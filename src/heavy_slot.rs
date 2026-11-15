@@ -5,9 +5,18 @@
 //! `heavy-slot-acquire [--max N] --name LANE [--dir DIR] -- COMMAND…` waits for one of N slots,
 //! runs COMMAND and returns COMMAND's exit code (128 + the signal number when it ends on a
 //! signal). A slot is a file `slot-<i>` with an exclusive `flock` (std `File::try_lock`); the
-//! open file is handed to COMMAND, so the slot stays held while either the wrapper or COMMAND
-//! is alive and the operating system frees it when both are gone, also after SIGKILL — no
-//! stale slot is left to clean. A waiter holds `waiting/<ns>-<pid>`, and its place is its rank
+//! open file is handed to COMMAND, so the slot stays held while the wrapper, COMMAND or any
+//! child or descendant of COMMAND that still has the file open is alive, and the operating
+//! system frees it when every one of them is gone, also after SIGKILL — no slot file is left
+//! to clean. A descendant that outlives COMMAND (a background process the command started)
+//! therefore keeps the slot after the wrapper has ended; `status` then still lists the slot
+//! with the wrapper's recorded pid, which is dead. Each `held` entry of `status` says so
+//! (`alive`: true, false, or null when the record names no process); for a dead pid it also
+//! lists the processes that have the slot file open (`holders`, `pid` and `comm`, from
+//! `/proc` or `lsof`; `unavailable` with `holders` null is not "nobody"). That is the list of
+//! processes with the file open, not a proof of who owns the lock. Ending such a process is
+//! for its owner; a slot file is never edited or deleted by hand. The Python twin has no
+//! `alive` or `holders`. A waiter holds `waiting/<ns>-<pid>`, and its place is its rank
 //! among live waiters by name. While waiting, and when COMMAND fails, the load averages and the
 //! free disk space of the working folder are printed (AC-2). A machine below `--min-free-gb`
 //! free or above `--max-swap-pct` swap use starts nothing and exits 75 with the measured
@@ -1062,6 +1071,42 @@ mod holders_tests {
         // No /proc and no lsof: unavailable.
         let noproc = d.path().join("noproc");
         assert!(find_with(&noproc, &["/nonexistent/lsof"], &slot, t).is_none());
+    }
+}
+
+/// #3033 D3: the four places that describe the slot say the same thing — a child or descendant
+/// that outlives the command keeps the slot, status shows who, and no one edits a slot file.
+#[cfg(test)]
+mod docs_tests {
+    #[test]
+    fn the_four_descriptions_name_the_leftover_child_and_the_hands_off_rule() {
+        let docs = [
+            ("src/heavy_slot.rs", include_str!("heavy_slot.rs")),
+            (
+                "skills/moai/workflows/verify.md",
+                include_str!("../skills/moai/workflows/verify.md"),
+            ),
+            (
+                "docs/rust-product-path.md",
+                include_str!("../docs/rust-product-path.md"),
+            ),
+            (
+                "tools/heavy_check_slot.py",
+                include_str!("../tools/heavy_check_slot.py"),
+            ),
+        ];
+        for (name, text) in docs {
+            assert!(text.contains("descendant"), "{name}: leftover descendant");
+            assert!(
+                text.contains("never edited or deleted by hand"),
+                "{name}: hands off the slot file"
+            );
+            assert!(text.contains("`alive`"), "{name}: names alive");
+        }
+        // Only the Rust status has `holders`; the Python tool says so instead of listing it.
+        for (name, text) in docs {
+            assert!(text.contains("`holders`"), "{name}: names holders");
+        }
     }
 }
 
