@@ -16,6 +16,8 @@ pub mod bin_names;
 pub mod check_tree;
 pub mod claim;
 pub mod claim_cache;
+pub mod claim_expired;
+pub mod claim_link;
 pub mod claim_timeout;
 pub mod claim_verify;
 pub mod claude;
