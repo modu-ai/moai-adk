@@ -4477,6 +4477,34 @@ mod tests {
         }
     }
 
+    /// #3004 P4-2 AC-11: the hooks the Rust build generates call `moai`, and none of them is
+    /// taken for the Go wiring's `moai hook <event>`; a real Go handler still is.
+    #[test]
+    fn the_rust_generated_hooks_are_not_the_go_wiring() {
+        let go = br#"{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"moai hook session-start"}]}]}}"#;
+        assert!(hooks_proof(go).is_ok());
+        for lane in [None, Some(("agent-1", "o/r"))] {
+            let set = crate::hooks::current_hooks("codex", lane).unwrap();
+            let doc = serde_json::json!({ "hooks": set });
+            assert!(doc.to_string().contains("\"moai "), "{doc}");
+            let proof = hooks_proof(doc.to_string().as_bytes());
+            assert!(proof.is_err(), "{lane:?}: {proof:?}");
+        }
+        for command in [
+            "moai hook-dispatch --host codex --event stop",
+            "moai hook-receipt --host codex",
+            "moai claim-verify .",
+            "moai lane-stop-hook --lane a --repo o/r",
+        ] {
+            let doc = serde_json::json!({"hooks": {"Stop": [{"hooks": [
+                {"type": "command", "command": command}]}]}});
+            assert!(
+                hooks_proof(doc.to_string().as_bytes()).is_err(),
+                "{command}"
+            );
+        }
+    }
+
     /// #2936 R-fix (audit mutant M03): a folder that is a link to a folder is not emptied by
     /// the move, however many of the files that would move sit inside its target. The
     /// classification refuses a path with a linked component, so only this function's own

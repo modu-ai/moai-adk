@@ -16,8 +16,9 @@ import unittest
 from tests.self_audit_run import rust_bin
 
 NOTE = (
-    "moai: hooks are generated with moai-cli until R5; put a Rust moai first on PATH "
-    "to let them use moai (nothing was changed)\n"
+    "moai: the first moai on PATH is not the Rust build; the generated hooks call moai, "
+    "so hooks-apply writes them only after a Rust moai is first on PATH "
+    "(nothing was changed)\n"
 )
 
 

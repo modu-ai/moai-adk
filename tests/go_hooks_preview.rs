@@ -111,7 +111,8 @@ fn the_preview_lists_what_goes_what_stays_and_what_is_added_and_writes_nothing()
     // The MoAI set is added; nothing of the Go generation is left in the result.
     let after = p["hooks_after"].to_string();
     assert!(!after.contains(".claude/hooks/moai/"), "{after}");
-    assert!(after.contains("moai-cli claim-verify"), "{after}");
+    assert!(after.contains("moai claim-verify"), "{after}");
+    assert!(!after.contains("moai-cli"), "{after}");
     assert!(after.contains("orca guard"), "{after}");
     assert_eq!(
         p["scripts"],
