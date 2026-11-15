@@ -21,6 +21,10 @@
 //! `CLAUDE.md`/`AGENTS.md`/`AGENTS.local.md` are moved into the backup's `root-files/` (#2936
 //! O4; the local settings are copied there, 0600), and the marker
 //! `.moai/moai-cli.json` is written last. The stage-2 section below has the layout.
+//!
+//! #2936 S1c-1 (PLAN 6878897673): the preview also classifies the Go generation's `.codex/`
+//! files ([`classify_codex`]) and moves none of them: every `.codex` item is `leave`. A
+//! `.codex` path is never one the receipts may name ([`ROOTS`] does not list it).
 
 use serde::{Deserialize, Serialize};
 // Stage 2 (`go-state-apply`, `go-state-revert-plan`, `go-state-revert`) is below `plan`.
@@ -42,6 +46,39 @@ const MANIFEST_LIMIT: u64 = 16 * 1024 * 1024;
 const FILE_LIMIT: u64 = 64 * 1024 * 1024;
 /// #2936 S1b: `.agents/` holds the Go skill mirror and the published command skills.
 const ROOTS: [&str; 3] = [".moai", ".claude", ".agents"];
+/// #2936 S1c-1: the folders the `unrecorded` count walks. `.codex` is counted but is not in
+/// [`ROOTS`], so a receipt still refuses a `.codex` path (nothing under it moves yet).
+const COUNTED_ROOTS: [&str; 4] = [".moai", ".claude", ".agents", ".codex"];
+/// #2936 S1c: the Go generation's Codex wiring files (`internal/codexwiring`), and the folders
+/// the deployer fills under `.codex/`.
+const CODEX_DIR: &str = ".codex";
+const CODEX_HOOKS: &str = ".codex/hooks.json";
+const CODEX_CONFIG: &str = ".codex/config.toml";
+const CODEX_GO_AGENTS: &str = ".codex/agents/moai/";
+const CODEX_GO_HOOK_SCRIPTS: &str = ".codex/hooks/moai/";
+/// The Go wiring's journal (`JournalRelPath`) and the prefix of its temp files (`tempPrefix`).
+const GO_WIRING_JOURNAL: &str = ".moai/state/codex-wiring-journal.json";
+const WIRING_TEMP: &str = ".codexwiring-";
+/// The reason of an item that S1c-2 will move; S1c-1 only classifies it.
+const MOVES_LATER: &str = "classified; moves in S1c-2";
+/// The size bound of a Codex config file, shared with `codex-config-plan`.
+const CODEX_READ_LIMIT: u64 = crate::hosts::codex_config::CONFIG_LIMIT;
+/// The handler commands the Go wiring owns (`moaiHandlerPrefix`, `isMoaiNamespaceCommand`).
+const GO_HANDLER_PREFIX: &str = "moai hook ";
+const GO_HANDLER_NAMESPACE: &str = "/.codex/hooks/moai/";
+/// The values of the Go `[mcp_servers.moai]` table (`configtoml.go`).
+const GO_MCP_ARGS: [&str; 1] = ["mcp-server"];
+const GO_MCP_ENV_VARS: [&str; 9] = [
+    "MOAI_HOME",
+    "MOAI_KANBAN_ID",
+    "MOAI_SESSION_PID",
+    "MOAI_KANBAN_BACKEND",
+    "MOAI_FACTORY_ROLE",
+    "MOAI_FACTORY_WORKER",
+    "MOAI_FACTORY_WORKERS",
+    "CLAUDE_PROJECT_DIR",
+    "CLAUDE_CODE_SESSION_ID",
+];
 /// The Go skill mirror (`internal/template/skill_mirror.go`): `.agents/skills/<n>` is a link
 /// whose body is exactly `../../.claude/skills/<n>`, or a real copy of that folder. Mirror
 /// entries are never in the Go manifest; the canonical files are.
@@ -152,6 +189,37 @@ struct Entry {
     provenance: String,
     #[serde(default)]
     deployed_hash: String,
+    /// #2936 S1c: the ownership parts of a `generated_managed` file (`manifest.Part`). Read
+    /// leniently (any shape): only the count of parts that are not `created` is shown.
+    #[serde(default)]
+    parts: serde_json::Value,
+}
+
+impl Entry {
+    /// (all parts, parts whose origin is not `created`).
+    fn part_counts(&self) -> (usize, usize) {
+        let parts = self.parts.as_array().map(Vec::as_slice).unwrap_or(&[]);
+        let other = parts
+            .iter()
+            .filter(|p| p["origin"].as_str() != Some("created"))
+            .count();
+        (parts.len(), other)
+    }
+}
+
+/// Whether `actual` (`sha256:<hex>` of the bytes on disk) is the hash the manifest recorded.
+/// The Go deployer records `sha256:<hex>`; the Codex wiring records its `generated_managed`
+/// files with bare hex (`internal/codexwiring/ownership.go`, `intendedEntry`). Only that
+/// provenance is normalized; every other record must match exactly.
+fn same_hash(provenance: &str, recorded: &str, actual: &str) -> bool {
+    if recorded.is_empty() {
+        return false;
+    }
+    if provenance == "generated_managed" {
+        let bare = |h: &str| h.strip_prefix("sha256:").unwrap_or(h).to_string();
+        return bare(recorded) == bare(actual);
+    }
+    recorded == actual
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq, Default)]
@@ -196,7 +264,7 @@ pub struct GoStatePlan {
     pub project: String,
     pub manifest_version: Option<String>,
     pub items: Vec<Item>,
-    /// Regular files under `.moai/` and `.claude/` the manifest does not record, counted per
+    /// Regular files under `.moai/`, `.claude/`, `.agents/` and `.codex/` the manifest does not record, counted per
     /// second-level folder (`.moai/specs`, `.claude/worktrees`, …). They are never moved.
     pub unrecorded: BTreeMap<String, u64>,
     /// AC-5: files copied from the Go backup's `specs/` into `.moai/specs` (`copy`), or not
@@ -231,8 +299,8 @@ pub struct GoStatePlan {
     pub counterparts: Vec<Counterpart>,
     /// #2936 R-A: what the move leaves behind.
     pub after_move: AfterMove,
-    /// #2936 O6: secret-named entries under `.claude/` and `.agents/`; only counted, never
-    /// listed, read or moved.
+    /// #2936 O6, Q6: secret-named entries under `.claude/`, `.agents/` and `.codex/`; only counted,
+    /// never listed, read or moved.
     pub secrets: u64,
     pub warnings: Vec<String>,
     pub plan_digest: String,
@@ -580,8 +648,7 @@ fn policy(
     let unchanged = match sha256_file(&path) {
         Ok(h) => {
             entry.provenance == "template_managed"
-                && !entry.deployed_hash.is_empty()
-                && h == entry.deployed_hash
+                && same_hash(&entry.provenance, &entry.deployed_hash, &h)
         }
         Err(_) => return leave("not a bounded regular file", "unknown"),
     };
@@ -768,9 +835,7 @@ fn classify_agents_skills(
             let rec = recorded.get(&format!("{canon}{inner}"));
             let h = sha256_file(&project.join(&rel).join(inner));
             match (rec, h) {
-                (Some(e), Ok(h)) if !e.deployed_hash.is_empty() && e.deployed_hash == h => {
-                    same += 1
-                }
+                (Some(e), Ok(h)) if same_hash(&e.provenance, &e.deployed_hash, &h) => same += 1,
                 _ => differ += 1,
             }
         }
@@ -802,11 +867,504 @@ fn classify_agents_skills(
     out
 }
 
-/// O6: secret-named entries under `.claude/` and `.agents/` (a secret-named folder counts
+// ---- #2936 S1c-1: the Go generation's `.codex/` files (classify and preview only) ----
+
+/// What this generation's own records say about `.codex/`, read once per preview.
+struct CodexRecords {
+    /// A record of this generation exists but cannot be read: Rust-made files cannot be told
+    /// apart from Go's, so nothing under `.codex` is proven.
+    broken: Option<&'static str>,
+    /// `.codex/**` paths of the Rust generation manifest's `owned_files`.
+    owned_paths: Vec<String>,
+    /// The `sha256` and `pending_sha256` of the Rust hooks receipt.
+    hooks_sha: Vec<String>,
+    /// Whether the Rust config receipt owns any key.
+    config_owned: bool,
+    /// Why the Go wiring looks interrupted (a temp file or an unfinished journal entry).
+    interrupted: Option<&'static str>,
+}
+
+/// One JSON record under this generation's state folder: `Ok(None)` when absent, `Err` when it
+/// is a link, not a bounded regular file, or not JSON.
+fn rust_record(project: &Path, sub: &str) -> std::result::Result<Option<serde_json::Value>, ()> {
+    let rel = crate::state_root::rel(project, sub);
+    match read_bounded_text(project, &rel, CODEX_READ_LIMIT) {
+        Ok(None) => Ok(None),
+        Ok(Some(text)) => serde_json::from_str(&text).map(Some).map_err(|_| ()),
+        Err(_) => Err(()),
+    }
+}
+
+fn codex_records(project: &Path) -> CodexRecords {
+    let mut r = CodexRecords {
+        broken: None,
+        owned_paths: Vec::new(),
+        hooks_sha: Vec::new(),
+        config_owned: false,
+        interrupted: wiring_interruption(project),
+    };
+    const BROKEN: &str = "a Rust record under the state folder cannot be read, so Rust-made files \
+                          cannot be told apart from the Go tool's; it stays";
+    match rust_record(project, "manifests/generation.json") {
+        Ok(None) => {}
+        Ok(Some(v)) => match v.get("owned_files") {
+            None => {}
+            Some(list) => match list.as_array() {
+                Some(list) => {
+                    r.owned_paths = list
+                        .iter()
+                        .filter_map(|f| f["path"].as_str())
+                        .filter(|p| top_of(p) == CODEX_DIR)
+                        .map(str::to_string)
+                        .collect();
+                }
+                None => r.broken = Some(BROKEN),
+            },
+        },
+        Err(()) => r.broken = Some(BROKEN),
+    }
+    match rust_record(project, "manifests/codex-hooks.json") {
+        Ok(None) => {}
+        Ok(Some(v)) if v["schema_version"].as_u64() == Some(1) => {
+            r.hooks_sha = ["sha256", "pending_sha256"]
+                .iter()
+                .filter_map(|k| v[*k].as_str().map(str::to_string))
+                .collect();
+        }
+        _ => r.broken = Some(BROKEN),
+    }
+    match rust_record(project, "manifests/codex-config.json") {
+        Ok(None) => {}
+        Ok(Some(v)) if v["schema_version"].as_u64() == Some(1) && v["owned"].is_object() => {
+            let owns = |o: &serde_json::Value| o.as_object().is_some_and(|m| !m.is_empty());
+            r.config_owned = owns(&v["owned"]) || owns(&v["pending"]["owned"]);
+        }
+        _ => r.broken = Some(BROKEN),
+    }
+    r
+}
+
+/// Q5: why the Go wiring looks interrupted, if it does. A temp file of the wiring's atomic
+/// write sits in `.codex/`, or the Go journal holds an entry that is neither `complete` nor
+/// `discarded` (or cannot be read). A finished journal stays on disk and is not a sign.
+fn wiring_interruption(project: &Path) -> Option<&'static str> {
+    if fs::symlink_metadata(project.join(CODEX_DIR)).is_ok_and(|m| m.is_dir()) {
+        let temp = fs::read_dir(project.join(CODEX_DIR))
+            .map(|rd| {
+                rd.flatten()
+                    .any(|e| e.file_name().to_string_lossy().starts_with(WIRING_TEMP))
+            })
+            .unwrap_or(false);
+        if temp {
+            return Some("a .codexwiring-* temp file is in .codex/");
+        }
+    }
+    match read_bounded_text(project, GO_WIRING_JOURNAL, MANIFEST_LIMIT) {
+        Ok(None) => None,
+        Err(_) => Some("the Go wiring journal cannot be read"),
+        Ok(Some(text)) => {
+            let Ok(doc) = serde_json::from_str::<serde_json::Value>(&text) else {
+                return Some("the Go wiring journal cannot be read");
+            };
+            match doc.get("entries") {
+                None => None,
+                Some(entries) => match entries.as_array() {
+                    None => Some("the Go wiring journal cannot be read"),
+                    Some(entries) => entries
+                        .iter()
+                        .any(|e| !matches!(e["state"].as_str(), Some("complete" | "discarded")))
+                        .then_some("the Go wiring journal has an unfinished entry"),
+                },
+            }
+        }
+    }
+}
+
+/// Dotted names (at most `MAX_NAMES`, each cut to `MAX_NAME` characters) for the proof text:
+/// key names are shown, never values.
+fn key_names(names: &[String]) -> String {
+    const MAX_NAMES: usize = 8;
+    const MAX_NAME: usize = 64;
+    let mut sorted: Vec<String> = names
+        .iter()
+        .map(|n| n.chars().take(MAX_NAME).collect())
+        .collect();
+    sorted.sort();
+    sorted.dedup();
+    let more = sorted.len().saturating_sub(MAX_NAMES);
+    sorted.truncate(MAX_NAMES);
+    if more > 0 {
+        format!("{} and {more} more", sorted.join(", "))
+    } else {
+        sorted.join(", ")
+    }
+}
+
+/// Content proof for `.codex/hooks.json` (PLAN S1c, key point b): the top-level keys are only
+/// `description` and `hooks`, and every handler command is the Go wiring's own (it starts with
+/// `moai hook ` or names a script under `/.codex/hooks/moai/`). `Err` says why, with key names
+/// and counts only; a command is never shown.
+fn hooks_proof(bytes: &[u8]) -> std::result::Result<String, String> {
+    let Ok(serde_json::Value::Object(top)) = serde_json::from_slice::<serde_json::Value>(bytes)
+    else {
+        return Err("hooks.json does not parse as a JSON object".into());
+    };
+    let foreign: Vec<String> = top
+        .keys()
+        .filter(|k| !matches!(k.as_str(), "description" | "hooks"))
+        .cloned()
+        .collect();
+    if !foreign.is_empty() {
+        return Err(format!(
+            "keys outside the Go wiring: {}",
+            key_names(&foreign)
+        ));
+    }
+    let (mut handlers, mut foreign_handlers) = (0usize, 0usize);
+    if let Some(events) = top.get("hooks") {
+        let shape = "hooks.json holds a hooks table the Go wiring does not write";
+        let events = events.as_object().ok_or(shape)?;
+        for entries in events.values() {
+            for entry in entries.as_array().ok_or(shape)? {
+                for handler in entry["hooks"].as_array().ok_or(shape)? {
+                    handlers += 1;
+                    let own = handler["command"].as_str().is_some_and(|c| {
+                        c.starts_with(GO_HANDLER_PREFIX) || c.contains(GO_HANDLER_NAMESPACE)
+                    });
+                    if !own {
+                        foreign_handlers += 1;
+                    }
+                }
+            }
+        }
+    }
+    if foreign_handlers > 0 {
+        return Err(format!("{foreign_handlers} handler(s) are not MoAI's"));
+    }
+    let keys: Vec<String> = top.keys().cloned().collect();
+    Ok(format!(
+        "content: keys {}; {handlers} handler(s), all MoAI's",
+        key_names(&keys)
+    ))
+}
+
+/// The dotted names of every value under `table`, tables entered, arrays and values leaves.
+fn toml_key_paths(table: &dyn toml_edit::TableLike, prefix: &str, out: &mut Vec<String>) {
+    for (key, item) in table.iter() {
+        let path = if prefix.is_empty() {
+            key.to_string()
+        } else {
+            format!("{prefix}.{key}")
+        };
+        match item {
+            toml_edit::Item::None => {}
+            toml_edit::Item::Table(t) => toml_key_paths(t, &path, out),
+            toml_edit::Item::Value(toml_edit::Value::InlineTable(t)) => {
+                toml_key_paths(t, &path, out)
+            }
+            _ => out.push(path),
+        }
+    }
+}
+
+fn toml_strings(item: Option<&toml_edit::Item>) -> Option<Vec<&str>> {
+    item?.as_array()?.iter().map(|v| v.as_str()).collect()
+}
+
+/// Content proof for `.codex/config.toml` (PLAN S1c, key point b): the only keys are the Go
+/// `[mcp_servers.moai]` table with exactly the Go values, and `tui.status_line` (a list of
+/// strings, any items). `Err` says why with key names only, never a value.
+fn config_proof(bytes: &[u8]) -> std::result::Result<String, String> {
+    let parse = "config.toml does not parse as TOML";
+    let text = std::str::from_utf8(bytes).map_err(|_| parse)?;
+    let doc: toml_edit::DocumentMut = text.parse().map_err(|_| parse)?;
+    let mut paths = Vec::new();
+    toml_key_paths(doc.as_table(), "", &mut paths);
+    let mcp_key = |k: &str| format!("mcp_servers.moai.{k}");
+    let mcp_keys = ["command", "args", "env_vars", "default_tools_approval_mode"];
+    let foreign: Vec<String> = paths
+        .iter()
+        .filter(|p| p.as_str() != "tui.status_line" && !mcp_keys.iter().any(|k| **p == mcp_key(k)))
+        .cloned()
+        .collect();
+    if !foreign.is_empty() {
+        return Err(format!(
+            "keys outside the Go wiring: {}",
+            key_names(&foreign)
+        ));
+    }
+    let moai = doc
+        .get("mcp_servers")
+        .and_then(|m| m.as_table_like())
+        .and_then(|m| m.get("moai"))
+        .and_then(|m| m.as_table_like());
+    if let Some(t) = moai {
+        let same = t.get("command").and_then(|v| v.as_str()) == Some("moai")
+            && toml_strings(t.get("args")).as_deref() == Some(&GO_MCP_ARGS[..])
+            && toml_strings(t.get("env_vars")).as_deref() == Some(&GO_MCP_ENV_VARS[..])
+            && t.get("default_tools_approval_mode")
+                .and_then(|v| v.as_str())
+                == Some("writes");
+        if !same {
+            return Err("mcp_servers.moai is not the table the Go wiring writes".into());
+        }
+    }
+    let line = doc
+        .get("tui")
+        .and_then(|t| t.as_table_like())
+        .and_then(|t| t.get("status_line"));
+    if line.is_some() && toml_strings(line).is_none() {
+        return Err("tui.status_line is not a list of strings".into());
+    }
+    let mut keys = Vec::new();
+    if moai.is_some() {
+        keys.push("mcp_servers.moai".to_string());
+    }
+    if line.is_some() {
+        keys.push("tui.status_line".to_string());
+    }
+    Ok(format!("content: keys {}", key_names(&keys)))
+}
+
+/// A bounded regular file's bytes for the content proof; `Err` is the reason it is not read.
+fn read_wiring_file(path: &Path) -> std::result::Result<Vec<u8>, String> {
+    let m = fs::symlink_metadata(path).map_err(|_| "file metadata unavailable".to_string())?;
+    if !m.is_file() {
+        return Err("not a regular file".into());
+    }
+    if m.len() > CODEX_READ_LIMIT {
+        return Err(format!("larger than {CODEX_READ_LIMIT} bytes; not read"));
+    }
+    let bytes = fs::read(path).map_err(|_| "file read failed".to_string())?;
+    if bytes.len() as u64 > CODEX_READ_LIMIT {
+        return Err(format!("larger than {CODEX_READ_LIMIT} bytes; not read"));
+    }
+    Ok(bytes)
+}
+
+/// Why a `.codex` path is Rust-made, if it is: listed in the Rust generation manifest, the
+/// bytes of `hooks.json` the Rust hooks receipt owns, or a `config.toml` whose keys the Rust
+/// config receipt owns. Rust-made files are never classified as Go's.
+fn rust_proof(project: &Path, path: &str, rec: &CodexRecords) -> Option<&'static str> {
+    if rec.owned_paths.iter().any(|p| p == path) {
+        return Some("listed in the Rust generation manifest");
+    }
+    if path == CODEX_HOOKS && !rec.hooks_sha.is_empty() {
+        let bytes = read_wiring_file(&project.join(path)).ok()?;
+        if rec.hooks_sha.contains(&crate::digest(&bytes)) {
+            return Some("sha256 equals the Rust hooks receipt");
+        }
+    }
+    if path == CODEX_CONFIG && rec.config_owned {
+        return Some("the Rust config receipt owns keys in it");
+    }
+    None
+}
+
+/// The item for one `.codex` path; `None` for a path only the Rust side named that is not
+/// Rust's after all (or is not there). Always `leave`: S1c-1 moves nothing.
+fn codex_item(
+    project: &Path,
+    path: &str,
+    entry: Option<&Entry>,
+    rec: &CodexRecords,
+) -> Option<Item> {
+    let item = |class: &str, reason: &str, proof: String| {
+        let mut i = new_item(path, "leave", reason.to_string(), class);
+        i.proof = proof;
+        i.deployed_hash = entry.map(|e| e.deployed_hash.clone()).unwrap_or_default();
+        Some(i)
+    };
+    if !plain_relative(path) {
+        return item("outside", "not a plain relative path", String::new());
+    }
+    if linked_component(project, path) {
+        return item(
+            "unknown",
+            "a path component is a symlink; it stays",
+            String::new(),
+        );
+    }
+    match fs::symlink_metadata(project.join(path)) {
+        Err(_) if entry.is_some() => return item("unknown", "missing", String::new()),
+        Err(_) => return None,
+        Ok(m) if !m.is_file() => {
+            return item("unknown", "not a regular file", String::new());
+        }
+        Ok(_) => {}
+    }
+    if let Some(why) = rec.broken {
+        return item("unknown", why, String::new());
+    }
+    if let Some(why) = rust_proof(project, path, rec) {
+        return item("rust", "this generation's file; it stays", why.to_string());
+    }
+    let entry = entry?;
+    if let Some(why) = rec.interrupted {
+        return item(
+            "interrupted",
+            "interrupted Codex wiring; everything under .codex stays (Q5)",
+            why.to_string(),
+        );
+    }
+    if entry.provenance == "user_created" {
+        return item(
+            "user_data",
+            "user_created: the user's own file",
+            String::new(),
+        );
+    }
+    let full = project.join(path);
+    if path == CODEX_HOOKS || path == CODEX_CONFIG {
+        return wiring_item(path, &full, entry, &item);
+    }
+    if path.starts_with(CODEX_GO_AGENTS) {
+        return agent_item(&full, entry, &item);
+    }
+    if path.starts_with(CODEX_GO_HOOK_SCRIPTS) {
+        return item(
+            "go_hook_script",
+            "the Go hook scripts stay in place (Q4)",
+            String::new(),
+        );
+    }
+    item(
+        "unknown",
+        "no rule moves this .codex path; it stays",
+        String::new(),
+    )
+}
+
+/// `.codex/agents/moai/*.toml`: a `template_managed` file with its deployed hash is the tool's;
+/// an edited or `user_modified` one moves later with both hashes recorded (O2, Q3).
+fn agent_item(
+    full: &Path,
+    entry: &Entry,
+    item: &dyn Fn(&str, &str, String) -> Option<Item>,
+) -> Option<Item> {
+    if !matches!(
+        entry.provenance.as_str(),
+        "template_managed" | "user_modified"
+    ) {
+        return item("unknown", "not template_managed", String::new());
+    }
+    let Ok(h) = sha256_file(full) else {
+        return item("unknown", "not a bounded regular file", String::new());
+    };
+    let unchanged = entry.provenance == "template_managed"
+        && same_hash(&entry.provenance, &entry.deployed_hash, &h);
+    if unchanged {
+        item(
+            "tool_asset",
+            MOVES_LATER,
+            "manifest; sha256 matches the deploy".to_string(),
+        )
+    } else if entry.provenance == "user_modified" {
+        item(
+            "user_modified",
+            MOVES_LATER,
+            "manifest; recorded user_modified".to_string(),
+        )
+    } else {
+        item(
+            "user_modified",
+            MOVES_LATER,
+            "manifest; sha256 differs from the deploy".to_string(),
+        )
+    }
+}
+
+/// `.codex/hooks.json` and `.codex/config.toml`: the manifest's `generated_managed` record, the
+/// hash and then the content must all prove the file is only the Go wiring's (hash alone is not
+/// proof: the wiring re-records the hash after the user edits the file).
+fn wiring_item(
+    path: &str,
+    full: &Path,
+    entry: &Entry,
+    item: &dyn Fn(&str, &str, String) -> Option<Item>,
+) -> Option<Item> {
+    if entry.provenance != "generated_managed" {
+        return item("unknown", "not generated_managed", String::new());
+    }
+    let bytes = match read_wiring_file(full) {
+        Ok(b) => b,
+        Err(why) => return item("unknown", &why, String::new()),
+    };
+    let (all, other) = entry.part_counts();
+    let record = format!("manifest generated_managed; {all} part(s), {other} not created");
+    if !same_hash(
+        &entry.provenance,
+        &entry.deployed_hash,
+        &crate::digest(&bytes),
+    ) {
+        return item(
+            "user_modified",
+            "sha256 differs from the wiring record; it stays in place",
+            format!("{record}; sha256 differs from the wiring record"),
+        );
+    }
+    let hooks = path == CODEX_HOOKS;
+    match if hooks {
+        hooks_proof(&bytes)
+    } else {
+        config_proof(&bytes)
+    } {
+        Ok(content) => item(
+            if hooks { "go_hooks" } else { "go_config" },
+            MOVES_LATER,
+            format!("{record}; sha256 matches; {content}"),
+        ),
+        Err(why) => item(
+            "user_modified",
+            "content is not proven to be only the Go wiring's; it stays in place",
+            format!("{record}; sha256 matches; {why}"),
+        ),
+    }
+}
+
+/// #2936 S1c-1: the items for `.codex/`, always `leave`, and their warnings. Candidates are the
+/// Go manifest's `.codex` records and the `.codex` files this generation made; a secret-named
+/// path is skipped before any read (the `secrets` count has it).
+fn classify_codex(project: &Path, recorded: &HashMap<String, Entry>) -> (Vec<Item>, Vec<String>) {
+    let rec = codex_records(project);
+    let mut warnings = Vec::new();
+    let mut paths: BTreeMap<String, Option<&Entry>> = BTreeMap::new();
+    for (key, entry) in recorded {
+        if top_of(key) == CODEX_DIR && !has_secret_component(key) {
+            paths.insert(key.clone(), Some(entry));
+        }
+    }
+    let rust_named = rec
+        .owned_paths
+        .iter()
+        .map(String::as_str)
+        .chain((!rec.hooks_sha.is_empty()).then_some(CODEX_HOOKS))
+        .chain(rec.config_owned.then_some(CODEX_CONFIG));
+    for path in rust_named {
+        if !has_secret_component(path) {
+            paths.entry(path.to_string()).or_insert(None);
+        }
+    }
+    let items: Vec<Item> = paths
+        .iter()
+        .filter_map(|(path, entry)| codex_item(project, path, *entry, &rec))
+        .collect();
+    if let Some(why) = rec.interrupted {
+        if items.iter().any(|i| i.class == "interrupted") {
+            warnings.push(format!(
+                "interrupted Codex wiring ({why}): everything the Go wiring wrote under .codex \
+                 stays in place until it is recovered (the Go tool: `moai tool enable codex`)"
+            ));
+        }
+    }
+    (items, warnings)
+}
+
+/// O6 (and Q6 for `.codex/`): secret-named entries under `.claude/`, `.agents/` and `.codex/` (a secret-named folder counts
 /// once and is not entered), without reading any; `true` when the walk passed `limit`.
 fn count_secrets(project: &Path, limit: u64) -> (u64, bool) {
     let (mut found, mut seen) = (0u64, 0u64);
-    for root in [".claude", ".agents"] {
+    for root in [".claude", ".agents", CODEX_DIR] {
         let base = project.join(root);
         if !fs::symlink_metadata(&base).is_ok_and(|m| m.is_dir()) {
             continue;
@@ -1056,7 +1614,7 @@ fn count_unrecorded(
     let mut counts = BTreeMap::new();
     let mut nested = 0u64;
     let mut seen = 0u64;
-    for root in ROOTS {
+    for root in COUNTED_ROOTS {
         let base = project.join(root);
         let Ok(m) = fs::symlink_metadata(&base) else {
             continue;
@@ -1558,6 +2116,17 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
     // #2670: the Go generation's worktree include list copies `.env*` into every new Claude
     // Code worktree. Reported, never edited (a line may be deliberate).
     warnings.extend(crate::worktree_include::warnings(&project));
+    // S1c: Codex reads these two files while a session runs (the Go wiring's trust layer).
+    if [CODEX_HOOKS, CODEX_CONFIG]
+        .iter()
+        .any(|f| fs::symlink_metadata(project.join(f)).is_ok())
+    {
+        warnings.push(
+            "A running Codex session reads .codex/hooks.json and .codex/config.toml; stop it \
+             before a later step moves them (this preview cannot tell whether one is running)."
+                .to_string(),
+        );
+    }
     let mut settings = Vec::new();
     for file in [SETTINGS, SETTINGS_LOCAL] {
         let text = read_bounded_text(&project, file, MANIFEST_LIMIT)?.unwrap_or_default();
@@ -1657,6 +2226,11 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
     let mut keys: Vec<&String> = recorded.keys().collect();
     keys.sort();
     for key in keys {
+        // S1c-1: the `.codex` records are classified together with the files this generation
+        // made there (see `classify_codex` below).
+        if top_of(key) == CODEX_DIR {
+            continue;
+        }
         // O6: a secret name under `.claude/` or `.agents/` is never listed, hashed or moved;
         // `secrets` counts what is on disk.
         if matches!(top_of(key), ".claude" | ".agents") && has_secret_component(key) {
@@ -1671,11 +2245,14 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
     }
     if version.is_some() {
         items.extend(classify_agents_skills(&project, &recorded, folder_moves));
+        let (codex_items, codex_warnings) = classify_codex(&project, &recorded);
+        items.extend(codex_items);
+        warnings.extend(codex_warnings);
     }
     let (secrets, secrets_stopped) = count_secrets(&project, unrecorded_limit());
     if secrets_stopped {
         warnings.push(format!(
-            "the secret-name count under .claude/ and .agents/ is a lower bound: its walk \
+            "the secret-name count under .claude/, .agents/ and .codex/ is a lower bound: its walk \
              passed {} entries",
             unrecorded_limit()
         ));
@@ -1686,7 +2263,7 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
         if stopped {
             warnings.push(format!(
                 "the count of files the manifest does not record stopped after \
-                 {limit} entries under .moai/, .claude/ and .agents/; the numbers in \
+                 {limit} entries under .moai/, .claude/, .agents/ and .codex/; the numbers in \
                  `unrecorded` are lower bounds (no file is moved on their account)"
             ));
         }
