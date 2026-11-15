@@ -1664,3 +1664,88 @@ fn the_observations_example_is_a_file_lane_safe_to_reset_reads() {
         "the tool refused the example: {v}"
     );
 }
+
+/// #3005, user instruction 6890270975 (items 2 and 3): a message is received when its sender has
+/// read the ACK line, never because a notification was shown; both modes judge Orca's connect and
+/// read, terminal send and orchestration send apart, never go round a refused path and never
+/// resend an unconfirmed send; a handoff is complete only on the receiver's ACK line.
+#[test]
+fn a_message_is_received_when_its_ack_line_is_read_and_orca_abilities_are_judged_apart() {
+    let agent = workflow("mode-agent.md");
+    let leader = workflow("mode-leader.md");
+    for (who, text) in [("mode-agent", &agent), ("mode-leader", &leader)] {
+        let orca = section_of(text, "Session control with Orca");
+        for p in [
+            "Judge three abilities apart",
+            "connect and read (`orca status --json` is `ready` and `orca terminal read --terminal <handle> --screen` answers)",
+            "terminal send (items 1 and 2) and orchestration send (`orca orchestration …`)",
+            "a read that works says nothing about a send",
+            "`orca: yes (read ok, terminal send ok, orchestration send failed (<reason>))`",
+            "write that ability `failed (<reason>)`",
+            "write it `unconfirmed`",
+            "Do not go round it by a path nobody approved",
+            "do not send it twice: read the target again, then decide",
+        ] {
+            assert!(orca.contains(p), "{who}: item 8 must say `{p}`:\n{orca}");
+        }
+    }
+    let lane = section_of(&agent, "Receive, acknowledge, start");
+    for p in [
+        "is received only when its sender has read your ACK line",
+        "A notification on a screen, `accepted: true` and a set `delivered_at` show delivery, not receipt",
+        "ACK first, then claim",
+        "print one line `ACK <lane> <ref> <UTC>`",
+        "`<UTC>` comes from `date -u`",
+        "The line says only \"read\"; it accepts nothing",
+        "Acceptance is a second line",
+        "`accepted`, `deferred` or `rejected` with the reason",
+        "Then start: your claim and a `claim-verify` that answers `owner`",
+        "A blocker is the `LANE-BLOCKED` line (`report` step), never a silent stop",
+        "`ACK <lane> resume <ref> <UTC>`",
+        "the handoff is complete for the sender only when it has read that ACK",
+        "it does not hand the card to a second session",
+    ] {
+        assert!(
+            lane.contains(p),
+            "`Receive, acknowledge, start` must say `{p}`:\n{lane}"
+        );
+    }
+    assert!(
+        !leader.contains("## Receive, acknowledge, start"),
+        "the lane's section belongs to the lane"
+    );
+    assert_says(
+        &leader,
+        "answer-requests",
+        &[
+            "A dispatch is received only when you have read the lane's ACK line",
+            "show delivery, not receipt",
+            "write `unconfirmed` for that dispatch in the round summary",
+            "never retype the card",
+        ],
+    );
+    assert_says(
+        &leader,
+        "handoff-line",
+        &[
+            "A handoff is complete only when you have read the receiving session's ACK line",
+            "hand the card to no second session",
+        ],
+    );
+    let receiving = section_of(&leader, "Receiving an instruction");
+    for p in [
+        "receive, acknowledge, start, report a blocker, resume, hand off",
+        "the instruction is received when you have written `ACK leader <ref> <UTC>`",
+        "`accepted`, `deferred` or `rejected` with the reason",
+        "`LANE-BLOCKED leader <target> <reason> · kind=<kind> owner=<who> next=<what>`",
+        "never a host goal set to `blocked` for a wait",
+        "`ACK leader resume <ref> <UTC>`",
+        "The handoff is complete only when you have read the new leader's ACK line",
+        "until then you are still the leader",
+    ] {
+        assert!(
+            receiving.contains(p),
+            "`Receiving an instruction` must say `{p}`:\n{receiving}"
+        );
+    }
+}
