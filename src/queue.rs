@@ -6,6 +6,7 @@
 //! `claim-acquire`. The remote stays the source of truth (user decision D-4); live GitHub runs
 //! are not part of the tests (fixtures only).
 use crate::claim::{parse_claim_line, ClaimComment};
+use crate::comment_authority::{retain_rest, Dropped};
 use crate::forge::policy::{next_link, parse_utc, Clock};
 use crate::forge::transport::Transport;
 use crate::forge::Client;
@@ -82,11 +83,13 @@ fn read_claim_history<T: Transport, C: Clock>(
     owner: &str,
     repo: &str,
     number: i64,
-) -> Result<(Vec<ClaimComment>, Option<Handoff>, bool)> {
+) -> Result<(Vec<ClaimComment>, Option<Handoff>, bool, Dropped)> {
     let mut url = Some(format!(
         "{API}/repos/{owner}/{repo}/issues/{number}/comments?per_page=100"
     ));
     let mut comments = Vec::new();
+    // Only a member's claim-family line counts (Issue #3052); the rest is reported.
+    let mut ignored = Dropped::default();
     let mut pages = 0;
     while let Some(u) = url {
         pages += 1;
@@ -94,7 +97,8 @@ fn read_claim_history<T: Transport, C: Clock>(
             return Err("queue claim comment page limit exceeded (50)".into());
         }
         let (body, next) = get_json(client, &u)?;
-        if let Value::Array(page) = body {
+        if let Value::Array(mut page) = body {
+            ignored.merge(retain_rest(&mut page));
             for c in page {
                 let (Some(id), Some(text)) = (c["id"].as_i64(), c["body"].as_str()) else {
                     continue;
@@ -161,7 +165,7 @@ fn read_claim_history<T: Transport, C: Clock>(
             _ => {}
         }
     }
-    Ok((claims, handoffs.pop(), !known.is_empty()))
+    Ok((claims, handoffs.pop(), !known.is_empty(), ignored))
 }
 
 /// `queue-free` stdin (typed JSON, unknown keys rejected).
@@ -213,6 +217,7 @@ pub fn free<T: Transport, C: Clock>(
     let (mut expired, mut unjudged) = (Vec::new(), Vec::new());
     let (mut held, mut epics, mut blocked) = (Vec::new(), Vec::new(), Vec::new());
     let mut inspected = 0u64;
+    let mut ignored = Dropped::default();
     for i in &issues {
         let Some(number) = i["number"].as_i64() else {
             continue;
@@ -260,7 +265,9 @@ pub fn free<T: Transport, C: Clock>(
             // No goal exclusions are passed, so `KeepSet` cannot occur.
             Some(crate::startable::Skip::KeepSet(_)) | None => {}
         }
-        let (claims, handoff, ever) = read_claim_history(client, &req.owner, &req.repo, number)?;
+        let (claims, handoff, ever, dropped) =
+            read_claim_history(client, &req.owner, &req.repo, number)?;
+        ignored.merge(dropped);
         if let Some(h) = handoff {
             reserved.push(json!({"issue": number, "title": title, "to": h.to,
                                  "handoff_comment_id": h.comment_id}));
@@ -301,7 +308,7 @@ pub fn free<T: Transport, C: Clock>(
         epics.len(),
         blocked.len()
     );
-    Ok(json!({
+    let mut out = json!({
         "schema_version": 1,
         "repository": format!("{}/{}", req.owner, req.repo),
         "inspected": inspected,
@@ -319,7 +326,11 @@ pub fn free<T: Transport, C: Clock>(
         "blocked": blocked,
         "summary": summary,
         "writes": false,
-    }))
+    });
+    if !ignored.is_empty() {
+        out["ignored_control_lines"] = ignored.to_json();
+    }
+    Ok(out)
 }
 
 /// `queue-free` with the system transport and clock; GET only, no journal.
@@ -356,15 +367,15 @@ mod tests {
             ),
             response: HttpResponse::new(200).with_body(body),
         };
-        let claim = |id: i64, s: &str| json!({"id": id, "body": format!("moai-claim: session={s} epoch=1 lease_until={lease}")});
+        let claim = |id: i64, s: &str| json!({"id": id, "author_association": "MEMBER", "body": format!("moai-claim: session={s} epoch=1 lease_until={lease}")});
         let t = RecordedTransport::new(vec![
             page(json!([
                 claim(100, "a"),
-                {"id": 150, "body": crate::claim_verify::render_release_line(100, "leader")},
+                {"id": 150, "author_association": "MEMBER", "body": crate::claim_verify::render_release_line(100, "leader")},
             ])),
             page(json!([
                 claim(100, "a"),
-                {"id": 150, "body": crate::claim_verify::render_handoff_line(100, "b", "leader")},
+                {"id": 150, "author_association": "MEMBER", "body": crate::claim_verify::render_handoff_line(100, "b", "leader")},
                 claim(200, "b"),
             ])),
         ]);

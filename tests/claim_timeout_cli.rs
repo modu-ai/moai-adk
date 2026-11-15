@@ -46,7 +46,7 @@ fn commits_url() -> String {
 }
 
 fn raw(id: i64, body: &str, created: i64) -> Value {
-    json!({"id": id, "user": {"login": "GoosLab"}, "body": body,
+    json!({"id": id, "user": {"login": "GoosLab"}, "author_association": "MEMBER", "body": body,
            "created_at": at(created), "updated_at": at(created)})
 }
 
@@ -176,6 +176,76 @@ fn only_get_requests_are_sent() {
     assert_eq!(sent.len(), 3);
     assert!(sent.iter().all(|r| r.method == "GET"), "{sent:?}");
     assert_eq!(t.remaining(), 0);
+}
+
+/// Issue #3052: the claim and the takeover request count only when a member wrote them. The
+/// same thread judged `met` with member authors is `not_met` when the claim or the request
+/// comes from someone else, and the ignored comment is named in the answer.
+#[test]
+fn a_claim_or_request_from_a_non_member_does_not_meet_the_timeout() {
+    for (which, id, association) in [
+        ("claim", 100, Some("NONE")),
+        ("claim", 100, Some("CONTRIBUTOR")),
+        ("claim", 100, Some("")),
+        ("claim", 100, None),
+        ("request", 200, Some("NONE")),
+        ("request", 200, None),
+    ] {
+        let mut thread = issue_body();
+        for c in thread.as_array_mut().unwrap() {
+            if c["id"] == json!(id) {
+                match association {
+                    Some(a) => c["author_association"] = json!(a),
+                    None => {
+                        c.as_object_mut().unwrap().remove("author_association");
+                    }
+                }
+            }
+        }
+        let (v, _) = run(vec![
+            get(ISSUE_URL, 200, thread),
+            get(&repo_url(), 200, json!([])),
+            get(&commits_url(), 200, commits_body()),
+        ]);
+        assert_eq!(v["met"], json!(false), "{which} {association:?}: {v}");
+        assert!(v["line"].is_null(), "{which} {association:?}: {v}");
+        if which == "claim" {
+            // The claim line is a control line: it is named.
+            assert_eq!(
+                v["ignored_control_lines"]["items"][0]["comment_id"],
+                json!(id),
+                "{which} {association:?}: {v}"
+            );
+        } else {
+            // The takeover request is plain text: it is counted, and it is not honoured.
+            assert_eq!(
+                v["ignored_control_lines"]["other_non_member_comments"],
+                json!(1),
+                "{which} {association:?}: {v}"
+            );
+            assert_eq!(
+                v["conditions"]["request_unanswered"]["reason"],
+                json!("request_not_found"),
+                "{which} {association:?}: {v}"
+            );
+        }
+    }
+    for association in ["OWNER", "MEMBER", "COLLABORATOR"] {
+        let mut thread = issue_body();
+        for c in thread.as_array_mut().unwrap() {
+            c["author_association"] = json!(association);
+        }
+        let (v, _) = run(vec![
+            get(ISSUE_URL, 200, thread),
+            get(&repo_url(), 200, json!([])),
+            get(&commits_url(), 200, commits_body()),
+        ]);
+        assert_eq!(v["met"], json!(true), "{association}: {v}");
+        assert!(
+            v.get("ignored_control_lines").is_none(),
+            "{association}: {v}"
+        );
+    }
 }
 
 /// AC13 end to end: the binary over a stub `gh` prints the envelope with `met` and the line,
