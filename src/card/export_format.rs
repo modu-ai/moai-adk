@@ -33,7 +33,10 @@ pub const FORMAT: u32 = 1;
 
 const CARD_MARK: &str = "<!-- moai-card-export 1 -->";
 const VIEW_MARK: &str = "<!-- human view: ignored on restore -->";
-const EVENTS_FILE: &str = "events.jsonl";
+/// The name of the events file.
+pub const EVENTS_FILE: &str = "events.jsonl";
+/// The name of the index file.
+pub const INDEX_FILE: &str = "index.json";
 
 /// A row of `card`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -244,7 +247,8 @@ fn sha256_hex(text: &str) -> String {
     format!("{:x}", Sha256::digest(text.as_bytes()))
 }
 
-fn card_file_name(card_id: i64) -> String {
+/// The file name of a card: `C-<card_id>.md`.
+pub fn card_file_name(card_id: i64) -> String {
     format!("C-{card_id}.md")
 }
 
@@ -598,7 +602,7 @@ pub fn parse(export: &Export) -> Result<Snapshot, ExportError> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
     fn card(id: i64) -> Card {
@@ -680,7 +684,7 @@ mod tests {
         }
     }
 
-    fn sample() -> Snapshot {
+    pub(crate) fn sample() -> Snapshot {
         let mut c2 = card(2);
         c2.source_host = Some("github".into());
         c2.source_project = Some("modu-ai/moai-adk".into());
