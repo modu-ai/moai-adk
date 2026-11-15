@@ -566,3 +566,74 @@ fn the_update_layer_counts_the_rewrite_and_gates_it() {
     let (file, _) = w.files(CLAUDE);
     assert!(!String::from_utf8_lossy(&file).contains("moai-cli"));
 }
+
+/// `hook_status.configured` tells an old `moai-cli` install (it still runs) from a current one
+/// and from a drifted file, for every host.
+#[test]
+fn the_status_names_an_old_install_legacy_binary() {
+    for h in ALL {
+        let w = world();
+        w.install_legacy(h);
+        let p = plan(&w, h, &w.rust());
+        assert_eq!(
+            p["hook_status"]["configured"],
+            json!("legacy_binary"),
+            "{}: {p}",
+            h.fixture
+        );
+        let v = apply(&w, h, &digest_of(&p), &w.rust(), &[]);
+        assert_eq!(v["ok"], json!(true), "{v}");
+        let p = plan(&w, h, &w.rust());
+        assert_eq!(p["hook_status"]["configured"], json!("yes"), "{p}");
+    }
+    let w = world();
+    w.install_legacy(OMP);
+    w.write(OMP.file, b"// something else\n");
+    let p = plan_envelope(&w, OMP, &w.rust());
+    assert!(p.to_string().contains("preservation review"), "{p}");
+}
+
+/// A file the receipt owns whole but that is neither the old nor the current set (an earlier
+/// MoAI set) is replaced as a whole and named as such, never shown command by command.
+#[test]
+fn an_earlier_owned_set_is_replaced_whole_and_named() {
+    // Claude: the `hooks` key equals the receipt's `owned.hooks`.
+    let w = world();
+    let earlier = json!({"SessionStart": [{"hooks": [{"type": "command",
+        "command": "moai-cli hook-receipt --host claude --earlier", "timeout": 10}]}]});
+    let mut settings = serde_json::to_vec_pretty(&json!({ "hooks": earlier })).unwrap();
+    settings.push(b'\n');
+    w.write(CLAUDE.file, &settings);
+    let mut receipt: Value = serde_json::from_slice(&fixture(CLAUDE.fixture_receipt)).unwrap();
+    receipt["owned"] = json!({ "hooks": earlier });
+    receipt["settings_sha256"] = json!(moai_cli::digest(&settings));
+    w.write(
+        CLAUDE.receipt,
+        &serde_json::to_vec_pretty(&receipt).unwrap(),
+    );
+    let p = plan(&w, CLAUDE, &w.rust());
+    assert_eq!(p["action"], json!("update"), "{p}");
+    let m = &p["binary_migration"];
+    assert_eq!(m["state"], json!("rewrite"), "{p}");
+    assert_eq!(m["entries"], json!([]), "{p}");
+    assert_eq!(m["replaced"][0]["reason"], json!("earlier_moai_set"), "{p}");
+    assert!(!p.to_string().contains("--earlier"), "{p}");
+
+    // OMP: the receipt's sha256 matches a module that is not the old one.
+    let w = world();
+    let module = b"// an earlier moai module\n";
+    w.write(OMP.file, module);
+    let mut receipt: Value = serde_json::from_slice(&fixture(OMP.fixture_receipt)).unwrap();
+    receipt["sha256"] = json!(moai_cli::digest(module));
+    w.write(OMP.receipt, &serde_json::to_vec_pretty(&receipt).unwrap());
+    let p = plan(&w, OMP, &w.rust());
+    assert_eq!(p["action"], json!("update"), "{p}");
+    let m = &p["binary_migration"];
+    assert_eq!(m["state"], json!("rewrite"), "{p}");
+    assert_eq!(m["entries"], json!([]), "{p}");
+    assert_eq!(
+        m["replaced"][0]["reason"],
+        json!("earlier_moai_module"),
+        "{p}"
+    );
+}
