@@ -1589,6 +1589,36 @@ fn mode_agent_workflow_names_claim_verify_before_writes() {
     );
 }
 
+/// #3030 D2: AGENTS.md and the agent-mode workflow state one order for the local claim record:
+/// claim in the folder you will work in, and run `claim-link` when the folder or branch
+/// changes afterwards.
+#[test]
+fn claim_order_docs_agree() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let agents = fs::read_to_string(root.join("AGENTS.md")).unwrap();
+    let mode = fs::read_to_string(root.join("skills/moai/workflows/mode-agent.md")).unwrap();
+    let line = |text: &str, start: &str| -> String {
+        text.lines()
+            .find(|l| l.starts_with(start))
+            .unwrap_or_else(|| panic!("no line starting {start:?}"))
+            .to_string()
+    };
+    let step1 = line(&agents, "1. Claim.");
+    let step2 = line(&agents, "2. Worktree.");
+    let claim = line(&mode, "5. **claim**");
+    let state = line(&mode, "3. **state**");
+    for l in [&step1, &claim] {
+        assert!(l.contains("claim in the folder you will work in"), "{l}");
+        assert!(l.contains("moai claim-link"), "{l}");
+    }
+    assert!(
+        step2.contains("create it first, then claim in it"),
+        "{step2}"
+    );
+    assert!(state.contains("the folder you claim in"), "{state}");
+    assert!(state.contains("moai claim-link"), "{state}");
+}
+
 /// #2673 AC-3: `claim-verify --hook` reads the branch, the claim record and the commits in the
 /// folder `git -C` names. Before, a commit sent from the primary checkout with
 /// `git -C <lane worktree>` read the primary's branch and passed as "not a lane worktree".
