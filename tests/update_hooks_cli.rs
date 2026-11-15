@@ -36,6 +36,9 @@ struct Fixture {
     home: PathBuf,
     exe: PathBuf,
     project: PathBuf,
+    /// The PATH every command runs with: a folder with the Rust build as `moai` (the generated
+    /// hooks call it, and the rewrite of an older set needs it, #3004 P4-2), then the system.
+    path: String,
 }
 
 /// A temporary HOME with the binary, the real package and the agent sources in a version folder,
@@ -54,11 +57,15 @@ fn setup() -> Fixture {
     let project = root.join("project");
     fs::create_dir_all(&project).unwrap();
     common::git::git_ok(&project, &["init", "-q"]);
+    let bin = root.join("bin");
+    fs::create_dir_all(&bin).unwrap();
+    std::os::unix::fs::symlink(&exe, bin.join("moai")).unwrap();
     Fixture {
         _tmp: tmp,
         home,
         exe,
         project,
+        path: format!("{}:/usr/bin:/bin", bin.display()),
     }
 }
 
@@ -66,7 +73,7 @@ fn run(f: &Fixture, cwd: &Path, args: &[&str]) -> Output {
     Command::new(&f.exe)
         .args(args)
         .clean_env()
-        .env("PATH", "/usr/bin:/bin")
+        .env("PATH", &f.path)
         .env("HOME", &f.home)
         .env("LC_ALL", "C")
         .current_dir(cwd)
@@ -214,7 +221,7 @@ fn an_installed_four_event_set_is_replanned() {
         assert_eq!(
             v["hooks"]["SessionStart"][0]["hooks"][0]["command"],
             json!(format!(
-                "moai-cli hook-dispatch --host {host} --event session-check"
+                "moai hook-dispatch --host {host} --event session-check"
             )),
             "{host}"
         );
@@ -295,10 +302,8 @@ fn an_old_hook_set_is_previewed_applied_and_reverted() {
     assert_eq!(r["hooks_result"]["state"], json!("applied"), "{r}");
     let text = fs::read_to_string(&settings).unwrap();
     assert!(!text.contains(OLD_COMMAND), "{text}");
-    assert!(
-        text.contains("moai-cli hook-receipt --host claude"),
-        "{text}"
-    );
+    assert!(text.contains("moai hook-receipt --host claude"), "{text}");
+    assert!(!text.contains("moai-cli"), "{text}");
     let id = r["hooks_result"]["receipt"].as_str().unwrap().to_string();
     assert!(r["revert"]["hooks"].as_str().unwrap().contains(&id), "{r}");
 
@@ -623,7 +628,7 @@ fn the_hook_receipt_keeps_a_protected_settings_file_privately_under_any_umask() 
             .arg(&f.exe)
             .args(["update", "--confirm", &digest])
             .clean_env()
-            .env("PATH", "/usr/bin:/bin")
+            .env("PATH", &f.path)
             .env("HOME", &f.home)
             .env("LC_ALL", "C")
             .current_dir(&f.project)

@@ -60,6 +60,7 @@ pub mod home_workdir;
 pub mod hook_config;
 pub mod hook_engine;
 pub mod hook_guards;
+pub mod hook_legacy;
 pub mod hooks;
 pub mod hosts;
 pub mod hygiene;
