@@ -396,6 +396,16 @@ mod tests {
             ("target changed since plan; re-preview required", StalePlan),
             ("target changed during apply; temporary file discarded", StalePlan),
             ("partial apply: applied [a]; failed at b: x", Partial),
+            // go-state-apply, F-I (#2936): the ignore file of the backup area failed after the
+            // pending receipt; the inner message may be any write failure and stays `partial`.
+            (
+                &crate::go_state::ignore_file_failed(
+                    "backup file write failed",
+                    "a new .moai/ holds the pending receipt",
+                    "20261115T000000Z",
+                ),
+                Partial,
+            ),
             // The wrapper wins over the plan-admit version phrase it may quote.
             (
                 "partial apply: applied [a]; failed at b: unsupported protocol_version; supported: 1",
