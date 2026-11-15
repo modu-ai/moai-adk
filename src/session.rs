@@ -31,6 +31,13 @@ const ROLES: [&str; 2] = ["leader", "agent"];
 const HOSTS: [&str; 3] = ["claude", "glm", "codex"];
 const EFFORTS: [&str; 6] = ["low", "medium", "high", "xhigh", "max", "ultracode"];
 const ADVISOR_ALIASES: [&str; 3] = ["fable", "opus", "sonnet"];
+/// Notes that tell the user an option they gave was dropped. The terminal launcher prints these
+/// before the host starts (#3004 P9), so the text is shared with `launcher_terminal`.
+pub const NOTE_EFFORT_NOT_PASSED_CODEX: &str = "--effort is not passed to codex by this launcher";
+pub const NOTE_ADVISOR_NOT_PASSED_CODEX: &str =
+    "the advisor applies to Claude hosts only; it was not passed to codex";
+pub const NOTE_ADVISOR_OMITTED_GLM: &str =
+    "--advisor omitted on glm: the advisor is Anthropic API only";
 const DEFAULT_MODEL: &str = "opus";
 const DEFAULT_EFFORT: &str = "medium";
 /// User decision 2026-11-08 (#2053 HOLD-L1 = A, #2062): a session without a role still gets the
@@ -669,10 +676,10 @@ fn codex_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<S
         argv.push(m.clone());
     }
     if r.effort.is_some() {
-        notes.push("--effort is not passed to codex by this launcher");
+        notes.push(NOTE_EFFORT_NOT_PASSED_CODEX);
     }
     if r.advisor.is_some() {
-        notes.push("the advisor applies to Claude hosts only; it was not passed to codex");
+        notes.push(NOTE_ADVISOR_NOT_PASSED_CODEX);
     }
     let mut parts: Vec<String> = r
         .name
@@ -747,7 +754,7 @@ pub fn compose(r: &SessionRequest) -> Result<Value, String> {
             }
             let mut plain = r.clone();
             if plain.advisor.take().is_some() {
-                notes.push("--advisor omitted on glm: the advisor is Anthropic API only");
+                notes.push(NOTE_ADVISOR_OMITTED_GLM);
             }
             notes.push("model aliases map to z.ai models for this session: opus, sonnet and fable to glm-5.3, haiku to glm-5.3-flash, with the 1M context window declared");
             env_keys.extend(GLM_ENV.iter().map(|(k, _)| *k));

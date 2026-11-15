@@ -1512,6 +1512,9 @@ fn outside_project_writes_follow_the_config() {
     );
     let reason = assert_deny(&dispatch("tool-preflight", &root, &input, &env));
     assert!(reason.contains("outside the project"), "{reason}");
+    // Codex review of #3019: the denial names the file the loader reads, not the older name.
+    assert!(reason.contains("~/.moai-cli/hook-config.toml"), "{reason}");
+    assert!(!reason.contains("~/.moai-cli/config "), "{reason}");
     let reason = assert_deny(&codex("tool-preflight", &root, &input));
     assert!(reason.is_empty() || reason.contains("MoAI"), "{reason}");
     assert_allow(&dispatch(

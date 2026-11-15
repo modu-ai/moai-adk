@@ -32,7 +32,9 @@
 //! <UTC>` and goes on; `waiting` lists it as `lane_waiting` (#2933 S6). It is information only:
 //! it never makes, blocks or reorders a task.
 //!
-//! Reads only (leader decision D1): reservations and comments stay with the existing commands.
+//! Writes no GitHub state (leader decision D1): reservations and comments stay with the
+//! existing commands. The one local write is the target it offers a registered lane, kept for
+//! a short lease so another lane is not offered the same one (#3015 C2, [`crate::lane_proposal`]).
 //! One collection sends at most [`API_BUDGET`] GitHub requests (D4), taking the higher
 //! priorities first; what the budget left unread is named in `partial`, never guessed. The open
 //! pull requests with their comments, the lane's threads and the open Issues come from a few
@@ -272,6 +274,38 @@ pub struct Snapshot {
     pub partial: Vec<String>,
     #[serde(default)]
     pub api_calls: u32,
+    /// Targets offered to other live lanes whose short lease still runs (#3015 C2); read from
+    /// the local proposal folder by [`crate::lane_proposal`], empty when none or not read.
+    #[serde(default)]
+    pub proposals: Vec<ActiveProposal>,
+}
+
+/// A target `lane-next` offered to `lane` a moment ago (#3015 C2), kept so another lane is not
+/// offered the same one before the claim or reservation comment shows on GitHub.
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+pub struct ActiveProposal {
+    pub lane: String,
+    /// The task kind: `reserve_audit` or `pick_issue`.
+    pub kind: String,
+    pub number: u64,
+    /// The pull request head a `reserve_audit` was offered for.
+    #[serde(default)]
+    pub head: Option<String>,
+    /// Unix seconds the offer ends (the lane is offered the target again after it).
+    pub lease_until: i64,
+}
+
+/// The offer to another lane that covers this target, if any.
+fn proposed_elsewhere<'a>(
+    snap: &'a Snapshot,
+    lane: &str,
+    kind: &str,
+    number: u64,
+    head: Option<&str>,
+) -> Option<&'a ActiveProposal> {
+    snap.proposals.iter().find(|p| {
+        p.lane != lane && p.kind == kind && p.number == number && p.head.as_deref() == head
+    })
 }
 
 // --- comment lines -----------------------------------------------------------------------
@@ -390,7 +424,7 @@ fn closed_claims(thread: &[Comment]) -> Vec<u64> {
 }
 
 /// The lane's live claim in a thread: its comment id, when one is not released or handed off.
-fn live_claim(thread: &[Comment], lane: &str) -> Option<u64> {
+pub(crate) fn live_claim(thread: &[Comment], lane: &str) -> Option<u64> {
     let closed = closed_claims(thread);
     thread
         .iter()
@@ -1200,6 +1234,15 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
                 );
                 continue;
             }
+            // #3015 C2: another live lane was offered this head a moment ago; its reservation
+            // comment is not on GitHub yet. Offer this lane the next one.
+            if let Some(p) =
+                proposed_elsewhere(snap, lane, "reserve_audit", pr.number, Some(&pr.head))
+            {
+                pr_skipped.push(json!({"pr": pr.number, "reason": "proposed_to_other_lane",
+                    "by": p.lane, "lease_until": p.lease_until}));
+                continue;
+            }
             return Some(task(
                 "P1",
                 "reserve_audit",
@@ -1362,6 +1405,14 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
             }
             if let Some(c) = t.comments.iter().find(|c| claim_session(c).is_some()) {
                 skip(json!({"issue": t.number, "reason": "claimed", "claim_comment": c.id}));
+                continue;
+            }
+            // #3015 C2: offered to another live lane a moment ago, claim not yet on GitHub.
+            if let Some(p) = proposed_elsewhere(snap, lane, "pick_issue", t.number, None) {
+                skip(
+                    json!({"issue": t.number, "reason": "proposed_to_other_lane",
+                    "by": p.lane, "lease_until": p.lease_until}),
+                );
                 continue;
             }
             return Some(task(
@@ -2274,6 +2325,29 @@ pub fn run_counting<T: Transport, C: Clock>(
     shared_lanes: u64,
     idle: Option<crate::lane_idle::IdleBudget>,
 ) -> Result<Value> {
+    run_with_store(
+        target,
+        transport,
+        clock,
+        wait_secs,
+        shared_lanes,
+        None,
+        idle,
+    )
+}
+
+/// [`run_counting`] that also keeps the target it offers in the local proposal folder `store`
+/// (the registry folder; #3015 C2), so a second lane calling a moment later is offered another
+/// one.
+pub fn run_with_store<T: Transport, C: Clock>(
+    target: &Target<'_>,
+    transport: &T,
+    clock: &C,
+    wait_secs: u64,
+    shared_lanes: u64,
+    store: Option<&std::path::Path>,
+    idle: Option<crate::lane_idle::IdleBudget>,
+) -> Result<Value> {
     if wait_secs > MAX_WAIT_SECS {
         return Err(format!("--wait accepts at most {MAX_WAIT_SECS} seconds"));
     }
@@ -2291,7 +2365,12 @@ pub fn run_counting<T: Transport, C: Clock>(
         let mut snap = collect(target, transport);
         snap.now
             .get_or_insert_with(|| crate::forge::policy::format_utc(clock.now()));
-        let mut v = decide(target.lane, &snap);
+        let mut v = match store {
+            Some(dir) => {
+                crate::lane_proposal::decide_and_record(dir, target.lane, &mut snap, clock.now())
+            }
+            None => decide(target.lane, &snap),
+        };
         let at_limit = idle.is_some_and(|budget| {
             tally.add(crate::lane_idle::classify(&v));
             budget.reached(&tally)
@@ -3020,6 +3099,49 @@ mod tests {
         assert_eq!(classify(&v), Read::Unreadable, "{v}");
         assert_eq!(v["rounds"], json!(9), "{v}");
         assert_eq!(v["idle_read"], json!({"empty": 0, "reset": false}), "{v}");
+    }
+
+    /// #3015 C2 with #3005 P8: a run that keeps its offer in the proposal folder and counts
+    /// empty reads does both — the answer carries `proposal` and `idle_read`; without a
+    /// registry the offer is not kept (`unavailable`) and the count still runs.
+    #[test]
+    fn a_run_can_keep_its_offer_and_count_its_reads() {
+        use crate::lane_idle::IdleBudget;
+        let dir = tempfile::TempDir::new().unwrap();
+        let mut init = std::process::Command::new("git");
+        init.args(["init", "-q"]).current_dir(dir.path());
+        crate::identity::scrub_git_env(&mut init);
+        assert!(init.status().unwrap().success());
+        let target = Target {
+            owner: "o",
+            repo: "r",
+            lane: "agent-10",
+            tip_branch: None,
+            dir: dir.path(),
+        };
+        let clock = FakeClock {
+            now: Cell::new(0),
+            slept: Cell::new(0),
+        };
+        let budget = Some(IdleBudget { max: 5, already: 0 });
+        let go = |store: Option<&std::path::Path>| {
+            run_with_store(&target, &Quiet, &clock, 0, SHARED_LANES, store, budget).unwrap()
+        };
+        let none = go(None);
+        assert!(
+            none.get("proposal").is_none(),
+            "no store, no proposal: {none}"
+        );
+        assert_eq!(none["idle_read"]["reset"], json!(false), "{none}");
+        crate::lane_registry::register(dir.path(), "agent-10", None, 3600, None, 0).unwrap();
+        let registry = crate::lane_registry::registry_dir(dir.path()).unwrap();
+        let kept = go(Some(&registry));
+        assert_eq!(kept["proposal"]["status"], json!("none"), "{kept}");
+        assert!(kept.get("idle_read").is_some(), "{kept}");
+        let missing = dir.path().join("no-such-registry");
+        let lost = go(Some(&missing));
+        assert_eq!(lost["proposal"]["status"], json!("unavailable"), "{lost}");
+        assert!(lost.get("idle_read").is_some(), "{lost}");
     }
 
     /// #2873 N9: `--shared-lanes` accepts 1 to 50 — 0 and 51 are refused.
