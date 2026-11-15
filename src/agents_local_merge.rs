@@ -170,7 +170,7 @@ fn has_token(line: &str, prefix: &str, min: usize, upper_digit_only: bool) -> bo
     })
 }
 
-fn secret_kind(line: &str) -> Option<&'static str> {
+pub(crate) fn secret_kind(line: &str) -> Option<&'static str> {
     let lower = line.to_ascii_lowercase();
     if lower.contains("-----begin") && lower.contains("private key") {
         return Some("private_key");

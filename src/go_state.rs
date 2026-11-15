@@ -2943,6 +2943,24 @@ pub fn backed_up_root_file(project: &Path, name: &str) -> Result<Option<BackedUp
     if !ROOT_FILES.contains(&name) {
         return Err(format!("{name}: not a root instruction file"));
     }
+    newest_backed_up(project, |m| m.kind == "root_file" && m.path == name)
+}
+
+/// Where a committed apply put the shared Claude settings (#2936 R8): the copy in the backup's
+/// `go-state/`, as [`backed_up_root_file`] reports a root instruction file. The file moves only
+/// with the Go folder (`policy`), so `Ok(None)` is the ordinary answer for a project whose
+/// settings stayed. Reads only.
+pub fn backed_up_settings(project: &Path) -> Result<Option<BackedUpRootFile>> {
+    newest_backed_up(project, |m| {
+        m.path == SETTINGS && (m.kind.is_empty() || m.kind == "edited")
+    })
+}
+
+/// The newest committed, not reverted apply whose receipt has a moved entry `wanted` accepts.
+fn newest_backed_up(
+    project: &Path,
+    wanted: impl Fn(&Moved) -> bool,
+) -> Result<Option<BackedUpRootFile>> {
     let project =
         fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
     let backups = format!("{MOAI_DIR}/backups");
@@ -2964,11 +2982,7 @@ pub fn backed_up_root_file(project: &Path, name: &str) -> Result<Option<BackedUp
         if receipt.state != "committed" {
             continue;
         }
-        if let Some(m) = receipt
-            .moves
-            .iter()
-            .find(|m| m.kind == "root_file" && m.path == name && m.moved)
-        {
+        if let Some(m) = receipt.moves.iter().find(|m| m.moved && wanted(m)) {
             return Ok(Some(BackedUpRootFile {
                 rel: backup_rel_of(&format!("{base}/backups/{stamp}"), m),
                 backup: stamp,
