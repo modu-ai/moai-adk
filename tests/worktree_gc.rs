@@ -423,3 +423,119 @@ fn the_clock_seam_is_hidden_from_help() {
         assert!(!help.contains("--now-unix"), "{word}: {help}");
     }
 }
+
+/// #3010 P1: the plan names where each worktree came from, which Issue it belongs to, whether
+/// `worktree-apply` made it (only a lock reason it wrote proves that) and whether an install
+/// folder can be rebuilt. The facts are additive: they never change an action.
+#[test]
+fn each_row_carries_its_lifecycle_facts() {
+    let fx = fixture();
+    let wt = |n: &str| fx.root.join(".moai-cli/worktrees").join(n);
+    // c: a real node_modules and a tracked lockfile -> rebuildable
+    fs::create_dir_all(wt("c").join("node_modules/x")).unwrap();
+    fs::write(wt("c").join("node_modules/x/i.js"), "x\n").unwrap();
+    fs::write(wt("c").join("package-lock.json"), "{}\n").unwrap();
+    git(&wt("c"), &["add", "package-lock.json"]);
+    // e: a real node_modules and no lockfile -> an install folder, not rebuildable
+    fs::create_dir_all(wt("e").join("node_modules")).unwrap();
+    // d: node_modules is a symlink -> never an install folder
+    std::os::unix::fs::symlink(wt("a"), wt("d").join("node_modules")).unwrap();
+    let r = plan(&fx, Some(later()));
+    let life = |n: &str| entry(&r, &format!(".moai-cli/worktrees/{n}"))["lifecycle"].clone();
+
+    let f = life("f");
+    assert_eq!(f["origin"], "project", "{f}");
+    assert_eq!(f["locked"], true);
+    assert_eq!(f["lock_reason"], "moai claim t e1");
+    assert_eq!(f["created_by"], "worktree-apply");
+    assert_eq!(f["claim_key"], "t");
+    assert_eq!(f["claim_epoch"], 1);
+    assert_eq!(f["issue"], 1, "from the issue/1-f branch: {f}");
+    assert_eq!(f["classes"], serde_json::json!(["locked_by_moai"]));
+    assert!(f["admin_age_secs"].is_u64(), "{f}");
+
+    let a = life("a");
+    assert_eq!(a["locked"], false);
+    assert_eq!(a["created_by"], Value::Null, "{a}");
+    assert_eq!(a["claim_key"], Value::Null);
+    assert_eq!(a["classes"], serde_json::json!([]));
+    assert_eq!(a["install_dir"], false);
+
+    let c = life("c");
+    assert_eq!(c["install_dir"], true, "{c}");
+    assert_eq!(c["install_lockfile_tracked"], true);
+    assert_eq!(c["classes"], serde_json::json!(["regenerable_install"]));
+    let e = life("e");
+    assert_eq!(e["install_dir"], true, "{e}");
+    assert_eq!(e["install_lockfile_tracked"], false);
+    assert_eq!(e["classes"], serde_json::json!([]));
+    let d = life("d");
+    assert_eq!(d["install_dir"], false, "a symlinked node_modules: {d}");
+    assert_eq!(d["classes"], serde_json::json!([]));
+
+    // free space before any apply, for a `df` before/after figure
+    assert!(r["before_free_bytes"].is_u64(), "{r}");
+    // facts only: none of this changes an action
+    assert_eq!(entry(&r, ".moai-cli/worktrees/f")["action"], "skip");
+    assert_eq!(reasons(entry(&r, ".moai-cli/worktrees/f")), ["locked"]);
+}
+
+/// A lock a person wrote by hand is a lock, but proves nothing about who made the worktree.
+#[test]
+fn a_hand_written_lock_does_not_count_as_made_by_worktree_apply() {
+    let fx = fixture();
+    let f_s = fx
+        .root
+        .join(".moai-cli/worktrees/f")
+        .to_str()
+        .unwrap()
+        .to_string();
+    git(&fx.root, &["worktree", "unlock", &f_s]);
+    git(&fx.root, &["worktree", "lock", "--reason", "keep me", &f_s]);
+    let r = plan(&fx, Some(later()));
+    let f = &entry(&r, ".moai-cli/worktrees/f")["lifecycle"];
+    assert_eq!(f["locked"], true, "{f}");
+    assert_eq!(f["lock_reason"], "keep me");
+    assert_eq!(f["created_by"], Value::Null);
+    assert_eq!(f["classes"], serde_json::json!([]));
+}
+
+/// Each lockfile the tool knows makes an install folder rebuildable, and an untracked one
+/// does not: the file must be in the index, not merely on disk.
+#[test]
+fn every_known_lockfile_counts_only_when_tracked() {
+    let fx = fixture();
+    let c = fx.root.join(".moai-cli/worktrees/c");
+    fs::create_dir_all(c.join("node_modules")).unwrap();
+    let facts = |fx: &Fixture| {
+        entry(&plan(fx, Some(later())), ".moai-cli/worktrees/c")["lifecycle"].clone()
+    };
+    for name in [
+        "package-lock.json",
+        "npm-shrinkwrap.json",
+        "pnpm-lock.yaml",
+        "yarn.lock",
+        "bun.lock",
+        "bun.lockb",
+    ] {
+        fs::write(c.join(name), "x\n").unwrap();
+        let untracked = facts(&fx);
+        assert_eq!(
+            untracked["install_lockfile_tracked"], false,
+            "{name}: {untracked}"
+        );
+        assert_eq!(untracked["classes"], serde_json::json!([]), "{name}");
+        git(&c, &["add", name]);
+        let tracked = facts(&fx);
+        assert_eq!(
+            tracked["install_lockfile_tracked"], true,
+            "{name}: {tracked}"
+        );
+        assert_eq!(
+            tracked["classes"],
+            serde_json::json!(["regenerable_install"]),
+            "{name}"
+        );
+        git(&c, &["rm", "-q", "-f", name]);
+    }
+}

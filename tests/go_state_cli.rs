@@ -972,15 +972,35 @@ fn the_go_settings_move_and_the_local_settings_stay() {
         action(&p, ".claude/hooks/moai/status.sh"),
         ("leave", "referenced by .claude/settings.local.json")
     );
+    // #2936 S-CYCLE (leader decision 6886519352): the script only the moving settings run is
+    // no longer held by them. Before, it stayed because of settings that moved away.
     assert_eq!(
-        action(&p, ".claude/hooks/moai/handle-pre-tool.sh"),
-        ("leave", "referenced by .claude/settings.json")
+        action(&p, ".claude/hooks/moai/handle-pre-tool.sh").0,
+        "move",
+        "{p}"
+    );
+    assert_eq!(
+        p["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|i| i["path"] == ".claude/hooks/moai/handle-pre-tool.sh")
+            .unwrap()["freed_by"],
+        json!(".claude/settings.json"),
+        "{p}"
     );
     assert_eq!(action(&p, ".claude/workflows/free.md").0, "move");
     let v = apply(&fx, p["plan_digest"].as_str().unwrap());
     assert_eq!(v["ok"], json!(true), "{v}");
     let dir = area(&fx, v["result"]["backup"].as_str().unwrap());
     assert!(!fx.root.join(".claude/settings.json").exists());
+    assert!(!fx
+        .root
+        .join(".claude/hooks/moai/handle-pre-tool.sh")
+        .exists());
+    assert!(dir
+        .join("go-state/.claude/hooks/moai/handle-pre-tool.sh")
+        .is_file());
     assert_eq!(
         fs::read_to_string(dir.join("go-state/.claude/settings.json")).unwrap(),
         shared
@@ -995,6 +1015,224 @@ fn the_go_settings_move_and_the_local_settings_stay() {
         local
     );
     assert!(fx.root.join(".claude/hooks/moai/status.sh").is_file());
+}
+
+// ---- #2936 S-CYCLE: settings that hold what they would take with them ----
+
+const HELD_BY_SHARED: &str = "referenced by .claude/settings.json";
+const FOLDER_HELD: &str =
+    "settings reference .moai/; the folder stays until they are cleaned (#2581)";
+
+/// A Go project whose `.claude/settings.json` runs one script, names a script under `.moai/` and
+/// carries a deny rule. `record` is the provenance the Go manifest gives the settings (`None`:
+/// the file is there but not recorded).
+fn cycle_fx(record: Option<&str>) -> Fx {
+    let mut fx = Fx::new();
+    fx.deployed(".moai/config/sections/a.yaml", "a: 1\n");
+    fx.deployed(".moai/status_line.sh", "#!/bin/sh\n");
+    fx.deployed(
+        ".claude/hooks/moai/handle-stop.sh",
+        "#!/bin/sh\necho stop\n",
+    );
+    fx.deployed(".claude/workflows/free.md", "# free\n");
+    let text = json!({
+        "hooks": {"Stop": [{"hooks": [{"type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/moai/handle-stop.sh\""}]}]},
+        "permissions": {"deny": ["Read(./.env)"]},
+        "statusLine": {"type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\""},
+    })
+    .to_string();
+    fx.write(".claude/settings.json", &text);
+    if let Some(provenance) = record {
+        fx.record(".claude/settings.json", provenance, &sha(text.as_bytes()));
+    }
+    fx.manifest();
+    fx
+}
+
+/// AC 1: Go settings the manifest proves are not a reason to keep the Go folder: they move
+/// with it, and so does the script only they ran. Apply and revert round-trip the tree.
+#[test]
+fn a_proven_go_settings_no_longer_holds_the_moai_folder() {
+    let fx = cycle_fx(Some("template_managed"));
+    let before = project_tree(&fx);
+    let p = plan(&fx);
+    assert_eq!(action(&p, ".moai").0, "move", "{p}");
+    assert_eq!(action(&p, ".claude/settings.json").0, "move", "{p}");
+    assert_eq!(
+        action(&p, ".claude/hooks/moai/handle-stop.sh").0,
+        "move",
+        "{p}"
+    );
+    assert_eq!(p["layout"], json!("folder_moves"), "{p}");
+    let sm = &p["settings_move"];
+    assert_eq!(sm["layout"], json!("folder_moves"), "{sm}");
+    assert_eq!(sm["folder_freed"], json!(true), "{sm}");
+    assert_eq!(sm["still_holding"], json!([]), "{sm}");
+    assert_eq!(
+        sm["freed"],
+        json!([".claude/hooks/moai/handle-stop.sh"]),
+        "{sm}"
+    );
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    assert!(!fx.root.join(".claude/settings.json").exists());
+    assert!(area(&fx, &backup)
+        .join("go-state/.claude/settings.json")
+        .is_file());
+    assert!(fx.root.join(".moai-backup/status_line.sh").is_file());
+    let rp = revert_plan(&fx, &backup);
+    let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(project_tree(&fx), before);
+}
+
+/// AC 3: settings the manifest does not prove keep holding what they name, the folder
+/// included, and the preview offers no settings move. Each miss is its own case: not recorded,
+/// recorded as the user's own, recorded with a provenance the rule does not know.
+#[test]
+fn unproven_settings_keep_holding() {
+    for (name, record) in [
+        ("not recorded", None),
+        ("user_created", Some("user_created")),
+        ("another provenance", Some("generated_managed")),
+    ] {
+        let fx = cycle_fx(record);
+        let p = plan(&fx);
+        assert_eq!(action(&p, ".moai"), ("leave", FOLDER_HELD), "{name}: {p}");
+        assert_eq!(
+            action(&p, ".claude/hooks/moai/handle-stop.sh"),
+            ("leave", HELD_BY_SHARED),
+            "{name}: {p}"
+        );
+        if record.is_some() {
+            assert_eq!(
+                action(&p, ".claude/settings.json").0,
+                "leave",
+                "{name}: {p}"
+            );
+        }
+        assert!(p.get("settings_move").is_none(), "{name}: {p}");
+        assert!(!p.to_string().contains("freed_by"), "{name}: {p}");
+        // The unrelated workflow still moves one by one.
+        assert_eq!(action(&p, ".claude/workflows/free.md").0, "move", "{name}");
+    }
+}
+
+/// AC 7: the cycle cannot come back. In every shape, a file the shared settings hold stays
+/// only while those settings stay, and the folder is held only by settings that stay.
+#[test]
+fn a_file_is_held_by_settings_only_if_those_settings_stay() {
+    let local_holds_folder = |fx: &Fx| {
+        fx.write(
+            ".claude/settings.local.json",
+            &json!({"statusLine": {"type": "command", "command": ".moai/local.sh"}}).to_string(),
+        )
+    };
+    let shapes: Vec<(&str, Fx)> = vec![
+        ("proven", cycle_fx(Some("template_managed"))),
+        ("proven, edited", cycle_fx(Some("user_modified"))),
+        ("proven, local settings hold the folder", {
+            let fx = cycle_fx(Some("template_managed"));
+            local_holds_folder(&fx);
+            fx
+        }),
+        ("user_created", cycle_fx(Some("user_created"))),
+        ("not recorded", cycle_fx(None)),
+    ];
+    for (name, fx) in shapes {
+        let p = plan(&fx);
+        let settings_move = p["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|i| i["path"] == ".claude/settings.json" && i["action"] == "move");
+        for i in p["items"].as_array().unwrap() {
+            let reason = i["reason"].as_str().unwrap();
+            if reason.starts_with(HELD_BY_SHARED) {
+                assert!(
+                    !settings_move,
+                    "{name}: {} is held by settings that move: {p}",
+                    i["path"]
+                );
+            }
+        }
+        let folder_reason = action(&p, ".moai").1;
+        if folder_reason == FOLDER_HELD && settings_move {
+            // Only the local settings can hold the folder then, and the preview names them.
+            assert_eq!(
+                p["settings_move"]["still_holding"],
+                json!([".claude/settings.local.json"]),
+                "{name}: {p}"
+            );
+        }
+    }
+}
+
+/// AC 14: the rule fires only for a `.moai/` the state root calls the Go generation's. Any other
+/// verdict moves nothing, the settings included, and offers no settings move.
+#[test]
+fn a_non_go_state_root_moves_no_settings() {
+    for verdict in ["mixed", "interrupted"] {
+        let fx = cycle_fx(Some("template_managed"));
+        assert_eq!(
+            action(&plan(&fx), ".claude/settings.json").0,
+            "move",
+            "the fixture alone moves the settings"
+        );
+        match verdict {
+            "mixed" => fx.write(
+                ".moai/moai-cli.json",
+                r#"{"schema_version":1,"generation":"moai-cli"}"#,
+            ),
+            _ => {
+                fx.write(".moai-backup/manifest.json", "{}");
+                fx.write(".moai/backups/20261113T000000Z/go-state-receipt.json", "{}");
+            }
+        }
+        let p = plan(&fx);
+        assert_eq!(moves(&p), 0, "{verdict}: {p}");
+        assert_eq!(
+            action(&p, ".claude/settings.json").0,
+            "leave",
+            "{verdict}: {p}"
+        );
+        assert!(p.get("settings_move").is_none(), "{verdict}: {p}");
+        assert!(!p.to_string().contains("freed_by"), "{verdict}: {p}");
+    }
+}
+
+/// AC 17: the settings are read up to 16 MiB. A file of exactly that size is planned; one byte
+/// more is refused, as it was before this rule.
+#[test]
+fn a_settings_file_at_the_read_limit() {
+    const LIMIT: usize = 16 * 1024 * 1024;
+    for (extra, planned) in [(0usize, true), (1, false)] {
+        let mut fx = Fx::new();
+        fx.deployed(".claude/workflows/w.md", "# w\n");
+        let mut text = String::from("{}");
+        text.push_str(&" ".repeat(LIMIT + extra - text.len()));
+        fx.deployed(".claude/settings.json", &text);
+        fx.manifest();
+        let out = run(&["go-state-plan", fx.root.to_str().unwrap()]);
+        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+        assert_eq!(v["ok"], json!(planned), "+{extra}: {v}");
+        if planned {
+            assert_eq!(
+                action(&v["result"], ".claude/settings.json").0,
+                "move",
+                "{v}"
+            );
+        } else {
+            assert!(
+                v.to_string()
+                    .contains(".claude/settings.json is not a bounded regular file"),
+                "{v}"
+            );
+        }
+    }
 }
 
 // ---- stage 3a: `.moai/` as one folder (decision 1, #2561 comment 6831345102) ----
@@ -2285,5 +2523,137 @@ fn an_earlier_root_move_failing_after_the_new_folder_leaves_nothing() {
     assert_eq!(v["ok"], json!(false), "{v}");
     assert!(v.to_string().contains("nothing else changed"), "{v}");
     assert_eq!(fx.tree(), before);
+    assert!(!fx.root.join(".moai").exists());
+}
+
+/// `go-state-apply` with the debug-build fault point `point` set (`MOAI_CLI_TEST_FAULT`).
+fn apply_with_fault(fx: &Fx, digest: &str, point: &str) -> Value {
+    let out = Command::new(EXE)
+        .args([
+            "go-state-apply",
+            fx.root.to_str().unwrap(),
+            "--plan-digest",
+            digest,
+            "--permission-reference",
+            REF,
+        ])
+        .clean_env()
+        .env("PATH", "/usr/bin:/bin")
+        .env("LC_ALL", "C")
+        .env("MOAI_CLI_TEST_FAULT", point)
+        .output()
+        .unwrap();
+    serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
+        panic!(
+            "{}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        )
+    })
+}
+
+/// The one stamp folder under `.moai/backups/` (not the `.gitignore` beside it).
+fn only_stamp(fx: &Fx) -> String {
+    let mut stamps: Vec<String> = fs::read_dir(fx.root.join(".moai/backups"))
+        .unwrap()
+        .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .filter(|n| n != ".gitignore")
+        .collect();
+    assert_eq!(stamps.len(), 1, "{stamps:?}");
+    stamps.pop().unwrap()
+}
+
+/// F-I (#2936): the ignore file of the backup area is written right after the pending
+/// receipt. A failure there is outside the step-2 undo, so the Go folder stays renamed and
+/// the new `.moai/` stays with a `pending` receipt: the error says so and names the revert
+/// plan with the real backup stamp, and that revert brings the project back byte for byte.
+#[test]
+fn a_failed_ignore_file_after_the_rename_names_the_state_and_the_revert() {
+    let fx = movable_fixture();
+    let before = project_tree(&fx);
+    let p = plan(&fx);
+    let v = apply_with_fault(
+        &fx,
+        p["plan_digest"].as_str().unwrap(),
+        "go_state_before_ignore",
+    );
+    assert_eq!(v["ok"], json!(false), "{v}");
+    let stamp = only_stamp(&fx);
+    let message = v["error"]["message"].as_str().unwrap();
+    // The state is not the "put back" state of the other step-2 failures: say so.
+    assert!(!message.contains("nothing else changed"), "{v}");
+    assert!(!message.contains("renamed back"), "{v}");
+    assert_eq!(v["error"]["kind"], json!("partial"), "{v}");
+    // The claim about the files is pinned: none has moved yet (checked on disk below).
+    assert!(message.contains("no file has moved yet"), "{v}");
+    assert!(message.contains(".moai-backup"), "{v}");
+    assert!(
+        message.contains("injected test fault at go_state_before_ignore"),
+        "{v}"
+    );
+    assert!(
+        message.contains(&format!(
+            "`moai go-state-revert-plan <project> --backup {stamp}`"
+        )),
+        "{v}"
+    );
+    // What the message says is what is on disk: the Go folder under its backup name, a new
+    // `.moai/` with the pending receipt, and no file moved yet.
+    assert!(fx.root.join(".moai-backup/manifest.json").is_file());
+    assert!(!fx.root.join(".moai/manifest.json").exists());
+    assert!(fx.root.join(".claude/workflows/w.md").is_file());
+    let (_, receipt) = receipt_of(&fx, &stamp);
+    assert_eq!(receipt["state"], json!("pending"), "{receipt}");
+
+    let rp = revert_plan(&fx, &stamp);
+    assert_eq!(rp["ok"], json!(true), "{rp}");
+    assert_eq!(item_action(&rp, ".moai"), json!("restore"), "{rp}");
+    let v = revert(&fx, &stamp, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(project_tree(&fx), before);
+    assert!(!fx.root.join(".moai-backup").exists());
+}
+
+/// F-I (#2936), the earlier-root layout: the same stop leaves a new `.moai/` with a `pending`
+/// receipt and no state entry moved; the error names the revert plan and the revert restores
+/// the project.
+#[test]
+fn a_failed_ignore_file_of_an_earlier_root_move_names_the_state_and_the_revert() {
+    let fx = legacy_fixture();
+    let before = project_tree(&fx);
+    let p = plan(&fx);
+    let v = apply_with_fault(
+        &fx,
+        p["plan_digest"].as_str().unwrap(),
+        "go_state_legacy_before_ignore",
+    );
+    assert_eq!(v["ok"], json!(false), "{v}");
+    let stamp = only_stamp(&fx);
+    let message = v["error"]["message"].as_str().unwrap();
+    assert!(!message.contains("nothing else changed"), "{v}");
+    assert_eq!(v["error"]["kind"], json!("partial"), "{v}");
+    assert!(message.contains("no file has moved yet"), "{v}");
+    assert!(
+        message.contains("injected test fault at go_state_legacy_before_ignore"),
+        "{v}"
+    );
+    assert!(
+        message.contains(&format!(
+            "`moai go-state-revert-plan <project> --backup {stamp}`"
+        )),
+        "{v}"
+    );
+    assert!(
+        fx.root.join(".moai-cli/project.yaml").is_file(),
+        "no entry moved"
+    );
+    let (_, receipt) = receipt_of(&fx, &stamp);
+    assert_eq!(receipt["state"], json!("pending"), "{receipt}");
+
+    let rp = revert_plan(&fx, &stamp);
+    assert_eq!(rp["ok"], json!(true), "{rp}");
+    let v = revert(&fx, &stamp, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(project_tree(&fx), before);
     assert!(!fx.root.join(".moai").exists());
 }

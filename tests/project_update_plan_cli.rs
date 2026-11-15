@@ -1015,20 +1015,31 @@ impl Fx {
     /// name `.moai/`). `.claude/settings.local.json` is written too and stays in place. Returns
     /// the backup's UTC stamp.
     fn go_project_with_moved_settings(&self, settings: &Value) -> String {
+        self.go_project_moved(settings, "{\"model\":\"local\"}\n", false)
+    }
+
+    /// [`Fx::go_project_with_moved_settings`] with the body of `settings.local.json` and, when
+    /// `edited`, settings whose bytes differ from the hash the manifest recorded at the deploy.
+    fn go_project_moved(&self, settings: &Value, local: &str, edited: bool) -> String {
         let mut files = serde_json::Map::new();
         for (rel, body) in [
             (".moai/config/sections/a.yaml", "a: 1\n".to_string()),
             (".claude/settings.json", settings.to_string()),
         ] {
             self.write(rel, &body);
-            let h = format!("sha256:{:x}", Sha256::digest(body.as_bytes()));
+            let recorded = if edited && rel == ".claude/settings.json" {
+                format!("{body} ")
+            } else {
+                body.clone()
+            };
+            let h = format!("sha256:{:x}", Sha256::digest(recorded.as_bytes()));
             files.insert(
                 rel.into(),
                 json!({"provenance": "template_managed", "template_hash": h,
                        "deployed_hash": h, "current_hash": h}),
             );
         }
-        self.write(".claude/settings.local.json", "{\"model\":\"local\"}\n");
+        self.write(".claude/settings.local.json", local);
         self.write(
             ".moai/manifest.json",
             &json!({"version": "v3.2.1-rc.6", "deployed_at": "2026-11-01T00:00:00Z",
@@ -1822,4 +1833,257 @@ fn a_project_skill_folder_that_is_not_ours_is_blocked_and_kept() {
     assert_eq!(s["state"], "blocked", "{s}");
     assert_eq!(s["apply"], Value::Null, "{s}");
     assert_eq!(before, fx.tree(), "the plan changed the tree");
+}
+
+// ---- #2936 S-CYCLE: the hooks step after the settings moved, and the backup step's block ----
+
+/// The words of a printed command.
+fn words(step: &Value) -> Vec<&str> {
+    step["apply"]["argv"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no command: {step}"))
+        .iter()
+        .map(|w| w.as_str().unwrap())
+        .collect()
+}
+
+/// AC 13: the Go hook entries went with the settings, so the hooks step offers the MoAI hook set
+/// (`hooks-apply --host claude`), but only in a project whose settings a committed go-state apply
+/// moved. A project that never had Go settings gets no such offer, and a reverted move takes
+/// the offer back.
+#[test]
+fn the_hooks_step_needs_a_settings_move_receipt() {
+    // No receipt: nothing to fill in, before and after the settings step.
+    let plain = Fx::new();
+    plain.with_profile(false);
+    for round in ["before", "after"] {
+        let plan = plain.plan();
+        let hooks = step(&plan, "hooks");
+        assert_eq!(hooks["state"], "unchanged", "{round}: {hooks}");
+        assert_eq!(hooks["apply"], Value::Null, "{round}: {hooks}");
+        plain.apply_ready();
+    }
+
+    // A committed move: the offer comes once the settings step has written the file.
+    let fx = Fx::new();
+    fx.go_project_with_moved_settings(&json!({"permissions": {"deny": ["Read(./.env)"]}}));
+    fx.with_profile(false);
+    let plan = fx.plan();
+    let hooks = step(&plan, "hooks");
+    assert_eq!(hooks["state"], "blocked", "{hooks}");
+    assert_eq!(hooks["reason"], "re-run after the claude-settings apply");
+    fx.apply_ready();
+    let plan = fx.plan();
+    let hooks = step(&plan, "hooks");
+    assert_eq!(hooks["state"], "ready", "{hooks}");
+    let argv = words(hooks);
+    assert_eq!(&argv[..2], ["moai", "hooks-apply"], "{argv:?}");
+    assert!(
+        argv.windows(2).any(|w| w == ["--host", "claude"]),
+        "{argv:?}"
+    );
+    assert_eq!(fx.apply_step(hooks)["ok"], json!(true), "{hooks}");
+    assert!(fx.settings_json()["hooks"].is_object());
+    let plan = fx.plan();
+    assert_eq!(step(&plan, "hooks")["state"], "unchanged");
+
+    // A reverted move offers nothing: the Go settings are back, so the backup phase has its
+    // move to make again and every install step waits for it.
+    let fx = Fx::new();
+    let backup = fx.go_project_with_moved_settings(&json!({"permissions": {"deny": ["x"]}}));
+    let rp = fx.call(&["go-state-revert-plan", fx.p(), "--backup", &backup], b"");
+    let digest = rp["plan_digest"].as_str().unwrap().to_string();
+    fx.call(
+        &[
+            "go-state-revert",
+            fx.p(),
+            "--backup",
+            &backup,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            REF,
+        ],
+        b"",
+    );
+    assert!(fx.root.join(".claude/settings.json").is_file());
+    fx.with_profile(false);
+    let plan = fx.plan();
+    let hooks = step(&plan, "hooks");
+    assert_eq!(hooks["state"], "blocked", "{hooks}");
+    assert_eq!(hooks["reason"], "re-run after the backup phase", "{hooks}");
+    assert_eq!(hooks["apply"], Value::Null, "{hooks}");
+}
+
+/// AC 13 (edited): settings the user changed since the deploy move too, and the offer follows.
+#[test]
+fn the_hooks_offer_follows_edited_settings_too() {
+    let fx = Fx::new();
+    fx.go_project_moved(
+        &json!({"permissions": {"deny": ["Read(./.env)"]}}),
+        "{\"model\":\"local\"}\n",
+        true,
+    );
+    fx.with_profile(false);
+    fx.apply_ready();
+    let plan = fx.plan();
+    let hooks = step(&plan, "hooks");
+    assert_eq!(hooks["state"], "ready", "{hooks}");
+    assert_eq!(&words(hooks)[..2], ["moai", "hooks-apply"], "{hooks}");
+}
+
+/// AC 13 (reverted, folder stays): a reverted move takes the offer back even when the receipt
+/// is still on disk. The Go folder stayed (local settings name it), so the stay-layout receipt
+/// lives under `.moai-cli/backups/`; once the Go settings are gone again nothing else holds
+/// the hooks step, so only the receipt state can.
+#[test]
+fn a_reverted_staying_folder_move_offers_no_hooks() {
+    let fx = Fx::new();
+    let backup = fx.go_project_moved(
+        &json!({"permissions": {"deny": ["x"]}}),
+        "{\"statusLine\":{\"type\":\"command\",\"command\":\".moai/status.sh\"}}\n",
+        false,
+    );
+    assert!(
+        fx.root.join(".moai-cli/backups").join(&backup).is_dir(),
+        "the stay-layout backup is under .moai-cli/backups"
+    );
+    let rp = fx.call(&["go-state-revert-plan", fx.p(), "--backup", &backup], b"");
+    let digest = rp["plan_digest"].as_str().unwrap().to_string();
+    fx.call(
+        &[
+            "go-state-revert",
+            fx.p(),
+            "--backup",
+            &backup,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            REF,
+        ],
+        b"",
+    );
+    assert!(fx.root.join(".moai-cli/backups").join(&backup).is_dir());
+    fs::remove_file(fx.root.join(".claude/settings.json")).unwrap();
+    fx.with_profile(false);
+    let plan = fx.plan();
+    let hooks = step(&plan, "hooks");
+    assert_eq!(hooks["state"], "unchanged", "{hooks}");
+    assert_eq!(hooks["apply"], Value::Null, "{hooks}");
+}
+
+/// AC 13 (no second move): the Go manifest keeps recording `.claude/settings.json` while the
+/// Go folder stays, but once the install phase wrote this generation's settings the file is
+/// not the Go tool's any more: a later preview offers no second move, and the hooks step is
+/// the next thing to do.
+#[test]
+fn the_settings_the_install_phase_wrote_are_not_moved_again() {
+    let fx = Fx::new();
+    fx.go_project_moved(
+        &json!({"permissions": {"deny": ["x"]}}),
+        "{\"statusLine\":{\"type\":\"command\",\"command\":\".moai/status.sh\"}}\n",
+        false,
+    );
+    fx.with_profile(false);
+    fx.apply_ready();
+    assert!(fx.root.join(".claude/settings.json").is_file());
+    let after = fx.plan();
+    let go = step(&after, "go-state");
+    // The local settings still hold the Go folder (`blocked`, as before this change); what the
+    // install phase wrote is not offered for a second move.
+    assert_ne!(go["state"], "needs_decision", "{go}");
+    let settings = go["preview"]["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|i| i["path"] == ".claude/settings.json")
+        .unwrap();
+    assert_eq!(settings["action"], "leave", "{settings}");
+    assert!(go["preview"].get("settings_move").is_none(), "{go}");
+    assert_eq!(
+        step(&after, "hooks")["state"],
+        "ready",
+        "{}",
+        step(&after, "hooks")
+    );
+}
+
+/// AC 13 (not committed): only a committed apply's receipt offers the hooks. A receipt that
+/// never reached `committed` (the move may have stopped midway) offers nothing.
+#[test]
+fn an_uncommitted_receipt_offers_no_hooks() {
+    let fx = Fx::new();
+    let backup = fx.go_project_moved(
+        &json!({"permissions": {"deny": ["x"]}}),
+        "{\"statusLine\":{\"type\":\"command\",\"command\":\".moai/status.sh\"}}\n",
+        false,
+    );
+    // The settings step goes first: with a committed receipt the hooks step is then `ready`.
+    fx.with_profile(false);
+    fx.apply_ready();
+    let ready = fx.plan();
+    let hooks = step(&ready, "hooks");
+    assert_eq!(hooks["state"], "ready", "{hooks}");
+    let receipt = fx
+        .root
+        .join(".moai-cli/backups")
+        .join(&backup)
+        .join("go-state-receipt.json");
+    let text = fs::read_to_string(&receipt).unwrap();
+    let committed = "\"state\": \"committed\"";
+    assert_eq!(text.matches(committed).count(), 1, "{text}");
+    fs::write(&receipt, text.replace(committed, "\"state\": \"pending\"")).unwrap();
+    let plan = fx.plan();
+    let hooks = step(&plan, "hooks");
+    assert_ne!(hooks["state"], "ready", "{hooks}");
+    assert_eq!(hooks["apply"], Value::Null, "{hooks}");
+}
+
+/// AC 16: settings the Go manifest proves no longer block the backup step with
+/// `settings reference .moai/`: the step has the move to offer. The same text in settings the
+/// manifest does not record still blocks it, as before.
+#[test]
+fn settings_the_manifest_proves_do_not_hold_the_backup_step() {
+    for recorded in [false, true] {
+        let fx = Fx::new();
+        let settings = r#"{"statusLine":{"type":"command","command":".moai/status.sh"}}"#;
+        let hash = |t: &str| format!("sha256:{:x}", Sha256::digest(t.as_bytes()));
+        fx.write(".moai/config/sections/a.yaml", "a: 1\n");
+        fx.write(".claude/settings.json", settings);
+        let mut files = serde_json::Map::new();
+        for (rel, body) in [
+            (".moai/config/sections/a.yaml", "a: 1\n"),
+            (".claude/settings.json", settings),
+        ] {
+            if rel == ".claude/settings.json" && !recorded {
+                continue;
+            }
+            let h = hash(body);
+            files.insert(
+                rel.into(),
+                json!({"provenance": "template_managed", "template_hash": h,
+                       "deployed_hash": h, "current_hash": h}),
+            );
+        }
+        fx.write(
+            ".moai/manifest.json",
+            &json!({"version": "v3.2.1-rc.6", "files": files}).to_string(),
+        );
+        let plan = fx.plan();
+        if recorded {
+            let go = step(&plan, "go-state");
+            assert_eq!(go["state"], "needs_decision", "{go}");
+            assert_eq!(words(go)[1], "go-state-apply", "{go}");
+            assert_eq!(go["preview"]["layout"], "folder_moves", "{go}");
+            assert_eq!(
+                go["preview"]["settings_move"]["path"], ".claude/settings.json",
+                "{go}"
+            );
+        } else {
+            assert_tied(&plan, "blocked", "settings reference .moai/");
+            assert!(step(&plan, "go-state")["preview"]
+                .get("settings_move")
+                .is_none());
+        }
+    }
 }
