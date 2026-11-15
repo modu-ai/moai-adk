@@ -238,6 +238,73 @@ fn an_installed_worktree_is_a_preview_fact_and_is_never_removed() {
     assert!(fx.wt("human").join("node_modules/data.sqlite").exists());
 }
 
+/// An install with no link inside: two package files, nothing else.
+fn install_plain(wt: &Path) {
+    write(
+        &wt.join("node_modules/pkg/index.js"),
+        "module.exports = 1;\n",
+    );
+    write(&wt.join("node_modules/pkg/package.json"), "{}\n");
+}
+
+/// Audit F1 on #3058: shapes the per-file rules call safe (the same bytes as the primary
+/// checkout's install, only log files, nothing at all) must not make an installed worktree a
+/// `remove` candidate. `decide` itself keeps it, with the reason `install_folder`, and apply
+/// leaves the folder and every file in it.
+#[test]
+fn install_shapes_the_file_rules_call_safe_are_still_kept() {
+    let fx = fixture(true, &["plain", "same", "logs", "empty"]);
+    install_plain(&fx.root);
+    install_plain(&fx.wt("same"));
+    write(&fx.wt("logs").join("node_modules/mine.log"), "log\n");
+    write(
+        &fx.wt("logs").join("node_modules/pkg/npm-debug.log"),
+        "log\n",
+    );
+    fs::create_dir_all(fx.wt("empty").join("node_modules")).unwrap();
+
+    let r = plan(&fx);
+    assert_eq!(row(&r, "plain")["action"], "remove", "{r}");
+    for n in ["same", "logs", "empty"] {
+        let c = row(&r, n);
+        assert_eq!(c["action"], "skip", "{n}: {c}");
+        assert!(
+            reasons(c).contains(&"install_folder".to_string()),
+            "{n}: {c}"
+        );
+        assert_eq!(c["lifecycle"]["install_dir"], true, "{n}: {c}");
+    }
+    let v = apply(&fx, &r);
+    assert_eq!(v["ok"], true, "{v}");
+    assert!(!fx.wt("plain").exists());
+    for n in ["same", "logs", "empty"] {
+        assert!(fx.wt(n).join("node_modules").is_dir(), "{n}");
+    }
+    assert!(fx.wt("same").join("node_modules/pkg/index.js").exists());
+    assert!(fx.wt("logs").join("node_modules/mine.log").exists());
+    assert!(fx
+        .wt("logs")
+        .join("node_modules/pkg/npm-debug.log")
+        .exists());
+}
+
+/// Audit F1 on #3058: an install put in after the plan was made (the same bytes as the primary
+/// checkout's, so no file rule objects) is not removed by the old plan.
+#[test]
+fn an_install_put_in_after_the_plan_is_not_removed() {
+    let fx = fixture(true, &["plain", "late"]);
+    install_plain(&fx.root);
+    let r = plan(&fx);
+    assert_eq!(row(&r, "late")["action"], "remove", "{r}");
+    install_plain(&fx.wt("late"));
+    let v = apply(&fx, &r);
+    // whichever guard answers (the stale plan or the re-check right before the deletion)
+    assert!(
+        fx.wt("late").join("node_modules/pkg/index.js").exists(),
+        "{v}"
+    );
+}
+
 /// Without a tracked lockfile nothing says the install can be rebuilt: the worktree is kept
 /// as well (the fact `lockfile tracked` is false).
 #[test]

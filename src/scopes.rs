@@ -118,7 +118,15 @@ mod tests {
 
     #[test]
     fn plain_folders_pass_and_everything_else_is_refused() {
-        for ok in ["src", "apps/web", "packages/ui-kit", "a.b/c_d", ".github"] {
+        // a space inside a name is a plain folder name (only a padded part is refused, below)
+        for ok in [
+            "src",
+            "apps/web",
+            "packages/ui-kit",
+            "a.b/c_d",
+            ".github",
+            "my app/web",
+        ] {
             assert!(path_ok(ok), "{ok}");
         }
         for no in [
