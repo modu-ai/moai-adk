@@ -226,13 +226,29 @@ fn the_adapter_table_has_a_row_for_every_route_with_a_status_word() {
                 "row `{name}`, column {column} must start with works, replaced or unsupported: {cell}"
             );
         }
+        // The audit of #3018 (B1): an Orca profile moves the settings folder to
+        // `CLAUDE_CONFIG_DIR`, which `moai update` does not look at (Issue #2936), so SETUP and
+        // UPDATE are not "works" with Orca.
+        if name == "SETUP" || name == "UPDATE" {
+            assert!(
+                cells[1].starts_with("unsupported") && cells[1].contains("#2936"),
+                "row `{name}`, With Orca must start with unsupported and name Issue #2936: {}",
+                cells[1]
+            );
+        }
         assert!(rows.insert(name.to_string()), "row `{name}` appears twice");
     }
     assert_eq!(
         rows, route_names,
         "the table and routes.json list different workflows"
     );
-    for cell in ["the OMP spelling", "an OMP lane's wake"] {
+    for cell in [
+        "the OMP spelling",
+        "an OMP lane's wake",
+        "a Codex or OMP leader's periodic run",
+        "the settings folder of an Orca profile",
+        "Issue #2936",
+    ] {
         assert!(missing.contains(cell), "the unsupported list lost `{cell}`");
     }
 }

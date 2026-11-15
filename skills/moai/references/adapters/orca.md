@@ -33,14 +33,14 @@ The full session-control rules for lanes and the leader are in the MODE-AGENT an
 
 Use `git worktree` and the host's own terminal instead, and record the Orca step as `not_run` with the reason (`orca` not on PATH, or the runtime not reachable).
 
-Orca is optional for every workflow (Issue #3005 AC-7, AC-8). Nothing in the `moai` tool runs `orca`, and the two modes name Orca only in steps that carry their own "without Orca" rule. This table says what each workflow does on each side; `works` runs as written, `replaced` runs through another channel, `unsupported` has no way yet and is listed in Issue #3005 for the leader.
+Orca is optional for every workflow (Issue #3005 AC-7, AC-8). Nothing in the `moai` tool runs `orca`, and the two modes name Orca only in steps that carry their own "without Orca" rule. This table says what each workflow does on each side; `works` runs as written, `replaced` runs through another channel, `unsupported` has no way yet and is listed in Issue #3005, or in the Issue its cell names, for the leader.
 
 | Workflow | With Orca | Without Orca | Host differences |
 |---|---|---|---|
 | READ | works (Orca not used) | works | parallel reads: Claude Code several agents in one message, Codex one agent at a time and wait for all, OMP the task list |
-| SETUP | works | works | files go to the host's own settings folder, which an Orca profile can move away from `~/.claude` |
+| SETUP | unsupported: an Orca profile starts Claude Code with `CLAUDE_CONFIG_DIR` set to its own folder, and `moai update` looks only at `~/.claude`, so `/moai` can be missing in that session while the preview says nothing to apply (Issue #2936) | works | files go to the host's own settings folder, which an Orca profile can move away from `~/.claude` |
 | PROJECT | works | works | entry `/moai project` (Claude Code), `$moai project` (Codex CLI); the OMP spelling is not stated yet |
-| UPDATE | works | works | same settings-folder point as SETUP |
+| UPDATE | unsupported: the same gap as SETUP; `moai update` does not see the settings folder of an Orca profile (Issue #2936) | works | same settings-folder point as SETUP |
 | PLAN | works | works | the `moai-plan` agent runs through the host's own subagent tool |
 | RUN | works (Orca terminals and worktrees are not used) | works | isolation: Claude Code `isolation: worktree`, OMP `isolated: true` when enabled; Codex, Kiro and Cursor work in one worktree, one change at a time |
 | VERIFY | works | works | heavy checks take turns through `heavy-slot`, shared by the whole machine |
@@ -50,7 +50,7 @@ Orca is optional for every workflow (Issue #3005 AC-7, AC-8). Nothing in the `mo
 | MODE-AGENT | works: a leader reads and sends lane screens through Orca | replaced: `lane-next` self-pick and Issue and pull request comments; the wake is Claude Code `/loop`, Codex `loop_line` and the Stop hook, and unsupported on OMP | none |
 | MODE-LEADER | works: the leader reads and sends lane screens through Orca | replaced: with a timer (Claude Code `/loop 5m`) it leads through Issue and pull request comments alone, with no `clear_redispatch` and no `restart`; with neither Orca nor a timer it refuses to enter; unsupported on Codex and OMP, which have no in-session timer | none |
 
-Unsupported today, tracked in Issue #3005: an OMP lane's wake, a Codex or OMP leader's periodic run without Orca, and the OMP spelling of the entry. The table is pinned by `tests/orca_optional_3005.rs`: a workflow without a row, or a row without one of the three words, fails the test.
+Unsupported today, tracked in Issue #3005: an OMP lane's wake, a Codex or OMP leader's periodic run without Orca, and the OMP spelling of the entry. Tracked in Issue #2936: the settings folder of an Orca profile (`CLAUDE_CONFIG_DIR`), which `moai update` does not see, so SETUP and UPDATE are unsupported with Orca until that repair lands. The table is pinned by `tests/orca_optional_3005.rs`: a workflow without a row, or a row without one of the three words, fails the test.
 
 ## Sources
 
