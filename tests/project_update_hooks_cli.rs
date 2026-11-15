@@ -262,3 +262,24 @@ fn hooks_wait_for_a_pending_claude_settings_apply() {
     );
     assert_eq!(hooks(&fx.update_plan())["state"], "unchanged");
 }
+
+/// The profile-error path builds its own step list; the same wait holds there.
+#[test]
+fn hooks_wait_for_the_settings_apply_when_the_profile_is_unreadable() {
+    let fx = project_with_go_hooks();
+    let stored = [".moai/project.yaml", ".moai-cli/project.yaml"]
+        .into_iter()
+        .find(|p| fx.root.join(p).is_file())
+        .expect("the stored profile");
+    fx.write(stored, "{ not a profile");
+    let plan = fx.update_plan();
+    let first = settings(&plan);
+    assert!(first["apply"].is_object(), "the precondition: {first}");
+    let step = hooks(&plan);
+    assert_eq!(step["state"], "blocked", "{step}");
+    assert_eq!(
+        step["reason"], "re-run after the claude-settings apply",
+        "{step}"
+    );
+    assert_eq!(step["apply"], Value::Null, "{step}");
+}
