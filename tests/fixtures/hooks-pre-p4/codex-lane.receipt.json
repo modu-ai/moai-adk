@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "hooks_path": ".codex/hooks.json",
+  "sha256": "sha256:2baef1981777acd0a248a27f94b7276575fd354a247735e75d9390b464013dd6",
+  "hooks": [
+    {
+      "event": "SessionStart",
+      "matcher": null,
+      "command": "moai-cli hook-dispatch --host codex --event session-check",
+      "timeout": 10
+    },
+    {
+      "event": "PreToolUse",
+      "matcher": "Bash",
+      "command": "moai-cli claim-verify . --hook",
+      "timeout": 10
+    },
+    {
+      "event": "PostToolUse",
+      "matcher": "Bash",
+      "command": "moai-cli hook-receipt --host codex",
+      "timeout": 10
+    },
+    {
+      "event": "Stop",
+      "matcher": null,
+      "command": "moai-cli lane-stop-hook --lane agent-1 --repo o/r",
+      "timeout": 120
+    }
+  ],
+  "lane_loop": {
+    "lane": "agent-1",
+    "repo": "o/r"
+  }
+}

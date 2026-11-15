@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "hooks_path": ".omp/extensions/moai-hooks.ts",
+  "sha256": "sha256:c12accc6f8d97d1f556f7e100f95bcd991db89f60443e75c231d0ba94433c794",
+  "hooks": [
+    {
+      "event": "before_agent_start",
+      "command": "moai-cli hook-dispatch --host omp --event session-check",
+      "timeout": 10
+    },
+    {
+      "event": "tool_call",
+      "command": "moai-cli hook-dispatch --host omp --event tool-preflight",
+      "timeout": 10
+    },
+    {
+      "event": "tool_result",
+      "command": "moai-cli hook-dispatch --host omp --event tool-observe",
+      "timeout": 10
+    }
+  ]
+}

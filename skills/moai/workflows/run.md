@@ -34,6 +34,7 @@ RUN hands one planned change at a time to `moai-impl`: in its own worktree where
 - Claude Code: the installed agent file sets `isolation: worktree`. That worktree starts from the default branch, so pass `base`; the agent checks it out and confirms `git rev-parse HEAD` before writing.
 - OMP: start it with the task tool's `isolated: true` when the user's settings enable task isolation; the result comes back as a patch or a branch, which you read and then apply in this worktree. With isolation off, use the fallback.
 - Codex CLI, Kiro and Cursor CLI document no subagent worktree isolation. Fallback: the agent works in this worktree, one change at a time, and you wait for its result before the next step.
+- Cleanup (Issue #3054): the agent deletes only the build output it made in its own worktree, from inside that worktree and by relative path (`rm -rf target/debug`), never by an absolute path, and reports in its `Cleanup` section what it could not delete. Read that section before you take the worktree's result.
 
 ## Web pages
 

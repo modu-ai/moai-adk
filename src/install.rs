@@ -519,9 +519,20 @@ fn match_receipt(
 // @MX:WARN: [AUTO] executes whatever binary a PATH entry or a Go install place holds under the expected name
 // @MX:REASON: REQ-04A-02 and #2791 AC-2 tell Rust from Go by the `--version` line; a hostile PATH entry runs at inspect time, without this process's environment; project-tree binaries are never run
 pub(crate) fn probe_version(path: &Path) -> Option<String> {
+    probe_version_env(path, &[])
+}
+
+/// [`probe_version`] with the named variables passed on to the child (#3004 P4-1). A routing
+/// shim in front of the Rust binary may need `HOME` to find it (`${MOAI_RUST_BIN:-$HOME/…}`), so
+/// `binary_state` passes that one variable and nothing else of this process's environment.
+/// `PATH` stays the fixed [`PROBE_PATH`]: an `extra_env` entry never replaces it.
+pub(crate) fn probe_version_env(path: &Path, extra_env: &[(&str, &Path)]) -> Option<String> {
     let mut cmd = std::process::Command::new(path);
-    cmd.env_clear()
-        .env("PATH", PROBE_PATH)
+    cmd.env_clear();
+    for (name, value) in extra_env {
+        cmd.env(name, value);
+    }
+    cmd.env("PATH", PROBE_PATH)
         .current_dir(std::env::temp_dir());
     if let Some(root) = std::env::var_os("SYSTEMROOT") {
         cmd.env("SYSTEMROOT", root);
@@ -607,16 +618,33 @@ fn first_line(bytes: &[u8]) -> String {
     line.chars().take(PROBE_LINE_CAP).collect()
 }
 
-/// Which generation a `--version` first line names (#2791 AC-2): the Rust CLI prints
-/// `moai-cli <version>` (R1 adds ` (rust)`), the Go `moai` prints `moai-adk <version>`
-/// (moai-adk-go `internal/cli/root.go` version template; older Go builds `moai <version>`).
-/// Anything else, or no output at all, is `unknown` — never guessed.
+/// Which generation a `--version` first line names (#2791 AC-2, #3004 P4-1): both names of the
+/// Rust build print `<name> <version> (rust)` (`VERSION_SIGNATURE`), so the line is Rust when it
+/// has that shape — `moai-cli` or `moai`, one space, a version that starts with a digit and holds
+/// no whitespace, then ` (rust)` — whatever this build's own version is. The suffix is checked
+/// first because the Go `moai` also prints `moai <version>` (`moai 3.2.0`), and the Go lines
+/// `moai-adk <version>` (moai-adk-go `internal/cli/root.go` version template) and
+/// `moai version v3…` stay Go. Anything else, or no output at all, is `unknown` — never guessed.
 pub(crate) fn generation_of(first: Option<&str>) -> &'static str {
     match first {
-        Some(l) if l.starts_with("moai-cli ") => "rust",
+        Some(l) if is_rust_signature(l) => "rust",
         Some(l) if l.starts_with("moai-adk ") || l.starts_with("moai ") => "go",
         _ => "unknown",
     }
+}
+
+/// `^(moai-cli|moai) [0-9]\S* \(rust\)$`.
+fn is_rust_signature(line: &str) -> bool {
+    let Some(rest) = line.strip_suffix(" (rust)") else {
+        return false;
+    };
+    let Some(version) = rest
+        .strip_prefix("moai-cli ")
+        .or_else(|| rest.strip_prefix("moai "))
+    else {
+        return false;
+    };
+    version.starts_with(|c: char| c.is_ascii_digit()) && !version.contains(char::is_whitespace)
 }
 
 fn is_executable(path: &Path) -> bool {
@@ -783,6 +811,81 @@ pub fn path_first_moai(candidates: &Value) -> Value {
         "probed": item["probed"],
         "basis": basis,
         "note": matches!(generation, "go" | "unknown" | "not_probed").then_some(PATH_FIRST_NOTE),
+    })
+}
+
+/// What a `moai` that is not the Rust build tells the person (#3004 P4-1). True today and after
+/// the hook command name changes: generated hooks still call `moai-cli`, so nothing is broken
+/// yet; the sentence names what a hook that called this `moai` would do.
+pub const MOAI_ON_PATH_NOTE: &str =
+    "the moai found on PATH is not the Rust build; hooks generated \
+     to call moai would fail as a non-blocking error and the claim guard would not run (hooks \
+     are generated with moai-cli until R5); put the Rust moai first on PATH or run `moai update`";
+
+/// Whether `path` — a PATH hit — is relative or lies inside the project tree `root` (already
+/// canonical), by its own spelling or after links are followed. A link that cannot be resolved
+/// counts as inside: the file is then never run.
+fn in_project_tree(path: &Path, root: &Path) -> bool {
+    if path.is_relative() || path.starts_with(root) {
+        return true;
+    }
+    fs::canonicalize(path).map_or(true, |real| real.starts_with(root))
+}
+
+/// The state of the first `moai` on `path_env` for the project at `project_root` (#3004 P4-1),
+/// in the vocabulary of `hooks::binary_state`: `resolved` (the Rust build), `wrong_generation`
+/// (Go, or anything whose `--version` is not the Rust signature, including no output within the
+/// probe limit), `binary_unresolved` (no `moai` on PATH) and `not_probed` (a relative path or a
+/// file inside the project tree: repository content, never run, #2800 audit B1). Only `HOME`
+/// reaches the probed child (`home`); see [`probe_version_env`]. Reports only.
+// @MX:WARN: [AUTO] executes the first `moai` on PATH that is outside the project tree
+// @MX:REASON: the Rust build and the Go one are told apart by `--version`; the child gets a cleared environment plus HOME, and a project-tree or relative hit is reported, never run
+pub fn moai_on_path_state(project_root: &Path, path_env: &str, home: Option<&Path>) -> Value {
+    let Some(path) = resolve_on_path(path_env, "moai") else {
+        return json!({
+            "name": "moai",
+            "state": "binary_unresolved",
+            "generation": "absent",
+            "basis": "no moai on PATH",
+            "note": "moai is not on this PATH",
+        });
+    };
+    let root = fs::canonicalize(project_root).unwrap_or_else(|_| project_root.to_path_buf());
+    if in_project_tree(&path, &root) {
+        return json!({
+            "name": "moai",
+            "state": "not_probed",
+            "reason": "project_tree",
+            "path": path.to_string_lossy(),
+            "generation": "not_probed",
+            "basis": "not probed: repository content",
+        });
+    }
+    let extra: Vec<(&str, &Path)> = home.map(|h| ("HOME", h)).into_iter().collect();
+    let line = probe_version_env(&path, &extra);
+    let generation = generation_of(line.as_deref());
+    let basis = match &line {
+        Some(l) => format!("--version: {l}"),
+        None => "--version gave no line".to_string(),
+    };
+    if generation == "rust" {
+        return json!({
+            "name": "moai",
+            "state": "resolved",
+            "path": path.to_string_lossy(),
+            "generation": generation,
+            "version_line": line,
+            "basis": basis,
+        });
+    }
+    json!({
+        "name": "moai",
+        "state": "wrong_generation",
+        "path": path.to_string_lossy(),
+        "generation": generation,
+        "version_line": line,
+        "basis": basis,
+        "note": MOAI_ON_PATH_NOTE,
     })
 }
 
@@ -955,5 +1058,77 @@ mod probe_limit_tests {
     fn the_probe_limits_are_pinned() {
         assert_eq!(super::PROBE_TIMEOUT, Duration::from_secs(5));
         assert_eq!(super::PROBE_GRACE, Duration::from_millis(200));
+    }
+}
+
+#[cfg(test)]
+mod generation_tests {
+    use super::generation_of;
+
+    /// #3004 P4-1: both binary names print `<name> <version> (rust)`; the suffix decides, so a
+    /// Go `moai 3.2.0` (same name, no suffix) stays Go. Matched on shape, never on this build's
+    /// version.
+    #[test]
+    fn the_rust_signature_is_matched_by_shape_under_both_names() {
+        for line in [
+            "moai-cli 2026.11.0-rc.1 (rust)",
+            "moai-cli 2026.11.0-rc.1+local.8 (rust)",
+            "moai 2026.11.0-rc.1 (rust)",
+            "moai-cli 0 (rust)",
+            "moai 9.9.9-x (rust)",
+            // The suffix is checked first: a Go-looking name with it is the Rust build.
+            "moai 3.2.0 (rust)",
+        ] {
+            assert_eq!(generation_of(Some(line)), "rust", "{line}");
+        }
+    }
+
+    #[test]
+    fn the_go_lines_stay_go() {
+        for line in [
+            "moai-adk v3.2.1-rc.6",
+            "moai-adk 3.2.0",
+            "moai 3.2.0",
+            "moai version v3.2.0",
+        ] {
+            assert_eq!(generation_of(Some(line)), "go", "{line}");
+        }
+    }
+
+    /// Everything that is neither the exact Rust shape nor a Go prefix is `unknown`, in every
+    /// direction the shape can miss: no suffix, a changed suffix, no or non-digit version, a
+    /// version with a space, another name, text around the signature, and no output.
+    #[test]
+    fn anything_else_is_unknown() {
+        assert_eq!(generation_of(None), "unknown");
+        for line in [
+            "",
+            "moai-cli",
+            "moai-cli 2026.11.0-rc.1",
+            "moai-cli (rust)",
+            "moai-cli  1.0 (rust)",
+            "moai-cli v1.0 (rust)",
+            "moai-cli 1.0 beta (rust)",
+            "moai-cli 1.0 (RUST)",
+            "moai-cli 1.0 (rust",
+            "moai-cli 1.0(rust)",
+            "moai-cli 1.0 (rust) ",
+            " moai-cli 1.0 (rust)",
+            "xmoai-cli 1.0 (rust)",
+            "moai-cliX 1.0 (rust)",
+            "other 1.0 (rust)",
+            "(rust)",
+            "Segmentation fault",
+        ] {
+            assert_eq!(generation_of(Some(line)), "unknown", "{line:?}");
+        }
+    }
+
+    /// The probe caps as literals: the integration tests probe at their edges, this pins the
+    /// numbers they are written around (`tests/binary_state_cli.rs`).
+    #[test]
+    fn the_probe_output_caps_are_pinned() {
+        assert_eq!(super::PROBE_LINE_CAP, 200);
+        assert_eq!(super::PROBE_STDOUT_CAP, 4096);
     }
 }

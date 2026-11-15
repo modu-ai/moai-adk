@@ -1820,11 +1820,18 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             let home = std::env::var_os("HOME").map(PathBuf::from);
             let mut out =
                 moai_cli::hooks::plan_with(&project, &host, home.as_deref(), lane.lane_loop())?;
-            merge_binary_state(&mut out);
+            merge_binary_state(&mut out, &project, home.as_deref());
             // Outside the plan digest: the #2391 hook state from local evidence, read only.
             let path_env = std::env::var("PATH").unwrap_or_default();
-            out["hook_status"] =
-                moai_cli::hooks::status(&project, &host, home.as_deref(), &path_env)?;
+            // The `moai` state was probed once above; the status block repeats it.
+            let moai = out.get("moai_on_path").cloned();
+            out["hook_status"] = moai_cli::hooks::status_with(
+                &project,
+                &host,
+                home.as_deref(),
+                &path_env,
+                moai.as_ref(),
+            )?;
             Ok(out)
         }
         Command::HooksRevert {
@@ -1848,7 +1855,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 &permission_reference,
                 lane.lane_loop(),
             )?;
-            merge_binary_state(&mut out);
+            merge_binary_state(&mut out, &project, home.as_deref());
             Ok(out)
         }
         // Printed by `hook_dispatch_main`, which `main` calls before any internal dispatch.
@@ -2325,12 +2332,17 @@ fn lane_stop_hook_main(lane: &str, repo: &str, snapshot: Option<&std::path::Path
 }
 
 /// Adds whether the generated hook command resolves on this process's PATH (#2348) to a
-/// hooks-plan / hooks-apply result.
-fn merge_binary_state(out: &mut serde_json::Value) {
+/// hooks-plan / hooks-apply result, and (#3004 P4-1) the state of the first `moai` on it, probed
+/// with `home` as its only variable.
+fn merge_binary_state(
+    out: &mut serde_json::Value,
+    project: &std::path::Path,
+    home: Option<&std::path::Path>,
+) {
     let path_env = std::env::var("PATH").unwrap_or_default();
     if let (Some(out), serde_json::Value::Object(state)) = (
         out.as_object_mut(),
-        moai_cli::hooks::binary_state(&path_env),
+        moai_cli::hooks::binary_state(project, &path_env, home),
     ) {
         out.extend(state);
     }
