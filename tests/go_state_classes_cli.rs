@@ -867,6 +867,7 @@ fn a_digest_change_after_the_preview_is_refused() {
     let before = fx.tree();
     let v = fx.apply(p["plan_digest"].as_str().unwrap());
     assert_eq!(v["ok"], json!(false), "{v}");
+    assert_eq!(v["error"]["kind"], json!("stale_plan"), "{v}");
     assert_eq!(fx.tree(), before, "nothing written");
 }
 
@@ -881,6 +882,7 @@ fn a_link_body_changed_after_the_preview_is_refused() {
     let before = fx.tree();
     let v = fx.apply(p["plan_digest"].as_str().unwrap());
     assert_eq!(v["ok"], json!(false), "{v}");
+    assert_eq!(v["error"]["kind"], json!("stale_plan"), "{v}");
     assert_eq!(fx.tree(), before, "nothing written");
 }
 

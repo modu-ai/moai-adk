@@ -249,6 +249,13 @@ pub struct Item {
     /// The manifest's `deployed_hash`, kept for the receipt of an edited file (O2).
     #[serde(skip)]
     pub(crate) deployed_hash: String,
+    /// S-DIGEST (#2936): what the moving item holds, as the preview read it — a file's
+    /// `sha256:<hex>`, a mirror link's body digest, a copy folder's digest over its files;
+    /// empty for the folders `.moai` and `.moai-cli` (one rename, content not pinned) and for
+    /// every item that stays. The digest binds it and the receipt takes it, so the preview
+    /// and the apply read each moving file once.
+    #[serde(skip)]
+    pub(crate) content: String,
 }
 
 fn new_item(path: &str, action: &str, reason: String, class: &str) -> Item {
@@ -573,13 +580,15 @@ fn published_skill(key: &str) -> bool {
 }
 
 /// The decision for one recorded path, as (action, reason, class, proof). The single place
-/// the move rule lives.
+/// the move rule lives. `content` is set to the file's `sha256:<hex>` once the policy has read
+/// it (S-DIGEST: the digest binds it and the apply takes it, so the file is read once).
 fn policy(
     project: &Path,
     key: &str,
     entry: &Entry,
     settings: &[(&'static str, String)],
     folder_moves: bool,
+    content: &mut String,
 ) -> (&'static str, &'static str, &'static str, String) {
     let leave = |reason, class| ("leave", reason, class, String::new());
     if !plain_relative(key) {
@@ -650,8 +659,10 @@ fn policy(
     }
     let unchanged = match sha256_file(&path) {
         Ok(h) => {
-            entry.provenance == "template_managed"
-                && same_hash(&entry.provenance, &entry.deployed_hash, &h)
+            let same = entry.provenance == "template_managed"
+                && same_hash(&entry.provenance, &entry.deployed_hash, &h);
+            *content = h;
+            same
         }
         Err(_) => return leave("not a bounded regular file", "unknown"),
     };
@@ -813,6 +824,7 @@ fn classify_agents_skills(
             i.proof = format!("link {body}");
             out.push(if body == want && recorded_under {
                 i.class = "go_mirror".into();
+                i.content = digest(body.as_bytes());
                 moving(
                     i,
                     "the Go skill mirror link; moves as a link, never followed",
@@ -834,9 +846,14 @@ fn classify_agents_skills(
             }
         };
         let (mut same, mut differ) = (0usize, 0usize);
+        // `rel\0sha256` per file, in the sorted order of `files`: what the digest binds.
+        let mut listing = String::new();
         for inner in &files {
             let rec = recorded.get(&format!("{canon}{inner}"));
             let h = sha256_file(&project.join(&rel).join(inner));
+            if let Ok(h) = &h {
+                listing.push_str(&format!("{inner}\0{h}\n"));
+            }
             match (rec, h) {
                 (Some(e), Ok(h)) if same_hash(&e.provenance, &e.deployed_hash, &h) => same += 1,
                 _ => differ += 1,
@@ -847,6 +864,7 @@ fn classify_agents_skills(
         } else if differ == 0 {
             let mut i = new_item(&rel, "leave", String::new(), "go_mirror_copy");
             i.proof = format!("every file matches the deployed_hash under {canon}");
+            i.content = digest(listing.as_bytes());
             moving(
                 i,
                 "a copy of the Go skill mirror; every file matches the Go deploy",
@@ -2240,11 +2258,19 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
         if matches!(top_of(key), ".claude" | ".agents") && has_secret_component(key) {
             continue;
         }
-        let (action, reason, class, proof) =
-            policy(&project, key, &recorded[key], &settings, folder_moves);
+        let mut content = String::new();
+        let (action, reason, class, proof) = policy(
+            &project,
+            key,
+            &recorded[key],
+            &settings,
+            folder_moves,
+            &mut content,
+        );
         let mut item = new_item(key, action, reason.into(), class);
         item.proof = proof;
         item.deployed_hash = recorded[key].deployed_hash.clone();
+        item.content = content;
         items.push(item);
     }
     if version.is_some() {
@@ -2428,9 +2454,211 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
         warnings,
         plan_digest: String::new(),
     };
-    let bytes = serde_json::to_vec(&plan).map_err(|_| "encode failed")?;
-    plan.plan_digest = format!("sha256:{:x}", Sha256::digest(bytes));
+    plan.plan_digest = bound_digest(&plan)?;
     Ok(plan)
+}
+
+// ---- S-DIGEST: what `plan_digest` binds (#2936, plan 6887264857 §3) ----
+//
+// The digest covers what the apply moves, copies or writes, and nothing the preview only
+// shows. Hashing the whole preview made any harmless change between preview and apply (a new
+// log file, a field another lane added) stale, while the content of a moving file was read
+// again at apply time, so an edit of an already edited file was not caught. The allow-list
+// below fixes both: each moving file's content hash is bound, and the apply refuses when a
+// fresh preview binds anything else.
+
+/// Version of the [`Bound`] layout. The field order below is the hash order: never reorder or
+/// add a field without bumping this, so an older digest is refused as a stale plan instead of
+/// matching by luck.
+const BOUND_VERSION: u32 = 1;
+
+/// What `plan_digest` hashes, as JSON.
+#[derive(Serialize)]
+struct Bound {
+    bound_version: u32,
+    project: String,
+    /// The Go backup name, or the stamped placeholder when the plain name is taken.
+    go_backup: Option<String>,
+    /// The items with `action` `move`, by path.
+    moves: Vec<BoundMove>,
+    /// The restore rows the apply copies (`copy`) or stops on (`conflict*`), by `from`.
+    restores: Vec<BoundRestore>,
+    /// The earlier root's entries that move, by `from`.
+    state_moves: Vec<BoundState>,
+    /// The root files the apply moves or copies, by path.
+    root_files: Vec<BoundRoot>,
+}
+
+#[derive(Serialize)]
+struct BoundMove {
+    path: String,
+    action: String,
+    class: String,
+    deployed_hash: String,
+    /// [`Item::content`]: what the move carries.
+    content: String,
+}
+
+#[derive(Serialize)]
+struct BoundRestore {
+    from: String,
+    to: String,
+    action: String,
+    sha256: String,
+}
+
+#[derive(Serialize)]
+struct BoundState {
+    from: String,
+    to: String,
+}
+
+#[derive(Serialize)]
+struct BoundRoot {
+    path: String,
+    action: String,
+    sha256: String,
+}
+
+/// Picks the bound part of a plan. Every plan type is destructured without `..`, so a field
+/// added to one of them does not compile until it is placed here (bound) or in the
+/// preview-only list beside it.
+fn bound_of(plan: &GoStatePlan) -> Result<Bound> {
+    let GoStatePlan {
+        // Bound: what the apply acts on.
+        project,
+        items,
+        restores,
+        go_backup,
+        state_moves,
+        root_files,
+        // Preview-only: the apply recomputes them (`backup_to` from `state_root::dir`) or never
+        // reads them.
+        schema_version: _,
+        manifest_version: _,
+        unrecorded: _,
+        layout: _,
+        backup_to: _,
+        left_in_backup: _,
+        kinds: _,
+        counterparts: _,
+        after_move: _,
+        secrets: _,
+        warnings: _,
+        plan_digest: _,
+    } = plan;
+    let mut moves = Vec::new();
+    for item in items {
+        let Item {
+            // Bound.
+            path,
+            action,
+            class,
+            deployed_hash,
+            content,
+            // Preview-only: why and how the preview shows the path.
+            reason: _,
+            kind: _,
+            proof: _,
+            git: _,
+        } = item;
+        if action != "move" {
+            continue;
+        }
+        // The two folders move by one rename and their content cannot be pinned (the receipt
+        // holds the tree digest taken after the move). Any other move must carry the hash of
+        // what it moves: fail closed, so a future kind of move cannot slip in unbound.
+        if content.is_empty() && path != MOAI_DIR && path != LEGACY_ROOT {
+            return Err(format!(
+                "{path}: a moving path without a content hash; refused"
+            ));
+        }
+        moves.push(BoundMove {
+            path: path.clone(),
+            action: action.clone(),
+            class: class.clone(),
+            deployed_hash: deployed_hash.clone(),
+            content: content.clone(),
+        });
+    }
+    moves.sort_by(|a, b| a.path.cmp(&b.path));
+    let mut bound_restores = Vec::new();
+    for row in restores {
+        let Restore {
+            from,
+            to,
+            sha256,
+            action,
+            // Preview-only: why a row is not copied.
+            reason: _,
+        } = row;
+        // `excluded_*`, `leave_link` and the like are never acted on.
+        if action == "copy" || action.starts_with("conflict") {
+            bound_restores.push(BoundRestore {
+                from: from.clone(),
+                to: to.clone(),
+                action: action.clone(),
+                sha256: sha256.clone(),
+            });
+        }
+    }
+    bound_restores.sort_by(|a, b| a.from.cmp(&b.from));
+    let mut bound_state = Vec::new();
+    for row in state_moves {
+        let StateMove {
+            from,
+            to,
+            action,
+            // Preview-only.
+            reason: _,
+        } = row;
+        if action == "move" {
+            bound_state.push(BoundState {
+                from: from.clone(),
+                to: to.clone(),
+            });
+        }
+    }
+    bound_state.sort_by(|a, b| a.from.cmp(&b.from));
+    let mut bound_roots = Vec::new();
+    for row in root_files {
+        let RootFile {
+            path,
+            sha256,
+            action,
+            // Preview-only: where the copy goes (the apply derives it), the later choice, why,
+            // what the file is and what git says.
+            backup_copy: _,
+            user_choice: _,
+            reason: _,
+            class: _,
+            go_proof: _,
+            git: _,
+        } = row;
+        if action != "leave" {
+            bound_roots.push(BoundRoot {
+                path: path.clone(),
+                action: action.clone(),
+                sha256: sha256.clone(),
+            });
+        }
+    }
+    bound_roots.sort_by(|a, b| a.path.cmp(&b.path));
+    Ok(Bound {
+        bound_version: BOUND_VERSION,
+        project: project.clone(),
+        go_backup: go_backup.clone(),
+        moves,
+        restores: bound_restores,
+        state_moves: bound_state,
+        root_files: bound_roots,
+    })
+}
+
+/// The `plan_digest` of a plan: `sha256:<hex>` over the [`Bound`] part.
+fn bound_digest(plan: &GoStatePlan) -> Result<String> {
+    let bytes = serde_json::to_vec(&bound_of(plan)?).map_err(|_| "encode failed")?;
+    Ok(digest(&bytes))
 }
 
 // ---- stage 2: apply and revert ----
@@ -2507,7 +2735,9 @@ fn planned_move(project: &Path, item: &Item) -> Result<Moved> {
             m.kind = "mirror_copy".into();
         }
         _ => {
-            m.sha256 = sha256_file(&path)?;
+            // The hash the preview took and the digest bound; `still_as_previewed` checks the
+            // file again right before it moves.
+            m.sha256 = item.content.clone();
             if item.class == "user_modified" || m.sha256 != item.deployed_hash {
                 m.kind = "edited".into();
                 m.deployed_hash = item.deployed_hash.clone();
@@ -2755,6 +2985,38 @@ fn move_exclusive(from: &Path, to: &Path) -> Result<()> {
     fs::remove_file(from).map_err(|_| "move failed: source not removed (both copies kept)".into())
 }
 
+/// S-DIGEST: a file moves as a hard link plus an unlink, so a write between the hash the
+/// receipt holds and the move would leave a receipt that names bytes the backup does not have.
+/// The file is hashed once more right before it moves; a different hash stops the move.
+fn still_as_previewed(from: &Path, rel: &str, sha256: &str) -> Result<()> {
+    if sha256_file(from).is_ok_and(|h| h == sha256) {
+        return Ok(());
+    }
+    Err(format!("{rel} changed after the preview; move stopped"))
+}
+
+/// Test seam (S-DIGEST): `MOAI_CLI_TEST_FAULT=go_state_edit_after_plan` appends one byte to the
+/// first file the apply is about to move, standing in for a writer that edits it after the
+/// fresh preview and before the move. Debug builds only.
+fn test_edit_first_moving_file(project: &Path, moves: &[Moved]) {
+    #[cfg(debug_assertions)]
+    if std::env::var("MOAI_CLI_TEST_FAULT").as_deref() == Ok("go_state_edit_after_plan") {
+        if let Some(first) = moves
+            .iter()
+            .find(|m| matches!(m.kind.as_str(), "" | "edited"))
+        {
+            if let Ok(mut f) = fs::OpenOptions::new()
+                .append(true)
+                .open(project.join(&first.path))
+            {
+                use std::io::Write as _;
+                let _ = f.write_all(b"x");
+            }
+        }
+    }
+    let _ = (project, moves);
+}
+
 /// Move one folder with a single rename: the source must be a real folder (not a link),
 /// the destination must not exist, and another filesystem is refused (no copy fallback).
 fn move_folder(from: &Path, to: &Path) -> Result<()> {
@@ -2795,6 +3057,21 @@ fn marker_bytes(go_backup: &str) -> Result<Vec<u8>> {
     ))
 }
 
+/// The apply's refusal when the confirmed digest is not the fresh preview's (F17, #2936: the
+/// phrase `stale or altered plan` makes `contract::classify` say `stale_plan`, and the run
+/// command is named so the reader knows the next step).
+pub(crate) const STALE_PLAN: &str = "stale or altered plan: what go-state-apply would move, copy \
+     or write no longer matches the preview that was confirmed (a moving file, a state entry, a \
+     restored copy, a root file or the backup name changed, or the digest is from an older \
+     version); nothing was written; run `moai go-state-plan <project>` again, read the new \
+     preview and confirm again with its plan_digest";
+
+/// The revert's refusal when the confirmed digest is not the fresh revert plan's.
+pub(crate) const STALE_REVERT_PLAN: &str = "stale or altered plan: the revert plan no longer \
+     matches the confirmed go-state-revert-plan (a path changed or the receipt moved on); \
+     nothing was written; run `moai go-state-revert-plan <project> --backup <UTC>` again and \
+     confirm again with its plan_digest";
+
 /// Apply the preview whose digest the caller confirmed. Nothing is written unless a fresh
 /// preview has exactly that digest.
 pub fn apply_with_stamp(
@@ -2805,7 +3082,7 @@ pub fn apply_with_stamp(
 ) -> Result<Receipt> {
     let fresh = plan(project)?;
     if fresh.plan_digest != plan_digest {
-        return Err("stale or unconfirmed plan: the digest does not match a fresh go-state-plan; nothing written".into());
+        return Err(STALE_PLAN.into());
     }
     if permission_reference.trim().is_empty() {
         return Err("a permission reference is required".into());
@@ -2856,6 +3133,7 @@ pub fn apply_with_stamp(
     for item in planned.iter().filter(|i| i.path != MOAI_DIR) {
         receipt.moves.push(planned_move(&project, item)?);
     }
+    test_edit_first_moving_file(&project, &receipt.moves);
     if planned.iter().any(|i| i.path == MOAI_DIR) {
         return apply_moving_folder(&project, &fresh, receipt, stamp);
     }
@@ -2886,6 +3164,7 @@ pub fn apply_with_stamp(
         refuse_linked(&project, &rel)?;
         let dest_rel = format!("{backup_rel}/go-state/{rel}");
         make_private_dirs(&project, &parent_of(&dest_rel)?)?;
+        still_as_previewed(&project.join(&rel), &rel, &receipt.moves[i].sha256)?;
         move_exclusive(&project.join(&rel), &project.join(&dest_rel))?;
         receipt.moves[i].moved = true;
         saved = save_receipt(&project, base, &receipt, Some(&saved))?;
@@ -2994,7 +3273,10 @@ fn apply_moving_folder(
                 }
                 move_folder(&from, &to)?
             }
-            _ => move_exclusive(&from, &to)?,
+            _ => {
+                still_as_previewed(&from, &rel, &receipt.moves[i].sha256)?;
+                move_exclusive(&from, &to)?
+            }
         }
         receipt.moves[i].moved = true;
         saved = save_receipt(project, MOAI_DIR, &receipt, Some(&saved))?;
@@ -3595,7 +3877,7 @@ pub fn revert(
 ) -> Result<RevertPlan> {
     let fresh = revert_plan(project, backup)?;
     if fresh.plan_digest != plan_digest {
-        return Err("stale or unconfirmed revert plan: the digest does not match a fresh go-state-revert-plan; nothing written".into());
+        return Err(STALE_REVERT_PLAN.into());
     }
     if permission_reference.trim().is_empty() {
         return Err("a permission reference is required".into());
@@ -3703,4 +3985,400 @@ pub fn revert(
     receipt.state = "reverted".into();
     save_receipt(&project, &base, &receipt, Some(&saved))?;
     Ok(fresh)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn file_item(path: &str, content: &str) -> Item {
+        let mut i = new_item(
+            path,
+            "move",
+            "proven Go deploy, unchanged".into(),
+            "tool_asset",
+        );
+        i.proof = "manifest; sha256 matches the deploy".into();
+        i.deployed_hash = "sha256:aa".into();
+        i.content = content.into();
+        i.kind = "rule".into();
+        i.git = "clean".into();
+        i
+    }
+
+    fn restore(from: &str, action: &str, sha: &str) -> Restore {
+        Restore {
+            from: from.into(),
+            to: from.replace(".moai-backup", ".moai"),
+            sha256: sha.into(),
+            action: action.into(),
+            reason: String::new(),
+        }
+    }
+
+    fn root_file(path: &str, action: &str, sha: &str) -> RootFile {
+        RootFile {
+            path: path.into(),
+            sha256: sha.into(),
+            action: action.into(),
+            backup_copy: format!(".moai/backups/<UTC>/root-files/{path}"),
+            user_choice: "keep".into(),
+            reason: "why".into(),
+            class: "instructions".into(),
+            go_proof: "none".into(),
+            git: String::new(),
+        }
+    }
+
+    fn state_move(from: &str, to: &str, action: &str) -> StateMove {
+        StateMove {
+            from: from.into(),
+            to: to.into(),
+            action: action.into(),
+            reason: "state".into(),
+        }
+    }
+
+    /// One row of every shape the apply acts on and of every shape it ignores.
+    fn sample() -> GoStatePlan {
+        GoStatePlan {
+            schema_version: SCHEMA_VERSION,
+            project: "/p".into(),
+            manifest_version: Some("v3".into()),
+            items: vec![
+                new_item(MOAI_DIR, "move", "the folder".into(), "go_folder"),
+                file_item(".claude/a.md", "sha256:01"),
+                file_item(".claude/b.md", "sha256:02"),
+                new_item(".claude/c.md", "leave", "referenced".into(), "tool_asset"),
+                new_item(".moai/x", "with_folder", "with it".into(), "go_folder"),
+            ],
+            unrecorded: BTreeMap::from([(".claude".to_string(), 1)]),
+            restores: vec![
+                restore(".moai-backup/specs/a.md", "copy", "sha256:03"),
+                restore(".moai-backup/specs/c.md", "conflict", "sha256:04"),
+                restore(".moai-backup/specs/s.md", "excluded_secret", ""),
+                restore(".moai-backup/specs", "leave_link", ""),
+            ],
+            go_backup: Some(".moai-backup".into()),
+            layout: "folder_moves",
+            backup_to: Some(".moai/backups/<UTC>".into()),
+            state_moves: vec![
+                state_move("earlier/index", ".moai/index", "move"),
+                state_move("earlier/notes", "", "leave"),
+            ],
+            root_files: vec![
+                root_file("CLAUDE.md", "move", "sha256:05"),
+                root_file(".claude/settings.local.json", "copy", "sha256:06"),
+                root_file("AGENTS.md", "leave", ""),
+            ],
+            left_in_backup: vec!["config".into()],
+            kinds: BTreeMap::from([("rule".to_string(), 2)]),
+            counterparts: Vec::new(),
+            after_move: AfterMove::default(),
+            secrets: 0,
+            warnings: vec!["w".into()],
+            plan_digest: String::new(),
+        }
+    }
+
+    fn digest_of(plan: &GoStatePlan) -> String {
+        bound_digest(plan).unwrap()
+    }
+
+    type Change = fn(&mut GoStatePlan);
+
+    /// F7: the preview shows more than the apply acts on; none of that data changes the digest.
+    #[test]
+    fn preview_only_data_does_not_change_the_digest() {
+        let base = digest_of(&sample());
+        let same: Vec<(&str, Change)> = vec![
+            ("schema_version", |p| p.schema_version += 1),
+            ("manifest_version", |p| p.manifest_version = None),
+            ("unrecorded", |p| {
+                p.unrecorded.insert(".moai/logs".into(), 9);
+            }),
+            ("layout", |p| p.layout = "folder_stays"),
+            ("backup_to", |p| p.backup_to = None),
+            ("left_in_backup", |p| p.left_in_backup.push("logs".into())),
+            ("kinds", |p| {
+                p.kinds.insert("hook".into(), 1);
+            }),
+            ("counterparts", |p| {
+                p.counterparts.push(Counterpart {
+                    kind: "rule".into(),
+                    moved: 2,
+                    counterpart: "c".into(),
+                    note: "n".into(),
+                })
+            }),
+            ("after_move", |p| {
+                p.after_move.unknown = true;
+                p.after_move.empty_folders.push(".claude".into());
+            }),
+            ("secrets", |p| p.secrets = 7),
+            ("warnings", |p| p.warnings.push("another".into())),
+            ("plan_digest", |p| p.plan_digest = "sha256:ff".into()),
+            ("item reason", |p| p.items[1].reason = "other".into()),
+            ("item proof", |p| p.items[1].proof = "other".into()),
+            ("item git", |p| p.items[1].git = "modified".into()),
+            ("item kind", |p| p.items[1].kind = "hook".into()),
+            ("item that stays", |p| {
+                p.items[3].class = "user_modified".into();
+                p.items[3].content = "sha256:99".into();
+                p.items[3].deployed_hash = "sha256:98".into();
+            }),
+            ("new item that stays", |p| {
+                p.items
+                    .push(new_item(".claude/new.md", "leave", "r".into(), "unknown"))
+            }),
+            ("item with the folder", |p| {
+                p.items[4].reason = "other".into()
+            }),
+            ("restore reason", |p| p.restores[0].reason = "other".into()),
+            ("excluded restore", |p| {
+                p.restores[2].sha256 = "sha256:77".into();
+                p.restores[2].reason = "other".into();
+            }),
+            ("new excluded restore", |p| {
+                p.restores
+                    .push(restore(".moai-backup/docs/.env", "excluded_secret", ""))
+            }),
+            ("new linked restore", |p| {
+                p.restores
+                    .push(restore(".moai-backup/docs", "leave_link", ""))
+            }),
+            ("state reason", |p| p.state_moves[0].reason = "other".into()),
+            ("state that stays", |p| {
+                p.state_moves[1].reason = "other".into();
+                p.state_moves.push(state_move("earlier/other", "", "leave"));
+            }),
+            ("root backup_copy", |p| {
+                p.root_files[0].backup_copy = "x".into()
+            }),
+            ("root user_choice", |p| {
+                p.root_files[0].user_choice = "x".into()
+            }),
+            ("root reason", |p| p.root_files[0].reason = "x".into()),
+            ("root class", |p| p.root_files[0].class = "conflict".into()),
+            ("root go_proof", |p| {
+                p.root_files[0].go_proof = "marker".into()
+            }),
+            ("root git", |p| p.root_files[0].git = "modified".into()),
+            ("root that stays", |p| {
+                p.root_files[2].sha256 = "sha256:88".into();
+                p.root_files.push(root_file("AGENTS.local.md", "leave", ""));
+            }),
+        ];
+        for (what, change) in same {
+            let mut p = sample();
+            change(&mut p);
+            assert_eq!(digest_of(&p), base, "{what} must not change the digest");
+        }
+    }
+
+    /// Everything the apply moves, copies or writes changes the digest.
+    #[test]
+    fn bound_data_changes_the_digest() {
+        let base = digest_of(&sample());
+        let differ: Vec<(&str, Change)> = vec![
+            ("project", |p| p.project = "/q".into()),
+            ("go_backup name", |p| {
+                p.go_backup = Some(".moai-backup-<UTC>".into())
+            }),
+            ("go_backup gone", |p| p.go_backup = None),
+            ("item path", |p| p.items[1].path = ".claude/z.md".into()),
+            ("item action", |p| p.items[1].action = "leave".into()),
+            ("item class", |p| p.items[1].class = "user_modified".into()),
+            ("item deployed_hash", |p| {
+                p.items[1].deployed_hash = "sha256:bb".into()
+            }),
+            ("item content", |p| p.items[1].content = "sha256:ee".into()),
+            ("new move", |p| {
+                p.items.push(file_item(".claude/n.md", "sha256:0a"))
+            }),
+            ("moving folder stays", |p| {
+                p.items[0].action = "leave".into()
+            }),
+            ("restore copy sha256", |p| {
+                p.restores[0].sha256 = "sha256:ee".into()
+            }),
+            ("restore copy to", |p| {
+                p.restores[0].to = ".moai/other".into()
+            }),
+            ("restore copy action", |p| {
+                p.restores[0].action = "conflict".into()
+            }),
+            ("restore conflict sha256", |p| {
+                p.restores[1].sha256 = "sha256:ee".into()
+            }),
+            ("new restore copy", |p| {
+                p.restores
+                    .push(restore(".moai-backup/specs/n.md", "copy", "sha256:0b"))
+            }),
+            ("new restore conflict", |p| {
+                p.restores.push(restore(
+                    ".moai-backup/specs/n.md",
+                    "conflict_link",
+                    "sha256:0b",
+                ))
+            }),
+            ("restore copy gone", |p| {
+                p.restores.remove(0);
+            }),
+            ("state to", |p| p.state_moves[0].to = ".moai/other".into()),
+            ("new state move", |p| {
+                p.state_moves
+                    .push(state_move("earlier/decisions", ".moai/decisions", "move"))
+            }),
+            ("state move now stays", |p| {
+                p.state_moves[0].action = "leave".into()
+            }),
+            ("root sha256", |p| {
+                p.root_files[0].sha256 = "sha256:ee".into()
+            }),
+            ("root action", |p| p.root_files[0].action = "copy".into()),
+            ("root copy sha256", |p| {
+                p.root_files[1].sha256 = "sha256:ee".into()
+            }),
+            ("new root move", |p| {
+                p.root_files
+                    .push(root_file("AGENTS.local.md", "move", "sha256:0c"))
+            }),
+            ("root now stays", |p| {
+                p.root_files[0].action = "leave".into()
+            }),
+        ];
+        for (what, change) in differ {
+            let mut p = sample();
+            change(&mut p);
+            assert_ne!(digest_of(&p), base, "{what} must change the digest");
+        }
+    }
+
+    /// The digest does not depend on the order the preview lists its rows in.
+    #[test]
+    fn row_order_does_not_change_the_digest() {
+        let base = digest_of(&sample());
+        let mut p = sample();
+        p.items.reverse();
+        p.restores.reverse();
+        p.state_moves.reverse();
+        p.root_files.reverse();
+        assert_eq!(digest_of(&p), base);
+    }
+
+    /// A moving path other than the two folders must carry the hash of what it moves (fail
+    /// closed); the folders, a leaving path and a path under the folder need none.
+    #[test]
+    fn a_move_without_content_is_refused_except_the_two_folders() {
+        let legacy = new_item(LEGACY_ROOT, "move", "r".into(), "legacy_state");
+        let mut p = sample();
+        p.items.push(legacy);
+        assert!(bound_digest(&p).is_ok(), "{LEGACY_ROOT}");
+        assert!(bound_digest(&sample()).is_ok(), "{MOAI_DIR}");
+
+        let mut p = sample();
+        p.items.push(new_item(
+            ".codex/hooks.json",
+            "move",
+            "r".into(),
+            "go_hooks",
+        ));
+        let err = bound_digest(&p).unwrap_err();
+        assert!(err.contains(".codex/hooks.json"), "{err}");
+        assert_eq!(
+            crate::contract::classify(&err),
+            crate::contract::Kind::InvalidInput
+        );
+        let mut p = sample();
+        p.items[1].content.clear();
+        assert!(bound_digest(&p).is_err(), "a file move with an empty hash");
+        // Not a move: nothing to bind.
+        let mut p = sample();
+        p.items.push(new_item(
+            ".codex/hooks.json",
+            "leave",
+            "r".into(),
+            "go_hooks",
+        ));
+        assert!(bound_digest(&p).is_ok());
+    }
+
+    /// The hash order is part of the contract: a golden text and digest for a small plan. A
+    /// change here needs a `BOUND_VERSION` bump.
+    #[test]
+    fn the_bound_layout_is_pinned() {
+        assert_eq!(BOUND_VERSION, 1);
+        let mut p = sample();
+        p.items.truncate(2);
+        p.restores.truncate(1);
+        p.state_moves.truncate(1);
+        p.root_files.truncate(1);
+        let text = serde_json::to_string(&bound_of(&p).unwrap()).unwrap();
+        assert_eq!(
+            text,
+            concat!(
+                r#"{"bound_version":1,"project":"/p","go_backup":".moai-backup","#,
+                r#""moves":[{"path":".claude/a.md","action":"move","class":"tool_asset","#,
+                r#""deployed_hash":"sha256:aa","content":"sha256:01"},"#,
+                r#"{"path":".moai","action":"move","class":"go_folder","#,
+                r#""deployed_hash":"","content":""}],"#,
+                r#""restores":[{"from":".moai-backup/specs/a.md","to":".moai/specs/a.md","#,
+                r#""action":"copy","sha256":"sha256:03"}],"#,
+                r#""state_moves":[{"from":"earlier/index","to":".moai/index"}],"#,
+                r#""root_files":[{"path":"CLAUDE.md","action":"move","sha256":"sha256:05"}]}"#
+            )
+        );
+        assert_eq!(
+            digest_of(&p),
+            "sha256:0e2cdc646d3f17a6ae911e09fc3d7139d4b275c6082833eced3bfecd78b654f7"
+        );
+        // The empty plan, the smallest `Bound`.
+        let mut empty = sample();
+        empty.items.clear();
+        empty.restores.clear();
+        empty.state_moves.clear();
+        empty.root_files.clear();
+        empty.go_backup = None;
+        assert_eq!(
+            serde_json::to_string(&bound_of(&empty).unwrap()).unwrap(),
+            r#"{"bound_version":1,"project":"/p","go_backup":null,"moves":[],"restores":[],"state_moves":[],"root_files":[]}"#
+        );
+    }
+
+    /// F17: both refusals map to `stale_plan` and name the command to run next.
+    #[test]
+    fn the_stale_messages_have_the_stale_plan_kind_and_name_their_next_step() {
+        use crate::contract::{classify, Kind};
+        for (m, command) in [
+            (STALE_PLAN, "go-state-plan"),
+            (STALE_REVERT_PLAN, "go-state-revert-plan"),
+        ] {
+            assert_eq!(classify(m), Kind::StalePlan, "{m}");
+            assert!(crate::error_next::names_next_step(m), "{m}");
+            assert!(m.contains(&format!("`moai {command} ")), "{m}");
+            assert!(m.contains("nothing was written; run `"), "{m}");
+        }
+    }
+
+    #[test]
+    fn a_file_that_changed_since_the_hash_stops_the_move() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("f.md");
+        fs::write(&file, "one\n").unwrap();
+        let sha = sha256_file(&file).unwrap();
+        assert!(still_as_previewed(&file, "f.md", &sha).is_ok());
+        fs::write(&file, "one\nx").unwrap();
+        let err = still_as_previewed(&file, "f.md", &sha).unwrap_err();
+        assert_eq!(err, "f.md changed after the preview; move stopped");
+        // Gone, or a link in its place: never moved either.
+        fs::remove_file(&file).unwrap();
+        assert!(still_as_previewed(&file, "f.md", &sha).is_err());
+        #[cfg(unix)]
+        {
+            fs::write(dir.path().join("t.md"), "one\n").unwrap();
+            std::os::unix::fs::symlink(dir.path().join("t.md"), &file).unwrap();
+            assert!(still_as_previewed(&file, "f.md", &sha).is_err());
+        }
+    }
 }
