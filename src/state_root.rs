@@ -19,11 +19,11 @@
 //!
 //! Go markers: `.moai/manifest.json` (the Go deploy manifest), `.moai/config/config.yaml`,
 //! and `.moai/config/sections/system.yaml` with a `moai:` block holding `version:`.
-//! Rust marker: `.moai/moai-cli.json` = `{"schema_version": 1, "generation": "moai-cli", …}`,
-//! written last by a migration (decision D1), or `.moai/moai.json` = `{…, "generation": "moai"}`
-//! (the rename of #2871, leader decision 6886824285 item 2: readers accept both names, writers
-//! still write the old one). Each name pairs with its own generation value; a mismatched pair is
-//! not a marker. `moai.json` alone decides when it exists. Every path is read with
+//! Rust marker: `.moai/moai.json` = `{"schema_version": 1, "generation": "moai", …}`, written
+//! last by a migration (decision D1), or the earlier `.moai/moai-cli.json` with `"generation":
+//! "moai-cli"` (the rename of #2871, leader decision 6886824285 item 2: readers accept both
+//! names, writers write only the new one). Each name pairs with its own generation value; a
+//! mismatched pair is not a marker. `moai.json` alone decides when it exists. Every path is read with
 //! `symlink_metadata`; a link anywhere on the way is not a marker. Writes nothing.
 //!
 //! A Go backup is the Go folder after `go-state-apply` renamed it (#2725 rev2 D2, #2696):
@@ -36,12 +36,21 @@ use std::{fs, path::Path};
 /// The Go and Rust folder name once the state has moved (#2725).
 pub const MOAI_DIR: &str = ".moai";
 /// The Rust generation marker inside `.moai/` that every writer writes (decision D1), with
-/// `"generation": "moai-cli"`. Readers also accept [`NEW_MARKER`] (#2871 marker rename, leader
-/// decision 6886824285 item 2: read both, write unchanged); a later step flips the writers.
-pub const RUST_MARKER: &str = "moai-cli.json";
-/// The marker name the rename moves to, paired with [`NEW_GENERATION`]. Read only for now.
+/// `"generation": "moai"` ([`NEW_GENERATION`]). #2871 marker rename (leader decision 6886824285
+/// item 2): the writers flipped to this name after the readers learned both; an existing
+/// [`LEGACY_MARKER`] is read, never rewritten, renamed or deleted. The one exception (leader
+/// audit 6900128841 B1): `home-install-apply` and `home-install-revert` of an install an
+/// earlier build began write, find and move the marker under the name that goes with the
+/// `generation` in its saved bytes, so a resumed install ends with `moai-cli.json` and its
+/// revert takes that file into the journal folder.
+pub const RUST_MARKER: &str = NEW_MARKER;
+/// The marker name of this generation, paired with [`NEW_GENERATION`].
 pub const NEW_MARKER: &str = "moai.json";
-/// `"generation"` inside [`RUST_MARKER`].
+/// The earlier marker name, paired with [`LEGACY_GENERATION`]. Read by every reader; written
+/// or moved only by `home-install-apply`/`home-install-revert` for an install an earlier build
+/// began (see [`RUST_MARKER`]).
+pub const LEGACY_MARKER: &str = "moai-cli.json";
+/// `"generation"` inside [`LEGACY_MARKER`].
 pub const LEGACY_GENERATION: &str = "moai-cli";
 /// `"generation"` inside [`NEW_MARKER`].
 pub const NEW_GENERATION: &str = "moai";
@@ -49,7 +58,7 @@ pub const NEW_GENERATION: &str = "moai";
 /// Either marker file name, ASCII case-insensitive (APFS and NTFS fold the case, so `MOAI.JSON`
 /// is the same file there).
 pub fn is_marker_name(name: &str) -> bool {
-    name.eq_ignore_ascii_case(RUST_MARKER) || name.eq_ignore_ascii_case(NEW_MARKER)
+    name.eq_ignore_ascii_case(LEGACY_MARKER) || name.eq_ignore_ascii_case(NEW_MARKER)
 }
 /// The marker schema this build writes and understands.
 pub const MARKER_SCHEMA: u64 = 1;
@@ -202,7 +211,7 @@ fn read_one_marker(moai: &Path, name: &str, generation: &str, accept: u64) -> On
         schema: None,
     };
     match fs::symlink_metadata(moai.join(name)) {
-        Err(e) if name == RUST_MARKER || e.kind() == std::io::ErrorKind::NotFound => {
+        Err(e) if name == LEGACY_MARKER || e.kind() == std::io::ErrorKind::NotFound => {
             return OneMarker {
                 status: "absent",
                 schema: None,
@@ -257,11 +266,11 @@ struct Marker {
 ///   old file beside a good new one is ignored.
 fn rust_marker(moai: &Path, accept: u64) -> Marker {
     let new = read_one_marker(moai, NEW_MARKER, NEW_GENERATION, accept);
-    let old = read_one_marker(moai, RUST_MARKER, LEGACY_GENERATION, accept);
+    let old = read_one_marker(moai, LEGACY_MARKER, LEGACY_GENERATION, accept);
     if new.status == "absent" {
         return Marker {
             status: old.status,
-            file: (old.status != "absent").then_some(RUST_MARKER),
+            file: (old.status != "absent").then_some(LEGACY_MARKER),
             conflict: None,
         };
     }
@@ -284,7 +293,7 @@ fn rust_marker(moai: &Path, accept: u64) -> Marker {
         // Both files carry a schema here (`newer`, `valid` and `schema-2` all do).
         let old_schema = old.schema.unwrap_or(0);
         return decided(Some(format!(
-            "markers disagree: {RUST_MARKER} is schema {old_schema} and {NEW_MARKER} is schema \
+            "markers disagree: {LEGACY_MARKER} is schema {old_schema} and {NEW_MARKER} is schema \
              {new_schema}; this build leaves both alone"
         )));
     }
@@ -384,7 +393,7 @@ fn classify_inner(root: &Path, go: fn(&Path) -> Vec<String>, accept: u64) -> Cla
     };
     let marker = found.status;
     // The file that decided, for the reasons below.
-    let decided_by = found.file.unwrap_or(RUST_MARKER);
+    let decided_by = found.file.unwrap_or(NEW_MARKER);
     // #2696: a go-state apply renames the Go folder to a backup, makes a new `.moai/` holding
     // its receipt and writes the marker last; a revert removes the marker first. A backup
     // beside a `.moai` that is missing, or that is the apply's own folder without a valid
@@ -518,7 +527,7 @@ pub fn create_dir(root: &Path) -> &'static str {
 pub fn marker_bytes(created_by: &str, extra: &[(&str, &str)]) -> Vec<u8> {
     let mut map = serde_json::Map::new();
     map.insert("schema_version".into(), json!(MARKER_SCHEMA));
-    map.insert("generation".into(), json!(LEGACY_GENERATION));
+    map.insert("generation".into(), json!(NEW_GENERATION));
     map.insert(
         "created_by".into(),
         json!(format!("moai-cli {} {created_by}", crate::BUILD_VERSION)),
@@ -536,7 +545,7 @@ pub fn marker_bytes(created_by: &str, extra: &[(&str, &str)]) -> Vec<u8> {
 pub fn home_marker_bytes(created_by: &str, stamp: &str) -> Vec<u8> {
     let mut map = serde_json::Map::new();
     map.insert("schema_version".into(), json!(HOME_MARKER_SCHEMA));
-    map.insert("generation".into(), json!("moai-cli"));
+    map.insert("generation".into(), json!(NEW_GENERATION));
     map.insert(
         "created_by".into(),
         json!(format!("moai-cli {} {created_by}", crate::BUILD_VERSION)),
@@ -862,7 +871,7 @@ mod tests {
         let text = String::from_utf8(bytes.clone()).unwrap();
         let v: Value = serde_json::from_str(&text).unwrap();
         assert_eq!(v["schema_version"], json!(HOME_MARKER_SCHEMA));
-        assert_eq!(v["generation"], json!("moai-cli"));
+        assert_eq!(v["generation"], json!(NEW_GENERATION));
         assert_eq!(v["install_stamp"], json!("20261114T120000Z"));
         assert!(v["created_by"]
             .as_str()
@@ -1058,12 +1067,12 @@ mod tests {
 
     #[test]
     fn the_marker_names_and_generations_are_pinned() {
-        assert_eq!(
-            RUST_MARKER, "moai-cli.json",
-            "writers still write the old name"
-        );
+        assert_eq!(RUST_MARKER, "moai.json", "writers write the new name");
         assert_eq!((NEW_MARKER, NEW_GENERATION), ("moai.json", "moai"));
-        assert_eq!(LEGACY_GENERATION, "moai-cli");
+        assert_eq!(
+            (LEGACY_MARKER, LEGACY_GENERATION),
+            ("moai-cli.json", "moai-cli")
+        );
         for name in ["moai.json", "moai-cli.json", "MOAI.JSON", "Moai-Cli.Json"] {
             assert!(is_marker_name(name), "{name}");
         }
@@ -1077,9 +1086,46 @@ mod tests {
         ] {
             assert!(!is_marker_name(name), "{name:?}");
         }
-        // The bytes a writer produces carry the old pair.
+        // The bytes a writer produces carry the new pair, and read back as a valid marker.
         let v: Value = serde_json::from_slice(&marker_bytes("t", &[])).unwrap();
-        assert_eq!(v["generation"], json!("moai-cli"));
+        assert_eq!(v["generation"], json!("moai"));
+        assert_eq!(v["schema_version"], json!(MARKER_SCHEMA));
+        let c = verdict(|r| {
+            put(
+                r,
+                RUST_MARKER,
+                &String::from_utf8(marker_bytes("t", &[])).unwrap(),
+            )
+        });
+        assert_eq!((c.generation, c.marker_file), ("rust", Some("moai.json")));
+    }
+
+    /// A new project gets `.moai/moai.json` with `"moai"` and no `moai-cli.json`; an old-name
+    /// marker beside it (not a new project: `.moai` exists) is read, and left byte for byte.
+    #[test]
+    fn adopt_new_writes_only_the_new_name() {
+        let tmp = tempfile::tempdir().unwrap();
+        assert!(adopt_new(tmp.path(), "test").unwrap());
+        let moai = tmp.path().join(".moai");
+        assert!(moai.join("moai.json").is_file());
+        assert!(fs::symlink_metadata(moai.join("moai-cli.json")).is_err());
+        let v: Value = serde_json::from_slice(&fs::read(moai.join("moai.json")).unwrap()).unwrap();
+        assert_eq!(v["generation"], json!("moai"));
+        let c = classify(tmp.path());
+        assert_eq!((c.generation, c.marker_file), ("rust", Some("moai.json")));
+        // A project that already has an old-name marker is not new: nothing is written, the
+        // old file stays as it was and keeps deciding.
+        let old = tempfile::tempdir().unwrap();
+        put(old.path(), "moai-cli.json", MARKER_V1);
+        let before = snapshot(old.path());
+        assert!(!adopt_new(old.path(), "test").unwrap());
+        assert_eq!(
+            snapshot(old.path()),
+            before,
+            "an old-name marker is left untouched"
+        );
+        assert_eq!(dir(old.path()), MOAI_DIR);
+        assert_eq!(classify(old.path()).marker_file, Some("moai-cli.json"));
     }
 
     /// Each name alone: valid for a project, schema 2 for a HOME, newer and unreadable refused,
