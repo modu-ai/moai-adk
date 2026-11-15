@@ -44,7 +44,9 @@ fn comments(items: &[(i64, String)]) -> String {
     Value::Array(
         items
             .iter()
-            .map(|(id, body)| json!({"id": id, "user": {"login": "GoosLab"}, "body": body}))
+            .map(|(id, body)| {
+                json!({"id": id, "user": {"login": "GoosLab"}, "author_association": "MEMBER", "body": body})
+            })
             .collect(),
     )
     .to_string()
@@ -607,6 +609,56 @@ fn stale_claim_cannot_link() {
     let msg = refused(&fx.link(&w, &stale), "blocked");
     assert!(msg.starts_with("claim verify: stale"), "{msg}");
     assert_eq!(fx.log(), log);
+}
+
+/// #3052: a claim line written by a non-member does not count, and the refusal names its
+/// comment; the same line written by a member passes (the filter, not the text, decides).
+#[test]
+fn claim_line_by_a_non_member_is_refused_and_named() {
+    let fx = Fx::new();
+    fx.seed();
+    let w = fx.worktree("w1", "feat/x", "HEAD");
+    let log = fx.log();
+    let line = claim_line(LANE, &secs(3600));
+    let by_none = json!([{"id": 100, "user": {"login": "GoosLab"},
+        "author_association": "NONE", "body": line}])
+    .to_string();
+    let msg = refused(&fx.link(&w, &by_none), "blocked");
+    assert!(msg.starts_with("claim verify: uncertain"), "{msg}");
+    assert!(
+        msg.contains("claim comment 100 was ignored because its author is not a member"),
+        "{msg}"
+    );
+    assert_eq!(fx.log(), log, "nothing is written on a refusal");
+}
+
+#[test]
+fn claim_line_by_a_member_links_and_reports_ignored_lines() {
+    let fx = Fx::new();
+    fx.seed();
+    let w = fx.worktree("w1", "feat/x", "HEAD");
+    let line = claim_line(LANE, &secs(3600));
+    let by_member = json!([{"id": 100, "user": {"login": "GoosLab"},
+        "author_association": "MEMBER", "body": line}])
+    .to_string();
+    let r = ok(&fx.link(&w, &by_member));
+    assert_eq!(r["outcome"], json!("linked"), "{r}");
+    assert!(r.get("ignored_control_lines").is_none(), "{r}");
+    // A later claim line by a stranger is reported, and does not change the answer.
+    let both = json!([
+        {"id": 100, "user": {"login": "GoosLab"}, "author_association": "OWNER", "body": line},
+        {"id": 101, "user": {"login": "x"}, "author_association": "NONE",
+         "body": claim_line("evil", &secs(3600))}
+    ])
+    .to_string();
+    let again = ok(&fx.link(&w, &both));
+    assert_eq!(again["outcome"], json!("unchanged"), "{again}");
+    assert_eq!(again["ignored_control_lines"]["count"], json!(1), "{again}");
+    assert_eq!(
+        again["ignored_control_lines"]["items"][0]["comment_id"],
+        json!(101),
+        "{again}"
+    );
 }
 
 #[test]

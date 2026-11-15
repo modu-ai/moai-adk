@@ -31,6 +31,7 @@ use crate::claim::{ClaimRecord, Journal, JournalEvent, WorktreeId, ACTIVE_STATES
 use crate::claim_verify::{
     classify_comment, evaluate, read_comments, refusal, CommentKind, Verifier,
 };
+use crate::comment_authority::Dropped;
 use crate::forge::policy::Clock;
 use crate::forge::transport::Transport;
 use crate::forge::Client;
@@ -131,13 +132,13 @@ pub fn verify_owner<T: Transport, C: Clock>(
     clock: &C,
 ) -> Result<Value> {
     let client = Client::new(transport, clock, Default::default(), Default::default());
-    let comments = read_comments(
+    let (comments, ignored) = read_comments(
         &client,
         &record.task_ref.owner,
         &record.task_ref.repo,
         record.task_ref.issue_number,
     )?;
-    let verdict = evaluate(
+    let mut verdict = evaluate(
         &comments,
         &Verifier {
             session: lane,
@@ -146,8 +147,11 @@ pub fn verify_owner<T: Transport, C: Clock>(
             now: clock.now(),
         },
     );
+    if !ignored.is_empty() {
+        verdict["ignored_control_lines"] = ignored.to_json();
+    }
     if let Some(message) = refusal(&verdict) {
-        return Err(message);
+        return Err(name_ignored_claims(message, &ignored, comment));
     }
     let session = comments
         .iter()
@@ -159,11 +163,40 @@ pub fn verify_owner<T: Transport, C: Clock>(
             "session_differs",
             format!("the claim comment {comment} was posted by session `{session}`, not `{lane}`"),
         )),
-        _ => Err(refuse(
-            "session_differs",
-            format!("comment {comment} carries no readable claim line"),
+        _ => Err(name_ignored_claims(
+            refuse(
+                "session_differs",
+                format!("comment {comment} carries no readable claim line"),
+            ),
+            &ignored,
+            comment,
         )),
     }
+}
+
+/// Adds the claim comments the member filter dropped (Issue #3052) to a refusal, so a lane
+/// whose claim line was written by a non-member sees why it did not count. Unchanged when no
+/// dropped comment carried a claim line.
+fn name_ignored_claims(message: String, ignored: &Dropped, comment: i64) -> String {
+    let ids: Vec<String> = ignored
+        .lines
+        .iter()
+        .filter(|l| l.kind == "claim")
+        .take(10)
+        .map(|l| l.comment_id.to_string())
+        .collect();
+    if ids.is_empty() {
+        return message;
+    }
+    let own = if ids.contains(&comment.to_string()) {
+        format!("claim comment {comment} was ignored because its author is not a member; ")
+    } else {
+        String::new()
+    };
+    format!(
+        "{message}; {own}claim line(s) in comment(s) {} were ignored because their author is not a member",
+        ids.join(", ")
+    )
 }
 
 /// `OWNER/REPO` of `--repo`, or of the project's `origin` remote on GitHub (as
@@ -502,7 +535,7 @@ pub fn link_cli<T: Transport, C: Clock>(
         },
     )?;
     let applied = update["applied"] == json!(true);
-    Ok(json!({
+    let mut out = json!({
         "outcome": if applied { "linked" } else { "unchanged" },
         "applied": applied,
         "task_key": record.task_key,
@@ -525,7 +558,11 @@ pub fn link_cli<T: Transport, C: Clock>(
         "base_relation": probe.relation,
         "record_update": update,
         "writes": if applied { "journal" } else { "none" },
-    }))
+    });
+    if let Some(ignored) = verdict.get("ignored_control_lines") {
+        out["ignored_control_lines"] = ignored.clone();
+    }
+    Ok(out)
 }
 
 #[cfg(test)]
@@ -604,7 +641,11 @@ mod tests {
     }
 
     pub(super) fn comment(id: i64, body: &str) -> Value {
-        json!({"id": id, "user": {"login": "GoosLab"}, "body": body})
+        comment_by(id, "MEMBER", body)
+    }
+
+    pub(super) fn comment_by(id: i64, association: &str, body: &str) -> Value {
+        json!({"id": id, "user": {"login": "GoosLab"}, "author_association": association, "body": body})
     }
 
     pub(super) fn claim_body(session: &str, lease: &str) -> String {
@@ -686,6 +727,28 @@ mod tests {
         assert!(check_record(&none, 100, "lane-a")
             .unwrap_err()
             .contains("comment_differs"));
+    }
+
+    /// #3052: a claim line written by a non-member does not count; the refusal names its
+    /// comment, and the same line written by a member passes.
+    #[test]
+    fn a_non_member_claim_line_is_named_and_a_member_one_passes() {
+        let r = record("0000000000000001", 7, 100, "lane-a", "assigned");
+        let line = claim_body("lane-a", LIVE);
+        let by_none = json!([comment_by(100, "NONE", &line)]);
+        let err = verify_owner(&r, 100, "lane-a", &get(by_none), &clock()).unwrap_err();
+        assert!(
+            err.contains("claim comment 100 was ignored because its author is not a member"),
+            "{err}"
+        );
+        // A field that is absent is not a member either (fail closed).
+        let bare = json!([{"id": 100, "user": {"login": "GoosLab"}, "body": line}]);
+        let err = verify_owner(&r, 100, "lane-a", &get(bare), &clock()).unwrap_err();
+        assert!(err.contains("claim comment 100 was ignored"), "{err}");
+        let by_member = json!([comment_by(100, "MEMBER", &line)]);
+        let v = verify_owner(&r, 100, "lane-a", &get(by_member), &clock()).unwrap();
+        assert_eq!(v["status"], json!("owner"));
+        assert!(v.get("ignored_control_lines").is_none(), "{v}");
     }
 
     #[test]
