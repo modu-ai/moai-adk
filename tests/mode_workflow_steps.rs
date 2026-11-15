@@ -187,10 +187,17 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "goal-plan",
             "goal-show",
             "heavy-slot-acquire",
+            // #2904 (C3 of #2899 comment 6880316209): a Codex lane's Stop hook is installed
+            // through the preview and the person's confirmation.
+            "hooks-apply --host",
+            "hooks-plan --host",
             "labels-apply",
             "labels-plan",
             // #2879: the lane's one build folder and the card cleanup.
             "lane-env",
+            // #2904: the host's wake line a Codex or OMP lane must print.
+            "lane-loop-line",
+            "lane-loop-line --host",
             "lane-next",
             "lane-next --lane",
             "lane-next --wait",
@@ -1023,5 +1030,60 @@ fn waiting_is_a_line_and_the_next_job_and_an_armed_watch_is_idle() {
             "each round count the idle lanes",
             "name pull request work first, then a startable Issue",
         ],
+    );
+}
+
+// #2904 (Codex measurement C3 of #2899 comment 6880316209): a Codex lane that printed no
+// `loop_line` left the person nothing to paste and nothing to wake the lane. On Codex and OMP the
+// `goal-lines` step now requires the host's wake line from `moai lane-loop-line` (and, on Codex,
+// the Stop hook install notice: preview, then the person's confirmation, then apply), `wake`
+// requires that printing before any `no wake mechanism` report and no longer calls the
+// installation "planned", and the summary at the top says both.
+#[test]
+fn codex_and_omp_lanes_must_print_their_wake_line_and_the_stop_hook_notice() {
+    let agent = workflow("mode-agent.md");
+    let top = &agent[agent.find("\n## ").expect("a first section") + 1..];
+    let top = &top[..top[3..].find("\n## ").map_or(top.len(), |i| i + 3)];
+    let wake_item = top
+        .lines()
+        .find(|l| l.contains("`wake`"))
+        .expect("the summary line about the wake");
+    for p in [
+        "Codex and OMP",
+        "`loop_line`",
+        "`moai lane-loop-line`",
+        "Stop hook install notice",
+    ] {
+        assert!(
+            wake_item.contains(p),
+            "the summary must say `{p}`: {wake_item}"
+        );
+    }
+    assert_says(
+        &agent,
+        "goal-lines",
+        &[
+            "On Codex CLI and OMP this printing is required, not optional",
+            "`moai lane-loop-line --host codex --lane <lane> --repo <owner/repo>`",
+            "`moai lane-loop-line --host omp --lane <lane>`",
+            "every `text` of its `lines`",
+            "`stop_hook.state`",
+            "`blocked_line`",
+            "`moai hooks-plan --host codex --lane-loop <lane> --repo <owner/repo> .`",
+            "`moai hooks-apply --host codex --lane-loop <lane> --repo <owner/repo> --plan-digest <digest> --permission-reference <reference> .`",
+            "never run the apply yourself",
+            "reviewing and trusting the hook in Codex `/hooks` is the person's step",
+        ],
+    );
+    let wake = step(&agent, "wake");
+    for p in [
+        "On Codex CLI and OMP, print the `goal-lines` wake line (and on Codex the Stop hook install notice) before any `LANE-BLOCKED <lane> wake no wake mechanism on this host`",
+        "the hook installed only through the preview `moai hooks-plan --host codex --lane-loop` and the person's confirmation",
+    ] {
+        assert!(wake.contains(p), "`wake` must say `{p}`:\n{wake}");
+    }
+    assert!(
+        !wake.contains("planned in Issue #2899 O5"),
+        "the Stop hook installation is no longer planned (hooks-plan --lane-loop, #2926)"
     );
 }
