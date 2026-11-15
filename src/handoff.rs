@@ -25,6 +25,7 @@
 //! Results are classified `passed|failed|blocked|uncertain|not_run` in the output `verdict`
 //! field; anything not probed is never reported as success (REQ-06B-10).
 use crate::claim::{is_active, is_key, ClaimRecord, Journal, JournalEvent, TaskRef};
+use crate::comment_authority::{retain_rest, Dropped};
 use crate::forge::outbox::{op_id, op_marker, parse_op_markers};
 use crate::forge::policy::{format_utc, next_link, Clock};
 use crate::forge::transport::Transport;
@@ -485,6 +486,7 @@ enum Probe {
 fn fetch_comments<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     t: &TaskRef,
+    dropped: &RefCell<Dropped>,
 ) -> std::result::Result<Vec<(i64, String)>, ForgeError> {
     let mut url = Some(format!(
         "https://api.github.com/repos/{}/{}/issues/{}/comments?per_page=100",
@@ -502,12 +504,14 @@ fn fetch_comments<T: Transport, C: Clock>(
             });
         }
         let resp = client.get(&u, None)?;
-        let arr = resp
+        let mut arr = resp
             .body
             .as_ref()
             .and_then(Value::as_array)
             .cloned()
             .unwrap_or_default();
+        // Issue #3052: an operation marker counts only when a repository member wrote it.
+        dropped.borrow_mut().merge(retain_rest(&mut arr));
         for c in &arr {
             if let (Some(id), Some(body)) = (c["id"].as_i64(), c["body"].as_str()) {
                 comments.push((id, body.to_string()));
@@ -720,6 +724,7 @@ pub fn effects_reconcile<T: Transport, C: Clock>(
     type Items = std::result::Result<Vec<(i64, String)>, ForgeError>;
     let fetched: RefCell<std::collections::BTreeMap<&'static str, Items>> =
         RefCell::new(Default::default());
+    let ignored: RefCell<Dropped> = RefCell::new(Dropped::default());
     // Fetches one source on first use; `None` when the source has no effects to serve.
     let ensure = |source: &'static str| -> Option<Items> {
         if !fetched.borrow().contains_key(source) {
@@ -731,7 +736,7 @@ pub fn effects_reconcile<T: Transport, C: Clock>(
                 return None;
             }
             let r = match source {
-                "comments" => fetch_comments(&client, &record.task_ref),
+                "comments" => fetch_comments(&client, &record.task_ref, &ignored),
                 "head" => fetch_pulls(
                     &client,
                     &record.task_ref,
@@ -955,10 +960,15 @@ pub fn effects_reconcile<T: Transport, C: Clock>(
             retry_after
         ));
     }
-    Ok(json!({
+    let mut out = json!({
         "outcome": "reconciled", "verdict": verdict,
         "transitions": transitions, "notes": notes,
-    }))
+    });
+    let ignored = ignored.into_inner();
+    if !ignored.is_empty() {
+        out["ignored_control_lines"] = ignored.to_json();
+    }
+    Ok(out)
 }
 
 /// The `moai:op` markers found in a remote body, re-exported for callers that parse

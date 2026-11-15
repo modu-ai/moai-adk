@@ -142,7 +142,7 @@ fn acquire_with(
 }
 
 fn claim_comment(id: i64, session: &str, lease_until: &str) -> Value {
-    json!({"id": id, "body": format!("moai-claim: session={session} epoch=1 lease_until={lease_until}")})
+    json!({"id": id, "author_association": "MEMBER", "body": format!("moai-claim: session={session} epoch=1 lease_until={lease_until}")})
 }
 
 /// The happy-path exchange script: pre-check GET (empty), the one POST, and the
@@ -161,6 +161,84 @@ fn happy_exchanges(id: i64, session: &str, lease_until: &str) -> Vec<Exchange> {
             resp(200, json!([claim_comment(id, session, lease_until)])),
         ),
     ]
+}
+
+// ---- Issue #3052: only a comment a repository member wrote may be a claim ----
+
+fn outsider_claim(id: i64, association: Option<&str>, session: &str, lease_until: &str) -> Value {
+    let mut c = claim_comment(id, session, lease_until);
+    match association {
+        Some(a) => c["author_association"] = json!(a),
+        None => {
+            c.as_object_mut().unwrap().remove("author_association");
+        }
+    }
+    c
+}
+
+#[test]
+fn a_live_claim_line_from_a_non_member_does_not_block_and_is_reported() {
+    for association in [Some("NONE"), Some("CONTRIBUTOR"), Some(""), None] {
+        let tmp = tempfile::tempdir().unwrap();
+        let clock = FakeClock::at(CLOCK0);
+        let lease = format_utc(CLOCK0 + 3600);
+        // A live claim of another session with a smaller id, written by a non-member.
+        let stranger = outsider_claim(50, association, "agent-a", &lease);
+        let (out, t) = acquire_in(
+            tmp.path(),
+            "agent-x",
+            &lease,
+            vec![
+                exchange("GET", &comments_url(), resp(200, json!([stranger.clone()]))),
+                exchange(
+                    "POST",
+                    "https://api.github.com/repos/acme/widgets/issues/7/comments",
+                    resp(201, json!({"id": 900})),
+                ),
+                exchange(
+                    "GET",
+                    &comments_url(),
+                    resp(
+                        200,
+                        json!([stranger, claim_comment(900, "agent-x", &lease)]),
+                    ),
+                ),
+            ],
+            &clock,
+        );
+        assert_eq!(out.outcome, "claimed", "association {association:?}");
+        assert_eq!(t.remaining(), 0, "association {association:?}");
+        let reported = out.ignored.to_json();
+        assert_eq!(
+            reported["count"], 1,
+            "association {association:?}: {reported}"
+        );
+        assert_eq!(
+            reported["items"][0]["comment_id"], 50,
+            "association {association:?}: {reported}"
+        );
+    }
+}
+
+#[test]
+fn the_same_claim_line_from_a_member_still_wins() {
+    for association in ["OWNER", "MEMBER", "COLLABORATOR"] {
+        let tmp = tempfile::tempdir().unwrap();
+        let clock = FakeClock::at(CLOCK0);
+        let lease = format_utc(CLOCK0 + 3600);
+        let holder = outsider_claim(50, Some(association), "agent-a", &lease);
+        let (out, t) = acquire_in(
+            tmp.path(),
+            "agent-x",
+            &lease,
+            vec![exchange("GET", &comments_url(), resp(200, json!([holder])))],
+            &clock,
+        );
+        assert_eq!(out.outcome, "already_owned", "association {association}");
+        assert_eq!(out.foreign_owner.unwrap()["comment_id"], 50);
+        assert!(t.sent.borrow().iter().all(|r| r.method == "GET"));
+        assert!(out.ignored.is_empty());
+    }
 }
 
 // ---- AC-06A-11: exactly one comment POST, the id recorded ----
@@ -341,7 +419,7 @@ fn claim_lowest_comment_id_wins() {
         json!([
             claim_comment(100, "agent-a", &live),
             claim_comment(50, "agent-z", &expired),
-            {"id": 200, "body": format!("leader relay\n\nmoai-claim: session=agent-x epoch=1 lease_until={live}")},
+            {"id": 200, "author_association": "MEMBER", "body": format!("leader relay\n\nmoai-claim: session=agent-x epoch=1 lease_until={live}")},
         ]),
     );
     let (out, t) = acquire_in(
@@ -797,7 +875,7 @@ fn git_repo(dir: &Path) {
 /// `CLAIM_STUB_ID` (the claim line body is JSON-safe by construction). Everything else is
 /// the 201 comment creation.
 fn stub_gh(dir: &Path) -> PathBuf {
-    let script = "#!/bin/sh\n# claim test stub for gh api (stateful: read-your-writes)\ncase \"$*\" in\n  *per_page=100*)\n    if [ -n \"${CLAIM_STUB_JSON:-}\" ]; then printf 'HTTP/2.0 200 OK\\r\\n\\r\\n%s' \"$CLAIM_STUB_JSON\";\n    elif [ -f \"$CLAIM_STUB_DIR/posted\" ]; then printf 'HTTP/2.0 200 OK\\r\\n\\r\\n[{\"id\":%s,\"body\":\"%s\"}]' \"${CLAIM_STUB_ID:-4242}\" \"$CLAIM_STUB_BODY\";\n    else printf 'HTTP/2.0 200 OK\\r\\n\\r\\n[]'; fi;;\n  *)\n    : > \"$CLAIM_STUB_DIR/posted\"\n    printf 'HTTP/2.0 201 Created\\r\\n\\r\\n{\"id\":%s}' \"${CLAIM_STUB_ID:-4242}\";;\nesac\n";
+    let script = "#!/bin/sh\n# claim test stub for gh api (stateful: read-your-writes)\ncase \"$*\" in\n  *per_page=100*)\n    if [ -n \"${CLAIM_STUB_JSON:-}\" ]; then printf 'HTTP/2.0 200 OK\\r\\n\\r\\n%s' \"$CLAIM_STUB_JSON\";\n    elif [ -f \"$CLAIM_STUB_DIR/posted\" ]; then printf 'HTTP/2.0 200 OK\\r\\n\\r\\n[{\"id\":%s,\"author_association\":\"MEMBER\",\"body\":\"%s\"}]' \"${CLAIM_STUB_ID:-4242}\" \"$CLAIM_STUB_BODY\";\n    else printf 'HTTP/2.0 200 OK\\r\\n\\r\\n[]'; fi;;\n  *)\n    : > \"$CLAIM_STUB_DIR/posted\"\n    printf 'HTTP/2.0 201 Created\\r\\n\\r\\n{\"id\":%s}' \"${CLAIM_STUB_ID:-4242}\";;\nesac\n";
     let path = dir.join("gh-stub");
     common::write_executable(&path, script);
     path

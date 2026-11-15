@@ -340,7 +340,8 @@ pub struct AfterMove {
     /// Set when the settings file moves: the hook entries and deny rules it carried.
     pub wiring_lost: Option<WiringLost>,
     /// `true` when a bounded read gave up (the folder walk passed its limit, or an include or
-    /// ignore list was not read): the lists above may be incomplete.
+    /// ignore list was not read) or the moving settings file could not be read as a JSON
+    /// object (`wiring_lost` is then `None`): the lists above may be incomplete.
     pub unknown: bool,
 }
 
@@ -1916,10 +1917,11 @@ fn kind_of(path: &str) -> &'static str {
     }
 }
 
+const GONE: &str = "no counterpart \u{2014} will be gone";
+
 /// #2936 R-A: what this generation puts in place of one kind of moved file, and a note. The
 /// user layer is named, never read (O-3: this preview does not read HOME).
 fn counterpart_of(kind: &str) -> (&'static str, &'static str) {
-    const GONE: &str = "no counterpart \u{2014} will be gone";
     const USER_LAYER: &str = "user layer after moai update";
     match kind {
         "hook" => (
@@ -1949,7 +1951,11 @@ fn counterpart_of(kind: &str) -> (&'static str, &'static str) {
 }
 
 /// #2936 R-A: the moving items grouped by kind, and the counterpart of each kind.
-fn plan_counterparts(items: &[Item]) -> (BTreeMap<String, u64>, Vec<Counterpart>) {
+fn plan_counterparts(
+    project: &Path,
+    items: &[Item],
+    settings: &[(&'static str, String)],
+) -> (BTreeMap<String, u64>, Vec<Counterpart>) {
     let mut kinds = BTreeMap::new();
     for i in items
         .iter()
@@ -1957,10 +1963,18 @@ fn plan_counterparts(items: &[Item]) -> (BTreeMap<String, u64>, Vec<Counterpart>
     {
         *kinds.entry(i.kind.clone()).or_insert(0u64) += 1;
     }
+    let hooks_replace = kinds.contains_key("hook") && hooks_step_has_work(project, items, settings);
     let rows = kinds
         .iter()
         .map(|(kind, moved)| {
-            let (counterpart, note) = counterpart_of(kind);
+            let (counterpart, note) = match kind.as_str() {
+                "hook" if !hooks_replace => (
+                    GONE,
+                    "after this move no Go hook entry or script is left, so the hooks step \
+                     installs nothing; write the MoAI hook set with hooks-apply",
+                ),
+                _ => counterpart_of(kind),
+            };
             Counterpart {
                 kind: kind.clone(),
                 moved: *moved,
@@ -1970,6 +1984,48 @@ fn plan_counterparts(items: &[Item]) -> (BTreeMap<String, u64>, Vec<Counterpart>
         })
         .collect();
     (kinds, rows)
+}
+
+/// #2936 F-A: whether the `hooks` install step still finds a Go hook to replace once the moving
+/// files are gone (`go_hooks::plan`: `replace` rather than `none`). A Go hook entry counts
+/// when the settings file stays and carries one; a script counts when it stays in the hook
+/// folder. A settings file that stays but is not a JSON object, or a hook folder that cannot
+/// be listed, makes that step refuse rather than report `unchanged`, so both count as work.
+fn hooks_step_has_work(
+    project: &Path,
+    items: &[Item],
+    settings: &[(&'static str, String)],
+) -> bool {
+    let moving = |path: &str| items.iter().any(|i| moving_file(i) && i.path == path);
+    if !moving(SETTINGS) {
+        let text = settings
+            .iter()
+            .find(|(f, _)| *f == SETTINGS)
+            .map_or("", |(_, text)| text.as_str());
+        // `settings` holds "" both for a missing file and for an empty one, so the file's
+        // presence is read here: an empty file that stays is not a JSON object either, and
+        // the step refuses it just as it refuses any other non-object.
+        if fs::symlink_metadata(project.join(SETTINGS)).is_ok() {
+            match serde_json::from_str::<serde_json::Value>(text) {
+                Ok(serde_json::Value::Object(map)) => {
+                    let entries = map
+                        .get("hooks")
+                        .and_then(serde_json::Value::as_object)
+                        .map_or(0, |h| crate::go_hooks::split(h).0.len());
+                    if entries > 0 {
+                        return true;
+                    }
+                }
+                _ => return true,
+            }
+        }
+    }
+    match crate::go_hooks::scripts(project) {
+        Ok(names) => names
+            .iter()
+            .any(|n| !moving(&format!("{}/{n}", crate::go_hooks::GO_HOOK_DIR))),
+        Err(_) => true,
+    }
 }
 
 /// An item that moves on its own (not the two folders that move whole).
@@ -2069,8 +2125,8 @@ fn plan_after_move(
     let (empty, walk_stopped) = empty_after(project, &moving, unrecorded_limit());
     let paths: Vec<String> = moving.iter().map(|p| p.to_string()).collect();
     let (dangling, unread) = crate::worktree_include::lists_selecting(project, &paths);
-    let wiring_lost = moving
-        .contains(SETTINGS)
+    let settings_move = moving.contains(SETTINGS);
+    let wiring_lost = settings_move
         .then(|| {
             settings
                 .iter()
@@ -2078,11 +2134,14 @@ fn plan_after_move(
                 .and_then(|(_, text)| wiring_of(text))
         })
         .flatten();
+    // F-F: a moving settings file that is not a JSON object (invalid JSON, or another JSON
+    // shape) has wiring the preview could not read; it says so instead of showing nothing.
+    let wiring_unread = settings_move && wiring_lost.is_none();
     AfterMove {
         empty_folders: empty.into_iter().collect(),
         dangling,
         wiring_lost,
-        unknown: walk_stopped || unread,
+        unknown: walk_stopped || unread || wiring_unread,
     }
 }
 
@@ -2416,7 +2475,7 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
     for i in items.iter_mut() {
         i.kind = kind_of(&i.path).into();
     }
-    let (kinds, counterparts) = plan_counterparts(&items);
+    let (kinds, counterparts) = plan_counterparts(&project, &items, &settings);
     let after_move = plan_after_move(&project, &items, &settings);
     // O-2 (#2936): the skill mirror folders may end up empty; the apply deletes no folder, so
     // the preview says so and the user decides.

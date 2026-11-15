@@ -703,7 +703,7 @@ fn get(body: Value) -> Exchange {
 }
 
 fn raw(id: i64, login: &str, body: &str) -> Value {
-    json!({"id": id, "user": {"login": login}, "body": body})
+    json!({"id": id, "user": {"login": login}, "author_association": "MEMBER", "body": body})
 }
 
 fn request(session: &str, comment_id: Option<i64>) -> VerifyRequest {
@@ -751,6 +751,88 @@ fn verify_op_refuses_non_owner_with_one_get() {
     let err = verify_cli(&bad, &t, &clock).unwrap_err();
     assert_eq!(classify(&err), Kind::InvalidInput);
     assert!(t.sent.borrow().is_empty());
+}
+
+fn raw_as(id: i64, association: &str, body: &str) -> Value {
+    json!({"id": id, "user": {"login": "GoosLab"}, "author_association": association, "body": body})
+}
+
+/// Issue #3052: a claim line holds the Issue only when a member wrote it. An earlier line from
+/// anyone else is left out and reported with its comment id.
+#[test]
+fn a_claim_line_counts_only_when_a_member_wrote_it() {
+    let clock = FixedClock(now());
+    let mine = format!("moai-claim: session=a epoch=1 lease_until={LIVE}");
+    let earlier = format!("moai-claim: session=b epoch=1 lease_until={LIVE}");
+    for association in [
+        "NONE",
+        "CONTRIBUTOR",
+        "FIRST_TIMER",
+        "FIRST_TIME_CONTRIBUTOR",
+        "MANNEQUIN",
+        "",
+        "member",
+        "UNKNOWN",
+    ] {
+        let body = json!([
+            raw_as(50, association, &earlier),
+            raw_as(100, "MEMBER", &mine)
+        ]);
+        let t = RecordedTransport::new(vec![get(body)]);
+        let out = verify_cli(&request("a", Some(100)), &t, &clock).unwrap();
+        assert_eq!(out["status"], json!("owner"), "{association:?}");
+        let ignored = &out["ignored_control_lines"];
+        assert_eq!(ignored["reason"], json!("no_member_authority"));
+        assert_eq!(ignored["count"], json!(1), "{association:?}");
+        assert_eq!(ignored["items"][0]["comment_id"], json!(50));
+        assert_eq!(ignored["items"][0]["kind"], json!("claim"));
+        assert_eq!(
+            ignored["items"][0]["author_association"],
+            json!(association)
+        );
+    }
+    for association in ["OWNER", "MEMBER", "COLLABORATOR"] {
+        let body = json!([
+            raw_as(50, association, &earlier),
+            raw_as(100, "MEMBER", &mine)
+        ]);
+        let t = RecordedTransport::new(vec![get(body)]);
+        let err = verify_cli(&request("a", Some(100)), &t, &clock).unwrap_err();
+        assert!(err.contains("not owner") && err.contains("50"), "{err}");
+    }
+}
+
+/// Issue #3052: a payload without the association field is not honoured, and says why.
+#[test]
+fn a_payload_without_the_association_field_is_not_honoured() {
+    let clock = FixedClock(now());
+    let no_field = json!({"id": 100, "user": {"login": "GoosLab"},
+        "body": format!("moai-claim: session=a epoch=1 lease_until={LIVE}")});
+    let t = RecordedTransport::new(vec![get(json!([no_field]))]);
+    let err = verify_cli(&request("a", Some(100)), &t, &clock).unwrap_err();
+    // Its own claim comment is not visible, so the verdict is `uncertain` (a blocking refusal).
+    assert_eq!(classify(&err), Kind::Blocked, "{err}");
+    assert!(err.contains("uncertain"), "{err}");
+    assert!(
+        err.contains("1 control line(s) were ignored") && err.contains("100"),
+        "{err}"
+    );
+}
+
+/// Issue #3052: the refusal names the ignored line when an outsider's claim is all there is.
+#[test]
+fn a_claim_by_a_non_member_alone_is_a_refusal_that_names_it() {
+    let clock = FixedClock(now());
+    let line = format!("moai-claim: session=a epoch=1 lease_until={LIVE}");
+    let t = RecordedTransport::new(vec![get(json!([raw_as(100, "NONE", &line)]))]);
+    let err = verify_cli(&request("a", Some(100)), &t, &clock).unwrap_err();
+    assert_eq!(classify(&err), Kind::Blocked, "{err}");
+    assert!(err.contains("uncertain"), "{err}");
+    assert!(
+        err.contains("1 control line(s) were ignored") && err.contains("100"),
+        "{err}"
+    );
+    assert!(t.sent.borrow().iter().all(|r| r.method == "GET"));
 }
 
 fn git(dir: &Path, args: &[&str]) -> String {

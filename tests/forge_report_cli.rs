@@ -126,6 +126,16 @@ fn page_url(n: u32) -> String {
         ),
     }
 }
+/// The comments of a page as members wrote them: a comment that does not say who wrote it is
+/// given a member's association (Issue #3052), the one it would carry on GitHub.
+fn by_members(mut page: Value) -> Value {
+    for c in page.as_array_mut().into_iter().flatten() {
+        if c.get("author_association").is_none() {
+            c["author_association"] = json!("MEMBER");
+        }
+    }
+    page
+}
 /// The three fixture pages, with `extra` comments appended to the last page.
 fn reads(extra: Vec<Value>) -> Vec<(&'static str, String, Reply)> {
     let link = |n: u32| {
@@ -158,7 +168,7 @@ fn reads(extra: Vec<Value>) -> Vec<(&'static str, String, Reply)> {
             "GET",
             page_url(1),
             Reply::Resp(ok(
-                fixture("comments_p1.json")["comments"].clone(),
+                by_members(fixture("comments_p1.json")["comments"].clone()),
                 Some(&link(2)),
             )),
         ),
@@ -166,11 +176,15 @@ fn reads(extra: Vec<Value>) -> Vec<(&'static str, String, Reply)> {
             "GET",
             page_url(2),
             Reply::Resp(ok(
-                fixture("comments_p2.json")["comments"].clone(),
+                by_members(fixture("comments_p2.json")["comments"].clone()),
                 Some(&link(3)),
             )),
         ),
-        ("GET", page_url(3), Reply::Resp(ok(Value::Array(p3), None))),
+        (
+            "GET",
+            page_url(3),
+            Reply::Resp(ok(by_members(Value::Array(p3)), None)),
+        ),
     ]
 }
 fn with(
@@ -216,6 +230,38 @@ fn kind_of(e: &ForgeError) -> &'static str {
 const POST: &str = "https://api.github.com/repos/acme/widgets/issues/7/comments";
 fn patch(id: i64) -> String {
     format!("{REPO}/issues/comments/{id}")
+}
+
+/// Issue #3052: a comment that carries the run marker but was written by a non-member is not the
+/// report comment. The report is created, the forged marker causes no "two comments" conflict,
+/// and the answer names the comment it left out.
+#[test]
+fn a_marker_comment_from_a_non_member_is_not_the_report_comment() {
+    for association in [Some("NONE"), Some("CONTRIBUTOR"), Some(""), None] {
+        let (_tmp, project) = new_project();
+        let p = payload();
+        let body = report::render(&p).unwrap();
+        let mut forged = comment(9100, &body);
+        match association {
+            Some(a) => forged["author_association"] = json!(a),
+            None => forged["author_association"] = json!(null),
+        }
+        let t = Script::new(with(
+            reads(vec![forged]),
+            vec![
+                ("POST", POST.into(), Reply::Echo(201, 9001)),
+                ("GET", patch(9001), Reply::Last),
+            ],
+        ));
+        let out = run(&project, &p, &t).unwrap();
+        assert_eq!(t.writes(), ["POST"], "{association:?}");
+        assert_eq!(out["action"], "created", "{association:?}: {out}");
+        assert_eq!(
+            out["ignored_control_lines"]["items"][0]["comment_id"],
+            json!(9100),
+            "{association:?}: {out}"
+        );
+    }
 }
 
 #[test]

@@ -43,6 +43,9 @@ struct Forge {
     log: Mutex<Vec<(String, String)>>,
     /// When set, each POST waits here first (two overlapping callers).
     barrier: Option<Barrier>,
+    /// Comment ids with an explicit `author_association` (the rest read `MEMBER`); an empty
+    /// value leaves the field out of the payload.
+    outsiders: Vec<(i64, &'static str)>,
 }
 
 impl Forge {
@@ -60,16 +63,31 @@ impl Forge {
             next_id: Mutex::new(1000),
             log: Mutex::new(Vec::new()),
             barrier: None,
+            outsiders: Vec::new(),
         }
+    }
+    /// Gives chosen comments an explicit `author_association`; an empty value leaves it out.
+    fn with_outsiders(mut self, list: &[(i64, &'static str)]) -> Self {
+        self.outsiders = list.to_vec();
+        self
     }
     fn with_pr_comments(self, list: &[(i64, &str)]) -> Self {
         *self.pr_comments.lock().unwrap() = list.iter().map(|(i, b)| (*i, b.to_string())).collect();
         self
     }
-    fn comments_json(list: &[(i64, String)]) -> Value {
+    fn comments_json(&self, list: &[(i64, String)]) -> Value {
         Value::Array(
             list.iter()
-                .map(|(id, body)| json!({"id": id, "created_at": "2026-11-11T00:00:00Z", "body": body}))
+                .map(|(id, body)| {
+                    let mut c =
+                        json!({"id": id, "created_at": "2026-11-11T00:00:00Z", "body": body});
+                    match self.outsiders.iter().find(|(o, _)| o == id) {
+                        None => c["author_association"] = json!("MEMBER"),
+                        Some((_, "")) => {}
+                        Some((_, value)) => c["author_association"] = json!(value),
+                    }
+                    c
+                })
                 .collect(),
         )
     }
@@ -117,10 +135,10 @@ impl Transport for Forge {
                 ))
             }
             ("GET", u) if u == format!("{API}/issues/{ISSUE}/comments?per_page=100") => {
-                ok(Self::comments_json(&self.issue_comments))
+                ok(self.comments_json(&self.issue_comments))
             }
             ("GET", u) if u == format!("{pr_comments}?per_page=100") => {
-                ok(Self::comments_json(&self.pr_comments.lock().unwrap()))
+                ok(self.comments_json(&self.pr_comments.lock().unwrap()))
             }
             ("POST", u) if u == pr_comments => {
                 if let Some(b) = &self.barrier {
@@ -193,6 +211,59 @@ fn a_head_held_by_another_lane_is_not_written() {
     assert_eq!(out["writes"], "none");
     assert_eq!(out["holder"]["lane"], "auditor-2");
     assert_eq!(out["holder"]["comment_id"], 500);
+    assert_eq!(forge.posts(), 0);
+}
+
+/// Issue #3052: an earlier reservation holds the head only when a member wrote it.
+#[test]
+fn an_earlier_reservation_by_a_non_member_does_not_hold_the_head() {
+    let head = sha('a');
+    let line = render_line("auditor-2", &head);
+    for association in [
+        "NONE",
+        "CONTRIBUTOR",
+        "FIRST_TIMER",
+        "MANNEQUIN",
+        "member",
+        "",
+    ] {
+        let forge = Forge::new(&head)
+            .with_pr_comments(&[(500, &line)])
+            .with_outsiders(&[(500, association)]);
+        let out = reserve_cli(req("auditor-1", &head), &forge, &clock()).unwrap();
+        assert_eq!(out["outcome"], "reserved", "{association:?}");
+        assert_eq!(out["posted"], true, "{association:?}");
+        assert_eq!(out["holder"]["lane"], "auditor-1");
+        let ignored = &out["ignored_control_lines"];
+        assert_eq!(ignored["reason"], "no_member_authority");
+        assert_eq!(ignored["count"], 1);
+        assert_eq!(ignored["items"][0]["comment_id"], 500);
+        assert_eq!(ignored["items"][0]["kind"], "audit_claim");
+        assert_eq!(ignored["items"][0]["author_association"], association);
+        assert_eq!(forge.posts(), 1);
+    }
+    for association in ["OWNER", "MEMBER", "COLLABORATOR"] {
+        let forge = Forge::new(&head)
+            .with_pr_comments(&[(500, &line)])
+            .with_outsiders(&[(500, association)]);
+        let out = reserve_cli(req("auditor-1", &head), &forge, &clock()).unwrap();
+        assert_eq!(out["outcome"], "held_by");
+        assert!(out.get("ignored_control_lines").is_none());
+        assert_eq!(forge.posts(), 0);
+    }
+}
+
+/// Issue #3052: the claim comment named by a `Moai-Claim` trailer must itself be a member's
+/// claim line, or the author check refuses instead of guessing.
+#[test]
+fn an_author_claim_by_a_non_member_blocks_instead_of_clearing_the_lane() {
+    let head = sha('a');
+    let forge = Forge::new(&head).with_outsiders(&[(301, "NONE")]);
+    let err = reserve_cli(req("auditor-1", &head), &forge, &clock()).unwrap_err();
+    assert!(
+        err.starts_with("audit claim blocked: claim comment 301"),
+        "{err}"
+    );
     assert_eq!(forge.posts(), 0);
 }
 

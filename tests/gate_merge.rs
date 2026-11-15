@@ -95,8 +95,8 @@ fn reads(head: &str, base: &str, tip: &str, body: &str) -> Vec<Exchange> {
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
             response: ok(json!([
-                {"id": 100, "body": format!("moai-audit-claim: lane=agent-10 head={head}\n")},
-                {"id": 200, "body": format!("AUDIT #9 (x) head {head} base {base} — verdict: PASS\n\n감사: agent-10.\n")},
+                {"id": 100, "author_association": "MEMBER", "body": format!("moai-audit-claim: lane=agent-10 head={head}\n")},
+                {"id": 200, "author_association": "MEMBER", "body": format!("AUDIT #9 (x) head {head} base {base} — verdict: PASS\n\n감사: agent-10.\n")},
                 // #2906 S5b: G5 reads the local check line for the head.
                 local_check(head)
             ])),
@@ -113,7 +113,9 @@ fn reads(head: &str, base: &str, tip: &str, body: &str) -> Vec<Exchange> {
         },
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/issues/comments/555")),
-            response: ok(json!({"id": 555, "body": "moai-claim: session=agent-26 epoch=1\n"})),
+            response: ok(
+                json!({"id": 555, "author_association": "MEMBER", "body": "moai-claim: session=agent-26 epoch=1\n"}),
+            ),
         },
         // #2859: the open pull requests (only this one), read before the tip.
         Exchange {
@@ -126,7 +128,7 @@ fn reads(head: &str, base: &str, tip: &str, body: &str) -> Vec<Exchange> {
 
 /// The `local-check:` pass line for `head` (#2906 S5b, G5).
 fn local_check(head: &str) -> Value {
-    json!({"id": 250, "body": format!("local-check: head={head} result=pass cmd=tools/local_check.sh at=2026-11-14T12:00:00Z\n")})
+    json!({"id": 250, "author_association": "MEMBER", "body": format!("local-check: head={head} result=pass cmd=tools/local_check.sh at=2026-11-14T12:00:00Z\n")})
 }
 
 /// The tip's push CI read (every attempt) answering `runs`.
@@ -515,8 +517,8 @@ fn delta_repo() -> (TempDir, String, String, String) {
 fn delta_reads(dir: &TempDir, n: &str, h: &str, base: &str, extra: &[Value]) -> Vec<Exchange> {
     let tip = tip_of(dir);
     let mut comments = vec![
-        json!({"id": 100, "body": format!("moai-audit-claim: lane=agent-10 head={h}\n")}),
-        json!({"id": 200, "body": format!("AUDIT #9 (x) head {h} base {base} — verdict: PASS\n\n감사: agent-10.\n")}),
+        json!({"id": 100, "author_association": "MEMBER", "body": format!("moai-audit-claim: lane=agent-10 head={h}\n")}),
+        json!({"id": 200, "author_association": "MEMBER", "body": format!("AUDIT #9 (x) head {h} base {base} — verdict: PASS\n\n감사: agent-10.\n")}),
         local_check(n),
     ];
     comments.extend(extra.iter().cloned());
@@ -574,7 +576,7 @@ fn a_mechanical_delta_is_recorded_first_then_merged() {
 #[test]
 fn an_existing_auto_delta_line_is_not_written_again() {
     let (dir, a, h, n) = delta_repo();
-    let line = json!({"id": 300, "body": format!("AUTO-DELTA #9 {h}→{n}\n\nearlier pass")});
+    let line = json!({"id": 300, "author_association": "MEMBER", "body": format!("AUTO-DELTA #9 {h}→{n}\n\nearlier pass")});
     let mut ex = delta_reads(&dir, &n, &h, &a, &[line]);
     ex.extend(status(&n, 201));
     ex.push(put(200));

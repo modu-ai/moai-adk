@@ -152,7 +152,8 @@ fn project_comments(resp: &HttpResponse) -> Value {
                         .chars()
                         .take(COMMENT_TEXT_LIMIT)
                         .collect();
-                    json!({"id": c["id"], "author": c["user"]["login"], "text": text})
+                    json!({"id": c["id"], "author": c["user"]["login"],
+                           "author_association": c["author_association"], "text": text})
                 })
                 .collect()
         })
@@ -174,6 +175,7 @@ fn check<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     base: &str,
     condition: &Condition,
+    ignored: &mut crate::comment_authority::Dropped,
 ) -> Result<(Option<Value>, bool, String), ForgeError> {
     match condition {
         Condition::Ci { head } => {
@@ -232,7 +234,17 @@ fn check<T: Transport, C: Clock>(
             prefix,
         } => {
             let url = format!("{base}/issues/{issue}/comments?per_page=100");
-            let (items, all_cached) = client.pages(url, &project_comments)?;
+            let (mut items, all_cached) = client.pages(url, &project_comments)?;
+            // Issue #3052: a wait for a line that starts with `prefix` is a wait for a control
+            // line, and only a comment a repository member wrote may carry one. Without a
+            // prefix any new comment counts, as before: it says only that someone wrote.
+            if prefix.is_some() {
+                // The projection keeps the text under `text`; the check reads it as `body`.
+                for c in items.iter_mut() {
+                    c["body"] = c["text"].clone();
+                }
+                ignored.merge(crate::comment_authority::retain_rest(&mut items));
+            }
             let hit = items.iter().find(|c| {
                 c["id"].as_u64().is_some_and(|id| id > *after)
                     && prefix.as_ref().is_none_or(|p| {
@@ -274,7 +286,9 @@ pub fn wait<T: Transport, C: Clock>(
     let mut notes = crate::progress::StateNotes::default();
     loop {
         let client = Client::new(transport, clock, Config::default(), cache.clone());
-        let (found, all_cached, state) = check(&client, &base, &req.condition)?;
+        // Each poll reads the same thread again, so the latest reading is the one reported.
+        let mut ignored = crate::comment_authority::Dropped::default();
+        let (found, all_cached, state) = check(&client, &base, &req.condition, &mut ignored)?;
         polls += 1;
         if found.is_none() {
             if let Some(line) = notes.observe(&state, clock.now()) {
@@ -291,7 +305,7 @@ pub fn wait<T: Transport, C: Clock>(
         cache.extend(client.used.into_inner());
         let elapsed = (clock.now() - start).max(0) as u64;
         let answer = |matched: bool, value: Value| {
-            json!({
+            let mut out = json!({
                 "matched": matched,
                 "condition": req.condition.name(),
                 "value": value,
@@ -299,7 +313,11 @@ pub fn wait<T: Transport, C: Clock>(
                 "not_modified": not_modified,
                 "rate_limit": rate,
                 "elapsed_secs": elapsed,
-            })
+            });
+            if !ignored.is_empty() {
+                out["ignored_control_lines"] = ignored.to_json();
+            }
+            out
         };
         if let Some(value) = found {
             return Ok(answer(true, value));
@@ -493,9 +511,9 @@ mod tests {
     fn comment_needs_a_newer_id_and_a_line_starting_with_the_prefix() {
         let url = "https://api.github.com/repos/o/r/issues/5/comments?per_page=100";
         let body = json!([
-            {"id": 10, "user": {"login": "a"}, "body": "moai-claim-handoff: comment=1 to=x by=leader"},
-            {"id": 20, "user": {"login": "b"}, "body": "quoting `moai-claim-handoff: comment=2` mid-line"},
-            {"id": 30, "user": {"login": "c"}, "body": "note\nmoai-claim-handoff: comment=3 to=agent-10 by=leader\nmore"}
+            {"id": 10, "user": {"login": "a"}, "author_association": "MEMBER", "body": "moai-claim-handoff: comment=1 to=x by=leader"},
+            {"id": 20, "user": {"login": "b"}, "author_association": "MEMBER", "body": "quoting `moai-claim-handoff: comment=2` mid-line"},
+            {"id": 30, "user": {"login": "c"}, "author_association": "MEMBER", "body": "note\nmoai-claim-handoff: comment=3 to=agent-10 by=leader\nmore"}
         ]);
         let t = RecordedTransport::new(vec![Exchange {
             request: get(url, None),
@@ -509,6 +527,68 @@ mod tests {
         let out = wait(&req(cond, 60), &t, &clock()).unwrap();
         assert_eq!(out["value"]["id"], 30);
         assert_eq!(out["value"]["first_line"], "note");
+    }
+
+    /// Issue #3052: a wait for a control line (with a prefix) is not ended by a comment a
+    /// non-member wrote, and the answer names it; without a prefix any new comment ends the wait,
+    /// as before; the same line from a member ends it.
+    #[test]
+    fn a_prefix_wait_is_not_ended_by_a_non_member_comment() {
+        let url = "https://api.github.com/repos/o/r/issues/5/comments?per_page=100";
+        let line = "moai-claim-handoff: comment=3 to=agent-10 by=leader";
+        let page = |association: Option<&str>| {
+            let mut c = json!({"id": 30, "user": {"login": "c"}, "body": line});
+            if let Some(a) = association {
+                c["author_association"] = json!(a);
+            }
+            json!([c])
+        };
+        let cond = || Condition::Comment {
+            issue: 5,
+            after: 10,
+            prefix: Some("moai-claim-handoff:".into()),
+        };
+        for association in [Some("NONE"), Some("CONTRIBUTOR"), Some(""), None] {
+            // One second to wait with a thirty-second interval: a first poll, then a 304.
+            let t = RecordedTransport::new(vec![
+                Exchange {
+                    request: get(url, None),
+                    response: ok(page(association), "\"c\"", "100"),
+                },
+                Exchange {
+                    request: get(url, Some("\"c\"")),
+                    response: not_modified("\"c\"", "99"),
+                },
+            ]);
+            let out = wait(&req(cond(), 1), &t, &clock()).unwrap();
+            assert_eq!(out["matched"], json!(false), "{association:?}: {out}");
+            assert_eq!(
+                out["ignored_control_lines"]["items"][0]["comment_id"],
+                json!(30),
+                "{association:?}: {out}"
+            );
+        }
+        for association in ["OWNER", "MEMBER", "COLLABORATOR"] {
+            let t = RecordedTransport::new(vec![Exchange {
+                request: get(url, None),
+                response: ok(page(Some(association)), "\"c\"", "100"),
+            }]);
+            let out = wait(&req(cond(), 60), &t, &clock()).unwrap();
+            assert_eq!(out["value"]["id"], 30, "{association}: {out}");
+            assert!(out.get("ignored_control_lines").is_none(), "{association}");
+        }
+        // No prefix: a new comment from anyone ends the wait; it is not read as a control line.
+        let t = RecordedTransport::new(vec![Exchange {
+            request: get(url, None),
+            response: ok(page(Some("NONE")), "\"c\"", "100"),
+        }]);
+        let any = Condition::Comment {
+            issue: 5,
+            after: 10,
+            prefix: None,
+        };
+        let out = wait(&req(any, 60), &t, &clock()).unwrap();
+        assert_eq!(out["value"]["id"], 30, "{out}");
     }
 
     /// #2806: a read of several pages says which page it reads from the second on (API path
