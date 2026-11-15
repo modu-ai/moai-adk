@@ -103,6 +103,7 @@ Lane and leader
   claim-verify            Check claim ownership before a commit or push
   claim-timeout-check     Check the three timeout takeover conditions of a claim
   claim-expired           List the open claims whose lease has ended
+  audit-claim-stale       List audit reservations left on closed pull requests
   claim-show              Show the current claim record of a task
   claim-release           Close the active claim as cancelled
   claim-handoff           Hand a claim to another session
