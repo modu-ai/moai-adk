@@ -151,6 +151,7 @@ Lane and leader
   flow-wip-check          Check the open pull requests against the WIP cap
   dispatch-record         Record a dispatch revision
   dispatch-ack            Record a dispatch acknowledgement and decision
+  dispatch-start          Record that an accepted dispatch has started
   dispatch-check          Check dispatch revisions and late acknowledgements
   message-record          Publish a durable message
   message-ack             Publish a receiver acknowledgement
