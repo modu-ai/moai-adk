@@ -10,7 +10,8 @@
 //!   to a lane with no entry or an expired one blocks nobody, and a lane that was never
 //!   registered is told `caller_not_registered` (its offer is kept but nobody honours it).
 //! - The lease is [`PROPOSAL_LEASE_SECS`]. The same lane asking again for the same target keeps
-//!   the first `lease_until`, so a stuck lane cannot hold a target forever.
+//!   the first `lease_until` while it runs, so a stuck lane cannot hold a target forever; a
+//!   record whose lease runs longer than that from now (a clock set back) is not honoured.
 //! - Reading, deciding and writing happen under the registry's exclusive lock, so two lanes
 //!   that ask at once get different targets; the GitHub reads stay outside the lock.
 //! - Any trouble with the folder (missing, a link, oversized or malformed file, no lock) leaves
@@ -160,9 +161,12 @@ pub fn decide_and_record(registry: &Path, lane: &str, snap: &mut Snapshot, now: 
         Err(_) => return unavailable(snap, "session registry entry unreadable"),
     };
     let mut offers = Vec::new();
+    // A lease can never run longer than [`PROPOSAL_LEASE_SECS`] from now: a record that says
+    // otherwise (the clock was set back, or the file was edited) blocks nobody (#3015 C3, N2).
+    let lease_ok = |until: i64| until > now && until <= now + PROPOSAL_LEASE_SECS;
     for r in records
         .iter()
-        .filter(|r| r.lane != lane && r.lease_until > now)
+        .filter(|r| r.lane != lane && lease_ok(r.lease_until))
     {
         match is_live(registry, &r.lane, now) {
             Ok(true) => offers.push(ActiveProposal {
@@ -185,7 +189,7 @@ pub fn decide_and_record(registry: &Path, lane: &str, snap: &mut Snapshot, now: 
         (Some(kind), Some(number)) => {
             let head = next["target"]["head"].as_str().map(str::to_string);
             let same = own.filter(|o| {
-                o.kind == kind && o.number == number && o.head == head && o.lease_until > now
+                o.kind == kind && o.number == number && o.head == head && lease_ok(o.lease_until)
             });
             match same {
                 Some(o) => json!({"status": "kept", "lease_until": o.lease_until}),
@@ -482,5 +486,78 @@ mod tests {
         let mut got = [a.join().unwrap(), b.join().unwrap()];
         got.sort_unstable();
         assert_eq!(got, [40, 41]);
+    }
+
+    /// #3015 C3 (N-M3): a proposal folder that is a link is refused for reading and writing,
+    /// and nothing is written through it.
+    #[cfg(unix)]
+    #[test]
+    fn a_proposal_folder_that_is_a_link_is_refused_and_not_followed() {
+        let reg = registry();
+        register(reg.path(), "agent-1", NOW + 3000);
+        let elsewhere = registry();
+        std::os::unix::fs::symlink(elsewhere.path(), folder(reg.path())).unwrap();
+        let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), NOW);
+        assert_eq!(v["proposal"]["status"], "unavailable", "{v}");
+        assert_eq!(v["proposal"]["reason"], "proposal folder is a link", "{v}");
+        assert_eq!(target(&v).1, 40, "the decision is made anyway: {v}");
+        assert_eq!(fs::read_dir(elsewhere.path()).unwrap().count(), 0);
+    }
+
+    /// #3015 C3 (N-M5): a record with another `schema_version` is malformed, not read.
+    #[test]
+    fn a_record_of_another_schema_version_is_malformed() {
+        let reg = registry();
+        register(reg.path(), "agent-1", NOW + 3000);
+        register(reg.path(), "agent-2", NOW + 3000);
+        let proposals = folder(reg.path());
+        fs::create_dir_all(&proposals).unwrap();
+        let record = |version: u64| {
+            json!({"schema_version": version, "lane": "agent-2", "kind": "reserve_audit",
+                "target": {"number": 40, "head": head('a')}, "proposed_at": NOW,
+                "lease_until": NOW + 100})
+            .to_string()
+        };
+        fs::write(proposals.join("agent-2.json"), record(2)).unwrap();
+        let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), NOW);
+        assert_eq!(v["proposal"]["reason"], "proposal file malformed", "{v}");
+        // The same record with version 1 is read and honoured: agent-1 is offered 41.
+        fs::write(proposals.join("agent-2.json"), record(1)).unwrap();
+        let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), NOW);
+        assert_eq!(target(&v).1, 41, "{v}");
+    }
+
+    /// #3015 C3 (N2): an offer never lasts longer than the lease from now. A record that ends
+    /// later (the clock was set back) blocks nobody, and the lane that holds it gets a fresh
+    /// lease instead of keeping it.
+    #[test]
+    fn a_lease_longer_than_the_lease_length_is_not_honoured() {
+        let reg = registry();
+        register(reg.path(), "agent-1", NOW + 3000);
+        register(reg.path(), "agent-2", NOW + 3000);
+        let proposals = folder(reg.path());
+        fs::create_dir_all(&proposals).unwrap();
+        let put = |until: i64| {
+            let body = json!({"schema_version": 1, "lane": "agent-2", "kind": "reserve_audit",
+                "target": {"number": 40, "head": head('a')}, "proposed_at": NOW,
+                "lease_until": until});
+            fs::write(proposals.join("agent-2.json"), body.to_string()).unwrap();
+        };
+        // Ending exactly one lease from now still blocks; one second more does not.
+        put(NOW + PROPOSAL_LEASE_SECS);
+        let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), NOW);
+        assert_eq!(target(&v).1, 41, "{v}");
+        fs::remove_file(proposals.join("agent-1.json")).unwrap();
+        put(NOW + PROPOSAL_LEASE_SECS + 1);
+        let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), NOW);
+        assert_eq!(target(&v).1, 40, "{v}");
+        // The lane that holds such a record asks for the same target: a new lease, not `kept`.
+        let v = decide_and_record(reg.path(), "agent-2", &mut two_prs(), NOW);
+        assert_eq!(v["proposal"]["status"], "recorded", "{v}");
+        assert_eq!(
+            v["proposal"]["lease_until"],
+            NOW + PROPOSAL_LEASE_SECS,
+            "{v}"
+        );
     }
 }

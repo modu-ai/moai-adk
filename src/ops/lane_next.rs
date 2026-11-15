@@ -17,8 +17,8 @@ use std::path::PathBuf;
 /// `proposal` in the answer says whether it was kept. `--wait` reads again every 432
 /// seconds for the default ten lanes on one token (within half of GitHub's hourly limit;
 /// `--shared-lanes` changes the count) until a task appears. A watching lane stops by itself:
-/// the one thing it writes is a count kept per lane and repository in the clone's state
-/// folder (`<git common dir>/.moai-cli/lane-idle/`, result `writes: true`; nothing with
+/// besides the offer above, the one thing it writes is a count kept per lane and repository
+/// in the clone's state folder (`<git common dir>/.moai-cli/lane-idle/`, result `writes: true`; nothing with
 /// `--max-empty 0`; a `--snapshot` read counts and writes only when `--max-empty` is given).
 /// Each read with no task, nothing to wait for and a full answer from GitHub adds 1; at
 /// `--max-empty` (6 on a GitHub read) the result says `status: idle_limit` and carries the
