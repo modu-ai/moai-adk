@@ -216,6 +216,16 @@ fn show_without_a_project_reads_the_clone_of_the_current_folder() {
     let out = run_in(&fx, &plain, &["--show", "--name", "agent-8", "--now", T0]);
     assert_ne!(out.status.code(), Some(0), "{}", envelope(&out));
     assert_eq!(envelope(&out)["ok"], false);
+    // A PROJECT that is given wins over the current folder: from a folder that is no clone,
+    // `--show PROJECT` still reads that project's registry.
+    let repo = fx.repo.to_str().unwrap();
+    let named = ok(&run_in(
+        &fx,
+        &plain,
+        &[repo, "--show", "--name", "agent-8", "--now", T0],
+    ));
+    assert_eq!(named["status"], "held");
+    assert_eq!(named["instance"], first["instance"]);
     // Registering and releasing still name the project.
     for args in [
         vec!["--name", "agent-8", "--now", T0],
