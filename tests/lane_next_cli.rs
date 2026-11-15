@@ -2369,10 +2369,51 @@ mod idle_limit {
             "comments": [], "ci": "pending"}]})
     }
 
+    /// The lane's own draft pull request: `pr_skipped` names it `draft`, and `own_open_prs`
+    /// lists it, so the lane is in flight (the leader's NN6 decision on #3020).
+    fn own_draft_pr() -> Value {
+        json!({"cards": [], "prs": [{"number": 10, "head": h('a'), "author_lane": LANE,
+            "draft": true, "comments": []}]})
+    }
+
     fn state_file(c: &Clone) -> std::path::PathBuf {
         c.repo
             .join(".git/.moai-cli/lane-idle")
             .join(format!("{LANE}__o__r.json"))
+    }
+
+    /// An own draft pull request is work in flight: four reads with `--max-empty 3` do not
+    /// stop the lane and the count stays 0.
+    #[test]
+    fn an_own_draft_pull_request_is_not_an_empty_read() {
+        let c = clone();
+        for n in 1..=4 {
+            let (r, _) = read(&c, LANE, "o/r", &own_draft_pr(), "3");
+            assert_eq!(
+                r["pr_skipped"],
+                json!([{"pr": 10, "reason": "draft"}]),
+                "the snapshot is the own-draft case: {r}"
+            );
+            assert_eq!(r["own_open_prs"], json!([10]), "{r}");
+            assert!(r.get("status").is_none(), "read {n} stopped the lane: {r}");
+            assert_eq!(r["idle"]["consecutive_empty"], json!(0), "read {n}: {r}");
+        }
+    }
+
+    /// A draft of another lane is not the lane's own work: it is not in `own_open_prs`, and
+    /// the empty reads count to the limit.
+    #[test]
+    fn a_foreign_draft_pull_request_does_not_keep_the_lane_busy() {
+        let c = clone();
+        let snap = json!({"cards": [], "prs": [{"number": 11, "head": h('b'),
+            "author_lane": "agent-99", "draft": true, "comments": []}]});
+        let mut last = Value::Null;
+        for _ in 1..=3 {
+            let (r, _) = read(&c, LANE, "o/r", &snap, "3");
+            assert_eq!(r["own_open_prs"], json!([]), "{r}");
+            last = r;
+        }
+        assert_eq!(last["status"], json!("idle_limit"), "{last}");
     }
 
     /// A lane with its own open pull request waiting on CI is not idle: three reads with

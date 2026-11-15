@@ -16,12 +16,15 @@ use std::path::PathBuf;
 /// `--shared-lanes` changes the count) until a task appears. A watching lane stops by itself:
 /// the one thing it writes is a count kept per lane and repository in the clone's state
 /// folder (`<git common dir>/.moai-cli/lane-idle/`, result `writes: true`; nothing with
-/// `--max-empty 0` or `--snapshot`). Each read with no task, nothing to wait for and a full
-/// answer from GitHub adds 1; at `--max-empty` (6 on a GitHub read) the result says `status:
-/// idle_limit` and carries the `LANE-IDLE` line to print once, and a `--wait` ends at that
-/// read. A read with a task, something to wait for or an open pull request of the lane's own
-/// sets the count back to 0; a partial read (`partial`, or an unknown `end_condition.met`)
-/// is not counted.
+/// `--max-empty 0`; a `--snapshot` read counts and writes only when `--max-empty` is given).
+/// Each read with no task, nothing to wait for and a full answer from GitHub adds 1; at
+/// `--max-empty` (6 on a GitHub read) the result says `status: idle_limit` and carries the
+/// `LANE-IDLE` line to print once, and a `--wait` ends at that read. A read with a task,
+/// something to wait for or an open pull request of the lane's own (a draft too:
+/// `own_open_prs`) sets the count back to 0; a partial read (`partial`, or an unknown
+/// `end_condition.met`) is not counted. Two `partial` notes are not a failure and do not
+/// block an empty read: no tip base known (nothing is open) and `#<n>: only the newest 100
+/// comments read` of a busy Issue.
 #[derive(clap::Args)]
 pub struct Args {
     /// The lane name as it appears in claims (`session=<lane>`) and audit reservations.
