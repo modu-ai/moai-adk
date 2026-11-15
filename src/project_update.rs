@@ -534,14 +534,16 @@ fn github_step(root: &Path, shown: &str) -> Result<Step> {
     })
 }
 
-const INSTALL: [&str; 7] = [
+const INSTALL: [&str; 9] = [
     "profile",
     "generation",
     "claude-settings",
     "github",
     "codex-hooks",
+    "codex-config",
     "omp-hooks",
     "omp-config",
+    "omp-agents",
 ];
 
 /// The host steps (#2936 R9 S5a) as this module's steps.
@@ -554,7 +556,7 @@ fn host_steps(root: &Path, shown: &str) -> Vec<Step> {
             reason: h.reason,
             preview: h.preview,
             plan_digest: h.plan_digest,
-            apply: h.apply.map(|argv| (argv, Value::Null)),
+            apply: h.apply,
         })
         .collect()
 }

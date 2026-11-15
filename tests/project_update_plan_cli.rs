@@ -62,7 +62,12 @@ impl Fx {
 
     /// Runs the binary with `stdin` and returns the whole envelope.
     fn run(&self, args: &[&str], stdin: &[u8]) -> Value {
-        let mut child = Command::new(EXE)
+        self.run_exe(EXE, args, stdin)
+    }
+
+    /// [`Fx::run`] with another executable (a copy inside a fake install folder).
+    fn run_exe(&self, exe: &str, args: &[&str], stdin: &[u8]) -> Value {
+        let mut child = Command::new(exe)
             .args(args)
             .clean_env()
             .env("HOME", &self.home)
@@ -124,6 +129,31 @@ impl Fx {
         let plan = self.call(&["project-update-plan", self.p()], b"");
         assert_eq!(before, self.tree(), "project-update-plan wrote something");
         plan
+    }
+
+    /// A fake install folder beside the project and HOME: a copy of this binary at
+    /// `install/bin/<name>` with the skill package and the agent sources next to it, the layout
+    /// `update::installed_package_dir` and `installed_agents_dir` look for. Returns the copy.
+    fn install(&self) -> String {
+        let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let dir = self.home.parent().unwrap().join("install");
+        fs::create_dir_all(dir.join("bin")).unwrap();
+        fs::create_dir_all(dir.join("skills")).unwrap();
+        let exe = dir.join("bin").join(Path::new(EXE).file_name().unwrap());
+        common::copy_executable(Path::new(EXE), &exe);
+        for (from, to) in [("skills/moai", "skills/moai"), ("agents", "agents")] {
+            copy_tree(&repo.join(from), &dir.join(to));
+        }
+        exe.to_str().unwrap().to_string()
+    }
+
+    /// [`Fx::plan`] run by the copy [`Fx::install`] made.
+    fn plan_installed(&self, exe: &str) -> Value {
+        let before = self.tree();
+        let v = self.run_exe(exe, &["project-update-plan", self.p()], b"");
+        assert_eq!(v["ok"], json!(true), "{v}");
+        assert_eq!(before, self.tree(), "project-update-plan wrote something");
+        v["result"].clone()
     }
 
     /// A profile written the way PROJECT writes it: the detected facts, then
@@ -268,15 +298,30 @@ fn steps(plan: &Value) -> Vec<&Value> {
         .collect()
 }
 
-const INSTALL: [&str; 7] = [
+const INSTALL: [&str; 9] = [
     "profile",
     "generation",
     "claude-settings",
     "github",
     "codex-hooks",
+    "codex-config",
     "omp-hooks",
     "omp-config",
+    "omp-agents",
 ];
+
+fn copy_tree(from: &Path, to: &Path) {
+    fs::create_dir_all(to).unwrap();
+    for e in fs::read_dir(from).unwrap() {
+        let e = e.unwrap();
+        let target = to.join(e.file_name());
+        if e.file_type().unwrap().is_dir() {
+            copy_tree(&e.path(), &target);
+        } else {
+            fs::copy(e.path(), target).unwrap();
+        }
+    }
+}
 
 #[test]
 fn empty_project() {
@@ -1017,10 +1062,180 @@ fn a_broken_profile_blocks_its_steps_and_not_the_host_hook_steps() {
     let plan = fx.plan();
     assert_eq!(step(&plan, "profile")["state"], "blocked", "{plan}");
     assert_eq!(step(&plan, "generation")["state"], "blocked", "{plan}");
-    for name in ["codex-hooks", "omp-hooks"] {
+    for name in ["codex-hooks", "codex-config", "omp-hooks"] {
         let s = step(&plan, name);
         assert_eq!(s["state"], "ready", "{name}: {s}");
         assert!(s["apply"]["argv"].is_array(), "{name}: {s}");
     }
     assert_eq!(step(&plan, "omp-config")["state"], "skip", "{plan}");
+}
+
+fn argv_of(step: &Value) -> Vec<&str> {
+    step["apply"]["argv"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no printed command: {step}"))
+        .iter()
+        .map(|w| w.as_str().unwrap())
+        .collect()
+}
+
+impl Fx {
+    /// The entries under HOME only.
+    fn home_tree(&self) -> Vec<(PathBuf, Node)> {
+        self.tree()
+            .into_iter()
+            .filter(|(p, _)| p.starts_with(&self.home))
+            .collect()
+    }
+}
+
+#[test]
+fn the_codex_config_step_prints_its_apply_with_the_status_line_on_stdin_and_settles() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let plan = fx.plan();
+    let s = step(&plan, "codex-config");
+    assert_eq!(s["state"], "ready", "{s}");
+    let argv = argv_of(s);
+    assert_eq!(&argv[..2], ["moai", "codex-config-apply"], "{argv:?}");
+    assert_eq!(argv[2], fx.p(), "{argv:?}");
+    assert_eq!(
+        s["apply"]["stdin"],
+        json!({"tui.status_line": "moai"}),
+        "{s}"
+    );
+    assert!(s["plan_digest"].is_string(), "{s}");
+    assert!(
+        s["preview"]["config_path"]
+            .as_str()
+            .unwrap()
+            .ends_with("config.toml"),
+        "{s}"
+    );
+    assert_no_forbidden_words(&plan);
+    let home = fx.home_tree();
+    let out = fx.apply_step(s);
+    assert_eq!(out["ok"], json!(true), "{out}");
+    assert!(fx.root.join(".codex/config.toml").is_file());
+    assert_eq!(home, fx.home_tree(), "the apply wrote into HOME");
+    let again = fx.plan();
+    let s = step(&again, "codex-config");
+    assert_eq!(s["state"], "unchanged", "{s}");
+    assert_eq!(s["apply"], Value::Null, "{s}");
+}
+
+#[test]
+fn the_omp_agents_step_is_skipped_when_this_binary_has_no_install() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let plan = fx.plan();
+    let s = step(&plan, "omp-agents");
+    assert_eq!(s["state"], "skip", "{s}");
+    assert_eq!(s["apply"], Value::Null, "{s}");
+    assert!(s["reason"].as_str().unwrap().contains("installed"), "{s}");
+}
+
+#[test]
+fn the_omp_agents_step_prints_its_apply_and_settles() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let exe = fx.install();
+    let plan = fx.plan_installed(&exe);
+    let s = step(&plan, "omp-agents");
+    assert_eq!(s["state"], "ready", "{s}");
+    let argv = argv_of(s);
+    assert_eq!(&argv[..2], ["moai", "agents-project-apply"], "{argv:?}");
+    assert_eq!(argv[2], fx.p(), "{argv:?}");
+    assert!(argv[3].ends_with("install/skills/moai"), "{argv:?}");
+    assert!(argv[4].ends_with("install/agents"), "{argv:?}");
+    assert!(argv.contains(&"--plan-digest"), "{argv:?}");
+    assert_eq!(s["apply"]["stdin"], Value::Null, "{s}");
+    assert!(
+        s["preview"]["shadows_user_agents"]
+            .as_str()
+            .unwrap()
+            .contains("shadows"),
+        "{s}"
+    );
+    let files = s["preview"]["files"].as_array().unwrap();
+    assert!(!files.is_empty(), "{s}");
+    assert!(files.iter().all(|f| f["action"] == "create"), "{s}");
+    assert_no_forbidden_words(&plan);
+    let home = fx.home_tree();
+    let out = fx.apply_step(s);
+    assert_eq!(out["ok"], json!(true), "{out}");
+    let written = fs::read_dir(fx.root.join(".omp/agents")).unwrap().count();
+    assert_eq!(written, files.len(), "{out}");
+    assert_eq!(home, fx.home_tree(), "the apply wrote into HOME");
+    let again = fx.plan_installed(&exe);
+    let s = step(&again, "omp-agents");
+    assert_eq!(s["state"], "unchanged", "{s}");
+    assert_eq!(s["apply"], Value::Null, "{s}");
+}
+
+#[test]
+fn an_agent_file_the_user_edited_stays_and_the_step_has_nothing_to_do() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let exe = fx.install();
+    let plan = fx.plan_installed(&exe);
+    assert_eq!(fx.apply_step(step(&plan, "omp-agents"))["ok"], json!(true));
+    let file = fs::read_dir(fx.root.join(".omp/agents"))
+        .unwrap()
+        .next()
+        .unwrap()
+        .unwrap()
+        .path();
+    fs::write(&file, "mine\n").unwrap();
+    let again = fx.plan_installed(&exe);
+    let s = step(&again, "omp-agents");
+    assert_eq!(s["state"], "unchanged", "{s}");
+    assert_eq!(s["apply"], Value::Null, "{s}");
+    assert!(
+        s["preview"]["files"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|f| f["action"] == "preserved"),
+        "{s}"
+    );
+    assert_eq!(fs::read_to_string(&file).unwrap(), "mine\n");
+}
+
+#[test]
+fn a_linked_omp_folder_blocks_the_agents_step_and_nothing_lands_beyond_it() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let exe = fx.install();
+    let beyond = fx.home.parent().unwrap().join("beyond");
+    fs::create_dir_all(&beyond).unwrap();
+    std::os::unix::fs::symlink(&beyond, fx.root.join(".omp")).unwrap();
+    let plan = fx.plan_installed(&exe);
+    let s = step(&plan, "omp-agents");
+    assert_eq!(s["state"], "blocked", "{s}");
+    assert_eq!(s["apply"], Value::Null, "{s}");
+    assert!(fs::read_dir(&beyond).unwrap().next().is_none());
+}
+
+#[test]
+fn a_status_line_the_user_changed_after_the_apply_is_kept_and_stays_byte_identical() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let plan = fx.plan();
+    assert_eq!(
+        fx.apply_step(step(&plan, "codex-config"))["ok"],
+        json!(true)
+    );
+    let mine = "[tui]\nstatus_line = [\"model\"]\n";
+    fx.write(".codex/config.toml", mine);
+    let before = fx.tree();
+    let again = fx.plan();
+    let s = step(&again, "codex-config");
+    assert_eq!(s["state"], "unchanged", "{s}");
+    assert_eq!(s["apply"], Value::Null, "{s}");
+    assert_eq!(before, fx.tree(), "the plan changed the user's file");
+    assert_eq!(
+        fs::read_to_string(fx.root.join(".codex/config.toml")).unwrap(),
+        mine
+    );
 }
