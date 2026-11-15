@@ -649,7 +649,7 @@ fn agents_local_merge_step(root: &Path, shown: &str) -> Result<Step> {
 
 /// The whole preview. Writes nothing.
 pub fn plan(project: &Path) -> Result<Value> {
-    let root = fs::canonicalize(project).map_err(|_| "project folder unavailable")?;
+    let root = fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
     let shown = root.to_str().ok_or("non UTF-8 project path")?.to_string();
     let detected = project_detect::detect(&root);
     let backup = vec![or_blocked("go-state", go_state_step(&root, &shown))];

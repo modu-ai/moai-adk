@@ -1202,7 +1202,8 @@ fn plan_root_files(project: &Path, recorded: &HashMap<String, Entry>) -> Vec<Roo
 
 /// The read-only preview over one project folder.
 pub fn plan(project: &Path) -> Result<GoStatePlan> {
-    let project = fs::canonicalize(project).map_err(|_| "project folder unavailable")?;
+    let project =
+        fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
     // A linked `.moai` (or any linked component above the manifest) is refused by the
     // manifest read below, with or without a manifest file.
     let mut warnings = vec![
@@ -2362,7 +2363,8 @@ pub fn backed_up_root_file(project: &Path, name: &str) -> Result<Option<BackedUp
     if !ROOT_FILES.contains(&name) {
         return Err(format!("{name}: not a root instruction file"));
     }
-    let project = fs::canonicalize(project).map_err(|_| "project folder unavailable")?;
+    let project =
+        fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
     let backups = format!("{MOAI_DIR}/backups");
     refuse_linked(&project, &backups)?;
     let Ok(entries) = fs::read_dir(project.join(&backups)) else {
@@ -2399,7 +2401,8 @@ pub fn backed_up_root_file(project: &Path, name: &str) -> Result<Option<BackedUp
 
 /// Read-only: what a revert of one apply would do.
 pub fn revert_plan(project: &Path, backup: &str) -> Result<RevertPlan> {
-    let project = fs::canonicalize(project).map_err(|_| "project folder unavailable")?;
+    let project =
+        fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
     let (receipt, _, base) = read_receipt(&project, backup)?;
     let moving = !receipt.go_backup.is_empty();
     // Either #2696 layout: the marker and this generation's `.moai/` are undone the same way.
