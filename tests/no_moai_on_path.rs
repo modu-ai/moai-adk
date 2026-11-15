@@ -1,7 +1,11 @@
 //! #2383 AC-2 / AC-3: with no `moai` on PATH, the Claude Code status line renders the same
-//! bytes and the generated MoAI hooks never block a harmless tool call. A decoy `moai` that
-//! records every call shows that nothing looks the name up: the outputs with and without it
-//! are identical and its log stays empty. Temporary HOME and project only.
+//! bytes. A decoy `moai` that records every call shows that nothing looks the name up: the
+//! outputs with and without it are identical and its log stays empty.
+//!
+//! #3004 P4-2: the generated hooks now call `moai`, so they run with the Rust `moai` on PATH and
+//! never block a harmless tool call; a wrong (Go-like) `moai` first on PATH makes each hook fail
+//! as a non-blocking error (exit 1), which is why `hooks-apply` refuses to write them there.
+//! Temporary HOME and project only.
 #![cfg(unix)]
 
 mod common;
@@ -24,6 +28,8 @@ struct Fixture {
     project: PathBuf,
     /// Holds only `moai-cli`.
     bin: PathBuf,
+    /// Holds the Rust build as `moai` (what the generated hooks call).
+    rust: PathBuf,
     /// Holds a `moai` that appends its argv to `decoy.log` and exits 1.
     decoy: PathBuf,
 }
@@ -41,6 +47,9 @@ impl Fixture {
         }
         let cli = Path::new(common::MOAI_CLI_BIN);
         std::os::unix::fs::symlink(cli, bin.join("moai-cli")).unwrap();
+        let rust = root.join("rust");
+        fs::create_dir_all(&rust).unwrap();
+        std::os::unix::fs::symlink(cli, rust.join("moai")).unwrap();
         fs::create_dir_all(home.join(".moai-cli/path")).unwrap();
         std::os::unix::fs::symlink(cli, home.join(".moai-cli/path/moai-cli")).unwrap();
         common::write_executable(
@@ -71,6 +80,7 @@ impl Fixture {
             home,
             project,
             bin,
+            rust,
             decoy,
         }
     }
@@ -82,6 +92,16 @@ impl Fixture {
     /// PATH without any `moai`, or with the decoy first.
     fn path(&self, with_decoy: bool) -> String {
         let base = format!("{}:/usr/bin:/bin", self.bin.display());
+        if with_decoy {
+            format!("{}:{base}", self.decoy.display())
+        } else {
+            base
+        }
+    }
+
+    /// PATH with the Rust `moai` (what a hook needs), or with the decoy `moai` before it.
+    fn hook_path(&self, with_decoy: bool) -> String {
+        let base = format!("{}:{}", self.rust.display(), self.path(false));
         if with_decoy {
             format!("{}:{base}", self.decoy.display())
         } else {
@@ -182,7 +202,7 @@ fn generated_hooks_run_and_never_block_a_harmless_call_without_moai_on_path() {
         .arg(&f.project)
         .clean_env()
         .env("HOME", &f.home)
-        .env("PATH", f.path(false))
+        .env("PATH", f.hook_path(false))
         .output()
         .unwrap();
     let plan: Value = serde_json::from_slice(&out.stdout).unwrap();
@@ -192,7 +212,7 @@ fn generated_hooks_run_and_never_block_a_harmless_call_without_moai_on_path() {
     let mut preflight = None;
     for h in &hooks {
         let command = h["command"].as_str().unwrap();
-        assert!(command.starts_with("moai-cli "), "{command}");
+        assert!(command.starts_with("moai "), "{command}");
         let event = h["event"].as_str().unwrap();
         let tools: Vec<&str> = match h["matcher"].as_str() {
             Some(m) => m.split('|').collect(),
@@ -200,7 +220,7 @@ fn generated_hooks_run_and_never_block_a_harmless_call_without_moai_on_path() {
         };
         for tool in tools {
             let input = event_input(event, tool, &f.project).to_string();
-            let without = f.sh(command, &f.path(false), input.as_bytes());
+            let without = f.sh(command, &f.hook_path(false), input.as_bytes());
             // Exit 0, not 127: the hook's binary ran (a missing command would not block
             // either, and would prove nothing).
             assert_eq!(without.0, 0, "{event} {tool} `{command}`: {:?}", without.1);
@@ -209,20 +229,30 @@ fn generated_hooks_run_and_never_block_a_harmless_call_without_moai_on_path() {
                 "{event} {tool}: {:?}",
                 without.1
             );
-            let with_decoy = f.sh(command, &f.path(true), input.as_bytes());
-            assert_eq!(without, with_decoy, "{event} {tool} `{command}`");
+            // A Go-like `moai` first on PATH receives the hook, exits 1 and so switches the
+            // guard off without blocking the call: the case the apply gate exists for.
+            let with_decoy = f.sh(command, &f.hook_path(true), input.as_bytes());
+            assert_eq!(
+                with_decoy.0, 1,
+                "{event} {tool} `{command}`: {with_decoy:?}"
+            );
+            assert!(!blocks(with_decoy.0, &with_decoy.1), "{event} {tool}");
         }
         if command.contains("--event tool-preflight") {
             preflight = Some(command.to_string());
         }
     }
-    assert_eq!(f.decoy_log(), "", "nothing ran `moai`");
+    assert!(
+        f.decoy_log().contains("moai claim-verify . --hook"),
+        "the decoy received the guard: {:?}",
+        f.decoy_log()
+    );
     // The guards really ran: the same preflight command still denies a dangerous call.
     let mut danger = event_input("PreToolUse", "Bash", &f.project);
     danger["tool_input"]["command"] = json!("rm -rf /");
     let r = f.sh(
         &preflight.expect("a preflight hook"),
-        &f.path(false),
+        &f.hook_path(false),
         danger.to_string().as_bytes(),
     );
     assert!(blocks(r.0, &r.1), "rm -rf / allowed: {r:?}");

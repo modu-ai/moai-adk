@@ -1,5 +1,6 @@
 //! Read-only merge train projection (#2388 AC-1c). Order comes exclusively from a
 //! caller-pinned remote ledger comment, never from PR age or a new local store.
+use crate::comment_authority::{is_member, rest_association, Dropped};
 use crate::forge::{policy::Clock, transport::Transport, Client};
 use crate::lane_status::{self, IssueData, LaneStatusRequest, PrData, Snapshot};
 use serde::Deserialize;
@@ -158,8 +159,25 @@ fn sha(s: &str) -> bool {
 
 /// Only the exact first-line PR, head and base verdict grammar counts. Reuse lane-status's
 /// projection after filtering; incidental quotes and PASS-with-conditions cannot become PASS.
-fn exact_comments(raw: Vec<Value>, pr: i64, head: &str, base: &str) -> Vec<lane_status::Comment> {
-    lane_status::read_comments(raw)
+fn exact_comments(
+    raw: Vec<Value>,
+    pr: i64,
+    head: &str,
+    base: &str,
+) -> (Vec<lane_status::Comment>, Dropped) {
+    let (comments, dropped) = lane_status::read_comments(raw);
+    (exact_only(comments, pr, head, base), dropped)
+}
+
+/// The exact-grammar filter of [`exact_comments`] over comments that were already read (and
+/// already limited to member authors).
+fn exact_only(
+    comments: Vec<lane_status::Comment>,
+    pr: i64,
+    head: &str,
+    base: &str,
+) -> Vec<lane_status::Comment> {
+    comments
         .into_iter()
         .filter(|c| {
             let words: Vec<_> = c
@@ -219,6 +237,15 @@ pub fn query_cli<T: Transport, C: Clock>(
     {
         return Err("queue ledger comment does not belong to the requested Issue".into());
     }
+    // The order table decides which PR goes first, so it is a control line (Issue #3052).
+    if !is_member(&rest_association(&ledger)) {
+        return Err(format!(
+            "queue ledger comment {} was not written by a member (author_association {:?}); \
+             it is not honoured",
+            req.ledger_comment_id,
+            rest_association(&ledger)
+        ));
+    }
     let body = ledger["body"]
         .as_str()
         .ok_or("queue ledger comment has no body")?;
@@ -226,6 +253,7 @@ pub fn query_cli<T: Transport, C: Clock>(
     let worktrees = crate::worktree::worktrees(project)?;
     let mut rows = Vec::new();
     let mut preceding = Vec::new();
+    let mut ignored = Dropped::default();
     for (index, number) in order.into_iter().enumerate() {
         let pr = one(&client, &format!("{repo}/pulls/{number}"))?;
         let head = pr["head"]["sha"]
@@ -261,11 +289,13 @@ pub fn query_cli<T: Transport, C: Clock>(
             }
             issue.open = data["state"] == "open";
             issue.body = data["body"].as_str().unwrap_or_default().into();
-            issue.comments = lane_status::read_comments(pages(
+            let (comments, dropped) = lane_status::read_comments(pages(
                 &client,
                 format!("{repo}/issues/{n}/comments?per_page=100"),
                 None,
             )?);
+            issue.comments = comments;
+            ignored.merge(dropped);
         }
         let blockers: BTreeSet<_> = crate::queue::refs_on(&issue.body, "Blocked-By:")
             .into_iter()
@@ -299,20 +329,14 @@ pub fn query_cli<T: Transport, C: Clock>(
             prs: vec![],
             worktrees: Ok(vec![]),
             now: clock.now(),
+            ignored: Dropped::default(),
         };
         let status = lane_status::build(&status_req, &snap);
         let holder = &status["rows"][0];
         let mut audit_issue = issue.clone();
-        audit_issue.comments = exact_comments(
-            issue
-                .comments
-                .iter()
-                .map(|c| json!({"id": c.id, "body": c.body}))
-                .collect(),
-            number,
-            head,
-            base,
-        );
+        audit_issue.comments = exact_only(issue.comments.clone(), number, head, base);
+        let (pr_comments, dropped) = exact_comments(comments, number, head, base);
+        ignored.merge(dropped);
         let audit_pr = PrData {
             number,
             head: head.into(),
@@ -320,7 +344,7 @@ pub fn query_cli<T: Transport, C: Clock>(
             issue: issue_number,
             commits: vec![],
             claim_ids: vec![],
-            comments: exact_comments(comments, number, head, base),
+            comments: pr_comments,
         };
         let audit = lane_status::audit_value(&audit_issue, &audit_pr);
         let checks = pages(
@@ -426,7 +450,9 @@ pub fn query_cli<T: Transport, C: Clock>(
     {
         return Err("queue ledger changed during query; query again".into());
     }
-    Ok(
-        json!({"rows": rows, "ledger": {"issue": req.ledger_issue, "comment_id": req.ledger_comment_id, "body_digest": crate::digest(body.as_bytes()), "updated_at": ledger["updated_at"]}, "observed_at": clock.now(), "local_worktrees": worktrees.len(), "writes": "none", "note": "read-only observation; not an integration authorization; ledger freshness is caller-selected"}),
-    )
+    let mut out = json!({"rows": rows, "ledger": {"issue": req.ledger_issue, "comment_id": req.ledger_comment_id, "body_digest": crate::digest(body.as_bytes()), "updated_at": ledger["updated_at"]}, "observed_at": clock.now(), "local_worktrees": worktrees.len(), "writes": "none", "note": "read-only observation; not an integration authorization; ledger freshness is caller-selected"});
+    if !ignored.is_empty() {
+        out["ignored_control_lines"] = ignored.to_json();
+    }
+    Ok(out)
 }

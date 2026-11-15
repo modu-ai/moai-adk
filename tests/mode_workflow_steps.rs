@@ -172,6 +172,7 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
         seen,
         [
             "claim-acquire",
+            "claim-link",
             "claim-timeout-check",
             "claim-timeout-check --issue",
             "claim-verify",

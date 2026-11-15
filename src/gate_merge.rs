@@ -56,6 +56,33 @@ pub fn merge<T: Transport, S: Transport, C: Clock>(
         return Err("a permission reference is required; nothing was read or written".into());
     }
     let snapshot = gate_collect::collect(target, transport)?;
+    let ignored = snapshot.ignored.clone();
+    let mut out = merge_snapshot(
+        target,
+        permission,
+        app,
+        snapshot,
+        transport,
+        status_transport,
+        clock,
+    )?;
+    if !ignored.is_empty() {
+        out["ignored_control_lines"] = ignored.to_json();
+    }
+    Ok(out)
+}
+
+/// The steps after the snapshot is read (Issue #3052 split them out so the answer can name the
+/// comments the snapshot left out).
+fn merge_snapshot<T: Transport, S: Transport, C: Clock>(
+    target: &Target<'_>,
+    permission: &str,
+    app: bool,
+    snapshot: gate::Snapshot,
+    transport: &T,
+    status_transport: &S,
+    clock: &C,
+) -> Result<Value> {
     // #2906 T (user decision 6878414880): the audit tier decides what the merge cites — the
     // verdict for tiers 1 and 2, the local-check line for tier 0, which has no verdict.
     let tier = gate::effective_tier(&snapshot);

@@ -18,6 +18,7 @@
 //! user-chosen value, not a measured one). The tick never sleeps: scheduling is the caller's.
 //! Not done here: regenerating `assignments.json` (a follow-up), live GitHub runs (fixtures only).
 use crate::claim::{parse_claim_line, resolve_winner, ClaimComment};
+use crate::comment_authority::{retain_rest, Dropped};
 use crate::forge::policy::{next_link, parse_utc, Clock};
 use crate::forge::transport::Transport;
 use crate::forge::Client;
@@ -139,7 +140,7 @@ fn observe<T: Transport, C: Clock>(
     req: &TickRequest,
     pr: &Value,
     now: i64,
-) -> Result<Option<(i64, Observation)>> {
+) -> Result<Option<(i64, Observation, Dropped)>> {
     let (Some(number), Some(head)) = (pr["number"].as_i64(), pr["head"]["sha"].as_str()) else {
         return Ok(None);
     };
@@ -175,9 +176,12 @@ fn observe<T: Transport, C: Clock>(
         .unwrap_or("none")
         .to_string();
     let issue = refs_issue(pr["body"].as_str().unwrap_or_default());
+    let mut ignored = Dropped::default();
     let (verdict, author) = match issue {
         Some(i) => {
-            let comments = pages(client, format!("{repo}/issues/{i}/comments?per_page=100"))?;
+            let mut comments = pages(client, format!("{repo}/issues/{i}/comments?per_page=100"))?;
+            // Issue #3052: only a comment a repository member wrote may carry a verdict or claim.
+            ignored.merge(retain_rest(&mut comments));
             (verdict_for(&comments, head), author(&comments, now))
         }
         None => ("none".into(), None),
@@ -196,6 +200,7 @@ fn observe<T: Transport, C: Clock>(
             verdict,
             author,
         },
+        ignored,
     )))
 }
 
@@ -316,8 +321,10 @@ pub fn tick<T: Transport, C: Clock>(
         schema_version: 1,
         prs: BTreeMap::new(),
     };
+    let mut ignored = Dropped::default();
     for pr in &list {
-        if let Some((n, mut o)) = observe(client, req, pr, now)? {
+        if let Some((n, mut o, dropped)) = observe(client, req, pr, now)? {
+            ignored.merge(dropped);
             // GitHub answers `unknown` while it is still computing; that is not a change.
             if o.mergeable_state == "unknown" {
                 if let Some(p) = prev.prs.get(&n).filter(|p| p.head == o.head) {
@@ -340,13 +347,16 @@ pub fn tick<T: Transport, C: Clock>(
     }
     // Issue #2678: the count and "no change" are said outright, not left to an empty list.
     let summary = tick_summary(next.prs.len(), changes.len());
-    let report = json!({
+    let mut report = json!({
         "summary": summary,
         "observed": next.prs.len(),
         "changes": changes,
         "hints": hints,
         "writes": "none on GitHub; post hints through effect-intend, gh, effect-confirm",
     });
+    if !ignored.is_empty() {
+        report["ignored_control_lines"] = ignored.to_json();
+    }
     Ok((report, next))
 }
 

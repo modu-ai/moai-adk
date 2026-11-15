@@ -61,6 +61,7 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `audit-clone-plan`
 - `claim-acquire`
 - `claim-handoff`
+- `claim-link`
 - `claim-release`
 - `claim-show`
 - `claim-verify`
