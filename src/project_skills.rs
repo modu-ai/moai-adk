@@ -317,8 +317,11 @@ pub fn project_skill_apply_confirmed(
 /// digest applies (symlink/special/size), through a temp directory and an
 /// atomic rename: the destination is replaced whole or not at all. The
 /// destination must not exist when called (the caller decides create vs
-/// replace). Returns the number of files copied.
-fn copy_tree_into_vacant(src: &Path, dest: &Path) -> Result<usize> {
+/// replace). The copied tree must hash to `expected` (the digest the plan
+/// bound) before it is renamed into place: a source that changed after the
+/// preview is a stale plan, and nothing reaches `dest` (#2936 R9 S5c2).
+/// Returns the number of files copied.
+fn copy_tree_into_vacant(src: &Path, dest: &Path, expected: &str) -> Result<usize> {
     let parent = dest.parent().ok_or("destination parent unavailable")?;
     fs::create_dir_all(parent).map_err(|_| "destination directory unavailable".to_string())?;
     let nanos = std::time::SystemTime::now()
@@ -335,6 +338,10 @@ fn copy_tree_into_vacant(src: &Path, dest: &Path) -> Result<usize> {
     if let Err(e) = copy_result {
         let _ = fs::remove_dir_all(&temp);
         return Err(e);
+    }
+    if !matches!(crate::package_digest(&temp), Ok(d) if d == expected) {
+        let _ = fs::remove_dir_all(&temp);
+        return Err("stale or altered plan; re-preview required".into());
     }
     match fs::rename(&temp, dest) {
         Ok(()) => Ok(count),
@@ -462,6 +469,11 @@ pub fn project_skill_apply(req: &ProjectSkillRequest) -> Result<ProjectSkillAppl
         .canonicalize()
         .map_err(|_| "project directory unavailable".to_string())?;
     let staged = crate::update::stage_package(&req.source_dir)?;
+    // The plan above read the package once and this staging reads it again; a package that
+    // changed between the two is a stale plan, refused before the rollback folder exists.
+    if staged.digest != plan.package_digest {
+        return Err("stale or altered plan; re-preview required".into());
+    }
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_nanos())
@@ -518,7 +530,7 @@ pub fn project_skill_apply(req: &ProjectSkillRequest) -> Result<ProjectSkillAppl
                     files_copied: 0,
                 });
             }
-            "create" => match copy_tree_into_vacant(&req.source_dir, &dest) {
+            "create" => match copy_tree_into_vacant(&req.source_dir, &dest, &plan.package_digest) {
                 Ok(count) => {
                     applied.push(AppliedCopy {
                         host: entry.host.clone(),
@@ -565,7 +577,7 @@ pub fn project_skill_apply(req: &ProjectSkillRequest) -> Result<ProjectSkillAppl
                     .map_err(|_| "rollback replaced directory unavailable".to_string())?;
                 fs::rename(&dest, &replaced_dir)
                     .map_err(|_| "existing skill directory move failed".to_string())?;
-                match copy_tree_into_vacant(&req.source_dir, &dest) {
+                match copy_tree_into_vacant(&req.source_dir, &dest, &plan.package_digest) {
                     Ok(count) => {
                         applied.push(AppliedCopy {
                             host: entry.host.clone(),
@@ -733,6 +745,30 @@ mod tests {
         )
         .unwrap();
         fs::write(dir.join("references/a.md"), b"a").unwrap();
+    }
+
+    /// #2998 audit follow-up 2: the copy checks the bytes it wrote against the digest the plan
+    /// bound. A source that changes after the preview is never renamed into place, and no
+    /// temporary folder is left behind.
+    #[test]
+    fn a_source_that_changed_after_its_digest_is_not_copied() {
+        let t = tempfile::tempdir().unwrap();
+        let (src, dest) = (
+            t.path().join("src"),
+            t.path().join("out/.agents/skills/moai"),
+        );
+        write_source(&src);
+        let digest = crate::package_digest(&src).unwrap();
+        // The same bytes copy.
+        assert_eq!(copy_tree_into_vacant(&src, &dest, &digest).unwrap(), 2);
+        fs::remove_dir_all(&dest).unwrap();
+        // Another byte after the digest was taken does not.
+        fs::write(src.join("references/a.md"), b"changed").unwrap();
+        let err = copy_tree_into_vacant(&src, &dest, &digest).unwrap_err();
+        assert!(err.contains("stale or altered plan"), "{err}");
+        assert!(!dest.exists());
+        let left: Vec<_> = fs::read_dir(dest.parent().unwrap()).unwrap().collect();
+        assert!(left.is_empty(), "a temporary folder stayed: {left:?}");
     }
 
     #[test]
