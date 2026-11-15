@@ -118,6 +118,7 @@ Lane and leader
   close-check             Check whether an Issue may close
   lane-env                Print a lane's cargo folders
   session-register        Register this session's lane name
+  session-current         Print this session's own id
   usage-limit             Report how close the usage limits are
   heavy-slot-acquire      Run a heavy command in a machine-wide slot
   heavy-slot-status       List the heavy-run slots held now
