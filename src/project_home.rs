@@ -41,14 +41,56 @@ fn path_hash_key(real: &Path) -> Result<String> {
     Ok(format!("path-{}", &digest["sha256:".len()..][..32]))
 }
 
+/// Names Windows keeps for devices: a folder with one of these names (with or without an
+/// extension, in any letter case) cannot be created there. A profile id is `[A-Za-z0-9_-]`,
+/// so only the bare name needs checking.
+const WINDOWS_RESERVED: &[&str] = &[
+    "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8",
+    "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+];
+
+/// Whether `name` has the shape of a hash key ([`path_hash_key`]): `path-` and 32 hex digits,
+/// in any letter case (two letter cases are one folder on a case-insensitive volume).
+fn hash_key_shaped(name: &str) -> bool {
+    name.len() == "path-".len() + 32
+        && name[.."path-".len()].eq_ignore_ascii_case("path-")
+        && name["path-".len()..].bytes().all(|b| b.is_ascii_hexdigit())
+}
+
+/// Whether `name` can be a folder name under `projects/` or `backups/` on every platform the
+/// tool runs on: a plain profile name that is not a Windows device name.
+fn folder_name_ok(name: &str) -> bool {
+    portable_id(name)
+        && !WINDOWS_RESERVED
+            .iter()
+            .any(|r| name.eq_ignore_ascii_case(r))
+}
+
 /// The HOME folder of `project` under `home` (the user's HOME folder, not its state root: the
 /// state root is chosen the way every HOME reader chooses it, [`crate::home_root::path`]).
 /// A profile that is there but cannot give an id is an error; the key is never guessed from
 /// the path in that case, since the path would name a different folder than the id will.
+///
+/// The profile is read the way [`crate::layout::active_home`] reads it (the whole profile
+/// must pass), so the two never name different folders for one project. A person-chosen id
+/// that is a Windows device name (`con`, `NUL`, ...) or has the shape of a hash key
+/// (`path-` and 32 hex digits) is refused: the first cannot be a folder on Windows and the
+/// second could be the folder of another project.
 pub fn resolve(home: &Path, project: &Path) -> Result<ProjectHome> {
     let real = std::fs::canonicalize(project).map_err(|_| PROJECT_PATH_UNAVAILABLE.to_string())?;
     let (key, key_source) = match crate::project_id::read(&real)? {
-        Some(id) => (id, KeySource::Profile),
+        Some(id) => {
+            if crate::profile::read_profile(&real).is_err() {
+                return Err("the profile does not pass validation, so it gives no key".into());
+            }
+            if !folder_name_ok(&id) {
+                return Err("the profile id is a name the HOME folder cannot use".into());
+            }
+            if hash_key_shaped(&id) {
+                return Err("the profile id has the shape of a path-hash key".into());
+            }
+            (id, KeySource::Profile)
+        }
         None => (path_hash_key(&real)?, KeySource::PathHash),
     };
     Ok(ProjectHome {
@@ -59,14 +101,21 @@ pub fn resolve(home: &Path, project: &Path) -> Result<ProjectHome> {
 }
 
 impl ProjectHome {
+    /// Whether the key has upper-case letters. Two keys that differ only in letter case are
+    /// one folder on a case-insensitive volume (macOS and Windows default), so a caller can
+    /// warn a person about `Demo` next to `demo`. Hash keys and random ids are lower-case.
+    pub fn key_has_upper_case(&self) -> bool {
+        self.key.bytes().any(|b| b.is_ascii_uppercase())
+    }
+
     /// `<dir>/backups/<stamp>/<kind>`: where one backup of `kind` (for example `go-state`)
     /// taken at `stamp` (`YYYYMMDDTHHMMSSZ`) goes. Both parts are checked, so neither can name
     /// a parent folder or a second level.
     pub fn backup_area(&self, stamp: &str, kind: &str) -> Result<PathBuf> {
         if !crate::state_root::utc_stamp(stamp) {
-            return Err(format!("stamp `{stamp}` is not YYYYMMDDTHHMMSSZ"));
+            return Err("backup stamp is not YYYYMMDDTHHMMSSZ".into());
         }
-        if !portable_id(kind) {
+        if !folder_name_ok(kind) {
             return Err("backup kind is not a plain name".into());
         }
         Ok(self.dir.join("backups").join(stamp).join(kind))
@@ -81,12 +130,29 @@ mod tests {
 
     const STAMP: &str = "20261115T050000Z";
 
+    /// A profile that passes full validation, in the project's state folder (`.moai-cli`
+    /// unless the project carries this generation's marker).
     fn profile(project: &Path, id: &str) {
-        let dir = project.join(crate::PROJECT_STATE_DIR);
+        let dir = project.join(crate::state_root::dir(project));
         fs::create_dir_all(&dir).unwrap();
         fs::write(
             dir.join("project.yaml"),
-            format!("{{\"project_id\":\"{id}\"}}"),
+            json!({
+                "schema_version": 2, "project_id": id, "purpose": "p",
+                "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]
+            })
+            .to_string(),
+        )
+        .unwrap();
+    }
+
+    /// Mark `project` with this generation's marker so its state folder is `.moai`.
+    fn mark(project: &Path) {
+        let moai = project.join(crate::state_root::MOAI_DIR);
+        fs::create_dir_all(&moai).unwrap();
+        fs::write(
+            moai.join(crate::state_root::RUST_MARKER),
+            crate::state_root::marker_bytes("test", &[]),
         )
         .unwrap();
     }
@@ -175,6 +241,159 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
         fs::write(dir.join("project.yaml"), "project_id: by hand\n").unwrap();
         assert!(resolve(home.path(), project.path()).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_project_folder_path_that_is_not_utf8_has_no_hash_key() {
+        use std::{ffi::OsStr, os::unix::ffi::OsStrExt};
+        let bad = Path::new(OsStr::from_bytes(b"/tmp/\xff-project"));
+        let err = path_hash_key(bad).unwrap_err();
+        assert_eq!(err, "the project folder path is not UTF-8");
+        assert!(path_hash_key(Path::new("/tmp/project")).is_ok());
+    }
+
+    #[test]
+    fn windows_device_names_are_refused_as_a_key_in_any_letter_case() {
+        for id in [
+            "con", "CON", "Nul", "aux", "prn", "com1", "COM9", "lpt1", "Lpt9",
+        ] {
+            let (home, project) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+            profile(project.path(), id);
+            assert!(resolve(home.path(), project.path()).is_err(), "id {id}");
+        }
+        // Next to the edges: com0 and com10 are not device names, `console` is not `con`.
+        for id in ["com0", "com10", "lpt0", "console", "nulls", "auxiliary"] {
+            let (home, project) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+            profile(project.path(), id);
+            assert_eq!(resolve(home.path(), project.path()).unwrap().key, id);
+        }
+    }
+
+    #[test]
+    fn a_backup_kind_that_is_a_windows_device_name_is_refused() {
+        let (home, project) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        profile(project.path(), "demo");
+        let ph = resolve(home.path(), project.path()).unwrap();
+        for kind in ["nul", "CON", "com1"] {
+            assert!(ph.backup_area(STAMP, kind).is_err(), "kind {kind}");
+        }
+        assert!(ph.backup_area(STAMP, "go-state").is_ok());
+    }
+
+    #[test]
+    fn an_id_shaped_like_a_hash_key_is_refused_and_a_look_alike_is_not() {
+        let hex32 = "0123456789abcdef0123456789abcdef";
+        for id in [
+            format!("path-{hex32}"),
+            format!("PATH-{}", hex32.to_uppercase()),
+            format!("Path-{hex32}"),
+        ] {
+            let (home, project) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+            profile(project.path(), &id);
+            assert!(resolve(home.path(), project.path()).is_err(), "id {id}");
+        }
+        // One digit short or long, a non-hex digit, or another prefix: a plain name.
+        for id in [
+            format!("path-{}", &hex32[..31]),
+            format!("path-{hex32}0"),
+            format!("path-{}g", &hex32[..31]),
+            format!("paths{hex32}"),
+        ] {
+            let (home, project) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+            profile(project.path(), &id);
+            assert_eq!(resolve(home.path(), project.path()).unwrap().key, id);
+        }
+    }
+
+    #[test]
+    fn a_key_with_upper_case_letters_says_so_and_the_rest_do_not() {
+        let home = tempfile::tempdir().unwrap();
+        for (id, upper) in [("Demo", true), ("demo", false), ("de-Mo_1", true)] {
+            let project = tempfile::tempdir().unwrap();
+            profile(project.path(), id);
+            let ph = resolve(home.path(), project.path()).unwrap();
+            assert_eq!(ph.key_has_upper_case(), upper, "id {id}");
+        }
+        let plain = tempfile::tempdir().unwrap();
+        assert!(!resolve(home.path(), plain.path())
+            .unwrap()
+            .key_has_upper_case());
+    }
+
+    #[test]
+    fn a_profile_that_fails_validation_gives_no_key_and_active_home_gives_none_too() {
+        let (home, project) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        let dir = project.path().join(crate::PROJECT_STATE_DIR);
+        fs::create_dir_all(&dir).unwrap();
+        // An id a profile would accept, but no purpose, tools or hosts.
+        fs::write(dir.join("project.yaml"), r#"{"project_id":"demo"}"#).unwrap();
+        assert!(resolve(home.path(), project.path()).is_err());
+        let root = crate::home_root::path(home.path());
+        fs::create_dir_all(root.join("projects").join("demo")).unwrap();
+        fs::write(root.join("projects").join("demo").join("layout.json"), "{}").unwrap();
+        assert_eq!(crate::layout::active_home(project.path(), &root), None);
+    }
+
+    #[test]
+    fn resolve_and_active_home_name_the_same_folder_for_a_valid_profile() {
+        for marked in [false, true] {
+            let (home, project) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+            if marked {
+                mark(project.path());
+            }
+            profile(project.path(), "demo");
+            let ph = resolve(home.path(), project.path()).unwrap();
+            fs::create_dir_all(&ph.dir).unwrap();
+            fs::write(ph.dir.join("layout.json"), "{}").unwrap();
+            let root = crate::home_root::path(home.path());
+            assert_eq!(
+                crate::layout::active_home(project.path(), &root),
+                Some(ph.dir),
+                "marked {marked}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_project_whose_state_folder_is_a_marked_dot_moai_is_keyed_by_the_profile_there() {
+        let (home, project) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        mark(project.path());
+        assert_eq!(
+            crate::state_root::dir(project.path()),
+            crate::state_root::MOAI_DIR
+        );
+        // No profile yet: the hash key. A profile in `.moai`: its id. A profile left only in
+        // the earlier folder is not read, since the marked folder is the one that counts.
+        assert_eq!(
+            resolve(home.path(), project.path()).unwrap().key_source,
+            KeySource::PathHash
+        );
+        profile(project.path(), "demo");
+        assert!(project
+            .path()
+            .join(crate::state_root::MOAI_DIR)
+            .join("project.yaml")
+            .is_file());
+        assert!(!project.path().join(crate::PROJECT_STATE_DIR).exists());
+        let ph = resolve(home.path(), project.path()).unwrap();
+        assert_eq!(
+            (ph.key.as_str(), ph.key_source),
+            ("demo", KeySource::Profile)
+        );
+    }
+
+    #[test]
+    fn a_stamp_error_does_not_repeat_what_the_caller_sent() {
+        let (home, project) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        profile(project.path(), "demo");
+        let ph = resolve(home.path(), project.path()).unwrap();
+        // Neither is a stamp nor a plain name (spaces and a slash), so both are refused.
+        let sent = "SECRET looking/text 123";
+        let err = ph.backup_area(sent, "go-state").unwrap_err();
+        assert!(!err.contains("SECRET") && !err.contains("looking"), "{err}");
+        let err = ph.backup_area(STAMP, sent).unwrap_err();
+        assert!(!err.contains("SECRET") && !err.contains("looking"), "{err}");
     }
 
     #[test]
