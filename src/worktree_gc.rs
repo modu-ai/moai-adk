@@ -521,6 +521,20 @@ pub(crate) fn ignored_split(
             continue;
         }
         let top = wt.join(entry.trim_end_matches('/'));
+        // #3010: a real `node_modules` with a tracked lockfile is install output that the
+        // lockfile rebuilds; it is judged as one unit with its own entry limit instead of file
+        // by file (one install is about 92,000 files, past the 20,000 census limit). Links
+        // inside are removed as links, never followed. Anything the walk cannot vouch for
+        // falls through to the file-by-file census below, which fails closed.
+        if entry == "node_modules/" && install_proof(wt) == (true, true) {
+            let mut marks = Vec::new();
+            if let Some(n) = walk_install(&top, INSTALL_ENTRY_LIMIT, &mut marks) {
+                safe += n.max(1);
+                safe_files.push(top);
+                git_marks.extend(marks);
+                continue;
+            }
+        }
         for f in walk_files(top, &mut seen, &mut git_marks)? {
             let rel = f.strip_prefix(wt).ok()?.to_path_buf();
             if ignored_file_is_safe(wt, primary, &rel) {
@@ -639,6 +653,58 @@ const INSTALL_LOCKFILES: [&str; 6] = [
     "bun.lockb",
 ];
 
+/// More entries than this in one `node_modules` and it is not treated as a rebuildable
+/// install (it keeps its worktree). Measured by the Issue at about 92,000 files for one
+/// install; the limit leaves room for several times that.
+pub(crate) const INSTALL_ENTRY_LIMIT: usize = 500_000;
+
+/// `(real install folder, lockfile tracked)` for the top-level `node_modules` of `wt`. The
+/// folder counts only as a real folder (a symlink may point anywhere), and it is rebuildable
+/// only when a lockfile is in the index (#3010).
+pub(crate) fn install_proof(wt: &Path) -> (bool, bool) {
+    let install_dir = fs::symlink_metadata(wt.join("node_modules")).is_ok_and(|m| m.is_dir());
+    let lockfile_tracked = install_dir
+        && git_out(
+            wt,
+            &[&["ls-files", "--"][..], &INSTALL_LOCKFILES[..]].concat(),
+        )
+        .is_some_and(|s| !s.trim().is_empty());
+    (install_dir, lockfile_tracked)
+}
+
+/// Walks an install folder without following links. Returns how many entries it holds, or
+/// `None` when it is unreadable, holds more than `limit` entries, or holds anything but
+/// files, folders and links (a socket or pipe is not install output). A `.git` inside (a git
+/// dependency) is not walked into; it goes to `git_marks`, which keeps the worktree.
+pub(crate) fn walk_install(
+    top: &Path,
+    limit: usize,
+    git_marks: &mut Vec<PathBuf>,
+) -> Option<usize> {
+    let mut stack = vec![top.to_path_buf()];
+    let mut seen = 0usize;
+    while let Some(d) = stack.pop() {
+        for e in fs::read_dir(&d).ok()?.flatten() {
+            let p = e.path();
+            seen += 1;
+            if seen > limit {
+                return None;
+            }
+            if e.file_name() == ".git" {
+                git_marks.push(p);
+                continue;
+            }
+            let ft = fs::symlink_metadata(&p).ok()?.file_type();
+            if ft.is_dir() {
+                stack.push(p);
+            } else if !(ft.is_file() || ft.is_symlink()) {
+                return None;
+            }
+        }
+    }
+    Some(seen)
+}
+
 /// Lifecycle facts of one worktree (#3010 P1). Read-only and additive: none of this enters the
 /// plan digest or changes any decision, so `worktree-gc-apply` acts exactly as before. Every
 /// value is an observation or a derivation from one; `created_by` is `null` unless the lock
@@ -655,14 +721,7 @@ fn lifecycle(
 ) -> Value {
     let moai_lock = lock_reason.and_then(parse_moai_lock);
     let claim_key = moai_lock.as_ref().map(|(k, _)| k.as_str());
-    // An install folder counts only as a real folder: a symlink may point anywhere.
-    let install_dir = fs::symlink_metadata(path.join("node_modules")).is_ok_and(|m| m.is_dir());
-    let lockfile_tracked = install_dir
-        && git_out(
-            path,
-            &[&["ls-files", "--"][..], &INSTALL_LOCKFILES[..]].concat(),
-        )
-        .is_some_and(|s| !s.trim().is_empty());
+    let (install_dir, lockfile_tracked) = install_proof(path);
     let mut classes: Vec<&str> = Vec::new();
     if locked && moai_lock.is_some() {
         classes.push("locked_by_moai");
@@ -1342,6 +1401,64 @@ mod tests {
         ] {
             assert_eq!(parse_moai_lock(no), None, "{no:?}");
         }
+    }
+
+    #[cfg(unix)]
+    fn install_fixture(files: usize) -> tempfile::TempDir {
+        let d = tempfile::tempdir().unwrap();
+        let top = d.path().join("node_modules/pkg");
+        fs::create_dir_all(&top).unwrap();
+        for i in 0..files {
+            fs::write(top.join(format!("f{i}.js")), "x").unwrap();
+        }
+        d
+    }
+
+    /// The entry limit at its edge: a folder with exactly `limit` entries is walked, one more is
+    /// not (`pkg` itself counts as an entry).
+    #[cfg(unix)]
+    #[test]
+    fn an_install_folder_is_walked_up_to_its_limit_and_not_past_it() {
+        let d = install_fixture(4); // pkg + 4 files = 5 entries
+        let top = d.path().join("node_modules");
+        let mut marks = Vec::new();
+        assert_eq!(walk_install(&top, 5, &mut marks), Some(5));
+        assert_eq!(walk_install(&top, 4, &mut marks), None);
+        assert_eq!(walk_install(&top, 6, &mut marks), Some(5));
+        assert!(marks.is_empty());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_install_walk_follows_no_link_and_refuses_special_files() {
+        let d = install_fixture(1);
+        let outside = tempfile::tempdir().unwrap();
+        for i in 0..10 {
+            fs::write(outside.path().join(format!("o{i}")), "x").unwrap();
+        }
+        let top = d.path().join("node_modules");
+        std::os::unix::fs::symlink(outside.path(), top.join("linked")).unwrap();
+        let mut marks = Vec::new();
+        // pkg + its file + the link itself; nothing behind the link is counted
+        assert_eq!(walk_install(&top, 100, &mut marks), Some(3));
+        let fifo = top.join("pipe");
+        let made = std::process::Command::new("mkfifo").arg(&fifo).status();
+        if made.is_ok_and(|s| s.success()) {
+            assert_eq!(walk_install(&top, 100, &mut marks), None);
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_nested_git_entry_is_marked_not_walked() {
+        let d = install_fixture(1);
+        let top = d.path().join("node_modules");
+        let dep = top.join("gitdep");
+        fs::create_dir_all(dep.join(".git/objects")).unwrap();
+        fs::write(dep.join(".git/objects/o"), "x").unwrap();
+        let mut marks = Vec::new();
+        assert_eq!(walk_install(&top, 100, &mut marks), Some(4)); // pkg, f0, gitdep, .git
+        assert_eq!(marks, vec![dep.join(".git")]);
     }
 
     #[test]
