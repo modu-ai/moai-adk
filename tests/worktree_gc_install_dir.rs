@@ -57,7 +57,13 @@ fn fixture(lockfile: bool, names: &[&str]) -> Fx {
     )
     .unwrap();
     fs::write(root.join("a.txt"), "a\n").unwrap();
-    git(&root, &["add", ".gitignore", "a.txt"]);
+    // a tracked file in `apps/web` makes git list a nested `apps/web/node_modules/` by its own
+    // name; without it git would list just `apps/`
+    write(&root.join("apps/web/package.json"), "{}\n");
+    git(
+        &root,
+        &["add", ".gitignore", "a.txt", "apps/web/package.json"],
+    );
     if lockfile {
         fs::write(root.join("package-lock.json"), "{}\n").unwrap();
         git(&root, &["add", "package-lock.json"]);
