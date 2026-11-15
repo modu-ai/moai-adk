@@ -387,6 +387,40 @@ mod tests {
     }
 
     #[test]
+    fn an_issue_offer_does_not_cover_a_pull_request_with_the_same_number() {
+        let dir = registry();
+        register(dir.path(), "agent-1", NOW + 3000);
+        register(dir.path(), "agent-2", NOW + 3000);
+        let mut issue: Snapshot = serde_json::from_value(json!({"open_issues": [
+            {"number": 40, "title": "a", "labels": [], "comments": []}]}))
+        .unwrap();
+        let a = decide_and_record(dir.path(), "agent-1", &mut issue, NOW);
+        assert_eq!(target(&a), ("pick_issue".into(), 40), "{a}");
+        let mut pr: Snapshot = serde_json::from_value(json!({"prs": [
+            {"number": 40, "head": head('a'), "author_lane": "agent-28", "comments": []}]}))
+        .unwrap();
+        let b = decide_and_record(dir.path(), "agent-2", &mut pr, NOW + 1);
+        assert_eq!(target(&b), ("reserve_audit".into(), 40), "{b}");
+    }
+
+    #[test]
+    fn a_lane_name_that_is_not_a_registry_name_writes_nothing() {
+        let dir = registry();
+        let inner = dir.path().join("reg");
+        fs::create_dir_all(&inner).unwrap();
+        for lane in ["../escape", "a/b", "", "Agent One"] {
+            let v = decide_and_record(&inner, lane, &mut two_prs(), NOW);
+            assert_eq!(v["proposal"]["status"], "unavailable", "{lane:?}: {v}");
+            assert_eq!(target(&v).1, 40, "the decision is made anyway: {v}");
+        }
+        assert!(!dir.path().join("escape.json").exists());
+        assert!(
+            !folder(&inner).exists(),
+            "nothing was written under the registry"
+        );
+    }
+
+    #[test]
     fn trouble_with_the_folder_leaves_the_decision_and_says_why() {
         // No registry folder at all.
         let dir = registry();
