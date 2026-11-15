@@ -1450,7 +1450,9 @@ mod tests {
 
     #[cfg(unix)]
     fn gc_git(dir: &Path, args: &[&str]) {
-        let ok = Command::new("git")
+        let mut cmd = Command::new("git");
+        scrub_git_env(&mut cmd);
+        let ok = cmd
             .args([
                 "-c",
                 "user.name=fixture",
