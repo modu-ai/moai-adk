@@ -455,4 +455,91 @@ mod tests {
         assert_eq!(ids, vec![5, 6]);
         assert_eq!(d.to_json()["count"], 2);
     }
+
+    /// Issue #3052 (AC4): every source file that reads the comments of an Issue or a pull
+    /// request goes through this module, so a command added later cannot honour a control line
+    /// that a non-member wrote. A file that touches the comments URL but reads no comment as
+    /// input is listed here with its reason; a listed file that stops touching it is an error,
+    /// so the list cannot go stale.
+    #[test]
+    fn every_source_file_that_reads_comments_filters_them_by_author() {
+        // What a comment read looks like in source: the REST list and single-comment URLs, and
+        // the GraphQL comment connection. Built from parts so this file does not match itself.
+        let reads: Vec<String> = vec![
+            format!("{}?per_page", "/comments"),
+            format!("{}?", "/comments"),
+            format!("{}\"", "/comments"),
+            format!("{}(last:", "comments"),
+            format!("{}/comments/", "issues"),
+        ];
+        const EXEMPT: [(&str, &str); 2] = [
+            (
+                "forge/mod.rs",
+                "reads the Issue's own metadata and the comment URL of a write, not a comment's text",
+            ),
+            (
+                "gate_merge.rs",
+                "only posts the AUTO-DELTA and merge records; the snapshot it judges comes from gate_collect",
+            ),
+        ];
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut stack = vec![root.clone()];
+        let mut touching = Vec::new();
+        let mut missing = Vec::new();
+        while let Some(d) = stack.pop() {
+            for e in std::fs::read_dir(&d).unwrap() {
+                let p = e.unwrap().path();
+                if p.is_dir() {
+                    stack.push(p);
+                    continue;
+                }
+                if p.extension().is_none_or(|x| x != "rs") {
+                    continue;
+                }
+                let rel = p
+                    .strip_prefix(&root)
+                    .unwrap()
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                if rel == "comment_authority.rs" {
+                    continue;
+                }
+                let text = std::fs::read_to_string(&p).unwrap();
+                // Production code only: the part before the first test module.
+                let prod = text.split("#[cfg(test)]").next().unwrap_or("");
+                let reads_comments = prod.lines().any(|l| {
+                    !l.trim_start().starts_with("//")
+                        && reads.iter().any(|r| l.contains(r.as_str()))
+                });
+                if !reads_comments {
+                    continue;
+                }
+                touching.push(rel.clone());
+                let filters = prod.contains("comment_authority::");
+                let exempt = EXEMPT.iter().any(|(f, _)| *f == rel);
+                if !filters && !exempt {
+                    missing.push(rel);
+                }
+            }
+        }
+        touching.sort();
+        assert!(
+            missing.is_empty(),
+            "these files read comments without comment_authority (keep only a member's comment, \
+             or add the file to EXEMPT with the reason): {missing:?}"
+        );
+        for (file, why) in EXEMPT {
+            assert!(
+                touching.iter().any(|t| t == file),
+                "{file} is exempt ({why}) but no longer touches the comments URL: drop it from EXEMPT"
+            );
+        }
+        // The scan sees what it should: a few files that must be in it.
+        for want in ["claim.rs", "lane_next.rs", "gate_collect.rs", "message.rs"] {
+            assert!(
+                touching.iter().any(|t| t == want),
+                "the scan lost {want}: {touching:?}"
+            );
+        }
+    }
 }

@@ -837,6 +837,27 @@
         }
       ],
       "rejects": "a user.email / GIT_AUTHOR_EMAIL / GIT_COMMITTER_EMAIL value in src/, tests/ or tools/ (Rust, Python) that is not on TEST_IDENTITY_EMAILS (#2878 audit N3)"
+    },
+    {
+      "id": "comment-reads-filter-by-author",
+      "tests": [
+        "src/comment_authority.rs::tests::every_source_file_that_reads_comments_filters_them_by_author"
+      ],
+      "checks": [
+        "cargo test --offline --locked --lib every_source_file_that_reads_comments_filters_them_by_author"
+      ],
+      "rules": [
+        "src/comment_authority.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "a source file that reads Issue or pull request comments (the REST comment URLs or the GraphQL comment connection) without going through comment_authority, so a control line written by a non-member could be honoured (#3052 AC4)"
     }
   ]
 }
