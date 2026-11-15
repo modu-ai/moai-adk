@@ -6,6 +6,7 @@
 
 mod common;
 use common::git::{git, git_ok, git_raw};
+use common::CleanEnv;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{
@@ -74,7 +75,7 @@ impl Fx {
         full.extend(&args[1..]);
         let mut child = Command::new(common::MOAI_BIN)
             .args(&full)
-            .env_clear()
+            .clean_env()
             .env("HOME", &self.home)
             .env("PATH", "/usr/bin:/bin")
             .env("LC_ALL", "C")
