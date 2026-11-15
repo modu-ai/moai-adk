@@ -1033,6 +1033,106 @@ fn waiting_is_a_line_and_the_next_job_and_an_armed_watch_is_idle() {
     );
 }
 
+// #3005 P1 (Codex measurement F3, F4, F5, F6, F9 of Issue #3005): seven Codex lanes of mo.ai.kr
+// stopped before their first claim, four stopped again after a leader dispatch, the leader marked its
+// own goal `blocked` while it only waited, an unrendered screen froze two dispatches, and no lane
+// knew where to post its `LANE-` lines. The text that closes each stop is pinned here.
+#[test]
+fn a_lane_does_not_stop_before_its_first_claim_and_knows_where_to_report() {
+    let agent = workflow("mode-agent.md");
+    let first = agent
+        .find("\n## First turn\n")
+        .expect("the `First turn` section");
+    let busy = agent
+        .find("\n## When the leader is busy or does not answer\n")
+        .expect("the leader-busy summary");
+    let input = agent.find("\n## Input\n").expect("the Input section");
+    assert!(
+        busy < first && first < input,
+        "`First turn` sits after the five-line summary and before `Input`"
+    );
+    let section = &agent[first + 1..];
+    let section = &section[..section[3..].find("\n## ").map_or(section.len(), |i| i + 3)];
+    for p in [
+        "Walk the steps `mode-only`, `banner`, `state`, `session-id` and `claim` in your first turn without stopping",
+        "names the leader as your only channel for instructions and coordination tells you where to send a request",
+        "take the self-claim candidate of `moai queue-free` and `moai lane-next` in the same turn",
+        "The claim comment records ownership; it asks nobody for approval",
+        "is never a reason to stop before the claim round",
+        "On Codex CLI and OMP print the wake line right after the banner, not at the `goal-lines` step",
+        "`moai lane-loop-line --host <codex|omp> --lane <lane> --repo <owner/repo>`",
+        "\"Waiting for the next assignment\" is not a state of this mode",
+        "The coordination Issue is the number your leader's duty or dispatch line names",
+        "`coordination Issue: none named`",
+        "a missing number never keeps a `LANE-DONE` or `LANE-BLOCKED` line off GitHub",
+    ] {
+        assert!(section.contains(p), "`First turn` must say `{p}`:\n{section}");
+    }
+    // The first-run steps stay fixed: the section adds rules, not steps.
+    assert_eq!(
+        procedure_keys(&agent).first().map(String::as_str),
+        Some("mode-only")
+    );
+}
+
+#[test]
+fn an_unrendered_screen_stops_the_typing_never_the_dispatch() {
+    for text in [workflow("mode-leader.md"), workflow("mode-agent.md")] {
+        let orca = &text[text
+            .find("\n## Session control with Orca\n")
+            .expect("the Orca section")..];
+        let orca = &orca[..orca[3..].find("\n## ").map_or(orca.len(), |i| i + 3)];
+        for p in [
+            "A reply whose `source` is `screen-unavailable` is not that case",
+            "returned the accumulated output instead",
+            "count the lane as unconfirmed only when the output is empty too",
+            "type nothing into it",
+            "relay the dispatch as an Issue comment instead",
+            "An unreadable screen stops the typing, never the dispatch",
+        ] {
+            assert!(orca.contains(p), "the Orca section must say `{p}`:\n{orca}");
+        }
+    }
+}
+
+#[test]
+fn a_dispatch_says_to_claim_names_the_report_issue_and_forbids_nothing_extra() {
+    let leader = workflow("mode-leader.md");
+    assert_says(
+        &leader,
+        "answer-requests",
+        &[
+            "it starts with the card (`#<n>`) and the words `claim it first: post your moai-claim line, work only after claim-verify answers owner`",
+            "it names the coordination Issue number the lane posts its `LANE-` lines on",
+            "a read-only task says `read-only` and ends with `report with a LANE-DONE line, then self-pick`",
+            "Never write \"do not start, change or merge anything without approval\" in a dispatch",
+            "a lane's limits are the ones in its own workflow (Exceptions and Permissions) and in the five HOLD categories",
+        ],
+    );
+    assert_says(
+        &leader,
+        "supervise",
+        &["the lane's name, the coordination Issue number and, when you dispatch one, its first task"],
+    );
+}
+
+#[test]
+fn a_leader_that_only_waits_arms_a_wake_and_never_marks_its_goal_blocked() {
+    let leader = workflow("mode-leader.md");
+    assert_says(
+        &leader,
+        "supervise",
+        &[
+            "Waiting is not blocked",
+            "is a `waiting: <what> since <UTC>` line and the next job of this step",
+            "never a reason to mark the host goal `blocked`",
+            "a wake (`mode-channel` step) is armed before the turn ends",
+            "Mark a goal `blocked` only for a HOLD category or a `guarded` choice that only the person can lift",
+            "and still arm the wake",
+        ],
+    );
+}
+
 // #2904 (Codex measurement C3 of #2899 comment 6880316209): a Codex lane that printed no
 // `loop_line` left the person nothing to paste and nothing to wake the lane. On Codex and OMP the
 // `goal-lines` step now requires the host's wake line from `moai lane-loop-line` (and, on Codex,
