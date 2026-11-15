@@ -6,6 +6,7 @@
 //! overwriting. AGENTS.local.md is created once and never modified afterwards.
 
 use crate::apply::{self, decide, read_opt, relative_ok, root_of, target, Decision};
+use crate::state_root;
 use crate::{digest, read_profile, Profile};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -317,15 +318,98 @@ pub fn is_generated_local(bytes: &[u8]) -> bool {
     })
 }
 
-fn render_ignore(root: &Path) -> String {
+/// What the project's state folder keeps in git (#3009 S3b, design §2): the profile, the
+/// generation manifests and workflows this tool writes into it today, the two generation
+/// markers (a fresh checkout classifies the folder by them), and the team's own `config/`,
+/// `decisions/` and `docs/`. Everything else in the folder is machine output and is ignored.
+const STATE_KEPT: [&str; 8] = [
+    "project.yaml",
+    "moai-cli.json",
+    "moai.json",
+    "manifests/",
+    "workflows/",
+    "config/",
+    "decisions/",
+    "docs/",
+];
+
+/// The `kind` an owned `.gitignore` block is recorded with: whether it lists `AGENTS.local.md`
+/// (#3009 S3b). A block recorded before this field existed listed it, so `None` reads as listed.
+const IGNORE_KIND_WITH_LOCAL: &str = "agents:ignore-with-local";
+const IGNORE_KIND_STATE_ONLY: &str = "agents:ignore-state";
+
+/// The managed `.gitignore` block (#3009 S3b, leader decision A): the receipts line, the
+/// state-folder allow-list, and `AGENTS.local.md` only when `list_local` (the personal file is
+/// `ignored`, the behaviour before S3b). `specs/` is kept only for a project without GitHub
+/// Issues (decision 6892663669: with a tracker the spec lives in the Issue, so no local copy).
+fn render_ignore(root: &Path, github_issues: Option<bool>, list_local: bool) -> String {
     let (begin, end) = markers(IGNORE_SECTION, "hash");
+    let state = state_root::dir(root);
+    let mut body = String::new();
+    if list_local {
+        body.push_str("AGENTS.local.md\n");
+    }
     // HOLD-B1 (user-confirmed 2026-11-08, ADK_1989_CONFIRMED_20261108_01): apply
     // receipts stay out of git alongside the
     // personal file; src/apply.rs::receipts_rel is the single source of the path.
-    format!(
-        "{begin}\nAGENTS.local.md\n{}/\n{end}\n",
-        apply::receipts_rel(root)
-    )
+    body.push_str(&format!("{}/\n", apply::receipts_rel(root)));
+    body.push_str(&format!("{state}/*\n"));
+    for kept in STATE_KEPT {
+        body.push_str(&format!("!{state}/{kept}\n"));
+    }
+    if github_issues != Some(true) {
+        body.push_str(&format!("!{state}/specs/\n"));
+    }
+    format!("{begin}\n{body}{end}\n")
+}
+
+fn ignore_kind(list_local: bool) -> &'static str {
+    if list_local {
+        IGNORE_KIND_WITH_LOCAL
+    } else {
+        IGNORE_KIND_STATE_ONLY
+    }
+}
+
+/// `true` when the manifest's owned `.gitignore` block lists `AGENTS.local.md` (#3009 S3b): its
+/// recorded kind says so, or it has none (a block written before the kind existed listed it).
+pub(crate) fn ignore_kind_lists_local(kind: Option<&str>) -> bool {
+    kind.is_none_or(|k| k == IGNORE_KIND_WITH_LOCAL)
+}
+
+/// The line-level preview of a managed block change for the plan's `detail` (#3009 S3b,
+/// condition 1): `+` a line the block gains, `-` a line it loses, nothing for a kept line.
+fn block_line_preview(current: Option<&[u8]>, begin: &str, end: &str, rendered: &str) -> String {
+    let body = |text: &str| -> Vec<String> {
+        text.lines()
+            .filter(|l| *l != begin && *l != end)
+            .map(String::from)
+            .collect()
+    };
+    let old: Vec<String> = current
+        .and_then(|b| std::str::from_utf8(b).ok())
+        .and_then(|text| {
+            find_block(text, begin, end)
+                .ok()
+                .flatten()
+                .map(|(s, e, _)| body(&text[s..e]))
+        })
+        .unwrap_or_default();
+    let new = body(rendered);
+    let added: Vec<&String> = new.iter().filter(|l| !old.contains(l)).collect();
+    let removed: Vec<&String> = old.iter().filter(|l| !new.contains(l)).collect();
+    let mut out = format!(
+        "managed block lines: {} added, {} removed",
+        added.len(),
+        removed.len()
+    );
+    for l in &added {
+        out.push_str(&format!("\n+ {l}"));
+    }
+    for l in &removed {
+        out.push_str(&format!("\n- {l}"));
+    }
+    out
 }
 
 pub(crate) fn ignore_has_rule(text: &str) -> bool {
@@ -451,13 +535,30 @@ fn plan_digest(p: &AgentsPlan) -> String {
 
 /// Records `bytes` as the baseline of one managed section, replacing an earlier entry.
 fn record_owned(owned: &mut Vec<OwnedFile>, path: &str, section: &str, bytes: &[u8]) {
+    record_owned_kind(owned, path, section, bytes, None);
+}
+
+fn record_owned_kind(
+    owned: &mut Vec<OwnedFile>,
+    path: &str,
+    section: &str,
+    bytes: &[u8],
+    kind: Option<&str>,
+) {
     owned.retain(|f| f.path != path);
     owned.push(OwnedFile {
         path: path.into(),
         section_id: Some(section.into()),
         baseline_sha256: digest(bytes),
-        kind: None,
+        kind: kind.map(String::from),
     });
+}
+
+/// Whether the personal file's line goes into the managed `.gitignore` block (#3009 S3b): the
+/// choice is `ignored`, and no user rule of that name already stands before this tool owns a
+/// block (`has_baseline` is false).
+fn lists_local(request: &AgentsRequest, ignore_text: Option<&str>, has_baseline: bool) -> bool {
+    request.local_file == "ignored" && (has_baseline || !ignore_text.is_some_and(ignore_has_rule))
 }
 
 /// What an apply carries over from the previous manifest: the generation linkage (#2127:
@@ -512,7 +613,12 @@ fn adopt_unchanged(
             {
                 let block = &bytes[s..end];
                 if digest(block) == rendered {
-                    record_owned(owned, &f.path, section, block);
+                    if section == IGNORE_SECTION {
+                        let lists = std::str::from_utf8(block).is_ok_and(ignore_has_rule);
+                        record_owned_kind(owned, &f.path, section, block, Some(ignore_kind(lists)));
+                    } else {
+                        record_owned(owned, &f.path, section, block);
+                    }
                 }
             }
         }
@@ -722,34 +828,48 @@ pub(crate) fn agents_plan_for(
         });
     }
 
-    if request.local_file == "ignored" {
+    // #3009 S3b (leader decision A): the managed `.gitignore` block is always planned, for the
+    // state-folder allow-list; `AGENTS.local.md` is listed in it only when the personal file is
+    // `ignored` (the behaviour before S3b) and no user rule of the same name already stands
+    // outside a block this tool owns.
+    {
         let ignore = read_opt(&target(&root, ".gitignore")?)?;
         let ignore_text = match &ignore {
             Some(b) => Some(std::str::from_utf8(b).map_err(|_| "target is not UTF-8")?),
             None => None,
         };
-        if ignore_text.is_some_and(ignore_has_rule) && baseline_for(m, ".gitignore").is_none() {
-            files.push(FilePlan {
-                path: ".gitignore".into(),
-                action: "unchanged".into(),
-                tracked_by_default: true,
-                expected_sha256: ignore.as_deref().map(digest),
-                section_id: Some(IGNORE_SECTION.into()),
-                baseline_sha256: None,
-                rendered_sha256: None,
-                detail: Some("existing user rule names AGENTS.local.md; effective git ignore status not verified".into()),
-            });
-        } else {
-            files.push(section_plan(
-                ".gitignore",
-                true,
-                IGNORE_SECTION,
-                "hash",
+        let has_baseline = baseline_for(m, ".gitignore").is_some();
+        let list_local = lists_local(&request, ignore_text, has_baseline);
+        let user_rule = request.local_file == "ignored" && !list_local;
+        let (begin, end) = markers(IGNORE_SECTION, "hash");
+        let rendered = render_ignore(&root, profile.github_issues, list_local);
+        let mut plan = section_plan(
+            ".gitignore",
+            true,
+            IGNORE_SECTION,
+            "hash",
+            ignore.as_deref(),
+            baseline_for(m, ".gitignore"),
+            &rendered,
+        )?;
+        // Condition 1 of the decision: the block's lines show in the preview, for a new block
+        // and for a widened one alike.
+        if matches!(plan.action.as_str(), "create" | "append" | "merge") {
+            plan.detail = Some(block_line_preview(
                 ignore.as_deref(),
-                baseline_for(m, ".gitignore"),
-                &render_ignore(&root),
-            )?);
+                &begin,
+                &end,
+                &rendered,
+            ));
         }
+        if user_rule {
+            let note = "existing user rule names AGENTS.local.md; effective git ignore status not verified";
+            plan.detail = Some(match plan.detail.take() {
+                Some(d) => format!("{note}\n{d}"),
+                None => note.into(),
+            });
+        }
+        files.push(plan);
     }
 
     let manifest_bytes = read_opt(&target(&root, &manifest_rel)?)?;
@@ -1020,7 +1140,12 @@ pub(crate) fn agents_apply_amended_for(
             }
             ".gitignore" => {
                 let (b, e) = markers(IGNORE_SECTION, "hash");
-                let rendered = render_ignore(&root);
+                let list_local = lists_local(
+                    &p.request,
+                    before.as_deref().and_then(|x| std::str::from_utf8(x).ok()),
+                    owned.iter().any(|o| o.path == ".gitignore"),
+                );
+                let rendered = render_ignore(&root, profile.github_issues, list_local);
                 let out = splice(before.as_deref(), &b, &e, &rendered, "")?;
                 assert_single_block(&out, &b, &e, &rendered)?;
                 (out, Some(IGNORE_SECTION))
@@ -1101,12 +1226,22 @@ pub(crate) fn agents_apply_amended_for(
                     render_review(&profile, &p.request).ok_or("review section has no answers")?;
                 record_owned(&mut owned, &f.path, REVIEW_SECTION, rendered.as_bytes());
             }
-            Some(IGNORE_SECTION) => record_owned(
-                &mut owned,
-                &f.path,
-                IGNORE_SECTION,
-                render_ignore(&root).as_bytes(),
-            ),
+            Some(IGNORE_SECTION) => {
+                // The block just written is the one rendered above; its lines say whether the
+                // personal file is listed, and the record keeps that (#3009 S3b).
+                let written = std::str::from_utf8(&bytes).map_err(|_| "target is not UTF-8")?;
+                let (b, e) = markers(IGNORE_SECTION, "hash");
+                let block = find_block(written, &b, &e)?
+                    .map(|(s, end, _)| &written[s..end])
+                    .ok_or("managed block missing after write")?;
+                record_owned_kind(
+                    &mut owned,
+                    &f.path,
+                    IGNORE_SECTION,
+                    block.as_bytes(),
+                    Some(ignore_kind(ignore_has_rule(block))),
+                );
+            }
             _ => {
                 if !created.contains(&f.path) {
                     created.push(f.path.clone());

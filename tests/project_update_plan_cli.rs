@@ -716,14 +716,12 @@ fn local_file_from_manifest() {
     let request = &step(&plan, "generation")["apply"]["stdin"]["request"];
     assert_eq!(request["local_file"], "none", "{plan}");
     let paths = generation_paths(&plan);
-    assert!(
-        !paths
-            .iter()
-            .any(|p| p == "AGENTS.local.md" || p == ".gitignore"),
-        "{paths:?}"
-    );
+    // #3009 S3b: the managed `.gitignore` block (the state-folder allow-list) is planned for
+    // every choice; the personal file is planned only when the choice makes it.
+    assert!(!paths.iter().any(|p| p == "AGENTS.local.md"), "{paths:?}");
+    assert!(paths.iter().any(|p| p == ".gitignore"), "{paths:?}");
 
-    for (choice, gitignore) in [("tracked", false), ("ignored", true)] {
+    for (choice, lists_local) in [("tracked", false), ("ignored", true)] {
         let fx = Fx::new();
         fx.with_profile(false);
         let mut request = step(&fx.plan(), "generation")["apply"]["stdin"]["request"].clone();
@@ -737,10 +735,16 @@ fn local_file_from_manifest() {
             paths.iter().any(|p| p == "AGENTS.local.md"),
             "{choice}: {paths:?}"
         );
-        assert_eq!(
+        assert!(
             paths.iter().any(|p| p == ".gitignore"),
-            gitignore,
             "{choice}: {paths:?}"
+        );
+        // The block lists the personal file only for the `ignored` choice (condition 4).
+        let ignore = fs::read_to_string(fx.root.join(".gitignore")).unwrap();
+        assert_eq!(
+            ignore.lines().any(|l| l == "AGENTS.local.md"),
+            lists_local,
+            "{choice}: {ignore}"
         );
     }
 
@@ -763,6 +767,58 @@ fn local_file_from_manifest() {
     );
     assert_eq!(generation["apply"], Value::Null, "{generation}");
     assert_eq!(plan["all_unchanged"], json!(false), "{plan}");
+}
+
+/// #3009 S3b: the block recorded before the `kind` field existed listed the personal file, so
+/// a manifest row without a kind still reads as `ignored`; a row whose kind says "state only"
+/// reads as `tracked` when `AGENTS.local.md` exists, and as `none` when it does not.
+#[test]
+fn the_recorded_block_kind_tells_the_personal_file_choice() {
+    let old_block = "# moai:managed:begin id=moai-local\nAGENTS.local.md\n.moai-cli/receipts/\n# moai:managed:end id=moai-local\n";
+    let sha = |b: &str| format!("sha256:{:x}", Sha256::digest(b.as_bytes()));
+    // (kind to record or None to drop it, expected choice in the printed request)
+    for (kind, expected) in [(None, "ignored"), (Some("agents:ignore-state"), "tracked")] {
+        let fx = Fx::new();
+        fx.with_profile(false);
+        let mut request = step(&fx.plan(), "generation")["apply"]["stdin"]["request"].clone();
+        request["local_file"] = json!("ignored");
+        fx.generate(&request);
+        let manifest_path = fx.generation_manifest(&fx.plan());
+        let mut manifest: Value =
+            serde_json::from_slice(&fs::read(&manifest_path).unwrap()).unwrap();
+        let text = if kind.is_none() {
+            old_block.to_string()
+        } else {
+            old_block.replace("AGENTS.local.md\n", "")
+        };
+        for file in manifest["owned_files"].as_array_mut().unwrap() {
+            if file["path"] == ".gitignore" {
+                file["baseline_sha256"] = json!(sha(&text));
+                match kind {
+                    Some(k) => file["kind"] = json!(k),
+                    None => {
+                        file.as_object_mut().unwrap().remove("kind");
+                    }
+                }
+            }
+        }
+        fs::write(
+            &manifest_path,
+            serde_json::to_vec_pretty(&manifest).unwrap(),
+        )
+        .unwrap();
+        fx.write(".gitignore", &text);
+        let plan = fx.plan();
+        let generation = step(&plan, "generation");
+        assert_ne!(
+            generation["state"], "needs_decision",
+            "{kind:?}: {generation}"
+        );
+        assert_eq!(
+            generation["apply"]["stdin"]["request"]["local_file"], expected,
+            "{kind:?}: {generation}"
+        );
+    }
 }
 
 /// #2953 F3: a `ready` profile step holds the generation step until the preview is re-run.
