@@ -27,13 +27,18 @@ pub const CLEAR_CONTEXT_PCT: u32 = 85;
 pub const MAX_CONTEXT_PCT: u32 = 100;
 /// Host bullets in front of an assistant line: Claude Code `⏺`, Codex `•` (decision Q2).
 pub const BULLETS: [char; 2] = ['⏺', '•'];
-/// The four lane markers, each counted only at the start of a line.
-pub const MARKER_WORDS: [(&str, MarkerKind); 4] = [
+/// The five lane markers, each counted only at the start of a line. `LANE-IDLE` is the line a
+/// lane prints once when `lane-next --max-empty` answered `idle_limit` (#3005 P9).
+pub const MARKER_WORDS: [(&str, MarkerKind); 5] = [
     ("LANE-DONE", MarkerKind::Done),
     ("LANE-REPORT", MarkerKind::Report),
     ("LANE-BLOCKED", MarkerKind::Blocked),
     ("LANE-WAIT", MarkerKind::Wait),
+    ("LANE-IDLE", MarkerKind::Idle),
 ];
+/// The reason of the `leave` action for a lane whose last marker is `LANE-IDLE`; the round
+/// lists those lanes under `idle_lanes`.
+pub const IDLE_REASON: &str = "lane_idle";
 /// A line after the last marker holding this text means a card was taken (decision Q3).
 pub const CLAIM_TEXT: &str = "moai-claim:";
 /// The line a `restart` sends.
@@ -125,6 +130,7 @@ pub enum MarkerKind {
     Report,
     Blocked,
     Wait,
+    Idle,
 }
 
 /// A counted `LANE-*` line: its index in the tail and its text without the bullet.
@@ -418,6 +424,16 @@ pub fn decide(
                 return leave(a, "lane_wait");
             }
         }
+    }
+    // 4b. The lane stopped itself after `idle_limit` (#3005 P9): it has nothing to do and no
+    // loop running, so the restart line would only send it round the same empty reads again.
+    // It is a dispatch candidate; a marker after the line (a card it was handed) decides
+    // instead, because only the last marker is read.
+    if last.is_some_and(|m| m.kind == MarkerKind::Idle) {
+        a.notes.push(
+            "LANE-IDLE: the lane stopped itself after idle_limit; it is a dispatch candidate — hand it the next card with a new dispatch, do not type the restart line".into(),
+        );
+        return leave(a, IDLE_REASON);
     }
     // 5. A question for the leader: its line is data, never sent back.
     if let Some(m) = last.filter(|m| m.kind == MarkerKind::Blocked) {
@@ -824,6 +840,71 @@ mod tests {
         );
         assert_eq!(m.found.len(), 1);
         assert_eq!(m.found[0].text, "LANE-DONE agent-29 outside");
+    }
+
+    // #3005 P9: a lane that stopped itself with `LANE-IDLE` (the `lane-next` `idle_limit` line)
+    // is an idle lane, a card the leader can hand it, not a loop to restart.
+
+    const IDLE_LINE: &str = "LANE-IDLE lane=agent-29 checks=6 last=2026-11-14T09:19:00Z restart=enter MODE-AGENT again as lane agent-29 (`/moai --mode-agent` in Claude Code, `$moai --mode-agent` in Codex CLI)";
+
+    #[test]
+    fn a_lane_idle_line_is_a_marker_of_its_own_lane_only() {
+        let other = "LANE-IDLE lane=agent-2 checks=6 last=x restart=y";
+        let tail = format!(
+            "⏺ {IDLE_LINE}\n{other}\nLANE-IDLEX agent-29\n> {IDLE_LINE}\n```\n{IDLE_LINE}\n```\n"
+        );
+        let m = markers(&tail, "agent-29");
+        assert_eq!(m.found.len(), 1, "{:?}", m.found);
+        assert_eq!(m.found[0].kind, MarkerKind::Idle);
+        assert_eq!(m.found[0].text, IDLE_LINE);
+        assert_eq!(m.ignored, vec![other.to_string()]);
+    }
+
+    #[test]
+    fn an_idle_lane_is_left_for_a_dispatch_and_never_restarted() {
+        for end_met in [None, Some(false)] {
+            let obs = with_tail(&format!(
+                "⏺ LANE-REPORT agent-29 nothing to do\n⏺ {IDLE_LINE}"
+            ));
+            let a = decide(&obs, now(), &ResetVerdict::Safe, end_met);
+            assert_eq!(
+                (a.action, a.reason.as_str()),
+                (Act::Leave, "lane_idle"),
+                "{end_met:?}"
+            );
+            assert!(a.send.is_empty(), "{:?}", a.send);
+            assert!(
+                a.notes.iter().any(|n| n.contains("dispatch")),
+                "{:?}",
+                a.notes
+            );
+        }
+    }
+
+    #[test]
+    fn a_marker_after_the_idle_line_decides_instead() {
+        // The leader handed the lane a card and it finished: the card boundary counts.
+        let obs = with_tail(&format!("⏺ {IDLE_LINE}\n⏺ LANE-DONE agent-29 #3000 merged"));
+        let a = safe(&obs);
+        assert_eq!(
+            (a.action, a.reason.as_str()),
+            (Act::ClearRedispatch, "card_boundary")
+        );
+        // A question that came after it is answered.
+        let obs = with_tail(&format!(
+            "⏺ {IDLE_LINE}\n⏺ LANE-BLOCKED agent-29 #3000 kind=decision owner=leader which?"
+        ));
+        assert_eq!(safe(&obs).action, Act::Answer);
+    }
+
+    #[test]
+    fn the_idle_line_does_not_outrank_a_running_turn_or_an_armed_wake() {
+        let mut obs = with_tail(&format!("⏺ {IDLE_LINE}"));
+        obs.turn = Turn::Running;
+        assert_eq!(safe(&obs).reason, "turn_running");
+        let mut obs = with_tail(&format!("⏺ {IDLE_LINE}"));
+        obs.wake_armed = true;
+        assert_eq!(safe(&obs).reason, "wake_armed");
     }
 
     // AC8: the observation's age.
