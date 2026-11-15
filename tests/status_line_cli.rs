@@ -780,6 +780,24 @@ fn a_removed_or_receipt_less_old_status_line_is_not_rewritten() {
     );
     assert_eq!(w.read(SETTINGS), b"{}\n");
 
+    // The old bytes with no ownership receipt: the update preview names it foreign, prints no
+    // command and the file stays (M16: a receipt-less value must not read as MoAI's).
+    let w = modern();
+    w.with_profile();
+    w.write(SETTINGS, &fixture("statusline.settings.json"));
+    let s = step(&update_plan(&w, &w.rust()), "claude-settings");
+    assert_eq!(s["apply"], Value::Null, "{s}");
+    assert_eq!(s["state"], json!("unchanged"), "{s}");
+    let m = &s["preview"]["status_line_migration"];
+    assert_eq!(
+        (&m["state"], &m["reason"]),
+        (&json!("none"), &json!("foreign")),
+        "{s}"
+    );
+    assert_eq!(w.read(SETTINGS), fixture("statusline.settings.json"));
+    let p = settings_plan(&w, &want(), &w.rust());
+    assert!(p.get("status_line_migration").is_none(), "{p}");
+
     let w = world();
     w.write(SETTINGS, &fixture("statusline.settings.json"));
     let before = w.read(SETTINGS);
