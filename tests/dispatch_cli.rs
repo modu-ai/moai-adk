@@ -86,7 +86,7 @@ impl Transport for Remote {
             }
             let id = 100 + self.comments.borrow().len() as u64;
             if self.lands.get() && self.hide_n.get() != Some(self.posts()) {
-                self.comments.borrow_mut().push(json!({"id":id,"body":request.body.as_ref().unwrap()["body"],"user":{"id":self.actor.get()},"created_at":"2026-11-11T00:00:00Z"}));
+                self.comments.borrow_mut().push(json!({"id":id,"author_association":"MEMBER","body":request.body.as_ref().unwrap()["body"],"user":{"id":self.actor.get()},"created_at":"2026-11-11T00:00:00Z"}));
             }
             if self.lost.replace(false) || self.lose_n.get() == Some(self.posts()) {
                 return Err("response lost".into());
@@ -758,9 +758,9 @@ fn unrelated_generic_packets_do_not_block_valid_dispatch_observation() {
     }
     r.comments
         .borrow_mut()
-        .push(json!({"id":9001,"body":"HOLD: preserve the user's draft","user":{"id":99}}));
+        .push(json!({"id":9001,"author_association":"MEMBER","body":"HOLD: preserve the user's draft","user":{"id":99}}));
     r.comments.borrow_mut().push(
-        json!({"id":9002,"body":"<!-- moai-op other-operation:p1:d2:1 -->","user":{"id":99}}),
+        json!({"id":9002,"author_association":"MEMBER","body":"<!-- moai-op other-operation:p1:d2:1 -->","user":{"id":99}}),
     );
     let v = check(&two, &r).unwrap();
     assert_eq!(v["disposition"], "accepted");

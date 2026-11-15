@@ -120,6 +120,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     }
     // The claims: the file's, else read from GitHub; a failed or cut read is said in `unknowns`.
     let mut claims_note = None;
+    let mut ignored = moai_cli::comment_authority::Dropped::default();
     let claims_read_here = obs.claims.is_none();
     if obs.claims.is_none() {
         let read = repo_of(&args).and_then(|(owner, repo)| {
@@ -138,6 +139,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             Ok(r) => {
                 obs.claims = Some(r.claims);
                 claims_note = r.partial;
+                ignored = r.ignored;
             }
             Err(why) => claims_note = Some(why),
         }
@@ -166,12 +168,16 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             }
         }
     }
-    moai_cli::lane_reset::check_full(
+    let mut out = moai_cli::lane_reset::check_full(
         &args.project,
         &args.lane,
         &obs,
         now,
         claims_note.as_deref(),
         &extras,
-    )
+    )?;
+    if !ignored.is_empty() {
+        out["ignored_control_lines"] = ignored.to_json();
+    }
+    Ok(out)
 }

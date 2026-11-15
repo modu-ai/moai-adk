@@ -500,7 +500,7 @@ const CLAIM_70: &str = "moai-claim: session=agent-9 epoch=1 lease_until=2026-11-
 const NOTE_71: &str = "moai-resume: lane=agent-9 issue=7 claim=6000070 lease_until=2026-11-15T08:00:00Z branch=issue/7-card head=0123456789abcdef0123456789abcdef01234567 uncommitted=0\nnext: push";
 
 fn gh_comment(id: u64, login: &str, body: &str) -> Value {
-    json!({"id": id, "user": {"login": login}, "body": body})
+    json!({"id": id, "user": {"login": login}, "author_association": "MEMBER", "body": body})
 }
 
 /// What a stub `gh` answers: the search result, Issue 7's comments (`None` answers 404) and the
@@ -886,6 +886,39 @@ fn a_claim_without_a_resume_note_or_a_running_job_makes_the_lane_not_safe() {
     ]);
     let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&released));
     assert_eq!(result(&r)["claims"]["items"], json!([]), "{r}");
+}
+
+/// Issue #3052: a resume note whose writer is no repository member is not a resume note, even
+/// when it carries the claim author's login; the answer names the comment it left out.
+#[cfg(unix)]
+#[test]
+fn a_resume_note_from_a_non_member_is_ignored_and_reported() {
+    let f = fixture();
+    let flags = clean_flags(&f);
+    for association in [Some("NONE"), Some("CONTRIBUTOR"), Some(""), None] {
+        let mut note = gh_comment(6000071, "GoosLab", NOTE_71);
+        match association {
+            Some(a) => note["author_association"] = json!(a),
+            None => {
+                note.as_object_mut().unwrap().remove("author_association");
+            }
+        }
+        let forge = forge_with(vec![gh_comment(6000070, "GoosLab", CLAIM_70), note]);
+        let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&forge));
+        let res = result(&r);
+        assert_eq!(res["verdict"], "not_safe", "{association:?}: {r}");
+        assert_eq!(
+            res["ignored_control_lines"]["items"][0]["comment_id"], 6000071,
+            "{association:?}: {r}"
+        );
+    }
+    let forge = forge_with(vec![
+        gh_comment(6000070, "GoosLab", CLAIM_70),
+        gh_comment(6000071, "GoosLab", NOTE_71),
+    ]);
+    let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&forge));
+    assert_eq!(result(&r)["verdict"], "safe", "{r}");
+    assert!(result(&r).get("ignored_control_lines").is_none(), "{r}");
 }
 
 #[cfg(unix)]

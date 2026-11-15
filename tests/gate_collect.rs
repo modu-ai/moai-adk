@@ -103,7 +103,7 @@ fn tip_runs(sha: &str, runs: Value) -> Exchange {
 
 /// The `local-check:` pass line for `head` (#2906 S5b, G5).
 fn local_check(head: &str) -> Value {
-    json!({"id": 250, "body": format!("local-check: head={head} result=pass cmd=tools/local_check.sh at=2026-11-14T12:00:00Z\n")})
+    json!({"id": 250, "author_association": "MEMBER", "body": format!("local-check: head={head} result=pass cmd=tools/local_check.sh at=2026-11-14T12:00:00Z\n")})
 }
 
 /// The reads `collect` makes, with a green tip push CI on `tip`; the comments end with the
@@ -137,11 +137,11 @@ fn exchanges(head: &str, tip: &str, mut comments: Vec<Value>, body: &str) -> Rec
 }
 
 fn verdict(head: &str, base: &str) -> Value {
-    json!({"id": 200, "body": format!("AUDIT #9 (x) head {head} base {base} — verdict: PASS\n\n감사: agent-10 (예약 100).\n")})
+    json!({"id": 200, "author_association": "MEMBER", "body": format!("AUDIT #9 (x) head {head} base {base} — verdict: PASS\n\n감사: agent-10 (예약 100).\n")})
 }
 
 fn claim(head: &str) -> Value {
-    json!({"id": 100, "body": format!("moai-audit-claim: lane=agent-10 head={head}\n")})
+    json!({"id": 100, "author_association": "MEMBER", "body": format!("moai-audit-claim: lane=agent-10 head={head}\n")})
 }
 
 fn target(r: &Repo) -> Target<'_> {
@@ -776,7 +776,9 @@ fn the_walk_follows_first_parents_not_a_merged_branch() {
 fn claim_comment(id: u64, first_line: &str) -> Exchange {
     Exchange {
         request: HttpRequest::new("GET", format!("{API}/issues/comments/{id}")),
-        response: ok(json!({"id": id, "body": format!("{first_line}\n\nmore text")})),
+        response: ok(
+            json!({"id": id, "author_association": "MEMBER", "body": format!("{first_line}\n\nmore text")}),
+        ),
     }
 }
 
@@ -810,6 +812,76 @@ fn repo_with_trailers(trailer: &str) -> Repo {
         b: head,
         c: r.c,
     }
+}
+
+/// Issue #3052: a verdict a non-member wrote is not in the snapshot, the snapshot says it was
+/// left out, and the gate stops on the missing verdict; a trailer claim a non-member wrote
+/// stops the collection.
+#[test]
+fn comments_of_non_members_are_left_out_of_the_snapshot_and_reported() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    for association in ["NONE", "CONTRIBUTOR", "", "member"] {
+        let mut outsider = verdict(&r.b, &r.a);
+        outsider["author_association"] = json!(association);
+        let t = exchanges(&r.b, &r.c, vec![claim(&r.b), outsider], PASS_BODY);
+        let s = collect(&target(&r), &t).unwrap();
+        assert_eq!(t.remaining(), 0);
+        assert!(
+            s.comments.iter().all(|c| c.id != 200),
+            "{association:?}: {:?}",
+            s.comments
+        );
+        let reported = s.ignored.to_json();
+        assert_eq!(reported["count"], json!(1), "{association:?}: {reported}");
+        assert_eq!(
+            reported["items"][0]["comment_id"],
+            json!(200),
+            "{association:?}: {reported}"
+        );
+        assert_eq!(
+            gate::check(&s).unwrap_err().rule,
+            "G1",
+            "{association:?}: the verdict is not read"
+        );
+    }
+    // The same verdict from an owner, a member or a collaborator is read.
+    for association in ["OWNER", "MEMBER", "COLLABORATOR"] {
+        let mut v = verdict(&r.b, &r.a);
+        v["author_association"] = json!(association);
+        let t = exchanges(&r.b, &r.c, vec![claim(&r.b), v], PASS_BODY);
+        let s = collect(&target(&r), &t).unwrap();
+        assert!(s.ignored.is_empty(), "{association}");
+        assert!(gate::check(&s).is_ok(), "{association}");
+    }
+}
+
+#[test]
+fn a_trailer_claim_a_non_member_wrote_stops_the_collection() {
+    let r = repo_with_trailers("Moai-Claim: 7#555");
+    let ex = RecordedTransport::new(vec![
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/pulls/9")),
+            response: ok(json!({"head": {"sha": r.b}, "body": PASS_BODY})),
+        },
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
+            response: ok(json!([claim(&r.b), verdict(&r.b, &r.a)])),
+        },
+        Exchange {
+            request: HttpRequest::new(
+                "GET",
+                format!("{API}/commits/{}/check-runs?per_page=100", r.b),
+            ),
+            response: ok(json!({"check_runs": [{"name": "ci", "conclusion": "success"}]})),
+        },
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/issues/comments/555")),
+            response: ok(json!({"id": 555, "author_association": "NONE",
+                "body": "moai-claim: session=agent-26 epoch=1 lease_until=2026-11-13T19:00:00Z"})),
+        },
+    ]);
+    let err = collect(&target(&r), &ex).unwrap_err();
+    assert!(err.contains("not written by a repository member"), "{err}");
 }
 
 /// #2674 R1: the authors are the sessions of the claims the PR's own commits name.
@@ -846,6 +918,7 @@ fn the_authors_are_the_sessions_of_the_claims_in_the_trailers() {
     let mut by_author = s.clone();
     by_author.comments = vec![gate::Comment {
         id: 200,
+        author_association: "MEMBER".into(),
         body: format!(
             "AUDIT #9 (x) head {} base {} — verdict: PASS\n\n감사: agent-26.\n",
             r.b, r.a

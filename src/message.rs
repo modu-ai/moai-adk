@@ -490,10 +490,16 @@ fn observe<T: Transport, C: Clock>(client: &Client<'_, T, C>, entry: &Entry) -> 
         let body = response
             .body
             .ok_or_else(|| err(Kind::Transport, "message comments response missing"))?;
-        let comments = body
+        let mut comments = body
             .as_array()
-            .ok_or_else(|| err(Kind::Transport, "message comments response is not an array"))?;
-        for comment in comments {
+            .ok_or_else(|| err(Kind::Transport, "message comments response is not an array"))?
+            .clone();
+        // Issue #3052: a record or ack marker counts only when a repository member wrote it, so
+        // a forged marker from anyone else can neither confirm a message nor make a second
+        // marker look like a conflict. The commands answer from the journal, which has no place
+        // for the list of comments left out; the filter is the protection here.
+        let _left_out = crate::comment_authority::retain_rest(&mut comments);
+        for comment in &comments {
             let text = comment["body"]
                 .as_str()
                 .ok_or_else(|| err(Kind::Blocked, "message comment body unavailable"))?;
@@ -1056,7 +1062,7 @@ mod durability_tests {
                 self.posts.set(self.posts.get() + 1);
                 let mut comments = self.comments.borrow_mut();
                 let id = 100 + comments.len() as u64;
-                comments.push(json!({"id":id,"body":body,"user":{"id":self.actor.get()}}));
+                comments.push(json!({"id":id,"author_association":"MEMBER","body":body,"user":{"id":self.actor.get()}}));
                 return Ok(HttpResponse::new(201).with_body(json!({"id":id})));
             }
             assert_eq!(request.method, "GET");
