@@ -473,35 +473,48 @@ fn status_says_whether_the_recorded_pid_is_alive() {
 }
 
 /// `status` only reads: the slot file's bytes and modification time and the folder's names are
-/// the same after it.
+/// the same after it, for a live recorded pid and also for a dead one, where it looks up the
+/// processes that have the file open (`holders`).
 #[test]
 fn status_reads_only() {
-    let d = tempfile::tempdir().unwrap();
-    let body = format!(r#"{{"name":"a","pid":{}}}"#, std::process::id());
-    let _lock = held_slot(d.path(), &body);
-    let slot = d.path().join("slot-0");
-    let names = |p: &Path| {
-        let mut v: Vec<String> = fs::read_dir(p)
-            .unwrap()
-            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
-            .collect();
-        v.sort();
-        v
-    };
-    let before = (
-        fs::read(&slot).unwrap(),
-        fs::metadata(&slot).unwrap().modified().unwrap(),
-        names(d.path()),
-    );
-    let result = status(d.path());
-    assert_eq!(result["writes"], false, "{result}");
-    assert_eq!(result["held"][0]["alive"], true, "{result}");
-    let after = (
-        fs::read(&slot).unwrap(),
-        fs::metadata(&slot).unwrap().modified().unwrap(),
-        names(d.path()),
-    );
-    assert_eq!(before, after);
+    let mut gone = Command::new("true").spawn().unwrap();
+    let reaped = gone.id();
+    gone.wait().unwrap();
+    for (pid, alive) in [(std::process::id(), true), (reaped, false)] {
+        let d = tempfile::tempdir().unwrap();
+        let body = format!(r#"{{"name":"a","pid":{pid}}}"#);
+        let _lock = held_slot(d.path(), &body);
+        let slot = d.path().join("slot-0");
+        let names = |p: &Path| {
+            let mut v: Vec<String> = fs::read_dir(p)
+                .unwrap()
+                .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+                .collect();
+            v.sort();
+            v
+        };
+        let before = (
+            fs::read(&slot).unwrap(),
+            fs::metadata(&slot).unwrap().modified().unwrap(),
+            names(d.path()),
+        );
+        let result = status(d.path());
+        assert_eq!(result["writes"], false, "{result}");
+        assert_eq!(result["held"][0]["alive"], alive, "{result}");
+        if !alive {
+            // The lookup ran: the answer is a list or "unavailable", never missing.
+            assert!(
+                result["held"][0].get("holders_source").is_some(),
+                "{result}"
+            );
+        }
+        let after = (
+            fs::read(&slot).unwrap(),
+            fs::metadata(&slot).unwrap().modified().unwrap(),
+            names(d.path()),
+        );
+        assert_eq!(before, after, "alive={alive}");
+    }
 }
 
 /// SIGTERM to the wrapper reaches the command, and the wrapper returns 128 + 15.
