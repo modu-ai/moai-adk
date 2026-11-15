@@ -1824,7 +1824,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             // Outside the plan digest: the #2391 hook state from local evidence, read only.
             let path_env = std::env::var("PATH").unwrap_or_default();
             // The `moai` state was probed once above; the status block repeats it.
-            let moai = out.get("moai_on_path").cloned();
+            let moai = out.get("hook_binary").cloned();
             out["hook_status"] = moai_cli::hooks::status_with(
                 &project,
                 &host,
@@ -1832,6 +1832,13 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 &path_env,
                 moai.as_ref(),
             )?;
+            // What the apply gate would say about the `moai` just probed.
+            let state = moai
+                .as_ref()
+                .and_then(|m| m["state"].as_str())
+                .unwrap_or("wrong_generation")
+                .to_string();
+            moai_cli::hook_legacy::annotate(&mut out, &state);
             Ok(out)
         }
         Command::HooksRevert {
@@ -1847,13 +1854,15 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             lane,
         } => {
             let home = std::env::var_os("HOME").map(PathBuf::from);
-            let mut out = moai_cli::hooks::apply_with(
+            let path_env = std::env::var("PATH").unwrap_or_default();
+            let mut out = moai_cli::update_hooks::apply_direct(
                 &project,
                 &host,
                 home.as_deref(),
                 &plan_digest,
                 &permission_reference,
                 lane.lane_loop(),
+                &path_env,
             )?;
             merge_binary_state(&mut out, &project, home.as_deref());
             Ok(out)
@@ -2331,9 +2340,8 @@ fn lane_stop_hook_main(lane: &str, repo: &str, snapshot: Option<&std::path::Path
     ExitCode::SUCCESS
 }
 
-/// Adds whether the generated hook command resolves on this process's PATH (#2348) to a
-/// hooks-plan / hooks-apply result, and (#3004 P4-1) the state of the first `moai` on it, probed
-/// with `home` as its only variable.
+/// Adds the state of the hook binary, the first `moai` on this process's PATH (#2348, #3004),
+/// to a hooks-plan / hooks-apply result, probed with `home` as its only variable.
 fn merge_binary_state(
     out: &mut serde_json::Value,
     project: &std::path::Path,
