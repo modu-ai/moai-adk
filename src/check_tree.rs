@@ -12,7 +12,10 @@
 //!
 //! This is the warning stage: the command always answers, never fails on a finding, and
 //! writes nothing (one `git ls-files`, then reads). A finding names the path and a count or a
-//! size; the matched text (a user name, a UUID, an id) is never repeated.
+//! size; the matched text (a user name, a UUID, an id) is never repeated. A file is read only
+//! when every folder above it is a real folder (a linked one could lead out of the project),
+//! and only the paths in scope are decoded (a file name that is not UTF-8 elsewhere changes
+//! nothing); what is not read is counted in `not_read`.
 use crate::{contract::PROJECT_PATH_UNAVAILABLE, project_id, worktree_include::secret_name};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
@@ -56,15 +59,41 @@ impl Finding {
 
 /// Whether a tracked path is under one of the two MoAI folders at the top of the project.
 pub fn in_scope(path: &str) -> bool {
-    let first = path.split('/').next().unwrap_or("");
-    path.contains('/')
-        && [crate::state_root::MOAI_DIR, crate::PROJECT_STATE_DIR]
-            .iter()
-            .any(|d| first.eq_ignore_ascii_case(d))
+    in_scope_bytes(path.as_bytes())
+}
+
+/// [`in_scope`] on the raw bytes git printed, so a path that is not UTF-8 can be sorted into
+/// "in scope" or "not" before anything tries to decode it.
+fn in_scope_bytes(path: &[u8]) -> bool {
+    let Some(slash) = path.iter().position(|&b| b == b'/') else {
+        return false;
+    };
+    let first = &path[..slash];
+    [crate::state_root::MOAI_DIR, crate::PROJECT_STATE_DIR]
+        .iter()
+        .any(|d| first.eq_ignore_ascii_case(d.as_bytes()))
 }
 
 fn name_byte(b: u8) -> bool {
     b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-')
+}
+
+/// Whether the text at `bytes[at..]` starts an account name: an ASCII name byte, or a letter
+/// or digit of another script (`홍길동`, `élise`) read as UTF-8. A byte that is not the start of
+/// a whole UTF-8 character, a space (also U+00A0) and a symbol start no name.
+fn name_start(bytes: &[u8], at: usize) -> bool {
+    let Some(&first) = bytes.get(at) else {
+        return false;
+    };
+    if first < 0x80 {
+        return name_byte(first);
+    }
+    let rest = &bytes[at..bytes.len().min(at + 4)];
+    let valid = match std::str::from_utf8(rest) {
+        Ok(s) => s,
+        Err(e) => std::str::from_utf8(&rest[..e.valid_up_to()]).unwrap_or(""),
+    };
+    valid.chars().next().is_some_and(char::is_alphanumeric)
 }
 
 /// Bytes that may stand right before an absolute path in text (a space, a quote, a bracket,
@@ -96,7 +125,7 @@ pub fn absolute_path_hits(bytes: &[u8]) -> usize {
         {
             let before_ok = at == 0 || path_start_boundary(bytes[at - 1]);
             let after = at + prefix.len();
-            let name_ok = bytes.get(after).copied().is_some_and(name_byte);
+            let name_ok = name_start(bytes, after);
             if before_ok && name_ok {
                 hits += 1;
             }
@@ -152,8 +181,21 @@ fn looks_binary(bytes: &[u8]) -> bool {
     bytes.iter().take(8192).any(|&b| b == 0)
 }
 
-/// What the files git tracks in `project` are: `git ls-files -z`, as UTF-8 paths.
-fn tracked(project: &Path) -> Result<Vec<String>> {
+/// The files git tracks in a project, sorted by what concerns this check.
+struct Tracked {
+    /// Every distinct tracked path, whatever its encoding.
+    total: usize,
+    /// The paths under the two MoAI folders that are UTF-8, sorted.
+    scoped: Vec<String>,
+    /// Paths under the two MoAI folders whose names are not UTF-8: they cannot be named in the
+    /// answer, so they are counted as not read.
+    undecodable: usize,
+}
+
+/// What the files git tracks in `project` are: `git ls-files -z`, split on the raw bytes. Only
+/// the paths in scope are decoded, so a file name outside the MoAI folders, whatever its
+/// encoding, never stops the check.
+fn tracked(project: &Path) -> Result<Tracked> {
     let mut cmd = Command::new("git");
     cmd.arg("-C")
         .arg(project)
@@ -163,15 +205,56 @@ fn tracked(project: &Path) -> Result<Vec<String>> {
     if !out.status.success() {
         return Err(format!("not a git work tree: {}", project.display()));
     }
-    let text = String::from_utf8(out.stdout).map_err(|_| "git output is not UTF-8".to_string())?;
-    let mut paths: Vec<String> = text
-        .split('\0')
+    let mut raw: Vec<&[u8]> = out
+        .stdout
+        .split(|&b| b == 0)
         .filter(|p| !p.is_empty())
-        .map(str::to_string)
         .collect();
-    paths.sort();
-    paths.dedup();
-    Ok(paths)
+    raw.sort();
+    raw.dedup();
+    let mut scoped = Vec::new();
+    let mut undecodable = 0;
+    for path in raw.iter().filter(|p| in_scope_bytes(p)) {
+        match std::str::from_utf8(path) {
+            Ok(s) => scoped.push(s.to_string()),
+            Err(_) => undecodable += 1,
+        }
+    }
+    Ok(Tracked {
+        total: raw.len(),
+        scoped,
+        undecodable,
+    })
+}
+
+/// How the folders above a tracked file stand: every step a real folder, one of them a link
+/// (the file is then not inside the project, whatever its name says), or one of them gone.
+#[derive(PartialEq, Eq)]
+enum Parents {
+    Real,
+    Linked,
+    Gone,
+}
+
+/// Looks at each folder between `root` and the file `rel`, one step at a time without
+/// following any link. `symlink_metadata` of the file alone only judges its last name, and a
+/// linked folder above it would lead the read out of the project.
+fn parents_of(root: &Path, rel: &str) -> Parents {
+    let mut dir = root.to_path_buf();
+    let mut parts = rel.split('/').peekable();
+    while let Some(part) = parts.next() {
+        if parts.peek().is_none() {
+            break;
+        }
+        dir.push(part);
+        match fs::symlink_metadata(&dir) {
+            Err(_) => return Parents::Gone,
+            Ok(m) if m.file_type().is_symlink() => return Parents::Linked,
+            Ok(m) if !m.is_dir() => return Parents::Gone,
+            Ok(_) => {}
+        }
+    }
+    Parents::Real
 }
 
 /// The text of a regular file of at most [`SIZE_LIMIT`] bytes; `None` for anything else.
@@ -193,9 +276,9 @@ pub fn check(project: &Path) -> Result<Value> {
     let root = fs::canonicalize(project).map_err(|_| PROJECT_PATH_UNAVAILABLE.to_string())?;
     let all = tracked(&root)?;
     let mut findings: Vec<Finding> = Vec::new();
-    let (mut scoped, mut missing, mut skipped) = (0usize, 0usize, 0usize);
-    for rel in all.iter().filter(|p| in_scope(p)) {
-        scoped += 1;
+    let scoped = all.scoped.len() + all.undecodable;
+    let (mut missing, mut skipped) = (0usize, all.undecodable);
+    for rel in &all.scoped {
         let mut add = |kind: &'static str, amount: Option<(&'static str, u64)>| {
             findings.push(Finding {
                 path: rel.clone(),
@@ -209,6 +292,17 @@ pub fn check(project: &Path) -> Result<Value> {
         }
         if uuid_hits(rel.as_bytes()) > 0 {
             add(SESSION_ID, Some(("hits", 1)));
+        }
+        match parents_of(&root, rel) {
+            Parents::Real => {}
+            Parents::Linked => {
+                skipped += 1;
+                continue;
+            }
+            Parents::Gone => {
+                missing += 1;
+                continue;
+            }
         }
         let full = root.join(rel);
         let Ok(meta) = fs::symlink_metadata(&full) else {
@@ -269,7 +363,7 @@ pub fn check(project: &Path) -> Result<Value> {
     Ok(json!({
         "stage": "warning",
         "status": if total == 0 { "clean" } else { "warnings" },
-        "tracked": all.len(),
+        "tracked": all.total,
         "in_scope": scoped,
         "missing": missing,
         "not_read": skipped,
@@ -412,6 +506,82 @@ mod tests {
         let d = tempfile::tempdir().unwrap();
         let err = check(&d.path().join("nowhere")).unwrap_err();
         assert_eq!(err, PROJECT_PATH_UNAVAILABLE);
+    }
+
+    #[test]
+    fn an_account_name_may_start_with_a_letter_of_any_script() {
+        // B2 of the #3044 audit: Korean and accented account names were passed as clean.
+        for text in [
+            "/home/홍길동/project",
+            "/Users/élise/project",
+            "/Users/Ünal",
+            "/home/日本語",
+            "/home/1",
+            "x=/home/_u",
+        ] {
+            assert_eq!(absolute_path_hits(text.as_bytes()), 1, "{text}");
+        }
+        // The edges: nothing, a separator, a space (also U+00A0), a symbol, a byte that starts
+        // no UTF-8 character, a character cut in two at the end.
+        let cases: [&[u8]; 9] = [
+            b"/home/",
+            b"/home//x",
+            b"/home/ x",
+            "/home/\u{a0}x".as_bytes(),
+            "/home/\u{1f600}x".as_bytes(),
+            b"/home/\xff",
+            b"/home/\x80x",
+            &"/home/홍".as_bytes()[..8],
+            b"/Users/\n",
+        ];
+        for bytes in cases {
+            assert_eq!(absolute_path_hits(bytes), 0, "{bytes:?}");
+        }
+        // A whole character before a cut one still counts once.
+        assert_eq!(absolute_path_hits(&"/home/홍길".as_bytes()[..10]), 1);
+    }
+
+    #[test]
+    fn a_path_is_sorted_into_scope_before_it_is_decoded() {
+        // B1/N1 of the #3044 audit: a name that is not UTF-8 can be told in or out of scope.
+        assert!(in_scope_bytes(b".moai/\xff"));
+        assert!(in_scope_bytes(b".MOAI/a/\xfe\xff"));
+        assert!(!in_scope_bytes(b"src/\xff"));
+        assert!(!in_scope_bytes(b"\xff/a"));
+        assert!(!in_scope_bytes(b".moai"));
+        assert!(!in_scope_bytes(b""));
+        assert!(!in_scope_bytes(b".moai\xff/a"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_linked_or_missing_folder_above_a_file_is_told_from_a_real_one() {
+        let d = tempfile::tempdir().unwrap();
+        let root = d.path().join("project");
+        let outside = d.path().join("outside");
+        fs::create_dir_all(root.join(".moai/real/deep")).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(root.join(".moai/file"), "x").unwrap();
+        std::os::unix::fs::symlink(&outside, root.join(".moai/linked")).unwrap();
+        std::os::unix::fs::symlink(&outside, root.join("top")).unwrap();
+        assert!(parents_of(&root, ".moai/a") == Parents::Real, "one step");
+        assert!(parents_of(&root, ".moai/real/deep/a") == Parents::Real);
+        assert!(
+            parents_of(&root, ".moai/linked/a") == Parents::Linked,
+            "mid"
+        );
+        assert!(
+            parents_of(&root, ".moai/linked/x/y") == Parents::Linked,
+            "first link wins"
+        );
+        assert!(parents_of(&root, "top/a") == Parents::Linked, "top");
+        assert!(parents_of(&root, ".moai/nowhere/a") == Parents::Gone);
+        assert!(
+            parents_of(&root, ".moai/file/a") == Parents::Gone,
+            "a file is no folder"
+        );
+        // The last name is not looked at here: a link as the file itself is `check`'s business.
+        assert!(parents_of(&root, ".moai/linked") == Parents::Real);
     }
 
     #[test]

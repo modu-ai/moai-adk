@@ -321,3 +321,176 @@ fn a_folder_that_is_not_a_git_work_tree_and_a_missing_folder_are_refused() {
     assert!(!ok);
     assert_eq!(e["kind"], json!("not_found"), "{e}");
 }
+
+/// B2 of the #3044 audit: an account name that starts with a letter of another script is a
+/// personal path too. The names are never printed back.
+#[test]
+fn an_account_name_in_korean_or_with_an_accent_is_found_and_never_printed() {
+    let d = repo();
+    write_file(
+        d.path(),
+        ".moai/u1.txt",
+        "/home/홍길동/project\n".as_bytes(),
+    );
+    write_file(
+        d.path(),
+        ".moai/u2.txt",
+        "/Users/élise/project\n".as_bytes(),
+    );
+    write_file(d.path(), ".moai/u3.txt", b"/home/alice/project\n");
+    // Not names: a space, U+00A0, a symbol, a byte that is no UTF-8 character, a bare slash.
+    write_file(d.path(), ".moai/n1.txt", b"/home/ x\n");
+    write_file(d.path(), ".moai/n2.txt", "/home/\u{a0}x\n".as_bytes());
+    write_file(d.path(), ".moai/n3.txt", "/Users/\u{1f600}\n".as_bytes());
+    write_file(d.path(), ".moai/n4.txt", b" /home/\xff\n");
+    write_file(d.path(), ".moai/n5.txt", b"/home//x\n");
+    track(d.path());
+    let (ok, r, raw) = run(d.path());
+    assert!(ok, "{r}");
+    assert_eq!(
+        kinds(&r),
+        vec![
+            pair(".moai/u1.txt", "absolute_path"),
+            pair(".moai/u2.txt", "absolute_path"),
+            pair(".moai/u3.txt", "absolute_path"),
+        ],
+        "{r}"
+    );
+    assert_eq!(r["counts"], json!({"absolute_path": 3}));
+    for name in ["홍길동", "élise", "alice"] {
+        assert!(!raw.contains(name), "the answer repeated `{name}`: {raw}");
+    }
+}
+
+/// B1 of the #3044 audit: a tracked folder replaced by a link to a folder outside the project
+/// must not lead the read out of it. The file in the outside folder holds paths that would be
+/// counted if it were read.
+#[cfg(unix)]
+#[test]
+fn a_file_under_a_linked_folder_is_not_read_and_is_counted_as_not_read() {
+    let d = repo();
+    let outside = tempfile::tempdir().unwrap();
+    write_file(outside.path(), "note.txt", b"/Users/bob/x\n/home/carol/y\n");
+    write_file(d.path(), ".moai/sub/note.txt", b"/Users/alice/x\n");
+    write_file(d.path(), ".moai/deep/inner/note.txt", b"/Users/dave/x\n");
+    write_file(d.path(), ".moai-cli/state/note.txt", b"/Users/erin/x\n");
+    track(d.path());
+    // Control: before any link, every file is read.
+    let (ok, r, _) = run(d.path());
+    assert!(ok, "{r}");
+    assert_eq!(r["counts"], json!({"absolute_path": 3}), "{r}");
+    assert_eq!(r["not_read"], json!(0));
+    // A folder right under `.moai`, one two steps down and one under `.moai-cli` become links.
+    for rel in [".moai/sub", ".moai/deep/inner", ".moai-cli/state"] {
+        std::fs::remove_dir_all(d.path().join(rel)).unwrap();
+        std::os::unix::fs::symlink(outside.path(), d.path().join(rel)).unwrap();
+    }
+    let (ok, r, raw) = run(d.path());
+    assert!(ok, "{r}");
+    assert_eq!(r["findings"], json!([]), "{r}");
+    assert_eq!(r["not_read"], json!(3), "{r}");
+    assert_eq!(r["missing"], json!(0), "{r}");
+    assert_eq!(r["status"], json!("clean"));
+    for name in ["bob", "carol", "alice"] {
+        assert!(!raw.contains(name), "`{name}` is in the answer: {raw}");
+    }
+}
+
+/// The first step counts too: `.moai` itself replaced by a link to a folder outside.
+#[cfg(unix)]
+#[test]
+fn a_linked_moai_folder_is_not_read() {
+    let d = repo();
+    let outside = tempfile::tempdir().unwrap();
+    write_file(outside.path(), "note.txt", b"/Users/bob/x\n");
+    write_file(d.path(), ".moai/note.txt", b"/Users/alice/x\n");
+    track(d.path());
+    std::fs::remove_dir_all(d.path().join(".moai")).unwrap();
+    std::os::unix::fs::symlink(outside.path(), d.path().join(".moai")).unwrap();
+    let (ok, r, raw) = run(d.path());
+    assert!(ok, "{r}");
+    assert_eq!(r["findings"], json!([]), "{r}");
+    assert_eq!(
+        (r["not_read"].clone(), r["missing"].clone()),
+        (json!(1), json!(0)),
+        "{r}"
+    );
+    assert!(!raw.contains("bob"), "{raw}");
+}
+
+/// A folder that is gone above a tracked file is `missing`, like the file itself being gone.
+#[test]
+fn a_tracked_file_whose_folder_was_deleted_is_counted_as_missing() {
+    let d = repo();
+    write_file(d.path(), ".moai/gone/deep/a.md", b"/Users/a/x\n");
+    write_file(d.path(), ".moai/here.md", b"fine\n");
+    track(d.path());
+    std::fs::remove_dir_all(d.path().join(".moai/gone")).unwrap();
+    let (ok, r, _) = run(d.path());
+    assert!(ok, "{r}");
+    assert_eq!(
+        (r["missing"].clone(), r["not_read"].clone()),
+        (json!(1), json!(0)),
+        "{r}"
+    );
+    assert_eq!(r["findings"], json!([]));
+}
+
+/// Adds `name` (raw bytes) to the git index only, as an empty file: most file systems cannot
+/// hold such a name, the index can.
+#[cfg(unix)]
+fn index_only(dir: &Path, name: &[u8]) {
+    use std::ffi::OsString;
+    use std::os::unix::ffi::OsStringExt;
+    let oid = common::git::git(dir, &["hash-object", "-w", "--stdin"]);
+    let mut arg = format!("100644,{oid},").into_bytes();
+    arg.extend_from_slice(name);
+    let out = common::git::command()
+        .args(["update-index", "--add", "--cacheinfo"])
+        .arg(OsString::from_vec(arg))
+        .current_dir(dir)
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+/// N1 of the #3044 audit: a tracked name that is not UTF-8 outside the MoAI folders must not
+/// stop the check; one inside cannot be named in the answer and is counted as not read.
+#[cfg(unix)]
+#[test]
+fn a_file_name_that_is_not_utf8_does_not_stop_the_check() {
+    let d = repo();
+    write_file(d.path(), ".moai/a.md", b"/Users/zed/x\n");
+    track(d.path());
+    index_only(d.path(), b"src/bad\xffname");
+    let (ok, r, _) = run(d.path());
+    assert!(ok, "outside the folders: {r}");
+    assert_eq!(kinds(&r), vec![pair(".moai/a.md", "absolute_path")], "{r}");
+    assert_eq!(
+        (
+            r["tracked"].clone(),
+            r["in_scope"].clone(),
+            r["not_read"].clone()
+        ),
+        (json!(2), json!(1), json!(0)),
+        "{r}"
+    );
+    index_only(d.path(), b".moai/bad\xffname");
+    let (ok, r, _) = run(d.path());
+    assert!(ok, "inside the folders: {r}");
+    assert_eq!(kinds(&r), vec![pair(".moai/a.md", "absolute_path")], "{r}");
+    assert_eq!(
+        (
+            r["tracked"].clone(),
+            r["in_scope"].clone(),
+            r["not_read"].clone()
+        ),
+        (json!(3), json!(2), json!(1)),
+        "{r}"
+    );
+}
