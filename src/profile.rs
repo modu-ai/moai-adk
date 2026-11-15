@@ -81,6 +81,12 @@ pub struct DecisionRecord {
 #[serde(deny_unknown_fields)]
 pub struct Profile {
     pub schema_version: u32,
+    /// The project's fixed id (#3009 S1, decision A 6889383420): the name the HOME store is
+    /// keyed by. A request that leaves it out (or empty) gets the file's existing id, or for a
+    /// profile that does not exist yet a random one from [`crate::project_id::new_id`]; [`plan`]
+    /// fills it in, so a plan and its apply always carry the same id. An existing id, such as
+    /// `demo`, is never replaced.
+    #[serde(default)]
     pub project_id: String,
     pub purpose: String,
     pub tools: Vec<String>,
@@ -453,7 +459,13 @@ fn plan_digest(p: &Plan) -> String {
         .expect("typed plan"),
     )
 }
-pub fn plan(root: &Path, profile: Profile) -> Result<Plan> {
+pub fn plan(root: &Path, mut profile: Profile) -> Result<Plan> {
+    if profile.project_id.is_empty() {
+        profile.project_id = match existing_project_id(root)? {
+            Some(id) => id,
+            None => crate::project_id::new_id()?,
+        };
+    }
     validate(&profile)?;
     if profile.schema_version != 2 {
         return Err("invalid or nonportable profile; no values were logged".into());
@@ -761,6 +773,16 @@ pub fn apply(root: &Path, p: Plan, confirmed: &str, permission: &str) -> Result<
             crate::state_root::rel(root, "manifests/generation.json")
         )]
     }))
+}
+
+/// The `project_id` of the profile file that is already there: `Ok(None)` when the project
+/// has no profile, an error when it has one that is not a JSON object with a usable
+/// `project_id` (the file is left alone). Reads only.
+pub(crate) fn existing_project_id(root: &Path) -> Result<Option<String>> {
+    match read(&target(root)?)? {
+        None => Ok(None),
+        Some(bytes) => crate::project_id::of_profile_bytes(&bytes).map(Some),
+    }
 }
 
 /// Reads the existing profile, keeping only known keys. Unknown user keys are left in the
