@@ -94,6 +94,7 @@ pub mod pr_link;
 pub mod profile;
 pub mod progress;
 pub mod project_detect;
+pub mod project_home;
 pub mod project_hosts;
 pub mod project_id;
 pub mod project_skills;
