@@ -1340,6 +1340,40 @@ fn a_linked_agents_folder_blocks_the_codex_skill_step_and_nothing_lands_beyond_i
     assert!(fs::read_dir(&beyond).unwrap().next().is_none());
 }
 
+/// Audit #3025 B2: a project that is the user's HOME, or lies in a host's configuration folder
+/// under it, gets no `project-skill-apply` command: following it would create the user's own
+/// `~/.agents/skills/moai`. The plan still writes nothing (`plan_installed` compares the trees).
+#[test]
+fn a_project_that_is_the_home_or_inside_its_agents_folder_gets_no_skill_command() {
+    for inside in [None, Some(".agents/work"), Some(".codex/work")] {
+        let base = Fx::new();
+        let (tmp, home) = (base._tmp, base.home);
+        let root = match inside {
+            None => home.clone(),
+            Some(rel) => {
+                let p = home.join(rel);
+                fs::create_dir_all(&p).unwrap();
+                p
+            }
+        };
+        let fx = Fx {
+            _tmp: tmp,
+            home,
+            root,
+        };
+        fx.with_profile(false);
+        let exe = fx.install();
+        let plan = fx.plan_installed(&exe);
+        let s = step(&plan, "codex-skill");
+        assert_eq!(s["state"], "blocked", "{inside:?}: {s}");
+        assert_eq!(s["apply"], Value::Null, "{inside:?}: {s}");
+        assert!(
+            !fx.home.join(".agents/skills/moai").exists(),
+            "{inside:?}: the user's skill folder was created"
+        );
+    }
+}
+
 #[test]
 fn a_project_skill_folder_that_is_not_ours_is_blocked_and_kept() {
     let fx = Fx::new();

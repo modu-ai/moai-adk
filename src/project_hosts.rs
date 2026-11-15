@@ -225,7 +225,8 @@ fn config_from_plan(shown: &str, desired: &Value, plan: &Value) -> HostStep {
 /// too, so a `moai` skill there means the project needs no copy (user decision 6880072221
 /// Q-H3). The step never writes HOME: it only looks for that one file. Without an installed
 /// package there is nothing to copy (`skip`); without a HOME the user decides (`needs_decision`,
-/// no command).
+/// no command); a project that is the HOME or lies in a host configuration folder under it is
+/// `blocked` (audit #3025 B2).
 fn codex_skill_step(
     root: &Path,
     shown: &str,
@@ -244,12 +245,25 @@ fn codex_skill_step(
             "HOME is not set, so the user's own Codex skill folder cannot be checked; nothing is copied",
         );
     };
+    // The same refusal as the hook steps (audit #3025 B2): a project that is the user's HOME, or
+    // lies in a host's configuration folder under it, would make the printed apply write the
+    // user's own skill folder, so no command is offered.
+    if hooks::project_root(root, Some(home)).is_err() {
+        return HostStep::bare(
+            NAME,
+            "blocked",
+            "the project is the user's HOME or lies inside a host configuration folder under it, \
+             or cannot be read; no project skill copy is offered",
+        );
+    }
     let user_copy = home
         .join(".agents")
         .join("skills")
         .join(update::SKILL_DIR)
         .join("SKILL.md");
-    if user_copy.exists() {
+    // `symlink_metadata`, not `exists`: a broken link there is still something the user put in
+    // their own skill folder (audit #3025 N1), so the project offers no copy next to it.
+    if user_copy.symlink_metadata().is_ok() {
         return HostStep::bare(
             NAME,
             "skip",
@@ -528,6 +542,62 @@ mod tests {
         });
         let step = codex_skill_step(&root, "/p", None, &installed);
         assert_eq!(step.state, "needs_decision", "{}", step.reason);
+        assert!(step.apply.is_none());
+    }
+
+    /// Audit #3025 B2: a project that is the HOME, or lies in a host configuration folder or
+    /// the HOME state folder under it, is blocked with no command; a plain project under the
+    /// same HOME is not refused for that reason.
+    #[test]
+    fn a_project_that_is_the_home_or_in_its_host_folders_is_blocked_for_the_skill_copy() {
+        let t = tempfile::tempdir().unwrap();
+        let home = std::fs::canonicalize(t.path()).unwrap();
+        let installed = Ok(Installed {
+            package: home.clone(),
+            agents: home.clone(),
+        });
+        let mut refused = vec![home.clone()];
+        for dir in [".agents", ".codex", ".omp", ".claude"] {
+            let inner = home.join(dir).join("work");
+            std::fs::create_dir_all(&inner).unwrap();
+            refused.push(inner);
+        }
+        for root in &refused {
+            let step = codex_skill_step(root, "/p", Some(&home), &installed);
+            assert_eq!(step.state, "blocked", "{}: {}", root.display(), step.reason);
+            assert!(step.apply.is_none(), "{}", root.display());
+        }
+        // A project beside them is not refused for this reason: the step goes on to the plan
+        // (the empty package folder is then what blocks it, with another reason).
+        let plain = home.join("project");
+        std::fs::create_dir_all(&plain).unwrap();
+        let step = codex_skill_step(&plain, "/p", Some(&home), &installed);
+        assert!(
+            !step.reason.contains("no project skill copy is offered"),
+            "{}",
+            step.reason
+        );
+    }
+
+    /// Audit #3025 N1: a broken link where the user's own moai skill would be is something
+    /// the user put there; the project offers no copy next to it.
+    #[cfg(unix)]
+    #[test]
+    fn a_broken_link_in_the_users_skill_folder_counts_as_their_skill() {
+        let t = tempfile::tempdir().unwrap();
+        let base = std::fs::canonicalize(t.path()).unwrap();
+        let home = base.join("home");
+        let project = base.join("project");
+        let user_skill = home.join(".agents").join("skills").join(update::SKILL_DIR);
+        std::fs::create_dir_all(&user_skill).unwrap();
+        std::fs::create_dir_all(&project).unwrap();
+        std::os::unix::fs::symlink(base.join("missing"), user_skill.join("SKILL.md")).unwrap();
+        let installed = Ok(Installed {
+            package: base.clone(),
+            agents: base.clone(),
+        });
+        let step = codex_skill_step(&project, "/p", Some(&home), &installed);
+        assert_eq!(step.state, "skip", "{}", step.reason);
         assert!(step.apply.is_none());
     }
 
