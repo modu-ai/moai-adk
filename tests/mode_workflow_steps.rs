@@ -1349,3 +1349,198 @@ fn a_lane_without_a_leader_watches_by_a_ladder_and_stops_at_the_idle_limit() {
         ],
     );
 }
+
+/// #3005 N4, N14, N15: one different card per lane and one batched dispatch per lane, a round
+/// that changed nothing ends the turn instead of sleeping, and a lane that loses a card takes
+/// the next one at once.
+#[test]
+fn dispatch_is_batched_per_lane_without_sleep_turns_and_a_lost_card_moves_on() {
+    let leader = workflow("mode-leader.md");
+    assert_says(
+        &leader,
+        "answer-requests",
+        &[
+            "Name a different card to each lane in one round",
+            "remove the cards you already named this round and the cards with a live claim",
+            "Send one batched dispatch per lane",
+            "check the state once per round, not once per send",
+        ],
+    );
+    assert_says(
+        &leader,
+        "supervise",
+        &[
+            "A round that changed nothing ends the turn: write one `waiting:` line, arm the wake and stop",
+            "never fill the turn with `sleep` commands",
+        ],
+    );
+    assert_says(
+        &workflow("mode-agent.md"),
+        "claim",
+        &[
+            "take the next candidate in the same turn and never wait for the other lane",
+            "`claim-verify` answers `not_owner` after your claim",
+        ],
+    );
+}
+
+/// #3005 N1: each round the leader looks for merges that skipped the gate.
+#[test]
+fn the_leader_looks_every_round_for_merges_that_skipped_the_gate() {
+    assert_says(
+        &workflow("mode-leader.md"),
+        "supervise",
+        &[
+            "Every round also looks for merges that skipped the gate",
+            "`gh pr list --state merged`",
+            "name each one whose merge your merge record does not hold, with its number and who merged it",
+            "in one comment on that pull request",
+        ],
+    );
+}
+
+/// #3005 N11: a lane registers its session in its first turn and renews it while it waits.
+#[test]
+fn a_lane_registers_in_its_first_turn_and_renews_while_it_waits() {
+    assert_says(
+        &workflow("mode-agent.md"),
+        "session-id",
+        &[
+            "Register in your first turn, before the claim round, even when you hold no claim yet",
+            "renew at every wake and at least every 30 minutes while you wait",
+            "the lease lasts one hour",
+        ],
+    );
+}
+
+/// #3005 N5, N17: Orca mail is checked for delivery once, and no mode switches the person's
+/// screen focus to read a terminal.
+#[test]
+fn orca_mail_is_checked_for_delivery_and_focus_is_never_switched() {
+    let leader = section_of(&workflow("mode-leader.md"), "Session control with Orca");
+    assert_eq!(
+        leader,
+        section_of(&workflow("mode-agent.md"), "Session control with Orca"),
+        "the two modes carry one Orca section"
+    );
+    for p in [
+        "Never run `orca terminal switch` to read another session",
+        "`orca terminal read --terminal <handle> --screen`",
+        "A message sent as Orca mail is not delivered until its `delivered_at` is set",
+        "Read `delivered_at` once after the send",
+        "send the same text with `orca terminal send` under items 1 and 2",
+        "Never resend a mail whose `delivered_at` is set",
+    ] {
+        assert!(
+            leader.contains(p),
+            "the leader's Orca section must say `{p}`"
+        );
+    }
+    let agent = section_of(&workflow("mode-agent.md"), "Session control with Orca");
+    assert!(
+        agent.contains("Never run `orca terminal switch` to read another session"),
+        "the lane's Orca section must forbid switching focus"
+    );
+}
+
+/// #3005 P3a (F1, F2): a leader with Orca carries a dispatch as a task of a Run (not only as
+/// mail to a terminal handle, which is not kept for a lane that is not checking), falls back
+/// to the Issue comment pointer when the Run path refuses a lane, and detects the channel
+/// before the first send. The section is the leader's alone; the lane's Orca section is
+/// untouched.
+#[test]
+fn a_leader_with_orca_dispatches_through_a_run_and_detects_the_channel() {
+    let leader = workflow("mode-leader.md");
+    let section = section_of(&leader, "Dispatch through an Orca Run");
+    for p in [
+        "Only the leader creates Runs",
+        "(item 2 decides; without Orca this item is skipped)",
+        "carry a dispatch as a task of a Run, not only as typed text",
+        "Keep one Run for the supervision session, not one per round",
+        "read `orca orchestration run-current --json` first",
+        "`orca orchestration run-create --objective \"<round goal>\" --json` only when there is none or the objective changed",
+        "never clear Runs or tasks with `orca orchestration reset` without the user's confirmation",
+        "`orca orchestration task-create --task-title \"<Issue #n>\" --spec-file - --json`",
+        "first read its screen under items 1 and 2 of \"Session control with Orca\"",
+        "`orca orchestration worker-start --task <task_id> --terminal <handle> --worktree <selector of that lane's worktree> --json`",
+        "never `--worktree current`: that is your own worktree",
+        "A started worker is the screen delivery of the pair in the `answer-requests` step",
+        "still post the Issue comment, which is the record, and do not also type the same card with `orca terminal send`",
+        "`orca orchestration send --to dispatch:<dispatch_id> --type dispatch",
+        "Record the task and dispatch ids beside the card in your round summary",
+        "When `worker-start` fails, do not rerun it: read its `failedStage`",
+        "deliver by the Issue comment pointer of the `answer-requests` step",
+        "mark the Run path `not_run` for that lane",
+        "a real Run dispatch to a running lane was not executed on this machine",
+        "keep the lane's own claim comment, never the Run, as the proof of ownership",
+        "a retry that creates a second Run or Task is a duplicate to remove, not a retry",
+        "Detect the channel before the first send",
+        "`orca: yes` or `orca: no (<reason>)`",
+        "`orca status --json` answers with `result.runtime.state` `ready`",
+        "`ORCA_TERMINAL_HANDLE` is not part of that test",
+        "It decides only whether the Run path of item 1 can be used",
+        "answers `no_active_sender_terminal` without it",
+        "`orca terminal list --json`, `orca terminal read` and `orca terminal send` with an explicit `--terminal <handle>` still work",
+        "`orca: yes (run path not_run: ORCA_TERMINAL_HANDLE missing)`, skip item 1",
+        "keep every other rule of \"Session control with Orca\", `restart` and `clear_redispatch` as they are",
+        "drops `ORCA_*`",
+        "Codex's `shell_environment_policy` must let `ORCA_*` through",
+        "Do not edit the person's Codex configuration, and do not guess a `--from` handle",
+        "only then the rules for a leader without Orca apply",
+    ] {
+        assert!(
+            section.contains(p),
+            "`Dispatch through an Orca Run` must say `{p}`:\n{section}"
+        );
+    }
+    for gone in [
+        "if either is missing there is no Orca for this round",
+        "item 1 is unusable",
+        "report the session-control step `not_run`",
+    ] {
+        assert!(
+            !section.contains(gone),
+            "a missing `ORCA_TERMINAL_HANDLE` must not make the whole session control `not_run`: `{gone}`"
+        );
+    }
+    let agent = workflow("mode-agent.md");
+    assert!(
+        !agent.contains("Dispatch through an Orca Run"),
+        "a lane does not create Runs"
+    );
+}
+
+/// #3005 N12: the observations example in the leader's workflow is a file `lane-safe-to-reset`
+/// accepts (its keys are checked by the tool, which refuses an unknown one).
+#[test]
+fn the_observations_example_is_a_file_lane_safe_to_reset_reads() {
+    let supervise = step(&workflow("mode-leader.md"), "supervise");
+    let at = supervise
+        .find("`{\"schema_version\":1")
+        .expect("an observations example");
+    let rest = &supervise[at + 1..];
+    let example = &rest[..rest.find('`').expect("the example ends")];
+    let parsed: serde_json::Value = serde_json::from_str(example).expect("the example is JSON");
+    assert_eq!(parsed["schema_version"], serde_json::json!(1));
+
+    let dir = tempfile::tempdir().unwrap();
+    let repo = dir.path().join("repo");
+    fs::create_dir(&repo).unwrap();
+    common::git::git_ok(&repo, &["init", "-q", "-b", "main"]);
+    let file = dir.path().join("observations.json");
+    fs::write(&file, example).unwrap();
+    let out = Command::new(crate::common::MOAI_BIN)
+        .args(["lane-safe-to-reset", "--lane", "agent-22", "--observations"])
+        .arg(&file)
+        .arg(&repo)
+        .output()
+        .unwrap();
+    let text = String::from_utf8_lossy(&out.stdout);
+    let v: serde_json::Value = serde_json::from_str(&text)
+        .unwrap_or_else(|_| panic!("{text} {}", String::from_utf8_lossy(&out.stderr)));
+    assert_eq!(
+        v["ok"],
+        serde_json::json!(true),
+        "the tool refused the example: {v}"
+    );
+}

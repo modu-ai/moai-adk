@@ -244,6 +244,7 @@ fn an_empty_null_or_placeholder_reference_is_refused_with_its_own_kind() {
 
 /// The digest binds the project by its real path: the same project reached through a link has
 /// the same plan, so a plan made through one name applies through the other.
+#[cfg(unix)]
 #[test]
 fn a_plan_made_through_a_link_to_the_project_applies_to_the_project() {
     let f = fx();
