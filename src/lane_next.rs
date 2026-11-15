@@ -390,7 +390,7 @@ fn closed_claims(thread: &[Comment]) -> Vec<u64> {
 }
 
 /// The lane's live claim in a thread: its comment id, when one is not released or handed off.
-fn live_claim(thread: &[Comment], lane: &str) -> Option<u64> {
+pub(crate) fn live_claim(thread: &[Comment], lane: &str) -> Option<u64> {
     let closed = closed_claims(thread);
     thread
         .iter()
