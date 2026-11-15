@@ -28,6 +28,27 @@ fn get(url: &str, body: Value) -> Exchange {
 
 /// One open PR #5 (`Refs #7`) at `head`, claimed by `author`, with the given verdict.
 fn one_pr(head: &str, author: &str, verdict: &str, ci: &str) -> Vec<Exchange> {
+    one_pr_by(head, author, verdict, ci, Some("MEMBER"))
+}
+
+/// The same PR whose claim and verdict comments carry the given `author_association`
+/// (`None` leaves the field out).
+fn one_pr_by(
+    head: &str,
+    author: &str,
+    verdict: &str,
+    ci: &str,
+    association: Option<&str>,
+) -> Vec<Exchange> {
+    let mut comments = json!([
+        {"id": 100, "body": format!("moai-claim: session={author} epoch=1 lease_until={LEASE}")},
+        {"id": 101, "body": format!("AUDIT #7 (A1) head {head} base b — verdict: {verdict}")},
+    ]);
+    if let Some(a) = association {
+        for c in comments.as_array_mut().unwrap() {
+            c["author_association"] = json!(a);
+        }
+    }
     vec![
         get(
             &format!("{API}/pulls?state=open&base=v2026.11.0&per_page=100"),
@@ -45,13 +66,7 @@ fn one_pr(head: &str, author: &str, verdict: &str, ci: &str) -> Vec<Exchange> {
             &format!("{API}/commits/{head}/check-runs"),
             json!({"check_runs": [{"name": "rc-ci", "status": "completed", "conclusion": ci}]}),
         ),
-        get(
-            &format!("{API}/issues/7/comments?per_page=100"),
-            json!([
-                {"id": 100, "body": format!("moai-claim: session={author} epoch=1 lease_until={LEASE}")},
-                {"id": 101, "body": format!("AUDIT #7 (A1) head {head} base b — verdict: {verdict}")},
-            ]),
-        ),
+        get(&format!("{API}/issues/7/comments?per_page=100"), comments),
     ]
 }
 
@@ -75,6 +90,42 @@ fn tick(project: &Path, lanes: &[&str], exchanges: Vec<Exchange>) -> Value {
         "GET only"
     );
     out
+}
+
+/// Issue #3052: a verdict line and a claim line from a non-member are not read, and the tick
+/// says what it left out; the same comments from a member are read.
+#[test]
+fn verdict_and_claim_lines_from_non_members_are_ignored_and_reported() {
+    for association in [Some("NONE"), Some("CONTRIBUTOR"), Some(""), None] {
+        let tmp = tempfile::tempdir().unwrap();
+        let out = tick(
+            tmp.path(),
+            &[],
+            one_pr_by("h1", "agent-1", "PASS", "success", association),
+        );
+        let now = &out["changes"][0]["now"];
+        assert_eq!(now["verdict"], json!("none"), "{association:?}: {out}");
+        assert_eq!(now["author"], json!(null), "{association:?}: {out}");
+        assert_eq!(
+            out["ignored_control_lines"]["count"], 2,
+            "{association:?}: {out}"
+        );
+    }
+    for association in ["OWNER", "MEMBER", "COLLABORATOR"] {
+        let tmp = tempfile::tempdir().unwrap();
+        let out = tick(
+            tmp.path(),
+            &[],
+            one_pr_by("h1", "agent-1", "PASS", "success", Some(association)),
+        );
+        let now = &out["changes"][0]["now"];
+        assert_eq!(now["verdict"], json!("PASS"), "{association}: {out}");
+        assert_eq!(now["author"], json!("agent-1"), "{association}: {out}");
+        assert!(
+            out.get("ignored_control_lines").is_none(),
+            "{association}: {out}"
+        );
+    }
 }
 
 /// AC-1: the first tick reports the PR; an identical second tick reports nothing and keeps
@@ -228,7 +279,7 @@ fn the_summary_counts_every_pull_request_and_change() {
         ));
         two.push(get(
             &format!("{API}/issues/{issue}/comments?per_page=100"),
-            json!([{"id": 100, "body": format!("moai-claim: session=agent-1 epoch=1 lease_until={LEASE}")}]),
+            json!([{"id": 100, "author_association": "MEMBER", "body": format!("moai-claim: session=agent-1 epoch=1 lease_until={LEASE}")}]),
         ));
     }
     let first = tick(p, &[], two.clone());
