@@ -86,6 +86,14 @@ pub const MAX_WAIT_SECS: u64 = 3600;
 /// idle count ([`crate::lane_idle::classify`]) does not take it for a read that failed.
 pub const TIP_BASE_UNKNOWN: &str = "tip: no --tip and no open pull request to take the base from";
 
+/// Whether a `partial` note is only the comment window ("#1975: only the newest 100 comments
+/// read"): the newest comments, the ones a decision is made on, were read. A busy Issue always
+/// carries it, so the idle count ([`crate::lane_idle::classify`]) does not take it for a read
+/// that failed.
+pub fn is_comment_window_note(note: &str) -> bool {
+    note.ends_with(&format!("only the newest {COMMENTS_READ} comments read"))
+}
+
 /// One comment as read: its id and body (oldest first within a thread).
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct Comment {

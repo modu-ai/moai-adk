@@ -2407,18 +2407,25 @@ mod idle_limit {
         assert_eq!(r["status"], json!("idle_limit"), "3 since the PR: {r}");
     }
 
-    /// With nothing open and no `--tip` every read carries the note that no tip base is known;
-    /// that note alone is not a failed read, or a lane could never go idle once all is done.
+    /// With nothing open and no `--tip` every read carries the note that no tip base is known,
+    /// and a busy Issue always carries the comment-window note ("only the newest 100 comments
+    /// read"); those notes alone are not a failed read, or a lane could never go idle.
     #[test]
-    fn the_no_tip_base_note_alone_does_not_stop_the_count() {
-        let c = clone();
-        let snap = json!({"cards": [], "partial": [moai_cli::lane_next::TIP_BASE_UNKNOWN]});
-        for n in 1..=2u64 {
+    fn the_always_present_partial_notes_alone_do_not_stop_the_count() {
+        let notes = [
+            json!([moai_cli::lane_next::TIP_BASE_UNKNOWN]),
+            json!(["#1975: only the newest 100 comments read"]),
+        ];
+        for note in notes {
+            let c = clone();
+            let snap = json!({"cards": [], "partial": note});
+            for n in 1..=2u64 {
+                let (r, _) = read(&c, LANE, "o/r", &snap, "3");
+                assert_eq!(r["idle"]["consecutive_empty"], json!(n), "{r}");
+            }
             let (r, _) = read(&c, LANE, "o/r", &snap, "3");
-            assert_eq!(r["idle"]["consecutive_empty"], json!(n), "{r}");
+            assert_eq!(r["status"], json!("idle_limit"), "{r}");
         }
-        let (r, _) = read(&c, LANE, "o/r", &snap, "3");
-        assert_eq!(r["status"], json!("idle_limit"), "{r}");
     }
 
     /// A read GitHub answered in part (`partial`), or whose lane-wide end is unknown

@@ -71,11 +71,16 @@ pub fn classify(result: &Value) -> Read {
     {
         return Read::Work;
     }
-    // The note that no tip base is known is always there when nothing is open (the state in
-    // which a lane goes idle), so it does not make a read unreadable.
+    // Two notes are always there in the state in which a lane goes idle, so they do not make a
+    // read unreadable: no tip base is known (nothing is open), and the comment window of a busy
+    // Issue (the newest comments were read). Any other note is a part GitHub did not answer.
     let partial = result["partial"].as_array().is_some_and(|p| {
-        p.iter()
-            .any(|n| n.as_str() != Some(crate::lane_next::TIP_BASE_UNKNOWN))
+        p.iter().any(|n| {
+            n.as_str().is_none_or(|s| {
+                s != crate::lane_next::TIP_BASE_UNKNOWN
+                    && !crate::lane_next::is_comment_window_note(s)
+            })
+        })
     });
     if partial || !result["end_condition"]["met"].is_boolean() {
         return Read::Unreadable;
@@ -531,6 +536,31 @@ mod tests {
         assert_eq!(
             classify(&with("partial", json!([tip, "goal exclusions: x"]))),
             Read::Unreadable
+        );
+        // The comment window of a busy Issue is on every real read; it alone is not a failure,
+        // and next to a real failure the read is unreadable.
+        let window = "#1975: only the newest 100 comments read";
+        assert_eq!(
+            classify(&with(
+                "partial",
+                json!([window, "PR #3: only the newest 100 comments read", tip])
+            )),
+            Read::Empty
+        );
+        assert_eq!(
+            classify(&with(
+                "partial",
+                json!([window, "open pull requests: HTTP 502"])
+            )),
+            Read::Unreadable
+        );
+        assert_eq!(
+            classify(&with(
+                "partial",
+                json!(["#7: only the newest 50 comments read"])
+            )),
+            Read::Unreadable,
+            "another window size is not the known note"
         );
         assert_eq!(classify(&json!({"next": null})), Read::Unreadable);
         assert_eq!(classify(&json!({})), Read::Unreadable);
