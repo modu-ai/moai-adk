@@ -1951,3 +1951,98 @@ fn git_dash_c_names_the_worktree_the_commit_runs_in() {
     ));
     assert!(reason.contains("more than one folder"), "{reason}");
 }
+
+/// The `additionalContext` a session-check answers for this `source` value (`None` leaves the
+/// field out), on the given host.
+fn session_context(host: &str, root: &Path, source: Option<Value>) -> String {
+    let mut input = json!({"hook_event_name": "SessionStart", "session_id": "s", "model": "m"});
+    if let Some(v) = source {
+        input["source"] = v;
+    }
+    let r = run_program(
+        Path::new(BIN),
+        &["hook-dispatch", "--host", host, "--event", "session-check"],
+        root,
+        input.to_string().as_bytes(),
+        &[],
+    )
+    .unwrap();
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
+    v["hookSpecificOutput"]["additionalContext"]
+        .as_str()
+        .unwrap()
+        .to_string()
+}
+
+/// #3015 C6: after a compaction (`source: "compact"`) both hosts run `SessionStart` again; the
+/// answer then says the earlier user instructions were handled and points at the card's newest
+/// `moai-resume:` comment. Any other `source` gets the text it always had.
+#[test]
+fn a_compacted_session_is_told_not_to_rerun_handled_instructions() {
+    let (_d, root) = repo("issue/77-k");
+    let plain = session_context("claude", &root, Some(json!("startup")));
+    let compact = session_context("claude", &root, Some(json!("compact")));
+    assert!(compact.starts_with(&plain), "{compact}");
+    assert!(
+        compact.contains("The user instructions given before the compaction were already handled: do not run them again."),
+        "{compact}"
+    );
+    assert!(
+        compact.contains("newest `moai-resume:` comment of Issue #77"),
+        "{compact}"
+    );
+    assert!(!plain.contains("compaction"), "{plain}");
+    // The branch name's words are not echoed.
+    assert!(!compact.contains("-k"), "{compact}");
+}
+
+#[test]
+fn only_the_exact_compact_source_changes_the_answer() {
+    let (_d, root) = repo("issue/77-k");
+    let plain = session_context("claude", &root, Some(json!("startup")));
+    for source in [
+        Some(json!("resume")),
+        Some(json!("clear")),
+        Some(json!("fork")),
+        Some(json!("Compact")),
+        Some(json!("compact ")),
+        Some(json!("manual")),
+        Some(json!(5)),
+        Some(json!(null)),
+        Some(json!(["compact"])),
+        None,
+    ] {
+        assert_eq!(
+            session_context("claude", &root, source.clone()),
+            plain,
+            "{source:?}"
+        );
+    }
+}
+
+#[test]
+fn a_compacted_codex_session_is_also_pointed_at_its_goal_and_claude_is_not() {
+    let (_d, root) = repo("issue/77-k");
+    let codex_ctx = session_context("codex", &root, Some(json!("compact")));
+    assert!(
+        codex_ctx.ends_with("Check the active /goal before you continue."),
+        "{codex_ctx}"
+    );
+    assert!(codex_ctx.contains("Issue #77"), "{codex_ctx}");
+    let claude_ctx = session_context("claude", &root, Some(json!("compact")));
+    assert!(!claude_ctx.contains("/goal"), "{claude_ctx}");
+    // Codex without a compaction gets no goal sentence.
+    assert!(!session_context("codex", &root, Some(json!("startup"))).contains("/goal"));
+}
+
+#[test]
+fn a_compacted_session_outside_a_lane_branch_names_no_issue_number() {
+    let (_d, root) = repo("main");
+    let ctx = session_context("claude", &root, Some(json!("compact")));
+    assert!(
+        ctx.contains("newest `moai-resume:` comment of your card's Issue"),
+        "{ctx}"
+    );
+    assert!(!ctx.contains("Issue #"), "{ctx}");
+}

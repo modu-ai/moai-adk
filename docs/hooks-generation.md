@@ -28,7 +28,7 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
 
 | event | matcher | handler |
 | --- | --- | --- |
-| `SessionStart` | 없음 | `moai hook-dispatch --host <host> --event session-check`, timeout 10초(#2936 R9 S1: 이전의 `hook-receipt` 대신 세션 점검 답을 냄) |
+| `SessionStart` | 없음 | `moai hook-dispatch --host <host> --event session-check`, timeout 10초(#2936 R9 S1: 이전의 `hook-receipt` 대신 세션 점검 답을 냄). 입력의 `source` 가 정확히 `compact`(압축 뒤)이면 답에 고정 안내를 더한다: 압축 전에 받은 사용자 지시는 이미 처리했으니 다시 실행하지 말고 카드 Issue 의 최신 `moai-resume:` 댓글에서 이어 가라(Codex 는 활성 `/goal` 확인 한 줄도). 그 밖의 `source` 는 이전과 같다. `PreCompact`·`PostCompact` 는 어느 호스트에서도 문맥에 글을 넣지 못해 쓰지 않는다(#3015 C6) |
 | `PreToolUse` | `Bash` | `moai claim-verify . --hook`, timeout 10초(#2255 claim 쓰기 경계, 차단 exit 2) |
 | `PreToolUse`(Claude Code 만) | `Bash\|Write\|Edit\|MultiEdit\|NotebookEdit` | `moai hook-dispatch --host claude --event tool-preflight`, timeout 10초 — 훅 엔진의 위험 Bash·`.git`·자격 증명 폴더·개인 키·토큰 쓰기 가드, 문서화된 PreToolUse `deny` 로만 답함(#2877 리더 Q1: Go 세대 hook 을 바꾼 뒤에도 그 보호가 남게) |
 | `PostToolUse` | `Bash` | `moai hook-receipt --host <host>`, timeout 10초 |

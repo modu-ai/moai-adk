@@ -166,7 +166,7 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
         Some(_) => return engine_error("hook_event_name does not match the requested duty"),
     }
     let verdict = match event {
-        Event::SessionCheck => session_check(cwd),
+        Event::SessionCheck => session_check(host, &input, cwd),
         Event::ToolPreflight => {
             // Stage 7 opt-in rules (B3, B9; decision 6779829826) come from ~/.moai-cli/hook-config.toml,
             // read once per call; an unusable file leaves them off and one line says why (N1).
@@ -461,17 +461,36 @@ fn render_claude(event: Event, verdict: Verdict) -> Answer {
     }
 }
 
-/// session-check: a short, fixed-vocabulary state summary for the model. Never blocks.
-fn session_check(cwd: &Path) -> Verdict {
+/// The sentences a session that was just compacted gets (#3015 C6). Both hosts run the
+/// `SessionStart` hook again after a compaction with `source: "compact"` (Codex hooks page,
+/// https://learn.chatgpt.com/docs/hooks; Claude Code hooks page,
+/// https://code.claude.com/docs/en/hooks; both read 2026-11-15); `PreCompact` and `PostCompact`
+/// cannot put text into the context on either host. The text is fixed: it names no instruction
+/// the user gave and echoes nothing from the input.
+const COMPACTED: &str =
+    "This session was just compacted. The user instructions given before the compaction \
+    were already handled: do not run them again.";
+/// Codex keeps the `/goal` as host state; the sentence points at it and says nothing the host
+/// has not been shown to keep (whether `/goal` survives a compaction is not measured).
+const COMPACTED_CODEX_GOAL: &str = "Check the active /goal before you continue.";
+
+/// session-check: a short, fixed-vocabulary state summary for the model. Never blocks. After a
+/// compaction (`source: "compact"`, exactly that string) it adds [`COMPACTED`] and points at the
+/// card's newest `moai-resume:` comment; any other `source`, or none, gives the text it always did.
+fn session_check(host: Host, input: &Value, cwd: &Path) -> Verdict {
     let state_dir = match std::fs::symlink_metadata(crate::state_root::path(cwd, "")) {
         Ok(m) if m.is_dir() => "present",
         Ok(_) => "not a directory",
         Err(_) => "absent",
     };
+    let mut card_issue = None;
     let lane = match crate::claim_verify::current_branch(cwd)
         .map(|b| crate::claim_verify::lane_branch(&b))
     {
-        Some(crate::claim_verify::LaneBranch::Issue(n)) => format!("Issue #{n}"),
+        Some(crate::claim_verify::LaneBranch::Issue(n)) => {
+            card_issue = Some(n);
+            format!("Issue #{n}")
+        }
         Some(crate::claim_verify::LaneBranch::Unparseable) => "unparseable issue/ branch".into(),
         Some(crate::claim_verify::LaneBranch::NotLane) => "none".into(),
         None => "none (detached HEAD or not a git worktree)".into(),
@@ -481,12 +500,29 @@ fn session_check(cwd: &Path) -> Verdict {
     } else {
         "absent"
     };
-    Verdict::Context(format!(
+    let mut text = format!(
         "MoAI session-check (moai {}): project state directory {}: {state_dir}; lane branch: \
          {lane}; local claim record: {record}. Read locally; no network was used.",
         env!("CARGO_PKG_VERSION"),
         crate::state_root::dir(cwd),
-    ))
+    );
+    if input.get("source").and_then(Value::as_str) == Some("compact") {
+        text.push(' ');
+        text.push_str(COMPACTED);
+        let card = match card_issue {
+            Some(n) => format!("Issue #{n}"),
+            None => "your card's Issue".to_string(),
+        };
+        text.push_str(&format!(
+            " Continue from the newest `moai-resume:` comment of {card} (read it there; this hook \
+             did not)."
+        ));
+        if host == Host::Codex {
+            text.push(' ');
+            text.push_str(COMPACTED_CODEX_GOAL);
+        }
+    }
+    Verdict::Context(text)
 }
 
 /// tool-preflight, stage 1 policy: a Bash `git commit` on a lane branch `issue/<n>-…` that has
