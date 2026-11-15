@@ -598,7 +598,10 @@ fn a_moai_that_hangs_on_the_probe_is_unprobed() {
         &["claude-settings-plan", w.project.to_str().unwrap()],
         &want(),
         &w.dir("hangs"),
-        &[("MOAI_CLI_TEST_PROBE_TIMEOUT_MS", "300")],
+        // The limit applies to the `--version` probe too, which the fake answers at once; it is
+        // long enough for a loaded machine to start the script, and the fake sleeps 30 s on
+        // `statusline`, so ending under the bound below still proves the hung child is not awaited.
+        &[("MOAI_CLI_TEST_PROBE_TIMEOUT_MS", "3000")],
     );
     assert!(
         started.elapsed().as_secs() < 20,
