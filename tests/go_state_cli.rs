@@ -2176,6 +2176,8 @@ fn a_failed_ignore_file_after_the_rename_names_the_state_and_the_revert() {
     assert!(!message.contains("nothing else changed"), "{v}");
     assert!(!message.contains("renamed back"), "{v}");
     assert_eq!(v["error"]["kind"], json!("partial"), "{v}");
+    // The claim about the files is pinned: none has moved yet (checked on disk below).
+    assert!(message.contains("no file has moved yet"), "{v}");
     assert!(message.contains(".moai-backup"), "{v}");
     assert!(
         message.contains("injected test fault at go_state_before_ignore"),
@@ -2222,6 +2224,7 @@ fn a_failed_ignore_file_of_an_earlier_root_move_names_the_state_and_the_revert()
     let message = v["error"]["message"].as_str().unwrap();
     assert!(!message.contains("nothing else changed"), "{v}");
     assert_eq!(v["error"]["kind"], json!("partial"), "{v}");
+    assert!(message.contains("no file has moved yet"), "{v}");
     assert!(
         message.contains("injected test fault at go_state_legacy_before_ignore"),
         "{v}"
