@@ -27,7 +27,7 @@
 //! Limits: every lane posts through one shared GitHub account, so `--lane` cannot be
 //! authenticated; the check against the claim comment's `session=` only narrows it.
 
-use crate::claim::{ClaimRecord, Journal, JournalEvent, ACTIVE_STATES};
+use crate::claim::{ClaimRecord, Journal, JournalEvent, WorktreeId, ACTIVE_STATES};
 use crate::claim_verify::{
     classify_comment, evaluate, read_comments, refusal, CommentKind, Verifier,
 };
@@ -182,6 +182,129 @@ pub fn resolve_repo(project: &Path, repo: Option<&str>) -> Result<(String, Strin
 /// Opens nothing: the journal events of an already locked journal.
 pub fn active_records(journal: &Journal) -> Result<Vec<ClaimRecord>> {
     Ok(latest_active(journal.read_events()?))
+}
+
+/// What the target folder measures as, and how its HEAD relates to the claim base.
+#[derive(Clone, Debug)]
+pub struct Probe {
+    /// Path, git dir, common dir, HEAD and branch, measured by git (canonical paths, as
+    /// `claim-acquire` records them). `branch` is `None` on a detached HEAD.
+    pub id: WorktreeId,
+    /// `equal` (HEAD is the base) or `descends` (HEAD is a later commit of the base).
+    pub relation: &'static str,
+}
+
+/// Exit code and stdout of `git -C dir args`; `Err` only when git cannot be started.
+fn git_code(dir: &Path, args: &[&str]) -> Result<(i32, String)> {
+    let mut cmd = std::process::Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    let out = cmd
+        .arg("-C")
+        .arg(dir)
+        .args(args)
+        .stdin(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .map_err(|_| "git unavailable".to_string())?;
+    Ok((
+        out.status.code().unwrap_or(-1),
+        String::from_utf8_lossy(&out.stdout).trim().to_string(),
+    ))
+}
+
+/// Measures `target` and decides whether it may be linked to a record whose claim base is
+/// `base`. Reads only (git rev-parse, worktree list, cat-file, merge-base). Refuses, in this
+/// order: a path that is not UTF-8; a symlink, a missing path or a file (the identity
+/// reader's own refusals); a folder that is not inside a git work tree, or is a bare
+/// repository or a bare git directory (`not_a_worktree`); a work tree of another clone
+/// (`common_dir_differs`); a work tree `git worktree list` of this clone does not register
+/// (`not_a_worktree`, which also catches a forged `.git` file and a pruned worktree); a base
+/// commit this clone does not have (`base_missing`); and a HEAD that does not contain the
+/// base (`base_not_in_head`, naming the one git command that fixes it). A detached HEAD is
+/// linkable, with no branch.
+pub fn probe_target(project: &Path, target: &Path, base: &str) -> Result<Probe> {
+    let Some(shown) = target.to_str() else {
+        return Err("invalid claim link request: the worktree path is not UTF-8".into());
+    };
+    if !crate::worktree::is_sha(base) {
+        return Err("invalid record: base_revision must be 40 lowercase hex".into());
+    }
+    let ident = crate::identity::identity(target)?;
+    match ident["identity_status"].as_str() {
+        Some("ok") => {}
+        Some("git_unavailable") => return Err("git unavailable".into()),
+        _ => {
+            return Err(refuse(
+                "not_a_worktree",
+                format!("{shown} is not inside a git work tree"),
+            ))
+        }
+    }
+    if !matches!(ident["workspace_kind"].as_str(), Some("primary" | "linked")) {
+        return Err(refuse(
+            "not_a_worktree",
+            format!("{shown} is a bare repository or a git directory, not a work tree"),
+        ));
+    }
+    let mine = crate::identity::identity(project)?;
+    if mine["clone_anchor"].is_null() || mine["clone_anchor"] != ident["clone_anchor"] {
+        return Err(refuse(
+            "common_dir_differs",
+            format!("{shown} belongs to another clone than the journal's"),
+        ));
+    }
+    let top = ident["work_tree"].as_str().unwrap_or_default().to_string();
+    let registered = crate::worktree::worktrees(project)?
+        .iter()
+        .any(|e| std::fs::canonicalize(&e.path).is_ok_and(|p| p == Path::new(&top)));
+    if !registered {
+        return Err(refuse(
+            "not_a_worktree",
+            format!("{top} is not a worktree git lists for this clone (git worktree list)"),
+        ));
+    }
+    let id = crate::claim::worktree_id(&ident)?;
+    let commit = format!("{base}^{{commit}}");
+    if git_code(Path::new(&top), &["cat-file", "-e", &commit])?.0 != 0 {
+        return Err(refuse(
+            "base_missing",
+            format!("the claim base {base} is not a commit of this clone"),
+        ));
+    }
+    let quoted = crate::lane_env::quote(Path::new(&id.path));
+    match git_code(
+        Path::new(&top),
+        &["merge-base", "--is-ancestor", base, "HEAD"],
+    )?
+    .0
+    {
+        0 => Ok(Probe {
+            relation: if id.head == base { "equal" } else { "descends" },
+            id,
+        }),
+        1 => {
+            // HEAD an ancestor of the base: it only lags and fast-forwards; otherwise it has
+            // commits of its own and the base has to be merged in.
+            let behind = git_code(
+                Path::new(&top),
+                &["merge-base", "--is-ancestor", "HEAD", base],
+            )?
+            .0 == 0;
+            let fix = if behind {
+                format!("git -C {quoted} merge --ff-only {base}")
+            } else {
+                format!("git -C {quoted} merge {base}")
+            };
+            Err(refuse(
+                "base_not_in_head",
+                format!(
+                    "HEAD {} of this worktree does not contain the claim base {base}; run `{fix}`",
+                    id.head
+                ),
+            ))
+        }
+        _ => Err("git failed: merge-base could not compare HEAD with the claim base".into()),
+    }
 }
 
 #[cfg(test)]
@@ -400,5 +523,232 @@ mod tests {
             crate::contract::Kind::Transport,
             "{err}"
         );
+    }
+}
+
+#[cfg(test)]
+mod probe_tests {
+    use super::*;
+    use std::fs;
+    use std::path::PathBuf;
+
+    /// `git` with the fixture guards; returns trimmed stdout, panics on failure.
+    fn git(dir: &Path, args: &[&str]) -> String {
+        let out = std::process::Command::new("git")
+            .args(["-c", "gc.auto=0", "-c", "maintenance.auto=false"])
+            .args(["-c", "user.name=t", "-c", "user.email=t@example.invalid"])
+            .args([
+                "-c",
+                "commit.gpgsign=false",
+                "-c",
+                "init.defaultBranch=main",
+            ])
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .env("LC_ALL", "C")
+            .arg("-C")
+            .arg(dir)
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    }
+
+    /// A clone with one commit on `main`; the returned folder is canonical.
+    fn repo() -> (tempfile::TempDir, PathBuf) {
+        let dir = tempfile::TempDir::new().unwrap();
+        let root = fs::canonicalize(dir.path()).unwrap();
+        git(&root, &["init", "-q", "-b", "main"]);
+        git(&root, &["commit", "-q", "--allow-empty", "-m", "base"]);
+        (dir, root)
+    }
+
+    fn add_worktree(root: &Path, name: &str, branch: &str, from: &str) -> PathBuf {
+        let path = root.parent().unwrap().join(name);
+        git(
+            root,
+            &[
+                "worktree",
+                "add",
+                "-q",
+                "-b",
+                branch,
+                path.to_str().unwrap(),
+                from,
+            ],
+        );
+        fs::canonicalize(path).unwrap()
+    }
+
+    fn code(err: &str) -> &str {
+        err.strip_prefix("conflict in claim link: ")
+            .and_then(|r| r.split(':').next())
+            .unwrap_or("")
+    }
+
+    #[test]
+    fn head_equal_to_the_base_and_a_later_commit_both_link() {
+        let (_d, root) = repo();
+        let base = git(&root, &["rev-parse", "HEAD"]);
+        let w = add_worktree(&root, "w-equal", "feat/x", "HEAD");
+        let p = probe_target(&root, &w, &base).unwrap();
+        assert_eq!(p.relation, "equal");
+        assert_eq!(p.id.path, w.to_str().unwrap());
+        assert_eq!(p.id.branch.as_deref(), Some("feat/x"));
+        assert_eq!(p.id.head, base);
+        assert_eq!(p.id.common_dir, root.join(".git").to_str().unwrap());
+        assert!(p.id.git_dir.contains("worktrees"), "{}", p.id.git_dir);
+        // base + 1 commit: HEAD descends from the base.
+        git(&w, &["commit", "-q", "--allow-empty", "-m", "one more"]);
+        let p = probe_target(&root, &w, &base).unwrap();
+        assert_eq!(p.relation, "descends");
+        assert_ne!(p.id.head, base);
+        // The primary checkout is a work tree too, and links with its own branch.
+        let p = probe_target(&root, &root, &base).unwrap();
+        assert_eq!(p.id.branch.as_deref(), Some("main"));
+    }
+
+    #[test]
+    fn a_detached_head_links_with_no_branch() {
+        let (_d, root) = repo();
+        let base = git(&root, &["rev-parse", "HEAD"]);
+        let w = add_worktree(&root, "w-detached", "feat/d", "HEAD");
+        git(&w, &["switch", "-q", "--detach"]);
+        let p = probe_target(&root, &w, &base).unwrap();
+        assert_eq!(p.id.branch, None);
+    }
+
+    #[test]
+    fn a_path_with_spaces_and_a_subfolder_resolve_to_the_work_tree_top() {
+        let (_d, root) = repo();
+        let base = git(&root, &["rev-parse", "HEAD"]);
+        let w = add_worktree(&root, "my work tree", "feat/s", "HEAD");
+        let sub = w.join("sub dir");
+        fs::create_dir(&sub).unwrap();
+        let p = probe_target(&root, &sub, &base).unwrap();
+        assert_eq!(p.id.path, w.to_str().unwrap(), "the record holds the top");
+    }
+
+    #[test]
+    fn a_head_that_lacks_the_base_is_refused_with_the_git_command_that_fixes_it() {
+        let (_d, root) = repo();
+        let old = git(&root, &["rev-parse", "HEAD"]);
+        git(&root, &["commit", "-q", "--allow-empty", "-m", "newer"]);
+        let base = git(&root, &["rev-parse", "HEAD"]);
+        // Behind: a worktree made from the older commit fast-forwards.
+        let w = add_worktree(&root, "w-behind", "feat/b", &old);
+        let err = probe_target(&root, &w, &base).unwrap_err();
+        assert_eq!(code(&err), "base_not_in_head", "{err}");
+        let fix = format!("run `git -C '{}' merge --ff-only {base}`", w.display());
+        assert!(err.ends_with(&fix), "{err}");
+        // Diverged: the worktree has a commit the base does not, so a merge is needed.
+        git(&w, &["commit", "-q", "--allow-empty", "-m", "own"]);
+        let err = probe_target(&root, &w, &base).unwrap_err();
+        let fix = format!("run `git -C '{}' merge {base}`", w.display());
+        assert!(err.ends_with(&fix), "{err}");
+        // After the merge the link is possible.
+        git(&w, &["merge", "-q", "--no-edit", &base]);
+        assert_eq!(probe_target(&root, &w, &base).unwrap().relation, "descends");
+        // A base this clone does not have.
+        let err = probe_target(&root, &w, &"c".repeat(40)).unwrap_err();
+        assert_eq!(code(&err), "base_missing", "{err}");
+    }
+
+    #[test]
+    fn the_target_must_be_a_registered_worktree_of_this_clone() {
+        let (_d, root) = repo();
+        let base = git(&root, &["rev-parse", "HEAD"]);
+        // A plain folder.
+        let plain = tempfile::TempDir::new().unwrap();
+        let err = probe_target(&root, &fs::canonicalize(plain.path()).unwrap(), &base).unwrap_err();
+        assert_eq!(code(&err), "not_a_worktree", "{err}");
+        // A work tree of another clone.
+        let (_d2, other) = repo();
+        let err = probe_target(&root, &other, &base).unwrap_err();
+        assert_eq!(code(&err), "common_dir_differs", "{err}");
+        // A forged `.git` file in a plain folder that points at this clone's git dir: the
+        // folder is not in `git worktree list`.
+        let forged = root.parent().unwrap().join("forged");
+        fs::create_dir(&forged).unwrap();
+        fs::write(
+            forged.join(".git"),
+            format!("gitdir: {}\n", root.join(".git").display()),
+        )
+        .unwrap();
+        let err = probe_target(&root, &forged, &base).unwrap_err();
+        assert!(
+            matches!(code(&err), "not_a_worktree" | "common_dir_differs"),
+            "{err}"
+        );
+        // A pruned worktree: the folder stays but its admin directory is gone.
+        let w = add_worktree(&root, "w-pruned", "feat/p", "HEAD");
+        let admin = fs::read_dir(root.join(".git").join("worktrees"))
+            .unwrap()
+            .map(|e| e.unwrap().path())
+            .find(|p| {
+                fs::read_to_string(p.join("gitdir"))
+                    .is_ok_and(|g| g.trim().starts_with(w.to_str().unwrap()))
+            })
+            .unwrap();
+        fs::remove_dir_all(admin).unwrap();
+        let err = probe_target(&root, &w, &base).unwrap_err();
+        assert_eq!(code(&err), "not_a_worktree", "{err}");
+        // A deleted folder.
+        let gone = root.parent().unwrap().join("never-made");
+        let err = probe_target(&root, &gone, &base).unwrap_err();
+        assert_eq!(
+            crate::contract::classify(&err),
+            crate::contract::Kind::NotFound,
+            "{err}"
+        );
+        // A bare repository.
+        let bare = tempfile::TempDir::new().unwrap();
+        let bare_root = fs::canonicalize(bare.path()).unwrap();
+        git(&bare_root, &["init", "-q", "--bare"]);
+        let err = probe_target(&root, &bare_root, &base).unwrap_err();
+        assert_eq!(code(&err), "not_a_worktree", "{err}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_symlinked_target_is_refused() {
+        let (_d, root) = repo();
+        let base = git(&root, &["rev-parse", "HEAD"]);
+        let w = add_worktree(&root, "w-real", "feat/l", "HEAD");
+        let link = root.parent().unwrap().join("w-link");
+        std::os::unix::fs::symlink(&w, &link).unwrap();
+        let err = probe_target(&root, &link, &base).unwrap_err();
+        assert!(err.contains("path is a symlink; refused"), "{err}");
+        assert_eq!(
+            crate::contract::classify(&err),
+            crate::contract::Kind::InvalidInput
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_path_that_is_not_utf8_is_refused_before_git_runs() {
+        use std::os::unix::ffi::OsStrExt;
+        let (_d, root) = repo();
+        let base = git(&root, &["rev-parse", "HEAD"]);
+        let odd = Path::new(std::ffi::OsStr::from_bytes(b"/tmp/claim-link-\xff"));
+        let err = probe_target(&root, odd, &base).unwrap_err();
+        assert!(err.contains("not UTF-8"), "{err}");
+        assert_eq!(
+            crate::contract::classify(&err),
+            crate::contract::Kind::InvalidInput
+        );
+    }
+
+    #[test]
+    fn a_base_that_is_not_a_full_sha_is_refused() {
+        let (_d, root) = repo();
+        let err = probe_target(&root, &root, "HEAD").unwrap_err();
+        assert!(err.contains("base_revision"), "{err}");
     }
 }

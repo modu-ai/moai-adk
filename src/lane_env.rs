@@ -144,8 +144,8 @@ pub fn resolve(lane: &str, base: &Path) -> Result<LaneEnv, String> {
     })
 }
 
-/// A POSIX shell single-quoted word.
-fn quote(path: &Path) -> String {
+/// A POSIX shell single-quoted word (also the `claim-link` next-command paths, #3030).
+pub(crate) fn quote(path: &Path) -> String {
     format!("'{}'", path.to_string_lossy().replace('\'', "'\\''"))
 }
 
