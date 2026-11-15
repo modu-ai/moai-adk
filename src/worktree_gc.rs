@@ -521,6 +521,20 @@ pub(crate) fn ignored_split(
             continue;
         }
         let top = wt.join(entry.trim_end_matches('/'));
+        // #3010: a real `node_modules` with a tracked lockfile is install output that the
+        // lockfile rebuilds; it is judged as one unit with its own entry limit instead of file
+        // by file (one install is about 92,000 files, past the 20,000 census limit). Links
+        // inside are removed as links, never followed. Anything the walk cannot vouch for
+        // falls through to the file-by-file census below, which fails closed.
+        if entry == "node_modules/" && install_proof(wt) == (true, true) {
+            let mut marks = Vec::new();
+            if let Some(n) = walk_install(&top, INSTALL_ENTRY_LIMIT, &mut marks) {
+                safe += n.max(1);
+                safe_files.push(top);
+                git_marks.extend(marks);
+                continue;
+            }
+        }
         for f in walk_files(top, &mut seen, &mut git_marks)? {
             let rel = f.strip_prefix(wt).ok()?.to_path_buf();
             if ignored_file_is_safe(wt, primary, &rel) {
@@ -605,6 +619,141 @@ fn shown(path: &Path, root: &Path) -> String {
         Ok(rel) => rel.to_string_lossy().into_owned(),
         Err(_) => path.to_string_lossy().into_owned(),
     }
+}
+
+/// Lock reasons written by `worktree-apply` are `moai claim <task_key> e<epoch>`; returns the
+/// key and the epoch, or `None` for any other reason (a hand-written lock is never ours).
+pub fn parse_moai_lock(reason: &str) -> Option<(String, u64)> {
+    let rest = reason.strip_prefix("moai claim ")?;
+    let (key, epoch) = rest.rsplit_once(" e")?;
+    let epoch: u64 = epoch.parse().ok()?;
+    (!key.is_empty() && !key.contains(char::is_whitespace)).then(|| (key.to_string(), epoch))
+}
+
+/// The Issue number a worktree belongs to: the digits before `#` in a claim key such as
+/// `3005#6886837864`, else the number in an `issue/<n>-…` branch, else `None`.
+pub fn issue_of(claim_key: Option<&str>, branch: Option<&str>) -> Option<u64> {
+    let from_key = claim_key
+        .and_then(|k| k.split_once('#'))
+        .and_then(|(n, _)| n.parse().ok());
+    from_key.or_else(|| {
+        let rest = branch?.strip_prefix("issue/")?;
+        let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
+        digits.parse().ok()
+    })
+}
+
+/// Lockfiles whose tracked presence means an install folder can be rebuilt from the repo.
+const INSTALL_LOCKFILES: [&str; 6] = [
+    "package-lock.json",
+    "npm-shrinkwrap.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "bun.lock",
+    "bun.lockb",
+];
+
+/// More entries than this in one `node_modules` and it is not treated as a rebuildable
+/// install (it keeps its worktree). Measured by the Issue at about 92,000 files for one
+/// install; the limit leaves room for several times that.
+pub(crate) const INSTALL_ENTRY_LIMIT: usize = 500_000;
+
+/// `(real install folder, lockfile tracked)` for the top-level `node_modules` of `wt`. The
+/// folder counts only as a real folder (a symlink may point anywhere), and it is rebuildable
+/// only when a lockfile is in the index (#3010).
+pub(crate) fn install_proof(wt: &Path) -> (bool, bool) {
+    let install_dir = fs::symlink_metadata(wt.join("node_modules")).is_ok_and(|m| m.is_dir());
+    let lockfile_tracked = install_dir
+        && git_out(
+            wt,
+            &[&["ls-files", "--"][..], &INSTALL_LOCKFILES[..]].concat(),
+        )
+        .is_some_and(|s| !s.trim().is_empty());
+    (install_dir, lockfile_tracked)
+}
+
+/// Walks an install folder without following links. Returns how many entries it holds, or
+/// `None` when it is unreadable, holds more than `limit` entries, or holds anything but
+/// files, folders and links (a socket or pipe is not install output). A `.git` inside (a git
+/// dependency) is not walked into; it goes to `git_marks`, which keeps the worktree.
+pub(crate) fn walk_install(
+    top: &Path,
+    limit: usize,
+    git_marks: &mut Vec<PathBuf>,
+) -> Option<usize> {
+    let mut stack = vec![top.to_path_buf()];
+    let mut seen = 0usize;
+    while let Some(d) = stack.pop() {
+        for e in fs::read_dir(&d).ok()?.flatten() {
+            let p = e.path();
+            seen += 1;
+            if seen > limit {
+                return None;
+            }
+            if e.file_name() == ".git" {
+                git_marks.push(p);
+                continue;
+            }
+            let ft = fs::symlink_metadata(&p).ok()?.file_type();
+            if ft.is_dir() {
+                stack.push(p);
+            } else if !(ft.is_file() || ft.is_symlink()) {
+                return None;
+            }
+        }
+    }
+    Some(seen)
+}
+
+/// Lifecycle facts of one worktree (#3010 P1). Read-only and additive: none of this enters the
+/// plan digest or changes any decision, so `worktree-gc-apply` acts exactly as before. Every
+/// value is an observation or a derivation from one; `created_by` is `null` unless the lock
+/// reason proves `worktree-apply` made it, and `admin_age_secs` is an estimate (the mtime of
+/// the worktree's `.git/worktrees/<name>/gitdir`, which `git worktree repair` or `move` can
+/// reset) — neither is a creation record.
+fn lifecycle(
+    path: &Path,
+    origin: &str,
+    branch: Option<&str>,
+    lock_reason: Option<&str>,
+    locked: bool,
+    now: u64,
+) -> Value {
+    let moai_lock = lock_reason.and_then(parse_moai_lock);
+    let claim_key = moai_lock.as_ref().map(|(k, _)| k.as_str());
+    let (install_dir, lockfile_tracked) = install_proof(path);
+    let mut classes: Vec<&str> = Vec::new();
+    if locked && moai_lock.is_some() {
+        classes.push("locked_by_moai");
+    }
+    if install_dir && lockfile_tracked {
+        classes.push("regenerable_install");
+    }
+    let admin_age = fs::read_to_string(path.join(".git"))
+        .ok()
+        .and_then(|t| {
+            t.trim()
+                .strip_prefix("gitdir:")
+                .map(|g| PathBuf::from(g.trim()))
+        })
+        .and_then(|admin| fs::metadata(admin.join("gitdir")).ok())
+        .and_then(|m| m.modified().ok())
+        .and_then(unix_secs)
+        .map(|t| now.saturating_sub(t));
+    json!({
+        "origin": origin,
+        "issue": issue_of(claim_key, branch),
+        "created_by": if moai_lock.is_some() { json!("worktree-apply") } else { Value::Null },
+        "claim_key": claim_key,
+        "claim_epoch": moai_lock.as_ref().map(|(_, e)| *e),
+        "locked": locked,
+        "lock_reason": lock_reason,
+        "install_dir": install_dir,
+        "install_lockfile_tracked": lockfile_tracked,
+        "classes": classes,
+        "admin_age_secs": admin_age,
+        "admin_age_note": "estimate: mtime of .git/worktrees/<name>/gitdir, not a creation record",
+    })
 }
 
 /// Builds the plan. `now_unix` overrides the clock (tests); `None` uses the system time.
@@ -836,6 +985,14 @@ pub fn plan_paced(
             "change_age_secs": f.change_age_secs,
             "trim_bytes": trim_bytes,
             "bytes_partial": partial,
+            "lifecycle": lifecycle(
+                &path,
+                location,
+                e.branch.as_deref(),
+                e.lock_reason.as_deref(),
+                e.locked,
+                now,
+            ),
         }));
     }
     candidates.sort_by(|a, b| a["path"].as_str().cmp(&b["path"].as_str()));
@@ -866,6 +1023,9 @@ pub fn plan_paced(
         "candidates": candidates,
         "remaining": remaining,
         "next_cursor": if remaining > 0 { json!(last_checked) } else { Value::Null },
+        // #3010 P1: free bytes before any apply; a reclaimed figure is the later `df` minus
+        // this one, never a sum of sizes (clonefile and hard links make sums wrong).
+        "before_free_bytes": crate::worktree_report::disk_bytes(&top).map(|(free, _)| free),
         "plan_digest": plan_digest,
         "apply": "worktree-gc-apply with this plan_digest and a permission reference (#2498); on this machine the leader runs it only after the user confirms (#2389 comment 6774899518 item 2)",
         "network": "disabled",
@@ -1214,5 +1374,104 @@ mod tests {
         ] {
             assert!(!lane_temp_dir(no), "{no}");
         }
+    }
+
+    #[test]
+    fn only_a_worktree_apply_lock_reason_names_a_claim() {
+        assert_eq!(
+            parse_moai_lock("moai claim 3005#6886837864 e1"),
+            Some(("3005#6886837864".to_string(), 1))
+        );
+        assert_eq!(
+            parse_moai_lock("moai claim k e12"),
+            Some(("k".to_string(), 12))
+        );
+        for no in [
+            "",
+            "moai claim",
+            "moai claim k",
+            "moai claim k e",
+            "moai claim k e1x",
+            "moai claim k e-1",
+            "moai claim  e1",
+            "moai claim a b e1",
+            "Moai claim k e1",
+            "my own lock",
+            "wip moai claim k e1",
+        ] {
+            assert_eq!(parse_moai_lock(no), None, "{no:?}");
+        }
+    }
+
+    #[cfg(unix)]
+    fn install_fixture(files: usize) -> tempfile::TempDir {
+        let d = tempfile::tempdir().unwrap();
+        let top = d.path().join("node_modules/pkg");
+        fs::create_dir_all(&top).unwrap();
+        for i in 0..files {
+            fs::write(top.join(format!("f{i}.js")), "x").unwrap();
+        }
+        d
+    }
+
+    /// The entry limit at its edge: a folder with exactly `limit` entries is walked, one more is
+    /// not (`pkg` itself counts as an entry).
+    #[cfg(unix)]
+    #[test]
+    fn an_install_folder_is_walked_up_to_its_limit_and_not_past_it() {
+        let d = install_fixture(4); // pkg + 4 files = 5 entries
+        let top = d.path().join("node_modules");
+        let mut marks = Vec::new();
+        assert_eq!(walk_install(&top, 5, &mut marks), Some(5));
+        assert_eq!(walk_install(&top, 4, &mut marks), None);
+        assert_eq!(walk_install(&top, 6, &mut marks), Some(5));
+        assert!(marks.is_empty());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_install_walk_follows_no_link_and_refuses_special_files() {
+        let d = install_fixture(1);
+        let outside = tempfile::tempdir().unwrap();
+        for i in 0..10 {
+            fs::write(outside.path().join(format!("o{i}")), "x").unwrap();
+        }
+        let top = d.path().join("node_modules");
+        std::os::unix::fs::symlink(outside.path(), top.join("linked")).unwrap();
+        let mut marks = Vec::new();
+        // pkg + its file + the link itself; nothing behind the link is counted
+        assert_eq!(walk_install(&top, 100, &mut marks), Some(3));
+        let fifo = top.join("pipe");
+        let made = std::process::Command::new("mkfifo").arg(&fifo).status();
+        if made.is_ok_and(|s| s.success()) {
+            assert_eq!(walk_install(&top, 100, &mut marks), None);
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_nested_git_entry_is_marked_not_walked() {
+        let d = install_fixture(1);
+        let top = d.path().join("node_modules");
+        let dep = top.join("gitdep");
+        fs::create_dir_all(dep.join(".git/objects")).unwrap();
+        fs::write(dep.join(".git/objects/o"), "x").unwrap();
+        let mut marks = Vec::new();
+        assert_eq!(walk_install(&top, 100, &mut marks), Some(4)); // pkg, f0, gitdep, .git
+        assert_eq!(marks, vec![dep.join(".git")]);
+    }
+
+    #[test]
+    fn the_issue_comes_from_the_claim_key_first_then_the_branch() {
+        assert_eq!(
+            issue_of(Some("3005#6886837864"), Some("issue/9-x")),
+            Some(3005)
+        );
+        assert_eq!(issue_of(Some("no-hash"), Some("issue/9-x")), Some(9));
+        assert_eq!(issue_of(None, Some("issue/3010-p1-lifecycle")), Some(3010));
+        for branch in ["main", "issue/", "issue/x-1", "feature/12-a", "issues/3-a"] {
+            assert_eq!(issue_of(None, Some(branch)), None, "{branch}");
+        }
+        assert_eq!(issue_of(None, None), None);
     }
 }
