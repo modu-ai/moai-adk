@@ -1909,7 +1909,10 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
         Command::ClaudeSettingsPlan { project, scope } => {
             let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
             let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
-            moai_cli::claude::settings_plan_in(&project, &desired, scope)
+            // #3004 P4-3: the status line preview and its gate read HOME and PATH, like hooks-plan.
+            let home = std::env::var_os("HOME").map(PathBuf::from);
+            let path_env = std::env::var("PATH").unwrap_or_default();
+            moai_cli::status_line::plan_in(&project, &desired, scope, home.as_deref(), &path_env)
         }
         Command::ClaudeSettingsApply {
             project,
@@ -1920,13 +1923,17 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
         } => {
             let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
             let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
-            moai_cli::claude::settings_apply_in(
+            let home = std::env::var_os("HOME").map(PathBuf::from);
+            let path_env = std::env::var("PATH").unwrap_or_default();
+            moai_cli::status_line::apply_in(
                 &project,
                 &desired,
                 &plan_digest,
                 &permission_reference,
                 scope,
                 confirm_replace.as_deref(),
+                home.as_deref(),
+                &path_env,
             )
         }
         Command::WorktreePlan {

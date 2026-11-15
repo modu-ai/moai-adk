@@ -903,6 +903,202 @@ fn revert_refuses_a_changed_marker() {
     assert_eq!(tree(&f.home, &[]), before, "nothing was changed");
 }
 
+/// Make the install look as another build made it (#2871 B1, leader audit 6900128841): the
+/// marker bytes saved in the manifest carry `generation`, and with `on_disk` the marker in
+/// `~/.moai` is the file of that generation with those bytes. The bytes come back.
+fn saved_by_generation(f: &Fx, generation: &str, on_disk: bool) -> Vec<u8> {
+    let manifest = f.journal().join(format!("install-manifest-{STAMP}.json"));
+    let mut m: Value = serde_json::from_slice(&fs::read(&manifest).unwrap()).unwrap();
+    let was = m["marker"]["content"].as_str().unwrap().to_string();
+    let content = was.replace(
+        "\"generation\": \"moai\"",
+        &format!("\"generation\": \"{generation}\""),
+    );
+    assert_ne!(content, was, "the saved bytes carry the generation");
+    m["marker"]["sha256"] = json!(moai_cli::digest(content.as_bytes()));
+    m["marker"]["content"] = json!(content);
+    fs::write(&manifest, serde_json::to_vec_pretty(&m).unwrap()).unwrap();
+    if on_disk {
+        let from = f.dest("moai.json");
+        let to = f.dest("moai-cli.json");
+        fs::rename(&from, &to).unwrap();
+        fs::write(&to, &content).unwrap();
+    }
+    content.into_bytes()
+}
+
+/// The marker files in `~/.moai`, by name.
+fn marker_files(f: &Fx) -> Vec<&'static str> {
+    ["moai.json", "moai-cli.json"]
+        .into_iter()
+        .filter(|n| fs::symlink_metadata(f.dest(n)).is_ok())
+        .collect()
+}
+
+/// B1 repro A: an install an earlier build finished has `moai-cli.json` in `~/.moai`. The revert
+/// of this build finds it under that name and puts it into the journal folder, so the HOME does
+/// not stay half-reverted with a marker the tools read as rust-first.
+#[test]
+fn revert_finds_the_marker_an_earlier_build_wrote() {
+    let f = fx();
+    let before = home_tree(&f);
+    applied(&f);
+    let bytes = saved_by_generation(&f, "moai-cli", true);
+    assert_eq!(marker_files(&f), ["moai-cli.json"]);
+    assert_eq!(generation(&f), "rust-first");
+    let rv = revert(&f);
+    assert_eq!(rv["ok"], json!(true), "{rv}");
+    assert_eq!(rv["result"]["state"], json!("reverted"), "{rv}");
+    assert_eq!(
+        rv["result"]["marker"],
+        json!("moved_into_install_journal"),
+        "{rv}"
+    );
+    assert_eq!(rv["result"]["moai"], json!("removed"), "{rv}");
+    assert!(marker_files(&f).is_empty(), "no marker is left in ~/.moai");
+    assert_eq!(generation(&f), "none");
+    assert_eq!(moai_cli::home_root::dir(&f.home), ".moai-cli");
+    let kept = f.journal().join(format!("reverted-marker-{STAMP}.json"));
+    assert_eq!(
+        fs::read(kept).unwrap(),
+        bytes,
+        "the marker was kept as it was"
+    );
+    assert_eq!(home_tree(&f), before);
+}
+
+/// B1 repro B: the same command run again after an earlier build finished the install says
+/// `unchanged`. It writes nothing, least of all a `moai.json` with the earlier generation next
+/// to the valid `moai-cli.json`.
+#[test]
+fn a_rerun_after_an_earlier_build_finished_is_unchanged() {
+    let f = fx();
+    let p = plan(&f);
+    let first = apply(&f, &digest_of(&p));
+    assert_eq!(first["result"]["state"], json!("applied"), "{first}");
+    let bytes = saved_by_generation(&f, "moai-cli", true);
+    let after = tree(&f.home, &[]);
+    let second = apply(&f, &digest_of(&p));
+    assert_eq!(second["ok"], json!(true), "{second}");
+    assert_eq!(second["result"]["state"], json!("unchanged"), "{second}");
+    assert_eq!(second["result"]["writes"], json!(false), "{second}");
+    assert_eq!(marker_files(&f), ["moai-cli.json"]);
+    assert_eq!(fs::read(f.dest("moai-cli.json")).unwrap(), bytes);
+    assert_eq!(generation(&f), "rust-first");
+    assert_eq!(tree(&f.home, &[]), after, "nothing was written");
+}
+
+/// An install an earlier build began and did not finish is finished by this build under the
+/// marker name that goes with the saved bytes, never as `moai.json` with the earlier generation,
+/// a pair `state_root` rejects. The revert after it finds that marker too.
+#[test]
+fn an_install_an_earlier_build_began_is_finished_under_its_own_marker_name() {
+    let f = fx();
+    let before = home_tree(&f);
+    let p = plan(&f);
+    let a = apply_with(&f, NOW, &digest_of(&p), PERM, &[(FAULT, "before_marker")]);
+    assert!(
+        message(&a).contains("injected crash at before_marker"),
+        "{a}"
+    );
+    let bytes = saved_by_generation(&f, "moai-cli", false);
+    assert!(marker_files(&f).is_empty());
+    let b = apply(&f, &digest_of(&p));
+    assert_eq!(b["ok"], json!(true), "{b}");
+    assert_eq!(b["result"]["state"], json!("applied"), "{b}");
+    assert_eq!(b["result"]["resumed"], json!(true), "{b}");
+    assert_eq!(b["result"]["marker"]["written"], json!(true), "{b}");
+    assert_eq!(
+        b["result"]["marker"]["path"],
+        json!(f.dest("moai-cli.json").display().to_string()),
+        "{b}"
+    );
+    assert_eq!(marker_files(&f), ["moai-cli.json"]);
+    assert_eq!(fs::read(f.dest("moai-cli.json")).unwrap(), bytes);
+    assert_eq!(generation(&f), "rust-first");
+    let rv = revert(&f);
+    assert_eq!(rv["ok"], json!(true), "{rv}");
+    assert_eq!(
+        rv["result"]["marker"],
+        json!("moved_into_install_journal"),
+        "{rv}"
+    );
+    assert_eq!(home_tree(&f), before);
+}
+
+/// A new install writes the new name with the new generation and never the earlier name.
+#[test]
+fn a_new_install_writes_only_the_new_marker_name() {
+    let f = fx();
+    let r = applied(&f);
+    assert_eq!(marker_files(&f), ["moai.json"]);
+    assert_eq!(
+        r["marker"]["path"],
+        json!(f.dest("moai.json").display().to_string()),
+        "{r}"
+    );
+    let m: Value = serde_json::from_slice(&fs::read(f.dest("moai.json")).unwrap()).unwrap();
+    assert_eq!(m["generation"], json!("moai"), "{m}");
+}
+
+/// A manifest whose saved marker names a generation this build does not know is refused by the
+/// revert and by a rerun, with nothing changed.
+#[test]
+fn a_manifest_with_an_unknown_marker_generation_is_refused() {
+    let f = fx();
+    let p = plan(&f);
+    let first = apply(&f, &digest_of(&p));
+    assert_eq!(first["ok"], json!(true), "{first}");
+    saved_by_generation(&f, "future", false);
+    let before = tree(&f.home, &[]);
+    let rv = revert(&f);
+    assert_eq!(rv["ok"], json!(false), "{rv}");
+    assert!(
+        message(&rv).contains("generation this build does not know"),
+        "{rv}"
+    );
+    let again = apply(&f, &digest_of(&p));
+    assert_eq!(again["ok"], json!(false), "{again}");
+    assert!(
+        message(&again).contains("generation this build does not know"),
+        "{again}"
+    );
+    assert_eq!(tree(&f.home, &[]), before, "nothing was changed");
+}
+
+/// The refusal of an unknown generation comes from reading the manifest, before anything is
+/// moved: a rerun of an install that stopped early (after the manifest, after the folder was
+/// made, with every item moved but no marker) is refused at once and the tree stays as the stop
+/// left it. A check that came only at the marker would move the items first and refuse after.
+#[test]
+fn an_unfinished_install_with_an_unknown_marker_generation_is_refused_before_it_moves_anything() {
+    for point in ["after_manifest", "after_mkdir", "before_marker"] {
+        let f = fx();
+        let p = plan(&f);
+        let a = apply_with(&f, NOW, &digest_of(&p), PERM, &[(FAULT, point)]);
+        assert!(
+            message(&a).contains(&format!("injected crash at {point}")),
+            "{point}: {a}"
+        );
+        saved_by_generation(&f, "future", false);
+        let stopped = tree(&f.home, &[]);
+        let again = apply(&f, &digest_of(&p));
+        assert_eq!(again["ok"], json!(false), "{point}: {again}");
+        assert!(
+            message(&again).contains("generation this build does not know"),
+            "{point}: {again}"
+        );
+        assert_eq!(tree(&f.home, &[]), stopped, "{point}: nothing was moved");
+        let rv = revert(&f);
+        assert_eq!(rv["ok"], json!(false), "{point}: {rv}");
+        assert_eq!(
+            tree(&f.home, &[]),
+            stopped,
+            "{point}: revert changed nothing"
+        );
+    }
+}
+
 #[test]
 fn revert_keeps_a_moai_folder_it_did_not_create() {
     let f = fx();

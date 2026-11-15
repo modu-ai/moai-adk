@@ -25,7 +25,10 @@ use crate::home_install::{self, ALIAS_JOURNAL_LIMIT, JOURNAL_DIR, KIND, MANIFEST
 use crate::home_layout;
 use crate::home_state::{stamp, InUse};
 use crate::move_journal::{self, JournalState, MoveEnv, PlannedMove};
-use crate::state_root::{classify_home, utc_stamp, MOAI_DIR, RUST_MARKER};
+use crate::state_root::{
+    classify_home, utc_stamp, LEGACY_GENERATION, LEGACY_MARKER, MOAI_DIR, NEW_GENERATION,
+    NEW_MARKER,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
@@ -180,7 +183,25 @@ impl Manifest {
         if crate::digest(self.marker.content.as_bytes()) != self.marker.sha256 {
             return bad("the marker digest does not match its content");
         }
+        if self.marker_file().is_none() {
+            return bad("the marker names a generation this build does not know");
+        }
         Ok(())
+    }
+
+    /// The file name of the marker this install wrote, from the `generation` inside the saved
+    /// bytes: `moai-cli` is the earlier name, `moai` the new one (#2871 B1). A build that resumes
+    /// or reverts an install another build began must write and find the file under the name
+    /// that matches the bytes, or it publishes a name and generation that `state_root` rejects as
+    /// a pair, or overlooks the marker of a finished install. A new install carries the new
+    /// generation, so it is written under the new name.
+    fn marker_file(&self) -> Option<&'static str> {
+        let v: Value = serde_json::from_str(&self.marker.content).ok()?;
+        match v["generation"].as_str()? {
+            LEGACY_GENERATION => Some(LEGACY_MARKER),
+            NEW_GENERATION => Some(NEW_MARKER),
+            _ => None,
+        }
     }
 }
 
@@ -310,9 +331,20 @@ fn read_manifest(home: &Path, roots: &Roots, stamp: &str) -> Res<Manifest> {
     Ok(m)
 }
 
+/// Where the marker of this install is in `~/.moai`: the name its saved bytes go with.
+fn marker_path(roots: &Roots, m: &Manifest) -> Res<PathBuf> {
+    let name = m.marker_file().ok_or_else(|| {
+        format!(
+            "home install manifest {} is invalid: the marker names a generation this build does not know; nothing was changed",
+            m.stamp
+        )
+    })?;
+    Ok(roots.moai.join(name))
+}
+
 /// Whether the marker the manifest names is in `~/.moai`: the same bytes, by digest.
 fn marker_is_ours(roots: &Roots, m: &Manifest) -> Res<bool> {
-    let p = roots.moai.join(RUST_MARKER);
+    let p = marker_path(roots, m)?;
     match lstat(&p) {
         Err(e) if not_found(&e) => Ok(false),
         Err(e) => Err(io(&p, e)),
@@ -752,7 +784,7 @@ fn run(c: &Ctx) -> Res<Value> {
         "stubs": stubs,
         "vault": vault,
         "marker": {
-            "path": c.roots.moai.join(RUST_MARKER).display().to_string(),
+            "path": marker_path(&c.roots, &c.m)?.display().to_string(),
             "written": wrote,
         },
         "generation": generation,
@@ -902,7 +934,7 @@ fn vault_report(c: &Ctx) -> Value {
 /// The marker, last: exclusive, with the mode of `~/.moai-cli` minus the execute bits. A marker
 /// already there is accepted only when it is the one this install wrote (a rerun).
 fn write_marker(roots: &Roots, m: &Manifest) -> Res<bool> {
-    let path = roots.moai.join(RUST_MARKER);
+    let path = marker_path(roots, m)?;
     match lstat(&path) {
         Err(e) if not_found(&e) => {}
         Err(e) => return Err(io(&path, e)),
@@ -1012,7 +1044,7 @@ fn revert_locked(home: &Path, roots: &Roots, m: &Manifest) -> Res<Value> {
 
 /// Take the marker out of `~/.moai` into the journal folder, but only the one the apply wrote.
 fn take_marker_back(roots: &Roots, m: &Manifest) -> Res<&'static str> {
-    let path = roots.moai.join(RUST_MARKER);
+    let path = marker_path(roots, m)?;
     match lstat(&path) {
         Err(e) if not_found(&e) => return Ok("absent"),
         Err(e) => return Err(io(&path, e)),

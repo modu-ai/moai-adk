@@ -837,8 +837,12 @@ fn a_first_install_into_an_empty_home_starts_on_moai() {
     let result = apply_ok(&home, &stage1, &plan, &digest);
     assert_eq!(result["status"], json!("applied"), "{result}");
     let marker: Value =
-        serde_json::from_slice(&fs::read(home.join(".moai/moai-cli.json")).unwrap()).unwrap();
-    assert_eq!(marker["generation"], json!("moai-cli"), "{marker}");
+        serde_json::from_slice(&fs::read(home.join(".moai/moai.json")).unwrap()).unwrap();
+    assert_eq!(marker["generation"], json!("moai"), "{marker}");
+    assert!(
+        !home.join(".moai/moai-cli.json").exists(),
+        "the earlier name is not written"
+    );
     assert!(!home.join(".moai-cli").exists(), "no earlier root");
     let installations: Vec<PathBuf> = fs::read_dir(home.join(".moai/installations"))
         .unwrap()
