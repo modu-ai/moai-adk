@@ -49,6 +49,7 @@ const PROFILE_KEYS: &[(&str, bool)] = &[
     ("archive_grace_days", true),
     ("language", true),
     ("detected", true),
+    ("scopes", true),
 ];
 
 fn managed_keys() -> impl Iterator<Item = &'static str> {
@@ -131,6 +132,11 @@ pub struct Profile {
     /// profile written before this key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub detected: Option<crate::project_detect::Detected>,
+    /// Worktree scopes (#3010): named lists of repository folders, an allow list that a later
+    /// piece turns into a sparse checkout. Absent means no scope was declared and a worktree
+    /// is the whole repository, as before; a profile written before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scopes: Option<Vec<crate::scopes::ScopeEntry>>,
 }
 
 /// What a first launch writes into `tools` and `development_methods` until the project
@@ -259,6 +265,9 @@ fn validate(p: &Profile) -> Result<()> {
     }
     if let Some(detected) = &p.detected {
         crate::project_detect::validate(detected)?;
+    }
+    if let Some(scopes) = &p.scopes {
+        crate::scopes::validate(scopes)?;
     }
     let decisions_ok = p.decisions.len() <= DECISION_ITEM_LIMIT
         && p.decisions.iter().all(|d| {
@@ -837,6 +846,7 @@ mod tests {
             archive_grace_days: None,
             language: None,
             detected: None,
+            scopes: None,
         }
     }
 
@@ -857,6 +867,10 @@ mod tests {
                 project_kind: "new".into(),
                 ..Default::default()
             }),
+            scopes: Some(vec![crate::scopes::ScopeEntry {
+                name: "web".into(),
+                paths: vec!["apps/web".into()],
+            }]),
             ..v2()
         };
         let fields: Vec<String> = serde_json::to_value(&full)
@@ -884,9 +898,74 @@ mod tests {
                 "context_max_bytes",
                 "archive_grace_days",
                 "language",
-                "detected"
+                "detected",
+                "scopes"
             ]
         );
+    }
+
+    /// #3010: `scopes` is additive and validated by `validate` and by `read_profile` on a
+    /// hand-edited file; an absent key plans exactly as before the key existed.
+    #[test]
+    fn scopes_key_is_additive_and_validated() {
+        let base = serde_json::json!({
+            "schema_version": 2, "project_id": "demo", "purpose": "p",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]
+        });
+        let listed = |d: &Delta| {
+            [&d.added, &d.changed, &d.removed, &d.unchanged, &d.conflict]
+                .iter()
+                .any(|l| l.contains(&"scopes".to_string()))
+        };
+        assert!(!listed(&compute_delta(Some(&base), Some(&base), &base)));
+        let mut desired = base.clone();
+        desired["scopes"] = serde_json::json!([{"name": "web", "paths": ["apps/web"]}]);
+        assert_eq!(
+            compute_delta(Some(&base), Some(&base), &desired).added,
+            vec!["scopes"]
+        );
+        let with = |name: &str, paths: &[&str]| Profile {
+            scopes: Some(vec![crate::scopes::ScopeEntry {
+                name: name.into(),
+                paths: paths.iter().map(|p| p.to_string()).collect(),
+            }]),
+            ..v2()
+        };
+        assert!(validate(&with("web", &["apps/web", "packages/ui"])).is_ok());
+        assert!(validate(&with("web", &["../up"])).is_err());
+        assert!(validate(&with("Web", &["apps/web"])).is_err());
+        assert!(validate(&with("web", &[])).is_err());
+        assert!(validate(&Profile {
+            scopes: Some(Vec::new()),
+            ..v2()
+        })
+        .is_err());
+
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp
+            .path()
+            .join(crate::PROJECT_STATE_DIR)
+            .join("project.yaml");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        for (bad, why) in [
+            (json!([{"name": "web", "paths": ["/abs"]}]), "absolute path"),
+            (
+                json!([{"name": "web", "paths": ["a"], "x": 1}]),
+                "unknown field",
+            ),
+            (json!([{"name": "web"}]), "missing paths"),
+            (json!({"web": ["a"]}), "wrong shape"),
+        ] {
+            let mut file = serde_json::to_value(v2()).unwrap();
+            file["scopes"] = bad;
+            fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+            assert!(read_profile(tmp.path()).is_err(), "{why}");
+        }
+        let mut file = serde_json::to_value(v2()).unwrap();
+        file["scopes"] = json!([{"name": "web", "paths": ["apps/web"]}]);
+        fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+        let (profile, _) = read_profile(tmp.path()).unwrap();
+        assert_eq!(profile.scopes.unwrap()[0].paths, ["apps/web"]);
     }
 
     /// AC-1 (#2293): `language` is additive, and an unknown item or an unsupported code is
