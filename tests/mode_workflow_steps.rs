@@ -200,10 +200,14 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "lane-loop-line --host",
             "lane-next",
             "lane-next --lane",
+            // #3005 P9 (P8 adds the flag): the tool counts the empty reads of a watching lane.
+            "lane-next --max-empty",
             "lane-next --wait",
             // #2900 (#2899 G2): the leader clears a lane only on `safe`.
             "lane-safe-to-reset --lane",
             // #2902 O3b: the leader's round, one action per lane.
+            // #3005 P9: its `idle_lanes` list names the lanes that stopped at `idle_limit`.
+            "leader-round",
             "leader-round --observations",
             "pr-confirm",
             // #2840 D3: the PR body is checked locally before the push and before opening.
