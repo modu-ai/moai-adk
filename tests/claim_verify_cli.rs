@@ -948,6 +948,109 @@ fn hook_guards_commit_in_claimed_worktree_only() {
     assert!(t.sent.borrow().is_empty());
 }
 
+/// #3030 H1: a record is seeded at `worktree` for Issue `issue`, so two records can sit at
+/// nested paths of one clone.
+fn seed_record(
+    root: &Path,
+    key: &str,
+    issue: i64,
+    comment_id: i64,
+    session: &str,
+    worktree: &Path,
+) {
+    let record = ClaimRecord {
+        schema_version: 1,
+        task_ref: TaskRef::new(
+            "github",
+            "github.com",
+            "acme",
+            "widgets",
+            1,
+            70 + issue,
+            issue,
+        ),
+        task_key: key.into(),
+        logical_key: format!("H{issue}"),
+        owner: Owner::new("session", session),
+        assignee: None,
+        provider_session: None,
+        integration_owner: None,
+        attempt: None,
+        epoch: 1,
+        base_revision: git(root, &["rev-parse", "HEAD"]),
+        worktree: WorktreeId::new(
+            root.join(".git").display().to_string(),
+            root.join(".git").display().to_string(),
+            worktree.display().to_string(),
+            "b".repeat(40),
+        ),
+        write_scope: vec!["src/x.rs".into()],
+        spec_ref: SpecRef {
+            id: "SPEC-H".into(),
+            revision: "r1".into(),
+            digest: None,
+        },
+        comment_id: Some(comment_id),
+        claim_token: Some(format!("Moai-Claim: {issue}#{comment_id}")),
+        lease_until: Some(LIVE.into()),
+        state: "assigned".into(),
+        effects: vec![],
+        last_observed_at: NOW.into(),
+    };
+    let journal = Journal::open(&moai_cli::claim::journal_root(root).unwrap()).unwrap();
+    assert!(journal.try_lock().unwrap());
+    journal.commit("acquire", &record).unwrap();
+}
+
+/// #3030 H1: when a worktree sits inside another record's worktree path (a lane worktree under
+/// the primary checkout), the guard verifies the record of the deepest match, not whichever
+/// record comes first in the journal. Record A (task key sorts first) holds the primary
+/// checkout; record B holds the nested worktree.
+#[test]
+fn hook_prefers_the_deepest_matching_worktree_record() {
+    let clock = FixedClock(now());
+    let dir = tempfile::TempDir::new().unwrap();
+    let root = fs::canonicalize(dir.path()).unwrap();
+    git(&root, &["init", "-q", "-b", "main"]);
+    git(&root, &["commit", "-q", "--allow-empty", "-m", "base"]);
+    let nested = root.join("nested-wt");
+    fs::create_dir(&nested).unwrap();
+    seed_record(&root, "0000000000000001", 7, 100, "a", &root);
+    seed_record(&root, "ffffffffffffffff", 8, 200, "b", &nested);
+    let url8 = "https://api.github.com/repos/acme/widgets/issues/8/comments?per_page=100";
+    let body8 = json!([raw(
+        200,
+        "GoosLab",
+        &format!("moai-claim: session=b epoch=1 lease_until={LIVE}")
+    )]);
+
+    // A commit in the nested worktree verifies Issue 8 (record B), not Issue 7.
+    let t = RecordedTransport::new(vec![common::exchange(
+        "GET",
+        url8,
+        common::json_response(200, body8),
+    )]);
+    let v = hook_cli(&root, &hook_input("git commit -m x", &nested), &t, &clock).unwrap();
+    assert_eq!(v["source"], json!("journal"));
+    assert_eq!(v["issue"], json!(8));
+    assert_eq!(v["status"], json!("owner"));
+    let sent = t.sent.borrow();
+    assert_eq!(sent.len(), 1);
+    assert!(sent[0].url.contains("/issues/8/comments"), "{:?}", sent[0]);
+    drop(sent);
+
+    // A commit in the primary checkout, outside the nested worktree, still verifies record A.
+    let body7 = json!([raw(
+        100,
+        "GoosLab",
+        &format!("moai-claim: session=a epoch=1 lease_until={LIVE}")
+    )]);
+    let t = RecordedTransport::new(vec![get(body7)]);
+    let v = hook_cli(&root, &hook_input("git commit -m x", &root), &t, &clock).unwrap();
+    assert_eq!(v["issue"], json!(7));
+    assert_eq!(v["status"], json!("owner"));
+}
+
 /// #2336: a lane branch carries its Issue number first (`issue/<n>-<key>`), the shape every
 /// lane uses and `worktree-plan` now emits. The two card cases — the old `worktree-plan`
 /// shape `issue/<key>-<n>-e<epoch>` with a digit-led key, and a letter-led key — are reported
@@ -1566,6 +1669,36 @@ fn mode_agent_workflow_names_claim_verify_before_writes() {
         step.contains("never take the Issue over by time alone"),
         "{step}"
     );
+}
+
+/// #3030 D2: AGENTS.md and the agent-mode workflow state one order for the local claim record:
+/// claim in the folder you will work in, and run `claim-link` when the folder or branch
+/// changes afterwards.
+#[test]
+fn claim_order_docs_agree() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let agents = fs::read_to_string(root.join("AGENTS.md")).unwrap();
+    let mode = fs::read_to_string(root.join("skills/moai/workflows/mode-agent.md")).unwrap();
+    let line = |text: &str, start: &str| -> String {
+        text.lines()
+            .find(|l| l.starts_with(start))
+            .unwrap_or_else(|| panic!("no line starting {start:?}"))
+            .to_string()
+    };
+    let step1 = line(&agents, "1. Claim.");
+    let step2 = line(&agents, "2. Worktree.");
+    let claim = line(&mode, "5. **claim**");
+    let state = line(&mode, "3. **state**");
+    for l in [&step1, &claim] {
+        assert!(l.contains("claim in the folder you will work in"), "{l}");
+        assert!(l.contains("moai claim-link"), "{l}");
+    }
+    assert!(
+        step2.contains("create it first, then claim in it"),
+        "{step2}"
+    );
+    assert!(state.contains("the folder you claim in"), "{state}");
+    assert!(state.contains("moai claim-link"), "{state}");
 }
 
 /// #2673 AC-3: `claim-verify --hook` reads the branch, the claim record and the commits in the

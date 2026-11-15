@@ -2729,7 +2729,9 @@ fn bound_digest(plan: &GoStatePlan) -> Result<String> {
 //   1. `.moai` → the Go backup (`.moai-backup`, or `.moai-backup-<UTC>` when taken), one
 //      rename that never overwrites;
 //   2. a new `.moai/` with the receipt `.moai/backups/<UTC>/go-state-receipt.json`, `pending`
-//      (when this step fails, the rename is undone at once);
+//      (when this step fails, the rename is undone at once; the ignore file of the backup
+//      area, written right after it, is outside that undo: its failure says `partial apply`
+//      and names the revert plan);
 //   3. the proven `.claude/` files move to `.moai/backups/<UTC>/go-state/<same path>`;
 //   4. the earlier root's product state moves, `.moai-cli/<entry>` → `.moai/<entry>`;
 //   5. SPECs are copied from the backup into `.moai/specs`;
@@ -3022,6 +3024,17 @@ fn keep_backups_out_of_git(project: &Path) -> Result<()> {
     }
 }
 
+/// F-I (#2936): the ignore file is written after the pending receipt, so a failure there is
+/// outside the step-2 undo. `done` says what is on disk (the receipt is `pending`, so
+/// `state_root` says `interrupted`); the revert plan takes the project back. The phrase
+/// `partial apply` makes `contract::classify` say `partial`.
+pub(crate) fn ignore_file_failed(e: &str, done: &str, stamp: &str) -> String {
+    format!(
+        "partial apply: {done}; failed at {MOAI_DIR}/backups/.gitignore: {e}; no file has moved \
+         yet; run `moai go-state-revert-plan <project> --backup {stamp}` to put the project back"
+    )
+}
+
 fn parent_of(rel: &str) -> Result<String> {
     Path::new(rel)
         .parent()
@@ -3305,7 +3318,18 @@ fn apply_moving_folder(
             );
         }
     };
-    keep_backups_out_of_git(project)?;
+    crate::update::test_fault("go_state_before_ignore")
+        .and_then(|_| keep_backups_out_of_git(project))
+        .map_err(|e| {
+            ignore_file_failed(
+                &e,
+                &format!(
+                    "the Go folder was renamed to {go_backup} and a new {MOAI_DIR}/ holds the \
+                     pending receipt"
+                ),
+                stamp,
+            )
+        })?;
     receipt.moves[0].sha256 = crate::baseline::tree_digest(&project.join(&go_backup), &[])?;
     saved = save_receipt(project, MOAI_DIR, &receipt, Some(&saved))?;
     // 3. The proven `.claude/` and `.agents/` entries: files, the mirror links (as links) and
@@ -3485,7 +3509,15 @@ fn apply_legacy_move(
             return Err(format!("{e}; nothing else changed"));
         }
     };
-    keep_backups_out_of_git(project)?;
+    crate::update::test_fault("go_state_legacy_before_ignore")
+        .and_then(|_| keep_backups_out_of_git(project))
+        .map_err(|e| {
+            ignore_file_failed(
+                &e,
+                &format!("a new {MOAI_DIR}/ holds the pending receipt"),
+                stamp,
+            )
+        })?;
     let saved = move_state_entries(project, &mut receipt, saved)?;
     let marker = crate::state_root::marker_bytes("legacy-move", &[]);
     finish_with_marker(project, receipt, saved, &marker)
@@ -4474,6 +4506,34 @@ mod tests {
             fs::write(dir.path().join("t.md"), "one\n").unwrap();
             std::os::unix::fs::symlink(dir.path().join("t.md"), &file).unwrap();
             assert!(still_as_previewed(&file, "f.md", &sha).is_err());
+        }
+    }
+
+    /// #3004 P4-2 AC-11: the hooks the Rust build generates call `moai`, and none of them is
+    /// taken for the Go wiring's `moai hook <event>`; a real Go handler still is.
+    #[test]
+    fn the_rust_generated_hooks_are_not_the_go_wiring() {
+        let go = br#"{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"moai hook session-start"}]}]}}"#;
+        assert!(hooks_proof(go).is_ok());
+        for lane in [None, Some(("agent-1", "o/r"))] {
+            let set = crate::hooks::current_hooks("codex", lane).unwrap();
+            let doc = serde_json::json!({ "hooks": set });
+            assert!(doc.to_string().contains("\"moai "), "{doc}");
+            let proof = hooks_proof(doc.to_string().as_bytes());
+            assert!(proof.is_err(), "{lane:?}: {proof:?}");
+        }
+        for command in [
+            "moai hook-dispatch --host codex --event stop",
+            "moai hook-receipt --host codex",
+            "moai claim-verify .",
+            "moai lane-stop-hook --lane a --repo o/r",
+        ] {
+            let doc = serde_json::json!({"hooks": {"Stop": [{"hooks": [
+                {"type": "command", "command": command}]}]}});
+            assert!(
+                hooks_proof(doc.to_string().as_bytes()).is_err(),
+                "{command}"
+            );
         }
     }
 
