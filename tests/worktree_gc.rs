@@ -499,3 +499,43 @@ fn a_hand_written_lock_does_not_count_as_made_by_worktree_apply() {
     assert_eq!(f["created_by"], Value::Null);
     assert_eq!(f["classes"], serde_json::json!([]));
 }
+
+/// Each lockfile the tool knows makes an install folder rebuildable, and an untracked one
+/// does not: the file must be in the index, not merely on disk.
+#[test]
+fn every_known_lockfile_counts_only_when_tracked() {
+    let fx = fixture();
+    let c = fx.root.join(".moai-cli/worktrees/c");
+    fs::create_dir_all(c.join("node_modules")).unwrap();
+    let facts = |fx: &Fixture| {
+        entry(&plan(fx, Some(later())), ".moai-cli/worktrees/c")["lifecycle"].clone()
+    };
+    for name in [
+        "package-lock.json",
+        "npm-shrinkwrap.json",
+        "pnpm-lock.yaml",
+        "yarn.lock",
+        "bun.lock",
+        "bun.lockb",
+    ] {
+        fs::write(c.join(name), "x\n").unwrap();
+        let untracked = facts(&fx);
+        assert_eq!(
+            untracked["install_lockfile_tracked"], false,
+            "{name}: {untracked}"
+        );
+        assert_eq!(untracked["classes"], serde_json::json!([]), "{name}");
+        git(&c, &["add", name]);
+        let tracked = facts(&fx);
+        assert_eq!(
+            tracked["install_lockfile_tracked"], true,
+            "{name}: {tracked}"
+        );
+        assert_eq!(
+            tracked["classes"],
+            serde_json::json!(["regenerable_install"]),
+            "{name}"
+        );
+        git(&c, &["rm", "-q", "-f", name]);
+    }
+}
