@@ -842,6 +842,144 @@ fn without_flags_the_decided_limits_apply() {
 
 // ---- #2811 W2: new worktrees under <HOME>/.moai/worktrees ----
 
+/// #3030 L3b (the #3048 acceptance): when the folder, the branch or the task already has a
+/// worktree, the `conflict` answer names the command that links that worktree to the claim:
+/// `moai claim-link` with the record's Issue, repository, lane and claim comment and the
+/// existing worktree's path, shell-quoted. A conflict without a worktree path adds nothing.
+#[test]
+fn worktree_apply_conflict_names_claim_link() {
+    let f = fixture();
+    let tmp = fs::canonicalize(f.repo.parent().unwrap()).unwrap();
+    let other = tmp.join("someone else");
+    git(
+        &f.repo,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "lane/7-06-C-e1",
+            other.to_str().unwrap(),
+            &f.base,
+        ],
+    );
+    let expect = |path: &str| {
+        format!(
+            "moai claim-link . --issue 7 --repo acme/widgets --lane agent-1-0dd806 \
+             --comment {COMMENT_ID} --worktree '{path}'"
+        )
+    };
+    // branch_in_use: the planned branch is checked out in another worktree.
+    let plan1 = plan(&f, "lane");
+    let env = apply(&f, "lane", plan1["plan_digest"].as_str().unwrap());
+    let r = &env["result"];
+    assert_eq!(r["reason"], "branch_in_use", "{env}");
+    let existing = r["existing"][0]["path"].as_str().unwrap();
+    assert_eq!(r["next"], json!(expect(existing)), "{env}");
+    assert!(
+        r["next"].as_str().unwrap().contains("'"),
+        "the path is quoted"
+    );
+
+    // path_exists: an explicit --path where a worktree already is.
+    let existing_path = other.to_str().unwrap().to_string();
+    let p = project(&f);
+    let planned = envelope(&run(
+        &f.repo,
+        &args(
+            &[
+                "worktree-plan",
+                &p,
+                "--branch-prefix",
+                "lane2",
+                "--path",
+                &existing_path,
+            ],
+            &f.source,
+        ),
+    ))["result"]
+        .clone();
+    let out = run(
+        &f.repo,
+        &args(
+            &[
+                "worktree-apply",
+                &p,
+                "--branch-prefix",
+                "lane2",
+                "--path",
+                &existing_path,
+                "--plan-digest",
+                planned["plan_digest"].as_str().unwrap(),
+                "--disk-floor-bytes",
+                "0",
+            ],
+            &f.source,
+        ),
+    );
+    let env = envelope(&out);
+    let r = &env["result"];
+    assert_eq!(r["reason"], "path_exists", "{env}");
+    assert_eq!(r["next"], json!(expect(&existing_path)), "{env}");
+
+    // task_has_worktree: the task's own locked worktree, then another branch and path.
+    let f = fixture();
+    let plan2 = plan(&f, "lane");
+    let made = apply(&f, "lane", plan2["plan_digest"].as_str().unwrap());
+    let made_path = made["result"]["path"].as_str().unwrap().to_string();
+    let p = project(&f);
+    let other_plan = envelope(&run(
+        &f.repo,
+        &args(
+            &[
+                "worktree-plan",
+                &p,
+                "--branch-prefix",
+                "other",
+                "--path",
+                "elsewhere",
+            ],
+            &f.source,
+        ),
+    ))["result"]
+        .clone();
+    let out = run(
+        &f.repo,
+        &args(
+            &[
+                "worktree-apply",
+                &p,
+                "--branch-prefix",
+                "other",
+                "--path",
+                "elsewhere",
+                "--plan-digest",
+                other_plan["plan_digest"].as_str().unwrap(),
+                "--disk-floor-bytes",
+                "0",
+            ],
+            &f.source,
+        ),
+    );
+    let env = envelope(&out);
+    let r = &env["result"];
+    assert_eq!(r["reason"], "task_has_worktree", "{env}");
+    let existing = r["existing"][0]["path"].as_str().unwrap();
+    assert_eq!(
+        fs::canonicalize(existing).unwrap(),
+        fs::canonicalize(&made_path).unwrap()
+    );
+    assert_eq!(r["next"], json!(expect(existing)), "{env}");
+
+    // branch_exists carries no worktree path, so there is nothing to link and no `next`.
+    let f = fixture();
+    git(&f.repo, &["branch", "lane/7-06-C-e1", &f.base]);
+    let plan3 = plan(&f, "lane");
+    let env = apply(&f, "lane", plan3["plan_digest"].as_str().unwrap());
+    assert_eq!(env["result"]["reason"], "branch_exists", "{env}");
+    assert!(env["result"].get("next").is_none(), "{env}");
+}
+
 /// AC-2: in a temporary HOME the created worktree is `<HOME>/.moai/worktrees/<project>-<id>`;
 /// planning created no folder (D5) and the add created the parents itself.
 #[test]

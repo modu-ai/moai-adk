@@ -1014,3 +1014,101 @@ fn numeric_flag_bounds() {
     assert!(msg.contains("comment_differs"), "{msg}");
     assert_eq!(fx.calls(), 0);
 }
+
+/// L3c (the #3048 acceptance): `claim-verify` in its flag and stdin forms tells a lane whose
+/// record points at another folder which command links this one. The hint is added only when
+/// the local journal has the claim's active record and its worktree does not contain this
+/// folder; every other key of the verdict is unchanged, and the hook's answer is not touched.
+#[test]
+fn claim_verify_reports_a_record_worktree_mismatch() {
+    let fx = Fx::new();
+    fx.seed();
+    let w = fx.worktree("w1", "feat/x", "HEAD");
+    let body = owner_body(LANE);
+    let flags = [
+        "claim-verify",
+        ".",
+        "--issue",
+        "7",
+        "--comment",
+        "100",
+        "--lane",
+        LANE,
+        "--repo",
+        "acme/widgets",
+    ];
+
+    // From the folder the record names: no hint, the plain verdict.
+    let at_root = fx.run_in(&fx.root, &flags, &body, "");
+    assert_eq!(at_root.status.code(), Some(0), "{at_root:?}");
+    let plain = envelope(&at_root)["result"].clone();
+    assert_eq!(plain["status"], json!("owner"));
+    assert!(plain.get("worktree_link").is_none(), "{plain}");
+
+    // From the new worktree: the same verdict plus the hint with the one command to run.
+    let at_w = fx.run_in(&w, &flags, &body, "");
+    assert_eq!(at_w.status.code(), Some(0), "{at_w:?}");
+    let mut hinted = envelope(&at_w)["result"].clone();
+    let hint = hinted
+        .as_object_mut()
+        .unwrap()
+        .remove("worktree_link")
+        .unwrap();
+    assert_eq!(hinted, plain, "no other key changes");
+    assert_eq!(hint["status"], json!("mismatch"));
+    assert_eq!(hint["record_worktree"], json!(fx.root.to_str().unwrap()));
+    assert_eq!(hint["this_worktree"], json!(w.to_str().unwrap()));
+    let next = format!(
+        "moai claim-link . --issue 7 --repo acme/widgets --lane {LANE} --comment 100 --worktree '{}'",
+        w.display()
+    );
+    assert_eq!(hint["next"], json!(next));
+
+    // The stdin form reads the same record and gives the same hint.
+    let request = json!({"schema_version": 1, "owner": "acme", "repo": "widgets",
+                         "issue_number": 7, "session": LANE, "comment_id": 100})
+    .to_string();
+    let out = fx.run_in(&w, &["claim-verify", "."], &body, &request);
+    assert_eq!(envelope(&out)["result"]["worktree_link"], hint);
+
+    // Another lane's flags find no record of theirs: no hint.
+    let mut other_lane = flags;
+    other_lane[7] = "lane-b";
+    let out = fx.run_in(&w, &other_lane, &body, "");
+    assert!(envelope(&out)["result"].get("worktree_link").is_none());
+
+    // The hook's answer is not changed by the hint: allowed, nothing printed.
+    let out = fx.hook(&w, &body);
+    assert_eq!(out.status.code(), Some(0), "{out:?}");
+    assert!(out.stdout.is_empty(), "{out:?}");
+
+    // After the link the record contains this folder and the hint is gone.
+    ok(&fx.link(&w, &body));
+    let out = fx.run_in(&w, &flags, &body, "");
+    assert_eq!(out.status.code(), Some(0), "{out:?}");
+    assert!(envelope(&out)["result"].get("worktree_link").is_none());
+}
+
+/// Without any local record (a clone that never ran `claim-acquire`) the verdict has no hint
+/// key at all, and the read creates no journal.
+#[test]
+fn claim_verify_without_a_local_record_has_no_hint() {
+    let fx = Fx::new();
+    let w = fx.worktree("w1", "feat/x", "HEAD");
+    let flags = [
+        "claim-verify",
+        ".",
+        "--issue",
+        "7",
+        "--comment",
+        "100",
+        "--lane",
+        LANE,
+        "--repo",
+        "acme/widgets",
+    ];
+    let out = fx.run_in(&w, &flags, &owner_body(LANE), "");
+    assert_eq!(out.status.code(), Some(0), "{out:?}");
+    assert!(envelope(&out)["result"].get("worktree_link").is_none());
+    assert!(!fx.journal_dir().exists(), "a read creates no journal");
+}

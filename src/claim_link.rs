@@ -341,6 +341,67 @@ pub fn held_by_other(records: &[ClaimRecord], key: &str, id: &WorktreeId) -> Res
     Ok(())
 }
 
+/// A shell word for `s`: bare when it only holds characters no shell treats specially,
+/// single-quoted otherwise.
+fn shell_word(s: &str) -> String {
+    let plain = !s.is_empty()
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || "-_.:@%+=,/".contains(c));
+    if plain {
+        s.to_string()
+    } else {
+        crate::lane_env::quote(Path::new(s))
+    }
+}
+
+/// The command that links `worktree` to `rec`'s claim, as the next step after a refusal or a
+/// mismatch (#3048): the record's Issue, repository, lane and claim comment, and the path
+/// single-quoted. `None` for a record that has no claim comment id (nothing to name).
+pub fn next_command(rec: &ClaimRecord, worktree: &str) -> Option<String> {
+    let comment = rec.comment_id?;
+    Some(format!(
+        "moai claim-link . --issue {} --repo {}/{} --lane {} --comment {} --worktree {}",
+        rec.task_ref.issue_number,
+        rec.task_ref.owner,
+        rec.task_ref.repo,
+        shell_word(&rec.owner.id),
+        comment,
+        crate::lane_env::quote(Path::new(worktree)),
+    ))
+}
+
+/// What `claim-verify` (the non-hook forms) adds when the local journal has this claim's
+/// active record and its worktree does not contain `project`'s work tree: the guard would not
+/// find the record from here. `None` otherwise — no record, a record of another lane or
+/// comment, or a record that does contain this folder — so a verdict without a local record
+/// is byte for byte what it was.
+pub fn mismatch_hint(project: &Path, req: &crate::claim_verify::VerifyRequest) -> Option<Value> {
+    let comment = req.comment_id?;
+    let rec = crate::worktree::active_records(project)
+        .ok()?
+        .into_iter()
+        .find(|r| {
+            r.task_ref.issue_number == req.issue_number
+                && r.task_ref.owner == req.owner
+                && r.task_ref.repo == req.repo
+                && r.comment_id == Some(comment)
+                && r.owner.id == req.session
+        })?;
+    let ident = crate::identity::identity(project).ok()?;
+    let this = ident["work_tree"].as_str()?.to_string();
+    let contains = std::fs::canonicalize(&rec.worktree.path)
+        .is_ok_and(|recorded| Path::new(&this).starts_with(recorded));
+    if contains {
+        return None;
+    }
+    Some(json!({
+        "status": "mismatch",
+        "record_worktree": rec.worktree.path,
+        "this_worktree": this,
+        "next": next_command(&rec, &this)?,
+    }))
+}
+
 /// The inputs of `claim-link`.
 #[derive(Clone, Copy, Debug)]
 pub struct LinkRequest<'a> {
@@ -690,6 +751,25 @@ mod tests {
             crate::contract::Kind::Transport,
             "{err}"
         );
+    }
+
+    #[test]
+    fn the_next_command_quotes_what_a_shell_would_split() {
+        let r = record("0000000000000001", 7, 100, "agent-10", "assigned");
+        assert_eq!(
+            next_command(&r, "/p/my wt").unwrap(),
+            "moai claim-link . --issue 7 --repo acme/widgets --lane agent-10 --comment 100 \
+             --worktree '/p/my wt'"
+        );
+        // A lane with a space and a quote is single-quoted, the quote escaped.
+        let odd = record("0000000000000001", 7, 100, "it's a lane", "assigned");
+        let next = next_command(&odd, "/p/it's").unwrap();
+        assert!(next.contains("--lane 'it'\\''s a lane' "), "{next}");
+        assert!(next.ends_with("--worktree '/p/it'\\''s'"), "{next}");
+        // A record without a claim comment id has nothing to name.
+        let mut none = r;
+        none.comment_id = None;
+        assert_eq!(next_command(&none, "/p"), None);
     }
 
     fn held(r: &ClaimRecord, path: &str, branch: Option<&str>) -> ClaimRecord {

@@ -1752,7 +1752,14 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                     }
                     _ => input::<moai_cli::claim_verify::VerifyRequest>()?,
                 };
-                moai_cli::claim_verify::verify_cli(&request, &transport, &clock)
+                let mut verdict = moai_cli::claim_verify::verify_cli(&request, &transport, &clock)?;
+                // #3030: a record that points at another folder gets the command that links
+                // this one; the key is absent when there is nothing to say (the hook above
+                // never adds it).
+                if let Some(hint) = moai_cli::claim_link::mismatch_hint(&project, &request) {
+                    verdict["worktree_link"] = hint;
+                }
+                Ok(verdict)
             }
         }
         Command::ClaimShow { project, task } => moai_cli::claim::show_cli(&project, &task),
