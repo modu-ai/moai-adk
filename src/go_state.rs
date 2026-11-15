@@ -2001,7 +2001,10 @@ fn hooks_step_has_work(
             .iter()
             .find(|(f, _)| *f == SETTINGS)
             .map_or("", |(_, text)| text.as_str());
-        if !text.is_empty() {
+        // `settings` holds "" both for a missing file and for an empty one, so the file's
+        // presence is read here: an empty file that stays is not a JSON object either, and
+        // the step refuses it just as it refuses any other non-object.
+        if fs::symlink_metadata(project.join(SETTINGS)).is_ok() {
             match serde_json::from_str::<serde_json::Value>(text) {
                 Ok(serde_json::Value::Object(map)) => {
                     let entries = map

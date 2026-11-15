@@ -256,6 +256,52 @@ fn the_hook_counterpart_stays_when_the_hook_folder_cannot_be_listed() {
     );
 }
 
+/// The kept direction (#3060 audit B1): an EMPTY settings file that stays is not a JSON object
+/// either, so the `hooks` step refuses it and the preview keeps the reinstall wording. A file
+/// with only white space is the same; the two used to differ because "" meant "no file".
+#[test]
+fn the_hook_counterpart_stays_when_the_staying_settings_are_empty() {
+    for settings in ["", "\n", "  \t\n"] {
+        let fx = hook_fx(settings, false);
+        let plan = fx.plan();
+        assert_eq!(
+            action(&plan, ".claude/hooks/moai/handle-a.sh"),
+            "move",
+            "{plan}"
+        );
+        assert_eq!(
+            counterpart(&plan, "hook")["counterpart"],
+            json!("reinstalled by hooks"),
+            "settings {settings:?}: {plan}"
+        );
+    }
+}
+
+/// The miss direction next to the one above: no settings file at all gives the hooks step
+/// nothing to refuse and nothing to replace, so with every script moved the hooks go away.
+#[test]
+fn the_hook_counterpart_is_dropped_when_there_is_no_settings_file() {
+    let mut fx = GoFx::new();
+    for n in ["handle-a", "handle-b"] {
+        fx.deployed(
+            &format!(".claude/hooks/moai/{n}.sh"),
+            &format!("#!/bin/sh\necho {n}\n"),
+        );
+    }
+    fx.manifest();
+    let plan = fx.plan();
+    assert_eq!(
+        action(&plan, ".claude/hooks/moai/handle-a.sh"),
+        "move",
+        "{plan}"
+    );
+    assert_eq!(
+        counterpart(&plan, "hook")["counterpart"],
+        json!(GONE),
+        "{plan}"
+    );
+}
+
 /// The miss direction: a kind with nothing moving gets no row, and a plan that moves nothing
 /// has no rows at all.
 #[test]
