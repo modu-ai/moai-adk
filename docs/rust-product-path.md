@@ -817,7 +817,9 @@ operation envelope. The main layout replaces the earlier Go-parity layout:
 (`status_line::current`); releases before it wrote `moai-cli statusline`. That old value is
 recognised only by equality with the old generator's output and only when the ownership receipt
 records it, and is then rewritten as an `update` through the Claude settings three-way (the old file
-is kept under `.moai-cli/settings-backups/`). An edited, foreign or receipt-less status line is
+is kept under `.moai-cli/settings-backups/` before anything is written; when that copy cannot be
+made the rewrite is refused with `status_line_backup_failed` and nothing changes, and a copy made
+before a later failed write is not deleted). An edited, foreign or receipt-less status line is
 never touched and its text is never printed. The rewrite, and a new default where a `moai` is on
 PATH, wait for the first `moai` on PATH to be the Rust build **and** to answer `statusline --help`
 with the Rust summary line (a routing script can answer `--version` as Rust and still send

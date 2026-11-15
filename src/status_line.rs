@@ -266,8 +266,14 @@ pub fn plan_in(
 
 /// `claude::settings_apply_in` behind the gate: a request that writes MoAI's new status line is
 /// refused, before anything is written, when [`gate`] holds it now (the plan digest does not bind
-/// the PATH, so the plan-time verdict is not enough). After a rewrite the old settings file is
-/// kept byte for byte under `.moai-cli/settings-backups/`, and the result says where.
+/// the PATH, so the plan-time verdict is not enough).
+///
+/// A rewrite first keeps the old settings file byte for byte under
+/// `.moai-cli/settings-backups/<UTC>-<scope>/` and reads the copy back; when that fails nothing
+/// is written (`status_line_backup_failed`, "nothing was changed"). The write comes after, so the
+/// copy exists whenever the settings file or its receipt holds the new value. When the write then
+/// fails (a stale digest, a conflict) the copy stays: nothing is deleted. The result's
+/// `status_line_migration.backup_dir` is that folder.
 #[allow(clippy::too_many_arguments)]
 pub fn apply_in(
     project: &Path,
@@ -288,8 +294,17 @@ pub fn apply_in(
     if let Some(kind) = kind {
         gate(kind, project, home, path_env).map_err(|h| h.message)?;
     }
-    let before = match kind {
-        Some(Kind::Rewrite) => claude::read_existing(&project.join(scope.file()))?,
+    let backup = match kind {
+        Some(Kind::Rewrite) => {
+            let before = claude::read_existing(&project.join(scope.file()))?;
+            let dir = claude::keep_original(project, scope, before.as_deref()).map_err(|e| {
+                format!(
+                    "status_line_backup_failed: the old settings file could not be kept ({e}); \
+                     the status line is not rewritten and nothing was changed"
+                )
+            })?;
+            Some(dir)
+        }
         _ => None,
     };
     let mut out = claude::settings_apply_in(
@@ -315,18 +330,14 @@ pub fn apply_in(
             (Kind::Create, true) => "created",
         },
     });
-    if let (Kind::Rewrite, true) = (kind, wrote) {
-        match claude::keep_original(project, scope, before.as_deref()) {
-            Ok(dir) => {
-                let name = scope.file().rsplit('/').next().unwrap_or("settings.json");
-                note["backup_dir"] = json!(dir);
-                note["revert"] = json!(format!(
-                    "from the project folder: cp '{dir}/{name}' '{}' (MoAI then treats the restored value as your change and leaves it as it is)",
-                    scope.file()
-                ));
-            }
-            // The settings file is already written; say that the old copy could not be kept.
-            Err(e) => note["backup_error"] = json!(e),
+    if let Some(dir) = &backup {
+        note["backup_dir"] = json!(dir);
+        if wrote {
+            let name = scope.file().rsplit('/').next().unwrap_or("settings.json");
+            note["revert"] = json!(format!(
+                "from the project folder: cp '{dir}/{name}' '{}' (MoAI then treats the restored value as your change and leaves it as it is)",
+                scope.file()
+            ));
         }
     }
     out["status_line_migration"] = note;

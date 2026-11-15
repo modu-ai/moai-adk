@@ -509,6 +509,62 @@ fn a_pristine_old_install_is_rewritten_behind_a_rust_moai_and_reverts() {
     assert_eq!(after["action"], json!("unchanged"), "{after}");
 }
 
+/// The old file is kept before anything is written. When it cannot be kept (the backup place is
+/// a file here) the rewrite is refused with its own reason, "nothing was changed", and the
+/// settings file and the receipt are the same bytes; a retry once the place is usable works.
+#[test]
+fn a_rewrite_that_cannot_keep_the_old_file_writes_nothing() {
+    let w = world();
+    w.install_legacy();
+    let before = w.files();
+    w.write(".moai-cli/settings-backups", b"not a folder");
+    let p = settings_plan(&w, &want(), &w.rust());
+    let v = settings_apply(&w, &want(), &digest_of(&p), &w.rust());
+    assert_eq!(v["ok"], json!(false), "{v}");
+    let text = v.to_string();
+    assert!(text.contains("status_line_backup_failed"), "{text}");
+    assert!(text.contains("nothing was changed"), "{text}");
+    assert!(
+        !text.contains("not rewritten: it would call"),
+        "not a gate hold: {text}"
+    );
+    assert_eq!(w.files(), before, "settings file and receipt are untouched");
+    assert_eq!(w.read(".moai-cli/settings-backups"), b"not a folder");
+
+    fs::remove_file(w.path(".moai-cli/settings-backups")).unwrap();
+    let v = settings_apply(&w, &want(), &digest_of(&p), &w.rust());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    let dir = v["result"]["status_line_migration"]["backup_dir"]
+        .as_str()
+        .unwrap();
+    assert_eq!(
+        w.read(&format!("{dir}/settings.json")),
+        fixture("statusline.settings.json")
+    );
+}
+
+/// The copy comes before the write and is never deleted: an apply that then fails (a stale
+/// digest) leaves the files as they were and the kept copy in place, holding the old bytes.
+#[test]
+fn a_failed_write_after_the_copy_leaves_the_copy_and_the_files() {
+    let w = world();
+    w.install_legacy();
+    let before = w.files();
+    let v = settings_apply(&w, &want(), "sha256:stale", &w.rust());
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert_eq!(w.files(), before);
+    let kept: Vec<_> = fs::read_dir(w.path(".moai-cli/settings-backups"))
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.is_dir())
+        .collect();
+    assert_eq!(kept.len(), 1, "{kept:?}");
+    assert_eq!(
+        fs::read(kept[0].join("settings.json")).unwrap(),
+        fixture("statusline.settings.json")
+    );
+}
+
 /// AC-2 through the update preview: the old install is a ready settings step that carries the
 /// new status line and names the rewrite; applying the printed command ends `unchanged`.
 #[test]
