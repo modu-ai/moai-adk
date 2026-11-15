@@ -1044,4 +1044,22 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn an_index_that_is_not_what_the_exporter_writes_is_refused() {
+        let mut out = render(&sample()).unwrap();
+        out.index = out.index.replacen("{\n", "{ \n", 1);
+        assert_eq!(parse(&out), Err(ExportError::Modified("index.json".into())));
+    }
+
+    #[test]
+    fn the_events_file_must_keep_its_name_in_the_index() {
+        let mut out = render(&sample()).unwrap();
+        out.index = out.index.replacen("events.jsonl", "other.jsonl", 1);
+        assert!(
+            matches!(parse(&out), Err(ExportError::Format(_))),
+            "{:?}",
+            parse(&out)
+        );
+    }
 }
