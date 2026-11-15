@@ -44,4 +44,3 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     };
     moai_cli::claim_expired::list(&owner, &repo, now, &GhTransport::from_env()?, &SystemClock)
 }
-

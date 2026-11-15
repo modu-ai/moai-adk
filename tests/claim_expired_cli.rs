@@ -3,6 +3,7 @@
 //! recorded forge; the binary runs with a cleared environment and an empty temporary HOME.
 mod common;
 
+use common::CleanEnv;
 use serde_json::Value;
 use std::process::{Command, Output};
 
@@ -14,7 +15,7 @@ fn run(args: &[&str]) -> (Output, Value) {
         .arg("claim-expired")
         .args(args)
         .current_dir(home.path())
-        .env_clear()
+        .clean_env()
         .env("HOME", home.path())
         .env("PATH", "/usr/bin:/bin")
         .output()

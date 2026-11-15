@@ -325,6 +325,84 @@ mod tests {
         assert_eq!(v["expired"].as_array().unwrap().len(), 1);
     }
 
+    /// A forge whose answers fail: one fixed reply for the search and one for every thread.
+    struct Failing {
+        search: std::result::Result<HttpResponse, String>,
+        thread: std::result::Result<HttpResponse, String>,
+    }
+    impl Transport for Failing {
+        fn send(&self, req: &HttpRequest) -> std::result::Result<HttpResponse, String> {
+            if req.url.contains("/search/issues") {
+                self.search.clone()
+            } else {
+                self.thread.clone()
+            }
+        }
+    }
+
+    fn one_found() -> std::result::Result<HttpResponse, String> {
+        Ok(HttpResponse::new(200).with_body(
+            json!({"total_count": 1, "incomplete_results": false, "items": [{"number": 4}]}),
+        ))
+    }
+
+    #[test]
+    fn a_search_that_fails_is_an_error_and_never_an_empty_list() {
+        let ok_thread = Ok(HttpResponse::new(200).with_body(json!([])));
+        let cases: Vec<(&str, std::result::Result<HttpResponse, String>)> = vec![
+            (
+                "500",
+                Ok(HttpResponse::new(500).with_body(json!({"message": "boom"}))),
+            ),
+            (
+                "403",
+                Ok(HttpResponse::new(403).with_body(json!({"message": "rate limit"}))),
+            ),
+            ("transport", Err("connection refused".to_string())),
+            ("no body", Ok(HttpResponse::new(200))),
+            (
+                "no items",
+                Ok(HttpResponse::new(200).with_body(json!({"total_count": 0}))),
+            ),
+            (
+                "items not a list",
+                Ok(HttpResponse::new(200).with_body(json!({"items": "x"}))),
+            ),
+        ];
+        for (name, search) in cases {
+            let f = Failing {
+                search,
+                thread: ok_thread.clone(),
+            };
+            assert!(list("o", "r", NOW, &f, &C0).is_err(), "{name}");
+        }
+    }
+
+    #[test]
+    fn a_thread_request_that_fails_is_named_in_unread() {
+        let cases: Vec<(&str, std::result::Result<HttpResponse, String>)> = vec![
+            (
+                "404",
+                Ok(HttpResponse::new(404).with_body(json!({"message": "Not Found"}))),
+            ),
+            (
+                "500",
+                Ok(HttpResponse::new(500).with_body(json!({"message": "boom"}))),
+            ),
+            ("transport", Err("connection reset".to_string())),
+        ];
+        for (name, thread) in cases {
+            let f = Failing {
+                search: one_found(),
+                thread,
+            };
+            let v = list("o", "r", NOW, &f, &C0).unwrap();
+            assert_eq!(v["unread"], json!([4]), "{name}: {v}");
+            assert_eq!(v["threads_read"], 0, "{name}: {v}");
+            assert_eq!(v["expired"], json!([]), "{name}: {v}");
+        }
+    }
+
     #[test]
     fn a_cut_search_is_partial() {
         let f = forge(
