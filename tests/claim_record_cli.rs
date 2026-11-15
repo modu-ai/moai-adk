@@ -299,6 +299,9 @@ fn scope_check_records_integration_order() {
         &[],
     ));
     assert_eq!(res["decision"], "allowed_with_order");
+    // The record is not blocked, so there is nothing to close again (#3048).
+    assert_eq!(res["record_update"]["applied"], true, "{res}");
+    assert!(res["record_update"].get("undo").is_none(), "{res}");
     let rec = latest(&repo, KEY_A);
     assert_eq!(rec["state"], "running");
     assert_eq!(
