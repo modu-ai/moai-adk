@@ -185,6 +185,17 @@ pub fn read_claims<T: Transport, C: crate::forge::policy::Clock>(
     transport: &T,
     clock: &C,
 ) -> Result<ClaimsRead> {
+    // Nothing is asked of GitHub with a name that would change the search or the URL
+    // (audit #3023 N3).
+    if !valid_lane(lane) {
+        return Err(format!("invalid lane name `{lane}`"));
+    }
+    // `repo_ok` allows dots, so `.` and `..` (a path step in the URL) are refused here.
+    if !crate::lane_loop::repo_ok(&format!("{owner}/{repo}"))
+        || [owner, repo].iter().any(|p| p.chars().all(|c| c == '.'))
+    {
+        return Err(format!("invalid repository `{owner}/{repo}`"));
+    }
     let client =
         crate::forge::Client::new(transport, clock, Default::default(), Default::default());
     let query = format!("repo:{owner}/{repo} is:open in:comments \"session={lane}\"");
@@ -200,24 +211,34 @@ pub fn read_claims<T: Transport, C: crate::forge::policy::Clock>(
         .as_array()
         .ok_or("the search for the lane's claims answered without a list of items")?;
     let mut numbers: BTreeSet<u64> = items.iter().filter_map(|i| i["number"].as_u64()).collect();
-    let total = body["total_count"].as_u64().unwrap_or(items.len() as u64);
-    let partial = if total > items.len() as u64 {
-        Some(format!(
-            "the search found {total} threads and returned {}",
-            items.len()
-        ))
-    } else if body["incomplete_results"].as_bool() == Some(true) {
-        Some("GitHub's search flagged its result as incomplete".to_string())
-    } else {
-        None
+    // A full page whose total is not said may hide more threads (audit #3023 B2): partial.
+    let shown = items.len() as u64;
+    let partial = match body["total_count"].as_u64() {
+        Some(total) if total > shown => Some(format!(
+            "the search found {total} threads and returned {shown}"
+        )),
+        None if shown >= SEARCH_PAGE => Some(format!(
+            "the search returned a full page of {shown} threads and did not say how many it found"
+        )),
+        _ if body["incomplete_results"].as_bool() == Some(true) => {
+            Some("GitHub's search flagged its result as incomplete".to_string())
+        }
+        _ => None,
     };
     numbers.extend(extra.iter().copied());
     let mut threads = Vec::new();
     for n in numbers {
         let url =
             format!("https://api.github.com/repos/{owner}/{repo}/issues/{n}/comments?per_page=100");
-        let raw = crate::lane_status::pages(&client, url)
+        let (raw, complete) = crate::lane_status::pages_with_evidence(&client, url, None)
             .map_err(|e| format!("the comments of #{n} could not be read: {e}"))?;
+        // A page that is no list, or a `Link: rel="next"` that cannot be followed, is a read
+        // that did not reach the end: never "no claim here" (audit #3023 B1).
+        if !complete {
+            return Err(format!(
+                "the comments of #{n} could not be read to the end (an answer that is no list, or a next page that cannot be followed)"
+            ));
+        }
         threads.push(IssueComments {
             issue: n,
             comments: raw
@@ -876,8 +897,12 @@ branch=issue/{issue}-x head=0123456789abcdef0123456789abcdef01234567 uncommitted
         assert!(sent.iter().all(|(m, _)| m == "GET"), "{sent:?}");
         assert_eq!(sent.len(), 2, "{sent:?}");
         // The search names the repository, the open state and the lane's session token.
-        assert!(sent[0].1.contains("repo%3Aacme%2Fwidgets"), "{}", sent[0].1);
-        assert!(sent[0].1.contains("session%3Dagent-9"), "{}", sent[0].1);
+        // The whole encoded query (audit #3023 N6): open threads, comments, the lane's token.
+        assert_eq!(
+            sent[0].1,
+            "https://api.github.com/search/issues?q=repo%3Aacme%2Fwidgets%20is%3Aopen%20in%3Acomments%20%22session%3Dagent-9%22&per_page=30"
+        );
+        assert_eq!(sent[1].1, format!("{API}/issues/7/comments?per_page=100"));
     }
 
     #[test]
@@ -959,6 +984,173 @@ branch=issue/{issue}-x head=0123456789abcdef0123456789abcdef01234567 uncommitted
             .map(|_| ())
             .unwrap_err();
         assert!(err.contains("#7"), "{err}");
+    }
+
+    fn search_body(count: usize, total: Option<u64>) -> (String, u16, serde_json::Value) {
+        let mut body = json!({"incomplete_results": false,
+            "items": (1..=count as u64).map(|n| json!({"number": n})).collect::<Vec<_>>()});
+        if let Some(t) = total {
+            body["total_count"] = json!(t);
+        }
+        ("https://api.github.com/search/issues?q=".into(), 200, body)
+    }
+
+    /// Audit #3023 B2: a full search page is partial unless its total says it was all there.
+    #[test]
+    fn a_full_search_page_is_partial_unless_the_total_says_otherwise() {
+        let any_comments = || (format!("{API}/issues/"), 200, json!([]));
+        for (count, total, partial) in [
+            (30, Some(30), false),
+            (30, Some(31), true),
+            (30, None, true),
+            (29, None, false),
+            (29, Some(29), false),
+            (0, None, false),
+        ] {
+            let fake = Fake {
+                answers: vec![search_body(count, total), any_comments()],
+                sent: RefCell::new(Vec::new()),
+            };
+            let got = read_claims("acme", "widgets", "agent-9", &[], &fake, &Clock0).unwrap();
+            assert_eq!(
+                got.partial.is_some(),
+                partial,
+                "{count} threads, total {total:?}: {:?}",
+                got.partial
+            );
+        }
+    }
+
+    /// Answers the search with thread 7 and thread 7's comments in `pages` pages chained by
+    /// `Link`; `last_link` is the `Link` the last page carries (none when the chain ends).
+    struct Chain {
+        pages: u32,
+        last_link: Option<&'static str>,
+        body: Option<serde_json::Value>,
+    }
+
+    impl Transport for Chain {
+        fn send(&self, req: &HttpRequest) -> std::result::Result<HttpResponse, String> {
+            if req
+                .url
+                .starts_with("https://api.github.com/search/issues?q=")
+            {
+                return Ok(HttpResponse::new(200).with_body(
+                    json!({"total_count": 1, "incomplete_results": false, "items": [{"number": 7}]}),
+                ));
+            }
+            let base = format!("{API}/issues/7/comments?per_page=100");
+            let page: u32 = req
+                .url
+                .strip_prefix(&format!("{base}&page="))
+                .map_or(1, |p| p.parse().unwrap());
+            let mut resp = HttpResponse::new(200);
+            resp.body = Some(self.body.clone().unwrap_or_else(|| json!([])));
+            if page < self.pages {
+                resp =
+                    resp.with_header("link", format!("<{base}&page={}>; rel=\"next\"", page + 1));
+            } else if let Some(link) = self.last_link {
+                resp = resp.with_header("link", link);
+            }
+            Ok(resp)
+        }
+    }
+
+    /// Audit #3023 B2: fifty comment pages are read; a fifty-first that is still asked for is a
+    /// read that failed, never a quiet "no claim".
+    #[test]
+    fn the_comment_page_limit_is_fifty() {
+        let ok = Chain {
+            pages: 50,
+            last_link: None,
+            body: None,
+        };
+        assert!(read_claims("acme", "widgets", "agent-9", &[], &ok, &Clock0).is_ok());
+        let over = Chain {
+            pages: 51,
+            last_link: None,
+            body: None,
+        };
+        let err = read_claims("acme", "widgets", "agent-9", &[], &over, &Clock0)
+            .map(|_| ())
+            .unwrap_err();
+        assert!(err.contains("#7") && err.contains("limit"), "{err}");
+    }
+
+    /// Audit #3023 B1: an answer that is no list, or a next page that cannot be followed, is
+    /// a read that did not reach the end.
+    #[test]
+    fn comments_that_were_not_read_to_the_end_are_an_error_not_no_claim() {
+        let object = Chain {
+            pages: 1,
+            last_link: None,
+            body: Some(json!({"message": "weird object"})),
+        };
+        let unfollowable = Chain {
+            pages: 1,
+            last_link: Some("garbage; rel=\"next\""),
+            body: None,
+        };
+        let no_body = Fake {
+            answers: vec![
+                search(&[7], 1, false),
+                // 200 with no JSON body at all (a truncated answer).
+                (
+                    format!("{API}/issues/7/comments?per_page=100"),
+                    200,
+                    json!(null),
+                ),
+            ],
+            sent: RefCell::new(Vec::new()),
+        };
+        for (what, result) in [
+            (
+                "an object",
+                read_claims("acme", "widgets", "agent-9", &[], &object, &Clock0),
+            ),
+            (
+                "an unfollowable next link",
+                read_claims("acme", "widgets", "agent-9", &[], &unfollowable, &Clock0),
+            ),
+            (
+                "a null body",
+                read_claims("acme", "widgets", "agent-9", &[], &no_body, &Clock0),
+            ),
+        ] {
+            let err = result.map(|_| ()).unwrap_err();
+            assert!(
+                err.contains("#7") && err.contains("to the end"),
+                "{what}: {err}"
+            );
+        }
+    }
+
+    /// Audit #3023 N3: a lane name or a repository that would change the search or the URL is
+    /// refused before any request.
+    #[test]
+    fn a_name_that_would_change_the_request_is_refused_before_it_is_sent() {
+        let fake = Fake {
+            answers: vec![search(&[], 0, false)],
+            sent: RefCell::new(Vec::new()),
+        };
+        for lane in ["x\" repo:evil/other \"y", "a b", "", "a/b"] {
+            assert!(
+                read_claims("acme", "widgets", lane, &[], &fake, &Clock0).is_err(),
+                "{lane:?}"
+            );
+        }
+        for (owner, repo) in [
+            ("acme", "widgets?x=1#"),
+            ("acme", ".."),
+            ("", "w"),
+            ("a b", "w"),
+        ] {
+            assert!(
+                read_claims(owner, repo, "agent-9", &[], &fake, &Clock0).is_err(),
+                "{owner}/{repo}"
+            );
+        }
+        assert!(fake.sent.borrow().is_empty(), "{:?}", fake.sent.borrow());
     }
 
     #[test]
