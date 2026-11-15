@@ -303,7 +303,7 @@ pub fn merge<T: Transport, S: Transport, C: Clock>(
     // #2906 T: a tier-0 record names the tier and the local-check line in place of a verdict.
     let record = if tier == 0 {
         format!(
-            "리더 병합 기록 (`moai-cli gate-merge`, #2674): audit-tier: 0 (실효 등급 0, 감사 없음 — 사용자 결정 6878414880), local-check {local_check_id}: `{local_check_line}` (head {}, merge base {}), check run success {checks}, Self-Audit checker 통과. 병합 시점 tip {} 과 merge-tree 충돌 0, merge base 이후 tip 변경 파일과 이 PR 변경 파일 겹침 {}.{note} 병합 커밋 {}.\n\n🗿 MoAI",
+            "리더 병합 기록 (`moai gate-merge`, #2674): audit-tier: 0 (실효 등급 0, 감사 없음 — 사용자 결정 6878414880), local-check {local_check_id}: `{local_check_line}` (head {}, merge base {}), check run success {checks}, Self-Audit checker 통과. 병합 시점 tip {} 과 merge-tree 충돌 0, merge base 이후 tip 변경 파일과 이 PR 변경 파일 겹침 {}.{note} 병합 커밋 {}.\n\n🗿 MoAI",
             short(&head),
             short(&base),
             short(&tip),
@@ -312,7 +312,7 @@ pub fn merge<T: Transport, S: Transport, C: Clock>(
         )
     } else {
         format!(
-            "리더 병합 기록 (`moai-cli gate-merge`, #2674): 판정 {cited} PASS(head {}, base {}), audit-tier: {tier}, check run success {checks}, Self-Audit checker 통과. 병합 시점 tip {} 과 merge-tree 충돌 0, 판정 base 이후 tip 변경 파일과 이 PR 변경 파일 겹침 {}.{note} 병합 커밋 {}.\n\n🗿 MoAI",
+            "리더 병합 기록 (`moai gate-merge`, #2674): 판정 {cited} PASS(head {}, base {}), audit-tier: {tier}, check run success {checks}, Self-Audit checker 통과. 병합 시점 tip {} 과 merge-tree 충돌 0, 판정 base 이후 tip 변경 파일과 이 PR 변경 파일 겹침 {}.{note} 병합 커밋 {}.\n\n🗿 MoAI",
             short(&head),
             short(&base),
             short(&tip),

@@ -242,7 +242,7 @@ pub fn once<T: Transport, S: Transport, C: Clock>(
                     ));
                 }
                 comment(t, &api, pr, format!(
-                    "리더(`moai-cli gate-loop`) — 게이트 중단 → **update-branch 실행**. 감사 PASS·CI 는 갖췄고 충돌도 없지만, 판정 base 이후 tip 이 이 PR 과 같은 코드 파일을 바꿨다({reason}). 합친 head 에서 CI 를 다시 돈다. 저자가 할 일은 없다. 감사자(이 PR 의 예약 보유 레인): 병합 커밋의 겹친 파일만 delta 재감사하고, 판정에 자기 예약 id 를 적는다.\n\n{mark}\n\n🗿 MoAI"
+                    "리더(`moai gate-loop`) — 게이트 중단 → **update-branch 실행**. 감사 PASS·CI 는 갖췄고 충돌도 없지만, 판정 base 이후 tip 이 이 PR 과 같은 코드 파일을 바꿨다({reason}). 합친 head 에서 CI 를 다시 돈다. 저자가 할 일은 없다. 감사자(이 PR 의 예약 보유 레인): 병합 커밋의 겹친 파일만 delta 재감사하고, 판정에 자기 예약 id 를 적는다.\n\n{mark}\n\n🗿 MoAI"
                 ))?;
                 "updated_branch"
             }
@@ -252,7 +252,7 @@ pub fn once<T: Transport, S: Transport, C: Clock>(
                 "already_asked"
             } else {
                 comment(t, &api, pr, format!(
-                    "리더(`moai-cli gate-loop`) — 게이트 중단: 마지막 판정을 쓴 레인이 이 PR 의 허용된 감사 예약을 가진 레인이 아니다({reason}). 허용되는 감사자는 이 PR 의 가장 낮은 `moai-audit-claim` 을 가진 레인, 또는 지금 head 를 적은 가장 낮은 예약을 가진 레인이다. 그 레인이 판정을 내고, 판정 첫 줄 다음에 자기 레인 이름과 예약 id 를 적어 달라.\n\n{mark}\n\n🗿 MoAI"
+                    "리더(`moai gate-loop`) — 게이트 중단: 마지막 판정을 쓴 레인이 이 PR 의 허용된 감사 예약을 가진 레인이 아니다({reason}). 허용되는 감사자는 이 PR 의 가장 낮은 `moai-audit-claim` 을 가진 레인, 또는 지금 head 를 적은 가장 낮은 예약을 가진 레인이다. 그 레인이 판정을 내고, 판정 첫 줄 다음에 자기 레인 이름과 예약 id 를 적어 달라.\n\n{mark}\n\n🗿 MoAI"
                 ))?;
                 "asked_auditor"
             }

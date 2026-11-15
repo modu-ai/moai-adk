@@ -101,7 +101,9 @@ impl<'a> MoveEnv<'a> {
         }
     }
 
-    fn fault(&self, point: &str) -> Result<()> {
+    /// The seam itself, shared with the install apply (#2871 U3c) so its own steps stop at the
+    /// same knob as the journal's.
+    pub(crate) fn fault(&self, point: &str) -> Result<()> {
         #[cfg(debug_assertions)]
         if self.fault == Some(point) {
             return Err(format!("injected crash at {point}"));
@@ -577,7 +579,7 @@ fn rename_exclusive(from: &Path, to: &Path) -> std::result::Result<(), Verdict> 
 }
 
 #[cfg(any(target_os = "macos", target_os = "linux"))]
-fn rename_noreplace(from: &Path, to: &Path) -> std::io::Result<()> {
+pub(crate) fn rename_noreplace(from: &Path, to: &Path) -> std::io::Result<()> {
     use std::ffi::CString;
     use std::os::unix::ffi::OsStrExt;
     let f = CString::new(from.as_os_str().as_bytes()).map_err(std::io::Error::other)?;
@@ -609,7 +611,7 @@ fn rename_noreplace(from: &Path, to: &Path) -> std::io::Result<()> {
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-fn rename_noreplace(_from: &Path, _to: &Path) -> std::io::Result<()> {
+pub(crate) fn rename_noreplace(_from: &Path, _to: &Path) -> std::io::Result<()> {
     Err(std::io::ErrorKind::Unsupported.into())
 }
 

@@ -359,6 +359,29 @@ fn the_ignore_list_is_read_up_to_its_size_limit() {
     assert_eq!(over["after_move"]["unknown"], json!(true), "N+1: {over}");
 }
 
+/// `worktree_include::HIT_PATHS`: a line names at most this many of its paths; `count` has the
+/// full number (audit mutant M32). Written as a literal so a changed constant fails here.
+#[test]
+fn a_line_names_at_most_five_paths_and_counts_them_all() {
+    for (moved, named) in [(4usize, 4usize), (5, 5), (6, 5), (7, 5)] {
+        let mut fx = GoFx::new();
+        for n in 1..=moved {
+            fx.deployed(&format!(".claude/workflows/w{n}.md"), "# w\n");
+        }
+        fx.manifest();
+        fx.write(".gitignore", ".claude/workflows/\n");
+        let plan = fx.plan();
+        let dangling = plan["after_move"]["dangling"].as_array().unwrap();
+        assert_eq!(dangling.len(), 1, "{moved} moved: {plan}");
+        let hit = &dangling[0];
+        assert_eq!(hit["count"], json!(moved), "{moved} moved: {hit}");
+        let paths: Vec<String> = (1..=named)
+            .map(|n| format!(".claude/workflows/w{n}.md"))
+            .collect();
+        assert_eq!(hit["paths"], json!(paths), "{moved} moved: {hit}");
+    }
+}
+
 // ---- AC-6: the settings wiring that goes with a moved settings file ----
 
 #[test]
@@ -473,20 +496,61 @@ fn a_style_named_exactly_is_kept() {
     );
 }
 
-// ---- AC-8: the new fields are part of the digest ----
-
+/// The frontmatter is read from at most its first 16 KiB (audit mutant M30). The style file's
+/// name differs from the style the settings name, so only its `name:` line can match. N: the
+/// line ends on byte 16384 and is found. N+1: it ends on byte 16385, is cut short, and the
+/// file is not kept.
 #[test]
-fn a_new_dangling_line_changes_the_plan_digest_and_the_old_digest_is_refused() {
+fn a_style_name_is_read_from_the_first_16_kib_of_its_frontmatter() {
+    const LIMIT: usize = 16 * 1024;
+    let file = |end: usize| {
+        let (head, name) = ("---\n", "name: MoAI-Easy");
+        // One comment line pads the frontmatter so the `name:` line ends on byte `end`.
+        let pad = end - head.len() - name.len();
+        format!("{head}#{}\n{name}\n---\nbody\n", "x".repeat(pad - 2))
+    };
+    for (end, kept) in [(LIMIT, true), (LIMIT + 1, false)] {
+        let body = file(end);
+        let name_end = body.find("name: MoAI-Easy").unwrap() + "name: MoAI-Easy".len();
+        assert_eq!(
+            name_end, end,
+            "the fixture puts the name line where it says"
+        );
+        let fx = style_fx(
+            "moai-easy",
+            &[(".claude/output-styles/moai/custom.md", &body)],
+        );
+        let plan = fx.plan();
+        let want = if kept { "leave" } else { "move" };
+        assert_eq!(
+            action(&plan, ".claude/output-styles/moai/custom.md"),
+            want,
+            "name ends on byte {end}: {plan}"
+        );
+    }
+}
+
+// ---- AC-8: the new fields are preview-only, not part of the digest ----
+
+/// S-DIGEST (#2936 plan 6887264857 §3): preview-only data is not bound. A dangling ignore
+/// line lives in `after_move`, which the apply never acts on, so a line added between the
+/// preview and the apply shows in the fresh preview but keeps the confirmed digest valid.
+/// (Before S-DIGEST the whole preview was hashed and this was refused.)
+#[test]
+fn a_new_dangling_line_shows_in_the_preview_but_keeps_the_plan_digest() {
     let fx = go_fx();
     fx.manifest();
     let before = fx.plan();
     fx.write(".gitignore", ".claude/loop.md\n");
     let after = fx.plan();
-    assert_ne!(before["plan_digest"], after["plan_digest"], "{after}");
-    let tree = fx.tree();
-    let refused = fx.apply(before["plan_digest"].as_str().unwrap());
-    assert_eq!(refused["ok"], json!(false), "{refused}");
-    assert_eq!(fx.tree(), tree, "a refused apply writes nothing");
+    assert_ne!(
+        before["after_move"]["dangling"], after["after_move"]["dangling"],
+        "the new line shows in the preview: {after}"
+    );
+    assert_eq!(before["plan_digest"], after["plan_digest"], "{after}");
+    let applied = fx.apply(before["plan_digest"].as_str().unwrap());
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+    assert_eq!(applied["result"]["state"], json!("committed"), "{applied}");
 }
 
 // ---- AC-11, O-2: an emptied skill mirror folder is warned about and kept ----

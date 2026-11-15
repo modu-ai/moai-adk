@@ -167,6 +167,9 @@ const RULES: &[(&str, Kind)] = &[
     ("decision append blocked: ", Kind::Blocked),
     // placeholder profile (#2936 R3): ahead of the generic words it quotes.
     ("profile blocked: ", Kind::Blocked),
+    // home install (#2871 U3c): a live Rust session or an unreadable registry stops the apply
+    // before any write; ahead of the generic words the reason may quote (`unknown`).
+    ("home install blocked: ", Kind::Blocked),
     ("decision append refused: ", Kind::InvalidInput),
     ("claim verify: stale", Kind::Blocked),
     ("claim verify: uncertain", Kind::Blocked),
@@ -389,6 +392,9 @@ mod tests {
             ("encode failed", Internal),
             ("permission reference required", PermissionReferenceMissing),
             ("stale or altered plan; re-preview required", StalePlan),
+            // go-state-apply and go-state-revert (S-DIGEST, F17 #2936): the whole messages.
+            (crate::go_state::STALE_PLAN, StalePlan),
+            (crate::go_state::STALE_REVERT_PLAN, StalePlan),
             ("target changed since plan", StalePlan),
             ("target changed since plan; re-preview required", StalePlan),
             ("target changed during apply; temporary file discarded", StalePlan),
@@ -566,6 +572,13 @@ mod tests {
             ("layout source unreadable", Io),
             ("home layout marker write failed", Io),
             ("home root unavailable; HOME is not set", Io),
+            // home install (#2871 U3c): the lock another apply or revert holds, an edited marker,
+            // a live Rust session and an unknown registry, each refused before a write.
+            ("conflict in home install: another apply or revert holds the install lock; nothing was written", Conflict),
+            ("conflict in home install: the marker was changed since the apply (digest mismatch); nothing was changed", Conflict),
+            ("home install blocked: rust_session_live:2; nothing was written", Blocked),
+            ("home install blocked: rust_session_registry_unknown (the registry cannot be read: unknown state); nothing was written", Blocked),
+            ("stale or altered plan: the recomputed digest differs; re-preview required, nothing was written", StalePlan),
             // claim-verify (rc.2 A9 #2255)
             (
                 "claim verify: not owner; the lowest open claim is comment 7 (REQ-A9-01), so no commit or push",

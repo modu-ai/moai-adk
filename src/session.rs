@@ -395,7 +395,7 @@ fn clock() -> i64 {
 /// Whether some launcher holds the lock on the `agent-<n>.live` file at `path`. The probe asks
 /// for a shared lock and lets go at once: it conflicts with the holder's exclusive lock only,
 /// and two probes never block each other.
-fn live_lock_held(path: &Path) -> Result<bool, String> {
+pub(crate) fn live_lock_held(path: &Path) -> Result<bool, String> {
     refuse_unless_regular(path)?;
     let unusable = || {
         format!(
@@ -741,7 +741,7 @@ pub fn compose(r: &SessionRequest) -> Result<Value, String> {
                 Err(b) => return Err(blocked_line(&b)),
                 Ok(None) => {
                     return Err(format!(
-                        "blocked: key_absent: {GLM_TOKEN_VAR} is not set or is empty in this environment and the vault holds no glm key (store it with `moai-cli key-set glm` reading the value from stdin, or set the variable; the launcher never prints or stores the value)"
+                        "blocked: key_absent: {GLM_TOKEN_VAR} is not set or is empty in this environment and the vault holds no glm key (store it with `moai key-set glm` reading the value from stdin, or set the variable; the launcher never prints or stores the value)"
                     ));
                 }
                 Ok(Some((_, source))) => {

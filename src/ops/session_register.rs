@@ -9,20 +9,22 @@ use std::path::PathBuf;
 /// .moai-cli/sessions/<name>.json`) before claiming (#2592 S-C). A name another instance holds
 /// under a live lease is refused (`conflict`); the first call returns a fresh `instance`, and
 /// later calls with `--instance` renew the lease. `--release` frees the name before the
-/// session is cleared. `--show` reads the holder without writing; the leader then releases
+/// session is cleared. `--show` reads the holder without writing and may leave PROJECT out (the
+/// clone of the current folder is read; #3015 C3); the leader then releases
 /// that instance with `--release --by leader` (#2902 O3a). `--mode leader|agent` records the
 /// session's mode for the statusline tag (#2928).
 #[derive(clap::Args)]
 pub struct Args {
-    /// Any checkout of the repository (the primary one or a worktree).
-    project: PathBuf,
+    /// Any checkout of the repository (the primary one or a worktree). Only `--show` may leave
+    /// it out: it then reads the clone of the current folder.
+    project: Option<PathBuf>,
     /// The lane's name, as in its claim comments (`agent-8`).
     #[arg(long)]
     name: String,
     /// The `instance` a previous registration of this session returned; absent on the first.
     #[arg(long)]
     instance: Option<String>,
-    /// Lease length in seconds, 60 to 86400 (default 3600).
+    /// Lease length in seconds, 60 to 86400 (default 14400, four hours).
     #[arg(long, default_value_t = moai_cli::lane_registry::DEFAULT_LEASE_SECS)]
     lease_secs: u64,
     /// Free the name held by `--instance` instead of registering it.
@@ -50,19 +52,23 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     let now = moai_cli::forge::policy::parse_utc(&now_text)
         .ok_or_else(|| format!("invalid --now `{now_text}`: expected YYYY-MM-DDTHH:MM:SSZ"))?;
     if args.show {
-        return moai_cli::lane_registry::show(&args.project, &args.name, now);
+        let project = args.project.unwrap_or_else(|| PathBuf::from("."));
+        return moai_cli::lane_registry::show(&project, &args.name, now);
     }
+    let project = args
+        .project
+        .ok_or("PROJECT is required (only --show may leave it out)")?;
     let instance = args.instance.as_deref();
     match (args.release, instance) {
         (true, Some(i)) => moai_cli::lane_registry::release(
-            &args.project,
+            &project,
             &args.name,
             i,
             args.by.as_deref(),
             now,
         ),
         _ => moai_cli::lane_registry::register(
-            &args.project,
+            &project,
             &args.name,
             instance,
             args.lease_secs,

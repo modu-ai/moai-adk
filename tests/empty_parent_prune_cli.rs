@@ -2,9 +2,15 @@
 //! `.agents/skills` (or `.claude/skills`) behind. `generation-apply` removing the last project
 //! skill and `project-skill-revert` of a copy it created prune the folders their removal
 //! emptied, up to the project root and no further; a folder that still holds anything stays.
+//!
+//! Every case builds a temporary project; the child runs with an empty temporary HOME and a
+//! cleared environment, so nothing of the developer's machine is read.
+
+#![cfg(unix)]
 
 mod common;
 
+use common::CleanEnv;
 use moai_cli::project_skills::{
     project_skill_apply, project_skill_revert, ProjectSkillRequest, ProjectSkillRevertRequest,
 };
@@ -17,8 +23,14 @@ use std::{
 use tempfile::TempDir;
 
 fn cli(args: &[&str], input: &Value) -> std::process::Output {
+    // An empty temporary HOME for the child; it lives until the child has exited.
+    let home = TempDir::new().unwrap();
     let mut child = Command::new(crate::common::MOAI_BIN)
         .args(args)
+        .clean_env()
+        .env("HOME", home.path())
+        .env("PATH", "/usr/bin:/bin")
+        .env("LC_ALL", "C")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

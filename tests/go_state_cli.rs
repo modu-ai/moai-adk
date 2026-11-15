@@ -491,6 +491,7 @@ fn apply_moves_only_the_planned_files_and_needs_the_current_digest() {
     for wrong in ["", "sha256:0000", "not-a-digest"] {
         let v = apply(&fx, wrong);
         assert_eq!(v["ok"], json!(false), "{wrong}: {v}");
+        assert_eq!(v["error"]["kind"], json!("stale_plan"), "{wrong}: {v}");
         assert_eq!(
             fx.tree(),
             before,
@@ -583,6 +584,7 @@ fn a_file_changed_after_the_preview_stops_the_apply() {
     let before = fx.tree();
     let v = apply(&fx, p["plan_digest"].as_str().unwrap());
     assert_eq!(v["ok"], json!(false), "{v}");
+    assert_eq!(v["error"]["kind"], json!("stale_plan"), "{v}");
     assert_eq!(fx.tree(), before);
 }
 
@@ -1269,6 +1271,69 @@ fn an_unrecorded_marker_digest_removes_only_the_name_this_build_writes() {
         json!("conflict"),
         "{rp}"
     );
+}
+
+/// Codex review of #3047: with both marker files the apply's own, a revert that stops after the
+/// first removal must still finish on the next run. The recorded digest is kept until every
+/// marker file is gone, so the file left over is still the apply's own (`remove`), not a
+/// `conflict` against an emptied record. The stop is made with the macOS user-immutable flag on
+/// `moai.json` (removal fails after the old name is already gone), so this runs on macOS only.
+#[cfg(target_os = "macos")]
+#[test]
+fn a_revert_stopped_after_the_first_marker_removal_finishes_on_the_next_run() {
+    let chflags = |flag: &str, path: &Path| {
+        let ok = Command::new("chflags")
+            .arg(flag)
+            .arg(path)
+            .status()
+            .unwrap()
+            .success();
+        assert!(ok, "chflags {flag} {}", path.display());
+    };
+    let fx = movable_fixture();
+    let before = project_tree(&fx);
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    // The apply writes `moai.json` only; the earlier name is made by copying it.
+    let old = fx.root.join(".moai/moai-cli.json");
+    let new = fx.root.join(".moai/moai.json");
+    fs::copy(&new, &old).unwrap();
+    chflags("uchg", &new);
+    let rp = revert_plan(&fx, &backup);
+    assert_eq!(
+        item_action(&rp, ".moai/moai-cli.json"),
+        json!("remove"),
+        "{rp}"
+    );
+    assert_eq!(item_action(&rp, ".moai/moai.json"), json!("remove"), "{rp}");
+    let stopped = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    chflags("nouchg", &new);
+    assert_eq!(stopped["ok"], json!(false), "{stopped}");
+    assert!(!old.exists(), "the old name was removed before the stop");
+    assert!(new.exists());
+    let again = revert_plan(&fx, &backup);
+    // The earlier name is only an item while its file is there.
+    assert!(
+        !again["result"]["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|i| i["path"] == ".moai/moai-cli.json"),
+        "{again}"
+    );
+    assert_eq!(
+        item_action(&again, ".moai/moai.json"),
+        json!("remove"),
+        "{again}"
+    );
+    let v = revert(
+        &fx,
+        &backup,
+        again["result"]["plan_digest"].as_str().unwrap(),
+    );
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(project_tree(&fx), before);
 }
 
 /// #2696: the folder was renamed but the receipt write after it did not happen (no digest):
@@ -1979,6 +2044,7 @@ fn root_instruction_files_move_into_root_files() {
     let before = fx.tree();
     let v = apply(&fx, p["plan_digest"].as_str().unwrap());
     assert_eq!(v["ok"], json!(false), "{v}");
+    assert_eq!(v["error"]["kind"], json!("stale_plan"), "{v}");
     assert_eq!(fx.tree(), before);
 
     let p = plan(&fx);

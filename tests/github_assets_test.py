@@ -455,12 +455,12 @@ class PullRequestTemplateTest(unittest.TestCase):
         self.assertIsNone(SECRET_SHAPES.search(text))
 
     def test_template_names_the_rust_checker(self):
-        # #2708: the Python checker is gone; the form points at `moai-cli pr-self-audit-check`
+        # #2708: the Python checker is gone; the form points at `moai pr-self-audit-check`
         # for both the first audit's ci: line and the re-audit body check (audit 6864465911 N1)
         text = PR_TEMPLATE.read_text(encoding="utf-8")
         self.assertNotIn("tools/check_pr_self_audit.py", text)
-        self.assertIn("`moai-cli pr-self-audit-check`", text)
-        self.assertIn("`moai-cli pr-self-audit-check --reaudit --file BODY.md`", text)
+        self.assertIn("`moai pr-self-audit-check`", text)
+        self.assertIn("`moai pr-self-audit-check --reaudit --file BODY.md`", text)
 
 
 class PreviousGenerationTest(unittest.TestCase):

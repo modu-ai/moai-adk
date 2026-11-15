@@ -302,9 +302,19 @@ fn generated_hooks_call_moai_cli_so_a_go_moai_first_on_path_never_takes_the_guar
         }
     }
 
+    // Planning reports the first `moai` on PATH (#3004 P4-1), so the Go `moai` was asked for
+    // its `--version` and nothing else, once per plan. That log is cleared here: the check
+    // below is that the generated guard itself never reaches the Go `moai`.
+    let plan = plan_with("claude");
+    let probes = fs::read_to_string(&go_log).unwrap();
+    assert!(
+        probes.lines().count() >= 1 && probes.lines().all(|l| l == "--version"),
+        "planning may only probe --version: {probes:?}"
+    );
+    fs::remove_file(&go_log).unwrap();
+
     // Run the generated claim guard the way a host does: its command string through a shell
     // with that PATH, the PreToolUse input on stdin.
-    let plan = plan_with("claude");
     let guard = plan["hooks"]
         .as_array()
         .unwrap()

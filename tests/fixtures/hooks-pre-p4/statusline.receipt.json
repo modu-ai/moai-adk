@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "settings_path": ".claude/settings.json",
+  "owned": {
+    "statusLine": {
+      "type": "command",
+      "command": "moai-cli statusline"
+    }
+  },
+  "settings_sha256": "sha256:638a0383a8a784018e3fe27df11bb91efd9870c053a892d00b2a8fe39f952914"
+}

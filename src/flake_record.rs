@@ -192,7 +192,7 @@ pub fn record<T: Transport>(
         }
         let title = format!("[flake] {}", f.test);
         let body = format!(
-            "{marker}\n불안정 시험 추적 (`moai-cli flake-record`, #2666). 같은 head의 뒤 run에서 통과한 실패를 run마다 적어요.\n\n{}\n\n🗿 MoAI",
+            "{marker}\n불안정 시험 추적 (`moai flake-record`, #2666). 같은 head의 뒤 run에서 통과한 실패를 run마다 적어요.\n\n{}\n\n🗿 MoAI",
             entry(f, run, &run_url)
         );
         let sent = transport.send(

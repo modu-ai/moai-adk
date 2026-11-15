@@ -13,6 +13,7 @@ pub mod audit_delta;
 pub mod banner;
 pub mod baseline;
 pub mod bin_names;
+pub mod check_tree;
 pub mod claim;
 pub mod claim_cache;
 pub mod claim_timeout;
@@ -49,6 +50,7 @@ pub mod handoff;
 pub mod heavy_slot;
 pub mod help;
 pub mod home_install;
+pub mod home_install_apply;
 pub mod home_layout;
 pub mod home_retire;
 pub mod home_root;
@@ -77,6 +79,7 @@ pub mod lane_next;
 pub mod lane_proposal;
 pub mod lane_registry;
 pub mod lane_reset;
+pub mod lane_state;
 pub mod lane_status;
 pub mod language;
 pub mod launcher_init;
@@ -401,6 +404,11 @@ mod state_dir_tests {
                 "apply.rs",
                 1,
                 "the earlier receipt store stays out of recovery too",
+            ),
+            (
+                "check_tree.rs",
+                1,
+                "the check looks at both MoAI folders by name, the earlier one included: a tracked earlier folder is what it warns about (#3009 S3a)",
             ),
             (
                 "forge/report.rs",
