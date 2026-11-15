@@ -813,6 +813,41 @@ fn a_removed_or_receipt_less_old_status_line_is_not_rewritten() {
     assert_eq!(w.read(SETTINGS), before);
 }
 
+/// An old status line MoAI owns, in a request that carries it over unchanged while it changes
+/// another key: the plan does not rewrite it, so the preview says `none` / `not_requested`
+/// (never `rewrite`, never held, no command text), under any PATH, and the apply keeps the old
+/// bytes of the status line.
+#[test]
+fn a_plan_that_keeps_the_old_status_line_says_it_is_not_requested() {
+    let w = world();
+    w.install_legacy();
+    let keep = format!(
+        "{{\"outputStyle\":\"Explanatory\",\"statusLine\":{}}}",
+        serde_json::to_string(&status_line::legacy()).unwrap()
+    )
+    .into_bytes();
+    for path_env in [w.rust(), w.dir("go"), w.none()] {
+        let p = settings_plan(&w, &keep, &path_env);
+        assert_eq!(p["action"], json!("update"), "{p}");
+        let m = &p["status_line_migration"];
+        assert_eq!(m["state"], json!("none"), "{p}");
+        assert_eq!(m["reason"], json!("not_requested"), "{p}");
+        assert_eq!(m["blocked_by"], Value::Null, "{p}");
+        assert!(
+            m.get("held_action").is_none() && m.get("note").is_none(),
+            "{p}"
+        );
+        assert!(!m.to_string().contains("statusline"), "{m}");
+    }
+    let p = settings_plan(&w, &keep, &w.dir("go"));
+    let v = settings_apply(&w, &keep, &digest_of(&p), &w.dir("go"));
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(v["result"].get("status_line_migration"), None, "{v}");
+    let after = w.settings_json();
+    assert_eq!(after["statusLine"], status_line::legacy());
+    assert_eq!(after["outputStyle"], json!("Explanatory"));
+}
+
 /// The gate is for MoAI's own two spellings only: a status line request that is neither is the
 /// caller's (`claude-settings-plan` has always carried it) and is not gated by the PATH.
 #[test]

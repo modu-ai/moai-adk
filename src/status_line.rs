@@ -250,7 +250,12 @@ pub fn plan_in(
     let mut out = claude::settings_plan_in(project, desired, scope)?;
     let (owned, current) = claude::scope_view(project, scope)?;
     let (o, c) = (owned.get("statusLine"), current.get("statusLine"));
-    let said = intent(o, c);
+    // A request that keeps the status line as it is (another key changes, or the old value is
+    // carried over) does not rewrite it, so the preview says `not_requested`, not `rewrite`.
+    let said = match (intent(o, c), classify(o, c, desired.get("statusLine"))) {
+        (Intent::Write(_), None) => Intent::Keep("not_requested"),
+        (said, _) => said,
+    };
     let verdict =
         classify(o, c, desired.get("statusLine")).map(|kind| gate(kind, project, home, path_env));
     if verdict.is_some() || o == Some(&legacy()) {
