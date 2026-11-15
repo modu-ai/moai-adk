@@ -538,3 +538,159 @@ fn a_skills_folder_that_keeps_something_is_not_warned_about() {
         plan["warnings"]
     );
 }
+
+// ---- #2936 S0 (F6, F16, F24): the preview says what the move does with the Go folder ----
+
+/// Where the new `.moai/` keeps the dated backup; the apply fills in `<UTC>`.
+const BACKUP_AREA: &str = ".moai/backups/<UTC>";
+
+/// A Go project that only has files under `.moai/`: no `.claude/` file can move on its own, so
+/// the `.moai/` item alone decides what the plan does.
+fn folder_only_fx() -> GoFx {
+    let mut fx = GoFx::new();
+    fx.deployed(".moai/config/sections/a.yaml", "a: 1\n");
+    fx.manifest();
+    fx
+}
+
+/// The preview `project-update-plan` embeds carries the same three fields as the plan.
+fn assert_embedded(fx: &GoFx, plan: &Value) {
+    let update = fx.update_plan();
+    let preview = go_state_preview(&update);
+    for key in ["layout", "go_backup", "backup_to"] {
+        assert_eq!(preview[key], plan[key], "{key}: {preview}");
+    }
+}
+
+#[test]
+fn layout_folder_moves_names_the_go_backup_and_the_backup_area() {
+    let fx = go_fx();
+    fx.manifest();
+    let plan = fx.plan();
+    assert_eq!(plan["layout"], json!("folder_moves"), "{plan}");
+    assert_eq!(plan["go_backup"], json!(".moai-backup"), "{plan}");
+    assert_eq!(plan["backup_to"], json!(BACKUP_AREA), "{plan}");
+    assert_embedded(&fx, &plan);
+    let update = fx.update_plan();
+    assert_eq!(update["phases"][0]["steps"][0]["state"], "needs_decision");
+}
+
+#[test]
+fn layout_folder_stays_when_the_settings_name_the_folder() {
+    let fx = folder_only_fx();
+    fx.write(
+        ".claude/settings.json",
+        "{\"statusLine\": \".moai/status.sh\"}\n",
+    );
+    let plan = fx.plan();
+    assert_eq!(plan["layout"], json!("folder_stays"), "{plan}");
+    assert_eq!(action(&plan, ".moai"), "leave", "{plan}");
+    // Nothing moves, so there is no Go backup name and no backup area, not an empty string.
+    assert_eq!(plan["go_backup"], Value::Null, "{plan}");
+    assert_eq!(plan["backup_to"], Value::Null, "{plan}");
+    assert_embedded(&fx, &plan);
+    // F24: no step waits on a confirmation, no command is printed.
+    let update = fx.update_plan();
+    let step = &update["phases"][0]["steps"][0];
+    assert_ne!(step["state"], "needs_decision", "{step}");
+    assert_eq!(step["apply"], Value::Null, "{step}");
+}
+
+/// The nested-only case: the one thing in the way is a checkout inside `.moai/`.
+#[test]
+fn layout_folder_stays_for_a_nested_checkout_and_the_reason_says_so() {
+    let fx = folder_only_fx();
+    fx.write(".moai/nested/.git/HEAD", "ref: refs/heads/main\n");
+    let plan = fx.plan();
+    assert_eq!(plan["layout"], json!("folder_stays"), "{plan}");
+    assert_eq!(plan["go_backup"], Value::Null, "{plan}");
+    assert_eq!(plan["backup_to"], Value::Null, "{plan}");
+    let reason = item(&plan, ".moai")["reason"].as_str().unwrap();
+    assert!(reason.starts_with("1 nested checkout(s)"), "{reason}");
+    assert!(
+        reason.contains("the .moai/ folder stays where it is and is not moved into a backup"),
+        "{reason}"
+    );
+    assert_embedded(&fx, &plan);
+}
+
+/// The edge of F24: a staying folder with one proven `.claude/` file to move still makes a
+/// backup, and the plan names where; with no such file it names none.
+#[test]
+fn a_staying_folder_names_a_backup_only_when_a_file_moves() {
+    let mut fx = GoFx::new();
+    fx.deployed(".moai/config/sections/a.yaml", "a: 1\n");
+    fx.deployed(".claude/workflows/w1.md", "# w1\n");
+    fx.manifest();
+    fx.write(
+        ".claude/settings.json",
+        "{\"statusLine\": \".moai/status.sh\"}\n",
+    );
+    let one = fx.plan();
+    assert_eq!(one["layout"], json!("folder_stays"), "N=1: {one}");
+    assert_eq!(
+        action(&one, ".claude/workflows/w1.md"),
+        "move",
+        "N=1: {one}"
+    );
+    assert_eq!(one["go_backup"], Value::Null, "N=1: {one}");
+    // The state folder in use is not `.moai/`: that folder is the one that stays.
+    assert_eq!(
+        one["backup_to"],
+        json!(format!("{}/backups/<UTC>", moai_cli::PROJECT_STATE_DIR)),
+        "N=1: {one}"
+    );
+    assert_embedded(&fx, &one);
+
+    std::fs::remove_file(fx.root.join(".claude/workflows/w1.md")).unwrap();
+    let zero = fx.plan();
+    assert_eq!(zero["layout"], json!("folder_stays"), "N=0: {zero}");
+    assert_eq!(zero["backup_to"], Value::Null, "N=0: {zero}");
+}
+
+#[test]
+fn layout_legacy_into_new_moves_the_earlier_root_into_a_new_moai() {
+    let fx = GoFx::new();
+    fx.write(
+        &format!("{}/specs/SPEC-1/spec.md", moai_cli::PROJECT_STATE_DIR),
+        "# spec\n",
+    );
+    let plan = fx.plan();
+    assert_eq!(plan["layout"], json!("legacy_into_new"), "{plan}");
+    // No Go folder is renamed, so there is no Go backup name; the receipt area is in the new
+    // `.moai/`.
+    assert_eq!(plan["go_backup"], Value::Null, "{plan}");
+    assert_eq!(plan["backup_to"], json!(BACKUP_AREA), "{plan}");
+    assert_embedded(&fx, &plan);
+}
+
+#[test]
+fn layout_nothing_has_no_go_backup_and_no_backup_area() {
+    let fx = GoFx::new();
+    fx.write(".claude/keep.md", "x\n");
+    let plan = fx.plan();
+    assert_eq!(plan["layout"], json!("nothing"), "{plan}");
+    assert_eq!(plan["go_backup"], Value::Null, "{plan}");
+    assert_eq!(plan["backup_to"], Value::Null, "{plan}");
+    assert_embedded(&fx, &plan);
+    let update = fx.update_plan();
+    let step = &update["phases"][0]["steps"][0];
+    assert_eq!(step["state"], "unchanged", "{step}");
+    assert_eq!(step["apply"], Value::Null, "{step}");
+}
+
+/// After the apply the Go folder is gone from the project (only its backup is left), so the
+/// same project reads `nothing`.
+#[test]
+fn after_the_apply_the_same_project_reads_nothing() {
+    let fx = go_fx();
+    fx.manifest();
+    let plan = fx.plan();
+    assert_eq!(plan["layout"], json!("folder_moves"), "{plan}");
+    let applied = fx.apply(plan["plan_digest"].as_str().unwrap());
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+    let again = fx.plan();
+    assert_eq!(again["layout"], json!("nothing"), "{again}");
+    assert_eq!(again["go_backup"], Value::Null, "{again}");
+    assert_eq!(again["backup_to"], Value::Null, "{again}");
+}

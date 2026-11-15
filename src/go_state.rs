@@ -206,6 +206,17 @@ pub struct GoStatePlan {
     /// #2696: the name the Go `.moai/` gets — `.moai-backup`, or `.moai-backup-<UTC>` when
     /// that is taken. `None` unless the folder moves.
     pub go_backup: Option<String>,
+    /// #2936 S0: what the move does with the Go `.moai/` folder, in one word — `folder_moves`
+    /// (the folder becomes the Go backup, see `go_backup`), `folder_stays` (the folder stays
+    /// where it is: settings name it, a worktree or nested checkout is inside, …),
+    /// `legacy_into_new` (no Go folder; the earlier root's product state moves into a new
+    /// `.moai/`) or `nothing`.
+    pub layout: &'static str,
+    /// #2936 S0: where the dated backup of the moving files would go, `<UTC>` filled in by the
+    /// apply: `.moai/backups/<UTC>` when a new `.moai/` is made, else the current state
+    /// folder's `backups/<UTC>`. `None` when no file moves or is copied — then no backup is
+    /// made. A `folder_stays` plan can still move proven `.claude/` files, and then names it.
+    pub backup_to: Option<String>,
     /// #2696: the earlier root's entries, each `move` (into `.moai/`) or `leave`.
     pub state_moves: Vec<StateMove>,
     /// #2696, #2936 O4: `CLAUDE.md`, `AGENTS.md` and `AGENTS.local.md`, moved into the backup
@@ -1495,6 +1506,41 @@ fn plan_after_move(
     }
 }
 
+/// #2936 S0: the plan's `layout` and `backup_to`, from what the plan itself decided. A file
+/// that moves or is copied needs a backup; the Go folder and the earlier root go with a new
+/// `.moai/`, so their backup area lives there, any other move uses the current state folder.
+fn layout_and_backup(
+    project: &Path,
+    items: &[Item],
+    state_moves: &[StateMove],
+    root_files: &[RootFile],
+    restores: &[Restore],
+) -> (&'static str, Option<String>) {
+    let action_of = |path: &str| {
+        items
+            .iter()
+            .find(|i| i.path == path)
+            .map(|i| i.action.as_str())
+    };
+    let pending = items.iter().any(|i| i.action == "move")
+        || state_moves.iter().any(|m| m.action == "move")
+        || root_files.iter().any(|f| f.action != "leave")
+        || restores.iter().any(|r| r.action == "copy");
+    let layout = match (action_of(MOAI_DIR), action_of(LEGACY_ROOT)) {
+        (Some("move"), _) => "folder_moves",
+        (_, Some("move")) => "legacy_into_new",
+        (Some(_), _) => "folder_stays",
+        // No Go folder to judge: files that move anyway are still a stay, never `nothing`.
+        _ if pending => "folder_stays",
+        _ => "nothing",
+    };
+    let backup_to = pending.then(|| match layout {
+        "folder_moves" | "legacy_into_new" => format!("{MOAI_DIR}/backups/<UTC>"),
+        _ => format!("{}/backups/<UTC>", crate::state_root::dir(project)),
+    });
+    (layout, backup_to)
+}
+
 /// The read-only preview over one project folder.
 pub fn plan(project: &Path) -> Result<GoStatePlan> {
     let project = fs::canonicalize(project).map_err(|_| "project folder unavailable")?;
@@ -1583,7 +1629,8 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
                     (_, Some(n)) => format!(
                         "{n} nested checkout(s) (folders holding a .git entry, such as worktrees \
                          of another repository) are under .moai/; moving the folder would cut \
-                         their repositories off from them, so it stays until they are moved out"
+                         their repositories off from them, so the .moai/ folder stays where it \
+                         is and is not moved into a backup until they are moved out"
                     ),
                     (_, None) => format!(
                         "the .moai/ folder holds more than {} entries, so it was not fully \
@@ -1775,6 +1822,8 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
              it yourself if you do not want it"
         ));
     }
+    let (layout, backup_to) =
+        layout_and_backup(&project, &items, &state_moves, &root_files, &restores);
     let mut plan = GoStatePlan {
         schema_version: SCHEMA_VERSION,
         project: project
@@ -1786,6 +1835,8 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
         unrecorded,
         restores,
         go_backup,
+        layout,
+        backup_to,
         state_moves,
         root_files,
         left_in_backup,
