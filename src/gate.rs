@@ -11,6 +11,22 @@ use serde::{Deserialize, Serialize};
 pub struct Comment {
     pub id: u64,
     pub body: String,
+    /// GitHub's `author_association` of the writer. A snapshot that does not say is read as
+    /// "not a member" (Issue #3052), so an old snapshot file fails closed.
+    #[serde(default)]
+    pub author_association: String,
+}
+
+impl crate::comment_authority::Authored for Comment {
+    fn comment_id(&self) -> i64 {
+        i64::try_from(self.id).unwrap_or(i64::MAX)
+    }
+    fn body(&self) -> &str {
+        &self.body
+    }
+    fn association(&self) -> &str {
+        &self.author_association
+    }
 }
 
 /// One check run on the head: its name and conclusion (`null` while it runs).
@@ -30,6 +46,10 @@ pub struct Snapshot {
     /// The PR head, 40 lowercase hex.
     pub head: String,
     pub comments: Vec<Comment>,
+    /// What [`Snapshot::keep_member_comments`] and the collector left out (Issue #3052). It is
+    /// never part of a snapshot file.
+    #[serde(skip)]
+    pub ignored: crate::comment_authority::Dropped,
     pub checks: Vec<CheckRun>,
     /// Files the PR changes (merge base to head).
     pub pr_files: Vec<String>,
@@ -98,6 +118,15 @@ pub struct Snapshot {
     /// unknown, and a tier-0 PR stops.
     #[serde(default)]
     pub merge_base: Option<String>,
+}
+
+impl Snapshot {
+    /// Keeps only the comments a repository member wrote and remembers what it removed
+    /// (Issue #3052). Applying it twice is harmless.
+    pub fn keep_member_comments(&mut self) {
+        let dropped = crate::comment_authority::retain_members(&mut self.comments);
+        self.ignored.merge(dropped);
+    }
 }
 
 /// One pull request below a stacked one (#2859): another open PR whose commits this PR's head

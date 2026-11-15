@@ -112,17 +112,17 @@ fn get(url: String, body: Value) -> Exchange {
 fn claim_comment(id: u64, session: &str) -> Exchange {
     get(
         format!("{API}/issues/comments/{id}"),
-        json!({"id": id, "body": format!("moai-claim: session={session} epoch=1\n\nmore")}),
+        json!({"id": id, "author_association": "MEMBER", "body": format!("moai-claim: session={session} epoch=1\n\nmore")}),
     )
 }
 
 fn verdict(pr: u64, id: u64, head: &str, base: &str, v: &str, lane: &str) -> Value {
-    json!({"id": id, "body": format!("AUDIT #{pr} (x) head {head} base {base} — verdict: {v}\n\n감사: {lane} (예약 {}).\n", id - 1)})
+    json!({"id": id, "author_association": "MEMBER", "body": format!("AUDIT #{pr} (x) head {head} base {base} — verdict: {v}\n\n감사: {lane} (예약 {}).\n", id - 1)})
 }
 
 /// The `local-check:` pass line for `head` (#2906 S5b, G5).
 fn local_check(head: &str) -> Value {
-    json!({"id": 250, "body": format!("local-check: head={head} result=pass cmd=tools/local_check.sh at=2026-11-14T12:00:00Z\n")})
+    json!({"id": 250, "author_association": "MEMBER", "body": format!("local-check: head={head} result=pass cmd=tools/local_check.sh at=2026-11-14T12:00:00Z\n")})
 }
 
 /// The reads `collect` makes for PR #9 with PR #7 open below it: PR #9 (passing on its own),
@@ -137,7 +137,7 @@ fn reads(s: &Stack, pr7_open: bool, pr7_comments: Value) -> RecordedTransport {
         get(
             format!("{API}/issues/9/comments?per_page=100"),
             json!([
-                {"id": 100, "body": format!("moai-audit-claim: lane=agent-10 head={}\n", s.b1)},
+                {"id": 100, "author_association": "MEMBER", "body": format!("moai-audit-claim: lane=agent-10 head={}\n", s.b1)},
                 verdict(9, 200, &s.b1, &s.base, "PASS", "agent-10"),
                 local_check(&s.b1),
             ]),
@@ -310,6 +310,23 @@ fn a_pass_below_by_its_own_author_stops() {
     );
 }
 
+/// Issue #3052: the PASS of the PR below counts only when a member wrote it. One a non-member
+/// wrote, even a well-formed one by an unrelated lane, does not cover the carried head: PR #9
+/// stops as if no verdict existed, and the snapshot says which comment it left out.
+#[test]
+fn a_pass_below_that_a_non_member_wrote_does_not_cover() {
+    let s = stack(false, false);
+    for association in ["NONE", "CONTRIBUTOR", ""] {
+        let mut pass = verdict(7, 301, &s.a1, &s.base, "PASS", "agent-30");
+        pass["author_association"] = json!(association);
+        let snap = snapshot(&s, true, json!([pass]));
+        let why = g12_stop(&snap);
+        assert!(why.contains("no AUDIT verdict"), "{association}: {why}");
+        let listed = snap.ignored.to_json().to_string();
+        assert!(listed.contains("301"), "{association}: {listed}");
+    }
+}
+
 /// A PASS on a head the gate's repository does not have cannot be shown to hold the carried
 /// commits: unknown is never a pass.
 #[test]
@@ -380,7 +397,7 @@ fn the_pr_below_commit_pages_stop_at_three() {
             get(
                 format!("{API}/issues/9/comments?per_page=100"),
                 json!([
-                    {"id": 100, "body": format!("moai-audit-claim: lane=agent-10 head={}\n", s.b1)},
+                    {"id": 100, "author_association": "MEMBER", "body": format!("moai-audit-claim: lane=agent-10 head={}\n", s.b1)},
                     verdict(9, 200, &s.b1, &s.base, "PASS", "agent-10"),
                     local_check(&s.b1),
                 ]),

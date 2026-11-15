@@ -151,7 +151,7 @@ mod tests {
             (
                 "home_install.rs",
                 3,
-                "the install preview reads the earlier folder whatever generation the HOME is in (one use in the plan, one in the install-journal lookup that tells the readers an earlier install id (R5), one in the unit-test fixture)",
+                "the install reads the earlier folder whatever generation the HOME is in (one use in `old_root`, which the plan, apply and revert ask, one in the install-journal lookup that tells the readers an earlier install id (R5), one in the unit-test fixture)",
             ),
             (
                 "hooks.rs",
