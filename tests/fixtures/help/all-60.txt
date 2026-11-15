@@ -19,6 +19,8 @@ Project
   language-set            Record the conversation language
                           in HOME
   index-build             Build the code map index
+  check-tree              Warn about what the tracked MoAI
+                          folders hold
   agents-plan             Preview the AGENTS.md managed
                           section
   agents-apply            Write a previewed AGENTS.md
