@@ -132,6 +132,87 @@ fn an_output_style_name_resolves_only_from_home() {
     );
 }
 
+const GONE: &str = "no counterpart \u{2014} will be gone";
+
+/// Two Go hook scripts, both recorded, and a settings file recorded or not.
+fn hook_fx(settings: &str, recorded: bool) -> GoFx {
+    let mut fx = GoFx::new();
+    for n in ["handle-a", "handle-b"] {
+        fx.deployed(
+            &format!(".claude/hooks/moai/{n}.sh"),
+            &format!("#!/bin/sh\necho {n}\n"),
+        );
+    }
+    if recorded {
+        fx.deployed(".claude/settings.json", settings);
+        fx.manifest();
+    } else {
+        fx.manifest();
+        fx.write(".claude/settings.json", settings);
+    }
+    fx
+}
+
+const DENY_ONLY: &str = "{\"permissions\":{\"deny\":[\"Read(./.env)\"]}}";
+
+/// #2936 F-A: the `hooks` install step replaces Go hook entries and scripts that are LEFT
+/// after the move. When the settings file moves with its hook entries and every script moves
+/// too, it finds none and installs nothing, so the preview must not promise a reinstall.
+#[test]
+fn the_hook_counterpart_is_dropped_when_nothing_is_left_for_the_hooks_step() {
+    let fx = hook_fx(DENY_ONLY, true);
+    let plan = fx.plan();
+    assert_eq!(action(&plan, ".claude/settings.json"), "move", "{plan}");
+    assert_eq!(action(&plan, ".claude/hooks/moai/handle-a.sh"), "move");
+    assert_eq!(action(&plan, ".claude/hooks/moai/handle-b.sh"), "move");
+    let row = counterpart(&plan, "hook");
+    assert_eq!(row["moved"], json!(2), "{row}");
+    assert_eq!(row["counterpart"], json!(GONE), "{row}");
+    let note = row["note"].as_str().unwrap();
+    assert!(note.contains("hooks-apply"), "{note}");
+    assert!(!note.contains("is written into"), "{note}");
+}
+
+/// The same drop when the settings file stays but carries no Go hook entry.
+#[test]
+fn the_hook_counterpart_is_dropped_when_the_staying_settings_have_no_go_entry() {
+    let fx = hook_fx(DENY_ONLY, false);
+    let plan = fx.plan();
+    assert_eq!(action(&plan, ".claude/hooks/moai/handle-a.sh"), "move");
+    assert_eq!(counterpart(&plan, "hook")["counterpart"], json!(GONE));
+}
+
+/// The kept direction: a script that stays is a Go script for the hooks step to replace.
+#[test]
+fn the_hook_counterpart_stays_when_a_script_stays() {
+    let fx = hook_fx(DENY_ONLY, true);
+    fx.write(".claude/hooks/moai/mine.sh", "#!/bin/sh\necho mine\n");
+    let plan = fx.plan();
+    assert_eq!(action(&plan, ".claude/settings.json"), "move", "{plan}");
+    assert_eq!(
+        counterpart(&plan, "hook")["counterpart"],
+        json!("reinstalled by hooks"),
+        "{plan}"
+    );
+}
+
+/// The kept direction: a staying settings file with a Go hook entry is replaced by the step.
+#[test]
+fn the_hook_counterpart_stays_when_the_staying_settings_keep_a_go_entry() {
+    // The entry names a script by an escaped path, so the plain text match does not keep
+    // the script, but the hooks step reads the JSON and sees the Go entry.
+    let settings = "{\"hooks\":{\"PreToolUse\":[{\"matcher\":\"*\",\"hooks\":[{\"type\":\
+                    \"command\",\"command\":\"bash .claude\\/hooks\\/moai\\/handle-a.sh\"}]}]}}";
+    let fx = hook_fx(settings, false);
+    let plan = fx.plan();
+    assert_eq!(action(&plan, ".claude/hooks/moai/handle-a.sh"), "move");
+    assert_eq!(
+        counterpart(&plan, "hook")["counterpart"],
+        json!("reinstalled by hooks"),
+        "{plan}"
+    );
+}
+
 /// The miss direction: a kind with nothing moving gets no row, and a plan that moves nothing
 /// has no rows at all.
 #[test]
@@ -380,6 +461,110 @@ fn a_moved_settings_file_reports_the_wiring_that_goes_with_it() {
     assert_eq!(wiring["go_hook_entries"], json!(2), "{wiring}");
     assert_eq!(wiring["deny_rules"], json!(3), "{wiring}");
     assert_eq!(wiring["keys"], json!(["hooks", "permissions"]), "{wiring}");
+    assert_eq!(plan["after_move"]["unknown"], json!(false), "{plan}");
+}
+
+/// `go_state::MANIFEST_LIMIT`: the largest settings file the preview reads.
+const SETTINGS_LIMIT: usize = 16 * 1024 * 1024;
+
+/// A moving settings file, recorded in the manifest, with `body` as its bytes.
+fn moving_settings(body: &str) -> (GoFx, Value) {
+    let mut fx = go_fx();
+    fx.deployed(".claude/settings.json", body);
+    fx.manifest();
+    let plan = fx.plan();
+    assert_eq!(action(&plan, ".claude/settings.json"), "move", "{plan}");
+    (fx, plan)
+}
+
+/// #2936 F-F: a moving settings file that cannot be read as a JSON object says nothing about
+/// its wiring, so the preview says it does not know (`unknown`), not that nothing is lost.
+#[test]
+fn a_moving_settings_file_that_is_not_json_makes_the_preview_unknown() {
+    for body in ["{\"hooks\": ", "not json at all", ""] {
+        let (_fx, plan) = moving_settings(body);
+        assert_eq!(
+            plan["after_move"]["unknown"],
+            json!(true),
+            "{body:?}: {plan}"
+        );
+        assert_eq!(
+            plan["after_move"]["wiring_lost"],
+            Value::Null,
+            "{body:?}: {plan}"
+        );
+    }
+}
+
+/// Valid JSON that is not an object has no keys to list; the wiring is still unread, so the
+/// preview is unknown too (the field means: the lists may be incomplete).
+#[test]
+fn a_moving_settings_file_of_the_wrong_shape_makes_the_preview_unknown() {
+    for body in ["[]", "[\"hooks\"]", "42", "\"hooks\"", "null"] {
+        let (_fx, plan) = moving_settings(body);
+        assert_eq!(
+            plan["after_move"]["unknown"],
+            json!(true),
+            "{body:?}: {plan}"
+        );
+        assert_eq!(
+            plan["after_move"]["wiring_lost"],
+            Value::Null,
+            "{body:?}: {plan}"
+        );
+    }
+}
+
+/// The kept direction: a readable object, even an empty one, is not unknown.
+#[test]
+fn a_moving_settings_object_is_read_and_not_unknown() {
+    for (body, keys) in [("{}", json!([])), ("{\"model\": \"x\"}", json!(["model"]))] {
+        let (_fx, plan) = moving_settings(body);
+        let wiring = &plan["after_move"]["wiring_lost"];
+        assert_eq!(wiring["keys"], keys, "{body:?}: {plan}");
+        assert_eq!(
+            plan["after_move"]["unknown"],
+            json!(false),
+            "{body:?}: {plan}"
+        );
+    }
+}
+
+/// Settings that stay are not read for wiring, so garbage in them is not unknown either.
+#[test]
+fn a_staying_settings_file_that_is_not_json_is_not_unknown() {
+    let fx = go_fx();
+    fx.manifest();
+    fx.write(".claude/settings.json", "not json at all");
+    let plan = fx.plan();
+    assert_eq!(plan["after_move"]["wiring_lost"], Value::Null, "{plan}");
+    assert_eq!(plan["after_move"]["unknown"], json!(false), "{plan}");
+}
+
+/// N and N+1 of the read that bounds `wiring_of`: a settings file of exactly the limit is
+/// read, and one byte more fails the whole preview (nothing is guessed).
+#[test]
+fn the_moving_settings_file_is_read_up_to_its_size_limit() {
+    let object = |len: usize| {
+        let head = "{\"k\":\"";
+        let tail = "\"}";
+        format!("{head}{}{tail}", "x".repeat(len - head.len() - tail.len()))
+    };
+    let (fx, plan) = moving_settings(&object(SETTINGS_LIMIT));
+    assert_eq!(
+        plan["after_move"]["wiring_lost"]["keys"],
+        json!(["k"]),
+        "N: unknown={}",
+        plan["after_move"]["unknown"]
+    );
+    assert_eq!(plan["after_move"]["unknown"], json!(false), "N");
+    fx.write(".claude/settings.json", &object(SETTINGS_LIMIT + 1));
+    let over = fx.run(&["go-state-plan", fx.p()]);
+    assert_eq!(over["ok"], json!(false), "N+1: {over}");
+    assert!(
+        over.to_string().contains("not a bounded regular file"),
+        "N+1: {over}"
+    );
 }
 
 /// The miss direction: settings that stay lose nothing.
