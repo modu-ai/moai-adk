@@ -495,13 +495,27 @@ mod tests {
     fn a_proposal_folder_that_is_a_link_is_refused_and_not_followed() {
         let reg = registry();
         register(reg.path(), "agent-1", NOW + 3000);
+        register(reg.path(), "agent-2", NOW + 3000);
+        // The folder the link leads to holds a live offer of agent-2 for 40: it must not be read.
         let elsewhere = registry();
+        let offer = json!({"schema_version": 1, "lane": "agent-2", "kind": "reserve_audit",
+            "target": {"number": 40, "head": head('a')}, "proposed_at": NOW,
+            "lease_until": NOW + 100});
+        fs::write(elsewhere.path().join("agent-2.json"), offer.to_string()).unwrap();
         std::os::unix::fs::symlink(elsewhere.path(), folder(reg.path())).unwrap();
         let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), NOW);
         assert_eq!(v["proposal"]["status"], "unavailable", "{v}");
         assert_eq!(v["proposal"]["reason"], "proposal folder is a link", "{v}");
-        assert_eq!(target(&v).1, 40, "the decision is made anyway: {v}");
-        assert_eq!(fs::read_dir(elsewhere.path()).unwrap().count(), 0);
+        assert_eq!(
+            target(&v).1,
+            40,
+            "the decision is made anyway, without the offer behind the link: {v}"
+        );
+        assert_eq!(
+            fs::read_dir(elsewhere.path()).unwrap().count(),
+            1,
+            "nothing is written through the link"
+        );
     }
 
     /// #3015 C3 (N-M5): a record with another `schema_version` is malformed, not read.
@@ -551,8 +565,11 @@ mod tests {
         put(NOW + PROPOSAL_LEASE_SECS + 1);
         let v = decide_and_record(reg.path(), "agent-1", &mut two_prs(), NOW);
         assert_eq!(target(&v).1, 40, "{v}");
-        // The lane that holds such a record asks for the same target: a new lease, not `kept`.
+        // The lane that holds such a record asks for the same target (agent-1's offer of it is
+        // gone first, so the target is free): a new lease, not `kept`.
+        fs::remove_file(proposals.join("agent-1.json")).unwrap();
         let v = decide_and_record(reg.path(), "agent-2", &mut two_prs(), NOW);
+        assert_eq!(target(&v).1, 40, "{v}");
         assert_eq!(v["proposal"]["status"], "recorded", "{v}");
         assert_eq!(
             v["proposal"]["lease_until"],
