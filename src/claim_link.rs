@@ -860,7 +860,9 @@ mod probe_tests {
 
     /// `git` with the fixture guards; returns trimmed stdout, panics on failure.
     pub(super) fn git(dir: &Path, args: &[&str]) -> String {
-        let out = std::process::Command::new("git")
+        let mut cmd = std::process::Command::new("git");
+        crate::identity::scrub_git_env(&mut cmd);
+        let out = cmd
             .args(["-c", "gc.auto=0", "-c", "maintenance.auto=false"])
             .args(["-c", "user.name=t", "-c", "user.email=t@example.invalid"])
             .args([
