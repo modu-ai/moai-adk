@@ -912,7 +912,7 @@ mod tests {
             "{err}"
         );
         assert_eq!(fs::read(mine.join("SKILL.md")).unwrap(), b"mine");
-        assert!(!project.path().join(".moai-cli").exists());
+        assert!(!crate::state_root::path(project.path(), "").exists());
     }
 
     /// A package that changes after the apply staged it is refused when the copy is hashed. With
@@ -952,7 +952,7 @@ mod tests {
         let mine = project.path().join(".claude/skills/moai");
         let before = fs::read(mine.join("references/a.md")).unwrap();
         let rollbacks = |p: &Path| {
-            fs::read_dir(p.join(".moai-cli/project-skill-rollback"))
+            fs::read_dir(crate::state_root::path(p, "project-skill-rollback"))
                 .unwrap()
                 .count()
         };
@@ -1023,10 +1023,12 @@ mod tests {
             .join(".claude/skills/moai/SKILL.md")
             .is_file());
         assert!(!project.path().join(".agents/skills/moai").exists());
-        let receipts: Vec<_> =
-            fs::read_dir(project.path().join(".moai-cli/project-skill-rollback"))
-                .unwrap()
-                .collect();
+        let receipts: Vec<_> = fs::read_dir(crate::state_root::path(
+            project.path(),
+            "project-skill-rollback",
+        ))
+        .unwrap()
+        .collect();
         assert_eq!(receipts.len(), 1, "{receipts:?}");
     }
 
@@ -1038,17 +1040,14 @@ mod tests {
         write_source(source.path());
         let req = request(project.path(), None, source.path(), true);
         fs::create_dir_all(project.path().join(".claude/skills")).unwrap();
-        fs::create_dir_all(project.path().join(".moai-cli")).unwrap();
+        fs::create_dir_all(crate::state_root::path(project.path(), "")).unwrap();
         let altered =
             |_host: &str| fs::write(source.path().join("references/a.md"), b"late").unwrap();
         assert!(apply_core(&req, None, &altered).is_err());
         assert!(project.path().join(".claude/skills").is_dir());
-        assert!(project.path().join(".moai-cli").is_dir());
+        assert!(crate::state_root::path(project.path(), "").is_dir());
         assert!(!project.path().join(".claude/skills/moai").exists());
-        assert!(!project
-            .path()
-            .join(".moai-cli/project-skill-rollback")
-            .exists());
+        assert!(!crate::state_root::path(project.path(), "project-skill-rollback").exists());
     }
 
     /// #3002 audit B3 (mutants M13, M14, M27): the plan digest binds the project, the package,
