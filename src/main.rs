@@ -2163,6 +2163,13 @@ fn usage_error(e: clap::Error) -> ExitCode {
             for line in &detail {
                 eprintln!("{line}");
             }
+            // #3015 C8: a stray argument gets the command's usage line (clap's own, which shows
+            // the command's shape and none of the words typed).
+            if matches!(e.kind(), ErrorKind::UnknownArgument) {
+                if let Some(usage) = rendered.lines().find(|l| l.starts_with("Usage:")) {
+                    eprintln!("{usage}");
+                }
+            }
         }
     }
     println!("{}", contract::failure(op, contract::Kind::Usage, message));
