@@ -157,6 +157,44 @@ fn unreadable_activity_is_uncertain() {
     assert_eq!(v["activity_read"]["branch_found"], json!(false), "{v}");
 }
 
+/// Issue #3052: a sign of life from the holder in the repository-wide list counts only when a
+/// member wrote it. The same comment from a member answers the request and blocks the
+/// takeover; from anyone else it changes nothing and is counted as left out.
+#[test]
+fn a_repo_wide_comment_of_the_holder_counts_only_from_a_member() {
+    let sign_of_life = |association: &str| {
+        let mut c = raw(300, "agent-7: still working on it", -60);
+        c["author_association"] = json!(association);
+        c
+    };
+    let judge = |association: &str| {
+        run(vec![
+            get(ISSUE_URL, 200, issue_body()),
+            get(&repo_url(), 200, json!([sign_of_life(association)])),
+            get(&commits_url(), 200, commits_body()),
+        ])
+        .0
+    };
+
+    let member = judge("MEMBER");
+    assert_eq!(member["met"], json!(false), "{member}");
+    assert_eq!(
+        member["conditions"]["request_unanswered"]["answered_by"],
+        json!(300),
+        "{member}"
+    );
+
+    for association in ["NONE", "CONTRIBUTOR", ""] {
+        let v = judge(association);
+        assert_eq!(v["met"], json!(true), "{association}: {v}");
+        assert_eq!(
+            v["ignored_control_lines"]["other_non_member_comments"],
+            json!(1),
+            "{association}: {v}"
+        );
+    }
+}
+
 /// AC12: the whole check sends three GETs and nothing else.
 #[test]
 fn only_get_requests_are_sent() {
