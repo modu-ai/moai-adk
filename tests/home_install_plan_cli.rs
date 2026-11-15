@@ -531,6 +531,28 @@ fn install_does_not_repoint_a_stub_when_versions_stays() {
     assert_eq!(repoint(&staying), json!(false), "{staying}");
 }
 
+// #3001 audit note N1 (mutant J3): when `versions` moves but `path` does not (here its destination
+// is taken, which blocks the plan), the stub must not be re-pointed either: the apply would leave
+// a `path` entry aimed at a `versions` that is no longer where the link says.
+#[test]
+fn install_does_not_repoint_a_stub_when_path_stays() {
+    let (_d, home) = rust_home();
+    add_go_state(&home);
+    write(&home, ".moai/path/x", "x");
+    let version_bin = home.join(".moai-cli/versions/1.0.0/bin/moai-cli");
+    symlink(&version_bin, home.join(".moai-cli/path/moai-cli")).unwrap();
+    let p = plan(&home);
+    assert_eq!(act(&p, "versions").0, "move", "{p}");
+    assert_eq!(
+        act(&p, "path"),
+        ("blocked".into(), "destination_taken".into()),
+        "{p}"
+    );
+    let stub = p["stub"].as_array().unwrap();
+    let link = stub.iter().find(|e| e["name"] == "moai-cli").unwrap();
+    assert_eq!(link["repoint"], json!(false), "{p}");
+}
+
 // Codex P2 4576239282 on #3001: the table lookup ignores ASCII case, so a `Versions` folder is a
 // Rust name that moves, and the stub plan must agree (on a case-insensitive volume such as default
 // APFS the link below reaches it by the lowercase spelling).
