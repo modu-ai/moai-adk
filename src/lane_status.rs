@@ -560,7 +560,7 @@ fn full_shas(text: &str) -> Vec<String> {
 }
 
 /// The last `AUDIT … <head> … verdict: PASS|FAIL` line naming `head`, with its comment id.
-fn verdict_on(comments: &[Comment], head: &str) -> Option<(&'static str, i64)> {
+pub(crate) fn verdict_on(comments: &[Comment], head: &str) -> Option<(&'static str, i64)> {
     let mut found = None;
     for c in comments {
         for line in c.body.lines() {
@@ -1336,7 +1336,7 @@ fn communication<T: Transport, C: Clock>(
             let elapsed = now.checked_sub(at);
             let alert = if report.ack.is_some() {
                 "received"
-            } else if elapsed.is_some_and(|n| n >= 300) {
+            } else if elapsed.is_some_and(|n| n >= crate::dispatch::ACK_ALERT_SECS) {
                 "unacknowledged"
             } else {
                 "waiting"
