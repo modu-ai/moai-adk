@@ -14,6 +14,9 @@ use std::{
 };
 
 type Result<T> = std::result::Result<T, OpError>;
+/// Seconds of server-observed silence after which a record without an ACK is "unacknowledged".
+/// `dispatch-check` and `lane-status` both read it, so the two never disagree on the edge.
+pub const ACK_ALERT_SECS: i64 = 300;
 #[derive(Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RecordRequest {
@@ -137,7 +140,8 @@ fn decision(d: &mut Message, m: &Message, digest: &str) -> Result<Decision> {
 struct Assignment {
     publication: Publication,
     payload: Dispatch,
-    received: bool,
+    /// The ACK with the lowest comment id; its server `created_at` is the receive time.
+    receipt: Option<Publication>,
     decision: Option<Publication>,
 }
 struct Snapshot {
@@ -236,7 +240,7 @@ fn snapshot<T: Transport, C: Clock>(anchor: &Message, t: &T, c: &C) -> Result<Sn
                 Assignment {
                     publication: p,
                     payload,
-                    received: false,
+                    receipt: None,
                     decision: None,
                 },
             );
@@ -268,7 +272,12 @@ fn snapshot<T: Transport, C: Clock>(anchor: &Message, t: &T, c: &C) -> Result<Sn
         {
             return Err(conflict());
         }
-        a.received = true;
+        if a.receipt
+            .as_ref()
+            .is_none_or(|old| receipt.comment_id < old.comment_id)
+        {
+            a.receipt = Some(receipt);
+        }
     }
     for mut d in decisions {
         let rev = d
@@ -283,7 +292,7 @@ fn snapshot<T: Transport, C: Clock>(anchor: &Message, t: &T, c: &C) -> Result<Sn
             &a.publication.message,
             &a.publication.payload_digest,
         )?;
-        if !a.received || d.created_at < a.publication.created_at {
+        if a.receipt.is_none() || d.created_at < a.publication.created_at {
             return Err(conflict());
         }
         if let Some(old) = &a.decision {
@@ -322,8 +331,8 @@ fn view(s: &Snapshot, anchor: &Message, now: i64) -> Result<Value> {
         .filter(|n| *n >= 0 && s.latest_timestamp.is_some_and(|at| at <= now));
     let alert = match elapsed {
         None => "unknown",
-        Some(_) if current.received => "received",
-        Some(n) if n >= 300 => "unacknowledged",
+        Some(_) if current.receipt.is_some() => "received",
+        Some(n) if n >= ACK_ALERT_SECS => "unacknowledged",
         Some(_) => "waiting",
     };
     let disposition = current
@@ -334,8 +343,10 @@ fn view(s: &Snapshot, anchor: &Message, now: i64) -> Result<Value> {
     Ok(
         json!({"dispatch_id":current.payload.dispatch_id,"requested_revision":requested,"current_revision":rev,
         "current_report_id":current.publication.message.report_id,"current_payload_digest":current.publication.payload_digest,
-        "record_comment_id":current.publication.comment_id,"queued":true,"received_ack":current.received,
+        "record_comment_id":current.publication.comment_id,"queued":true,"received_ack":current.receipt.is_some(),
         "disposition":disposition,"decision_comment_id":current.decision.as_ref().map(|p|p.comment_id),
+        "sent_at":current.publication.created_at,"received_at":current.receipt.as_ref().map(|p|p.created_at),
+        "ack_comment_id":current.receipt.as_ref().map(|p|p.comment_id),"decided_at":current.decision.as_ref().map(|p|p.created_at),
         "superseded":requested!=*rev,"observation_current":requested==*rev && elapsed.is_some(),"ack_alert":alert,"elapsed_secs":elapsed,
         "observed_at":now,"claim_authorized":false,"ownership_transferred":false,"audit_gate_integrated":false,"cross_host_atomic":false,
         "business_completion":false,"c3":"observation_only_gate_integration_unfulfilled"}),

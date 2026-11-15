@@ -1336,7 +1336,7 @@ fn communication<T: Transport, C: Clock>(
             let elapsed = now.checked_sub(at);
             let alert = if report.ack.is_some() {
                 "received"
-            } else if elapsed.is_some_and(|n| n >= 300) {
+            } else if elapsed.is_some_and(|n| n >= crate::dispatch::ACK_ALERT_SECS) {
                 "unacknowledged"
             } else {
                 "waiting"

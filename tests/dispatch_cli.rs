@@ -848,3 +848,137 @@ fn decision_receipts_need_their_record_and_never_create_business_acceptance() {
         assert_eq!(journal_bytes(root.path()), bytes);
     }
 }
+
+// The fake remote stamps every comment 2026-11-11T00:00:00Z, which is `Time.now()`.
+const BASE: i64 = 1_794_355_200;
+fn at(secs: i64) -> Value {
+    json!(format!("2026-11-11T00:{:02}:{:02}Z", secs / 60, secs % 60))
+}
+
+#[test]
+fn dispatch_times_are_separate_values() {
+    let root = temp_root();
+    let r = Remote::new();
+    let mut m = packet();
+    // A time written inside a message is a claim by its author, never the observed time.
+    m.created_at = "2099-01-01T00:00:00Z".into();
+    send(root.path(), &m, &r).unwrap();
+    let queued = check(&m, &r).unwrap();
+    assert_eq!(queued["sent_at"], BASE);
+    for key in ["received_at", "ack_comment_id", "decided_at"] {
+        assert_eq!(queued[key], Value::Null, "{key}");
+    }
+    r.actor.set(22);
+    ack(root.path(), &m, answer(&m, "accepted"), &r).unwrap();
+    {
+        let mut comments = r.comments.borrow_mut();
+        comments[1]["created_at"] = at(40);
+        comments[2]["created_at"] = at(41);
+    }
+    let v = dispatch::check_cli(
+        CheckRequest {
+            dispatch: m.clone(),
+        },
+        &r,
+        &At(BASE + 400),
+    )
+    .unwrap();
+    assert_eq!(v["sent_at"], BASE);
+    assert_eq!(v["received_at"], BASE + 40);
+    assert_eq!(v["decided_at"], BASE + 41);
+    assert_eq!(v["record_comment_id"], 100);
+    assert_eq!(v["ack_comment_id"], 101);
+    assert_eq!(v["decision_comment_id"], 102);
+    assert_eq!(v["disposition"], "accepted");
+    // The earlier keys keep their meaning.
+    assert_eq!(v["received_ack"], true);
+    assert_eq!(v["ack_alert"], "received");
+    assert_eq!(v["claim_authorized"], false);
+    assert_eq!(v["ownership_transferred"], false);
+    assert_eq!(v["audit_gate_integrated"], false);
+
+    // A duplicate ACK keeps the lowest comment id, even when a later comment is earlier in time.
+    let mut dup = r.comments.borrow()[1].clone();
+    dup["id"] = json!(50);
+    dup["created_at"] = at(45);
+    r.comments.borrow_mut().push(dup);
+    let v = dispatch::check_cli(
+        CheckRequest {
+            dispatch: m.clone(),
+        },
+        &r,
+        &At(BASE + 400),
+    )
+    .unwrap();
+    assert_eq!(v["ack_comment_id"], 50);
+    assert_eq!(v["received_at"], BASE + 45);
+
+    // An ACK is not a decision.
+    let root = temp_root();
+    let r = Remote::new();
+    send(root.path(), &m, &r).unwrap();
+    r.actor.set(22);
+    message::ack_cli(
+        root.path(),
+        message::AckRequest {
+            message: m.clone(),
+            payload_digest: payload_digest(&m),
+        },
+        "decision:1",
+        &r,
+        &Time,
+    )
+    .unwrap();
+    r.comments.borrow_mut()[1]["created_at"] = at(40);
+    let v = dispatch::check_cli(
+        CheckRequest {
+            dispatch: m.clone(),
+        },
+        &r,
+        &At(BASE + 400),
+    )
+    .unwrap();
+    assert_eq!(v["received_at"], BASE + 40);
+    assert_eq!(v["decided_at"], Value::Null);
+    assert_eq!(v["decision_comment_id"], Value::Null);
+
+    // An ACK observed before its own record is a conflict, not a negative duration.
+    r.comments.borrow_mut()[0]["created_at"] = at(30);
+    r.comments.borrow_mut()[1]["created_at"] = at(20);
+    let e = dispatch::check_cli(CheckRequest { dispatch: m }, &r, &At(BASE + 400)).unwrap_err();
+    assert_eq!(e.kind, moai_cli::contract::Kind::Conflict);
+}
+
+#[test]
+fn ack_alert_boundary_uses_the_shared_constant() {
+    let n = dispatch::ACK_ALERT_SECS;
+    assert_eq!(n, 300);
+    let root = temp_root();
+    let r = Remote::new();
+    let m = packet();
+    send(root.path(), &m, &r).unwrap();
+    for (offset, state) in [
+        (n - 1, "waiting"),
+        (n, "unacknowledged"),
+        (n + 1, "unacknowledged"),
+        (-1, "unknown"),
+    ] {
+        let v = dispatch::check_cli(
+            CheckRequest {
+                dispatch: m.clone(),
+            },
+            &r,
+            &At(BASE + offset),
+        )
+        .unwrap();
+        assert_eq!(v["ack_alert"], state, "offset {offset}");
+        assert_eq!(
+            v["elapsed_secs"],
+            if offset < 0 {
+                Value::Null
+            } else {
+                json!(offset)
+            }
+        );
+    }
+}
