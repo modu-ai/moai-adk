@@ -310,6 +310,23 @@ fn a_pass_below_by_its_own_author_stops() {
     );
 }
 
+/// Issue #3052: the PASS of the PR below counts only when a member wrote it. One a non-member
+/// wrote, even a well-formed one by an unrelated lane, does not cover the carried head: PR #9
+/// stops as if no verdict existed, and the snapshot says which comment it left out.
+#[test]
+fn a_pass_below_that_a_non_member_wrote_does_not_cover() {
+    let s = stack(false, false);
+    for association in ["NONE", "CONTRIBUTOR", ""] {
+        let mut pass = verdict(7, 301, &s.a1, &s.base, "PASS", "agent-30");
+        pass["author_association"] = json!(association);
+        let snap = snapshot(&s, true, json!([pass]));
+        let why = g12_stop(&snap);
+        assert!(why.contains("no AUDIT verdict"), "{association}: {why}");
+        let listed = snap.ignored.to_json().to_string();
+        assert!(listed.contains("301"), "{association}: {listed}");
+    }
+}
+
 /// A PASS on a head the gate's repository does not have cannot be shown to hold the carried
 /// commits: unknown is never a pass.
 #[test]
