@@ -141,10 +141,12 @@ pub fn duty(lane: &str, duty: Option<&str>) -> String {
 
 /// The command a lane's Codex `Stop` hook runs.
 pub fn stop_hook_command(lane: &str, repo: &str) -> String {
-    format!(
-        "{} {STOP_HOOK_SUBCOMMAND} --lane {lane} --repo {repo}",
-        crate::hooks::HOOK_BINARY
-    )
+    stop_hook_command_with(crate::hooks::HOOK_BINARY, lane, repo)
+}
+
+/// [`stop_hook_command`] for any binary name (the legacy spelling is `LEGACY_BINARY`).
+pub fn stop_hook_command_with(binary: &str, lane: &str, repo: &str) -> String {
+    format!("{binary} {STOP_HOOK_SUBCOMMAND} --lane {lane} --repo {repo}")
 }
 
 fn line(kind: &str, text: String) -> Value {
@@ -208,9 +210,11 @@ pub fn lines(
     Ok(out)
 }
 
-/// The lane's Codex `Stop` hook in `<project>/.codex/hooks.json`: `installed`, `missing` (no
-/// file), `no_lane_hook`, `other_lane` or `unreadable`. Trust is Codex's own record and is
-/// never read here.
+/// The lane's Codex `Stop` hook in `<project>/.codex/hooks.json`: `installed`,
+/// `installed_legacy` (the same hook spelled with the `moai-cli` name of the releases before
+/// #3004 P4-2: it still runs, so it is not a block), `missing` (no file), `no_lane_hook`,
+/// `other_lane` (a lane Stop hook of another lane, in either spelling) or `unreadable`. Trust is
+/// Codex's own record and is never read here.
 pub fn codex_hook_state(project: &Path, lane: &str, repo: &str) -> &'static str {
     let path = project.join(".codex/hooks.json");
     if matches!(std::fs::symlink_metadata(&path), Err(e) if e.kind() == std::io::ErrorKind::NotFound)
@@ -225,18 +229,23 @@ pub fn codex_hook_state(project: &Path, lane: &str, repo: &str) -> &'static str 
         return "unreadable";
     };
     let mine = stop_hook_command(lane, repo);
-    let prefix = format!("{} {STOP_HOOK_SUBCOMMAND} ", crate::hooks::HOOK_BINARY);
-    let mut other = false;
+    let mine_legacy = stop_hook_command_with(crate::hooks::LEGACY_BINARY, lane, repo);
+    let prefixes = [crate::hooks::HOOK_BINARY, crate::hooks::LEGACY_BINARY]
+        .map(|b| format!("{b} {STOP_HOOK_SUBCOMMAND} "));
+    let (mut other, mut legacy) = (false, false);
     for group in v["hooks"]["Stop"].as_array().into_iter().flatten() {
         for h in group["hooks"].as_array().into_iter().flatten() {
             let cmd = h["command"].as_str().unwrap_or("").trim();
             if cmd == mine {
                 return "installed";
             }
-            other |= cmd.starts_with(&prefix);
+            legacy |= cmd == mine_legacy;
+            other |= prefixes.iter().any(|p| cmd.starts_with(p.as_str()));
         }
     }
-    if other {
+    if legacy {
+        "installed_legacy"
+    } else if other {
         "other_lane"
     } else {
         "no_lane_hook"
@@ -247,7 +256,7 @@ pub fn codex_hook_state(project: &Path, lane: &str, repo: &str) -> &'static str 
 /// [`codex_hook_state`]); none when it is. Installing the hook is the person's step: the hook
 /// file is reviewed and trusted in Codex's own `/hooks`.
 pub fn codex_blocked_line(lane: &str, state: &str) -> Option<String> {
-    (state != "installed").then(|| {
+    (!matches!(state, "installed" | "installed_legacy")).then(|| {
         format!(
             "LANE-BLOCKED {lane} wake codex Stop hook {state} · kind=outside owner=user \
              next=install the lane Stop hook in .codex/hooks.json and trust it in Codex /hooks"
@@ -673,7 +682,7 @@ mod tests {
         assert!(texts[1].chars().count() <= CODEX_GOAL_LIMIT);
         assert_eq!(
             x["stop_hook"]["command"],
-            json!("moai-cli lane-stop-hook --lane agent-10 --repo modu-ai/moai-adk")
+            json!("moai lane-stop-hook --lane agent-10 --repo modu-ai/moai-adk")
         );
         let o = lines(Host::Omp, "agent-10", None, None).unwrap();
         assert_eq!(
@@ -735,6 +744,32 @@ mod tests {
         assert_eq!(codex_hook_state(p, "agent-10", "o/r"), "other_lane");
         std::fs::write(&file, with(&stop_hook_command("agent-10", "o/r"))).unwrap();
         assert_eq!(codex_hook_state(p, "agent-10", "o/r"), "installed");
+        // #3004 P4-2: the same hook spelled with the old `moai-cli` name still runs; it is its
+        // own state, not "installed", and a lane or repository that differs is `other_lane` in
+        // both spellings.
+        let old = |lane: &str, repo: &str| {
+            stop_hook_command_with(crate::hooks::LEGACY_BINARY, lane, repo)
+        };
+        assert_eq!(
+            old("agent-10", "o/r"),
+            "moai-cli lane-stop-hook --lane agent-10 --repo o/r"
+        );
+        std::fs::write(&file, with(&old("agent-10", "o/r"))).unwrap();
+        assert_eq!(codex_hook_state(p, "agent-10", "o/r"), "installed_legacy");
+        std::fs::write(&file, with(&old("agent-9", "o/r"))).unwrap();
+        assert_eq!(codex_hook_state(p, "agent-10", "o/r"), "other_lane");
+        std::fs::write(&file, with(&old("agent-10", "o/x"))).unwrap();
+        assert_eq!(codex_hook_state(p, "agent-10", "o/r"), "other_lane");
+        // Both spellings of the lane present: the current one wins.
+        let both = json!({"hooks": {"Stop": [
+            {"hooks": [{"type": "command", "command": old("agent-10", "o/r")}]},
+            {"hooks": [{"type": "command", "command": stop_hook_command("agent-10", "o/r")}]},
+        ]}});
+        std::fs::write(&file, both.to_string()).unwrap();
+        assert_eq!(codex_hook_state(p, "agent-10", "o/r"), "installed");
+        // A command that only starts like the old hook is not the lane's hook.
+        std::fs::write(&file, with(&format!("{} --extra", old("agent-10", "o/r")))).unwrap();
+        assert_eq!(codex_hook_state(p, "agent-10", "o/r"), "other_lane");
         // The hook under another event is not a Stop hook.
         let pre = json!({"hooks": {"PreToolUse": [{"hooks": [{"type": "command",
             "command": stop_hook_command("agent-10", "o/r")}]}]}});
@@ -807,6 +842,8 @@ mod tests {
     #[test]
     fn only_a_missing_hook_gives_the_blocked_line() {
         assert_eq!(codex_blocked_line("agent-10", "installed"), None);
+        // The old spelling still runs (#3004 P4-2): it is no block.
+        assert_eq!(codex_blocked_line("agent-10", "installed_legacy"), None);
         for state in ["missing", "no_lane_hook", "other_lane", "unreadable"] {
             let l = codex_blocked_line("agent-10", state).unwrap();
             assert!(l.starts_with(&format!(

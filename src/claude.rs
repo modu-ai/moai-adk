@@ -555,7 +555,7 @@ impl SettingsScope {
         }
     }
 
-    fn file(self) -> &'static str {
+    pub(crate) fn file(self) -> &'static str {
         match self {
             Self::Project => SETTINGS_FILE,
             Self::Local => SETTINGS_LOCAL_FILE,
@@ -981,6 +981,16 @@ pub fn owned_settings(project: &Path) -> Result<Map<String, Value>> {
     Ok(settings_state(project, &Map::new(), SettingsScope::Project)?.owned)
 }
 
+/// What MoAI owns and what the file holds now, for one scope: the receipt's owned keys and the
+/// file's top-level keys (#3004 P4-3 recognises its old status line in them). Reads only.
+pub fn scope_view(
+    project: &Path,
+    scope: SettingsScope,
+) -> Result<(Map<String, Value>, Map<String, Value>)> {
+    let s = settings_state(project, &Map::new(), scope)?;
+    Ok((s.owned, s.current))
+}
+
 /// The top-level keys of `PROJECT/.claude/settings.json` now (#2936 R8); empty when the file is
 /// absent. A file that is not a bounded JSON object is the same preservation-review error the
 /// plan gives. Reads only.
@@ -1310,7 +1320,11 @@ fn keep_out_of_git(backups: &Path) -> Result<()> {
 /// Keeps the existing settings file byte for byte in a new, exclusively created
 /// `.moai-cli/settings-backups/<UTC>-<scope>/` folder before a confirmed replacement (#2383),
 /// and reads it back. Returns the folder relative to the project.
-fn keep_original(project: &Path, scope: SettingsScope, before: Option<&[u8]>) -> Result<String> {
+pub(crate) fn keep_original(
+    project: &Path,
+    scope: SettingsScope,
+    before: Option<&[u8]>,
+) -> Result<String> {
     let before = before.ok_or("no settings file to keep; nothing applied")?;
     let root = fs::canonicalize(project).map_err(|_| "project directory unavailable")?;
     let backups = crate::state_root::path(&root, SETTINGS_BACKUPS);

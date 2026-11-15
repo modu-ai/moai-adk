@@ -13,6 +13,19 @@ use std::process::Command;
 
 const PERMISSION: &str = "test-permission-2877";
 
+/// A PATH that holds no `moai`: the hooks the replacement installs are not checked against a
+/// `moai` here (#3004 P4-2 gate tests are below), so these tests do not depend on the machine.
+const NO_MOAI_PATH: &str = "/nonexistent-moai-path";
+
+fn apply_no_moai(
+    project: &Path,
+    home: Option<&Path>,
+    digest: &str,
+    permission: &str,
+) -> Result<Value, String> {
+    go_hooks::apply_in(project, home, digest, permission, NO_MOAI_PATH)
+}
+
 fn go_handler(script: &str) -> Value {
     json!({
         "type": "command",
@@ -92,7 +105,7 @@ fn apply_replaces_the_go_hooks_and_revert_puts_every_byte_back() {
         "plan writes nothing"
     );
 
-    let out = go_hooks::apply(
+    let out = apply_no_moai(
         &root,
         None,
         plan["plan_digest"].as_str().unwrap(),
@@ -148,14 +161,14 @@ fn a_stale_digest_or_a_missing_permission_writes_nothing() {
     let settings_before = fs::read(root.join(".claude/settings.json")).unwrap();
     let plan = go_hooks::plan(&root, None).unwrap();
     let digest = plan["plan_digest"].as_str().unwrap();
-    assert!(go_hooks::apply(&root, None, digest, "").is_err());
+    assert!(apply_no_moai(&root, None, digest, "").is_err());
     // A script changed after the preview: the digest no longer matches.
     fs::write(
         root.join(".claude/hooks/moai/handle-stop.sh"),
         "#!/bin/sh\necho x\n",
     )
     .unwrap();
-    let e = go_hooks::apply(&root, None, digest, PERMISSION).unwrap_err();
+    let e = apply_no_moai(&root, None, digest, PERMISSION).unwrap_err();
     assert!(e.contains("stale"), "{e}");
     assert_eq!(
         fs::read(root.join(".claude/settings.json")).unwrap(),
@@ -176,7 +189,7 @@ fn hooks_of_another_tool_block_the_replacement() {
     let plan = go_hooks::plan(&root, None).unwrap();
     assert_eq!(plan["action"], json!("blocked"), "{plan}");
     assert_eq!(plan["blocks"], json!(["other_hooks_present"]));
-    let e = go_hooks::apply(
+    let e = apply_no_moai(
         &root,
         None,
         plan["plan_digest"].as_str().unwrap(),
@@ -191,7 +204,7 @@ fn hooks_of_another_tool_block_the_replacement() {
 fn revert_refuses_once_the_settings_changed_since_the_apply() {
     let (_d, root) = go_project();
     let plan = go_hooks::plan(&root, None).unwrap();
-    let out = go_hooks::apply(
+    let out = apply_no_moai(
         &root,
         None,
         plan["plan_digest"].as_str().unwrap(),
@@ -221,7 +234,7 @@ fn a_failed_install_puts_everything_back() {
     fs::write(&receipt, "not json").unwrap();
     let settings_before = fs::read(root.join(".claude/settings.json")).unwrap();
     let plan = go_hooks::plan(&root, None).unwrap();
-    let e = go_hooks::apply(
+    let e = apply_no_moai(
         &root,
         None,
         plan["plan_digest"].as_str().unwrap(),
@@ -259,7 +272,7 @@ fn the_commands_are_wired() {
 
 fn applied(root: &Path) -> String {
     let plan = go_hooks::plan(root, None).unwrap();
-    let out = go_hooks::apply(
+    let out = apply_no_moai(
         root,
         None,
         plan["plan_digest"].as_str().unwrap(),
@@ -375,4 +388,159 @@ fn a_revert_that_fails_midway_moves_the_scripts_back_into_the_archive() {
         go_hooks::revert(&root, &id, PERMISSION).unwrap()["state"],
         json!("reverted")
     );
+}
+
+/// A folder with a `moai` that prints `line` for `--version`, and the PATH that puts it first.
+fn fake_moai(line: &str) -> (tempfile::TempDir, String) {
+    let dir = tempfile::tempdir().unwrap();
+    let bin = fs::canonicalize(dir.path()).unwrap().join("bin");
+    fs::create_dir_all(&bin).unwrap();
+    common::write_executable(
+        &bin.join("moai"),
+        &format!("#!/bin/sh\nprintf '%s\\n' '{line}'\n"),
+    );
+    let path = format!("{}:/usr/bin:/bin", bin.display());
+    (dir, path)
+}
+
+/// Every file under `root` with its bytes, for a byte-identical tree check.
+fn tree(root: &Path) -> Vec<(String, Vec<u8>)> {
+    fn walk(dir: &Path, root: &Path, out: &mut Vec<(String, Vec<u8>)>) {
+        for e in fs::read_dir(dir).unwrap().flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                walk(&p, root, out);
+            } else {
+                let rel = p.strip_prefix(root).unwrap().display().to_string();
+                out.push((rel, fs::read(&p).unwrap()));
+            }
+        }
+    }
+    let mut out = Vec::new();
+    walk(root, root, &mut out);
+    out.sort();
+    out
+}
+
+/// #3004 P4-2: the hooks the replacement installs call `moai`. With a Go `moai` first on PATH
+/// they would reach it and the claim guard would stay off, so nothing is written: no moved
+/// scripts, no settings rewrite, no receipt. A Rust `moai`, or none on PATH, applies.
+#[test]
+fn a_go_moai_first_on_path_refuses_the_replacement_and_writes_nothing() {
+    let (_d, root) = go_project();
+    let before = tree(&root);
+    let plan = go_hooks::plan(&root, None).unwrap();
+    let digest = plan["plan_digest"].as_str().unwrap();
+    let (_g, go_path) = fake_moai("moai-adk v3.2.1");
+    let e = go_hooks::apply_in(&root, None, digest, PERMISSION, &go_path).unwrap_err();
+    assert!(e.contains("wrong_generation"), "{e}");
+    assert!(e.contains("nothing was written"), "{e}");
+    assert!(e.contains("Put the Rust moai first on PATH"), "{e}");
+    assert_eq!(tree(&root), before, "the tree is byte-identical");
+    assert!(!root.join(".moai-cli").exists());
+
+    // The same confirmed plan applies once a Rust `moai` is first.
+    let (_r, rust_path) = fake_moai("moai 1.2.3 (rust)");
+    let out = go_hooks::apply_in(&root, None, digest, PERMISSION, &rust_path).unwrap();
+    assert_eq!(out["state"], json!("applied"), "{out}");
+    assert!(!root.join(".claude/hooks/moai").exists());
+}
+
+/// No `moai` on PATH is reported by the install (`hooks_active: false`), not refused, as
+/// `hooks-apply` always did; a Go `moai` found inside the project is not run and not refused.
+#[test]
+fn no_moai_on_path_or_one_inside_the_project_still_applies() {
+    let (_d, root) = go_project();
+    let plan = go_hooks::plan(&root, None).unwrap();
+    let out = go_hooks::apply_in(
+        &root,
+        None,
+        plan["plan_digest"].as_str().unwrap(),
+        PERMISSION,
+        NO_MOAI_PATH,
+    )
+    .unwrap();
+    assert_eq!(out["state"], json!("applied"), "{out}");
+
+    let (_d, root) = go_project();
+    let bin = root.join("bin");
+    fs::create_dir_all(&bin).unwrap();
+    common::write_executable(&bin.join("moai"), "#!/bin/sh\necho moai-adk v3.2.1\n");
+    let plan = go_hooks::plan(&root, None).unwrap();
+    let path = format!("{}:/usr/bin:/bin", bin.display());
+    let out = go_hooks::apply_in(
+        &root,
+        None,
+        plan["plan_digest"].as_str().unwrap(),
+        PERMISSION,
+        &path,
+    )
+    .unwrap();
+    assert_eq!(out["state"], json!("applied"), "{out}");
+}
+
+/// Through the binary: `go-hooks-plan` carries the gate for the PATH it runs with, and
+/// `go-hooks-apply` refuses under a Go `moai` with the tree untouched.
+#[test]
+fn the_commands_report_and_enforce_the_gate() {
+    use common::CleanEnv as _;
+    let (_d, root) = go_project();
+    let home = tempfile::tempdir().unwrap();
+    let run = |op: &str, path: &str, extra: &[&str]| -> Value {
+        let out = Command::new(common::MOAI_BIN)
+            .clean_env()
+            .arg(op)
+            .args(extra)
+            .arg(&root)
+            .env("HOME", home.path())
+            .env("PATH", path)
+            .output()
+            .unwrap();
+        serde_json::from_slice(&out.stdout).unwrap()
+    };
+    let (_g, go_path) = fake_moai("moai-adk v3.2.1");
+    let (_r, rust_path) = fake_moai("moai 1.2.3 (rust)");
+    let before = tree(&root);
+    let under_go = run("go-hooks-plan", &go_path, &[]);
+    let under_rust = run("go-hooks-plan", &rust_path, &[]);
+    assert_eq!(
+        under_go["result"]["gate"]["allowed"],
+        json!(false),
+        "{under_go}"
+    );
+    assert!(under_go["result"]["gate"]["reason"]
+        .as_str()
+        .unwrap()
+        .contains("wrong_generation"));
+    assert_eq!(
+        under_rust["result"]["gate"]["allowed"],
+        json!(true),
+        "{under_rust}"
+    );
+    // The gate is a report: the digest is the same under every PATH.
+    assert_eq!(
+        under_go["result"]["plan_digest"],
+        under_rust["result"]["plan_digest"]
+    );
+    assert_eq!(tree(&root), before);
+
+    let digest = under_go["result"]["plan_digest"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let args = [
+        "--plan-digest",
+        &digest,
+        "--permission-reference",
+        PERMISSION,
+    ];
+    let refused = run("go-hooks-apply", &go_path, &args);
+    assert_eq!(refused["ok"], json!(false), "{refused}");
+    assert!(
+        refused.to_string().contains("nothing was written"),
+        "{refused}"
+    );
+    assert_eq!(tree(&root), before);
+    let done = run("go-hooks-apply", &rust_path, &args);
+    assert_eq!(done["ok"], json!(true), "{done}");
 }

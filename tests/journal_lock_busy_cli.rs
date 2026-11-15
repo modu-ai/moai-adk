@@ -3,7 +3,7 @@
 //! kind `unavailable`, `retryable: true`, exit 1, one shared message. Before #2345 the
 //! ops answered per op: `claim-acquire`/`claim-release`/`queue-next` returned an `ok: true`
 //! `busy` outcome, the 06-B/06-C ops a `conflict` error the classifier made non-retryable.
-//! `queue-next` is retired since (#2901), so eleven operations remain.
+//! `queue-next` is retired since (#2901), so eleven operations remained; `claim-link` (#3030) is the twelfth.
 //! Each case runs the real binary as a subprocess against a real git repository while this
 //! test process holds `<git common dir>/.moai-cli/claims/.lock`.
 
@@ -389,10 +389,28 @@ fn every_journal_writing_op_answers_one_busy_envelope() {
             None,
             "pr.confirm",
         ),
+        // #3030: `claim-link` takes the lock before its one forge read; the loud `gh` fails
+        // the case if the lock came after it.
+        (
+            vec![
+                "claim-link".into(),
+                ".".into(),
+                "--issue".into(),
+                "2005".into(),
+                "--comment".into(),
+                "4242".into(),
+                "--lane".into(),
+                "busy-test".into(),
+                "--repo".into(),
+                "modu-ai/moai-adk".into(),
+            ],
+            None,
+            "claim.link",
+        ),
     ];
     assert_eq!(
         cases.len(),
-        11,
+        12,
         "all journal-writing operations are covered"
     );
 

@@ -310,6 +310,21 @@ fn busy_now(dir: &Path) -> Option<&'static str> {
     }
 }
 
+/// The size a moved item is recorded with and whether it is only a lower bound. The plan's size
+/// when it has one (build folders); otherwise measured now, with a budget of its own that starts
+/// here. A budget shared by the whole apply is spent by the use checks before each move (two
+/// `lsof` runs and a `ps`, about ten seconds each on a loaded Mac), so the last item would be
+/// measured after it ran out and recorded as 0 bytes without a word (#3079).
+fn moved_bytes(item: &Value, path: &Path, budget: Duration) -> (u64, bool) {
+    match item["bytes"].as_u64() {
+        Some(bytes) => (bytes, item["bytes_partial"].as_bool().unwrap_or(false)),
+        None => bytes_under(
+            std::slice::from_ref(&path.to_path_buf()),
+            Instant::now() + budget,
+        ),
+    }
+}
+
 /// `hygiene.apply` (#2934 S4b): recomputes the plan with the same inputs and refuses before
 /// any write unless its digest equals `plan_digest` or the holding folder or its manifest is a
 /// link. Then each `hold` item, re-checked right before ([`busy_now`]), gets its manifest line
@@ -352,7 +367,6 @@ pub fn apply(inp: &Inputs, plan_digest: &str, permission_reference: &str) -> Res
                 .count()
         })
         .unwrap_or(0);
-    let deadline = Instant::now() + SIZE_BUDGET;
     for it in &items {
         let path = PathBuf::from(it["path"].as_str().unwrap_or_default());
         let kind = it["kind"].as_str().unwrap_or_default();
@@ -380,9 +394,7 @@ pub fn apply(inp: &Inputs, plan_digest: &str, permission_reference: &str) -> Res
                 break d;
             }
         };
-        let bytes = it["bytes"]
-            .as_u64()
-            .unwrap_or_else(|| bytes_under(std::slice::from_ref(&path), deadline).0);
+        let (bytes, bytes_partial) = moved_bytes(it, &path, SIZE_BUDGET);
         let line = format!("{shown}\t{}\t{kind}\t{bytes}\t{reason}\n", dest.display());
         let staged = record(&manifest, &line).ok();
         if staged.is_none() {
@@ -407,6 +419,7 @@ pub fn apply(inp: &Inputs, plan_digest: &str, permission_reference: &str) -> Res
             "holding": dest.to_string_lossy(),
             "kind": kind,
             "bytes": bytes,
+            "bytes_partial": bytes_partial,
             "reason": reason,
         }));
     }
@@ -505,5 +518,34 @@ mod tests {
                 (json!("keep"), json!("in_use_unknown"))
             );
         }
+    }
+    /// #3079: the size recorded for a moved item. The plan's size is taken as it is (and its
+    /// partial flag with it); an item without one is measured with a budget that starts at the
+    /// call, and a budget that is already spent says "partial" instead of a quiet 0.
+    #[test]
+    fn moved_bytes_takes_the_plans_size_and_measures_the_rest_with_its_own_budget() {
+        let gone = Path::new("/nonexistent-3079-path");
+        let big = Duration::from_secs(20);
+        assert_eq!(moved_bytes(&json!({"bytes": 5}), gone, big), (5, false));
+        assert_eq!(
+            moved_bytes(&json!({"bytes": 7, "bytes_partial": true}), gone, big),
+            (7, true)
+        );
+        let tmp = tempfile::tempdir().unwrap();
+        fs::write(tmp.path().join("f"), vec![1u8; 4096]).unwrap();
+        // Time passing before the call does not use up the budget of the call.
+        std::thread::sleep(Duration::from_millis(50));
+        let (bytes, partial) = moved_bytes(&json!({"kind": "worktree"}), tmp.path(), big);
+        assert!(bytes >= 4096 && !partial, "{bytes} {partial}");
+        // A spent budget is told as partial, never as a complete 0.
+        assert_eq!(
+            moved_bytes(&json!({"kind": "worktree"}), tmp.path(), Duration::ZERO),
+            (0, true)
+        );
+        // A size of 0 in the plan is a size, not a missing one.
+        assert_eq!(
+            moved_bytes(&json!({"bytes": 0}), tmp.path(), Duration::ZERO),
+            (0, false)
+        );
     }
 }

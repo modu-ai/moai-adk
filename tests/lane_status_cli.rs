@@ -1306,6 +1306,38 @@ fn s6_dispatch_receipt_is_not_business_acceptance() {
 }
 
 #[test]
+fn s6_dispatch_check_and_communication_agree_at_the_ack_alert_boundary() {
+    let tmp = tempfile::tempdir().unwrap();
+    let n = moai_cli::dispatch::ACK_ALERT_SECS;
+    for (age, alert) in [
+        (n - 1, "waiting"),
+        (n, "unacknowledged"),
+        (n + 1, "unacknowledged"),
+    ] {
+        let out = s6_run(
+            tmp.path(),
+            vec![s6_packet(101, s6_dispatch(), false)],
+            age,
+            true,
+        );
+        let lane = s6_lane(&out, "sender");
+        // `dispatches` is the dispatch-check view; `sent_reports` is lane-status's own row.
+        assert_eq!(lane["dispatches"][0]["ack_alert"], alert, "age {age}");
+        assert_eq!(lane["sent_reports"][0]["ack_alert"], alert, "age {age}");
+        assert_eq!(lane["dispatches"][0]["elapsed_secs"], age);
+        assert_eq!(lane["sent_reports"][0]["elapsed_secs"], age);
+    }
+    // A record from the future is unknown for dispatch-check and unavailable here.
+    let out = s6_run(
+        tmp.path(),
+        vec![s6_packet(101, s6_dispatch(), false)],
+        -1,
+        true,
+    );
+    assert_eq!(out["communication"]["available"], false);
+}
+
+#[test]
 fn s6_dispatch_new_revision_supersedes_old_receiver() {
     let tmp = tempfile::tempdir().unwrap();
     let m = s6_dispatch();

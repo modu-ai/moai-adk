@@ -788,6 +788,12 @@ mod tests {
         assert_eq!(live_session_count(&dir, 0), Ok(1), "lock and entry");
         fs::remove_file(dir.join("agent-5.json")).unwrap();
         drop(live);
+        // A lock nobody holds is a file nobody has locked. The file that was just released is not
+        // read back for this: while other tests spawn processes in the same run, a child that has
+        // forked but not yet exec'd holds a copy of the open file for a moment, and the released
+        // lock then still looks held (observed on a loaded machine, `Ok(1)` instead of `Ok(0)`).
+        fs::remove_file(dir.join("agent-5.live")).unwrap();
+        fs::File::create(dir.join("agent-6.live")).unwrap();
         assert_eq!(live_session_count(&dir, 0), Ok(0), "a lock nobody holds");
         // A folder that cannot be listed. A user who can list it anyway (root) cannot make
         // this input, so the check is skipped there.

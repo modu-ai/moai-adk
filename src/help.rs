@@ -145,9 +145,12 @@ pub const GROUPS: &[Group] = &[
             ("claim-acquire", false),
             ("claim-verify", false),
             ("claim-timeout-check", false),
+            ("claim-expired", false),
+            ("audit-claim-stale", false),
             ("claim-show", false),
             ("claim-release", false),
             ("claim-handoff", false),
+            ("claim-link", false),
             ("queue-free", false),
             ("queue-query", false),
             ("leader-tick", false),
@@ -192,6 +195,7 @@ pub const GROUPS: &[Group] = &[
             ("flow-wip-check", false),
             ("dispatch-record", false),
             ("dispatch-ack", false),
+            ("dispatch-start", false),
             ("dispatch-check", false),
             ("message-record", false),
             ("message-ack", false),
@@ -252,6 +256,7 @@ pub const GROUPS: &[Group] = &[
             ("archive-search", false),
             ("worktree-gc-plan", false),
             ("worktree-gc-apply", false),
+            ("worktree-install-plan", false),
             ("hygiene-plan", false),
             ("hygiene-apply", false),
             ("session", false),
@@ -361,9 +366,12 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
         "claim-timeout-check",
         &["claim-timeout-check --issue 7 --claim 101 --request 202 --lane agent-1"],
     ),
+    ("claim-expired", &["claim-expired ."]),
+    ("audit-claim-stale", &["audit-claim-stale --lane agent-1 ."]),
     ("claim-show", &["claim-show --task <task> ."]),
     ("claim-release", &["claim-release --task <task> --epoch 1 ."]),
     ("claim-handoff", &["claim-handoff --task <task> --from-epoch 1 --reason <reason> ."]),
+    ("claim-link", &["claim-link --issue 7 --comment 101 --lane agent-1 ."]),
     ("queue-free", &["queue-free . < request.json"]),
     ("queue-query", &["queue-query . < request.json"]),
     ("leader-tick", &["leader-tick . < request.json"]),
@@ -444,6 +452,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("flow-wip-check", &["flow-wip-check --owner modu-ai --repo modu-ai/moai-adk --lane agent-1"]),
     ("dispatch-record", &["dispatch-record --permission-reference <ref> . < request.json"]),
     ("dispatch-ack", &["dispatch-ack --permission-reference <ref> . < request.json"]),
+    ("dispatch-start", &["dispatch-start --permission-reference <ref> . < request.json"]),
     ("dispatch-check", &["dispatch-check < request.json"]),
     ("message-record", &["message-record --permission-reference <ref> . < request.json"]),
     ("message-ack", &["message-ack --permission-reference <ref> . < request.json"]),
@@ -491,6 +500,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("archive-restore", &["archive-restore --spec SPEC-001 --permission-reference <ref> ."]),
     ("archive-search", &["archive-search --query cache ."]),
     ("worktree-gc-plan", &["worktree-gc-plan --integration-ref origin/main .", "worktree-gc-apply --integration-ref origin/main --plan-digest <digest> --permission-reference <ref> ."]),
+    ("worktree-install-plan", &["worktree-install-plan --scope web ."]),
     ("hygiene-plan", &["hygiene-plan --integration-ref origin/main ."]),
     ("hygiene-apply", &["hygiene-apply --integration-ref origin/main --plan-digest <digest> --permission-reference <ref> ."]),
     ("worktree-gc-apply", &["worktree-gc-apply --integration-ref origin/main --plan-digest <digest> --permission-reference <ref> ."]),
@@ -1445,6 +1455,12 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          (WT-1, #2380). 사실만 — 지울 후보는 판단하지 않아요. 아무것도 쓰지 않아요.",
     ),
     (
+        "worktree-install-plan",
+        "프로필 `scopes` 의 scope 하나가 고른 폴더만 설치하는 명령을 보여 주기만 해요(#3010 P6a). \
+         명령을 실행하지 않고 아무것도 쓰지 않아요 — 패키지 설치는 네트워크로 받는 일이에요. \
+         잠금 파일로 매니저를 고르고, 문서에 없는 것은 `unverified` 에 적어요.",
+    ),
+    (
         "optimize-plan",
         "비울 수 있는 공간을 읽기만 하고 미리 봐요(#2724): 병합 뒤의 linked worktree(squash 병합 \
          포함), 이름 댄 루트 아래의 cargo 빌드 폴더, 보고서 — 크기, 마지막 변경, 보관 기간, 남기는 \
@@ -1582,6 +1598,12 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "worktree-report",
         "budget_ms",
         "크기 훑기의 시간 예산(밀리초). 넘으면 그 갈래는 `partial`",
+    ),
+    ("worktree-install-plan", "project", "저장소의 아무 체크아웃"),
+    (
+        "worktree-install-plan",
+        "scope",
+        "프로필 `scopes` 에 선언된 scope 이름",
     ),
     ("optimize-plan", "project", "저장소의 아무 체크아웃"),
     (

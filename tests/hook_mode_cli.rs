@@ -213,7 +213,10 @@ fn hook_mode_transport_setting_only_matters_to_a_guarded_command() {
 fn hooks_plan_and_apply_report_an_unresolved_binary() {
     let p = project();
     let root = fs::canonicalize(p.path()).unwrap();
-    let bin = root.join("bin");
+    // The fake `moai` lives outside the project: one inside it is repository content and is
+    // reported as `not_probed`, never run.
+    let outside = tempfile::TempDir::new().unwrap();
+    let bin = fs::canonicalize(outside.path()).unwrap().join("bin");
     fs::create_dir_all(&bin).unwrap();
     let empty = root.join("empty");
     fs::create_dir_all(&empty).unwrap();
@@ -227,7 +230,7 @@ fn hooks_plan_and_apply_report_an_unresolved_binary() {
     let plan: Value = serde_json::from_str(&r.stdout).unwrap();
     assert_eq!(plan["ok"], true, "{plan}");
     assert_eq!(plan["result"]["hook_binary"]["state"], "binary_unresolved");
-    assert_eq!(plan["result"]["hook_binary"]["name"], "moai-cli");
+    assert_eq!(plan["result"]["hook_binary"]["name"], "moai");
     assert_eq!(plan["result"]["hooks_active"], false);
 
     let digest = plan["result"]["plan_digest"].as_str().unwrap().to_string();
@@ -254,9 +257,9 @@ fn hooks_plan_and_apply_report_an_unresolved_binary() {
     );
     assert_eq!(applied["result"]["hooks_active"], false);
 
-    // Only a `moai` on that PATH (it may be the Go generation's): the generated hooks call
-    // `moai-cli` until R5 (#2812 leader decision 6868439066 (나)), so they still do not resolve.
-    common::write_executable(&bin.join("moai"), "#!/bin/sh\nexit 0\n");
+    // A `moai` on that PATH that is the Go generation's (or gives no signature) is not the
+    // binary the generated hooks need (#3004 P4-2): `wrong_generation`, never active.
+    common::write_executable(&bin.join("moai"), "#!/bin/sh\necho 'moai-adk v3.2.1'\n");
     let with_binary = bin.to_string_lossy().to_string();
     let r = run(
         &["hooks-plan", ".", "--host", "claude"],
@@ -265,15 +268,19 @@ fn hooks_plan_and_apply_report_an_unresolved_binary() {
         &[("PATH", &with_binary)],
     );
     let plan: Value = serde_json::from_str(&r.stdout).unwrap();
-    assert_eq!(plan["result"]["hook_binary"]["name"], "moai-cli", "{plan}");
+    assert_eq!(plan["result"]["hook_binary"]["name"], "moai", "{plan}");
     assert_eq!(
-        plan["result"]["hook_binary"]["state"], "binary_unresolved",
+        plan["result"]["hook_binary"]["state"], "wrong_generation",
         "{plan}"
     );
+    assert_eq!(plan["result"]["hooks_active"], false, "{plan}");
 
-    // With an executable `moai-cli` on that PATH the binary resolves; whether the host runs
+    // With an executable Rust `moai` on that PATH the binary resolves; whether the host runs
     // the hooks is still unknown until a host receipt says so.
-    common::write_executable(&bin.join("moai-cli"), "#!/bin/sh\nexit 0\n");
+    common::write_executable(
+        &bin.join("moai"),
+        "#!/bin/sh\necho 'moai-cli 1.2.3 (rust)'\n",
+    );
     let r = run(
         &["hooks-plan", ".", "--host", "claude"],
         &root,

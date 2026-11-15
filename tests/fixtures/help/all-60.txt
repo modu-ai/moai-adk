@@ -160,11 +160,17 @@ Lane and leader
                           commit or push
   claim-timeout-check     Check the three timeout takeover
                           conditions of a claim
+  claim-expired           List the open claims whose lease
+                          has ended
+  audit-claim-stale       List audit reservations left on
+                          closed pull requests
   claim-show              Show the current claim record of a
                           task
   claim-release           Close the active claim as
                           cancelled
   claim-handoff           Hand a claim to another session
+  claim-link              Link a claim to the worktree you
+                          work in
   queue-free              List the open cards a lane may
                           take
   queue-query             Read the merge train from the
@@ -241,6 +247,8 @@ Lane and leader
   dispatch-record         Record a dispatch revision
   dispatch-ack            Record a dispatch acknowledgement
                           and decision
+  dispatch-start          Record that an accepted dispatch
+                          has started
   dispatch-check          Check dispatch revisions and late
                           acknowledgements
   message-record          Publish a durable message
@@ -321,6 +329,7 @@ Internal
                           merged worktrees
   worktree-gc-apply       Remove or trim the previewed
                           worktrees
+  worktree-install-plan   Preview a scoped package install
   hygiene-plan            Preview what may move to the
                           holding folder
   hygiene-apply           Move the previewed leftovers to
