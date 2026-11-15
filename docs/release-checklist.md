@@ -6,7 +6,7 @@
 
 - [x] version `2026.11.0-rc.1`은 SemVer 2.0.0 prerelease(`-rc.1` 하이픈 식별자)이며 `2026.11.0`보다 precedence가 낮다(semver.org, 2026-11-08 검증). 문서·tag·Release는 prerelease로 취급한다.
 - [x] tag는 `moai-cli-v2026.11.0-rc.1`(04-A 결정 B: 같은 repo, `moai-cli-v<version>` 접두사). Go RC 채널의 `v`/`go-v` 접두사 필터에는 걸리지 않는다. rc.N은 prerelease라 GitHub가 latest로 지정하지 않으므로 Go stable updater의 `/releases/latest`에도 나오지 않는다. **정식판은 다르다**: `/releases/latest`는 접두사로 거르지 않으므로, 접미사 없는 `moai-cli-v<version>`을 `make_latest` 기본값(true)으로 게시하면 그 릴리스가 latest가 되어 Go stable updater가 실패한다. 정식판은 `--latest=false`(또는 `docs/release-attestation.md` 운영자 승인 항목 6의 해결안)로만 게시한다. 근거: `docs/release-attestation.md` "prerelease와 정식판의 latest"·승인 항목 6, `tests/release_suite.rs` `go_feed_contamination_table_reproduces_plain_v_risk`·`rust_final_release_hides_newer_go_release_from_stable_clients`(E6 #2198).
-- [ ] **not_run — tag ruleset 적용 대기**: 결정됨(01:1x(11-09) 생성 카드, 17:52Z(11-10) 표 37–41 A: PR #2375 병합 뒤 리더 적용·재확인). 기존 `Release tag immutability (v*)`(19583648, `refs/tags/v*`)는 `moai-cli-v*`를 덮지 않는다(2026-11-12T03:59Z `gh api …/rulesets/19583648 --jq .conditions.ref_name.include` → `["refs/tags/v*"]`). 리더 적용과 readback(#2197 AC-2) 전까지 REQ-08D-09는 절차상 규약으로만 성립한다.
+- [ ] **적용·readback 완료, 동작 증명 not_run — tag ruleset**: 리더가 2026-11-12T06:46Z 에 적용하고 readback 했다(#2197 댓글 6816816319, AC-2). ruleset 27096500 `Release tag immutability (moai-cli-v*)`는 target=tag, enforcement=active, include `["refs/tags/moai-cli-v*"]`, rules `deletion`·`update`, bypass 없음이다(2026-11-15T08:45Z `gh api repos/modu-ai/moai-adk/rulesets/27096500`로 다시 읽음). 기존 `Release tag immutability (v*)`(19583648, `refs/tags/v*`)는 `moai-cli-v*`를 덮지 않아 둘은 따로 있다(2026-11-12T03:59Z `gh api …/rulesets/19583648 --jq .conditions.ref_name.include` → `["refs/tags/v*"]`). 시험용 tag 를 올려 삭제·갱신이 막히는지 보는 probe 는 실행하지 않았고(not_run; 실행 또는 면제는 사용자 결정), REQ-08D-09의 동작 증명은 첫 실제 `moai-cli-v*` tag 가 생긴 뒤에야 성립한다.
 
 ## (b) exact candidate SHA · base SHA
 
@@ -45,7 +45,7 @@
 
 - [ ] **not_run — `/releases/latest` 확인(게시 후 재실행)**: 실측(2026-11-09): `gh api …/releases/latest` → `v3.1.2`(Go stable — RC 부재 확인), `gh release view moai-cli-v2026.11.0-rc.1` → **release not found**(미게시 확인). 게시 단계에서: RC는 `--prerelease --latest=false --verify-tag`로 올려 Go stable updater(`non-prerelease, non-draft latest`)가 접근하지 못함을 재확인한다.
 - [x] 설계 정합: tag namespace `moai-cli-v*`는 Go checker의 `v`/`go-v` 접두사 필터(RC 채널)에 걸리지 않는다(04-A 특성화 시험 `go_updater_feed_contamination_table` — `tests/update_cli.rs`… 04-B 이후 `tests/install_cli.rs`가 계승, 본 repo 기록). `/releases/latest`(stable 채널)는 접두사로 거르지 않는다. 그래서 rc.N(prerelease)은 latest가 될 수 없어 노출되지 않지만, 정식판은 `--latest=false` 없이 게시하면 latest가 되어 노출된다(E6 #2198 `tests/release_suite.rs` `rust_final_release_hides_newer_go_release_from_stable_clients`: dist 기본값이면 Go stable 검사가 `checksum_unavailable` 오류, `make_latest=false`면 더 새 Go 릴리스가 그대로 보임; `docs/release-attestation.md` 운영자 승인 항목 6). **다만 실측은 같은 repo 게시 후에만 성립** — 게시 전까지는 설계·fixture 근거 상태다.
-- [ ] **not_run — `moai-cli-v*` 전용 tag ruleset**: (a) 참조. 결정됨, 리더 적용 대기(#2197).
+- [ ] **`moai-cli-v*` 전용 tag ruleset — 적용·readback 완료, 동작 증명 not_run**: (a) 참조. ruleset 27096500 적용됨(#2197 댓글 6816816319). probe 는 not_run, 동작 증명은 첫 실제 tag 뒤.
 
 ## (h) 문서 예제 재현 (AC-08D-8)
 
@@ -105,7 +105,7 @@ git status --short
 
 | 미결 | 성격 | 릴리스에 끼치는 것 |
 | --- | --- | --- |
-| `moai-cli-v*` tag ruleset 적용 | 리더(결정 A, 17:52Z(11-10)) | 적용·readback 전까지 REQ-08D-09는 절차 규약 |
+| `moai-cli-v*` tag ruleset 적용 | 리더(결정 A, 17:52Z(11-10)) — 2026-11-12T06:46Z 적용·readback 완료(#2197 댓글 6816816319) | probe not_run(사용자 결정), REQ-08D-09 동작 증명은 첫 실제 tag 뒤 |
 | attestation 생성 workflow(`actions/attest@v4`) | release 운영(운영자) | AC-08D-5 not_run — provenance 부재 상태로는 게시 불가 |
 | 배포 산출물 OS/arch matrix·locale | 사용자 결정(CI matrix는 01:1x(11-09) 결정: macOS arm64·x86_64 + Linux x86_64·arm64, Windows 빌드만) | 지금 배포 target은 `aarch64-apple-darwin` 하나(`dist-workspace.toml` `targets`) |
 | SBOM(cargo-cyclonedx) | 사용자 결정 2026-11-09 07:0x 재정의("dist build + cargo cyclonedx 단계") → **E1에서 도입·실측 완료** | (i) 참조 — attestation 연동만 게시 단계 not_run |
@@ -130,7 +130,7 @@ tree `v2026.11.0` tip `cf4e662aff5b33ceb96c47757eafa9eb6f250f20`, 실행 2026-11
 | --- | --- | --- | --- |
 | (a) version | passed | `grep -m1 '^version' Cargo.toml` → `version = "2026.11.0-rc.1"` | 맞음 |
 | (a) tag 미생성 | passed | `git ls-remote --tags origin 'moai-cli-v*'` → 출력 없음(tag 0) | 맞음 — 2026-11-12T03:59Z `git ls-remote --tags origin 'moai-cli-v*'` 0줄 |
-| (a) `moai-cli-v*` tag ruleset | blocked | `gh api repos/modu-ai/moai-adk/rulesets` → `26791615 RC1 integration gate (v2026.11.0) target=branch`, `19583648 Release tag immutability (v*) target=tag`; `…/rulesets/19583648 --jq .conditions.ref_name` → `include: ["refs/tags/v*"]` — `moai-cli-v*`는 덮이지 않음. 추가는 저장소 설정(운영자 결정) | 관측은 같음(03:59Z ruleset 2개, 19583648 `["refs/tags/v*"]`). **결정됨**: 01:1x(11-09) 생성 카드, 17:52Z(11-10) 표 37–41 A — 리더 적용 대기(#2197 OPEN) |
+| (a) `moai-cli-v*` tag ruleset | blocked | `gh api repos/modu-ai/moai-adk/rulesets` → `26791615 RC1 integration gate (v2026.11.0) target=branch`, `19583648 Release tag immutability (v*) target=tag`; `…/rulesets/19583648 --jq .conditions.ref_name` → `include: ["refs/tags/v*"]` — `moai-cli-v*`는 덮이지 않음. 추가는 저장소 설정(운영자 결정) | 관측은 같음(03:59Z ruleset 2개, 19583648 `["refs/tags/v*"]`). **현행(2026-11-15T08:45Z `gh api repos/modu-ai/moai-adk/rulesets`)**: 리더가 2026-11-12T06:46Z 에 적용하고 readback 했다(#2197 댓글 6816816319) — `27096500 Release tag immutability (moai-cli-v*) target=tag enforcement=active`, include `["refs/tags/moai-cli-v*"]`, rules `deletion`·`update`, bypass 없음. 이 행의 앞 칸들(blocked 와 03:59Z 관측)은 11-09 기록 그대로다. 시험용 tag probe 는 not_run(실행 또는 면제는 사용자 결정), REQ-08D-09 동작 증명은 첫 실제 `moai-cli-v*` tag 뒤 |
 | (b) candidate SHA | not_run | 후보 SHA는 게시 승인 때 정한다. 이 리허설의 tree는 위 tip이다 | 맞음 |
 | (c) `cargo test --offline --locked` | passed | exit 0, 369 passed / 0 failed | **낡음(수치)** — 그 뒤 시험이 크게 늘었다(agent-8 부분 실행 6811336861만 727 passed). 현재 결과는 not_run |
 | (c) `cargo clippy --offline --locked --all-targets -- -D warnings` | passed | exit 0 | not_run(이번 대조는 실행하지 않음) |
