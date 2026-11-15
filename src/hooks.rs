@@ -219,10 +219,21 @@ pub const HOOK_BINARY: &str = "moai-cli";
 /// `hooks-apply` report it next to the plan, outside the plan digest: the PATH a host gives
 /// its hook process may differ from the shell's, so `resolved` only says this PATH finds it,
 /// and the set is never reported active before a host receipt shows a hook ran.
-pub fn binary_state(path_env: &str) -> Value {
+///
+/// `hook_binary` is the hook binary as generated today (`moai-cli`), only looked up, never run:
+/// `resolved` / `binary_unresolved`, and `hooks_active` follows it. `moai_on_path` (#3004 P4-1,
+/// to be folded into `hook_binary` when the generated command becomes `moai`) is the first `moai`
+/// on `path_env`, told apart by its `--version` line (see [`crate::install::moai_on_path_state`]):
+/// `resolved` for the Rust build, `wrong_generation` for the Go one or anything unrecognised,
+/// `binary_unresolved` when there is none, `not_probed` (reason `project_tree`) for a relative
+/// path or one inside `project`, which is never run. It changes no byte of any generated file and
+/// gates nothing yet. `home` is the one variable the probed `moai` is given.
+pub fn binary_state(project: &Path, path_env: &str, home: Option<&Path>) -> Value {
+    let moai_on_path = crate::install::moai_on_path_state(project, path_env, home);
     match crate::install::resolve_on_path(path_env, HOOK_BINARY) {
         Some(_) => json!({
             "hook_binary": {"name": HOOK_BINARY, "state": "resolved"},
+            "moai_on_path": moai_on_path,
             "hooks_active": "not_run",
         }),
         None => json!({
@@ -232,6 +243,7 @@ pub fn binary_state(path_env: &str) -> Value {
                 "note": "moai-cli is not on this PATH; each generated hook fails as a \
                          non-blocking error and the claim guard does not run",
             },
+            "moai_on_path": moai_on_path,
             "hooks_active": false,
         }),
     }
@@ -778,6 +790,11 @@ fn receipt_lines(root: &Path, file: &str) -> Vec<Value> {
 
 /// The hook state vocabulary of Issue #2391, each from evidence that exists locally, read only:
 /// - `installed`: the hook binary resolves on `path_env`.
+/// - `binary` and `binary_generation` (#3004 P4-1): the state and generation of the first `moai`
+///   on `path_env` — `resolved` / `rust`, `wrong_generation` / `go` or `unknown`,
+///   `binary_unresolved` / `absent`, `not_probed` / `not_probed` (see
+///   [`crate::install::moai_on_path_state`]; `home` is the one variable its `--version` probe
+///   gets). They add to `installed`, which keeps meaning the generated command (`moai-cli`).
 /// - `configured`: `yes` when the host file's `hooks` equal the generated hook set, `no` when
 ///   the file is absent, `drifted` when it exists with other hooks (or does not parse).
 /// - `trusted`: always `unknown`. Claude Code checks workspace trust before running any hook
@@ -795,6 +812,19 @@ fn receipt_lines(root: &Path, file: &str) -> Vec<Value> {
 ///   ran and answered — not that a host ran the hook or obeyed the deny (audit H4-B2). No
 ///   host-originated evidence is read; `evidence` names what the other two rest on.
 pub fn status(project: &Path, host: &str, home: Option<&Path>, path_env: &str) -> Result<Value> {
+    status_with(project, host, home, path_env, None)
+}
+
+/// [`status`] with the `moai` state already probed: `hooks-plan` reports it once as
+/// `moai_on_path` and hands that object here, so one command runs `moai --version` once
+/// (#3004 P4-1). `None` probes it.
+pub fn status_with(
+    project: &Path,
+    host: &str,
+    home: Option<&Path>,
+    path_env: &str,
+    moai: Option<&Value>,
+) -> Result<Value> {
     check_host(host)?;
     let root = project_root(project, home)?;
     // Compared directly, not through the plan: the Claude settings plan preserves a user's
@@ -855,9 +885,15 @@ pub fn status(project: &Path, host: &str, home: Option<&Path>, path_env: &str) -
             && l["unix_ms"].as_u64().is_some_and(|t| !ran_later(l, t))
     });
     let installed = crate::install::resolve_on_path(path_env, HOOK_BINARY).is_some();
+    let moai = match moai {
+        Some(state) => state.clone(),
+        None => crate::install::moai_on_path_state(&root, path_env, home),
+    };
     Ok(json!({
         "host": host,
         "installed": installed,
+        "binary": moai["state"],
+        "binary_generation": moai["generation"],
         "configured": configured,
         "trusted": "unknown",
         "fired": fired,
