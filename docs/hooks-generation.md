@@ -63,6 +63,7 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
     - 옛 `moai-cli` 항목을 `moai`로 바꾸는 쓰기(rewrite)는 `hook_binary.state`가 `resolved`일 때만 한다. `wrong_generation`·`binary_unresolved`·`not_probed`이면 아무것도 쓰지 않고 "hooks not rewritten"으로 거부한다.
     - 새 설치(`create`, 또는 바꿀 옛 항목이 없는 `update`)는 `wrong_generation`일 때만 거부한다. PATH에 `moai`가 없거나(`binary_unresolved`) 프로젝트 안에 있으면(`not_probed`) 예전처럼 쓰고 `hooks_active: false`로 알린다.
     - 쓰지 않는 계획(`unchanged`, `conflict`)은 게이트에 걸리지 않는다.
+    - `go-hooks-apply`(Go 세대 훅을 걷고 MoAI 훅을 까는 길)도 같은 게이트를 쓰되 새 설치처럼 `wrong_generation`일 때만 거부한다. Go `moai`가 PATH 맨 앞이면 Go 스크립트를 옮기거나 설정을 고치기 전에 "nothing was written"으로 거부하고, `go-hooks-plan`은 `gate: {allowed, reason}`을 `plan_digest` 밖에서 보여 준다(`replace` 계획에만).
     - `hooks-plan`은 결과를 `gate: {allowed, reason}`과 `binary_migration.blocked_by`(`moai_<state>`)로 보여 준다. `moai update`의 훅 층은 거부된 host를 `conflict`(이유와 함께, digest 없음)로 보여 준다.
   - **`binary_migration`(#3004 P4-2)**: `hooks-plan` 결과에 더해지는 미리보기이고 `plan_digest` 밖이다. `{from: "moai-cli", to: "moai", state, entries, kept, replaced, blocked_by}`.
     - 알아보는 옛 항목은 옛 생성기(`hooks::LEGACY_BINARY`로 부른 같은 생성 코드)가 쓰는 그룹과 **정확히 같은** 것뿐이다. 인자·경로 접두·timeout·matcher·공백이 하나라도 다르면 MoAI의 옛 항목이 아니라 사용자가 고친 항목이므로 그대로 두고, 명령 문장은 미리보기에 싣지 않는다(event·matcher·이유 `edited`/`not_moai`/`current`만).
