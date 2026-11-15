@@ -166,6 +166,30 @@ fn go_state_step(root: &Path, shown: &str) -> Result<Step> {
     if let Some(sm) = &plan.settings_move {
         preview["settings_move"] = encode(sm)?;
     }
+    // #2936 S-AGENTS-STAY U1: the backup area's own `.gitignore` leaves the copies to git (or git
+    // cannot tell). The apply would refuse before writing, so no command is offered: the user
+    // fixes that file (the update never edits it) and previews again. The install steps wait
+    // behind this step like behind any backup step that is still to do.
+    if let Some(b) = &plan.backup_ignore {
+        preview["backup_ignore"] = encode(b)?;
+        let named = if b.examples.is_empty() {
+            String::new()
+        } else {
+            format!(" (for example {})", b.examples.join(", "))
+        };
+        return Ok(Step {
+            name: "go-state",
+            state: "needs_decision",
+            reason: format!(
+                "the earlier generation's state would move into a backup area git may offer for \
+                 commit{named}: {}",
+                b.reason
+            ),
+            preview,
+            apply: None,
+            plan_digest: Some(plan.plan_digest),
+        });
+    }
     Ok(if pending {
         Step {
             name: "go-state",
