@@ -1,0 +1,404 @@
+//! `claim-link` (Issue #3030): re-point an active claim record at the worktree and branch the
+//! lane really works in.
+//!
+//! The hook guard (`claim-verify --hook`) finds a claim record by the folder a commit runs in.
+//! A claim records the folder and branch of the moment it was posted; a worktree made after
+//! it, or a branch renamed after it, leaves the record pointing elsewhere and the guard sees
+//! "not a lane worktree" (cases: mo.ai.kr #911, #3048). `claim-link` fixes that without
+//! touching the claim itself: it changes only `record.worktree` and appends one
+//! `worktree_linked` effect and event. The branch and the path are measured from git, never
+//! typed.
+//!
+//! Order, each step before the next (a mutant that reorders them must fail a test):
+//! 1. the journal lock, before any forge call (busy is the typed `unavailable` answer);
+//! 2. the one active record of the Issue; `--comment` and `--lane` must match it;
+//! 3. ownership against the forge: the claim comment is the lowest open claim, its lease is
+//!    live, and its `session=` is the lane (`claim-verify` rules, [`verify_owner`]);
+//! 4. the local facts of the target folder ([`probe_target`]);
+//! 5. no other active record holds the same path or branch ([`held_by_other`]);
+//! 6. one journal event through `worktree::commit_update` (nothing is written when the
+//!    record already says the same).
+//!
+//! Every refusal is an `Err` whose message starts `conflict in claim link: <code>: `, so the
+//! contract classifies it as `conflict`; a message that has a command to run ends with it in
+//! the `run `…`` form `error_next` recognises. A claim-verify refusal (`not owner`, `closed`,
+//! `stale`, `uncertain`) keeps its own text and kind.
+//!
+//! Limits: every lane posts through one shared GitHub account, so `--lane` cannot be
+//! authenticated; the check against the claim comment's `session=` only narrows it.
+
+use crate::claim::{ClaimRecord, Journal, JournalEvent, ACTIVE_STATES};
+use crate::claim_verify::{
+    classify_comment, evaluate, read_comments, refusal, CommentKind, Verifier,
+};
+use crate::forge::policy::Clock;
+use crate::forge::transport::Transport;
+use crate::forge::Client;
+use serde_json::{json, Value};
+use std::collections::BTreeMap;
+use std::path::Path;
+
+type Result<T> = std::result::Result<T, String>;
+
+/// Longest `--lane` value, the same bound `claim-acquire` puts on an owner id.
+pub const MAX_LANE_BYTES: usize = 128;
+
+/// A refusal: `conflict in claim link: <code>: <detail>`.
+pub fn refuse(code: &str, detail: impl std::fmt::Display) -> String {
+    format!("conflict in claim link: {code}: {detail}")
+}
+
+/// The latest record of every task in the journal events, active states only.
+pub fn latest_active(events: Vec<JournalEvent>) -> Vec<ClaimRecord> {
+    let mut latest: BTreeMap<String, ClaimRecord> = BTreeMap::new();
+    for e in events {
+        latest.insert(e.record.task_key.clone(), e.record);
+    }
+    latest
+        .into_values()
+        .filter(|r| ACTIVE_STATES.contains(&r.state.as_str()))
+        .collect()
+}
+
+/// The one active record of Issue `issue` in `owner/repo`.
+pub fn find_record(
+    records: &[ClaimRecord],
+    issue: i64,
+    owner: &str,
+    repo: &str,
+) -> Result<ClaimRecord> {
+    let mut found = records.iter().filter(|r| {
+        r.task_ref.issue_number == issue && r.task_ref.owner == owner && r.task_ref.repo == repo
+    });
+    let first = found.next().ok_or_else(|| {
+        refuse(
+            "record_not_found",
+            format!(
+                "no active claim record for Issue #{issue} of {owner}/{repo} in this clone's \
+                 journal; claim it first with claim-acquire"
+            ),
+        )
+    })?;
+    if found.next().is_some() {
+        return Err(refuse(
+            "record_ambiguous",
+            format!("more than one active claim record for Issue #{issue} of {owner}/{repo}"),
+        ));
+    }
+    Ok(first.clone())
+}
+
+/// The record must be the one `--comment` and `--lane` name, and must be linkable. A claim
+/// waiting for a handoff (`handoff_pending`) is not changed by its old owner.
+pub fn check_record(record: &ClaimRecord, comment: i64, lane: &str) -> Result<()> {
+    if record.comment_id != Some(comment) {
+        return Err(refuse(
+            "comment_differs",
+            format!(
+                "--comment {comment} is not the claim comment of the record ({})",
+                record
+                    .comment_id
+                    .map_or("none".to_string(), |c| c.to_string())
+            ),
+        ));
+    }
+    if record.owner.id != lane {
+        return Err(refuse(
+            "lane_differs",
+            format!(
+                "--lane `{lane}` is not the owner of the record (`{}`)",
+                record.owner.id
+            ),
+        ));
+    }
+    if record.state == "handoff_pending" {
+        return Err(refuse(
+            "state_not_linkable",
+            "the record waits for a handoff (handoff_pending); the leader decides it",
+        ));
+    }
+    Ok(())
+}
+
+/// Ownership of `record`'s claim comment, read from the forge once (GET only): the
+/// `claim-verify` verdict must be `owner`, and the comment's `session=` must be `lane` — the
+/// evaluator ignores the session when a comment id is given. Returns the verdict.
+pub fn verify_owner<T: Transport, C: Clock>(
+    record: &ClaimRecord,
+    comment: i64,
+    lane: &str,
+    transport: &T,
+    clock: &C,
+) -> Result<Value> {
+    let client = Client::new(transport, clock, Default::default(), Default::default());
+    let comments = read_comments(
+        &client,
+        &record.task_ref.owner,
+        &record.task_ref.repo,
+        record.task_ref.issue_number,
+    )?;
+    let verdict = evaluate(
+        &comments,
+        &Verifier {
+            session: lane,
+            comment_id: Some(comment),
+            allowed_authors: &[],
+            now: clock.now(),
+        },
+    );
+    if let Some(message) = refusal(&verdict) {
+        return Err(message);
+    }
+    let session = comments
+        .iter()
+        .find(|c| c.id == comment)
+        .map(|c| classify_comment(&c.body));
+    match session {
+        Some(CommentKind::Claim { session, .. }) if session == lane => Ok(verdict),
+        Some(CommentKind::Claim { session, .. }) => Err(refuse(
+            "session_differs",
+            format!("the claim comment {comment} was posted by session `{session}`, not `{lane}`"),
+        )),
+        _ => Err(refuse(
+            "session_differs",
+            format!("comment {comment} carries no readable claim line"),
+        )),
+    }
+}
+
+/// `OWNER/REPO` of `--repo`, or of the project's `origin` remote on GitHub (as
+/// `claim-verify --issue` reads it).
+pub fn resolve_repo(project: &Path, repo: Option<&str>) -> Result<(String, String)> {
+    let req =
+        crate::claim_verify::request_from_flags(project, 1, 1, "lane", repo, &[]).map_err(|m| {
+            match m.strip_prefix("claim-verify:") {
+                Some(rest) => format!("claim-link:{rest}"),
+                None => m,
+            }
+        })?;
+    Ok((req.owner, req.repo))
+}
+
+/// Opens nothing: the journal events of an already locked journal.
+pub fn active_records(journal: &Journal) -> Result<Vec<ClaimRecord>> {
+    Ok(latest_active(journal.read_events()?))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::claim::{Owner, SpecRef, TaskRef, WorktreeId};
+    use crate::forge::policy::{parse_utc, Clock};
+    use crate::forge::transport::{Exchange, HttpRequest, HttpResponse, RecordedTransport};
+
+    const NOW: &str = "2026-11-09T05:00:00Z";
+    const LIVE: &str = "2026-11-09T09:00:00Z";
+    const EXPIRED: &str = "2026-11-09T04:00:00Z";
+    const URL: &str = "https://api.github.com/repos/acme/widgets/issues/7/comments?per_page=100";
+
+    struct FixedClock(i64);
+    impl Clock for FixedClock {
+        fn now(&self) -> i64 {
+            self.0
+        }
+        fn sleep(&self, _: u64) {}
+    }
+
+    fn clock() -> FixedClock {
+        FixedClock(parse_utc(NOW).unwrap())
+    }
+
+    fn record(key: &str, issue: i64, comment: i64, lane: &str, state: &str) -> ClaimRecord {
+        ClaimRecord {
+            schema_version: 1,
+            task_ref: TaskRef::new(
+                "github",
+                "github.com",
+                "acme",
+                "widgets",
+                1,
+                70 + issue,
+                issue,
+            ),
+            task_key: key.into(),
+            logical_key: format!("L{issue}"),
+            owner: Owner::new("session", lane),
+            assignee: None,
+            provider_session: None,
+            integration_owner: None,
+            attempt: None,
+            epoch: 1,
+            base_revision: "a".repeat(40),
+            worktree: WorktreeId::new("/c/.git", "/c/.git", "/c", "b".repeat(40)),
+            write_scope: vec!["src/x.rs".into()],
+            spec_ref: SpecRef {
+                id: "SPEC".into(),
+                revision: "r1".into(),
+                digest: None,
+            },
+            comment_id: Some(comment),
+            claim_token: Some(format!("Moai-Claim: {issue}#{comment}")),
+            lease_until: Some(LIVE.into()),
+            state: state.into(),
+            effects: vec![],
+            last_observed_at: NOW.into(),
+        }
+    }
+
+    fn event(r: &ClaimRecord) -> JournalEvent {
+        JournalEvent {
+            event: "acquire".into(),
+            record: r.clone(),
+        }
+    }
+
+    fn comment(id: i64, body: &str) -> Value {
+        json!({"id": id, "user": {"login": "GoosLab"}, "body": body})
+    }
+
+    fn claim_body(session: &str, lease: &str) -> String {
+        format!("moai-claim: session={session} epoch=1 lease_until={lease}")
+    }
+
+    fn get(body: Value) -> RecordedTransport {
+        RecordedTransport::new(vec![Exchange {
+            request: HttpRequest::new("GET", URL),
+            response: HttpResponse::new(200).with_body(body),
+        }])
+    }
+
+    #[test]
+    fn find_record_takes_the_latest_active_record_of_the_issue() {
+        let mut old = record("0000000000000001", 7, 100, "a", "assigned");
+        let mut newer = old.clone();
+        newer.epoch = 2;
+        old.state = "assigned".into();
+        let other = record("0000000000000002", 8, 200, "b", "running");
+        let released = record("0000000000000003", 9, 300, "c", "cancelled");
+        let records = latest_active(vec![
+            event(&old),
+            event(&other),
+            event(&newer),
+            event(&released),
+        ]);
+        assert_eq!(records.len(), 2, "the cancelled record is not active");
+        let found = find_record(&records, 7, "acme", "widgets").unwrap();
+        assert_eq!(found.epoch, 2, "the later event of the task wins");
+        let err = find_record(&records, 9, "acme", "widgets").unwrap_err();
+        assert!(
+            err.starts_with("conflict in claim link: record_not_found: "),
+            "{err}"
+        );
+        let err = find_record(&records, 7, "acme", "other").unwrap_err();
+        assert!(err.contains("record_not_found"), "{err}");
+        // Two active records for one Issue number of one repository cannot be told apart.
+        let twin = record("0000000000000004", 7, 150, "d", "assigned");
+        let records = latest_active(vec![event(&old), event(&twin)]);
+        let err = find_record(&records, 7, "acme", "widgets").unwrap_err();
+        assert!(err.contains("record_ambiguous"), "{err}");
+    }
+
+    #[test]
+    fn check_record_names_the_differing_input() {
+        let r = record("0000000000000001", 7, 100, "lane-a", "assigned");
+        assert!(check_record(&r, 100, "lane-a").is_ok());
+        let err = check_record(&r, 101, "lane-a").unwrap_err();
+        assert!(
+            err.starts_with("conflict in claim link: comment_differs: "),
+            "{err}"
+        );
+        let err = check_record(&r, 100, "lane-b").unwrap_err();
+        assert!(
+            err.starts_with("conflict in claim link: lane_differs: "),
+            "{err}"
+        );
+        for state in [
+            "assigned",
+            "running",
+            "verifying",
+            "pr_ready",
+            "in_review",
+            "blocked",
+            "uncertain",
+        ] {
+            let mut s = r.clone();
+            s.state = state.into();
+            assert!(check_record(&s, 100, "lane-a").is_ok(), "{state}");
+        }
+        let mut pending = r.clone();
+        pending.state = "handoff_pending".into();
+        let err = check_record(&pending, 100, "lane-a").unwrap_err();
+        assert!(err.contains("state_not_linkable"), "{err}");
+        // A record without a comment id can never match --comment.
+        let mut none = r;
+        none.comment_id = None;
+        assert!(check_record(&none, 100, "lane-a")
+            .unwrap_err()
+            .contains("comment_differs"));
+    }
+
+    #[test]
+    fn only_the_live_lowest_claim_of_the_lane_passes() {
+        let r = record("0000000000000001", 7, 100, "lane-a", "assigned");
+        let owner = json!([comment(100, &claim_body("lane-a", LIVE))]);
+        let t = get(owner);
+        let v = verify_owner(&r, 100, "lane-a", &t, &clock()).unwrap();
+        assert_eq!(v["status"], json!("owner"));
+        assert_eq!(t.sent.borrow().len(), 1);
+        assert!(t.sent.borrow().iter().all(|q| q.method == "GET"));
+
+        // A lower open claim of another session holds the Issue.
+        let lower = json!([
+            comment(50, &claim_body("other", LIVE)),
+            comment(100, &claim_body("lane-a", LIVE)),
+        ]);
+        let err = verify_owner(&r, 100, "lane-a", &get(lower), &clock()).unwrap_err();
+        assert!(err.starts_with("claim verify: not owner"), "{err}");
+
+        // A claim closed by a release line.
+        let closed = json!([
+            comment(100, &claim_body("lane-a", LIVE)),
+            comment(110, "moai-claim-release: comment=100 by=leader"),
+        ]);
+        let err = verify_owner(&r, 100, "lane-a", &get(closed), &clock()).unwrap_err();
+        assert!(err.starts_with("claim verify: closed"), "{err}");
+
+        // An expired lease stays the holder: stale, not owner.
+        let stale = json!([comment(100, &claim_body("lane-a", EXPIRED))]);
+        let err = verify_owner(&r, 100, "lane-a", &get(stale), &clock()).unwrap_err();
+        assert!(err.starts_with("claim verify: stale"), "{err}");
+
+        // A comment that is not on the Issue is uncertain.
+        let missing = json!([comment(999, &claim_body("lane-a", LIVE))]);
+        let err = verify_owner(&r, 100, "lane-a", &get(missing), &clock()).unwrap_err();
+        assert!(err.starts_with("claim verify: uncertain"), "{err}");
+    }
+
+    #[test]
+    fn the_claim_comment_session_must_be_the_lane() {
+        let r = record("0000000000000001", 7, 100, "lane-a", "assigned");
+        // The comment id is right and the claim is the owner's, but another session wrote it.
+        let forged = json!([comment(100, &claim_body("lane-b", LIVE))]);
+        let err = verify_owner(&r, 100, "lane-a", &get(forged), &clock()).unwrap_err();
+        assert!(
+            err.starts_with("conflict in claim link: session_differs: "),
+            "{err}"
+        );
+        assert_eq!(
+            crate::contract::classify(&err),
+            crate::contract::Kind::Conflict
+        );
+    }
+
+    #[test]
+    fn a_forge_failure_is_a_transport_error() {
+        let r = record("0000000000000001", 7, 100, "lane-a", "assigned");
+        let t = RecordedTransport::new(vec![]);
+        let err = verify_owner(&r, 100, "lane-a", &t, &clock()).unwrap_err();
+        assert_eq!(
+            crate::contract::classify(&err),
+            crate::contract::Kind::Transport,
+            "{err}"
+        );
+    }
+}
