@@ -2749,6 +2749,20 @@ mod tests {
         // A line that names itself closes nothing.
         let itself = [claim(10), c(11, "moai-claim-release: comment=11")];
         assert_eq!(live_claim(&itself, "agent-1"), Some(10));
+        // The same holds for what the thread says it closed: nothing in these cases.
+        assert!(closed_claims(&not_a_claim).is_empty());
+        assert!(closed_claims(&unknown).is_empty());
+        assert!(closed_claims(&before).is_empty());
+        assert_eq!(closed_claims(&released), vec![10]);
+        // An earlier claim of another number does not make a line close a later claim.
+        let later_target = [claim(5), c(9, "moai-claim-release: comment=10"), claim(10)];
+        assert!(closed_claims(&later_target).is_empty());
+        // A comment that is a claim and also names itself in a release line closes nothing.
+        let self_release = [c(
+            10,
+            "moai-claim: session=agent-1 epoch=1 lease_until=2026-11-15T10:00:00Z\nmoai-claim-release: comment=10",
+        )];
+        assert_eq!(live_claim(&self_release, "agent-1"), Some(10));
         // The release of one claim leaves the lane's later claim open.
         let later = [
             claim(10),
