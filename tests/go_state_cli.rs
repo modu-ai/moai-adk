@@ -1140,6 +1140,176 @@ fn a_changed_folder_backup_refuses_the_revert() {
     assert_eq!(fx.tree(), before);
 }
 
+/// #2871 marker rename (read both, write unchanged): the revert acts on the marker files that
+/// are there. A `moai.json` that is byte-for-byte the marker the apply recorded goes, alone or
+/// beside the old name; the aside folder keeps neither.
+#[test]
+fn the_revert_removes_each_marker_file_that_is_the_applys_own() {
+    for both_names in [false, true] {
+        let fx = movable_fixture();
+        let before = project_tree(&fx);
+        let p = plan(&fx);
+        let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+        let backup = v["result"]["backup"].as_str().unwrap().to_string();
+        let old = fx.root.join(".moai/moai-cli.json");
+        let new = fx.root.join(".moai/moai.json");
+        if both_names {
+            fs::copy(&old, &new).unwrap();
+        } else {
+            fs::rename(&old, &new).unwrap();
+        }
+        let rp = revert_plan(&fx, &backup);
+        assert_eq!(
+            item_action(&rp, ".moai/moai-cli.json"),
+            json!(if both_names { "remove" } else { "skip" }),
+            "both={both_names}: {rp}"
+        );
+        assert_eq!(item_action(&rp, ".moai/moai.json"), json!("remove"), "{rp}");
+        let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+        assert_eq!(v["ok"], json!(true), "both={both_names}: {v}");
+        assert_eq!(project_tree(&fx), before, "both={both_names}");
+        let aside = rust_aside(&fx);
+        assert!(!aside.join("moai-cli.json").exists());
+        assert!(!aside.join("moai.json").exists());
+        let (_, receipt) = receipt_of(&fx, &backup);
+        assert_eq!(receipt["state"], json!("reverted"), "{receipt}");
+    }
+}
+
+/// A marker file that is not the bytes the apply recorded is a `conflict` at either name: the
+/// whole revert is refused before the first write, and nothing is removed.
+#[test]
+fn a_marker_file_the_apply_did_not_write_refuses_the_revert() {
+    // Name by name: a `moai.json` of someone else, beside the apply's own old marker; and the
+    // apply's own old marker edited afterwards.
+    for (edited, other) in [("moai.json", true), ("moai-cli.json", false)] {
+        let fx = movable_fixture();
+        let p = plan(&fx);
+        let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+        let backup = v["result"]["backup"].as_str().unwrap().to_string();
+        let own = fs::read(fx.root.join(".moai/moai-cli.json")).unwrap();
+        if other {
+            fx.write(
+                ".moai/moai.json",
+                r#"{"schema_version":1,"generation":"moai"}"#,
+            );
+        } else {
+            let mut changed = own.clone();
+            changed.extend_from_slice(b" ");
+            fs::write(fx.root.join(".moai/moai-cli.json"), changed).unwrap();
+        }
+        let rp = revert_plan(&fx, &backup);
+        assert_eq!(
+            item_action(&rp, &format!(".moai/{edited}")),
+            json!("conflict"),
+            "{rp}"
+        );
+        let before = fx.tree();
+        let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+        assert_eq!(v["ok"], json!(false), "{edited}: {v}");
+        assert!(
+            v.to_string()
+                .contains(&format!(".moai/{edited} is conflict")),
+            "{v}"
+        );
+        assert_eq!(fx.tree(), before, "{edited}: nothing was removed");
+    }
+}
+
+/// An apply that stopped after publishing the marker and before recording its digest leaves an
+/// empty `marker` in the receipt. The old-name file is then the apply's own and goes, as it did
+/// before the rename; a `moai.json` is not something the apply wrote, so it is a `conflict`
+/// (and the revert stops before any removal).
+#[test]
+fn an_unrecorded_marker_digest_removes_only_the_old_name() {
+    let fx = movable_fixture();
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    let (path, mut r) = receipt_of(&fx, &backup);
+    r["marker"] = json!("");
+    fs::write(&path, r.to_string()).unwrap();
+    let alone = revert_plan(&fx, &backup);
+    assert_eq!(
+        item_action(&alone, ".moai/moai-cli.json"),
+        json!("remove"),
+        "{alone}"
+    );
+    fx.write(
+        ".moai/moai.json",
+        r#"{"schema_version":1,"generation":"moai"}"#,
+    );
+    let rp = revert_plan(&fx, &backup);
+    assert_eq!(
+        item_action(&rp, ".moai/moai-cli.json"),
+        json!("remove"),
+        "{rp}"
+    );
+    assert_eq!(
+        item_action(&rp, ".moai/moai.json"),
+        json!("conflict"),
+        "{rp}"
+    );
+}
+
+/// Codex review of #3047: with both marker files the apply's own, a revert that stops after the
+/// first removal must still finish on the next run. The recorded digest is kept until every
+/// marker file is gone, so the file left over is still the apply's own (`remove`), not a
+/// `conflict` against an emptied record. The stop is made with the macOS user-immutable flag on
+/// `moai.json` (removal fails after the old name is already gone), so this runs on macOS only.
+#[cfg(target_os = "macos")]
+#[test]
+fn a_revert_stopped_after_the_first_marker_removal_finishes_on_the_next_run() {
+    let chflags = |flag: &str, path: &Path| {
+        let ok = Command::new("chflags")
+            .arg(flag)
+            .arg(path)
+            .status()
+            .unwrap()
+            .success();
+        assert!(ok, "chflags {flag} {}", path.display());
+    };
+    let fx = movable_fixture();
+    let before = project_tree(&fx);
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    let old = fx.root.join(".moai/moai-cli.json");
+    let new = fx.root.join(".moai/moai.json");
+    fs::copy(&old, &new).unwrap();
+    chflags("uchg", &new);
+    let rp = revert_plan(&fx, &backup);
+    assert_eq!(
+        item_action(&rp, ".moai/moai-cli.json"),
+        json!("remove"),
+        "{rp}"
+    );
+    assert_eq!(item_action(&rp, ".moai/moai.json"), json!("remove"), "{rp}");
+    let stopped = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    chflags("nouchg", &new);
+    assert_eq!(stopped["ok"], json!(false), "{stopped}");
+    assert!(!old.exists(), "the old name was removed before the stop");
+    assert!(new.exists());
+    let again = revert_plan(&fx, &backup);
+    assert_eq!(
+        item_action(&again, ".moai/moai-cli.json"),
+        json!("skip"),
+        "{again}"
+    );
+    assert_eq!(
+        item_action(&again, ".moai/moai.json"),
+        json!("remove"),
+        "{again}"
+    );
+    let v = revert(
+        &fx,
+        &backup,
+        again["result"]["plan_digest"].as_str().unwrap(),
+    );
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(project_tree(&fx), before);
+}
+
 /// #2696: the folder was renamed but the receipt write after it did not happen (no digest):
 /// the disk decides, and the revert brings it back.
 #[test]

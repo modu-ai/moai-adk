@@ -38,8 +38,10 @@ const GO_MARKER_ENTRIES: &[&str] = &["user-assets.json", "state"];
 /// `Home-State-Receipt.json` is the same file the receipt is written to (re-audit 6864623190).
 fn is_reserved(name: &str) -> bool {
     let name = name.to_ascii_lowercase();
+    // Both marker names: the writers still write the old one and the readers accept the new
+    // one (#2871 marker rename), so a Go entry named either would be replaced or misread.
     name == "home-state-receipt.json"
-        || name == crate::state_root::RUST_MARKER.to_ascii_lowercase()
+        || crate::state_root::is_marker_name(&name)
         || name.ends_with(".tmp-write")
 }
 /// User work folders in the same `~/.moai` (#2811 D7/D8a): new worktrees, new projects and
@@ -840,7 +842,7 @@ pub fn apply(
         write_new(&moai.join(RECEIPT), format!("{receipt:#}\n").as_bytes())?;
         let marker = json!({
             "schema_version": crate::state_root::MARKER_SCHEMA,
-            "generation": "moai-cli",
+            "generation": crate::state_root::LEGACY_GENERATION,
             "created_at": now,
             "go_backup": backup.file_name().map(|n| n.to_string_lossy().into_owned()),
         });
@@ -953,6 +955,32 @@ pub fn revert(home: &Path, now: &str, permission_reference: &str) -> Result<Valu
 
 #[cfg(test)]
 mod tests {
+    /// Names the apply writes or that a reader takes for the marker are never copied from a Go
+    /// folder: both marker names, in any ASCII case (APFS folds it), and the receipt.
+    #[test]
+    fn both_marker_names_are_reserved_in_any_case() {
+        for name in [
+            "moai-cli.json",
+            "MOAI-CLI.JSON",
+            "moai.json",
+            "MOAI.JSON",
+            "Moai.Json",
+            "home-state-receipt.json",
+            "x.tmp-write",
+        ] {
+            assert!(super::is_reserved(name), "{name}");
+        }
+        for name in [
+            "moai.json.bak",
+            "moai-json",
+            "moai",
+            "xmoai.json",
+            "moai-clix.json",
+        ] {
+            assert!(!super::is_reserved(name), "{name}");
+        }
+    }
+
     #[test]
     fn the_selective_table_classifies_by_name_and_fails_closed() {
         use super::{table_class, EntryClass::*};

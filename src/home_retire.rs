@@ -667,7 +667,13 @@ mod tests {
             ("keep", "not_in_table")
         );
         // This generation's own names never retire.
-        for n in ["vault", "versions", "receipts", "moai-cli.json"] {
+        for n in [
+            "vault",
+            "versions",
+            "receipts",
+            "moai-cli.json",
+            "moai.json",
+        ] {
             assert_eq!(d(n, "folder", "go"), ("keep", "this_generation"), "{n}");
         }
         // The key file stays until the merge step.
