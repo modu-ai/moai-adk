@@ -113,7 +113,7 @@ const LEGACY_ROOT: &str = crate::PROJECT_STATE_DIR;
 /// The earlier root's entries that are product state and move into `.moai/` (design
 /// 6862154151). Everything else there stays: `worktrees/` until #2723 moves them (D6),
 /// `reports/` (D5), `backups/` where earlier go-state receipts expect it, and anything else.
-const STATE_ENTRIES: [&str; 17] = [
+const STATE_ENTRIES: [&str; 18] = [
     "archive",
     "config",
     "decisions",
@@ -121,6 +121,9 @@ const STATE_ENTRIES: [&str; 17] = [
     "forge",
     "imports",
     "index",
+    // `lane_loop` writes `lane-stop-hook/<lane>.json` through `state_root::path` (#2871, leader
+    // decision 6887464608): it is product state of the earlier root like its siblings.
+    "lane-stop-hook",
     "manifests",
     "messages",
     "project-skill-rollback",

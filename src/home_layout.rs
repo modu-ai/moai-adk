@@ -123,21 +123,21 @@ pub const HOME_TABLE: &[Entry] = &[
     // This generation's names (PLAN 1-A).
     row("agents", Writes, false, Class::Rust, RustName, NO, "agent_install.rs:28,44"),
     row("backups", Writes, true, ToolAsset, GoRetires, NO, "update.rs:1213,2398, recovery.rs:100; Go homestate/paths.go:463 update backups"),
-    row("bin", RustUse::None, true, ToolAsset, GoRetires, NO, "Go paths.go:461 (table A: tool asset, backed up); no writer in src (only versions/<v>/bin)"),
+    row("bin", RustUse::None, true, ToolAsset, GoRetires, NO, "Go paths.go:461 (table A: tool asset, backed up). No Rust writer: the installed command is `path/` (update.rs:509, bin_names.rs:95) and `versions/<v>/bin`; design #3009 §2 (마) lists a device-global `bin`, which no code makes yet, so the Go folder retires and the name stays free for it"),
     row("cleanup", Writes, false, Class::Rust, RustName, NO, "update_cleanup.rs:39,894"),
-    row("config", Writes, true, ConfigGuide, GoRetires, MERGE, "session.rs:209 config/launcher.yaml; Go paths.go:450 config/sections/*.yaml (merge: sections/statusline.yaml user values); the hook TOML file moves to hook-config.toml"),
-    row("hook-config.toml", RustUse::None, false, Class::Rust, RustName, NO, "new name for the hook TOML file now at `config` (hook_config.rs:112), which clashes with the config/ folder of both generations; rule only, nothing renamed yet"),
+    row("config", Writes, true, ConfigGuide, GoRetires, MERGE, "session.rs:209 config/launcher.yaml (a folder); Go paths.go:450 config/sections/*.yaml (merge: sections/statusline.yaml user values). The hook TOML file no longer lives at `config` (it is `hook-config.toml`, hook_config.rs); design #3009 §2 (마) keeps `config` as the device-global settings place"),
+    row("hook-config.toml", Reads, false, Class::Rust, RustName, NO, "hook_config.rs: the hook TOML file; read here first, and from the old file name `config` only while that is a regular file (the folder `config/` of both generations cannot also be a file); the user writes it, this generation does not"),
     row("home-routing", Writes, false, Class::Rust, RustName, NO, "home_routing.rs:30,134"),
     row("home-style", Writes, false, Class::Rust, RustName, NO, "home_style.rs:31,135"),
     row("installations", Writes, false, Class::Rust, RustName, NO, "install.rs:368,445, update.rs:960"),
     row("path", Writes, false, Class::Rust, RustName, NO, "update.rs:509,600, bin_names.rs:95; on PATH via shims"),
-    row("projects", Writes, true, UserData, UserDataKeep, NO, "layout.rs:46,122,254 (home project store) and home_workdir.rs:30 (#2811 new-project parent); Go carve-out clean_home.go:33 with another meaning (Z3: kept in place)"),
+    row("projects", Writes, true, UserData, UserDataKeep, NO, "design #3009 §2 (나): `projects/<project_id>/` holds this generation's machine-written data (layout.rs:46,122,254); the same folder is the #2811 new-project parent `projects/<name>` (home_workdir.rs:30); Go carve-out clean_home.go:33 with another meaning (Z3: kept in place, never moved or retired). A child is never a table name"),
     row("receipts", Writes, false, Class::Rust, RustName, NO, "key_vault.rs:1001"),
     row("schedule", Writes, false, Class::Rust, RustName, NO, "gate_schedule.rs:372 schedule_dir (unit files, lock, receipts); spelled through a constant, so the src scan below does not see it"),
     row("state", Writes, true, ToolAsset, GoRetires, NO, "usage_limit.rs:50, statusline/state.rs:88; Go paths.go:456 state/active-sessions.json (a live registry: skip-in-use)"),
     row("vault", Writes, false, Class::Rust, SecretRenameOnly, NO, "key_vault.rs:37,239 (.master.key and entries; 0700/0600)"),
     row("versions", Writes, false, Class::Rust, RustName, NO, "update.rs:901, bin_names.rs:95"),
-    row("worktrees", Writes, true, UserData, UserDataKeep, NO, "worktree_move.rs:175, home_workdir.rs; Go worktreeroot.go:70 (#2811 D8: shared, never moved)"),
+    row("worktrees", Writes, true, UserData, UserDataKeep, NO, "design #3009 §2 (라): `worktrees/<project_id>/<issue>-<key>/` (worktree_move.rs:175, home_workdir.rs); Go worktreeroot.go:70 shares the folder (#2811 D8: never moved or retired)"),
     row("moai-cli.json", Writes, false, Class::Rust, RustName, NO, "state_root.rs:35 marker"),
     row("home-state-receipt.json", Writes, false, Class::Rust, RustName, NO, "home_state.rs:677"),
     // Go names (survey §1, PLAN v2 table A).
@@ -152,9 +152,12 @@ pub const HOME_TABLE: &[Entry] = &[
     row("cache", RustUse::None, true, ToolAsset, GoRetires, NO, "Go paths.go:459"),
     row("run", RustUse::None, true, ToolAsset, GoRetires, NO, "Go paths.go:322 run state (sqlite; skip-in-use)"),
     row("db", RustUse::None, true, ToolAsset, GoRetires, NO, "Go paths.go:286 databases (sqlite; skip-in-use)"),
-    row("logs", RustUse::None, true, ToolAsset, GoRetires, NO, "Go paths.go:452 logs (Go update recreates it)"),
+    row("logs", Writes, true, ToolAsset, GoRetires, NO, "gate_schedule.rs:40,418 `logs/gate-loop.log` and its folder; Go paths.go:452 logs (Go update recreates it). Design #3009 §2 (나) moves machine logs under `projects/<project_id>/logs` in a later step; until then this name is shared like `backups` and `state`"),
     row("releases", RustUse::None, true, ToolAsset, GoRetires, NO, "Go paths.go:436"),
     row("evidence", RustUse::None, true, ToolAsset, GoRetires, NO, "Go paths.go:457"),
+    row("rescue", RustUse::None, true, ToolAsset, GoRetires, NO, "home_state.rs SELECTIVE_TABLE `go_run_data` (the update step moves it to the backup; this table now agrees)"),
+    row("scratch", RustUse::None, true, ToolAsset, GoRetires, NO, "home_state.rs SELECTIVE_TABLE `go_run_data` (same)"),
+    row("tmp-*", RustUse::None, true, ToolAsset, GoRetires, NO, "home_state.rs SELECTIVE_TABLE `go_run_data` (same)"),
     row("todo", RustUse::None, true, ToolAsset, GoRetires, NO, "Go factory/state_dir.go:43-56"),
     row("integrations", RustUse::None, true, Unknown, UnknownKeep, NO, "Go paths.go:460 (Z2: owner unknown, kept and reported)"),
     row("user-assets*.json", RustUse::None, true, ToolAsset, GoRetires, NO, "Go userassets/paths.go:192 asset manifest (a Go HOME marker; read before the backup)"),
@@ -171,7 +174,7 @@ pub const HOME_TABLE: &[Entry] = &[
     row("mcp", RustUse::None, true, Unknown, UnknownKeep, NO, "no current writer"),
     row("search", RustUse::None, true, Unknown, UnknownKeep, NO, "no current writer"),
     row("studio", RustUse::None, true, Unknown, UnknownKeep, NO, "no current writer"),
-    row("holding", RustUse::None, true, Unknown, UnknownKeep, NO, "held open by another tool (lsof: hided), never touched (Z8)"),
+    row("holding", Writes, false, Class::Rust, RustName, NO, "hygiene.rs:38 `holding/<UTC date>/` (held worktrees and build folders, purged after 3 days); another tool (lsof: hided) also holds the folder open (Z8): nothing here retires or moves it"),
     row("locks", RustUse::None, true, Unknown, UnknownKeep, NO, "no current writer"),
 ];
 
@@ -259,6 +262,8 @@ mod tests {
         "home-routing",
         "home-style",
         "installations",
+        "holding",
+        "logs",
         "path",
         "projects",
         "receipts",
@@ -357,6 +362,54 @@ mod tests {
         assert_eq!(lookup(".env.typesafe").unwrap().name, ".env*");
     }
 
+    /// #2871 (decision 6887464608): the update step's table (`home_state::SELECTIVE_TABLE`) and
+    /// this one name the same folders; a name in the first has a row here with the matching
+    /// action (a secret is renamed, a work folder stays, run data retires to the backup).
+    #[test]
+    fn the_update_table_and_the_home_table_agree() {
+        use crate::home_state::{EntryClass, SELECTIVE_TABLE};
+        for (pattern, class, _) in SELECTIVE_TABLE {
+            let sample = pattern.replace('*', "x");
+            let e = lookup(&sample).unwrap_or_else(|| panic!("{pattern} has no HOME_TABLE row"));
+            let want = match class {
+                EntryClass::SecretManual => SecretRenameOnly,
+                EntryClass::KeepInPlace => UserDataKeep,
+                EntryClass::MoveToBackup => GoRetires,
+                EntryClass::Unknown => UnknownKeep,
+            };
+            assert_eq!(e.rule, want, "{pattern} (as {sample})");
+        }
+    }
+
+    /// The work folders are written by this generation and never moved or retired (design #3009
+    /// §2 (나)/(라)); the other mismatch names say what the code does.
+    #[test]
+    fn the_names_of_design_3009_match_what_the_code_does() {
+        for name in ["projects", "worktrees"] {
+            let e = lookup(name).unwrap();
+            assert_eq!(
+                (e.rust, e.go, e.class, e.rule),
+                (Writes, true, UserData, UserDataKeep),
+                "{name}"
+            );
+        }
+        // `logs`: gate_schedule writes `logs/gate-loop.log`; Go's folder of that name retires.
+        let logs = lookup("logs").unwrap();
+        assert_eq!((logs.rust, logs.rule), (Writes, GoRetires));
+        // `holding`: hygiene writes `holding/<UTC date>/`; nothing retires or moves it.
+        let holding = lookup("holding").unwrap();
+        assert_eq!(
+            (holding.rust, holding.go, holding.class, holding.rule),
+            (Writes, false, Class::Rust, RustName)
+        );
+        // `config` is the launcher folder; the hook file has its own name and is only read.
+        assert_eq!(lookup("config").unwrap().rule, GoRetires);
+        let hook = lookup(crate::hook_config::HOOK_CONFIG_FILE).unwrap();
+        assert_eq!((hook.rust, hook.rule), (Reads, RustName));
+        // `bin`: no Rust writer (the command lives in `path/`), so the Go folder retires.
+        assert_eq!(lookup("bin").unwrap().rust, RustUse::None);
+    }
+
     /// The class decides the action (PLAN v2 table A): a secret is only renamed, user data and
     /// unknown items stay, Go tool assets and settings retire to the backup, and this
     /// generation's own rows are never Go's.
@@ -387,6 +440,8 @@ mod tests {
             ("state", ToolAsset, GoRetires, true),
             ("db", ToolAsset, GoRetires, true),
             ("run", ToolAsset, GoRetires, true),
+            // `logs` is written by gate_schedule too (#2871 decision 6887464608): shared like
+            // `backups` and `state`, so Go's folder retires and this generation takes the name.
             ("logs", ToolAsset, GoRetires, true),
             ("releases", ToolAsset, GoRetires, true),
             ("cache", ToolAsset, GoRetires, true),
@@ -411,7 +466,8 @@ mod tests {
             ("claude-profiles", Unknown, UnknownKeep, true),
             ("integrations", Unknown, UnknownKeep, true),
             ("reports", Unknown, UnknownKeep, true),
-            ("holding", Unknown, UnknownKeep, true),
+            // hygiene.rs writes `holding/<UTC date>/`; the name is this generation's.
+            ("holding", Class::Rust, RustName, false),
         ];
         for &(name, class, rule, go) in want {
             let e = lookup(name).unwrap_or_else(|| panic!("{name} is not in HOME_TABLE"));
@@ -493,7 +549,6 @@ mod tests {
             "cache",
             "run",
             "db",
-            "logs",
             "releases",
             "integrations",
             "user-assets.json",

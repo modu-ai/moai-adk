@@ -1651,6 +1651,8 @@ fn the_earlier_roots_product_state_moves_into_the_new_moai() {
     fx.write(".moai-cli/project.yaml", "schema_version: 2\n");
     fx.write(".moai-cli/index/a.json", "{\"a\":1}");
     fx.write(".moai-cli/receipts/r1.json", "{}");
+    // `lane_loop` writes this folder through `state_root::path` (#2871, decision 6887464608).
+    fx.write(".moai-cli/lane-stop-hook/agent-1.json", "{\"n\":1}");
     fx.write(".moai-cli/worktrees/lane/x", "x");
     fx.write(".moai-cli/reports/r.md", "# r\n");
     fx.write(".moai-cli/backups/20261101T000000Z/x", "x");
@@ -1660,6 +1662,7 @@ fn the_earlier_roots_product_state_moves_into_the_new_moai() {
     for (from, action) in [
         (".moai-cli/project.yaml", "move"),
         (".moai-cli/index", "move"),
+        (".moai-cli/lane-stop-hook", "move"),
         (".moai-cli/receipts", "move"),
         (".moai-cli/worktrees", "leave"),
         (".moai-cli/reports", "leave"),
@@ -1679,6 +1682,7 @@ fn the_earlier_roots_product_state_moves_into_the_new_moai() {
         (".moai/project.yaml", "schema_version: 2\n"),
         (".moai/index/a.json", "{\"a\":1}"),
         (".moai/receipts/r1.json", "{}"),
+        (".moai/lane-stop-hook/agent-1.json", "{\"n\":1}"),
         (".moai-cli/worktrees/lane/x", "x"),
         (".moai-cli/reports/r.md", "# r\n"),
         (".moai-cli/backups/20261101T000000Z/x", "x"),
@@ -1692,6 +1696,7 @@ fn the_earlier_roots_product_state_moves_into_the_new_moai() {
     }
     assert!(!fx.root.join(".moai-cli/project.yaml").exists());
     assert!(!fx.root.join(".moai-cli/index").exists());
+    assert!(!fx.root.join(".moai-cli/lane-stop-hook").exists());
     let (_, r) = receipt_of(&fx, &backup);
     let states: Vec<&str> = r["moves"]
         .as_array()
@@ -1704,6 +1709,7 @@ fn the_earlier_roots_product_state_moves_into_the_new_moai() {
         states,
         vec![
             ".moai-cli/index",
+            ".moai-cli/lane-stop-hook",
             ".moai-cli/project.yaml",
             ".moai-cli/receipts"
         ]

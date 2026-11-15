@@ -1,5 +1,9 @@
-//! Opt-in hook rules from `~/.moai-cli/config` (Issue #2391 stage 7; user decision, Issue #2391
-//! comment 6779829826, design 6777574227). Both rules are off unless the user turns them on:
+//! Opt-in hook rules from `hook-config.toml` in the HOME state folder, or from the older file
+//! name `config` there (Issue #2391 stage 7; user decision, Issue #2391 comment 6779829826,
+//! design 6777574227; the new name is #2871 decision 6887464608: `config` is also the folder
+//! of `config/launcher.yaml`, and a name cannot be both a file and a folder). The new name
+//! wins when it exists; the old name is read only when it is not a folder. Both rules are off
+//! unless the user turns them on:
 //!
 //! ```toml
 //! [hooks.outside_project_writes]   # B9
@@ -103,14 +107,29 @@ pub struct Loaded {
     pub problem: Option<ConfigProblem>,
 }
 
+/// The file name in the HOME state folder (#2871 decision 6887464608).
+pub const HOOK_CONFIG_FILE: &str = "hook-config.toml";
+/// The name before it; read only while it is not a folder.
+const OLD_HOOK_CONFIG_NAME: &str = "config";
+
 /// The config of `HOME` (both rules off when `HOME` is unset or the file is unusable).
 pub fn load() -> Loaded {
     let Some(home) = std::env::var_os("HOME").filter(|h| !h.is_empty()) else {
         return Loaded::default();
     };
     let home = PathBuf::from(home);
-    let path = crate::home_root::path(&home).join("config");
-    load_path(&path, &home)
+    let root = crate::home_root::path(&home);
+    let new = root.join(HOOK_CONFIG_FILE);
+    // Present in any form (a link or a folder too): `load_path` names the problem.
+    if fs::symlink_metadata(&new).is_ok() {
+        return load_path(&new, &home);
+    }
+    let old = root.join(OLD_HOOK_CONFIG_NAME);
+    // The folder `config/` (`config/launcher.yaml`, both generations) is not the old file.
+    if fs::symlink_metadata(&old).is_ok_and(|m| m.is_dir()) {
+        return Loaded::default();
+    }
+    load_path(&old, &home)
 }
 
 /// The config at `path`; `home` expands a leading `~`.
