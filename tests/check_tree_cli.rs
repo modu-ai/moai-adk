@@ -232,7 +232,8 @@ fn a_link_and_a_binary_file_are_not_read_as_text() {
     write_file(d.path(), "src/target.txt", b"/Users/linked/x\n");
     std::fs::create_dir_all(d.path().join(".moai")).unwrap();
     std::os::unix::fs::symlink("../src/target.txt", d.path().join(".moai/link.txt")).unwrap();
-    let mut bin = vec![0u8, 1, 2];
+    // A space before the path, so only "this is a binary file" keeps it out of the answer.
+    let mut bin = vec![0u8, 1, 2, b' '];
     bin.extend_from_slice(b"/Users/binary/x");
     write_file(d.path(), ".moai/blob.bin", &bin);
     track(d.path());
