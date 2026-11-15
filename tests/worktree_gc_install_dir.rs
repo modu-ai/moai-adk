@@ -224,6 +224,7 @@ fn an_installed_worktree_is_a_preview_fact_and_is_never_removed() {
         assert_ne!(c["action"], "remove", "{n}: {c}");
         // the facts stay, and they do not claim the worktree is removable
         assert_eq!(c["lifecycle"]["install_dir"], true, "{n}: {c}");
+        assert_eq!(c["lifecycle"]["install_lockfile_tracked"], true, "{n}: {c}");
     }
     let v = apply(&fx, &r);
     fs::set_permissions(&unreadable, fs::Permissions::from_mode(0o755)).unwrap();
@@ -259,6 +260,8 @@ fn a_symlinked_node_modules_keeps_the_worktree_and_its_target() {
     std::os::unix::fs::symlink(outside.path(), fx.wt("linked").join("node_modules")).unwrap();
     let r = plan(&fx);
     assert_ne!(row(&r, "linked")["action"], "remove", "{r}");
+    // a link is not an install folder, whatever it points at
+    assert_eq!(row(&r, "linked")["lifecycle"]["install_dir"], false, "{r}");
     let v = apply(&fx, &r);
     assert_eq!(v["ok"], true, "{v}");
     assert!(fx.wt("linked").exists());
