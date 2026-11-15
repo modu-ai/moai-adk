@@ -1951,3 +1951,128 @@ fn git_dash_c_names_the_worktree_the_commit_runs_in() {
     ));
     assert!(reason.contains("more than one folder"), "{reason}");
 }
+
+/// The `additionalContext` a session-check answers for this `source` value (`None` leaves the
+/// field out), on the given host.
+fn session_context(host: &str, root: &Path, source: Option<Value>) -> String {
+    let mut input = json!({"hook_event_name": "SessionStart", "session_id": "s", "model": "m"});
+    if let Some(v) = source {
+        input["source"] = v;
+    }
+    let r = run_program(
+        Path::new(BIN),
+        &["hook-dispatch", "--host", host, "--event", "session-check"],
+        root,
+        input.to_string().as_bytes(),
+        &[],
+    )
+    .unwrap();
+    assert_eq!(r.code, 0, "{}", r.stderr);
+    let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
+    v["hookSpecificOutput"]["additionalContext"]
+        .as_str()
+        .or_else(|| v["context"].as_str())
+        .unwrap()
+        .to_string()
+}
+
+/// #3015 C6 (audit B1 of #3075): after a compaction (`source: "compact"`) both hosts run
+/// `SessionStart` again. The hook reads no comment, claim or pull request, so the answer never
+/// says an instruction is done: it says how to check, that a standing instruction still
+/// applies, and, only conditionally, where a card's newest `moai-resume:` comment is. Any other
+/// `source` gets the text it always had.
+#[test]
+fn a_compacted_session_is_told_how_to_check_not_that_instructions_are_done() {
+    let (_d, root) = repo("issue/77-k");
+    let plain = session_context("claude", &root, Some(json!("startup")));
+    let compact = session_context("claude", &root, Some(json!("compact")));
+    assert!(compact.starts_with(&plain), "{compact}");
+    for sentence in [
+        "This session was just compacted.",
+        "User instructions you can still see may already be done:",
+        "check whether a comment, a claim or a pull request already shows it done, and run it again only when none does.",
+        "A standing instruction (a rule meant to stay in force) still applies.",
+        "If Issue #77 is your card, its newest `moai-resume:` comment says where you stopped (read it there; this hook did not).",
+    ] {
+        assert!(compact.contains(sentence), "{sentence}: {compact}");
+    }
+    // Nothing the hook cannot know is stated as a fact.
+    for claim in [
+        "were already handled",
+        "do not run them again",
+        "Continue from",
+    ] {
+        assert!(!compact.contains(claim), "{claim}: {compact}");
+    }
+    assert!(!plain.contains("compact"), "{plain}");
+    // The branch name's words are not echoed.
+    assert!(!compact.contains("-k"), "{compact}");
+}
+
+#[test]
+fn only_the_exact_compact_source_changes_the_answer() {
+    let (_d, root) = repo("issue/77-k");
+    let plain = session_context("claude", &root, Some(json!("startup")));
+    for source in [
+        Some(json!("resume")),
+        Some(json!("clear")),
+        Some(json!("fork")),
+        Some(json!("Compact")),
+        Some(json!("compact ")),
+        Some(json!("manual")),
+        Some(json!(5)),
+        Some(json!(null)),
+        Some(json!(["compact"])),
+        None,
+    ] {
+        let ctx = session_context("claude", &root, source.clone());
+        assert_eq!(ctx, plain, "{source:?}");
+        assert!(!ctx.contains("compacted"), "{source:?}: {ctx}");
+    }
+    assert!(!plain.contains("compacted"), "{plain}");
+}
+
+#[test]
+fn a_compacted_codex_session_is_also_pointed_at_its_goal_and_claude_is_not() {
+    let (_d, root) = repo("issue/77-k");
+    let codex_ctx = session_context("codex", &root, Some(json!("compact")));
+    assert!(
+        codex_ctx.ends_with("Check the active /goal before you continue."),
+        "{codex_ctx}"
+    );
+    assert!(codex_ctx.contains("Issue #77"), "{codex_ctx}");
+    let claude_ctx = session_context("claude", &root, Some(json!("compact")));
+    assert!(!claude_ctx.contains("/goal"), "{claude_ctx}");
+    // Codex without a compaction gets no goal sentence.
+    assert!(!session_context("codex", &root, Some(json!("startup"))).contains("/goal"));
+}
+
+#[test]
+fn a_compacted_session_outside_a_lane_branch_names_no_issue_number() {
+    let (_d, root) = repo("main");
+    let ctx = session_context("claude", &root, Some(json!("compact")));
+    assert!(
+        ctx.contains("If your work has a card Issue, its newest `moai-resume:` comment says where you stopped"),
+        "{ctx}"
+    );
+    assert!(!ctx.contains("Issue #"), "{ctx}");
+    // The standing-instruction and check sentences do not depend on a lane branch.
+    assert!(ctx.contains("A standing instruction"), "{ctx}");
+    assert!(ctx.contains("run it again only when none does."), "{ctx}");
+}
+
+/// OMP answers `{"context": …}`; a `source: "compact"` input (the generated module does not send
+/// `source` today) gets the same sentences, and any other input the plain text.
+#[test]
+fn an_omp_input_with_source_compact_gets_the_same_sentences() {
+    let (_d, root) = repo("issue/77-k");
+    let plain = session_context("omp", &root, None);
+    let compact = session_context("omp", &root, Some(json!("compact")));
+    assert!(compact.starts_with(&plain), "{compact}");
+    assert!(
+        compact.contains("This session was just compacted."),
+        "{compact}"
+    );
+    assert!(!compact.contains("/goal"), "{compact}");
+    assert!(!plain.contains("compacted"), "{plain}");
+}

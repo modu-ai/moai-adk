@@ -265,6 +265,9 @@ fn held_items_move_whole_into_the_holding_folder_with_a_manifest_line_each() {
     assert_eq!(moved.len(), 2, "{v}");
     let wt_bytes = moved[1]["bytes"].as_u64().unwrap();
     assert!(wt_bytes > 0, "{v}");
+    // #3079: a size that was measured is complete here; a spent budget would say `true`.
+    assert_eq!(moved[1]["bytes_partial"], false, "{v}");
+    assert_eq!(moved[0]["bytes_partial"], false, "{v}");
     let expect = format!(
         "{HEADER}{}\t{}\ttmp_build\t{build_bytes}\tidle_build_output\n{}\t{}\tworktree\t{wt_bytes}\tmerged_clean_idle\n",
         fx.build().display(),

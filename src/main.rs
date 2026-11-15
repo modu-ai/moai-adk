@@ -332,6 +332,15 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Record that an accepted dispatch has started
+    ///
+    /// Record the receiver's separate start packet for an accepted, current dispatch
+    /// revision (typed JSON stdin); not ownership, a claim or completion.
+    DispatchStart {
+        project: PathBuf,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Check dispatch revisions and late acknowledgements
     ///
     /// Observe dispatch revisions, decisions and the five-minute ACK alert (GET only).
@@ -1212,6 +1221,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         LeaderTick { .. } => "leader.tick",
         DispatchRecord { .. } => "dispatch.record",
         DispatchAck { .. } => "dispatch.ack",
+        DispatchStart { .. } => "dispatch.start",
         DispatchCheck => "dispatch.check",
         MessageAck { .. } => "message.ack",
         MessageReconcile { .. } => "message.reconcile",
@@ -1393,6 +1403,16 @@ fn run_internal(
         } => moai_cli::dispatch::ack_cli(
             &project,
             input::<moai_cli::dispatch::AckRequest>()?,
+            &permission_reference,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::DispatchStart {
+            project,
+            permission_reference,
+        } => moai_cli::dispatch::start_cli(
+            &project,
+            input::<moai_cli::dispatch::StartRequest>()?,
             &permission_reference,
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
@@ -1889,7 +1909,10 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
         Command::ClaudeSettingsPlan { project, scope } => {
             let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
             let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
-            moai_cli::claude::settings_plan_in(&project, &desired, scope)
+            // #3004 P4-3: the status line preview and its gate read HOME and PATH, like hooks-plan.
+            let home = std::env::var_os("HOME").map(PathBuf::from);
+            let path_env = std::env::var("PATH").unwrap_or_default();
+            moai_cli::status_line::plan_in(&project, &desired, scope, home.as_deref(), &path_env)
         }
         Command::ClaudeSettingsApply {
             project,
@@ -1900,13 +1923,17 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
         } => {
             let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
             let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
-            moai_cli::claude::settings_apply_in(
+            let home = std::env::var_os("HOME").map(PathBuf::from);
+            let path_env = std::env::var("PATH").unwrap_or_default();
+            moai_cli::status_line::apply_in(
                 &project,
                 &desired,
                 &plan_digest,
                 &permission_reference,
                 scope,
                 confirm_replace.as_deref(),
+                home.as_deref(),
+                &path_env,
             )
         }
         Command::WorktreePlan {
