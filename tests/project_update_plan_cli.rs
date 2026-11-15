@@ -1281,6 +1281,16 @@ fn the_codex_skill_step_prints_its_apply_with_both_flags_and_settles() {
             .ends_with("install/skills/moai"),
         "{s}"
     );
+    // The step carries the digest its printed command names, and the install steps come in the
+    // order of `INSTALL`.
+    assert_eq!(s["plan_digest"], json!(argv[4]), "{s}");
+    let order: Vec<&str> = phase(&plan, "install")["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|st| st["step"].as_str().unwrap())
+        .collect();
+    assert_eq!(order, INSTALL, "{plan}");
     assert_eq!(s["preview"]["path"], ".agents/skills/moai", "{s}");
     assert_eq!(s["preview"]["action"], "create", "{s}");
     assert_no_forbidden_words(&plan);
