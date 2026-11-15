@@ -1110,6 +1110,33 @@ fn an_unreadable_info_exclude_stops_the_plan() {
     assert_eq!(fx.plan_envelope("none")["ok"], json!(true));
 }
 
+/// N3 (audit 6903194227): a `.git/info/exclude` that exists but cannot be opened (no permission)
+/// stops the plan with the reason, the same as one that is not UTF-8. Skipped when this user can
+/// read it anyway (root), because then the file is not unreadable.
+#[cfg(unix)]
+#[test]
+fn an_info_exclude_without_read_permission_stops_the_plan() {
+    use std::os::unix::fs::PermissionsExt;
+    let fx = Fx::new(None);
+    let exclude = fx.root.join(".git/info/exclude");
+    fs::write(&exclude, "*.log\n").unwrap();
+    fs::set_permissions(&exclude, fs::Permissions::from_mode(0o000)).unwrap();
+    let unreadable = fs::read(&exclude).is_err();
+    let envelope = fx.plan_envelope("none");
+    fs::set_permissions(&exclude, fs::Permissions::from_mode(0o644)).unwrap();
+    if !unreadable {
+        return;
+    }
+    assert_eq!(envelope["ok"], json!(false), "{envelope}");
+    assert!(
+        envelope
+            .to_string()
+            .contains("cannot read .git/info/exclude"),
+        "{envelope}"
+    );
+    assert_eq!(fx.plan_envelope("none")["ok"], json!(true));
+}
+
 /// Git's default global excludes file (`$HOME/.config/git/ignore`, no setting needed) is a
 /// source of rules, and the preview writes its home folder as `~`.
 #[test]
@@ -1160,7 +1187,12 @@ fn a_tracked_receipts_name_gets_no_keep_line() {
 fn tracked_names_are_written_as_patterns_that_match_exactly_them() {
     let fx = Fx::moved(
         Some(true),
-        &[".moai-cli/we*ird[1].txt", ".moai-cli/trail "],
+        &[
+            ".moai-cli/we*ird[1].txt",
+            ".moai-cli/trail ",
+            ".moai-cli/a?b.txt",
+            r".moai-cli/c\d.txt",
+        ],
         "",
     );
     let plan = fx.plan("none");
@@ -1173,14 +1205,33 @@ fn tracked_names_are_written_as_patterns_that_match_exactly_them() {
         "{detail}"
     );
     assert!(detail.lines().any(|l| l == r"+ !.moai/trail\ "), "{detail}");
+    // N4 (audit 6903194227): `?` and `\` are written escaped too.
+    assert!(
+        detail.lines().any(|l| l == r"+ !.moai/a\?b.txt"),
+        "{detail}"
+    );
+    assert!(
+        detail.lines().any(|l| l == r"+ !.moai/c\\d.txt"),
+        "{detail}"
+    );
     fx.apply_ok("none");
     assert!(!fx.ignored(".moai/we*ird[1].txt"), "{}", fx.ignore());
     assert!(!fx.ignored(".moai/trail "), "{}", fx.ignore());
+    assert!(!fx.ignored(".moai/a?b.txt"), "{}", fx.ignore());
+    assert!(!fx.ignored(r".moai/c\d.txt"), "{}", fx.ignore());
     assert!(
         fx.ignored(".moai/weird1.txt"),
         "the escaped line stays exact\n{}",
         fx.ignore()
     );
+    // The other names each unescaped pattern would also have matched stay ignored.
+    for other in [".moai/aXb.txt", ".moai/cd.txt"] {
+        assert!(
+            fx.ignored(other),
+            "{other} is not the tracked name\n{}",
+            fx.ignore()
+        );
+    }
 
     let fx = Fx::moved(Some(true), &[".moai-cli/line\nbreak"], "");
     let envelope = fx.plan_envelope("none");
