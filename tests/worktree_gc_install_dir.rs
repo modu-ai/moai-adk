@@ -178,6 +178,22 @@ fn an_install_with_a_tracked_lockfile_does_not_keep_a_merged_worktree() {
     assert!(c["ignored_safe"].as_u64().unwrap() >= 7, "{c}");
 }
 
+/// The reason for this change: an install past the 20,000-file ignored census limit (one real
+/// install is about 92,000) used to make the census unknown, so the worktree was kept for ever.
+#[test]
+fn an_install_past_the_ignored_file_census_limit_is_still_rebuildable() {
+    let fx = fixture(true, &["big"]);
+    let pkg = fx.wt("big").join("node_modules/pkg");
+    fs::create_dir_all(&pkg).unwrap();
+    for i in 0..20_001 {
+        fs::write(pkg.join(format!("f{i}.js")), "x").unwrap();
+    }
+    let r = plan(&fx);
+    let c = row(&r, "big");
+    assert_eq!(c["action"], "remove", "{c}");
+    assert!(c["ignored_safe"].as_u64().unwrap() > 20_000, "{c}");
+}
+
 /// Without a tracked lockfile nothing says the install can be rebuilt: the files are kept.
 #[test]
 fn an_install_without_a_tracked_lockfile_keeps_the_worktree() {
@@ -200,6 +216,9 @@ fn what_the_install_proof_does_not_cover_keeps_the_worktree() {
     std::os::unix::fs::symlink(outside.path(), fx.wt("linked").join("node_modules")).unwrap();
     install(&fx.wt("beside"));
     write(&fx.wt("beside").join("notes.md"), "my notes\n");
+    // a top-level install that is fine, and a second one nested in a package: the nested one
+    // is not covered, so the worktree stays
+    install(&fx.wt("nested"));
     write(&fx.wt("nested").join("apps/web/node_modules/p/i.js"), "x\n");
     install(&fx.wt("gitdep"));
     write(&fx.wt("gitdep").join("node_modules/dep/.git/HEAD"), "ref\n");
