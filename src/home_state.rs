@@ -38,7 +38,7 @@ const GO_MARKER_ENTRIES: &[&str] = &["user-assets.json", "state"];
 /// `Home-State-Receipt.json` is the same file the receipt is written to (re-audit 6864623190).
 fn is_reserved(name: &str) -> bool {
     let name = name.to_ascii_lowercase();
-    // Both marker names: the writers still write the old one and the readers accept the new
+    // Both marker names: the writers write the new one and the readers still accept the old
     // one (#2871 marker rename), so a Go entry named either would be replaced or misread.
     name == "home-state-receipt.json"
         || crate::state_root::is_marker_name(&name)
@@ -842,7 +842,7 @@ pub fn apply(
         write_new(&moai.join(RECEIPT), format!("{receipt:#}\n").as_bytes())?;
         let marker = json!({
             "schema_version": crate::state_root::MARKER_SCHEMA,
-            "generation": crate::state_root::LEGACY_GENERATION,
+            "generation": crate::state_root::NEW_GENERATION,
             "created_at": now,
             "go_backup": backup.file_name().map(|n| n.to_string_lossy().into_owned()),
         });

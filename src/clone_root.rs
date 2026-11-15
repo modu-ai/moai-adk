@@ -1,7 +1,7 @@
 //! #2696 C4c: which folder under the git common dir holds the clone-shared state (claims,
 //! goal, sessions, run receipts) — the clone twin of [`crate::state_root::dir`]. `<common>/.moai`
 //! once [`crate::state_root::classify`] says `rust` there (a valid marker
-//! `<common>/.moai/moai-cli.json` or `<common>/.moai/moai.json`), otherwise the earlier
+//! `<common>/.moai/moai.json`, or the earlier name `<common>/.moai/moai-cli.json`), otherwise the earlier
 //! `<common>/.moai-cli`
 //! ([`crate::CLONE_STATE_DIR`]). Read both, one writes.
 //!

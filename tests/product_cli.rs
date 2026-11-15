@@ -102,7 +102,8 @@ fn profile_v2_create_and_secret_rejection() {
         .unwrap()
         .contains("generation.json"));
     // #2696 C2b: a project with no state gets `.moai/` and its marker first.
-    assert!(root.path().join(".moai/moai-cli.json").is_file());
+    assert!(root.path().join(".moai/moai.json").is_file());
+    assert!(!root.path().join(".moai/moai-cli.json").exists());
     assert!(!root.path().join(".moai-cli").exists());
     let file = root.path().join(".moai/project.yaml");
     let value = json_file(&file);

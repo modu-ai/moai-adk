@@ -527,6 +527,18 @@ pub(crate) fn probe_version(path: &Path) -> Option<String> {
 /// `binary_state` passes that one variable and nothing else of this process's environment.
 /// `PATH` stays the fixed [`PROBE_PATH`]: an `extra_env` entry never replaces it.
 pub(crate) fn probe_version_env(path: &Path, extra_env: &[(&str, &Path)]) -> Option<String> {
+    probe_args_env(path, &["--version"], extra_env)
+}
+
+/// [`probe_version_env`] for any harmless argument list (#3004 P4-3 asks `statusline --help`).
+/// Every limit of the version probe holds: cleared environment but the named variables, the
+/// fixed `PATH`, the system temporary folder as working folder, stdin closed, stderr dropped,
+/// stdout capped and read for at most the probe time, the whole process group killed on time-out.
+pub(crate) fn probe_args_env(
+    path: &Path,
+    args: &[&str],
+    extra_env: &[(&str, &Path)],
+) -> Option<String> {
     let mut cmd = std::process::Command::new(path);
     cmd.env_clear();
     for (name, value) in extra_env {
@@ -543,7 +555,7 @@ pub(crate) fn probe_version_env(path: &Path, extra_env: &[(&str, &Path)]) -> Opt
         cmd.process_group(0);
     }
     let Ok(mut child) = cmd
-        .arg("--version")
+        .args(args)
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::null())
