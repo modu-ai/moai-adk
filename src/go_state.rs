@@ -3645,9 +3645,16 @@ pub fn revert(
     let project = PathBuf::from(&fresh.project);
     let (mut receipt, mut saved, mut base) = read_receipt(&project, backup)?;
     let moving = !receipt.go_backup.is_empty();
+    // The recorded marker digest stays until every marker file is gone: with both names present,
+    // clearing it after the first removal would leave a stopped revert comparing the other file
+    // against an empty record (`conflict`) on the next run (Codex review of #3047).
+    let mut marker_removed = false;
     for item in fresh.items.iter().filter(|i| i.action == "remove") {
         refuse_linked(&project, &item.path)?;
         fs::remove_file(project.join(&item.path)).map_err(|_| "marker not removed")?;
+        marker_removed = true;
+    }
+    if marker_removed {
         receipt.marker.clear();
         saved = save_receipt(&project, &base, &receipt, Some(&saved))?;
     }
