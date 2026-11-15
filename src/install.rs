@@ -483,13 +483,18 @@ fn match_receipt(
     canonical_home: &Path,
     canonical_exe: &Path,
     exe_sha256: &str,
+    moved_here: bool,
 ) -> &'static str {
-    let expanded = expand_home(canonical_home, &receipt.binary_path);
-    let Ok(resolved) = fs::canonicalize(&expanded) else {
-        return "foreign";
-    };
-    if resolved != canonical_exe {
-        return "foreign";
+    // `moved_here`: the receipt's id is one this build had before its folder moved, so the old
+    // path it names is this binary's earlier place and is not looked up (R5, #2871 U3b).
+    if !moved_here {
+        let expanded = expand_home(canonical_home, &receipt.binary_path);
+        let Ok(resolved) = fs::canonicalize(&expanded) else {
+            return "foreign";
+        };
+        if resolved != canonical_exe {
+            return "foreign";
+        }
     }
     if receipt.binary_sha256 == exe_sha256 {
         "self"
@@ -828,11 +833,25 @@ pub fn inspect(home: &Path, path_env: &str, places: &CandidatePlaces) -> Result<
 
     let mut self_state = "unrecorded";
     let mut installations = Vec::new();
+    // R5 (#2871 U3b): a receipt written under an id this build had before its folder moved is
+    // this build's own; only a committed install journal says so.
+    let current_id = install_id(&identity).ok();
+    let aliases = crate::home_install::committed_aliases(&canonical_home);
     for mut entry in read_receipts(&canonical_home)? {
         if entry["status"] == "ok" {
             let receipt: InstallReceipt =
                 serde_json::from_value(entry["receipt"].clone()).map_err(|_| "encode failed")?;
-            let state = match_receipt(&receipt, &canonical_home, &identity, &exe_sha256);
+            let moved_here = entry["install_id"]
+                .as_str()
+                .and_then(|id| aliases.get(id))
+                .is_some_and(|new| Some(new) == current_id.as_ref());
+            let state = match_receipt(
+                &receipt,
+                &canonical_home,
+                &identity,
+                &exe_sha256,
+                moved_here,
+            );
             if state == "self" {
                 self_state = "self";
             } else if state == "stale_receipt" && self_state == "unrecorded" {

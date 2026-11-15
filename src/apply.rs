@@ -33,7 +33,7 @@ pub fn receipts_rel(root: &Path) -> String {
 }
 const RECEIPT_SCHEMA_VERSION: u32 = 1;
 /// Same bounded-file rule as every other state file.
-const RECEIPT_LIMIT: u64 = 262_144;
+pub(crate) const RECEIPT_LIMIT: u64 = 262_144;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Decision {

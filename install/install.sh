@@ -14,6 +14,12 @@
 # rule for it lives in the binary (#2871 I2), not here. The shell configuration and PATH are
 # never edited, and an existing Go-edition `moai` is never touched: the script prints what to
 # run next instead. POSIX sh, so it runs under `sh` and `bash` alike.
+#
+# The language of the conversation with the model (#2935 L1) comes from --language, else
+# MOAI_LANGUAGE, else (at a terminal) a numbered menu, else the locale, else English. After the
+# commands are linked the script runs `moai-cli language-set --home <code>` once; that never
+# overwrites an earlier choice, and a moai-cli without it only costs a warning. Everything this
+# script prints stays English whatever the language.
 
 set -eu
 
@@ -57,13 +63,120 @@ Options:
   --version VERSION     Install a specific version (default: latest)
   --install-dir DIR     Put the moai and moai-cli commands in DIR (default: <state home>/path)
   --channel CHANNEL     stable (default) or rc: rc also takes release candidates
+  --language CODE       Language of your conversation with the model, for example en, ko, ja or
+                        zh (default: asked at a terminal, else MOAI_LANGUAGE, else your locale,
+                        else en). MoAI's own messages stay English.
   -h, --help            Show this help message
 
 Examples:
   curl -fsSL https://adk.mo.ai.kr/install.sh | sh
   curl -fsSL https://adk.mo.ai.kr/install.sh | sh -s -- --version 2026.11.0
   curl -fsSL https://adk.mo.ai.kr/install.sh | sh -s -- --channel rc
+  curl -fsSL https://adk.mo.ai.kr/install.sh | sh -s -- --language ko
 EOF
+}
+
+# A language code is BCP-47-shaped text only: 2-3 letters, then groups of 2-8 letters or digits
+# after a `-`, at most 35 characters (#2935 L1). It is passed to moai-cli as written, so nothing
+# else gets through (a newline would let a multi-line value slip past the one-line match, so it
+# is refused first).
+valid_language() {
+    case "$1" in
+        "" | *[!A-Za-z0-9-]*) return 1 ;;
+    esac
+    [ "${#1}" -le 35 ] || return 1
+    printf '%s\n' "$1" | grep -Eq '^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$'
+}
+
+# The language part of the first of LC_ALL, LC_MESSAGES, LANG that is set (`ko_KR.UTF-8` -> ko),
+# as written; nothing when it is C, POSIX or not a code. Always succeeds.
+locale_language() {
+    for loc in "${LC_ALL:-}" "${LC_MESSAGES:-}" "${LANG:-}"; do
+        [ -n "$loc" ] || continue
+        part="${loc%%[_.@]*}"
+        case "$part" in C | POSIX) return 0 ;; esac
+        if valid_language "$part"; then printf '%s' "$part"; fi
+        return 0
+    done
+    return 0
+}
+
+# Asks for the language at a terminal; the answer goes to LANGUAGE_CODE. A wrong answer is asked
+# again, three answers at most, then the default is used; an empty answer or the end of input
+# takes the default too.
+choose_language() {
+    default=$1
+    echo ""
+    echo "Which language should the model use when it talks with you?"
+    echo "  1) English"
+    echo "  2) 한국어"
+    echo "  3) 日本語"
+    echo "  4) 中文"
+    echo "  5) Other (type a language code, for example fr or pt-BR)"
+    tries=0
+    while [ "$tries" -lt 3 ]; do
+        tries=$((tries + 1))
+        printf 'Choose 1-5 [default: %s]: ' "$default"
+        if ! read -r answer; then
+            echo ""
+            break
+        fi
+        case "$answer" in
+            "") LANGUAGE_CODE="$default"; return 0 ;;
+            1) LANGUAGE_CODE="en"; return 0 ;;
+            2) LANGUAGE_CODE="ko"; return 0 ;;
+            3) LANGUAGE_CODE="ja"; return 0 ;;
+            4) LANGUAGE_CODE="zh"; return 0 ;;
+            5)
+                printf 'Language code: '
+                if ! read -r answer; then
+                    echo ""
+                    break
+                fi
+                if valid_language "$answer"; then
+                    LANGUAGE_CODE="$answer"
+                    return 0
+                fi
+                print_warning "That is not a language code (for example en, ko, fr, pt-BR)."
+                ;;
+            *) print_warning "Please type a number from 1 to 5." ;;
+        esac
+    done
+    LANGUAGE_CODE="$default"
+    print_info "Using $default."
+}
+
+# Settles LANGUAGE_CODE before anything is downloaded or written: --language, else
+# MOAI_LANGUAGE, else the menu at a terminal, else the locale, else en.
+resolve_language() {
+    if [ -z "$LANGUAGE_CODE" ] && [ -n "${MOAI_LANGUAGE:-}" ]; then
+        valid_language "$MOAI_LANGUAGE" || die "Not a language code: '$MOAI_LANGUAGE' (for example en, ko, ja, zh)"
+        LANGUAGE_CODE="$MOAI_LANGUAGE"
+    fi
+    [ -z "$LANGUAGE_CODE" ] || return 0
+    default=$(locale_language)
+    [ -n "$default" ] || default="en"
+    if [ -t 0 ] && [ -t 1 ]; then
+        choose_language "$default"
+    else
+        LANGUAGE_CODE="$default"
+    fi
+}
+
+# Records the language once, with the installed moai-cli. It never overwrites a value that is
+# already there, and a moai-cli that has no language-set (an older pinned version) or refuses
+# the code costs a warning, not the install.
+record_language() {
+    if ! out=$("$DEST/bin/moai-cli" language-set --home "$LANGUAGE_CODE" 2>/dev/null); then
+        print_warning "Could not record the conversation language ($LANGUAGE_CODE): this moai-cli has no language-set or does not accept the code. The install is complete."
+        return 0
+    fi
+    case "$out" in
+        *'"written":true'*) print_success "Conversation language recorded: $LANGUAGE_CODE" ;;
+        *'"reason":"exists"'*) print_info "A conversation language is already recorded; left as it is" ;;
+        *'"reason":"no_home_state"'*) print_info "No MoAI state folder in your home yet; the conversation language was not recorded" ;;
+        *) print_warning "The conversation language answer was not understood; it may not be recorded." ;;
+    esac
 }
 
 # A version is SemVer-shaped text only: it becomes part of a URL and a folder name.
@@ -313,6 +426,7 @@ main() {
     VERSION=""
     INSTALL_DIR="${MOAI_INSTALL_DIR:-}"
     CHANNEL="stable"
+    LANGUAGE_CODE=""
     while [ $# -gt 0 ]; do
         case "$1" in
             --version)
@@ -332,6 +446,12 @@ main() {
                 [ $# -ge 2 ] || die "--channel needs a value"
                 CHANNEL="$2"
                 case "$CHANNEL" in stable | rc) ;; *) die "Unknown channel: $CHANNEL (stable or rc)" ;; esac
+                shift 2
+                ;;
+            --language)
+                [ $# -ge 2 ] || die "--language needs a value"
+                valid_language "$2" || die "Not a language code: '$2' (for example en, ko, ja, zh)"
+                LANGUAGE_CODE="$2"
                 shift 2
                 ;;
             -h | --help)
@@ -358,6 +478,7 @@ main() {
     echo ""
     echo "MoAI-ADK installer (Rust edition)"
     echo ""
+    resolve_language
     detect_target
     TMP_DIR=$(mktemp -d)
     if [ -z "$VERSION" ]; then
@@ -370,6 +491,7 @@ main() {
     inspect
     place
     link_commands
+    record_language
     finish
 }
 

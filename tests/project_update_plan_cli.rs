@@ -268,12 +268,15 @@ fn steps(plan: &Value) -> Vec<&Value> {
         .collect()
 }
 
-const INSTALL: [&str; 5] = [
+const INSTALL: [&str; 8] = [
     "profile",
     "generation",
     "claude-settings",
     "hooks",
     "github",
+    "codex-hooks",
+    "omp-hooks",
+    "omp-config",
 ];
 
 #[test]
@@ -300,9 +303,14 @@ fn empty_project() {
         assert_eq!(s["apply"], Value::Null, "{name}: {s}");
     }
     assert_eq!(phase(&plan, "install")["state"], "needs_decision");
+    // #2936 R10: the merge phase is a real phase; with no AGENTS.local.md it has nothing to do.
     let merge = phase(&plan, "merge");
-    assert_eq!(merge["state"], "not_run", "{merge}");
-    assert_eq!(merge["candidates"], json!([]), "{merge}");
+    assert_eq!(merge["state"], "skip", "{merge}");
+    assert_eq!(
+        step(&plan, "agents-local-merge")["state"],
+        "skip",
+        "{merge}"
+    );
     assert_eq!(plan["all_unchanged"], json!(false));
 }
 
@@ -819,4 +827,201 @@ fn request_defaults() {
             .any(|p| p.contains("review-flow")),
         "{generation}"
     );
+}
+
+/// #2936 R10: a settled project with a personal `AGENTS.local.md` gets the merge as a decision
+/// that prints the apply command; applying it settles the preview again.
+#[test]
+fn the_merge_step_offers_the_personal_file_and_settles_after_the_apply() {
+    let fx = Fx::new();
+    fx.settled();
+    let settled = fx.plan();
+    assert_eq!(
+        step(&settled, "agents-local-merge")["state"],
+        "skip",
+        "{settled}"
+    );
+
+    let mine = "# My notes\n\nReply in Korean.\n";
+    fs::write(fx.root.join("AGENTS.local.md"), mine).unwrap();
+    let plan = fx.plan();
+    let merge = step(&plan, "agents-local-merge");
+    assert_eq!(merge["state"], "needs_decision", "{merge}");
+    assert_eq!(merge["preview"]["body"], json!(mine), "{merge}");
+    assert!(
+        merge["preview"]["commit_notice"]
+            .as_str()
+            .unwrap()
+            .contains("committed"),
+        "{merge}"
+    );
+    let argv: Vec<&str> = merge["apply"]["argv"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|w| w.as_str().unwrap())
+        .collect();
+    assert_eq!(&argv[..2], ["moai", "agents-merge-apply"], "{merge}");
+    assert_eq!(argv.last(), Some(&"<permission-reference>"), "{merge}");
+    assert_eq!(plan["all_unchanged"], json!(false));
+
+    assert_eq!(fx.apply_step(merge)["ok"], json!(true), "{merge}");
+    let after = fx.plan();
+    assert_eq!(
+        step(&after, "agents-local-merge")["state"],
+        "unchanged",
+        "{after}"
+    );
+    assert_eq!(after["all_unchanged"], json!(true), "{after}");
+}
+
+/// #2936 R10: while the generation step still has files to write, the merge waits: that step's
+/// digest binds the `AGENTS.md` bytes the merge would change.
+#[test]
+fn the_merge_waits_for_the_install_phase() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    fs::write(fx.root.join("AGENTS.local.md"), "# mine\n\ntext\n").unwrap();
+    let plan = fx.plan();
+    assert_eq!(step(&plan, "generation")["state"], "ready", "{plan}");
+    let merge = step(&plan, "agents-local-merge");
+    assert_eq!(merge["state"], "blocked", "{merge}");
+    assert_eq!(merge["reason"], "re-run after the install phase", "{merge}");
+    assert_eq!(merge["apply"], Value::Null, "{merge}");
+}
+
+// ---- #2936 R9 S5a: the host hook steps ----
+
+/// The whole plan as text, for the words no step may print (Q-H2: no trust bypass, no
+/// approval mode, no `features.` key, no `trust_level`).
+fn assert_no_forbidden_words(plan: &Value) {
+    let text = plan.to_string();
+    for word in [
+        "trust_level",
+        "--dangerously-bypass-hook-trust",
+        "approvalMode",
+        "features.",
+    ] {
+        assert!(!text.contains(word), "the plan prints {word}: {text}");
+    }
+}
+
+#[test]
+fn the_host_hook_steps_print_their_apply_and_settle() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let plan = fx.plan();
+    for (name, host, file) in [
+        ("codex-hooks", "codex", ".codex/hooks.json"),
+        ("omp-hooks", "omp", ".omp/extensions/"),
+    ] {
+        let s = step(&plan, name);
+        assert_eq!(s["state"], "ready", "{name}: {s}");
+        let argv: Vec<&str> = s["apply"]["argv"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|w| w.as_str().unwrap())
+            .collect();
+        assert_eq!(&argv[..2], ["moai", "hooks-apply"], "{argv:?}");
+        assert_eq!(argv[2], fx.p(), "{argv:?}");
+        let at = argv.iter().position(|w| *w == "--host").unwrap();
+        assert_eq!(argv[at + 1], host, "{argv:?}");
+        assert!(
+            s["preview"]["path"].as_str().unwrap().starts_with(file),
+            "{name}: {s}"
+        );
+        assert!(s["plan_digest"].is_string(), "{name}: {s}");
+    }
+    for name in ["codex-hooks", "omp-hooks"] {
+        let out = fx.apply_step(step(&plan, name));
+        assert_eq!(out["ok"], json!(true), "{name}: {out}");
+    }
+    assert!(fx.root.join(".codex/hooks.json").is_file());
+    let again = fx.plan();
+    for name in ["codex-hooks", "omp-hooks"] {
+        let s = step(&again, name);
+        assert_eq!(s["state"], "unchanged", "{name}: {s}");
+        assert_eq!(s["apply"], Value::Null, "{name}: {s}");
+    }
+}
+
+#[test]
+fn the_codex_hook_step_says_the_user_trusts_the_hooks_in_codex() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let plan = fx.plan();
+    let notice = step(&plan, "codex-hooks")["preview"]["trust_required"]
+        .as_str()
+        .unwrap_or_else(|| panic!("no trust notice: {plan}"))
+        .to_string();
+    assert!(notice.contains("/hooks"), "{notice}");
+    assert_no_forbidden_words(&plan);
+}
+
+#[test]
+fn an_edited_codex_hook_file_is_a_conflict_and_stays_byte_identical() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let mine = "{\"hooks\": {\"Notification\": []}}\n";
+    fx.write(".codex/hooks.json", mine);
+    let before = fx.tree();
+    let plan = fx.plan();
+    let s = step(&plan, "codex-hooks");
+    assert_eq!(s["state"], "conflict", "{s}");
+    assert_eq!(s["apply"], Value::Null, "{s}");
+    assert!(
+        s["reason"]
+            .as_str()
+            .unwrap()
+            .contains("preservation review"),
+        "{s}"
+    );
+    assert_eq!(before, fx.tree(), "the plan changed the user's file");
+    assert_eq!(
+        fs::read_to_string(fx.root.join(".codex/hooks.json")).unwrap(),
+        mine
+    );
+}
+
+#[test]
+fn the_omp_config_step_writes_nothing_and_prints_no_command() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let plan = fx.plan();
+    let s = step(&plan, "omp-config");
+    assert_eq!(s["state"], "skip", "{s}");
+    assert_eq!(s["apply"], Value::Null, "{s}");
+    assert!(
+        s["reason"].as_str().unwrap().contains(".omp/config.yml"),
+        "{s}"
+    );
+    for ready in steps(&plan).into_iter().filter(|x| x["state"] == "ready") {
+        assert_eq!(fx.apply_step(ready)["ok"], json!(true), "{ready}");
+    }
+    assert!(
+        !fx.root.join(".omp/config.yml").exists(),
+        "the install phase created .omp/config.yml"
+    );
+}
+
+#[test]
+fn a_broken_profile_blocks_its_steps_and_not_the_host_hook_steps() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    // The profile lives in the state folder; find it where PROJECT wrote it.
+    let stored = [".moai/project.yaml", ".moai-cli/project.yaml"]
+        .into_iter()
+        .find(|rel| fx.root.join(rel).is_file())
+        .expect("the profile file");
+    fx.write(stored, "{not a profile\n");
+    let plan = fx.plan();
+    assert_eq!(step(&plan, "profile")["state"], "blocked", "{plan}");
+    assert_eq!(step(&plan, "generation")["state"], "blocked", "{plan}");
+    for name in ["codex-hooks", "omp-hooks"] {
+        let s = step(&plan, name);
+        assert_eq!(s["state"], "ready", "{name}: {s}");
+        assert!(s["apply"]["argv"].is_array(), "{name}: {s}");
+    }
+    assert_eq!(step(&plan, "omp-config")["state"], "skip", "{plan}");
 }

@@ -135,10 +135,13 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
             "unknown hook event; must be session-check, tool-preflight, tool-observe or turn-validation",
         );
     };
-    // OMP has no turn-end event (its `session_shutdown` fires on process exit only), so no
-    // OMP extension can carry this duty; a call is a configuration error, never a guess.
+    // OMP's turn-end event is `session_stop` (OMP 18.18.7, extensions.md), but the generated
+    // extension module does not subscribe to it: the turn-validation rules are empty
+    // (`STOP_RULES`). A call is a configuration error, never a guess.
     if host == Host::Omp && event == Event::TurnValidation {
-        return engine_error("turn-validation has no OMP event");
+        return engine_error(
+            "turn-validation is not wired for OMP (session_stop exists; no rule uses it yet)",
+        );
     }
     let Ok(Value::Object(input)) = serde_json::from_slice::<Value>(stdin) else {
         // A PostToolUse input carries the whole tool result; one past the stdin bound is cut
@@ -401,7 +404,8 @@ pub fn capabilities(host: &str) -> Value {
                                "on_module_error": "the module lets the call through when moai-cli is missing, times out or exits 1, matching the non-blocking engine error of the other hosts; OMP itself treats a throwing handler as a block"},
             "tool-observe": {"events": ["tool_result"], "records": "observe line", "blocks": false,
                              "outcome": "tool_result.isError"},
-            "turn-validation": {"supported": false, "reason": "OMP has no turn-end event; session_shutdown fires on process exit only"},
+            "turn-validation": {"supported": false, "event": "session_stop", "answer": "{decision: \"block\", reason} (OMP 18.18.7 extensions.md)",
+                                "reason": "not wired: STOP_RULES is empty, so the extension module does not subscribe to session_stop"},
             "on_engine_error": "exit 1: the module does not block",
         }),
         None => json!({"error": "unknown hook host; must be claude, codex or omp"}),

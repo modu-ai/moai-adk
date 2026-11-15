@@ -109,6 +109,39 @@ fn project_skill_dir(root: &Path, host: &str) -> Result<PathBuf> {
     Ok(root.join(host_folder(host)?).join(crate::update::SKILL_DIR))
 }
 
+/// The first folder on `parts` below `root` that is a symbolic link, is not a folder, or
+/// cannot be read (#2936 R9 S4): a copy written, or removed, through it would land outside the
+/// project. Stops quietly at the first folder that does not exist yet — the copy makes it.
+fn unsafe_parent(root: &Path, parts: &[&str]) -> Option<String> {
+    let mut path = root.to_path_buf();
+    let mut shown = String::new();
+    for part in parts {
+        path.push(part);
+        if !shown.is_empty() {
+            shown.push('/');
+        }
+        shown.push_str(part);
+        match fs::symlink_metadata(&path) {
+            Ok(m) if m.file_type().is_symlink() => {
+                return Some(format!("{shown} is a symbolic link"));
+            }
+            Ok(m) if !m.is_dir() => return Some(format!("{shown} is not a folder")),
+            Ok(_) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return None,
+            Err(_) => return Some(format!("{shown} cannot be read")),
+        }
+    }
+    None
+}
+
+/// Why a copy for `host` may not be written or removed under `root`: a link, a file or an
+/// unreadable folder among the host's skill folders or the rollback folders.
+fn linked_parent(root: &Path, host: &str) -> Result<Option<String>> {
+    let host_parts: Vec<&str> = host_folder(host)?.split('/').collect();
+    let rollback_parts = [crate::state_root::dir(root), "project-skill-rollback"];
+    Ok(unsafe_parent(root, &host_parts).or_else(|| unsafe_parent(root, &rollback_parts)))
+}
+
 fn validate(req: &ProjectSkillRequest) -> Result<()> {
     if req.protocol_version != PROJECT_SKILL_SCHEMA_VERSION {
         return Err("unsupported protocol_version; supported: 1".into());
@@ -148,6 +181,25 @@ pub fn project_skill_plan(req: &ProjectSkillRequest) -> Result<ProjectSkillPlan>
     for host in &req.hosts {
         let folder = host_folder(host)?;
         let project_dir = project_skill_dir(&req.project_root, host)?;
+        // #2936 R9 S4: a linked (or non-folder) skill or rollback folder is blocked, never
+        // written through; nothing below it is read either.
+        if let Some(why) = linked_parent(&req.project_root, host)? {
+            entries.push(ProjectSkillEntry {
+                host: host.clone(),
+                path: format!("{folder}/{}", crate::update::SKILL_DIR),
+                action: "blocked".into(),
+                blocked_reason: Some(format!(
+                    "{why}; a copy made through it would land outside the project, so nothing \
+                     is written"
+                )),
+                source_sha256: staged.digest.clone(),
+                current_sha256: None,
+                home_sha256: None,
+                duplicated_with_home: false,
+                reading_order_note: String::new(),
+            });
+            continue;
+        }
         // Decision row 22 (#2286): an existing folder is ours only when one of our own
         // rollback receipts recorded its current digest; anything else — including a
         // folder the digest cannot read — is blocked, never replaced.
@@ -539,12 +591,25 @@ pub fn project_skill_revert(req: &ProjectSkillRevertRequest) -> Result<Value> {
     let root = project_root
         .canonicalize()
         .map_err(|_| "project directory unavailable".to_string())?;
+    // #2936 R9 S4: a rollback or skill folder that became a link, or a file, would send the
+    // removal and the moves below outside the project; refuse before anything is read or moved.
+    if let Some(why) = unsafe_parent(
+        &root,
+        &[crate::state_root::dir(&root), "project-skill-rollback"],
+    ) {
+        return Err(format!("{why}; nothing reverted"));
+    }
     let rollback_dir = rollback_root(&root).join(request_id.as_str());
     let receipt_path = rollback_dir.join("receipt.json");
     let bytes = fs::read(&receipt_path)
         .map_err(|_| "receipt not found; inspect the rollback directory".to_string())?;
     let receipt: ProjectSkillApplyReceipt = serde_json::from_slice(&bytes)
         .map_err(|_| "receipt unreadable; inspect the rollback directory".to_string())?;
+    for a in &receipt.applied {
+        if let Some(why) = linked_parent(&root, &a.host)? {
+            return Err(format!("{why}; nothing reverted"));
+        }
+    }
     // #2392 D3-A: a created folder is removed only while it is still exactly what the apply
     // wrote. A copy that changed since — a file the user added or edited, or a folder the
     // digest cannot read — is never removed, and the whole revert is refused before anything

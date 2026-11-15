@@ -301,6 +301,22 @@ fn render_local(r: &AgentsRequest) -> String {
     }
 }
 
+/// `true` when `bytes` is exactly one of the personal-file texts `render_local` writes (#2936
+/// R10): such a file holds nothing the user wrote, so a merge into `AGENTS.md` skips it.
+pub fn is_generated_local(bytes: &[u8]) -> bool {
+    ["en", "ko"].iter().any(|language| {
+        ["ignored", "tracked", "none"].iter().any(|local_file| {
+            let request = AgentsRequest {
+                protocol_version: 1,
+                language: (*language).into(),
+                workflow_reference: String::new(),
+                local_file: (*local_file).into(),
+            };
+            render_local(&request).as_bytes() == bytes
+        })
+    })
+}
+
 fn render_ignore(root: &Path) -> String {
     let (begin, end) = markers(IGNORE_SECTION, "hash");
     // HOLD-B1 (user-confirmed 2026-11-08, ADK_1989_CONFIRMED_20261108_01): apply

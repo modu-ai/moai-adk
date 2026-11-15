@@ -50,7 +50,10 @@ fn migrated(language: Option<&str>, project: Option<&str>) -> (TempDir, PathBuf)
 }
 
 fn setup(root: &Path, args: &[&str], stdin: &str) -> (Vec<u8>, String) {
+    // #2935 L1: an empty temporary HOME, so the developer's real conversation default is not read.
+    let home = TempDir::new().unwrap();
     let mut child = Command::new(EXE)
+        .env("HOME", home.path())
         .arg("language-setup")
         .arg(root)
         .args(args)

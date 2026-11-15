@@ -31,7 +31,14 @@ fn project(language: Option<Value>) -> TempDir {
 }
 
 fn run(args: &[&str], stdin: &[u8]) -> Output {
-    let mut child = Command::new(EXE)
+    // #2935 L1: `language-setup` reads a conversation default from HOME; an empty temporary HOME
+    // keeps these cases off the developer's real one.
+    let home = TempDir::new().unwrap();
+    let mut command = Command::new(EXE);
+    if args.first() == Some(&"language-setup") {
+        command.env("HOME", home.path());
+    }
+    let mut child = command
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())

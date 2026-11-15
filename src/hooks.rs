@@ -12,8 +12,8 @@
 //!   project hooks load only when the project `.codex/` layer is trusted, and non-managed hooks
 //!   are reviewed and trusted (by hash) before they run.
 //!
-//! Only the intersection both hosts accept is used: events `SessionStart`, `PreToolUse`,
-//! `PostToolUse` and `Stop` (both hosts: matcher `Bash`, stdin `tool_name`,
+//! Only the intersection both hosts accept is used: events `SessionStart`, `PreToolUse` and
+//! `PostToolUse` (`Stop` was removed in #2936 R9 S1; both hosts: matcher `Bash`, stdin `tool_name`,
 //! `tool_input.command` and `cwd`, exit 2 blocks with the reason on stderr), handler fields `type: "command"`, `command` and an explicit `timeout`, so neither
 //! host's defaults matter. Nothing here writes a home directory: a project equal to the given
 //! home, or inside its host configuration directories, is refused. No host session runs here;
@@ -43,20 +43,27 @@ pub enum Handler {
     /// Code only for now (#2877 leader Q1): it keeps the protection the Go-generation hooks gave
     /// once those are replaced. Answers with the documented PreToolUse deny object, never allow.
     Preflight,
+    /// `hook-dispatch --event session-check`: answers with the session context (project state
+    /// folder, lane branch, local claim record) the model reads at session start (#2936 R9 S1).
+    /// It replaces the record-only receipt at `SessionStart`: nothing but `hooks-status` read
+    /// that receipt.
+    SessionCheck,
 }
 
 /// The tools the Claude preflight guard sees: the hook engine's Bash and write guards
 /// (`hook_engine::capabilities("claude")`).
 pub const CLAUDE_PREFLIGHT_MATCHER: &str = "Bash|Write|Edit|MultiEdit|NotebookEdit";
 
-/// The MoAI hook set: (event, matcher, handler). Receipts at session start, after each Bash
-/// tool call and at turn end; one blocking guard before each Bash tool call, which refuses
-/// only an unverified claim's commit or push (#2255 AC-2).
+/// The MoAI hook set: (event, matcher, handler). The session context at session start, one
+/// blocking guard before each Bash tool call (it refuses only an unverified claim's commit or
+/// push, #2255 AC-2) and a receipt after each Bash tool call. `Stop` is not in the set: its
+/// receipt had no reader but `hooks-status`, and the turn-validation rules are empty
+/// (`hook_engine::STOP_RULES`). The Codex lane Stop hook is added by [`codex_hooks`], not here
+/// (#2936 R9 S1, selection table of Issue #2936 comment 6881107273).
 pub const HOOK_SET: &[(&str, Option<&str>, Handler)] = &[
-    ("SessionStart", None, Handler::Receipt),
+    ("SessionStart", None, Handler::SessionCheck),
     ("PreToolUse", Some("Bash"), Handler::ClaimGuard),
     ("PostToolUse", Some("Bash"), Handler::Receipt),
-    ("Stop", None, Handler::Receipt),
 ];
 
 pub const HOSTS: &[&str] = &["claude", "codex", "omp"];
@@ -192,6 +199,9 @@ pub fn hook_command(host: &str, handler: Handler) -> String {
     match handler {
         Handler::Receipt => format!("{HOOK_BINARY} hook-receipt --host {host}"),
         Handler::ClaimGuard => format!("{HOOK_BINARY} claim-verify . --hook"),
+        Handler::SessionCheck => {
+            format!("{HOOK_BINARY} hook-dispatch --host {host} --event session-check")
+        }
         Handler::Preflight => {
             format!("{HOOK_BINARY} hook-dispatch --host {host} --event tool-preflight")
         }
@@ -272,8 +282,9 @@ pub fn hooks_object(host: &str) -> Result<Map<String, Value>> {
     Ok(out)
 }
 
-/// The opt-in lane `Stop` hook of a Codex project (#2904 stage 2, #2899 D-O2): a second `Stop`
-/// matcher group after the receipt group that runs `lane-stop-hook --lane L --repo O/R`.
+/// The opt-in lane `Stop` hook of a Codex project (#2904 stage 2, #2899 D-O2): the only `Stop`
+/// matcher group (the default set has none since #2936 R9 S1) that runs
+/// `lane-stop-hook --lane L --repo O/R`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LaneLoop {
     /// What the Codex ownership receipt records under `lane_loop`; none recorded → the base
@@ -322,14 +333,18 @@ fn check_lane(host: &str, lane: &LaneLoop) -> Result<()> {
     }
 }
 
-/// The Codex hooks object: the hook set, plus the lane's Stop group after the receipt group.
+/// The Codex hooks object: the hook set, plus the lane's Stop group. The base set has no `Stop`
+/// event, so the lane group is the event's only group; an absent `Stop` is created, never
+/// skipped (a skipped lane hook would vanish with no error while its receipt still names it).
 fn codex_hooks(lane: Option<&Lane>) -> Result<Map<String, Value>> {
     let mut out = hooks_object("codex")?;
     if let Some(l) = lane {
-        if let Some(stop) = out.get_mut("Stop").and_then(Value::as_array_mut) {
-            stop.push(json!({"hooks": [{"type": "command", "command": l.command(),
-                "timeout": crate::lane_loop::STOP_HOOK_TIMEOUT_SECS}]}));
-        }
+        let stop = out.entry("Stop").or_insert_with(|| json!([]));
+        let Some(groups) = stop.as_array_mut() else {
+            return Err("the Stop hook entry is not a list".into());
+        };
+        groups.push(json!({"hooks": [{"type": "command", "command": l.command(),
+            "timeout": crate::lane_loop::STOP_HOOK_TIMEOUT_SECS}]}));
     }
     Ok(out)
 }
@@ -681,12 +696,18 @@ pub fn apply_with(
     if let Some(l) = &applied_lane {
         out["lane_loop"] = l.json();
     }
-    out["trust_required"] = json!(match host {
+    out["trust_required"] = json!(trust_notice(host));
+    Ok(out)
+}
+
+/// What the user must do before `host` runs the generated project hooks. Printed by
+/// `hooks-apply` and by the `project-update-plan` host steps.
+pub fn trust_notice(host: &str) -> &'static str {
+    match host {
         "claude" => "Claude Code runs project hooks only in a trusted workspace",
         "omp" => "OMP loads project extensions from .omp/extensions with no trust prompt in its docs (docs/extension-loading.md, read 2026-11-13)",
         _ => "Codex runs project hooks only when the project .codex/ layer is trusted and each hook is reviewed (/hooks)",
-    });
-    Ok(out)
+    }
 }
 
 /// Where each host keeps the project hook definitions MoAI generates.
@@ -939,14 +960,16 @@ pub fn receipt(host: &str, stdin: &[u8], cwd: &Path, now_unix_ms: u128) -> Value
 mod tests {
     use super::*;
 
-    /// The bytes of a Codex install without a lane, captured from the code before #2904
-    /// stage 2 (a869647cb7): the hook file, its receipt and a fresh project's plan digest.
+    /// The bytes of a Codex install without a lane: the hook file, its receipt and a fresh
+    /// project's plan digest. Captured from the code before #2904 stage 2 (a869647cb7) and
+    /// captured again for the three-event set of #2936 R9 S1 (no `Stop`, `SessionStart` =
+    /// session-check), so a later lane change still cannot move a no-lane install's bytes.
     const BASE_CODEX_SHA: &str =
-        "sha256:80876935d7e0ac2589cca21678f760508d2046d22fd1c6fe7d23e2105679841c";
+        "sha256:7539fda0dbab97970be03160c4c5f00ab7fcb0b406e5bad6fb6397fb5b9ebc8a";
     const BASE_RECEIPT_SHA: &str =
-        "sha256:3785f9474d91580d34d89a1144f1318462859c1f3b0affe7191f7cd578b571af";
+        "sha256:af889f67422f94108bd4aab7da72ba2a6bd7fbf8db04adb254976555c00430e2";
     const BASE_PLAN_DIGEST: &str =
-        "sha256:403c6a05153198a5249ad4c0d9a04dfdf1090ae657d0edda5e1902bf6189524d";
+        "sha256:ad56e4fca23398034a61b9902c3fd4b52bdf09edac908b9922a18bac7a8a9e09";
 
     #[test]
     fn a_codex_install_without_a_lane_keeps_its_bytes() {
@@ -992,19 +1015,16 @@ mod tests {
         install(root, set("agent-1", "o/r"));
         let v: Value = serde_json::from_slice(&fs::read(&file).unwrap()).unwrap();
         let stop = v["hooks"]["Stop"].as_array().unwrap();
-        assert_eq!(stop.len(), 2);
+        // The base set has no `Stop` event: the lane group is created and is the only one.
+        assert_eq!(stop.len(), 1);
         assert_eq!(
-            stop[0]["hooks"][0]["command"],
-            json!("moai-cli hook-receipt --host codex")
-        );
-        assert_eq!(
-            stop[1],
+            stop[0],
             json!({"hooks": [{"type": "command",
                 "command": "moai-cli lane-stop-hook --lane agent-1 --repo o/r", "timeout": 120}]})
         );
         let r: Value = serde_json::from_slice(&fs::read(&receipt).unwrap()).unwrap();
         assert_eq!(r["lane_loop"], json!({"lane": "agent-1", "repo": "o/r"}));
-        assert_eq!(r["hooks"].as_array().unwrap().len(), 5);
+        assert_eq!(r["hooks"].as_array().unwrap().len(), 4);
         // Keep re-plans to the same file; the status reads the receipt's set.
         let keep = plan(root, "codex", None).unwrap();
         assert_eq!(keep["action"], json!("unchanged"), "{keep}");

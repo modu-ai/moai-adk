@@ -16,6 +16,8 @@
 //!    for 30:00 whose lane is silent — ask for a second auditor with one takeover-request line
 //!    (#2933 S4 ④; only the leader's handoff makes it effective); then a pull request with a
 //!    PASS on its head and green CI that is still open — read the gate's reason (#2933 S3);
+//!    then a FAIL nobody repairs for 30:00 whose author lane is silent — offer repair help with
+//!    one line (#2933 S5 ⑤; a push needs the author's consent or the leader's handoff);
 //! 5. a `LANE-BLOCKED kind=decision` of the lane that a `LEADER-DECISION` now answers;
 //! 6. P2 the next step of a card the lane claims (no open pull request of its own for it);
 //! 7. P2–P4 an open Issue nobody claims.
@@ -25,6 +27,10 @@
 //! by the active goal, an epic or blocked is named under `skipped` with its reason, and the
 //! list goes on. `end_condition` is the lane-wide end: no open pull request and no startable
 //! open Issue.
+//!
+//! A lane that waits for CI, an audit, a shell or a reply leaves one line `waiting: <what> since
+//! <UTC>` and goes on; `waiting` lists it as `lane_waiting` (#2933 S6). It is information only:
+//! it never makes, blocks or reorders a task.
 //!
 //! Reads only (leader decision D1): reservations and comments stay with the existing commands.
 //! One collection sends at most [`API_BUDGET`] GitHub requests (D4), taking the higher
@@ -307,7 +313,12 @@ fn foreign_audit_record(pr: &Pr) -> Option<u64> {
     let head = pr.head.to_ascii_lowercase();
     pr.comments.iter().rev().find_map(|c| {
         // A takeover request (#2933 S4) names the head and says `audit`, yet records no audit.
-        if verdict(c).is_some() || audit_claim(c).is_some() || takeover_request(c).is_some() {
+        // A repair-help offer (#2933 S5) names the head too, and its lane may say `audit`.
+        if verdict(c).is_some()
+            || audit_claim(c).is_some()
+            || takeover_request(c).is_some()
+            || help_offer(c).is_some()
+        {
             return None;
         }
         let line = first_line(c)
@@ -640,8 +651,13 @@ fn names_lane(c: &Comment, lane: &str) -> bool {
 /// head, moved by the leader's `moai-claim-handoff: comment=<reservation> to=<lane> by=leader`
 /// line. `None` when no reservation names the head now.
 fn head_holder(pr: &Pr) -> Option<Holder> {
-    let comments: Vec<crate::lane_status::Comment> = pr
-        .comments
+    holder_in(&pr.comments, &pr.head)
+}
+
+/// [`head_holder`] over any run of a pull request's comments: step ⑤ asks who held the head at
+/// the moment of a FAIL by passing the comments before it (#2933 S5).
+fn holder_in(comments: &[Comment], head: &str) -> Option<Holder> {
+    let comments: Vec<crate::lane_status::Comment> = comments
         .iter()
         .map(|c| crate::lane_status::Comment {
             id: i64::try_from(c.id).unwrap_or(i64::MAX),
@@ -649,7 +665,7 @@ fn head_holder(pr: &Pr) -> Option<Holder> {
             body: c.body.clone(),
         })
         .collect();
-    holder_of(&comments, &pr.head)
+    holder_of(&comments, head)
 }
 
 /// The reservation a pull request is passed over for: the comment that gives the hold and the
@@ -745,6 +761,108 @@ fn second_audit(pr: &Pr, lane: &str, now: Option<&str>) -> Option<Second> {
     )))
 }
 
+/// `moai-repair-help-offer: pr=<n> lane=<lane> fail=<verdict comment> head=<40hex>` of a comment
+/// (#2933 S5): the pull request, the offering lane, the FAIL it answers and the head.
+fn help_offer(c: &Comment) -> Option<(u64, String, u64, String)> {
+    lines(c).find_map(|l| {
+        let rest = l.strip_prefix("moai-repair-help-offer:")?;
+        Some((
+            field(rest, "pr")?.parse().ok()?,
+            field(rest, "lane")?.to_string(),
+            field(rest, "fail")?.parse().ok()?,
+            field(rest, "head")?.to_string(),
+        ))
+    })
+}
+
+/// Seconds a FAIL may stand with no comment of the author lane before repair help is offered
+/// (#2933 S5 ⑤, decision A): 30:00 is enough, 29:59 is not.
+pub const REPAIR_HELP_SECS: i64 = 1800;
+
+/// What step ⑤ finds on a pull request that failed its audit.
+enum Help {
+    /// The task to post an offer line.
+    Offer(Value),
+    /// An offer exists (mine, or a lower one): the author's consent or the leader decides.
+    Wait(Value),
+}
+
+/// #2933 S5 ⑤: the newest verdict of `pr` is a FAIL on the head now (so no push and no later
+/// verdict followed it), and the author lane has not commented on the pull request for
+/// [`REPAIR_HELP_SECS`] after it. Then `lane` — neither the author nor the lane that held the
+/// audit when it failed ([`holder_in`] on the comments before the FAIL; lanes are compared as
+/// [`same_lane`]) — may offer repair help with one line; the lowest offer comment id
+/// stands. The line is only an offer: the author's consent in a comment, or the leader's
+/// `moai-claim-handoff … by=leader` line, must come before any push to the author's branch.
+/// `None` when it does not hold, or when the clock, the FAIL's time, the author lane or the
+/// auditor is unknown (silence is not proven).
+fn repair_help(pr: &Pr, lane: &str, now: Option<&str>) -> Option<Help> {
+    let now = crate::forge::policy::parse_utc(now?)?;
+    let author = pr.author_lane.as_deref()?;
+    let (idx, fail, head, v) = pr
+        .comments
+        .iter()
+        .enumerate()
+        .rev()
+        .find_map(|(i, c)| verdict(c).map(|(head, v)| (i, c, head, v)))?;
+    if v != "FAIL" || head != pr.head {
+        return None;
+    }
+    // The lane that held the audit of the head when the FAIL was posted keeps the re-audit: the
+    // holder as `audit-claim` reads it from the comments before the FAIL (the lowest
+    // reservation, moved by a leader handoff posted before it). Without one the auditor is not
+    // known and nothing is offered.
+    let auditor = holder_in(&pr.comments[..idx], &pr.head)?.lane;
+    if same_lane(author, lane) || same_lane(&auditor, lane) {
+        return None;
+    }
+    let mut quiet_since = crate::forge::policy::parse_utc(&fail.at)?;
+    for c in pr.comments[idx + 1..]
+        .iter()
+        .filter(|c| names_lane(c, author))
+    {
+        // A comment of the author with no readable time counts as now: silence is not proven.
+        quiet_since = quiet_since.max(crate::forge::policy::parse_utc(&c.at).unwrap_or(now));
+    }
+    let idle = now - quiet_since;
+    if idle < REPAIR_HELP_SECS {
+        return None;
+    }
+    let winner = pr.comments[idx + 1..]
+        .iter()
+        .filter_map(|c| {
+            let (number, asker, on, at_head) = help_offer(c)?;
+            (number == pr.number
+                && on == fail.id
+                && at_head == pr.head
+                && !same_lane(&asker, author))
+            .then_some((c.id, asker))
+        })
+        .min();
+    if let Some((offer, asker)) = winner {
+        let reason = if same_lane(&asker, lane) {
+            "help_offered"
+        } else {
+            "help_offer_lost"
+        };
+        return Some(Help::Wait(json!({"number": pr.number, "reason": reason,
+            "comment": fail.id, "offer_comment": offer, "by": asker, "head": pr.head})));
+    }
+    Some(Help::Offer(task(
+        "P1",
+        "offer_repair_help",
+        pr_target(pr),
+        format!(
+            "PR #{n}: the audit FAIL (comment {id}, audit held by {auditor}) has stood for {idle} s with no comment of its author {author}: post exactly one line `moai-repair-help-offer: pr={n} lane={lane} fail={id} head={head}` on the PR. It is only an offer: never push to {author}'s branch until {author} agrees in a comment on the PR or the leader names you with a `moai-claim-handoff … by=leader` line. The lowest offer wins",
+            n = pr.number,
+            id = fail.id,
+            head = pr.head,
+        ),
+        json!({"fail_comment": fail.id, "failed_by": auditor, "author_lane": author,
+               "head": pr.head, "idle_secs": idle}),
+    )))
+}
+
 /// What a claimed card's thread says after the claim: the newest merged pull request whose
 /// body names the claim (#2873 N8), a `pr-wait:` line still waiting, and whether a close table
 /// is posted (#2880 W3).
@@ -790,6 +908,108 @@ fn decision_pending(waiting: &[Value], number: u64) -> bool {
     waiting
         .iter()
         .any(|w| w["number"] == json!(number) && w.get("blocked_comment").is_some())
+}
+
+/// The most characters of `<what>` a wait record keeps (#2933 S6); the rest is cut.
+pub const WAIT_WHAT_MAX: usize = 160;
+
+/// What one `waiting:` line says.
+enum WaitLine {
+    /// `waiting: <what> since <UTC>`.
+    Record { what: String, since: String },
+    /// `waiting: done` or `waiting: -`: the lane waits for nothing any more.
+    Clear,
+}
+
+/// `YYYY-MM-DDTHH:MM:SSZ` with digits only where digits belong, as seconds since the epoch.
+fn strict_utc(s: &str) -> Option<i64> {
+    let b = s.as_bytes();
+    let shaped = b.len() == 20
+        && b.iter()
+            .enumerate()
+            .all(|(i, c)| matches!(i, 4 | 7 | 10 | 13 | 16 | 19) || c.is_ascii_digit());
+    if shaped {
+        crate::forge::policy::parse_utc(s)
+    } else {
+        None
+    }
+}
+
+/// A wait line (#2933 S6): `waiting: <what> since <UTC>` starting at column 0 of the line.
+/// `<what>` loses its control characters (nothing a comment says reaches a terminal raw) and is
+/// cut at [`WAIT_WHAT_MAX`] characters. A line with no `since`, or a `since` that is not a UTC
+/// time, is no record; only `done` and `-` may come without one.
+fn wait_line(line: &str) -> Option<WaitLine> {
+    let rest = line.strip_prefix("waiting:")?.trim();
+    let (what, since) = match rest.rsplit_once(" since ") {
+        Some((what, since)) => (what, Some(since.trim())),
+        None => (rest, None),
+    };
+    let what: String = what.chars().filter(|c| !c.is_control()).collect();
+    let what = what.trim();
+    if matches!(what, "done" | "-") && since.is_none_or(|s| strict_utc(s).is_some()) {
+        return Some(WaitLine::Clear);
+    }
+    let since = since.filter(|s| strict_utc(s).is_some())?;
+    if what.is_empty() {
+        return None;
+    }
+    Some(WaitLine::Record {
+        what: what.chars().take(WAIT_WHAT_MAX).collect(),
+        since: since.to_string(),
+    })
+}
+
+/// The lane's wait records (#2933 S6): on each Issue the lane holds a live claim on, and each
+/// pull request the lane authored or reserved the audit of, the newest `waiting:` line of a
+/// comment that names the lane — every lane posts as one account, so the name decides
+/// ([`names_lane`]). A later `waiting: done` line clears it; any other later comment does not.
+/// Information only: `decide` adds these to `waiting` after the task is chosen.
+fn wait_records(lane: &str, snap: &Snapshot) -> Vec<Value> {
+    let now = snap
+        .now
+        .as_deref()
+        .and_then(crate::forge::policy::parse_utc);
+    let issues = snap
+        .threads
+        .iter()
+        .filter(|t| live_claim(&t.comments, lane).is_some())
+        .map(|t| (t.number, &t.comments));
+    let prs = snap
+        .prs
+        .iter()
+        .filter(|p| {
+            p.author_lane.as_deref() == Some(lane)
+                || reserved_by(p).is_some_and(|(_, by)| same_lane(&by, lane))
+        })
+        .map(|p| (p.number, &p.comments));
+    let mut found: Vec<Value> = issues
+        .chain(prs)
+        .filter_map(|(number, comments)| {
+            let mut record = None;
+            for c in comments.iter().filter(|c| names_lane(c, lane)) {
+                for line in c.body.lines() {
+                    match wait_line(line) {
+                        Some(WaitLine::Record { what, since }) => {
+                            record = Some((what, since, c.id))
+                        }
+                        Some(WaitLine::Clear) => record = None,
+                        None => {}
+                    }
+                }
+            }
+            let (what, since, comment) = record?;
+            let age = now
+                .zip(crate::forge::policy::parse_utc(&since))
+                .map(|(now, at)| (now - at).max(0));
+            Some(
+                json!({"reason": "lane_waiting", "number": number, "what": what,
+                "since": since, "age_secs": age, "comment": comment}),
+            )
+        })
+        .collect();
+    found.sort_by_key(|w| w["number"].as_u64());
+    found
 }
 
 /// Decides the next task of `lane` from `snap`. Pure: the same snapshot gives the same bytes.
@@ -901,6 +1121,7 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
         // 4. P1: another lane's pull request with no auditor; a draft or a reserved one is
         // named with its reason and the list goes on.
         let mut second_ask: Option<Value> = None;
+        let mut help_ask: Option<Value> = None;
         for pr in prs
             .iter()
             .filter(|p| p.author_lane.as_deref() != Some(lane))
@@ -922,6 +1143,19 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
                         continue;
                     }
                     Some(Second::Wait(entry)) => {
+                        waiting.push(entry);
+                        continue;
+                    }
+                    None => {}
+                }
+                // ⑤ (#2933 S5): a FAIL nobody repairs is not "passed over" either: an offer of
+                // repair help (taken after ④ and 4b) or a wait for the author's consent.
+                match repair_help(pr, lane, snap.now.as_deref()) {
+                    Some(Help::Offer(t)) => {
+                        help_ask.get_or_insert(t);
+                        continue;
+                    }
+                    Some(Help::Wait(entry)) => {
                         waiting.push(entry);
                         continue;
                     }
@@ -959,6 +1193,11 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
         // 4b. P1: a pull request with a PASS on its head and green CI that is still open (#2933
         // S3 ⑥) — another lane's, or the lane's own: its author can act on the gate's reason too.
         if let Some(t) = prs.iter().find_map(|p| unstick_task(p)) {
+            return Some(t);
+        }
+        // 4c. P1: ⑤ offer repair help for a FAIL nobody repairs (#2933 S5), after every audit
+        // step and the passed pull requests, before any Issue.
+        if let Some(t) = help_ask {
             return Some(t);
         }
         // 5. A decision request of the lane that a leader decision now answers.
@@ -1112,6 +1351,8 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
         }
         None
     })();
+    // The lane's own wait records (#2933 S6) come last and change nothing above.
+    waiting.extend(wait_records(lane, snap));
     // The lane-wide end (#2901, #2515): shared with `leader-round` through [`end_condition`]
     // (#2902 O3b), which judges with the same `judge_within`, open set and read-through.
     let mut v = json!({

@@ -234,11 +234,41 @@ fn plain_dirs(dirs: &[PathBuf]) -> Result<()> {
     Ok(())
 }
 
+/// Owner-only bits for a receipt folder and the bytes it keeps: a settings or hook file can hold a
+/// key the user protected with 0600 (audit FAIL 6882751326 B1; the rule `go_state` follows).
+const PRIVATE_DIR: u32 = 0o700;
+const PRIVATE_FILE: u32 = 0o600;
+
+/// Creates a folder (and its missing parents when `parents`) that is 0700 from its creation.
+#[cfg(unix)]
+fn create_private_dir(path: &Path, parents: bool) -> std::io::Result<()> {
+    use std::os::unix::fs::DirBuilderExt;
+    fs::DirBuilder::new()
+        .recursive(parents)
+        .mode(PRIVATE_DIR)
+        .create(path)
+}
+
+#[cfg(not(unix))]
+fn create_private_dir(path: &Path, parents: bool) -> std::io::Result<()> {
+    fs::DirBuilder::new().recursive(parents).create(path)
+}
+
 fn new_receipt_dir(root: &Path) -> Result<(String, PathBuf)> {
     let receipts = receipts_dir(root);
     plain_dirs(&[crate::state_root::path(root, ""), receipts.clone()])?;
-    fs::create_dir_all(&receipts).map_err(|_| "hook receipt folder unavailable")?;
+    create_private_dir(&receipts, true).map_err(|_| "hook receipt folder unavailable")?;
     plain_dirs(std::slice::from_ref(&receipts))?;
+    // The kept copies are never meant for git, whatever the project's own ignore rules say.
+    match crate::apply::publish_exclusive_mode(
+        &receipts.join(".gitignore"),
+        b"*\n",
+        Some(PRIVATE_FILE),
+    ) {
+        Ok(()) => {}
+        Err(_) if receipts.join(".gitignore").is_file() => {}
+        Err(e) => return Err(e),
+    }
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_nanos())
@@ -246,7 +276,7 @@ fn new_receipt_dir(root: &Path) -> Result<(String, PathBuf)> {
     for n in 0..16 {
         let id = format!("{RECEIPT_PREFIX}{nanos}-{n}");
         let dir = receipts.join(&id);
-        if fs::create_dir(&dir).is_ok() {
+        if create_private_dir(&dir, false).is_ok() {
             return Ok((id, dir));
         }
     }
@@ -256,8 +286,11 @@ fn new_receipt_dir(root: &Path) -> Result<(String, PathBuf)> {
 fn write_json(path: &Path, value: &impl Serialize) -> Result<()> {
     let mut bytes = serde_json::to_vec_pretty(value).map_err(|_| "encode failed")?;
     bytes.push(b'\n');
-    let before = crate::claude::read_existing(path)?;
-    crate::apply::publish_replace(path, before.as_deref(), &bytes)
+    match crate::claude::read_existing(path)? {
+        // A new receipt is 0600 from its creation; a replaced one keeps the bits it has.
+        None => crate::apply::publish_exclusive_mode(path, &bytes, Some(PRIVATE_FILE)),
+        Some(before) => crate::apply::publish_replace(path, Some(&before), &bytes),
+    }
 }
 
 /// Applies the confirmed hook layer: each host that writes goes through `hooks::apply` with its
@@ -288,8 +321,13 @@ pub fn apply(home: &Path, layer: &Layer, plan_digest: &str, permission: &str) ->
             let bytes = crate::claude::read_existing(&root.join(f))?;
             if let Some(b) = &bytes {
                 let keep = dir.join("before").join(h.host);
-                fs::create_dir_all(&keep).map_err(|_| "hook receipt folder unavailable")?;
-                fs::write(keep.join(n.to_string()), b).map_err(|_| "hook receipt write failed")?;
+                create_private_dir(&keep, true).map_err(|_| "hook receipt folder unavailable")?;
+                crate::apply::publish_exclusive_mode(
+                    &keep.join(n.to_string()),
+                    b,
+                    Some(PRIVATE_FILE),
+                )
+                .map_err(|_| "hook receipt write failed")?;
             }
             before.push(bytes.as_deref().map(crate::digest));
         }

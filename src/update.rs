@@ -940,7 +940,24 @@ pub(crate) fn resolve_host_receipt(
     install_id: &str,
     host: &str,
 ) -> Result<ReceiptSource> {
-    let own = load_host_receipt(&host_receipt_path(canonical_home, install_id, host, false)?)?;
+    let mut own = load_host_receipt(&host_receipt_path(canonical_home, install_id, host, false)?)?;
+    if own.is_none() {
+        // R5 (#2871 U3b): this folder moved with `~/.moai-cli`, so its receipt may still sit under
+        // the id it was written under. Only a receipt that names that id and this host counts;
+        // the newest of them (by its finish time) stands in for the missing own one.
+        for old in crate::home_install::earlier_ids_of(canonical_home, install_id) {
+            let path = host_receipt_path(canonical_home, &old, host, false)?;
+            if let Ok(Some(r)) = load_host_receipt(&path) {
+                let newer = own.as_ref().is_none_or(|o| {
+                    r.finished_at.clone().unwrap_or(r.started_at.clone())
+                        > o.finished_at.clone().unwrap_or(o.started_at.clone())
+                });
+                if r.install_id == old && r.host == host && newer {
+                    own = Some(r);
+                }
+            }
+        }
+    }
     let plain = |receipt| ReceiptSource {
         receipt,
         from: None,
@@ -988,40 +1005,64 @@ pub(crate) fn resolve_host_receipt(
         }
     }
     folders.sort();
-    for (_, id) in earlier_install_ids(&versions, &folders, &exe_name)? {
-        if id == install_id {
+    for (_, folder_id) in earlier_install_ids(&versions, &folders, &exe_name)? {
+        if folder_id == install_id {
             continue;
         }
-        match fs::symlink_metadata(installations.join(&id)) {
-            Ok(m) if m.is_dir() => {}
-            _ => continue, // never installed anything, or a linked receipt directory
-        }
-        let path = host_receipt_path(canonical_home, &id, host, false)?;
-        let receipt = match load_host_receipt(&path) {
-            Ok(Some(r)) => r,
-            Ok(None) => continue,
-            Err(e) => {
+        // R5 (#2871 U3b): a folder that moved with `~/.moai-cli` may hold its receipts under the
+        // id it had before (the committed install journal says which). The folder's own id comes
+        // first; of the finished receipts it holds, the newest stands for the folder, so one
+        // folder never ties with itself. With no journal this is the folder's own id alone.
+        let mut ids = vec![folder_id.clone()];
+        ids.extend(crate::home_install::earlier_ids_of(
+            canonical_home,
+            &folder_id,
+        ));
+        let mut chosen: Option<(String, HostReceipt)> = None;
+        for id in ids {
+            if id == install_id {
+                continue;
+            }
+            match fs::symlink_metadata(installations.join(&id)) {
+                Ok(m) if m.is_dir() => {}
+                _ => continue, // never installed anything, or a linked receipt directory
+            }
+            let path = host_receipt_path(canonical_home, &id, host, false)?;
+            let receipt = match load_host_receipt(&path) {
+                Ok(Some(r)) => r,
+                Ok(None) => continue,
+                Err(e) => {
+                    return Ok(blocked(format!(
+                        "the host receipt of the earlier installation {id} is unreadable ({e}); \
+                         nothing was adopted"
+                    )))
+                }
+            };
+            if receipt.install_id != id || receipt.host != host {
                 return Ok(blocked(format!(
-                    "the host receipt of the earlier installation {id} is unreadable ({e}); \
-                     nothing was adopted"
-                )))
+                    "the host receipt of the earlier installation {id} names another \
+                     installation or host; nothing was adopted"
+                )));
             }
-        };
-        if receipt.install_id != id || receipt.host != host {
-            return Ok(blocked(format!(
-                "the host receipt of the earlier installation {id} names another \
-                 installation or host; nothing was adopted"
-            )));
-        }
-        if receipt.status == "pending" {
-            if newest_pending
+            if receipt.status == "pending" {
+                if newest_pending
+                    .as_ref()
+                    .is_none_or(|(k, _)| receipt.started_at > *k)
+                {
+                    newest_pending = Some((receipt.started_at.clone(), id));
+                }
+                continue;
+            }
+            if chosen
                 .as_ref()
-                .is_none_or(|(k, _)| receipt.started_at > *k)
+                .is_none_or(|(_, c)| finished_key(&receipt) > finished_key(c))
             {
-                newest_pending = Some((receipt.started_at.clone(), id));
+                chosen = Some((id, receipt));
             }
-            continue;
         }
+        let Some((id, receipt)) = chosen else {
+            continue;
+        };
         let key = finished_key(&receipt);
         match &best {
             Some((k, _, _)) if key < *k => {}
@@ -1389,6 +1430,9 @@ pub struct UserLayerPlan {
     pub hooks: crate::update_hooks::Layer,
     /// #2871 I2 S3: legacy `.env.<provider>` key files under HOME and the vault import of `glm`.
     pub keys: crate::update_keys::Layer,
+    /// #2871 I2 U2b: the Go generation's `~/.moai` items a `--confirm-home <token>` run retires.
+    /// Not part of `plan_digest`: only its own token applies it.
+    pub home: crate::update_home::Layer,
     /// Agent, routing and style hosts left out because their skill copy is blocked.
     pub skipped: Vec<serde_json::Value>,
     /// One digest over the seven plan digests; the only value `--confirm` accepts.
@@ -1453,6 +1497,7 @@ fn user_layer_plan(
     let cwd = std::env::current_dir().map_err(|_| "current directory unavailable".to_string())?;
     let hooks = crate::update_hooks::plan(home, &cwd)?;
     let keys = crate::update_keys::plan(home)?;
+    let home_layer = crate::update_home::plan(home)?;
     // One snapshot: what the agents and the section were rendered from is the staged package.
     if agents.package_digest != staged.digest
         || routing.package_digest != staged.digest
@@ -1484,6 +1529,7 @@ fn user_layer_plan(
         bin_names,
         hooks,
         keys,
+        home: home_layer,
         skipped,
         plan_digest,
         cleanup,
@@ -1523,9 +1569,10 @@ fn cleanup_token<'a>(layer: &UserLayerPlan, given: Option<&'a str>) -> Result<Op
 
 /// Whether the terminal is asked to apply the layer: only for a plan that writes and only
 /// without `--confirm-cleanup` — a cleanup run without `--confirm` leaves the layer a preview,
-/// so a yes there never applies it (#2872 stage 2).
-fn asks(cleanup: Option<&str>, writes: bool) -> bool {
-    cleanup.is_none() && writes
+/// so a yes there never applies it (#2872 stage 2). The same holds for `--confirm-home`
+/// (#2871 U2b): a part with its own token is never applied by the terminal yes.
+fn asks(cleanup: Option<&str>, home: Option<&str>, writes: bool) -> bool {
+    cleanup.is_none() && home.is_none() && writes
 }
 
 /// Archive the cleanup items (`update_cleanup::apply` re-plans and checks the token again).
@@ -1666,6 +1713,7 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
     out.push_str(&format!("command names\n  moai: {}\n", p.bin_names.state));
     out.push_str(&p.hooks.summary());
     out.push_str(&p.keys.summary());
+    out.push_str(&p.home.summary());
     for s in &p.skipped {
         out.push_str(&format!(
             "  skipped {} {}: {}\n",
@@ -1703,10 +1751,17 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
 /// can be archived. Neither `confirm` nor the terminal yes applies it; only `confirm_cleanup`
 /// (`--confirm-cleanup`, the preview's `confirm_token`) does, after the layer — or alone, with
 /// the layer left a preview. A token that is not the preview's is refused before any write.
+///
+/// #2871 I2 U2b: the preview carries `home` (an `update_home::Layer`) when the HOME holds
+/// Go-generation items. Like the cleanup it has its own token: only `confirm_home`
+/// (`--confirm-home`, the preview's `home.confirm_token`) moves them to the dated backup,
+/// after the layer or alone. It is refused together with `confirm_cleanup`: both move items of
+/// `~/.moai`, so each would leave the other's preview stale.
 pub fn update_command(
     home: &Path,
     confirm: Option<&str>,
     confirm_cleanup: Option<&str>,
+    confirm_home: Option<&str>,
     ask: impl FnOnce(&str, &serde_json::Value) -> Result<bool>,
 ) -> Result<serde_json::Value> {
     const PERMISSION: &str = "moai-cli update confirmation";
@@ -1728,6 +1783,12 @@ pub fn update_command(
         || layer.hooks.writes()
         || layer.keys.writes();
     let cleanup = cleanup_token(&layer, confirm_cleanup)?;
+    let home_token = crate::update_home::check_token(&layer.home, confirm_home)?;
+    if home_token.is_some() && cleanup.is_some() {
+        return Err(
+            "the home token and the cleanup token both move items of ~/.moai and would make each other's preview stale; confirm one at a time, nothing applied".into(),
+        );
+    }
     // The preview value: what a pipe gets as the envelope result and what the terminal question
     // shows (#2894).
     let preview = || {
@@ -1753,11 +1814,17 @@ pub fn update_command(
         if let Some(c) = &layer.cleanup {
             out["cleanup"] = c.clone();
         }
+        // #2871 I2 U2b: only a HOME with Go-generation items has a `home` part.
+        if let Some(h) = layer.home.to_json() {
+            out["home"] = h.clone();
+        }
         out
     };
     let digest = match confirm {
         Some(d) => d.to_string(),
-        None if asks(cleanup, writes) && ask(&layer_summary(&layer), &preview())? => {
+        // A cleanup or home run without `--confirm` leaves the layer a preview: a yes at the
+        // question never applies a part with its own token.
+        None if asks(cleanup, home_token, writes) && ask(&layer_summary(&layer), &preview())? => {
             layer.plan_digest.clone()
         }
         None => {
@@ -1766,6 +1833,11 @@ pub fn update_command(
                 let r = run_cleanup(home, &staged, t, PERMISSION)?;
                 out["revert"] = json!({"cleanup": cleanup_revert(&r)});
                 out["cleanup_result"] = r;
+            }
+            if let Some(t) = home_token {
+                let r = crate::update_home::apply(home, t, PERMISSION)?;
+                out["revert"] = json!({"home": r["revert"]});
+                out["home_result"] = r;
             }
             return Ok(out);
         }
@@ -1868,6 +1940,8 @@ pub fn update_command(
         || matches!(hooks["state"].as_str(), Some("applied" | "partial"));
     // #2872 stage 2: the confirmed cleanup, after the layer; an error is reported beside it.
     let cleanup = cleanup.map(|t| part(run_cleanup(home, &staged, t, PERMISSION)));
+    // #2871 I2 U2b: the confirmed home part, after the layer; an error is reported beside it.
+    let home_part = home_token.map(|t| part(crate::update_home::apply(home, t, PERMISSION)));
     let revert = |op: &str, r: &serde_json::Value| {
         r["receipt"]
             .as_str()
@@ -1902,6 +1976,10 @@ pub fn update_command(
     if let Some(c) = cleanup {
         out["revert"]["cleanup"] = json!(cleanup_revert(&c));
         out["cleanup_result"] = c;
+    }
+    if let Some(h) = home_part {
+        out["revert"]["home"] = h["revert"].clone();
+        out["home_result"] = h;
     }
     Ok(out)
 }
@@ -2716,9 +2794,11 @@ mod user_layer_tests {
         layer.cleanup = None;
         assert!(cleanup_token(&layer, Some("cleanup:0123456789abcdef")).is_err());
         // The terminal is asked only for a plan that writes and never on a cleanup run.
-        assert!(asks(None, true));
-        assert!(!asks(None, false));
-        assert!(!asks(Some("cleanup:0123456789abcdef"), true));
+        assert!(asks(None, None, true));
+        assert!(!asks(None, None, false));
+        assert!(!asks(Some("cleanup:0123456789abcdef"), None, true));
+        // #2871 U2b: a home token alone leaves the layer a preview too.
+        assert!(!asks(None, Some("home:0123456789abcdef"), true));
     }
 
     /// Audit 6847256437 B1: a host whose skill copy passed the preview but did not land in the
