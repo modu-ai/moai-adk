@@ -534,6 +534,27 @@ pub fn recover(root: &Path, receipt_id: &str, permission: &str) -> Result<Value>
 mod tests {
     use super::*;
 
+    /// #2936 R-fix (audit mutant M16): the walk stops at the project root. When the removal
+    /// empties every folder up to it, the root stays, and so does what sits beside it. The
+    /// writers always leave a state folder in the root, so only a direct call reaches this edge.
+    #[test]
+    fn prune_empty_dirs_keeps_the_project_root_and_its_siblings() {
+        let parent = tempfile::TempDir::new().unwrap();
+        let root = parent.path().join("project");
+        let sibling = parent.path().join("sibling");
+        fs::create_dir_all(root.join(".agents/skills/moai")).unwrap();
+        fs::create_dir_all(&sibling).unwrap();
+
+        prune_empty_dirs(&root.join(".agents/skills/moai"), &root);
+        assert!(!root.join(".agents").exists(), "the emptied folders go");
+        assert!(root.is_dir(), "the project root was removed");
+        assert!(sibling.is_dir(), "a sibling of the root was removed");
+
+        // A start at the root itself removes nothing.
+        prune_empty_dirs(&root, &root);
+        assert!(root.is_dir(), "the project root was removed");
+    }
+
     #[test]
     fn three_way_decisions() {
         // The eight rows of the decision table (REQ-01B-01).

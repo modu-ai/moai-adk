@@ -340,7 +340,8 @@ pub struct AfterMove {
     /// Set when the settings file moves: the hook entries and deny rules it carried.
     pub wiring_lost: Option<WiringLost>,
     /// `true` when a bounded read gave up (the folder walk passed its limit, or an include or
-    /// ignore list was not read): the lists above may be incomplete.
+    /// ignore list was not read) or the moving settings file could not be read as a JSON
+    /// object (`wiring_lost` is then `None`): the lists above may be incomplete.
     pub unknown: bool,
 }
 
@@ -1916,10 +1917,11 @@ fn kind_of(path: &str) -> &'static str {
     }
 }
 
+const GONE: &str = "no counterpart \u{2014} will be gone";
+
 /// #2936 R-A: what this generation puts in place of one kind of moved file, and a note. The
 /// user layer is named, never read (O-3: this preview does not read HOME).
 fn counterpart_of(kind: &str) -> (&'static str, &'static str) {
-    const GONE: &str = "no counterpart \u{2014} will be gone";
     const USER_LAYER: &str = "user layer after moai update";
     match kind {
         "hook" => (
@@ -1949,7 +1951,11 @@ fn counterpart_of(kind: &str) -> (&'static str, &'static str) {
 }
 
 /// #2936 R-A: the moving items grouped by kind, and the counterpart of each kind.
-fn plan_counterparts(items: &[Item]) -> (BTreeMap<String, u64>, Vec<Counterpart>) {
+fn plan_counterparts(
+    project: &Path,
+    items: &[Item],
+    settings: &[(&'static str, String)],
+) -> (BTreeMap<String, u64>, Vec<Counterpart>) {
     let mut kinds = BTreeMap::new();
     for i in items
         .iter()
@@ -1957,10 +1963,18 @@ fn plan_counterparts(items: &[Item]) -> (BTreeMap<String, u64>, Vec<Counterpart>
     {
         *kinds.entry(i.kind.clone()).or_insert(0u64) += 1;
     }
+    let hooks_replace = kinds.contains_key("hook") && hooks_step_has_work(project, items, settings);
     let rows = kinds
         .iter()
         .map(|(kind, moved)| {
-            let (counterpart, note) = counterpart_of(kind);
+            let (counterpart, note) = match kind.as_str() {
+                "hook" if !hooks_replace => (
+                    GONE,
+                    "after this move no Go hook entry or script is left, so the hooks step \
+                     installs nothing; write the MoAI hook set with hooks-apply",
+                ),
+                _ => counterpart_of(kind),
+            };
             Counterpart {
                 kind: kind.clone(),
                 moved: *moved,
@@ -1970,6 +1984,48 @@ fn plan_counterparts(items: &[Item]) -> (BTreeMap<String, u64>, Vec<Counterpart>
         })
         .collect();
     (kinds, rows)
+}
+
+/// #2936 F-A: whether the `hooks` install step still finds a Go hook to replace once the moving
+/// files are gone (`go_hooks::plan`: `replace` rather than `none`). A Go hook entry counts
+/// when the settings file stays and carries one; a script counts when it stays in the hook
+/// folder. A settings file that stays but is not a JSON object, or a hook folder that cannot
+/// be listed, makes that step refuse rather than report `unchanged`, so both count as work.
+fn hooks_step_has_work(
+    project: &Path,
+    items: &[Item],
+    settings: &[(&'static str, String)],
+) -> bool {
+    let moving = |path: &str| items.iter().any(|i| moving_file(i) && i.path == path);
+    if !moving(SETTINGS) {
+        let text = settings
+            .iter()
+            .find(|(f, _)| *f == SETTINGS)
+            .map_or("", |(_, text)| text.as_str());
+        // `settings` holds "" both for a missing file and for an empty one, so the file's
+        // presence is read here: an empty file that stays is not a JSON object either, and
+        // the step refuses it just as it refuses any other non-object.
+        if fs::symlink_metadata(project.join(SETTINGS)).is_ok() {
+            match serde_json::from_str::<serde_json::Value>(text) {
+                Ok(serde_json::Value::Object(map)) => {
+                    let entries = map
+                        .get("hooks")
+                        .and_then(serde_json::Value::as_object)
+                        .map_or(0, |h| crate::go_hooks::split(h).0.len());
+                    if entries > 0 {
+                        return true;
+                    }
+                }
+                _ => return true,
+            }
+        }
+    }
+    match crate::go_hooks::scripts(project) {
+        Ok(names) => names
+            .iter()
+            .any(|n| !moving(&format!("{}/{n}", crate::go_hooks::GO_HOOK_DIR))),
+        Err(_) => true,
+    }
 }
 
 /// An item that moves on its own (not the two folders that move whole).
@@ -2069,8 +2125,8 @@ fn plan_after_move(
     let (empty, walk_stopped) = empty_after(project, &moving, unrecorded_limit());
     let paths: Vec<String> = moving.iter().map(|p| p.to_string()).collect();
     let (dangling, unread) = crate::worktree_include::lists_selecting(project, &paths);
-    let wiring_lost = moving
-        .contains(SETTINGS)
+    let settings_move = moving.contains(SETTINGS);
+    let wiring_lost = settings_move
         .then(|| {
             settings
                 .iter()
@@ -2078,11 +2134,14 @@ fn plan_after_move(
                 .and_then(|(_, text)| wiring_of(text))
         })
         .flatten();
+    // F-F: a moving settings file that is not a JSON object (invalid JSON, or another JSON
+    // shape) has wiring the preview could not read; it says so instead of showing nothing.
+    let wiring_unread = settings_move && wiring_lost.is_none();
     AfterMove {
         empty_folders: empty.into_iter().collect(),
         dangling,
         wiring_lost,
-        unknown: walk_stopped || unread,
+        unknown: walk_stopped || unread || wiring_unread,
     }
 }
 
@@ -2416,7 +2475,7 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
     for i in items.iter_mut() {
         i.kind = kind_of(&i.path).into();
     }
-    let (kinds, counterparts) = plan_counterparts(&items);
+    let (kinds, counterparts) = plan_counterparts(&project, &items, &settings);
     let after_move = plan_after_move(&project, &items, &settings);
     // O-2 (#2936): the skill mirror folders may end up empty; the apply deletes no folder, so
     // the preview says so and the user decides.
@@ -2670,7 +2729,9 @@ fn bound_digest(plan: &GoStatePlan) -> Result<String> {
 //   1. `.moai` → the Go backup (`.moai-backup`, or `.moai-backup-<UTC>` when taken), one
 //      rename that never overwrites;
 //   2. a new `.moai/` with the receipt `.moai/backups/<UTC>/go-state-receipt.json`, `pending`
-//      (when this step fails, the rename is undone at once);
+//      (when this step fails, the rename is undone at once; the ignore file of the backup
+//      area, written right after it, is outside that undo: its failure says `partial apply`
+//      and names the revert plan);
 //   3. the proven `.claude/` files move to `.moai/backups/<UTC>/go-state/<same path>`;
 //   4. the earlier root's product state moves, `.moai-cli/<entry>` → `.moai/<entry>`;
 //   5. SPECs are copied from the backup into `.moai/specs`;
@@ -2963,6 +3024,17 @@ fn keep_backups_out_of_git(project: &Path) -> Result<()> {
     }
 }
 
+/// F-I (#2936): the ignore file is written after the pending receipt, so a failure there is
+/// outside the step-2 undo. `done` says what is on disk (the receipt is `pending`, so
+/// `state_root` says `interrupted`); the revert plan takes the project back. The phrase
+/// `partial apply` makes `contract::classify` say `partial`.
+pub(crate) fn ignore_file_failed(e: &str, done: &str, stamp: &str) -> String {
+    format!(
+        "partial apply: {done}; failed at {MOAI_DIR}/backups/.gitignore: {e}; no file has moved \
+         yet; run `moai go-state-revert-plan <project> --backup {stamp}` to put the project back"
+    )
+}
+
 fn parent_of(rel: &str) -> Result<String> {
     Path::new(rel)
         .parent()
@@ -3246,7 +3318,18 @@ fn apply_moving_folder(
             );
         }
     };
-    keep_backups_out_of_git(project)?;
+    crate::update::test_fault("go_state_before_ignore")
+        .and_then(|_| keep_backups_out_of_git(project))
+        .map_err(|e| {
+            ignore_file_failed(
+                &e,
+                &format!(
+                    "the Go folder was renamed to {go_backup} and a new {MOAI_DIR}/ holds the \
+                     pending receipt"
+                ),
+                stamp,
+            )
+        })?;
     receipt.moves[0].sha256 = crate::baseline::tree_digest(&project.join(&go_backup), &[])?;
     saved = save_receipt(project, MOAI_DIR, &receipt, Some(&saved))?;
     // 3. The proven `.claude/` and `.agents/` entries: files, the mirror links (as links) and
@@ -3426,7 +3509,15 @@ fn apply_legacy_move(
             return Err(format!("{e}; nothing else changed"));
         }
     };
-    keep_backups_out_of_git(project)?;
+    crate::update::test_fault("go_state_legacy_before_ignore")
+        .and_then(|_| keep_backups_out_of_git(project))
+        .map_err(|e| {
+            ignore_file_failed(
+                &e,
+                &format!("a new {MOAI_DIR}/ holds the pending receipt"),
+                stamp,
+            )
+        })?;
     let saved = move_state_entries(project, &mut receipt, saved)?;
     let marker = crate::state_root::marker_bytes("legacy-move", &[]);
     finish_with_marker(project, receipt, saved, &marker)
@@ -4416,5 +4507,67 @@ mod tests {
             std::os::unix::fs::symlink(dir.path().join("t.md"), &file).unwrap();
             assert!(still_as_previewed(&file, "f.md", &sha).is_err());
         }
+    }
+
+    /// #3004 P4-2 AC-11: the hooks the Rust build generates call `moai`, and none of them is
+    /// taken for the Go wiring's `moai hook <event>`; a real Go handler still is.
+    #[test]
+    fn the_rust_generated_hooks_are_not_the_go_wiring() {
+        let go = br#"{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"moai hook session-start"}]}]}}"#;
+        assert!(hooks_proof(go).is_ok());
+        for lane in [None, Some(("agent-1", "o/r"))] {
+            let set = crate::hooks::current_hooks("codex", lane).unwrap();
+            let doc = serde_json::json!({ "hooks": set });
+            assert!(doc.to_string().contains("\"moai "), "{doc}");
+            let proof = hooks_proof(doc.to_string().as_bytes());
+            assert!(proof.is_err(), "{lane:?}: {proof:?}");
+        }
+        for command in [
+            "moai hook-dispatch --host codex --event stop",
+            "moai hook-receipt --host codex",
+            "moai claim-verify .",
+            "moai lane-stop-hook --lane a --repo o/r",
+        ] {
+            let doc = serde_json::json!({"hooks": {"Stop": [{"hooks": [
+                {"type": "command", "command": command}]}]}});
+            assert!(
+                hooks_proof(doc.to_string().as_bytes()).is_err(),
+                "{command}"
+            );
+        }
+    }
+
+    /// #2936 R-fix (audit mutant M03): a folder that is a link to a folder is not emptied by
+    /// the move, however many of the files that would move sit inside its target. The
+    /// classification refuses a path with a linked component, so only this function's own
+    /// check stands between a link and the list of emptied folders.
+    #[cfg(unix)]
+    #[test]
+    fn a_linked_folder_is_not_listed_as_emptied() {
+        use std::collections::BTreeSet;
+        let tmp = tempfile::TempDir::new().unwrap();
+        let project = tmp.path().join("project");
+        fs::create_dir_all(project.join(".claude")).unwrap();
+        fs::create_dir_all(project.join("store/workflows")).unwrap();
+        fs::write(project.join("store/workflows/w1.md"), "# w1\n").unwrap();
+        std::os::unix::fs::symlink("../store/workflows", project.join(".claude/workflows"))
+            .unwrap();
+        // The same shape with a real folder, to show the walk lists what it should.
+        fs::create_dir_all(project.join(".claude/rules")).unwrap();
+        fs::write(project.join(".claude/rules/r.md"), "# r\n").unwrap();
+
+        let linked = BTreeSet::from([".claude/workflows/w1.md"]);
+        let (empty, stopped) = empty_after(&project, &linked, 100);
+        assert!(!stopped);
+        assert!(empty.is_empty(), "a link was listed as emptied: {empty:?}");
+
+        let real = BTreeSet::from([".claude/rules/r.md"]);
+        let (empty, stopped) = empty_after(&project, &real, 100);
+        assert!(!stopped);
+        assert_eq!(
+            empty,
+            BTreeSet::from([".claude/rules".to_string()]),
+            "`.claude` also holds the link, so it stays"
+        );
     }
 }

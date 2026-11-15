@@ -40,6 +40,7 @@
 //! detector (docs/hooks-generation.md §3, named limit; rc.2 A9 follow-up 2 #2323).
 
 use crate::claim::{parse_claim_line, ClaimRecord};
+use crate::comment_authority::{retain_rest, Dropped};
 use crate::forge::policy::{next_link, parse_utc, Clock};
 use crate::forge::transport::Transport;
 use crate::forge::Client;
@@ -336,17 +337,19 @@ pub struct VerifyRequest {
     pub allowed_authors: Vec<String>,
 }
 
-/// Every comment of the Issue (GET only, `Link` pagination).
+/// Every comment of the Issue a member wrote (GET only, `Link` pagination). What was left out
+/// because of its author comes back as the second value (Issue #3052).
 pub fn read_comments<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     owner: &str,
     repo: &str,
     issue: i64,
-) -> Result<Vec<IssueComment>> {
+) -> Result<(Vec<IssueComment>, Dropped)> {
     let mut url = Some(format!(
         "https://api.github.com/repos/{owner}/{repo}/issues/{issue}/comments?per_page=100"
     ));
     let mut out = Vec::new();
+    let mut ignored = Dropped::default();
     let mut pages = 0;
     while let Some(u) = url {
         pages += 1;
@@ -354,13 +357,14 @@ pub fn read_comments<T: Transport, C: Clock>(
             return Err("claim comment page limit exceeded (50)".into());
         }
         let resp = client.get(&u, None).map_err(String::from)?;
-        for c in resp
+        let mut page: Vec<Value> = resp
             .body
             .as_ref()
             .and_then(Value::as_array)
-            .into_iter()
-            .flatten()
-        {
+            .cloned()
+            .unwrap_or_default();
+        ignored.merge(retain_rest(&mut page));
+        for c in &page {
             if let (Some(id), Some(body)) = (c["id"].as_i64(), c["body"].as_str()) {
                 out.push(IssueComment {
                     id,
@@ -371,7 +375,7 @@ pub fn read_comments<T: Transport, C: Clock>(
         }
         url = resp.header("link").and_then(|l| next_link(Some(l)));
     }
-    Ok(out)
+    Ok((out, ignored))
 }
 
 fn check_request(req: &VerifyRequest) -> Result<()> {
@@ -402,8 +406,8 @@ pub fn verify_cli<T: Transport, C: Clock>(
 ) -> Result<Value> {
     check_request(req)?;
     let client = Client::new(transport, clock, Default::default(), Default::default());
-    let comments = read_comments(&client, &req.owner, &req.repo, req.issue_number)?;
-    let verdict = evaluate(
+    let (comments, ignored) = read_comments(&client, &req.owner, &req.repo, req.issue_number)?;
+    let mut verdict = evaluate(
         &comments,
         &Verifier {
             session: &req.session,
@@ -412,9 +416,27 @@ pub fn verify_cli<T: Transport, C: Clock>(
             now: clock.now(),
         },
     );
+    if !ignored.is_empty() {
+        verdict["ignored_control_lines"] = ignored.to_json();
+    }
     match refusal(&verdict) {
         None => Ok(verdict),
-        Some(message) => Err(message),
+        Some(message) => Err(if ignored.lines.is_empty() {
+            message
+        } else {
+            format!(
+                "{message}; {} control line(s) were ignored because their author is not a member \
+                 (comment ids {})",
+                ignored.lines.len(),
+                ignored
+                    .lines
+                    .iter()
+                    .take(10)
+                    .map(|l| l.comment_id.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        }),
     }
 }
 
@@ -1103,11 +1125,25 @@ fn accepted_tokens(issue: i64, verdict: &Value) -> Vec<String> {
         .collect()
 }
 
-/// The active claim record whose worktree contains `cwd`.
+/// The active claim record whose worktree contains `cwd`. When several records contain it (a
+/// lane worktree made inside the primary checkout's folder), the deepest worktree wins — the
+/// one with the most path components — so the nested worktree's own record is verified, not
+/// the outer one (#3030). Equal depth keeps the first record, as before.
 fn record_for(records: Vec<ClaimRecord>, cwd: &Path) -> Option<ClaimRecord> {
-    records
-        .into_iter()
-        .find(|r| std::fs::canonicalize(&r.worktree.path).is_ok_and(|p| cwd.starts_with(p)))
+    let mut best: Option<(usize, ClaimRecord)> = None;
+    for r in records {
+        let Ok(p) = std::fs::canonicalize(&r.worktree.path) else {
+            continue;
+        };
+        if !cwd.starts_with(&p) {
+            continue;
+        }
+        let depth = p.components().count();
+        if best.as_ref().is_none_or(|(d, _)| depth > *d) {
+            best = Some((depth, r));
+        }
+    }
+    best.map(|(_, r)| r)
 }
 
 /// `claim-verify --hook`: the host `PreToolUse` guard. Allows everything except a Bash

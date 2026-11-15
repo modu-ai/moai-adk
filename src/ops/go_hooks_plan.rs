@@ -20,5 +20,11 @@ pub const OPERATION: &str = "go_hooks.plan";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
     let home = std::env::var_os("HOME").map(PathBuf::from);
-    moai_cli::go_hooks::plan(&args.project, home.as_deref())
+    let plan = moai_cli::go_hooks::plan(&args.project, home.as_deref())?;
+    let path_env = std::env::var("PATH").unwrap_or_default();
+    Ok(moai_cli::go_hooks::with_gate(
+        plan,
+        home.as_deref(),
+        &path_env,
+    ))
 }

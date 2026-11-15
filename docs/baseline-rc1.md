@@ -20,7 +20,7 @@
 수집기는 아무것도 쓰지 않고 JSON 하나를 stdout으로 낸다. 파일 분리는 `jq`로 한다.
 
 ```sh
-moai-cli baseline-inventory <PROJECT> --go-baseline-commit 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 > out.json
+moai baseline-inventory <PROJECT> --go-baseline-commit 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 > out.json
 jq .baseline    out.json > rc1-baseline.json
 jq .inventory   out.json > rc1-inventory.json
 jq .claude_diff out.json > claude-diff.json

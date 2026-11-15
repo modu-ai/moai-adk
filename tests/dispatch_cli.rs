@@ -86,7 +86,7 @@ impl Transport for Remote {
             }
             let id = 100 + self.comments.borrow().len() as u64;
             if self.lands.get() && self.hide_n.get() != Some(self.posts()) {
-                self.comments.borrow_mut().push(json!({"id":id,"body":request.body.as_ref().unwrap()["body"],"user":{"id":self.actor.get()},"created_at":"2026-11-11T00:00:00Z"}));
+                self.comments.borrow_mut().push(json!({"id":id,"author_association":"MEMBER","body":request.body.as_ref().unwrap()["body"],"user":{"id":self.actor.get()},"created_at":"2026-11-11T00:00:00Z"}));
             }
             if self.lost.replace(false) || self.lose_n.get() == Some(self.posts()) {
                 return Err("response lost".into());
@@ -758,9 +758,9 @@ fn unrelated_generic_packets_do_not_block_valid_dispatch_observation() {
     }
     r.comments
         .borrow_mut()
-        .push(json!({"id":9001,"body":"HOLD: preserve the user's draft","user":{"id":99}}));
+        .push(json!({"id":9001,"author_association":"MEMBER","body":"HOLD: preserve the user's draft","user":{"id":99}}));
     r.comments.borrow_mut().push(
-        json!({"id":9002,"body":"<!-- moai-op other-operation:p1:d2:1 -->","user":{"id":99}}),
+        json!({"id":9002,"author_association":"MEMBER","body":"<!-- moai-op other-operation:p1:d2:1 -->","user":{"id":99}}),
     );
     let v = check(&two, &r).unwrap();
     assert_eq!(v["disposition"], "accepted");
@@ -846,5 +846,560 @@ fn decision_receipts_need_their_record_and_never_create_business_acceptance() {
         }
         assert_eq!(r.posts(), posts);
         assert_eq!(journal_bytes(root.path()), bytes);
+    }
+}
+
+// The fake remote stamps every comment 2026-11-11T00:00:00Z, which is `Time.now()`.
+const BASE: i64 = 1_794_355_200;
+fn at(secs: i64) -> Value {
+    json!(format!("2026-11-11T00:{:02}:{:02}Z", secs / 60, secs % 60))
+}
+
+#[test]
+fn dispatch_times_are_separate_values() {
+    let root = temp_root();
+    let r = Remote::new();
+    let mut m = packet();
+    // A time written inside a message is a claim by its author, never the observed time.
+    m.created_at = "2099-01-01T00:00:00Z".into();
+    send(root.path(), &m, &r).unwrap();
+    let queued = check(&m, &r).unwrap();
+    assert_eq!(queued["sent_at"], BASE);
+    for key in ["received_at", "ack_comment_id", "decided_at"] {
+        assert_eq!(queued[key], Value::Null, "{key}");
+    }
+    r.actor.set(22);
+    ack(root.path(), &m, answer(&m, "accepted"), &r).unwrap();
+    {
+        let mut comments = r.comments.borrow_mut();
+        comments[1]["created_at"] = at(40);
+        comments[2]["created_at"] = at(41);
+    }
+    let v = dispatch::check_cli(
+        CheckRequest {
+            dispatch: m.clone(),
+        },
+        &r,
+        &At(BASE + 400),
+    )
+    .unwrap();
+    assert_eq!(v["sent_at"], BASE);
+    assert_eq!(v["received_at"], BASE + 40);
+    assert_eq!(v["decided_at"], BASE + 41);
+    assert_eq!(v["record_comment_id"], 100);
+    assert_eq!(v["ack_comment_id"], 101);
+    assert_eq!(v["decision_comment_id"], 102);
+    assert_eq!(v["disposition"], "accepted");
+    // The earlier keys keep their meaning.
+    assert_eq!(v["received_ack"], true);
+    assert_eq!(v["ack_alert"], "received");
+    assert_eq!(v["claim_authorized"], false);
+    assert_eq!(v["ownership_transferred"], false);
+    assert_eq!(v["audit_gate_integrated"], false);
+
+    // A duplicate ACK keeps the lowest comment id, even when a later comment is earlier in time.
+    let mut dup = r.comments.borrow()[1].clone();
+    dup["id"] = json!(50);
+    dup["created_at"] = at(45);
+    r.comments.borrow_mut().push(dup);
+    let v = dispatch::check_cli(
+        CheckRequest {
+            dispatch: m.clone(),
+        },
+        &r,
+        &At(BASE + 400),
+    )
+    .unwrap();
+    assert_eq!(v["ack_comment_id"], 50);
+    assert_eq!(v["received_at"], BASE + 45);
+
+    // An ACK is not a decision.
+    let root = temp_root();
+    let r = Remote::new();
+    send(root.path(), &m, &r).unwrap();
+    r.actor.set(22);
+    message::ack_cli(
+        root.path(),
+        message::AckRequest {
+            message: m.clone(),
+            payload_digest: payload_digest(&m),
+        },
+        "decision:1",
+        &r,
+        &Time,
+    )
+    .unwrap();
+    r.comments.borrow_mut()[1]["created_at"] = at(40);
+    let v = dispatch::check_cli(
+        CheckRequest {
+            dispatch: m.clone(),
+        },
+        &r,
+        &At(BASE + 400),
+    )
+    .unwrap();
+    assert_eq!(v["received_at"], BASE + 40);
+    assert_eq!(v["decided_at"], Value::Null);
+    assert_eq!(v["decision_comment_id"], Value::Null);
+
+    // An ACK observed before its own record is a conflict, not a negative duration.
+    r.comments.borrow_mut()[0]["created_at"] = at(30);
+    r.comments.borrow_mut()[1]["created_at"] = at(20);
+    let e = dispatch::check_cli(CheckRequest { dispatch: m }, &r, &At(BASE + 400)).unwrap_err();
+    assert_eq!(e.kind, moai_cli::contract::Kind::Conflict);
+}
+
+fn start_of(m: &Message) -> Message {
+    let mut s = answer(m, "accepted");
+    s.report_id = format!("{}-start", m.report_id);
+    s.event = "dispatch-start".into();
+    s.payload = json!({"dispatch_report_id":m.report_id,"dispatch_payload_digest":payload_digest(m),"note":"work begun"});
+    s
+}
+// The writer command arrives in a later slice; the fold is read through the generic S1 record.
+fn post(root: &Path, m: &Message, r: &Remote) {
+    message::record_cli(
+        root,
+        message::RecordRequest { message: m.clone() },
+        "decision:1",
+        r,
+        &Time,
+    )
+    .unwrap();
+}
+fn later(m: &Message, r: &Remote) -> Result<Value, moai_cli::contract::OpError> {
+    dispatch::check_cli(
+        CheckRequest {
+            dispatch: m.clone(),
+        },
+        r,
+        &At(BASE + 400),
+    )
+}
+fn conflict_kind(result: Result<Value, moai_cli::contract::OpError>) -> moai_cli::contract::Kind {
+    result.unwrap_err().kind
+}
+
+#[test]
+fn dispatch_start_requires_accepted_current_revision() {
+    use moai_cli::contract::Kind;
+    // Accepted, current: the start is folded with its own server time and comment id.
+    let root = temp_root();
+    let r = Remote::new();
+    let m = packet();
+    send(root.path(), &m, &r).unwrap();
+    r.actor.set(22);
+    ack(root.path(), &m, answer(&m, "accepted"), &r).unwrap();
+    let before = later(&m, &r).unwrap();
+    assert_eq!(before["started"], false);
+    assert_eq!(before["started_at"], Value::Null);
+    assert_eq!(before["start_comment_id"], Value::Null);
+    post(root.path(), &start_of(&m), &r);
+    // A start in the same second as the decision is allowed.
+    assert_eq!(later(&m, &r).unwrap()["started"], true);
+    r.comments.borrow_mut()[3]["created_at"] = at(60);
+    let v = later(&m, &r).unwrap();
+    assert_eq!(v["started"], true);
+    assert_eq!(v["started_at"], BASE + 60);
+    assert_eq!(v["start_comment_id"], 103);
+    assert_eq!(v["decided_at"], BASE);
+    assert_eq!(v["claim_authorized"], false);
+    assert_eq!(v["ownership_transferred"], false);
+    assert_eq!(v["audit_gate_integrated"], false);
+    // A start before the decision is a conflict, not a negative duration.
+    r.comments.borrow_mut()[2]["created_at"] = at(61);
+    assert_eq!(conflict_kind(later(&m, &r)), Kind::Conflict);
+
+    // Deferred or rejected decisions cannot start.
+    for kind in ["deferred", "rejected"] {
+        let root = temp_root();
+        let r = Remote::new();
+        send(root.path(), &m, &r).unwrap();
+        r.actor.set(22);
+        ack(root.path(), &m, answer(&m, kind), &r).unwrap();
+        post(root.path(), &start_of(&m), &r);
+        assert_eq!(conflict_kind(later(&m, &r)), Kind::Conflict, "{kind}");
+    }
+
+    // No ACK at all, and an ACK without a decision, cannot start either.
+    let root = temp_root();
+    let r = Remote::new();
+    send(root.path(), &m, &r).unwrap();
+    r.actor.set(22);
+    post(root.path(), &start_of(&m), &r);
+    assert_eq!(conflict_kind(later(&m, &r)), Kind::Conflict);
+    let root = temp_root();
+    let r = Remote::new();
+    send(root.path(), &m, &r).unwrap();
+    r.actor.set(22);
+    message::ack_cli(
+        root.path(),
+        message::AckRequest {
+            message: m.clone(),
+            payload_digest: payload_digest(&m),
+        },
+        "decision:1",
+        &r,
+        &Time,
+    )
+    .unwrap();
+    post(root.path(), &start_of(&m), &r);
+    assert_eq!(conflict_kind(later(&m, &r)), Kind::Conflict);
+
+    // A start that was current when written stays readable after a newer revision; one written
+    // after the newer record is a conflict.
+    let root = temp_root();
+    let r = Remote::new();
+    let v = send(root.path(), &m, &r).unwrap();
+    r.actor.set(22);
+    ack(root.path(), &m, answer(&m, "accepted"), &r).unwrap();
+    post(root.path(), &start_of(&m), &r);
+    r.actor.set(11);
+    let n = next(&m, &v);
+    send(root.path(), &n, &r).unwrap();
+    let new = later(&n, &r).unwrap();
+    assert_eq!(new["started"], false);
+    let old = later(&m, &r).unwrap();
+    assert_eq!(old["superseded"], true);
+    assert_eq!(old["started"], false);
+    r.comments.borrow_mut()[3]["created_at"] = at(60);
+    assert_eq!(conflict_kind(later(&n, &r)), Kind::Conflict);
+    assert_eq!(conflict_kind(later(&m, &r)), Kind::Conflict);
+
+    // The payload schema is closed: an unknown key is invalid, a blank note is a conflict.
+    // Only the receiver of the dispatch can start it, never its sender.
+    for field in [
+        "unknown_key",
+        "blank_note",
+        "wrong_digest",
+        "sender_starts",
+        "receiver_wrong",
+    ] {
+        let root = temp_root();
+        let r = Remote::new();
+        send(root.path(), &m, &r).unwrap();
+        r.actor.set(22);
+        ack(root.path(), &m, answer(&m, "accepted"), &r).unwrap();
+        let mut s = start_of(&m);
+        match field {
+            "unknown_key" => s.payload["extra"] = json!(true),
+            "blank_note" => s.payload["note"] = json!(" "),
+            "sender_starts" => {
+                s.sender = m.sender.clone();
+                r.actor.set(11);
+            }
+            "receiver_wrong" => s.receiver = m.receiver.clone(),
+            _ => s.payload["dispatch_payload_digest"] = json!(digest(b"wrong")),
+        }
+        post(root.path(), &s, &r);
+        let want = if field == "unknown_key" {
+            Kind::InvalidInput
+        } else {
+            Kind::Conflict
+        };
+        assert_eq!(conflict_kind(later(&m, &r)), want, "{field}");
+    }
+}
+
+#[test]
+fn recording_the_same_dispatch_twice_leaves_one_row() {
+    let root = temp_root();
+    let r = Remote::new();
+    let m = packet();
+    send(root.path(), &m, &r).unwrap();
+    r.actor.set(22);
+    ack(root.path(), &m, answer(&m, "accepted"), &r).unwrap();
+    post(root.path(), &start_of(&m), &r);
+    let once = later(&m, &r).unwrap();
+    assert_eq!(once["start_comment_id"], 103);
+    // The same packets observed again under other comment ids: one row, lowest id wins.
+    for (index, id, secs) in [(3, 500, 90), (0, 600, 5), (1, 700, 6)] {
+        let mut dup = r.comments.borrow()[index].clone();
+        dup["id"] = json!(id);
+        dup["created_at"] = at(secs);
+        r.comments.borrow_mut().push(dup);
+    }
+    let v = later(&m, &r).unwrap();
+    assert_eq!(v["start_comment_id"], 103);
+    assert_eq!(v["started_at"], BASE);
+    assert_eq!(v["record_comment_id"], 100);
+    assert_eq!(v["ack_comment_id"], 101);
+    assert_eq!(v["decision_comment_id"], 102);
+    assert_eq!(v["sent_at"], BASE);
+    // A lower id wins even when its server time is later.
+    let mut dup = r.comments.borrow()[3].clone();
+    dup["id"] = json!(50);
+    dup["created_at"] = at(70);
+    r.comments.borrow_mut().push(dup);
+    let v = later(&m, &r).unwrap();
+    assert_eq!(v["start_comment_id"], 50);
+    assert_eq!(v["started_at"], BASE + 70);
+    // A second, different start packet for the same dispatch is a conflict, not a second row.
+    let mut other = start_of(&m);
+    other.report_id = "d1-start-other".into();
+    other.payload["note"] = json!("a different packet");
+    post(root.path(), &other, &r);
+    assert_eq!(
+        conflict_kind(later(&m, &r)),
+        moai_cli::contract::Kind::Conflict
+    );
+}
+
+fn begin(
+    root: &Path,
+    m: &Message,
+    s: Message,
+    r: &Remote,
+) -> Result<Value, moai_cli::contract::OpError> {
+    dispatch::start_cli(
+        root,
+        dispatch::StartRequest {
+            dispatch: m.clone(),
+            start: s,
+        },
+        "decision:1",
+        r,
+        &Time,
+    )
+}
+fn outbox_has(root: &Path, report_id: &str) -> bool {
+    root.join(".moai-cli/messages/outbox")
+        .join(format!("{report_id}.json"))
+        .exists()
+}
+fn accepted_world() -> (TempDir, Remote, Message) {
+    let root = temp_root();
+    let r = Remote::new();
+    let m = packet();
+    send(root.path(), &m, &r).unwrap();
+    r.actor.set(22);
+    ack(root.path(), &m, answer(&m, "accepted"), &r).unwrap();
+    (root, r, m)
+}
+
+#[test]
+fn dispatch_start_write_is_idempotent() {
+    let (root, r, m) = accepted_world();
+    assert_eq!(r.posts(), 3);
+    let s = start_of(&m);
+    let v = begin(root.path(), &m, s.clone(), &r).unwrap();
+    assert_eq!(v["started"], true);
+    assert_eq!(v["start_comment_id"], 103);
+    assert_eq!(v["started_at"], BASE);
+    assert_eq!(v["disposition"], "accepted");
+    assert_eq!(v["claim_authorized"], false);
+    assert_eq!(v["ownership_transferred"], false);
+    assert_eq!(v["audit_gate_integrated"], false);
+    assert_eq!(r.posts(), 4);
+    assert!(outbox_has(root.path(), "d1-start"));
+    // The same request again, in this folder and in a fresh one: no POST, one outbox file,
+    // one row, and the first start time.
+    let restarted = temp_root();
+    for folder in [root.path(), restarted.path()] {
+        let again = begin(folder, &m, s.clone(), &r).unwrap();
+        assert_eq!(again["started_at"], v["started_at"]);
+        assert_eq!(again["start_comment_id"], 103);
+        assert_eq!(r.posts(), 4);
+        assert_eq!(r.comments.borrow().len(), 4);
+        assert!(outbox_has(folder, "d1-start"));
+    }
+    let starts = fs::read_dir(root.path().join(".moai-cli/messages/outbox"))
+        .unwrap()
+        .filter(|e| {
+            e.as_ref()
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .contains("start")
+        })
+        .count();
+    assert_eq!(starts, 1);
+
+    // A lost response is resumed only after observation, and never posts twice.
+    for landed in [false, true] {
+        let (root, r, m) = accepted_world();
+        r.lose_n.set(Some(4));
+        if !landed {
+            r.hide_n.set(Some(4));
+        }
+        let first = begin(root.path(), &m, start_of(&m), &r);
+        assert_eq!(first.is_ok(), landed);
+        let posts = r.posts();
+        let second = begin(root.path(), &m, start_of(&m), &r);
+        assert_eq!(second.is_ok(), landed);
+        assert_eq!(r.posts(), posts);
+        assert_eq!(check(&m, &r).unwrap()["started"], landed, "landed={landed}");
+    }
+}
+
+#[test]
+fn dispatch_start_refuses_before_ack_or_decision() {
+    use moai_cli::contract::Kind;
+    for case in ["no_ack", "ack_only", "deferred", "rejected"] {
+        let root = temp_root();
+        let r = Remote::new();
+        let m = packet();
+        send(root.path(), &m, &r).unwrap();
+        r.actor.set(22);
+        match case {
+            "no_ack" => {}
+            "ack_only" => {
+                message::ack_cli(
+                    root.path(),
+                    message::AckRequest {
+                        message: m.clone(),
+                        payload_digest: payload_digest(&m),
+                    },
+                    "decision:1",
+                    &r,
+                    &Time,
+                )
+                .unwrap();
+            }
+            kind => {
+                ack(root.path(), &m, answer(&m, kind), &r).unwrap();
+            }
+        }
+        let posts = r.posts();
+        let e = begin(root.path(), &m, start_of(&m), &r).unwrap_err();
+        assert_eq!(e.kind, Kind::Blocked, "{case}");
+        assert_eq!(r.posts(), posts, "{case}");
+        assert!(!outbox_has(root.path(), "d1-start"), "{case}");
+    }
+
+    // A superseded revision cannot be started; the new one has no ACK yet.
+    let (root, r, m) = accepted_world();
+    r.actor.set(11);
+    let v = check(&m, &r).unwrap();
+    let n = next(&m, &v);
+    send(root.path(), &n, &r).unwrap();
+    r.actor.set(22);
+    let posts = r.posts();
+    assert_eq!(
+        begin(root.path(), &m, start_of(&m), &r).unwrap_err().kind,
+        Kind::Blocked
+    );
+    assert_eq!(
+        begin(root.path(), &n, start_of(&n), &r).unwrap_err().kind,
+        Kind::Blocked
+    );
+    assert_eq!(r.posts(), posts);
+    // Even when the newer revision is accepted, the old one stays blocked.
+    ack(root.path(), &n, answer(&n, "accepted"), &r).unwrap();
+    let posts = r.posts();
+    assert_eq!(
+        begin(root.path(), &m, start_of(&m), &r).unwrap_err().kind,
+        Kind::Blocked
+    );
+    assert_eq!(r.posts(), posts);
+    assert!(!outbox_has(root.path(), "d1-start"));
+    assert_eq!(
+        begin(root.path(), &n, start_of(&n), &r).unwrap()["started"],
+        true
+    );
+
+    // A malformed or foreign start never reaches the provider.
+    let (root, r, m) = accepted_world();
+    for field in ["sender", "receiver", "digest", "event", "note"] {
+        let mut s = start_of(&m);
+        match field {
+            "sender" => s.sender = m.sender.clone(),
+            "receiver" => s.receiver = m.receiver.clone(),
+            "digest" => s.payload["dispatch_payload_digest"] = json!(digest(b"wrong")),
+            "event" => s.event = "dispatch-decision".into(),
+            _ => s.payload["note"] = json!(" "),
+        }
+        let sent = r.sent.borrow().len();
+        assert!(begin(root.path(), &m, s, &r).is_err(), "{field}");
+        assert_eq!(r.sent.borrow().len(), sent, "{field}");
+        assert!(!outbox_has(root.path(), "d1-start"), "{field}");
+    }
+
+    // A second, different start packet for the same dispatch is refused before any POST.
+    begin(root.path(), &m, start_of(&m), &r).unwrap();
+    let posts = r.posts();
+    let mut other = start_of(&m);
+    other.report_id = "d1-start-other".into();
+    other.payload["note"] = json!("a different packet");
+    assert_eq!(
+        begin(root.path(), &m, other, &r).unwrap_err().kind,
+        Kind::Conflict
+    );
+    assert_eq!(r.posts(), posts);
+    assert!(!outbox_has(root.path(), "d1-start-other"));
+}
+
+#[test]
+fn dispatch_start_requires_permission_reference() {
+    let (root, r, m) = accepted_world();
+    let sent = r.sent.borrow().len();
+    let too_long = "x".repeat(moai_cli::contract::PERMISSION_REFERENCE_MAX_BYTES + 1);
+    for permission in ["", " ", "null", "placeholder", "a\nb", too_long.as_str()] {
+        let result = dispatch::start_cli(
+            root.path(),
+            dispatch::StartRequest {
+                dispatch: m.clone(),
+                start: start_of(&m),
+            },
+            permission,
+            &r,
+            &Time,
+        );
+        assert_eq!(
+            result.unwrap_err().kind,
+            moai_cli::contract::Kind::PermissionReferenceMissing,
+            "{permission:?}"
+        );
+        assert_eq!(r.sent.borrow().len(), sent, "{permission:?}");
+    }
+    assert!(!outbox_has(root.path(), "d1-start"));
+    // The binary refuses the missing flag before it reads stdin or contacts anything.
+    #[cfg(unix)]
+    {
+        use std::process::{Command, Stdio};
+        let out = Command::new(crate::common::MOAI_BIN)
+            .args(["dispatch-start", "."])
+            .clean_env()
+            .env("HOME", root.path())
+            .current_dir(root.path())
+            .stdin(Stdio::null())
+            .output()
+            .unwrap();
+        assert!(!out.status.success());
+        assert!(String::from_utf8_lossy(&out.stderr).contains("--permission-reference"));
+    }
+}
+
+#[test]
+fn ack_alert_boundary_uses_the_shared_constant() {
+    let n = dispatch::ACK_ALERT_SECS;
+    assert_eq!(n, 300);
+    let root = temp_root();
+    let r = Remote::new();
+    let m = packet();
+    send(root.path(), &m, &r).unwrap();
+    for (offset, state) in [
+        (n - 1, "waiting"),
+        (n, "unacknowledged"),
+        (n + 1, "unacknowledged"),
+        (-1, "unknown"),
+    ] {
+        let v = dispatch::check_cli(
+            CheckRequest {
+                dispatch: m.clone(),
+            },
+            &r,
+            &At(BASE + offset),
+        )
+        .unwrap();
+        assert_eq!(v["ack_alert"], state, "offset {offset}");
+        assert_eq!(
+            v["elapsed_secs"],
+            if offset < 0 {
+                Value::Null
+            } else {
+                json!(offset)
+            }
+        );
     }
 }

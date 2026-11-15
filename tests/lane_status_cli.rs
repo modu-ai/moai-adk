@@ -33,11 +33,13 @@ fn get(url: &str, body: Value) -> Exchange {
 
 fn claim(id: i64, session: &str, epoch: u64) -> Value {
     json!({"id": id, "created_at": format!("2026-11-10T00:00:{:02}Z", id % 60),
+           "author_association": "MEMBER",
            "body": format!("moai-claim: session={session} epoch={epoch} lease_until={LIVE}")})
 }
 
 fn note(id: i64, body: &str) -> Value {
-    json!({"id": id, "created_at": format!("2026-11-10T00:01:{:02}Z", id % 60), "body": body})
+    json!({"id": id, "created_at": format!("2026-11-10T00:01:{:02}Z", id % 60),
+           "author_association": "MEMBER", "body": body})
 }
 
 fn issue(n: i64, body: &str) -> Value {
@@ -337,6 +339,90 @@ fn lane_status_covers_every_phase_with_its_evidence() {
     // The issue listed twice is one row; #16 (no claim) and the foreign PR #200 make none.
     assert_eq!(out["rows"].as_array().unwrap().len(), 8, "{out}");
     assert_eq!(out["writes"], json!("none"));
+}
+
+/// Sets (or, with `None`, removes) the `author_association` of one comment in a recorded list.
+fn set_association(exchanges: &mut [Exchange], issue: i64, comment: i64, value: Option<&str>) {
+    let url = format!("{API}/issues/{issue}/comments?per_page=100");
+    let list = exchanges
+        .iter_mut()
+        .find(|e| e.request.url == url)
+        .and_then(|e| e.response.body.as_mut())
+        .and_then(Value::as_array_mut)
+        .unwrap();
+    let c = list.iter_mut().find(|c| c["id"] == json!(comment)).unwrap();
+    match value {
+        Some(v) => c["author_association"] = json!(v),
+        None => {
+            c.as_object_mut().unwrap().remove("author_association");
+        }
+    }
+}
+
+/// Issue #3052: a claim line or a verdict counts only when a member wrote it; what was left
+/// out is reported with its comment id.
+#[test]
+fn a_claim_or_verdict_by_a_non_member_is_left_out_and_reported() {
+    for association in [
+        Some("NONE"),
+        Some("CONTRIBUTOR"),
+        Some("member"),
+        Some(""),
+        None,
+    ] {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = fs::canonicalize(tmp.path()).unwrap();
+        let p = project(&root);
+        let mut ex = remote(false);
+        set_association(&mut ex, 11, 1101, association);
+        set_association(&mut ex, 15, 1502, association);
+        let out = run(&p, request(lanes(), decisions()), ex);
+        let rows = out["rows"].as_array().unwrap();
+        assert!(
+            rows.iter().all(|r| r["issue"] != json!(11)),
+            "{association:?}"
+        );
+        let r = row(&out, "agent-6", 15);
+        assert_ne!(r["phase"], json!("waiting"), "{association:?}");
+        assert_ne!(r["phase_evidence"]["verdict_comment_id"], json!(1502));
+        let ignored = &out["ignored_control_lines"];
+        assert_eq!(ignored["reason"], json!("no_member_authority"));
+        assert_eq!(ignored["count"], json!(2), "{association:?}");
+        let mut ids: Vec<Value> = ignored["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|i| i["comment_id"].clone())
+            .collect();
+        ids.sort_by_key(|v| v.as_i64());
+        assert_eq!(ids, vec![json!(1101), json!(1502)]);
+        let kinds: Vec<&str> = ignored["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|i| i["kind"].as_str().unwrap())
+            .collect();
+        assert!(
+            kinds.contains(&"claim") && kinds.contains(&"audit_verdict"),
+            "{kinds:?}"
+        );
+        assert_eq!(
+            association.is_none() || association == Some(""),
+            ignored.get("hint").is_some()
+        );
+    }
+    for association in ["OWNER", "MEMBER", "COLLABORATOR"] {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = fs::canonicalize(tmp.path()).unwrap();
+        let p = project(&root);
+        let mut ex = remote(false);
+        set_association(&mut ex, 11, 1101, Some(association));
+        set_association(&mut ex, 15, 1502, Some(association));
+        let out = run(&p, request(lanes(), decisions()), ex);
+        assert_eq!(row(&out, "agent-1", 11)["phase"], json!("claimed"));
+        assert_eq!(row(&out, "agent-6", 15)["phase"], json!("waiting"));
+        assert!(out.get("ignored_control_lines").is_none());
+    }
 }
 
 /// AC-2: every idle cause, each with its evidence; `unknown` when no record supports one.
@@ -953,6 +1039,7 @@ fn s6_packet(id: u64, mut m: moai_cli::message::Message, ack: bool) -> Value {
         1,
     );
     json!({"id": id, "user": {"id": 11}, "created_at": "2026-11-11T00:00:00Z",
+        "author_association": "MEMBER",
         "body": format!("{marker}\n{}\n<!-- moai:message:end -->",
             serde_json::to_string(&wire).unwrap())})
 }
@@ -1216,6 +1303,38 @@ fn s6_dispatch_receipt_is_not_business_acceptance() {
         s6_lane(&out, "receiver")["sent_reports"][0]["event"],
         "dispatch-decision"
     );
+}
+
+#[test]
+fn s6_dispatch_check_and_communication_agree_at_the_ack_alert_boundary() {
+    let tmp = tempfile::tempdir().unwrap();
+    let n = moai_cli::dispatch::ACK_ALERT_SECS;
+    for (age, alert) in [
+        (n - 1, "waiting"),
+        (n, "unacknowledged"),
+        (n + 1, "unacknowledged"),
+    ] {
+        let out = s6_run(
+            tmp.path(),
+            vec![s6_packet(101, s6_dispatch(), false)],
+            age,
+            true,
+        );
+        let lane = s6_lane(&out, "sender");
+        // `dispatches` is the dispatch-check view; `sent_reports` is lane-status's own row.
+        assert_eq!(lane["dispatches"][0]["ack_alert"], alert, "age {age}");
+        assert_eq!(lane["sent_reports"][0]["ack_alert"], alert, "age {age}");
+        assert_eq!(lane["dispatches"][0]["elapsed_secs"], age);
+        assert_eq!(lane["sent_reports"][0]["elapsed_secs"], age);
+    }
+    // A record from the future is unknown for dispatch-check and unavailable here.
+    let out = s6_run(
+        tmp.path(),
+        vec![s6_packet(101, s6_dispatch(), false)],
+        -1,
+        true,
+    );
+    assert_eq!(out["communication"]["available"], false);
 }
 
 #[test]

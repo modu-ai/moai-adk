@@ -332,6 +332,15 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Record that an accepted dispatch has started
+    ///
+    /// Record the receiver's separate start packet for an accepted, current dispatch
+    /// revision (typed JSON stdin); not ownership, a claim or completion.
+    DispatchStart {
+        project: PathBuf,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Check dispatch revisions and late acknowledgements
     ///
     /// Observe dispatch revisions, decisions and the five-minute ACK alert (GET only).
@@ -397,6 +406,32 @@ enum Command {
         /// GitHub login whose claim lines count (repeatable); default: any author.
         #[arg(long = "allowed-author", requires = "issue")]
         allowed_author: Vec<String>,
+    },
+    /// Link a claim to the worktree you work in
+    ///
+    /// Point your active claim record at the worktree and branch you really work in (#3030),
+    /// so `claim-verify --hook` guards your commits there: run it after you made a worktree
+    /// or renamed the branch following the claim. Path and branch are read from git, never
+    /// typed. It checks your ownership against the claim comment first (GET only), changes
+    /// only the record's worktree, and writes nothing when the record already says the same.
+    ClaimLink {
+        /// A folder of the clone whose journal holds the claim (run it inside the new worktree).
+        project: PathBuf,
+        /// Issue number of the claim.
+        #[arg(long, value_parser = clap::value_parser!(i64).range(1..))]
+        issue: i64,
+        /// Id of your claim comment on the Issue.
+        #[arg(long, value_parser = clap::value_parser!(i64).range(1..))]
+        comment: i64,
+        /// Your session name, as written in the claim line (`session=`).
+        #[arg(long)]
+        lane: String,
+        /// OWNER/REPO; default: the project's `origin` remote on GitHub.
+        #[arg(long)]
+        repo: Option<String>,
+        /// The folder to link; default: the project folder.
+        #[arg(long)]
+        worktree: Option<PathBuf>,
     },
     /// Show the current claim record of a task
     ///
@@ -634,8 +669,9 @@ enum Command {
     },
     /// Create the previewed worktree of a claim
     ///
-    /// Create the planned worktree with `git worktree add --lock -b` (06-C #2007); refuses
-    /// without `--force` when the branch, path or task already has a worktree.
+    /// Create the planned worktree with `git worktree add --lock -b` (06-C #2007); answers
+    /// `decision: conflict` and creates nothing when the branch, path or task already has a
+    /// worktree. It never forces; to adopt an existing worktree, run `moai claim-link`.
     WorktreeApply {
         project: PathBuf,
         #[command(flatten)]
@@ -1160,6 +1196,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         AuditClonePlan { .. } => "audit.clone.plan",
         ClaimAcquire { .. } => "claim.acquire",
         ClaimHandoff { .. } => "claim.handoff",
+        ClaimLink { .. } => "claim.link",
         ClaimRelease { .. } => "claim.release",
         ClaimShow { .. } => "claim.show",
         ClaimVerify { .. } => "claim.verify",
@@ -1184,6 +1221,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         LeaderTick { .. } => "leader.tick",
         DispatchRecord { .. } => "dispatch.record",
         DispatchAck { .. } => "dispatch.ack",
+        DispatchStart { .. } => "dispatch.start",
         DispatchCheck => "dispatch.check",
         MessageAck { .. } => "message.ack",
         MessageReconcile { .. } => "message.reconcile",
@@ -1369,6 +1407,16 @@ fn run_internal(
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
+        Command::DispatchStart {
+            project,
+            permission_reference,
+        } => moai_cli::dispatch::start_cli(
+            &project,
+            input::<moai_cli::dispatch::StartRequest>()?,
+            &permission_reference,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
         Command::DispatchCheck => moai_cli::dispatch::check_cli(
             input::<moai_cli::dispatch::CheckRequest>()?,
             &moai_cli::forge::transport::GhTransport::from_env()?,
@@ -1416,6 +1464,26 @@ fn run_internal(
             &task,
             epoch,
             reason.as_deref().unwrap_or("unspecified"),
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        // Typed errors: a held journal lock is the `unavailable` answer (#2345, #3030).
+        Command::ClaimLink {
+            project,
+            issue,
+            comment,
+            lane,
+            repo,
+            worktree,
+        } => moai_cli::claim_link::link_cli(
+            &moai_cli::claim_link::LinkRequest {
+                project: &project,
+                issue,
+                comment,
+                lane: &lane,
+                repo: repo.as_deref(),
+                worktree: worktree.as_deref(),
+            },
+            &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,
         ),
         Command::ClaimHandoff {
@@ -1705,7 +1773,14 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                     }
                     _ => input::<moai_cli::claim_verify::VerifyRequest>()?,
                 };
-                moai_cli::claim_verify::verify_cli(&request, &transport, &clock)
+                let mut verdict = moai_cli::claim_verify::verify_cli(&request, &transport, &clock)?;
+                // #3030: a record that points at another folder gets the command that links
+                // this one; the key is absent when there is nothing to say (the hook above
+                // never adds it).
+                if let Some(hint) = moai_cli::claim_link::mismatch_hint(&project, &request) {
+                    verdict["worktree_link"] = hint;
+                }
+                Ok(verdict)
             }
         }
         Command::ClaimShow { project, task } => moai_cli::claim::show_cli(&project, &task),
@@ -1765,11 +1840,25 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             let home = std::env::var_os("HOME").map(PathBuf::from);
             let mut out =
                 moai_cli::hooks::plan_with(&project, &host, home.as_deref(), lane.lane_loop())?;
-            merge_binary_state(&mut out);
+            merge_binary_state(&mut out, &project, home.as_deref());
             // Outside the plan digest: the #2391 hook state from local evidence, read only.
             let path_env = std::env::var("PATH").unwrap_or_default();
-            out["hook_status"] =
-                moai_cli::hooks::status(&project, &host, home.as_deref(), &path_env)?;
+            // The `moai` state was probed once above; the status block repeats it.
+            let moai = out.get("hook_binary").cloned();
+            out["hook_status"] = moai_cli::hooks::status_with(
+                &project,
+                &host,
+                home.as_deref(),
+                &path_env,
+                moai.as_ref(),
+            )?;
+            // What the apply gate would say about the `moai` just probed.
+            let state = moai
+                .as_ref()
+                .and_then(|m| m["state"].as_str())
+                .unwrap_or("wrong_generation")
+                .to_string();
+            moai_cli::hook_legacy::annotate(&mut out, &state);
             Ok(out)
         }
         Command::HooksRevert {
@@ -1785,15 +1874,17 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             lane,
         } => {
             let home = std::env::var_os("HOME").map(PathBuf::from);
-            let mut out = moai_cli::hooks::apply_with(
+            let path_env = std::env::var("PATH").unwrap_or_default();
+            let mut out = moai_cli::update_hooks::apply_direct(
                 &project,
                 &host,
                 home.as_deref(),
                 &plan_digest,
                 &permission_reference,
                 lane.lane_loop(),
+                &path_env,
             )?;
-            merge_binary_state(&mut out);
+            merge_binary_state(&mut out, &project, home.as_deref());
             Ok(out)
         }
         // Printed by `hook_dispatch_main`, which `main` calls before any internal dispatch.
@@ -2156,10 +2247,34 @@ fn usage_error(e: clap::Error) -> ExitCode {
             for line in &detail {
                 eprintln!("{line}");
             }
+            // #3015 C8: a stray argument gets the command's usage line (clap's own, which shows
+            // the command's shape and none of the words typed).
+            if matches!(e.kind(), ErrorKind::UnknownArgument) {
+                if let Some(usage) = usage_line(&e) {
+                    eprintln!("{usage}");
+                }
+            }
         }
     }
     println!("{}", contract::failure(op, contract::Kind::Usage, message));
     ExitCode::from(2)
+}
+
+/// The command's usage line, read from the usage clap built out of the command definition
+/// (`ContextKind::Usage`), never from the rendered error text: that text quotes the stray
+/// argument, so an argument holding a newline and `Usage:` could pose as the usage line
+/// (#3015 C8 audit B1). Only the first line of that value is used.
+fn usage_line(e: &clap::Error) -> Option<String> {
+    use clap::error::{ContextKind, ContextValue};
+    match e.get(ContextKind::Usage)? {
+        ContextValue::StyledStr(usage) => usage
+            .to_string()
+            .lines()
+            .next()
+            .filter(|l| l.starts_with("Usage:"))
+            .map(str::to_string),
+        _ => None,
+    }
 }
 
 /// The name the error frame's help pointer prints: `moai`, whichever name the user ran
@@ -2269,13 +2384,17 @@ fn lane_stop_hook_main(lane: &str, repo: &str, snapshot: Option<&std::path::Path
     ExitCode::SUCCESS
 }
 
-/// Adds whether the generated hook command resolves on this process's PATH (#2348) to a
-/// hooks-plan / hooks-apply result.
-fn merge_binary_state(out: &mut serde_json::Value) {
+/// Adds the state of the hook binary, the first `moai` on this process's PATH (#2348, #3004),
+/// to a hooks-plan / hooks-apply result, probed with `home` as its only variable.
+fn merge_binary_state(
+    out: &mut serde_json::Value,
+    project: &std::path::Path,
+    home: Option<&std::path::Path>,
+) {
     let path_env = std::env::var("PATH").unwrap_or_default();
     if let (Some(out), serde_json::Value::Object(state)) = (
         out.as_object_mut(),
-        moai_cli::hooks::binary_state(&path_env),
+        moai_cli::hooks::binary_state(project, &path_env, home),
     ) {
         out.extend(state);
     }

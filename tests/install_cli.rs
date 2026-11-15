@@ -626,7 +626,13 @@ fn the_first_moai_on_path_is_reported_with_its_generation() {
     let v = first(&go);
     assert_eq!(v["generation"], json!("go"), "{v}");
     assert_eq!(v["basis"], json!("--version: moai 3.1.5 (go)"), "{v}");
-    assert!(v["note"].as_str().unwrap().contains("until R5"), "{v}");
+    let note = v["note"].as_str().unwrap();
+    assert!(note.contains("is not the Rust build"), "{v}");
+    assert!(note.contains("generated hooks call moai"), "{v}");
+    assert!(
+        !note.contains("until R5") && !note.contains("moai-cli"),
+        "{v}"
+    );
     assert!(v["path"].as_str().unwrap().ends_with("go-bin/moai"), "{v}");
 
     let rust = root.path().join("rust-bin");

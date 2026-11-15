@@ -74,6 +74,11 @@ pub struct Snapshot {
     /// What was left unread (older comments, a failed read).
     #[serde(default)]
     pub partial: Vec<String>,
+    /// Comments left out because no repository member wrote them (Issue #3052). The collector
+    /// filters where the raw answer first becomes a [`Comment`]; a saved snapshot does not
+    /// carry it.
+    #[serde(skip)]
+    pub ignored: crate::comment_authority::Dropped,
 }
 
 /// The search for open pull requests whose text names `Moai-Claim: <n>#`; the hits are then
@@ -348,7 +353,7 @@ pub fn decide(snap: &Snapshot) -> Value {
         "uncertain" => "read the older comments before deciding".to_string(),
         _ => "nothing to do".to_string(),
     };
-    json!({
+    let mut out = json!({
         "issue": n,
         "state": snap.state,
         "verdict": verdict,
@@ -361,14 +366,18 @@ pub fn decide(snap: &Snapshot) -> Value {
         "next": next,
         "partial": snap.partial,
         "writes": false,
-    })
+    });
+    if !snap.ignored.is_empty() {
+        out["ignored_control_lines"] = snap.ignored.to_json();
+    }
+    out
 }
 
 const GRAPHQL_URL: &str = "https://api.github.com/graphql";
 
 const QUERY: &str =
     "query($owner:String!,$repo:String!,$n:Int!,$claims:String!){repository(owner:$owner,name:$repo){\
-issue(number:$n){number state comments(last:100){totalCount nodes{databaseId body createdAt}} \
+issue(number:$n){number state comments(last:100){totalCount nodes{databaseId authorAssociation body createdAt}} \
 timelineItems(itemTypes:[CROSS_REFERENCED_EVENT],last:100){nodes{...on CrossReferencedEvent{\
 source{...on PullRequest{number state body}}}}}}} \
 claimers:search(query:$claims,type:ISSUE,first:30){nodes{...on PullRequest{number state body}}}}";
@@ -394,25 +403,26 @@ pub fn collect<T: Transport>(owner: &str, repo: &str, n: u64, t: &T) -> Result<S
             .unwrap_or("issue not found");
         return Err(format!("Issue #{n} unreadable: {msg}"));
     }
-    let comments: Vec<Comment> = issue["comments"]["nodes"]
+    // Issue #3052: the close table counts only when a repository member wrote it. The count of
+    // comments read is taken before anything is left out.
+    let mut nodes: Vec<Value> = issue["comments"]["nodes"]
         .as_array()
-        .map(|a| {
-            a.iter()
-                .map(|c| Comment {
-                    id: c["databaseId"].as_u64().unwrap_or(0),
-                    body: c["body"].as_str().unwrap_or("").to_string(),
-                    at: c["createdAt"].as_str().unwrap_or("").to_string(),
-                })
-                .collect()
-        })
+        .cloned()
         .unwrap_or_default();
+    let read = nodes.len();
+    let ignored = crate::comment_authority::retain_graphql(&mut nodes);
+    let comments: Vec<Comment> = nodes
+        .iter()
+        .map(|c| Comment {
+            id: c["databaseId"].as_u64().unwrap_or(0),
+            body: c["body"].as_str().unwrap_or("").to_string(),
+            at: c["createdAt"].as_str().unwrap_or("").to_string(),
+        })
+        .collect();
     let mut partial = Vec::new();
     let total = issue["comments"]["totalCount"].as_u64().unwrap_or(0);
-    if total > comments.len() as u64 {
-        partial.push(format!(
-            "comments: read the newest {} of {total}",
-            comments.len()
-        ));
+    if total > read as u64 {
+        partial.push(format!("comments: read the newest {read} of {total}"));
     }
     let mut prs: Vec<RefPr> = Vec::new();
     let referring = issue["timelineItems"]["nodes"]
@@ -443,6 +453,7 @@ pub fn collect<T: Transport>(owner: &str, repo: &str, n: u64, t: &T) -> Result<S
         comments,
         prs,
         partial,
+        ignored,
     })
 }
 
@@ -660,7 +671,7 @@ mod tests {
     fn one_request_reads_the_issue_and_its_pull_requests() {
         let answer = json!({"data": {"repository": {"issue": {
         "number": 7, "state": "OPEN",
-        "comments": {"totalCount": 101, "nodes": [{"databaseId": 5, "body": TABLE, "createdAt": "t"}]},
+        "comments": {"totalCount": 101, "nodes": [{"databaseId": 5, "authorAssociation": "MEMBER", "body": TABLE, "createdAt": "t"}]},
         "timelineItems": {"nodes": [
             {"source": {"number": 9, "state": "MERGED", "body": "Moai-Claim: 7#1"}},
             {"source": {"number": 9, "state": "MERGED", "body": "Moai-Claim: 7#1"}},
@@ -684,6 +695,42 @@ mod tests {
         assert_eq!(decide(&snap)["merged_prs"], json!([9]));
     }
 
+    /// Issue #3052: the query asks for the author's association, and a close table that a
+    /// non-member wrote closes nothing; the answer names the comment it left out. The same table
+    /// from an owner, a member or a collaborator decides.
+    #[test]
+    fn a_close_table_from_a_non_member_is_ignored_and_reported() {
+        assert!(QUERY.contains("nodes{databaseId authorAssociation body createdAt}"));
+        let answer = |association: Option<&str>| {
+            let mut node = json!({"databaseId": 5, "body": TABLE, "createdAt": "t"});
+            if let Some(a) = association {
+                node["authorAssociation"] = json!(a);
+            }
+            json!({"data": {"repository": {"issue": {
+                "number": 7, "state": "OPEN",
+                "comments": {"totalCount": 1, "nodes": [node]},
+                "timelineItems": {"nodes": []}}}}})
+        };
+        for association in [Some("NONE"), Some("CONTRIBUTOR"), Some(""), None] {
+            let t = Fixed(RefCell::new(Vec::new()), answer(association));
+            let snap = collect("o", "r", 7, &t).unwrap();
+            let out = decide(&snap);
+            assert_eq!(out["verdict"], json!("no_table"), "{association:?}: {out}");
+            assert_eq!(
+                out["ignored_control_lines"]["items"][0]["comment_id"],
+                json!(5),
+                "{association:?}: {out}"
+            );
+            assert_eq!(snap.partial, Vec::<String>::new(), "{association:?}");
+        }
+        for association in ["OWNER", "MEMBER", "COLLABORATOR"] {
+            let t = Fixed(RefCell::new(Vec::new()), answer(Some(association)));
+            let out = decide(&collect("o", "r", 7, &t).unwrap());
+            assert_eq!(out["verdict"], json!("close"), "{association}: {out}");
+            assert!(out.get("ignored_control_lines").is_none(), "{association}");
+        }
+    }
+
     /// Audit 6874717869 N1: an open pull request whose body carries only the claim line (no
     /// `#<n>`, so no cross-reference) is found by the search and keeps the Issue open; a search
     /// hit that claims another Issue does not.
@@ -692,7 +739,7 @@ mod tests {
         let answer = json!({"data": {
             "repository": {"issue": {
                 "number": 7, "state": "OPEN",
-                "comments": {"totalCount": 1, "nodes": [{"databaseId": 5, "body": TABLE}]},
+                "comments": {"totalCount": 1, "nodes": [{"databaseId": 5, "authorAssociation": "MEMBER", "body": TABLE}]},
                 "timelineItems": {"nodes": [
                     {"source": {"number": 9, "state": "MERGED", "body": "Moai-Claim: 7#1"}}]}}},
             "claimers": {"nodes": [

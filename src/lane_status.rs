@@ -13,6 +13,7 @@
 //! here: the caller passes them with a source and a time, and they are cited as given.
 //! Not done here: host session events (#A12), posting the assignment drafts, live runs.
 use crate::claim_verify::{classify_comment, evaluate, CommentKind, IssueComment, Verifier};
+use crate::comment_authority::{retain_rest, Dropped};
 use crate::forge::policy::{next_link, parse_utc, Clock};
 use crate::forge::transport::{HttpRequest, HttpResponse, Transport};
 use crate::forge::Client;
@@ -220,6 +221,8 @@ pub struct Snapshot {
     pub prs: Vec<PrData>,
     pub worktrees: std::result::Result<Vec<WorktreeData>, String>,
     pub now: i64,
+    /// Comments left out because a member did not write them (Issue #3052).
+    pub ignored: Dropped,
 }
 
 fn validate(req: &LaneStatusRequest) -> Result<()> {
@@ -296,9 +299,11 @@ pub(crate) fn one<T: Transport, C: Clock>(client: &Client<'_, T, C>, url: &str) 
     Ok(resp.body.unwrap_or(Value::Null))
 }
 
-/// Issue or PR comments from the API, sorted by id without repeats.
-pub(crate) fn read_comments(raw: Vec<Value>) -> Vec<Comment> {
-    comments_from(&raw)
+/// Issue or PR comments from the API, sorted by id without repeats. Only comments a member wrote
+/// are kept (Issue #3052); what was dropped comes back as the second value.
+pub(crate) fn read_comments(mut raw: Vec<Value>) -> (Vec<Comment>, Dropped) {
+    let dropped = retain_rest(&mut raw);
+    (comments_from(&raw), dropped)
 }
 
 fn comments_from(raw: &[Value]) -> Vec<Comment> {
@@ -437,14 +442,17 @@ fn collect_with_raw<T: Transport, C: Clock>(
     )?;
     let mut issues = Vec::new();
     let mut raw = Vec::new();
+    let mut ignored = Dropped::default();
     for n in &wanted {
         let issue = one(client, &format!("{repo}/issues/{n}"))?;
         let mut source_urls = Vec::new();
-        let (raw_comments, complete) = pages_with_evidence(
+        let (mut raw_comments, complete) = pages_with_evidence(
             client,
             format!("{repo}/issues/{n}/comments?per_page=100"),
             Some(&mut source_urls),
         )?;
+        // Both the table and the message evidence read only what a member wrote.
+        ignored.merge(retain_rest(&mut raw_comments));
         let comments = comments_from(&raw_comments);
         issues.push(IssueData {
             number: *n,
@@ -504,10 +512,12 @@ fn collect_with_raw<T: Transport, C: Clock>(
                 }
             }
         }
-        pr.comments = read_comments(pages(
+        let (comments, dropped) = read_comments(pages(
             client,
             format!("{repo}/issues/{}/comments?per_page=100", pr.number),
         )?);
+        pr.comments = comments;
+        ignored.merge(dropped);
     }
     let worktrees = crate::worktree::worktrees(project).map(|list| {
         list.into_iter()
@@ -527,6 +537,7 @@ fn collect_with_raw<T: Transport, C: Clock>(
             prs,
             worktrees,
             now: clock.now(),
+            ignored,
         },
         raw,
     ))
@@ -549,7 +560,7 @@ fn full_shas(text: &str) -> Vec<String> {
 }
 
 /// The last `AUDIT … <head> … verdict: PASS|FAIL` line naming `head`, with its comment id.
-fn verdict_on(comments: &[Comment], head: &str) -> Option<(&'static str, i64)> {
+pub(crate) fn verdict_on(comments: &[Comment], head: &str) -> Option<(&'static str, i64)> {
     let mut found = None;
     for c in comments {
         for line in c.body.lines() {
@@ -973,7 +984,7 @@ pub fn build(req: &LaneStatusRequest, snap: &Snapshot) -> Value {
     // `idle: true | false | null`; only `true` is an idle lane (audit B1 6850252311).
     let idle_true = idle.iter().filter(|l| l["idle"] == json!(true)).count();
     let summary = summary_line(rows.len(), idle.len(), idle_true, ready.len());
-    json!({
+    let mut out = json!({
         "summary": summary,
         "rows": rows.into_iter().map(|r| r.value).collect::<Vec<_>>(),
         "idle": idle,
@@ -982,7 +993,11 @@ pub fn build(req: &LaneStatusRequest, snap: &Snapshot) -> Value {
         "worktrees": worktrees,
         "writes": "none",
         "note": "pane states and pending decisions are the caller's records, cited as given",
-    })
+    });
+    if !snap.ignored.is_empty() {
+        out["ignored_control_lines"] = snap.ignored.to_json();
+    }
+    out
 }
 
 // S6 consumes the same complete Issue snapshot as the original table. It never opens
@@ -1321,7 +1336,7 @@ fn communication<T: Transport, C: Clock>(
             let elapsed = now.checked_sub(at);
             let alert = if report.ack.is_some() {
                 "received"
-            } else if elapsed.is_some_and(|n| n >= 300) {
+            } else if elapsed.is_some_and(|n| n >= crate::dispatch::ACK_ALERT_SECS) {
                 "unacknowledged"
             } else {
                 "waiting"
@@ -1451,9 +1466,11 @@ mod tests {
             prs: vec![],
             worktrees: Ok(vec![]),
             now: 0,
+            ignored: Dropped::default(),
         };
         let out = build(&req, &snap);
         assert_eq!(out["rows"], json!([]));
+        assert!(out.get("ignored_control_lines").is_none());
         assert_eq!(
             out["summary"],
             json!("0 rows: no claim, pull request or worktree was found for the named Issues; 0 lane(s) named, 0 idle; 0 ready Issue(s)")
