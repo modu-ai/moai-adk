@@ -1510,6 +1510,60 @@ fn a_leader_with_orca_dispatches_through_a_run_and_detects_the_channel() {
     );
 }
 
+/// #3005 P10 and P11: OMP enters a skill with `/skill:moai <text>` (the text is plain text, not a
+/// flag), and an OMP lane keeps going with goal mode, which the `goal` tool's `drop` ends; OMP
+/// has no interval timer and no count of empty reads, so the count stays with the tool.
+#[test]
+fn omp_has_an_entry_spelling_and_a_wake_that_a_lane_can_end() {
+    let skill = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/SKILL.md"),
+    )
+    .unwrap();
+    for p in [
+        "`/skill:moai project` in OMP",
+        "`/skill:moai optimize` in OMP",
+        "`/skill:moai --mode-agent …` in OMP, which hands the text after the skill name to the skill as plain text, not as a flag of its own",
+    ] {
+        assert!(skill.contains(p), "SKILL.md must say `{p}`");
+    }
+    let agent = workflow("mode-agent.md");
+    let leader = workflow("mode-leader.md");
+    assert!(
+        agent.contains("`/skill:moai --mode-agent` in OMP; no other spelling enters this mode"),
+        "mode-agent.md must name the OMP entry"
+    );
+    assert!(
+        leader.contains("`/skill:moai --mode-leader …` in OMP; no other spelling enters this mode"),
+        "mode-leader.md must name the OMP entry"
+    );
+    for (file, key) in [
+        ("project.md", "`/skill:moai project` in OMP"),
+        ("update.md", "`/skill:moai update` in OMP"),
+        ("optimize.md", "`/skill:moai optimize` in OMP"),
+    ] {
+        assert!(workflow(file).contains(key), "{file} must say `{key}`");
+    }
+    let section = section_of(&agent, "Watching on your own");
+    for p in [
+        "OMP goal mode (the next bullet)",
+        "On OMP (Oh My Pi 18.18.7; read in its installed documents and source on 2026-11-15, no live OMP session was run)",
+        "`omp --goal \"<objective>\"` (interactive only)",
+        "it stops on `complete`, on `drop`, or when two turns in a row make the same tool calls with the same results",
+        "Use goal mode and not `/loop`",
+        "the `goal` tool's `op: \"drop\"` discards the goal and ends goal mode",
+        "nothing in OMP lets you turn `/loop` off (only Esc or a person's `/loop` does)",
+        "OMP has no timer that repeats a prompt every N minutes and no count of empty results",
+        "the count stays with `moai lane-next --max-empty`",
+        "never `complete` a goal that only ran out of work, because `complete` is for verified completion",
+        "on OMP `drop` the goal after the line is printed",
+    ] {
+        assert!(
+            section.contains(p),
+            "`Watching on your own` must say `{p}`:\n{section}"
+        );
+    }
+}
+
 /// #3005 N12: the observations example in the leader's workflow is a file `lane-safe-to-reset`
 /// accepts (its keys are checked by the tool, which refuses an unknown one).
 #[test]

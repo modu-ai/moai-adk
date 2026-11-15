@@ -1,6 +1,6 @@
 # OPTIMIZE
 
-Entered with `/moai optimize` in Claude Code or `$moai optimize` in Codex CLI (leader decision on Issue #2724). It shows how much space the repository's leftovers hold and which of them could go. It is a preview only: this route deletes, moves and writes nothing.
+Entered with `/moai optimize` in Claude Code, `$moai optimize` in Codex CLI or `/skill:moai optimize` in OMP (leader decision on Issue #2724). It shows how much space the repository's leftovers hold and which of them could go. It is a preview only: this route deletes, moves and writes nothing.
 
 ## Input
 

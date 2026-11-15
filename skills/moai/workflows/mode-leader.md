@@ -1,6 +1,6 @@
 # MODE-LEADER
 
-Entered with `/moai --mode-leader [--autonomy full|semi]`; no other spelling enters this mode. The procedures this mode follows are defined once in the MoAI repository's `docs/design-review/autonomy-modes-spec.md` (the SPEC below); this workflow names them by section and does not restate them.
+Entered with `/moai --mode-leader [--autonomy full|semi]` in Claude Code, `$moai --mode-leader …` in Codex CLI or `/skill:moai --mode-leader …` in OMP; no other spelling enters this mode. The procedures this mode follows are defined once in the MoAI repository's `docs/design-review/autonomy-modes-spec.md` (the SPEC below); this workflow names them by section and does not restate them.
 
 ## Input
 

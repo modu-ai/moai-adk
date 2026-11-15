@@ -1,6 +1,6 @@
 # PROJECT
 
-`/moai project` (`$moai project` in Codex CLI) describes the current project for MoAI: it tells a new project from an existing one, runs the matching interview, records what it detected, and offers the code map. It extends SETUP and keeps SETUP's approval rules. The project facts live in `project.yaml` in the project's state folder — `.moai/` once `state_root.generation` is `rust` (Issue #2725), otherwise the earlier `.moai-cli/` — and in the AGENTS.md managed section; no product, structure or tech documents are written (user decision 16 = B, Issue #2496).
+`/moai project` (`$moai project` in Codex CLI, `/skill:moai project` in OMP) describes the current project for MoAI: it tells a new project from an existing one, runs the matching interview, records what it detected, and offers the code map. It extends SETUP and keeps SETUP's approval rules. The project facts live in `project.yaml` in the project's state folder — `.moai/` once `state_root.generation` is `rust` (Issue #2725), otherwise the earlier `.moai-cli/` — and in the AGENTS.md managed section; no product, structure or tech documents are written (user decision 16 = B, Issue #2496).
 
 ## Input
 
