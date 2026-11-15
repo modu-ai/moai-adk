@@ -25,6 +25,8 @@ struct Fx {
     _tmp: TempDir,
     root: PathBuf,
     home: PathBuf,
+    /// The `PATH` the binary runs with: a stub `git` folder can come first, or the only entry.
+    path: std::cell::RefCell<String>,
 }
 
 impl Fx {
@@ -40,6 +42,7 @@ impl Fx {
             _tmp: tmp,
             root,
             home,
+            path: std::cell::RefCell::new("/usr/bin:/bin".to_string()),
         };
         git_ok(&fx.root, &["init", "-q", "-b", "main"]);
         let mut profile = json!({
@@ -77,7 +80,7 @@ impl Fx {
             .args(&full)
             .clean_env()
             .env("HOME", &self.home)
-            .env("PATH", "/usr/bin:/bin")
+            .env("PATH", self.path.borrow().as_str())
             .env("LC_ALL", "C")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -864,4 +867,312 @@ fn a_user_rule_for_the_personal_file_does_not_make_the_second_plan_add_a_line() 
     assert_eq!(Fx::ignore_row(&again)["action"], "unchanged", "{again}");
     fx.apply_ok("ignored");
     assert_eq!(fx.ignore(), text);
+}
+
+impl Fx {
+    /// A project whose update has moved `.moai-cli/` to `.moai/`; `files` (relative to the root,
+    /// under `.moai-cli/`) were committed before the move. `rules` is the user's `.gitignore`.
+    fn moved(github_issues: Option<bool>, files: &[&str], rules: &str) -> Fx {
+        let fx = Fx::new(github_issues);
+        fs::write(fx.root.join(".gitignore"), rules).unwrap();
+        for rel in files {
+            let file = fx.root.join(rel);
+            if file.is_dir() {
+                // The project setup made this folder; the case wants a file of that name.
+                fs::remove_dir_all(&file).unwrap();
+            }
+            fs::create_dir_all(file.parent().unwrap()).unwrap();
+            fs::write(&file, "{}\n").unwrap();
+            git_ok(&fx.root, &["add", "-f", "--", rel]);
+        }
+        git_ok(
+            &fx.root,
+            &[
+                "-c",
+                "user.name=fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+                "commit",
+                "-q",
+                "--allow-empty",
+                "-m",
+                "state",
+            ],
+        );
+        fs::rename(fx.root.join(".moai-cli"), fx.root.join(".moai")).unwrap();
+        fs::write(
+            fx.root.join(".moai/moai-cli.json"),
+            r#"{"schema_version":1,"generation":"moai-cli"}"#,
+        )
+        .unwrap();
+        fx
+    }
+
+    /// Puts a `git` first on `PATH` that refuses `word` (a subcommand or option) with exit
+    /// `code` and a message, and is the real git for everything else.
+    fn git_fails_on(&self, word: &str, code: i32) {
+        let dir = self.root.parent().unwrap().join("stub-bin");
+        fs::create_dir_all(&dir).unwrap();
+        let script = format!(
+            "#!/bin/sh\nfor a in \"$@\"; do\n  if [ \"$a\" = '{word}' ]; then\n    echo 'fatal: stub refuses {word}' >&2\n    exit {code}\n  fi\ndone\nexec /usr/bin/git \"$@\"\n"
+        );
+        common::write_executable(&dir.join("git"), &script);
+        *self.path.borrow_mut() = format!("{}:/usr/bin:/bin", dir.display());
+    }
+
+    /// A `PATH` with no `git` on it.
+    fn without_git(&self) {
+        let dir = self.root.parent().unwrap().join("empty-bin");
+        fs::create_dir_all(&dir).unwrap();
+        *self.path.borrow_mut() = dir.display().to_string();
+    }
+
+    /// `agents-plan` answered with its envelope, ok or not.
+    fn plan_envelope(&self, local_file: &str) -> Value {
+        self.run(&["agents-plan"], &Fx::request(local_file))
+    }
+}
+
+/// N1 (audit 6899590801, leader decision): a user rule wins over a name git tracked in the
+/// earlier folder. The new folder keeps ignoring what the rule ignores, no `!` line is written
+/// for it, and the preview names the rule, the path and the earlier name whose tracking ends.
+#[test]
+fn a_user_rule_beats_a_tracked_name_in_the_earlier_folder() {
+    // (rule, tracked file, the new-folder name the rule ignores, a path probed there)
+    let cases = [
+        (
+            "state/",
+            ".moai-cli/state/lane.json",
+            "state/",
+            ".moai/state/session-token.json",
+        ),
+        (
+            "config/",
+            ".moai-cli/config/sections/language.yaml",
+            "config/",
+            ".moai/config/credentials.json",
+        ),
+        (
+            "evidence",
+            ".moai-cli/evidence/run.json",
+            "evidence/",
+            ".moai/evidence/run.json",
+        ),
+    ];
+    for (rule, tracked, name, probe) in cases {
+        let fx = Fx::moved(Some(true), &[tracked], &format!("{rule}\n"));
+        let before = fx.ignored(probe);
+        assert!(before, "{rule}: the rule ignores {probe} on its own");
+
+        let plan = fx.plan("none");
+        let detail = Fx::ignore_row(&plan)["detail"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let line = format!(
+            "tracking ends: your rule `{rule}` in .gitignore ignores .moai/{name}, which git tracks as .moai-cli/{name}"
+        );
+        assert!(detail.lines().any(|l| l == line), "{rule}:\n{detail}");
+        assert!(
+            !detail.contains(&format!("kept because git tracks .moai-cli/{name}")),
+            "{rule}:\n{detail}"
+        );
+        assert!(
+            !detail.lines().any(|l| l == format!("+ !.moai/{name}")),
+            "{rule}:\n{detail}"
+        );
+
+        fx.apply_ok("none");
+        let text = fx.ignore();
+        let block = &text[text.find(BEGIN).unwrap()..];
+        assert!(
+            !block.contains(&format!("!.moai/{name}\n")),
+            "{rule}:\n{text}"
+        );
+        assert!(
+            fx.ignored(probe),
+            "{rule}: {probe} stopped being ignored\n{text}"
+        );
+    }
+}
+
+/// N1 boundary: a rule that ignores nothing a tracked name needs leaves the keep line in place.
+#[test]
+fn a_user_rule_elsewhere_does_not_cost_a_tracked_name_its_line() {
+    let fx = Fx::moved(
+        Some(true),
+        &[".moai-cli/state/lane.json"],
+        "node_modules/\n",
+    );
+    let plan = fx.plan("none");
+    let detail = Fx::ignore_row(&plan)["detail"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(detail.lines().any(|l| l == "+ !.moai/state/"), "{detail}");
+    assert!(!detail.contains("tracking ends"), "{detail}");
+}
+
+/// N2: git failing is not "nothing is tracked". Each question the plan asks git stops it with a
+/// message when git answers with an error.
+#[test]
+fn a_failing_git_stops_the_plan_instead_of_reading_as_nothing() {
+    // (word the stub refuses, exit code, rules in .gitignore, text the message must carry)
+    let cases = [
+        ("ls-files", 128, "", "which files git tracks"),
+        ("--git-path", 128, "", ".git/info/exclude is"),
+        ("--type=path", 128, "", "core.excludesFile"),
+        ("--type=path", 2, "", "core.excludesFile"),
+        (
+            "check-ignore",
+            128,
+            "state/\n",
+            "check-ignore did not answer",
+        ),
+        ("check-ignore", 2, "state/\n", "check-ignore did not answer"),
+    ];
+    for (word, code, rules, expected) in cases {
+        let fx = Fx::moved(Some(true), &[".moai-cli/state/lane.json"], rules);
+        fx.git_fails_on(word, code);
+        let envelope = fx.plan_envelope("none");
+        assert_eq!(envelope["ok"], json!(false), "{word} {code}: {envelope}");
+        let text = envelope.to_string();
+        assert!(text.contains(expected), "{word} {code}: {text}");
+        assert!(
+            text.contains("stub refuses") || word == "check-ignore",
+            "{word}: {text}"
+        );
+    }
+}
+
+/// N2: the two answers that do mean "nothing to read" still give a plan. A folder that is not a
+/// git repository has nothing tracked; git missing from `PATH` is said in the preview.
+#[test]
+fn no_repository_and_no_git_are_not_failures() {
+    let fx = Fx::moved(Some(true), &[".moai-cli/state/lane.json"], "");
+    fs::remove_dir_all(fx.root.join(".git")).unwrap();
+    let plan = fx.plan("none");
+    let detail = Fx::ignore_row(&plan)["detail"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(!detail.contains("cannot tell"), "{detail}");
+    assert!(!detail.contains("kept because git tracks"), "{detail}");
+    assert!(!detail.contains("git is not available"), "{detail}");
+
+    // No git on PATH, no rule anywhere: a plan with one explanatory line.
+    let fx = Fx::new(None);
+    fx.without_git();
+    let plan = fx.plan("none");
+    let detail = Fx::ignore_row(&plan)["detail"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let note =
+        "git is not available, so your ignore rules and the files git tracks were not considered";
+    assert_eq!(detail.lines().filter(|l| *l == note).count(), 1, "{detail}");
+
+    // With a rule to apply, git is needed to read it: the plan stops, and says why.
+    let fx = Fx::new(None);
+    fs::write(fx.root.join(".gitignore"), "*.json\n").unwrap();
+    fx.without_git();
+    let envelope = fx.plan_envelope("none");
+    assert_eq!(envelope["ok"], json!(false), "{envelope}");
+    assert!(
+        envelope.to_string().contains("git unavailable"),
+        "{envelope}"
+    );
+}
+
+/// N2: a `.git/info/exclude` that is there and cannot be read stops the plan; one that is not
+/// there does not.
+#[test]
+fn an_unreadable_info_exclude_stops_the_plan() {
+    let fx = Fx::new(None);
+    let exclude = fx.root.join(".git/info/exclude");
+    fs::write(&exclude, [0xff, 0xfe, b'\n']).unwrap();
+    let envelope = fx.plan_envelope("none");
+    assert_eq!(envelope["ok"], json!(false), "{envelope}");
+    assert!(envelope.to_string().contains("not UTF-8"), "{envelope}");
+
+    fs::remove_file(&exclude).unwrap();
+    assert_eq!(fx.plan_envelope("none")["ok"], json!(true));
+}
+
+/// Git's default global excludes file (`$HOME/.config/git/ignore`, no setting needed) is a
+/// source of rules, and the preview writes its home folder as `~`.
+#[test]
+fn the_default_global_excludes_file_is_read() {
+    let fx = Fx::new(None);
+    fs::create_dir_all(fx.home.join(".config/git")).unwrap();
+    fs::write(fx.home.join(".config/git/ignore"), "*.json\n").unwrap();
+    let plan = fx.plan("none");
+    let detail = Fx::ignore_row(&plan)["detail"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let line = "left ignored by your rule `*.json` in ~/.config/git/ignore: .moai-cli/moai.json";
+    assert!(detail.lines().any(|l| l == line), "{detail}");
+}
+
+/// The receipts folder has its own line in the block; a tracked receipts name does not get a
+/// second, `!`, line, whether git tracks it as a folder or as a file.
+#[test]
+fn a_tracked_receipts_name_gets_no_keep_line() {
+    for tracked in [".moai-cli/receipts/r.json", ".moai-cli/receipts"] {
+        let fx = Fx::moved(Some(true), &[tracked], "");
+        let plan = fx.plan("none");
+        let detail = Fx::ignore_row(&plan)["detail"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        assert!(
+            detail.lines().any(|l| l == "+ .moai/receipts/"),
+            "{tracked}: the block's own line stays\n{detail}"
+        );
+        assert!(!detail.contains("!.moai/receipts"), "{tracked}:\n{detail}");
+        assert!(!detail.contains("kept because"), "{tracked}:\n{detail}");
+        // A file named `receipts` stops the apply itself (no receipts folder); the plan is the
+        // evidence for that shape, the apply for the folder shape.
+        if tracked.ends_with("r.json") {
+            fx.apply_ok("none");
+            let text = fx.ignore();
+            let block = &text[text.find(BEGIN).unwrap()..];
+            assert!(!block.contains("!.moai/receipts"), "{tracked}:\n{text}");
+        }
+    }
+}
+
+/// A tracked name with characters a pattern reads as syntax is written escaped, so the line
+/// matches that name and no other; a name with a line break is refused with the reason.
+#[test]
+fn tracked_names_are_written_as_patterns_that_match_exactly_them() {
+    let fx = Fx::moved(
+        Some(true),
+        &[".moai-cli/we*ird[1].txt", ".moai-cli/trail "],
+        "",
+    );
+    let plan = fx.plan("none");
+    let detail = Fx::ignore_row(&plan)["detail"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(
+        detail.lines().any(|l| l == r"+ !.moai/we\*ird\[1].txt"),
+        "{detail}"
+    );
+    assert!(detail.lines().any(|l| l == r"+ !.moai/trail\ "), "{detail}");
+    fx.apply_ok("none");
+    assert!(!fx.ignored(".moai/we*ird[1].txt"), "{}", fx.ignore());
+    assert!(!fx.ignored(".moai/trail "), "{}", fx.ignore());
+    assert!(
+        fx.ignored(".moai/weird1.txt"),
+        "the escaped line stays exact\n{}",
+        fx.ignore()
+    );
+
+    let fx = Fx::moved(Some(true), &[".moai-cli/line\nbreak"], "");
+    let envelope = fx.plan_envelope("none");
+    assert_eq!(envelope["ok"], json!(false), "{envelope}");
+    assert!(envelope.to_string().contains("line break"), "{envelope}");
 }

@@ -50,7 +50,8 @@ pub struct FilePlan {
     /// create | merge | append | unchanged | conflict
     pub action: String,
     /// Design intent for generated projects, not a measured git state. The `.gitignore` row
-    /// asks git two read-only questions (`ignore_block`); no other row runs git.
+    /// asks git read-only questions (`ignore_block`: up to five calls, one of them a throw-away
+    /// `git init` in the temporary folder); no other row runs git.
     pub tracked_by_default: bool,
     pub expected_sha256: Option<String>,
     pub section_id: Option<String>,
@@ -358,9 +359,34 @@ fn render_ignore(root: &Path, list_local: bool, allow: &[String]) -> String {
     body.push_str(&format!("{}/\n", apply::receipts_rel(root)));
     body.push_str(&format!("{state}/*\n"));
     for path in allow {
-        body.push_str(&format!("!{path}\n"));
+        // `ignore_block` refused a name that cannot be written, so the fallback is not reached.
+        let line = escape_ignore_path(path).unwrap_or_else(|| path.clone());
+        body.push_str(&format!("!{line}\n"));
     }
     format!("{begin}\n{body}{end}\n")
+}
+
+/// `path` as one `.gitignore` pattern that matches exactly that path: a backslash before the
+/// characters git reads as pattern syntax (`* ? [ \`) and before trailing spaces. `None` for a
+/// name with a line break, which no pattern line can hold.
+fn escape_ignore_path(path: &str) -> Option<String> {
+    if path.contains(['\n', '\r']) {
+        return None;
+    }
+    let mut out = String::with_capacity(path.len());
+    for c in path.chars() {
+        if matches!(c, '*' | '?' | '[' | '\\') {
+            out.push('\\');
+        }
+        out.push(c);
+    }
+    let kept = out.trim_end_matches(' ').len();
+    let spaces = out.len() - kept;
+    out.truncate(kept);
+    for _ in 0..spaces {
+        out.push_str("\\ ");
+    }
+    Some(out)
 }
 
 /// The rendered block and what the plan tells about how it was made.
@@ -397,28 +423,61 @@ fn ignore_block(
         kept.push(format!("{state}/specs/"));
     }
     let user = ignore_text.map(outside_block).unwrap_or_default();
-    let (hits, source_notes) = user_rule_hits(root, &user, &kept)?;
-    let mut notes: Vec<String> = hits
-        .iter()
-        .map(|h| {
-            format!(
+    let mut notes: Vec<String> = Vec::new();
+    // Names git tracks in the earlier folder, and the path each takes in this one. A name the
+    // receipts line already covers is not asked about.
+    let receipts = format!("{}/", apply::receipts_rel(root));
+    let mut moved: Vec<(String, String)> = Vec::new();
+    for name in tracked_in_earlier_folder(root, state, &mut notes)? {
+        let path = format!("{state}/{name}");
+        if format!("{path}/") == receipts || path == receipts {
+            continue;
+        }
+        if escape_ignore_path(&path).is_none() {
+            return Err(format!(
+                "git tracks {}/{name}, a name a .gitignore line cannot hold (it has a line break); \
+                 rename it before the update",
+                crate::PROJECT_STATE_DIR
+            ));
+        }
+        moved.push((name, path));
+    }
+    // One question to git covers the fixed list and the moved names: a user rule that ignores a
+    // path wins over both (audit 6899590801 N1), whether or not git tracked it before.
+    let mut asked = kept.clone();
+    for (_, path) in &moved {
+        if !asked.contains(path) {
+            asked.push(path.clone());
+        }
+    }
+    let hits = user_rule_hits(root, &user, &asked, &mut notes)?;
+    let mut shown: Vec<String> = Vec::new();
+    for h in &hits {
+        let line = match moved.iter().find(|(_, path)| *path == h.path) {
+            Some((name, _)) => format!(
+                "tracking ends: your rule `{}` in {} ignores {}, which git tracks as {}/{name}",
+                h.rule,
+                h.origin,
+                h.path,
+                crate::PROJECT_STATE_DIR
+            ),
+            None => format!(
                 "left ignored by your rule `{}` in {}: {}",
                 h.rule, h.origin, h.path
-            )
-        })
-        .collect();
-    notes.extend(source_notes);
+            ),
+        };
+        shown.push(line);
+    }
+    shown.append(&mut notes);
     let mut allow: Vec<String> = kept
         .into_iter()
         .filter(|p| !hits.iter().any(|h| h.path == *p))
         .collect();
-    let receipts = format!("{}/", apply::receipts_rel(root));
-    for name in tracked_in_earlier_folder(root, state) {
-        let path = format!("{state}/{name}");
-        if allow.contains(&path) || format!("{path}/") == receipts || path == receipts {
+    for (name, path) in moved {
+        if allow.contains(&path) || hits.iter().any(|h| h.path == path) {
             continue;
         }
-        notes.push(format!(
+        shown.push(format!(
             "kept because git tracks {}/{name}, which the update moves to {path}",
             crate::PROJECT_STATE_DIR
         ));
@@ -426,7 +485,7 @@ fn ignore_block(
     }
     Ok(IgnoreBlock {
         rendered: render_ignore(root, list_local, &allow),
-        notes,
+        notes: shown,
     })
 }
 
@@ -440,7 +499,11 @@ fn outside_block(text: &str) -> String {
     }
 }
 
-/// `git` in `dir` with the scrubbed environment; `input` goes to its stdin.
+/// What a spawn error of `git` is called, so a caller can tell "no git" from "git said no".
+const GIT_UNAVAILABLE: &str = "git unavailable";
+
+/// `git` in `dir` with the scrubbed environment; `input` goes to its stdin. stderr is kept only
+/// to classify a failure (`ask_project`); it is never shown.
 fn git_output(dir: &Path, args: &[&str], input: &[u8]) -> Result<std::process::Output> {
     use std::io::Write;
     use std::process::{Command, Stdio};
@@ -452,9 +515,9 @@ fn git_output(dir: &Path, args: &[&str], input: &[u8]) -> Result<std::process::O
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped())
         .spawn()
-        .map_err(|_| "git unavailable".to_string())?;
+        .map_err(|_| GIT_UNAVAILABLE.to_string())?;
     if let Some(mut pipe) = child.stdin.take() {
         // A write that fails shows up as git's own exit code.
         let _ = pipe.write_all(input);
@@ -462,6 +525,53 @@ fn git_output(dir: &Path, args: &[&str], input: &[u8]) -> Result<std::process::O
     child
         .wait_with_output()
         .map_err(|_| "git failed to run".to_string())
+}
+
+/// The one-line summary of a failed git call, without paths (`identity::failure_summary`).
+fn git_failure(what: &str, out: &std::process::Output) -> String {
+    let summary = crate::identity::failure_summary(&out.stderr);
+    let summary = if out.stderr.iter().all(u8::is_ascii_whitespace) {
+        "no message".to_string()
+    } else {
+        summary
+    };
+    format!("cannot tell {what}: git said: {summary}")
+}
+
+/// Records, once, that git is missing so the project's own ignore state could not be read.
+fn note_git_missing(notes: &mut Vec<String>) {
+    let note =
+        "git is not available, so your ignore rules and the files git tracks were not considered";
+    if !notes.iter().any(|n| n == note) {
+        notes.push(note.to_string());
+    }
+}
+
+/// A read-only git question about the project, where only two failures mean "nothing to read":
+/// the project is not a git repository, and git is not installed (the second is noted in the
+/// preview). Any other failure stops the plan, because reading it as "nothing" would drop a
+/// protection without a word (audit 6899590801 N2). `Ok(None)` is "nothing to read".
+fn ask_project(
+    root: &Path,
+    args: &[&str],
+    what: &str,
+    notes: &mut Vec<String>,
+) -> Result<Option<Vec<u8>>> {
+    let out = match git_output(root, args, b"") {
+        Ok(out) => out,
+        Err(e) if e == GIT_UNAVAILABLE => {
+            note_git_missing(notes);
+            return Ok(None);
+        }
+        Err(e) => return Err(e),
+    };
+    if out.status.success() {
+        return Ok(Some(out.stdout));
+    }
+    if String::from_utf8_lossy(&out.stderr).contains(crate::identity::NOT_A_REPOSITORY) {
+        return Ok(None);
+    }
+    Err(git_failure(what, &out))
 }
 
 /// One allow-list path a user rule already ignores.
@@ -508,45 +618,76 @@ fn default_global_excludes() -> Option<std::path::PathBuf> {
 /// The global excludes file git reads for `root` and its text. A file that is configured but
 /// missing, or present but unreadable, gives no rules and a one-line note for the preview
 /// (leader decision 6897897560, item 7); an unset setting with no default file gives neither.
-fn global_excludes(root: &Path) -> (Option<std::path::PathBuf>, String, Option<String>) {
-    let configured = git_output(
+fn global_excludes(
+    root: &Path,
+    notes: &mut Vec<String>,
+) -> Result<(Option<std::path::PathBuf>, String)> {
+    // Unit tests run with the developer's real HOME; the real global file must not shape them.
+    // The binary tests (tests/gitignore_block_cli.rs) run this code with an empty HOME.
+    if cfg!(test) {
+        return Ok((None, String::new()));
+    }
+    // `git config --get` answers 0 with the value and 1 when the key is not set; any other
+    // answer is a broken configuration, which stops the plan.
+    let configured = match git_output(
         root,
         &["config", "--type=path", "--get", "core.excludesFile"],
         b"",
-    )
-    .ok()
-    .filter(|o| o.status.success())
-    .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-    .filter(|p| !p.is_empty())
-    .map(std::path::PathBuf::from);
+    ) {
+        Ok(out) => match out.status.code() {
+            Some(0) => Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
+                .filter(|p| !p.is_empty())
+                .map(std::path::PathBuf::from),
+            Some(1) => None,
+            _ => return Err(git_failure("what git's core.excludesFile says", &out)),
+        },
+        Err(e) if e == GIT_UNAVAILABLE => {
+            note_git_missing(notes);
+            return Ok((None, String::new()));
+        }
+        Err(e) => return Err(e),
+    };
     let was_configured = configured.is_some();
     let Some(path) = configured.or_else(default_global_excludes) else {
-        return (None, String::new(), None);
+        return Ok((None, String::new()));
     };
     match std::fs::read_to_string(&path) {
-        Ok(text) => (Some(path), text, None),
+        Ok(text) => Ok((Some(path), text)),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound && !was_configured => {
-            (Some(path), String::new(), None)
+            Ok((Some(path), String::new()))
         }
         Err(_) => {
-            let note = format!(
+            notes.push(format!(
                 "global excludes file {} is missing or unreadable; its rules are not considered",
                 tilde(&path)
-            );
-            (Some(path), String::new(), Some(note))
+            ));
+            Ok((Some(path), String::new()))
         }
     }
 }
 
-/// The text of the project's `.git/info/exclude` (empty when there is none).
-fn info_exclude(root: &Path) -> String {
-    git_output(root, &["rev-parse", "--git-path", "info/exclude"], b"")
-        .ok()
-        .filter(|o| o.status.success())
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        .filter(|p| !p.is_empty())
-        .and_then(|p| std::fs::read_to_string(root.join(p)).ok())
-        .unwrap_or_default()
+/// The text of the project's `.git/info/exclude`: empty when the project is not a repository or
+/// the file is not there; a file that is there and cannot be read stops the plan.
+fn info_exclude(root: &Path, notes: &mut Vec<String>) -> Result<String> {
+    let Some(out) = ask_project(
+        root,
+        &["rev-parse", "--git-path", "info/exclude"],
+        "where the project's .git/info/exclude is",
+        notes,
+    )?
+    else {
+        return Ok(String::new());
+    };
+    let path = String::from_utf8_lossy(&out).trim().to_string();
+    if path.is_empty() {
+        return Ok(String::new());
+    }
+    match std::fs::read(root.join(path)) {
+        Ok(bytes) => String::from_utf8(bytes)
+            .map_err(|_| "cannot read .git/info/exclude: it is not UTF-8 text".to_string()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
+        Err(_) => Err("cannot read .git/info/exclude".to_string()),
+    }
 }
 
 /// Which of `paths` the user's own ignore rules already ignore, with the rule and the file it
@@ -555,18 +696,19 @@ fn info_exclude(root: &Path) -> String {
 /// repository in the temporary folder, where git applies them in its own order, and asked with
 /// `check-ignore --no-index`, so the project is neither read through git's ignore machinery nor
 /// written and a negated rule counts as not ignoring. A directory path ends in `/`. Nothing is
-/// asked when no source holds a rule. The second value is the preview notes about the sources.
+/// asked when no source holds a rule. What cannot be read about the sources goes to `notes`
+/// (the preview) or, when git answers wrongly, stops the plan.
 fn user_rule_hits(
     root: &Path,
     user_rules: &str,
     paths: &[String],
-) -> Result<(Vec<RuleHit>, Vec<String>)> {
-    let (global_path, global_text, global_note) = global_excludes(root);
-    let notes: Vec<String> = global_note.into_iter().collect();
-    let info_text = info_exclude(root);
+    notes: &mut Vec<String>,
+) -> Result<Vec<RuleHit>> {
+    let (global_path, global_text) = global_excludes(root, notes)?;
+    let info_text = info_exclude(root, notes)?;
     if paths.is_empty() || !(has_rule(user_rules) || has_rule(&info_text) || has_rule(&global_text))
     {
-        return Ok((Vec::new(), notes));
+        return Ok(Vec::new());
     }
     let unavailable =
         "cannot tell which paths your ignore rules ignore: git check-ignore did not answer";
@@ -637,32 +779,40 @@ fn user_rule_hits(
             origin,
         });
     }
-    Ok((hits, notes))
+    Ok(hits)
 }
 
 /// Top-level names (`specs/`, `state/`, `project.yaml`) git tracks in the earlier state
 /// folder `.moai-cli/` while the project's state folder is `.moai/`: the update moves them
-/// there. Empty when the state folder is not `.moai/`, outside a git work tree, or when git
-/// cannot answer (nothing is tracked that anyone can name).
-fn tracked_in_earlier_folder(root: &Path, state: &str) -> Vec<String> {
+/// there. Empty when the state folder is not `.moai/`, when the project is not a git
+/// repository, or when git is not installed (noted in the preview). Any other failure of git,
+/// and a tracked name that is not UTF-8 text, stop the plan: a list that silently lacks names
+/// would let a later `git add -A` drop them.
+fn tracked_in_earlier_folder(
+    root: &Path,
+    state: &str,
+    notes: &mut Vec<String>,
+) -> Result<Vec<String>> {
     if state != state_root::MOAI_DIR {
-        return Vec::new();
+        return Ok(Vec::new());
     }
-    let Ok(out) = git_output(
+    let Some(stdout) = ask_project(
         root,
         &["ls-files", "-z", "--", crate::PROJECT_STATE_DIR],
-        b"",
-    ) else {
-        return Vec::new();
+        "which files git tracks in the earlier state folder",
+        notes,
+    )?
+    else {
+        return Ok(Vec::new());
     };
-    if !out.status.success() {
-        return Vec::new();
-    }
     let mut names = std::collections::BTreeSet::new();
-    for path in out.stdout.split(|b| *b == 0) {
-        let Ok(path) = std::str::from_utf8(path) else {
-            continue;
-        };
+    for path in stdout.split(|b| *b == 0).filter(|p| !p.is_empty()) {
+        let path = std::str::from_utf8(path).map_err(|_| {
+            format!(
+                "git tracks a name under {}/ that is not UTF-8 text; rename it before the update",
+                crate::PROJECT_STATE_DIR
+            )
+        })?;
         let Some((_, rest)) = path.split_once('/') else {
             continue;
         };
@@ -671,7 +821,7 @@ fn tracked_in_earlier_folder(root: &Path, state: &str) -> Vec<String> {
             None => rest.to_string(),
         });
     }
-    names.into_iter().collect()
+    Ok(names.into_iter().collect())
 }
 
 fn ignore_kind(list_local: bool) -> &'static str {
