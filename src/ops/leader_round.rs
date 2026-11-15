@@ -141,9 +141,16 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         }
         lanes.push(a);
     }
+    // Lanes that stopped themselves after `idle_limit` (#3005 P9): cards for the leader to hand out.
+    let idle_lanes: Vec<&str> = lanes
+        .iter()
+        .filter(|a| a.reason == leader_round::IDLE_REASON)
+        .map(|a| a.lane.as_str())
+        .collect();
     Ok(json!({
         "now": moai_cli::forge::policy::format_utc(now),
         "lanes": lanes,
+        "idle_lanes": idle_lanes,
         "round": round,
         "partial": snap.as_ref().map(|s| s.partial.clone()).unwrap_or_default(),
         "api_calls": snap.as_ref().map_or(0, |s| s.api_calls),
