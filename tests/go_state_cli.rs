@@ -491,6 +491,7 @@ fn apply_moves_only_the_planned_files_and_needs_the_current_digest() {
     for wrong in ["", "sha256:0000", "not-a-digest"] {
         let v = apply(&fx, wrong);
         assert_eq!(v["ok"], json!(false), "{wrong}: {v}");
+        assert_eq!(v["error"]["kind"], json!("stale_plan"), "{wrong}: {v}");
         assert_eq!(
             fx.tree(),
             before,
@@ -581,6 +582,7 @@ fn a_file_changed_after_the_preview_stops_the_apply() {
     let before = fx.tree();
     let v = apply(&fx, p["plan_digest"].as_str().unwrap());
     assert_eq!(v["ok"], json!(false), "{v}");
+    assert_eq!(v["error"]["kind"], json!("stale_plan"), "{v}");
     assert_eq!(fx.tree(), before);
 }
 
@@ -1850,6 +1852,7 @@ fn root_instruction_files_move_into_root_files() {
     let before = fx.tree();
     let v = apply(&fx, p["plan_digest"].as_str().unwrap());
     assert_eq!(v["ok"], json!(false), "{v}");
+    assert_eq!(v["error"]["kind"], json!("stale_plan"), "{v}");
     assert_eq!(fx.tree(), before);
 
     let p = plan(&fx);

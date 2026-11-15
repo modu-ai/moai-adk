@@ -473,20 +473,27 @@ fn a_style_named_exactly_is_kept() {
     );
 }
 
-// ---- AC-8: the new fields are part of the digest ----
+// ---- AC-8: the new fields are preview-only, not part of the digest ----
 
+/// S-DIGEST (#2936 plan 6887264857 §3): preview-only data is not bound. A dangling ignore
+/// line lives in `after_move`, which the apply never acts on, so a line added between the
+/// preview and the apply shows in the fresh preview but keeps the confirmed digest valid.
+/// (Before S-DIGEST the whole preview was hashed and this was refused.)
 #[test]
-fn a_new_dangling_line_changes_the_plan_digest_and_the_old_digest_is_refused() {
+fn a_new_dangling_line_shows_in_the_preview_but_keeps_the_plan_digest() {
     let fx = go_fx();
     fx.manifest();
     let before = fx.plan();
     fx.write(".gitignore", ".claude/loop.md\n");
     let after = fx.plan();
-    assert_ne!(before["plan_digest"], after["plan_digest"], "{after}");
-    let tree = fx.tree();
-    let refused = fx.apply(before["plan_digest"].as_str().unwrap());
-    assert_eq!(refused["ok"], json!(false), "{refused}");
-    assert_eq!(fx.tree(), tree, "a refused apply writes nothing");
+    assert_ne!(
+        before["after_move"]["dangling"], after["after_move"]["dangling"],
+        "the new line shows in the preview: {after}"
+    );
+    assert_eq!(before["plan_digest"], after["plan_digest"], "{after}");
+    let applied = fx.apply(before["plan_digest"].as_str().unwrap());
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+    assert_eq!(applied["result"]["state"], json!("committed"), "{applied}");
 }
 
 // ---- AC-11, O-2: an emptied skill mirror folder is warned about and kept ----
