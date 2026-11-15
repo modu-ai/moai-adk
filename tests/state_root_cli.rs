@@ -96,9 +96,10 @@ fn a_project_with_no_state_starts_on_moai() {
     );
     create(root.path());
     let marker: Value =
-        serde_json::from_slice(&fs::read(root.path().join(".moai/moai-cli.json")).unwrap())
-            .unwrap();
-    assert_eq!(marker["generation"], json!("moai-cli"), "{marker}");
+        serde_json::from_slice(&fs::read(root.path().join(".moai/moai.json")).unwrap()).unwrap();
+    assert_eq!(marker["generation"], json!("moai"), "{marker}");
+    // #2871 marker rename: only the new name is written.
+    assert!(!root.path().join(".moai/moai-cli.json").exists());
     assert_eq!(marker["schema_version"], json!(1), "{marker}");
     assert!(root.path().join(".moai/project.yaml").is_file());
     assert!(root
@@ -161,6 +162,46 @@ fn a_project_with_the_marker_keeps_its_state_in_moai() {
         "{detect}"
     );
     assert_eq!(detect["profile"]["project_id"], json!("demo"), "{detect}");
+}
+
+/// #2871 marker rename: a project whose marker is under the earlier name keeps working, the
+/// marker is read as it is (no rename, rewrite or second file), and `project-detect` names the
+/// file that decided. A project marked `moai.json` does the same.
+#[test]
+fn an_existing_marker_of_either_name_is_read_and_never_rewritten() {
+    for (name, generation) in [("moai-cli.json", "moai-cli"), ("moai.json", "moai")] {
+        let root = TempDir::new().unwrap();
+        fs::create_dir(root.path().join(".moai")).unwrap();
+        let body = format!(r#"{{"schema_version":1,"generation":"{generation}"}}"#);
+        fs::write(root.path().join(".moai").join(name), &body).unwrap();
+        create(root.path());
+        assert!(root.path().join(".moai/project.yaml").is_file(), "{name}");
+        assert!(!root.path().join(".moai-cli").exists(), "{name}");
+        assert_eq!(
+            fs::read_to_string(root.path().join(".moai").join(name)).unwrap(),
+            body,
+            "{name}: the marker is byte for byte as it was"
+        );
+        let other = if name == "moai.json" {
+            "moai-cli.json"
+        } else {
+            "moai.json"
+        };
+        assert!(
+            !root.path().join(".moai").join(other).exists(),
+            "{name}: no second marker appears"
+        );
+        let detect = cli(
+            &["project-detect", root.path().to_str().unwrap()],
+            &json!({}),
+        );
+        assert_eq!(
+            detect["state_root"]["generation"],
+            json!("rust"),
+            "{detect}"
+        );
+        assert_eq!(detect["state_root"]["marker_file"], json!(name), "{detect}");
+    }
 }
 
 #[test]
