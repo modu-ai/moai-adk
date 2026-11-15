@@ -16,6 +16,9 @@ Project
   language-set            Record the conversation language in HOME
   index-build             Build the code map index
   check-tree              Warn about what the tracked MoAI folders hold
+  ledger-status           Show the project's ledger state
+  ledger-register-plan    Preview registering the project's ledger
+  ledger-register-apply   Create the previewed project ledger
   agents-plan             Preview the AGENTS.md managed section
   agents-apply            Write a previewed AGENTS.md managed section
   generation-plan         Preview the project's generated agent and skill files
