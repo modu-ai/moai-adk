@@ -199,7 +199,7 @@ mod tests {
             fs::create_dir(&moai).unwrap();
             fs::write(
                 moai.join(crate::state_root::RUST_MARKER),
-                json!({"schema_version": schema, "generation": "moai-cli"}).to_string(),
+                json!({"schema_version": schema, "generation": "moai"}).to_string(),
             )
             .unwrap();
             let ph = resolve(home.path(), project.path()).unwrap();
