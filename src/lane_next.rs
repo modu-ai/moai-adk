@@ -91,7 +91,17 @@ pub const TIP_BASE_UNKNOWN: &str = "tip: no --tip and no open pull request to ta
 /// carries it, so the idle count ([`crate::lane_idle::classify`]) does not take it for a read
 /// that failed.
 pub fn is_comment_window_note(note: &str) -> bool {
-    note.ends_with(&format!("only the newest {COMMENTS_READ} comments read"))
+    // The two shapes `collect` writes: `#<n>: <window>` and `PR #<n>: <window>`, nothing before
+    // or after (a failure note that merely ends with the words is a failure).
+    let window = format!("only the newest {COMMENTS_READ} comments read");
+    let rest = note.strip_prefix("PR ").unwrap_or(note);
+    let Some(rest) = rest.strip_prefix('#') else {
+        return false;
+    };
+    let Some((digits, tail)) = rest.split_once(": ") else {
+        return false;
+    };
+    !digits.is_empty() && digits.chars().all(|c| c.is_ascii_digit()) && tail == window
 }
 
 /// One comment as read: its id and body (oldest first within a thread).
@@ -1029,6 +1039,9 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
     let mut waiting = Vec::new();
     // Pull requests passed over in steps 2 and 4, each with its reason (#2933 S1).
     let mut pr_skipped: Vec<Value> = Vec::new();
+    // The lane's own open pull requests passed over because nothing in them needs the lane
+    // now — drafts included, which `pr_skipped` names `draft` like anyone's draft (#3005 P8).
+    let mut own_open_prs: Vec<u64> = Vec::new();
     // Cards passed over in steps 6 and 7, each with its reason (#2901), once per Issue.
     let mut skipped: Vec<Value> = Vec::new();
     let mut skip = |entry: Value| {
@@ -1094,6 +1107,7 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
             }
             let reason = if pr.draft { "draft" } else { "own_no_blocker" };
             pr_skipped.push(json!({"pr": pr.number, "reason": reason}));
+            own_open_prs.push(pr.number);
         }
         // 2b. P1: SYNC — a claimed card whose pull request merged and whose close table is not
         // posted yet: close it before new work (#2880 W3). A card with another open pull
@@ -1373,6 +1387,7 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
         "waiting": waiting,
         "skipped": skipped,
         "pr_skipped": pr_skipped,
+        "own_open_prs": own_open_prs,
         "end_condition": end_condition(snap),
         "partial": snap.partial,
         "api_calls": snap.api_calls,
@@ -2937,12 +2952,10 @@ mod tests {
         };
         // A full read with nothing to do: an empty card list from GitHub, and a git folder so
         // the goal file is readable too (`partial` stays empty).
-        let git = std::process::Command::new("git")
-            .args(["init", "-q"])
-            .current_dir(dir.path())
-            .status()
-            .unwrap();
-        assert!(git.success());
+        let mut init = std::process::Command::new("git");
+        init.args(["init", "-q"]).current_dir(dir.path());
+        crate::identity::scrub_git_env(&mut init);
+        assert!(init.status().unwrap().success());
         let none = HeldOldest {
             issues: 0,
             held: 0,

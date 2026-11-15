@@ -58,13 +58,17 @@ pub enum Read {
     Unreadable,
 }
 
-/// Sorts a `lane-next` result. Work wins over everything: a lane with its own pull request
-/// (`pr_skipped` reason `own_no_blocker`: no blocker now, CI or audit pending) is not idle,
-/// even when the read was partial. Only a full read with no work is empty.
+/// Sorts a `lane-next` result. Work wins over everything: a lane with its own open pull
+/// request is not idle, even when the read was partial. That is `own_open_prs` (every own
+/// pull request, a draft too) or `pr_skipped` reason `own_no_blocker` (no blocker now, CI or
+/// audit pending). Only a full read with no work is empty.
 pub fn classify(result: &Value) -> Read {
-    let own_pr = result["pr_skipped"]
+    let own_pr = result["own_open_prs"]
         .as_array()
-        .is_some_and(|l| l.iter().any(|p| p["reason"] == json!("own_no_blocker")));
+        .is_some_and(|l| !l.is_empty())
+        || result["pr_skipped"]
+            .as_array()
+            .is_some_and(|l| l.iter().any(|p| p["reason"] == json!("own_no_blocker")));
     if !result["next"].is_null()
         || result["waiting"].as_array().is_some_and(|w| !w.is_empty())
         || own_pr
@@ -503,6 +507,22 @@ mod tests {
             )),
             Read::Empty
         );
+        // The lane's own draft pull request is work in flight too: `own_open_prs` lists it
+        // (its `pr_skipped` reason is `draft`), an empty list is not work.
+        assert_eq!(
+            classify(&with("own_open_prs", json!([20]))),
+            Read::Work,
+            "an own draft PR"
+        );
+        let mut draft = with("own_open_prs", json!([20]));
+        draft["pr_skipped"] = json!([{"pr": 20, "reason": "draft"}]);
+        draft["partial"] = json!(["open pull requests: HTTP 502"]);
+        assert_eq!(
+            classify(&draft),
+            Read::Work,
+            "work wins over a partial read"
+        );
+        assert_eq!(classify(&with("own_open_prs", json!([]))), Read::Empty);
     }
 
     /// A read GitHub answered in part, or whose lane-wide end is unknown, says nothing about
@@ -562,6 +582,34 @@ mod tests {
             Read::Unreadable,
             "another window size is not the known note"
         );
+        // Only the exact note counts: a real failure that happens to end with the phrase, or
+        // a subject that is not an Issue or pull request number, stays unreadable.
+        for bad in [
+            "lists: HTTP 502 only the newest 100 comments read",
+            "lists: only the newest 100 comments read",
+            "#x: only the newest 100 comments read",
+            "#12:only the newest 100 comments read",
+            "#: only the newest 100 comments read",
+            "PR : only the newest 100 comments read",
+            "#12: only the newest 100 comments read, HTTP 502",
+            "x #12: only the newest 100 comments read",
+        ] {
+            assert_eq!(
+                classify(&with("partial", json!([bad]))),
+                Read::Unreadable,
+                "{bad}"
+            );
+        }
+        for good in [
+            "#1975: only the newest 100 comments read",
+            "PR #3: only the newest 100 comments read",
+        ] {
+            assert_eq!(
+                classify(&with("partial", json!([good]))),
+                Read::Empty,
+                "{good}"
+            );
+        }
         assert_eq!(classify(&json!({"next": null})), Read::Unreadable);
         assert_eq!(classify(&json!({})), Read::Unreadable);
         let mut r = with("partial", json!(["x"]));
@@ -643,9 +691,9 @@ mod tests {
         );
     }
 
-    /// Three partial reads, or three reads with an own pull request in flight, never reach the
-    /// limit and leave the saved count and the file alone; the tally `run` attaches is used and
-    /// removed from the output.
+    /// Three partial reads never reach the limit and write nothing (no file, the saved count
+    /// stays); three reads with an own pull request in flight never reach it either (work
+    /// keeps the count at 0). The tally `run` attaches is used and removed from the output.
     #[test]
     fn apply_does_not_count_an_unreadable_read_or_work_in_flight() {
         let d = tempfile::tempdir().unwrap();
