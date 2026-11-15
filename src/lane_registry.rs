@@ -94,7 +94,38 @@ pub fn registry_dir(project: &Path) -> Result<PathBuf, String> {
     Ok(crate::clone_root::path(Path::new(common)).join("sessions"))
 }
 
-fn refuse_symlink(path: &Path) -> Result<(), String> {
+/// Whether `name` has a live entry in the registry folder `dir`: the entry exists and its lease
+/// runs past `now` (`lease_until > now`; an entry that ends exactly at `now` is over). A
+/// missing entry is `false`; an unreadable, malformed or oversized one is an error (#3015 C2).
+pub(crate) fn is_live(dir: &Path, name: &str, now: i64) -> Result<bool, String> {
+    if !valid_name(name) {
+        return Ok(false);
+    }
+    let file = dir.join(format!("{name}.json"));
+    refuse_symlink(&file)?;
+    Ok(matches!(read_entry(&file, name)?, Some((_, lease, _)) if lease > now))
+}
+
+/// Takes the registry's exclusive lock (the one `register` holds) in the existing folder `dir`;
+/// the lock is held until the returned file is dropped. The folder is not created (#3015 C2).
+pub(crate) fn lock_existing(dir: &Path) -> Result<fs::File, String> {
+    refuse_symlink(dir)?;
+    let lock_path = dir.join("registry.lock");
+    refuse_symlink(&lock_path)?;
+    if !dir.is_dir() {
+        return Err("session registry folder is missing".into());
+    }
+    OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&lock_path)
+        .and_then(|f| f.lock().map(|()| f))
+        .map_err(|_| "session registry lock unavailable".to_string())
+}
+
+pub(crate) fn refuse_symlink(path: &Path) -> Result<(), String> {
     match fs::symlink_metadata(path) {
         Ok(m) if m.file_type().is_symlink() => Err(format!(
             "session registry path {} is a symlink; refused",
