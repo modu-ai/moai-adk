@@ -245,6 +245,11 @@ fn git_code(dir: &Path, args: &[&str]) -> Result<(i32, String)> {
     ))
 }
 
+/// True when the identity reader's git failure says a gitfile points at nothing.
+fn names_no_git_directory(failure: &str) -> bool {
+    failure.starts_with("git failed:") && failure.contains("does not point to a valid repository")
+}
+
 /// Measures `target` and decides whether it may be linked to a record whose claim base is
 /// `base`. Reads only (git rev-parse, worktree list, cat-file, merge-base). Refuses, in this
 /// order: a path that is not UTF-8; a symlink, a missing path or a file (the identity
@@ -262,7 +267,19 @@ pub fn probe_target(project: &Path, target: &Path, base: &str) -> Result<Probe> 
     if !crate::worktree::is_sha(base) {
         return Err("invalid record: base_revision must be 40 lowercase hex".into());
     }
-    let ident = crate::identity::identity(target)?;
+    // A pruned worktree keeps its `.git` file but loses the admin folder it names. Older git
+    // answers "not a git repository" (a typed status below); newer git answers that the
+    // gitfile "does not point to a valid repository", which the identity reader reports as a
+    // git failure. Both mean the folder is no longer a registered worktree.
+    let ident = match crate::identity::identity(target) {
+        Err(e) if names_no_git_directory(&e) => {
+            return Err(refuse(
+                "not_a_worktree",
+                format!("{shown} has a .git file that no longer names a git directory"),
+            ))
+        }
+        other => other?,
+    };
     match ident["identity_status"].as_str() {
         Some("ok") => {}
         Some("git_unavailable") => return Err("git unavailable".into()),
@@ -920,6 +937,24 @@ mod probe_tests {
     use super::*;
     use std::fs;
     use std::path::PathBuf;
+
+    /// A pruned worktree: macOS git answers "not a git repository" (a typed identity status),
+    /// Linux git answers that the gitfile points at nothing (a `git failed:` error). Only the
+    /// second is a string this module has to recognise, so the wording is pinned here.
+    #[test]
+    fn a_gitfile_that_points_at_nothing_is_recognised() {
+        assert!(names_no_git_directory(
+            "git failed: gitfile does not point to a valid repository: /tmp/w"
+        ));
+        assert!(names_no_git_directory(
+            "git failed: gitfile does not point to a valid repository:"
+        ));
+        assert!(!names_no_git_directory("git failed: permission denied"));
+        assert!(!names_no_git_directory(
+            "gitfile does not point to a valid repository"
+        ));
+        assert!(!names_no_git_directory("path unavailable"));
+    }
 
     /// `git` with the fixture guards; returns trimmed stdout, panics on failure.
     pub(super) fn git(dir: &Path, args: &[&str]) -> String {
