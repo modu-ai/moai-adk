@@ -1,7 +1,7 @@
 //! `lane-next` (#2831 C1): the one thing a lane should do next, read fresh from GitHub each
 //! run. The logic is `moai_cli::lane_next`.
 
-use moai_cli::forge::policy::SystemClock;
+use moai_cli::forge::policy::{Clock as _, SystemClock};
 use moai_cli::forge::transport::GhTransport;
 use std::path::PathBuf;
 
@@ -11,7 +11,10 @@ use std::path::PathBuf;
 /// the lane's own pull request (audit FAIL, conflict, failed CI), an audit it reserved (not
 /// judged, head moved, re-audit asked — with the head now), a pull request with no auditor, a
 /// decision request the leader answered, its claimed card, an unclaimed Issue. Reads GitHub
-/// (at most 30 requests a run) and the local clone only; writes nothing. `--wait` reads again
+/// (at most 30 requests a run) and the local clone only; writes no GitHub state. A registered
+/// lane's offered audit or Issue is kept for 600 seconds in the clone's session registry folder
+/// (`proposals/<lane>.json`), so a second lane asking a moment later is offered another one;
+/// `proposal` in the answer says whether it was kept. `--wait` reads again
 /// every 432 seconds for the default ten lanes on one token (within half of GitHub's hourly
 /// limit; `--shared-lanes` changes the count) until a task appears.
 #[derive(clap::Args)]
@@ -33,9 +36,10 @@ pub struct Args {
     /// ⌈3600 × 30 × lanes / 2500⌉ seconds (432 for 10; 1 to 50).
     #[arg(long, default_value_t = moai_cli::lane_next::SHARED_LANES)]
     shared_lanes: u64,
-    /// The local clone the tip judgment walks.
-    #[arg(long, default_value = ".")]
-    dir: PathBuf,
+    /// The local clone the tip judgment walks (default `.`); also where the offered target is
+    /// kept. With `--snapshot` nothing is kept unless `--dir` is given.
+    #[arg(long)]
+    dir: Option<PathBuf>,
     /// Decide from a saved snapshot (JSON) instead of reading GitHub.
     #[arg(long)]
     snapshot: Option<PathBuf>,
@@ -47,31 +51,57 @@ pub struct Args {
 pub const OPERATION: &str = "lane.next";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
+    // The registry folder that keeps the offered target (#3015 C2): the clone of `--dir`, or of
+    // `.` when no snapshot is given. `None` when it is no git clone; the answer then says so.
+    let kept_in = match (&args.snapshot, &args.dir) {
+        (Some(_), None) => None,
+        (_, dir) => Some(dir.clone().unwrap_or_else(|| PathBuf::from("."))),
+    };
+    let store = kept_in
+        .as_deref()
+        .map(moai_cli::lane_registry::registry_dir);
     let mut v = match &args.snapshot {
         Some(file) => {
             let bytes = std::fs::read(file).map_err(|e| format!("snapshot unreadable: {e}"))?;
-            let snap: moai_cli::lane_next::Snapshot =
+            let mut snap: moai_cli::lane_next::Snapshot =
                 serde_json::from_slice(&bytes).map_err(|e| format!("snapshot invalid: {e}"))?;
-            moai_cli::lane_next::decide(&args.lane, &snap)
+            match &store {
+                Some(Ok(dir)) => moai_cli::lane_proposal::decide_and_record(
+                    dir,
+                    &args.lane,
+                    &mut snap,
+                    SystemClock.now(),
+                ),
+                _ => moai_cli::lane_next::decide(&args.lane, &snap),
+            }
         }
         None => {
             let (owner, repo) = args
                 .repo
                 .split_once('/')
                 .ok_or("--repo must be OWNER/REPO")?;
+            let dir = kept_in.clone().unwrap_or_else(|| PathBuf::from("."));
             let target = moai_cli::lane_next::Target {
                 owner,
                 repo,
                 lane: &args.lane,
                 tip_branch: args.tip.as_deref(),
-                dir: &args.dir,
+                dir: &dir,
             };
-            moai_cli::lane_next::run(&target, &GhTransport::from_env()?, &SystemClock,
+            moai_cli::lane_next::run_with_store(
+                &target,
+                &GhTransport::from_env()?,
+                &SystemClock,
                 args.wait,
                 args.shared_lanes,
+                store.as_ref().and_then(|s| s.as_deref().ok()),
             )?
         }
     };
+    if matches!(store, Some(Err(_))) {
+        v["proposal"] = serde_json::json!({"status": "unavailable",
+            "reason": "no session registry for this clone"});
+    }
     if args.explain {
         v["explain"] = serde_json::json!(moai_cli::lane_next::explain_lines(&v));
     }

@@ -32,7 +32,9 @@
 //! <UTC>` and goes on; `waiting` lists it as `lane_waiting` (#2933 S6). It is information only:
 //! it never makes, blocks or reorders a task.
 //!
-//! Reads only (leader decision D1): reservations and comments stay with the existing commands.
+//! Writes no GitHub state (leader decision D1): reservations and comments stay with the
+//! existing commands. The one local write is the target it offers a registered lane, kept for
+//! a short lease so another lane is not offered the same one (#3015 C2, [`crate::lane_proposal`]).
 //! One collection sends at most [`API_BUDGET`] GitHub requests (D4), taking the higher
 //! priorities first; what the budget left unread is named in `partial`, never guessed. The open
 //! pull requests with their comments, the lane's threads and the open Issues come from a few
@@ -250,6 +252,38 @@ pub struct Snapshot {
     pub partial: Vec<String>,
     #[serde(default)]
     pub api_calls: u32,
+    /// Targets offered to other live lanes whose short lease still runs (#3015 C2); read from
+    /// the local proposal folder by [`crate::lane_proposal`], empty when none or not read.
+    #[serde(default)]
+    pub proposals: Vec<ActiveProposal>,
+}
+
+/// A target `lane-next` offered to `lane` a moment ago (#3015 C2), kept so another lane is not
+/// offered the same one before the claim or reservation comment shows on GitHub.
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+pub struct ActiveProposal {
+    pub lane: String,
+    /// The task kind: `reserve_audit` or `pick_issue`.
+    pub kind: String,
+    pub number: u64,
+    /// The pull request head a `reserve_audit` was offered for.
+    #[serde(default)]
+    pub head: Option<String>,
+    /// Unix seconds the offer ends (the lane is offered the target again after it).
+    pub lease_until: i64,
+}
+
+/// The offer to another lane that covers this target, if any.
+fn proposed_elsewhere<'a>(
+    snap: &'a Snapshot,
+    lane: &str,
+    kind: &str,
+    number: u64,
+    head: Option<&str>,
+) -> Option<&'a ActiveProposal> {
+    snap.proposals.iter().find(|p| {
+        p.lane != lane && p.kind == kind && p.number == number && p.head.as_deref() == head
+    })
 }
 
 // --- comment lines -----------------------------------------------------------------------
@@ -1174,6 +1208,15 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
                 );
                 continue;
             }
+            // #3015 C2: another live lane was offered this head a moment ago; its reservation
+            // comment is not on GitHub yet. Offer this lane the next one.
+            if let Some(p) =
+                proposed_elsewhere(snap, lane, "reserve_audit", pr.number, Some(&pr.head))
+            {
+                pr_skipped.push(json!({"pr": pr.number, "reason": "proposed_to_other_lane",
+                    "by": p.lane, "lease_until": p.lease_until}));
+                continue;
+            }
             return Some(task(
                 "P1",
                 "reserve_audit",
@@ -1336,6 +1379,14 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
             }
             if let Some(c) = t.comments.iter().find(|c| claim_session(c).is_some()) {
                 skip(json!({"issue": t.number, "reason": "claimed", "claim_comment": c.id}));
+                continue;
+            }
+            // #3015 C2: offered to another live lane a moment ago, claim not yet on GitHub.
+            if let Some(p) = proposed_elsewhere(snap, lane, "pick_issue", t.number, None) {
+                skip(
+                    json!({"issue": t.number, "reason": "proposed_to_other_lane",
+                    "by": p.lane, "lease_until": p.lease_until}),
+                );
                 continue;
             }
             return Some(task(
@@ -2234,6 +2285,19 @@ pub fn run<T: Transport, C: Clock>(
     wait_secs: u64,
     shared_lanes: u64,
 ) -> Result<Value> {
+    run_with_store(target, transport, clock, wait_secs, shared_lanes, None)
+}
+
+/// [`run`] that also keeps the target it offers in the local proposal folder `store` (the
+/// registry folder; #3015 C2), so a second lane calling a moment later is offered another one.
+pub fn run_with_store<T: Transport, C: Clock>(
+    target: &Target<'_>,
+    transport: &T,
+    clock: &C,
+    wait_secs: u64,
+    shared_lanes: u64,
+    store: Option<&std::path::Path>,
+) -> Result<Value> {
     if wait_secs > MAX_WAIT_SECS {
         return Err(format!("--wait accepts at most {MAX_WAIT_SECS} seconds"));
     }
@@ -2250,7 +2314,12 @@ pub fn run<T: Transport, C: Clock>(
         let mut snap = collect(target, transport);
         snap.now
             .get_or_insert_with(|| crate::forge::policy::format_utc(clock.now()));
-        let mut v = decide(target.lane, &snap);
+        let mut v = match store {
+            Some(dir) => {
+                crate::lane_proposal::decide_and_record(dir, target.lane, &mut snap, clock.now())
+            }
+            None => decide(target.lane, &snap),
+        };
         let done = !v["next"].is_null() || clock.now() + poll as i64 > deadline;
         if done {
             v["rounds"] = json!(rounds);
