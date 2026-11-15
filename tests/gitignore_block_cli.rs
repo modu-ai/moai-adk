@@ -497,6 +497,39 @@ fn a_user_rule_elsewhere_leaves_the_block_as_it_is() {
     assert_eq!(block(fx.ignore()), block(plain.ignore()));
 }
 
+/// A user rule that re-includes a path (`!rule`) does not ignore it: that path is no "left
+/// ignored" hit and keeps its allow line, while the folder-wide rule still names the others.
+#[test]
+fn a_user_negation_is_not_an_ignoring_rule() {
+    let fx = Fx::new(None);
+    fs::write(
+        fx.root.join(".gitignore"),
+        ".moai-cli/*\n!.moai-cli/project.yaml\n",
+    )
+    .unwrap();
+    let plan = fx.plan("none");
+    let detail = Fx::ignore_row(&plan)["detail"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    // git answers a file path matched by a `!` rule with that rule; it is not an ignoring one.
+    assert!(!detail.contains("your rule `!"), "{detail}");
+    assert!(
+        !detail.contains("in .gitignore: .moai-cli/project.yaml"),
+        "{detail}"
+    );
+    assert!(
+        detail
+            .lines()
+            .any(|l| l == "left ignored by your rule `.moai-cli/*` in .gitignore: .moai-cli/docs/"),
+        "{detail}"
+    );
+    fx.apply_ok("none");
+    let text = fx.ignore();
+    let block = &text[text.find(BEGIN).unwrap()..];
+    assert!(block.contains("\n!.moai-cli/project.yaml\n"), "{text}");
+}
+
 /// Like [`Fx::ignored`], with the global excludes file given; the repository's own
 /// `.git/info/exclude` always applies.
 fn ignored_with(fx: &Fx, rel: &str, global: &Path) -> bool {
