@@ -28,7 +28,7 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
 
 | event | matcher | handler |
 | --- | --- | --- |
-| `SessionStart` | 없음 | `moai hook-dispatch --host <host> --event session-check`, timeout 10초(#2936 R9 S1: 이전의 `hook-receipt` 대신 세션 점검 답을 냄) |
+| `SessionStart` | 없음 | `moai hook-dispatch --host <host> --event session-check`, timeout 10초(#2936 R9 S1: 이전의 `hook-receipt` 대신 세션 점검 답을 냄). 입력의 `source` 가 정확히 `compact`(압축 뒤)이면 답에 고정 안내를 더한다: 훅은 댓글·claim·PR 을 읽지 않아 지시가 끝났는지 알 수 없으므로 “끝났다”고 말하지 않고, 보이는 사용자 지시는 댓글·claim·PR 이 끝났음을 보이는지 먼저 확인하고 아무것도 없을 때만 다시 실행하라, 상시 지시는 계속 유효하다, 레인 가지(`issue/<n>-…`)면 “Issue #n 이 당신의 카드라면” 그 최신 `moai-resume:` 댓글에서 이어 가라(레인 가지가 아니면 카드를 전제하지 않는 문장)고 알린다(Codex 는 활성 `/goal` 확인 한 줄도; OMP 도 입력에 `source: "compact"` 가 오면 같은 안내를 받지만 지금 생성되는 OMP 모듈은 `source` 를 보내지 않는다). 그 밖의 `source` 는 이전과 같다. `PreCompact`·`PostCompact` 는 어느 호스트에서도 문맥에 글을 넣지 못해 쓰지 않는다(#3015 C6) |
 | `PreToolUse` | `Bash` | `moai claim-verify . --hook`, timeout 10초(#2255 claim 쓰기 경계, 차단 exit 2) |
 | `PreToolUse`(Claude Code 만) | `Bash\|Write\|Edit\|MultiEdit\|NotebookEdit` | `moai hook-dispatch --host claude --event tool-preflight`, timeout 10초 — 훅 엔진의 위험 Bash·`.git`·자격 증명 폴더·개인 키·토큰 쓰기 가드, 문서화된 PreToolUse `deny` 로만 답함(#2877 리더 Q1: Go 세대 hook 을 바꾼 뒤에도 그 보호가 남게) |
 | `PostToolUse` | `Bash` | `moai hook-receipt --host <host>`, timeout 10초 |
