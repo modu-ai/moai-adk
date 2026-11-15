@@ -1318,22 +1318,47 @@ pub fn generation_apply(
     receipt
         .save(&root)
         .map_err(|e| format!("published files but the receipt was not recorded: {e}"))?;
-    let agents_applied: Vec<String> = agents_result
+    // #2936 G3-2 (F18): a file the agents engine wrote is `created` only when the plan said
+    // `create`; an `append` or `merge` changed a file that was already there (`AGENTS.md` of a
+    // project that has one). The manifest the engine published is listed too, and the engine's
+    // own receipt is named.
+    let mut all_created: Vec<String> = Vec::new();
+    let mut all_merged: Vec<String> = Vec::new();
+    for path in agents_result
         .get("applied")
         .and_then(Value::as_array)
         .into_iter()
         .flatten()
-        .filter_map(|v| v.as_str().map(str::to_string))
-        .filter(|path| *path != manifest_rel(&root))
-        .collect();
-    let mut all_created = agents_applied.clone();
+        .filter_map(Value::as_str)
+    {
+        let action = agents_plan
+            .files
+            .iter()
+            .find(|f| f.path == path)
+            .map_or("create", |f| f.action.as_str());
+        if action == "create" {
+            all_created.push(path.to_string());
+        } else {
+            all_merged.push(path.to_string());
+        }
+    }
     all_created.extend(files_created.iter().cloned());
+    all_merged.extend(files_merged.iter().cloned());
     Ok(json!({
         "state": "applied",
         "files_created": all_created,
-        "files_merged": files_merged,
+        "files_merged": all_merged,
         "host_loaded": false,
         "execution_verified": false,
+        "not_checked": [
+            "host_loaded is false: no host session was checked for having loaded these files",
+            "execution_verified is false: nothing that was generated was run",
+        ],
+        "next_actions": [
+            "start a new host session in this project so it loads AGENTS.md and the generated files",
+            "run project-update-plan to see which steps remain",
+        ],
         "receipt": request_id,
+        "agents_receipt": agents_result.get("receipt").cloned().unwrap_or(Value::Null),
     }))
 }

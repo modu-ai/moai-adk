@@ -516,7 +516,7 @@ enum Command {
     },
     /// Preview the managed Claude Code settings keys
     ///
-    /// Preview a three-way merge of the managed keys (`outputStyle`, `statusLine`, `permissions`) on stdin
+    /// Preview a three-way merge of the managed keys (`outputStyle`, `statusLine`, `permissions`, `env`, `model`) on stdin
     /// into PROJECT/.claude/settings.json (#2239); other keys are refused. Writes nothing.
     ClaudeSettingsPlan {
         project: PathBuf,

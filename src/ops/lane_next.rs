@@ -14,9 +14,20 @@ use std::path::PathBuf;
 /// (at most 30 requests a run) and the local clone only; writes no GitHub state. A registered
 /// lane's offered audit or Issue is kept for 600 seconds in the clone's session registry folder
 /// (`proposals/<lane>.json`), so a second lane asking a moment later is offered another one;
-/// `proposal` in the answer says whether it was kept. `--wait` reads again
-/// every 432 seconds for the default ten lanes on one token (within half of GitHub's hourly
-/// limit; `--shared-lanes` changes the count) until a task appears.
+/// `proposal` in the answer says whether it was kept. `--wait` reads again every 432
+/// seconds for the default ten lanes on one token (within half of GitHub's hourly limit;
+/// `--shared-lanes` changes the count) until a task appears. A watching lane stops by itself:
+/// the one thing it writes is a count kept per lane and repository in the clone's state
+/// folder (`<git common dir>/.moai-cli/lane-idle/`, result `writes: true`; nothing with
+/// `--max-empty 0`; a `--snapshot` read counts and writes only when `--max-empty` is given).
+/// Each read with no task, nothing to wait for and a full answer from GitHub adds 1; at
+/// `--max-empty` (6 on a GitHub read) the result says `status: idle_limit` and carries the
+/// `LANE-IDLE` line to print once, and a `--wait` ends at that read. A read with a task,
+/// something to wait for or an open pull request of the lane's own (a draft too:
+/// `own_open_prs`) sets the count back to 0; a partial read (`partial`, or an unknown
+/// `end_condition.met`) is not counted. Two `partial` notes are not a failure and do not
+/// block an empty read: no tip base known (nothing is open) and `#<n>: only the newest 100
+/// comments read` of a busy Issue.
 #[derive(clap::Args)]
 pub struct Args {
     /// The lane name as it appears in claims (`session=<lane>`) and audit reservations.
@@ -46,6 +57,10 @@ pub struct Args {
     /// Add `explain`: why each pull request and Issue was passed over.
     #[arg(long)]
     explain: bool,
+    /// Empty reads in a row after which the result says `idle_limit` (1 to 1000; 0 = do not
+    /// count). Default 6 on a GitHub read; a `--snapshot` read counts only when this is given.
+    #[arg(long)]
+    max_empty: Option<u64>,
 }
 
 pub const OPERATION: &str = "lane.next";
@@ -60,6 +75,18 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     let store = kept_in
         .as_deref()
         .map(moai_cli::lane_registry::registry_dir);
+    let max_empty = moai_cli::lane_idle::resolve_max(args.max_empty, args.snapshot.is_some())?;
+    let anchor = (max_empty > 0)
+        .then(|| {
+            moai_cli::identity::identity(args.dir.as_deref().unwrap_or(std::path::Path::new(".")))
+                .ok()
+                .filter(|id| id["identity_status"].as_str() == Some("ok"))
+                .and_then(|id| id["clone_anchor"].as_str().map(PathBuf::from))
+        })
+        .flatten();
+    // The count saved so far, so a `--wait` call stops at the Nth empty read in a row.
+    let budget =
+        moai_cli::lane_idle::budget(anchor.as_deref(), &args.lane, &args.repo, max_empty);
     let mut v = match &args.snapshot {
         Some(file) => {
             let bytes = std::fs::read(file).map_err(|e| format!("snapshot unreadable: {e}"))?;
@@ -95,12 +122,24 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 args.wait,
                 args.shared_lanes,
                 store.as_ref().and_then(|s| s.as_deref().ok()),
+                budget,
             )?
         }
     };
     if matches!(store, Some(Err(_))) {
         v["proposal"] = serde_json::json!({"status": "unavailable",
             "reason": "no session registry for this clone"});
+    }
+    if max_empty > 0 {
+        let now = moai_cli::forge::policy::format_utc(SystemClock.now());
+        moai_cli::lane_idle::apply(
+            &mut v,
+            anchor.as_deref(),
+            &args.lane,
+            &args.repo,
+            max_empty,
+            &now,
+        );
     }
     if args.explain {
         v["explain"] = serde_json::json!(moai_cli::lane_next::explain_lines(&v));
