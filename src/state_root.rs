@@ -20,8 +20,11 @@
 //! Go markers: `.moai/manifest.json` (the Go deploy manifest), `.moai/config/config.yaml`,
 //! and `.moai/config/sections/system.yaml` with a `moai:` block holding `version:`.
 //! Rust marker: `.moai/moai-cli.json` = `{"schema_version": 1, "generation": "moai-cli", …}`,
-//! written last by a migration (decision D1). Every path is read with `symlink_metadata`;
-//! a link anywhere on the way is not a marker. Writes nothing.
+//! written last by a migration (decision D1), or `.moai/moai.json` = `{…, "generation": "moai"}`
+//! (the rename of #2871, leader decision 6886824285 item 2: readers accept both names, writers
+//! still write the old one). Each name pairs with its own generation value; a mismatched pair is
+//! not a marker. `moai.json` alone decides when it exists. Every path is read with
+//! `symlink_metadata`; a link anywhere on the way is not a marker. Writes nothing.
 //!
 //! A Go backup is the Go folder after `go-state-apply` renamed it (#2725 rev2 D2, #2696):
 //! exactly `.moai-backup`, or `.moai-backup-<UTC>` when that name was taken. The Go tool's own
@@ -32,8 +35,22 @@ use std::{fs, path::Path};
 
 /// The Go and Rust folder name once the state has moved (#2725).
 pub const MOAI_DIR: &str = ".moai";
-/// The Rust generation marker inside `.moai/` (decision D1).
+/// The Rust generation marker inside `.moai/` that every writer writes (decision D1), with
+/// `"generation": "moai-cli"`. Readers also accept [`NEW_MARKER`] (#2871 marker rename, leader
+/// decision 6886824285 item 2: read both, write unchanged); a later step flips the writers.
 pub const RUST_MARKER: &str = "moai-cli.json";
+/// The marker name the rename moves to, paired with [`NEW_GENERATION`]. Read only for now.
+pub const NEW_MARKER: &str = "moai.json";
+/// `"generation"` inside [`RUST_MARKER`].
+pub const LEGACY_GENERATION: &str = "moai-cli";
+/// `"generation"` inside [`NEW_MARKER`].
+pub const NEW_GENERATION: &str = "moai";
+
+/// Either marker file name, ASCII case-insensitive (APFS and NTFS fold the case, so `MOAI.JSON`
+/// is the same file there).
+pub fn is_marker_name(name: &str) -> bool {
+    name.eq_ignore_ascii_case(RUST_MARKER) || name.eq_ignore_ascii_case(NEW_MARKER)
+}
 /// The marker schema this build writes and understands.
 pub const MARKER_SCHEMA: u64 = 1;
 /// #2871 I2 R1: a HOME marker with this schema makes the HOME this generation's first
@@ -60,6 +77,9 @@ pub struct Classified {
     pub go_markers: Vec<String>,
     /// `valid`, `absent`, `newer` or `unreadable`.
     pub rust_marker: &'static str,
+    /// The marker file that decided `rust_marker` (`moai.json` or `moai-cli.json`); `None` when
+    /// there is no marker.
+    pub marker_file: Option<&'static str>,
     /// The Go backups beside `.moai` that make the verdict `interrupted`, sorted (empty
     /// for every other verdict).
     pub interrupted: Vec<String>,
@@ -88,6 +108,10 @@ impl Classified {
         // Only a `rust-first` verdict carries the key, so every other verdict's JSON is unchanged.
         if self.generation == "rust-first" {
             v["go_retire_pending"] = json!(self.go_retire_pending);
+        }
+        // Likewise `marker_file` appears only when a marker exists.
+        if let Some(file) = self.marker_file {
+            v["marker_file"] = json!(file);
         }
         v
     }
@@ -159,31 +183,112 @@ fn go_markers(moai: &Path) -> Vec<String> {
     found
 }
 
-/// `valid`, `absent`, `newer` or `unreadable` for `.moai/moai-cli.json`; `schema-2` too when
+/// What one marker file says (`.moai/moai-cli.json` or `.moai/moai.json`): `valid`, `absent`, `newer` or `unreadable`; `schema-2` too when
 /// `accept` is [`HOME_MARKER_SCHEMA`] (HOME only). Old builds read schema 2 as `newer` and
-/// refuse it.
-fn rust_marker(moai: &Path, accept: u64) -> &'static str {
-    let path = moai.join(RUST_MARKER);
-    match fs::symlink_metadata(&path) {
-        Err(_) => return "absent",
-        Ok(m) if !m.is_file() => return "unreadable",
+/// refuse it. `schema` is the number found for `valid`, `schema-2` and `newer`.
+struct OneMarker {
+    status: &'static str,
+    schema: Option<u64>,
+}
+
+/// Read `moai/<name>` and demand `generation` as its generation: `moai-cli.json` carries
+/// `"moai-cli"`, `moai.json` carries `"moai"` and no other pairing is a marker. A file that is
+/// not a regular file (a link, a folder, a FIFO) is `unreadable` and never opened. `Absent`
+/// follows the old rule for the old name (any failed `lstat`) and only a missing name for the
+/// new one, so a name that exists but cannot be examined still decides.
+fn read_one_marker(moai: &Path, name: &str, generation: &str, accept: u64) -> OneMarker {
+    let unreadable = OneMarker {
+        status: "unreadable",
+        schema: None,
+    };
+    match fs::symlink_metadata(moai.join(name)) {
+        Err(e) if name == RUST_MARKER || e.kind() == std::io::ErrorKind::NotFound => {
+            return OneMarker {
+                status: "absent",
+                schema: None,
+            }
+        }
+        Err(_) => return unreadable,
+        Ok(m) if !m.is_file() => return unreadable,
         Ok(_) => {}
     }
-    let Some(bytes) = read_limited(moai, &[RUST_MARKER], MARKER_LIMIT) else {
-        return "unreadable";
+    let Some(bytes) = read_limited(moai, &[name], MARKER_LIMIT) else {
+        return unreadable;
     };
     let Ok(Value::Object(map)) = serde_json::from_slice::<Value>(&bytes) else {
-        return "unreadable";
+        return unreadable;
     };
-    if map.get("generation").and_then(Value::as_str) != Some("moai-cli") {
-        return "unreadable";
+    if map.get("generation").and_then(Value::as_str) != Some(generation) {
+        return unreadable;
     }
     match map.get("schema_version").and_then(Value::as_u64) {
-        Some(MARKER_SCHEMA) => "valid",
-        Some(HOME_MARKER_SCHEMA) if accept >= HOME_MARKER_SCHEMA => "schema-2",
-        Some(v) if v > MARKER_SCHEMA => "newer",
-        _ => "unreadable",
+        Some(MARKER_SCHEMA) => OneMarker {
+            status: "valid",
+            schema: Some(MARKER_SCHEMA),
+        },
+        Some(HOME_MARKER_SCHEMA) if accept >= HOME_MARKER_SCHEMA => OneMarker {
+            status: "schema-2",
+            schema: Some(HOME_MARKER_SCHEMA),
+        },
+        Some(v) if v > MARKER_SCHEMA => OneMarker {
+            status: "newer",
+            schema: Some(v),
+        },
+        _ => unreadable,
     }
+}
+
+/// The decided marker of a `.moai/`: its status string, the file that decided it, and, when the
+/// two names disagree, why (#2871 marker rename, leader decision 6886824285 item 2).
+struct Marker {
+    status: &'static str,
+    file: Option<&'static str>,
+    conflict: Option<String>,
+}
+
+/// Read both marker names; reads only, nothing is renamed, rewritten or deleted.
+///
+/// - `moai.json` present (any `lstat` answer but "not found"): it alone decides. The old file is
+///   never a fallback for it.
+/// - `moai.json` absent: `moai-cli.json` decides, exactly as before the rename.
+/// - Both present and the new one readable: the new one decides unless the old one is `newer`
+///   or carries a higher schema than the new one (`markers disagree`, refused). An old
+///   schema 1 beside a new schema 2 is the expected pair of a HOME install, and an unreadable
+///   old file beside a good new one is ignored.
+fn rust_marker(moai: &Path, accept: u64) -> Marker {
+    let new = read_one_marker(moai, NEW_MARKER, NEW_GENERATION, accept);
+    let old = read_one_marker(moai, RUST_MARKER, LEGACY_GENERATION, accept);
+    if new.status == "absent" {
+        return Marker {
+            status: old.status,
+            file: (old.status != "absent").then_some(RUST_MARKER),
+            conflict: None,
+        };
+    }
+    let decided = |conflict: Option<String>| Marker {
+        status: if conflict.is_some() {
+            "newer"
+        } else {
+            new.status
+        },
+        file: Some(NEW_MARKER),
+        conflict,
+    };
+    if !matches!(new.status, "valid" | "schema-2") {
+        return decided(None);
+    }
+    let new_schema = new.schema.unwrap_or(MARKER_SCHEMA);
+    let disagrees = old.status == "newer"
+        || (matches!(old.status, "valid" | "schema-2") && old.schema.unwrap_or(0) > new_schema);
+    if disagrees {
+        // Both files carry a schema here (`newer`, `valid` and `schema-2` all do).
+        let old_schema = old.schema.unwrap_or(0);
+        return decided(Some(format!(
+            "markers disagree: {RUST_MARKER} is schema {old_schema} and {NEW_MARKER} is schema \
+             {new_schema}; this build leaves both alone"
+        )));
+    }
+    decided(None)
 }
 
 /// A UTC stamp `YYYYMMDDTHHMMSSZ`, the only suffix a backup or apply name carries.
@@ -263,12 +368,23 @@ fn classify_inner(root: &Path, go: fn(&Path) -> Vec<String>, accept: u64) -> Cla
         Ok(_) => "other",
     };
     let legacy_root = regular_file(root, &[crate::PROJECT_STATE_DIR, "project.yaml"]).is_some();
-    let (go, marker, entries) = if moai_dir == "folder" {
+    let (go, found, entries) = if moai_dir == "folder" {
         let entries = fs::read_dir(&moai).map(|rd| rd.count() as u64).unwrap_or(0);
         (go_markers(&moai), rust_marker(&moai, accept), entries)
     } else {
-        (Vec::new(), "absent", 0)
+        (
+            Vec::new(),
+            Marker {
+                status: "absent",
+                file: None,
+                conflict: None,
+            },
+            0,
+        )
     };
+    let marker = found.status;
+    // The file that decided, for the reasons below.
+    let decided_by = found.file.unwrap_or(RUST_MARKER);
     // #2696: a go-state apply renames the Go folder to a backup, makes a new `.moai/` holding
     // its receipt and writes the marker last; a revert removes the marker first. A backup
     // beside a `.moai` that is missing, or that is the apply's own folder without a valid
@@ -307,11 +423,15 @@ fn classify_inner(root: &Path, go: fn(&Path) -> Vec<String>, accept: u64) -> Cla
             _ => match (marker, go.is_empty()) {
                 ("newer", _) => (
                     "refuse",
-                    format!("{MOAI_DIR}/{RUST_MARKER} is from a newer moai-cli; this build leaves it alone"),
+                    found.conflict.clone().unwrap_or_else(|| {
+                        format!(
+                            "{MOAI_DIR}/{decided_by} is from a newer moai-cli; this build leaves it alone"
+                        )
+                    }),
                 ),
                 ("unreadable", _) => (
                     "refuse",
-                    format!("{MOAI_DIR}/{RUST_MARKER} is not a marker this build can read"),
+                    format!("{MOAI_DIR}/{decided_by} is not a marker this build can read"),
                 ),
                 ("schema-2", _) => match crate::home_layout::check_root_in(
                     crate::home_layout::RUST_HOME_LAYOUT,
@@ -355,6 +475,7 @@ fn classify_inner(root: &Path, go: fn(&Path) -> Vec<String>, accept: u64) -> Cla
         },
         go_markers: go,
         rust_marker: marker,
+        marker_file: found.file,
         interrupted,
         entries,
         legacy_root,
@@ -397,7 +518,7 @@ pub fn create_dir(root: &Path) -> &'static str {
 pub fn marker_bytes(created_by: &str, extra: &[(&str, &str)]) -> Vec<u8> {
     let mut map = serde_json::Map::new();
     map.insert("schema_version".into(), json!(MARKER_SCHEMA));
-    map.insert("generation".into(), json!("moai-cli"));
+    map.insert("generation".into(), json!(LEGACY_GENERATION));
     map.insert(
         "created_by".into(),
         json!(format!("moai-cli {} {created_by}", crate::BUILD_VERSION)),
@@ -859,6 +980,419 @@ mod tests {
             c.go_retire_pending,
             vec![".moai/credentials.yaml".to_string()]
         );
+    }
+
+    // ---- #2871 marker rename, PR-A: read both names, write unchanged ----
+
+    /// Both file names with the generation each one is paired with.
+    const NAMES: [(&str, &str); 2] = [("moai-cli.json", "moai-cli"), ("moai.json", "moai")];
+
+    fn body(generation: &str, schema: u64) -> String {
+        format!(r#"{{"schema_version":{schema},"generation":"{generation}"}}"#)
+    }
+
+    fn put(root: &Path, name: &str, text: &str) {
+        write(root, &format!(".moai/{name}"), text);
+    }
+
+    fn padded(text: &str, len: usize) -> String {
+        let mut s = text.to_string();
+        while s.len() < len {
+            s.push(' ');
+        }
+        s
+    }
+
+    /// Project and HOME verdicts of the same setup: `(generation, rust_marker, marker_file)`.
+    fn both(setup: impl Fn(&Path)) -> [(&'static str, &'static str, Option<&'static str>); 2] {
+        let p = verdict(&setup);
+        let h = home_verdict(&setup);
+        [
+            (p.generation, p.rust_marker, p.marker_file),
+            (h.generation, h.rust_marker, h.marker_file),
+        ]
+    }
+
+    #[test]
+    fn the_marker_names_and_generations_are_pinned() {
+        assert_eq!(
+            RUST_MARKER, "moai-cli.json",
+            "writers still write the old name"
+        );
+        assert_eq!((NEW_MARKER, NEW_GENERATION), ("moai.json", "moai"));
+        assert_eq!(LEGACY_GENERATION, "moai-cli");
+        for name in ["moai.json", "moai-cli.json", "MOAI.JSON", "Moai-Cli.Json"] {
+            assert!(is_marker_name(name), "{name}");
+        }
+        for name in [
+            "moai.json.bak",
+            "moai",
+            "moai-json",
+            "xmoai.json",
+            "",
+            "moai.json ",
+        ] {
+            assert!(!is_marker_name(name), "{name:?}");
+        }
+        // The bytes a writer produces carry the old pair.
+        let v: Value = serde_json::from_slice(&marker_bytes("t", &[])).unwrap();
+        assert_eq!(v["generation"], json!("moai-cli"));
+    }
+
+    /// Each name alone: valid for a project, schema 2 for a HOME, newer and unreadable refused,
+    /// and the reason names the file that decided.
+    #[test]
+    fn either_marker_name_decides_alone() {
+        for (name, generation) in NAMES {
+            let v1 = body(generation, 1);
+            let v2 = body(generation, 2);
+            let got = both(|r| put(r, name, &v1));
+            assert_eq!(got[0], ("rust", "valid", Some(name)), "{name}");
+            assert_eq!(got[1], ("rust", "valid", Some(name)), "{name}");
+            // Schema 2: a HOME is rust-first, a project refuses it as newer.
+            let got = both(|r| put(r, name, &v2));
+            assert_eq!(got[0], ("refuse", "newer", Some(name)), "{name}");
+            assert_eq!(got[1], ("rust-first", "schema-2", Some(name)), "{name}");
+            // Schema 3 is newer for both; schema 0 and a wrong shape are unreadable.
+            let got = both(|r| put(r, name, &body(generation, 3)));
+            assert_eq!(got[0], ("refuse", "newer", Some(name)), "{name}");
+            assert_eq!(got[1], ("refuse", "newer", Some(name)), "{name}");
+            assert!(verdict(|r| put(r, name, &body(generation, 3)))
+                .reason
+                .contains(name));
+            for bad in [
+                body(generation, 0),
+                format!(r#"{{"schema_version":"1","generation":"{generation}"}}"#),
+                format!(r#"{{"generation":"{generation}"}}"#),
+                r#"{"schema_version":1}"#.to_string(),
+                "[1]".to_string(),
+                "not json".to_string(),
+            ] {
+                let got = both(|r| put(r, name, &bad));
+                assert_eq!(got[0], ("refuse", "unreadable", Some(name)), "{name} {bad}");
+                assert_eq!(got[1], ("refuse", "unreadable", Some(name)), "{name} {bad}");
+                let c = verdict(|r| put(r, name, &bad));
+                assert!(c.reason.contains(name), "{name}: {}", c.reason);
+            }
+        }
+        // `moai.json` beside Go markers is `mixed`, as the old name is.
+        let c = verdict(|r| {
+            put(r, "moai.json", &body("moai", 1));
+            write(r, ".moai/manifest.json", "{}");
+        });
+        assert_eq!((c.generation, c.marker_file), ("mixed", Some("moai.json")));
+        // `dir` follows the verdict: the new name alone is a `rust` project.
+        let tmp = tempfile::tempdir().unwrap();
+        put(tmp.path(), "moai.json", &body("moai", 1));
+        assert_eq!(dir(tmp.path()), MOAI_DIR);
+        assert!(!is_new_project(tmp.path()));
+    }
+
+    /// The name and the generation travel together: either mismatch is not a marker.
+    #[test]
+    fn a_name_with_the_other_generation_is_refused() {
+        for (name, other) in [("moai-cli.json", "moai"), ("moai.json", "moai-cli")] {
+            for schema in [1, 2] {
+                let got = both(|r| put(r, name, &body(other, schema)));
+                assert_eq!(
+                    got[0],
+                    ("refuse", "unreadable", Some(name)),
+                    "{name} {schema}"
+                );
+                assert_eq!(
+                    got[1],
+                    ("refuse", "unreadable", Some(name)),
+                    "{name} {schema}"
+                );
+            }
+        }
+        // A good pair beside a crossed one: the crossed `moai.json` decides alone (refuse), and
+        // a crossed old file beside a good new one is ignored.
+        let got = both(|r| {
+            put(r, "moai-cli.json", &body("moai-cli", 1));
+            put(r, "moai.json", &body("moai-cli", 1));
+        });
+        assert_eq!(got[0], ("refuse", "unreadable", Some("moai.json")));
+        let got = both(|r| {
+            put(r, "moai-cli.json", &body("moai", 1));
+            put(r, "moai.json", &body("moai", 1));
+        });
+        assert_eq!(got[0], ("rust", "valid", Some("moai.json")));
+    }
+
+    /// Classifying never writes, renames or deletes: one tree snapshot before and after, for
+    /// each name alone and for both, in a project and in a HOME.
+    #[test]
+    fn classify_changes_nothing_for_either_name() {
+        let setups: [Vec<(&str, String)>; 4] = [
+            vec![("moai-cli.json", body("moai-cli", 1))],
+            vec![("moai.json", body("moai", 1))],
+            vec![
+                ("moai-cli.json", body("moai-cli", 1)),
+                ("moai.json", body("moai", 2)),
+            ],
+            vec![
+                ("moai-cli.json", body("moai-cli", 3)),
+                ("moai.json", body("moai", 1)),
+            ],
+        ];
+        for files in &setups {
+            let tmp = tempfile::tempdir().unwrap();
+            let r = tmp.path();
+            for (name, text) in files {
+                put(r, name, text);
+            }
+            write(r, ACTIVE, "[]");
+            let before = snapshot(r);
+            let _ = classify(r);
+            let _ = classify_home(r);
+            let _ = classify_with(r, crate::home_state::home_go_markers);
+            let _ = dir(r);
+            let _ = is_new_project(r);
+            assert_eq!(snapshot(r), before, "{files:?}");
+        }
+    }
+
+    #[test]
+    fn the_marker_size_limit_is_64_kib_at_both_names() {
+        for (name, generation) in NAMES {
+            // A project reads schema 1, a HOME schema 2: 65536 bytes pass, 65537 do not.
+            let p1 = body(generation, 1);
+            let p2 = body(generation, 2);
+            let at = verdict(|r| put(r, name, &padded(&p1, 65536)));
+            assert_eq!((at.generation, at.rust_marker), ("rust", "valid"), "{name}");
+            let over = verdict(|r| put(r, name, &padded(&p1, 65537)));
+            assert_eq!(
+                (over.generation, over.rust_marker),
+                ("refuse", "unreadable"),
+                "{name}"
+            );
+            let at = home_verdict(|h| put(h, name, &padded(&p2, 65536)));
+            assert_eq!(
+                (at.generation, at.rust_marker),
+                ("rust-first", "schema-2"),
+                "{name}"
+            );
+            let over = home_verdict(|h| put(h, name, &padded(&p2, 65537)));
+            assert_eq!(
+                (over.generation, over.rust_marker),
+                ("refuse", "unreadable"),
+                "{name}"
+            );
+        }
+    }
+
+    /// A link, a folder or a FIFO in the place of either marker is `unreadable`; none is
+    /// followed or opened (opening a FIFO would block), and nothing is written.
+    #[cfg(unix)]
+    #[test]
+    fn a_link_a_folder_or_a_fifo_is_no_marker_at_either_name() {
+        use std::os::unix::fs::symlink;
+        for (name, generation) in NAMES {
+            for home in [false, true] {
+                let schema = if home { 2 } else { 1 };
+                let classify_it = |r: &Path| {
+                    if home {
+                        classify_home(r)
+                    } else {
+                        classify(r)
+                    }
+                };
+                // A link to a good marker.
+                let tmp = tempfile::tempdir().unwrap();
+                let r = tmp.path();
+                write(r, "outside/m.json", &body(generation, schema));
+                fs::create_dir(r.join(".moai")).unwrap();
+                symlink(r.join("outside/m.json"), r.join(".moai").join(name)).unwrap();
+                let before = snapshot(r);
+                let c = classify_it(r);
+                assert_eq!(
+                    (c.generation, c.rust_marker, c.marker_file),
+                    ("refuse", "unreadable", Some(name)),
+                    "link {name} home={home}"
+                );
+                assert_eq!(snapshot(r), before, "link {name}");
+                // A dangling link too.
+                let tmp = tempfile::tempdir().unwrap();
+                let r = tmp.path();
+                fs::create_dir(r.join(".moai")).unwrap();
+                symlink(r.join("nowhere"), r.join(".moai").join(name)).unwrap();
+                let c = classify_it(r);
+                assert_eq!(
+                    (c.generation, c.rust_marker),
+                    ("refuse", "unreadable"),
+                    "dangling {name} home={home}"
+                );
+                // A folder.
+                let tmp = tempfile::tempdir().unwrap();
+                let r = tmp.path();
+                fs::create_dir_all(r.join(".moai").join(name)).unwrap();
+                let c = classify_it(r);
+                assert_eq!(
+                    (c.generation, c.rust_marker, c.marker_file),
+                    ("refuse", "unreadable", Some(name)),
+                    "folder {name} home={home}"
+                );
+                // A FIFO: `lstat` says it is no regular file, so it is never opened.
+                let tmp = tempfile::tempdir().unwrap();
+                let r = tmp.path();
+                fs::create_dir(r.join(".moai")).unwrap();
+                let status = std::process::Command::new("mkfifo")
+                    .arg(r.join(".moai").join(name))
+                    .status()
+                    .unwrap();
+                assert!(status.success());
+                let before = snapshot(r);
+                let c = classify_it(r);
+                assert_eq!(
+                    (c.generation, c.rust_marker, c.marker_file),
+                    ("refuse", "unreadable", Some(name)),
+                    "fifo {name} home={home}"
+                );
+                assert_eq!(snapshot(r), before, "fifo {name}");
+            }
+        }
+    }
+
+    /// Both files present: `moai.json` alone decides when it exists; the old file is no
+    /// fallback for it, and is ignored unless it is newer or higher than the new one.
+    #[test]
+    fn with_both_marker_files_the_new_one_decides() {
+        let old = |schema| body("moai-cli", schema);
+        let new = |schema| body("moai", schema);
+        // Equal and readable: new wins, and the verdict says so.
+        let got = both(|r| {
+            put(r, "moai-cli.json", &old(1));
+            put(r, "moai.json", &new(1));
+        });
+        assert_eq!(got[0], ("rust", "valid", Some("moai.json")));
+        assert_eq!(got[1], ("rust", "valid", Some("moai.json")));
+        // An old v1 beside a new v2 is the expected pair of a HOME install, not a conflict.
+        let got = both(|r| {
+            put(r, "moai-cli.json", &old(1));
+            put(r, "moai.json", &new(2));
+        });
+        assert_eq!(got[1], ("rust-first", "schema-2", Some("moai.json")));
+        // For a project the new v2 is newer than this build.
+        assert_eq!(got[0], ("refuse", "newer", Some("moai.json")));
+        // An unreadable old file beside a good new one is ignored.
+        for bad in [
+            "not json",
+            "[1]",
+            r#"{"schema_version":1,"generation":"moai"}"#,
+        ] {
+            let got = both(|r| {
+                put(r, "moai-cli.json", bad);
+                put(r, "moai.json", &new(1));
+            });
+            assert_eq!(got[0], ("rust", "valid", Some("moai.json")), "{bad}");
+            assert_eq!(got[1], ("rust", "valid", Some("moai.json")), "{bad}");
+        }
+        // The old file as a folder or a link is ignored too.
+        let c = verdict(|r| {
+            put(r, "moai.json", &new(1));
+            fs::create_dir_all(r.join(".moai/moai-cli.json")).unwrap();
+        });
+        assert_eq!((c.generation, c.marker_file), ("rust", Some("moai.json")));
+        // A new file that is unreadable or newer refuses on its own state; the good old file
+        // is not a fallback.
+        for (text, marker) in [
+            ("not json", "unreadable"),
+            (
+                r#"{"schema_version":1,"generation":"moai-cli"}"#,
+                "unreadable",
+            ),
+            (r#"{"schema_version":3,"generation":"moai"}"#, "newer"),
+        ] {
+            let got = both(|r| {
+                put(r, "moai-cli.json", &old(1));
+                put(r, "moai.json", text);
+            });
+            assert_eq!(got[0], ("refuse", marker, Some("moai.json")), "{text}");
+            assert_eq!(got[1], ("refuse", marker, Some("moai.json")), "{text}");
+            let c = verdict(|r| {
+                put(r, "moai-cli.json", &old(1));
+                put(r, "moai.json", text);
+            });
+            assert!(c.reason.contains("moai.json"), "{}", c.reason);
+        }
+        // A `moai.json` that is a link or a folder is "present": the old file does not decide.
+        #[cfg(unix)]
+        {
+            let c = verdict(|r| {
+                put(r, "moai-cli.json", &old(1));
+                write(r, "outside/m.json", &new(1));
+                std::os::unix::fs::symlink(r.join("outside/m.json"), r.join(".moai/moai.json"))
+                    .unwrap();
+            });
+            assert_eq!((c.generation, c.marker_file), ("refuse", Some("moai.json")));
+        }
+        let c = verdict(|r| {
+            put(r, "moai-cli.json", &old(1));
+            fs::create_dir_all(r.join(".moai/moai.json")).unwrap();
+        });
+        assert_eq!((c.generation, c.rust_marker), ("refuse", "unreadable"));
+        // `moai.json` absent: the old name decides exactly as before.
+        let c = verdict(|r| put(r, "moai-cli.json", &old(1)));
+        assert_eq!(
+            (c.generation, c.marker_file),
+            ("rust", Some("moai-cli.json"))
+        );
+    }
+
+    /// Two markers that disagree refuse and say so: the old file newer than this build, or with
+    /// a higher schema than the new one. Nothing is touched.
+    #[test]
+    fn markers_that_disagree_are_refused() {
+        // Old v2 beside new v1 (a HOME reads both): refuse.
+        let tmp = tempfile::tempdir().unwrap();
+        let h = tmp.path();
+        put(h, "moai-cli.json", &body("moai-cli", 2));
+        put(h, "moai.json", &body("moai", 1));
+        let before = snapshot(h);
+        let c = classify_home(h);
+        assert_eq!((c.generation, c.rust_marker), ("refuse", "newer"));
+        assert!(c.reason.contains("markers disagree"), "{}", c.reason);
+        assert!(c.reason.contains("moai-cli.json") && c.reason.contains("moai.json"));
+        assert_eq!(c.marker_file, Some("moai.json"));
+        assert_eq!(snapshot(h), before, "nothing written");
+        // Old schema 3 (newer than this build) beside a good new file: refuse, home and project.
+        for schema in [3, 7] {
+            let got = both(|r| {
+                put(r, "moai-cli.json", &body("moai-cli", schema));
+                put(r, "moai.json", &body("moai", 1));
+            });
+            assert_eq!(got[0].0, "refuse", "{schema}");
+            assert_eq!(got[1].0, "refuse", "{schema}");
+        }
+        // A project reads an old v2 as newer, so beside a new v1 it disagrees too.
+        let c = verdict(|r| {
+            put(r, "moai-cli.json", &body("moai-cli", 2));
+            put(r, "moai.json", &body("moai", 1));
+        });
+        assert_eq!(c.generation, "refuse");
+        assert!(c.reason.contains("markers disagree"), "{}", c.reason);
+        // Equal schemas and a lower old schema are not a disagreement.
+        let c = home_verdict(|h| {
+            put(h, "moai-cli.json", &body("moai-cli", 2));
+            put(h, "moai.json", &body("moai", 2));
+        });
+        assert_eq!(c.generation, "rust-first");
+    }
+
+    /// `marker_file` is in the JSON only when a marker exists; every other key is as before.
+    #[test]
+    fn the_json_names_the_deciding_file_only_when_there_is_one() {
+        let none = verdict(|_| {}).to_json();
+        assert!(none.get("marker_file").is_none(), "{none}");
+        let unknown = verdict(|r| write(r, ".moai/notes.txt", "x")).to_json();
+        assert!(unknown.get("marker_file").is_none(), "{unknown}");
+        for (name, generation) in NAMES {
+            let j = verdict(|r| put(r, name, &body(generation, 1))).to_json();
+            assert_eq!(j["marker_file"], json!(name), "{j}");
+            assert_eq!(j["rust_marker"], json!("valid"), "{j}");
+            assert_eq!(j["generation"], json!("rust"), "{j}");
+        }
     }
 
     #[test]
