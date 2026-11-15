@@ -1787,6 +1787,16 @@ mod tests {
         );
     }
 
+    /// Codex review of #3019: every denial that points the user at the hook rules names the file
+    /// the loader reads (`hook-config.toml`), not the older name `config` (a folder now).
+    #[test]
+    fn the_denials_name_the_hook_config_file() {
+        for text in [OUTSIDE_PROJECT, PRIMARY_CHECKOUT, PROTECTED_BRANCH_COMMIT] {
+            assert!(text.contains("~/.moai-cli/hook-config.toml"), "{text}");
+            assert!(!text.contains("~/.moai-cli/config"), "{text}");
+        }
+    }
+
     #[test]
     fn writes_into_git_and_credential_paths_are_refused() {
         let dir = tempfile::TempDir::new().unwrap();
