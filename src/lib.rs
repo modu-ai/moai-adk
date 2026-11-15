@@ -79,6 +79,7 @@ pub mod lane_next;
 pub mod lane_proposal;
 pub mod lane_registry;
 pub mod lane_reset;
+pub mod lane_state;
 pub mod lane_status;
 pub mod language;
 pub mod launcher_init;

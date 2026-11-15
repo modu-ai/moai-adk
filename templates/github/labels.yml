@@ -1,7 +1,7 @@
 # MoAI label list for a project that uses MoAI's Issue forms.
 # Every label an Issue form sets is in this list: GitHub drops a form label that does not
 # exist in the repository. This file is the source of truth: create and update the
-# repository's labels from it with `moai-cli labels-plan` and `labels-apply` before the forms
+# repository's labels from it with `moai labels-plan` and `labels-apply` before the forms
 # are used; labels it does not list are kept, never deleted.
 #
 # Axes an Issue carries:
