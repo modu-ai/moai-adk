@@ -299,6 +299,8 @@ mod tests {
         assert_eq!(rows[0]["issue"], 9);
         assert_eq!(rows[0]["expired_secs"], 4000);
         assert_eq!(rows[0]["session"], "agent-9");
+        assert_eq!(rows[0]["epoch"], 1);
+        assert_eq!(rows[0]["claim_comment"], 90);
         assert_eq!(rows[0]["lease_until"], at(NOW - 4000));
         assert_eq!(rows[1]["issue"], 3);
         assert_eq!(v["threads_read"], 3);
