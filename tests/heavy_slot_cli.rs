@@ -226,6 +226,7 @@ fn with_one_slot_the_second_caller_waits_its_turn() {
     assert_eq!(held["held"][0]["slot"], 0);
     // #3033 D1: a live wrapper's slot reports its pid alive.
     assert_eq!(held["held"][0]["alive"], true, "{held}");
+    assert!(held["held"][0].get("holders").is_none(), "{held}");
 
     let mut c = acquire(
         d.path(),
@@ -285,6 +286,43 @@ fn pid_is_alive(pid: i32) -> bool {
     unsafe { libc::kill(pid, 0) == 0 }
 }
 
+/// #3033 D2 on a held entry whose recorded pid is dead: `holders` lists the process with the
+/// slot file open (`pid`, `comm`, no argv), read from `/proc` (Linux) or `lsof`. Where neither
+/// source exists the entry says `unavailable` with `holders` null — never an empty list.
+fn assert_holder(entry: &Value, pid: i32, comm: Option<&str>) {
+    let source = entry["holders_source"].as_str().unwrap();
+    if source == "unavailable" {
+        if cfg!(target_os = "linux") {
+            panic!("/proc must work on Linux: {entry}");
+        }
+        assert!(
+            Command::new("lsof").arg("-v").output().is_err(),
+            "lsof is installed but the entry says unavailable: {entry}"
+        );
+        assert!(entry["holders"].is_null(), "{entry}");
+        eprintln!("skipped: no /proc and no lsof on this machine");
+        return;
+    }
+    assert!(["proc", "lsof"].contains(&source), "{entry}");
+    if cfg!(target_os = "linux") {
+        assert_eq!(source, "proc", "{entry}");
+    }
+    let found = entry["holders"].as_array().unwrap();
+    let hit = found
+        .iter()
+        .find(|h| h["pid"] == pid)
+        .unwrap_or_else(|| panic!("pid {pid} is not among the holders: {entry}"));
+    if let Some(comm) = comm {
+        assert_eq!(hit["comm"], comm, "{entry}");
+    }
+    assert!(hit["comm"].is_string(), "{entry}");
+    assert_eq!(
+        hit.as_object().unwrap().len(),
+        2,
+        "a holder is pid and comm only, no argv: {entry}"
+    );
+}
+
 /// #3033 AC-1, pinning today's behaviour: the lock is on the open file, not on a process, so a
 /// background child the command leaves behind keeps the slot after the command and the wrapper
 /// have ended. `status` still lists the slot as held, with the wrapper's pid, which is dead by
@@ -329,6 +367,8 @@ fn a_command_that_leaves_a_background_child_keeps_the_slot_and_status_shows_a_de
     assert_eq!(held[0]["pid"], wrapper_pid, "{held}");
     // #3033 D1: and says so — the recorded pid is dead although the slot is held.
     assert_eq!(held[0]["alive"], false, "{held}");
+    // #3033 D2: and names who has the slot file open — the sleeper, never the dead wrapper.
+    assert_holder(&held[0], child_pid, Some("sleep"));
 
     // A second caller waits; it runs only after the child has gone.
     let mut c = acquire(
@@ -409,6 +449,15 @@ fn status_says_whether_the_recorded_pid_is_alive() {
         let held = status(d.path())["held"].clone();
         assert_eq!(held.as_array().unwrap().len(), 1, "{body}: {held}");
         assert_eq!(held[0]["alive"], want, "{body}: {held}");
+        if want == Value::Bool(false) {
+            // This test holds the lock, so it is the process the slot file is open in.
+            assert_holder(&held[0], me as i32, None);
+        } else {
+            // Holders are looked up only for a dead pid.
+            let keys = held[0].as_object().unwrap();
+            assert!(!keys.contains_key("holders"), "{body}: {held}");
+            assert!(!keys.contains_key("holders_source"), "{body}: {held}");
+        }
     }
     // The record's own keys come back unchanged next to `alive`.
     let d = tempfile::tempdir().unwrap();
