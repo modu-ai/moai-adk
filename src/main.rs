@@ -660,8 +660,9 @@ enum Command {
     },
     /// Create the previewed worktree of a claim
     ///
-    /// Create the planned worktree with `git worktree add --lock -b` (06-C #2007); refuses
-    /// without `--force` when the branch, path or task already has a worktree.
+    /// Create the planned worktree with `git worktree add --lock -b` (06-C #2007); answers
+    /// `decision: conflict` and creates nothing when the branch, path or task already has a
+    /// worktree. It never forces; to adopt an existing worktree, run `moai claim-link`.
     WorktreeApply {
         project: PathBuf,
         #[command(flatten)]

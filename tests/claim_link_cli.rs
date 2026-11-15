@@ -1112,3 +1112,63 @@ fn claim_verify_without_a_local_record_has_no_hint() {
     assert!(envelope(&out)["result"].get("worktree_link").is_none());
     assert!(!fx.journal_dir().exists(), "a read creates no journal");
 }
+
+/// D1: `worktree-apply` answers `decision: conflict` and never forces; its help must not
+/// promise a `--force` the command does not have.
+#[test]
+fn worktree_apply_help_does_not_promise_force() {
+    let fx = Fx::new();
+    let out = fx.run_in(&fx.home, &["worktree-apply", "--help"], "[]", "");
+    assert_eq!(out.status.code(), Some(0), "{out:?}");
+    let help = String::from_utf8_lossy(&out.stdout).into_owned();
+    assert!(!help.contains("--force"), "{help}");
+    assert!(help.contains("conflict"), "{help}");
+    assert!(help.contains("claim-link"), "{help}");
+}
+
+/// D2: AGENTS.md and the agent-mode workflow state one order for the local claim record:
+/// claim in the folder you will work in, and run `claim-link` when the folder or branch
+/// changes afterwards.
+#[test]
+fn claim_order_docs_agree() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let agents = fs::read_to_string(root.join("AGENTS.md")).unwrap();
+    let mode = fs::read_to_string(root.join("skills/moai/workflows/mode-agent.md")).unwrap();
+    let step1 = agents
+        .lines()
+        .find(|l| l.starts_with("1. Claim."))
+        .expect("AGENTS.md has the claim step");
+    let step2 = agents
+        .lines()
+        .find(|l| l.starts_with("2. Worktree."))
+        .expect("AGENTS.md has the worktree step");
+    assert!(
+        step1.contains("claim in the folder you will work in"),
+        "{step1}"
+    );
+    assert!(step1.contains("moai claim-link"), "{step1}");
+    assert!(
+        step2.contains("create it first, then claim in it"),
+        "{step2}"
+    );
+    let claim = mode
+        .lines()
+        .find(|l| l.starts_with("5. **claim**"))
+        .expect("mode-agent has the claim step");
+    assert!(
+        claim.contains("claim in the folder you will work in"),
+        "{claim}"
+    );
+    assert!(claim.contains("moai claim-link"), "{claim}");
+    let state = mode
+        .lines()
+        .find(|l| l.starts_with("3. **state**"))
+        .expect("mode-agent has the state step");
+    assert!(state.contains("the folder you claim in"), "{state}");
+    assert!(state.contains("moai claim-link"), "{state}");
+    // No second, contradicting order: neither document tells a lane to claim before the
+    // worktree exists.
+    for text in [&agents, &mode] {
+        assert!(!text.contains("claim before you create the worktree"));
+    }
+}
