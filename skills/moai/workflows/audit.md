@@ -106,6 +106,8 @@ Keep the browser's default permission mode; use a wider mode only when the user 
 
 Self-assessment in the same context and a judge's recommendation do not replace the required independent audit. If a reviewer cannot be created or the evidence is insufficient, the result is blocked or unknown.
 
+An audit reservation or verdict line counts only when a repository member wrote its comment: the comment's `author_association` is `OWNER`, `MEMBER` or `COLLABORATOR`, and a missing or unknown value is not a member (Issue #3052). The gate commands drop every other comment and list what they left out under `ignored_control_lines`; read that key before you conclude that a verdict or reservation is missing.
+
 ## Completion Check
 
 Bind the output to the task and the exact snapshot. Never report a verification or external effect that was not performed as complete.
