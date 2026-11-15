@@ -103,6 +103,9 @@ pub struct ProjectSkillPlan {
     pub package_digest: String,
     pub entries: Vec<ProjectSkillEntry>,
     pub warnings: Vec<String>,
+    /// Binds the project, the package and every entry; `project-skill-apply --plan-digest`
+    /// takes it (#2936 R9 S5c).
+    pub plan_digest: String,
 }
 
 fn project_skill_dir(root: &Path, host: &str) -> Result<PathBuf> {
@@ -266,13 +269,48 @@ pub fn project_skill_plan(req: &ProjectSkillRequest) -> Result<ProjectSkillPlan>
             ));
         }
     }
+    // The digest binds the project (its canonical path), the package and every entry, so a plan
+    // of one project or package cannot be applied to another (#2936 R9 S5c).
+    let root = req
+        .project_root
+        .canonicalize()
+        .map_err(|_| "project directory unavailable".to_string())?;
+    let bound = serde_json::to_vec(&json!({
+        "project": root.to_str().ok_or("non UTF-8 project path")?,
+        "package_digest": staged.digest,
+        "entries": entries,
+        "warnings": warnings,
+    }))
+    .map_err(|_| "encode failed".to_string())?;
     Ok(ProjectSkillPlan {
         protocol_version: PROJECT_SKILL_SCHEMA_VERSION,
         opt_in: req.opt_in,
         package_digest: staged.digest,
         entries,
         warnings,
+        plan_digest: crate::digest(&bound),
     })
+}
+
+/// [`project_skill_apply`] of a previewed plan (#2936 R9 S5c): a permission reference is
+/// required and `plan_digest` must equal a fresh plan's, both checked before anything is
+/// written. The digest binds the project and the package, so a plan of another project or of
+/// a package changed since the preview is refused.
+pub fn project_skill_apply_confirmed(
+    req: &ProjectSkillRequest,
+    plan_digest: &str,
+    permission: &str,
+) -> Result<ProjectSkillApplyReceipt> {
+    if !crate::contract::permission_reference_ok(permission) {
+        return Err("permission reference required".into());
+    }
+    if !req.opt_in {
+        return Err(opt_in_error());
+    }
+    if project_skill_plan(req)?.plan_digest != plan_digest {
+        return Err("stale or altered plan; re-preview required".into());
+    }
+    project_skill_apply(req)
 }
 
 /// Copies the staged skill tree into `dest` with the same refusals the

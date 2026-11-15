@@ -997,20 +997,7 @@ fn input<T: serde::de::DeserializeOwned>() -> Result<T, String> {
 /// The config writer takes an explicit user home. Refuse a project target that is also
 /// the host's relocated user config directory before either preview or apply can run.
 fn codex_config_home(project: &std::path::Path) -> Result<PathBuf, String> {
-    let home = std::env::var_os("HOME")
-        .or_else(|| std::env::var_os("USERPROFILE"))
-        .map(PathBuf::from)
-        .ok_or("home directory missing; config target refused")?;
-    let home = std::fs::canonicalize(home)
-        .map_err(|_| "home directory unavailable; config target refused")?;
-    if let Some(path) = std::env::var_os("CODEX_HOME") {
-        let user = std::fs::canonicalize(path)
-            .map_err(|_| "CODEX_HOME unavailable; user config target refused")?;
-        if std::fs::canonicalize(project.join(".codex")).is_ok_and(|target| target == user) {
-            return Err("project .codex is CODEX_HOME; user config target refused".into());
-        }
-    }
-    Ok(home)
+    moai_cli::hosts::codex_config::config_home(project)
 }
 /// Upper bound on a typed plan fed back to its `*-apply` (#2349). A plan grows with the
 /// files it covers (about 330 bytes per file per host), so the 64 KiB request bound cut

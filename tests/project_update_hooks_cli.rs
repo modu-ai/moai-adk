@@ -68,7 +68,9 @@ fn the_install_phase_lists_hooks_after_the_claude_settings() {
         .iter()
         .map(|s| s["step"].as_str().unwrap())
         .collect();
-    assert_eq!(names, INSTALL_ORDER, "{plan}");
+    // The host steps (#2936 R9) follow `github`; this pin is the order up to there.
+    assert!(names.len() >= INSTALL_ORDER.len(), "{plan}");
+    assert_eq!(names[..INSTALL_ORDER.len()], INSTALL_ORDER, "{plan}");
 }
 
 #[test]

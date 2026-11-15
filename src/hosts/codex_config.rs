@@ -514,6 +514,26 @@ fn status_line_plan(s: &ConfigState, desired: &Map<String, Value>, preset: Optio
     json!({"before": before, "after": after, "preset": preset, "items": items})
 }
 
+/// The user home the config writer takes (moved out of `src/main.rs` unchanged, #2936 R9 S5b so
+/// `project-update-plan` can preview the same write). Refuses a project target that is also the
+/// host's relocated user config directory.
+pub fn config_home(project: &Path) -> Result<PathBuf> {
+    let home = std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(PathBuf::from)
+        .ok_or("home directory missing; config target refused")?;
+    let home = std::fs::canonicalize(home)
+        .map_err(|_| "home directory unavailable; config target refused")?;
+    if let Some(path) = std::env::var_os("CODEX_HOME") {
+        let user = std::fs::canonicalize(path)
+            .map_err(|_| "CODEX_HOME unavailable; user config target refused")?;
+        if std::fs::canonicalize(project.join(".codex")).is_ok_and(|target| target == user) {
+            return Err("project .codex is CODEX_HOME; user config target refused".into());
+        }
+    }
+    Ok(home)
+}
+
 /// Previews setting `desired` (managed dotted keys only) in `PROJECT/.codex/config.toml`.
 /// Never writes. `home` is the user home; a project equal to it is refused.
 /// `"tui.status_line": "moai"` names [`MOAI_STATUS_LINE_PRESET`].
