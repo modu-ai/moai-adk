@@ -1971,28 +1971,40 @@ fn session_context(host: &str, root: &Path, source: Option<Value>) -> String {
     let v: Value = serde_json::from_str(r.stdout.trim()).unwrap();
     v["hookSpecificOutput"]["additionalContext"]
         .as_str()
+        .or_else(|| v["context"].as_str())
         .unwrap()
         .to_string()
 }
 
-/// #3015 C6: after a compaction (`source: "compact"`) both hosts run `SessionStart` again; the
-/// answer then says the earlier user instructions were handled and points at the card's newest
-/// `moai-resume:` comment. Any other `source` gets the text it always had.
+/// #3015 C6 (audit B1 of #3075): after a compaction (`source: "compact"`) both hosts run
+/// `SessionStart` again. The hook reads no comment, claim or pull request, so the answer never
+/// says an instruction is done: it says how to check, that a standing instruction still
+/// applies, and, only conditionally, where a card's newest `moai-resume:` comment is. Any other
+/// `source` gets the text it always had.
 #[test]
-fn a_compacted_session_is_told_not_to_rerun_handled_instructions() {
+fn a_compacted_session_is_told_how_to_check_not_that_instructions_are_done() {
     let (_d, root) = repo("issue/77-k");
     let plain = session_context("claude", &root, Some(json!("startup")));
     let compact = session_context("claude", &root, Some(json!("compact")));
     assert!(compact.starts_with(&plain), "{compact}");
-    assert!(
-        compact.contains("The user instructions given before the compaction were already handled: do not run them again."),
-        "{compact}"
-    );
-    assert!(
-        compact.contains("newest `moai-resume:` comment of Issue #77"),
-        "{compact}"
-    );
-    assert!(!plain.contains("compaction"), "{plain}");
+    for sentence in [
+        "This session was just compacted.",
+        "User instructions you can still see may already be done:",
+        "check whether a comment, a claim or a pull request already shows it done, and run it again only when none does.",
+        "A standing instruction (a rule meant to stay in force) still applies.",
+        "If Issue #77 is your card, its newest `moai-resume:` comment says where you stopped (read it there; this hook did not).",
+    ] {
+        assert!(compact.contains(sentence), "{sentence}: {compact}");
+    }
+    // Nothing the hook cannot know is stated as a fact.
+    for claim in [
+        "were already handled",
+        "do not run them again",
+        "Continue from",
+    ] {
+        assert!(!compact.contains(claim), "{claim}: {compact}");
+    }
+    assert!(!plain.contains("compact"), "{plain}");
     // The branch name's words are not echoed.
     assert!(!compact.contains("-k"), "{compact}");
 }
@@ -2013,12 +2025,11 @@ fn only_the_exact_compact_source_changes_the_answer() {
         Some(json!(["compact"])),
         None,
     ] {
-        assert_eq!(
-            session_context("claude", &root, source.clone()),
-            plain,
-            "{source:?}"
-        );
+        let ctx = session_context("claude", &root, source.clone());
+        assert_eq!(ctx, plain, "{source:?}");
+        assert!(!ctx.contains("compacted"), "{source:?}: {ctx}");
     }
+    assert!(!plain.contains("compacted"), "{plain}");
 }
 
 #[test]
@@ -2041,8 +2052,27 @@ fn a_compacted_session_outside_a_lane_branch_names_no_issue_number() {
     let (_d, root) = repo("main");
     let ctx = session_context("claude", &root, Some(json!("compact")));
     assert!(
-        ctx.contains("newest `moai-resume:` comment of your card's Issue"),
+        ctx.contains("If your work has a card Issue, its newest `moai-resume:` comment says where you stopped"),
         "{ctx}"
     );
     assert!(!ctx.contains("Issue #"), "{ctx}");
+    // The standing-instruction and check sentences do not depend on a lane branch.
+    assert!(ctx.contains("A standing instruction"), "{ctx}");
+    assert!(ctx.contains("run it again only when none does."), "{ctx}");
+}
+
+/// OMP answers `{"context": …}`; a `source: "compact"` input (the generated module does not send
+/// `source` today) gets the same sentences, and any other input the plain text.
+#[test]
+fn an_omp_input_with_source_compact_gets_the_same_sentences() {
+    let (_d, root) = repo("issue/77-k");
+    let plain = session_context("omp", &root, None);
+    let compact = session_context("omp", &root, Some(json!("compact")));
+    assert!(compact.starts_with(&plain), "{compact}");
+    assert!(
+        compact.contains("This session was just compacted."),
+        "{compact}"
+    );
+    assert!(!compact.contains("/goal"), "{compact}");
+    assert!(!plain.contains("compacted"), "{plain}");
 }

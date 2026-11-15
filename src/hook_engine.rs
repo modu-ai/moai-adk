@@ -466,17 +466,24 @@ fn render_claude(event: Event, verdict: Verdict) -> Answer {
 /// https://learn.chatgpt.com/docs/hooks; Claude Code hooks page,
 /// https://code.claude.com/docs/en/hooks; both read 2026-11-15); `PreCompact` and `PostCompact`
 /// cannot put text into the context on either host. The text is fixed: it names no instruction
-/// the user gave and echoes nothing from the input.
+/// the user gave and echoes nothing from the input. The hook reads no comment, claim or pull
+/// request, so it cannot say that an instruction is done; it says how to find out (the rule of
+/// `skills/moai/workflows/mode-leader.md`: run an instruction again only when no comment, claim
+/// or pull request shows it done) and that a standing instruction still applies (audit B1 of
+/// #3075).
 const COMPACTED: &str =
-    "This session was just compacted. The user instructions given before the compaction \
-    were already handled: do not run them again.";
+    "This session was just compacted. User instructions you can still see may already be done: \
+     before you act on one, check whether a comment, a claim or a pull request already shows it \
+     done, and run it again only when none does. A standing instruction (a rule meant to stay \
+     in force) still applies.";
 /// Codex keeps the `/goal` as host state; the sentence points at it and says nothing the host
 /// has not been shown to keep (whether `/goal` survives a compaction is not measured).
 const COMPACTED_CODEX_GOAL: &str = "Check the active /goal before you continue.";
 
 /// session-check: a short, fixed-vocabulary state summary for the model. Never blocks. After a
-/// compaction (`source: "compact"`, exactly that string) it adds [`COMPACTED`] and points at the
-/// card's newest `moai-resume:` comment; any other `source`, or none, gives the text it always did.
+/// compaction (`source: "compact"`, exactly that string) it adds [`COMPACTED`] and, if the work
+/// has a card, points at its newest `moai-resume:` comment; any other `source`, or none, gives
+/// the text it always did.
 fn session_check(host: Host, input: &Value, cwd: &Path) -> Verdict {
     let state_dir = match std::fs::symlink_metadata(crate::state_root::path(cwd, "")) {
         Ok(m) if m.is_dir() => "present",
@@ -509,13 +516,20 @@ fn session_check(host: Host, input: &Value, cwd: &Path) -> Verdict {
     if input.get("source").and_then(Value::as_str) == Some("compact") {
         text.push(' ');
         text.push_str(COMPACTED);
+        // Conditional on purpose: the hook does not know that the branch's Issue (or any card)
+        // is this session's work.
         let card = match card_issue {
             Some(n) => format!("Issue #{n}"),
-            None => "your card's Issue".to_string(),
+            None => "your work has a card Issue".to_string(),
+        };
+        let lead = if card_issue.is_some() {
+            format!("If {card} is your card")
+        } else {
+            format!("If {card}")
         };
         text.push_str(&format!(
-            " Continue from the newest `moai-resume:` comment of {card} (read it there; this hook \
-             did not)."
+            " {lead}, its newest `moai-resume:` comment says where you stopped (read it there; \
+             this hook did not)."
         ));
         if host == Host::Codex {
             text.push(' ');
