@@ -62,10 +62,14 @@ fn mentions_orca(text: &str) -> bool {
 /// migration reads (`go_hooks.rs`), a status line command in a settings fixture
 /// (`claude.rs`), and the leader round's description of the screen it is given
 /// (`leader_round.rs`, `ops/leader_round.rs`). None of them starts the program.
-const SRC_ORCA_FILES: [&str; 4] = [
+const SRC_ORCA_FILES: [&str; 6] = [
     "src/claude.rs",
     "src/go_hooks.rs",
+    // The `session_cwd` example of `lane-safe-to-reset` names the source `orca` (#3015 C1); the
+    // text is an example the command reads, and nothing there runs the program.
+    "src/lane_reset.rs",
     "src/leader_round.rs",
+    "src/ops/lane_safe_to_reset.rs",
     "src/ops/leader_round.rs",
 ];
 

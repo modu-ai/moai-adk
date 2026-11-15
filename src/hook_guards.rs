@@ -679,9 +679,9 @@ pub fn write_guard(tool: &str, tool_input: &Value, cwd: &Path) -> Option<&'stati
     None
 }
 
-const OUTSIDE_PROJECT: &str = "MoAI tool-preflight: a write outside the project is refused; add the folder to `allow` under [hooks.outside_project_writes] in ~/.moai-cli/config to permit it.";
-const PRIMARY_CHECKOUT: &str = "MoAI tool-preflight: this primary checkout is shared with linked worktrees; switching, resetting, stashing, rebasing, merging or changing its branches is refused (use a worktree; add the exact command to `allow_commands` under [hooks.primary_checkout] in ~/.moai-cli/config to permit it).";
-const PROTECTED_BRANCH_COMMIT: &str = "MoAI tool-preflight: this primary checkout is on a branch listed in `deny_commits_on` under [hooks.primary_checkout] in ~/.moai-cli/config; a commit, revert or cherry-pick there is refused (commit in a worktree on its own branch).";
+const OUTSIDE_PROJECT: &str = "MoAI tool-preflight: a write outside the project is refused; add the folder to `allow` under [hooks.outside_project_writes] in ~/.moai-cli/hook-config.toml to permit it.";
+const PRIMARY_CHECKOUT: &str = "MoAI tool-preflight: this primary checkout is shared with linked worktrees; switching, resetting, stashing, rebasing, merging or changing its branches is refused (use a worktree; add the exact command to `allow_commands` under [hooks.primary_checkout] in ~/.moai-cli/hook-config.toml to permit it).";
+const PROTECTED_BRANCH_COMMIT: &str = "MoAI tool-preflight: this primary checkout is on a branch listed in `deny_commits_on` under [hooks.primary_checkout] in ~/.moai-cli/hook-config.toml; a commit, revert or cherry-pick there is refused (commit in a worktree on its own branch).";
 
 /// The folder holding the nearest `.git` (a folder or a file) at or above `dir`, resolved.
 /// Found from the file system only: no git process.
@@ -1040,7 +1040,7 @@ pub fn commit_identity_guard(
             for (role, email) in [("author", author), ("committer", committer)] {
                 if let Some(e) = email.filter(|e| denied(e)) {
                     return Some(format!(
-                        "MoAI tool-preflight: the {role} identity <{e}> is a test address; the commit is refused. Fix the identity git would use (git config user.email, or GIT_AUTHOR_EMAIL/GIT_COMMITTER_EMAIL) — a test's identity has leaked into this checkout ([hooks.commit_identity] in ~/.moai-cli/config)."
+                        "MoAI tool-preflight: the {role} identity <{e}> is a test address; the commit is refused. Fix the identity git would use (git config user.email, or GIT_AUTHOR_EMAIL/GIT_COMMITTER_EMAIL) — a test's identity has leaked into this checkout ([hooks.commit_identity] in ~/.moai-cli/hook-config.toml)."
                     ));
                 }
             }
@@ -1785,6 +1785,16 @@ mod tests {
             primary_checkout_guard("git commit -m x", &repo, &unlisted),
             None
         );
+    }
+
+    /// Codex review of #3019: every denial that points the user at the hook rules names the file
+    /// the loader reads (`hook-config.toml`), not the older name `config` (a folder now).
+    #[test]
+    fn the_denials_name_the_hook_config_file() {
+        for text in [OUTSIDE_PROJECT, PRIMARY_CHECKOUT, PROTECTED_BRANCH_COMMIT] {
+            assert!(text.contains("~/.moai-cli/hook-config.toml"), "{text}");
+            assert!(!text.contains("~/.moai-cli/config"), "{text}");
+        }
     }
 
     #[test]
