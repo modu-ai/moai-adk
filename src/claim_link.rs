@@ -307,6 +307,40 @@ pub fn probe_target(project: &Path, target: &Path, base: &str) -> Result<Probe> 
     }
 }
 
+/// Refuses when another active record (a different task) already holds the measured path
+/// (`path_held`) or branch (`branch_held`). `records` is the active set, `key` the record being
+/// linked, which never conflicts with itself. A detached HEAD has no branch to hold. The
+/// message names the other Issue number only. Recorded paths are compared canonical when they
+/// still resolve, as written otherwise.
+pub fn held_by_other(records: &[ClaimRecord], key: &str, id: &WorktreeId) -> Result<()> {
+    let canon = |p: &str| {
+        std::fs::canonicalize(p)
+            .map_or_else(|_| p.to_string(), |c| c.to_string_lossy().into_owned())
+    };
+    for r in records.iter().filter(|r| r.task_key != key) {
+        let issue = r.task_ref.issue_number;
+        if canon(&r.worktree.path) == id.path {
+            return Err(refuse(
+                "path_held",
+                format!(
+                    "the worktree {} is the worktree of the active claim of Issue #{issue}",
+                    id.path
+                ),
+            ));
+        }
+        if id.branch.is_some() && r.worktree.branch == id.branch {
+            return Err(refuse(
+                "branch_held",
+                format!(
+                    "the branch {} is the branch of the active claim of Issue #{issue}",
+                    id.branch.as_deref().unwrap_or_default()
+                ),
+            ));
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -524,6 +558,85 @@ mod tests {
             "{err}"
         );
     }
+
+    fn held(r: &ClaimRecord, path: &str, branch: Option<&str>) -> ClaimRecord {
+        let mut r = r.clone();
+        r.worktree.path = path.into();
+        r.worktree.branch = branch.map(str::to_string);
+        r
+    }
+
+    #[test]
+    fn another_active_record_holding_the_path_or_branch_blocks_the_link() {
+        let mine = record("0000000000000001", 7, 100, "lane-a", "assigned");
+        let other = held(
+            &record("0000000000000002", 8, 200, "lane-b", "running"),
+            "/work/other",
+            Some("issue/8-x"),
+        );
+        let records = [mine.clone(), other];
+        let id = |path: &str, branch: Option<&str>| {
+            let mut i = WorktreeId::new("/c/.git", "/c/.git", path, "b".repeat(40));
+            i.branch = branch.map(str::to_string);
+            i
+        };
+        // Free path and branch.
+        assert!(held_by_other(
+            &records,
+            &mine.task_key,
+            &id("/work/new", Some("issue/7-y"))
+        )
+        .is_ok());
+        // The same path (any branch) and the same branch (any path) are each refused.
+        let err = held_by_other(
+            &records,
+            &mine.task_key,
+            &id("/work/other", Some("issue/7-y")),
+        )
+        .unwrap_err();
+        assert!(
+            err.starts_with("conflict in claim link: path_held: "),
+            "{err}"
+        );
+        assert!(err.contains("#8") && !err.contains("lane-b"), "{err}");
+        let err = held_by_other(
+            &records,
+            &mine.task_key,
+            &id("/work/new", Some("issue/8-x")),
+        )
+        .unwrap_err();
+        assert!(
+            err.starts_with("conflict in claim link: branch_held: "),
+            "{err}"
+        );
+        assert!(err.contains("#8") && !err.contains("lane-b"), "{err}");
+        // A detached HEAD has no branch: two detached records never hold each other.
+        let detached_other = held(&records[1], "/work/other", None);
+        let both = [mine.clone(), detached_other];
+        assert!(held_by_other(&both, &mine.task_key, &id("/work/new", None)).is_ok());
+        // The record being linked never conflicts with itself, even with the same path and branch.
+        let own = held(&mine, "/work/new", Some("issue/7-y"));
+        assert!(held_by_other(&[own], &mine.task_key, &id("/work/new", Some("issue/7-y"))).is_ok());
+        // An inactive record is not in the active set, so it holds nothing.
+        assert!(held_by_other(&[], &mine.task_key, &id("/work/other", Some("issue/8-x"))).is_ok());
+    }
+
+    #[test]
+    fn a_recorded_path_that_resolves_to_the_target_through_a_link_is_the_same_path() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let real = std::fs::canonicalize(dir.path()).unwrap();
+        let mine = record("0000000000000001", 7, 100, "lane-a", "assigned");
+        // The other record spells the path with a `.` component; it resolves to `real`.
+        let spelled = format!("{}/./", real.display());
+        let other = held(
+            &record("0000000000000002", 8, 200, "lane-b", "running"),
+            &spelled,
+            None,
+        );
+        let id = WorktreeId::new("/c/.git", "/c/.git", real.to_str().unwrap(), "b".repeat(40));
+        let err = held_by_other(&[mine.clone(), other], &mine.task_key, &id).unwrap_err();
+        assert!(err.contains("path_held"), "{err}");
+    }
 }
 
 #[cfg(test)]
@@ -559,10 +672,13 @@ mod probe_tests {
         String::from_utf8_lossy(&out.stdout).trim().to_string()
     }
 
-    /// A clone with one commit on `main`; the returned folder is canonical.
+    /// A clone with one commit on `main`, in `<temp dir>/project`; the returned folder is
+    /// canonical. Its siblings (worktrees, links) live in the same temp dir, so a test never
+    /// writes into the shared system temp folder and the whole tree goes with the guard.
     fn repo() -> (tempfile::TempDir, PathBuf) {
         let dir = tempfile::TempDir::new().unwrap();
-        let root = fs::canonicalize(dir.path()).unwrap();
+        let root = fs::canonicalize(dir.path()).unwrap().join("project");
+        fs::create_dir(&root).unwrap();
         git(&root, &["init", "-q", "-b", "main"]);
         git(&root, &["commit", "-q", "--allow-empty", "-m", "base"]);
         (dir, root)
