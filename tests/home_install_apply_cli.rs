@@ -1066,6 +1066,39 @@ fn a_manifest_with_an_unknown_marker_generation_is_refused() {
     assert_eq!(tree(&f.home, &[]), before, "nothing was changed");
 }
 
+/// The refusal of an unknown generation comes from reading the manifest, before anything is
+/// moved: a rerun of an install that stopped early (after the manifest, after the folder was
+/// made, with every item moved but no marker) is refused at once and the tree stays as the stop
+/// left it. A check that came only at the marker would move the items first and refuse after.
+#[test]
+fn an_unfinished_install_with_an_unknown_marker_generation_is_refused_before_it_moves_anything() {
+    for point in ["after_manifest", "after_mkdir", "before_marker"] {
+        let f = fx();
+        let p = plan(&f);
+        let a = apply_with(&f, NOW, &digest_of(&p), PERM, &[(FAULT, point)]);
+        assert!(
+            message(&a).contains(&format!("injected crash at {point}")),
+            "{point}: {a}"
+        );
+        saved_by_generation(&f, "future", false);
+        let stopped = tree(&f.home, &[]);
+        let again = apply(&f, &digest_of(&p));
+        assert_eq!(again["ok"], json!(false), "{point}: {again}");
+        assert!(
+            message(&again).contains("generation this build does not know"),
+            "{point}: {again}"
+        );
+        assert_eq!(tree(&f.home, &[]), stopped, "{point}: nothing was moved");
+        let rv = revert(&f);
+        assert_eq!(rv["ok"], json!(false), "{point}: {rv}");
+        assert_eq!(
+            tree(&f.home, &[]),
+            stopped,
+            "{point}: revert changed nothing"
+        );
+    }
+}
+
 #[test]
 fn revert_keeps_a_moai_folder_it_did_not_create() {
     let f = fx();

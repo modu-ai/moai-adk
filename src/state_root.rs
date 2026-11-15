@@ -38,11 +38,17 @@ pub const MOAI_DIR: &str = ".moai";
 /// The Rust generation marker inside `.moai/` that every writer writes (decision D1), with
 /// `"generation": "moai"` ([`NEW_GENERATION`]). #2871 marker rename (leader decision 6886824285
 /// item 2): the writers flipped to this name after the readers learned both; an existing
-/// [`LEGACY_MARKER`] is read, never rewritten, renamed or deleted.
+/// [`LEGACY_MARKER`] is read, never rewritten, renamed or deleted. The one exception (leader
+/// audit 6900128841 B1): `home-install-apply` and `home-install-revert` of an install an
+/// earlier build began write, find and move the marker under the name that goes with the
+/// `generation` in its saved bytes, so a resumed install ends with `moai-cli.json` and its
+/// revert takes that file into the journal folder.
 pub const RUST_MARKER: &str = NEW_MARKER;
 /// The marker name of this generation, paired with [`NEW_GENERATION`].
 pub const NEW_MARKER: &str = "moai.json";
-/// The earlier marker name, paired with [`LEGACY_GENERATION`]. Read only.
+/// The earlier marker name, paired with [`LEGACY_GENERATION`]. Read by every reader; written
+/// or moved only by `home-install-apply`/`home-install-revert` for an install an earlier build
+/// began (see [`RUST_MARKER`]).
 pub const LEGACY_MARKER: &str = "moai-cli.json";
 /// `"generation"` inside [`LEGACY_MARKER`].
 pub const LEGACY_GENERATION: &str = "moai-cli";

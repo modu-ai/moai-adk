@@ -140,7 +140,7 @@ pub const HOME_TABLE: &[Entry] = &[
     row("vault", Writes, false, Class::Rust, SecretRenameOnly, NO, "key_vault.rs:37,239 (.master.key and entries; 0700/0600)"),
     row("versions", Writes, false, Class::Rust, RustName, NO, "update.rs:901, bin_names.rs:95"),
     row("worktrees", Writes, true, UserData, UserDataKeep, NO, "design #3009 §2 (라): `worktrees/<project_id>/<issue>-<key>/` (worktree_move.rs:175, home_workdir.rs); Go worktreeroot.go:70 shares the folder (#2811 D8: never moved or retired)"),
-    row("moai-cli.json", Reads, false, Class::Rust, RustName, NO, "state_root.rs LEGACY_MARKER: the marker's earlier name (#2871, decision 6886824285 item 2); readers still accept it, no writer writes it any more"),
+    row("moai-cli.json", Reads, false, Class::Rust, RustName, NO, "state_root.rs LEGACY_MARKER: the marker's earlier name (#2871, decision 6886824285 item 2); readers still accept it, and the only writer is home_install_apply.rs for an install an earlier build began (it ends under the name that goes with the saved marker bytes; its revert moves that file into the journal folder)"),
     row("moai.json", Writes, false, Class::Rust, RustName, NO, "state_root.rs NEW_MARKER / RUST_MARKER: the marker every writer writes (#2871, decision 6886824285 item 2)"),
     row("home-state-receipt.json", Writes, false, Class::Rust, RustName, NO, "home_state.rs:677"),
     // Go names (survey §1, PLAN v2 table A).
