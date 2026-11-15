@@ -200,10 +200,14 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "lane-loop-line --host",
             "lane-next",
             "lane-next --lane",
+            // #3005 P9 (P8 adds the flag): the tool counts the empty reads of a watching lane.
+            "lane-next --max-empty",
             "lane-next --wait",
             // #2900 (#2899 G2): the leader clears a lane only on `safe`.
             "lane-safe-to-reset --lane",
             // #2902 O3b: the leader's round, one action per lane.
+            // #3005 P9: its `idle_lanes` list names the lanes that stopped at `idle_limit`.
+            "leader-round",
             "leader-round --observations",
             "pr-confirm",
             // #2840 D3: the PR body is checked locally before the push and before opening.
@@ -1284,6 +1288,66 @@ fn a_message_the_person_typed_into_a_lane_outranks_the_leaders_dispatch() {
     ] {
         assert!(agent.contains(p), "the lane's permissions must say `{p}`:\n{agent}");
     }
+}
+
+/// #3005 P9 (user decision, Issue #3005 comment 6887207942): with no leader answering, a lane
+/// watches the repository itself by a ladder of tools, the tool (not the model) counts the
+/// empty reads, and at the limit the lane prints one `LANE-IDLE` line and turns the repeat off.
+#[test]
+fn a_lane_without_a_leader_watches_by_a_ladder_and_stops_at_the_idle_limit() {
+    let agent = workflow("mode-agent.md");
+    let section = section_of(&agent, "Watching on your own");
+    for p in [
+        "no leader dispatch arrives at the start",
+        "a decision request has gone one round without an answer",
+        "the Orca channel reports an error",
+        "keep your claims",
+        "Use the first rung your host has",
+        "(1) the host's watch tool",
+        "`moai lane-next --wait <seconds>`",
+        "(2) the host's own repeat",
+        "`/loop`",
+        "`/goal` with the `loop_line`",
+        "(3) in the turn",
+        "do not end the turn",
+        "Let the tool count, not the model",
+        "`moai lane-next --max-empty <n>`",
+        "default 6",
+        "`status: \"idle_limit\"`",
+        "`idle.line`",
+        "`LANE-IDLE lane=<lane> checks=<n> last=<UTC> restart=...`",
+        "once, never the same line twice",
+        "comment on the coordination Issue",
+        "turn the repeat off",
+        "stop `/loop`, clear `/goal`, stop the Monitor",
+        "The leader reads the `LANE-IDLE` line as an idle lane",
+        "a person restarts it with the `restart=` text of the line",
+    ] {
+        assert!(
+            section.contains(p),
+            "the watching section must say `{p}`:\n{section}"
+        );
+    }
+    // The third way a turn ends is named in the keep-going step.
+    assert_says(
+        &agent,
+        "keep-going",
+        &[
+            "(iii) `moai lane-next --max-empty` answered `idle_limit` and the `LANE-IDLE` line is printed",
+            "In every other case do not end the turn",
+        ],
+    );
+    // The leader hands an idle lane a card instead of typing the restart line.
+    let leader = workflow("mode-leader.md");
+    assert_says(
+        &leader,
+        "lane-done",
+        &[
+            "On a `LANE-IDLE` line the lane stopped itself after `idle_limit`",
+            "`moai leader-round` lists it under `idle_lanes` and leaves it (`lane_idle`)",
+            "hand it the next card with a new dispatch instead of typing the restart line",
+        ],
+    );
 }
 
 /// #3005 N4, N14, N15: one different card per lane and one batched dispatch per lane, a round
