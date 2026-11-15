@@ -616,6 +616,23 @@ mod tests {
                 "invalid claim verify request: owner, repo, issue_number and session are required",
                 InvalidInput,
             ),
+            // claim-link (#3030): every refusal code is a conflict; a bad flag value is input.
+            (
+                "conflict in claim link: base_not_in_head: HEAD abc of this worktree does not contain the claim base def; run `git -C '/w' merge --ff-only def`",
+                Conflict,
+            ),
+            (
+                "conflict in claim link: record_not_found: no active claim record for Issue #7",
+                Conflict,
+            ),
+            (
+                "conflict in claim link: path_held: the worktree /w is the worktree of the active claim of Issue #8",
+                Conflict,
+            ),
+            (
+                "invalid claim link request: --lane must be a bounded string (1 to 128 bytes) without control characters",
+                InvalidInput,
+            ),
             (
                 "claim verify: uncertain; the commit message carries no `Moai-Claim: 7#<id>`",
                 Blocked,
