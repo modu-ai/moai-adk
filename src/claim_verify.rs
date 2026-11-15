@@ -1103,11 +1103,25 @@ fn accepted_tokens(issue: i64, verdict: &Value) -> Vec<String> {
         .collect()
 }
 
-/// The active claim record whose worktree contains `cwd`.
+/// The active claim record whose worktree contains `cwd`. When several records contain it (a
+/// lane worktree made inside the primary checkout's folder), the deepest worktree wins — the
+/// one with the most path components — so the nested worktree's own record is verified, not
+/// the outer one (#3030). Equal depth keeps the first record, as before.
 fn record_for(records: Vec<ClaimRecord>, cwd: &Path) -> Option<ClaimRecord> {
-    records
-        .into_iter()
-        .find(|r| std::fs::canonicalize(&r.worktree.path).is_ok_and(|p| cwd.starts_with(p)))
+    let mut best: Option<(usize, ClaimRecord)> = None;
+    for r in records {
+        let Ok(p) = std::fs::canonicalize(&r.worktree.path) else {
+            continue;
+        };
+        if !cwd.starts_with(&p) {
+            continue;
+        }
+        let depth = p.components().count();
+        if best.as_ref().is_none_or(|(d, _)| depth > *d) {
+            best = Some((depth, r));
+        }
+    }
+    best.map(|(_, r)| r)
 }
 
 /// `claim-verify --hook`: the host `PreToolUse` guard. Allows everything except a Bash
