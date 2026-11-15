@@ -219,6 +219,27 @@ fn install_preview_follows_the_table() {
     assert_eq!(p["counts"]["blocked"], json!(0), "{p}");
 }
 
+/// Codex review of #3019: the user's hook rules (`hook-config.toml`) move with the HOME, since
+/// after the marker the loader reads only `~/.moai`. The folder `config/` moves as before.
+#[test]
+fn the_hook_config_file_moves_with_the_home() {
+    let (_d, home) = rust_home();
+    write(&home, ".moai-cli/hook-config.toml", "[hooks]\n");
+    let p = plan(&home);
+    assert_eq!(p["action"], json!("install"), "{p}");
+    assert_eq!(
+        act(&p, "hook-config.toml"),
+        ("move".into(), "rust_item".into()),
+        "{p}"
+    );
+    assert_eq!(
+        entry(&p, "hook-config.toml")["destination"],
+        json!(home.join(".moai/hook-config.toml").display().to_string()),
+        "{p}"
+    );
+    assert_eq!(p["counts"]["move"], json!(14), "{p}");
+}
+
 #[test]
 fn schedule_is_a_rust_table_row() {
     let row = moai_cli::home_layout::lookup("schedule").expect("a table row for `schedule`");
