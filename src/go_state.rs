@@ -150,7 +150,7 @@ const LEGACY_ROOT: &str = crate::PROJECT_STATE_DIR;
 /// The earlier root's entries that are product state and move into `.moai/` (design
 /// 6862154151). Everything else there stays: `worktrees/` until #2723 moves them (D6),
 /// `reports/` (D5), `backups/` where earlier go-state receipts expect it, and anything else.
-const STATE_ENTRIES: [&str; 17] = [
+const STATE_ENTRIES: [&str; 18] = [
     "archive",
     "config",
     "decisions",
@@ -158,6 +158,9 @@ const STATE_ENTRIES: [&str; 17] = [
     "forge",
     "imports",
     "index",
+    // `lane_loop` writes `lane-stop-hook/<lane>.json` through `state_root::path` (#2871, leader
+    // decision 6887464608): it is product state of the earlier root like its siblings.
+    "lane-stop-hook",
     "manifests",
     "messages",
     "project-skill-rollback",
@@ -2101,7 +2104,8 @@ fn layout_and_backup(
 
 /// The read-only preview over one project folder.
 pub fn plan(project: &Path) -> Result<GoStatePlan> {
-    let project = fs::canonicalize(project).map_err(|_| "project folder unavailable")?;
+    let project =
+        fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
     // A linked `.moai` (or any linked component above the manifest) is refused by the
     // manifest read below, with or without a manifest file.
     let mut warnings = vec![
@@ -3337,7 +3341,8 @@ pub fn backed_up_root_file(project: &Path, name: &str) -> Result<Option<BackedUp
     if !ROOT_FILES.contains(&name) {
         return Err(format!("{name}: not a root instruction file"));
     }
-    let project = fs::canonicalize(project).map_err(|_| "project folder unavailable")?;
+    let project =
+        fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
     let backups = format!("{MOAI_DIR}/backups");
     refuse_linked(&project, &backups)?;
     let Ok(entries) = fs::read_dir(project.join(&backups)) else {
@@ -3374,7 +3379,8 @@ pub fn backed_up_root_file(project: &Path, name: &str) -> Result<Option<BackedUp
 
 /// Read-only: what a revert of one apply would do.
 pub fn revert_plan(project: &Path, backup: &str) -> Result<RevertPlan> {
-    let project = fs::canonicalize(project).map_err(|_| "project folder unavailable")?;
+    let project =
+        fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
     let (receipt, _, base) = read_receipt(&project, backup)?;
     let moving = !receipt.go_backup.is_empty();
     // Either #2696 layout: the marker and this generation's `.moai/` are undone the same way.

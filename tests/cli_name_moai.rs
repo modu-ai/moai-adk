@@ -168,8 +168,8 @@ fn only_the_first_word_hook_is_taken_and_its_input_never_blocks() {
 }
 
 /// AC-2: both names print the same `--version` line, `moai-cli <ver> (rust)`, and the same help
-/// and usage error except the binary name: since #2802 S1 (design #2799 D2 section 9) usage and
-/// help name the binary that ran, so `moai`'s text equals `moai-cli`'s with that name swapped.
+/// and usage error byte for byte: since #3004 P1 usage and help name `moai` whichever name ran
+/// (#2802 S1 had them name the binary that ran).
 #[test]
 fn both_names_print_the_same_output() {
     let version = run(MOAI, &["--version"], b"");
@@ -196,23 +196,16 @@ fn both_names_print_the_same_output() {
         let a = run(MOAI, &args, b"");
         let b = run(MOAI_CLI, &args, b"");
         assert_eq!(a.status.code(), b.status.code(), "{args:?}");
-        let named = |s: String| s.replace("moai-cli", "moai");
-        assert_eq!(
-            named(text(&a.stdout)),
-            named(text(&b.stdout)),
-            "{args:?} stdout"
-        );
-        assert_eq!(
-            named(text(&a.stderr)),
-            named(text(&b.stderr)),
-            "{args:?} stderr"
-        );
+        // Since #3004 P1 the two names print the very same bytes, no name swapped.
+        assert_eq!(text(&a.stdout), text(&b.stdout), "{args:?} stdout");
+        assert_eq!(text(&a.stderr), text(&b.stderr), "{args:?} stderr");
     }
-    // The usage line names the binary that ran.
+    // The usage line names `moai` whichever name ran (#3004 AC-1).
     let help = text(&run(MOAI, &["--help"], b"").stdout);
     assert!(help.contains("Usage: moai <command>"), "{help}");
     let help = text(&run(MOAI_CLI, &["--help"], b"").stdout);
-    assert!(help.contains("Usage: moai-cli <command>"), "{help}");
+    assert!(help.contains("Usage: moai <command>"), "{help}");
+    assert!(!help.contains("moai-cli"), "{help}");
 }
 
 /// Impact table B2: a `moai` hard-linked beside `moai-cli` is the same installation — the

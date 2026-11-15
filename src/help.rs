@@ -5,6 +5,7 @@
 //! help is text for people. clap has no way to put subcommands under several headings, so the
 //! root help body is drawn from [`GROUPS`] and handed to clap as the root's help template.
 
+use crate::ui::{Painter, Token};
 use crate::ui_text::Lang;
 use clap::Command;
 use unicode_width::UnicodeWidthStr;
@@ -883,18 +884,12 @@ pub fn group_of(word: &str) -> Option<&'static str> {
         .map(|g| g.heading)
 }
 
-/// The name a person typed: `moai` or `moai-cli` from `argv[0]` (#2802, D2 section 9); any
-/// other name (a renamed copy) reads as `moai-cli`, the canonical one.
-pub fn bin_name(argv0: &str) -> &'static str {
-    let stem = std::path::Path::new(argv0)
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("");
-    if stem == "moai" {
-        "moai"
-    } else {
-        "moai-cli"
-    }
+/// The name help, usage lines, footers and usage-error text print: always `moai`, whichever
+/// name was typed (`moai`, `moai-cli`, a renamed copy; #3004 P1). `moai-cli` stays an alias of
+/// the executable and the `--version` signature, but a person reads and types `moai`. The
+/// `argv[0]` argument stays so every caller goes through this one place when the rule changes.
+pub fn bin_name(_argv0: &str) -> &'static str {
+    "moai"
 }
 
 /// The narrowest `COLUMNS` the help follows; a smaller (or unreadable) value means [`MAX_WIDTH`].
@@ -924,6 +919,166 @@ pub fn render_groups(cmd: &Command, all: bool, width: usize) -> String {
 
 /// [`render_groups`] in `lang`: headings, the launcher line and the root commands' abouts.
 pub fn render_groups_in(cmd: &Command, all: bool, width: usize, lang: Lang) -> String {
+    let rows = group_rows(cmd, all, lang);
+    let name_w = rows
+        .iter()
+        .flat_map(|(_, l)| l.iter().map(|(n, _)| n.width()))
+        .max()
+        .unwrap_or(0);
+    let indent = 2 + name_w + 2;
+    let mut out = String::new();
+    for (heading, list) in rows {
+        out.push_str(heading);
+        out.push('\n');
+        for (name, text) in list {
+            let pad = name_w - name.width();
+            let row = format!(
+                "  {name}{}  {}",
+                " ".repeat(pad),
+                wrap(&text, indent, width)
+            );
+            // A command without an about leaves no padding at the line end.
+            out.push_str(row.trim_end());
+            out.push('\n');
+        }
+    }
+    out
+}
+
+/// The first steps the root help names, in the order a new person takes them (#3004 P1): the
+/// command after the binary name and what it does. A command starting with `/` is typed inside
+/// the session, not to the shell. `the_getting_started_and_example_commands_exist` (in
+/// `main.rs`) parses every one against the real command tree, so a removed command breaks it.
+pub const GETTING_STARTED: &[(&str, &str)] = &[
+    ("install-inspect", "Check the installed MoAI"),
+    ("cc", "Start a session in this folder (or: codex, glm)"),
+    ("/moai project", "Inside the session: prepare this project"),
+    ("update", "Update MoAI from the installed package"),
+];
+
+/// A few commands to copy, each with what it does (#3004 P1); parsed against the real command
+/// tree by the same test.
+pub const ROOT_EXAMPLES: &[(&str, &str)] = &[
+    ("cc -l", "lead session"),
+    ("update", "preview and apply an update"),
+    ("project-detect .", "show the facts of this project"),
+];
+
+/// Where the root help sends a reader for more: the word after the binary name and why.
+const ROOT_MORE: &[(&str, &str)] = &[
+    ("help --all", "every command"),
+    ("<command> --help", "options and examples of one command"),
+];
+
+/// One row of the root help: `lead` spaces, the left cell (`plain` is what it reads, `styled`
+/// the same with style codes), then the about in the column every block shares.
+struct Row {
+    lead: usize,
+    plain: String,
+    styled: String,
+    about: String,
+}
+
+/// The root help body for English (#3004 P1): the first steps, the grouped commands, a few
+/// examples and where the rest is, one block each with a blank line between. The about column
+/// is shared by every block, so the eye finds it once. `color` adds style codes to the
+/// headings and command names; the words and the line breaks are the same without it.
+pub fn render_root(cmd: &Command, bin: &str, width: usize, color: bool) -> String {
+    let painter = Painter {
+        color,
+        unicode: false,
+        lang: Lang::En,
+    };
+    let command_row = |text: &str, about: &str| {
+        let full = format!("{bin} {text}");
+        Row {
+            lead: 2,
+            styled: painter.paint(Token::Code, &full),
+            plain: full,
+            about: about.to_string(),
+        }
+    };
+    let mut steps = Vec::new();
+    for (i, (text, about)) in GETTING_STARTED.iter().enumerate() {
+        let mut row = if text.starts_with('/') {
+            Row {
+                lead: 2,
+                styled: painter.paint(Token::Code, text),
+                plain: text.to_string(),
+                about: about.to_string(),
+            }
+        } else {
+            command_row(text, about)
+        };
+        let number = format!("{}. ", i + 1);
+        row.plain.insert_str(0, &number);
+        row.styled.insert_str(0, &number);
+        steps.push(row);
+    }
+    let mut commands = Vec::new();
+    for (heading, list) in group_rows(cmd, false, Lang::En) {
+        // A group heading is a row without an about: its own line, one level in.
+        commands.push(Row {
+            lead: 2,
+            styled: painter.paint(Token::Accent, heading),
+            plain: heading.to_string(),
+            about: String::new(),
+        });
+        for (name, about) in list {
+            commands.push(Row {
+                lead: 4,
+                styled: painter.paint(Token::Code, &name),
+                plain: name,
+                about,
+            });
+        }
+    }
+    let examples: Vec<Row> = ROOT_EXAMPLES
+        .iter()
+        .map(|(text, about)| command_row(text, about))
+        .collect();
+    let more: Vec<Row> = ROOT_MORE
+        .iter()
+        .map(|(text, about)| command_row(text, about))
+        .collect();
+    let blocks = [
+        ("Getting started", steps),
+        ("Commands", commands),
+        ("Examples", examples),
+        ("More", more),
+    ];
+    // The about column starts two cells after the widest left cell of any row that has one.
+    let column = blocks
+        .iter()
+        .flat_map(|(_, rows)| rows.iter())
+        .filter(|r| !r.about.is_empty())
+        .map(|r| r.lead + r.plain.width())
+        .max()
+        .unwrap_or(0)
+        + 2;
+    let mut out = String::new();
+    for (i, (heading, rows)) in blocks.iter().enumerate() {
+        if i > 0 {
+            out.push('\n');
+        }
+        out.push_str(&painter.paint(Token::Strong, heading));
+        out.push('\n');
+        for r in rows {
+            let mut line = format!("{}{}", " ".repeat(r.lead), r.styled);
+            if !r.about.is_empty() {
+                line.push_str(&" ".repeat(column - r.lead - r.plain.width()));
+                line.push_str(&wrap(&r.about, column, width));
+            }
+            out.push_str(line.trim_end());
+            out.push('\n');
+        }
+    }
+    out
+}
+
+/// The `(name, about)` rows under each group heading in `lang`; `all` lists every command,
+/// otherwise only the root ones (the launchers on one line). A group with no row is left out.
+fn group_rows(cmd: &Command, all: bool, lang: Lang) -> Vec<(&'static str, Vec<(String, String)>)> {
     let about = |word: &str| -> String {
         if lang == Lang::Ko {
             if let Some(text) = about_ko(word) {
@@ -958,29 +1113,7 @@ pub fn render_groups_in(cmd: &Command, all: bool, width: usize, lang: Lang) -> S
             rows.push((heading_in(g, lang), list));
         }
     }
-    let name_w = rows
-        .iter()
-        .flat_map(|(_, l)| l.iter().map(|(n, _)| n.width()))
-        .max()
-        .unwrap_or(0);
-    let indent = 2 + name_w + 2;
-    let mut out = String::new();
-    for (heading, list) in rows {
-        out.push_str(heading);
-        out.push('\n');
-        for (name, text) in list {
-            let pad = name_w - name.width();
-            let row = format!(
-                "  {name}{}  {}",
-                " ".repeat(pad),
-                wrap(&text, indent, width)
-            );
-            // A command without an about leaves no padding at the line end.
-            out.push_str(row.trim_end());
-            out.push('\n');
-        }
-    }
-    out
+    rows
 }
 
 /// `text` broken at spaces so no line passes `width` display cells (a wide character counts
@@ -1010,11 +1143,14 @@ pub fn configure(cmd: Command, bin: &'static str, version: &str, all: bool) -> C
     // Help goes to stdout, so its language is stdout's: English whenever stdout is not a
     // terminal (S6-2), whatever stderr is.
     let lang = crate::ui::ui_lang(crate::ui::Stream::Stdout);
-    configure_in(cmd, bin, version, all, lang)
+    // Colour and bold follow stdout like the rest of the human layer (#2803): off on a pipe,
+    // `NO_COLOR` and `TERM=dumb`, on a terminal; `--color` wins when it was given.
+    let color = Painter::for_stream(crate::ui::Stream::Stdout, crate::ui::ColorFlag::Auto).color;
+    configure_styled(cmd, bin, version, all, lang, color)
 }
 
-/// [`configure`] in `lang` (S6d, #2825). The first line names the product and stays English
-/// (design 1, like the banner's identity line).
+/// [`configure`] in `lang` (S6d, #2825), without style codes. The first line names the product
+/// and stays English (design 1, like the banner's identity line).
 pub fn configure_in(
     cmd: Command,
     bin: &'static str,
@@ -1022,7 +1158,30 @@ pub fn configure_in(
     all: bool,
     lang: Lang,
 ) -> Command {
-    let groups = render_groups_in(&cmd, all, width(), lang);
+    configure_styled(cmd, bin, version, all, lang, false)
+}
+
+/// [`configure_in`] with the root help's style codes when `color` is set (#3004 P1). Only the
+/// English root help carries style: `help --all` is printed as plain text, and the Korean help
+/// (unused while the CLI's human output is English only, user decision 6878265192) keeps its
+/// earlier layout.
+pub fn configure_styled(
+    cmd: Command,
+    bin: &'static str,
+    version: &str,
+    all: bool,
+    lang: Lang,
+    color: bool,
+) -> Command {
+    // The English root help (#3004 P1) is its own layout: first steps, the grouped commands,
+    // examples and pointers. `help --all` and the Korean help keep the grouped list and its
+    // footer.
+    let root_en = lang == Lang::En && !all;
+    let groups = if root_en {
+        render_root(&cmd, bin, width(), color)
+    } else {
+        render_groups_in(&cmd, all, width(), lang)
+    };
     let footer = footer(lang, bin, all);
     let options_heading = match lang {
         Lang::En => "Options:",
@@ -1051,9 +1210,14 @@ pub fn configure_in(
     } else {
         String::new()
     };
-    let template = format!(
-        "MoAI-ADK {version} — agentic development kit\n\n{usage_lines}\n\n{groups}{options}\n{footer}\n"
-    );
+    // The English root help ends with its own "More" block instead of the footer lines.
+    let template = if root_en {
+        format!("MoAI-ADK {version} — agentic development kit\n\n{usage_lines}\n\n{groups}")
+    } else {
+        format!(
+            "MoAI-ADK {version} — agentic development kit\n\n{usage_lines}\n\n{groups}{options}\n{footer}\n"
+        )
+    };
     // `mut_subcommands` keeps the command order and never panics on a name the table lacks
     // (`mut_subcommand` moves the command to the end and panics on an unknown one).
     let cmd = cmd.mut_subcommands(
@@ -1735,12 +1899,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn bin_name_reads_the_typed_name() {
-        assert_eq!(bin_name("/usr/local/bin/moai"), "moai");
-        assert_eq!(bin_name("moai"), "moai");
-        assert_eq!(bin_name("/x/moai-cli"), "moai-cli");
-        assert_eq!(bin_name("/x/moai-copy"), "moai-cli");
-        assert_eq!(bin_name(""), "moai-cli");
+    fn bin_name_is_moai_whatever_name_was_typed() {
+        for argv0 in [
+            "/usr/local/bin/moai",
+            "moai",
+            "/x/moai-cli",
+            "moai-cli",
+            "C:/Users/u/.moai/path/moai-cli.exe",
+            "/x/moai-copy",
+            "",
+        ] {
+            assert_eq!(bin_name(argv0), "moai", "{argv0:?}");
+        }
     }
 
     #[test]
@@ -1876,6 +2046,112 @@ mod tests {
         assert!(!ko.contains("About "), "{ko}");
         assert!(ko.contains("  project-detect  "), "{ko}");
         assert_eq!(ko.lines().count(), en.lines().count());
+    }
+
+    /// `text` without its SGR style codes (`ESC [ … m`).
+    fn without_styles(text: &str) -> String {
+        let mut out = String::new();
+        let mut chars = text.chars();
+        while let Some(c) = chars.next() {
+            if c == '\x1b' {
+                for d in chars.by_ref() {
+                    if d == 'm' {
+                        break;
+                    }
+                }
+            } else {
+                out.push(c);
+            }
+        }
+        out
+    }
+
+    /// #3004 P1: the English root help has its four blocks in order, a blank line between them,
+    /// the groups one level under "Commands", one about column for every block, and no line
+    /// past the width (60, 80 and 100), a trailing space or a style code.
+    #[test]
+    fn the_root_help_has_its_blocks_and_fits_its_width() {
+        let cmd = root_cmd();
+        for width in [60usize, 80, 100] {
+            let text = render_root(&cmd, "moai", width, false);
+            let heads: Vec<&str> = text
+                .lines()
+                .filter(|l| !l.is_empty() && !l.starts_with(' '))
+                .collect();
+            assert_eq!(
+                heads,
+                ["Getting started", "Commands", "Examples", "More"],
+                "{text}"
+            );
+            assert!(
+                text.contains("\n\nCommands\n  Start\n    cc, codex, glm  "),
+                "{text}"
+            );
+            assert!(text.contains("\n\nExamples\n  moai cc -l  "), "{text}");
+            assert!(text.ends_with("command\n"), "{text}");
+            assert!(!text.contains("\n\n\n"), "{text}");
+            for line in text.lines() {
+                assert!(line.width() <= width, "{width}: {line:?}");
+                assert_eq!(line, line.trim_end(), "{width}: trailing space {line:?}");
+                assert!(!line.contains('\x1b'), "{line:?}");
+            }
+            // One about column: the first about of each block starts at the same cell.
+            let starts: std::collections::BTreeSet<usize> = text
+                .lines()
+                .filter_map(|l| {
+                    [
+                        "  1. moai install-inspect",
+                        "  moai cc -l",
+                        "  moai help --all",
+                        "    cc, codex, glm",
+                    ]
+                    .iter()
+                    .find(|p| l.starts_with(**p))
+                    .map(|p| p.len() + l[p.len()..].chars().take_while(|c| *c == ' ').count())
+                })
+                .collect();
+            assert_eq!(starts.len(), 1, "{width}: {starts:?}\n{text}");
+        }
+    }
+
+    /// #3004 P1 AC-5: style codes only when asked, and the same words and breaks either way.
+    #[test]
+    fn the_root_help_styles_only_when_asked_and_keeps_its_words() {
+        let cmd = root_cmd();
+        let plain = render_root(&cmd, "moai", 80, false);
+        let styled = render_root(&cmd, "moai", 80, true);
+        assert!(!plain.contains('\x1b'), "{plain}");
+        assert!(
+            styled.contains("\x1b[1mGetting started\x1b[0m"),
+            "{styled:?}"
+        );
+        assert!(
+            styled.contains("\x1b[1mmoai install-inspect\x1b[0m"),
+            "{styled:?}"
+        );
+        assert_eq!(without_styles(&styled), plain);
+    }
+
+    /// #3004 P1: every name the root help types is a root command of the table (the real command
+    /// tree is checked in `main.rs`), and the binary name is the one given.
+    #[test]
+    fn the_first_steps_name_root_commands_and_the_given_binary() {
+        let root_words: std::collections::BTreeSet<&str> = GROUPS
+            .iter()
+            .flat_map(|g| g.commands.iter())
+            .filter(|(_, root)| *root)
+            .map(|(w, _)| *w)
+            .collect();
+        for (text, _) in GETTING_STARTED.iter().chain(ROOT_EXAMPLES.iter()) {
+            if text.starts_with('/') {
+                continue;
+            }
+            let word = text.split_whitespace().next().unwrap();
+            assert!(root_words.contains(word), "{text}");
+        }
+        let text = render_root(&root_cmd(), "bin-x", 80, false);
+        assert!(text.contains("  1. bin-x install-inspect  "), "{text}");
+        assert!(!text.contains(" moai "), "{text}");
     }
 
     /// S6d AC-2: `help --all` shows the root commands in Korean and keeps the other abouts in
@@ -2034,8 +2310,13 @@ mod tests {
             en.contains("\nUsage: moai <command> [options]\n       moai cc|"),
             "{en}"
         );
+        // The English root help ends with its "More" block (#3004 P1), not the footer lines;
+        // `help --all` keeps the footer.
+        assert!(en.contains("\nMore\n  moai help --all "), "{en}");
+        assert!(!en.contains("Run '"), "{en}");
         assert!(
-            en.contains("Run 'moai help --all' for every command."),
+            render(true, Lang::En)
+                .ends_with("Run 'moai <command> --help' for details and examples.\n"),
             "{en}"
         );
         let ko = render(false, Lang::Ko);
