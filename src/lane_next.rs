@@ -2391,7 +2391,7 @@ pub fn run_with_store<T: Transport, C: Clock>(
             .get_or_insert_with(|| crate::forge::policy::format_utc(clock.now()));
         let mut v = match store {
             Some(dir) => {
-                crate::lane_proposal::decide_and_record(dir, target.lane, &mut snap, clock.now())
+                crate::lane_proposal::decide_and_record(dir, target.lane, &mut snap, || clock.now())
             }
             None => decide(target.lane, &snap),
         };
@@ -3258,6 +3258,56 @@ mod tests {
         let lost = go(Some(&missing));
         assert_eq!(lost["proposal"]["status"], json!("unavailable"), "{lost}");
         assert!(lost.get("idle_read").is_some(), "{lost}");
+    }
+
+    /// #3015 C3 (N-M7): the offer's lease runs from the clock of the run, not from 0: with a
+    /// clock that is not zero, an Issue offered to a registered lane ends 600 seconds later.
+    #[test]
+    fn the_offer_lease_runs_from_the_clock_of_the_run() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let mut init = std::process::Command::new("git");
+        init.args(["init", "-q"]).current_dir(dir.path());
+        crate::identity::scrub_git_env(&mut init);
+        assert!(init.status().unwrap().success());
+        let target = Target {
+            owner: "o",
+            repo: "r",
+            lane: "agent-10",
+            tip_branch: None,
+            dir: dir.path(),
+        };
+        const START: i64 = 1_800_000_000;
+        let clock = FakeClock {
+            now: Cell::new(START),
+            slept: Cell::new(0),
+        };
+        crate::lane_registry::register(dir.path(), "agent-10", None, 3600, None, START).unwrap();
+        let registry = crate::lane_registry::registry_dir(dir.path()).unwrap();
+        let one_issue = HeldOldest {
+            issues: 1,
+            held: 0,
+            claimed: 0,
+            total: 1,
+            sent: Cell::new(0),
+            read: Default::default(),
+        };
+        let v = run_with_store(
+            &target,
+            &one_issue,
+            &clock,
+            0,
+            SHARED_LANES,
+            Some(&registry),
+            None,
+        )
+        .unwrap();
+        assert_eq!(v["next"]["kind"], json!("pick_issue"), "{v}");
+        assert_eq!(v["proposal"]["status"], json!("recorded"), "{v}");
+        assert_eq!(
+            v["proposal"]["lease_until"],
+            json!(START + crate::lane_proposal::PROPOSAL_LEASE_SECS),
+            "{v}"
+        );
     }
 
     /// #2873 N9: `--shared-lanes` accepts 1 to 50 — 0 and 51 are refused.

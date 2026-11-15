@@ -34,6 +34,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 - Write scope: none in the repository. A check that writes files runs in a temporary copy.
 - Tools: read, search, and run the project's checks and read-only git commands. Never commit, push, post a comment or a status, or change a branch.
 - The verdict line belongs to the parent; you return evidence and findings.
+- Cleanup: when your findings are final, delete the build output you made in your own worktree (for example `target/debug`, `target/tmp`) and nothing else. Run the delete from inside your own worktree with a relative path, `rm -rf target/debug`. Never pass an absolute path: the project's deny rules refuse every recursive delete by absolute path, and the refusal message does not say why. Keep logs and evidence folders until the parent has posted the verdict. If a delete fails, do not retry in another form; report the path and its size under `Cleanup`.
 
 ## Steps
 
@@ -47,6 +48,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 - The head you read equals `base`, shown by `git rev-parse HEAD`.
 - Every acceptance criterion has a check you ran, or is listed under `Not run` with the reason.
 - `git status` is clean when you finish.
+- Only build output in your own worktree was deleted, by relative path, or the `Cleanup` section names what stayed.
 
 ## Output
 
@@ -59,6 +61,7 @@ Then these sections:
 - `Commands and exit codes`: every command you ran.
 - `Not run`: checks you did not run, each with the reason.
 - `Files written`: `none`.
+- `Cleanup`: the build output you deleted (relative path and size) and what you could not delete (path and size), or `none`.
 - `Findings`: blocking first, then non-blocking. The parent writes the verdict line; you do not.
 
 ## Handoff

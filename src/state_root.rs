@@ -55,8 +55,8 @@ pub fn is_marker_name(name: &str) -> bool {
 pub const MARKER_SCHEMA: u64 = 1;
 /// #2871 I2 R1: a HOME marker with this schema makes the HOME this generation's first
 /// (`rust-first`, user decision D-M1 6876633358), Go markers or not. Only
-/// [`classify_home`] reads it; projects and older builds refuse it as `newer`. Nothing writes
-/// it yet.
+/// [`classify_home`] reads it; projects and older builds refuse it as `newer`. Only
+/// `home-install-apply` writes it ([`home_marker_bytes`]), as the last step of the move.
 pub const HOME_MARKER_SCHEMA: u64 = 2;
 /// The name `go-state-apply` gives the Go folder (#2725 rev2 D2); never overwritten.
 pub const GO_BACKUP: &str = ".moai-backup";
@@ -531,6 +531,22 @@ pub fn marker_bytes(created_by: &str, extra: &[(&str, &str)]) -> Vec<u8> {
     bytes
 }
 
+/// The schema-2 marker `home-install-apply` writes last (#2871 U3c, user decision D-M1): the
+/// two fields [`classify_home`] reads, who wrote it and the stamp of the install it closes.
+pub fn home_marker_bytes(created_by: &str, stamp: &str) -> Vec<u8> {
+    let mut map = serde_json::Map::new();
+    map.insert("schema_version".into(), json!(HOME_MARKER_SCHEMA));
+    map.insert("generation".into(), json!("moai-cli"));
+    map.insert(
+        "created_by".into(),
+        json!(format!("moai-cli {} {created_by}", crate::BUILD_VERSION)),
+    );
+    map.insert("install_stamp".into(), json!(stamp));
+    let mut bytes = serde_json::to_vec_pretty(&Value::Object(map)).expect("marker encodes");
+    bytes.push(b'\n');
+    bytes
+}
+
 /// Make a new project's `.moai/` and its marker (#2696 C2b), so every later read and write
 /// resolves to `.moai`. Does nothing for any other project and says whether it wrote. The
 /// folder is created exclusively and the marker published without overwriting.
@@ -836,6 +852,33 @@ mod tests {
         }
         out.sort();
         out
+    }
+
+    /// #2871 U3c: the marker `home-install-apply` writes is the schema-2 marker the HOME verdict
+    /// reads, and it carries the install stamp; a project root refuses it as `newer`.
+    #[test]
+    fn the_home_marker_bytes_make_a_home_rust_first() {
+        let bytes = home_marker_bytes("home-install-apply", "20261114T120000Z");
+        let text = String::from_utf8(bytes.clone()).unwrap();
+        let v: Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(v["schema_version"], json!(HOME_MARKER_SCHEMA));
+        assert_eq!(v["generation"], json!("moai-cli"));
+        assert_eq!(v["install_stamp"], json!("20261114T120000Z"));
+        assert!(v["created_by"]
+            .as_str()
+            .unwrap()
+            .ends_with("home-install-apply"));
+        assert!(text.ends_with('\n'));
+        let c = home_verdict(|h| {
+            fs::create_dir_all(h.join(".moai")).unwrap();
+            fs::write(h.join(".moai").join(RUST_MARKER), &bytes).unwrap();
+        });
+        assert_eq!((c.generation, c.rust_marker), ("rust-first", "schema-2"));
+        let project = verdict(|r| {
+            fs::create_dir_all(r.join(".moai")).unwrap();
+            fs::write(r.join(".moai").join(RUST_MARKER), &bytes).unwrap();
+        });
+        assert_eq!(project.rust_marker, "newer");
     }
 
     /// #2871 I2 R1 (D-M1 6876633358): a schema-2 marker on a HOME is this generation first;
