@@ -112,6 +112,7 @@ pub mod repo_scans;
 pub mod review;
 pub mod run;
 pub mod scope;
+pub mod scopes;
 pub mod search;
 pub mod self_audit;
 pub mod self_update;
