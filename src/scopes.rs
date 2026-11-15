@@ -47,7 +47,8 @@ fn name_ok(name: &str) -> bool {
 
 /// Whether `path` is a plain repository-relative folder path: `/`-separated, no empty, `.` or
 /// `..` part, nothing inside `.git`, no absolute or drive form, no glob or control character, no
-/// trailing slash (one spelling per folder), no secret-looking text.
+/// trailing slash (one spelling per folder), no leading or trailing space in any part, no
+/// secret-looking text.
 pub fn path_ok(path: &str) -> bool {
     // A trailing slash leaves an empty last part, which the part check below refuses.
     if path.is_empty() || path.len() > PATH_BYTES {
@@ -67,7 +68,11 @@ pub fn path_ok(path: &str) -> bool {
         return false;
     }
     path.split('/').all(|part| {
-        !part.is_empty() && part != "." && part != ".." && !part.eq_ignore_ascii_case(".git")
+        !part.is_empty()
+            && part == part.trim()
+            && part != "."
+            && part != ".."
+            && !part.eq_ignore_ascii_case(".git")
     })
 }
 
@@ -87,12 +92,14 @@ pub fn validate(scopes: &[ScopeEntry]) -> Result<()> {
         if s.paths.is_empty() || s.paths.len() > PATH_LIMIT {
             return Err("invalid scopes: a scope names between 1 and 64 folders".into());
         }
-        let mut seen: Vec<&String> = Vec::new();
+        // Folders that differ only in case are one folder on a case-insensitive disk.
+        let mut seen: Vec<String> = Vec::new();
         for p in &s.paths {
-            if !path_ok(p) || seen.contains(&p) {
+            let lower = p.to_lowercase();
+            if !path_ok(p) || seen.contains(&lower) {
                 return Err("invalid scopes: a folder path is malformed or repeated".into());
             }
-            seen.push(p);
+            seen.push(lower);
         }
     }
     Ok(())
@@ -135,6 +142,10 @@ mod tests {
             "~/x",
             "a\"b",
             "line\nbreak",
+            " apps",
+            "apps ",
+            "apps/ web",
+            "apps/web /x",
             "password=fixture-only",
         ] {
             assert!(!path_ok(no), "{no:?}");
@@ -184,6 +195,8 @@ mod tests {
         assert!(validate(&[scope("web", &["a"]), scope("api", &["b"])]).is_ok());
         assert!(validate(&[scope("web", &["a"]), scope("web", &["b"])]).is_err());
         assert!(validate(&[scope("web", &["a", "a"])]).is_err());
+        assert!(validate(&[scope("web", &["apps", "Apps"])]).is_err());
+        assert!(validate(&[scope("web", &["apps/Web", "APPS/web"])]).is_err());
         assert!(validate(&[scope("web", &["a", "b"]), scope("api", &["a"])]).is_ok());
         assert!(validate(&[scope("web", &["bad/"])]).is_err());
         assert!(validate(&[scope("Web", &["a"])]).is_err());

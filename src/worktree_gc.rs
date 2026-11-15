@@ -502,7 +502,7 @@ pub(crate) fn ignored_split(
     wt: &Path,
     primary: &Path,
     preserved: &[String],
-) -> Option<(usize, Vec<String>, Option<u64>, Option<(usize, u64)>)> {
+) -> Option<(usize, Vec<String>, Option<u64>)> {
     let s = git_out(
         wt,
         &[
@@ -515,33 +515,12 @@ pub(crate) fn ignored_split(
     )?;
     let (mut safe, mut kept, mut seen) = (0usize, Vec::new(), 0usize);
     let (mut git_marks, mut safe_files) = (Vec::new(), Vec::new());
-    let mut install_newest: Option<u64> = None;
-    let mut install_fp: Option<(usize, u64)> = None;
     for rec in s.split('\0').filter(|r| r.len() > 3) {
         let (code, entry) = rec.split_at(3);
         if code != "!! " || entry == "target/" {
             continue;
         }
         let top = wt.join(entry.trim_end_matches('/'));
-        // #3010: a real `node_modules` with a tracked lockfile is install output that the
-        // lockfile rebuilds; it is judged as one unit with its own entry limit instead of file
-        // by file (one install is about 92,000 files, past the 20,000 census limit). Links
-        // inside are removed as links, never followed. Anything the walk cannot vouch for
-        // falls through to the file-by-file census below, which fails closed. The top level
-        // must look like package-manager output (`install_shaped`): a stray `.env`, note or
-        // database next to the packages is the user's, and keeps the worktree (audit B1 on #3058).
-        if entry == "node_modules/" && install_proof(wt) == (true, true) && install_shaped(&top) {
-            let mut marks = Vec::new();
-            if let Some(n) =
-                walk_install(&top, INSTALL_ENTRY_LIMIT, &mut marks, &mut install_newest)
-            {
-                safe += n.max(1);
-                install_fp = Some((n, install_newest.unwrap_or(0)));
-                safe_files.push(top);
-                git_marks.extend(marks);
-                continue;
-            }
-        }
         for f in walk_files(top, &mut seen, &mut git_marks)? {
             let rel = f.strip_prefix(wt).ok()?.to_path_buf();
             if ignored_file_is_safe(wt, primary, &rel) {
@@ -581,11 +560,10 @@ pub(crate) fn ignored_split(
         .filter_map(|f| fs::symlink_metadata(f).ok())
         .filter_map(|m| m.modified().ok())
         .filter_map(unix_secs)
-        .max()
-        .max(install_newest);
+        .max();
     kept.sort();
     kept.dedup();
-    Some((safe, kept, newest, install_fp))
+    Some((safe, kept, newest))
 }
 
 /// How far one plan goes (#2879 D2): at most `max_checked` worktrees are examined, starting
@@ -661,14 +639,10 @@ const INSTALL_LOCKFILES: [&str; 6] = [
     "bun.lockb",
 ];
 
-/// More entries than this in one `node_modules` and it is not treated as a rebuildable
-/// install (it keeps its worktree). Measured by the Issue at about 92,000 files for one
-/// install; the limit leaves room for several times that.
-pub(crate) const INSTALL_ENTRY_LIMIT: usize = 500_000;
-
 /// `(real install folder, lockfile tracked)` for the top-level `node_modules` of `wt`. The
-/// folder counts only as a real folder (a symlink may point anywhere), and it is rebuildable
-/// only when a lockfile is in the index (#3010).
+/// folder counts only as a real folder (a symlink may point anywhere), and the lockfile counts
+/// only when it is in the index (#3010). A fact for the preview (`lifecycle`), never a reason
+/// to remove: an install folder keeps its worktree (leader decision 6895403187, B).
 pub(crate) fn install_proof(wt: &Path) -> (bool, bool) {
     let install_dir = fs::symlink_metadata(wt.join("node_modules")).is_ok_and(|m| m.is_dir());
     let lockfile_tracked = install_dir
@@ -678,115 +652,6 @@ pub(crate) fn install_proof(wt: &Path) -> (bool, bool) {
         )
         .is_some_and(|s| !s.trim().is_empty());
     (install_dir, lockfile_tracked)
-}
-
-/// Walks an install folder without following links. Returns how many entries it holds, or
-/// `None` when it is unreadable, holds more than `limit` entries, or holds anything but
-/// files, folders and links (a socket or pipe is not install output). A `.git` inside (a git
-/// dependency) is not walked into; it goes to `git_marks`, which keeps the worktree. `newest`
-/// is raised to the newest modification time of any entry walked.
-pub(crate) fn walk_install(
-    top: &Path,
-    limit: usize,
-    git_marks: &mut Vec<PathBuf>,
-    newest: &mut Option<u64>,
-) -> Option<usize> {
-    let mut stack = vec![top.to_path_buf()];
-    let mut seen = 0usize;
-    while let Some(d) = stack.pop() {
-        for e in fs::read_dir(&d).ok()?.flatten() {
-            let p = e.path();
-            seen += 1;
-            if seen > limit {
-                return None;
-            }
-            if e.file_name() == ".git" {
-                git_marks.push(p);
-                continue;
-            }
-            let meta = fs::symlink_metadata(&p).ok()?;
-            // Writing inside a package does not change the top folder's mtime, so every
-            // entry's own mtime is kept for the recent-change check (Codex review on #3058).
-            if let Some(t) = meta.modified().ok().and_then(unix_secs) {
-                *newest = Some(newest.map_or(t, |n| n.max(t)));
-            }
-            let ft = meta.file_type();
-            if ft.is_dir() {
-                stack.push(p);
-            } else if !(ft.is_file() || ft.is_symlink()) {
-                return None;
-            }
-        }
-    }
-    Some(seen)
-}
-
-/// Files a package manager writes at the top of `node_modules` besides packages.
-const INSTALL_TOP_FILES: [&str; 4] = [
-    ".package-lock.json",
-    ".yarn-integrity",
-    ".modules.yaml",
-    ".yarn-state.yml",
-];
-/// Folders a package manager or its tools keep at the top of `node_modules`.
-const INSTALL_TOP_DIRS: [&str; 3] = [".bin", ".cache", ".pnpm"];
-
-/// Whether the top level of `top` (a `node_modules`) holds only what a package manager writes:
-/// links, a package folder (one with its own `package.json`), a scope folder whose children are
-/// links or packages, and the files and folders named above. Anything else — a `.env`, a note, a
-/// database, a folder that is not a package — is something a person put there, so it is not
-/// install output and the folder is not judged as one (audit B1 on #3058). A file a person puts
-/// inside a package folder cannot be told from the package's own files; the install fingerprint
-/// in the plan digest and the recent-change check are what guard those.
-pub(crate) fn install_shaped(top: &Path) -> bool {
-    let package =
-        |dir: &Path| fs::symlink_metadata(dir.join("package.json")).is_ok_and(|m| m.is_file());
-    let Ok(entries) = fs::read_dir(top) else {
-        return false;
-    };
-    for e in entries.flatten() {
-        let name = e.file_name();
-        let Some(name) = name.to_str() else {
-            return false;
-        };
-        let Ok(meta) = fs::symlink_metadata(e.path()) else {
-            return false;
-        };
-        let ft = meta.file_type();
-        if ft.is_symlink() {
-            continue; // removed as a link, never followed
-        }
-        if ft.is_file() {
-            if INSTALL_TOP_FILES.contains(&name) || name.starts_with(".pnpm-workspace-state") {
-                continue;
-            }
-            return false;
-        }
-        if !ft.is_dir() {
-            return false;
-        }
-        if INSTALL_TOP_DIRS.contains(&name) {
-            continue;
-        }
-        if name.starts_with('@') {
-            let Ok(inner) = fs::read_dir(e.path()) else {
-                return false;
-            };
-            for c in inner.flatten() {
-                let Ok(m) = fs::symlink_metadata(c.path()) else {
-                    return false;
-                };
-                if !(m.file_type().is_symlink() || (m.is_dir() && package(&c.path()))) {
-                    return false;
-                }
-            }
-            continue;
-        }
-        if !package(&e.path()) {
-            return false;
-        }
-    }
-    true
 }
 
 /// Whether `path` is a worktree Codex made: `<home>/.codex/worktrees/<id>/<repo>`. A host-made
@@ -1010,7 +875,6 @@ pub fn plan_paced(
         let mut ignored_safe: Option<usize> = None;
         let mut ignored_kept: Vec<String> = Vec::new();
         let mut safe_newest: Option<u64> = None;
-        let mut install_fp: Option<(usize, u64)> = None;
         let over_count = i != 0 && pace.max_checked.is_some_and(|m| checked >= m);
         if Instant::now() >= deadline || over_count {
             f.budget_spent = true;
@@ -1045,7 +909,7 @@ pub fn plan_paced(
                     f.untracked = Some(u);
                     f.ignored_outside_build = Some(ign + preserved.len());
                 }
-            } else if let (Some((u, _, _)), Some((safe, kept, newest, fp))) =
+            } else if let (Some((u, _, _)), Some((safe, kept, newest))) =
                 (census(&path), ignored_split(&path, &primary, &preserved))
             {
                 f.untracked = Some(u);
@@ -1053,7 +917,6 @@ pub fn plan_paced(
                 ignored_safe = Some(safe);
                 ignored_kept = kept;
                 safe_newest = newest;
-                install_fp = fp;
             }
             f.in_use = cwds
                 .as_ref()
@@ -1080,7 +943,6 @@ pub fn plan_paced(
             "untracked": f.untracked,
             "ignored_outside_build": f.ignored_outside_build,
             "ignored_safe": ignored_safe,
-            "install_fingerprint": install_fp.map(|(n, t)| json!({"entries": n, "newest_mtime": t})),
             "ignored_kept": ignored_kept.iter().take(5).collect::<Vec<_>>(),
             "change_age_secs": f.change_age_secs,
             "trim_bytes": trim_bytes,
@@ -1097,12 +959,10 @@ pub fn plan_paced(
     }
     candidates.sort_by(|a, b| a["path"].as_str().cmp(&b["path"].as_str()));
     // The digest binds what a later apply acts on: path, head, action, reasons and the exact
-    // trim paths (#2498 N1 — a cargo folder that appears after the plan changes the digest),
-    // and for a judged install folder its entry count and newest mtime, so a file written
-    // into it after the plan changes the digest (audit B1 on #3058).
+    // trim paths (#2498 N1 — a cargo folder that appears after the plan changes the digest).
     let bound: Vec<Value> = candidates
         .iter()
-        .map(|c| json!({"path": c["path"], "head": c["head"], "action": c["action"], "reasons": c["reasons"], "trim_paths": c["trim_paths"], "install_fingerprint": c["install_fingerprint"]}))
+        .map(|c| json!({"path": c["path"], "head": c["head"], "action": c["action"], "reasons": c["reasons"], "trim_paths": c["trim_paths"]}))
         .collect();
     let plan_digest = crate::digest(serde_json::to_string(&bound).unwrap_or_default().as_bytes());
     let count = |a: &str| candidates.iter().filter(|c| c["action"] == a).count();
@@ -1173,7 +1033,7 @@ pub(crate) fn busy_now(wt: &Path, removing: bool, primary: Option<&Path>) -> Opt
         let (_, preserved) = split_target(&wt.join("target"));
         let split = primary.and_then(|p| ignored_split(wt, p, &preserved));
         match (census(wt), split) {
-            (Some((0, _, _)), Some((_, kept, _, _))) if kept.is_empty() => {}
+            (Some((0, _, _)), Some((_, kept, _))) if kept.is_empty() => {}
             (Some(_), Some(_)) => return Some("files_outside_build_output"),
             _ => return Some("file_census_unknown"),
         }
@@ -1506,32 +1366,6 @@ mod tests {
     }
 
     #[cfg(unix)]
-    fn install_fixture(files: usize) -> tempfile::TempDir {
-        let d = tempfile::tempdir().unwrap();
-        let top = d.path().join("node_modules/pkg");
-        fs::create_dir_all(&top).unwrap();
-        for i in 0..files {
-            fs::write(top.join(format!("f{i}.js")), "x").unwrap();
-        }
-        d
-    }
-
-    /// The entry limit at its edge: a folder with exactly `limit` entries is walked, one more is
-    /// not (`pkg` itself counts as an entry).
-    #[cfg(unix)]
-    #[test]
-    fn an_install_folder_is_walked_up_to_its_limit_and_not_past_it() {
-        let d = install_fixture(4); // pkg + 4 files = 5 entries
-        let top = d.path().join("node_modules");
-        let mut marks = Vec::new();
-        let mut newest = None;
-        assert_eq!(walk_install(&top, 5, &mut marks, &mut newest), Some(5));
-        assert_eq!(walk_install(&top, 4, &mut marks, &mut newest), None);
-        assert_eq!(walk_install(&top, 6, &mut marks, &mut newest), Some(5));
-        assert!(marks.is_empty());
-    }
-
-    #[cfg(unix)]
     fn tree(files: &[&str]) -> tempfile::TempDir {
         let d = tempfile::tempdir().unwrap();
         for f in files {
@@ -1542,41 +1376,8 @@ mod tests {
         d
     }
 
-    /// Audit B1 on #3058: only what a package manager writes at the top counts as install output.
-    #[cfg(unix)]
-    #[test]
-    fn only_package_manager_output_is_shaped_like_an_install() {
-        let ok = tree(&[
-            "a/package.json",
-            "@s/b/package.json",
-            ".bin/tool",
-            ".package-lock.json",
-            ".modules.yaml",
-            ".pnpm-workspace-state-v1.json",
-            ".cache/x",
-            ".pnpm/y/z",
-        ]);
-        std::os::unix::fs::symlink("a", ok.path().join("linked")).unwrap();
-        assert!(install_shaped(ok.path()));
-        for stray in [
-            ".env",
-            "my-notes.md",
-            "data.sqlite",
-            "scratch/a.txt",
-            "a2/index.js",
-        ] {
-            let d = tree(&["a/package.json", stray]);
-            assert!(!install_shaped(d.path()), "{stray}");
-        }
-        let scope = tree(&["@s/loose.txt"]);
-        assert!(!install_shaped(scope.path()));
-        let scope = tree(&["@s/nopkg/index.js"]);
-        assert!(!install_shaped(scope.path()));
-        assert!(!install_shaped(Path::new("/nonexistent-install-folder")));
-    }
-
-    /// Audit B4 on #3058, guard 1: a lockfile counts as tracked only when git says so; where
-    /// `git ls-files` fails the answer is "not tracked", never "tracked".
+    /// Audit B4 on #3058: a lockfile counts as tracked only when git says so; where `git
+    /// ls-files` fails the answer is "not tracked", never "tracked" (a fact shown in the preview).
     #[cfg(unix)]
     #[test]
     fn a_failed_git_listing_never_counts_the_lockfile_as_tracked() {
@@ -1584,23 +1385,22 @@ mod tests {
         assert_eq!(install_proof(d.path()), (true, false));
     }
 
-    /// Audit B4 on #3058, guard 2: a folder the walk cannot read makes the walk fail, it is not
-    /// skipped.
+    /// Audit B4 on #3058: a folder the ignored-file walk cannot read makes the walk fail (the
+    /// census is then unknown and the worktree is kept); it is never skipped.
     #[cfg(unix)]
     #[test]
-    fn an_unreadable_folder_fails_the_install_walk() {
+    fn an_unreadable_folder_fails_the_ignored_file_walk() {
         use std::os::unix::fs::PermissionsExt;
-        let d = install_fixture(1);
-        let top = d.path().join("node_modules");
-        let locked = top.join("pkg");
+        let d = tree(&["top/ok/a.txt", "top/locked/b.txt"]);
+        let locked = d.path().join("top/locked");
         fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).unwrap();
         // a process that can still read it (root) proves nothing here
         let readable = fs::read_dir(&locked).is_ok();
-        let (mut marks, mut newest) = (Vec::new(), None);
-        let walked = walk_install(&top, 100, &mut marks, &mut newest);
+        let (mut seen, mut marks) = (0usize, Vec::new());
+        let walked = walk_files(d.path().join("top"), &mut seen, &mut marks);
         fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
         if !readable {
-            assert_eq!(walked, None);
+            assert!(walked.is_none());
         }
     }
 
@@ -1613,60 +1413,6 @@ mod tests {
             "/h/worktrees/.codex/ab12/repo"
         )));
         assert!(!is_codex_worktree(Path::new("/h/.codex-x/worktrees/ab12")));
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn an_install_walk_follows_no_link_and_refuses_special_files() {
-        let d = install_fixture(1);
-        let outside = tempfile::tempdir().unwrap();
-        for i in 0..10 {
-            fs::write(outside.path().join(format!("o{i}")), "x").unwrap();
-        }
-        let top = d.path().join("node_modules");
-        std::os::unix::fs::symlink(outside.path(), top.join("linked")).unwrap();
-        let mut marks = Vec::new();
-        let mut newest = None;
-        // pkg + its file + the link itself; nothing behind the link is counted
-        assert_eq!(walk_install(&top, 100, &mut marks, &mut newest), Some(3));
-        let fifo = top.join("pipe");
-        let made = std::process::Command::new("mkfifo").arg(&fifo).status();
-        if made.is_ok_and(|s| s.success()) {
-            assert_eq!(walk_install(&top, 100, &mut marks, &mut newest), None);
-        }
-    }
-
-    /// Codex review on #3058: a file written deep inside a package leaves the top folder's mtime
-    /// alone, so the walk must report the newest mtime of any entry itself.
-    #[cfg(unix)]
-    #[test]
-    fn the_install_walk_reports_the_newest_entry_mtime_inside_packages() {
-        let d = install_fixture(2);
-        let top = d.path().join("node_modules");
-        let stamp = SystemTime::now() + std::time::Duration::from_secs(5 * 86_400);
-        fs::File::options()
-            .write(true)
-            .open(top.join("pkg/f1.js"))
-            .unwrap()
-            .set_modified(stamp)
-            .unwrap();
-        let (mut marks, mut newest) = (Vec::new(), None);
-        assert_eq!(walk_install(&top, 100, &mut marks, &mut newest), Some(3));
-        assert_eq!(newest, unix_secs(stamp));
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn a_nested_git_entry_is_marked_not_walked() {
-        let d = install_fixture(1);
-        let top = d.path().join("node_modules");
-        let dep = top.join("gitdep");
-        fs::create_dir_all(dep.join(".git/objects")).unwrap();
-        fs::write(dep.join(".git/objects/o"), "x").unwrap();
-        let mut marks = Vec::new();
-        let mut newest = None;
-        assert_eq!(walk_install(&top, 100, &mut marks, &mut newest), Some(4)); // pkg, f0, gitdep, .git
-        assert_eq!(marks, vec![dep.join(".git")]);
     }
 
     #[test]
