@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "settings_path": ".claude/settings.json",
+  "owned": {
+    "hooks": {
+      "SessionStart": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "command": "moai-cli hook-dispatch --host claude --event session-check",
+              "timeout": 10
+            }
+          ]
+        }
+      ],
+      "PreToolUse": [
+        {
+          "matcher": "Bash",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "moai-cli claim-verify . --hook",
+              "timeout": 10
+            }
+          ]
+        },
+        {
+          "matcher": "Bash|Write|Edit|MultiEdit|NotebookEdit",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "moai-cli hook-dispatch --host claude --event tool-preflight",
+              "timeout": 10
+            }
+          ]
+        }
+      ],
+      "PostToolUse": [
+        {
+          "matcher": "Bash",
+          "hooks": [
+            {
+              "type": "command",
+              "command": "moai-cli hook-receipt --host claude",
+              "timeout": 10
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "settings_sha256": "sha256:05b09f453b0246f5b999c4a70fb8069a476c8b19024d4e69a10af1eb2cf8a936"
+}
