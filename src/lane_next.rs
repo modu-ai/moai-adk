@@ -81,6 +81,28 @@ pub const fn poll_secs(shared_lanes: u64) -> u64 {
 pub const POLL_SECS: u64 = poll_secs(SHARED_LANES);
 /// The longest `--wait` accepted (seconds).
 pub const MAX_WAIT_SECS: u64 = 3600;
+/// The `partial` note for a run with no `--tip` and no open pull request: the base the tip is
+/// judged on is unknown, so no tip is judged. It is always there when nothing is open, so the
+/// idle count ([`crate::lane_idle::classify`]) does not take it for a read that failed.
+pub const TIP_BASE_UNKNOWN: &str = "tip: no --tip and no open pull request to take the base from";
+
+/// Whether a `partial` note is only the comment window ("#1975: only the newest 100 comments
+/// read"): the newest comments, the ones a decision is made on, were read. A busy Issue always
+/// carries it, so the idle count ([`crate::lane_idle::classify`]) does not take it for a read
+/// that failed.
+pub fn is_comment_window_note(note: &str) -> bool {
+    // The two shapes `collect` writes: `#<n>: <window>` and `PR #<n>: <window>`, nothing before
+    // or after (a failure note that merely ends with the words is a failure).
+    let window = format!("only the newest {COMMENTS_READ} comments read");
+    let rest = note.strip_prefix("PR ").unwrap_or(note);
+    let Some(rest) = rest.strip_prefix('#') else {
+        return false;
+    };
+    let Some((digits, tail)) = rest.split_once(": ") else {
+        return false;
+    };
+    !digits.is_empty() && digits.chars().all(|c| c.is_ascii_digit()) && tail == window
+}
 
 /// One comment as read: its id and body (oldest first within a thread).
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
@@ -1017,6 +1039,9 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
     let mut waiting = Vec::new();
     // Pull requests passed over in steps 2 and 4, each with its reason (#2933 S1).
     let mut pr_skipped: Vec<Value> = Vec::new();
+    // The lane's own open pull requests passed over because nothing in them needs the lane
+    // now — drafts included, which `pr_skipped` names `draft` like anyone's draft (#3005 P8).
+    let mut own_open_prs: Vec<u64> = Vec::new();
     // Cards passed over in steps 6 and 7, each with its reason (#2901), once per Issue.
     let mut skipped: Vec<Value> = Vec::new();
     let mut skip = |entry: Value| {
@@ -1082,6 +1107,7 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
             }
             let reason = if pr.draft { "draft" } else { "own_no_blocker" };
             pr_skipped.push(json!({"pr": pr.number, "reason": reason}));
+            own_open_prs.push(pr.number);
         }
         // 2b. P1: SYNC — a claimed card whose pull request merged and whose close table is not
         // posted yet: close it before new work (#2880 W3). A card with another open pull
@@ -1361,6 +1387,7 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
         "waiting": waiting,
         "skipped": skipped,
         "pr_skipped": pr_skipped,
+        "own_open_prs": own_open_prs,
         "end_condition": end_condition(snap),
         "partial": snap.partial,
         "api_calls": snap.api_calls,
@@ -1782,9 +1809,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
     });
     snap.tip_branch = tip_branch.clone();
     match tip_branch {
-        None => snap
-            .partial
-            .push("tip: no --tip and no open pull request to take the base from".into()),
+        None => snap.partial.push(TIP_BASE_UNKNOWN.into()),
         Some(tip_branch) => {
             match crate::gate_collect::get_json(&t, &format!("{base}/branches/{tip_branch}")) {
                 Ok((b, _)) => {
@@ -2234,6 +2259,21 @@ pub fn run<T: Transport, C: Clock>(
     wait_secs: u64,
     shared_lanes: u64,
 ) -> Result<Value> {
+    run_counting(target, transport, clock, wait_secs, shared_lanes, None)
+}
+
+/// [`run`] that also counts empty reads for the idle limit (#3005 P8). Each read is sorted
+/// ([`crate::lane_idle::classify`]); the wait ends at the read that brings the count to the
+/// limit instead of at the end of the wait, and the result carries `idle_read` (what the
+/// reads of the call counted) for [`crate::lane_idle::apply`] to save and remove.
+pub fn run_counting<T: Transport, C: Clock>(
+    target: &Target<'_>,
+    transport: &T,
+    clock: &C,
+    wait_secs: u64,
+    shared_lanes: u64,
+    idle: Option<crate::lane_idle::IdleBudget>,
+) -> Result<Value> {
     if wait_secs > MAX_WAIT_SECS {
         return Err(format!("--wait accepts at most {MAX_WAIT_SECS} seconds"));
     }
@@ -2245,16 +2285,24 @@ pub fn run<T: Transport, C: Clock>(
     let poll = poll_secs(shared_lanes);
     let deadline = clock.now() + wait_secs as i64;
     let mut rounds = 0u32;
+    let mut tally = crate::lane_idle::Tally::default();
     loop {
         rounds += 1;
         let mut snap = collect(target, transport);
         snap.now
             .get_or_insert_with(|| crate::forge::policy::format_utc(clock.now()));
         let mut v = decide(target.lane, &snap);
-        let done = !v["next"].is_null() || clock.now() + poll as i64 > deadline;
+        let at_limit = idle.is_some_and(|budget| {
+            tally.add(crate::lane_idle::classify(&v));
+            budget.reached(&tally)
+        });
+        let done = !v["next"].is_null() || at_limit || clock.now() + poll as i64 > deadline;
         if done {
             v["rounds"] = json!(rounds);
             v["poll_secs"] = json!(poll);
+            if idle.is_some() {
+                crate::lane_idle::attach(&mut v, &tally);
+            }
             return Ok(v);
         }
         clock.sleep(poll);
@@ -2882,6 +2930,96 @@ mod tests {
             (json!(2), json!(864))
         );
         assert_eq!(clock.slept.get(), 864);
+    }
+
+    /// #3005 P8 N1: with an idle budget a `--wait` ends at the read that brings the count to the
+    /// limit, not at the end of the wait; reads already saved count, and a budget that cannot
+    /// be reached (`max` 0, or reads that are not full answers) waits the whole time.
+    #[test]
+    fn a_wait_ends_at_the_read_that_reaches_the_idle_limit() {
+        use crate::lane_idle::{classify, IdleBudget, Read};
+        let dir = tempfile::TempDir::new().unwrap();
+        let target = Target {
+            owner: "o",
+            repo: "r",
+            lane: "agent-10",
+            tip_branch: None,
+            dir: dir.path(),
+        };
+        let fresh = || FakeClock {
+            now: Cell::new(0),
+            slept: Cell::new(0),
+        };
+        // A full read with nothing to do: an empty card list from GitHub, and a git folder so
+        // the goal file is readable too (`partial` stays empty).
+        let mut init = std::process::Command::new("git");
+        init.args(["init", "-q"]).current_dir(dir.path());
+        crate::identity::scrub_git_env(&mut init);
+        assert!(init.status().unwrap().success());
+        let none = HeldOldest {
+            issues: 0,
+            held: 0,
+            claimed: 0,
+            total: 0,
+            sent: Cell::new(0),
+            read: Default::default(),
+        };
+        let go = |clock: &FakeClock, budget: Option<IdleBudget>| {
+            run_counting(&target, &none, clock, 3600, SHARED_LANES, budget).unwrap()
+        };
+        let clock = fresh();
+        let plain = go(&clock, None);
+        assert_eq!(
+            classify(&plain),
+            Read::Empty,
+            "the read is a full empty one: {plain}"
+        );
+        assert!(plain.get("idle_read").is_none(), "no budget, no tally");
+        assert_eq!(plain["rounds"], json!(9), "the whole wait without a budget");
+        let clock = fresh();
+        let v = go(&clock, Some(IdleBudget { max: 3, already: 0 }));
+        assert_eq!(v["rounds"], json!(3), "{v}");
+        assert_eq!(v["idle_read"], json!({"empty": 3, "reset": false}));
+        assert_eq!(
+            clock.slept.get(),
+            2 * POLL_SECS,
+            "slept between reads 1-2-3 only"
+        );
+        let clock = fresh();
+        let v = go(&clock, Some(IdleBudget { max: 3, already: 2 }));
+        assert_eq!(
+            v["rounds"],
+            json!(1),
+            "two already saved: the first read is the third"
+        );
+        let clock = fresh();
+        let v = go(
+            &clock,
+            Some(IdleBudget {
+                max: 1000,
+                already: 0,
+            }),
+        );
+        assert_eq!(
+            v["rounds"],
+            json!(9),
+            "a limit not reached waits the whole time"
+        );
+        // Reads GitHub answered in part are not empty: even `max` 1 waits the whole time and
+        // the tally counts nothing.
+        let clock = fresh();
+        let v = run_counting(
+            &target,
+            &Quiet,
+            &clock,
+            3600,
+            SHARED_LANES,
+            Some(IdleBudget { max: 1, already: 0 }),
+        )
+        .unwrap();
+        assert_eq!(classify(&v), Read::Unreadable, "{v}");
+        assert_eq!(v["rounds"], json!(9), "{v}");
+        assert_eq!(v["idle_read"], json!({"empty": 0, "reset": false}), "{v}");
     }
 
     /// #2873 N9: `--shared-lanes` accepts 1 to 50 — 0 and 51 are refused.
