@@ -860,7 +860,10 @@ pub(crate) fn dispatch_publications<T: Transport, C: Clock>(
     let relevant = |m: &Message| {
         m.project_id == anchor.project_id
             && m.task.task_id == anchor.task.task_id
-            && (m.event == "dispatch" || m.event == "dispatch-decision")
+            && matches!(
+                m.event.as_str(),
+                "dispatch" | "dispatch-decision" | "dispatch-start"
+            )
     };
     // Discover all relevant packet IDs before any context/event filtering. A collision
     // can precede its relevant packet on another page, project, task or message kind.

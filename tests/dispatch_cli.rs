@@ -949,6 +949,202 @@ fn dispatch_times_are_separate_values() {
     assert_eq!(e.kind, moai_cli::contract::Kind::Conflict);
 }
 
+fn start_of(m: &Message) -> Message {
+    let mut s = answer(m, "accepted");
+    s.report_id = format!("{}-start", m.report_id);
+    s.event = "dispatch-start".into();
+    s.payload = json!({"dispatch_report_id":m.report_id,"dispatch_payload_digest":payload_digest(m),"note":"work begun"});
+    s
+}
+// The writer command arrives in a later slice; the fold is read through the generic S1 record.
+fn post(root: &Path, m: &Message, r: &Remote) {
+    message::record_cli(
+        root,
+        message::RecordRequest { message: m.clone() },
+        "decision:1",
+        r,
+        &Time,
+    )
+    .unwrap();
+}
+fn later(m: &Message, r: &Remote) -> Result<Value, moai_cli::contract::OpError> {
+    dispatch::check_cli(
+        CheckRequest {
+            dispatch: m.clone(),
+        },
+        r,
+        &At(BASE + 400),
+    )
+}
+fn conflict_kind(result: Result<Value, moai_cli::contract::OpError>) -> moai_cli::contract::Kind {
+    result.unwrap_err().kind
+}
+
+#[test]
+fn dispatch_start_requires_accepted_current_revision() {
+    use moai_cli::contract::Kind;
+    // Accepted, current: the start is folded with its own server time and comment id.
+    let root = temp_root();
+    let r = Remote::new();
+    let m = packet();
+    send(root.path(), &m, &r).unwrap();
+    r.actor.set(22);
+    ack(root.path(), &m, answer(&m, "accepted"), &r).unwrap();
+    let before = later(&m, &r).unwrap();
+    assert_eq!(before["started"], false);
+    assert_eq!(before["started_at"], Value::Null);
+    assert_eq!(before["start_comment_id"], Value::Null);
+    post(root.path(), &start_of(&m), &r);
+    // A start in the same second as the decision is allowed.
+    assert_eq!(later(&m, &r).unwrap()["started"], true);
+    r.comments.borrow_mut()[3]["created_at"] = at(60);
+    let v = later(&m, &r).unwrap();
+    assert_eq!(v["started"], true);
+    assert_eq!(v["started_at"], BASE + 60);
+    assert_eq!(v["start_comment_id"], 103);
+    assert_eq!(v["decided_at"], BASE);
+    assert_eq!(v["claim_authorized"], false);
+    assert_eq!(v["ownership_transferred"], false);
+    assert_eq!(v["audit_gate_integrated"], false);
+    // A start before the decision is a conflict, not a negative duration.
+    r.comments.borrow_mut()[2]["created_at"] = at(61);
+    assert_eq!(conflict_kind(later(&m, &r)), Kind::Conflict);
+
+    // Deferred or rejected decisions cannot start.
+    for kind in ["deferred", "rejected"] {
+        let root = temp_root();
+        let r = Remote::new();
+        send(root.path(), &m, &r).unwrap();
+        r.actor.set(22);
+        ack(root.path(), &m, answer(&m, kind), &r).unwrap();
+        post(root.path(), &start_of(&m), &r);
+        assert_eq!(conflict_kind(later(&m, &r)), Kind::Conflict, "{kind}");
+    }
+
+    // No ACK at all, and an ACK without a decision, cannot start either.
+    let root = temp_root();
+    let r = Remote::new();
+    send(root.path(), &m, &r).unwrap();
+    r.actor.set(22);
+    post(root.path(), &start_of(&m), &r);
+    assert_eq!(conflict_kind(later(&m, &r)), Kind::Conflict);
+    let root = temp_root();
+    let r = Remote::new();
+    send(root.path(), &m, &r).unwrap();
+    r.actor.set(22);
+    message::ack_cli(
+        root.path(),
+        message::AckRequest {
+            message: m.clone(),
+            payload_digest: payload_digest(&m),
+        },
+        "decision:1",
+        &r,
+        &Time,
+    )
+    .unwrap();
+    post(root.path(), &start_of(&m), &r);
+    assert_eq!(conflict_kind(later(&m, &r)), Kind::Conflict);
+
+    // A start that was current when written stays readable after a newer revision; one written
+    // after the newer record is a conflict.
+    let root = temp_root();
+    let r = Remote::new();
+    let v = send(root.path(), &m, &r).unwrap();
+    r.actor.set(22);
+    ack(root.path(), &m, answer(&m, "accepted"), &r).unwrap();
+    post(root.path(), &start_of(&m), &r);
+    r.actor.set(11);
+    let n = next(&m, &v);
+    send(root.path(), &n, &r).unwrap();
+    let new = later(&n, &r).unwrap();
+    assert_eq!(new["started"], false);
+    let old = later(&m, &r).unwrap();
+    assert_eq!(old["superseded"], true);
+    assert_eq!(old["started"], false);
+    r.comments.borrow_mut()[3]["created_at"] = at(60);
+    assert_eq!(conflict_kind(later(&n, &r)), Kind::Conflict);
+    assert_eq!(conflict_kind(later(&m, &r)), Kind::Conflict);
+
+    // The payload schema is closed: an unknown key is invalid, a blank note is a conflict.
+    // Only the receiver of the dispatch can start it, never its sender.
+    for field in [
+        "unknown_key",
+        "blank_note",
+        "wrong_digest",
+        "sender_starts",
+        "receiver_wrong",
+    ] {
+        let root = temp_root();
+        let r = Remote::new();
+        send(root.path(), &m, &r).unwrap();
+        r.actor.set(22);
+        ack(root.path(), &m, answer(&m, "accepted"), &r).unwrap();
+        let mut s = start_of(&m);
+        match field {
+            "unknown_key" => s.payload["extra"] = json!(true),
+            "blank_note" => s.payload["note"] = json!(" "),
+            "sender_starts" => {
+                s.sender = m.sender.clone();
+                r.actor.set(11);
+            }
+            "receiver_wrong" => s.receiver = m.receiver.clone(),
+            _ => s.payload["dispatch_payload_digest"] = json!(digest(b"wrong")),
+        }
+        post(root.path(), &s, &r);
+        let want = if field == "unknown_key" {
+            Kind::InvalidInput
+        } else {
+            Kind::Conflict
+        };
+        assert_eq!(conflict_kind(later(&m, &r)), want, "{field}");
+    }
+}
+
+#[test]
+fn recording_the_same_dispatch_twice_leaves_one_row() {
+    let root = temp_root();
+    let r = Remote::new();
+    let m = packet();
+    send(root.path(), &m, &r).unwrap();
+    r.actor.set(22);
+    ack(root.path(), &m, answer(&m, "accepted"), &r).unwrap();
+    post(root.path(), &start_of(&m), &r);
+    let once = later(&m, &r).unwrap();
+    assert_eq!(once["start_comment_id"], 103);
+    // The same packets observed again under other comment ids: one row, lowest id wins.
+    for (index, id, secs) in [(3, 500, 90), (0, 600, 5), (1, 700, 6)] {
+        let mut dup = r.comments.borrow()[index].clone();
+        dup["id"] = json!(id);
+        dup["created_at"] = at(secs);
+        r.comments.borrow_mut().push(dup);
+    }
+    let v = later(&m, &r).unwrap();
+    assert_eq!(v["start_comment_id"], 103);
+    assert_eq!(v["started_at"], BASE);
+    assert_eq!(v["record_comment_id"], 100);
+    assert_eq!(v["ack_comment_id"], 101);
+    assert_eq!(v["decision_comment_id"], 102);
+    assert_eq!(v["sent_at"], BASE);
+    // A lower id wins even when its server time is later.
+    let mut dup = r.comments.borrow()[3].clone();
+    dup["id"] = json!(50);
+    dup["created_at"] = at(70);
+    r.comments.borrow_mut().push(dup);
+    let v = later(&m, &r).unwrap();
+    assert_eq!(v["start_comment_id"], 50);
+    assert_eq!(v["started_at"], BASE + 70);
+    // A second, different start packet for the same dispatch is a conflict, not a second row.
+    let mut other = start_of(&m);
+    other.report_id = "d1-start-other".into();
+    other.payload["note"] = json!("a different packet");
+    post(root.path(), &other, &r);
+    assert_eq!(
+        conflict_kind(later(&m, &r)),
+        moai_cli::contract::Kind::Conflict
+    );
+}
+
 #[test]
 fn ack_alert_boundary_uses_the_shared_constant() {
     let n = dispatch::ACK_ALERT_SECS;

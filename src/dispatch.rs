@@ -1,4 +1,4 @@
-//! Dispatch and decision observations over the S1 durable message protocol (#2390 S2).
+//! Dispatch, decision and start observations over the S1 durable message protocol (#2390 S2).
 //! This module never grants a claim, publishes a verdict, or changes an audit gate.
 //! Session IDs remain declarations. A fresh GET snapshot is not a cross-host CAS.
 use crate::{
@@ -63,6 +63,13 @@ struct Decision {
     dispatch_payload_digest: String,
     disposition: String,
     reason: String,
+}
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct Start {
+    dispatch_report_id: String,
+    dispatch_payload_digest: String,
+    note: String,
 }
 fn error(kind: Kind, text: &str) -> OpError {
     OpError::new(kind, text)
@@ -137,12 +144,38 @@ fn decision(d: &mut Message, m: &Message, digest: &str) -> Result<Decision> {
     }
     Ok(p)
 }
+/// A start packet answers the dispatch from the same side as its decision.
+fn start(s: &mut Message, m: &Message, digest: &str) -> Result<Start> {
+    message::validate(s)?;
+    let p: Start = serde_json::from_value(s.payload.clone())
+        .map_err(|_| error(Kind::InvalidInput, "invalid dispatch start payload"))?;
+    if s.event != "dispatch-start"
+        || s.report_id == m.report_id
+        || s.project_id != m.project_id
+        || s.task != m.task
+        || s.sender != m.receiver
+        || s.receiver != m.sender
+        || s.owner_epoch != m.owner_epoch
+        || s.leader_epoch != m.leader_epoch
+        || s.candidate_digest != m.candidate_digest
+        || s.approval_refs != m.approval_refs
+        || s.hold_refs != m.hold_refs
+        || p.dispatch_report_id != m.report_id
+        || p.dispatch_payload_digest != digest
+        || !literal(&p.note)
+    {
+        return Err(conflict());
+    }
+    Ok(p)
+}
 struct Assignment {
     publication: Publication,
     payload: Dispatch,
     /// The ACK with the lowest comment id; its server `created_at` is the receive time.
     receipt: Option<Publication>,
     decision: Option<Publication>,
+    /// The start packet with the lowest comment id; its server `created_at` is the start time.
+    start: Option<Publication>,
 }
 struct Snapshot {
     latest_timestamp: Option<i64>,
@@ -172,6 +205,7 @@ fn snapshot<T: Transport, C: Clock>(anchor: &Message, t: &T, c: &C) -> Result<Sn
     let mut assignments: BTreeMap<u64, Assignment> = BTreeMap::new();
     let mut receipts = Vec::new();
     let mut decisions = Vec::new();
+    let mut starts = Vec::new();
     let mut ids = BTreeMap::new();
     for mut p in publications {
         // One server id must not describe two packets, even on overlapping pages.
@@ -204,7 +238,10 @@ fn snapshot<T: Transport, C: Clock>(anchor: &Message, t: &T, c: &C) -> Result<Sn
         {
             continue;
         }
-        if p.message.event != "dispatch" && p.message.event != "dispatch-decision" {
+        if !matches!(
+            p.message.event.as_str(),
+            "dispatch" | "dispatch-decision" | "dispatch-start"
+        ) {
             continue;
         }
         let mut task = p.message.task.clone();
@@ -216,6 +253,12 @@ fn snapshot<T: Transport, C: Clock>(anchor: &Message, t: &T, c: &C) -> Result<Sn
         if p.message.event == "dispatch-decision" {
             if !p.ack {
                 decisions.push(p);
+            }
+            continue;
+        }
+        if p.message.event == "dispatch-start" {
+            if !p.ack {
+                starts.push(p);
             }
             continue;
         }
@@ -242,6 +285,7 @@ fn snapshot<T: Transport, C: Clock>(anchor: &Message, t: &T, c: &C) -> Result<Sn
                     payload,
                     receipt: None,
                     decision: None,
+                    start: None,
                 },
             );
         }
@@ -307,6 +351,46 @@ fn snapshot<T: Transport, C: Clock>(anchor: &Message, t: &T, c: &C) -> Result<Sn
             a.decision = Some(d);
         }
     }
+    for mut s in starts {
+        let rev = s
+            .message
+            .task
+            .revision
+            .parse::<u64>()
+            .map_err(|_| conflict())?;
+        // A start must not be newer than the record that superseded its revision.
+        let superseded_at = rev
+            .checked_add(1)
+            .and_then(|next| assignments.get(&next))
+            .map(|n| n.publication.created_at);
+        let a = assignments.get_mut(&rev).ok_or_else(conflict)?;
+        start(
+            &mut s.message,
+            &a.publication.message,
+            &a.publication.payload_digest,
+        )?;
+        // Only after the ACK and an accepted decision, never before that decision.
+        let accepted_at = match &a.decision {
+            Some(d) if a.receipt.is_some() && d.message.payload["disposition"] == "accepted" => {
+                d.created_at
+            }
+            _ => return Err(conflict()),
+        };
+        if s.created_at < accepted_at || superseded_at.is_some_and(|at| s.created_at > at) {
+            return Err(conflict());
+        }
+        if let Some(old) = &a.start {
+            if old.message != s.message {
+                return Err(conflict());
+            }
+        }
+        if a.start
+            .as_ref()
+            .is_none_or(|old| s.comment_id < old.comment_id)
+        {
+            a.start = Some(s);
+        }
+    }
     Ok(Snapshot {
         assignments,
         latest_timestamp,
@@ -347,6 +431,8 @@ fn view(s: &Snapshot, anchor: &Message, now: i64) -> Result<Value> {
         "disposition":disposition,"decision_comment_id":current.decision.as_ref().map(|p|p.comment_id),
         "sent_at":current.publication.created_at,"received_at":current.receipt.as_ref().map(|p|p.created_at),
         "ack_comment_id":current.receipt.as_ref().map(|p|p.comment_id),"decided_at":current.decision.as_ref().map(|p|p.created_at),
+        "started":current.start.is_some(),"started_at":current.start.as_ref().map(|p|p.created_at),
+        "start_comment_id":current.start.as_ref().map(|p|p.comment_id),
         "superseded":requested!=*rev,"observation_current":requested==*rev && elapsed.is_some(),"ack_alert":alert,"elapsed_secs":elapsed,
         "observed_at":now,"claim_authorized":false,"ownership_transferred":false,"audit_gate_integrated":false,"cross_host_atomic":false,
         "business_completion":false,"c3":"observation_only_gate_integration_unfulfilled"}),
