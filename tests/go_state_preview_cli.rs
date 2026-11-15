@@ -758,3 +758,88 @@ fn after_the_apply_the_same_project_reads_nothing() {
     assert_eq!(again["go_backup"], Value::Null, "{again}");
     assert_eq!(again["backup_to"], Value::Null, "{again}");
 }
+
+// ---- #2936 S-CYCLE: the preview names the settings that move and what they free ----
+
+/// AC 8: before the user answers, the preview says which settings move, which files that
+/// frees, and what wiring goes with them, by count: never a deny rule, a command or a value.
+#[test]
+fn the_preview_names_the_settings_that_move_and_what_they_free() {
+    let mut fx = GoFx::new();
+    fx.real_run_cycle_shape(Some("MoAI-Easy"), None);
+    let plan = fx.plan();
+    assert_eq!(action(&plan, ".claude/settings.json"), "move", "{plan}");
+    let wiring = &plan["after_move"]["wiring_lost"];
+    assert_eq!(wiring["file"], json!(".claude/settings.json"), "{wiring}");
+    assert_eq!(wiring["go_hook_entries"], json!(23), "{wiring}");
+    assert_eq!(wiring["deny_rules"], json!(2), "{wiring}");
+    assert_eq!(
+        wiring["keys"],
+        json!(["hooks", "outputStyle", "permissions", "statusLine"]),
+        "{wiring}"
+    );
+    let sm = &plan["settings_move"];
+    assert_eq!(sm["freed"].as_array().unwrap().len(), 24, "{sm}");
+    assert_eq!(sm["folder_freed"], json!(true), "{sm}");
+    let warning = plan["warnings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|w| w.as_str().unwrap())
+        .find(|w| w.contains("moves into the backup"))
+        .unwrap_or_else(|| panic!("no settings warning: {}", plan["warnings"]));
+    for count in [
+        "23 Go hook entries",
+        "2 deny rules",
+        "24 file(s)",
+        "a status line",
+    ] {
+        assert!(warning.contains(count), "{count}: {warning}");
+    }
+    for step in ["claude-settings", "hooks", "claude-settings-merge"] {
+        assert!(warning.contains(step), "{step}: {warning}");
+    }
+    // The same preview inside project-update-plan.
+    let update = fx.update_plan();
+    assert_eq!(
+        go_state_preview(&update)["settings_move"],
+        plan["settings_move"]
+    );
+    for (what, text) in [("plan", plan.to_string()), ("update", update.to_string())] {
+        for forbidden in ["Read(./.env)", "Read(./secrets/**)", "$CLAUDE_PROJECT_DIR"] {
+            assert!(!text.contains(forbidden), "{what} prints {forbidden}");
+        }
+    }
+}
+
+/// AC 9: a project the rule does not touch previews as before (no `settings_move`, no
+/// `freed_by`); when it fires, a settings edit after the preview makes the confirmed digest
+/// stale and the apply writes nothing.
+#[test]
+fn the_digest_changes_only_when_the_rule_fires() {
+    let fx = go_fx();
+    fx.manifest();
+    fx.write(
+        ".claude/settings.json",
+        &settings_body(&["handle-a.sh"], None, &["Read(./.env)"]),
+    );
+    let plan = fx.plan();
+    assert!(plan.get("settings_move").is_none(), "{plan}");
+    assert!(!plan.to_string().contains("freed_by"), "{plan}");
+
+    let mut fx = GoFx::new();
+    fx.real_run_cycle_shape(Some("MoAI-Easy"), None);
+    let plan = fx.plan();
+    assert_eq!(
+        fx.plan()["plan_digest"],
+        plan["plan_digest"],
+        "deterministic"
+    );
+    let text = std::fs::read_to_string(fx.root.join(".claude/settings.json")).unwrap();
+    fx.write(".claude/settings.json", &format!("{text}\n"));
+    let before = fx.tree();
+    let v = fx.apply(plan["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert_eq!(v["error"]["kind"], json!("stale_plan"), "{v}");
+    assert_eq!(fx.tree(), before, "nothing written");
+}

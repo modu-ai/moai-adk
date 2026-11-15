@@ -1005,11 +1005,24 @@ fn secrets_stay_untouched_through_apply_and_revert() {
         "template_managed",
         &sha(b"not read\n"),
     );
+    // #2936 S-CYCLE: recorded settings that name both secret-named files move too (AC 15); the
+    // preview counts the deny rule and never prints it, and neither file is opened (the FIFO
+    // would hang the preview), listed or moved.
+    fx.deployed(
+        ".claude/settings.json",
+        r#"{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"bash .claude/hooks/server.pem"}]}]},"permissions":{"deny":["Read(./.env)"]},"env":{"F":".claude/.env"}}"#,
+    );
     fx.manifest();
     let pem_ino = fs::metadata(fx.root.join(".claude/hooks/server.pem"))
         .unwrap()
         .ino();
-    let (_, backup) = fx.apply_ok();
+    let (p, backup) = fx.apply_ok();
+    assert_eq!(ac(&p, SETTINGS), ("move", "settings"), "{p}");
+    assert_eq!(p["secrets"], json!(2), "{p}");
+    assert!(
+        !p.to_string().contains("Read(./.env)"),
+        "the preview prints a deny rule: {p}"
+    );
     let check = |fx: &Fx| {
         let m = fs::symlink_metadata(fx.root.join(".claude/.env")).unwrap();
         assert!(!m.is_file() && !m.is_dir(), "the FIFO is still a FIFO");
@@ -1751,4 +1764,296 @@ fn a_private_user_data_folder_is_restored_private() {
         assert_eq!(m, want, "{private}");
     }
     assert_eq!(mode(&fx.root.join(".moai/plans/open")), 0o755);
+}
+
+// ---- #2936 S-CYCLE: the proven settings move whether or not the Go folder stays ----
+
+const SETTINGS: &str = ".claude/settings.json";
+/// Unrecorded local settings that name the Go folder, so the folder stays.
+const LOCAL_HOLDS_MOAI: &str =
+    r#"{"model":"local","statusLine":{"type":"command","command":"bash .moai/local_status.sh"}}"#;
+
+/// The backup area of apply `backup`: `.moai/backups` when the Go folder moved, the earlier
+/// root's when it stayed.
+fn area_of(fx: &Fx, backup: &str) -> PathBuf {
+    [".moai", ".moai-cli"]
+        .iter()
+        .map(|b| fx.root.join(b).join("backups").join(backup))
+        .find(|a| a.is_dir())
+        .unwrap_or_else(|| panic!("no backup area for {backup}"))
+}
+
+fn receipt_in(fx: &Fx, backup: &str) -> Value {
+    serde_json::from_slice(&fs::read(area_of(fx, backup).join("go-state-receipt.json")).unwrap())
+        .unwrap()
+}
+
+/// Every apply stamp under either backup folder.
+fn backup_stamps(fx: &Fx) -> Vec<String> {
+    let mut out = Vec::new();
+    for b in [".moai", ".moai-cli"] {
+        if let Ok(rd) = fs::read_dir(fx.root.join(b).join("backups")) {
+            for e in rd {
+                let n = e.unwrap().file_name().into_string().unwrap();
+                if n != ".gitignore" {
+                    out.push(n);
+                }
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+/// The project as the user sees it, without any backup area (the earlier root keeps one after
+/// a revert as the record of both acts).
+fn without_backups(fx: &Fx) -> Vec<(PathBuf, Node)> {
+    let kept = fx.root.join(".moai-cli/backups");
+    fx.project_tree()
+        .into_iter()
+        .filter(|(p, _)| !p.starts_with(&kept))
+        .collect()
+}
+
+fn tree_under(fx: &Fx, rel: &str) -> Vec<(PathBuf, Node)> {
+    let base = fx.root.join(rel);
+    fx.tree()
+        .into_iter()
+        .filter(|(p, _)| p.starts_with(&base))
+        .collect()
+}
+
+/// A Go project whose recorded settings run one script, name a script under `.moai/` and carry
+/// a deny rule, plus a recorded rule file the user edited. `holder` writes unrecorded local
+/// settings that name `.moai/` (the Go folder then stays); `edited` edits the recorded
+/// settings after the deploy. Returns the project and the settings as the Go tool wrote them.
+fn cycle_fx(holder: bool, edited: bool) -> (Fx, String) {
+    let mut fx = go_fx();
+    fx.deployed(".moai/status_line.sh", "#!/bin/sh\necho s\n");
+    fx.deployed(".claude/hooks/moai/h.sh", "#!/bin/sh\necho h\n");
+    fx.deployed(".claude/rules/x.md", "x: 1\n");
+    fx.write(".claude/rules/x.md", "x: 2 # edited\n");
+    let original = json!({
+        "hooks": {"Stop": [{"hooks": [{"type": "command",
+            "command": "bash .claude/hooks/moai/h.sh"}]}]},
+        "permissions": {"deny": ["Read(./.env)"]},
+        "statusLine": {"type": "command", "command": "bash .moai/status_line.sh"},
+    })
+    .to_string();
+    fx.deployed(SETTINGS, &original);
+    if edited {
+        fx.write(SETTINGS, &format!("{original}\n"));
+    }
+    if holder {
+        fx.write(".claude/settings.local.json", LOCAL_HOLDS_MOAI);
+    }
+    fx.manifest();
+    (fx, original)
+}
+
+/// AC 2: unrecorded local settings name `.moai/`, so the Go folder stays byte for byte; the
+/// recorded shared settings still move, with the script only they ran, into the earlier
+/// root's backup. The local settings stay as they are.
+#[test]
+fn proven_settings_move_while_the_go_folder_stays() {
+    let (fx, text) = cycle_fx(true, false);
+    let moai = tree_under(&fx, ".moai");
+    let local = fs::read(fx.root.join(".claude/settings.local.json")).unwrap();
+    let p = fx.plan();
+    assert_eq!(item(&p, ".moai")["action"], json!("leave"), "{p}");
+    assert_eq!(p["layout"], json!("folder_stays"), "{p}");
+    assert_eq!(ac(&p, SETTINGS), ("move", "settings"), "{p}");
+    assert_eq!(
+        item(&p, SETTINGS)["proof"],
+        json!("manifest; sha256 matches the deploy")
+    );
+    assert_eq!(
+        item(&p, ".claude/hooks/moai/h.sh")["freed_by"],
+        json!(SETTINGS),
+        "{p}"
+    );
+    let sm = &p["settings_move"];
+    assert_eq!(sm["layout"], json!("folder_stays"), "{sm}");
+    assert_eq!(sm["folder_freed"], json!(false), "{sm}");
+    assert_eq!(sm["edited"], json!(false), "{sm}");
+    assert_eq!(
+        sm["still_holding"],
+        json!([".claude/settings.local.json"]),
+        "{sm}"
+    );
+    let (_, backup) = fx.apply_ok();
+    assert!(!fx.root.join(SETTINGS).exists());
+    let area = area_of(&fx, &backup);
+    assert_eq!(area, fx.root.join(".moai-cli/backups").join(&backup));
+    assert_eq!(
+        fs::read_to_string(area.join("go-state").join(SETTINGS)).unwrap(),
+        text
+    );
+    assert_eq!(
+        tree_under(&fx, ".moai"),
+        moai,
+        "the Go folder is byte for byte as it was"
+    );
+    assert_eq!(
+        fs::read(fx.root.join(".claude/settings.local.json")).unwrap(),
+        local
+    );
+    let r = receipt_in(&fx, &backup);
+    assert!(moved(&r, SETTINGS).get("kind").is_none(), "{r}");
+    // The settings are the last file the apply moves (the skills sort after them).
+    assert!(moved(&r, ".claude/skills/moai-a/SKILL.md")["moved"] == json!(true));
+    let paths: Vec<&str> = r["moves"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| m["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(paths.last(), Some(&SETTINGS), "{paths:?}");
+}
+
+/// AC 4: settings the user edited move in both layouts, with the Go hash and the current hash
+/// in the receipt; a receipt may name an edited file in the staying layout for the settings
+/// only. In the staying layout an edited rule file still stays.
+#[test]
+fn edited_settings_move_with_both_hashes_in_both_layouts() {
+    for holder in [false, true] {
+        let (fx, original) = cycle_fx(holder, true);
+        let edited = fs::read_to_string(fx.root.join(SETTINGS)).unwrap();
+        assert_ne!(edited, original);
+        let before = without_backups(&fx);
+        let p = fx.plan();
+        let layout = if holder {
+            "folder_stays"
+        } else {
+            "folder_moves"
+        };
+        assert_eq!(p["layout"], json!(layout), "holder={holder}: {p}");
+        assert_eq!(
+            ac(&p, SETTINGS),
+            ("move", "settings"),
+            "holder={holder}: {p}"
+        );
+        assert_eq!(
+            item(&p, SETTINGS)["proof"],
+            json!("manifest; sha256 differs from the deploy")
+        );
+        assert_eq!(p["settings_move"]["edited"], json!(true), "{p}");
+        // The edited rule file moves with the folder (O2) and stays when the folder stays.
+        assert_eq!(
+            item(&p, ".claude/rules/x.md")["action"],
+            json!(if holder { "leave" } else { "move" }),
+            "holder={holder}: {p}"
+        );
+        let (_, backup) = fx.apply_ok();
+        let r = receipt_in(&fx, &backup);
+        let m = moved(&r, SETTINGS);
+        assert_eq!(m["kind"], json!("edited"), "holder={holder}: {r}");
+        assert_eq!(m["deployed_hash"], json!(sha(original.as_bytes())), "{r}");
+        assert_eq!(m["sha256"], json!(sha(edited.as_bytes())), "{r}");
+        assert_eq!(
+            r["moves"].as_array().unwrap().last().unwrap()["path"],
+            json!(SETTINGS),
+            "holder={holder}: the settings move last: {r}"
+        );
+        assert_eq!(
+            fs::read_to_string(area_of(&fx, &backup).join("go-state").join(SETTINGS)).unwrap(),
+            edited
+        );
+        if holder {
+            // The staying layout's receipt may name an edited file only for the settings.
+            let path = area_of(&fx, &backup).join("go-state-receipt.json");
+            let original_receipt = fs::read(&path).unwrap();
+            let mut forged: Value = serde_json::from_slice(&original_receipt).unwrap();
+            forged["moves"].as_array_mut().unwrap().push(json!({
+                "path": ".claude/rules/x.md", "sha256": sha(b"x"), "moved": true,
+                "kind": "edited", "deployed_hash": sha(b"y"),
+            }));
+            fs::write(&path, serde_json::to_vec_pretty(&forged).unwrap()).unwrap();
+            let rp = fx.revert_plan(&backup);
+            assert_eq!(rp["ok"], json!(false), "{rp}");
+            assert!(rp.to_string().contains("wrong kind"), "{rp}");
+            fs::write(&path, &original_receipt).unwrap();
+            assert_eq!(fx.revert_plan(&backup)["ok"], json!(true));
+        }
+        let v = fx.revert(&backup);
+        assert_eq!(v["ok"], json!(true), "holder={holder}: {v}");
+        assert_eq!(without_backups(&fx), before, "holder={holder}");
+    }
+}
+
+/// AC 10: the settings are the last `.claude/` file to move. A stop right before them, in
+/// either layout, leaves them in place and the receipt `pending`, and the revert brings the
+/// rest back.
+#[test]
+fn a_stop_before_the_settings_leaves_them_in_place() {
+    for holder in [false, true] {
+        let (fx, text) = cycle_fx(holder, false);
+        let before = without_backups(&fx);
+        let plan = fx.plan();
+        let v = fx.run_env(
+            &[
+                "go-state-apply",
+                fx.p(),
+                "--plan-digest",
+                plan["plan_digest"].as_str().unwrap(),
+                "--permission-reference",
+                REF,
+            ],
+            &[("MOAI_CLI_TEST_FAULT", "go_state_before_settings")],
+        );
+        assert_eq!(v["ok"], json!(false), "holder={holder}: {v}");
+        assert!(
+            v.to_string()
+                .contains("injected test fault at go_state_before_settings"),
+            "{v}"
+        );
+        assert_eq!(
+            fs::read_to_string(fx.root.join(SETTINGS)).unwrap(),
+            text,
+            "holder={holder}: the settings are still in place"
+        );
+        assert!(
+            !fx.root.join(".claude/hooks/moai/h.sh").exists(),
+            "the files before them already moved"
+        );
+        let stamps = backup_stamps(&fx);
+        assert_eq!(stamps.len(), 1, "{stamps:?}");
+        let r = receipt_in(&fx, &stamps[0]);
+        assert_eq!(r["state"], json!("pending"), "{r}");
+        assert_eq!(moved(&r, SETTINGS)["moved"], json!(false), "{r}");
+        assert_eq!(moved(&r, ".claude/hooks/moai/h.sh")["moved"], json!(true));
+        let v = fx.revert(&stamps[0]);
+        assert_eq!(v["ok"], json!(true), "holder={holder}: {v}");
+        assert_eq!(without_backups(&fx), before, "holder={holder}");
+    }
+}
+
+/// AC 11: the staying layout's revert puts the settings back byte for byte, and never over a
+/// settings file that is there again (the install step wrote a new one).
+#[test]
+fn the_stay_layout_revert_restores_the_settings() {
+    let (fx, text) = cycle_fx(true, false);
+    let before = without_backups(&fx);
+    let (_, backup) = fx.apply_ok();
+    assert!(!fx.root.join(SETTINGS).exists());
+    fx.write(SETTINGS, "{\"new\":1}");
+    let rp = fx.revert_plan(&backup);
+    let action = rp["result"]["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|i| i["path"] == SETTINGS)
+        .unwrap()["action"]
+        .clone();
+    assert_eq!(action, json!("conflict"), "{rp}");
+    let tree = fx.tree();
+    let v = fx.revert(&backup);
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert_eq!(fx.tree(), tree, "nothing overwritten");
+    // The new file goes first (the install step's own undo, or the user), then the revert runs.
+    fs::remove_file(fx.root.join(SETTINGS)).unwrap();
+    let v = fx.revert(&backup);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(fs::read_to_string(fx.root.join(SETTINGS)).unwrap(), text);
+    assert_eq!(without_backups(&fx), before);
 }
