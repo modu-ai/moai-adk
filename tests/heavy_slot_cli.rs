@@ -84,6 +84,23 @@ impl Spawned {
         c.kill().unwrap();
         c.wait().unwrap();
     }
+
+    /// Waits for the wrapper alone (bounded by the hang guard) and leaves the rest of its group
+    /// running; the drop of `self` kills the group, so a surviving descendant never outlives
+    /// the test.
+    fn wait_wrapper_only(&mut self) -> std::process::ExitStatus {
+        let start = Instant::now();
+        loop {
+            if let Some(s) = self.child.as_mut().unwrap().try_wait().unwrap() {
+                return s;
+            }
+            if start.elapsed() > HANG {
+                kill_group(self.group);
+                panic!("hang guard: the wrapper did not end");
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
 }
 
 impl Drop for Spawned {
@@ -258,6 +275,83 @@ fn the_slot_stays_held_by_the_command_after_the_wrapper_is_killed() {
     wait_for("slot released", || {
         status(d.path())["held"].as_array().unwrap().is_empty()
     });
+}
+
+/// Whether `pid` names a live process (kill(2) with signal 0).
+fn pid_is_alive(pid: i32) -> bool {
+    // SAFETY: signal 0 only checks that the process exists and may be signalled.
+    unsafe { libc::kill(pid, 0) == 0 }
+}
+
+/// #3033 AC-1, pinning today's behaviour: the lock is on the open file, not on a process, so a
+/// background child the command leaves behind keeps the slot after the command and the wrapper
+/// have ended. `status` still lists the slot as held, with the wrapper's pid, which is dead by
+/// then; a second caller waits until the child ends. (The child's stdio is null so no pipe waits
+/// on it.)
+#[test]
+fn a_command_that_leaves_a_background_child_keeps_the_slot_and_status_shows_a_dead_pid() {
+    let d = tempfile::tempdir().unwrap();
+    let m = tempfile::tempdir().unwrap();
+    let (pidfile, s2) = (m.path().join("child.pid"), m.path().join("s2"));
+    let script = format!(
+        "sleep 600 </dev/null >/dev/null 2>&1 & echo $! > '{}'",
+        pidfile.display()
+    );
+    let mut c = acquire(d.path(), "1", "leaver", &["sh", "-c", &script]);
+    c.stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    let mut wrapper = spawn(c);
+    let wrapper_pid = wrapper.id() as i32;
+    // The wrapper ends with the command's own code once `sh` has exited.
+    assert_eq!(wrapper.wait_wrapper_only().code(), Some(0));
+    let child_pid: i32 = fs::read_to_string(&pidfile)
+        .unwrap()
+        .trim()
+        .parse()
+        .unwrap();
+    let _child = KillOnDrop(child_pid);
+    assert!(
+        pid_is_alive(child_pid),
+        "the background child must be alive"
+    );
+    assert!(
+        !pid_is_alive(wrapper_pid),
+        "the wrapper has ended and was reaped"
+    );
+
+    // Still held, and the record names the dead wrapper, not the child that holds the lock.
+    let held = status(d.path())["held"].clone();
+    assert_eq!(held.as_array().unwrap().len(), 1, "{held}");
+    assert_eq!(held[0]["name"], "leaver", "{held}");
+    assert_eq!(held[0]["pid"], wrapper_pid, "{held}");
+
+    // A second caller waits; it runs only after the child has gone.
+    let mut c = acquire(
+        d.path(),
+        "1",
+        "next",
+        &["sh", "-c", &format!("touch '{}'", s2.display())],
+    );
+    c.stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let second = spawn(c);
+    wait_for("second waiting", || {
+        fs::read_dir(d.path().join("waiting"))
+            .map(|r| r.count() == 1)
+            .unwrap_or(false)
+    });
+    assert!(
+        !s2.exists(),
+        "the second caller ran while the child held the slot"
+    );
+    // SAFETY: SIGKILL to the sleeper this test started.
+    unsafe { libc::kill(child_pid, libc::SIGKILL) };
+    wait_for("second ran", || s2.exists());
+    let out = second.finish();
+    assert!(out.status.success(), "{}", text(&out));
+    assert_eq!(status(d.path())["held"], serde_json::json!([]));
 }
 
 /// SIGTERM to the wrapper reaches the command, and the wrapper returns 128 + 15.
