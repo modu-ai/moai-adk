@@ -438,7 +438,7 @@ fn owned_settings_kept() {
     let fx = Fx::new();
     fx.with_profile(false);
     // #2936 R8: a project without a status line gets MoAI's, so the owned keys include one.
-    let desired = br#"{"outputStyle":"Explanatory","statusLine":{"type":"command","command":"moai-cli statusline"}}"#;
+    let desired = br#"{"outputStyle":"Explanatory","statusLine":{"type":"command","command":"moai statusline"}}"#;
     let plan = fx.call(&["claude-settings-plan", fx.p()], desired);
     let digest = plan["plan_digest"].as_str().unwrap().to_string();
     fx.call(
@@ -1108,13 +1108,13 @@ fn a_project_without_a_status_line_gets_the_moai_one_and_nothing_else() {
     assert_eq!(settings["state"], "ready", "{settings}");
     assert_eq!(
         settings["apply"]["stdin"],
-        json!({"statusLine": {"type": "command", "command": "moai-cli statusline"}}),
+        json!({"statusLine": {"type": "command", "command": "moai statusline"}}),
         "{settings}"
     );
     fx.apply_ready();
     assert_eq!(
         fx.settings_json(),
-        json!({"statusLine": {"type": "command", "command": "moai-cli statusline"}})
+        json!({"statusLine": {"type": "command", "command": "moai statusline"}})
     );
     let after = fx.plan();
     assert_eq!(

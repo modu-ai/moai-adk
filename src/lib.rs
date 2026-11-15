@@ -125,6 +125,7 @@ pub mod spec;
 pub mod spec_links;
 pub mod startable;
 pub mod state_root;
+pub mod status_line;
 pub mod statusline;
 pub mod ui;
 pub mod ui_summary;
