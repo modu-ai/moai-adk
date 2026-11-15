@@ -10,7 +10,7 @@
 //! no timestamp and no path, so nothing is normalized.
 #![cfg(unix)]
 
-use moai_cli::{claude, hooks};
+use moai_cli::{claude, hooks, status_line};
 use serde_json::{json, Map, Value};
 use std::{fs, path::Path};
 use tempfile::TempDir;
@@ -163,10 +163,9 @@ fn same_file(project: &Path, generated: &str, fixture_name: &str) {
 fn an_owned_status_line_matches_the_pre_p4_bytes() {
     let (_d, project) = project();
     let mut input = Map::new();
-    input.insert(
-        "statusLine".into(),
-        json!({"type": "command", "command": "moai-cli statusline"}),
-    );
+    // The legacy status line generator (#3004 P4-3): the current generator called with the old
+    // binary name, equal to the captured pre-P4 bytes.
+    input.insert("statusLine".into(), status_line::legacy());
     let desired = claude::user_settings_desired(&project, &input).unwrap();
     let plan = claude::settings_plan(&project, &desired).unwrap();
     let digest = plan["plan_digest"].as_str().unwrap().to_string();
@@ -182,4 +181,35 @@ fn an_owned_status_line_matches_the_pre_p4_bytes() {
         ".moai-cli/manifests/claude-settings.json",
         "statusline.receipt.json",
     );
+}
+
+/// #3004 P4-3: the status line the generator writes now is `moai statusline`; it is not the
+/// captured bytes, and the captured bytes still hold the old command, so the fixtures keep
+/// pinning what the earlier releases wrote.
+#[test]
+fn the_current_status_line_differs_from_the_pre_p4_bytes() {
+    assert_eq!(
+        status_line::legacy(),
+        json!({"type": "command", "command": "moai-cli statusline"})
+    );
+    assert_eq!(
+        status_line::current(),
+        json!({"type": "command", "command": "moai statusline"})
+    );
+    let (_d, project) = project();
+    let mut input = Map::new();
+    input.insert("statusLine".into(), status_line::current());
+    let desired = claude::user_settings_desired(&project, &input).unwrap();
+    let plan = claude::settings_plan(&project, &desired).unwrap();
+    let digest = plan["plan_digest"].as_str().unwrap().to_string();
+    claude::settings_apply(&project, &desired, &digest, "fixture").unwrap();
+    for (generated, name) in [
+        (".claude/settings.json", "statusline.settings.json"),
+        (
+            ".moai-cli/manifests/claude-settings.json",
+            "statusline.receipt.json",
+        ),
+    ] {
+        is_legacy(name, &fs::read(project.join(generated)).unwrap());
+    }
 }
