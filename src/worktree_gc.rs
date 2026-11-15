@@ -607,6 +607,96 @@ fn shown(path: &Path, root: &Path) -> String {
     }
 }
 
+/// Lock reasons written by `worktree-apply` are `moai claim <task_key> e<epoch>`; returns the
+/// key and the epoch, or `None` for any other reason (a hand-written lock is never ours).
+pub fn parse_moai_lock(reason: &str) -> Option<(String, u64)> {
+    let rest = reason.strip_prefix("moai claim ")?;
+    let (key, epoch) = rest.rsplit_once(" e")?;
+    let epoch: u64 = epoch.parse().ok()?;
+    (!key.is_empty() && !key.contains(char::is_whitespace)).then(|| (key.to_string(), epoch))
+}
+
+/// The Issue number a worktree belongs to: the digits before `#` in a claim key such as
+/// `3005#6886837864`, else the number in an `issue/<n>-…` branch, else `None`.
+pub fn issue_of(claim_key: Option<&str>, branch: Option<&str>) -> Option<u64> {
+    let from_key = claim_key
+        .and_then(|k| k.split_once('#'))
+        .and_then(|(n, _)| n.parse().ok());
+    from_key.or_else(|| {
+        let rest = branch?.strip_prefix("issue/")?;
+        let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
+        digits.parse().ok()
+    })
+}
+
+/// Lockfiles whose tracked presence means an install folder can be rebuilt from the repo.
+const INSTALL_LOCKFILES: [&str; 6] = [
+    "package-lock.json",
+    "npm-shrinkwrap.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "bun.lock",
+    "bun.lockb",
+];
+
+/// Lifecycle facts of one worktree (#3010 P1). Read-only and additive: none of this enters the
+/// plan digest or changes any decision, so `worktree-gc-apply` acts exactly as before. Every
+/// value is an observation or a derivation from one; `created_by` is `null` unless the lock
+/// reason proves `worktree-apply` made it, and `admin_age_secs` is an estimate (the mtime of
+/// the worktree's `.git/worktrees/<name>/gitdir`, which `git worktree repair` or `move` can
+/// reset) — neither is a creation record.
+fn lifecycle(
+    path: &Path,
+    origin: &str,
+    branch: Option<&str>,
+    lock_reason: Option<&str>,
+    locked: bool,
+    now: u64,
+) -> Value {
+    let moai_lock = lock_reason.and_then(parse_moai_lock);
+    let claim_key = moai_lock.as_ref().map(|(k, _)| k.as_str());
+    // An install folder counts only as a real folder: a symlink may point anywhere.
+    let install_dir = fs::symlink_metadata(path.join("node_modules")).is_ok_and(|m| m.is_dir());
+    let lockfile_tracked = install_dir
+        && git_out(
+            path,
+            &[&["ls-files", "--"][..], &INSTALL_LOCKFILES[..]].concat(),
+        )
+        .is_some_and(|s| !s.trim().is_empty());
+    let mut classes: Vec<&str> = Vec::new();
+    if locked && moai_lock.is_some() {
+        classes.push("locked_by_moai");
+    }
+    if install_dir && lockfile_tracked {
+        classes.push("regenerable_install");
+    }
+    let admin_age = fs::read_to_string(path.join(".git"))
+        .ok()
+        .and_then(|t| {
+            t.trim()
+                .strip_prefix("gitdir:")
+                .map(|g| PathBuf::from(g.trim()))
+        })
+        .and_then(|admin| fs::metadata(admin.join("gitdir")).ok())
+        .and_then(|m| m.modified().ok())
+        .and_then(unix_secs)
+        .map(|t| now.saturating_sub(t));
+    json!({
+        "origin": origin,
+        "issue": issue_of(claim_key, branch),
+        "created_by": if moai_lock.is_some() { json!("worktree-apply") } else { Value::Null },
+        "claim_key": claim_key,
+        "claim_epoch": moai_lock.as_ref().map(|(_, e)| *e),
+        "locked": locked,
+        "lock_reason": lock_reason,
+        "install_dir": install_dir,
+        "install_lockfile_tracked": lockfile_tracked,
+        "classes": classes,
+        "admin_age_secs": admin_age,
+        "admin_age_note": "estimate: mtime of .git/worktrees/<name>/gitdir, not a creation record",
+    })
+}
+
 /// Builds the plan. `now_unix` overrides the clock (tests); `None` uses the system time.
 /// Only an ancestor of the integration tip counts as merged here: `worktree.gc.apply`
 /// recomputes this plan, and a squash merge alone never makes it remove (#2724).
@@ -836,6 +926,14 @@ pub fn plan_paced(
             "change_age_secs": f.change_age_secs,
             "trim_bytes": trim_bytes,
             "bytes_partial": partial,
+            "lifecycle": lifecycle(
+                &path,
+                location,
+                e.branch.as_deref(),
+                e.lock_reason.as_deref(),
+                e.locked,
+                now,
+            ),
         }));
     }
     candidates.sort_by(|a, b| a["path"].as_str().cmp(&b["path"].as_str()));
@@ -866,6 +964,9 @@ pub fn plan_paced(
         "candidates": candidates,
         "remaining": remaining,
         "next_cursor": if remaining > 0 { json!(last_checked) } else { Value::Null },
+        // #3010 P1: free bytes before any apply; a reclaimed figure is the later `df` minus
+        // this one, never a sum of sizes (clonefile and hard links make sums wrong).
+        "before_free_bytes": crate::worktree_report::disk_bytes(&top).map(|(free, _)| free),
         "plan_digest": plan_digest,
         "apply": "worktree-gc-apply with this plan_digest and a permission reference (#2498); on this machine the leader runs it only after the user confirms (#2389 comment 6774899518 item 2)",
         "network": "disabled",
@@ -1214,5 +1315,46 @@ mod tests {
         ] {
             assert!(!lane_temp_dir(no), "{no}");
         }
+    }
+
+    #[test]
+    fn only_a_worktree_apply_lock_reason_names_a_claim() {
+        assert_eq!(
+            parse_moai_lock("moai claim 3005#6886837864 e1"),
+            Some(("3005#6886837864".to_string(), 1))
+        );
+        assert_eq!(
+            parse_moai_lock("moai claim k e12"),
+            Some(("k".to_string(), 12))
+        );
+        for no in [
+            "",
+            "moai claim",
+            "moai claim k",
+            "moai claim k e",
+            "moai claim k e1x",
+            "moai claim k e-1",
+            "moai claim  e1",
+            "moai claim a b e1",
+            "Moai claim k e1",
+            "my own lock",
+            "wip moai claim k e1",
+        ] {
+            assert_eq!(parse_moai_lock(no), None, "{no:?}");
+        }
+    }
+
+    #[test]
+    fn the_issue_comes_from_the_claim_key_first_then_the_branch() {
+        assert_eq!(
+            issue_of(Some("3005#6886837864"), Some("issue/9-x")),
+            Some(3005)
+        );
+        assert_eq!(issue_of(Some("no-hash"), Some("issue/9-x")), Some(9));
+        assert_eq!(issue_of(None, Some("issue/3010-p1-lifecycle")), Some(3010));
+        for branch in ["main", "issue/", "issue/x-1", "feature/12-a", "issues/3-a"] {
+            assert_eq!(issue_of(None, Some(branch)), None, "{branch}");
+        }
+        assert_eq!(issue_of(None, None), None);
     }
 }
