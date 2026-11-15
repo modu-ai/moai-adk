@@ -298,10 +298,11 @@ fn steps(plan: &Value) -> Vec<&Value> {
         .collect()
 }
 
-const INSTALL: [&str; 10] = [
+const INSTALL: [&str; 11] = [
     "profile",
     "generation",
     "claude-settings",
+    "hooks",
     "github",
     "codex-hooks",
     "codex-config",

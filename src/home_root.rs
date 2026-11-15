@@ -158,6 +158,11 @@ mod tests {
                 "hooks are refused inside either HOME state root",
             ),
             (
+                "project_home.rs",
+                2,
+                "unit-test fixtures of the earlier layout (the expected folder of a HOME with no marker); the code asks home_root::path",
+            ),
+            (
                 "statusline/render.rs",
                 1,
                 "unit-test fixture of the earlier layout",
