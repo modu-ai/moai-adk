@@ -560,7 +560,7 @@ fn full_shas(text: &str) -> Vec<String> {
 }
 
 /// The last `AUDIT … <head> … verdict: PASS|FAIL` line naming `head`, with its comment id.
-fn verdict_on(comments: &[Comment], head: &str) -> Option<(&'static str, i64)> {
+pub(crate) fn verdict_on(comments: &[Comment], head: &str) -> Option<(&'static str, i64)> {
     let mut found = None;
     for c in comments {
         for line in c.body.lines() {
