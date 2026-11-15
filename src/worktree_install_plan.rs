@@ -66,6 +66,24 @@ fn is_plain_dir(path: &Path) -> bool {
     fs::symlink_metadata(path).is_ok_and(|m| m.is_dir())
 }
 
+/// Every part of `rel` below `root` is a plain folder: a link in the middle of the path is not
+/// followed either, and `..` is not a part (audit memo 1 on #3083).
+fn is_plain_dir_path(root: &Path, rel: &str) -> bool {
+    let mut current = root.to_path_buf();
+    let mut parts = 0;
+    for part in rel.split('/').filter(|s| !s.is_empty() && *s != ".") {
+        if part == ".." {
+            return false;
+        }
+        current.push(part);
+        parts += 1;
+        if !is_plain_dir(&current) {
+            return false;
+        }
+    }
+    parts > 0
+}
+
 /// The lockfiles at the project root, as `(file name, manager)`. `None` for the manager means
 /// the file is a `yarn.lock` that is neither generation. `bun.lock` and `bun.lockb` are one
 /// manager and are listed once.
@@ -140,7 +158,7 @@ fn cargo_name(dir: &Path) -> Option<String> {
 pub fn preview(root: &Path, scope: &ScopeEntry) -> Result<Value> {
     let mut problems: Vec<&str> = Vec::new();
     for p in &scope.paths {
-        if !is_plain_dir(&root.join(p)) {
+        if !is_plain_dir_path(root, p) {
             problems.push(p);
         }
     }
@@ -155,6 +173,7 @@ pub fn preview(root: &Path, scope: &ScopeEntry) -> Result<Value> {
             "commands": [],
             "unverified": [],
             "ran": false,
+            "note": "preview only: no command was run and nothing was written",
         })
     };
     if !problems.is_empty() {
@@ -202,6 +221,20 @@ pub fn preview(root: &Path, scope: &ScopeEntry) -> Result<Value> {
             .collect::<Vec<_>>()
             .join(" ")
     };
+    // pnpm and Bun read a bare `apps/web` as a package name; a folder selector starts with `./`
+    // (pnpm.io/filtering, bun.sh/docs/pm/filter; audit B1 on #3083).
+    let dir_flags = |flag: &str| {
+        paths
+            .iter()
+            .map(|p| {
+                format!(
+                    "{flag} {}",
+                    quote(&format!("./{}", p.trim_start_matches("./")))
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
     let mut unverified: Vec<&str> = Vec::new();
     let mut commands: Vec<String> = Vec::new();
     let mut unnamed: Vec<String> = Vec::new();
@@ -216,10 +249,12 @@ pub fn preview(root: &Path, scope: &ScopeEntry) -> Result<Value> {
         Manager::Pnpm => {
             commands.push(format!(
                 "pnpm install --frozen-lockfile {}",
-                flags("--filter")
+                dir_flags("--filter")
             ));
             unverified.extend([
+                "that this command selects exactly the scope folders: no package manager was run, the ./<folder> form follows pnpm.io/filtering",
                 "whether pnpm install --filter also installs the root package",
+                "whether a folder that is not a workspace project selects nothing without an error",
                 "the lowest pnpm version that accepts this form",
             ]);
         }
@@ -237,9 +272,10 @@ pub fn preview(root: &Path, scope: &ScopeEntry) -> Result<Value> {
         Manager::Bun => {
             commands.push(format!(
                 "bun install --frozen-lockfile {}",
-                flags("--filter")
+                dir_flags("--filter")
             ));
             unverified.extend([
+                "that this command selects exactly the scope folders: no package manager was run, the ./<folder> form follows bun.sh/docs/pm/filter",
                 "an example that combines --filter with --frozen-lockfile",
                 "the lowest bun version that accepts this form",
             ]);
@@ -270,7 +306,6 @@ pub fn preview(root: &Path, scope: &ScopeEntry) -> Result<Value> {
     }
     v["commands"] = json!(commands);
     v["unverified"] = json!(unverified);
-    v["note"] = json!("preview only: no command was run and nothing was written");
     Ok(v)
 }
 
@@ -334,12 +369,12 @@ mod tests {
             (
                 "pnpm-lock.yaml",
                 "",
-                "pnpm install --frozen-lockfile --filter 'apps/web' --filter 'packages/ui'",
+                "pnpm install --frozen-lockfile --filter './apps/web' --filter './packages/ui'",
             ),
             (
                 "bun.lock",
                 "",
-                "bun install --frozen-lockfile --filter 'apps/web' --filter 'packages/ui'",
+                "bun install --frozen-lockfile --filter './apps/web' --filter './packages/ui'",
             ),
             (
                 "yarn.lock",
@@ -356,6 +391,86 @@ mod tests {
             assert_eq!(commands(&v), [want], "{lock}");
             assert_eq!(v["ran"], false);
             assert!(!v["unverified"].as_array().unwrap().is_empty(), "{lock}");
+        }
+    }
+
+    /// Audit B1 on #3083: pnpm and Bun read a bare `apps/web` as a package name, so their folder
+    /// selector starts with `./` (once, even when the scope already wrote it); npm's `-w` takes
+    /// the folder as written.
+    #[test]
+    fn pnpm_and_bun_select_folders_with_a_dot_slash_and_npm_does_not() {
+        for (lock, manager) in [("pnpm-lock.yaml", "pnpm"), ("bun.lock", "bun")] {
+            let root = project(&[(lock, ""), ("apps/web/x", ""), ("packages/ui/x", "")]);
+            for paths in [["apps/web", "packages/ui"], ["./apps/web", "packages/ui"]] {
+                let v = preview(root.path(), &scope(&paths)).unwrap();
+                let want = format!(
+                    "{manager} install --frozen-lockfile --filter './apps/web' --filter './packages/ui'"
+                );
+                assert_eq!(commands(&v), [want], "{manager} {paths:?}");
+                let unverified = v["unverified"].to_string();
+                assert!(
+                    unverified.contains("no package manager was run"),
+                    "{unverified}"
+                );
+            }
+        }
+        let root = project(&[("package-lock.json", "{}"), ("apps/web/x", "")]);
+        let v = preview(root.path(), &scope(&["apps/web"])).unwrap();
+        assert_eq!(commands(&v), ["npm ci -w 'apps/web'"]);
+    }
+
+    /// Audit memo 1 on #3083: a link in the middle of a scope path is not followed.
+    #[cfg(unix)]
+    #[test]
+    fn a_scope_folder_behind_a_linked_parent_is_refused() {
+        let outside = project(&[("web/package.json", r#"{"name":"outside-pkg"}"#)]);
+        let root = project(&[
+            ("yarn.lock", "__metadata:\n  version: 8\n"),
+            ("apps/web/package.json", r#"{"name":"web"}"#),
+        ]);
+        std::os::unix::fs::symlink(outside.path(), root.path().join("lnk")).unwrap();
+        let v = preview(root.path(), &scope(&["lnk/web"])).unwrap();
+        assert_eq!(v["mode"], "refused", "{v}");
+        assert_eq!(v["problem_paths"], json!(["lnk/web"]));
+        assert!(commands(&v).is_empty());
+        // a path with `..` is no plain folder either, though the folder it reaches is one
+        let v = preview(root.path(), &scope(&["apps/../apps/web"])).unwrap();
+        assert_eq!(v["mode"], "refused", "{v}");
+        let v = preview(root.path(), &scope(&["apps/web"])).unwrap();
+        assert_eq!(v["mode"], "scoped", "{v}");
+    }
+
+    /// Audit memo 2 on #3083: every answer, also a refusal, says nothing was run.
+    #[test]
+    fn every_answer_says_nothing_was_run() {
+        let dir = ("apps/web/x", "");
+        let answers = [
+            preview(
+                project(&[dir, ("pnpm-lock.yaml", "")]).path(),
+                &scope(&["apps/web"]),
+            ),
+            preview(project(&[dir]).path(), &scope(&["apps/web"])),
+            preview(
+                project(&[("pnpm-lock.yaml", "")]).path(),
+                &scope(&["apps/web"]),
+            ),
+            preview(
+                project(&[dir, ("yarn.lock", "# yarn lockfile v1\n")]).path(),
+                &scope(&["apps/web"]),
+            ),
+        ];
+        let modes: Vec<String> = answers
+            .iter()
+            .map(|a| a.as_ref().unwrap()["mode"].as_str().unwrap().to_string())
+            .collect();
+        assert_eq!(modes, ["scoped", "undecidable", "refused", "full_only"]);
+        for a in answers {
+            let v = a.unwrap();
+            assert!(
+                v["note"].as_str().unwrap().contains("no command was run"),
+                "{v}"
+            );
+            assert_eq!(v["ran"], false);
         }
     }
 

@@ -1103,6 +1103,51 @@ fn trim(wt: &Path, trim_paths: &[String]) -> std::result::Result<(), String> {
     Ok(())
 }
 
+/// What `apply` does with one entry of the recomputed plan, after the digest matched: the
+/// linked-worktree check, the re-check right before acting ([`recheck_entry`], asked with the
+/// entry's own `action`), then the trim or the removal. Its own function so a test can hand it a
+/// plan entry whose worktree changed after the plan (audit B2 on #3083).
+fn act_on(
+    c: &Value,
+    action: &str,
+    shown_path: &str,
+    primary: &Path,
+    worktrees: &[PathBuf],
+) -> std::result::Result<&'static str, String> {
+    let wt =
+        fs::canonicalize(primary.join(shown_path)).unwrap_or_else(|_| primary.join(shown_path));
+    if wt == primary || !worktrees.contains(&wt) {
+        Err("not a linked worktree of this repository".to_string())
+    } else if let Some(why) = recheck_entry(&wt, action, primary) {
+        Err(format!("refused: {why}"))
+    } else if action == "trim" {
+        let paths: Vec<String> = c["trim_paths"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|p| p.as_str().map(str::to_string))
+            .collect();
+        trim(&wt, &paths).map(|()| "trimmed")
+    } else {
+        let mut cmd = Command::new("git");
+        scrub_git_env(&mut cmd);
+        match cmd
+            .arg("-C")
+            .arg(primary)
+            .args(["worktree", "remove"])
+            .arg(&wt)
+            .output()
+        {
+            Ok(o) if o.status.success() => Ok("removed"),
+            Ok(o) => Err(format!(
+                "git worktree remove refused: {}",
+                String::from_utf8_lossy(&o.stderr).trim()
+            )),
+            Err(_) => Err("git worktree remove could not run".to_string()),
+        }
+    }
+}
+
 /// `worktree.gc.apply` (#2498, WT-9): recomputes the plan with the same inputs and refuses
 /// before any write unless its digest equals `plan_digest`. Then, in the plan's order, it
 /// acts only on the `trim` and `remove` entries — `trim` deletes the listed cargo-owned
@@ -1158,38 +1203,7 @@ pub fn apply(
             continue;
         }
         let shown_path = c["path"].as_str().unwrap_or_default().to_string();
-        let wt = fs::canonicalize(primary.join(&shown_path))
-            .unwrap_or_else(|_| primary.join(&shown_path));
-        let outcome = if wt == primary || !worktrees.contains(&wt) {
-            Err("not a linked worktree of this repository".to_string())
-        } else if let Some(why) = recheck_entry(&wt, action, &primary) {
-            Err(format!("refused: {why}"))
-        } else if action == "trim" {
-            let paths: Vec<String> = c["trim_paths"]
-                .as_array()
-                .into_iter()
-                .flatten()
-                .filter_map(|p| p.as_str().map(str::to_string))
-                .collect();
-            trim(&wt, &paths).map(|()| "trimmed")
-        } else {
-            let mut cmd = Command::new("git");
-            scrub_git_env(&mut cmd);
-            match cmd
-                .arg("-C")
-                .arg(&primary)
-                .args(["worktree", "remove"])
-                .arg(&wt)
-                .output()
-            {
-                Ok(o) if o.status.success() => Ok("removed"),
-                Ok(o) => Err(format!(
-                    "git worktree remove refused: {}",
-                    String::from_utf8_lossy(&o.stderr).trim()
-                )),
-                Err(_) => Err("git worktree remove could not run".to_string()),
-            }
-        };
+        let outcome = act_on(c, action, &shown_path, &primary, &worktrees);
         let (status, detail) = match outcome {
             Ok(s) => (s, Value::Null),
             Err(e) => {
@@ -1541,6 +1555,62 @@ mod tests {
         );
         fs::remove_dir_all(wt.join("node_modules")).unwrap();
         assert_eq!(probe(true), None);
+    }
+
+    /// Audit B2 on #3083 (condition 1 of the #3058 audit): the entry `apply` acts on carries its own
+    /// action to the re-check. A plan entry says `remove` for a worktree that got an untracked file
+    /// after the plan, and the entry is refused; a `trim` entry of the same worktree is not, because
+    /// the file is not what a trim touches. (Through the command line the digest already differs
+    /// for such a file, so this is the call `apply` makes after it matched.)
+    #[cfg(unix)]
+    #[test]
+    fn apply_asks_the_recheck_with_the_action_of_the_entry() {
+        let d = tempfile::tempdir().unwrap();
+        let base = fs::canonicalize(d.path()).unwrap();
+        let primary = base.join("primary");
+        fs::create_dir_all(&primary).unwrap();
+        gc_git(&primary, &["init", "-q", "-b", "main"]);
+        fs::write(primary.join(".gitignore"), "target/\n").unwrap();
+        fs::write(primary.join("a.txt"), "a\n").unwrap();
+        gc_git(&primary, &["add", ".gitignore", "a.txt"]);
+        gc_git(&primary, &["commit", "-q", "-m", "init"]);
+        let wt = base.join("wt");
+        gc_git(
+            &primary,
+            &["worktree", "add", "-q", "-b", "b", wt.to_str().unwrap()],
+        );
+        fs::create_dir_all(wt.join("target")).unwrap();
+        fs::write(wt.join("scratch.txt"), "mine\n").unwrap();
+        let worktrees = vec![primary.clone(), wt.clone()];
+        let path = wt.to_string_lossy().to_string();
+        let entry = |action: &str| json!({"path": path, "action": action, "trim_paths": []});
+
+        assert_eq!(
+            act_on(&entry("remove"), "remove", &path, &primary, &worktrees),
+            Err("refused: files_outside_build_output".to_string())
+        );
+        assert!(
+            wt.join("scratch.txt").exists(),
+            "a refused entry leaves the worktree whole"
+        );
+        assert_eq!(
+            act_on(&entry("trim"), "trim", &path, &primary, &worktrees),
+            Ok("trimmed")
+        );
+        assert!(
+            wt.join("scratch.txt").exists(),
+            "a trim does not touch the file"
+        );
+        assert_eq!(
+            act_on(
+                &entry("trim"),
+                "trim",
+                &primary.to_string_lossy(),
+                &primary,
+                &worktrees
+            ),
+            Err("not a linked worktree of this repository".to_string())
+        );
     }
 
     /// Audit F1 on #3058: `decide` keeps a worktree with an install folder out of `remove` even
