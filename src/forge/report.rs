@@ -635,11 +635,30 @@ fn save_proposal(project: &Path, run: &str, body: &str) -> Result<String, ForgeE
 }
 
 /// REQ-REPORT-003..008: render, preserve, then create or update the single marker comment.
+///
+/// Only a comment a repository member wrote can be the report comment (Issue #3052): a marker
+/// line from anyone else is not found, so it can neither make the run look published nor make
+/// two comments look like a conflict. The answer names what was left out.
 pub fn publish<T: Transport, C: Clock>(
     project: &Path,
     payload: &ReportPayload,
     permission: &str,
     client: &Client<'_, T, C>,
+) -> Result<Value, ForgeError> {
+    let mut ignored = crate::comment_authority::Dropped::default();
+    let mut out = publish_with(project, payload, permission, client, &mut ignored)?;
+    if !ignored.is_empty() {
+        out["ignored_control_lines"] = ignored.to_json();
+    }
+    Ok(out)
+}
+
+fn publish_with<T: Transport, C: Clock>(
+    project: &Path,
+    payload: &ReportPayload,
+    permission: &str,
+    client: &Client<'_, T, C>,
+    ignored: &mut crate::comment_authority::Dropped,
 ) -> Result<Value, ForgeError> {
     // Caller authorization remains host-owned; the reference is not an authorization verifier.
     if !crate::contract::permission_reference_ok(permission) {
@@ -682,9 +701,14 @@ pub fn publish<T: Transport, C: Clock>(
                 a.iter()
                     .map(|c| {
                         let b = c["body"].as_str().unwrap_or("");
+                        let is_marker = b.lines().next() == Some(marker.as_str());
+                        // The body stays a digest; only the marker line itself is kept, so a
+                        // comment a non-member wrote can be named (Issue #3052).
                         json!({"id": c["id"], "node_id": c["node_id"], "html_url": c["html_url"],
                                "updated_at": c["updated_at"],
-                               "marker": b.lines().next() == Some(marker.as_str()),
+                               "author_association": c["author_association"],
+                               "body": if is_marker { b.lines().next().unwrap_or("") } else { "" },
+                               "marker": is_marker,
                                "body_digest": crate::digest(b.as_bytes())})
                     })
                     .collect()
@@ -692,10 +716,11 @@ pub fn publish<T: Transport, C: Clock>(
             .unwrap_or_default();
         json!({"items": items, "next": next_link(r.header("link"))})
     };
-    let (comments, _) = client.pages(
+    let (mut comments, _) = client.pages(
         format!("{repo_url}/issues/{}/comments?per_page=100", issue.number),
         &project_page,
     )?;
+    ignored.merge(crate::comment_authority::retain_rest(&mut comments));
     let marked: Vec<&Value> = comments
         .iter()
         .filter(|c| c["marker"] == json!(true))

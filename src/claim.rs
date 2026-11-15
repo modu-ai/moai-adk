@@ -32,6 +32,7 @@
 //! HOLD (reported, never decided here): the heartbeat numbers (P08/P11); the journal location
 //! is an interim derivation under the git common dir until P09/01-B fixes the state-root
 //! map; takeover after expiry is 06-B's operator procedure.
+use crate::comment_authority::{retain_rest, Dropped};
 use crate::contract::{Kind, OpError};
 use crate::digest;
 use crate::forge::policy::{format_utc, next_link, parse_utc, Clock};
@@ -674,17 +675,19 @@ pub fn render_claim_line(f: &ClaimFields) -> String {
 }
 
 /// Reads every comment page and returns claims not explicitly closed.
-/// Release/handoff markers can close only an earlier referenced claim comment.
+/// Release/handoff markers can close only an earlier referenced claim comment. Only comments a
+/// member wrote are read (Issue #3052); the rest come back as the second value.
 fn read_claims<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     t: &TaskRef,
-) -> std::result::Result<Vec<ClaimComment>, ForgeError> {
+) -> std::result::Result<(Vec<ClaimComment>, Dropped), ForgeError> {
     let mut url = Some(format!(
         "https://api.github.com/repos/{}/{}/issues/{}/comments?per_page=100",
         t.owner, t.repo, t.issue_number
     ));
     let mut claims = Vec::new();
     let mut closed = BTreeSet::new();
+    let mut ignored = Dropped::default();
     let mut pages = 0;
     while let Some(u) = url {
         pages += 1;
@@ -696,12 +699,13 @@ fn read_claims<T: Transport, C: Clock>(
             });
         }
         let resp = client.get(&u, None)?;
-        let arr = resp
+        let mut arr = resp
             .body
             .as_ref()
             .and_then(Value::as_array)
             .cloned()
             .unwrap_or_default();
+        ignored.merge(retain_rest(&mut arr));
         for c in &arr {
             let (Some(id), Some(body)) = (c["id"].as_i64(), c["body"].as_str()) else {
                 continue;
@@ -729,7 +733,7 @@ fn read_claims<T: Transport, C: Clock>(
         url = resp.header("link").and_then(|l| next_link(Some(l)));
     }
     claims.retain(|c| !closed.contains(&c.comment_id));
-    Ok(claims)
+    Ok((claims, ignored))
 }
 
 /// The one allowed GitHub write of a claim (REQ-06A-12): exactly one comment POST.
@@ -950,12 +954,14 @@ fn fs_note(kind: &str) -> String {
 
 // ---- Operations ----
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct AcquireOutcome {
     pub outcome: &'static str,
     pub record: Option<ClaimRecord>,
     pub foreign_owner: Option<Value>,
     pub notes: Vec<String>,
+    /// Claim-family lines left out because a member did not write them (Issue #3052).
+    pub ignored: Dropped,
 }
 
 fn scope_of(outcome: &str, record: Option<&ClaimRecord>) -> &'static str {
@@ -979,14 +985,18 @@ fn scope_of(outcome: &str, record: Option<&ClaimRecord>) -> &'static str {
 
 impl AcquireOutcome {
     pub(crate) fn to_json(&self) -> Value {
-        json!({
+        let mut out = json!({
             "outcome": self.outcome,
             "record": self.record.as_ref().map(|r| json!(r)).unwrap_or(Value::Null),
             "foreign_owner": self.foreign_owner.clone().unwrap_or(Value::Null),
             "coordination_scope": scope_of(self.outcome, self.record.as_ref()),
             "cross_host_atomic": false,
             "notes": self.notes,
-        })
+        });
+        if !self.ignored.is_empty() {
+            out["ignored_control_lines"] = self.ignored.to_json();
+        }
+        out
     }
 }
 
@@ -1034,6 +1044,7 @@ pub fn acquire<T: Transport, C: Clock>(
                     notes: vec![
                         "the active record's lease has expired; takeover needs operator approval (06-B)".into(),
                     ],
+                    ..Default::default()
                 }
             } else {
                 AcquireOutcome {
@@ -1041,6 +1052,7 @@ pub fn acquire<T: Transport, C: Clock>(
                     record: Some(existing.clone()),
                     foreign_owner: None,
                     notes: vec![],
+                    ..Default::default()
                 }
             });
         }
@@ -1054,7 +1066,7 @@ pub fn acquire<T: Transport, C: Clock>(
         }
     }
     // ⑤: read before posting; a live foreign claim wins by the smaller comment id.
-    let claims = read_claims(client, &req.task_ref).map_err(String::from)?;
+    let (claims, mut ignored) = read_claims(client, &req.task_ref).map_err(String::from)?;
     let live: Vec<ClaimComment> = claims
         .into_iter()
         .filter(|c| is_live(&c.lease_until, now))
@@ -1072,6 +1084,7 @@ pub fn acquire<T: Transport, C: Clock>(
                 notes: vec![
                     "a live claim comment with a smaller comment id is the winner; nothing was written".into(),
                 ],
+                ignored,
             });
         }
         // The winner carries our session value. A comment body proves nothing about who
@@ -1092,6 +1105,7 @@ pub fn acquire<T: Transport, C: Clock>(
                      live session may share the name (REQ-AM-04); nothing was written",
                     winner.comment_id
                 )],
+                ignored,
             });
         }
         Some(winner) => {
@@ -1134,9 +1148,11 @@ pub fn acquire<T: Transport, C: Clock>(
                              re-check with claim-show and the issue comments",
                         e.message
                     )],
+                    ignored,
                 });
             }
-            Ok(claims2) => {
+            Ok((claims2, ignored2)) => {
+                ignored.merge(ignored2);
                 let live2: Vec<ClaimComment> = claims2
                     .into_iter()
                     .filter(|c| is_live(&c.lease_until, now))
@@ -1153,6 +1169,7 @@ pub fn acquire<T: Transport, C: Clock>(
                              show it; without read-your-writes visibility the winner cannot be \
                              judged — no journal record was written, re-check with claim-show"
                         )],
+                        ignored,
                     });
                 };
                 match resolve_winner(&live2) {
@@ -1171,6 +1188,7 @@ pub fn acquire<T: Transport, C: Clock>(
                                 winner_id = winner.comment_id,
                                 mine = comment_id,
                             )],
+                            ignored,
                         });
                     }
                     _ => comment_id,
@@ -1225,6 +1243,7 @@ pub fn acquire<T: Transport, C: Clock>(
         record: Some(record),
         foreign_owner: None,
         notes,
+        ignored,
     })
 }
 
@@ -1251,6 +1270,7 @@ pub fn release<C: Clock>(
             record: None,
             foreign_owner: None,
             notes: vec!["no record exists for this task key".into()],
+            ..Default::default()
         });
     };
     if !is_active(&rec.state) {
@@ -1259,6 +1279,7 @@ pub fn release<C: Clock>(
             record: Some(rec),
             foreign_owner: None,
             notes: vec!["the record is not in an active state".into()],
+            ..Default::default()
         });
     }
     if rec.epoch != epoch {
@@ -1280,6 +1301,7 @@ pub fn release<C: Clock>(
         record: Some(new),
         foreign_owner: None,
         notes: vec![],
+        ..Default::default()
     })
 }
 

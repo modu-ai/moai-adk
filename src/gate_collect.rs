@@ -107,6 +107,13 @@ fn claim_sessions<T: Transport>(
     let mut sessions = Vec::new();
     for id in ids {
         let (c, _) = get_json(t, &format!("{base_url}/issues/comments/{id}"))?;
+        // Issue #3052: a claim line counts only when a repository member wrote it.
+        if !crate::comment_authority::is_member(&crate::comment_authority::rest_association(&c)) {
+            return Err(format!(
+                "claim comment {id} was not written by a repository member (author_association `{}`)",
+                crate::comment_authority::rest_association(&c)
+            ));
+        }
         let first = c["body"]
             .as_str()
             .unwrap_or("")
@@ -192,6 +199,7 @@ fn stacked_below<T: Transport>(
     pr: u64,
     merge_base: &str,
     head: &str,
+    ignored: &mut crate::comment_authority::Dropped,
 ) -> Result<Vec<gate::StackedBelow>> {
     let open = get_all(t, &format!("{base_url}/pulls?state=open&per_page=100"), 1)?;
     let others: Vec<u64> = open
@@ -239,11 +247,13 @@ fn stacked_below<T: Transport>(
         walk.extend(carried.iter().map(|c| c.as_str()));
         let authors = claim_sessions(t, base_url, dir, &walk)?;
         let unclaimed = unclaimed_in(dir, &walk)?;
-        let comments = get_all(
+        let mut comments = get_all(
             t,
             &format!("{base_url}/issues/{n}/comments?per_page=100"),
             MAX_PAGES,
         )?;
+        // Issue #3052: the verdict that covers a stacked PR is read from members only.
+        ignored.merge(crate::comment_authority::retain_rest(&mut comments));
         let last = comments
             .iter()
             .filter_map(|c| {
@@ -905,6 +915,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
             comments.push(Comment {
                 id: c["id"].as_u64().ok_or("comment without id")?,
                 body: c["body"].as_str().unwrap_or("").to_string(),
+                author_association: crate::comment_authority::rest_association(c),
             });
         }
         url = next;
@@ -1045,13 +1056,22 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
     }
 
     // #2859: open pull requests below this one, read before the tip so G8 stays last.
-    let stacked = stacked_below(t, &base_url, dir, target.pr, &merge_base, &head)?;
+    let mut stacked_ignored = crate::comment_authority::Dropped::default();
+    let stacked = stacked_below(
+        t,
+        &base_url,
+        dir,
+        target.pr,
+        &merge_base,
+        &head,
+        &mut stacked_ignored,
+    )?;
 
     // G8 is read last: every earlier read is unchanged, and a pull request the gate cannot read
     // locally never costs the tip reads.
     let tip_ci = tip_ci(t, &base_url, dir, &tip)?;
 
-    Ok(Snapshot {
+    let mut snapshot = Snapshot {
         schema_version: 1,
         pr: target.pr,
         head,
@@ -1076,7 +1096,10 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         stacked_below: Some(stacked),
         body_tier: gate::parse_body_tier(&body),
         merge_base: Some(merge_base),
-    })
+        ignored: stacked_ignored,
+    };
+    snapshot.keep_member_comments();
+    Ok(snapshot)
 }
 
 #[cfg(test)]

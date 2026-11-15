@@ -23,6 +23,7 @@ pub mod claude_settings_merge;
 pub mod clone_root;
 pub mod close_check;
 pub mod code_refs;
+pub mod comment_authority;
 pub mod context;
 pub mod contract;
 pub mod decision;

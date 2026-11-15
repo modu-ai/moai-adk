@@ -64,12 +64,21 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     if text.len() > 4 * 1024 * 1024 {
         return Err("snapshot larger than 4 MiB; refused".into());
     }
-    let snapshot: Snapshot =
+    let mut snapshot: Snapshot =
         serde_json::from_str(&text).map_err(|e| format!("invalid gate snapshot: {e}"))?;
+    snapshot.keep_member_comments();
     Ok(decide(&snapshot))
 }
 
 fn decide(snapshot: &Snapshot) -> serde_json::Value {
+    let mut out = decide_rules(snapshot);
+    if !snapshot.ignored.is_empty() {
+        out["ignored_control_lines"] = snapshot.ignored.to_json();
+    }
+    out
+}
+
+fn decide_rules(snapshot: &Snapshot) -> serde_json::Value {
     match gate::check(snapshot) {
         Ok((base, overlap)) => {
             let mut out = serde_json::json!({
