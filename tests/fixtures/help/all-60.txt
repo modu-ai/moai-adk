@@ -78,6 +78,9 @@ Update and move
   home-retire-revert      Undo a Go-item retire
   home-install-plan       Preview moving ~/.moai-cli items
                           to ~/.moai
+  home-install-apply      Move the ~/.moai-cli items to
+                          ~/.moai
+  home-install-revert     Undo a ~/.moai-cli to ~/.moai move
   worktree-move-plan      Preview moving this clone's
                           worktrees
   worktree-move-apply     Move the previewed worktrees
