@@ -341,6 +341,132 @@ pub fn held_by_other(records: &[ClaimRecord], key: &str, id: &WorktreeId) -> Res
     Ok(())
 }
 
+/// The inputs of `claim-link`.
+#[derive(Clone, Copy, Debug)]
+pub struct LinkRequest<'a> {
+    /// A folder of the clone whose journal holds the record (`moai claim-link . …`).
+    pub project: &'a Path,
+    pub issue: i64,
+    /// Your claim comment on the Issue.
+    pub comment: i64,
+    /// Your session name, as written in the claim line (`session=`).
+    pub lane: &'a str,
+    /// `OWNER/REPO`; default: the project's `origin` remote on GitHub.
+    pub repo: Option<&'a str>,
+    /// The folder to link; default: `project`.
+    pub worktree: Option<&'a Path>,
+}
+
+/// The identity fields a link compares. The HEAD is not one of them: it moves with every
+/// commit, so keying on it would make a second `claim-link` rewrite the record.
+fn changed_fields(from: &WorktreeId, to: &WorktreeId) -> Vec<&'static str> {
+    let mut out = Vec::new();
+    if from.path != to.path {
+        out.push("path");
+    }
+    if from.git_dir != to.git_dir {
+        out.push("git_dir");
+    }
+    if from.common_dir != to.common_dir {
+        out.push("common_dir");
+    }
+    if from.branch != to.branch {
+        out.push("branch");
+    }
+    out
+}
+
+fn identity_json(id: &WorktreeId) -> Value {
+    json!({"path": id.path, "branch": id.branch, "head": id.head})
+}
+
+fn check_request(req: &LinkRequest<'_>) -> Result<()> {
+    if req.issue <= 0 || req.comment <= 0 {
+        return Err("invalid claim link request: --issue and --comment must be positive".into());
+    }
+    let lane = req.lane;
+    if lane.is_empty() || lane.len() > MAX_LANE_BYTES || lane.chars().any(char::is_control) {
+        return Err(format!(
+            "invalid claim link request: --lane must be a bounded string (1 to {MAX_LANE_BYTES} \
+             bytes) without control characters"
+        ));
+    }
+    Ok(())
+}
+
+/// `claim-link`: see the module text for the order. Success is `linked` (the record changed;
+/// one `worktree_linked` event was appended) or `unchanged` (the record already named this
+/// folder and branch; nothing was written). Anything else is an error.
+pub fn link_cli<T: Transport, C: Clock>(
+    req: &LinkRequest<'_>,
+    transport: &T,
+    clock: &C,
+) -> std::result::Result<Value, crate::contract::OpError> {
+    check_request(req)?;
+    let target = req.worktree.unwrap_or(req.project);
+    // 1. The lock comes first: a busy journal never reaches the forge or a write.
+    let journal = crate::worktree::open_locked_journal(req.project)?;
+    // 2. The record of the Issue, and the inputs that must match it.
+    let (owner, repo) = resolve_repo(req.project, req.repo)?;
+    let records = active_records(&journal)?;
+    let record = find_record(&records, req.issue, &owner, &repo)?;
+    check_record(&record, req.comment, req.lane)?;
+    // 3. Ownership, read from the forge once.
+    let verdict = verify_owner(&record, req.comment, req.lane, transport, clock)?;
+    // 4. What git says about the folder, all of it measured before the write.
+    let probe = probe_target(req.project, target, &record.base_revision)?;
+    // 5. No other claim holds this folder or branch.
+    held_by_other(&records, &record.task_key, &probe.id)?;
+    // 6. One event, only when the identity differs.
+    let changed = changed_fields(&record.worktree, &probe.id);
+    let at = crate::forge::policy::format_utc(clock.now());
+    let effect = json!({
+        "kind": "worktree_linked",
+        "from": identity_json(&record.worktree),
+        "to": identity_json(&probe.id),
+        "at": at,
+    });
+    let new_id = probe.id.clone();
+    let update = crate::worktree::commit_update(
+        &journal,
+        &record.task_key,
+        record.epoch,
+        "worktree_linked",
+        clock,
+        |r| {
+            if !changed_fields(&r.worktree, &new_id).is_empty() {
+                r.worktree = new_id.clone();
+                r.effects.push(effect.clone());
+            }
+        },
+    )?;
+    let applied = update["applied"] == json!(true);
+    Ok(json!({
+        "outcome": if applied { "linked" } else { "unchanged" },
+        "applied": applied,
+        "task_key": record.task_key,
+        "epoch": record.epoch,
+        "issue": req.issue,
+        "from": identity_json(&record.worktree),
+        "to": {
+            "path": probe.id.path,
+            "branch": probe.id.branch,
+            "head": probe.id.head,
+            "git_dir": probe.id.git_dir,
+            "common_dir": probe.id.common_dir,
+        },
+        "changed": changed,
+        "verify": {
+            "status": verdict["status"],
+            "holder": verdict["holder"],
+            "holder_live": verdict["holder_live"],
+        },
+        "base_relation": probe.relation,
+        "record_update": update,
+        "writes": if applied { "journal" } else { "none" },
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -348,12 +474,13 @@ mod tests {
     use crate::forge::policy::{parse_utc, Clock};
     use crate::forge::transport::{Exchange, HttpRequest, HttpResponse, RecordedTransport};
 
-    const NOW: &str = "2026-11-09T05:00:00Z";
-    const LIVE: &str = "2026-11-09T09:00:00Z";
+    pub(super) const NOW: &str = "2026-11-09T05:00:00Z";
+    pub(super) const LIVE: &str = "2026-11-09T09:00:00Z";
     const EXPIRED: &str = "2026-11-09T04:00:00Z";
-    const URL: &str = "https://api.github.com/repos/acme/widgets/issues/7/comments?per_page=100";
+    pub(super) const URL: &str =
+        "https://api.github.com/repos/acme/widgets/issues/7/comments?per_page=100";
 
-    struct FixedClock(i64);
+    pub(super) struct FixedClock(i64);
     impl Clock for FixedClock {
         fn now(&self) -> i64 {
             self.0
@@ -361,11 +488,17 @@ mod tests {
         fn sleep(&self, _: u64) {}
     }
 
-    fn clock() -> FixedClock {
+    pub(super) fn clock() -> FixedClock {
         FixedClock(parse_utc(NOW).unwrap())
     }
 
-    fn record(key: &str, issue: i64, comment: i64, lane: &str, state: &str) -> ClaimRecord {
+    pub(super) fn record(
+        key: &str,
+        issue: i64,
+        comment: i64,
+        lane: &str,
+        state: &str,
+    ) -> ClaimRecord {
         ClaimRecord {
             schema_version: 1,
             task_ref: TaskRef::new(
@@ -409,15 +542,15 @@ mod tests {
         }
     }
 
-    fn comment(id: i64, body: &str) -> Value {
+    pub(super) fn comment(id: i64, body: &str) -> Value {
         json!({"id": id, "user": {"login": "GoosLab"}, "body": body})
     }
 
-    fn claim_body(session: &str, lease: &str) -> String {
+    pub(super) fn claim_body(session: &str, lease: &str) -> String {
         format!("moai-claim: session={session} epoch=1 lease_until={lease}")
     }
 
-    fn get(body: Value) -> RecordedTransport {
+    pub(super) fn get(body: Value) -> RecordedTransport {
         RecordedTransport::new(vec![Exchange {
             request: HttpRequest::new("GET", URL),
             response: HttpResponse::new(200).with_body(body),
@@ -646,7 +779,7 @@ mod probe_tests {
     use std::path::PathBuf;
 
     /// `git` with the fixture guards; returns trimmed stdout, panics on failure.
-    fn git(dir: &Path, args: &[&str]) -> String {
+    pub(super) fn git(dir: &Path, args: &[&str]) -> String {
         let out = std::process::Command::new("git")
             .args(["-c", "gc.auto=0", "-c", "maintenance.auto=false"])
             .args(["-c", "user.name=t", "-c", "user.email=t@example.invalid"])
@@ -675,7 +808,7 @@ mod probe_tests {
     /// A clone with one commit on `main`, in `<temp dir>/project`; the returned folder is
     /// canonical. Its siblings (worktrees, links) live in the same temp dir, so a test never
     /// writes into the shared system temp folder and the whole tree goes with the guard.
-    fn repo() -> (tempfile::TempDir, PathBuf) {
+    pub(super) fn repo() -> (tempfile::TempDir, PathBuf) {
         let dir = tempfile::TempDir::new().unwrap();
         let root = fs::canonicalize(dir.path()).unwrap().join("project");
         fs::create_dir(&root).unwrap();
@@ -684,7 +817,7 @@ mod probe_tests {
         (dir, root)
     }
 
-    fn add_worktree(root: &Path, name: &str, branch: &str, from: &str) -> PathBuf {
+    pub(super) fn add_worktree(root: &Path, name: &str, branch: &str, from: &str) -> PathBuf {
         let path = root.parent().unwrap().join(name);
         git(
             root,
@@ -866,5 +999,367 @@ mod probe_tests {
         let (_d, root) = repo();
         let err = probe_target(&root, &root, "HEAD").unwrap_err();
         assert!(err.contains("base_revision"), "{err}");
+    }
+}
+
+#[cfg(test)]
+mod link_tests {
+    use super::probe_tests::{add_worktree, git, repo};
+    use super::tests::{claim_body, clock, comment, get, record, LIVE};
+    use super::*;
+    use crate::contract::{Kind, OpError};
+    use crate::forge::transport::RecordedTransport;
+    use std::fs;
+    use std::path::PathBuf;
+
+    const KEY: &str = "0000000000000001";
+
+    /// Seeds the journal of `root` with the active record of Issue 7 (comment 100, lane
+    /// `lane-a`) whose worktree is `root` itself, as `claim-acquire` records it.
+    fn seed(root: &Path) -> ClaimRecord {
+        let mut r = record(KEY, 7, 100, "lane-a", "assigned");
+        r.base_revision = git(root, &["rev-parse", "HEAD"]);
+        r.worktree = crate::claim::worktree_id(&crate::identity::identity(root).unwrap()).unwrap();
+        commit(root, "acquire", &r);
+        r
+    }
+
+    fn commit(root: &Path, event: &str, r: &ClaimRecord) {
+        let j = Journal::open(&crate::claim::journal_root(root).unwrap()).unwrap();
+        assert!(j.try_lock().unwrap());
+        j.commit(event, r).unwrap();
+    }
+
+    fn log(root: &Path) -> String {
+        fs::read_to_string(
+            crate::claim::journal_root(root)
+                .unwrap()
+                .join("journal.log"),
+        )
+        .unwrap_or_default()
+    }
+
+    fn current(root: &Path) -> ClaimRecord {
+        let j = Journal::open_read(&crate::claim::journal_root(root).unwrap()).unwrap();
+        latest_active(j.read_events().unwrap()).remove(0)
+    }
+
+    fn owner_only() -> RecordedTransport {
+        get(json!([comment(100, &claim_body("lane-a", LIVE))]))
+    }
+
+    fn req<'a>(root: &'a Path, worktree: &'a Path) -> LinkRequest<'a> {
+        LinkRequest {
+            project: root,
+            issue: 7,
+            comment: 100,
+            lane: "lane-a",
+            repo: Some("acme/widgets"),
+            worktree: Some(worktree),
+        }
+    }
+
+    fn link(root: &Path, worktree: &Path, t: &RecordedTransport) -> Result<Value> {
+        link_cli(&req(root, worktree), t, &clock()).map_err(|e| e.message)
+    }
+
+    /// L1: a worktree made after the claim is linked; the record then names it.
+    #[test]
+    fn links_a_worktree_made_after_the_claim() {
+        let (_d, root) = repo();
+        let before = seed(&root);
+        let w = add_worktree(&root, "w1", "feat/x", "HEAD");
+        let t = owner_only();
+        let out = link(&root, &w, &t).unwrap();
+        assert_eq!(out["outcome"], json!("linked"));
+        assert_eq!(out["applied"], json!(true));
+        assert_eq!(out["changed"], json!(["path", "git_dir", "branch"]));
+        assert_eq!(out["from"]["path"], json!(root.to_str().unwrap()));
+        assert_eq!(out["to"]["path"], json!(w.to_str().unwrap()));
+        assert_eq!(out["to"]["branch"], json!("feat/x"));
+        assert_eq!(out["verify"]["status"], json!("owner"));
+        assert_eq!(out["base_relation"], json!("equal"));
+        assert_eq!(out["record_update"]["event"], json!("worktree_linked"));
+        assert_eq!(out["writes"], json!("journal"));
+        assert_eq!(out["task_key"], json!(KEY));
+        assert_eq!(t.sent.borrow().len(), 1, "one forge read");
+        assert!(t.sent.borrow().iter().all(|q| q.method == "GET"));
+        let now = current(&root);
+        assert_eq!(now.worktree.path, w.to_str().unwrap());
+        assert_eq!(now.worktree.branch.as_deref(), Some("feat/x"));
+        assert_eq!(now.effects.len(), before.effects.len() + 1);
+        assert_eq!(now.effects[0]["kind"], json!("worktree_linked"));
+        assert_eq!(
+            now.effects[0]["from"]["path"],
+            json!(root.to_str().unwrap())
+        );
+        assert_eq!(log(&root).lines().count(), 2);
+        assert!(log(&root)
+            .lines()
+            .last()
+            .unwrap()
+            .contains("\"event\":\"worktree_linked\""));
+    }
+
+    /// L5: only the worktree, the effect list and the observation time differ afterwards.
+    #[test]
+    fn link_changes_only_the_worktree() {
+        let (_d, root) = repo();
+        let before = seed(&root);
+        let w = add_worktree(&root, "w1", "feat/x", "HEAD");
+        link(&root, &w, &owner_only()).unwrap();
+        let after = current(&root);
+        let mut expected = before.clone();
+        expected.worktree = after.worktree.clone();
+        expected.effects = after.effects.clone();
+        expected.last_observed_at = after.last_observed_at.clone();
+        assert_eq!(after, expected);
+        assert_eq!(after.state, "assigned");
+        assert_eq!(after.epoch, before.epoch);
+        assert_eq!(after.base_revision, before.base_revision);
+        assert_eq!(after.comment_id, before.comment_id);
+        assert_eq!(after.lease_until, before.lease_until);
+        assert_eq!(after.owner, before.owner);
+    }
+
+    /// L4: a second link, and a link after a new commit, write nothing.
+    #[test]
+    fn link_twice_writes_one_event_and_a_new_commit_changes_nothing() {
+        let (_d, root) = repo();
+        seed(&root);
+        let w = add_worktree(&root, "w1", "feat/x", "HEAD");
+        link(&root, &w, &owner_only()).unwrap();
+        let log_once = log(&root);
+        let record_file = crate::claim::journal_root(&root)
+            .unwrap()
+            .join(format!("{KEY}.json"));
+        let bytes_once = fs::read(&record_file).unwrap();
+        let out = link(&root, &w, &owner_only()).unwrap();
+        assert_eq!(out["outcome"], json!("unchanged"));
+        assert_eq!(out["applied"], json!(false));
+        assert_eq!(out["changed"], json!([]));
+        assert_eq!(out["writes"], json!("none"));
+        assert_eq!(log(&root), log_once);
+        git(&w, &["commit", "-q", "--allow-empty", "-m", "more work"]);
+        let out = link(&root, &w, &owner_only()).unwrap();
+        assert_eq!(out["outcome"], json!("unchanged"));
+        assert_eq!(out["base_relation"], json!("descends"));
+        assert_eq!(
+            log(&root),
+            log_once,
+            "the HEAD is not part of the idempotence key"
+        );
+        assert_eq!(fs::read(&record_file).unwrap(), bytes_once);
+    }
+
+    /// L2: a branch renamed after the claim is synced; the path stays.
+    #[test]
+    fn a_renamed_branch_is_synced() {
+        let (_d, root) = repo();
+        seed(&root);
+        let w = add_worktree(&root, "w1", "feat/old", "HEAD");
+        link(&root, &w, &owner_only()).unwrap();
+        git(&w, &["branch", "-m", "feat/new"]);
+        let out = link(&root, &w, &owner_only()).unwrap();
+        assert_eq!(out["outcome"], json!("linked"));
+        assert_eq!(out["changed"], json!(["branch"]));
+        assert_eq!(out["from"]["branch"], json!("feat/old"));
+        assert_eq!(out["to"]["branch"], json!("feat/new"));
+        assert_eq!(current(&root).worktree.branch.as_deref(), Some("feat/new"));
+        assert_eq!(log(&root).lines().count(), 3);
+    }
+
+    /// N1/N2/N3/N4/N7: an ownership refusal writes nothing and keeps claim-verify's text.
+    #[test]
+    fn a_refused_ownership_writes_nothing() {
+        let (_d, root) = repo();
+        seed(&root);
+        let w = add_worktree(&root, "w1", "feat/x", "HEAD");
+        let before = log(&root);
+        let cases = [
+            (
+                json!([
+                    comment(50, &claim_body("other", LIVE)),
+                    comment(100, &claim_body("lane-a", LIVE)),
+                ]),
+                "claim verify: not owner",
+                Kind::Conflict,
+            ),
+            (
+                json!([
+                    comment(100, &claim_body("lane-a", LIVE)),
+                    comment(110, "moai-claim-release: comment=100 by=leader"),
+                ]),
+                "claim verify: closed",
+                Kind::Conflict,
+            ),
+            (
+                json!([comment(100, &claim_body("lane-a", "2026-11-09T04:00:00Z"))]),
+                "claim verify: stale",
+                Kind::Blocked,
+            ),
+            (
+                json!([comment(999, &claim_body("lane-a", LIVE))]),
+                "claim verify: uncertain",
+                Kind::Blocked,
+            ),
+            (
+                json!([comment(100, &claim_body("lane-b", LIVE))]),
+                "conflict in claim link: session_differs",
+                Kind::Conflict,
+            ),
+        ];
+        for (body, text, kind) in cases {
+            let err = link(&root, &w, &get(body)).unwrap_err();
+            assert!(err.starts_with(text), "{err}");
+            assert_eq!(crate::contract::classify(&err), kind, "{err}");
+            assert_eq!(log(&root), before, "{text}");
+        }
+    }
+
+    /// N5/N6/N8/N14/B1: local refusals never reach the forge.
+    #[test]
+    fn local_refusals_make_no_forge_call_and_write_nothing() {
+        let (_d, root) = repo();
+        let mut rec = seed(&root);
+        let w = add_worktree(&root, "w1", "feat/x", "HEAD");
+        let before = log(&root);
+        let none = RecordedTransport::new(vec![]);
+        let run = |r: LinkRequest<'_>| link_cli(&r, &none, &clock()).unwrap_err();
+        let base = req(&root, &w);
+        let e = run(LinkRequest {
+            lane: "lane-b",
+            ..base
+        });
+        assert!(e.message.contains("lane_differs"), "{e}");
+        assert_eq!(e.kind, Kind::Conflict);
+        let e = run(LinkRequest {
+            comment: 101,
+            ..base
+        });
+        assert!(e.message.contains("comment_differs"), "{e}");
+        let e = run(LinkRequest { issue: 8, ..base });
+        assert!(e.message.contains("record_not_found"), "{e}");
+        assert_eq!(e.kind, Kind::Conflict);
+        let e = run(LinkRequest {
+            repo: Some("acme/other"),
+            ..base
+        });
+        assert!(e.message.contains("record_not_found"), "{e}");
+        rec.state = "handoff_pending".into();
+        commit(&root, "handoff_pending", &rec);
+        let e = run(base);
+        assert!(e.message.contains("state_not_linkable"), "{e}");
+        assert!(none.sent.borrow().is_empty());
+        assert_eq!(log(&root).lines().count(), before.lines().count() + 1);
+    }
+
+    /// N15: a held lock is the typed `unavailable` answer, before any forge call.
+    #[test]
+    fn a_held_lock_is_unavailable_and_nothing_is_read_or_written() {
+        let (_d, root) = repo();
+        seed(&root);
+        let w = add_worktree(&root, "w1", "feat/x", "HEAD");
+        let before = log(&root);
+        let holder = Journal::open(&crate::claim::journal_root(&root).unwrap()).unwrap();
+        assert!(holder.try_lock().unwrap());
+        let t = owner_only();
+        let e: OpError = link_cli(&req(&root, &w), &t, &clock()).unwrap_err();
+        assert_eq!(e.kind, Kind::Unavailable);
+        assert_eq!(e.message, crate::claim::JOURNAL_LOCK_BUSY);
+        assert!(
+            t.sent.borrow().is_empty(),
+            "the lock comes before the forge read"
+        );
+        assert_eq!(log(&root), before);
+    }
+
+    /// N16: a forge failure is a transport error and writes nothing.
+    #[test]
+    fn a_forge_failure_writes_nothing() {
+        let (_d, root) = repo();
+        seed(&root);
+        let w = add_worktree(&root, "w1", "feat/x", "HEAD");
+        let before = log(&root);
+        let err = link(&root, &w, &RecordedTransport::new(vec![])).unwrap_err();
+        assert_eq!(crate::contract::classify(&err), Kind::Transport, "{err}");
+        assert_eq!(log(&root), before);
+    }
+
+    /// N9/N11/N12/N13: the local facts and the other claims' holds refuse after the forge read
+    /// and write nothing.
+    #[test]
+    fn a_bad_target_or_a_held_folder_writes_nothing() {
+        let (_d, root) = repo();
+        seed(&root);
+        // A plain folder.
+        let plain = tempfile::TempDir::new().unwrap();
+        let plain_path: PathBuf = fs::canonicalize(plain.path()).unwrap();
+        let err = link(&root, &plain_path, &owner_only()).unwrap_err();
+        assert!(err.contains("not_a_worktree"), "{err}");
+        // A worktree whose HEAD lacks the claim base: the base moves on after the worktree
+        // was made from the older commit.
+        let old = git(&root, &["rev-parse", "HEAD"]);
+        let behind = add_worktree(&root, "w-behind", "feat/b", &old);
+        git(&root, &["commit", "-q", "--allow-empty", "-m", "newer"]);
+        let mut rec = current(&root);
+        rec.base_revision = git(&root, &["rev-parse", "HEAD"]);
+        commit(&root, "rebase_base", &rec);
+        let err = link(&root, &behind, &owner_only()).unwrap_err();
+        assert!(err.contains("base_not_in_head"), "{err}");
+        // Another claim holds the branch, then the path.
+        let w = add_worktree(&root, "w1", "feat/x", "HEAD");
+        let mut other = record("0000000000000002", 8, 200, "lane-b", "running");
+        other.worktree.branch = Some("feat/x".into());
+        commit(&root, "acquire", &other);
+        let err = link(&root, &w, &owner_only()).unwrap_err();
+        assert!(err.contains("branch_held"), "{err}");
+        other.worktree.branch = None;
+        other.worktree.path = w.to_str().unwrap().into();
+        commit(&root, "move", &other);
+        let n = log(&root).lines().count();
+        let err = link(&root, &w, &owner_only()).unwrap_err();
+        assert!(err.contains("path_held"), "{err}");
+        assert_eq!(log(&root).lines().count(), n, "refusals write nothing");
+        assert!(current_of(&root, KEY).effects.is_empty());
+    }
+
+    fn current_of(root: &Path, key: &str) -> ClaimRecord {
+        let j = Journal::open_read(&crate::claim::journal_root(root).unwrap()).unwrap();
+        j.read_events()
+            .unwrap()
+            .into_iter()
+            .rev()
+            .find(|e| e.record.task_key == key)
+            .unwrap()
+            .record
+    }
+
+    /// B1: the lane bound is 128 bytes, counted in bytes.
+    #[test]
+    fn the_lane_bound_is_128_bytes() {
+        let ok = "a".repeat(128);
+        let too_long = "a".repeat(129);
+        let multibyte = format!("{}가", "a".repeat(126));
+        let base = LinkRequest {
+            project: Path::new("."),
+            issue: 1,
+            comment: 1,
+            lane: &ok,
+            repo: None,
+            worktree: None,
+        };
+        assert!(check_request(&base).is_ok());
+        for bad in [too_long.as_str(), multibyte.as_str(), "", "a\nb"] {
+            let e = check_request(&LinkRequest { lane: bad, ..base }).unwrap_err();
+            assert!(e.starts_with("invalid claim link request: --lane"), "{e}");
+            assert_eq!(crate::contract::classify(&e), Kind::InvalidInput);
+        }
+        assert!(check_request(&LinkRequest { issue: 0, ..base }).is_err());
+        assert!(check_request(&LinkRequest {
+            comment: -1,
+            ..base
+        })
+        .is_err());
     }
 }
