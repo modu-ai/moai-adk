@@ -62,6 +62,7 @@ fn passing() -> Value {
         "merge_clean": true,
         "body_check_ok": true,
         "verdict_base_known": true,
+        "verdict_base_in_tip": true,
         "pr_authors": ["agent-26"],
         "tip_ci": {"state": "green", "tip": OTHER, "decided_by": OTHER, "detail": "green"},
         "commits_without_claim": [],
@@ -603,6 +604,52 @@ fn audit_notes_title_head_rc_ci_withdrawal_and_known_base() {
     assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
     s.as_object_mut().unwrap().remove("verdict_base_known");
     assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
+}
+
+/// #3066 P3: a verdict base that exists but is not an ancestor of the base-branch tip says
+/// nothing about the tip the PR merges onto, so G1 stops with its own reason. Known and in
+/// the tip passes; an unknown base keeps the old reason; a snapshot without the
+/// `verdict_base_in_tip` key reads as false (fail-closed).
+#[test]
+fn g1_stops_a_verdict_base_that_is_not_an_ancestor_of_the_tip() {
+    let reason = |v: &Value| v["result"]["reason"].as_str().unwrap().to_string();
+
+    // known + in the tip: passes.
+    let v = gate(&passing());
+    assert_eq!(stopped(&v), (true, "".into()), "{v}");
+
+    // known, not in the tip: G1 with the new reason.
+    let mut s = passing();
+    s["verdict_base_in_tip"] = json!(false);
+    let v = gate(&s);
+    assert_eq!(stopped(&v), (false, "G1".into()), "{v}");
+    assert!(
+        reason(&v).contains("not an ancestor of the base-branch tip"),
+        "{v}"
+    );
+    assert!(reason(&v).contains(B), "{v}");
+    assert!(!reason(&v).contains("not a known commit"), "{v}");
+
+    // The key removed: fail-closed, same stop.
+    let mut s = passing();
+    s.as_object_mut().unwrap().remove("verdict_base_in_tip");
+    let v = gate(&s);
+    assert_eq!(stopped(&v), (false, "G1".into()), "{v}");
+    assert!(
+        reason(&v).contains("not an ancestor of the base-branch tip"),
+        "{v}"
+    );
+
+    // unknown base: the old reason stays, whatever `in_tip` says.
+    for in_tip in [true, false] {
+        let mut s = passing();
+        s["verdict_base_known"] = json!(false);
+        s["verdict_base_in_tip"] = json!(in_tip);
+        let v = gate(&s);
+        assert_eq!(stopped(&v), (false, "G1".into()), "{v}");
+        assert!(reason(&v).contains("is not a known commit"), "{v}");
+        assert!(!reason(&v).contains("ancestor"), "{v}");
+    }
 }
 
 /// Audit 6850638994 B2: a withdrawal removes a claim only when its lane matches that claim's

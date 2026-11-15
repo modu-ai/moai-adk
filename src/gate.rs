@@ -76,6 +76,12 @@ pub struct Snapshot {
     /// means unknown, and the gate stops (audit 6850181707 N4).
     #[serde(default)]
     pub verdict_base_known: bool,
+    /// Whether the verdict's base is the base-branch tip or one of its ancestors
+    /// (`git merge-base --is-ancestor <base> <tip>`, #3066 P3). Collected only when the base is
+    /// a known commit. Absent reads as false, and G1 stops: a base off the tip (a side branch,
+    /// the PR's own old head) says nothing about the tip the PR merges onto.
+    #[serde(default)]
+    pub verdict_base_in_tip: bool,
     /// The full SHA of the last verdict's short base, when the collector resolved it to exactly
     /// one commit (#2860 rule 3). Absent for a full-length base or one that did not resolve.
     #[serde(default)]
@@ -569,6 +575,13 @@ fn g1(s: &Snapshot) -> Result<(String, String), Stop> {
     if !s.verdict_base_known {
         return Err(stop(format!(
             "the verdict base {base} is not a known commit"
+        )));
+    }
+    // #3066 P3: a known base off the tip (a side branch, the PR's own old head) is no verdict
+    // about the tip the PR merges onto.
+    if !s.verdict_base_in_tip {
+        return Err(stop(format!(
+            "the verdict base {base} is not an ancestor of the base-branch tip"
         )));
     }
     Ok((base, head))
