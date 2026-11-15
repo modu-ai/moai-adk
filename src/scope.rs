@@ -502,6 +502,7 @@ pub fn physical_findings(root: &std::path::Path, scope: &[String]) -> Vec<Value>
 /// `read_only` computes the same verdict and writes nothing, also for a journal record
 /// (#3048). A write that blocked the record names the command that closes it again under
 /// `record_update.undo`: a `blocked` record has no other way out.
+#[allow(clippy::too_many_arguments)]
 pub fn check_and_record<C: crate::forge::policy::Clock>(
     project: &std::path::Path,
     mine: &ClaimRecord,
@@ -547,7 +548,10 @@ pub fn check_and_record<C: crate::forge::policy::Clock>(
         (Some(_), false) => not_written(),
         (Some(effect), true) => {
             let blocked = out["decision"] == "blocked";
-            let reason = effect["kind"].as_str().unwrap_or("scope_conflict").to_string();
+            let reason = effect["kind"]
+                .as_str()
+                .unwrap_or("scope_conflict")
+                .to_string();
             let journal = open_locked_journal(project)?;
             let mut update = commit_update(
                 &journal,
