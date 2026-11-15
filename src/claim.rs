@@ -22,8 +22,10 @@
 //! The token `Moai-Claim: <issue>#<comment-id>` is carried in the branch
 //! name (suffix `c<issue>-<id>`), in every commit trailer and in the PR body
 //! (REQ-06A-14); [`verify_claim_token`] is the leader's read-side check (REQ-06A-15).
-//! An expired lease is never taken over automatically: the outcome names the operator
-//! (06-B) instead (REQ-06A-16).
+//! An expired lease of another session is never taken over automatically: the outcome names
+//! what the takeover needs instead (REQ-06A-16, 06-B). A session's own expired claim is not a
+//! takeover: it is renewed with the next epoch and a new claim line, with no handoff line
+//! (decision D1, Issue #1975 comment 6840449133; Issue #3042).
 //!
 //! Lease (rc.2 #2166, decisions 00:5x 2026-11-09): an absent `lease_until` defaults to
 //! now + [`DEFAULT_LEASE`] (4h); an explicit value wins. Expiry is only shown
@@ -1029,6 +1031,8 @@ pub fn acquire<T: Transport, C: Clock>(
         .filter(|e| e.record.task_key == key)
         .map(|e| &e.record)
         .collect();
+    // The expired claim this session renews below (decision D1, #3042): its comment id and epoch.
+    let mut renewed: Option<(String, u64)> = None;
     if let Some(&existing) = mine.last() {
         if is_active(&existing.state) {
             // Never changed, never taken over (REQ-06A-03, REQ-06A-16).
@@ -1036,25 +1040,46 @@ pub fn acquire<T: Transport, C: Clock>(
                 .lease_until
                 .as_deref()
                 .is_some_and(|l| !is_live(l, now));
-            return Ok(if expired {
-                AcquireOutcome {
-                    outcome: "expired",
-                    record: Some(existing.clone()),
-                    foreign_owner: None,
-                    notes: vec![
-                        "the active record's lease has expired; takeover needs operator approval (06-B)".into(),
-                    ],
-                    ..Default::default()
-                }
+            let held_comment = existing
+                .comment_id
+                .map_or_else(|| "?".to_string(), |c| c.to_string());
+            if expired && existing.owner.id == req.owner.id {
+                // The same session's own claim is renewed, not taken over: the normal path
+                // below posts the next epoch's line and still yields to another session's
+                // live claim.
+                renewed = Some((held_comment, existing.epoch));
             } else {
-                AcquireOutcome {
-                    outcome: "already_owned",
-                    record: Some(existing.clone()),
-                    foreign_owner: None,
-                    notes: vec![],
-                    ..Default::default()
-                }
-            });
+                return Ok(if expired {
+                    AcquireOutcome {
+                        outcome: "expired",
+                        record: Some(existing.clone()),
+                        foreign_owner: None,
+                        notes: vec![format!(
+                            "the active record's lease has expired and it belongs to another \
+                             session (session {session}, claim comment {held_comment}, epoch \
+                             {epoch}); expiry alone never transfers it. A takeover needs the \
+                             leader's line `moai-claim-handoff: comment={held_comment} to=<your \
+                             session> by=leader`, or, once your request for it has had no answer \
+                             for 30 minutes, `moai claim-timeout-check --issue {issue} --claim \
+                             {held_comment} --request <your request comment id> --lane <your \
+                             session>` answering `met` and the line it prints (decision D2); \
+                             operator approval (06-B)",
+                            session = existing.owner.id,
+                            epoch = existing.epoch,
+                            issue = req.task_ref.issue_number,
+                        )],
+                        ..Default::default()
+                    }
+                } else {
+                    AcquireOutcome {
+                        outcome: "already_owned",
+                        record: Some(existing.clone()),
+                        foreign_owner: None,
+                        notes: vec![],
+                        ..Default::default()
+                    }
+                });
+            }
         }
     }
     let epoch = mine.iter().map(|r| r.epoch).max().unwrap_or(0) + 1;
@@ -1237,6 +1262,13 @@ pub fn acquire<T: Transport, C: Clock>(
         notes.push(
             "a live claim comment of this session already existed and was adopted; no comment was posted".into(),
         );
+    }
+    if let Some((held_comment, held_epoch)) = renewed {
+        notes.push(format!(
+            "this session's earlier claim (comment {held_comment}, epoch {held_epoch}) had \
+             expired; it is renewed with epoch {epoch} and a new claim line, without a handoff \
+             line (decision D1, Issue #1975 comment 6840449133)"
+        ));
     }
     Ok(AcquireOutcome {
         outcome: "claimed",
