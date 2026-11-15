@@ -330,6 +330,7 @@ Internal
                           merged worktrees
   worktree-gc-apply       Remove or trim the previewed
                           worktrees
+  worktree-install-plan   Preview a scoped package install
   hygiene-plan            Preview what may move to the
                           holding folder
   hygiene-apply           Move the previewed leftovers to
