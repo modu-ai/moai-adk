@@ -414,16 +414,22 @@ fn claim_session(c: &Comment) -> Option<String> {
     lines(c).find_map(|l| Some(field(l.strip_prefix("moai-claim:")?, "session")?.to_string()))
 }
 
-/// The claim comment ids a thread releases or hands off.
+/// The claim comment ids a thread releases or hands off. A release or handoff line closes only
+/// an earlier comment of the thread that is a `moai-claim:` line, the rule `claim-verify`
+/// follows (a line that names no earlier claim closes nothing; #3015 C7c).
 fn closed_claims(thread: &[Comment]) -> Vec<u64> {
     thread
         .iter()
-        .flat_map(lines)
-        .filter_map(|l| {
+        .flat_map(|c| lines(c).map(move |l| (c.id, l)))
+        .filter_map(|(at, l)| {
             let rest = l
                 .strip_prefix("moai-claim-release:")
                 .or_else(|| l.strip_prefix("moai-claim-handoff:"))?;
-            field(rest, "comment")?.parse().ok()
+            let target: u64 = field(rest, "comment")?.parse().ok()?;
+            thread
+                .iter()
+                .any(|k| k.id == target && k.id < at && claim_session(k).is_some())
+                .then_some(target)
         })
         .collect()
 }
@@ -2701,6 +2707,55 @@ mod tests {
                 "{name} has a comment selection without it"
             );
         }
+    }
+
+    /// #3015 C7c: a release or handoff line closes an earlier `moai-claim:` comment of the
+    /// thread and nothing else, the rule `claim-verify` follows.
+    #[test]
+    fn a_release_or_handoff_closes_only_an_earlier_claim_comment() {
+        let claim = |id| {
+            c(
+                id,
+                "moai-claim: session=agent-1 epoch=1 lease_until=2026-11-15T10:00:00Z",
+            )
+        };
+        // A release that names a claim and comes after it closes it.
+        let released = [
+            claim(10),
+            c(11, "moai-claim-release: comment=10 by=agent-1"),
+        ];
+        assert_eq!(live_claim(&released, "agent-1"), None);
+        let handed = [
+            claim(10),
+            c(11, "moai-claim-handoff: comment=10 to=agent-2 by=leader"),
+        ];
+        assert_eq!(live_claim(&handed, "agent-1"), None);
+        // The line stands among other lines of the same comment.
+        let among = [claim(10), c(11, "thanks\nmoai-claim-release: comment=10")];
+        assert_eq!(live_claim(&among, "agent-1"), None);
+        // A line that names a comment which is not a claim closes nothing.
+        let not_a_claim = [
+            claim(10),
+            c(12, "just text"),
+            c(13, "moai-claim-release: comment=12"),
+        ];
+        assert_eq!(live_claim(&not_a_claim, "agent-1"), Some(10));
+        // A line that names an id no comment of the thread has closes nothing.
+        let unknown = [claim(10), c(11, "moai-claim-release: comment=999")];
+        assert_eq!(live_claim(&unknown, "agent-1"), Some(10));
+        // A line posted before the claim it names cannot close it (the claim is not earlier).
+        let before = [c(9, "moai-claim-release: comment=10"), claim(10)];
+        assert_eq!(live_claim(&before, "agent-1"), Some(10));
+        // A line that names itself closes nothing.
+        let itself = [claim(10), c(11, "moai-claim-release: comment=11")];
+        assert_eq!(live_claim(&itself, "agent-1"), Some(10));
+        // The release of one claim leaves the lane's later claim open.
+        let later = [
+            claim(10),
+            c(11, "moai-claim-release: comment=10"),
+            claim(12),
+        ];
+        assert_eq!(live_claim(&later, "agent-1"), Some(12));
     }
 
     /// Issue #3052: a comment a non-member wrote is not a comment of the thread; the answer to
