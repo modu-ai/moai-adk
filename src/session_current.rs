@@ -126,6 +126,15 @@ mod tests {
     }
 
     #[test]
+    fn the_fallback_line_is_the_go_builds_line_word_for_word() {
+        assert_eq!(
+            FALLBACK,
+            "source_session_id: <not-available — environment-fallback, next session will backfill via /moai session register on activation>"
+        );
+        assert_eq!(SOURCES, ["CLAUDE_CODE_SESSION_ID", "CODEX_THREAD_ID"]);
+    }
+
+    #[test]
     fn the_id_shape_has_exact_length_edges() {
         assert!(!well_formed(&"a".repeat(7)));
         assert!(well_formed(&"a".repeat(8)));
