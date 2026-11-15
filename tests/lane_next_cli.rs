@@ -22,7 +22,10 @@ fn next_with(snap: &Value, args: &[&str]) -> Value {
     let d = TempDir::new().unwrap();
     let file = d.path().join("snap.json");
     std::fs::write(&file, snap.to_string()).unwrap();
+    // Run in the temp folder, never in the checkout under test: a count written by a run with
+    // no `--dir` would land in this repository's own state folder (#3005 P8 N6).
     let out = Command::new(EXE)
+        .current_dir(d.path())
         .args(["lane-next", "--lane", LANE, "--repo", "o/r", "--snapshot"])
         .arg(&file)
         .args(args)
@@ -1257,6 +1260,7 @@ fn next_for(lane: &str, snap: &Value) -> Value {
     let file = d.path().join("snap.json");
     std::fs::write(&file, snap.to_string()).unwrap();
     let out = Command::new(EXE)
+        .current_dir(d.path())
         .args(["lane-next", "--lane", lane, "--repo", "o/r", "--snapshot"])
         .arg(&file)
         .output()
@@ -2348,13 +2352,103 @@ mod idle_limit {
         (v["result"].clone(), v)
     }
 
+    /// A full read with nothing to do: the card list was read (`cards`), so the lane-wide end
+    /// is known (`met: true`) and `partial` is empty.
     fn nothing() -> Value {
-        json!({"now": "2026-11-15T02:00:00Z"})
+        json!({"now": "2026-11-15T02:00:00Z", "cards": []})
     }
 
     fn waiting() -> Value {
         let blocked = json!({"id": 50, "body": "LANE-BLOCKED kind=decision owner=leader #2827 B1 — (가)/(나), safe default (나)"});
-        json!({"threads": [{"number": 2812, "comments": [claim(40, LANE), blocked]}]})
+        json!({"cards": [], "threads": [{"number": 2812, "comments": [claim(40, LANE), blocked]}]})
+    }
+
+    /// The lane's own open pull request, no blocker now (CI pending): the lane is in flight.
+    fn own_pr_in_flight() -> Value {
+        json!({"cards": [], "prs": [{"number": 10, "head": h('a'), "author_lane": LANE,
+            "comments": [], "ci": "pending"}]})
+    }
+
+    fn state_file(c: &Clone) -> std::path::PathBuf {
+        c.repo
+            .join(".git/.moai-cli/lane-idle")
+            .join(format!("{LANE}__o__r.json"))
+    }
+
+    /// A lane with its own open pull request waiting on CI is not idle: three reads with
+    /// `--max-empty 3` do not stop it, and the count stays 0 (the leader's repro of #3020 B1).
+    #[test]
+    fn an_own_pull_request_in_flight_is_not_an_empty_read() {
+        let c = clone();
+        for n in 1..=4 {
+            let (r, _) = read(&c, LANE, "o/r", &own_pr_in_flight(), "3");
+            assert_eq!(r["next"], json!(null), "read {n}: {r}");
+            assert_eq!(
+                r["pr_skipped"],
+                json!([{"pr": 10, "reason": "own_no_blocker"}]),
+                "the snapshot is the own-PR case: {r}"
+            );
+            assert!(r.get("status").is_none(), "read {n} stopped the lane: {r}");
+            assert_eq!(r["idle"]["consecutive_empty"], json!(0), "read {n}: {r}");
+        }
+        // Empty reads before it do not survive it: 2 empty, the PR, then 2 empty is not 4.
+        let c = clone();
+        for snap in [
+            nothing(),
+            nothing(),
+            own_pr_in_flight(),
+            nothing(),
+            nothing(),
+        ] {
+            read(&c, LANE, "o/r", &snap, "3");
+        }
+        let (r, _) = read(&c, LANE, "o/r", &nothing(), "3");
+        assert_eq!(r["idle"]["consecutive_empty"], json!(3), "{r}");
+        assert_eq!(r["status"], json!("idle_limit"), "3 since the PR: {r}");
+    }
+
+    /// With nothing open and no `--tip` every read carries the note that no tip base is known;
+    /// that note alone is not a failed read, or a lane could never go idle once all is done.
+    #[test]
+    fn the_no_tip_base_note_alone_does_not_stop_the_count() {
+        let c = clone();
+        let snap = json!({"cards": [], "partial": [moai_cli::lane_next::TIP_BASE_UNKNOWN]});
+        for n in 1..=2u64 {
+            let (r, _) = read(&c, LANE, "o/r", &snap, "3");
+            assert_eq!(r["idle"]["consecutive_empty"], json!(n), "{r}");
+        }
+        let (r, _) = read(&c, LANE, "o/r", &snap, "3");
+        assert_eq!(r["status"], json!("idle_limit"), "{r}");
+    }
+
+    /// A read GitHub answered in part (`partial`), or whose lane-wide end is unknown
+    /// (`met: null`), is not an empty read: three of them with `--max-empty 3` do not stop the
+    /// lane, change the saved count or write the file (the leader's repro of #3020 B2).
+    #[test]
+    fn a_partial_read_is_not_counted() {
+        let partial = json!({"cards": [], "partial": ["open pull requests: HTTP 502"]});
+        let unknown = json!({"now": "2026-11-15T02:00:00Z"});
+        for (name, snap) in [("partial", partial), ("unknown end", unknown)] {
+            let c = clone();
+            for n in 1..=4 {
+                let (r, _) = read(&c, LANE, "o/r", &snap, "3");
+                assert!(r.get("status").is_none(), "{name} read {n}: {r}");
+                assert_eq!(r["idle"]["consecutive_empty"], json!(0), "{name}: {r}");
+                assert_eq!(r["idle"]["limit_reached"], json!(false), "{name}: {r}");
+                assert!(r["idle"]["not_counted"].is_string(), "{name}: {r}");
+                assert_eq!(r["writes"], json!(false), "{name}: nothing written: {r}");
+            }
+            assert!(!state_file(&c).exists(), "{name} wrote the state file");
+        }
+        // Between full reads a partial one neither adds nor resets: 2 empty, partial, empty is 3.
+        let c = clone();
+        let part = json!({"cards": [], "partial": ["x"]});
+        for snap in [nothing(), nothing(), part] {
+            read(&c, LANE, "o/r", &snap, "3");
+        }
+        let (r, _) = read(&c, LANE, "o/r", &nothing(), "3");
+        assert_eq!(r["idle"]["consecutive_empty"], json!(3), "{r}");
+        assert_eq!(r["status"], json!("idle_limit"), "{r}");
     }
 
     /// Reads 1 to 5 go on, read 6 is `idle_limit` with the `LANE-IDLE` line, and the count
