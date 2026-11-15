@@ -86,6 +86,69 @@ fn every_agent_defines_purpose_boundaries_verification_and_handoff() {
     }
 }
 
+/// #3054 AC1: the agents that build (`moai-impl`, `moai-audit`) and the AUDIT and RUN workflows
+/// say how to clean up: inside the agent's own worktree, by relative path, only its own build
+/// output, never by an absolute path, and logs stay until the verdict. No instruction text
+/// shows a recursive delete of an absolute path, which the project's deny rules refuse.
+#[test]
+fn builders_clean_up_by_relative_path_inside_their_own_worktree() {
+    for d in package_agents(&agents(), &package()).unwrap() {
+        if d.name != "moai-impl" && d.name != "moai-audit" {
+            continue;
+        }
+        let rule = d
+            .body
+            .lines()
+            .find(|l| l.starts_with("- Cleanup: "))
+            .unwrap_or_else(|| panic!("{}: no `- Cleanup: ` rule in Boundaries", d.name));
+        for needle in [
+            "build output you made in your own worktree",
+            "from inside your own worktree with a relative path",
+            "rm -rf target/debug",
+            "Never pass an absolute path",
+            "Keep logs and evidence folders until",
+            "report the path and its size under `Cleanup`",
+        ] {
+            assert!(
+                rule.contains(needle),
+                "{}: {needle:?} missing: {rule}",
+                d.name
+            );
+        }
+        assert!(
+            d.body.contains("- `Cleanup`: "),
+            "{}: Output lacks `Cleanup`",
+            d.name
+        );
+        for l in d.body.lines() {
+            assert!(
+                !l.contains("rm -rf /") && !l.contains("rm -rf ~") && !l.contains("rm -rf \"/"),
+                "{}: absolute recursive delete shown: {l}",
+                d.name
+            );
+        }
+    }
+    for flow in ["workflows/audit.md", "workflows/run.md"] {
+        let text = std::fs::read_to_string(package().join(flow)).unwrap();
+        let rule = text
+            .lines()
+            .find(|l| l.starts_with("- Cleanup (Issue #3054): "))
+            .unwrap_or_else(|| panic!("{flow}: no cleanup rule"));
+        assert!(
+            rule.contains("relative path") && rule.contains("`rm -rf target/debug`"),
+            "{flow}: {rule}"
+        );
+        assert!(
+            rule.contains("never") && rule.contains("absolute path"),
+            "{flow}: {rule}"
+        );
+        assert!(
+            !text.contains("rm -rf /"),
+            "{flow}: absolute recursive delete shown"
+        );
+    }
+}
+
 /// #2721: a symlinked or non-folder source path is refused, never followed.
 #[cfg(unix)]
 #[test]

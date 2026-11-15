@@ -100,7 +100,7 @@
       }
     },
     "workflows/run.md": {
-      "sha256": "529d2834489607fabd41d1a3158a14976ddbc3b6bb73e4f880c97c1a3055b717",
+      "sha256": "3d9814182cac39b8b9bc550f9c4fb983a06c99ca96c02bc20eab3f24ce83fc6a",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",
@@ -118,7 +118,7 @@
       }
     },
     "workflows/audit.md": {
-      "sha256": "83b74b590679825c81bdbb66cd74b6d47354a3ba056a5b22faae143abc0514db",
+      "sha256": "f69c247549ea30d70cca44411c0ee95cb1017874a2cdd85ad44442ce8f97dabb",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",

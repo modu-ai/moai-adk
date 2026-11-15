@@ -93,6 +93,7 @@ AUDIT hands the evidence-gathering to `moai-audit`, never to the agent or sessio
 - Read-only is enforced by the host only where the installed agent file can carry it: Claude Code (the file denies the editing tools), and the host's own read-only setting on Kiro and Cursor CLI. Codex CLI subagents inherit the parent's sandbox and OMP subagents run without approvals, so there read-only rests on the instructions alone; say so in the verdict.
 - On every host, confirm after the agent returns that `git status` in its worktree shows no change; a change there makes its findings unusable.
 - Isolation: as in the RUN workflow, a separate worktree only on Claude Code and on OMP with task isolation enabled; elsewhere the agent reads the detached audit worktree you prepared.
+- Cleanup (Issue #3054): put the cleanup rule in the agent's brief and read its `Cleanup` section. The agent deletes only the build output it made in its own worktree (for example `target/debug`), from inside that worktree and by relative path (`rm -rf target/debug`); it never uses an absolute path, because the project's deny rules refuse every recursive delete by absolute path and the refusal says only that permission was denied. Logs and evidence folders stay until you have posted the verdict. A delete that failed is reported with its path and size, never retried in another form; whoever removes the worktree afterwards does it through `worktree-gc-apply` after the user confirms, not with a recursive delete.
 
 ## Web pages
 
