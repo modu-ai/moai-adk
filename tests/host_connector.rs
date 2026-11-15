@@ -366,6 +366,23 @@ fn a_bad_marker_or_a_refused_post_is_an_error_and_never_a_posted_summary() {
         |c| c.post_summary(&target, "summary", marker()),
     );
     assert!(matches!(outcome, Err(ConnectorError::Host(_))));
+    // Only 201 is a created comment: an answer that carries an id with another status is not.
+    let (outcome, _) = with_connector(
+        vec![
+            get(&comments_url(42), json_response(200, json!([]))),
+            exchange(
+                "POST",
+                &format!("{BASE}/issues/42/comments"),
+                json_response(200, json!({"id": 9})),
+            ),
+        ],
+        Config::default(),
+        |c| c.post_summary(&target, "summary", marker()),
+    );
+    assert!(
+        matches!(outcome, Err(ConnectorError::Host(_))),
+        "{outcome:?}"
+    );
 }
 
 #[test]
