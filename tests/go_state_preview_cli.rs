@@ -213,6 +213,49 @@ fn the_hook_counterpart_stays_when_the_staying_settings_keep_a_go_entry() {
     );
 }
 
+/// The kept direction: a staying settings file that is not a JSON object makes the hooks step
+/// refuse, not report `unchanged`, so the preview keeps the reinstall wording even though
+/// every script moves (audit mutant A3: that arm treated as "nothing left").
+#[test]
+fn the_hook_counterpart_stays_when_the_staying_settings_are_not_an_object() {
+    for settings in ["not json at all", "[1, 2]"] {
+        let fx = hook_fx(settings, false);
+        let plan = fx.plan();
+        assert_eq!(action(&plan, ".claude/hooks/moai/handle-a.sh"), "move");
+        assert_eq!(action(&plan, ".claude/hooks/moai/handle-b.sh"), "move");
+        assert_eq!(
+            counterpart(&plan, "hook")["counterpart"],
+            json!("reinstalled by hooks"),
+            "settings {settings:?}: {plan}"
+        );
+    }
+}
+
+/// The kept direction: a hook folder the step cannot list (it holds a sub-folder, which is not
+/// a regular file) makes the step refuse, so the preview keeps the reinstall wording even
+/// though every recorded script moves (audit mutant A5: that arm treated as "nothing left").
+#[test]
+fn the_hook_counterpart_stays_when_the_hook_folder_cannot_be_listed() {
+    let fx = hook_fx(DENY_ONLY, true);
+    fx.write(".claude/hooks/moai/sub/inner.sh", "#!/bin/sh\necho inner\n");
+    let plan = fx.plan();
+    assert_eq!(
+        action(&plan, ".claude/hooks/moai/handle-a.sh"),
+        "move",
+        "{plan}"
+    );
+    assert_eq!(
+        action(&plan, ".claude/hooks/moai/handle-b.sh"),
+        "move",
+        "{plan}"
+    );
+    assert_eq!(
+        counterpart(&plan, "hook")["counterpart"],
+        json!("reinstalled by hooks"),
+        "{plan}"
+    );
+}
+
 /// The miss direction: a kind with nothing moving gets no row, and a plan that moves nothing
 /// has no rows at all.
 #[test]
