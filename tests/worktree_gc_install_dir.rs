@@ -274,6 +274,45 @@ fn a_file_written_into_the_install_after_the_plan_refuses_the_apply() {
     assert!(fx.wt("inst").join("node_modules/pkg/late.js").exists());
 }
 
+/// Same count, newer content: a file of the install rewritten after the plan (its mtime moves)
+/// also changes the digest, so the apply refuses.
+#[test]
+fn a_rewritten_install_file_after_the_plan_refuses_the_apply() {
+    let fx = fixture(true, &["inst"]);
+    install(&fx.wt("inst"));
+    let r = plan(&fx);
+    assert_eq!(row(&r, "inst")["action"], "remove", "{r}");
+    let digest = r["plan_digest"].as_str().unwrap().to_string();
+    let file = fx.wt("inst").join("node_modules/pkg/index.js");
+    fs::write(&file, "module.exports = 2;\n").unwrap();
+    // an hour ahead of the real clock, still a day before the plan's clock: outside the
+    // recent-change window, so only the fingerprint can notice
+    fs::File::options()
+        .write(true)
+        .open(&file)
+        .unwrap()
+        .set_modified(std::time::SystemTime::now() + std::time::Duration::from_secs(3_600))
+        .unwrap();
+    let now = later().to_string();
+    let v = run(
+        &fx,
+        &[
+            "worktree-gc-apply",
+            fx.root.to_str().unwrap(),
+            "--integration-ref",
+            "integ",
+            "--now-unix",
+            &now,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "fixture-approved",
+        ],
+    );
+    assert_eq!(v["ok"], false, "{v}");
+    assert!(file.exists());
+}
+
 /// Audit B3 on #3058 (user decision 6892859628): a worktree Codex made is a preview row and is
 /// never removed, with or without an install folder.
 #[test]
