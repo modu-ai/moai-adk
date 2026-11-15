@@ -1379,6 +1379,46 @@ fn orca_mail_is_checked_for_delivery_and_focus_is_never_switched() {
     );
 }
 
+/// #3005 P3a (F1, F2): a leader with Orca carries a dispatch as a task of a Run (not only as
+/// mail to a terminal handle, which is not kept for a lane that is not checking), falls back
+/// to the Issue comment pointer when the Run path refuses a lane, and detects the channel
+/// before the first send. The section is the leader's alone; the lane's Orca section is
+/// untouched.
+#[test]
+fn a_leader_with_orca_dispatches_through_a_run_and_detects_the_channel() {
+    let leader = workflow("mode-leader.md");
+    let section = section_of(&leader, "Dispatch through an Orca Run");
+    for p in [
+        "Only the leader creates Runs",
+        "`orca orchestration run-create --objective \"<round goal>\" --json`",
+        "`orca orchestration task-create --task-title \"<Issue #n>\" --spec-file - --json`",
+        "`orca orchestration worker-start --task <task_id> --terminal <handle> --worktree <selector of that lane's worktree> --json`",
+        "never `--worktree current`: that is your own worktree",
+        "`orca orchestration send --to dispatch:<dispatch_id> --type dispatch",
+        "Record the task and dispatch ids beside the card in your round summary",
+        "do not retry in a loop: deliver by the Issue comment pointer",
+        "mark the Run path `not_run` for that lane",
+        "a real Run dispatch to a running lane was not executed on this machine",
+        "keep the lane's own claim comment, never the Run, as the proof of ownership",
+        "a retry that creates a second Run or Task is a duplicate to remove, not a retry",
+        "`orca: yes` or `orca: no (<reason>)`",
+        "`ORCA_TERMINAL_HANDLE` is set in your environment and `orca status --json` answers with `runtime.state` `ready`",
+        "drops `ORCA_*`",
+        "item 1 is unusable",
+        "Do not edit the person's Codex configuration, and do not guess a `--from` handle",
+    ] {
+        assert!(
+            section.contains(p),
+            "`Dispatch through an Orca Run` must say `{p}`:\n{section}"
+        );
+    }
+    let agent = workflow("mode-agent.md");
+    assert!(
+        !agent.contains("Dispatch through an Orca Run"),
+        "a lane does not create Runs"
+    );
+}
+
 /// #3005 N12: the observations example in the leader's workflow is a file `lane-safe-to-reset`
 /// accepts (its keys are checked by the tool, which refuses an unknown one).
 #[test]
