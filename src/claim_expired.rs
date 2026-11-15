@@ -118,13 +118,16 @@ pub fn list<T: Transport, C: Clock>(
         ));
     }
     let (mut expired, mut unread) = (Vec::new(), Vec::new());
+    // Control lines written by an account outside the organization do not count (#3052).
+    let mut ignored = crate::comment_authority::Dropped::default();
     let mut read = 0u64;
     for n in numbers.into_iter().take(MAX_THREADS) {
         let url =
             format!("https://api.github.com/repos/{owner}/{repo}/issues/{n}/comments?per_page=100");
         match crate::lane_status::pages_with_evidence(&client, url, None) {
-            Ok((raw, true)) => {
+            Ok((mut raw, true)) => {
                 read += 1;
+                ignored.merge(crate::comment_authority::retain_rest(&mut raw));
                 let comments: Vec<IssueComment> = raw
                     .iter()
                     .filter_map(|c| {
@@ -141,7 +144,7 @@ pub fn list<T: Transport, C: Clock>(
         }
     }
     expired.sort_by_key(|e| (e.lease_until, e.issue));
-    Ok(json!({
+    let mut out = json!({
         "now": crate::forge::policy::format_utc(now),
         "threads_read": read,
         "expired": expired.iter().map(|e| json!({
@@ -155,7 +158,11 @@ pub fn list<T: Transport, C: Clock>(
         "unread": unread,
         "partial": partial,
         "takeover": "not done here: it needs `claim-timeout-check` and a handoff line",
-    }))
+    });
+    if !ignored.is_empty() {
+        out["ignored_control_lines"] = ignored.to_json();
+    }
+    Ok(out)
 }
 
 #[cfg(test)]
@@ -263,7 +270,7 @@ mod tests {
     }
 
     fn comment(c: &IssueComment) -> Value {
-        json!({"id": c.id, "body": c.body, "user": {"login": c.author}})
+        json!({"id": c.id, "body": c.body, "user": {"login": c.author}, "author_association": "MEMBER"})
     }
 
     fn thread(cs: &[IssueComment]) -> Option<Value> {
@@ -401,6 +408,63 @@ mod tests {
             assert_eq!(v["threads_read"], 0, "{name}: {v}");
             assert_eq!(v["expired"], json!([]), "{name}: {v}");
         }
+    }
+
+    #[test]
+    fn a_claim_line_from_outside_the_organization_counts_for_nothing_and_is_reported() {
+        let line = |lease: i64| {
+            format!(
+                "moai-claim: session=agent-3 epoch=1 lease_until={}",
+                at(lease)
+            )
+        };
+        let outsider = |id: i64, body: String, who: &str| json!({"id": id, "body": body, "user": {"login": "x"}, "author_association": who});
+        // #3: a member's expired claim and an outsider's release of it (the release does not count).
+        // #4: an outsider's expired claim alone (no claim at all).
+        let f = forge(
+            2,
+            &[3, 4],
+            vec![
+                (
+                    3,
+                    Some(json!([
+                        outsider(30, line(NOW - 100), "MEMBER"),
+                        outsider(31, "moai-claim-release: comment=30".to_string(), "NONE"),
+                    ])),
+                ),
+                (
+                    4,
+                    Some(json!([outsider(40, line(NOW - 100), "CONTRIBUTOR")])),
+                ),
+            ],
+        );
+        let v = list("o", "r", NOW, &f, &C0).unwrap();
+        let rows = v["expired"].as_array().unwrap();
+        assert_eq!(rows.len(), 1, "{v}");
+        assert_eq!(rows[0]["issue"], 3);
+        let ignored = &v["ignored_control_lines"];
+        assert_eq!(ignored["count"], 2, "{v}");
+        let kinds: Vec<_> = ignored["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|i| {
+                (
+                    i["comment_id"].as_i64().unwrap(),
+                    i["kind"].as_str().unwrap(),
+                )
+            })
+            .collect();
+        assert!(kinds.contains(&(31, "claim_release")), "{v}");
+        assert!(kinds.contains(&(40, "claim")), "{v}");
+        // Nothing dropped: the key is absent.
+        let clean = forge(
+            1,
+            &[3],
+            vec![(3, thread(&[claim(30, "agent-3", 1, NOW - 100)]))],
+        );
+        let v = list("o", "r", NOW, &clean, &C0).unwrap();
+        assert!(v.get("ignored_control_lines").is_none(), "{v}");
     }
 
     #[test]
