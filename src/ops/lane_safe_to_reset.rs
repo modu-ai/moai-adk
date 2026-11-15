@@ -23,6 +23,14 @@ use std::path::PathBuf;
 /// now) and the lane's folder with `--session-cwd`; an observations file is only needed to
 /// pass a screen read earlier, with its own time.
 ///
+/// The answer also says what state the lane is in (`lane_state`, #3015 C3b), told from its
+/// open claims with their resume notes, the open pull requests those claims lead to, unsaved
+/// work, a running writer on the screen and the session lease — not from a quiet screen:
+/// `idle` (nothing is owed), `waiting` (every claim waits for a check or an audit), `resumable`
+/// (stopped, with a resume note to go on from), `stopped` (stopped with nothing saying where to
+/// go on), `working` (a background job runs) or `unknown` (a fact was not read; `reasons` names
+/// it). The pull requests are read only when this command reads the claims itself.
+///
 /// Observations file: schema_version: 1; claims.items[].issue, claim_comment, resume_note: numbers (resume_note may be left out); session_cwd.path: text; screen.observed_at: YYYY-MM-DDTHH:MM:SSZ; screen.background_jobs: a number (not a list); no other keys. Every part except schema_version may be left out
 ///
 /// Example:
@@ -113,6 +121,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     // The claims: the file's, else read from GitHub; a failed or cut read is said in `unknowns`.
     let mut claims_note = None;
     let mut ignored = moai_cli::comment_authority::Dropped::default();
+    let claims_read_here = obs.claims.is_none();
     if obs.claims.is_none() {
         let read = repo_of(&args).and_then(|(owner, repo)| {
             let transport = GhTransport::from_env()?;
@@ -135,12 +144,37 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             Err(why) => claims_note = Some(why),
         }
     }
-    let mut out = moai_cli::lane_reset::check_with(
+    // The lane's state (#3015 C3b) also needs the open pull requests its claims lead to — read
+    // only when this command read the claims itself — and its session lease. A fact that is not
+    // read stays `None`, and the state then says `unknown`.
+    let mut extras = moai_cli::lane_reset::Extras {
+        session_live: moai_cli::lane_registry::session_live(&args.project, &args.lane, now),
+        ..Default::default()
+    };
+    if claims_read_here {
+        if let (Some(claims), Ok((owner, repo))) = (&obs.claims, repo_of(&args)) {
+            let read = GhTransport::from_env().and_then(|transport| {
+                moai_cli::lane_state::read_open_prs(
+                    &owner,
+                    &repo,
+                    &claims.items,
+                    &transport,
+                    &SystemClock,
+                )
+            });
+            if let Ok(r) = read {
+                extras.open_prs = Some(r.prs);
+                extras.prs_partial = r.partial;
+            }
+        }
+    }
+    let mut out = moai_cli::lane_reset::check_full(
         &args.project,
         &args.lane,
         &obs,
         now,
         claims_note.as_deref(),
+        &extras,
     )?;
     if !ignored.is_empty() {
         out["ignored_control_lines"] = ignored.to_json();

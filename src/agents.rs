@@ -1094,6 +1094,13 @@ pub(crate) fn agents_apply_amended_for(
                 AGENTS_SECTION,
                 render_agents(&profile, &p.request, &root).as_bytes(),
             ),
+            // #2936: REVIEW.md is an owned section too; without a baseline a later language or
+            // answer change planned `conflict` for a block nobody had edited.
+            Some(REVIEW_SECTION) => {
+                let rendered =
+                    render_review(&profile, &p.request).ok_or("review section has no answers")?;
+                record_owned(&mut owned, &f.path, REVIEW_SECTION, rendered.as_bytes());
+            }
             Some(IGNORE_SECTION) => record_owned(
                 &mut owned,
                 &f.path,

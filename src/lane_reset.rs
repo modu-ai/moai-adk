@@ -468,6 +468,30 @@ pub fn check_with(
     now: i64,
     claims_note: Option<&str>,
 ) -> Result<Value> {
+    check_full(project, lane, obs, now, claims_note, &Extras::default())
+}
+
+/// What the caller read besides the observations, for the lane's state (#3015 C3b). `None` is
+/// "not read".
+#[derive(Clone, Debug, Default)]
+pub struct Extras {
+    /// The open pull requests that lead to the lane's open claims.
+    pub open_prs: Option<Vec<crate::lane_state::OpenPr>>,
+    /// The pull request read was cut at one page.
+    pub prs_partial: bool,
+    /// Whether the lane's session lease still runs.
+    pub session_live: Option<bool>,
+}
+
+/// [`check_with`] with [`Extras`]; the answer then carries `lane_state` as well.
+pub fn check_full(
+    project: &Path,
+    lane: &str,
+    obs: &Observations,
+    now: i64,
+    claims_note: Option<&str>,
+    extras: &Extras,
+) -> Result<Value> {
     if !valid_lane(lane) {
         return Err("invalid lane name: 1 to 64 of letters, digits, `-`, `_`, `.`".into());
     }
@@ -528,6 +552,9 @@ pub fn check_with(
     if stashes.is_none() {
         unknowns.push("git stash list unavailable".into());
     }
+    // For the lane's state: unsaved work in the lane's own worktrees, `None` when a check
+    // of one of them could not run.
+    let (mut unsaved_found, mut unsaved_unread) = (false, stashes.is_none());
     // Linked worktrees usually live inside the primary checkout, so the session folder belongs
     // to the deepest worktree that contains it, not to every one.
     let cwd_worktree = cwd.and_then(|c| {
@@ -566,6 +593,8 @@ pub fn check_with(
             &mut u,
         ));
         if attributed {
+            unsaved_found |= !f.is_empty();
+            unsaved_unread |= !u.is_empty();
             findings.extend(f);
             unknowns.extend(u);
         } else {
@@ -592,6 +621,7 @@ pub fn check_with(
     }
 
     // (3) background jobs on the lane's screen.
+    let mut fresh_jobs = None;
     let screen = match &obs.screen {
         None => {
             unknowns.push("no screen observation: background jobs unchecked".into());
@@ -607,11 +637,14 @@ pub fn check_with(
                     "screen observation is {} s old; the limit is {SCREEN_MAX_AGE_SECS} s",
                     now - at
                 )),
-                Some(_) if s.background_jobs > 0 => findings.push(format!(
-                    "{} background job(s) still running on the lane's screen",
-                    s.background_jobs
-                )),
-                Some(_) => {}
+                Some(_) if s.background_jobs > 0 => {
+                    fresh_jobs = Some(s.background_jobs);
+                    findings.push(format!(
+                        "{} background job(s) still running on the lane's screen",
+                        s.background_jobs
+                    ));
+                }
+                Some(_) => fresh_jobs = Some(0),
             }
             json!({"source": s.source, "observed_at": s.observed_at, "background_jobs": s.background_jobs})
         }
@@ -624,9 +657,24 @@ pub fn check_with(
     } else {
         "safe"
     };
+    let open_claims: Option<Vec<OpenClaim>> = obs.claims.as_ref().map(|c| c.items.clone());
+    let lane_state = crate::lane_state::classify(&crate::lane_state::Facts {
+        claims: open_claims.as_deref(),
+        claims_partial: obs.claims.is_some() && claims_note.is_some(),
+        open_prs: extras.open_prs.as_deref(),
+        prs_partial: extras.prs_partial,
+        unsaved: if unsaved_unread {
+            None
+        } else {
+            Some(unsaved_found)
+        },
+        background_jobs: fresh_jobs,
+        session_live: extras.session_live,
+    });
     Ok(json!({
         "lane": lane,
         "verdict": verdict,
+        "lane_state": lane_state,
         "findings": findings,
         "unknowns": unknowns,
         "unattributed": unattributed,
