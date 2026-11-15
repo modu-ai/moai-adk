@@ -303,6 +303,62 @@ impl GoFx {
         referenced
     }
 
+    /// #2936 S-CYCLE: the real run shape with the cycle the old rule left open. The Go deployer
+    /// recorded `.claude/settings.json` too, and that file runs 23 of the 46 scripts, names the
+    /// style, carries two deny rules and a status line that runs `.moai/status_line.sh` (also
+    /// recorded). Before the fix the settings kept the 23 scripts, the style and the whole
+    /// `.moai/` folder in place, and the settings themselves stayed because moving them would
+    /// drop their wiring. `local` is the body of an unrecorded `.claude/settings.local.json`
+    /// (it stays in place whatever it names). Returns the 23 script names the settings run.
+    pub fn real_run_cycle_shape(
+        &mut self,
+        style: Option<&str>,
+        local: Option<&str>,
+    ) -> Vec<String> {
+        let names: Vec<String> = (0..46).map(|n| format!("handle-{n:02}.sh")).collect();
+        for n in &names {
+            self.deployed(
+                &format!(".claude/hooks/moai/{n}"),
+                &format!("#!/bin/sh\necho {n}\n"),
+            );
+        }
+        for (file, name) in [
+            ("moai.md", "MoAI"),
+            ("moai-easy.md", "MoAI-Easy"),
+            ("moai-learn.md", "MoAI-Learn"),
+        ] {
+            self.deployed(
+                &format!(".claude/output-styles/moai/{file}"),
+                &format!("---\nname: {name}\n---\nbody\n"),
+            );
+        }
+        for n in ["plan", "run", "sync"] {
+            self.deployed(&format!(".claude/workflows/{n}.md"), &format!("# {n}\n"));
+        }
+        self.deployed(".claude/loop.md", "# loop\n");
+        self.deployed(".moai/status_line.sh", "#!/bin/sh\necho status\n");
+        let referenced: Vec<String> = names.iter().take(23).cloned().collect();
+        let handlers: Vec<Value> = referenced
+            .iter()
+            .map(|s| json!({"type": "command", "command": format!("bash .claude/hooks/moai/{s}")}))
+            .collect();
+        let mut settings = json!({
+            "hooks": {"PreToolUse": [{"matcher": "*", "hooks": handlers}]},
+            "permissions": {"deny": ["Read(./.env)", "Read(./secrets/**)"]},
+            "statusLine": {"type": "command",
+                           "command": "bash \"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\""},
+        });
+        if let Some(s) = style {
+            settings["outputStyle"] = json!(s);
+        }
+        self.deployed(".claude/settings.json", &settings.to_string());
+        self.manifest();
+        if let Some(body) = local {
+            self.write(".claude/settings.local.json", body);
+        }
+        referenced
+    }
+
     /// The first `moai cc` launch in this project, with a stub `claude` on PATH: the launcher
     /// writes the placeholder profile (`tools: ["unspecified"]`) the way a user's first
     /// launch does. Nothing else of the real HOME is read.
@@ -377,6 +433,15 @@ pub fn install_step<'a>(update: &'a Value, name: &str) -> Option<&'a Value> {
         .as_array()?
         .iter()
         .find(|s| s["step"] == name)
+}
+
+/// The step named `name` in phase number `phase` (0 backup, 1 install, 2 merge) of a
+/// `project-update-plan` result.
+pub fn step_in<'a>(update: &'a Value, phase: usize, name: &str) -> &'a Value {
+    update["phases"][phase]["steps"]
+        .as_array()
+        .and_then(|steps| steps.iter().find(|s| s["step"] == name))
+        .unwrap_or_else(|| panic!("no step {name} in phase {phase}: {update}"))
 }
 
 pub fn path_in(root: &Path, rel: &str) -> PathBuf {
