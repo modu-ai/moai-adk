@@ -137,9 +137,13 @@ fn apply_moves_aside_copies_the_selection_and_rerun_is_none_then_revert_restores
             "memories/",
             "memories/a/",
             "memories/a/note.md",
-            "moai-cli.json"
+            "moai.json"
         ]
     );
+    // The marker is the new name with generation "moai"; the earlier name is not written.
+    let marker: Value =
+        serde_json::from_slice(&fs::read(home.join(".moai/moai.json")).unwrap()).unwrap();
+    assert_eq!(marker["generation"], json!("moai"), "{marker}");
     let receipt: Value =
         serde_json::from_slice(&fs::read(home.join(".moai/home-state-receipt.json")).unwrap())
             .unwrap();
@@ -154,7 +158,8 @@ fn apply_moves_aside_copies_the_selection_and_rerun_is_none_then_revert_restores
     assert_eq!(tree(&home.join(".moai")), original);
     assert!(!home.join(".moai-backup").exists());
     let aside = home.join(".moai.rust-20261113T193000Z");
-    assert!(aside.join("moai-cli.json").is_file());
+    assert!(aside.join("moai.json").is_file());
+    assert!(!aside.join("moai-cli.json").exists());
     assert_eq!(plan(&home)["state"]["generation"], json!("go"));
     // A second revert finds no Rust folder and moves nothing.
     let r2 = revert(&home, "again");
@@ -246,7 +251,7 @@ fn a_failure_after_the_rename_puts_the_go_folder_back() {
         "the partial Rust folder is kept, not deleted"
     );
     assert!(
-        !partial.join("moai-cli.json").exists(),
+        !partial.join("moai.json").exists() && !partial.join("moai-cli.json").exists(),
         "never marked finished"
     );
 }
