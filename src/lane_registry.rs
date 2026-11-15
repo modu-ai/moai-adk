@@ -290,6 +290,49 @@ pub fn live_agent_numbers(dir: &Path, now: i64) -> Result<Vec<u64>, String> {
     Ok(live)
 }
 
+/// How many sessions of this clone are alive at `now` in the registry folder `dir` (#2871 U3c,
+/// leader decision 6886405676): every `<name>.json` entry whose lease runs past `now`, and every
+/// `agent-<n>` whose launcher holds the `.live` lock, each session counted once. This is the
+/// liveness [`live_agent_numbers`] and the launcher already use, for every name instead of the
+/// `agent-<n>` ones. Read only: no lock is kept, nothing is created, and a missing folder has no
+/// session. A symlinked folder, an entry that is a link, not a regular file, oversized or
+/// malformed, and a `.live` file that cannot be probed are errors, never "absent": the caller
+/// that must not move state under a running session fails closed on them.
+pub fn live_session_count(dir: &Path, now: i64) -> Result<usize, String> {
+    refuse_symlink(dir)?;
+    let entries = match fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(0),
+        Err(e) => {
+            return Err(format!(
+                "session registry {} cannot be read: {e}",
+                dir.display()
+            ))
+        }
+    };
+    let mut live = std::collections::BTreeSet::new();
+    for entry in entries {
+        let entry =
+            entry.map_err(|e| format!("session registry {} cannot be read: {e}", dir.display()))?;
+        let file_name = entry.file_name();
+        let Some(file) = file_name.to_str() else {
+            continue;
+        };
+        if let Some(n) = crate::session::agent_number_of(file, ".live") {
+            if crate::session::live_lock_held(&entry.path())? {
+                live.insert(format!("agent-{n}"));
+            }
+        } else if let Some(name) = file.strip_suffix(".json").filter(|n| valid_name(n)) {
+            if let Some((_, lease, _)) = read_entry(&entry.path(), name)? {
+                if lease > now {
+                    live.insert(name.to_string());
+                }
+            }
+        }
+    }
+    Ok(live.len())
+}
+
 /// Who may release on a lane's behalf (#2902 O3a): only the leader, which passes the instance
 /// it read with `show`.
 pub const RELEASED_BY: &[&str] = &["leader"];
@@ -682,6 +725,80 @@ mod tests {
         std::os::unix::fs::symlink(tmp.path().join("real"), tmp.path().join("agent-4.json"))
             .unwrap();
         assert!(live_agent_numbers(tmp.path(), 0).is_err(), "symlink");
+    }
+
+    fn named_entry(name: &str, lease: i64) -> String {
+        numbered_entry(0, lease).replace("agent-0", name)
+    }
+
+    /// #2871 U3c: every name counts once, not only `agent-<n>`; a lease that ends exactly at
+    /// `now` is over; a missing folder has no session; other files are not sessions.
+    #[test]
+    fn live_session_count_counts_every_live_name_once() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("sessions");
+        assert_eq!(live_session_count(&dir, 0), Ok(0), "missing folder");
+        fs::create_dir(&dir).unwrap();
+        let now = 1_000;
+        fs::write(dir.join("leader.json"), named_entry("leader", now + 1)).unwrap();
+        fs::write(dir.join("agent-3.json"), named_entry("agent-3", now + 5)).unwrap();
+        fs::write(dir.join("agent-4.json"), named_entry("agent-4", now)).unwrap();
+        fs::write(dir.join("registry.lock"), "").unwrap();
+        fs::write(dir.join("notes.txt"), "x").unwrap();
+        fs::write(dir.join(".hidden.json"), "not an entry").unwrap();
+        assert_eq!(live_session_count(&dir, now), Ok(2));
+        assert_eq!(live_session_count(&dir, now + 5), Ok(0));
+        assert_eq!(live_session_count(&dir, now - 1), Ok(3));
+    }
+
+    /// #2871 U3c: what cannot be judged is an error, so the install apply fails closed.
+    #[cfg(unix)]
+    #[test]
+    fn live_session_count_fails_on_what_it_cannot_judge() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("sessions");
+        fs::create_dir(&dir).unwrap();
+        fs::write(dir.join("agent-1.json"), "{not json").unwrap();
+        assert!(live_session_count(&dir, 0).is_err(), "malformed entry");
+        fs::remove_file(dir.join("agent-1.json")).unwrap();
+        fs::write(dir.join("real"), named_entry("leader", 10)).unwrap();
+        std::os::unix::fs::symlink(dir.join("real"), dir.join("leader.json")).unwrap();
+        assert!(live_session_count(&dir, 0).is_err(), "symlinked entry");
+        fs::remove_file(dir.join("leader.json")).unwrap();
+        let linked = tmp.path().join("linked");
+        std::os::unix::fs::symlink(&dir, &linked).unwrap();
+        assert!(live_session_count(&linked, 0).is_err(), "symlinked folder");
+    }
+
+    /// #2871 U3c (audit of #3041, B1): a launcher's lock on `agent-<n>.live` is a session with no
+    /// registry entry at all; a lock nobody holds is dead; and a folder that cannot be listed is
+    /// an error, never "no sessions" (the install apply must fail closed).
+    #[cfg(unix)]
+    #[test]
+    fn live_session_count_follows_the_launcher_lock_and_fails_on_an_unlistable_folder() {
+        use std::os::unix::fs::PermissionsExt;
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("sessions");
+        fs::create_dir(&dir).unwrap();
+        let live = fs::File::create(dir.join("agent-5.live")).unwrap();
+        live.lock().unwrap();
+        assert_eq!(live_session_count(&dir, 0), Ok(1), "a held lock alone");
+        // The same session as a registry entry too: one session, not two.
+        fs::write(dir.join("agent-5.json"), named_entry("agent-5", 10)).unwrap();
+        assert_eq!(live_session_count(&dir, 0), Ok(1), "lock and entry");
+        fs::remove_file(dir.join("agent-5.json")).unwrap();
+        drop(live);
+        assert_eq!(live_session_count(&dir, 0), Ok(0), "a lock nobody holds");
+        // A folder that cannot be listed. A user who can list it anyway (root) cannot make
+        // this input, so the check is skipped there.
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o000)).unwrap();
+        let denied = fs::read_dir(&dir).is_err();
+        let counted = live_session_count(&dir, 0);
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o755)).unwrap();
+        if denied {
+            let err = counted.expect_err("an unlistable folder is not zero sessions");
+            assert!(err.contains("cannot be read"), "{err}");
+        }
     }
 
     #[test]

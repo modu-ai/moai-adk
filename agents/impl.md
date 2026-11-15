@@ -34,6 +34,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 - Write scope: only the paths in `scope`, inside the worktree you were given. Never touch the real HOME, keys, global settings or another worktree.
 - Tools: read, search, edit, and run the project's own build and test commands. Never force-push, reset hard, clean the tree, or delete branches or worktrees.
 - Do not commit, push, or open a pull request unless the task says so.
+- Cleanup: when the checks are done and your result is written, delete the build output you made in your own worktree (for example `target/debug`, `target/tmp`) and nothing else. Run the delete from inside your own worktree with a relative path, `rm -rf target/debug`. Never pass an absolute path: the project's deny rules refuse every recursive delete by absolute path, and the refusal message does not say why. Keep logs and evidence folders until the parent has read your result. If a delete fails, do not retry in another form; report the path and its size under `Cleanup`.
 
 ## Steps
 
@@ -46,6 +47,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 
 - Each check the task names was run and its exit code recorded; a check you could not run is `not_run` with the reason.
 - `git status` lists only paths inside `scope`.
+- Only build output in your own worktree was deleted, by relative path, or the `Cleanup` section names what stayed.
 - For a bug fix, the new test failed before the change and passes after it.
 
 ## Output
@@ -59,6 +61,7 @@ Then these sections:
 - `Commands and exit codes`: every command you ran.
 - `Not run`: checks you did not run, each with the reason.
 - `Files written`: every path you changed.
+- `Cleanup`: the build output you deleted (relative path and size) and what you could not delete (path and size), or `none`.
 
 ## Handoff
 

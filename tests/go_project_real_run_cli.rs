@@ -173,3 +173,80 @@ fn the_apply_moves_exactly_what_the_preview_named() {
         "{hooks}"
     );
 }
+
+/// The `counterpart` text of the `hook` row of a preview.
+fn hook_counterpart(preview: &Value) -> &str {
+    preview["counterparts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["kind"] == "hook")
+        .unwrap_or_else(|| panic!("no hook row: {}", preview["counterparts"]))["counterpart"]
+        .as_str()
+        .unwrap()
+}
+
+/// The `hooks` step after the backup phase is applied; the settings step rewrites the same
+/// file, so it is applied first when it has a command (#3028 audit B1).
+fn hooks_step_after(fx: &GoFx, plan: &Value) -> Value {
+    let applied = fx.apply(plan["plan_digest"].as_str().unwrap());
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+    let mut update = fx.update_plan();
+    if let Some(settings) =
+        install_step(&update, "claude-settings").filter(|s| s["apply"] != Value::Null)
+    {
+        let out = fx.apply_step(settings);
+        assert_eq!(out["ok"], json!(true), "{out}");
+        update = fx.update_plan();
+    }
+    install_step(&update, "hooks")
+        .unwrap_or_else(|| panic!("no hooks step: {update}"))
+        .clone()
+}
+
+/// #2936 F-A: the `hook` counterpart in the preview agrees with what the `hooks` step does
+/// once the move is applied. Every hook script moves together with the settings file that
+/// carries the deny rules: the step finds no Go hook left, so the preview must not say the
+/// hooks are "reinstalled by hooks".
+#[test]
+fn the_hook_counterpart_agrees_with_the_hooks_step_when_everything_moves() {
+    let mut fx = GoFx::new();
+    for n in 0..3 {
+        fx.deployed(
+            &format!(".claude/hooks/moai/handle-{n}.sh"),
+            &format!("#!/bin/sh\necho {n}\n"),
+        );
+    }
+    fx.deployed(
+        ".claude/settings.json",
+        "{\"permissions\":{\"deny\":[\"Read(./.env)\"]}}",
+    );
+    fx.manifest();
+    fx.first_launch();
+    let plan = fx.plan();
+    assert_eq!(moving(&plan, "hook"), 3, "{plan}");
+    assert_eq!(
+        hook_counterpart(&plan),
+        "no counterpart \u{2014} will be gone",
+        "{plan}"
+    );
+    let hooks = hooks_step_after(&fx, &plan);
+    assert_eq!(hooks["state"], json!("unchanged"), "{hooks}");
+    assert_eq!(hooks["apply"], Value::Null, "{hooks}");
+}
+
+/// The kept direction: scripts move, the settings stay with their Go entries, and the step
+/// prints the replacement command, as the preview said.
+#[test]
+fn the_hook_counterpart_agrees_with_the_hooks_step_when_entries_stay() {
+    let (fx, _) = real_run(Some("MoAI-Easy"));
+    let plan = fx.plan();
+    assert_eq!(hook_counterpart(&plan), "reinstalled by hooks", "{plan}");
+    let hooks = hooks_step_after(&fx, &plan);
+    assert_eq!(hooks["state"], json!("ready"), "{hooks}");
+    assert_eq!(
+        hooks["apply"]["argv"][1],
+        json!("go-hooks-apply"),
+        "{hooks}"
+    );
+}
