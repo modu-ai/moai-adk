@@ -281,10 +281,11 @@ mod tests {
     #[test]
     fn only_closed_prs_inside_the_window_are_read_and_listed_newest_first() {
         let f = forge(
+            // The list is not in PR-number order: the result is sorted, newest number first.
             vec![
-                pr(30, 1, H1, true),
                 pr(20, 47, H1, false),
                 pr(10, 49, H1, true),
+                pr(30, 1, H1, true),
             ],
             vec![
                 (30, thread(&[reserve(1, "agent-1", H1)])),
@@ -297,6 +298,9 @@ mod tests {
         assert_eq!(rows.len(), 2, "{v}");
         assert_eq!(rows[0]["pr"], 30);
         assert_eq!(rows[1]["pr"], 20);
+        // `merged` comes from the pull request's `merged_at`.
+        assert_eq!(rows[0]["merged"], true, "{v}");
+        assert_eq!(rows[1]["merged"], false, "{v}");
         assert_eq!(v["pull_requests_read"], 2);
         assert!(!f.seen.borrow().iter().any(|u| u.contains("/issues/10/")));
         assert!(rows[0]["guidance"].as_str().unwrap().contains("no effect"));
@@ -336,6 +340,12 @@ mod tests {
         // A lane name with a restart tag is the same lane (the rule of audit-claim).
         let tagged = list("o", "r", Some("agent-1-h2"), 48, NOW, &f, &C0).unwrap();
         assert_eq!(tagged["stale"].as_array().unwrap().len(), 2);
+        // ... also for a reserver that is not the holder: agent-2 reserved #20 and handed it
+        // to agent-1, so only the reservation matches `agent-2-h2`.
+        let reserver = list("o", "r", Some("agent-2-h2"), 48, NOW, &f, &C0).unwrap();
+        let rows = reserver["stale"].as_array().unwrap();
+        assert_eq!(rows.len(), 1, "{reserver}");
+        assert_eq!(rows[0]["pr"], 20);
     }
 
     #[test]
