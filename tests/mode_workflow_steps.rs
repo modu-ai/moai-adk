@@ -180,6 +180,12 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             // #2903 (#2899 O4): the lane closes its own card through `close-check` (its
             // `--repo` follows a placeholder, so tests/close_step_2903.rs checks that flag).
             "close-check",
+            // #3067 AC6: the leader records and checks a dispatch, the lane acknowledges it and
+            // records its start (tests below pin the step that names each one).
+            "dispatch-ack --permission-reference",
+            "dispatch-check",
+            "dispatch-record --permission-reference",
+            "dispatch-start --permission-reference",
             "gate-check",
             "gate-loop --fetch",
             "gate-schedule-apply",
@@ -266,6 +272,84 @@ fn assert_says(text: &str, key: &str, phrases: &[&str]) {
     for p in phrases {
         assert!(body.contains(p), "{key} must say `{p}`:\n{body}");
     }
+}
+
+/// #3067 AC6: no instruction called the dispatch commands, so the leader's dispatch had no
+/// server time and a lane's receipt and start were never recorded. Each step that owns one of
+/// the moments names the command, the command is in `help --all`, and the step says what the
+/// record is not.
+#[test]
+fn workflows_call_the_dispatch_commands() {
+    let leader = workflow("mode-leader.md");
+    let agent = workflow("mode-agent.md");
+    let all = {
+        let out = Command::new(crate::common::MOAI_BIN)
+            .args(["help", "--all"])
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "`moai help --all` failed");
+        String::from_utf8_lossy(&out.stdout).into_owned()
+    };
+    let cases: [(&String, &str, &str, &[&str]); 4] = [
+        (
+            &leader,
+            "answer-requests",
+            "moai dispatch-record --permission-reference",
+            &["is never the record", "never guess one"],
+        ),
+        (
+            &leader,
+            "supervise",
+            "moai dispatch-check",
+            &["not an ownership transfer", "reassign nothing"],
+        ),
+        (
+            &agent,
+            "claim",
+            "moai dispatch-ack --permission-reference",
+            &[
+                "A received record is not a claim",
+                "`accepted` only for a card you claim in this turn",
+            ],
+        ),
+        (
+            &agent,
+            "claim-verify",
+            "moai dispatch-start --permission-reference",
+            &["before your first edit", "A start is not ownership"],
+        ),
+    ];
+    for (text, key, command, phrases) in cases {
+        assert_says(text, key, &[command]);
+        assert_says(text, key, phrases);
+        let op = command.split_whitespace().nth(1).unwrap();
+        assert!(
+            all.lines().any(|l| l.split_whitespace().next() == Some(op)),
+            "`moai {op}` is not in `moai help --all`"
+        );
+        assert!(help(&[op]).contains("Usage"), "{op}");
+    }
+    // The packet fields are listed where the request is built, not left to guesswork.
+    assert_says(
+        &leader,
+        "answer-requests",
+        &[
+            "`repository_id`",
+            "`issue_node_id`",
+            "`actor_id`",
+            "gh api repos/<owner>/<repo> --jq .id",
+        ],
+    );
+    assert_says(
+        &agent,
+        "claim",
+        &["`dispatch_payload_digest`", "`current_payload_digest`"],
+    );
+    assert_says(
+        &agent,
+        "claim-verify",
+        &["`event` `dispatch-start`", "`note`"],
+    );
 }
 
 /// #2928 (decision D1 = (A)): the leader registers its session with mode `leader` at the banner
