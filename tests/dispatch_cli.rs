@@ -1145,6 +1145,231 @@ fn recording_the_same_dispatch_twice_leaves_one_row() {
     );
 }
 
+fn begin(
+    root: &Path,
+    m: &Message,
+    s: Message,
+    r: &Remote,
+) -> Result<Value, moai_cli::contract::OpError> {
+    dispatch::start_cli(
+        root,
+        dispatch::StartRequest {
+            dispatch: m.clone(),
+            start: s,
+        },
+        "decision:1",
+        r,
+        &Time,
+    )
+}
+fn outbox_has(root: &Path, report_id: &str) -> bool {
+    root.join(".moai-cli/messages/outbox")
+        .join(format!("{report_id}.json"))
+        .exists()
+}
+fn accepted_world() -> (TempDir, Remote, Message) {
+    let root = temp_root();
+    let r = Remote::new();
+    let m = packet();
+    send(root.path(), &m, &r).unwrap();
+    r.actor.set(22);
+    ack(root.path(), &m, answer(&m, "accepted"), &r).unwrap();
+    (root, r, m)
+}
+
+#[test]
+fn dispatch_start_write_is_idempotent() {
+    let (root, r, m) = accepted_world();
+    assert_eq!(r.posts(), 3);
+    let s = start_of(&m);
+    let v = begin(root.path(), &m, s.clone(), &r).unwrap();
+    assert_eq!(v["started"], true);
+    assert_eq!(v["start_comment_id"], 103);
+    assert_eq!(v["started_at"], BASE);
+    assert_eq!(v["disposition"], "accepted");
+    assert_eq!(v["claim_authorized"], false);
+    assert_eq!(v["ownership_transferred"], false);
+    assert_eq!(v["audit_gate_integrated"], false);
+    assert_eq!(r.posts(), 4);
+    assert!(outbox_has(root.path(), "d1-start"));
+    // The same request again, in this folder and in a fresh one: no POST, one outbox file,
+    // one row, and the first start time.
+    let restarted = temp_root();
+    for folder in [root.path(), restarted.path()] {
+        let again = begin(folder, &m, s.clone(), &r).unwrap();
+        assert_eq!(again["started_at"], v["started_at"]);
+        assert_eq!(again["start_comment_id"], 103);
+        assert_eq!(r.posts(), 4);
+        assert_eq!(r.comments.borrow().len(), 4);
+        assert!(outbox_has(folder, "d1-start"));
+    }
+    let starts = fs::read_dir(root.path().join(".moai-cli/messages/outbox"))
+        .unwrap()
+        .filter(|e| {
+            e.as_ref()
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .contains("start")
+        })
+        .count();
+    assert_eq!(starts, 1);
+
+    // A lost response is resumed only after observation, and never posts twice.
+    for landed in [false, true] {
+        let (root, r, m) = accepted_world();
+        r.lose_n.set(Some(4));
+        if !landed {
+            r.hide_n.set(Some(4));
+        }
+        let first = begin(root.path(), &m, start_of(&m), &r);
+        assert_eq!(first.is_ok(), landed);
+        let posts = r.posts();
+        let second = begin(root.path(), &m, start_of(&m), &r);
+        assert_eq!(second.is_ok(), landed);
+        assert_eq!(r.posts(), posts);
+        assert_eq!(check(&m, &r).unwrap()["started"], landed, "landed={landed}");
+    }
+}
+
+#[test]
+fn dispatch_start_refuses_before_ack_or_decision() {
+    use moai_cli::contract::Kind;
+    for case in ["no_ack", "ack_only", "deferred", "rejected"] {
+        let root = temp_root();
+        let r = Remote::new();
+        let m = packet();
+        send(root.path(), &m, &r).unwrap();
+        r.actor.set(22);
+        match case {
+            "no_ack" => {}
+            "ack_only" => {
+                message::ack_cli(
+                    root.path(),
+                    message::AckRequest {
+                        message: m.clone(),
+                        payload_digest: payload_digest(&m),
+                    },
+                    "decision:1",
+                    &r,
+                    &Time,
+                )
+                .unwrap();
+            }
+            kind => {
+                ack(root.path(), &m, answer(&m, kind), &r).unwrap();
+            }
+        }
+        let posts = r.posts();
+        let e = begin(root.path(), &m, start_of(&m), &r).unwrap_err();
+        assert_eq!(e.kind, Kind::Blocked, "{case}");
+        assert_eq!(r.posts(), posts, "{case}");
+        assert!(!outbox_has(root.path(), "d1-start"), "{case}");
+    }
+
+    // A superseded revision cannot be started; the new one has no ACK yet.
+    let (root, r, m) = accepted_world();
+    r.actor.set(11);
+    let v = check(&m, &r).unwrap();
+    let n = next(&m, &v);
+    send(root.path(), &n, &r).unwrap();
+    r.actor.set(22);
+    let posts = r.posts();
+    assert_eq!(
+        begin(root.path(), &m, start_of(&m), &r).unwrap_err().kind,
+        Kind::Blocked
+    );
+    assert_eq!(
+        begin(root.path(), &n, start_of(&n), &r).unwrap_err().kind,
+        Kind::Blocked
+    );
+    assert_eq!(r.posts(), posts);
+    // Even when the newer revision is accepted, the old one stays blocked.
+    ack(root.path(), &n, answer(&n, "accepted"), &r).unwrap();
+    let posts = r.posts();
+    assert_eq!(
+        begin(root.path(), &m, start_of(&m), &r).unwrap_err().kind,
+        Kind::Blocked
+    );
+    assert_eq!(r.posts(), posts);
+    assert!(!outbox_has(root.path(), "d1-start"));
+    assert_eq!(
+        begin(root.path(), &n, start_of(&n), &r).unwrap()["started"],
+        true
+    );
+
+    // A malformed or foreign start never reaches the provider.
+    let (root, r, m) = accepted_world();
+    for field in ["sender", "receiver", "digest", "event", "note"] {
+        let mut s = start_of(&m);
+        match field {
+            "sender" => s.sender = m.sender.clone(),
+            "receiver" => s.receiver = m.receiver.clone(),
+            "digest" => s.payload["dispatch_payload_digest"] = json!(digest(b"wrong")),
+            "event" => s.event = "dispatch-decision".into(),
+            _ => s.payload["note"] = json!(" "),
+        }
+        let sent = r.sent.borrow().len();
+        assert!(begin(root.path(), &m, s, &r).is_err(), "{field}");
+        assert_eq!(r.sent.borrow().len(), sent, "{field}");
+        assert!(!outbox_has(root.path(), "d1-start"), "{field}");
+    }
+
+    // A second, different start packet for the same dispatch is refused before any POST.
+    begin(root.path(), &m, start_of(&m), &r).unwrap();
+    let posts = r.posts();
+    let mut other = start_of(&m);
+    other.report_id = "d1-start-other".into();
+    other.payload["note"] = json!("a different packet");
+    assert_eq!(
+        begin(root.path(), &m, other, &r).unwrap_err().kind,
+        Kind::Conflict
+    );
+    assert_eq!(r.posts(), posts);
+    assert!(!outbox_has(root.path(), "d1-start-other"));
+}
+
+#[test]
+fn dispatch_start_requires_permission_reference() {
+    let (root, r, m) = accepted_world();
+    let sent = r.sent.borrow().len();
+    let too_long = "x".repeat(moai_cli::contract::PERMISSION_REFERENCE_MAX_BYTES + 1);
+    for permission in ["", " ", "null", "placeholder", "a\nb", too_long.as_str()] {
+        let result = dispatch::start_cli(
+            root.path(),
+            dispatch::StartRequest {
+                dispatch: m.clone(),
+                start: start_of(&m),
+            },
+            permission,
+            &r,
+            &Time,
+        );
+        assert_eq!(
+            result.unwrap_err().kind,
+            moai_cli::contract::Kind::PermissionReferenceMissing,
+            "{permission:?}"
+        );
+        assert_eq!(r.sent.borrow().len(), sent, "{permission:?}");
+    }
+    assert!(!outbox_has(root.path(), "d1-start"));
+    // The binary refuses the missing flag before it reads stdin or contacts anything.
+    #[cfg(unix)]
+    {
+        use std::process::{Command, Stdio};
+        let out = Command::new(crate::common::MOAI_BIN)
+            .args(["dispatch-start", "."])
+            .clean_env()
+            .env("HOME", root.path())
+            .current_dir(root.path())
+            .stdin(Stdio::null())
+            .output()
+            .unwrap();
+        assert!(!out.status.success());
+        assert!(String::from_utf8_lossy(&out.stderr).contains("--permission-reference"));
+    }
+}
+
 #[test]
 fn ack_alert_boundary_uses_the_shared_constant() {
     let n = dispatch::ACK_ALERT_SECS;

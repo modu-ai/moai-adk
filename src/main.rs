@@ -332,6 +332,15 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
     },
+    /// Record that an accepted dispatch has started
+    ///
+    /// Record the receiver's separate start packet for an accepted, current dispatch
+    /// revision (typed JSON stdin); not ownership, a claim or completion.
+    DispatchStart {
+        project: PathBuf,
+        #[arg(long)]
+        permission_reference: String,
+    },
     /// Check dispatch revisions and late acknowledgements
     ///
     /// Observe dispatch revisions, decisions and the five-minute ACK alert (GET only).
@@ -1184,6 +1193,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         LeaderTick { .. } => "leader.tick",
         DispatchRecord { .. } => "dispatch.record",
         DispatchAck { .. } => "dispatch.ack",
+        DispatchStart { .. } => "dispatch.start",
         DispatchCheck => "dispatch.check",
         MessageAck { .. } => "message.ack",
         MessageReconcile { .. } => "message.reconcile",
@@ -1365,6 +1375,16 @@ fn run_internal(
         } => moai_cli::dispatch::ack_cli(
             &project,
             input::<moai_cli::dispatch::AckRequest>()?,
+            &permission_reference,
+            &moai_cli::forge::transport::GhTransport::from_env()?,
+            &moai_cli::forge::policy::SystemClock,
+        ),
+        Command::DispatchStart {
+            project,
+            permission_reference,
+        } => moai_cli::dispatch::start_cli(
+            &project,
+            input::<moai_cli::dispatch::StartRequest>()?,
             &permission_reference,
             &moai_cli::forge::transport::GhTransport::from_env()?,
             &moai_cli::forge::policy::SystemClock,

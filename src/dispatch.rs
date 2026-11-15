@@ -30,6 +30,12 @@ pub struct AckRequest {
 }
 #[derive(Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
+pub struct StartRequest {
+    pub dispatch: Message,
+    pub start: Message,
+}
+#[derive(Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CheckRequest {
     pub dispatch: Message,
 }
@@ -492,6 +498,59 @@ pub fn record_cli<T: Transport, C: Clock>(
     check_cli(
         CheckRequest {
             dispatch: req.message,
+        },
+        t,
+        c,
+    )
+}
+pub fn start_cli<T: Transport, C: Clock>(
+    root: &Path,
+    mut req: StartRequest,
+    permission: &str,
+    t: &T,
+    c: &C,
+) -> Result<Value> {
+    message::permission_gate(permission)?;
+    let (_, digest) = dispatch(&mut req.dispatch)?;
+    start(&mut req.start, &req.dispatch, &digest)?;
+    let s = snapshot(&req.dispatch, t, c)?;
+    let v = view(&s, &req.dispatch, c.now())?;
+    if v["observation_current"] != true {
+        return Err(error(
+            Kind::Blocked,
+            "dispatch superseded or time unknown; start blocked",
+        ));
+    }
+    // The same rules the read side enforces: an ACK and an accepted decision come first. The
+    // snapshot refuses a decision without an ACK, so an observed decision implies one.
+    let a = s.assignments.last_key_value().unwrap().1;
+    let accepted = a
+        .decision
+        .as_ref()
+        .is_some_and(|d| d.message.payload["disposition"] == "accepted");
+    if !accepted {
+        return Err(error(
+            Kind::Blocked,
+            "dispatch not acknowledged and accepted; start blocked",
+        ));
+    }
+    if a.start.as_ref().is_some_and(|p| p.message != req.start) {
+        return Err(conflict());
+    }
+    // An observed start is recorded again without a new POST (S1 reconciles it); the first
+    // server time stays the start time.
+    message::record_cli(
+        root,
+        message::RecordRequest {
+            message: req.start.clone(),
+        },
+        permission,
+        t,
+        c,
+    )?;
+    check_cli(
+        CheckRequest {
+            dispatch: req.dispatch,
         },
         t,
         c,

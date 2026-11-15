@@ -14,7 +14,7 @@
 | `sync.*` | 없음 (RC1 미출하 — SYNC는 workflow 문서 절차) | `skills/moai/workflows/sync.md` 절차만; 상태 기계는 부록 1 |
 | `artifact.pin` | `plan.admit` `PinnedContract` + `update` rollback_manifest | artifact pin은 plan pin/manifest로 실현 |
 | `dispatch.*` | `forge-read`/`forge-report` + `effect-intend`/`effect-confirm`/`effects-reconcile` | dispatch는 forge 읽기·outbox effect 3-op로 분리 실현 |
-| 배정·수락 관측 (#2390 S2) | `dispatch-record` / `dispatch-ack` / `dispatch-check` (`dispatch.record`·`dispatch.ack`·`dispatch.check`) | S1 위의 revision·수신/수락 구분·5분 경보. C3는 관측까지 충족, 감사 claim 소비·게이트 연동 미충족(#2403/#2388 후속). 계약은 `docs/rust-product-path.md`의 S2 절 |
+| 배정·수락·착수 관측 (#2390 S2, #3067) | `dispatch-record` / `dispatch-ack` / `dispatch-start` / `dispatch-check` (`dispatch.record`·`dispatch.ack`·`dispatch.start`·`dispatch.check`) | S1 위의 revision·수신/수락/착수 구분·5분 경보. C3는 관측까지 충족, 감사 claim 소비·게이트 연동 미충족(#2403/#2388 후속). 계약은 `docs/rust-product-path.md`의 S2 절 |
 | 레인↔리더 영속 메시지 (#2390 S1) | `message-record` / `message-ack` / `message-reconcile` (`message.record`·`message.ack`·`message.reconcile`) | 로컬+Issue 기록과 명시 수신 ACK. `queued`·`received`·`received_ack`를 구분하며 dispatch 수락·소유권 이전·업무 완료는 아님. 입력/결과 계약은 `docs/rust-product-path.md`의 S1 절 |
 | 레인 통신 메타데이터 관측 (#2390 S6) | `lane-status` (`lane.status`)의 추가 `communication` 객체 | 기존 입력·출력 의미 유지. `available`, `observed_at`, `lanes`(세션별 `sent_reports`, `received_acks`, `unacknowledged_report_ids`, S2 `dispatches`), `errors: [{issue, reason}]`; payload 값은 노출하지 않음. 상세 필드는 `docs/rust-product-path.md`의 S6 절 |
 | — (문서 인터페이스명 없음) | `codex-projection-plan` (`codex.projection_plan`) | 대응 없음 — [83f] §6 host adapter projection을 측정하는 op이며 문서 인터페이스 어휘가 이를 이름으로 부르지 않는다 |
@@ -70,6 +70,7 @@ fixture·ground truth·baseline과 #2440 answer 선택 계약은 변경하지 �
 - `dispatch-ack`
 - `dispatch-check`
 - `dispatch-record`
+- `dispatch-start`
 - `effect-confirm`
 - `effect-intend`
 - `effects-reconcile`
