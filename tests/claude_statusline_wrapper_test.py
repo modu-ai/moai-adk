@@ -5,8 +5,13 @@ tools/claude-statusline.sh is the repository source of the design §4.1 script
 does (the file itself, through its shebang) in a temporary HOME whose name holds spaces and
 shell metacharacters, with an environment built from scratch. The real HOME, the installed
 moai-cli and the Go build are never run: the Rust and Go executables are fakes that record
-their argv, cwd and stdin. PATH starts with decoy `moai` and `moai-cli` executables that
-record a call too, so any PATH lookup of either name shows up as a decoy record.
+their argv, cwd and stdin. PATH starts with a decoy `moai` executable that records a call
+too, so any PATH lookup of the Go name shows up as a decoy record. The Rust name `moai-cli` is
+looked up on PATH last (#2871), and only a test that calls `path_cli()` puts one there.
+
+#2871 U3c: the install moves from `~/.moai-cli` to `~/.moai`. The wrapper tries
+`~/.moai/path/moai-cli`, then `~/.moai-cli/path/moai-cli`, then `moai-cli` on PATH, then the Go
+build; the cases below run it on the layout before the move, after it, and on both at once.
 """
 
 import pathlib
@@ -22,6 +27,7 @@ WRAPPER = REPO / "tools" / "claude-statusline.sh"
 DESIGN = REPO / "docs" / "2383-statusline-switch-design.md"
 
 RUST_REL = (".moai-cli", "path", "moai-cli")
+MOVED_REL = (".moai", "path", "moai-cli")
 GO_REL = ("go", "bin", "moai.old")
 # Not valid UTF-8, no trailing newline, a NUL byte and a line break: the wrapper must pass
 # the bytes through untouched (it never reads or re-serializes stdin).
@@ -48,9 +54,11 @@ class ClaudeStatuslineWrapperTest(unittest.TestCase):
         self.log = self.tmp / "calls.log"
         decoys = self.tmp / "decoy-bin"
         decoys.mkdir()
-        for name in ("moai", "moai-cli"):
-            self._fake(decoys / name, "decoy-" + name, 0)
-        self.env = {"HOME": str(self.home), "PATH": f"{decoys}:/usr/bin:/bin", "FAKE_LOG": str(self.log)}
+        self._fake(decoys / "moai", "decoy-moai", 0)
+        self.pathbin = self.tmp / "path-bin"
+        self.pathbin.mkdir()
+        self.env = {"HOME": str(self.home), "PATH": f"{self.pathbin}:{decoys}:/usr/bin:/bin",
+                    "FAKE_LOG": str(self.log)}
 
     def _fake(self, path, name, code, mode=0o755):
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -60,6 +68,12 @@ class ClaudeStatuslineWrapperTest(unittest.TestCase):
 
     def rust(self, code=0, mode=0o755):
         return self._fake(self.home.joinpath(*RUST_REL), "rust", code, mode)
+
+    def moved(self, name="rust", code=0, mode=0o755):
+        return self._fake(self.home.joinpath(*MOVED_REL), name, code, mode)
+
+    def path_cli(self, code=0, mode=0o755):
+        return self._fake(self.pathbin / "moai-cli", "pathcli", code, mode)
 
     def go(self, code=0, mode=0o755):
         return self._fake(self.home.joinpath(*GO_REL), "go", code, mode)
@@ -151,6 +165,130 @@ class ClaudeStatuslineWrapperTest(unittest.TestCase):
         self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"", b""))
         self.assertEqual(self.calls(), [])
 
+    # #2871 U3c: the layout after `home-install-apply` moved the install to ~/.moai.
+    def test_after_the_move_the_moved_cli_renders(self):
+        self.moved()
+        self.go()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-rust", b""))
+        self.assert_called_once("rust")
+
+    def test_after_the_move_the_installed_link_renders(self):
+        target = self._fake(self.home / ".moai" / "versions" / "v1" / "bin" / "moai-cli", "rust", 0)
+        link = self.home.joinpath(*MOVED_REL)
+        link.parent.mkdir(parents=True)
+        link.symlink_to(target)
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout), (0, b"out-rust"))
+        self.assert_called_once("rust")
+
+    def test_the_moved_cli_wins_when_both_layouts_exist(self):
+        self.rust()
+        self.moved(name="moved")
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout), (0, b"out-moved"))
+        self.assert_called_once("moved")
+
+    def test_a_directory_at_the_moved_path_falls_back_to_the_old_layout(self):
+        self.home.joinpath(*MOVED_REL).mkdir(parents=True)
+        self.rust()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-rust", b""))
+        self.assert_called_once("rust")
+
+    def test_a_non_executable_moved_cli_falls_back_to_the_old_layout(self):
+        self.moved(name="moved", mode=0o644)
+        self.rust()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout), (0, b"out-rust"))
+        self.assert_called_once("rust")
+
+    def test_a_failing_moved_cli_keeps_its_exit_code_and_nothing_else_runs(self):
+        self.moved(code=4)
+        self.rust(code=0)
+        self.go()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout), (4, b"out-rust"))
+        self.assert_called_once("rust")
+
+    # The name `moai-cli` on PATH is the third place; the Go name `moai` is never looked up.
+    def test_moai_cli_on_path_renders_when_no_home_layout_has_it(self):
+        self.path_cli()
+        self.go()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-pathcli", b""))
+        self.assert_called_once("pathcli")
+
+    def test_a_home_layout_wins_over_moai_cli_on_path(self):
+        self.path_cli()
+        self.moved()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout), (0, b"out-rust"))
+        self.assert_called_once("rust")
+
+    def test_the_old_layout_wins_over_moai_cli_on_path(self):
+        self.path_cli()
+        self.rust()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout), (0, b"out-rust"))
+        self.assert_called_once("rust")
+
+    def test_a_non_executable_moai_cli_on_path_falls_back_to_go(self):
+        self.path_cli(mode=0o644)
+        self.go()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-go", b""))
+        self.assert_called_once("go")
+
+    # #3008 audit B1: with `.` or an empty entry in PATH, `command -v moai-cli` answers the bare
+    # name, and the status line runs with the project folder as its cwd. A file named moai-cli
+    # that sits there must never be executed.
+    def _plant_in_cwd(self):
+        return self._fake(self.cwd / "moai-cli", "planted", 0)
+
+    def _path_with(self, entry_first):
+        base = self.env["PATH"]
+        self.env["PATH"] = f"{entry_first}{base}"
+
+    def test_a_dot_in_path_never_runs_a_file_from_the_current_folder(self):
+        self._plant_in_cwd()
+        self._path_with(".:")
+        self.go()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-go", b""))
+        self.assert_called_once("go")
+
+    def test_an_empty_path_entry_never_runs_a_file_from_the_current_folder(self):
+        self._plant_in_cwd()
+        self._path_with(":")
+        self.go()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-go", b""))
+        self.assert_called_once("go")
+
+    def test_a_trailing_empty_path_entry_never_runs_a_file_from_the_current_folder(self):
+        self._plant_in_cwd()
+        self.env["PATH"] = self.env["PATH"] + ":"
+        self.go()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-go", b""))
+        self.assert_called_once("go")
+
+    def test_a_real_moai_cli_before_a_dot_entry_in_path_still_wins(self):
+        self._plant_in_cwd()
+        self.env["PATH"] = self.env["PATH"] + ":."
+        self.path_cli()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout), (0, b"out-pathcli"))
+        self.assert_called_once("pathcli")
+
+    def test_a_directory_named_moai_cli_on_path_falls_back_to_go(self):
+        (self.pathbin / "moai-cli").mkdir()
+        self.go()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-go", b""))
+        self.assert_called_once("go")
+
     def test_the_go_env_file_is_never_sourced(self):
         # The Go wrapper sourced ~/.moai/.env.glm; design §4.1 drops it (no credentials in a render).
         env_file = self.home / ".moai" / ".env.glm"
@@ -167,11 +305,11 @@ class ClaudeStatuslineWrapperTest(unittest.TestCase):
         r = subprocess.run(["/bin/bash", "-n", str(WRAPPER)], capture_output=True, timeout=30)
         self.assertEqual((r.returncode, r.stderr), (0, b""))
 
-    def test_no_path_lookup_no_sourced_env_and_no_temporary_file(self):
+    def test_only_moai_cli_is_looked_up_on_path_no_sourced_env_and_no_temporary_file(self):
         lines = WRAPPER.read_text(encoding="utf-8").splitlines()
         code = [line for line in lines if not line.lstrip().startswith("#")]
         body = "\n".join(code)
-        self.assertNotIn("command -v", body)
+        self.assertEqual(re.findall(r"command -v ([\w-]+)", body), ["moai-cli"])
         self.assertNotIn("which ", body)
         self.assertNotRegex(body, r"(^|\s)(source|\.)\s", "the Go .env.glm source is dropped (design §4.1)")
         self.assertNotIn("mktemp", body)

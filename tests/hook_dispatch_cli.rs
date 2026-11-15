@@ -1659,6 +1659,7 @@ fn an_unusable_config_is_off_and_logged_once_with_its_reason() {
     let input = write_input(&outside.join("x.txt"), &root);
     let env = [("HOME", home.to_str().unwrap())];
     let path = home.join(".moai-cli/config");
+    let new_path = home.join(".moai-cli/hook-config.toml");
     let text = "[hooks.outside_project_writes]\nenabled = true\nallow = [\"~/.claude/\"]\n";
 
     assert_allow(&dispatch("tool-preflight", &root, &input, &env));
@@ -1704,10 +1705,12 @@ fn an_unusable_config_is_off_and_logged_once_with_its_reason() {
             }),
         ),
         (
+            // The new name as a folder is unusable; the old name `config` as a folder is the
+            // launcher folder and is no problem (a separate test, #2871).
             "not_regular_file",
             Box::new(|| {
                 fs::remove_file(&path).unwrap();
-                fs::create_dir(&path).unwrap();
+                fs::create_dir(&new_path).unwrap();
             }),
         ),
     ];
@@ -1716,7 +1719,7 @@ fn an_unusable_config_is_off_and_logged_once_with_its_reason() {
             "unreadable",
             Box::new(|| {
                 use std::os::unix::fs::PermissionsExt;
-                fs::remove_dir(&path).unwrap();
+                fs::remove_dir(&new_path).unwrap();
                 config(&home, text);
                 fs::set_permissions(&path, fs::Permissions::from_mode(0o000)).unwrap();
             }),
@@ -1749,6 +1752,60 @@ fn an_unusable_config_is_off_and_logged_once_with_its_reason() {
         assert!(!raw.contains("outside_project_writes"), "no text: {raw}");
     }
     assert!(!outside.exists(), "a hook never writes the file");
+}
+
+/// #2871 (decision 6887464608): the hook config is `hook-config.toml`; it wins over the older
+/// file name `config`, which is still read while it is a file.
+#[test]
+fn hook_config_toml_is_read_and_wins_over_the_older_name() {
+    let (_d, root) = repo("main");
+    let home = root.join("home");
+    let outside = root
+        .parent()
+        .unwrap()
+        .join(format!("moai-hcn-{}", std::process::id()));
+    let input = write_input(&outside.join("x.txt"), &root);
+    let env = [("HOME", home.to_str().unwrap())];
+    let on = "[hooks.outside_project_writes]\nenabled = true\nallow = [\"~/.claude/\"]\n";
+    let off = "[hooks.outside_project_writes]\nenabled = false\n";
+    fs::create_dir_all(home.join(".moai-cli")).unwrap();
+    fs::write(home.join(".moai-cli/hook-config.toml"), on).unwrap();
+    assert_deny(&dispatch("tool-preflight", &root, &input, &env));
+    // The old name says off, the new name says on: the new name wins.
+    config(&home, off);
+    assert_deny(&dispatch("tool-preflight", &root, &input, &env));
+    // The new name says off, the old name says on: still the new name.
+    fs::write(home.join(".moai-cli/hook-config.toml"), off).unwrap();
+    config(&home, on);
+    assert_allow(&dispatch("tool-preflight", &root, &input, &env));
+    assert!(config_errors(&root).is_empty());
+}
+
+/// #2871: the folder `config/` (`config/launcher.yaml`, both generations) is not a hook config
+/// and is no problem; without `hook-config.toml` the rules stay off and nothing is logged.
+#[test]
+fn a_config_folder_is_the_launcher_folder_and_no_problem() {
+    let (_d, root) = repo("main");
+    fs::create_dir(root.join(".moai-cli")).unwrap();
+    let home = root.join("home");
+    let outside = root
+        .parent()
+        .unwrap()
+        .join(format!("moai-hcf-{}", std::process::id()));
+    let input = write_input(&outside.join("x.txt"), &root);
+    let env = [("HOME", home.to_str().unwrap())];
+    fs::create_dir_all(home.join(".moai-cli/config")).unwrap();
+    fs::write(home.join(".moai-cli/config/launcher.yaml"), "{}").unwrap();
+    assert_allow(&dispatch("tool-preflight", &root, &input, &env));
+    assert!(config_errors(&root).is_empty(), "a folder is not a problem");
+    // The rules turn on through the new name next to the folder.
+    fs::write(
+        home.join(".moai-cli/hook-config.toml"),
+        "[hooks.outside_project_writes]\nenabled = true\nallow = [\"~/.claude/\"]\n",
+    )
+    .unwrap();
+    assert_deny(&dispatch("tool-preflight", &root, &input, &env));
+    assert!(config_errors(&root).is_empty());
 }
 
 // ---- #2633: the OMP adapter (an extension module calls hook-dispatch --host omp) ----

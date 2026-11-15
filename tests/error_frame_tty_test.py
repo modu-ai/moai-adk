@@ -16,6 +16,14 @@ from tests.self_audit_run import rust_bin
 
 ESC = re.compile(r"\x1b\[[0-9;]*m")
 
+# What a command that reads its JSON from stdin says when stdin is empty (`claim-verify .` with
+# no input). It was `invalid typed JSON input` before #2936 S-ERR (F14), which now keeps that
+# wording only for a document that is there but malformed.
+EMPTY_STDIN = (
+    "typed JSON input missing: this command reads its JSON from stdin and stdin was empty; "
+    "pipe the plan's apply.stdin into it"
+)
+
 
 def base_env(home, **extra):
     env = {"PATH": "/usr/bin:/bin", "HOME": home, "LANG": "en_US.UTF-8", "TERM": "xterm-256color"}
@@ -83,20 +91,20 @@ class ErrorFrameTty(unittest.TestCase):
         return base_env(self.home, **extra)
 
     def test_an_operation_error_is_framed_on_a_terminal_and_unchanged_on_a_pipe(self):
-        args = ["claim-verify", "."]  # empty stdin: `invalid typed JSON input`
+        args = ["claim-verify", "."]  # empty stdin: EMPTY_STDIN (#2936 S-ERR)
         code_p, out_p, err_p = piped(args, self.env(), self.home)
         self.assertEqual(code_p, 1)
-        self.assertEqual(err_p, "invalid typed JSON input\n")  # today's bytes
+        self.assertEqual(err_p, EMPTY_STDIN + "\n")  # today's bytes
         code_t, out_t, err_t = stderr_on_tty(args, self.env(), self.home)
         self.assertEqual(code_t, 1)
         self.assertEqual(out_t, out_p, "the envelope is byte-identical")
-        self.assertEqual(err_t, "\x1b[31merror:\x1b[0m invalid typed JSON input\n")
+        self.assertEqual(err_t, "\x1b[31merror:\x1b[0m " + EMPTY_STDIN + "\n")
 
     def test_plain_modes_draw_the_same_frame_without_escapes(self):
         args = ["claim-verify", "."]
         for extra in ({"NO_COLOR": "1"}, {"TERM": "dumb"}, {"COLUMNS": "60", "NO_COLOR": "1"}):
             _, _, err = stderr_on_tty(args, self.env(**extra), self.home)
-            self.assertEqual(err, "error: invalid typed JSON input\n", extra)
+            self.assertEqual(err, "error: " + EMPTY_STDIN + "\n", extra)
 
     def test_a_missing_argument_keeps_its_name_and_ends_with_the_next_step(self):
         args = ["project-plan"]
@@ -132,12 +140,12 @@ class ErrorFrameTty(unittest.TestCase):
             code, out, err = stderr_on_tty([*flag, *args], self.env(), self.home)
             self.assertEqual(code, 1, flag)
             self.assertEqual(out, out_auto, "the envelope is byte-identical")
-            self.assertEqual(err, "error: invalid typed JSON input\n", flag)
+            self.assertEqual(err, "error: " + EMPTY_STDIN + "\n", flag)
         for extra in ({"NO_COLOR": "1"}, {"TERM": "dumb"}):
             _, _, err = stderr_on_tty(["--color", "always", *args], self.env(**extra), self.home)
-            self.assertEqual(err, "\x1b[31merror:\x1b[0m invalid typed JSON input\n", extra)
+            self.assertEqual(err, "\x1b[31merror:\x1b[0m " + EMPTY_STDIN + "\n", extra)
         _, _, err = stderr_on_tty(["--color", "auto", *args], self.env(NO_COLOR="1"), self.home)
-        self.assertEqual(err, "error: invalid typed JSON input\n")
+        self.assertEqual(err, "error: " + EMPTY_STDIN + "\n")
 
     def test_the_color_flag_keeps_the_pipe_bytes(self):
         args = ["claim-verify", "."]

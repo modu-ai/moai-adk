@@ -170,7 +170,7 @@ fn has_token(line: &str, prefix: &str, min: usize, upper_digit_only: bool) -> bo
     })
 }
 
-fn secret_kind(line: &str) -> Option<&'static str> {
+pub(crate) fn secret_kind(line: &str) -> Option<&'static str> {
     let lower = line.to_ascii_lowercase();
     if lower.contains("-----begin") && lower.contains("private key") {
         return Some("private_key");
@@ -549,7 +549,7 @@ fn clone_found(found: &Found) -> Found {
 
 /// The read-only preview. Writes nothing.
 pub fn plan(project: &Path) -> Result<Value> {
-    let root = fs::canonicalize(project).map_err(|_| "project folder unavailable")?;
+    let root = fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
     plan_inner(&root).map(|i| i.json)
 }
 
@@ -647,7 +647,7 @@ pub fn apply(project: &Path, plan_digest: &str, permission: &str) -> Result<Valu
     if !crate::contract::permission_reference_ok(permission) {
         return Err("a permission reference is required; nothing was written".into());
     }
-    let root = fs::canonicalize(project).map_err(|_| "project folder unavailable")?;
+    let root = fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
     let inner = plan_inner(&root)?;
     if inner.json["plan_digest"].as_str() != Some(plan_digest) {
         return Err("stale or altered plan; re-preview required".into());

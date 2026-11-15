@@ -46,7 +46,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "0cad7cd9274381af7bff1df5f7c556e1c37d178b1c273e15754ed0e8ca736e25",
+      "sha256": "1699baaaefe62e3f14733a1c98cccc61c3733c3af873119ec41f73407624ce7e",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -82,7 +82,7 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "2008d5f96c361a4bf3aee4e1d3ee5e57a130f3b5b8fb158ec92747e8eaf08c86",
+      "sha256": "c5d7b39319da0dc50fac6047b0d6527be6df0e6bcab12d3c3bc0eff9120303a6",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
@@ -136,7 +136,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "4946a96ae1e85482e4df4a78f0089f2f92be2adb1d418921855628892e975a0e",
+      "sha256": "36833f7937c30d0bc86f3d530bed8b61f9a7cd99d69d9805a48fb491bf4f5d7e",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "0e34a50c9d0991be5ce7ba1e32953b18bc52c086b0499b454e033649384a7460",
+      "sha256": "100c1996bd166ad2bd54936ea7814d941982da924a1cc034bb41f5f8a1447e69",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
@@ -235,7 +235,7 @@
       }
     },
     "references/adapters/orca.md": {
-      "sha256": "dfbe4a30c856f49d8b5e6ec525c0ff1698122084f0aa22c6d4031328d1e91af0",
+      "sha256": "6a14ad7746e536ff433a6c77029b63a9c25000f949f71bc52bc19185b40a27ba",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-orca",

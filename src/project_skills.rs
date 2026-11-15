@@ -275,21 +275,33 @@ pub fn project_skill_plan(req: &ProjectSkillRequest) -> Result<ProjectSkillPlan>
         .project_root
         .canonicalize()
         .map_err(|_| "project directory unavailable".to_string())?;
-    let bound = serde_json::to_vec(&json!({
-        "project": root.to_str().ok_or("non UTF-8 project path")?,
-        "package_digest": staged.digest,
-        "entries": entries,
-        "warnings": warnings,
-    }))
-    .map_err(|_| "encode failed".to_string())?;
+    let plan_digest = plan_digest_of(&root, &staged.digest, &entries, &warnings)?;
     Ok(ProjectSkillPlan {
         protocol_version: PROJECT_SKILL_SCHEMA_VERSION,
         opt_in: req.opt_in,
         package_digest: staged.digest,
         entries,
         warnings,
-        plan_digest: crate::digest(&bound),
+        plan_digest,
     })
+}
+
+/// What a plan digest binds: the canonical project path, the package digest, every entry in
+/// full and the warnings.
+fn plan_digest_of(
+    root: &Path,
+    package_digest: &str,
+    entries: &[ProjectSkillEntry],
+    warnings: &[String],
+) -> Result<String> {
+    let bound = serde_json::to_vec(&json!({
+        "project": root.to_str().ok_or("non UTF-8 project path")?,
+        "package_digest": package_digest,
+        "entries": entries,
+        "warnings": warnings,
+    }))
+    .map_err(|_| "encode failed".to_string())?;
+    Ok(crate::digest(&bound))
 }
 
 /// [`project_skill_apply`] of a previewed plan (#2936 R9 S5c): a permission reference is
@@ -301,24 +313,43 @@ pub fn project_skill_apply_confirmed(
     plan_digest: &str,
     permission: &str,
 ) -> Result<ProjectSkillApplyReceipt> {
+    confirmed_apply(req, plan_digest, permission, &|| {}, &|_| {})
+}
+
+/// [`project_skill_apply_confirmed`] with two seams for the tests: `between_plans` runs after
+/// the digest check and before the apply plans again; `before_copy` runs before each host's copy.
+fn confirmed_apply(
+    req: &ProjectSkillRequest,
+    plan_digest: &str,
+    permission: &str,
+    between_plans: &dyn Fn(),
+    before_copy: &dyn Fn(&str),
+) -> Result<ProjectSkillApplyReceipt> {
     if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
     if !req.opt_in {
         return Err(opt_in_error());
     }
-    if project_skill_plan(req)?.plan_digest != plan_digest {
+    let confirmed = project_skill_plan(req)?;
+    if confirmed.plan_digest != plan_digest {
         return Err("stale or altered plan; re-preview required".into());
     }
-    project_skill_apply(req)
+    // The apply plans again; the plan it confirmed goes down with it, so a package or a project
+    // that changed between the two plans is refused before anything is written (#3002 audit B1).
+    between_plans();
+    apply_core(req, Some(&confirmed), before_copy)
 }
 
 /// Copies the staged skill tree into `dest` with the same refusals the
 /// digest applies (symlink/special/size), through a temp directory and an
 /// atomic rename: the destination is replaced whole or not at all. The
 /// destination must not exist when called (the caller decides create vs
-/// replace). Returns the number of files copied.
-fn copy_tree_into_vacant(src: &Path, dest: &Path) -> Result<usize> {
+/// replace). The copied tree must hash to `expected` (the digest the plan
+/// bound) before it is renamed into place: a source that changed after the
+/// preview is a stale plan, and nothing reaches `dest` (#2936 R9 S5c2).
+/// Returns the number of files copied.
+fn copy_tree_into_vacant(src: &Path, dest: &Path, expected: &str) -> Result<usize> {
     let parent = dest.parent().ok_or("destination parent unavailable")?;
     fs::create_dir_all(parent).map_err(|_| "destination directory unavailable".to_string())?;
     let nanos = std::time::SystemTime::now()
@@ -335,6 +366,10 @@ fn copy_tree_into_vacant(src: &Path, dest: &Path) -> Result<usize> {
     if let Err(e) = copy_result {
         let _ = fs::remove_dir_all(&temp);
         return Err(e);
+    }
+    if !matches!(crate::package_digest(&temp), Ok(d) if d == expected) {
+        let _ = fs::remove_dir_all(&temp);
+        return Err("stale or altered plan; re-preview required".into());
     }
     match fs::rename(&temp, dest) {
         Ok(()) => Ok(count),
@@ -442,12 +477,29 @@ fn own_copy_digests(project_root: &Path, host: &str) -> Vec<String> {
 /// `replace`) and persists the rollback receipt under
 /// `<project>/.moai-cli/project-skill-rollback/<request_id>/receipt.json`.
 pub fn project_skill_apply(req: &ProjectSkillRequest) -> Result<ProjectSkillApplyReceipt> {
+    apply_core(req, None, &|_| {})
+}
+
+/// The apply. `confirmed` is the plan a caller already checked its digest against: this
+/// function's own plan must be the same plan, and the package the copies are hashed against is
+/// that plan's. `before_copy` runs before each host's copy, with the host's name, once the
+/// package is staged (a seam for the tests: a package that changes at that point).
+fn apply_core(
+    req: &ProjectSkillRequest,
+    confirmed: Option<&ProjectSkillPlan>,
+    before_copy: &dyn Fn(&str),
+) -> Result<ProjectSkillApplyReceipt> {
     if !req.opt_in {
         // REQ-I5-01: the default is off — refuse before any write.
         return Err(opt_in_error());
     }
     validate(req)?;
     let plan = project_skill_plan(req)?;
+    if let Some(c) = confirmed {
+        if plan.plan_digest != c.plan_digest || plan.package_digest != c.package_digest {
+            return Err("stale or altered plan; re-preview required".into());
+        }
+    }
     // Decision row 22: a plan with any blocked host is refused whole, before any write
     // (the rollback directory included).
     if let Some(blocked) = plan.entries.iter().find(|e| e.action == "blocked") {
@@ -462,12 +514,18 @@ pub fn project_skill_apply(req: &ProjectSkillRequest) -> Result<ProjectSkillAppl
         .canonicalize()
         .map_err(|_| "project directory unavailable".to_string())?;
     let staged = crate::update::stage_package(&req.source_dir)?;
+    // The plan above read the package once and this staging reads it again; a package that
+    // changed between the two is a stale plan, refused before the rollback folder exists.
+    if staged.digest != plan.package_digest {
+        return Err("stale or altered plan; re-preview required".into());
+    }
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_nanos())
         .unwrap_or(0);
     let request_id = format!("project-skill-{}-{nanos}", &staged.digest[..12]);
     let rollback_dir = rollback_root(&root).join(&request_id);
+    let rollback_made = missing_dirs(&root, &rollback_dir);
     fs::create_dir_all(&rollback_dir).map_err(|_| "rollback directory unavailable".to_string())?;
 
     let mut applied: Vec<AppliedCopy> = Vec::new();
@@ -518,31 +576,42 @@ pub fn project_skill_apply(req: &ProjectSkillRequest) -> Result<ProjectSkillAppl
                     files_copied: 0,
                 });
             }
-            "create" => match copy_tree_into_vacant(&req.source_dir, &dest) {
-                Ok(count) => {
-                    applied.push(AppliedCopy {
-                        host: entry.host.clone(),
-                        path: format!("{folder}/{}", crate::update::SKILL_DIR),
-                        action: "create".into(),
-                        before_sha256: None,
-                        after_sha256: Some(staged.digest.clone()),
-                        backup_dir: None,
-                        files_copied: count,
-                    });
+            "create" => {
+                before_copy(&entry.host);
+                let host_made = dest
+                    .parent()
+                    .map(|p| missing_dirs(&root, p))
+                    .unwrap_or_default();
+                match copy_tree_into_vacant(&req.source_dir, &dest, &plan.package_digest) {
+                    Ok(count) => {
+                        applied.push(AppliedCopy {
+                            host: entry.host.clone(),
+                            path: format!("{folder}/{}", crate::update::SKILL_DIR),
+                            action: "create".into(),
+                            before_sha256: None,
+                            after_sha256: Some(staged.digest.clone()),
+                            backup_dir: None,
+                            files_copied: count,
+                        });
+                    }
+                    Err(e) => {
+                        if is_stale(&e) && nothing_landed(&applied) {
+                            take_back(&rollback_dir, &rollback_made, &host_made);
+                            return Err(e);
+                        }
+                        applied.push(AppliedCopy {
+                            host: entry.host.clone(),
+                            path: format!("{folder}/{}", crate::update::SKILL_DIR),
+                            action: "create".into(),
+                            before_sha256: None,
+                            after_sha256: None,
+                            backup_dir: None,
+                            files_copied: 0,
+                        });
+                        return Err(step_failed(&applied, &rollback_dir, &entry.host, &e));
+                    }
                 }
-                Err(e) => {
-                    applied.push(AppliedCopy {
-                        host: entry.host.clone(),
-                        path: format!("{folder}/{}", crate::update::SKILL_DIR),
-                        action: "create".into(),
-                        before_sha256: None,
-                        after_sha256: None,
-                        backup_dir: None,
-                        files_copied: 0,
-                    });
-                    return Err(step_failed(&applied, &rollback_dir, &entry.host, &e));
-                }
-            },
+            }
             "replace" => {
                 // replace: keep the before bytes for revert, move the old tree
                 // aside atomically, then rename the staged tree in.
@@ -560,12 +629,13 @@ pub fn project_skill_apply(req: &ProjectSkillRequest) -> Result<ProjectSkillAppl
                         &format!("rollback backup failed: {e}"),
                     ));
                 }
+                before_copy(&entry.host);
                 let replaced_dir = rollback_dir.join(format!("replaced/{folder}"));
                 fs::create_dir_all(replaced_dir.parent().expect("replaced parent"))
                     .map_err(|_| "rollback replaced directory unavailable".to_string())?;
                 fs::rename(&dest, &replaced_dir)
                     .map_err(|_| "existing skill directory move failed".to_string())?;
-                match copy_tree_into_vacant(&req.source_dir, &dest) {
+                match copy_tree_into_vacant(&req.source_dir, &dest, &plan.package_digest) {
                     Ok(count) => {
                         applied.push(AppliedCopy {
                             host: entry.host.clone(),
@@ -581,6 +651,10 @@ pub fn project_skill_apply(req: &ProjectSkillRequest) -> Result<ProjectSkillAppl
                         // Roll the move back: the old tree returns to its place.
                         let _ = fs::remove_dir_all(&dest);
                         let _ = fs::rename(&replaced_dir, &dest);
+                        if is_stale(&e) && nothing_landed(&applied) {
+                            take_back(&rollback_dir, &rollback_made, &[]);
+                            return Err(e);
+                        }
                         return Err(step_failed(&applied, &rollback_dir, &entry.host, &e));
                     }
                 }
@@ -607,6 +681,39 @@ pub fn project_skill_apply(req: &ProjectSkillRequest) -> Result<ProjectSkillAppl
     let bytes = serde_json::to_vec_pretty(&receipt).map_err(|_| "encode failed".to_string())?;
     fs::write(&receipt_path, bytes).map_err(|_| "receipt write failed".to_string())?;
     Ok(receipt)
+}
+
+fn is_stale(error: &str) -> bool {
+    error.starts_with("stale or altered plan")
+}
+
+/// Nothing of this apply is in the project yet: no earlier host was created or replaced.
+fn nothing_landed(applied: &[AppliedCopy]) -> bool {
+    applied.iter().all(|a| a.action == "unchanged")
+}
+
+/// The folders on the way to `dir` below `root` that do not exist yet, deepest first: what a
+/// `create_dir_all` of `dir` would make.
+fn missing_dirs(root: &Path, dir: &Path) -> Vec<PathBuf> {
+    let mut made = Vec::new();
+    let mut at = dir.to_path_buf();
+    while at != root && at.starts_with(root) && fs::symlink_metadata(&at).is_err() {
+        made.push(at.clone());
+        if !at.pop() {
+            break;
+        }
+    }
+    made
+}
+
+/// Takes back what an apply made when it stops before any copy landed (a stale plan found
+/// while copying): its rollback folder and the empty folders it made on the way. A folder that
+/// holds anything else stays (`remove_dir` refuses it).
+fn take_back(rollback_dir: &Path, rollback_made: &[PathBuf], host_made: &[PathBuf]) {
+    let _ = fs::remove_dir_all(rollback_dir);
+    for dir in rollback_made.iter().chain(host_made) {
+        let _ = fs::remove_dir(dir);
+    }
 }
 
 /// `project-skill-revert` (#2242 AC-1 revert): restores what one apply
@@ -733,6 +840,264 @@ mod tests {
         )
         .unwrap();
         fs::write(dir.join("references/a.md"), b"a").unwrap();
+    }
+
+    /// #2998 audit follow-up 2: the copy checks the bytes it wrote against the digest the plan
+    /// bound. A source that changes after the preview is never renamed into place, and no
+    /// temporary folder is left behind.
+    #[test]
+    fn a_source_that_changed_after_its_digest_is_not_copied() {
+        let t = tempfile::tempdir().unwrap();
+        let (src, dest) = (
+            t.path().join("src"),
+            t.path().join("out/.agents/skills/moai"),
+        );
+        write_source(&src);
+        let digest = crate::package_digest(&src).unwrap();
+        // The same bytes copy.
+        assert_eq!(copy_tree_into_vacant(&src, &dest, &digest).unwrap(), 2);
+        fs::remove_dir_all(&dest).unwrap();
+        // Another byte after the digest was taken does not.
+        fs::write(src.join("references/a.md"), b"changed").unwrap();
+        let err = copy_tree_into_vacant(&src, &dest, &digest).unwrap_err();
+        assert!(err.contains("stale or altered plan"), "{err}");
+        assert!(!dest.exists());
+        let left: Vec<_> = fs::read_dir(dest.parent().unwrap()).unwrap().collect();
+        assert!(left.is_empty(), "a temporary folder stayed: {left:?}");
+    }
+
+    fn no_hook(_host: &str) {}
+
+    /// #3002 audit B1: the confirmed apply plans twice (the digest check, then the apply's own
+    /// plan). The digest it confirmed must reach the second plan, so a package that changed
+    /// between the two is refused before anything is written.
+    #[test]
+    fn a_package_that_changed_between_the_two_plans_is_not_applied() {
+        let project = tempfile::TempDir::new().unwrap();
+        let source = tempfile::TempDir::new().unwrap();
+        write_source(source.path());
+        let req = request(project.path(), None, source.path(), true);
+        let confirmed = project_skill_plan(&req).unwrap();
+        fs::write(source.path().join("references/a.md"), b"another byte").unwrap();
+        let err = apply_core(&req, Some(&confirmed), &no_hook).unwrap_err();
+        assert_eq!(
+            crate::contract::classify(&err),
+            crate::contract::Kind::StalePlan,
+            "{err}"
+        );
+        assert!(
+            fs::read_dir(project.path()).unwrap().next().is_none(),
+            "something was written"
+        );
+        // The old call, which confirms nothing, plans for itself and applies.
+        assert!(apply_core(&req, None, &no_hook).is_ok());
+    }
+
+    /// A project folder that appeared after the preview changes the plan; the confirmed apply
+    /// calls that a stale plan (not a blocked copy) and leaves the folder as it is.
+    #[test]
+    fn a_project_folder_that_appeared_after_the_preview_is_a_stale_plan() {
+        let project = tempfile::TempDir::new().unwrap();
+        let source = tempfile::TempDir::new().unwrap();
+        write_source(source.path());
+        let req = request(project.path(), None, source.path(), true);
+        let confirmed = project_skill_plan(&req).unwrap();
+        let mine = project.path().join(".claude/skills/moai");
+        fs::create_dir_all(&mine).unwrap();
+        fs::write(mine.join("SKILL.md"), b"mine").unwrap();
+        let err = apply_core(&req, Some(&confirmed), &no_hook).unwrap_err();
+        assert_eq!(
+            crate::contract::classify(&err),
+            crate::contract::Kind::StalePlan,
+            "{err}"
+        );
+        assert_eq!(fs::read(mine.join("SKILL.md")).unwrap(), b"mine");
+        assert!(!crate::state_root::path(project.path(), "").exists());
+    }
+
+    /// A package that changes after the apply staged it is refused when the copy is hashed. With
+    /// nothing landed yet this is a plain stale plan, and the folders this apply made (the
+    /// rollback folder and the host's skill folder) are gone again.
+    #[test]
+    fn a_copy_that_fails_its_hash_with_nothing_landed_leaves_nothing_behind() {
+        let project = tempfile::TempDir::new().unwrap();
+        let source = tempfile::TempDir::new().unwrap();
+        write_source(source.path());
+        let req = request(project.path(), None, source.path(), true);
+        let altered =
+            |_host: &str| fs::write(source.path().join("references/a.md"), b"late").unwrap();
+        let err = apply_core(&req, None, &altered).unwrap_err();
+        assert_eq!(
+            crate::contract::classify(&err),
+            crate::contract::Kind::StalePlan,
+            "{err}"
+        );
+        assert!(
+            fs::read_dir(project.path()).unwrap().next().is_none(),
+            "left behind: {:?}",
+            fs::read_dir(project.path()).unwrap().collect::<Vec<_>>()
+        );
+    }
+
+    /// The same, for a host folder that already holds this tool's copy: the old tree comes back
+    /// byte for byte and the rollback folder is removed.
+    #[test]
+    fn a_failed_replace_with_nothing_landed_restores_the_folder_and_leaves_no_rollback() {
+        let project = tempfile::TempDir::new().unwrap();
+        let source = tempfile::TempDir::new().unwrap();
+        write_source(source.path());
+        let req = request(project.path(), None, source.path(), true);
+        apply_core(&req, None, &no_hook).unwrap();
+        fs::write(source.path().join("references/a.md"), b"v2").unwrap();
+        let mine = project.path().join(".claude/skills/moai");
+        let before = fs::read(mine.join("references/a.md")).unwrap();
+        let rollbacks = |p: &Path| {
+            fs::read_dir(crate::state_root::path(p, "project-skill-rollback"))
+                .unwrap()
+                .count()
+        };
+        assert_eq!(rollbacks(project.path()), 1);
+        let altered =
+            |_host: &str| fs::write(source.path().join("references/a.md"), b"v3").unwrap();
+        let err = apply_core(&req, None, &altered).unwrap_err();
+        assert_eq!(
+            crate::contract::classify(&err),
+            crate::contract::Kind::StalePlan,
+            "{err}"
+        );
+        assert_eq!(fs::read(mine.join("references/a.md")).unwrap(), before);
+        assert_eq!(
+            rollbacks(project.path()),
+            1,
+            "the failed apply left a rollback folder"
+        );
+    }
+
+    /// The confirmed call hands its plan to the apply: a package that changes between the digest
+    /// check and the apply's own plan is refused, and nothing is written.
+    #[test]
+    fn the_confirmed_call_refuses_a_package_changed_between_its_two_plans() {
+        let project = tempfile::TempDir::new().unwrap();
+        let source = tempfile::TempDir::new().unwrap();
+        write_source(source.path());
+        let req = request(project.path(), None, source.path(), true);
+        let digest = project_skill_plan(&req).unwrap().plan_digest;
+        let change = || fs::write(source.path().join("references/a.md"), b"between").unwrap();
+        let err = confirmed_apply(&req, &digest, "test:ref", &change, &no_hook).unwrap_err();
+        assert_eq!(
+            crate::contract::classify(&err),
+            crate::contract::Kind::StalePlan,
+            "{err}"
+        );
+        assert!(
+            fs::read_dir(project.path()).unwrap().next().is_none(),
+            "something was written"
+        );
+        // Nothing changed in between: the same call applies.
+        let digest = project_skill_plan(&req).unwrap().plan_digest;
+        assert!(confirmed_apply(&req, &digest, "test:ref", &|| {}, &no_hook).is_ok());
+    }
+
+    /// A stale plan found while copying the second host, after the first host landed, is still a
+    /// partial apply with a receipt: what landed stays reported and revertable.
+    #[test]
+    fn a_stale_copy_after_an_earlier_host_landed_is_a_partial_apply() {
+        let project = tempfile::TempDir::new().unwrap();
+        let source = tempfile::TempDir::new().unwrap();
+        write_source(source.path());
+        let mut req = request(project.path(), None, source.path(), true);
+        req.hosts = vec!["claude".into(), "codex".into()];
+        let late = |host: &str| {
+            if host == "codex" {
+                fs::write(source.path().join("references/a.md"), b"late").unwrap();
+            }
+        };
+        let err = apply_core(&req, None, &late).unwrap_err();
+        assert_eq!(
+            crate::contract::classify(&err),
+            crate::contract::Kind::Partial,
+            "{err}"
+        );
+        assert!(project
+            .path()
+            .join(".claude/skills/moai/SKILL.md")
+            .is_file());
+        assert!(!project.path().join(".agents/skills/moai").exists());
+        let receipts: Vec<_> = fs::read_dir(crate::state_root::path(
+            project.path(),
+            "project-skill-rollback",
+        ))
+        .unwrap()
+        .collect();
+        assert_eq!(receipts.len(), 1, "{receipts:?}");
+    }
+
+    /// Taking back what a refused apply made never removes a folder that was there before it.
+    #[test]
+    fn a_refused_copy_keeps_the_empty_folders_the_project_already_had() {
+        let project = tempfile::TempDir::new().unwrap();
+        let source = tempfile::TempDir::new().unwrap();
+        write_source(source.path());
+        let req = request(project.path(), None, source.path(), true);
+        fs::create_dir_all(project.path().join(".claude/skills")).unwrap();
+        fs::create_dir_all(crate::state_root::path(project.path(), "")).unwrap();
+        let altered =
+            |_host: &str| fs::write(source.path().join("references/a.md"), b"late").unwrap();
+        assert!(apply_core(&req, None, &altered).is_err());
+        assert!(project.path().join(".claude/skills").is_dir());
+        assert!(crate::state_root::path(project.path(), "").is_dir());
+        assert!(!project.path().join(".claude/skills/moai").exists());
+        assert!(!crate::state_root::path(project.path(), "project-skill-rollback").exists());
+    }
+
+    /// #3002 audit B3 (mutants M13, M14, M27): the plan digest binds the project, the package,
+    /// every entry in full and the warnings.
+    #[test]
+    fn the_plan_digest_binds_project_package_entries_and_warnings() {
+        let entry = |action: &str| ProjectSkillEntry {
+            host: "claude".into(),
+            path: ".claude/skills/moai".into(),
+            action: action.into(),
+            blocked_reason: None,
+            source_sha256: "sha256:p".into(),
+            current_sha256: None,
+            home_sha256: None,
+            duplicated_with_home: false,
+            reading_order_note: String::new(),
+        };
+        let digest =
+            |project: &str, package: &str, entries: &[ProjectSkillEntry], warnings: &[String]| {
+                plan_digest_of(Path::new(project), package, entries, warnings).unwrap()
+            };
+        let base = digest("/p", "sha256:p", &[entry("create")], &[]);
+        assert_eq!(base, digest("/p", "sha256:p", &[entry("create")], &[]));
+        assert_ne!(
+            base,
+            digest("/q", "sha256:p", &[entry("create")], &[]),
+            "project"
+        );
+        assert_ne!(
+            base,
+            digest("/p", "sha256:q", &[entry("create")], &[]),
+            "package"
+        );
+        assert_ne!(
+            base,
+            digest("/p", "sha256:p", &[entry("replace")], &[]),
+            "entry action"
+        );
+        let mut other = entry("create");
+        other.current_sha256 = Some("sha256:c".into());
+        assert_ne!(
+            base,
+            digest("/p", "sha256:p", &[other], &[]),
+            "entry digest"
+        );
+        assert_ne!(
+            base,
+            digest("/p", "sha256:p", &[entry("create")], &["w".into()]),
+            "warnings"
+        );
     }
 
     #[test]

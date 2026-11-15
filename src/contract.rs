@@ -11,6 +11,26 @@ use serde_json::{json, Value};
 
 pub const PROTOCOL_VERSION: u32 = 1;
 
+/// The error for a `<project>` argument that cannot be opened (#2936 S-ERR, F12). The old
+/// "project folder unavailable" did not say that the argument is a folder path and not a project
+/// id, and was `io` (retryable); the phrase below is `not_found` (resending cannot help).
+pub const PROJECT_PATH_UNAVAILABLE: &str =
+    "project directory unavailable: <project> must be the folder path of an existing project, not an id";
+
+/// The error for a command that reads its JSON from stdin when none came (#2936 S-ERR, F14).
+/// A malformed document keeps "invalid typed JSON input".
+pub const STDIN_JSON_MISSING: &str =
+    "typed JSON input missing: this command reads its JSON from stdin and stdin was empty; pipe the plan's apply.stdin into it";
+
+/// Parses the typed JSON a command read from stdin: nothing but whitespace is
+/// [`STDIN_JSON_MISSING`], any other bytes that do not parse are "invalid typed JSON input".
+pub fn typed_json<T: serde::de::DeserializeOwned>(bytes: &[u8]) -> Result<T, String> {
+    if bytes.iter().all(u8::is_ascii_whitespace) {
+        return Err(STDIN_JSON_MISSING.into());
+    }
+    serde_json::from_slice(bytes).map_err(|_| "invalid typed JSON input".into())
+}
+
 /// Longest permission reference, in bytes, that a write operation accepts.
 pub const PERMISSION_REFERENCE_MAX_BYTES: usize = 128;
 
@@ -326,6 +346,35 @@ mod tests {
         assert_eq!(copies.len(), 1, "{copies:?}");
         assert!(copies[0].0.ends_with("src/contract.rs"), "{copies:?}");
         assert_eq!(copies[0].1, 1, "{copies:?}");
+    }
+
+    /// #2936 S-ERR (F12, F14): a project folder that cannot be opened is `not_found` and says
+    /// that `<project>` is a folder path; an empty stdin is `invalid_input` and says how to give
+    /// the JSON, while a malformed one keeps the old wording.
+    #[test]
+    fn the_path_and_stdin_messages_tell_what_to_pass() {
+        assert_eq!(classify(PROJECT_PATH_UNAVAILABLE), Kind::NotFound);
+        assert!(PROJECT_PATH_UNAVAILABLE.contains("folder path"));
+        assert!(!PROJECT_PATH_UNAVAILABLE.contains("project folder unavailable"));
+        assert_eq!(classify(STDIN_JSON_MISSING), Kind::InvalidInput);
+        assert!(STDIN_JSON_MISSING.contains("stdin"));
+        assert_eq!(classify("invalid typed JSON input"), Kind::InvalidInput);
+        assert!(!Kind::NotFound.retryable());
+        assert!(!Kind::InvalidInput.retryable());
+
+        let parse = |s: &str| typed_json::<Value>(s.as_bytes());
+        for empty in ["", " ", "\n", " \r\n\t "] {
+            assert_eq!(parse(empty).unwrap_err(), STDIN_JSON_MISSING, "{empty:?}");
+        }
+        for broken in ["{", "x", "{\"a\":", "\u{a0}"] {
+            assert_eq!(
+                parse(broken).unwrap_err(),
+                "invalid typed JSON input",
+                "{broken:?}"
+            );
+        }
+        assert_eq!(parse(" {\"a\":1}\n").unwrap(), json!({"a": 1}));
+        assert_eq!(parse("null").unwrap(), Value::Null);
     }
 
     #[test]

@@ -436,7 +436,8 @@ fn one_blocked_step() {
 fn owned_settings_kept() {
     let fx = Fx::new();
     fx.with_profile(false);
-    let desired = br#"{"outputStyle":"Explanatory"}"#;
+    // #2936 R8: a project without a status line gets MoAI's, so the owned keys include one.
+    let desired = br#"{"outputStyle":"Explanatory","statusLine":{"type":"command","command":"moai-cli statusline"}}"#;
     let plan = fx.call(&["claude-settings-plan", fx.p()], desired);
     let digest = plan["plan_digest"].as_str().unwrap().to_string();
     fx.call(
@@ -457,6 +458,27 @@ fn owned_settings_kept() {
     assert_eq!(
         fs::read(fx.root.join(".claude/settings.json")).unwrap(),
         settings_before
+    );
+}
+
+/// #2936 R8 (F3): a settings file whose keys are all the user's is left alone, and the step says
+/// that MoAI owns nothing there instead of calling the owned keys "current".
+#[test]
+fn a_settings_file_with_only_the_users_keys_says_moai_owns_none() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    fs::create_dir_all(fx.root.join(".claude")).unwrap();
+    let own = br#"{"statusLine":{"type":"command","command":"my-status"}}"#;
+    fs::write(fx.root.join(".claude/settings.json"), own).unwrap();
+    let plan = fx.plan();
+    let settings = step(&plan, "claude-settings");
+    assert_eq!(settings["state"], "unchanged", "{settings}");
+    let reason = settings["reason"].as_str().unwrap();
+    assert!(reason.contains("owns no key"), "{reason}");
+    assert!(!reason.contains("are current"), "{reason}");
+    assert_eq!(
+        fs::read(fx.root.join(".claude/settings.json")).unwrap(),
+        own
     );
 }
 
@@ -499,6 +521,55 @@ fn backup_phase_first() {
             "{name}: {again}"
         );
     }
+}
+
+/// AC-20 (#2936 S1c-1): the backup phase's own text no longer says `.codex` is not covered, and
+/// its go-state step shows how many `.codex` items fall in each class. Nothing moves yet.
+#[test]
+fn backup_step_counts_codex_classes_and_does_not_call_codex_uncovered() {
+    let fx = Fx::new();
+    fx.go_project();
+    let manifest: Value =
+        serde_json::from_slice(&fs::read(fx.root.join(".moai/manifest.json")).unwrap()).unwrap();
+    let mut files = manifest["files"].as_object().unwrap().clone();
+    let agent = "name = \"expert\"\n";
+    let hooks = "{\"hooks\":{}}\n";
+    fx.write(".codex/agents/moai/expert.toml", agent);
+    fx.write(".codex/hooks.json", hooks);
+    let h = format!("{:x}", Sha256::digest(agent.as_bytes()));
+    files.insert(
+        ".codex/agents/moai/expert.toml".into(),
+        json!({"provenance": "template_managed", "template_hash": format!("sha256:{h}"),
+               "deployed_hash": format!("sha256:{h}"), "current_hash": format!("sha256:{h}")}),
+    );
+    // The wiring records a bare hex hash.
+    let bare = format!("{:x}", Sha256::digest(hooks.as_bytes()));
+    files.insert(
+        ".codex/hooks.json".into(),
+        json!({"provenance": "generated_managed", "template_hash": "",
+               "deployed_hash": bare, "current_hash": bare,
+               "parts": [{"kind": "whole-file", "origin": "created"}]}),
+    );
+    fx.write(
+        ".moai/manifest.json",
+        &json!({"version": "v3.2.1-rc.6", "deployed_at": "2026-11-01T00:00:00Z", "files": files})
+            .to_string(),
+    );
+    let plan = fx.plan();
+    let go = step(&plan, "go-state");
+    // `.claude/workflows/w.md` of the fixture is the first tool asset, the agent file the second.
+    assert_eq!(go["preview"]["classes"]["tool_asset"], json!(2), "{go}");
+    assert_eq!(go["preview"]["classes"]["go_hooks"], json!(1), "{go}");
+    assert!(
+        go["preview"]["warnings"]
+            .to_string()
+            .contains("running Codex session"),
+        "{go}"
+    );
+    let reason = phase(&plan, "backup")["reason"].as_str().unwrap();
+    assert!(reason.contains(".codex"), "{reason}");
+    assert!(!reason.contains("not covered"), "{reason}");
+    assert!(reason.contains(".agents"), "{reason}");
 }
 
 /// The printed argv is a word list that names the project as one word (its full path).
@@ -933,6 +1004,370 @@ fn the_merge_waits_for_the_install_phase() {
     assert_eq!(merge["state"], "blocked", "{merge}");
     assert_eq!(merge["reason"], "re-run after the install phase", "{merge}");
     assert_eq!(merge["apply"], Value::Null, "{merge}");
+}
+
+// ---- #2936 R8: the new settings.json and the earlier values offered back ----
+
+impl Fx {
+    /// A Go project whose recorded `.claude/settings.json` (`settings`) `go-state-apply` moved
+    /// into its backup (the shared settings move only with the Go folder, so `settings` must not
+    /// name `.moai/`). `.claude/settings.local.json` is written too and stays in place. Returns
+    /// the backup's UTC stamp.
+    fn go_project_with_moved_settings(&self, settings: &Value) -> String {
+        let mut files = serde_json::Map::new();
+        for (rel, body) in [
+            (".moai/config/sections/a.yaml", "a: 1\n".to_string()),
+            (".claude/settings.json", settings.to_string()),
+        ] {
+            self.write(rel, &body);
+            let h = format!("sha256:{:x}", Sha256::digest(body.as_bytes()));
+            files.insert(
+                rel.into(),
+                json!({"provenance": "template_managed", "template_hash": h,
+                       "deployed_hash": h, "current_hash": h}),
+            );
+        }
+        self.write(".claude/settings.local.json", "{\"model\":\"local\"}\n");
+        self.write(
+            ".moai/manifest.json",
+            &json!({"version": "v3.2.1-rc.6", "deployed_at": "2026-11-01T00:00:00Z",
+                    "files": files})
+            .to_string(),
+        );
+        let plan = self.call(&["go-state-plan", self.p()], b"");
+        let digest = plan["plan_digest"].as_str().unwrap().to_string();
+        let applied = self.call(
+            &[
+                "go-state-apply",
+                self.p(),
+                "--plan-digest",
+                &digest,
+                "--permission-reference",
+                REF,
+            ],
+            b"",
+        );
+        assert!(
+            !self.root.join(".claude/settings.json").exists(),
+            "{applied}"
+        );
+        applied["backup"].as_str().unwrap().to_string()
+    }
+
+    /// Applies every `ready` step the preview prints, as the UPDATE flow does after the user's
+    /// go-ahead, so what is left is the user's own decisions.
+    fn apply_ready(&self) {
+        for s in steps(&self.plan())
+            .into_iter()
+            .filter(|s| s["state"] == "ready")
+        {
+            assert_eq!(self.apply_step(s)["ok"], json!(true), "{s}");
+        }
+    }
+
+    fn settings_json(&self) -> Value {
+        serde_json::from_slice(&fs::read(self.root.join(".claude/settings.json")).unwrap()).unwrap()
+    }
+}
+
+fn credential() -> String {
+    format!("{}{}", "ghp_", "a".repeat(30))
+}
+
+fn user_settings() -> Value {
+    json!({
+        "permissions": {"allow": ["Bash(git status)"], "deny": ["Read(./.env)"],
+                        "additionalDirectories": ["/tmp/elsewhere"]},
+        "env": {"EDITOR": "vim", "MY_TOKEN": "plain", "OTHER": credential()},
+        "model": "opus",
+        "outputStyle": "Explanatory",
+        "statusLine": {"type": "command", "command": "my-status"},
+        "hooks": {"PreToolUse": [{"hooks": [{"type": "command", "command": "my-check"}]}]},
+        "enabledPlugins": {"x@y": false},
+    })
+}
+
+fn candidate<'a>(merge: &'a Value, key: &str) -> &'a Value {
+    merge["preview"]["candidates"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["key"] == key)
+        .unwrap_or_else(|| panic!("no candidate {key}: {merge}"))
+}
+
+/// R8-1, R8-3: a project with no status line gets MoAI's and nothing else; a second preview
+/// reads `unchanged`.
+#[test]
+fn a_project_without_a_status_line_gets_the_moai_one_and_nothing_else() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let plan = fx.plan();
+    let settings = step(&plan, "claude-settings");
+    assert_eq!(settings["state"], "ready", "{settings}");
+    assert_eq!(
+        settings["apply"]["stdin"],
+        json!({"statusLine": {"type": "command", "command": "moai-cli statusline"}}),
+        "{settings}"
+    );
+    fx.apply_ready();
+    assert_eq!(
+        fx.settings_json(),
+        json!({"statusLine": {"type": "command", "command": "moai-cli statusline"}})
+    );
+    let after = fx.plan();
+    assert_eq!(
+        step(&after, "claude-settings")["state"],
+        "unchanged",
+        "{after}"
+    );
+    assert_eq!(step(&after, "claude-settings")["apply"], Value::Null);
+}
+
+/// R8-2: a status line the user has stays; the step has nothing to do and writes nothing.
+#[test]
+fn a_status_line_the_user_has_is_left_alone() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    let mine = "{\"statusLine\":{\"type\":\"command\",\"command\":\"my-status\"}}\n";
+    fx.write(".claude/settings.json", mine);
+    let plan = fx.plan();
+    let settings = step(&plan, "claude-settings");
+    assert_eq!(settings["state"], "unchanged", "{settings}");
+    assert_eq!(settings["apply"], Value::Null);
+    assert_eq!(
+        fs::read_to_string(fx.root.join(".claude/settings.json")).unwrap(),
+        mine
+    );
+}
+
+/// R8-4: with nothing moved into a backup there is nothing to merge back.
+#[test]
+fn without_a_moved_settings_file_the_settings_merge_skips() {
+    let fx = Fx::new();
+    fx.settled();
+    let plan = fx.plan();
+    let merge = step(&plan, "claude-settings-merge");
+    assert_eq!(merge["state"], "skip", "{merge}");
+    assert_eq!(merge["apply"], Value::Null);
+}
+
+/// R8-5 to R8-8, R8-10: the earlier values come back on the user's go-ahead and nothing else.
+#[test]
+fn the_earlier_values_are_offered_and_merged_back_without_the_rest() {
+    let fx = Fx::new();
+    let backup = fx.go_project_with_moved_settings(&user_settings());
+    fx.with_profile(false);
+    let local_before = fs::read(fx.root.join(".claude/settings.local.json")).unwrap();
+
+    // The install step comes first: the merge waits for it.
+    let plan = fx.plan();
+    let waiting = step(&plan, "claude-settings-merge");
+    assert_eq!(waiting["state"], "blocked", "{waiting}");
+    assert_eq!(
+        waiting["reason"], "re-run after the install phase",
+        "{waiting}"
+    );
+    assert_eq!(waiting["apply"], Value::Null);
+
+    fx.apply_ready();
+    let plan = fx.plan();
+    let merge = step(&plan, "claude-settings-merge");
+    assert_eq!(merge["state"], "needs_decision", "{merge}");
+    assert_eq!(
+        merge["preview"]["backup"],
+        json!(format!(
+            ".moai/backups/{backup}/go-state/.claude/settings.json"
+        )),
+        "{merge}"
+    );
+    for key in ["permissions", "env", "model", "outputStyle", "statusLine"] {
+        assert_eq!(
+            candidate(merge, key)["state"],
+            "mergeable",
+            "{key}: {merge}"
+        );
+    }
+    for key in ["hooks", "enabledPlugins"] {
+        assert_eq!(
+            candidate(merge, key)["state"],
+            "kept_in_backup",
+            "{key}: {merge}"
+        );
+    }
+    assert!(
+        merge["preview"]["commit_notice"]
+            .as_str()
+            .unwrap()
+            .contains("committed"),
+        "{merge}"
+    );
+    // The credential-shaped value and the credential-named entry are named, never shown.
+    let text = plan.to_string();
+    assert!(
+        !text.contains(&credential()),
+        "the plan prints a credential"
+    );
+    assert!(text.contains("MY_TOKEN") && text.contains("OTHER"));
+    assert_eq!(
+        merge["apply"]["stdin"]["env"],
+        json!({"EDITOR": "vim"}),
+        "{merge}"
+    );
+    assert_eq!(
+        merge["apply"]["stdin"]["permissions"],
+        json!({"allow": ["Bash(git status)"], "deny": ["Read(./.env)"]}),
+        "{merge}"
+    );
+    assert_eq!(plan["all_unchanged"], json!(false));
+
+    assert_eq!(fx.apply_step(merge)["ok"], json!(true), "{merge}");
+    let written = fx.settings_json();
+    assert_eq!(written["env"], json!({"EDITOR": "vim"}));
+    assert_eq!(written["model"], json!("opus"));
+    assert_eq!(written["outputStyle"], json!("Explanatory"));
+    assert_eq!(
+        written["statusLine"],
+        json!({"type": "command", "command": "my-status"})
+    );
+    assert_eq!(
+        written["permissions"],
+        json!({"allow": ["Bash(git status)"], "deny": ["Read(./.env)"]})
+    );
+    for key in ["hooks", "enabledPlugins"] {
+        assert!(written.get(key).is_none(), "{key} was merged: {written}");
+    }
+    assert!(!written.to_string().contains(&credential()));
+    assert_eq!(
+        fs::read(fx.root.join(".claude/settings.local.json")).unwrap(),
+        local_before,
+        "the local settings are never touched"
+    );
+    // The values are MoAI-owned now: a later preview asks nothing and offers nothing to write.
+    let after = fx.plan();
+    assert_eq!(
+        step(&after, "claude-settings")["state"],
+        "unchanged",
+        "{after}"
+    );
+    assert_eq!(
+        step(&after, "claude-settings-merge")["state"],
+        "unchanged",
+        "{after}"
+    );
+}
+
+/// Audit 6888156222 B1: a credential-shaped value outside `env` blocks its key. The key is named,
+/// the value is neither printed in the plan nor written to the committed file, and a clean
+/// sibling key still merges. Each key is tried alone with the credential and once clean.
+#[test]
+fn a_credential_outside_env_blocks_its_key_and_is_never_shown_or_written() {
+    let secret = credential();
+    let cases: [(&str, Value, Value); 4] = [
+        (
+            "permissions",
+            json!({"allow": ["Bash(git status)", format!("Bash(curl -H 'Authorization: Bearer {secret}':*)")]}),
+            json!({"allow": ["Bash(git status)", "Bash(curl -H 'Accept: json':*)"]}),
+        ),
+        (
+            "statusLine",
+            json!({"type": "command", "command": format!("my-status --token {secret}")}),
+            json!({"type": "command", "command": "my-status --compact"}),
+        ),
+        ("model", json!(format!("opus-{secret}")), json!("opus")),
+        (
+            "outputStyle",
+            json!(format!("Style-{secret}")),
+            json!("Explanatory"),
+        ),
+    ];
+    for (key, bad, clean) in cases {
+        // The credential: the key is blocked, the clean sibling (`env`) still merges.
+        let fx = Fx::new();
+        fx.go_project_with_moved_settings(&json!({ key: bad, "env": {"EDITOR": "vim"} }));
+        fx.with_profile(false);
+        fx.apply_ready();
+        let plan = fx.plan();
+        let merge = step(&plan, "claude-settings-merge");
+        assert_eq!(merge["state"], "needs_decision", "{key}: {merge}");
+        assert_eq!(candidate(merge, key)["state"], "blocked", "{key}: {merge}");
+        assert_eq!(candidate(merge, "env")["state"], "mergeable", "{key}");
+        // The printed command carries no value of the blocked key (for `statusLine` it still
+        // carries MoAI's own, which the install step wrote).
+        let stdin = &merge["apply"]["stdin"];
+        assert!(!stdin.to_string().contains(&secret), "{key}: {merge}");
+        if key != "statusLine" {
+            assert!(stdin.get(key).is_none(), "{key}: {merge}");
+        }
+        assert!(
+            !plan.to_string().contains(&secret),
+            "{key}: the plan prints it"
+        );
+        assert_eq!(fx.apply_step(merge)["ok"], json!(true), "{key}");
+        let written = fx.settings_json();
+        assert!(!written.to_string().contains(&secret), "{key}: written");
+        assert_eq!(written["env"], json!({"EDITOR": "vim"}), "{key}");
+
+        // The same key without a credential merges.
+        let fx = Fx::new();
+        fx.go_project_with_moved_settings(&json!({ key: clean.clone() }));
+        fx.with_profile(false);
+        fx.apply_ready();
+        let plan = fx.plan();
+        let merge = step(&plan, "claude-settings-merge");
+        assert_eq!(
+            candidate(merge, key)["state"],
+            "mergeable",
+            "{key}: {merge}"
+        );
+        assert_eq!(merge["apply"]["stdin"][key], clean, "{key}: {merge}");
+    }
+}
+
+/// R8-5: what the Go generation set up itself is not the user's, so nothing is offered.
+#[test]
+fn only_go_made_values_leave_nothing_to_merge() {
+    let fx = Fx::new();
+    fx.go_project_with_moved_settings(&json!({
+        "statusLine": {"type": "command", "command": "bash $CLAUDE_PROJECT_DIR/status_line.sh"},
+        "outputStyle": "MoAI-Easy",
+        "hooks": {"Stop": [{"hooks": [{"command": "bash",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-stop.sh"]}]}]},
+    }));
+    fx.with_profile(false);
+    fx.apply_ready();
+    let plan = fx.plan();
+    let merge = step(&plan, "claude-settings-merge");
+    assert_eq!(merge["state"], "skip", "{merge}");
+    assert_eq!(merge["apply"], Value::Null);
+    for key in ["statusLine", "outputStyle", "hooks"] {
+        assert_eq!(
+            candidate(merge, key)["state"],
+            "go_generated",
+            "{key}: {merge}"
+        );
+    }
+}
+
+/// R8-4: a backup copy changed after the move is not trusted.
+#[test]
+fn a_backup_copy_changed_after_the_move_blocks_the_merge() {
+    let fx = Fx::new();
+    let backup = fx.go_project_with_moved_settings(&user_settings());
+    fx.with_profile(false);
+    fx.apply_ready();
+    fx.write(
+        &format!(".moai/backups/{backup}/go-state/.claude/settings.json"),
+        "{\"model\":\"tampered\"}\n",
+    );
+    let plan = fx.plan();
+    let merge = step(&plan, "claude-settings-merge");
+    assert_eq!(merge["state"], "blocked", "{merge}");
+    assert!(
+        merge["reason"].as_str().unwrap().contains("changed since"),
+        "{merge}"
+    );
+    assert_eq!(merge["apply"], Value::Null);
 }
 
 // ---- #2936 R9 S5a: the host hook steps ----
