@@ -2304,3 +2304,183 @@ fn a_wait_record_changes_no_task_and_no_order() {
         assert_eq!(others(&with), others(&without), "case {i}: {with}");
     }
 }
+
+/// #3005 P8: a watching lane stops by itself. `--max-empty N` counts reads with no task and
+/// nothing to wait for, per lane and repository, in the clone's state folder.
+mod idle_limit {
+    use super::*;
+    use crate::common::git::git_ok;
+
+    struct Clone {
+        _tmp: TempDir,
+        repo: std::path::PathBuf,
+    }
+
+    fn clone() -> Clone {
+        let tmp = TempDir::new().unwrap();
+        let repo = std::fs::canonicalize(tmp.path()).unwrap().join("clone");
+        std::fs::create_dir_all(&repo).unwrap();
+        git_ok(&repo, &["init", "-q", "-b", "main"]);
+        Clone { _tmp: tmp, repo }
+    }
+
+    fn read(c: &Clone, lane: &str, repo: &str, snap: &Value, max: &str) -> (Value, Value) {
+        let file = c.repo.join("snap.json");
+        std::fs::write(&file, snap.to_string()).unwrap();
+        let out = Command::new(EXE)
+            .args([
+                "lane-next",
+                "--lane",
+                lane,
+                "--repo",
+                repo,
+                "--max-empty",
+                max,
+            ])
+            .arg("--snapshot")
+            .arg(&file)
+            .arg("--dir")
+            .arg(&c.repo)
+            .output()
+            .unwrap();
+        let v: Value = serde_json::from_slice(&out.stdout)
+            .unwrap_or_else(|_| panic!("{}", String::from_utf8_lossy(&out.stderr)));
+        (v["result"].clone(), v)
+    }
+
+    fn nothing() -> Value {
+        json!({"now": "2026-11-15T02:00:00Z"})
+    }
+
+    fn waiting() -> Value {
+        let blocked = json!({"id": 50, "body": "LANE-BLOCKED kind=decision owner=leader #2827 B1 — (가)/(나), safe default (나)"});
+        json!({"threads": [{"number": 2812, "comments": [claim(40, LANE), blocked]}]})
+    }
+
+    /// Reads 1 to 5 go on, read 6 is `idle_limit` with the `LANE-IDLE` line, and the count
+    /// stays in a file under the clone's state folder.
+    #[test]
+    fn the_sixth_empty_read_is_the_limit_and_the_fifth_is_not() {
+        let c = clone();
+        for n in 1..=5u64 {
+            let (r, _) = read(&c, LANE, "o/r", &nothing(), "6");
+            assert_eq!(r["next"], json!(null), "{r}");
+            assert_eq!(r["idle"]["consecutive_empty"], json!(n), "{r}");
+            assert_eq!(r["idle"]["limit_reached"], json!(false), "read {n}: {r}");
+            assert!(r.get("status").is_none(), "read {n}: {r}");
+            assert_eq!(r["writes"], json!(true));
+        }
+        let (r, _) = read(&c, LANE, "o/r", &nothing(), "6");
+        assert_eq!(r["status"], json!("idle_limit"), "{r}");
+        assert_eq!(r["idle"]["consecutive_empty"], json!(6));
+        let line = r["idle"]["line"].as_str().unwrap();
+        assert!(
+            line.starts_with(&format!("LANE-IDLE lane={LANE} checks=6 last=20")),
+            "{line}"
+        );
+        let state = c
+            .repo
+            .join(".git/.moai-cli/lane-idle")
+            .join(format!("{LANE}__o__r.json"));
+        assert!(state.is_file(), "{}", state.display());
+    }
+
+    /// A read with a task, or with something to wait for, sets the count back to 0.
+    #[test]
+    fn a_task_or_a_wait_resets_the_count() {
+        let c = clone();
+        for _ in 0..4 {
+            read(&c, LANE, "o/r", &nothing(), "6");
+        }
+        let (r, _) = read(&c, LANE, "o/r", &waiting(), "6");
+        assert_eq!(r["next"], json!(null), "{r}");
+        assert_eq!(
+            r["idle"]["consecutive_empty"],
+            json!(0),
+            "a wait is not empty: {r}"
+        );
+        for _ in 0..3 {
+            read(&c, LANE, "o/r", &nothing(), "6");
+        }
+        let task = json!({"prs": [pr(5, &h('a'), Some("agent-3"), json!([]))]});
+        let (r, _) = read(&c, LANE, "o/r", &task, "6");
+        assert!(!r["next"].is_null(), "{r}");
+        assert_eq!(r["idle"]["consecutive_empty"], json!(0), "{r}");
+        let (r, _) = read(&c, LANE, "o/r", &nothing(), "6");
+        assert_eq!(
+            r["idle"]["consecutive_empty"],
+            json!(1),
+            "counting starts over: {r}"
+        );
+    }
+
+    /// Another lane, or another repository, has its own count.
+    #[test]
+    fn lanes_and_repositories_do_not_share_a_count() {
+        let c = clone();
+        for _ in 0..3 {
+            read(&c, LANE, "o/r", &nothing(), "6");
+        }
+        let (r, _) = read(&c, "agent-11", "o/r", &nothing(), "6");
+        assert_eq!(r["idle"]["consecutive_empty"], json!(1), "{r}");
+        let (r, _) = read(&c, LANE, "o/s", &nothing(), "6");
+        assert_eq!(r["idle"]["consecutive_empty"], json!(1), "{r}");
+        let (r, _) = read(&c, LANE, "o/r", &nothing(), "6");
+        assert_eq!(r["idle"]["consecutive_empty"], json!(4), "{r}");
+    }
+
+    /// The two edges of the option: 0 counts nothing and writes nothing, 1 stops at once, and
+    /// more than 1000 is refused.
+    #[test]
+    fn max_empty_zero_one_and_over_the_largest() {
+        let c = clone();
+        let (r, _) = read(&c, LANE, "o/r", &nothing(), "0");
+        assert!(
+            r.get("idle").is_none() && r["writes"] == json!(false),
+            "{r}"
+        );
+        assert!(!c.repo.join(".git/.moai-cli/lane-idle").exists());
+        let (r, _) = read(&c, LANE, "o/r", &nothing(), "1");
+        assert_eq!(r["status"], json!("idle_limit"), "{r}");
+        let (r, v) = read(&c, LANE, "o/r", &nothing(), "1001");
+        assert!(r.is_null() && v["ok"] == json!(false), "{v}");
+        let (r, _) = read(&c, LANE, "o/r", &nothing(), "1000");
+        assert_eq!(r["idle"]["max_empty"], json!(1000), "{r}");
+    }
+
+    /// Without `--max-empty` a `--snapshot` read counts nothing and writes nothing (the
+    /// measurement use of the tool stays read-only); outside a git clone the count is off and
+    /// the lane keeps going.
+    #[test]
+    fn a_snapshot_read_without_the_option_and_a_folder_that_is_no_clone_count_nothing() {
+        let c = clone();
+        let file = c.repo.join("snap.json");
+        std::fs::write(&file, nothing().to_string()).unwrap();
+        let out = Command::new(EXE)
+            .args(["lane-next", "--lane", LANE, "--repo", "o/r", "--snapshot"])
+            .arg(&file)
+            .arg("--dir")
+            .arg(&c.repo)
+            .output()
+            .unwrap();
+        let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+        assert!(v["result"].get("idle").is_none(), "{v}");
+        assert_eq!(v["result"]["writes"], json!(false));
+        assert!(!c.repo.join(".git/.moai-cli/lane-idle").exists());
+
+        let plain = TempDir::new().unwrap();
+        let (r, v) = read(
+            &Clone {
+                repo: plain.path().to_path_buf(),
+                _tmp: TempDir::new().unwrap(),
+            },
+            LANE,
+            "o/r",
+            &nothing(),
+            "6",
+        );
+        assert_eq!(v["ok"], json!(true), "{v}");
+        assert_eq!(r["idle"]["counting"], json!(false), "{r}");
+        assert!(r.get("status").is_none(), "{r}");
+    }
+}

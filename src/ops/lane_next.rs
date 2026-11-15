@@ -1,7 +1,7 @@
 //! `lane-next` (#2831 C1): the one thing a lane should do next, read fresh from GitHub each
 //! run. The logic is `moai_cli::lane_next`.
 
-use moai_cli::forge::policy::SystemClock;
+use moai_cli::forge::policy::{Clock as _, SystemClock};
 use moai_cli::forge::transport::GhTransport;
 use std::path::PathBuf;
 
@@ -13,7 +13,11 @@ use std::path::PathBuf;
 /// decision request the leader answered, its claimed card, an unclaimed Issue. Reads GitHub
 /// (at most 30 requests a run) and the local clone only; writes nothing. `--wait` reads again
 /// every 432 seconds for the default ten lanes on one token (within half of GitHub's hourly
-/// limit; `--shared-lanes` changes the count) until a task appears.
+/// limit; `--shared-lanes` changes the count) until a task appears. A watching lane stops by
+/// itself: each read with no task and nothing to wait for adds 1 to a count kept per lane and
+/// repository in the clone's state folder, and at `--max-empty` (6 on a GitHub read) the result
+/// says `status: idle_limit` and carries the `LANE-IDLE` line to print once. A read with a task
+/// or something to wait for sets the count back to 0.
 #[derive(clap::Args)]
 pub struct Args {
     /// The lane name as it appears in claims (`session=<lane>`) and audit reservations.
@@ -42,11 +46,16 @@ pub struct Args {
     /// Add `explain`: why each pull request and Issue was passed over.
     #[arg(long)]
     explain: bool,
+    /// Empty reads in a row after which the result says `idle_limit` (1 to 1000; 0 = do not
+    /// count). Default 6 on a GitHub read; a `--snapshot` read counts only when this is given.
+    #[arg(long)]
+    max_empty: Option<u64>,
 }
 
 pub const OPERATION: &str = "lane.next";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
+    let max_empty = moai_cli::lane_idle::resolve_max(args.max_empty, args.snapshot.is_some())?;
     let mut v = match &args.snapshot {
         Some(file) => {
             let bytes = std::fs::read(file).map_err(|e| format!("snapshot unreadable: {e}"))?;
@@ -72,6 +81,21 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             )?
         }
     };
+    if max_empty > 0 {
+        let anchor = moai_cli::identity::identity(&args.dir)
+            .ok()
+            .filter(|id| id["identity_status"].as_str() == Some("ok"))
+            .and_then(|id| id["clone_anchor"].as_str().map(PathBuf::from));
+        let now = moai_cli::forge::policy::format_utc(SystemClock.now());
+        moai_cli::lane_idle::apply(
+            &mut v,
+            anchor.as_deref(),
+            &args.lane,
+            &args.repo,
+            max_empty,
+            &now,
+        );
+    }
     if args.explain {
         v["explain"] = serde_json::json!(moai_cli::lane_next::explain_lines(&v));
     }
