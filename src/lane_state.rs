@@ -255,6 +255,24 @@ mod tests {
     }
 
     #[test]
+    fn the_session_lease_is_shown_as_evidence_and_never_decides() {
+        for (live, word) in [
+            (Some(true), "live"),
+            (Some(false), "ended"),
+            (None, "unknown"),
+        ] {
+            let mut f = facts(&[], &[]);
+            f.session_live = live;
+            let v = classify(&f);
+            assert_eq!(v["evidence"]["session"], word, "{v}");
+            assert_eq!(
+                v["state"], "idle",
+                "the lease does not change the state: {v}"
+            );
+        }
+    }
+
+    #[test]
     fn nothing_owed_is_idle() {
         assert_eq!(state(&facts(&[], &[])), "idle");
     }

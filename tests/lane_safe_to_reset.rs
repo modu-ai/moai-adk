@@ -718,6 +718,107 @@ fn a_lane_with_no_claim_and_nothing_left_is_idle_and_left_work_makes_it_stopped(
 
 #[cfg(unix)]
 #[test]
+fn a_worktree_that_cannot_be_checked_is_named_in_the_unknown_state() {
+    let f = fixture();
+    let forge = forge_with(vec![
+        gh_comment(6000070, "GoosLab", CLAIM_70),
+        gh_comment(6000071, "GoosLab", NOTE_71),
+    ]);
+    // The lane's worktree folder is gone but git still lists it: its work cannot be counted.
+    fs::remove_dir_all(&f.wt7).unwrap();
+    let flags: Vec<String> = vec![
+        "--repo".into(),
+        "acme/widgets".into(),
+        "--screen-jobs".into(),
+        "0".into(),
+    ];
+    let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&forge));
+    assert_eq!(lane_state(&r)["state"], "unknown", "{r}");
+    let reasons = texts(lane_state(&r), "reasons");
+    assert!(
+        reasons
+            .iter()
+            .any(|t| t.contains("could not be checked for unsaved work")),
+        "{reasons:?}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn claims_given_in_a_file_read_no_pull_requests_and_the_state_says_so() {
+    let f = fixture();
+    let forge = forge_with(vec![]);
+    let file = f.tmp.path().join("claims.json");
+    fs::write(
+        &file,
+        json!({
+            "schema_version": 1,
+            "claims": {"source": "fixture", "items": [
+                {"issue": 7, "claim_comment": 6000070, "resume_note": 6000071}
+            ]}
+        })
+        .to_string(),
+    )
+    .unwrap();
+    let flags: Vec<String> = vec![
+        "--observations".into(),
+        file.to_str().unwrap().into(),
+        "--repo".into(),
+        "acme/widgets".into(),
+        "--screen-jobs".into(),
+        "0".into(),
+        "--session-cwd".into(),
+        f.wt7.to_str().unwrap().into(),
+    ];
+    let (r, requests) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&forge));
+    assert!(requests.is_empty(), "no request at all: {requests:?}");
+    assert_eq!(lane_state(&r)["state"], "unknown", "{r}");
+    let reasons = texts(lane_state(&r), "reasons");
+    assert!(
+        reasons
+            .iter()
+            .any(|t| t.contains("open pull requests were not read")),
+        "{reasons:?}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn a_full_page_of_pull_requests_may_hide_the_claims_own() {
+    let f = fixture();
+    let mut forge = forge_with(vec![
+        gh_comment(6000070, "GoosLab", CLAIM_70),
+        gh_comment(6000071, "GoosLab", NOTE_71),
+    ]);
+    let flags = clean_flags(&f);
+    let others = |n: usize| -> Vec<Value> {
+        (0..n)
+            .map(|i| json!({"number": 100 + i, "head": {"ref": format!("issue/9{i:02}-x")}, "body": ""}))
+            .collect()
+    };
+    // 99 pull requests of other cards: the read is whole, the claim has none.
+    forge.pulls = Some(json!(others(99)));
+    let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&forge));
+    assert_eq!(lane_state(&r)["state"], "resumable", "{r}");
+    // 100 (a full page): a pull request of the claim may be on the next page.
+    forge.pulls = Some(json!(others(100)));
+    let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&forge));
+    assert_eq!(lane_state(&r)["state"], "unknown", "{r}");
+    let reasons = texts(lane_state(&r), "reasons");
+    assert!(
+        reasons.iter().any(|t| t.contains("read only in part")),
+        "{reasons:?}"
+    );
+    // The claim's own pull request is on the full page: nothing is hidden for it.
+    let mut page = others(99);
+    page.push(json!({"number": 41, "head": {"ref": "issue/7-card"}, "body": ""}));
+    forge.pulls = Some(json!(page));
+    let (r, _) = run_flags(&f, "agent-9", &as_strs(&flags), Some(&forge));
+    assert_eq!(lane_state(&r)["state"], "waiting", "{r}");
+}
+
+#[cfg(unix)]
+#[test]
 fn a_read_that_failed_makes_the_state_unknown_and_never_a_guess() {
     let f = fixture();
     let mut forge = forge_with(vec![
