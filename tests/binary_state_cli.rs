@@ -253,6 +253,21 @@ fn a_relative_or_in_project_moai_is_never_run() {
     assert_eq!(m["state"], json!("not_probed"), "{m}");
     assert!(!ran(&w, "ran-linked").exists(), "a linked hit was run");
 
+    // A link inside the project to a file outside it: the PATH hit is the project's own entry,
+    // so it is not run either, whatever it points to.
+    let w = world();
+    let real = w.root.join("real");
+    script(&real, "moai", &marking(&w, "ran-outward"));
+    let inside = w.project.join("bin");
+    fs::create_dir_all(&inside).unwrap();
+    std::os::unix::fs::symlink(real.join("moai"), inside.join("moai")).unwrap();
+    let m = moai_on_path(&w, inside.to_str().unwrap(), &[]);
+    assert_eq!(m["state"], json!("not_probed"), "{m}");
+    assert!(
+        !ran(&w, "ran-outward").exists(),
+        "an in-project link was run"
+    );
+
     // The other direction: a folder whose name merely starts like the project's is outside it.
     let w = world();
     let near = w.root.join("project-bin");
