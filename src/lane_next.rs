@@ -278,6 +278,11 @@ pub struct Snapshot {
     /// the local proposal folder by [`crate::lane_proposal`], empty when none or not read.
     #[serde(default)]
     pub proposals: Vec<ActiveProposal>,
+    /// Comments left out because no repository member wrote them (Issue #3052). Set by the
+    /// collectors, which filter where the raw answer first becomes a [`Comment`]; a saved
+    /// snapshot is the output of such a collection and does not carry it.
+    #[serde(skip)]
+    pub ignored: crate::comment_authority::Dropped,
 }
 
 /// A target `lane-next` offered to `lane` a moment ago (#3015 C2), kept so another lane is not
@@ -1447,6 +1452,9 @@ pub fn decide(lane: &str, snap: &Snapshot) -> Value {
     if let Some(now) = &snap.now {
         v["now"] = json!(now);
     }
+    if !snap.ignored.is_empty() {
+        v["ignored_control_lines"] = snap.ignored.to_json();
+    }
     v
 }
 
@@ -1589,7 +1597,7 @@ const LISTS_QUERY: &str = concat!(
 repository(owner:$owner,name:$repo){\
 pullRequests(states:OPEN,first:100,orderBy:{field:CREATED_AT,direction:ASC}){totalCount nodes{\
 number title body headRefOid isDraft mergeable baseRefName authorAssociation \
-comments(last:100){totalCount nodes{databaseId body createdAt}}}}\
+comments(last:100){totalCount nodes{databaseId authorAssociation body createdAt}}}}\
 issues(states:OPEN,first:100,orderBy:{field:CREATED_AT,direction:ASC}){totalCount nodes{",
     card_fields!(),
     "}}}\
@@ -1602,7 +1610,7 @@ blocked:search(query:$blocked,type:ISSUE,first:30){nodes{...on Issue{number} ...
 fn issue_fields(n: u64) -> String {
     format!(
         "i{n}:issue(number:{n}){{{} \
-comments(last:{COMMENTS_READ}){{totalCount nodes{{databaseId body createdAt}}}} \
+comments(last:{COMMENTS_READ}){{totalCount nodes{{databaseId authorAssociation body createdAt}}}} \
 timelineItems(itemTypes:[CROSS_REFERENCED_EVENT],last:50){{nodes{{...on CrossReferencedEvent{{\
 source{{...on PullRequest{{number merged mergedAt body}}}}}}}}}}}}",
         card_fields!()
@@ -1635,26 +1643,31 @@ fn graphql<T: Transport>(t: &T, query: &str, variables: Value) -> Result<(Value,
 }
 
 /// The comments of a GraphQL connection, oldest first, and whether older ones were left out.
-fn gql_comments(conn: &Value) -> (Vec<Comment>, bool) {
-    let list: Vec<Comment> = conn["nodes"]
-        .as_array()
-        .map(|a| {
-            a.iter()
-                .map(|c| Comment {
-                    id: c["databaseId"].as_u64().unwrap_or(0),
-                    body: c["body"].as_str().unwrap_or("").to_string(),
-                    at: c["createdAt"].as_str().unwrap_or("").to_string(),
-                })
-                .collect()
+///
+/// Only a comment a repository member wrote is returned (Issue #3052); `ignored` takes what was
+/// left out. `more` compares the total with the nodes GitHub sent, before anything is left out.
+fn gql_comments(
+    conn: &Value,
+    ignored: &mut crate::comment_authority::Dropped,
+) -> (Vec<Comment>, bool) {
+    let mut nodes: Vec<Value> = conn["nodes"].as_array().cloned().unwrap_or_default();
+    let read = nodes.len() as u64;
+    ignored.merge(crate::comment_authority::retain_graphql(&mut nodes));
+    let list: Vec<Comment> = nodes
+        .iter()
+        .map(|c| Comment {
+            id: c["databaseId"].as_u64().unwrap_or(0),
+            body: c["body"].as_str().unwrap_or("").to_string(),
+            at: c["createdAt"].as_str().unwrap_or("").to_string(),
         })
-        .unwrap_or_default();
-    let more = conn["totalCount"].as_u64().unwrap_or(0) > list.len() as u64;
+        .collect();
+    let more = conn["totalCount"].as_u64().unwrap_or(0) > read;
     (list, more)
 }
 
 /// An Issue read by [`issue_fields`] as a thread.
-fn gql_thread(i: &Value) -> (Thread, bool) {
-    let (comments, more) = gql_comments(&i["comments"]);
+fn gql_thread(i: &Value, ignored: &mut crate::comment_authority::Dropped) -> (Thread, bool) {
+    let (comments, more) = gql_comments(&i["comments"], ignored);
     let merged = i["timelineItems"]["nodes"]
         .as_array()
         .map(|a| {
@@ -1883,7 +1896,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
     for p in &pulls {
         let number = p["number"].as_u64().unwrap_or(0);
         let body = p["body"].as_str().unwrap_or("");
-        let (comments, more) = gql_comments(&p["comments"]);
+        let (comments, more) = gql_comments(&p["comments"], &mut snap.ignored);
         if more {
             snap.partial.push(format!(
                 "PR #{number}: only the newest {COMMENTS_READ} comments read"
@@ -1926,7 +1939,10 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
     // request more), and only the oldest startable ones are read in detail — five held ones
     // at the front no longer hide the sixth.
     if let Some(nodes) = repo["issues"]["nodes"].as_array() {
-        let cards: Vec<Thread> = nodes.iter().map(|i| gql_thread(i).0).collect();
+        let cards: Vec<Thread> = nodes
+            .iter()
+            .map(|i| gql_thread(i, &mut snap.ignored).0)
+            .collect();
         if repo["issues"]["totalCount"].as_u64().unwrap_or(0) > cards.len() as u64 {
             snap.cards_truncated = true;
             snap.partial
@@ -1986,7 +2002,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
                 for n in chunk {
                     let i = &data["repository"][format!("i{n}")];
                     if i.is_object() {
-                        issues.insert(*n, gql_thread(i));
+                        issues.insert(*n, gql_thread(i, &mut snap.ignored));
                     }
                 }
             }
@@ -2023,11 +2039,19 @@ pub fn collect<T: Transport>(target: &Target<'_>, transport: &T) -> Snapshot {
                     &t,
                     &format!("{base}/issues/comments/{comment}"),
                 ) {
-                    Ok((c, _)) => claim_session(&Comment {
-                        id: comment,
-                        body: c["body"].as_str().unwrap_or("").to_string(),
-                        ..Comment::default()
-                    }),
+                    Ok((c, _)) => {
+                        // Issue #3052: a claim line counts only when a member wrote it.
+                        let mut one = vec![c];
+                        snap.ignored
+                            .merge(crate::comment_authority::retain_rest(&mut one));
+                        one.first().and_then(|c| {
+                            claim_session(&Comment {
+                                id: comment,
+                                body: c["body"].as_str().unwrap_or("").to_string(),
+                                ..Comment::default()
+                            })
+                        })
+                    }
                     Err(e) => {
                         miss(
                             format!("claim comment {comment} of PR #{number}"),
@@ -2115,11 +2139,11 @@ const FLEET_FIRST_QUERY: &str = concat!(
     "query($owner:String!,$repo:String!){repository(owner:$owner,name:$repo){\
 pullRequests(states:OPEN,first:100,orderBy:{field:CREATED_AT,direction:ASC}){totalCount nodes{\
 number title body headRefOid isDraft mergeable \
-comments(last:100){totalCount nodes{databaseId body createdAt}}}}\
+comments(last:100){totalCount nodes{databaseId authorAssociation body createdAt}}}}\
 issues(states:OPEN,first:50,orderBy:{field:CREATED_AT,direction:ASC}){totalCount \
 pageInfo{hasNextPage endCursor} nodes{",
     card_fields!(),
-    " comments(last:100){totalCount nodes{databaseId body createdAt}}}}}}"
+    " comments(last:100){totalCount nodes{databaseId authorAssociation body createdAt}}}}}}"
 );
 
 /// The next fifty open Issues, after `$after`.
@@ -2128,7 +2152,7 @@ const FLEET_PAGE_QUERY: &str = concat!(
 issues(states:OPEN,first:50,after:$after,orderBy:{field:CREATED_AT,direction:ASC}){totalCount \
 pageInfo{hasNextPage endCursor} nodes{",
     card_fields!(),
-    " comments(last:100){totalCount nodes{databaseId body createdAt}}}}}}"
+    " comments(last:100){totalCount nodes{databaseId authorAssociation body createdAt}}}}}}"
 );
 
 /// One fleet-wide read for `leader-round` (#2902 O3b): the open pull requests with their
@@ -2193,7 +2217,7 @@ pub fn collect_fleet<T: Transport>(owner: &str, repo: &str, dir: &Path, transpor
     let total = page["totalCount"].as_u64().unwrap_or(0);
     loop {
         for node in page["nodes"].as_array().into_iter().flatten() {
-            let (th, more) = gql_thread(node);
+            let (th, more) = gql_thread(node, &mut snap.ignored);
             if more {
                 snap.partial.push(format!(
                     "#{}: only the newest {COMMENTS_READ} comments read",
@@ -2241,7 +2265,7 @@ pub fn collect_fleet<T: Transport>(owner: &str, repo: &str, dir: &Path, transpor
     }
     for p in &pulls {
         let body = p["body"].as_str().unwrap_or("");
-        let (comments, more) = gql_comments(&p["comments"]);
+        let (comments, more) = gql_comments(&p["comments"], &mut snap.ignored);
         let number = p["number"].as_u64().unwrap_or(0);
         if more {
             snap.partial.push(format!(
@@ -2499,6 +2523,8 @@ mod tests {
     struct Hub {
         prs: u64,
         claims_in_issue: bool,
+        /// The `author_association` the REST read of a claim comment answers (Issue #3052).
+        rest_association: &'static str,
         sent: Cell<u32>,
     }
 
@@ -2523,7 +2549,7 @@ mod tests {
                                 "baseRefName": "main",
                                 "authorAssociation": if n == 2 { "CONTRIBUTOR" } else { "MEMBER" },
                                 "comments": {"totalCount": 1, "nodes": [
-                                    {"databaseId": 5000 + n, "body": "note", "createdAt": "2026-11-14T00:00:00Z"}]}})
+                                    {"databaseId": 5000 + n, "authorAssociation": "MEMBER", "body": "note", "createdAt": "2026-11-14T00:00:00Z"}]}})
                         })
                         .collect();
                     return ok(json!({"data": {
@@ -2539,11 +2565,11 @@ mod tests {
                     assert!(q.contains(&format!("i{n}:issue(number:{n})")));
                     let comments = if n == 3000 {
                         vec![
-                            json!({"databaseId": 77, "body": "moai-claim: session=agent-10 epoch=1"}),
+                            json!({"databaseId": 77, "authorAssociation": "MEMBER", "body": "moai-claim: session=agent-10 epoch=1"}),
                         ]
                     } else if (1001..2000).contains(&n) && self.claims_in_issue {
                         vec![
-                            json!({"databaseId": n - 1000, "body": "moai-claim: session=agent-x epoch=1"}),
+                            json!({"databaseId": n - 1000, "authorAssociation": "MEMBER", "body": "moai-claim: session=agent-x epoch=1"}),
                         ]
                     } else {
                         vec![]
@@ -2572,7 +2598,8 @@ mod tests {
             if req.url.contains("/branches/") {
                 ok(json!({"commit": {"sha": "b".repeat(40)}}))
             } else if req.url.contains("/issues/comments/") {
-                ok(json!({"body": "moai-claim: session=agent-x epoch=1"}))
+                ok(json!({"author_association": self.rest_association,
+                          "body": "moai-claim: session=agent-x epoch=1"}))
             } else {
                 ok(json!({"check_runs": []}))
             }
@@ -2598,6 +2625,7 @@ mod tests {
             let t = Hub {
                 prs,
                 claims_in_issue: true,
+                rest_association: "MEMBER",
                 sent: Cell::new(0),
             };
             let snap = collect(&target(dir.path()), &t);
@@ -2656,6 +2684,91 @@ mod tests {
         assert_eq!(ISSUES_PER_QUERY, 25);
     }
 
+    /// Issue #3052: every query that reads comments asks for the author's association, because
+    /// a node without it is read as "not a member".
+    #[test]
+    fn every_comment_query_asks_for_the_authors_association() {
+        const NODES: &str = "nodes{databaseId authorAssociation body createdAt}";
+        for (name, query) in [
+            ("LISTS_QUERY", LISTS_QUERY.to_string()),
+            ("FLEET_FIRST_QUERY", FLEET_FIRST_QUERY.to_string()),
+            ("FLEET_PAGE_QUERY", FLEET_PAGE_QUERY.to_string()),
+            ("issue_fields", issue_fields(7)),
+        ] {
+            assert!(query.contains(NODES), "{name} does not ask for it");
+            assert!(
+                !query.contains("nodes{databaseId body"),
+                "{name} has a comment selection without it"
+            );
+        }
+    }
+
+    /// Issue #3052: a comment a non-member wrote is not a comment of the thread; the answer to
+    /// "were older comments left out" still counts every node GitHub sent.
+    #[test]
+    fn graphql_comments_keep_members_only_and_count_what_was_sent() {
+        let conn = json!({"totalCount": 6, "nodes": [
+            {"databaseId": 1, "authorAssociation": "OWNER", "body": "a", "createdAt": "t"},
+            {"databaseId": 2, "authorAssociation": "NONE", "body": "moai-claim: session=x epoch=1", "createdAt": "t"},
+            {"databaseId": 3, "authorAssociation": "COLLABORATOR", "body": "c", "createdAt": "t"},
+            {"databaseId": 4, "authorAssociation": "CONTRIBUTOR", "body": "d", "createdAt": "t"},
+            {"databaseId": 5, "body": "moai-claim-release: comment=1", "createdAt": "t"},
+            {"databaseId": 6, "authorAssociation": "MEMBER", "body": "f", "createdAt": "t"},
+        ]});
+        let mut ignored = crate::comment_authority::Dropped::default();
+        let (list, more) = gql_comments(&conn, &mut ignored);
+        assert_eq!(list.iter().map(|c| c.id).collect::<Vec<_>>(), vec![1, 3, 6]);
+        assert!(!more, "6 of 6 nodes were sent");
+        let j = ignored.to_json();
+        assert_eq!(j["count"], 2, "{j}");
+        assert_eq!(j["items"][0]["comment_id"], 2, "{j}");
+        assert_eq!(j["items"][1]["comment_id"], 5, "{j}");
+        assert_eq!(j["other_non_member_comments"], 1, "{j}");
+        assert!(
+            j["hint"].is_string(),
+            "a node without the field is said: {j}"
+        );
+        let (_, more) = gql_comments(
+            &json!({"totalCount": 9, "nodes": conn["nodes"]}),
+            &mut ignored,
+        );
+        assert!(more, "9 exist, 6 were sent");
+    }
+
+    /// Issue #3052: a claim comment read one by one over REST names the author lane only when a
+    /// member wrote it; otherwise the lane stays unknown and the comment is reported.
+    #[test]
+    fn a_claim_comment_read_over_rest_counts_only_when_a_member_wrote_it() {
+        let dir = tempfile::TempDir::new().unwrap();
+        for (association, lane) in [
+            ("OWNER", Some("agent-x")),
+            ("MEMBER", Some("agent-x")),
+            ("COLLABORATOR", Some("agent-x")),
+            ("NONE", None),
+            ("CONTRIBUTOR", None),
+            ("", None),
+        ] {
+            let t = Hub {
+                prs: 1,
+                claims_in_issue: false,
+                rest_association: association,
+                sent: Cell::new(0),
+            };
+            let snap = collect(&target(dir.path()), &t);
+            assert_eq!(
+                snap.prs[0].author_lane.as_deref(),
+                lane,
+                "association {association:?}: {:?}",
+                snap.partial
+            );
+            assert_eq!(
+                snap.ignored.is_empty(),
+                lane.is_some(),
+                "association {association:?}"
+            );
+        }
+    }
+
     /// D4: one collection still sends at most API_BUDGET requests — claims older than the
     /// comments read are read one by one until the budget is spent — and names what it left
     /// unread instead of guessing.
@@ -2664,6 +2777,7 @@ mod tests {
         let t = Hub {
             prs: 40,
             claims_in_issue: false,
+            rest_association: "MEMBER",
             sent: Cell::new(0),
         };
         let dir = tempfile::TempDir::new().unwrap();
@@ -2701,7 +2815,7 @@ mod tests {
         fn send(&self, req: &HttpRequest) -> Result<crate::forge::transport::HttpResponse> {
             let ok = |b: Value| Ok(crate::forge::transport::HttpResponse::new(200).with_body(b));
             if req.url == GRAPHQL_URL {
-                let pass = |head: &str| json!({"databaseId": 1, "body": format!("AUDIT #1 (x) head {head} — verdict: PASS")});
+                let pass = |head: &str| json!({"databaseId": 1, "authorAssociation": "MEMBER", "body": format!("AUDIT #1 (x) head {head} — verdict: PASS")});
                 let prs: Vec<Value> = (1..=self.prs)
                     .map(|n| {
                         let comments = if n == 2 {
@@ -2834,7 +2948,9 @@ mod tests {
                 let comments: Vec<Value> = if n - 2000 > self.held
                     && n - 2000 <= self.held + self.claimed
                 {
-                    vec![json!({"databaseId": n, "body": "moai-claim: session=agent-x epoch=1"})]
+                    vec![
+                        json!({"databaseId": n, "authorAssociation": "MEMBER", "body": "moai-claim: session=agent-x epoch=1"}),
+                    ]
                 } else {
                     vec![]
                 };
@@ -3499,7 +3615,7 @@ mod tests {
                 .map(|k| {
                     let n = page * 2 + k + 1;
                     let comments = if n == 1 {
-                        vec![json!({"databaseId": 10, "body": "CLOSE-TABLE #1\n| AC | ok |"})]
+                        vec![json!({"databaseId": 10, "authorAssociation": "MEMBER", "body": "CLOSE-TABLE #1\n| AC | ok |"})]
                     } else {
                         vec![]
                     };
