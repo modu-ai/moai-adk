@@ -19,7 +19,7 @@ use crate::home_layout::{self, Entry, Rule, RustUse};
 use crate::home_retire::{class_str, kind_of, rule_str};
 use crate::home_state::{stamp, CANDIDATE_LIMIT};
 use crate::move_journal;
-use crate::state_root::{classify_home, MOAI_DIR, RUST_MARKER};
+use crate::state_root::{classify_home, is_marker_name, MOAI_DIR};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -55,9 +55,9 @@ pub fn decide(entry: Option<&Entry>, name: &str, kind: &str) -> (&'static str, &
     let Some(e) = entry else {
         return ("keep", "not_in_table");
     };
-    if e.name == RUST_MARKER {
-        // The schema-2 marker is the last thing written; whatever sits under this name now is
-        // not it.
+    if is_marker_name(e.name) {
+        // The schema-2 marker is the last thing written, under either marker name; whatever
+        // sits under one of them now is not it.
         return ("keep", "marker_written_last");
     }
     if e.name == "worktrees" {
@@ -712,6 +712,8 @@ mod tests {
                 ("keep", "not_written_by_this_generation"),
             ),
             ("moai-cli.json", "file", ("keep", "marker_written_last")),
+            ("moai.json", "file", ("keep", "marker_written_last")),
+            ("MOAI.JSON", "file", ("keep", "marker_written_last")),
             (
                 "hook-config.toml",
                 "file",

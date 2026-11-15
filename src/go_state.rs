@@ -20,7 +20,8 @@
 //! the earlier `.moai-cli/` product state moves into it, SPECs are copied from the backup,
 //! `CLAUDE.md`/`AGENTS.md`/`AGENTS.local.md` are moved into the backup's `root-files/` (#2936
 //! O4; the local settings are copied there, 0600), and the marker
-//! `.moai/moai-cli.json` is written last. The stage-2 section below has the layout.
+//! `.moai/moai-cli.json` (the name every writer still writes; readers also accept `moai.json`,
+//! #2871) is written last. The stage-2 section below has the layout.
 //!
 //! #2936 S1c-1 (PLAN 6878897673): the preview also classifies the Go generation's `.codex/`
 //! files ([`classify_codex`]) and moves none of them: every `.codex` item is `leave`. A
@@ -2081,7 +2082,8 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
 //   5. SPECs are copied from the backup into `.moai/specs`;
 //   6. `CLAUDE.md`/`AGENTS.md`/`AGENTS.local.md` move to `.moai/backups/<UTC>/root-files/`, a
 //      0600 copy of the local settings goes there too;
-//   7. the marker `.moai/moai-cli.json` is written last, then the receipt says `committed`.
+//   7. the marker `.moai/moai-cli.json` (the write name; see `state_root::NEW_MARKER`) is
+//      written last, then the receipt says `committed`.
 //   Stopped anywhere after step 1, `state_root` says `interrupted` and the revert takes over.
 // * The Go folder stays (settings name it, a worktree is inside, …): only the proven
 //   `.claude/` files move, into `<state folder>/backups/<UTC>/go-state/`, with the receipt
@@ -3006,20 +3008,47 @@ pub fn revert_plan(project: &Path, backup: &str) -> Result<RevertPlan> {
     let area = format!("{base}/backups/{backup}");
     let mut items = Vec::new();
     if new_layout {
-        let marker = format!("{MOAI_DIR}/{}", crate::state_root::RUST_MARKER);
-        let action = if !at_moai {
-            "skip"
-        } else {
-            match fs::symlink_metadata(project.join(&marker)) {
-                Err(_) => "skip",
-                Ok(m) if m.is_file() => "remove",
-                Ok(_) => "conflict",
+        // The marker files actually present, one item each (#2871 marker rename, decision
+        // 6886824285 item 2: readers accept both names). The old name always has an item, as
+        // before; the new name has one only when the file is there. A file whose bytes are not
+        // the ones the apply recorded (`receipt.marker`) is a `conflict`, so the revert stops
+        // before any removal and never deletes what the apply did not write. An old-name file
+        // beside an empty record is the apply that stopped between publishing and recording
+        // the marker: it is the apply's own and goes as before.
+        for name in [
+            crate::state_root::RUST_MARKER,
+            crate::state_root::NEW_MARKER,
+        ] {
+            let marker = format!("{MOAI_DIR}/{name}");
+            let present = fs::symlink_metadata(project.join(&marker));
+            let old_name = name == crate::state_root::RUST_MARKER;
+            if !old_name && present.is_err() {
+                continue;
             }
-        };
-        items.push(RevertItem {
-            path: marker,
-            action: action.into(),
-        });
+            let action = if !at_moai {
+                "skip"
+            } else {
+                match present {
+                    Err(_) => "skip",
+                    Ok(m) if m.is_file() => {
+                        let recorded = receipt.marker.as_str();
+                        if old_name && recorded.is_empty() {
+                            "remove"
+                        } else {
+                            match sha256_file(&project.join(&marker)) {
+                                Ok(h) if h == recorded => "remove",
+                                _ => "conflict",
+                            }
+                        }
+                    }
+                    Ok(_) => "conflict",
+                }
+            };
+            items.push(RevertItem {
+                path: marker,
+                action: action.into(),
+            });
+        }
     }
     for r in &receipt.restored {
         // Read where they were written. Once this generation's `.moai/` is set aside, `.moai`

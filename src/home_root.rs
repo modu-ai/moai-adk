@@ -1,6 +1,7 @@
 //! #2696 C4b: which folder under HOME holds this generation's state — the HOME twin of
 //! [`crate::state_root::dir`]. `~/.moai` once [`crate::state_root::classify_with`] with the
-//! HOME's Go markers says `rust` (a valid marker `~/.moai/moai-cli.json`), otherwise the earlier
+//! HOME's Go markers says `rust` (a valid marker `~/.moai/moai-cli.json` or `~/.moai/moai.json`,
+//! [`crate::state_root::NEW_MARKER`]), otherwise the earlier
 //! `~/.moai-cli` ([`crate::HOME_STATE_DIR`]). Read both, one writes: a HOME without the marker
 //! keeps exactly the paths it had, and the Go generation's `~/.moai` is never written here.
 //! A schema-2 marker (#2871 I2 R1, [`crate::state_root::classify_home`]) makes the HOME
