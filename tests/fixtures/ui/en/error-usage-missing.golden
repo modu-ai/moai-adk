@@ -1,3 +1,3 @@
 error: the following required arguments were not provided:
   <PROJECT>
-  next: run `moai-cli project-plan --help` to see its arguments
+  next: run `moai project-plan --help` to see its arguments
