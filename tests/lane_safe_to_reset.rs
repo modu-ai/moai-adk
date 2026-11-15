@@ -694,6 +694,26 @@ fn claims_that_cannot_be_read_leave_the_lane_unknown_with_the_reason() {
         requests.is_empty(),
         "no request without a repository: {requests:?}"
     );
+    // A --repo that is not OWNER/REPO is refused before any request.
+    let (r, requests) = run_flags(
+        &f,
+        "agent-9",
+        &[
+            "--repo",
+            "acme/widgets/extra",
+            "--screen-jobs",
+            "0",
+            "--session-cwd",
+            f.wt7.to_str().unwrap(),
+        ],
+        None,
+    );
+    assert_eq!(result(&r)["verdict"], "unknown", "{r}");
+    assert!(
+        texts(result(&r), "unknowns")[0].contains("invalid --repo `acme/widgets/extra`"),
+        "{r}"
+    );
+    assert!(requests.is_empty(), "{requests:?}");
     // A search that shows fewer threads than it found is reported, never read as complete.
     let cut = Forge {
         search: json!({"total_count": 31, "incomplete_results": false, "items": [{"number": 7}]}),
@@ -766,6 +786,21 @@ fn a_part_given_twice_or_in_the_wrong_shape_is_refused_with_the_schema_and_an_ex
             .as_str()
             .unwrap()
             .contains("given twice"),
+        "{both}"
+    );
+    // The session folder in the file and as a flag.
+    let cwd = f.wt7.to_str().unwrap();
+    let both = run_flags_with_file(
+        &f,
+        json!({"schema_version": 1, "session_cwd": {"source": "fixture", "path": cwd}}),
+        &["--session-cwd", cwd],
+    );
+    assert_eq!(both["ok"], false, "{both}");
+    assert!(
+        both["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("session_cwd is given twice"),
         "{both}"
     );
     // A list where a number belongs: the message carries the field types and a full example.
