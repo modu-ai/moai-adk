@@ -320,6 +320,18 @@ fn hooks_of(total: usize) -> String {
     text
 }
 
+/// JSON text of a Rust record of exactly `total` bytes: only the `pad` value grows.
+fn record_of(total: usize, base: Value) -> String {
+    let at = |pad: usize| {
+        let mut v = base.clone();
+        v["pad"] = json!("x".repeat(pad));
+        v.to_string()
+    };
+    let text = at(total - at(0).len());
+    assert_eq!(text.len(), total);
+    text
+}
+
 /// `config.toml` text of exactly `total` bytes: only a trailing comment grows.
 fn config_of(total: usize) -> String {
     let at = |pad: usize| format!("{GO_CONFIG}# {}\n", "x".repeat(pad));
@@ -403,8 +415,14 @@ fn ac3_a_wiring_hash_is_bare_hex_and_only_that_provenance_is_normalized() {
     assert_eq!(item(&p, ".codex/hooks.json")["reason"], LATER);
     assert_eq!(item(&p, ".codex/config.toml")["reason"], LATER);
     assert!(proof(&p, ".codex/hooks.json").contains("generated_managed"));
-    // A generated_managed agent file is not a template asset, whatever its hash form.
-    assert_ne!(class(&p, ".codex/agents/moai/p.toml"), "tool_asset", "{p}");
+    // A generated_managed agent file is not a template asset, whatever its hash form: only a
+    // template_managed or user_modified record is judged by `agent_item` at all.
+    stays(&p, ".codex/agents/moai/p.toml", "unknown");
+    assert_eq!(
+        item(&p, ".codex/agents/moai/p.toml")["reason"],
+        json!("not template_managed"),
+        "{p}"
+    );
     // The miss direction: normalization is for generated_managed only.
     stays(&p, ".codex/agents/moai/q.toml", "user_modified");
     // One warning line: a running Codex session reads these two files.
@@ -490,6 +508,73 @@ fn ac4_hooks_json_with_only_moai_handlers_is_go_wiring_and_empty_hooks_are_too()
 }
 
 #[test]
+fn ac4_hooks_json_fails_closed_on_a_shape_or_a_handler_the_go_wiring_does_not_write() {
+    // Each case: the file text and a string that must name why it stays.
+    let cases: [(&str, &str, &str); 6] = [
+        // a handler without a command
+        (
+            "no command",
+            r#"{"hooks":{"Stop":[{"hooks":[{"type":"prompt"}]}]}}"#,
+            "handler",
+        ),
+        // a command that is not text
+        (
+            "command not text",
+            r#"{"hooks":{"Stop":[{"hooks":[{"type":"command","command":["moai hook x"]}]}]}}"#,
+            "handler",
+        ),
+        // the hooks table is not a table
+        (
+            "hooks a string",
+            r#"{"hooks":"moai hook x"}"#,
+            "hooks table",
+        ),
+        // an event holds no list of entries
+        (
+            "event not a list",
+            r#"{"hooks":{"Stop":"moai hook x"}}"#,
+            "hooks table",
+        ),
+        // an entry holds no list of handlers
+        (
+            "entry hooks not a list",
+            r#"{"hooks":{"Stop":[{"hooks":"moai hook x"}]}}"#,
+            "hooks table",
+        ),
+        // a script under `.codex/` that is not under the Go namespace `.codex/hooks/moai/`
+        (
+            "script outside the namespace",
+            r#"{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"sh /p/.codex/evil.sh"}]}]}}"#,
+            "handler",
+        ),
+    ];
+    for (n, (label, text, why)) in cases.iter().enumerate() {
+        let mut fx = go_fx();
+        fx.wired(".codex/hooks.json", text);
+        fx.manifest();
+        let p = fx.plan();
+        stays(&p, ".codex/hooks.json", "user_modified");
+        assert_ne!(item(&p, ".codex/hooks.json")["reason"], LATER, "{label}");
+        assert!(
+            proof(&p, ".codex/hooks.json").contains(why),
+            "case {n} {label}: {p}"
+        );
+        assert!(
+            !p.to_string().contains("evil.sh"),
+            "case {n}: a command reached the output"
+        );
+    }
+    // The pass direction beside the namespace case: the Go namespace itself is MoAI's.
+    let mut fx = go_fx();
+    fx.wired(
+        ".codex/hooks.json",
+        r#"{"hooks":{"Stop":[{"hooks":[{"type":"command","command":"sh /p/.codex/hooks/moai/stop.sh"}]}]}}"#,
+    );
+    fx.manifest();
+    stays(&fx.plan(), ".codex/hooks.json", "go_hooks");
+}
+
+#[test]
 fn ac5_config_toml_needs_content_proof_and_prints_key_names_only() {
     let cases: [(String, &str); 7] = [
         // a key the Go wiring does not write
@@ -554,6 +639,80 @@ fn ac5_config_toml_with_the_go_table_and_a_status_line_alone_is_go_wiring() {
         fx.manifest();
         let p = fx.plan();
         stays(&p, ".codex/config.toml", "go_config");
+    }
+}
+
+#[test]
+fn ac5_each_value_of_the_go_table_and_the_status_line_type_is_compared() {
+    // Each case: the text and the key name the proof must show. A canary value must not.
+    let cases: [(&str, String, &str); 8] = [
+        (
+            "args",
+            GO_CONFIG.replace("args = [\"mcp-server\"]", "args = [\"value-77b1\"]"),
+            "mcp_servers.moai",
+        ),
+        (
+            "args extra",
+            GO_CONFIG.replace("args = [\"mcp-server\"]", "args = [\"mcp-server\", \"value-77b2\"]"),
+            "mcp_servers.moai",
+        ),
+        (
+            "env_vars changed",
+            GO_CONFIG.replace("\"MOAI_HOME\"", "\"VALUE-77B3\""),
+            "mcp_servers.moai",
+        ),
+        (
+            "env_vars shorter",
+            GO_CONFIG.replace(", \"CLAUDE_CODE_SESSION_ID\"", ""),
+            "mcp_servers.moai",
+        ),
+        (
+            "approval mode",
+            GO_CONFIG.replace(
+                "default_tools_approval_mode = \"writes\"",
+                "default_tools_approval_mode = \"value-77b4\"",
+            ),
+            "mcp_servers.moai",
+        ),
+        (
+            "approval mode not text",
+            GO_CONFIG.replace(
+                "default_tools_approval_mode = \"writes\"",
+                "default_tools_approval_mode = 7",
+            ),
+            "mcp_servers.moai",
+        ),
+        (
+            "status_line a string",
+            GO_CONFIG.replace(
+                "status_line = [\"model-with-reasoning\", \"codex-version\", \"context-remaining\"]",
+                "status_line = \"value-77b5\"",
+            ),
+            "tui.status_line",
+        ),
+        (
+            "status_line holds a number",
+            GO_CONFIG.replace("\"codex-version\"", "7"),
+            "tui.status_line",
+        ),
+    ];
+    for (n, (label, text, why)) in cases.iter().enumerate() {
+        assert_ne!(text, GO_CONFIG, "case {label} changed nothing");
+        let mut fx = go_fx();
+        fx.wired(".codex/config.toml", text);
+        fx.manifest();
+        let p = fx.plan();
+        stays(&p, ".codex/config.toml", "user_modified");
+        assert_ne!(item(&p, ".codex/config.toml")["reason"], LATER, "{label}");
+        assert!(
+            proof(&p, ".codex/config.toml").contains(why),
+            "case {n} {label}: {p}"
+        );
+        let all = p.to_string().to_ascii_lowercase();
+        assert!(
+            !all.contains("value-77b"),
+            "case {n} {label}: a value reached the output"
+        );
     }
 }
 
@@ -700,6 +859,182 @@ fn ac9_a_config_toml_with_rust_owned_keys_is_never_classified_as_go() {
     stays(&fx.plan(), ".codex/config.toml", "unknown");
 }
 
+/// The Rust config receipt, the way `codex_config` writes it (`pending` only mid-write).
+fn config_receipt(owned: Value, pending_owned: Option<Value>) -> String {
+    let mut r = json!({"schema_version": 1, "config_path": ".codex/config.toml",
+                       "owned": owned, "config_sha256": null});
+    if let Some(o) = pending_owned {
+        r["pending"] = json!({"owned": o, "config_sha256": sha(b"next")});
+    }
+    r.to_string()
+}
+
+#[test]
+fn ac9_a_config_toml_only_the_pending_part_of_the_receipt_owns_is_never_go() {
+    // An interrupted Rust write: `owned` is still empty, the keys are only in `pending`.
+    let mut fx = go_fx();
+    fx.wired(".codex/config.toml", GO_CONFIG);
+    fx.manifest();
+    rust_file(
+        &fx,
+        "manifests/codex-config.json",
+        &config_receipt(json!({}), Some(json!({"tui.status_line": ["model"]}))),
+    );
+    stays(&fx.plan(), ".codex/config.toml", "rust");
+    // The miss direction: a pending part that owns no key owns nothing here.
+    let mut fx = go_fx();
+    fx.wired(".codex/config.toml", GO_CONFIG);
+    fx.manifest();
+    rust_file(
+        &fx,
+        "manifests/codex-config.json",
+        &config_receipt(json!({}), Some(json!({}))),
+    );
+    stays(&fx.plan(), ".codex/config.toml", "go_config");
+}
+
+#[test]
+fn ac9_a_config_toml_only_the_receipt_knows_is_listed_as_rust() {
+    // The config twin of the last AC-8 case: the Go manifest does not record the file.
+    let fx = go_fx();
+    fx.write(".codex/config.toml", GO_CONFIG);
+    fx.manifest();
+    rust_file(
+        &fx,
+        "manifests/codex-config.json",
+        &config_receipt(json!({"tui.status_line": ["model"]}), None),
+    );
+    let p = fx.plan();
+    stays(&p, ".codex/config.toml", "rust");
+    assert_ne!(item(&p, ".codex/config.toml")["reason"], LATER, "{p}");
+    // A receipt that owns no key lists nothing: the unrecorded file has no item.
+    let fx = go_fx();
+    fx.write(".codex/config.toml", GO_CONFIG);
+    fx.manifest();
+    rust_file(
+        &fx,
+        "manifests/codex-config.json",
+        &config_receipt(json!({}), None),
+    );
+    let p = fx.plan();
+    assert!(!has_item(&p, ".codex/config.toml"), "{p}");
+}
+
+#[test]
+fn ac9_a_hooks_receipt_of_another_schema_is_a_broken_record_not_an_owner() {
+    let hooks_sha = sha(GO_HOOKS.as_bytes());
+    for (n, receipt) in [
+        json!({"schema_version": 2, "sha256": hooks_sha}),
+        json!({"schema_version": "1", "sha256": hooks_sha}),
+        json!({"sha256": hooks_sha}),
+    ]
+    .iter()
+    .enumerate()
+    {
+        let fx = wired_fx();
+        fx.manifest();
+        rust_file(&fx, "manifests/codex-hooks.json", &receipt.to_string());
+        let p = fx.plan();
+        // Not "owned by Rust" and not "Go's": nothing under `.codex` is proven.
+        for rel in [".codex/hooks.json", ".codex/agents/moai/expert.toml"] {
+            stays(&p, rel, "unknown");
+            assert!(
+                item(&p, rel)["reason"].as_str().unwrap().contains("Rust"),
+                "case {n} {rel}: {p}"
+            );
+        }
+    }
+}
+
+#[test]
+fn ac9_a_config_receipt_of_another_schema_or_without_an_owned_table_is_broken() {
+    let keys = json!({"tui.status_line": ["model"]});
+    for (n, receipt) in [
+        json!({"schema_version": 2, "owned": keys}),
+        json!({"schema_version": "1", "owned": keys}),
+        json!({"owned": keys}),
+        json!({"schema_version": 1, "owned": ["tui.status_line"]}),
+        json!({"schema_version": 1, "owned": "tui.status_line"}),
+        json!({"schema_version": 1, "owned": null}),
+        json!({"schema_version": 1}),
+    ]
+    .iter()
+    .enumerate()
+    {
+        let fx = wired_fx();
+        fx.manifest();
+        rust_file(&fx, "manifests/codex-config.json", &receipt.to_string());
+        let p = fx.plan();
+        for rel in [".codex/config.toml", ".codex/agents/moai/expert.toml"] {
+            stays(&p, rel, "unknown");
+            assert!(
+                item(&p, rel)["reason"].as_str().unwrap().contains("Rust"),
+                "case {n} {rel}: {p}"
+            );
+        }
+    }
+}
+
+#[test]
+fn ac7_a_generation_manifest_whose_owned_files_is_not_a_list_is_a_broken_record() {
+    for (n, owned_files) in [json!({}), json!("AGENTS.md"), json!(null), json!(7)]
+        .iter()
+        .enumerate()
+    {
+        let mut fx = go_fx();
+        fx.deployed(".codex/agents/moai/go.toml", "name = \"go\"\n");
+        fx.manifest();
+        rust_file(
+            &fx,
+            "manifests/generation.json",
+            &json!({ "owned_files": owned_files }).to_string(),
+        );
+        let p = fx.plan();
+        stays(&p, ".codex/agents/moai/go.toml", "unknown");
+        assert!(
+            item(&p, ".codex/agents/moai/go.toml")["reason"]
+                .as_str()
+                .unwrap()
+                .contains("Rust"),
+            "case {n}: {p}"
+        );
+    }
+    // The miss direction: no `owned_files` key at all owns nothing, and is not broken.
+    let mut fx = go_fx();
+    fx.deployed(".codex/agents/moai/go.toml", "name = \"go\"\n");
+    fx.manifest();
+    rust_file(&fx, "manifests/generation.json", "{}");
+    stays(&fx.plan(), ".codex/agents/moai/go.toml", "tool_asset");
+}
+
+#[test]
+fn ac9_a_hooks_receipt_that_cannot_be_read_keeps_every_codex_file_unclassified() {
+    let receipt = json!({"schema_version": 1, "sha256": sha(GO_HOOKS.as_bytes())}).to_string();
+    for kind in ["fifo", "link", "torn", "empty"] {
+        let fx = wired_fx();
+        fx.manifest();
+        let at = ".moai-cli/manifests/codex-hooks.json";
+        match kind {
+            // A FIFO would hang a reader (`run_env` ends the test instead).
+            "fifo" => fx.fifo(at),
+            "link" => {
+                let target = fx.outside("receipt.json", &receipt);
+                fx.link(at, target.to_str().unwrap());
+            }
+            "torn" => fx.write(at, "{ torn"),
+            _ => fx.write(at, ""),
+        }
+        let p = fx.plan();
+        for rel in [".codex/hooks.json", ".codex/agents/moai/expert.toml"] {
+            stays(&p, rel, "unknown");
+            assert!(
+                item(&p, rel)["reason"].as_str().unwrap().contains("Rust"),
+                "{kind} {rel}: {p}"
+            );
+        }
+    }
+}
+
 // ---- AC-10: interrupted wiring ----
 
 fn wired_fx() -> Fx {
@@ -787,6 +1122,89 @@ fn ac10_a_finished_journal_and_no_temp_file_are_not_interrupted() {
     );
 }
 
+#[test]
+fn ac10_a_journal_that_cannot_be_read_as_a_file_keeps_everything_in_place() {
+    for kind in ["link", "fifo", "directory"] {
+        let fx = wired_fx();
+        let at = ".moai/state/codex-wiring-journal.json";
+        match kind {
+            // A finished journal behind a link: the link alone makes it unreadable.
+            "link" => {
+                let target = fx.outside("journal.json", &journal(&["complete"]));
+                fx.link(at, target.to_str().unwrap());
+            }
+            // A FIFO would hang a reader (`run_env` ends the test instead).
+            "fifo" => fx.fifo(at),
+            _ => fs::create_dir_all(fx.root.join(at)).unwrap(),
+        }
+        fx.manifest();
+        let p = fx.plan();
+        assert_everything_stays(&p);
+        assert!(
+            p["warnings"].to_string().contains("journal cannot be read"),
+            "{kind}: {p}"
+        );
+    }
+}
+
+#[test]
+fn ac10_a_journal_whose_entries_are_not_a_list_keeps_everything_in_place() {
+    for (n, text) in [
+        r#"{"entries": {"e0": {"state": "complete"}}}"#,
+        r#"{"entries": "complete"}"#,
+        r#"{"entries": null}"#,
+    ]
+    .iter()
+    .enumerate()
+    {
+        let fx = wired_fx();
+        fx.write(".moai/state/codex-wiring-journal.json", text);
+        fx.manifest();
+        let p = fx.plan();
+        assert_everything_stays(&p);
+        assert!(
+            p["warnings"].to_string().contains("journal cannot be read"),
+            "case {n}: {p}"
+        );
+    }
+    // The miss direction: no `entries` key at all says nothing, and nothing is interrupted.
+    let fx = wired_fx();
+    fx.write(".moai/state/codex-wiring-journal.json", "{}");
+    fx.manifest();
+    stays(&fx.plan(), ".codex/hooks.json", "go_hooks");
+}
+
+#[test]
+fn ac10_a_journal_entry_without_a_state_is_not_a_finished_one() {
+    for (n, entries) in [
+        json!([{"id": "e0", "op": "write", "path": ".codex/hooks.json"}]),
+        json!([{"id": "e0", "state": "complete"}, {"id": "e1", "op": "write"}]),
+        json!([{"id": "e0", "state": 7}]),
+        json!([null]),
+    ]
+    .iter()
+    .enumerate()
+    {
+        let fx = wired_fx();
+        fx.write(
+            ".moai/state/codex-wiring-journal.json",
+            &json!({ "entries": entries }).to_string(),
+        );
+        fx.manifest();
+        let p = fx.plan();
+        assert_everything_stays(&p);
+        assert!(
+            p["warnings"].to_string().contains("unfinished entry"),
+            "case {n}: {p}"
+        );
+    }
+    // The miss direction: an empty list has no unfinished entry.
+    let fx = wired_fx();
+    fx.write(".moai/state/codex-wiring-journal.json", r#"{"entries":[]}"#);
+    fx.manifest();
+    stays(&fx.plan(), ".codex/hooks.json", "go_hooks");
+}
+
 // ---- AC-11: symlinks ----
 
 #[test]
@@ -865,6 +1283,71 @@ fn ac11_a_linked_codex_folder_keeps_everything_and_is_not_counted() {
     );
 }
 
+#[test]
+fn ac11_a_fifo_named_hooks_json_is_not_a_regular_file_and_is_never_opened() {
+    let mut fx = go_fx();
+    // The Go manifest records it with the hash of the Go wiring; only a reader that opened the
+    // FIFO would wait for a writer (`run_env` ends the test after `DEADLINE` instead).
+    fx.fifo(".codex/hooks.json");
+    fx.record_wired(".codex/hooks.json", &hex(GO_HOOKS.as_bytes()));
+    fx.manifest();
+    let p = fx.plan();
+    stays(&p, ".codex/hooks.json", "unknown");
+    assert_eq!(
+        item(&p, ".codex/hooks.json")["reason"],
+        json!("not a regular file"),
+        "{p}"
+    );
+    // With a Rust hooks receipt beside it, the receipt's sha cannot be matched by opening it.
+    let mut fx = go_fx();
+    fx.fifo(".codex/hooks.json");
+    fx.record_wired(".codex/hooks.json", &hex(GO_HOOKS.as_bytes()));
+    fx.manifest();
+    rust_file(
+        &fx,
+        "manifests/codex-hooks.json",
+        &json!({"schema_version": 1, "sha256": sha(GO_HOOKS.as_bytes())}).to_string(),
+    );
+    let p = fx.plan();
+    stays(&p, ".codex/hooks.json", "unknown");
+    assert_eq!(
+        item(&p, ".codex/hooks.json")["reason"],
+        json!("not a regular file"),
+        "{p}"
+    );
+}
+
+#[test]
+fn ac11_a_fifo_in_place_of_any_other_codex_file_is_not_a_regular_file_either() {
+    let mut fx = go_fx();
+    fx.fifo(".codex/config.toml");
+    fx.record_wired(".codex/config.toml", &hex(GO_CONFIG.as_bytes()));
+    // An agent file the Go manifest records, whose own check would say "not a bounded ..."
+    fx.fifo(".codex/agents/moai/expert.toml");
+    fx.record(
+        ".codex/agents/moai/expert.toml",
+        "template_managed",
+        &sha(b"name = \"expert\"\n"),
+    );
+    // A FIFO the Rust generation manifest lists: it is not "Rust's file" either.
+    fx.fifo(".codex/agents/prj-fifo.toml");
+    fx.manifest();
+    rust_file(
+        &fx,
+        "manifests/generation.json",
+        &json!({"owned_files": [{"path": ".codex/agents/prj-fifo.toml"}]}).to_string(),
+    );
+    let p = fx.plan();
+    for rel in [
+        ".codex/config.toml",
+        ".codex/agents/moai/expert.toml",
+        ".codex/agents/prj-fifo.toml",
+    ] {
+        stays(&p, rel, "unknown");
+        assert_eq!(item(&p, rel)["reason"], json!("not a regular file"), "{p}");
+    }
+}
+
 // ---- AC-12: secret names ----
 
 #[test]
@@ -892,6 +1375,38 @@ fn ac12_secret_names_under_codex_are_counted_and_never_opened() {
     }
     assert_eq!(p["secrets"], json!(3), "{p}");
     stays(&p, ".codex/agents/moai/ok.toml", "tool_asset");
+}
+
+#[test]
+fn ac12_a_secret_name_the_rust_generation_owns_has_no_item_and_is_counted() {
+    // `credentials*` (home_state) and `*.key` (worktree_include) are secret names; the Rust
+    // manifest lists both, and also a plain name as the control.
+    let mut fx = go_fx();
+    fx.deployed(".codex/agents/moai/ok.toml", "name = \"ok\"\n");
+    fx.write(".codex/agents/credentials.toml", "token = \"x\"\n");
+    fx.write(".codex/agents/server.key", "not read\n");
+    fx.write(".codex/agents/prj-ok.toml", "name = \"prj\"\n");
+    fx.manifest();
+    rust_file(
+        &fx,
+        "manifests/generation.json",
+        &json!({"owned_files": [
+            {"path": ".codex/agents/credentials.toml"},
+            {"path": ".codex/agents/server.key"},
+            {"path": ".codex/agents/prj-ok.toml"}
+        ]})
+        .to_string(),
+    );
+    let p = fx.plan();
+    for rel in [".codex/agents/credentials.toml", ".codex/agents/server.key"] {
+        assert!(!has_item(&p, rel), "{rel}: {p}");
+    }
+    assert_eq!(p["secrets"], json!(2), "{p}");
+    stays(&p, ".codex/agents/prj-ok.toml", "rust");
+    stays(&p, ".codex/agents/moai/ok.toml", "tool_asset");
+    // The name is not echoed anywhere else in the preview either.
+    assert!(!p.to_string().contains("credentials.toml"), "{p}");
+    assert!(!p.to_string().contains("server.key"), "{p}");
 }
 
 // ---- AC-13: counted among the unrecorded files ----
@@ -943,6 +1458,58 @@ fn ac14_hooks_json_and_config_toml_are_read_up_to_exactly_the_limit() {
             item(&p, rel)["reason"].as_str().unwrap().contains("262144"),
             "{rel}: {p}"
         );
+    }
+}
+
+#[test]
+fn ac14_the_rust_records_are_read_up_to_exactly_the_limit() {
+    let reason = |p: &Value, rel: &str| item(p, rel)["reason"].as_str().unwrap().to_string();
+    // The generation manifest: read at N (it owns nothing here), a broken record at N+1.
+    for (len, want) in [(CONFIG_LIMIT, "tool_asset"), (CONFIG_LIMIT + 1, "unknown")] {
+        let mut fx = go_fx();
+        fx.deployed(".codex/agents/moai/go.toml", "name = \"go\"\n");
+        fx.manifest();
+        rust_file(
+            &fx,
+            "manifests/generation.json",
+            &record_of(len, json!({"owned_files": [{"path": "AGENTS.md"}]})),
+        );
+        let p = fx.plan();
+        stays(&p, ".codex/agents/moai/go.toml", want);
+        assert_eq!(
+            want == "unknown",
+            reason(&p, ".codex/agents/moai/go.toml").contains("Rust")
+        );
+    }
+    // The hooks receipt: read at N (its sha owns the file), a broken record at N+1.
+    for (len, want) in [(CONFIG_LIMIT, "rust"), (CONFIG_LIMIT + 1, "unknown")] {
+        let fx = wired_fx();
+        fx.manifest();
+        rust_file(
+            &fx,
+            "manifests/codex-hooks.json",
+            &record_of(
+                len,
+                json!({"schema_version": 1, "sha256": sha(GO_HOOKS.as_bytes())}),
+            ),
+        );
+        let p = fx.plan();
+        stays(&p, ".codex/hooks.json", want);
+    }
+    // The config receipt: read at N (its keys own the file), a broken record at N+1.
+    for (len, want) in [(CONFIG_LIMIT, "rust"), (CONFIG_LIMIT + 1, "unknown")] {
+        let fx = wired_fx();
+        fx.manifest();
+        rust_file(
+            &fx,
+            "manifests/codex-config.json",
+            &record_of(
+                len,
+                json!({"schema_version": 1, "owned": {"tui.status_line": ["model"]}}),
+            ),
+        );
+        let p = fx.plan();
+        stays(&p, ".codex/config.toml", want);
     }
 }
 
