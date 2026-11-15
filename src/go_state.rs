@@ -4445,4 +4445,38 @@ mod tests {
             );
         }
     }
+
+    /// #2936 R-fix (audit mutant M03): a folder that is a link to a folder is not emptied by
+    /// the move, however many of the files that would move sit inside its target. The
+    /// classification refuses a path with a linked component, so only this function's own
+    /// check stands between a link and the list of emptied folders.
+    #[cfg(unix)]
+    #[test]
+    fn a_linked_folder_is_not_listed_as_emptied() {
+        use std::collections::BTreeSet;
+        let tmp = tempfile::TempDir::new().unwrap();
+        let project = tmp.path().join("project");
+        fs::create_dir_all(project.join(".claude")).unwrap();
+        fs::create_dir_all(project.join("store/workflows")).unwrap();
+        fs::write(project.join("store/workflows/w1.md"), "# w1\n").unwrap();
+        std::os::unix::fs::symlink("../store/workflows", project.join(".claude/workflows"))
+            .unwrap();
+        // The same shape with a real folder, to show the walk lists what it should.
+        fs::create_dir_all(project.join(".claude/rules")).unwrap();
+        fs::write(project.join(".claude/rules/r.md"), "# r\n").unwrap();
+
+        let linked = BTreeSet::from([".claude/workflows/w1.md"]);
+        let (empty, stopped) = empty_after(&project, &linked, 100);
+        assert!(!stopped);
+        assert!(empty.is_empty(), "a link was listed as emptied: {empty:?}");
+
+        let real = BTreeSet::from([".claude/rules/r.md"]);
+        let (empty, stopped) = empty_after(&project, &real, 100);
+        assert!(!stopped);
+        assert_eq!(
+            empty,
+            BTreeSet::from([".claude/rules".to_string()]),
+            "`.claude` also holds the link, so it stays"
+        );
+    }
 }
