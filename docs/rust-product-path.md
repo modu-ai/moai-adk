@@ -801,6 +801,19 @@ The doctor reads no TOML (leader RC1 decision, 2026-11-08; the writer below is s
 `moai statusline` reads Claude Code JSON from stdin and prints raw text, not an
 operation envelope. The main layout replaces the earlier Go-parity layout:
 
+**The generated command (#3004 P4-3).** The `statusLine` that `project-update-plan` and
+`claude-settings-apply` write into a project is `{"type": "command", "command": "moai statusline"}`
+(`status_line::current`); releases before it wrote `moai-cli statusline`. That old value is
+recognised only by equality with the old generator's output and only when the ownership receipt
+records it, and is then rewritten as an `update` through the Claude settings three-way (the old file
+is kept under `.moai-cli/settings-backups/`). An edited, foreign or receipt-less status line is
+never touched and its text is never printed. The rewrite, and a new default where a `moai` is on
+PATH, wait for the first `moai` on PATH to be the Rust build **and** to answer `statusline --help`
+with the Rust summary line (a routing script can answer `--version` as Rust and still send
+`statusline` to the Go build); a hold is reported as `status_line_migration` with
+`blocked_by` (`moai_<state>`, `statusline_routed_elsewhere`, `statusline_unprobed`) and never
+blocks the hooks. See `docs/hooks-generation.md` §3. `tools/claude-statusline.sh` is unchanged (P6).
+
 The three lines follow the user instructions of 2026-11-13 (#2756) and, for the tag's
 place, #2928 (user instruction 6878415244, 2026-11-14). Segments on a line are joined by ` | `, and a segment with no value
 is left out together with its separator.
