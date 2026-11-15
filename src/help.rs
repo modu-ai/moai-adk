@@ -80,6 +80,8 @@ pub const GROUPS: &[Group] = &[
             ("home-retire-apply", false),
             ("home-retire-revert", false),
             ("home-install-plan", false),
+            ("home-install-apply", false),
+            ("home-install-revert", false),
             ("worktree-move-plan", true),
             ("worktree-move-apply", true),
             ("update-plan", false),
@@ -308,8 +310,10 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("home-retire-plan", &["home-retire-plan", "home-retire-apply --now 2026-11-14T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
     ("home-retire-apply", &["home-retire-apply --now 2026-11-14T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
     ("home-retire-revert", &["home-retire-revert --permission-reference <ref>"]),
-    ("home-install-plan", &["home-install-plan"]),
-    ("worktree-move-plan", &["worktree-move-plan .", "worktree-move-apply --plan-digest <digest> --permission-reference <ref> ."]),
+    ("home-install-plan", &["home-install-plan", "home-install-apply --home <HOME> --now 2026-11-14T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
+    ("home-install-apply", &["home-install-apply --home <HOME> --now 2026-11-14T00:00:00Z --plan-digest <digest> --permission-reference <ref>"]),
+    ("home-install-revert", &["home-install-revert --home <HOME> --permission-reference <ref>"]),
+    ("worktree-move-plan",&["worktree-move-plan .", "worktree-move-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("worktree-move-apply", &["worktree-move-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("update-plan", &["update-plan ~ <stage>", "update-apply --plan-digest <digest> --permission-reference <ref> ~ <stage> < request.json"]),
     ("update-apply", &["update-apply --plan-digest <digest> --permission-reference <ref> ~ <stage> < request.json"]),
@@ -1369,8 +1373,29 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          HOME 이름 표로 맨 위 항목마다 `move`(`~/.moai/<이름>` 으로 rename)·`keep`(사용자 자료, \
          옛 worktrees, 표에 없는 이름, 링크, 표식)·`blocked`(자리가 이미 있음)로 나눠요. Go \
          항목이 아직 은퇴 전이면 막혀요. 버전 폴더마다 이동 전후 설치 id, `path` 항목을 어디로 \
-         다시 가리킬지, vault 의 모드를 함께 보여 줘요(이름·모드만 보고 열지 않아요). 아무것도 \
-         쓰지 않고 확인 토큰을 줘요.",
+         다시 가리킬지, vault 의 모드를 함께 보여 줘요(이름·모드만 보고 열지 않아요). `--project` \
+         클론에 등록된 Rust 세션이 몇 개인지 보여 주고(적용은 있으면 거부해요), 다른 클론은 HOME \
+         에서 보이지 않는다고 알려 줘요. 아무것도 쓰지 않고 확인 토큰을 줘요.",
+    ),
+    (
+        "home-install-apply",
+        "미리 보기가 `move` 로 정한 `~/.moai-cli` 항목을 `~/.moai` 로 옮겨요(#2871 U3c): 먼저 \
+         매니페스트와 이동 저널을 쓰고, 항목마다 rename 한 번(덮어쓰지 않음, 같은 파일 시스템, \
+         `versions` 와 `path` 는 맨 마지막)이에요. 다음에 `path` 의 링크를 옮겨진 `versions` 로 \
+         다시 가리키고, vault 는 이름·모드만 확인하고(열지도 모드를 바꾸지도 않아요), schema 2 \
+         표식을 맨 마지막에 써서 모든 읽기가 `~/.moai` 로 가는 순간이 전부 끝난 뒤가 되게 해요. \
+         같은 입력으로 다시 계산한 미리 보기의 `plan_digest` 가 같고 동작이 `install` 이며 \
+         `--project` 클론에 등록된 Rust 세션이 없을 때만 실행해요. 돌고 있는 프로그램이 쥔 항목이 \
+         있으면 옮긴 것을 되돌려 `rolled_back` 으로 끝나요. 중간에 멈추면 같은 명령이 이어서 \
+         끝내요. 복사도 삭제도 없어요. 실제 HOME 에서는 사용자가 확인한 뒤에만 리더가 실행해요.",
+    ),
+    (
+        "home-install-revert",
+        "이동을 되돌려 놓아요(#2871 U3c): 적용이 쓴 표식(고쳐졌으면 거부)을 `~/.moai-cli/home-install/` \
+         로 치우고, `path` 의 링크는 아직 새 대상을 가리킬 때만 옛 대상으로 돌리고, 이동 저널을 \
+         거꾸로 되짚어요. 항목은 옮긴 그 항목이 그대로이고 옛 자리가 비어 있을 때만 돌아가요. \
+         `~/.moai` 는 적용이 만들었고 비어 있을 때만 없애요. `--stamp` 가 없으면 가장 새 설치를 \
+         되돌려요. 그 밖에는 아무것도 지우지 않아요.",
     ),
     (
         "worktree-move-plan",
@@ -1665,6 +1690,37 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "home-install-plan",
         "now",
         "`YYYY-MM-DDTHH:MM:SSZ`. 없으면 시스템 시계(저널 이름)",
+    ),
+    (
+        "home-install-plan",
+        "project",
+        "Rust 세션을 셀 클론 안의 폴더(기본: 현재 폴더). 다른 클론은 HOME 에서 보이지 않음",
+    ),
+    (
+        "home-install-apply",
+        "home",
+        "바꿀 HOME(필수). 실제 HOME 이 기본이 되는 일은 없음. 시험은 임시 폴더를 넘김",
+    ),
+    (
+        "home-install-apply",
+        "project",
+        "Rust 세션을 셀 클론 안의 폴더(기본: 현재 폴더). 등록된 세션이 있거나 레지스트리를 못 \
+         읽으면 거부",
+    ),
+    (
+        "home-install-apply",
+        "now",
+        "미리 보기가 읽은 것과 같은 `--now`",
+    ),
+    (
+        "home-install-revert",
+        "home",
+        "바꿀 HOME(필수). 실제 HOME 이 기본이 되는 일은 없음. 시험은 임시 폴더를 넘김",
+    ),
+    (
+        "home-install-revert",
+        "stamp",
+        "되돌릴 설치의 표지(`YYYYMMDDTHHMMSSZ`). 없으면 가장 새 설치",
     ),
     (
         "home-state-revert",

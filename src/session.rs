@@ -395,7 +395,7 @@ fn clock() -> i64 {
 /// Whether some launcher holds the lock on the `agent-<n>.live` file at `path`. The probe asks
 /// for a shared lock and lets go at once: it conflicts with the holder's exclusive lock only,
 /// and two probes never block each other.
-fn live_lock_held(path: &Path) -> Result<bool, String> {
+pub(crate) fn live_lock_held(path: &Path) -> Result<bool, String> {
     refuse_unless_regular(path)?;
     let unusable = || {
         format!(
