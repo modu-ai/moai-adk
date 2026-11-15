@@ -82,7 +82,7 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "c5d7b39319da0dc50fac6047b0d6527be6df0e6bcab12d3c3bc0eff9120303a6",
+      "sha256": "aede4b2ce628528e388a7aa34b96dd62a99ad0cfbf52cb54214cd2f72b63dcff",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
@@ -154,7 +154,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "bc6fadf652bb0c966b3c444158e4cff32a98ef877eb797c8dfd7a0884da3e98d",
+      "sha256": "a44e495e3a653702d284c2664016d794316bf31ba8241d2eae5f32be8886e1f8",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
