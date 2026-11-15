@@ -1,8 +1,9 @@
 //! `project-update-plan` (#2936 S1): one read-only preview of the project update, grouped into
 //! the three phases of the user's UPDATE flow (#2936 comment 6876720048): `backup` (the
 //! Go-generation state moves aside), `install` (this generation's managed files), `merge`
-//! (the text of `AGENTS.local.md` comes back into `AGENTS.md`, #2936 R10; the other backed-up
-//! settings and instructions are a later slice).
+//! (the text of `AGENTS.local.md` comes back into `AGENTS.md`, #2936 R10; the user's earlier
+//! `settings.json` values come back into the new one, #2936 R8; the other backed-up
+//! instructions are a later slice).
 //!
 //! Every step calls an existing plan in this process — `go_state::plan`, `profile::plan`,
 //! `generation::generation_plan`, `claude::settings_plan_in`, `github_templates::github_plan`
@@ -12,6 +13,7 @@
 
 use crate::agents_local_merge;
 use crate::claude::{self, SettingsScope};
+use crate::claude_settings_merge;
 use crate::generation::{self, GenerationRequest};
 use crate::github_templates::{self, GithubRequest};
 use crate::{go_state, profile, project_detect, project_hosts, state_root, Profile};
@@ -41,8 +43,9 @@ const INSTALL_REASON: &str = "profile, generation (AGENTS.md managed section and
 /// Why the merge step waits while the generation step has files to write: the merge reads and
 /// writes `AGENTS.md`, whose bytes that step's digest binds.
 pub const AFTER_INSTALL: &str = "re-run after the install phase";
-const MERGE_REASON: &str = "the text of AGENTS.local.md merges into AGENTS.md (#2936 R10); other \
-     backed-up settings and instructions are a later slice (#2936 S1f)";
+const MERGE_REASON: &str = "the text of AGENTS.local.md merges into AGENTS.md (#2936 R10); the \
+     user's earlier settings.json values merge back into the new one (#2936 R8); other \
+     backed-up instructions are a later slice (#2936 S1f)";
 
 /// Step states from least to most severe; a phase takes its worst step's state.
 /// `skip_in_use` (a file a running session reads, #2936 S2b) is reserved: this slice never
@@ -429,10 +432,23 @@ fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> 
 /// Q2 A (#2936): the keys MoAI already owns, without `hooks` (only `hooks-apply` writes
 /// that key), are kept as they are; no key is added by default.
 fn settings_step(root: &Path, shown: &str) -> Result<Step> {
-    let owned = settings_stdin(claude::owned_settings(root)?);
+    let mut owned = settings_stdin(claude::owned_settings(root)?);
+    // #2936 R8 (Q-H1, decision 6880072221): a project that has no status line of its own gets
+    // MoAI's. One it has stays as it is, and so does one MoAI wrote before.
+    if !owned.contains_key("statusLine")
+        && !claude::current_settings(root)?.contains_key("statusLine")
+    {
+        owned.insert("statusLine".into(), default_status_line());
+    }
     let desired = claude::user_settings_desired_in(root, &owned, SettingsScope::Project)?;
     let plan = claude::settings_plan_in(root, &desired, SettingsScope::Project)?;
     Ok(settings_from_plan(shown, &plan, owned))
+}
+
+/// The status line MoAI writes into a project that has none: the product command
+/// (`moai-cli statusline`, #2376), the same binary name the hooks call.
+fn default_status_line() -> Value {
+    json!({"type": "command", "command": "moai-cli statusline"})
 }
 
 /// The keys a printed settings apply carries on stdin: the owned keys without `hooks`.
@@ -446,6 +462,10 @@ fn settings_from_plan(shown: &str, plan: &Value, owned: Map<String, Value>) -> S
     let digest = plan["plan_digest"].as_str().map(String::from);
     let (state, reason) = match plan["action"].as_str() {
         Some("create" | "update") => ("ready", "MoAI-owned keys to restore"),
+        Some("unchanged") if owned.is_empty() => (
+            "unchanged",
+            "MoAI owns no key in this file; the keys it has are left as they are",
+        ),
         Some("unchanged") => ("unchanged", "the MoAI-owned keys are current"),
         _ => (
             "conflict",
@@ -604,16 +624,119 @@ fn install_steps(
 /// phase has a move to make, and while the generation step has files to write.
 fn merge_steps(root: &Path, shown: &str, backup: &[Step], install: &[Step]) -> Vec<Step> {
     const NAME: &str = "agents-local-merge";
+    const SETTINGS: &str = "claude-settings-merge";
     if backup.iter().any(|s| s.state == "needs_decision") {
-        return vec![Step::waiting(NAME, "blocked", AFTER_BACKUP)];
+        return vec![
+            Step::waiting(NAME, "blocked", AFTER_BACKUP),
+            Step::waiting(SETTINGS, "blocked", AFTER_BACKUP),
+        ];
     }
-    if install
+    let pending = |step: &str| {
+        install
+            .iter()
+            .any(|s| s.name == step && matches!(s.state, "ready" | "needs_decision"))
+    };
+    let agents = if install
         .iter()
         .any(|s| s.name == "generation" && s.state == "ready")
     {
-        return vec![Step::waiting(NAME, "blocked", AFTER_INSTALL)];
+        Step::waiting(NAME, "blocked", AFTER_INSTALL)
+    } else {
+        or_blocked(NAME, agents_local_merge_step(root, shown))
+    };
+    // The settings merge reads the file the install step writes: with something to merge, its
+    // digest would be stale before that step ran.
+    let settings = or_blocked(
+        SETTINGS,
+        claude_settings_merge_step(root, shown, pending("claude-settings")),
+    );
+    vec![agents, settings]
+}
+
+/// The settings merge (#2936 R8): what the user had set in the Go generation's
+/// `.claude/settings.json`, read from the copy `go-state-apply` moved into its backup, offered
+/// back key by key. The printed command is the ordinary `claude-settings-apply` with the
+/// owned keys plus every carriable candidate on stdin, so ownership, the three-way plan and the
+/// digest are the ones that file already has; a merge of only some keys is a new
+/// `claude-settings-plan` with fewer keys.
+fn claude_settings_merge_step(root: &Path, shown: &str, install_pending: bool) -> Result<Step> {
+    const NAME: &str = "claude-settings-merge";
+    let Some(found) = claude_settings_merge::candidates(root)? else {
+        return Ok(Step::waiting(
+            NAME,
+            "skip",
+            "no earlier settings.json was moved into a backup, so there is nothing to merge back",
+        ));
+    };
+    let preview = |extra: Value| {
+        json!({
+            "backup": found.rel,
+            "backup_sha256": found.sha256,
+            "candidates": found.rows,
+            "commit_notice": "a merged value is written to .claude/settings.json, a file that \
+                              is usually committed",
+            "plan": extra,
+        })
+    };
+    if found.carry.is_empty() {
+        return Ok(Step {
+            name: NAME,
+            state: "skip",
+            reason: "nothing in the earlier settings can be merged back; the file stays in the \
+                     backup"
+                .into(),
+            preview: preview(Value::Null),
+            plan_digest: None,
+            apply: None,
+        });
     }
-    vec![or_blocked(NAME, agents_local_merge_step(root, shown))]
+    if install_pending {
+        return Ok(Step {
+            name: NAME,
+            state: "blocked",
+            reason: AFTER_INSTALL.into(),
+            preview: preview(Value::Null),
+            plan_digest: None,
+            apply: None,
+        });
+    }
+    let mut stdin = settings_stdin(claude::owned_settings(root)?);
+    for (key, value) in &found.carry {
+        stdin.insert(key.clone(), value.clone());
+    }
+    let desired = claude::user_settings_desired_in(root, &stdin, SettingsScope::Project)?;
+    let plan = claude::settings_plan_in(root, &desired, SettingsScope::Project)?;
+    let digest = plan["plan_digest"].as_str().map(String::from);
+    let (state, reason) = match plan["action"].as_str() {
+        Some("create" | "update") => (
+            "needs_decision",
+            "earlier settings the user had can be merged back; which ones is the user's choice",
+        ),
+        Some("unchanged") => ("unchanged", "the earlier settings are already in the file"),
+        _ => (
+            "conflict",
+            "a key was changed in the file since MoAI wrote it; nothing is merged",
+        ),
+    };
+    let apply = match (&digest, state) {
+        (Some(d), "needs_decision") => Some((
+            argv("claude-settings-apply", shown, d),
+            Value::Object(stdin),
+        )),
+        _ => None,
+    };
+    Ok(Step {
+        name: NAME,
+        state,
+        reason: reason.into(),
+        preview: preview(json!({
+            "action": plan["action"],
+            "settings_path": plan["settings_path"],
+            "conflicts": plan["conflicts"],
+        })),
+        plan_digest: digest,
+        apply,
+    })
 }
 
 fn agents_local_merge_step(root: &Path, shown: &str) -> Result<Step> {

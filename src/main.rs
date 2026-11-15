@@ -516,7 +516,7 @@ enum Command {
     },
     /// Preview the managed Claude Code settings keys
     ///
-    /// Preview a three-way merge of the managed keys (`outputStyle`, `statusLine`, `permissions`) on stdin
+    /// Preview a three-way merge of the managed keys (`outputStyle`, `statusLine`, `permissions`, `env`, `model`) on stdin
     /// into PROJECT/.claude/settings.json (#2239); other keys are refused. Writes nothing.
     ClaudeSettingsPlan {
         project: PathBuf,
@@ -1244,7 +1244,7 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
                 // (Issue #2363); the usage error contract below is unchanged.
                 moai_cli::banner::maybe_print_banner();
                 Err(
-                    "usage: moai-cli -l | -a [cc|glm|codex] | moai-cli cc|glm|codex -l|-a | moai-cli <command>; see --help".into(),
+                    "usage: moai -l | -a [cc|glm|codex] | moai cc|glm|codex -l|-a | moai <command>; see --help".into(),
                 )
             }
         };
@@ -2139,17 +2139,11 @@ fn usage_error(e: clap::Error) -> ExitCode {
     ExitCode::from(2)
 }
 
-/// The name the user ran (`moai` or `moai-cli`), for the error frame's help pointer.
+/// The name the error frame's help pointer prints: `moai`, whichever name the user ran
+/// (`moai-cli` is an alias; #3004 P1), the same name the help and usage text print.
 fn program_name() -> String {
-    std::env::args_os()
-        .next()
-        .and_then(|a| {
-            std::path::Path::new(&a)
-                .file_name()
-                .map(|n| n.to_string_lossy().into_owned())
-        })
-        .filter(|n| !n.is_empty())
-        .unwrap_or_else(|| "moai".to_string())
+    let argv0 = std::env::args_os().next().unwrap_or_default();
+    moai_cli::help::bin_name(&argv0.to_string_lossy()).to_string()
 }
 
 /// The painter for the stderr error frame: S2's per-stream color decision (#2803).
@@ -2296,7 +2290,7 @@ fn pr_self_audit_check(reaudit: bool, file: Option<&std::path::Path>) -> ExitCod
             Err(e) => Err(format!("{}: {e}", path.display())),
         },
         None if io::stdin().is_terminal() => {
-            eprintln!("usage: moai-cli pr-self-audit-check [--reaudit] [--file BODY.md] < BODY.md");
+            eprintln!("usage: moai pr-self-audit-check [--reaudit] [--file BODY.md] < BODY.md");
             return ExitCode::from(2);
         }
         None => {
@@ -2624,10 +2618,11 @@ mod tests {
     }
 
     /// #2812 W3 AC-4, through the path `main` takes (`help::bin_name` + `help::configure`,
-    /// #2802 S1): Windows `moai.exe` and `moai-cli.exe` are judged like `moai` and `moai-cli`
-    /// (the `.exe` never shows), help and usage errors differ only in the name that ran, and
-    /// `--version` is the same build signature `moai-cli <ver> (rust)` for every name. Windows
-    /// paths are written with `/` so the test reads them the same on every OS.
+    /// #2802 S1; #3004 P1): Windows `moai.exe` and `moai-cli.exe` are judged like `moai` and
+    /// `moai-cli` (the `.exe` never shows), help and usage errors name `moai` and are the same
+    /// bytes for every name, and `--version` is the same build signature
+    /// `moai-cli <ver> (rust)` for every name. Windows paths are written with `/` so the test
+    /// reads them the same on every OS.
     #[test]
     fn every_binary_name_renders_the_same_moai_help() {
         let render = |argv0: &'static str, args: &[&str]| -> (&'static str, String) {
@@ -2652,9 +2647,10 @@ mod tests {
         };
         let names = [
             ("C:/Users/u/.moai/path/moai.exe", "moai"),
-            ("C:/Users/u/.moai/path/moai-cli.exe", "moai-cli"),
+            ("C:/Users/u/.moai/path/moai-cli.exe", "moai"),
             ("/usr/local/bin/moai", "moai"),
-            ("moai-cli", "moai-cli"),
+            ("moai-cli", "moai"),
+            ("/x/renamed-copy", "moai"),
         ];
         for args in [
             &["--help"][..],
@@ -2678,11 +2674,8 @@ mod tests {
                         out.contains(&format!("Usage: {bin} ")),
                         "{argv0} {args:?}: {out}"
                     );
-                    assert_eq!(
-                        out.replace("moai-cli", "moai"),
-                        first.replace("moai-cli", "moai"),
-                        "{argv0} {args:?}"
-                    );
+                    assert!(!out.contains("moai-cli"), "{argv0} {args:?}: {out}");
+                    assert_eq!(out, first, "{argv0} {args:?}");
                 }
             }
         }
@@ -3328,6 +3321,48 @@ mod help_rules {
             "examples that do not parse:\n{}",
             failed.join("\n")
         );
+    }
+
+    /// #3004 P1 AC-5: every command the root help names — the first steps and the examples —
+    /// is a real command of this build, parses with the arguments shown, and is one of the root
+    /// commands the list below it shows. A command removed or renamed breaks this test, not a
+    /// person's first minute. A step starting with `/` is typed inside the session; the only
+    /// one is `/moai project`, which is the skill's route (`skills/moai/SKILL.md`).
+    #[test]
+    fn the_getting_started_and_example_commands_exist() {
+        let tree = Cli::command();
+        let mut slash = Vec::new();
+        let mut shell = 0;
+        for (text, about) in moai_cli::help::GETTING_STARTED
+            .iter()
+            .chain(moai_cli::help::ROOT_EXAMPLES.iter())
+        {
+            assert!(!about.is_empty(), "{text}: no description");
+            if text.starts_with('/') {
+                slash.push(*text);
+                continue;
+            }
+            shell += 1;
+            let words: Vec<&str> = text.split_whitespace().collect();
+            let word = words[0];
+            assert!(
+                tree.find_subcommand(word).is_some(),
+                "`moai {text}`: `{word}` is no command of this build"
+            );
+            let on_the_root = moai_cli::help::GROUPS
+                .iter()
+                .flat_map(|g| g.commands.iter())
+                .any(|(w, root)| *w == word && *root);
+            assert!(on_the_root, "`moai {word}` is not a root command");
+            let argv: Vec<&str> = std::iter::once("moai").chain(words).collect();
+            let parsed = configured()
+                .try_get_matches_from(&argv)
+                .map_err(|e| e.kind())
+                .and_then(|m| Cli::from_arg_matches(&m).map(|_| ()).map_err(|e| e.kind()));
+            assert_eq!(parsed, Ok(()), "`moai {text}` does not parse");
+        }
+        assert_eq!(slash, ["/moai project"]);
+        assert!(shell >= 6, "{shell} shell commands");
     }
 
     /// Attaching the examples keeps the commands in their declared order (#2839 audit N1).

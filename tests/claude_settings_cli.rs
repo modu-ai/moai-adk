@@ -133,7 +133,7 @@ fn unmanaged_keys_and_stale_digests_are_refused() {
     let (home, project) = (TempDir::new().unwrap(), TempDir::new().unwrap());
     let p = project.path();
     let mut bad = desired();
-    bad["env"] = json!({"MOAI_TEST_UNMANAGED": "fixture"});
+    bad["enabledPlugins"] = json!({"MOAI_TEST_UNMANAGED": false});
     bad["hooks"] = json!({});
     let (code, v) = run(
         &["claude-settings-plan", p.to_str().unwrap()],
@@ -143,7 +143,7 @@ fn unmanaged_keys_and_stale_digests_are_refused() {
     assert_eq!(code, Some(1), "{v}");
     let msg = v["error"]["message"].as_str().unwrap();
     assert!(
-        msg.contains("env, hooks") && msg.contains("allowed: outputStyle, statusLine"),
+        msg.contains("enabledPlugins, hooks") && msg.contains("allowed: outputStyle, statusLine"),
         "{msg}"
     );
     let (code, _) = apply(p, home.path(), &bad, &"0".repeat(64));
@@ -157,6 +157,103 @@ fn unmanaged_keys_and_stale_digests_are_refused() {
         "{v}"
     );
     assert!(!p.join(".claude/settings.json").exists());
+}
+
+/// #2936 R8: `env` and `model` are settable through the CLI within their limits; each limit is
+/// tried at N and at N+1, and a credential-shaped entry is refused without being echoed.
+#[test]
+fn env_and_model_are_settable_within_their_limits() {
+    let (home, project) = (TempDir::new().unwrap(), TempDir::new().unwrap());
+    let p = project.path();
+    let refused = |desired: &Value| -> String {
+        let (code, v) = run(
+            &["claude-settings-plan", p.to_str().unwrap()],
+            home.path(),
+            desired,
+        );
+        assert_eq!(code, Some(1), "{desired}: {v}");
+        assert!(!p.join(".claude").exists(), "nothing written");
+        v["error"]["message"].as_str().unwrap().to_string()
+    };
+    let env_of = |n: usize| -> Value {
+        let entries: serde_json::Map<String, Value> =
+            (0..n).map(|i| (format!("V{i}"), json!("x"))).collect();
+        json!({"env": entries})
+    };
+    assert_eq!(plan(p, home.path(), &env_of(64))["action"], json!("create"));
+    assert!(refused(&env_of(65)).contains("at most 64"));
+
+    let value_of = |n: usize| json!({"env": {"LONG": "a".repeat(n)}});
+    assert_eq!(
+        plan(p, home.path(), &value_of(1024))["action"],
+        json!("create")
+    );
+    assert!(refused(&value_of(1025)).contains("LONG"));
+
+    let model_of = |n: usize| json!({"model": "m".repeat(n)});
+    assert_eq!(
+        plan(p, home.path(), &model_of(128))["action"],
+        json!("create")
+    );
+    assert!(refused(&model_of(129)).contains("model must be"));
+    assert!(refused(&json!({"model": "two\nlines"})).contains("model must be"));
+
+    let token = format!("{}{}", "ghp_", "a".repeat(30));
+    let msg = refused(&json!({"env": {"EDITOR": token}}));
+    assert!(msg.contains("EDITOR") && !msg.contains(&token), "{msg}");
+    assert!(refused(&json!({"env": {"MY_TOKEN": "x"}})).contains("MY_TOKEN"));
+    assert!(refused(&json!({"env": {"1BAD": "x"}})).contains("1BAD"));
+    assert!(refused(&json!({"env": {"URL": "https://u:p@host/x"}})).contains("URL"));
+}
+
+/// Audit 6888156222 B1: the writer itself refuses a credential-shaped value in `permissions`,
+/// `model`, `statusLine` and `outputStyle`, names the key, and never echoes the value; the same
+/// keys with clean values plan fine. A merge cannot get a credential into the file this way.
+#[test]
+fn a_credential_in_any_settings_key_is_refused_and_not_echoed() {
+    let (home, project) = (TempDir::new().unwrap(), TempDir::new().unwrap());
+    let p = project.path();
+    let token = format!("{}{}", "ghp_", "a".repeat(30));
+    let cases = [
+        (
+            "permissions",
+            json!({"allow": [format!("Bash(curl -H 'Authorization: Bearer {token}':*)")]}),
+            json!({"allow": ["Bash(git status)"]}),
+        ),
+        (
+            "permissions",
+            json!({"deny": ["Read(https://user:pass@host/x)"]}),
+            json!({"deny": ["Read(./.env)"]}),
+        ),
+        ("model", json!(format!("opus-{token}")), json!("opus")),
+        (
+            "statusLine",
+            json!({"type": "command", "command": format!("my-status --token {token}")}),
+            json!({"type": "command", "command": "my-status"}),
+        ),
+        (
+            "outputStyle",
+            json!(format!("Style-{token}")),
+            json!("Explanatory"),
+        ),
+    ];
+    for (key, bad, clean) in cases {
+        let (code, v) = run(
+            &["claude-settings-plan", p.to_str().unwrap()],
+            home.path(),
+            &json!({ key: bad }),
+        );
+        assert_eq!(code, Some(1), "{key}: {v}");
+        let msg = v["error"]["message"].as_str().unwrap();
+        assert!(msg.contains(key) && msg.contains("credential"), "{msg}");
+        assert!(!v.to_string().contains(&token), "{key}: echoed");
+        assert!(!p.join(".claude").exists(), "{key}: nothing written");
+        assert_eq!(
+            plan(p, home.path(), &json!({ key: clean }))["action"],
+            json!("create"),
+            "{key}"
+        );
+    }
 }
 
 /// Home writes are blocked: a project that is HOME, or whose `.claude` is
