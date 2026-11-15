@@ -723,6 +723,37 @@ mod tests {
         assert!(live_session_count(&linked, 0).is_err(), "symlinked folder");
     }
 
+    /// #2871 U3c (audit of #3041, B1): a launcher's lock on `agent-<n>.live` is a session with no
+    /// registry entry at all; a lock nobody holds is dead; and a folder that cannot be listed is
+    /// an error, never "no sessions" (the install apply must fail closed).
+    #[cfg(unix)]
+    #[test]
+    fn live_session_count_follows_the_launcher_lock_and_fails_on_an_unlistable_folder() {
+        use std::os::unix::fs::PermissionsExt;
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("sessions");
+        fs::create_dir(&dir).unwrap();
+        let live = fs::File::create(dir.join("agent-5.live")).unwrap();
+        live.lock().unwrap();
+        assert_eq!(live_session_count(&dir, 0), Ok(1), "a held lock alone");
+        // The same session as a registry entry too: one session, not two.
+        fs::write(dir.join("agent-5.json"), named_entry("agent-5", 10)).unwrap();
+        assert_eq!(live_session_count(&dir, 0), Ok(1), "lock and entry");
+        fs::remove_file(dir.join("agent-5.json")).unwrap();
+        drop(live);
+        assert_eq!(live_session_count(&dir, 0), Ok(0), "a lock nobody holds");
+        // A folder that cannot be listed. A user who can list it anyway (root) cannot make
+        // this input, so the check is skipped there.
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o000)).unwrap();
+        let denied = fs::read_dir(&dir).is_err();
+        let counted = live_session_count(&dir, 0);
+        fs::set_permissions(&dir, fs::Permissions::from_mode(0o755)).unwrap();
+        if denied {
+            let err = counted.expect_err("an unlistable folder is not zero sessions");
+            assert!(err.contains("cannot be read"), "{err}");
+        }
+    }
+
     #[test]
     fn instances_are_32_lowercase_hex() {
         let fresh = new_instance();

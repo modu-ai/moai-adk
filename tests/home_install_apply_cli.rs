@@ -1279,6 +1279,48 @@ fn an_unreadable_session_registry_blocks_the_apply() {
     assert_eq!(tree(&f.home, &[]), before);
 }
 
+/// Audit of #3041 (B1): a launcher is a live session by its lock on `agent-<n>.live` alone, with
+/// no registry entry; once nobody holds the lock the file is dead and the apply goes through.
+#[test]
+fn a_launcher_lock_without_a_registry_entry_blocks_the_apply() {
+    let f = fx();
+    let p = plan(&f);
+    fs::create_dir_all(f.sessions()).unwrap();
+    let live = fs::File::create(f.sessions().join("agent-5.live")).unwrap();
+    live.lock().unwrap();
+    let before = tree(&f.home, &[]);
+    let a = apply(&f, &digest_of(&p));
+    assert_eq!(kind(&a), "blocked", "{a}");
+    assert!(message(&a).contains("rust_session_live:1"), "{a}");
+    assert_eq!(tree(&f.home, &[]), before, "nothing was written");
+    assert_eq!(plan(&f)["sessions"]["live"], json!(1), "the preview agrees");
+    drop(live);
+    let ok = apply(&f, &digest_of(&p));
+    assert_eq!(ok["result"]["state"], json!("applied"), "{ok}");
+    assert_eq!(ok["result"]["sessions"]["live"], json!(0), "{ok}");
+}
+
+/// Audit of #3041 (B1): a registry folder that cannot be listed is `rust_session_registry_unknown`,
+/// not "no sessions". Skipped for a user who can list it anyway (root).
+#[test]
+fn a_session_registry_folder_that_cannot_be_listed_blocks_the_apply() {
+    let f = fx();
+    let p = plan(&f);
+    fs::create_dir_all(f.sessions()).unwrap();
+    chmod(&f.sessions(), 0o000);
+    if fs::read_dir(f.sessions()).is_ok() {
+        chmod(&f.sessions(), 0o755);
+        return;
+    }
+    let before = tree(&f.home, &[]);
+    let a = apply(&f, &digest_of(&p));
+    chmod(&f.sessions(), 0o755);
+    assert_eq!(kind(&a), "blocked", "{a}");
+    assert!(message(&a).contains("rust_session_registry_unknown"), "{a}");
+    assert!(message(&a).contains("cannot be read"), "{a}");
+    assert_eq!(tree(&f.home, &[]), before, "nothing was written");
+}
+
 #[test]
 fn the_preview_shows_the_sessions_it_can_see() {
     let f = fx();
