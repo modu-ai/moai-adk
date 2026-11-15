@@ -32,7 +32,14 @@ pub const JOURNAL_DIR: &str = "home-install";
 pub const KIND: &str = "home-install";
 /// The prefix of the confirmation token, apart from the other layers' (`home:` is the Go retire).
 pub const TOKEN_PREFIX: &str = "install:";
-const MANIFEST_PREFIX: &str = "install-manifest-";
+pub(crate) const MANIFEST_PREFIX: &str = "install-manifest-";
+
+/// The earlier state folder `~/.moai-cli`, whatever generation the HOME is in. The install is
+/// the one place that reads it on purpose, so its apply and revert ask here and the name stays
+/// spelled in one place (see the use count in `home_root`).
+pub(crate) fn old_root(home: &Path) -> std::path::PathBuf {
+    home.join(crate::HOME_STATE_DIR)
+}
 /// The `path` entries listed in a stub plan, and the longest link target shown.
 const STUB_LIMIT: usize = 50;
 /// The binary every version folder holds, relative to the folder: `bin/moai-cli` with the
@@ -73,6 +80,44 @@ pub fn decide(entry: Option<&Entry>, name: &str, kind: &str) -> (&'static str, &
     ("move", "rust_item")
 }
 
+/// What the session facts say about the clones the HOME cannot see.
+pub(crate) const OTHER_CLONES: &str = "not visible from the HOME";
+
+fn clock() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX))
+}
+
+/// The session registry of the clone at `project` and how many sessions are alive in it. A
+/// registry that cannot be located or read is an error, never "none alive": the apply fails
+/// closed on it.
+pub(crate) fn live_sessions_of(project: &Path) -> Result<(std::path::PathBuf, usize), String> {
+    let dir = crate::lane_registry::registry_dir(project)?;
+    let live = crate::lane_registry::live_session_count(&dir, clock())?;
+    Ok((dir, live))
+}
+
+/// The Rust sessions this preview could see (#2871 U3c, leader decision 6886405676): the
+/// registry of the one clone at `project`. Every other clone keeps its own registry, which the
+/// HOME does not lead to, so the answer says so instead of claiming there is no session.
+pub fn sessions(project: &Path) -> Value {
+    session_fact(&live_sessions_of(project))
+}
+
+/// The `sessions` object of a preview or an apply result, from what [`live_sessions_of`] found.
+pub fn session_fact(found: &Result<(std::path::PathBuf, usize), String>) -> Value {
+    match found {
+        Ok((dir, live)) => json!({
+            "checked": dir.display().to_string(), "live": live, "error": null,
+            "other_clones": OTHER_CLONES,
+        }),
+        Err(e) => json!({
+            "checked": null, "live": null, "error": e, "other_clones": OTHER_CLONES,
+        }),
+    }
+}
+
 /// `<digest>` as the token: `install:` and sixteen hex digits of the `content_digest`.
 pub fn token_of(content_digest: &str) -> String {
     let hex = content_digest
@@ -106,7 +151,7 @@ fn device(_p: &Path) -> Option<u64> {
 
 /// The permission bits of `p` as octal text, from its own metadata.
 #[cfg(unix)]
-fn mode_of(p: &Path) -> Option<u32> {
+pub(crate) fn mode_of(p: &Path) -> Option<u32> {
     use std::os::unix::fs::PermissionsExt;
     fs::symlink_metadata(p)
         .ok()
@@ -114,7 +159,7 @@ fn mode_of(p: &Path) -> Option<u32> {
 }
 
 #[cfg(not(unix))]
-fn mode_of(_p: &Path) -> Option<u32> {
+pub(crate) fn mode_of(_p: &Path) -> Option<u32> {
     None
 }
 
@@ -140,7 +185,7 @@ fn canon(p: &Path) -> std::path::PathBuf {
 /// The names under `dir`, sorted; `unreadable` counts names that are not UTF-8 and entries the
 /// listing could not read. A folder that cannot be listed at all gives nothing here: callers that
 /// must not take that for "empty" ask [`listable`] first.
-fn names_of(dir: &Path) -> (Vec<String>, usize) {
+pub(crate) fn names_of(dir: &Path) -> (Vec<String>, usize) {
     let mut names = Vec::new();
     let mut unreadable = 0;
     if let Ok(rd) = fs::read_dir(dir) {
@@ -237,7 +282,7 @@ fn stub_plan(old: &Path, versions_moves: bool) -> Vec<Value> {
 
 /// The vault's own metadata: its mode, the master key's mode, how many entries it holds and how
 /// many of those are links or have more than one name. Nothing inside is opened.
-fn vault_facts(old: &Path) -> Value {
+pub(crate) fn vault_facts(old: &Path) -> Value {
     let vault = old.join("vault");
     let Ok(meta) = fs::symlink_metadata(&vault) else {
         return json!({"kind": "absent"});
@@ -284,7 +329,7 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
         return Err("HOME is not an absolute path".into());
     }
     let stamp = stamp(now)?;
-    let old = home.join(crate::HOME_STATE_DIR);
+    let old = old_root(home);
     let moai = home.join(MOAI_DIR);
     let c = classify_home(home);
     let old_kind = match fs::symlink_metadata(&old) {
@@ -317,6 +362,11 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
         (Vec::new(), 0)
     };
     let total = names.len() + unreadable;
+    // The install journal folder is the apply's own: it creates it for its lock before it
+    // re-plans, so it never counts against the entry limit (a HOME with exactly 500 other
+    // entries must plan the same before and after the lock exists).
+    let own = names.iter().any(|n| n.eq_ignore_ascii_case(JOURNAL_DIR));
+    let entry_limit = CANDIDATE_LIMIT + usize::from(own);
     let journal_root = old.join(JOURNAL_DIR);
     let mut entries: Vec<Value> = Vec::new();
     let mut late: Vec<Value> = Vec::new();
@@ -368,7 +418,7 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
                 blocks.push("different_file_system".into());
             }
         }
-        if total > CANDIDATE_LIMIT {
+        if total > entry_limit {
             blocks.push("not_fully_listed".into());
         }
         if unreadable > 0 {
@@ -389,7 +439,7 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
             }
         }
 
-        for n in names.iter().take(CANDIDATE_LIMIT) {
+        for n in names.iter().take(entry_limit) {
             let raw = old.join(n);
             let kind = kind_of(&raw);
             let row = home_layout::lookup(n);
@@ -484,7 +534,7 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
     };
 
     let mut warnings = Vec::new();
-    if total > CANDIDATE_LIMIT {
+    if total > entry_limit {
         warnings.push(format!(
             "{total} entries in {}; the first {CANDIDATE_LIMIT} are listed",
             old.display()
@@ -568,14 +618,16 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
         "plan_digest": plan_digest,
         "content_digest": content_digest,
         "confirm_token": confirm_token,
-        "apply": "not in this build yet (#2871 U3c); on a real HOME it will run only after the user confirms",
+        "apply": "home-install-apply --home <HOME> with the same --now, this plan_digest and a permission reference; it refuses while a Rust session is registered in the clone at --project; on a real HOME it runs only after the user confirms",
         "writes": false,
     }))
 }
 
 /// The most install journals read; a journal folder with more is read for its newest this many
 /// and the older ones ignored (the reader is a lookup, never a gate).
-const ALIAS_JOURNAL_LIMIT: usize = 64;
+/// The apply refuses to write a journal past it, since the 65th would push the oldest one's ids
+/// out of the lookup.
+pub(crate) const ALIAS_JOURNAL_LIMIT: usize = 64;
 
 /// An install id as `install::install_id` makes it: the lower-case hex of a SHA-256, 64 digits.
 /// A journal is a file in the user's HOME and its aliases become path parts under
