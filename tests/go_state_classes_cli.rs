@@ -2550,3 +2550,147 @@ fn an_unreadable_settings_file_refuses_the_plan_and_is_never_moved() {
         );
     }
 }
+
+// ---- #2936 S-AGENTS-STAY PR-A U0: baselines of today's behaviour ----
+//
+// These tests pin what the code does before the S-AGENTS-STAY change (decision 6901387505).
+// They are meant to change: U1 changes the first, U2 the other two.
+
+/// The install step's settings write (`claude-settings-plan`, then `-apply`), the way the
+/// update flow runs it: the wanted keys come on stdin.
+fn install_settings(fx: &Fx, desired: &Value) {
+    let run = |args: &[&str]| -> Value {
+        let mut child = Command::new(EXE)
+            .args(args)
+            .clean_env()
+            .env("HOME", &fx.home)
+            .env("PATH", "/usr/bin:/bin")
+            .env("LC_ALL", "C")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        std::io::Write::write_all(
+            &mut child.stdin.take().unwrap(),
+            desired.to_string().as_bytes(),
+        )
+        .unwrap();
+        let out = child.wait_with_output().unwrap();
+        serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
+            panic!(
+                "{args:?}: {}{}",
+                String::from_utf8_lossy(&out.stdout),
+                String::from_utf8_lossy(&out.stderr)
+            )
+        })
+    };
+    let plan = run(&["claude-settings-plan", fx.p()]);
+    assert_eq!(plan["ok"], json!(true), "{plan}");
+    let applied = run(&[
+        "claude-settings-apply",
+        fx.p(),
+        "--plan-digest",
+        plan["result"]["plan_digest"].as_str().unwrap(),
+        "--permission-reference",
+        REF,
+    ]);
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+}
+
+/// The settings the install step wants: MoAI's status line (so the Rust receipt owns a key).
+fn wanted_settings() -> Value {
+    json!({"statusLine": {"type": "command", "command": "moai-cli statusline"}})
+}
+
+/// Baseline for decision 6901387505 condition 1. This test pins today's behaviour and U1 changes
+/// its expectation: a `.moai-cli/backups/.gitignore` that already exists is accepted whatever it
+/// says, so one that ignores nothing leaves the backup copies (which hold settings and may hold
+/// a token) offered to `git status` as untracked files.
+#[test]
+fn baseline_a_backups_gitignore_that_ignores_nothing_is_accepted_today() {
+    let (fx, text) = cycle_fx(true, false);
+    common::git::git_ok(&fx.root, &["init", "-q"]);
+    let mine = "# mine\n!keep-me\n";
+    fx.write(".moai-cli/backups/.gitignore", mine);
+    let (p, backup) = fx.apply_ok();
+    assert_eq!(p["layout"], json!("folder_stays"), "{p}");
+    assert_eq!(
+        fs::read_to_string(fx.root.join(".moai-cli/backups/.gitignore")).unwrap(),
+        mine,
+        "the user's file is left as it is"
+    );
+    assert_eq!(
+        fs::read_to_string(area_of(&fx, &backup).join("go-state").join(SETTINGS)).unwrap(),
+        text
+    );
+    let status = common::git::git(
+        &fx.root,
+        &["status", "--porcelain", "--untracked-files=all"],
+    );
+    let rel = format!(".moai-cli/backups/{backup}");
+    for path in [
+        format!("{rel}/go-state-receipt.json"),
+        format!("{rel}/go-state/{SETTINGS}"),
+    ] {
+        assert!(
+            status.lines().any(|l| l == format!("?? {path}")),
+            "today {path} is offered to git: {status}"
+        );
+        let out = common::git::git_raw(&fx.root, &["check-ignore", "-q", "--", &path]);
+        assert!(!out.success, "today {path} is not ignored");
+    }
+}
+
+/// Baseline for decision 6901387505 condition 2, staying layout. Pins today's behaviour; U2
+/// changes it. After the apply (the Go folder stays), the install step writes new settings and
+/// the Rust settings receipt, and the revert puts the Go settings back (the revert does not
+/// touch the receipt). The restored settings, byte for byte what the Go tool deployed, are
+/// classed `leave`/`settings` with the "live host settings" reason, not `rust`: when the Go
+/// folder stays, the policy's `Some(Err(_)) | None if !folder_moves` arm answers before the
+/// Rust-receipt verdict (`settings_proof`) is read for its class.
+#[test]
+fn baseline_after_a_staying_layout_revert_the_go_settings_class_today() {
+    let (fx, text) = cycle_fx(true, false);
+    let (_, backup) = fx.apply_ok();
+    install_settings(&fx, &wanted_settings());
+    let receipt_path = fx.root.join(".moai-cli/manifests/claude-settings.json");
+    let receipt = fs::read_to_string(&receipt_path).unwrap();
+    let parsed: Value = serde_json::from_str(&receipt).unwrap();
+    assert!(
+        parsed["owned"]["statusLine"].is_object(),
+        "the install step's receipt owns the status line: {receipt}"
+    );
+    let v = fx.revert(&backup);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(fs::read_to_string(fx.root.join(SETTINGS)).unwrap(), text);
+    assert_eq!(
+        fs::read_to_string(&receipt_path).unwrap(),
+        receipt,
+        "the revert leaves the Rust receipt as it is"
+    );
+    let p = fx.plan();
+    assert_eq!(p["layout"], json!("folder_stays"), "{p}");
+    assert_eq!(ac(&p, SETTINGS), ("leave", "settings"), "{p}");
+    assert_eq!(
+        item(&p, SETTINGS)["reason"],
+        json!("live host settings; moving them drops permissions, hooks and the status line"),
+        "{p}"
+    );
+}
+
+/// Baseline for decision 6901387505 condition 2, moving layout. Pins today's behaviour; U2
+/// changes it. The same flow with the Go folder moving: the revert sets the new `.moai/` aside
+/// whole, the Rust receipt with it, so the restored Go settings are the Go tool's again.
+#[test]
+fn baseline_after_a_moving_layout_revert_the_go_settings_class_today() {
+    let (fx, text) = cycle_fx(false, false);
+    let (_, backup) = fx.apply_ok();
+    install_settings(&fx, &wanted_settings());
+    let v = fx.revert(&backup);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(fs::read_to_string(fx.root.join(SETTINGS)).unwrap(), text);
+    let p = fx.plan();
+    assert_eq!(p["layout"], json!("folder_moves"), "{p}");
+    assert_eq!(ac(&p, SETTINGS), ("move", "settings"), "{p}");
+}
