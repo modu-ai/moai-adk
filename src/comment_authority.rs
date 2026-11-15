@@ -75,9 +75,14 @@ pub struct IgnoredLine {
 }
 
 impl Dropped {
-    /// Adds what another pass dropped (a command that reads an Issue and a PR).
+    /// Adds what another pass dropped (a command that reads an Issue and a PR). A control line
+    /// already listed under the same comment id is not listed twice.
     pub fn merge(&mut self, other: Dropped) {
-        self.lines.extend(other.lines);
+        for line in other.lines {
+            if !self.lines.iter().any(|l| l.comment_id == line.comment_id) {
+                self.lines.push(line);
+            }
+        }
         self.other += other.other;
         self.unread += other.unread;
     }
@@ -123,24 +128,53 @@ impl Dropped {
 /// comment without one is only counted. Applying this twice is harmless.
 pub fn retain_members<T: Authored>(comments: &mut Vec<T>) -> Dropped {
     let mut dropped = Dropped::default();
+    comments.retain(|c| keep(&mut dropped, c.comment_id(), c.body(), c.association()));
+    dropped
+}
+
+/// [`retain_members`] for the comment objects of a REST list (`id`, `body`, `author_association`),
+/// applied where the raw JSON first becomes a comment type. An element that is not an object has
+/// no association and is dropped.
+pub fn retain_rest(comments: &mut Vec<Value>) -> Dropped {
+    retain_json(comments, "id", "author_association")
+}
+
+/// [`retain_members`] for the comment nodes of a GraphQL connection (`databaseId`, `body`,
+/// `authorAssociation`). The query must request `authorAssociation`; a node without it is dropped.
+pub fn retain_graphql(comments: &mut Vec<Value>) -> Dropped {
+    retain_json(comments, "databaseId", "authorAssociation")
+}
+
+fn retain_json(comments: &mut Vec<Value>, id_key: &str, association_key: &str) -> Dropped {
+    let mut dropped = Dropped::default();
     comments.retain(|c| {
-        if is_member(c.association()) {
-            return true;
-        }
-        if c.association().is_empty() {
-            dropped.unread += 1;
-        }
-        match control_kind(c.body()) {
-            Some(kind) => dropped.lines.push(IgnoredLine {
-                comment_id: c.comment_id(),
-                kind,
-                association: c.association().to_string(),
-            }),
-            None => dropped.other += 1,
-        }
-        false
+        keep(
+            &mut dropped,
+            c.get(id_key).and_then(Value::as_i64).unwrap_or(0),
+            c.get("body").and_then(Value::as_str).unwrap_or(""),
+            c.get(association_key).and_then(Value::as_str).unwrap_or(""),
+        )
     });
     dropped
+}
+
+/// `true` when the comment stays; otherwise records why it went.
+fn keep(dropped: &mut Dropped, id: i64, body: &str, association: &str) -> bool {
+    if is_member(association) {
+        return true;
+    }
+    if association.is_empty() {
+        dropped.unread += 1;
+    }
+    match control_kind(body) {
+        Some(kind) => dropped.lines.push(IgnoredLine {
+            comment_id: id,
+            kind,
+            association: association.to_string(),
+        }),
+        None => dropped.other += 1,
+    }
+    false
 }
 
 /// The kind of the first control line in a body, for the report only. The decision to drop never
@@ -365,6 +399,42 @@ mod tests {
     }
 
     #[test]
+    fn a_rest_list_keeps_members_and_names_the_dropped_ids() {
+        let mut v = vec![
+            json!({"id": 1, "body": "moai-claim: x", "author_association": "MEMBER"}),
+            json!({"id": 2, "body": "moai-claim: x", "author_association": "NONE"}),
+            json!({"id": 3, "body": "AUDIT #4 x", "author_association": "CONTRIBUTOR"}),
+            json!({"id": 4, "body": "moai-claim: x"}),
+            json!({"id": 5, "body": "chat", "author_association": null}),
+            json!({"id": 6, "body": "chat", "author_association": "OWNER"}),
+            json!(null),
+        ];
+        let d = retain_rest(&mut v);
+        let kept: Vec<i64> = v.iter().map(|c| c["id"].as_i64().unwrap()).collect();
+        assert_eq!(kept, vec![1, 6]);
+        let ids: Vec<i64> = d.lines.iter().map(|l| l.comment_id).collect();
+        assert_eq!(ids, vec![2, 3, 4]);
+        assert_eq!(d.other, 2);
+        assert_eq!(d.unread, 3);
+    }
+
+    #[test]
+    fn a_graphql_list_reads_database_id_and_author_association() {
+        let mut v = vec![
+            json!({"databaseId": 10, "body": "moai-claim: x", "authorAssociation": "COLLABORATOR"}),
+            json!({"databaseId": 11, "body": "moai-claim: x", "authorAssociation": "NONE"}),
+            json!({"databaseId": 12, "body": "moai-claim: x"}),
+            json!({"databaseId": 13, "body": "moai-claim: x", "author_association": "MEMBER"}),
+        ];
+        let d = retain_graphql(&mut v);
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0]["databaseId"], 10);
+        let ids: Vec<i64> = d.lines.iter().map(|l| l.comment_id).collect();
+        assert_eq!(ids, vec![11, 12, 13]);
+        assert_eq!(d.unread, 2);
+    }
+
+    #[test]
     fn two_passes_merge_into_one_report() {
         let mut a = vec![c(1, "NONE", "moai-claim: x")];
         let mut b = vec![c(2, "", "chat"), c(3, "NONE", "AUDIT #1 x")];
@@ -373,5 +443,16 @@ mod tests {
         assert_eq!(d.lines.len(), 2);
         assert_eq!(d.other, 1);
         assert_eq!(d.unread, 1);
+    }
+
+    #[test]
+    fn the_same_comment_read_twice_is_listed_once() {
+        let mut a = vec![c(5, "NONE", "moai-claim: x")];
+        let mut b = vec![c(5, "NONE", "moai-claim: x"), c(6, "NONE", "AUDIT #1 x")];
+        let mut d = retain_members(&mut a);
+        d.merge(retain_members(&mut b));
+        let ids: Vec<i64> = d.lines.iter().map(|l| l.comment_id).collect();
+        assert_eq!(ids, vec![5, 6]);
+        assert_eq!(d.to_json()["count"], 2);
     }
 }

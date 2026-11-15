@@ -21,6 +21,7 @@
 //! Not done here: deleting or editing any comment (a losing line stays; it is inert under the
 //! rule), the `moai/audit` status, assignment, verdicts, leader dispatch.
 use crate::claim_verify::{classify_comment, CommentKind};
+use crate::comment_authority::Dropped;
 use crate::forge::policy::Clock;
 use crate::forge::transport::{HttpRequest, Transport};
 use crate::forge::Client;
@@ -208,11 +209,12 @@ fn transport_err(e: impl Into<String>) -> String {
 }
 
 /// Reads (GET only) the PR, refuses a stale head or an author lane, and returns the PR's
-/// conversation comments with the authors found.
+/// conversation comments with the authors found. Only comments a member wrote are read
+/// (Issue #3052); the rest come back as the [`Dropped`] value.
 fn precheck<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     req: &AuditClaimRequest,
-) -> Result<(Vec<Comment>, Vec<Value>)> {
+) -> Result<(Vec<Comment>, Vec<Value>, Dropped)> {
     let repo = format!("{API}/repos/{}/{}", req.owner, req.repo);
     let pr = one(client, &format!("{repo}/pulls/{}", req.pr)).map_err(transport_err)?;
     if pr["state"].as_str() != Some("open") {
@@ -253,14 +255,16 @@ fn precheck<T: Transport, C: Clock>(
         }
     }
     let mut authors = Vec::new();
+    let mut ignored = Dropped::default();
     if !claim_ids.is_empty() {
-        let issue_comments = read_comments(
+        let (issue_comments, dropped) = read_comments(
             pages(
                 client,
                 format!("{repo}/issues/{issue}/comments?per_page=100"),
             )
             .map_err(transport_err)?,
         );
+        ignored.merge(dropped);
         for id in &claim_ids {
             let session = issue_comments.iter().find(|c| c.id == *id).and_then(|c| {
                 match classify_comment(&c.body) {
@@ -284,14 +288,15 @@ fn precheck<T: Transport, C: Clock>(
             authors.push(json!({"session": session, "claim_comment_id": id}));
         }
     }
-    let comments = read_comments(
+    let (comments, dropped) = read_comments(
         pages(
             client,
             format!("{repo}/issues/{}/comments?per_page=100", req.pr),
         )
         .map_err(transport_err)?,
     );
-    Ok((comments, authors))
+    ignored.merge(dropped);
+    Ok((comments, authors, ignored))
 }
 
 /// Reserve `req.head` of `req.pr` for `req.lane`. At most one comment POST.
@@ -300,11 +305,15 @@ pub fn reserve<T: Transport, C: Clock>(
     req: &AuditClaimRequest,
 ) -> Result<Value> {
     validate(req)?;
-    let (comments, authors) = precheck(client, req)?;
+    let (comments, authors, ignored) = precheck(client, req)?;
     let repo = format!("{API}/repos/{}/{}", req.owner, req.repo);
-    let base = |outcome: &str, posted: Value, own: Option<i64>, comments: &[Comment]| {
+    let base = |outcome: &str,
+                posted: Value,
+                own: Option<i64>,
+                comments: &[Comment],
+                ignored: &Dropped| {
         let holder = holder_of(comments, &req.head);
-        json!({
+        let mut out = json!({
             "outcome": outcome,
             "pr": req.pr,
             "head": req.head,
@@ -321,7 +330,11 @@ pub fn reserve<T: Transport, C: Clock>(
             },
             "rule": "lowest reservation comment id on the head wins; a leader handoff line on the PR moves it",
             "author_rule": AUTHOR_RULE,
-        })
+        });
+        if !ignored.is_empty() {
+            out["ignored_control_lines"] = ignored.to_json();
+        }
+        out
     };
     let holder = holder_of(&comments, &req.head);
     let own = reservations_on(&comments, &req.head)
@@ -331,10 +344,18 @@ pub fn reserve<T: Transport, C: Clock>(
     match (&holder, own) {
         (Some(h), _) if same_lane(&h.lane, &req.lane) => {
             let id = own.unwrap_or(h.comment_id);
-            return Ok(base("reserved", json!(false), Some(id), &comments));
+            return Ok(base(
+                "reserved",
+                json!(false),
+                Some(id),
+                &comments,
+                &ignored,
+            ));
         }
-        (Some(_), Some(id)) => return Ok(base("lost", json!(false), Some(id), &comments)),
-        (Some(_), None) => return Ok(base("held_by", json!(false), None, &comments)),
+        (Some(_), Some(id)) => {
+            return Ok(base("lost", json!(false), Some(id), &comments, &ignored))
+        }
+        (Some(_), None) => return Ok(base("held_by", json!(false), None, &comments, &ignored)),
         (None, _) => {}
     }
     let post = HttpRequest::new("POST", format!("{repo}/issues/{}/comments", req.pr))
@@ -354,7 +375,7 @@ pub fn reserve<T: Transport, C: Clock>(
         _ => None,
     };
     let Some(posted_id) = posted_id else {
-        let mut out = base("uncertain", json!("unknown"), None, &comments);
+        let mut out = base("uncertain", json!("unknown"), None, &comments, &ignored);
         out["note"] = json!("the POST result is unknown; re-run audit-claim (it reads first and posts nothing if the line exists)");
         return Ok(out);
     };
@@ -363,10 +384,16 @@ pub fn reserve<T: Transport, C: Clock>(
         format!("{repo}/issues/{}/comments?per_page=100", req.pr),
     )
     .map(read_comments);
-    let after = match reread {
-        Ok(c) if c.iter().any(|c| c.id == posted_id) => c,
+    let (after, after_ignored) = match reread {
+        Ok((c, d)) if c.iter().any(|c| c.id == posted_id) => (c, d),
         Ok(_) | Err(_) => {
-            let mut out = base("uncertain", json!(true), Some(posted_id), &comments);
+            let mut out = base(
+                "uncertain",
+                json!(true),
+                Some(posted_id),
+                &comments,
+                &ignored,
+            );
             out["note"] = json!(format!(
                 "comment {posted_id} was posted but the re-read does not show it; the winner \
                  is unresolved — re-run audit-claim"
@@ -376,7 +403,13 @@ pub fn reserve<T: Transport, C: Clock>(
     };
     let won = holder_of(&after, &req.head).is_some_and(|h| same_lane(&h.lane, &req.lane));
     let outcome = if won { "reserved" } else { "lost" };
-    Ok(base(outcome, json!(true), Some(posted_id), &after))
+    Ok(base(
+        outcome,
+        json!(true),
+        Some(posted_id),
+        &after,
+        &after_ignored,
+    ))
 }
 
 /// CLI: validate, read, reserve. The outcome field decides: only `reserved` lets the lane
