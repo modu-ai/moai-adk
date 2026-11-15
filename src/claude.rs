@@ -366,11 +366,97 @@ pub fn doctor(project: &Path) -> Result<Value> {
 /// fixed MoAI hook set: a project whose `hooks` the user already set plans as a conflict, never
 /// a merge. A length-free slice, so two branches that each add a key merge without a silent
 /// length clash (PR #2044).
-pub const MANAGED_SETTINGS: &[&str] = &["outputStyle", "statusLine", "permissions", "hooks"];
+/// `env` and `model` (#2936 R8) are managed only so the user's earlier values can be merged back
+/// on the user's say-so; they are never set by default.
+pub const MANAGED_SETTINGS: &[&str] = &[
+    "outputStyle",
+    "statusLine",
+    "permissions",
+    "hooks",
+    "env",
+    "model",
+];
 
 /// The managed keys a caller may set through `claude-settings-plan` / `-apply` (#2239, #2244):
 /// every managed key except `hooks`.
-pub const USER_SETTINGS: &[&str] = &["outputStyle", "statusLine", "permissions"];
+pub const USER_SETTINGS: &[&str] = &["outputStyle", "statusLine", "permissions", "env", "model"];
+
+/// Bounds for the `env` and `model` values a caller may set (#2936 R8).
+pub const ENV_ENTRIES_MAX: usize = 64;
+pub const ENV_VALUE_CHARS_MAX: usize = 1024;
+pub const MODEL_CHARS_MAX: usize = 128;
+
+/// `env` names that read as holding a credential; such an entry is refused, whatever its value.
+const SECRET_ENV_NAMES: [&str; 8] = [
+    "TOKEN",
+    "SECRET",
+    "PASSWORD",
+    "PASSWD",
+    "CREDENTIAL",
+    "PRIVATE",
+    "APIKEY",
+    "API_KEY",
+];
+
+/// Why one `env` entry cannot be carried into a committed settings file, or `None`.
+pub(crate) fn env_entry_refusal(name: &str, value: &Value) -> Option<&'static str> {
+    let mut chars = name.chars();
+    let name_ok = chars
+        .next()
+        .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+        && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
+        && name.len() <= 128;
+    if !name_ok {
+        return Some("the name is not a plain variable name");
+    }
+    let Some(text) = value.as_str() else {
+        return Some("the value is not a string");
+    };
+    if text.chars().count() > ENV_VALUE_CHARS_MAX || text.chars().any(char::is_control) {
+        return Some("the value is not a one-line string within the size limit");
+    }
+    let upper = name.to_ascii_uppercase();
+    if SECRET_ENV_NAMES.iter().any(|s| upper.contains(s))
+        || crate::agents_local_merge::secret_kind(text).is_some()
+        || (text.contains("://") && text.contains('@'))
+    {
+        return Some("the name or the value looks like a credential");
+    }
+    None
+}
+
+/// Validates a desired `env` value: an object of at most [`ENV_ENTRIES_MAX`] plain entries.
+fn check_env(value: &Value) -> Result<()> {
+    let Value::Object(map) = value else {
+        return Err("env must be an object".into());
+    };
+    if map.len() > ENV_ENTRIES_MAX {
+        return Err(format!("env must have at most {ENV_ENTRIES_MAX} entries"));
+    }
+    for (name, v) in map {
+        if let Some(why) = env_entry_refusal(name, v) {
+            let shown: String = name.chars().filter(|c| !c.is_control()).take(64).collect();
+            return Err(format!("env entry {shown} refused: {why}"));
+        }
+    }
+    Ok(())
+}
+
+/// Validates a desired `model` value: one non-empty line of at most [`MODEL_CHARS_MAX`] characters.
+fn check_model(value: &Value) -> Result<()> {
+    let ok = value.as_str().is_some_and(|s| {
+        !s.trim().is_empty()
+            && s.chars().count() <= MODEL_CHARS_MAX
+            && !s.chars().any(char::is_control)
+    });
+    if ok {
+        Ok(())
+    } else {
+        Err(format!(
+            "model must be a non-empty one-line string of at most {MODEL_CHARS_MAX} characters"
+        ))
+    }
+}
 
 /// REQ-I2-01: names every key outside `allowed` and refuses; nothing is planned.
 fn refuse_unlisted<'a>(keys: impl Iterator<Item = &'a str>, allowed: &[&str]) -> Result<()> {
@@ -500,7 +586,7 @@ const PERMISSION_RULE_CHARS_MAX: usize = 256;
 /// (arrays of non-empty one-line rules) and `defaultMode` (a narrowing mode). Any other
 /// sub-key (`additionalDirectories`, `disableBypassPermissionsMode`, ...) is undecided and
 /// refused.
-fn check_permissions(value: &Value) -> Result<()> {
+pub(crate) fn check_permissions(value: &Value) -> Result<()> {
     let Value::Object(map) = value else {
         return Err("permissions must be an object".into());
     };
@@ -563,6 +649,12 @@ pub fn plan_settings(
     )?;
     if let Some(p) = desired.get("permissions") {
         check_permissions(p)?;
+    }
+    if let Some(e) = desired.get("env") {
+        check_env(e)?;
+    }
+    if let Some(m) = desired.get("model") {
+        check_model(m)?;
     }
     let mut keys: Vec<&String> = baseline.keys().chain(desired.keys()).collect();
     keys.sort();
@@ -860,6 +952,13 @@ fn settings_state(
 /// another key MoAI already owns.
 pub fn owned_settings(project: &Path) -> Result<Map<String, Value>> {
     Ok(settings_state(project, &Map::new(), SettingsScope::Project)?.owned)
+}
+
+/// The top-level keys of `PROJECT/.claude/settings.json` now (#2936 R8); empty when the file is
+/// absent. A file that is not a bounded JSON object is the same preservation-review error the
+/// plan gives. Reads only.
+pub fn current_settings(project: &Path) -> Result<Map<String, Value>> {
+    Ok(settings_state(project, &Map::new(), SettingsScope::Project)?.current)
 }
 
 /// Whether git ignores `PROJECT/.claude/settings.json` (#2581): `ignored`, `not_ignored`, or
@@ -1516,9 +1615,10 @@ mod tests {
     #[test]
     fn claude_settings_refuses_unmanaged_keys_and_keeps_order() {
         for (b, d) in [
-            // `permissions` (#2244) and `hooks` (#2238) are managed; `env` stays unmanaged.
-            (json!({}), json!({"env": {}})),
-            (json!({"env": {}}), json!({})),
+            // `permissions` (#2244), `hooks` (#2238), `env` and `model` (#2936 R8) are managed;
+            // `enabledPlugins` stays unmanaged.
+            (json!({}), json!({"enabledPlugins": {}})),
+            (json!({"enabledPlugins": {}}), json!({})),
         ] {
             let err = plan_settings(&obj(b), &Map::new(), &obj(d)).unwrap_err();
             assert_eq!(

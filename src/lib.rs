@@ -18,6 +18,7 @@ pub mod claim_cache;
 pub mod claim_timeout;
 pub mod claim_verify;
 pub mod claude;
+pub mod claude_settings_merge;
 pub mod clone_root;
 pub mod close_check;
 pub mod code_refs;
