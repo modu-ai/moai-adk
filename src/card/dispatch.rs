@@ -64,7 +64,7 @@ fn card_id(action: &str, reference: &str) -> Result<i64> {
     }
 }
 
-fn reservation_json(r: &Reservation) -> Value {
+pub(super) fn reservation_json(r: &Reservation) -> Value {
     json!({
         "name": input::card_name(r.card_id),
         "card_id": r.card_id,

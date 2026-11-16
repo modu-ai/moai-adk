@@ -1,6 +1,8 @@
 //! What `moai card list | show | add` do (Issue #3070 C1, plan comment 6905829690). The
 //! `src/ops/card.rs` file only parses arguments and calls these.
 //!
+//! `show` also prints the reservation that holds the card now (card C-53 S1), or `null`.
+//!
 //! `list` and `show` open the ledger read-only (`open_read_only`: no folder, no file, no journal).
 //! `add` is the only writer here: one `BEGIN IMMEDIATE` transaction that stores the card, its
 //! criteria and one `card.add` event, with every time taken from the transaction's database clock.
@@ -31,7 +33,7 @@ pub const DEFAULT_ACTOR: &str = "user";
 /// The longest `--by`, in characters.
 pub const ACTOR_MAX_CHARS: usize = 80;
 
-const ABSENT_HINT: &str = "ledger not found: no ledger is registered for this project; \
+pub(super) const ABSENT_HINT: &str = "ledger not found: no ledger is registered for this project; \
 run `moai ledger-register-plan`, then `moai ledger-register-apply`";
 
 fn project_id(project: &Path) -> Result<String> {
@@ -145,7 +147,8 @@ pub fn list(project: &Path, home: &Path, state: Option<&str>) -> Result<Value> {
     }))
 }
 
-/// `card show C-n | #number`: the card with its criteria, notes and links.
+/// `card show C-n | #number`: the card with its criteria, notes, links and the reservation that
+/// holds it now.
 pub fn show(project: &Path, home: &Path, reference: &str) -> Result<Value> {
     let which = input::parse_ref(reference).map_err(|e| format!("card show refused: {e}"))?;
     let id = project_id(project)?;
@@ -257,6 +260,9 @@ pub fn show(project: &Path, home: &Path, reference: &str) -> Result<Value> {
     card["criteria"] = json!(criteria);
     card["notes"] = json!(notes);
     card["links"] = json!(links);
+    card["reservation"] = ledger::reservation::current(conn, card_id)
+        .map_err(|e| e.to_string())?
+        .map_or(Value::Null, |r| super::dispatch::reservation_json(&r));
     card["writes"] = json!(false);
     Ok(card)
 }

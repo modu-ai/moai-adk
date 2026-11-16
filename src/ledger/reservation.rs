@@ -41,7 +41,7 @@ pub const MAX_FIELD_LEN: usize = 512;
 pub const EVENT_FENCE_REJECT: &str = "fence_reject";
 
 /// The statuses that count as "someone holds the card" (the partial unique index).
-const ACTIVE_STATUSES: &str = "('held','expired_candidate','held_for_review')";
+pub(super) const ACTIVE_STATUSES: &str = "('held','expired_candidate','held_for_review')";
 
 /// One row of `reservation` with its write scope.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -330,7 +330,7 @@ fn card_row(conn: &Connection, card_id: i64) -> Result<Option<(String, i64)>, Le
         .optional()?)
 }
 
-fn load_reservation(
+pub(super) fn load_reservation(
     conn: &Connection,
     card_id: i64,
     generation: i64,
@@ -410,7 +410,7 @@ pub fn history(conn: &Connection, card_id: i64) -> Result<Vec<Reservation>, Ledg
 
 // ---- writes ------------------------------------------------------------------------------------
 
-fn add_event(
+pub(super) fn add_event(
     conn: &Connection,
     now: i64,
     actor: &str,
@@ -429,7 +429,7 @@ fn add_event(
 
 /// The first pair of a pattern in `mine` and a pattern of another card's active reservation
 /// that [`crate::scope::overlap`] says could be written under both, in card and pattern order.
-fn find_overlap(
+pub(super) fn find_overlap(
     conn: &Connection,
     card_id: i64,
     mine: &[String],
@@ -616,7 +616,7 @@ fn record_rejection(
 
 /// Runs `body` after `evaluate` in one write transaction. A refusal is recorded and the
 /// transaction commits (only the event is new); a SQL failure rolls everything back.
-fn fenced<T>(
+pub(super) fn fenced<T>(
     w: &mut WriteLedger,
     op: &str,
     card_id: i64,
