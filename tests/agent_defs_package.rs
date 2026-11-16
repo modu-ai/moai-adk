@@ -256,6 +256,52 @@ fn every_role_renders_for_every_host_deterministically() {
     }
 }
 
+/// #3096 S7: a rendered agent file names no model and no effort, so a child starts on the
+/// parent session's model and effort. Measured 2026-11-16: Claude Code 2.1.325 (parent and two
+/// children `claude-sonnet-5-5` at `high`) and Codex 0.169.0 (parent effort `low` and `high`,
+/// child the same each time). This pins the files; it does not prove the host.
+#[test]
+fn rendered_agent_files_name_no_model_and_no_effort() {
+    const KEYS_CLAUDE_OMP: [&str; 5] = [
+        "name",
+        "description",
+        "disallowedTools",
+        "isolation",
+        "tools",
+    ];
+    const KEYS_CODEX: [&str; 3] = ["name", "description", "developer_instructions"];
+    let defs = package_agents(&agents(), &package()).unwrap();
+    assert!(!defs.is_empty());
+    for d in &defs {
+        for host in HOSTS {
+            let text = render(d, host).unwrap().text;
+            let (allowed, keys): (&[&str], Vec<String>) = if host == "codex" {
+                let keys = text
+                    .lines()
+                    .filter_map(|l| l.split_once(" = ").map(|(k, _)| k.to_string()))
+                    .collect();
+                (&KEYS_CODEX, keys)
+            } else {
+                let keys = text
+                    .lines()
+                    .skip(1)
+                    .take_while(|l| *l != "---")
+                    .filter_map(|l| l.split_once(':').map(|(k, _)| k.to_string()))
+                    .collect();
+                (&KEYS_CLAUDE_OMP, keys)
+            };
+            assert!(!keys.is_empty(), "{} {host}", d.name);
+            for k in &keys {
+                assert!(
+                    allowed.contains(&k.as_str()),
+                    "{} {host}: key {k:?}",
+                    d.name
+                );
+            }
+        }
+    }
+}
+
 #[test]
 fn a_package_without_sources_has_no_agents_and_a_stray_file_is_refused() {
     let tmp = tempfile::tempdir().unwrap();
