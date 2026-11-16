@@ -12,7 +12,7 @@ operation `card` · 코드 `src/ops/card.rs`, `src/card/command.rs` · Issue #30
 
 - `rev` 는 기준을 하나 넣을 때마다 스키마 트리거(`card_touch_ac_insert`)가 올려서, 기준이 n 개인 새 카드는 `1 + n` 이다.
 - 시각은 모두 트랜잭션의 DB 시계 값(`unixepoch()`)이다. `--by` 기본값 `user`(1–80자 한 줄).
-- 오류: 원장이 없으면 `not_found`(안내 문장에 `ledger-register-plan` → `ledger-register-apply`), 쓸 수 없는 원장·WAL·낯선 파일은 `blocked`, 거절된 입력은 `card <동작> refused: …` (`invalid_input`), 쓰기 잠금을 오래 못 잡으면 `busy`. 새 `kind` 를 만들지 않는다.
+- 오류: 원장이 없으면 `not_found`(안내 문장에 `ledger-register-plan` → `ledger-register-apply`), 쓸 수 없는 원장·WAL·낯선 파일은 `blocked`, 거절된 입력은 `card <동작> refused: …` (`invalid_input`), 쓰기 잠금을 오래 못 잡으면 `io`(`retryable`, 원장 메시지는 `ledger busy`). 제목·기준은 앞뒤 공백을 잘라서 저장한다. 새 `kind` 를 만들지 않는다.
 | `card ready C-n [--by NAME]` | 씀(트랜잭션 한 번) | `draft`·`hold` 카드만 | `from`, `state: "ready"`, `rev`, `events: 1`. 카드 상태 변경과 `card.ready` 사건이 한 트랜잭션 |
 | `card take C-n [--lease-secs N] [--scope P]... [--worktree W] [--branch B]` | 씀(`reservation::reserve`) | `--scope` 를 안 주면 카드의 `write_scope`; lease 60–86400초(기본 14400) | `reservation`(`generation`·`holder`·`lease_until`·`write_scope`…), `state: "active"`. `ready` 가 아니거나 이미 잡혔거나 범위가 다른 카드와 겹치면 `conflict` |
 | `card release C-n --generation G` | 씀(`reservation::release`) | 세대는 `take`·`handoff` 가 답한 값 | `reservation.status: "released"`, `state`(`active` 였으면 `ready`). 옛 세대·다른 holder 는 `conflict`(사건 `fence_reject` 한 줄) |
