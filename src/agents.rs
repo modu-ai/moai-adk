@@ -168,6 +168,7 @@ fn injects_markers(p: &Profile, r: &AgentsRequest) -> bool {
         .chain(&p.development_methods)
         .chain(&p.hosts)
         .chain(std::iter::once(&r.workflow_reference))
+        .chain(p.versioning.as_ref().and_then(|v| v.format.as_ref()))
         .chain(review_answers(p).into_iter().map(|(_, v)| v))
         .any(|v| tokens.iter().any(|t| v.contains(t)))
 }
@@ -251,11 +252,19 @@ fn render_agents(p: &Profile, r: &AgentsRequest, root: &Path) -> String {
             )
         })
         .unwrap_or_default();
+    // C-69: the versioning line appears only when the profile records a choice, so a profile
+    // without it renders byte-identical to the earlier template.
+    let versioning = p
+        .versioning
+        .as_ref()
+        .map(|v| crate::versioning::render_line(v, lang))
+        .unwrap_or_default();
     let body = if lang == "ko" {
         format!(
             "## MoAI 작업 흐름 (관리 구간)\n\n\
 프로젝트 `{id}` · 도구: {tools} · 개발 방식: {methods} · host: {hosts}.\n\
-목적: {purpose}\n\n\
+목적: {purpose}\n\
+{versioning}\n\
 {writing}\
 승인한 SPEC과 Issue 범위를 확인한 뒤 계획 → 구현 → 실제 검증 → 독립 감사 → 보고 순서로 진행한다.\n\
 사실 확인은 스스로 하고 근거를 남긴다. 되돌릴 수 없거나, 허용 범위를 넘거나(비용·권한·외부 전송), 돈·법·외부 계약·비밀·실데이터·보호 대상 설정(권한·키·실제 HOME과 전역 설정·삭제·보호 설정)에 닿는 선택은 사용자를 기다리고, 나머지는 허용 범위 안에서 정한 뒤 기록한다.\n\
@@ -275,7 +284,8 @@ MoAI binary가 없어도 native 도구로 가능한 작업을 수행한다. 필�
         format!(
             "## MoAI workflow (managed section)\n\n\
 Project `{id}` · tools: {tools} · methods: {methods} · hosts: {hosts}.\n\
-Purpose: {purpose}\n\n\
+Purpose: {purpose}\n\
+{versioning}\n\
 {writing}\
 Confirm the approved SPEC and Issue scope, then proceed plan → implement → real verification → independent audit → report.\n\
 Answer a factual question yourself and cite the evidence. A choice that cannot be undone, that goes beyond the allowed scope (cost, permissions, external transmission), or that touches money, legal terms, external contracts, secrets, real data or a guarded setting (permissions, keys, the real HOME and global settings, deletions, protection settings) waits for the user; decide any other choice within the allowed scope and record it.\n\
@@ -1873,6 +1883,49 @@ thread_local! {
 mod tests {
     use super::*;
     use std::fs;
+
+    /// C-69: the managed section names the versioning scheme when the profile records one,
+    /// in the section's language; a profile without the key renders byte for byte as before,
+    /// and a custom text cannot open or close a managed block.
+    #[test]
+    fn the_managed_section_names_the_versioning_scheme() {
+        let root = tempfile::TempDir::new().unwrap();
+        let base = json!({"schema_version":2,"project_id":"demo","purpose":"Build a small editor","tools":["Rust"],"development_methods":["TDD"],"hosts":["claude"]});
+        let request = |language: &str| AgentsRequest {
+            protocol_version: 1,
+            language: language.into(),
+            workflow_reference: "skills/moai/workflows/".into(),
+            local_file: "none".into(),
+        };
+        let plain: Profile = serde_json::from_value(base.clone()).unwrap();
+        let without = render_agents(&plain, &request("en"), root.path());
+        assert!(!without.contains("Versioning"), "{without}");
+
+        let with = |versioning: Value| -> Profile {
+            let mut v = base.clone();
+            v["versioning"] = versioning;
+            serde_json::from_value(v).expect("the profile takes a versioning key")
+        };
+        let calver = with(json!({"scheme": "calver", "format": "YYYY.0M.MICRO"}));
+        let text = render_agents(&calver, &request("en"), root.path());
+        let line = "Versioning: CalVer (YYYY.0M.MICRO).\n";
+        assert!(
+            text.contains(&format!(
+                "Purpose: Build a small editor\n{line}\nConfirm the approved"
+            )),
+            "{text}"
+        );
+        assert_eq!(text.replace(line, ""), without);
+        let korean = render_agents(&calver, &request("ko"), root.path());
+        assert!(
+            korean.contains("목적: Build a small editor\n버전 규칙: CalVer (YYYY.0M.MICRO).\n\n"),
+            "{korean}"
+        );
+
+        assert!(!injects_markers(&calver, &request("en")));
+        let breaking = with(json!({"scheme": "custom", "format": "x --> y"}));
+        assert!(injects_markers(&breaking, &request("en")));
+    }
 
     /// #2123: the manifest's before-bytes backup fails (its backup directory is
     /// blocked by a regular file, planted by the hook after this run created its

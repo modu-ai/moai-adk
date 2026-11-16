@@ -151,6 +151,7 @@ pub mod update_keys;
 pub mod update_tux;
 pub mod usage_limit;
 pub mod verify;
+pub mod versioning;
 pub mod worktree;
 pub mod worktree_gc;
 pub mod worktree_include;

@@ -22,5 +22,6 @@ Rules for every chain:
 - `moai-research` fans out: the parent may start several at once, each on one question, and merges their answers with the sources and read times they report.
 - A choice the request did not make is sorted with `internal/decide` before anyone is asked.
 - A question about how a stateful part behaves, why a pipeline is slow, what of an old part to keep or what a refactor could break is looked at with `internal/lenses`, which reports and changes no code.
+- The `versioning` rows of the PROJECT interview are asked with `internal/versioning`, read only when those rows are asked or a release version is computed.
 - MODE-AGENT picks one card at a time and runs the chain of that card's request; its own rules are in `workflows/mode-agent.md`.
 - When the host cannot start agents, the parent session follows the same order itself and keeps the implementing and auditing contexts apart.

@@ -154,7 +154,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "ee7d54d007096808384238c93d435b46a181b0c68215376a8f3adc8acc76ab7a",
+      "sha256": "01c5df46d6a49bc720d8da1a550b172fb1c97c4c4cf908e75f011a55f8d8051c",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
@@ -163,7 +163,7 @@
       }
     },
     "references/chains/index.md": {
-      "sha256": "b363e652615ad83b47649d064813acfa83a36756d815a6357cee8ae52b162e4e",
+      "sha256": "2e005ad9ecbb5c0b25ba91601002f5f2eaf1f485c07dc51faa7170f7e96d2ba8",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",
@@ -190,7 +190,7 @@
       }
     },
     "references/internal/interview.md": {
-      "sha256": "340ea347159342a4796dc41c64a8be0f167752b12b706e9c936f2f05d516f63b",
+      "sha256": "d55737b17d948c9ff28b9d99674646d8be42789a4d07d0ad9462b322b96df71b",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-interview",
@@ -346,6 +346,15 @@
         "template_id": "internal-questions",
         "adoption": "new",
         "reason": "Written for rc.2 cards C-51 and C-52 slice S1 (user decision 2026-11-16): how a question reaches the user in UPDATE, PROJECT and SETUP — the session runs the commands itself, every question is a selection with the recommended option first, and one table names the question tool per host (Claude Code, Codex CLI, OMP) with its plain-text fallback. Named by update.md, project.md, setup.md, internal/interview and the PROJECT row of chains/index.md instead of being repeated."
+      }
+    },
+    "references/internal/versioning.md": {
+      "sha256": "019189f9f28ae1c2994df338d9eda6f8b07949807aa60c7c6a25bdc48e5921c7",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-versioning",
+        "adoption": "new",
+        "reason": "Written for rc.2 card C-69 (user instruction 2026-11-17): the three versioning schemes the PROJECT interview offers — SemVer (default), HeadVer and CalVer — each with its format, who bumps what, when to pick it, how the next version is computed, its pre-release marking and two examples, plus the rule to keep the scheme a project already uses and how `project-detect` reads a version. Sources read 2026-11-17: semver.org 2.0.0, github.com/line/headver, calver.org spec 26.0. Named by project.md, internal/interview and chains/index.md."
       }
     }
   }

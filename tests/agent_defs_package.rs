@@ -460,6 +460,8 @@ fn internal_references_say_when_to_read_them() {
         "core-rules",
         // #3096 S1: four ways of looking, read only when a question or plan needs one.
         "lenses",
+        // C-69: the three versioning schemes the PROJECT interview offers.
+        "versioning",
     ];
     let mut found: Vec<String> = std::fs::read_dir(package().join("references/internal"))
         .unwrap()
@@ -586,7 +588,11 @@ fn interview_question_bank_covers_the_project_axes() {
             "build_command",
             "stack",
             "method",
-            "hosts"
+            "hosts",
+            // C-69: the versioning scheme, then the one detail the pick may need.
+            "versioning",
+            "versioning_format",
+            "versioning_head"
         ]
     );
     for r in &rows {
@@ -613,7 +619,8 @@ fn interview_question_bank_covers_the_project_axes() {
                     "profile `purpose`",
                     "profile `tools`",
                     "profile `development_methods`",
-                    "profile `hosts`"
+                    "profile `hosts`",
+                    "profile `versioning`"
                 ]
                 .contains(&to),
             "{id}: {to}"
@@ -622,6 +629,126 @@ fn interview_question_bank_covers_the_project_axes() {
     assert!(bank.contains("skip every row that reading already answered"));
     assert!(bank.contains("\"source\": \"repo\""));
     assert!(bank.contains("\"source\": \"user\""));
+}
+
+/// Card C-69: the `versioning` rows offer keeping the detected scheme first, else SemVer first,
+/// and ask a format or a head only when the pick needs one; the reference they name states the
+/// three schemes, and the PROJECT workflow and its chain row name that reference.
+#[test]
+fn versioning_rows_and_reference_cover_the_three_schemes() {
+    let read = |rel: &str| std::fs::read_to_string(package().join(rel)).unwrap();
+    let interview = read("references/internal/interview.md");
+    let row = |id: &str| -> Vec<String> {
+        interview
+            .lines()
+            .find(|l| l.starts_with(&format!("| `{id}` |")))
+            .unwrap_or_else(|| panic!("no `{id}` row"))
+            .trim_matches('|')
+            .split(" | ")
+            .map(|c| c.trim().to_string())
+            .collect()
+    };
+    let versioning = row("versioning");
+    assert_eq!(versioning[1], "the profile has no `versioning`");
+    let options = &versioning[3];
+    // Keep-existing comes first and is the recommended one when a scheme was detected.
+    let keep = options.find("keep the existing one").expect("keep option");
+    let fresh = options
+        .find("SemVer (recommended)")
+        .expect("SemVer recommended without a detected scheme");
+    assert!(keep < fresh, "{options}");
+    for text in [
+        "`versioning.scheme`",
+        "`versioning.latest`",
+        "(recommended); then the other two",
+        "SemVer (recommended); HeadVer; CalVer",
+        "`mixed`",
+    ] {
+        assert!(options.contains(text), "versioning options lack {text:?}");
+    }
+    let format = row("versioning_format");
+    assert!(format[1].contains("CalVer"), "{format:?}");
+    assert!(
+        format[3].starts_with("`YYYY.0M.MICRO` (recommended"),
+        "{format:?}"
+    );
+    // Audit N9: the two-part format is offered too.
+    for text in ["`YY.0M.MICRO`", "`YYYY.0M.0D`", "`YY.0M`"] {
+        assert!(format[3].contains(text), "{text}");
+    }
+    let head = row("versioning_head");
+    assert!(head[1].contains("HeadVer"), "{head:?}");
+    for text in ["plus one (recommended", "`0`"] {
+        assert!(head[3].contains(text), "head options lack {text:?}");
+    }
+    assert!(interview.contains("`internal/versioning`"));
+
+    let reference = read("references/internal/versioning.md");
+    for text in [
+        "MAJOR.MINOR.PATCH",
+        "{head}.{yearweek}.{build}",
+        "`YYYY.0M.MICRO`",
+        "2134",
+        "## Keep the existing scheme",
+        "`semver`, `headver`, `calver` or `custom`",
+        "https://semver.org",
+        "https://github.com/line/headver",
+        "https://calver.org",
+    ] {
+        assert!(reference.contains(text), "versioning.md lacks {text:?}");
+    }
+    // Each scheme has its own section with the same six points.
+    for scheme in ["## SemVer", "## HeadVer", "## CalVer"] {
+        let section = reference
+            .split(scheme)
+            .nth(1)
+            .unwrap_or_else(|| panic!("no {scheme} section"))
+            .split("\n## ")
+            .next()
+            .unwrap();
+        for point in [
+            "- Format:",
+            "- Who bumps what:",
+            "- Pick it when:",
+            "- Next version:",
+            "- Pre-release:",
+            "- Examples:",
+        ] {
+            assert!(section.contains(point), "{scheme} lacks {point:?}");
+        }
+    }
+    // Audit N9: what "Other" does on each row, and that the keep option can be corrected.
+    for text in [
+        "An answer through the host's \"Other\" to the `versioning` row is recorded as `{\"scheme\": \"custom\"",
+        "An \"Other\" answer to `versioning_format` stays CalVer when it is a format the profile takes",
+        "so the user can correct a wrong reading",
+    ] {
+        assert!(interview.contains(text), "interview.md lacks {text:?}");
+    }
+    // Audit N2 and N3: the overlap is named, and the limits are the ones the profile enforces.
+    for text in [
+        "Every HeadVer version is also valid SemVer",
+        "at most 128 characters",
+        "at most 9999",
+        "version order, not date",
+        "no program is started",
+    ] {
+        assert!(reference.contains(text), "versioning.md lacks {text:?}");
+    }
+    let project = read("workflows/project.md");
+    // Audit B1: detection starts no program, the versioning fact included.
+    for text in [
+        "`internal/versioning`",
+        "It never reads HOME, never probes PATH and never starts a program, because `project.yaml` is tracked and holds project facts only. That holds for `result.versioning` too",
+        "never from a git object or the git configuration",
+        "is followed only for a linked worktree",
+        "`tags: unavailable` with the reason",
+    ] {
+        assert!(project.contains(text), "project.md lacks {text:?}");
+    }
+    assert!(read("references/chains/index.md").contains(
+        "The `versioning` rows of the PROJECT interview are asked with `internal/versioning`"
+    ));
 }
 
 /// #2673 AC-2: git-safety names, per host, how to enter a worktree — the built-in tool first,
