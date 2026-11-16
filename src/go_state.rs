@@ -322,6 +322,12 @@ pub struct GoStatePlan {
     /// otherwise, so a project the rule does not touch previews as before. Preview-only.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub settings_move: Option<SettingsMove>,
+    /// #2936 S-AGENTS-STAY U1: set when the Go folder stays, files move, and the backup area's
+    /// existing `.gitignore` does not keep the copies out of git (or git cannot say). The apply
+    /// stops before it writes anything. Omitted otherwise, so a project without the problem
+    /// previews as before. Preview-only.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub backup_ignore: Option<BackupIgnore>,
     /// #2936 O6, Q6: secret-named entries under `.claude/`, `.agents/` and `.codex/`; only counted,
     /// never listed, read or moved.
     pub secrets: u64,
@@ -374,6 +380,21 @@ pub struct SettingsMove {
     pub folder_freed: bool,
     /// The settings files that still name a path under `.moai/` and keep the folder.
     pub still_holding: Vec<String>,
+}
+
+/// #2936 S-AGENTS-STAY U1: the backup area's `.gitignore` exists and git does not ignore the
+/// copies the apply would make there. Paths only: never a line of the file.
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+pub struct BackupIgnore {
+    /// `not_ignored` (git would offer a backup path) or `unknown` (git could not say; the check
+    /// stops closed).
+    pub state: &'static str,
+    /// The ignore file that exists and is not enough, e.g. `.moai-cli/backups/.gitignore`.
+    pub file: String,
+    /// Backup paths git does not ignore, `<UTC>` standing for the apply's stamp; at most
+    /// [`IGNORE_EXAMPLES`]. Empty for `unknown`.
+    pub examples: Vec<String>,
+    pub reason: String,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
@@ -648,27 +669,33 @@ fn settings_proof(project: &Path, entry: &Entry) -> std::result::Result<Settings
     }
     // The Go manifest keeps recording this path after the move (the folder stays), so a file
     // the install phase wrote since is this generation's, not the Go tool's: when the Rust
-    // settings receipt owns a key in it, it is never proven again (no second move).
-    match rust_record(project, "manifests/claude-settings.json") {
-        Ok(None) => {}
-        Ok(Some(v)) if v["schema_version"].as_u64() == Some(1) && v["owned"].is_object() => {
-            let owns = |o: &serde_json::Value| o.as_object().is_some_and(|m| !m.is_empty());
-            if owns(&v["owned"]) || owns(&v["pending"]["owned"]) {
-                return Err((
-                    "this generation's settings: the Rust settings receipt owns keys in it",
-                    "rust",
-                ));
+    // settings receipt owns a key in it, it is not proven again (no second move) — unless a
+    // revert put these very bytes back (S-AGENTS-STAY U2, below).
+    let rust_owns =
+        match rust_record(project, "manifests/claude-settings.json") {
+            Ok(None) => false,
+            Ok(Some(v)) if v["schema_version"].as_u64() == Some(1) && v["owned"].is_object() => {
+                let owns = |o: &serde_json::Value| o.as_object().is_some_and(|m| !m.is_empty());
+                owns(&v["owned"]) || owns(&v["pending"]["owned"])
             }
-        }
-        _ => {
-            return Err((
+            _ => return Err((
                 "a Rust settings receipt cannot be read, so these settings cannot be told apart \
                  from the Go tool's",
                 "unknown",
-            ))
-        }
+            )),
+        };
+    let content = sha256_file(&path);
+    if rust_owns
+        && !content
+            .as_ref()
+            .is_ok_and(|h| restored_by_revert(project, h))
+    {
+        return Err((
+            "this generation's settings: the Rust settings receipt owns keys in it",
+            "rust",
+        ));
     }
-    let content = sha256_file(&path).map_err(|_| ("not a bounded regular file", "unknown"))?;
+    let content = content.map_err(|_| ("not a bounded regular file", "unknown"))?;
     let unchanged = entry.provenance == "template_managed"
         && same_hash(&entry.provenance, &entry.deployed_hash, &content);
     // After a committed move a settings file someone wrote later is read here again (the
@@ -686,6 +713,46 @@ fn settings_proof(project: &Path, entry: &Entry) -> std::result::Result<Settings
         edited: !unchanged,
         proof,
         content,
+    })
+}
+
+/// #2936 S-AGENTS-STAY U2: whether the settings file on disk (`content`, its `sha256:<hex>`) is
+/// byte for byte the one an earlier apply moved and a revert then put back. The receipt of a
+/// reverted apply records the hash of the settings it moved (`sha256`) and that they are back
+/// (`moved: false`), so a file with that hash is the Go file again although the Rust settings
+/// receipt, which the revert leaves alone, still owns keys. One changed character makes the
+/// hashes differ, so a file the user edited since stays this generation's. Reads receipts only
+/// (the newest [`RECEIPT_SCAN`] under either backup folder); a receipt that cannot be read, or
+/// anything else unexpected, answers `false`.
+fn restored_by_revert(project: &Path, content: &str) -> bool {
+    const RECEIPT_SCAN: usize = 64;
+    if content.is_empty() {
+        return false;
+    }
+    let mut stamps: Vec<String> = Vec::new();
+    for base in [MOAI_DIR, LEGACY_ROOT] {
+        let backups = format!("{base}/backups");
+        if linked_component(project, &backups) {
+            continue;
+        }
+        if let Ok(entries) = fs::read_dir(project.join(&backups)) {
+            stamps.extend(
+                entries
+                    .filter_map(|e| e.ok())
+                    .filter_map(|e| e.file_name().into_string().ok())
+                    .filter(|n| valid_stamp(n)),
+            );
+        }
+    }
+    stamps.sort_unstable_by(|a, b| b.cmp(a));
+    stamps.dedup();
+    stamps.into_iter().take(RECEIPT_SCAN).any(|stamp| {
+        read_receipt(project, &stamp).is_ok_and(|(r, _, _)| {
+            r.state == "reverted"
+                && r.moves
+                    .iter()
+                    .any(|m| m.path == SETTINGS && !m.moved && m.sha256 == content)
+        })
     })
 }
 
@@ -2688,6 +2755,31 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
     if let Some(sm) = &settings_move {
         warnings.push(settings_move_warning(sm, after_move.wiring_lost.as_ref()));
     }
+    // S-AGENTS-STAY U1: with the Go folder staying, the moved files go to the current state
+    // folder's backup area, which a `.gitignore` already there must keep out of git.
+    let moves: Vec<&str> = items
+        .iter()
+        .filter(|i| moving_path(i))
+        .map(|i| i.path.as_str())
+        .collect();
+    // Nothing to move means the apply writes no backup (it answers `unchanged` first), so
+    // there is nothing for git to offer and nothing to stop.
+    let backup_ignore = if layout == "folder_stays" && !moves.is_empty() {
+        backup_ignore(
+            &project,
+            crate::state_root::dir(&project),
+            &moves,
+            EXAMPLE_STAMP,
+        )
+        .map(|mut b| {
+            for e in &mut b.examples {
+                *e = e.replace(EXAMPLE_STAMP, "<UTC>");
+            }
+            b
+        })
+    } else {
+        None
+    };
     let mut plan = GoStatePlan {
         schema_version: SCHEMA_VERSION,
         project: project
@@ -2708,6 +2800,7 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
         counterparts,
         after_move,
         settings_move,
+        backup_ignore,
         secrets,
         warnings,
         plan_digest: String::new(),
@@ -2843,6 +2936,7 @@ fn bound_of(plan: &GoStatePlan) -> Result<Bound> {
         counterparts: _,
         after_move: _,
         settings_move: _,
+        backup_ignore: _,
         secrets: _,
         warnings: _,
         plan_digest: _,
@@ -3267,6 +3361,173 @@ fn keep_backups_out_of_git(project: &Path, base: &str) -> Result<()> {
     }
 }
 
+/// A stamp of the real shape, for the preview's git question before any apply has a stamp.
+const EXAMPLE_STAMP: &str = "19700101T000000Z";
+/// How many unignored backup paths the preview names.
+const IGNORE_EXAMPLES: usize = 3;
+/// Paths per `git check-ignore` call, so a long move list never reaches the argument limit.
+const IGNORE_BATCH: usize = 64;
+
+/// What git says of a set of backup paths.
+#[derive(Debug, PartialEq, Eq)]
+enum IgnoreVerdict {
+    /// Every path is ignored, or the project is not a git work tree (git offers nothing).
+    Covered,
+    /// These paths git would offer.
+    Offered(Vec<String>),
+    /// Git could not say; the reason holds no path.
+    Unknown(String),
+}
+
+/// Runs `git --no-optional-locks -C <project> <args…> <paths…>` with the shared environment
+/// scrub and no stdin.
+fn git_in(
+    project: &Path,
+    args: &[&str],
+    paths: &[String],
+) -> std::io::Result<std::process::Output> {
+    let mut cmd = std::process::Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    cmd.arg("--no-optional-locks")
+        .arg("-C")
+        .arg(project)
+        .args(args)
+        .args(paths)
+        .env("GIT_OPTIONAL_LOCKS", "0")
+        .stdin(std::process::Stdio::null())
+        .output()
+}
+
+/// One line of `git check-ignore --no-index -v -n` as "is this path ignored"; `None` when the
+/// line is not in that shape. A match reads `<source>:<line>:<pattern>\t<path>` (the source can
+/// hold a colon, so the line number is the first `:<digits>:`), a miss reads `::\t<path>`, and
+/// a pattern that starts with `!` is the rule that un-ignores the path.
+fn check_ignore_line(line: &str) -> Option<bool> {
+    let (head, _path) = line.split_once('\t')?;
+    if head == "::" {
+        return Some(false);
+    }
+    for (i, _) in head.match_indices(':') {
+        let rest = &head[i + 1..];
+        let digits = rest.bytes().take_while(u8::is_ascii_digit).count();
+        if digits > 0 && rest.as_bytes().get(digits) == Some(&b':') {
+            let pattern = &rest[digits + 1..];
+            return (!pattern.is_empty()).then(|| !pattern.starts_with('!'));
+        }
+    }
+    None
+}
+
+/// Asks git whether each of `paths` (relative to `project`) is ignored. The paths need not
+/// exist. Nothing is written and no file is read here; the rules are git's own, so a literal
+/// look at the `.gitignore` text is never the judge.
+fn ignored_by_git(project: &Path, paths: &[String]) -> IgnoreVerdict {
+    let inside = match git_in(project, &["rev-parse", "--is-inside-work-tree"], &[]) {
+        Err(_) => return IgnoreVerdict::Unknown("git could not be run".into()),
+        Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout).trim().to_string(),
+        Ok(o) => {
+            let why = crate::identity::failure_summary(&o.stderr);
+            return if why.starts_with(crate::identity::NOT_A_REPOSITORY) {
+                IgnoreVerdict::Covered
+            } else {
+                IgnoreVerdict::Unknown(why)
+            };
+        }
+    };
+    match inside.as_str() {
+        "true" => {}
+        // A bare repository or the inside of `.git`: git has no work tree to offer files from.
+        "false" => return IgnoreVerdict::Covered,
+        _ => return IgnoreVerdict::Unknown("git gave an unexpected answer".into()),
+    }
+    let mut offered = Vec::new();
+    for batch in paths.chunks(IGNORE_BATCH) {
+        let out = match git_in(
+            project,
+            &["check-ignore", "--no-index", "-v", "-n", "--"],
+            batch,
+        ) {
+            Err(_) => return IgnoreVerdict::Unknown("git could not be run".into()),
+            Ok(o) => o,
+        };
+        // 0: some path is ignored, 1: none is; anything else is git failing.
+        if !matches!(out.status.code(), Some(0 | 1)) {
+            return IgnoreVerdict::Unknown(crate::identity::failure_summary(&out.stderr));
+        }
+        let Ok(text) = String::from_utf8(out.stdout) else {
+            return IgnoreVerdict::Unknown("git output was not UTF-8".into());
+        };
+        let lines: Vec<&str> = text.lines().collect();
+        if lines.len() != batch.len() {
+            return IgnoreVerdict::Unknown("git answered for a different number of paths".into());
+        }
+        for (path, line) in batch.iter().zip(lines) {
+            match check_ignore_line(line) {
+                Some(true) => {}
+                Some(false) => offered.push(path.clone()),
+                None => return IgnoreVerdict::Unknown("git gave an unexpected answer".into()),
+            }
+        }
+    }
+    if offered.is_empty() {
+        IgnoreVerdict::Covered
+    } else {
+        IgnoreVerdict::Offered(offered)
+    }
+}
+
+/// #2936 S-AGENTS-STAY U1: whether the `<base>/backups/.gitignore` that is already there keeps
+/// the staying layout's backup copies out of git. They are the receipt and one copy per moving
+/// file under `<base>/backups/<stamp>/`, and the settings among them may hold a token.
+/// `None` when nothing needs deciding: no such file (the apply writes `*`), a link on the way
+/// (the apply refuses it as before), git ignores every path, or the project is not a git work
+/// tree. Git being unable to answer is `unknown`: the check stops closed.
+fn backup_ignore(project: &Path, base: &str, moves: &[&str], stamp: &str) -> Option<BackupIgnore> {
+    let file = format!("{base}/backups/.gitignore");
+    if linked_component(project, &file) || fs::symlink_metadata(project.join(&file)).is_err() {
+        return None;
+    }
+    let area = format!("{base}/backups/{stamp}");
+    let mut paths = vec![format!("{area}/{RECEIPT}")];
+    paths.extend(moves.iter().map(|m| format!("{area}/go-state/{m}")));
+    match ignored_by_git(project, &paths) {
+        IgnoreVerdict::Covered => None,
+        IgnoreVerdict::Offered(offered) => Some(BackupIgnore {
+            state: "not_ignored",
+            reason: format!(
+                "{file} exists and git does not ignore the backup copies under {base}/backups/: \
+                 they may hold tokens, so nothing moves until that file ignores them; MoAI never \
+                 edits it (add a line such as `*` to it, or remove it and the apply writes one)"
+            ),
+            file,
+            examples: offered.into_iter().take(IGNORE_EXAMPLES).collect(),
+        }),
+        IgnoreVerdict::Unknown(why) => Some(BackupIgnore {
+            state: "unknown",
+            reason: format!(
+                "{file} exists and git could not say whether it ignores the backup copies \
+                 ({why}); nothing moves until it can; MoAI never edits that file"
+            ),
+            file,
+            examples: Vec::new(),
+        }),
+    }
+}
+
+/// The apply's refusal for a [`BackupIgnore`]. It carries the file name and a path, never a line
+/// of the file; the classifier reads `refused`.
+fn backup_ignore_refusal(b: &BackupIgnore) -> String {
+    let named = if b.examples.is_empty() {
+        String::new()
+    } else {
+        format!(" (for example {})", b.examples.join(", "))
+    };
+    format!(
+        "backup area not kept out of git; refused: {}{named}; nothing written",
+        b.reason
+    )
+}
+
 /// F-I (#2936): the ignore file is written after the pending receipt, so a failure there is
 /// outside the step-2 undo. `done` says what is on disk (the receipt is `pending`, so
 /// `state_root` says `interrupted`); the revert plan takes the project back. The phrase
@@ -3483,6 +3744,13 @@ pub fn apply_with_stamp(
     // The Go folder stays: the #2561 stage-2 layout under the current state folder.
     let base = crate::state_root::dir(&project);
     let backup_rel = format!("{base}/backups/{stamp}");
+    // S-AGENTS-STAY U1: an ignore file that is already there is never edited, so one that
+    // leaves the copies to git (or that git cannot judge) stops the apply before anything is
+    // written, `backups/` included. Asked again here with the real stamp and moves.
+    let moving: Vec<&str> = receipt.moves.iter().map(|m| m.path.as_str()).collect();
+    if let Some(b) = backup_ignore(&project, base, &moving, stamp) {
+        return Err(backup_ignore_refusal(&b));
+    }
     // `make_dirs` refuses a linked state folder or `backups`; the stamp folder itself is
     // created exclusively, so a link already at that name fails the create.
     make_private_dirs(&project, &format!("{base}/backups"))?;
@@ -4530,6 +4798,7 @@ mod tests {
             counterparts: Vec::new(),
             after_move: AfterMove::default(),
             settings_move: None,
+            backup_ignore: None,
             secrets: 0,
             warnings: vec!["w".into()],
             plan_digest: String::new(),
@@ -4587,6 +4856,16 @@ mod tests {
                     freed: vec![".claude/a.md".into()],
                     folder_freed: true,
                     still_holding: vec![SETTINGS_LOCAL.into()],
+                })
+            }),
+            ("backup_ignore", |p| {
+                p.backup_ignore = Some(BackupIgnore {
+                    state: "not_ignored",
+                    file: crate::project_state!("backups/.gitignore").into(),
+                    examples: vec![
+                        crate::project_state!("backups/<UTC>/go-state-receipt.json").into()
+                    ],
+                    reason: "r".into(),
                 })
             }),
             ("item freed_by", |p| p.items[1].freed_by = SETTINGS.into()),
@@ -4954,6 +5233,33 @@ mod tests {
             fs::write(&receipt, text).unwrap();
             let got = settings_proof(&project, &e).err().map(|(_, class)| class);
             assert_eq!(got, want, "{text}");
+        }
+    }
+
+    /// S-AGENTS-STAY U1: the `git check-ignore -v -n` lines as git 2.54 prints them, in both
+    /// directions: a match is ignored, a miss and a `!` rule are not, and anything else is not
+    /// guessed.
+    #[test]
+    fn check_ignore_lines_are_read_in_both_directions() {
+        for (line, want) in [
+            (
+                "state/backups/.gitignore:1:*\tstate/backups/x/a.json",
+                Some(true),
+            ),
+            (".gitignore:3:.moai-cli/backups/\t\"a b\"", Some(true)),
+            // The source may hold a colon; the line number is the first `:<digits>:`.
+            ("/odd:dir/ignore:12:go-state/\tp", Some(true)),
+            ("::\t.moai-cli/backups/x/a.json", Some(false)),
+            // A negated pattern is the rule that un-ignores the path.
+            ("state/backups/.gitignore:2:!keep-me\tp", Some(false)),
+            // Not in the shape: no tab, no line number, an empty pattern.
+            ("", None),
+            ("::", None),
+            ("src:x:*\tp", None),
+            ("src:1:\tp", None),
+            ("warning: unable to access\tp", None),
+        ] {
+            assert_eq!(check_ignore_line(line), want, "{line:?}");
         }
     }
 
