@@ -834,7 +834,8 @@ fn hooks_step(root: &Path, shown: &str) -> Result<Step> {
         "scripts_missing": names("scripts_missing"),
     });
     // #2936 S-CYCLE (OQ2 H1): no Go entry is left because the Go settings moved into a backup;
-    // the MoAI hook set is then written by the ordinary `hooks-apply` for Claude.
+    // the MoAI hook set is then written by the ordinary `hooks-apply` for Claude. C-55: the
+    // same holds where MoAI's record says the hook set is installed — the file may not hold it.
     if plan["action"].as_str() == Some("none") {
         if let Some(step) = hooks_after_settings_move(root, shown, &preview)? {
             return Ok(step);
@@ -875,8 +876,13 @@ fn hooks_step(root: &Path, shown: &str) -> Result<Step> {
 /// `go-hooks-apply` has nothing to replace, yet the new settings carry no hook set. The step
 /// then prints `hooks-apply --host claude`. Without such a receipt (a project that never had
 /// Go settings, or a reverted move) it offers nothing: `None`.
+///
+/// C-55: a project whose ownership record names the MoAI hook set is planned the same way, so
+/// a settings file that lost its `hooks` key (the record is not tracked by git, the file is)
+/// reads `ready` here and never `unchanged`.
 fn hooks_after_settings_move(root: &Path, shown: &str, base: &Value) -> Result<Option<Step>> {
-    if go_state::backed_up_settings(root)?.is_none() {
+    let moved = go_state::backed_up_settings(root)?.is_some();
+    if !moved && !crate::hooks::installed(root, "claude")? {
         return Ok(None);
     }
     let plan = crate::hooks::plan(root, "claude", None)?;
@@ -886,10 +892,14 @@ fn hooks_after_settings_move(root: &Path, shown: &str, base: &Value) -> Result<O
     preview["host"] = json!("claude");
     preview["hooks"] = plan["hooks"].clone();
     let (state, reason) = match plan["action"].as_str() {
-        Some("create" | "update") => (
+        Some("create" | "update") if moved => (
             "ready",
             "the Go settings moved into the backup and took their hook entries with them; the \
              MoAI hook set is not in the new settings yet",
+        ),
+        Some("create" | "update") => (
+            "ready",
+            "MoAI's record names the MoAI hook set, but .claude/settings.json does not hold it",
         ),
         Some("unchanged") => ("unchanged", "the MoAI hook set is current"),
         _ => (
