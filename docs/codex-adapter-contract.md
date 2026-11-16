@@ -175,6 +175,7 @@ status_line = ["model", "reasoning", "codex-version", "project-name", "git-branc
 | 2 | 저장소 | 일부 | `project-name`(또는 `current-dir`) |
 | 2 | ⬇️ 열린 Issue 수 | 불가 | 해당 항목 없음 — S1 |
 | 2 | 🔀 열린 PR 수 | 불가 | 해당 항목 없음(`pull-request-number`는 지금 가지의 PR 번호 하나) — S1 |
+| 2 | 🔥 진행 중 카드 수 / 📥 남은 카드 수 / ✅ 끝난 카드 수 (카드 C-65) | 불가 | 해당 항목 없음(로컬 장부를 읽는 항목이 없고 외부 명령도 실행하지 않음) — D2, S1 |
 | 2 | ahead/behind | 불가 | 해당 항목 없음 — `branch-changes`는 기본 가지 대비 커밋 차이 |
 | 2 | 가지 | 가능 | `git-branch` |
 | 2 | 변경 | 뜻이 다름 | `branch-changes` = 기본 가지 대비 커밋된 차이, 작업 트리의 미커밋 변경이 아님 |

@@ -11,6 +11,10 @@
 //! session task (`last-session-state.json`, 📋) is not read at all since the three-line layout
 //! (#2376, user decision 3: the task is never shown).
 //!
+//! Card C-65: the card counts are the one read under `$HOME/.moai/`: the project's local ledger
+//! in `$HOME/.moai/projects/<project_id>/`, opened read-only through `crate::ledger` with a
+//! short wait (see [`card_counts`]).
+//!
 //! The only subprocess is `git`, and only when a `.git` entry is found above the
 //! directory Go would open; it runs read-only (`--no-optional-locks`) under the render
 //! deadline. No network here: the counts refresh child is started by `statusline::run`
@@ -118,6 +122,9 @@ pub struct Status {
     pub git: Option<GitStatus>,
     pub repo: Option<(String, String)>,
     pub github: GitHubCounts,
+    /// Card C-65: the card counts of the project's local ledger; `None` when there is no
+    /// ledger to read (see [`card_counts`]).
+    pub cards: Option<CardCounts>,
     pub goal_armed: bool,
     /// #2756 AC-7: the open pull request of the current branch.
     pub pr: Option<PrInfo>,
@@ -158,6 +165,18 @@ pub struct GitHubCounts {
     pub suppressed: bool,
     pub open_issues: i64,
     pub open_prs: i64,
+}
+
+/// Card C-65 (user instructions 2026-11-16 and 2026-11-17): the cards of the project's local
+/// ledger, as the repository line shows them (`🔥 in_progress / 📥 remaining | ✅ done`).
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct CardCounts {
+    /// `active` + `review`.
+    pub in_progress: i64,
+    /// `draft` + `ready` + `hold`.
+    pub remaining: i64,
+    /// `done`; counted in neither of the other two.
+    pub done: i64,
 }
 
 /// `statusline.yaml` as the Go CLI reads it: theme and the segments map.
@@ -232,6 +251,10 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
         status.github = github_counts(anchor);
         status.goal_armed = goal_armed(anchor, input::text(&input.session_id));
     }
+    status.cards = anchor
+        .as_deref()
+        .or(project_root.as_deref())
+        .and_then(|project| card_counts(project, ctx));
     status.pr = input.pr.as_ref().and_then(|p| {
         Some(PrInfo {
             number: p.number.filter(|n| *n > 0)?,
@@ -842,6 +865,38 @@ fn github_counts(anchor: &Path) -> GitHubCounts {
         counts.suppressed = true;
     }
     counts
+}
+
+/// How long the card counts wait for a ledger another process has locked (card C-65). The
+/// status line is drawn again within seconds, so a locked ledger costs one render its segment,
+/// never the render budget.
+pub const CARDS_BUSY_TIMEOUT: Duration = Duration::from_millis(50);
+
+/// Card C-65: the card counts of `project`'s local ledger
+/// (`$HOME/.moai/projects/<project_id>/`), the one `moai card list` reads. Read-only like that
+/// command (`ledger::open`: no folder, no file, no journal; no process and no network), with
+/// [`CARDS_BUSY_TIMEOUT`] — or what is left of the render budget when that is less — in place of
+/// the ledger's own wait. `None`, and so no segment, whenever the counts cannot be read: no
+/// HOME, no project profile, no registered ledger, a file that is not this project's ledger
+/// (corrupt, another project's, a link), a lock held past the wait, or a spent budget.
+fn card_counts(project: &Path, ctx: &Context) -> Option<CardCounts> {
+    let home = ctx.home()?;
+    let busy = match ctx.deadline {
+        Some(deadline) => CARDS_BUSY_TIMEOUT.min(deadline.checked_duration_since(Instant::now())?),
+        None => CARDS_BUSY_TIMEOUT,
+    };
+    let id = crate::project_id::read(&std::fs::canonicalize(project).ok()?).ok()??;
+    let ledger = crate::ledger::open::open_read_only_within(&home, &id, busy).ok()?;
+    let mut counts = CardCounts::default();
+    for (state, n) in crate::ledger::command::state_counts(&ledger).ok()? {
+        match state.as_str() {
+            "active" | "review" => counts.in_progress += n,
+            "draft" | "ready" | "hold" => counts.remaining += n,
+            "done" => counts.done += n,
+            _ => {}
+        }
+    }
+    Some(counts)
 }
 
 /// An explicit `statusline.forge` naming neither github nor gitlab.
@@ -1610,6 +1665,254 @@ mod extras_tests {
         // A mistyped prompt_cache leaves the timer out but keeps the rest of the payload.
         let s = collect_json(json!({"session_name": "x", "prompt_cache": 7}), 0);
         assert_eq!((s.session_name.as_str(), s.cache_timer), ("x", None));
+    }
+}
+
+/// Card C-65: the card counts read from a ledger in a temporary HOME; the real HOME is never
+/// touched.
+#[cfg(test)]
+mod card_counts_tests {
+    use super::*;
+
+    struct Fixture {
+        _tmp: tempfile::TempDir,
+        home: PathBuf,
+        project: PathBuf,
+    }
+
+    /// A HOME and a project `demo` with its profile; no ledger yet.
+    fn fixture() -> Fixture {
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path().join("home");
+        let project = tmp.path().join("work/demo");
+        let state = project.join(crate::PROJECT_STATE_DIR);
+        std::fs::create_dir_all(&home).unwrap();
+        std::fs::create_dir_all(&state).unwrap();
+        std::fs::write(
+            state.join("project.yaml"),
+            "{\"schema_version\":2,\"project_id\":\"demo\"}\n",
+        )
+        .unwrap();
+        Fixture {
+            _tmp: tmp,
+            home,
+            project,
+        }
+    }
+
+    impl Fixture {
+        fn ctx(&self) -> Context {
+            Context::for_test(&[("HOME", self.home.to_str().unwrap())], None)
+        }
+
+        fn counts(&self) -> Option<CardCounts> {
+            card_counts(&self.project, &self.ctx())
+        }
+
+        fn ledger_file(&self) -> PathBuf {
+            crate::ledger::ledger_path(&self.home, "demo").unwrap()
+        }
+
+        /// Adds `n` cards in `state`. An `INSERT` has no transition check, so every state can
+        /// be written directly.
+        fn add(&self, state: &str, n: usize) {
+            let mut ledger = crate::ledger::open_write(&self.home, "demo").unwrap();
+            ledger
+                .with_write_tx(|tx, now| {
+                    for _ in 0..n {
+                        tx.execute(
+                            "INSERT INTO card (title, state, created_by, created_at, updated_at, closed_at) \
+                             VALUES ('t', ?1, 'test', ?2, ?2, iif(?1 = 'done', ?2, NULL))",
+                            rusqlite::params![state, now],
+                        )?;
+                    }
+                    Ok(())
+                })
+                .unwrap();
+        }
+
+        /// Every entry under the HOME with its bytes, sorted: equal before and after a read
+        /// means no file, folder or journal was made and no byte changed.
+        fn home_tree(&self) -> Vec<(PathBuf, Vec<u8>)> {
+            let mut out = Vec::new();
+            let mut stack = vec![self.home.clone()];
+            while let Some(dir) = stack.pop() {
+                for entry in std::fs::read_dir(&dir).unwrap() {
+                    let path = entry.unwrap().path();
+                    if path.is_dir() {
+                        out.push((path.clone(), Vec::new()));
+                        stack.push(path);
+                    } else {
+                        let bytes = std::fs::read(&path).unwrap();
+                        out.push((path, bytes));
+                    }
+                }
+            }
+            out.sort();
+            out
+        }
+    }
+
+    fn counts(in_progress: i64, remaining: i64, done: i64) -> Option<CardCounts> {
+        Some(CardCounts {
+            in_progress,
+            remaining,
+            done,
+        })
+    }
+
+    #[test]
+    fn no_registered_ledger_gives_no_counts_and_creates_nothing() {
+        let f = fixture();
+        assert_eq!(f.counts(), None);
+        assert_eq!(f.home_tree(), Vec::new(), "the HOME stays empty");
+    }
+
+    #[test]
+    fn an_empty_ledger_counts_zero_which_is_not_absent() {
+        let f = fixture();
+        crate::ledger::register(&f.home, "demo").unwrap();
+        assert_eq!(f.counts(), counts(0, 0, 0));
+    }
+
+    /// Each state lands in exactly one number: `active` and `review` in progress, `draft`,
+    /// `ready` and `hold` remaining, `done` only in done.
+    #[test]
+    fn each_state_is_counted_in_exactly_one_number() {
+        for (state, want) in [
+            ("active", counts(1, 0, 0)),
+            ("review", counts(1, 0, 0)),
+            ("draft", counts(0, 1, 0)),
+            ("ready", counts(0, 1, 0)),
+            ("hold", counts(0, 1, 0)),
+            ("done", counts(0, 0, 1)),
+        ] {
+            let f = fixture();
+            crate::ledger::register(&f.home, "demo").unwrap();
+            f.add(state, 1);
+            assert_eq!(f.counts(), want, "{state}");
+        }
+    }
+
+    #[test]
+    fn a_mix_of_states_adds_up_and_the_read_changes_nothing() {
+        let f = fixture();
+        crate::ledger::register(&f.home, "demo").unwrap();
+        for (state, n) in [
+            ("active", 3),
+            ("review", 2),
+            ("draft", 20),
+            ("ready", 25),
+            ("hold", 5),
+            ("done", 12),
+        ] {
+            f.add(state, n);
+        }
+        let before = f.home_tree();
+        let digest = crate::digest(&std::fs::read(f.ledger_file()).unwrap());
+        assert_eq!(f.counts(), counts(5, 50, 12));
+        assert_eq!(
+            crate::digest(&std::fs::read(f.ledger_file()).unwrap()),
+            digest,
+            "the ledger file is byte for byte the same"
+        );
+        assert_eq!(f.home_tree(), before, "no journal, no new file");
+    }
+
+    /// A ledger another process holds exclusively: no counts, and the wait is the short one,
+    /// far below the ledger's own five seconds.
+    #[test]
+    fn a_locked_ledger_gives_no_counts_within_the_short_wait() {
+        let f = fixture();
+        crate::ledger::register(&f.home, "demo").unwrap();
+        f.add("active", 1);
+        let holder = rusqlite::Connection::open(f.ledger_file()).unwrap();
+        holder.execute_batch("BEGIN EXCLUSIVE").unwrap();
+        let started = Instant::now();
+        assert_eq!(f.counts(), None);
+        let waited = started.elapsed();
+        assert!(
+            waited < crate::ledger::open::BUSY_TIMEOUT / 2,
+            "waited {waited:?}"
+        );
+        holder.execute_batch("ROLLBACK").unwrap();
+        assert_eq!(f.counts(), counts(1, 0, 0), "readable again once released");
+    }
+
+    #[test]
+    fn a_file_that_is_not_this_projects_ledger_gives_no_counts_and_is_left_alone() {
+        // Not a database at all, a database cut short, and another project's ledger.
+        let other = fixture();
+        crate::ledger::register(&other.home, "other").unwrap();
+        let other_bytes =
+            std::fs::read(crate::ledger::ledger_path(&other.home, "other").unwrap()).unwrap();
+        for bytes in [
+            b"not a database".to_vec(),
+            other_bytes[..200].to_vec(),
+            other_bytes,
+        ] {
+            let f = fixture();
+            crate::ledger::register(&f.home, "demo").unwrap();
+            assert_eq!(f.counts(), counts(0, 0, 0));
+            std::fs::write(f.ledger_file(), &bytes).unwrap();
+            let before = f.home_tree();
+            assert_eq!(f.counts(), None);
+            assert_eq!(f.home_tree(), before);
+        }
+    }
+
+    #[test]
+    fn no_home_no_profile_or_a_spent_budget_gives_no_counts() {
+        let f = fixture();
+        crate::ledger::register(&f.home, "demo").unwrap();
+        assert_eq!(f.counts(), counts(0, 0, 0));
+        // HOME unset.
+        let no_home = Context::for_test(&[], None);
+        assert_eq!(card_counts(&f.project, &no_home), None);
+        // A HOME that is not there.
+        let gone = f.home.join("gone");
+        let missing = Context::for_test(&[("HOME", gone.to_str().unwrap())], None);
+        assert_eq!(card_counts(&f.project, &missing), None);
+        // The render deadline has passed.
+        let mut late = f.ctx();
+        late.deadline = Some(Instant::now() - Duration::from_millis(1));
+        assert_eq!(card_counts(&f.project, &late), None);
+        late.deadline = Some(Instant::now() + Duration::from_secs(60));
+        assert_eq!(card_counts(&f.project, &late), counts(0, 0, 0));
+        // A project without a profile, and a folder that does not exist.
+        std::fs::remove_file(
+            f.project
+                .join(crate::PROJECT_STATE_DIR)
+                .join("project.yaml"),
+        )
+        .unwrap();
+        assert_eq!(f.counts(), None);
+        assert_eq!(card_counts(&f.project.join("absent"), &f.ctx()), None);
+    }
+
+    /// `collect` reads the counts for the project the input names (`workspace.project_dir`),
+    /// whatever the working directory is, and falls back to the project above the cwd.
+    #[test]
+    fn collect_reads_the_counts_of_the_anchor_or_of_the_cwd_project() {
+        let f = fixture();
+        crate::ledger::register(&f.home, "demo").unwrap();
+        f.add("ready", 2);
+        f.add("done", 1);
+        let elsewhere = f.home.parent().unwrap().to_path_buf();
+        let home = f.home.to_str().unwrap();
+        let named = input::parse(
+            serde_json::json!({"workspace": {"project_dir": f.project}})
+                .to_string()
+                .as_bytes(),
+        )
+        .unwrap();
+        let ctx = Context::for_test(&[("HOME", home)], Some(&elsewhere));
+        assert_eq!(collect(Some(&named), &ctx).cards, counts(0, 2, 1));
+        let empty = input::parse(b"{}").unwrap();
+        assert_eq!(collect(Some(&empty), &ctx).cards, None, "no project here");
+        std::fs::create_dir_all(f.project.join(".moai")).unwrap();
+        let inside = Context::for_test(&[("HOME", home)], Some(&f.project));
+        assert_eq!(collect(Some(&empty), &inside).cards, counts(0, 2, 1));
     }
 }
 
