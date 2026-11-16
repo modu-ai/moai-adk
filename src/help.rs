@@ -43,6 +43,10 @@ pub const GROUPS: &[Group] = &[
             ("card", false),
             ("ledger-register-plan", false),
             ("ledger-register-apply", false),
+            ("card-import-plan", false),
+            ("card-import-apply", false),
+            ("card-summary-plan", false),
+            ("card-summary-apply", false),
             ("ledger-recover-plan", false),
             ("ledger-recover-apply", false),
             ("agents-plan", false),
@@ -330,6 +334,10 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ),
     ("ledger-register-plan", &["ledger-register-plan .", "ledger-register-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("ledger-register-apply", &["ledger-register-apply --plan-digest <digest> --permission-reference <ref> ."]),
+    ("card-import-plan", &["card-import-plan --from github --repo owner/repo .", "card-import-apply --from github --repo owner/repo --plan-digest <digest> --permission-reference <ref> ."]),
+    ("card-import-apply", &["card-import-apply --from github --repo owner/repo --plan-digest <digest> --permission-reference <ref> ."]),
+    ("card-summary-plan", &["card-summary-plan --card C-1 --to github .", "card-summary-apply --card C-1 --to github --plan-digest <digest> --permission-reference <ref> ."]),
+    ("card-summary-apply", &["card-summary-apply --card C-1 --to github --plan-digest <digest> --permission-reference <ref> ."]),
     ("ledger-recover-plan", &["ledger-recover-plan --source <copy> .", "ledger-recover-apply --source <copy> --plan-digest <digest> --permission-reference <ref> ."]),
     ("ledger-recover-apply", &["ledger-recover-apply --source <copy> --plan-digest <digest> --permission-reference <ref> ."]),
     ("update", &["update"]),
@@ -1467,6 +1475,34 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          않아요. 이미 있는 유효한 원장은 그대로 두고, 이 프로젝트 것이 아닌 파일은 대체하지 않아요.",
     ),
     (
+        "card-import-plan",
+        "코드 호스트의 열린 이슈를 로컬 원장의 카드로 가져오면 무엇이 되는지 미리 봐요(#3071) — \
+         모든 페이지를 읽고(끝까지 못 읽으면 오류), 이슈마다 만들어질 카드와 읽어 낸 합격 기준, \
+         표를 읽지 못한 이슈, 남길 구성원 댓글과 걸러 낼 제어 줄을 보여 줘요. 이슈 글은 글로만 \
+         다루고 명령으로 실행하지 않아요. 읽기(GET)만 하고 원장도 폴더도 만들지 않으며, 답에 \
+         `plan_digest` 가 있어요.",
+    ),
+    (
+        "card-import-apply",
+        "미리 본 열린 이슈를 로컬 원장에 카드(draft)로 써요(#3071) — 호스트가 지금 주는 이슈 집합이 \
+         미리 보기의 `plan_digest` 와 같을 때만, 한 트랜잭션으로 전부 쓰거나 아무것도 쓰지 않아요. \
+         이미 카드가 있는 이슈는 그대로 두고, 원장이 없으면 호스트도 읽지 않고 멈춰요. 이슈를 \
+         닫거나 바꾸지 않아요.",
+    ),
+    (
+        "card-summary-plan",
+        "카드 한 장의 요약을 그 카드의 이슈(또는 `--number` 로 정한 PR)에 올리면 무엇이 올라가는지 \
+         미리 봐요(#3071) — 올라갈 글(올라가는 바이트 그대로, 제어 줄·멘션·비밀 모양을 씻은 뒤), \
+         출처, 대상, 두 번 올라가지 않게 하는 표지, `plan_digest` 를 보여 줘요. 카드는 `--to` 로 적은 호스트에서 온 것이어야 해요. 로컬 원장만 읽고 통신도 쓰기도 \
+         하지 않아요.",
+    ),
+    (
+        "card-summary-apply",
+        "미리 본 카드 요약을 이슈에 한 번 올려요(#3071) — 미리 보기의 `plan_digest` 가 그대로이고 \
+         권한 참조가 있을 때만, 호스트에 쓰는 유일한 명령이에요. 올리기 전에 호스트를 읽어 구성원 또는 \
+         토큰 계정의 댓글에 이 카드의 표지가 이미 있으면 아무것도 올리지 않고 `already_posted` 로 답해요.",
+    ),
+    (
         "ledger-recover-plan",
         "망가진 프로젝트 원장을 읽을 수 있는 사본에서 다시 만들면 무엇이 생기는지 미리 봐요(#3068). \
          사본은 `--source` 로 넘겨요(원장 파일 자체, `.bak`, 또는 원장 모양의 파일). 표마다 읽다가 \
@@ -1772,6 +1808,26 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     ),
     (
         "ledger-register-apply",
+        "home",
+        "미리 보기가 읽은 것과 같은 HOME(기본 `$HOME`)",
+    ),
+    (
+        "card-import-plan",
+        "home",
+        "원장을 찾을 HOME(기본 `$HOME`). 시험은 임시 폴더를 넘김",
+    ),
+    (
+        "card-import-apply",
+        "home",
+        "미리 보기가 읽은 것과 같은 HOME(기본 `$HOME`)",
+    ),
+    (
+        "card-summary-plan",
+        "home",
+        "원장을 찾을 HOME(기본 `$HOME`). 시험은 임시 폴더를 넘김",
+    ),
+    (
+        "card-summary-apply",
         "home",
         "미리 보기가 읽은 것과 같은 HOME(기본 `$HOME`)",
     ),
