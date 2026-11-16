@@ -355,6 +355,18 @@ fn another_application_id_or_a_missing_schema_is_unavailable() {
 }
 
 #[test]
+fn a_complete_ledger_with_another_application_id_is_unavailable() {
+    // Everything else is right (schema, version, project id row): only the application id
+    // differs, so only the application id check can refuse it.
+    let (home, file) = registered("demo");
+    {
+        let c = rusqlite::Connection::open(&file).unwrap();
+        c.execute_batch("PRAGMA application_id = 12345;").unwrap();
+    }
+    assert_unavailable_and_untouched(&home, &file);
+}
+
+#[test]
 fn a_link_or_a_folder_at_the_ledger_path_is_unavailable() {
     let (home, file) = registered("demo");
     let real = file.with_extension("real");
