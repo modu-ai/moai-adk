@@ -145,6 +145,105 @@ fn register_waits_for_the_go_generations_home_and_a_missing_home_is_not_created(
     assert!(!missing.exists());
 }
 
+/// Every HOME state the ledger must not write into, each built truthfully (the helper makes the
+/// files the state classifier reads) and named by what `state_root::classify_home` answers.
+fn refused_homes() -> Vec<(&'static str, TempHome)> {
+    let go = TempHome::new();
+    go.make_go_generation();
+    let mixed = TempHome::new();
+    mixed.make_mixed_generation();
+    let interrupted = TempHome::new();
+    interrupted.make_interrupted_generation();
+    let refused = TempHome::new();
+    refused.make_refused_generation();
+    vec![
+        ("go", go),
+        ("mixed", mixed),
+        ("interrupted", interrupted),
+        ("refuse", refused),
+    ]
+}
+
+#[test]
+fn the_helpers_build_the_states_the_classifier_names() {
+    for (state, home) in refused_homes() {
+        assert_eq!(
+            moai_cli::state_root::classify_home(home.path()).generation,
+            state
+        );
+    }
+    // The Rust marker alone is the ready state the refusal list must not catch.
+    let ready = TempHome::new();
+    ready.make_rust_generation();
+    assert_eq!(
+        moai_cli::state_root::classify_home(ready.path()).generation,
+        "rust"
+    );
+}
+
+#[test]
+fn register_is_refused_in_every_unfinished_or_refused_home_state_and_creates_nothing() {
+    for (state, home) in refused_homes() {
+        let before = home.snapshot();
+        let error = ledger::register(home.path(), "demo").unwrap_err();
+        assert!(
+            matches!(error, LedgerError::HomeNotReady(_)),
+            "{state}: {error:?}"
+        );
+        assert_eq!(error.code(), "home_not_ready", "{state}");
+        assert!(
+            error.to_string().contains(&format!("`{state}`")),
+            "{state}: {error}"
+        );
+        let after = home.snapshot();
+        assert_eq!(after, before, "{state}: nothing added, changed or removed");
+        assert!(
+            after
+                .iter()
+                .all(|e| !e.path.ends_with("ledger.db") && !e.path.contains(".creating-")),
+            "{state}: no ledger and no temporary file"
+        );
+        assert!(
+            !home.path().join(".moai/projects").exists(),
+            "{state}: no ledger folder"
+        );
+        // The opens find no ledger (`absent`; with `.moai` a file the path cannot be examined,
+        // which is `io`), and they create nothing either.
+        for error in open_errors(&home, "demo") {
+            let expected = if state == "refuse" {
+                matches!(error, LedgerError::Io(_))
+            } else {
+                error == LedgerError::Absent
+            };
+            assert!(expected, "{state}: {error:?}");
+        }
+        assert_eq!(home.snapshot(), before, "{state}: after the opens");
+    }
+}
+
+#[test]
+fn register_works_in_a_home_that_only_carries_this_generations_marker() {
+    // The refusal list is exactly the four states: the Rust generation's own HOME is ready.
+    let home = TempHome::new();
+    home.make_rust_generation();
+    assert_eq!(
+        ledger::register(home.path(), "demo").unwrap(),
+        Registered::Created
+    );
+    assert!(path_of(&home, "demo").is_file());
+}
+
+#[cfg(unix)]
+#[test]
+fn a_registered_ledger_file_is_private_to_its_owner() {
+    use std::os::unix::fs::PermissionsExt;
+    let (_home, file) = registered("demo");
+    let mode = fs::metadata(&file).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o600, "mode {mode:o}");
+    // The folders are made with `create_dir_all` and the process umask; the code sets no mode
+    // on them, so no assertion is made about them here.
+}
+
 // ---- open never creates --------------------------------------------------------------------------
 
 #[test]

@@ -78,6 +78,46 @@ impl TempHome {
         fs::write(state.join("active-sessions.json"), "[]").unwrap();
     }
 
+    /// The Rust marker `home-install-apply` of an earlier build wrote: `.moai/moai.json`,
+    /// schema 1, generation `moai`. Without a Go marker beside it the HOME is `rust`, the ready
+    /// state.
+    pub fn make_rust_generation(&self) {
+        let moai = self.path().join(".moai");
+        fs::create_dir_all(&moai).unwrap();
+        fs::write(
+            moai.join("moai.json"),
+            r#"{"schema_version":1,"generation":"moai","created_by":"moai test","project_id":"p"}"#,
+        )
+        .unwrap();
+    }
+
+    /// Makes `~/.moai` carry both this generation's marker and a Go marker (the Go session
+    /// registry): `state_root::classify_home` answers `mixed`.
+    pub fn make_mixed_generation(&self) {
+        self.make_rust_generation();
+        let state = self.path().join(".moai").join("state");
+        fs::create_dir_all(&state).unwrap();
+        fs::write(state.join("active-sessions.json"), "[]").unwrap();
+    }
+
+    /// Makes the HOME look like a Go move stopped midway: the Go folder was renamed to
+    /// `~/.moai-backup` and `~/.moai` does not exist yet. `classify_home` answers `interrupted`.
+    pub fn make_interrupted_generation(&self) {
+        let backup = self.path().join(".moai-backup");
+        fs::create_dir_all(&backup).unwrap();
+        fs::write(backup.join("manifest.json"), "{}").unwrap();
+    }
+
+    /// Makes `~/.moai` a regular file, which no writer may replace or step into:
+    /// `classify_home` answers `refuse`.
+    pub fn make_refused_generation(&self) {
+        fs::write(
+            self.path().join(".moai"),
+            "a file where the state folder belongs",
+        )
+        .unwrap();
+    }
+
     /// Every entry under the HOME (symlinks not followed), sorted. Two snapshots are equal only
     /// when no entry was added, removed or changed, folder modification times included.
     pub fn snapshot(&self) -> Vec<Entry> {

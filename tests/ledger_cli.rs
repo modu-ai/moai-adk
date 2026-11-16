@@ -248,6 +248,49 @@ fn the_go_generations_home_blocks_the_plan_and_the_apply() {
 }
 
 #[test]
+fn a_mixed_interrupted_or_refused_home_blocks_the_plan_and_the_apply_and_creates_nothing() {
+    type Make = fn(&TempHome);
+    let states: [(&str, Make); 3] = [
+        ("mixed", TempHome::make_mixed_generation),
+        ("interrupted", TempHome::make_interrupted_generation),
+        ("refuse", TempHome::make_refused_generation),
+    ];
+    for (state, make) in states {
+        let home = TempHome::new();
+        let project = home.project("demo");
+        let p = project_arg(&project);
+        make(&home);
+        let before = home.snapshot();
+        if state == "refuse" {
+            // With `.moai` a file the plan cannot even examine the ledger path (ENOTDIR), so it
+            // fails with an `io` error before the HOME check is reached; the API's `register`
+            // does answer `home_not_ready` there (tests/ledger_open.rs). Either way nothing is
+            // planned and nothing is written.
+            let out = run(&home, &["ledger-register-plan", &p]);
+            assert_eq!(out.status.code(), Some(1), "{state}");
+            let out = run(&home, &apply_args(&p, "sha256:00", "approved-by-test"));
+            assert_eq!(out.status.code(), Some(1), "{state}");
+        } else {
+            let plan = result(&run(&home, &["ledger-register-plan", &p]));
+            assert_eq!(plan["action"], json!("blocked"), "{state}");
+            assert_eq!(plan["problem"], json!("home_not_ready"), "{state}");
+            assert_eq!(plan["would_create"], json!([]), "{state}");
+            let digest = plan["plan_digest"].as_str().unwrap().to_string();
+            let out = run(&home, &apply_args(&p, &digest, "approved-by-test"));
+            assert_eq!(error_kind(&out), "blocked", "{state}");
+        }
+        let after = home.snapshot();
+        assert_eq!(after, before, "{state}: nothing added, changed or removed");
+        assert!(
+            after
+                .iter()
+                .all(|e| !e.path.ends_with("ledger.db") && !e.path.contains(".creating-")),
+            "{state}: no ledger and no temporary file"
+        );
+    }
+}
+
+#[test]
 fn a_project_without_a_profile_is_not_found_for_every_command() {
     let home = TempHome::new();
     let bare = home.path().join("work/bare");
