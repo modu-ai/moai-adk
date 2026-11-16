@@ -131,6 +131,41 @@ fn accepted_findings_give_verdict_counts_and_body() {
     assert!(r["digest"].as_str().unwrap().starts_with("sha256:"));
 }
 
+/// #3096 S2: `frequency` and `impact` ride along in a finding. `review-check` accepts them and
+/// neither reads nor prints them, so the result is the same as for the same findings without
+/// scores, and no score turns a blocker into a non-blocker or the other way round. The audit
+/// workflow relies on exactly this when it tells auditors to write the follow-up order in the
+/// verdict comment instead of in the posted table.
+#[test]
+fn score_keys_are_accepted_and_change_neither_verdict_nor_body() {
+    let (tmp, head) = repo();
+    let plain = json!([
+        finding("nit", 7, "let v7 = 7;"),
+        finding("pre_existing", 2, "let v2 = 2;"),
+    ]);
+    let mut scored = plain.clone();
+    scored[0]["frequency"] = json!(9);
+    scored[0]["impact"] = json!(2);
+    scored[1]["frequency"] = json!(1);
+    scored[1]["impact"] = json!(10);
+    let a = check(&tmp, &head, plain);
+    let b = check(&tmp, &head, scored);
+    assert_eq!(a["result"], b["result"], "{a} {b}");
+    assert!(!b["result"]["body"].as_str().unwrap().contains("frequency"));
+
+    // The lowest scores do not lift a blocker; the highest do not make a nit one.
+    let mut low = finding("important", 4, "let v4 = 4;");
+    low["frequency"] = json!(1);
+    low["impact"] = json!(1);
+    let v = check(&tmp, &head, json!([low]));
+    assert_eq!(v["result"]["verdict"], json!("FAIL"), "{v}");
+    let mut high = finding("nit", 5, "let v5 = 5;");
+    high["frequency"] = json!(10);
+    high["impact"] = json!(10);
+    let v = check(&tmp, &head, json!([high]));
+    assert_eq!(v["result"]["verdict"], json!("PASS"), "{v}");
+}
+
 #[test]
 fn one_important_finding_fails_the_verdict() {
     let (tmp, head) = repo();
@@ -328,6 +363,9 @@ fn the_audit_workflow_describes_the_review_steps() {
         "the result `confirmed`",
         "Any `important` finding makes the verdict FAIL",
         "Never start other sessions or tools to imitate parallel work",
+        // #3096 S2: the scores order follow-ups and never decide a block.
+        "they never decide whether a finding blocks",
+        "`Follow-up order: <file:line> f=<n> i=<n>; …`",
     ] {
         assert!(text.contains(needle), "audit.md lacks {needle:?}");
     }

@@ -7,14 +7,21 @@
 //! `add` never creates the ledger file: a project without one gets `ledger not found` and the
 //! two commands that create it (`ledger-register-plan`, `ledger-register-apply`).
 //!
+//! `export` (#3070 K2a) reads the ledger the same read-only way and writes the K0 export folder
+//! into the directory it is given, nowhere else.
+//!
 //! Errors use the ledger's own message prefixes, so `contract::classify` keeps its kinds:
 //! `ledger not found` is `not_found`, `ledger blocked` is `blocked`, and a refused input is
 //! `card add refused: …` (`invalid_input`).
 
+use super::export_db;
+use super::export_dir::{self, DirError};
+use super::export_format;
 use super::input::{self, AddInput, CardRef};
 use crate::ledger::{self, LedgerError};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
 use std::path::Path;
 
 type Result<T> = std::result::Result<T, String>;
@@ -333,5 +340,47 @@ pub fn add(project: &Path, home: &Path, req: &AddRequest<'_>) -> Result<Value> {
         "state": "draft", "kind": card.kind, "priority": card.priority,
         "criteria": card.criteria.len(), "rev": rev, "created_by": by,
         "events": 1, "writes": true,
+    }))
+}
+
+/// `card export --out DIR` (#3070 K2a): the five exported tables of the ledger as an export
+/// folder. The ledger is opened read-only and only read; the files go into `out` and nowhere else
+/// (an empty or new folder, nothing replaced: `export_dir::write`), private to the owner (0700
+/// folder, 0600 files) and never inside the state folder `<home>/.moai`. Links in the parents of
+/// `out` are followed and the real path is the one written and reported (`out`; `out_given` is
+/// what was typed). A project without a ledger gets `ledger not found` and nothing is made,
+/// `out` included.
+pub fn export(project: &Path, home: &Path, out: &Path) -> Result<Value> {
+    let id = project_id(project)?;
+    let ledger = ledger::open_read_only(home, &id).map_err(|e| match e {
+        LedgerError::Absent => ABSENT_HINT.to_string(),
+        other => other.to_string(),
+    })?;
+    let snapshot =
+        export_db::read_snapshot(ledger.conn(), ledger.project_id(), ledger.schema_version())
+            .map_err(|e| e.to_string())?;
+    let rendered = export_format::render(&snapshot)
+        .map_err(|e| format!("card export refused: the ledger's rows cannot be exported: {e}"))?;
+    // Where the folder really is: links in its parents are followed, and a folder inside the
+    // state folder (`<home>/.moai`, where the ledgers are) is refused. This path is written to.
+    let real_out = export_dir::resolve_out(out, &crate::home_workdir::root(home))
+        .map_err(|e| format!("card export refused: {e}"))?;
+    export_dir::write(&real_out, &rendered).map_err(|e| match e {
+        DirError::Io { .. } => format!(
+            "card export write failed: {e}. Files already written stay in {} (it has no \
+             index.json, so it is not an export); nothing was removed",
+            real_out.display()
+        ),
+        other => format!("card export refused: {other}"),
+    })?;
+    Ok(json!({
+        "action": "export", "project_id": id,
+        "out": real_out.display().to_string(), "out_given": out.display().to_string(),
+        "cards": snapshot.cards.len(), "acs": snapshot.acs.len(),
+        "notes": snapshot.notes.len(), "links": snapshot.links.len(),
+        "events": snapshot.events.len(),
+        "files": rendered.cards.len() + 2,
+        "index_sha256": format!("{:x}", Sha256::digest(rendered.index.as_bytes())),
+        "writes": false, "writes_files": true,
     }))
 }

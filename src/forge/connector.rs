@@ -268,8 +268,9 @@ pub trait HostConnector {
     fn open_issues(&self, project: &ProjectRef) -> Result<OpenIssues, ConnectorError>;
 
     /// Puts `body` on the target once. `marker` is one `<!-- moai-… -->` line: when a member's
-    /// comment on the target already carries it, nothing is posted. Otherwise the marker is
-    /// appended to the body, so the next call finds it.
+    /// comment on the target already carries it, or a comment written by the token's own
+    /// account, nothing is posted. Otherwise the marker is appended to the body, so the next
+    /// call finds it. The POST is never sent a second time by the connector.
     fn post_summary(
         &self,
         target: &SummaryTarget,
@@ -284,6 +285,13 @@ pub trait HostConnector {
 
 /// The longest marker, in bytes.
 pub const MARKER_MAX_BYTES: usize = 200;
+
+/// The exact body of the comment [`HostConnector::post_summary`] sends: `body` without trailing
+/// blanks and with token-shaped words redacted, a blank line, then the marker. Plans show this
+/// string and digest it, so what a person approved is what is posted.
+pub fn summary_comment_body(body: &str, marker: &str) -> String {
+    format!("{}\n\n{marker}", redact(body.trim_end()))
+}
 
 /// A marker is one HTML comment line: it starts `<!-- moai-`, ends ` -->`, has no `-->` inside
 /// (that would close the comment early), no control character (so no second line), and is at
@@ -347,6 +355,19 @@ impl<'a, T: Transport, C: Clock> GithubConnector<'a, T, C> {
             .and_then(Value::as_array)
             .cloned()
             .unwrap_or_default()
+    }
+
+    /// The login of the account the token belongs to.
+    fn own_login(&self) -> Result<String, ConnectorError> {
+        let resp = self.client.get(&format!("{API}/user"), None)?;
+        resp.body
+            .as_ref()
+            .and_then(|b| b["login"].as_str())
+            .filter(|login| !login.is_empty())
+            .map(str::to_string)
+            .ok_or_else(|| {
+                ConnectorError::Invalid("the host did not say which account the token is".into())
+            })
     }
 
     fn comments_url(project: &ProjectRef, number: u64) -> String {
@@ -464,24 +485,44 @@ impl<T: Transport, C: Clock> HostConnector for GithubConnector<'_, T, C> {
     ) -> Result<SummaryOutcome, ConnectorError> {
         Self::require_github(&target.project)?;
         check_marker(marker)?;
-        // The marker counts only on a member's comment: on a public repository anyone could
-        // write the marker text first and so stop a summary from ever being posted.
-        let existing = self
+        // A marker counts on a member's comment, or on a comment the token's own account wrote
+        // (so "once" holds even when that account is not a member). On a public repository
+        // anyone could write the marker text first and so stop a summary from ever being
+        // posted; a comment by anyone else is ignored (audit of #3119, B2).
+        let with_marker: Vec<HostComment> = self
             .read_all(
                 Self::comments_url(&target.project, target.number),
                 &Self::array,
             )?
             .iter()
             .filter_map(Self::comment_of)
-            .find(|c| c.by_member() && c.body.contains(marker));
-        if let Some(c) = existing {
+            .filter(|c| c.body.contains(marker))
+            .collect();
+        if let Some(c) = with_marker.iter().find(|c| c.by_member()) {
             return Ok(SummaryOutcome::AlreadyPosted { comment_id: c.id });
+        }
+        if !with_marker.is_empty() {
+            let me = self.own_login()?;
+            if let Some(c) = with_marker
+                .iter()
+                .find(|c| c.author.eq_ignore_ascii_case(&me))
+            {
+                return Ok(SummaryOutcome::AlreadyPosted { comment_id: c.id });
+            }
         }
         let url = Self::comments_url(&target.project, target.number);
         let url = url.split('?').next().unwrap_or(&url).to_string();
+        // Sent once, never again: a first send that timed out may already be on the host.
         let request = HttpRequest::new("POST", url)
-            .with_body(json!({"body": format!("{}\n\n{marker}", redact(body.trim_end()))}));
-        let resp = self.client.send_with_backoff(&request)?;
+            .with_body(json!({"body": summary_comment_body(body, marker)}));
+        let resp = self.client.send_once(&request).map_err(|mut e| {
+            if e.kind == "transport" {
+                e.message.push_str(
+                    "; the comment may have reached the host, so run the command again: it reads the comments for the marker before it posts",
+                );
+            }
+            ConnectorError::from(e)
+        })?;
         if resp.status != 201 {
             return Err(ForgeError::transport(format!(
                 "summary POST returned HTTP {}",

@@ -52,9 +52,121 @@ pub fn redact_secret_shapes(s: &str) -> String {
     out
 }
 
+/// Text that is about to be posted where anyone can read it (#3071 H4, audit of #3119 B1).
+///
+/// Works word by word (a word ends at whitespace) and replaces a whole word that has the shape
+/// of a credential with `[redacted]`. Returns the text and how many words were replaced, so the
+/// caller can warn before anything is posted. It adds to [`redact_secret_shapes`] on purpose:
+/// that function matches its short shapes anywhere inside a word (it would turn `risk-based`
+/// into `ri[redacted]`), which is right for a diagnostic and wrong for a title a person reads.
+/// Here a prefix shape must start the word and be long enough to be a key:
+///
+/// - the merged gh token prefixes anywhere in a word (they are specific);
+/// - `key=value` shapes (`password=`, `token=`, `api_key=`) and a PEM header anywhere in a word;
+/// - `sk-` (13 or more characters), `AKIA`/`ASIA` plus 16 upper-case letters or digits,
+///   `xox[abprs]-` (15 or more), `AIza` (30 or more) and a three-part `eyJ…` token (30 or more),
+///   each at the start of the word after opening punctuation.
+///
+/// It is a conservative shape filter, not a secret detector.
+pub fn redact_outgoing(s: &str) -> (String, usize) {
+    let mut count = 0;
+    let out: String = s
+        .split_inclusive(char::is_whitespace)
+        .map(|chunk| {
+            let word = chunk.trim_end();
+            if word.is_empty() || !word_has_secret_shape(word) {
+                return chunk.to_string();
+            }
+            count += 1;
+            format!("[redacted]{}", &chunk[word.len()..])
+        })
+        .collect();
+    (out, count)
+}
+
+fn word_has_secret_shape(word: &str) -> bool {
+    let lower = word.to_ascii_lowercase();
+    let anywhere =
+        TOKEN_PREFIXES
+            .iter()
+            .copied()
+            .chain(["password=", "token=", "api_key=", "-----begin"]);
+    if anywhere.into_iter().any(|shape| lower.contains(shape)) {
+        return true;
+    }
+    let core = word.trim_start_matches(|c: char| "\"'`([{<".contains(c));
+    let core_lower = core.to_ascii_lowercase();
+    if core_lower.starts_with("sk-") && core.chars().count() >= 13 {
+        return true;
+    }
+    for prefix in ["AKIA", "ASIA"] {
+        if let Some(rest) = core.strip_prefix(prefix) {
+            let key: String = rest
+                .chars()
+                .take_while(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+                .collect();
+            if key.len() >= 16 {
+                return true;
+            }
+        }
+    }
+    if core_lower.starts_with("xox")
+        && core.len() >= 15
+        && matches!(
+            core.as_bytes().get(3),
+            Some(b'a' | b'b' | b'p' | b'r' | b's')
+        )
+        && core.as_bytes().get(4) == Some(&b'-')
+    {
+        return true;
+    }
+    if core.starts_with("AIza") && core.len() >= 30 {
+        return true;
+    }
+    core.starts_with("eyJ") && core.len() >= 30 && core.matches('.').count() >= 2
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn outgoing_text_loses_key_shaped_words_and_keeps_ordinary_ones() {
+        let (out, n) = redact_outgoing(
+            "ping sk-live-abcdefghijklmnop AKIAABCDEFGHIJKLMNOP token=abc risk-based task-list \"sk-short\"",
+        );
+        assert_eq!(n, 3, "{out}");
+        assert!(!out.contains("abcdefghijklmnop"), "{out}");
+        assert!(!out.contains("AKIA"), "{out}");
+        assert!(!out.contains("token=abc"), "{out}");
+        assert!(out.contains("risk-based task-list"), "{out}");
+        assert!(out.contains("\"sk-short\""), "{out}");
+        let (same, none) = redact_outgoing("Add login for the admin page\nsecond line");
+        assert_eq!(
+            (same.as_str(), none),
+            ("Add login for the admin page\nsecond line", 0)
+        );
+    }
+
+    #[test]
+    fn outgoing_text_covers_each_prefix_shape_at_its_length_boundary() {
+        // sk- needs 13 characters: 12 stays, 13 goes.
+        assert_eq!(redact_outgoing("sk-123456789").1, 0);
+        assert_eq!(redact_outgoing("sk-1234567890").1, 1);
+        // AKIA/ASIA need 16 more upper-case letters or digits.
+        assert_eq!(redact_outgoing("AKIA123456789012345").1, 0);
+        assert_eq!(redact_outgoing("AKIA1234567890123456").1, 1);
+        assert_eq!(redact_outgoing("ASIA1234567890123456").1, 1);
+        assert_eq!(redact_outgoing("AKIAlowercaselowercase").1, 0);
+        assert_eq!(redact_outgoing("xoxb-1234567890").1, 1);
+        assert_eq!(redact_outgoing("xoxz-1234567890").1, 0);
+        assert_eq!(
+            redact_outgoing("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2lnbmF0dXJl").1,
+            1
+        );
+        assert_eq!(redact_outgoing("eyJhbGciOiJIUzI1NiJ9").1, 0);
+        assert_eq!(redact_outgoing("-----BEGIN").1, 1);
+    }
 
     #[test]
     fn detects_the_shared_shapes_without_echoing() {

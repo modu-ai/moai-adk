@@ -14,12 +14,15 @@
 //! Nothing here calls a model, the network or `git`.
 
 pub mod command;
+pub mod folders;
 pub mod import;
 pub mod location;
 pub mod migrate;
 pub mod open;
+pub mod recover;
 pub mod reservation;
 pub mod schema;
+pub mod summary;
 
 pub use location::ledger_path;
 pub use open::{
@@ -61,6 +64,13 @@ pub enum LedgerError {
     /// The HOME is in a state this slice does not write into (the Go generation's, or a stopped
     /// move), or it is not an existing folder.
     HomeNotReady(String),
+    /// `<home>/.moai`, `<home>/.moai/projects` or `<home>/.moai/projects/<id>` is a symbolic link
+    /// (also a dangling one) or was swapped for one while a step ran. Nothing is read, written or
+    /// created through it. The text names the component.
+    PathLink(String),
+    /// `projects` or `projects/<id>` exists but another user owns it: this build neither
+    /// changes its mode nor registers into it.
+    FolderNotOurs(String),
     /// A file system call failed.
     Io(String),
     /// Any other SQLite error.
@@ -81,6 +91,8 @@ impl LedgerError {
             LedgerError::ReadOnly => "read_only",
             LedgerError::InvalidProjectId => "invalid_project_id",
             LedgerError::HomeNotReady(_) => "home_not_ready",
+            LedgerError::PathLink(_) => "path_link",
+            LedgerError::FolderNotOurs(_) => "folder_not_ours",
             LedgerError::Io(_) => "io",
             LedgerError::Sql(_) => "sql",
         }
@@ -118,6 +130,14 @@ impl std::fmt::Display for LedgerError {
                 f.write_str("invalid project id: use letters, digits, `-` and `_` (at most 80)")
             }
             LedgerError::HomeNotReady(why) => write!(f, "ledger blocked: home_not_ready: {why}"),
+            LedgerError::PathLink(why) => write!(
+                f,
+                "ledger blocked: path_link: {why} is a symbolic link; the ledger never follows one"
+            ),
+            LedgerError::FolderNotOurs(why) => write!(
+                f,
+                "ledger blocked: folder_not_ours: {why} belongs to another user; nothing was changed"
+            ),
             LedgerError::Io(why) => write!(f, "ledger file write failed: {why}"),
             LedgerError::Sql(why) => write!(f, "ledger sql error: {why}"),
         }
@@ -194,6 +214,16 @@ mod tests {
             (
                 LedgerError::HomeNotReady("x".into()),
                 "home_not_ready",
+                Kind::Blocked,
+            ),
+            (
+                LedgerError::PathLink("x".into()),
+                "path_link",
+                Kind::Blocked,
+            ),
+            (
+                LedgerError::FolderNotOurs("x".into()),
+                "folder_not_ours",
                 Kind::Blocked,
             ),
             (LedgerError::Io("x".into()), "io", Kind::Io),

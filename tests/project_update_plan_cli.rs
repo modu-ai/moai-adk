@@ -664,7 +664,9 @@ fn the_settings_hold_names_the_keys_and_the_settings_step_does_not_say_current()
         "blocked",
         "held by .claude/settings.json (plansDirectory, statusLine); \
          .claude/settings.local.json (env); this update does not change those keys, so change \
-         or remove them yourself and run the update again",
+         or remove them yourself and run the update again; this update does not edit \
+         .claude/settings.local.json; edit or remove these keys yourself (env), then run \
+         `moai project-update-plan` again",
     );
     assert!(
         !plan.to_string().contains("secret-name"),

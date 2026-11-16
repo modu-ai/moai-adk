@@ -28,6 +28,18 @@ Project
                           ledger
   ledger-register-apply   Create the previewed project
                           ledger
+  card-import-plan        Preview importing a host's open
+                          issues as cards
+  card-import-apply       Import a host's open issues as
+                          cards, only the previewed set
+  card-summary-plan       Preview the summary a card would
+                          post to its issue
+  card-summary-apply      Post a card's summary to its
+                          issue, once
+  ledger-recover-plan     Preview recovering a damaged
+                          project ledger
+  ledger-recover-apply    Recover the previewed project
+                          ledger
   agents-plan             Preview the AGENTS.md managed
                           section
   agents-apply            Write a previewed AGENTS.md
@@ -371,7 +383,8 @@ Options:
           Main model (Claude hosts default `opus`; codex
           uses its own default unless set)
       --effort <EFFORT>
-          Claude effort (default `medium`)
+          Effort (Claude default `medium`; codex only when
+          set: low|medium|high|xhigh|max)
       --advisor <ADVISOR>
           Advisor model on Claude hosts (fable|opus|sonnet
           or a full claude-* id). None by default; the user

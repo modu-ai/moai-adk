@@ -7,7 +7,7 @@
 //! follow the grammar of the other plan/apply pairs: the apply recomputes the plan and acts only
 //! when its digest equals the one the caller was shown and a permission reference is given.
 
-use super::{location, open, LedgerError};
+use super::{folders, location, open, LedgerError};
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 
@@ -41,8 +41,19 @@ pub fn register_plan(project: &Path, home: &Path) -> Result<Value> {
 fn plan_for(home: &Path, id: &str) -> std::result::Result<Value, LedgerError> {
     let path = location::ledger_path(home, id)?;
     let dir = location::project_dir(home, id)?;
-    let (state, action, problem): (&str, &str, Option<LedgerError>) =
-        match std::fs::symlink_metadata(&path) {
+    // A link at `.moai`, `projects` or `<id>` blocks the plan before anything is looked up
+    // through it; so does a folder another user owns.
+    let folders = folders::inspect(home, id);
+    let (state, action, problem): (&str, &str, Option<LedgerError>) = match &folders {
+        Err(e) => ("absent", "blocked", Some(e.clone())),
+        Ok(f) if !f.not_ours.is_empty() => (
+            "absent",
+            "blocked",
+            Some(LedgerError::FolderNotOurs(
+                f.not_ours[0].display().to_string(),
+            )),
+        ),
+        Ok(_) => match std::fs::symlink_metadata(&path) {
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                 match open::check_home_ready(home) {
                     Ok(()) => ("absent", "register", None),
@@ -59,7 +70,16 @@ fn plan_for(home: &Path, id: &str) -> std::result::Result<Value, LedgerError> {
                 Ok(_) => ("registered", "none", None),
                 Err(e) => ("unavailable", "none", Some(e)),
             },
-        };
+        },
+    };
+    let would_tighten: Vec<String> = match &folders {
+        Ok(f) if action != "blocked" => f
+            .would_tighten
+            .iter()
+            .map(|p| p.display().to_string())
+            .collect(),
+        _ => Vec::new(),
+    };
     let would_create: Vec<String> = if action == "register" {
         let mut v = Vec::new();
         if !dir.exists() {
@@ -77,6 +97,7 @@ fn plan_for(home: &Path, id: &str) -> std::result::Result<Value, LedgerError> {
         "action": action,
         "problem": problem.as_ref().map(LedgerError::code),
         "would_create": would_create,
+        "would_tighten": would_tighten,
         "schema_version": super::SCHEMA_VERSION,
     });
     let digest = crate::digest(core.to_string().as_bytes());
@@ -107,7 +128,7 @@ pub fn register_apply(
     if fresh["plan_digest"].as_str() != Some(plan_digest) {
         return Err("stale or altered plan: the recomputed digest differs; re-preview required, nothing was written".into());
     }
-    let result = open::register(home, &id).map_err(|e| e.to_string())?;
+    let (result, report) = open::register_with_report(home, &id).map_err(|e| e.to_string())?;
     let path = location::ledger_path(home, &id).map_err(|e| e.to_string())?;
     Ok(json!({
         "project_id": id,
@@ -120,6 +141,7 @@ pub fn register_apply(
             open::Registered::Created => fresh["would_create"].clone(),
             open::Registered::AlreadyExists => json!([]),
         },
+        "tightened": report.tightened.iter().map(|p| p.display().to_string()).collect::<Vec<_>>(),
         "schema_version": super::SCHEMA_VERSION,
         "plan_digest": plan_digest,
         "network": "disabled",
@@ -128,7 +150,9 @@ pub fn register_apply(
 
 /// `ledger-status`: read-only report. An absent ledger is a normal answer (`exists: false`),
 /// an unusable one is reported with its `problem` code; nothing is created, repaired or
-/// written, and the file is opened read-only after its header was read.
+/// written, and the file is opened read-only after its header was read. `stale_temp` lists the
+/// `.creating-<pid>-<n>` files a dead `register` left in the project folder (their process is
+/// gone); they are reported only, never removed.
 pub fn status(project: &Path, home: &Path) -> Result<Value> {
     let id = project_id_of(project)?;
     let path = location::ledger_path(home, &id).map_err(|e| e.to_string())?;
@@ -141,8 +165,22 @@ pub fn status(project: &Path, home: &Path) -> Result<Value> {
         "wal": false,
         "cards": null,
         "problem": null,
+        "folder_modes": {"projects": null, "project": null},
+        "stale_temp": [],
         "writes": false,
     });
+    // A link at `.moai`, `projects` or `<id>` is reported, never followed: nothing below it is
+    // read.
+    if let Err(e) = folders::refuse_links(home, &id) {
+        out["exists"] = json!(true);
+        out["state"] = json!("unavailable");
+        out["problem"] = json!(e.code());
+        out["message"] = json!(e.to_string());
+        return Ok(out);
+    }
+    let (projects_mode, project_mode) = folders::modes(home, &id).map_err(|e| e.to_string())?;
+    out["folder_modes"] = json!({"projects": projects_mode, "project": project_mode});
+    out["stale_temp"] = json!(super::recover::stale_temp(home, &id).map_err(|e| e.to_string())?);
     match open::open_read_only(home, &id) {
         Err(LedgerError::Absent) => {}
         Err(e) => {

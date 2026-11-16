@@ -62,6 +62,13 @@ fn shortened_agents_md_keeps_its_gate_and_hold_sentences() {
         "Secrets never enter the repo, Issues, PRs, reports or messages",
         "Never redo a hook-denied action through another tool or path",
         "A session other than the author audits the head SHA",
+        // #3107 audit 6905415060: these three sentences were not pinned by the S3 test.
+        "`AUDIT #<n> (<key>) head <40hex> base <40hex> — verdict: PASS|FAIL` with no qualifiers; conditions make it FAIL.",
+        "Where a write guard rejects a path, stop and report; do not bypass.",
+        "the token `Moai-Claim: <issue>#<comment-id>` travels in the branch, the commit trailer and the PR body.",
+        // #3096 S3b, user instruction #1975 6904941797 §A: audits are assigned by the leader.
+        "The leader assigns each formal audit to a read-only audit agent.",
+        "never declares PASS for its own change or reserves another lane's pull request.",
         "the latest-tip requirement is off. The leader checks this and merges; lanes and bots never merge.",
         "A new push, including a tip merge for an overlapping file, needs its CI and a delta re-audit.",
         "New worktrees go to `~/.moai/worktrees/<project>-<id>`",

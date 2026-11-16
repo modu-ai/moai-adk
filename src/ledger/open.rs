@@ -20,8 +20,12 @@ use std::time::Duration;
 /// How long a connection waits for another process's write lock before `Busy`.
 pub const BUSY_TIMEOUT: Duration = Duration::from_secs(5);
 
+/// The name `register` gives its half-built file: `.creating-<pid>-<n>`. A writer that died
+/// leaves one behind; [`super::recover::stale_temp`] reports those (it never removes them).
+pub(crate) const TEMP_PREFIX: &str = ".creating-";
+
 /// The first 16 bytes of every SQLite file.
-const HEADER_MAGIC: &[u8; 16] = b"SQLite format 3\0";
+pub(crate) const HEADER_MAGIC: &[u8; 16] = b"SQLite format 3\0";
 
 /// What [`register`] found or made.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -108,6 +112,7 @@ pub fn new_event_key(
 /// (no journal, no WAL file): see the module comment for the refusals.
 pub fn open_read_only(home: &Path, project_id: &str) -> Result<ReadLedger, LedgerError> {
     let path = location::ledger_path(home, project_id)?;
+    super::folders::refuse_links(home, project_id)?;
     let (conn, schema_version) = open_at(&path, project_id, false)?;
     Ok(ReadLedger {
         conn,
@@ -119,6 +124,7 @@ pub fn open_read_only(home: &Path, project_id: &str) -> Result<ReadLedger, Ledge
 /// Opens an existing ledger for writing. Never creates a folder or a file.
 pub fn open_write(home: &Path, project_id: &str) -> Result<WriteLedger, LedgerError> {
     let path = location::ledger_path(home, project_id)?;
+    super::folders::refuse_links(home, project_id)?;
     let (conn, _) = open_at(&path, project_id, true)?;
     Ok(WriteLedger {
         conn,
@@ -131,39 +137,65 @@ pub fn open_write(home: &Path, project_id: &str) -> Result<WriteLedger, LedgerEr
 /// into place only when complete and checked, so a second `register` (or a crash) never leaves
 /// a half-made ledger at the real name. A ledger that is already there is checked and left
 /// alone ([`Registered::AlreadyExists`]); a file there that is not this project's ledger is an
-/// error, never replaced.
+/// error, never replaced. Folders it makes are 0700; see [`super::folders`] for the modes it
+/// tightens, the symbolic links it refuses and the race that remains.
 pub fn register(home: &Path, project_id: &str) -> Result<Registered, LedgerError> {
+    Ok(register_with_report(home, project_id)?.0)
+}
+
+/// [`register`] that also says which folders it made and which it tightened.
+pub fn register_with_report(
+    home: &Path,
+    project_id: &str,
+) -> Result<(Registered, super::folders::FolderReport), LedgerError> {
     static COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    use super::folders;
     let path = location::ledger_path(home, project_id)?;
     let dir = location::project_dir(home, project_id)?;
-    check_home_ready(home)?;
+    check_ready(home, project_id)?;
+    let plan = folders::inspect(home, project_id)?;
+    if let Some(other) = plan.not_ours.first() {
+        return Err(LedgerError::FolderNotOurs(other.display().to_string()));
+    }
     match std::fs::symlink_metadata(&path) {
         Ok(_) => {
-            open_at(&path, project_id, false)?;
-            return Ok(Registered::AlreadyExists);
+            let report = folders::tighten_existing(home, project_id)?;
+            open_read_only(home, project_id)?;
+            return Ok((Registered::AlreadyExists, report));
         }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
         Err(e) => return Err(LedgerError::Io(e.to_string())),
     }
-    std::fs::create_dir_all(&dir).map_err(|e| LedgerError::Io(e.to_string()))?;
+    let report = folders::create_chain(home, project_id)?;
     let tmp = dir.join(format!(
-        ".creating-{}-{}",
+        "{TEMP_PREFIX}{}-{}",
         std::process::id(),
         COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     ));
-    let made = build_new(&tmp, project_id).and_then(|()| {
-        match std::fs::hard_link(&tmp, &path) {
-            Ok(()) => Ok(Registered::Created),
-            // Another register won the race between our check and now: its file stands.
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-                open_at(&path, project_id, false)?;
-                Ok(Registered::AlreadyExists)
+    let made = folders::verify_open(home, project_id)
+        .and_then(|()| build_new(&tmp, project_id))
+        .and_then(|()| {
+            folders::verify_open(home, project_id)?;
+            match std::fs::hard_link(&tmp, &path) {
+                Ok(()) => Ok(Registered::Created),
+                // Another register won the race between our check and now: its file stands.
+                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                    open_read_only(home, project_id)?;
+                    Ok(Registered::AlreadyExists)
+                }
+                Err(e) => Err(LedgerError::Io(e.to_string())),
             }
-            Err(e) => Err(LedgerError::Io(e.to_string())),
-        }
-    });
+        });
     let _ = std::fs::remove_file(&tmp);
-    made
+    Ok((made?, report))
+}
+
+/// [`check_home_ready`] and no symbolic link at `.moai`, `projects` or `<id>`.
+pub(crate) fn check_ready(home: &Path, project_id: &str) -> Result<(), LedgerError> {
+    // The link check comes first: a link at `.moai` would otherwise be reported as a HOME that
+    // is not ready.
+    super::folders::refuse_links(home, project_id)?;
+    check_home_ready(home)
 }
 
 /// The HOME states this slice writes into: not the Go generation's `~/.moai`, not a stopped
@@ -190,23 +222,49 @@ pub(crate) fn check_home_ready(home: &Path) -> Result<(), LedgerError> {
 
 /// Builds a complete, checked ledger at `tmp` (which must not exist).
 fn build_new(tmp: &Path, project_id: &str) -> Result<(), LedgerError> {
+    build_new_with(tmp, project_id, |_| Ok(()))
+}
+
+/// [`build_new`] with `populate` run inside the build transaction (see
+/// [`schema::create_v1_with`]); the recovery uses it to fill the new file. Returns what
+/// `populate` returned once the finished file opened as this project's ledger.
+pub(crate) fn build_new_with<T>(
+    tmp: &Path,
+    project_id: &str,
+    populate: impl FnOnce(&Transaction<'_>) -> Result<T, LedgerError>,
+) -> Result<T, LedgerError> {
     let flags = OpenFlags::SQLITE_OPEN_READ_WRITE
         | OpenFlags::SQLITE_OPEN_CREATE
         | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+    // The file is made private before SQLite writes a byte into it (an empty file is a valid new
+    // database), so it is never readable by others, whatever the umask.
     {
+        let mut options = std::fs::OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600).custom_flags(libc::O_NOFOLLOW);
+        }
+        options
+            .open(tmp)
+            .map_err(|e| LedgerError::Io(format!("{}: {e}", tmp.display())))?;
+    }
+    let out = {
         let mut conn = Connection::open_with_flags(tmp, flags)?;
         conn.busy_timeout(BUSY_TIMEOUT)?;
         conn.query_row("PRAGMA journal_mode = DELETE", [], |_| Ok(()))?;
         conn.execute_batch("PRAGMA foreign_keys = ON; PRAGMA recursive_triggers = ON;")?;
-        schema::create_v1(&mut conn, project_id, crate::BUILD_VERSION)?;
-    }
+        schema::create_v1_with(&mut conn, project_id, crate::BUILD_VERSION, populate)?
+    };
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(tmp, std::fs::Permissions::from_mode(0o600))
             .map_err(|e| LedgerError::Io(e.to_string()))?;
     }
-    open_at(tmp, project_id, false).map(|_| ())
+    open_at(tmp, project_id, false)?;
+    Ok(out)
 }
 
 /// The file is a regular file, a SQLite database, not in WAL mode (header bytes 18 and 19 are
@@ -224,10 +282,26 @@ fn check_header(path: &Path) -> Result<(), LedgerError> {
         ));
     }
     let mut head = [0u8; 100];
-    let read = std::fs::File::open(path)
-        .and_then(|mut f| f.read_exact(&mut head))
-        .is_ok();
-    if !read || &head[..16] != HEADER_MAGIC {
+    let mut file = std::fs::File::open(path).map_err(|e| match e.kind() {
+        std::io::ErrorKind::NotFound => LedgerError::Absent,
+        _ => LedgerError::Io(format!("the ledger file cannot be opened: {e}")),
+    })?;
+    match file.read_exact(&mut head) {
+        Ok(()) => {}
+        // Fewer than 100 bytes: the content is cut short, which is damage.
+        Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+            return Err(LedgerError::Unavailable(
+                "the file is not a SQLite database".into(),
+            ))
+        }
+        // Any other read error says nothing about the content (a transient failure).
+        Err(e) => {
+            return Err(LedgerError::Io(format!(
+                "the ledger file cannot be read: {e}"
+            )))
+        }
+    }
+    if &head[..16] != HEADER_MAGIC {
         return Err(LedgerError::Unavailable(
             "the file is not a SQLite database".into(),
         ));
@@ -241,10 +315,21 @@ fn check_header(path: &Path) -> Result<(), LedgerError> {
 /// Opens `path` (never creating it), sets the per-connection pragmas, and checks the file is
 /// this project's ledger of a version this build can read. Returns the connection and the
 /// file's `user_version`.
-fn open_at(
+pub(crate) fn open_at(
     path: &Path,
     project_id: &str,
     writable: bool,
+) -> Result<(Connection, i64), LedgerError> {
+    open_at_timeout(path, project_id, writable, BUSY_TIMEOUT)
+}
+
+/// [`open_at`] with the wait for another connection given (a probe that only classifies a file
+/// does not need the full [`BUSY_TIMEOUT`]).
+pub(crate) fn open_at_timeout(
+    path: &Path,
+    project_id: &str,
+    writable: bool,
+    busy: Duration,
 ) -> Result<(Connection, i64), LedgerError> {
     check_header(path)?;
     let access = if writable {
@@ -255,7 +340,7 @@ fn open_at(
     // No SQLITE_OPEN_NOFOLLOW: SQLite then refuses a link anywhere in the path, and a HOME
     // behind a link (`/var` on macOS) is normal. The ledger file itself was checked above.
     let conn = Connection::open_with_flags(path, access | OpenFlags::SQLITE_OPEN_NO_MUTEX)?;
-    conn.busy_timeout(BUSY_TIMEOUT)?;
+    conn.busy_timeout(busy)?;
     conn.execute_batch("PRAGMA foreign_keys = ON; PRAGMA recursive_triggers = ON;")?;
     let version = verify_identity(&conn, project_id, writable).map_err(|e| match e {
         // A read-only connection cannot roll back a journal a crashed writer left behind.
@@ -292,10 +377,7 @@ fn verify_identity(
         .query_row("SELECT value FROM meta WHERE key = 'project_id'", [], |r| {
             r.get(0)
         })
-        .map_err(|e| match LedgerError::from(e) {
-            busy @ (LedgerError::Busy | LedgerError::ReadOnly) => busy,
-            other => LedgerError::Unavailable(format!("the ledger has no project id ({other})")),
-        })?;
+        .map_err(meta_lookup_error)?;
     if found != project_id {
         return Err(LedgerError::IdCollision {
             expected: project_id.to_string(),
@@ -303,4 +385,25 @@ fn verify_identity(
         });
     }
     Ok(version)
+}
+
+/// What a failed read of `meta.project_id` means: a database that is not one, a corrupt one, a
+/// missing table or a missing row is damage (`Unavailable`); a lock is `Busy`; a read-only
+/// connection that needs a journal rolled back stays `ReadOnly`; every other error (an I/O
+/// failure, any other SQLite error) says nothing about the content and is `Io`.
+fn meta_lookup_error(e: rusqlite::Error) -> LedgerError {
+    if matches!(e, rusqlite::Error::QueryReturnedNoRows) {
+        return LedgerError::Unavailable("the ledger has no project id (no row)".into());
+    }
+    let text = e.to_string();
+    match LedgerError::from(e) {
+        busy @ (LedgerError::Busy | LedgerError::ReadOnly) => busy,
+        LedgerError::Unavailable(why) => {
+            LedgerError::Unavailable(format!("the ledger has no project id ({why})"))
+        }
+        _ if text.contains("no such table") => {
+            LedgerError::Unavailable(format!("the ledger has no project id ({text})"))
+        }
+        other => LedgerError::Io(format!("the project id could not be read ({other})")),
+    }
 }
