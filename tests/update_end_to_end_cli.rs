@@ -546,12 +546,6 @@ fn applied<'a>(w: &'a Walk, step: &str) -> &'a Value {
         .1
 }
 
-fn undo_ok(fx: &GoFx, what: &str, args: &[&str]) -> Value {
-    let out = fx.run(args);
-    assert_eq!(out["ok"], json!(true), "{what}: {out}");
-    out["result"].clone()
-}
-
 /// The preview prints how to take the chain back, last applied first; running exactly that, with
 /// the ids the apply results printed, leaves every byte the project started with in place. Only
 /// what the steps added (receipts, the Rust state's set-aside folder, the host files that have no
