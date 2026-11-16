@@ -204,30 +204,14 @@ pub fn launcher_defaults(role: Option<&str>) -> bool {
     role.is_some() || ROLELESS_LAUNCHER_DEFAULTS
 }
 
-/// Reads the `launcher` object of the user-only `~/.moai-cli/config/launcher.yaml`; `None` when
-/// HOME, the file or the key is absent. Like the project profile's `.yaml` file, this file
-/// accepts only the JSON subset, parsed by serde_json (not general YAML). Errors never quote
-/// the file's content.
+/// Reads the `launcher` object of the user-only `~/.moai-cli/config/launcher.yaml` (read by
+/// [`crate::user_config`]); `None` when HOME, the file or the key is absent.
 fn user_launcher() -> Result<Option<serde_json::Map<String, Value>>, String> {
     let Ok(home) = crate::key_vault::home() else {
         return Ok(None);
     };
-    let path = crate::home_root::path(&home).join("config/launcher.yaml");
-    // Check the entry before reading: directories, symlinks and special files (including
-    // FIFOs, which could block a read) are not launcher configuration files.
-    match fs::symlink_metadata(&path) {
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(_) => return Err("user launcher configuration cannot be read".into()),
-        Ok(metadata) if !metadata.file_type().is_file() => {
-            return Err("user launcher configuration must be a regular file".into())
-        }
-        Ok(_) => {}
-    }
-    let bytes = fs::read(&path).map_err(|_| "user launcher configuration cannot be read")?;
-    let value: Value = serde_json::from_slice(&bytes)
-        .map_err(|_| "user launcher configuration must use valid JSON-subset syntax")?;
-    let Value::Object(mut root) = value else {
-        return Err("user launcher configuration must be an object".into());
+    let Some(mut root) = crate::user_config::read_root(&home)? else {
+        return Ok(None);
     };
     match root.remove("launcher") {
         None => Ok(None),
@@ -236,7 +220,9 @@ fn user_launcher() -> Result<Option<serde_json::Map<String, Value>>, String> {
     }
 }
 
-fn role_full_access(launcher: Option<&serde_json::Map<String, Value>>) -> Result<bool, String> {
+pub(crate) fn role_full_access(
+    launcher: Option<&serde_json::Map<String, Value>>,
+) -> Result<bool, String> {
     match launcher.and_then(|l| l.get("role_access")) {
         None => Ok(FULL_ACCESS_DEFAULT),
         Some(Value::String(access)) if access == "full" => Ok(true),
@@ -249,7 +235,7 @@ fn role_full_access(launcher: Option<&serde_json::Map<String, Value>>) -> Result
 
 /// `launcher.advisor`: absent or `none` is no advisor; `fable`, `opus`, `sonnet` or a full
 /// `claude-*` id (the `--advisor` forms) turns it on. Anything else is refused without quoting it.
-fn configured_advisor(
+pub(crate) fn configured_advisor(
     launcher: Option<&serde_json::Map<String, Value>>,
 ) -> Result<Option<String>, String> {
     match launcher.and_then(|l| l.get("advisor")) {

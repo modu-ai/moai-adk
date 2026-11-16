@@ -7,6 +7,7 @@ Start
   cc                      Start a Claude Code session
   codex                   Start a Codex CLI session
   glm                     Start a Claude Code session on z.ai GLM
+  setting                 Show the user's CLI defaults
 Project
   project-detect          Detect the project's facts
   project-plan            Preview the project profile

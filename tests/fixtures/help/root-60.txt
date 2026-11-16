@@ -16,6 +16,7 @@ Commands
   Start
     cc, codex, glm         Start a Claude Code, Codex or GLM
                            session
+    setting                Show the user's CLI defaults
   Project
     project-detect         Detect the project's facts
     project-plan           Preview the project profile

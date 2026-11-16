@@ -25,7 +25,12 @@ pub const GROUPS: &[Group] = &[
     Group {
         heading: "Start",
         heading_ko: "시작",
-        commands: &[("cc", true), ("codex", true), ("glm", true)],
+        commands: &[
+            ("cc", true),
+            ("codex", true),
+            ("glm", true),
+            ("setting", true),
+        ],
     },
     Group {
         heading: "Project",
@@ -357,6 +362,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("home-style-revert", &["home-style-revert --receipt <receipt-id> --permission-reference <ref> ~"]),
     ("key-set", &["key-set glm < key.txt"]),
     ("key-status", &["key-status glm"]),
+    ("setting", &["setting list", "setting get install.hosts"]),
     ("key-remove", &["key-remove glm"]),
     ("key-import-plan", &["key-import-plan glm", "key-import-apply --plan-digest <digest> --permission-reference <ref> glm"]),
     ("key-import-apply", &["key-import-apply --plan-digest <digest> --permission-reference <ref> glm"]),
