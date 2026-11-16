@@ -171,6 +171,9 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
     assert_eq!(
         seen,
         [
+            // Card C-53 S2: the card section of both modes; its actions and their flags are
+            // checked against `moai card <action> --help` in tests/mode_cards_53.rs.
+            "card",
             "claim-acquire",
             "claim-link",
             "claim-timeout-check",
