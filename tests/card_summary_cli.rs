@@ -263,6 +263,40 @@ fn each_card_has_its_own_marker_so_one_posted_summary_does_not_hide_another() {
 }
 
 #[test]
+fn a_card_that_changed_after_the_plan_is_not_posted_from_the_old_plan() {
+    let w = World::with_card();
+    let plan = result(&w.plan("C-1", &[]));
+    let digest = plan["plan_digest"].as_str().unwrap().to_string();
+    // AC1 is met after the user saw the plan: the text the plan showed is no longer the card.
+    let mut ledger = moai_cli::ledger::open_write(w.home.path(), "demo").unwrap();
+    ledger
+        .with_write_tx(|tx, _| {
+            tx.execute(
+                "UPDATE card_ac SET status = 'met', evidence_ref = 'run-1' WHERE card_id = 1 AND seq = 1",
+                [],
+            )?;
+            Ok(())
+        })
+        .unwrap();
+    drop(ledger);
+    let text = failure(&w.apply(&digest, "user-approved-test", &[]));
+    assert!(text.contains("stale or altered plan"), "{text}");
+    assert_eq!(w.posts(), 0);
+    // A fresh plan shows the change and is accepted.
+    let fresh = result(&w.plan("C-1", &[]));
+    assert!(fresh["text"]
+        .as_str()
+        .unwrap()
+        .contains("AC1 [met] it works"));
+    let ok = result(&w.apply(
+        fresh["plan_digest"].as_str().unwrap(),
+        "user-approved-test",
+        &[],
+    ));
+    assert_eq!(ok["state"], json!("posted"));
+}
+
+#[test]
 fn a_digest_that_is_not_the_plans_posts_nothing() {
     let w = World::with_card();
     let text = failure(&w.apply(
