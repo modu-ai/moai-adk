@@ -1,0 +1,152 @@
+# Candidate verification (#2554 PR-A, user decision #1975 6907950823).
+# After the user decides on a release, the leader pins one commit and verifies it on all five
+# targets - Linux x86_64, Linux ARM, macOS Intel, macOS ARM and Windows - with the same check
+# set the `ci` workflow runs, including the tests on Windows. The commit is pinned by the
+# name of the branch that is pushed:
+#
+#   git push origin <sha>:refs/heads/candidate/<sha>      (the name carries all 40 characters)
+#
+# A push runs the workflow file in the pushed commit, on the pushed commit, whether or not that
+# file is on the default branch (docs.github.com/en/actions/reference/workflows-and-actions/
+# events-that-trigger-workflows, `push`, read 2026-11-16). `workflow_dispatch` is not used: the
+# docs say it needs the file on the default branch, which has no workflows. The branch is
+# deleted after use. If any target is missing or fails, the `candidate` job fails and the
+# candidate is not published; a repair is a new commit and a new candidate branch.
+#
+# This workflow adds a path; it changes nothing the `ci` workflow does. Its check runs are named
+# `candidate` and `candidate / ...`, which the merge gate and `lane-next` do not read as jobs of
+# the tip (src/flow.rs `is_candidate_check`). It has no `concurrency`, so a newer run never
+# cancels an older one, uses no secret, and its token is read-only: no release, publish, tag or
+# artifact.
+name: candidate
+
+on:
+  push:
+    branches: ['candidate/**']
+
+permissions:
+  contents: read
+
+jobs:
+  # The branch name must be `candidate/<40 hex>` and name the commit that was pushed, so a
+  # mislabelled candidate fails before any runner is spent on it. The name is outside text:
+  # it reaches the script through `env`, never through `${{ }}` inside the script.
+  pin:
+    name: candidate / pin
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      sha: ${{ steps.pin.outputs.sha }}
+    steps:
+      - name: Branch name carries the pushed commit
+        id: pin
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          PUSHED: ${{ github.sha }}
+        run: |
+          if [[ ! "$REF_NAME" =~ ^candidate/[0-9a-f]{40}$ ]]; then
+            echo "the branch must be named candidate/<40 lowercase hex characters>" >&2
+            exit 1
+          fi
+          named="${REF_NAME#candidate/}"
+          if [[ ! "$PUSHED" =~ ^[0-9a-f]{40}$ ]] || [ "$named" != "$PUSHED" ]; then
+            echo "the branch name says one commit, the push is another" >&2
+            exit 1
+          fi
+          echo "sha=${PUSHED}" >> "$GITHUB_OUTPUT"
+
+  linux-x86_64:
+    name: candidate / linux-x86_64
+    needs: [pin]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/candidate-target.yml
+    with:
+      sha: ${{ needs.pin.outputs.sha }}
+      target: linux-x86_64
+      runner: ubuntu-24.04
+      timeout: 30
+      nextest_asset: x86_64-unknown-linux-gnu
+      nextest_sha256: 1d4ce302b820c41f4b89c5fb9bce45f0f0c94882c1cf08fc360caf08be6e7df4
+
+  linux-arm64:
+    name: candidate / linux-arm64
+    needs: [pin]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/candidate-target.yml
+    with:
+      sha: ${{ needs.pin.outputs.sha }}
+      target: linux-arm64
+      runner: ubuntu-24.04-arm
+      timeout: 45
+      nextest_asset: aarch64-unknown-linux-gnu
+      nextest_sha256: 3e35e8f6913af92558ba09d7155f74e35dd1f0024ef3cd891637433ae4eacbdd
+
+  macos-arm64:
+    name: candidate / macos-arm64
+    needs: [pin]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/candidate-target.yml
+    with:
+      sha: ${{ needs.pin.outputs.sha }}
+      target: macos-arm64
+      runner: macos-15
+      timeout: 45
+      nextest_asset: universal-apple-darwin
+      nextest_sha256: d1d7d025d4bfc9fb154cd76aea3949bd78534829a0589abefa6e5dd4edb135dd
+
+  macos-x86_64:
+    name: candidate / macos-x86_64
+    needs: [pin]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/candidate-target.yml
+    with:
+      sha: ${{ needs.pin.outputs.sha }}
+      target: macos-x86_64
+      runner: macos-15-intel
+      timeout: 60
+      nextest_asset: universal-apple-darwin
+      nextest_sha256: d1d7d025d4bfc9fb154cd76aea3949bd78534829a0589abefa6e5dd4edb135dd
+
+  # Windows runs the tests, not only the build: the same check set as every other target. A
+  # test that cannot run there fails by name; it is not skipped quietly (a reviewed list of
+  # tests that cannot run, with reasons, is a separate decision after the first real run).
+  windows-x86_64:
+    name: candidate / windows-x86_64
+    needs: [pin]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/candidate-target.yml
+    with:
+      sha: ${{ needs.pin.outputs.sha }}
+      target: windows-x86_64
+      runner: windows-2025
+      timeout: 60
+      nextest_asset: x86_64-pc-windows-msvc
+      nextest_sha256: e51bdb4b5883df48f335381b287378edb244318fac65ae0adaf6b9e69298246b
+
+  # One summary and one verdict. `!cancelled()` (as the `ci` aggregate, #2312): a failed or
+  # skipped target must fail this check, not skip it. The logic is tools/candidate_summary.py
+  # (tests/candidate_summary_test.py), so it is tested without a runner.
+  candidate:
+    name: candidate
+    if: ${{ !cancelled() }}
+    needs: [pin, linux-x86_64, linux-arm64, macos-arm64, macos-x86_64, windows-x86_64]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verdict
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          python3 tools/candidate_summary.py | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "${PIPESTATUS[0]}"

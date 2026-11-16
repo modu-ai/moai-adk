@@ -1,0 +1,251 @@
+# One target of the candidate verification (#2554 PR-A, user decision #1975 6907950823).
+# Called five times by candidate.yml, once per target, for the one commit that run is pinned to.
+# It runs the same check set as the `ci` workflow (tools/local_check.sh, so CI and a local run
+# cannot drift apart) on that exact commit, then reports the commit it checked out and how many
+# tests ran. It never builds a release, publishes, tags, uploads or reads a secret: the token is
+# read-only. Nothing here is a required status.
+# Rules this file keeps (tests/github_assets_test.py pins them):
+#   - no `${{ }}` inside a `run:` script: every value reaches the shell through `env:`;
+#   - no `concurrency`: a newer run never cancels an older one (the older run is a measurement);
+#   - every `uses` is pinned to a full commit SHA, the same three actions `ci.yml` uses.
+name: candidate-target
+
+on:
+  workflow_call:
+    inputs:
+      sha:
+        description: The 40-character commit to check out and verify
+        required: true
+        type: string
+      target:
+        description: Target name shown in the summary, e.g. linux-x86_64
+        required: true
+        type: string
+      runner:
+        description: GitHub-hosted runner label
+        required: true
+        type: string
+      timeout:
+        description: Job timeout in minutes
+        required: true
+        type: number
+      nextest_asset:
+        description: cargo-nextest 0.9.151 release asset stem for this target
+        required: true
+        type: string
+      nextest_sha256:
+        description: sha256 of that asset's .tar.gz, checked before it is unpacked
+        required: true
+        type: string
+    outputs:
+      sha:
+        description: The commit this target actually checked out
+        value: ${{ jobs.check.outputs.sha }}
+      tests_run:
+        description: Tests nextest ran on this target
+        value: ${{ jobs.check.outputs.tests_run }}
+      tests_passed:
+        description: Tests that passed
+        value: ${{ jobs.check.outputs.tests_passed }}
+      tests_skipped:
+        description: Tests nextest skipped (ignored or filtered); reported, never silent
+        value: ${{ jobs.check.outputs.tests_skipped }}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: check
+    runs-on: ${{ inputs.runner }}
+    timeout-minutes: ${{ inputs.timeout }}
+    permissions:
+      contents: read
+    # Git Bash on Windows, bash elsewhere: one script dialect for every target.
+    defaults:
+      run:
+        shell: bash
+    outputs:
+      sha: ${{ steps.record.outputs.sha }}
+      tests_run: ${{ steps.record.outputs.tests_run }}
+      tests_passed: ${{ steps.record.outputs.tests_passed }}
+      tests_skipped: ${{ steps.record.outputs.tests_skipped }}
+    env:
+      CARGO_TERM_COLOR: never
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.sha }}
+          persist-credentials: false
+          fetch-depth: 0 # `git diff --check` compares the commit with its first parent
+      - name: Checked out the pinned commit
+        env:
+          PINNED: ${{ inputs.sha }}
+        run: |
+          head="$(git rev-parse HEAD)"
+          if [ "$head" != "$PINNED" ]; then
+            echo "checked out $head, but the run is pinned to $PINNED" >&2
+            exit 1
+          fi
+          echo "candidate commit: $head"
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Install PyYAML (tests/github_assets_test.py)
+        run: python -m pip install --disable-pip-version-check "PyYAML==6.0.2"
+      - name: Install and verify ripgrep
+        run: |
+          if ! command -v rg >/dev/null 2>&1; then
+            case "$RUNNER_OS" in
+              Linux)
+                exec bash tools/ci-install-ripgrep.sh
+                ;;
+              macOS)
+                brew install ripgrep
+                ;;
+              Windows)
+                # Pinned like the Linux installer: the sha256 below is a reviewed literal,
+                # checked before the archive is unpacked or put on PATH. Recomputed from the
+                # official release asset (BurntSushi/ripgrep 14.1.1) on 2026-11-16.
+                version=14.1.1
+                name="ripgrep-${version}-x86_64-pc-windows-msvc"
+                sum=d0f534024c42afd6cb4d38907c25cd2b249b79bbe6cc1dbee8e3e37c2b6e25a1
+                tmp="$(cygpath -u "$RUNNER_TEMP")"
+                work="${tmp}/moai-ripgrep"
+                mkdir -p "${work}/bin"
+                curl --proto '=https' --tlsv1.2 -fsSL --retry 3 -o "${work}/archive.zip" \
+                  "https://github.com/BurntSushi/ripgrep/releases/download/${version}/${name}.zip"
+                actual="$(sha256sum "${work}/archive.zip" | cut -d' ' -f1)"
+                if [ "$actual" != "$sum" ]; then
+                  echo "ripgrep checksum mismatch: expected $sum, got $actual" >&2
+                  exit 1
+                fi
+                # bsdtar unpacks a zip; the GNU tar first on PATH in Git Bash does not.
+                /c/Windows/System32/tar.exe -xf "${work}/archive.zip" -C "${work}" "${name}/rg.exe"
+                cp "${work}/${name}/rg.exe" "${work}/bin/rg.exe"
+                cygpath -w "${work}/bin" >> "$GITHUB_PATH"
+                export PATH="${work}/bin:${PATH}"
+                ;;
+              *)
+                echo "ripgrep installation is not configured for $RUNNER_OS" >&2
+                exit 1
+                ;;
+            esac
+          fi
+          rg --version
+      # The same toolchain step as ci.yml (#2490): remove a partial install, then install,
+      # at most 3 attempts.
+      - name: Toolchain (rust-toolchain.toml)
+        run: |
+          channel="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' rust-toolchain.toml)"
+          test -n "$channel"
+          for attempt in 1 2 3; do
+            echo "toolchain install attempt ${attempt}/3 (${channel})"
+            rustup toolchain uninstall "$channel" || true
+            if rustup toolchain install; then break; fi
+            if [ "$attempt" = 3 ]; then
+              echo "toolchain install failed after 3 attempts (${channel})" >&2
+              exit 1
+            fi
+            echo "toolchain install attempt ${attempt}/3 failed; removing ${channel} and retrying" >&2
+            sleep $((attempt * 10))
+          done
+          rustc -V
+          rustup show
+      # Restore only. A candidate branch is used once, so a cache saved under its name would
+      # never be read again. Whether anything is restored for a new branch is not guaranteed;
+      # the summary reports the outcome.
+      - name: Dependency cache
+        id: cache
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: false
+      - name: cargo-nextest (pinned, sha256-checked)
+        env:
+          ASSET: ${{ inputs.nextest_asset }}
+          SUM: ${{ inputs.nextest_sha256 }}
+        run: |
+          version=0.9.151
+          member=cargo-nextest
+          if [ "$RUNNER_OS" = Windows ]; then member=cargo-nextest.exe; fi
+          tmp="$RUNNER_TEMP"
+          if [ "$RUNNER_OS" = Windows ]; then tmp="$(cygpath -u "$RUNNER_TEMP")"; fi
+          file="${tmp}/cargo-nextest-${version}-${ASSET}.tar.gz"
+          curl --proto '=https' --tlsv1.2 -fsSL --retry 3 -o "$file" \
+            "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-${version}/cargo-nextest-${version}-${ASSET}.tar.gz"
+          actual="$( (sha256sum "$file" 2>/dev/null || shasum -a 256 "$file") | cut -d' ' -f1)"
+          if [ "$actual" != "$SUM" ]; then
+            echo "cargo-nextest checksum mismatch: expected $SUM, got $actual" >&2
+            exit 1
+          fi
+          mkdir -p "$HOME/.cargo/bin"
+          tar xzf "$file" -C "$HOME/.cargo/bin" "$member"
+          cargo nextest --version
+      - name: Check set
+        id: check
+        env:
+          TARGET: ${{ inputs.target }}
+          RUNNER_LABEL: ${{ inputs.runner }}
+          CACHE_HIT: ${{ steps.cache.outputs.cache-hit }}
+        run: |
+          set -u
+          summary="$GITHUB_STEP_SUMMARY"
+          {
+            echo "## candidate / ${TARGET}"
+            echo
+            echo "- runner: \`${RUNNER_LABEL}\` · \`$(uname -sm)\` · rust host \`$(rustc -vV | sed -n 's/^host: //p')\`"
+            echo "- commit: \`$(git rev-parse HEAD)\`"
+            echo "- toolchain: \`$(rustc --version)\` · \`$(cargo --version)\` · \`$(python --version)\`"
+            echo "- dependency cache hit: \`${CACHE_HIT:-none}\` (restore only)"
+            echo "- test threads: \`RUST_MIN_STACK=8388608\` (#2452)"
+            echo
+            echo "| step | command | exit |"
+            echo "| --- | --- | --- |"
+          } >> "$summary"
+          failed=0
+          # In place: this checkout already is the commit. The diff check reads the commit
+          # against its first parent, the change the merge brought in.
+          LOCAL_CHECK_MODE=in-place LOCAL_CHECK_KEEP_GOING=1 LOCAL_CHECK_BASE=HEAD~1 LOCAL_CHECK_DIFF_HEAD=HEAD bash tools/local_check.sh || failed=1
+          exit "$failed"
+      # What the commit and the tests really were, whatever the check set did.
+      - name: Record result
+        id: record
+        if: ${{ always() }}
+        run: |
+          set -u
+          sha="$(git rev-parse HEAD 2>/dev/null || echo unknown)"
+          line="$( { grep -E '^ *Summary \[' ci-test.log 2>/dev/null || true; } | tail -n 1)"
+          run_n="$(printf '%s' "$line" | sed -nE 's/.*\] +([0-9]+) tests? run:.*/\1/p')"
+          passed_n="$(printf '%s' "$line" | sed -nE 's/.*run: ([0-9]+) passed.*/\1/p')"
+          skipped_n="$(printf '%s' "$line" | sed -nE 's/.*[ ,]([0-9]+) skipped.*/\1/p')"
+          if [ -z "$skipped_n" ]; then skipped_n=0; fi
+          {
+            echo "sha=${sha}"
+            echo "tests_run=${run_n}"
+            echo "tests_passed=${passed_n}"
+            echo "tests_skipped=${skipped_n}"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo
+            echo "- nextest: \`${line:-no Summary line}\`"
+            echo "- tests run ${run_n:-?} · passed ${passed_n:-?} · skipped ${skipped_n}"
+          } >> "$GITHUB_STEP_SUMMARY"
+      # Compiling is not a pass: no tests, or fewer passed than ran, fails this target even if
+      # the check set exited 0.
+      - name: Tests ran
+        if: ${{ always() }}
+        env:
+          RUN_N: ${{ steps.record.outputs.tests_run }}
+          PASSED_N: ${{ steps.record.outputs.tests_passed }}
+        run: |
+          case "$RUN_N" in
+            '' | 0 | *[!0-9]*)
+              echo "no tests ran (tests_run='${RUN_N}') - compiling is not a pass" >&2
+              exit 1
+              ;;
+          esac
+          if [ "$PASSED_N" != "$RUN_N" ]; then
+            echo "${PASSED_N:-?} of ${RUN_N} tests passed" >&2
+            exit 1
+          fi

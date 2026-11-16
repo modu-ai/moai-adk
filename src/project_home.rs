@@ -71,7 +71,32 @@ impl ProjectHome {
         }
         Ok(self.dir.join("backups").join(stamp).join(kind))
     }
+
+    /// `<dir>/<area>`: the folder of one machine-written area. Only the names in [`AREAS`]
+    /// are accepted, so a caller cannot name a parent folder, a second level or a folder the
+    /// design has not given a place yet. Not created here.
+    pub fn area(&self, area: &str) -> Result<PathBuf> {
+        if !AREAS.contains(&area) {
+            return Err("area is not one of the machine-written areas".into());
+        }
+        Ok(self.dir.join(area))
+    }
+
+    /// Like [`ProjectHome::area`], but for a writer: `Some` only when the key is the
+    /// profile's fixed id. A key made from the folder path changes when the folder is renamed
+    /// (design 6887461482 §3), so data written under it would be left behind; a writer keeps
+    /// its current place until the project has an id.
+    pub fn write_area(&self, area: &str) -> Result<Option<PathBuf>> {
+        let dir = self.area(area)?;
+        Ok((self.key_source == KeySource::Profile).then_some(dir))
+    }
 }
+
+/// The machine-written areas of a project folder in the HOME that a writer may use (design
+/// 6887461482 §2 (나)): hook receipts and logs, and small state files. Backups have their own
+/// call, [`ProjectHome::backup_area`]; the other areas of the design get a name here when
+/// something writes to them.
+pub const AREAS: &[&str] = &["receipts", "state", "logs"];
 
 #[cfg(test)]
 mod tests {
@@ -251,5 +276,59 @@ mod tests {
         }
         // The edges: a kind of 80 characters is the longest plain name.
         assert!(ph.backup_area(STAMP, &"k".repeat(80)).is_ok());
+    }
+
+    #[test]
+    fn an_area_is_projects_key_area_and_nothing_is_created() {
+        let (home, project) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        profile(project.path(), "demo");
+        let ph = resolve(home.path(), project.path()).unwrap();
+        let h0 = listing(home.path());
+        for area in AREAS {
+            assert_eq!(ph.area(area).unwrap(), ph.dir.join(area), "{area}");
+            assert_eq!(
+                ph.write_area(area).unwrap(),
+                Some(ph.dir.join(area)),
+                "{area}"
+            );
+        }
+        assert_eq!(AREAS, &["receipts", "state", "logs"]);
+        assert_eq!(listing(home.path()), h0);
+    }
+
+    #[test]
+    fn a_name_outside_the_area_list_is_refused_by_both_calls() {
+        let (home, project) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        profile(project.path(), "demo");
+        let ph = resolve(home.path(), project.path()).unwrap();
+        for area in [
+            "",
+            ".",
+            "..",
+            "../receipts",
+            "receipts/",
+            "receipts/hooks",
+            "state/lane-stop-hook",
+            "Receipts",
+            "backups",
+            "receipts ",
+        ] {
+            assert!(ph.area(area).is_err(), "area {area:?}");
+            assert!(ph.write_area(area).is_err(), "write_area {area:?}");
+        }
+    }
+
+    #[test]
+    fn a_writer_gets_no_place_under_a_key_made_from_the_path() {
+        let (home, project) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        let ph = resolve(home.path(), project.path()).unwrap();
+        assert_eq!(ph.key_source, KeySource::PathHash);
+        for area in AREAS {
+            assert_eq!(ph.write_area(area).unwrap(), None, "{area}");
+            // A reader still gets the place the data would be under.
+            assert_eq!(ph.area(area).unwrap(), ph.dir.join(area), "{area}");
+        }
+        // A bad name is still an error, not `None`.
+        assert!(ph.write_area("..").is_err());
     }
 }

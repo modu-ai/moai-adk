@@ -868,16 +868,61 @@ pub fn written_files(root: &Path, host: &str) -> Result<(Vec<String>, Vec<PathBu
 /// The JSON lines of `<root>/.moai-cli/receipts/<file>` (bounded by [`RECEIPT_LOG_LIMIT`];
 /// a missing, oversized or non-regular log reads as empty).
 fn receipt_lines(root: &Path, file: &str) -> Vec<Value> {
-    let path = crate::state_root::path(root, "receipts").join(file);
-    match fs::symlink_metadata(&path) {
+    receipt_lines_in(env_home().as_deref(), root, file)
+}
+
+/// The lines of one receipt log, oldest first: the project side (where every earlier hook
+/// wrote) and then the HOME side (where a project with a fixed id writes, #3009 S4b). Each file
+/// is bounded and read on its own; nothing is copied or removed.
+pub(crate) fn receipt_lines_in(home: Option<&Path>, root: &Path, file: &str) -> Vec<Value> {
+    let mut paths = vec![crate::state_root::path(root, "receipts").join(file)];
+    paths.extend(home_receipts_dir(home, root).map(|d| d.join(file)));
+    paths.iter().flat_map(|p| log_lines(p)).collect()
+}
+
+fn log_lines(path: &Path) -> Vec<Value> {
+    match fs::symlink_metadata(path) {
         Ok(m) if m.is_file() && m.len() <= RECEIPT_LOG_LIMIT => {}
         _ => return Vec::new(),
     }
-    fs::read_to_string(&path)
+    fs::read_to_string(path)
         .unwrap_or_default()
         .lines()
         .filter_map(|l| serde_json::from_str(l).ok())
         .collect()
+}
+
+/// The user's HOME folder from `$HOME`; `None` when it is unset or empty.
+pub fn env_home() -> Option<std::path::PathBuf> {
+    std::env::var_os("HOME")
+        .map(std::path::PathBuf::from)
+        .filter(|h| !h.as_os_str().is_empty())
+}
+
+/// The HOME-side `receipts` folder of the project at `root` (see [`home_area_dir`]).
+fn home_receipts_dir(home: Option<&Path>, root: &Path) -> Option<std::path::PathBuf> {
+    home_area_dir(home, root, "receipts")
+}
+
+/// The HOME-side folder `area` (one of [`crate::project_home::AREAS`]) of the project at
+/// `root`: `Some` only when `home` is given, its state root is a real folder, and the project's
+/// key is its fixed id (a key made from the folder path is never written under, see
+/// [`crate::project_home::ProjectHome::write_area`]). Nothing is created.
+pub(crate) fn home_area_dir(
+    home: Option<&Path>,
+    root: &Path,
+    area: &str,
+) -> Option<std::path::PathBuf> {
+    let home = home?;
+    let home_state = crate::home_root::path(home);
+    if !fs::symlink_metadata(&home_state).is_ok_and(|m| m.is_dir()) {
+        return None;
+    }
+    crate::project_home::resolve(home, root)
+        .ok()?
+        .write_area(area)
+        .ok()
+        .flatten()
 }
 
 /// The hook state vocabulary of Issue #2391, each from evidence that exists locally, read only:
@@ -1024,19 +1069,47 @@ pub fn append_receipt_line(
     file: &str,
     line: &Value,
 ) -> std::result::Result<(), &'static str> {
+    append_receipt_line_in(env_home().as_deref(), cwd, file, line)
+}
+
+/// [`append_receipt_line`] with the HOME named by the caller (#3009 S4b). The log goes to the
+/// project's folder in the HOME (`<HOME state root>/projects/<project_id>/receipts/`) when the
+/// project has a fixed id and the HOME state root is a real folder, so every worktree of the
+/// project writes one log; in every other case it goes to `<cwd>/.moai-cli/receipts/` as before.
+/// The working directory must be a project with a state folder either way. The HOME side is
+/// created private (folders 0700, the log 0600) and is never reached through a link.
+pub(crate) fn append_receipt_line_in(
+    home: Option<&Path>,
+    cwd: &Path,
+    file: &str,
+    line: &Value,
+) -> std::result::Result<(), &'static str> {
     let state_dir = crate::state_root::path(cwd, "");
     match fs::symlink_metadata(&state_dir) {
         Ok(m) if m.is_dir() => {}
         _ => return Err("no .moai-cli directory in the working directory"),
     }
-    let dir = state_dir.join("receipts");
-    if let Ok(m) = fs::symlink_metadata(&dir) {
-        if !m.is_dir() {
-            return Err("receipts path is not a directory");
+    let home_dir = home_receipts_dir(home, cwd);
+    let dir = match &home_dir {
+        Some(dir) => {
+            let state = home
+                .map(crate::home_root::path)
+                .ok_or("home folder unavailable")?;
+            make_private_dirs(dir, &state)?;
+            dir.clone()
         }
-    } else if fs::create_dir(&dir).is_err() {
-        return Err("receipts directory unavailable");
-    }
+        None => {
+            let dir = state_dir.join("receipts");
+            if let Ok(m) = fs::symlink_metadata(&dir) {
+                if !m.is_dir() {
+                    return Err("receipts path is not a directory");
+                }
+            } else if fs::create_dir(&dir).is_err() {
+                return Err("receipts directory unavailable");
+            }
+            dir
+        }
+    };
     let log = dir.join(file);
     match fs::symlink_metadata(&log) {
         Ok(m) if !m.is_file() => return Err("receipt log is not a regular file"),
@@ -1045,12 +1118,46 @@ pub fn append_receipt_line(
     }
     let mut bytes = serde_json::to_vec(line).map_err(|_| "receipt line encode failed")?;
     bytes.push(b'\n');
-    fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&log)
+    let mut open = fs::OpenOptions::new();
+    open.create(true).append(true);
+    #[cfg(unix)]
+    if home_dir.is_some() {
+        use std::os::unix::fs::OpenOptionsExt;
+        open.mode(0o600);
+    }
+    open.open(&log)
         .and_then(|mut f| f.write_all(&bytes))
         .map_err(|_| "receipt log write failed")
+}
+
+/// Creates `dir` and the folders between it and the existing `base` (the HOME state root),
+/// each private (0700). Every folder must end up a real folder: a link or a file in the way is
+/// refused. `dir` must lie under `base`.
+pub(crate) fn make_private_dirs(dir: &Path, base: &Path) -> std::result::Result<(), &'static str> {
+    let Ok(rel) = dir.strip_prefix(base) else {
+        return Err("receipts directory unavailable");
+    };
+    let mut cur = base.to_path_buf();
+    for part in rel.components() {
+        cur.push(part);
+        match fs::symlink_metadata(&cur) {
+            Ok(m) if m.is_dir() => continue,
+            Ok(_) => return Err("receipts path is not a directory"),
+            Err(_) => {}
+        }
+        let mut builder = fs::DirBuilder::new();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::DirBuilderExt;
+            builder.mode(0o700);
+        }
+        // Another hook may create the folder between the check above and this call; a real
+        // folder that is there afterwards is what was wanted (a link or a file is not).
+        if builder.create(&cur).is_err() && !fs::symlink_metadata(&cur).is_ok_and(|m| m.is_dir()) {
+            return Err("receipts directory unavailable");
+        }
+    }
+    Ok(())
 }
 /// Hook stdin fields a receipt keeps. Everything else — `tool_input`, `tool_response`,
 /// `prompt`, transcript paths — is never read into the log.
@@ -1260,5 +1367,260 @@ mod tests {
         fs::write(&receipt, serde_json::to_vec(&r).unwrap()).unwrap();
         let e = plan(dir.path(), "codex", None).unwrap_err();
         assert!(e.contains("preservation review"), "{e}");
+    }
+}
+
+/// Where the hook logs go and how both places are read (#3009 S4b).
+#[cfg(test)]
+mod receipt_home_tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    const ID: &str = "abcdefghijklmnopqrstuvwxyz";
+
+    /// A project with a state folder (and a profile when `id` is given) and a HOME with a state
+    /// root (when `home_state` is true).
+    fn world(id: Option<&str>, home_state: bool) -> (tempfile::TempDir, tempfile::TempDir) {
+        let (home, project) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        let state = project.path().join(crate::PROJECT_STATE_DIR);
+        fs::create_dir_all(&state).unwrap();
+        if let Some(id) = id {
+            fs::write(
+                state.join("project.yaml"),
+                format!("{{\"project_id\":\"{id}\"}}"),
+            )
+            .unwrap();
+        }
+        if home_state {
+            fs::create_dir(crate::home_root::path(home.path())).unwrap();
+        }
+        (home, project)
+    }
+
+    fn home_log(home: &Path, id: &str, file: &str) -> PathBuf {
+        crate::home_root::path(home)
+            .join("projects")
+            .join(id)
+            .join("receipts")
+            .join(file)
+    }
+
+    fn project_log(project: &Path, file: &str) -> PathBuf {
+        project
+            .join(crate::PROJECT_STATE_DIR)
+            .join("receipts")
+            .join(file)
+    }
+
+    /// Every path under `dir`, so a test can show nothing was created.
+    fn listing(dir: &Path) -> Vec<String> {
+        let mut out = Vec::new();
+        let mut stack = vec![dir.to_path_buf()];
+        while let Some(d) = stack.pop() {
+            for e in fs::read_dir(&d).unwrap().flatten() {
+                out.push(e.path().strip_prefix(dir).unwrap().display().to_string());
+                if e.path().is_dir() {
+                    stack.push(e.path());
+                }
+            }
+        }
+        out.sort();
+        out
+    }
+
+    fn line(n: u64) -> Value {
+        json!({"kind": "t", "n": n})
+    }
+
+    fn append(
+        home: Option<&Path>,
+        project: &Path,
+        n: u64,
+    ) -> std::result::Result<(), &'static str> {
+        append_receipt_line_in(home, project, "hooks.jsonl", &line(n))
+    }
+
+    #[test]
+    fn a_project_with_an_id_logs_in_the_home_and_leaves_its_own_folder_alone() {
+        let (home, project) = world(Some(ID), true);
+        let p0 = listing(project.path());
+        append(Some(home.path()), project.path(), 1).unwrap();
+        append(Some(home.path()), project.path(), 2).unwrap();
+        let text = fs::read_to_string(home_log(home.path(), ID, "hooks.jsonl")).unwrap();
+        assert_eq!(text.lines().count(), 2, "{text}");
+        assert_eq!(
+            listing(project.path()),
+            p0,
+            "the project folder is untouched"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_home_side_is_private() {
+        use std::os::unix::fs::PermissionsExt;
+        let (home, project) = world(Some(ID), true);
+        append(Some(home.path()), project.path(), 1).unwrap();
+        let mode = |p: &Path| fs::metadata(p).unwrap().permissions().mode() & 0o777;
+        let log = home_log(home.path(), ID, "hooks.jsonl");
+        assert_eq!(mode(&log), 0o600);
+        let receipts = log.parent().unwrap();
+        let key_dir = receipts.parent().unwrap();
+        let projects = key_dir.parent().unwrap();
+        for dir in [receipts, key_dir, projects] {
+            assert_eq!(mode(dir), 0o700, "{}", dir.display());
+        }
+    }
+
+    #[test]
+    fn every_other_case_logs_in_the_project_as_before_and_leaves_the_home_alone() {
+        // No profile, so the key would come from the path; no HOME state root; no HOME at all.
+        let cases: [(Option<&str>, bool, bool); 3] = [
+            (None, true, true),
+            (Some(ID), false, true),
+            (Some(ID), true, false),
+        ];
+        for (id, home_state, with_home) in cases {
+            let (home, project) = world(id, home_state);
+            let h0 = listing(home.path());
+            let home_arg = with_home.then_some(home.path());
+            append(home_arg, project.path(), 1).unwrap();
+            let text = fs::read_to_string(project_log(project.path(), "hooks.jsonl")).unwrap();
+            assert_eq!(text.lines().count(), 1, "{id:?} {home_state} {with_home}");
+            assert_eq!(listing(home.path()), h0, "{id:?} {home_state} {with_home}");
+        }
+    }
+
+    #[test]
+    fn a_folder_that_is_not_a_project_gets_no_log_on_either_side() {
+        let (home, _) = world(Some(ID), true);
+        let bare = tempfile::tempdir().unwrap();
+        let h0 = listing(home.path());
+        assert!(append(Some(home.path()), bare.path(), 1).is_err());
+        assert_eq!(listing(home.path()), h0);
+        assert!(listing(bare.path()).is_empty());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_link_or_a_file_in_the_way_on_the_home_side_is_refused() {
+        let (home, project) = world(Some(ID), true);
+        let elsewhere = tempfile::tempdir().unwrap();
+        let projects = crate::home_root::path(home.path()).join("projects");
+        std::os::unix::fs::symlink(elsewhere.path(), &projects).unwrap();
+        assert!(append(Some(home.path()), project.path(), 1).is_err());
+        assert!(
+            listing(elsewhere.path()).is_empty(),
+            "nothing is written through the link"
+        );
+        fs::remove_file(&projects).unwrap();
+        // A file where `receipts` should be.
+        let receipts = home_log(home.path(), ID, "x")
+            .parent()
+            .unwrap()
+            .to_path_buf();
+        fs::create_dir_all(receipts.parent().unwrap()).unwrap();
+        fs::write(&receipts, "not a folder").unwrap();
+        assert!(append(Some(home.path()), project.path(), 1).is_err());
+    }
+
+    #[test]
+    fn a_full_home_log_refuses_at_the_limit_and_takes_a_line_just_below_it() {
+        let (home, project) = world(Some(ID), true);
+        append(Some(home.path()), project.path(), 1).unwrap();
+        let log = home_log(home.path(), ID, "hooks.jsonl");
+        let set_len = |n: u64| {
+            fs::OpenOptions::new()
+                .write(true)
+                .open(&log)
+                .unwrap()
+                .set_len(n)
+                .unwrap()
+        };
+        set_len(RECEIPT_LOG_LIMIT - 1);
+        assert!(append(Some(home.path()), project.path(), 2).is_ok());
+        set_len(RECEIPT_LOG_LIMIT);
+        assert_eq!(
+            append(Some(home.path()), project.path(), 3),
+            Err("receipt log full")
+        );
+    }
+
+    #[test]
+    fn worktrees_with_one_id_share_one_home_log() {
+        let (home, first) = world(Some(ID), true);
+        let (_, second) = world(Some(ID), false);
+        append(Some(home.path()), first.path(), 1).unwrap();
+        append(Some(home.path()), second.path(), 2).unwrap();
+        let text = fs::read_to_string(home_log(home.path(), ID, "hooks.jsonl")).unwrap();
+        assert_eq!(text.lines().count(), 2, "{text}");
+        for p in [&first, &second] {
+            let lines = receipt_lines_in(Some(home.path()), p.path(), "hooks.jsonl");
+            assert_eq!(lines.len(), 2, "each worktree sees both lines");
+        }
+    }
+
+    #[test]
+    fn reading_gives_the_project_side_first_and_then_the_home_side() {
+        let (home, project) = world(Some(ID), true);
+        let old = project_log(project.path(), "hooks.jsonl");
+        fs::create_dir_all(old.parent().unwrap()).unwrap();
+        fs::write(&old, "{\"n\":1}\nnot json\n{\"n\":2}\n").unwrap();
+        let new = home_log(home.path(), ID, "hooks.jsonl");
+        fs::create_dir_all(new.parent().unwrap()).unwrap();
+        fs::write(&new, "{\"n\":3}\n").unwrap();
+        let numbers = |home: Option<&Path>| -> Vec<u64> {
+            receipt_lines_in(home, project.path(), "hooks.jsonl")
+                .iter()
+                .map(|v| v["n"].as_u64().unwrap())
+                .collect()
+        };
+        assert_eq!(numbers(Some(home.path())), vec![1, 2, 3]);
+        // Without a HOME only the project side is read.
+        assert_eq!(numbers(None), vec![1, 2]);
+    }
+
+    #[test]
+    fn an_oversized_log_on_one_side_does_not_hide_the_other_side() {
+        let (home, project) = world(Some(ID), true);
+        let old = project_log(project.path(), "hooks.jsonl");
+        fs::create_dir_all(old.parent().unwrap()).unwrap();
+        fs::write(&old, "{\"n\":1}\n").unwrap();
+        fs::OpenOptions::new()
+            .write(true)
+            .open(&old)
+            .unwrap()
+            .set_len(RECEIPT_LOG_LIMIT + 1)
+            .unwrap();
+        let new = home_log(home.path(), ID, "hooks.jsonl");
+        fs::create_dir_all(new.parent().unwrap()).unwrap();
+        fs::write(&new, "{\"n\":3}\n").unwrap();
+        let got = receipt_lines_in(Some(home.path()), project.path(), "hooks.jsonl");
+        assert_eq!(got.len(), 1);
+        assert_eq!(got[0]["n"], json!(3));
+    }
+
+    #[test]
+    fn concurrent_hooks_never_break_a_line() {
+        let (home, project) = world(Some(ID), true);
+        let (h, p) = (home.path().to_path_buf(), project.path().to_path_buf());
+        let threads: Vec<_> = (0..8u64)
+            .map(|t| {
+                let (h, p) = (h.clone(), p.clone());
+                std::thread::spawn(move || {
+                    for i in 0..40u64 {
+                        append(Some(&h), &p, t * 100 + i).unwrap();
+                    }
+                })
+            })
+            .collect();
+        for t in threads {
+            t.join().unwrap();
+        }
+        let text = fs::read_to_string(home_log(home.path(), ID, "hooks.jsonl")).unwrap();
+        assert_eq!(text.lines().count(), 320);
+        assert!(text
+            .lines()
+            .all(|l| serde_json::from_str::<Value>(l).is_ok()));
     }
 }

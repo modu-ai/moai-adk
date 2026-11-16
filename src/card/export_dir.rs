@@ -4,6 +4,12 @@
 //! opens a ledger. The rules are the ones a user's own folder needs:
 //! - `write` goes only into a folder that does not exist yet or is empty, and it makes every
 //!   file with `create_new`, so nothing that was already there is ever replaced or removed.
+//! - What is written is private to its owner, like the ledger it comes from (unix): a new folder
+//!   is made 0700 and every file 0600; an existing empty folder that group or others can open is
+//!   refused ([`DirError::TooOpen`]), not narrowed, because it is not ours to change.
+//! - [`resolve_out`] says where the folder really is before anything is written: links in the
+//!   parent folders are followed and the real path is what is used and shown, and a folder
+//!   inside the MoAI state folder (which holds the ledgers) is refused.
 //! - `index.json` is written last. It names every other file with a digest, so a folder that
 //!   was cut short (disk full, killed) has no index and `read` refuses it; nothing is deleted
 //!   to hide the half-written files.
@@ -37,6 +43,12 @@ pub enum DirError {
     Link(PathBuf),
     /// `write` was given a folder that already holds something.
     NotEmpty(PathBuf),
+    /// `write` was given an existing empty folder that group or others can open (unix).
+    TooOpen(PathBuf),
+    /// The path names no folder (it ends in `..` or is a root).
+    NoName(PathBuf),
+    /// The folder would be inside the MoAI state folder, where the ledgers live.
+    InStateFolder { path: PathBuf, state: PathBuf },
     /// A file name of the export is not one the format writes.
     BadName(String),
     /// An entry of the folder is not one of the format's files, or is not a plain file.
@@ -63,6 +75,20 @@ impl fmt::Display for DirError {
                 f,
                 "{} already holds files; the export goes into an empty or new folder",
                 p.display()
+            ),
+            Self::TooOpen(p) => write!(
+                f,
+                "{} is open to other users; run `chmod 700` on it first, or give a new folder \
+                 (an export holds card text and session ids)",
+                p.display()
+            ),
+            Self::NoName(p) => write!(f, "{} does not name a folder", p.display()),
+            Self::InStateFolder { path, state } => write!(
+                f,
+                "{} is inside the MoAI state folder {}, which holds the ledgers; \
+                 give a folder outside it",
+                path.display(),
+                state.display()
             ),
             Self::BadName(n) => write!(f, "{n:?} is not an export file name"),
             Self::Unexpected(n) => write!(
@@ -116,32 +142,85 @@ fn check_names(export: &Export) -> Result<(), DirError> {
     Ok(())
 }
 
-/// The folder is new (made here) or empty. The parent folder must exist.
+/// One new folder, 0700 on unix. Only the last step is made: the parent must exist.
+fn make_private_dir(dir: &Path) -> std::io::Result<()> {
+    let mut builder = fs::DirBuilder::new();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        builder.mode(0o700);
+    }
+    builder.create(dir)
+}
+
+/// The folder is new (made here, private) or empty and closed to other users. The parent folder
+/// must exist.
 fn prepare(dir: &Path) -> Result<(), DirError> {
     match fs::symlink_metadata(dir) {
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => fs::create_dir(dir).map_err(io(dir)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            make_private_dir(dir).map_err(io(dir))
+        }
         Err(e) => Err(io(dir)(e)),
         Ok(m) if m.file_type().is_symlink() => Err(DirError::Link(dir.to_path_buf())),
         Ok(m) if !m.is_dir() => Err(DirError::NotADirectory(dir.to_path_buf())),
-        Ok(_) => {
+        Ok(m) => {
             let mut entries = fs::read_dir(dir).map_err(io(dir))?;
             match entries.next() {
-                None => Ok(()),
-                Some(Err(e)) => Err(io(dir)(e)),
-                Some(Ok(_)) => Err(DirError::NotEmpty(dir.to_path_buf())),
+                None => {}
+                Some(Err(e)) => return Err(io(dir)(e)),
+                Some(Ok(_)) => return Err(DirError::NotEmpty(dir.to_path_buf())),
             }
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                if m.permissions().mode() & 0o077 != 0 {
+                    return Err(DirError::TooOpen(dir.to_path_buf()));
+                }
+            }
+            #[cfg(not(unix))]
+            let _ = m;
+            Ok(())
         }
     }
+}
+
+/// Where `out` really is, before anything is written. The folder's parent must exist and is
+/// resolved (a link in it, such as `/var` on macOS, is followed), the last name is kept: whether
+/// that name is a link is `prepare`'s to refuse. A folder inside `state_root` (the MoAI state
+/// folder `<HOME>/.moai`, which holds every ledger) is refused, also when it is reached through a
+/// link or by another letter case on a case-insensitive volume. The returned path is the one to
+/// write to and to show.
+pub fn resolve_out(out: &Path, state_root: &Path) -> Result<PathBuf, DirError> {
+    let name = out
+        .file_name()
+        .ok_or_else(|| DirError::NoName(out.to_path_buf()))?;
+    let parent = match out.parent() {
+        Some(p) if !p.as_os_str().is_empty() => p,
+        _ => Path::new("."),
+    };
+    let real_parent = fs::canonicalize(parent).map_err(io(parent))?;
+    let target = real_parent.join(name);
+    let state = fs::canonicalize(state_root).unwrap_or_else(|_| state_root.to_path_buf());
+    if target.starts_with(&state) {
+        return Err(DirError::InStateFolder {
+            path: target,
+            state,
+        });
+    }
+    Ok(target)
 }
 
 /// One new file: it fails if the name is taken, whatever it is (file, folder, link).
 fn put(dir: &Path, name: &str, text: &str) -> Result<(), DirError> {
     let path = dir.join(name);
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&path)
-        .map_err(io(&path))?;
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let mut file = options.open(&path).map_err(io(&path))?;
     file.write_all(text.as_bytes()).map_err(io(&path))?;
     file.sync_all().map_err(io(&path))
 }
@@ -280,6 +359,16 @@ mod tests {
         render(&sample()).unwrap()
     }
 
+    /// An empty folder the way `write` takes it: closed to other users (unix).
+    fn private_dir(path: &Path) {
+        fs::create_dir(path).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(path, fs::Permissions::from_mode(0o700)).unwrap();
+        }
+    }
+
     fn names(dir: &Path) -> Vec<String> {
         let mut v: Vec<String> = fs::read_dir(dir)
             .unwrap()
@@ -354,7 +443,7 @@ mod tests {
     fn an_empty_existing_folder_is_taken_and_a_folder_with_anything_in_it_is_not() {
         let tmp = tempfile::tempdir().unwrap();
         let dir = tmp.path().join("o");
-        fs::create_dir(&dir).unwrap();
+        private_dir(&dir);
         write(&dir, &export()).unwrap();
         // Written again into the folder that now holds an export: refused, nothing changed.
         let before: Vec<Vec<u8>> = names(&dir)
@@ -406,7 +495,7 @@ mod tests {
     fn a_link_to_the_folder_is_refused_both_ways() {
         let tmp = tempfile::tempdir().unwrap();
         let real = tmp.path().join("real");
-        fs::create_dir(&real).unwrap();
+        private_dir(&real);
         let link = tmp.path().join("link");
         std::os::unix::fs::symlink(&real, &link).unwrap();
         assert_eq!(write(&link, &export()), Err(DirError::Link(link.clone())));
@@ -529,7 +618,7 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         for stray in [".DS_Store", "notes.txt", "C-01.md", "C-1.txt", "C-1.md.bak"] {
             let dir = tmp.path().join(stray);
-            fs::create_dir(&dir).unwrap();
+            private_dir(&dir);
             write(&dir, &export()).unwrap();
             fs::write(dir.join(stray), "x").unwrap();
             assert_eq!(
@@ -644,5 +733,131 @@ mod tests {
             load(&dir),
             Err(DirError::Export(ExportError::Digest("C-1.md".into())))
         );
+    }
+
+    #[cfg(unix)]
+    fn mode_of(path: &Path) -> u32 {
+        use std::os::unix::fs::PermissionsExt;
+        fs::metadata(path).unwrap().permissions().mode() & 0o777
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_new_folder_is_0700_and_every_file_in_it_0600() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("out");
+        write(&dir, &export()).unwrap();
+        assert_eq!(mode_of(&dir), 0o700);
+        for n in names(&dir) {
+            assert_eq!(mode_of(&dir.join(&n)), 0o600, "{n}");
+        }
+        // The parent is not touched.
+        assert_ne!(mode_of(tmp.path()) & 0o700, 0);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_existing_empty_folder_that_others_can_open_is_refused_and_left_as_it_is() {
+        use std::os::unix::fs::PermissionsExt;
+        let tmp = tempfile::tempdir().unwrap();
+        for open in [0o755, 0o750, 0o705, 0o770, 0o777] {
+            let dir = tmp.path().join(format!("o{open:o}"));
+            fs::create_dir(&dir).unwrap();
+            fs::set_permissions(&dir, fs::Permissions::from_mode(open)).unwrap();
+            assert_eq!(
+                write(&dir, &export()),
+                Err(DirError::TooOpen(dir.clone())),
+                "{open:o}"
+            );
+            assert!(names(&dir).is_empty(), "{open:o}");
+            assert_eq!(
+                mode_of(&dir),
+                open,
+                "the folder's mode is not ours to change"
+            );
+        }
+        // Closed to others, whatever the owner bits: taken.
+        let ok = tmp.path().join("ok");
+        fs::create_dir(&ok).unwrap();
+        fs::set_permissions(&ok, fs::Permissions::from_mode(0o700)).unwrap();
+        write(&ok, &export()).unwrap();
+    }
+
+    #[test]
+    fn out_with_no_folder_name_or_a_missing_parent_is_refused() {
+        let tmp = tempfile::tempdir().unwrap();
+        let state = tmp.path().join(".moai");
+        fs::create_dir(&state).unwrap();
+        for bad in [tmp.path().join("a").join(".."), PathBuf::from("/")] {
+            assert!(
+                matches!(resolve_out(&bad, &state), Err(DirError::NoName(_))),
+                "{bad:?}"
+            );
+        }
+        let missing = tmp.path().join("no-such").join("out");
+        assert!(matches!(
+            resolve_out(&missing, &state),
+            Err(DirError::Io { .. })
+        ));
+        assert!(!tmp.path().join("no-such").exists());
+    }
+
+    #[test]
+    fn a_folder_inside_the_state_folder_is_refused_at_any_depth() {
+        let tmp = tempfile::tempdir().unwrap();
+        let state = tmp.path().join(".moai");
+        let ledgers = state.join("projects").join("demo");
+        fs::create_dir_all(&ledgers).unwrap();
+        for inside in [
+            state.join("x"),
+            state.join("projects").join("x"),
+            ledgers.join("x"),
+        ] {
+            match resolve_out(&inside, &state) {
+                Err(DirError::InStateFolder { path, state: s }) => {
+                    assert_eq!(path.file_name(), inside.file_name());
+                    assert!(path.starts_with(&s));
+                }
+                other => panic!("{inside:?}: {other:?}"),
+            }
+        }
+        // Beside it is fine, including a name that only starts like the state folder's.
+        for outside in [tmp.path().join("x"), tmp.path().join(".moai-exports")] {
+            assert_eq!(
+                resolve_out(&outside, &state).unwrap().file_name(),
+                outside.file_name()
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_link_in_a_parent_is_followed_and_the_real_path_is_what_is_checked() {
+        let tmp = tempfile::tempdir().unwrap();
+        let state = tmp.path().join(".moai");
+        fs::create_dir_all(state.join("projects")).unwrap();
+        let elsewhere = tmp.path().join("elsewhere");
+        fs::create_dir(&elsewhere).unwrap();
+        // A link that leads out of nowhere into the state folder.
+        let into_state = elsewhere.join("looks-harmless");
+        std::os::unix::fs::symlink(state.join("projects"), &into_state).unwrap();
+        assert!(matches!(
+            resolve_out(&into_state.join("x"), &state),
+            Err(DirError::InStateFolder { .. })
+        ));
+        // A link to an ordinary folder: followed, and the real path comes back.
+        let real = tmp.path().join("real");
+        fs::create_dir(&real).unwrap();
+        let link = elsewhere.join("to-real");
+        std::os::unix::fs::symlink(&real, &link).unwrap();
+        let got = resolve_out(&link.join("x"), &state).unwrap();
+        assert_eq!(got, fs::canonicalize(&real).unwrap().join("x"));
+        // The state folder itself behind a link is the state folder.
+        let state_link = tmp.path().join("state-link");
+        std::os::unix::fs::symlink(&state, &state_link).unwrap();
+        assert!(matches!(
+            resolve_out(&state.join("x"), &state_link),
+            Err(DirError::InStateFolder { .. })
+        ));
     }
 }

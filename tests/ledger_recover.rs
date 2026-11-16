@@ -2298,8 +2298,8 @@ fn a_second_recovery_while_the_lock_is_held_changes_nothing() {
     )
     .unwrap_err();
     assert_refused(&err, "recovery_in_progress");
-    // A stale plan is answered by the lock first only while the lock is held; the loser has
-    // changed nothing either way.
+    // A stale plan is answered as a stale plan even while the lock is held: that check is made
+    // before the lock is asked for. The loser has changed nothing either way.
     let err = recover::apply_with_suffix(
         w.home.path(),
         PROJECT,
@@ -2309,7 +2309,7 @@ fn a_second_recovery_while_the_lock_is_held_changes_nothing() {
         "20261116T000009Z",
     )
     .unwrap_err();
-    assert_refused(&err, "recovery_in_progress");
+    assert_refused(&err, "stale_plan");
     assert_eq!(fs::read(&scratch).unwrap(), scratch_bytes);
     assert_eq!(w.home.snapshot(), before);
 

@@ -32,7 +32,7 @@ pub fn decide(row: &ReservationRow, card_generation: i64, obs: &Observations) ->
 pub fn stale_temp(home: &Path, project_id: &str) -> Result<Vec<StaleTemp>, LedgerError>;
 ```
 
-오류는 `LedgerError`: 원본이 쓸 수 없으면 `Unavailable`(사유 글), 다른 프로젝트 파일이면 `IdCollision`, WAL 이면 `WalUnexpected`, 새 스키마면 `SchemaNewer`, HOME 이 Go 세대면 `HomeNotReady`. 거절은 `Constraint("<낱말>: …")` 이고 낱말은 `stale_plan` · `recovery_in_progress` · `lock_mismatch` · `target_healthy` · `target_not_damaged` · `target_not_regular` · `recovering_not_regular` · `suffix_in_use` · `invalid_suffix` · `damaged_not_set_aside` · `nothing_to_install` · `check_failed`.
+오류는 `LedgerError`: 원본이 쓸 수 없으면 `Unavailable`(사유 글), 다른 프로젝트 파일이면 `IdCollision`, WAL 이면 `WalUnexpected`, 새 스키마면 `SchemaNewer`, HOME 이 Go 세대면 `HomeNotReady`. 거절은 `Constraint("<낱말>: …")` 이고 낱말은 `stale_plan` · `recovery_in_progress` · `lock_mismatch` · `target_healthy` · `target_not_damaged` · `target_not_regular` · `recovering_not_regular` · `lock_not_regular` · `suffix_in_use` · `invalid_suffix` · `damaged_not_set_aside` · `nothing_to_install` · `check_failed`.
 
 ### 원본 열기
 
@@ -91,7 +91,7 @@ pub fn stale_temp(home: &Path, project_id: &str) -> Result<Vec<StaleTemp>, Ledge
 
 ## apply
 
-0. 접미사를 확인하고(`invalid_suffix`) **잠금을 건다**(`recovery_in_progress`). 이 아래 전부가 잠금 안이다.
+0. 접미사를 확인한다(`invalid_suffix`). 그다음 **잠금 없이 읽기만 하는 1차 판단**: 이미 이 계획의 결과가 제자리에 있으면 `unchanged`, digest 가 다르거나(`stale_plan`) 대상이 바꿀 수 없는 상태이면(`target_healthy`·`target_not_regular`·`target_not_damaged`) 거절한다. **거절은 잠금 파일도 만들지 않아서 HOME 이 그대로다.** 1차를 통과한 적용만 **잠금을 건다**(`recovery_in_progress`; `.recover.lock` 이 일반 파일이 아니면 `lock_not_regular`, 열기 전에 `lstat` 로 거르고 `O_NOFOLLOW | O_NONBLOCK` 으로 열어 `fstat` 로 다시 확인). 잠금 안에서 아래 1·2 를 **다시** 하며 그쪽이 결정한다. 이 아래 전부가 잠금 안이다.
 1. 이미 이 계획의 결과가 제자리에 있으면(쓸 수 있는 원장에 사건 `recover:<plan_digest>` 가 있다) `unchanged` — 원본을 읽지도 않고 아무것도 쓰지 않는다.
 2. 계획을 다시 계산해 digest 가 같아야 한다(`stale_plan`). `target_state` 가 `absent`/`unavailable` 이 아니면 거절(`target_healthy`·`target_not_regular`·`target_not_damaged`). 만들고 난 뒤 바꾸기 직전에 한 번 더 판단해 달라졌으면 만든 파일을 지우고 거절한다.
 3. `build_recovering`: 끝나지 않은 `.recovering` 정리, P1 과 같은 만들기(`schema::create_v1_with`: 표 → `meta` → 행 복사 → 트리거; 트리거가 마지막이라 복사한 `rev`·시각이 바뀌지 않는다), 명시한 id 로 복사(부모 먼저), `sqlite_sequence` = max(원본 계수, 복사한 최대 id) (**잃은 행의 id 를 다시 내지 않는다**), 사건 `recover` 한 줄(`event_key` = `recover:<plan_digest>`, payload: 표별 개수, 결정, 원본 경로, digest), `integrity_check` + `foreign_key_check`.
@@ -107,6 +107,10 @@ pub fn stale_temp(home: &Path, project_id: &str) -> Result<Vec<StaleTemp>, Ledge
 ### 되살린 `held` 행을 SQL 로 직접 넣는 이유
 
 `copy_rows` 는 되살린 예약을 `reservation.rs` 의 함수가 아니라 직접 `INSERT` 로 넣는다. `reserve`·`handoff` 는 **새 세대를 부여하고 사건을 쓰고 `rev` 를 올리는** 함수라, 원본의 `reservation_id`·세대·`acquired_at`·`lease_until` 을 그대로 지켜야 하는 복구에는 쓸 수 없다. 대신 같은 스키마의 제약(`UNIQUE(card_id, generation)`, 카드당 활성 하나의 부분 색인, CHECK)이 그대로 걸려서 어긋난 행은 거절 목록에 남는다. 카드의 세대는 낮추지 않고, 되살린 `held` 행은 `fence` 를 통과한다(시험).
+
+### 폴더 보강 (C3·C4·R2·R3·R4)
+
+폴더의 소유자 전용 모드와 링크 거절은 `ledger_folders.md` 에 있다. 복구에 닿는 부분: 모든 복구 걸음은 `.moai`·`projects`·`<id>` 에 링크가 있으면 `path_link` 로 거절하고(`target_state` 는 `unconfirmed`), 복구는 폴더를 만들지 않는다. 헤더·`meta` 의 일시 I/O 오류는 `Io` 라서 `unconfirmed` → `target_not_damaged` 로 거절된다(바꿔 끼우지 않음). `.recover.lock` 은 `lock_not_regular` 로 거른다.
 
 ## 하지 않는 것 (다음 조각 몫)
 
