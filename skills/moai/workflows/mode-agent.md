@@ -32,7 +32,7 @@ Measured on seven Codex sessions of 2026-11-14 (Issue #3005, F4 and F5): every l
 
 A leader's dispatch or a relayed instruction (an Issue comment, a typed line, an Orca task) is received only when its sender has read your ACK line (user instruction of 2026-11-15, Issue #3005 comment 6890270975). A notification on a screen, `accepted: true` and a set `delivered_at` show delivery, not receipt.
 
-- ACK first, then claim: before the `claim` step, print one line `ACK <lane> <ref> <UTC>` and post it as the first line of a comment on the coordination Issue. `<ref>` is the card (`#<n>`), the comment id or the Orca dispatch id the message names, and `<UTC>` comes from `date -u`. The line says only "read"; it accepts nothing.
+- ACK first, then claim: before the `claim` step, print one line `ACK <lane> <ref> <UTC>` and post it as the first line of a comment on the coordination Issue. `<ref>` is the card (`#<n>`), the comment number or the Orca dispatch id the message names, and `<UTC>` comes from `date -u`. The line says only "read"; it accepts nothing.
 - Acceptance is a second line, in the same comment or the next: `accepted`, `deferred` or `rejected` with the reason. A deferral or a rejection names the rule it rests on (Exceptions and Permissions); a dispatch that forbids more than your own limits is no such rule (`First turn`).
 - Then start: your claim and a `claim-verify` that answers `owner` (`claim` and `claim-verify` steps). A blocker is the `LANE-BLOCKED` line (`report` step), never a silent stop.
 - After a pause or a cleared session, read the Issue's resume note (`self-pick` step) and make the first line you post `ACK <lane> resume <ref> <UTC>`, so the leader reads that you came back before it counts the lane as working.
