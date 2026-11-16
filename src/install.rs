@@ -527,6 +527,18 @@ pub(crate) fn probe_version(path: &Path) -> Option<String> {
 /// `binary_state` passes that one variable and nothing else of this process's environment.
 /// `PATH` stays the fixed [`PROBE_PATH`]: an `extra_env` entry never replaces it.
 pub(crate) fn probe_version_env(path: &Path, extra_env: &[(&str, &Path)]) -> Option<String> {
+    probe_args_env(path, &["--version"], extra_env)
+}
+
+/// [`probe_version_env`] for any harmless argument list (#3004 P4-3 asks `statusline --help`).
+/// Every limit of the version probe holds: cleared environment but the named variables, the
+/// fixed `PATH`, the system temporary folder as working folder, stdin closed, stderr dropped,
+/// stdout capped and read for at most the probe time, the whole process group killed on time-out.
+pub(crate) fn probe_args_env(
+    path: &Path,
+    args: &[&str],
+    extra_env: &[(&str, &Path)],
+) -> Option<String> {
     let mut cmd = std::process::Command::new(path);
     cmd.env_clear();
     for (name, value) in extra_env {
@@ -543,7 +555,7 @@ pub(crate) fn probe_version_env(path: &Path, extra_env: &[(&str, &Path)]) -> Opt
         cmd.process_group(0);
     }
     let Ok(mut child) = cmd
-        .arg("--version")
+        .args(args)
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::null())
@@ -785,12 +797,13 @@ fn moai_candidates(home: &Path, path_env: &str, places: &CandidatePlaces) -> Val
 }
 
 /// The note a person sees when the first `moai` on PATH is not this generation's (#2867).
-pub const PATH_FIRST_NOTE: &str = "hooks are generated with moai-cli until R5; put a Rust moai \
-     first on PATH to let them use moai (nothing was changed)";
+pub const PATH_FIRST_NOTE: &str = "the first moai on PATH is not the Rust build; the generated \
+     hooks call moai, so hooks-apply writes them only after a Rust moai is first on PATH \
+     (nothing was changed)";
 
 /// #2867 (R5a): the first `moai` on PATH — its path, generation and the evidence for it, read
 /// from the R2 candidates (`moai_candidates`) without probing again. A `go` or `unknown` first
-/// `moai` carries [`PATH_FIRST_NOTE`]: a hook that called `moai` would reach it. Reports only.
+/// `moai` carries [`PATH_FIRST_NOTE`]: a generated hook would reach it. Reports only.
 pub fn path_first_moai(candidates: &Value) -> Value {
     let first = candidates["items"]
         .as_array()
@@ -814,13 +827,13 @@ pub fn path_first_moai(candidates: &Value) -> Value {
     })
 }
 
-/// What a `moai` that is not the Rust build tells the person (#3004 P4-1). True today and after
-/// the hook command name changes: generated hooks still call `moai-cli`, so nothing is broken
-/// yet; the sentence names what a hook that called this `moai` would do.
+/// What a `moai` that is not the Rust build tells the person (#3004): the generated hooks call
+/// `moai`, and the sentence names what a hook that reached this `moai` would do.
 pub const MOAI_ON_PATH_NOTE: &str =
     "the moai found on PATH is not the Rust build; hooks generated \
-     to call moai would fail as a non-blocking error and the claim guard would not run (hooks \
-     are generated with moai-cli until R5); put the Rust moai first on PATH or run `moai update`";
+     to call moai would fail as a non-blocking error and the claim guard would not run (hooks-apply \
+     writes them only after a Rust moai is first on PATH); put the Rust moai first on PATH or run \
+     `moai update`";
 
 /// Whether `path` — a PATH hit — is relative or lies inside the project tree `root` (already
 /// canonical), by its own spelling or after links are followed. A link that cannot be resolved
@@ -847,7 +860,8 @@ pub fn moai_on_path_state(project_root: &Path, path_env: &str, home: Option<&Pat
             "state": "binary_unresolved",
             "generation": "absent",
             "basis": "no moai on PATH",
-            "note": "moai is not on this PATH",
+            "note": "moai is not on this PATH; each generated hook fails as a non-blocking error \
+                     and the claim guard does not run",
         });
     };
     let root = fs::canonicalize(project_root).unwrap_or_else(|_| project_root.to_path_buf());

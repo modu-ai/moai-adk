@@ -402,6 +402,16 @@ mod tests {
             ("target changed since plan; re-preview required", StalePlan),
             ("target changed during apply; temporary file discarded", StalePlan),
             ("partial apply: applied [a]; failed at b: x", Partial),
+            // go-state-apply, F-I (#2936): the ignore file of the backup area failed after the
+            // pending receipt; the inner message may be any write failure and stays `partial`.
+            (
+                &crate::go_state::ignore_file_failed(
+                    "backup file write failed",
+                    "a new .moai/ holds the pending receipt",
+                    "20261115T000000Z",
+                ),
+                Partial,
+            ),
             // The wrapper wins over the plan-admit version phrase it may quote.
             (
                 "partial apply: applied [a]; failed at b: unsupported protocol_version; supported: 1",
@@ -607,6 +617,23 @@ mod tests {
             ),
             (
                 "invalid claim verify request: owner, repo, issue_number and session are required",
+                InvalidInput,
+            ),
+            // claim-link (#3030): every refusal code is a conflict; a bad flag value is input.
+            (
+                "conflict in claim link: base_not_in_head: HEAD abc of this worktree does not contain the claim base def; run `git -C '/w' merge --ff-only def`",
+                Conflict,
+            ),
+            (
+                "conflict in claim link: record_not_found: no active claim record for Issue #7",
+                Conflict,
+            ),
+            (
+                "conflict in claim link: path_held: the worktree /w is the worktree of the active claim of Issue #8",
+                Conflict,
+            ),
+            (
+                "invalid claim link request: --lane must be a bounded string (1 to 128 bytes) without control characters",
                 InvalidInput,
             ),
             (

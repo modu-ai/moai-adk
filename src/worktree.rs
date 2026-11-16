@@ -517,15 +517,26 @@ pub fn identity(path: &Path) -> Result<WorktreeId> {
     Ok(id)
 }
 
-fn conflict(reason: &str, plan: &Value, existing: Vec<Value>) -> Value {
-    json!({
+/// A `conflict` answer. When an `existing` worktree carries a path and the record has a claim
+/// comment, `next` names the `claim-link` command that links that worktree to the claim
+/// (#3030, #3048); it is absent otherwise.
+fn conflict(rec: &ClaimRecord, reason: &str, plan: &Value, existing: Vec<Value>) -> Value {
+    let next = existing
+        .iter()
+        .find_map(|e| e["path"].as_str())
+        .and_then(|path| crate::claim_link::next_command(rec, path));
+    let mut out = json!({
         "decision": "conflict",
         "reason": reason,
         "branch": plan["branch"],
         "path": plan["path"],
         "existing": existing,
         "record_update_request": Value::Null,
-    })
+    });
+    if let Some(next) = next {
+        out["next"] = json!(next);
+    }
+    out
 }
 
 /// REQ-06C-02/03: create the worktree, or report the existing owner; the add is never forced.
@@ -554,7 +565,7 @@ pub fn apply(
         .map(entry_json)
         .collect();
     if !in_use.is_empty() {
-        return Ok(conflict("branch_in_use", &p, in_use));
+        return Ok(conflict(rec, "branch_in_use", &p, in_use));
     }
     let same_task: Vec<Value> = entries
         .iter()
@@ -566,11 +577,12 @@ pub fn apply(
         .map(entry_json)
         .collect();
     if !same_task.is_empty() {
-        return Ok(conflict("task_has_worktree", &p, same_task));
+        return Ok(conflict(rec, "task_has_worktree", &p, same_task));
     }
     if git_ok(project, &["show-ref", "--verify", "--quiet", &full_ref])? {
         let head = git(project, &["rev-parse", &full_ref])?;
         return Ok(conflict(
+            rec,
             "branch_exists",
             &p,
             vec![json!({"branch": full_ref, "head": head.trim()})],
@@ -582,12 +594,13 @@ pub fn apply(
             .filter(|e| Path::new(&e.path) == target)
             .map(entry_json)
             .collect();
-        return Ok(conflict("path_exists", &p, at));
+        return Ok(conflict(rec, "path_exists", &p, at));
     }
     // WT-5: refuse below the free-space floor, measured right before the add.
     let free = crate::worktree_report::disk_bytes(project).map(|(free, _)| free);
     if !disk_floor_ok(free, capacity.floor_bytes) {
         return Ok(conflict(
+            rec,
             "disk_free_below_floor",
             &p,
             vec![json!({

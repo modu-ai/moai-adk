@@ -137,11 +137,11 @@ fn hook_set_has_explicit_timeouts_and_bare_commands() {
             assert_eq!(handler["timeout"], json!(hooks::HOOK_TIMEOUT_SECS));
             let command = handler["command"].as_str().unwrap();
             let expected = match event.as_str() {
-                "PreToolUse" => "moai-cli claim-verify . --hook".to_string(),
+                "PreToolUse" => "moai claim-verify . --hook".to_string(),
                 "SessionStart" => {
-                    format!("moai-cli hook-dispatch --host {host} --event session-check")
+                    format!("moai hook-dispatch --host {host} --event session-check")
                 }
-                _ => format!("moai-cli hook-receipt --host {host}"),
+                _ => format!("moai hook-receipt --host {host}"),
             };
             assert_eq!(command, expected);
             assert!(!command.contains('/'), "{command}");
@@ -196,7 +196,7 @@ fn generated_pre_tool_use_command_blocks_an_unverified_commit() {
             .unwrap()
             .to_string();
         let mut words = command.split_whitespace();
-        assert_eq!(words.next(), Some("moai-cli"));
+        assert_eq!(words.next(), Some("moai"));
         let args: Vec<&str> = words.collect();
         let run = |tool_command: &str| {
             let mut child = Command::new(crate::common::MOAI_BIN)
@@ -517,6 +517,9 @@ fn cli(args: &[&str], cwd: &Path, home: &Path, stdin: &[u8]) -> (i32, Value) {
         .args(args)
         .current_dir(cwd)
         .env("HOME", home)
+        // A PATH with no `moai`: the gate (#3004 P4-2) reads the PATH, and the machine's own
+        // `moai` must not decide this test.
+        .env("PATH", "/usr/bin:/bin")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -671,7 +674,7 @@ fn omp_plan_apply_writes_the_module_and_replan_is_noop() {
         json!([".omp/extensions/moai-hooks.ts"])
     );
     let module = fs::read_to_string(p.path().join(".omp/extensions/moai-hooks.ts")).unwrap();
-    assert_eq!(module, hooks::OMP_MODULE);
+    assert_eq!(module, hooks::omp_module("moai"));
     let receipt = read_json(&p.path().join(".moai-cli/manifests/omp-hooks.json"));
     assert_eq!(receipt["hooks"].as_array().unwrap().len(), 3);
     assert_eq!(receipt["sha256"], applied["hooks_sha256_after"]);
@@ -697,10 +700,9 @@ fn omp_plan_apply_writes_the_module_and_replan_is_noop() {
 /// system prompt instead of replacing it, and never blocks on its own failure.
 #[test]
 fn omp_module_wiring_is_pinned() {
-    let m = hooks::OMP_MODULE;
-    assert!(
-        m.contains(r#"Bun.spawn(["moai-cli", "hook-dispatch", "--host", "omp", "--event", event]"#)
-    );
+    let module = hooks::omp_module("moai");
+    let m = module.as_str();
+    assert!(m.contains(r#"Bun.spawn(["moai", "hook-dispatch", "--host", "omp", "--event", event]"#));
     // Both the preflight and the observation handler stop at a non-bash tool (mutation H5).
     for handler in ["tool_call", "tool_result"] {
         let start = m.find(&format!(r#"pi.on("{handler}""#)).unwrap();
@@ -760,7 +762,7 @@ fn claude_runs_the_preflight_guard_and_codex_does_not() {
     let command = pre[1]["hooks"][0]["command"].as_str().unwrap();
     assert_eq!(
         command,
-        "moai-cli hook-dispatch --host claude --event tool-preflight"
+        "moai hook-dispatch --host claude --event tool-preflight"
     );
     let codex = hooks::hooks_object("codex").unwrap();
     assert_eq!(codex["PreToolUse"].as_array().unwrap().len(), 1);
@@ -769,10 +771,10 @@ fn claude_runs_the_preflight_guard_and_codex_does_not() {
         .any(|v| v.to_string().contains("tool-preflight")));
     assert_eq!(
         codex["SessionStart"][0]["hooks"][0]["command"],
-        json!("moai-cli hook-dispatch --host codex --event session-check")
+        json!("moai hook-dispatch --host codex --event session-check")
     );
 
-    // Run it the way Claude Code would: the command's words, our binary for `moai-cli`.
+    // Run it the way Claude Code would: the command's words, our binary for `moai`.
     let dir = tempfile::TempDir::new().unwrap();
     let root = fs::canonicalize(dir.path()).unwrap();
     fs::create_dir_all(root.join("home")).unwrap();

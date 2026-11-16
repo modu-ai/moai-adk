@@ -137,12 +137,41 @@ fn missing_hook_reports_lane_blocked_wake() {
     );
     fs::create_dir(dir.path().join(".codex")).unwrap();
     let hooks = json!({"hooks": {"Stop": [{"hooks": [{"type": "command",
-        "command": "moai-cli lane-stop-hook --lane agent-1 --repo o/r", "timeout": 120}]}]}});
+        "command": "moai lane-stop-hook --lane agent-1 --repo o/r", "timeout": 120}]}]}});
     fs::write(dir.path().join(".codex/hooks.json"), hooks.to_string()).unwrap();
     let (_, v) = run(&args, dir.path());
     assert_eq!(v["result"]["stop_hook"]["state"], json!("installed"));
     assert_eq!(v["result"]["stop_hook"]["trust"], json!("unknown"));
     assert_eq!(v["result"]["blocked_line"], Value::Null);
+    // #3004 P4-2: the file the releases before it wrote (`moai-cli`) still runs: its own state
+    // and no blocked line; another lane's hook, in either spelling, is `other_lane`.
+    let old = hooks.to_string().replace("\"moai lane", "\"moai-cli lane");
+    assert!(
+        old.contains("moai-cli lane-stop-hook --lane agent-1"),
+        "{old}"
+    );
+    fs::write(dir.path().join(".codex/hooks.json"), &old).unwrap();
+    let (_, v) = run(&args, dir.path());
+    assert_eq!(
+        v["result"]["stop_hook"]["state"],
+        json!("installed_legacy"),
+        "{v}"
+    );
+    assert_eq!(v["result"]["blocked_line"], Value::Null, "{v}");
+    for other in [
+        old.replace("agent-1", "agent-2"),
+        hooks.to_string().replace("agent-1", "agent-2"),
+    ] {
+        fs::write(dir.path().join(".codex/hooks.json"), other).unwrap();
+        let (_, v) = run(&args, dir.path());
+        assert_eq!(
+            v["result"]["stop_hook"]["state"],
+            json!("other_lane"),
+            "{v}"
+        );
+        assert!(v["result"]["blocked_line"].is_string(), "{v}");
+    }
+    fs::write(dir.path().join(".codex/hooks.json"), hooks.to_string()).unwrap();
     // Another project folder is read with --project.
     let other = tempfile::tempdir().unwrap();
     let mut with_project = args.to_vec();

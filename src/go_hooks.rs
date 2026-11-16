@@ -321,6 +321,20 @@ pub fn plan(project: &Path, home: Option<&Path>) -> Result<Value> {
     Ok(p)
 }
 
+/// Adds the gate's verdict to a [`plan`] that replaces (report only; it is not in `plan_digest`):
+/// `gate: {allowed, reason}`, the same object `hooks-plan` prints, for the `moai` first on
+/// `path_env`. A plan that writes nothing is returned as it is and the `moai` is not run.
+pub fn with_gate(mut plan: Value, home: Option<&Path>, path_env: &str) -> Value {
+    if plan["action"] == json!("replace") {
+        let root = Path::new(plan["project"].as_str().unwrap_or(".")).to_path_buf();
+        plan["gate"] = match crate::hook_legacy::fresh_install(&root, home, path_env) {
+            Ok(()) => json!({"allowed": true, "reason": null}),
+            Err(reason) => json!({"allowed": false, "reason": reason}),
+        };
+    }
+    plan
+}
+
 /// The record of one replacement, under `<state>/receipts/go-hooks-<id>/`.
 #[derive(serde::Serialize, serde::Deserialize)]
 struct Receipt {
@@ -395,11 +409,33 @@ fn restore(path: &Path, now: Option<&[u8]>, bytes: Option<&[u8]>) -> Result<()> 
 
 /// Replaces the Go-generation hooks of `project` after the user confirmed the plan whose digest
 /// is `plan_digest` (see the module notes for the order of writes).
+///
+/// The installed hooks call `moai`, so a Go `moai` first on this process's PATH refuses the
+/// replacement before anything is written (#3004 P4-2); see [`apply_in`].
 pub fn apply(
     project: &Path,
     home: Option<&Path>,
     plan_digest: &str,
     permission: &str,
+) -> Result<Value> {
+    apply_in(
+        project,
+        home,
+        plan_digest,
+        permission,
+        &std::env::var("PATH").unwrap_or_default(),
+    )
+}
+
+/// [`apply`] with the PATH the gate probes the `moai` on given. The install of the MoAI set is a
+/// fresh create for the gate: only a `moai` of the wrong generation refuses it (`hook_legacy::check`);
+/// no `moai` on PATH, or one inside the project, is reported by the install and still allowed.
+pub fn apply_in(
+    project: &Path,
+    home: Option<&Path>,
+    plan_digest: &str,
+    permission: &str,
+    path_env: &str,
 ) -> Result<Value> {
     if !crate::contract::permission_reference_ok(permission) {
         return Err("a permission reference is required; nothing was written".into());
@@ -414,6 +450,10 @@ pub fn apply(
         _ => return Err(format!("the plan is blocked: {}", p["blocks"])),
     }
     let root = crate::hooks::project_root(project, home)?;
+    // Before the receipt folder, the script move and the settings rewrite: nothing is written.
+    crate::hook_legacy::fresh_install(&root, home, path_env).map_err(|e| {
+        format!("{e}; nothing was written (the Go hooks and scripts are as they were)")
+    })?;
     let settings_path = root.join(SETTINGS);
     let receipt_path = crate::state_root::path(&root, CLAUDE_RECEIPT);
     let settings_before = crate::claude::read_existing(&settings_path)?;

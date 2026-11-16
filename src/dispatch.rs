@@ -1,4 +1,4 @@
-//! Dispatch and decision observations over the S1 durable message protocol (#2390 S2).
+//! Dispatch, decision and start observations over the S1 durable message protocol (#2390 S2).
 //! This module never grants a claim, publishes a verdict, or changes an audit gate.
 //! Session IDs remain declarations. A fresh GET snapshot is not a cross-host CAS.
 use crate::{
@@ -14,6 +14,9 @@ use std::{
 };
 
 type Result<T> = std::result::Result<T, OpError>;
+/// Seconds of server-observed silence after which a record without an ACK is "unacknowledged".
+/// `dispatch-check` and `lane-status` both read it, so the two never disagree on the edge.
+pub const ACK_ALERT_SECS: i64 = 300;
 #[derive(Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RecordRequest {
@@ -24,6 +27,12 @@ pub struct RecordRequest {
 pub struct AckRequest {
     pub dispatch: Message,
     pub decision: Message,
+}
+#[derive(Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StartRequest {
+    pub dispatch: Message,
+    pub start: Message,
 }
 #[derive(Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -60,6 +69,13 @@ struct Decision {
     dispatch_payload_digest: String,
     disposition: String,
     reason: String,
+}
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct Start {
+    dispatch_report_id: String,
+    dispatch_payload_digest: String,
+    note: String,
 }
 fn error(kind: Kind, text: &str) -> OpError {
     OpError::new(kind, text)
@@ -134,15 +150,44 @@ fn decision(d: &mut Message, m: &Message, digest: &str) -> Result<Decision> {
     }
     Ok(p)
 }
+/// A start packet answers the dispatch from the same side as its decision.
+fn start(s: &mut Message, m: &Message, digest: &str) -> Result<Start> {
+    message::validate(s)?;
+    let p: Start = serde_json::from_value(s.payload.clone())
+        .map_err(|_| error(Kind::InvalidInput, "invalid dispatch start payload"))?;
+    if s.event != "dispatch-start"
+        || s.report_id == m.report_id
+        || s.project_id != m.project_id
+        || s.task != m.task
+        || s.sender != m.receiver
+        || s.receiver != m.sender
+        || s.owner_epoch != m.owner_epoch
+        || s.leader_epoch != m.leader_epoch
+        || s.candidate_digest != m.candidate_digest
+        || s.approval_refs != m.approval_refs
+        || s.hold_refs != m.hold_refs
+        || p.dispatch_report_id != m.report_id
+        || p.dispatch_payload_digest != digest
+        || !literal(&p.note)
+    {
+        return Err(conflict());
+    }
+    Ok(p)
+}
 struct Assignment {
     publication: Publication,
     payload: Dispatch,
-    received: bool,
+    /// The ACK with the lowest comment id; its server `created_at` is the receive time.
+    receipt: Option<Publication>,
     decision: Option<Publication>,
+    /// The start packet with the lowest comment id; its server `created_at` is the start time.
+    start: Option<Publication>,
 }
 struct Snapshot {
     latest_timestamp: Option<i64>,
     assignments: BTreeMap<u64, Assignment>,
+    /// Comments the author filter left out of the read (Issue #3067 S3).
+    ignored: message::IgnoredPublications,
 }
 fn previous(a: &Assignment) -> Previous {
     Previous {
@@ -160,7 +205,10 @@ fn follows(p: &Dispatch, m: &Message, a: &Assignment) -> bool {
         && m.owner_epoch >= a.publication.message.owner_epoch
 }
 fn snapshot<T: Transport, C: Clock>(anchor: &Message, t: &T, c: &C) -> Result<Snapshot> {
-    let publications = message::dispatch_publications(anchor, t, c)?;
+    let message::Publications {
+        items: publications,
+        ignored,
+    } = message::dispatch_publications(anchor, t, c)?;
     let mut latest_timestamp: Option<i64> = None;
     let mut records = BTreeSet::new();
     let mut acknowledged = BTreeSet::new();
@@ -168,6 +216,7 @@ fn snapshot<T: Transport, C: Clock>(anchor: &Message, t: &T, c: &C) -> Result<Sn
     let mut assignments: BTreeMap<u64, Assignment> = BTreeMap::new();
     let mut receipts = Vec::new();
     let mut decisions = Vec::new();
+    let mut starts = Vec::new();
     let mut ids = BTreeMap::new();
     for mut p in publications {
         // One server id must not describe two packets, even on overlapping pages.
@@ -200,7 +249,10 @@ fn snapshot<T: Transport, C: Clock>(anchor: &Message, t: &T, c: &C) -> Result<Sn
         {
             continue;
         }
-        if p.message.event != "dispatch" && p.message.event != "dispatch-decision" {
+        if !matches!(
+            p.message.event.as_str(),
+            "dispatch" | "dispatch-decision" | "dispatch-start"
+        ) {
             continue;
         }
         let mut task = p.message.task.clone();
@@ -212,6 +264,12 @@ fn snapshot<T: Transport, C: Clock>(anchor: &Message, t: &T, c: &C) -> Result<Sn
         if p.message.event == "dispatch-decision" {
             if !p.ack {
                 decisions.push(p);
+            }
+            continue;
+        }
+        if p.message.event == "dispatch-start" {
+            if !p.ack {
+                starts.push(p);
             }
             continue;
         }
@@ -236,8 +294,9 @@ fn snapshot<T: Transport, C: Clock>(anchor: &Message, t: &T, c: &C) -> Result<Sn
                 Assignment {
                     publication: p,
                     payload,
-                    received: false,
+                    receipt: None,
                     decision: None,
+                    start: None,
                 },
             );
         }
@@ -268,7 +327,12 @@ fn snapshot<T: Transport, C: Clock>(anchor: &Message, t: &T, c: &C) -> Result<Sn
         {
             return Err(conflict());
         }
-        a.received = true;
+        if a.receipt
+            .as_ref()
+            .is_none_or(|old| receipt.comment_id < old.comment_id)
+        {
+            a.receipt = Some(receipt);
+        }
     }
     for mut d in decisions {
         let rev = d
@@ -283,7 +347,7 @@ fn snapshot<T: Transport, C: Clock>(anchor: &Message, t: &T, c: &C) -> Result<Sn
             &a.publication.message,
             &a.publication.payload_digest,
         )?;
-        if !a.received || d.created_at < a.publication.created_at {
+        if a.receipt.is_none() || d.created_at < a.publication.created_at {
             return Err(conflict());
         }
         if let Some(old) = &a.decision {
@@ -298,9 +362,50 @@ fn snapshot<T: Transport, C: Clock>(anchor: &Message, t: &T, c: &C) -> Result<Sn
             a.decision = Some(d);
         }
     }
+    for mut s in starts {
+        let rev = s
+            .message
+            .task
+            .revision
+            .parse::<u64>()
+            .map_err(|_| conflict())?;
+        // A start must not be newer than the record that superseded its revision.
+        let superseded_at = rev
+            .checked_add(1)
+            .and_then(|next| assignments.get(&next))
+            .map(|n| n.publication.created_at);
+        let a = assignments.get_mut(&rev).ok_or_else(conflict)?;
+        start(
+            &mut s.message,
+            &a.publication.message,
+            &a.publication.payload_digest,
+        )?;
+        // Only after the ACK and an accepted decision, never before that decision.
+        let accepted_at = match &a.decision {
+            Some(d) if a.receipt.is_some() && d.message.payload["disposition"] == "accepted" => {
+                d.created_at
+            }
+            _ => return Err(conflict()),
+        };
+        if s.created_at < accepted_at || superseded_at.is_some_and(|at| s.created_at > at) {
+            return Err(conflict());
+        }
+        if let Some(old) = &a.start {
+            if old.message != s.message {
+                return Err(conflict());
+            }
+        }
+        if a.start
+            .as_ref()
+            .is_none_or(|old| s.comment_id < old.comment_id)
+        {
+            a.start = Some(s);
+        }
+    }
     Ok(Snapshot {
         assignments,
         latest_timestamp,
+        ignored,
     })
 }
 fn view(s: &Snapshot, anchor: &Message, now: i64) -> Result<Value> {
@@ -322,8 +427,8 @@ fn view(s: &Snapshot, anchor: &Message, now: i64) -> Result<Value> {
         .filter(|n| *n >= 0 && s.latest_timestamp.is_some_and(|at| at <= now));
     let alert = match elapsed {
         None => "unknown",
-        Some(_) if current.received => "received",
-        Some(n) if n >= 300 => "unacknowledged",
+        Some(_) if current.receipt.is_some() => "received",
+        Some(n) if n >= ACK_ALERT_SECS => "unacknowledged",
         Some(_) => "waiting",
     };
     let disposition = current
@@ -331,15 +436,23 @@ fn view(s: &Snapshot, anchor: &Message, now: i64) -> Result<Value> {
         .as_ref()
         .map(|p| p.message.payload["disposition"].clone())
         .unwrap_or(Value::Null);
-    Ok(
-        json!({"dispatch_id":current.payload.dispatch_id,"requested_revision":requested,"current_revision":rev,
+    let mut out = json!({"dispatch_id":current.payload.dispatch_id,"requested_revision":requested,"current_revision":rev,
         "current_report_id":current.publication.message.report_id,"current_payload_digest":current.publication.payload_digest,
-        "record_comment_id":current.publication.comment_id,"queued":true,"received_ack":current.received,
+        "record_comment_id":current.publication.comment_id,"queued":true,"received_ack":current.receipt.is_some(),
         "disposition":disposition,"decision_comment_id":current.decision.as_ref().map(|p|p.comment_id),
+        "sent_at":current.publication.created_at,"received_at":current.receipt.as_ref().map(|p|p.created_at),
+        "ack_comment_id":current.receipt.as_ref().map(|p|p.comment_id),"decided_at":current.decision.as_ref().map(|p|p.created_at),
+        "started":current.start.is_some(),"started_at":current.start.as_ref().map(|p|p.created_at),
+        "start_comment_id":current.start.as_ref().map(|p|p.comment_id),
         "superseded":requested!=*rev,"observation_current":requested==*rev && elapsed.is_some(),"ack_alert":alert,"elapsed_secs":elapsed,
         "observed_at":now,"claim_authorized":false,"ownership_transferred":false,"audit_gate_integrated":false,"cross_host_atomic":false,
-        "business_completion":false,"c3":"observation_only_gate_integration_unfulfilled"}),
-    )
+        "business_completion":false,"c3":"observation_only_gate_integration_unfulfilled"});
+    // Like every command that reads comments: present only when the author filter left
+    // something out (comments from anyone but a repository member), never when nothing went.
+    if !s.ignored.is_empty() {
+        out["ignored_control_lines"] = s.ignored.to_json();
+    }
+    Ok(out)
 }
 pub fn check_cli<T: Transport, C: Clock>(mut req: CheckRequest, t: &T, c: &C) -> Result<Value> {
     dispatch(&mut req.dispatch)?;
@@ -395,6 +508,59 @@ pub fn record_cli<T: Transport, C: Clock>(
     check_cli(
         CheckRequest {
             dispatch: req.message,
+        },
+        t,
+        c,
+    )
+}
+pub fn start_cli<T: Transport, C: Clock>(
+    root: &Path,
+    mut req: StartRequest,
+    permission: &str,
+    t: &T,
+    c: &C,
+) -> Result<Value> {
+    message::permission_gate(permission)?;
+    let (_, digest) = dispatch(&mut req.dispatch)?;
+    start(&mut req.start, &req.dispatch, &digest)?;
+    let s = snapshot(&req.dispatch, t, c)?;
+    let v = view(&s, &req.dispatch, c.now())?;
+    if v["observation_current"] != true {
+        return Err(error(
+            Kind::Blocked,
+            "dispatch superseded or time unknown; start blocked",
+        ));
+    }
+    // The same rules the read side enforces: an ACK and an accepted decision come first. The
+    // snapshot refuses a decision without an ACK, so an observed decision implies one.
+    let a = s.assignments.last_key_value().unwrap().1;
+    let accepted = a
+        .decision
+        .as_ref()
+        .is_some_and(|d| d.message.payload["disposition"] == "accepted");
+    if !accepted {
+        return Err(error(
+            Kind::Blocked,
+            "dispatch not acknowledged and accepted; start blocked",
+        ));
+    }
+    if a.start.as_ref().is_some_and(|p| p.message != req.start) {
+        return Err(conflict());
+    }
+    // An observed start is recorded again without a new POST (S1 reconciles it); the first
+    // server time stays the start time.
+    message::record_cli(
+        root,
+        message::RecordRequest {
+            message: req.start.clone(),
+        },
+        permission,
+        t,
+        c,
+    )?;
+    check_cli(
+        CheckRequest {
+            dispatch: req.dispatch,
         },
         t,
         c,

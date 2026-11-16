@@ -79,7 +79,7 @@ fn install(f: &Fixture, extra: &[&str]) -> (Value, Value) {
 }
 
 const LANE: [&str; 4] = ["--lane-loop", "agent-1", "--repo", "o/r"];
-const COMMAND: &str = "moai-cli lane-stop-hook --lane agent-1 --repo o/r";
+const COMMAND: &str = "moai lane-stop-hook --lane agent-1 --repo o/r";
 
 fn fixture(name: &str) -> String {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -202,7 +202,7 @@ fn stop(f: &Fixture, snapshot: &str, stdin: &[u8]) -> (i32, String) {
         .unwrap()
         .to_string();
     let mut words = cmd.split_whitespace();
-    assert_eq!(words.next(), Some("moai-cli"));
+    assert_eq!(words.next(), Some("moai"));
     let mut args: Vec<String> = words.map(str::to_string).collect();
     args.extend(["--snapshot".to_string(), fixture(snapshot)]);
     let args: Vec<&str> = args.iter().map(String::as_str).collect();
