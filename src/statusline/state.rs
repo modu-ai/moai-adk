@@ -315,14 +315,28 @@ const STATUSLINE_LOCAL_YAML: (&str, &str) =
 /// Go state stays as it is. Existence decides, not parsing: an unreadable `.moai-cli/`
 /// file means defaults (as Go treats an unparseable file), never a silent return to the
 /// Go values.
+///
+/// #2936 S1g: once `go-state-apply` moved the Go `.moai/` away, the Rust and the Go path are the
+/// same place in the new `.moai/` and both are empty, so a project that set a theme or hid a
+/// segment in Go got the defaults. With neither file present, the same Go path inside the newest
+/// Go backup folder (`.moai-backup`, `.moai-backup-<UTC>`) is read — read only, never moved or
+/// copied; a file in the new `.moai/` still wins whole.
 fn config_path(root: &Path, (rc, go): (&str, &str)) -> PathBuf {
     // #2725 S2b: `rc` is relative to the project's state folder (`.moai-cli`, or `.moai`).
     let rc = crate::state_root::path(root, rc);
     if rc.exists() {
-        rc
-    } else {
-        root.join(go)
+        return rc;
     }
+    let go_file = root.join(go);
+    if go_file.exists() {
+        return go_file;
+    }
+    // The backup is the Go `.moai/` itself, so the path inside it drops the leading `.moai/`.
+    let inside = go.strip_prefix(".moai/").unwrap_or(go);
+    crate::state_root::latest_go_backup(root)
+        .map(|backup| backup.join(inside))
+        .filter(|path| path.exists())
+        .unwrap_or(go_file)
 }
 
 fn read_display_config(path: &Path) -> DisplayConfig {
@@ -1035,6 +1049,170 @@ mod tests {
             .collect();
         names.sort();
         assert_eq!(names, ["config", "statusline.local.yaml"]);
+    }
+
+    /// A project the Rust state folder (`.moai/`, marker last) replaced, the Go `.moai/` kept whole
+    /// under the given backup folders: each `(folder, relative path, text)` is written.
+    fn moved_project(files: &[(&str, &str, &str)]) -> tempfile::TempDir {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(tmp.path().join(".moai")).unwrap();
+        std::fs::write(
+            tmp.path().join(".moai/moai.json"),
+            crate::state_root::marker_bytes("test", &[]),
+        )
+        .unwrap();
+        for (folder, rel, text) in files {
+            let path = tmp.path().join(folder).join(rel);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, text).unwrap();
+        }
+        tmp
+    }
+
+    fn display_in(tmp: &tempfile::TempDir) -> DisplayConfig {
+        display_config(None, &Context::for_test(&[], Some(tmp.path())))
+    }
+
+    const GO_YAML: &str = "config/sections/statusline.yaml";
+
+    /// #2936 S1g: the Go values the move took away are read from the Go backup, newest first.
+    #[test]
+    fn a_moved_go_statusline_yaml_is_read_from_the_newest_go_backup() {
+        let one = moved_project(&[(
+            ".moai-backup",
+            GO_YAML,
+            "statusline:\n  theme: older\n  segments:\n    model: false\n",
+        )]);
+        let c = display_in(&one);
+        assert_eq!(c.theme, "older");
+        assert_eq!(c.segments.get("model"), Some(&false));
+
+        let two = moved_project(&[
+            (".moai-backup", GO_YAML, "statusline:\n  theme: older\n"),
+            (
+                ".moai-backup-20261116T050000Z",
+                GO_YAML,
+                "statusline:\n  theme: newer\n",
+            ),
+            (
+                ".moai-backup-20261115T050000Z",
+                GO_YAML,
+                "statusline:\n  theme: middle\n",
+            ),
+        ]);
+        assert_eq!(display_in(&two).theme, "newer");
+        // The newest backup decides even where it lacks the file: nothing is merged across backups.
+        let lacking = moved_project(&[
+            (".moai-backup", GO_YAML, "statusline:\n  theme: older\n"),
+            (".moai-backup-20261116T050000Z", "manifest.json", "{}"),
+        ]);
+        assert_eq!(display_in(&lacking).theme, "");
+    }
+
+    #[test]
+    fn a_file_in_the_new_state_folder_still_wins_whole() {
+        let tmp = moved_project(&[(
+            ".moai-backup",
+            GO_YAML,
+            "statusline:\n  theme: go\n  segments:\n    git: false\n",
+        )]);
+        let rc = tmp.path().join(".moai/config/sections");
+        std::fs::create_dir_all(&rc).unwrap();
+        std::fs::write(rc.join("statusline.yaml"), "statusline:\n  theme: rust\n").unwrap();
+        let c = display_in(&tmp);
+        assert_eq!(c.theme, "rust");
+        assert!(c.segments.is_empty());
+        // An unreadable new file means defaults, not the backup's values.
+        std::fs::write(rc.join("statusline.yaml"), "statusline:\n\ttheme: x\n").unwrap();
+        let c = display_in(&tmp);
+        assert_eq!(c.theme, "");
+        assert!(c.segments.is_empty());
+    }
+
+    /// A Go `.moai/` that is still in place (nothing moved, or the folder stays) is the Go file the
+    /// reader always used; an older backup beside it changes nothing.
+    #[test]
+    fn an_intact_go_folder_is_read_before_any_backup() {
+        let tmp = tempfile::tempdir().unwrap();
+        for (folder, theme) in [(".moai", "go"), (".moai-backup", "backup")] {
+            let dir = tmp.path().join(folder).join("config/sections");
+            std::fs::create_dir_all(&dir).unwrap();
+            std::fs::write(
+                dir.join("statusline.yaml"),
+                format!("statusline:\n  theme: {theme}\n"),
+            )
+            .unwrap();
+        }
+        assert_eq!(display_in(&tmp).theme, "go");
+    }
+
+    #[test]
+    fn only_a_real_go_backup_folder_is_read() {
+        let tmp = moved_project(&[
+            (".moai-backups", GO_YAML, "statusline:\n  theme: plural\n"),
+            (".moai-backup-old", GO_YAML, "statusline:\n  theme: named\n"),
+            (
+                ".moai-backup-20261116T050000",
+                GO_YAML,
+                "statusline:\n  theme: short\n",
+            ),
+        ]);
+        assert_eq!(display_in(&tmp).theme, "");
+        // A file called `.moai-backup` is not a backup folder.
+        let file = moved_project(&[]);
+        std::fs::write(file.path().join(".moai-backup"), "not a folder").unwrap();
+        assert_eq!(display_in(&file).theme, "");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_linked_go_backup_folder_is_not_read() {
+        let elsewhere = moved_project(&[("real", GO_YAML, "statusline:\n  theme: linked\n")]);
+        let tmp = moved_project(&[]);
+        std::os::unix::fs::symlink(
+            elsewhere.path().join("real"),
+            tmp.path().join(".moai-backup"),
+        )
+        .unwrap();
+        assert_eq!(display_in(&tmp).theme, "");
+    }
+
+    #[test]
+    fn the_local_file_and_the_forge_follow_the_same_backup_and_nothing_is_written() {
+        let tmp = moved_project(&[
+            (
+                ".moai-backup",
+                GO_YAML,
+                "statusline:\n  theme: kept\n  forge: github\n",
+            ),
+            (
+                ".moai-backup",
+                "statusline.local.yaml",
+                "statusline:\n  forge: none\n",
+            ),
+        ]);
+        // The local file is read first, then the shared one: `none` suppresses the counts.
+        assert!(github_counts(tmp.path()).suppressed);
+        assert_eq!(display_in(&tmp).theme, "kept");
+        let listing = |root: &Path| {
+            let mut all = Vec::new();
+            let mut stack = vec![root.to_path_buf()];
+            while let Some(dir) = stack.pop() {
+                for e in std::fs::read_dir(&dir).unwrap() {
+                    let p = e.unwrap().path();
+                    if p.is_dir() {
+                        stack.push(p.clone());
+                    }
+                    all.push((p.clone(), std::fs::read(&p).ok()));
+                }
+            }
+            all.sort();
+            all
+        };
+        let before = listing(tmp.path());
+        let _ = display_in(&tmp);
+        let _ = github_counts(tmp.path());
+        assert_eq!(listing(tmp.path()), before);
     }
 
     #[test]
