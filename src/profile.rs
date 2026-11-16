@@ -50,6 +50,7 @@ const PROFILE_KEYS: &[(&str, bool)] = &[
     ("language", true),
     ("detected", true),
     ("scopes", true),
+    ("versioning", true),
 ];
 
 fn managed_keys() -> impl Iterator<Item = &'static str> {
@@ -138,6 +139,12 @@ pub struct Profile {
     /// repository, as before; a profile written before this key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub scopes: Option<Vec<crate::scopes::ScopeEntry>>,
+    /// The versioning scheme the project's releases follow (card C-69): `semver`, `headver`,
+    /// `calver` or `custom`, with the CalVer format or the HeadVer head when chosen. Absent
+    /// means the interview recorded no choice; a profile written before this key reads
+    /// unchanged and the managed section renders as before.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub versioning: Option<crate::versioning::VersioningSettings>,
 }
 
 /// What a first launch writes into `tools` and `development_methods` until the project
@@ -269,6 +276,13 @@ fn validate(p: &Profile) -> Result<()> {
     }
     if let Some(scopes) = &p.scopes {
         crate::scopes::validate(scopes)?;
+    }
+    if let Some(versioning) = &p.versioning {
+        crate::versioning::validate(versioning)?;
+        // The format is text like every other profile string: no path, no secret shape.
+        if versioning.format.as_ref().is_some_and(|f| !portable(f)) {
+            return Err("invalid or nonportable profile; no values were logged".into());
+        }
     }
     let decisions_ok = p.decisions.len() <= DECISION_ITEM_LIMIT
         && p.decisions.iter().all(|d| {
@@ -848,6 +862,7 @@ mod tests {
             language: None,
             detected: None,
             scopes: None,
+            versioning: None,
         }
     }
 
@@ -872,6 +887,11 @@ mod tests {
                 name: "web".into(),
                 paths: vec!["apps/web".into()],
             }]),
+            versioning: Some(crate::versioning::VersioningSettings {
+                scheme: "headver".into(),
+                format: None,
+                head: Some(3),
+            }),
             ..v2()
         };
         let fields: Vec<String> = serde_json::to_value(&full)
@@ -900,7 +920,8 @@ mod tests {
                 "archive_grace_days",
                 "language",
                 "detected",
-                "scopes"
+                "scopes",
+                "versioning"
             ]
         );
     }
@@ -967,6 +988,85 @@ mod tests {
         fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
         let (profile, _) = read_profile(tmp.path()).unwrap();
         assert_eq!(profile.scopes.unwrap()[0].paths, ["apps/web"]);
+    }
+
+    /// C-69: `versioning` is additive and validated by `read_profile` on a hand-edited file; an
+    /// absent key plans exactly as before the key existed and an older profile still loads.
+    #[test]
+    fn versioning_key_is_additive_and_validated() {
+        let base = serde_json::json!({
+            "schema_version": 2, "project_id": "demo", "purpose": "p",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]
+        });
+        let listed = |d: &Delta| {
+            [&d.added, &d.changed, &d.removed, &d.unchanged, &d.conflict]
+                .iter()
+                .any(|l| l.contains(&"versioning".to_string()))
+        };
+        assert!(!listed(&compute_delta(Some(&base), Some(&base), &base)));
+        let mut desired = base.clone();
+        desired["versioning"] = serde_json::json!({"scheme": "calver", "format": "YYYY.0M.MICRO"});
+        assert_eq!(
+            compute_delta(Some(&base), Some(&base), &desired).added,
+            vec!["versioning"]
+        );
+
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp
+            .path()
+            .join(crate::PROJECT_STATE_DIR)
+            .join("project.yaml");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        for (bad, why) in [
+            (json!({"scheme": "romantic"}), "unknown scheme"),
+            (json!({"scheme": "SemVer"}), "scheme names are lower-case"),
+            (
+                json!({"scheme": "semver", "head": 1}),
+                "head without HeadVer",
+            ),
+            (
+                json!({"scheme": "headver", "format": "YYYY.0M"}),
+                "format without CalVer or custom",
+            ),
+            (
+                json!({"scheme": "calver", "format": "YYYY"}),
+                "one-token format",
+            ),
+            (json!({"scheme": "semver", "x": 1}), "unknown field"),
+            (json!({"format": "YYYY.0M"}), "no scheme"),
+            (json!("semver"), "wrong shape"),
+            (json!({"scheme": "headver", "head": -1}), "negative head"),
+            (json!({"scheme": "headver", "head": "3"}), "head as text"),
+            (
+                json!({"scheme": "custom", "format": "see docs/VERSIONS.md"}),
+                "a path in the custom text",
+            ),
+        ] {
+            let mut file = serde_json::to_value(v2()).unwrap();
+            file["versioning"] = bad;
+            fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+            assert!(read_profile(tmp.path()).is_err(), "{why}");
+        }
+        for good in [
+            json!({"scheme": "semver"}),
+            json!({"scheme": "headver", "head": 3}),
+            json!({"scheme": "headver", "head": 0}),
+            json!({"scheme": "calver", "format": "YYYY.0M.MICRO"}),
+            json!({"scheme": "custom", "format": "release train letter plus build number"}),
+        ] {
+            let mut file = serde_json::to_value(v2()).unwrap();
+            file["versioning"] = good.clone();
+            fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+            let (profile, _) = read_profile(tmp.path()).unwrap();
+            assert_eq!(serde_json::to_value(&profile).unwrap()["versioning"], good);
+        }
+        // A profile written before the key existed loads and does not gain it.
+        fs::write(&path, serde_json::to_vec(&v2()).unwrap()).unwrap();
+        let (profile, _) = read_profile(tmp.path()).unwrap();
+        assert!(serde_json::to_value(&profile)
+            .unwrap()
+            .get("versioning")
+            .is_none());
     }
 
     /// AC-1 (#2293): `language` is additive, and an unknown item or an unsupported code is
