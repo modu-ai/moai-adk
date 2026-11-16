@@ -852,6 +852,52 @@ fn event_keys_survive_the_copy_so_a_replay_adds_nothing() {
 }
 
 #[test]
+fn a_repeated_event_key_in_the_source_is_counted_as_a_duplicate_and_not_as_a_rejection() {
+    let w = World::new();
+    let source = w.copy_as("repeated_key.db");
+    // Remove the UNIQUE guard from the copy's schema (its index entry too), then repeat a key:
+    // a damaged file can hold what a sound one cannot.
+    {
+        let conn = Connection::open(&source).unwrap();
+        conn.execute_batch("PRAGMA writable_schema = ON;").unwrap();
+        conn.execute(
+            "UPDATE sqlite_master SET sql = replace(sql, 'event_key      TEXT    NOT NULL UNIQUE', \
+             'event_key      TEXT    NOT NULL') WHERE type = 'table' AND name = 'event'",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "DELETE FROM sqlite_master WHERE type = 'index' AND tbl_name = 'event'",
+            [],
+        )
+        .unwrap();
+    }
+    {
+        let conn = Connection::open(&source).unwrap();
+        let before: i64 = conn
+            .query_row(
+                "SELECT count(*) FROM sqlite_master WHERE tbl_name = 'event' AND sql LIKE '%UNIQUE%'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(before, 0, "the guard is gone from the copy");
+        conn.execute(
+            "INSERT INTO event (event_key, at, actor, kind, payload) \
+             SELECT event_key, at, actor, kind, payload FROM event WHERE event_key = 'import:github:o/r:12:x'",
+            [],
+        )
+        .unwrap();
+    }
+    let plan = plan_of(&w, &source, &Observations::default());
+    let event = plan.tables.iter().find(|t| t.table == "event").unwrap();
+    assert_eq!(event.skipped_duplicate, 1, "{event:?}");
+    assert_eq!(event.rejected, 0, "{event:?}");
+    assert_eq!(plan.rejected_total, 0);
+    assert_eq!(event.state, "ok");
+}
+
+#[test]
 fn apply_refuses_a_stale_digest_a_healthy_ledger_and_a_used_suffix() {
     let w = World::new();
     let bak = break_ledger(&w);
