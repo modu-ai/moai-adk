@@ -256,10 +256,11 @@ fn every_role_renders_for_every_host_deterministically() {
     }
 }
 
-/// #3096 S7: a rendered agent file names no model and no effort, so a child starts on the
-/// parent session's model and effort. Measured 2026-11-16: Claude Code 2.1.325 (parent and two
-/// children `claude-sonnet-5-5` at `high`) and Codex 0.169.0 (parent effort `low` and `high`,
-/// child the same each time). This pins the files; it does not prove the host.
+/// #3096 S7: a rendered agent file names no model and no effort. In the one run per product
+/// measured on 2026-11-16 (`docs/agent-model-effort-inheritance.md`) a child of such a file
+/// showed its parent's model and effort. This test pins the files; it does not prove the host.
+/// The Codex file is parsed as TOML, so a table or a `key="v"` line without spaces is seen too
+/// (#3110 audit 6905677737 B2); the Claude Code and OMP frontmatter is read line by line.
 #[test]
 fn rendered_agent_files_name_no_model_and_no_effort() {
     const KEYS_CLAUDE_OMP: [&str; 5] = [
@@ -276,17 +277,22 @@ fn rendered_agent_files_name_no_model_and_no_effort() {
         for host in HOSTS {
             let text = render(d, host).unwrap().text;
             let (allowed, keys): (&[&str], Vec<String>) = if host == "codex" {
-                let keys = text
-                    .lines()
-                    .filter_map(|l| l.split_once(" = ").map(|(k, _)| k.to_string()))
-                    .collect();
+                let doc: toml_edit::DocumentMut = text
+                    .parse()
+                    .unwrap_or_else(|e| panic!("{} codex file is not TOML: {e}", d.name));
+                let keys = doc.iter().map(|(k, _)| k.to_string()).collect();
                 (&KEYS_CODEX, keys)
             } else {
                 let keys = text
                     .lines()
                     .skip(1)
                     .take_while(|l| *l != "---")
-                    .filter_map(|l| l.split_once(':').map(|(k, _)| k.to_string()))
+                    .map(|l| {
+                        l.split_once(':')
+                            .unwrap_or_else(|| panic!("{} {host}: frontmatter line {l:?}", d.name))
+                            .0
+                            .to_string()
+                    })
                     .collect();
                 (&KEYS_CLAUDE_OMP, keys)
             };
