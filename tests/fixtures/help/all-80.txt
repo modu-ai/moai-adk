@@ -231,7 +231,8 @@ Options:
                            next `agent-N` for -a; none without a role)
       --model <MODEL>      Main model (Claude hosts default `opus`; codex uses
                            its own default unless set)
-      --effort <EFFORT>    Claude effort (default `medium`)
+      --effort <EFFORT>    Effort (Claude default `medium`; codex only when set:
+                           low|medium|high|xhigh|max)
       --advisor <ADVISOR>  Advisor model on Claude hosts (fable|opus|sonnet or a
                            full claude-* id). None by default; the user setting
                            `launcher.advisor` can turn it on. May bill to usage

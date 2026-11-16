@@ -109,7 +109,7 @@ struct LaunchOpts {
     /// Main model (Claude hosts default `opus`; codex uses its own default unless set).
     #[arg(long)]
     model: Option<String>,
-    /// Claude effort (default `medium`).
+    /// Effort (Claude default `medium`; codex only when set: low|medium|high|xhigh|max).
     #[arg(long)]
     effort: Option<String>,
     /// Advisor model on Claude hosts (fable|opus|sonnet or a full claude-* id). None by default;
