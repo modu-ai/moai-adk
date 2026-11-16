@@ -532,6 +532,56 @@ fn only_exact_go_values_are_cleaned() {
     }
 }
 
+/// A launcher that resolves to a file inside the project is repository content and is never run
+/// (#2936 L2a, audit of the launcher gate): the plan is held and the file leaves no mark.
+#[test]
+fn a_launcher_that_lies_inside_the_project_is_never_run() {
+    let fx = shape_g();
+    let marker = fx.root.join("ran.marker");
+    let script = fx.root.join("bin/moai-cli");
+    fs::create_dir_all(script.parent().unwrap()).unwrap();
+    common::write_executable(
+        &script,
+        &format!(
+            "#!/bin/sh\ntouch '{}'\nif [ \"$1\" = statusline ] && [ \"$2\" = --help ]; then\n  echo '{RUST_HELP_LINE}'\nfi\n",
+            marker.display()
+        ),
+    );
+    let home_launcher = fx.home.join(LAUNCHER);
+    fs::remove_file(&home_launcher).unwrap();
+    std::os::unix::fs::symlink(&script, &home_launcher).unwrap();
+    let p = plan(&fx);
+    assert_eq!(p["action"], json!("held"), "{p}");
+    assert_eq!(p["launcher"]["state"], json!("unprobed"), "{p}");
+    assert!(!marker.exists(), "the project's script was run: {p}");
+}
+
+/// While the go-settings step has a command, a go-state step that has a command of its own waits
+/// (#2936 L2a): the settings write changes what the go-state plan reads, so its digest would be
+/// stale.
+#[test]
+fn a_go_state_move_waits_for_the_go_settings_apply() {
+    let mut fx = GoFx::new();
+    fx.deployed(".moai/status_line.sh", "#!/bin/sh\necho status\n");
+    fx.deployed(".claude/rules/moai/r.md", "rule\n");
+    fx.write(LOCAL, LOCAL_BODY);
+    put_launcher(&fx, &rust_launcher());
+    fx.manifest();
+    fx.write(SETTINGS, &go_settings().to_string());
+    let up = fx.update_plan();
+    let go_settings_step = step_in(&up, 0, "go-settings");
+    assert_eq!(go_settings_step["state"], json!("ready"), "{up}");
+    assert!(go_settings_step["apply"]["argv"].is_array(), "{up}");
+    let go_state = step_in(&up, 0, "go-state");
+    assert_eq!(go_state["state"], json!("blocked"), "{go_state}");
+    assert_eq!(
+        go_state["reason"],
+        json!("re-run after the go-settings apply"),
+        "{go_state}"
+    );
+    assert_eq!(go_state["apply"], Value::Null, "{go_state}");
+}
+
 /// D1 condition 3: the local file is never written, even when it holds Go references.
 #[test]
 fn the_local_settings_are_byte_identical_after_apply_and_revert() {
