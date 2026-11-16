@@ -1,3 +1,5 @@
 # Golden output is byte-exact, including final blank lines.
 golden/* -whitespace -text
 stdin/* -text
+# Card C-65: a project ledger (SQLite) the case b13-card-counts copies into its HOME.
+ledger/* binary
