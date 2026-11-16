@@ -4,7 +4,7 @@ operation `optimize.plan` · 코드 `src/ops/optimize_plan.rs`, `src/optimize.rs
 
 `optimize-plan PROJECT --integration-ref REF [--build-root DIR]… [--observations FILE] [--retention-days N] [--recent-minutes N] [--budget-ms N]` 는 저장소에 남은 것을 한 표로 보여 준다. 읽기만 하고, 지우지도 쓰지도 않으며, 네트워크를 쓰지 않는다.
 
-- 행 종류: `worktree`(연결 worktree — `worktree-gc-plan` 을 스쿼시 병합 판정을 켜고 다시 쓴다), `build_folder`(호출자가 `--build-root` 로 넘긴 절대 경로 폴더의 자식 폴더 — 기본 뿌리 없음, 링크·파일인 뿌리는 거절), `report`(`.moai-cli/reports`, 항상 `keep`).
+- 행 종류: `worktree`(연결 worktree — `worktree-gc-plan` 을 스쿼시 병합 판정을 켜고 다시 쓴다), `build_folder`(호출자가 `--build-root` 로 넘긴 절대 경로 폴더의 자식 폴더 — 기본 뿌리 없음, 링크·파일인 뿌리는 거절), `report`(`.moai-cli/reports`, 항상 `keep`), `hook_log`(#3009 S4d: 훅 줄 로그 `receipts/hooks.jsonl` — 프로젝트 쪽 파일 `side: project`, 그리고 프로필에 고정 `project_id` 가 있고 `$HOME` 의 상태 폴더가 진짜 폴더일 때 HOME 의 프로젝트 폴더 쪽 파일 `side: home`. 항상 `keep`이고, 크기 `bytes`, 가장 오래된 줄 `oldest_line_unix`(첫 8 KiB 안의 첫 줄에서 읽음), 가득 참 `full`(4 MiB, 그 뒤로는 새 줄을 버림), 설계의 보존선(7일 또는 64 MiB 초과, 7일·64 MiB 정확히는 아직 안 넘음)을 넘었는지 `design_retention`·이유 `past_design_retention` 을 보여 줄 뿐 회전·자르기·삭제는 하지 않는다. 링크나 폴더가 로그 자리에 있으면 따라가 읽지 않고 `hook_log_not_a_regular_file` 로 적는다).
 - 행마다: `bytes`(+`bytes_partial`), `modified_unix`, `age_secs`, `retention_until_unix`, `action`(`remove`/`trim`/`skip`/`keep`), `reasons`, `restore`(복구 방법), `apply`(어느 명령이 적용하는지).
 - 스쿼시 병합: HEAD 가 통합 ref 의 조상이 아니어도, 가지가 merge-base 이후 바꾼 경로(이름 바꾸기 끔)가 통합 tip 에서 HEAD 와 내용이 모두 같으면 `merged_by: squash`. 바꾼 경로가 없거나 git 이 실패하면 병합으로 보지 않는다(실패는 `merged_unknown`).
 - `remove` 후보 조건: gc 판정이 `remove` 이고, 관측 파일의 `audits` 에 그 HEAD 40자와 같은 `PASS` 가 있을 것. 없으면 `audit_unconfirmed`(관측 자체가 없으면 `audits_unobserved`)로 `trim`(cargo 산출물이 있을 때) 또는 `skip`.

@@ -893,7 +893,7 @@ fn log_lines(path: &Path) -> Vec<Value> {
 }
 
 /// The user's HOME folder from `$HOME`; `None` when it is unset or empty.
-pub(crate) fn env_home() -> Option<std::path::PathBuf> {
+pub fn env_home() -> Option<std::path::PathBuf> {
     std::env::var_os("HOME")
         .map(std::path::PathBuf::from)
         .filter(|h| !h.as_os_str().is_empty())
