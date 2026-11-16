@@ -637,7 +637,7 @@ fn the_state_root_generation_is_reported_and_nothing_is_written() {
     // The PROJECT workflow moves nothing on the verdicts that leave the choice to the user.
     let workflow = include_str!("../skills/moai/workflows/project.md");
     assert!(workflow.contains(
-        "When `generation` is `mixed`, `unknown`, `empty` or `refuse`, move nothing in step 2: show its `reason` and let the user decide. `interrupted` is handled in step 2."
+        "When `generation` is `mixed`, `unknown`, `empty` or `refuse`, move nothing in step 2: show its `reason` and ask as a selection whether to go on with the interview (recommended) or stop here. `interrupted` is handled in step 2."
     ));
     assert!(workflow
         .contains("2. **Earlier-generation state (when `state_root.generation` is `go`, or `none` with `legacy_root`).**"));

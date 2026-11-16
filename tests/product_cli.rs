@@ -2983,8 +2983,9 @@ mod skill_package {
             "has no baseline yet",
             "Apply in two steps",
             "Never edit `project.yaml` by hand to get past the conflict",
-            // #2639: read before asking, three or four at a time, the five common axes, a
-            // file preview before approval, and hand edits never overwritten on a re-run.
+            // #2639: read before asking, the five common axes, a file preview before approval,
+            // and hand edits never overwritten on a re-run. C-51/C-52 (user decision
+            // 2026-11-16): at most three per call (the Codex CLI limit), four calls.
             "Read before you ask (Issue #2639)",
             // #2706: the writing language is asked once, stored in project.yaml only, and read.
             "ask it item by item with `moai language-setup <project>`",
@@ -2992,7 +2993,7 @@ mod skill_package {
             "A later run reads the stored value and does not ask again",
             "written in the stored `instruction_files` language",
             "is confirmed with the user, not asked",
-            "three or four questions at a time and at most three rounds, one axis per question",
+            "at most three questions per call and at most four calls, one axis per question",
             "what must never be touched, what counts as done (a check the user will run themselves), which mistakes a review should always stop, and what may run without asking against what must be asked",
             "sorted the way SKILL.md sorts an open question",
             "each new file with its first lines and each changed file as its difference",

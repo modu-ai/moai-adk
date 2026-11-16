@@ -43,21 +43,25 @@ fn the_update_route_is_the_project_layer() {
         "Run `moai project-update-plan <project>`. It writes nothing",
         "Show the user every phase and every step in one view",
         "Ask once for the `ready` steps as a whole, then a separate yes for each `needs_decision` step",
-        "the words of `apply.argv` (the first is the `moai` command) with `<permission-reference>` replaced by the user's permission reference, and `apply.stdin` on stdin",
+        // C-51 (user decision 2026-11-16): the session composes the reference from the pick.
+        "the words of `apply.argv` (the first is the `moai` command) with `<permission-reference>` replaced by a permission reference this session composes from the user's pick",
+        "and `apply.stdin` on stdin (nothing when it is `null`)",
         "After a go-state apply, run `moai project-update-plan <project>` again before anything else",
         "The project is up to date only when `all_unchanged` is `true`",
         "a re-run plans `unchanged`",
-        // The user layer is the shell command, named and never run from this route.
+        // The user layer is the shell command; since C-51 (user decision 2026-11-16) this
+        // session runs it after the preview and the user's pick.
         "The user layer — the installed skill, the binary and the global instructions under HOME — is the shell command `moai update`",
-        "this route never runs it",
+        "this session runs it for the user (user decision 2026-11-16, card C-51): never tell the user to run it in a terminal",
         // #2702 audit B1: a Go-generation project usually has no profile yet; the move comes
-        // first, and "nothing to update" holds only without Go state.
-        "when the backup phase has a move, do it first (steps 2–4), then send the user to SETUP (or `/moai project`) and stop",
+        // first, and "nothing to update" holds only without Go state. C-51: the session goes
+        // on to PROJECT itself.
+        "when the backup phase has a move, do it first (steps 2–4), then go on to the PROJECT route in this session once the user picks that, and never send the user to type another command",
         "only when there is no profile and no Go-generation state is there nothing to update",
         // #2702 audit N2 (#2953 F1): the other Go-state kinds are reported, never written.
         "When the go-state step reads `needs_decision` with a `reason` naming state_root `interrupted`, a move stopped midway",
         "`state_root.generation` is `mixed`, `unknown` or `refuse` (`refuse` covers a `.moai` that is a link or not a folder)",
-        "It is reported with its `reason` and nothing is moved (a link is never followed): say what was found and let the user decide outside this route",
+        "It is reported with its `reason` and nothing is moved (a link is never followed): say what was found and ask as a selection whether to go on with the steps that do not depend on it (recommended) or stop here",
         // #2953 F6: the confirmed replacement is the step's printed command.
         "the step reads `needs_decision` and its printed command is that replacement (`apply.argv` ends with `--confirm-replace <token>`",
         // #2702 audit N1: the user's edits, unreadable targets and HOLD, and the #2383 step.
@@ -90,6 +94,194 @@ fn the_update_route_is_the_project_layer() {
         !update.contains("Identify the MoAI skill, settings, and owner on every installed host"),
         "the user-layer procedure moved out of the project route"
     );
+}
+
+fn squeezed(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// C-51 D1 (user decision 2026-11-16): the session runs every command itself after the
+/// preview and the user's pick, the user layer included, and no step hands the user a command
+/// or a decision "outside this route".
+#[test]
+fn the_update_route_runs_the_commands_itself_after_the_pick() {
+    let update = skill("workflows/update.md");
+    for text in [
+        "run the preview `moai update --json` (it writes nothing)",
+        "it writes under the real HOME, a `guarded` setting, so nothing is applied without the user's pick",
+        "After the pick run `moai update --confirm <plan_digest>` with that preview's `plan_digest`",
+        "`moai update --confirm-cleanup <token>` (the preview's `cleanup.confirm_token`",
+        "`moai update --confirm-home <token>` (the preview's `home.confirm_token`",
+        "one at a time, with a new preview between them",
+        "the two cannot be combined in one run",
+        "`moai update-apply … --confirm-backup-replace <token>`",
+        // D3: what only the user can do is a selection too; deletions wait for the pick.
+        "this session cannot close another one",
+        "\"I closed them, continue (recommended)\"",
+        "after the pick make that one change yourself",
+        "Never edit that file without the pick",
+        // Addendum 1: the printed order, never a step blocked behind an earlier one.
+        "Ask about the steps in the printed order, and never about a step that reads `blocked` or `re-run after …` behind an earlier one",
+        "the backup phase lists `go-settings` before `go-state`",
+    ] {
+        assert!(update.contains(text), "update.md lacks {text:?}");
+    }
+    let flat = squeezed(&update).to_lowercase();
+    for gone in [
+        "this route never runs it",
+        "tell them to run it in a terminal",
+        "let the user decide outside this route",
+        "then send the user to setup",
+        "send the user to `/moai project`",
+        "ask the user to close such sessions",
+    ] {
+        assert!(!flat.contains(gone), "update.md still says {gone:?}");
+    }
+}
+
+/// C-51 D2 and C-52 D4: one reference says how a question reaches the user — a selection,
+/// the recommended option first, through the host's question tool, with the stated plain-text
+/// fallback — and the routes that ask name it instead of repeating it.
+#[test]
+fn every_question_is_a_selection_through_the_hosts_question_tool() {
+    let q = skill("references/internal/questions.md");
+    for text in [
+        "(user decision 2026-11-16, cards C-51 and C-52)",
+        "Never tell the user to run a command in a terminal when this session can run it",
+        "Every question is a selection",
+        "put the recommended one first and mark it",
+        "Never ask an open or free-text question when the options can be listed",
+        "A yes-or-no ask is a selection of two options with a recommendation",
+        "waits for the user's pick with no default applied",
+        "Nothing is deleted unless the user picked exactly that",
+        "Use the host's question tool whenever the host lists it",
+        "At most three questions per call",
+        "`moai language-setup <project> --questions`",
+        "never as a bullet list",
+    ] {
+        assert!(q.contains(text), "questions.md lacks {text:?}");
+    }
+    // One table row per host: the tool, and the fallback when the host does not list it.
+    let row = |host: &str| {
+        q.lines()
+            .find(|l| l.starts_with(&format!("| {host} |")))
+            .unwrap_or_else(|| panic!("no row for {host}"))
+            .to_string()
+    };
+    for (host, texts) in [
+        ("Claude Code", &["`AskUserQuestion`", "(Recommended)"][..]),
+        (
+            "Codex CLI",
+            &[
+                "`request_user_input`",
+                "At most 3 questions per call, 2 or 3 options each",
+                "`features.default_mode_request_user_input`",
+                "the `moai codex` launcher enables it (card C-52)",
+                "Never `request_user_input_async` for a question a step waits on",
+                "say once that `/plan` enables the dialog",
+                "one question per message with numbered choices",
+            ][..],
+        ),
+        (
+            "OMP",
+            &[
+                "`ask`",
+                "one HTML form",
+                "`<select>`",
+                "`checked`",
+                "print mode or a subagent",
+                "in the final answer",
+            ][..],
+        ),
+    ] {
+        let r = row(host);
+        assert_eq!(r.matches(" | ").count(), 3, "{host}: four cells");
+        for t in texts {
+            assert!(r.contains(t), "{host} row lacks {t:?}: {r}");
+        }
+    }
+    // The routes that ask, and the question bank, name the reference.
+    for file in [
+        "workflows/update.md",
+        "workflows/project.md",
+        "workflows/setup.md",
+        "references/internal/interview.md",
+    ] {
+        assert!(
+            skill(file).contains("`internal/questions`"),
+            "{file} does not name `internal/questions`"
+        );
+    }
+    // The case-(2) sentence of SKILL.md keeps the wait and says it is still a selection.
+    let skill_md = skill("SKILL.md");
+    assert!(skill_md.contains(
+        "goes to the user and waits — no deadline applies it by default; it is still asked as a selection with the recommended option first, and once the user has picked, the session runs it (user decision 2026-11-16, card C-51)"
+    ));
+    // No route asks three or four at a time any more (the Codex CLI limit is three).
+    for file in [
+        "workflows/project.md",
+        "workflows/setup.md",
+        "references/internal/interview.md",
+    ] {
+        assert!(
+            !skill(file).contains("three or four"),
+            "{file} still asks three or four at a time"
+        );
+    }
+}
+
+/// C-51 D5 and the 2026-11-16 addendum: the work ledger is local cards, never asked and
+/// never a development method; previews run without asking and the pick follows them.
+#[test]
+fn the_ledger_is_local_cards_and_previews_run_without_asking() {
+    let project = skill("workflows/project.md");
+    for text in [
+        "the previews are read-only and run without asking (user decision 2026-11-16, card C-51)",
+        "`go-settings` comes before `go-state`",
+        "never ask about a step that reads `blocked` or `re-run after …` behind an earlier step",
+        "ask once, after the preview is shown",
+        "the development method is TDD or DDD only",
+        "the work ledger is the local card ledger (`moai card`): it is not asked, it is never recorded under `development_methods`, and GitHub Issues are not offered as a ledger or a method",
+        "relay the `--questions` set through the host's question tool",
+        "its `suggested` value first",
+    ] {
+        assert!(project.contains(text), "project.md lacks {text:?}");
+    }
+    for gone in [
+        "second yes",
+        "After a yes, run the read-only preview",
+        "Ask the user whether to move the earlier MoAI generation's state aside now",
+        "else in the conversation",
+    ] {
+        assert!(!project.contains(gone), "project.md still says {gone:?}");
+    }
+    let interview = skill("references/internal/interview.md");
+    for text in [
+        "The work ledger is not a row",
+        "these two only",
+        "never recorded under `development_methods`",
+    ] {
+        assert!(interview.contains(text), "interview.md lacks {text:?}");
+    }
+    let setup = skill("workflows/setup.md");
+    for text in [
+        "record the first work item with `moai card add`",
+        "do not offer GitHub Issues as the ledger",
+        "Only when the user asks to export a work item to a GitHub Issue",
+        "never tell the user to run it in a terminal",
+    ] {
+        assert!(setup.contains(text), "setup.md lacks {text:?}");
+    }
+    assert!(
+        !setup.contains("to answer on the terminal"),
+        "setup.md still sends the language questions to the terminal"
+    );
+    let skill_md = skill("SKILL.md");
+    assert!(
+        !skill_md.contains("syncs docs and Issues"),
+        "the description still names Issues"
+    );
+    assert!(skill_md.contains("syncs docs and work cards through one shared workflow"));
 }
 
 /// #2936 S0 (F6, F16, F24): PROJECT step 2 says the same three things as UPDATE step 2.
