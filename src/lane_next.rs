@@ -333,7 +333,7 @@ fn is_hex40(s: &str) -> bool {
 }
 
 /// `moai-audit-claim: lane=<lane> head=<40hex>` lines of a comment.
-fn audit_claim(c: &Comment) -> Option<(String, String)> {
+pub(crate) fn audit_claim(c: &Comment) -> Option<(String, String)> {
     lines(c).find_map(|l| {
         let rest = l.strip_prefix("moai-audit-claim:")?;
         Some((
@@ -344,7 +344,7 @@ fn audit_claim(c: &Comment) -> Option<(String, String)> {
 }
 
 /// A verdict comment: first line `AUDIT #<n> … head <40hex> … verdict: PASS|FAIL`.
-fn verdict(c: &Comment) -> Option<(String, &'static str)> {
+pub(crate) fn verdict(c: &Comment) -> Option<(String, &'static str)> {
     let l = first_line(c);
     if !l.starts_with("AUDIT #") {
         return None;
@@ -989,7 +989,7 @@ enum WaitLine {
 }
 
 /// `YYYY-MM-DDTHH:MM:SSZ` with digits only where digits belong, as seconds since the epoch.
-fn strict_utc(s: &str) -> Option<i64> {
+pub(crate) fn strict_utc(s: &str) -> Option<i64> {
     let b = s.as_bytes();
     let shaped = b.len() == 20
         && b.iter()
@@ -1730,7 +1730,7 @@ fn gql_thread(i: &Value, ignored: &mut crate::comment_authority::Dropped) -> (Th
 /// A bare line wins; without one, the first inline `Moai-Claim: <digits>#<digits>` (in a list
 /// item or code span) counts, the way the merge gate's G11 reads the marker anywhere in the
 /// body (`gate_collect::has_body_claim`; WF-OBS 6874554271, #2401).
-fn body_claim(body: &str) -> Option<(u64, u64)> {
+pub(crate) fn body_claim(body: &str) -> Option<(u64, u64)> {
     let bare = body.lines().find_map(|l| {
         let rest = l.trim().strip_prefix("Moai-Claim:")?.trim();
         let (issue, comment) = rest.split_once('#')?;
