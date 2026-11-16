@@ -214,11 +214,45 @@ pub fn parse_ac_table(body: &str) -> AcReading {
     AcReading::Read { rows, skipped }
 }
 
+/// What a planned note is stored as (`card_note.kind`, ledger contract revision 1): a reservation
+/// line read from the host is an `observation`, the text of any other member comment a `comment`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NoteKind {
+    Comment,
+    Observation,
+}
+
+impl NoteKind {
+    /// The value the ledger stores.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            NoteKind::Comment => "comment",
+            NoteKind::Observation => "observation",
+        }
+    }
+}
+
+/// The control-line kinds (`comment_authority::control_kind`) that are reservation lines: who
+/// holds a card, who took it over, who gave it up, who audits it. Importing only records them as
+/// text; it never makes a reservation (revision 1, answer 3). Every other kind of line, such as a
+/// CI result or an audit verdict, is a plain comment.
+const RESERVATION_KINDS: &[&str] = &["claim", "claim_handoff", "claim_release", "audit_claim"];
+
+/// The kind of the note a comment body becomes, from the first control line in the body (the same
+/// line that [`ImportPlan`] counts per kind): a reservation line makes an `observation`.
+pub fn note_kind(body: &str) -> NoteKind {
+    match comment_authority::control_kind(body) {
+        Some(kind) if RESERVATION_KINDS.contains(&kind) => NoteKind::Observation,
+        _ => NoteKind::Comment,
+    }
+}
+
 /// A member's comment that would become a card note.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PlannedNote {
     pub comment_id: u64,
     pub author: String,
+    pub kind: NoteKind,
     pub body: String,
 }
 
@@ -303,6 +337,7 @@ fn plan_card(source_host: &'static str, project: &str, issue: &HostIssue) -> Pla
         .map(|c| PlannedNote {
             comment_id: c.id,
             author: c.author,
+            kind: note_kind(&c.body),
             body: c.body,
         })
         .collect();
