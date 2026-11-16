@@ -1535,6 +1535,14 @@ mod tests {
         assert!(p.fields_missing);
         assert_eq!(merged_stage(&p, now()).state, UNKNOWN);
         assert_eq!(ready_stage(&p, now()).state, UNKNOWN);
+        // Either field alone is enough to make the PR unreadable.
+        for (name, node) in [
+            ("isDraft", json!({"number": 9, "merged": false})),
+            ("merged", json!({"number": 9, "isDraft": false})),
+        ] {
+            let p = parse_pr(&node, &mut dropped).unwrap();
+            assert!(p.fields_missing, "{name} missing");
+        }
         let whole = json!({"number": 9, "state": "OPEN", "isDraft": true, "merged": false,
                            "createdAt": "2026-11-16T08:00:00Z", "authorAssociation": "MEMBER"});
         let q = parse_pr(&whole, &mut dropped).unwrap();
