@@ -673,7 +673,9 @@ fn a_settings_file_that_repeats_a_key_is_held_not_merged() {
     let fx = base_fx();
     fx.manifest();
     fx.write(SETTINGS, "{\"model\":\"a\",\"model\":\"b\"}\n");
-    assert_eq!(plan(&fx)["action"], json!("none"));
+    let p = plan(&fx);
+    assert_eq!(p["action"], json!("none"), "{p}");
+    assert!(p.get("reason").is_none() && p.get("next").is_none(), "{p}");
 }
 
 #[test]
