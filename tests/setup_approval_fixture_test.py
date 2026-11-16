@@ -43,7 +43,13 @@ class SetupProcedureDocumentedTest(unittest.TestCase):
         self.assertIn("dirty user changes are not swept in", doc)
         self.assertIn("existing commit is never amended", doc)
         # Step 8: the reviewed Issue publication — a separate approval, exact
-        # draft only, readback before success.
+        # draft only, readback before success. Since card C-51 (user decision
+        # 2026-11-16) it is an optional export: the first work item is a card.
+        self.assertIn("First work item: a card", doc)
+        self.assertIn("record the first work item with `moai card add`", doc)
+        self.assertIn("Reviewed Issue publication is an optional export", doc)
+        self.assertIn(
+            "Only when the user asks to export a work item to a GitHub Issue", doc)
         self.assertIn("Reviewed Issue publication", doc)
         self.assertIn("approving the initial commit never approves publication", doc)
         self.assertIn("publish exactly the reviewed draft", doc)

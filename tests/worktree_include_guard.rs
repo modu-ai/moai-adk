@@ -22,7 +22,9 @@ fn files(dir: &Path, out: &mut Vec<PathBuf>) {
     }
 }
 
-/// AC-3: the UPDATE route tells the user about the warning and never edits the file.
+/// AC-3: the UPDATE route tells the user about the warning and never edits the file on its
+/// own; since C-51 (user decision 2026-11-16) the user picks in a selection and the session
+/// makes that one change.
 #[test]
 fn the_update_workflow_reports_the_warning_and_never_edits_the_file() {
     let text = fs::read_to_string(Path::new(ROOT).join("skills/moai/workflows/update.md")).unwrap();
@@ -31,7 +33,8 @@ fn the_update_workflow_reports_the_warning_and_never_edits_the_file() {
         "selects secret files such as `.env`",
         "copy them into every new worktree",
         "`moai-impl` and `moai-audit`",
-        "never edit that file for them",
+        "Name the line and ask as a selection",
+        "Never edit that file without the pick",
     ] {
         assert!(text.contains(line), "update.md lacks: {line}");
     }

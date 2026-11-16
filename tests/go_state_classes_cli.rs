@@ -1602,8 +1602,10 @@ fn the_project_workflow_says_the_root_instruction_files_are_moved() {
         "A `root_files` row with `action` `move` is no longer in the project root after the apply",
         "a copy of `.claude/settings.local.json` (the original settings file stays)",
         "`.moai/backups/.gitignore` keeps them out of git",
-        // #2936 R-fix R-A: read out what the move takes away before the second yes.
-        "`counterparts` and `after_move`, and read them out before asking for the second yes",
+        // #2936 R-fix R-A: read out what the move takes away before asking (C-51, user
+        // decision 2026-11-16: the preview runs unasked, so there is one ask, after it).
+        "`counterparts` and `after_move`, and read them out before asking",
+        "Apply only after the user picked the move in the selection that followed that preview",
     ] {
         assert!(workflow.contains(sentence), "project.md lacks: {sentence}");
     }
