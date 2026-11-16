@@ -334,6 +334,28 @@ fn every_value_key_set_accepts_reads_back() {
     assert!(!entry(&home).exists());
 }
 
+/// C-54 S1: `--prompt` asks at a terminal only. With stdin a pipe (a value on it, or nothing)
+/// it is refused before stdin is read, nothing is written, and the piped value is not
+/// echoed; the same pipe without `--prompt` stores the value as before. The terminal side is
+/// `tests/key_set_prompt_tty_test.py`.
+#[test]
+fn prompt_without_a_terminal_is_refused_and_nothing_is_written() {
+    let (_d, home) = home();
+    let key = synthetic();
+    for stdin in [Some(key.as_str()), None] {
+        let out = run(&home, &["key-set", "glm", "--prompt"], stdin);
+        assert_eq!(out.status.code(), Some(1), "{stdin:?}");
+        let e = envelope(&out, &key);
+        assert_eq!(e["ok"], false, "{e}");
+        let message = e["error"]["message"].as_str().unwrap();
+        assert!(message.contains("stdin is not a terminal"), "{message}");
+        assert!(message.contains("nothing was read or stored"), "{message}");
+        assert!(!vault(&home).exists());
+    }
+    let set = envelope(&run(&home, &["key-set", "glm"], Some(&key)), &key);
+    assert_eq!(set["result"]["written"], true, "{set}");
+}
+
 /// A plain-text entry (the format before the decision) is refused, never used as a value.
 #[test]
 fn a_plain_text_entry_is_refused() {
