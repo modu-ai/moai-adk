@@ -98,6 +98,17 @@ pub fn ready(project: &Path, home: &Path, reference: &str, by: Option<&str>) -> 
             let Some(from) = state else {
                 return Ok(Err(format!("card not found: there is no C-{card_id}")));
             };
+            let live: i64 = tx.query_row(
+                "SELECT count(*) FROM reservation WHERE card_id = ?1 \
+                 AND status IN ('held','expired_candidate','held_for_review')",
+                [card_id],
+                |r| r.get(0),
+            )?;
+            if live > 0 {
+                return Ok(Err(format!(
+                    "card ready refused: C-{card_id} has a live reservation; release or hand it over first"
+                )));
+            }
             if from != "draft" && from != "hold" {
                 return Ok(Err(format!(
                     "card ready refused: C-{card_id} is `{from}`; only a `draft` or `hold` card becomes `ready`"
