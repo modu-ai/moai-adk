@@ -36,6 +36,10 @@ fn world() -> World {
         "number": 1, "title": "Add login", "body": TABLE, "labels": [],
         "user": {"login": "alice"}, "author_association": "OWNER",
         "created_at": "2026-11-01T00:00:00Z", "updated_at": "2026-11-02T00:00:00Z"
+    }, {
+        "number": 2, "title": "Add logout", "body": TABLE, "labels": [],
+        "user": {"login": "alice"}, "author_association": "OWNER",
+        "created_at": "2026-11-01T00:00:00Z", "updated_at": "2026-11-02T00:00:00Z"
     }]);
     fs::write(dir.join("issues.json"), issues.to_string()).unwrap();
     let posted_comments = json!([{
@@ -132,12 +136,16 @@ impl World {
     }
 
     fn apply(&self, digest: &str, permission: &str, extra: &[&str]) -> Output {
+        self.apply_card("C-1", digest, permission, extra)
+    }
+
+    fn apply_card(&self, card: &str, digest: &str, permission: &str, extra: &[&str]) -> Output {
         let project = self.project_arg();
         let mut args = vec![
             "card-summary-apply",
             &project,
             "--card",
-            "C-1",
+            card,
             "--to",
             "github",
             "--plan-digest",
@@ -233,6 +241,28 @@ fn a_summary_is_posted_once_and_the_second_run_posts_nothing() {
 }
 
 #[test]
+fn each_card_has_its_own_marker_so_one_posted_summary_does_not_hide_another() {
+    let w = World::with_card();
+    let first = result(&w.plan("C-1", &[]));
+    result(&w.apply(
+        first["plan_digest"].as_str().unwrap(),
+        "user-approved-test",
+        &[],
+    ));
+    let second = result(&w.plan("C-2", &[]));
+    assert_eq!(second["marker"], json!("<!-- moai-card-summary C-2 -->"));
+    assert_eq!(second["target"]["number"], json!(2));
+    let posted = result(&w.apply_card(
+        "C-2",
+        second["plan_digest"].as_str().unwrap(),
+        "user-approved-test",
+        &[],
+    ));
+    assert_eq!(posted["state"], json!("posted"), "{posted}");
+    assert_eq!(w.posts(), 2);
+}
+
+#[test]
 fn a_digest_that_is_not_the_plans_posts_nothing() {
     let w = World::with_card();
     let text = failure(&w.apply(
@@ -276,6 +306,8 @@ fn a_card_that_is_not_there_or_a_host_that_is_not_written_is_refused() {
     assert!(text.contains("no card C-99"), "{text}");
     failure(&w.plan("abc", &[]));
     failure(&w.plan("C-0", &[]));
+    failure(&w.plan("C-+1", &[]));
+    failure(&w.plan("C--1", &[]));
     let project = w.project_arg();
     let text = failure(&w.run(&[
         "card-summary-plan",
