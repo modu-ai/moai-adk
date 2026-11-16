@@ -44,6 +44,33 @@ pub const PLANS_WALK_LIMIT: usize = 1000;
 
 const RECEIPT_PREFIX: &str = "go-settings-";
 
+/// Owner-only bits for the receipt folder and the kept copy of the settings file, which may hold
+/// a token in its `env` block (#3111 audit B1).
+const PRIVATE_DIR: u32 = 0o700;
+const PRIVATE_FILE: u32 = 0o600;
+
+/// Create one folder (not its parents); it is 0700 from its creation.
+#[cfg(unix)]
+fn create_private_dir(path: &Path) -> std::io::Result<()> {
+    use std::os::unix::fs::DirBuilderExt;
+    let mut builder = fs::DirBuilder::new();
+    builder.mode(PRIVATE_DIR);
+    builder.create(path)
+}
+
+#[cfg(not(unix))]
+fn create_private_dir(path: &Path) -> std::io::Result<()> {
+    fs::create_dir(path)
+}
+
+/// The kept copy lives in a folder whose own `.gitignore` is `*`: a nested ignore file outranks
+/// the project's, so `git add -A` never offers the copy, whether or not the managed block of the
+/// root `.gitignore` exists yet (#3111 audit B2: this is the first step of the backup phase).
+fn keep_receipt_out_of_git(dir: &Path) -> Result<()> {
+    crate::apply::publish_exclusive_mode(&dir.join(".gitignore"), b"*\n", Some(PRIVATE_FILE))
+        .map_err(|_| "receipt .gitignore refused".into())
+}
+
 /// What a Go key becomes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Change {
@@ -97,6 +124,64 @@ fn is_go_status_line(v: &Value) -> bool {
             .all(|k| matches!(k.as_str(), "type" | "command" | "refreshInterval"))
         && o.get("refreshInterval")
             .is_none_or(|r| GO_REFRESH.iter().any(|n| *r == json!(n)))
+}
+
+/// Whether any object in `bytes` repeats a key. Parsing into a map keeps only the last one, so a
+/// rewrite would merge them silently (#3111 audit N1).
+fn repeats_a_key(bytes: &[u8]) -> bool {
+    use serde::de::{Deserialize, Deserializer, Error, MapAccess, SeqAccess, Visitor};
+    struct Strict;
+    impl<'de> Deserialize<'de> for Strict {
+        fn deserialize<D: Deserializer<'de>>(d: D) -> std::result::Result<Self, D::Error> {
+            struct V;
+            impl<'de> Visitor<'de> for V {
+                type Value = Strict;
+                fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    f.write_str("any JSON value")
+                }
+                fn visit_bool<E>(self, _: bool) -> std::result::Result<Strict, E> {
+                    Ok(Strict)
+                }
+                fn visit_i64<E>(self, _: i64) -> std::result::Result<Strict, E> {
+                    Ok(Strict)
+                }
+                fn visit_u64<E>(self, _: u64) -> std::result::Result<Strict, E> {
+                    Ok(Strict)
+                }
+                fn visit_f64<E>(self, _: f64) -> std::result::Result<Strict, E> {
+                    Ok(Strict)
+                }
+                fn visit_str<E>(self, _: &str) -> std::result::Result<Strict, E> {
+                    Ok(Strict)
+                }
+                fn visit_unit<E>(self) -> std::result::Result<Strict, E> {
+                    Ok(Strict)
+                }
+                fn visit_seq<A: SeqAccess<'de>>(
+                    self,
+                    mut a: A,
+                ) -> std::result::Result<Strict, A::Error> {
+                    while a.next_element::<Strict>()?.is_some() {}
+                    Ok(Strict)
+                }
+                fn visit_map<A: MapAccess<'de>>(
+                    self,
+                    mut a: A,
+                ) -> std::result::Result<Strict, A::Error> {
+                    let mut seen = std::collections::HashSet::new();
+                    while let Some(k) = a.next_key::<String>()? {
+                        if !seen.insert(k) {
+                            return Err(A::Error::custom("repeated key"));
+                        }
+                        a.next_value::<Strict>()?;
+                    }
+                    Ok(Strict)
+                }
+            }
+            d.deserialize_any(V)
+        }
+    }
+    serde_json::from_slice::<Strict>(bytes).is_err()
 }
 
 /// The Go-made keys of a settings object (sorted by key name) and, as `kept`, the names of the
@@ -321,6 +406,7 @@ fn plan_inner(project: &Path, home: Option<&Path>) -> Result<Planned> {
         _ => Default::default(),
     };
     let needs_launcher = go.iter().any(|g| g.change == Change::Replace);
+    let repeats = !go.is_empty() && before.as_deref().is_some_and(repeats_a_key);
     let launcher = match (needs_launcher, home) {
         (false, _) => LauncherState::NotNeeded,
         (true, Some(h)) => launcher_state(&root, h),
@@ -331,6 +417,14 @@ fn plan_inner(project: &Path, home: Option<&Path>) -> Result<Planned> {
     let mut held: Option<(String, String)> = None;
     if needs_launcher && home.is_none() {
         blocks.push("home_unavailable");
+    } else if repeats {
+        held = Some((
+            format!("{SETTINGS} repeats a key; writing it again would merge the repeats into one"),
+            format!(
+                "remove the repeated key from {SETTINGS} yourself, then run `moai go-settings-plan \
+                 <project>` again; nothing was written and the Go keys stay"
+            ),
+        ));
     } else if needs_launcher && launcher != LauncherState::Rust {
         let why = match launcher {
             LauncherState::Missing => format!(
@@ -379,6 +473,14 @@ fn plan_inner(project: &Path, home: Option<&Path>) -> Result<Planned> {
         "result_sha256": after.as_deref().map(crate::digest),
     });
 
+    let yours: Vec<&str> = ["plansDirectory", "statusLine", "subagentStatusLine"]
+        .into_iter()
+        .filter(|k| {
+            map.as_ref().is_some_and(|m| m.contains_key(*k))
+                && !go.iter().any(|g| g.key == *k)
+                && !kept.iter().any(|n| n == k)
+        })
+        .collect();
     let plans_files = if go.iter().any(|g| g.key == "plansDirectory") {
         let c = count_plans(&root);
         json!({
@@ -404,6 +506,13 @@ fn plan_inner(project: &Path, home: Option<&Path>) -> Result<Planned> {
         "launcher": {"path": LAUNCHER_SHOWN, "state": launcher.name()},
         "plans_files": plans_files,
         "local_settings": "never written",
+        "formatting": if go.is_empty() {
+            Value::Null
+        } else {
+            json!("the whole file is written again as JSON with 2-space indentation and LF line \
+                   ends: every key keeps its value and its place, but spacing and escapes may change")
+        },
+        "yours": yours,
         "blocks": blocks,
         "project": root.display().to_string(),
         "writes": false,
@@ -478,7 +587,7 @@ fn new_receipt_dir(root: &Path) -> Result<(String, PathBuf)> {
     for n in 0..16 {
         let id = format!("{RECEIPT_PREFIX}{nanos}-{n}");
         let dir = receipts.join(&id);
-        if fs::create_dir(&dir).is_ok() {
+        if create_private_dir(&dir).is_ok() {
             return Ok((id, dir));
         }
     }
@@ -532,9 +641,11 @@ pub fn apply(
     };
 
     let (id, dir) = new_receipt_dir(&root)?;
+    keep_receipt_out_of_git(&dir)?;
     let keep = dir.join("before");
-    fs::create_dir_all(&keep).map_err(|_| "receipt folder unavailable")?;
-    fs::write(keep.join("settings.json"), before).map_err(|_| "receipt write failed")?;
+    create_private_dir(&keep).map_err(|_| "receipt folder unavailable")?;
+    crate::apply::publish_exclusive_mode(&keep.join("settings.json"), before, Some(PRIVATE_FILE))
+        .map_err(|_| "receipt write failed")?;
     let mut receipt = Receipt {
         schema_version: 1,
         id: id.clone(),
