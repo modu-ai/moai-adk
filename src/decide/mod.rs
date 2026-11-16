@@ -63,7 +63,7 @@ pub struct Prepared {
     pub provider: provider::Provider,
     endpoint: &'static str,
     body: Vec<u8>,
-    pub outbound: outbound::Outbound,
+    outbound: outbound::Outbound,
     reversible: bool,
     category: String,
     default: String,
@@ -81,6 +81,12 @@ impl Prepared {
     /// gate and the secret screen are the bytes that go.
     pub fn body(&self) -> &[u8] {
         &self.body
+    }
+
+    /// The masked text the body was built from. Read-only: an answer is checked against
+    /// the options that were sent, not against ones put here afterwards.
+    pub fn outbound(&self) -> &outbound::Outbound {
+        &self.outbound
     }
 }
 
@@ -327,9 +333,9 @@ mod tests {
     #[test]
     fn a_request_that_does_not_parse_is_refused_before_the_provider() {
         assert_eq!(refused("{").code, "invalid_request");
-        let extra = refused(&request_json(|v| {
-            v["endpoint"] = json!("https://example.invalid")
-        }));
+        // A request cannot name where it goes (no URL is written here: the scan of this
+        // folder in tests/home_isolation_scan.rs allows the two endpoint constants only).
+        let extra = refused(&request_json(|v| v["endpoint"] = json!("example.invalid")));
         assert_eq!(extra.code, "invalid_request");
     }
 
@@ -342,12 +348,18 @@ mod tests {
         );
     }
 
+    /// A Jev answer that weighs its own choice highest, as a consistent answer does.
     fn jev_answer(choice: &str) -> Vec<u8> {
+        let other = if choice == "nextest" {
+            "cargo-test"
+        } else {
+            "nextest"
+        };
         json!({
             "model": "jev-1.14.0",
             "answers": {"decision": {
                 "type": "choice", "choice": choice, "confidence": 0.875,
-                "probabilities": {"nextest": 0.875, "cargo-test": 0.125}
+                "probabilities": {choice: 0.875, other: 0.125}
             }},
             "usage": {"input_tokens": 61}
         })
@@ -375,7 +387,7 @@ mod tests {
                 "model_source": "response",
                 "chosen": "cargo-test",
                 "confidence": 0.875,
-                "probabilities": {"cargo-test": 0.125, "nextest": 0.875},
+                "probabilities": {"cargo-test": 0.875, "nextest": 0.125},
                 "card": "C-37"
             })
         );

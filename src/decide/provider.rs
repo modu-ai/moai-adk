@@ -148,9 +148,45 @@ fn unit(value: &Value) -> Option<f64> {
     value.as_f64().filter(|n| (0.0..=1.0).contains(n))
 }
 
+/// How far a sum of probabilities may be from 1, and how far below the most probable option
+/// the chosen one may be (rounding in the provider's numbers).
+pub const PROBABILITY_SLACK: f64 = 0.02;
+
+/// Whether `probabilities` (each already 0 to 1, each option at most once) agree with one
+/// another and with `choice` (audit B5, leader decision 2026-11-17):
+/// - with every one of the `options` options weighed they add up to 1 within
+///   [`PROBABILITY_SLACK`]; with some of them only, to no more than that;
+/// - the chosen option, when it is weighed, is not less probable than another one by more
+///   than [`PROBABILITY_SLACK`].
+///
+/// An answer that fails either contradicts itself and is no answer.
+fn consistent(
+    choice: &str,
+    probabilities: &BTreeMap<String, f64>,
+    options: usize,
+) -> Result<(), Refusal> {
+    // Decimal fractions are not exact in binary: 0.52 + 0.5 is a hair over 1.02.
+    const ROUNDING: f64 = 1e-9;
+    let slack = PROBABILITY_SLACK + ROUNDING;
+    let sum: f64 = probabilities.values().sum();
+    let whole = probabilities.len() == options;
+    if sum > 1.0 + slack || (whole && sum < 1.0 - slack) {
+        return Err(no_answer("`probabilities` do not add up to 1"));
+    }
+    if let Some(chosen) = probabilities.get(choice) {
+        if probabilities.values().any(|p| p - chosen > slack) {
+            return Err(no_answer(
+                "the chosen option is less probable than another one",
+            ));
+        }
+    }
+    Ok(())
+}
+
 /// The answer in a provider's `response` body. A refusal by the provider, a choice that is not
-/// one of the options and a body that is not the documented shape all send the choice back to
-/// the leader; none of them quotes the response.
+/// one of the options, a body that is not the documented shape and an answer that contradicts
+/// itself ([`consistent`]) all send the choice back to the leader; none of them quotes the
+/// response.
 pub fn parse_answer(
     provider: Provider,
     outbound: &Outbound,
@@ -159,9 +195,19 @@ pub fn parse_answer(
     let body: Value = serde_json::from_slice(response).map_err(|_| no_answer("not JSON"))?;
     let answer = match provider {
         Provider::Typesafe => body["answers"].as_object().and_then(|a| a.get(QUESTION_ID)),
-        Provider::Openai => body["answers"]
-            .as_array()
-            .and_then(|a| a.iter().find(|one| one["name"] == QUESTION_ID)),
+        Provider::Openai => {
+            // Exactly one answer under the question's name: with two there is no telling
+            // which one the provider meant, whatever each of them is.
+            let mut named = body["answers"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter(|one| one["name"] == QUESTION_ID);
+            match (named.next(), named.next()) {
+                (one, None) => one,
+                _ => return Err(no_answer("more than one answer to the question")),
+            }
+        }
     }
     .ok_or_else(|| no_answer("no answer to the question that was asked"))?;
     match answer["type"].as_str() {
@@ -222,11 +268,14 @@ pub fn parse_answer(
                     .ok_or_else(|| {
                         no_answer("`probabilities` is not [{value: option, probability: 0 to 1}]")
                     })?;
-                probabilities.insert(option.to_string(), p);
+                if probabilities.insert(option.to_string(), p).is_some() {
+                    return Err(no_answer("`probabilities` names an option twice"));
+                }
             }
         }
         _ => return Err(no_answer("`probabilities` is not in the provider's shape")),
     }
+    consistent(choice, &probabilities, outbound.options().len())?;
     Ok(Answer {
         choice: choice.to_string(),
         confidence,
@@ -248,7 +297,7 @@ mod tests {
 
     fn answer(provider: Provider, response: &Value) -> Result<Answer, Refusal> {
         let p = prepared(provider);
-        parse_answer(provider, &p.outbound, response.to_string().as_bytes())
+        parse_answer(provider, p.outbound(), response.to_string().as_bytes())
     }
 
     fn code(provider: Provider, response: &Value) -> &'static str {
@@ -583,7 +632,7 @@ mod tests {
             b"",
             b"{\"detail\":[{\"msg\":\"bad\"}]}",
         ] {
-            let r = parse_answer(Provider::Typesafe, &p.outbound, body).unwrap_err();
+            let r = parse_answer(Provider::Typesafe, p.outbound(), body).unwrap_err();
             assert_eq!(r.code, "answer_invalid");
             assert!(!r.reason.contains("502") && !r.reason.contains("bad"));
         }
@@ -623,5 +672,209 @@ mod tests {
         let mut missing = jev(good);
         missing.as_object_mut().unwrap().remove("model");
         assert_eq!(code(Provider::Typesafe, &missing), "answer_invalid");
+    }
+
+    /// One answer of `choice` with `pairs` as its probabilities, in the provider's own shape.
+    fn weighed(provider: Provider, choice: &str, pairs: &[(&str, f64)]) -> Value {
+        let mut a = json!({"type": "choice", "name": "decision", "choice": choice});
+        match provider {
+            Provider::Typesafe => {
+                let map: Map<String, Value> = pairs
+                    .iter()
+                    .map(|(option, p)| (option.to_string(), json!(p)))
+                    .collect();
+                a["probabilities"] = Value::Object(map);
+                jev(a)
+            }
+            Provider::Openai => {
+                let list: Vec<Value> = pairs
+                    .iter()
+                    .map(|(option, p)| json!({"value": option, "probability": p}))
+                    .collect();
+                a["probabilities"] = Value::Array(list);
+                openai(a)
+            }
+        }
+    }
+
+    /// A request with a third option, so an answer can weigh some of the options only.
+    fn of_three(provider: Provider, response: &Value) -> Result<Answer, Refusal> {
+        let text = request_json(|v| {
+            v["options"]
+                .as_array_mut()
+                .unwrap()
+                .push(json!({"value": "both", "description": "each runner once"}));
+        });
+        let p = prepare(&text, provider, &who()).unwrap();
+        parse_answer(provider, p.outbound(), response.to_string().as_bytes())
+    }
+
+    /// Audit B5: when every option has a probability they add up to 1, give or take 0.02.
+    /// The edges: 0.98 and 1.02 are read, 0.97 and 1.03 are no answer.
+    #[test]
+    fn probabilities_of_every_option_add_up_to_one() {
+        for provider in Provider::ALL {
+            for (pairs, reads) in [
+                ([("nextest", 0.95), ("cargo-test", 0.05)], true),
+                ([("nextest", 0.52), ("cargo-test", 0.5)], true),
+                ([("nextest", 0.5), ("cargo-test", 0.48)], true),
+                ([("nextest", 0.53), ("cargo-test", 0.5)], false),
+                ([("nextest", 0.5), ("cargo-test", 0.47)], false),
+                ([("nextest", 1.0), ("cargo-test", 1.0)], false),
+                ([("nextest", 0.0), ("cargo-test", 0.0)], false),
+            ] {
+                let got = answer(provider, &weighed(provider, "nextest", &pairs));
+                assert_eq!(got.is_ok(), reads, "{provider:?} {pairs:?}");
+                if let Err(r) = got {
+                    assert_eq!(r.code, "answer_invalid", "{provider:?} {pairs:?}");
+                }
+            }
+            // Some of the options only: there is no sum to hold them to.
+            let some = [("nextest", 0.5), ("cargo-test", 0.2)];
+            assert!(
+                of_three(provider, &weighed(provider, "nextest", &some)).is_ok(),
+                "{provider:?}"
+            );
+            // They still cannot add up to more than 1: 1.02 is read, 1.03 is not.
+            for (pairs, reads) in [
+                ([("nextest", 0.52), ("cargo-test", 0.5)], true),
+                ([("nextest", 0.53), ("cargo-test", 0.5)], false),
+            ] {
+                let got = of_three(provider, &weighed(provider, "nextest", &pairs));
+                assert_eq!(got.is_ok(), reads, "{provider:?} {pairs:?}");
+            }
+            let all = [("nextest", 0.5), ("cargo-test", 0.2), ("both", 0.2)];
+            assert_eq!(
+                of_three(provider, &weighed(provider, "nextest", &all))
+                    .unwrap_err()
+                    .code,
+                "answer_invalid",
+                "{provider:?}"
+            );
+        }
+    }
+
+    /// Audit B5 (leader decision 2026-11-17): a choice whose probability is lower than
+    /// another option's by more than 0.02 contradicts itself and is no answer. At 0.02 it
+    /// is read.
+    #[test]
+    fn a_choice_less_probable_than_another_option_falls_back() {
+        for provider in Provider::ALL {
+            for (pairs, reads) in [
+                ([("nextest", 0.55), ("cargo-test", 0.45)], true),
+                ([("nextest", 0.5), ("cargo-test", 0.5)], true),
+                ([("nextest", 0.49), ("cargo-test", 0.51)], true),
+                ([("nextest", 0.48), ("cargo-test", 0.51)], false),
+                ([("nextest", 0.45), ("cargo-test", 0.55)], false),
+                ([("nextest", 0.0), ("cargo-test", 1.0)], false),
+            ] {
+                let got = answer(provider, &weighed(provider, "nextest", &pairs));
+                assert_eq!(got.is_ok(), reads, "{provider:?} {pairs:?}");
+                if let Err(r) = got {
+                    assert_eq!(r.code, "answer_invalid", "{provider:?} {pairs:?}");
+                }
+            }
+            // The same with some of the options only, when the choice is one of them.
+            let some = [("nextest", 0.5), ("cargo-test", 0.2)];
+            assert_eq!(
+                of_three(provider, &weighed(provider, "cargo-test", &some))
+                    .unwrap_err()
+                    .code,
+                "answer_invalid",
+                "{provider:?}"
+            );
+            // A choice with no probability of its own cannot be compared.
+            assert!(
+                of_three(provider, &weighed(provider, "both", &some)).is_ok(),
+                "{provider:?}"
+            );
+        }
+    }
+
+    /// Audit B5: a probability is a finite number from 0 to 1, in both shapes.
+    #[test]
+    fn a_probability_out_of_range_falls_back() {
+        for provider in Provider::ALL {
+            for bad in [-0.01, 1.01, 2.0, -1.0] {
+                let pairs = [("nextest", bad), ("cargo-test", 0.5)];
+                assert_eq!(
+                    code(provider, &weighed(provider, "nextest", &pairs)),
+                    "answer_invalid",
+                    "{provider:?} {bad}"
+                );
+            }
+            // JSON has no NaN and no infinity; a number too large for a float, and the words,
+            // are no answer either.
+            let p = prepared(provider);
+            for number in ["1e999", "-1e999", "NaN", "Infinity"] {
+                let good = weighed(provider, "nextest", &[("nextest", 0.25)]).to_string();
+                let body = good.replace("0.25", number);
+                assert_ne!(body, good);
+                let r = parse_answer(provider, p.outbound(), body.as_bytes()).unwrap_err();
+                assert_eq!(r.code, "answer_invalid", "{provider:?} {number}");
+            }
+        }
+    }
+
+    /// Audit B5: OpenAI's list names each option once.
+    #[test]
+    fn a_repeated_value_in_openai_probabilities_falls_back() {
+        for (first, second) in [(0.5, 0.5), (0.9, 0.1), (1.0, 1.0)] {
+            let mut a = json!({"type": "choice", "name": "decision", "choice": "nextest"});
+            a["probabilities"] = json!([
+                {"value": "nextest", "probability": first},
+                {"value": "nextest", "probability": second}
+            ]);
+            assert_eq!(
+                code(Provider::Openai, &openai(a.clone())),
+                "answer_invalid",
+                "{first} {second}"
+            );
+            a["probabilities"]
+                .as_array_mut()
+                .unwrap()
+                .push(json!({"value": "cargo-test", "probability": 0.0}));
+            assert_eq!(
+                code(Provider::Openai, &openai(a)),
+                "answer_invalid",
+                "{first} {second} and the other option"
+            );
+        }
+    }
+
+    /// Audit B5: exactly one answer to the question that was asked. Two under its name are
+    /// no answer in any order and whatever each one is; an answer to another question beside
+    /// it changes nothing.
+    #[test]
+    fn two_openai_answers_to_the_question_fall_back() {
+        let choice = |c: &str| json!({"type": "choice", "name": "decision", "choice": c});
+        let refusal = json!({"type": "refusal", "name": "decision", "refusal": "no"});
+        let odd = json!({"type": 7, "name": "decision"});
+        let bare = json!({"name": "decision"});
+        for (a, b) in [
+            (choice("nextest"), choice("cargo-test")),
+            (choice("nextest"), choice("nextest")),
+            (choice("nextest"), refusal.clone()),
+            (choice("nextest"), odd),
+            (choice("nextest"), bare),
+            (refusal.clone(), refusal),
+        ] {
+            for answers in [json!([a, b]), json!([b, a])] {
+                assert_eq!(
+                    code(Provider::Openai, &json!({"answers": answers})),
+                    "answer_invalid",
+                    "{answers}"
+                );
+            }
+        }
+        let mut other = choice("cargo-test");
+        other["name"] = json!("other");
+        for answers in [
+            json!([other, choice("nextest")]),
+            json!([choice("nextest"), other]),
+        ] {
+            let a = answer(Provider::Openai, &json!({"answers": answers})).unwrap();
+            assert_eq!(a.choice, "nextest");
+        }
     }
 }

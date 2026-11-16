@@ -15,7 +15,12 @@
 //!    value; and any run of 48 or more base64 characters that mixes upper case, lower case
 //!    and digits (leader decision 2026-11-17, audit N7). A false hit costs one fallback to
 //!    the leader. Commit ids and sha256 digests (lower-case hex) are not hits.
-//! 3. The home folder and the user name are masked ([`mask`]): they say who and where, and a
+//!    Second audit (2026-11-17), N7: also the Stripe (`sk_live_`, `sk_test_`, `rk_live_`),
+//!    Hugging Face (`hf_`) and npm (`npm_`) prefixes, and a reading with `\uXXXX` escapes
+//!    and full-width letters taken as ASCII. N6: `sk-` before a lower-case hyphenated name
+//!    (sk-learn-pipeline) and a macOS temporary folder are not hits.
+//! 3. The home folder, the user name and a macOS temporary folder are masked ([`mask`]):
+//!    they say who and where, and a
 //!    decision needs neither. An option value that would change under the mask is refused
 //!    instead, because the answer names an option by its value.
 //!
@@ -70,18 +75,95 @@ impl Outbound {
 /// True when `text` holds a credential shape (see the module rules). Read twice: as written,
 /// where a character without width is a break like any other, and with those characters
 /// taken out, so one placed inside a key does not split it.
+///
+/// A third reading takes `\uXXXX` escapes and full-width letters (U+FF01 to U+FF5E) as the
+/// ASCII they stand for (second audit, N7). Look-alike letters of other scripts are not
+/// read. All of it is for the refusal only: text that passes is sent as it was written.
+///
+/// Two shapes are plain text and not hits (second audit, N6): a macOS temporary folder
+/// ([`mask_temp_folders`]; it is masked) and a lower-case hyphenated name after `sk-`
+/// ([`without_sk_names`]).
 pub fn holds_secret_shape(text: &str) -> bool {
     let reads = |t: &str| {
-        crate::redact::redact_outgoing(t).1 > 0
-            || holds_glued_shape(t)
-            || holds_secret_pair(t)
-            || holds_long_mixed_run(t)
+        let t = without_sk_names(&mask_temp_folders(t));
+        crate::redact::redact_outgoing(&t).1 > 0
+            || holds_glued_shape(&t)
+            || holds_secret_pair(&t)
+            || holds_long_mixed_run(&t)
     };
+    let joined = |t: &str| -> String { t.chars().filter(|c| !ZERO_WIDTH.contains(c)).collect() };
     if reads(text) {
         return true;
     }
-    let joined: String = text.chars().filter(|c| !ZERO_WIDTH.contains(c)).collect();
-    joined.len() != text.len() && reads(&joined)
+    let bare = joined(text);
+    if bare.len() != text.len() && reads(&bare) {
+        return true;
+    }
+    let ascii = joined(&as_ascii(text));
+    ascii != bare && reads(&ascii)
+}
+
+/// `text` with each `\uXXXX` escape as the character it names (an escape that names none,
+/// half of a surrogate pair, stays as written) and each full-width form of an ASCII
+/// character (U+FF01 to U+FF5E) as that character.
+fn as_ascii(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(at) = rest.find("\\u") {
+        out.push_str(&rest[..at]);
+        let named = rest
+            .get(at + 2..at + 6)
+            .filter(|hex| hex.bytes().all(|b| b.is_ascii_hexdigit()))
+            .and_then(|hex| u32::from_str_radix(hex, 16).ok())
+            .and_then(char::from_u32);
+        match named {
+            Some(c) => {
+                out.push(c);
+                rest = &rest[at + 6..];
+            }
+            None => {
+                out.push_str("\\u");
+                rest = &rest[at + 2..];
+            }
+        }
+    }
+    out.push_str(rest);
+    out.chars()
+        .map(|c| match c {
+            '\u{ff01}'..='\u{ff5e}' => char::from_u32(c as u32 - 0xfee0).unwrap_or(c),
+            c => c,
+        })
+        .collect()
+}
+
+/// `text` with each name of the kind `sk-learn-pipeline` blanked out (the same number of
+/// `x`): `sk-` where a key could start, then lower-case words joined by at least one more
+/// hyphen, with no digit, upper-case letter or underscore anywhere in the run. A key is
+/// random and does not look like that; a pair around the name (`token: sk-…`) still hits.
+fn without_sk_names(text: &str) -> String {
+    let mut bytes = text.as_bytes().to_vec();
+    let key = |b: u8| b.is_ascii_alphanumeric() || b == b'_' || b == b'-';
+    let mut at = 0;
+    while at < bytes.len() {
+        let starts =
+            bytes[at..].starts_with(b"sk-") && (at == 0 || !bytes[at - 1].is_ascii_alphanumeric());
+        if !starts {
+            at += 1;
+            continue;
+        }
+        let len = bytes[at..].iter().take_while(|b| key(**b)).count();
+        let words = &bytes[at + 3..at + len];
+        let name = words.contains(&b'-')
+            && words
+                .split(|b| *b == b'-')
+                .all(|word| !word.is_empty() && word.iter().all(u8::is_ascii_lowercase));
+        if name {
+            bytes[at..at + len].fill(b'x');
+        }
+        at += len;
+    }
+    // Only ASCII bytes were replaced, each by an ASCII byte.
+    String::from_utf8(bytes).unwrap_or_else(|_| text.to_string())
 }
 
 /// Characters that take no room on the screen: zero-width space, non-joiner and joiner, word
@@ -99,6 +181,17 @@ fn starts_with_ignoring_case(text: &str, prefix: &str) -> bool {
 fn run(text: &str, part: impl Fn(u8) -> bool) -> usize {
     text.bytes().take_while(|b| part(*b)).count()
 }
+
+/// More key prefixes (second audit, N7) and the fewest letters and digits right after one
+/// that make a hit: Stripe secret and restricted keys, Hugging Face and npm tokens. Their
+/// tails hold no `_` or `-`, which keeps names like `npm_config_cache` out.
+const MORE_PREFIXES: [(&str, usize); 5] = [
+    ("sk_live_", 16),
+    ("sk_test_", 16),
+    ("rk_live_", 16),
+    ("hf_", 20),
+    ("npm_", 20),
+];
 
 /// A known key prefix right after any character that is not an ASCII letter or digit (or at
 /// the start, or after a `%XX` escape): `**sk-…**`, `KEY_sk-…`, a key after Korean text or a
@@ -146,6 +239,11 @@ fn holds_glued_shape(text: &str) -> bool {
             }
         }
         if starts("glpat-") && run(here, key) >= 14 {
+            return true;
+        }
+        if MORE_PREFIXES.iter().any(|(prefix, least)| {
+            starts(prefix) && run(&here[prefix.len()..], |b| b.is_ascii_alphanumeric()) >= *least
+        }) {
             return true;
         }
         if starts("bearer") {
@@ -244,10 +342,11 @@ const PLAIN_NAMES: [&str; 1] = ["root"];
 /// `text` with the home folder as `~`, the user name as a whole word as `[user]` (also in a
 /// host name made from it, `<name>s-MacBook-Pro`), and the name in any other home-shaped
 /// path (`/Users/<name>`, `/home/<name>`, `\Users\<name>`, `\Documents and Settings\<name>`)
-/// as `[user]`. The name is `who.user` and the last part of `who.home`. Letter case is
+/// as `[user]`, and a macOS temporary folder as `[tmp]` ([`mask_temp_folders`]). The name is
+/// `who.user` and the last part of `who.home`. Letter case is
 /// ignored when matching (ASCII), since the systems that use these folders ignore it too.
 pub fn mask(text: &str, who: &Who) -> String {
-    let mut out = text.to_string();
+    let mut out = mask_temp_folders(text);
     let home = who
         .home
         .as_deref()
@@ -277,6 +376,56 @@ pub fn mask(text: &str, who: &Who) -> String {
     for parent in HOME_PARENTS {
         out = mask_names_after(&out, parent);
     }
+    out
+}
+
+/// What stands in for a macOS per-user temporary folder.
+pub const TEMP_MASK: &str = "[tmp]";
+
+/// Where macOS keeps the per-user temporary folders, and the longest folder id read.
+const TEMP_PARENT: &str = "/var/folders/";
+const TEMP_ID_MAX: usize = 64;
+
+/// `text` with each macOS temporary folder, `/var/folders/<2 characters>/<id>/T` (also
+/// under `/private`), as `[tmp]`. The id is made from the user's account and says nothing a
+/// decision needs; with its `/` and the `T` it would also read as a long mixed run (second
+/// audit, N6). `<2 characters>` and `<id>` are lower-case letters, digits and `_`; the `T`
+/// ends the path or is followed by something that is not part of a name.
+fn mask_temp_folders(text: &str) -> String {
+    let part = |b: u8| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_';
+    let mut out = String::with_capacity(text.len());
+    let mut from = 0;
+    while let Some(found) = text[from..].find(TEMP_PARENT) {
+        let at = from + found;
+        let rest = &text.as_bytes()[at + TEMP_PARENT.len()..];
+        let id = rest
+            .get(3..)
+            .map_or(0, |r| r.iter().take_while(|b| part(**b)).count());
+        let shaped = rest.len() >= 3
+            && part(rest[0])
+            && part(rest[1])
+            && rest[2] == b'/'
+            && (1..=TEMP_ID_MAX).contains(&id)
+            && rest[3 + id..].starts_with(b"/T")
+            && !rest
+                .get(3 + id + 2)
+                .is_some_and(|b| b.is_ascii_alphanumeric() || *b == b'_' || *b == b'-');
+        if !shaped {
+            out.push_str(&text[from..at + TEMP_PARENT.len()]);
+            from = at + TEMP_PARENT.len();
+            continue;
+        }
+        let start = if text[from..at].ends_with("/private") {
+            at - "/private".len()
+        } else {
+            at
+        };
+        out.push_str(&text[from..start]);
+        out.push_str(TEMP_MASK);
+        // All of the path read so far is ASCII, so this is a character boundary.
+        from = at + TEMP_PARENT.len() + 3 + id + 2;
+    }
+    out.push_str(&text[from..]);
     out
 }
 
@@ -569,6 +718,155 @@ mod tests {
             assert!(!holds_secret_shape(&text), "{text}");
         }
         assert!(built(|v| v["evidence"] = json!(format!("built from {commit}"))).is_ok());
+    }
+
+    /// Second audit, N7: the key prefixes of more services, alone, glued and in a sentence.
+    /// Test data built at run time; the shortest tail that counts and one short of it.
+    #[test]
+    fn stripe_hugging_face_and_npm_keys_are_secret_shapes() {
+        for (prefix, least) in [
+            ("sk_live_", 16),
+            ("sk_test_", 16),
+            ("rk_live_", 16),
+            ("hf_", 20),
+            ("npm_", 20),
+        ] {
+            let key = format!("{prefix}{}", "a1".repeat(least / 2));
+            for text in [
+                key.clone(),
+                format!("**{key}**"),
+                format!("it printed {key}."),
+                format!("KEY_{key}"),
+                key.to_ascii_uppercase(),
+            ] {
+                assert!(holds_secret_shape(&text), "{text}");
+            }
+            let r = built(|v| v["evidence"] = json!(format!("log: {key}"))).unwrap_err();
+            assert_eq!(r.code, "secret_shape", "{prefix}");
+            let short = &key[..key.len() - 1];
+            assert!(!holds_secret_shape(&format!("see {short} here")), "{short}");
+        }
+        for slack in ["xoxb-", "xoxp-"] {
+            let key = format!("{slack}{}", "1".repeat(12));
+            assert!(holds_secret_shape(&format!("**{key}**")), "{key}");
+        }
+        // Names that only start the same way: the tail of a key is letters and digits.
+        for text in [
+            "hf_hub_download(repo_id, filename)",
+            "npm_config_cache and npm_package_version",
+            "the sk_test_mode flag and sk_live_mode",
+            "a shelf_abcdefghijklmnopqrstuvwxyz name",
+        ] {
+            assert!(!holds_secret_shape(text), "{text}");
+        }
+    }
+
+    /// Second audit, N7: a key written in full-width letters, or with `\uXXXX` escapes in it,
+    /// is the same key. Read for the refusal only: text that passes is sent as it was written.
+    #[test]
+    fn full_width_letters_and_unicode_escapes_do_not_hide_a_secret_shape() {
+        let key = format!("sk-{}", "a1".repeat(12));
+        let wide = |text: &str| -> String {
+            text.chars()
+                .map(|c| char::from_u32(c as u32 + 0xfee0).unwrap())
+                .collect()
+        };
+        for text in [
+            wide(&key),
+            format!("{}{}", wide("sk-"), &key[3..]),
+            format!("s{}", wide(&key[1..])),
+            format!("\\u0073k-{}", &key[3..]),
+            format!("sk\\u002d{}", &key[3..]),
+            format!("sk\\u002D{}", &key[3..]),
+            format!("sk-a1\\u200b{}", &key[5..]),
+            format!("\\uff53\\uff4b\\uff0d{}", &key[3..]),
+            "token\\u003a v".to_string(),
+            format!("{}: v", wide("password")),
+        ] {
+            assert!(holds_secret_shape(&text), "{text}");
+            let r = built(|v| v["evidence"] = json!(format!("see {text}"))).unwrap_err();
+            assert_eq!(r.code, "secret_shape", "{text}");
+        }
+        for text in [
+            wide("Which runner?"),
+            "caf\\u00e9 and C:\\users\\public and \\u12 and \\uzzzz".to_string(),
+            "an escaped \\ud83d half of a pair".to_string(),
+        ] {
+            assert!(!holds_secret_shape(&text), "{text}");
+        }
+        let prose = format!("{} \\u0041", wide("Which runner?"));
+        let out = built(|v| v["evidence"] = json!(prose.clone())).unwrap();
+        assert_eq!(out.evidence(), prose);
+    }
+
+    /// Second audit, N6: `sk-` before lower-case words joined by further hyphens is a name
+    /// (sk-learn-pipeline), as long as it holds no digit and no upper-case letter.
+    #[test]
+    fn a_hyphenated_lower_case_name_after_sk_is_not_a_secret_shape() {
+        for text in [
+            "sk-learn-pipeline",
+            "the sk-learn-pipeline step, then (sk-learn-model-selection).",
+            "`sk-learn-pipeline`",
+        ] {
+            assert!(!holds_secret_shape(text), "{text}");
+            assert!(built(|v| v["evidence"] = json!(text)).is_ok(), "{text}");
+        }
+        for text in [
+            "sk-learn-pipeline2",
+            "sk-learn-Pipeline",
+            "sk-learnpipelinestep",
+            "sk-learn_pipeline-step",
+            "sk-learn--pipeline",
+            "sk-learn-pipeline-",
+            "token: sk-learn-pipeline",
+            "%20sk-learn-pipeline",
+        ] {
+            assert!(holds_secret_shape(text), "{text}");
+        }
+    }
+
+    /// Second audit, N6: a macOS temporary folder is masked like a home folder instead of
+    /// being read as a long mixed run; what follows it is still screened.
+    #[test]
+    fn a_macos_temp_folder_is_masked_and_not_refused() {
+        let folder = "/var/folders/zz/zyxvpxvq6csfxvn_n0000000000000/T";
+        let who = who();
+        for (text, want) in [
+            (
+                format!("{folder}/tmp.x1Yz/out.log failed"),
+                "[tmp]/tmp.x1Yz/out.log failed",
+            ),
+            (format!("/private{folder}/a.txt"), "[tmp]/a.txt"),
+            (format!("in {folder}."), "in [tmp]."),
+            (format!("TMPDIR={folder}/"), "TMPDIR=[tmp]/"),
+        ] {
+            assert!(!holds_secret_shape(&text), "{text}");
+            assert_eq!(mask(&text, &who), want);
+            let out = built(|v| v["evidence"] = json!(text.clone())).unwrap();
+            assert_eq!(out.evidence(), want);
+        }
+        // Not that folder: another last part, a longer first part, a name that goes on.
+        for text in [
+            "/var/folders/zz/zyxvpxvq6csfxvn_n0000000000000/C/com.apple.x".to_string(),
+            "/var/folders/zzz/zyxvpxvq6csfxvn_n0000000000000/T/a".to_string(),
+            format!("{folder}mp/a"),
+        ] {
+            assert_eq!(mask(&text, &who), text);
+        }
+        let key = format!("sk-{}", "a1".repeat(12));
+        for text in [
+            format!("{folder}/{key}"),
+            format!("{folder}/{}", "A1b2".repeat(12)),
+        ] {
+            assert!(holds_secret_shape(&text), "{text}");
+        }
+        // An option value is never rewritten.
+        let r = built(|v| {
+            v["options"][0]["value"] = json!(format!("{folder}/a"));
+            v["default"] = json!(format!("{folder}/a"));
+        })
+        .unwrap_err();
+        assert_eq!(r.code, "option_value_private");
     }
 
     /// Audit N10: one field at its edge, 65,536 bytes kept and 65,537 refused, raw and after
