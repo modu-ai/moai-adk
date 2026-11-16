@@ -375,7 +375,8 @@ Options:
           Main model (Claude hosts default `opus`; codex
           uses its own default unless set)
       --effort <EFFORT>
-          Claude effort (default `medium`)
+          Effort (Claude default `medium`; codex only when
+          set: low|medium|high|xhigh|max)
       --advisor <ADVISOR>
           Advisor model on Claude hosts (fable|opus|sonnet
           or a full claude-* id). None by default; the user
