@@ -102,6 +102,24 @@ impl Outbound {
     }
 }
 
+/// Shortest token the entropy rule reads, and the entropy, in bits per character, at which
+/// it refuses.
+pub const ENTROPY_LEN_MIN: usize = 20;
+pub const ENTROPY_BITS_MIN: f64 = 4.0;
+
+/// What stands in for an e-mail address (user decision U2, 2026-11-16).
+pub const EMAIL_MASK: &str = "[email]";
+
+/// Shannon entropy of `token`, in bits per character.
+pub fn entropy(token: &str) -> f64 {
+    0.0
+}
+
+/// The code of the first screen that refuses `text`, or `None` (stub).
+pub fn screen(text: &str) -> Option<&'static str> {
+    holds_secret_shape(text).then_some("secret_shape")
+}
+
 /// True when `text` holds a credential shape (see the module rules). Read twice: as written,
 /// where a character without width is a break like any other, and with those characters
 /// taken out, so one placed inside a key does not split it.
@@ -654,13 +672,66 @@ mod tests {
         assert_eq!(out.evidence_fields(), ["ci", "[user]", "zz_last"]);
         assert_eq!(out.undo(), "git revert the commit in ~/proj");
         let one = BTreeMap::from([("log".to_string(), "one\ntwo".to_string())]);
-        assert_eq!(render_evidence(&one), "log: one\ntwo");
+        assert_eq!(render_evidence(&one), "log: one\\ntwo");
         let key = format!("sk-{}", "a1".repeat(12));
         let r = built(|v| v["undo"] = json!(format!("put {key} back"))).unwrap_err();
         assert_eq!(r.code, "secret_shape");
-        // A field named like a secret key reads as a pair with its value: refused.
-        let r = built(|v| v["evidence"] = json!({"password": "hunter2"})).unwrap_err();
+    }
+
+    /// V1 audit N8: a field's name and its value are screened apart, so a field named like a
+    /// secret key with an innocent value is sent, and a secret in the value still refuses.
+    /// A short password alone in a value is a stated limit (module text).
+    #[test]
+    fn field_names_and_values_are_screened_apart() {
+        for name in ["token", "password", "secret", "api_key", "apikey", "authorization"] {
+            for value in [
+                "the rotation policy says ninety days",
+                "see the vault entry of the deploy step",
+                "hunter2",
+            ] {
+                let out = built(|v| v["evidence"] = json!({ name: value }));
+                assert!(out.is_ok(), "{name}: {value}");
+                assert_eq!(out.unwrap().evidence(), format!("{name}: {value}"));
+            }
+        }
+        let key = format!("sk-{}", "a1".repeat(12));
+        for value in [key.clone(), format!("token: {key}"), "password: x".to_string()] {
+            let r = built(|v| v["evidence"] = json!({"notes": "plain", "token": value}))
+                .unwrap_err();
+            assert_eq!(r.code, "secret_shape", "{value}");
+            assert!(r.reason.starts_with("an evidence value"), "{}", r.reason);
+        }
+        // A name is screened on its own too.
+        let r = built(|v| v["evidence"] = json!({ format!("hf_{}", "a1".repeat(10)): "plain" }))
+            .unwrap_err();
         assert_eq!(r.code, "secret_shape");
+        assert!(r.reason.starts_with("an evidence field name"), "{}", r.reason);
+    }
+
+    /// V1 audit N8: a value with a line break and `name:` after it cannot add a field line.
+    /// The rendering escapes (it is not a JSON object): `\` as `\\`, a line feed as `\n`, a
+    /// carriage return as `\r`, U+2028 and U+2029 as ` ` and ` `; one line per field.
+    #[test]
+    fn a_value_cannot_forge_another_field_line() {
+        let out = built(|v| {
+            v["evidence"] = json!({
+                "a": "first\nb: forged\nc: also\u{2028}d: and\u{2029}e: more",
+                "b": "real \\n backslash",
+            })
+        })
+        .unwrap();
+        let lines: Vec<&str> = out.evidence().lines().collect();
+        assert_eq!(
+            lines,
+            [
+                "a: first\\nb: forged\\nc: also\\u2028d: and\\u2029e: more",
+                "b: real \\\\n backslash",
+            ]
+        );
+        assert!(!out.evidence().contains(['\u{2028}', '\u{2029}', '\r']));
+        // A carriage return never passes the parser; the rendering escapes it all the same.
+        let raw = BTreeMap::from([("a".to_string(), "x\r\ny: z".to_string())]);
+        assert_eq!(render_evidence(&raw), "a: x\\r\\ny: z");
     }
 
     /// Test data: shaped like credentials, built at run time, none real.
@@ -791,7 +862,6 @@ mod tests {
             "the secret santa list and the password rule".to_string(),
             format!("blob {short} end"),
             "a".repeat(100),
-            "abcdefghijkl0123456789".repeat(3),
             "ABCDEFGHIJKLabcdefghijkl".repeat(3),
             format!("at commit {commit}"),
             format!("sha256:{digest}"),
@@ -867,7 +937,13 @@ mod tests {
         ] {
             assert!(holds_secret_shape(&text), "{text}");
             let r = built(|v| v["evidence"] = evidence(format!("see {text}"))).unwrap_err();
-            assert_eq!(r.code, "secret_shape", "{text}");
+            // Full-width letters fold before the patterns read; an escape is read by the
+            // one decoding pass (design v2, slice V2).
+            assert!(
+                ["secret_shape", "secret_encoded"].contains(&r.code),
+                "{text}: {}",
+                r.code
+            );
         }
         for text in [
             wide("Which runner?"),
@@ -921,6 +997,11 @@ mod tests {
             (format!("/private{folder}/a.txt"), "[tmp]/a.txt"),
             (format!("in {folder}."), "in [tmp]."),
             (format!("TMPDIR={folder}/"), "TMPDIR=[tmp]/"),
+            // The per-user cache folder, `C`, beside `T` (design v2, slice V2).
+            (
+                "/var/folders/zz/zyxvpxvq6csfxvn_n0000000000000/C/com.apple.x".to_string(),
+                "[tmp]/com.apple.x",
+            ),
         ] {
             assert!(!holds_secret_shape(&text), "{text}");
             assert_eq!(mask(&text, &who), want);
@@ -929,7 +1010,7 @@ mod tests {
         }
         // Not that folder: another last part, a longer first part, a name that goes on.
         for text in [
-            "/var/folders/zz/zyxvpxvq6csfxvn_n0000000000000/C/com.apple.x".to_string(),
+            "/var/folders/zz/zyxvpxvq6csfxvn_n0000000000000/X/com.apple.x".to_string(),
             "/var/folders/zzz/zyxvpxvq6csfxvn_n0000000000000/T/a".to_string(),
             format!("{folder}mp/a"),
         ] {
@@ -957,32 +1038,82 @@ mod tests {
     #[test]
     fn a_field_over_64_kib_is_refused() {
         assert_eq!(FIELD_MAX, 65_536);
-        for (field, n) in [("what", 65_536), ("evidence", 65_531)] {
-            assert!(
-                built_raw(|v| put(v, field, "a".repeat(n))).is_ok(),
-                "{field}"
-            );
-            let r = built_raw(|v| put(v, field, "a".repeat(n + 1))).unwrap_err();
+        // At 65,536 bytes the screen reads the field, and the request's own bound (checked
+        // again after masking) refuses it; at 65,537 the screen never reads it.
+        for (field, at_bound) in [
+            ("what", "what_too_long"),
+            ("evidence", "evidence_field_too_large"),
+        ] {
+            let r = built_raw(|v| put(v, field, "a".repeat(65_536))).unwrap_err();
+            assert_eq!(r.code, at_bound, "{field}");
+            let r = built_raw(|v| put(v, field, "a".repeat(65_537))).unwrap_err();
             assert_eq!(r.code, "too_large", "{field}");
         }
-        assert!(built_raw(|v| v["options"][1]["description"] = json!("a".repeat(65_536))).is_ok());
+        let r =
+            built_raw(|v| v["options"][1]["description"] = json!("a".repeat(65_536))).unwrap_err();
+        assert_eq!(r.code, "description_too_long");
         let r =
             built_raw(|v| v["options"][1]["description"] = json!("a".repeat(65_537))).unwrap_err();
         assert_eq!(r.code, "too_large");
-        // `al` becomes `[user]`: four bytes longer, so a field that fit no longer does.
+    }
+
+    /// Item 6 of slice V2: after masking, each sent field is checked against the request's
+    /// bound again; a field the mask made too long is refused, never cut. `al` becomes
+    /// `[user]`, four bytes longer. N and N+1 for each bound.
+    #[test]
+    fn a_field_the_mask_made_too_long_is_refused() {
+        use super::super::request::{
+            DESCRIPTION_MAX, EVIDENCE_FIELD_MAX, EVIDENCE_MAX, UNDO_MAX, WHAT_MAX,
+        };
         let al = Who {
             home: None,
             user: Some("al".into()),
         };
-        let grown = |n: usize| {
-            let request: Request = serde_json::from_str(&request_json(|v| {
-                v["evidence"] = evidence(format!("al {}", "a".repeat(n - 3)))
-            }))
-            .unwrap();
+        // A text of `n` bytes, starting with the name, that is `n + 4` bytes once masked.
+        let grows = |n: usize| format!("al {}", "a".repeat(n - 3));
+        let with = |edit: &dyn Fn(&mut Value)| {
+            let request = parse(&request_json(edit)).unwrap();
             build(&Cleared::unchecked(&request), &al)
         };
-        assert_eq!(grown(65_527).unwrap().evidence().len(), 65_536);
-        assert_eq!(grown(65_528).unwrap_err().code, "too_large");
+        for (bound, code, edit) in [
+            (
+                WHAT_MAX,
+                "what_too_long",
+                &(|v: &mut Value, t: String| v["what"] = json!(t)) as &dyn Fn(&mut Value, String),
+            ),
+            (DESCRIPTION_MAX, "description_too_long", &|v, t| {
+                v["options"][1]["description"] = json!(t)
+            }),
+            (UNDO_MAX, "undo_too_long", &|v, t| v["undo"] = json!(t)),
+            (EVIDENCE_FIELD_MAX, "evidence_field_too_large", &|v, t| {
+                v["evidence"] = evidence(t)
+            }),
+        ] {
+            assert!(with(&|v| edit(v, grows(bound - 4))).is_ok(), "{code}");
+            let r = with(&|v| edit(v, grows(bound - 3))).unwrap_err();
+            assert_eq!(r.code, code);
+            assert!(r.reason.contains("mask"), "{}", r.reason);
+        }
+        // The sum of the values: 16,380 bytes before the mask and 16,384 after it fit; one
+        // more byte in a fifth field is 16,381 before (the parser lets it through) and
+        // 16,385 after.
+        assert_eq!(EVIDENCE_MAX, 16_384);
+        let fields = |fifth: bool| {
+            let mut v = json!({
+                "a": "e".repeat(4_096),
+                "b": "e".repeat(4_096),
+                "c": "e".repeat(4_096),
+                "d": grows(4_092),
+            });
+            if fifth {
+                v["e"] = json!("e");
+            }
+            v
+        };
+        let fits = with(&|v| v["evidence"] = fields(false)).unwrap();
+        assert_eq!(fits.evidence_fields().len(), 4);
+        let r = with(&|v| v["evidence"] = fields(true)).unwrap_err();
+        assert_eq!(r.code, "evidence_too_large");
     }
 
     /// Audit N9: names with a space, other letter cases, a host name made from the name, and
@@ -1162,5 +1293,297 @@ mod tests {
         .unwrap_err();
         assert_eq!(r.code, "option_value_private");
         assert!(!r.reason.contains("testperson"));
+    }
+
+    /// Test data for slice V2, built at run time: shaped like keys and not keys.
+    fn key() -> String {
+        format!("sk-{}", "a1".repeat(12))
+    }
+
+    fn wide(text: &str) -> String {
+        text.chars()
+            .map(|c| char::from_u32(c as u32 + 0xfee0).unwrap())
+            .collect()
+    }
+
+    fn base64(bytes: &[u8]) -> String {
+        const A: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        let mut out = String::new();
+        for chunk in bytes.chunks(3) {
+            let n = chunk.iter().fold(0u32, |n, b| n << 8 | *b as u32) << (8 * (3 - chunk.len()));
+            for i in 0..=chunk.len() {
+                out.push(A[(n >> (18 - 6 * i) & 63) as usize] as char);
+            }
+            for _ in chunk.len()..3 {
+                out.push('=');
+            }
+        }
+        out
+    }
+
+    /// Every bypass the audits of slices S2 and V1 listed, with the code it is refused with.
+    fn bypasses() -> Vec<(&'static str, String, &'static str)> {
+        let key = key();
+        let tail = &key[3..];
+        let hex: String = key.bytes().map(|b| format!("{b:02x}")).collect();
+        vec![
+            ("bold markers", format!("**{key}**"), "secret_shape"),
+            (
+                "Hangul adjacency",
+                format!("\u{d0a4}\u{b294}{key}\u{c785}\u{b2c8}\u{b2e4}"),
+                "secret_shape",
+            ),
+            ("KEY_ prefix", format!("KEY_{key}"), "secret_shape"),
+            ("%20 before", format!("x%20{key}"), "secret_shape"),
+            ("zero-width before", format!("x\u{200b}{key}"), "secret_shape"),
+            ("zero-width inside", format!("s\u{200b}k-{tail}"), "secret_shape"),
+            ("soft hyphen inside", format!("sk\u{ad}-{tail}"), "secret_shape"),
+            ("tag character inside", format!("sk-a1\u{e0041}{}", &key[5..]), "secret_shape"),
+            ("full-width", wide(&key), "secret_shape"),
+            ("full-width prefix", format!("{}{tail}", wide("sk-")), "secret_shape"),
+            ("long s", format!("\u{17f}k-{tail}"), "secret_shape"),
+            ("plain sk-", key.clone(), "secret_shape"),
+            ("\\U00000073", format!("\\U00000073k-{tail}"), "secret_encoded"),
+            ("\\x73", format!("\\x73k-{tail}"), "secret_encoded"),
+            ("\\u{73}", format!("\\u{{73}}k-{tail}"), "secret_encoded"),
+            ("\\u0073", format!("\\u0073k-{tail}"), "secret_encoded"),
+            ("%73", format!("%73k-{tail}"), "secret_encoded"),
+            ("&#115;", format!("&#115;k-{tail}"), "secret_encoded"),
+            ("&#x73;", format!("&#x73;k-{tail}"), "secret_encoded"),
+            ("Cyrillic s", format!("\u{455}k-{tail}"), "mixed_script"),
+            ("Greek omicron", format!("t\u{3bf}ken-{tail}"), "mixed_script"),
+            ("base64 of a key", base64(key.as_bytes()), "secret_encoded"),
+            ("hex of a key", hex, "secret_encoded"),
+            ("sk_live_", format!("sk_live_{}", "a1".repeat(8)), "secret_shape"),
+            ("sk_test_", format!("sk_test_{}", "a1".repeat(8)), "secret_shape"),
+            ("rk_live_", format!("rk_live_{}", "a1".repeat(8)), "secret_shape"),
+            ("rk_test_", format!("rk_test_{}", "a1".repeat(8)), "secret_shape"),
+            ("whsec_", format!("whsec_{}", "a1".repeat(8)), "secret_shape"),
+            ("whsec_ lower case", format!("whsec_{}", "abcdefgh".repeat(2)), "secret_shape"),
+            ("sk-proj- lower case", format!("sk-proj-{}", "abcdefgh".repeat(3)), "secret_shape"),
+            ("hf_", format!("hf_{}", "a1".repeat(10)), "secret_shape"),
+            ("npm_", format!("npm_{}", "a1".repeat(10)), "secret_shape"),
+            ("xoxb-", format!("xoxb-{}", "1".repeat(12)), "secret_shape"),
+            ("glued after letters", format!("mysk_live_{}", "a1".repeat(8)), "secret_shape"),
+            ("sk- glued after letters", format!("my{key}"), "secret_shape"),
+            ("random token", "q7Zr2LkX9pWm4TfV8sYb".to_string(), "high_entropy"),
+        ]
+    }
+
+    /// Each bypass, refused with its code in every field the request carries: `what`, an
+    /// option description, `undo`, an evidence value, and, where it fits their shorter
+    /// bounds, the card and an option value. The reason never quotes it.
+    #[test]
+    fn every_listed_bypass_is_refused_in_every_field() {
+        for (name, text, code) in bypasses() {
+            assert_eq!(screen(&text), Some(code), "{name}: {text}");
+            for field in ["what", "evidence", "undo"] {
+                let r = built(|v| put(v, field, format!("it printed {text} twice"))).unwrap_err();
+                assert_eq!(r.code, code, "{name} in {field}");
+                assert!(!r.reason.contains(&text), "{name}: {}", r.reason);
+            }
+            let r = built(|v| v["options"][1]["description"] = json!(text)).unwrap_err();
+            assert_eq!(r.code, code, "{name} in a description");
+            if text.len() <= 64 {
+                let r = built(|v| v["card"] = json!(text)).unwrap_err();
+                assert_eq!(r.code, code, "{name} in the card");
+                let r = built(|v| {
+                    v["options"][0]["value"] = json!(text);
+                    v["default"] = json!(text);
+                })
+                .unwrap_err();
+                assert_eq!(r.code, code, "{name} in an option value");
+            }
+            // Through the whole chain too: the gate does not take another code first.
+            let r = super::super::prepare(
+                &request_json(|v| v["evidence"] = json!({"ci": "plain", "log": text})),
+                super::super::provider::Provider::Typesafe,
+                &who(),
+            )
+            .unwrap_err();
+            assert_eq!(r.code, code, "{name} through prepare");
+        }
+        // The key prefixes that fit an evidence field name are refused there too.
+        for name in [
+            format!("sk_live_{}", "a1".repeat(8)),
+            format!("rk_test_{}", "a1".repeat(8)),
+            format!("whsec_{}", "a1".repeat(8)),
+            format!("hf_{}", "a1".repeat(10)),
+            format!("npm_{}", "a1".repeat(10)),
+            format!("mysk_live_{}", "a1".repeat(8)),
+        ] {
+            let r = built(|v| v["evidence"] = json!({ name.clone(): "plain" })).unwrap_err();
+            assert_eq!(r.code, "secret_shape", "{name}");
+            assert!(!r.reason.contains(&name));
+        }
+    }
+
+    /// The miss direction of slice V2: ordinary engineering text passes every screen and is
+    /// sent (masked where it names a person).
+    #[test]
+    fn ordinary_engineering_text_passes_every_screen() {
+        let run_url = format!(
+            "{}://github.com/modu-ai/moai-adk/actions/runs/19234567890/job/54321098765",
+            "https"
+        );
+        let ordinary = [
+            "at commit c7ef9b1f8c2365fe08963269af718f3d48de7d51".to_string(),
+            format!("sha256:{}", "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"),
+            "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08".to_string(),
+            "run cf998b8a-4360-419c-b982-edacba5e85da failed".to_string(),
+            "max_tokens: 4096".to_string(),
+            run_url,
+            "CARGO_TARGET_DIR=target/v2".to_string(),
+            "ProviderResponseValidationError".to_string(),
+            "ProviderResponseValidationErrorKindUnknown".to_string(),
+            "src/decide/outbound.rs:540 and tests/home_isolation_scan.rs".to_string(),
+            "/Users/testperson/MoAI/moai-adk/.claude/worktrees/agent-ad8f65b06b51e1d65".to_string(),
+            "refs/heads/card/37-v2-screen".to_string(),
+            "x86_64-unknown-linux-gnu and linux-x86_64-musl-static-v2026".to_string(),
+            "the_largest_v2_request_fits_the_body_bound".to_string(),
+            "a_key_glued_to_other_characters_refuses_the_request_in_every_field".to_string(),
+            "feedback_new_worktrees_only_in_moai_home".to_string(),
+            "github-actions-runner-ubuntu-22-04-x64".to_string(),
+            "v2026.11.0-rc.2+local.4".to_string(),
+            "cargo clippy --locked --all-targets -- -D warnings".to_string(),
+            "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>".to_string(),
+            "the risk-based-v2-rollout-plan and task-level-configuration".to_string(),
+            "work_test_suiteforintegration".to_string(),
+            "/var/folders/zz/2b_k5x8n1m7q9_3h8r0z9y4w0000gn/T/tmp.x1Yz".to_string(),
+            "키는 값입니다: CI runs nextest".to_string(),
+            "10\u{3bc}s per call, \u{3b1} = 0.5".to_string(),
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".to_string(),
+            "12345678901234567890123456789".to_string(),
+        ];
+        for text in &ordinary {
+            assert_eq!(screen(text), None, "{text}");
+            assert!(built(|v| v["evidence"] = evidence(text)).is_ok(), "{text}");
+        }
+    }
+
+    /// Shannon entropy, and the rule's two edges: 19 characters pass and 20 are refused (all
+    /// distinct, 4.25 and 4.32 bits); at 32 characters 4.0 bits exactly are refused and 3.98
+    /// pass. A token without a digit, or without a letter, is never refused by it.
+    #[test]
+    fn the_entropy_rule_refuses_at_twenty_characters_and_four_bits() {
+        assert_eq!((ENTROPY_LEN_MIN, ENTROPY_BITS_MIN), (20, 4.0));
+        assert_eq!(entropy("ab"), 1.0);
+        assert_eq!(entropy("aaaa"), 0.0);
+        let nineteen = "abcdefghijklmnopqr1";
+        let twenty = "abcdefghijklmnopqr12";
+        assert_eq!((nineteen.len(), twenty.len()), (19, 20));
+        assert!(entropy(nineteen) >= 4.0);
+        assert_eq!(screen(nineteen), None);
+        assert_eq!(screen(twenty), Some("high_entropy"));
+        let at = "0123456789ghijkl".repeat(2);
+        assert_eq!(entropy(&at), 4.0);
+        assert_eq!(screen(&at), Some("high_entropy"));
+        let below = format!("{}0", &at[..31]);
+        assert!(entropy(&below) < 4.0 && entropy(&below) > 3.97, "{}", entropy(&below));
+        assert_eq!(screen(&below), None);
+        // No digit, or no letter: passes at any entropy.
+        assert_eq!(screen("abcdefghijklmnopqrstuvwxyz"), None);
+        assert_eq!(screen("12345678901234567890"), None);
+        // The same token, split by a space, is two short tokens.
+        assert_eq!(screen("abcdefghij klmnopqr12"), None);
+        // A path whose every part is an ordinary word passes; one random part refuses it.
+        assert_eq!(screen("moai-adk/actions/runs/19234567890/job/54321098765"), None);
+        assert_eq!(
+            screen("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"),
+            Some("high_entropy")
+        );
+    }
+
+    /// A word that mixes ASCII letters with Cyrillic or Greek letters is refused; a word in one
+    /// script, or a Greek letter beside a number, is not.
+    #[test]
+    fn a_word_mixing_ascii_with_cyrillic_or_greek_letters_is_refused() {
+        for text in [
+            "\u{455}k-live",
+            "p\u{430}ssword",
+            "t\u{3bf}ken",
+            "AKI\u{391}",
+            "my_\u{3c3}ecret-x",
+        ] {
+            assert_eq!(screen(text), Some("mixed_script"), "{text}");
+        }
+        for text in [
+            "\u{43f}\u{440}\u{438}\u{432}\u{435}\u{442} world",
+            "\u{3b1}\u{3b2}\u{3b3} and abc",
+            "10\u{3bc}s",
+            "caf\u{e9}",
+            "\u{d0a4}abc",
+        ] {
+            assert_eq!(screen(text), None, "{text}");
+        }
+    }
+
+    /// A bidirectional control character is refused in every screened field, by the screen
+    /// itself (the gate refuses it earlier in the chain, with the same code).
+    #[test]
+    fn a_bidi_character_is_refused_by_the_screen() {
+        for field in ["what", "evidence", "undo"] {
+            let r = built(|v| put(v, field, "see \u{202e}txt.exe")).unwrap_err();
+            assert_eq!(r.code, "bidi_character", "{field}");
+        }
+    }
+
+    /// User decision U2: an e-mail address is masked as `[email]` and sent; an SSH remote
+    /// (`git@host:…`), a package version and a decorator are not addresses.
+    #[test]
+    fn e_mail_addresses_are_masked() {
+        let w = who();
+        for (text, want) in [
+            ("mail testperson@example.com now", "mail [email] now"),
+            ("a.b+c@sub.example.co.kr.", "[email]."),
+            (
+                "Co-Authored-By: Claude <noreply@anthropic.com>",
+                "Co-Authored-By: Claude <[email]>",
+            ),
+            ("TESTPERSON@EXAMPLE.ORG", "[email]"),
+            ("x@y.io,z@w.dev", "[email],[email]"),
+        ] {
+            assert_eq!(mask(text, &w), want, "{text}");
+        }
+        for text in [
+            "@types/node",
+            "pkg@1.2.3",
+            "user@localhost",
+            "git@github.com:org/repo.git",
+            "a@b",
+            "@ alone",
+            "x@.com",
+            "x@y.c",
+        ] {
+            assert_eq!(mask(text, &Who::default()), text, "{text}");
+        }
+        let out = built(|v| v["evidence"] = evidence("reported by someone@example.com")).unwrap();
+        assert_eq!(out.evidence(), "log: reported by [email]");
+        let r = built(|v| {
+            v["options"][0]["value"] = json!("someone@example.com");
+            v["default"] = json!("someone@example.com");
+        })
+        .unwrap_err();
+        assert_eq!(r.code, "option_value_private");
+    }
+
+    /// Each refusal code of the screen has its own reason, which names the field's place and
+    /// the rule, never the text.
+    #[test]
+    fn each_screen_code_has_a_reason_that_quotes_nothing() {
+        let codes: Vec<&str> = bypasses().iter().map(|(_, _, code)| *code).collect();
+        for code in [
+            "secret_shape",
+            "secret_encoded",
+            "mixed_script",
+            "high_entropy",
+        ] {
+            assert!(codes.contains(&code), "{code}");
+        }
+        let marker = "q7Zr2LkX9pWm4TfV8sYb";
+        let r = built(|v| v["what"] = json!(format!("Which {marker}?"))).unwrap_err();
+        assert_eq!(r.code, "high_entropy");
+        assert!(r.reason.starts_with("`what`"), "{}", r.reason);
+        assert!(!r.reason.contains(marker));
     }
 }

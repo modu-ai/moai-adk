@@ -390,6 +390,34 @@ mod tests {
         }
     }
 
+    /// Slice V2: the reserved value is compared after the normaliser, so a character without
+    /// width, full-width letters or the long s do not hide it; a bidi character in a value is
+    /// refused with its own code.
+    #[test]
+    fn the_reserved_value_is_compared_after_the_normaliser() {
+        let wide: String = "none"
+            .chars()
+            .map(|c| char::from_u32(c as u32 + 0xfee0).unwrap())
+            .collect();
+        for hidden in [
+            "none\u{200b}_of_these".to_string(),
+            "\u{feff}none_of_these".to_string(),
+            format!("{wide}_of_these"),
+            "none_of_the\u{17f}e".to_string(),
+            "none_of_these\u{fe0f}".to_string(),
+        ] {
+            assert_eq!(
+                code(|v| v["options"][1]["value"] = json!(hidden)),
+                "option_reserved",
+                "{hidden}"
+            );
+        }
+        assert_eq!(
+            code(|v| v["options"][1]["value"] = json!("none\u{202e}_of_these")),
+            "bidi_character"
+        );
+    }
+
     /// A description is required, at most 300 bytes: 300 accepted, 301 refused.
     #[test]
     fn a_description_is_required_and_short() {
@@ -401,6 +429,7 @@ mod tests {
                 "{empty:?}"
             );
         }
+        // V1 audit N10: an absent description has the same code as an empty one.
         assert_eq!(
             code(|v| {
                 v["options"][1]
@@ -408,6 +437,10 @@ mod tests {
                     .unwrap()
                     .remove("description");
             }),
+            "description_missing"
+        );
+        assert_eq!(
+            code(|v| v["options"][1]["description"] = Value::Null),
             "invalid_request"
         );
         assert_eq!(
@@ -436,7 +469,8 @@ mod tests {
         );
     }
 
-    /// `undo`: required, one line of text, at most 200 bytes.
+    /// `undo`: required, one line of text, at most 200 bytes. V1 audit N7: each broken rule
+    /// has its own code; every Unicode line terminator counts as a second line.
     #[test]
     fn undo_is_one_required_line() {
         assert_eq!(UNDO_MAX, 200);
@@ -445,11 +479,44 @@ mod tests {
         });
         assert_eq!(missing, "undo_missing");
         assert_eq!(code(|v| v["undo"] = Value::Null), "undo_missing");
-        for bad in ["", "   ", "two\nlines", "cr\rhere", "esc\u{1b}[0m"] {
-            assert_eq!(code(|v| v["undo"] = json!(bad)), "undo_invalid", "{bad:?}");
+        for blank in ["", "   ", "\t"] {
+            assert_eq!(
+                code(|v| v["undo"] = json!(blank)),
+                "undo_missing",
+                "{blank:?}"
+            );
         }
+        for two in [
+            "two\nlines",
+            "cr\rhere",
+            "crlf\r\nhere",
+            "vt\u{b}here",
+            "ff\u{c}here",
+            "nel\u{85}here",
+            "ls\u{2028}here",
+            "ps\u{2029}here",
+            "end\n",
+        ] {
+            assert_eq!(
+                code(|v| v["undo"] = json!(two)),
+                "undo_multiline",
+                "{two:?}"
+            );
+        }
+        assert_eq!(
+            code(|v| v["undo"] = json!("esc\u{1b}[0m")),
+            "undo_invalid"
+        );
         assert_eq!(code(|v| v["undo"] = json!("u".repeat(200))), "parsed");
-        assert_eq!(code(|v| v["undo"] = json!("u".repeat(201))), "undo_invalid");
+        assert_eq!(
+            code(|v| v["undo"] = json!("u".repeat(201))),
+            "undo_too_long"
+        );
+        // A long text on two lines: the line rule answers first.
+        assert_eq!(
+            code(|v| v["undo"] = json!(format!("{}\n", "u".repeat(201)))),
+            "undo_multiline"
+        );
         assert_eq!(code(|v| v["undo"] = json!(1)), "invalid_request");
     }
 
@@ -496,11 +563,19 @@ mod tests {
         );
         assert_eq!(code(|v| v["evidence"] = json!({"a": 1})), "invalid_request");
         assert_eq!(code(|v| v["evidence"] = json!(["a"])), "invalid_request");
-        // A name given twice would drop a field: refused.
-        let text = request_json(|_| {})
-            .replace(r#""evidence":{"ci":"#, r#""evidence":{"ci":"first","ci":"#);
-        assert!(text.contains(r#""ci":"first","ci":"#), "{text}");
-        assert_eq!(parse(&text).unwrap_err().code, "invalid_request");
+        // A name given twice would drop a field: refused with its own code (V1 audit N6),
+        // and the reason quotes neither the name nor a value.
+        let text = request_json(|_| {}).replace(
+            r#""evidence":{"ci":"#,
+            r#""evidence":{"ci":"MARKER_FIRST","ci":"#,
+        );
+        assert!(text.contains(r#""ci":"MARKER_FIRST","ci":"#), "{text}");
+        let r = parse(&text).unwrap_err();
+        assert_eq!(r.code, "evidence_duplicate");
+        assert!(!r.reason.contains("MARKER") && !r.reason.contains("\"ci\""));
+        // A field named twice elsewhere in the text is not this rule.
+        let elsewhere = request_json(|_| {}).replace(r#""tier":1"#, r#""tier":1,"tier":1"#);
+        assert_eq!(parse(&elsewhere).unwrap_err().code, "invalid_request");
     }
 
     #[test]

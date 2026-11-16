@@ -607,4 +607,89 @@ mod tests {
             "cleared"
         );
     }
+
+    /// V1 audit N1: a force push written as a cluster of short flags with `f` in it, or as a
+    /// refspec with a leading `+`. The near misses beside them pass.
+    #[test]
+    fn force_push_flag_clusters_and_plus_refspecs_are_refused() {
+        for text in [
+            "git push -fu origin main",
+            "git push -uf origin main",
+            "git push -vf",
+            "git push origin +main",
+            "git push origin +HEAD:main",
+            "git push origin +refs/heads/x:refs/heads/x",
+            "GIT PUSH ORIGIN +MAIN",
+        ] {
+            assert_eq!(deny(text), Some("deny_force_push"), "{text}");
+        }
+        for text in [
+            "git push -u origin main",
+            "git push origin -fix",
+            "git push origin main+1",
+            "push +1 to the vote",
+            "git push origin main\n+main is a ref",
+            "git add -f x",
+        ] {
+            assert_eq!(deny(text), None, "{text}");
+        }
+    }
+
+    /// V1 audit N2: `gh repo create … --public` makes a repository public too.
+    #[test]
+    fn creating_a_public_repository_is_refused() {
+        for text in [
+            "gh repo create moai-x --public",
+            "gh repo create --public moai-x --source .",
+            "GH REPO CREATE x --PUBLIC",
+        ] {
+            assert_eq!(deny(text), Some("deny_visibility_public"), "{text}");
+        }
+        for text in [
+            "gh repo create moai-x --private",
+            "a --public flag elsewhere",
+            "gh repo create x\n--public later",
+            "gh repo view --public",
+        ] {
+            assert_eq!(deny(text), None, "{text}");
+        }
+    }
+
+    /// V1 audit N3: the deny list reads the text after the normaliser, so a character without
+    /// width, a full-width form or an ideographic space does not hide a shape; a bidi or
+    /// control character is refused with its own code.
+    #[test]
+    fn the_deny_list_reads_normalised_text() {
+        let wide = |text: &str| -> String {
+            text.chars()
+                .map(|c| match c {
+                    ' ' => '\u{3000}',
+                    c => char::from_u32(c as u32 + 0xfee0).unwrap(),
+                })
+                .collect()
+        };
+        for (text, want) in [
+            ("git pu\u{200b}sh --force".to_string(), "deny_force_push"),
+            ("git push --fo\u{ad}rce".to_string(), "deny_force_push"),
+            (wide("git push --force"), "deny_force_push"),
+            ("rm\u{3000}-rf x".to_string(), "deny_rm_rf"),
+            ("git reset --\u{2060}hard".to_string(), "deny_reset_hard"),
+            ("drop\u{feff} table users".to_string(), "deny_drop_table"),
+            (wide("$5"), "deny_currency"),
+            ("git push \u{202e}--force".to_string(), "bidi_character"),
+            ("plain \u{2066}text".to_string(), "bidi_character"),
+            ("plain \u{1b}text".to_string(), "control_character"),
+        ] {
+            assert_eq!(deny(&text), Some(want), "{text}");
+        }
+        // Through the gate: the place is named, the text is not.
+        let request = parse(&request_json(|v| {
+            v["options"][1]["description"] = json!("see \u{202e}txt.exe")
+        }))
+        .unwrap();
+        let r = check(&request).unwrap_err();
+        assert_eq!(r.code, "bidi_character");
+        assert!(r.reason.starts_with("an option description"), "{}", r.reason);
+        assert!(!r.reason.contains("txt"), "{}", r.reason);
+    }
 }

@@ -33,6 +33,7 @@
 //! D-reason).
 
 pub mod gate;
+pub mod normalise;
 pub mod outbound;
 pub mod provider;
 pub mod request;
