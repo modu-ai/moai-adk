@@ -52,25 +52,78 @@ fn get<T: Transport>(t: &T, url: &str) -> Result<(Value, Option<String>)> {
     Ok((resp.body.unwrap_or(Value::Null), next))
 }
 
-/// Whether any comment on the pull request already carries `mark`.
-fn marked<T: Transport>(t: &T, api: &str, pr: u64, mark: &str) -> Result<bool> {
+/// Whether any comment a repository member wrote on the pull request already carries `mark`
+/// (Issue #3052), and the comments of non-members that were left out of the reading.
+fn marked<T: Transport>(
+    t: &T,
+    api: &str,
+    pr: u64,
+    mark: &str,
+) -> Result<(bool, crate::comment_authority::Dropped)> {
     let mut url = Some(format!("{api}/issues/{pr}/comments?per_page=100"));
     let mut pages = 0;
+    let mut ignored = crate::comment_authority::Dropped::default();
     while let Some(u) = url {
         pages += 1;
         if pages > 30 {
             return Err("more than 30 comment pages; refused".into());
         }
         let (page, next) = get(t, &u)?;
-        if page.as_array().is_some_and(|a| {
-            a.iter()
-                .any(|c| c["body"].as_str().is_some_and(|b| b.contains(mark)))
-        }) {
-            return Ok(true);
+        let mut comments = page.as_array().cloned().unwrap_or_default();
+        ignored.merge(crate::comment_authority::retain_rest(&mut comments));
+        if comments
+            .iter()
+            .any(|c| c["body"].as_str().is_some_and(|b| b.contains(mark)))
+        {
+            return Ok((true, ignored));
         }
         url = next;
     }
-    Ok(false)
+    Ok((false, ignored))
+}
+
+/// A row with the comments the pass left out added, when there were any. A report already on
+/// the row (from the merge) is joined, not replaced. The two readings are of the same thread,
+/// so a comment named in both is counted once and the plain-comment count is the larger one.
+fn with_ignored(mut row: Value, ignored: &crate::comment_authority::Dropped) -> Value {
+    if ignored.is_empty() {
+        return row;
+    }
+    let new = ignored.to_json();
+    row["ignored_control_lines"] = match row.get("ignored_control_lines") {
+        None => new,
+        Some(old) => {
+            let mut out = old.clone();
+            let mut items = old["items"].as_array().cloned().unwrap_or_default();
+            let seen: Vec<Value> = items.iter().map(|i| i["comment_id"].clone()).collect();
+            let fresh: Vec<Value> = new["items"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|i| !seen.contains(&i["comment_id"]))
+                .collect();
+            let shown = new["items"].as_array().map_or(0, Vec::len);
+            let repeated = (shown - fresh.len()) as u64;
+            out["count"] = json!(
+                old["count"].as_u64().unwrap_or(0) + new["count"].as_u64().unwrap_or(0) - repeated
+            );
+            out["other_non_member_comments"] = json!(old["other_non_member_comments"]
+                .as_u64()
+                .unwrap_or(0)
+                .max(new["other_non_member_comments"].as_u64().unwrap_or(0)));
+            items.extend(fresh);
+            items.truncate(50);
+            out["items"] = json!(items);
+            if out.get("hint").is_none() {
+                if let Some(h) = new.get("hint") {
+                    out["hint"] = h.clone();
+                }
+            }
+            out
+        }
+    };
+    row
 }
 
 fn comment<T: Transport>(t: &T, api: &str, pr: u64, body: String) -> Result<()> {
@@ -93,8 +146,15 @@ fn dry_decision<T: Transport>(
     t: &T,
     api: &str,
     head: &str,
-) -> Result<(String, String, String, u8)> {
+) -> Result<(
+    String,
+    String,
+    String,
+    u8,
+    crate::comment_authority::Dropped,
+)> {
     let snapshot = crate::gate_collect::collect(one, t)?;
+    let mut ignored = snapshot.ignored.clone();
     // #2906 T: every row names the audit tier the gate judged by.
     let tier = crate::gate::effective_tier(&snapshot);
     match crate::gate::check(&snapshot) {
@@ -104,18 +164,22 @@ fn dry_decision<T: Transport>(
             } else {
                 "would_merge"
             };
-            Ok((action.into(), String::new(), String::new(), tier))
+            Ok((action.into(), String::new(), String::new(), tier, ignored))
         }
         Err(stop) => {
             let action = if stop.rule == "G6" && stop.reason.starts_with("overlap in non-doc file")
             {
-                if marked(t, api, one.pr, &marker("update-branch", head))? {
+                let (seen, more) = marked(t, api, one.pr, &marker("update-branch", head))?;
+                ignored.merge(more);
+                if seen {
                     "already_updated"
                 } else {
                     "would_update_branch"
                 }
             } else if stop.rule == "G2" {
-                if marked(t, api, one.pr, &marker("auditor", head))? {
+                let (seen, more) = marked(t, api, one.pr, &marker("auditor", head))?;
+                ignored.merge(more);
+                if seen {
                     "already_asked"
                 } else {
                     "would_ask_auditor"
@@ -123,7 +187,13 @@ fn dry_decision<T: Transport>(
             } else {
                 "stopped"
             };
-            Ok((action.into(), stop.rule.to_string(), stop.reason, tier))
+            Ok((
+                action.into(),
+                stop.rule.to_string(),
+                stop.reason,
+                tier,
+                ignored,
+            ))
         }
     }
 }
@@ -199,9 +269,10 @@ pub fn once<T: Transport, S: Transport, C: Clock>(
         };
         if dry_run {
             let row = match dry_decision(&one, t, &api, &head) {
-                Ok((action, rule, reason, tier)) => {
-                    json!({"pr": pr, "head": head, "outcome": action, "rule": rule, "reason": reason, "effective_tier": tier})
-                }
+                Ok((action, rule, reason, tier, ignored)) => with_ignored(
+                    json!({"pr": pr, "head": head, "outcome": action, "rule": rule, "reason": reason, "effective_tier": tier}),
+                    &ignored,
+                ),
                 Err(e) => json!({"pr": pr, "head": head, "outcome": "skipped", "reason": e}),
             };
             rows.push(row);
@@ -215,20 +286,32 @@ pub fn once<T: Transport, S: Transport, C: Clock>(
             }
         };
         let tier = out["effective_tier"].clone();
+        let mut ignored = crate::comment_authority::Dropped::default();
+        let reported = out.get("ignored_control_lines").cloned();
         if out["merged"] == json!(true) {
-            rows.push(json!({"pr": pr, "outcome": "merged", "merge_commit": out["merge_commit"], "effective_tier": tier}));
+            let mut row = json!({"pr": pr, "outcome": "merged", "merge_commit": out["merge_commit"], "effective_tier": tier});
+            if let Some(r) = reported {
+                row["ignored_control_lines"] = r;
+            }
+            rows.push(row);
             continue;
         }
         // A merge whose effect could not be read back: report it, act on nothing else.
         if out["merged"] == json!("uncertain") {
-            rows.push(json!({"pr": pr, "outcome": "uncertain", "reason": out["reason"], "effective_tier": tier}));
+            let mut row = json!({"pr": pr, "outcome": "uncertain", "reason": out["reason"], "effective_tier": tier});
+            if let Some(r) = reported {
+                row["ignored_control_lines"] = r;
+            }
+            rows.push(row);
             continue;
         }
         let rule = out["rule"].as_str().unwrap_or("");
         let reason = out["reason"].as_str().unwrap_or("").to_string();
         let action = if rule == "G6" && reason.starts_with("overlap in non-doc file") {
             let mark = marker("update-branch", &head);
-            if marked(t, &api, pr, &mark)? {
+            let (seen, more) = marked(t, &api, pr, &mark)?;
+            ignored.merge(more);
+            if seen {
                 "already_updated"
             } else {
                 let resp = t.send(
@@ -242,24 +325,30 @@ pub fn once<T: Transport, S: Transport, C: Clock>(
                     ));
                 }
                 comment(t, &api, pr, format!(
-                    "리더(`moai-cli gate-loop`) — 게이트 중단 → **update-branch 실행**. 감사 PASS·CI 는 갖췄고 충돌도 없지만, 판정 base 이후 tip 이 이 PR 과 같은 코드 파일을 바꿨다({reason}). 합친 head 에서 CI 를 다시 돈다. 저자가 할 일은 없다. 감사자(이 PR 의 예약 보유 레인): 병합 커밋의 겹친 파일만 delta 재감사하고, 판정에 자기 예약 id 를 적는다.\n\n{mark}\n\n🗿 MoAI"
+                    "리더(`moai gate-loop`) — 게이트 중단 → **update-branch 실행**. 감사 PASS·CI 는 갖췄고 충돌도 없지만, 판정 base 이후 tip 이 이 PR 과 같은 코드 파일을 바꿨다({reason}). 합친 head 에서 CI 를 다시 돈다. 저자가 할 일은 없다. 감사자(이 PR 의 예약 보유 레인): 병합 커밋의 겹친 파일만 delta 재감사하고, 판정에 자기 예약 id 를 적는다.\n\n{mark}\n\n🗿 MoAI"
                 ))?;
                 "updated_branch"
             }
         } else if rule == "G2" {
             let mark = marker("auditor", &head);
-            if marked(t, &api, pr, &mark)? {
+            let (seen, more) = marked(t, &api, pr, &mark)?;
+            ignored.merge(more);
+            if seen {
                 "already_asked"
             } else {
                 comment(t, &api, pr, format!(
-                    "리더(`moai-cli gate-loop`) — 게이트 중단: 마지막 판정을 쓴 레인이 이 PR 의 허용된 감사 예약을 가진 레인이 아니다({reason}). 허용되는 감사자는 이 PR 의 가장 낮은 `moai-audit-claim` 을 가진 레인, 또는 지금 head 를 적은 가장 낮은 예약을 가진 레인이다. 그 레인이 판정을 내고, 판정 첫 줄 다음에 자기 레인 이름과 예약 id 를 적어 달라.\n\n{mark}\n\n🗿 MoAI"
+                    "리더(`moai gate-loop`) — 게이트 중단: 마지막 판정을 쓴 레인이 이 PR 의 허용된 감사 예약을 가진 레인이 아니다({reason}). 허용되는 감사자는 이 PR 의 가장 낮은 `moai-audit-claim` 을 가진 레인, 또는 지금 head 를 적은 가장 낮은 예약을 가진 레인이다. 그 레인이 판정을 내고, 판정 첫 줄 다음에 자기 레인 이름과 예약 id 를 적어 달라.\n\n{mark}\n\n🗿 MoAI"
                 ))?;
                 "asked_auditor"
             }
         } else {
             "stopped"
         };
-        rows.push(json!({"pr": pr, "outcome": action, "rule": rule, "reason": reason, "effective_tier": tier}));
+        let mut row = json!({"pr": pr, "outcome": action, "rule": rule, "reason": reason, "effective_tier": tier});
+        if let Some(r) = reported {
+            row["ignored_control_lines"] = r;
+        }
+        rows.push(with_ignored(row, &ignored));
     }
     let mut out = json!({"dry_run": dry_run, "pull_requests": rows});
     if let Some(f) = fetched {

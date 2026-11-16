@@ -3,7 +3,7 @@
 //! kind `unavailable`, `retryable: true`, exit 1, one shared message. Before #2345 the
 //! ops answered per op: `claim-acquire`/`claim-release`/`queue-next` returned an `ok: true`
 //! `busy` outcome, the 06-B/06-C ops a `conflict` error the classifier made non-retryable.
-//! `queue-next` is retired since (#2901), so eleven operations remain.
+//! `queue-next` is retired since (#2901), so eleven operations remained; `claim-link` (#3030) is the twelfth.
 //! Each case runs the real binary as a subprocess against a real git repository while this
 //! test process holds `<git common dir>/.moai-cli/claims/.lock`.
 
@@ -61,7 +61,7 @@ fn git_repo(dir: &Path) {
 /// `tests/claim_cli.rs`. The busy cases themselves must never reach `gh`: their stub
 /// exits loudly instead, so a busy answer that got past the lock cannot pass.
 fn claim_stub(dir: &Path) -> PathBuf {
-    let script = "#!/bin/sh\n# claim test stub for gh api (stateful: read-your-writes)\ncase \"$*\" in\n  *per_page=100*)\n    if [ -f \"$CLAIM_STUB_DIR/posted\" ]; then printf 'HTTP/2.0 200 OK\\r\\n\\r\\n[{\"id\":%s,\"body\":\"%s\"}]' \"${CLAIM_STUB_ID:-4242}\" \"$CLAIM_STUB_BODY\";\n    else printf 'HTTP/2.0 200 OK\\r\\n\\r\\n[]'; fi;;\n  *)\n    : > \"$CLAIM_STUB_DIR/posted\"\n    printf 'HTTP/2.0 201 Created\\r\\n\\r\\n{\"id\":%s}' \"${CLAIM_STUB_ID:-4242}\";;\nesac\n";
+    let script = "#!/bin/sh\n# claim test stub for gh api (stateful: read-your-writes)\ncase \"$*\" in\n  *per_page=100*)\n    if [ -f \"$CLAIM_STUB_DIR/posted\" ]; then printf 'HTTP/2.0 200 OK\\r\\n\\r\\n[{\"id\":%s,\"author_association\":\"MEMBER\",\"body\":\"%s\"}]' \"${CLAIM_STUB_ID:-4242}\" \"$CLAIM_STUB_BODY\";\n    else printf 'HTTP/2.0 200 OK\\r\\n\\r\\n[]'; fi;;\n  *)\n    : > \"$CLAIM_STUB_DIR/posted\"\n    printf 'HTTP/2.0 201 Created\\r\\n\\r\\n{\"id\":%s}' \"${CLAIM_STUB_ID:-4242}\";;\nesac\n";
     let path = dir.join("gh-stub");
     common::write_executable(&path, script);
     path
@@ -389,10 +389,28 @@ fn every_journal_writing_op_answers_one_busy_envelope() {
             None,
             "pr.confirm",
         ),
+        // #3030: `claim-link` takes the lock before its one forge read; the loud `gh` fails
+        // the case if the lock came after it.
+        (
+            vec![
+                "claim-link".into(),
+                ".".into(),
+                "--issue".into(),
+                "2005".into(),
+                "--comment".into(),
+                "4242".into(),
+                "--lane".into(),
+                "busy-test".into(),
+                "--repo".into(),
+                "modu-ai/moai-adk".into(),
+            ],
+            None,
+            "claim.link",
+        ),
     ];
     assert_eq!(
         cases.len(),
-        11,
+        12,
         "all journal-writing operations are covered"
     );
 

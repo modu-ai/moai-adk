@@ -103,7 +103,7 @@ fn tip_runs(sha: &str, runs: Value) -> Exchange {
 
 /// The `local-check:` pass line for `head` (#2906 S5b, G5).
 fn local_check(head: &str) -> Value {
-    json!({"id": 250, "body": format!("local-check: head={head} result=pass cmd=tools/local_check.sh at=2026-11-14T12:00:00Z\n")})
+    json!({"id": 250, "author_association": "MEMBER", "body": format!("local-check: head={head} result=pass cmd=tools/local_check.sh at=2026-11-14T12:00:00Z\n")})
 }
 
 /// The reads `collect` makes, with a green tip push CI on `tip`; the comments end with the
@@ -137,11 +137,11 @@ fn exchanges(head: &str, tip: &str, mut comments: Vec<Value>, body: &str) -> Rec
 }
 
 fn verdict(head: &str, base: &str) -> Value {
-    json!({"id": 200, "body": format!("AUDIT #9 (x) head {head} base {base} — verdict: PASS\n\n감사: agent-10 (예약 100).\n")})
+    json!({"id": 200, "author_association": "MEMBER", "body": format!("AUDIT #9 (x) head {head} base {base} — verdict: PASS\n\n감사: agent-10 (예약 100).\n")})
 }
 
 fn claim(head: &str) -> Value {
-    json!({"id": 100, "body": format!("moai-audit-claim: lane=agent-10 head={head}\n")})
+    json!({"id": 100, "author_association": "MEMBER", "body": format!("moai-audit-claim: lane=agent-10 head={head}\n")})
 }
 
 fn target(r: &Repo) -> Target<'_> {
@@ -170,6 +170,7 @@ fn a_clean_pull_request_collects_into_a_passing_snapshot() {
     assert_eq!(s.pr_files, vec!["src/a.rs".to_string()]);
     assert_eq!(s.tip_files_since_verdict_base, vec!["src/b.rs".to_string()]);
     assert!(s.merge_clean && s.verdict_base_known && s.body_check_ok);
+    assert!(s.verdict_base_in_tip);
     assert_eq!(s.checks.len(), 3);
     assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s));
     let _ = &r.c;
@@ -382,6 +383,12 @@ fn an_entry_without_a_file_and_a_body_without_the_section_fail() {
 
 /// A verdict whose base is an earlier PR head (not on the tip) must not count the PR's own
 /// changes as tip changes: the tip side is measured from where that base meets the tip.
+///
+/// #3066 P3 changed the gate's answer deliberately: this used to pass the whole gate, but a
+/// base that is not an ancestor of the tip says nothing about the tip the PR merges onto, so
+/// the collector now records `verdict_base_in_tip == false` (the base itself is still a known
+/// commit) and G1 stops. The overlap measurement is unchanged and still reports no false
+/// overlap.
 #[test]
 fn a_verdict_base_off_the_tip_is_not_a_false_overlap() {
     let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
@@ -393,7 +400,105 @@ fn a_verdict_base_off_the_tip_is_not_a_false_overlap() {
     let t = exchanges(&b2, &r.c, vec![claim(&b2), verdict(&b2, &r.b)], PASS_BODY);
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(s.tip_files_since_verdict_base, vec!["src/b.rs".to_string()]);
-    assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s));
+    assert!(s.verdict_base_known);
+    assert!(!s.verdict_base_in_tip);
+    let stop = gate::check(&s).unwrap_err();
+    assert_eq!(stop.rule, "G1", "{stop:?}");
+    assert!(stop.reason.contains("not an ancestor"), "{stop:?}");
+}
+
+/// Collects the PR whose head is `head` with a verdict on `base`; `tip` is the commit `main`
+/// points at (the push CI read is recorded for it).
+fn collect_with_base(r: &Repo, head: &str, base: &str, tip: &str) -> gate::Snapshot {
+    let t = exchanges(head, tip, vec![claim(head), verdict(head, base)], PASS_BODY);
+    collect(&target(r), &t).unwrap()
+}
+
+/// The `main` commit `git` reports now.
+fn main_tip(r: &Repo) -> String {
+    git(r._dir.path(), &["rev-parse", "main"])
+        .trim()
+        .to_string()
+}
+
+/// #3066 P3: the collector records whether the verdict base is the tip or one of its
+/// ancestors. Equal to the tip and an older tip commit pass the gate; a base on a side branch
+/// that the tip never merged, and the PR's old head after the tip moved on without it, are
+/// known commits but not in the tip, and G1 stops. Each case is a real git repository.
+#[test]
+fn the_verdict_base_must_be_the_tip_or_an_ancestor_of_it() {
+    // base == tip.
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let s = collect_with_base(&r, &r.b, &r.c, &r.c);
+    assert!(s.verdict_base_known && s.verdict_base_in_tip);
+    assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s).err());
+
+    // base is an ancestor of the tip (the fork point).
+    let s = collect_with_base(&r, &r.b, &r.a, &r.c);
+    assert!(s.verdict_base_known && s.verdict_base_in_tip);
+    assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s).err());
+
+    // base is a commit on a side branch the tip never merged.
+    let d = r._dir.path();
+    git_ok(d, &["checkout", "-q", "-b", "side", &r.a]);
+    let side = commit(d, &[("src/side.rs", "s\n")], "side");
+    git_ok(d, &["checkout", "-q", "main"]);
+    let s = collect_with_base(&r, &r.b, &side, &r.c);
+    assert!(s.verdict_base_known);
+    assert!(!s.verdict_base_in_tip);
+    assert_eq!(gate::check(&s).unwrap_err().rule, "G1");
+
+    // the tip moves on without containing the PR's old head, which stays a known non-ancestor.
+    let c2 = commit(d, &[("src/b.rs", "b3\n")], "tip 2");
+    assert_eq!(main_tip(&r), c2);
+    let s = collect_with_base(&r, &r.b, &r.b, &c2);
+    assert!(s.verdict_base_known);
+    assert!(!s.verdict_base_in_tip);
+    assert_eq!(gate::check(&s).unwrap_err().rule, "G1");
+    // while the first tip is now an ancestor of the moved tip.
+    let s = collect_with_base(&r, &r.b, &r.c, &c2);
+    assert!(s.verdict_base_known && s.verdict_base_in_tip);
+    assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s).err());
+}
+
+/// A verdict base git does not have is not known, so it is never asked about the tip: both
+/// fields stay false and G1 keeps its "not a known commit" reason.
+#[test]
+fn a_nonexistent_verdict_base_is_neither_known_nor_in_the_tip() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let unknown = "abababababababababababababababababababab";
+    let s = collect_with_base(&r, &r.b, unknown, &r.c);
+    assert!(!s.verdict_base_known);
+    assert!(!s.verdict_base_in_tip);
+    let stop = gate::check(&s).unwrap_err();
+    assert_eq!(stop.rule, "G1");
+    assert!(stop.reason.contains("not a known commit"), "{stop:?}");
+}
+
+/// Boundary of the ancestor test: the tip's parent is an ancestor (passes), the tip's child on
+/// a branch the tip has not merged is not (fails).
+#[test]
+fn the_tips_parent_is_in_the_tip_and_its_unmerged_child_is_not() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let d = r._dir.path();
+    // The child: one commit on a branch that grows from the tip but is not merged into it.
+    git_ok(d, &["checkout", "-q", "-b", "ahead"]);
+    let child = commit(d, &[("src/ahead.rs", "x\n")], "child of the tip");
+    git_ok(d, &["checkout", "-q", "main"]);
+    let s = collect_with_base(&r, &r.b, &child, &r.c);
+    assert!(s.verdict_base_known);
+    assert!(!s.verdict_base_in_tip);
+    assert_eq!(gate::check(&s).unwrap_err().rule, "G1");
+    // The parent: the tip grows by one commit, so the old tip is its parent.
+    let tip = commit(d, &[("src/b.rs", "b3\n")], "tip 2");
+    let parent = git(d, &["rev-parse", "HEAD^"]).trim().to_string();
+    assert_eq!(parent, r.c);
+    let s = collect_with_base(&r, &r.b, &parent, &tip);
+    assert!(s.verdict_base_known && s.verdict_base_in_tip);
+    assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s).err());
+    // And the tip itself, now the child of that parent, is in the tip.
+    let s = collect_with_base(&r, &r.b, &tip, &tip);
+    assert!(s.verdict_base_known && s.verdict_base_in_tip);
 }
 
 // ---- #2777 G8: the tip's push CI ----
@@ -776,7 +881,9 @@ fn the_walk_follows_first_parents_not_a_merged_branch() {
 fn claim_comment(id: u64, first_line: &str) -> Exchange {
     Exchange {
         request: HttpRequest::new("GET", format!("{API}/issues/comments/{id}")),
-        response: ok(json!({"id": id, "body": format!("{first_line}\n\nmore text")})),
+        response: ok(
+            json!({"id": id, "author_association": "MEMBER", "body": format!("{first_line}\n\nmore text")}),
+        ),
     }
 }
 
@@ -810,6 +917,76 @@ fn repo_with_trailers(trailer: &str) -> Repo {
         b: head,
         c: r.c,
     }
+}
+
+/// Issue #3052: a verdict a non-member wrote is not in the snapshot, the snapshot says it was
+/// left out, and the gate stops on the missing verdict; a trailer claim a non-member wrote
+/// stops the collection.
+#[test]
+fn comments_of_non_members_are_left_out_of_the_snapshot_and_reported() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    for association in ["NONE", "CONTRIBUTOR", "", "member"] {
+        let mut outsider = verdict(&r.b, &r.a);
+        outsider["author_association"] = json!(association);
+        let t = exchanges(&r.b, &r.c, vec![claim(&r.b), outsider], PASS_BODY);
+        let s = collect(&target(&r), &t).unwrap();
+        assert_eq!(t.remaining(), 0);
+        assert!(
+            s.comments.iter().all(|c| c.id != 200),
+            "{association:?}: {:?}",
+            s.comments
+        );
+        let reported = s.ignored.to_json();
+        assert_eq!(reported["count"], json!(1), "{association:?}: {reported}");
+        assert_eq!(
+            reported["items"][0]["comment_id"],
+            json!(200),
+            "{association:?}: {reported}"
+        );
+        assert_eq!(
+            gate::check(&s).unwrap_err().rule,
+            "G1",
+            "{association:?}: the verdict is not read"
+        );
+    }
+    // The same verdict from an owner, a member or a collaborator is read.
+    for association in ["OWNER", "MEMBER", "COLLABORATOR"] {
+        let mut v = verdict(&r.b, &r.a);
+        v["author_association"] = json!(association);
+        let t = exchanges(&r.b, &r.c, vec![claim(&r.b), v], PASS_BODY);
+        let s = collect(&target(&r), &t).unwrap();
+        assert!(s.ignored.is_empty(), "{association}");
+        assert!(gate::check(&s).is_ok(), "{association}");
+    }
+}
+
+#[test]
+fn a_trailer_claim_a_non_member_wrote_stops_the_collection() {
+    let r = repo_with_trailers("Moai-Claim: 7#555");
+    let ex = RecordedTransport::new(vec![
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/pulls/9")),
+            response: ok(json!({"head": {"sha": r.b}, "body": PASS_BODY})),
+        },
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
+            response: ok(json!([claim(&r.b), verdict(&r.b, &r.a)])),
+        },
+        Exchange {
+            request: HttpRequest::new(
+                "GET",
+                format!("{API}/commits/{}/check-runs?per_page=100", r.b),
+            ),
+            response: ok(json!({"check_runs": [{"name": "ci", "conclusion": "success"}]})),
+        },
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/issues/comments/555")),
+            response: ok(json!({"id": 555, "author_association": "NONE",
+                "body": "moai-claim: session=agent-26 epoch=1 lease_until=2026-11-13T19:00:00Z"})),
+        },
+    ]);
+    let err = collect(&target(&r), &ex).unwrap_err();
+    assert!(err.contains("not written by a repository member"), "{err}");
 }
 
 /// #2674 R1: the authors are the sessions of the claims the PR's own commits name.
@@ -846,6 +1023,7 @@ fn the_authors_are_the_sessions_of_the_claims_in_the_trailers() {
     let mut by_author = s.clone();
     by_author.comments = vec![gate::Comment {
         id: 200,
+        author_association: "MEMBER".into(),
         body: format!(
             "AUDIT #9 (x) head {} base {} — verdict: PASS\n\n감사: agent-26.\n",
             r.b, r.a
@@ -1470,6 +1648,7 @@ fn a_short_verdict_base_is_resolved_to_one_commit() {
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(s.verdict_base_full.as_deref(), Some(r.a.as_str()));
     assert!(s.verdict_base_known);
+    assert!(s.verdict_base_in_tip);
     assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s).err());
 
     let t = exchanges(

@@ -45,15 +45,15 @@ fn card(number: i64, key: &str, body: &str) -> Value {
 }
 
 fn claim(id: i64, session: &str) -> Value {
-    json!({"id": id, "body": format!("moai-claim: session={session} epoch=1 lease_until={LEASE}")})
+    json!({"id": id, "author_association": "MEMBER", "body": format!("moai-claim: session={session} epoch=1 lease_until={LEASE}")})
 }
 
 fn handoff(id: i64, target: i64, to: &str) -> Value {
-    json!({"id": id, "body": moai_cli::claim_verify::render_handoff_line(target, to, "leader")})
+    json!({"id": id, "author_association": "MEMBER", "body": moai_cli::claim_verify::render_handoff_line(target, to, "leader")})
 }
 
 fn release(id: i64, target: i64) -> Value {
-    json!({"id": id, "body": moai_cli::claim_verify::render_release_line(target, "leader")})
+    json!({"id": id, "author_association": "MEMBER", "body": moai_cli::claim_verify::render_release_line(target, "leader")})
 }
 
 fn comments(n: i64) -> String {
@@ -87,7 +87,7 @@ fn record_file(root: &Path, issue: i64) -> std::path::PathBuf {
 }
 
 fn claim_until(id: i64, session: &str, lease: &str) -> Value {
-    json!({"id": id, "body": format!("moai-claim: session={session} epoch=1 lease_until={lease}")})
+    json!({"id": id, "author_association": "MEMBER", "body": format!("moai-claim: session={session} epoch=1 lease_until={lease}")})
 }
 
 fn posts(t: &RecordedTransport) -> Vec<String> {
@@ -335,6 +335,54 @@ fn queue_free_sorts_every_card_into_one_bucket() {
              held 1, epics 1, blocked 1)"
         )
     );
+}
+
+/// Issue #3052: a claim line a non-member wrote does not take a card out of the free list, and
+/// it is reported; the same line from a member does take it.
+#[test]
+fn queue_free_ignores_claim_lines_from_non_members_and_reports_them() {
+    for association in [Some("NONE"), Some("CONTRIBUTOR"), Some(""), None] {
+        let mut stranger = claim(50, "agent-9");
+        match association {
+            Some(a) => stranger["author_association"] = json!(a),
+            None => {
+                stranger
+                    .as_object_mut()
+                    .unwrap()
+                    .remove("author_association");
+            }
+        }
+        let (out, t) = free_run(vec![
+            open_issues(vec![card(5, "U", "")]),
+            exchange("GET", &comments(5), resp(200, json!([stranger]))),
+        ]);
+        let out = out.unwrap();
+        assert_eq!(t.remaining(), 0);
+        assert_eq!(
+            numbers(&out, "free"),
+            vec![5],
+            "association {association:?}: {out}"
+        );
+        assert_eq!(
+            out["ignored_control_lines"]["count"], 1,
+            "association {association:?}: {out}"
+        );
+        assert_eq!(
+            out["ignored_control_lines"]["items"][0]["comment_id"], 50,
+            "association {association:?}: {out}"
+        );
+    }
+    for association in ["OWNER", "MEMBER", "COLLABORATOR"] {
+        let mut holder = claim(50, "agent-9");
+        holder["author_association"] = json!(association);
+        let (out, _) = free_run(vec![
+            open_issues(vec![card(5, "U", "")]),
+            exchange("GET", &comments(5), resp(200, json!([holder]))),
+        ]);
+        let out = out.unwrap();
+        assert_eq!(numbers(&out, "claimed"), vec![5], "{association}: {out}");
+        assert!(out.get("ignored_control_lines").is_none(), "{out}");
+    }
 }
 
 /// An empty answer states its count (#2675 AC-2): `free_count: 0`, an empty list, and a

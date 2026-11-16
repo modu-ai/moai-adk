@@ -61,7 +61,46 @@ fn an_empty_project_has_no_state_and_trust_is_never_claimed() {
         assert_eq!(s["fired"], json!(false));
         assert_eq!(s["action_blocked"], json!(false));
         assert_eq!(s["verified"], json!(false));
+        // #3004 P4-1: no `moai` on the path.
+        assert_eq!(s["binary"], json!("binary_unresolved"));
+        assert_eq!(s["binary_generation"], json!("absent"));
     }
+}
+
+/// #3004: `binary` / `binary_generation` follow the first `moai` on the given path, and
+/// `installed` only says a `moai` is found there, whatever build it is.
+#[test]
+fn binary_follows_the_first_moai_on_the_given_path() {
+    let (_d, root) = project();
+    let outside = tempfile::TempDir::new().unwrap();
+    let outside = fs::canonicalize(outside.path()).unwrap();
+    common::write_executable(
+        &outside.join("moai"),
+        "#!/bin/sh\necho 'moai-cli 1.2.3 (rust)'\n",
+    );
+    let s = status(&root, "codex", outside.to_str().unwrap());
+    assert_eq!(s["binary"], json!("resolved"), "{s}");
+    assert_eq!(s["binary_generation"], json!("rust"), "{s}");
+    assert_eq!(s["installed"], json!(true), "{s}");
+
+    common::write_executable(&outside.join("moai"), "#!/bin/sh\necho 'moai-adk v3.2.1'\n");
+    let s = status(&root, "codex", outside.to_str().unwrap());
+    assert_eq!(s["binary"], json!("wrong_generation"), "{s}");
+    assert_eq!(s["binary_generation"], json!("go"), "{s}");
+    assert_eq!(s["installed"], json!(true), "{s}");
+
+    // Inside the project tree the file is never run.
+    let inside = root.join("tree");
+    fs::create_dir_all(&inside).unwrap();
+    let marker = root.join("ran");
+    common::write_executable(
+        &inside.join("moai"),
+        &format!("#!/bin/sh\ntouch '{}'\n", marker.display()),
+    );
+    let s = status(&root, "codex", inside.to_str().unwrap());
+    assert_eq!(s["binary"], json!("not_probed"), "{s}");
+    assert_eq!(s["binary_generation"], json!("not_probed"), "{s}");
+    assert!(!marker.exists());
 }
 
 #[test]
@@ -69,7 +108,13 @@ fn installed_follows_the_given_path_only() {
     let (_d, root) = project();
     let bin = root.join("home/bin");
     fs::create_dir_all(&bin).unwrap();
+    // Only the hook binary (`moai`) counts; a `moai-cli` beside it does not.
     common::write_executable(&bin.join("moai-cli"), "#!/bin/sh\nexit 0\n");
+    assert_eq!(
+        status(&root, "codex", bin.to_str().unwrap())["installed"],
+        json!(false)
+    );
+    common::write_executable(&bin.join("moai"), "#!/bin/sh\nexit 0\n");
     assert_eq!(
         status(&root, "codex", bin.to_str().unwrap())["installed"],
         json!(true)

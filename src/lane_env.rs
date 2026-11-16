@@ -12,7 +12,10 @@
 //! - `CARGO_HOME` is the lane's own `<base>/moai-rc-cargo-<lane>` when it holds a prepared
 //!   registry (`registry/src`), else the shared `<base>/moai-rc-product-cargo` when that does,
 //!   else it is left unset (cargo's own default) and a comment line says why. Nothing is created
-//!   or copied: the command only reads.
+//!   or copied: the command only reads. "Prepared" means `registry/src` exists, not that the
+//!   registry holds every crate `Cargo.lock` names: on 2026-11-15 the shared home was prepared
+//!   and still failed offline with `no matching package named cap-std` (#3054; `AGENTS.local.md`
+//!   says how to fill a lane's own home without the network).
 //! - `CARGO_INCREMENTAL=0` always (#2930): incremental compilation is off for lane builds.
 //! - `<base>` is `/tmp` on Unix (the folder lanes already use) and the system temporary folder
 //!   on Windows, or `--base <absolute folder>`.
@@ -144,8 +147,8 @@ pub fn resolve(lane: &str, base: &Path) -> Result<LaneEnv, String> {
     })
 }
 
-/// A POSIX shell single-quoted word.
-fn quote(path: &Path) -> String {
+/// A POSIX shell single-quoted word (also the `claim-link` next-command paths, #3030).
+pub(crate) fn quote(path: &Path) -> String {
     format!("'{}'", path.to_string_lossy().replace('\'', "'\\''"))
 }
 

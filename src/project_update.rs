@@ -16,7 +16,7 @@ use crate::claude::{self, SettingsScope};
 use crate::claude_settings_merge;
 use crate::generation::{self, GenerationRequest};
 use crate::github_templates::{self, GithubRequest};
-use crate::{go_state, profile, project_detect, project_hosts, state_root, Profile};
+use crate::{go_state, profile, project_detect, project_hosts, state_root, status_line, Profile};
 use serde_json::{json, Map, Value};
 use std::{fs, path::Path};
 
@@ -146,7 +146,7 @@ fn go_state_step(root: &Path, shown: &str) -> Result<Step> {
     for i in &plan.items {
         *classes.entry(i.class.as_str()).or_insert(0) += 1;
     }
-    let preview = json!({
+    let mut preview = json!({
         "classes": classes,
         "kinds": plan.kinds,
         "counterparts": plan.counterparts,
@@ -162,6 +162,10 @@ fn go_state_step(root: &Path, shown: &str) -> Result<Step> {
         "unrecorded": plan.unrecorded,
         "warnings": plan.warnings,
     });
+    // #2936 S-CYCLE: which settings move and what that frees; absent when the rule does not fire.
+    if let Some(sm) = &plan.settings_move {
+        preview["settings_move"] = encode(sm)?;
+    }
     Ok(if pending {
         Step {
             name: "go-state",
@@ -286,6 +290,10 @@ fn profile_step(
 /// is `none`. `Err` when the record cannot tell: the section without the file, or the file
 /// without the section while a user rule in `.gitignore` names it (an `ignored` choice
 /// records no section then).
+///
+/// Since #3009 S3b the section is written for every choice (the state-folder allow-list), so
+/// "the section is there" no longer means "the personal file is listed". What the section
+/// lists is its recorded `kind`; a section recorded before the kind existed listed the file.
 fn local_file(root: &Path, manifest: &Value) -> Result<&'static str> {
     const LOCAL: &str = "AGENTS.local.md";
     let created = manifest["created_once"]
@@ -299,25 +307,32 @@ fn local_file(root: &Path, manifest: &Value) -> Result<&'static str> {
             .into_iter()
             .flatten()
             .any(|f| f["path"] == LOCAL && f["section_id"].is_null());
-    let section = owned_entries(manifest).any(|(s, _)| s == crate::agents::IGNORE_SECTION);
+    // `Some(listed)` when the section is recorded: whether it lists the personal file.
+    let section: Option<bool> = manifest["owned_files"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|f| f["section_id"] == crate::agents::IGNORE_SECTION)
+        .map(|f| crate::agents::ignore_kind_lists_local(f["kind"].as_str()));
     let unknown = "the generation manifest does not tell whether AGENTS.local.md is tracked \
                    or ignored; ask the user and regenerate through /moai project";
-    match (created, section) {
-        (true, true) => Ok("ignored"),
-        (false, false) => Ok("none"),
-        (false, true) => Err(unknown.into()),
-        (true, false) => {
-            let ignore = crate::apply::read_opt(&crate::apply::target(root, ".gitignore")?)?;
-            let user_rule = ignore
-                .as_deref()
-                .and_then(|b| std::str::from_utf8(b).ok())
-                .is_some_and(crate::agents::ignore_has_rule);
-            if user_rule {
-                Err(unknown.into())
-            } else {
-                Ok("tracked")
-            }
+    let user_rule_decides = || -> Result<&'static str> {
+        let ignore = crate::apply::read_opt(&crate::apply::target(root, ".gitignore")?)?;
+        let user_rule = ignore
+            .as_deref()
+            .and_then(|b| std::str::from_utf8(b).ok())
+            .is_some_and(crate::agents::ignore_has_rule);
+        if user_rule {
+            Err(unknown.into())
+        } else {
+            Ok("tracked")
         }
+    };
+    match (created, section) {
+        (true, Some(true)) => Ok("ignored"),
+        (false, None) | (false, Some(false)) => Ok("none"),
+        (false, Some(true)) => Err(unknown.into()),
+        (true, None) | (true, Some(false)) => user_rule_decides(),
     }
 }
 
@@ -439,23 +454,53 @@ fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> 
 /// Q2 A (#2936): the keys MoAI already owns, without `hooks` (only `hooks-apply` writes
 /// that key), are kept as they are; no key is added by default.
 fn settings_step(root: &Path, shown: &str) -> Result<Step> {
-    let mut owned = settings_stdin(claude::owned_settings(root)?);
-    // #2936 R8 (Q-H1, decision 6880072221): a project that has no status line of its own gets
-    // MoAI's. One it has stays as it is, and so does one MoAI wrote before.
-    if !owned.contains_key("statusLine")
-        && !claude::current_settings(root)?.contains_key("statusLine")
-    {
-        owned.insert("statusLine".into(), default_status_line());
-    }
-    let desired = claude::user_settings_desired_in(root, &owned, SettingsScope::Project)?;
-    let plan = claude::settings_plan_in(root, &desired, SettingsScope::Project)?;
-    Ok(settings_from_plan(shown, &plan, owned))
+    let home = std::env::var_os("HOME").map(std::path::PathBuf::from);
+    let path_env = std::env::var("PATH").unwrap_or_default();
+    settings_step_with(root, shown, home.as_deref(), &path_env)
 }
 
-/// The status line MoAI writes into a project that has none: the product command
-/// (`moai-cli statusline`, #2376), the same binary name the hooks call.
-fn default_status_line() -> Value {
-    json!({"type": "command", "command": "moai-cli statusline"})
+/// [`settings_step`] for a given HOME and PATH.
+///
+/// #3004 P4-3: the status line is `moai statusline` (`status_line::current`, the same binary
+/// name the hooks call). A project with none gets it, and a status line MoAI owns in the form
+/// the earlier releases wrote (`moai-cli statusline`) and the file still holds is rewritten to
+/// it, both only where [`status_line::gate`] lets it through. When the gate holds, the old
+/// status line stays in the printed owned keys (so nothing is rewritten) and the step says why
+/// in `status_line_migration`; the hooks step is not touched, its gate is the hook gate's. An
+/// edited or foreign status line is never touched and its text is never printed.
+fn settings_step_with(
+    root: &Path,
+    shown: &str,
+    home: Option<&Path>,
+    path_env: &str,
+) -> Result<Step> {
+    let mut owned = settings_stdin(claude::owned_settings(root)?);
+    let file = claude::current_settings(root)?;
+    // #2936 R8 (Q-H1, decision 6880072221): a project that has no status line of its own gets
+    // MoAI's. One it has stays as it is, and so does one MoAI wrote before.
+    let intent = status_line::intent(owned.get("statusLine"), file.get("statusLine"));
+    let verdict = match intent {
+        status_line::Intent::Write(kind) => {
+            let verdict = status_line::gate(kind, root, home, path_env);
+            if verdict.is_ok() {
+                owned.insert("statusLine".into(), status_line::current());
+            }
+            Some(verdict)
+        }
+        status_line::Intent::Keep(_) => None,
+    };
+    let desired = claude::user_settings_desired_in(root, &owned, SettingsScope::Project)?;
+    let plan = claude::settings_plan_in(root, &desired, SettingsScope::Project)?;
+    let mut step = settings_from_plan(shown, &plan, owned);
+    step.preview["status_line_migration"] = status_line::migration(intent, verdict.as_ref());
+    if let Some(Err(held)) = &verdict {
+        // With nothing else to write, the hold is the news, not "current".
+        if step.state == "unchanged" {
+            step.state = "needs_decision";
+            step.reason = held.message.clone();
+        }
+    }
+    Ok(step)
 }
 
 /// The keys a printed settings apply carries on stdin: the owned keys without `hooks`.
@@ -540,6 +585,13 @@ fn hooks_step(root: &Path, shown: &str) -> Result<Step> {
         "scripts_unreferenced": names("scripts_unreferenced"),
         "scripts_missing": names("scripts_missing"),
     });
+    // #2936 S-CYCLE (OQ2 H1): no Go entry is left because the Go settings moved into a backup;
+    // the MoAI hook set is then written by the ordinary `hooks-apply` for Claude.
+    if plan["action"].as_str() == Some("none") {
+        if let Some(step) = hooks_after_settings_move(root, shown, &preview)? {
+            return Ok(step);
+        }
+    }
     let (state, reason) = match plan["action"].as_str() {
         Some("replace") => (
             "ready",
@@ -568,6 +620,63 @@ fn hooks_step(root: &Path, shown: &str) -> Result<Step> {
         plan_digest: digest,
         apply,
     })
+}
+
+/// #2936 S-CYCLE (OQ2 H1): the Go settings moved into a backup (a committed `go-state-apply`
+/// whose receipt is not reverted holds them), so the Go hook entries are gone with them and
+/// `go-hooks-apply` has nothing to replace, yet the new settings carry no hook set. The step
+/// then prints `hooks-apply --host claude`. Without such a receipt (a project that never had
+/// Go settings, or a reverted move) it offers nothing: `None`.
+fn hooks_after_settings_move(root: &Path, shown: &str, base: &Value) -> Result<Option<Step>> {
+    if go_state::backed_up_settings(root)?.is_none() {
+        return Ok(None);
+    }
+    let plan = crate::hooks::plan(root, "claude", None)?;
+    let digest = plan["plan_digest"].as_str().map(String::from);
+    let mut preview = base.clone();
+    preview["action"] = plan["action"].clone();
+    preview["host"] = json!("claude");
+    preview["hooks"] = plan["hooks"].clone();
+    let (state, reason) = match plan["action"].as_str() {
+        Some("create" | "update") => (
+            "ready",
+            "the Go settings moved into the backup and took their hook entries with them; the \
+             MoAI hook set is not in the new settings yet",
+        ),
+        Some("unchanged") => ("unchanged", "the MoAI hook set is current"),
+        _ => (
+            "conflict",
+            "the MoAI hook set conflicts with a key the user set in .claude/settings.json; \
+             nothing is written",
+        ),
+    };
+    let apply = match (&digest, state) {
+        (Some(d), "ready") => Some((
+            [
+                "moai",
+                "hooks-apply",
+                shown,
+                "--host",
+                "claude",
+                "--plan-digest",
+                d,
+                "--permission-reference",
+                PERMISSION_PLACEHOLDER,
+            ]
+            .map(String::from)
+            .to_vec(),
+            Value::Null,
+        )),
+        _ => None,
+    };
+    Ok(Some(Step {
+        name: "hooks",
+        state,
+        reason: reason.into(),
+        preview,
+        plan_digest: digest,
+        apply,
+    }))
 }
 
 fn github_step(root: &Path, shown: &str) -> Result<Step> {

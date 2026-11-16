@@ -33,14 +33,14 @@ fn ledger(order: &[i64]) -> Exchange {
     }
     get(
         "issues/comments/5",
-        json!({"id":5,"issue_url":format!("{API}/issues/1"),"body":body,"updated_at":"2026-11-10T00:00:00Z"}),
+        json!({"id":5,"issue_url":format!("{API}/issues/1"),"author_association":"MEMBER","body":body,"updated_at":"2026-11-10T00:00:00Z"}),
     )
 }
 fn pr(n: i64, head: &str) -> Value {
     json!({"number":n,"state":"open","draft":false,"body":"Refs #7","head":{"sha":head,"ref":"issue/7-x"},"base":{"sha":"0".repeat(40),"ref":"integration"},"mergeable_state":"clean"})
 }
 fn audit(n: i64, head: &str, base: &str, verdict: &str) -> Value {
-    json!({"id":200,"body":format!("AUDIT #{n} (k) head {head} base {base} — verdict: {verdict}")})
+    json!({"id":200,"author_association":"MEMBER","body":format!("AUDIT #{n} (k) head {head} base {base} — verdict: {verdict}")})
 }
 fn check(id: i64, name: &str, head: &str, state: &str) -> Value {
     json!({"id":id,"name":name,"head_sha":head,"app":{"slug":"github-actions"},"status":"completed","conclusion":state})
@@ -56,7 +56,7 @@ fn row(n: i64, detail: Value, comments: Vec<Value>, checks: Vec<Value>) -> Vec<E
         get("issues/7", json!({"state":"open","body":""})),
         get(
             "issues/7/comments?per_page=100",
-            json!([{"id":100,"body":"moai-claim: session=agent-20 epoch=1 lease_until=2030-01-01T00:00:00Z"}]),
+            json!([{"id":100,"author_association":"MEMBER","body":"moai-claim: session=agent-20 epoch=1 lease_until=2030-01-01T00:00:00Z"}]),
         ),
         get(
             &format!("commits/{head}/check-runs?per_page=100&filter=all"),
@@ -125,7 +125,7 @@ fn stale_conditional_wrong_pr_or_wrong_base_pass_never_counts() {
         audit(99, &h, &base, "PASS"),
         audit(20, &h, &"c".repeat(40), "PASS"),
         audit(20, &h, &base, "PASS if CI passes"),
-        json!({"id":201,"body":format!("quoted example\nAUDIT #20 (k) head {h} base {base} — verdict: PASS")}),
+        json!({"id":201,"author_association":"MEMBER","body":format!("quoted example\nAUDIT #20 (k) head {h} base {base} — verdict: PASS")}),
     ] {
         let mut p = pr(20, &h);
         p["mergeable_state"] = json!("dirty");
@@ -247,6 +247,86 @@ fn malformed_request_and_wrong_ledger_issue_do_not_read_prs() {
     assert_eq!(t.remaining(), 0);
 }
 
+/// Issue #3052: the order table decides which PR goes first, so only a member's comment counts.
+#[test]
+fn a_ledger_comment_by_a_non_member_is_refused() {
+    let tmp = tempfile::tempdir().unwrap();
+    common::git::git(tmp.path(), &["init"]);
+    for association in [
+        Some("NONE"),
+        Some("CONTRIBUTOR"),
+        Some("member"),
+        Some(""),
+        None,
+    ] {
+        let mut ex = ledger(&[20]);
+        let body = ex.response.body.as_mut().unwrap();
+        match association {
+            Some(v) => body["author_association"] = json!(v),
+            None => {
+                body.as_object_mut().unwrap().remove("author_association");
+            }
+        }
+        let t = RecordedTransport::new(vec![ex]);
+        let err = query_cli(tmp.path(), req(), &t, &Fixed).unwrap_err();
+        assert!(
+            err.contains("was not written by a member"),
+            "{association:?}: {err}"
+        );
+        assert_eq!(t.remaining(), 0);
+    }
+}
+
+/// Issue #3052: an audit verdict written by a non-member does not count, and is reported.
+#[test]
+fn a_verdict_by_a_non_member_does_not_count_and_is_reported() {
+    let h = "a".repeat(40);
+    let base = "0".repeat(40);
+    for association in ["NONE", "CONTRIBUTOR", "FIRST_TIMER", "member", ""] {
+        let mut note = audit(20, &h, &base, "PASS");
+        note["author_association"] = json!(association);
+        let mut ex = vec![ledger(&[20])];
+        ex.extend(row(
+            20,
+            pr(20, &h),
+            vec![note],
+            vec![
+                check(1, "rc-ci", &h, "success"),
+                check(2, "windows-build", &h, "success"),
+            ],
+        ));
+        let (out, _) = run(ex);
+        let r = &out["rows"][0];
+        assert!(r["verdict"]["verdict"].is_null(), "{association:?}: {r}");
+        assert!(r["blocked_reasons"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("audit_missing_or_stale")));
+        let ignored = &out["ignored_control_lines"];
+        assert_eq!(ignored["reason"], "no_member_authority");
+        assert_eq!(ignored["items"][0]["comment_id"], 200);
+        assert_eq!(ignored["items"][0]["kind"], "audit_verdict");
+        assert_eq!(ignored["items"][0]["author_association"], association);
+    }
+    for association in ["OWNER", "MEMBER", "COLLABORATOR"] {
+        let mut note = audit(20, &h, &base, "PASS");
+        note["author_association"] = json!(association);
+        let mut ex = vec![ledger(&[20])];
+        ex.extend(row(
+            20,
+            pr(20, &h),
+            vec![note],
+            vec![
+                check(1, "rc-ci", &h, "success"),
+                check(2, "windows-build", &h, "success"),
+            ],
+        ));
+        let (out, _) = run(ex);
+        assert_eq!(out["rows"][0]["verdict"]["verdict"], "PASS");
+        assert!(out.get("ignored_control_lines").is_none());
+    }
+}
+
 #[test]
 fn moving_head_refuses_a_mixed_snapshot() {
     let h = "a".repeat(40);
@@ -305,7 +385,7 @@ fn expired_claim_blocker_and_closed_predecessor_remain_distinct() {
     let mut second = row(10, pr(10, &h), vec![audit(10, &h, &base, "PASS")], checks);
     second[2].response.body = Some(json!({"state":"open","body":"Blocked-By: #99 #98"}));
     second[3].response.body = Some(
-        json!([{"id":100,"body":"moai-claim: session=agent-20 epoch=1 lease_until=2020-01-01T00:00:00Z"}]),
+        json!([{"id":100,"author_association":"MEMBER","body":"moai-claim: session=agent-20 epoch=1 lease_until=2020-01-01T00:00:00Z"}]),
     );
     second.insert(4, get("issues/98", json!({"state":"closed"})));
     second.insert(5, get("issues/99", json!({"state":"open"})));
@@ -400,7 +480,7 @@ fn final_verdict_token_beats_key_text() {
         ("verdict:PASS", "FAIL", json!(["audit_failed"])),
         ("verdict:FAIL", "PASS", json!([])),
     ] {
-        let note = json!({"id":201,"body":format!("AUDIT #20 ({key}) head {h} base {base} — verdict: {verdict}")});
+        let note = json!({"id":201,"author_association":"MEMBER","body":format!("AUDIT #20 ({key}) head {h} base {base} — verdict: {verdict}")});
         let mut ex = vec![ledger(&[20])];
         ex.extend(row(
             20,

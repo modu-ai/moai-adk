@@ -38,6 +38,7 @@ operation `gate.loop` · 코드 `src/ops/gate_loop.rs`, `src/gate_loop.rs` · Is
 
 - G2: 댓글 **첫 줄**의 `moai-claim-handoff: comment=<id> to=<lane> by=leader` 가 허용된 예약을 그 레인으로 옮긴다. 허용된 예약을 가리키고 그 뒤에 쓴 것만 인정하며, 마지막 인계가 이긴다.
 - G1: 판정 base 가 7–39자 짧은 SHA 여도 collect 가 `rev-parse --verify` 로 커밋 하나로 풀면(`verdict_base_full`) 인정한다. head 는 40자 그대로다.
+- G1(#3066 P3): 판정 base 는 아는 커밋일 뿐 아니라 base 브랜치 tip 이거나 그 조상이어야 한다(`verdict_base_in_tip`). 사이드 브랜치 커밋이나 PR 의 옛 head 는 G1 에서 멈춘다. 자세한 규칙은 `gate_check.md`.
 - G6: `src/lib.rs` 겹침은 PR 쪽 변경이 `mod x;`/`pub mod x;` 추가 줄뿐이고 병합 tree 에 모두 남으면(`lib_mod_only_kept`) 허용한다.
 - G8(tip 빨강 멈춤)은 #2554 D8(a) 로 판정한다(#2860 범위 추가, 근거 #2856 감사 N10; 리더 도구 `green_tip.py` 와 같은 규칙).
   - 모음 job `ci` 는 보지 않고, 남은 job 을 `gate_collect::d8a_judgment` 로 판정한다. 이 함수는 #2856 `lane-next` 와 같은 함수다.

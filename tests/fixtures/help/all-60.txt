@@ -19,6 +19,8 @@ Project
   language-set            Record the conversation language
                           in HOME
   index-build             Build the code map index
+  check-tree              Warn about what the tracked MoAI
+                          folders hold
   agents-plan             Preview the AGENTS.md managed
                           section
   agents-apply            Write a previewed AGENTS.md
@@ -78,6 +80,9 @@ Update and move
   home-retire-revert      Undo a Go-item retire
   home-install-plan       Preview moving ~/.moai-cli items
                           to ~/.moai
+  home-install-apply      Move the ~/.moai-cli items to
+                          ~/.moai
+  home-install-revert     Undo a ~/.moai-cli to ~/.moai move
   worktree-move-plan      Preview moving this clone's
                           worktrees
   worktree-move-apply     Move the previewed worktrees
@@ -155,11 +160,17 @@ Lane and leader
                           commit or push
   claim-timeout-check     Check the three timeout takeover
                           conditions of a claim
+  claim-expired           List the open claims whose lease
+                          has ended
+  audit-claim-stale       List audit reservations left on
+                          closed pull requests
   claim-show              Show the current claim record of a
                           task
   claim-release           Close the active claim as
                           cancelled
   claim-handoff           Hand a claim to another session
+  claim-link              Link a claim to the worktree you
+                          work in
   queue-free              List the open cards a lane may
                           take
   queue-query             Read the merge train from the
@@ -185,6 +196,7 @@ Lane and leader
   close-check             Check whether an Issue may close
   lane-env                Print a lane's cargo folders
   session-register        Register this session's lane name
+  session-current         Print this session's own id
   usage-limit             Report how close the usage limits
                           are
   heavy-slot-acquire      Run a heavy command in a
@@ -210,8 +222,8 @@ Lane and leader
                           scheduler entry
   wait                    Wait until a condition holds on
                           GitHub
-  scope-check             Check a claim's write scope
-                          against others
+  scope-check             Check a write scope (--task
+                          records it)
   worktree-plan           Preview the branch and worktree of
                           a claim
   worktree-apply          Create the previewed worktree of a
@@ -236,6 +248,8 @@ Lane and leader
   dispatch-record         Record a dispatch revision
   dispatch-ack            Record a dispatch acknowledgement
                           and decision
+  dispatch-start          Record that an accepted dispatch
+                          has started
   dispatch-check          Check dispatch revisions and late
                           acknowledgements
   message-record          Publish a durable message
@@ -316,6 +330,7 @@ Internal
                           merged worktrees
   worktree-gc-apply       Remove or trim the previewed
                           worktrees
+  worktree-install-plan   Preview a scoped package install
   hygiene-plan            Preview what may move to the
                           holding folder
   hygiene-apply           Move the previewed leftovers to

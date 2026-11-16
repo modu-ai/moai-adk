@@ -2,9 +2,10 @@
 //! in the project the command runs from is brought to what this binary generates, inside the
 //! same preview and confirmation as the rest of the user layer.
 //!
-//! Leader decisions on #2853: D1 the hook commands keep naming `moai-cli` (`hooks::HOOK_BINARY`)
-//! and an entry the user changed, or one MoAI never owned, is reported as a conflict and left
-//! as it is; D2 the layer's digest is part of the one `plan_digest` `--confirm` takes; D3 tests
+//! Leader decisions on #2853: D1 an entry the user changed, or one MoAI never owned, is reported
+//! as a conflict and left as it is (the hook commands named `moai-cli` until #3004 P4-2; an
+//! installed set that still does is rewritten to `moai` here, as an ordinary `update`, and only
+//! while the `moai` first on PATH is the Rust build, see [`crate::hook_legacy`]); D2 the layer's digest is part of the one `plan_digest` `--confirm` takes; D3 tests
 //! use a temporary HOME. Target (the default of LANE-BLOCKED 6870179526): the git work tree the
 //! command runs in, and only the hosts whose hook set MoAI already installed there — `update`
 //! never installs hooks; that stays with `hooks-apply`.
@@ -31,6 +32,8 @@ pub struct HostPlan {
     pub reason: Option<String>,
     /// The host's own plan digest; `None` for a conflict, which is never applied.
     pub plan_digest: Option<String>,
+    /// How many entries of the old `moai-cli` set the plan rewrites to `moai` (#3004 P4-2).
+    pub migration: usize,
 }
 
 impl HostPlan {
@@ -45,6 +48,7 @@ impl HostPlan {
             "conflicts": self.conflicts,
             "reason": self.reason,
             "plan_digest": self.plan_digest,
+            "migration": self.migration,
         })
     }
 }
@@ -87,7 +91,7 @@ impl Layer {
         }
         let mut out = format!("hooks ({})\n", project.display());
         for h in &self.hosts {
-            let detail = if !h.conflicts.is_empty() {
+            let mut detail = if !h.conflicts.is_empty() {
                 format!(" ({})", h.conflicts.join(", "))
             } else {
                 h.reason
@@ -95,6 +99,12 @@ impl Layer {
                     .map(|r| format!(" ({r})"))
                     .unwrap_or_default()
             };
+            if h.migration > 0 {
+                detail.push_str(&format!(
+                    " ({} moai-cli hook entries become moai)",
+                    h.migration
+                ));
+            }
             out.push_str(&format!("  {}: {}{detail}\n", h.host, h.action));
         }
         out
@@ -114,8 +124,14 @@ fn project_of(cwd: &Path) -> std::result::Result<PathBuf, String> {
     }
 }
 
-/// Plans the hook layer for the project `cwd` belongs to. Never writes.
+/// Plans the hook layer for the project `cwd` belongs to. Never writes. The gate reads this
+/// process's PATH.
 pub fn plan(home: &Path, cwd: &Path) -> Result<Layer> {
+    plan_in(home, cwd, &path_env())
+}
+
+/// [`plan`] with the PATH the gate probes the `moai` on given.
+pub fn plan_in(home: &Path, cwd: &Path, path_env: &str) -> Result<Layer> {
     let mut layer = Layer {
         project: None,
         hosts: Vec::new(),
@@ -135,7 +151,7 @@ pub fn plan(home: &Path, cwd: &Path) -> Result<Layer> {
                 for host in crate::hooks::HOSTS {
                     match crate::hooks::installed(&root, host) {
                         Ok(false) => {}
-                        Ok(true) => layer.hosts.push(host_plan(&root, home, host)),
+                        Ok(true) => layer.hosts.push(host_plan(&root, home, host, path_env)),
                         Err(e) => layer.hosts.push(conflict(host, e)),
                     }
                 }
@@ -163,14 +179,24 @@ fn conflict(host: &'static str, reason: String) -> HostPlan {
         conflicts: Vec::new(),
         reason: Some(reason),
         plan_digest: None,
+        migration: 0,
     }
 }
 
-fn host_plan(root: &Path, home: &Path, host: &'static str) -> HostPlan {
+/// The PATH this process gives the `moai` probe of the gate.
+fn path_env() -> String {
+    std::env::var("PATH").unwrap_or_default()
+}
+
+fn host_plan(root: &Path, home: &Path, host: &'static str, path_env: &str) -> HostPlan {
     let v = match crate::hooks::plan(root, host, Some(home)) {
         Ok(v) => v,
         Err(e) => return conflict(host, e),
     };
+    // The gate: a plan that must not be written is shown as a conflict with its reason.
+    if let Err(e) = crate::hook_legacy::gate_plan(&v, root, Some(home), path_env) {
+        return conflict(host, e);
+    }
     let action = v["action"].as_str().unwrap_or("conflict").to_string();
     let conflicts = v["conflicts"]
         .as_array()
@@ -187,6 +213,7 @@ fn host_plan(root: &Path, home: &Path, host: &'static str) -> HostPlan {
         conflicts,
         reason: None,
         plan_digest,
+        migration: crate::hook_legacy::rewrite_count(&v),
     }
 }
 
@@ -293,10 +320,144 @@ fn write_json(path: &Path, value: &impl Serialize) -> Result<()> {
     }
 }
 
+/// One host's apply with its replaced bytes kept under a receipt folder.
+struct KeptApply<'a> {
+    root: &'a Path,
+    home: Option<&'a Path>,
+    host: &'static str,
+    digest: &'a str,
+    permission: &'a str,
+    lane: crate::hooks::LaneLoop,
+    dir: &'a Path,
+    receipt_path: &'a Path,
+}
+
+impl KeptApply<'_> {
+    /// Keeps the host's files, applies, and records both sides in `receipt`. The outer error is
+    /// a receipt failure before the apply; the inner one is the apply's own refusal.
+    fn run(self, receipt: &mut Receipt) -> Result<std::result::Result<Value, String>> {
+        let (files, dirs) = crate::hooks::written_files(self.root, self.host)?;
+        plain_dirs(&dirs)?;
+        let mut before = Vec::new();
+        for (n, f) in files.iter().enumerate() {
+            let bytes = crate::claude::read_existing(&self.root.join(f))?;
+            if let Some(b) = &bytes {
+                let keep = self.dir.join("before").join(self.host);
+                create_private_dir(&keep, true).map_err(|_| "hook receipt folder unavailable")?;
+                crate::apply::publish_exclusive_mode(
+                    &keep.join(n.to_string()),
+                    b,
+                    Some(PRIVATE_FILE),
+                )
+                .map_err(|_| "hook receipt write failed")?;
+            }
+            before.push(bytes.as_deref().map(crate::digest));
+        }
+        match crate::hooks::apply_with(
+            self.root,
+            self.host,
+            self.home,
+            self.digest,
+            self.permission,
+            self.lane,
+        ) {
+            Ok(v) => {
+                let mut entries = Vec::new();
+                for (f, b) in files.iter().zip(before) {
+                    let after = crate::claude::read_existing(&self.root.join(f))?;
+                    entries.push(FileEntry {
+                        path: f.clone(),
+                        before_sha256: b,
+                        after_sha256: after.as_deref().map(crate::digest),
+                    });
+                }
+                receipt.hosts.push(HostEntry {
+                    host: self.host.to_string(),
+                    files: entries,
+                });
+                write_json(self.receipt_path, &*receipt)?;
+                Ok(Ok(v))
+            }
+            Err(e) => Ok(Err(e)),
+        }
+    }
+}
+
+/// `hooks-apply` of one host (#3004 P4-2): the gate (the plan is made again now, against the
+/// PATH now), then the apply. A plan that changes an existing file (`update`, which includes the
+/// rewrite of an old `moai-cli` set) keeps the replaced bytes under a receipt and names the
+/// `hooks-revert` command that restores them; a first install or a plan that writes nothing
+/// has nothing to restore and leaves no receipt.
+pub fn apply_direct(
+    project: &Path,
+    host: &str,
+    home: Option<&Path>,
+    plan_digest: &str,
+    permission: &str,
+    lane: crate::hooks::LaneLoop,
+    path_env: &str,
+) -> Result<Value> {
+    if !crate::contract::permission_reference_ok(permission) {
+        return Err("permission reference required".into());
+    }
+    let plan = crate::hooks::plan_with(project, host, home, lane.clone())?;
+    crate::hook_legacy::gate_plan(&plan, project, home, path_env)?;
+    let host: &'static str = crate::hooks::HOSTS
+        .iter()
+        .find(|h| **h == host)
+        .ok_or("unknown hook host; must be claude, codex or omp")?;
+    // A plan that is stale, or writes no existing file, is left to the writer: no receipt.
+    if plan["action"] != json!("update") || plan["plan_digest"] != json!(plan_digest) {
+        return crate::hooks::apply_with(project, host, home, plan_digest, permission, lane);
+    }
+    let root = crate::hooks::project_root(project, home)?;
+    let (id, dir) = new_receipt_dir(&root)?;
+    let mut receipt = Receipt {
+        schema_version: 1,
+        id: id.clone(),
+        plan_digest: plan_digest.to_string(),
+        permission_reference: permission.to_string(),
+        status: "pending".into(),
+        hosts: Vec::new(),
+    };
+    let receipt_path = dir.join("receipt.json");
+    write_json(&receipt_path, &receipt)?;
+    let kept = KeptApply {
+        root: &root,
+        home,
+        host,
+        digest: plan_digest,
+        permission,
+        lane,
+        dir: &dir,
+        receipt_path: &receipt_path,
+    };
+    let mut out = kept.run(&mut receipt)??;
+    receipt.status = "applied".into();
+    write_json(&receipt_path, &receipt)?;
+    out["receipt"] = json!(id);
+    out["revert"] = json!(format!(
+        "moai hooks-revert {} --receipt {id} --permission-reference <reference>",
+        root.display()
+    ));
+    Ok(out)
+}
+
 /// Applies the confirmed hook layer: each host that writes goes through `hooks::apply` with its
 /// confirmed digest (which re-plans and refuses a changed file), its replaced bytes kept under
 /// one receipt. A host's failure is reported beside the others, never hiding them.
 pub fn apply(home: &Path, layer: &Layer, plan_digest: &str, permission: &str) -> Result<Value> {
+    apply_in(home, layer, plan_digest, permission, &path_env())
+}
+
+/// [`apply`] with the PATH the gate probes the `moai` on given.
+pub fn apply_in(
+    home: &Path,
+    layer: &Layer,
+    plan_digest: &str,
+    permission: &str,
+    path_env: &str,
+) -> Result<Value> {
     let writes: Vec<&HostPlan> = layer.hosts.iter().filter(|h| h.writes()).collect();
     let Some(root) = layer.project.as_deref().filter(|_| !writes.is_empty()) else {
         return Ok(json!({"state": "unchanged", "hosts": []}));
@@ -314,45 +475,35 @@ pub fn apply(home: &Path, layer: &Layer, plan_digest: &str, permission: &str) ->
     write_json(&receipt_path, &receipt)?;
     let mut results = Vec::new();
     for h in writes {
-        let (files, dirs) = crate::hooks::written_files(root, h.host)?;
-        plain_dirs(&dirs)?;
-        let mut before = Vec::new();
-        for (n, f) in files.iter().enumerate() {
-            let bytes = crate::claude::read_existing(&root.join(f))?;
-            if let Some(b) = &bytes {
-                let keep = dir.join("before").join(h.host);
-                create_private_dir(&keep, true).map_err(|_| "hook receipt folder unavailable")?;
-                crate::apply::publish_exclusive_mode(
-                    &keep.join(n.to_string()),
-                    b,
-                    Some(PRIVATE_FILE),
-                )
-                .map_err(|_| "hook receipt write failed")?;
-            }
-            before.push(bytes.as_deref().map(crate::digest));
+        // The digest binds the files, not the PATH: the gate is read again right before the write.
+        if let Err(e) = crate::hook_legacy::gate(
+            root,
+            h.host,
+            Some(home),
+            crate::hooks::LaneLoop::Keep,
+            path_env,
+        ) {
+            results.push(json!({"host": h.host, "state": "error", "message": e}));
+            continue;
         }
         let digest = h
             .plan_digest
             .as_deref()
             .expect("a writing host has a digest");
-        match crate::hooks::apply(root, h.host, Some(home), digest, permission) {
-            Ok(v) => {
-                let mut entries = Vec::new();
-                for (f, b) in files.iter().zip(before) {
-                    let after = crate::claude::read_existing(&root.join(f))?;
-                    entries.push(FileEntry {
-                        path: f.clone(),
-                        before_sha256: b,
-                        after_sha256: after.as_deref().map(crate::digest),
-                    });
-                }
-                receipt.hosts.push(HostEntry {
-                    host: h.host.to_string(),
-                    files: entries,
-                });
-                write_json(&receipt_path, &receipt)?;
-                results.push(json!({"host": h.host, "state": v["state"], "files_changed": v["files_changed"]}));
-            }
+        let kept = KeptApply {
+            root,
+            home: Some(home),
+            host: h.host,
+            digest,
+            permission,
+            lane: crate::hooks::LaneLoop::Keep,
+            dir: &dir,
+            receipt_path: &receipt_path,
+        };
+        match kept.run(&mut receipt)? {
+            Ok(v) => results.push(
+                json!({"host": h.host, "state": v["state"], "files_changed": v["files_changed"]}),
+            ),
             Err(e) => results.push(json!({"host": h.host, "state": "error", "message": e})),
         }
     }

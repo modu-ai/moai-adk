@@ -314,7 +314,8 @@ fn the_go_generation_move_runs_preview_cancel_apply_rerun_and_revert() {
         "a file the user edited is kept in the backup"
     );
     assert!(fx.root.join(".moai/specs/SPEC-1/spec.md").exists());
-    assert!(fx.root.join(".moai/moai-cli.json").is_file());
+    assert!(fx.root.join(".moai/moai.json").is_file());
+    assert!(!fx.root.join(".moai/moai-cli.json").exists());
 
     // A second run of the route finds nothing more to move, and step 2 is not offered again.
     let again = fx.call(&["go-state-plan", fx.p()]);

@@ -134,8 +134,8 @@ mod tests {
             Some("run `moai project-plan --help` to see its arguments")
         );
         assert_eq!(
-            next_action(Kind::Usage, "moai-cli", None, m).as_deref(),
-            Some("run `moai-cli --help` to see the commands")
+            next_action(Kind::Usage, "moai", None, m).as_deref(),
+            Some("run `moai --help` to see the commands")
         );
     }
 
@@ -174,8 +174,8 @@ mod tests {
             assert_eq!(ko(k).as_deref(), Some(korean), "{k:?}");
         }
         assert_eq!(
-            next_action_in(Kind::Usage, Ko, "moai-cli", None, m).as_deref(),
-            Some("`moai-cli --help` 로 명령 목록을 확인하세요")
+            next_action_in(Kind::Usage, Ko, "moai", None, m).as_deref(),
+            Some("`moai --help` 로 명령 목록을 확인하세요")
         );
         // A message that already names its next step keeps it in Korean too.
         assert_eq!(

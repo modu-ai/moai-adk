@@ -33,11 +33,11 @@ fn gate(snapshot: &Value) -> Value {
 }
 
 fn verdict(id: u64, lane: &str, head: &str, v: &str) -> Value {
-    json!({"id": id, "body": format!("AUDIT #9 (x) head {head} base {B} — verdict: {v}\n\n감사: {lane} (예약 100).\n")})
+    json!({"id": id, "author_association": "MEMBER", "body": format!("AUDIT #9 (x) head {head} base {B} — verdict: {v}\n\n감사: {lane} (예약 100).\n")})
 }
 
 fn claim(id: u64, lane: &str, head: &str) -> Value {
-    json!({"id": id, "body": format!("moai-audit-claim: lane={lane} head={head}\n")})
+    json!({"id": id, "author_association": "MEMBER", "body": format!("moai-audit-claim: lane={lane} head={head}\n")})
 }
 
 /// The local check pass line for the head `H` (#2906 S5b, G5), posted after the verdict.
@@ -62,6 +62,7 @@ fn passing() -> Value {
         "merge_clean": true,
         "body_check_ok": true,
         "verdict_base_known": true,
+        "verdict_base_in_tip": true,
         "pr_authors": ["agent-26"],
         "tip_ci": {"state": "green", "tip": OTHER, "decided_by": OTHER, "detail": "green"},
         "commits_without_claim": [],
@@ -87,6 +88,107 @@ fn a_complete_snapshot_passes_and_names_its_base() {
     assert_eq!(v["result"]["overlap"], json!([]));
 }
 
+/// Issue #3052: the verdict and the local check count only when a repository member wrote
+/// them. Each of the two, written by someone else, stops the gate and is named in the answer;
+/// the same comments from an owner, a member or a collaborator pass.
+#[test]
+fn a_verdict_or_local_check_from_a_non_member_does_not_pass_the_gate() {
+    for index in [1, 2] {
+        for association in [
+            Some("NONE"),
+            Some("CONTRIBUTOR"),
+            Some("FIRST_TIME_CONTRIBUTOR"),
+            Some(""),
+            None,
+        ] {
+            let mut s = passing();
+            let c = &mut s["comments"][index];
+            match association {
+                Some(a) => c["author_association"] = json!(a),
+                None => {
+                    c.as_object_mut().unwrap().remove("author_association");
+                }
+            }
+            let id = c["id"].clone();
+            let v = gate(&s);
+            assert_eq!(
+                v["result"]["pass"],
+                json!(false),
+                "comment {index} {association:?}: {v}"
+            );
+            assert_eq!(
+                v["result"]["ignored_control_lines"]["items"][0]["comment_id"], id,
+                "comment {index} {association:?}: {v}"
+            );
+        }
+    }
+    for association in ["OWNER", "MEMBER", "COLLABORATOR"] {
+        let mut s = passing();
+        for c in s["comments"].as_array_mut().unwrap() {
+            c["author_association"] = json!(association);
+        }
+        let v = gate(&s);
+        assert_eq!(v["result"]["pass"], json!(true), "{association}: {v}");
+        assert!(v["result"].get("ignored_control_lines").is_none(), "{v}");
+    }
+}
+
+/// Issue #3052: an audit reservation with a lower id than the auditor's takes the audit from
+/// the auditor when a member wrote it (G2). Written by someone else it takes nothing, and the
+/// answer names it.
+#[test]
+fn a_lower_audit_reservation_from_a_non_member_does_not_take_the_audit() {
+    for association in [Some("NONE"), Some("CONTRIBUTOR"), Some(""), None] {
+        let mut s = passing();
+        let mut forged = claim(50, "agent-99", H);
+        match association {
+            Some(a) => forged["author_association"] = json!(a),
+            None => {
+                forged.as_object_mut().unwrap().remove("author_association");
+            }
+        }
+        s["comments"].as_array_mut().unwrap().insert(0, forged);
+        let v = gate(&s);
+        assert_eq!(v["result"]["pass"], json!(true), "{association:?}: {v}");
+        assert_eq!(
+            v["result"]["ignored_control_lines"]["items"][0]["comment_id"],
+            json!(50),
+            "{association:?}: {v}"
+        );
+    }
+    // The same reservation from a member does take it: the gate stops on G2.
+    let mut s = passing();
+    s["comments"]
+        .as_array_mut()
+        .unwrap()
+        .insert(0, claim(50, "agent-99", H));
+    let v = gate(&s);
+    assert_eq!(stopped(&v), (false, "G2".into()), "{v}");
+}
+
+/// An old snapshot file, written before comments carried an association, is read as having no
+/// member comment at all: it does not pass, and the answer says how to fix the file.
+#[test]
+fn a_snapshot_without_associations_fails_closed_and_says_why() {
+    let mut s = passing();
+    for c in s["comments"].as_array_mut().unwrap() {
+        c.as_object_mut().unwrap().remove("author_association");
+    }
+    let v = gate(&s);
+    assert_eq!(v["result"]["pass"], json!(false), "{v}");
+    assert_eq!(
+        v["result"]["ignored_control_lines"]["count"],
+        json!(3),
+        "{v}"
+    );
+    assert!(
+        v["result"]["ignored_control_lines"]["hint"]
+            .as_str()
+            .is_some_and(|h| h.contains("author_association")),
+        "{v}"
+    );
+}
+
 #[test]
 fn g1_the_last_verdict_must_be_a_pass_on_this_head() {
     let mut s = passing();
@@ -105,7 +207,7 @@ fn g1_the_last_verdict_must_be_a_pass_on_this_head() {
     ]);
     assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
     // A short base is not a verdict line.
-    s["comments"] = json!([claim(100, "agent-10", H), {"id": 200, "body": format!("AUDIT #9 head {H} base 2222 — verdict: PASS\nagent-10")}, lc()]);
+    s["comments"] = json!([claim(100, "agent-10", H), {"id": 200, "author_association": "MEMBER", "body": format!("AUDIT #9 head {H} base 2222 — verdict: PASS\nagent-10")}, lc()]);
     assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
     // The latest verdict counts: an older PASS on this head does not outlive a newer one elsewhere.
     s["comments"] = json!([
@@ -153,13 +255,13 @@ fn g2_the_auditor_holds_the_lowest_claim_or_the_lowest_on_this_head() {
     ]);
     assert_eq!(stopped(&gate(&s)), (false, "G2".into()));
     // The auditor is the first lane after the AUDIT line, not one mentioned later.
-    s["comments"] = json!([claim(100, "agent-10", H), {"id": 200, "body": format!("AUDIT #9 head {H} base {B} — verdict: PASS\n\n감사: agent-27, 저자 agent-10.\n")}, lc()]);
+    s["comments"] = json!([claim(100, "agent-10", H), {"id": 200, "author_association": "MEMBER", "body": format!("AUDIT #9 head {H} base {B} — verdict: PASS\n\n감사: agent-27, 저자 agent-10.\n")}, lc()]);
     assert_eq!(stopped(&gate(&s)), (false, "G2".into()));
     // A verdict naming no lane stops.
-    s["comments"] = json!([claim(100, "agent-10", H), {"id": 200, "body": format!("AUDIT #9 head {H} base {B} — verdict: PASS\n\nok\n")}, lc()]);
+    s["comments"] = json!([claim(100, "agent-10", H), {"id": 200, "author_association": "MEMBER", "body": format!("AUDIT #9 head {H} base {B} — verdict: PASS\n\nok\n")}, lc()]);
     assert_eq!(stopped(&gate(&s)), (false, "G2".into()));
     // A lane name runs to its end: `agent-10x` is not `agent-10`.
-    s["comments"] = json!([claim(100, "agent-10", H), {"id": 200, "body": format!("AUDIT #9 head {H} base {B} — verdict: PASS\n\n감사: agent-10x.\n")}, lc()]);
+    s["comments"] = json!([claim(100, "agent-10", H), {"id": 200, "author_association": "MEMBER", "body": format!("AUDIT #9 head {H} base {B} — verdict: PASS\n\n감사: agent-10x.\n")}, lc()]);
     assert_eq!(stopped(&gate(&s)), (false, "G2".into()));
     // `agent-100` is not `agent-10`.
     s["comments"] = json!([
@@ -251,7 +353,7 @@ fn local_check_line(head: &str, result: &str) -> String {
 }
 
 fn local_check(id: u64, head: &str, result: &str) -> Value {
-    json!({"id": id, "body": format!("{}\n", local_check_line(head, result))})
+    json!({"id": id, "author_association": "MEMBER", "body": format!("{}\n", local_check_line(head, result))})
 }
 
 /// `passing()` with its local-check comment replaced by `extra` (ids above the verdict's).
@@ -309,12 +411,14 @@ fn g5_the_last_local_check_line_for_this_head_decides() {
         format!(" {}", local_check_line(H, "pass")),
         format!("> {}", local_check_line(H, "pass")),
     ] {
-        let s = with_local_checks(&[json!({"id": 300, "body": line.clone()})]);
+        let s = with_local_checks(&[
+            json!({"id": 300, "author_association": "MEMBER", "body": line.clone()}),
+        ]);
         assert!(g5_reason(&s).contains(NONE), "{line}");
     }
     // The well-formed line passes (N), on any line of a comment.
     let s = with_local_checks(&[
-        json!({"id": 300, "body": format!("ran it\n\n{}\n", local_check_line(H, "pass"))}),
+        json!({"id": 300, "author_association": "MEMBER", "body": format!("ran it\n\n{}\n", local_check_line(H, "pass"))}),
     ]);
     assert_eq!(stopped(&gate(&s)), (true, String::new()), "{}", gate(&s));
     // The last line for this head decides, across comments and within one.
@@ -322,7 +426,7 @@ fn g5_the_last_local_check_line_for_this_head_decides() {
     assert!(g5_reason(&s).contains(FAILED));
     let s = with_local_checks(&[local_check(300, H, "fail"), local_check(310, H, "pass")]);
     assert_eq!(stopped(&gate(&s)), (true, String::new()), "{}", gate(&s));
-    let both = |a: &str, b: &str| json!({"id": 300, "body": format!("{}\n{}\n", local_check_line(H, a), local_check_line(H, b))});
+    let both = |a: &str, b: &str| json!({"id": 300, "author_association": "MEMBER", "body": format!("{}\n{}\n", local_check_line(H, a), local_check_line(H, b))});
     assert!(g5_reason(&with_local_checks(&[both("pass", "fail")])).contains(FAILED));
     let s = with_local_checks(&[both("fail", "pass")]);
     assert_eq!(stopped(&gate(&s)), (true, String::new()), "{}", gate(&s));
@@ -334,6 +438,248 @@ fn g5_the_last_local_check_line_for_this_head_decides() {
         let s = with_local_checks(&[local_check(300, H, "pass"), local_check(310, OTHER, r)]);
         assert_eq!(stopped(&gate(&s)), (true, String::new()), "{}", gate(&s));
     }
+}
+
+const TREE: &str = "4444444444444444444444444444444444444444";
+const SCRIPT: &str = "5555555555555555555555555555555555555555";
+const RUN: &str = "0123456789ab";
+
+/// The fields of the longer `local-check:` line (#3066 P1), in order, for the head `H`: a
+/// passing run with a real base and a real tree.
+fn evidence_fields(result: &str) -> Vec<(&'static str, String)> {
+    [
+        ("head", H),
+        ("result", result),
+        ("base", B),
+        ("tree", TREE),
+        ("script", SCRIPT),
+        ("rustc", "1.91.0"),
+        ("run", RUN),
+        ("cmd", "tools/local_check.sh"),
+        ("at", "2026-11-14T12:00:00Z"),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k, v.to_string()))
+    .collect()
+}
+
+fn evidence_join(fields: &[(&str, String)]) -> String {
+    let parts: Vec<String> = fields.iter().map(|(k, v)| format!("{k}={v}")).collect();
+    format!("local-check: {}", parts.join(" "))
+}
+
+/// The new-form line for `head` with this `result` and the default evidence fields.
+fn evidence_line(head: &str, result: &str) -> String {
+    let mut f = evidence_fields(result);
+    f[0].1 = head.to_string();
+    evidence_join(&f)
+}
+
+/// The passing new-form line for `H` with one field's value replaced.
+fn evidence_set(key: &str, value: &str) -> String {
+    let mut f = evidence_fields("pass");
+    f.iter_mut().find(|(k, _)| *k == key).unwrap().1 = value.to_string();
+    evidence_join(&f)
+}
+
+/// The passing new-form line for `H` with one field removed.
+fn evidence_drop(key: &str) -> String {
+    let mut f = evidence_fields("pass");
+    f.retain(|(k, _)| *k != key);
+    evidence_join(&f)
+}
+
+fn evidence_comment(id: u64, line: &str) -> Value {
+    json!({"id": id, "author_association": "MEMBER", "body": format!("{line}\n")})
+}
+
+fn raw_comment(id: u64, line: &str) -> Value {
+    json!({"id": id, "author_association": "MEMBER", "body": line})
+}
+
+const NONE_REASON: &str = "no local-check line for this head";
+const FAILED_REASON: &str = "local-check result=fail on this head";
+
+fn assert_g5_passes(extra: &[Value]) {
+    let s = with_local_checks(extra);
+    assert_eq!(stopped(&gate(&s)), (true, String::new()), "{}", gate(&s));
+}
+
+/// #3066 P1: the longer line (base, tree, script, rustc, run) is read like the old one: a
+/// `pass` line for this head lets G5 through, a `fail` line stops it with the old reason.
+#[test]
+fn g5_reads_the_new_local_check_line() {
+    assert_g5_passes(&[evidence_comment(300, &evidence_line(H, "pass"))]);
+    // On any line of a comment, as with the old form.
+    assert_g5_passes(&[raw_comment(
+        300,
+        &format!("ran it\n\n{}\n", evidence_line(H, "pass")),
+    )]);
+    let s = with_local_checks(&[evidence_comment(300, &evidence_line(H, "fail"))]);
+    assert!(g5_reason(&s).contains(FAILED_REASON));
+}
+
+/// #3066 P1: the edges of the new line. Each rejected line counts as absent, exactly like a
+/// rejected old line; each accepted edge is read.
+#[test]
+fn g5_new_local_check_line_edges() {
+    let hex39 = &B[..39];
+    let hex41 = format!("{B}2");
+    let upper = "A".repeat(40);
+    let nonhex = "g".repeat(40);
+    let none_pass_fail = |line: String| {
+        let s = with_local_checks(&[evidence_comment(300, &line)]);
+        assert!(g5_reason(&s).contains(NONE_REASON), "{line}");
+    };
+    let mut rejected: Vec<String> = Vec::new();
+    // Hex fields: 39 and 41 digits, uppercase, a non-hex letter.
+    for key in ["head", "base", "tree", "script"] {
+        for bad in [hex39, hex41.as_str(), upper.as_str(), nonhex.as_str(), ""] {
+            rejected.push(evidence_set(key, bad));
+        }
+    }
+    for bad in [
+        &RUN[..11],
+        "0123456789abc",
+        "0123456789AB",
+        "0123456789ag",
+        "",
+    ] {
+        rejected.push(evidence_set("run", bad));
+    }
+    // `rustc`: 33 characters, empty, a space, `=`, `/`, and other characters.
+    for bad in [
+        "a".repeat(33),
+        String::new(),
+        "1.91 0".into(),
+        "1=2".into(),
+        "1/2".into(),
+        "1.91.0:x".into(),
+        "\u{e9}".into(),
+    ] {
+        rejected.push(evidence_set("rustc", &bad));
+    }
+    // `none` only on a failed run, and `base=none` needs `tree=none`.
+    for (base, tree, result) in [
+        ("none", "none", "pass"),
+        (B, "none", "pass"),
+        ("none", TREE, "fail"),
+        ("none", TREE, "pass"),
+        ("NONE", "none", "fail"),
+        ("none", "NONE", "fail"),
+        ("None", "None", "fail"),
+    ] {
+        let mut f = evidence_fields(result);
+        f[2].1 = base.to_string();
+        f[3].1 = tree.to_string();
+        rejected.push(evidence_join(&f));
+    }
+    // Another result word.
+    rejected.push(evidence_set("result", "ok"));
+    rejected.push(evidence_set("result", ""));
+    // Fields in another order.
+    for (a, b) in [(2, 3), (4, 5), (5, 6), (0, 1), (6, 7), (7, 8)] {
+        let mut f = evidence_fields("pass");
+        f.swap(a, b);
+        rejected.push(evidence_join(&f));
+    }
+    // A missing field, one case per field.
+    for (key, _) in evidence_fields("pass") {
+        rejected.push(evidence_drop(key));
+    }
+    // Another command or time.
+    rejected.push(evidence_set("cmd", "tools/other.sh"));
+    rejected.push(evidence_set("at", "2026-11-14T12:00:00"));
+    rejected.push(evidence_set("at", "2026-11-14 12:00:00Z"));
+    // A `dirty=1` field anywhere, extra trailing text, a second space, a leading space or
+    // quote, no `local-check: ` prefix spacing.
+    let good = evidence_line(H, "pass");
+    rejected.push(good.replacen(" cmd=", " dirty=1 cmd=", 1));
+    rejected.push(good.replacen(" base=", " dirty=1 base=", 1));
+    rejected.push(good.replacen(" run=", " dirty=1 run=", 1));
+    rejected.push(format!("{good} dirty=1"));
+    rejected.push(format!("{good} extra"));
+    rejected.push(format!("{good} "));
+    rejected.push(good.replacen(" base=", "  base=", 1));
+    rejected.push(good.replacen(" run=", "  run=", 1));
+    rejected.push(good.replacen(" cmd=", "  cmd=", 1));
+    rejected.push(good.replacen("local-check: ", "local-check:  ", 1));
+    rejected.push(format!(" {good}"));
+    rejected.push(format!("> {good}"));
+    for line in rejected {
+        none_pass_fail(line);
+    }
+
+    // Accepted edges. `rustc` of 32 characters from the whole allowed set passes.
+    let rustc32 = "aZ09._+-".repeat(4);
+    assert_eq!(rustc32.len(), 32);
+    assert_g5_passes(&[evidence_comment(300, &evidence_set("rustc", &rustc32))]);
+    // One character is enough.
+    assert_g5_passes(&[evidence_comment(300, &evidence_set("rustc", "x"))]);
+    // A failed run may have no tree (a conflict: real base) or no base and no tree; both are
+    // read, and both stop G5 with the failure reason rather than "no line".
+    for (base, tree) in [(B, "none"), ("none", "none")] {
+        let mut f = evidence_fields("fail");
+        f[2].1 = base.to_string();
+        f[3].1 = tree.to_string();
+        let s = with_local_checks(&[evidence_comment(300, &evidence_join(&f))]);
+        assert!(g5_reason(&s).contains(FAILED_REASON), "{base} {tree}");
+    }
+}
+
+/// #3066 P1: the last line for the head decides whichever form it is in: a higher comment id
+/// beats a lower one, and within a comment the later line wins.
+#[test]
+fn g5_old_and_new_lines_for_one_head_are_ordered_by_comment() {
+    let old = |r: &str| local_check_line(H, r);
+    let new = |r: &str| evidence_line(H, r);
+    for (low, high, passes) in [
+        (old("pass"), new("fail"), false),
+        (old("fail"), new("pass"), true),
+        (new("pass"), old("fail"), false),
+        (new("fail"), old("pass"), true),
+    ] {
+        // Listed in both orders: the comment id orders them, not the position in the list.
+        for flip in [false, true] {
+            let mut extra = vec![evidence_comment(300, &low), evidence_comment(310, &high)];
+            if flip {
+                extra.reverse();
+            }
+            if passes {
+                assert_g5_passes(&extra);
+            } else {
+                let s = with_local_checks(&extra);
+                assert!(g5_reason(&s).contains(FAILED_REASON), "{low} / {high}");
+            }
+        }
+        // Inside one comment the later line wins.
+        let both = [raw_comment(300, &format!("{low}\n{high}\n"))];
+        if passes {
+            assert_g5_passes(&both);
+        } else {
+            let s = with_local_checks(&both);
+            assert!(g5_reason(&s).contains(FAILED_REASON), "{low} / {high}");
+        }
+    }
+}
+
+/// #3066 P1: a new-form line for another head is ignored, pass or fail, like an old one.
+#[test]
+fn g5_a_new_local_check_line_for_another_head_is_ignored() {
+    let s = with_local_checks(&[evidence_comment(300, &evidence_line(OTHER, "pass"))]);
+    assert!(g5_reason(&s).contains(NONE_REASON));
+    for r in ["pass", "fail"] {
+        assert_g5_passes(&[
+            evidence_comment(300, &evidence_line(H, "pass")),
+            evidence_comment(310, &evidence_line(OTHER, r)),
+        ]);
+    }
+    // The head field is the head of the line; the base is not mistaken for it.
+    let mut f = evidence_fields("pass");
+    f[0].1 = OTHER.to_string();
+    f[2].1 = H.to_string();
+    let s = with_local_checks(&[evidence_comment(300, &evidence_join(&f))]);
+    assert!(g5_reason(&s).contains(NONE_REASON));
 }
 
 /// #2906 S5b: GitHub check runs no longer block the merge; `ci_info` reports them.
@@ -428,7 +774,7 @@ fn a_bad_snapshot_is_refused() {
 /// reverses a FAIL.
 #[test]
 fn a_quoted_verdict_line_is_not_a_verdict() {
-    let quoted = json!({"id": 300, "body": format!("수리 push — agent-10에게\nAUDIT #9 (x) head {H} base {B} — verdict: PASS\nagent-10\n")});
+    let quoted = json!({"id": 300, "author_association": "MEMBER", "body": format!("수리 push — agent-10에게\nAUDIT #9 (x) head {H} base {B} — verdict: PASS\nagent-10\n")});
     let mut s = passing();
     s["comments"] = json!([
         claim(100, "agent-10", H),
@@ -447,7 +793,7 @@ fn a_quoted_verdict_line_is_not_a_verdict() {
     ]);
     assert!(stopped(&gate(&s)).0);
     // A quoted FAIL does not block either.
-    let quoted_fail = json!({"id": 300, "body": format!("note\nAUDIT #9 (x) head {H} base {B} — verdict: FAIL\nagent-27\n")});
+    let quoted_fail = json!({"id": 300, "author_association": "MEMBER", "body": format!("note\nAUDIT #9 (x) head {H} base {B} — verdict: FAIL\nagent-27\n")});
     s["comments"] = json!([
         claim(100, "agent-10", H),
         verdict(200, "agent-10", H, "PASS"),
@@ -463,7 +809,7 @@ fn a_quoted_verdict_line_is_not_a_verdict() {
 #[test]
 fn audit_notes_title_head_rc_ci_withdrawal_and_known_base() {
     let mut s = passing();
-    s["comments"] = json!([claim(100, "agent-10", H), {"id": 200, "body": format!("AUDIT #9 (fix head recheck) head {H} base {B} — verdict: PASS\n\n감사: agent-10.\n")}, lc()]);
+    s["comments"] = json!([claim(100, "agent-10", H), {"id": 200, "author_association": "MEMBER", "body": format!("AUDIT #9 (fix head recheck) head {H} base {B} — verdict: PASS\n\n감사: agent-10.\n")}, lc()]);
     assert!(stopped(&gate(&s)).0);
 
     let mut s = passing();
@@ -476,8 +822,7 @@ fn audit_notes_title_head_rc_ci_withdrawal_and_known_base() {
     assert_eq!(v["result"]["ci_info"], json!("ci=failure"), "{v}");
 
     let mut s = passing();
-    let withdraw =
-        json!({"id": 120, "body": "moai-audit-claim 철회: agent-10 (100) — agent-27 takes it\n"});
+    let withdraw = json!({"id": 120, "author_association": "MEMBER", "body": "moai-audit-claim 철회: agent-10 (100) — agent-27 takes it\n"});
     s["comments"] = json!([
         claim(100, "agent-10", H),
         withdraw,
@@ -486,7 +831,7 @@ fn audit_notes_title_head_rc_ci_withdrawal_and_known_base() {
         lc()
     ]);
     assert!(stopped(&gate(&s)).0);
-    let free_text = json!({"id": 120, "body": "agent-10: 감사 예약 100 철회\n"});
+    let free_text = json!({"id": 120, "author_association": "MEMBER", "body": "agent-10: 감사 예약 100 철회\n"});
     s["comments"] = json!([
         claim(100, "agent-10", H),
         free_text,
@@ -503,13 +848,59 @@ fn audit_notes_title_head_rc_ci_withdrawal_and_known_base() {
     assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
 }
 
+/// #3066 P3: a verdict base that exists but is not an ancestor of the base-branch tip says
+/// nothing about the tip the PR merges onto, so G1 stops with its own reason. Known and in
+/// the tip passes; an unknown base keeps the old reason; a snapshot without the
+/// `verdict_base_in_tip` key reads as false (fail-closed).
+#[test]
+fn g1_stops_a_verdict_base_that_is_not_an_ancestor_of_the_tip() {
+    let reason = |v: &Value| v["result"]["reason"].as_str().unwrap().to_string();
+
+    // known + in the tip: passes.
+    let v = gate(&passing());
+    assert_eq!(stopped(&v), (true, "".into()), "{v}");
+
+    // known, not in the tip: G1 with the new reason.
+    let mut s = passing();
+    s["verdict_base_in_tip"] = json!(false);
+    let v = gate(&s);
+    assert_eq!(stopped(&v), (false, "G1".into()), "{v}");
+    assert!(
+        reason(&v).contains("not an ancestor of the base-branch tip"),
+        "{v}"
+    );
+    assert!(reason(&v).contains(B), "{v}");
+    assert!(!reason(&v).contains("not a known commit"), "{v}");
+
+    // The key removed: fail-closed, same stop.
+    let mut s = passing();
+    s.as_object_mut().unwrap().remove("verdict_base_in_tip");
+    let v = gate(&s);
+    assert_eq!(stopped(&v), (false, "G1".into()), "{v}");
+    assert!(
+        reason(&v).contains("not an ancestor of the base-branch tip"),
+        "{v}"
+    );
+
+    // unknown base: the old reason stays, whatever `in_tip` says.
+    for in_tip in [true, false] {
+        let mut s = passing();
+        s["verdict_base_known"] = json!(false);
+        s["verdict_base_in_tip"] = json!(in_tip);
+        let v = gate(&s);
+        assert_eq!(stopped(&v), (false, "G1".into()), "{v}");
+        assert!(reason(&v).contains("is not a known commit"), "{v}");
+        assert!(!reason(&v).contains("ancestor"), "{v}");
+    }
+}
+
 /// Audit 6850638994 B2: a withdrawal removes a claim only when its lane matches that claim's
 /// lane; a mistyped id naming another lane's claim leaves it in place and G2 stops. N5: a
 /// failed `rc-ci / …` job counts like a `ci / …` one (since #2906 S5b in `ci_info`, not G5).
 #[test]
 fn a_withdrawal_must_name_the_claims_own_lane_and_rc_ci_jobs_count() {
     let mut s = passing();
-    let wrong = json!({"id": 3, "body": "moai-audit-claim 철회: agent-10 (1)\n"});
+    let wrong = json!({"id": 3, "author_association": "MEMBER", "body": "moai-audit-claim 철회: agent-10 (1)\n"});
     s["comments"] = json!([
         claim(1, "agent-22", H),
         claim(2, "agent-10", H),
@@ -518,7 +909,7 @@ fn a_withdrawal_must_name_the_claims_own_lane_and_rc_ci_jobs_count() {
         lc()
     ]);
     assert_eq!(stopped(&gate(&s)), (false, "G2".into()));
-    let right = json!({"id": 3, "body": "moai-audit-claim 철회: agent-22 (1)\n"});
+    let right = json!({"id": 3, "author_association": "MEMBER", "body": "moai-audit-claim 철회: agent-22 (1)\n"});
     s["comments"] = json!([
         claim(1, "agent-22", H),
         claim(2, "agent-10", H),
@@ -813,7 +1204,7 @@ fn the_audit_rules_apply_to_the_verdict_head_of_a_delta() {
 }
 
 fn note(id: u64, body: &str) -> Value {
-    json!({"id": id, "body": body})
+    json!({"id": id, "author_association": "MEMBER", "body": body})
 }
 
 /// #2860 rule 1 (shell owner_ok.py): a leader handoff whose first line names an allowed claim
@@ -878,7 +1269,7 @@ fn g2_a_leader_handoff_moves_an_allowed_claim() {
 #[test]
 fn g1_a_short_base_counts_only_when_resolved_to_one_commit() {
     let short = &B[..12];
-    let line = |base: &str, head: &str| json!({"id": 200, "body": format!("AUDIT #9 (x) head {head} base {base} — verdict: PASS\n\n감사: agent-10 (예약 100).\n")});
+    let line = |base: &str, head: &str| json!({"id": 200, "author_association": "MEMBER", "body": format!("AUDIT #9 (x) head {head} base {base} — verdict: PASS\n\n감사: agent-10 (예약 100).\n")});
     let mut s = passing();
     s["comments"] = json!([claim(100, "agent-10", H), line(short, H), lc()]);
     s["verdict_base_full"] = json!(B);

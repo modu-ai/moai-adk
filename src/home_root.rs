@@ -1,6 +1,7 @@
 //! #2696 C4b: which folder under HOME holds this generation's state — the HOME twin of
 //! [`crate::state_root::dir`]. `~/.moai` once [`crate::state_root::classify_with`] with the
-//! HOME's Go markers says `rust` (a valid marker `~/.moai/moai-cli.json`), otherwise the earlier
+//! HOME's Go markers says `rust` (a valid marker `~/.moai/moai.json`, or the earlier name
+//! `~/.moai/moai-cli.json`, [`crate::state_root::LEGACY_MARKER`]), otherwise the earlier
 //! `~/.moai-cli` ([`crate::HOME_STATE_DIR`]). Read both, one writes: a HOME without the marker
 //! keeps exactly the paths it had, and the Go generation's `~/.moai` is never written here.
 //! A schema-2 marker (#2871 I2 R1, [`crate::state_root::classify_home`]) makes the HOME
@@ -101,6 +102,10 @@ mod tests {
         assert!(is_new_home(home.path()));
         assert_eq!(adopt_new(home.path(), "test"), Ok(true));
         assert_eq!(dir(home.path()), MOAI_DIR);
+        // #2871 marker rename: the new name with generation "moai", and no earlier name.
+        let written = fs::read_to_string(home.path().join(".moai/moai.json")).unwrap();
+        assert!(written.contains(r#""generation": "moai""#), "{written}");
+        assert!(!home.path().join(".moai/moai-cli.json").exists());
         assert_eq!(adopt_new(home.path(), "test"), Ok(false), "only once");
         // An earlier `~/.moai-cli`: kept, nothing written.
         let earlier = tempfile::tempdir().unwrap();
@@ -115,6 +120,7 @@ mod tests {
         assert!(!is_new_home(go.path()));
         assert_eq!(adopt_new(go.path(), "test"), Ok(false));
         assert!(!go.path().join(".moai/moai-cli.json").exists());
+        assert!(!go.path().join(".moai/moai.json").exists());
     }
 
     /// #2871 I2 R1 (D-M1): a schema-2 marker resolves HOME paths to the layout's root even
@@ -150,7 +156,7 @@ mod tests {
             (
                 "home_install.rs",
                 3,
-                "the install preview reads the earlier folder whatever generation the HOME is in (one use in the plan, one in the install-journal lookup that tells the readers an earlier install id (R5), one in the unit-test fixture)",
+                "the install reads the earlier folder whatever generation the HOME is in (one use in `old_root`, which the plan, apply and revert ask, one in the install-journal lookup that tells the readers an earlier install id (R5), one in the unit-test fixture)",
             ),
             (
                 "hooks.rs",

@@ -10,11 +10,15 @@ pub mod audit;
 pub mod audit_claim;
 pub mod audit_clone;
 pub mod audit_delta;
+pub mod audit_stale;
 pub mod banner;
 pub mod baseline;
 pub mod bin_names;
+pub mod check_tree;
 pub mod claim;
 pub mod claim_cache;
+pub mod claim_expired;
+pub mod claim_link;
 pub mod claim_timeout;
 pub mod claim_verify;
 pub mod claude;
@@ -22,6 +26,7 @@ pub mod claude_settings_merge;
 pub mod clone_root;
 pub mod close_check;
 pub mod code_refs;
+pub mod comment_authority;
 pub mod context;
 pub mod contract;
 pub mod decision;
@@ -49,6 +54,7 @@ pub mod handoff;
 pub mod heavy_slot;
 pub mod help;
 pub mod home_install;
+pub mod home_install_apply;
 pub mod home_layout;
 pub mod home_retire;
 pub mod home_root;
@@ -59,6 +65,7 @@ pub mod home_workdir;
 pub mod hook_config;
 pub mod hook_engine;
 pub mod hook_guards;
+pub mod hook_legacy;
 pub mod hooks;
 pub mod hosts;
 pub mod hygiene;
@@ -77,6 +84,7 @@ pub mod lane_next;
 pub mod lane_proposal;
 pub mod lane_registry;
 pub mod lane_reset;
+pub mod lane_state;
 pub mod lane_status;
 pub mod language;
 pub mod launcher_init;
@@ -110,16 +118,19 @@ pub mod repo_scans;
 pub mod review;
 pub mod run;
 pub mod scope;
+pub mod scopes;
 pub mod search;
 pub mod self_audit;
 pub mod self_update;
 pub mod session;
+pub mod session_current;
 pub mod shim_check;
 pub mod skills_legacy;
 pub mod spec;
 pub mod spec_links;
 pub mod startable;
 pub mod state_root;
+pub mod status_line;
 pub mod statusline;
 pub mod ui;
 pub mod ui_summary;
@@ -135,6 +146,7 @@ pub mod verify;
 pub mod worktree;
 pub mod worktree_gc;
 pub mod worktree_include;
+pub mod worktree_install_plan;
 pub mod worktree_move;
 pub mod worktree_report;
 pub use agents::{agents_apply, agents_plan, AgentsPlan, AgentsRequest};
@@ -401,6 +413,11 @@ mod state_dir_tests {
                 "apply.rs",
                 1,
                 "the earlier receipt store stays out of recovery too",
+            ),
+            (
+                "check_tree.rs",
+                1,
+                "the check looks at both MoAI folders by name, the earlier one included: a tracked earlier folder is what it warns about (#3009 S3a)",
             ),
             (
                 "forge/report.rs",

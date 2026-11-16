@@ -93,6 +93,18 @@ fn list<T: Transport>(transport: &T, first: String) -> Result<Vec<Value>> {
     Ok(items)
 }
 
+/// The comments of one Issue that a repository member wrote (Issue #3052); `ignored` takes the
+/// rest, so a run line a non-member wrote cannot make a run look recorded.
+fn member_comments<T: Transport>(
+    transport: &T,
+    first: String,
+    ignored: &mut crate::comment_authority::Dropped,
+) -> Result<Vec<Value>> {
+    let mut comments = list(transport, first)?;
+    ignored.merge(crate::comment_authority::retain_rest(&mut comments));
+    Ok(comments)
+}
+
 fn lines_hold(text: Option<&str>, marker: &str) -> bool {
     text.is_some_and(|t| t.lines().any(|l| l.trim() == marker))
 }
@@ -135,6 +147,7 @@ pub fn record<T: Transport>(
         .collect();
     let (mut created, mut commented, mut skipped, mut uncertain) =
         (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    let mut ignored = crate::comment_authority::Dropped::default();
     for f in &rows {
         let marker = test_marker(&f.test);
         let run_mark = run_marker(run, &f.job);
@@ -154,9 +167,10 @@ pub fn record<T: Transport>(
                 .as_u64()
                 .ok_or("an Issue without a number")?;
             let recorded = lines_hold(issue["body"].as_str(), &run_mark)
-                || list(
+                || member_comments(
                     transport,
                     format!("{api}/issues/{number}/comments?per_page=100"),
+                    &mut ignored,
                 )?
                 .iter()
                 .any(|c| lines_hold(c["body"].as_str(), &run_mark));
@@ -175,9 +189,10 @@ pub fn record<T: Transport>(
                 Ok(r) => return Err(format!("comment on #{number} returned HTTP {}", r.status)),
                 // Maybe posted: read the comments back.
                 Err(e) => {
-                    let back = list(
+                    let back = member_comments(
                         transport,
                         format!("{api}/issues/{number}/comments?per_page=100"),
+                        &mut ignored,
                     )
                     .map(|cs| cs.iter().any(|c| lines_hold(c["body"].as_str(), &run_mark)));
                     match back {
@@ -192,7 +207,7 @@ pub fn record<T: Transport>(
         }
         let title = format!("[flake] {}", f.test);
         let body = format!(
-            "{marker}\n불안정 시험 추적 (`moai-cli flake-record`, #2666). 같은 head의 뒤 run에서 통과한 실패를 run마다 적어요.\n\n{}\n\n🗿 MoAI",
+            "{marker}\n불안정 시험 추적 (`moai flake-record`, #2666). 같은 head의 뒤 run에서 통과한 실패를 run마다 적어요.\n\n{}\n\n🗿 MoAI",
             entry(f, run, &run_url)
         );
         let sent = transport.send(
@@ -222,8 +237,12 @@ pub fn record<T: Transport>(
         open.push(issue);
     }
     let writes = created.len() + commented.len();
-    Ok(json!({
+    let mut out = json!({
         "run": run, "created": created, "commented": commented,
         "already_recorded": skipped, "uncertain": uncertain, "writes": writes,
-    }))
+    });
+    if !ignored.is_empty() {
+        out["ignored_control_lines"] = ignored.to_json();
+    }
+    Ok(out)
 }

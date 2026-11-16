@@ -157,6 +157,8 @@ pub struct ClaimsRead {
     pub claims: ClaimsObservation,
     /// Why the reading may be incomplete (search result cut or flagged incomplete).
     pub partial: Option<String>,
+    /// Comments of non-members that were left out of the reading (Issue #3052).
+    pub ignored: crate::comment_authority::Dropped,
 }
 
 /// `text` with everything but unreserved characters percent-encoded.
@@ -227,10 +229,11 @@ pub fn read_claims<T: Transport, C: crate::forge::policy::Clock>(
     };
     numbers.extend(extra.iter().copied());
     let mut threads = Vec::new();
+    let mut ignored = crate::comment_authority::Dropped::default();
     for n in numbers {
         let url =
             format!("https://api.github.com/repos/{owner}/{repo}/issues/{n}/comments?per_page=100");
-        let (raw, complete) = crate::lane_status::pages_with_evidence(&client, url, None)
+        let (mut raw, complete) = crate::lane_status::pages_with_evidence(&client, url, None)
             .map_err(|e| format!("the comments of #{n} could not be read: {e}"))?;
         // A page that is no list, or a `Link: rel="next"` that cannot be followed, is a read
         // that did not reach the end: never "no claim here" (audit #3023 B1).
@@ -239,6 +242,8 @@ pub fn read_claims<T: Transport, C: crate::forge::policy::Clock>(
                 "the comments of #{n} could not be read to the end (an answer that is no list, or a next page that cannot be followed)"
             ));
         }
+        // Issue #3052: a claim or resume line counts only when a repository member wrote it.
+        ignored.merge(crate::comment_authority::retain_rest(&mut raw));
         threads.push(IssueComments {
             issue: n,
             comments: raw
@@ -259,6 +264,7 @@ pub fn read_claims<T: Transport, C: crate::forge::policy::Clock>(
             items: claims_from_threads(lane, &threads),
         },
         partial,
+        ignored,
     })
 }
 
@@ -462,6 +468,30 @@ pub fn check_with(
     now: i64,
     claims_note: Option<&str>,
 ) -> Result<Value> {
+    check_full(project, lane, obs, now, claims_note, &Extras::default())
+}
+
+/// What the caller read besides the observations, for the lane's state (#3015 C3b). `None` is
+/// "not read".
+#[derive(Clone, Debug, Default)]
+pub struct Extras {
+    /// The open pull requests that lead to the lane's open claims.
+    pub open_prs: Option<Vec<crate::lane_state::OpenPr>>,
+    /// The pull request read was cut at one page.
+    pub prs_partial: bool,
+    /// Whether the lane's session lease still runs.
+    pub session_live: Option<bool>,
+}
+
+/// [`check_with`] with [`Extras`]; the answer then carries `lane_state` as well.
+pub fn check_full(
+    project: &Path,
+    lane: &str,
+    obs: &Observations,
+    now: i64,
+    claims_note: Option<&str>,
+    extras: &Extras,
+) -> Result<Value> {
     if !valid_lane(lane) {
         return Err("invalid lane name: 1 to 64 of letters, digits, `-`, `_`, `.`".into());
     }
@@ -522,6 +552,9 @@ pub fn check_with(
     if stashes.is_none() {
         unknowns.push("git stash list unavailable".into());
     }
+    // For the lane's state: unsaved work in the lane's own worktrees, `None` when a check
+    // of one of them could not run.
+    let (mut unsaved_found, mut unsaved_unread) = (false, stashes.is_none());
     // Linked worktrees usually live inside the primary checkout, so the session folder belongs
     // to the deepest worktree that contains it, not to every one.
     let cwd_worktree = cwd.and_then(|c| {
@@ -560,6 +593,8 @@ pub fn check_with(
             &mut u,
         ));
         if attributed {
+            unsaved_found |= !f.is_empty();
+            unsaved_unread |= !u.is_empty();
             findings.extend(f);
             unknowns.extend(u);
         } else {
@@ -586,6 +621,7 @@ pub fn check_with(
     }
 
     // (3) background jobs on the lane's screen.
+    let mut fresh_jobs = None;
     let screen = match &obs.screen {
         None => {
             unknowns.push("no screen observation: background jobs unchecked".into());
@@ -601,11 +637,14 @@ pub fn check_with(
                     "screen observation is {} s old; the limit is {SCREEN_MAX_AGE_SECS} s",
                     now - at
                 )),
-                Some(_) if s.background_jobs > 0 => findings.push(format!(
-                    "{} background job(s) still running on the lane's screen",
-                    s.background_jobs
-                )),
-                Some(_) => {}
+                Some(_) if s.background_jobs > 0 => {
+                    fresh_jobs = Some(s.background_jobs);
+                    findings.push(format!(
+                        "{} background job(s) still running on the lane's screen",
+                        s.background_jobs
+                    ));
+                }
+                Some(_) => fresh_jobs = Some(0),
             }
             json!({"source": s.source, "observed_at": s.observed_at, "background_jobs": s.background_jobs})
         }
@@ -618,9 +657,24 @@ pub fn check_with(
     } else {
         "safe"
     };
+    let open_claims: Option<Vec<OpenClaim>> = obs.claims.as_ref().map(|c| c.items.clone());
+    let lane_state = crate::lane_state::classify(&crate::lane_state::Facts {
+        claims: open_claims.as_deref(),
+        claims_partial: obs.claims.is_some() && claims_note.is_some(),
+        open_prs: extras.open_prs.as_deref(),
+        prs_partial: extras.prs_partial,
+        unsaved: if unsaved_unread {
+            None
+        } else {
+            Some(unsaved_found)
+        },
+        background_jobs: fresh_jobs,
+        session_live: extras.session_live,
+    });
     Ok(json!({
         "lane": lane,
         "verdict": verdict,
+        "lane_state": lane_state,
         "findings": findings,
         "unknowns": unknowns,
         "unattributed": unattributed,
@@ -748,6 +802,40 @@ branch=issue/{issue}-x head=0123456789abcdef0123456789abcdef01234567 uncommitted
         assert!(claims_from_threads("agent-9", &[released, handed]).is_empty());
     }
 
+    /// #3015 C7c: `lane-safe-to-reset` and `claim-verify` read a release or handoff line by
+    /// one rule: it closes an earlier claim comment of the thread, and only that.
+    #[test]
+    fn a_line_that_names_no_earlier_claim_leaves_the_claim_open_as_claim_verify_reads_it() {
+        use crate::claim_verify::{evaluate, IssueComment, Verifier};
+        let before_lease = crate::forge::policy::parse_utc("2026-11-15T07:00:00Z").unwrap();
+        for stray in [
+            "moai-claim-release: comment=6000099",
+            "moai-claim-handoff: comment=6000099 to=agent-3 by=leader",
+            "moai-claim-release: comment=6000072",
+        ] {
+            let comments = vec![claim(6000070, "Bot", "agent-9"), cc(6000072, "Bot", stray)];
+            let items = claims_from_threads("agent-9", &[thread(7, comments.clone())]);
+            assert_eq!(items.len(), 1, "{stray}");
+            let verdict = evaluate(
+                &comments
+                    .iter()
+                    .map(|c| IssueComment {
+                        id: c.id as i64,
+                        author: c.author.clone(),
+                        body: c.body.clone(),
+                    })
+                    .collect::<Vec<_>>(),
+                &Verifier {
+                    session: "agent-9",
+                    comment_id: Some(6000070),
+                    allowed_authors: &[],
+                    now: before_lease,
+                },
+            );
+            assert_eq!(verdict["status"], "owner", "{stray}: {verdict}");
+        }
+    }
+
     #[test]
     fn another_lanes_claim_is_not_this_lanes() {
         let t = thread(7, vec![claim(6000070, "Bot", "agent-90")]);
@@ -853,7 +941,11 @@ branch=issue/{issue}-x head=0123456789abcdef0123456789abcdef01234567 uncommitted
     const API: &str = "https://api.github.com/repos/acme/widgets";
 
     fn raw(id: u64, author: &str, body: &str) -> serde_json::Value {
-        json!({"id": id, "user": {"login": author}, "body": body})
+        json!({"id": id, "user": {"login": author}, "author_association": "MEMBER", "body": body})
+    }
+
+    fn raw_outsider(id: u64, author: &str, body: &str) -> serde_json::Value {
+        json!({"id": id, "user": {"login": author}, "author_association": "NONE", "body": body})
     }
 
     fn search(numbers: &[u64], total: u64, incomplete: bool) -> (String, u16, serde_json::Value) {
@@ -903,6 +995,35 @@ branch=issue/{issue}-x head=0123456789abcdef0123456789abcdef01234567 uncommitted
             "https://api.github.com/search/issues?q=repo%3Aacme%2Fwidgets%20is%3Aopen%20in%3Acomments%20%22session%3Dagent-9%22&per_page=30"
         );
         assert_eq!(sent[1].1, format!("{API}/issues/7/comments?per_page=100"));
+    }
+
+    #[test]
+    fn a_claim_line_from_a_non_member_is_no_claim_and_is_reported() {
+        // Issue #3052: the same claim line, written by someone who is no member, opens nothing.
+        let claim = "moai-claim: session=agent-9 epoch=1 lease_until=2026-11-15T08:00:00Z";
+        let fake = Fake {
+            answers: vec![
+                search(&[7], 1, false),
+                comments(7, vec![raw_outsider(6000070, "Stranger", claim)]),
+            ],
+            sent: RefCell::new(Vec::new()),
+        };
+        let got = read_claims("acme", "widgets", "agent-9", &[], &fake, &Clock0).unwrap();
+        assert!(got.claims.items.is_empty(), "{:?}", got.claims.items);
+        let out = got.ignored.to_json();
+        assert_eq!(out["count"], 1, "{out}");
+        assert_eq!(out["items"][0]["comment_id"], 6000070, "{out}");
+        // The same line from a member is a claim.
+        let fake = Fake {
+            answers: vec![
+                search(&[7], 1, false),
+                comments(7, vec![raw(6000070, "Bot", claim)]),
+            ],
+            sent: RefCell::new(Vec::new()),
+        };
+        let got = read_claims("acme", "widgets", "agent-9", &[], &fake, &Clock0).unwrap();
+        assert_eq!(got.claims.items.len(), 1);
+        assert!(got.ignored.is_empty());
     }
 
     #[test]
