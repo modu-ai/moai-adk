@@ -97,6 +97,8 @@ Host worktree guard (Issue #2836, leader decision 6869212685). When Claude Code 
 
 These forms only change how a permitted effect is spelled (VERIFY workflow, "Guard refusal"): a refusal of the effect itself — a write in another worktree, the real HOME — stays a refusal.
 
+How a lane hands over its work (a fixed SHA with its test results, never a write to the integration reference) and how conflicts return to it follow the M-Flow rules the route table names under `flow_rules`. This workflow repeats none of them, and none of them weakens a gate, a claim or the independent audit named here.
+
 ## Without the `moai` command
 
 In a project where neither `moai` nor `moai-cli` runs (SKILL.md, "On a remote without the CLI"), the mode runs reduced (Issue #2664): the claim is the same comment line; in place of `claim-verify`, before every commit and push read every comment of the Issue with `gh api --paginate`, take the lowest claim comment that no release or handoff line closes — expired or not — and write only when it is yours and its lease is live. An expired holder stays the holder, as `claim-verify` judges it `stale`: never take the card over by time alone, and renew your own lease before it ends. When the read fails, is paged short or the order of the claims cannot be read, write nothing and report `LANE-BLOCKED <lane> #<n> claim unverifiable · kind=claim owner=leader`. In place of `lane-next`, follow the `self-pick` order by reading the open pull requests and Issues with `gh`. The checks that need the command (`pr-self-audit-check`, `heavy-slot-acquire`, `goal-block`) are reported `not_run` with the substitute, never as passed.

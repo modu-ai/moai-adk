@@ -458,6 +458,8 @@ fn internal_references_say_when_to_read_them() {
         "core-rules",
         // #3096 S1: four ways of looking, read only when a question or plan needs one.
         "lenses",
+        // #3096 M-Flow: the collaboration rules, written once; SKILL.md and both modes point here.
+        "m-flow",
     ];
     let mut found: Vec<String> = std::fs::read_dir(package().join("references/internal"))
         .unwrap()

@@ -46,7 +46,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "698843e955e9db63a1a6d97b2ea2762d4af757b3d351738211924a82f8e10042",
+      "sha256": "d80d575baa0c9aee8a10e28ee6936f66af80030aa4e7fc7317f847f88fee6a84",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -55,7 +55,7 @@
       }
     },
     "references/routes.json": {
-      "sha256": "d49da0fbb743c6c80526ea665294b2a4a38b25599c7d861459c42ac529e9b82e",
+      "sha256": "00f2529b371e91941c35edb734b1391f963f98176953200b7d1c97f480ab3a67",
       "origin": {
         "kind": "design-template",
         "template_id": "router-routes",
@@ -136,7 +136,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "37e2d1871e4fdd5afefed73cfde941aa4c3bdd81d86e1fb2d80cccb6700690e8",
+      "sha256": "f3c7a937cc094e9bfc334ab591419887cfc80c7cce7583e8aeca91896430c83c",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "7ddf7a4736219af52537f406f3596ee7a7cc0228919f655f5ccfd7e485fa5af5",
+      "sha256": "671738aa6976bc25a3bf05e841c6ff7c3aa65ee38a94b78ef01efe12c12456c3",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
@@ -163,7 +163,7 @@
       }
     },
     "references/chains/index.md": {
-      "sha256": "c4ac67e70035befb15241fec32263fbe5aab7b24f998ab1cb93e27a3ef2193bb",
+      "sha256": "46fd10039a78dcf5458c811f3a5d48943d73b6689950f0bc860f0f9e66dd49ef",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",
@@ -337,6 +337,15 @@
         "template_id": "internal-lenses",
         "adoption": "new",
         "reason": "Written for rc.2 #3096 S1 (user instruction 2026-11-16, record in #1975): four ways of looking (state machine, CI in three stretches, what to keep if built again, refactor risk) read only when a question or plan needs one; each reports and changes no code."
+      }
+    },
+    "references/internal/m-flow.md": {
+      "sha256": "a97791beea196c0c85f70c6f70ad9ec826cfb9f9cc31de47133d7b97535865ff",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-m-flow",
+        "adoption": "new",
+        "reason": "Written for rc.2 #3096 (user decision 2026-11-16T07:00Z, dispatch #3096 6909720824, name M-Flow): the seven collaboration rules a leader and a lane share, in one file that SKILL.md, MODE-LEADER and MODE-AGENT point to instead of repeating. It changes no gate, claim or audit rule."
       }
     }
   }
