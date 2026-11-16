@@ -716,6 +716,7 @@ pub fn d8a_judgment(runs: &[serde_json::Value]) -> serde_json::Value {
         .filter(|r| {
             let name = r["name"].as_str().unwrap_or("");
             !crate::flow::CI_CHECK_NAMES.contains(&name)
+                && !crate::flow::is_candidate_check(name)
                 && r["conclusion"].as_str() != Some("cancelled")
         })
         .cloned()
@@ -738,9 +739,9 @@ pub fn d8a_judgment(runs: &[serde_json::Value]) -> serde_json::Value {
 /// so D8(a) never reads such a project as forever pending.
 fn g8_judgment(runs: &[serde_json::Value]) -> serde_json::Value {
     let has_jobs = runs.iter().any(|r| {
-        r["name"]
-            .as_str()
-            .is_some_and(|n| !crate::flow::CI_CHECK_NAMES.contains(&n))
+        r["name"].as_str().is_some_and(|n| {
+            !crate::flow::CI_CHECK_NAMES.contains(&n) && !crate::flow::is_candidate_check(n)
+        })
     });
     if has_jobs {
         d8a_judgment(runs)
@@ -764,6 +765,7 @@ fn unexcused_cancels(runs: &[serde_json::Value], newer_ok: &[String]) -> Vec<Str
         .filter(|r| r["conclusion"].as_str() == Some("cancelled"))
         .filter_map(|r| r["name"].as_str())
         .filter(|n| !crate::flow::CI_CHECK_NAMES.contains(n))
+        .filter(|n| !crate::flow::is_candidate_check(n))
         .filter(|n| !succeeded(n))
         .filter(|n| !(n.contains("macos") && newer_ok.iter().any(|ok| ok == n)))
         .map(str::to_string)
