@@ -15,8 +15,11 @@
 //! the span `unknown`. The time a `pr-wait:` line states in its own text is kept apart as
 //! `stated_at` and never enters a span. Nothing here writes to GitHub or to disk.
 
-use crate::forge::policy::format_utc;
+use crate::comment_authority::{self, Dropped};
+use crate::forge::policy::{format_utc, Clock};
+use crate::forge::transport::{HttpRequest, HttpResponse, Transport};
 use crate::lane_next::{audit_claim, body_claim, strict_utc, verdict, Comment};
+use crate::message::Message;
 use serde_json::{json, Map, Value};
 
 /// The three stage words. One place: #3068 reads them later, and the leader may rename them.
@@ -160,6 +163,16 @@ pub struct CardRead {
     /// Comments a repository member wrote, oldest first.
     pub comments: Vec<Comment>,
     pub comments_complete: bool,
+    /// `OPEN` or `CLOSED`.
+    pub state: String,
+    pub labels: Vec<String>,
+    /// The pull requests that refer to the card (all of them; [`claims_pr`] picks its own).
+    pub prs: Vec<PrRead>,
+    pub prs_complete: bool,
+    /// The same member comments in the REST shape `dispatch` reads.
+    pub rest_comments: Vec<Value>,
+    pub issue_id: u64,
+    pub issue_node_id: String,
 }
 
 /// Does `pr` belong to card `card`: its body names `Moai-Claim: <card>#…`, or its branch is
@@ -403,6 +416,606 @@ pub fn repairs(pr: &PrRead, now: i64) -> Vec<Value> {
         }));
     }
     out
+}
+
+// --- reading GitHub ----------------------------------------------------------------------
+
+/// The command's name and the most Issues one call may ask about. Defaults awaiting the
+/// leader's decision (coordinated with #3068); they live here only.
+pub const COMMAND: &str = "card-times";
+pub const MAX_ISSUES: usize = 50;
+/// Issues read by one GraphQL request. A card brings its pull requests, so two keep one request
+/// well under GitHub's node limit while 50 cards still fit the request budget.
+pub const ISSUES_PER_QUERY: usize = 2;
+/// Requests one call sends at most: the same number `lane-next` spends.
+pub const API_BUDGET: u32 = crate::lane_next::API_BUDGET;
+
+const GRAPHQL_URL: &str = "https://api.github.com/graphql";
+
+const PR_FIELDS: &str = "number state isDraft createdAt mergedAt merged headRefOid headRefName body \
+comments(last:100){totalCount nodes{databaseId authorAssociation body createdAt}} \
+timelineItems(itemTypes:[READY_FOR_REVIEW_EVENT,CONVERT_TO_DRAFT_EVENT],last:20){totalCount nodes{__typename ...on ReadyForReviewEvent{createdAt} ...on ConvertToDraftEvent{createdAt}}} \
+allCommits:commits(last:100){totalCount nodes{commit{oid committedDate}}} \
+headCommit:commits(last:1){nodes{commit{oid checkSuites(first:20){totalCount nodes{createdAt checkRuns(first:20){totalCount nodes{startedAt}}}}}}}";
+
+const ISSUE_FIELDS: &str = "i$N:issue(number:$N){number state databaseId id labels(first:20){nodes{name}} \
+comments(last:100){totalCount nodes{databaseId authorAssociation body createdAt author{...on User{databaseId} ...on Bot{databaseId}}}} \
+timelineItems(itemTypes:[CROSS_REFERENCED_EVENT],last:20){totalCount nodes{...on CrossReferencedEvent{source{...on PullRequest{$PR}}}}}}";
+
+/// The input: the repository and 1 to [`MAX_ISSUES`] card numbers.
+#[derive(Clone, Debug, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Request {
+    pub schema_version: u32,
+    pub owner: String,
+    pub repo: String,
+    pub issues: Vec<u64>,
+}
+
+impl Request {
+    pub fn validate(&self) -> Result<(), String> {
+        let word = |s: &str| {
+            !s.is_empty()
+                && s.len() <= 100
+                && s.bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.'))
+        };
+        if self.schema_version != 1 {
+            return Err("schema_version must be 1".into());
+        }
+        if !word(&self.owner) || !word(&self.repo) {
+            return Err("owner and repo must be GitHub names".into());
+        }
+        if self.issues.is_empty() || self.issues.len() > MAX_ISSUES {
+            return Err(format!(
+                "issues must list 1 to {MAX_ISSUES} numbers, not {}",
+                self.issues.len()
+            ));
+        }
+        if self.issues.contains(&0) {
+            return Err("an Issue number is at least 1".into());
+        }
+        let mut seen = self.issues.clone();
+        seen.sort_unstable();
+        seen.dedup();
+        if seen.len() != self.issues.len() {
+            return Err("issues lists a number twice".into());
+        }
+        Ok(())
+    }
+}
+
+/// Sends at most `limit` requests; the next one is refused with `budget`.
+struct Capped<'t, T: Transport> {
+    inner: &'t T,
+    used: std::cell::Cell<u32>,
+    limit: u32,
+}
+
+impl<T: Transport> Transport for Capped<'_, T> {
+    fn send(&self, req: &HttpRequest) -> Result<HttpResponse, String> {
+        if self.used.get() >= self.limit {
+            return Err("budget".into());
+        }
+        self.used.set(self.used.get() + 1);
+        self.inner.send(req)
+    }
+}
+
+/// One GraphQL request: the `data` and the `errors` GitHub answered beside it.
+fn post<T: Transport>(t: &T, query: &str, vars: Value) -> Result<(Value, Vec<Value>), String> {
+    let req =
+        HttpRequest::new("POST", GRAPHQL_URL).with_body(json!({"query": query, "variables": vars}));
+    let resp = t.send(&req)?;
+    if resp.status != 200 {
+        return Err(format!("GraphQL returned HTTP {}", resp.status));
+    }
+    let body = resp.body.unwrap_or(Value::Null);
+    let errors = body["errors"].as_array().cloned().unwrap_or_default();
+    if !body["data"].is_object() {
+        let first = errors
+            .first()
+            .and_then(|e| e["message"].as_str())
+            .unwrap_or("no data");
+        return Err(format!("GraphQL answered without data: {first}"));
+    }
+    Ok((body["data"].clone(), errors))
+}
+
+/// Text from GitHub or from a transport, safe to print: control characters out, cut at 200.
+fn clean(s: &str) -> String {
+    s.chars().filter(|c| !c.is_control()).take(200).collect()
+}
+
+fn query(numbers: &[u64]) -> String {
+    let fields: Vec<String> = numbers
+        .iter()
+        .map(|n| {
+            ISSUE_FIELDS
+                .replace("$PR", PR_FIELDS)
+                .replace("$N", &n.to_string())
+        })
+        .collect();
+    format!(
+        "query($owner:String!,$repo:String!){{repository(owner:$owner,name:$repo){{databaseId {}}}}}",
+        fields.join(" ")
+    )
+}
+
+/// The member comments of a GraphQL connection, oldest first, and whether all were read. A
+/// comment a non-member wrote is left out and reported in `dropped` (Issue #3052); the count
+/// compared with `totalCount` is the one before anything is left out.
+fn member_nodes(conn: &Value, dropped: &mut Dropped) -> (Vec<Value>, bool) {
+    let mut nodes: Vec<Value> = conn["nodes"].as_array().cloned().unwrap_or_default();
+    let read = nodes.len() as u64;
+    dropped.merge(comment_authority::retain_graphql(&mut nodes));
+    let complete = conn["totalCount"]
+        .as_u64()
+        .is_some_and(|total| total <= read);
+    (nodes, complete)
+}
+
+fn comments_of(nodes: &[Value]) -> Vec<Comment> {
+    nodes
+        .iter()
+        .map(|c| Comment {
+            id: c["databaseId"].as_u64().unwrap_or(0),
+            body: c["body"].as_str().unwrap_or("").to_string(),
+            at: c["createdAt"].as_str().unwrap_or("").to_string(),
+        })
+        .collect()
+}
+
+fn strings(nodes: &Value, key: &str) -> Vec<String> {
+    nodes
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|n| n[key].as_str().map(str::to_string))
+        .collect()
+}
+
+fn list_complete(conn: &Value) -> bool {
+    let read = conn["nodes"].as_array().map_or(0, |a| a.len() as u64);
+    conn["totalCount"]
+        .as_u64()
+        .is_some_and(|total| total <= read)
+}
+
+fn parse_pr(node: &Value, dropped: &mut Dropped) -> Option<PrRead> {
+    let (members, comments_complete) = member_nodes(&node["comments"], dropped);
+    let events = &node["timelineItems"];
+    let kind = |name: &str| -> Vec<String> {
+        events["nodes"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|e| e["__typename"] == name)
+            .filter_map(|e| e["createdAt"].as_str().map(str::to_string))
+            .collect()
+    };
+    let commits = node["allCommits"]["nodes"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|c| {
+            Some((
+                c["commit"]["oid"].as_str()?.to_string(),
+                c["commit"]["committedDate"].as_str()?.to_string(),
+            ))
+        })
+        .collect();
+    let suites = &node["headCommit"]["nodes"][0]["commit"]["checkSuites"];
+    let suite_nodes: Vec<&Value> = suites["nodes"].as_array().into_iter().flatten().collect();
+    let checks_complete =
+        list_complete(suites) && suite_nodes.iter().all(|s| list_complete(&s["checkRuns"]));
+    Some(PrRead {
+        number: node["number"].as_u64()?,
+        state: node["state"].as_str().unwrap_or("").to_string(),
+        draft: node["isDraft"].as_bool().unwrap_or(false),
+        merged: node["merged"].as_bool().unwrap_or(false),
+        created_at: node["createdAt"].as_str().unwrap_or("").to_string(),
+        merged_at: node["mergedAt"].as_str().map(str::to_string),
+        head: node["headRefOid"].as_str().unwrap_or("").to_string(),
+        branch: node["headRefName"].as_str().unwrap_or("").to_string(),
+        body: node["body"].as_str().unwrap_or("").to_string(),
+        comments: comments_of(&members),
+        comments_complete,
+        ready_events: kind("ReadyForReviewEvent"),
+        convert_events: kind("ConvertToDraftEvent"),
+        events_complete: list_complete(events),
+        commits,
+        commits_complete: list_complete(&node["allCommits"]),
+        check_suites: suite_nodes
+            .iter()
+            .filter_map(|s| s["createdAt"].as_str().map(str::to_string))
+            .collect(),
+        check_runs: suite_nodes
+            .iter()
+            .flat_map(|s| strings(&s["checkRuns"]["nodes"], "startedAt"))
+            .collect(),
+        checks_complete,
+    })
+}
+
+fn parse_card(n: u64, node: &Value, dropped: &mut Dropped) -> CardRead {
+    let (members, comments_complete) = member_nodes(&node["comments"], dropped);
+    let rest_comments = members
+        .iter()
+        .map(|c| {
+            json!({
+                "id": c["databaseId"],
+                "body": c["body"],
+                "user": {"id": c["author"]["databaseId"]},
+                "created_at": c["createdAt"],
+                "author_association": c["authorAssociation"],
+            })
+        })
+        .collect();
+    let refs = &node["timelineItems"];
+    let prs = refs["nodes"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|e| parse_pr(&e["source"], dropped))
+        .collect();
+    CardRead {
+        number: n,
+        comments: comments_of(&members),
+        comments_complete,
+        state: node["state"].as_str().unwrap_or("").to_string(),
+        labels: strings(&node["labels"]["nodes"], "name"),
+        prs,
+        prs_complete: list_complete(refs),
+        rest_comments,
+        issue_id: node["databaseId"].as_u64().unwrap_or(0),
+        issue_node_id: node["id"].as_str().unwrap_or("").to_string(),
+    }
+}
+
+// --- the dispatch stages -----------------------------------------------------------------
+
+/// The clock `dispatch` reads, fixed at the time of this read.
+struct At(i64);
+
+impl Clock for At {
+    fn now(&self) -> i64 {
+        self.0
+    }
+    fn sleep(&self, _secs: u64) {}
+}
+
+/// Serves the comments already read to `dispatch`, GET only: its checker asks for the repository,
+/// the Issue and the comment list, and gets what this read holds, never a second network read.
+struct Frozen {
+    base: String,
+    card: u64,
+    repo: Value,
+    issue: Value,
+    comments: Value,
+}
+
+impl Transport for Frozen {
+    fn send(&self, req: &HttpRequest) -> Result<HttpResponse, String> {
+        if req.method != "GET" || req.body.is_some() {
+            return Err("card-times serves GET only".into());
+        }
+        let body = if req.url == self.base {
+            &self.repo
+        } else if req.url == format!("{}/issues/{}", self.base, self.card) {
+            &self.issue
+        } else if req.url == format!("{}/issues/{}/comments?per_page=100", self.base, self.card) {
+            &self.comments
+        } else {
+            return Err("card-times snapshot target unavailable".into());
+        };
+        Ok(HttpResponse::new(200).with_body(body.clone()))
+    }
+}
+
+/// The dispatch records on the card: a `dispatch` message of kind `record`, with the comment id.
+fn dispatch_records(card: &CardRead) -> Vec<Message> {
+    card.rest_comments
+        .iter()
+        .filter_map(|c| {
+            let wire: Value = serde_json::from_str(c["body"].as_str()?.split('\n').nth(1)?).ok()?;
+            if wire["kind"] != "record" {
+                return None;
+            }
+            let m: Message = serde_json::from_value(wire["message"].clone()).ok()?;
+            (m.event == "dispatch").then_some(m)
+        })
+        .collect()
+}
+
+fn epoch_stage(source: &str, at: &Value, id: &Value, now: i64, none: &str) -> Stage {
+    match at.as_i64() {
+        Some(t) => Stage::observed(source, &format_utc(t), now, id.as_u64()),
+        None => Stage::absent(source, none),
+    }
+}
+
+fn dispatch_group(state: &str, reason: Option<&str>, stages: [Stage; 4], extra: Value) -> Value {
+    let [sent, received, decided, started] = stages;
+    let mut v = json!({
+        "state": state,
+        "sent_at": sent.to_json(),
+        "received_at": received.to_json(),
+        "decided_at": decided.to_json(),
+        "started_at": started.to_json(),
+        "spans": {
+            "sent_to_received": span(&sent, &received),
+            "received_to_decided": span(&received, &decided),
+            "decided_to_started": span(&decided, &started),
+            "sent_to_started": span(&sent, &started),
+        },
+        "ack_alert_secs": crate::dispatch::ACK_ALERT_SECS,
+    });
+    if let Some(r) = reason {
+        v["reason"] = json!(r);
+    }
+    if let Value::Object(m) = extra {
+        for (k, x) in m {
+            v[k] = x;
+        }
+    }
+    v
+}
+
+const DISPATCH_SOURCES: [&str; 4] = [
+    "dispatch_record_comment",
+    "dispatch_ack_comment",
+    "dispatch_decision_comment",
+    "dispatch_start_comment",
+];
+
+fn dispatch_all(state: &'static str, reason: &str) -> Value {
+    let [a, b, c, d] = DISPATCH_SOURCES;
+    let make = |s: &str| {
+        if state == ABSENT {
+            Stage::absent(s, reason)
+        } else {
+            Stage::unknown(s, reason)
+        }
+    };
+    dispatch_group(
+        state,
+        Some(reason),
+        [make(a), make(b), make(c), make(d)],
+        json!({}),
+    )
+}
+
+/// The times of the card's current dispatch, read with `dispatch`'s own checker from the comments
+/// already read. No record on a finished read is `absent`; a cut read or a checker error is
+/// `unknown`.
+pub fn dispatch_json(card: &CardRead, owner: &str, repo: &str, repo_id: u64, now: i64) -> Value {
+    if !card.comments_complete {
+        return dispatch_all(
+            UNKNOWN,
+            "older comments were not read: a dispatch record may be there",
+        );
+    }
+    let records = dispatch_records(card);
+    let Some(newest) = records.last() else {
+        return dispatch_all(ABSENT, "no dispatch record on the card");
+    };
+    let anchor = records
+        .iter()
+        .filter(|m| m.project_id == newest.project_id && m.task.task_id == newest.task.task_id)
+        .max_by_key(|m| m.task.revision.parse::<u64>().unwrap_or(0))
+        .unwrap_or(newest)
+        .clone();
+    let base = format!("https://api.github.com/repos/{owner}/{repo}");
+    let frozen = Frozen {
+        base,
+        card: card.number,
+        repo: json!({"id": repo_id}),
+        issue: json!({"id": card.issue_id, "node_id": card.issue_node_id, "number": card.number}),
+        comments: Value::Array(card.rest_comments.clone()),
+    };
+    let checked = crate::dispatch::check_cli(
+        crate::dispatch::CheckRequest { dispatch: anchor },
+        &frozen,
+        &At(now),
+    );
+    let v = match checked {
+        Ok(v) => v,
+        Err(e) => return dispatch_all(UNKNOWN, &clean(&e.message)),
+    };
+    let [a, b, c, d] = DISPATCH_SOURCES;
+    let stages = [
+        epoch_stage(a, &v["sent_at"], &v["record_comment_id"], now, "no record"),
+        epoch_stage(
+            b,
+            &v["received_at"],
+            &v["ack_comment_id"],
+            now,
+            "no ACK read",
+        ),
+        epoch_stage(
+            c,
+            &v["decided_at"],
+            &v["decision_comment_id"],
+            now,
+            "no decision read",
+        ),
+        epoch_stage(
+            d,
+            &v["started_at"],
+            &v["start_comment_id"],
+            now,
+            "no start read",
+        ),
+    ];
+    dispatch_group(
+        OBSERVED,
+        None,
+        stages,
+        json!({
+            "dispatch_id": v["dispatch_id"],
+            "revision": v["current_revision"],
+            "disposition": v["disposition"],
+            "ack_alert": v["ack_alert"],
+            "superseded": v["superseded"],
+        }),
+    )
+}
+
+// --- the answer --------------------------------------------------------------------------
+
+fn blank_card(n: u64, state: &str, reason: &str) -> Value {
+    let claim = Stage::unknown("issue_comment", reason);
+    json!({
+        "card": n,
+        "state": state,
+        "reason": reason,
+        "held": Value::Null,
+        "dispatch": dispatch_all(UNKNOWN, reason),
+        "claim_at": claim.to_json(),
+        "pr_wait_state": UNKNOWN,
+        "pr_wait": [],
+        "prs_complete": false,
+        "prs": [],
+    })
+}
+
+/// One card's answer.
+pub fn card_json(card: &CardRead, owner: &str, repo: &str, repo_id: u64, now: i64) -> Value {
+    let held = card.labels.iter().find(|l| crate::startable::holds(l));
+    let (wait_state, wait) = pr_wait(card, now);
+    let mut mine: Vec<&PrRead> = card
+        .prs
+        .iter()
+        .filter(|p| claims_pr(card.number, p))
+        .collect();
+    mine.sort_by_key(|p| p.number);
+    mine.dedup_by_key(|p| p.number);
+    json!({
+        "card": card.number,
+        "state": card.state.to_ascii_lowercase(),
+        "held": held.is_some(),
+        "held_by": held,
+        "comments_complete": card.comments_complete,
+        "dispatch": dispatch_json(card, owner, repo, repo_id, now),
+        "claim_at": claim_stage(card, now).to_json(),
+        "pr_wait_state": wait_state,
+        "pr_wait": wait,
+        "prs_complete": card.prs_complete,
+        "prs": mine.iter().map(|p| pr_json(p, now)).collect::<Vec<_>>(),
+    })
+}
+
+/// What one call read.
+pub struct Collected {
+    pub cards: Vec<Value>,
+    pub partial: Vec<String>,
+    pub ignored: Dropped,
+    pub api_calls: u32,
+}
+
+fn not_found(errors: &[Value], n: u64) -> bool {
+    let alias = format!("i{n}");
+    errors.iter().any(|e| {
+        e["path"]
+            .as_array()
+            .is_some_and(|p| p.iter().any(|x| x == &json!(alias)))
+            && (e["type"] == "NOT_FOUND"
+                || e["message"]
+                    .as_str()
+                    .is_some_and(|m| m.contains("Could not resolve")))
+    })
+}
+
+/// Reads the cards, [`ISSUES_PER_QUERY`] to a request, within `budget` requests. A request that
+/// fails, or that the budget refuses, turns its cards `unknown` and says why in `partial`.
+pub fn collect<T: Transport>(t: &T, req: &Request, now: i64, budget: u32) -> Collected {
+    let capped = Capped {
+        inner: t,
+        used: std::cell::Cell::new(0),
+        limit: budget,
+    };
+    let mut out = Collected {
+        cards: Vec::new(),
+        partial: Vec::new(),
+        ignored: Dropped::default(),
+        api_calls: 0,
+    };
+    for chunk in req.issues.chunks(ISSUES_PER_QUERY) {
+        let vars = json!({"owner": req.owner, "repo": req.repo});
+        let (data, errors) = match post(&capped, &query(chunk), vars) {
+            Ok(x) => x,
+            Err(e) => {
+                let why = if e == "budget" {
+                    format!("request budget ({budget}) spent")
+                } else {
+                    clean(&e)
+                };
+                out.partial.push(format!("cards {chunk:?}: {why}"));
+                out.cards
+                    .extend(chunk.iter().map(|n| blank_card(*n, UNKNOWN, &why)));
+                continue;
+            }
+        };
+        let repository = &data["repository"];
+        if !repository.is_object() {
+            let why = "GitHub sent no repository";
+            out.partial.push(format!("cards {chunk:?}: {why}"));
+            out.cards
+                .extend(chunk.iter().map(|n| blank_card(*n, UNKNOWN, why)));
+            continue;
+        }
+        let repo_id = repository["databaseId"].as_u64().unwrap_or(0);
+        for &n in chunk {
+            let node = &repository[format!("i{n}")];
+            if node.is_object() {
+                let card = parse_card(n, node, &mut out.ignored);
+                if !card.comments_complete {
+                    out.partial
+                        .push(format!("card #{n}: only the newest comments were read"));
+                }
+                if !card.prs_complete {
+                    out.partial.push(format!(
+                        "card #{n}: only the newest cross-references were read"
+                    ));
+                }
+                out.cards
+                    .push(card_json(&card, &req.owner, &req.repo, repo_id, now));
+            } else if not_found(&errors, n) {
+                out.cards
+                    .push(blank_card(n, "not_found", "the Issue does not exist"));
+            } else {
+                let why = "GitHub sent no data for the Issue";
+                out.partial.push(format!("card #{n}: {why}"));
+                out.cards.push(blank_card(n, UNKNOWN, why));
+            }
+        }
+    }
+    out.api_calls = capped.used.get();
+    out
+}
+
+/// The whole answer for `req`. Reads GitHub only; writes nothing anywhere.
+pub fn run<T: Transport, C: Clock>(req: &Request, t: &T, clock: &C) -> Result<Value, String> {
+    req.validate()?;
+    let now = clock.now();
+    let got = collect(t, req, now, API_BUDGET);
+    Ok(json!({
+        "schema_version": 1,
+        "owner": req.owner,
+        "repo": req.repo,
+        "observed_at": format_utc(now),
+        "observed_at_epoch": now,
+        "cards": got.cards,
+        "partial": got.partial,
+        "ignored_control_lines": got.ignored.to_json(),
+        "api_calls": got.api_calls,
+        "api_budget": API_BUDGET,
+        "writes": false,
+        "claim_authorized": false,
+        "ownership_transferred": false,
+        "audit_gate_integrated": false,
+    }))
 }
 
 #[cfg(test)]
