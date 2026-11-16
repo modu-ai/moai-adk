@@ -342,7 +342,7 @@ mod tests {
     fn the_typesafe_body_is_the_documented_bytes() {
         let want = concat!(
             r#"{"model":"jev-latest","#,
-            r#""state":"CI runs nextest; the local docs name both runners.","#,
+            r#""state":"ci: CI runs nextest; the local docs name both runners.","#,
             r#""questions":{"decision":{"type":"choice","#,
             r#""instructions":"Which test runner does the new module use?","#,
             r#""criteria":{"nextest":"cargo nextest, as CI runs it","#,
@@ -360,7 +360,7 @@ mod tests {
     fn the_openai_body_is_the_documented_bytes() {
         let want = concat!(
             r#"{"model":"gpt-6-luna","#,
-            r#""input":"CI runs nextest; the local docs name both runners.","#,
+            r#""input":"ci: CI runs nextest; the local docs name both runners.","#,
             r#""questions":[{"type":"choice","name":"decision","#,
             r#""instructions":"Which test runner does the new module use?","#,
             r#""choices":[{"value":"nextest","description":"cargo nextest, as CI runs it"},"#,
@@ -372,13 +372,14 @@ mod tests {
         );
     }
 
-    /// The body holds the sent fields only: not the card, the default, the deadline or the
-    /// category, and the masked text, not the original.
+    /// The body holds the sent fields only: not the card, the default, the deadline, the
+    /// category, `undo` or `tier`, and the masked text, not the original.
     #[test]
     fn the_body_carries_only_the_masked_sent_fields() {
         for provider in Provider::ALL {
             let text = request_json(|v| {
-                v["evidence"] = json!("/Users/testperson/proj/ci.yml runs nextest");
+                v["evidence"] = json!({"ci": "/Users/testperson/proj/ci.yml runs nextest"});
+                v["undo"] = json!("C-9999 revert");
                 v["card"] = json!("C-9999");
                 v["deadline"] = json!("2031-01-02T03:04:05Z");
             });
@@ -392,6 +393,9 @@ mod tests {
                 "reversible",
                 "category",
                 "default",
+                "undo",
+                "revert",
+                "tier",
             ] {
                 assert!(!body.contains(absent), "{absent}: {body}");
             }
