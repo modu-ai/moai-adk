@@ -308,6 +308,9 @@ pub fn add(project: &Path, home: &Path, req: &AddRequest<'_>) -> Result<Value> {
         criteria: req.criteria,
     })
     .map_err(|e| format!("card add refused: {e}"))?;
+    // The reservation limits too (64 entries, 512 characters each), so the card can be taken
+    // with its own scope (card C-53 audit N4).
+    super::dispatch::checked_scope("add", req.scope)?;
     let by = actor(req.by, "add")?;
     let (id, mut ledger) = open_for_write(project, home)?;
     let (card_id, rev) = ledger

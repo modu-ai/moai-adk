@@ -945,7 +945,8 @@ fn release_refuses_a_review_card_and_writes_nothing() {
         err,
         FenceError::CardInReview {
             card_id: card,
-            generation: 1
+            generation: 1,
+            lease_live: true
         }
     );
     assert_eq!(err.code(), "card_in_review");
@@ -982,15 +983,31 @@ fn release_refuses_a_review_card_and_writes_nothing() {
     assert_eq!(rejects[1].2["reason"], "unknown_generation");
     assert_eq!(event_count(&home), before + 2);
 
-    // A lease that ended does not open the way either: the card would still be stranded.
+    // A lease that ended does not open the way either: the card would still be stranded. The
+    // sentence then does not send the holder to `card reopen`, which needs a live lease
+    // (card C-53 audit N1).
     sql(
         &mut w,
         &format!("UPDATE reservation SET lease_until = 1 WHERE card_id = {card}"),
     );
-    assert!(matches!(
-        reservation::release(&mut w, card, "a", 1).unwrap_err(),
-        FenceError::CardInReview { .. }
-    ));
+    let ended = reservation::release(&mut w, card, "a", 1).unwrap_err();
+    assert_eq!(
+        ended,
+        FenceError::CardInReview {
+            card_id: card,
+            generation: 1,
+            lease_live: false
+        }
+    );
+    let text = ended.to_string();
+    assert!(text.starts_with("card conflict in state: "), "{text}");
+    assert!(text.contains("its lease has ended"), "{text}");
+    assert!(
+        text.contains("ask the leader (reclaim comes with card C-53 S6)"),
+        "{text}"
+    );
+    assert!(!text.contains("card reopen"), "{text}");
+    assert_eq!(event_count(&home), before + 2, "nothing was written");
     sql(
         &mut w,
         &format!("UPDATE reservation SET lease_until = unixepoch() + 3600 WHERE card_id = {card}"),

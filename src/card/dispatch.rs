@@ -145,8 +145,9 @@ pub fn ready(project: &Path, home: &Path, reference: &str, by: Option<&str>) -> 
 const LIVE_RESERVATION: &str = "status IN ('held','expired_candidate','held_for_review')";
 
 /// A write scope a user typed, checked as `add --scope` checks it, and within what
-/// `reservation::reserve` stores, so a card that gets it can also be taken with it.
-fn checked_scope(action: &str, entries: &[String]) -> Result<Vec<String>> {
+/// `reservation::reserve` stores, so a card that gets it can also be taken with it. `add`,
+/// `scope` and `take --scope` all use it.
+pub(super) fn checked_scope(action: &str, entries: &[String]) -> Result<Vec<String>> {
     let scope =
         input::validate_scope(entries).map_err(|e| format!("card {action} refused: {e}"))?;
     if scope.len() > reservation::MAX_SCOPE_PATTERNS {
@@ -217,8 +218,8 @@ pub fn scope(
             if state != "draft" && state != "ready" {
                 return Ok(Err(format!(
                     "card conflict in state: C-{card_id} is `{state}`{held}; only a `draft` or \
-                     `ready` card that nobody holds gets a new scope (a holder narrows its own \
-                     with `card take --scope`)"
+                     `ready` card that nobody holds gets a new scope; the scope is set before the \
+                     card is taken"
                 )));
             }
             if holder.is_some() {
@@ -269,34 +270,37 @@ pub struct TakeRequest<'a> {
 }
 
 /// `card take C-n`: reserves a `ready` card for the holder. Without `--scope` the card's own
-/// write scope is used.
+/// write scope is used, read inside the reserving transaction (`reserve_own_scope`), so a
+/// `card scope` at the same moment cannot leave the reservation with the old scope.
 pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>) -> Result<Value> {
     let card_id = card_id("take", reference)?;
-    let (id, mut ledger) = open_for_write(project, home)?;
-    let scope: Vec<String> = if req.scope.is_empty() {
-        let own: Option<String> = ledger
-            .conn()
-            .query_row(
-                "SELECT write_scope FROM card WHERE card_id = ?1",
-                [card_id],
-                |r| r.get(0),
-            )
-            .ok();
-        own.and_then(|s| serde_json::from_str(&s).ok())
-            .unwrap_or_default()
+    // Checked as `add --scope` checks it: no absolute path, no `.` or `..` (card C-68 N-e).
+    let given = if req.scope.is_empty() {
+        None
     } else {
-        // Checked as `add --scope` checks it: no absolute path, no `.` or `..` (card C-68 N-e).
-        checked_scope("take", req.scope)?
+        Some(checked_scope("take", req.scope)?)
     };
-    let r = reservation::reserve(
-        &mut ledger,
-        card_id,
-        req.holder,
-        &scope,
-        req.lease_secs.unwrap_or(DEFAULT_LEASE_SECS),
-        req.worktree,
-        req.branch,
-    )
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let lease = req.lease_secs.unwrap_or(DEFAULT_LEASE_SECS);
+    let r = match given {
+        Some(scope) => reservation::reserve(
+            &mut ledger,
+            card_id,
+            req.holder,
+            &scope,
+            lease,
+            req.worktree,
+            req.branch,
+        ),
+        None => reservation::reserve_own_scope(
+            &mut ledger,
+            card_id,
+            req.holder,
+            lease,
+            req.worktree,
+            req.branch,
+        ),
+    }
     .map_err(|e| e.to_string())?;
     Ok(json!({
         "action": "take", "project_id": id, "reservation": reservation_json(&r),
