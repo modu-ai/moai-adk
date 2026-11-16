@@ -1,6 +1,9 @@
 //! The folders above a ledger (Issue #3068 hardening: C3 owner-only modes, C4 no symbolic
 //! links) and transient errors that are not damage (R2). Every test runs in a temporary HOME;
-//! none touches the real `~/.moai`.
+//! none touches the real `~/.moai`. Unix only: modes, owners, links and pipes are what it tests
+//! (the Windows build compiles this file to nothing).
+
+#![cfg(unix)]
 
 mod common;
 

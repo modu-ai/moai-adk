@@ -1404,9 +1404,13 @@ pub fn lock_recovery(home: &Path, project_id: &str) -> Result<RecoveryLock, Ledg
             .mode(0o600)
             .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
     }
-    let file = options.open(&path).map_err(|e| match e.raw_os_error() {
-        Some(libc::ELOOP) => lock_not_regular(&path),
-        _ => LedgerError::Io(format!("{}: {e}", path.display())),
+    let file = options.open(&path).map_err(|e| {
+        // ELOOP is what O_NOFOLLOW answers for a link swapped in after the lstat (unix only).
+        #[cfg(unix)]
+        if e.raw_os_error() == Some(libc::ELOOP) {
+            return lock_not_regular(&path);
+        }
+        LedgerError::Io(format!("{}: {e}", path.display()))
     })?;
     if !file.metadata().is_ok_and(|m| m.file_type().is_file()) {
         return Err(lock_not_regular(&path));

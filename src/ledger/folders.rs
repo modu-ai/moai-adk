@@ -163,12 +163,15 @@ fn set_private(_path: &Path) -> Result<(), LedgerError> {
 }
 
 fn make_private_dir(path: &Path) -> Result<bool, LedgerError> {
-    let mut builder = std::fs::DirBuilder::new();
     #[cfg(unix)]
-    {
+    let builder = {
         use std::os::unix::fs::DirBuilderExt;
+        let mut builder = std::fs::DirBuilder::new();
         builder.mode(0o700);
-    }
+        builder
+    };
+    #[cfg(not(unix))]
+    let builder = std::fs::DirBuilder::new();
     match builder.create(path) {
         Ok(()) => {
             // The mode given to mkdir is cut by the umask; set it to exactly 0700.
