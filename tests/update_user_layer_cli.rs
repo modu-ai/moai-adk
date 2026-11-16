@@ -234,6 +234,13 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
         .as_str()
         .unwrap()
         .starts_with("moai home-routing-revert"));
+    // #2936 E1: the commands are only safe last applied first (style, then routing, then agents):
+    // reverting routing first leaves the Codex block behind for good. The envelope says so.
+    assert_eq!(
+        r["revert_order"],
+        json!(["style", "routing", "agents"]),
+        "{r}"
+    );
     // The global instruction files carry the section; `~/.agents/AGENTS.md` is never made.
     assert!(fs::read_to_string(home.join(".claude/CLAUDE.md"))
         .unwrap()

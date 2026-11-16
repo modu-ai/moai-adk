@@ -19,10 +19,10 @@ mod common;
 #[path = "common/go_project_real_run.rs"]
 mod go_project_real_run;
 
-use go_project_real_run::{step_in, GoFx, Node};
+use go_project_real_run::{step_in, GoFx, Node, REF};
 use moai_cli::status_line::RUST_HELP_LINE;
 use serde_json::{json, Value};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 
 const SETTINGS: &str = ".claude/settings.json";
@@ -158,6 +158,8 @@ fn shape_e() -> (GoFx, u32) {
 struct Walk {
     /// The step each round executed, in order.
     order: Vec<String>,
+    /// What each executed step printed, in the same order.
+    applied: Vec<(String, Value)>,
     /// The plan that ended the loop.
     last: Value,
 }
@@ -188,21 +190,31 @@ fn open_steps(plan: &Value) -> Vec<(String, String)> {
 /// The loop of the UPDATE flow. Every command is the printed one, and must succeed.
 fn walk(fx: &GoFx) -> Walk {
     let mut order = Vec::new();
+    let mut applied = Vec::new();
     for _ in 0..MAX_STEPS {
         let plan = fx.update_plan();
         if plan["all_unchanged"] == json!(true) {
-            return Walk { order, last: plan };
+            return Walk {
+                order,
+                applied,
+                last: plan,
+            };
         }
         let Some(step) = steps_of(&plan)
             .into_iter()
             .find(|s| s["apply"].is_object())
             .cloned()
         else {
-            return Walk { order, last: plan };
+            return Walk {
+                order,
+                applied,
+                last: plan,
+            };
         };
         let name = step["step"].as_str().unwrap().to_string();
         let out = fx.apply_step(&step);
         assert_eq!(out["ok"], json!(true), "{name}: {out}");
+        applied.push((name.clone(), out["result"].clone()));
         order.push(name);
     }
     panic!("the loop did not end in {MAX_STEPS} steps: {order:?}");
@@ -497,6 +509,213 @@ fn go_references_in_the_local_settings_are_named_and_left_to_the_user() {
     assert_eq!(rest.last["state_root"]["rust_marker"], json!("valid"));
 }
 
+// ---- undo (AUDIT #3117 E1) ----
+
+/// Every entry of the project, git's folder left out: a file's bytes, a link's target, a folder.
+fn project_nodes(fx: &GoFx) -> BTreeMap<String, Node> {
+    fx.tree()
+        .into_iter()
+        .filter(|(p, _)| p.starts_with(&fx.root))
+        .filter(|(p, _)| !p.components().any(|c| c.as_os_str() == ".git"))
+        .map(|(p, n)| (p.strip_prefix(&fx.root).unwrap().display().to_string(), n))
+        .collect()
+}
+
+/// What the chain adds and an undo does not take away: the receipts, the set-aside folder of the
+/// Rust state, and the files of the three host steps that have no revert command.
+fn may_stay_behind(rel: &str) -> bool {
+    rel == ".codex"
+        || rel.starts_with(".codex/")
+        || rel == ".omp"
+        || rel.starts_with(".omp/")
+        || rel.starts_with(".moai-cli/receipts")
+        || rel.starts_with(".moai.rust-")
+        || matches!(
+            rel,
+            ".moai-cli/manifests/codex-config.json"
+                | ".moai-cli/manifests/codex-hooks.json"
+                | ".moai-cli/manifests/omp-hooks.json"
+        )
+}
+
+fn applied<'a>(w: &'a Walk, step: &str) -> &'a Value {
+    &w.applied
+        .iter()
+        .find(|(name, _)| name == step)
+        .unwrap_or_else(|| panic!("{step} was not applied: {:?}", w.order))
+        .1
+}
+
+fn undo_ok(fx: &GoFx, what: &str, args: &[&str]) -> Value {
+    let out = fx.run(args);
+    assert_eq!(out["ok"], json!(true), "{what}: {out}");
+    out["result"].clone()
+}
+
+/// The preview prints how to take the chain back, last applied first; running exactly that, with
+/// the ids the apply results printed, leaves every byte the project started with in place. Only
+/// what the steps added (receipts, the Rust state's set-aside folder, the host files that have no
+/// revert command) is left. Out of that order the go-state revert is refused.
+#[test]
+fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
+    let fx = shape_g();
+    // The user's own instruction file: the move keeps it in the backup, the generation step writes
+    // a managed one in its place, and the go-state revert must find that one still there or gone.
+    fx.write("AGENTS.md", "# AGENTS\n\nmine\n");
+    let start = project_nodes(&fx);
+    let w = walk(&fx);
+    assert_eq!(w.order, ORDER, "{:?}", open_steps(&w.last));
+    let steps = w.last["undo_order"]["steps"].as_array().unwrap();
+    let printed: Vec<&str> = steps.iter().map(|s| s["step"].as_str().unwrap()).collect();
+    let mut reverse = ORDER.to_vec();
+    reverse.reverse();
+    assert_eq!(printed, reverse, "{}", w.last["undo_order"]);
+    let commands = |step: &str| -> Vec<String> {
+        steps.iter().find(|s| s["step"] == step).unwrap()["commands"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| c.as_str().unwrap().to_string())
+            .collect()
+    };
+    // The printed commands name the commands this test runs, in this order.
+    for (step, words) in [
+        ("omp-hooks", vec![]),
+        ("codex-config", vec![]),
+        ("codex-hooks", vec![]),
+        ("hooks", vec!["moai go-hooks-revert"]),
+        (
+            "generation",
+            vec!["moai apply-recover", "moai apply-recover"],
+        ),
+        (
+            "go-state",
+            vec!["moai go-state-revert-plan", "moai go-state-revert "],
+        ),
+        ("go-settings", vec!["moai go-settings-revert"]),
+    ] {
+        let got = commands(step);
+        assert_eq!(got.len(), words.len(), "{step}: {got:?}");
+        for (c, w) in got.iter().zip(words) {
+            assert!(c.starts_with(w), "{step}: {c}");
+        }
+    }
+    let id = |step: &str, key: &str| applied(&w, step)[key].as_str().unwrap().to_string();
+    let hooks = id("hooks", "receipt");
+    let agents = id("generation", "agents_receipt");
+    let generation = id("generation", "receipt");
+    let backup = id("go-state", "backup");
+    let settings = id("go-settings", "receipt");
+
+    // Out of order the go-state revert is refused and writes nothing.
+    let before = project_nodes(&fx);
+    let early = fx.run(&["go-state-revert-plan", fx.p(), "--backup", &backup]);
+    let digest = early["result"]["plan_digest"].as_str().unwrap().to_string();
+    let refused = fx.run(&[
+        "go-state-revert",
+        "--backup",
+        &backup,
+        "--plan-digest",
+        &digest,
+        "--permission-reference",
+        REF,
+        fx.p(),
+    ]);
+    assert_eq!(refused["ok"], json!(false), "{refused}");
+    assert!(
+        refused["error"]["message"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("AGENTS.md is conflict"),
+        "{refused}"
+    );
+    assert_eq!(
+        project_nodes(&fx),
+        before,
+        "a refused revert writes nothing"
+    );
+
+    // The printed order.
+    undo_ok(
+        &fx,
+        "hooks",
+        &[
+            "go-hooks-revert",
+            "--receipt",
+            &hooks,
+            "--permission-reference",
+            REF,
+            fx.p(),
+        ],
+    );
+    undo_ok(
+        &fx,
+        "agents receipt",
+        &[
+            "apply-recover",
+            "--receipt",
+            &agents,
+            "--permission-reference",
+            REF,
+            fx.p(),
+        ],
+    );
+    undo_ok(
+        &fx,
+        "generation",
+        &[
+            "apply-recover",
+            "--receipt",
+            &generation,
+            "--permission-reference",
+            REF,
+            fx.p(),
+        ],
+    );
+    let plan = undo_ok(
+        &fx,
+        "go-state plan",
+        &["go-state-revert-plan", fx.p(), "--backup", &backup],
+    );
+    let digest = plan["plan_digest"].as_str().unwrap().to_string();
+    undo_ok(
+        &fx,
+        "go-state",
+        &[
+            "go-state-revert",
+            "--backup",
+            &backup,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            REF,
+            fx.p(),
+        ],
+    );
+    undo_ok(
+        &fx,
+        "go-settings",
+        &[
+            "go-settings-revert",
+            "--receipt",
+            &settings,
+            "--permission-reference",
+            REF,
+            fx.p(),
+        ],
+    );
+
+    let end = project_nodes(&fx);
+    for (path, node) in &start {
+        assert_eq!(end.get(path), Some(node), "{path} is not as it started");
+    }
+    let extra: Vec<&String> = end
+        .keys()
+        .filter(|p| !start.contains_key(*p) && !may_stay_behind(p))
+        .collect();
+    assert!(extra.is_empty(), "left behind: {extra:?}");
+}
+
 // ---- leftovers ----
 
 fn lock(fx: &GoFx, body: &str) {
@@ -597,6 +816,21 @@ fn the_earlier_state_folder_is_stated_once_the_state_lives_in_moai() {
         fx.root.join(".moai-cli/f9.txt").is_file(),
         "nothing was removed"
     );
+    // AUDIT #3117 E4: a file name is the project's text. A long one is cut, and a control character
+    // (an escape sequence) shows as `?`; the file itself is not touched.
+    // Sorts before the f*.txt names, so it is among the eight shown.
+    let long = "0".repeat(200);
+    fx.write(&format!(".moai-cli/{long}"), "x");
+    fx.write(".moai-cli/\u{1b}[31mred", "x");
+    let plan = fx.update_plan();
+    let fact = leftover(&plan, ".moai-cli/")["fact"].as_str().unwrap();
+    assert!(!fact.contains('\u{1b}'), "{fact:?}");
+    assert!(fact.contains("?[31mred"), "{fact:?}");
+    assert!(!fact.contains(&"0".repeat(60)), "{fact:?}");
+    assert!(fact.contains('…'), "{fact:?}");
+    assert!(fx.root.join(format!(".moai-cli/{long}")).is_file());
+    fs::remove_file(fx.root.join(format!(".moai-cli/{long}"))).unwrap();
+    fs::remove_file(fx.root.join(".moai-cli/\u{1b}[31mred")).unwrap();
     // Gone, or a link: nothing to state.
     for n in 0..10 {
         fs::remove_file(fx.root.join(format!(".moai-cli/f{n}.txt"))).unwrap();

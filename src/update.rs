@@ -1973,6 +1973,16 @@ pub fn update_command(
         out["revert"]["keys"] = json!(revert("keys-revert", &keys));
         out["keys_result"] = keys;
     }
+    // #2936 E1 (the Codex revert-order trap found in the isolated fixture): the revert commands are
+    // only safe last applied first. Codex's `~/.codex/AGENTS.md` is changed by the routing and the
+    // style layer; reverting routing before style is skipped as "user_changed_since_apply" and
+    // style then leaves the routing block behind for good. The apply order is agents, routing,
+    // style, command names, hooks, keys; the commands that exist are listed in the reverse.
+    let order: Vec<&str> = ["keys", "hooks", "style", "routing", "agents"]
+        .into_iter()
+        .filter(|k| out["revert"][*k].is_string())
+        .collect();
+    out["revert_order"] = json!(order);
     if let Some(c) = cleanup {
         out["revert"]["cleanup"] = json!(cleanup_revert(&c));
         out["cleanup_result"] = c;
