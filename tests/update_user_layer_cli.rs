@@ -313,6 +313,73 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
     }
 }
 
+/// #2936 E1 (U1): the printed `revert_order` is the order that really takes the user layer back.
+/// The user's own instruction files and agent start as they were, byte for byte, once style,
+/// routing and agents are reverted in that order with the printed commands; the commands are run
+/// as printed, `<HOME>` and `<reference>` filled in.
+#[test]
+fn the_printed_revert_order_gives_back_the_users_own_files_byte_for_byte() {
+    let (_t, home, exe, _) = setup();
+    let mine = [
+        (".codex/AGENTS.md", "# My Codex notes\n\nkeep this\n"),
+        (".claude/CLAUDE.md", "# My Claude notes\n"),
+        (".claude/settings.json", "{\"theme\":\"dark\"}\n"),
+        (".codex/agents/my-own.md", "---\nname: my-own\n---\nmine\n"),
+    ];
+    for (rel, text) in mine {
+        let path = home.join(rel);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, text).unwrap();
+    }
+    let p = result(&run(&exe, &home, &["update"]));
+    let top = p["plan_digest"].as_str().unwrap();
+    let r = result(&run(&exe, &home, &["update", "--confirm", top]));
+    assert_eq!(r["applied"], json!(true), "{r}");
+    for (rel, text) in mine {
+        // The layer wrote beside or into these files; none is left as the user had it.
+        let now = fs::read_to_string(home.join(rel)).unwrap();
+        if rel != ".codex/agents/my-own.md" {
+            assert_ne!(now, text, "{rel} was not touched by the apply");
+        }
+    }
+    let order: Vec<String> = r["revert_order"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| v.as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(order, ["style", "routing", "agents"], "{r}");
+    let h = home.to_str().unwrap();
+    for step in &order {
+        let printed = r["revert"][step.as_str()].as_str().unwrap();
+        let words: Vec<String> = printed
+            .split_whitespace()
+            .skip(1)
+            .map(|w| match w {
+                "<HOME>" => h.to_string(),
+                "<reference>" => "fixture".to_string(),
+                other => other.to_string(),
+            })
+            .collect();
+        let args: Vec<&str> = words.iter().map(String::as_str).collect();
+        let out = result(&run(&exe, &home, &args));
+        assert_ne!(out["state"], json!("conflict"), "{step}: {out}");
+        assert_ne!(out["retryable"], json!(false), "{step}: {out}");
+    }
+    for (rel, text) in mine {
+        assert_eq!(
+            fs::read_to_string(home.join(rel)).unwrap(),
+            text,
+            "{rel} is not as the user had it"
+        );
+    }
+    let left: Vec<String> = fs::read_dir(home.join(".codex/agents"))
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(left, ["my-own.md"], "only the user's own agent remains");
+}
+
 /// Skills already current (installed through `update-plan`/`update-apply`), agents and section
 /// missing: `update` still has something to apply and installs only those two parts.
 #[test]
