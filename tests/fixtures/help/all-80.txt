@@ -25,6 +25,8 @@ Project
                           previewed set
   card-summary-plan       Preview the summary a card would post to its issue
   card-summary-apply      Post a card's summary to its issue, once
+  ledger-recover-plan     Preview recovering a damaged project ledger
+  ledger-recover-apply    Recover the previewed project ledger
   agents-plan             Preview the AGENTS.md managed section
   agents-apply            Write a previewed AGENTS.md managed section
   generation-plan         Preview the project's generated agent and skill files
@@ -43,6 +45,9 @@ Project
   go-hooks-plan           Preview replacing Go-era project hooks
   go-hooks-apply          Replace Go-era project hooks
   go-hooks-revert         Undo a Go-era hook replacement
+  go-settings-plan        Preview cleaning Go-era settings keys
+  go-settings-apply       Clean Go-era settings keys
+  go-settings-revert      Undo a Go-era settings clean-up
   agents-merge-plan       Preview merging AGENTS.local.md into AGENTS.md
   agents-merge-apply      Merge AGENTS.local.md into AGENTS.md
   agents-merge-revert     Undo an AGENTS.local.md merge

@@ -87,6 +87,44 @@ pub enum InputError {
     BadReference { given: String },
 }
 
+/// The longest piece of a user's text an error message repeats, in characters.
+pub const ECHO_MAX_CHARS: usize = 40;
+
+/// Whether [`echo`] shows `c` as `?`: a control character (C0, DEL, C1), a line or paragraph
+/// separator, a direction mark, override or isolate, or a character that takes no room (zero-width
+/// space, word joiner, byte order mark). The zero-width joiners U+200C/U+200D stay: they join
+/// letters of real words.
+fn hidden_in_echo(c: char) -> bool {
+    c.is_control()
+        || matches!(
+            c,
+            '\u{061C}'
+                | '\u{200B}'
+                | '\u{200E}'..='\u{200F}'
+                | '\u{2028}'..='\u{202E}'
+                | '\u{2060}'
+                | '\u{2066}'..='\u{2069}'
+                | '\u{FEFF}'
+        )
+}
+
+/// What an error message may repeat of text the user typed: the first [`ECHO_MAX_CHARS`]
+/// characters with every control character, line separator, direction character and invisible
+/// character shown as `?` (see [`hidden_in_echo`]), so an escape sequence typed as a card name does
+/// not reach a terminal and a name cannot reorder or hide the text around it, and `…` when the
+/// text was cut.
+pub fn echo(text: &str) -> String {
+    let mut out: String = text
+        .chars()
+        .take(ECHO_MAX_CHARS)
+        .map(|c| if hidden_in_echo(c) { '?' } else { c })
+        .collect();
+    if text.chars().count() > ECHO_MAX_CHARS {
+        out.push('…');
+    }
+    out
+}
+
 impl fmt::Display for InputError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use InputError::*;
@@ -103,15 +141,16 @@ impl fmt::Display for InputError {
                 "the body is {bytes} bytes; the longest is {BODY_MAX_BYTES}"
             ),
             UnknownKind { given } => {
-                write!(f, "unknown kind `{given}`; use {}", KINDS.join(", "))
+                write!(f, "unknown kind `{}`; use {}", echo(given), KINDS.join(", "))
             }
             UnknownPriority { given } => write!(
                 f,
-                "unknown priority `{given}`; use {}",
+                "unknown priority `{}`; use {}",
+                echo(given),
                 PRIORITIES.join(", ")
             ),
             UnknownState { given } => {
-                write!(f, "unknown state `{given}`; use {}", STATES.join(", "))
+                write!(f, "unknown state `{}`; use {}", echo(given), STATES.join(", "))
             }
             ScopeEmpty { entry } => write!(f, "scope entry {entry} is empty"),
             ScopeNotRelative { entry } => write!(
@@ -133,7 +172,8 @@ impl fmt::Display for InputError {
             CriterionNotOneLine { entry } => write!(f, "criterion {entry} must be one line"),
             BadReference { given } => write!(
                 f,
-                "`{given}` is not a card; write C-<number> or #<source number>"
+                "`{}` is not a card; write C-<number> or #<source number>",
+                echo(given)
             ),
         }
     }
@@ -640,5 +680,74 @@ mod tests {
                 "{bad:?}"
             );
         }
+    }
+
+    #[test]
+    fn an_error_does_not_repeat_line_separators_direction_marks_or_invisible_characters() {
+        // Each is shown as `?`, alone and inside a word.
+        let hidden = [
+            '\u{200B}', '\u{200E}', '\u{200F}', '\u{061C}', '\u{2028}', '\u{2029}', '\u{202A}',
+            '\u{202B}', '\u{202C}', '\u{202D}', '\u{202E}', '\u{2060}', '\u{2066}', '\u{2067}',
+            '\u{2068}', '\u{2069}', '\u{FEFF}',
+        ];
+        for c in hidden {
+            assert_eq!(echo(&format!("a{c}b")), "a?b", "U+{:04X}", c as u32);
+            assert_eq!(echo(&c.to_string()), "?", "U+{:04X}", c as u32);
+            let text = InputError::UnknownKind {
+                given: format!("x{c}y"),
+            }
+            .to_string();
+            assert!(!text.contains(c), "U+{:04X} in {text:?}", c as u32);
+        }
+        // The characters next to each range are left alone: the zero-width joiners that join
+        // letters, spaces, a hyphenation point and unassigned code points.
+        for c in [
+            '\u{061B}', '\u{061D}', '\u{200A}', '\u{200C}', '\u{200D}', '\u{2010}', '\u{2027}',
+            '\u{202F}', '\u{205F}', '\u{2061}', '\u{2065}', '\u{206A}', '\u{FEFE}', '\u{FF00}',
+        ] {
+            let s = format!("a{c}b");
+            assert_eq!(echo(&s), s, "U+{:04X}", c as u32);
+        }
+        // The 40-character cut counts a replaced character like any other.
+        let long = format!("{}{}", "\u{202E}".repeat(40), "z");
+        assert_eq!(echo(&long), format!("{}…", "?".repeat(40)));
+    }
+
+    #[test]
+    fn an_error_repeats_at_most_forty_plain_characters_of_what_was_typed() {
+        // Control characters never reach the message as they were typed.
+        for given in ["\u{1b}[31mred", "a\nb", "a\u{7}b", "\u{0}"] {
+            for err in [
+                InputError::UnknownKind {
+                    given: given.into(),
+                },
+                InputError::UnknownPriority {
+                    given: given.into(),
+                },
+                InputError::UnknownState {
+                    given: given.into(),
+                },
+                InputError::BadReference {
+                    given: given.into(),
+                },
+            ] {
+                let text = err.to_string();
+                assert!(!text.chars().any(char::is_control), "{text:?}");
+                assert!(text.contains('?'), "{text:?}");
+            }
+        }
+        // 40 characters are repeated whole, 41 are cut with a mark.
+        let (ok, cut) = ("x".repeat(40), "x".repeat(41));
+        assert_eq!(echo(&ok), ok);
+        assert_eq!(echo(&cut), format!("{ok}…"));
+        // Counted in characters, not bytes.
+        let wide = "한".repeat(40);
+        assert_eq!(echo(&wide), wide);
+        assert_eq!(echo(""), "");
+        let msg = InputError::BadReference { given: cut }.to_string();
+        assert!(
+            msg.contains(&format!("{ok}…")) && !msg.contains(&"x".repeat(41)),
+            "{msg}"
+        );
     }
 }
