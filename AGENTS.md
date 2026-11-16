@@ -47,6 +47,10 @@ On a blocker report the exact action and target, the reason, the denial/pending/
 
 A blocked lane reports the kind, the owner and the next check, and moves to independent work (MODE-AGENT `report` step). Never tick a checkbox from a document or agent claim alone. Where a lane cannot post its own comment, the leader relays it verbatim, marked as a relay with the lane named.
 
+## Development build versions
+
+Development builds use HeadVer `{head}.{yearweek}.{build}`, e.g. `4.2647.4`: head `4` is manual (the released generation is v3), yearweek is the UTC ISO week, build only goes up. Rules: `AGENTS.local.md`.
+
 ## Language
 
 Instruction files and code comments are English unless the project sets otherwise. User-facing text follows the user's conversation language in native idiom; identifiers, commands and paths stay verbatim. Korean Issue text keeps code identifiers in their original form.
