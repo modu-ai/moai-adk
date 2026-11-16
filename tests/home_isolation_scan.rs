@@ -397,28 +397,74 @@ fn the_legacy_ledger_named_list_does_not_grow() {
     }
 }
 
+/// Scan A, baseline: what is wrong with the tests under `<root>/tests` against the baseline list
+/// (empty when all is well).
+fn baseline_failures(root: &Path) -> Vec<String> {
+    let baseline = read_baseline(root);
+    if baseline.is_empty() {
+        return vec![format!(
+            "{BASELINE} is empty or missing; it lists the tests that predate the rule"
+        )];
+    }
+    let (new, stale) = baseline_problems(&binary_without_home(root), &baseline);
+    let mut out = Vec::new();
+    for name in new {
+        out.push(format!(
+            "{name} runs the binary without naming HOME; run it through TempHome (or set HOME to \
+             a temporary folder) instead of adding it to {BASELINE}"
+        ));
+    }
+    for name in stale {
+        out.push(format!(
+            "{BASELINE} names {name}, which no longer runs the binary without a HOME; delete the \
+             line (the list only shrinks)"
+        ));
+    }
+    out
+}
+
 #[test]
 fn no_new_test_runs_the_binary_without_a_home() {
-    let root = Path::new(ROOT);
-    let found = binary_without_home(root);
-    let baseline = read_baseline(root);
+    let failures = baseline_failures(Path::new(ROOT));
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+#[test]
+fn the_baseline_scan_fails_on_a_new_file_and_on_a_stale_name() {
+    let dir = tempfile::tempdir().unwrap();
+    let tests = dir.path().join("tests");
+    fs::create_dir_all(tests.join("fixtures/home_isolation")).unwrap();
+    let baseline = dir.path().join(BASELINE);
+    let runs = "const B: &str = common::MOAI_BIN;\n";
+    fs::write(tests.join("old.rs"), runs).unwrap();
+    // a fixture sample under tests/fixtures is not a test
+    fs::write(tests.join("fixtures/sample.rs"), runs).unwrap();
+    fs::write(
+        tests.join("fine.rs"),
+        format!("{runs}fn h() {{ e(\"HOME\"); }}"),
+    )
+    .unwrap();
+
+    // missing or empty baseline: reported once, not as a file per line
+    assert_eq!(baseline_failures(dir.path()).len(), 1);
+    fs::write(&baseline, "# only a comment\n").unwrap();
+    assert_eq!(baseline_failures(dir.path()).len(), 1);
+    // N: the baseline equals what the scan finds
+    fs::write(&baseline, "tests/old.rs\n").unwrap();
+    assert_eq!(baseline_failures(dir.path()), Vec::<String>::new());
+    // N+1: a second file runs the binary without a HOME and is not on the list
+    fs::write(tests.join("added.rs"), runs).unwrap();
+    let failures = baseline_failures(dir.path());
+    assert_eq!(failures.len(), 1, "{failures:?}");
     assert!(
-        !baseline.is_empty(),
-        "{BASELINE} is empty or missing; it lists the tests that predate the rule"
+        failures[0].starts_with("tests/added.rs runs the binary"),
+        "{failures:?}"
     );
-    let (new, stale) = baseline_problems(&found, &baseline);
-    assert!(
-        new.is_empty(),
-        "these tests run the binary without naming HOME; run it through TempHome (or set HOME \
-         to a temporary folder) instead of adding them to {BASELINE}:\n{}",
-        new.join("\n")
-    );
-    assert!(
-        stale.is_empty(),
-        "{BASELINE} names tests that no longer run the binary without a HOME; delete the lines \
-         (the list only shrinks):\n{}",
-        stale.join("\n")
-    );
+    // a name on the list that stopped qualifying is stale
+    fs::write(&baseline, "tests/added.rs\ntests/old.rs\ntests/fine.rs\n").unwrap();
+    let failures = baseline_failures(dir.path());
+    assert_eq!(failures.len(), 1, "{failures:?}");
+    assert!(failures[0].contains("names tests/fine.rs"), "{failures:?}");
 }
 
 #[test]
