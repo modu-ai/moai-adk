@@ -11,6 +11,7 @@
 pub mod audit_status;
 pub mod connector;
 pub mod gitlab;
+pub mod import_apply;
 pub mod import_plan;
 pub mod labels;
 pub mod links;
