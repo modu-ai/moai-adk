@@ -252,6 +252,10 @@ mod tests {
         assert_eq!(shell_word("a b"), "'a b'");
         assert_eq!(shell_word("it's"), "'it'\\''s'");
         assert_eq!(shell_word("$(x)"), "'$(x)'");
+        // A single word with a variable must not reach the shell unquoted.
+        assert_eq!(shell_word("$HOME"), "'$HOME'");
+        assert_eq!(shell_word("~"), "'~'");
+        assert_eq!(shell_word("a*"), "'a*'");
         assert_eq!(shell_word(""), "''");
     }
 

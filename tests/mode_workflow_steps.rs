@@ -1774,6 +1774,8 @@ fn the_leader_pulse_is_built_by_the_cli_and_sent_by_the_skill() {
         "You run that command once per round, wait the interval, and run it again",
         "never `orca terminal create`, and never to another lane's handle",
         "`pulse: turn not started (<what orca answered>)`",
+        "Run the `args` array, not the `command_line` string",
+        "When there is no Orca (`orca: no`), send nothing and skip this paragraph",
         "do not send it again",
         "`verified: not_run`",
     ] {

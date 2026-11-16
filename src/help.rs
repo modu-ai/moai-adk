@@ -379,7 +379,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("leader-tick", &["leader-tick . < request.json"]),
     (
         "leader-pulse",
-        &["leader-pulse --terminal term_abc --text \"순환 계속\" --interval-secs 300"],
+        &["leader-pulse --terminal term_abc --text continue-round --interval-secs 300"],
     ),
     (
         "leader-round",
