@@ -572,6 +572,7 @@ pub struct FakeConnector {
     host: HostKind,
     issues: Vec<HostIssue>,
     incomplete: Option<String>,
+    pull_requests_skipped: usize,
     prs: BTreeMap<u64, PrState>,
     verdicts: BTreeMap<u64, Verdicts>,
     posted: RefCell<Vec<(String, u64, String, String)>>,
@@ -584,6 +585,7 @@ impl FakeConnector {
             host,
             issues: Vec::new(),
             incomplete: None,
+            pull_requests_skipped: 0,
             prs: BTreeMap::new(),
             verdicts: BTreeMap::new(),
             posted: RefCell::new(Vec::new()),
@@ -599,6 +601,12 @@ impl FakeConnector {
     /// Makes `open_issues` fail as an unreadable-to-the-end listing.
     pub fn with_incomplete(mut self, reason: &str) -> Self {
         self.incomplete = Some(reason.to_string());
+        self
+    }
+
+    /// How many pull requests `open_issues` says it left out of the listing.
+    pub fn with_pull_requests_skipped(mut self, count: usize) -> Self {
+        self.pull_requests_skipped = count;
         self
     }
 
@@ -643,7 +651,7 @@ impl HostConnector for FakeConnector {
         Ok(OpenIssues {
             project: project.clone(),
             issues: self.issues.clone(),
-            pull_requests_skipped: 0,
+            pull_requests_skipped: self.pull_requests_skipped,
         })
     }
 

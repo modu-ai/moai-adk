@@ -357,7 +357,7 @@ fn plan_card(source_host: &'static str, project: &str, issue: &HostIssue) -> Pla
 }
 
 /// Appends one field with its length, so no two field lists encode alike.
-fn field(out: &mut Vec<u8>, value: &str) {
+pub(crate) fn field(out: &mut Vec<u8>, value: &str) {
     out.extend_from_slice(value.len().to_string().as_bytes());
     out.push(b':');
     out.extend_from_slice(value.as_bytes());
@@ -371,7 +371,7 @@ fn list(out: &mut Vec<u8>, items: &[String]) {
     }
 }
 
-fn hash(text: &str) -> String {
+pub(crate) fn hash(text: &str) -> String {
     format!("{:x}", Sha256::digest(text.as_bytes()))
 }
 
