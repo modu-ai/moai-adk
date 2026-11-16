@@ -21,8 +21,10 @@
 //!
 //! Every [`Refusal`] means the same thing to the caller: the model does not decide, the
 //! leader does (`fallback: leader`). A [`Record`] carries the fields every decision record
-//! names (SKILL.md) and who decided, `model:<provider>/<model the response reported>`; the
-//! model gives no written reason and none is recorded (leader default D-reason).
+//! names (SKILL.md) and who decided, `model:<provider>/<model>`, with `model_source` saying
+//! whether the response reported that model or, when it named none, the request's alias
+//! stands in; the model gives no written reason and none is recorded (leader default
+//! D-reason).
 
 pub mod gate;
 pub mod outbound;
@@ -59,17 +61,32 @@ impl Refusal {
 #[derive(Debug)]
 pub struct Prepared {
     pub provider: provider::Provider,
-    /// Where the bytes would go: one of the two compiled endpoints.
-    pub endpoint: &'static str,
-    /// The request body, exactly as it would be sent.
-    pub body: Vec<u8>,
+    endpoint: &'static str,
+    body: Vec<u8>,
     pub outbound: outbound::Outbound,
     reversible: bool,
     category: String,
     default: String,
     deadline: String,
-    card: Option<String>,
 }
+
+impl Prepared {
+    /// Where the bytes would go: one of the two compiled endpoints. Read-only, so nothing
+    /// outside this module can aim a prepared request elsewhere.
+    pub fn endpoint(&self) -> &'static str {
+        self.endpoint
+    }
+
+    /// The request body, exactly as it would be sent. Read-only: the bytes that passed the
+    /// gate and the secret screen are the bytes that go.
+    pub fn body(&self) -> &[u8] {
+        &self.body
+    }
+}
+
+/// Largest request body, in bytes (256 KiB). A hard bound for now; the providers' token
+/// limits come with the settings (S3).
+pub const BODY_MAX: usize = 256 * 1024;
 
 /// One model decision, as recorded. The fields are the ones every decision record names
 /// (what, options, default, reversible, category, deadline, who decided) plus the answer.
@@ -84,9 +101,13 @@ pub struct Record {
     pub reversible: bool,
     pub category: String,
     pub deadline: String,
-    /// `model:<provider>/<model>`; the model is the one the response reported, never the
-    /// alias the request asked for.
+    /// `model:<provider>/<model>`; the model is the one the response reported, and the alias
+    /// the request asked for only when the response names none (`model_source`).
     pub decided_by: String,
+    /// Where the model name in `decided_by` comes from: `response` when the provider's
+    /// response named the model, `request` when it named none and the alias that was asked
+    /// for stands in (leader decision 2026-11-17, audit B2).
+    pub model_source: String,
     pub chosen: String,
     #[serde(default)]
     pub confidence: Option<f64>,
@@ -118,6 +139,9 @@ fn prepare_with(
     let cleared = gate::check(&request)?;
     let outbound = outbound::build(&cleared, who)?;
     let body = build(provider, &outbound);
+    if body.len() > BODY_MAX {
+        return Err(outbound::too_large());
+    }
     Ok(Prepared {
         provider,
         endpoint: provider.endpoint(),
@@ -127,7 +151,6 @@ fn prepare_with(
         category: request.category.clone().unwrap_or_default(),
         default: request.default.clone(),
         deadline: request.deadline.clone(),
-        card: request.card.clone(),
     })
 }
 
@@ -150,10 +173,11 @@ pub fn conclude(prepared: &Prepared, response: &[u8]) -> Result<Record, Refusal>
         category: prepared.category.clone(),
         deadline: prepared.deadline.clone(),
         decided_by: format!("model:{}/{}", prepared.provider.name(), answer.model),
+        model_source: answer.model_source.to_string(),
         chosen: answer.choice,
         confidence: answer.confidence,
         probabilities: answer.probabilities,
-        card: prepared.card.clone(),
+        card: prepared.outbound.card().map(str::to_string),
     })
 }
 
@@ -219,8 +243,8 @@ mod tests {
         })
         .unwrap();
         assert_eq!(calls.get(), 1);
-        assert_eq!(p.body, b"body");
-        assert_eq!(p.endpoint, "https://api.openai.com/v1/decisions");
+        assert_eq!(p.body(), b"body");
+        assert_eq!(p.endpoint(), "https://api.openai.com/v1/decisions");
     }
 
     /// One case per category, literal: only `none` passes. Each refusal comes before the
@@ -348,6 +372,7 @@ mod tests {
                 "category": "none",
                 "deadline": "2026-11-18T00:00:00Z",
                 "decided_by": "model:typesafe/jev-1.14.0",
+                "model_source": "response",
                 "chosen": "cargo-test",
                 "confidence": 0.875,
                 "probabilities": {"cargo-test": 0.125, "nextest": 0.875},
@@ -360,6 +385,76 @@ mod tests {
         let mut with_reason = serde_json::to_value(&record).unwrap();
         with_reason["reason"] = json!("because");
         assert!(serde_json::from_value::<Record>(with_reason).is_err());
+    }
+
+    /// Audit B2: the documented OpenAI response names no model. The record then names the
+    /// alias the request asked for and says so (`model_source: request`); a response that
+    /// does name one is believed (`response`).
+    #[test]
+    fn an_openai_record_says_where_its_model_name_comes_from() {
+        let p = prepare(&request_json(|_| {}), Provider::Openai, &who()).unwrap();
+        let documented = json!({"answers": [{
+            "type": "choice", "name": "decision", "choice": "nextest",
+            "probabilities": [
+                {"value": "nextest", "probability": 0.95},
+                {"value": "cargo-test", "probability": 0.05}
+            ],
+            "confidence": 0.93
+        }]});
+        let record = conclude(&p, documented.to_string().as_bytes()).unwrap();
+        assert_eq!(record.decided_by, "model:openai/gpt-6-luna");
+        assert_eq!(record.model_source, "request");
+        assert_eq!(record.chosen, "nextest");
+        assert_eq!(record.confidence, Some(0.93));
+        assert_eq!(record.probabilities["cargo-test"], 0.05);
+        let mut named = documented.clone();
+        named["model"] = json!("gpt-6-luna-2026-10-01");
+        let record = conclude(&p, named.to_string().as_bytes()).unwrap();
+        assert_eq!(record.decided_by, "model:openai/gpt-6-luna-2026-10-01");
+        assert_eq!(record.model_source, "response");
+    }
+
+    /// The card is recorded, never sent: masked like the sent fields, and a secret shape in
+    /// it refuses the request before the provider (audit N5).
+    #[test]
+    fn the_card_is_masked_in_the_record_and_screened() {
+        let text = request_json(|v| v["card"] = json!("testperson-C-37"));
+        let p = prepare(&text, Provider::Typesafe, &who()).unwrap();
+        assert!(!String::from_utf8_lossy(p.body()).contains("C-37"));
+        let record = conclude(&p, &jev_answer("nextest")).unwrap();
+        assert_eq!(record.card.as_deref(), Some("[user]-C-37"));
+        let fake = format!("sk-{}", "a1".repeat(12));
+        let r = refused(&request_json(|v| v["card"] = json!(fake.clone())));
+        assert_eq!(r.code, "secret_shape");
+    }
+
+    /// The body size at its edge (audit N10): 262,144 bytes are sent, 262,145 are refused.
+    #[test]
+    fn a_body_over_256_kib_is_refused() {
+        assert_eq!(BODY_MAX, 262_144);
+        let with_last = |n: usize| {
+            request_json(|v| {
+                v["what"] = json!("a".repeat(60_000));
+                v["evidence"] = json!("a".repeat(60_000));
+                v["options"] = json!([
+                    {"value": "x", "description": "a".repeat(60_000)},
+                    {"value": "y", "description": "a".repeat(60_000)},
+                    {"value": "z", "description": "a".repeat(n)}
+                ]);
+                v["default"] = json!("x");
+            })
+        };
+        for provider in provider::Provider::ALL {
+            let base = prepare(&with_last(1), provider, &who())
+                .unwrap()
+                .body()
+                .len();
+            let fill = 1 + BODY_MAX - base;
+            let at = prepare(&with_last(fill), provider, &who()).unwrap();
+            assert_eq!(at.body().len(), 262_144);
+            let over = prepare(&with_last(fill + 1), provider, &who()).unwrap_err();
+            assert_eq!(over.code, "too_large", "{provider:?}");
+        }
     }
 
     #[test]

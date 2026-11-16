@@ -10,7 +10,10 @@
 //! The last check is [`screen`], a fixed word list. It is a deterministic filter, not a
 //! classifier: it cannot show a text is harmless, it only catches a `none` that names money,
 //! a key, a deletion and the like in plain words. A hit costs nothing but the model's turn
-//! (the leader decides instead), so the list leans towards refusing.
+//! (the leader decides instead), so the list leans towards refusing: after the audit of the
+//! first round it also holds everyday verbs (`remove`, `drop`, `buy`, `rotate`), and an
+//! ordinary engineering choice that uses one (`remove the unused import`) goes to the leader
+//! too (leader decision 2026-11-17, audit N8).
 
 use super::request::Request;
 use super::Refusal;
@@ -55,6 +58,9 @@ pub const SCREEN: [(&str, &[&str]); 8] = [
             "paid plan",
             "budget",
             "cost",
+            "wire",
+            "charge",
+            "buy",
             "결제",
             "과금",
             "요금",
@@ -62,6 +68,8 @@ pub const SCREEN: [(&str, &[&str]); 8] = [
             "환불",
             "비용",
             "예산",
+            "돈",
+            "송금",
         ],
     ),
     (
@@ -84,7 +92,14 @@ pub const SCREEN: [(&str, &[&str]); 8] = [
     ),
     (
         "external_contract",
-        &["contract", "sla", "nda", "vendor agreement", "계약"],
+        &[
+            "contract",
+            "sla",
+            "nda",
+            "vendor agreement",
+            "sign the",
+            "계약",
+        ],
     ),
     (
         "secret",
@@ -116,7 +131,11 @@ pub const SCREEN: [(&str, &[&str]); 8] = [
             "personal data",
             "user data",
             "pii",
+            "prod",
+            "production",
+            "customer",
             "실제 데이터",
+            "운영",
             "운영 데이터",
             "고객 데이터",
             "개인정보",
@@ -134,10 +153,23 @@ pub const SCREEN: [(&str, &[&str]); 8] = [
             "reset --hard",
             "delete",
             "deletion",
+            "drop",
+            "wipe",
+            "erase",
+            "truncate",
+            "remove",
+            "--force",
+            "two-factor",
+            "2fa",
+            "certificate",
+            "rotate",
             "권한",
             "전역 설정",
             "보호 규칙",
             "삭제",
+            "지우",
+            "지울",
+            "지워",
         ],
     ),
     (
@@ -149,6 +181,10 @@ pub const SCREEN: [(&str, &[&str]); 8] = [
             "third-party",
             "external service",
             "send to",
+            "make public",
+            "go public",
+            "private repository",
+            "repository public",
             "외부 전송",
             "외부로",
             "업로드",
@@ -352,6 +388,89 @@ mod tests {
             ("This cannot be undone: squash now?", "irreversible"),
         ] {
             assert_eq!(screen(text).map(|(c, _)| c), Some(class), "{text}");
+        }
+    }
+
+    /// Audit N8: the auditor's probe sentences, each declared `none`, each refused. The two
+    /// from the first round stay refused.
+    #[test]
+    fn the_audit_probes_are_refused() {
+        for text in [
+            "Drop the users table in prod now or after the release?",
+            "Wire 4,000 dollars to the contractor today or next week?",
+            "Paste the production key into the CI variables or keep it local?",
+            "Email the full customer list to the agency today?",
+            "Charge the card 20 USD a month for the Pro tier or stay on Free?",
+            "Wipe the backups and truncate the audit log, or keep them?",
+            "Sign the MSA with Acme now?",
+            "Run push --force to main or open a PR?",
+            "Erase the user records older than 30 days?",
+            "Make the private repository public today?",
+            "Turn off two-factor login for the admins?",
+            "Remove the prod database volume?",
+            "Buy the enterprise seats now?",
+            "Rotate the prod signing certificate and tokens tonight?",
+            "운영 DB 를 지울까요 아니면 둘까요",
+            "돈을 오늘 보낼까요 내일 보낼까요",
+            "Delete the cache folder?",
+            "Which paid plan do we take?",
+        ] {
+            assert!(screen(text).is_some(), "{text}");
+            assert_eq!(
+                code(|v| v["what"] = json!(text)),
+                "class_mismatch",
+                "{text}"
+            );
+            assert_eq!(
+                code(|v| v["evidence"] = json!(text)),
+                "class_mismatch",
+                "{text}"
+            );
+        }
+    }
+
+    /// Each word N8 adds, alone, in the class it reads as.
+    #[test]
+    fn the_added_words_each_read_as_a_class() {
+        for (text, class) in [
+            ("wire it", "money"),
+            ("charge them", "money"),
+            ("buy it", "money"),
+            ("돈", "money"),
+            ("송금", "money"),
+            ("sign the form", "external_contract"),
+            ("prod", "real_data"),
+            ("production", "real_data"),
+            ("customer", "real_data"),
+            ("운영", "real_data"),
+            ("drop it", "guarded"),
+            ("wipe it", "guarded"),
+            ("erase it", "guarded"),
+            ("truncate it", "guarded"),
+            ("remove it", "guarded"),
+            ("use --force", "guarded"),
+            ("two-factor", "guarded"),
+            ("2fa", "guarded"),
+            ("certificate", "guarded"),
+            ("rotate it", "guarded"),
+            ("지우기", "guarded"),
+            ("지울까", "guarded"),
+            ("지워요", "guarded"),
+            ("make public", "external_transmission"),
+            ("go public", "external_transmission"),
+            ("the private repository", "external_transmission"),
+        ] {
+            assert_eq!(screen(text).map(|(c, _)| c), Some(class), "{text}");
+        }
+        // Whole words still: these only contain an added word.
+        for text in [
+            "a product page",
+            "the rewire step",
+            "signing off",
+            "dropdown menu",
+            "buyer",
+        ] {
+            assert_eq!(screen(text), None, "{text}");
         }
     }
 

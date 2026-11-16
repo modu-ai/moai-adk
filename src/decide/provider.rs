@@ -3,8 +3,8 @@
 //!
 //! | name | label | request | answer |
 //! | --- | --- | --- | --- |
-//! | `typesafe` | Jev | `{model, state, questions}`; `questions` is an object keyed by the question id, each `{type, instructions, criteria}` with `criteria` an object `{option: description}` | `{model, answers: {<id>: {type, choice, confidence, probabilities}}}` |
-//! | `openai` | OpenAI | `{model, input, questions}`; `questions` is a list of `{type, name, instructions, choices: [{value, description}]}` | `{model, answers: [{type, name, choice, confidence, probabilities}]}`, or an answer of `type: "refusal"` |
+//! | `typesafe` | Jev | `{model, state, questions}`; `questions` is an object keyed by the question id, each `{type, instructions, criteria}` with `criteria` an object `{option: description}` | `{model, answers: {<id>: {type, choice, confidence, probabilities}}}` with `probabilities` an object `{option: probability}` |
+//! | `openai` | OpenAI | `{model, input, questions}`; `questions` is a list of `{type, name, instructions, choices: [{value, description}]}` | `{answers: [{type, name, choice, probabilities, confidence}]}` with `probabilities` a list of `{value, probability}` and no top-level `model`, or an answer of `type: "refusal"` |
 //!
 //! Sources: the plan of cards C-37 and C-54 (provider facts read 2026-11-16 from the vendors'
 //! documentation and from the Go generation's Jev client). Nothing here was checked against
@@ -12,7 +12,11 @@
 //!
 //! The endpoints and the model aliases are compile-time constants. No setting, environment
 //! variable or request field reaches them, so a request cannot be aimed at another host.
-//! The model a record names is the one the response reports, never the alias sent.
+//! The model a record names is the one the response reports. The documented OpenAI response
+//! reports none: there the alias that was sent stands in and the answer says so
+//! (`model_source: "request"`, leader decision 2026-11-17 on audit finding B2); a top-level
+//! `model` in an OpenAI response is used when it is there. Jev always reports its model, and
+//! a Jev response without one is no answer.
 
 use super::outbound::Outbound;
 use super::Refusal;
@@ -80,8 +84,11 @@ pub struct Answer {
     pub choice: String,
     pub confidence: Option<f64>,
     pub probabilities: BTreeMap<String, f64>,
-    /// As the response reported it.
+    /// As the response reported it, or the alias the request asked for when the response
+    /// names none (OpenAI); `model_source` says which.
     pub model: String,
+    /// `response` or `request`.
+    pub model_source: &'static str,
 }
 
 /// The request body for `provider`, exactly as it would be sent: compact JSON, keys in the
@@ -170,14 +177,17 @@ pub fn parse_answer(
         }
         _ => return Err(no_answer("the answer is not of type `choice`")),
     }
-    let model = body["model"]
-        .as_str()
-        .filter(|m| {
-            (1..=MODEL_NAME_MAX).contains(&m.len())
-                && m.bytes()
-                    .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-' | b':'))
-        })
-        .ok_or_else(|| no_answer("no plain `model` name of 1 to 64 bytes"))?;
+    let plain = |m: &str| {
+        (1..=MODEL_NAME_MAX).contains(&m.len())
+            && m.bytes()
+                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-' | b':'))
+    };
+    let (model, model_source) = match (&body["model"], provider) {
+        (Value::String(m), _) if plain(m) => (m.as_str(), "response"),
+        // The documented OpenAI response names no model: the alias that was sent stands in.
+        (Value::Null, Provider::Openai) => (OPENAI_MODEL, "request"),
+        _ => return Err(no_answer("no plain `model` name of 1 to 64 bytes")),
+    };
     let is_option = |value: &str| outbound.options().iter().any(|(v, _)| v == value);
     let choice = answer["choice"]
         .as_str()
@@ -193,9 +203,9 @@ pub fn parse_answer(
         value => Some(unit(value).ok_or_else(|| no_answer("`confidence` is not 0 to 1"))?),
     };
     let mut probabilities = BTreeMap::new();
-    match &answer["probabilities"] {
-        Value::Null => {}
-        Value::Object(map) => {
+    match (provider, &answer["probabilities"]) {
+        (_, Value::Null) => {}
+        (Provider::Typesafe, Value::Object(map)) => {
             for (option, value) in map {
                 let p = unit(value)
                     .filter(|_| is_option(option))
@@ -203,13 +213,26 @@ pub fn parse_answer(
                 probabilities.insert(option.clone(), p);
             }
         }
-        _ => return Err(no_answer("`probabilities` is not an object")),
+        (Provider::Openai, Value::Array(list)) => {
+            for item in list {
+                let (option, p) = item["value"]
+                    .as_str()
+                    .filter(|option| is_option(option))
+                    .zip(unit(&item["probability"]))
+                    .ok_or_else(|| {
+                        no_answer("`probabilities` is not [{value: option, probability: 0 to 1}]")
+                    })?;
+                probabilities.insert(option.to_string(), p);
+            }
+        }
+        _ => return Err(no_answer("`probabilities` is not in the provider's shape")),
     }
     Ok(Answer {
         choice: choice.to_string(),
         confidence,
         probabilities,
         model: model.to_string(),
+        model_source,
     })
 }
 
@@ -260,8 +283,8 @@ mod tests {
         for other in ["", "jev", "OpenAI", "typesafe ", "glm"] {
             assert_eq!(Provider::from_name(other), None, "{other:?}");
         }
-        assert_eq!(prepared(t).endpoint, TYPESAFE_ENDPOINT);
-        assert_eq!(prepared(o).endpoint, OPENAI_ENDPOINT);
+        assert_eq!(prepared(t).endpoint(), TYPESAFE_ENDPOINT);
+        assert_eq!(prepared(o).endpoint(), OPENAI_ENDPOINT);
     }
 
     /// Golden body, Jev: `questions` is an object keyed by the question id and `criteria` an
@@ -277,7 +300,7 @@ mod tests {
             r#""cargo-test":"plain cargo test"}}}}"#
         );
         assert_eq!(
-            String::from_utf8(prepared(Provider::Typesafe).body).unwrap(),
+            String::from_utf8(prepared(Provider::Typesafe).body().to_vec()).unwrap(),
             want
         );
     }
@@ -295,7 +318,7 @@ mod tests {
             r#"{"value":"cargo-test","description":"plain cargo test"}]}]}"#
         );
         assert_eq!(
-            String::from_utf8(prepared(Provider::Openai).body).unwrap(),
+            String::from_utf8(prepared(Provider::Openai).body().to_vec()).unwrap(),
             want
         );
     }
@@ -310,7 +333,8 @@ mod tests {
                 v["card"] = json!("C-9999");
                 v["deadline"] = json!("2031-01-02T03:04:05Z");
             });
-            let body = String::from_utf8(prepare(&text, provider, &who()).unwrap().body).unwrap();
+            let prepared = prepare(&text, provider, &who()).unwrap();
+            let body = String::from_utf8(prepared.body().to_vec()).unwrap();
             assert!(body.contains("~/proj/ci.yml runs nextest"), "{body}");
             for absent in [
                 "testperson",
@@ -324,8 +348,8 @@ mod tests {
             }
             // Text is JSON-escaped, so it cannot add a field.
             let quoted = request_json(|v| v["what"] = json!("a \"quoted\"\nline, \"model\":\"x\""));
-            let body = prepare(&quoted, provider, &who()).unwrap().body;
-            let v: Value = serde_json::from_slice(&body).unwrap();
+            let prepared = prepare(&quoted, provider, &who()).unwrap();
+            let v: Value = serde_json::from_slice(prepared.body()).unwrap();
             assert_eq!(v["model"], provider.model());
             assert_eq!(v.as_object().unwrap().len(), 3);
         }
@@ -335,8 +359,9 @@ mod tests {
         json!({"model": "jev-1.14.0", "answers": {"decision": answer}, "usage": {"input_tokens": 61}})
     }
 
+    /// The documented OpenAI response: a list of answers and no top-level `model`.
     fn openai(answer: Value) -> Value {
-        json!({"id": "dec_1", "model": "gpt-6-luna-2026-10-01", "answers": [answer]})
+        json!({"answers": [answer]})
     }
 
     #[test]
@@ -358,7 +383,10 @@ mod tests {
                 ("nextest".to_string(), 0.25)
             ])
         );
-        assert_eq!(a.model, "jev-1.14.0");
+        assert_eq!(
+            (a.model.as_str(), a.model_source),
+            ("jev-1.14.0", "response")
+        );
     }
 
     #[test]
@@ -366,16 +394,31 @@ mod tests {
         let a = answer(
             Provider::Openai,
             &openai(json!({
-                "type": "choice", "name": "decision", "choice": "nextest", "confidence": 1.0,
-                "probabilities": {"nextest": 1.0, "cargo-test": 0.0}
+                "type": "choice", "name": "decision", "choice": "nextest",
+                "probabilities": [
+                    {"value": "nextest", "probability": 0.95},
+                    {"value": "cargo-test", "probability": 0.05}
+                ],
+                "confidence": 0.93
             })),
         )
         .unwrap();
         assert_eq!(a.choice, "nextest");
-        assert_eq!(a.confidence, Some(1.0));
-        assert_eq!(a.probabilities["cargo-test"], 0.0);
-        assert_eq!(a.model, "gpt-6-luna-2026-10-01");
-        // Confidence and probabilities may be absent; the choice and the model may not.
+        assert_eq!(a.confidence, Some(0.93));
+        assert_eq!(
+            a.probabilities,
+            BTreeMap::from([
+                ("cargo-test".to_string(), 0.05),
+                ("nextest".to_string(), 0.95)
+            ])
+        );
+        // The documented response names no model: the alias that was asked for stands in,
+        // and the answer says so.
+        assert_eq!(
+            (a.model.as_str(), a.model_source),
+            ("gpt-6-luna", "request")
+        );
+        // Confidence and probabilities may be absent; the choice may not.
         let bare = answer(
             Provider::Openai,
             &openai(json!({"type": "choice", "name": "decision", "choice": "nextest"})),
@@ -406,6 +449,77 @@ mod tests {
                 code(Provider::Typesafe, &jev(a)),
                 "unknown_choice",
                 "{choice:?}"
+            );
+        }
+    }
+
+    /// Each provider's `probabilities` in its own documented shape only: a list of
+    /// `{value, probability}` for OpenAI, an object `{option: probability}` for Jev.
+    #[test]
+    fn probabilities_have_each_providers_shape() {
+        let good = json!({"type": "choice", "name": "decision", "choice": "nextest"});
+        let with = |value: Value| {
+            let mut a = good.clone();
+            a["probabilities"] = value;
+            a
+        };
+        let list = json!([{"value": "nextest", "probability": 1.0}]);
+        let map = json!({"nextest": 1.0});
+        assert!(answer(Provider::Openai, &openai(with(list.clone()))).is_ok());
+        assert!(answer(Provider::Typesafe, &jev(with(map.clone()))).is_ok());
+        assert_eq!(code(Provider::Openai, &openai(with(map))), "answer_invalid");
+        assert_eq!(code(Provider::Typesafe, &jev(with(list))), "answer_invalid");
+        for bad in [
+            json!([{"value": "pytest", "probability": 0.5}]),
+            json!([{"value": "nextest", "probability": 2}]),
+            json!([{"value": "nextest", "probability": "high"}]),
+            json!([{"value": "nextest"}]),
+            json!([{"probability": 0.5}]),
+            json!([0.5, 0.5]),
+            json!("nextest"),
+        ] {
+            assert_eq!(
+                code(Provider::Openai, &openai(with(bad.clone()))),
+                "answer_invalid",
+                "{bad}"
+            );
+        }
+    }
+
+    /// OpenAI: a top-level `model` is believed when it is a plain name, refused when it is
+    /// there and is not one, and replaced by the request's alias only when it is absent.
+    #[test]
+    fn an_openai_model_name_is_the_responses_or_the_requests() {
+        let good = json!({"type": "choice", "name": "decision", "choice": "nextest"});
+        let with_model = |model: Value| {
+            let mut v = openai(good.clone());
+            v["model"] = model;
+            v
+        };
+        let named = answer(
+            Provider::Openai,
+            &with_model(json!("gpt-6-luna-2026-10-01")),
+        )
+        .unwrap();
+        assert_eq!(
+            (named.model.as_str(), named.model_source),
+            ("gpt-6-luna-2026-10-01", "response")
+        );
+        let absent = answer(Provider::Openai, &openai(good.clone())).unwrap();
+        assert_eq!(
+            (absent.model.as_str(), absent.model_source),
+            ("gpt-6-luna", "request")
+        );
+        for bad in [
+            json!(""),
+            json!("two words"),
+            json!(7),
+            json!("m".repeat(65)),
+        ] {
+            assert_eq!(
+                code(Provider::Openai, &with_model(bad.clone())),
+                "answer_invalid",
+                "{bad}"
             );
         }
     }
