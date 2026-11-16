@@ -13,10 +13,17 @@
 //!   second passes without input ([`QUIET_TENTHS`]) and counts what still arrives: anything
 //!   but a single further line end (a terminal that sends CR LF) refuses the whole input, as
 //!   the stdin path refuses a value with a line break in it. A paste of two lines is thus
-//!   neither stored in part, nor shown, nor left for the shell to run.
+//!   neither stored in part, nor shown, nor left for the shell to run. The second is a bound,
+//!   not a proof: a second line that starts more than a second after the first ended is
+//!   caught only if it is already in the terminal when the modes go back (the unread count,
+//!   `FIONREAD`, is asked right before; anything there refuses the value). Later than that
+//!   it is the shell's, like anything typed after any command ended.
 //! - the modes are put back with `TCSAFLUSH`, which also drops input not read yet, at every
-//!   exit and from a signal handler (`SIGINT`, `SIGTERM`, `SIGHUP`, `SIGQUIT`), which then
-//!   lets the signal end the process as it would have. `SIGQUIT` ends it with the usual status
+//!   exit and from a signal handler, which then lets the signal end the process as it would
+//!   have. The handler is there for every signal that ends a process by default and is not a
+//!   program fault: `SIGINT`, `SIGTERM`, `SIGHUP`, `SIGQUIT`, `SIGUSR1`, `SIGUSR2`,
+//!   `SIGALRM`, `SIGPIPE`, `SIGXCPU`, `SIGXFSZ`, `SIGVTALRM`, `SIGPROF`. `SIGQUIT`, `SIGXCPU`
+//!   and `SIGXFSZ` end it with the usual status
 //!   (128 + signal) but without a core file, which could hold typed bytes. A signal that was
 //!   ignored when the prompt started (`nohup`) stays ignored. `SIGTSTP` is ignored while echo
 //!   is off (and Ctrl-Z is switched off), since a stopped process cannot put anything back.
@@ -87,6 +94,8 @@ pub fn read_line(input: &mut impl std::io::BufRead) -> Result<Vec<u8>> {
 pub struct Extra {
     count: usize,
     first: Option<u8>,
+    /// Bytes still in the terminal, unread, when it was given back.
+    queued: usize,
 }
 
 impl Extra {
@@ -97,9 +106,17 @@ impl Extra {
         self.count += bytes.len();
     }
 
-    /// True when it is more than the one further line end a CR LF terminal sends.
+    /// Notes `queued` bytes the terminal still held, unread, when the wait for silence was
+    /// over: they came after it. Their content is unknown, so one byte is already too much.
+    pub fn note_queued(&mut self, queued: usize) {
+        self.queued += queued;
+    }
+
+    /// True when it is more than the one further line end a CR LF terminal sends, or when
+    /// anything was still queued at the end.
     pub fn is_more_input(&self) -> bool {
-        !(self.count == 0 || (self.count == 1 && matches!(self.first, Some(b'\n' | b'\r'))))
+        self.queued > 0
+            || !(self.count == 0 || (self.count == 1 && matches!(self.first, Some(b'\n' | b'\r'))))
     }
 }
 
@@ -137,6 +154,9 @@ pub fn read_hidden(provider: &str) -> Result<String> {
         quiet.drain(&mut extra);
         // The Enter that ended the line was not echoed either.
         let _ = writeln!(err);
+        // Last thing before the modes go back (the drop of `quiet`, which also discards
+        // what is queued): input that came in after the silence refuses the value as well.
+        extra.note_queued(quiet.queued());
         (line, extra)
     };
     let line = line?;
@@ -163,9 +183,27 @@ mod unix {
     use std::sync::atomic::{AtomicBool, Ordering};
 
     const FD: libc::c_int = libc::STDIN_FILENO;
-    /// The signals that end a process waiting at a prompt: Ctrl-C, `kill`, a closed terminal
-    /// window, Ctrl-\.
-    const ENDING: [libc::c_int; 4] = [libc::SIGINT, libc::SIGTERM, libc::SIGHUP, libc::SIGQUIT];
+    /// The signals that end a process by default, that can be caught and that nothing else
+    /// here handles: Ctrl-C, `kill`, a closed terminal window, Ctrl-\, then the user signals,
+    /// the timers, a closed pipe and the resource limits (second audit, N4). Not in it: the
+    /// signals of a fault in the program itself (`SIGSEGV`, `SIGBUS`, `SIGABRT` and the
+    /// like) and the ones only some systems have (`SIGIO`, `SIGPWR`, `SIGSTKFLT` on Linux).
+    const ENDING: [libc::c_int; 12] = [
+        libc::SIGINT,
+        libc::SIGTERM,
+        libc::SIGHUP,
+        libc::SIGQUIT,
+        libc::SIGUSR1,
+        libc::SIGUSR2,
+        libc::SIGALRM,
+        libc::SIGPIPE,
+        libc::SIGXCPU,
+        libc::SIGXFSZ,
+        libc::SIGVTALRM,
+        libc::SIGPROF,
+    ];
+    /// The ones of [`ENDING`] whose default action may also write a core file.
+    const WITH_CORE: [libc::c_int; 3] = [libc::SIGQUIT, libc::SIGXCPU, libc::SIGXFSZ];
     /// Most bytes read and dropped after the line end before the prompt stops waiting for
     /// silence; what is still queued then goes with `TCSAFLUSH`.
     const DRAIN_MAX: usize = 1 << 20;
@@ -178,10 +216,10 @@ mod unix {
 
     /// Puts the saved modes back and drops the input not read yet (`TCSAFLUSH`), then lets
     /// the signal end the process the default way (the exit status a shell sees is the
-    /// signal's, as without the prompt). `SIGQUIT` would also write a core file, which could
-    /// hold what was typed: for it the process exits with the status a shell reports for the
-    /// signal, 128 + its number. Only async-signal-safe calls: `tcsetattr`, `_exit`,
-    /// `signal`, `raise`.
+    /// signal's, as without the prompt). A signal of [`WITH_CORE`] would also write a core
+    /// file, which could hold what was typed: for those the process exits with the status a
+    /// shell reports for the signal, 128 + its number. Only async-signal-safe calls:
+    /// `tcsetattr`, `_exit`, `signal`, `raise`.
     extern "C" fn restore_then_end(signal: libc::c_int) {
         if ARMED.load(Ordering::SeqCst) {
             // SAFETY: `SAVED` was initialized before `ARMED` was set and is not written
@@ -191,8 +229,13 @@ mod unix {
         // SAFETY: plain libc calls. The signal is blocked while its handler runs, so the
         // raised one is delivered, with the default action, when the handler returns.
         unsafe {
-            if signal == libc::SIGQUIT {
-                libc::_exit(128 + signal);
+            // A plain loop over a constant: nothing here allocates or locks.
+            let mut at = 0;
+            while at < WITH_CORE.len() {
+                if signal == WITH_CORE[at] {
+                    libc::_exit(128 + signal);
+                }
+                at += 1;
             }
             libc::signal(signal, libc::SIG_DFL);
             libc::raise(signal);
@@ -281,6 +324,17 @@ mod unix {
                 return Err(failed.into());
             }
             Ok(quiet)
+        }
+
+        /// How many bytes the terminal holds that nobody has read (`FIONREAD`); 0 when it
+        /// cannot be asked.
+        pub fn queued(&self) -> usize {
+            let mut count: libc::c_int = 0;
+            // SAFETY: FIONREAD writes one `int` into the pointer it is given.
+            if unsafe { libc::ioctl(FD, libc::FIONREAD, &mut count) } != 0 {
+                return 0;
+            }
+            usize::try_from(count).unwrap_or(0)
         }
 
         /// Reads and drops what still arrives, echo off, until the terminal has been silent
@@ -415,6 +469,26 @@ mod tests {
         assert!(after(&[b"BBBsecond\n"]));
         assert!(after(&[b"\n", b"BBBsecond\n"]));
         assert!(after(&[b" "]));
+    }
+
+    /// Second audit, N2: input still queued when the terminal is given back came after the
+    /// silence. What it is was never read, so any of it refuses, a lone line end too.
+    #[test]
+    fn input_queued_at_the_end_refuses_whatever_it_is() {
+        let late = |pieces: &[&[u8]], queued: usize| {
+            let mut extra = Extra::default();
+            for piece in pieces {
+                extra.note(piece);
+            }
+            extra.note_queued(queued);
+            extra.is_more_input()
+        };
+        assert!(!late(&[], 0));
+        assert!(!late(&[b"\n"], 0));
+        assert!(late(&[], 1));
+        assert!(late(&[b"\n"], 1));
+        assert!(late(&[], 4096));
+        assert!(late(&[b"B"], 0));
     }
 
     /// The vault's limit at its edge, through the line reader: 65,535 bytes are a value and

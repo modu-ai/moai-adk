@@ -3545,6 +3545,54 @@ mod help_rules {
         assert_eq!(names(&configured()), names(&Cli::command()));
     }
 
+    /// Flags that make a command take its input from the terminal instead of standard input
+    /// (`key-set --prompt`, card C-54 S1).
+    const TERMINAL_INPUT_FLAGS: [&str; 1] = ["--prompt"];
+
+    /// Whether the example carries one of [`TERMINAL_INPUT_FLAGS`]. Such an example must not
+    /// have ` < file`: the command refuses a standard input that is not a terminal.
+    fn example_reads_terminal(example: &str) -> bool {
+        example
+            .split_whitespace()
+            .any(|word| TERMINAL_INPUT_FLAGS.contains(&word))
+    }
+
+    /// The exception to the stdin rule is by flag, as a whole word, and only for a flag the
+    /// example's command really has.
+    #[test]
+    fn a_terminal_input_example_is_told_by_its_flag() {
+        for (example, wants) in [
+            ("key-set glm --prompt", true),
+            ("key-set glm --shared --prompt", true),
+            ("key-set glm < key.txt", false),
+            ("key-set glm --prompted", false),
+            ("key-set prompt", false),
+            ("statusline < status.json", false),
+        ] {
+            assert_eq!(example_reads_terminal(example), wants, "{example}");
+        }
+        let mut seen = 0;
+        for (_, examples) in moai_cli::help::EXAMPLES {
+            for example in examples.iter().filter(|e| example_reads_terminal(e)) {
+                seen += 1;
+                let word = example.split_whitespace().next().unwrap();
+                let command = Cli::command();
+                let sub = command.find_subcommand(word).unwrap();
+                for flag in TERMINAL_INPUT_FLAGS {
+                    if example.split_whitespace().any(|w| w == flag) {
+                        assert!(
+                            sub.get_arguments()
+                                .any(|a| a.get_long() == flag.strip_prefix("--")),
+                            "`{example}`: {word} has no {flag}"
+                        );
+                    }
+                }
+                assert!(!example.contains(" < "), "`{example}` reads the terminal");
+            }
+        }
+        assert!(seen >= 1, "no example shows a terminal input flag");
+    }
+
     /// Commands `main` answers before the internal dispatch; each reads standard input there
     /// (`statusline`, `pr-self-audit-check`, `hook_dispatch_main` and `lane_stop_hook_main`).
     const READ_BEFORE_DISPATCH: [&str; 4] = [
@@ -3619,7 +3667,8 @@ mod help_rules {
 
     /// An example carries ` < file` exactly when the command it runs reads standard input, so
     /// an example typed as written gets its input (#2839 audit B1: ten typed-request commands
-    /// lacked it).
+    /// lacked it). One exception: an example with a terminal input flag
+    /// ([`example_reads_terminal`]) never carries it.
     #[test]
     fn stdin_examples_match_the_commands_that_read_stdin() {
         let reads = commands_reading_stdin();
@@ -3632,6 +3681,13 @@ mod help_rules {
         let mut off = Vec::new();
         for (_, examples) in moai_cli::help::EXAMPLES {
             for example in *examples {
+                if example_reads_terminal(example) {
+                    // Read from the terminal, not from standard input: no ` < file`.
+                    if example.contains(" < ") {
+                        off.push(format!("`{example}` (reads the terminal)"));
+                    }
+                    continue;
+                }
                 let word = example.split_whitespace().next().unwrap();
                 let wants = reads.contains(word) || READ_BEFORE_DISPATCH.contains(&word);
                 if example.contains(" < ") != wants {

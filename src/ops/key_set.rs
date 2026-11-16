@@ -17,6 +17,8 @@ pub struct Args {
     #[arg(long)]
     shared: bool,
     /// Type the value at a hidden prompt (echo off); only on a terminal (stdin and stderr).
+    /// The answer comes one second after Enter: more input within that second refuses the
+    /// value.
     #[arg(long)]
     prompt: bool,
 }

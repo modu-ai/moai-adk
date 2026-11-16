@@ -2034,7 +2034,8 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     (
         "key-set",
         "prompt",
-        "값을 숨긴 입력란에 직접 입력(화면에 보이지 않음). stdin 과 stderr 가 터미널일 때만",
+        "값을 숨긴 입력란에 직접 입력(화면에 보이지 않음). stdin 과 stderr 가 터미널일 때만. \
+         답은 Enter 뒤 1초 지나서 나오고, 그 1초 안에 입력이 더 들어오면 값을 거절",
     ),
     (
         "key-remove",

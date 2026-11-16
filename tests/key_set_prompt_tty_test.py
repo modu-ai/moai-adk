@@ -329,6 +329,42 @@ class KeySetPrompt(unittest.TestCase):
             self.assertNotIn(self.value.encode()[:8], r.term)
             self.assertFalse(os.path.exists(self.vault()))
 
+    def test_the_other_ending_signals_leave_the_terminal_as_it_was_too(self):
+        # Every signal that ends a process by default, not only the four a terminal sends:
+        # a timer, a user signal and a resource limit here. SIGXCPU could write a core file,
+        # so like SIGQUIT it ends with 128 + signal.
+        for sig, code in ((signal.SIGUSR1, -signal.SIGUSR1), (signal.SIGALRM, -signal.SIGALRM),
+                          (signal.SIGXCPU, 128 + signal.SIGXCPU)):
+            def end(master, proc, sig=sig):
+                os.write(master, self.value.encode()[:8])
+                proc.send_signal(sig)
+
+            r = self.prompt(at_prompt=end)
+            self.assertEqual(r.code, code, (sig, r.term))
+            self.assertIs(r.echo_asked, False)
+            self.assert_terminal_as_before(r, f"after signal {sig}")
+            self.assertNotIn(self.value.encode()[:8], r.term)
+            self.assertFalse(os.path.exists(self.vault()))
+
+    def test_a_signal_drops_what_was_typed_and_not_read_yet(self):
+        # The command is stopped (SIGSTOP cannot be caught), so what is typed now stays in
+        # the terminal unread; then it is told to end and let go. The handler runs before the
+        # command reads again, and it must drop that input with the modes it puts back:
+        # otherwise the shell would run it as its next command.
+        def end(master, proc):
+            proc.send_signal(signal.SIGSTOP)
+            time.sleep(0.3)
+            os.write(master, b"echo LEFT-FOR-THE-SHELL\n")
+            time.sleep(0.1)
+            proc.send_signal(signal.SIGTERM)
+            proc.send_signal(signal.SIGCONT)
+
+        r = self.prompt(at_prompt=end)
+        self.assertEqual(r.code, -signal.SIGTERM, r.term)
+        self.assert_terminal_as_before(r, "after a signal with input waiting")
+        self.assertNotIn(b"LEFT-FOR-THE-SHELL", r.term)
+        self.assertFalse(os.path.exists(self.vault()))
+
     def test_an_ignored_hangup_stays_ignored_and_a_stop_signal_does_not_stop_the_prompt(self):
         # Under `nohup` SIGHUP is ignored and stays so; SIGTSTP is ignored while echo is off,
         # since a stopped process could not put the terminal's modes back.
