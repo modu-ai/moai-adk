@@ -864,12 +864,18 @@ The three lines follow the user instructions of 2026-11-13 (#2756) and, for the 
 place, #2928 (user instruction 6878415244, 2026-11-14). Segments on a line are joined by ` | `, and a segment with no value
 is left out together with its separator.
 
-1. Tag and running environment: `🏷️ <tag>` first (`🏷️ leader | 🧠 … | 🗿 …`; #2928, user
+1. Tag and running environment: `🏷️ <tag>` first (`🏷️ Leader | 🧠 … | 🗿 …`; #2928, user
    instruction 6878415244 on 2026-11-14, which moved it from the front of line 3). The tag
-   is only `leader` or `agent`: `leader` when the stdin `session_name` is a valid lane name
-   and the clone's lane registry holds a live entry for it with mode `leader`
-   (`moai session-register --mode leader`, read by `lane_registry::mode_of`), `agent`
-   otherwise. The `session_name` text itself is never printed. The tag is shown whenever
+   is the session name in two exact shapes and `agent` otherwise (#2871, leader decision
+   6907570513 on the user's instruction 6907370060, replacing #2928's "no name text"):
+   `agent-<decimal u32 without a leading zero>` → `Agent-<n>`; `Leader` for the exact name
+   `leader`, or when the stdin `session_name` is a valid lane name and the clone's lane
+   registry holds a live entry for it with mode `leader` (`moai session-register --mode
+   leader`, read by `lane_registry::mode_of`); every other name or none → `agent`. The
+   `session_name` bytes are never copied (a title, escape or C1 bytes, `agent-027`,
+   `agent-4294967296`, `AGENT-1` and a 65-character name all give `agent`): the code writes
+   the tag again from the parsed shape (#2818 B1). The exact name `leader` is a display hint
+   only and never an authority decision. The tag is shown whenever
    the `session` option is on, even without stdin (decision Q2); with every other line-1
    segment off it stands alone, and with `session` off line 1 starts at `🧠`. Then `🧠`
    model, `🤔` effort/thinking, `♻️` cache hit with the prompt

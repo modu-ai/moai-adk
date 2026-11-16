@@ -105,8 +105,8 @@ pub struct Status {
     pub output_style: String,
     pub session_name: String,
     /// #2928 (decision D1 = (A)): the clone's lane registry holds a live `leader` entry for the
-    /// stdin `session_name`. The tag shows `leader` only then and `agent` otherwise; the name
-    /// text itself is never shown.
+    /// stdin `session_name`. The tag shows `Leader` then, and also for the exact name `leader`
+    /// (#2871); the name text itself is never copied (see `render::tag_text`).
     pub leader: bool,
     /// `Some` when `effort` is present, even with an empty level.
     pub effort: Option<String>,
