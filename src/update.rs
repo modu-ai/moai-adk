@@ -1426,6 +1426,9 @@ pub struct UserLayerPlan {
     pub style: crate::home_style::Plan,
     /// The `moai` hard link in this build's version folder (#2791 AC-1).
     pub bin_names: crate::bin_names::Plan,
+    /// #3004 P6-1: the `<state-home>/path/moai` link this build would own. Report only: it is
+    /// not part of `plan_digest` and nothing applies it yet.
+    pub path_link: crate::path_link::Plan,
     /// The MoAI hook set installed in the project the command runs from (#2853).
     pub hooks: crate::update_hooks::Layer,
     /// #2871 I2 S3: legacy `.env.<provider>` key files under HOME and the vault import of `glm`.
@@ -1494,6 +1497,7 @@ fn user_layer_plan(
     let style = crate::home_style::plan_for(home, package, &style_hosts)?;
     let exe = std::env::current_exe().map_err(|_| "current executable unavailable".to_string())?;
     let bin_names = crate::bin_names::plan_for(home, &exe)?;
+    let path_link = crate::path_link::plan_for(home, &exe);
     let cwd = std::env::current_dir().map_err(|_| "current directory unavailable".to_string())?;
     let hooks = crate::update_hooks::plan(home, &cwd)?;
     let keys = crate::update_keys::plan(home)?;
@@ -1527,6 +1531,7 @@ fn user_layer_plan(
         routing,
         style,
         bin_names,
+        path_link,
         hooks,
         keys,
         home: home_layer,
@@ -1711,6 +1716,10 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
         ));
     }
     out.push_str(&format!("command names\n  moai: {}\n", p.bin_names.state));
+    out.push_str(&format!(
+        "path link (report only)\n  moai: {}\n",
+        p.path_link.state
+    ));
     out.push_str(&p.hooks.summary());
     out.push_str(&p.keys.summary());
     out.push_str(&p.home.summary());
@@ -1803,6 +1812,7 @@ pub fn update_command(
             "routing": layer.routing,
             "style": layer.style,
             "bin_names": layer.bin_names.to_json(),
+            "path_link": layer.path_link.to_json(),
             "hooks": layer.hooks.to_json(),
             "skipped": layer.skipped,
             "confirm_with": format!("moai update --confirm {}", layer.plan_digest),

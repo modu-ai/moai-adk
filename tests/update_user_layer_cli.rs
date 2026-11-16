@@ -448,7 +448,7 @@ fn go_leftovers(home: &Path) {
     );
 }
 
-const PREVIEW_KEYS: [&str; 13] = [
+const PREVIEW_KEYS: [&str; 14] = [
     "mode",
     "applied",
     "nothing_to_apply",
@@ -459,6 +459,7 @@ const PREVIEW_KEYS: [&str; 13] = [
     "routing",
     "style",
     "bin_names",
+    "path_link",
     "hooks",
     "skipped",
     "confirm_with",
@@ -472,6 +473,80 @@ fn refused(out: &Output) -> String {
     assert!(!out.status.success());
     let v: Value = serde_json::from_slice(&out.stdout).unwrap();
     v["error"]["message"].as_str().unwrap().to_string()
+}
+
+/// Every entry under `root` with its kind, size, modification time and link text, so a
+/// preview that touched even a timestamp shows.
+fn listing(root: &Path) -> Vec<(PathBuf, char, u64, std::time::SystemTime, Option<PathBuf>)> {
+    let mut out = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        for e in fs::read_dir(&dir).unwrap().flatten() {
+            let p = e.path();
+            let m = fs::symlink_metadata(&p).unwrap();
+            let kind = match (m.file_type().is_symlink(), m.is_dir()) {
+                (true, _) => 'l',
+                (_, true) => 'd',
+                _ => 'f',
+            };
+            out.push((
+                p.clone(),
+                kind,
+                m.len(),
+                m.modified().unwrap(),
+                fs::read_link(&p).ok(),
+            ));
+            if kind == 'd' {
+                stack.push(p);
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+/// #3004 P6-1: the preview names the plan for `<state-home>/path/moai` under its own key, from
+/// the `bin/moai` of the version folder it runs from, and a preview writes nothing — not even
+/// the `path/` folder.
+#[test]
+fn the_preview_carries_the_path_link_plan_and_writes_nothing() {
+    let (_t, home, exe, _) = setup();
+    let moai = exe.with_file_name("moai");
+    fs::hard_link(&exe, &moai).unwrap();
+    let link = home.join(".moai-cli/path/moai");
+    let before = listing(&home);
+    let p = result(&run(&exe, &home, &["update"]));
+    assert_eq!(p["path_link"]["state"], json!("create"), "{p}");
+    assert_eq!(p["path_link"]["link"], json!(link.to_string_lossy()), "{p}");
+    assert_eq!(
+        p["path_link"]["target"],
+        json!(moai.to_string_lossy()),
+        "{p}"
+    );
+    assert_eq!(p["bin_names"]["state"], json!("unchanged"), "{p}");
+    assert_eq!(listing(&home), before, "the preview writes nothing");
+    assert!(!link.parent().unwrap().exists(), "no path/ folder is made");
+}
+
+/// #3004 P6-1: the plan is a report. It is not in `plan_digest`, so a foreign file at the link
+/// path neither changes the digest the person confirms nor is touched by the preview.
+#[test]
+fn a_foreign_file_at_the_path_link_is_reported_outside_the_digest_and_left_alone() {
+    let (_t, home, exe, _) = setup();
+    fs::hard_link(&exe, exe.with_file_name("moai")).unwrap();
+    let digest = result(&run(&exe, &home, &["update"]))["plan_digest"].clone();
+    let link = home.join(".moai-cli/path/moai");
+    fs::create_dir_all(link.parent().unwrap()).unwrap();
+    common::write_executable(&link, "#!/bin/sh\nexit 0\n");
+    let before = listing(&home);
+    let p = result(&run(&exe, &home, &["update"]));
+    assert_eq!(p["path_link"]["state"], json!("foreign"), "{p}");
+    assert_eq!(
+        p["plan_digest"], digest,
+        "report only: the digest is the same"
+    );
+    assert_eq!(fs::read(&link).unwrap(), b"#!/bin/sh\nexit 0\n");
+    assert_eq!(listing(&home), before);
 }
 
 /// #2872 stage 2: with nothing to archive the preview is exactly what it was — no `cleanup`

@@ -88,7 +88,7 @@ fn finish(
 
 /// The version folder's `bin/` this executable runs from, when it sits exactly in the
 /// layout `<home>/<HOME_STATE_DIR>/versions/<v>/bin/` under either name.
-fn layout_bin(home: &Path, exe: &Path) -> Option<PathBuf> {
+pub(crate) fn layout_bin(home: &Path, exe: &Path) -> Option<PathBuf> {
     let canonical_home = fs::canonicalize(home).ok()?;
     let canonical_exe = fs::canonicalize(exe).ok()?;
     let bin = canonical_exe.parent()?;

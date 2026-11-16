@@ -100,6 +100,7 @@ pub mod omp_agents;
 pub mod ontology;
 pub mod optimize;
 pub mod parity;
+pub mod path_link;
 pub mod plan;
 pub mod pr_link;
 pub mod profile;
