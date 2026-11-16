@@ -204,9 +204,23 @@ pub fn create_v1(
     project_id: &str,
     created_by: &str,
 ) -> Result<(), super::LedgerError> {
+    create_v1_with(conn, project_id, created_by, |_| Ok(()))
+}
+
+/// [`create_v1`] with a step in the middle: `populate` runs in the same transaction after the
+/// tables and the `meta` rows exist and before the triggers do, so it can insert rows with
+/// explicit ids, `rev` and times (a recovery, Issue #3068 P6) without the touch triggers
+/// changing them. Its result is returned when the transaction commits; an `Err` rolls the
+/// whole build back.
+pub fn create_v1_with<T>(
+    conn: &mut Connection,
+    project_id: &str,
+    created_by: &str,
+    populate: impl FnOnce(&rusqlite::Transaction<'_>) -> Result<T, super::LedgerError>,
+) -> Result<T, super::LedgerError> {
     conn.pragma_update(None, "application_id", APPLICATION_ID)?;
     let tx = conn.transaction()?;
-    tx.execute_batch(&ddl_v1())?;
+    tx.execute_batch(TABLES)?;
     tx.execute_batch(&format!("PRAGMA user_version = {SCHEMA_VERSION};"))?;
     for (key, value) in [
         ("schema_version", SCHEMA_VERSION.to_string()),
@@ -222,6 +236,8 @@ pub fn create_v1(
         "INSERT INTO meta (key, value) VALUES ('created_at', CAST(unixepoch() AS TEXT))",
         [],
     )?;
+    let out = populate(&tx)?;
+    tx.execute_batch(TRIGGERS)?;
     tx.commit()?;
-    Ok(())
+    Ok(out)
 }
