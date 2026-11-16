@@ -1,4 +1,5 @@
-//! `moai card` (#3070). `command` is what `card list | show | add` do with the ledger; the rest
+//! `moai card` (#3070). `command` is what `card list | show | add` do with the ledger and
+//! `dispatch` what `card ready | take | release | handoff` do; the rest
 //! needs no ledger connection.
 //!
 //! `export_format` is the file format of the ledger export: plain values in, bytes out, and
@@ -8,6 +9,7 @@
 //! (`C-12`, `#3066`).
 
 pub mod command;
+pub mod dispatch;
 pub mod export_dir;
 pub mod export_format;
 pub mod input;

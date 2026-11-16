@@ -16,7 +16,10 @@ use crate::claude::{self, SettingsScope};
 use crate::claude_settings_merge;
 use crate::generation::{self, GenerationRequest};
 use crate::github_templates::{self, GithubRequest};
-use crate::{go_state, profile, project_detect, project_hosts, state_root, status_line, Profile};
+use crate::{
+    go_settings_clean, go_state, profile, project_detect, project_hosts, state_root, status_line,
+    Profile,
+};
 use serde_json::{json, Map, Value};
 use std::{fs, path::Path};
 
@@ -34,6 +37,10 @@ pub const AFTER_BACKUP: &str = "re-run after the backup phase";
 pub const AFTER_PROFILE: &str = "re-run after the profile apply";
 /// Why the hooks step waits while the settings step has a write to make (#3028 audit B1).
 pub const AFTER_SETTINGS: &str = "re-run after the claude-settings apply";
+/// Why the go-state step waits while the go-settings step has a write to make (#2936 L2a): that
+/// write changes what the go-state plan reads from `.claude/settings.json`, so a digest made
+/// before it would be stale.
+pub const AFTER_GO_SETTINGS: &str = "re-run after the go-settings apply";
 
 const BACKUP_REASON: &str = "the Go-generation .moai/ and the earlier .moai-cli/ state, the \
      Go tool files under .claude/ and .agents/, settings and instruction files \
@@ -135,8 +142,103 @@ fn encode<T: serde::Serialize>(v: &T) -> Result<Value> {
     serde_json::to_value(v).map_err(|_| "encode failed".to_string())
 }
 
-fn go_state_step(root: &Path, shown: &str) -> Result<Step> {
-    let plan = go_state::plan(root)?;
+/// #2936 L2a: the `go-settings` step, the backup phase's first. The Go tool's `.moai/` references
+/// in `.claude/settings.json` (a status line that runs `.moai/status_line.sh`, `plansDirectory`)
+/// hold the Go `.moai/` folder in place; `go-settings-apply` removes exactly the values the Go
+/// tool wrote, after backing the file up and showing the Rust launcher is the Rust build.
+///
+/// - `ready`: Go-made keys to clean; the printed command is `go-settings-apply`.
+/// - `unchanged`: no Go-made key (values the user changed are named under `kept` and stay).
+/// - `skip`: the Go manifest proves the whole file the earlier generation's, so it moves with
+///   the go-state step into the backup and its keys are not cleaned apart.
+/// - `needs_decision`: held, the Rust launcher could not be shown; nothing is written and the
+///   reason says what to check. `blocked`: the plan cannot be made.
+fn go_settings_step(
+    root: &Path,
+    shown: &str,
+    go_state: Option<&go_state::GoStatePlan>,
+) -> Result<Step> {
+    let home = std::env::var_os("HOME").map(std::path::PathBuf::from);
+    let plan = go_settings_clean::plan(root, home.as_deref())?;
+    let digest = plan["plan_digest"].as_str().map(String::from);
+    let moves_itself = go_state.is_some_and(|p| {
+        p.items
+            .iter()
+            .any(|i| i.path == ".claude/settings.json" && i.action == "move")
+    });
+    let (state, reason) = match plan["action"].as_str() {
+        Some("replace") if moves_itself => (
+            "skip",
+            "the Go manifest proves .claude/settings.json the earlier generation's: it moves \
+             into the backup with the go-state step, so its keys are not cleaned apart"
+                .to_string(),
+        ),
+        Some("replace") => (
+            "ready",
+            "Go-made .moai/ references in .claude/settings.json to clean (a backup is kept)"
+                .to_string(),
+        ),
+        Some("none") => (
+            "unchanged",
+            "no value the Go tool wrote names .moai/ in .claude/settings.json".to_string(),
+        ),
+        Some("held") => (
+            "needs_decision",
+            format!(
+                "{}; {}",
+                plan["reason"]
+                    .as_str()
+                    .unwrap_or("the Rust launcher is not shown"),
+                plan["next"].as_str().unwrap_or("nothing was written")
+            ),
+        ),
+        _ => (
+            "blocked",
+            format!("the clean-up is blocked: {}", plan["blocks"]),
+        ),
+    };
+    let apply = match (&digest, state) {
+        (Some(d), "ready") => Some((argv("go-settings-apply", shown, d), Value::Null)),
+        _ => None,
+    };
+    Ok(Step {
+        name: "go-settings",
+        state,
+        reason,
+        preview: json!({
+            "action": plan["action"],
+            "go_keys": plan["go_keys"],
+            "kept": plan["kept"],
+            "kept_note": plan.get("kept_note"),
+            "launcher": plan["launcher"],
+            "plans_files": plan["plans_files"],
+            "local_settings": plan["local_settings"],
+            "blocks": plan["blocks"],
+        }),
+        plan_digest: digest,
+        apply,
+    })
+}
+
+/// The key names a `go-settings` step cleans, for another step's reason.
+fn go_setting_names(step: &Step) -> String {
+    step.preview["go_keys"]
+        .as_array()
+        .map(|a| {
+            a.iter()
+                .filter_map(|k| k["key"].as_str())
+                .collect::<Vec<_>>()
+                .join(", ")
+        })
+        .unwrap_or_default()
+}
+
+fn go_state_step(
+    root: &Path,
+    shown: &str,
+    plan: &go_state::GoStatePlan,
+    settings: &Step,
+) -> Result<Step> {
     let pending = plan.items.iter().any(|i| i.action == "move")
         || plan.state_moves.iter().any(|m| m.action == "move")
         || plan.root_files.iter().any(|f| f.action != "leave")
@@ -187,7 +289,7 @@ fn go_state_step(root: &Path, shown: &str) -> Result<Step> {
             ),
             preview,
             apply: None,
-            plan_digest: Some(plan.plan_digest),
+            plan_digest: Some(plan.plan_digest.clone()),
         });
     }
     Ok(if pending {
@@ -201,15 +303,15 @@ fn go_state_step(root: &Path, shown: &str) -> Result<Step> {
                 argv("go-state-apply", shown, &plan.plan_digest),
                 Value::Null,
             )),
-            plan_digest: Some(plan.plan_digest),
+            plan_digest: Some(plan.plan_digest.clone()),
         }
-    } else if let Some((state, reason)) = tied(root, &plan) {
+    } else if let Some((state, reason)) = tied(root, plan, settings) {
         Step {
             name: "go-state",
             state,
             reason,
             preview,
-            plan_digest: Some(plan.plan_digest),
+            plan_digest: Some(plan.plan_digest.clone()),
             apply: None,
         }
     } else {
@@ -218,7 +320,7 @@ fn go_state_step(root: &Path, shown: &str) -> Result<Step> {
             state: "unchanged",
             reason: "nothing to move".into(),
             preview,
-            plan_digest: Some(plan.plan_digest),
+            plan_digest: Some(plan.plan_digest.clone()),
             apply: None,
         }
     })
@@ -228,7 +330,11 @@ fn go_state_step(root: &Path, shown: &str) -> Result<Step> {
 /// leaves everything for a `state_root` verdict other than `go`/`none`, and for Go or
 /// `.moai-cli/` state it cannot move (settings naming `.moai/`, a worktree or nested checkout
 /// inside, no usable Go manifest). The user decides; `interrupted` waits for their revert.
-fn tied(root: &Path, plan: &go_state::GoStatePlan) -> Option<(&'static str, String)> {
+fn tied(
+    root: &Path,
+    plan: &go_state::GoStatePlan,
+    settings: &Step,
+) -> Option<(&'static str, String)> {
     let state = state_root::classify(root);
     let held = |path: &str| {
         plan.items
@@ -256,14 +362,40 @@ fn tied(root: &Path, plan: &go_state::GoStatePlan) -> Option<(&'static str, Stri
             let mut why = held(state_root::MOAI_DIR)
                 .unwrap_or_else(|| "no usable Go manifest, so nothing is proven tool-made".into());
             // #2936 L1: name the file and keys that hold the folder, and what to do next.
+            // #2936 L2a: the go-settings step above cleans the values the Go tool wrote.
             if why.starts_with("settings reference .moai/") {
                 let refs = moai_dir_references(root);
                 if !refs.is_empty() {
-                    why = format!(
-                        "{why}; held by {}; this update does not change those keys, so change \
-                         or remove them yourself and run the update again",
-                        moai_dir_reference_note(&refs)
-                    );
+                    // Values the step leaves: the ones it lists as kept, and anything in the
+                    // local file, which is never written (#2936 L2a, D1 condition 3).
+                    let yours = settings.preview["kept"]
+                        .as_array()
+                        .is_some_and(|k| !k.is_empty())
+                        || refs
+                            .iter()
+                            .any(|(file, _)| *file == ".claude/settings.local.json");
+                    let next = match settings.state {
+                        "ready" => format!(
+                            "the go-settings step above clears the Go-made keys ({}); apply it \
+                             and preview again{}",
+                            go_setting_names(settings),
+                            if yours {
+                                "; the keys it lists as kept and the ones in \
+                                 .claude/settings.local.json are your values: change or remove \
+                                 them yourself"
+                            } else {
+                                ""
+                            }
+                        ),
+                        "needs_decision" => format!(
+                            "the go-settings step above could not clear the Go-made keys ({})",
+                            settings.reason
+                        ),
+                        _ => "this update does not change those keys, so change or remove them \
+                              yourself and run the update again"
+                            .to_string(),
+                    };
+                    why = format!("{why}; held by {}; {next}", moai_dir_reference_note(&refs));
                 }
             }
             Some(("blocked", format!("the Go-generation .moai/ stays: {why}")))
@@ -896,12 +1028,24 @@ fn hooks_after_settings(steps: &mut [Step]) {
     }
 }
 
+/// Whether the backup phase still has something to do that makes the later previews stale: the
+/// go-state step wants a decision (a move, or a user fix it cannot print), or the go-settings
+/// step has a command to run (#2936 L2a). A held go-settings step (`needs_decision` without a
+/// command) changes nothing, so it does not count.
+fn backup_pending(backup: &[Step]) -> bool {
+    backup.iter().any(|s| match s.name {
+        "go-state" => s.state == "needs_decision",
+        "go-settings" => s.apply.is_some(),
+        _ => false,
+    })
+}
+
 /// The merge phase (#2936 R10): `AGENTS.local.md` into `AGENTS.md`. It waits while the backup
 /// phase has a move to make, and while the generation step has files to write.
 fn merge_steps(root: &Path, shown: &str, backup: &[Step], install: &[Step]) -> Vec<Step> {
     const NAME: &str = "agents-local-merge";
     const SETTINGS: &str = "claude-settings-merge";
-    if backup.iter().any(|s| s.state == "needs_decision") {
+    if backup_pending(backup) {
         return vec![
             Step::waiting(NAME, "blocked", AFTER_BACKUP),
             Step::waiting(SETTINGS, "blocked", AFTER_BACKUP),
@@ -1052,9 +1196,24 @@ pub fn plan(project: &Path) -> Result<Value> {
     let root = fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
     let shown = root.to_str().ok_or("non UTF-8 project path")?.to_string();
     let detected = project_detect::detect(&root);
-    let backup = vec![or_blocked("go-state", go_state_step(&root, &shown))];
+    // #2936 L2a: `go-settings` first. Its apply rewrites `.claude/settings.json`, which the
+    // go-state plan reads; the go-state step with a command of its own waits until a new
+    // preview is made after it.
+    let moves = go_state::plan(&root);
+    let settings = or_blocked(
+        "go-settings",
+        go_settings_step(&root, &shown, moves.as_ref().ok()),
+    );
+    let mut state = match &moves {
+        Ok(p) => or_blocked("go-state", go_state_step(&root, &shown, p, &settings)),
+        Err(e) => Step::waiting("go-state", "blocked", e),
+    };
+    if settings.apply.is_some() && state.apply.is_some() {
+        state = Step::waiting("go-state", "blocked", AFTER_GO_SETTINGS);
+    }
+    let backup = vec![settings, state];
     // A move still to make: every install preview would be stale after it.
-    let install = if backup[0].state == "needs_decision" {
+    let install = if backup_pending(&backup) {
         INSTALL
             .map(|n| Step::waiting(n, "blocked", AFTER_BACKUP))
             .into_iter()

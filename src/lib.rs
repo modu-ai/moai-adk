@@ -49,6 +49,7 @@ pub mod generation;
 pub mod github_templates;
 pub mod go_hooks;
 pub mod go_settings;
+pub mod go_settings_clean;
 pub mod go_state;
 pub mod goal;
 pub mod goal_block;
