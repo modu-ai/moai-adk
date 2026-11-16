@@ -1909,7 +1909,10 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
         Command::ClaudeSettingsPlan { project, scope } => {
             let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
             let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
-            moai_cli::claude::settings_plan_in(&project, &desired, scope)
+            // #3004 P4-3: the status line preview and its gate read HOME and PATH, like hooks-plan.
+            let home = std::env::var_os("HOME").map(PathBuf::from);
+            let path_env = std::env::var("PATH").unwrap_or_default();
+            moai_cli::status_line::plan_in(&project, &desired, scope, home.as_deref(), &path_env)
         }
         Command::ClaudeSettingsApply {
             project,
@@ -1920,13 +1923,17 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
         } => {
             let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
             let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
-            moai_cli::claude::settings_apply_in(
+            let home = std::env::var_os("HOME").map(PathBuf::from);
+            let path_env = std::env::var("PATH").unwrap_or_default();
+            moai_cli::status_line::apply_in(
                 &project,
                 &desired,
                 &plan_digest,
                 &permission_reference,
                 scope,
                 confirm_replace.as_deref(),
+                home.as_deref(),
+                &path_env,
             )
         }
         Command::WorktreePlan {
@@ -2247,10 +2254,34 @@ fn usage_error(e: clap::Error) -> ExitCode {
             for line in &detail {
                 eprintln!("{line}");
             }
+            // #3015 C8: a stray argument gets the command's usage line (clap's own, which shows
+            // the command's shape and none of the words typed).
+            if matches!(e.kind(), ErrorKind::UnknownArgument) {
+                if let Some(usage) = usage_line(&e) {
+                    eprintln!("{usage}");
+                }
+            }
         }
     }
     println!("{}", contract::failure(op, contract::Kind::Usage, message));
     ExitCode::from(2)
+}
+
+/// The command's usage line, read from the usage clap built out of the command definition
+/// (`ContextKind::Usage`), never from the rendered error text: that text quotes the stray
+/// argument, so an argument holding a newline and `Usage:` could pose as the usage line
+/// (#3015 C8 audit B1). Only the first line of that value is used.
+fn usage_line(e: &clap::Error) -> Option<String> {
+    use clap::error::{ContextKind, ContextValue};
+    match e.get(ContextKind::Usage)? {
+        ContextValue::StyledStr(usage) => usage
+            .to_string()
+            .lines()
+            .next()
+            .filter(|l| l.starts_with("Usage:"))
+            .map(str::to_string),
+        _ => None,
+    }
 }
 
 /// The name the error frame's help pointer prints: `moai`, whichever name the user ran

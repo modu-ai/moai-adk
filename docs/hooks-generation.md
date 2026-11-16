@@ -28,7 +28,7 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
 
 | event | matcher | handler |
 | --- | --- | --- |
-| `SessionStart` | 없음 | `moai hook-dispatch --host <host> --event session-check`, timeout 10초(#2936 R9 S1: 이전의 `hook-receipt` 대신 세션 점검 답을 냄) |
+| `SessionStart` | 없음 | `moai hook-dispatch --host <host> --event session-check`, timeout 10초(#2936 R9 S1: 이전의 `hook-receipt` 대신 세션 점검 답을 냄). 입력의 `source` 가 정확히 `compact`(압축 뒤)이면 답에 고정 안내를 더한다: 훅은 댓글·claim·PR 을 읽지 않아 지시가 끝났는지 알 수 없으므로 “끝났다”고 말하지 않고, 보이는 사용자 지시는 댓글·claim·PR 이 끝났음을 보이는지 먼저 확인하고 아무것도 없을 때만 다시 실행하라, 상시 지시는 계속 유효하다, 레인 가지(`issue/<n>-…`)면 “Issue #n 이 당신의 카드라면” 그 최신 `moai-resume:` 댓글에서 이어 가라(레인 가지가 아니면 카드를 전제하지 않는 문장)고 알린다(Codex 는 활성 `/goal` 확인 한 줄도; OMP 도 입력에 `source: "compact"` 가 오면 같은 안내를 받지만 지금 생성되는 OMP 모듈은 `source` 를 보내지 않는다). 그 밖의 `source` 는 이전과 같다. `PreCompact`·`PostCompact` 는 어느 호스트에서도 문맥에 글을 넣지 못해 쓰지 않는다(#3015 C6) |
 | `PreToolUse` | `Bash` | `moai claim-verify . --hook`, timeout 10초(#2255 claim 쓰기 경계, 차단 exit 2) |
 | `PreToolUse`(Claude Code 만) | `Bash\|Write\|Edit\|MultiEdit\|NotebookEdit` | `moai hook-dispatch --host claude --event tool-preflight`, timeout 10초 — 훅 엔진의 위험 Bash·`.git`·자격 증명 폴더·개인 키·토큰 쓰기 가드, 문서화된 PreToolUse `deny` 로만 답함(#2877 리더 Q1: Go 세대 hook 을 바꾼 뒤에도 그 보호가 남게) |
 | `PostToolUse` | `Bash` | `moai hook-receipt --host <host>`, timeout 10초 |
@@ -71,6 +71,12 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
     - 쓰기는 이미 파일을 소유한 쓰기 경로가 한다. Claude는 `hooks` 키를 영수증과 3자 비교하고, Codex·OMP는 파일 전체 sha256을 영수증과 비교한다. 그래서 손대지 않은 옛 설치는 `update`, 고친 설치는 `conflict`이거나 "requires preservation review"로 파일이 그대로 남는다.
     - `hooks-apply`가 `update`를 쓰면 결과에 `receipt`와 `revert`(`moai hooks-revert <project> --receipt <id> --permission-reference <ref>`)가 붙는다. 앞 바이트가 `.moai-cli/receipts/hooks-<id>/`에 남아 host 파일과 소유 영수증을 되돌린다(§4a).
     - `hook_status.configured`는 옛 세트가 그대로 설치되어 있으면 `legacy_binary`다. 이 파일은 계속 동작하지만(`moai-cli`를 부름) 다음 `hooks-apply`가 바꾼다.
+  - **상태줄 `status_line_migration`(#3004 P4-3)**: 생성되는 Claude `statusLine` 명령도 `moai statusline`이다(`src/status_line.rs`, 옛 값은 `moai-cli statusline`). 훅 게이트와 **따로** 돌며, 상태줄 보류는 훅 쓰기를 막지 않는다.
+    - 알아보는 옛 값은 소유 영수증이 MoAI 것으로 적고 파일에도 그대로 있는, 옛 생성기(`status_line::command_of(LEGACY_BINARY)`)와 **정확히 같은** 값뿐이다. 인자·공백·경로 접두·객체 모양이 하나라도 다르거나 영수증이 없으면 사용자 값이라 건드리지 않고 명령 문장도 싣지 않는다(이유 `edited`/`foreign`/`removed`/`current`/`other`만).
+    - 쓰기는 `statusLine` 키를 이미 소유한 Claude settings 3자 비교(`claude-settings-apply`)가 한다. 손대지 않은 옛 설치는 `update`이고, 고친 값은 다시 쓰지 않는다. 다시 쓰기는 **쓰기 전에** 옛 settings 파일을 `.moai-cli/settings-backups/<UTC>-<scope>/`에 바이트 그대로 남기고 다시 읽어 확인한다. 사본을 만들지 못하면 아무것도 쓰지 않고 `status_line_backup_failed`(문장에 "nothing was changed")로 거부한다(게이트 보류와 다른 이유 코드). 사본을 만든 뒤 쓰기가 실패하면(오래된 digest 등) 파일은 그대로이고 만들어 둔 사본도 지우지 않는다. 결과에는 `status_line_migration.backup_dir`(그 폴더)와 `revert`(사본을 되돌리는 `cp` 안내)가 붙는다.
+    - 미리보기 `status_line_migration`은 `claude-settings-plan`과 `project-update-plan`의 `claude-settings` 단계에 더해지며 `plan_digest` 밖이다. `{from, to, state: none|rewrite|create|held, reason, blocked_by}`; 보류면 `held_action`(`rewrite`|`create`)과 `note`가 붙는다. 보류하면 `project-update-plan`은 옛 상태줄을 그대로 둔 채 단계를 `needs_decision`(명령 없음)으로 보여 준다.
+    - 게이트: 다시 쓰기는 `hook_binary.state == resolved`이고 **그 `moai`가 `statusline --help`에 Rust 빌드로 답할 때만** 한다. 새 기본값은 `wrong_generation`이거나 Rust 상태줄이 아닐 때 거부하고, PATH에 `moai`가 없거나 프로젝트 안이면(`binary_unresolved`/`not_probed`) 쓴다(훅 새 설치와 같다). 보류 이유: `moai_<state>`, `statusline_routed_elsewhere`(다른 것이 답함: Go 빌드, `statusline`만 다른 곳으로 보내는 라우팅 스크립트), `statusline_unprobed`(5초 안에 답이 없음). 계획 때와 쓰기 직전에 두 번 본다.
+    - 두 번째 탐침이 있는 까닭: 라우팅 스크립트는 `--version`을 Rust로 넘기면서 `statusline`은 Go로 보낼 수 있어서 버전 탐침만으로는 상태줄이 Rust로 가는지 알 수 없다. 탐침은 `--version` 탐침과 같은 실행기(환경 비움+`HOME`, 셸 없음, 5초, 4096바이트, 프로젝트 안·상대 경로는 실행 안 함)로 `statusline --help`를 돌려 첫 줄이 Rust 빌드의 요약(`Render the Claude Code status line`)과 같은지 본다. 한계: 첫 줄이 같은 위조 스크립트는 막지 못하고, `statusline --help`만 Rust로 보내고 실제 입력은 다른 곳으로 보내는 스크립트도 구별하지 못한다.
 - 훅 모드 출력과 종료 코드(#2348):
   - `hook-receipt`와 `claim-verify --hook`은 성공(exit 0)할 때 stdout에 아무것도 쓰지 않는다. 두 호스트 모두 stdout의 JSON 객체를 훅 출력으로 읽기 때문이다. 다른 호출은 envelope를 그대로 쓴다.
   - exit 2(차단)는 guard의 거부 하나뿐이다. 사용법 오류(알 수 없는 플래그·단어)와 `hook-receipt`의 오류는 exit 1(비차단 오류)이고, 사유는 stderr에 쓴다.

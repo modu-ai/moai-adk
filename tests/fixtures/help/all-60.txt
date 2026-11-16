@@ -162,6 +162,8 @@ Lane and leader
                           conditions of a claim
   claim-expired           List the open claims whose lease
                           has ended
+  audit-claim-stale       List audit reservations left on
+                          closed pull requests
   claim-show              Show the current claim record of a
                           task
   claim-release           Close the active claim as
@@ -194,6 +196,7 @@ Lane and leader
   close-check             Check whether an Issue may close
   lane-env                Print a lane's cargo folders
   session-register        Register this session's lane name
+  session-current         Print this session's own id
   usage-limit             Report how close the usage limits
                           are
   heavy-slot-acquire      Run a heavy command in a
@@ -327,6 +330,7 @@ Internal
                           merged worktrees
   worktree-gc-apply       Remove or trim the previewed
                           worktrees
+  worktree-install-plan   Preview a scoped package install
   hygiene-plan            Preview what may move to the
                           holding folder
   hygiene-apply           Move the previewed leftovers to

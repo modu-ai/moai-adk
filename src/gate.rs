@@ -810,24 +810,134 @@ fn g3(s: &Snapshot, judged: &str) -> Result<(), Stop> {
     }
 }
 
-/// `(head, result)` from the line `tools/local_check.sh` prints last (#2906 S5a): exactly
-/// `local-check: head=<40 lowercase hex> result=<pass|fail> cmd=tools/local_check.sh
-/// at=<YYYY-MM-DDTHH:MM:SSZ>`, from column 0, these fields in this order. Anything else (a
-/// short or long head, uppercase, no `at=`, another command, a `dirty=1` field) is `None`.
-pub fn parse_local_check(line: &str) -> Option<(&str, &str)> {
-    let rest = line.strip_prefix("local-check: head=")?;
-    let (head, rest) = rest.split_once(' ')?;
-    let (result, rest) = rest.strip_prefix("result=")?.split_once(' ')?;
-    let at = rest.strip_prefix("cmd=tools/local_check.sh at=")?;
-    let at_ok = at.len() == 20
+/// `YYYY-MM-DDTHH:MM:SSZ`: digits and separators only, 20 bytes, nothing after the `Z`.
+fn is_utc_seconds(at: &str) -> bool {
+    at.len() == 20
         && at.bytes().enumerate().all(|(i, b)| match i {
             4 | 7 => b == b'-',
             10 => b == b'T',
             13 | 16 => b == b':',
             19 => b == b'Z',
             _ => b.is_ascii_digit(),
-        });
-    (is_hex40(head) && matches!(result, "pass" | "fail") && at_ok).then_some((head, result))
+        })
+}
+
+/// `(head, result)` from the line `tools/local_check.sh` prints last, in either of its two
+/// forms (#2906 S5a, #3066 P1), from column 0, fields in this order:
+///
+/// - the short form `local-check: head=<40 lowercase hex> result=<pass|fail>
+///   cmd=tools/local_check.sh at=<YYYY-MM-DDTHH:MM:SSZ>` (what the script prints today);
+/// - the long form read by [`parse_local_check_evidence`] (accepted here so the gate keeps
+///   working when the script starts to print it).
+///
+/// Anything else (a short or long head, uppercase, no `at=`, another command, a `dirty=1`
+/// field) is `None`.
+pub fn parse_local_check(line: &str) -> Option<(&str, &str)> {
+    if let Some(short) = parse_local_check_short(line) {
+        return Some(short);
+    }
+    let e = parse_local_check_evidence(line)?;
+    Some((e.head, e.result))
+}
+
+fn parse_local_check_short(line: &str) -> Option<(&str, &str)> {
+    let rest = line.strip_prefix("local-check: head=")?;
+    let (head, rest) = rest.split_once(' ')?;
+    let (result, rest) = rest.strip_prefix("result=")?.split_once(' ')?;
+    let at = rest.strip_prefix("cmd=tools/local_check.sh at=")?;
+    (is_hex40(head) && matches!(result, "pass" | "fail") && is_utc_seconds(at))
+        .then_some((head, result))
+}
+
+/// The fields of a long-form `local-check:` line (#3066 P1), all already validated by
+/// [`parse_local_check_evidence`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LocalCheckEvidence<'a> {
+    /// The checked commit: 40 lowercase hex.
+    pub head: &'a str,
+    /// `pass` or `fail`.
+    pub result: &'a str,
+    /// The base the run merged the head onto: 40 lowercase hex, or `None` when the line says
+    /// `base=none` (no base was known; only on a `fail`).
+    pub base: Option<&'a str>,
+    /// The tree of that merge: 40 lowercase hex, or `None` when the line says `tree=none` (no
+    /// tree, for example a merge conflict; only on a `fail`).
+    pub tree: Option<&'a str>,
+    /// The checking script's identity: 40 lowercase hex.
+    pub script: &'a str,
+    /// The toolchain token: 1 to 32 characters from `[A-Za-z0-9._+-]`.
+    pub rustc: &'a str,
+    /// The run id: 12 lowercase hex.
+    pub run: &'a str,
+    /// The UTC time, `YYYY-MM-DDTHH:MM:SSZ`.
+    pub at: &'a str,
+}
+
+/// `Some(None)` for the word `none`, `Some(Some(hex))` for 40 lowercase hex, else `None`.
+fn hex40_or_none(s: &str) -> Option<Option<&str>> {
+    if s == "none" {
+        Some(None)
+    } else {
+        is_hex40(s).then_some(Some(s))
+    }
+}
+
+/// One `key=value` field of a long-form line: the value up to the next single space, and
+/// what follows that space.
+fn local_check_field<'a>(rest: &'a str, key: &str) -> Option<(&'a str, &'a str)> {
+    rest.strip_prefix(key)?.split_once(' ')
+}
+
+/// Reads the long form of the `local-check:` line (#3066 P1), from column 0, single spaces,
+/// no trailing text, fields in exactly this order: `local-check: head=<40hex> result=<pass|fail>
+/// base=<40hex|none> tree=<40hex|none> script=<40hex> rustc=<token> run=<12hex>
+/// cmd=tools/local_check.sh at=<YYYY-MM-DDTHH:MM:SSZ>`. All hex is lowercase. A `pass` line
+/// has a real base and a real tree; `tree=none` and `base=none` only on a `fail`, and
+/// `base=none` needs `tree=none`. Anything else, including the short form and a `dirty=1`
+/// field, is `None`.
+pub fn parse_local_check_evidence(line: &str) -> Option<LocalCheckEvidence<'_>> {
+    let rest = line.strip_prefix("local-check: head=")?;
+    let (head, rest) = rest.split_once(' ')?;
+    let (result, rest) = local_check_field(rest, "result=")?;
+    let (base, rest) = local_check_field(rest, "base=")?;
+    let (tree, rest) = local_check_field(rest, "tree=")?;
+    let (script, rest) = local_check_field(rest, "script=")?;
+    let (rustc, rest) = local_check_field(rest, "rustc=")?;
+    let (run, rest) = local_check_field(rest, "run=")?;
+    let at = rest.strip_prefix("cmd=tools/local_check.sh at=")?;
+    let (base, tree) = (hex40_or_none(base)?, hex40_or_none(tree)?);
+    let rustc_ok = (1..=32).contains(&rustc.len())
+        && rustc
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'+' | b'-'));
+    let run_ok = run.len() == 12
+        && run
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b));
+    let evidence_ok = match (base, tree) {
+        (Some(_), Some(_)) => true,
+        // A conflict: the base is known, the merge has no tree.
+        (Some(_), None) => result == "fail",
+        (None, None) => result == "fail",
+        (None, Some(_)) => false,
+    };
+    (is_hex40(head)
+        && matches!(result, "pass" | "fail")
+        && evidence_ok
+        && is_hex40(script)
+        && rustc_ok
+        && run_ok
+        && is_utc_seconds(at))
+    .then_some(LocalCheckEvidence {
+        head,
+        result,
+        base,
+        tree,
+        script,
+        rustc,
+        run,
+        at,
+    })
 }
 
 /// The `local-check:` line G5 decides from: `(comment id, line, result)` of the last line for
@@ -1045,7 +1155,10 @@ pub fn check(s: &Snapshot) -> Result<(String, Vec<String>), Stop> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_body_tier, parse_local_check, tier0_safe};
+    use super::{
+        parse_body_tier, parse_local_check, parse_local_check_evidence, tier0_safe,
+        LocalCheckEvidence,
+    };
 
     /// #2906 T: `audit-tier: <0|1|2>` at column 0, then the end of the line or a space.
     #[test]
@@ -1166,5 +1279,206 @@ mod tests {
             )),
             None
         );
+    }
+
+    const HEAD: &str = "0123456789abcdef0123456789abcdef01234567";
+    const BASE: &str = "1123456789abcdef0123456789abcdef01234567";
+    const TREE: &str = "2123456789abcdef0123456789abcdef01234567";
+    const SCRIPT: &str = "3123456789abcdef0123456789abcdef01234567";
+
+    /// A long-form line from its variable fields.
+    fn long(
+        head: &str,
+        result: &str,
+        base: &str,
+        tree: &str,
+        script: &str,
+        rustc: &str,
+        run: &str,
+    ) -> String {
+        format!(
+            "local-check: head={head} result={result} base={base} tree={tree} script={script} rustc={rustc} run={run} cmd=tools/local_check.sh {AT}"
+        )
+    }
+
+    fn good(result: &str) -> String {
+        long(HEAD, result, BASE, TREE, SCRIPT, "1.91.0", "0123456789ab")
+    }
+
+    /// #3066 P1: every field of a long-form line is returned as written, and
+    /// `parse_local_check` gives `(head, result)` for it, not another field.
+    #[test]
+    fn a_long_local_check_line_returns_its_fields() {
+        let l = good("pass");
+        assert_eq!(
+            parse_local_check_evidence(&l),
+            Some(LocalCheckEvidence {
+                head: HEAD,
+                result: "pass",
+                base: Some(BASE),
+                tree: Some(TREE),
+                script: SCRIPT,
+                rustc: "1.91.0",
+                run: "0123456789ab",
+                at: "2026-11-14T12:00:00Z",
+            })
+        );
+        assert_eq!(parse_local_check(&l), Some((HEAD, "pass")));
+        assert_eq!(parse_local_check(&good("fail")), Some((HEAD, "fail")));
+        // The short form is not a long-form line, and the long form is not a short one.
+        assert_eq!(parse_local_check_evidence(&line(HEAD, "pass")), None);
+    }
+
+    /// #3066 P1: `none` is read as no value, only on a failed run.
+    #[test]
+    fn a_long_local_check_none_is_only_for_a_failed_run() {
+        let ok = |base: &str, tree: &str, result: &str| {
+            parse_local_check_evidence(&long(HEAD, result, base, tree, SCRIPT, "x", "0123456789ab"))
+                .map(|e| (e.base.map(str::to_string), e.tree.map(str::to_string)))
+        };
+        assert_eq!(ok(BASE, "none", "fail"), Some((Some(BASE.into()), None)));
+        assert_eq!(ok("none", "none", "fail"), Some((None, None)));
+        assert_eq!(
+            ok(BASE, TREE, "pass"),
+            Some((Some(BASE.into()), Some(TREE.into())))
+        );
+        assert_eq!(ok(BASE, "none", "pass"), None);
+        assert_eq!(ok("none", "none", "pass"), None);
+        assert_eq!(ok("none", TREE, "fail"), None);
+        assert_eq!(ok("none", TREE, "pass"), None);
+        assert_eq!(ok("NONE", "none", "fail"), None);
+        assert_eq!(ok(BASE, "None", "fail"), None);
+    }
+
+    /// #3066 P1: each hex field is exactly its length (N passes, N-1 and N+1 do not), lowercase
+    /// hex only.
+    #[test]
+    fn a_long_local_check_hex_fields_have_an_exact_length() {
+        let run = "0123456789ab";
+        let h = |s: &str, n: usize| -> String { s.chars().cycle().take(n).collect() };
+        for n in [0usize, 39, 41, 80] {
+            let v = h(HEAD, n);
+            assert_eq!(
+                parse_local_check_evidence(&long(&v, "pass", BASE, TREE, SCRIPT, "x", run)),
+                None,
+                "head {n}"
+            );
+            assert_eq!(
+                parse_local_check_evidence(&long(HEAD, "pass", &v, TREE, SCRIPT, "x", run)),
+                None,
+                "base {n}"
+            );
+            assert_eq!(
+                parse_local_check_evidence(&long(HEAD, "pass", BASE, &v, SCRIPT, "x", run)),
+                None,
+                "tree {n}"
+            );
+            assert_eq!(
+                parse_local_check_evidence(&long(HEAD, "pass", BASE, TREE, &v, "x", run)),
+                None,
+                "script {n}"
+            );
+        }
+        for n in [0usize, 11, 13, 40] {
+            let v = h(run, n);
+            assert_eq!(
+                parse_local_check_evidence(&long(HEAD, "pass", BASE, TREE, SCRIPT, "x", &v)),
+                None,
+                "run {n}"
+            );
+        }
+        for bad in ["A", "g", "G"] {
+            let up = format!("{}{bad}", &HEAD[1..]);
+            assert_eq!(
+                parse_local_check_evidence(&long(&up, "pass", BASE, TREE, SCRIPT, "x", run)),
+                None,
+                "{up}"
+            );
+            assert_eq!(
+                parse_local_check_evidence(&long(HEAD, "pass", &up, TREE, SCRIPT, "x", run)),
+                None,
+                "{up}"
+            );
+            assert_eq!(
+                parse_local_check_evidence(&long(HEAD, "pass", BASE, &up, SCRIPT, "x", run)),
+                None,
+                "{up}"
+            );
+            assert_eq!(
+                parse_local_check_evidence(&long(HEAD, "pass", BASE, TREE, &up, "x", run)),
+                None,
+                "{up}"
+            );
+            let bad_run = format!("{}{bad}", &run[1..]);
+            assert_eq!(
+                parse_local_check_evidence(&long(HEAD, "pass", BASE, TREE, SCRIPT, "x", &bad_run)),
+                None,
+                "{bad_run}"
+            );
+        }
+    }
+
+    /// #3066 P1: `rustc` is 1 to 32 characters from `[A-Za-z0-9._+-]`.
+    #[test]
+    fn a_long_local_check_rustc_is_a_short_token() {
+        let with = |r: &str| {
+            parse_local_check_evidence(&long(HEAD, "pass", BASE, TREE, SCRIPT, r, "0123456789ab"))
+                .map(|e| e.rustc.to_string())
+        };
+        assert_eq!(
+            with("1.91.0-nightly+Ab_9").as_deref(),
+            Some("1.91.0-nightly+Ab_9")
+        );
+        assert!(with("x").is_some());
+        assert!(with(&"a".repeat(32)).is_some());
+        assert!(with(&"a".repeat(33)).is_none());
+        assert!(with("").is_none());
+        for bad in ["a b", "a=b", "a/b", "a:b", "a\u{e9}", "a,b", "a\tb"] {
+            assert!(with(bad).is_none(), "{bad:?}");
+        }
+    }
+
+    /// #3066 P1: no `dirty=1`, no extra or reordered or missing field, no second space, no
+    /// trailing text, and the time rule is the short form's.
+    #[test]
+    fn a_long_local_check_line_is_strict() {
+        let l = good("pass");
+        assert!(parse_local_check_evidence(&l).is_some());
+        for bad in [
+            l.replacen(" cmd=", " dirty=1 cmd=", 1),
+            l.replacen(" base=", " dirty=1 base=", 1),
+            format!("{l} dirty=1"),
+            format!("{l} extra"),
+            format!("{l} "),
+            l.replacen(" tree=", "  tree=", 1),
+            l.replacen("local-check: ", "local-check:  ", 1),
+            format!(" {l}"),
+            l.replacen("cmd=tools/local_check.sh", "cmd=tools/other.sh", 1),
+            l.replacen("at=2026-11-14T12:00:00Z", "at=2026-11-14T12:00:00", 1),
+            l.replacen("at=2026-11-14T12:00:00Z", "at=2026-11-14 12:00:00Z", 1),
+            l.replacen("result=pass", "result=ok", 1),
+            l.replacen(
+                &format!("base={BASE} tree={TREE}"),
+                &format!("tree={TREE} base={BASE}"),
+                1,
+            ),
+        ] {
+            assert_eq!(parse_local_check_evidence(&bad), None, "{bad}");
+            assert_eq!(parse_local_check(&bad), None, "{bad}");
+        }
+        // One field missing at a time.
+        for key in [
+            "result", "base", "tree", "script", "rustc", "run", "cmd", "at",
+        ] {
+            let dropped: Vec<&str> = l
+                .split(' ')
+                .filter(|p| !p.starts_with(&format!("{key}=")))
+                .collect();
+            assert_eq!(
+                parse_local_check_evidence(&dropped.join(" ")),
+                None,
+                "{key}"
+            );
+        }
     }
 }
