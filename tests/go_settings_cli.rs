@@ -582,6 +582,148 @@ fn a_go_state_move_waits_for_the_go_settings_apply() {
     assert_eq!(go_state["apply"], Value::Null, "{go_state}");
 }
 
+fn mode_of(fx: &GoFx, rel: &str) -> u32 {
+    fs::metadata(fx.root.join(rel))
+        .unwrap()
+        .permissions()
+        .mode()
+        & 0o777
+}
+
+/// #3111 audit B1: the kept copy may hold a token, so it and its folders are owner-only even
+/// when the process default would be wider; the live file keeps its own mode.
+#[test]
+fn the_kept_copy_and_its_folders_are_owner_only() {
+    let fx = shape_g();
+    fs::set_permissions(fx.root.join(SETTINGS), fs::Permissions::from_mode(0o600)).unwrap();
+    let p = plan(&fx);
+    let out = apply(&fx, &p);
+    assert_eq!(out["ok"], json!(true), "{out}");
+    let id = receipts(&fx).remove(0);
+    let base = format!(".moai-cli/receipts/{id}");
+    assert_eq!(mode_of(&fx, &base), 0o700, "receipt folder");
+    assert_eq!(
+        mode_of(&fx, &format!("{base}/before")),
+        0o700,
+        "before folder"
+    );
+    assert_eq!(
+        mode_of(&fx, &format!("{base}/before/settings.json")),
+        0o600,
+        "kept copy"
+    );
+    assert_eq!(mode_of(&fx, SETTINGS), 0o600, "live file");
+}
+
+/// #3111 audit B2: go-settings is the first step of the backup phase, so a Go project may have
+/// no managed `.gitignore` block yet. The kept copy must still never be offered to `git add -A`,
+/// not even under a root `.gitignore` that un-ignores everything.
+#[test]
+fn the_kept_copy_stays_out_of_git_without_the_managed_block() {
+    for root_ignore in [None, Some("!*\n")] {
+        let fx = shape_g();
+        if let Some(text) = root_ignore {
+            fx.write(".gitignore", text);
+        }
+        common::git::git_ok(&fx.root, &["init", "-q"]);
+        let p = plan(&fx);
+        let out = apply(&fx, &p);
+        assert_eq!(out["ok"], json!(true), "{out}");
+        let id = receipts(&fx).remove(0);
+        let status = common::git::git(
+            &fx.root,
+            &["status", "--porcelain", "--untracked-files=all"],
+        );
+        assert!(
+            !status.contains("receipts"),
+            "git would offer the kept copy ({root_ignore:?}):\n{status}"
+        );
+        let kept = format!(".moai-cli/receipts/{id}/before/settings.json");
+        let r = common::git::git_raw(&fx.root, &["check-ignore", "-q", &kept]);
+        assert!(r.success, "git does not ignore {kept} ({root_ignore:?})");
+    }
+}
+
+/// #3111 audit N1: the file is written again as a whole, so a repeated key (which parsing would
+/// merge into one) holds the plan, at any depth; the preview says the whole file is rewritten.
+#[test]
+fn a_settings_file_that_repeats_a_key_is_held_not_merged() {
+    for body in [
+        "{\n \"model\": \"a\",\n \"model\": \"b\",\n \"plansDirectory\": \".moai/plans\"\n}\n",
+        "{\"env\":{\"A\":\"1\",\"A\":\"2\"},\"plansDirectory\":\".moai/plans\"}\n",
+        "{\"hooks\":[{\"x\":1,\"x\":2}],\"plansDirectory\":\".moai/plans\"}\n",
+    ] {
+        let fx = base_fx();
+        fx.manifest();
+        fx.write(SETTINGS, body);
+        let p = plan(&fx);
+        assert_eq!(p["action"], json!("held"), "{body}: {p}");
+        let why = p["reason"].as_str().unwrap();
+        assert!(why.contains("repeats a key"), "{why}");
+        assert!(
+            p["next"].as_str().unwrap().contains("go-settings-plan"),
+            "{p}"
+        );
+        let out = apply_with(&fx, p["plan_digest"].as_str().unwrap(), REF, &[]);
+        assert_eq!(out["ok"], json!(false), "{out}");
+        assert_eq!(read(&fx, SETTINGS), body.as_bytes(), "{body}");
+        assert!(receipts(&fx).is_empty(), "{body}");
+    }
+    // A repeat with nothing of ours to clean is not our business: the plan stays `none`.
+    let fx = base_fx();
+    fx.manifest();
+    fx.write(SETTINGS, "{\"model\":\"a\",\"model\":\"b\"}\n");
+    let p = plan(&fx);
+    assert_eq!(p["action"], json!("none"), "{p}");
+    assert!(p.get("reason").is_none() && p.get("next").is_none(), "{p}");
+}
+
+#[test]
+fn the_preview_says_the_whole_file_is_written_again() {
+    let fx = shape_g();
+    let p = plan(&fx);
+    assert_eq!(p["action"], json!("replace"), "{p}");
+    let f = p["formatting"].as_str().expect("formatting note");
+    assert!(f.contains("whole file is written again"), "{f}");
+    assert!(f.contains("2-space"), "{f}");
+    // Nothing to clean: nothing is written, so nothing is said.
+    let fx = base_fx();
+    fx.manifest();
+    fx.write(SETTINGS, "{\"model\":\"x\"}\n");
+    assert_eq!(plan(&fx)["formatting"], Value::Null);
+}
+
+/// #3111 audit N2: a value under one of the three Go key names that is not the Go tool's is the
+/// user's; the preview names the key (without its value) even when it does not name `.moai/`.
+#[test]
+fn the_users_own_values_of_the_go_key_names_are_named() {
+    let fx = base_fx();
+    fx.manifest();
+    fx.write(
+        SETTINGS,
+        &json!({"statusLine": {"type": "command", "command": "my-line"},
+                "plansDirectory": "my-own-plans", "model": "x"})
+        .to_string(),
+    );
+    let p = plan(&fx);
+    assert_eq!(p["action"], json!("none"), "{p}");
+    assert_eq!(
+        keys_of(&p["yours"]),
+        ["plansDirectory", "statusLine"],
+        "{p}"
+    );
+    assert!(
+        !p.to_string().contains("my-own-plans"),
+        "a value was printed: {p}"
+    );
+    assert!(
+        !p.to_string().contains("my-line"),
+        "a value was printed: {p}"
+    );
+    // The Go tool's own keys are not "yours".
+    assert!(keys_of(&plan(&shape_g())["yours"]).is_empty());
+}
+
 /// D1 condition 3: the local file is never written, even when it holds Go references.
 #[test]
 fn the_local_settings_are_byte_identical_after_apply_and_revert() {

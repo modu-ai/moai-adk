@@ -160,6 +160,7 @@ pub const GROUPS: &[Group] = &[
             ("queue-free", false),
             ("queue-query", false),
             ("leader-tick", false),
+            ("leader-pulse", false),
             ("leader-round", false),
             ("lane-next", false),
             ("lane-loop-line", false),
@@ -389,6 +390,10 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("queue-free", &["queue-free . < request.json"]),
     ("queue-query", &["queue-query . < request.json"]),
     ("leader-tick", &["leader-tick . < request.json"]),
+    (
+        "leader-pulse",
+        &["leader-pulse --terminal term_abc --text continue-round --interval-secs 300"],
+    ),
     (
         "leader-round",
         &[
