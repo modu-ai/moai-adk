@@ -1,5 +1,5 @@
 //! #2928 (user instruction 6878415244, 2026-11-14, replacing S-1's tag-first line 3): line 1 of
-//! the Claude statusline starts with `🏷️ <leader|agent> | `, and line 3 is `🔋 CTX … | 🪫 Week …`
+//! the Claude statusline starts with `🏷️ <Leader|Agent-N|agent> | ` (#2871), and line 3 is `🔋 CTX … | 🪫 Week …`
 //! without the tag, the same bytes under every language and width.
 //!
 //! The renderer has no language text and does not read `COLUMNS` (docs/rust-product-path.md,
@@ -32,8 +32,13 @@ const ARGV: [&str; 5] = [
     "1738429000",
 ];
 /// `a02`: no registry (agent, every bar); `d01`: a live leader entry; `d03`: a title with
-/// escape bytes as `session_name` (agent).
-const CASES: [&str; 3] = ["a02-doc-full", "d01-leader-mode", "d03-title-name"];
+/// escape bytes as `session_name` (agent); `d04`: the exact name `agent-27` (`Agent-27`, #2871).
+const CASES: [&str; 4] = [
+    "a02-doc-full",
+    "d01-leader-mode",
+    "d03-title-name",
+    "d04-agent-name",
+];
 
 fn case(manifest: &Value, name: &str) -> Value {
     manifest["cases"]
@@ -139,10 +144,10 @@ fn line1_tag_first_under_ko_en_and_80_40_columns() {
     let mut runs = 0;
     for name in CASES {
         let case = case(&manifest, name);
-        let want_tag = if name == "d01-leader-mode" {
-            "🏷️ leader | "
-        } else {
-            "🏷️ agent | "
+        let want_tag = match name {
+            "d01-leader-mode" => "🏷️ Leader | ",
+            "d04-agent-name" => "🏷️ Agent-27 | ",
+            _ => "🏷️ agent | ",
         };
         for (variant, color) in [("plain", false), ("ansi", true)] {
             let recorded = case["recorded_with"]["variants"][variant]["version"]

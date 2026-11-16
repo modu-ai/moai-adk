@@ -1113,17 +1113,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "sha256": "57b6a6759d1a46d3d6a4cf3d49784d673292418b1eeef1bc3c798ef2434d8e79",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "sha256": "57b6a6759d1a46d3d6a4cf3d49784d673292418b1eeef1bc3c798ef2434d8e79",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "sha256": "57b6a6759d1a46d3d6a4cf3d49784d673292418b1eeef1bc3c798ef2434d8e79",
             "stdout": "PTY"
           }
         }
@@ -1134,7 +1134,7 @@
       "class": "d",
       "stdin": "stdin/d01-leader-mode.json",
       "covers": [
-        "#2928 S-2: a leader entry whose lease ends at the render second shows agent"
+        "#2928 S-2: a leader entry whose lease ends at the render second no longer decides the tag; #2871: the exact session name leader shows Leader without a live entry"
       ],
       "setup": [
         {
@@ -1152,17 +1152,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "sha256": "57b6a6759d1a46d3d6a4cf3d49784d673292418b1eeef1bc3c798ef2434d8e79",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "sha256": "57b6a6759d1a46d3d6a4cf3d49784d673292418b1eeef1bc3c798ef2434d8e79",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "sha256": "57b6a6759d1a46d3d6a4cf3d49784d673292418b1eeef1bc3c798ef2434d8e79",
             "stdout": "PTY"
           }
         }
@@ -1202,6 +1202,40 @@
           "ansi256": {
             "version": "2026.11.0-rc.1",
             "sha256": "32ac4a1f7f09312ef86fca4b04f5efabf3d3ef32449a3a174012f00555bba946",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "d04-agent-name",
+      "class": "d",
+      "stdin": "stdin/d04-agent-name.json",
+      "covers": [
+        "#2871: the exact session name agent-27 shows the tag Agent-27 (no registry entry needed)"
+      ],
+      "setup": [
+        {
+          "kind": "git_init",
+          "branch": "main"
+        }
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "57b6a6759d1a46d3d6a4cf3d49784d673292418b1eeef1bc3c798ef2434d8e79",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "57b6a6759d1a46d3d6a4cf3d49784d673292418b1eeef1bc3c798ef2434d8e79",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "57b6a6759d1a46d3d6a4cf3d49784d673292418b1eeef1bc3c798ef2434d8e79",
             "stdout": "PTY"
           }
         }
