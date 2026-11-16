@@ -870,6 +870,20 @@ fn settings_state(
     desired: &Map<String, Value>,
     scope: SettingsScope,
 ) -> Result<SettingsState> {
+    settings_state_with(project, desired, scope, false)
+}
+
+/// [`settings_state`]; with `hooks_on_disk` (the hook writer, C-55) the recorded `hooks` is the
+/// baseline only while the file has a `hooks` key. The record is not tracked by git and the
+/// settings file is, so a reset or checkout can leave a record that names hooks the file does
+/// not have; the absent key is then planned again instead of read as a user's edit to keep.
+/// A `hooks` key the file does have is compared as before (an edit of the current set stays).
+fn settings_state_with(
+    project: &Path,
+    desired: &Map<String, Value>,
+    scope: SettingsScope,
+    hooks_on_disk: bool,
+) -> Result<SettingsState> {
     let root = fs::canonicalize(project).map_err(|_| "project directory unavailable")?;
     if !root.is_dir() {
         return Err("project must be a directory".into());
@@ -916,7 +930,11 @@ fn settings_state(
             }
         },
     };
-    let (candidate, conflicts) = plan_settings(&owned, &current, desired)?;
+    let mut baseline = owned.clone();
+    if hooks_on_disk && !current.contains_key("hooks") {
+        baseline.remove("hooks");
+    }
+    let (candidate, conflicts) = plan_settings(&baseline, &current, desired)?;
     let after = candidate.as_ref().filter(|c| **c != current).map(|c| {
         let mut b = serde_json::to_vec_pretty(c).expect("JSON object");
         b.push(b'\n');
@@ -1051,7 +1069,21 @@ pub fn settings_plan_in(
     desired: &Map<String, Value>,
     scope: SettingsScope,
 ) -> Result<Value> {
-    let s = settings_state(project, desired, scope)?;
+    plan_of(project, settings_state(project, desired, scope)?, scope)
+}
+
+/// [`settings_plan`] for `hooks-plan`: `desired` carries the generated hook set, and a file
+/// without a `hooks` key gets it whatever the record says (C-55).
+pub fn hooks_settings_plan(project: &Path, desired: &Map<String, Value>) -> Result<Value> {
+    let scope = SettingsScope::Project;
+    plan_of(
+        project,
+        settings_state_with(project, desired, scope, true)?,
+        scope,
+    )
+}
+
+fn plan_of(project: &Path, s: SettingsState, scope: SettingsScope) -> Result<Value> {
     let root = fs::canonicalize(project).map_err(|_| "project directory unavailable")?;
     let ignored = settings_ignored(&root, scope.file());
     let sessions = match scope {
@@ -1185,11 +1217,49 @@ pub fn settings_apply_in(
     scope: SettingsScope,
     confirm_replace: Option<&str>,
 ) -> Result<Value> {
+    apply_of(
+        project,
+        desired,
+        plan_digest,
+        permission,
+        scope,
+        confirm_replace,
+        false,
+    )
+}
+
+/// [`settings_apply`] of a [`hooks_settings_plan`] plan, for `hooks-apply` (C-55).
+pub fn hooks_settings_apply(
+    project: &Path,
+    desired: &Map<String, Value>,
+    plan_digest: &str,
+    permission: &str,
+) -> Result<Value> {
+    apply_of(
+        project,
+        desired,
+        plan_digest,
+        permission,
+        SettingsScope::Project,
+        None,
+        true,
+    )
+}
+
+fn apply_of(
+    project: &Path,
+    desired: &Map<String, Value>,
+    plan_digest: &str,
+    permission: &str,
+    scope: SettingsScope,
+    confirm_replace: Option<&str>,
+    hooks_on_disk: bool,
+) -> Result<Value> {
     // Authorization stays with the host; the reference is caller metadata, not a verifier.
     if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
-    let mut s = settings_state(project, desired, scope)?;
+    let mut s = settings_state_with(project, desired, scope, hooks_on_disk)?;
     let file = scope.file();
     let replacing = match confirm_replace {
         None => None,

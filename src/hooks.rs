@@ -655,7 +655,7 @@ pub fn plan_with(project: &Path, host: &str, home: Option<&Path>, lane: LaneLoop
     let mut old_lane: Option<Lane> = None;
     let mut after_sha256 = None;
     let mut out = if host == "claude" {
-        let mut v = crate::claude::settings_plan(&root, &claude_desired(&root)?)?;
+        let mut v = crate::claude::hooks_settings_plan(&root, &claude_desired(&root)?)?;
         v["path"] = v["settings_path"].take();
         v.as_object_mut().map(|m| m.remove("settings_path"));
         before = crate::claude::read_existing(&root.join(host_config_path(host)))?;
@@ -739,8 +739,12 @@ pub fn apply_with(
     let root = project_root(project, home)?;
     let mut applied_lane = None;
     let mut out = if host == "claude" {
-        let mut v =
-            crate::claude::settings_apply(&root, &claude_desired(&root)?, plan_digest, permission)?;
+        let mut v = crate::claude::hooks_settings_apply(
+            &root,
+            &claude_desired(&root)?,
+            plan_digest,
+            permission,
+        )?;
         v["receipt_path"] = json!(crate::state_root::rel(
             &root,
             "manifests/claude-settings.json"
@@ -968,6 +972,7 @@ pub fn status_with(
     let root = project_root(project, home)?;
     // Compared directly, not through the plan: the Claude settings plan preserves a user's
     // edit to an owned key and then reports `unchanged`, which is not "configured as generated".
+    // A file with no `hooks` key at all is planned again there (C-55), never `unchanged`.
     // Codex: the set its receipt records, so an installed lane Stop hook is `yes` (#2904). An
     // unreadable or malformed receipt compares with the base set.
     let lane = if host == "codex" {
