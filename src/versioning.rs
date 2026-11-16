@@ -13,23 +13,28 @@
 //!
 //! - `<project>/.git` is a real folder: the names are the regular files under `refs/tags`
 //!   (names only, never their content; a link is no tag and is not followed; at most
-//!   [`MAX_TAG_ENTRIES`] directory entries, names of at most [`MAX_TAG_PARTS`] parts) and the
-//!   `<id> refs/tags/<name>` lines of `packed-refs` (a regular file of at most
-//!   [`MAX_PACKED`] bytes; peeled `^` lines are skipped).
+//!   [`MAX_TAG_ENTRIES`] directory entries; folders are entered for names of at most
+//!   [`MAX_TAG_PARTS`] parts, and deeper names are skipped) and the `<id> refs/tags/<name>`
+//!   lines of `packed-refs` (a regular file of at most [`MAX_PACKED`] bytes; peeled `^`
+//!   lines are skipped).
 //! - `<project>/.git` is a file: it is followed only for a linked worktree, that is a
-//!   `gitdir: <path>` line whose folder holds a regular `commondir` file and a `gitdir` file
-//!   that names `<project>/.git` back. The tags are then read from the common folder
-//!   `commondir` names, by the same rules. The folders the two pointers name are checked
-//!   themselves (a real folder, not a link); the path leading to them is not.
+//!   `gitdir: <path>` line (relative to the project) naming an admin folder that holds a
+//!   `commondir` file and a `gitdir` file (both relative to the admin folder) where `gitdir`
+//!   names `<project>/.git` back and the admin folder is `<common>/worktrees/<name>` of the
+//!   common folder `commondir` names. The tags are then read from that common folder, by the
+//!   same rules. It is outside the project: the admin and common folders are checked
+//!   themselves (a real folder, not a link), and links in the path leading to them are
+//!   followed.
 //! - Anything else — `.git` as a link, a submodule's pointer, a pointer to a repository that
-//!   does not name this folder back, `refs`, `refs/tags` or `packed-refs` as a link or a
-//!   special file, a file or a folder over its limit — is `tags: unavailable` with a
-//!   `tags_reason`, and no tag is read. No `.git` entry is `tags: no_repository`: a parent
-//!   folder's repository is not the project's.
+//!   does not name this folder back, an admin folder outside the common folder's
+//!   `worktrees`, `refs`, `refs/tags` or `packed-refs` as a link or a special file, a file
+//!   or a folder over its limit — is `tags: unavailable` with a `tags_reason`, and no tag is
+//!   read. No `.git` entry is `tags: no_repository`: a parent folder's repository is not the
+//!   project's.
 //!
-//! "Highest" is version order, not date: the numeric segments compared left to right, a
-//! release above its own pre-release. Only a name that is short, plain text ([`showable`]) is
-//! ever considered or shown.
+//! "Highest" is version order, not date: the numeric segments compared left to right, then
+//! the pre-release in SemVer 2.0.0 order (a release above its pre-releases). Only a name that
+//! is short, plain text ([`showable`]) is ever considered or shown.
 //!
 //! The rules the skill follows are in `skills/moai/references/internal/versioning.md`.
 
@@ -93,30 +98,66 @@ const NOTE_TWO_PART_OR_CALVER: &str =
 const NOTE_HEADVER_OR_CALVER: &str =
     "a HeadVer year-week segment behind a four-digit year; not counted";
 const NOTE_HEADVER_ALSO_SEMVER: &str =
-    "also valid SemVer; beside SemVer tags it is counted as SemVer";
+    "also valid SemVer; beside a SemVer version of the same major it is counted as SemVer";
 
 /// A two-digit year is taken as one from 10 (2010): below that a first segment is far more
 /// often a plain number.
 const FIRST_SHORT_YEAR: u64 = 10;
 const FIRST_FULL_YEAR: u64 = 2000;
 
-/// The numeric segments of a version and whether a pre-release follows them. A leading `v`
-/// and a prefix that ends in `/` or `@` (`release/v1.2.3`, `pkg@1.2.3`) are dropped; what
-/// follows the first `-` or `+` is not read beyond telling a pre-release (`-`) apart.
+/// The numeric segments of a version and its pre-release, the text between a `-` that ends
+/// the segments and the next `+`. A leading `v` and a prefix that ends in `/` or `@`
+/// (`release/v1.2.3`, `pkg@1.2.3`) are dropped; build metadata after `+` is not read.
 /// `None` unless there are two to four all-digit segments of at most nine digits.
-fn parts(text: &str) -> Option<(Vec<&str>, bool)> {
+fn parts(text: &str) -> Option<(Vec<&str>, Option<&str>)> {
     let name = text.rsplit(['/', '@']).next().unwrap_or(text);
     let name = name.strip_prefix(['v', 'V']).unwrap_or(name);
     let end = name.find(['-', '+']).unwrap_or(name.len());
     let (core, tail) = name.split_at(end);
     let segments: Vec<&str> = core.split('.').collect();
     let numeric = |s: &&str| !s.is_empty() && s.len() <= 9 && s.bytes().all(|b| b.is_ascii_digit());
+    let prerelease = tail
+        .strip_prefix('-')
+        .map(|p| p.split('+').next().unwrap_or(p));
     ((2..=4).contains(&segments.len()) && segments.iter().all(numeric))
-        .then(|| (segments, tail.starts_with('-')))
+        .then_some((segments, prerelease))
 }
 
 fn number(segment: &str) -> u64 {
     segment.parse().unwrap_or(u64::MAX)
+}
+
+/// The first number of a version; `u64::MAX` for text that is none.
+fn first_number(text: &str) -> u64 {
+    parts(text).map_or(u64::MAX, |(segments, _)| number(segments[0]))
+}
+
+/// Two pre-releases in SemVer 2.0.0 order (section 11.4): a release (`None`) above any
+/// pre-release; else the dot-separated identifiers left to right, numeric ones compared as
+/// numbers and below alphanumeric ones, alphanumeric ones in ASCII order, and with an equal
+/// prefix the shorter set lower.
+fn prerelease_order(a: Option<&str>, b: Option<&str>) -> Ordering {
+    let (a, b) = match (a, b) {
+        (None, None) => return Ordering::Equal,
+        (None, Some(_)) => return Ordering::Greater,
+        (Some(_), None) => return Ordering::Less,
+        (Some(a), Some(b)) => (a, b),
+    };
+    let numeric = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
+    let identifier = |x: &str, y: &str| match (numeric(x), numeric(y)) {
+        (true, true) => {
+            let (x, y) = (x.trim_start_matches('0'), y.trim_start_matches('0'));
+            x.len().cmp(&y.len()).then_with(|| x.cmp(y))
+        }
+        (true, false) => Ordering::Less,
+        (false, true) => Ordering::Greater,
+        (false, false) => x.cmp(y),
+    };
+    a.split('.')
+        .zip(b.split('.'))
+        .map(|(x, y)| identifier(x, y))
+        .find(|o| o.is_ne())
+        .unwrap_or_else(|| a.split('.').count().cmp(&b.split('.').count()))
 }
 
 /// The shape of one version string and the note its evidence row carries.
@@ -160,30 +201,64 @@ pub fn classify(text: &str) -> Shape {
     shape_of(text).0
 }
 
-/// The scheme a set of shapes shows: the one scheme, `mixed` for two, `None` when no shape is
-/// one of the three. Every HeadVer version is valid SemVer too, so HeadVer shapes beside
-/// SemVer ones are SemVer (a minor that walks through `1001`), not a second scheme.
-fn scheme_of(shapes: impl Iterator<Item = Shape>) -> Option<&'static str> {
-    let mut found: Vec<Shape> = Vec::new();
-    for shape in shapes {
-        let definite = matches!(shape, Shape::Semver | Shape::Calver | Shape::Headver);
-        if definite && !found.contains(&shape) {
-            found.push(shape);
+/// The scheme each version is counted as: its shape, except that a HeadVer shape beside a
+/// SemVer version of the same major is SemVer (every HeadVer version is valid SemVer, and a
+/// minor that walks through `1001` is no second scheme). `None` for a shape that is not
+/// counted.
+fn counted(versions: &[&str]) -> Vec<Option<&'static str>> {
+    let majors: Vec<u64> = versions
+        .iter()
+        .filter(|v| classify(v) == Shape::Semver)
+        .map(|v| first_number(v))
+        .collect();
+    versions
+        .iter()
+        .map(|v| match classify(v) {
+            Shape::Headver if majors.contains(&first_number(v)) => Some(Shape::Semver.name()),
+            shape @ (Shape::Semver | Shape::Calver | Shape::Headver) => Some(shape.name()),
+            Shape::Ambiguous | Shape::Unrecognised => None,
+        })
+        .collect()
+}
+
+/// The scheme a set of versions shows: the one scheme, `mixed` for two, `None` when none is
+/// counted. SemVer and HeadVer together are a move to HeadVer, `headver`, when every head is
+/// above every SemVer major (so every HeadVer version sorts above every SemVer one), and
+/// `mixed` otherwise.
+fn scheme_of(versions: &[&str]) -> Option<&'static str> {
+    let counted = counted(versions);
+    let firsts = |scheme: &'static str| {
+        versions
+            .iter()
+            .zip(&counted)
+            .filter(move |(_, c)| **c == Some(scheme))
+            .map(|(v, _)| first_number(v))
+    };
+    let moved = matches!(
+        (firsts("headver").min(), firsts("semver").max()),
+        (Some(head), Some(major)) if head > major
+    );
+    let mut found: Vec<&'static str> = Vec::new();
+    for scheme in counted.into_iter().flatten() {
+        let scheme = if moved && scheme == "semver" {
+            "headver"
+        } else {
+            scheme
+        };
+        if !found.contains(&scheme) {
+            found.push(scheme);
         }
-    }
-    if found.contains(&Shape::Semver) {
-        found.retain(|s| *s != Shape::Headver);
     }
     match found.as_slice() {
         [] => None,
-        [one] => Some(one.name()),
+        [one] => Some(one),
         _ => Some("mixed"),
     }
 }
 
 /// Where a tag stands among the evidence: versions of a definite shape first, then ambiguous
 /// ones, then names that are no version; inside the first two the higher version first.
-fn rank(name: &str) -> (u8, Vec<u64>, bool) {
+fn rank(name: &str) -> (u8, Vec<u64>, Option<&str>) {
     let tier = match classify(name) {
         Shape::Semver | Shape::Calver | Shape::Headver => 0,
         Shape::Ambiguous => 1,
@@ -193,28 +268,30 @@ fn rank(name: &str) -> (u8, Vec<u64>, bool) {
         Some((segments, prerelease)) if tier < 2 => (
             tier,
             segments.iter().map(|s| number(s)).collect(),
-            !prerelease,
+            prerelease,
         ),
-        _ => (tier, Vec::new(), false),
+        _ => (tier, Vec::new(), None),
     }
 }
 
-/// Highest first: by tier, then numeric segments, a release above its pre-release, and the
-/// name itself last so the order never depends on how the names arrived.
+/// Highest first: by tier, then numeric segments, then the pre-release in SemVer order (a
+/// release above its pre-releases), and the name itself last so the order never depends on
+/// how the names arrived.
 fn by_rank(a: &&String, b: &&String) -> Ordering {
     let (ta, sa, ra) = rank(a);
     let (tb, sb, rb) = rank(b);
     ta.cmp(&tb)
         .then_with(|| sb.cmp(&sa))
-        .then_with(|| rb.cmp(&ra))
+        .then_with(|| prerelease_order(rb, ra))
         .then_with(|| if ta < 2 { b.cmp(a) } else { a.cmp(b) })
 }
 
 /// The versioning fact from tag names (in any order) and manifest versions
 /// (`(file, version)`). The tags decide when one of them has a definite shape; the manifests
-/// decide only without that. `evidence` holds the [`MAX_TAGS`] highest tags, then the
-/// manifests. `latest` is the highest tag that is a version, else the first manifest version
-/// that is one.
+/// decide only without that. `evidence` holds the [`MAX_TAGS`] highest tags, with `mixed`
+/// tags also the highest tag of each counted scheme not among them, then the manifests.
+/// `latest` is the highest tag that is a version, else the first manifest version that is
+/// one.
 pub fn summarize(tags: &[String], manifests: &[(&str, String)]) -> Value {
     let row = |source: &str, value: &str| {
         let (shape, note) = shape_of(value);
@@ -227,14 +304,28 @@ pub fn summarize(tags: &[String], manifests: &[(&str, String)]) -> Value {
     let mut ranked: Vec<&String> = tags.iter().collect();
     ranked.sort_by(by_rank);
     ranked.dedup();
-    let evidence: Vec<Value> = ranked
+    let names: Vec<&str> = ranked.iter().map(|t| t.as_str()).collect();
+    let tag_scheme = scheme_of(&names);
+    let mut shown: Vec<&str> = names.iter().take(MAX_TAGS).copied().collect();
+    if tag_scheme == Some("mixed") {
+        // The highest tag of a scheme is its first in version order.
+        let counted = counted(&names);
+        let mut seen: Vec<&str> = counted.iter().take(MAX_TAGS).flatten().copied().collect();
+        for (name, scheme) in names.iter().zip(&counted).skip(MAX_TAGS) {
+            if let Some(scheme) = scheme.filter(|s| !seen.contains(s)) {
+                seen.push(scheme);
+                shown.push(name);
+            }
+        }
+    }
+    let evidence: Vec<Value> = shown
         .iter()
-        .take(MAX_TAGS)
         .map(|t| row("tag", t))
         .chain(manifests.iter().map(|(file, v)| row(file, v)))
         .collect();
-    let scheme = scheme_of(tags.iter().map(|t| classify(t)))
-        .or_else(|| scheme_of(manifests.iter().map(|(_, v)| classify(v))))
+    let manifest_values: Vec<&str> = manifests.iter().map(|(_, v)| v.as_str()).collect();
+    let scheme = tag_scheme
+        .or_else(|| scheme_of(&manifest_values))
         .unwrap_or("none");
     let latest = ranked
         .first()
@@ -255,11 +346,35 @@ fn showable(value: &str) -> bool {
         })
 }
 
+/// The file at `path`, opened for reading without following a link and without waiting (a
+/// pipe put there after the caller's check cannot hold the open), and only when what was
+/// opened is a regular file ([`check_opened`]).
+fn open_regular(path: &Path) -> Result<fs::File> {
+    let mut options = fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
+    }
+    let file = options.open(path).map_err(|_| "could not be read")?;
+    check_opened(&file)?;
+    Ok(file)
+}
+
+/// `Err` unless the opened handle is a regular file: the path may have been swapped for a
+/// pipe or a device between the caller's check and the open.
+fn check_opened(file: &fs::File) -> Result<()> {
+    if file.metadata().is_ok_and(|m| m.is_file()) {
+        Ok(())
+    } else {
+        Err("is not a regular file".into())
+    }
+}
+
 /// The bytes of the regular file at `path`, at most `max`: `Ok(None)` when nothing is there,
 /// `Err` with the reason for a link, a folder, a pipe or device, a larger file or a failed
-/// read. The file is opened without following a link and without waiting (a pipe put there
-/// between the check and the open cannot hold the read), and what was opened is checked
-/// again.
+/// read. The path is checked, then opened by [`open_regular`], which checks the handle again.
 fn read_regular(path: &Path, max: u64) -> Result<Option<Vec<u8>>> {
     let meta = match fs::symlink_metadata(path) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
@@ -272,17 +387,7 @@ fn read_regular(path: &Path, max: u64) -> Result<Option<Vec<u8>>> {
     if meta.len() > max {
         return Err(format!("is larger than {max} bytes"));
     }
-    let mut options = fs::OpenOptions::new();
-    options.read(true);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        options.custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
-    }
-    let file = options.open(path).map_err(|_| "could not be read")?;
-    if !file.metadata().is_ok_and(|m| m.is_file()) {
-        return Err("is not a regular file".into());
-    }
+    let file = open_regular(path)?;
     let mut bytes = Vec::new();
     file.take(max + 1)
         .read_to_end(&mut bytes)
@@ -327,6 +432,7 @@ fn refs_home(root: &Path) -> Result<Option<PathBuf>> {
         .and_then(|line| line.strip_prefix("gitdir:").map(|p| p.trim().to_string()))
         .filter(|p| !p.is_empty())
         .ok_or(not_a_worktree)?;
+    // A relative pointer is relative to the folder that holds the file, as git reads it.
     let admin = root.join(target);
     if !real_dir(&admin) {
         return Err("the folder the .git file points at is missing or a link".into());
@@ -335,15 +441,18 @@ fn refs_home(root: &Path) -> Result<Option<PathBuf>> {
         .filter(|p| !p.is_empty())
         .ok_or(not_a_worktree)?;
     // The repository must name this folder as its worktree, or the pointer could borrow
-    // the tags of any repository.
-    let back = pointer(&admin.join("gitdir")).unwrap_or_default();
-    let back = Path::new(&back);
+    // the tags of any repository. A relative back-pointer is relative to the admin folder.
+    let back = pointer(&admin.join("gitdir"))
+        .filter(|p| !p.is_empty())
+        .map(|p| admin.join(p));
     let same_folder = |a: &Path, b: &Path| match (a.canonicalize(), b.canonicalize()) {
         (Ok(a), Ok(b)) => a == b,
         _ => false,
     };
-    let names_back = back.file_name().is_some_and(|n| n == ".git")
-        && back.parent().is_some_and(|p| same_folder(p, root));
+    let names_back = back.as_deref().is_some_and(|back| {
+        back.file_name().is_some_and(|n| n == ".git")
+            && back.parent().is_some_and(|p| same_folder(p, root))
+    });
     if !names_back {
         return Err(
             "the repository the .git file points at does not name this folder as its worktree"
@@ -353,6 +462,19 @@ fn refs_home(root: &Path) -> Result<Option<PathBuf>> {
     let common = admin.join(common);
     if !real_dir(&common) {
         return Err("the common folder of the linked worktree is missing or a link".into());
+    }
+    // The admin folder must be one of the common folder's own `worktrees/<name>` folders: an
+    // admin folder made anywhere else could name this folder back and any repository as its
+    // common folder.
+    let owned = match (admin.canonicalize(), common.canonicalize()) {
+        (Ok(admin), Ok(common)) => admin.parent() == Some(common.join("worktrees").as_path()),
+        _ => false,
+    };
+    if !owned {
+        return Err(
+            "the folder the .git file points at is not a worktree folder of the repository it names"
+                .into(),
+        );
     }
     Ok(Some(common))
 }
@@ -493,13 +615,33 @@ pub fn fact(root: &Path) -> Value {
 
 /// The schemes the profile accepts. `custom` is the user's own words, kept in `format`.
 pub const SCHEMES: [&str; 4] = ["semver", "headver", "calver", "custom"];
-/// The tokens of a CalVer format (calver.org, spec 26.0); `MM`, `WW` and `DD` are the
-/// spelling the page used before that spec.
-const CALVER_TOKENS: [&str; 16] = [
-    "YYYY", "YY", "0Y", "M", "0M", "W", "0W", "D", "0D", "MM", "WW", "DD", "MAJOR", "MINOR",
-    "MICRO", "MODIFIER",
-];
-const YEAR_TOKENS: [&str; 3] = ["YYYY", "YY", "0Y"];
+/// The unit of a CalVer token (calver.org, spec 26.0) and its place in a format: year, month
+/// or week, day, `MINOR`, `MICRO`, `MODIFIER`. `MM`, `WW` and `DD` are the spelling the page
+/// used before that spec. `MAJOR` has no place: calver.org makes it the first number, and the
+/// profile's first token is the year.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum CalverUnit {
+    Year,
+    Month,
+    Week,
+    Day,
+    Minor,
+    Micro,
+    Modifier,
+}
+
+fn calver_unit(token: &str) -> Option<CalverUnit> {
+    Some(match token {
+        "YYYY" | "YY" | "0Y" => CalverUnit::Year,
+        "M" | "0M" | "MM" => CalverUnit::Month,
+        "W" | "0W" | "WW" => CalverUnit::Week,
+        "D" | "0D" | "DD" => CalverUnit::Day,
+        "MINOR" => CalverUnit::Minor,
+        "MICRO" => CalverUnit::Micro,
+        "MODIFIER" => CalverUnit::Modifier,
+        _ => return None,
+    })
+}
 
 /// The `versioning` key of the project profile: the scheme the project's releases follow, as
 /// picked in the `/moai project` interview. It is read from a JSON object only: an array, a
@@ -545,32 +687,59 @@ impl TryFrom<Map<String, Value>> for VersioningSettings {
     }
 }
 
-/// Two to four known tokens joined by dots, none twice, the first one the only year token.
+/// Two to four known tokens joined by dots, at most one per unit, in the order of
+/// [`CalverUnit`] and the year first; a day only behind a month (so never with a week), and
+/// `MODIFIER` not right behind the year.
 fn calver_format(format: &str) -> bool {
-    let tokens: Vec<&str> = format.split('.').collect();
-    (2..=4).contains(&tokens.len())
-        && tokens.iter().all(|t| CALVER_TOKENS.contains(t))
-        && tokens
-            .iter()
-            .enumerate()
-            .all(|(i, t)| !tokens[..i].contains(t))
-        && YEAR_TOKENS.contains(&tokens[0])
-        && tokens[1..].iter().all(|t| !YEAR_TOKENS.contains(t))
+    let Some(units) = format
+        .split('.')
+        .map(calver_unit)
+        .collect::<Option<Vec<CalverUnit>>>()
+    else {
+        return false;
+    };
+    let has = |unit| units.contains(&unit);
+    (2..=4).contains(&units.len())
+        && units[0] == CalverUnit::Year
+        && !(has(CalverUnit::Month) && has(CalverUnit::Week))
+        && (!has(CalverUnit::Day) || has(CalverUnit::Month))
+        && units.windows(2).all(|w| w[0] < w[1])
+        && !units
+            .windows(2)
+            .any(|w| w == [CalverUnit::Year, CalverUnit::Modifier])
+}
+
+/// A character that shows nothing or turns the text's direction where the managed section
+/// shows it: the soft hyphen, the Arabic letter mark, the Mongolian vowel separator, the
+/// zero-width and direction marks, the line and paragraph separators, the embeddings and
+/// overrides, the word joiner and invisible operators and isolates, the byte order mark,
+/// variation selectors and tag characters.
+fn hidden(c: char) -> bool {
+    matches!(
+        u32::from(c),
+        0x00AD
+            | 0x061C
+            | 0x180E
+            | 0x200B..=0x200F
+            | 0x2028..=0x202E
+            | 0x2060..=0x206F
+            | 0xFE00..=0xFE0F
+            | 0xFEFF
+            | 0xE0000..=0xE007F
+            | 0xE0100..=0xE01EF
+    )
 }
 
 /// One line of the user's own words, at most [`MAX_CUSTOM_CHARS`] characters, that cannot be
 /// read as markup or hide text where the managed section shows it: no control character, no
-/// `<`, `>` or backtick, no `#` at the start, no invisible or direction-changing character.
+/// `<`, `>`, backtick, `[`, `]`, `*` or `_`, no `#` at the start, no [`hidden`] character.
 fn custom_text(text: &str) -> bool {
-    let hidden = |c: char| {
-        matches!(c, '\u{2028}' | '\u{2029}' | '\u{202E}') || ('\u{200B}'..='\u{200F}').contains(&c)
-    };
     !text.trim().is_empty()
         && text.chars().count() <= MAX_CUSTOM_CHARS
         && !text.trim_start().starts_with('#')
-        && !text
-            .chars()
-            .any(|c| c.is_control() || matches!(c, '<' | '>' | '`') || hidden(c))
+        && !text.chars().any(|c| {
+            c.is_control() || matches!(c, '<' | '>' | '`' | '[' | ']' | '*' | '_') || hidden(c)
+        })
 }
 
 /// Accepts a `versioning` value: a known scheme, a `format` only on CalVer (a token format) or
@@ -814,6 +983,137 @@ mod tests {
             .contains("also valid SemVer"));
     }
 
+    /// Re-audit B1: a HeadVer tag counts as SemVer only beside a SemVer tag of the same major.
+    /// HeadVer heads above every SemVer major are a move to HeadVer; anything else is mixed.
+    #[test]
+    fn a_move_from_semver_to_headver_reads_headver() {
+        let read = |list: &[&str]| {
+            let v = summarize(&tags(list), &[]);
+            (
+                v["scheme"].as_str().unwrap().to_string(),
+                v["latest"].clone(),
+            )
+        };
+        // This repository's own plan: SemVer v3.x, then HeadVer with head 4. The kept head is
+        // the first number of `latest`, 4, not the old major plus one.
+        assert_eq!(
+            read(&["v3.0.0", "v3.2.0", "4.2647.1"]),
+            ("headver".into(), json!("4.2647.1"))
+        );
+        assert_eq!(
+            read(&["v3.0.0", "v3.2.0", "4.2647.1", "4.2647.3"]),
+            ("headver".into(), json!("4.2647.3"))
+        );
+        // A minor that walks through 1001 stays SemVer.
+        assert_eq!(
+            read(&["v1.999.0", "v1.1000.0", "v1.1001.0"]),
+            ("semver".into(), json!("v1.1001.0"))
+        );
+        // The head at its edges beside major 3: one below is mixed, equal is SemVer, one
+        // above is a move.
+        assert_eq!(read(&["v3.2.0", "2.2647.1"]).0, "mixed");
+        assert_eq!(read(&["v3.2.0", "3.2647.1"]).0, "semver");
+        assert_eq!(read(&["v3.2.0", "4.2647.1"]).0, "headver");
+        // A head between two SemVer majors, or heads on both sides, is no move.
+        assert_eq!(read(&["v3.0.0", "v5.0.0", "4.2647.1"]).0, "mixed");
+        assert_eq!(read(&["v3.0.0", "2.2647.1", "4.2647.1"]).0, "mixed");
+        // A same-major HeadVer shape counts as SemVer, so the higher head is still a move.
+        assert_eq!(read(&["v3.0.0", "3.2647.1", "4.2647.1"]).0, "headver");
+        // CalVer beside a move is a second scheme.
+        assert_eq!(read(&["v3.0.0", "4.2647.1", "2026.11.0"]).0, "mixed");
+        // The manifests follow the same rule.
+        let manifests = [
+            ("Cargo.toml", "3.2.0".to_string()),
+            ("package.json", "4.2647.1".to_string()),
+        ];
+        assert_eq!(summarize(&[], &manifests)["scheme"], "headver");
+    }
+
+    /// Re-audit N6: pre-releases compare per SemVer 2.0.0 section 11.4: dot-separated
+    /// identifiers, numeric ones as numbers and below alphanumeric ones, a shorter set lower
+    /// when the rest is equal.
+    #[test]
+    fn pre_releases_compare_by_their_identifiers() {
+        let v = summarize(&tags(&["v2.0.0-rc.2", "v2.0.0-rc.10", "v1.0.0"]), &[]);
+        assert_eq!(v["latest"], "v2.0.0-rc.10");
+        assert_eq!(values(&v), ["v2.0.0-rc.10", "v2.0.0-rc.2", "v1.0.0"]);
+        // The example of section 11.4, highest first, from a scrambled order.
+        let highest_first = [
+            "1.0.0",
+            "1.0.0-rc.1",
+            "1.0.0-beta.11",
+            "1.0.0-beta.2",
+            "1.0.0-beta",
+            "1.0.0-alpha.beta",
+            "1.0.0-alpha.1",
+            "1.0.0-alpha",
+        ];
+        let names = tags(&[
+            "1.0.0-beta.2",
+            "1.0.0-alpha",
+            "1.0.0",
+            "1.0.0-alpha.beta",
+            "1.0.0-beta.11",
+            "1.0.0-rc.1",
+            "1.0.0-alpha.1",
+            "1.0.0-beta",
+        ]);
+        let mut sorted: Vec<&String> = names.iter().collect();
+        sorted.sort_by(by_rank);
+        assert_eq!(sorted, highest_first);
+        // A numeric identifier with more digits is the higher number.
+        let names = tags(&["1.0.0-9", "1.0.0-10", "1.0.0-x"]);
+        let mut sorted: Vec<&String> = names.iter().collect();
+        sorted.sort_by(by_rank);
+        assert_eq!(sorted, ["1.0.0-x", "1.0.0-10", "1.0.0-9"]);
+    }
+
+    /// Re-audit N7: with `mixed`, the highest tag of each counted scheme is evidence even
+    /// when it is not among the five highest.
+    #[test]
+    fn mixed_evidence_shows_the_highest_of_each_scheme() {
+        let calver = [
+            "2026.01.0",
+            "2026.02.0",
+            "2026.03.0",
+            "2026.04.0",
+            "2026.05.0",
+            "2026.06.0",
+        ];
+        let five = [
+            "2026.06.0",
+            "2026.05.0",
+            "2026.04.0",
+            "2026.03.0",
+            "2026.02.0",
+        ];
+        let with = |more: &[&str]| {
+            let mut list = calver.to_vec();
+            list.extend(more);
+            summarize(&tags(&list), &[("Cargo.toml", "3.1.0".to_string())])
+        };
+        let v = with(&["v3.0.0", "v3.1.0"]);
+        assert_eq!(v["scheme"], "mixed");
+        let mut expected = five.to_vec();
+        expected.extend(["v3.1.0", "3.1.0"]);
+        assert_eq!(values(&v), expected);
+        // Three schemes: the highest SemVer and the highest HeadVer, in version order.
+        let v = with(&["v1.0.0", "0.2647.1", "0.2647.0"]);
+        assert_eq!(v["scheme"], "mixed");
+        let mut expected = five.to_vec();
+        expected.extend(["v1.0.0", "0.2647.1", "3.1.0"]);
+        assert_eq!(values(&v), expected);
+        // A scheme already among the five adds nothing.
+        let v = summarize(&tags(&["v3.0.0", "2026.01.0"]), &[]);
+        assert_eq!(values(&v), ["2026.01.0", "v3.0.0"]);
+        // One scheme: the five highest only.
+        let v = with(&[]);
+        assert_eq!(v["scheme"], "calver");
+        let mut expected = five.to_vec();
+        expected.push("3.1.0");
+        assert_eq!(values(&v), expected);
+    }
+
     /// An ambiguous shape says so in its evidence row and is not counted.
     #[test]
     fn an_ambiguous_version_is_reported_and_not_counted() {
@@ -951,6 +1251,152 @@ mod tests {
         // Audit N7: the head stops at 9999.
         assert!(validate(&settings("headver", None, Some(9999))).is_ok());
         assert!(validate(&settings("headver", None, Some(10000))).is_err());
+    }
+
+    /// Re-audit N3: custom text refuses markup characters and every character of the hidden
+    /// ranges, at both ends of each range; the visible neighbours of a range are taken.
+    #[test]
+    fn custom_text_refuses_markup_and_every_hidden_range() {
+        let custom = |text: String| validate(&settings("custom", Some(&text), None));
+        for c in ['[', ']', '*', '_', '<', '>', '`'] {
+            assert!(custom(format!("a {c} b")).is_err(), "{c:?}");
+        }
+        let ranges: [(u32, u32); 10] = [
+            (0x00AD, 0x00AD),
+            (0x061C, 0x061C),
+            (0x180E, 0x180E),
+            (0x200B, 0x200F),
+            (0x202A, 0x202E),
+            (0x2060, 0x206F),
+            (0xFEFF, 0xFEFF),
+            (0xFE00, 0xFE0F),
+            (0xE0000, 0xE007F),
+            (0xE0100, 0xE01EF),
+        ];
+        for (first, last) in ranges {
+            for code in [first, last] {
+                let c = char::from_u32(code).unwrap();
+                assert!(custom(format!("a{c}b")).is_err(), "U+{code:04X}");
+            }
+        }
+        // The neighbours outside each range, where the neighbour is not itself refused for
+        // another reason (U+180D and U+180F are variation selectors outside the list, U+2029
+        // is a paragraph separator, U+FEFE is unassigned).
+        for code in [
+            0x00AC, 0x00AE, 0x061B, 0x061D, 0x200A, 0x2010, 0x202F, 0x205F, 0x2070, 0xFDFF, 0xFE10,
+            0xE0080, 0xE00FF, 0xE01F0,
+        ] {
+            let c = char::from_u32(code).unwrap();
+            assert!(custom(format!("a{c}b")).is_ok(), "U+{code:04X}");
+        }
+        // Plain text with other punctuation is taken.
+        assert!(custom("release/train 4 (build #2), weekly; 50% + x".into()).is_ok());
+    }
+
+    /// Re-audit N4: a CalVer format has at most one token per unit, in the order year, month
+    /// or week, day, MINOR, MICRO, MODIFIER; a week excludes a month and a day, a day follows
+    /// a month, MODIFIER comes last and not right behind the year, and MAJOR is refused
+    /// (calver.org: MAJOR is the first number, and the profile's first token is the year).
+    #[test]
+    fn calver_formats_follow_the_unit_order() {
+        let calver = |f: &str| validate(&settings("calver", Some(f), None)).is_ok();
+        for ok in [
+            "YYYY.0M.MICRO",
+            "YY.0M.MICRO",
+            "YYYY.0M.0D",
+            "YY.0M",
+            "YYYY.0M.0D.MICRO",
+            "YYYY.MINOR.MICRO",
+            "YY.MINOR.MICRO",
+            "YYYY.MM.DD",
+            "YYYY.0W",
+            "YYYY.0W.MICRO",
+            "YYYY.0M.MODIFIER",
+            "YYYY.0M.MICRO.MODIFIER",
+            "0Y.M.D",
+            "YYYY.MICRO",
+        ] {
+            assert!(calver(ok), "{ok}");
+        }
+        for bad in [
+            // Two tokens of one unit.
+            "YYYY.0M.MM",
+            "YYYY.M.0M",
+            "YYYY.0W.WW",
+            "YYYY.0D.DD.MICRO",
+            // Out of order.
+            "YYYY.0D.0M",
+            "YYYY.MICRO.0M",
+            "YYYY.MICRO.MINOR",
+            "YYYY.0M.MODIFIER.MICRO",
+            // A week with a month or a day; a day without a month.
+            "YYYY.0W.0D",
+            "YYYY.0W.0M",
+            "YYYY.0M.0W",
+            "YYYY.0D",
+            "YYYY.0D.MICRO",
+            // MODIFIER right behind the year; MAJOR anywhere.
+            "YYYY.MODIFIER",
+            "YYYY.MAJOR",
+            "YYYY.MAJOR.MINOR",
+            "YYYY.0M.MAJOR",
+        ] {
+            assert!(!calver(bad), "{bad}");
+        }
+    }
+
+    /// A named pipe nobody writes to, in a fresh temporary folder.
+    #[cfg(unix)]
+    fn named_pipe() -> (tempfile::TempDir, std::path::PathBuf) {
+        let dir = tempfile::TempDir::new().unwrap();
+        let pipe = dir.path().join("pipe");
+        let made = std::process::Command::new("mkfifo")
+            .arg(&pipe)
+            .status()
+            .unwrap();
+        assert!(made.success());
+        (dir, pipe)
+    }
+
+    /// Re-audit N5 (mutant M1): opening a named pipe does not wait for a writer, and the
+    /// opened pipe is refused. Without `O_NONBLOCK` the open blocks and this times out.
+    #[cfg(unix)]
+    #[test]
+    fn opening_a_named_pipe_returns_an_error_within_two_seconds() {
+        let (_dir, pipe) = named_pipe();
+        let (send, receive) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = send.send(open_regular(&pipe).map(|_| ()));
+        });
+        let opened = receive
+            .recv_timeout(std::time::Duration::from_secs(2))
+            .expect("opening a named pipe waited for a writer");
+        assert_eq!(opened, Err("is not a regular file".to_string()));
+    }
+
+    /// Re-audit N5 (mutant M3): a path swapped for a pipe after the caller's metadata check
+    /// is refused on the handle: the test above calls `open_regular` without that check, as
+    /// if the swap came between the two, and here `check_opened` refuses an opened pipe and
+    /// takes a regular file. (The pipe is not opened through `open_regular` here, so a
+    /// missing `O_NONBLOCK` fails the test above instead of hanging this one.)
+    #[cfg(unix)]
+    #[test]
+    fn the_opened_handle_is_checked_again() {
+        use std::os::unix::fs::OpenOptionsExt;
+        let (dir, pipe) = named_pipe();
+        let handle = fs::OpenOptions::new()
+            .read(true)
+            .custom_flags(libc::O_NONBLOCK)
+            .open(&pipe)
+            .unwrap();
+        assert_eq!(
+            check_opened(&handle),
+            Err("is not a regular file".to_string())
+        );
+        let regular = dir.path().join("regular");
+        fs::write(&regular, b"x").unwrap();
+        assert_eq!(check_opened(&fs::File::open(&regular).unwrap()), Ok(()));
+        assert!(open_regular(&regular).is_ok());
     }
 
     /// Audit N7: the value is read from a JSON object only.

@@ -254,6 +254,21 @@ fn calver_headver_mixed_and_none_are_told_apart() {
         "{v}"
     );
 
+    // Re-audit B1: a move from SemVer v3.x to HeadVer head 4 reads HeadVer, whose latest
+    // keeps head 4.
+    let moved = TempDir::new().unwrap();
+    handmade_repo(moved.path(), &["v3.0.0", "v3.2.0", "4.2647.1", "4.2647.3"]);
+    let v = versioning(&home, moved.path());
+    assert_eq!(
+        (&v["scheme"], &v["latest"]),
+        (&json!("headver"), &json!("4.2647.3")),
+        "{v}"
+    );
+    // A HeadVer tag below a SemVer major is no move.
+    let below = TempDir::new().unwrap();
+    handmade_repo(below.path(), &["v5.0.0", "3.2647.1"]);
+    assert_eq!(versioning(&home, below.path())["scheme"], "mixed");
+
     // A repository without tags, and a folder that is no repository.
     let untagged = TempDir::new().unwrap();
     handmade_repo(untagged.path(), &[]);
@@ -616,6 +631,139 @@ fn a_git_file_is_followed_only_for_a_linked_worktree() {
     }
 }
 
+/// The pointer files of a linked worktree, written by hand: `<admin>/commondir`,
+/// `<admin>/gitdir` and `<worktree>/.git`.
+fn link_worktree(worktree: &Path, admin: &Path, git_file: &str, commondir: &str, gitdir: &str) {
+    write(&admin.join("HEAD"), format!("{HEX}\n").as_bytes());
+    write(
+        &admin.join("commondir"),
+        format!("{commondir}\n").as_bytes(),
+    );
+    write(&admin.join("gitdir"), format!("{gitdir}\n").as_bytes());
+    write(
+        &worktree.join(".git"),
+        format!("gitdir: {git_file}\n").as_bytes(),
+    );
+}
+
+/// Re-audit N1: an admin folder the project made itself cannot borrow another repository's
+/// tags, even when it names the project back. The admin folder must be one of the common
+/// folder's own `worktrees/<name>` folders.
+#[test]
+fn a_fake_admin_folder_does_not_borrow_another_repositorys_tags() {
+    let home = TempHome::new();
+    let foreign = TempDir::new().unwrap();
+    handmade_repo(foreign.path(), &["v9.9.9"]);
+    let foreign_git = foreign.path().join(".git");
+    let foreign_git = foreign_git.to_str().unwrap();
+
+    // The admin folder inside the project, absolute pointers.
+    let inside = TempDir::new().unwrap();
+    let back = inside.path().join(".git");
+    link_worktree(
+        inside.path(),
+        &inside.path().join("adm"),
+        "adm",
+        foreign_git,
+        back.to_str().unwrap(),
+    );
+    assert_unavailable(&versioning(&home, inside.path()), "admin in the project");
+
+    // The admin folder elsewhere, under a folder that is also called `worktrees`.
+    let project = TempDir::new().unwrap();
+    let elsewhere = TempDir::new().unwrap();
+    let admin = elsewhere.path().join("worktrees/adm");
+    let back = project.path().join(".git");
+    link_worktree(
+        project.path(),
+        &admin,
+        admin.to_str().unwrap(),
+        foreign_git,
+        back.to_str().unwrap(),
+    );
+    assert_unavailable(
+        &versioning(&home, project.path()),
+        "admin under another worktrees folder",
+    );
+
+    // The admin folder inside the project with a relative `commondir` to the foreign
+    // repository, the way `--relative-paths` writes it.
+    let relative = TempDir::new().unwrap();
+    let up = format!(
+        "../../{}/.git",
+        foreign.path().file_name().unwrap().to_str().unwrap()
+    );
+    assert_eq!(
+        relative.path().parent(),
+        foreign.path().parent(),
+        "both temporary folders share one parent"
+    );
+    let back = relative.path().join(".git");
+    link_worktree(
+        relative.path(),
+        &relative.path().join("adm"),
+        "adm",
+        &up,
+        back.to_str().unwrap(),
+    );
+    assert!(relative.path().join("adm").join(&up).is_dir());
+    assert_unavailable(
+        &versioning(&home, relative.path()),
+        "relative commondir to a foreign repository",
+    );
+}
+
+/// Re-audit N2: a worktree made by `git worktree add --relative-paths` (git 2.48 and later)
+/// reads the main repository's tags. The pointers are written by hand the way git 2.54
+/// writes them (measured): `.git` relative to the worktree folder, the admin `gitdir`
+/// relative to the admin folder, `commondir` as `../..`.
+#[test]
+fn a_worktree_with_relative_pointers_reads_the_main_repositorys_tags() {
+    let home = TempHome::new();
+    let holder = TempDir::new().unwrap();
+    let main = holder.path().join("main");
+    handmade_repo(&main, &["v1.0.0", "v1.1.0"]);
+    let worktree = holder.path().join("wt2");
+    link_worktree(
+        &worktree,
+        &main.join(".git/worktrees/wt2"),
+        "../main/.git/worktrees/wt2",
+        "../..",
+        "../../../../wt2/.git",
+    );
+    let v = versioning(&home, &worktree);
+    assert_eq!(v["tags"], "read", "{v}");
+    assert_eq!(
+        (&v["scheme"], &v["latest"]),
+        (&json!("semver"), &json!("v1.1.0")),
+        "{v}"
+    );
+
+    // A worktree two folders deeper.
+    let deep = holder.path().join("deep/x/wt3");
+    link_worktree(
+        &deep,
+        &main.join(".git/worktrees/wt3"),
+        "../../../main/.git/worktrees/wt3",
+        "../..",
+        "../../../../deep/x/wt3/.git",
+    );
+    let v = versioning(&home, &deep);
+    assert_eq!(v["tags"], "read", "{v}");
+    assert_eq!(v["latest"], "v1.1.0", "{v}");
+
+    // The same back-pointer naming another folder is refused.
+    let other = holder.path().join("wt4");
+    link_worktree(
+        &other,
+        &main.join(".git/worktrees/wt4"),
+        "../main/.git/worktrees/wt4",
+        "../..",
+        "../../../../wt2/.git",
+    );
+    assert_unavailable(&versioning(&home, &other), "back-pointer to wt2");
+}
+
 /// Audit N6 and its surviving mutant: a tag name that is not short, plain text never
 /// reaches the output, and it does not take the place of a tag that is.
 #[test]
@@ -842,6 +990,18 @@ fn an_unknown_choice_is_refused_and_nothing_is_written() {
         (
             json!({"scheme": "custom", "format": "a\u{202e}b"}),
             "a direction override",
+        ),
+        (
+            json!({"scheme": "custom", "format": "see [notes](x)"}),
+            "a link bracket",
+        ),
+        (
+            json!({"scheme": "custom", "format": "a\u{2066}b"}),
+            "a direction isolate",
+        ),
+        (
+            json!({"scheme": "calver", "format": "YYYY.0W.0D"}),
+            "a week with a day",
         ),
     ] {
         let root = TempDir::new().unwrap();
