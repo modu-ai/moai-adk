@@ -47,7 +47,14 @@ impl TempHome {
     /// A `moai` child with a clean environment whose HOME (and USERPROFILE) is this folder.
     /// Nothing of the caller's environment is passed on.
     pub fn command(&self, args: &[&str]) -> Command {
-        let mut cmd = Command::new(super::MOAI_BIN);
+        self.command_for(super::MOAI_BIN, args)
+    }
+
+    /// Any `program` run the way [`TempHome::command`] runs `moai`: clean environment, HOME and
+    /// USERPROFILE are this folder. For a ledger test that needs another process (a helper
+    /// script, a signal) and must not give it the real HOME either (Issue #3068 P2).
+    pub fn command_for(&self, program: impl AsRef<std::ffi::OsStr>, args: &[&str]) -> Command {
+        let mut cmd = Command::new(program);
         cmd.args(args)
             .clean_env()
             .env("HOME", self.path())
