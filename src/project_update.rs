@@ -559,7 +559,7 @@ fn local_file(root: &Path, manifest: &Value) -> Result<&'static str> {
 /// for a folder that no longer exists ("workflow reference directory missing") and no command
 /// ever clears it. A reference elsewhere, or a project whose state has not moved, is as recorded.
 fn follow_state_dir(root: &Path, recorded: &str) -> String {
-    let earlier = format!("{}/", crate::PROJECT_STATE_DIR);
+    let earlier = format!("{}/", state_root::EARLIER_PROJECT_DIR);
     match recorded.strip_prefix(&earlier) {
         Some(rest) if state_root::dir(root) == state_root::MOAI_DIR => {
             format!("{}/{rest}", state_root::MOAI_DIR)
@@ -1254,15 +1254,16 @@ fn leftover(path: &str, fact: String) -> Value {
 fn leftovers(root: &Path, generation: &str) -> Vec<Value> {
     let mut out = Vec::new();
     if generation == "rust" {
-        if let Ok(m) = fs::symlink_metadata(root.join(crate::PROJECT_STATE_DIR)) {
+        if let Ok(m) = fs::symlink_metadata(root.join(state_root::EARLIER_PROJECT_DIR)) {
             if m.is_dir() {
-                let mut names: Vec<String> = fs::read_dir(root.join(crate::PROJECT_STATE_DIR))
-                    .map(|rd| {
-                        rd.flatten()
-                            .map(|e| e.file_name().to_string_lossy().into_owned())
-                            .collect()
-                    })
-                    .unwrap_or_default();
+                let mut names: Vec<String> =
+                    fs::read_dir(root.join(state_root::EARLIER_PROJECT_DIR))
+                        .map(|rd| {
+                            rd.flatten()
+                                .map(|e| e.file_name().to_string_lossy().into_owned())
+                                .collect()
+                        })
+                        .unwrap_or_default();
                 names.sort();
                 let held = match names.len() {
                     0 => "is an empty folder".to_string(),
@@ -1282,7 +1283,7 @@ fn leftovers(root: &Path, generation: &str) -> Vec<Value> {
                     }
                 };
                 out.push(leftover(
-                    ".moai-cli/",
+                    &format!("{}/", state_root::EARLIER_PROJECT_DIR),
                     format!(
                         "the earlier generation's state folder {held}; this generation's state \
                          is in .moai/"
