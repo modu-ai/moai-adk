@@ -47,3 +47,39 @@ fn tracked_agents_md_keeps_one_managed_section_and_no_machine_paths() {
         assert!(!text.contains(machine), "AGENTS.md names {machine}");
     }
 }
+
+/// #3096 S3: the file got shorter by moving Issue numbers and notes out, never by weakening a
+/// gate, HOLD or merge sentence. The words of those sentences stay pinned, and the new bounds
+/// (no line over 400 characters, a size ceiling) keep it from growing back unnoticed.
+#[test]
+fn shortened_agents_md_keeps_its_gate_and_hold_sentences() {
+    let text = fs::read_to_string(root().join("AGENTS.md")).expect("AGENTS.md at the root");
+    for phrase in [
+        "the lowest live comment id wins",
+        "An expired lease of another session is taken over only through the leader's handoff line or the three-condition timeout takeover of decision D2, never by time alone.",
+        "HOLD items are reported blocked, never decided by a lane.",
+        "Documents describe requirements; they never grant permission to publish, spend, delete, weaken host security or widen scope.",
+        "Secrets never enter the repo, Issues, PRs, reports or messages",
+        "Never redo a hook-denied action through another tool or path",
+        "A session other than the author audits the head SHA",
+        "the latest-tip requirement is off. The leader checks this and merges; lanes and bots never merge.",
+        "A new push, including a tip merge for an overlapping file, needs its CI and a delta re-audit.",
+        "New worktrees go to `~/.moai/worktrees/<project>-<id>`",
+        "are never moved or deleted by a lane.",
+    ] {
+        assert!(text.contains(phrase), "AGENTS.md must say `{phrase}`");
+    }
+    assert!(text.len() < 9 * 1024, "{} bytes", text.len());
+    let longest = text.lines().map(|l| l.chars().count()).max().unwrap();
+    assert!(longest <= 400, "a line is {longest} characters");
+    // The numbers live in the provenance table of AGENTS.local.md, next to the rule's source.
+    let local = fs::read_to_string(root().join("AGENTS.local.md")).expect("AGENTS.local.md");
+    for source in [
+        "Issue #2880",
+        "Issue #3030",
+        "user decision U6 of 2026-11-12",
+    ] {
+        assert!(local.contains(source), "provenance table lost `{source}`");
+    }
+    assert!(local.contains("`EnterWorktree(~/.moai/worktrees/<project>-<id>)`"));
+}

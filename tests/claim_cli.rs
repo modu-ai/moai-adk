@@ -639,6 +639,325 @@ fn claim_expired_requires_operator() {
     // The journal still holds exactly the original record.
     let journal = Journal::open_read(&root).unwrap();
     assert_eq!(journal.read_events().unwrap().len(), 1);
+    // #3042: the note names what to do next, with the holder's own numbers filled in.
+    let note = &third.notes[0];
+    for want in [
+        "session agent-x",
+        "comment 900",
+        "epoch 1",
+        "moai-claim-handoff: comment=900 to=",
+        "by=leader",
+        "moai claim-timeout-check --issue 7 --claim 900 --request",
+    ] {
+        assert!(note.contains(want), "{want:?} not in {note}");
+    }
+}
+
+// ---- #3042: a session renews its own expired claim (decision D1, #1975 comment 6840449133) ----
+
+fn claim_line(id: i64, session: &str, epoch: u64, lease_until: &str) -> Value {
+    json!({"id": id, "author_association": "MEMBER", "body": format!("moai-claim: session={session} epoch={epoch} lease_until={lease_until}")})
+}
+
+/// The recorded exchanges of a renewal: the pre-check sees the old, expired line; the one POST;
+/// the re-read shows the new line live beside the old one.
+fn renew_exchanges(old: (i64, u64, &str), new: (i64, u64, &str), session: &str) -> Vec<Exchange> {
+    vec![
+        exchange(
+            "GET",
+            &comments_url(),
+            resp(200, json!([claim_line(old.0, session, old.1, old.2)])),
+        ),
+        exchange(
+            "POST",
+            "https://api.github.com/repos/acme/widgets/issues/7/comments",
+            resp(201, json!({"id": new.0})),
+        ),
+        exchange(
+            "GET",
+            &comments_url(),
+            resp(
+                200,
+                json!([
+                    claim_line(old.0, session, old.1, old.2),
+                    claim_line(new.0, session, new.1, new.2)
+                ]),
+            ),
+        ),
+    ]
+}
+
+#[test]
+fn a_session_renews_its_own_expired_claim_with_the_next_epoch_and_no_handoff_line() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = journal_root(tmp.path());
+    let clock = FakeClock::at(CLOCK0);
+    let lease1 = format_utc(CLOCK0 + 3600);
+    let (first, _) = acquire_in(
+        &root,
+        "agent-x",
+        &lease1,
+        happy_exchanges(900, "agent-x", &lease1),
+        &clock,
+    );
+    assert_eq!(first.outcome, "claimed");
+
+    clock.advance(7200);
+    let lease2 = format_utc(clock.now() + 3600);
+    let (second, t2) = acquire_in(
+        &root,
+        "agent-x",
+        &lease2,
+        renew_exchanges((900, 1, &lease1), (901, 2, &lease2), "agent-x"),
+        &clock,
+    );
+    assert_eq!(second.outcome, "claimed", "{:?}", second.notes);
+    assert_eq!(t2.remaining(), 0);
+    let posts = t2
+        .sent
+        .borrow()
+        .iter()
+        .filter(|r| r.method == "POST")
+        .count();
+    assert_eq!(posts, 1, "one new claim line, no handoff line");
+    let rec = second.record.as_ref().unwrap();
+    assert_eq!(rec.epoch, 2);
+    assert_eq!(rec.comment_id, Some(901));
+    assert_eq!(rec.lease_until.as_deref(), Some(lease2.as_str()));
+    assert!(
+        second.notes.iter().any(|n| n.contains("decision D1")
+            && n.contains("comment 900")
+            && n.contains("epoch 1")),
+        "{:?}",
+        second.notes
+    );
+    let journal = Journal::open_read(&root).unwrap();
+    assert_eq!(journal.read_events().unwrap().len(), 2);
+    let shown = moai_cli::claim::show_at(&root, &task_key(&task_ref()), clock.now()).unwrap();
+    assert_eq!(shown["expired"], json!(false), "{shown}");
+    assert_eq!(shown["record"]["epoch"], json!(2));
+
+    // And again: epochs only go up.
+    clock.advance(7200);
+    let lease3 = format_utc(clock.now() + 3600);
+    let (third, _) = acquire_in(
+        &root,
+        "agent-x",
+        &lease3,
+        renew_exchanges((901, 2, &lease2), (902, 3, &lease3), "agent-x"),
+        &clock,
+    );
+    assert_eq!(third.outcome, "claimed", "{:?}", third.notes);
+    assert_eq!(third.record.as_ref().unwrap().epoch, 3);
+}
+
+#[test]
+fn the_second_the_lease_ends_is_expired_and_one_second_before_it_is_still_held() {
+    for (offset, outcome, posts) in [(3599, "already_owned", 0), (3600, "claimed", 1)] {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = journal_root(tmp.path());
+        let clock = FakeClock::at(CLOCK0);
+        let lease1 = format_utc(CLOCK0 + 3600);
+        acquire_in(
+            &root,
+            "agent-x",
+            &lease1,
+            happy_exchanges(900, "agent-x", &lease1),
+            &clock,
+        );
+        clock.advance(offset);
+        let lease2 = format_utc(clock.now() + 3600);
+        let exchanges = if posts == 0 {
+            vec![]
+        } else {
+            renew_exchanges((900, 1, &lease1), (901, 2, &lease2), "agent-x")
+        };
+        let (out, t) = acquire_in(&root, "agent-x", &lease2, exchanges, &clock);
+        assert_eq!(out.outcome, outcome, "offset {offset}: {:?}", out.notes);
+        let sent = t
+            .sent
+            .borrow()
+            .iter()
+            .filter(|r| r.method == "POST")
+            .count();
+        assert_eq!(sent, posts, "offset {offset}");
+    }
+}
+
+#[test]
+fn a_renewal_does_not_beat_another_sessions_live_claim() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = journal_root(tmp.path());
+    let clock = FakeClock::at(CLOCK0);
+    let lease1 = format_utc(CLOCK0 + 3600);
+    acquire_in(
+        &root,
+        "agent-x",
+        &lease1,
+        happy_exchanges(900, "agent-x", &lease1),
+        &clock,
+    );
+    clock.advance(7200);
+    let lease2 = format_utc(clock.now() + 3600);
+    // Another session holds a live claim (a handoff gave it the card meanwhile).
+    let exchanges = vec![exchange(
+        "GET",
+        &comments_url(),
+        resp(
+            200,
+            json!([
+                claim_line(900, "agent-x", 1, &lease1),
+                claim_line(950, "agent-a", 2, &lease2)
+            ]),
+        ),
+    )];
+    let (out, t) = acquire_in(&root, "agent-x", &lease2, exchanges, &clock);
+    assert_eq!(out.outcome, "already_owned", "{:?}", out.notes);
+    assert_eq!(out.foreign_owner.unwrap()["comment_id"], 950);
+    assert!(t.sent.borrow().iter().all(|r| r.method == "GET"));
+    let journal = Journal::open_read(&root).unwrap();
+    assert_eq!(journal.read_events().unwrap().len(), 1);
+}
+
+fn comment_line(id: i64, body: &str) -> Value {
+    json!({"id": id, "author_association": "MEMBER", "body": body})
+}
+
+/// The state the renewal tests start from: agent-x claimed at 900, the lease ran out.
+fn expired_own_claim(root: &Path, clock: &FakeClock) -> (String, String) {
+    let lease1 = format_utc(CLOCK0 + 3600);
+    acquire_in(
+        root,
+        "agent-x",
+        &lease1,
+        happy_exchanges(900, "agent-x", &lease1),
+        clock,
+    );
+    clock.advance(7200);
+    let lease2 = format_utc(clock.now() + 3600);
+    (lease1, lease2)
+}
+
+/// A handoff or release line already closed the claim: no renewal, no POST, nothing recorded,
+/// and the outcome says why (audit of #3094, B1).
+#[test]
+fn a_renewal_does_not_reopen_a_claim_a_handoff_or_release_line_closed() {
+    for (kind, line) in [
+        (
+            "handoff",
+            "moai-claim-handoff: comment=900 to=agent-a by=leader",
+        ),
+        ("release", "moai-claim-release: comment=900 by=agent-x"),
+    ] {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = journal_root(tmp.path());
+        let clock = FakeClock::at(CLOCK0);
+        let (lease1, lease2) = expired_own_claim(&root, &clock);
+        // agent-a has not posted its own claim line yet (a handoff just went out).
+        let exchanges = vec![exchange(
+            "GET",
+            &comments_url(),
+            resp(
+                200,
+                json!([
+                    claim_line(900, "agent-x", 1, &lease1),
+                    comment_line(905, line)
+                ]),
+            ),
+        )];
+        let (out, t) = acquire_in(&root, "agent-x", &lease2, exchanges, &clock);
+        assert_eq!(out.outcome, "closed", "{kind}: {:?}", out.notes);
+        assert_eq!(t.remaining(), 0, "{kind}");
+        assert!(
+            t.sent.borrow().iter().all(|r| r.method == "GET"),
+            "{kind}: no POST"
+        );
+        let note = &out.notes[0];
+        let line_kind = format!("a {kind} line has already closed it");
+        for want in [
+            "comment 900",
+            "epoch 1",
+            line_kind.as_str(),
+            "nothing was written",
+        ] {
+            assert!(note.contains(want), "{kind}: {want:?} not in {note}");
+        }
+        let journal = Journal::open_read(&root).unwrap();
+        assert_eq!(
+            journal.read_events().unwrap().len(),
+            1,
+            "{kind}: journal unchanged"
+        );
+    }
+}
+
+/// A line that closes some other claim does not stop the renewal of this one.
+#[test]
+fn a_handoff_line_for_another_claim_does_not_stop_a_renewal() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = journal_root(tmp.path());
+    let clock = FakeClock::at(CLOCK0);
+    let (lease1, lease2) = expired_own_claim(&root, &clock);
+    let other = comment_line(905, "moai-claim-handoff: comment=800 to=agent-a by=leader");
+    let mut ex = renew_exchanges((900, 1, &lease1), (901, 2, &lease2), "agent-x");
+    ex[0] = exchange(
+        "GET",
+        &comments_url(),
+        resp(
+            200,
+            json!([claim_line(900, "agent-x", 1, &lease1), other.clone()]),
+        ),
+    );
+    ex[2] = exchange(
+        "GET",
+        &comments_url(),
+        resp(
+            200,
+            json!([
+                claim_line(900, "agent-x", 1, &lease1),
+                other,
+                claim_line(901, "agent-x", 2, &lease2)
+            ]),
+        ),
+    );
+    let (out, t) = acquire_in(&root, "agent-x", &lease2, ex, &clock);
+    assert_eq!(out.outcome, "claimed", "{:?}", out.notes);
+    assert_eq!(t.remaining(), 0);
+}
+
+#[test]
+fn a_renewal_still_checks_the_expected_epoch() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = journal_root(tmp.path());
+    let clock = FakeClock::at(CLOCK0);
+    let lease1 = format_utc(CLOCK0 + 3600);
+    acquire_in(
+        &root,
+        "agent-x",
+        &lease1,
+        happy_exchanges(900, "agent-x", &lease1),
+        &clock,
+    );
+    clock.advance(7200);
+    let lease2 = format_utc(clock.now() + 3600);
+    let journal = lock_journal(&root);
+    let t = RecordedTransport::new(vec![]);
+    // The renewal would be epoch 2; asking for 5 is stale.
+    let req = lib_req("agent-x", &lease2).expected_epoch(5);
+    let err = acquire(&journal, &req, worktree(), &client(&t, &clock), &clock).unwrap_err();
+    assert!(err.contains("stale epoch 5"), "{err}");
+    assert!(t.sent.borrow().is_empty());
+    // The right number goes through.
+    drop(journal);
+    let req = lib_req("agent-x", &lease2).expected_epoch(2);
+    let journal = lock_journal(&root);
+    let t = RecordedTransport::new(renew_exchanges(
+        (900, 1, &lease1),
+        (901, 2, &lease2),
+        "agent-x",
+    ));
+    let out = acquire(&journal, &req, worktree(), &client(&t, &clock), &clock).unwrap();
+    assert_eq!(out.outcome, "claimed", "{:?}", out.notes);
 }
 
 #[test]

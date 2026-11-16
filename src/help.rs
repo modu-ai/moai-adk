@@ -39,6 +39,9 @@ pub const GROUPS: &[Group] = &[
             ("language-set", false),
             ("index-build", true),
             ("check-tree", false),
+            ("ledger-status", false),
+            ("ledger-register-plan", false),
+            ("ledger-register-apply", false),
             ("agents-plan", false),
             ("agents-apply", false),
             ("generation-plan", false),
@@ -167,6 +170,7 @@ pub const GROUPS: &[Group] = &[
             ("close-check", false),
             ("lane-env", false),
             ("session-register", false),
+            ("session-current", false),
             ("usage-limit", false),
             ("heavy-slot-acquire", false),
             ("heavy-slot-status", false),
@@ -256,6 +260,7 @@ pub const GROUPS: &[Group] = &[
             ("archive-search", false),
             ("worktree-gc-plan", false),
             ("worktree-gc-apply", false),
+            ("worktree-install-plan", false),
             ("hygiene-plan", false),
             ("hygiene-apply", false),
             ("session", false),
@@ -303,6 +308,9 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("agents-merge-revert", &["agents-merge-revert --receipt <id> --permission-reference <ref> ."]),
     ("agents-project-plan", &["agents-project-plan . skills/moai agents", "agents-project-apply --plan-digest <digest> --permission-reference <ref> . skills/moai agents"]),
     ("agents-project-apply", &["agents-project-apply --plan-digest <digest> --permission-reference <ref> . skills/moai agents"]),
+    ("ledger-status", &["ledger-status ."]),
+    ("ledger-register-plan", &["ledger-register-plan .", "ledger-register-apply --plan-digest <digest> --permission-reference <ref> ."]),
+    ("ledger-register-apply", &["ledger-register-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("update", &["update"]),
     ("go-state-plan", &["go-state-plan .", "go-state-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("go-state-apply", &["go-state-apply --plan-digest <digest> --permission-reference <ref> ."]),
@@ -423,6 +431,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
             "session-register --release --by leader --name agent-1 --instance <instance> .",
         ],
     ),
+    ("session-current", &["session-current"]),
     ("usage-limit", &["usage-limit ~"]),
     ("heavy-slot-acquire", &["heavy-slot-acquire --name agent-1 -- cargo test"]),
     ("heavy-slot-status", &["heavy-slot-status"]),
@@ -499,6 +508,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("archive-restore", &["archive-restore --spec SPEC-001 --permission-reference <ref> ."]),
     ("archive-search", &["archive-search --query cache ."]),
     ("worktree-gc-plan", &["worktree-gc-plan --integration-ref origin/main .", "worktree-gc-apply --integration-ref origin/main --plan-digest <digest> --permission-reference <ref> ."]),
+    ("worktree-install-plan", &["worktree-install-plan --scope web ."]),
     ("hygiene-plan", &["hygiene-plan --integration-ref origin/main ."]),
     ("hygiene-apply", &["hygiene-apply --integration-ref origin/main --plan-digest <digest> --permission-reference <ref> ."]),
     ("worktree-gc-apply", &["worktree-gc-apply --integration-ref origin/main --plan-digest <digest> --permission-reference <ref> ."]),
@@ -1406,6 +1416,24 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          되돌려요. 그 밖에는 아무것도 지우지 않아요.",
     ),
     (
+        "ledger-status",
+        "프로젝트의 로컬 SQLite 원장 상태를 읽기만 하고 보여 줘요(#3068): 있는지, 스키마 버전, WAL \
+         모드가 아닌지, 카드가 상태별로 몇 장인지. 원장이 없는 것은 정상 답(`exists: false`)이고 \
+         폴더도 파일도 만들지 않아요. 쓸 수 없는 파일은 `problem` 코드로 알리고 고치지 않아요.",
+    ),
+    (
+        "ledger-register-plan",
+        "프로젝트의 로컬 원장을 `<HOME>/.moai/projects/<project_id>/` 에 만들면 무엇이 생기는지 \
+         미리 봐요(#3068). 프로젝트 id 는 프로파일의 `project_id` 예요. 이미 있는 파일은 읽기만 \
+         하고 바꾸지 않아요. 아무것도 쓰지 않고, 답에 `plan_digest` 가 있어요.",
+    ),
+    (
+        "ledger-register-apply",
+        "미리 본 프로젝트 원장을 만들어요(#3068) — 같은 입력으로 다시 계산한 계획의 `plan_digest` 가 \
+         같을 때만, 원장 폴더와 파일을 만드는 유일한 명령이에요. Go 세대의 `~/.moai` 에는 만들지 \
+         않아요. 이미 있는 유효한 원장은 그대로 두고, 이 프로젝트 것이 아닌 파일은 대체하지 않아요.",
+    ),
+    (
         "worktree-move-plan",
         "이 클론의 linked worktree 를 `<root>/<project>-<name>` 으로 옮기는 일을 미리 봐요(#2723, \
          #2835) — `worktree-plan` 이 새 worktree 를 만드는 자리예요. worktree 마다 `location` 과 \
@@ -1451,6 +1479,12 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
         "worktree-report",
         "저장소의 worktree, 그 빌드 폴더, 임시 `moai-*` 폴더가 쓰는 공간을 읽기만 하고 보고해요 \
          (WT-1, #2380). 사실만 — 지울 후보는 판단하지 않아요. 아무것도 쓰지 않아요.",
+    ),
+    (
+        "worktree-install-plan",
+        "프로필 `scopes` 의 scope 하나가 고른 폴더만 설치하는 명령을 보여 주기만 해요(#3010 P6a). \
+         명령을 실행하지 않고 아무것도 쓰지 않아요 — 패키지 설치는 네트워크로 받는 일이에요. \
+         잠금 파일로 매니저를 고르고, 문서에 없는 것은 `unverified` 에 적어요.",
     ),
     (
         "optimize-plan",
@@ -1591,6 +1625,12 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "budget_ms",
         "크기 훑기의 시간 예산(밀리초). 넘으면 그 갈래는 `partial`",
     ),
+    ("worktree-install-plan", "project", "저장소의 아무 체크아웃"),
+    (
+        "worktree-install-plan",
+        "scope",
+        "프로필 `scopes` 에 선언된 scope 이름",
+    ),
     ("optimize-plan", "project", "저장소의 아무 체크아웃"),
     (
         "optimize-plan",
@@ -1663,6 +1703,21 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "home-state-plan",
         "home",
         "읽을 HOME(기본 `$HOME`). 시험은 임시 폴더를 넘김",
+    ),
+    (
+        "ledger-status",
+        "home",
+        "읽을 HOME(기본 `$HOME`). 시험은 임시 폴더를 넘김",
+    ),
+    (
+        "ledger-register-plan",
+        "home",
+        "읽을 HOME(기본 `$HOME`). 시험은 임시 폴더를 넘김",
+    ),
+    (
+        "ledger-register-apply",
+        "home",
+        "미리 보기가 읽은 것과 같은 HOME(기본 `$HOME`)",
     ),
     (
         "",

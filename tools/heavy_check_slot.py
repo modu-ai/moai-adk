@@ -35,8 +35,12 @@ COMMAND's codes) without running COMMAND, and `status` lists it under "refused".
 
 A slot is a file `slot-<i>` with an exclusive `fcntl.flock` lock. The lock lives on
 the open file, so the descriptor is also handed to COMMAND: the slot stays held while
-either this wrapper or COMMAND is alive, and the operating system frees it when both
-are gone, even after SIGKILL. No stale slot is left behind to clean up. The record
+this wrapper, COMMAND or any child or descendant of COMMAND that still has the file open
+is alive, and the operating system frees it when every one of them is gone, even after
+SIGKILL. No slot file is left behind to clean up. A descendant that outlives COMMAND keeps
+the slot after the wrapper has ended, and `status` then lists it with the wrapper's
+recorded pid, which is dead; this tool does not say so (only the Rust `heavy-slot-status`
+has `alive` and `holders`), and a slot file is never edited or deleted by hand. The record
 (name, command, pid) is written just after the lock is taken, so for a moment `status`
 can list a held slot with an empty record (#2599).
 

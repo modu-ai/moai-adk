@@ -2550,3 +2550,546 @@ fn an_unreadable_settings_file_refuses_the_plan_and_is_never_moved() {
         );
     }
 }
+
+// ---- #2936 S-AGENTS-STAY PR-A (decision 6901387505) ----
+//
+// U1: with the Go folder staying, a `.moai-cli/backups/.gitignore` that already exists is never
+// edited; when git does not ignore the backup copies (or cannot say), the apply stops before it
+// writes anything and the preview names the file. U2: the Go settings a revert put back are
+// offered for the move again although the Rust settings receipt still owns keys. Every case
+// builds a temporary project in a real git work tree with a temporary HOME.
+
+/// The install step's settings write (`claude-settings-plan`, then `-apply`), the way the
+/// update flow runs it: the wanted keys come on stdin.
+fn install_settings(fx: &Fx, desired: &Value) {
+    let run = |args: &[&str]| -> Value {
+        let mut child = Command::new(EXE)
+            .args(args)
+            .clean_env()
+            .env("HOME", &fx.home)
+            .env("PATH", "/usr/bin:/bin")
+            .env("LC_ALL", "C")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        std::io::Write::write_all(
+            &mut child.stdin.take().unwrap(),
+            desired.to_string().as_bytes(),
+        )
+        .unwrap();
+        let out = child.wait_with_output().unwrap();
+        serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
+            panic!(
+                "{args:?}: {}{}",
+                String::from_utf8_lossy(&out.stdout),
+                String::from_utf8_lossy(&out.stderr)
+            )
+        })
+    };
+    let plan = run(&["claude-settings-plan", fx.p()]);
+    assert_eq!(plan["ok"], json!(true), "{plan}");
+    let applied = run(&[
+        "claude-settings-apply",
+        fx.p(),
+        "--plan-digest",
+        plan["result"]["plan_digest"].as_str().unwrap(),
+        "--permission-reference",
+        REF,
+    ]);
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+}
+
+/// The settings the install step wants: MoAI's status line (so the Rust receipt owns a key).
+fn wanted_settings() -> Value {
+    json!({"statusLine": {"type": "command", "command": "moai-cli statusline"}})
+}
+
+const BACKUPS_IGNORE: &str = ".moai-cli/backups/.gitignore";
+
+/// A staying-layout project (the Go folder stays, the proven settings move) in a git work tree
+/// whose `.moai-cli/backups/.gitignore` already holds `ignore`. Returns the project and the
+/// settings as the Go tool wrote them.
+fn staying_with_backups_ignore(ignore: &str) -> (Fx, String) {
+    let (fx, text) = cycle_fx(true, false);
+    common::git::git_ok(&fx.root, &["init", "-q"]);
+    fx.write(BACKUPS_IGNORE, ignore);
+    (fx, text)
+}
+
+/// The lines of `git status --porcelain --untracked-files=all` that name a backup area.
+fn backup_lines_offered_to_git(fx: &Fx) -> Vec<String> {
+    common::git::git(
+        &fx.root,
+        &["status", "--porcelain", "--untracked-files=all"],
+    )
+    .lines()
+    .filter(|l| l.contains("backups"))
+    .map(str::to_string)
+    .collect()
+}
+
+/// The `go-state-apply` of the project's current preview, whatever it answers.
+fn apply_current(fx: &Fx) -> Value {
+    let p = fx.plan();
+    fx.apply(p["plan_digest"].as_str().unwrap())
+}
+
+/// The apply answered with the U1 refusal, and the tree is as it was before the call.
+fn assert_stopped_before_any_write(fx: &Fx, before: &[(PathBuf, Node)], v: &Value) {
+    assert_eq!(v["ok"], json!(false), "{v}");
+    let msg = v["error"]["message"].as_str().unwrap();
+    assert!(msg.contains(BACKUPS_IGNORE), "{msg}");
+    assert!(msg.contains("never edits"), "{msg}");
+    assert_eq!(fx.tree(), before, "nothing written: {msg}");
+}
+
+/// Condition 1, the reported hole: an existing ignore file with only unrelated lines was
+/// accepted without a look, and the apply then left the backup copies (which hold the settings
+/// and may hold a token) offered to `git status`. The apply now stops before it writes anything
+/// and does not touch the file.
+#[test]
+fn a_backups_gitignore_that_does_not_ignore_stops_the_apply_before_any_write() {
+    let (fx, _) = staying_with_backups_ignore("# mine\n!keep-me\n");
+    let p = fx.plan();
+    assert_eq!(p["layout"], json!("folder_stays"), "{p}");
+    let before = fx.tree();
+    let v = fx.apply(p["plan_digest"].as_str().unwrap());
+    assert_stopped_before_any_write(&fx, &before, &v);
+    let msg = v["error"]["message"].as_str().unwrap();
+    assert!(
+        msg.contains("/go-state-receipt.json"),
+        "a path is named: {msg}"
+    );
+    // Nothing moved, no backup folder was made, the file is as the user wrote it.
+    assert!(fx.root.join(SETTINGS).is_file());
+    let names: Vec<String> = fs::read_dir(fx.root.join(".moai-cli/backups"))
+        .unwrap()
+        .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .collect();
+    assert_eq!(names, vec![".gitignore".to_string()]);
+    assert_eq!(
+        fs::read_to_string(fx.root.join(BACKUPS_IGNORE)).unwrap(),
+        "# mine\n!keep-me\n"
+    );
+}
+
+/// Condition 1, the preview: `go-state-plan` names the file and a backup path git would offer,
+/// the digest does not depend on it (preview-only), and in `project-update-plan` the `go-state`
+/// step reads `needs_decision` with no command, so every install step waits behind it.
+#[test]
+fn the_preview_names_the_ignore_file_that_does_not_cover_the_backups() {
+    let (fx, _) = staying_with_backups_ignore("# mine\n!keep-me\n");
+    let p = fx.plan();
+    let b = &p["backup_ignore"];
+    assert_eq!(b["state"], json!("not_ignored"), "{p}");
+    assert_eq!(b["file"], json!(BACKUPS_IGNORE), "{p}");
+    let examples: Vec<&str> = b["examples"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e.as_str().unwrap())
+        .collect();
+    assert!(
+        examples.contains(&".moai-cli/backups/<UTC>/go-state-receipt.json"),
+        "{examples:?}"
+    );
+    assert!(
+        examples.len() <= 3 && examples.iter().all(|e| e.contains("<UTC>")),
+        "{examples:?}"
+    );
+    assert!(
+        b["reason"].as_str().unwrap().contains(BACKUPS_IGNORE),
+        "{p}"
+    );
+    let digest = p["plan_digest"].clone();
+
+    let update = fx.run(&["project-update-plan", fx.p()]);
+    assert_eq!(update["ok"], json!(true), "{update}");
+    let update = &update["result"];
+    let steps: Vec<&Value> = update["phases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|ph| ph["steps"].as_array().unwrap())
+        .collect();
+    let go = steps.iter().find(|s| s["step"] == "go-state").unwrap();
+    assert_eq!(go["state"], json!("needs_decision"), "{go}");
+    assert_eq!(go["apply"], Value::Null, "no command is printed: {go}");
+    assert_eq!(
+        go["preview"]["backup_ignore"]["file"],
+        json!(BACKUPS_IGNORE),
+        "{go}"
+    );
+    assert!(
+        go["reason"].as_str().unwrap().contains(BACKUPS_IGNORE),
+        "{go}"
+    );
+    let install: Vec<&&Value> = steps
+        .iter()
+        .filter(|s| s["step"] != "go-state" && s["state"] == "blocked")
+        .collect();
+    assert!(!install.is_empty(), "{update}");
+    assert!(
+        install
+            .iter()
+            .all(|s| s["reason"] == json!("re-run after the backup phase")),
+        "{update}"
+    );
+
+    // Once the file ignores the area, the field is gone and the digest is the same.
+    fx.write(BACKUPS_IGNORE, "*\n");
+    let ok = fx.plan();
+    assert!(ok.get("backup_ignore").is_none(), "{ok}");
+    assert_eq!(ok["plan_digest"], digest, "the field is preview-only");
+}
+
+/// Condition 1, the boundary table: git's own rules judge, never a look at the text. Each case
+/// is a fresh project. A file git says ignores every backup path lets the apply go on (and a
+/// real `git status` then offers no backup path); any other stops it before a write. Results
+/// were taken from git 2.54 (`check-ignore --no-index -v -n`): a `!` rule after `*` does not
+/// bring a file back because the stamp folder itself is ignored, and git drops the CR of a CRLF
+/// line.
+#[test]
+fn only_a_gitignore_that_really_ignores_lets_the_apply_go_on() {
+    let cases: [(&str, bool); 11] = [
+        ("*\n", true),
+        ("/*\n", true),
+        ("**\n", true),
+        ("# keep\nfoo\n*\n", true),
+        ("*\r\n", true),
+        ("*\n!*.json\n", true),
+        ("", false),
+        ("# mine\n", false),
+        ("# mine\n!keep-me\n", false),
+        ("go-state/\n", false),
+        // Every path is asked, not only the first: this ignores the receipt but not the settings
+        // copy, which is the file that may hold a token.
+        ("go-state-receipt.json\n", false),
+    ];
+    for (text, ignores) in cases {
+        let (fx, _) = staying_with_backups_ignore(text);
+        let p = fx.plan();
+        assert_eq!(p.get("backup_ignore").is_none(), ignores, "{text:?}: {p}");
+        let before = fx.tree();
+        let v = fx.apply(p["plan_digest"].as_str().unwrap());
+        if ignores {
+            assert_eq!(v["ok"], json!(true), "{text:?}: {v}");
+            assert_eq!(v["result"]["state"], json!("committed"), "{text:?}: {v}");
+            assert_eq!(
+                backup_lines_offered_to_git(&fx),
+                Vec::<String>::new(),
+                "{text:?}: git offers no backup path"
+            );
+            assert_eq!(
+                fs::read_to_string(fx.root.join(BACKUPS_IGNORE)).unwrap(),
+                text,
+                "{text:?}: the file is left as it is"
+            );
+        } else {
+            assert_stopped_before_any_write(&fx, &before, &v);
+        }
+    }
+    // A folder where the ignore file should be is no rule file: git ignores nothing through it.
+    let (fx, _) = cycle_fx(true, false);
+    common::git::git_ok(&fx.root, &["init", "-q"]);
+    fs::create_dir_all(fx.root.join(BACKUPS_IGNORE)).unwrap();
+    let p = fx.plan();
+    assert_eq!(p["backup_ignore"]["state"], json!("not_ignored"), "{p}");
+    let before = fx.tree();
+    let v = fx.apply(p["plan_digest"].as_str().unwrap());
+    assert_stopped_before_any_write(&fx, &before, &v);
+}
+
+/// Condition 1, the three ways through: no ignore file yet (the apply writes `*`, as before), a
+/// rule in the project's own root `.gitignore` that covers the area (the file under `backups/`
+/// says nothing relevant and is left alone), and a project that is not in a git work tree.
+#[test]
+fn an_absent_or_root_covered_or_non_git_backups_gitignore_does_not_stop_the_apply() {
+    // No file: written.
+    let (fx, _) = cycle_fx(true, false);
+    common::git::git_ok(&fx.root, &["init", "-q"]);
+    let p = fx.plan();
+    assert!(p.get("backup_ignore").is_none(), "{p}");
+    fx.apply_ok();
+    assert_eq!(
+        fs::read_to_string(fx.root.join(BACKUPS_IGNORE)).unwrap(),
+        "*\n"
+    );
+    assert_eq!(backup_lines_offered_to_git(&fx), Vec::<String>::new());
+
+    // A root rule covers the area; the user's two files are not edited.
+    let (fx, _) = staying_with_backups_ignore("# unrelated\n");
+    fx.write(".gitignore", ".moai-cli/backups/\n");
+    let (root_before, area_before) = (
+        fs::read(fx.root.join(".gitignore")).unwrap(),
+        fs::read(fx.root.join(BACKUPS_IGNORE)).unwrap(),
+    );
+    let p = fx.plan();
+    assert!(p.get("backup_ignore").is_none(), "{p}");
+    fx.apply_ok();
+    assert_eq!(fs::read(fx.root.join(".gitignore")).unwrap(), root_before);
+    assert_eq!(fs::read(fx.root.join(BACKUPS_IGNORE)).unwrap(), area_before);
+    assert_eq!(backup_lines_offered_to_git(&fx), Vec::<String>::new());
+
+    // Not a git work tree: there is nothing for git to offer.
+    let (fx, _) = cycle_fx(true, false);
+    fx.write(BACKUPS_IGNORE, "# mine\n");
+    let p = fx.plan();
+    assert!(p.get("backup_ignore").is_none(), "{p}");
+    fx.apply_ok();
+    assert_eq!(
+        fs::read_to_string(fx.root.join(BACKUPS_IGNORE)).unwrap(),
+        "# mine\n"
+    );
+}
+
+/// Condition 1, closed when git cannot answer: a repository git cannot open and a `git` that
+/// cannot be run both read `unknown`, name the file, and stop the apply before a write.
+#[test]
+fn an_unreadable_check_ignore_stops_closed() {
+    // A `.git` file git cannot read as a repository.
+    let (fx, _) = cycle_fx(true, false);
+    fx.write(".git", "not a gitfile\n");
+    fx.write(BACKUPS_IGNORE, "*\n");
+    let p = fx.plan();
+    assert_eq!(p["backup_ignore"]["state"], json!("unknown"), "{p}");
+    assert_eq!(p["backup_ignore"]["file"], json!(BACKUPS_IGNORE), "{p}");
+    assert_eq!(p["backup_ignore"]["examples"], json!([]), "{p}");
+    let before = fx.tree();
+    let v = fx.apply(p["plan_digest"].as_str().unwrap());
+    assert_stopped_before_any_write(&fx, &before, &v);
+
+    // A real repository whose ignore file is enough, but `git` is not on PATH.
+    let (fx, _) = staying_with_backups_ignore("*\n");
+    let no_git = [("PATH", "/nonexistent")];
+    let p = fx.plan_env(&no_git);
+    assert_eq!(p["backup_ignore"]["state"], json!("unknown"), "{p}");
+    let before = fx.tree();
+    let v = fx.run_env(
+        &[
+            "go-state-apply",
+            fx.p(),
+            "--plan-digest",
+            p["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            REF,
+        ],
+        &no_git,
+    );
+    assert_stopped_before_any_write(&fx, &before, &v);
+    // With git back, the same project goes on.
+    assert!(fx.plan().get("backup_ignore").is_none());
+}
+
+/// Condition 1: the user's `.gitignore` files are read, never written, whether the apply is
+/// stopped or goes on.
+#[test]
+fn the_users_gitignore_files_are_never_edited() {
+    for (text, stops) in [("# mine\n!keep-me\n", true), ("*\n", false)] {
+        let (fx, _) = staying_with_backups_ignore(text);
+        fx.write(".gitignore", "target/\n");
+        let files = [".gitignore", BACKUPS_IGNORE];
+        let hashes = |fx: &Fx| -> Vec<String> {
+            files
+                .iter()
+                .map(|f| sha(&fs::read(fx.root.join(f)).unwrap()))
+                .collect()
+        };
+        let before = hashes(&fx);
+        let v = apply_current(&fx);
+        assert_eq!(v["ok"], json!(!stops), "{text:?}: {v}");
+        assert_eq!(hashes(&fx), before, "{text:?}");
+    }
+}
+
+/// Condition 1: a link at the ignore file is still refused with the earlier wording (the new
+/// check leaves it to the apply's own link refusal), and nothing is moved.
+#[test]
+fn a_linked_backups_gitignore_is_refused_as_before() {
+    let (fx, _) = cycle_fx(true, false);
+    common::git::git_ok(&fx.root, &["init", "-q"]);
+    fx.write("elsewhere.txt", "*\n");
+    fx.link(BACKUPS_IGNORE, "../../elsewhere.txt");
+    let p = fx.plan();
+    assert!(p.get("backup_ignore").is_none(), "{p}");
+    let v = fx.apply(p["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(false), "{v}");
+    let msg = v["error"]["message"].as_str().unwrap();
+    assert!(
+        msg.contains("a path component is a symlink; refused") && msg.contains(BACKUPS_IGNORE),
+        "{msg}"
+    );
+    assert!(!msg.contains("never edits"), "{msg}");
+    assert!(fx.root.join(SETTINGS).is_file(), "nothing moved");
+}
+
+/// Two applies need two backup stamps, and a stamp has a one-second resolution.
+fn next_utc_second() {
+    std::thread::sleep(Duration::from_millis(1100));
+}
+
+/// The Rust settings receipt the install step wrote, as text; it owns the status line.
+fn rust_settings_receipt(fx: &Fx) -> String {
+    let text =
+        fs::read_to_string(fx.root.join(".moai-cli/manifests/claude-settings.json")).unwrap();
+    let parsed: Value = serde_json::from_str(&text).unwrap();
+    assert!(
+        parsed["owned"]["statusLine"].is_object(),
+        "the install step's receipt owns the status line: {text}"
+    );
+    text
+}
+
+/// Condition 2 (staying layout). Before the fix the Go settings a revert put back were never
+/// offered again: the Rust settings receipt, which the revert leaves alone, still owns a key,
+/// and the staying layout read them as `leave`/`settings` ("live host settings"), so the same
+/// cycle could not be repeated. They are the very bytes the reverted apply moved, so they are
+/// `move` again, and the new preview's apply moves them once more.
+#[test]
+fn after_a_staying_layout_revert_the_go_settings_are_proposed_again() {
+    let (fx, text) = cycle_fx(true, false);
+    let (_, backup) = fx.apply_ok();
+    install_settings(&fx, &wanted_settings());
+    let receipt = rust_settings_receipt(&fx);
+    let v = fx.revert(&backup);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(fs::read_to_string(fx.root.join(SETTINGS)).unwrap(), text);
+    assert_eq!(
+        rust_settings_receipt(&fx),
+        receipt,
+        "the revert leaves the Rust receipt as it is"
+    );
+    let p = fx.plan();
+    assert_eq!(p["layout"], json!("folder_stays"), "{p}");
+    assert_eq!(ac(&p, SETTINGS), ("move", "settings"), "{p}");
+    assert_eq!(
+        item(&p, SETTINGS)["proof"],
+        json!("manifest; sha256 matches the deploy"),
+        "{p}"
+    );
+    assert_eq!(p["settings_move"]["edited"], json!(false), "{p}");
+    next_utc_second();
+    let v = fx.apply(p["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(v["result"]["state"], json!("committed"), "{v}");
+    let again = v["result"]["backup"].as_str().unwrap();
+    assert_ne!(again, backup);
+    assert!(!fx.root.join(SETTINGS).exists());
+    assert_eq!(
+        fs::read_to_string(area_of(&fx, again).join("go-state").join(SETTINGS)).unwrap(),
+        text
+    );
+}
+
+/// Condition 2 (guard direction): one changed character after the revert and the file is no
+/// longer the one the reverted apply moved, so the Rust receipt that owns a key in it decides
+/// as before and the settings are not offered. The preview says nothing about a settings move.
+#[test]
+fn a_restored_settings_file_the_user_edited_stays_rust() {
+    let (fx, text) = cycle_fx(true, false);
+    let (_, backup) = fx.apply_ok();
+    install_settings(&fx, &wanted_settings());
+    let v = fx.revert(&backup);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    let edited = text.replace("Read(./.env)", "Read(./.env2)");
+    assert_ne!(edited, text);
+    fx.write(SETTINGS, &edited);
+    let p = fx.plan();
+    assert_eq!(ac(&p, SETTINGS), ("leave", "settings"), "{p}");
+    assert_eq!(
+        item(&p, SETTINGS)["reason"],
+        json!("live host settings; moving them drops permissions, hooks and the status line"),
+        "{p}"
+    );
+    assert!(p.get("settings_move").is_none(), "{p}");
+    // A single trailing byte is enough too.
+    fx.write(SETTINGS, &format!("{text} "));
+    let p = fx.plan();
+    assert_eq!(ac(&p, SETTINGS).0, "leave", "{p}");
+}
+
+/// Condition 2 (moving layout): the revert sets the new `.moai/` aside whole, the Rust
+/// receipt with it, so the Go settings were never kept from a second move there; they are
+/// `move` again and the next apply moves them again. This pins that the fix changed nothing
+/// for the layout that already worked.
+#[test]
+fn the_moving_layout_revert_proposes_the_go_settings_again() {
+    let (fx, text) = cycle_fx(false, false);
+    let (_, backup) = fx.apply_ok();
+    install_settings(&fx, &wanted_settings());
+    let v = fx.revert(&backup);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(fs::read_to_string(fx.root.join(SETTINGS)).unwrap(), text);
+    let p = fx.plan();
+    assert_eq!(p["layout"], json!("folder_moves"), "{p}");
+    assert_eq!(ac(&p, SETTINGS), ("move", "settings"), "{p}");
+    next_utc_second();
+    let v = fx.apply(p["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(v["result"]["state"], json!("committed"), "{v}");
+    assert!(!fx.root.join(SETTINGS).exists());
+}
+
+/// Condition 2: a whole second cycle in the staying layout. The second apply moves the settings
+/// again, a settings file this generation wrote after it is not offered (it is not the file the
+/// reverted apply moved), the second revert puts the same bytes back again, and they are
+/// proposed a third time. The second cycle's own install step is `claude.rs`'s: against the
+/// receipt the first cycle left (it owns the status line, the file is gone) it answers `ok` and
+/// writes no file, so the file of this generation is put there by hand here.
+#[test]
+fn a_second_staying_cycle_after_a_revert_still_works() {
+    let (fx, text) = cycle_fx(true, false);
+    let (_, first) = fx.apply_ok();
+    install_settings(&fx, &wanted_settings());
+    assert_eq!(fx.revert(&first)["ok"], json!(true));
+    let p = fx.plan();
+    assert_eq!(ac(&p, SETTINGS), ("move", "settings"), "{p}");
+    next_utc_second();
+    let v = fx.apply(p["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    let second = v["result"]["backup"].as_str().unwrap().to_string();
+    let rust_file = format!("{}\n", wanted_settings());
+    fx.write(SETTINGS, &rust_file);
+    let p = fx.plan();
+    assert_eq!(ac(&p, SETTINGS), ("leave", "settings"), "{p}");
+    assert!(p.get("settings_move").is_none(), "{p}");
+    let v = fx.revert(&second);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(fs::read_to_string(fx.root.join(SETTINGS)).unwrap(), text);
+    let p = fx.plan();
+    assert_eq!(ac(&p, SETTINGS), ("move", "settings"), "{p}");
+}
+
+/// Condition 1, nothing to move: once the apply is committed there is no file left to back up
+/// (a second apply answers `unchanged` before it writes anything), so an ignore file that
+/// covers nothing is no reason to stop the update and the preview shows no `backup_ignore`.
+#[test]
+fn an_ignore_file_that_covers_nothing_does_not_stop_a_preview_with_nothing_to_move() {
+    let (fx, _) = cycle_fx(true, false);
+    common::git::git_ok(&fx.root, &["init", "-q"]);
+    fx.apply_ok();
+    fx.write(BACKUPS_IGNORE, "# mine\n");
+    let p = fx.plan();
+    assert_eq!(p["layout"], json!("folder_stays"), "{p}");
+    assert!(
+        p["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|i| i["action"] != json!("move")),
+        "nothing is left to move: {p}"
+    );
+    assert!(p.get("backup_ignore").is_none(), "{p}");
+    let update = fx.run(&["project-update-plan", fx.p()]);
+    let go = update["result"]["phases"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|ph| ph["steps"].as_array().unwrap())
+        .find(|s| s["step"] == "go-state")
+        .unwrap()
+        .clone();
+    assert_ne!(go["state"], json!("needs_decision"), "{go}");
+}

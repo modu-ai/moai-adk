@@ -40,9 +40,17 @@ fn the_agent_loop_runs_lane_next_and_goes_on_with_reversible_defaults() {
 fn agents_md_names_the_plan_comment_as_part_of_the_design() {
     let agents =
         fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("AGENTS.md")).unwrap();
-    assert!(agents
-        .contains("Each Issue body plus the lane's `PLAN #<issue>` comment is the design (#2880)"));
+    // The Issue number (#2880) moved to the provenance table in AGENTS.local.md (#3096 S3); the
+    // rule's words stay pinned.
+    assert!(
+        agents.contains("Each Issue body plus the lane's `PLAN #<issue>` comment is the design;")
+    );
     assert!(!agents.contains("Each Issue body is the design;"));
+    let local =
+        fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("AGENTS.local.md")).unwrap();
+    assert!(local.contains(
+        "| Authority 2: the lane's `PLAN #<issue>` comment is part of the design | Issue #2880 |"
+    ));
 }
 
 /// Every flag the workflow names exists on the command, and the limits it states match.

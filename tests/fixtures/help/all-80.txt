@@ -16,6 +16,9 @@ Project
   language-set            Record the conversation language in HOME
   index-build             Build the code map index
   check-tree              Warn about what the tracked MoAI folders hold
+  ledger-status           Show the project's ledger state
+  ledger-register-plan    Preview registering the project's ledger
+  ledger-register-apply   Create the previewed project ledger
   agents-plan             Preview the AGENTS.md managed section
   agents-apply            Write a previewed AGENTS.md managed section
   generation-plan         Preview the project's generated agent and skill files
@@ -124,6 +127,7 @@ Lane and leader
   close-check             Check whether an Issue may close
   lane-env                Print a lane's cargo folders
   session-register        Register this session's lane name
+  session-current         Print this session's own id
   usage-limit             Report how close the usage limits are
   heavy-slot-acquire      Run a heavy command in a machine-wide slot
   heavy-slot-status       List the heavy-run slots held now
@@ -137,7 +141,7 @@ Lane and leader
   gate-schedule-plan      Preview a scheduler entry for gate-loop
   gate-schedule-apply     Write a previewed gate-loop scheduler entry
   wait                    Wait until a condition holds on GitHub
-  scope-check             Check a claim's write scope against others
+  scope-check             Check a write scope (--task records it)
   worktree-plan           Preview the branch and worktree of a claim
   worktree-apply          Create the previewed worktree of a claim
   pr-body-render          Render the pull request body of a claim
@@ -203,6 +207,7 @@ Internal
   archive-search          Search the archived SPECs
   worktree-gc-plan        Preview removing or trimming merged worktrees
   worktree-gc-apply       Remove or trim the previewed worktrees
+  worktree-install-plan   Preview a scoped package install
   hygiene-plan            Preview what may move to the holding folder
   hygiene-apply           Move the previewed leftovers to the holding folder
   session                 Start a Claude Code session (legacy form)
