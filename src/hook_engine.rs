@@ -823,24 +823,17 @@ pub const STOP_RULES: &[StopRule] = &[];
 pub const MOAI_STOP_BLOCK_CAP: usize = 2;
 
 /// MoAI's consecutive `stop_block` lines for `session` since that session's last `observe`
-/// line (a tool call resets the count, as Claude Code's own cap does). Reads the bounded log
-/// only; a missing or unreadable log counts as zero.
+/// line (a tool call resets the count, as Claude Code's own cap does). Reads the bounded logs
+/// only (the project side first, then the HOME side where a project with a fixed id writes,
+/// #3009 S4b); a missing or unreadable log counts as zero.
 fn consecutive_blocks(cwd: &Path, session: &str) -> usize {
-    let log = crate::state_root::path(cwd, "receipts").join(ENGINE_LOG);
-    let Ok(meta) = std::fs::symlink_metadata(&log) else {
-        return 0;
-    };
-    if !meta.is_file() || meta.len() > crate::hooks::RECEIPT_LOG_LIMIT {
-        return 0;
-    }
-    let Ok(text) = std::fs::read_to_string(&log) else {
-        return 0;
-    };
+    consecutive_blocks_in(crate::hooks::env_home().as_deref(), cwd, session)
+}
+
+fn consecutive_blocks_in(home: Option<&Path>, cwd: &Path, session: &str) -> usize {
+    let lines = crate::hooks::receipt_lines_in(home, cwd, ENGINE_LOG);
     let mut count = 0;
-    for line in text.lines().rev() {
-        let Ok(v) = serde_json::from_str::<Value>(line) else {
-            continue;
-        };
+    for v in lines.iter().rev() {
         if v["session"] != json!(session) {
             continue;
         }
@@ -1085,5 +1078,53 @@ mod tests {
         assert!(!text.contains("sess-A"), "{text}");
         assert_eq!(session_key(&json!({})), "unknown");
         assert_eq!(session_key(&stop(false)).len(), 16);
+    }
+
+    /// The block count reads the project-side log (older) and then the HOME-side log (newer),
+    /// so an `observe` on the newer side resets blocks written on the older side (#3009 S4b).
+    #[test]
+    fn the_block_count_reads_the_project_log_and_then_the_home_log() {
+        const ID: &str = "abcdefghijklmnopqrstuvwxyz";
+        let p = project(true);
+        std::fs::write(
+            crate::state_root::path(p.path(), "project.yaml"),
+            format!("{{\"project_id\":\"{ID}\"}}"),
+        )
+        .unwrap();
+        let home = tempfile::tempdir().unwrap();
+        std::fs::create_dir(crate::home_root::path(home.path())).unwrap();
+        let session = "s";
+        let put = |kind: &str, in_home: bool| {
+            let line = json!({"kind": kind, "session": session});
+            if in_home {
+                crate::hooks::append_receipt_line_in(
+                    Some(home.path()),
+                    p.path(),
+                    ENGINE_LOG,
+                    &line,
+                )
+                .unwrap();
+            } else {
+                crate::hooks::append_receipt_line_in(None, p.path(), ENGINE_LOG, &line).unwrap();
+            }
+        };
+        let count = || consecutive_blocks_in(Some(home.path()), p.path(), session);
+        assert_eq!(count(), 0);
+        put("stop_block", false);
+        put("stop_block", false);
+        assert_eq!(count(), 2, "blocks written before the switch still count");
+        put("stop_block", true);
+        assert_eq!(count(), 3);
+        put("observe", true);
+        assert_eq!(count(), 0, "a newer observe resets older blocks");
+        put("stop_block", true);
+        assert_eq!(count(), 1);
+        // Another session's lines never count.
+        assert_eq!(
+            consecutive_blocks_in(Some(home.path()), p.path(), "other"),
+            0
+        );
+        // Without the HOME the HOME-side lines are not seen.
+        assert_eq!(consecutive_blocks_in(None, p.path(), session), 2);
     }
 }

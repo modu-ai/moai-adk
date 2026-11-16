@@ -56,6 +56,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             serde_json::from_str(&text).map_err(|e| format!("invalid observations: {e}"))?
         }
     };
+    let home = moai_cli::hooks::env_home();
     moai_cli::optimize::plan(&moai_cli::optimize::Request {
         project: &args.project,
         integration_ref: &args.integration_ref,
@@ -65,5 +66,6 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         observations: &obs,
         build_roots: &args.build_roots,
         retention_days: args.retention_days,
+        home: home.as_deref(),
     })
 }

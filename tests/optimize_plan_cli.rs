@@ -585,3 +585,224 @@ fn a_relative_or_symlinked_build_root_and_bad_observations_are_refused() {
     let v = base(&["--retention-days", "0"]);
     assert_eq!(v["error"]["kind"], "invalid_input", "{v}");
 }
+
+// ---- #3009 S4d: the hook log rows (read-only; nothing is rotated or deleted) ----
+
+const T0: u64 = 1_800_000_000;
+
+fn project_log(fx: &Fixture) -> PathBuf {
+    fx.root
+        .join(moai_cli::PROJECT_STATE_DIR)
+        .join("receipts")
+        .join("hooks.jsonl")
+}
+
+fn home_log(fx: &Fixture, id: &str) -> PathBuf {
+    fx.home
+        .join(moai_cli::HOME_STATE_DIR)
+        .join("projects")
+        .join(id)
+        .join("receipts")
+        .join("hooks.jsonl")
+}
+
+fn write_log(path: &Path, first_unix: u64) {
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    let line = |t: u64| {
+        format!(
+            "{{\"schema_version\":1,\"host\":\"claude\",\"unix_ms\":{}}}\n",
+            t * 1000
+        )
+    };
+    fs::write(
+        path,
+        format!("{}{}", line(first_unix), line(first_unix + 60)),
+    )
+    .unwrap();
+}
+
+fn give_project_an_id(fx: &Fixture, id: &str) {
+    let state = fx.root.join(moai_cli::PROJECT_STATE_DIR);
+    fs::create_dir_all(&state).unwrap();
+    fs::write(
+        state.join("project.yaml"),
+        format!("{{\"project_id\":\"{id}\"}}"),
+    )
+    .unwrap();
+}
+
+fn hook_logs(v: &Value) -> Vec<Value> {
+    v["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|r| r["kind"] == "hook_log")
+        .cloned()
+        .collect()
+}
+
+fn tree(dir: &Path) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        for e in fs::read_dir(&d).unwrap().flatten() {
+            out.push(e.path().strip_prefix(dir).unwrap().display().to_string());
+            if e.path().is_dir() && !e.path().is_symlink() {
+                stack.push(e.path());
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+#[test]
+fn a_project_without_a_hook_log_has_no_hook_log_row() {
+    let fx = fixture();
+    let v = optimize(&fx, None, T0, &[]);
+    assert!(hook_logs(&v).is_empty());
+}
+
+#[test]
+fn the_projects_own_hook_log_is_listed_with_its_size_and_oldest_line_and_is_kept() {
+    let fx = fixture();
+    write_log(&project_log(&fx), T0);
+    let before = tree(&fx.home);
+    let v = optimize(&fx, None, T0 + 86_400, &[]);
+    let rows = hook_logs(&v);
+    assert_eq!(rows.len(), 1, "{rows:?}");
+    let row = &rows[0];
+    assert_eq!(row["side"], "project");
+    assert_eq!(
+        row["path"],
+        format!("{}/receipts/hooks.jsonl", moai_cli::PROJECT_STATE_DIR)
+    );
+    assert_eq!(row["action"], "keep");
+    assert_eq!(row["reasons"], json!(["hook_log_kept"]));
+    assert_eq!(row["bytes"], fs::metadata(project_log(&fx)).unwrap().len());
+    assert_eq!(row["oldest_line_unix"], T0);
+    assert_eq!(row["full"], false);
+    assert_eq!(row["design_retention"]["past_days"], false);
+    assert_eq!(row["design_retention"]["past_bytes"], false);
+    assert_eq!(row["trim_paths"], json!([]));
+    assert_eq!(v["writes"], false);
+    assert!(project_log(&fx).exists(), "the log is still there");
+    assert_eq!(
+        tree(&fx.home),
+        before,
+        "the preview wrote nothing in the HOME"
+    );
+}
+
+#[test]
+fn the_retention_in_days_is_shown_past_seven_days_and_not_at_seven() {
+    let fx = fixture();
+    write_log(&project_log(&fx), T0);
+    for (now, past) in [
+        (T0 + 7 * 86_400 - 1, false),
+        (T0 + 7 * 86_400, false),
+        (T0 + 7 * 86_400 + 1, true),
+    ] {
+        let v = optimize(&fx, None, now, &[]);
+        let row = &hook_logs(&v)[0];
+        assert_eq!(row["design_retention"]["past_days"], past, "now {now}");
+        let reasons = row["reasons"].as_array().unwrap();
+        assert_eq!(
+            reasons.contains(&json!("past_design_retention")),
+            past,
+            "now {now}"
+        );
+        assert_eq!(row["action"], "keep", "never more than a preview");
+    }
+}
+
+#[test]
+fn the_size_edges_of_a_full_log_and_of_the_design_retention_are_shown() {
+    let fx = fixture();
+    let path = project_log(&fx);
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    const FOUR_MIB: u64 = 4 * 1024 * 1024;
+    const SIXTY_FOUR_MIB: u64 = 64 * 1024 * 1024;
+    for (len, full, past_bytes) in [
+        (FOUR_MIB - 1, false, false),
+        (FOUR_MIB, true, false),
+        (SIXTY_FOUR_MIB, true, false),
+        (SIXTY_FOUR_MIB + 1, true, true),
+    ] {
+        let f = fs::File::create(&path).unwrap();
+        f.set_len(len).unwrap();
+        let v = optimize(&fx, None, T0, &[]);
+        let row = &hook_logs(&v)[0];
+        assert_eq!(row["bytes"], len);
+        assert_eq!(row["full"], full, "{len}");
+        assert_eq!(row["design_retention"]["past_bytes"], past_bytes, "{len}");
+        let reasons = row["reasons"].as_array().unwrap();
+        assert_eq!(reasons.contains(&json!("hook_log_full")), full, "{len}");
+        assert_eq!(
+            reasons.contains(&json!("past_design_retention")),
+            past_bytes,
+            "{len}"
+        );
+        assert_eq!(
+            row["oldest_line_unix"],
+            Value::Null,
+            "no readable first line"
+        );
+    }
+}
+
+#[test]
+fn a_project_with_an_id_lists_the_home_log_beside_its_own() {
+    let fx = fixture();
+    give_project_an_id(&fx, "demo");
+    write_log(&project_log(&fx), T0);
+    write_log(&home_log(&fx, "demo"), T0 + 3600);
+    let before = tree(&fx.home);
+    let v = optimize(&fx, None, T0 + 7200, &[]);
+    let rows = hook_logs(&v);
+    let sides: Vec<_> = rows.iter().map(|r| r["side"].as_str().unwrap()).collect();
+    assert_eq!(sides, ["project", "home"], "{rows:?}");
+    assert_eq!(rows[1]["path"], home_log(&fx, "demo").display().to_string());
+    assert_eq!(rows[1]["oldest_line_unix"], T0 + 3600);
+    assert_eq!(
+        tree(&fx.home),
+        before,
+        "the preview wrote nothing in the HOME"
+    );
+}
+
+#[test]
+fn a_home_log_is_listed_only_for_a_project_with_an_id_and_a_home_state_root() {
+    // No id: the key would be made from the path, nothing is written there, so nothing is listed.
+    let fx = fixture();
+    write_log(&home_log(&fx, "demo"), T0);
+    assert!(hook_logs(&optimize(&fx, None, T0, &[])).is_empty());
+    // An id, and the log only in the HOME: one row.
+    give_project_an_id(&fx, "demo");
+    let rows = hook_logs(&optimize(&fx, None, T0, &[]));
+    assert_eq!(rows.len(), 1, "{rows:?}");
+    assert_eq!(rows[0]["side"], "home");
+}
+
+#[test]
+fn a_link_in_the_place_of_the_log_is_listed_and_not_read_through() {
+    let fx = fixture();
+    let outside = tempfile::tempdir().unwrap();
+    let target = outside.path().join("elsewhere.jsonl");
+    write_log(&target, T0);
+    let path = project_log(&fx);
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::os::unix::fs::symlink(&target, &path).unwrap();
+    let before = fs::read(&target).unwrap();
+    let v = optimize(&fx, None, T0 + 100 * 86_400, &[]);
+    let row = &hook_logs(&v)[0];
+    assert_eq!(row["bytes"], 0);
+    assert_eq!(row["oldest_line_unix"], Value::Null);
+    let reasons = row["reasons"].as_array().unwrap();
+    assert!(
+        reasons.contains(&json!("hook_log_not_a_regular_file")),
+        "{reasons:?}"
+    );
+    assert!(!reasons.contains(&json!("past_design_retention")));
+    assert_eq!(fs::read(&target).unwrap(), before);
+}

@@ -32,6 +32,11 @@ type Result<T> = std::result::Result<T, String>;
 /// Default retention of a build folder outside the worktrees, in days.
 pub const DEFAULT_RETENTION_DAYS: u64 = 7;
 
+/// The retention the design gives the hook log (#3009 §6, "7 days or 64 MiB"). The preview shows
+/// whether a log is past it ([`hook_log_row`]); nothing is rotated, trimmed or deleted by it.
+pub const HOOK_LOG_RETENTION_DAYS: u64 = 7;
+pub const HOOK_LOG_RETENTION_BYTES: u64 = 64 * 1024 * 1024;
+
 /// The observations file (typed JSON, unknown keys rejected). Every part is optional; a part
 /// that is missing keeps the rows that need it.
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -104,6 +109,9 @@ pub struct Request<'a> {
     pub observations: &'a Observations,
     pub build_roots: &'a [PathBuf],
     pub retention_days: u64,
+    /// The user's HOME, where a project with a fixed id keeps its hook log (#3009 S4b); `None`
+    /// lists only the project's own log.
+    pub home: Option<&'a Path>,
 }
 
 /// `issue/<n>-…` → `n`.
@@ -344,6 +352,89 @@ pub fn worktree_count_warning(count: usize) -> Option<String> {
     })
 }
 
+/// `unix_ms` of the first line of a log (the oldest, the log is only appended to), read from at
+/// most its first 8 KiB; `None` when the line is longer, empty or not a receipt line.
+fn first_line_unix_ms(path: &Path) -> Option<u64> {
+    use std::io::Read;
+    let mut buf = vec![0u8; 8192];
+    let n = fs::File::open(path).ok()?.read(&mut buf).ok()?;
+    let text = String::from_utf8_lossy(&buf[..n]);
+    let line = text.lines().next()?;
+    serde_json::from_str::<Value>(line).ok()?["unix_ms"].as_u64()
+}
+
+/// One `hook_log` row for the hook log at `path` (#3009 S4d), or `None` when there is no such
+/// file. Always `keep`: the row shows the size, the oldest line, whether the log is full (it
+/// stops taking lines at [`crate::hooks::RECEIPT_LOG_LIMIT`]) and whether it is past the design's
+/// retention, so the user can decide; nothing is rotated, trimmed or deleted. A link or a
+/// folder in the place of the log is listed as such and is not read through.
+fn hook_log_row(side: &str, shown: &str, path: &Path, now: u64) -> Option<Value> {
+    let meta = fs::symlink_metadata(path).ok()?;
+    let regular = meta.is_file();
+    let bytes = if regular { meta.len() } else { 0 };
+    let oldest = if regular {
+        first_line_unix_ms(path).map(|ms| ms / 1000)
+    } else {
+        None
+    };
+    let past_days =
+        oldest.is_some_and(|t| now.saturating_sub(t) > HOOK_LOG_RETENTION_DAYS * 86_400);
+    let past_bytes = bytes > HOOK_LOG_RETENTION_BYTES;
+    let full = bytes >= crate::hooks::RECEIPT_LOG_LIMIT;
+    let mut reasons = vec!["hook_log_kept"];
+    if !regular {
+        reasons.push("hook_log_not_a_regular_file");
+    }
+    if full {
+        reasons.push("hook_log_full");
+    }
+    if past_days || past_bytes {
+        reasons.push("past_design_retention");
+    }
+    let modified = if regular { mtime(path) } else { None };
+    Some(json!({
+        "kind": "hook_log",
+        "side": side,
+        "path": shown,
+        "action": "keep",
+        "reasons": reasons,
+        "trim_paths": [],
+        "bytes": bytes,
+        "bytes_partial": false,
+        "modified_unix": modified,
+        "age_secs": modified.map(|t| now.saturating_sub(t)),
+        "oldest_line_unix": oldest,
+        "full": full,
+        "limit_bytes": crate::hooks::RECEIPT_LOG_LIMIT,
+        "design_retention": {
+            "days": HOOK_LOG_RETENTION_DAYS,
+            "bytes": HOOK_LOG_RETENTION_BYTES,
+            "past_days": past_days,
+            "past_bytes": past_bytes,
+        },
+        "retention_until_unix": Value::Null,
+        "restore": "not regenerable — the hook log is evidence and is kept",
+        "apply": "none — the design's retention is shown, not applied; nothing is rotated, trimmed or deleted",
+    }))
+}
+
+/// The hook log rows of the project at `primary`: the project's own log, then the one in the
+/// HOME ([`crate::hooks::home_area_dir`]: only when the project has a fixed id and the HOME
+/// state root is a real folder, the same place the hooks write and read).
+fn hook_log_rows(home: Option<&Path>, primary: &Path, now: u64) -> Vec<Value> {
+    let mut rows = Vec::new();
+    let own = crate::state_root::path(primary, "receipts").join("hooks.jsonl");
+    let shown = own
+        .strip_prefix(primary)
+        .map_or_else(|_| own.display().to_string(), |p| p.display().to_string());
+    rows.extend(hook_log_row("project", &shown, &own, now));
+    if let Some(dir) = crate::hooks::home_area_dir(home, primary, "receipts") {
+        let log = dir.join("hooks.jsonl");
+        rows.extend(hook_log_row("home", &log.display().to_string(), &log, now));
+    }
+    rows
+}
+
 /// Builds the preview. Reads only.
 pub fn plan(req: &Request) -> Result<Value> {
     validate(req.observations)?;
@@ -476,6 +567,8 @@ pub fn plan(req: &Request) -> Result<Value> {
             "apply": "none",
         }));
     }
+
+    rows.extend(hook_log_rows(req.home, &primary, now));
 
     let bound: Vec<Value> = rows
         .iter()
