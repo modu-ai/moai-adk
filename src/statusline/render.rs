@@ -20,13 +20,13 @@ pub struct Theme {
     pub text: &'static str,
     pub muted: &'static str,
     pub stops: [&'static str; 4],
-    /// `🤖` model (mauve).
+    /// `🧠` model (mauve).
     pub model: &'static str,
-    /// `🧠` effort and thinking (lavender).
+    /// `🤔` effort and thinking (lavender).
     pub effort: &'static str,
     /// `♻️` cache hit (teal).
     pub cache: &'static str,
-    /// `🔅` Claude Code and `🗿` MoAI versions (sky).
+    /// `🤖` Claude Code and `🗿` MoAI versions (sky).
     pub version: &'static str,
     /// `📡` repository (blue).
     pub repo: &'static str,
@@ -156,7 +156,7 @@ impl Renderer {
         }
         let metrics = !s.model.is_empty();
         if self.enabled("model") && metrics {
-            segs.push(self.paint(self.theme.model, &format!("🤖 {}", s.model)));
+            segs.push(self.paint(self.theme.model, &format!("🧠 {}", s.model)));
         }
         if self.enabled("effort_thinking") {
             let thinking = s.thinking == Some(true);
@@ -164,7 +164,7 @@ impl Renderer {
                 None if thinking => segs.push(self.paint(self.theme.effort, "·t")),
                 Some(level) if !level.is_empty() => segs.push(self.paint(
                     self.theme.effort,
-                    &format!("🧠 {level}{}", if thinking { "·t" } else { "" }),
+                    &format!("🤔 {level}{}", if thinking { "·t" } else { "" }),
                 )),
                 _ => {}
             }
@@ -186,7 +186,7 @@ impl Renderer {
             }
         }
         if self.enabled("claude_version") && !s.claude_version.is_empty() {
-            segs.push(self.paint(self.theme.version, &format!("🔅 v{}", s.claude_version)));
+            segs.push(self.paint(self.theme.version, &format!("🤖 v{}", s.claude_version)));
         }
         if self.enabled("moai_version") {
             if let Some(v) = s.version.as_ref().filter(|v| !v.current.is_empty()) {
@@ -429,7 +429,7 @@ mod tests {
     fn full_main_layout_has_three_ordered_lines_without_reset_or_ahead() {
         assert_eq!(
             plain(&full_status(), &[]),
-            "🏷️ agent | 🤖 Opus | 🧠 high·t | ♻️ 75% | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0\n\
+            "🏷️ agent | 🧠 Opus | 🤔 high·t | ♻️ 75% | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0\n\
              📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3\n\
              🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
         );
@@ -539,7 +539,7 @@ mod tests {
         let out = plain(&status, &[]);
         assert_eq!(
             out.lines().next(),
-            Some("🏷️ agent | 🤖 Opus | 🧠 high·t | ♻️ 75% | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0")
+            Some("🏷️ agent | 🧠 Opus | 🤔 high·t | ♻️ 75% | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0")
         );
         assert_eq!(
             out.lines().nth(2),
@@ -547,7 +547,7 @@ mod tests {
         );
     }
 
-    /// #2928 (user instruction 6878415244, 2026-11-14): line 1 is `🏷️ <tag> | 🤖 … | 🗿 …` and
+    /// #2928 (user instruction 6878415244, 2026-11-14): line 1 is `🏷️ <tag> | 🧠 … | 🗿 …` and
     /// line 3 is `🔋 CTX … | 🪫 Week …` alone. The tag is `leader` or `agent` and comes first; it
     /// is shown whenever the `session` segment is on, even with no stdin (decision Q2 = (가));
     /// with every other line-1 segment off it stands alone, and with `session` off line 1 is as
@@ -573,7 +573,7 @@ mod tests {
         );
         let mut full = full_status();
         let bars = "🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%";
-        let env = "🤖 Opus | 🧠 high·t | ♻️ 75% | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0";
+        let env = "🧠 Opus | 🤔 high·t | ♻️ 75% | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0";
         assert_eq!(
             plain(&full, &[]).lines().next(),
             Some(format!("🏷️ agent | {env}").as_str())
@@ -623,7 +623,7 @@ mod tests {
             let out = plain(&status, &[]);
             assert_eq!(
                 out.lines().next(),
-                Some("🏷️ agent | 🤖 Opus | 🧠 high·t | ♻️ 75% | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0"),
+                Some("🏷️ agent | 🧠 Opus | 🤔 high·t | ♻️ 75% | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0"),
                 "{name:?}"
             );
             let colored = colored("mocha", Profile::TrueColor, &status);
@@ -771,7 +771,7 @@ mod tests {
         let lines: Vec<_> = out.lines().collect();
         assert_eq!(
             lines[0],
-            "🏷️ agent | 🤖 Opus | 🧠 high·t | ♻️ 75% ⏱️ 4m | 🔅 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0"
+            "🏷️ agent | 🧠 Opus | 🤔 high·t | ♻️ 75% ⏱️ 4m | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0"
         );
         assert_eq!(
             lines[1],
@@ -782,7 +782,7 @@ mod tests {
             "plain output carries no link escape: {out:?}"
         );
         status.cache_timer = Some(CacheTimer::Cold);
-        assert!(plain(&status, &[]).starts_with("🏷️ agent | 🤖 Opus | 🧠 high·t | ♻️ 75% 🧊 | "));
+        assert!(plain(&status, &[]).starts_with("🏷️ agent | 🧠 Opus | 🤔 high·t | ♻️ 75% 🧊 | "));
         status.cache = None;
         assert!(
             plain(&status, &[]).contains("| ♻️ 🧊 |"),
@@ -944,10 +944,10 @@ mod tests {
                 let mut status = full_status();
                 let out = colored(name, profile, &status);
                 for (hex, text) in [
-                    (t.model, "🤖 Opus"),
-                    (t.effort, "🧠 high·t"),
+                    (t.model, "🧠 Opus"),
+                    (t.effort, "🤔 high·t"),
                     (t.cache, "♻️ 75%"),
-                    (t.version, "🔅 v2.1.293"),
+                    (t.version, "🤖 v2.1.293"),
                     (t.version, "🗿 v2.0 -> 🗿 v3.0"),
                     (t.repo, "📡 owner/repo"),
                     (t.issues, "⬇️ 7"),
