@@ -107,7 +107,7 @@ fn squeezed(text: &str) -> String {
 fn the_update_route_runs_the_commands_itself_after_the_pick() {
     let update = skill("workflows/update.md");
     for text in [
-        "run the preview `moai update --json` (it writes nothing)",
+        "(it writes nothing), show what it would change, and ask",
         "it writes under the real HOME, a `guarded` setting, so nothing is applied without the user's pick",
         "After the pick run `moai update --confirm <plan_digest>` with that preview's `plan_digest`",
         "`moai update --confirm-cleanup <token>` (the preview's `cleanup.confirm_token`",
@@ -123,6 +123,19 @@ fn the_update_route_runs_the_commands_itself_after_the_pick() {
         // Addendum 1: the printed order, never a step blocked behind an earlier one.
         "Ask about the steps in the printed order, and never about a step that reads `blocked` or `re-run after …` behind an earlier one",
         "the backup phase lists `go-settings` before `go-state`",
+        // Audit of 32c514a8ee N4: the four sentences that keep the session's hands off.
+        "so you never open or edit it",
+        "Never change it without the pick",
+        "never remove those files unless the user picked exactly that removal in a selection that named each file",
+        "it records the pick and is not an authorization check",
+        // N5: the preview can never reach the terminal question.
+        "run the preview `moai update --json` with stdin closed (`</dev/null`)",
+        "with a terminal on stdin and stderr the command asks `[y/N]` itself",
+        // N3: the route's end.
+        "Offer every step that does not read `unchanged` at the end once, in one selection: run it now (recommended when it reads `ready`) or leave it",
+        "A `blocked` step is not offered: report it with what unblocks it",
+        "core rule 18 (`internal/core-rules`)",
+        "the checks to try themselves and the decisions made for them, each with how to undo it",
     ] {
         assert!(update.contains(text), "update.md lacks {text:?}");
     }
@@ -158,6 +171,16 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
         "At most three questions per call",
         "`moai language-setup <project> --questions`",
         "never as a bullet list",
+        // Audit of 32c514a8ee B1: a case-(2) question has no preset answer, and no answer
+        // is not a pick.
+        "Nothing is preselected for it",
+        "the recommended option is still listed first and marked in its label text",
+        "A cancelled, empty, timed-out or unanswered result is not a pick: nothing runs, the step stays open and is reported as open",
+        "never go on by best judgment",
+        "\"I closed the other sessions\"",
+        // N6: a secret never passes through the session.
+        "A secret value never goes through a question tool, a command argument or this session's output",
+        "the user types it into the product's own hidden prompt in their own terminal",
     ] {
         assert!(q.contains(text), "questions.md lacks {text:?}");
     }
@@ -176,7 +199,14 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
                 "`request_user_input`",
                 "At most 3 questions per call, 2 or 3 options each",
                 "`features.default_mode_request_user_input`",
-                "the `moai codex` launcher enables it (card C-52)",
+                // N1: true at this head — the launcher does not turn the feature on yet.
+                "(under development, off by default; the `moai codex` launcher is to turn it on — card C-52, not in this version): go by the tool list",
+                // B1: Codex's own Default-mode instruction must not decide a case-(2) question.
+                "continue with best judgment",
+                "for a case-(2) question never do that: no answer is not a pick (rule 3)",
+                // N2: Plan mode previews and picks; the applies run after it.
+                "In Plan mode only previews and picks happen",
+                "the applies run after the user leaves Plan mode; say so once",
                 "Never `request_user_input_async` for a question a step waits on",
                 "say once that `/plan` enables the dialog",
                 "one question per message with numbered choices",
@@ -189,6 +219,9 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
                 "one HTML form",
                 "`<select>`",
                 "`checked`",
+                // B1: OMP submits the form's values on a timeout, so case (2) presets none.
+                "for a case-(2) question (rule 3) nothing is preselected: no `checked`, no `selected` and no `value`",
+                "`ask.timeout`",
                 "print mode or a subagent",
                 "in the final answer",
             ][..],
@@ -244,6 +277,10 @@ fn the_ledger_is_local_cards_and_previews_run_without_asking() {
         "the work ledger is the local card ledger (`moai card`): it is not asked, it is never recorded under `development_methods`, and GitHub Issues are not offered as a ledger or a method",
         "relay the `--questions` set through the host's question tool",
         "its `suggested` value first",
+        // Audit of 32c514a8ee N3: the route's end.
+        "offer once, in one selection, every step the user left out or that does not read `unchanged`",
+        "report a `blocked` step with what unblocks it",
+        "core rule 18 (`internal/core-rules`)",
     ] {
         assert!(project.contains(text), "project.md lacks {text:?}");
     }
@@ -269,6 +306,12 @@ fn the_ledger_is_local_cards_and_previews_run_without_asking() {
         "do not offer GitHub Issues as the ledger",
         "Only when the user asks to export a work item to a GitHub Issue",
         "never tell the user to run it in a terminal",
+        // Audit of 32c514a8ee B2: creating the ledger writes under the real HOME.
+        "which work ledger is used is not asked",
+        "creating it is a write under the real HOME",
+        "run the read-only preview `moai ledger-register-plan <project>` without asking",
+        "run `moai ledger-register-apply` only after its own pick in a selection",
+        "never that the ledger is created unasked",
     ] {
         assert!(setup.contains(text), "setup.md lacks {text:?}");
     }
