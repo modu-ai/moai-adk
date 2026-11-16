@@ -54,6 +54,45 @@ fn core_rules_stay_small_numbered_and_host_neutral() {
     }
 }
 
+/// #3096 S1: rules 19-21 and the report-first sentence of rule 18 keep their scope and reason,
+/// and the lenses file reports without changing code.
+#[test]
+fn prior_art_scope_and_code_wins_rules_keep_their_words() {
+    let rules = package("references/internal/core-rules.md");
+    for phrase in [
+        "19. Before building an unfamiliar feature from scratch, find at least two public implementations of something similar, compare their approaches and write down why you chose yours.",
+        "20. Do not design for a rare case or a future situation nobody asked for; note it as a follow-up.",
+        "Input checks at trust boundaries, data-loss prevention and security stay in scope, as in rule 3.",
+        "21. When an instruction file and the code or a command's real output disagree, the code and the output win; report the disagreement.",
+        "is read by someone who did not watch the work: it gives the conclusion first, in plain words, and ends with two lists",
+    ] {
+        assert!(rules.contains(phrase), "core-rules.md must say `{phrase}`");
+    }
+    let lenses = package("references/internal/lenses.md");
+    assert!(
+        lenses.contains("Each lens produces a report and changes no code"),
+        "{lenses}"
+    );
+    for lens in [
+        "**State machine.**",
+        "**CI in three stretches.**",
+        "**What would we keep if we built it again today.**",
+        "**Refactor risk.**",
+    ] {
+        assert!(lenses.contains(lens), "lenses.md lost {lens}");
+    }
+    for (file, needle) in [
+        ("workflows/plan.md", "`internal/lenses`"),
+        ("workflows/read.md", "`internal/lenses`"),
+        ("references/chains/index.md", "`internal/lenses`"),
+    ] {
+        assert!(
+            package(file).contains(needle),
+            "{file} must point to {needle}"
+        );
+    }
+}
+
 /// SKILL.md sends every session to the file, and every base agent reads it first.
 #[test]
 fn the_skill_and_every_base_agent_read_core_rules() {
