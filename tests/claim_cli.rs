@@ -873,7 +873,13 @@ fn a_renewal_does_not_reopen_a_claim_a_handoff_or_release_line_closed() {
             "{kind}: no POST"
         );
         let note = &out.notes[0];
-        for want in ["comment 900", "epoch 1", kind, "nothing was written"] {
+        let line_kind = format!("a {kind} line has already closed it");
+        for want in [
+            "comment 900",
+            "epoch 1",
+            line_kind.as_str(),
+            "nothing was written",
+        ] {
             assert!(note.contains(want), "{kind}: {want:?} not in {note}");
         }
         let journal = Journal::open_read(&root).unwrap();
