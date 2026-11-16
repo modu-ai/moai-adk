@@ -1,7 +1,7 @@
 # Review instructions
 
-Read with AGENTS.md. `moai-cli review-package` hands this file to every reviewer from the
-base commit, and `moai-cli review-check` refuses a finding without a severity, a file and
+Read with AGENTS.md. `moai review-package` hands this file to every reviewer from the
+base commit, and `moai review-check` refuses a finding without a severity, a file and
 line in HEAD, evidence quoted from that line, and a confirmed verification.
 
 ## Important (blocks the merge)
