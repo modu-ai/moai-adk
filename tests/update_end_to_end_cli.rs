@@ -578,64 +578,63 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
             .map(|c| c.as_str().unwrap().to_string())
             .collect()
     };
-    // The printed commands name the commands this test runs, in this order.
-    for (step, words) in [
-        ("omp-hooks", vec![]),
-        ("codex-config", vec![]),
-        ("codex-hooks", vec![]),
-        ("hooks", vec!["moai go-hooks-revert"]),
-        (
-            "generation",
-            vec!["moai apply-recover", "moai apply-recover"],
-        ),
-        (
-            "go-state",
-            vec!["moai go-state-revert-plan", "moai go-state-revert "],
-        ),
-        ("go-settings", vec!["moai go-settings-revert"]),
-    ] {
-        let got = commands(step);
-        assert_eq!(got.len(), words.len(), "{step}: {got:?}");
-        for (c, w) in got.iter().zip(words) {
-            assert!(c.starts_with(w), "{step}: {c}");
-        }
-    }
-    // Which receipt each command takes is part of the order: the instruction file's own receipt
-    // first, then the generation's; the plan before the revert it digests.
     for step in ["omp-hooks", "codex-config", "codex-hooks"] {
         let note = steps.iter().find(|s| s["step"] == step).unwrap()["note"].as_str();
         assert!(
             note.is_some_and(|n| n.contains("no revert command")),
             "{step}"
         );
+        assert_eq!(commands(step), Vec::<String>::new(), "{step}");
     }
-    let generation_commands = commands("generation");
-    assert!(generation_commands[0].contains("<agents_receipt of the generation step>"));
-    assert!(generation_commands[1].contains("<receipt of the generation step>"));
-    let state_commands = commands("go-state");
-    assert!(state_commands[0].starts_with("moai go-state-revert-plan"));
-    assert!(state_commands[1].contains("--plan-digest"));
+    // What stays is said, not left to be read as "everything is back".
+    let stays = w.last["undo_order"]["stays"].as_str().unwrap();
+    assert!(
+        stays.contains("receipts") && stays.contains(".moai.rust-"),
+        "{stays}"
+    );
     let id = |step: &str, key: &str| applied(&w, step)[key].as_str().unwrap().to_string();
-    let hooks = id("hooks", "receipt");
-    let agents = id("generation", "agents_receipt");
-    let generation = id("generation", "receipt");
-    let backup = id("go-state", "backup");
-    let settings = id("go-settings", "receipt");
+    let fills = [
+        ("<receipt of the hooks step>", id("hooks", "receipt")),
+        (
+            "<agents_receipt of the generation step>",
+            id("generation", "agents_receipt"),
+        ),
+        (
+            "<receipt of the generation step>",
+            id("generation", "receipt"),
+        ),
+        ("<backup of the go-state step>", id("go-state", "backup")),
+        (
+            "<receipt of the go-settings step>",
+            id("go-settings", "receipt"),
+        ),
+        ("<reference>", REF.to_string()),
+        ("<PROJECT>", fx.p().to_string()),
+    ];
+    // A printed command, run as printed: its placeholders filled (the digest from the plan that
+    // came just before it), no placeholder left, the first word (`moai`) dropped.
+    let digest = std::cell::RefCell::new(String::new());
+    let run_printed = |cmd: &str| -> Value {
+        let mut line = cmd.to_string();
+        for (placeholder, value) in &fills {
+            line = line.replace(placeholder, value);
+        }
+        line = line.replace("<digest of that plan>", &digest.borrow());
+        assert!(!line.contains('<'), "a placeholder is left: {line}");
+        let args: Vec<&str> = line.split_whitespace().skip(1).collect();
+        let out = fx.run(&args);
+        if let Some(d) = out["result"]["plan_digest"].as_str() {
+            *digest.borrow_mut() = d.to_string();
+        }
+        out
+    };
 
     // Out of order the go-state revert is refused and writes nothing.
     let before = project_nodes(&fx);
-    let early = fx.run(&["go-state-revert-plan", fx.p(), "--backup", &backup]);
-    let digest = early["result"]["plan_digest"].as_str().unwrap().to_string();
-    let refused = fx.run(&[
-        "go-state-revert",
-        "--backup",
-        &backup,
-        "--plan-digest",
-        &digest,
-        "--permission-reference",
-        REF,
-        fx.p(),
-    ]);
+    let early = commands("go-state");
+    assert_eq!(early.len(), 2, "{early:?}");
+    assert_eq!(run_printed(&early[0])["ok"], json!(true));
+    let refused = run_printed(&early[1]);
     assert_eq!(refused["ok"], json!(false), "{refused}");
     assert!(
         refused["error"]["message"]
@@ -650,75 +649,16 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
         "a refused revert writes nothing"
     );
 
-    // The printed order.
-    undo_ok(
-        &fx,
-        "hooks",
-        &[
-            "go-hooks-revert",
-            "--receipt",
-            &hooks,
-            "--permission-reference",
-            REF,
-            fx.p(),
-        ],
-    );
-    undo_ok(
-        &fx,
-        "agents receipt",
-        &[
-            "apply-recover",
-            "--receipt",
-            &agents,
-            "--permission-reference",
-            REF,
-            fx.p(),
-        ],
-    );
-    undo_ok(
-        &fx,
-        "generation",
-        &[
-            "apply-recover",
-            "--receipt",
-            &generation,
-            "--permission-reference",
-            REF,
-            fx.p(),
-        ],
-    );
-    let plan = undo_ok(
-        &fx,
-        "go-state plan",
-        &["go-state-revert-plan", fx.p(), "--backup", &backup],
-    );
-    let digest = plan["plan_digest"].as_str().unwrap().to_string();
-    undo_ok(
-        &fx,
-        "go-state",
-        &[
-            "go-state-revert",
-            "--backup",
-            &backup,
-            "--plan-digest",
-            &digest,
-            "--permission-reference",
-            REF,
-            fx.p(),
-        ],
-    );
-    undo_ok(
-        &fx,
-        "go-settings",
-        &[
-            "go-settings-revert",
-            "--receipt",
-            &settings,
-            "--permission-reference",
-            REF,
-            fx.p(),
-        ],
-    );
+    // The printed order: every printed command of every step, one after the other.
+    let mut ran = 0;
+    for step in steps {
+        for cmd in step["commands"].as_array().unwrap() {
+            let out = run_printed(cmd.as_str().unwrap());
+            assert_eq!(out["ok"], json!(true), "{}: {cmd}: {out}", step["step"]);
+            ran += 1;
+        }
+    }
+    assert_eq!(ran, 6, "hooks 1, generation 2, go-state 2, go-settings 1");
 
     let end = project_nodes(&fx);
     for (path, node) in &start {

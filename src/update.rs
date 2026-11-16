@@ -1585,6 +1585,24 @@ fn run_cleanup(
     crate::update_cleanup::apply(home, staged, token, permission, &crate::audit::utc_now())
 }
 
+/// The keys of a result's `revert` object, in the one order the commands are safe to run: last
+/// applied first (#2936 E1). The apply order is agents, routing, style, command names, hooks,
+/// keys, then the confirmed cleanup, then the confirmed home part. A file two layers changed, such
+/// as Codex's `~/.codex/AGENTS.md` (routing and style), is only given back in this order:
+/// reverting routing first is skipped as `user_changed_since_apply` and style then leaves the
+/// routing block behind for good. Only the commands that exist are listed. The terminal screen and
+/// the JSON result both take the order from here.
+pub const REVERT_ORDER: [&str; 7] = [
+    "home", "cleanup", "keys", "hooks", "style", "routing", "agents",
+];
+
+pub fn revert_order(revert: &serde_json::Value) -> Vec<&'static str> {
+    REVERT_ORDER
+        .into_iter()
+        .filter(|k| revert[*k].is_string())
+        .collect()
+}
+
 fn cleanup_revert(r: &serde_json::Value) -> Option<String> {
     r["stamp"]
         .as_str()
@@ -1832,11 +1850,13 @@ pub fn update_command(
             if let Some(t) = cleanup {
                 let r = run_cleanup(home, &staged, t, PERMISSION)?;
                 out["revert"] = json!({"cleanup": cleanup_revert(&r)});
+                out["revert_order"] = json!(revert_order(&out["revert"]));
                 out["cleanup_result"] = r;
             }
             if let Some(t) = home_token {
                 let r = crate::update_home::apply(home, t, PERMISSION)?;
                 out["revert"] = json!({"home": r["revert"]});
+                out["revert_order"] = json!(revert_order(&out["revert"]));
                 out["home_result"] = r;
             }
             return Ok(out);
@@ -1973,16 +1993,6 @@ pub fn update_command(
         out["revert"]["keys"] = json!(revert("keys-revert", &keys));
         out["keys_result"] = keys;
     }
-    // #2936 E1 (the Codex revert-order trap found in the isolated fixture): the revert commands are
-    // only safe last applied first. Codex's `~/.codex/AGENTS.md` is changed by the routing and the
-    // style layer; reverting routing before style is skipped as "user_changed_since_apply" and
-    // style then leaves the routing block behind for good. The apply order is agents, routing,
-    // style, command names, hooks, keys; the commands that exist are listed in the reverse.
-    let order: Vec<&str> = ["keys", "hooks", "style", "routing", "agents"]
-        .into_iter()
-        .filter(|k| out["revert"][*k].is_string())
-        .collect();
-    out["revert_order"] = json!(order);
     if let Some(c) = cleanup {
         out["revert"]["cleanup"] = json!(cleanup_revert(&c));
         out["cleanup_result"] = c;
@@ -1991,6 +2001,7 @@ pub fn update_command(
         out["revert"]["home"] = h["revert"].clone();
         out["home_result"] = h;
     }
+    out["revert_order"] = json!(revert_order(&out["revert"]));
     Ok(out)
 }
 

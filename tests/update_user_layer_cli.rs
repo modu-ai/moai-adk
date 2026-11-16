@@ -635,6 +635,8 @@ fn the_cleanup_token_alone_archives_and_cleanup_revert_restores() {
         r["revert"]["cleanup"],
         json!(format!("moai cleanup-revert-plan <HOME> --stamp {stamp}"))
     );
+    // The cleanup's revert is in the list the agent and the screen follow (AUDIT #3133 B2).
+    assert_eq!(r["revert_order"], json!(["cleanup"]), "{r}");
     let archive = home.join(".moai-cli/cleanup").join(stamp);
     assert!(archive.join("receipt.json").is_file());
     assert_eq!(

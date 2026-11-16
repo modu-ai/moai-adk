@@ -238,6 +238,7 @@ fn update_home_never_prints_or_records_the_content_of_a_secret_file() {
         "the secret file was renamed, not copied: {files:?}"
     );
     let revert = r["revert"]["home"].as_str().unwrap();
+    assert_eq!(r["revert_order"], json!(["home"]), "{r}");
     let stamp = revert
         .split_whitespace()
         .skip_while(|w| *w != "--stamp")

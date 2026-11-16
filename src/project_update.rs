@@ -1361,7 +1361,7 @@ fn undo_order() -> Value {
             {"step": "codex-hooks", "commands": [], "note": none},
             {"step": "hooks", "commands": [
                 "moai go-hooks-revert --receipt <receipt of the hooks step> --permission-reference <reference> <PROJECT>",
-            ], "note": "for a hooks step that ran go-hooks-apply (the Go hook set)"},
+            ], "note": "for a hooks step that ran go-hooks-apply (the Go hook set); a project that took hooks-apply --host claude has no command here"},
             {"step": "generation", "commands": [
                 "moai apply-recover --receipt <agents_receipt of the generation step> --permission-reference <reference> <PROJECT>",
                 "moai apply-recover --receipt <receipt of the generation step> --permission-reference <reference> <PROJECT>",
@@ -1374,6 +1374,7 @@ fn undo_order() -> Value {
                 "moai go-settings-revert --receipt <receipt of the go-settings step> --permission-reference <reference> <PROJECT>",
             ]},
         ],
+        "stays": "what the commands above do not take away: the receipts under .moai-cli/receipts/, the Rust state's set-aside folder .moai.rust-<UTC>/, and what the three steps without a revert command wrote (.codex/, .omp/, .moai-cli/manifests/codex-config.json, codex-hooks.json, omp-hooks.json); remove those by hand only after reading them, nothing here deletes them",
         "other_steps": "a step not listed (profile, claude-settings, github, the merge steps) prints its own revert or receipt in its apply result",
     })
 }
