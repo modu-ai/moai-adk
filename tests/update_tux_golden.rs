@@ -154,6 +154,45 @@ fn the_keys_rows_are_one_plain_line_each() {
     }
 }
 
+/// #2936 E1 (AUDIT #3133 B2): the screen prints the revert commands in the order
+/// `update::revert_order` gives the JSON result — last applied first, the confirmed home part and
+/// the cleanup before the layer's own commands — and prints each command once.
+#[test]
+fn the_screen_prints_the_revert_commands_in_the_one_order_of_the_result() {
+    let revert = serde_json::json!({
+        "agents": "moai agents-home-revert <HOME> --receipt A",
+        "routing": "moai home-routing-revert <HOME> --receipt R",
+        "style": "moai home-style-revert <HOME> --receipt S",
+        "hooks": "moai hooks-revert <PROJECT> --receipt H",
+        "keys": "moai keys-revert <HOME> --receipt K",
+        "cleanup": "moai cleanup-revert-plan <HOME> --stamp 20261114T080000Z",
+        "home": "moai home-retire-revert <HOME> --receipt Q",
+    });
+    let order = moai_cli::update::revert_order(&revert);
+    assert_eq!(
+        order,
+        ["home", "cleanup", "keys", "hooks", "style", "routing", "agents"]
+    );
+    let mut done = fixture("preview-changes");
+    done["mode"] = serde_json::json!("applied");
+    done["agents_result"] = serde_json::json!({"state": "applied", "receipt": "A"});
+    done["cleanup_result"] =
+        serde_json::json!({"state": "committed", "moved": 2, "stamp": "20261114T080000Z"});
+    done["home_result"] = serde_json::json!({"state": "committed", "moved": 1, "receipt": "Q"});
+    done["revert"] = revert.clone();
+    for lang in [Lang::En, Lang::Ko] {
+        let v = view(lang, Look::Plain, 200, None);
+        let text = screen(&done, Asked::Yes, &v);
+        let mut at = Vec::new();
+        for key in &order {
+            let command = revert[*key].as_str().unwrap();
+            assert_eq!(text.matches(command).count(), 1, "{key} once: {text}");
+            at.push(text.find(command).unwrap());
+        }
+        assert!(at.windows(2).all(|w| w[0] < w[1]), "{at:?}: {text}");
+    }
+}
+
 fn moai_project() -> Option<Project> {
     Some(Project {
         path: "/home/u/work/app".into(),

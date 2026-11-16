@@ -1154,7 +1154,7 @@ impl Out<'_> {
         self.buf.push_str(&line);
     }
     /// A home part that ran (`--confirm-home`): how many entries moved and the revert.
-    fn home_done(&mut self, v: &Value) {
+    fn home_done(&mut self, v: &Value, with_revert: bool) {
         let r = &v["home_result"];
         if r.is_null() {
             return;
@@ -1177,7 +1177,7 @@ impl Out<'_> {
             Mark::Ok,
             &format!("{} {}", w(lang, W::Retired), count(lang, moved)),
         );
-        if let Some(c) = v["revert"]["home"].as_str() {
+        if let Some(c) = v["revert"]["home"].as_str().filter(|_| with_revert) {
             let c = self.home(c);
             let line = format!(
                 "  {} {}\n",
@@ -1189,7 +1189,7 @@ impl Out<'_> {
         }
     }
     /// A cleanup that ran (`--confirm-cleanup`): how many entries were archived and the revert.
-    fn cleanup_done(&mut self, v: &Value) {
+    fn cleanup_done(&mut self, v: &Value, with_revert: bool) {
         let r = &v["cleanup_result"];
         if r.is_null() {
             return;
@@ -1215,7 +1215,7 @@ impl Out<'_> {
             Mark::Ok,
             &format!("{} {}", w(lang, W::Cleaned), count(lang, moved)),
         );
-        if let Some(c) = v["revert"]["cleanup"].as_str() {
+        if let Some(c) = v["revert"]["cleanup"].as_str().filter(|_| with_revert) {
             let c = self.home(c);
             let line = format!(
                 "  {} {}\n",
@@ -1507,9 +1507,9 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
             o.blank();
             o.rows(&others);
         }
-        o.cleanup_done(result);
+        o.cleanup_done(result, true);
         o.cleanup_next(result);
-        o.home_done(result);
+        o.home_done(result, true);
         o.home_next(result);
         o.project_next();
         return o.buf;
@@ -1533,9 +1533,9 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
         let line = format!("  {}\n", o.p().paint(Token::Code, &visible(cmd)));
         o.buf.push_str(&line);
     }
-    o.cleanup_done(result);
+    o.cleanup_done(result, true);
     o.cleanup_next(result);
-    o.home_done(result);
+    o.home_done(result, true);
     o.home_next(result);
     o.buf
 }
@@ -1655,11 +1655,11 @@ fn applied(v: &Value, view: &View) -> String {
         format!("{total} {}", w(lang, W::Changed))
     };
     o.status(m, &format!("{} — {total}", w(lang, head)));
-    // Last applied first (the apply order is agents, routing, style, command names, hooks, keys): a file
-    // two layers changed, such as Codex's AGENTS.md, is only restored in that order.
-    let reverts: Vec<String> = ["keys", "hooks", "style", "routing", "agents"]
-        .iter()
-        .filter_map(|k| v["revert"][*k].as_str())
+    // Last applied first, from the one order `update::revert_order` holds; the cleanup and home
+    // commands are in it (their status rows follow, without a second revert line).
+    let reverts: Vec<String> = crate::update::revert_order(&v["revert"])
+        .into_iter()
+        .filter_map(|k| v["revert"][k].as_str())
         .map(|c| o.home(c))
         .collect();
     // Revert commands stay whole (never cut) so they can be copied.
@@ -1680,8 +1680,8 @@ fn applied(v: &Value, view: &View) -> String {
     if reload {
         o.muted(w(lang, W::Reload));
     }
-    o.cleanup_done(v);
-    o.home_done(v);
+    o.cleanup_done(v, false);
+    o.home_done(v, false);
     // A partly applied run ends with what failed, not the next step (#2894 7b).
     if !bad {
         o.project_next();

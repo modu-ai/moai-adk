@@ -1585,6 +1585,24 @@ fn run_cleanup(
     crate::update_cleanup::apply(home, staged, token, permission, &crate::audit::utc_now())
 }
 
+/// The keys of a result's `revert` object, in the one order the commands are safe to run: last
+/// applied first (#2936 E1). The apply order is agents, routing, style, command names, hooks,
+/// keys, then the confirmed cleanup, then the confirmed home part. A file two layers changed, such
+/// as Codex's `~/.codex/AGENTS.md` (routing and style), is only given back in this order:
+/// reverting routing first is skipped as `user_changed_since_apply` and style then leaves the
+/// routing block behind for good. Only the commands that exist are listed. The terminal screen and
+/// the JSON result both take the order from here.
+pub const REVERT_ORDER: [&str; 7] = [
+    "home", "cleanup", "keys", "hooks", "style", "routing", "agents",
+];
+
+pub fn revert_order(revert: &serde_json::Value) -> Vec<&'static str> {
+    REVERT_ORDER
+        .into_iter()
+        .filter(|k| revert[*k].is_string())
+        .collect()
+}
+
 fn cleanup_revert(r: &serde_json::Value) -> Option<String> {
     r["stamp"]
         .as_str()
@@ -1832,11 +1850,13 @@ pub fn update_command(
             if let Some(t) = cleanup {
                 let r = run_cleanup(home, &staged, t, PERMISSION)?;
                 out["revert"] = json!({"cleanup": cleanup_revert(&r)});
+                out["revert_order"] = json!(revert_order(&out["revert"]));
                 out["cleanup_result"] = r;
             }
             if let Some(t) = home_token {
                 let r = crate::update_home::apply(home, t, PERMISSION)?;
                 out["revert"] = json!({"home": r["revert"]});
+                out["revert_order"] = json!(revert_order(&out["revert"]));
                 out["home_result"] = r;
             }
             return Ok(out);
@@ -1981,6 +2001,7 @@ pub fn update_command(
         out["revert"]["home"] = h["revert"].clone();
         out["home_result"] = h;
     }
+    out["revert_order"] = json!(revert_order(&out["revert"]));
     Ok(out)
 }
 

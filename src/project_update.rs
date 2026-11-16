@@ -1268,10 +1268,12 @@ fn leftovers(root: &Path, generation: &str) -> Vec<Value> {
                 let held = match names.len() {
                     0 => "is an empty folder".to_string(),
                     n => {
+                        // File names are the project's, not ours (AUDIT #3117 E4): a long one is
+                        // cut and a control or direction character shows as `?`.
                         let shown = names
                             .iter()
                             .take(LEFTOVER_NAMES)
-                            .cloned()
+                            .map(|n| crate::card::input::echo(n))
                             .collect::<Vec<_>>()
                             .join(", ");
                         let more = n.saturating_sub(LEFTOVER_NAMES);
@@ -1342,6 +1344,41 @@ fn dead_update_lock(root: &Path) -> Option<String> {
     ))
 }
 
+/// #2936 E1 (AUDIT #3117): how to take the update chain back, last applied first. Printed with
+/// every preview, because the order is not a matter of taste: `go-state-revert` refuses while the
+/// generation step's `AGENTS.md` is still in place ("revert refused: AGENTS.md is conflict"), and
+/// the generation step's `AGENTS.md` is a second receipt (`agents_receipt`) that its own undo does
+/// not cover. Run in this order the project is back to its start bytes (what the steps added —
+/// receipts, `.moai.rust-<UTC>/`, the Codex and OMP files — stays). Each id is printed by the
+/// apply result of its step.
+fn undo_order() -> Value {
+    let none = "no revert command exists for this step; its files stay and do not block the commands below";
+    json!({
+        "rule": "undo the step applied last first; every command needs its own permission reference",
+        "steps": [
+            {"step": "omp-hooks", "commands": [], "note": none},
+            {"step": "codex-config", "commands": [], "note": none},
+            {"step": "codex-hooks", "commands": [], "note": none},
+            {"step": "hooks", "commands": [
+                "moai go-hooks-revert --receipt <receipt of the hooks step> --permission-reference <reference> <PROJECT>",
+            ], "note": "for a hooks step that ran go-hooks-apply (the Go hook set); a project that took hooks-apply --host claude has no command here"},
+            {"step": "generation", "commands": [
+                "moai apply-recover --receipt <agents_receipt of the generation step> --permission-reference <reference> <PROJECT>",
+                "moai apply-recover --receipt <receipt of the generation step> --permission-reference <reference> <PROJECT>",
+            ], "note": "the instruction file has a receipt of its own; undo it before the workflow files"},
+            {"step": "go-state", "commands": [
+                "moai go-state-revert-plan <PROJECT> --backup <backup of the go-state step>",
+                "moai go-state-revert --backup <backup of the go-state step> --plan-digest <digest of that plan> --permission-reference <reference> <PROJECT>",
+            ], "note": "refused while the generation step's AGENTS.md is in place"},
+            {"step": "go-settings", "commands": [
+                "moai go-settings-revert --receipt <receipt of the go-settings step> --permission-reference <reference> <PROJECT>",
+            ]},
+        ],
+        "stays": "what the commands above do not take away: the receipts under .moai-cli/receipts/, the Rust state's set-aside folder .moai.rust-<UTC>/, and what the three steps without a revert command wrote (.codex/, .omp/, .moai-cli/manifests/codex-config.json, codex-hooks.json, omp-hooks.json); remove those by hand only after reading them, nothing here deletes them",
+        "other_steps": "a step not listed (profile, claude-settings, github, the merge steps) prints its own revert or receipt in its apply result",
+    })
+}
+
 /// The whole preview. Writes nothing.
 pub fn plan(project: &Path) -> Result<Value> {
     let root = fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
@@ -1398,12 +1435,43 @@ pub fn plan(project: &Path) -> Result<Value> {
             phase("merge", MERGE_REASON, &merge),
         ],
         "all_unchanged": all_unchanged,
+        "undo_order": undo_order(),
     }))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// AUDIT #3117 E2: a workflow reference recorded in the earlier state folder follows the state
+    /// to `.moai/` once it has moved, and only then; any other reference is as recorded.
+    #[test]
+    fn a_workflow_reference_in_the_earlier_state_folder_follows_the_state() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        let earlier = format!("{}/workflows/moai/", state_root::EARLIER_PROJECT_DIR);
+        let moved = format!("{}/workflows/moai/", state_root::MOAI_DIR);
+        // The state has not moved: as recorded.
+        assert_eq!(follow_state_dir(root, &earlier), earlier);
+        fs::create_dir_all(root.join(state_root::MOAI_DIR)).unwrap();
+        fs::write(
+            root.join(state_root::MOAI_DIR)
+                .join(state_root::RUST_MARKER),
+            state_root::marker_bytes("test", &[]),
+        )
+        .unwrap();
+        assert_eq!(follow_state_dir(root, &earlier), moved);
+        // Anything that is not that prefix is left alone, look-alikes included.
+        for other in [
+            format!("{}/workflows/x/", state_root::MOAI_DIR),
+            format!("docs/{earlier}"),
+            format!("{}x/workflows/", state_root::EARLIER_PROJECT_DIR),
+            "workflows/moai/".to_string(),
+            state_root::EARLIER_PROJECT_DIR.to_string(),
+        ] {
+            assert_eq!(follow_state_dir(root, &other), other);
+        }
+    }
 
     #[test]
     fn a_phase_takes_its_worst_step() {
