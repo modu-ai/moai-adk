@@ -36,13 +36,20 @@ const PLANS_DIR: &str = ".moai/plans";
 pub const LAUNCHER_SHOWN: &str = "$HOME/.moai-cli/path/moai-cli";
 
 /// The same file under HOME.
-const LAUNCHER_REL: [&str; 3] = [".moai-cli", "path", "moai-cli"];
+const LAUNCHER_REL: [&str; 3] = [crate::fixed_state!(), "path", "moai-cli"];
 
 /// The most directory entries the `.moai/plans` count looks at (#2936 L2a, D1 condition 2): the
 /// walk stops at the next one and the count is reported as `more_than_limit`.
 pub const PLANS_WALK_LIMIT: usize = 1000;
 
 const RECEIPT_PREFIX: &str = "go-settings-";
+
+/// What the preview and the apply say of the old file's kept copy (#3111 audit N2).
+const KEPT_COPY_NOTE: &str =
+    "the old .claude/settings.json is kept as before/settings.json in the \
+    receipt folder (receipts/go-settings-<id>/ under the project state folder); it can hold \
+    secrets, so it is owner-only (0600 in a 0700 folder) and a .gitignore in that folder keeps \
+    it out of git";
 
 /// Owner-only bits for the receipt folder and the kept copy of the settings file, which may hold
 /// a token in its `env` block (#3111 audit B1).
@@ -182,6 +189,110 @@ fn repeats_a_key(bytes: &[u8]) -> bool {
         }
     }
     serde_json::from_slice::<Strict>(bytes).is_err()
+}
+
+/// The names of the top-level keys that hold a number which writing the file again would spell
+/// differently (#3111 audit B4): a number whose text is not what `serde_json` prints for the
+/// value it reads (an integer beyond 64 bits that becomes a float, `-0`, `1E2`, `1.10`). Names
+/// only. `bytes` is JSON that already parsed as an object.
+fn numbers_that_change(bytes: &[u8]) -> Vec<String> {
+    struct Scan<'a> {
+        b: &'a [u8],
+        i: usize,
+        hits: Vec<String>,
+    }
+    impl Scan<'_> {
+        fn ws(&mut self) {
+            while matches!(self.b.get(self.i), Some(b' ' | b'\t' | b'\n' | b'\r')) {
+                self.i += 1;
+            }
+        }
+        fn string(&mut self) -> String {
+            let start = self.i;
+            self.i += 1;
+            while let Some(c) = self.b.get(self.i) {
+                self.i += 1;
+                match c {
+                    b'\\' => self.i += 1,
+                    b'"' => break,
+                    _ => {}
+                }
+            }
+            serde_json::from_slice::<String>(self.b.get(start..self.i).unwrap_or_default())
+                .unwrap_or_default()
+        }
+        fn value(&mut self, top: Option<&str>, depth: usize) {
+            self.ws();
+            match self.b.get(self.i) {
+                Some(b'"') => {
+                    self.string();
+                }
+                Some(&open @ (b'{' | b'[')) => {
+                    self.i += 1;
+                    loop {
+                        self.ws();
+                        match self.b.get(self.i) {
+                            None => return,
+                            Some(b'}' | b']') => {
+                                self.i += 1;
+                                return;
+                            }
+                            Some(b',') => self.i += 1,
+                            Some(_) => {
+                                let mut key = top.map(String::from);
+                                if open == b'{' {
+                                    let k = self.string();
+                                    self.ws();
+                                    self.i += 1; // the colon
+                                    if depth == 0 {
+                                        key = Some(k);
+                                    }
+                                }
+                                self.value(key.as_deref(), depth + 1);
+                            }
+                        }
+                    }
+                }
+                Some(b't' | b'f' | b'n') => {
+                    while self.b.get(self.i).is_some_and(u8::is_ascii_alphabetic) {
+                        self.i += 1;
+                    }
+                }
+                Some(_) => {
+                    let start = self.i;
+                    while self.b.get(self.i).is_some_and(|c| {
+                        c.is_ascii_digit() || matches!(c, b'.' | b'e' | b'E' | b'+' | b'-')
+                    }) {
+                        self.i += 1;
+                    }
+                    let token = std::str::from_utf8(self.b.get(start..self.i).unwrap_or_default())
+                        .unwrap_or_default();
+                    let same = serde_json::from_str::<Value>(token)
+                        .map(|v| {
+                            let printed = v.to_string();
+                            printed == token
+                        })
+                        .unwrap_or(false);
+                    if !same {
+                        if let Some(name) = top {
+                            if !self.hits.iter().any(|h| h == name) {
+                                self.hits.push(name.to_string());
+                            }
+                        }
+                    }
+                }
+                None => {}
+            }
+        }
+    }
+    let mut scan = Scan {
+        b: bytes,
+        i: 0,
+        hits: Vec::new(),
+    };
+    scan.value(None, 0);
+    scan.hits.sort();
+    scan.hits
 }
 
 /// The Go-made keys of a settings object (sorted by key name) and, as `kept`, the names of the
@@ -407,6 +518,10 @@ fn plan_inner(project: &Path, home: Option<&Path>) -> Result<Planned> {
     };
     let needs_launcher = go.iter().any(|g| g.change == Change::Replace);
     let repeats = !go.is_empty() && before.as_deref().is_some_and(repeats_a_key);
+    let spelled_differently: Vec<String> = match (&before, go.is_empty()) {
+        (Some(b), false) => numbers_that_change(b),
+        _ => Vec::new(),
+    };
     let launcher = match (needs_launcher, home) {
         (false, _) => LauncherState::NotNeeded,
         (true, Some(h)) => launcher_state(&root, h),
@@ -422,6 +537,19 @@ fn plan_inner(project: &Path, home: Option<&Path>) -> Result<Planned> {
             format!("{SETTINGS} repeats a key; writing it again would merge the repeats into one"),
             format!(
                 "remove the repeated key from {SETTINGS} yourself, then run `moai go-settings-plan \
+                 <project>` again; nothing was written and the Go keys stay"
+            ),
+        ));
+    } else if !spelled_differently.is_empty() {
+        held = Some((
+            format!(
+                "{SETTINGS} holds numbers that writing it again would spell differently or round \
+                 (keys: {}); the values would change",
+                spelled_differently.join(", ")
+            ),
+            format!(
+                "change those numbers in {SETTINGS} yourself (write them as the plain value, for \
+                 example a string for a very large id), then run `moai go-settings-plan \
                  <project>` again; nothing was written and the Go keys stay"
             ),
         ));
@@ -506,6 +634,11 @@ fn plan_inner(project: &Path, home: Option<&Path>) -> Result<Planned> {
         "launcher": {"path": LAUNCHER_SHOWN, "state": launcher.name()},
         "plans_files": plans_files,
         "local_settings": "never written",
+        "kept_copy": if go.is_empty() {
+            Value::Null
+        } else {
+            json!(KEPT_COPY_NOTE)
+        },
         "formatting": if go.is_empty() {
             Value::Null
         } else {
@@ -688,6 +821,7 @@ pub fn apply(
         "replaced": names(Change::Replace),
         "plans_files": p["plans_files"],
         "receipt": id,
+        "kept_copy": KEPT_COPY_NOTE,
         "host_loaded": "not_run",
         "next_actions": [format!("to undo: moai go-settings-revert --receipt {id} --permission-reference <ref> <project>")],
     }))
