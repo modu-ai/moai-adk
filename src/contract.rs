@@ -170,6 +170,9 @@ const RULES: &[(&str, Kind)] = &[
     // home install (#2871 U3c): a live Rust session or an unreadable registry stops the apply
     // before any write; ahead of the generic words the reason may quote (`unknown`).
     ("home install blocked: ", Kind::Blocked),
+    // local ledger (#3068): an unusable, foreign, WAL-mode or newer ledger file, or a HOME it
+    // may not write into, needs a person; ahead of the generic words the reason may quote.
+    ("ledger blocked: ", Kind::Blocked),
     ("decision append refused: ", Kind::InvalidInput),
     ("claim verify: stale", Kind::Blocked),
     ("claim verify: uncertain", Kind::Blocked),

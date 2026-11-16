@@ -1,6 +1,7 @@
 //! Helpers shared by integration tests.
 pub mod cli;
 pub mod git;
+pub mod home;
 use moai_cli::forge::transport::{Exchange, HttpRequest, HttpResponse};
 use std::path::{Path, PathBuf};
 
