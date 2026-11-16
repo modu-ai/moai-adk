@@ -65,6 +65,10 @@ Use Orca only when the user chose it for this project and `orca` answers on this
 
 Name every terminal by its handle on every command — without `--terminal` a command acts on the active terminal of the current worktree, which may be someone else's — and never by its title, which the shell may rewrite. After an Orca restart use only the new handle; never send the same input to an old and a new handle. Close only a terminal you created, after matching the handle, tab and incarnation recorded when you created it.
 
+## Periodic instruction
+
+A leader with no timer of its own keeps its rounds going by typing the round instruction into its own terminal (Issue #3015 C5, decision 2026-11-16): `moai leader-pulse --terminal <your own handle> --text <one line> --interval-secs 300` checks the line and prints the `orca terminal send` command and the interval; it runs nothing. You run that command once per round, wait the interval, and run it again; never `orca terminal create`, and never to another lane's handle. If the answer shows the turn did not start, write `pulse: turn not started (<what orca answered>)` in the round summary and do not send it again. Run the `args` array, not the `command_line` string, when your host takes an argument list; `command_line` is only for a shell. When there is no Orca (`orca: no`), send nothing and skip this paragraph: there is no terminal to type into, and the wake of the `mode-channel` step is the timer. A live Codex leader that went two rounds this way is not measured yet (`verified: not_run`).
+
 ## Dispatch through an Orca Run
 
 Only the leader creates Runs (Issue #3005 P3a); without Orca, or with no Run path that works for a lane, the `answer-requests` step still delivers by the Issue comment pointer and the lane's `moai lane-next` round.

@@ -256,6 +256,58 @@ fn every_role_renders_for_every_host_deterministically() {
     }
 }
 
+/// #3096 S7: a rendered agent file names no model and no effort. In the one run per product
+/// measured on 2026-11-16 (`docs/agent-model-effort-inheritance.md`) a child of such a file
+/// showed its parent's model and effort. This test pins the files; it does not prove the host.
+/// The Codex file is parsed as TOML, so a table or a `key="v"` line without spaces is seen too
+/// (#3110 audit 6905677737 B2); the Claude Code and OMP frontmatter is read line by line.
+#[test]
+fn rendered_agent_files_name_no_model_and_no_effort() {
+    const KEYS_CLAUDE_OMP: [&str; 5] = [
+        "name",
+        "description",
+        "disallowedTools",
+        "isolation",
+        "tools",
+    ];
+    const KEYS_CODEX: [&str; 3] = ["name", "description", "developer_instructions"];
+    let defs = package_agents(&agents(), &package()).unwrap();
+    assert!(!defs.is_empty());
+    for d in &defs {
+        for host in HOSTS {
+            let text = render(d, host).unwrap().text;
+            let (allowed, keys): (&[&str], Vec<String>) = if host == "codex" {
+                let doc: toml_edit::DocumentMut = text
+                    .parse()
+                    .unwrap_or_else(|e| panic!("{} codex file is not TOML: {e}", d.name));
+                let keys = doc.iter().map(|(k, _)| k.to_string()).collect();
+                (&KEYS_CODEX, keys)
+            } else {
+                let keys = text
+                    .lines()
+                    .skip(1)
+                    .take_while(|l| *l != "---")
+                    .map(|l| {
+                        l.split_once(':')
+                            .unwrap_or_else(|| panic!("{} {host}: frontmatter line {l:?}", d.name))
+                            .0
+                            .to_string()
+                    })
+                    .collect();
+                (&KEYS_CLAUDE_OMP, keys)
+            };
+            assert!(!keys.is_empty(), "{} {host}", d.name);
+            for k in &keys {
+                assert!(
+                    allowed.contains(&k.as_str()),
+                    "{} {host}: key {k:?}",
+                    d.name
+                );
+            }
+        }
+    }
+}
+
 #[test]
 fn a_package_without_sources_has_no_agents_and_a_stray_file_is_refused() {
     let tmp = tempfile::tempdir().unwrap();

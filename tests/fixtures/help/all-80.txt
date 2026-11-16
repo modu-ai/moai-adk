@@ -119,6 +119,8 @@ Lane and leader
   queue-free              List the open cards a lane may take
   queue-query             Read the merge train from the leader's comment
   leader-tick             Run one leader supervision tick
+  leader-pulse            Print the periodic round instruction and its orca
+                          command
   leader-round            Build the leader's per-lane action list
   lane-next               Find the lane's next task
   lane-loop-line          Print a lane's wake line for its host
@@ -130,6 +132,7 @@ Lane and leader
   lane-handoff-check      Check that a worktree is safe to leave
   lane-safe-to-reset      Check that a lane's session is safe to clear
   close-check             Check whether an Issue may close
+  card-times              Read the server times of cards and their pull requests
   lane-env                Print a lane's cargo folders
   session-register        Register this session's lane name
   session-current         Print this session's own id
