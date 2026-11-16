@@ -11,6 +11,7 @@
 use super::connector::{HostConnector, HostKind, ProjectRef};
 use super::import_apply::{apply_import, ImportReport};
 use super::import_plan::{plan_import, AcReading, ImportPlan, PlannedCard};
+use crate::ledger::summary::{sources_in_ledger, SourceCount};
 use crate::ledger::{self, import::SqliteImport, LedgerError};
 use serde_json::{json, Value};
 use std::path::Path;
@@ -41,6 +42,10 @@ fn card_json(card: &PlannedCard) -> Value {
     }
     json!({
         "number": card.source_number,
+        "source": format!(
+            "{} {}#{}",
+            card.source_host, card.source_project, card.source_number
+        ),
         "title": card.title,
         "kind": card.kind,
         "kind_source": format!("{:?}", card.kind_source).to_lowercase(),
@@ -68,10 +73,40 @@ fn plan_json(plan: &ImportPlan) -> Value {
     })
 }
 
+/// The host projects a ledger already holds cards from, as plan JSON, and a one-line notice when
+/// that is more than the one project `host`/`project` (leader decision on #3119: a ledger may
+/// hold several repositories, and the plan says so instead of refusing).
+pub(super) fn sources_json(sources: &[SourceCount], host: &str, project: &str) -> (Value, Value) {
+    let list: Vec<Value> = sources
+        .iter()
+        .map(|s| json!({"host": s.host, "project": s.project, "cards": s.cards}))
+        .collect();
+    let others: Vec<String> = sources
+        .iter()
+        .filter(|s| !(s.host == host && s.project == project))
+        .map(|s| format!("{} {} ({} cards)", s.host, s.project, s.cards))
+        .collect();
+    let notice = if others.is_empty() {
+        Value::Null
+    } else {
+        json!(format!(
+            "this ledger already holds cards from other repositories: {}; {host} {project} is a different source",
+            others.join(", ")
+        ))
+    };
+    (json!(list), notice)
+}
+
 /// What the ledger of the project at `home` can take. Opens it read-only: nothing is created.
-fn ledger_json(home: &Path, project_id: &str) -> Value {
+fn ledger_json(home: &Path, project_id: &str, host: &str, project: &str) -> Value {
     match ledger::open_read_only(home, project_id) {
-        Ok(_) => json!({"state": "ready", "problem": null}),
+        Ok(read) => match sources_in_ledger(&read) {
+            Ok(sources) => {
+                let (list, notice) = sources_json(&sources, host, project);
+                json!({"state": "ready", "problem": null, "sources": list, "notice": notice})
+            }
+            Err(error) => json!({"state": "unavailable", "problem": error.code()}),
+        },
         Err(LedgerError::Absent) => json!({"state": "absent", "problem": null}),
         Err(error) => json!({"state": "unavailable", "problem": error.code()}),
     }
@@ -95,7 +130,12 @@ pub fn plan(
     let plan = plan_import(&issues);
     let mut out = plan_json(&plan);
     out["project_id"] = json!(project_id);
-    out["ledger"] = ledger_json(home, &project_id);
+    out["ledger"] = ledger_json(
+        home,
+        &project_id,
+        host_project.host().as_str(),
+        &host_project.source_project(),
+    );
     out["writes"] = json!(false);
     out["network"] = json!("read-only (GET)");
     out["apply"] = json!(

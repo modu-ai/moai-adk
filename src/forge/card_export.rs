@@ -1,13 +1,24 @@
 //! Putting a card's summary on its issue or pull request, once (#3071 H4, AC7).
-//! `card-summary-plan` shows the exact text, target and marker and sends nothing;
-//! `card-summary-apply` posts that text only when the plan the caller holds is still the plan,
-//! and a permission reference is given. The connector looks for the marker in a member's comment
-//! before it posts, so a second run posts nothing.
+//! `card-summary-plan` shows the exact bytes of the comment, the target and the marker and sends
+//! nothing; `card-summary-apply` posts that comment only when the plan the caller holds is still
+//! the plan, and a permission reference is given. The connector looks for the marker in a
+//! member's comment, or one written by the token's own account, before it posts, so a second
+//! run posts nothing.
+//!
+//! The comment is public, written with the user's own token, from text anyone could have put in
+//! an issue. So the text is cleaned first ([`super::public_text`]): no line can act as a control
+//! line, no `@name` notifies anyone, credential-shaped words are replaced, and the plan says how
+//! many of each. The `text` the plan shows is the comment as it is posted, marker included
+//! ([`super::connector::summary_comment_body`]), and the plan digest covers it.
 //!
 //! Nothing is posted automatically: the only caller of [`apply`] is the `card-summary-apply`
 //! command. A card that did not come from a host has no target and is refused.
-use super::connector::{HostConnector, HostKind, ProjectRef, SummaryOutcome, SummaryTarget};
-use crate::ledger::summary::{read_card_summary, summary_marker, CardSummary};
+use super::card_import::sources_json;
+use super::connector::{
+    summary_comment_body, HostConnector, HostKind, ProjectRef, SummaryOutcome, SummaryTarget,
+};
+use super::public_text::{clean_public_text, Changes};
+use crate::ledger::summary::{read_card_summary, sources_in_ledger, summary_marker, CardSummary};
 use crate::ledger::{self, LedgerError};
 use serde_json::{json, Value};
 use std::path::Path;
@@ -38,7 +49,15 @@ struct Prepared {
     summary: CardSummary,
     target: SummaryTarget,
     marker: String,
-    text: String,
+    /// The cleaned text handed to the connector.
+    cleaned: String,
+    /// The comment exactly as the connector posts it: `cleaned` and the marker.
+    posted: String,
+    changes: Changes,
+    /// `host project#number` the card came from.
+    source: String,
+    ledger_sources: serde_json::Value,
+    ledger_notice: serde_json::Value,
     digest: String,
 }
 
@@ -80,10 +99,11 @@ fn prepare(req: &Request) -> Result<(String, Prepared)> {
         number: number.unwrap_or(source.number),
     };
     let marker = summary_marker(card_id);
-    let text = summary.render();
+    let (cleaned, changes) = clean_public_text(&summary.render());
+    let posted = summary_comment_body(&cleaned, &marker);
     let digest = crate::digest(
         format!(
-            "{}\n{}/{}#{}\n{marker}\n{text}",
+            "{}\n{}/{}#{}\n{posted}",
             source.host,
             target.project.owner(),
             target.project.repo(),
@@ -91,13 +111,21 @@ fn prepare(req: &Request) -> Result<(String, Prepared)> {
         )
         .as_bytes(),
     );
+    let sources = sources_in_ledger(&read).map_err(|e| e.to_string())?;
+    let (ledger_sources, ledger_notice) = sources_json(&sources, &source.host, &source.project);
+    let source_text = format!("{} {}#{}", source.host, source.project, source.number);
     Ok((
         project_id,
         Prepared {
             summary,
             target,
             marker,
-            text,
+            cleaned,
+            posted,
+            changes,
+            source: source_text,
+            ledger_sources,
+            ledger_notice,
             digest,
         },
     ))
@@ -114,8 +142,19 @@ pub fn plan(req: &Request) -> Result<Value> {
             "project": format!("{}/{}", p.target.project.owner(), p.target.project.repo()),
             "number": p.target.number,
         },
+        "source": p.source,
+        "ledger_sources": p.ledger_sources,
+        "ledger_notice": p.ledger_notice,
         "marker": p.marker,
-        "text": p.text,
+        "text": p.posted,
+        "sanitized": {
+            "control_characters": p.changes.control_characters,
+            "html_comment_openers": p.changes.html_comment_openers,
+            "mentions": p.changes.mentions,
+            "secret_shapes": p.changes.secret_shapes,
+            "control_lines": p.changes.control_lines,
+        },
+        "warnings": p.changes.warnings(),
         "plan_digest": p.digest,
         "writes": false,
         "network": "none",
@@ -144,7 +183,7 @@ pub fn apply(
         return Err("the connector is for another host than the card".into());
     }
     let outcome = connector
-        .post_summary(&p.target, &p.text, &p.marker)
+        .post_summary(&p.target, &p.cleaned, &p.marker)
         .map_err(|e| e.to_string())?;
     let (state, comment_id) = match outcome {
         SummaryOutcome::Posted { comment_id } => ("posted", comment_id),

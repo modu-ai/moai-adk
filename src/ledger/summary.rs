@@ -109,6 +109,40 @@ pub fn read_card_summary(
     }))
 }
 
+/// How many cards of the ledger came from one host project.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SourceCount {
+    pub host: String,
+    /// Lower case `owner/repo`.
+    pub project: String,
+    pub cards: i64,
+}
+
+/// The host projects the ledger's cards came from, with a count each (cards made by hand have
+/// none). A ledger may hold several; plans say so before anything is added or posted.
+pub fn sources_in_ledger(ledger: &ReadLedger) -> Result<Vec<SourceCount>, LedgerError> {
+    let mut statement = ledger
+        .conn()
+        .prepare(
+            "SELECT source_host, source_project, count(*) FROM card
+             WHERE source_host IS NOT NULL
+             GROUP BY source_host, source_project ORDER BY source_host, source_project",
+        )
+        .map_err(sql)?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok(SourceCount {
+                host: row.get(0)?,
+                project: row.get(1)?,
+                cards: row.get(2)?,
+            })
+        })
+        .map_err(sql)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(sql)?;
+    Ok(rows)
+}
+
 /// The marker that says "this card's summary is already there". One per card, so the second run
 /// posts nothing even when the card has moved on since.
 pub fn summary_marker(card_id: i64) -> String {

@@ -351,3 +351,38 @@ fn a_project_without_a_profile_is_refused() {
     assert!(text.contains("profile"), "{text}");
     assert!(w.calls().is_empty());
 }
+
+#[test]
+fn the_plan_names_each_cards_source_and_says_when_the_ledger_holds_another_repository() {
+    let w = world();
+    w.register();
+    let first = w.plan();
+    assert_eq!(first["cards"][0]["source"], json!("github acme/widgets#1"));
+    assert_eq!(first["ledger"]["sources"], json!([]));
+    assert_eq!(first["ledger"]["notice"], json!(null));
+    result(&w.apply(first["plan_digest"].as_str().unwrap()));
+
+    // The same repository again is not "another": no notice.
+    let again = w.plan();
+    assert_eq!(
+        again["ledger"]["sources"],
+        json!([{"host": "github", "project": "acme/widgets", "cards": 2}])
+    );
+    assert_eq!(again["ledger"]["notice"], json!(null));
+
+    // Another repository (the stub serves the same issues for any name) is allowed, and the
+    // plan says the ledger already holds cards from elsewhere.
+    let project = w.project_arg();
+    let other = result(&w.run(&[
+        "card-import-plan",
+        &project,
+        "--from",
+        "github",
+        "--repo",
+        "other/repo",
+    ]));
+    assert_eq!(other["cards"][0]["source"], json!("github other/repo#1"));
+    let notice = other["ledger"]["notice"].as_str().expect("a notice");
+    assert!(notice.contains("github acme/widgets (2 cards)"), "{notice}");
+    assert_eq!(w.cards_total(), 2, "a plan adds nothing");
+}
