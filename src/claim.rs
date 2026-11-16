@@ -22,8 +22,10 @@
 //! The token `Moai-Claim: <issue>#<comment-id>` is carried in the branch
 //! name (suffix `c<issue>-<id>`), in every commit trailer and in the PR body
 //! (REQ-06A-14); [`verify_claim_token`] is the leader's read-side check (REQ-06A-15).
-//! An expired lease is never taken over automatically: the outcome names the operator
-//! (06-B) instead (REQ-06A-16).
+//! An expired lease of another session is never taken over automatically: the outcome names
+//! what the takeover needs instead (REQ-06A-16, 06-B). A session's own expired claim is not a
+//! takeover: it is renewed with the next epoch and a new claim line, with no handoff line
+//! (decision D1, Issue #1975 comment 6840449133; Issue #3042).
 //!
 //! Lease (rc.2 #2166, decisions 00:5x 2026-11-09): an absent `lease_until` defaults to
 //! now + [`DEFAULT_LEASE`] (4h); an explicit value wins. Expiry is only shown
@@ -42,7 +44,7 @@ use crate::identity;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
-    collections::BTreeSet,
+    collections::BTreeMap,
     fs::{self, OpenOptions},
     io::Write,
     path::{Path, PathBuf},
@@ -674,19 +676,24 @@ pub fn render_claim_line(f: &ClaimFields) -> String {
     line
 }
 
-/// Reads every comment page and returns claims not explicitly closed.
+/// Claim comments closed by a release or handoff line: the claim's comment id and the kind of
+/// line that closed it (`"release"` or `"handoff"`).
+type ClosedBy = BTreeMap<i64, &'static str>;
+
+/// Reads every comment page and returns claims not explicitly closed, and the ones that were
+/// (#3042: a renewal must not reopen a claim a handoff or release line already closed).
 /// Release/handoff markers can close only an earlier referenced claim comment. Only comments a
-/// member wrote are read (Issue #3052); the rest come back as the second value.
+/// member wrote are read (Issue #3052); the rest come back as the last value.
 fn read_claims<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     t: &TaskRef,
-) -> std::result::Result<(Vec<ClaimComment>, Dropped), ForgeError> {
+) -> std::result::Result<(Vec<ClaimComment>, ClosedBy, Dropped), ForgeError> {
     let mut url = Some(format!(
         "https://api.github.com/repos/{}/{}/issues/{}/comments?per_page=100",
         t.owner, t.repo, t.issue_number
     ));
     let mut claims = Vec::new();
-    let mut closed = BTreeSet::new();
+    let mut closed = ClosedBy::new();
     let mut ignored = Dropped::default();
     let mut pages = 0;
     while let Some(u) = url {
@@ -721,19 +728,19 @@ fn read_claims<T: Transport, C: Clock>(
                     epoch,
                     lease_until,
                 }),
-                crate::claim_verify::CommentKind::Release { target }
-                | crate::claim_verify::CommentKind::Handoff { target, .. }
-                    if target < id =>
-                {
-                    closed.insert(target);
+                crate::claim_verify::CommentKind::Release { target } if target < id => {
+                    closed.insert(target, "release");
+                }
+                crate::claim_verify::CommentKind::Handoff { target, .. } if target < id => {
+                    closed.insert(target, "handoff");
                 }
                 _ => {}
             }
         }
         url = resp.header("link").and_then(|l| next_link(Some(l)));
     }
-    claims.retain(|c| !closed.contains(&c.comment_id));
-    Ok((claims, ignored))
+    claims.retain(|c| !closed.contains_key(&c.comment_id));
+    Ok((claims, closed, ignored))
 }
 
 /// The one allowed GitHub write of a claim (REQ-06A-12): exactly one comment POST.
@@ -978,7 +985,7 @@ fn scope_of(outcome: &str, record: Option<&ClaimRecord>) -> &'static str {
             }
         }
         // The winner is unresolved on the comment ledger, which is the cross-host layer.
-        "uncertain" => "cross-host-eventual",
+        "uncertain" | "closed" => "cross-host-eventual",
         _ => "single-host",
     }
 }
@@ -1029,6 +1036,8 @@ pub fn acquire<T: Transport, C: Clock>(
         .filter(|e| e.record.task_key == key)
         .map(|e| &e.record)
         .collect();
+    // The expired claim this session renews below (decision D1, #3042): its comment id and epoch.
+    let mut renewed: Option<(String, u64)> = None;
     if let Some(&existing) = mine.last() {
         if is_active(&existing.state) {
             // Never changed, never taken over (REQ-06A-03, REQ-06A-16).
@@ -1036,25 +1045,46 @@ pub fn acquire<T: Transport, C: Clock>(
                 .lease_until
                 .as_deref()
                 .is_some_and(|l| !is_live(l, now));
-            return Ok(if expired {
-                AcquireOutcome {
-                    outcome: "expired",
-                    record: Some(existing.clone()),
-                    foreign_owner: None,
-                    notes: vec![
-                        "the active record's lease has expired; takeover needs operator approval (06-B)".into(),
-                    ],
-                    ..Default::default()
-                }
+            let held_comment = existing
+                .comment_id
+                .map_or_else(|| "?".to_string(), |c| c.to_string());
+            if expired && existing.owner.id == req.owner.id {
+                // The same session's own claim is renewed, not taken over: the normal path
+                // below posts the next epoch's line and still yields to another session's
+                // live claim.
+                renewed = Some((held_comment, existing.epoch));
             } else {
-                AcquireOutcome {
-                    outcome: "already_owned",
-                    record: Some(existing.clone()),
-                    foreign_owner: None,
-                    notes: vec![],
-                    ..Default::default()
-                }
-            });
+                return Ok(if expired {
+                    AcquireOutcome {
+                        outcome: "expired",
+                        record: Some(existing.clone()),
+                        foreign_owner: None,
+                        notes: vec![format!(
+                            "the active record's lease has expired and it belongs to another \
+                             session (session {session}, claim comment {held_comment}, epoch \
+                             {epoch}); expiry alone never transfers it. A takeover needs the \
+                             leader's line `moai-claim-handoff: comment={held_comment} to=<your \
+                             session> by=leader`, or, once your request for it has had no answer \
+                             for 30 minutes, `moai claim-timeout-check --issue {issue} --claim \
+                             {held_comment} --request <your request comment id> --lane <your \
+                             session>` answering `met` and the line it prints (decision D2); \
+                             operator approval (06-B)",
+                            session = existing.owner.id,
+                            epoch = existing.epoch,
+                            issue = req.task_ref.issue_number,
+                        )],
+                        ..Default::default()
+                    }
+                } else {
+                    AcquireOutcome {
+                        outcome: "already_owned",
+                        record: Some(existing.clone()),
+                        foreign_owner: None,
+                        notes: vec![],
+                        ..Default::default()
+                    }
+                });
+            }
         }
     }
     let epoch = mine.iter().map(|r| r.epoch).max().unwrap_or(0) + 1;
@@ -1066,7 +1096,29 @@ pub fn acquire<T: Transport, C: Clock>(
         }
     }
     // ⑤: read before posting; a live foreign claim wins by the smaller comment id.
-    let (claims, mut ignored) = read_claims(client, &req.task_ref).map_err(String::from)?;
+    let (claims, closed, mut ignored) = read_claims(client, &req.task_ref).map_err(String::from)?;
+    // #3042: a renewal never reopens a claim that a handoff or release line already closed —
+    // the handoff names another session, and a renewal would take the card back from it.
+    if let Some((held_comment, held_epoch)) = &renewed {
+        let kind = held_comment
+            .parse::<i64>()
+            .ok()
+            .and_then(|id| closed.get(&id).copied());
+        if let Some(kind) = kind {
+            return Ok(AcquireOutcome {
+                outcome: "closed",
+                record: mine.last().map(|r| (*r).clone()),
+                foreign_owner: None,
+                notes: vec![format!(
+                    "this session's earlier claim (comment {held_comment}, epoch {held_epoch}) \
+                     has expired and a {kind} line has already closed it, so it is not renewed \
+                     and nothing was written; the card belongs to whoever the line names. Take \
+                     it back only with the leader's new `moai-claim-handoff` line"
+                )],
+                ignored,
+            });
+        }
+    }
     let live: Vec<ClaimComment> = claims
         .into_iter()
         .filter(|c| is_live(&c.lease_until, now))
@@ -1151,7 +1203,7 @@ pub fn acquire<T: Transport, C: Clock>(
                     ignored,
                 });
             }
-            Ok((claims2, ignored2)) => {
+            Ok((claims2, _closed2, ignored2)) => {
                 ignored.merge(ignored2);
                 let live2: Vec<ClaimComment> = claims2
                     .into_iter()
@@ -1237,6 +1289,13 @@ pub fn acquire<T: Transport, C: Clock>(
         notes.push(
             "a live claim comment of this session already existed and was adopted; no comment was posted".into(),
         );
+    }
+    if let Some((held_comment, held_epoch)) = renewed {
+        notes.push(format!(
+            "this session's earlier claim (comment {held_comment}, epoch {held_epoch}) had \
+             expired; it is renewed with epoch {epoch} and a new claim line, without a handoff \
+             line (decision D1, Issue #1975 comment 6840449133)"
+        ));
     }
     Ok(AcquireOutcome {
         outcome: "claimed",

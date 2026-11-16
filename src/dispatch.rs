@@ -186,6 +186,8 @@ struct Assignment {
 struct Snapshot {
     latest_timestamp: Option<i64>,
     assignments: BTreeMap<u64, Assignment>,
+    /// Comments the author filter left out of the read (Issue #3067 S3).
+    ignored: message::IgnoredPublications,
 }
 fn previous(a: &Assignment) -> Previous {
     Previous {
@@ -203,7 +205,10 @@ fn follows(p: &Dispatch, m: &Message, a: &Assignment) -> bool {
         && m.owner_epoch >= a.publication.message.owner_epoch
 }
 fn snapshot<T: Transport, C: Clock>(anchor: &Message, t: &T, c: &C) -> Result<Snapshot> {
-    let publications = message::dispatch_publications(anchor, t, c)?;
+    let message::Publications {
+        items: publications,
+        ignored,
+    } = message::dispatch_publications(anchor, t, c)?;
     let mut latest_timestamp: Option<i64> = None;
     let mut records = BTreeSet::new();
     let mut acknowledged = BTreeSet::new();
@@ -400,6 +405,7 @@ fn snapshot<T: Transport, C: Clock>(anchor: &Message, t: &T, c: &C) -> Result<Sn
     Ok(Snapshot {
         assignments,
         latest_timestamp,
+        ignored,
     })
 }
 fn view(s: &Snapshot, anchor: &Message, now: i64) -> Result<Value> {
@@ -430,8 +436,7 @@ fn view(s: &Snapshot, anchor: &Message, now: i64) -> Result<Value> {
         .as_ref()
         .map(|p| p.message.payload["disposition"].clone())
         .unwrap_or(Value::Null);
-    Ok(
-        json!({"dispatch_id":current.payload.dispatch_id,"requested_revision":requested,"current_revision":rev,
+    let mut out = json!({"dispatch_id":current.payload.dispatch_id,"requested_revision":requested,"current_revision":rev,
         "current_report_id":current.publication.message.report_id,"current_payload_digest":current.publication.payload_digest,
         "record_comment_id":current.publication.comment_id,"queued":true,"received_ack":current.receipt.is_some(),
         "disposition":disposition,"decision_comment_id":current.decision.as_ref().map(|p|p.comment_id),
@@ -441,8 +446,13 @@ fn view(s: &Snapshot, anchor: &Message, now: i64) -> Result<Value> {
         "start_comment_id":current.start.as_ref().map(|p|p.comment_id),
         "superseded":requested!=*rev,"observation_current":requested==*rev && elapsed.is_some(),"ack_alert":alert,"elapsed_secs":elapsed,
         "observed_at":now,"claim_authorized":false,"ownership_transferred":false,"audit_gate_integrated":false,"cross_host_atomic":false,
-        "business_completion":false,"c3":"observation_only_gate_integration_unfulfilled"}),
-    )
+        "business_completion":false,"c3":"observation_only_gate_integration_unfulfilled"});
+    // Like every command that reads comments: present only when the author filter left
+    // something out (comments from anyone but a repository member), never when nothing went.
+    if !s.ignored.is_empty() {
+        out["ignored_control_lines"] = s.ignored.to_json();
+    }
+    Ok(out)
 }
 pub fn check_cli<T: Transport, C: Clock>(mut req: CheckRequest, t: &T, c: &C) -> Result<Value> {
     dispatch(&mut req.dispatch)?;

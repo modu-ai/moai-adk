@@ -252,12 +252,27 @@ fn the_adapter_table_has_a_row_for_every_route_with_a_status_word() {
         .find(|l| l.starts_with("Unsupported today"))
         .expect("the section has an `Unsupported today` paragraph");
     for cell in [
-        "the OMP spelling",
-        "an OMP lane's wake",
         "a Codex or OMP leader's periodic run",
         "the settings folder of an Orca profile",
         "Issue #2936",
     ] {
         assert!(list.contains(cell), "the unsupported list lost `{cell}`");
+    }
+    // #3005 P10 and P11 settled the OMP entry spelling and an OMP lane's wake: they are no
+    // longer unsupported, and the paragraph says what replaced them.
+    for gone in ["the OMP spelling of the entry", "an OMP lane's wake"] {
+        assert!(
+            !list.contains(gone),
+            "`{gone}` is settled and must not be listed as unsupported: {list}"
+        );
+    }
+    for settled in [
+        "the entry is `/skill:moai <text>`",
+        "`~/.agents/skills`",
+        "`~/.claude/skills` only when `enabledProviders` names `claude`, `skills.enableClaudeUser` is on or `CLAUDE_CONFIG_DIR` is set",
+        "goal mode and ends it with the `goal` tool's `drop`",
+        "no live OMP session was run",
+    ] {
+        assert!(list.contains(settled), "the OMP paragraph lost `{settled}`: {list}");
     }
 }

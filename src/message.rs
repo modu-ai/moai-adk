@@ -845,17 +845,104 @@ pub(crate) struct Publication {
     pub comment_id: u64,
     pub created_at: i64,
 }
+
+/// What the author filter left out of one dispatch read (Issue #3067 S3). It has the shape of
+/// every other `ignored_control_lines` (`reason`, `count`, `items`, `other_non_member_comments`):
+/// `count` and `items` are the left-out comments that carry a message record or ACK marker, an
+/// item's `kind` is the event it names, and `by_event` adds how many there were per event.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct IgnoredPublications {
+    dropped: crate::comment_authority::Dropped,
+    by_event: BTreeMap<&'static str, usize>,
+}
+impl IgnoredPublications {
+    pub(crate) fn is_empty(&self) -> bool {
+        self.dropped.is_empty()
+    }
+    pub(crate) fn to_json(&self) -> Value {
+        let mut out = self.dropped.to_json();
+        out["by_event"] = json!(self.by_event);
+        out
+    }
+}
+/// The publications of one dispatch read and what the author filter left out.
+pub(crate) struct Publications {
+    pub items: Vec<Publication>,
+    pub ignored: IgnoredPublications,
+}
+
+/// The event a message record or ACK comment names, for the report of what was left out;
+/// `None` when the comment carries no message marker. A packet that does not parse is
+/// `unreadable`, an event outside the dispatch family `other_event`.
+fn publication_event(body: &str) -> Option<&'static str> {
+    let first = body.split('\n').next().unwrap_or_default();
+    if !outbox::parse_op_markers(first)
+        .iter()
+        .any(|m| m.operation == "message-record" || m.operation == "message-ack")
+    {
+        return None;
+    }
+    let wire = body
+        .split('\n')
+        .nth(1)
+        .and_then(|encoded| serde_json::from_str::<Wire>(encoded).ok());
+    Some(match wire.as_ref().map(|w| w.message.event.as_str()) {
+        Some("dispatch") => "dispatch",
+        Some("dispatch-decision") => "dispatch-decision",
+        Some("dispatch-start") => "dispatch-start",
+        Some(_) => "other_event",
+        None => "unreadable",
+    })
+}
+
+/// Keeps the comments a repository member wrote (`comment_authority::retain_rest`) and records
+/// what went, by event for the ones that carry a message marker. A forged packet from anyone
+/// else can then neither join the snapshot nor close the read with a conflict.
+fn retain_member_publications(
+    comments: Vec<Value>,
+    ignored: &mut IgnoredPublications,
+) -> Vec<Value> {
+    let mut kept = comments.clone();
+    let left = crate::comment_authority::retain_rest(&mut kept);
+    ignored.dropped.unread += left.unread;
+    // `retain_rest` keeps a subsequence in the order read, so walking both lists finds the
+    // comments it removed; an equal comment has an equal fate.
+    let mut survivors = kept.iter().peekable();
+    for comment in &comments {
+        if survivors.peek().is_some_and(|k| *k == comment) {
+            survivors.next();
+            continue;
+        }
+        match publication_event(comment["body"].as_str().unwrap_or_default()) {
+            Some(event) => {
+                ignored
+                    .dropped
+                    .lines
+                    .push(crate::comment_authority::IgnoredLine {
+                        comment_id: comment["id"].as_i64().unwrap_or(0),
+                        kind: event,
+                        association: crate::comment_authority::rest_association(comment),
+                    });
+                *ignored.by_event.entry(event).or_insert(0) += 1;
+            }
+            None => ignored.dropped.other += 1,
+        }
+    }
+    kept
+}
+
 pub(crate) fn dispatch_publications<T: Transport, C: Clock>(
     anchor: &Message,
     transport: &T,
     clock: &C,
-) -> Result<Vec<Publication>> {
+) -> Result<Publications> {
     let client = client(transport, clock);
     verify_target(&client, anchor)?;
     let base = url(anchor);
     let mut next = Some(format!("{base}?per_page=100"));
     let mut visited = BTreeSet::new();
     let mut candidates = Vec::new();
+    let mut ignored = IgnoredPublications::default();
     let mut relevant_ids = BTreeSet::from([anchor.report_id.clone()]);
     let relevant = |m: &Message| {
         m.project_id == anchor.project_id
@@ -889,10 +976,13 @@ pub(crate) fn dispatch_publications<T: Transport, C: Clock>(
         let body = response
             .body
             .ok_or_else(|| err(Kind::Transport, "dispatch comments missing"))?;
-        for comment in body
+        let page_comments = body
             .as_array()
             .ok_or_else(|| err(Kind::Transport, "dispatch comments not an array"))?
-        {
+            .clone();
+        // Issue #3067 S3: only what a repository member wrote counts, so a forged packet from
+        // anyone else is left out here, before any packet identity is looked at.
+        for comment in &retain_member_publications(page_comments, &mut ignored) {
             let text = comment["body"].as_str().ok_or_else(conflict)?;
             let marks = outbox::parse_op_markers(text.split('\n').next().unwrap_or_default());
             if !marks
@@ -961,7 +1051,10 @@ pub(crate) fn dispatch_publications<T: Transport, C: Clock>(
             created_at: at,
         });
     }
-    Ok(result)
+    Ok(Publications {
+        items: result,
+        ignored,
+    })
 }
 
 #[cfg(all(test, unix))]
@@ -1389,5 +1482,198 @@ mod durability_tests {
         )
         .unwrap();
         assert_eq!(remote.posts.get(), posts);
+    }
+}
+
+/// Issue #3067 S3: the dispatch read keeps only what a repository member wrote and reports what
+/// it left out. These pin `retain_member_publications` itself, so a removed filter call, a
+/// reversed membership test or a miscount fails here and not only in a command test.
+#[cfg(test)]
+mod author_filter_tests {
+    use super::*;
+
+    fn packet(event: &str) -> Message {
+        serde_json::from_value(json!({"schema_version":1,"report_id":"r1","project_id":"p1",
+            "task":{"owner":"org","repo":"repo","repository_id":1,"issue_id":2,"issue_node_id":"I_2",
+                "issue_number":3,"task_id":"T1","revision":"1"},
+            "sender":{"actor_id":11,"session_id":"leader"},"receiver":{"actor_id":22,"session_id":"lane"},
+            "owner_epoch":1,"leader_epoch":1,"event":event,"candidate_digest":"c",
+            "created_at":"2026-11-11T00:00:00Z","approval_refs":[],"hold_refs":[],"payload":{}}))
+        .unwrap()
+    }
+    /// The body of a record (or ACK) comment for `event`.
+    fn body(event: &str, ack: bool) -> String {
+        let operation = if ack { "message-ack" } else { "message-record" };
+        let wire = Wire {
+            schema_version: 1,
+            kind: if ack { "ack" } else { "record" }.into(),
+            message: packet(event),
+            payload_digest: "d".into(),
+        };
+        format!(
+            "{}\n{}\n{END}",
+            outbox::op_marker(operation, "p1", "r1", 1),
+            serde_json::to_string(&wire).unwrap()
+        )
+    }
+    fn comment(id: i64, association: Option<&str>, body: &str) -> Value {
+        let mut c = json!({"id":id,"body":body,"user":{"id":11}});
+        if let Some(a) = association {
+            c["author_association"] = json!(a);
+        }
+        c
+    }
+    fn ids(comments: &[Value]) -> Vec<i64> {
+        comments.iter().map(|c| c["id"].as_i64().unwrap()).collect()
+    }
+
+    #[test]
+    fn only_owner_member_and_collaborator_comments_stay_in_the_order_read() {
+        let b = body("dispatch", false);
+        let mut all = Vec::new();
+        for (id, a) in [
+            (1, Some("OWNER")),
+            (2, Some("NONE")),
+            (3, Some("MEMBER")),
+            (4, Some("CONTRIBUTOR")),
+            (5, Some("COLLABORATOR")),
+            (6, Some("FIRST_TIMER")),
+            (7, Some("member")),
+            (8, Some("")),
+            (9, None),
+        ] {
+            all.push(comment(id, a, &b));
+        }
+        let mut ignored = IgnoredPublications::default();
+        let kept = retain_member_publications(all, &mut ignored);
+        assert_eq!(ids(&kept), [1, 3, 5]);
+        let json = ignored.to_json();
+        assert_eq!(json["count"], 6, "{json}");
+        assert_eq!(json["by_event"], json!({"dispatch": 6}), "{json}");
+        assert_eq!(json["other_non_member_comments"], 0, "{json}");
+        let listed: Vec<i64> = json["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|i| i["comment_id"].as_i64().unwrap())
+            .collect();
+        assert_eq!(listed, [2, 4, 6, 7, 8, 9]);
+        assert_eq!(json["items"][0]["author_association"], "NONE");
+        assert_eq!(json["items"][0]["kind"], "dispatch");
+        assert_eq!(json["reason"], "no_member_authority");
+        // Two of them carried no usable association: the hint says why.
+        assert!(json["hint"].is_string(), "{json}");
+    }
+
+    #[test]
+    fn what_was_left_out_is_counted_per_event() {
+        let rows = [
+            (10, body("dispatch", false)),
+            (11, body("dispatch", true)),
+            (12, body("dispatch-decision", false)),
+            (13, body("dispatch-start", false)),
+            (14, body("dispatch-start", true)),
+            (15, body("dispatch-start", false)),
+            (16, body("report", false)),
+            (
+                17,
+                format!(
+                    "{}\nnot json\n{END}",
+                    outbox::op_marker("message-record", "p1", "r9", 1)
+                ),
+            ),
+        ];
+        let all: Vec<Value> = rows
+            .iter()
+            .map(|(id, b)| comment(*id, Some("NONE"), b))
+            .collect();
+        let mut ignored = IgnoredPublications::default();
+        assert!(retain_member_publications(all, &mut ignored).is_empty());
+        let json = ignored.to_json();
+        assert_eq!(json["count"], 8, "{json}");
+        assert_eq!(
+            json["by_event"],
+            json!({"dispatch":2,"dispatch-decision":1,"dispatch-start":3,
+                "other_event":1,"unreadable":1}),
+            "{json}"
+        );
+        assert!(json.get("hint").is_none(), "{json}");
+    }
+
+    #[test]
+    fn a_non_member_comment_without_a_message_marker_is_only_counted() {
+        let all = vec![
+            comment(1, Some("NONE"), "HOLD: hello"),
+            comment(2, Some("CONTRIBUTOR"), "no marker at all"),
+            comment(3, Some("MEMBER"), "a member's note"),
+            comment(4, Some("NONE"), &body("dispatch", false)),
+        ];
+        let mut ignored = IgnoredPublications::default();
+        let kept = retain_member_publications(all, &mut ignored);
+        assert_eq!(ids(&kept), [3]);
+        let json = ignored.to_json();
+        assert_eq!(json["count"], 1, "{json}");
+        assert_eq!(json["other_non_member_comments"], 2, "{json}");
+        assert_eq!(json["by_event"], json!({"dispatch":1}), "{json}");
+    }
+
+    #[test]
+    fn nothing_left_out_reports_empty_and_keeps_every_comment() {
+        let all = vec![
+            comment(1, Some("OWNER"), &body("dispatch", false)),
+            comment(2, Some("MEMBER"), &body("dispatch-decision", false)),
+        ];
+        let mut ignored = IgnoredPublications::default();
+        let kept = retain_member_publications(all.clone(), &mut ignored);
+        assert_eq!(kept, all);
+        assert!(ignored.is_empty());
+        assert_eq!(ignored.to_json()["count"], 0);
+    }
+
+    #[test]
+    fn equal_comments_share_a_fate_and_pages_add_up() {
+        let forged = comment(5, Some("NONE"), &body("dispatch-start", false));
+        let real = comment(6, Some("MEMBER"), &body("dispatch", false));
+        let mut ignored = IgnoredPublications::default();
+        let page_one = vec![forged.clone(), forged.clone(), real.clone(), forged.clone()];
+        assert_eq!(
+            retain_member_publications(page_one, &mut ignored),
+            std::slice::from_ref(&real)
+        );
+        // A second page: the totals add up instead of being replaced.
+        let page_two = vec![real.clone(), forged];
+        assert_eq!(retain_member_publications(page_two, &mut ignored), [real]);
+        let json = ignored.to_json();
+        assert_eq!(json["count"], 4, "{json}");
+        assert_eq!(json["by_event"], json!({"dispatch-start":4}), "{json}");
+    }
+
+    #[test]
+    fn an_element_that_is_not_a_comment_object_is_left_out() {
+        let mut ignored = IgnoredPublications::default();
+        let kept = retain_member_publications(
+            vec![json!("text"), json!(7), Value::Null, json!([1])],
+            &mut ignored,
+        );
+        assert!(kept.is_empty());
+        assert_eq!(ignored.to_json()["other_non_member_comments"], 4);
+    }
+
+    #[test]
+    fn the_event_of_a_message_comment_is_read_from_its_packet_only() {
+        for (event, want) in [
+            ("dispatch", "dispatch"),
+            ("dispatch-decision", "dispatch-decision"),
+            ("dispatch-start", "dispatch-start"),
+            ("something-else", "other_event"),
+        ] {
+            assert_eq!(publication_event(&body(event, false)), Some(want));
+            assert_eq!(publication_event(&body(event, true)), Some(want));
+        }
+        assert_eq!(publication_event("plain text"), None);
+        assert_eq!(publication_event(""), None);
+        // A body that only mentions a marker further down is not a message comment.
+        let quoted = format!("quoted:\n{}", body("dispatch", false));
+        assert_eq!(publication_event(&quoted), None);
     }
 }

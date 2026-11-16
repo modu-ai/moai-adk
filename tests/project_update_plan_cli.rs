@@ -623,6 +623,95 @@ fn generation_paths(plan: &Value) -> Vec<String> {
         .collect()
 }
 
+/// #2936 L1: a Go project whose settings the manifest does not record. The settings files
+/// name `.moai/` in the keys the tests give.
+fn go_project_with_unrecorded_settings(settings: &str, local: &str) -> Fx {
+    let fx = Fx::new();
+    let body = "a: 1\n";
+    let h = format!("sha256:{:x}", Sha256::digest(body.as_bytes()));
+    fx.write(".moai/config/sections/a.yaml", body);
+    // An earlier `.moai-cli/project.yaml` that is no Rust profile: the install steps are then
+    // planned from the files (as in the project the reproduction in #2936 follows) and not
+    // all waiting for `/moai project`.
+    fx.write(".moai-cli/project.yaml", "project_id: demo\n");
+    fx.write(
+        ".moai/manifest.json",
+        &json!({"version": "v3.2.1-rc.6", "files": {".moai/config/sections/a.yaml": {
+            "provenance": "template_managed", "template_hash": h,
+            "deployed_hash": h, "current_hash": h}}})
+        .to_string(),
+    );
+    fx.write(".claude/settings.json", settings);
+    fx.write(".claude/settings.local.json", local);
+    fx
+}
+
+/// #2936 L1: the backup step's `settings reference .moai/` hold names the file and the keys
+/// (never their values) and says what to do next; the settings step does not call such a file
+/// "current" and lists the same keys in its preview.
+#[test]
+fn the_settings_hold_names_the_keys_and_the_settings_step_does_not_say_current() {
+    let fx = go_project_with_unrecorded_settings(
+        r#"{"model":"opus","statusLine":{"type":"command","command":".moai/secret-name.sh"},"plansDirectory":".moai/plans"}"#,
+        r#"{"env":{"A":".moai/x"},"other":1}"#,
+    );
+    let plan = fx.plan();
+    assert_tied(
+        &plan,
+        "blocked",
+        "held by .claude/settings.json (plansDirectory, statusLine); \
+         .claude/settings.local.json (env); this update does not change those keys, so change \
+         or remove them yourself and run the update again",
+    );
+    assert!(
+        !plan.to_string().contains("secret-name"),
+        "a value is never printed: {plan}"
+    );
+    let settings = step(&plan, "claude-settings");
+    assert_eq!(settings["state"], "unchanged", "{settings}");
+    let reason = settings["reason"].as_str().unwrap();
+    assert!(
+        reason.contains("still naming .moai/ and holding the Go .moai/ folder (go-state step)")
+            && reason.contains(".claude/settings.json (plansDirectory, statusLine)"),
+        "{settings}"
+    );
+    assert_eq!(
+        settings["preview"]["go_references"],
+        json!([
+            {"file": ".claude/settings.json", "keys": ["plansDirectory", "statusLine"]},
+            {"file": ".claude/settings.local.json", "keys": ["env"]}
+        ]),
+        "{settings}"
+    );
+}
+
+/// #2936 L1: the note is for the earlier generation's folder only. A settings file with the
+/// same keys in a project that is not Go-generation keeps the plain "current" reason.
+#[test]
+fn a_project_without_go_state_gets_no_go_reference_note() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    // MoAI's own status line is already there, so the step has nothing to write.
+    fx.write(
+        ".claude/settings.json",
+        r#"{"statusLine":{"type":"command","command":"moai statusline"},"plansDirectory":".moai/plans"}"#,
+    );
+    let plan = fx.plan();
+    let settings = step(&plan, "claude-settings");
+    assert_eq!(settings["state"], "unchanged", "{settings}");
+    assert!(
+        !settings["reason"]
+            .as_str()
+            .unwrap()
+            .contains("still naming"),
+        "{settings}"
+    );
+    assert!(
+        settings["preview"].get("go_references").is_none(),
+        "{settings}"
+    );
+}
+
 /// #2953 F1: earlier state that stays where it is reads `state` with a reason, prints no
 /// command, and keeps `all_unchanged` false.
 fn assert_tied(plan: &Value, state: &str, needle: &str) {
@@ -716,14 +805,12 @@ fn local_file_from_manifest() {
     let request = &step(&plan, "generation")["apply"]["stdin"]["request"];
     assert_eq!(request["local_file"], "none", "{plan}");
     let paths = generation_paths(&plan);
-    assert!(
-        !paths
-            .iter()
-            .any(|p| p == "AGENTS.local.md" || p == ".gitignore"),
-        "{paths:?}"
-    );
+    // #3009 S3b: the managed `.gitignore` block (the state-folder allow-list) is planned for
+    // every choice; the personal file is planned only when the choice makes it.
+    assert!(!paths.iter().any(|p| p == "AGENTS.local.md"), "{paths:?}");
+    assert!(paths.iter().any(|p| p == ".gitignore"), "{paths:?}");
 
-    for (choice, gitignore) in [("tracked", false), ("ignored", true)] {
+    for (choice, lists_local) in [("tracked", false), ("ignored", true)] {
         let fx = Fx::new();
         fx.with_profile(false);
         let mut request = step(&fx.plan(), "generation")["apply"]["stdin"]["request"].clone();
@@ -737,10 +824,16 @@ fn local_file_from_manifest() {
             paths.iter().any(|p| p == "AGENTS.local.md"),
             "{choice}: {paths:?}"
         );
-        assert_eq!(
+        assert!(
             paths.iter().any(|p| p == ".gitignore"),
-            gitignore,
             "{choice}: {paths:?}"
+        );
+        // The block lists the personal file only for the `ignored` choice (condition 4).
+        let ignore = fs::read_to_string(fx.root.join(".gitignore")).unwrap();
+        assert_eq!(
+            ignore.lines().any(|l| l == "AGENTS.local.md"),
+            lists_local,
+            "{choice}: {ignore}"
         );
     }
 
@@ -763,6 +856,58 @@ fn local_file_from_manifest() {
     );
     assert_eq!(generation["apply"], Value::Null, "{generation}");
     assert_eq!(plan["all_unchanged"], json!(false), "{plan}");
+}
+
+/// #3009 S3b: the block recorded before the `kind` field existed listed the personal file, so
+/// a manifest row without a kind still reads as `ignored`; a row whose kind says "state only"
+/// reads as `tracked` when `AGENTS.local.md` exists, and as `none` when it does not.
+#[test]
+fn the_recorded_block_kind_tells_the_personal_file_choice() {
+    let old_block = "# moai:managed:begin id=moai-local\nAGENTS.local.md\n.moai-cli/receipts/\n# moai:managed:end id=moai-local\n";
+    let sha = |b: &str| format!("sha256:{:x}", Sha256::digest(b.as_bytes()));
+    // (kind to record or None to drop it, expected choice in the printed request)
+    for (kind, expected) in [(None, "ignored"), (Some("agents:ignore-state"), "tracked")] {
+        let fx = Fx::new();
+        fx.with_profile(false);
+        let mut request = step(&fx.plan(), "generation")["apply"]["stdin"]["request"].clone();
+        request["local_file"] = json!("ignored");
+        fx.generate(&request);
+        let manifest_path = fx.generation_manifest(&fx.plan());
+        let mut manifest: Value =
+            serde_json::from_slice(&fs::read(&manifest_path).unwrap()).unwrap();
+        let text = if kind.is_none() {
+            old_block.to_string()
+        } else {
+            old_block.replace("AGENTS.local.md\n", "")
+        };
+        for file in manifest["owned_files"].as_array_mut().unwrap() {
+            if file["path"] == ".gitignore" {
+                file["baseline_sha256"] = json!(sha(&text));
+                match kind {
+                    Some(k) => file["kind"] = json!(k),
+                    None => {
+                        file.as_object_mut().unwrap().remove("kind");
+                    }
+                }
+            }
+        }
+        fs::write(
+            &manifest_path,
+            serde_json::to_vec_pretty(&manifest).unwrap(),
+        )
+        .unwrap();
+        fx.write(".gitignore", &text);
+        let plan = fx.plan();
+        let generation = step(&plan, "generation");
+        assert_ne!(
+            generation["state"], "needs_decision",
+            "{kind:?}: {generation}"
+        );
+        assert_eq!(
+            generation["apply"]["stdin"]["request"]["local_file"], expected,
+            "{kind:?}: {generation}"
+        );
+    }
 }
 
 /// #2953 F3: a `ready` profile step holds the generation step until the preview is re-run.

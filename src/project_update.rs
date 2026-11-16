@@ -166,6 +166,30 @@ fn go_state_step(root: &Path, shown: &str) -> Result<Step> {
     if let Some(sm) = &plan.settings_move {
         preview["settings_move"] = encode(sm)?;
     }
+    // #2936 S-AGENTS-STAY U1: the backup area's own `.gitignore` leaves the copies to git (or git
+    // cannot tell). The apply would refuse before writing, so no command is offered: the user
+    // fixes that file (the update never edits it) and previews again. The install steps wait
+    // behind this step like behind any backup step that is still to do.
+    if let Some(b) = &plan.backup_ignore {
+        preview["backup_ignore"] = encode(b)?;
+        let named = if b.examples.is_empty() {
+            String::new()
+        } else {
+            format!(" (for example {})", b.examples.join(", "))
+        };
+        return Ok(Step {
+            name: "go-state",
+            state: "needs_decision",
+            reason: format!(
+                "the earlier generation's state would move into a backup area git may offer for \
+                 commit{named}: {}",
+                b.reason
+            ),
+            preview,
+            apply: None,
+            plan_digest: Some(plan.plan_digest),
+        });
+    }
     Ok(if pending {
         Step {
             name: "go-state",
@@ -228,15 +252,22 @@ fn tied(root: &Path, plan: &go_state::GoStatePlan) -> Option<(&'static str, Stri
                 state.generation, state.reason
             ),
         )),
-        "go" => Some((
-            "blocked",
-            format!(
-                "the Go-generation .moai/ stays: {}",
-                held(state_root::MOAI_DIR).unwrap_or_else(|| {
-                    "no usable Go manifest, so nothing is proven tool-made".into()
-                })
-            ),
-        )),
+        "go" => {
+            let mut why = held(state_root::MOAI_DIR)
+                .unwrap_or_else(|| "no usable Go manifest, so nothing is proven tool-made".into());
+            // #2936 L1: name the file and keys that hold the folder, and what to do next.
+            if why.starts_with("settings reference .moai/") {
+                let refs = moai_dir_references(root);
+                if !refs.is_empty() {
+                    why = format!(
+                        "{why}; held by {}; this update does not change those keys, so change \
+                         or remove them yourself and run the update again",
+                        moai_dir_reference_note(&refs)
+                    );
+                }
+            }
+            Some(("blocked", format!("the Go-generation .moai/ stays: {why}")))
+        }
         // Without a Rust marker `state_root::dir` names the earlier `.moai-cli` folder.
         "none" => held(state_root::dir(root)).map(|r| {
             (
@@ -246,6 +277,39 @@ fn tied(root: &Path, plan: &go_state::GoStatePlan) -> Option<(&'static str, Stri
         }),
         _ => None,
     }
+}
+
+/// #2936 L1: the top-level keys of the project and local settings files whose values name
+/// `.moai/`, per file. Key names only: a value is never printed. A file that cannot be read as
+/// a settings object is left out (the settings plan already reports that).
+fn moai_dir_references(root: &Path) -> Vec<(&'static str, Vec<String>)> {
+    let mut out = Vec::new();
+    for (scope, file) in [
+        (SettingsScope::Project, ".claude/settings.json"),
+        (SettingsScope::Local, ".claude/settings.local.json"),
+    ] {
+        let Ok((_, current)) = claude::scope_view(root, scope) else {
+            continue;
+        };
+        let mut keys: Vec<String> = current
+            .iter()
+            .filter(|(_, v)| v.to_string().contains(".moai/"))
+            .map(|(k, _)| k.clone())
+            .collect();
+        keys.sort();
+        if !keys.is_empty() {
+            out.push((file, keys));
+        }
+    }
+    out
+}
+
+/// `file (key, key); file (key)` for [`moai_dir_references`].
+fn moai_dir_reference_note(refs: &[(&'static str, Vec<String>)]) -> String {
+    refs.iter()
+        .map(|(file, keys)| format!("{file} ({})", keys.join(", ")))
+        .collect::<Vec<_>>()
+        .join("; ")
 }
 
 fn profile_step(
@@ -290,6 +354,10 @@ fn profile_step(
 /// is `none`. `Err` when the record cannot tell: the section without the file, or the file
 /// without the section while a user rule in `.gitignore` names it (an `ignored` choice
 /// records no section then).
+///
+/// Since #3009 S3b the section is written for every choice (the state-folder allow-list), so
+/// "the section is there" no longer means "the personal file is listed". What the section
+/// lists is its recorded `kind`; a section recorded before the kind existed listed the file.
 fn local_file(root: &Path, manifest: &Value) -> Result<&'static str> {
     const LOCAL: &str = "AGENTS.local.md";
     let created = manifest["created_once"]
@@ -303,25 +371,32 @@ fn local_file(root: &Path, manifest: &Value) -> Result<&'static str> {
             .into_iter()
             .flatten()
             .any(|f| f["path"] == LOCAL && f["section_id"].is_null());
-    let section = owned_entries(manifest).any(|(s, _)| s == crate::agents::IGNORE_SECTION);
+    // `Some(listed)` when the section is recorded: whether it lists the personal file.
+    let section: Option<bool> = manifest["owned_files"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|f| f["section_id"] == crate::agents::IGNORE_SECTION)
+        .map(|f| crate::agents::ignore_kind_lists_local(f["kind"].as_str()));
     let unknown = "the generation manifest does not tell whether AGENTS.local.md is tracked \
                    or ignored; ask the user and regenerate through /moai project";
-    match (created, section) {
-        (true, true) => Ok("ignored"),
-        (false, false) => Ok("none"),
-        (false, true) => Err(unknown.into()),
-        (true, false) => {
-            let ignore = crate::apply::read_opt(&crate::apply::target(root, ".gitignore")?)?;
-            let user_rule = ignore
-                .as_deref()
-                .and_then(|b| std::str::from_utf8(b).ok())
-                .is_some_and(crate::agents::ignore_has_rule);
-            if user_rule {
-                Err(unknown.into())
-            } else {
-                Ok("tracked")
-            }
+    let user_rule_decides = || -> Result<&'static str> {
+        let ignore = crate::apply::read_opt(&crate::apply::target(root, ".gitignore")?)?;
+        let user_rule = ignore
+            .as_deref()
+            .and_then(|b| std::str::from_utf8(b).ok())
+            .is_some_and(crate::agents::ignore_has_rule);
+        if user_rule {
+            Err(unknown.into())
+        } else {
+            Ok("tracked")
         }
+    };
+    match (created, section) {
+        (true, Some(true)) => Ok("ignored"),
+        (false, None) | (false, Some(false)) => Ok("none"),
+        (false, Some(true)) => Err(unknown.into()),
+        (true, None) | (true, Some(false)) => user_rule_decides(),
     }
 }
 
@@ -487,6 +562,22 @@ fn settings_step_with(
         if step.state == "unchanged" {
             step.state = "needs_decision";
             step.reason = held.message.clone();
+        }
+    }
+    // #2936 L1: "current" must not hide keys that still name the earlier generation's `.moai/`
+    // folder: they keep the go-state step waiting, and nothing here changes them yet.
+    if step.state == "unchanged" && state_root::classify(root).generation == "go" {
+        let refs = moai_dir_references(root);
+        if !refs.is_empty() {
+            step.reason = format!(
+                "{}; still naming .moai/ and holding the Go .moai/ folder (go-state step): {}",
+                step.reason,
+                moai_dir_reference_note(&refs)
+            );
+            step.preview["go_references"] = json!(refs
+                .iter()
+                .map(|(file, keys)| json!({"file": file, "keys": keys}))
+                .collect::<Vec<_>>());
         }
     }
     Ok(step)

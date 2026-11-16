@@ -46,7 +46,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "1699baaaefe62e3f14733a1c98cccc61c3733c3af873119ec41f73407624ce7e",
+      "sha256": "698843e955e9db63a1a6d97b2ea2762d4af757b3d351738211924a82f8e10042",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -82,12 +82,12 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "2d77516bb0243b2329f317263885392e0a5b02a7e9746a4eb7b66502c54aead2",
+      "sha256": "333e6b0624850abdb01e28466a1a25526e59ac01ae0f29fd57d7f0a04e770e92",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template. The 2026.11.0-rc.1 UPDATE implementation (04-B #1999) replaced the not-implemented status note with the implemented scope; the backup/rollback step remains 04-C. Step 6 (#2483) adds the user-confirmed backup-then-replace of an unmanaged moai skill folder (decision row 22)."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template. The 2026.11.0-rc.1 UPDATE implementation (04-B #1999) replaced the not-implemented status note with the implemented scope; the backup/rollback step remains 04-C. Step 6 (#2483) adds the user-confirmed backup-then-replace of an unmanaged moai skill folder (decision row 22). Step 1 (#2936 S-AGENTS-STAY, decision 6901387505) says a staying-layout backup area whose own .gitignore git does not honour reads backup_ignore and stops the go-state step without a command, and that Go settings a revert put back are proposed for the move again."
       }
     },
     "workflows/plan.md": {
@@ -109,7 +109,7 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "616cc2309f8840f44539a0b9bb95976e4a39c18280b432056415b78c7c234c6e",
+      "sha256": "442602ff1751dc1f7e07d014f0ca8fc7d2786051347f4ffbc72e1df4e704292a",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
@@ -136,7 +136,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "7b2bba4acf7612d90343c637d8508f05fa12971b1386f777d26e027bc220506c",
+      "sha256": "63db510770df8cf4e4d9088790b3d52260fc1d8e84a5db3c2e05780765a1cf36",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "f1683efb5b0bd36a330bc975c617079ca2698c22c8e701f69d87d7c89b1161ec",
+      "sha256": "7ddf7a4736219af52537f406f3596ee7a7cc0228919f655f5ccfd7e485fa5af5",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
@@ -154,12 +154,12 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "0c447825b18eb0ab6a042aa7a8c225a94a8f07b81de117652b1769c211588004",
+      "sha256": "a8d0603f90490ef130ce590cd601a1d2a7bf0f81bfab591cf015eaee7f6c88b7",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
         "adoption": "new",
-        "reason": "Written for rc.2 #2496 from user decisions 16 = B and 17 = all three (#1975 comment 6815357071) and the gap analysis #2286 6811414257; no design-22 template exists for PROJECT. Go `/moai project` was read as reference only; its product/structure/tech documents are not ported (decision 16 = B). Step 2 says the root instruction files are moved, not copied, into the backup's root-files/ and that a not-copied restore says why (#2936 S1b repair, audit 6879582411 B2)."
+        "reason": "Written for rc.2 #2496 from user decisions 16 = B and 17 = all three (#1975 comment 6815357071) and the gap analysis #2286 6811414257; no design-22 template exists for PROJECT. Go `/moai project` was read as reference only; its product/structure/tech documents are not ported (decision 16 = B). Step 2 says the root instruction files are moved, not copied, into the backup's root-files/ and that a not-copied restore says why (#2936 S1b repair, audit 6879582411 B2). Step 2 adds the staying-layout backup_ignore stop and the re-proposal of reverted Go settings (#2936 S-AGENTS-STAY, decision 6901387505)."
       }
     },
     "references/chains/index.md": {
@@ -235,7 +235,7 @@
       }
     },
     "references/adapters/orca.md": {
-      "sha256": "6a14ad7746e536ff433a6c77029b63a9c25000f949f71bc52bc19185b40a27ba",
+      "sha256": "6c70926478f31c80cf8994b1e141c23d31724c53484cd7e1f225d058bdbb8a70",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-orca",
@@ -322,7 +322,7 @@
       }
     },
     "workflows/optimize.md": {
-      "sha256": "47617dc6dc94e747eeb59c25b469bd2530a4240d07eb6945ea925c7abca9fa18",
+      "sha256": "02f29786c87148964661dbbb36b1162a17adf2bc2bd996b959f5acdccc910a7b",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-optimize",

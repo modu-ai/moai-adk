@@ -31,6 +31,16 @@
         "detail": null
       },
       {
+        "path": ".gitignore",
+        "action": "create",
+        "tracked_by_default": true,
+        "expected_sha256": null,
+        "section_id": "moai-local",
+        "baseline_sha256": null,
+        "rendered_sha256": "sha256:81d0c891f8c41a84e897d13a733842f15031d1dff9e2c85e55fc9f262f9b076f",
+        "detail": "managed block lines: 11 added, 0 removed\n+ .moai/receipts/\n+ .moai/*\n+ !.moai/project.yaml\n+ !.moai/moai-cli.json\n+ !.moai/moai.json\n+ !.moai/manifests/\n+ !.moai/workflows/\n+ !.moai/config/\n+ !.moai/decisions/\n+ !.moai/docs/\n+ !.moai/specs/"
+      },
+      {
         "path": ".moai/manifests/generation.json",
         "action": "create",
         "tracked_by_default": true,
@@ -55,10 +65,11 @@
       "receipt": "<masked>",
       "applied": [
         "AGENTS.md",
+        ".gitignore",
         ".moai/manifests/generation.json"
       ],
       "files_created": true,
-      "manifest_sha256": "sha256:f1fae6ea9efe4f613cb5d786f52602b564bdad63972d469e70335bc7b9d6327a",
+      "manifest_sha256": "sha256:2b5058e6db8961684afc6ac9ef760173f5087d33363fd569b3d8fbf2e0ce68ef",
       "host_loaded": false,
       "execution_verified": false,
       "host_notes": []

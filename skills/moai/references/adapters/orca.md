@@ -39,18 +39,18 @@ Orca is optional for every workflow (Issue #3005 AC-7, AC-8). Nothing in the `mo
 |---|---|---|---|
 | READ | works (Orca not used) | works | parallel reads: Claude Code several agents in one message, Codex one agent at a time and wait for all, OMP the task list |
 | SETUP | unsupported: an Orca profile starts Claude Code with `CLAUDE_CONFIG_DIR` set to its own folder, and `moai update` looks only at `~/.claude`, so `/moai` can be missing in that session while the preview says nothing to apply (Issue #2936) | works | files go to the host's own settings folder, which an Orca profile can move away from `~/.claude` |
-| PROJECT | works | works | entry `/moai project` (Claude Code), `$moai project` (Codex CLI); the OMP spelling is not stated yet |
+| PROJECT | works | works | entry `/moai project` (Claude Code), `$moai project` (Codex CLI), `/skill:moai project` (OMP) |
 | UPDATE | unsupported: the same gap as SETUP; `moai update` does not see the settings folder of an Orca profile (Issue #2936) | works | same settings-folder point as SETUP |
 | PLAN | works | works | the `moai-plan` agent runs through the host's own subagent tool |
 | RUN | works (Orca terminals and worktrees are not used) | works | isolation: Claude Code `isolation: worktree`, OMP `isolated: true` when enabled; Codex, Kiro and Cursor work in one worktree, one change at a time |
 | VERIFY | works | works | heavy checks take turns through `heavy-slot`, shared by the whole machine |
 | AUDIT | works | works | read-only is enforced by the agent file on Claude Code only; the verdict's first line has one format on every host |
-| OPTIMIZE | works | works | entry `/moai optimize` (Claude Code), `$moai optimize` (Codex CLI); the OMP spelling is not stated yet |
+| OPTIMIZE | works | works | entry `/moai optimize` (Claude Code), `$moai optimize` (Codex CLI), `/skill:moai optimize` (OMP) |
 | SYNC | works | works | none |
-| MODE-AGENT | works: a leader reads and sends lane screens through Orca | replaced: `lane-next` self-pick and Issue and pull request comments; the wake is Claude Code `/loop`, Codex `loop_line` and the Stop hook, and unsupported on OMP | none |
+| MODE-AGENT | works: a leader reads and sends lane screens through Orca | replaced: `lane-next` self-pick and Issue and pull request comments; the wake is Claude Code `/loop`, Codex `loop_line` and the Stop hook, and on OMP goal mode (`--goal`, interactive only; no interval timer, so the idle limit is the tool's) | none |
 | MODE-LEADER | works: the leader reads and sends lane screens through Orca | replaced: with a timer (Claude Code `/loop 5m`) it leads through Issue and pull request comments alone, with no `clear_redispatch` and no `restart`; with neither Orca nor a timer it refuses to enter; unsupported on Codex and OMP, which have no in-session timer | none |
 
-Unsupported today, tracked in Issue #3005: an OMP lane's wake, a Codex or OMP leader's periodic run without Orca, and the OMP spelling of the entry. Tracked in Issue #2936: the settings folder of an Orca profile (`CLAUDE_CONFIG_DIR`), which `moai update` does not see, so SETUP and UPDATE are unsupported with Orca until that repair lands. The table is pinned by `tests/orca_optional_3005.rs`: a workflow without a row, or a row without one of the three words, fails the test.
+Unsupported today, tracked in Issue #3005: a Codex or OMP leader's periodic run without Orca. Settled in Issue #3005 P10 and P11 (OMP 18.18.7, read in its installed documents and source on 2026-11-15; no live OMP session was run): the entry is `/skill:moai <text>` and the text after the name reaches the skill as plain text; OMP reads skills from `~/.agents/skills` and from `.claude/skills`, `.agents/skills` and `.omp/skills` of the project, and from `~/.claude/skills` only when `enabledProviders` names `claude`, `skills.enableClaudeUser` is on or `CLAUDE_CONFIG_DIR` is set; an OMP lane keeps going with goal mode and ends it with the `goal` tool's `drop`, since OMP has no interval timer and no empty-read count. Tracked in Issue #2936: the settings folder of an Orca profile (`CLAUDE_CONFIG_DIR`), which `moai update` does not see, so SETUP and UPDATE are unsupported with Orca until that repair lands. The table is pinned by `tests/orca_optional_3005.rs`: a workflow without a row, or a row without one of the three words, fails the test.
 
 ## Sources
 

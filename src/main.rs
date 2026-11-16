@@ -707,9 +707,13 @@ enum Command {
     /// matches over the published index generation (or the tracked files), each result with
     /// a source citation; the typed-edge step is reported unavailable (#2408).
     Search { project: PathBuf },
-    /// Check a claim's write scope against others
+    /// Check a write scope (--task records it)
     ///
-    /// write_scope overlap of a claim against the other active claims (06-C #2007).
+    /// write_scope overlap of a claim against the other active claims (06-C #2007). Given
+    /// `--task`, a conflict is written to that claim's record in the journal (`blocked`; an
+    /// integration order is recorded as an effect), and the answer names the command that
+    /// closes a blocked record again. `--read-only` computes the same verdict and writes
+    /// nothing (#3048).
     ScopeCheck {
         project: PathBuf,
         #[command(flatten)]
@@ -717,6 +721,9 @@ enum Command {
         /// The task the leader orders first (task key, logical key or `#<issue>`).
         #[arg(long)]
         integration_order: Option<String>,
+        /// Only look: write nothing to the journal, also with `--task`.
+        #[arg(long)]
+        read_only: bool,
     },
     /// Print a lane's cargo folders
     ///
@@ -1596,6 +1603,7 @@ fn run_internal(
             project,
             source,
             integration_order,
+            read_only,
         } => {
             let mine = source.load(&project)?;
             let others = moai_cli::worktree::active_records(&project)?;
@@ -1618,6 +1626,7 @@ fn run_internal(
                 &project,
                 &mine,
                 source.task.is_some(),
+                read_only,
                 &others,
                 integration_order.as_deref(),
                 &handed_off,
