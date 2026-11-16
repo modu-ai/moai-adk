@@ -36,7 +36,7 @@ class BinaryVersionTest(unittest.TestCase):
 
     def test_only_the_named_version_token_is_replaced(self):
         norm = statusline_golden.normalize_version
-        self.assertEqual(norm("🤖 Opus | 🗿 v3.2.1\n", "3.2.1"), "🤖 Opus | 🗿 v<binary-version>\n")
+        self.assertEqual(norm("🧠 Opus | 🗿 v3.2.1\n", "3.2.1"), "🧠 Opus | 🗿 v<binary-version>\n")
         # b04: the template version stays visible; only the binary side is normalized.
         self.assertEqual(norm("🗿 v2.0.0 -> 🗿 v3.2.1", "3.2.1"), "🗿 v2.0.0 -> 🗿 v<binary-version>")
         self.assertEqual(norm("🗿 v3.2.10", "3.2.1"), "🗿 v<binary-version>0")

@@ -128,7 +128,7 @@ fn go_home_state_files_are_never_read() {
 
     let out = render(&f, &[]);
     assert_no_go_markers(&out);
-    assert!(!out.contains("🤖"), "{out}");
+    assert!(!out.contains("🧠"), "{out}");
     assert!(!out.contains("📋"), "{out}");
 
     let go_home = f.home.join(".moai");
@@ -147,14 +147,14 @@ fn moai_cli_home_state_files_are_read() {
     let f = fixture();
     write_rc_state(&f);
     let out = render(&f, &[]);
-    assert!(out.contains("🤖 rc-marker-model"), "{out}");
+    assert!(out.contains("🧠 rc-marker-model"), "{out}");
     assert!(!out.contains("📋") && !out.contains("rcmarker"), "{out}");
 
     write_go_state(&f);
     let go_home = f.home.join(".moai");
     for extra in [vec![], vec![("MOAI_HOME", go_home.to_str().unwrap())]] {
         let out = render(&f, &extra);
-        assert!(out.contains("🤖 rc-marker-model"), "{out}");
+        assert!(out.contains("🧠 rc-marker-model"), "{out}");
         assert!(!out.contains("📋") && !out.contains("rcmarker"), "{out}");
         assert_no_go_markers(&out);
     }
@@ -166,7 +166,7 @@ fn moai_last_model_still_overrides_the_model_file() {
     let f = fixture();
     write_rc_state(&f);
     let out = render(&f, &[("MOAI_LAST_MODEL", "env-marker-model")]);
-    assert!(out.contains("🤖 env-marker-model"), "{out}");
+    assert!(out.contains("🧠 env-marker-model"), "{out}");
     assert!(!out.contains("rc-marker-model"), "{out}");
 }
 
@@ -176,17 +176,17 @@ fn moai_last_model_still_overrides_the_model_file() {
 fn model_file_boundaries() {
     let f = fixture();
     let out = render(&f, &[]);
-    assert!(!out.contains("🤖"), "absent: {out}");
+    assert!(!out.contains("🧠"), "absent: {out}");
 
     for (case, bytes) in [("empty", &b""[..]), ("whitespace", &b" \n\t\n"[..])] {
         write(&f.home, ".moai-cli/state/last-model.txt", bytes);
         let out = render(&f, &[]);
-        assert!(!out.contains("🤖"), "{case}: {out}");
+        assert!(!out.contains("🧠"), "{case}: {out}");
     }
 
     write(&f.home, ".moai-cli/state/last-model.txt", b"m");
     let out = render(&f, &[]);
-    assert!(out.contains("🤖 m"), "one character: {out}");
+    assert!(out.contains("🧠 m"), "one character: {out}");
 }
 
 /// AC-2 boundaries for the session state: absent, 0 bytes, broken JSON, no `active_task`,

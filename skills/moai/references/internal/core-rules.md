@@ -27,4 +27,10 @@ When to read: once per session, before the first step of any route or agent task
 15. An abort or exit code 0 does not prove nothing changed: compare the tree before and after, and say "no changes" only when they match; otherwise list what was applied and what was not. A read-only mode never repairs, and a check that cannot show it is read-only is not run there.
 16. When a delegated task does not come back, record what was delegated, that it did not return and why, before delegating it again.
 17. A rule change is a decision record that names the record it replaces. When a change reverses a rule recorded less than an hour earlier, ask the person who made it once, before applying it, which one stands.
-18. The final report to the person ends with two lists: the checks to try themselves, every item touching a HOLD category or `guarded` setting first; and the decisions made for them, each with how to undo it. Mark test data as test data wherever it can be mistaken for real data.
+18. The final report to the person is read by someone who did not watch the work: it gives the conclusion first, in plain words, and ends with two lists: the checks to try themselves, every item touching a HOLD category or `guarded` setting first; and the decisions made for them, each with how to undo it. Mark test data as test data wherever it can be mistaken for real data.
+
+## Sources and scope
+
+19. Before building an unfamiliar feature from scratch, find at least two public implementations of something similar, compare their approaches and write down why you chose yours.
+20. Do not design for a rare case or a future situation nobody asked for; note it as a follow-up. Input checks at trust boundaries, data-loss prevention and security stay in scope, as in rule 3.
+21. When an instruction file and the code or a command's real output disagree, the code and the output win; report the disagreement.

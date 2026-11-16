@@ -38,7 +38,7 @@ fn the_update_route_is_the_project_layer() {
     );
     let update = skill("workflows/update.md");
     for text in [
-        "`/moai update` (`$moai update` in Codex CLI) updates the current project",
+        "`/moai update` (`$moai update` in Codex CLI, `/skill:moai update` in OMP) updates the current project",
         // #2936 S1: one read-only preview of every phase, then the printed commands.
         "Run `moai project-update-plan <project>`. It writes nothing",
         "Show the user every phase and every step in one view",

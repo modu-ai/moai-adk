@@ -3,8 +3,8 @@
 //! data; only a member's comment becomes a note.
 use moai_cli::forge::connector::{HostComment, HostIssue, HostKind, OpenIssues, ProjectRef};
 use moai_cli::forge::import_plan::{
-    issue_set_digest, kind_from_labels, parse_ac_table, plan_import, AcProblem, AcReading,
-    KindSource, MAX_AC_ROWS, MAX_CELL_CHARS, TITLE_MAX,
+    issue_set_digest, kind_from_labels, note_kind, parse_ac_table, plan_import, AcProblem,
+    AcReading, KindSource, NoteKind, MAX_AC_ROWS, MAX_CELL_CHARS, TITLE_MAX,
 };
 
 fn project() -> ProjectRef {
@@ -421,6 +421,81 @@ fn control_lines_are_counted_by_kind_and_a_strangers_never_count() {
         "the stranger's claim line is not a note"
     );
     assert_eq!(card.dropped.lines.len(), 1, "and it is reported as dropped");
+}
+
+/// Audit memo 4 on #3085, ledger contract revision 1 answer 3: a reservation line read from the
+/// host is stored as an `observation` note, every other member comment as a `comment` note. The
+/// kind is only a label; importing never makes a reservation.
+#[test]
+fn a_reservation_line_is_an_observation_and_any_other_comment_is_a_comment() {
+    let reservations = [
+        "moai-claim: session=a epoch=1 lease_until=2026-11-16T00:00:00Z",
+        "moai-claim-handoff: from=a to=b epoch=2",
+        "moai-claim-release: session=a epoch=1",
+        "moai-audit-claim: lane=agent-7 head=0123456789abcdef0123456789abcdef01234567",
+    ];
+    for body in reservations {
+        assert_eq!(note_kind(body), NoteKind::Observation, "{body}");
+    }
+    let others = [
+        "just a note",
+        "",
+        "AUDIT #5 (x) head abc base def — verdict: PASS",
+        "ci: rc-ci run=1 head=abc conclusion=success",
+        "LANE-REPORT agent-25 done",
+        "CLOSE-TABLE #3 ok",
+        "local-check: pass",
+        "<!-- moai:marker -->",
+        "moai-resume: x",
+        "moai-tip-repair: y",
+        // Only a line that starts with the word is a control line.
+        "I read moai-claim: in the docs",
+    ];
+    for body in others {
+        assert_eq!(note_kind(body), NoteKind::Comment, "{body:?}");
+    }
+    assert_eq!(NoteKind::Comment.as_str(), "comment");
+    assert_eq!(NoteKind::Observation.as_str(), "observation");
+}
+
+/// The kind comes from the first control line, the same line the plan counts per kind, even when
+/// a later line is of another kind; lines before it that are plain text do not matter.
+#[test]
+fn the_first_control_line_decides_the_note_kind() {
+    let claim_then_ci = "text above\nmoai-claim: s=a epoch=1\nci: x";
+    let ci_then_claim = "ci: x\nmoai-claim: s=a epoch=1";
+    assert_eq!(note_kind(claim_then_ci), NoteKind::Observation);
+    assert_eq!(note_kind(ci_then_claim), NoteKind::Comment);
+    assert_eq!(
+        note_kind("  moai-claim: indented"),
+        NoteKind::Observation,
+        "the line is trimmed, as the plan counts it"
+    );
+}
+
+#[test]
+fn planned_notes_carry_their_kind_and_the_non_member_claim_is_no_note_at_all() {
+    let mut i = issue(1, "t", "");
+    i.comments = vec![
+        comment(1, "MEMBER", "moai-claim: session=a epoch=1 lease_until=x"),
+        comment(2, "OWNER", "plain words"),
+        comment(3, "MEMBER", "AUDIT #5 (x) head a base b — verdict: PASS"),
+        comment(4, "NONE", "moai-claim: session=evil epoch=9 lease_until=x"),
+        comment(5, "COLLABORATOR", "   "),
+        comment(6, "MEMBER", "moai-audit-claim: lane=l head=abc"),
+    ];
+    let card = &plan_import(&open(vec![i])).cards[0];
+    let kinds: Vec<(u64, NoteKind)> = card.notes.iter().map(|n| (n.comment_id, n.kind)).collect();
+    assert_eq!(
+        kinds,
+        vec![
+            (1, NoteKind::Observation),
+            (2, NoteKind::Comment),
+            (3, NoteKind::Comment),
+            (6, NoteKind::Observation),
+        ],
+        "the stranger's claim (4) and the empty comment (5) are no notes"
+    );
 }
 
 #[test]

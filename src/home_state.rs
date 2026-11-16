@@ -111,7 +111,7 @@ pub(crate) fn live_sessions(moai: &Path) -> Option<usize> {
 
 /// Whether `pid` is alive; `None` when it cannot be judged.
 #[cfg(unix)]
-fn pid_alive(pid: i64) -> Option<bool> {
+pub(crate) fn pid_alive(pid: i64) -> Option<bool> {
     // SAFETY: signal 0 only checks that the process exists and may be signalled.
     let rc = unsafe { libc::kill(pid as libc::pid_t, 0) };
     if rc == 0 {
@@ -127,7 +127,7 @@ fn pid_alive(pid: i64) -> Option<bool> {
 /// Without `kill(pid, 0)` a registered pid cannot be judged: the caller blocks (fail-closed;
 /// `libc` is a unix-only dependency, #2771 re-audit F3).
 #[cfg(not(unix))]
-fn pid_alive(_pid: i64) -> Option<bool> {
+pub(crate) fn pid_alive(_pid: i64) -> Option<bool> {
     None
 }
 
