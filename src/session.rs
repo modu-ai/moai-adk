@@ -12,7 +12,7 @@
 //! - `glm`: Claude Code pointed at z.ai through process environment only, per
 //!   https://docs.z.ai/scenario-example/develop-tools/claude. The token is inherited from the
 //!   caller and only its presence is checked; its value is never kept, printed or written.
-//! - `codex`: Codex CLI `-s danger-full-access -a never [-m <model>] [PROMPT]`
+//! - `codex`: Codex CLI `-s danger-full-access -a never [-m <model>] [-c model_reasoning_effort="<effort>"] [PROMPT]`
 //!   (`-s workspace-write -a on-request` with `--permissions`), per
 //!   https://learn.chatgpt.com/docs/developer-commands?surface=cli. Codex has no session-name
 //!   flag, so the name travels in the first prompt.
@@ -30,10 +30,16 @@ use std::path::{Path, PathBuf};
 const ROLES: [&str; 2] = ["leader", "agent"];
 const HOSTS: [&str; 3] = ["claude", "glm", "codex"];
 const EFFORTS: [&str; 6] = ["low", "medium", "high", "xhigh", "max", "ultracode"];
+/// The efforts the launcher hands to Codex (`-c model_reasoning_effort="<value>"`). Codex
+/// 0.169.0 reads all five from its source (`ReasoningEffort::from_str`, rust-v0.169.0) and its
+/// config reference lists them; which of them a model takes depends on the model. `ultracode`
+/// is a Claude Code word and is not passed.
+const CODEX_EFFORTS: [&str; 5] = ["low", "medium", "high", "xhigh", "max"];
 const ADVISOR_ALIASES: [&str; 3] = ["fable", "opus", "sonnet"];
 /// Notes that tell the user an option they gave was dropped. The terminal launcher prints these
 /// before the host starts (#3004 P9), so the text is shared with `launcher_terminal`.
-pub const NOTE_EFFORT_NOT_PASSED_CODEX: &str = "--effort is not passed to codex by this launcher";
+pub const NOTE_EFFORT_NOT_PASSED_CODEX: &str =
+    "--effort was not passed to codex: codex takes low|medium|high|xhigh|max here";
 pub const NOTE_ADVISOR_NOT_PASSED_CODEX: &str =
     "the advisor applies to Claude hosts only; it was not passed to codex";
 pub const NOTE_ADVISOR_OMITTED_GLM: &str =
@@ -159,7 +165,8 @@ pub struct SessionRequest {
     /// `None` uses the host default: `opus` on Claude hosts, Codex's own default on codex.
     #[serde(default)]
     pub model: Option<String>,
-    /// `None` uses `medium` on Claude hosts; Codex has no effort flag here.
+    /// `None` uses `medium` on Claude hosts; on codex `None` passes nothing and a value that
+    /// Codex takes (`low|medium|high|xhigh|max`) goes out as `-c model_reasoning_effort="…"`.
     #[serde(default)]
     pub effort: Option<String>,
     #[serde(default)]
@@ -675,8 +682,17 @@ fn codex_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<S
         argv.push("-m".into());
         argv.push(m.clone());
     }
-    if r.effort.is_some() {
-        notes.push(NOTE_EFFORT_NOT_PASSED_CODEX);
+    // #3096 S7b (leader decision 6905681774): an effort the operator asked for is passed on as
+    // `-c model_reasoning_effort="<value>"` when Codex takes that value; no request passes
+    // nothing, so the user's own Codex settings decide and the launcher never picks a model
+    // default for them. Only the five fixed words below are ever put into the argument.
+    if let Some(e) = r.effort.as_deref() {
+        if CODEX_EFFORTS.contains(&e) {
+            argv.push("-c".into());
+            argv.push(format!("model_reasoning_effort=\"{e}\""));
+        } else {
+            notes.push(NOTE_EFFORT_NOT_PASSED_CODEX);
+        }
     }
     if r.advisor.is_some() {
         notes.push(NOTE_ADVISOR_NOT_PASSED_CODEX);

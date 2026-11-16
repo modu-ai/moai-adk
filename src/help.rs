@@ -1607,7 +1607,11 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "model",
         "주 모델(Claude 호스트 기본 `opus`, codex 는 정하지 않으면 자기 기본값)",
     ),
-    ("cc|codex|glm", "effort", "Claude effort(기본 `medium`)"),
+    (
+        "cc|codex|glm",
+        "effort",
+        "effort(Claude 기본 `medium`, codex 는 지정할 때만 low|medium|high|xhigh|max)",
+    ),
     (
         "cc|codex|glm",
         "advisor",

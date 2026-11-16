@@ -19,9 +19,10 @@ Limits of these runs:
 - The Codex child rollout holds a copy of the parent's records, so the child's own
   `turn_context` could not be told apart from the copy. A differing value would have shown as
   a separate line; every line was of one kind. This is not a proof of the child's own values.
-- The Codex parent got its effort from `-c model_reasoning_effort=…`. The launcher does not
-  start Codex that way (it passes `-m` only, no effort), so the launcher's own path, and a
-  parent whose effort nobody set, were not measured.
+- The Codex parent got its effort from `-c model_reasoning_effort=…`. At the time of the runs
+  the launcher did not start Codex that way (it passed `-m` only); it does now when an effort
+  is asked for. The launcher's own start (`-m` with or without the `-c` argument) and a parent
+  whose effort nobody set were not measured.
 - Not measured: OMP (no live session); a child started on a model other than the parent's.
 - The Claude transcript fields and the Codex rollout fields are not in the products' official
   documentation; they are what the files held on the day.
@@ -51,8 +52,19 @@ Codex (developers.openai.com/codex/subagents, config-reference):
   `disallowedTools`, `isolation`, `developer_instructions`). The test
   `rendered_agent_files_name_no_model_and_no_effort` (`tests/agent_defs_package.rs`) fails when
   a rendered file gains any other key, so a model or effort key cannot be added unseen.
-- The launcher passes `--model` and `--effort` to a Claude parent and `-m` to a Codex parent;
-  it does not pass an effort to Codex (`NOTE_EFFORT_NOT_PASSED_CODEX`). This PR leaves the
-  launcher unchanged. The Codex runs above did not use the launcher's path, so what a child
-  shows under it is not measured here; the Codex launcher effort is a separate piece (#3096 S7b).
+- The launcher passes `--model` and `--effort` to a Claude parent. To a Codex parent it passes
+  `-m` when a model was asked for, and, since #3096 S7b, `-c model_reasoning_effort="<value>"`
+  when an effort was asked for and the value is one of `low`, `medium`, `high`, `xhigh`, `max`.
+  When no effort was asked for it passes nothing, so the user's own Codex settings decide and the
+  launcher puts no default of its own there. A value Codex does not take (`ultracode` is a Claude
+  Code word) is not passed and the launcher says so (`NOTE_EFFORT_NOT_PASSED_CODEX`). The five
+  words are the ones Codex 0.169.0 reads in its source (`ReasoningEffort::from_str`, tag
+  `rust-v0.169.0`) and lists in its config reference, read 2026-11-16; which of them a given
+  model accepts depends on the model, and what the Codex server does with a word the model does
+  not take was not checked.
+- Not measured for S7b: a Codex parent started the way the launcher starts it (`-m` and
+  `-c model_reasoning_effort`, or `-m` alone) in an isolated `CODEX_HOME`, and its child. That
+  run needs a Codex login, and no login file is copied into an isolated home; the run waits for
+  an authenticated Codex (`not_run`). The earlier rows above used `-c` on the parent, which is
+  the same argument the launcher now sends.
 - Installing agent files into a real home and any user setting stay outside this page.
