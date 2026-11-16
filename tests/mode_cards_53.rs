@@ -231,17 +231,18 @@ fn the_agent_section_maps_each_step_of_the_round_to_a_card_command() {
             // per-file limit (see the size test below).
             "`moai card next`",
             "`moai card take <card> --scope <p> --worktree <w> --branch card/<n>-<slug>`",
-            "each writer below with its `--generation <g>`",
+            "each writer then takes `--generation <g>`",
             "`card renew` before the lease ends",
-            "`card check --path <p>` before each write",
+            "`card check <card> --generation <g> --path <p>` before each write",
             // Reports, decisions, criteria.
             "`card note --kind report < file`",
             "`PLAN C-<n>`",
             "`--kind decision` note needs `--by`",
-            "`card criterion --met --evidence <ref>`",
+            "`card criterion <card> <n> --met --evidence <ref>`",
             "`--withdraw --reason <text>`",
-            // Pull request, review, close.
-            "`card pr`, then `card review` once the audit is asked",
+            // Pull request, review, close. A local card names its host project (audit N2).
+            "`card pr <card> <pr> --repo <o/r>` (local card), then `card review` once the audit \
+             is asked",
             "on FAIL `card reopen`",
             "after the merge `card pr` again and `card done`",
             // Giving a card back or on.
@@ -254,10 +255,16 @@ fn the_agent_section_maps_each_step_of_the_round_to_a_card_command() {
             "never edit the ledger file",
             // What a lane does not do.
             "`card add`, `card scope` and `card ready` are the leader's",
-            // The parts that still read Issue claims.
-            "`not_run`",
+            // The parts that still read Issue claims: the commit guard lets a card branch
+            // through as "not a lane worktree" (`claim_verify.rs`, audit N7).
+            "the commit guard answers `allowed` on a card branch, checking nothing",
             "C-53 S3",
         ],
+    );
+    let agent = card_section("mode-agent.md");
+    assert!(
+        !agent.contains("`not_run`"),
+        "the guard answers, it is not not_run"
     );
 }
 
@@ -288,18 +295,18 @@ fn the_leader_section_makes_cards_ready_assigns_audits_and_names_the_transition(
     );
 }
 
-/// Every package file is read with a 64 KiB bound (`profile::read`, used by `package_digest`
-/// for install, update and `package-inspect`). MODE-AGENT was 64,181 bytes before its card
-/// section, which is why that section is one paragraph; a file over the bound makes the
-/// whole package unreadable ("target is not a bounded regular file").
+/// Every package file is read with the bound `profile::LIMIT` (`profile::read`, used by
+/// `package_digest` for install, update and `package-inspect`). MODE-AGENT was 64,181 bytes
+/// before its card section, which is why that section is one paragraph; a file over the bound
+/// makes the whole package unreadable ("target is not a bounded regular file").
 #[test]
 fn both_mode_files_stay_within_the_package_file_bound() {
-    const BOUND: usize = 65_536;
+    let bound = moai_cli::profile::LIMIT as usize;
     for name in ["mode-agent.md", "mode-leader.md"] {
         let bytes = workflow(name).len();
         assert!(
-            bytes <= BOUND,
-            "{name} is {bytes} bytes, over the {BOUND}-byte bound of a package file"
+            bytes <= bound,
+            "{name} is {bytes} bytes, over the {bound}-byte bound of a package file"
         );
     }
 }
