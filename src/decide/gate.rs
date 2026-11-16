@@ -1,19 +1,28 @@
-//! The gate of `moai decide` (card C-37 S2): which choices a model may make at all.
+//! The gate of `moai decide` (card C-37, design v2 slice V1): which choices a model may make
+//! at all.
 //!
 //! SKILL.md sorts an open choice: one that cannot be undone, that touches one of the five HOLD
 //! categories or that changes a `guarded` setting goes to the user and waits. Only what is
 //! left, a reversible choice of category `none`, is the leader's, and only that may be put to
 //! a model in the leader's place. So the gate lets through exactly: `reversible` is `true`,
-//! `category` is `none`, the default is one of the options, and the text itself does not read
-//! as one of the other classes.
+//! `category` is `none`, the default is one of the options, and no text of the request holds
+//! a shape of the deny list. Eligibility rests on those honest structured fields (with `undo`
+//! and `tier`, which the parser requires), never on a model and never on a word list.
 //!
-//! The last check is [`screen`], a fixed word list. It is a deterministic filter, not a
-//! classifier: it cannot show a text is harmless, it only catches a `none` that names money,
-//! a key, a deletion and the like in plain words. A hit costs nothing but the model's turn
-//! (the leader decides instead), so the list leans towards refusing: after the audit of the
-//! first round it also holds everyday verbs (`remove`, `drop`, `buy`, `rotate`), and an
-//! ordinary engineering choice that uses one (`remove the unused import`) goes to the leader
-//! too (leader decision 2026-11-17, audit N8).
+//! The deny list ([`DENY`]) is for known threats only, not a risk judge. It names a few exact
+//! command and action shapes that must never be handed to a model whatever the fields say,
+//! and nothing else: a force push, `reset --hard`, a forced recursive delete, dropping or
+//! truncating a database table, making a repository public, `chmod 777`, and a currency
+//! amount. It reads `what`, every option value and description, `undo` and every evidence
+//! value, in any letter case, one line at a time. A text without one of these shapes is not
+//! shown to be harmless; that judgement stays with the person who filled in `reversible`,
+//! `category`, `undo` and `tier`. Each shape refuses with its own code, before any provider
+//! code runs.
+//!
+//! The first design's keyword screen (a word list over the same texts, with a
+//! `class_mismatch` refusal) is gone: it let consequential sentences through and refused
+//! ordinary ones such as "Remove the unused import?" (design v2, two audits of the first
+//! design).
 
 use super::request::Request;
 use super::Refusal;
@@ -31,206 +40,177 @@ impl<'a> Cleared<'a> {
         self.request
     }
 
-    /// For the tests of the steps after the gate, which must not depend on its word list.
+    /// For the tests of the steps after the gate, which must not depend on its rules.
     #[cfg(test)]
     pub(crate) fn unchecked(request: &'a Request) -> Self {
         Cleared { request }
     }
 }
 
-/// The classes the screen knows and the words that name them. The five HOLD categories and
-/// `guarded` are the shared ones ([`CATEGORIES`]); `external_transmission` and `irreversible`
-/// are the other two reasons SKILL.md gives for a choice that waits for the user. An ASCII
-/// term matches whole words (a plural `s` allowed), in any letter case; a Korean term matches
-/// anywhere, since particles attach to the word.
-pub const SCREEN: [(&str, &[&str]); 8] = [
+/// The deny list: each shape's reason code and what it names. Known threats only, not a risk
+/// judge (see the module text); [`deny`] says how each one is matched.
+pub const DENY: [(&str, &str); 7] = [
     (
-        "money",
-        &[
-            "money",
-            "payment",
-            "billing",
-            "invoice",
-            "purchase",
-            "subscription",
-            "refund",
-            "pricing",
-            "paid plan",
-            "budget",
-            "cost",
-            "wire",
-            "charge",
-            "buy",
-            "결제",
-            "과금",
-            "요금",
-            "구매",
-            "환불",
-            "비용",
-            "예산",
-            "돈",
-            "송금",
-        ],
+        "deny_force_push",
+        "a force push (`push` with `--force` or `-f` after it, or `--force-with-lease`)",
+    ),
+    ("deny_reset_hard", "`reset` with `--hard` after it"),
+    (
+        "deny_rm_rf",
+        "a forced recursive delete (`rm` with both the `r` and the `f` flag after it)",
     ),
     (
-        "legal",
-        &[
-            "legal",
-            "license",
-            "licence",
-            "lawsuit",
-            "copyright",
-            "trademark",
-            "terms of service",
-            "gdpr",
-            "법적",
-            "법률",
-            "라이선스",
-            "저작권",
-            "약관",
-        ],
+        "deny_drop_table",
+        "`drop table`, `drop database` or `truncate table`",
     ),
     (
-        "external_contract",
-        &[
-            "contract",
-            "sla",
-            "nda",
-            "vendor agreement",
-            "sign the",
-            "계약",
-        ],
+        "deny_visibility_public",
+        "making a repository public (`--visibility public`, `visibility=public`)",
     ),
+    ("deny_chmod_777", "`chmod` with `777` or `0777` after it"),
     (
-        "secret",
-        &[
-            "secret",
-            "credential",
-            "password",
-            "passphrase",
-            "api key",
-            "api_key",
-            "api-key",
-            "private key",
-            "access token",
-            "auth token",
-            "비밀번호",
-            "비밀 키",
-            "자격 증명",
-            "암호",
-            "시크릿",
-        ],
-    ),
-    (
-        "real_data",
-        &[
-            "real data",
-            "production data",
-            "production database",
-            "customer data",
-            "personal data",
-            "user data",
-            "pii",
-            "prod",
-            "production",
-            "customer",
-            "실제 데이터",
-            "운영",
-            "운영 데이터",
-            "고객 데이터",
-            "개인정보",
-        ],
-    ),
-    (
-        "guarded",
-        &[
-            "permission",
-            "global setting",
-            "branch protection",
-            "force-push",
-            "force push",
-            "rm -rf",
-            "reset --hard",
-            "delete",
-            "deletion",
-            "drop",
-            "wipe",
-            "erase",
-            "truncate",
-            "remove",
-            "--force",
-            "two-factor",
-            "2fa",
-            "certificate",
-            "rotate",
-            "권한",
-            "전역 설정",
-            "보호 규칙",
-            "삭제",
-            "지우",
-            "지울",
-            "지워",
-        ],
-    ),
-    (
-        "external_transmission",
-        &[
-            "upload",
-            "publish",
-            "third party",
-            "third-party",
-            "external service",
-            "send to",
-            "make public",
-            "go public",
-            "private repository",
-            "repository public",
-            "외부 전송",
-            "외부로",
-            "업로드",
-        ],
-    ),
-    (
-        "irreversible",
-        &[
-            "irreversible",
-            "cannot be undone",
-            "can't be undone",
-            "one-way",
-            "되돌릴 수 없",
-        ],
+        "deny_currency",
+        "a currency amount (`$`, `€`, `£`, `₩` or `¥` right before a digit, or a number before \
+         USD, EUR, KRW or 원)",
     ),
 ];
 
-/// The first class `text` reads as, with the term that matched, or `None`.
-pub fn screen(text: &str) -> Option<(&'static str, &'static str)> {
-    let lower = text.to_lowercase();
-    SCREEN.iter().find_map(|(class, terms)| {
-        terms
-            .iter()
-            .find(|term| holds_term(&lower, term))
-            .map(|term| (*class, *term))
-    })
+/// The code of the first deny-list shape `text` holds, or `None`.
+///
+/// The command shapes are read one line at a time, as words split at white space, in lower
+/// case, with quotes, brackets and sentence punctuation taken off each word's ends:
+/// - `deny_force_push`: the word `push` with the word `--force` or `-f` anywhere after it on
+///   the line (`git push origin main --force` too), or the word `--force-with-lease` (also
+///   `--force-with-lease=…`) anywhere. `--force` without `push` before it is not this shape.
+/// - `deny_reset_hard`: the word `reset` with `--hard` after it on the line.
+/// - `deny_rm_rf`: the word `rm` with both the `r` and the `f` flag after it on the line, in
+///   one word (`-rf`, `-fr`, `-Rf`, `-rfv`), in two (`-r -f`) or long (`--recursive
+///   --force`). `rm -r` alone passes: a recursive delete without force is judged by the
+///   honest `reversible` and `undo` fields, not by this list.
+/// - `deny_drop_table`: the two words `drop table`, `drop database` or `truncate table`.
+/// - `deny_visibility_public`: `visibility=public` anywhere, or the words `--visibility
+///   public`.
+/// - `deny_chmod_777`: the word `chmod` with the word `777` or `0777` after it on the line.
+///
+/// `deny_currency` reads the text as it is: `$`, `€`, `£`, `₩` or `¥` right before an ASCII
+/// digit (`$5`, `₩5000`; `$HOME` and `$ 5` are not), or a number (digits, with `,` or `.`
+/// inside) right before `USD`, `EUR` or `KRW` as a whole word, in any case and with at most
+/// one space between, or right before `원`. Known false hits, each costing one fallback to
+/// the leader: a shell argument such as `$1`, and a Korean word that starts with `원` after
+/// a number (`제1원칙`).
+pub fn deny(text: &str) -> Option<&'static str> {
+    for line in text.lines() {
+        let words = words(line);
+        let after = |first: &str, found: &dyn Fn(&str) -> bool| {
+            words
+                .iter()
+                .position(|w| w == first)
+                .is_some_and(|at| words[at + 1..].iter().any(|w| found(w)))
+        };
+        let pair = |a: &str, b: &str| words.windows(2).any(|w| w[0] == a && w[1] == b);
+        if after("push", &|w| w == "--force" || w == "-f")
+            || words
+                .iter()
+                .any(|w| w == "--force-with-lease" || w.starts_with("--force-with-lease="))
+        {
+            return Some("deny_force_push");
+        }
+        if after("reset", &|w| w == "--hard") {
+            return Some("deny_reset_hard");
+        }
+        if rm_forced_recursive(&words) {
+            return Some("deny_rm_rf");
+        }
+        if pair("drop", "table") || pair("drop", "database") || pair("truncate", "table") {
+            return Some("deny_drop_table");
+        }
+        if line.to_lowercase().contains("visibility=public") || pair("--visibility", "public") {
+            return Some("deny_visibility_public");
+        }
+        if after("chmod", &|w| w == "777" || w == "0777") {
+            return Some("deny_chmod_777");
+        }
+    }
+    holds_currency_amount(text).then_some("deny_currency")
 }
 
-/// True when the lower-cased text holds `term`: anywhere for a Korean term, as whole words
-/// for an ASCII one (no ASCII letter or digit right before it or right after it, a plural `s`
-/// aside).
-fn holds_term(lower: &str, term: &str) -> bool {
-    if !term.is_ascii() {
-        return lower.contains(term);
+/// The words of one line: split at white space, lower case, with quotes, brackets and
+/// sentence punctuation taken off both ends.
+fn words(line: &str) -> Vec<String> {
+    line.split_whitespace()
+        .map(|w| {
+            w.trim_matches(|c: char| "`'\"()[]{}<>,;:.!?".contains(c))
+                .to_lowercase()
+        })
+        .filter(|w| !w.is_empty())
+        .collect()
+}
+
+/// True when the word `rm` is followed on its line by both the recursive and the force flag.
+fn rm_forced_recursive(words: &[String]) -> bool {
+    let Some(at) = words.iter().position(|w| w == "rm") else {
+        return false;
+    };
+    let (mut recursive, mut force) = (false, false);
+    for word in &words[at + 1..] {
+        match word.as_str() {
+            "--recursive" => recursive = true,
+            "--force" => force = true,
+            short if short.starts_with('-') && !short.starts_with("--") => {
+                recursive |= short.contains('r');
+                force |= short.contains('f');
+            }
+            _ => {}
+        }
     }
-    let in_word = |c: char| c.is_ascii_alphanumeric();
-    lower.match_indices(term).any(|(at, _)| {
-        let before = lower[..at].chars().next_back();
-        let after = &lower[at + term.len()..];
-        let after = after.strip_prefix('s').unwrap_or(after);
-        !before.is_some_and(in_word) && !after.chars().next().is_some_and(in_word)
-    })
+    recursive && force
+}
+
+/// True when `text` holds a currency amount (see [`deny`]).
+fn holds_currency_amount(text: &str) -> bool {
+    let chars: Vec<char> = text.chars().collect();
+    let symbol_before_digit = chars
+        .windows(2)
+        .any(|w| "$€£₩¥".contains(w[0]) && w[1].is_ascii_digit());
+    if symbol_before_digit {
+        return true;
+    }
+    let mut i = 0;
+    while i < chars.len() {
+        if !chars[i].is_ascii_digit() {
+            i += 1;
+            continue;
+        }
+        // The number: digits, with `,` or `.` between digits.
+        while i < chars.len()
+            && (chars[i].is_ascii_digit()
+                || (matches!(chars[i], ',' | '.')
+                    && chars.get(i + 1).is_some_and(char::is_ascii_digit)))
+        {
+            i += 1;
+        }
+        let mut at = i;
+        if chars.get(at) == Some(&' ') {
+            at += 1;
+        }
+        if chars.get(at) == Some(&'원') {
+            return true;
+        }
+        let unit: String = chars[at..]
+            .iter()
+            .take(3)
+            .collect::<String>()
+            .to_lowercase();
+        let ends = !chars.get(at + 3).is_some_and(|c| c.is_ascii_alphanumeric());
+        if ["usd", "eur", "krw"].contains(&unit.as_str()) && ends {
+            return true;
+        }
+    }
+    false
 }
 
 /// The gate: `request` as a [`Cleared`] choice, or the first rule that refuses it. The order
-/// is fixed: reversible, category, default, then the text screen.
+/// is fixed: reversible, category, default, then the deny list.
 pub fn check(request: &Request) -> Result<Cleared<'_>, Refusal> {
     if request.reversible != Some(true) {
         return Err(Refusal::new(
@@ -272,22 +252,33 @@ pub fn check(request: &Request) -> Result<Cleared<'_>, Refusal> {
             "`default` is not the value of one of the options",
         ));
     }
-    let texts = [request.what.as_str(), request.evidence.as_str()]
+    // Each text with the fixed name of where it stands, so the reason never quotes the request
+    // (an evidence field's name is the request's own text too).
+    let texts = [("`what`", request.what.as_str())]
         .into_iter()
+        .chain(request.options.iter().flat_map(|o| {
+            [
+                ("an option value", o.value.as_str()),
+                ("an option description", o.description.as_str()),
+            ]
+        }))
+        .chain(request.undo.as_deref().map(|undo| ("`undo`", undo)))
         .chain(
             request
-                .options
-                .iter()
-                .flat_map(|o| [o.value.as_str(), o.description.as_str()]),
+                .evidence
+                .values()
+                .map(|value| ("an evidence value", value.as_str())),
         );
-    for text in texts {
-        if let Some((class, term)) = screen(text) {
+    for (place, text) in texts {
+        if let Some(code) = deny(text) {
+            let names = DENY
+                .iter()
+                .find(|(c, _)| *c == code)
+                .map(|(_, names)| *names)
+                .unwrap_or_default();
             return Err(Refusal::new(
-                "class_mismatch",
-                format!(
-                    "`category` is `none`, but the text reads as `{class}` (term `{term}`): \
-                     the leader decides"
-                ),
+                code,
+                format!("{place} holds {names}: a known threat shape, the leader decides"),
             ));
         }
     }
@@ -297,11 +288,11 @@ pub fn check(request: &Request) -> Result<Cleared<'_>, Refusal> {
 #[cfg(test)]
 mod tests {
     use super::super::request::parse;
-    use super::super::testing::request_json;
+    use super::super::testing::{evidence, request_json};
     use super::*;
-    use serde_json::json;
+    use serde_json::{json, Value};
 
-    fn code(edit: impl FnOnce(&mut serde_json::Value)) -> &'static str {
+    fn code(edit: impl FnOnce(&mut Value)) -> &'static str {
         let request = parse(&request_json(edit)).unwrap();
         match check(&request) {
             Ok(_) => "cleared",
@@ -351,7 +342,8 @@ mod tests {
     }
 
     /// The first failing rule answers: a one-way choice is `irreversible` whatever else is
-    /// wrong with it, and a category is judged before the default.
+    /// wrong with it, a category is judged before the default, and the default before the
+    /// deny list.
     #[test]
     fn the_rules_answer_in_a_fixed_order() {
         assert_eq!(
@@ -369,156 +361,250 @@ mod tests {
             }),
             "category_hold"
         );
-    }
-
-    #[test]
-    fn the_screen_reads_each_class_in_english_and_korean() {
-        for (text, class) in [
-            ("Do we renew the subscription this month?", "money"),
-            ("이번 달 결제를 진행할까요", "money"),
-            ("Is the MIT License compatible here?", "legal"),
-            ("Does the SLA allow a night deploy?", "external_contract"),
-            ("Rotate the API key now or later?", "secret"),
-            ("Store two passwords or one?", "secret"),
-            ("Run the migration on production data first?", "real_data"),
-            ("개인정보가 든 표를 먼저 옮길까요", "real_data"),
-            ("Delete the old branches or keep them?", "guarded"),
-            ("전역 설정을 바꿀까요", "guarded"),
-            ("Upload the report or attach it?", "external_transmission"),
-            ("This cannot be undone: squash now?", "irreversible"),
-        ] {
-            assert_eq!(screen(text).map(|(c, _)| c), Some(class), "{text}");
-        }
-    }
-
-    /// Audit N8: the auditor's probe sentences, each declared `none`, each refused. The two
-    /// from the first round stay refused.
-    #[test]
-    fn the_audit_probes_are_refused() {
-        for text in [
-            "Drop the users table in prod now or after the release?",
-            "Wire 4,000 dollars to the contractor today or next week?",
-            "Paste the production key into the CI variables or keep it local?",
-            "Email the full customer list to the agency today?",
-            "Charge the card 20 USD a month for the Pro tier or stay on Free?",
-            "Wipe the backups and truncate the audit log, or keep them?",
-            "Sign the MSA with Acme now?",
-            "Run push --force to main or open a PR?",
-            "Erase the user records older than 30 days?",
-            "Make the private repository public today?",
-            "Turn off two-factor login for the admins?",
-            "Remove the prod database volume?",
-            "Buy the enterprise seats now?",
-            "Rotate the prod signing certificate and tokens tonight?",
-            "운영 DB 를 지울까요 아니면 둘까요",
-            "돈을 오늘 보낼까요 내일 보낼까요",
-            "Delete the cache folder?",
-            "Which paid plan do we take?",
-        ] {
-            assert!(screen(text).is_some(), "{text}");
-            assert_eq!(
-                code(|v| v["what"] = json!(text)),
-                "class_mismatch",
-                "{text}"
-            );
-            assert_eq!(
-                code(|v| v["evidence"] = json!(text)),
-                "class_mismatch",
-                "{text}"
-            );
-        }
-    }
-
-    /// Each word N8 adds, alone, in the class it reads as.
-    #[test]
-    fn the_added_words_each_read_as_a_class() {
-        for (text, class) in [
-            ("wire it", "money"),
-            ("charge them", "money"),
-            ("buy it", "money"),
-            ("돈", "money"),
-            ("송금", "money"),
-            ("sign the form", "external_contract"),
-            ("prod", "real_data"),
-            ("production", "real_data"),
-            ("customer", "real_data"),
-            ("운영", "real_data"),
-            ("drop it", "guarded"),
-            ("wipe it", "guarded"),
-            ("erase it", "guarded"),
-            ("truncate it", "guarded"),
-            ("remove it", "guarded"),
-            ("use --force", "guarded"),
-            ("two-factor", "guarded"),
-            ("2fa", "guarded"),
-            ("certificate", "guarded"),
-            ("rotate it", "guarded"),
-            ("지우기", "guarded"),
-            ("지울까", "guarded"),
-            ("지워요", "guarded"),
-            ("make public", "external_transmission"),
-            ("go public", "external_transmission"),
-            ("the private repository", "external_transmission"),
-        ] {
-            assert_eq!(screen(text).map(|(c, _)| c), Some(class), "{text}");
-        }
-        // Whole words still: these only contain an added word.
-        for text in [
-            "a product page",
-            "the rewire step",
-            "signing off",
-            "dropdown menu",
-            "buyer",
-        ] {
-            assert_eq!(screen(text), None, "{text}");
-        }
-    }
-
-    /// The miss direction: a term inside a longer word is not the term, and ordinary
-    /// engineering text passes.
-    #[test]
-    fn the_screen_matches_whole_words_only() {
-        for text in [
-            "Which test runner does the new module use?",
-            // `sla` and `nda`, `cost`, `delete`, `publish` and `pii` inside longer words.
-            "Translate the island agenda",
-            "The costly path or the cheap one",
-            "Deleted rows are filtered upstream",
-            "A republished crate name",
-            "Use spiing or polling",
-            "nextest 와 cargo test 중 무엇을 쓸까요",
-        ] {
-            assert_eq!(screen(text), None, "{text}");
-        }
-        // Punctuation and case do not hide a term.
-        assert_eq!(screen("(PASSWORD)").map(|(c, _)| c), Some("secret"));
-        assert_eq!(screen("budget.").map(|(c, _)| c), Some("money"));
-    }
-
-    /// Declared `none`, read as another class: refused, in whichever text field it stands.
-    /// The reason names the class and the fixed term, not the text.
-    #[test]
-    fn a_none_that_reads_as_another_class_is_a_mismatch() {
-        for field in ["what", "evidence"] {
-            let request = parse(&request_json(|v| {
-                v[field] = json!("We could delete the cache folder first.")
-            }))
-            .unwrap();
-            let r = check(&request).unwrap_err();
-            assert_eq!(r.code, "class_mismatch", "{field}");
-            assert!(r.reason.contains("guarded") && r.reason.contains("`delete`"));
-            assert!(!r.reason.contains("cache folder"), "{}", r.reason);
-        }
-        assert_eq!(
-            code(|v| v["options"][0]["description"] = json!("pay the invoice")),
-            "class_mismatch"
-        );
         assert_eq!(
             code(|v| {
-                v["options"][0]["value"] = json!("purchase");
-                v["default"] = json!("purchase");
+                v["default"] = json!("x");
+                v["what"] = json!("Run git push --force now?");
             }),
-            "class_mismatch"
+            "default_not_an_option"
+        );
+    }
+
+    /// The ordinary engineering choices the first design's keyword screen refused: with
+    /// honest fields, each one is cleared.
+    #[test]
+    fn ordinary_choices_pass_with_honest_fields() {
+        for (what, options, undo) in [
+            (
+                "Remove the unused import?",
+                [
+                    ("remove", "delete the unused use line"),
+                    ("keep", "leave it"),
+                ],
+                "add the use line back",
+            ),
+            (
+                "Drop the trailing comma in the fixture?",
+                [("drop", "drop the comma"), ("keep", "keep the comma")],
+                "put the comma back",
+            ),
+            (
+                "Delete the dead code path?",
+                [
+                    ("delete", "delete the unreachable branch"),
+                    ("keep", "keep it"),
+                ],
+                "git revert the commit that deletes it",
+            ),
+            (
+                "Rotate the log files daily or weekly?",
+                [
+                    ("daily", "rotate every day"),
+                    ("weekly", "rotate every week"),
+                ],
+                "change the rotation setting back",
+            ),
+        ] {
+            let c = code(|v| {
+                v["what"] = json!(what);
+                v["options"] = json!([
+                    {"value": options[0].0, "description": options[0].1},
+                    {"value": options[1].0, "description": options[1].1},
+                ]);
+                v["default"] = json!(options[1].0);
+                v["undo"] = json!(undo);
+                v["evidence"] = evidence("the file has one such line");
+            });
+            assert_eq!(c, "cleared", "{what}");
+        }
+    }
+
+    /// Each deny shape, refused with its own code; the near miss beside it passes.
+    #[test]
+    fn each_deny_shape_is_refused_and_its_near_miss_passes() {
+        let cases: [(&str, &[&str], &[&str]); 7] = [
+            (
+                "deny_force_push",
+                &[
+                    "git push --force",
+                    "git push -f origin x",
+                    "git push origin main --force",
+                    "GIT PUSH --FORCE",
+                    "git push --force-with-lease",
+                    "use --force-with-lease=main:abc",
+                    "`git push --force`.",
+                ],
+                &[
+                    "git push origin x",
+                    "push the branch",
+                    "cargo install --force",
+                    "git push --forced-name",
+                    "git push origin -fix",
+                    "use -f for rm only\npush later",
+                ],
+            ),
+            (
+                "deny_reset_hard",
+                &[
+                    "git reset --hard",
+                    "git reset --hard HEAD~1",
+                    "Git Reset HEAD --HARD",
+                ],
+                &[
+                    "git reset --soft HEAD~1",
+                    "reset the hard limit",
+                    "--hard reset",
+                ],
+            ),
+            (
+                "deny_rm_rf",
+                &[
+                    "rm -rf tmp",
+                    "rm -fr tmp",
+                    "rm -Rf tmp",
+                    "rm -rfv tmp",
+                    "rm -r -f tmp",
+                    "sudo rm --recursive --force /x",
+                    "cd x && rm -rf y",
+                ],
+                &[
+                    "rm -r tmp",
+                    "rm -f x.log",
+                    "rm tmp",
+                    "perform -rf",
+                    "the rm -r step\nthen -f",
+                ],
+            ),
+            (
+                "deny_drop_table",
+                &[
+                    "drop table users",
+                    "DROP TABLE users;",
+                    "drop database app",
+                    "truncate table audit_log",
+                    "`DROP TABLE` users",
+                ],
+                &[
+                    "drop the table",
+                    "drop tables",
+                    "truncate the log",
+                    "table drop",
+                    "Drop the trailing comma",
+                ],
+            ),
+            (
+                "deny_visibility_public",
+                &[
+                    "gh repo edit --visibility public",
+                    "gh repo edit --visibility=public",
+                    "set visibility=public",
+                    "--VISIBILITY PUBLIC",
+                ],
+                &[
+                    "gh repo edit --visibility private",
+                    "public visibility",
+                    "visibility = private",
+                ],
+            ),
+            (
+                "deny_chmod_777",
+                &["chmod 777 x", "chmod -R 777 dir", "chmod 0777 x"],
+                &["chmod 755 x", "chmod 7777 x", "777 files"],
+            ),
+            (
+                "deny_currency",
+                &[
+                    "$5",
+                    "costs $20",
+                    "€5",
+                    "£5",
+                    "₩5000",
+                    "¥5",
+                    "5 USD",
+                    "5USD",
+                    "20 eur",
+                    "1,000 KRW",
+                    "100원",
+                    "1.5 usd.",
+                    "US$5",
+                ],
+                &[
+                    "$HOME",
+                    "$PATH",
+                    "${x}",
+                    "5 users",
+                    "USD",
+                    "$ 5",
+                    "5 euros",
+                    "eurostar",
+                    "v2 eurozone",
+                    "원",
+                    "rule 5",
+                ],
+            ),
+        ];
+        for (code_want, refused, passes) in cases {
+            assert!(DENY.iter().any(|(c, _)| *c == code_want), "{code_want}");
+            for text in refused {
+                assert_eq!(deny(text), Some(code_want), "{text}");
+            }
+            for text in passes {
+                assert_eq!(deny(text), None, "{text}");
+            }
+        }
+    }
+
+    /// The four ordinary pins and the text of the default request hold no shape.
+    #[test]
+    fn ordinary_text_holds_no_deny_shape() {
+        for text in [
+            "Remove the unused import?",
+            "Drop the trailing comma in the fixture?",
+            "Delete the dead code path?",
+            "Rotate the log files daily or weekly?",
+            "Which test runner does the new module use?",
+            "CI runs nextest; the local docs name both runners.",
+            "echo $HOME and $USER",
+        ] {
+            assert_eq!(deny(text), None, "{text}");
+        }
+    }
+
+    /// A shape refuses in every text the gate reads: `what`, an option value, an option
+    /// description, `undo` and an evidence value (any of them). The reason names the place
+    /// and the shape, never the text.
+    #[test]
+    fn a_deny_shape_refuses_in_every_field() {
+        let text = "then git push --force";
+        let refusal = |edit: &dyn Fn(&mut Value)| {
+            let request = parse(&request_json(edit)).unwrap();
+            check(&request).unwrap_err()
+        };
+        for (place, edit) in [
+            (
+                "`what`",
+                &(|v: &mut Value| v["what"] = json!(text)) as &dyn Fn(&mut Value),
+            ),
+            ("an option value", &|v: &mut Value| {
+                v["options"][1]["value"] = json!(text)
+            }),
+            ("an option description", &|v: &mut Value| {
+                v["options"][1]["description"] = json!(text)
+            }),
+            ("`undo`", &|v: &mut Value| v["undo"] = json!(text)),
+            ("an evidence value", &|v: &mut Value| {
+                v["evidence"] = json!({"a": "plain", "b": text})
+            }),
+        ] {
+            let r = refusal(edit);
+            assert_eq!(r.code, "deny_force_push", "{place}");
+            assert!(r.reason.starts_with(place), "{}", r.reason);
+            assert!(!r.reason.contains("then git"), "{}", r.reason);
+        }
+        // An evidence field's name is not read (it is a short identifier).
+        assert_eq!(
+            code(|v| v["evidence"] = json!({"rm_rf": "plain"})),
+            "cleared"
         );
     }
 }

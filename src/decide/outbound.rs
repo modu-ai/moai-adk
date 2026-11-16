@@ -25,9 +25,15 @@
 //!    instead, because the answer names an option by its value.
 //!
 //! All of it is a conservative filter over known shapes, not a secret detector.
+//!
+//! The evidence is an object of named fields (design v2, slice V1). It is sent as one text,
+//! one `name: value` line per field in name order ([`render_evidence`]), and that text is
+//! what the rules above read and mask. `undo` is recorded and never sent; like the card it
+//! is screened and masked. The provider slice (V3) may send the fields as an object instead.
 
 use super::gate::Cleared;
 use super::Refusal;
+use std::collections::BTreeMap;
 
 /// What stands in for the user's name, and for the home folder.
 pub const USER_MASK: &str = "[user]";
@@ -46,7 +52,19 @@ pub struct Outbound {
     what: String,
     options: Vec<(String, String)>,
     evidence: String,
+    evidence_fields: Vec<String>,
+    undo: String,
     card: Option<String>,
+}
+
+/// The evidence fields as the one text that is sent: `name: value`, one field after the
+/// other in name order, joined by a line break.
+pub fn render_evidence(fields: &BTreeMap<String, String>) -> String {
+    fields
+        .iter()
+        .map(|(name, value)| format!("{name}: {value}"))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// Largest single text field, in bytes (64 KiB), before and after masking.
@@ -67,8 +85,20 @@ impl Outbound {
         &self.options
     }
 
+    /// The rendered evidence text ([`render_evidence`]), masked.
     pub fn evidence(&self) -> &str {
         &self.evidence
+    }
+
+    /// The names of the evidence fields, masked like the text; never their values. Kept for
+    /// the record.
+    pub fn evidence_fields(&self) -> &[String] {
+        &self.evidence_fields
+    }
+
+    /// How the choice is undone, masked. Kept for the record; no provider code reads it.
+    pub fn undo(&self) -> &str {
+        &self.undo
     }
 }
 
@@ -505,14 +535,16 @@ pub(super) fn too_large() -> Refusal {
 }
 
 /// The outbound text of a cleared request, or the refusal of a field over [`FIELD_MAX`], of
-/// rule 1, or of an option value the mask would change. The card is not sent, but it is
-/// recorded: it is screened and masked like the fields that are.
+/// rule 1, or of an option value the mask would change. The card and `undo` are not sent,
+/// but they are recorded: they are screened and masked like the fields that are.
 pub fn build(cleared: &Cleared<'_>, who: &Who) -> Result<Outbound, Refusal> {
     let request = cleared.request();
+    let evidence = render_evidence(&request.evidence);
     let texts = || {
-        [request.what.as_str(), request.evidence.as_str()]
+        [request.what.as_str(), evidence.as_str()]
             .into_iter()
             .chain(request.card.as_deref())
+            .chain(request.undo.as_deref())
             .chain(
                 request
                     .options
@@ -548,7 +580,13 @@ pub fn build(cleared: &Cleared<'_>, who: &Who) -> Result<Outbound, Refusal> {
             .iter()
             .map(|o| (o.value.clone(), mask(&o.description, who)))
             .collect(),
-        evidence: mask(&request.evidence, who),
+        evidence: mask(&evidence, who),
+        evidence_fields: request
+            .evidence
+            .keys()
+            .map(|name| mask(name, who))
+            .collect(),
+        undo: mask(request.undo.as_deref().unwrap_or_default(), who),
         card: request.card.as_deref().map(|card| mask(card, who)),
     };
     // `[user]` can be longer than the name it replaces.
@@ -569,15 +607,60 @@ pub fn build(cleared: &Cleared<'_>, who: &Who) -> Result<Outbound, Refusal> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::request::parse;
-    use super::super::testing::{request_json, who};
+    use super::super::request::{parse, Request};
+    use super::super::testing::{evidence, request_json, who};
     use super::*;
-    use serde_json::json;
+    use serde_json::{json, Value};
 
     /// Past the gate without asking it: these cases are about this step alone.
     fn built(edit: impl FnOnce(&mut serde_json::Value)) -> Result<Outbound, Refusal> {
         let request = parse(&request_json(edit)).unwrap();
         build(&Cleared::unchecked(&request), &who())
+    }
+
+    /// Past the parser too: for the bounds of this step, which the parser's smaller bounds
+    /// would otherwise hide.
+    fn built_raw(edit: impl FnOnce(&mut serde_json::Value)) -> Result<Outbound, Refusal> {
+        let request: Request = serde_json::from_str(&request_json(edit)).unwrap();
+        build(&Cleared::unchecked(&request), &who())
+    }
+
+    /// Puts `text` in `field`; the evidence takes it as its one field `log`.
+    fn put(v: &mut Value, field: &str, text: impl serde::Serialize) {
+        if field == "evidence" {
+            v["evidence"] = evidence(text);
+        } else {
+            v[field] = json!(text);
+        }
+    }
+
+    /// The evidence is sent as one text, `name: value` per field in name order; its names
+    /// are kept for the record, and `undo` is kept, masked and screened, but not sent.
+    #[test]
+    fn the_evidence_fields_are_rendered_in_name_order_and_undo_is_kept() {
+        let out = built(|v| {
+            v["evidence"] = json!({
+                "zz_last": "the /Users/testperson/ci.yml line",
+                "ci": "CI runs nextest",
+                "testperson": "a field named like the user"
+            });
+            v["undo"] = json!("git revert the commit in /Users/testperson/proj");
+        })
+        .unwrap();
+        assert_eq!(
+            out.evidence(),
+            "ci: CI runs nextest\n[user]: a field named like the user\nzz_last: the ~/ci.yml line"
+        );
+        assert_eq!(out.evidence_fields(), ["ci", "[user]", "zz_last"]);
+        assert_eq!(out.undo(), "git revert the commit in ~/proj");
+        let one = BTreeMap::from([("log".to_string(), "one\ntwo".to_string())]);
+        assert_eq!(render_evidence(&one), "log: one\ntwo");
+        let key = format!("sk-{}", "a1".repeat(12));
+        let r = built(|v| v["undo"] = json!(format!("put {key} back"))).unwrap_err();
+        assert_eq!(r.code, "secret_shape");
+        // A field named like a secret key reads as a pair with its value: refused.
+        let r = built(|v| v["evidence"] = json!({"password": "hunter2"})).unwrap_err();
+        assert_eq!(r.code, "secret_shape");
     }
 
     /// Test data: shaped like credentials, built at run time, none real.
@@ -597,9 +680,8 @@ mod tests {
     fn a_secret_shape_in_any_sent_field_refuses_the_request() {
         for fake in fakes() {
             assert!(holds_secret_shape(&format!("see {fake} here")), "{fake}");
-            for field in ["what", "evidence"] {
-                let r =
-                    built(|v| v[field] = json!(format!("it printed {fake} twice"))).unwrap_err();
+            for field in ["what", "evidence", "undo"] {
+                let r = built(|v| put(v, field, format!("it printed {fake} twice"))).unwrap_err();
                 assert_eq!(r.code, "secret_shape", "{field}");
                 assert!(!r.reason.contains(&fake));
             }
@@ -633,8 +715,8 @@ mod tests {
         ];
         for text in &glued {
             assert!(holds_secret_shape(text), "{text}");
-            for field in ["what", "evidence", "card"] {
-                let r = built(|v| v[field] = json!(text)).unwrap_err();
+            for field in ["what", "evidence", "card", "undo"] {
+                let r = built(|v| put(v, field, text)).unwrap_err();
                 assert_eq!(r.code, "secret_shape", "{field}: {text}");
             }
             let r = built(|v| v["options"][1]["description"] = json!(text)).unwrap_err();
@@ -686,7 +768,7 @@ mod tests {
         ] {
             assert!(holds_secret_shape(&text), "{text}");
         }
-        let r = built(|v| v["evidence"] = json!(format!("config has {long}"))).unwrap_err();
+        let r = built(|v| v["evidence"] = evidence(format!("config has {long}"))).unwrap_err();
         assert_eq!(r.code, "secret_shape");
     }
 
@@ -717,7 +799,7 @@ mod tests {
         ] {
             assert!(!holds_secret_shape(&text), "{text}");
         }
-        assert!(built(|v| v["evidence"] = json!(format!("built from {commit}"))).is_ok());
+        assert!(built(|v| v["evidence"] = evidence(format!("built from {commit}"))).is_ok());
     }
 
     /// Second audit, N7: the key prefixes of more services, alone, glued and in a sentence.
@@ -741,7 +823,7 @@ mod tests {
             ] {
                 assert!(holds_secret_shape(&text), "{text}");
             }
-            let r = built(|v| v["evidence"] = json!(format!("log: {key}"))).unwrap_err();
+            let r = built(|v| v["evidence"] = evidence(format!("log: {key}"))).unwrap_err();
             assert_eq!(r.code, "secret_shape", "{prefix}");
             let short = &key[..key.len() - 1];
             assert!(!holds_secret_shape(&format!("see {short} here")), "{short}");
@@ -784,7 +866,7 @@ mod tests {
             format!("{}: v", wide("password")),
         ] {
             assert!(holds_secret_shape(&text), "{text}");
-            let r = built(|v| v["evidence"] = json!(format!("see {text}"))).unwrap_err();
+            let r = built(|v| v["evidence"] = evidence(format!("see {text}"))).unwrap_err();
             assert_eq!(r.code, "secret_shape", "{text}");
         }
         for text in [
@@ -795,8 +877,8 @@ mod tests {
             assert!(!holds_secret_shape(&text), "{text}");
         }
         let prose = format!("{} \\u0041", wide("Which runner?"));
-        let out = built(|v| v["evidence"] = json!(prose.clone())).unwrap();
-        assert_eq!(out.evidence(), prose);
+        let out = built(|v| v["evidence"] = evidence(prose.clone())).unwrap();
+        assert_eq!(out.evidence(), format!("log: {prose}"));
     }
 
     /// Second audit, N6: `sk-` before lower-case words joined by further hyphens is a name
@@ -809,7 +891,7 @@ mod tests {
             "`sk-learn-pipeline`",
         ] {
             assert!(!holds_secret_shape(text), "{text}");
-            assert!(built(|v| v["evidence"] = json!(text)).is_ok(), "{text}");
+            assert!(built(|v| v["evidence"] = evidence(text)).is_ok(), "{text}");
         }
         for text in [
             "sk-learn-pipeline2",
@@ -842,8 +924,8 @@ mod tests {
         ] {
             assert!(!holds_secret_shape(&text), "{text}");
             assert_eq!(mask(&text, &who), want);
-            let out = built(|v| v["evidence"] = json!(text.clone())).unwrap();
-            assert_eq!(out.evidence(), want);
+            let out = built(|v| v["evidence"] = evidence(text.clone())).unwrap();
+            assert_eq!(out.evidence(), format!("log: {want}"));
         }
         // Not that folder: another last part, a longer first part, a name that goes on.
         for text in [
@@ -870,20 +952,22 @@ mod tests {
     }
 
     /// Audit N10: one field at its edge, 65,536 bytes kept and 65,537 refused, raw and after
-    /// the mask made it longer.
+    /// the mask made it longer. The parser's bounds are smaller (design v2), so this step's
+    /// own bound is reached past the parser; the rendered evidence counts its `log: ` too.
     #[test]
     fn a_field_over_64_kib_is_refused() {
         assert_eq!(FIELD_MAX, 65_536);
-        for field in ["what", "evidence"] {
+        for (field, n) in [("what", 65_536), ("evidence", 65_531)] {
             assert!(
-                built(|v| v[field] = json!("a".repeat(65_536))).is_ok(),
+                built_raw(|v| put(v, field, "a".repeat(n))).is_ok(),
                 "{field}"
             );
-            let r = built(|v| v[field] = json!("a".repeat(65_537))).unwrap_err();
+            let r = built_raw(|v| put(v, field, "a".repeat(n + 1))).unwrap_err();
             assert_eq!(r.code, "too_large", "{field}");
         }
-        assert!(built(|v| v["options"][1]["description"] = json!("a".repeat(65_536))).is_ok());
-        let r = built(|v| v["options"][1]["description"] = json!("a".repeat(65_537))).unwrap_err();
+        assert!(built_raw(|v| v["options"][1]["description"] = json!("a".repeat(65_536))).is_ok());
+        let r =
+            built_raw(|v| v["options"][1]["description"] = json!("a".repeat(65_537))).unwrap_err();
         assert_eq!(r.code, "too_large");
         // `al` becomes `[user]`: four bytes longer, so a field that fit no longer does.
         let al = Who {
@@ -891,14 +975,14 @@ mod tests {
             user: Some("al".into()),
         };
         let grown = |n: usize| {
-            let request = parse(&request_json(|v| {
-                v["evidence"] = json!(format!("al {}", "a".repeat(n - 3)))
+            let request: Request = serde_json::from_str(&request_json(|v| {
+                v["evidence"] = evidence(format!("al {}", "a".repeat(n - 3)))
             }))
             .unwrap();
             build(&Cleared::unchecked(&request), &al)
         };
-        assert_eq!(grown(65_532).unwrap().evidence().len(), 65_536);
-        assert_eq!(grown(65_533).unwrap_err().code, "too_large");
+        assert_eq!(grown(65_527).unwrap().evidence().len(), 65_536);
+        assert_eq!(grown(65_528).unwrap_err().code, "too_large");
     }
 
     /// Audit N9: names with a space, other letter cases, a host name made from the name, and
@@ -984,7 +1068,7 @@ mod tests {
         ] {
             assert!(!holds_secret_shape(text), "{text}");
         }
-        assert!(built(|v| v["evidence"] = json!("a risk-based, task-level choice")).is_ok());
+        assert!(built(|v| v["evidence"] = evidence("a risk-based, task-level choice")).is_ok());
     }
 
     #[test]
@@ -1053,7 +1137,7 @@ mod tests {
         let out = built(|v| {
             v["what"] = json!("Which runner for /Users/testperson/proj?");
             v["options"][0]["description"] = json!("as testperson set it up");
-            v["evidence"] = json!("/Users/testperson/proj/ci.yml runs nextest");
+            v["evidence"] = evidence("/Users/testperson/proj/ci.yml runs nextest");
         })
         .unwrap();
         assert_eq!(out.what(), "Which runner for ~/proj?");
@@ -1064,7 +1148,7 @@ mod tests {
                 ("cargo-test".to_string(), "plain cargo test".to_string()),
             ]
         );
-        assert_eq!(out.evidence(), "~/proj/ci.yml runs nextest");
+        assert_eq!(out.evidence(), "log: ~/proj/ci.yml runs nextest");
     }
 
     /// An option value is what the answer names, so it is never rewritten: a value the mask

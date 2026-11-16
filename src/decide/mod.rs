@@ -9,9 +9,14 @@
 //! ([`provider::request_body`]) takes nothing but an `Outbound`. So a request the gate or the
 //! secret screen refuses never reaches a line that knows a provider.
 //!
+//! - [`request`] reads the request (design v2, slice V1): a short question, 2 to 8 options with
+//!   required descriptions, the required `undo` line and `tier`, and evidence as 1 to 8
+//!   named fields with byte bounds. Every bound refuses; nothing is cut.
 //! - [`gate`] refuses a choice that is not the model's to make: not reversible, no category,
 //!   an unknown one, `guarded`, one of the five HOLD categories, a default that is not an
-//!   option, or text that reads as one of those classes while `none` is declared.
+//!   option, or a text holding one shape of the narrow deny list (known threats only, not a
+//!   risk judge: a force push, `reset --hard`, `rm -rf`, dropping a table, making a
+//!   repository public, `chmod 777`, a currency amount).
 //! - [`outbound`] is the text that would leave the machine. A credential shape in it refuses
 //!   the request (user decision 2026-11-16, D-secret-hit: refuse and fall back, never mask and
 //!   send); the home folder and the user name are masked.
@@ -21,7 +26,8 @@
 //!
 //! Every [`Refusal`] means the same thing to the caller: the model does not decide, the
 //! leader does (`fallback: leader`). A [`Record`] carries the fields every decision record
-//! names (SKILL.md) and who decided, `model:<provider>/<model>`, with `model_source` saying
+//! names (SKILL.md), how the choice is undone, its tier and the names (never the values) of
+//! the evidence fields, and who decided, `model:<provider>/<model>`, with `model_source` saying
 //! whether the response reported that model or, when it named none, the request's alias
 //! stands in; the model gives no written reason and none is recorded (leader default
 //! D-reason).
@@ -68,6 +74,7 @@ pub struct Prepared {
     category: String,
     default: String,
     deadline: String,
+    tier: u8,
 }
 
 impl Prepared {
@@ -95,11 +102,14 @@ impl Prepared {
 pub const BODY_MAX: usize = 256 * 1024;
 
 /// One model decision, as recorded. The fields are the ones every decision record names
-/// (what, options, default, reversible, category, deadline, who decided) plus the answer.
-/// The texts are the masked ones that were sent. There is no reason field.
+/// (what, options, default, reversible, category, deadline, who decided), how the choice is
+/// undone, its tier, the names of the evidence fields, plus the answer. The texts are the
+/// masked ones that were sent (`undo` is masked and never sent). There is no reason field,
+/// and no evidence value.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Record {
+    /// 2 since design v2 (slice V1 added `undo`, `tier` and `evidence_fields`).
     pub schema_version: u32,
     pub what: String,
     pub options: Vec<String>,
@@ -107,6 +117,9 @@ pub struct Record {
     pub reversible: bool,
     pub category: String,
     pub deadline: String,
+    pub undo: String,
+    pub tier: u8,
+    pub evidence_fields: Vec<String>,
     /// `model:<provider>/<model>`; the model is the one the response reported, and the alias
     /// the request asked for only when the response names none (`model_source`).
     pub decided_by: String,
@@ -157,6 +170,8 @@ fn prepare_with(
         category: request.category.clone().unwrap_or_default(),
         default: request.default.clone(),
         deadline: request.deadline.clone(),
+        // The parser admits 1 or 2 only.
+        tier: request.tier.map_or(0, |tier| tier as u8),
     })
 }
 
@@ -166,7 +181,7 @@ fn prepare_with(
 pub fn conclude(prepared: &Prepared, response: &[u8]) -> Result<Record, Refusal> {
     let answer = provider::parse_answer(prepared.provider, &prepared.outbound, response)?;
     Ok(Record {
-        schema_version: 1,
+        schema_version: 2,
         what: prepared.outbound.what().to_string(),
         options: prepared
             .outbound
@@ -178,6 +193,9 @@ pub fn conclude(prepared: &Prepared, response: &[u8]) -> Result<Record, Refusal>
         reversible: prepared.reversible,
         category: prepared.category.clone(),
         deadline: prepared.deadline.clone(),
+        undo: prepared.outbound.undo().to_string(),
+        tier: prepared.tier,
+        evidence_fields: prepared.outbound.evidence_fields().to_vec(),
         decided_by: format!("model:{}/{}", prepared.provider.name(), answer.model),
         model_source: answer.model_source.to_string(),
         chosen: answer.choice,
@@ -203,11 +221,18 @@ pub(crate) mod testing {
             "reversible": true,
             "category": "none",
             "deadline": "2026-11-18T00:00:00Z",
-            "evidence": "CI runs nextest; the local docs name both runners.",
+            "undo": "set the runner line in ci.yml back to the other runner",
+            "tier": 1,
+            "evidence": {"ci": "CI runs nextest; the local docs name both runners."},
             "card": "C-37"
         });
         edit(&mut v);
         v.to_string()
+    }
+
+    /// Evidence of one field, `log`, holding `text`: for the tests that are about one text.
+    pub fn evidence(text: impl serde::Serialize) -> Value {
+        json!({ "log": text })
     }
 
     /// Test data: a made-up person, never the one running the tests.
@@ -309,13 +334,79 @@ mod tests {
         assert_eq!(r.code, "default_not_an_option");
     }
 
+    /// Each deny-list shape refuses with its own code before the provider's builder runs, in
+    /// whichever text it stands.
     #[test]
-    fn text_that_reads_as_a_hold_class_under_none_is_refused_before_the_provider() {
-        let r = refused(&request_json(|v| {
-            v["what"] = json!("Which paid plan do we take for the CI minutes?")
-        }));
-        assert_eq!(r.code, "class_mismatch");
-        assert!(r.reason.contains("money"), "{}", r.reason);
+    fn each_deny_shape_is_refused_before_the_provider() {
+        for (text, code) in [
+            ("then git push --force", "deny_force_push"),
+            ("git reset --hard HEAD~1", "deny_reset_hard"),
+            ("rm -rf target", "deny_rm_rf"),
+            ("DROP TABLE users", "deny_drop_table"),
+            ("gh repo edit --visibility public", "deny_visibility_public"),
+            ("chmod 777 bin", "deny_chmod_777"),
+            ("about $20 a month", "deny_currency"),
+        ] {
+            let r = refused(&request_json(|v| v["what"] = json!(text)));
+            assert_eq!(r.code, code, "{text}");
+            let r = refused(&request_json(|v| v["undo"] = json!(text)));
+            assert_eq!(r.code, code, "undo: {text}");
+            let r = refused(&request_json(|v| v["evidence"]["log"] = json!(text)));
+            assert_eq!(r.code, code, "evidence: {text}");
+        }
+        // The near misses reach the builder.
+        for text in ["git push origin x", "echo $HOME", "rm -r tmp"] {
+            assert!(
+                prepare(
+                    &request_json(|v| v["what"] = json!(text)),
+                    Provider::Typesafe,
+                    &who()
+                )
+                .is_ok(),
+                "{text}"
+            );
+        }
+    }
+
+    /// The parser's refusals come before the provider's builder too, each with its own code.
+    #[test]
+    fn the_v2_request_rules_refuse_before_the_provider() {
+        let nine: Value = (0..9)
+            .map(|i| json!({"value": format!("o{i}"), "description": "d"}))
+            .collect();
+        for (code, edit) in [
+            (
+                "undo_missing",
+                &(|v: &mut Value| {
+                    v.as_object_mut().unwrap().remove("undo");
+                }) as &dyn Fn(&mut Value),
+            ),
+            ("tier_missing", &|v: &mut Value| {
+                v.as_object_mut().unwrap().remove("tier");
+            }),
+            ("tier_invalid", &|v: &mut Value| v["tier"] = json!(3)),
+            ("options_count", &|v: &mut Value| {
+                v["options"] = nine.clone();
+                v["default"] = json!("o0");
+            }),
+            ("description_missing", &|v: &mut Value| {
+                v["options"][1]["description"] = json!("")
+            }),
+            ("option_reserved", &|v: &mut Value| {
+                v["options"][1]["value"] = json!("none_of_these")
+            }),
+            ("evidence_field_too_large", &|v: &mut Value| {
+                v["evidence"] = json!({"a": "e".repeat(4_097)})
+            }),
+            ("evidence_count", &|v: &mut Value| {
+                v["evidence"] = (0..9)
+                    .map(|i| (format!("f{i}"), json!("x")))
+                    .collect::<serde_json::Map<_, _>>()
+                    .into()
+            }),
+        ] {
+            assert_eq!(refused(&request_json(edit)).code, code);
+        }
     }
 
     #[test]
@@ -323,7 +414,7 @@ mod tests {
         // Test data: built at run time, shaped like a key and not one.
         let fake = format!("sk-{}", "a1".repeat(12));
         let r = refused(&request_json(|v| {
-            v["evidence"] = json!(format!("the log shows {fake} in the header"))
+            v["evidence"] = testing::evidence(format!("the log shows {fake} in the header"))
         }));
         assert_eq!(r.code, "secret_shape");
         assert!(!r.reason.contains(&fake));
@@ -368,21 +459,31 @@ mod tests {
     }
 
     /// The record names the fields of every decision record and who decided: the provider and
-    /// the model the response reported, not the alias that was asked for. No reason field.
+    /// the model the response reported, not the alias that was asked for. It names how the
+    /// choice is undone, its tier and the evidence field names, never their values. No
+    /// reason field.
     #[test]
     fn the_record_names_the_model_the_response_reported() {
-        let p = prepare(&request_json(|_| {}), Provider::Typesafe, &who()).unwrap();
+        let text = request_json(|v| {
+            v["tier"] = json!(2);
+            v["undo"] = json!("revert the commit in /Users/testperson/proj");
+            v["evidence"]["notes"] = json!("VALUE_ONLY_IN_THE_BODY");
+        });
+        let p = prepare(&text, Provider::Typesafe, &who()).unwrap();
         let record = conclude(&p, &jev_answer("cargo-test")).unwrap();
         assert_eq!(
             serde_json::to_value(&record).unwrap(),
             json!({
-                "schema_version": 1,
+                "schema_version": 2,
                 "what": "Which test runner does the new module use?",
                 "options": ["nextest", "cargo-test"],
                 "default": "nextest",
                 "reversible": true,
                 "category": "none",
                 "deadline": "2026-11-18T00:00:00Z",
+                "undo": "revert the commit in ~/proj",
+                "tier": 2,
+                "evidence_fields": ["ci", "notes"],
                 "decided_by": "model:typesafe/jev-1.14.0",
                 "model_source": "response",
                 "chosen": "cargo-test",
@@ -391,8 +492,10 @@ mod tests {
                 "card": "C-37"
             })
         );
+        assert!(String::from_utf8_lossy(p.body()).contains("VALUE_ONLY_IN_THE_BODY"));
         // The record reads back, and a field it does not know (a written reason) does not.
         let text = serde_json::to_string(&record).unwrap();
+        assert!(!text.contains("VALUE_ONLY_IN_THE_BODY"), "{text}");
         assert_eq!(serde_json::from_str::<Record>(&text).unwrap(), record);
         let mut with_reason = serde_json::to_value(&record).unwrap();
         with_reason["reason"] = json!("because");
@@ -441,31 +544,39 @@ mod tests {
     }
 
     /// The body size at its edge (audit N10): 262,144 bytes are sent, 262,145 are refused.
+    /// The request bounds of design v2 keep a real body far below it, so the builder here
+    /// stands in with a body of the size under test.
     #[test]
     fn a_body_over_256_kib_is_refused() {
         assert_eq!(BODY_MAX, 262_144);
-        let with_last = |n: usize| {
-            request_json(|v| {
-                v["what"] = json!("a".repeat(60_000));
-                v["evidence"] = json!("a".repeat(60_000));
-                v["options"] = json!([
-                    {"value": "x", "description": "a".repeat(60_000)},
-                    {"value": "y", "description": "a".repeat(60_000)},
-                    {"value": "z", "description": "a".repeat(n)}
-                ]);
-                v["default"] = json!("x");
+        let with_body = |n: usize| {
+            prepare_with(&request_json(|_| {}), Provider::Typesafe, &who(), |_, _| {
+                vec![b'a'; n]
             })
         };
-        for provider in provider::Provider::ALL {
-            let base = prepare(&with_last(1), provider, &who())
-                .unwrap()
-                .body()
-                .len();
-            let fill = 1 + BODY_MAX - base;
-            let at = prepare(&with_last(fill), provider, &who()).unwrap();
-            assert_eq!(at.body().len(), 262_144);
-            let over = prepare(&with_last(fill + 1), provider, &who()).unwrap_err();
-            assert_eq!(over.code, "too_large", "{provider:?}");
+        assert_eq!(with_body(262_144).unwrap().body().len(), 262_144);
+        assert_eq!(with_body(262_145).unwrap_err().code, "too_large");
+    }
+
+    /// The largest request the v2 bounds allow, with every text escaped to twice its size,
+    /// stays under the body bound for both providers.
+    #[test]
+    fn the_largest_v2_request_fits_the_body_bound() {
+        let quotes = |n: usize| "\"".repeat(n);
+        let text = request_json(|v| {
+            v["what"] = json!(quotes(500));
+            v["options"] = (0..8)
+                .map(|i| json!({"value": format!("o{i}{}", "v".repeat(62)), "description": quotes(300)}))
+                .collect();
+            v["default"] = json!(format!("o0{}", "v".repeat(62)));
+            v["evidence"] = (0..4)
+                .map(|i| (format!("f{i}"), json!(quotes(4_096))))
+                .collect::<serde_json::Map<_, _>>()
+                .into();
+        });
+        for provider in Provider::ALL {
+            let p = prepare(&text, provider, &who()).unwrap();
+            assert!(p.body().len() < BODY_MAX / 4, "{}", p.body().len());
         }
     }
 
