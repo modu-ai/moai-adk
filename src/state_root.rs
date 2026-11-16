@@ -676,6 +676,43 @@ mod tests {
         assert_eq!(interrupted.interrupted, vec![".moai-backup".to_string()]);
     }
 
+    /// AUDIT #3125 S2: the newest Go backup that is a real folder; a link, a file, or a name that is
+    /// not a backup name never counts, however new it looks.
+    #[test]
+    fn the_newest_real_go_backup_is_named() {
+        let tmp = tempfile::tempdir().unwrap();
+        let r = tmp.path();
+        assert_eq!(latest_go_backup(r), None);
+        for d in [
+            ".moai-backup",
+            ".moai-backup-20261115T050000Z",
+            ".moai-backup-20261116T050000Z",
+            ".moai-backups",
+            ".moai-backup-old",
+        ] {
+            fs::create_dir(r.join(d)).unwrap();
+        }
+        // Newer by name, but a plain file.
+        fs::write(r.join(".moai-backup-20261117T000000Z"), "x").unwrap();
+        assert_eq!(
+            latest_go_backup(r),
+            Some(r.join(".moai-backup-20261116T050000Z"))
+        );
+        #[cfg(unix)]
+        {
+            // Newer by name, but a link to a folder.
+            std::os::unix::fs::symlink(
+                r.join(".moai-backup"),
+                r.join(".moai-backup-20261118T000000Z"),
+            )
+            .unwrap();
+            assert_eq!(
+                latest_go_backup(r),
+                Some(r.join(".moai-backup-20261116T050000Z"))
+            );
+        }
+    }
+
     /// #2696: which Go backups beside which `.moai` mean a stopped migration.
     #[test]
     fn a_go_backup_means_interrupted_only_beside_a_missing_or_unfinished_moai() {

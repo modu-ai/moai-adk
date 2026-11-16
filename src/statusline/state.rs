@@ -320,15 +320,22 @@ const STATUSLINE_LOCAL_YAML: (&str, &str) =
 /// same place in the new `.moai/` and both are empty, so a project that set a theme or hid a
 /// segment in Go got the defaults. With neither file present, the same Go path inside the newest
 /// Go backup folder (`.moai-backup`, `.moai-backup-<UTC>`) is read — read only, never moved or
-/// copied; a file in the new `.moai/` still wins whole.
+/// copied; a file in the new `.moai/` still wins whole. The backup is looked at only after such a
+/// move (the state folder is `.moai`) and only while the new folder has no shared
+/// `statusline.yaml` of its own (AUDIT #3125 S1, S2): a project that wrote its new settings has
+/// said what it wants, and an old `forge: none` in the backup's local file must not outvote it.
 fn config_path(root: &Path, (rc, go): (&str, &str)) -> PathBuf {
     // #2725 S2b: `rc` is relative to the project's state folder (`.moai-cli`, or `.moai`).
-    let rc = crate::state_root::path(root, rc);
+    let state = crate::state_root::dir(root);
+    let rc = root.join(state).join(rc);
     if rc.exists() {
         return rc;
     }
     let go_file = root.join(go);
     if go_file.exists() {
+        return go_file;
+    }
+    if state != crate::state_root::MOAI_DIR || root.join(state).join(STATUSLINE_YAML.0).exists() {
         return go_file;
     }
     // The backup is the Go `.moai/` itself, so the path inside it drops the leading `.moai/`.
@@ -1213,6 +1220,37 @@ mod tests {
         let _ = display_in(&tmp);
         let _ = github_counts(tmp.path());
         assert_eq!(listing(tmp.path()), before);
+    }
+
+    /// AUDIT #3125 S1: the backup's local file speaks only while the new folder has no shared file;
+    /// a new `statusline.yaml` that says `forge: github` is not outvoted by an old `forge: none`.
+    #[test]
+    fn a_backup_local_file_never_outvotes_a_new_shared_file() {
+        let tmp = moved_project(&[(
+            ".moai-backup",
+            "statusline.local.yaml",
+            "statusline:\n  forge: none\n",
+        )]);
+        assert!(github_counts(tmp.path()).suppressed);
+        let rc = tmp.path().join(".moai/config/sections");
+        std::fs::create_dir_all(&rc).unwrap();
+        std::fs::write(rc.join("statusline.yaml"), "statusline:\n  forge: github\n").unwrap();
+        assert!(!github_counts(tmp.path()).suppressed);
+    }
+
+    /// AUDIT #3125 S2: a backup is read only when the state folder is the new `.moai`; a project that
+    /// still keeps its state in `.moai-cli` and happens to have a backup folder reads nothing there.
+    #[test]
+    fn a_backup_is_read_only_after_the_move_to_the_new_state_folder() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join(".moai-backup/config/sections");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("statusline.yaml"),
+            "statusline:\n  theme: backup\n",
+        )
+        .unwrap();
+        assert_eq!(display_in(&tmp).theme, "");
     }
 
     #[test]
