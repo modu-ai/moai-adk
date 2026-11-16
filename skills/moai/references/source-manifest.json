@@ -46,7 +46,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "1699baaaefe62e3f14733a1c98cccc61c3733c3af873119ec41f73407624ce7e",
+      "sha256": "698843e955e9db63a1a6d97b2ea2762d4af757b3d351738211924a82f8e10042",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -82,7 +82,7 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "dee2489c59d5e0a48cf018b8599f61a0002e57e9d912d93f3a8963a890cecd06",
+      "sha256": "333e6b0624850abdb01e28466a1a25526e59ac01ae0f29fd57d7f0a04e770e92",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
@@ -136,7 +136,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "7b2bba4acf7612d90343c637d8508f05fa12971b1386f777d26e027bc220506c",
+      "sha256": "63db510770df8cf4e4d9088790b3d52260fc1d8e84a5db3c2e05780765a1cf36",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "a45c2a15d97771b8a10edbda2ab5828ceafafbf1f139065f639f90d73b5bd1a0",
+      "sha256": "7ddf7a4736219af52537f406f3596ee7a7cc0228919f655f5ccfd7e485fa5af5",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
@@ -154,7 +154,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "d7fd6291195ccd8db04f1645e208ec0f3ef6bc4f56fc2efa12bc9195d1eeac71",
+      "sha256": "a8d0603f90490ef130ce590cd601a1d2a7bf0f81bfab591cf015eaee7f6c88b7",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
@@ -235,7 +235,7 @@
       }
     },
     "references/adapters/orca.md": {
-      "sha256": "6a14ad7746e536ff433a6c77029b63a9c25000f949f71bc52bc19185b40a27ba",
+      "sha256": "6c70926478f31c80cf8994b1e141c23d31724c53484cd7e1f225d058bdbb8a70",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-orca",
@@ -322,7 +322,7 @@
       }
     },
     "workflows/optimize.md": {
-      "sha256": "47617dc6dc94e747eeb59c25b469bd2530a4240d07eb6945ea925c7abca9fa18",
+      "sha256": "02f29786c87148964661dbbb36b1162a17adf2bc2bd996b959f5acdccc910a7b",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-optimize",
