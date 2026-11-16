@@ -252,15 +252,22 @@ fn tied(root: &Path, plan: &go_state::GoStatePlan) -> Option<(&'static str, Stri
                 state.generation, state.reason
             ),
         )),
-        "go" => Some((
-            "blocked",
-            format!(
-                "the Go-generation .moai/ stays: {}",
-                held(state_root::MOAI_DIR).unwrap_or_else(|| {
-                    "no usable Go manifest, so nothing is proven tool-made".into()
-                })
-            ),
-        )),
+        "go" => {
+            let mut why = held(state_root::MOAI_DIR)
+                .unwrap_or_else(|| "no usable Go manifest, so nothing is proven tool-made".into());
+            // #2936 L1: name the file and keys that hold the folder, and what to do next.
+            if why.starts_with("settings reference .moai/") {
+                let refs = moai_dir_references(root);
+                if !refs.is_empty() {
+                    why = format!(
+                        "{why}; held by {}; this update does not change those keys, so change \
+                         or remove them yourself and run the update again",
+                        moai_dir_reference_note(&refs)
+                    );
+                }
+            }
+            Some(("blocked", format!("the Go-generation .moai/ stays: {why}")))
+        }
         // Without a Rust marker `state_root::dir` names the earlier `.moai-cli` folder.
         "none" => held(state_root::dir(root)).map(|r| {
             (
@@ -270,6 +277,39 @@ fn tied(root: &Path, plan: &go_state::GoStatePlan) -> Option<(&'static str, Stri
         }),
         _ => None,
     }
+}
+
+/// #2936 L1: the top-level keys of the project and local settings files whose values name
+/// `.moai/`, per file. Key names only: a value is never printed. A file that cannot be read as
+/// a settings object is left out (the settings plan already reports that).
+fn moai_dir_references(root: &Path) -> Vec<(&'static str, Vec<String>)> {
+    let mut out = Vec::new();
+    for (scope, file) in [
+        (SettingsScope::Project, ".claude/settings.json"),
+        (SettingsScope::Local, ".claude/settings.local.json"),
+    ] {
+        let Ok((_, current)) = claude::scope_view(root, scope) else {
+            continue;
+        };
+        let mut keys: Vec<String> = current
+            .iter()
+            .filter(|(_, v)| v.to_string().contains(".moai/"))
+            .map(|(k, _)| k.clone())
+            .collect();
+        keys.sort();
+        if !keys.is_empty() {
+            out.push((file, keys));
+        }
+    }
+    out
+}
+
+/// `file (key, key); file (key)` for [`moai_dir_references`].
+fn moai_dir_reference_note(refs: &[(&'static str, Vec<String>)]) -> String {
+    refs.iter()
+        .map(|(file, keys)| format!("{file} ({})", keys.join(", ")))
+        .collect::<Vec<_>>()
+        .join("; ")
 }
 
 fn profile_step(
@@ -522,6 +562,22 @@ fn settings_step_with(
         if step.state == "unchanged" {
             step.state = "needs_decision";
             step.reason = held.message.clone();
+        }
+    }
+    // #2936 L1: "current" must not hide keys that still name the earlier generation's `.moai/`
+    // folder: they keep the go-state step waiting, and nothing here changes them yet.
+    if step.state == "unchanged" && state_root::classify(root).generation == "go" {
+        let refs = moai_dir_references(root);
+        if !refs.is_empty() {
+            step.reason = format!(
+                "{}; still naming .moai/ and holding the Go .moai/ folder (go-state step): {}",
+                step.reason,
+                moai_dir_reference_note(&refs)
+            );
+            step.preview["go_references"] = json!(refs
+                .iter()
+                .map(|(file, keys)| json!({"file": file, "keys": keys}))
+                .collect::<Vec<_>>());
         }
     }
     Ok(step)
