@@ -25,7 +25,7 @@ pub fn resolve_home(home: Option<PathBuf>) -> Result<PathBuf> {
 }
 
 /// The profile's `project_id` of the project at `project`.
-fn project_id_of(project: &Path) -> Result<String> {
+pub(crate) fn project_id_of(project: &Path) -> Result<String> {
     let real = std::fs::canonicalize(project)
         .map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE.to_string())?;
     crate::project_id::read(&real)?
@@ -128,7 +128,9 @@ pub fn register_apply(
 
 /// `ledger-status`: read-only report. An absent ledger is a normal answer (`exists: false`),
 /// an unusable one is reported with its `problem` code; nothing is created, repaired or
-/// written, and the file is opened read-only after its header was read.
+/// written, and the file is opened read-only after its header was read. `stale_temp` lists the
+/// `.creating-<pid>-<n>` files a dead `register` left in the project folder (their process is
+/// gone); they are reported only, never removed.
 pub fn status(project: &Path, home: &Path) -> Result<Value> {
     let id = project_id_of(project)?;
     let path = location::ledger_path(home, &id).map_err(|e| e.to_string())?;
@@ -141,6 +143,7 @@ pub fn status(project: &Path, home: &Path) -> Result<Value> {
         "wal": false,
         "cards": null,
         "problem": null,
+        "stale_temp": super::recover::stale_temp(home, &id).map_err(|e| e.to_string())?,
         "writes": false,
     });
     match open::open_read_only(home, &id) {

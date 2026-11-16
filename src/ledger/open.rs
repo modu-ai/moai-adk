@@ -20,8 +20,12 @@ use std::time::Duration;
 /// How long a connection waits for another process's write lock before `Busy`.
 pub const BUSY_TIMEOUT: Duration = Duration::from_secs(5);
 
+/// The name `register` gives its half-built file: `.creating-<pid>-<n>`. A writer that died
+/// leaves one behind; [`super::recover::stale_temp`] reports those (it never removes them).
+pub(crate) const TEMP_PREFIX: &str = ".creating-";
+
 /// The first 16 bytes of every SQLite file.
-const HEADER_MAGIC: &[u8; 16] = b"SQLite format 3\0";
+pub(crate) const HEADER_MAGIC: &[u8; 16] = b"SQLite format 3\0";
 
 /// What [`register`] found or made.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -147,7 +151,7 @@ pub fn register(home: &Path, project_id: &str) -> Result<Registered, LedgerError
     }
     std::fs::create_dir_all(&dir).map_err(|e| LedgerError::Io(e.to_string()))?;
     let tmp = dir.join(format!(
-        ".creating-{}-{}",
+        "{TEMP_PREFIX}{}-{}",
         std::process::id(),
         COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     ));
@@ -190,23 +194,35 @@ pub(crate) fn check_home_ready(home: &Path) -> Result<(), LedgerError> {
 
 /// Builds a complete, checked ledger at `tmp` (which must not exist).
 fn build_new(tmp: &Path, project_id: &str) -> Result<(), LedgerError> {
+    build_new_with(tmp, project_id, |_| Ok(()))
+}
+
+/// [`build_new`] with `populate` run inside the build transaction (see
+/// [`schema::create_v1_with`]); the recovery uses it to fill the new file. Returns what
+/// `populate` returned once the finished file opened as this project's ledger.
+pub(crate) fn build_new_with<T>(
+    tmp: &Path,
+    project_id: &str,
+    populate: impl FnOnce(&Transaction<'_>) -> Result<T, LedgerError>,
+) -> Result<T, LedgerError> {
     let flags = OpenFlags::SQLITE_OPEN_READ_WRITE
         | OpenFlags::SQLITE_OPEN_CREATE
         | OpenFlags::SQLITE_OPEN_NO_MUTEX;
-    {
+    let out = {
         let mut conn = Connection::open_with_flags(tmp, flags)?;
         conn.busy_timeout(BUSY_TIMEOUT)?;
         conn.query_row("PRAGMA journal_mode = DELETE", [], |_| Ok(()))?;
         conn.execute_batch("PRAGMA foreign_keys = ON; PRAGMA recursive_triggers = ON;")?;
-        schema::create_v1(&mut conn, project_id, crate::BUILD_VERSION)?;
-    }
+        schema::create_v1_with(&mut conn, project_id, crate::BUILD_VERSION, populate)?
+    };
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(tmp, std::fs::Permissions::from_mode(0o600))
             .map_err(|e| LedgerError::Io(e.to_string()))?;
     }
-    open_at(tmp, project_id, false).map(|_| ())
+    open_at(tmp, project_id, false)?;
+    Ok(out)
 }
 
 /// The file is a regular file, a SQLite database, not in WAL mode (header bytes 18 and 19 are
@@ -241,7 +257,7 @@ fn check_header(path: &Path) -> Result<(), LedgerError> {
 /// Opens `path` (never creating it), sets the per-connection pragmas, and checks the file is
 /// this project's ledger of a version this build can read. Returns the connection and the
 /// file's `user_version`.
-fn open_at(
+pub(crate) fn open_at(
     path: &Path,
     project_id: &str,
     writable: bool,

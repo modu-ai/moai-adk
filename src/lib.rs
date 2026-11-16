@@ -93,6 +93,7 @@ pub mod layout;
 pub mod leader;
 pub mod leader_round;
 pub mod ledger;
+pub mod ledger_recover;
 pub mod local_build;
 pub mod message;
 pub mod migrate;
