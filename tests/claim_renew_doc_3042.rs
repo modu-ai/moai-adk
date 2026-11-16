@@ -15,8 +15,9 @@ fn the_agent_workflow_says_what_the_command_does_with_an_expired_claim() {
         .expect("claim step");
     // The same words the command's note uses (pinned in tests/claim_cli.rs).
     for phrase in [
-        "`moai claim-acquire` does the same for your own expired record in the local journal (Issue #3042)",
+        "`moai claim-acquire` does the same for your own expired record in the local record (Issue #3042)",
         "the same session name gets `claimed` with the next epoch and a new claim line",
+        "a claim that a handoff or release line already closed answers `closed` and is not renewed",
         "another session's expired record still answers `expired`",
         "`moai claim-timeout-check`",
         "decision D2",

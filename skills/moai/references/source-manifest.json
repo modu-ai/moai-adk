@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "c024a4de08dbebf3e0a36e85044fda22bb041501d9ea02e631cd64efa7290ff1",
+      "sha256": "a45c2a15d97771b8a10edbda2ab5828ceafafbf1f139065f639f90d73b5bd1a0",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",

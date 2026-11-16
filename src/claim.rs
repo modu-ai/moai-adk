@@ -44,7 +44,7 @@ use crate::identity;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
-    collections::BTreeSet,
+    collections::BTreeMap,
     fs::{self, OpenOptions},
     io::Write,
     path::{Path, PathBuf},
@@ -676,19 +676,24 @@ pub fn render_claim_line(f: &ClaimFields) -> String {
     line
 }
 
-/// Reads every comment page and returns claims not explicitly closed.
+/// Claim comments closed by a release or handoff line: the claim's comment id and the kind of
+/// line that closed it (`"release"` or `"handoff"`).
+type ClosedBy = BTreeMap<i64, &'static str>;
+
+/// Reads every comment page and returns claims not explicitly closed, and the ones that were
+/// (#3042: a renewal must not reopen a claim a handoff or release line already closed).
 /// Release/handoff markers can close only an earlier referenced claim comment. Only comments a
-/// member wrote are read (Issue #3052); the rest come back as the second value.
+/// member wrote are read (Issue #3052); the rest come back as the last value.
 fn read_claims<T: Transport, C: Clock>(
     client: &Client<'_, T, C>,
     t: &TaskRef,
-) -> std::result::Result<(Vec<ClaimComment>, Dropped), ForgeError> {
+) -> std::result::Result<(Vec<ClaimComment>, ClosedBy, Dropped), ForgeError> {
     let mut url = Some(format!(
         "https://api.github.com/repos/{}/{}/issues/{}/comments?per_page=100",
         t.owner, t.repo, t.issue_number
     ));
     let mut claims = Vec::new();
-    let mut closed = BTreeSet::new();
+    let mut closed = ClosedBy::new();
     let mut ignored = Dropped::default();
     let mut pages = 0;
     while let Some(u) = url {
@@ -723,19 +728,19 @@ fn read_claims<T: Transport, C: Clock>(
                     epoch,
                     lease_until,
                 }),
-                crate::claim_verify::CommentKind::Release { target }
-                | crate::claim_verify::CommentKind::Handoff { target, .. }
-                    if target < id =>
-                {
-                    closed.insert(target);
+                crate::claim_verify::CommentKind::Release { target } if target < id => {
+                    closed.insert(target, "release");
+                }
+                crate::claim_verify::CommentKind::Handoff { target, .. } if target < id => {
+                    closed.insert(target, "handoff");
                 }
                 _ => {}
             }
         }
         url = resp.header("link").and_then(|l| next_link(Some(l)));
     }
-    claims.retain(|c| !closed.contains(&c.comment_id));
-    Ok((claims, ignored))
+    claims.retain(|c| !closed.contains_key(&c.comment_id));
+    Ok((claims, closed, ignored))
 }
 
 /// The one allowed GitHub write of a claim (REQ-06A-12): exactly one comment POST.
@@ -980,7 +985,7 @@ fn scope_of(outcome: &str, record: Option<&ClaimRecord>) -> &'static str {
             }
         }
         // The winner is unresolved on the comment ledger, which is the cross-host layer.
-        "uncertain" => "cross-host-eventual",
+        "uncertain" | "closed" => "cross-host-eventual",
         _ => "single-host",
     }
 }
@@ -1091,7 +1096,29 @@ pub fn acquire<T: Transport, C: Clock>(
         }
     }
     // ⑤: read before posting; a live foreign claim wins by the smaller comment id.
-    let (claims, mut ignored) = read_claims(client, &req.task_ref).map_err(String::from)?;
+    let (claims, closed, mut ignored) = read_claims(client, &req.task_ref).map_err(String::from)?;
+    // #3042: a renewal never reopens a claim that a handoff or release line already closed —
+    // the handoff names another session, and a renewal would take the card back from it.
+    if let Some((held_comment, held_epoch)) = &renewed {
+        let kind = held_comment
+            .parse::<i64>()
+            .ok()
+            .and_then(|id| closed.get(&id).copied());
+        if let Some(kind) = kind {
+            return Ok(AcquireOutcome {
+                outcome: "closed",
+                record: mine.last().map(|r| (*r).clone()),
+                foreign_owner: None,
+                notes: vec![format!(
+                    "this session's earlier claim (comment {held_comment}, epoch {held_epoch}) \
+                     has expired and a {kind} line has already closed it, so it is not renewed \
+                     and nothing was written; the card belongs to whoever the line names. Take \
+                     it back only with the leader's new `moai-claim-handoff` line"
+                )],
+                ignored,
+            });
+        }
+    }
     let live: Vec<ClaimComment> = claims
         .into_iter()
         .filter(|c| is_live(&c.lease_until, now))
@@ -1176,7 +1203,7 @@ pub fn acquire<T: Transport, C: Clock>(
                     ignored,
                 });
             }
-            Ok((claims2, ignored2)) => {
+            Ok((claims2, _closed2, ignored2)) => {
                 ignored.merge(ignored2);
                 let live2: Vec<ClaimComment> = claims2
                     .into_iter()
