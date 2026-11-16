@@ -500,7 +500,7 @@
           "prefix": ".github/"
         }
       ],
-      "rejects": "a form set other than the decided four, a workflow set other than ci.yml and moai-label-sync.yml, unpinned actions"
+      "rejects": "a form set other than the decided four, a workflow set other than candidate-target.yml, candidate.yml, ci.yml and moai-label-sync.yml, unpinned actions"
     },
     {
       "id": "design-review-fixes",

@@ -87,6 +87,16 @@ pub(crate) fn fetch_pr<T: Transport, C: crate::forge::policy::Clock>(
 /// job such as `ci / linux-x86_64` never does.
 pub const CI_CHECK_NAMES: [&str; 2] = ["ci", "rc-ci"];
 
+/// #2554 PR-A: the candidate verification (`.github/workflows/candidate.yml`, run on a pushed
+/// `candidate/<sha>` branch) names its check runs `candidate` (the summary) and
+/// `candidate / <target> / …`. It measures a release candidate on five targets; it is not a
+/// merge-gate CI job. Its check runs land on the commit it checks, which can be the tip, so the
+/// tip judgments must not read them as jobs of the tip's own CI. Only these exact shapes count;
+/// `candidates`, `candidate-x` and `xcandidate / y` are ordinary names.
+pub fn is_candidate_check(name: &str) -> bool {
+    name == "candidate" || name.starts_with("candidate / ")
+}
+
 /// Whether a check run named `actual` is a run of the required check `required`.
 /// Either CI spelling matches every run of the logical CI check (the union of both
 /// names); any other required name matches only itself.

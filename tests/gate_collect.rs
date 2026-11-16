@@ -1803,6 +1803,105 @@ fn g8_reads_the_jobs_and_excuses_a_macos_cancel_a_newer_run_passed() {
     }
 }
 
+/// #2554 PR-A (user decision 6907950823): the candidate verification (workflow `candidate`, check
+/// runs `candidate` and `candidate / …`) lands on the commit it checks, which can be the tip. It
+/// is a release measurement, not a merge-gate CI job: a failed or cancelled one must not make
+/// the tip red or undecided, while a real `ci / …` failure stays red beside it. Only the exact
+/// names are excluded; a lookalike is still judged.
+#[test]
+fn g8_does_not_judge_the_candidate_verification_checks() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let linux = "ci / linux-x86_64";
+    for (tip_now, want) in [
+        // A failed candidate target and its summary do not redden a green tip.
+        (
+            json!([
+                job("ci", Some("success"), 90),
+                job(linux, Some("success"), 90),
+                job("candidate / windows-x86_64 / check", Some("failure"), 91),
+                job("candidate", Some("failure"), 91)
+            ]),
+            "green",
+        ),
+        // A real failure is still red with candidate checks beside it.
+        (
+            json!([
+                job("ci", Some("failure"), 90),
+                job(linux, Some("failure"), 90),
+                job("candidate", Some("success"), 91)
+            ]),
+            "red",
+        ),
+        // The aggregate plus candidate checks only: judged by the aggregate, not "no jobs".
+        (
+            json!([
+                job("ci", Some("success"), 90),
+                job("candidate", Some("failure"), 91)
+            ]),
+            "green",
+        ),
+        // A cancelled candidate job leaves the tip decided (it is not an unexcused cancel).
+        (
+            json!([
+                job("ci", Some("success"), 90),
+                job(linux, Some("success"), 90),
+                job("candidate / linux-arm64 / check", Some("cancelled"), 91)
+            ]),
+            "green",
+        ),
+        // Lookalike names are ordinary jobs: judged, so a failure is red.
+        (
+            json!([
+                job("ci", Some("success"), 90),
+                job(linux, Some("success"), 90),
+                job("candidates / x", Some("failure"), 91)
+            ]),
+            "red",
+        ),
+        (
+            json!([
+                job("ci", Some("success"), 90),
+                job(linux, Some("success"), 90),
+                job("candidate-x", Some("failure"), 91)
+            ]),
+            "red",
+        ),
+        (
+            json!([
+                job("ci", Some("success"), 90),
+                job(linux, Some("success"), 90),
+                job("xcandidate / y", Some("failure"), 91)
+            ]),
+            "red",
+        ),
+        // The prefix is `candidate / ` with both spaces: no-space shapes are ordinary jobs.
+        (
+            json!([
+                job("ci", Some("success"), 90),
+                job(linux, Some("success"), 90),
+                job("candidate /x", Some("failure"), 91)
+            ]),
+            "red",
+        ),
+        (
+            json!([
+                job("ci", Some("success"), 90),
+                job(linux, Some("success"), 90),
+                job("candidate/x", Some("failure"), 91)
+            ]),
+            "red",
+        ),
+    ] {
+        let t = with_tip(&r.b, PASS_BODY, vec![tip_runs(&r.c, tip_now.clone())], &r.a);
+        let s = collect(&target(&r), &t).unwrap();
+        assert_eq!(t.remaining(), 0, "{tip_now}");
+        let ci = s.tip_ci.clone().unwrap();
+        assert_eq!(ci.state, want, "{tip_now}");
+        assert_eq!(ci.decided_by.as_deref(), Some(r.c.as_str()), "{tip_now}");
+        assert_eq!(g8(&s).is_some(), want != "green", "{tip_now}");
+    }
+}
+
 /// D8(a)'s pure judgment, shared with `lane-next` (#2856): the aggregate and cancelled jobs are
 /// not judged; a real job failure is red; nothing left is pending.
 #[test]
