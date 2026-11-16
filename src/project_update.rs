@@ -166,6 +166,30 @@ fn go_state_step(root: &Path, shown: &str) -> Result<Step> {
     if let Some(sm) = &plan.settings_move {
         preview["settings_move"] = encode(sm)?;
     }
+    // #2936 S-AGENTS-STAY U1: the backup area's own `.gitignore` leaves the copies to git (or git
+    // cannot tell). The apply would refuse before writing, so no command is offered: the user
+    // fixes that file (the update never edits it) and previews again. The install steps wait
+    // behind this step like behind any backup step that is still to do.
+    if let Some(b) = &plan.backup_ignore {
+        preview["backup_ignore"] = encode(b)?;
+        let named = if b.examples.is_empty() {
+            String::new()
+        } else {
+            format!(" (for example {})", b.examples.join(", "))
+        };
+        return Ok(Step {
+            name: "go-state",
+            state: "needs_decision",
+            reason: format!(
+                "the earlier generation's state would move into a backup area git may offer for \
+                 commit{named}: {}",
+                b.reason
+            ),
+            preview,
+            apply: None,
+            plan_digest: Some(plan.plan_digest),
+        });
+    }
     Ok(if pending {
         Step {
             name: "go-state",
@@ -290,6 +314,10 @@ fn profile_step(
 /// is `none`. `Err` when the record cannot tell: the section without the file, or the file
 /// without the section while a user rule in `.gitignore` names it (an `ignored` choice
 /// records no section then).
+///
+/// Since #3009 S3b the section is written for every choice (the state-folder allow-list), so
+/// "the section is there" no longer means "the personal file is listed". What the section
+/// lists is its recorded `kind`; a section recorded before the kind existed listed the file.
 fn local_file(root: &Path, manifest: &Value) -> Result<&'static str> {
     const LOCAL: &str = "AGENTS.local.md";
     let created = manifest["created_once"]
@@ -303,25 +331,32 @@ fn local_file(root: &Path, manifest: &Value) -> Result<&'static str> {
             .into_iter()
             .flatten()
             .any(|f| f["path"] == LOCAL && f["section_id"].is_null());
-    let section = owned_entries(manifest).any(|(s, _)| s == crate::agents::IGNORE_SECTION);
+    // `Some(listed)` when the section is recorded: whether it lists the personal file.
+    let section: Option<bool> = manifest["owned_files"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|f| f["section_id"] == crate::agents::IGNORE_SECTION)
+        .map(|f| crate::agents::ignore_kind_lists_local(f["kind"].as_str()));
     let unknown = "the generation manifest does not tell whether AGENTS.local.md is tracked \
                    or ignored; ask the user and regenerate through /moai project";
-    match (created, section) {
-        (true, true) => Ok("ignored"),
-        (false, false) => Ok("none"),
-        (false, true) => Err(unknown.into()),
-        (true, false) => {
-            let ignore = crate::apply::read_opt(&crate::apply::target(root, ".gitignore")?)?;
-            let user_rule = ignore
-                .as_deref()
-                .and_then(|b| std::str::from_utf8(b).ok())
-                .is_some_and(crate::agents::ignore_has_rule);
-            if user_rule {
-                Err(unknown.into())
-            } else {
-                Ok("tracked")
-            }
+    let user_rule_decides = || -> Result<&'static str> {
+        let ignore = crate::apply::read_opt(&crate::apply::target(root, ".gitignore")?)?;
+        let user_rule = ignore
+            .as_deref()
+            .and_then(|b| std::str::from_utf8(b).ok())
+            .is_some_and(crate::agents::ignore_has_rule);
+        if user_rule {
+            Err(unknown.into())
+        } else {
+            Ok("tracked")
         }
+    };
+    match (created, section) {
+        (true, Some(true)) => Ok("ignored"),
+        (false, None) | (false, Some(false)) => Ok("none"),
+        (false, Some(true)) => Err(unknown.into()),
+        (true, None) | (true, Some(false)) => user_rule_decides(),
     }
 }
 
