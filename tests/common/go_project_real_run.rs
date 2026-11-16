@@ -424,7 +424,9 @@ pub fn action<'a>(plan: &'a Value, rel: &str) -> &'a str {
 pub fn go_state_preview(update: &Value) -> &Value {
     let backup = &update["phases"][0];
     assert_eq!(backup["phase"], json!("backup"), "{update}");
-    &backup["steps"][0]["preview"]
+    // #2936 L2a: `go-settings` is the backup phase's first step, so the go-state step is found
+    // by name.
+    &step_in(update, 0, "go-state")["preview"]
 }
 
 /// The step named `name` in the install phase of a `project-update-plan` result.

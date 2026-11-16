@@ -13,7 +13,7 @@ mod common;
 #[path = "common/go_project_real_run.rs"]
 mod go_project_real_run;
 
-use go_project_real_run::{action, go_state_preview, item, GoFx};
+use go_project_real_run::{action, go_state_preview, item, step_in, GoFx};
 use serde_json::{json, Value};
 
 /// `worktree_include::LIMIT`: a larger include or ignore list is not read.
@@ -910,7 +910,7 @@ fn layout_folder_moves_names_the_go_backup_and_the_backup_area() {
     assert_eq!(plan["backup_to"], json!(BACKUP_AREA), "{plan}");
     assert_embedded(&fx, &plan);
     let update = fx.update_plan();
-    assert_eq!(update["phases"][0]["steps"][0]["state"], "needs_decision");
+    assert_eq!(step_in(&update, 0, "go-state")["state"], "needs_decision");
 }
 
 #[test]
@@ -929,7 +929,7 @@ fn layout_folder_stays_when_the_settings_name_the_folder() {
     assert_embedded(&fx, &plan);
     // F24: no step waits on a confirmation, no command is printed.
     let update = fx.update_plan();
-    let step = &update["phases"][0]["steps"][0];
+    let step = step_in(&update, 0, "go-state");
     assert_ne!(step["state"], "needs_decision", "{step}");
     assert_eq!(step["apply"], Value::Null, "{step}");
 }
@@ -1012,7 +1012,7 @@ fn layout_nothing_has_no_go_backup_and_no_backup_area() {
     assert_eq!(plan["backup_to"], Value::Null, "{plan}");
     assert_embedded(&fx, &plan);
     let update = fx.update_plan();
-    let step = &update["phases"][0]["steps"][0];
+    let step = step_in(&update, 0, "go-state");
     assert_eq!(step["state"], "unchanged", "{step}");
     assert_eq!(step["apply"], Value::Null, "{step}");
 }
