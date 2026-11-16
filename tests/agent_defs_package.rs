@@ -751,6 +751,62 @@ fn versioning_rows_and_reference_cover_the_three_schemes() {
     ));
 }
 
+/// Card C-72: the HeadVer part states what each number means and who sets it, from the author's
+/// article; `## At every release` is the checklist an agent runs at every release, and the SYNC
+/// route, where a release is one of the effects, names it.
+#[test]
+fn versioning_reference_states_headver_numbers_and_the_release_checklist() {
+    let read = |rel: &str| std::fs::read_to_string(package().join(rel)).unwrap();
+    let reference = read("references/internal/versioning.md");
+    let section = |heading: &str| -> String {
+        reference
+            .split(&format!("\n{heading}\n"))
+            .nth(1)
+            .unwrap_or_else(|| panic!("no {heading} section"))
+            .split("\n## ")
+            .next()
+            .unwrap()
+            .to_string()
+    };
+    let headver = section("## HeadVer");
+    for text in [
+        // The three numbers: who sets each and what it means.
+        "`head`: set by a person",
+        "raise it on every delivery that reaches users",
+        "`yearweek`: when it was built",
+        "computed by a program at build time, never typed",
+        "`build`: which build it is",
+        "the build server's counter",
+        "the same code built twice is two builds",
+        // Metadata, tags and how people talk about versions.
+        "is not part of the version",
+        "never make a commit that only edits a version number",
+        "plan by head (`v3`), debug by build (`b79`)",
+        "`date -u +%g%V`",
+        "`-dev`",
+        "Do not invent an alias",
+    ] {
+        assert!(headver.contains(text), "HeadVer section lacks {text:?}");
+    }
+    assert!(reference.contains(
+        "https://techblog.lycorp.co.jp/ko/headver-new-versioning-system-for-product-teams"
+    ));
+    let release = section("## At every release");
+    for text in [
+        "without being asked",
+        "The new tag must not exist yet",
+        "Never reuse, move or delete a tag",
+        "never on a feature branch",
+        "stays the user's pick",
+        "do not tag or publish",
+    ] {
+        assert!(release.contains(text), "At every release lacks {text:?}");
+    }
+    assert!(read("workflows/sync.md").contains(
+        "When a release or release candidate is prepared, run `internal/versioning` `## At every release`"
+    ));
+}
+
 /// #2673 AC-2: git-safety names, per host, how to enter a worktree — the built-in tool first,
 /// `git -C <worktree>` where there is none — and the Claude Code guard's refused shapes.
 #[test]
