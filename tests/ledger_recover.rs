@@ -406,13 +406,17 @@ fn a_source_in_wal_mode_is_refused() {
 #[test]
 fn a_link_a_folder_or_a_missing_file_is_not_a_source() {
     let w = World::new();
-    let real = w.copy_as("real.db");
-    let link = w.home.path().join("sources/link.db");
-    std::os::unix::fs::symlink(&real, &link).unwrap();
-    assert!(matches!(
-        plan_error(&w, &link),
-        LedgerError::Unavailable(m) if m.contains("link or not a regular file")
-    ));
+    // A link needs `std::os::unix`; the folder and the missing file are refused everywhere.
+    #[cfg(unix)]
+    {
+        let real = w.copy_as("real.db");
+        let link = w.home.path().join("sources/link.db");
+        std::os::unix::fs::symlink(&real, &link).unwrap();
+        assert!(matches!(
+            plan_error(&w, &link),
+            LedgerError::Unavailable(m) if m.contains("link or not a regular file")
+        ));
+    }
     let folder = w.home.path().join("sources/folder.db");
     fs::create_dir_all(&folder).unwrap();
     assert!(matches!(
@@ -1048,24 +1052,27 @@ fn a_link_or_a_folder_at_the_ledger_path_or_the_scratch_name_is_never_replaced()
         "{err:?}"
     );
     fs::remove_dir(&scratch).unwrap();
-    // A link at the ledger path.
-    let target = w.home.path().join("elsewhere.db");
-    fs::copy(&bak, &target).unwrap();
-    fs::remove_file(w.ledger()).unwrap();
-    std::os::unix::fs::symlink(&target, w.ledger()).unwrap();
-    let p = plan_of(&w, &bak, &obs);
-    assert_eq!(p.target_state, recover::TargetState::NotRegular);
-    let err =
-        recover::apply_with_suffix(w.home.path(), PROJECT, &bak, &obs, &p.plan_digest, SUFFIX)
-            .unwrap_err();
-    assert!(
-        matches!(&err, LedgerError::Constraint(m) if m.starts_with("target_not_regular")),
-        "{err:?}"
-    );
-    assert!(std::fs::symlink_metadata(w.ledger())
-        .unwrap()
-        .file_type()
-        .is_symlink());
+    // A link at the ledger path (a link needs `std::os::unix`).
+    #[cfg(unix)]
+    {
+        let target = w.home.path().join("elsewhere.db");
+        fs::copy(&bak, &target).unwrap();
+        fs::remove_file(w.ledger()).unwrap();
+        std::os::unix::fs::symlink(&target, w.ledger()).unwrap();
+        let p = plan_of(&w, &bak, &obs);
+        assert_eq!(p.target_state, recover::TargetState::NotRegular);
+        let err =
+            recover::apply_with_suffix(w.home.path(), PROJECT, &bak, &obs, &p.plan_digest, SUFFIX)
+                .unwrap_err();
+        assert!(
+            matches!(&err, LedgerError::Constraint(m) if m.starts_with("target_not_regular")),
+            "{err:?}"
+        );
+        assert!(std::fs::symlink_metadata(w.ledger())
+            .unwrap()
+            .file_type()
+            .is_symlink());
+    }
 }
 
 #[test]
@@ -1955,31 +1962,34 @@ fn a_newer_other_wal_or_unreadable_ledger_is_never_replaced() {
         assert!(!sibling(&w.ledger(), ".recovering").exists(), "{name}");
     }
 
-    // A ledger this process may not read says nothing about its content.
-    use std::os::unix::fs::PermissionsExt;
-    let w = World::new();
-    let source = w.copy_as("healthy_source.db");
-    fs::set_permissions(w.ledger(), fs::Permissions::from_mode(0o000)).unwrap();
-    let plan = plan_of(&w, &source, &Observations::default());
-    let result = recover::apply_with_suffix(
-        w.home.path(),
-        PROJECT,
-        &source,
-        &Observations::default(),
-        &plan.plan_digest,
-        SUFFIX,
-    );
-    fs::set_permissions(w.ledger(), fs::Permissions::from_mode(0o600)).unwrap();
-    // (A superuser can read it; then it is simply healthy and refused for that reason.)
-    assert!(
-        matches!(
-            plan.target_state,
-            recover::TargetState::Unconfirmed | recover::TargetState::Healthy
-        ),
-        "{:?}",
-        plan.target_state
-    );
-    assert!(result.is_err());
+    // A ledger this process may not read says nothing about its content (unix file modes).
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let w = World::new();
+        let source = w.copy_as("healthy_source.db");
+        fs::set_permissions(w.ledger(), fs::Permissions::from_mode(0o000)).unwrap();
+        let plan = plan_of(&w, &source, &Observations::default());
+        let result = recover::apply_with_suffix(
+            w.home.path(),
+            PROJECT,
+            &source,
+            &Observations::default(),
+            &plan.plan_digest,
+            SUFFIX,
+        );
+        fs::set_permissions(w.ledger(), fs::Permissions::from_mode(0o600)).unwrap();
+        // (A superuser can read it; then it is simply healthy and refused for that reason.)
+        assert!(
+            matches!(
+                plan.target_state,
+                recover::TargetState::Unconfirmed | recover::TargetState::Healthy
+            ),
+            "{:?}",
+            plan.target_state
+        );
+        assert!(result.is_err());
+    }
 }
 
 /// The damaged cases the repair must keep recovering: a truncated file, a flipped header and a
@@ -2427,6 +2437,7 @@ fn two_processes_recovering_at_once_leave_one_winner_and_a_sound_ledger() {
 
 /// M10: the recovered ledger is private to its owner, like a registered one.
 #[test]
+#[cfg(unix)]
 fn the_recovered_ledger_is_mode_0600() {
     use std::os::unix::fs::PermissionsExt;
     let w = World::new();

@@ -424,28 +424,34 @@ fn without_a_journal_or_remote_observation_every_active_reservation_is_held_for_
 #[test]
 fn a_source_that_is_a_link_or_the_wrong_project_is_refused_and_nothing_is_written() {
     let f = Fixture::new();
+    // A link needs `std::os::unix`; the wrong-project refusal below is checked everywhere.
+    #[cfg(unix)]
     let link = f.home.path().join("sources/link.db");
+    #[cfg(unix)]
     std::os::unix::fs::symlink(&f.bak, &link).unwrap();
     let other = f.home.project("other");
     let before = f.home.snapshot();
-    let out = run(
-        &f.home,
-        &[
-            "ledger-recover-plan",
-            f.project.to_str().unwrap(),
-            "--source",
-            link.to_str().unwrap(),
-        ],
-    );
-    let err = error_of(&out);
-    assert!(
-        err["message"]
-            .as_str()
-            .unwrap()
-            .contains("ledger_unavailable"),
-        "{err}"
-    );
-    assert_eq!(err["kind"], json!("blocked"));
+    #[cfg(unix)]
+    {
+        let out = run(
+            &f.home,
+            &[
+                "ledger-recover-plan",
+                f.project.to_str().unwrap(),
+                "--source",
+                link.to_str().unwrap(),
+            ],
+        );
+        let err = error_of(&out);
+        assert!(
+            err["message"]
+                .as_str()
+                .unwrap()
+                .contains("ledger_unavailable"),
+            "{err}"
+        );
+        assert_eq!(err["kind"], json!("blocked"));
+    }
     // A project whose id differs from the file's.
     let out = run(
         &f.home,
