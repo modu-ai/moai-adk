@@ -232,6 +232,17 @@ fn a_batch_writes_cards_criteria_notes_and_one_event_each() {
         )
         .unwrap();
     assert_eq!(event_card, card_seven, "the event belongs to its card");
+    // Every card's own event is on that card, not only the first one's.
+    let joined: i64 = w
+        .conn()
+        .query_row(
+            "SELECT count(*) FROM event e JOIN card c ON c.card_id = e.card_id \
+             WHERE e.event_key = 'import:github:owner/repo:' || c.source_number || ':h'",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(joined, 2);
     assert_eq!(payload, "{\"digest\":\"d\"}");
     // Nothing but text: no reservation, no link, no state beyond draft.
     assert_eq!((count(&w, "reservation"), count(&w, "card_link")), (0, 0));
