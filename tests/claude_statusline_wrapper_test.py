@@ -12,6 +12,11 @@ looked up on PATH last (#2871), and only a test that calls `path_cli()` puts one
 #2871 U3c: the install moves from `~/.moai-cli` to `~/.moai`. The wrapper tries
 `~/.moai/path/moai-cli`, then `~/.moai-cli/path/moai-cli`, then `moai-cli` on PATH, then the Go
 build; the cases below run it on the layout before the move, after it, and on both at once.
+
+#3004 P6a: the one name is `moai`. Before those `moai-cli` places the wrapper tries
+`~/.moai/path/moai`, then `~/.moai-cli/path/moai`, and runs one only when it is a link: the
+install lays a link, while a plain file of that name can be an old Go shim that answers
+`--version` as Rust and routes `statusline` to Go. The PATH name `moai` is still never looked up.
 """
 
 import pathlib
@@ -29,6 +34,8 @@ DESIGN = REPO / "docs" / "2383-statusline-switch-design.md"
 RUST_REL = (".moai-cli", "path", "moai-cli")
 MOVED_REL = (".moai", "path", "moai-cli")
 GO_REL = ("go", "bin", "moai.old")
+MOAI_MOVED_REL = (".moai", "path", "moai")
+MOAI_OLD_REL = (".moai-cli", "path", "moai")
 # Not valid UTF-8, no trailing newline, a NUL byte and a line break: the wrapper must pass
 # the bytes through untouched (it never reads or re-serializes stdin).
 STDIN = b'{"model":{"display_name":"Opus"},"cwd":"/x y"}\n\xff\xfe\x00tail'
@@ -74,6 +81,14 @@ class ClaudeStatuslineWrapperTest(unittest.TestCase):
 
     def path_cli(self, code=0, mode=0o755):
         return self._fake(self.pathbin / "moai-cli", "pathcli", code, mode)
+
+    def moai_link(self, rel, name, code=0, mode=0o755):
+        """The installed shape of `path/moai`: a link to a build under `versions/`."""
+        link = self.home.joinpath(*rel)
+        target = self._fake(link.parent.parent / "versions" / f"v-{name}" / "bin" / "moai", name, code, mode)
+        link.parent.mkdir(parents=True, exist_ok=True)
+        link.symlink_to(target)
+        return link
 
     def go(self, code=0, mode=0o755):
         return self._fake(self.home.joinpath(*GO_REL), "go", code, mode)
@@ -211,7 +226,80 @@ class ClaudeStatuslineWrapperTest(unittest.TestCase):
         self.assertEqual((r.returncode, r.stdout), (4, b"out-rust"))
         self.assert_called_once("rust")
 
-    # The name `moai-cli` on PATH is the third place; the Go name `moai` is never looked up.
+    # #3004 P6a: the link `path/moai` is tried before every `moai-cli` place.
+    def test_the_moved_moai_link_renders_and_wins_over_the_moai_cli_places(self):
+        self.moai_link(MOAI_MOVED_REL, "moai-moved")
+        self.moved()
+        self.rust()
+        self.path_cli()
+        self.go()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-moai-moved", b""))
+        self.assert_called_once("moai-moved")
+
+    def test_the_old_layout_moai_link_renders_and_wins_over_its_moai_cli(self):
+        self.moai_link(MOAI_OLD_REL, "moai-old")
+        self.rust()
+        self.go()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout), (0, b"out-moai-old"))
+        self.assert_called_once("moai-old")
+
+    def test_the_moved_moai_link_wins_over_the_old_layout_moai_link(self):
+        self.moai_link(MOAI_OLD_REL, "moai-old")
+        self.moai_link(MOAI_MOVED_REL, "moai-moved")
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout), (0, b"out-moai-moved"))
+        self.assert_called_once("moai-moved")
+
+    def test_a_plain_file_named_moai_is_never_run_it_may_be_an_old_go_shim(self):
+        for rel in (MOAI_MOVED_REL, MOAI_OLD_REL):
+            self._fake(self.home.joinpath(*rel), "shim", 0)
+        self.rust()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout, r.stderr), (0, b"out-rust", b""))
+        self.assert_called_once("rust")
+
+    def test_a_plain_moai_file_alone_falls_through_to_go(self):
+        self._fake(self.home.joinpath(*MOAI_MOVED_REL), "shim", 0)
+        self.go()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout), (0, b"out-go"))
+        self.assert_called_once("go")
+
+    def test_a_non_executable_moai_link_falls_through(self):
+        self.moai_link(MOAI_MOVED_REL, "moai-moved", mode=0o644)
+        self.moved()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout), (0, b"out-rust"))
+        self.assert_called_once("rust")
+
+    def test_a_moai_link_to_a_directory_falls_through(self):
+        target = self.home / ".moai" / "versions" / "v1"
+        target.mkdir(parents=True)
+        link = self.home.joinpath(*MOAI_MOVED_REL)
+        link.parent.mkdir(parents=True, exist_ok=True)
+        link.symlink_to(target)
+        self.moved()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout), (0, b"out-rust"))
+        self.assert_called_once("rust")
+
+    def test_a_failing_moai_link_keeps_its_exit_code_and_nothing_else_runs(self):
+        self.moai_link(MOAI_MOVED_REL, "moai-moved", code=6)
+        self.moved()
+        self.go()
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout), (6, b"out-moai-moved"))
+        self.assert_called_once("moai-moved")
+
+    def test_the_decoy_moai_on_path_is_still_never_run(self):
+        self.moai_link(MOAI_MOVED_REL, "moai-moved")
+        r = self.run_wrapper()
+        self.assertEqual((r.returncode, r.stdout), (0, b"out-moai-moved"))
+        self.assertNotIn("decoy-moai", [c[0] for c in self.calls()])
+
+    # The name `moai-cli` on PATH is the last place; the Go name `moai` is never looked up.
     def test_moai_cli_on_path_renders_when_no_home_layout_has_it(self):
         self.path_cli()
         self.go()
