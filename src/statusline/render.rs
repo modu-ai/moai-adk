@@ -147,12 +147,12 @@ impl Renderer {
     fn info_line(&self, s: &Status) -> String {
         let mut segs = Vec::new();
         // #2928 (user instruction 6878415244, 2026-11-14, replacing S-1's tag-first line 3): the
-        // tag comes first on line 1 and is only `leader` or `agent` — never the stdin
-        // `session_name` text — and is shown whenever the `session` segment is on, even without
-        // stdin (decision Q2 = (가)).
+        // tag comes first on line 1 and is shown whenever the `session` segment is on, even
+        // without stdin (decision Q2 = (가)). #2871 (leader decision 6907570513): its text is
+        // the session name in the two exact shapes `tag_text` writes again — never the stdin
+        // text itself.
         if self.enabled("session") {
-            let tag = if s.leader { "leader" } else { "agent" };
-            segs.push(format!("🏷️ {}", crate::ui::visible(tag)));
+            segs.push(format!("🏷️ {}", crate::ui::visible(&tag_text(s))));
         }
         let metrics = !s.model.is_empty();
         if self.enabled("model") && metrics {
@@ -338,6 +338,23 @@ impl Renderer {
         };
         let repo = self.paint(self.theme.repo, &format!("📡 {owner}/{name}"));
         Some(format!("{repo}{forge} | {branch}"))
+    }
+}
+
+/// The text of the `🏷️` tag (#2871, leader decision 6907570513, replacing #2928's "no name
+/// text"). The stdin `session_name` is free text (escape and control bytes, #2818 B1), so it is
+/// never copied: only two exact shapes are read and written again by this code.
+/// - A live registry `leader` entry (`s.leader`) or the name exactly `leader` → `Leader`. The
+///   name is only a display hint and is never an authority decision.
+/// - `agent-<decimal u32 without a leading zero>` (`session::agent_number_of`) → `Agent-<n>`.
+/// - Any other name, or none → `agent`.
+fn tag_text(s: &Status) -> String {
+    if s.leader || s.session_name == "leader" {
+        return "Leader".to_string();
+    }
+    match crate::session::agent_number_of(&s.session_name, "") {
+        Some(n) => format!("Agent-{n}"),
+        None => "agent".to_string(),
     }
 }
 
@@ -548,7 +565,7 @@ mod tests {
     }
 
     /// #2928 (user instruction 6878415244, 2026-11-14): line 1 is `🏷️ <tag> | 🧠 … | 🗿 …` and
-    /// line 3 is `🔋 CTX … | 🪫 Week …` alone. The tag is `leader` or `agent` and comes first; it
+    /// line 3 is `🔋 CTX … | 🪫 Week …` alone. The tag (`Leader`, `Agent-<n>` or `agent`, #2871) comes first; it
     /// is shown whenever the `session` segment is on, even with no stdin (decision Q2 = (가));
     /// with every other line-1 segment off it stands alone, and with `session` off line 1 is as
     /// before. The bar icons and marks are unchanged.
@@ -564,9 +581,9 @@ mod tests {
         status.leader = true;
         assert_eq!(
             plain(&status, &[]),
-            "🏷️ leader\nCTX: ░░░░░░░░░░ n/a | 🔋 Week: ░░░░░░░░░░ 0%"
+            "🏷️ Leader\nCTX: ░░░░░░░░░░ n/a | 🔋 Week: ░░░░░░░░░░ 0%"
         );
-        assert_eq!(plain(&status, &["usage_7d", "context"]), "🏷️ leader");
+        assert_eq!(plain(&status, &["usage_7d", "context"]), "🏷️ Leader");
         assert_eq!(
             plain(&status, &["session"]),
             "CTX: ░░░░░░░░░░ n/a | 🔋 Week: ░░░░░░░░░░ 0%"
@@ -594,29 +611,94 @@ mod tests {
         full.leader = true;
         assert_eq!(
             plain(&full, &[]).lines().next(),
-            Some(format!("🏷️ leader | {env}").as_str())
+            Some(format!("🏷️ Leader | {env}").as_str())
         );
         assert_eq!(plain(&full, &[]).lines().nth(2), Some(bars));
         let colored = strip_sgr(&colored("mocha", Profile::TrueColor, &full));
         assert!(
-            colored.lines().next().unwrap().starts_with("🏷️ leader | "),
+            colored.lines().next().unwrap().starts_with("🏷️ Leader | "),
             "{colored:?}"
         );
         assert_eq!(colored.lines().nth(2), Some(bars), "{colored:?}");
     }
 
+    /// #2871 (leader decision 6907570513, replacing #2928's "never print the name"): the tag is
+    /// the session name only in two exact shapes that this code writes again itself —
+    /// `agent-<decimal u32 without a leading zero>` → `Agent-<n>`, and exactly `leader` →
+    /// `Leader` — and `agent` for every other name. The name's own bytes are never copied.
+    #[test]
+    fn the_tag_rewrites_only_the_exact_agent_and_leader_names() {
+        let tag_of = |name: &str| {
+            let mut status = full_status();
+            status.session_name = name.into();
+            plain(&status, &[]).lines().next().unwrap().to_string()
+        };
+        let line = |tag: &str| {
+            format!("🏷️ {tag} | 🧠 Opus | 🤔 high·t | ♻️ 75% | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0")
+        };
+        for (name, want) in [
+            ("agent-27", "Agent-27"),
+            ("agent-0", "Agent-0"),
+            ("agent-1", "Agent-1"),
+            ("agent-4294967295", "Agent-4294967295"),
+            ("leader", "Leader"),
+        ] {
+            assert_eq!(tag_of(name), line(want), "{name:?}");
+        }
+        let long = format!("agent-{}", "9".repeat(59));
+        assert_eq!(long.len(), 65);
+        for name in [
+            "agent-4294967296",
+            "agent-027",
+            "agent-00",
+            "agent-1;x",
+            "agent-\u{663}",
+            "agent-+5",
+            "agent--5",
+            "agent-5 ",
+            "agent-5\n",
+            "agent-",
+            "agent",
+            "AGENT-1",
+            "Agent-1",
+            "Leader",
+            "LEADER",
+            "leader ",
+            "leader-2",
+            "\u{1b}]0;agent-5\u{7}",
+            "agent-5\u{9b}31m",
+            "#2388·#2403 Issue 닫기 대조",
+            "/moai",
+            "",
+            long.as_str(),
+        ] {
+            assert_eq!(tag_of(name), line("agent"), "{name:?}");
+        }
+        // 64 and 65 characters of a name that is no exact shape: the same fixed word.
+        for len in [64, 65] {
+            assert_eq!(tag_of(&"x".repeat(len)), line("agent"), "{len}");
+        }
+        // The exact `leader` name or a live registry entry gives `Leader`; the registry wins
+        // over an agent-shaped name, as before.
+        let mut status = full_status();
+        status.leader = true;
+        status.session_name = "agent-27".into();
+        assert_eq!(
+            plain(&status, &[]).lines().next(),
+            Some(line("Leader").as_str())
+        );
+    }
+
     /// #2928 S-3 (#2818 B1): the stdin `session_name` — a lane name, a terminal title, escape
-    /// or C1 bytes, even the word `leader` itself — never reaches the output; only the tag
-    /// does, and without a registry reading it is `agent`.
+    /// or C1 bytes — never reaches the output as itself; only the tag does, and a name that is
+    /// no exact shape (see `the_tag_rewrites_only_the_exact_agent_and_leader_names`) is `agent`.
     #[test]
     fn session_name_text_never_reaches_the_tag() {
         for name in [
             "\u{1b}]0;evil\u{7}",
             "x\u{9b}31m",
             "#2388·#2403·#2385 Issue 닫기 대조",
-            "agent-27",
             "/moai",
-            "leader",
         ] {
             let mut status = full_status();
             status.session_name = name.into();
@@ -657,20 +739,17 @@ mod tests {
         for text in [&base_plain, &base_colored] {
             assert_eq!(first(text).matches("🏷️ agent").count(), 1, "{text:?}");
         }
-        for (leader, name) in [
-            (false, ""),
-            (true, "leader"),
-            (false, "\u{1b}]0;x\u{7}"),
-            (true, "agent-27"),
+        for (leader, name, tag) in [
+            (false, "", "🏷️ agent"),
+            (true, "leader", "🏷️ Leader"),
+            (false, "leader", "🏷️ Leader"),
+            (false, "\u{1b}]0;x\u{7}", "🏷️ agent"),
+            (true, "agent-27", "🏷️ Leader"),
+            (false, "agent-27", "🏷️ Agent-27"),
         ] {
             let mut s = full_status();
             s.leader = leader;
             s.session_name = name.into();
-            let tag = if leader {
-                "🏷️ leader"
-            } else {
-                "🏷️ agent"
-            };
             let got_plain = plain(&s, &[]);
             assert_eq!(tail(&got_plain), want_plain, "{leader} {name:?}");
             assert_eq!(
