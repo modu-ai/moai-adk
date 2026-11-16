@@ -404,6 +404,8 @@ fn internal_references_say_when_to_read_them() {
         "security-checklist",
         // #2876: the rules every route, host and base agent follows.
         "core-rules",
+        // #3096 S1: four ways of looking, read only when a question or plan needs one.
+        "lenses",
     ];
     let mut found: Vec<String> = std::fs::read_dir(package().join("references/internal"))
         .unwrap()
