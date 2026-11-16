@@ -84,6 +84,23 @@ impl Spawned {
         c.kill().unwrap();
         c.wait().unwrap();
     }
+
+    /// Waits for the wrapper alone (bounded by the hang guard) and leaves the rest of its group
+    /// running; the drop of `self` kills the group, so a surviving descendant never outlives
+    /// the test.
+    fn wait_wrapper_only(&mut self) -> std::process::ExitStatus {
+        let start = Instant::now();
+        loop {
+            if let Some(s) = self.child.as_mut().unwrap().try_wait().unwrap() {
+                return s;
+            }
+            if start.elapsed() > HANG {
+                kill_group(self.group);
+                panic!("hang guard: the wrapper did not end");
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
 }
 
 impl Drop for Spawned {
@@ -207,6 +224,9 @@ fn with_one_slot_the_second_caller_waits_its_turn() {
     let held = status(d.path());
     assert_eq!(held["held"][0]["name"], "first", "{held}");
     assert_eq!(held["held"][0]["slot"], 0);
+    // #3033 D1: a live wrapper's slot reports its pid alive.
+    assert_eq!(held["held"][0]["alive"], true, "{held}");
+    assert!(held["held"][0].get("holders").is_none(), "{held}");
 
     let mut c = acquire(
         d.path(),
@@ -258,6 +278,243 @@ fn the_slot_stays_held_by_the_command_after_the_wrapper_is_killed() {
     wait_for("slot released", || {
         status(d.path())["held"].as_array().unwrap().is_empty()
     });
+}
+
+/// Whether `pid` names a live process (kill(2) with signal 0).
+fn pid_is_alive(pid: i32) -> bool {
+    // SAFETY: signal 0 only checks that the process exists and may be signalled.
+    unsafe { libc::kill(pid, 0) == 0 }
+}
+
+/// #3033 D2 on a held entry whose recorded pid is dead: `holders` lists the process with the
+/// slot file open (`pid`, `comm`, no argv), read from `/proc` (Linux) or `lsof`. Where neither
+/// source exists the entry says `unavailable` with `holders` null — never an empty list.
+fn assert_holder(entry: &Value, pid: i32, comm: Option<&str>) {
+    let source = entry["holders_source"].as_str().unwrap();
+    if source == "unavailable" {
+        if cfg!(target_os = "linux") {
+            panic!("/proc must work on Linux: {entry}");
+        }
+        assert!(
+            Command::new("lsof").arg("-v").output().is_err(),
+            "lsof is installed but the entry says unavailable: {entry}"
+        );
+        assert!(entry["holders"].is_null(), "{entry}");
+        eprintln!("skipped: no /proc and no lsof on this machine");
+        return;
+    }
+    assert!(["proc", "lsof"].contains(&source), "{entry}");
+    if cfg!(target_os = "linux") {
+        assert_eq!(source, "proc", "{entry}");
+    }
+    let found = entry["holders"].as_array().unwrap();
+    let hit = found
+        .iter()
+        .find(|h| h["pid"] == pid)
+        .unwrap_or_else(|| panic!("pid {pid} is not among the holders: {entry}"));
+    if let Some(comm) = comm {
+        assert_eq!(hit["comm"], comm, "{entry}");
+    }
+    assert!(hit["comm"].is_string(), "{entry}");
+    assert_eq!(
+        hit.as_object().unwrap().len(),
+        2,
+        "a holder is pid and comm only, no argv: {entry}"
+    );
+}
+
+/// #3033 AC-1, pinning today's behaviour: the lock is on the open file, not on a process, so a
+/// background child the command leaves behind keeps the slot after the command and the wrapper
+/// have ended. `status` still lists the slot as held, with the wrapper's pid, which is dead by
+/// then; a second caller waits until the child ends. (The child's stdio is null so no pipe waits
+/// on it.)
+#[test]
+fn a_command_that_leaves_a_background_child_keeps_the_slot_and_status_shows_a_dead_pid() {
+    let d = tempfile::tempdir().unwrap();
+    let m = tempfile::tempdir().unwrap();
+    let (pidfile, s2) = (m.path().join("child.pid"), m.path().join("s2"));
+    let script = format!(
+        "sleep 600 </dev/null >/dev/null 2>&1 & echo $! > '{}'",
+        pidfile.display()
+    );
+    let mut c = acquire(d.path(), "1", "leaver", &["sh", "-c", &script]);
+    c.stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+    let mut wrapper = spawn(c);
+    let wrapper_pid = wrapper.id() as i32;
+    // The wrapper ends with the command's own code once `sh` has exited.
+    assert_eq!(wrapper.wait_wrapper_only().code(), Some(0));
+    let child_pid: i32 = fs::read_to_string(&pidfile)
+        .unwrap()
+        .trim()
+        .parse()
+        .unwrap();
+    let _child = KillOnDrop(child_pid);
+    assert!(
+        pid_is_alive(child_pid),
+        "the background child must be alive"
+    );
+    assert!(
+        !pid_is_alive(wrapper_pid),
+        "the wrapper has ended and was reaped"
+    );
+
+    // Still held, and the record names the dead wrapper, not the child that holds the lock.
+    let held = status(d.path())["held"].clone();
+    assert_eq!(held.as_array().unwrap().len(), 1, "{held}");
+    assert_eq!(held[0]["name"], "leaver", "{held}");
+    assert_eq!(held[0]["pid"], wrapper_pid, "{held}");
+    // #3033 D1: and says so — the recorded pid is dead although the slot is held.
+    assert_eq!(held[0]["alive"], false, "{held}");
+    // #3033 D2: and names who has the slot file open — the sleeper, never the dead wrapper.
+    assert_holder(&held[0], child_pid, Some("sleep"));
+
+    // A second caller waits; it runs only after the child has gone.
+    let mut c = acquire(
+        d.path(),
+        "1",
+        "next",
+        &["sh", "-c", &format!("touch '{}'", s2.display())],
+    );
+    c.stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    let second = spawn(c);
+    wait_for("second waiting", || {
+        fs::read_dir(d.path().join("waiting"))
+            .map(|r| r.count() == 1)
+            .unwrap_or(false)
+    });
+    assert!(
+        !s2.exists(),
+        "the second caller ran while the child held the slot"
+    );
+    // SAFETY: SIGKILL to the sleeper this test started.
+    unsafe { libc::kill(child_pid, libc::SIGKILL) };
+    wait_for("second ran", || s2.exists());
+    let out = second.finish();
+    assert!(out.status.success(), "{}", text(&out));
+    assert_eq!(status(d.path())["held"], serde_json::json!([]));
+}
+
+/// A slot file `slot-0` in `dir` holding `body`, with its lock held by this test for as long as
+/// the returned file lives (a lock on another open file description, so `status` in another
+/// process sees it as held).
+fn held_slot(dir: &Path, body: &str) -> fs::File {
+    let path = dir.join("slot-0");
+    fs::write(&path, body).unwrap();
+    let f = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&path)
+        .unwrap();
+    f.try_lock().unwrap();
+    f
+}
+
+/// #3033 D1: every held entry says whether its recorded pid is alive — true or false by
+/// `kill(pid, 0)`, null when the record names no process (missing, 0, negative, text, a number
+/// beyond a pid, an unreadable or non-object record). One folder per case.
+#[test]
+fn status_says_whether_the_recorded_pid_is_alive() {
+    let me = std::process::id();
+    let mut gone = Command::new("true").spawn().unwrap();
+    let reaped = gone.id();
+    gone.wait().unwrap();
+    let null = Value::Null;
+    let cases: Vec<(String, Value)> = vec![
+        (format!(r#"{{"name":"a","pid":{me}}}"#), Value::Bool(true)),
+        (
+            format!(r#"{{"name":"a","pid":{reaped}}}"#),
+            Value::Bool(false),
+        ),
+        (r#"{"name":"a","pid":1}"#.into(), Value::Bool(true)),
+        (r#"{"pid":2147483647}"#.into(), Value::Bool(false)),
+        (r#"{"pid":2147483648}"#.into(), null.clone()),
+        (r#"{"pid":0}"#.into(), null.clone()),
+        (r#"{"pid":-1}"#.into(), null.clone()),
+        (r#"{"pid":"1"}"#.into(), null.clone()),
+        (r#"{"pid":1.5}"#.into(), null.clone()),
+        (r#"{"pid":null}"#.into(), null.clone()),
+        (r#"{"name":"a"}"#.into(), null.clone()),
+        ("{}".into(), null.clone()),
+        ("[1]".into(), null.clone()),
+        ("not json".into(), null.clone()),
+        (String::new(), null),
+    ];
+    for (body, want) in cases {
+        let d = tempfile::tempdir().unwrap();
+        let _lock = held_slot(d.path(), &body);
+        let held = status(d.path())["held"].clone();
+        assert_eq!(held.as_array().unwrap().len(), 1, "{body}: {held}");
+        assert_eq!(held[0]["alive"], want, "{body}: {held}");
+        if want == Value::Bool(false) {
+            // This test holds the lock, so it is the process the slot file is open in.
+            assert_holder(&held[0], me as i32, None);
+        } else {
+            // Holders are looked up only for a dead pid.
+            let keys = held[0].as_object().unwrap();
+            assert!(!keys.contains_key("holders"), "{body}: {held}");
+            assert!(!keys.contains_key("holders_source"), "{body}: {held}");
+        }
+    }
+    // The record's own keys come back unchanged next to `alive`.
+    let d = tempfile::tempdir().unwrap();
+    let _lock = held_slot(
+        d.path(),
+        r#"{"name":"lane","command":["a","b"],"pid":1,"started_unix":5,"slot":0}"#,
+    );
+    let held = status(d.path())["held"][0].clone();
+    assert_eq!(
+        held,
+        serde_json::json!({"name":"lane","command":["a","b"],"pid":1,"started_unix":5,"slot":0,"alive":true})
+    );
+}
+
+/// `status` only reads: the slot file's bytes and modification time and the folder's names are
+/// the same after it, for a live recorded pid and also for a dead one, where it looks up the
+/// processes that have the file open (`holders`).
+#[test]
+fn status_reads_only() {
+    let mut gone = Command::new("true").spawn().unwrap();
+    let reaped = gone.id();
+    gone.wait().unwrap();
+    for (pid, alive) in [(std::process::id(), true), (reaped, false)] {
+        let d = tempfile::tempdir().unwrap();
+        let body = format!(r#"{{"name":"a","pid":{pid}}}"#);
+        let _lock = held_slot(d.path(), &body);
+        let slot = d.path().join("slot-0");
+        let names = |p: &Path| {
+            let mut v: Vec<String> = fs::read_dir(p)
+                .unwrap()
+                .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+                .collect();
+            v.sort();
+            v
+        };
+        let before = (
+            fs::read(&slot).unwrap(),
+            fs::metadata(&slot).unwrap().modified().unwrap(),
+            names(d.path()),
+        );
+        let result = status(d.path());
+        assert_eq!(result["writes"], false, "{result}");
+        assert_eq!(result["held"][0]["alive"], alive, "{result}");
+        if !alive {
+            // The lookup ran: the answer is a list or "unavailable", never missing.
+            assert!(
+                result["held"][0].get("holders_source").is_some(),
+                "{result}"
+            );
+        }
+        let after = (
+            fs::read(&slot).unwrap(),
+            fs::metadata(&slot).unwrap().modified().unwrap(),
+            names(d.path()),
+        );
+        assert_eq!(before, after, "alive={alive}");
+    }
 }
 
 /// SIGTERM to the wrapper reaches the command, and the wrapper returns 128 + 15.

@@ -224,8 +224,10 @@ jobs:
           # set lanes also run, so CI and the local run cannot drift apart. KEEP_GOING keeps
           # this job's rule (every step runs and gets a summary row with its exit); the
           # script's last line is its `local-check:` record. The step shell runs with
-          # -e -o pipefail, so the exit is kept, not raised.
-          LOCAL_CHECK_KEEP_GOING=1 LOCAL_CHECK_BASE="${{ github.event.pull_request.base.sha || 'HEAD~1' }}" LOCAL_CHECK_DIFF_HEAD="${{ github.event.pull_request.head.sha || 'HEAD' }}" bash tools/local_check.sh || failed=1
+          # -e -o pipefail, so the exit is kept, not raised. This checkout already is the merge
+          # ref, so the script runs in place (#3066 P2); a local run checks a candidate
+          # (the head merged with the latest base tip) instead.
+          LOCAL_CHECK_MODE=in-place LOCAL_CHECK_KEEP_GOING=1 LOCAL_CHECK_BASE="${{ github.event.pull_request.base.sha || 'HEAD~1' }}" LOCAL_CHECK_DIFF_HEAD="${{ github.event.pull_request.head.sha || 'HEAD' }}" bash tools/local_check.sh || failed=1
           # macOS-only cases (#2194): cfg(target_os = "macos") Rust tests are compiled out on
           # Linux and darwin-gated Python tests are skipped; report per target which of them
           # ran, so a Linux pass is never read as a macOS-only measurement (AC-08C-7).
