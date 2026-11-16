@@ -2,7 +2,12 @@
 //! in an isolated HOME: publish (`add`), `ready`, `take`, a second `take` refused, `handoff`,
 //! a stale `release` refused, `release`. The reservation rules themselves are #3068 P3's
 //! (`tests/ledger_reservation.rs`); here the commands, their answers and their refusal kinds.
-//! Every command runs against a temporary HOME; the real `~/.moai` is not read or written.
+//!
+//! The holder is never typed: it is the session id the host put in the environment
+//! (`CLAUDE_CODE_SESSION_ID`), so a caller that only knows another holder's name cannot act for it
+//! (#3115 verdict N1). `--home` is exercised from a second, empty HOME so a command that ignored
+//! it would find no ledger. Every command runs against a temporary HOME; the real `~/.moai` is
+//! not read or written.
 
 mod common;
 
@@ -12,8 +17,21 @@ use serde_json::{json, Value};
 use std::path::Path;
 use std::process::{Output, Stdio};
 
+const SESSION_VAR: &str = "CLAUDE_CODE_SESSION_ID";
+const S_A: &str = "aaaaaaaa-0000-4000-8000-00000000000a";
+const S_B: &str = "bbbbbbbb-0000-4000-8000-00000000000b";
+const S_C: &str = "cccccccc-0000-4000-8000-00000000000c";
+
 fn run(home: &TempHome, args: &[&str]) -> Output {
     home.command(args).output().expect("run moai")
+}
+
+/// A command run as the session `session`.
+fn as_session(home: &TempHome, session: &str, args: &[&str]) -> Output {
+    home.command(args)
+        .env(SESSION_VAR, session)
+        .output()
+        .expect("run moai")
 }
 
 fn envelope(out: &Output) -> Value {
@@ -85,15 +103,20 @@ fn ready_card(home: &TempHome, project: &str, scope: &str) -> String {
     name
 }
 
-fn take(home: &TempHome, project: &str, card: &str, holder: &str) -> Output {
-    run(
+fn take(home: &TempHome, project: &str, card: &str, session: &str) -> Output {
+    as_session(home, session, &["card", "take", card, "--project", project])
+}
+
+fn release(home: &TempHome, project: &str, card: &str, session: &str, generation: &str) -> Output {
+    as_session(
         home,
+        session,
         &[
             "card",
-            "take",
+            "release",
             card,
-            "--holder",
-            holder,
+            "--generation",
+            generation,
             "--project",
             project,
         ],
@@ -126,7 +149,7 @@ fn a_card_goes_from_draft_to_taken_handed_over_and_released() {
     assert_eq!(added["state"], json!("draft"));
 
     // A draft card cannot be taken.
-    let (kind, message) = refusal(&take(&home, &project, "C-1", "agent-a"));
+    let (kind, message) = refusal(&take(&home, &project, "C-1", S_A));
     assert_eq!(kind, "conflict", "{message}");
     assert!(message.contains("`draft`"), "{message}");
 
@@ -146,15 +169,15 @@ fn a_card_goes_from_draft_to_taken_handed_over_and_released() {
     assert_eq!(ready["state"], json!("ready"));
     assert_eq!(ready["events"], json!(1));
 
-    // Take: the card's own scope is used; the answer carries what release and handoff need.
-    let taken = result(&run(
+    // Take: the holder is the session; the card's own scope is used; the answer carries what
+    // release and handoff need.
+    let taken = result(&as_session(
         &home,
+        S_A,
         &[
             "card",
             "take",
             "C-1",
-            "--holder",
-            "agent-a",
             "--lease-secs",
             "3600",
             "--worktree",
@@ -168,7 +191,7 @@ fn a_card_goes_from_draft_to_taken_handed_over_and_released() {
     let r = &taken["reservation"];
     assert_eq!(taken["state"], json!("active"));
     assert_eq!(r["generation"], json!(1));
-    assert_eq!(r["holder"], json!("agent-a"));
+    assert_eq!(r["holder"], json!(S_A));
     assert_eq!(r["status"], json!("held"));
     assert_eq!(r["write_scope"], json!(["src/a.rs"]));
     assert_eq!(r["worktree"], json!("/w/a"));
@@ -181,53 +204,39 @@ fn a_card_goes_from_draft_to_taken_handed_over_and_released() {
     let shown = result(&run(&home, &["card", "show", "C-1", "--project", &project]));
     assert_eq!(shown["state"], json!("active"));
 
-    // A second take of the same card is refused, even by the same holder.
-    for holder in ["agent-b", "agent-a"] {
-        let (kind, message) = refusal(&take(&home, &project, "C-1", holder));
+    // A second take of the same card is refused, even by the same session.
+    for session in [S_B, S_A] {
+        let (kind, message) = refusal(&take(&home, &project, "C-1", session));
         assert_eq!(kind, "conflict", "{message}");
         assert!(message.contains("already held"), "{message}");
     }
 
-    // Hand over: generation 2 for the new holder, same scope, branch and lease end.
-    let handed = result(&run(
+    // Hand over: generation 2 for the receiver, same scope, branch and lease end.
+    let handed = result(&as_session(
         &home,
+        S_A,
         &[
             "card",
             "handoff",
             "C-1",
-            "--holder",
-            "agent-a",
             "--generation",
             "1",
             "--to",
-            "agent-b",
+            S_B,
             "--project",
             &project,
         ],
     ));
     let h = &handed["reservation"];
     assert_eq!(h["generation"], json!(2));
-    assert_eq!(h["holder"], json!("agent-b"));
+    assert_eq!(h["holder"], json!(S_B));
     assert_eq!(h["write_scope"], json!(["src/a.rs"]));
     assert_eq!(h["branch"], json!("issue/1-a"));
     assert_eq!(h["lease_until"], r["lease_until"]);
-    assert_eq!(handed["from_holder"], json!("agent-a"));
+    assert_eq!(handed["from_holder"], json!(S_A));
 
-    // The old holder with the old generation is refused and the card stays taken.
-    let (kind, message) = refusal(&run(
-        &home,
-        &[
-            "card",
-            "release",
-            "C-1",
-            "--holder",
-            "agent-a",
-            "--generation",
-            "1",
-            "--project",
-            &project,
-        ],
-    ));
+    // The old session with the old generation is refused and the card stays taken.
+    let (kind, message) = refusal(&release(&home, &project, "C-1", S_A, "1"));
     assert_eq!(kind, "conflict", "{message}");
     assert!(message.contains("stale"), "{message}");
     assert_eq!(
@@ -242,24 +251,12 @@ fn a_card_goes_from_draft_to_taken_handed_over_and_released() {
     assert_eq!(shown["state"], json!("active"));
 
     // The new holder gives it back: the card is ready again and can be taken at generation 3.
-    let released = result(&run(
-        &home,
-        &[
-            "card",
-            "release",
-            "C-1",
-            "--holder",
-            "agent-b",
-            "--generation",
-            "2",
-            "--project",
-            &project,
-        ],
-    ));
+    let released = result(&release(&home, &project, "C-1", S_B, "2"));
     assert_eq!(released["state"], json!("ready"));
     assert_eq!(released["reservation"]["status"], json!("released"));
-    let again = result(&take(&home, &project, "C-1", "agent-c"));
+    let again = result(&take(&home, &project, "C-1", S_C));
     assert_eq!(again["reservation"]["generation"], json!(3));
+    assert_eq!(again["reservation"]["holder"], json!(S_C));
     let a = &again["reservation"];
     assert_eq!(
         a["lease_until"].as_i64().unwrap() - a["acquired_at"].as_i64().unwrap(),
@@ -277,24 +274,142 @@ fn a_card_goes_from_draft_to_taken_handed_over_and_released() {
 }
 
 #[test]
+fn another_session_cannot_act_for_the_holder_and_a_typed_holder_is_not_accepted() {
+    let (home, project) = registered();
+    let card = ready_card(&home, &project, "src/own.rs");
+    result(&take(&home, &project, &card, S_A));
+
+    // Another session that knows the generation can neither release nor hand over the card.
+    let (kind, message) = refusal(&release(&home, &project, &card, S_B, "1"));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("held by"), "{message}");
+    let (kind, message) = refusal(&as_session(
+        &home,
+        S_B,
+        &[
+            "card",
+            "handoff",
+            &card,
+            "--generation",
+            "1",
+            "--to",
+            S_C,
+            "--project",
+            &project,
+        ],
+    ));
+    assert_eq!(kind, "conflict", "{message}");
+
+    // `--holder` no longer exists: naming the holder does not work, and nothing changes.
+    for args in [
+        vec![
+            "card",
+            "release",
+            card.as_str(),
+            "--holder",
+            S_A,
+            "--generation",
+            "1",
+            "--project",
+            project.as_str(),
+        ],
+        vec![
+            "card",
+            "take",
+            card.as_str(),
+            "--holder",
+            S_B,
+            "--project",
+            project.as_str(),
+        ],
+    ] {
+        let out = as_session(&home, S_B, &args);
+        assert!(!out.status.success(), "{args:?}");
+    }
+    let l = ledger::open_read_only(home.path(), "demo").unwrap();
+    let cur = ledger::reservation::current(l.conn(), 1).unwrap().unwrap();
+    assert_eq!(
+        (cur.holder.as_str(), cur.generation, cur.status.as_str()),
+        (S_A, 1, "held")
+    );
+}
+
+#[test]
+fn a_session_without_a_usable_id_holds_nothing_and_changes_nothing() {
+    let (home, project) = registered();
+    let card = ready_card(&home, &project, "src/none.rs");
+    let before = count(&home, "SELECT count(*) FROM event");
+    // No variable at all, then values that are not session ids.
+    let mut outs = vec![run(&home, &["card", "take", &card, "--project", &project])];
+    for bad in ["", "agent-7", "short", "not a session id"] {
+        outs.push(as_session(
+            &home,
+            bad,
+            &["card", "take", &card, "--project", &project],
+        ));
+    }
+    for out in outs {
+        let (kind, message) = refusal(&out);
+        assert_eq!(kind, "invalid_input", "{message}");
+        assert!(message.starts_with("card take refused: "), "{message}");
+        assert!(message.contains(SESSION_VAR), "{message}");
+    }
+    for action in ["release", "handoff"] {
+        let mut args = vec!["card", action, card.as_str(), "--generation", "1"];
+        if action == "handoff" {
+            args.extend(["--to", S_B]);
+        }
+        args.extend(["--project", project.as_str()]);
+        let (kind, message) = refusal(&run(&home, &args));
+        assert_eq!(kind, "invalid_input", "{action}: {message}");
+    }
+    assert_eq!(count(&home, "SELECT count(*) FROM reservation"), 0);
+    assert_eq!(count(&home, "SELECT count(*) FROM event"), before);
+}
+
+#[test]
+fn the_receiver_of_a_handoff_must_be_a_session_id() {
+    let (home, project) = registered();
+    let card = ready_card(&home, &project, "src/recv.rs");
+    result(&take(&home, &project, &card, S_A));
+    for bad in ["agent-b", "", "abc", S_A] {
+        let (kind, message) = refusal(&as_session(
+            &home,
+            S_A,
+            &[
+                "card",
+                "handoff",
+                &card,
+                "--generation",
+                "1",
+                "--to",
+                bad,
+                "--project",
+                &project,
+            ],
+        ));
+        assert_eq!(kind, "invalid_input", "{bad:?}: {message}");
+    }
+    let l = ledger::open_read_only(home.path(), "demo").unwrap();
+    let cur = ledger::reservation::current(l.conn(), 1).unwrap().unwrap();
+    assert_eq!((cur.holder.as_str(), cur.generation), (S_A, 1));
+}
+
+#[test]
 fn six_takes_at_once_give_the_card_to_exactly_one() {
     let (home, project) = registered();
     let card = ready_card(&home, &project, "src/race.rs");
     let children: Vec<_> = (0..6)
         .map(|i| {
-            home.command(&[
-                "card",
-                "take",
-                &card,
-                "--holder",
-                &format!("agent-{i}"),
-                "--project",
-                &project,
-            ])
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .unwrap()
+            home.command(&["card", "take", &card, "--project", &project])
+                .env(
+                    SESSION_VAR,
+                    format!("dddddddd-0000-4000-8000-00000000000{i}"),
+                )
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .unwrap()
         })
         .collect();
     let (mut won, mut lost) = (Vec::new(), 0);
@@ -328,8 +443,8 @@ fn two_cards_with_overlapping_scopes_cannot_both_be_taken() {
     let (home, project) = registered();
     let a = ready_card(&home, &project, "src/shared/**");
     let b = ready_card(&home, &project, "src/shared/x.rs");
-    result(&take(&home, &project, &a, "agent-a"));
-    let (kind, message) = refusal(&take(&home, &project, &b, "agent-b"));
+    result(&take(&home, &project, &a, S_A));
+    let (kind, message) = refusal(&take(&home, &project, &b, S_B));
     assert_eq!(kind, "conflict", "{message}");
     assert!(message.contains("write scope"), "{message}");
     let shown = result(&run(&home, &["card", "show", &b, "--project", &project]));
@@ -344,14 +459,13 @@ fn two_cards_with_overlapping_scopes_cannot_both_be_taken() {
 fn take_uses_the_given_scope_over_the_cards_own_and_needs_one() {
     let (home, project) = registered();
     let card = ready_card(&home, &project, "src/own.rs");
-    let t = result(&run(
+    let t = result(&as_session(
         &home,
+        S_A,
         &[
             "card",
             "take",
             &card,
-            "--holder",
-            "a",
             "--scope",
             "lib/x.rs",
             "--scope",
@@ -373,7 +487,7 @@ fn take_uses_the_given_scope_over_the_cards_own_and_needs_one() {
         &home,
         &["card", "ready", "C-2", "--project", &project],
     ));
-    let (kind, message) = refusal(&take(&home, &project, "C-2", "a"));
+    let (kind, message) = refusal(&take(&home, &project, "C-2", S_B));
     assert_eq!(kind, "invalid_input", "{message}");
     assert_eq!(
         count(&home, "SELECT count(*) FROM reservation WHERE card_id = 2"),
@@ -382,20 +496,19 @@ fn take_uses_the_given_scope_over_the_cards_own_and_needs_one() {
 }
 
 #[test]
-fn the_lease_and_the_holder_have_hard_edges() {
+fn the_lease_has_hard_edges() {
     let (home, project) = registered();
     let mut n = 0;
-    let mut try_take = |secs: &str, holder: &str| -> Output {
+    let mut try_take = |secs: &str| -> Output {
         n += 1;
         let card = ready_card(&home, &project, &format!("src/edge{n}.rs"));
-        run(
+        as_session(
             &home,
+            S_A,
             &[
                 "card",
                 "take",
                 &card,
-                "--holder",
-                holder,
                 "--lease-secs",
                 secs,
                 "--project",
@@ -409,19 +522,13 @@ fn the_lease_and_the_holder_have_hard_edges() {
         ("86400", true),
         ("86401", false),
     ] {
-        let out = try_take(secs, "a");
+        let out = try_take(secs);
         if ok {
             result(&out);
         } else {
             assert_eq!(refusal(&out).0, "invalid_input", "{secs} seconds");
         }
     }
-    let h200 = "h".repeat(200);
-    let h201 = "h".repeat(201);
-    result(&try_take("3600", &h200));
-    assert_eq!(refusal(&try_take("3600", &h201)).0, "invalid_input");
-    assert_eq!(refusal(&try_take("3600", "")).0, "invalid_input");
-    assert_eq!(refusal(&try_take("3600", "a\nb")).0, "invalid_input");
 }
 
 #[test]
@@ -475,7 +582,7 @@ fn ready_refuses_what_is_not_a_draft_or_hold_card() {
         &["card", "ready", "C-2", "--project", &project],
     ));
     assert_eq!(r["from"], json!("hold"));
-    // Each successful ready wrote exactly one event with the actor.
+    // Each successful ready wrote exactly one event.
     assert_eq!(
         count(
             &home,
@@ -520,21 +627,11 @@ fn without_a_ledger_every_action_is_not_found_and_creates_nothing() {
     let before = home.snapshot();
     for args in [
         vec!["card", "ready", "C-1", "--project", project.as_str()],
-        vec![
-            "card",
-            "take",
-            "C-1",
-            "--holder",
-            "a",
-            "--project",
-            project.as_str(),
-        ],
+        vec!["card", "take", "C-1", "--project", project.as_str()],
         vec![
             "card",
             "release",
             "C-1",
-            "--holder",
-            "a",
             "--generation",
             "1",
             "--project",
@@ -544,67 +641,121 @@ fn without_a_ledger_every_action_is_not_found_and_creates_nothing() {
             "card",
             "handoff",
             "C-1",
-            "--holder",
-            "a",
             "--generation",
             "1",
             "--to",
-            "b",
+            S_B,
             "--project",
             project.as_str(),
         ],
     ] {
-        let (kind, message) = refusal(&run(&home, &args));
+        let (kind, message) = refusal(&as_session(&home, S_A, &args));
         assert_eq!(kind, "not_found", "{args:?}: {message}");
         assert!(message.contains("ledger-register-plan"), "{message}");
     }
     assert_eq!(home.snapshot(), before);
 }
 
+/// `--home` names the HOME that holds the ledger. Each command runs from a second, empty HOME:
+/// with `--home` it finds the ledger, without it it finds none. A command that ignored `--home`
+/// would fail the first half.
 #[test]
-fn a_release_or_handoff_by_the_wrong_party_or_at_a_wrong_generation_is_refused() {
-    let (home, project) = registered();
-    let card = ready_card(&home, &project, "src/w.rs");
-    result(&take(&home, &project, &card, "owner"));
-    for (holder, generation) in [("intruder", "1"), ("owner", "2"), ("owner", "0")] {
-        let (kind, message) = refusal(&run(
-            &home,
-            &[
-                "card",
-                "release",
-                &card,
-                "--holder",
-                holder,
-                "--generation",
-                generation,
-                "--project",
-                &project,
-            ],
-        ));
-        assert!(
-            kind == "conflict" || kind == "invalid_input",
-            "{holder} {generation}: {kind} {message}"
-        );
-    }
-    let (kind, _) = refusal(&run(
-        &home,
-        &[
-            "card",
-            "handoff",
-            &card,
-            "--holder",
-            "owner",
-            "--generation",
-            "1",
-            "--to",
-            "owner",
-            "--project",
-            &project,
-        ],
-    ));
-    assert_eq!(kind, "invalid_input", "a hand-over to oneself");
-    // The reservation is still the owner's at generation 1.
-    let l = ledger::open_read_only(home.path(), "demo").unwrap();
-    let cur = ledger::reservation::current(l.conn(), 1).unwrap().unwrap();
-    assert_eq!((cur.holder.as_str(), cur.generation), ("owner", 1));
+fn the_home_option_is_the_home_that_is_used() {
+    let (real, project) = registered();
+    let decoy = TempHome::new();
+    let real_home = real.path().to_str().unwrap().to_string();
+    let h = |args: &[&str]| -> Vec<String> {
+        let mut v: Vec<String> = args.iter().map(|s| s.to_string()).collect();
+        v.extend(["--home".into(), real_home.clone()]);
+        v
+    };
+    let from_decoy = |args: Vec<String>| -> Output {
+        let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+        decoy
+            .command(&refs)
+            .env(SESSION_VAR, S_A)
+            .output()
+            .expect("run moai")
+    };
+    let r = result(&from_decoy(h(&[
+        "card",
+        "add",
+        "--title",
+        "far away",
+        "--scope",
+        "src/far.rs",
+        "--project",
+        &project,
+    ])));
+    assert_eq!(r["name"], json!("C-1"));
+    assert_eq!(count(&real, "SELECT count(*) FROM card"), 1);
+    result(&from_decoy(h(&[
+        "card",
+        "ready",
+        "C-1",
+        "--project",
+        &project,
+    ])));
+    let t = result(&from_decoy(h(&[
+        "card",
+        "take",
+        "C-1",
+        "--project",
+        &project,
+    ])));
+    assert_eq!(t["reservation"]["generation"], json!(1));
+    let list = result(&from_decoy(h(&["card", "list", &project])));
+    assert_eq!(list["count"], json!(1));
+    assert_eq!(list["cards"][0]["state"], json!("active"));
+    let show = result(&from_decoy(h(&[
+        "card",
+        "show",
+        "C-1",
+        "--project",
+        &project,
+    ])));
+    assert_eq!(show["title"], json!("far away"));
+    let hand = result(&from_decoy(h(&[
+        "card",
+        "handoff",
+        "C-1",
+        "--generation",
+        "1",
+        "--to",
+        S_B,
+        "--project",
+        &project,
+    ])));
+    assert_eq!(hand["reservation"]["generation"], json!(2));
+    let args = h(&[
+        "card",
+        "release",
+        "C-1",
+        "--generation",
+        "2",
+        "--project",
+        &project,
+    ]);
+    let refs: Vec<&str> = args.iter().map(String::as_str).collect();
+    let released = result(
+        &decoy
+            .command(&refs)
+            .env(SESSION_VAR, S_B)
+            .output()
+            .expect("run moai"),
+    );
+    assert_eq!(released["state"], json!("ready"));
+
+    // Without `--home` the decoy HOME holds no ledger and nothing is created there.
+    let before = decoy.snapshot();
+    let list = result(&decoy.command(&["card", "list", &project]).output().unwrap());
+    assert_eq!(list["ledger"], json!("absent"));
+    let (kind, _) = refusal(
+        &decoy
+            .command(&["card", "add", "--title", "t", "--project", &project])
+            .output()
+            .unwrap(),
+    );
+    assert_eq!(kind, "not_found");
+    assert_eq!(decoy.snapshot(), before);
 }

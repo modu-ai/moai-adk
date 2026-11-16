@@ -99,17 +99,15 @@ enum Action {
     },
     /// Writes the ledger. Take a ready card for a holder
     ///
-    /// Writes the ledger. Reserves the card: the next generation, a lease from the database
+    /// Writes the ledger. Reserves the card for this session: the next generation, a lease from the database
     /// clock, its write scope (the card's own unless `--scope` is given) and `ready` → `active`.
     /// Refused when the card is not `ready`, is already held, or its scope overlaps another
     /// card's reservation (`conflict`). The answer's `generation` is what `release` and
-    /// `handoff` need.
+    /// `handoff` need. The holder is this session's own id (`CLAUDE_CODE_SESSION_ID` or
+    /// `CODEX_THREAD_ID`), never typed; a session without one is refused.
     Take {
         /// `C-12`.
         card: String,
-        /// Who takes it (1 to 200 characters, no control characters).
-        #[arg(long)]
-        holder: String,
         /// Lease length in seconds, 60 to 86400 (default 14400).
         #[arg(long)]
         lease_secs: Option<i64>,
@@ -131,14 +129,12 @@ enum Action {
     },
     /// Writes the ledger. Give a taken card back
     ///
-    /// Writes the ledger. Ends the holder's reservation at the given generation; an `active` card
-    /// becomes `ready`. A stale generation or another holder is refused (`conflict`).
+    /// Writes the ledger. Ends this session's reservation at the given generation; an `active`
+    /// card becomes `ready`. A stale generation or a card held by another session is refused
+    /// (`conflict`).
     Release {
         /// `C-12`.
         card: String,
-        /// The holder that took it.
-        #[arg(long)]
-        holder: String,
         /// The generation `take` or `handoff` answered with.
         #[arg(long)]
         generation: i64,
@@ -151,19 +147,16 @@ enum Action {
     },
     /// Writes the ledger. Hand a taken card over to another holder
     ///
-    /// Writes the ledger. Ends the holder's reservation and gives `--to` the next generation with
+    /// Writes the ledger. Ends this session's reservation and gives `--to` the next generation with
     /// the same scope, worktree, branch and lease end; the card stays `active`. The old generation
     /// is stale from then on. Needs a live lease.
     Handoff {
         /// `C-12`.
         card: String,
-        /// The holder that hands it over.
-        #[arg(long)]
-        holder: String,
-        /// The generation the holder has.
+        /// The generation this session holds.
         #[arg(long)]
         generation: i64,
-        /// The holder that receives it.
+        /// The session id of the receiving holder (hex digits and `-`, 8 to 64 characters).
         #[arg(long)]
         to: String,
         /// The project folder (its profile holds the project id).
@@ -176,6 +169,11 @@ enum Action {
 }
 
 pub const OPERATION: &str = "card";
+
+/// One environment variable, for the session id (a value that is not UTF-8 reads as absent).
+fn env(name: &str) -> Option<String> {
+    std::env::var(name).ok()
+}
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
     use moai_cli::card::command as c;
@@ -223,7 +221,6 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         } => d::ready(&project, &resolve_home(home)?, &card, by.as_deref()),
         Action::Take {
             card,
-            holder,
             lease_secs,
             scope,
             worktree,
@@ -235,7 +232,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             &resolve_home(home)?,
             &card,
             &d::TakeRequest {
-                holder: &holder,
+                holder: &d::session_holder("take", env)?,
                 lease_secs,
                 scope: &scope,
                 worktree: worktree.as_deref(),
@@ -244,14 +241,18 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         ),
         Action::Release {
             card,
-            holder,
             generation,
             project,
             home,
-        } => d::release(&project, &resolve_home(home)?, &card, &holder, generation),
+        } => d::release(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &d::session_holder("release", env)?,
+            generation,
+        ),
         Action::Handoff {
             card,
-            holder,
             generation,
             to,
             project,
@@ -260,7 +261,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             &project,
             &resolve_home(home)?,
             &card,
-            &holder,
+            &d::session_holder("handoff", env)?,
             generation,
             &to,
         ),

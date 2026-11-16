@@ -317,7 +317,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
         &[
             "card add --title fix-login --ac login-works --project .",
             "card ready C-1 --project .",
-            "card take C-1 --holder agent-1 --project .",
+            "card take C-1 --project .",
         ],
     ),
     ("ledger-register-plan", &["ledger-register-plan .", "ledger-register-apply --plan-digest <digest> --permission-reference <ref> ."]),
