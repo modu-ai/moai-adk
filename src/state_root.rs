@@ -31,7 +31,10 @@
 //! `.moai-backups/` (plural) is not one.
 
 use serde_json::{json, Value};
-use std::{fs, path::Path};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 /// The Go and Rust folder name once the state has moved (#2725).
 pub const MOAI_DIR: &str = ".moai";
@@ -67,6 +70,9 @@ pub const MARKER_SCHEMA: u64 = 1;
 /// [`classify_home`] reads it; projects and older builds refuse it as `newer`. Only
 /// `home-install-apply` writes it ([`home_marker_bytes`]), as the last step of the move.
 pub const HOME_MARKER_SCHEMA: u64 = 2;
+/// The earlier generation's project root folder, for the one place that states it as a leftover
+/// and for the workflow reference that still names it (#2936 L2b).
+pub const EARLIER_PROJECT_DIR: &str = crate::PROJECT_STATE_DIR;
 /// The name `go-state-apply` gives the Go folder (#2725 rev2 D2); never overwritten.
 pub const GO_BACKUP: &str = ".moai-backup";
 /// The receipt a `go-state-apply` that moved the Go folder keeps under `.moai/backups/<UTC>/`.
@@ -316,6 +322,18 @@ pub fn go_backup_name(name: &str) -> bool {
             .strip_prefix(GO_BACKUP)
             .and_then(|r| r.strip_prefix('-'))
             .is_some_and(utc_stamp)
+}
+
+/// The newest Go backup folder directly under `root` that is a real folder, not a link (#2936
+/// S1g): `go-state-apply` keeps the Go `.moai/` whole there, so a reader that wants a Go file the
+/// move took away looks inside it. `.moai-backup` sorts before every `.moai-backup-<UTC>`, so the
+/// last name is the most recent one. Only read: a caller never writes below it.
+pub fn latest_go_backup(root: &Path) -> Option<PathBuf> {
+    go_backups(root)
+        .into_iter()
+        .rev()
+        .map(|name| root.join(name))
+        .find(|path| fs::symlink_metadata(path).is_ok_and(|m| m.is_dir()))
 }
 
 /// The Go backups directly under `root`, whatever each entry is, sorted.

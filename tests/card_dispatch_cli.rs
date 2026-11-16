@@ -866,6 +866,38 @@ fn a_card_with_a_live_reservation_cannot_be_made_ready() {
 }
 
 #[test]
+fn ready_on_a_taken_card_names_its_state_and_changes_nothing() {
+    let (home, project) = registered();
+    let card = ready_card(&home, &project, "src/taken.rs");
+    result(&take(&home, &project, &card, S_A));
+    let shown = result(&run(&home, &["card", "show", &card, "--project", &project]));
+    assert_eq!(shown["state"], json!("active"));
+    // The state is the reason, not the reservation that goes with it.
+    let (kind, message) = refusal(&run(
+        &home,
+        &["card", "ready", &card, "--project", &project],
+    ));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("is `active`"), "{message}");
+    assert!(!message.contains("live reservation"), "{message}");
+    // Nothing was written: one `card.ready` event (from `ready_card`), one held reservation.
+    assert_eq!(
+        count(
+            &home,
+            "SELECT count(*) FROM event WHERE kind = 'card.ready'"
+        ),
+        1
+    );
+    assert_eq!(
+        count(
+            &home,
+            "SELECT count(*) FROM reservation WHERE status = 'held'"
+        ),
+        1
+    );
+}
+
+#[test]
 fn a_bad_card_name_is_not_repeated_raw_on_stderr_or_stdout() {
     let (home, project) = registered();
     let nasty = "\u{1b}[31mC-\u{1b}[0m".to_string() + &"z".repeat(100);
