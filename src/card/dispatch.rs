@@ -185,7 +185,7 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
 }
 
 /// `card release C-n`: gives the card back; an `active` card becomes `ready`. A `review` card
-/// is refused before anything is written.
+/// is refused by `reservation::release`, inside its transaction and after the fence.
 pub fn release(
     project: &Path,
     home: &Path,
@@ -195,15 +195,6 @@ pub fn release(
 ) -> Result<Value> {
     let card_id = card_id("release", reference)?;
     let (id, mut ledger) = open_for_write(project, home)?;
-    // A `review` card that is given back has nobody who can close or reopen it, and nothing
-    // reclaims a card yet (C-53 S6): the holder takes it back to `active` first.
-    if card_state(&ledger, card_id)?.as_deref() == Some("review") {
-        return Err(format!(
-            "card conflict in state: C-{card_id} is `review`, and a review card that is given \
-             back has nobody who can close it; run `card reopen C-{card_id} --generation \
-             {generation}` and release it then, or `card done` after the merge"
-        ));
-    }
     let out = reservation::release(&mut ledger, card_id, holder, generation)
         .map_err(|e| e.to_string())?;
     Ok(json!({

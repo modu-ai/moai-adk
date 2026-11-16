@@ -153,8 +153,8 @@ impl From<LedgerError> for ReserveError {
 }
 
 /// Why [`renew`], [`release`], [`handoff`] or [`fence`] refused. Every variant that names a
-/// reservation problem (all but `InvalidInput`, `CardNotFound` and `Ledger`) is also written to
-/// `event` as `fence_reject`.
+/// reservation problem (all but `InvalidInput`, `CardNotFound`, `CardInReview` and `Ledger`) is
+/// also written to `event` as `fence_reject`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FenceError {
     /// A value is out of its limits or malformed. Nothing was read or written.
@@ -185,6 +185,12 @@ pub enum FenceError {
         lease_until: i64,
         now: i64,
     },
+    /// [`release`] only: the caller is the holder, but the card is `review`. Given back, it
+    /// would have nobody who can close or reopen it. Not a reservation problem, so no event.
+    CardInReview {
+        card_id: i64,
+        generation: i64,
+    },
     /// The ledger itself failed (busy, unavailable, constraint ...).
     Ledger(LedgerError),
 }
@@ -200,6 +206,7 @@ impl FenceError {
             FenceError::NotHeld { .. } => "not_held",
             FenceError::WrongHolder { .. } => "wrong_holder",
             FenceError::LeaseExpired { .. } => "lease_expired",
+            FenceError::CardInReview { .. } => "card_in_review",
             FenceError::Ledger(e) => e.code(),
         }
     }
@@ -208,7 +215,10 @@ impl FenceError {
     fn is_recorded(&self) -> bool {
         !matches!(
             self,
-            FenceError::InvalidInput(_) | FenceError::CardNotFound(_) | FenceError::Ledger(_)
+            FenceError::InvalidInput(_)
+                | FenceError::CardNotFound(_)
+                | FenceError::CardInReview { .. }
+                | FenceError::Ledger(_)
         )
     }
 }
@@ -240,6 +250,15 @@ impl std::fmt::Display for FenceError {
             FenceError::LeaseExpired { lease_until, now } => write!(
                 f,
                 "reservation conflict in card: the lease ended at {lease_until} (now {now})"
+            ),
+            FenceError::CardInReview {
+                card_id,
+                generation,
+            } => write!(
+                f,
+                "card conflict in state: C-{card_id} is `review`, and a review card that is given \
+                 back has nobody who can close it; run `card reopen C-{card_id} --generation \
+                 {generation}` and release it then, or `card done` after the merge"
             ),
             FenceError::Ledger(e) => e.fmt(f),
         }
@@ -679,8 +698,14 @@ pub fn renew(
 
 /// Ends the current reservation of `holder` at `generation` (`released`). A live lease is not
 /// needed: a holder whose lease ran out can still give the card back while nobody reclaimed
-/// it. The card goes `active -> ready`; a card that has meanwhile moved on (`review`, `hold`,
-/// `done` ...) keeps its state.
+/// it. The card goes `active -> ready`; a card that has meanwhile moved on (`hold`, `done` ...)
+/// keeps its state.
+///
+/// A `review` card is refused ([`FenceError::CardInReview`]) and nothing is written: given
+/// back, it would have nobody who can close or reopen it, and nothing reclaims a card yet
+/// (C-53 S6). The state is read inside the transaction that would release, after the fence, so
+/// a `review` that commits at the same moment cannot slip between the check and the write
+/// (card C-68 N-a), and a caller who is not the holder gets the fence refusal first.
 pub fn release(
     w: &mut WriteLedger,
     card_id: i64,
@@ -696,13 +721,19 @@ pub fn release(
         generation,
         false,
         |tx, now, row| {
+            let (state, _) = card_row(tx, card_id)?.ok_or_else(|| {
+                LedgerError::Sql("the card vanished inside the transaction".into())
+            })?;
+            if state == "review" {
+                return Ok(Err(FenceError::CardInReview {
+                    card_id,
+                    generation,
+                }));
+            }
             tx.execute(
             "UPDATE reservation SET status = 'released', updated_at = ?1 WHERE reservation_id = ?2",
             params![now, row.reservation_id],
         )?;
-            let (state, _) = card_row(tx, card_id)?.ok_or_else(|| {
-                LedgerError::Sql("the card vanished inside the transaction".into())
-            })?;
             let card_state = if state == "active" {
                 tx.execute(
                     "UPDATE card SET state = 'ready' WHERE card_id = ?1",
@@ -723,12 +754,12 @@ pub fn release(
             let reservation = load_reservation(tx, card_id, generation)?.ok_or_else(|| {
                 LedgerError::Sql("the released reservation cannot be read".into())
             })?;
-            Ok(Released {
+            Ok(Ok(Released {
                 reservation,
                 card_state,
-            })
+            }))
         },
-    )
+    )?
 }
 
 /// Passes the card from `holder` to `to_holder` in one step: the old reservation becomes
@@ -1032,6 +1063,12 @@ mod tests {
         assert!(!FenceError::InvalidInput("x".into()).is_recorded());
         assert!(!FenceError::CardNotFound(1).is_recorded());
         assert!(!FenceError::Ledger(LedgerError::Busy).is_recorded());
+        // The holder's own `release` of a `review` card is a state refusal, not a fence one.
+        assert!(!FenceError::CardInReview {
+            card_id: 1,
+            generation: 1
+        }
+        .is_recorded());
         assert!(FenceError::NoReservation.is_recorded());
         assert!(FenceError::StaleGeneration {
             offered: 1,

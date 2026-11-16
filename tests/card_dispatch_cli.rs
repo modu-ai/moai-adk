@@ -897,6 +897,132 @@ fn ready_on_a_taken_card_names_its_state_and_changes_nothing() {
     );
 }
 
+// ---- release and review (card C-68 N-a) -----------------------------------------------------------
+
+fn generation_args<'a>(action: &'a str, card: &'a str, project: &'a str) -> [&'a str; 7] {
+    [
+        "card",
+        action,
+        card,
+        "--generation",
+        "1",
+        "--project",
+        project,
+    ]
+}
+
+#[test]
+fn a_release_of_a_review_card_by_another_session_is_a_fence_refusal() {
+    let (home, project) = registered();
+    let card = ready_card(&home, &project, "src/rev.rs");
+    result(&take(&home, &project, &card, S_A));
+    result(&as_session(
+        &home,
+        S_A,
+        &generation_args("review", &card, &project),
+    ));
+    // Not the holder: the fence answers (and records it), not the sentence for the holder.
+    let (kind, message) = refusal(&release(&home, &project, &card, S_B, "1"));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("is held by"), "{message}");
+    assert!(!message.contains("card reopen"), "{message}");
+    assert_eq!(
+        count(
+            &home,
+            "SELECT count(*) FROM event WHERE kind = 'fence_reject' \
+             AND json_extract(payload, '$.op') = 'release' \
+             AND json_extract(payload, '$.reason') = 'wrong_holder'"
+        ),
+        1
+    );
+    // The holder with a generation that was never issued: the fence again.
+    let (kind, message) = refusal(&release(&home, &project, &card, S_A, "7"));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("never issued"), "{message}");
+    // The holder itself is told what to do, and nothing is written for it.
+    let events = count(&home, "SELECT count(*) FROM event");
+    let (kind, message) = refusal(&release(&home, &project, &card, S_A, "1"));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(
+        message.contains(&format!("card reopen {card} --generation 1")),
+        "{message}"
+    );
+    assert_eq!(count(&home, "SELECT count(*) FROM event"), events);
+    assert_eq!(
+        count(
+            &home,
+            "SELECT count(*) FROM reservation WHERE status = 'held'"
+        ),
+        1
+    );
+}
+
+/// The holder starts `card release` and `card review` at the same moment, 100 times (two
+/// processes per round, the one started first alternates). The state check of `release` runs
+/// inside its transaction, so exactly one of the two succeeds and no card is left in `review`
+/// with a reservation that was given back.
+#[test]
+fn a_hundred_release_and_review_races_never_strand_a_review_card() {
+    const ROUNDS: usize = 100;
+    let (home, project) = registered();
+    let mut stranded = Vec::new();
+    for round in 0..ROUNDS {
+        let card = ready_card(&home, &project, &format!("race/{round}/"));
+        result(&take(&home, &project, &card, S_A));
+        let start = |action: &str| {
+            home.command(&generation_args(action, &card, &project))
+                .env(SESSION_VAR, S_A)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .expect("start moai")
+        };
+        let order = if round % 2 == 0 {
+            ["release", "review"]
+        } else {
+            ["review", "release"]
+        };
+        let first = start(order[0]);
+        let second = start(order[1]);
+        let outs = [
+            first.wait_with_output().unwrap(),
+            second.wait_with_output().unwrap(),
+        ];
+        let ok: Vec<&str> = order
+            .iter()
+            .zip(&outs)
+            .filter(|(_, out)| out.status.code() == Some(0))
+            .map(|(action, _)| *action)
+            .collect();
+        let l = ledger::open_read_only(home.path(), "demo").unwrap();
+        let id = (round + 1) as i64;
+        let state: String = l
+            .conn()
+            .query_row("SELECT state FROM card WHERE card_id = ?1", [id], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        let held = ledger::reservation::current(l.conn(), id)
+            .unwrap()
+            .is_some_and(|r| r.status == "held");
+        if state == "review" && !held {
+            // Counted, not asserted here: the last line reports how many rounds went wrong.
+            stranded.push(card.clone());
+            continue;
+        }
+        match ok.as_slice() {
+            ["release"] => assert_eq!((state.as_str(), held), ("ready", false), "{card}"),
+            ["review"] => assert_eq!((state.as_str(), held), ("review", true), "{card}"),
+            other => panic!("{card}: exactly one of the two succeeds, got {other:?}"),
+        }
+    }
+    assert!(
+        stranded.is_empty(),
+        "{} of {ROUNDS} rounds left a `review` card without a live reservation: {stranded:?}",
+        stranded.len()
+    );
+}
+
 #[test]
 fn a_bad_card_name_is_not_repeated_raw_on_stderr_or_stdout() {
     let (home, project) = registered();

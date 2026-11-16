@@ -1373,8 +1373,16 @@ fn next_lists_a_review_card_nobody_holds_under_its_own_reason() {
     let n = workflow::next(w.conn(), Some(B)).unwrap();
     assert_eq!(n.skipped[0].reason.code(), "held", "held while in review");
 
-    // The library still lets a holder give a review card back; the card then has no holder.
-    reservation::release(&mut w, card, A, g).unwrap();
+    // `release` refuses a review card (card C-68 N-a), so a ledger from an older build or one
+    // edited by hand is the only way to get a review card with no holder.
+    assert!(matches!(
+        reservation::release(&mut w, card, A, g),
+        Err(FenceError::CardInReview { .. })
+    ));
+    sql(
+        &mut w,
+        &format!("UPDATE reservation SET status = 'released' WHERE card_id = {card}"),
+    );
     for holder in [Some(A), Some(B), None] {
         let n = workflow::next(w.conn(), holder).unwrap();
         assert!(n.mine.is_empty() && n.ready.is_empty());
