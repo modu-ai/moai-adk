@@ -5,9 +5,18 @@
 //! `heavy-slot-acquire [--max N] --name LANE [--dir DIR] -- COMMAND…` waits for one of N slots,
 //! runs COMMAND and returns COMMAND's exit code (128 + the signal number when it ends on a
 //! signal). A slot is a file `slot-<i>` with an exclusive `flock` (std `File::try_lock`); the
-//! open file is handed to COMMAND, so the slot stays held while either the wrapper or COMMAND
-//! is alive and the operating system frees it when both are gone, also after SIGKILL — no
-//! stale slot is left to clean. A waiter holds `waiting/<ns>-<pid>`, and its place is its rank
+//! open file is handed to COMMAND, so the slot stays held while the wrapper, COMMAND or any
+//! child or descendant of COMMAND that still has the file open is alive, and the operating
+//! system frees it when every one of them is gone, also after SIGKILL — no slot file is left
+//! to clean. A descendant that outlives COMMAND (a background process the command started)
+//! therefore keeps the slot after the wrapper has ended; `status` then still lists the slot
+//! with the wrapper's recorded pid, which is dead. Each `held` entry of `status` says so
+//! (`alive`: true, false, or null when the record names no process); for a dead pid it also
+//! lists the processes that have the slot file open (`holders`, `pid` and `comm`, from
+//! `/proc` or `lsof`; `unavailable` with `holders` null is not "nobody"). That is the list of
+//! processes with the file open, not a proof of who owns the lock. Ending such a process is
+//! for its owner; a slot file is never edited or deleted by hand. The Python twin has no
+//! `alive` or `holders`. A waiter holds `waiting/<ns>-<pid>`, and its place is its rank
 //! among live waiters by name. While waiting, and when COMMAND fails, the load averages and the
 //! free disk space of the working folder are printed (AC-2). A machine below `--min-free-gb`
 //! free or above `--max-swap-pct` swap use starts nothing and exits 75 with the measured
@@ -699,7 +708,61 @@ mod sys {
         code
     }
 
-    /// The slots held now (their records) and slot paths that are not plain files. Reads only.
+    /// Whether the process a slot record names is alive (#3033): `Some(true)` or `Some(false)`
+    /// from `kill(pid, 0)`, `None` when the record has no usable pid — missing, not an integer,
+    /// 0 or negative (those would signal a process group), or above `i32::MAX`. A live pid is
+    /// not proof that it holds the lock: the lock belongs to the open file, and the pid may
+    /// have been reused by an unrelated process.
+    pub(super) fn alive_of(record: &Value) -> Option<bool> {
+        let pid = record.get("pid")?.as_i64()?;
+        if !(1..=i64::from(i32::MAX)).contains(&pid) {
+            return None;
+        }
+        crate::home_state::pid_alive(pid)
+    }
+
+    /// One `held` entry: the record as read (any JSON object, `{}` when the file holds anything
+    /// else) plus `alive`, true/false/null as [`alive_of`] says. When the recorded pid is dead
+    /// (`alive` false) the slot is held by someone else, so the entry also lists the processes
+    /// that have the slot file open (`holders`, with `holders_source` `proc` or `lsof`), or
+    /// `holders` null with `holders_source` `unavailable` when neither source could be read —
+    /// "unavailable" is not "nobody".
+    fn held_entry(bytes: Option<Vec<u8>>, slot: &Path) -> Value {
+        held_entry_with(bytes, slot, super::holders::find)
+    }
+
+    /// [`held_entry`] with the holder lookup passed in, so a test can reach the branch where
+    /// neither `/proc` nor `lsof` can be read (`find` answers `None`).
+    pub(super) fn held_entry_with<F>(bytes: Option<Vec<u8>>, slot: &Path, find: F) -> Value
+    where
+        F: FnOnce(&Path) -> Option<(Vec<super::holders::Holder>, &'static str)>,
+    {
+        let mut rec = bytes
+            .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
+            .filter(Value::is_object)
+            .unwrap_or_else(|| json!({}));
+        let alive = alive_of(&rec);
+        rec["alive"] = json!(alive);
+        if alive == Some(false) {
+            match find(slot) {
+                Some((found, source)) => {
+                    rec["holders"] = json!(found
+                        .iter()
+                        .map(|h| json!({"pid": h.pid, "comm": h.comm}))
+                        .collect::<Vec<_>>());
+                    rec["holders_source"] = json!(source);
+                }
+                None => {
+                    rec["holders"] = Value::Null;
+                    rec["holders_source"] = json!("unavailable");
+                }
+            }
+        }
+        rec
+    }
+
+    /// The slots held now (their records, each with `alive`) and slot paths that are not plain
+    /// files. Reads only.
     pub fn status(folder: &Path) -> Result<Value> {
         let (mut held, mut refused) = (Vec::new(), Vec::new());
         let mut names: Vec<String> = match fs::read_dir(folder) {
@@ -714,12 +777,7 @@ mod sys {
         for n in names {
             let p = folder.join(&n);
             match is_held(&p) {
-                Ok(true) => held.push(
-                    fs::read(&p)
-                        .ok()
-                        .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
-                        .unwrap_or_else(|| json!({})),
-                ),
+                Ok(true) => held.push(held_entry(fs::read(&p).ok(), &p)),
                 Ok(false) => {}
                 Err(Open::NotPlain(_)) => refused.push(n),
                 Err(Open::Io(e)) => return Err(e),
@@ -732,6 +790,443 @@ mod sys {
             "machine": machine_line(folder),
             "writes": false,
         }))
+    }
+}
+
+/// #3033 D2: which processes have a slot file open. This answers "who has this file open",
+/// not "who owns the lock": a `flock` belongs to an open file description, and no portable
+/// read says which of the processes sharing one it is. A slot whose recorded pid is dead is
+/// held through a descendant that inherited the file; the open files show it.
+#[cfg(unix)]
+mod holders {
+    use std::fs;
+    use std::io::Read;
+    use std::os::unix::fs::MetadataExt;
+    use std::path::Path;
+    use std::process::{Command, Stdio};
+    use std::time::{Duration, Instant};
+
+    /// `lsof` that has not answered by now is given up on (the answer is then "unavailable").
+    const LSOF_TIMEOUT: Duration = Duration::from_secs(5);
+    /// Longest process name kept; names are cut and control characters replaced.
+    const MAX_COMM: usize = 64;
+
+    /// A process that has the slot file open. No argv: it can carry secrets.
+    #[derive(Debug, PartialEq, Eq)]
+    pub struct Holder {
+        pub pid: i64,
+        pub comm: String,
+    }
+
+    fn clean_comm(s: &str) -> String {
+        s.trim_end_matches(['\n', '\r'])
+            .chars()
+            .map(|c| if c.is_control() { '?' } else { c })
+            .take(MAX_COMM)
+            .collect()
+    }
+
+    /// The processes of `lsof -F pc` output: a `p<pid>` line starts a process, its `c<name>` line
+    /// names it. A process with an unreadable pid is dropped with its fields; a process listed
+    /// twice counts once.
+    pub fn parse_lsof(out: &str) -> Vec<Holder> {
+        let mut found: Vec<Holder> = Vec::new();
+        let mut current: Option<usize> = None;
+        for line in out.lines() {
+            if let Some(p) = line.strip_prefix('p') {
+                current = match p.parse::<i64>() {
+                    Ok(pid) if pid > 0 && p.bytes().all(|b| b.is_ascii_digit()) => {
+                        match found.iter().position(|h| h.pid == pid) {
+                            Some(i) => Some(i),
+                            None => {
+                                found.push(Holder {
+                                    pid,
+                                    comm: String::new(),
+                                });
+                                Some(found.len() - 1)
+                            }
+                        }
+                    }
+                    _ => None,
+                };
+            } else if let Some(c) = line.strip_prefix('c') {
+                if let Some(i) = current {
+                    if found[i].comm.is_empty() {
+                        found[i].comm = clean_comm(c);
+                    }
+                }
+            }
+        }
+        found
+    }
+
+    /// The processes under `proc_root` (a `/proc`) with an open file that is the same file as
+    /// `slot` — the same device and inode, so a hard link or another path to it counts and a
+    /// path string is never compared. `None` when `slot` cannot be read. A process whose `fd`
+    /// folder this user cannot read is not seen.
+    pub fn scan_proc(proc_root: &Path, slot: &Path) -> Option<Vec<Holder>> {
+        let m = fs::metadata(slot).ok()?;
+        let want = (m.dev(), m.ino());
+        let mut out = Vec::new();
+        for e in fs::read_dir(proc_root).ok()?.flatten() {
+            let name = e.file_name();
+            let Some(name) = name.to_str() else { continue };
+            if name.is_empty() || !name.bytes().all(|b| b.is_ascii_digit()) {
+                continue;
+            }
+            let Ok(pid) = name.parse::<i64>() else {
+                continue;
+            };
+            let Ok(fds) = fs::read_dir(e.path().join("fd")) else {
+                continue;
+            };
+            let hit = fds
+                .flatten()
+                .any(|fd| fs::metadata(fd.path()).is_ok_and(|m| (m.dev(), m.ino()) == want));
+            if hit {
+                let comm = fs::read_to_string(e.path().join("comm")).unwrap_or_default();
+                out.push(Holder {
+                    pid,
+                    comm: clean_comm(&comm),
+                });
+            }
+        }
+        out.sort_by_key(|h| h.pid);
+        Some(out)
+    }
+
+    /// `lsof -w -F pc -- <slot>`: exit 0 or 1 is an answer (1 with no output means no process has
+    /// the file open); another code, a failure to start or no answer within `timeout` is `None`.
+    /// `lsof` is the program and its leading arguments (`["lsof"]`; a test passes `["sh",
+    /// "<script>"]` so no freshly written file is executed).
+    pub fn run_lsof(lsof: &[&str], slot: &Path, timeout: Duration) -> Option<Vec<Holder>> {
+        let (program, lead) = lsof.split_first()?;
+        let mut child = Command::new(program)
+            .args(lead)
+            .args(["-w", "-F", "pc", "--"])
+            .arg(slot)
+            .env("LC_ALL", "C")
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .ok()?;
+        let start = Instant::now();
+        let status = loop {
+            match child.try_wait() {
+                Ok(Some(s)) => break s,
+                Ok(None) if start.elapsed() < timeout => {
+                    std::thread::sleep(Duration::from_millis(10))
+                }
+                _ => {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return None;
+                }
+            }
+        };
+        if !matches!(status.code(), Some(0 | 1)) {
+            return None;
+        }
+        let mut text = String::new();
+        child.stdout.take()?.read_to_string(&mut text).ok()?;
+        Some(parse_lsof(&text))
+    }
+
+    /// The holders of `slot` and where they were read: `/proc` when `proc_root` has one
+    /// (`proc`), else `lsof` (`lsof`). The calling process is not listed. `None` when neither
+    /// source can be read.
+    pub fn find_with(
+        proc_root: &Path,
+        lsof: &[&str],
+        slot: &Path,
+        timeout: Duration,
+    ) -> Option<(Vec<Holder>, &'static str)> {
+        let me = i64::from(std::process::id());
+        let (mut found, source) = if proc_root.join("self/fd").exists() {
+            (scan_proc(proc_root, slot)?, "proc")
+        } else {
+            (run_lsof(lsof, slot, timeout)?, "lsof")
+        };
+        found.retain(|h| h.pid != me);
+        Some((found, source))
+    }
+
+    pub fn find(slot: &Path) -> Option<(Vec<Holder>, &'static str)> {
+        find_with(Path::new("/proc"), &["lsof"], slot, LSOF_TIMEOUT)
+    }
+}
+
+#[cfg(all(test, unix))]
+mod holders_tests {
+    use super::holders::{find_with, parse_lsof, run_lsof, scan_proc, Holder};
+    use std::fs;
+    use std::path::Path;
+    use std::time::Duration;
+
+    fn h(pid: i64, comm: &str) -> Holder {
+        Holder {
+            pid,
+            comm: comm.into(),
+        }
+    }
+
+    #[test]
+    fn lsof_output_is_parsed() {
+        let out = "p123\ncsleep\np456\ncsh\n";
+        assert_eq!(parse_lsof(out), vec![h(123, "sleep"), h(456, "sh")]);
+        // A process with no name line, a name line before any process, and the same pid twice.
+        assert_eq!(
+            parse_lsof("cstray\np7\np8\ncx\np7\ncy\n"),
+            vec![h(7, "y"), h(8, "x")]
+        );
+        // An unreadable pid drops that process and its name, not the next one.
+        assert_eq!(
+            parse_lsof("pabc\ncbad\np-3\ncbad\np0\ncbad\np+5\ncbad\np9\ncok\n"),
+            vec![h(9, "ok")]
+        );
+        assert!(parse_lsof("").is_empty());
+        assert!(parse_lsof("f3\nn/some/file\n").is_empty());
+        // A name is cut to 64 characters and control characters are replaced.
+        let long = format!("p1\nc{}\n", "x".repeat(200));
+        assert_eq!(parse_lsof(&long)[0].comm.len(), 64);
+        assert_eq!(parse_lsof("p1\ncab\u{1b}[31mc\n")[0].comm, "ab?[31mc");
+    }
+
+    /// A fake `/proc`: the processes that have the slot file open are found by device and inode —
+    /// also through a hard link under another name — and nothing else is.
+    #[test]
+    fn holders_from_proc_match_by_inode() {
+        let d = tempfile::tempdir().unwrap();
+        let slot = d.path().join("slot-0");
+        fs::write(&slot, "{}").unwrap();
+        let alias = d.path().join("alias");
+        fs::hard_link(&slot, &alias).unwrap();
+        let other = d.path().join("other");
+        fs::write(&other, "x").unwrap();
+        let proc = d.path().join("proc");
+        let mk = |pid: &str, fds: &[(&str, &Path)], comm: Option<&str>| {
+            let fd = proc.join(pid).join("fd");
+            fs::create_dir_all(&fd).unwrap();
+            for (n, target) in fds {
+                std::os::unix::fs::symlink(target, fd.join(n)).unwrap();
+            }
+            if let Some(c) = comm {
+                fs::write(proc.join(pid).join("comm"), c).unwrap();
+            }
+        };
+        mk("self", &[("0", &slot)], Some("me\n")); // not a number: skipped
+        mk("100", &[("3", &alias)], Some("sleep\n")); // by hard link
+        mk("200", &[("0", &other)], Some("noise\n")); // another file
+        mk("300", &[], Some("nofd\n")); // no open file
+        mk("400", &[("5", &slot), ("6", &slot)], None); // twice open, no name
+        mk("12x", &[("3", &slot)], Some("bad\n")); // not a number: skipped
+        fs::create_dir_all(proc.join("500")).unwrap(); // no fd folder
+        let got = scan_proc(&proc, &slot).unwrap();
+        assert_eq!(got, vec![h(100, "sleep"), h(400, "")]);
+        // A slot that cannot be read gives no answer.
+        assert!(scan_proc(&proc, &d.path().join("missing")).is_none());
+    }
+
+    #[test]
+    fn find_prefers_proc_and_leaves_out_the_caller() {
+        let d = tempfile::tempdir().unwrap();
+        let slot = d.path().join("slot-0");
+        fs::write(&slot, "{}").unwrap();
+        let proc = d.path().join("proc");
+        let me = std::process::id().to_string();
+        for pid in [me.as_str(), "77"] {
+            let fd = proc.join(pid).join("fd");
+            fs::create_dir_all(&fd).unwrap();
+            std::os::unix::fs::symlink(&slot, fd.join("3")).unwrap();
+        }
+        fs::create_dir_all(proc.join("self/fd")).unwrap();
+        let (found, source) =
+            find_with(&proc, &["/nonexistent/lsof"], &slot, Duration::from_secs(1)).unwrap();
+        assert_eq!(source, "proc");
+        assert_eq!(found, vec![h(77, "")]);
+    }
+
+    /// A stub `lsof` script, run as `sh <script>` (a file just written is never executed, which
+    /// would race with a fork in another test thread: ETXTBSY).
+    fn stub(dir: &Path, body: &str) -> String {
+        let p = dir.join("lsof.sh");
+        fs::write(&p, format!("{body}\n")).unwrap();
+        p.display().to_string()
+    }
+
+    /// `lsof` exit 0 and 1 are answers; any other exit, a missing program and a program that
+    /// does not answer in time are "unavailable" (`None`), never an empty list.
+    #[test]
+    fn lsof_exit_codes_and_silence_are_told_apart() {
+        let d = tempfile::tempdir().unwrap();
+        let slot = d.path().join("slot-0");
+        fs::write(&slot, "{}").unwrap();
+        let t = Duration::from_millis(300);
+        let run = |body: &str| {
+            let script = stub(d.path(), body);
+            run_lsof(&["sh", &script], &slot, t)
+        };
+        assert_eq!(run("printf 'p5\\ncfoo\\n'"), Some(vec![h(5, "foo")]));
+        assert_eq!(run("exit 1"), Some(vec![]));
+        assert_eq!(
+            run("printf 'p6\\ncbar\\n'; exit 1"),
+            Some(vec![h(6, "bar")])
+        );
+        assert_eq!(run("printf 'p5\\ncfoo\\n'; exit 2"), None);
+        assert_eq!(run("exec sleep 30"), None);
+        assert_eq!(run_lsof(&["/nonexistent/lsof"], &slot, t), None);
+        assert_eq!(run_lsof(&[], &slot, t), None);
+        // No /proc and no lsof: unavailable.
+        let noproc = d.path().join("noproc");
+        assert!(find_with(&noproc, &["/nonexistent/lsof"], &slot, t).is_none());
+    }
+}
+
+/// #3033 D3: the four places that describe the slot say the same thing — a child or descendant
+/// that outlives the command keeps the slot, status shows who, and no one edits a slot file.
+#[cfg(test)]
+mod docs_tests {
+    #[test]
+    fn the_four_descriptions_name_the_leftover_child_and_the_hands_off_rule() {
+        let docs = [
+            ("src/heavy_slot.rs", include_str!("heavy_slot.rs")),
+            (
+                "skills/moai/workflows/verify.md",
+                include_str!("../skills/moai/workflows/verify.md"),
+            ),
+            (
+                "docs/rust-product-path.md",
+                include_str!("../docs/rust-product-path.md"),
+            ),
+            (
+                "tools/heavy_check_slot.py",
+                include_str!("../tools/heavy_check_slot.py"),
+            ),
+        ];
+        for (name, text) in docs {
+            assert!(text.contains("descendant"), "{name}: leftover descendant");
+            assert!(
+                text.contains("never edited or deleted by hand"),
+                "{name}: hands off the slot file"
+            );
+            assert!(text.contains("`alive`"), "{name}: names alive");
+        }
+        // Only the Rust status has `holders`; the Python tool says so instead of listing it.
+        for (name, text) in docs {
+            assert!(text.contains("`holders`"), "{name}: names holders");
+        }
+    }
+}
+
+#[cfg(all(test, unix))]
+mod alive_tests {
+    use super::holders::Holder;
+    use super::sys::{alive_of, held_entry_with};
+    use serde_json::{json, Value};
+    use std::path::Path;
+
+    /// A pid that was alive a moment ago and has been reaped.
+    fn dead_pid() -> i64 {
+        let mut child = std::process::Command::new("true").spawn().unwrap();
+        let pid = i64::from(child.id());
+        child.wait().unwrap();
+        pid
+    }
+
+    fn entry_for(
+        record: &Value,
+        find: impl FnOnce(&Path) -> Option<(Vec<Holder>, &'static str)>,
+    ) -> Value {
+        held_entry_with(
+            Some(record.to_string().into_bytes()),
+            Path::new("slot-0"),
+            find,
+        )
+    }
+
+    /// #3033 D1: `alive` follows `kill(pid, 0)` for a pid in 1..=i32::MAX and is null for
+    /// anything the record cannot name a process by.
+    #[test]
+    fn the_recorded_pid_decides_alive() {
+        let me = i64::from(std::process::id());
+        let mut child = std::process::Command::new("true").spawn().unwrap();
+        let reaped = i64::from(child.id());
+        child.wait().unwrap();
+        let cases: Vec<(Value, Option<bool>)> = vec![
+            (json!({"pid": me}), Some(true)),
+            (json!({"pid": reaped}), Some(false)),
+            (json!({"pid": 1}), Some(true)),
+            (json!({"pid": i32::MAX}), Some(false)),
+            (json!({"pid": 2_147_483_648_i64}), None),
+            (json!({"pid": u64::MAX}), None),
+            (json!({"pid": 0}), None),
+            (json!({"pid": -1}), None),
+            (json!({"pid": i64::MIN}), None),
+            (json!({"pid": "1"}), None),
+            (json!({"pid": 1.5}), None),
+            (json!({"pid": null}), None),
+            (json!({"pid": [1]}), None),
+            (json!({"name": "x"}), None),
+            (json!({}), None),
+            (json!([1]), None),
+            (json!(7), None),
+        ];
+        for (record, want) in cases {
+            assert_eq!(alive_of(&record), want, "{record}");
+        }
+    }
+
+    /// #3033 B1: a slot whose recorded pid is dead is held through someone else. When neither
+    /// `/proc` nor `lsof` can be read the entry says `holders` null and `holders_source`
+    /// `unavailable` — never an empty list, which would read as "nobody holds it" and invite a
+    /// hand edit of the slot file. The same entry with a source that answered "nobody" is an
+    /// empty list from that source, and with an answer it lists the processes.
+    #[test]
+    fn unreadable_holders_are_unavailable_never_an_empty_list() {
+        let record = json!({"pid": dead_pid(), "name": "cargo"});
+        let e = entry_for(&record, |_| None);
+        assert_eq!(e["alive"], json!(false), "{e}");
+        assert!(e["holders"].is_null(), "unavailable is not nobody: {e}");
+        assert_eq!(e["holders_source"], json!("unavailable"), "{e}");
+        assert_eq!(e["name"], json!("cargo"), "the record is kept: {e}");
+
+        let e = entry_for(&record, |_| Some((vec![], "proc")));
+        assert_eq!(e["holders"], json!([]), "{e}");
+        assert_eq!(e["holders_source"], json!("proc"), "{e}");
+
+        let e = entry_for(&record, |_| {
+            Some((
+                vec![Holder {
+                    pid: 41,
+                    comm: "sleep".into(),
+                }],
+                "lsof",
+            ))
+        });
+        assert_eq!(e["holders"], json!([{"pid": 41, "comm": "sleep"}]), "{e}");
+        assert_eq!(e["holders_source"], json!("lsof"), "{e}");
+    }
+
+    /// Only a recorded pid that is dead asks where the file is open: a live pid, a record with no
+    /// usable pid and bytes that are not a JSON object never do, and their entries carry neither
+    /// `holders` nor `holders_source`.
+    #[test]
+    fn only_a_dead_pid_asks_for_holders() {
+        let me = i64::from(std::process::id());
+        let asked = |_: &Path| -> Option<(Vec<Holder>, &'static str)> {
+            panic!("the holders were asked for")
+        };
+        for record in [json!({"pid": me}), json!({"pid": "x"}), json!({})] {
+            let e = entry_for(&record, asked);
+            assert!(e.get("holders").is_none(), "{record}: {e}");
+            assert!(e.get("holders_source").is_none(), "{record}: {e}");
+        }
+        for bytes in [None, Some(b"not json".to_vec()), Some(b"[1]".to_vec())] {
+            let e = held_entry_with(bytes, Path::new("slot-0"), asked);
+            assert_eq!(e["alive"], Value::Null, "{e}");
+            assert!(e.get("holders").is_none(), "{e}");
+        }
     }
 }
 
