@@ -17,6 +17,7 @@ Project
   index-build             Build the code map index
   check-tree              Warn about what the tracked MoAI folders hold
   ledger-status           Show the project's ledger state
+  card                    Work with the project's local cards
   ledger-register-plan    Preview registering the project's ledger
   ledger-register-apply   Create the previewed project ledger
   ledger-recover-plan     Preview recovering a damaged project ledger

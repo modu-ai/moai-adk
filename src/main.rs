@@ -1268,7 +1268,18 @@ fn operation_of(word: &str) -> Option<&'static str> {
     let cli = Cli::command();
     let sub = cli.get_subcommands().find(|s| s.get_name() == word)?;
     let mut argv = vec!["moai-cli".to_string(), word.to_string()];
-    for arg in sub.get_arguments().filter(|a| a.is_required_set()) {
+    push_required(&mut argv, sub);
+    // A word with actions (`card list`): one operation, so any one action names it.
+    if let Some(action) = sub.get_subcommands().find(|s| s.get_name() != "help") {
+        argv.push(action.get_name().to_string());
+        push_required(&mut argv, action);
+    }
+    operation(Cli::try_parse_from(argv).ok()?.command.as_ref()?)
+}
+
+/// Appends a value for each required argument of `command`, in the order clap lists them.
+fn push_required(argv: &mut Vec<String>, command: &clap::Command) {
+    for arg in command.get_arguments().filter(|a| a.is_required_set()) {
         let value = arg
             .get_possible_values()
             .first()
@@ -1278,7 +1289,6 @@ fn operation_of(word: &str) -> Option<&'static str> {
         }
         argv.push(value);
     }
-    operation(Cli::try_parse_from(argv).ok()?.command.as_ref()?)
 }
 
 /// `-l` → leader, `-a` → agent, neither → no role (never guessed).

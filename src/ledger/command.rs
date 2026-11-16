@@ -25,7 +25,7 @@ pub fn resolve_home(home: Option<PathBuf>) -> Result<PathBuf> {
 }
 
 /// The profile's `project_id` of the project at `project`.
-pub(crate) fn project_id_of(project: &Path) -> Result<String> {
+pub fn project_id_of(project: &Path) -> Result<String> {
     let real = std::fs::canonicalize(project)
         .map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE.to_string())?;
     crate::project_id::read(&real)?
