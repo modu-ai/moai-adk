@@ -209,7 +209,13 @@ pub fn show(project: &Path, home: &Path, reference: &str) -> Result<Value> {
 
     let mut stmt = conn
         .prepare(
-            "SELECT note_id, kind, author, origin, body, ref, created_at \
+            // `session`: the session that wrote the note, from its `card.note` event (`null`
+            // for a note written without one, and for an imported note).
+            "SELECT note_id, kind, author, origin, body, ref, created_at, \
+                    (SELECT json_extract(e.payload, '$.session') FROM event e \
+                      WHERE e.card_id = card_note.card_id AND e.kind = 'card.note' \
+                        AND json_extract(e.payload, '$.note_id') = card_note.note_id \
+                      ORDER BY e.event_id LIMIT 1) \
                FROM card_note WHERE card_id = ?1 ORDER BY note_id",
         )
         .map_err(sql_err)?;
@@ -220,6 +226,7 @@ pub fn show(project: &Path, home: &Path, reference: &str) -> Result<Value> {
                 "author": r.get::<_, String>(2)?, "origin": r.get::<_, String>(3)?,
                 "body": r.get::<_, String>(4)?, "ref": r.get::<_, Option<String>>(5)?,
                 "created_at": r.get::<_, i64>(6)?,
+                "session": r.get::<_, Option<String>>(7)?,
             }))
         })
         .map_err(sql_err)?

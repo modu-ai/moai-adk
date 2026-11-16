@@ -295,8 +295,10 @@ fn next_marks_an_ended_lease_and_leaves_closed_cards_out() {
 fn a_note_is_appended_with_a_ref_of_its_own_and_one_event() {
     let (_home, mut w) = setup();
     let card = add_card(&mut w, "draft", "p2", "[]", 0);
-    let first = workflow::add_note(&mut w, card, "report", A, "PLAN C-1\nstep one", None).unwrap();
-    let second = workflow::add_note(&mut w, card, "report", A, "PLAN C-1\nstep one", None).unwrap();
+    let first =
+        workflow::add_note(&mut w, card, "report", A, None, "PLAN C-1\nstep one", None).unwrap();
+    let second =
+        workflow::add_note(&mut w, card, "report", A, None, "PLAN C-1\nstep one", None).unwrap();
     assert_eq!((first.note_id, second.note_id), (1, 2));
     assert_ne!(
         first.reference, second.reference,
@@ -314,6 +316,7 @@ fn a_note_is_appended_with_a_ref_of_its_own_and_one_event() {
         card,
         "decision",
         "user",
+        None,
         "answer",
         Some("decision-7"),
     )
@@ -346,7 +349,15 @@ fn a_note_is_appended_with_a_ref_of_its_own_and_one_event() {
     );
 
     // The same ref on the same card is refused and nothing is added; on another card it is free.
-    let again = workflow::add_note(&mut w, card, "comment", "user", "x", Some("decision-7"));
+    let again = workflow::add_note(
+        &mut w,
+        card,
+        "comment",
+        "user",
+        None,
+        "x",
+        Some("decision-7"),
+    );
     assert_eq!(
         again,
         Err(WorkflowError::DuplicateRef {
@@ -356,14 +367,23 @@ fn a_note_is_appended_with_a_ref_of_its_own_and_one_event() {
     );
     assert_eq!(one::<i64>(w.conn(), "SELECT count(*) FROM card_note"), 3);
     let other = add_card(&mut w, "draft", "p2", "[]", 0);
-    workflow::add_note(&mut w, other, "comment", "user", "x", Some("decision-7")).unwrap();
+    workflow::add_note(
+        &mut w,
+        other,
+        "comment",
+        "user",
+        None,
+        "x",
+        Some("decision-7"),
+    )
+    .unwrap();
 }
 
 #[test]
 fn notes_are_append_only() {
     let (_home, mut w) = setup();
     let card = add_card(&mut w, "draft", "p2", "[]", 0);
-    workflow::add_note(&mut w, card, "comment", "user", "first", None).unwrap();
+    workflow::add_note(&mut w, card, "comment", "user", None, "first", None).unwrap();
     for statement in [
         "UPDATE card_note SET body = 'changed' WHERE note_id = 1",
         "DELETE FROM card_note WHERE note_id = 1",
@@ -374,7 +394,7 @@ fn notes_are_append_only() {
         });
         assert!(refused.is_err(), "{statement}");
     }
-    workflow::add_note(&mut w, card, "comment", "user", "second", None).unwrap();
+    workflow::add_note(&mut w, card, "comment", "user", None, "second", None).unwrap();
     assert_eq!(
         one::<String>(
             w.conn(),
@@ -389,36 +409,42 @@ fn a_note_has_one_of_four_kinds_a_body_within_its_limits_and_a_one_line_ref() {
     let (_home, mut w) = setup();
     let card = add_card(&mut w, "draft", "p2", "[]", 0);
     for kind in NOTE_KINDS {
-        workflow::add_note(&mut w, card, kind, "user", "x", None).unwrap();
+        workflow::add_note(&mut w, card, kind, "user", None, "x", None).unwrap();
     }
     let bad = |r: Result<workflow::Note, WorkflowError>| match r {
         Err(WorkflowError::InvalidInput(why)) => why,
         other => panic!("{other:?}"),
     };
-    assert!(bad(workflow::add_note(&mut w, card, "plan", "user", "x", None)).contains("kind"));
-    assert!(bad(workflow::add_note(&mut w, card, "", "user", "x", None)).contains("kind"));
     assert!(bad(workflow::add_note(
-        &mut w, card, "comment", "user", "", None
+        &mut w, card, "plan", "user", None, "x", None
+    ))
+    .contains("kind"));
+    assert!(bad(workflow::add_note(
+        &mut w, card, "", "user", None, "x", None
+    ))
+    .contains("kind"));
+    assert!(bad(workflow::add_note(
+        &mut w, card, "comment", "user", None, "", None
     ))
     .contains("empty"));
     assert!(bad(workflow::add_note(
-        &mut w, card, "comment", "user", "a\0b", None
+        &mut w, card, "comment", "user", None, "a\0b", None
     ))
     .contains("NUL"));
     let edge = "a".repeat(MAX_NOTE_BYTES);
     assert_eq!(
-        workflow::add_note(&mut w, card, "comment", "user", &edge, None)
+        workflow::add_note(&mut w, card, "comment", "user", None, &edge, None)
             .unwrap()
             .bytes,
         MAX_NOTE_BYTES
     );
     let over = "a".repeat(MAX_NOTE_BYTES + 1);
     assert!(bad(workflow::add_note(
-        &mut w, card, "comment", "user", &over, None
+        &mut w, card, "comment", "user", None, &over, None
     ))
     .contains("1048577"));
     let long = "r".repeat(MAX_LINE_CHARS);
-    workflow::add_note(&mut w, card, "comment", "user", "x", Some(&long)).unwrap();
+    workflow::add_note(&mut w, card, "comment", "user", None, "x", Some(&long)).unwrap();
     let longer = "r".repeat(MAX_LINE_CHARS + 1);
     for reference in [longer.as_str(), "", " ", "two\nlines"] {
         bad(workflow::add_note(
@@ -426,17 +452,18 @@ fn a_note_has_one_of_four_kinds_a_body_within_its_limits_and_a_one_line_ref() {
             card,
             "comment",
             "user",
+            None,
             "x",
             Some(reference),
         ));
     }
     for author in ["", " ", "two\nlines"] {
         bad(workflow::add_note(
-            &mut w, card, "comment", author, "x", None,
+            &mut w, card, "comment", author, None, "x", None,
         ));
     }
     assert_eq!(
-        workflow::add_note(&mut w, 99, "comment", "user", "x", None),
+        workflow::add_note(&mut w, 99, "comment", "user", None, "x", None),
         Err(WorkflowError::CardNotFound(99))
     );
     assert_eq!(
@@ -669,18 +696,34 @@ fn a_pull_request_is_linked_once_and_its_state_follows_the_host() {
         3
     );
 
-    // A link that was retired by hand is live again when its pull request is linked again.
+    // A retired link stays retired: linking its pull request again is refused and changes
+    // nothing (N8).
     sql(
         &mut w,
         "UPDATE card_link SET state = 'retired' WHERE target_number = 8",
     );
-    workflow::link_pr(&mut w, card, A, g, &open_pr(8)).unwrap();
+    assert_eq!(
+        workflow::link_pr(&mut w, card, A, g, &merged(8)),
+        Err(WorkflowError::LinkRetired {
+            card_id: card,
+            target: "github:octo/demo#8".to_string()
+        })
+    );
     assert_eq!(
         one::<String>(
             w.conn(),
-            "SELECT state FROM card_link WHERE target_number = 8"
+            "SELECT state || '|' || pr_state || '|' || coalesce(merge_ref, '-') FROM card_link \
+             WHERE target_number = 8"
         ),
-        "active"
+        "retired|open|-"
+    );
+    assert_eq!(
+        one::<i64>(
+            w.conn(),
+            "SELECT count(*) FROM event WHERE kind = 'card.pr'"
+        ),
+        3,
+        "a refused link leaves no event"
     );
 }
 
@@ -937,8 +980,11 @@ fn done_needs_a_met_criterion_no_open_one_and_a_merged_pull_request() {
         0
     );
 
-    // All met and merged.
-    workflow::link_pr(&mut w, card, A, g, &merged(7)).unwrap();
+    // All met and merged (the link is live again only because the test says so by hand).
+    sql(
+        &mut w,
+        "UPDATE card_link SET state = 'active' WHERE from_card = 2",
+    );
     let closed = workflow::done(&mut w, card, A, g).unwrap();
     assert_eq!(
         (closed.from.as_str(), closed.state.as_str()),
@@ -1087,6 +1133,9 @@ fn a_pattern_covers_itself_and_what_lies_below_it_never_what_lies_above_or_besid
         ("src/**/mod.rs", "src/a/lib.rs"),
         ("src/card/", "src/card/../ledger/x.rs"),
         ("src/card/", "../outside"),
+        ("src/card/", "../src/card/x"),
+        ("e/", "q/../../e/x"),
+        ("src/card/", "src/../../src/card/x"),
         ("src/card/", "src/card/../../../etc/passwd"),
         ("../up/", "anything"),
         ("src/card/", ""),
@@ -1169,9 +1218,170 @@ fn every_refusal_reads_as_the_kind_the_envelope_needs() {
             "not_closable",
             Kind::InvalidInput,
         ),
+        (
+            WorkflowError::LinkRetired {
+                card_id: 3,
+                target: "github:o/r#7".into(),
+            },
+            "link_retired",
+            Kind::Conflict,
+        ),
     ];
     for (error, code, kind) in cases {
         assert_eq!(error.code(), code);
         assert_eq!(classify(&error.to_string()), kind, "{error}");
+    }
+}
+
+// ---- repair of the first audit (N1, N2, N9) ------------------------------------------------------
+
+#[test]
+fn every_note_event_carries_the_session_that_wrote_it_whatever_the_author_says() {
+    let (_home, mut w) = setup();
+    let card = add_card(&mut w, "draft", "p2", "[]", 0);
+    workflow::add_note(&mut w, card, "decision", "leader", Some(B), "go left", None).unwrap();
+    workflow::add_note(&mut w, card, "comment", A, Some(A), "seen", None).unwrap();
+    workflow::add_note(&mut w, card, "comment", "user", None, "by hand", None).unwrap();
+    let sessions: Vec<Option<String>> = w
+        .conn()
+        .prepare(
+            "SELECT json_extract(payload, '$.session') FROM event WHERE kind = 'card.note' \
+             ORDER BY event_id",
+        )
+        .unwrap()
+        .query_map([], |r| r.get(0))
+        .unwrap()
+        .map(Result::unwrap)
+        .collect();
+    assert_eq!(
+        sessions,
+        [Some(B.to_string()), Some(A.to_string()), None],
+        "the author is what was claimed; the session is who wrote"
+    );
+    assert_eq!(
+        one::<String>(
+            w.conn(),
+            "SELECT json_type(payload, '$.session') FROM event WHERE kind = 'card.note' \
+             ORDER BY event_id DESC LIMIT 1"
+        ),
+        "null",
+        "no session is written as null, not left out"
+    );
+    assert_eq!(
+        one::<String>(w.conn(), "SELECT author FROM card_note WHERE note_id = 1"),
+        "leader"
+    );
+    // A session id has the shape of one.
+    for bad in ["", " ", "two\nlines"] {
+        assert!(matches!(
+            workflow::add_note(&mut w, card, "comment", "user", Some(bad), "x", None),
+            Err(WorkflowError::InvalidInput(_))
+        ));
+    }
+    assert_eq!(one::<i64>(w.conn(), "SELECT count(*) FROM card_note"), 3);
+}
+
+#[test]
+fn a_note_keeps_tabs_and_line_breaks_and_refuses_every_other_control_character() {
+    let (_home, mut w) = setup();
+    let card = add_card(&mut w, "draft", "p2", "[]", 0);
+    workflow::add_note(&mut w, card, "comment", "user", None, "a\tb\nc", None).unwrap();
+    for bad in [
+        "a\u{1b}[31mred",
+        "a\rb",
+        "bell\u{7}",
+        "a\u{7f}b",
+        "a\u{9b}b",
+        "a\0b",
+    ] {
+        match workflow::add_note(&mut w, card, "comment", "user", None, bad, None) {
+            Err(WorkflowError::InvalidInput(why)) => {
+                assert!(why.contains("control") || why.contains("NUL"), "{why}")
+            }
+            other => panic!("{bad:?}: {other:?}"),
+        }
+    }
+    assert_eq!(one::<i64>(w.conn(), "SELECT count(*) FROM card_note"), 1);
+}
+
+#[test]
+fn reopen_takes_a_review_card_back_to_active_for_its_holder() {
+    let (_home, mut w) = setup();
+    let (card, g) = taken(&mut w, A, 1);
+    assert_eq!(
+        workflow::reopen(&mut w, card, A, g),
+        Err(WorkflowError::WrongState {
+            card_id: card,
+            state: "active".to_string(),
+            needs: "review",
+            action: "reopened"
+        })
+    );
+    workflow::review(&mut w, card, A, g).unwrap();
+    assert!(matches!(
+        workflow::reopen(&mut w, card, B, g),
+        Err(WorkflowError::Fence(FenceError::WrongHolder { .. }))
+    ));
+    assert!(matches!(
+        workflow::reopen(&mut w, card, A, g + 1),
+        Err(WorkflowError::Fence(FenceError::UnknownGeneration { .. }))
+    ));
+    sql(
+        &mut w,
+        "UPDATE reservation SET lease_until = unixepoch() WHERE card_id = 1",
+    );
+    assert!(matches!(
+        workflow::reopen(&mut w, card, A, g),
+        Err(WorkflowError::Fence(FenceError::LeaseExpired { .. }))
+    ));
+    assert_eq!(one::<String>(w.conn(), "SELECT state FROM card"), "review");
+    assert_eq!(fence_rejects(w.conn(), "reopen", "wrong_holder"), 1);
+    assert_eq!(fence_rejects(w.conn(), "reopen", "lease_expired"), 1);
+
+    sql(
+        &mut w,
+        "UPDATE reservation SET lease_until = unixepoch() + 600 WHERE card_id = 1",
+    );
+    let moved = workflow::reopen(&mut w, card, A, g).unwrap();
+    assert_eq!(
+        (moved.from.as_str(), moved.state.as_str()),
+        ("review", "active")
+    );
+    assert_eq!(moved.reservation.status, "held");
+    assert_eq!(moved.reservation.generation, g, "the same generation");
+    assert_eq!(moved.closed_at, None);
+    assert_eq!(one::<String>(w.conn(), "SELECT state FROM card"), "active");
+    assert_eq!(
+        one::<i64>(
+            w.conn(),
+            "SELECT count(*) FROM event WHERE kind = 'card.reopen'"
+        ),
+        1
+    );
+    // The repaired card goes to review again and closes as usual.
+    met(&mut w, card, A, g, 1);
+    workflow::link_pr(&mut w, card, A, g, &merged(7)).unwrap();
+    workflow::review(&mut w, card, A, g).unwrap();
+    workflow::done(&mut w, card, A, g).unwrap();
+}
+
+#[test]
+fn next_lists_a_review_card_nobody_holds_under_its_own_reason() {
+    let (_home, mut w) = setup();
+    let (card, g) = taken(&mut w, A, 0);
+    workflow::review(&mut w, card, A, g).unwrap();
+    let n = workflow::next(w.conn(), Some(B)).unwrap();
+    assert_eq!(n.skipped[0].reason.code(), "held", "held while in review");
+
+    // The library still lets a holder give a review card back; the card then has no holder.
+    reservation::release(&mut w, card, A, g).unwrap();
+    for holder in [Some(A), Some(B), None] {
+        let n = workflow::next(w.conn(), holder).unwrap();
+        assert!(n.mine.is_empty() && n.ready.is_empty());
+        assert_eq!(n.skipped.len(), 1);
+        assert_eq!(n.skipped[0].card_id, card);
+        assert_eq!(n.skipped[0].state, "review");
+        assert_eq!(n.skipped[0].reason, SkipReason::ReviewNoHolder);
+        assert_eq!(n.skipped[0].reason.code(), "review_no_holder");
     }
 }

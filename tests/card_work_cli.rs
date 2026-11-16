@@ -805,7 +805,15 @@ fn check_answers_whether_this_session_may_write_a_path() {
         assert_eq!(kind, "conflict", "{path}: {message}");
         assert!(message.contains("conflict in write scope"), "{message}");
     }
-    for path in ["", "/etc/passwd", "a\nb"] {
+    for path in [
+        "",
+        "/etc/passwd",
+        "a\nb",
+        "src\\card\\work.rs",
+        " src/card/work.rs",
+        "src/card/work.rs ",
+        "C:\\x",
+    ] {
         let (kind, message) = refusal(&w.card(
             Some(S_A),
             &["check", &card, "--generation", "1", "--path", path],
@@ -1114,6 +1122,7 @@ fn every_new_action_says_first_what_it_does_to_the_ledger() {
         ("review", "Writes the ledger."),
         ("done", "Writes the ledger."),
         ("renew", "Writes the ledger."),
+        ("reopen", "Writes the ledger."),
     ] {
         let out = home.command(&["card", action, "--help"]).output().unwrap();
         assert!(out.status.success(), "card {action} --help");
@@ -1142,4 +1151,304 @@ fn every_new_action_says_first_what_it_does_to_the_ledger() {
             "card --help lists {action}"
         );
     }
+}
+
+// ---- repair of the first audit --------------------------------------------------------------------
+
+/// A token-shaped word built at run time, so no literal in this file has the shape.
+fn token_shaped() -> String {
+    format!("{}{}", ["gh", "p_"].concat(), "a1B2".repeat(9))
+}
+
+#[test]
+fn a_note_records_the_session_that_wrote_it_and_show_prints_it() {
+    let w = world(true);
+    let card = w.ready_card("src/a/", 0, "p2");
+    let note = |session: Option<&str>, extra: &[&str]| {
+        let mut args = vec!["note", card.as_str()];
+        args.extend_from_slice(extra);
+        w.card_stdin(session, &args, b"text")
+    };
+    let as_leader = result(&note(Some(S_B), &["--kind", "decision", "--by", "leader"]));
+    assert_eq!(as_leader["author"], json!("leader"));
+    assert_eq!(
+        as_leader["session"],
+        json!(S_B),
+        "--by does not hide the session"
+    );
+    let own = result(&note(Some(S_A), &["--kind", "comment"]));
+    assert_eq!(own["author"], json!(S_A));
+    assert_eq!(own["session"], json!(S_A));
+    let by_hand = result(&note(None, &["--kind", "comment"]));
+    assert_eq!(by_hand["author"], json!("user"));
+    assert_eq!(by_hand["session"], Value::Null);
+
+    let show = result(&w.card(None, &["show", &card]));
+    let seen: Vec<(Value, Value)> = show["notes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|n| (n["author"].clone(), n["session"].clone()))
+        .collect();
+    assert_eq!(
+        seen,
+        [
+            (json!("leader"), json!(S_B)),
+            (json!(S_A), json!(S_A)),
+            (json!("user"), Value::Null),
+        ]
+    );
+}
+
+#[test]
+fn a_decision_note_needs_an_explicit_author() {
+    let w = world(true);
+    let card = w.ready_card("src/a/", 0, "p2");
+    let args = ["note", card.as_str(), "--kind", "decision"];
+    for session in [None, Some(S_A)] {
+        let (kind, message) = refusal(&w.card_stdin(session, &args, b"go left"));
+        assert_eq!(kind, "invalid_input", "{session:?}: {message}");
+        assert!(message.starts_with("card note refused: "), "{message}");
+        assert!(message.contains("--by"), "{message}");
+    }
+    assert_eq!(w.count("SELECT count(*) FROM card_note"), 0);
+    assert_eq!(
+        w.count("SELECT count(*) FROM event WHERE kind = 'card.note'"),
+        0
+    );
+    // The other kinds keep their default author; a decision with --by is stored.
+    result(&w.card_stdin(None, &["note", &card, "--kind", "report"], b"x"));
+    let decided = result(&w.card_stdin(
+        None,
+        &["note", &card, "--kind", "decision", "--by", "user"],
+        b"go left",
+    ));
+    assert_eq!(decided["author"], json!("user"));
+    assert_eq!(decided["session"], Value::Null);
+}
+
+#[test]
+fn a_review_card_is_not_released_but_reopened() {
+    let w = world(true);
+    let (card, g) = w.taken(S_A, "src/a/", 1);
+    result(&w.card(Some(S_A), &["review", &card, "--generation", &g]));
+
+    // Giving a review card back would leave it with nobody who can close it.
+    let events = w.count("SELECT count(*) FROM event");
+    let (kind, message) = refusal(&w.card(Some(S_A), &["release", &card, "--generation", &g]));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("`review`"), "{message}");
+    assert!(
+        message.contains("card reopen"),
+        "it says what to do: {message}"
+    );
+    assert_eq!(
+        w.count("SELECT count(*) FROM event"),
+        events,
+        "nothing was written"
+    );
+    let show = result(&w.card(None, &["show", &card]));
+    assert_eq!(show["state"], json!("review"));
+    assert_eq!(show["reservation"]["status"], json!("held"));
+
+    // Reopen: holder only, then the card is active again and can be given back.
+    let (kind, message) = refusal(&w.card(Some(S_B), &["reopen", &card, "--generation", &g]));
+    assert_eq!(kind, "conflict", "{message}");
+    let (kind, _) = refusal(&w.card(None, &["reopen", &card, "--generation", &g]));
+    assert_eq!(kind, "invalid_input");
+    let reopened = result(&w.card(Some(S_A), &["reopen", &card, "--generation", &g]));
+    assert_eq!(reopened["action"], json!("reopen"));
+    assert_eq!(reopened["from"], json!("review"));
+    assert_eq!(reopened["state"], json!("active"));
+    assert_eq!(reopened["reservation"]["status"], json!("held"));
+    assert_eq!(reopened["events"], json!(1));
+    let (kind, message) = refusal(&w.card(Some(S_A), &["reopen", &card, "--generation", &g]));
+    assert_eq!(kind, "conflict", "not twice: {message}");
+    let released = result(&w.card(Some(S_A), &["release", &card, "--generation", &g]));
+    assert_eq!(released["state"], json!("ready"));
+}
+
+#[test]
+fn next_shows_a_review_card_nobody_holds() {
+    let w = world(true);
+    let (card, g) = w.taken(S_A, "src/a/", 0);
+    result(&w.card(Some(S_A), &["review", &card, "--generation", &g]));
+    // Such a card can only come from outside the commands (an older build, a repair by hand).
+    let mut l = ledger::open_write(w.home.path(), "demo").unwrap();
+    l.with_write_tx(|tx, _| {
+        tx.execute("UPDATE reservation SET status = 'released'", [])?;
+        Ok(())
+    })
+    .unwrap();
+    drop(l);
+    let next = w.next(Some(S_A));
+    assert_eq!(next["next"], Value::Null);
+    assert_eq!(next["mine"], json!([]));
+    assert_eq!(next["skipped"][0]["name"], json!(card));
+    assert_eq!(next["skipped"][0]["state"], json!("review"));
+    assert_eq!(next["skipped"][0]["reason"], json!("review_no_holder"));
+}
+
+#[test]
+fn handoff_reports_the_state_the_card_is_in() {
+    let w = world(true);
+    let (card, g) = w.taken(S_A, "src/a/", 0);
+    result(&w.card(Some(S_A), &["review", &card, "--generation", &g]));
+    let handed = result(&w.card(
+        Some(S_A),
+        &["handoff", &card, "--generation", &g, "--to", S_B],
+    ));
+    assert_eq!(handed["state"], json!("review"));
+    assert_eq!(handed["reservation"]["holder"], json!(S_B));
+    let back = result(&w.card(Some(S_B), &["reopen", &card, "--generation", "2"]));
+    assert_eq!(back["state"], json!("active"));
+    let handed = result(&w.card(
+        Some(S_B),
+        &["handoff", &card, "--generation", "2", "--to", S_A],
+    ));
+    assert_eq!(handed["state"], json!("active"));
+}
+
+#[test]
+fn a_card_from_a_host_project_takes_pull_requests_of_that_project_only() {
+    let home = TempHome::new();
+    let project = home.project("demo");
+    ledger::register(home.path(), "demo").unwrap();
+    let mut l = ledger::open_write(home.path(), "demo").unwrap();
+    l.with_write_tx(|tx, now| {
+        tx.execute(
+            "INSERT INTO card (title, state, write_scope, created_by, created_at, updated_at, \
+                               source_host, source_project, source_number) \
+             VALUES ('t', 'ready', '[\"src/a/\"]', 'test', ?1, ?1, 'github', 'octo/demo', 3)",
+            [now],
+        )?;
+        tx.execute(
+            "INSERT INTO card (title, state, write_scope, created_by, created_at, updated_at) \
+             VALUES ('local', 'ready', '[\"src/b/\"]', 'test', ?1, ?1)",
+            [now],
+        )?;
+        Ok(())
+    })
+    .unwrap();
+    for (card, scope) in [(1, "src/a/"), (2, "src/b/")] {
+        ledger::reservation::reserve(&mut l, card, S_A, &[scope.to_string()], 3600, None, None)
+            .unwrap();
+    }
+    drop(l);
+    let fake = FakeConnector::new(HostKind::Github).with_pr(PrState {
+        number: 12,
+        phase: PrPhase::Open,
+        head: HEAD.to_string(),
+        merge_commit: None,
+    });
+    let request = |repo: Option<&'static str>| work::PrRequest {
+        holder: S_A,
+        generation: 1,
+        number: 12,
+        from: None,
+        repo,
+    };
+    for other in ["evil/demo", "octo/other", "octo/demo2"] {
+        let refused =
+            work::pr(&project, home.path(), "C-1", &request(Some(other)), &fake).unwrap_err();
+        assert!(refused.starts_with("card pr refused: "), "{refused}");
+        assert!(
+            refused.contains("octo/demo"),
+            "it names the card's project: {refused}"
+        );
+    }
+    assert!(fake.calls().is_empty(), "a refused project is never asked");
+    // The card's own project, however it is spelled, and no --repo at all.
+    work::pr(
+        &project,
+        home.path(),
+        "C-1",
+        &request(Some("Octo/Demo")),
+        &fake,
+    )
+    .unwrap();
+    work::pr(&project, home.path(), "C-1", &request(None), &fake).unwrap();
+    // A card that came from nowhere keeps --repo.
+    let local = work::pr(
+        &project,
+        home.path(),
+        "C-2",
+        &request(Some("any/where")),
+        &fake,
+    )
+    .unwrap();
+    assert_eq!(local["to"], json!("github:any/where#12"));
+    assert_eq!(fake.calls().len(), 3);
+}
+
+#[test]
+fn a_note_is_measured_after_the_trailing_line_breaks_are_gone() {
+    let w = world(true);
+    let card = w.ready_card("src/a/", 0, "p2");
+    let args = ["note", card.as_str(), "--kind", "report"];
+    let mut edge = vec![b'a'; 1_048_576];
+    edge.extend(vec![b'\n'; 5_000]);
+    assert_eq!(
+        result(&w.card_stdin(None, &args, &edge))["bytes"],
+        json!(1_048_576),
+        "exactly one mebibyte of text, whatever follows it"
+    );
+    let mut over = vec![b'a'; 1_048_577];
+    over.extend(vec![b'\n'; 5_000]);
+    let (kind, message) = refusal(&w.card_stdin(None, &args, &over));
+    assert_eq!(kind, "invalid_input", "{message}");
+    // Text after a long run of line breaks is still text: nothing is cut short in silence.
+    let mut split = vec![b'a'; 1_048_000];
+    split.extend(vec![b'\n'; 5_000]);
+    split.extend_from_slice(b"tail");
+    let (kind, message) = refusal(&w.card_stdin(None, &args, &split));
+    assert_eq!(kind, "invalid_input", "{message}");
+    let mut inside = vec![b'a'; 1_000];
+    inside.extend(vec![b'\n'; 5_000]);
+    inside.extend_from_slice(b"tail");
+    assert_eq!(
+        result(&w.card_stdin(None, &args, &inside))["bytes"],
+        json!(6_004)
+    );
+    assert_eq!(w.count("SELECT count(*) FROM card_note"), 2);
+}
+
+#[test]
+fn a_note_with_the_shape_of_a_secret_or_a_terminal_escape_is_refused() {
+    let w = world(true);
+    let card = w.ready_card("src/a/", 0, "p2");
+    let args = ["note", card.as_str(), "--kind", "report"];
+    let token = token_shaped();
+    let key = format!("{}{}", ["s", "k-"].concat(), "a1B2".repeat(6));
+    for text in [
+        format!("the token is {token}"),
+        format!("first line\n{key}\nlast line"),
+        format!("{}=hunter2", ["pass", "word"].concat()),
+    ] {
+        let (kind, message) = refusal(&w.card_stdin(None, &args, text.as_bytes()));
+        assert_eq!(kind, "invalid_input", "{message}");
+        assert!(message.starts_with("card note refused: "), "{message}");
+        assert!(message.contains("secret"), "{message}");
+        assert!(
+            !message.contains(&token) && !message.contains(&key) && !message.contains("hunter2"),
+            "the refusal does not repeat the text: {message}"
+        );
+    }
+    for text in [
+        &b"red \x1b[31mtext"[..],
+        &b"carriage\rreturn"[..],
+        &b"bell\x07"[..],
+    ] {
+        let (kind, message) = refusal(&w.card_stdin(None, &args, text));
+        assert_eq!(kind, "invalid_input", "{message}");
+        assert!(message.contains("control"), "{message}");
+    }
+    assert_eq!(w.count("SELECT count(*) FROM card_note"), 0);
+    // Ordinary words that only contain a short shape are notes like any other.
+    let plain = result(&w.card_stdin(
+        None,
+        &args,
+        b"risk-based task-1: ask-first\n\tindented token count",
+    ));
+    assert_eq!(plain["note_id"], json!(1));
 }

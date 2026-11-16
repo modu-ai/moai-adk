@@ -153,7 +153,7 @@ enum Action {
     /// Writes the ledger. Give a taken card back
     ///
     /// Writes the ledger. Ends this session's reservation at the given generation; an `active`
-    /// card becomes `ready`. A stale generation or a card held by another session is refused
+    /// card becomes `ready`. A `review` card is refused: `card reopen` it first. A stale generation or a card held by another session is refused
     /// (`conflict`).
     Release {
         /// `C-12`.
@@ -210,8 +210,10 @@ enum Action {
     ///
     /// Writes the ledger. Stores the text read from stdin as one note with one `card.note`
     /// event. Notes are only ever added, never changed or removed, and anyone may add one: a
-    /// decision is answered by someone who does not hold the card. The answer's `ref` names the
-    /// note on its card.
+    /// decision is answered by someone who does not hold the card. The event keeps the id of the
+    /// session that wrote the note, whatever `--by` says, and `card show` prints it. The text is
+    /// at most 1 MiB, with no control character but tabs and line breaks, and no word with the
+    /// shape of a secret: `card export` writes notes out. The answer's `ref` names the note.
     Note {
         /// `C-12`.
         card: String,
@@ -221,7 +223,8 @@ enum Action {
         /// A name for the note, unique on its card (default: a random one).
         #[arg(long = "ref")]
         reference: Option<String>,
-        /// Who writes it (default: this session's id, or `user` without one).
+        /// Who signs it (default: this session's id, or `user` without one). A `decision`
+        /// needs it.
         #[arg(long)]
         by: Option<String>,
         /// The project folder (its profile holds the project id).
@@ -277,7 +280,8 @@ enum Action {
         /// The generation `take` or `handoff` answered with.
         #[arg(long)]
         generation: i64,
-        /// The host project, written `owner/repo` (default: the project the card came from).
+        /// The host project, written `owner/repo`. A card that came from a host project takes
+        /// only that project (the default); any other card needs this.
         #[arg(long)]
         repo: Option<String>,
         /// The host: `github` (default: the card's own host, else `github`).
@@ -296,6 +300,24 @@ enum Action {
     /// this session, holding the card at `--generation` with a live lease; the reservation
     /// stays.
     Review {
+        /// `C-12`.
+        card: String,
+        /// The generation `take` or `handoff` answered with.
+        #[arg(long)]
+        generation: i64,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Take a card in review back to active
+    ///
+    /// Writes the ledger. A `review` card becomes `active` again, with one `card.reopen` event:
+    /// the way back when the review found something to repair. As this session, holding the
+    /// card at `--generation` with a live lease; the reservation stays.
+    Reopen {
         /// `C-12`.
         card: String,
         /// The generation `take` or `handoff` answered with.
@@ -352,14 +374,15 @@ enum Action {
     ///
     /// Reads the ledger only. Exit 0 only when this session holds the card at `--generation`
     /// with a live lease and every `--path` lies under the reservation's write scope. Anything
-    /// else is refused (`conflict`). Nothing is recorded.
+    /// else is refused (`conflict`). Nothing is recorded. The paths are compared as text:
+    /// a symbolic link on disk is not followed.
     Check {
         /// `C-12`.
         card: String,
         /// The generation `take` or `handoff` answered with.
         #[arg(long)]
         generation: i64,
-        /// A path to write, relative to the repository (repeat for more).
+        /// A path to write, relative to the repository and written with `/` (repeat for more).
         #[arg(long = "path", required = true)]
         path: Vec<String>,
         /// The project folder (its profile holds the project id).
@@ -376,19 +399,6 @@ pub const OPERATION: &str = "card";
 /// One environment variable, for the session id (a value that is not UTF-8 reads as absent).
 fn env(name: &str) -> Option<String> {
     std::env::var(name).ok()
-}
-
-/// The text of `card note` from stdin: at most one byte more than `work::NOTE_READ_LIMIT`, so a
-/// text that is too large is seen as too large and never cut short without a word.
-fn read_note_text() -> Result<Vec<u8>, String> {
-    use std::io::Read;
-    let mut text = Vec::new();
-    std::io::stdin()
-        .lock()
-        .take(moai_cli::card::work::NOTE_READ_LIMIT as u64 + 1)
-        .read_to_end(&mut text)
-        .map_err(|e| format!("card note refused: stdin could not be read ({e})"))?;
-    Ok(text)
 }
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
@@ -500,7 +510,9 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             home,
         } => {
             let home = resolve_home(home)?;
-            let text = read_note_text()?;
+            // The one action that reads standard input (the help rule in `src/main.rs` reads
+            // this arm).
+            let text = w::read_note_text(std::io::stdin().lock())?;
             w::note(
                 &project,
                 &home,
@@ -587,6 +599,18 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             &resolve_home(home)?,
             &card,
             &d::session_holder("review", env)?,
+            generation,
+        ),
+        Action::Reopen {
+            card,
+            generation,
+            project,
+            home,
+        } => w::reopen(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &d::session_holder("reopen", env)?,
             generation,
         ),
         Action::Done {

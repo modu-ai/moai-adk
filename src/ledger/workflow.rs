@@ -6,7 +6,9 @@
 //! - [`next`] only reads: the cards a holder holds, the `ready` cards it could take (priority,
 //!   then number) and every card it cannot take, with the reason.
 //! - [`add_note`] appends one note. Notes are not fenced: a decision is answered by someone who
-//!   does not hold the card. Every note gets a `ref` that is unique on its card.
+//!   does not hold the card. Every note gets a `ref` that is unique on its card, and its event
+//!   records the session that wrote it next to the author it is signed with.
+//! - [`reopen`] is `review -> active` for the holder, the way back after a failed review.
 //! - [`set_criterion`], [`link_pr`], [`review`] and [`done`] are fenced writers: they accept only
 //!   the current generation of the offered holder, and a refusal is recorded as a
 //!   `fence_reject` event like every other fenced call. [`set_criterion`] and [`review`] need a
@@ -60,6 +62,11 @@ pub enum WorkflowError {
     },
     /// `done` was refused by one of the three closing rules; the text is the schema's own.
     NotClosable(String),
+    /// The card's link to this pull request was retired; it is not made live again.
+    LinkRetired {
+        card_id: i64,
+        target: String,
+    },
     /// The ledger itself failed (busy, unavailable, constraint ...).
     Ledger(LedgerError),
 }
@@ -74,6 +81,7 @@ impl WorkflowError {
             WorkflowError::DuplicateRef { .. } => "duplicate_ref",
             WorkflowError::WrongState { .. } => "wrong_state",
             WorkflowError::NotClosable(_) => "not_closable",
+            WorkflowError::LinkRetired { .. } => "link_retired",
             WorkflowError::Ledger(e) => e.code(),
         }
     }
@@ -102,6 +110,10 @@ impl std::fmt::Display for WorkflowError {
                 "card conflict in state: C-{card_id} is `{state}`; only a `{needs}` card can be {action}"
             ),
             WorkflowError::NotClosable(why) => write!(f, "card done refused: {why}"),
+            WorkflowError::LinkRetired { card_id, target } => write!(
+                f,
+                "card conflict in pr link: C-{card_id}'s link to {target} is retired; a retired link is not linked again"
+            ),
             WorkflowError::Ledger(e) => e.fmt(f),
         }
     }
@@ -165,6 +177,8 @@ pub enum SkipReason {
     },
     /// It has no write scope, and a reservation needs one.
     EmptyScope,
+    /// It is in `review` and nobody holds it, so nobody can close or reopen it.
+    ReviewNoHolder,
 }
 
 impl SkipReason {
@@ -173,6 +187,7 @@ impl SkipReason {
             SkipReason::Held { .. } => "held",
             SkipReason::ScopeOverlap { .. } => "scope_overlap",
             SkipReason::EmptyScope => "empty_scope",
+            SkipReason::ReviewNoHolder => "review_no_holder",
         }
     }
 }
@@ -249,6 +264,17 @@ pub fn next(conn: &Connection, holder: Option<&str>) -> Result<Next, LedgerError
             }
             continue;
         }
+        if state == "review" {
+            // Nobody can close or reopen it: `review`, `done` and `reopen` all need the holder.
+            out.skipped.push(Skipped {
+                card_id,
+                title,
+                state,
+                priority,
+                reason: SkipReason::ReviewNoHolder,
+            });
+            continue;
+        }
         if state != "ready" {
             continue;
         }
@@ -300,12 +326,16 @@ pub struct Note {
 }
 
 /// Appends one note to the card, with a `card.note` event. `reference` names the note on its
-/// card; without one a random one is made (`note:<card>:<32 hex digits>`).
+/// card; without one a random one is made (`note:<card>:<32 hex digits>`). `author` is the name
+/// the note is signed with and `session` the id of the session that writes it (`None` for a
+/// caller without one): the event keeps both, so a note signed `leader` still says which
+/// session wrote it.
 pub fn add_note(
     w: &mut WriteLedger,
     card_id: i64,
     kind: &str,
     author: &str,
+    session: Option<&str>,
     body: &str,
     reference: Option<&str>,
 ) -> Result<Note, WorkflowError> {
@@ -317,11 +347,24 @@ pub fn add_note(
         )));
     }
     one_line("the note author", author, MAX_AUTHOR_CHARS).map_err(invalid)?;
+    if let Some(session) = session {
+        one_line("the session id", session, MAX_AUTHOR_CHARS).map_err(invalid)?;
+    }
     if body.trim().is_empty() {
         return Err(invalid("the note text is empty".into()));
     }
     if body.contains('\0') {
         return Err(invalid("the note text contains a NUL character".into()));
+    }
+    // A note is shown on terminals and written out by `card export`: an escape sequence or a
+    // carriage return could repaint what a reader sees. Tabs and line breaks are text.
+    if body
+        .chars()
+        .any(|c| c.is_control() && c != '\t' && c != '\n')
+    {
+        return Err(invalid(
+            "the note text contains a control character; only tabs and line breaks are kept".into(),
+        ));
     }
     if body.len() > MAX_NOTE_BYTES {
         return Err(invalid(format!(
@@ -369,7 +412,11 @@ pub fn add_note(
             author,
             card_id,
             "card.note",
-            &json!({"note_id": note_id, "kind": kind, "ref": reference, "bytes": body.len()}),
+            // `session` is who wrote the note, whatever `author` claims; `null` without one.
+            &json!({
+                "note_id": note_id, "kind": kind, "ref": reference, "bytes": body.len(),
+                "author": author, "session": session,
+            }),
         )?;
         Ok(Ok(Note {
             note_id,
@@ -544,7 +591,8 @@ pub fn holder_check(
 }
 
 /// Links the card to a pull request, or stores the new state of a link it already has, as the
-/// current holder at `generation` (a live lease is not needed).
+/// current holder at `generation` (a live lease is not needed). A link that was retired stays
+/// retired: the call is refused and nothing changes.
 pub fn link_pr(
     w: &mut WriteLedger,
     card_id: i64,
@@ -580,22 +628,29 @@ pub fn link_pr(
     // Only a merged pull request has a merge commit worth keeping.
     let merge_ref = t.merge_ref.filter(|_| t.pr_state == "merged");
     reservation::fenced(w, "pr", card_id, holder, generation, false, |tx, now, _| {
-        let existing: Option<i64> = tx
+        let existing: Option<(i64, String)> = tx
             .query_row(
-                "SELECT link_id FROM card_link WHERE from_card = ?1 AND kind = 'pr' \
+                "SELECT link_id, state FROM card_link WHERE from_card = ?1 AND kind = 'pr' \
                      AND target_host = ?2 AND target_project = ?3 AND target_number = ?4",
                 params![card_id, t.host, t.project, t.number],
-                |r| r.get(0),
+                |r| Ok((r.get(0)?, r.get(1)?)),
             )
             .optional()?;
-        let link_id = match existing {
-            Some(link_id) => {
+        let link_id = match &existing {
+            // Retiring a link is a decision; reading the host again does not undo it.
+            Some((_, state)) if state != "active" => {
+                return Ok(Err(WorkflowError::LinkRetired {
+                    card_id,
+                    target: format!("{}:{}#{}", t.host, t.project, t.number),
+                }));
+            }
+            Some((link_id, _)) => {
                 tx.execute(
-                    "UPDATE card_link SET pr_state = ?1, merge_ref = ?2, state = 'active', \
-                         updated_at = ?3 WHERE link_id = ?4",
+                    "UPDATE card_link SET pr_state = ?1, merge_ref = ?2, updated_at = ?3 \
+                     WHERE link_id = ?4",
                     params![t.pr_state, merge_ref, now, link_id],
                 )?;
-                link_id
+                *link_id
             }
             None => {
                 tx.execute(
@@ -619,7 +674,7 @@ pub fn link_pr(
                 "generation": generation, "created": existing.is_none(),
             }),
         )?;
-        Ok(PrLink {
+        Ok(Ok(PrLink {
             link_id,
             card_id,
             host: t.host.to_string(),
@@ -628,14 +683,13 @@ pub fn link_pr(
             pr_state: t.pr_state.to_string(),
             merge_ref: merge_ref.map(str::to_string),
             created: existing.is_none(),
-        })
-    })
-    .map_err(WorkflowError::from)
+        }))
+    })?
 }
 
 // ---- review and done ---------------------------------------------------------------------------
 
-/// A card after [`review`] or [`done`].
+/// A card after [`review`], [`reopen`] or [`done`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Moved {
     pub card_id: i64,
@@ -690,6 +744,55 @@ pub fn review(
                 card_id,
                 from,
                 state: "review".to_string(),
+                rev: card_rev(tx, card_id)?,
+                closed_at: None,
+                reservation: row,
+            }))
+        },
+    )?
+}
+
+/// `review -> active`, as the current holder at `generation` with a live lease: the way back
+/// after a review that found something to repair. The reservation stays `held`.
+pub fn reopen(
+    w: &mut WriteLedger,
+    card_id: i64,
+    holder: &str,
+    generation: i64,
+) -> Result<Moved, WorkflowError> {
+    reservation::fenced(
+        w,
+        "reopen",
+        card_id,
+        holder,
+        generation,
+        true,
+        |tx, now, row| {
+            let from = card_state(tx, card_id)?;
+            if from != "review" {
+                return Ok(Err(WorkflowError::WrongState {
+                    card_id,
+                    state: from,
+                    needs: "review",
+                    action: "reopened",
+                }));
+            }
+            tx.execute(
+                "UPDATE card SET state = 'active', updated_at = ?2 WHERE card_id = ?1",
+                params![card_id, now],
+            )?;
+            reservation::add_event(
+                tx,
+                now,
+                holder,
+                card_id,
+                "card.reopen",
+                &json!({"from": from, "generation": generation}),
+            )?;
+            Ok(Ok(Moved {
+                card_id,
+                from,
+                state: "active".to_string(),
                 rev: card_rev(tx, card_id)?,
                 closed_at: None,
                 reservation: row,

@@ -1,4 +1,4 @@
-//! What `moai card next | note | criterion | pr | review | done | renew | check` do (card C-53
+//! What `moai card next | note | criterion | pr | review | reopen | done | renew | check` do (card C-53
 //! S1): a lane finds the next card, works it and closes it, with no GitHub Issue.
 //!
 //! The rules are the ledger's: `ledger::workflow` for the finish path and `ledger::reservation`
@@ -26,10 +26,6 @@ use serde_json::{json, Value};
 use std::path::Path;
 
 type Result<T> = std::result::Result<T, String>;
-
-/// The most bytes `card note` reads from stdin before it refuses the text as too large: the
-/// largest note and room for the line breaks a pipe leaves at the end.
-pub const NOTE_READ_LIMIT: usize = workflow::MAX_NOTE_BYTES + 1024;
 
 /// The card's number; a host number (`#12`) needs a lookup, so these actions refuse it.
 fn card_id(action: &str, reference: &str) -> Result<i64> {
@@ -116,7 +112,7 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
                     v["mine"] = json!(mine);
                     v["theirs"] = json!(theirs);
                 }
-                SkipReason::EmptyScope => {}
+                SkipReason::EmptyScope | SkipReason::ReviewNoHolder => {}
             }
             v
         })
@@ -137,6 +133,43 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
     }))
 }
 
+/// The text of `card note` from `reader` (stdin), without the blanks and line breaks at its
+/// end. The limit ([`workflow::MAX_NOTE_BYTES`]) is on that text, so a note of exactly the limit
+/// is kept whatever a pipe adds after it, and reading stops at the first byte that makes the
+/// text too large: nothing is ever cut short without a word, and no more than the limit is held
+/// in memory.
+pub fn read_note_text(mut reader: impl std::io::Read) -> Result<Vec<u8>> {
+    let max = workflow::MAX_NOTE_BYTES;
+    // `kept` ends at the last byte that is not a blank; `blanks` are the blanks since then,
+    // stored only while they could still be followed by text that fits.
+    let mut kept: Vec<u8> = Vec::new();
+    let mut blanks: Vec<u8> = Vec::new();
+    let mut buffer = [0u8; 64 * 1024];
+    loop {
+        let n = reader
+            .read(&mut buffer)
+            .map_err(|e| format!("card note refused: stdin could not be read ({e})"))?;
+        if n == 0 {
+            return Ok(kept);
+        }
+        for &byte in &buffer[..n] {
+            if byte.is_ascii_whitespace() {
+                if kept.len() + blanks.len() <= max {
+                    blanks.push(byte);
+                }
+            } else {
+                if kept.len() + blanks.len() + 1 > max {
+                    return Err(format!(
+                        "card note refused: the note text is larger than {max} bytes"
+                    ));
+                }
+                kept.append(&mut blanks);
+                kept.push(byte);
+            }
+        }
+    }
+}
+
 /// What `card note` was given. `text` is what stdin held.
 pub struct NoteRequest<'a> {
     pub kind: &'a str,
@@ -152,27 +185,46 @@ pub struct NoteRequest<'a> {
 /// leaves at the end are not part of the note.
 pub fn note(project: &Path, home: &Path, reference: &str, req: &NoteRequest<'_>) -> Result<Value> {
     let card_id = card_id("note", reference)?;
-    if req.text.len() > NOTE_READ_LIMIT {
-        return Err(format!(
-            "card note refused: the note text is larger than {} bytes",
-            workflow::MAX_NOTE_BYTES
-        ));
-    }
     let text = std::str::from_utf8(req.text)
         .map_err(|_| "card note refused: the note text on stdin is not UTF-8 text".to_string())?
         .trim_end();
+    // A decision is acted on by other sessions, so it is never signed by default.
+    if req.kind == "decision" && req.by.is_none() {
+        return Err(
+            "card note refused: a decision note needs --by NAME: say who decided".to_string(),
+        );
+    }
+    // The check the repository uses for text that leaves it (`redact::redact_outgoing`): a note
+    // is kept for good and `card export` writes it out. The text is not repeated.
+    let (_, shaped) = crate::redact::redact_outgoing(text);
+    if shaped > 0 {
+        return Err(format!(
+            "card note refused: the note text has {shaped} word(s) with the shape of a secret \
+             (a token, a key, `password=`); a note is kept for good and written out by \
+             `card export`, so take them out"
+        ));
+    }
     let author = match (req.by, req.session) {
         (Some(by), _) => actor(Some(by), "note")?,
         (None, Some(session)) => session.to_string(),
         (None, None) => actor(None, "note")?,
     };
     let (id, mut ledger) = open_for_write(project, home)?;
-    let note = workflow::add_note(&mut ledger, card_id, req.kind, &author, text, req.reference)
-        .map_err(|e| refusal("note", e))?;
+    let note = workflow::add_note(
+        &mut ledger,
+        card_id,
+        req.kind,
+        &author,
+        req.session,
+        text,
+        req.reference,
+    )
+    .map_err(|e| refusal("note", e))?;
     Ok(json!({
         "action": "note", "project_id": id,
         "name": input::card_name(card_id), "card_id": card_id,
         "note_id": note.note_id, "kind": note.kind, "author": note.author,
+        "session": req.session,
         "ref": note.reference, "bytes": note.bytes, "created_at": note.created_at,
         "events": 1, "writes": true,
     }))
@@ -236,21 +288,34 @@ fn pr_project(
     let host_word = req
         .from
         .map(str::to_string)
-        .or(source_host)
+        .or_else(|| source_host.clone())
         .unwrap_or_else(|| HostKind::Github.as_str().to_string());
     let host = HostKind::parse(&host_word)
         .and_then(HostKind::require_implemented)
         .map_err(|e| refused(e.to_string()))?;
-    let repo = match (req.repo, source_project) {
+    let repo = match (req.repo, &source_project) {
         (Some(repo), _) => repo.to_string(),
-        (None, Some(project)) => project,
+        (None, Some(project)) => project.clone(),
         (None, None) => {
             return Err(refused(format!(
                 "C-{card_id} did not come from a code host; name the project with --repo owner/repo"
             )))
         }
     };
-    ProjectRef::parse(host, &repo).map_err(|e| refused(e.to_string()))
+    let named = ProjectRef::parse(host, &repo).map_err(|e| refused(e.to_string()))?;
+    // A card that came from a host project is closed by a pull request of that project: a
+    // merged pull request anywhere else is not this card's work.
+    if let (Some(from_host), Some(from_project)) = (source_host, source_project) {
+        if named.host().as_str() != from_host || named.source_project() != from_project {
+            return Err(refused(format!(
+                "C-{card_id} came from {from_host}:{from_project}; its pull request is in that \
+                 project, not in {}:{}",
+                named.host().as_str(),
+                input::echo(&named.source_project())
+            )));
+        }
+    }
+    Ok(named)
 }
 
 /// `card pr C-n NUMBER`: reads the pull request's state from the host (one GET through the
@@ -344,6 +409,21 @@ pub fn review(
     Ok(moved_json("review", &id, &moved))
 }
 
+/// `card reopen C-n`: `review` becomes `active` again; the reservation stays.
+pub fn reopen(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    holder: &str,
+    generation: i64,
+) -> Result<Value> {
+    let card_id = card_id("reopen", reference)?;
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let moved = workflow::reopen(&mut ledger, card_id, holder, generation)
+        .map_err(|e| refusal("reopen", e))?;
+    Ok(moved_json("reopen", &id, &moved))
+}
+
 /// `card done C-n`: `review` becomes `done` when a criterion is met, none is open and a merged
 /// pull request is linked; the reservation ends.
 pub fn done(
@@ -385,7 +465,9 @@ pub fn renew(
     }))
 }
 
-/// A path as `card check` accepts it: relative to the repository, one line, not empty.
+/// A path as `card check` accepts it, the way `card add --scope` reads a scope entry: relative
+/// to the repository, written with `/`, one line, no blank at either end, not empty. The check
+/// is on the text of the path: a symbolic link on disk is not followed.
 fn check_path(path: &str) -> Result<()> {
     let bad = |why: &str| {
         Err(format!(
@@ -395,6 +477,10 @@ fn check_path(path: &str) -> Result<()> {
     };
     if path.trim().is_empty() {
         bad("is empty")
+    } else if path != path.trim() {
+        bad("starts or ends with a blank")
+    } else if path.contains('\\') {
+        bad("must be written with `/`, not `\\`")
     } else if path.starts_with('/') {
         bad("must be relative to the repository")
     } else if path.chars().any(char::is_control) {
@@ -462,7 +548,20 @@ mod tests {
         for good in ["src/a.rs", "a", "./src/a.rs", "src/../a", "with space/a"] {
             assert!(check_path(good).is_ok(), "{good:?}");
         }
-        for bad in ["", " ", "/abs", "/", "a\nb", "a\0b", "a\tb"] {
+        for bad in [
+            "",
+            " ",
+            "/abs",
+            "/",
+            "a\nb",
+            "a\0b",
+            "a\tb",
+            "a\\b",
+            "C:\\a",
+            " a",
+            "a ",
+            "\\\\host\\a",
+        ] {
             let err = check_path(bad).unwrap_err();
             assert!(err.starts_with("card check refused: "), "{err}");
         }
@@ -481,5 +580,44 @@ mod tests {
             refusal("done", WorkflowError::CardNotFound(4)),
             "card not found: C-4"
         );
+    }
+}
+
+#[cfg(test)]
+mod note_text_tests {
+    use super::*;
+
+    fn read(bytes: &[u8]) -> Result<Vec<u8>> {
+        read_note_text(bytes)
+    }
+
+    #[test]
+    fn the_limit_is_on_the_text_without_its_trailing_blanks() {
+        let max = workflow::MAX_NOTE_BYTES;
+        assert_eq!(read(b"").unwrap(), b"");
+        assert_eq!(read(b" \n\t\r\n").unwrap(), b"");
+        assert_eq!(read(b"a\n\n b \n").unwrap(), b"a\n\n b");
+        let mut edge = vec![b'a'; max];
+        assert_eq!(read(&edge).unwrap().len(), max);
+        edge.extend(vec![b'\n'; 3 * max]);
+        assert_eq!(
+            read(&edge).unwrap().len(),
+            max,
+            "blanks after the text do not count"
+        );
+        let over = vec![b'a'; max + 1];
+        assert!(read(&over).unwrap_err().starts_with("card note refused: "));
+        // Blanks inside the text count: the last byte is the one that does not fit.
+        let mut inside = vec![b'a'; max - 2];
+        inside.extend_from_slice(b"\n\nb");
+        assert!(read(&inside).is_err());
+        let mut fits = vec![b'a'; max - 3];
+        fits.extend_from_slice(b"\n\nb");
+        assert_eq!(read(&fits).unwrap().len(), max);
+        // Text after more blanks than the limit is not dropped in silence.
+        let mut late = b"a".to_vec();
+        late.extend(vec![b' '; 2 * max]);
+        late.push(b'b');
+        assert!(read(&late).is_err());
     }
 }
