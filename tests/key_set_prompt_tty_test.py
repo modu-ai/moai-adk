@@ -351,12 +351,17 @@ class KeySetPrompt(unittest.TestCase):
         # the terminal unread; then it is told to end and let go. The handler runs before the
         # command reads again, and it must drop that input with the modes it puts back:
         # otherwise the shell would run it as its next command.
+        # The order matters: the signal is already waiting when the input arrives, so the
+        # interrupted read hands over to the handler instead of taking the input first (with
+        # the input sent first the read took it, and a handler that only put the modes back
+        # passed).
         def end(master, proc):
             proc.send_signal(signal.SIGSTOP)
             time.sleep(0.3)
+            proc.send_signal(signal.SIGTERM)
+            time.sleep(0.1)
             os.write(master, b"echo LEFT-FOR-THE-SHELL\n")
             time.sleep(0.1)
-            proc.send_signal(signal.SIGTERM)
             proc.send_signal(signal.SIGCONT)
 
         r = self.prompt(at_prompt=end)
