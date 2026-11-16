@@ -759,3 +759,126 @@ fn the_home_option_is_the_home_that_is_used() {
     assert_eq!(kind, "not_found");
     assert_eq!(decoy.snapshot(), before);
 }
+
+#[test]
+fn a_handoff_with_an_old_generation_is_refused_even_by_the_same_session() {
+    let (home, project) = registered();
+    let card = ready_card(&home, &project, "src/gen.rs");
+    // The same session takes (g1), gives back, takes again (g2).
+    result(&take(&home, &project, &card, S_A));
+    result(&release(&home, &project, &card, S_A, "1"));
+    let again = result(&take(&home, &project, &card, S_A));
+    assert_eq!(again["reservation"]["generation"], json!(2));
+    let handoff = |generation: &str| -> Output {
+        as_session(
+            &home,
+            S_A,
+            &[
+                "card",
+                "handoff",
+                &card,
+                "--generation",
+                generation,
+                "--to",
+                S_B,
+                "--project",
+                &project,
+            ],
+        )
+    };
+    // The old generation is stale although the holder is the same; nothing moves.
+    let (kind, message) = refusal(&handoff("1"));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("stale"), "{message}");
+    // A generation that was never issued is refused too.
+    let (kind, message) = refusal(&handoff("9"));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("never issued"), "{message}");
+    let l = ledger::open_read_only(home.path(), "demo").unwrap();
+    let cur = ledger::reservation::current(l.conn(), 1).unwrap().unwrap();
+    assert_eq!((cur.holder.as_str(), cur.generation), (S_A, 2));
+    drop(l);
+    // The current generation works and the receiver gets the next one.
+    let ok = result(&handoff("2"));
+    assert_eq!(ok["reservation"]["generation"], json!(3));
+    assert_eq!(ok["reservation"]["holder"], json!(S_B));
+}
+
+#[test]
+fn the_holder_comes_from_the_two_host_variables_and_from_nothing_else() {
+    let (home, project) = registered();
+    let card = ready_card(&home, &project, "src/env.rs");
+    let with_env = |pairs: &[(&str, &str)]| -> Output {
+        let mut cmd = home.command(&["card", "take", &card, "--project", &project]);
+        for (k, v) in pairs {
+            cmd.env(k, v);
+        }
+        cmd.output().expect("run moai")
+    };
+    // Other variables a caller might set are not read: no session id, no reservation.
+    for name in [
+        "MOAI_CARD_HOLDER",
+        "MOAI_SESSION_ID",
+        "SESSION_ID",
+        "USER",
+        "LOGNAME",
+    ] {
+        let (kind, message) = refusal(&with_env(&[(name, S_B)]));
+        assert_eq!(kind, "invalid_input", "{name}: {message}");
+    }
+    assert_eq!(count(&home, "SELECT count(*) FROM reservation"), 0);
+    // The Claude variable wins over the Codex one; the Codex one works alone.
+    let t = result(&with_env(&[("CODEX_THREAD_ID", S_B), (SESSION_VAR, S_A)]));
+    assert_eq!(t["reservation"]["holder"], json!(S_A));
+    result(&release(&home, &project, &card, S_A, "1"));
+    let t = result(&with_env(&[
+        ("CODEX_THREAD_ID", S_B),
+        ("MOAI_CARD_HOLDER", S_C),
+    ]));
+    assert_eq!(t["reservation"]["holder"], json!(S_B));
+}
+
+#[test]
+fn a_card_with_a_live_reservation_cannot_be_made_ready() {
+    let (home, project) = registered();
+    let card = ready_card(&home, &project, "src/live.rs");
+    result(&take(&home, &project, &card, S_A));
+    // A `hold` card that still has a reservation (made by hand: no command holds a card yet).
+    let conn =
+        rusqlite::Connection::open(ledger::ledger_path(home.path(), "demo").unwrap()).unwrap();
+    conn.execute("UPDATE card SET state = 'hold' WHERE card_id = 1", [])
+        .unwrap();
+    drop(conn);
+    let (kind, message) = refusal(&run(
+        &home,
+        &["card", "ready", &card, "--project", &project],
+    ));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("live reservation"), "{message}");
+    let shown = result(&run(&home, &["card", "show", &card, "--project", &project]));
+    assert_eq!(shown["state"], json!("hold"), "the card is untouched");
+    // Once the holder gives it back, the hold card becomes ready.
+    result(&release(&home, &project, &card, S_A, "1"));
+    result(&run(
+        &home,
+        &["card", "ready", &card, "--project", &project],
+    ));
+}
+
+#[test]
+fn a_bad_card_name_is_not_repeated_raw_on_stderr_or_stdout() {
+    let (home, project) = registered();
+    let nasty = "\u{1b}[31mC-\u{1b}[0m".to_string() + &"z".repeat(100);
+    for action in ["show", "ready"] {
+        let out = run(&home, &["card", action, &nasty, "--project", &project]);
+        assert_eq!(out.status.code(), Some(1));
+        for bytes in [&out.stdout, &out.stderr] {
+            assert!(!bytes.contains(&0x1b), "{action}: raw escape in output");
+            assert!(
+                !String::from_utf8_lossy(bytes).contains(&"z".repeat(41)),
+                "{action}: the name is repeated whole"
+            );
+        }
+        assert_eq!(refusal(&out).0, "invalid_input");
+    }
+}
