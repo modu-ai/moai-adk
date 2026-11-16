@@ -2120,6 +2120,62 @@ fn an_active_reservation_row_that_cannot_be_read_becomes_held_for_review() {
     assert!(reservation::fence(&mut writer, 1, "alice", 1).is_err());
 }
 
+/// B2: every column of the row counts, not only the ones the decision reads: a `held` row whose
+/// `lease_until` is text is unreadable too, and is not restored even when all three observations
+/// confirm it.
+#[test]
+fn a_reservation_row_with_a_text_lease_is_unreadable_even_if_the_decision_would_confirm_it() {
+    let w = World::new();
+    let healthy = w.copy_as("healthy.db");
+    let obs = confirm_all(&w, &healthy);
+    let bak = break_ledger(&w);
+    {
+        let conn = Connection::open(&bak).unwrap();
+        conn.execute_batch("PRAGMA writable_schema = ON;").unwrap();
+        let n = conn
+            .execute(
+                "UPDATE sqlite_master SET sql = replace(sql, \
+                 'lease_until    INTEGER NOT NULL', 'lease_until    ANY NOT NULL') \
+                 WHERE type = 'table' AND name = 'reservation'",
+                [],
+            )
+            .unwrap();
+        assert_eq!(n, 1);
+        conn.execute(
+            "DELETE FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'reservation'",
+            [],
+        )
+        .unwrap();
+    }
+    Connection::open(&bak)
+        .unwrap()
+        .execute(
+            "UPDATE reservation SET lease_until = 'tomorrow' WHERE reservation_id = 2",
+            [],
+        )
+        .unwrap();
+    let plan = plan_of(&w, &bak, &obs);
+    assert_eq!(plan.unreadable_reservations, 1);
+    let bob = plan
+        .decisions
+        .iter()
+        .find(|d| d.unreadable)
+        .expect("the row has a decision");
+    assert_eq!(
+        (
+            bob.reservation_id,
+            bob.holder.as_str(),
+            bob.decision.as_str()
+        ),
+        (2, "bob", HELD_FOR_REVIEW)
+    );
+    assert_eq!(bob.reasons, vec!["unreadable_row".to_string()]);
+    assert_eq!(
+        plan.restore_held, 2,
+        "alice and dave are judged by the rule"
+    );
+}
+
 /// B2: an unreadable row that is not active is never copied as it is; it is a rejected row.
 #[test]
 fn an_unreadable_released_row_is_rejected_not_copied() {
