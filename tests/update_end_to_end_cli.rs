@@ -449,6 +449,12 @@ fn go_references_in_the_local_settings_are_named_and_left_to_the_user() {
             ),
         "{why}"
     );
+    // Only the local file holds Go keys, so the sentence about keys "this update does not
+    // change" (for the project settings) is not there.
+    assert!(
+        !why.contains("this update does not change those keys"),
+        "{why}"
+    );
     // The values are never printed.
     assert!(
         !w.last.to_string().contains("CLAUDE_PROJECT_DIR"),
