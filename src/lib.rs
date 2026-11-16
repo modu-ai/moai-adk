@@ -13,6 +13,7 @@ pub mod audit_delta;
 pub mod banner;
 pub mod baseline;
 pub mod bin_names;
+pub mod card_times;
 pub mod check_tree;
 pub mod claim;
 pub mod claim_cache;
