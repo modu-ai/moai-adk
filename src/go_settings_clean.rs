@@ -31,10 +31,6 @@ const SETTINGS: &str = ".claude/settings.json";
 /// The Go tool's plans folder, the only `plansDirectory` value taken for its own.
 const PLANS_DIR: &str = ".moai/plans";
 
-/// The Go status line wrapper, relative to the project; the Go tool wrote it behind one of the
-/// project folder prefixes of [`crate::go_hooks`].
-const WRAPPER: &str = ".moai/status_line.sh";
-
 /// The Rust launcher as the status line command spells it (Claude Code's shell expands `$HOME`),
 /// and as every preview shows it.
 pub const LAUNCHER_SHOWN: &str = "$HOME/.moai-cli/path/moai-cli";
@@ -73,14 +69,34 @@ pub struct GoKey {
     pub change: Change,
 }
 
-/// Whether `v` is exactly the status line object the Go tool wrote: `{"type": "command",
-/// "command": X}` with nothing else in it and X the wrapper behind one of the project prefixes
-/// (the list `go_hooks` uses, without the bare form the Go tool never wrote for a status line).
+/// The `command` values the Go settings template (`settings.json.tmpl`) wrote for the wrapper
+/// over its history: the bare path (the first releases), behind `$CLAUDE_PROJECT_DIR`, quoted
+/// whole (the October 2026 template, also for `subagentStatusLine`), and the Windows `bash "…"`.
+const GO_STATUS_COMMANDS: [&str; 4] = [
+    ".moai/status_line.sh",
+    "$CLAUDE_PROJECT_DIR/.moai/status_line.sh",
+    "\"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"",
+    "bash \"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"",
+];
+
+/// The `refreshInterval` values that template wrote (10 until August 2026, 60 after).
+const GO_REFRESH: [u64; 2] = [10, 60];
+
+/// Whether `v` is exactly the status line object the Go tool wrote: `type` `command`, one of
+/// [`GO_STATUS_COMMANDS`], and at most a `refreshInterval` of [`GO_REFRESH`] besides — nothing
+/// else. Any other value, key or spelling is the user's.
 fn is_go_status_line(v: &Value) -> bool {
-    crate::go_hooks::PROJECT_PREFIXES
-        .iter()
-        .filter(|p| !p.is_empty())
-        .any(|p| *v == json!({"type": "command", "command": format!("{p}{WRAPPER}")}))
+    let Some(o) = v.as_object() else {
+        return false;
+    };
+    o.get("type") == Some(&json!("command"))
+        && o.get("command")
+            .and_then(Value::as_str)
+            .is_some_and(|c| GO_STATUS_COMMANDS.contains(&c))
+        && o.keys()
+            .all(|k| matches!(k.as_str(), "type" | "command" | "refreshInterval"))
+        && o.get("refreshInterval")
+            .is_none_or(|r| GO_REFRESH.iter().any(|n| *r == json!(n)))
 }
 
 /// The Go-made keys of a settings object (sorted by key name) and, as `kept`, the names of the
@@ -643,14 +659,28 @@ mod tests {
         v.as_object().cloned().unwrap()
     }
 
-    /// Every spelling of the wrapper the Go tool wrote is Go-made.
+    /// Every spelling and shape the Go templates wrote is Go-made (#2936 L2a, template history).
     #[test]
-    fn the_four_go_spellings_are_go_made() {
+    fn the_go_template_spellings_are_go_made() {
+        let with = |c: &str, r: Option<u64>| {
+            let mut v = status(c);
+            if let Some(r) = r {
+                v["refreshInterval"] = json!(r);
+            }
+            v
+        };
+        for c in GO_STATUS_COMMANDS {
+            for r in [None, Some(10), Some(60)] {
+                let m = map(json!({"statusLine": with(c, r), "subagentStatusLine": with(c, r)}));
+                let (go, kept) = classify(&m);
+                assert_eq!(go.len(), 2, "{c} {r:?}");
+                assert!(kept.is_empty(), "{c} {r:?}");
+            }
+        }
         for c in [
             "$CLAUDE_PROJECT_DIR/.moai/status_line.sh",
-            "${CLAUDE_PROJECT_DIR}/.moai/status_line.sh",
-            "\"$CLAUDE_PROJECT_DIR\"/.moai/status_line.sh",
-            "\"${CLAUDE_PROJECT_DIR}\"/.moai/status_line.sh",
+            "\"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"",
+            ".moai/status_line.sh",
         ] {
             let m = map(json!({"statusLine": status(c), "subagentStatusLine": status(c)}));
             let (go, kept) = classify(&m);
@@ -676,9 +706,15 @@ mod tests {
             status(&format!("{ok}2")),
             status(&format!("bash {ok}")),
             status("$CLAUDE_PROJECT_DIR/.moai/status_line.sh --x"),
-            // The bare form is a hook-script spelling; the Go tool never wrote it for a status line.
-            status(".moai/status_line.sh"),
             status("./.moai/status_line.sh"),
+            // Spellings the Go template never wrote for a status line.
+            status("${CLAUDE_PROJECT_DIR}/.moai/status_line.sh"),
+            status("\"$CLAUDE_PROJECT_DIR\"/.moai/status_line.sh"),
+            status("bash $CLAUDE_PROJECT_DIR/.moai/status_line.sh"),
+            // A refreshInterval the template never wrote is the user's edit.
+            json!({"type": "command", "command": ok, "refreshInterval": 61}),
+            json!({"type": "command", "command": ok, "refreshInterval": "60"}),
+            json!({"type": "command", "command": ok, "refreshInterval": 0}),
             status("$CLAUDE_PROJECT_DIR/.moai/status-line.sh"),
             status("$CLAUDE_PROJECT_DIR/.moai/Status_line.sh"),
             status("$CLAUDE_PROJECT_DIR//.moai/status_line.sh"),
@@ -725,7 +761,7 @@ mod tests {
             "permissions": {"deny": ["Read(./.env)"]},
             "env": {"X": "1"},
             "statusLine": status("moai statusline"),
-            "plansDirectory": "docs/plans",
+            "plansDirectory": "my-own-plans",
             "other": {"path": "x/.moai/y"},
         }));
         let (go, kept) = classify(&m);

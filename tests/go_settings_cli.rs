@@ -46,7 +46,8 @@ fn go_settings() -> Value {
         "statusLine": {"type": "command", "command": "$CLAUDE_PROJECT_DIR/.moai/status_line.sh"},
         "model": "opus",
         "subagentStatusLine": {"type": "command",
-                               "command": "\"${CLAUDE_PROJECT_DIR}\"/.moai/status_line.sh"},
+                               "command": "\"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"",
+                               "refreshInterval": 60},
         "plansDirectory": ".moai/plans",
         "env": {"FOO": "1"},
     })
@@ -511,10 +512,10 @@ fn only_exact_go_values_are_cleaned() {
         assert_eq!(keys_of(&p["kept"]), ["statusLine"], "{off}: {p}");
     }
     for spelling in [
+        ".moai/status_line.sh",
         "$CLAUDE_PROJECT_DIR/.moai/status_line.sh",
-        "${CLAUDE_PROJECT_DIR}/.moai/status_line.sh",
-        "\"$CLAUDE_PROJECT_DIR\"/.moai/status_line.sh",
-        "\"${CLAUDE_PROJECT_DIR}\"/.moai/status_line.sh",
+        "\"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"",
+        "bash \"$CLAUDE_PROJECT_DIR/.moai/status_line.sh\"",
     ] {
         let fx = base_fx();
         fx.manifest();
