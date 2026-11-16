@@ -209,6 +209,70 @@ fn scope_check_records_blocked_once() {
     assert_eq!(events(&repo).len(), count, "a repeated check adds no event");
 }
 
+/// #3048: `--task` writes `blocked` into the claim record, so the first line of its help says
+/// so, the answer that did write names the command that closes the record again, and
+/// `--read-only` is the way to only look: the journal stays byte for byte as it was.
+#[test]
+fn scope_check_says_it_writes_and_can_be_told_not_to() {
+    let tmp = tempfile::tempdir().unwrap();
+    let repo = tmp.path().join("primary");
+    let base = make_repo(&repo);
+    seed(
+        &repo,
+        &[
+            record(KEY_A, "06-C", &base, &["src/lib.rs"]),
+            record(KEY_B, "05-B", &base, &["src/**"]),
+        ],
+    );
+    let p = repo.to_string_lossy().to_string();
+
+    let help = run(&repo, &["scope-check", "--help"], &[]);
+    let text = String::from_utf8_lossy(&help.stdout).to_string();
+    let first = text.lines().next().unwrap_or_default();
+    assert!(
+        first.contains("--task") && first.contains("record"),
+        "the first help line names the write: {first}"
+    );
+    assert!(text.contains("--read-only"), "{text}");
+
+    let before = fs::read(journal_dir(&repo).join("journal.log")).unwrap();
+    let look = ok(&run(
+        &repo,
+        &["scope-check", &p, "--task", KEY_A, "--read-only"],
+        &[],
+    ));
+    assert_eq!(look["decision"], "blocked", "the verdict is still computed");
+    assert_eq!(look["record_update"]["applied"], false, "{look}");
+    assert!(
+        look["record_update"]["reason"]
+            .as_str()
+            .unwrap()
+            .contains("--read-only"),
+        "{look}"
+    );
+    assert!(look["record_update"].get("undo").is_none(), "{look}");
+    assert_eq!(
+        fs::read(journal_dir(&repo).join("journal.log")).unwrap(),
+        before,
+        "a read-only check leaves the journal as it was"
+    );
+    assert_eq!(latest(&repo, KEY_A)["state"], "running");
+
+    let wrote = ok(&run(&repo, &["scope-check", &p, "--task", KEY_A], &[]));
+    assert_eq!(wrote["record_update"]["applied"], true, "{wrote}");
+    let undo = wrote["record_update"]["undo"]["command"].as_str().unwrap();
+    assert_eq!(
+        undo,
+        format!("moai claim-release . --task {KEY_A} --epoch 1 --reason scope_conflict"),
+        "{wrote}"
+    );
+    assert_eq!(latest(&repo, KEY_A)["state"], "blocked");
+    // A repeated check changes nothing, so there is nothing to undo that it did.
+    let again = ok(&run(&repo, &["scope-check", &p, "--task", KEY_A], &[]));
+    assert_eq!(again["record_update"]["applied"], false);
+    assert!(again["record_update"].get("undo").is_none(), "{again}");
+}
+
 #[test]
 fn scope_check_records_integration_order() {
     let tmp = tempfile::tempdir().unwrap();
@@ -235,6 +299,9 @@ fn scope_check_records_integration_order() {
         &[],
     ));
     assert_eq!(res["decision"], "allowed_with_order");
+    // The record is not blocked, so there is nothing to close again (#3048).
+    assert_eq!(res["record_update"]["applied"], true, "{res}");
+    assert!(res["record_update"].get("undo").is_none(), "{res}");
     let rec = latest(&repo, KEY_A);
     assert_eq!(rec["state"], "running");
     assert_eq!(

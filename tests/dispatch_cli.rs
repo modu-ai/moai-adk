@@ -365,6 +365,10 @@ fn new_revision_requires_exact_predecessor_and_current_leader_epoch() {
         assert_eq!(r.posts(), 1);
     }
 }
+// A repository member's comment (the fixture's `author_association` is `MEMBER`) whose user id is
+// not the account the packet names, or whose timestamp is unknown, still closes the read. A
+// comment from anyone who is not a member is not read at all since #3067 S3; see
+// `packets_from_non_members_are_ignored_and_reported_by_event`.
 #[test]
 fn forged_author_and_unknown_timestamp_are_not_accepted_observations() {
     let root = temp_root();
@@ -1402,4 +1406,217 @@ fn ack_alert_boundary_uses_the_shared_constant() {
             }
         );
     }
+}
+
+// Issue #3067 S3: only comments a repository member wrote are read as dispatch packets. A forged
+// packet from anyone else is left out and reported, so it can neither join the observation nor
+// close the read for the lanes that depend on it.
+
+/// A copy of one recorded comment as another account wrote it: a new id, a foreign user id and
+/// the given `author_association` (`None` leaves the field out).
+fn forged(c: &Value, id: u64, association: Option<&str>) -> Value {
+    let mut f = c.clone();
+    f["id"] = json!(id);
+    f["user"]["id"] = json!(99);
+    match association {
+        Some(a) => f["author_association"] = json!(a),
+        None => {
+            f.as_object_mut().unwrap().remove("author_association");
+        }
+    }
+    f
+}
+/// The dispatch view without the report of what the author filter left out.
+fn without_ignored(v: &Value) -> Value {
+    let mut v = v.clone();
+    v.as_object_mut().unwrap().remove("ignored_control_lines");
+    v
+}
+/// A world with the record, the ACK, the accepted decision and the start (comments 100..=103).
+fn started_world() -> (TempDir, Remote, Message) {
+    let (root, r, m) = accepted_world();
+    begin(root.path(), &m, start_of(&m), &r).unwrap();
+    assert_eq!(r.comments.borrow().len(), 4);
+    (root, r, m)
+}
+
+#[test]
+fn packets_from_non_members_are_ignored_and_reported_by_event() {
+    for association in [
+        Some("NONE"),
+        Some("CONTRIBUTOR"),
+        Some("FIRST_TIMER"),
+        Some("FIRST_TIME_CONTRIBUTOR"),
+        Some("MANNEQUIN"),
+        Some("member"),
+        Some(""),
+        None,
+    ] {
+        let (root, r, m) = started_world();
+        let clean = check(&m, &r).unwrap();
+        assert_eq!(clean["started"], true);
+        assert!(clean.get("ignored_control_lines").is_none(), "{clean}");
+        // A forged copy of every packet (dispatch, ACK, decision, start), before and after.
+        let real = r.comments.borrow().clone();
+        let mut all = Vec::new();
+        for (i, c) in real.iter().enumerate() {
+            all.push(forged(c, 5000 + i as u64, association));
+        }
+        all.extend(real.iter().cloned());
+        for (i, c) in real.iter().enumerate() {
+            all.push(forged(c, 6000 + i as u64, association));
+        }
+        *r.comments.borrow_mut() = all;
+        let posts = r.posts();
+        // The read, a repeated start and a repeated decision all go through.
+        let v = check(&m, &r).unwrap();
+        assert_eq!(without_ignored(&v), clean, "{association:?}");
+        let ignored = &v["ignored_control_lines"];
+        assert_eq!(ignored["count"], 8, "{association:?}: {v}");
+        assert_eq!(
+            ignored["by_event"],
+            json!({"dispatch":4,"dispatch-decision":2,"dispatch-start":2}),
+            "{association:?}: {v}"
+        );
+        assert_eq!(ignored["reason"], "no_member_authority");
+        assert_eq!(ignored["other_non_member_comments"], 0);
+        assert_eq!(ignored["items"].as_array().unwrap().len(), 8);
+        assert_eq!(
+            ignored["items"][0]["author_association"],
+            association.unwrap_or("")
+        );
+        let again = begin(root.path(), &m, start_of(&m), &r).unwrap();
+        assert_eq!(without_ignored(&again), clean, "{association:?}");
+        assert_eq!(again["ignored_control_lines"]["count"], 8);
+        let decided = ack(root.path(), &m, answer(&m, "accepted"), &r).unwrap();
+        assert_eq!(without_ignored(&decided), clean, "{association:?}");
+        assert_eq!(r.posts(), posts, "{association:?}: nothing was posted");
+    }
+}
+
+#[test]
+fn a_forged_packet_before_the_real_one_cannot_block_the_next_steps() {
+    // The forged dispatch comes first on the first page; the real flow still runs to the end.
+    let root = temp_root();
+    let r = Remote::new();
+    let m = packet();
+    send(root.path(), &m, &r).unwrap();
+    let real = r.comments.borrow()[0].clone();
+    r.comments
+        .borrow_mut()
+        .insert(0, forged(&real, 4000, Some("NONE")));
+    r.actor.set(22);
+    let v = ack(root.path(), &m, answer(&m, "accepted"), &r).unwrap();
+    assert_eq!(v["disposition"], "accepted");
+    assert_eq!(v["ignored_control_lines"]["count"], 1, "{v}");
+    let v = begin(root.path(), &m, start_of(&m), &r).unwrap();
+    assert_eq!(v["started"], true);
+    assert_eq!(
+        v["ignored_control_lines"]["by_event"],
+        json!({"dispatch":1})
+    );
+}
+
+#[test]
+fn members_stay_authoritative_and_a_member_with_a_foreign_user_still_closes_the_read() {
+    for association in ["OWNER", "MEMBER", "COLLABORATOR"] {
+        // The same account writing the same packet again, under a later id, is one row.
+        let (_root, r, m) = started_world();
+        let clean = check(&m, &r).unwrap();
+        let mut same = r.comments.borrow()[3].clone();
+        same["id"] = json!(5000);
+        same["author_association"] = json!(association);
+        r.comments.borrow_mut().push(same);
+        let v = check(&m, &r).unwrap();
+        assert_eq!(v, clean, "{association}");
+        assert!(v.get("ignored_control_lines").is_none(), "{v}");
+        // A member association does not make another user id acceptable: the packet's author
+        // must still be the account the packet names, and the read stays closed.
+        let (_root, r, m) = started_world();
+        let other = forged(&r.comments.borrow()[3], 5000, Some(association));
+        r.comments.borrow_mut().push(other);
+        assert!(check(&m, &r).is_err(), "{association}");
+    }
+}
+
+#[test]
+fn comments_from_only_non_members_read_as_no_record() {
+    use moai_cli::contract::Kind;
+    let (root, r, m) = started_world();
+    for c in r.comments.borrow_mut().iter_mut() {
+        c["author_association"] = json!("NONE");
+    }
+    let posts = r.posts();
+    let e = check(&m, &r).unwrap_err();
+    assert_eq!(e.kind, Kind::Blocked, "{e:?}");
+    assert!(begin(root.path(), &m, start_of(&m), &r).is_err());
+    assert!(ack(root.path(), &m, answer(&m, "accepted"), &r).is_err());
+    assert_eq!(r.posts(), posts, "nothing was posted");
+}
+
+#[test]
+fn the_filter_covers_every_page_and_the_counts_add_up() {
+    let (_root, r, m) = started_world();
+    let clean = check(&m, &r).unwrap();
+    let real = r.comments.borrow().clone();
+    // Five forged comments among the four real ones, two per page: page 1 holds forged ones
+    // only, a forged copy sits at every page edge.
+    let mut all = vec![
+        forged(&real[0], 5000, Some("NONE")),
+        forged(&real[3], 5001, Some("CONTRIBUTOR")),
+    ];
+    all.push(real[0].clone());
+    all.push(forged(&real[2], 5002, Some("NONE")));
+    all.push(real[1].clone());
+    all.push(real[2].clone());
+    all.push(forged(&real[1], 5003, Some("FIRST_TIMER")));
+    all.push(real[3].clone());
+    all.push(forged(&real[3], 5004, None));
+    *r.comments.borrow_mut() = all;
+    r.page_size.set(2);
+    let before = r.sent.borrow().len();
+    let v = check(&m, &r).unwrap();
+    assert_eq!(without_ignored(&v), clean);
+    let ignored = &v["ignored_control_lines"];
+    assert_eq!(ignored["count"], 5, "{v}");
+    assert_eq!(
+        ignored["by_event"],
+        json!({"dispatch":2,"dispatch-decision":1,"dispatch-start":2}),
+        "{v}"
+    );
+    let pages = r.sent.borrow()[before..]
+        .iter()
+        .filter(|q| q.url.contains("/comments?"))
+        .count();
+    assert!(pages >= 5, "every page was read: {pages}");
+}
+
+#[test]
+fn a_non_member_packet_that_does_not_parse_is_reported_not_fatal() {
+    use moai_cli::contract::Kind;
+    let (_root, r, m) = started_world();
+    let clean = check(&m, &r).unwrap();
+    let junk = |id: u64, association: &str, body: &str| {
+        json!({"id":id,"author_association":association,"body":body,"user":{"id":99},
+            "created_at":"2026-11-11T00:00:00Z"})
+    };
+    r.comments.borrow_mut().push(junk(
+        7000,
+        "NONE",
+        "<!-- moai:op message-record:p1:zz:1 -->\nnot json",
+    ));
+    r.comments
+        .borrow_mut()
+        .push(junk(7001, "CONTRIBUTOR", "just a remark"));
+    let v = check(&m, &r).unwrap();
+    assert_eq!(without_ignored(&v), clean);
+    assert_eq!(v["ignored_control_lines"]["count"], 1, "{v}");
+    assert_eq!(
+        v["ignored_control_lines"]["by_event"],
+        json!({"unreadable":1})
+    );
+    assert_eq!(v["ignored_control_lines"]["other_non_member_comments"], 1);
+    // The same junk from a member is still a conflict: the read stays closed for members.
+    r.comments.borrow_mut()[4]["author_association"] = json!("MEMBER");
+    assert_eq!(conflict_kind(check(&m, &r)), Kind::Conflict);
 }
