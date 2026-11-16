@@ -1092,7 +1092,7 @@ mod tests {
         )
         .unwrap();
         let home = tempfile::tempdir().unwrap();
-        std::fs::create_dir(home.path().join(crate::HOME_STATE_DIR)).unwrap();
+        std::fs::create_dir(crate::home_root::path(home.path())).unwrap();
         let session = "s";
         let put = |kind: &str, in_home: bool| {
             let line = json!({"kind": kind, "session": session});

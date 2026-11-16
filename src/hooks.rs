@@ -1392,13 +1392,13 @@ mod receipt_home_tests {
             .unwrap();
         }
         if home_state {
-            fs::create_dir(home.path().join(crate::HOME_STATE_DIR)).unwrap();
+            fs::create_dir(crate::home_root::path(home.path())).unwrap();
         }
         (home, project)
     }
 
     fn home_log(home: &Path, id: &str, file: &str) -> PathBuf {
-        home.join(crate::HOME_STATE_DIR)
+        crate::home_root::path(home)
             .join("projects")
             .join(id)
             .join("receipts")
@@ -1506,7 +1506,7 @@ mod receipt_home_tests {
     fn a_link_or_a_file_in_the_way_on_the_home_side_is_refused() {
         let (home, project) = world(Some(ID), true);
         let elsewhere = tempfile::tempdir().unwrap();
-        let projects = home.path().join(crate::HOME_STATE_DIR).join("projects");
+        let projects = crate::home_root::path(home.path()).join("projects");
         std::os::unix::fs::symlink(elsewhere.path(), &projects).unwrap();
         assert!(append(Some(home.path()), project.path(), 1).is_err());
         assert!(

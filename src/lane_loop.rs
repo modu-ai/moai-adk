@@ -1123,13 +1123,13 @@ mod tests {
             .unwrap();
         }
         if home_state {
-            std::fs::create_dir(home.path().join(crate::HOME_STATE_DIR)).unwrap();
+            std::fs::create_dir(crate::home_root::path(home.path())).unwrap();
         }
         (home, project)
     }
 
     fn s4c_home_file(home: &Path, id: &str, lane: &str) -> std::path::PathBuf {
-        home.join(crate::HOME_STATE_DIR)
+        crate::home_root::path(home)
             .join("projects")
             .join(id)
             .join("state")
