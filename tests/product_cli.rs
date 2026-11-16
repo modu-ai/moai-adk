@@ -722,15 +722,17 @@ fn agents_user_edits_are_preserved_or_reported_as_conflict() {
 fn agents_local_file_is_opt_in_and_never_rewritten() {
     let (root, plan) = agents_project("en", "none");
     assert!(!root.path().join("AGENTS.local.md").exists());
-    assert!(!root.path().join(".gitignore").exists());
-    assert!(actions(&plan)
-        .iter()
-        .all(|(p, _)| p != "AGENTS.local.md" && p != ".gitignore"));
+    // #3009 S3b: the managed `.gitignore` block is written for every choice; it lists the
+    // personal file only for `ignored`.
+    let ignore = fs::read_to_string(root.path().join(".gitignore")).unwrap();
+    assert!(!ignore.lines().any(|l| l == "AGENTS.local.md"), "{ignore}");
+    assert!(actions(&plan).iter().all(|(p, _)| p != "AGENTS.local.md"));
 
     let (root, plan) = agents_project("ko", "tracked");
     assert!(root.path().join("AGENTS.local.md").is_file());
-    assert!(!root.path().join(".gitignore").exists());
-    assert!(actions(&plan).iter().all(|(p, _)| p != ".gitignore"));
+    let ignore = fs::read_to_string(root.path().join(".gitignore")).unwrap();
+    assert!(!ignore.lines().any(|l| l == "AGENTS.local.md"), "{ignore}");
+    assert!(actions(&plan).iter().any(|(p, _)| p == ".gitignore"));
     fs::write(root.path().join("AGENTS.local.md"), "personal\n").unwrap();
     let plan: Value = ok_result(&agents_plan(&root, &agents_request("ko", "tracked")));
     assert!(agents_apply(&root, &plan).status.success());
@@ -866,7 +868,13 @@ fn interrupted_update_refreshes_baseline_instead_of_false_conflict() {
     assert_eq!(actions(&plan)[0].1, "unchanged");
     assert!(agents_apply(&root, &plan).status.success());
     let refreshed: Value = serde_json::from_slice(&fs::read(&manifest).unwrap()).unwrap();
-    let baseline = refreshed["owned_files"][0]["baseline_sha256"]
+    // The `.gitignore` block is owned too (#3009 S3b), so the entry is found by its path.
+    let baseline = refreshed["owned_files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["path"] == "AGENTS.md")
+        .unwrap()["baseline_sha256"]
         .as_str()
         .unwrap();
     assert_eq!(
@@ -3977,10 +3985,17 @@ fn generation_manifest_entries_carry_kind() {
                 .map(str::to_string)
         })
         .collect();
+    // The managed `.gitignore` block records an `agents:` kind of its own (#3009 S3b: whether it
+    // lists the personal file); it is not a generation entry, so it stays out of this partition.
     let kind_partition: Vec<String> = manifest["owned_files"]
         .as_array()
         .unwrap()
         .iter()
+        .filter(|f| {
+            f["section_id"]
+                .as_str()
+                .is_some_and(|s| s.starts_with("generation:"))
+        })
         .filter_map(|f| f["kind"].as_str().map(str::to_string))
         .collect();
     assert_eq!(tag_partition, kind_partition);

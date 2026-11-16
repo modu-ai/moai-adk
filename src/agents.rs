@@ -6,6 +6,7 @@
 //! overwriting. AGENTS.local.md is created once and never modified afterwards.
 
 use crate::apply::{self, decide, read_opt, relative_ok, root_of, target, Decision};
+use crate::state_root;
 use crate::{digest, read_profile, Profile};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -48,7 +49,9 @@ pub struct FilePlan {
     pub path: String,
     /// create | merge | append | unchanged | conflict
     pub action: String,
-    /// Design intent for generated projects, not a measured git state (no git command runs).
+    /// Design intent for generated projects, not a measured git state. The `.gitignore` row
+    /// asks git read-only questions (`ignore_block`: up to five calls, one of them a throw-away
+    /// `git init` in the temporary folder); no other row runs git.
     pub tracked_by_default: bool,
     pub expected_sha256: Option<String>,
     pub section_id: Option<String>,
@@ -317,15 +320,557 @@ pub fn is_generated_local(bytes: &[u8]) -> bool {
     })
 }
 
-fn render_ignore(root: &Path) -> String {
+/// What the project's state folder keeps in git (#3009 S3b, design §2): the profile, the
+/// generation manifests and workflows this tool writes into it today, the two generation
+/// markers (a fresh checkout classifies the folder by them), and the team's own `config/`,
+/// `decisions/` and `docs/`. Everything else in the folder is machine output and is ignored.
+const STATE_KEPT: [&str; 8] = [
+    "project.yaml",
+    "moai-cli.json",
+    "moai.json",
+    "manifests/",
+    "workflows/",
+    "config/",
+    "decisions/",
+    "docs/",
+];
+
+/// The `kind` an owned `.gitignore` block is recorded with: whether it lists `AGENTS.local.md`
+/// (#3009 S3b). A block recorded before this field existed listed it, so `None` reads as listed.
+const IGNORE_KIND_WITH_LOCAL: &str = "agents:ignore-with-local";
+const IGNORE_KIND_STATE_ONLY: &str = "agents:ignore-state";
+
+/// The managed `.gitignore` block (#3009 S3b, leader decision A): the receipts line, the
+/// state-folder allow-list, and `AGENTS.local.md` only when `list_local` (the personal file is
+/// `ignored`, the behaviour before S3b). `specs/` is kept only for a project without GitHub
+/// Issues (decision 6892663669: with a tracker the spec lives in the Issue, so no local copy).
+///
+/// `allow` is the list of `!` paths the block carries, in order (see [`ignore_block`]).
+fn render_ignore(root: &Path, list_local: bool, allow: &[String]) -> String {
     let (begin, end) = markers(IGNORE_SECTION, "hash");
+    let state = state_root::dir(root);
+    let mut body = String::new();
+    if list_local {
+        body.push_str("AGENTS.local.md\n");
+    }
     // HOLD-B1 (user-confirmed 2026-11-08, ADK_1989_CONFIRMED_20261108_01): apply
     // receipts stay out of git alongside the
     // personal file; src/apply.rs::receipts_rel is the single source of the path.
-    format!(
-        "{begin}\nAGENTS.local.md\n{}/\n{end}\n",
-        apply::receipts_rel(root)
-    )
+    body.push_str(&format!("{}/\n", apply::receipts_rel(root)));
+    body.push_str(&format!("{state}/*\n"));
+    for path in allow {
+        // `ignore_block` refused a name that cannot be written, so the fallback is not reached.
+        let line = escape_ignore_path(path).unwrap_or_else(|| path.clone());
+        body.push_str(&format!("!{line}\n"));
+    }
+    format!("{begin}\n{body}{end}\n")
+}
+
+/// `path` as one `.gitignore` pattern that matches exactly that path: a backslash before the
+/// characters git reads as pattern syntax (`* ? [ \`) and before trailing spaces. `None` for a
+/// name with a line break, which no pattern line can hold.
+fn escape_ignore_path(path: &str) -> Option<String> {
+    if path.contains(['\n', '\r']) {
+        return None;
+    }
+    let mut out = String::with_capacity(path.len());
+    for c in path.chars() {
+        if matches!(c, '*' | '?' | '[' | '\\') {
+            out.push('\\');
+        }
+        out.push(c);
+    }
+    let kept = out.trim_end_matches(' ').len();
+    let spaces = out.len() - kept;
+    out.truncate(kept);
+    for _ in 0..spaces {
+        out.push_str("\\ ");
+    }
+    Some(out)
+}
+
+/// The rendered block and what the plan tells about how it was made.
+struct IgnoreBlock {
+    rendered: String,
+    /// Preview lines for the plan's `detail`: paths left ignored for a user rule, paths kept
+    /// because git tracks them under the folder an update moves away from.
+    notes: Vec<String>,
+}
+
+/// The `!` allow-list of the block, shaped by two facts about the project (#3009 S3b, audit
+/// 6897773189 B1/B3, leader decision 6897797810):
+///
+/// - a rule the user wrote wins: outside the block in the project's root `.gitignore`, in
+///   `.git/info/exclude`, or in the global excludes file git reads (leader decision 6897897560).
+///   A path such a rule already ignores gets no `!` line, so the block never changes what one
+///   of the user's rules does. A `!` line in the root `.gitignore` outranks the other two
+///   sources, which is why they are read too. The block is committed, so another computer's
+///   global rules cannot be seen from here; planning again there fits the block to them;
+/// - a project update moves the state folder from `.moai-cli/` to `.moai/`: what git tracks
+///   in the earlier folder keeps its place in the new one, so a later `git add -A` does not
+///   take the old paths out of git and leave the new ones ignored.
+///
+/// Plan and apply both call this, so the preview and the write cannot differ.
+fn ignore_block(
+    root: &Path,
+    github_issues: Option<bool>,
+    list_local: bool,
+    ignore_text: Option<&str>,
+) -> Result<IgnoreBlock> {
+    let state = state_root::dir(root);
+    let mut kept: Vec<String> = STATE_KEPT.iter().map(|k| format!("{state}/{k}")).collect();
+    if github_issues != Some(true) {
+        kept.push(format!("{state}/specs/"));
+    }
+    let user = ignore_text.map(outside_block).unwrap_or_default();
+    let mut notes: Vec<String> = Vec::new();
+    // Names git tracks in the earlier folder, and the path each takes in this one. A name the
+    // receipts line already covers is not asked about.
+    let receipts = format!("{}/", apply::receipts_rel(root));
+    let mut moved: Vec<(String, String)> = Vec::new();
+    for name in tracked_in_earlier_folder(root, state, &mut notes)? {
+        let path = format!("{state}/{name}");
+        if format!("{path}/") == receipts || path == receipts {
+            continue;
+        }
+        if escape_ignore_path(&path).is_none() {
+            return Err(format!(
+                "git tracks {}/{name}, a name a .gitignore line cannot hold (it has a line break); \
+                 rename it before the update",
+                crate::PROJECT_STATE_DIR
+            ));
+        }
+        moved.push((name, path));
+    }
+    // One question to git covers the fixed list and the moved names: a user rule that ignores a
+    // path wins over both (audit 6899590801 N1), whether or not git tracked it before.
+    let mut asked = kept.clone();
+    for (_, path) in &moved {
+        if !asked.contains(path) {
+            asked.push(path.clone());
+        }
+    }
+    let hits = user_rule_hits(root, &user, &asked, &mut notes)?;
+    let mut shown: Vec<String> = Vec::new();
+    for h in &hits {
+        let line = match moved.iter().find(|(_, path)| *path == h.path) {
+            Some((name, _)) => format!(
+                "tracking ends: your rule `{}` in {} ignores {}, which git tracks as {}/{name}",
+                h.rule,
+                h.origin,
+                h.path,
+                crate::PROJECT_STATE_DIR
+            ),
+            None => format!(
+                "left ignored by your rule `{}` in {}: {}",
+                h.rule, h.origin, h.path
+            ),
+        };
+        shown.push(line);
+    }
+    shown.append(&mut notes);
+    let mut allow: Vec<String> = kept
+        .into_iter()
+        .filter(|p| !hits.iter().any(|h| h.path == *p))
+        .collect();
+    for (name, path) in moved {
+        if allow.contains(&path) || hits.iter().any(|h| h.path == path) {
+            continue;
+        }
+        shown.push(format!(
+            "kept because git tracks {}/{name}, which the update moves to {path}",
+            crate::PROJECT_STATE_DIR
+        ));
+        allow.push(path);
+    }
+    Ok(IgnoreBlock {
+        rendered: render_ignore(root, list_local, &allow),
+        notes: shown,
+    })
+}
+
+/// The part of a `.gitignore` the user wrote: its text outside this tool's managed block. A
+/// text with malformed markers is returned whole (the plan reports those as a conflict).
+fn outside_block(text: &str) -> String {
+    let (begin, end) = markers(IGNORE_SECTION, "hash");
+    match find_block(text, &begin, &end) {
+        Ok(Some((start, block_end, _))) => format!("{}{}", &text[..start], &text[block_end..]),
+        _ => text.to_string(),
+    }
+}
+
+/// What a spawn error of `git` is called, so a caller can tell "no git" from "git said no".
+const GIT_UNAVAILABLE: &str = "git unavailable";
+
+/// `git` in `dir` with the scrubbed environment; `input` goes to its stdin. stderr is kept only
+/// to classify a failure (`ask_project`); it is never shown.
+fn git_output(dir: &Path, args: &[&str], input: &[u8]) -> Result<std::process::Output> {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+    let mut cmd = Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    let mut child = cmd
+        .arg("-C")
+        .arg(dir)
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|_| GIT_UNAVAILABLE.to_string())?;
+    if let Some(mut pipe) = child.stdin.take() {
+        // A write that fails shows up as git's own exit code.
+        let _ = pipe.write_all(input);
+    }
+    child
+        .wait_with_output()
+        .map_err(|_| "git failed to run".to_string())
+}
+
+/// The one-line summary of a failed git call, without paths (`identity::failure_summary`).
+fn git_failure(what: &str, out: &std::process::Output) -> String {
+    let summary = crate::identity::failure_summary(&out.stderr);
+    let summary = if out.stderr.iter().all(u8::is_ascii_whitespace) {
+        "no message".to_string()
+    } else {
+        summary
+    };
+    format!("cannot tell {what}: git said: {summary}")
+}
+
+/// Records, once, that git is missing so the project's own ignore state could not be read.
+fn note_git_missing(notes: &mut Vec<String>) {
+    let note =
+        "git is not available, so your ignore rules and the files git tracks were not considered";
+    if !notes.iter().any(|n| n == note) {
+        notes.push(note.to_string());
+    }
+}
+
+/// A read-only git question about the project, where only two failures mean "nothing to read":
+/// the project is not a git repository, and git is not installed (the second is noted in the
+/// preview). Any other failure stops the plan, because reading it as "nothing" would drop a
+/// protection without a word (audit 6899590801 N2). `Ok(None)` is "nothing to read".
+fn ask_project(
+    root: &Path,
+    args: &[&str],
+    what: &str,
+    notes: &mut Vec<String>,
+) -> Result<Option<Vec<u8>>> {
+    let out = match git_output(root, args, b"") {
+        Ok(out) => out,
+        Err(e) if e == GIT_UNAVAILABLE => {
+            note_git_missing(notes);
+            return Ok(None);
+        }
+        Err(e) => return Err(e),
+    };
+    if out.status.success() {
+        return Ok(Some(out.stdout));
+    }
+    if String::from_utf8_lossy(&out.stderr).contains(crate::identity::NOT_A_REPOSITORY) {
+        return Ok(None);
+    }
+    Err(git_failure(what, &out))
+}
+
+/// One allow-list path a user rule already ignores.
+struct RuleHit {
+    path: String,
+    rule: String,
+    /// The file the rule stands in: `.gitignore`, `.git/info/exclude`, or the global excludes
+    /// file (its home folder shown as `~`).
+    origin: String,
+}
+
+fn has_rule(text: &str) -> bool {
+    text.lines().any(|l| {
+        let t = l.trim();
+        !t.is_empty() && !t.starts_with('#')
+    })
+}
+
+/// `path` with the home folder at its start written as `~`.
+fn tilde(path: &Path) -> String {
+    let shown = path.display().to_string();
+    let Some(home) = std::env::var("HOME").ok().filter(|h| !h.is_empty()) else {
+        return shown;
+    };
+    match shown.strip_prefix(home.trim_end_matches('/')) {
+        Some(rest) if rest.is_empty() || rest.starts_with('/') => format!("~{rest}"),
+        _ => shown,
+    }
+}
+
+/// Where git looks for the global excludes file when `core.excludesFile` is not set.
+fn default_global_excludes() -> Option<std::path::PathBuf> {
+    let config = std::env::var_os("XDG_CONFIG_HOME")
+        .filter(|v| !v.is_empty())
+        .map(std::path::PathBuf::from)
+        .or_else(|| {
+            std::env::var_os("HOME")
+                .filter(|v| !v.is_empty())
+                .map(|h| std::path::PathBuf::from(h).join(".config"))
+        })?;
+    Some(config.join("git").join("ignore"))
+}
+
+/// The global excludes file git reads for `root` and its text. A file that is configured but
+/// missing, or present but unreadable, gives no rules and a one-line note for the preview
+/// (leader decision 6897897560, item 7); an unset setting with no default file gives neither.
+fn global_excludes(
+    root: &Path,
+    notes: &mut Vec<String>,
+) -> Result<(Option<std::path::PathBuf>, String)> {
+    // Unit tests run with the developer's real HOME; the real global file must not shape them.
+    // The binary tests (tests/gitignore_block_cli.rs) run this code with an empty HOME.
+    if cfg!(test) {
+        return Ok((None, String::new()));
+    }
+    // `git config --get` answers 0 with the value and 1 when the key is not set; any other
+    // answer is a broken configuration, which stops the plan.
+    let configured = match git_output(
+        root,
+        &["config", "--type=path", "--get", "core.excludesFile"],
+        b"",
+    ) {
+        Ok(out) => match out.status.code() {
+            Some(0) => Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
+                .filter(|p| !p.is_empty())
+                .map(std::path::PathBuf::from),
+            Some(1) => None,
+            _ => return Err(git_failure("what git's core.excludesFile says", &out)),
+        },
+        Err(e) if e == GIT_UNAVAILABLE => {
+            note_git_missing(notes);
+            return Ok((None, String::new()));
+        }
+        Err(e) => return Err(e),
+    };
+    let was_configured = configured.is_some();
+    let Some(path) = configured.or_else(default_global_excludes) else {
+        return Ok((None, String::new()));
+    };
+    match std::fs::read_to_string(&path) {
+        Ok(text) => Ok((Some(path), text)),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound && !was_configured => {
+            Ok((Some(path), String::new()))
+        }
+        Err(_) => {
+            notes.push(format!(
+                "global excludes file {} is missing or unreadable; its rules are not considered",
+                tilde(&path)
+            ));
+            Ok((Some(path), String::new()))
+        }
+    }
+}
+
+/// The text of the project's `.git/info/exclude`: empty when the project is not a repository or
+/// the file is not there; a file that is there and cannot be read stops the plan.
+fn info_exclude(root: &Path, notes: &mut Vec<String>) -> Result<String> {
+    let Some(out) = ask_project(
+        root,
+        &["rev-parse", "--git-path", "info/exclude"],
+        "where the project's .git/info/exclude is",
+        notes,
+    )?
+    else {
+        return Ok(String::new());
+    };
+    let path = String::from_utf8_lossy(&out).trim().to_string();
+    if path.is_empty() {
+        return Ok(String::new());
+    }
+    match std::fs::read(root.join(path)) {
+        Ok(bytes) => String::from_utf8(bytes)
+            .map_err(|_| "cannot read .git/info/exclude: it is not UTF-8 text".to_string()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(String::new()),
+        Err(_) => Err("cannot read .git/info/exclude".to_string()),
+    }
+}
+
+/// Which of `paths` the user's own ignore rules already ignore, with the rule and the file it
+/// stands in: `user_rules` (the root `.gitignore` outside the block), `.git/info/exclude`, and
+/// the global excludes file. Git answers: the three texts are written to a throw-away
+/// repository in the temporary folder, where git applies them in its own order, and asked with
+/// `check-ignore --no-index`, so the project is neither read through git's ignore machinery nor
+/// written and a negated rule counts as not ignoring. A directory path ends in `/`. Nothing is
+/// asked when no source holds a rule. What cannot be read about the sources goes to `notes`
+/// (the preview) or, when git answers wrongly, stops the plan.
+fn user_rule_hits(
+    root: &Path,
+    user_rules: &str,
+    paths: &[String],
+    notes: &mut Vec<String>,
+) -> Result<Vec<RuleHit>> {
+    let (global_path, global_text) = global_excludes(root, notes)?;
+    let info_text = info_exclude(root, notes)?;
+    if paths.is_empty() || !(has_rule(user_rules) || has_rule(&info_text) || has_rule(&global_text))
+    {
+        return Ok(Vec::new());
+    }
+    let unavailable =
+        "cannot tell which paths your ignore rules ignore: git check-ignore did not answer";
+    let tmp = tempfile::tempdir().map_err(|_| "temporary folder unavailable".to_string())?;
+    let dir = tmp.path();
+    let no_excludes = dir.join("global-excludes");
+    std::fs::write(&no_excludes, &global_text)
+        .map_err(|_| "temporary folder unavailable".to_string())?;
+    std::fs::write(dir.join(".gitignore"), user_rules)
+        .map_err(|_| "temporary folder unavailable".to_string())?;
+    if !git_output(dir, &["init", "-q"], b"")?.status.success() {
+        return Err(unavailable.into());
+    }
+    let info_dir = dir.join(".git").join("info");
+    std::fs::create_dir_all(&info_dir).map_err(|_| "temporary folder unavailable".to_string())?;
+    std::fs::write(info_dir.join("exclude"), &info_text)
+        .map_err(|_| "temporary folder unavailable".to_string())?;
+    let excludes = format!("core.excludesFile={}", no_excludes.display());
+    let mut input = Vec::new();
+    for path in paths {
+        input.extend_from_slice(path.as_bytes());
+        input.push(0);
+    }
+    let out = git_output(
+        dir,
+        &[
+            "-c",
+            excludes.as_str(),
+            "check-ignore",
+            "-v",
+            "-z",
+            "--no-index",
+            "--stdin",
+        ],
+        &input,
+    )?;
+    // 0: some path matched; 1: none did; anything else is a failure.
+    if !matches!(out.status.code(), Some(0 | 1)) {
+        return Err(unavailable.into());
+    }
+    // `-v -z` prints four NUL-ended fields per match: source, line, pattern, path.
+    let fields: Vec<&[u8]> = out.stdout.split(|b| *b == 0).collect();
+    let mut hits = Vec::new();
+    for record in fields.chunks_exact(4) {
+        let (Ok(source), Ok(pattern), Ok(path)) = (
+            std::str::from_utf8(record[0]),
+            std::str::from_utf8(record[2]),
+            std::str::from_utf8(record[3]),
+        ) else {
+            return Err(unavailable.into());
+        };
+        // A negated rule matching a path means the path is not ignored.
+        if pattern.starts_with('!') {
+            continue;
+        }
+        let origin = if source == ".gitignore" {
+            ".gitignore".to_string()
+        } else if source.replace('\\', "/").ends_with("info/exclude") {
+            ".git/info/exclude".to_string()
+        } else {
+            global_path
+                .as_deref()
+                .map_or_else(|| "the global excludes file".to_string(), tilde)
+        };
+        hits.push(RuleHit {
+            path: path.to_string(),
+            rule: pattern.to_string(),
+            origin,
+        });
+    }
+    Ok(hits)
+}
+
+/// Top-level names (`specs/`, `state/`, `project.yaml`) git tracks in the earlier state
+/// folder `.moai-cli/` while the project's state folder is `.moai/`: the update moves them
+/// there. Empty when the state folder is not `.moai/`, when the project is not a git
+/// repository, or when git is not installed (noted in the preview). Any other failure of git,
+/// and a tracked name that is not UTF-8 text, stop the plan: a list that silently lacks names
+/// would let a later `git add -A` drop them.
+fn tracked_in_earlier_folder(
+    root: &Path,
+    state: &str,
+    notes: &mut Vec<String>,
+) -> Result<Vec<String>> {
+    if state != state_root::MOAI_DIR {
+        return Ok(Vec::new());
+    }
+    let Some(stdout) = ask_project(
+        root,
+        &["ls-files", "-z", "--", crate::PROJECT_STATE_DIR],
+        "which files git tracks in the earlier state folder",
+        notes,
+    )?
+    else {
+        return Ok(Vec::new());
+    };
+    let mut names = std::collections::BTreeSet::new();
+    for path in stdout.split(|b| *b == 0).filter(|p| !p.is_empty()) {
+        let path = std::str::from_utf8(path).map_err(|_| {
+            format!(
+                "git tracks a name under {}/ that is not UTF-8 text; rename it before the update",
+                crate::PROJECT_STATE_DIR
+            )
+        })?;
+        let Some((_, rest)) = path.split_once('/') else {
+            continue;
+        };
+        names.insert(match rest.split_once('/') {
+            Some((first, _)) => format!("{first}/"),
+            None => rest.to_string(),
+        });
+    }
+    Ok(names.into_iter().collect())
+}
+
+fn ignore_kind(list_local: bool) -> &'static str {
+    if list_local {
+        IGNORE_KIND_WITH_LOCAL
+    } else {
+        IGNORE_KIND_STATE_ONLY
+    }
+}
+
+/// `true` when the manifest's owned `.gitignore` block lists `AGENTS.local.md` (#3009 S3b): its
+/// recorded kind says so, or it has none (a block written before the kind existed listed it).
+pub(crate) fn ignore_kind_lists_local(kind: Option<&str>) -> bool {
+    kind.is_none_or(|k| k == IGNORE_KIND_WITH_LOCAL)
+}
+
+/// The line-level preview of a managed block change for the plan's `detail` (#3009 S3b,
+/// condition 1): `+` a line the block gains, `-` a line it loses, nothing for a kept line.
+fn block_line_preview(current: Option<&[u8]>, begin: &str, end: &str, rendered: &str) -> String {
+    let body = |text: &str| -> Vec<String> {
+        text.lines()
+            .filter(|l| *l != begin && *l != end)
+            .map(String::from)
+            .collect()
+    };
+    let old: Vec<String> = current
+        .and_then(|b| std::str::from_utf8(b).ok())
+        .and_then(|text| {
+            find_block(text, begin, end)
+                .ok()
+                .flatten()
+                .map(|(s, e, _)| body(&text[s..e]))
+        })
+        .unwrap_or_default();
+    let new = body(rendered);
+    let added: Vec<&String> = new.iter().filter(|l| !old.contains(l)).collect();
+    let removed: Vec<&String> = old.iter().filter(|l| !new.contains(l)).collect();
+    let mut out = format!(
+        "managed block lines: {} added, {} removed",
+        added.len(),
+        removed.len()
+    );
+    for l in &added {
+        out.push_str(&format!("\n+ {l}"));
+    }
+    for l in &removed {
+        out.push_str(&format!("\n- {l}"));
+    }
+    out
 }
 
 pub(crate) fn ignore_has_rule(text: &str) -> bool {
@@ -451,13 +996,33 @@ fn plan_digest(p: &AgentsPlan) -> String {
 
 /// Records `bytes` as the baseline of one managed section, replacing an earlier entry.
 fn record_owned(owned: &mut Vec<OwnedFile>, path: &str, section: &str, bytes: &[u8]) {
+    record_owned_kind(owned, path, section, bytes, None);
+}
+
+fn record_owned_kind(
+    owned: &mut Vec<OwnedFile>,
+    path: &str,
+    section: &str,
+    bytes: &[u8],
+    kind: Option<&str>,
+) {
     owned.retain(|f| f.path != path);
     owned.push(OwnedFile {
         path: path.into(),
         section_id: Some(section.into()),
         baseline_sha256: digest(bytes),
-        kind: None,
+        kind: kind.map(String::from),
     });
+}
+
+/// Whether the personal file's line goes into the managed `.gitignore` block (#3009 S3b): the
+/// choice is `ignored`, and no rule of that name stands in the user's own text, the part of the
+/// file outside the block. The block's own line is never counted as a user rule (audit
+/// 6897773189 B4): with the generation manifest gone, a block that lists the file would
+/// otherwise read itself as the user's rule, plan a different block and stay in conflict.
+fn lists_local(request: &AgentsRequest, ignore_text: Option<&str>) -> bool {
+    request.local_file == "ignored"
+        && !ignore_text.is_some_and(|text| ignore_has_rule(&outside_block(text)))
 }
 
 /// What an apply carries over from the previous manifest: the generation linkage (#2127:
@@ -512,7 +1077,12 @@ fn adopt_unchanged(
             {
                 let block = &bytes[s..end];
                 if digest(block) == rendered {
-                    record_owned(owned, &f.path, section, block);
+                    if section == IGNORE_SECTION {
+                        let lists = std::str::from_utf8(block).is_ok_and(ignore_has_rule);
+                        record_owned_kind(owned, &f.path, section, block, Some(ignore_kind(lists)));
+                    } else {
+                        record_owned(owned, &f.path, section, block);
+                    }
                 }
             }
         }
@@ -722,34 +1292,49 @@ pub(crate) fn agents_plan_for(
         });
     }
 
-    if request.local_file == "ignored" {
+    // #3009 S3b (leader decision A): the managed `.gitignore` block is always planned, for the
+    // state-folder allow-list; `AGENTS.local.md` is listed in it only when the personal file is
+    // `ignored` (the behaviour before S3b) and no user rule of the same name already stands
+    // outside a block this tool owns.
+    {
         let ignore = read_opt(&target(&root, ".gitignore")?)?;
         let ignore_text = match &ignore {
             Some(b) => Some(std::str::from_utf8(b).map_err(|_| "target is not UTF-8")?),
             None => None,
         };
-        if ignore_text.is_some_and(ignore_has_rule) && baseline_for(m, ".gitignore").is_none() {
-            files.push(FilePlan {
-                path: ".gitignore".into(),
-                action: "unchanged".into(),
-                tracked_by_default: true,
-                expected_sha256: ignore.as_deref().map(digest),
-                section_id: Some(IGNORE_SECTION.into()),
-                baseline_sha256: None,
-                rendered_sha256: None,
-                detail: Some("existing user rule names AGENTS.local.md; effective git ignore status not verified".into()),
-            });
-        } else {
-            files.push(section_plan(
-                ".gitignore",
-                true,
-                IGNORE_SECTION,
-                "hash",
-                ignore.as_deref(),
-                baseline_for(m, ".gitignore"),
-                &render_ignore(&root),
-            )?);
+        let list_local = lists_local(&request, ignore_text);
+        let user_rule = request.local_file == "ignored" && !list_local;
+        let (begin, end) = markers(IGNORE_SECTION, "hash");
+        let block = ignore_block(&root, profile.github_issues, list_local, ignore_text)?;
+        let rendered = block.rendered;
+        let mut plan = section_plan(
+            ".gitignore",
+            true,
+            IGNORE_SECTION,
+            "hash",
+            ignore.as_deref(),
+            baseline_for(m, ".gitignore"),
+            &rendered,
+        )?;
+        // Condition 1 of the decision: the block's lines show in the preview, for a new block
+        // and for a widened one alike.
+        if matches!(plan.action.as_str(), "create" | "append" | "merge") {
+            let mut detail = block_line_preview(ignore.as_deref(), &begin, &end, &rendered);
+            // Which user rules stood in the way of an allow line, and which tracked paths the
+            // block keeps: named in the preview, not only visible as a missing or extra line.
+            for note in &block.notes {
+                detail.push_str(&format!("\n{note}"));
+            }
+            plan.detail = Some(detail);
         }
+        if user_rule {
+            let note = "existing user rule names AGENTS.local.md; effective git ignore status not verified";
+            plan.detail = Some(match plan.detail.take() {
+                Some(d) => format!("{note}\n{d}"),
+                None => note.into(),
+            });
+        }
+        files.push(plan);
     }
 
     let manifest_bytes = read_opt(&target(&root, &manifest_rel)?)?;
@@ -1020,7 +1605,10 @@ pub(crate) fn agents_apply_amended_for(
             }
             ".gitignore" => {
                 let (b, e) = markers(IGNORE_SECTION, "hash");
-                let rendered = render_ignore(&root);
+                let before_text = before.as_deref().and_then(|x| std::str::from_utf8(x).ok());
+                let list_local = lists_local(&p.request, before_text);
+                let rendered =
+                    ignore_block(&root, profile.github_issues, list_local, before_text)?.rendered;
                 let out = splice(before.as_deref(), &b, &e, &rendered, "")?;
                 assert_single_block(&out, &b, &e, &rendered)?;
                 (out, Some(IGNORE_SECTION))
@@ -1101,12 +1689,22 @@ pub(crate) fn agents_apply_amended_for(
                     render_review(&profile, &p.request).ok_or("review section has no answers")?;
                 record_owned(&mut owned, &f.path, REVIEW_SECTION, rendered.as_bytes());
             }
-            Some(IGNORE_SECTION) => record_owned(
-                &mut owned,
-                &f.path,
-                IGNORE_SECTION,
-                render_ignore(&root).as_bytes(),
-            ),
+            Some(IGNORE_SECTION) => {
+                // The block just written is the one rendered above; its lines say whether the
+                // personal file is listed, and the record keeps that (#3009 S3b).
+                let written = std::str::from_utf8(&bytes).map_err(|_| "target is not UTF-8")?;
+                let (b, e) = markers(IGNORE_SECTION, "hash");
+                let block = find_block(written, &b, &e)?
+                    .map(|(s, end, _)| &written[s..end])
+                    .ok_or("managed block missing after write")?;
+                record_owned_kind(
+                    &mut owned,
+                    &f.path,
+                    IGNORE_SECTION,
+                    block.as_bytes(),
+                    Some(ignore_kind(ignore_has_rule(block))),
+                );
+            }
             _ => {
                 if !created.contains(&f.path) {
                     created.push(f.path.clone());
