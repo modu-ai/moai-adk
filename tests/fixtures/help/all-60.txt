@@ -199,6 +199,8 @@ Lane and leader
   lane-safe-to-reset      Check that a lane's session is
                           safe to clear
   close-check             Check whether an Issue may close
+  card-times              Read the server times of cards and
+                          their pull requests
   lane-env                Print a lane's cargo folders
   session-register        Register this session's lane name
   session-current         Print this session's own id
