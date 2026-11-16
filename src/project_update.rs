@@ -366,22 +366,24 @@ fn tied(
             if why.starts_with("settings reference .moai/") {
                 let refs = moai_dir_references(root);
                 if !refs.is_empty() {
-                    // Values the step leaves: the ones it lists as kept, and anything in the
-                    // local file, which is never written (#2936 L2a, D1 condition 3).
+                    // Values the step leaves: the ones it lists as kept. The local file is never
+                    // written (#2936 L2a, D1 condition 3); its keys get a sentence of their own
+                    // (#2936 L2b).
                     let yours = settings.preview["kept"]
                         .as_array()
-                        .is_some_and(|k| !k.is_empty())
-                        || refs
-                            .iter()
-                            .any(|(file, _)| *file == ".claude/settings.local.json");
-                    let next = match settings.state {
+                        .is_some_and(|k| !k.is_empty());
+                    let local_keys = refs
+                        .iter()
+                        .find(|(file, _)| *file == LOCAL_SETTINGS)
+                        .map(|(_, keys)| keys.join(", "));
+                    let shared_keys = refs.iter().any(|(file, _)| *file != LOCAL_SETTINGS);
+                    let mut next = match settings.state {
                         "ready" => format!(
                             "the go-settings step above clears the Go-made keys ({}); apply it \
                              and preview again{}",
                             go_setting_names(settings),
                             if yours {
-                                "; the keys it lists as kept and the ones in \
-                                 .claude/settings.local.json are your values: change or remove \
+                                "; the keys it lists as kept are your values: change or remove \
                                  them yourself"
                             } else {
                                 ""
@@ -391,10 +393,17 @@ fn tied(
                             "the go-settings step above could not clear the Go-made keys ({})",
                             settings.reason
                         ),
-                        _ => "this update does not change those keys, so change or remove them \
-                              yourself and run the update again"
+                        _ if shared_keys => "this update does not change those keys, so change \
+                                             or remove them yourself and run the update again"
                             .to_string(),
+                        _ => String::new(),
                     };
+                    if let Some(keys) = &local_keys {
+                        if !next.is_empty() {
+                            next.push_str("; ");
+                        }
+                        next.push_str(&local_settings_next(keys));
+                    }
                     why = format!("{why}; held by {}; {next}", moai_dir_reference_note(&refs));
                 }
             }
@@ -411,6 +420,18 @@ fn tied(
     }
 }
 
+/// The local settings file, which this update never writes (#2936 L2a, D1 condition 3).
+const LOCAL_SETTINGS: &str = ".claude/settings.local.json";
+
+/// #2936 L2b: what to do about Go references in the local settings file: which file, which keys
+/// (names only), that this update does not edit it, and the command that follows the user's edit.
+fn local_settings_next(keys: &str) -> String {
+    format!(
+        "this update does not edit {LOCAL_SETTINGS}; edit or remove these keys yourself ({keys}), \
+         then run `moai project-update-plan` again"
+    )
+}
+
 /// #2936 L1: the top-level keys of the project and local settings files whose values name
 /// `.moai/`, per file. Key names only: a value is never printed. A file that cannot be read as
 /// a settings object is left out (the settings plan already reports that).
@@ -418,7 +439,7 @@ fn moai_dir_references(root: &Path) -> Vec<(&'static str, Vec<String>)> {
     let mut out = Vec::new();
     for (scope, file) in [
         (SettingsScope::Project, ".claude/settings.json"),
-        (SettingsScope::Local, ".claude/settings.local.json"),
+        (SettingsScope::Local, LOCAL_SETTINGS),
     ] {
         let Ok((_, current)) = claude::scope_view(root, scope) else {
             continue;
@@ -532,6 +553,21 @@ fn local_file(root: &Path, manifest: &Value) -> Result<&'static str> {
     }
 }
 
+/// #2936 L2b: a workflow reference recorded while the state lived in the earlier `.moai-cli/`
+/// follows the state once it has moved to `.moai/` (the go-state step moves that folder's product
+/// state, not the path inside the generation manifest). Without this the generation step waits
+/// for a folder that no longer exists ("workflow reference directory missing") and no command
+/// ever clears it. A reference elsewhere, or a project whose state has not moved, is as recorded.
+fn follow_state_dir(root: &Path, recorded: &str) -> String {
+    let earlier = format!("{}/", state_root::EARLIER_PROJECT_DIR);
+    match recorded.strip_prefix(&earlier) {
+        Some(rest) if state_root::dir(root) == state_root::MOAI_DIR => {
+            format!("{}/{rest}", state_root::MOAI_DIR)
+        }
+        _ => recorded.to_string(),
+    }
+}
+
 /// The generation request rebuilt from the profile and the manifest's record (#2936 S1).
 /// `Err` is a question for the user (the step reads `needs_decision`).
 fn generation_request(
@@ -548,7 +584,7 @@ fn generation_request(
         .unwrap_or_else(|| "en".into());
     let workflow_reference = manifest["workflow_reference"]
         .as_str()
-        .map(String::from)
+        .map(|r| follow_state_dir(root, r))
         .unwrap_or_else(|| format!("{}/workflows/project/", state_root::dir(root)));
     let workflow_id = manifest["workflow_id"]
         .as_str()
@@ -1191,6 +1227,121 @@ fn agents_local_merge_step(root: &Path, shown: &str) -> Result<Step> {
     })
 }
 
+/// What every leftover says it is not (#2936 L2b).
+const LEFTOVER_NOTE: &str = "not removed by update";
+/// The Go tool's update lock, relative to the project.
+const GO_UPDATE_LOCK: &str = ".moai/.update.lock";
+/// A lock file is a few lines of JSON; this only refuses absurd inputs.
+const LOCK_LIMIT: u64 = 4096;
+/// How many entry names the `.moai-cli/` fact lists.
+const LEFTOVER_NAMES: usize = 8;
+
+fn leftover(path: &str, fact: String) -> Value {
+    json!({"path": path, "fact": fact, "note": LEFTOVER_NOTE})
+}
+
+/// #2936 L2b (completion condition 3 of the Issue): what earlier generations leave behind that no
+/// step of this update removes, as facts (path, one line, and that the update does not remove
+/// it). Read only, no deletion offered: the user decides. A fact needs its proof:
+///
+/// - `.moai-cli/`: a real folder while the state already lives in `.moai/` (state_root `rust`).
+///   Before that it is the live state folder (or moves with the go-state step) and is no leftover.
+/// - `CLAUDE.md`: a regular file with Go proof (the Go manifest records it, or it holds a Go
+///   curator block) and no managed section of this generation, while the Go `.moai/` folder is
+///   not there for the go-state step to move it with.
+/// - `.moai/.update.lock`: the Go tool's lock file whose recorded process is not running
+///   (`kill -0`; a process that cannot be judged, or a lock that cannot be read, is not stated).
+fn leftovers(root: &Path, generation: &str) -> Vec<Value> {
+    let mut out = Vec::new();
+    if generation == "rust" {
+        if let Ok(m) = fs::symlink_metadata(root.join(state_root::EARLIER_PROJECT_DIR)) {
+            if m.is_dir() {
+                let mut names: Vec<String> =
+                    fs::read_dir(root.join(state_root::EARLIER_PROJECT_DIR))
+                        .map(|rd| {
+                            rd.flatten()
+                                .map(|e| e.file_name().to_string_lossy().into_owned())
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                names.sort();
+                let held = match names.len() {
+                    0 => "is an empty folder".to_string(),
+                    n => {
+                        let shown = names
+                            .iter()
+                            .take(LEFTOVER_NAMES)
+                            .cloned()
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        let more = n.saturating_sub(LEFTOVER_NAMES);
+                        if more > 0 {
+                            format!("still holds {n} entries ({shown}, and {more} more)")
+                        } else {
+                            format!("still holds {n} entries ({shown})")
+                        }
+                    }
+                };
+                out.push(leftover(
+                    &format!("{}/", state_root::EARLIER_PROJECT_DIR),
+                    format!(
+                        "the earlier generation's state folder {held}; this generation's state \
+                         is in .moai/"
+                    ),
+                ));
+            }
+        }
+    }
+    if generation != "go" {
+        if let Some(proof) = go_state::go_claude_md_proof(root) {
+            let how = if proof == "manifest" {
+                "the Go manifest records it"
+            } else {
+                "it holds a Go curator block"
+            };
+            out.push(leftover(
+                "CLAUDE.md",
+                format!("a Go-generation instruction file ({how}) is still in the project root"),
+            ));
+        }
+    }
+    if let Some(fact) = dead_update_lock(root) {
+        out.push(leftover(GO_UPDATE_LOCK, fact));
+    }
+    out
+}
+
+/// The fact for a Go update lock whose recorded process is not running; `None` for no lock, a
+/// link, a lock that cannot be read as the Go payload `{pid, started_at, hostname}`, or a process
+/// that is alive or cannot be judged.
+fn dead_update_lock(root: &Path) -> Option<String> {
+    let path = root.join(GO_UPDATE_LOCK);
+    let m = fs::symlink_metadata(&path).ok()?;
+    if !m.is_file() || m.len() > LOCK_LIMIT || crate::apply::target(root, GO_UPDATE_LOCK).is_err() {
+        return None;
+    }
+    let payload: Value = serde_json::from_slice(&fs::read(&path).ok()?).ok()?;
+    let pid = payload["pid"]
+        .as_i64()
+        .filter(|p| *p > 0 && *p <= i64::from(i32::MAX))?;
+    if crate::home_state::pid_alive(pid)? {
+        return None;
+    }
+    // The time is shown only when it looks like one: the file is not trusted text.
+    let since = payload["started_at"]
+        .as_str()
+        .filter(|s| {
+            s.len() <= 32
+                && s.chars()
+                    .all(|c| c.is_ascii_digit() || matches!(c, '-' | ':' | 'T' | 'Z' | '.' | '+'))
+        })
+        .map(|s| format!(" (started {s})"))
+        .unwrap_or_default();
+    Some(format!(
+        "the Go update lock names process {pid}{since}, which is not running"
+    ))
+}
+
 /// The whole preview. Writes nothing.
 pub fn plan(project: &Path) -> Result<Value> {
     let root = fs::canonicalize(project).map_err(|_| crate::contract::PROJECT_PATH_UNAVAILABLE)?;
@@ -1235,10 +1386,12 @@ pub fn plan(project: &Path) -> Result<Value> {
             "steps": steps.iter().map(Step::to_json).collect::<Vec<_>>(),
         })
     };
+    let classified = state_root::classify(&root);
     Ok(json!({
         "project": shown,
         "detected": detected.ok(),
-        "state_root": state_root::classify(&root).to_json(),
+        "state_root": classified.to_json(),
+        "leftovers": leftovers(&root, classified.generation),
         "phases": [
             phase("backup", BACKUP_REASON, &backup),
             phase("install", INSTALL_REASON, &install),

@@ -67,6 +67,9 @@ pub const MARKER_SCHEMA: u64 = 1;
 /// [`classify_home`] reads it; projects and older builds refuse it as `newer`. Only
 /// `home-install-apply` writes it ([`home_marker_bytes`]), as the last step of the move.
 pub const HOME_MARKER_SCHEMA: u64 = 2;
+/// The earlier generation's project root folder, for the one place that states it as a leftover
+/// and for the workflow reference that still names it (#2936 L2b).
+pub const EARLIER_PROJECT_DIR: &str = crate::PROJECT_STATE_DIR;
 /// The name `go-state-apply` gives the Go folder (#2725 rev2 D2); never overwritten.
 pub const GO_BACKUP: &str = ".moai-backup";
 /// The receipt a `go-state-apply` that moved the Go folder keeps under `.moai/backups/<UTC>/`.
