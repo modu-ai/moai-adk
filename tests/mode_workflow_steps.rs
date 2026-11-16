@@ -214,6 +214,8 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "lane-safe-to-reset --lane",
             // #2902 O3b: the leader's round, one action per lane.
             // #3005 P9: its `idle_lanes` list names the lanes that stopped at `idle_limit`.
+            // #3015 C5: the leader's periodic round instruction.
+            "leader-pulse --terminal",
             "leader-round",
             "leader-round --observations",
             "pr-confirm",
@@ -1758,6 +1760,28 @@ fn the_observations_example_is_a_file_lane_safe_to_reset_reads() {
         serde_json::json!(true),
         "the tool refused the example: {v}"
     );
+}
+
+/// #3015 C5 (decision 2=B, 3=A): the leader's periodic instruction is built by `leader-pulse`
+/// and sent by the skill, once per interval, never to a new terminal and never twice.
+#[test]
+fn the_leader_pulse_is_built_by_the_cli_and_sent_by_the_skill() {
+    let leader = workflow("mode-leader.md");
+    let orca = section_of(&leader, "Periodic instruction");
+    for p in [
+        "`moai leader-pulse --terminal <your own handle> --text <one line> --interval-secs 300`",
+        "it runs nothing",
+        "You run that command once per round, wait the interval, and run it again",
+        "never `orca terminal create`, and never to another lane's handle",
+        "`pulse: turn not started (<what orca answered>)`",
+        "do not send it again",
+        "`verified: not_run`",
+    ] {
+        assert!(
+            orca.contains(p),
+            "the periodic instruction must say `{p}`:\n{orca}"
+        );
+    }
 }
 
 /// #3005, user instruction 6890270975 (items 2 and 3): a message is received when its sender has
