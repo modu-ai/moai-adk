@@ -657,6 +657,7 @@ fn apply_keeps_every_id_and_row_and_sets_the_damaged_file_aside() {
     assert_eq!(
         TempHome::names_in(w.ledger().parent().unwrap()),
         vec![
+            ".recover.lock".to_string(),
             "ledger.db".to_string(),
             "ledger.db.bak".to_string(),
             format!("ledger.db.damaged-{SUFFIX}"),
@@ -990,8 +991,8 @@ fn apply_refuses_a_stale_digest_a_healthy_ledger_and_a_used_suffix() {
     );
     assert_eq!(fs::read(&taken).unwrap(), b"somebody else's file");
     assert!(
-        std::fs::symlink_metadata(sibling(&w.ledger(), ".recovering")).is_ok(),
-        "the finished new ledger waits; only the install was refused"
+        std::fs::symlink_metadata(sibling(&w.ledger(), ".recovering")).is_err(),
+        "the refused call removed the scratch file it built itself"
     );
     // Another suffix goes through; the file that held the name stays.
     let ok = recover::apply_with_suffix(
@@ -1635,12 +1636,13 @@ fn apply_child() {
             }
         }
     };
+    let lock = recover::lock_recovery(&home, PROJECT).unwrap();
     park("before_build");
-    recover::build_recovering(&home, PROJECT, &source, &obs, &digest).unwrap();
+    recover::build_recovering(&home, PROJECT, &source, &obs, &digest, &lock).unwrap();
     park("after_build");
-    recover::set_aside_damaged(&home, PROJECT, "20261116T000001Z").unwrap();
+    recover::set_aside_damaged(&home, PROJECT, "20261116T000001Z", &lock).unwrap();
     park("after_set_aside");
-    recover::install_recovered(&home, PROJECT).unwrap();
+    recover::install_recovered(&home, PROJECT, &lock).unwrap();
     park("after_install");
 }
 
@@ -1778,8 +1780,10 @@ fn installing_never_loses_a_file_that_has_no_other_name() {
     let bak = break_ledger(&w);
     let obs = Observations::default();
     let plan = plan_of(&w, &bak, &obs);
-    recover::build_recovering(w.home.path(), PROJECT, &bak, &obs, &plan.plan_digest).unwrap();
-    let err = recover::install_recovered(w.home.path(), PROJECT).unwrap_err();
+    let lock = recover::lock_recovery(w.home.path(), PROJECT).unwrap();
+    recover::build_recovering(w.home.path(), PROJECT, &bak, &obs, &plan.plan_digest, &lock)
+        .unwrap();
+    let err = recover::install_recovered(w.home.path(), PROJECT, &lock).unwrap_err();
     assert!(
         matches!(&err, LedgerError::Constraint(m) if m.starts_with("damaged_not_set_aside")),
         "{err:?}"
@@ -1787,7 +1791,7 @@ fn installing_never_loses_a_file_that_has_no_other_name() {
     assert_eq!(old_or_new(&w), "old");
     // Nothing to install.
     fs::remove_file(sibling(&w.ledger(), ".recovering")).unwrap();
-    let err = recover::install_recovered(w.home.path(), PROJECT).unwrap_err();
+    let err = recover::install_recovered(w.home.path(), PROJECT, &lock).unwrap_err();
     assert!(
         matches!(&err, LedgerError::Constraint(m) if m.starts_with("nothing_to_install")),
         "{err:?}"
@@ -1840,4 +1844,553 @@ fn the_recovery_library_spawns_nothing_and_reaches_no_network_or_forge() {
     ] {
         assert!(!code.contains(name), "src/ledger/recover.rs holds `{name}`");
     }
+}
+
+// ---- repair of the PR #3120 audit (B1, B2, B3 and the cheap items) -------------------------------
+
+const REFUSED: &str = "target_not_damaged";
+
+fn assert_refused(err: &LedgerError, word: &str) {
+    assert!(
+        matches!(err, LedgerError::Constraint(m) if m.starts_with(word)),
+        "{err:?}"
+    );
+}
+
+/// B1 (1): a healthy ledger that another connection holds is not a damaged ledger. The plan says
+/// `busy`, the apply refuses, and the holder's write survives its COMMIT.
+#[test]
+fn a_ledger_held_by_another_connection_is_busy_not_damaged_and_its_write_is_not_lost() {
+    let w = World::new();
+    let source = w.copy_as("busy_source.db");
+    let holder = Connection::open(w.ledger()).unwrap();
+    holder.execute_batch("BEGIN EXCLUSIVE;").unwrap();
+    holder
+        .execute(
+            "INSERT INTO event (event_key, at, actor, kind, payload) \
+             VALUES ('held:write', 7, 'holder', 'note', '{}')",
+            [],
+        )
+        .unwrap();
+
+    let started = Instant::now();
+    let plan = plan_of(&w, &source, &Observations::default());
+    assert!(
+        started.elapsed() < Duration::from_secs(4),
+        "the probe waits a short time, not the full busy timeout: {:?}",
+        started.elapsed()
+    );
+    assert_eq!(plan.target_state, recover::TargetState::Busy);
+    assert!(!plan.target_state.replaceable());
+    let err = recover::apply_with_suffix(
+        w.home.path(),
+        PROJECT,
+        &source,
+        &Observations::default(),
+        &plan.plan_digest,
+        SUFFIX,
+    )
+    .unwrap_err();
+    assert_refused(&err, REFUSED);
+    assert!(!sibling(&w.ledger(), ".recovering").exists());
+    assert!(kept_files(&w.home).is_empty());
+
+    holder.execute_batch("COMMIT;").unwrap();
+    drop(holder);
+    let r = w.reader();
+    let n: i64 = r
+        .conn()
+        .query_row(
+            "SELECT count(*) FROM event WHERE event_key = 'held:write'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(n, 1, "the holder's write is in the ledger");
+}
+
+/// B1 (2) and (3): a ledger of a newer schema or of another project, in WAL mode, or one this
+/// process cannot read is not proven damaged; the apply refuses and the file is untouched.
+#[test]
+fn a_newer_other_wal_or_unreadable_ledger_is_never_replaced() {
+    type Spoil = fn(&World);
+    let cases: [(&str, recover::TargetState, Spoil); 3] = [
+        ("newer schema", recover::TargetState::SchemaNewer, |w| {
+            let c = Connection::open(w.ledger()).unwrap();
+            c.execute_batch("PRAGMA user_version = 99;").unwrap();
+        }),
+        ("other project", recover::TargetState::IdCollision, |w| {
+            let c = Connection::open(w.ledger()).unwrap();
+            c.execute_batch("UPDATE meta SET value = 'other' WHERE key = 'project_id';")
+                .unwrap();
+        }),
+        ("wal mode", recover::TargetState::Wal, |w| {
+            let c = Connection::open(w.ledger()).unwrap();
+            let mode: String = c
+                .query_row("PRAGMA journal_mode = WAL", [], |r| r.get(0))
+                .unwrap();
+            assert_eq!(mode, "wal");
+        }),
+    ];
+    for (name, expected, spoil) in cases {
+        let w = World::new();
+        let source = w.copy_as("healthy_source.db");
+        spoil(&w);
+        let before = fs::read(w.ledger()).unwrap();
+        let plan = plan_of(&w, &source, &Observations::default());
+        assert_eq!(plan.target_state, expected, "{name}");
+        assert!(plan.target_detail.is_some(), "{name}: the reason is shown");
+        let err = recover::apply_with_suffix(
+            w.home.path(),
+            PROJECT,
+            &source,
+            &Observations::default(),
+            &plan.plan_digest,
+            SUFFIX,
+        )
+        .unwrap_err();
+        assert_refused(&err, REFUSED);
+        assert_eq!(fs::read(w.ledger()).unwrap(), before, "{name}");
+        assert!(kept_files(&w.home).is_empty(), "{name}");
+        assert!(!sibling(&w.ledger(), ".recovering").exists(), "{name}");
+    }
+
+    // A ledger this process may not read says nothing about its content.
+    use std::os::unix::fs::PermissionsExt;
+    let w = World::new();
+    let source = w.copy_as("healthy_source.db");
+    fs::set_permissions(w.ledger(), fs::Permissions::from_mode(0o000)).unwrap();
+    let plan = plan_of(&w, &source, &Observations::default());
+    let result = recover::apply_with_suffix(
+        w.home.path(),
+        PROJECT,
+        &source,
+        &Observations::default(),
+        &plan.plan_digest,
+        SUFFIX,
+    );
+    fs::set_permissions(w.ledger(), fs::Permissions::from_mode(0o600)).unwrap();
+    // (A superuser can read it; then it is simply healthy and refused for that reason.)
+    assert!(
+        matches!(
+            plan.target_state,
+            recover::TargetState::Unconfirmed | recover::TargetState::Healthy
+        ),
+        "{:?}",
+        plan.target_state
+    );
+    assert!(result.is_err());
+}
+
+/// The damaged cases the repair must keep recovering: a truncated file, a flipped header and a
+/// wrong `application_id` are positively unusable.
+#[test]
+fn a_truncated_flipped_or_foreign_ledger_is_still_replaceable() {
+    for name in ["truncated", "flipped", "foreign"] {
+        let w = World::new();
+        let bak = w.copy_as("good.db");
+        match name {
+            "truncated" => fs::OpenOptions::new()
+                .write(true)
+                .open(w.ledger())
+                .unwrap()
+                .set_len(300)
+                .unwrap(),
+            "flipped" => overwrite(&w.ledger(), 0, b"NOT A DATABASE!!"),
+            _ => overwrite(&w.ledger(), 68, &[0, 0, 0, 1]),
+        }
+        let plan = plan_of(&w, &bak, &Observations::default());
+        assert_eq!(
+            plan.target_state,
+            recover::TargetState::Unavailable,
+            "{name}"
+        );
+        assert!(plan.target_state.replaceable());
+        let r = recover::apply_with_suffix(
+            w.home.path(),
+            PROJECT,
+            &bak,
+            &Observations::default(),
+            &plan.plan_digest,
+            SUFFIX,
+        )
+        .unwrap();
+        assert_eq!(r.state, ApplyState::Applied, "{name}");
+    }
+}
+
+/// Rewrites the declared type of `reservation.generation` in a source so it can hold text, and
+/// removes the triggers of the table: the source of a hand-made or damaged file.
+fn untype_reservation_generation(source: &Path) {
+    let conn = Connection::open(source).unwrap();
+    conn.execute_batch("PRAGMA writable_schema = ON;").unwrap();
+    let changed = conn
+        .execute(
+            "UPDATE sqlite_master SET sql = replace(sql, \
+             'generation     INTEGER NOT NULL CHECK (generation >= 1)', 'generation     ANY NOT NULL') \
+             WHERE type = 'table' AND name = 'reservation'",
+            [],
+        )
+        .unwrap();
+    assert_eq!(changed, 1);
+    conn.execute(
+        "DELETE FROM sqlite_master WHERE type = 'trigger' AND tbl_name = 'reservation'",
+        [],
+    )
+    .unwrap();
+}
+
+fn set_generation_text(source: &Path, reservation_id: i64, text: &str) {
+    let conn = Connection::open(source).unwrap();
+    let n = conn
+        .execute(
+            "UPDATE reservation SET generation = ?1 WHERE reservation_id = ?2",
+            rusqlite::params![text, reservation_id],
+        )
+        .unwrap();
+    assert_eq!(n, 1);
+    let kind: String = conn
+        .query_row(
+            "SELECT typeof(generation) FROM reservation WHERE reservation_id = ?1",
+            [reservation_id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(kind, "text", "the source really holds text there");
+}
+
+/// B2: a source row that is `held` but whose generation is the text `'1 '` (STRICT would turn it
+/// into 1 on insert) must not come back as `held`.
+#[test]
+fn an_active_reservation_row_that_cannot_be_read_becomes_held_for_review() {
+    let w = World::new();
+    let healthy = w.copy_as("healthy.db");
+    let obs = confirm_all(&w, &healthy);
+    let bak = break_ledger(&w);
+    untype_reservation_generation(&bak);
+    set_generation_text(&bak, 1, "1 ");
+
+    let plan = plan_of(&w, &bak, &obs);
+    assert_eq!(plan.unreadable_reservations, 1);
+    let alice = plan
+        .decisions
+        .iter()
+        .find(|d| d.unreadable && d.card_id == 1 && d.holder == "alice")
+        .expect("the unreadable row has a decision");
+    assert_eq!(alice.decision, HELD_FOR_REVIEW);
+    assert_eq!(alice.reasons, vec!["unreadable_row".to_string()]);
+    assert!(alice.unreadable);
+    assert_eq!(alice.reservation_id, 1, "what could be read is kept");
+    // Every other active row is still judged by the rule (all confirmed here).
+    assert_eq!((plan.restore_held, plan.held_for_review), (2, 1));
+    assert!(plan
+        .schema_differs
+        .iter()
+        .any(|d| d.table == "reservation" && d.column == "generation"));
+
+    let r = recover::apply_with_suffix(
+        w.home.path(),
+        PROJECT,
+        &bak,
+        &obs,
+        &plan.plan_digest,
+        SUFFIX,
+    )
+    .unwrap();
+    assert_eq!(r.state, ApplyState::Applied);
+    let mut writer = ledger::open_write(w.home.path(), PROJECT).unwrap();
+    let status: String = writer
+        .conn()
+        .query_row(
+            "SELECT status FROM reservation WHERE reservation_id = 1",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(status, HELD_FOR_REVIEW, "never `held`");
+    // The card cannot be taken by someone else.
+    sql(
+        &mut writer,
+        "UPDATE card SET state = 'ready' WHERE card_id = 1",
+    );
+    let err = reservation::reserve(&mut writer, 1, "mallory", &s(&["zone9/"]), 3600, None, None)
+        .unwrap_err();
+    assert!(matches!(err, ReserveError::AlreadyHeld { .. }), "{err:?}");
+    // The fence of the unreadable row's holder does not pass either.
+    assert!(reservation::fence(&mut writer, 1, "alice", 1).is_err());
+}
+
+/// B2: an unreadable row that is not active is never copied as it is; it is a rejected row.
+#[test]
+fn an_unreadable_released_row_is_rejected_not_copied() {
+    let w = World::new();
+    let bak = break_ledger(&w);
+    untype_reservation_generation(&bak);
+    set_generation_text(&bak, 3, "1 "); // carol's released generation 1 on card 3
+    let plan = plan_of(&w, &bak, &Observations::default());
+    assert_eq!(plan.unreadable_reservations, 1);
+    assert!(plan
+        .rejected
+        .iter()
+        .any(|r| r.table == "reservation" && r.id == "3" && r.reason == "unreadable_row"));
+    assert!(
+        plan.decisions.iter().all(|d| !d.unreadable),
+        "a released row has no decision"
+    );
+    recover::apply_with_suffix(
+        w.home.path(),
+        PROJECT,
+        &bak,
+        &Observations::default(),
+        &plan.plan_digest,
+        SUFFIX,
+    )
+    .unwrap();
+    let r = w.reader();
+    let n: i64 = r
+        .conn()
+        .query_row(
+            "SELECT count(*) FROM reservation WHERE reservation_id = 3",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(n, 0, "the row stays in the source only");
+}
+
+/// B2: a source table whose declared column type differs from this build's is reported; a clean
+/// source reports nothing, and the difference alone does not stop the recovery.
+#[test]
+fn a_source_whose_table_definition_differs_is_reported_and_a_clean_one_is_not() {
+    let w = World::new();
+    let clean = break_ledger(&w);
+    let plan = plan_of(&w, &clean, &Observations::default());
+    assert!(plan.schema_differs.is_empty(), "{:?}", plan.schema_differs);
+
+    let other = w.home.path().join("sources/typed_text.db");
+    fs::create_dir_all(other.parent().unwrap()).unwrap();
+    fs::copy(&clean, &other).unwrap();
+    {
+        let conn = Connection::open(&other).unwrap();
+        conn.execute_batch("PRAGMA writable_schema = ON;").unwrap();
+        let n = conn
+            .execute(
+                "UPDATE sqlite_master SET sql = replace(sql, \
+                 'generation     INTEGER NOT NULL CHECK (generation >= 1)', 'generation     TEXT NOT NULL') \
+                 WHERE type = 'table' AND name = 'reservation'",
+                [],
+            )
+            .unwrap();
+        assert_eq!(n, 1);
+    }
+    let plan = plan_of(&w, &other, &Observations::default());
+    assert_eq!(
+        plan.schema_differs,
+        vec![recover::SchemaDiff {
+            table: "reservation".into(),
+            column: "generation".into(),
+            expected: "INTEGER notnull=1 pk=0".into(),
+            found: "TEXT notnull=1 pk=0".into(),
+        }]
+    );
+    // A report, not a refusal: the plan has a digest and the recovery goes through.
+    let r = recover::apply_with_suffix(
+        w.home.path(),
+        PROJECT,
+        &other,
+        &Observations::default(),
+        &plan.plan_digest,
+        SUFFIX,
+    );
+    assert!(r.is_ok(), "{r:?}");
+}
+
+/// B3 (deterministic): while one recovery holds the lock, another answers
+/// `recovery_in_progress` and touches nothing, not even the scratch file of the holder.
+#[test]
+fn a_second_recovery_while_the_lock_is_held_changes_nothing() {
+    let w = World::new();
+    let bak = break_ledger(&w);
+    let obs = confirm_all(&w, &bak);
+    let plan = plan_of(&w, &bak, &obs);
+    let lock = recover::lock_recovery(w.home.path(), PROJECT).unwrap();
+    recover::build_recovering(w.home.path(), PROJECT, &bak, &obs, &plan.plan_digest, &lock)
+        .unwrap();
+    let scratch = sibling(&w.ledger(), ".recovering");
+    let scratch_bytes = fs::read(&scratch).unwrap();
+    let before = w.home.snapshot();
+
+    let err = recover::lock_recovery(w.home.path(), PROJECT).unwrap_err();
+    assert_refused(&err, "recovery_in_progress");
+    let err = recover::apply_with_suffix(
+        w.home.path(),
+        PROJECT,
+        &bak,
+        &obs,
+        &plan.plan_digest,
+        "20261116T000009Z",
+    )
+    .unwrap_err();
+    assert_refused(&err, "recovery_in_progress");
+    // A stale plan is answered by the lock first only while the lock is held; the loser has
+    // changed nothing either way.
+    let err = recover::apply_with_suffix(
+        w.home.path(),
+        PROJECT,
+        &bak,
+        &obs,
+        "sha256:0",
+        "20261116T000009Z",
+    )
+    .unwrap_err();
+    assert_refused(&err, "recovery_in_progress");
+    assert_eq!(fs::read(&scratch).unwrap(), scratch_bytes);
+    assert_eq!(w.home.snapshot(), before);
+
+    // A step called with the lock of another project folder is refused.
+    drop(lock);
+    // Free again: a stale digest is answered as a stale plan, and the lock file stays.
+    let err = recover::apply_with_suffix(
+        w.home.path(),
+        PROJECT,
+        &bak,
+        &obs,
+        "sha256:0",
+        "20261116T000009Z",
+    )
+    .unwrap_err();
+    assert_refused(&err, "stale_plan");
+    assert!(w.ledger().parent().unwrap().join(".recover.lock").exists());
+}
+
+const RACE_ID: &str = "MOAI_RECOVER_RACE_ID";
+
+/// The child of the two-process race: waits for the `go` file, runs the whole apply, and writes
+/// what happened.
+#[test]
+fn race_child() {
+    let Some(dir) = std::env::var_os(KILL_ENV).map(PathBuf::from) else {
+        return;
+    };
+    let Ok(id) = std::env::var(RACE_ID) else {
+        return;
+    };
+    let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+    let source = PathBuf::from(fs::read_to_string(dir.join("source")).unwrap());
+    let digest = fs::read_to_string(dir.join("digest")).unwrap();
+    let obs: Observations =
+        serde_json::from_str(&fs::read_to_string(dir.join("obs")).unwrap()).unwrap();
+    fs::write(dir.join(format!("ready-{id}")), "").unwrap();
+    wait_for(&dir.join("go"), "the start signal");
+    let suffix = format!("2026111600000{id}Z");
+    let outcome = match recover::apply_with_suffix(&home, PROJECT, &source, &obs, &digest, &suffix)
+    {
+        Ok(r) => match r.state {
+            ApplyState::Applied => "applied".to_string(),
+            ApplyState::Unchanged => "unchanged".to_string(),
+        },
+        Err(LedgerError::Constraint(m)) => m.split(':').next().unwrap_or("").to_string(),
+        Err(other) => format!("other: {other:?}"),
+    };
+    fs::write(dir.join(format!("outcome-{id}")), outcome).unwrap();
+}
+
+/// B3: two processes apply the same recovery at the same moment, many times. Exactly one applies;
+/// the other is told `recovery_in_progress` (or `unchanged` when it started after the winner
+/// finished). The result is one sound ledger, one kept file and no scratch file.
+#[test]
+fn two_processes_recovering_at_once_leave_one_winner_and_a_sound_ledger() {
+    let mut seen_busy = 0;
+    for round in 0..12 {
+        let w = World::new();
+        let bak = break_ledger(&w);
+        let obs = confirm_all(&w, &bak);
+        let plan = plan_of(&w, &bak, &obs);
+        let signals = tempfile::tempdir().unwrap();
+        fs::write(signals.path().join("source"), bak.display().to_string()).unwrap();
+        fs::write(signals.path().join("digest"), &plan.plan_digest).unwrap();
+        fs::write(
+            signals.path().join("obs"),
+            serde_json::to_string(&obs).unwrap(),
+        )
+        .unwrap();
+        let mut children: Vec<std::process::Child> = ["1", "2"]
+            .iter()
+            .map(|id| {
+                spawn_self(
+                    "race_child",
+                    &w.home,
+                    &[(KILL_ENV, signals.path())],
+                    &[(RACE_ID, id)],
+                )
+            })
+            .collect();
+        for id in ["1", "2"] {
+            wait_for(&signals.path().join(format!("ready-{id}")), "a racer");
+        }
+        fs::write(signals.path().join("go"), "").unwrap();
+        for c in &mut children {
+            assert!(c.wait().unwrap().success(), "round {round}");
+        }
+        let mut outcomes: Vec<String> = ["1", "2"]
+            .iter()
+            .map(|id| fs::read_to_string(signals.path().join(format!("outcome-{id}"))).unwrap())
+            .collect();
+        outcomes.sort();
+        assert_eq!(
+            outcomes.iter().filter(|o| *o == "applied").count(),
+            1,
+            "round {round}: {outcomes:?}"
+        );
+        let loser = outcomes.iter().find(|o| *o != "applied").unwrap();
+        assert!(
+            loser == "recovery_in_progress" || loser == "unchanged",
+            "round {round}: {outcomes:?}"
+        );
+        if loser == "recovery_in_progress" {
+            seen_busy += 1;
+        }
+        let r = w.reader();
+        let check: String = r
+            .conn()
+            .query_row("PRAGMA integrity_check", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(check, "ok", "round {round}");
+        assert_eq!(recover_events(r.conn()).len(), 1, "round {round}");
+        assert!(
+            !sibling(&w.ledger(), ".recovering").exists(),
+            "round {round}: no scratch file is left"
+        );
+        assert_eq!(kept_files(&w.home).len(), 1, "round {round}: one kept file");
+    }
+    assert!(
+        seen_busy > 0,
+        "in twelve simultaneous rounds the lock turned one racer away at least once"
+    );
+}
+
+/// M10: the recovered ledger is private to its owner, like a registered one.
+#[test]
+fn the_recovered_ledger_is_mode_0600() {
+    use std::os::unix::fs::PermissionsExt;
+    let w = World::new();
+    let bak = break_ledger(&w);
+    let plan = plan_of(&w, &bak, &Observations::default());
+    recover::apply_with_suffix(
+        w.home.path(),
+        PROJECT,
+        &bak,
+        &Observations::default(),
+        &plan.plan_digest,
+        SUFFIX,
+    )
+    .unwrap();
+    let mode = fs::metadata(w.ledger()).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o600);
+    let lock_mode = fs::metadata(w.ledger().parent().unwrap().join(".recover.lock"))
+        .unwrap()
+        .permissions()
+        .mode()
+        & 0o777;
+    assert_eq!(lock_mode, 0o600);
 }

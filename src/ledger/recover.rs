@@ -11,7 +11,7 @@
 //!   read in primary-key order; a read error stops that table at its last good row and the plan
 //!   says how many rows were lost. The result carries a digest over everything the apply will
 //!   do.
-//! - [`apply`] recomputes the plan, requires the same digest, builds the new ledger at
+//! - [`apply`] (under one exclusive per-project lock, [`lock_recovery`]) recomputes the plan, requires the same digest, builds the new ledger at
 //!   `<ledger>.recovering` with the builder `register` uses, copies the rows with their explicit
 //!   ids, writes one `recover` event, checks the new file, then sets the damaged file aside
 //!   (a hard link under `<ledger>.damaged-<UTC>`, so the real name never points at nothing) and
@@ -138,6 +138,10 @@ pub struct ReservationDecision {
     pub decision: String,
     /// Empty exactly when the decision is [`RESTORE_HELD`].
     pub reasons: Vec<String>,
+    /// `true` when the source row could not be read as a reservation (a column holds a value of
+    /// another kind than the schema declares). The other fields then hold what could be read
+    /// (`0` and the empty text for the rest) and the only reason is [`REASON_UNREADABLE_ROW`].
+    pub unreadable: bool,
 }
 
 /// The decision rule. `card_generation` is the card's restored generation (the larger of the
@@ -208,6 +212,7 @@ pub fn decide(
         }
         .into(),
         reasons,
+        unreadable: false,
     }
 }
 
@@ -385,10 +390,46 @@ pub enum TargetState {
     Absent,
     /// The ledger path is not a regular file (a link or a folder): apply refuses.
     NotRegular,
-    /// A file that does not open as this project's ledger: the one apply replaces.
+    /// A file that the P1 open positively reports as not this project's usable ledger because of
+    /// its content (not a database, corrupt, truncated, another `application_id`, a version
+    /// below 1): the one apply replaces.
     Unavailable,
     /// A usable ledger: apply refuses unless it is the result of this very plan.
     Healthy,
+    /// Another connection holds the file past the short probe wait. Not confirmed damaged: apply
+    /// refuses (replacing it would lose the holder's write).
+    Busy,
+    /// Written by a newer schema than this build knows: apply refuses.
+    SchemaNewer,
+    /// A readable ledger of another project: apply refuses.
+    IdCollision,
+    /// In WAL mode (this build never opens it): apply refuses.
+    Wal,
+    /// A leftover rollback journal that a writer must roll back first: apply refuses.
+    NeedsRecovery,
+    /// The file could not be examined for a reason other than its content (an I/O or other SQL
+    /// error): not confirmed damaged, apply refuses.
+    Unconfirmed,
+}
+
+impl TargetState {
+    /// Whether an apply may build over this state: only when no ledger is there or the content
+    /// of the file is positively reported unusable.
+    pub fn replaceable(self) -> bool {
+        matches!(self, TargetState::Absent | TargetState::Unavailable)
+    }
+}
+
+/// One difference between a source table and the table this build creates.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct SchemaDiff {
+    pub table: String,
+    /// Empty for a whole table that is missing.
+    pub column: String,
+    /// `TYPE notnull=<0|1> pk=<n>` of this build's column, or `absent`.
+    pub expected: String,
+    /// The same for the source, or `absent` / `unreadable: <error>`.
+    pub found: String,
 }
 
 /// A `.creating-<pid>-<n>` file left in the project folder by a `register` whose process is
@@ -425,6 +466,15 @@ pub struct RecoveryPlan {
     /// Cards that are `active` but have no active reservation in the new ledger.
     pub active_cards_without_holder: Vec<i64>,
     pub target_state: TargetState,
+    /// The error text behind a [`TargetState`] that is not `absent`, `healthy` or
+    /// `unavailable`, else `None`.
+    pub target_detail: Option<String>,
+    /// Source reservation rows that could not be read as reservations. Active ones become
+    /// `held_for_review` (reason `unreadable_row`); the others are rejected, never copied.
+    pub unreadable_reservations: u64,
+    /// The source's table definitions that differ from this build's (columns and types). A
+    /// difference alone does not refuse: the unreadable-row rule is the safety net.
+    pub schema_differs: Vec<SchemaDiff>,
     pub stale_temp: Vec<StaleTemp>,
     pub plan_digest: String,
 }
@@ -435,7 +485,19 @@ struct Prepared {
     rows: BTreeMap<&'static str, Vec<Vec<Value>>>,
     seq: BTreeMap<String, i64>,
     card_generation: BTreeMap<i64, i64>,
-    status_of: BTreeMap<i64, String>,
+    /// One per source reservation row, in the table's order.
+    verdicts: Vec<RowVerdict>,
+}
+
+/// What the copy does with one source reservation row.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum RowVerdict {
+    /// Not an active row: copied as it is.
+    Keep,
+    /// Active: inserted with this status (`held` or `held_for_review`).
+    Status(&'static str),
+    /// Not copied; the reason is recorded as a rejected row.
+    Reject(&'static str),
 }
 
 // ---- reading the source -------------------------------------------------------------------------
@@ -679,8 +741,14 @@ pub fn queries(
         .collect())
 }
 
+/// A reservation row whose every column holds the kind of value the schema declares.
 fn reservation_row(r: &[Value]) -> Option<ReservationRow> {
     let s = spec("reservation");
+    // The columns the decision does not read are still checked: a row is readable only when all
+    // of it is.
+    for name in ["acquired_at", "lease_until", "updated_at"] {
+        int(&r[col(s, name)])?;
+    }
     Some(ReservationRow {
         reservation_id: int(&r[col(s, "reservation_id")])?,
         card_id: int(&r[col(s, "card_id")])?,
@@ -690,6 +758,116 @@ fn reservation_row(r: &[Value]) -> Option<ReservationRow> {
         worktree: opt_text(&r[col(s, "worktree")])?,
         branch: opt_text(&r[col(s, "branch")])?,
     })
+}
+
+/// What can be said of a reservation row that is not readable as a whole: its status when that
+/// is text, and the integers and the holder that are fine.
+fn unreadable_facts(r: &[Value]) -> (Option<String>, ReservationDecisionIds) {
+    let s = spec("reservation");
+    (
+        text(&r[col(s, "status")]),
+        ReservationDecisionIds {
+            reservation_id: int(&r[col(s, "reservation_id")]).unwrap_or(0),
+            card_id: int(&r[col(s, "card_id")]).unwrap_or(0),
+            generation: int(&r[col(s, "generation")]).unwrap_or(0),
+            holder: text(&r[col(s, "holder")]).unwrap_or_default(),
+        },
+    )
+}
+
+struct ReservationDecisionIds {
+    reservation_id: i64,
+    card_id: i64,
+    generation: i64,
+    holder: String,
+}
+
+/// The most differences a plan lists.
+const MAX_SCHEMA_DIFFS: usize = 200;
+
+/// `(column name, "TYPE notnull=<n> pk=<n>")` of `table`, in column order. An empty list means
+/// the table is not there.
+fn table_columns(conn: &Connection, table: &str) -> Result<Vec<(String, String)>, String> {
+    let mut stmt = conn
+        .prepare(&format!("PRAGMA table_info({table})"))
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok((
+                r.get::<_, String>(1)?,
+                format!(
+                    "{} notnull={} pk={}",
+                    r.get::<_, String>(2)?.to_uppercase(),
+                    r.get::<_, i64>(3)?,
+                    r.get::<_, i64>(5)?
+                ),
+            ))
+        })
+        .map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())
+}
+
+/// The source's definitions of the seven copied tables against the ones this build creates.
+/// Reports; it never refuses (an unreadable row is the safety net for a value of the wrong
+/// kind).
+fn schema_differs(source: &Connection) -> Result<Vec<SchemaDiff>, LedgerError> {
+    let mut expected = Connection::open_in_memory()?;
+    schema::create_v1(&mut expected, "expected", "recovery-plan")?;
+    let mut out = Vec::new();
+    for s in &SPECS {
+        let want = table_columns(&expected, s.name).unwrap_or_default();
+        let found = match table_columns(source, s.name) {
+            Ok(f) => f,
+            Err(e) => {
+                out.push(SchemaDiff {
+                    table: s.name.to_string(),
+                    column: String::new(),
+                    expected: "table".into(),
+                    found: format!("unreadable: {e}"),
+                });
+                continue;
+            }
+        };
+        if found.is_empty() {
+            out.push(SchemaDiff {
+                table: s.name.to_string(),
+                column: String::new(),
+                expected: "table".into(),
+                found: "absent".into(),
+            });
+            continue;
+        }
+        for (name, shape) in &want {
+            match found.iter().find(|(n, _)| n == name) {
+                Some((_, f)) if f == shape => {}
+                Some((_, f)) => out.push(SchemaDiff {
+                    table: s.name.to_string(),
+                    column: name.clone(),
+                    expected: shape.clone(),
+                    found: f.clone(),
+                }),
+                None => out.push(SchemaDiff {
+                    table: s.name.to_string(),
+                    column: name.clone(),
+                    expected: shape.clone(),
+                    found: "absent".into(),
+                }),
+            }
+        }
+        for (name, shape) in &found {
+            if !want.iter().any(|(n, _)| n == name) {
+                out.push(SchemaDiff {
+                    table: s.name.to_string(),
+                    column: name.clone(),
+                    expected: "absent".into(),
+                    found: shape.clone(),
+                });
+            }
+        }
+    }
+    out.truncate(MAX_SCHEMA_DIFFS);
+    Ok(out)
 }
 
 fn prepare(
@@ -707,6 +885,7 @@ fn prepare(
         Err(e) => format!("unreadable: {e}"),
     };
     let seq = read_sequences(&conn);
+    let schema_differs = schema_differs(&conn)?;
     let mut rows: BTreeMap<&'static str, Vec<Vec<Value>>> = BTreeMap::new();
     let mut tables = Vec::new();
     for s in &SPECS {
@@ -745,21 +924,46 @@ fn prepare(
 
     // Decide every active reservation.
     let mut decisions: Vec<ReservationDecision> = Vec::new();
-    let mut status_of: BTreeMap<i64, String> = BTreeMap::new();
+    let mut verdicts: Vec<RowVerdict> = Vec::new();
     let mut copied_as_is = 0u64;
+    let mut unreadable_reservations = 0u64;
     for r in &rows["reservation"] {
         let Some(row) = reservation_row(r) else {
-            // A row of the wrong shape cannot be judged; the schema refuses it on insert and it
-            // stays in the source.
+            // A row that is not a whole reservation cannot be judged by the rule. It must never
+            // come back as `held`: an active one is held for review (the schema may still refuse
+            // it on insert, then it is listed as rejected); any other is not copied.
+            unreadable_reservations += 1;
+            let (status, ids) = unreadable_facts(r);
+            match status {
+                Some(st) if is_active(&st) => {
+                    decisions.push(ReservationDecision {
+                        reservation_id: ids.reservation_id,
+                        card_id: ids.card_id,
+                        generation: ids.generation,
+                        holder: ids.holder,
+                        source_status: st,
+                        decision: HELD_FOR_REVIEW.into(),
+                        reasons: vec![REASON_UNREADABLE_ROW.into()],
+                        unreadable: true,
+                    });
+                    verdicts.push(RowVerdict::Status(HELD_FOR_REVIEW));
+                }
+                _ => verdicts.push(RowVerdict::Reject(REASON_UNREADABLE_ROW)),
+            }
             continue;
         };
         if !is_active(&row.status) {
             copied_as_is += 1;
+            verdicts.push(RowVerdict::Keep);
             continue;
         }
         let generation = card_generation.get(&row.card_id).copied().unwrap_or(0);
         let d = decide(&row, generation, obs);
-        status_of.insert(row.reservation_id, d.decision.clone());
+        verdicts.push(RowVerdict::Status(if d.decision == RESTORE_HELD {
+            "held"
+        } else {
+            HELD_FOR_REVIEW
+        }));
         decisions.push(d);
     }
 
@@ -771,7 +975,7 @@ fn prepare(
         rows: &rows,
         seq: &seq,
         card_generation: &card_generation,
-        status_of: &status_of,
+        verdicts: &verdicts,
     };
     let copy = schema::create_v1_with(&mut mem, project_id, "recovery-plan", |tx| {
         copy_rows(tx, &prepared_view)
@@ -797,7 +1001,7 @@ fn prepare(
         .map(|t| t.table.clone())
         .collect();
 
-    let target_state = target_state(home, project_id, &ledger);
+    let (target_state, target_detail) = target_state(project_id, &ledger);
     let digest_input = json!({
         "format": 1,
         "project_id": project_id,
@@ -811,6 +1015,8 @@ fn prepare(
         "copy": copy.tables.iter().map(|(k, v)| json!([k, v.copied, v.skipped_duplicate, v.rejected])).collect::<Vec<_>>(),
         "rejected": copy.rejected,
         "generations_raised": card_generations_raised,
+        "unreadable_reservations": unreadable_reservations,
+        "schema_differs": schema_differs,
     });
     let plan_digest = crate::digest(digest_input.to_string().as_bytes());
     let rejected_total = copy.rejected.len() as u64;
@@ -837,6 +1043,9 @@ fn prepare(
         rejected: listed,
         active_cards_without_holder,
         target_state,
+        target_detail,
+        unreadable_reservations,
+        schema_differs,
         stale_temp: stale_temp(home, project_id)?,
         plan_digest,
     };
@@ -845,7 +1054,7 @@ fn prepare(
         rows,
         seq,
         card_generation,
-        status_of,
+        verdicts,
     })
 }
 
@@ -878,7 +1087,7 @@ struct View<'a> {
     rows: &'a BTreeMap<&'static str, Vec<Vec<Value>>>,
     seq: &'a BTreeMap<String, i64>,
     card_generation: &'a BTreeMap<i64, i64>,
-    status_of: &'a BTreeMap<i64, String>,
+    verdicts: &'a [RowVerdict],
 }
 
 #[derive(Default)]
@@ -902,6 +1111,20 @@ impl CopyReport {
             .map(|r| r.id.clone())
             .collect()
     }
+}
+
+/// The key of a row for the rejected list: its id, or the two key columns of a table without one.
+fn rejected_id(s: &Spec, values: &[Value]) -> String {
+    values
+        .iter()
+        .take(if s.id.is_some() { 1 } else { 2 })
+        .map(|v| match v {
+            Value::Integer(n) => n.to_string(),
+            Value::Text(t) => t.clone(),
+            other => format!("{other:?}"),
+        })
+        .collect::<Vec<_>>()
+        .join("/")
 }
 
 fn is_constraint(e: &rusqlite::Error) -> bool {
@@ -931,7 +1154,7 @@ fn copy_rows(tx: &Transaction<'_>, view: &View<'_>) -> Result<CopyReport, Ledger
             marks.join(", ")
         ))?;
         let copy = report.tables.entry(s.name).or_default();
-        for r in &view.rows[s.name] {
+        for (index, r) in view.rows[s.name].iter().enumerate() {
             let mut values = r.clone();
             if s.name == "card" {
                 if let Some(restored) = int(&values[0]).and_then(|id| view.card_generation.get(&id))
@@ -940,16 +1163,19 @@ fn copy_rows(tx: &Transaction<'_>, view: &View<'_>) -> Result<CopyReport, Ledger
                 }
             }
             if s.name == "reservation" {
-                if let Some(id) = int(&values[0]) {
-                    if let Some(decision) = view.status_of.get(&id) {
-                        values[col(s, "status")] = Value::Text(
-                            if decision == RESTORE_HELD {
-                                "held"
-                            } else {
-                                HELD_FOR_REVIEW
-                            }
-                            .to_string(),
-                        );
+                match &view.verdicts[index] {
+                    RowVerdict::Keep => {}
+                    RowVerdict::Status(status) => {
+                        values[col(s, "status")] = Value::Text((*status).to_string());
+                    }
+                    RowVerdict::Reject(why) => {
+                        copy.rejected += 1;
+                        report.rejected.push(Rejected {
+                            table: s.name.to_string(),
+                            id: rejected_id(s, &values),
+                            reason: (*why).to_string(),
+                        });
+                        continue;
                     }
                 }
             }
@@ -960,16 +1186,7 @@ fn copy_rows(tx: &Transaction<'_>, view: &View<'_>) -> Result<CopyReport, Ledger
                     copy.rejected += 1;
                     report.rejected.push(Rejected {
                         table: s.name.to_string(),
-                        id: values
-                            .iter()
-                            .take(if s.id.is_some() { 1 } else { 2 })
-                            .map(|v| match v {
-                                Value::Integer(n) => n.to_string(),
-                                Value::Text(t) => t.clone(),
-                                other => format!("{other:?}"),
-                            })
-                            .collect::<Vec<_>>()
-                            .join("/"),
+                        id: rejected_id(s, &values),
                         reason: e.to_string(),
                     });
                 }
@@ -1067,13 +1284,40 @@ fn utc_suffix() -> Result<String, LedgerError> {
     )?)
 }
 
-fn target_state(home: &Path, project_id: &str, ledger: &Path) -> TargetState {
+/// The wait of the probe that classifies the real ledger. A ledger held by another connection
+/// longer than this is `busy`, which is never replaced, so a short wait only makes the answer
+/// quicker.
+const TARGET_PROBE_BUSY: std::time::Duration = std::time::Duration::from_millis(300);
+
+/// Classifies the file at the real ledger path from what the P1 open says. Only an error that
+/// is about the file's content is "damaged" ([`TargetState::Unavailable`]); a lock, a newer
+/// schema, another project, WAL, a hot journal or an I/O error is not proof of damage.
+fn target_state(project_id: &str, ledger: &Path) -> (TargetState, Option<String>) {
     match std::fs::symlink_metadata(ledger) {
-        Err(_) => TargetState::Absent,
-        Ok(m) if !m.file_type().is_file() => TargetState::NotRegular,
-        Ok(_) => match open::open_read_only(home, project_id) {
-            Ok(_) => TargetState::Healthy,
-            Err(_) => TargetState::Unavailable,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => (TargetState::Absent, None),
+        Err(e) => (TargetState::Unconfirmed, Some(e.to_string())),
+        Ok(m) if !m.file_type().is_file() => (TargetState::NotRegular, None),
+        // A file this process cannot even open says nothing about its content.
+        Ok(_) if std::fs::File::open(ledger).is_err() => (
+            TargetState::Unconfirmed,
+            Some("the ledger file cannot be opened for reading".into()),
+        ),
+        Ok(_) => match open::open_at_timeout(ledger, project_id, false, TARGET_PROBE_BUSY) {
+            Ok(_) => (TargetState::Healthy, None),
+            Err(LedgerError::Absent) => (TargetState::Absent, None),
+            Err(LedgerError::Unavailable(why)) if why.starts_with("needs_recovery") => {
+                (TargetState::NeedsRecovery, Some(why))
+            }
+            Err(LedgerError::Unavailable(_)) => (TargetState::Unavailable, None),
+            Err(LedgerError::Busy) => (TargetState::Busy, None),
+            Err(e @ LedgerError::SchemaNewer { .. }) => {
+                (TargetState::SchemaNewer, Some(e.to_string()))
+            }
+            Err(e @ LedgerError::IdCollision { .. }) => {
+                (TargetState::IdCollision, Some(e.to_string()))
+            }
+            Err(e @ LedgerError::WalUnexpected) => (TargetState::Wal, Some(e.to_string())),
+            Err(e) => (TargetState::Unconfirmed, Some(e.to_string())),
         },
     }
 }
@@ -1096,6 +1340,86 @@ fn already_applied(home: &Path, project_id: &str, plan_digest: &str) -> bool {
 
 fn recover_key(plan_digest: &str) -> String {
     format!("recover:{plan_digest}")
+}
+
+/// The name of the lock file in the project folder. It is created on the first recovery and
+/// never removed: the lock is the advisory `flock` on it, not its existence.
+pub const LOCK_NAME: &str = ".recover.lock";
+
+/// The exclusive recovery lock of one project. Holding it is the proof the steps of an apply
+/// ask for; it is released when the value is dropped (or the process ends).
+#[derive(Debug)]
+pub struct RecoveryLock {
+    dir: PathBuf,
+    _file: std::fs::File,
+}
+
+impl RecoveryLock {
+    fn covers(&self, home: &Path, project_id: &str) -> Result<(), LedgerError> {
+        if location::project_dir(home, project_id)? == self.dir {
+            Ok(())
+        } else {
+            Err(constraint(
+                "lock_mismatch",
+                "the recovery lock belongs to another project folder",
+            ))
+        }
+    }
+}
+
+/// Takes the recovery lock of the project without waiting. The project folder must exist. The
+/// loser gets `recovery_in_progress` and has touched nothing.
+pub fn lock_recovery(home: &Path, project_id: &str) -> Result<RecoveryLock, LedgerError> {
+    open::check_home_ready(home)?;
+    let dir = location::project_dir(home, project_id)?;
+    if !dir.is_dir() {
+        return Err(unavailable(
+            "the project folder does not exist; register the project first",
+        ));
+    }
+    let path = dir.join(LOCK_NAME);
+    let mut options = std::fs::OpenOptions::new();
+    options.write(true).create(true).truncate(false);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600).custom_flags(libc::O_NOFOLLOW);
+    }
+    let file = options
+        .open(&path)
+        .map_err(|e| LedgerError::Io(format!("{}: {e}", path.display())))?;
+    match file.try_lock() {
+        Ok(()) => Ok(RecoveryLock { dir, _file: file }),
+        Err(std::fs::TryLockError::WouldBlock) => Err(constraint(
+            "recovery_in_progress",
+            "another recovery of this project holds the lock; nothing was changed",
+        )),
+        Err(std::fs::TryLockError::Error(e)) => Err(LedgerError::Io(e.to_string())),
+    }
+}
+
+/// The refusal for a real ledger that is not positively unusable.
+fn not_damaged(state: TargetState, detail: Option<&str>) -> LedgerError {
+    constraint(
+        "target_not_damaged",
+        format!(
+            "the ledger at the real name is `{}`, not confirmed damaged; it is never replaced{}",
+            serde_json::to_value(state)
+                .ok()
+                .and_then(|v| v.as_str().map(str::to_string))
+                .unwrap_or_default(),
+            detail.map(|d| format!(" ({d})")).unwrap_or_default()
+        ),
+    )
+}
+
+/// Removes the file this call built (and its journal) when the apply stops before the install.
+fn discard_scratch(target: &Path) {
+    for path in [target.to_path_buf(), sibling(target, "-journal")] {
+        if std::fs::symlink_metadata(&path).is_ok_and(|m| m.file_type().is_file()) {
+            let _ = std::fs::remove_file(&path);
+        }
+    }
 }
 
 /// Recovers the ledger from `source` when the plan recomputed now has `plan_digest`: builds,
@@ -1136,7 +1460,9 @@ pub fn apply_with_suffix(
         ));
     }
     let ledger = location::ledger_path(home, project_id)?;
-    if target_state(home, project_id, &ledger) == TargetState::Healthy
+    // One recovery at a time per project, across processes. The loser changes nothing.
+    let lock = lock_recovery(home, project_id)?;
+    if target_state(project_id, &ledger).0 == TargetState::Healthy
         && already_applied(home, project_id, plan_digest)
     {
         return Ok(RecoveryResult {
@@ -1147,9 +1473,23 @@ pub fn apply_with_suffix(
             set_aside: None,
         });
     }
-    let built = build_recovering(home, project_id, source, observations, plan_digest)?;
-    let set_aside = set_aside_damaged(home, project_id, suffix)?;
-    install_recovered(home, project_id)?;
+    let built = build_recovering(home, project_id, source, observations, plan_digest, &lock)?;
+    // The state of the real file can have changed during the build (a writer may have revived
+    // it): replace it only while it is still positively unusable.
+    let (state, detail) = target_state(project_id, &ledger);
+    if !state.replaceable() {
+        discard_scratch(&built.target);
+        return Err(not_damaged(state, detail.as_deref()));
+    }
+    let set_aside = match set_aside_damaged(home, project_id, suffix, &lock) {
+        Ok(kept) => kept,
+        // The new file is this call's own scratch (the lock is held): nothing else is left behind.
+        Err(e) => {
+            discard_scratch(&built.target);
+            return Err(e);
+        }
+    };
+    install_recovered(home, project_id, &lock)?;
     Ok(RecoveryResult {
         state: ApplyState::Applied,
         plan_digest: plan_digest.to_string(),
@@ -1169,7 +1509,9 @@ pub fn build_recovering(
     source: &Path,
     observations: &Observations,
     plan_digest: &str,
+    lock: &RecoveryLock,
 ) -> Result<Built, LedgerError> {
+    lock.covers(home, project_id)?;
     let p = prepare(home, project_id, source, observations)?;
     if p.plan.plan_digest != plan_digest {
         return Err(constraint(
@@ -1191,6 +1533,7 @@ pub fn build_recovering(
             ))
         }
         TargetState::Absent | TargetState::Unavailable => {}
+        other => return Err(not_damaged(other, p.plan.target_detail.as_deref())),
     }
     let target = p.plan.target.clone();
     let mut replaced_unfinished = false;
@@ -1218,7 +1561,7 @@ pub fn build_recovering(
         rows: &p.rows,
         seq: &p.seq,
         card_generation: &p.card_generation,
-        status_of: &p.status_of,
+        verdicts: &p.verdicts,
     };
     let event_id = open::build_new_with(&target, project_id, |tx| {
         let copy = copy_rows(tx, &view)?;
@@ -1297,7 +1640,9 @@ pub fn set_aside_damaged(
     home: &Path,
     project_id: &str,
     suffix: &str,
+    lock: &RecoveryLock,
 ) -> Result<SetAside, LedgerError> {
+    lock.covers(home, project_id)?;
     if !valid_suffix(suffix) {
         return Err(constraint(
             "invalid_suffix",
@@ -1376,7 +1721,12 @@ pub fn set_aside_damaged(
 
 /// Step three: renames `<ledger>.recovering` over the real name. Refuses while a file at the
 /// real name has no other name (it would be lost): [`set_aside_damaged`] first.
-pub fn install_recovered(home: &Path, project_id: &str) -> Result<(), LedgerError> {
+pub fn install_recovered(
+    home: &Path,
+    project_id: &str,
+    lock: &RecoveryLock,
+) -> Result<(), LedgerError> {
+    lock.covers(home, project_id)?;
     let ledger = location::ledger_path(home, project_id)?;
     let target = sibling(&ledger, RECOVERING);
     match std::fs::symlink_metadata(&target) {
@@ -1490,6 +1840,34 @@ mod tests {
                 exists: true,
             }],
         }
+    }
+
+    /// The source is opened read-only: a write through the connection is refused by SQLite.
+    #[test]
+    fn the_source_connection_cannot_write() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("source.db");
+        {
+            let mut conn = Connection::open(&path).unwrap();
+            schema::create_v1(&mut conn, "p", "t").unwrap();
+        }
+        let conn = open_source(&path, "p").unwrap();
+        let err = conn
+            .execute_batch("CREATE TABLE should_not_exist (a)")
+            .unwrap_err();
+        assert!(
+            err.to_string().contains("readonly"),
+            "a read-only connection refuses the write: {err}"
+        );
+        let after: i64 = Connection::open(&path)
+            .unwrap()
+            .query_row(
+                "SELECT count(*) FROM sqlite_master WHERE name = 'should_not_exist'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(after, 0);
     }
 
     /// The decision table: every condition is the only one that fails once.

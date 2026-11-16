@@ -262,6 +262,17 @@ pub(crate) fn open_at(
     project_id: &str,
     writable: bool,
 ) -> Result<(Connection, i64), LedgerError> {
+    open_at_timeout(path, project_id, writable, BUSY_TIMEOUT)
+}
+
+/// [`open_at`] with the wait for another connection given (a probe that only classifies a file
+/// does not need the full [`BUSY_TIMEOUT`]).
+pub(crate) fn open_at_timeout(
+    path: &Path,
+    project_id: &str,
+    writable: bool,
+    busy: Duration,
+) -> Result<(Connection, i64), LedgerError> {
     check_header(path)?;
     let access = if writable {
         OpenFlags::SQLITE_OPEN_READ_WRITE
@@ -271,7 +282,7 @@ pub(crate) fn open_at(
     // No SQLITE_OPEN_NOFOLLOW: SQLite then refuses a link anywhere in the path, and a HOME
     // behind a link (`/var` on macOS) is normal. The ledger file itself was checked above.
     let conn = Connection::open_with_flags(path, access | OpenFlags::SQLITE_OPEN_NO_MUTEX)?;
-    conn.busy_timeout(BUSY_TIMEOUT)?;
+    conn.busy_timeout(busy)?;
     conn.execute_batch("PRAGMA foreign_keys = ON; PRAGMA recursive_triggers = ON;")?;
     let version = verify_identity(&conn, project_id, writable).map_err(|e| match e {
         // A read-only connection cannot roll back a journal a crashed writer left behind.
