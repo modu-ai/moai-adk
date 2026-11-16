@@ -815,7 +815,10 @@ fn the_local_settings_are_byte_identical_after_apply_and_revert() {
         .unwrap()
         .to_string();
     assert!(
-        why.contains(".claude/settings.local.json are your values"),
+        why.contains(
+            "this update does not edit .claude/settings.local.json; edit or remove these keys \
+             yourself (plansDirectory, statusLine), then run `moai project-update-plan` again"
+        ),
         "{why}"
     );
     let out = apply(&fx, &p);
