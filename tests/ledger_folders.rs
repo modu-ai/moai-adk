@@ -97,10 +97,10 @@ fn register_with_umask(h: &TempHome, profile: &Path, umask: u32) -> Value {
 // ---- C3: owner-only folders ---------------------------------------------------------------------
 
 /// Every folder the register makes is 0700, also when the umask would open it (000) and when it
-/// would close it further (077), and the ledger file is 0600.
+/// would close it further (077; 177 would even cut the owner's search bit), and the ledger file is 0600.
 #[test]
 fn register_makes_every_new_folder_0700_whatever_the_umask() {
-    for umask in [0o000, 0o022, 0o027, 0o077] {
+    for umask in [0o000, 0o022, 0o027, 0o077, 0o177] {
         let h = TempHome::new();
         let profile = h.project(ID);
         let applied = register_with_umask(&h, &profile, umask);
