@@ -728,6 +728,15 @@ mod sys {
     /// `holders` null with `holders_source` `unavailable` when neither source could be read —
     /// "unavailable" is not "nobody".
     fn held_entry(bytes: Option<Vec<u8>>, slot: &Path) -> Value {
+        held_entry_with(bytes, slot, super::holders::find)
+    }
+
+    /// [`held_entry`] with the holder lookup passed in, so a test can reach the branch where
+    /// neither `/proc` nor `lsof` can be read (`find` answers `None`).
+    pub(super) fn held_entry_with<F>(bytes: Option<Vec<u8>>, slot: &Path, find: F) -> Value
+    where
+        F: FnOnce(&Path) -> Option<(Vec<super::holders::Holder>, &'static str)>,
+    {
         let mut rec = bytes
             .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
             .filter(Value::is_object)
@@ -735,7 +744,7 @@ mod sys {
         let alive = alive_of(&rec);
         rec["alive"] = json!(alive);
         if alive == Some(false) {
-            match super::holders::find(slot) {
+            match find(slot) {
                 Some((found, source)) => {
                     rec["holders"] = json!(found
                         .iter()
@@ -1112,8 +1121,29 @@ mod docs_tests {
 
 #[cfg(all(test, unix))]
 mod alive_tests {
-    use super::sys::alive_of;
+    use super::holders::Holder;
+    use super::sys::{alive_of, held_entry_with};
     use serde_json::{json, Value};
+    use std::path::Path;
+
+    /// A pid that was alive a moment ago and has been reaped.
+    fn dead_pid() -> i64 {
+        let mut child = std::process::Command::new("true").spawn().unwrap();
+        let pid = i64::from(child.id());
+        child.wait().unwrap();
+        pid
+    }
+
+    fn entry_for(
+        record: &Value,
+        find: impl FnOnce(&Path) -> Option<(Vec<Holder>, &'static str)>,
+    ) -> Value {
+        held_entry_with(
+            Some(record.to_string().into_bytes()),
+            Path::new("slot-0"),
+            find,
+        )
+    }
 
     /// #3033 D1: `alive` follows `kill(pid, 0)` for a pid in 1..=i32::MAX and is null for
     /// anything the record cannot name a process by.
@@ -1144,6 +1174,58 @@ mod alive_tests {
         ];
         for (record, want) in cases {
             assert_eq!(alive_of(&record), want, "{record}");
+        }
+    }
+
+    /// #3033 B1: a slot whose recorded pid is dead is held through someone else. When neither
+    /// `/proc` nor `lsof` can be read the entry says `holders` null and `holders_source`
+    /// `unavailable` — never an empty list, which would read as "nobody holds it" and invite a
+    /// hand edit of the slot file. The same entry with a source that answered "nobody" is an
+    /// empty list from that source, and with an answer it lists the processes.
+    #[test]
+    fn unreadable_holders_are_unavailable_never_an_empty_list() {
+        let record = json!({"pid": dead_pid(), "name": "cargo"});
+        let e = entry_for(&record, |_| None);
+        assert_eq!(e["alive"], json!(false), "{e}");
+        assert!(e["holders"].is_null(), "unavailable is not nobody: {e}");
+        assert_eq!(e["holders_source"], json!("unavailable"), "{e}");
+        assert_eq!(e["name"], json!("cargo"), "the record is kept: {e}");
+
+        let e = entry_for(&record, |_| Some((vec![], "proc")));
+        assert_eq!(e["holders"], json!([]), "{e}");
+        assert_eq!(e["holders_source"], json!("proc"), "{e}");
+
+        let e = entry_for(&record, |_| {
+            Some((
+                vec![Holder {
+                    pid: 41,
+                    comm: "sleep".into(),
+                }],
+                "lsof",
+            ))
+        });
+        assert_eq!(e["holders"], json!([{"pid": 41, "comm": "sleep"}]), "{e}");
+        assert_eq!(e["holders_source"], json!("lsof"), "{e}");
+    }
+
+    /// Only a recorded pid that is dead asks where the file is open: a live pid, a record with no
+    /// usable pid and bytes that are not a JSON object never do, and their entries carry neither
+    /// `holders` nor `holders_source`.
+    #[test]
+    fn only_a_dead_pid_asks_for_holders() {
+        let me = i64::from(std::process::id());
+        let asked = |_: &Path| -> Option<(Vec<Holder>, &'static str)> {
+            panic!("the holders were asked for")
+        };
+        for record in [json!({"pid": me}), json!({"pid": "x"}), json!({})] {
+            let e = entry_for(&record, asked);
+            assert!(e.get("holders").is_none(), "{record}: {e}");
+            assert!(e.get("holders_source").is_none(), "{record}: {e}");
+        }
+        for bytes in [None, Some(b"not json".to_vec()), Some(b"[1]".to_vec())] {
+            let e = held_entry_with(bytes, Path::new("slot-0"), asked);
+            assert_eq!(e["alive"], Value::Null, "{e}");
+            assert!(e.get("holders").is_none(), "{e}");
         }
     }
 }
