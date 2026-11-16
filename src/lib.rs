@@ -31,6 +31,7 @@ pub mod code_refs;
 pub mod comment_authority;
 pub mod context;
 pub mod contract;
+pub mod decide;
 pub mod decision;
 pub mod decision_file;
 pub mod decision_log;
