@@ -16,6 +16,12 @@ Project
   language-set            Record the conversation language in HOME
   index-build             Build the code map index
   check-tree              Warn about what the tracked MoAI folders hold
+  ledger-status           Show the project's ledger state
+  card                    Work with the project's local cards
+  ledger-register-plan    Preview registering the project's ledger
+  ledger-register-apply   Create the previewed project ledger
+  ledger-recover-plan     Preview recovering a damaged project ledger
+  ledger-recover-apply    Recover the previewed project ledger
   agents-plan             Preview the AGENTS.md managed section
   agents-apply            Write a previewed AGENTS.md managed section
   generation-plan         Preview the project's generated agent and skill files
@@ -34,6 +40,9 @@ Project
   go-hooks-plan           Preview replacing Go-era project hooks
   go-hooks-apply          Replace Go-era project hooks
   go-hooks-revert         Undo a Go-era hook replacement
+  go-settings-plan        Preview cleaning Go-era settings keys
+  go-settings-apply       Clean Go-era settings keys
+  go-settings-revert      Undo a Go-era settings clean-up
   agents-merge-plan       Preview merging AGENTS.local.md into AGENTS.md
   agents-merge-apply      Merge AGENTS.local.md into AGENTS.md
   agents-merge-revert     Undo an AGENTS.local.md merge
@@ -111,6 +120,8 @@ Lane and leader
   queue-free              List the open cards a lane may take
   queue-query             Read the merge train from the leader's comment
   leader-tick             Run one leader supervision tick
+  leader-pulse            Print the periodic round instruction and its orca
+                          command
   leader-round            Build the leader's per-lane action list
   lane-next               Find the lane's next task
   lane-loop-line          Print a lane's wake line for its host
@@ -122,6 +133,7 @@ Lane and leader
   lane-handoff-check      Check that a worktree is safe to leave
   lane-safe-to-reset      Check that a lane's session is safe to clear
   close-check             Check whether an Issue may close
+  card-times              Read the server times of cards and their pull requests
   lane-env                Print a lane's cargo folders
   session-register        Register this session's lane name
   session-current         Print this session's own id

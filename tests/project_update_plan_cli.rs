@@ -652,16 +652,21 @@ fn go_project_with_unrecorded_settings(settings: &str, local: &str) -> Fx {
 #[test]
 fn the_settings_hold_names_the_keys_and_the_settings_step_does_not_say_current() {
     let fx = go_project_with_unrecorded_settings(
-        r#"{"model":"opus","statusLine":{"type":"command","command":".moai/secret-name.sh"},"plansDirectory":".moai/plans"}"#,
+        // `.moai/plans/` is one character off the value the Go tool wrote, so it is the user's
+        // (#2936 L2a): the go-settings step has nothing to clean and this note stands.
+        r#"{"model":"opus","statusLine":{"type":"command","command":".moai/secret-name.sh"},"plansDirectory":".moai/plans/"}"#,
         r#"{"env":{"A":".moai/x"},"other":1}"#,
     );
     let plan = fx.plan();
+    assert_eq!(step(&plan, "go-settings")["state"], "unchanged", "{plan}");
     assert_tied(
         &plan,
         "blocked",
         "held by .claude/settings.json (plansDirectory, statusLine); \
          .claude/settings.local.json (env); this update does not change those keys, so change \
-         or remove them yourself and run the update again",
+         or remove them yourself and run the update again; this update does not edit \
+         .claude/settings.local.json; edit or remove these keys yourself (env), then run \
+         `moai project-update-plan` again",
     );
     assert!(
         !plan.to_string().contains("secret-name"),
@@ -681,6 +686,84 @@ fn the_settings_hold_names_the_keys_and_the_settings_step_does_not_say_current()
             {"file": ".claude/settings.json", "keys": ["plansDirectory", "statusLine"]},
             {"file": ".claude/settings.local.json", "keys": ["env"]}
         ]),
+        "{settings}"
+    );
+}
+
+/// #2936 L1 (audit mutant M8): the "held by" note belongs to the `settings reference .moai/`
+/// block only. A Go project whose `.moai/` stays for another reason (here: no usable Go
+/// manifest) keeps that reason as it is, although a settings key names `.moai/`.
+#[test]
+fn the_held_by_note_is_only_for_the_settings_reference_block() {
+    let fx = Fx::new();
+    fx.write(".moai/config/config.yaml", "user: {}\n");
+    fx.write(
+        ".claude/settings.json",
+        r#"{"statusLine":{"type":"command","command":".moai/status.sh"}}"#,
+    );
+    let plan = fx.plan();
+    assert_tied(&plan, "blocked", "no usable Go manifest");
+    let reason = step(&plan, "go-state")["reason"].as_str().unwrap();
+    assert!(!reason.contains("held by"), "{reason}");
+    assert!(!reason.contains("statusLine"), "{reason}");
+}
+
+/// #2936 L1 (audit mutant M9): the "still naming" note replaces the word "current" only on a
+/// step that reads `unchanged`. A settings step that has MoAI's status line to write (`ready`)
+/// in a Go project whose settings name `.moai/` carries neither the note nor `go_references`.
+#[test]
+fn a_settings_step_that_is_not_unchanged_gets_no_go_reference_note() {
+    // The file has no status line, so the step would create MoAI's own; `plansDirectory` is
+    // one character off the Go tool's value, so the go-settings step leaves it alone.
+    let fx = go_project_with_unrecorded_settings(
+        r#"{"model":"opus","plansDirectory":".moai/plans/"}"#,
+        r#"{"other":1}"#,
+    );
+    let plan = fx.plan();
+    assert_tied(
+        &plan,
+        "blocked",
+        "held by .claude/settings.json (plansDirectory)",
+    );
+    let settings = step(&plan, "claude-settings");
+    assert_eq!(settings["state"], "ready", "{settings}");
+    assert!(
+        !settings["reason"]
+            .as_str()
+            .unwrap()
+            .contains("still naming"),
+        "{settings}"
+    );
+    assert!(
+        settings["preview"].get("go_references").is_none(),
+        "{settings}"
+    );
+}
+
+/// #2936 L1 (audit mutant M11): a Go project whose settings files name `.moai/` in no key value
+/// gets no note anywhere. The text of the file still holds the folder (a key name does), so
+/// go-state keeps its own reason, without "held by"; the settings step stays plainly unchanged.
+#[test]
+fn zero_references_give_no_note() {
+    let fx = go_project_with_unrecorded_settings(
+        r#"{"statusLine":{"type":"command","command":"moai statusline"},".moai/x":1}"#,
+        r#"{"other":1}"#,
+    );
+    let plan = fx.plan();
+    assert_tied(&plan, "blocked", "settings reference .moai/");
+    let reason = step(&plan, "go-state")["reason"].as_str().unwrap();
+    assert!(!reason.contains("held by"), "{reason}");
+    let settings = step(&plan, "claude-settings");
+    assert_eq!(settings["state"], "unchanged", "{settings}");
+    assert!(
+        !settings["reason"]
+            .as_str()
+            .unwrap()
+            .contains("still naming"),
+        "{settings}"
+    );
+    assert!(
+        settings["preview"].get("go_references").is_none(),
         "{settings}"
     );
 }
@@ -2231,4 +2314,123 @@ fn settings_the_manifest_proves_do_not_hold_the_backup_step() {
                 .is_none());
         }
     }
+}
+
+/// #2936 L2a: a Go project whose settings carry a Go-made `plansDirectory` (no launcher is
+/// needed to clean that key); `recorded` says whether the Go manifest records the settings file.
+fn go_project_with_go_made_plans_key(recorded: bool) -> Fx {
+    let fx = Fx::new();
+    let settings = r#"{"model":"opus","plansDirectory":".moai/plans"}"#;
+    let hash = |t: &str| format!("sha256:{:x}", Sha256::digest(t.as_bytes()));
+    fx.write(".moai/config/sections/a.yaml", "a: 1\n");
+    fx.write(".claude/settings.json", settings);
+    let mut files = serde_json::Map::new();
+    for (rel, body) in [
+        (".moai/config/sections/a.yaml", "a: 1\n"),
+        (".claude/settings.json", settings),
+    ] {
+        if rel == ".claude/settings.json" && !recorded {
+            continue;
+        }
+        let h = hash(body);
+        files.insert(
+            rel.into(),
+            json!({"provenance": "template_managed", "template_hash": h,
+                   "deployed_hash": h, "current_hash": h}),
+        );
+    }
+    fx.write(
+        ".moai/manifest.json",
+        &json!({"version": "v3.2.1-rc.6", "files": files}).to_string(),
+    );
+    fx
+}
+
+/// #2936 L2a: the backup phase lists `go-settings` before `go-state`; with no Go-made key it is
+/// `unchanged` and prints no command, and it counts in `all_unchanged`.
+#[test]
+fn the_backup_phase_lists_go_settings_before_go_state() {
+    let fx = Fx::new();
+    let plan = fx.plan();
+    let names: Vec<&str> = phase(&plan, "backup")["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["step"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["go-settings", "go-state"], "{plan}");
+    let gs = step(&plan, "go-settings");
+    assert_eq!(gs["state"], "unchanged", "{gs}");
+    assert_eq!(gs["apply"], Value::Null, "{gs}");
+    assert_eq!(gs["preview"]["action"], "none", "{gs}");
+
+    // A step that is not `unchanged` or `skip` keeps `all_unchanged` false.
+    let fx = go_project_with_go_made_plans_key(false);
+    let plan = fx.plan();
+    assert_eq!(step(&plan, "go-settings")["state"], "ready", "{plan}");
+    assert_eq!(plan["all_unchanged"], json!(false), "{plan}");
+}
+
+/// #2936 L2a: while the go-settings step has a command, the go-state step and every install
+/// and merge step wait for a new preview (their digests would be stale after the settings are
+/// rewritten); the go-state reason names the step; after the apply go-state offers its move.
+#[test]
+fn a_ready_go_settings_step_holds_the_later_steps_until_it_is_applied() {
+    let fx = go_project_with_go_made_plans_key(false);
+    let plan = fx.plan();
+    let gs = step(&plan, "go-settings");
+    assert_eq!(gs["state"], "ready", "{gs}");
+    assert_eq!(words(gs)[1], "go-settings-apply", "{gs}");
+    assert_eq!(
+        gs["preview"]["go_keys"],
+        json!([{"key": "plansDirectory", "change": "remove"}])
+    );
+    assert_eq!(gs["preview"]["launcher"]["state"], "not_needed", "{gs}");
+    let own = fx.call(&["go-settings-plan", fx.p()], b"");
+    assert_eq!(gs["plan_digest"], own["plan_digest"], "{gs}");
+    let go = step(&plan, "go-state");
+    assert_eq!(go["state"], "blocked", "{go}");
+    assert!(
+        go["reason"]
+            .as_str()
+            .unwrap()
+            .contains("the go-settings step above clears the Go-made keys (plansDirectory)"),
+        "{go}"
+    );
+    assert_eq!(go["apply"], Value::Null, "{go}");
+    for name in INSTALL {
+        let s = step(&plan, name);
+        assert_eq!(s["reason"], BLOCKED_BY_BACKUP, "{name}: {s}");
+        assert_eq!(s["apply"], Value::Null, "{name}: {s}");
+    }
+    for name in ["agents-local-merge", "claude-settings-merge"] {
+        assert_eq!(step(&plan, name)["reason"], BLOCKED_BY_BACKUP, "{name}");
+    }
+
+    let out = fx.apply_step(gs);
+    assert_eq!(out["ok"], json!(true), "{out}");
+    let again = fx.plan();
+    assert_eq!(step(&again, "go-settings")["state"], "unchanged", "{again}");
+    let go = step(&again, "go-state");
+    assert_eq!(go["state"], "needs_decision", "{go}");
+    assert_eq!(words(go)[1], "go-state-apply", "{go}");
+}
+
+/// #2936 L2a: when the Go manifest proves the settings file the earlier generation's, the file
+/// moves into the backup with the go-state step, so the go-settings step skips and leaves it
+/// alone; the go-state step keeps its own command.
+#[test]
+fn go_settings_skips_a_settings_file_the_manifest_proves() {
+    let fx = go_project_with_go_made_plans_key(true);
+    let plan = fx.plan();
+    let gs = step(&plan, "go-settings");
+    assert_eq!(gs["state"], "skip", "{gs}");
+    assert_eq!(gs["apply"], Value::Null, "{gs}");
+    let go = step(&plan, "go-state");
+    assert_eq!(go["state"], "needs_decision", "{go}");
+    assert_eq!(words(go)[1], "go-state-apply", "{go}");
+    assert_eq!(
+        go["preview"]["settings_move"]["path"], ".claude/settings.json",
+        "{go}"
+    );
 }

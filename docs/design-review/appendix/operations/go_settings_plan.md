@@ -1,0 +1,9 @@
+# `go-settings-plan`
+
+operation `go_settings.plan` · 코드 `src/ops/go_settings_plan.rs`, `src/go_settings_clean.rs` · Issue #2936 (조각 L2a)
+
+`go-settings-plan [PROJECT]` 는 `.claude/settings.json` 에서 Go 세대가 만든 `.moai/` 참조를 걷으면 어떻게 되는지 보여 준다. 쓰지 않는다. Go 세대 프로젝트(`state_root` 가 `go`)에서만, 그리고 값이 Go 도구가 쓴 것과 **한 글자도 다르지 않을 때만** Go 가 만든 값으로 본다: `statusLine`·`subagentStatusLine` 이 `type` `command` 와 `command` X 로 이루어지고(`refreshInterval` 은 10 또는 60 만, 그 밖의 키는 없음) X 가 Go 템플릿이 실제로 쓴 네 가지 중 하나: `.moai/status_line.sh`, `$CLAUDE_PROJECT_DIR/.moai/status_line.sh`, 따옴표로 감싼 같은 경로, Windows 의 `bash "…"` 꼴. `plansDirectory` 가 정확히 `.moai/plans`. 한 글자라도 다른 값은 사용자 값이라 건드리지 않고, `.moai/` 를 가리키면 `kept`, 아니면(세 키 이름에 한해) `yours` 에 키 이름만 올린다. 값은 어디에도 찍지 않는다.
+
+필드: `action` (`replace` | `none` | `held` | `blocked`), `go_keys` (`{key, change: remove|replace}`), `kept`, `yours`, `formatting` (정리할 키가 있을 때: 파일 전체가 JSON 2칸 들여쓰기·LF 로 다시 쓰여 서식이 바뀔 수 있다는 말), `launcher` (`{path, state: rust|missing|not_rust|unprobed|not_needed}`), `plans_files` (`.moai/plans` 안 일반 파일 수; 링크는 따라가지 않고, 항목 1000개까지만 보며 넘으면 `more_than_limit`; 지우지 않고 go-state 백업과 함께 옮겨진다), `plan_digest` (settings 바이트·launcher 상태·결과를 묶는다), `next_actions`.
+
+`statusLine` 은 PATH 의 `moai` 이름이 아니라 Rust 실행 파일의 직접 경로(`"$HOME/.moai-cli/path/moai-cli" statusline`)로 바뀐다(리더 결정 D2 = C). 그 줄을 쓰기 전에 `$HOME/.moai-cli/path/moai-cli` 가 실행 가능한 일반 파일(또는 그리로 풀리는 링크)이고 `statusline --help` 첫 줄이 `Render the Claude Code status line` 임을 보인다(`status_line` 의 안전한 탐침). 보일 수 없으면 `held`: 아무것도 쓰지 않고 `reason` 과 `next`(확인 명령)를 낸다. `.claude/settings.local.json` 은 쓰지 않는다. 파일 안 어느 객체든 같은 키가 두 번 나오고 정리할 키도 있으면 `held`: 다시 쓰면 중복이 하나로 합쳐지므로 아무것도 쓰지 않고 사용자가 직접 고치게 한다. 다시 쓰면 철자나 값이 달라지는 숫자(64비트를 넘는 정수, `-0`, `1E2`, `1.10` 처럼 `serde_json` 이 같은 글자로 되돌려 쓰지 않는 숫자)가 있어도 `held` 이고 이유에 그 숫자를 가진 최상위 키 이름만 적는다(값은 안 적는다). `kept_copy` 는 옛 파일의 보관 위치와 비밀이 들어 있을 수 있다는 말이다.

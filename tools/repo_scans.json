@@ -108,6 +108,58 @@
       "rejects": "a copy of the permission-reference rule outside src/contract.rs (#2642 + #2632)"
     },
     {
+      "id": "ledger-file-name-spelled-once",
+      "tests": [
+        "src/ledger/location.rs::tests::the_ledger_file_name_is_spelled_once"
+      ],
+      "checks": [
+        "cargo test --offline --locked --lib the_ledger_file_name_is_spelled_once"
+      ],
+      "rules": [
+        "src/ledger/location.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "the ledger file name spelled in src/ outside src/ledger/location.rs instead of ledger::location::ledger_path (#3068 P1)"
+    },
+    {
+      "id": "home-isolation-scans",
+      "tests": [
+        "tests/home_isolation_scan.rs::ledger_tests_run_the_binary_only_through_temp_home",
+        "tests/home_isolation_scan.rs::no_new_test_runs_the_binary_without_a_home",
+        "tests/home_isolation_scan.rs::the_ledger_library_has_no_external_call_names"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test home_isolation_scan"
+      ],
+      "rules": [
+        "tests/home_isolation_scan.rs",
+        "tests/fixtures/home_isolation/binary_without_home.txt",
+        "tests/common/home.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs"
+          ]
+        },
+        {
+          "prefix": "src/ledger/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "a ledger test that runs the binary without TempHome, a test that runs the binary without naming HOME and is not in the baseline list, or a process, socket, program name or URL in src/ledger/ (#3068 P2)"
+    },
+    {
       "id": "git-spawns-scrubbed",
       "tests": [
         "tests/git_env_scrub.rs::every_git_subprocess_in_src_is_scrubbed"

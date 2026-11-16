@@ -39,6 +39,12 @@ pub const GROUPS: &[Group] = &[
             ("language-set", false),
             ("index-build", true),
             ("check-tree", false),
+            ("ledger-status", false),
+            ("card", false),
+            ("ledger-register-plan", false),
+            ("ledger-register-apply", false),
+            ("ledger-recover-plan", false),
+            ("ledger-recover-apply", false),
             ("agents-plan", false),
             ("agents-apply", false),
             ("generation-plan", false),
@@ -57,6 +63,9 @@ pub const GROUPS: &[Group] = &[
             ("go-hooks-plan", false),
             ("go-hooks-apply", false),
             ("go-hooks-revert", false),
+            ("go-settings-plan", false),
+            ("go-settings-apply", false),
+            ("go-settings-revert", false),
             ("agents-merge-plan", false),
             ("agents-merge-apply", false),
             ("agents-merge-revert", false),
@@ -154,6 +163,7 @@ pub const GROUPS: &[Group] = &[
             ("queue-free", false),
             ("queue-query", false),
             ("leader-tick", false),
+            ("leader-pulse", false),
             ("leader-round", false),
             ("lane-next", false),
             ("lane-loop-line", false),
@@ -165,6 +175,7 @@ pub const GROUPS: &[Group] = &[
             ("lane-handoff-check", false),
             ("lane-safe-to-reset", false),
             ("close-check", false),
+            ("card-times", false),
             ("lane-env", false),
             ("session-register", false),
             ("session-current", false),
@@ -300,11 +311,27 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("go-hooks-plan", &["go-hooks-plan .", "go-hooks-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("go-hooks-apply", &["go-hooks-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("go-hooks-revert", &["go-hooks-revert --receipt <id> --permission-reference <ref> ."]),
+    ("go-settings-plan", &["go-settings-plan .", "go-settings-apply --plan-digest <digest> --permission-reference <ref> ."]),
+    ("go-settings-apply", &["go-settings-apply --plan-digest <digest> --permission-reference <ref> ."]),
+    ("go-settings-revert", &["go-settings-revert --receipt <id> --permission-reference <ref> ."]),
     ("agents-merge-plan", &["agents-merge-plan .", "agents-merge-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("agents-merge-apply", &["agents-merge-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("agents-merge-revert", &["agents-merge-revert --receipt <id> --permission-reference <ref> ."]),
     ("agents-project-plan", &["agents-project-plan . skills/moai agents", "agents-project-apply --plan-digest <digest> --permission-reference <ref> . skills/moai agents"]),
     ("agents-project-apply", &["agents-project-apply --plan-digest <digest> --permission-reference <ref> . skills/moai agents"]),
+    ("ledger-status", &["ledger-status ."]),
+    (
+        "card",
+        &[
+            "card add --title fix-login --ac login-works --project .",
+            "card ready C-1 --project .",
+            "card take C-1 --project .",
+        ],
+    ),
+    ("ledger-register-plan", &["ledger-register-plan .", "ledger-register-apply --plan-digest <digest> --permission-reference <ref> ."]),
+    ("ledger-register-apply", &["ledger-register-apply --plan-digest <digest> --permission-reference <ref> ."]),
+    ("ledger-recover-plan", &["ledger-recover-plan --source <copy> .", "ledger-recover-apply --source <copy> --plan-digest <digest> --permission-reference <ref> ."]),
+    ("ledger-recover-apply", &["ledger-recover-apply --source <copy> --plan-digest <digest> --permission-reference <ref> ."]),
     ("update", &["update"]),
     ("go-state-plan", &["go-state-plan .", "go-state-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("go-state-apply", &["go-state-apply --plan-digest <digest> --permission-reference <ref> ."]),
@@ -377,6 +404,10 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("queue-query", &["queue-query . < request.json"]),
     ("leader-tick", &["leader-tick . < request.json"]),
     (
+        "leader-pulse",
+        &["leader-pulse --terminal term_abc --text continue-round --interval-secs 300"],
+    ),
+    (
         "leader-round",
         &[
             "leader-round --observations screens.json --repo modu-ai/moai-adk .",
@@ -417,6 +448,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("lane-handoff-check", &["lane-handoff-check . < request.json"]),
     ("lane-safe-to-reset", &["lane-safe-to-reset --lane agent-1 ."]),
     ("close-check", &["close-check 2903 --repo modu-ai/moai-adk"]),
+    ("card-times", &["card-times < request.json"]),
     (
         "session-register",
         &[
@@ -1410,6 +1442,50 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          되돌려요. 그 밖에는 아무것도 지우지 않아요.",
     ),
     (
+        "ledger-status",
+        "프로젝트의 로컬 SQLite 원장 상태를 읽기만 하고 보여 줘요(#3068): 있는지, 스키마 버전, WAL \
+         모드가 아닌지, 카드가 상태별로 몇 장인지. 원장이 없는 것은 정상 답(`exists: false`)이고 \
+         폴더도 파일도 만들지 않아요. 쓸 수 없는 파일은 `problem` 코드로 알리고 고치지 않아요.",
+    ),
+    (
+        "card",
+        "프로젝트의 로컬 카드를 읽고 써요(#3070): `list`(목록), `show C-n`(카드 하나와 기준·메모·링크), \
+         `add`(draft 카드 하나와 기준을 한 트랜잭션으로), `ready`(draft 를 ready 로), `take`·`release`·`handoff`(예약을 잡고, 돌려주고, 넘겨요). `list`·`show` 는 읽기만 하고, 원장 파일과 \
+         폴더는 어떤 동작도 만들지 않아요(`ledger-register-apply` 만 만들어요). 원장이 없으면 \
+         `list` 는 빈 목록, 나머지는 `ledger not found` 오류와 안내를 줘요.",
+    ),
+    (
+        "ledger-register-plan",
+        "프로젝트의 로컬 원장을 `<HOME>/.moai/projects/<project_id>/` 에 만들면 무엇이 생기는지 \
+         미리 봐요(#3068). 프로젝트 id 는 프로파일의 `project_id` 예요. 이미 있는 파일은 읽기만 \
+         하고 바꾸지 않아요. 아무것도 쓰지 않고, 답에 `plan_digest` 가 있어요.",
+    ),
+    (
+        "ledger-register-apply",
+        "미리 본 프로젝트 원장을 만들어요(#3068) — 같은 입력으로 다시 계산한 계획의 `plan_digest` 가 \
+         같을 때만, 원장 폴더와 파일을 만드는 유일한 명령이에요. Go 세대의 `~/.moai` 에는 만들지 \
+         않아요. 이미 있는 유효한 원장은 그대로 두고, 이 프로젝트 것이 아닌 파일은 대체하지 않아요.",
+    ),
+    (
+        "ledger-recover-plan",
+        "망가진 프로젝트 원장을 읽을 수 있는 사본에서 다시 만들면 무엇이 생기는지 미리 봐요(#3068). \
+         사본은 `--source` 로 넘겨요(원장 파일 자체, `.bak`, 또는 원장 모양의 파일). 표마다 읽다가 \
+         오류를 만나면 마지막 좋은 행에서 멈추고 잃은 행 수를 알려 줘요. 예약은 클레임 저널의 \
+         lease 가 살아 있고, worktree 가 그 가지에 있고, 원격 관찰 파일이 그 가지를 보여 줄 때만 \
+         `held` 로 되살리고, 나머지 활성 예약은 `held_for_review` 로 남겨 카드를 새로 잡지 못하게 \
+         해요. 답에 `plan_digest` 가 있어요. 아무것도 쓰지 않아요(사본에도). 망가진 파일은 지우지도 \
+         덮어쓰지도 않아요.",
+    ),
+    (
+        "ledger-recover-apply",
+        "미리 본 원장 복구를 해요(#3068) — 같은 입력으로 다시 계산한 계획의 `plan_digest` 가 같고 \
+         권한 참조가 있을 때만. 새 원장을 `<원장>.recovering` 에 만들어 `integrity_check`·\
+         `foreign_key_check` 를 통과시킨 뒤, 망가진 파일을 `<원장>.damaged-<UTC>` 로 남기고(하드 \
+         링크라 원래 이름이 빈 적이 없어요) 새 파일을 원래 이름으로 바꿔 놓아요. 아무것도 지우지 \
+         않아요. 같은 계획을 다시 하면 `unchanged` 이고 아무것도 쓰지 않아요. 이 계획의 결과가 \
+         아닌 쓸 수 있는 원장은 대체하지 않아요.",
+    ),
+    (
         "worktree-move-plan",
         "이 클론의 linked worktree 를 `<root>/<project>-<name>` 으로 옮기는 일을 미리 봐요(#2723, \
          #2835) — `worktree-plan` 이 새 worktree 를 만드는 자리예요. worktree 마다 `location` 과 \
@@ -1679,6 +1755,75 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "home-state-plan",
         "home",
         "읽을 HOME(기본 `$HOME`). 시험은 임시 폴더를 넘김",
+    ),
+    (
+        "ledger-status",
+        "home",
+        "읽을 HOME(기본 `$HOME`). 시험은 임시 폴더를 넘김",
+    ),
+    (
+        "ledger-register-plan",
+        "home",
+        "읽을 HOME(기본 `$HOME`). 시험은 임시 폴더를 넘김",
+    ),
+    (
+        "ledger-register-apply",
+        "home",
+        "미리 보기가 읽은 것과 같은 HOME(기본 `$HOME`)",
+    ),
+    (
+        "ledger-recover-plan",
+        "home",
+        "읽을 HOME(기본 `$HOME`). 시험은 임시 폴더를 넘김",
+    ),
+    (
+        "ledger-recover-apply",
+        "home",
+        "미리 보기가 읽은 것과 같은 HOME(기본 `$HOME`)",
+    ),
+    (
+        "ledger-recover-plan",
+        "source",
+        "읽을 수 있는 가장 좋은 원장 사본: 망가진 파일 자체, `.bak`, 또는 원장 모양의 파일. 링크·폴더·WAL \
+         파일·다른 프로젝트의 파일은 거절",
+    ),
+    (
+        "ledger-recover-apply",
+        "source",
+        "미리 보기가 읽은 것과 같은 사본",
+    ),
+    (
+        "ledger-recover-plan",
+        "journal",
+        "클레임 저널 폴더(기본: 프로젝트의 것). 없거나 못 읽으면 저널 확인이 모자라 모든 활성 예약이 \
+         `held_for_review`",
+    ),
+    (
+        "ledger-recover-apply",
+        "journal",
+        "미리 보기가 읽은 것과 같은 저널 폴더",
+    ),
+    (
+        "ledger-recover-plan",
+        "observations",
+        "JSON 파일: 선택 `journal`(holder·generation·live)·`worktrees`(path·exists·branch·clean)·\
+         `remotes`(branch·exists, 선택 card_id·holder·generation). 원격 관찰이 없으면 그 예약은 \
+         `held_for_review`. `worktrees` 는 이 컴퓨터에 없는 경로에만 쓰임",
+    ),
+    (
+        "ledger-recover-apply",
+        "observations",
+        "미리 보기가 읽은 것과 같은 관측 파일",
+    ),
+    (
+        "ledger-recover-plan",
+        "now",
+        "`YYYY-MM-DDTHH:MM:SSZ`. 없으면 시스템 시계(저널 lease 를 이때와 견줌)",
+    ),
+    (
+        "ledger-recover-apply",
+        "now",
+        "미리 보기가 읽은 것과 같은 `--now`",
     ),
     (
         "",
