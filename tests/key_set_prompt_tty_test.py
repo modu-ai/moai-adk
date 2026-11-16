@@ -190,6 +190,14 @@ def run_prompt(args, env, cwd, typed=None, at_prompt=None, stderr_tty=True, igno
         modes_back = bool(flags & termios.ECHO) and bool(flags & termios.ICANON)
         left = left_in_queue(slave)
         os.write(hold_w, b"x")
+        # A session leader does not exit while the terminal still has output for a reader:
+        # keep reading until the stand-in shell is gone.
+        while shell.poll() is None and time.monotonic() < deadline + 30:
+            if select.select([master], [], [], 0.05)[0]:
+                try:
+                    seen += os.read(master, 65536)
+                except OSError:
+                    break
         out = shell.stdout.read().decode()
         shell.stdout.close()
         shell.wait(timeout=60)
