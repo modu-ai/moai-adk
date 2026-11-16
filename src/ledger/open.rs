@@ -112,6 +112,7 @@ pub fn new_event_key(
 /// (no journal, no WAL file): see the module comment for the refusals.
 pub fn open_read_only(home: &Path, project_id: &str) -> Result<ReadLedger, LedgerError> {
     let path = location::ledger_path(home, project_id)?;
+    super::folders::refuse_links(home, project_id)?;
     let (conn, schema_version) = open_at(&path, project_id, false)?;
     Ok(ReadLedger {
         conn,
@@ -123,6 +124,7 @@ pub fn open_read_only(home: &Path, project_id: &str) -> Result<ReadLedger, Ledge
 /// Opens an existing ledger for writing. Never creates a folder or a file.
 pub fn open_write(home: &Path, project_id: &str) -> Result<WriteLedger, LedgerError> {
     let path = location::ledger_path(home, project_id)?;
+    super::folders::refuse_links(home, project_id)?;
     let (conn, _) = open_at(&path, project_id, true)?;
     Ok(WriteLedger {
         conn,
@@ -135,39 +137,65 @@ pub fn open_write(home: &Path, project_id: &str) -> Result<WriteLedger, LedgerEr
 /// into place only when complete and checked, so a second `register` (or a crash) never leaves
 /// a half-made ledger at the real name. A ledger that is already there is checked and left
 /// alone ([`Registered::AlreadyExists`]); a file there that is not this project's ledger is an
-/// error, never replaced.
+/// error, never replaced. Folders it makes are 0700; see [`super::folders`] for the modes it
+/// tightens, the symbolic links it refuses and the race that remains.
 pub fn register(home: &Path, project_id: &str) -> Result<Registered, LedgerError> {
+    Ok(register_with_report(home, project_id)?.0)
+}
+
+/// [`register`] that also says which folders it made and which it tightened.
+pub fn register_with_report(
+    home: &Path,
+    project_id: &str,
+) -> Result<(Registered, super::folders::FolderReport), LedgerError> {
     static COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    use super::folders;
     let path = location::ledger_path(home, project_id)?;
     let dir = location::project_dir(home, project_id)?;
-    check_home_ready(home)?;
+    check_ready(home, project_id)?;
+    let plan = folders::inspect(home, project_id)?;
+    if let Some(other) = plan.not_ours.first() {
+        return Err(LedgerError::FolderNotOurs(other.display().to_string()));
+    }
     match std::fs::symlink_metadata(&path) {
         Ok(_) => {
-            open_at(&path, project_id, false)?;
-            return Ok(Registered::AlreadyExists);
+            let report = folders::tighten_existing(home, project_id)?;
+            open_read_only(home, project_id)?;
+            return Ok((Registered::AlreadyExists, report));
         }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
         Err(e) => return Err(LedgerError::Io(e.to_string())),
     }
-    std::fs::create_dir_all(&dir).map_err(|e| LedgerError::Io(e.to_string()))?;
+    let report = folders::create_chain(home, project_id)?;
     let tmp = dir.join(format!(
         "{TEMP_PREFIX}{}-{}",
         std::process::id(),
         COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     ));
-    let made = build_new(&tmp, project_id).and_then(|()| {
-        match std::fs::hard_link(&tmp, &path) {
-            Ok(()) => Ok(Registered::Created),
-            // Another register won the race between our check and now: its file stands.
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-                open_at(&path, project_id, false)?;
-                Ok(Registered::AlreadyExists)
+    let made = folders::verify_open(home, project_id)
+        .and_then(|()| build_new(&tmp, project_id))
+        .and_then(|()| {
+            folders::verify_open(home, project_id)?;
+            match std::fs::hard_link(&tmp, &path) {
+                Ok(()) => Ok(Registered::Created),
+                // Another register won the race between our check and now: its file stands.
+                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                    open_read_only(home, project_id)?;
+                    Ok(Registered::AlreadyExists)
+                }
+                Err(e) => Err(LedgerError::Io(e.to_string())),
             }
-            Err(e) => Err(LedgerError::Io(e.to_string())),
-        }
-    });
+        });
     let _ = std::fs::remove_file(&tmp);
-    made
+    Ok((made?, report))
+}
+
+/// [`check_home_ready`] and no symbolic link at `.moai`, `projects` or `<id>`.
+pub(crate) fn check_ready(home: &Path, project_id: &str) -> Result<(), LedgerError> {
+    // The link check comes first: a link at `.moai` would otherwise be reported as a HOME that
+    // is not ready.
+    super::folders::refuse_links(home, project_id)?;
+    check_home_ready(home)
 }
 
 /// The HOME states this slice writes into: not the Go generation's `~/.moai`, not a stopped
@@ -208,6 +236,20 @@ pub(crate) fn build_new_with<T>(
     let flags = OpenFlags::SQLITE_OPEN_READ_WRITE
         | OpenFlags::SQLITE_OPEN_CREATE
         | OpenFlags::SQLITE_OPEN_NO_MUTEX;
+    // The file is made private before SQLite writes a byte into it (an empty file is a valid new
+    // database), so it is never readable by others, whatever the umask.
+    {
+        let mut options = std::fs::OpenOptions::new();
+        options.write(true).create_new(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600).custom_flags(libc::O_NOFOLLOW);
+        }
+        options
+            .open(tmp)
+            .map_err(|e| LedgerError::Io(format!("{}: {e}", tmp.display())))?;
+    }
     let out = {
         let mut conn = Connection::open_with_flags(tmp, flags)?;
         conn.busy_timeout(BUSY_TIMEOUT)?;
@@ -240,10 +282,26 @@ fn check_header(path: &Path) -> Result<(), LedgerError> {
         ));
     }
     let mut head = [0u8; 100];
-    let read = std::fs::File::open(path)
-        .and_then(|mut f| f.read_exact(&mut head))
-        .is_ok();
-    if !read || &head[..16] != HEADER_MAGIC {
+    let mut file = std::fs::File::open(path).map_err(|e| match e.kind() {
+        std::io::ErrorKind::NotFound => LedgerError::Absent,
+        _ => LedgerError::Io(format!("the ledger file cannot be opened: {e}")),
+    })?;
+    match file.read_exact(&mut head) {
+        Ok(()) => {}
+        // Fewer than 100 bytes: the content is cut short, which is damage.
+        Err(e) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
+            return Err(LedgerError::Unavailable(
+                "the file is not a SQLite database".into(),
+            ))
+        }
+        // Any other read error says nothing about the content (a transient failure).
+        Err(e) => {
+            return Err(LedgerError::Io(format!(
+                "the ledger file cannot be read: {e}"
+            )))
+        }
+    }
+    if &head[..16] != HEADER_MAGIC {
         return Err(LedgerError::Unavailable(
             "the file is not a SQLite database".into(),
         ));
@@ -319,10 +377,7 @@ fn verify_identity(
         .query_row("SELECT value FROM meta WHERE key = 'project_id'", [], |r| {
             r.get(0)
         })
-        .map_err(|e| match LedgerError::from(e) {
-            busy @ (LedgerError::Busy | LedgerError::ReadOnly) => busy,
-            other => LedgerError::Unavailable(format!("the ledger has no project id ({other})")),
-        })?;
+        .map_err(meta_lookup_error)?;
     if found != project_id {
         return Err(LedgerError::IdCollision {
             expected: project_id.to_string(),
@@ -330,4 +385,25 @@ fn verify_identity(
         });
     }
     Ok(version)
+}
+
+/// What a failed read of `meta.project_id` means: a database that is not one, a corrupt one, a
+/// missing table or a missing row is damage (`Unavailable`); a lock is `Busy`; a read-only
+/// connection that needs a journal rolled back stays `ReadOnly`; every other error (an I/O
+/// failure, any other SQLite error) says nothing about the content and is `Io`.
+fn meta_lookup_error(e: rusqlite::Error) -> LedgerError {
+    if matches!(e, rusqlite::Error::QueryReturnedNoRows) {
+        return LedgerError::Unavailable("the ledger has no project id (no row)".into());
+    }
+    let text = e.to_string();
+    match LedgerError::from(e) {
+        busy @ (LedgerError::Busy | LedgerError::ReadOnly) => busy,
+        LedgerError::Unavailable(why) => {
+            LedgerError::Unavailable(format!("the ledger has no project id ({why})"))
+        }
+        _ if text.contains("no such table") => {
+            LedgerError::Unavailable(format!("the ledger has no project id ({text})"))
+        }
+        other => LedgerError::Io(format!("the project id could not be read ({other})")),
+    }
 }

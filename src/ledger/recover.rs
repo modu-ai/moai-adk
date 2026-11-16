@@ -729,7 +729,7 @@ pub fn queries(
     project_id: &str,
     source: &Path,
 ) -> Result<Vec<ReservationRow>, LedgerError> {
-    open::check_home_ready(home)?;
+    open::check_ready(home, project_id)?;
     location::ledger_path(home, project_id)?;
     let conn = open_source(source, project_id)?;
     let seq = read_sequences(&conn);
@@ -876,7 +876,7 @@ fn prepare(
     source: &Path,
     obs: &Observations,
 ) -> Result<Prepared, LedgerError> {
-    open::check_home_ready(home)?;
+    open::check_ready(home, project_id)?;
     let ledger = location::ledger_path(home, project_id)?;
     let conn = open_source(source, project_id)?;
     let source_check = match conn.query_row("PRAGMA quick_check(1)", [], |r| r.get::<_, String>(0))
@@ -1001,7 +1001,7 @@ fn prepare(
         .map(|t| t.table.clone())
         .collect();
 
-    let (target_state, target_detail) = target_state(project_id, &ledger);
+    let (target_state, target_detail) = target_state(home, project_id, &ledger);
     let digest_input = json!({
         "format": 1,
         "project_id": project_id,
@@ -1292,7 +1292,11 @@ const TARGET_PROBE_BUSY: std::time::Duration = std::time::Duration::from_millis(
 /// Classifies the file at the real ledger path from what the P1 open says. Only an error that
 /// is about the file's content is "damaged" ([`TargetState::Unavailable`]); a lock, a newer
 /// schema, another project, WAL, a hot journal or an I/O error is not proof of damage.
-fn target_state(project_id: &str, ledger: &Path) -> (TargetState, Option<String>) {
+fn target_state(home: &Path, project_id: &str, ledger: &Path) -> (TargetState, Option<String>) {
+    // Nothing is looked up through a link above the ledger: not confirmed damaged, refused.
+    if let Err(e) = super::folders::refuse_links(home, project_id) {
+        return (TargetState::Unconfirmed, Some(e.to_string()));
+    }
     match std::fs::symlink_metadata(ledger) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => (TargetState::Absent, None),
         Err(e) => (TargetState::Unconfirmed, Some(e.to_string())),
@@ -1356,6 +1360,8 @@ pub struct RecoveryLock {
 
 impl RecoveryLock {
     fn covers(&self, home: &Path, project_id: &str) -> Result<(), LedgerError> {
+        // Every step re-checks the folders above the ledger for a link.
+        super::folders::verify_open(home, project_id)?;
         if location::project_dir(home, project_id)? == self.dir {
             Ok(())
         } else {
@@ -1370,24 +1376,45 @@ impl RecoveryLock {
 /// Takes the recovery lock of the project without waiting. The project folder must exist. The
 /// loser gets `recovery_in_progress` and has touched nothing.
 pub fn lock_recovery(home: &Path, project_id: &str) -> Result<RecoveryLock, LedgerError> {
-    open::check_home_ready(home)?;
+    open::check_ready(home, project_id)?;
     let dir = location::project_dir(home, project_id)?;
     if !dir.is_dir() {
         return Err(unavailable(
             "the project folder does not exist; register the project first",
         ));
     }
+    super::folders::verify_open(home, project_id)?;
     let path = dir.join(LOCK_NAME);
+    // The lock path must be a regular file. A pipe, a folder, a device, a socket or a link is
+    // refused before it is opened (opening a pipe could block).
+    match std::fs::symlink_metadata(&path) {
+        Ok(m) if !m.file_type().is_file() => return Err(lock_not_regular(&path)),
+        Ok(_) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => return Err(LedgerError::Io(format!("{}: {e}", path.display()))),
+    }
     let mut options = std::fs::OpenOptions::new();
     options.write(true).create(true).truncate(false);
     #[cfg(unix)]
     {
         use std::os::unix::fs::OpenOptionsExt;
-        options.mode(0o600).custom_flags(libc::O_NOFOLLOW);
+        // O_NOFOLLOW: a link swapped in after the check is not followed. O_NONBLOCK: a pipe
+        // swapped in after the check does not block the open.
+        options
+            .mode(0o600)
+            .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK);
     }
-    let file = options
-        .open(&path)
-        .map_err(|e| LedgerError::Io(format!("{}: {e}", path.display())))?;
+    let file = options.open(&path).map_err(|e| {
+        // ELOOP is what O_NOFOLLOW answers for a link swapped in after the lstat (unix only).
+        #[cfg(unix)]
+        if e.raw_os_error() == Some(libc::ELOOP) {
+            return lock_not_regular(&path);
+        }
+        LedgerError::Io(format!("{}: {e}", path.display()))
+    })?;
+    if !file.metadata().is_ok_and(|m| m.file_type().is_file()) {
+        return Err(lock_not_regular(&path));
+    }
     match file.try_lock() {
         Ok(()) => Ok(RecoveryLock { dir, _file: file }),
         Err(std::fs::TryLockError::WouldBlock) => Err(constraint(
@@ -1396,6 +1423,16 @@ pub fn lock_recovery(home: &Path, project_id: &str) -> Result<RecoveryLock, Ledg
         )),
         Err(std::fs::TryLockError::Error(e)) => Err(LedgerError::Io(e.to_string())),
     }
+}
+
+fn lock_not_regular(path: &Path) -> LedgerError {
+    constraint(
+        "lock_not_regular",
+        format!(
+            "{} is not a regular file; nothing was changed",
+            path.display()
+        ),
+    )
 }
 
 /// The refusal for a real ledger that is not positively unusable.
@@ -1460,9 +1497,27 @@ pub fn apply_with_suffix(
         ));
     }
     let ledger = location::ledger_path(home, project_id)?;
+    // First pass, read-only and without the lock: a finished recovery, a stale plan or a target
+    // that must not be replaced is answered here, so a refusal leaves the folder exactly as it
+    // was (no lock file is made). The pass under the lock below is the authoritative one.
+    if target_state(home, project_id, &ledger).0 == TargetState::Healthy
+        && already_applied(home, project_id, plan_digest)
+    {
+        return Ok(RecoveryResult {
+            state: ApplyState::Unchanged,
+            plan_digest: plan_digest.to_string(),
+            ledger,
+            built: None,
+            set_aside: None,
+        });
+    }
+    check_plan(
+        &prepare(home, project_id, source, observations)?.plan,
+        plan_digest,
+    )?;
     // One recovery at a time per project, across processes. The loser changes nothing.
     let lock = lock_recovery(home, project_id)?;
-    if target_state(project_id, &ledger).0 == TargetState::Healthy
+    if target_state(home, project_id, &ledger).0 == TargetState::Healthy
         && already_applied(home, project_id, plan_digest)
     {
         return Ok(RecoveryResult {
@@ -1476,7 +1531,7 @@ pub fn apply_with_suffix(
     let built = build_recovering(home, project_id, source, observations, plan_digest, &lock)?;
     // The state of the real file can have changed during the build (a writer may have revived
     // it): replace it only while it is still positively unusable.
-    let (state, detail) = target_state(project_id, &ledger);
+    let (state, detail) = target_state(home, project_id, &ledger);
     if !state.replaceable() {
         discard_scratch(&built.target);
         return Err(not_damaged(state, detail.as_deref()));
@@ -1499,6 +1554,29 @@ pub fn apply_with_suffix(
     })
 }
 
+/// The digest the caller holds is the recomputed one, and the real ledger is a state apply may
+/// build over. Read-only.
+fn check_plan(plan: &RecoveryPlan, plan_digest: &str) -> Result<(), LedgerError> {
+    if plan.plan_digest != plan_digest {
+        return Err(constraint(
+            "stale_plan",
+            "the recomputed digest differs; preview again, nothing was written",
+        ));
+    }
+    match plan.target_state {
+        TargetState::Healthy => Err(constraint(
+            "target_healthy",
+            "the ledger at the real name is usable and is not this plan's result; it is never replaced",
+        )),
+        TargetState::NotRegular => Err(constraint(
+            "target_not_regular",
+            "the ledger path is a link or a folder",
+        )),
+        TargetState::Absent | TargetState::Unavailable => Ok(()),
+        other => Err(not_damaged(other, plan.target_detail.as_deref())),
+    }
+}
+
 /// Step one of the apply: recomputes the plan, requires `plan_digest`, builds the new ledger at
 /// `<ledger>.recovering` and checks it. Changes nothing but that file. An unfinished
 /// `.recovering` (and its journal) of an earlier try is a scratch copy of the same source and is
@@ -1513,28 +1591,7 @@ pub fn build_recovering(
 ) -> Result<Built, LedgerError> {
     lock.covers(home, project_id)?;
     let p = prepare(home, project_id, source, observations)?;
-    if p.plan.plan_digest != plan_digest {
-        return Err(constraint(
-            "stale_plan",
-            "the recomputed digest differs; preview again, nothing was written",
-        ));
-    }
-    match p.plan.target_state {
-        TargetState::Healthy => {
-            return Err(constraint(
-                "target_healthy",
-                "the ledger at the real name is usable and is not this plan's result; it is never replaced",
-            ))
-        }
-        TargetState::NotRegular => {
-            return Err(constraint(
-                "target_not_regular",
-                "the ledger path is a link or a folder",
-            ))
-        }
-        TargetState::Absent | TargetState::Unavailable => {}
-        other => return Err(not_damaged(other, p.plan.target_detail.as_deref())),
-    }
+    check_plan(&p.plan, plan_digest)?;
     let target = p.plan.target.clone();
     let mut replaced_unfinished = false;
     for stale in [target.clone(), sibling(&target, "-journal")] {
@@ -1772,6 +1829,7 @@ fn has_other_name(_m: &std::fs::Metadata) -> bool {
 /// machine: a `register` that died. Report only: nothing is removed or renamed. A process that
 /// cannot be judged is not listed. An absent folder is an empty list.
 pub fn stale_temp(home: &Path, project_id: &str) -> Result<Vec<StaleTemp>, LedgerError> {
+    super::folders::refuse_links(home, project_id)?;
     let dir = location::project_dir(home, project_id)?;
     let entries = match std::fs::read_dir(&dir) {
         Ok(e) => e,
