@@ -40,6 +40,7 @@ pub const GROUPS: &[Group] = &[
             ("index-build", true),
             ("check-tree", false),
             ("ledger-status", false),
+            ("card", false),
             ("ledger-register-plan", false),
             ("ledger-register-apply", false),
             ("agents-plan", false),
@@ -311,6 +312,14 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("agents-project-plan", &["agents-project-plan . skills/moai agents", "agents-project-apply --plan-digest <digest> --permission-reference <ref> . skills/moai agents"]),
     ("agents-project-apply", &["agents-project-apply --plan-digest <digest> --permission-reference <ref> . skills/moai agents"]),
     ("ledger-status", &["ledger-status ."]),
+    (
+        "card",
+        &[
+            "card list .",
+            "card show C-1 --project .",
+            "card add --title fix-login --ac login-works --project .",
+        ],
+    ),
     ("ledger-register-plan", &["ledger-register-plan .", "ledger-register-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("ledger-register-apply", &["ledger-register-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("update", &["update"]),
@@ -1427,6 +1436,13 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
         "프로젝트의 로컬 SQLite 원장 상태를 읽기만 하고 보여 줘요(#3068): 있는지, 스키마 버전, WAL \
          모드가 아닌지, 카드가 상태별로 몇 장인지. 원장이 없는 것은 정상 답(`exists: false`)이고 \
          폴더도 파일도 만들지 않아요. 쓸 수 없는 파일은 `problem` 코드로 알리고 고치지 않아요.",
+    ),
+    (
+        "card",
+        "프로젝트의 로컬 카드를 읽고 써요(#3070): `list`(목록), `show C-n`(카드 하나와 기준·메모·링크), \
+         `add`(draft 카드 하나와 기준을 한 트랜잭션으로). `list`·`show` 는 읽기만 하고, 원장 파일과 \
+         폴더는 어떤 동작도 만들지 않아요(`ledger-register-apply` 만 만들어요). 원장이 없으면 \
+         `list` 는 빈 목록, 나머지는 `ledger not found` 오류와 안내를 줘요.",
     ),
     (
         "ledger-register-plan",
