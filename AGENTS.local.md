@@ -108,6 +108,7 @@ Still open for M1: interview orchestration, common skill/host projection, lossle
 | Workflow 2: new worktrees at `~/.moai/worktrees/<project>-<id>` | `worktree-plan` default, Issue #2811; user correction 6866770949 (#2811, #2723, #2835 closed); leader decision #1975 6904869986 of 2026-11-16 |
 | Workflow 2: existing worktrees stay where they are | before S3 the text named them: existing ones under `.moai-cli/worktrees/` stay where they are, and `~/.moai/worktrees/projects/` belongs to the Go generation and is never moved or deleted |
 | Workflow 2: why `.moai-cli/worktrees/` was chosen (before 2026-11-16) | the Go `moai` PreToolUse hook rejects Edit/Write outside the primary checkout; `.claude/worktrees/` would write into preserved state and pollute the 00-A inventory; `/.moai-cli/worktrees/` is gitignored |
+| Workflow 5: the leader assigns audits; a lane asks with one `감사 요청` line and never reserves another lane's PR | user instruction recorded by the leader, Issue #1975 comment 6904941797 §A of 2026-11-16: applies to requests made after that comment; audits reserved before it are finished by the lane that reserved them, re-audits stay with the first auditor (decision D4). The merge gate (`moai/audit` + `ci`, verdict first line, receipt line) is unchanged |
 | Workflow 7: the latest-tip requirement is off | user decision U6 of 2026-11-12 |
 | Host loading: `AGENTS.md` is tracked | Issue #2667 comment 6848071468; user decision 2026-11-13 (replaces the per-machine rule of 2026-11-08); details in `docs/agents-md-maintenance.md` |
 
