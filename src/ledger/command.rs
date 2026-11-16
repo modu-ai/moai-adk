@@ -49,7 +49,12 @@ fn plan_for(home: &Path, id: &str) -> std::result::Result<Value, LedgerError> {
                     Err(e) => ("absent", "blocked", Some(e)),
                 }
             }
-            Err(e) => return Err(LedgerError::Io(e.to_string())),
+            // A path that cannot be examined at all (for example `.moai` is a file, ENOTDIR) in
+            // a HOME that is not ready is a blocked plan, not an `io` failure.
+            Err(e) => match open::check_home_ready(home) {
+                Err(not_ready) => ("absent", "blocked", Some(not_ready)),
+                Ok(()) => return Err(LedgerError::Io(e.to_string())),
+            },
             Ok(_) => match open::open_read_only(home, id) {
                 Ok(_) => ("registered", "none", None),
                 Err(e) => ("unavailable", "none", Some(e)),
