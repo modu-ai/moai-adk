@@ -292,6 +292,7 @@ fn a_reservation_comes_back_held_only_with_journal_worktree_and_remote_all_confi
 
     // Apply: a stale digest, a bad `--now`, a missing permission reference are all refused and
     // leave the HOME as it was.
+    let before = f.home.snapshot();
     let stale_args = [
         "--journal",
         journal,
@@ -343,20 +344,9 @@ fn a_reservation_comes_back_held_only_with_journal_worktree_and_remote_all_confi
     ];
     let out = run(&f.home, &f.args("ledger-recover-apply", &bad_now));
     assert_eq!(out.status.code(), Some(1));
-    // The refusals changed nothing but the recovery lock file the stale-plan attempt created
-    // (kept, empty): the ledger is as it was and no scratch or kept file appeared.
-    let project_dir = f.ledger.parent().unwrap();
-    let listed = common::home::TempHome::names_in(project_dir);
-    assert_eq!(
-        listed,
-        vec![".recover.lock".to_string(), "ledger.db".to_string()]
-    );
-    assert_eq!(
-        fs::metadata(project_dir.join(".recover.lock"))
-            .unwrap()
-            .len(),
-        0
-    );
+    // R3: every refusal above (stale digest, empty permission reference, bad `--now`) left the
+    // HOME exactly as it was: no lock file, no scratch file, no kept file.
+    assert_eq!(f.home.snapshot(), before);
 
     // Apply with the preview's inputs.
     let good = [
