@@ -345,8 +345,11 @@ pub fn add(project: &Path, home: &Path, req: &AddRequest<'_>) -> Result<Value> {
 
 /// `card export --out DIR` (#3070 K2a): the five exported tables of the ledger as an export
 /// folder. The ledger is opened read-only and only read; the files go into `out` and nowhere else
-/// (an empty or new folder, nothing replaced: `export_dir::write`). A project without a ledger
-/// gets `ledger not found` and nothing is made, `out` included.
+/// (an empty or new folder, nothing replaced: `export_dir::write`), private to the owner (0700
+/// folder, 0600 files) and never inside the state folder `<home>/.moai`. Links in the parents of
+/// `out` are followed and the real path is the one written and reported (`out`; `out_given` is
+/// what was typed). A project without a ledger gets `ledger not found` and nothing is made,
+/// `out` included.
 pub fn export(project: &Path, home: &Path, out: &Path) -> Result<Value> {
     let id = project_id(project)?;
     let ledger = ledger::open_read_only(home, &id).map_err(|e| match e {
@@ -358,12 +361,21 @@ pub fn export(project: &Path, home: &Path, out: &Path) -> Result<Value> {
             .map_err(|e| e.to_string())?;
     let rendered = export_format::render(&snapshot)
         .map_err(|e| format!("card export refused: the ledger's rows cannot be exported: {e}"))?;
-    export_dir::write(out, &rendered).map_err(|e| match e {
-        DirError::Io { .. } => format!("card export write failed: {e}"),
+    // Where the folder really is: links in its parents are followed, and a folder inside the
+    // state folder (`<home>/.moai`, where the ledgers are) is refused. This path is written to.
+    let real_out = export_dir::resolve_out(out, &crate::home_workdir::root(home))
+        .map_err(|e| format!("card export refused: {e}"))?;
+    export_dir::write(&real_out, &rendered).map_err(|e| match e {
+        DirError::Io { .. } => format!(
+            "card export write failed: {e}. Files already written stay in {} (it has no \
+             index.json, so it is not an export); nothing was removed",
+            real_out.display()
+        ),
         other => format!("card export refused: {other}"),
     })?;
     Ok(json!({
-        "action": "export", "project_id": id, "out": out.display().to_string(),
+        "action": "export", "project_id": id,
+        "out": real_out.display().to_string(), "out_given": out.display().to_string(),
         "cards": snapshot.cards.len(), "acs": snapshot.acs.len(),
         "notes": snapshot.notes.len(), "links": snapshot.links.len(),
         "events": snapshot.events.len(),

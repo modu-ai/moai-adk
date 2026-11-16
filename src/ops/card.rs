@@ -52,8 +52,14 @@ enum Action {
     /// and one `C-<n>.md` per card (title, body, criteria, notes, links) into an empty or new
     /// folder; the same ledger gives the same bytes. Nothing already in the folder is replaced,
     /// and a project without a ledger gets `ledger not found` and no folder.
+    ///
+    /// The export is private to you (new folder 0700, files 0600; an existing empty folder that
+    /// others can open is refused: `chmod 700` it first) and holds what the ledger holds: card
+    /// text, criteria, notes, links and every event with its payload, which includes reservation
+    /// holders (session ids) and lease times. Look at it before you share it. The folder may not be inside
+    /// `<HOME>/.moai`. Links in the parent folders are followed; the real path is printed as `out`.
     Export {
-        /// The folder to write: new, or empty (its parent must exist).
+        /// The folder to write: new, or empty and closed to other users (its parent must exist).
         #[arg(long)]
         out: PathBuf,
         /// The project folder (its profile holds the project id).

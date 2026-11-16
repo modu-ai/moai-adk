@@ -384,3 +384,179 @@ fn the_help_says_what_the_action_does() {
         "{text}"
     );
 }
+
+// ---- who can read the export, and where it may go (PR #3126 verdict B1, B2) ---------------------
+
+#[cfg(unix)]
+fn mode_of(path: &Path) -> u32 {
+    use std::os::unix::fs::PermissionsExt;
+    fs::metadata(path).unwrap().permissions().mode() & 0o777
+}
+
+#[cfg(unix)]
+#[test]
+fn the_export_is_private_to_its_owner() {
+    let (home, project) = filled();
+    let out = home.path().join("exports").join("private");
+    fs::create_dir_all(out.parent().unwrap()).unwrap();
+    result(&export(&home, &project, &out));
+    assert_eq!(mode_of(&out), 0o700, "the new folder");
+    let names: Vec<String> = files(&out).into_iter().map(|(n, _)| n).collect();
+    assert_eq!(names.len(), 4, "{names:?}");
+    for n in names {
+        assert_eq!(mode_of(&out.join(&n)), 0o600, "{n}");
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn an_empty_folder_that_others_can_open_is_refused_and_a_closed_one_is_taken() {
+    use std::os::unix::fs::PermissionsExt;
+    let (home, project) = filled();
+    let out = home.path().join("exports").join("open");
+    fs::create_dir_all(&out).unwrap();
+    fs::set_permissions(&out, fs::Permissions::from_mode(0o755)).unwrap();
+    let (kind, message) = refusal(&export(&home, &project, &out));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("chmod 700"), "{message}");
+    assert!(files(&out).is_empty(), "something was written");
+    assert_eq!(mode_of(&out), 0o755, "the folder's mode was changed");
+    fs::set_permissions(&out, fs::Permissions::from_mode(0o700)).unwrap();
+    result(&export(&home, &project, &out));
+    assert_eq!(files(&out).len(), 4);
+}
+
+#[test]
+fn a_folder_inside_the_state_folder_is_refused_and_nothing_is_made() {
+    let (home, project) = filled();
+    let state = home.path().join(".moai");
+    let ledger_dir = ledger_file(&home).parent().unwrap().to_path_buf();
+    for inside in [
+        state.join("exp"),
+        state.join("projects").join("exp"),
+        ledger_dir.join("exp"),
+    ] {
+        let before = home.snapshot();
+        let (kind, message) = refusal(&export(&home, &project, &inside));
+        assert_eq!(kind, "invalid_input", "{message}");
+        assert!(message.contains("state folder"), "{message}");
+        assert!(!inside.exists(), "{inside:?} was made");
+        assert_eq!(home.snapshot(), before, "{inside:?}");
+    }
+    // The ledger itself is still readable afterwards.
+    assert_eq!(count(&home, "card"), 2);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_link_in_the_path_is_followed_and_the_real_folder_is_what_is_reported_and_checked() {
+    let (home, project) = filled();
+    let base = home.path().join("exports");
+    let real = base.join("real");
+    fs::create_dir_all(&real).unwrap();
+    let link = base.join("link");
+    std::os::unix::fs::symlink(&real, &link).unwrap();
+    let typed = link.join("new");
+    let r = result(&export(&home, &project, &typed));
+    let real_new = fs::canonicalize(&real).unwrap().join("new");
+    assert_eq!(r["out"], json!(real_new.display().to_string()), "{r}");
+    assert_eq!(r["out_given"], json!(typed.display().to_string()), "{r}");
+    assert_eq!(
+        files(&real_new).len(),
+        4,
+        "the files went to the real folder"
+    );
+
+    // A link that leads into the state folder is judged by where it leads.
+    let sneaky = base.join("sneaky");
+    std::os::unix::fs::symlink(home.path().join(".moai").join("projects"), &sneaky).unwrap();
+    let before = home.snapshot();
+    let (kind, message) = refusal(&export(&home, &project, &sneaky.join("exp")));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("state folder"), "{message}");
+    assert_eq!(home.snapshot(), before);
+}
+
+// On a case-insensitive volume (the macOS default) `.MOAI` is the state folder too.
+#[cfg(target_os = "macos")]
+#[test]
+fn another_letter_case_of_the_state_folder_is_still_the_state_folder() {
+    let (home, project) = filled();
+    let upper = home.path().join(".MOAI");
+    if !upper.exists() {
+        return; // a case-sensitive volume: `.MOAI` is another folder
+    }
+    let out = upper.join("projects").join("exp");
+    let before = home.snapshot();
+    let (kind, message) = refusal(&export(&home, &project, &out));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("state folder"), "{message}");
+    assert_eq!(home.snapshot(), before);
+}
+
+// ---- the ledger is only read (PR #3126 verdict B3) ----------------------------------------------
+
+/// A leftover rollback journal is what a read-write connection would roll back, which writes to
+/// the ledger. A read-only connection must refuse it instead, and export nothing.
+#[test]
+fn a_ledger_with_a_leftover_journal_is_not_rolled_back_and_nothing_is_exported() {
+    let (home, project) = filled();
+    let file = ledger_file(&home);
+    let mut journal = file.clone().into_os_string();
+    journal.push("-journal");
+    let journal = PathBuf::from(journal);
+    fs::write(&journal, b"left behind").unwrap();
+    let (bytes, journal_bytes) = (fs::read(&file).unwrap(), fs::read(&journal).unwrap());
+    let out = home.path().join("exports").join("hot");
+    fs::create_dir_all(out.parent().unwrap()).unwrap();
+    let before = home.snapshot();
+    let (_, message) = refusal(&export(&home, &project, &out));
+    assert!(message.contains("needs_recovery"), "{message}");
+    assert_eq!(fs::read(&file).unwrap(), bytes, "the ledger was written");
+    assert_eq!(
+        fs::read(&journal).unwrap(),
+        journal_bytes,
+        "the journal was touched"
+    );
+    assert!(!out.exists(), "a folder was made");
+    assert_eq!(home.snapshot(), before);
+}
+
+#[test]
+fn a_file_that_is_not_a_ledger_is_refused_unchanged_and_nothing_is_exported() {
+    let (home, project) = filled();
+    let file = ledger_file(&home);
+    fs::write(&file, vec![0x5au8; 5000]).unwrap();
+    let out = home.path().join("exports").join("junk");
+    fs::create_dir_all(out.parent().unwrap()).unwrap();
+    let before = home.snapshot();
+    let (_, message) = refusal(&export(&home, &project, &out));
+    assert!(!message.is_empty());
+    assert_eq!(
+        fs::read(&file).unwrap(),
+        vec![0x5au8; 5000],
+        "the file was written"
+    );
+    assert!(!out.exists(), "a folder was made");
+    assert_eq!(home.snapshot(), before);
+}
+
+#[test]
+fn the_documents_and_the_help_say_what_the_export_holds() {
+    let home = TempHome::new();
+    let out = run(&home, &["card", "export", "--help"]);
+    // The help wraps lines: compare with the white space folded.
+    let text = String::from_utf8_lossy(&out.stdout)
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    for needle in [
+        "reservation holders (session ids)",
+        "lease times",
+        "Look at it before you share it",
+        "chmod 700",
+        "may not be inside `<HOME>/.moai`",
+    ] {
+        assert!(text.contains(needle), "{needle}: {text}");
+    }
+}
