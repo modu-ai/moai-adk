@@ -2088,6 +2088,35 @@ fn plan_root_files(project: &Path, recorded: &HashMap<String, Entry>) -> Vec<Roo
     out
 }
 
+/// #2936 L2b: the Go proof of the root `CLAUDE.md`, for the leftovers `project-update-plan`
+/// states as facts. `Some("manifest")` when the Go manifest records it, `Some("marker")` when it
+/// holds a Go curator block; `None` for no file, a link or another non-file, a file over the
+/// read limit, one with this generation's managed section, or one without either proof.
+/// Read only; a manifest that cannot be read is no proof.
+pub fn go_claude_md_proof(project: &Path) -> Option<&'static str> {
+    const NAME: &str = "CLAUDE.md";
+    if linked_component(project, NAME) {
+        return None;
+    }
+    let bytes = read_bounded_file(&project.join(NAME))?;
+    let text = String::from_utf8_lossy(&bytes);
+    if text.contains(RUST_MARKER_TEXT) {
+        return None;
+    }
+    let recorded = read_bounded_text(project, MANIFEST, MANIFEST_LIMIT)
+        .ok()
+        .flatten()
+        .and_then(|t| serde_json::from_str::<Manifest>(&t).ok())
+        .is_some_and(|m| m.files.contains_key(NAME));
+    if recorded {
+        Some("manifest")
+    } else if GO_MARKERS.iter().any(|m| text.contains(m)) {
+        Some("marker")
+    } else {
+        None
+    }
+}
+
 /// #2936 R-A: what a recorded file under `.claude/` or `.agents/` is for, by its place; empty
 /// for any other path.
 fn kind_of(path: &str) -> &'static str {
