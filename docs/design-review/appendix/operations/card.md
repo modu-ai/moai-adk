@@ -13,4 +13,10 @@ operation `card` · 코드 `src/ops/card.rs`, `src/card/command.rs` · Issue #30
 - `rev` 는 기준을 하나 넣을 때마다 스키마 트리거(`card_touch_ac_insert`)가 올려서, 기준이 n 개인 새 카드는 `1 + n` 이다.
 - 시각은 모두 트랜잭션의 DB 시계 값(`unixepoch()`)이다. `--by` 기본값 `user`(1–80자 한 줄).
 - 오류: 원장이 없으면 `not_found`(안내 문장에 `ledger-register-plan` → `ledger-register-apply`), 쓸 수 없는 원장·WAL·낯선 파일은 `blocked`, 거절된 입력은 `card <동작> refused: …` (`invalid_input`), 쓰기 잠금을 오래 못 잡으면 `busy`. 새 `kind` 를 만들지 않는다.
-- 아직 없는 동작: `edit`·`note`·`take`·`release`·`handoff`·`done`·`export`·`restore`·`backup`.
+| `card ready C-n [--by NAME]` | 씀(트랜잭션 한 번) | `draft`·`hold` 카드만 | `from`, `state: "ready"`, `rev`, `events: 1`. 카드 상태 변경과 `card.ready` 사건이 한 트랜잭션 |
+| `card take C-n --holder H [--lease-secs N] [--scope P]... [--worktree W] [--branch B]` | 씀(`reservation::reserve`) | `--scope` 를 안 주면 카드의 `write_scope`; lease 60–86400초(기본 14400) | `reservation`(`generation`·`holder`·`lease_until`·`write_scope`…), `state: "active"`. `ready` 가 아니거나 이미 잡혔거나 범위가 다른 카드와 겹치면 `conflict` |
+| `card release C-n --holder H --generation G` | 씀(`reservation::release`) | 세대는 `take`·`handoff` 가 답한 값 | `reservation.status: "released"`, `state`(`active` 였으면 `ready`). 옛 세대·다른 holder 는 `conflict`(사건 `fence_reject` 한 줄) |
+| `card handoff C-n --holder H --generation G --to H2` | 씀(`reservation::handoff`) | 살아 있는 lease 필요, `--to` 는 holder 와 달라야 함 | 새 `reservation`(세대 + 1, 같은 범위·worktree·branch·lease 끝), `from_holder`, `state: "active"` |
+
+- 예약 규칙(세대·lease·쓰기 범위·울타리)은 #3068 P3(`src/ledger/reservation.rs`, `ledger_reservation.md`)의 것이다. `ready`·`take`·`release`·`handoff` 는 `C-n` 으로만 부르고(`#번호` 는 거절), P3 의 거절 문장이 그대로 나가 계약 분류가 `not_found`(`card not found`)·`conflict`(`conflict in`)·`invalid_input`(`invalid reservation input`)을 정한다.
+- 아직 없는 동작: `edit`·`note`·`renew`·`review`·`done`·`export`·`restore`·`backup`.

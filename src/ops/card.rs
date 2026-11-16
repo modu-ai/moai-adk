@@ -80,12 +80,106 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Make a draft card ready to be taken
+    ///
+    /// Writes the ledger. A `draft` (or `hold`) card becomes `ready`, with one `card.ready` event.
+    /// The ledger must already exist.
+    Ready {
+        /// `C-12`.
+        card: String,
+        /// Who does it (default `user`).
+        #[arg(long)]
+        by: Option<String>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Take a ready card for a holder
+    ///
+    /// Writes the ledger. Reserves the card: the next generation, a lease from the database
+    /// clock, its write scope (the card's own unless `--scope` is given) and `ready` → `active`.
+    /// Refused when the card is not `ready`, is already held, or its scope overlaps another
+    /// card's reservation (`conflict`). The answer's `generation` is what `release` and
+    /// `handoff` need.
+    Take {
+        /// `C-12`.
+        card: String,
+        /// Who takes it (1 to 200 characters, no control characters).
+        #[arg(long)]
+        holder: String,
+        /// Lease length in seconds, 60 to 86400 (default 14400).
+        #[arg(long)]
+        lease_secs: Option<i64>,
+        /// A path pattern the holder may write, repeat for more (default: the card's own scope).
+        #[arg(long = "scope")]
+        scope: Vec<String>,
+        /// The worktree the holder works in.
+        #[arg(long)]
+        worktree: Option<String>,
+        /// The branch the holder works on.
+        #[arg(long)]
+        branch: Option<String>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Give a taken card back
+    ///
+    /// Writes the ledger. Ends the holder's reservation at the given generation; an `active` card
+    /// becomes `ready`. A stale generation or another holder is refused (`conflict`).
+    Release {
+        /// `C-12`.
+        card: String,
+        /// The holder that took it.
+        #[arg(long)]
+        holder: String,
+        /// The generation `take` or `handoff` answered with.
+        #[arg(long)]
+        generation: i64,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Hand a taken card over to another holder
+    ///
+    /// Writes the ledger. Ends the holder's reservation and gives `--to` the next generation with
+    /// the same scope, worktree, branch and lease end; the card stays `active`. The old generation
+    /// is stale from then on. Needs a live lease.
+    Handoff {
+        /// `C-12`.
+        card: String,
+        /// The holder that hands it over.
+        #[arg(long)]
+        holder: String,
+        /// The generation the holder has.
+        #[arg(long)]
+        generation: i64,
+        /// The holder that receives it.
+        #[arg(long)]
+        to: String,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
 }
 
 pub const OPERATION: &str = "card";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
     use moai_cli::card::command as c;
+    use moai_cli::card::dispatch as d;
     use moai_cli::ledger::command::resolve_home;
     match args.action {
         Action::List {
@@ -120,6 +214,55 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 criteria: &criteria,
                 by: by.as_deref(),
             },
+        ),
+        Action::Ready {
+            card,
+            by,
+            project,
+            home,
+        } => d::ready(&project, &resolve_home(home)?, &card, by.as_deref()),
+        Action::Take {
+            card,
+            holder,
+            lease_secs,
+            scope,
+            worktree,
+            branch,
+            project,
+            home,
+        } => d::take(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &d::TakeRequest {
+                holder: &holder,
+                lease_secs,
+                scope: &scope,
+                worktree: worktree.as_deref(),
+                branch: branch.as_deref(),
+            },
+        ),
+        Action::Release {
+            card,
+            holder,
+            generation,
+            project,
+            home,
+        } => d::release(&project, &resolve_home(home)?, &card, &holder, generation),
+        Action::Handoff {
+            card,
+            holder,
+            generation,
+            to,
+            project,
+            home,
+        } => d::handoff(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &holder,
+            generation,
+            &to,
         ),
     }
 }

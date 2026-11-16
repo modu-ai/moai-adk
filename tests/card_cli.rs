@@ -530,6 +530,10 @@ fn every_action_says_first_what_it_does_to_the_ledger() {
         ("list", "Reads the ledger only."),
         ("show", "Reads the ledger only."),
         ("add", "Writes the ledger."),
+        ("ready", "Writes the ledger."),
+        ("take", "Writes the ledger."),
+        ("release", "Writes the ledger."),
+        ("handoff", "Writes the ledger."),
     ] {
         let out = run(&home, &["card", action, "--help"]);
         assert!(out.status.success());
