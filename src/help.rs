@@ -157,6 +157,7 @@ pub const GROUPS: &[Group] = &[
             ("queue-free", false),
             ("queue-query", false),
             ("leader-tick", false),
+            ("leader-pulse", false),
             ("leader-round", false),
             ("lane-next", false),
             ("lane-loop-line", false),
@@ -168,6 +169,7 @@ pub const GROUPS: &[Group] = &[
             ("lane-handoff-check", false),
             ("lane-safe-to-reset", false),
             ("close-check", false),
+            ("card-times", false),
             ("lane-env", false),
             ("session-register", false),
             ("session-current", false),
@@ -383,6 +385,10 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("queue-query", &["queue-query . < request.json"]),
     ("leader-tick", &["leader-tick . < request.json"]),
     (
+        "leader-pulse",
+        &["leader-pulse --terminal term_abc --text continue-round --interval-secs 300"],
+    ),
+    (
         "leader-round",
         &[
             "leader-round --observations screens.json --repo modu-ai/moai-adk .",
@@ -423,6 +429,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("lane-handoff-check", &["lane-handoff-check . < request.json"]),
     ("lane-safe-to-reset", &["lane-safe-to-reset --lane agent-1 ."]),
     ("close-check", &["close-check 2903 --repo modu-ai/moai-adk"]),
+    ("card-times", &["card-times < request.json"]),
     (
         "session-register",
         &[
