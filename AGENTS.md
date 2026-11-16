@@ -49,13 +49,13 @@ A blocked lane reports the kind, the owner and the next check, and moves to inde
 
 ## Development build versions (HeadVer)
 
-Local development builds of this repository are numbered with HeadVer (`https://github.com/line/headver`): `{head}.{yearweek}.{build}`. This rule is for development builds on a developer's machine only; it does not name or change a release, a tag or the package version in `Cargo.toml`.
+Local development builds of this repository are numbered with HeadVer (`https://github.com/line/headver`): `{head}.{yearweek}.{build}`. This rule covers development builds on a developer's machine. Releases of this generation are to follow the same `4.{yearweek}.{build}` form; until card C-67 changes the build and release steps, no tag and no package version in `Cargo.toml` is changed by this rule.
 
-- `{head}`: the one manual number, zero-based. It is `0` until the user raises it.
+- `{head}`: the one manual number. It is `4`: the generation already released is v3, and this generation is v4 (user decision 2026-11-17). Only the user raises it.
 - `{yearweek}`: automatic, always four digits: two-digit year and two-digit ISO-8601 week of the build's UTC date (2026-11-17 is `2647`). Read the date from a clock in the same step.
 - `{build}`: automatic, one counter that only goes up and never restarts with a new week or head. It continues the local build numbers already used (`+local.3` was build 3, so the next is 4).
 - Never commit a change only to move a development version, and never reuse a build number, also not for a rebuild of the same commit.
-- Until the binary prints this form itself (card C-67), pass the build number as `MOAI_LOCAL_BUILD=<build>`; the binary then shows `<package version>+local.<build>`. Reports name both, for example `0.2647.4 (2026.11.0-rc.2+local.4)`.
+- Until the binary prints this form itself (card C-67), pass the build number as `MOAI_LOCAL_BUILD=<build>`; the binary then shows `<package version>+local.<build>`. Reports name both, for example `4.2647.4 (2026.11.0-rc.2+local.4)`.
 
 ## Language
 
