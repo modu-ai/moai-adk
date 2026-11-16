@@ -20,7 +20,7 @@ use super::input::{self, CardRef};
 use crate::ledger::reservation::{self, Reservation};
 use crate::ledger::{self};
 use crate::session_current;
-use rusqlite::params;
+use rusqlite::{params, OptionalExtension};
 use serde_json::{json, Value};
 use std::path::Path;
 
@@ -64,7 +64,7 @@ fn card_id(action: &str, reference: &str) -> Result<i64> {
     }
 }
 
-fn reservation_json(r: &Reservation) -> Value {
+pub(super) fn reservation_json(r: &Reservation) -> Value {
     json!({
         "name": input::card_name(r.card_id),
         "card_id": r.card_id,
@@ -184,7 +184,8 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
     }))
 }
 
-/// `card release C-n`: gives the card back; an `active` card becomes `ready`.
+/// `card release C-n`: gives the card back; an `active` card becomes `ready`. A `review` card
+/// is refused before anything is written.
 pub fn release(
     project: &Path,
     home: &Path,
@@ -194,6 +195,15 @@ pub fn release(
 ) -> Result<Value> {
     let card_id = card_id("release", reference)?;
     let (id, mut ledger) = open_for_write(project, home)?;
+    // A `review` card that is given back has nobody who can close or reopen it, and nothing
+    // reclaims a card yet (C-53 S6): the holder takes it back to `active` first.
+    if card_state(&ledger, card_id)?.as_deref() == Some("review") {
+        return Err(format!(
+            "card conflict in state: C-{card_id} is `review`, and a review card that is given \
+             back has nobody who can close it; run `card reopen C-{card_id} --generation \
+             {generation}` and release it then, or `card done` after the merge"
+        ));
+    }
     let out = reservation::release(&mut ledger, card_id, holder, generation)
         .map_err(|e| e.to_string())?;
     Ok(json!({
@@ -202,7 +212,8 @@ pub fn release(
     }))
 }
 
-/// `card handoff C-n`: the holder's reservation ends and `to` gets the next generation.
+/// `card handoff C-n`: the holder's reservation ends and `to` gets the next generation. The
+/// card keeps its state (`active` or `review`), which the answer reports.
 pub fn handoff(
     project: &Path,
     home: &Path,
@@ -218,8 +229,23 @@ pub fn handoff(
         .map_err(|e| e.to_string())?;
     Ok(json!({
         "action": "handoff", "project_id": id, "reservation": reservation_json(&r),
-        "from_holder": holder, "state": "active", "writes": true,
+        "from_holder": holder,
+        "state": card_state(&ledger, card_id)?.unwrap_or_default(),
+        "writes": true,
     }))
+}
+
+/// The card's state now, `None` when there is no such card.
+fn card_state(ledger: &ledger::WriteLedger, card_id: i64) -> Result<Option<String>> {
+    ledger
+        .conn()
+        .query_row(
+            "SELECT state FROM card WHERE card_id = ?1",
+            [card_id],
+            |r| r.get(0),
+        )
+        .optional()
+        .map_err(|e| ledger::LedgerError::from(e).to_string())
 }
 
 #[cfg(test)]

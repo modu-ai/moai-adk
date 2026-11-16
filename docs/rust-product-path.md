@@ -891,7 +891,11 @@ is left out together with its separator.
    AC-8), `🤖` Claude Code version and `🗿` MoAI version. The session time (`⏳`) and the
    output style are not shown; their `session_time` and `output_style` options are still
    accepted.
-2. Repository: `📡` owner/repo, available `⬇️` Issue / `🔀` PR counts, `🅱️` branch with
+2. Repository: `📡` owner/repo, available `⬇️` Issue / `🔀` PR counts, the card counts
+   `🔥 N / 📥 M | ✅ D` of the project's local ledger (card C-65, user instructions
+   2026-11-16 and 2026-11-17: `🔥` cards in progress = `active` + `review`, `📥` cards
+   created and remaining = `draft` + `ready` + `hold`, `✅` cards `done`, counted in neither
+   of the other two; `📡 owner/repo | ⬇️ 46 / 🔀 0 | 🔥 5 / 📥 50 | ✅ 12 | 🅱️ main`), `🅱️` branch with
    its behind and dirty counts, `🌳` the worktree name (`worktree.name`, else
    `workspace.git_worktree`; absent in the main checkout, AC-9), `🔗 #N state` this
    branch's pull request (AC-7; an OSC 8 hyperlink to `pr.url` only when color is on and
@@ -899,6 +903,23 @@ is left out together with its separator.
    `💾` file-change segment (leader decision 6862179411 on #2756; the `git_status`
    option is still accepted). Ahead arrows are hidden. Missing forge counts are omitted.
    The `worktree` and `pr` options turn their segments off.
+   The card counts are read from the ledger `moai card list` reads
+   (`$HOME/.moai/projects/<project_id>/`, the project being the one the input names, else
+   the project above the working directory), read-only: no folder, file or journal is
+   made, no process is started and no network is used, and the ledger file is byte for
+   byte the same afterwards. A registered ledger without cards shows `🔥 0 / 📥 0 | ✅ 0`.
+   With no registered ledger, no HOME, no project profile, a file that is not this
+   project's ledger (corrupt, cut short, another project's, a link) or a ledger another
+   process holds locked for more than 50 ms (`CARDS_BUSY_TIMEOUT`, or what is left of the
+   render budget when that is less), the three numbers are absent, the rest of the line is
+   unchanged and the exit code stays 0. Without forge counts the card counts keep the same
+   place; without a repository name or a branch (or with `git_branch` off) they open the
+   line. The one option `cards` in `statusline.yaml` (`statusline.segments.cards: false`)
+   turns all three numbers off. `statusline.yaml` switches segments on and off only; it has
+   no setting for their order. Each number carries its icon, so color is never the only
+   signal. Tests: `tests/statusline_cards.rs`, the golden case `b13-card-counts` (its
+   ledger is the checked-in `tests/fixtures/statusline-claude/ledger/cards-5-50-12.sqlite`,
+   written by the ignored test `write_the_golden_ledger_fixture`).
 3. Usage: the `CTX` and available `Week` bars only (`🔋 CTX: … | 🪫 Week: …`; since #2928
    user instruction 6878415244 the tag is on line 1, not here). With both bars off the
    line is empty and omitted like any empty line. The bar icons (`🔋`/`🪫`) and the

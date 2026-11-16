@@ -1031,6 +1031,65 @@
       ]
     },
     {
+      "name": "b13-card-counts",
+      "class": "b",
+      "stdin": "../statusline/stdin/a02-doc-full.json",
+      "covers": [
+        "card C-65: card counts \ud83d\udd25 in progress / \ud83d\udce5 remaining after the forge counts, then \u2705 done",
+        "counts read from the project's local ledger in the temporary HOME (3 active, 2 review, 20 draft, 25 ready, 5 hold, 12 done)"
+      ],
+      "setup": [
+        {
+          "kind": "git_init",
+          "branch": "main"
+        },
+        {
+          "kind": "write",
+          "path": "README.md",
+          "content": "fixture\n"
+        },
+        {
+          "kind": "write",
+          "path": ".moai-cli/project.yaml",
+          "content": "{\"schema_version\":2,\"project_id\":\"demo\"}\n"
+        },
+        {
+          "kind": "write",
+          "path": ".moai-cli/state/github/counts.json",
+          "content": "{\"open_issues\":46,\"open_prs\":0,\"fetched_at\":4102444800}\n"
+        },
+        {
+          "kind": "git_commit_all"
+        },
+        {
+          "kind": "copy",
+          "from": "ledger/cards-5-50-12.sqlite",
+          "under": "moai_home",
+          "path": "projects/demo/ledger.db"
+        }
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "de007373a2623927333a8b6184e061c82bc7fd974f4bcd22a681a9710c1a2ca7",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "de007373a2623927333a8b6184e061c82bc7fd974f4bcd22a681a9710c1a2ca7",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "2026.11.0-rc.1",
+            "sha256": "de007373a2623927333a8b6184e061c82bc7fd974f4bcd22a681a9710c1a2ca7",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
       "name": "c01-prompt-cache-warm",
       "class": "a",
       "stdin": "stdin/c01-prompt-cache-warm.json",

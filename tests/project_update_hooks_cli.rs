@@ -283,3 +283,197 @@ fn hooks_wait_for_the_settings_apply_when_the_profile_is_unreadable() {
     );
     assert_eq!(step["apply"], Value::Null, "{step}");
 }
+
+// ---- C-55: the ownership record outlives the settings file it describes ----
+
+fn generated() -> Value {
+    Value::Object(moai_cli::hooks::hooks_object("claude").unwrap())
+}
+
+fn settings_now(fx: &GoFx) -> Value {
+    serde_json::from_slice(&fs::read(fx.root.join(".claude/settings.json")).unwrap()).unwrap()
+}
+
+fn hooks_plan(fx: &GoFx) -> Value {
+    fx.call(&["hooks-plan", fx.p(), "--host", "claude"], b"")
+}
+
+/// A project whose hooks step ran once (the ownership record names the MoAI hook set) and
+/// whose settings file and scripts were then put back as they were before it, the way a
+/// `git reset` restores tracked files and leaves the untracked record. Returns the restored
+/// settings bytes.
+fn reset_after_a_hooks_step(fx: &GoFx) -> Vec<u8> {
+    let plan = after_settings(fx);
+    let old = fs::read(fx.root.join(".claude/settings.json")).unwrap();
+    let out = fx.apply_step(hooks(&plan));
+    assert_eq!(out["ok"], json!(true), "{out}");
+    assert_eq!(settings_now(fx)["hooks"], generated(), "the first apply");
+    fs::write(fx.root.join(".claude/settings.json"), &old).unwrap();
+    fx.write(".claude/hooks/moai/handle-a.sh", "#!/bin/sh\necho a\n");
+    fx.write(".claude/hooks/moai/handle-b.sh", "#!/bin/sh\necho b\n");
+    assert!(
+        [".moai", ".moai-cli"].iter().any(|state| fx
+            .root
+            .join(state)
+            .join("manifests/claude-settings.json")
+            .is_file()),
+        "the record stays"
+    );
+    old
+}
+
+/// The reported sequence: the record says the MoAI hooks are installed, the file holds the Go
+/// entries again. The step must end with the previewed hook set in the file, the plan and the
+/// status must agree afterwards, and the receipt's revert must put the scripts and the
+/// entries back.
+#[test]
+fn a_stale_record_does_not_keep_the_hooks_step_from_writing_the_hook_set() {
+    let fx = project_with_go_hooks();
+    let old = reset_after_a_hooks_step(&fx);
+
+    let plan = after_settings(&fx);
+    let step = hooks(&plan);
+    assert_eq!(step["state"], "ready", "{step}");
+    assert_eq!(step["apply"]["argv"][1], "go-hooks-apply", "{step}");
+    let before_apply = fs::read(fx.root.join(".claude/settings.json")).unwrap();
+    let out = fx.apply_step(step);
+    assert_eq!(out["ok"], json!(true), "{out}");
+    assert_eq!(out["result"]["state"], "applied", "{out}");
+
+    let after = settings_now(&fx);
+    assert_eq!(
+        after["hooks"],
+        generated(),
+        "an applied hooks step leaves the previewed MoAI hook set in the file: {after}"
+    );
+    assert_eq!(after["permissions"]["deny"], json!(DENY), "{after}");
+    assert!(!fx.root.join(".claude/hooks/moai").exists());
+    let own = hooks_plan(&fx);
+    assert_eq!(own["action"], "unchanged", "{own}");
+    assert_eq!(own["hook_status"]["configured"], "yes", "{own}");
+    assert_eq!(hooks(&fx.update_plan())["state"], "unchanged");
+
+    let receipt = out["result"]["receipt"].as_str().unwrap();
+    let back = fx.call(
+        &[
+            "go-hooks-revert",
+            fx.p(),
+            "--receipt",
+            receipt,
+            "--permission-reference",
+            go_project_real_run::REF,
+        ],
+        b"",
+    );
+    assert_eq!(back["state"], "reverted", "{back}");
+    assert_eq!(back["scripts_restored"], json!(2), "{back}");
+    assert_eq!(
+        fs::read(fx.root.join(".claude/settings.json")).unwrap(),
+        before_apply
+    );
+    assert_eq!(before_apply, old, "no settings apply ran in between");
+    for (name, body) in [
+        ("handle-a.sh", "#!/bin/sh\necho a\n"),
+        ("handle-b.sh", "#!/bin/sh\necho b\n"),
+    ] {
+        assert_eq!(
+            fs::read_to_string(fx.root.join(".claude/hooks/moai").join(name)).unwrap(),
+            body
+        );
+    }
+}
+
+/// The state the reported run ended in: no Go entry, no `hooks` key, a record that names the
+/// MoAI hook set. Neither plan may read `unchanged` while the status reads `drifted`; the step
+/// prints `hooks-apply`, and applying it writes the set.
+#[test]
+fn a_file_without_the_recorded_hooks_reads_ready_and_agrees_with_the_status() {
+    let fx = project_with_go_hooks();
+    let plan = after_settings(&fx);
+    let out = fx.apply_step(hooks(&plan));
+    assert_eq!(out["ok"], json!(true), "{out}");
+    let mut s = settings_now(&fx);
+    s.as_object_mut().unwrap().remove("hooks");
+    fx.write(
+        ".claude/settings.json",
+        &serde_json::to_string_pretty(&s).unwrap(),
+    );
+
+    let own = hooks_plan(&fx);
+    assert_eq!(own["hook_status"]["configured"], "drifted", "{own}");
+    assert_eq!(own["action"], "update", "{own}");
+    let update = fx.update_plan();
+    let step = hooks(&update);
+    assert_eq!(step["state"], "ready", "{step}");
+    assert_eq!(step["plan_digest"], own["plan_digest"], "{step}");
+    assert_eq!(
+        step["apply"]["argv"],
+        json!([
+            "moai",
+            "hooks-apply",
+            fx.p(),
+            "--host",
+            "claude",
+            "--plan-digest",
+            own["plan_digest"],
+            "--permission-reference",
+            PLACEHOLDER
+        ]),
+        "{step}"
+    );
+
+    let out = fx.apply_step(step);
+    assert_eq!(out["ok"], json!(true), "{out}");
+    let after = settings_now(&fx);
+    assert_eq!(after["hooks"], generated(), "{after}");
+    assert_eq!(after["permissions"]["deny"], json!(DENY), "{after}");
+    let own = hooks_plan(&fx);
+    assert_eq!(own["action"], "unchanged", "{own}");
+    assert_eq!(own["hook_status"]["configured"], "yes", "{own}");
+    assert_eq!(hooks(&fx.update_plan())["state"], "unchanged");
+}
+
+/// The other direction: a `hooks` key the file still has is not the lost-key case. A user's
+/// edit of the current set is kept as before (the three-way rule `update` pins in
+/// `a_hand_edit_of_a_current_hook_set_is_kept`): no command is printed and nothing is written.
+#[test]
+fn recorded_hooks_that_were_edited_are_kept_and_get_no_command() {
+    let fx = project_with_go_hooks();
+    let plan = after_settings(&fx);
+    let out = fx.apply_step(hooks(&plan));
+    assert_eq!(out["ok"], json!(true), "{out}");
+    let mut s = settings_now(&fx);
+    s["hooks"]["PostToolUse"] = json!([]);
+    fx.write(
+        ".claude/settings.json",
+        &serde_json::to_string_pretty(&s).unwrap(),
+    );
+    let edited = fs::read(fx.root.join(".claude/settings.json")).unwrap();
+
+    let own = hooks_plan(&fx);
+    assert_eq!(own["hook_status"]["configured"], "drifted", "{own}");
+    assert_eq!(own["action"], "unchanged", "{own}");
+    assert_eq!(own["planned_sha256"], Value::Null, "{own}");
+    let update = fx.update_plan();
+    let step = hooks(&update);
+    assert_eq!(step["state"], "unchanged", "{step}");
+    assert_eq!(step["apply"], Value::Null, "{step}");
+    let applied = fx.run_stdin(
+        &[
+            "hooks-apply",
+            fx.p(),
+            "--host",
+            "claude",
+            "--plan-digest",
+            own["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            go_project_real_run::REF,
+        ],
+        b"",
+    );
+    assert_eq!(applied["result"]["state"], "unchanged", "{applied}");
+    assert_eq!(
+        fs::read(fx.root.join(".claude/settings.json")).unwrap(),
+        edited
+    );
+}

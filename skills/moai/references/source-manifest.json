@@ -46,7 +46,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "698843e955e9db63a1a6d97b2ea2762d4af757b3d351738211924a82f8e10042",
+      "sha256": "678861a2150358462c4cec0c88cfd1a7b493eb469f8389f0d483fabea618cc6b",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -73,7 +73,7 @@
       }
     },
     "workflows/setup.md": {
-      "sha256": "9b26ba7d7549697ac51f5bb6e6bb3e61181026e9bf0e0b2b949809036662441e",
+      "sha256": "7f9fcc9c589eb82e07c2814fec5c09a34c6005e3684b18040fb965e30ad2061a",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-setup",
@@ -82,7 +82,7 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "72e8736b9d202c2cfc496835fb01ed6f0c127717a7d36385b4215926f51212be",
+      "sha256": "bca1a45a881bad50a7b07accd8064b4329df8063655330e0093db1c363b65118",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
@@ -154,7 +154,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "a8d0603f90490ef130ce590cd601a1d2a7bf0f81bfab591cf015eaee7f6c88b7",
+      "sha256": "ee7d54d007096808384238c93d435b46a181b0c68215376a8f3adc8acc76ab7a",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
@@ -163,7 +163,7 @@
       }
     },
     "references/chains/index.md": {
-      "sha256": "c4ac67e70035befb15241fec32263fbe5aab7b24f998ab1cb93e27a3ef2193bb",
+      "sha256": "b363e652615ad83b47649d064813acfa83a36756d815a6357cee8ae52b162e4e",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",
@@ -190,7 +190,7 @@
       }
     },
     "references/internal/interview.md": {
-      "sha256": "f5ae499025fbec71f3692b40af5f30286735c5f2b07f48ee9450de46acba94cd",
+      "sha256": "340ea347159342a4796dc41c64a8be0f167752b12b706e9c936f2f05d516f63b",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-interview",
@@ -337,6 +337,15 @@
         "template_id": "internal-lenses",
         "adoption": "new",
         "reason": "Written for rc.2 #3096 S1 (user instruction 2026-11-16, record in #1975): four ways of looking (state machine, CI in three stretches, what to keep if built again, refactor risk) read only when a question or plan needs one; each reports and changes no code."
+      }
+    },
+    "references/internal/questions.md": {
+      "sha256": "345cfab2d912deaf6e7d4788ac183c91ad445f8c262744a0a3d125187a51544b",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-questions",
+        "adoption": "new",
+        "reason": "Written for rc.2 cards C-51 and C-52 slice S1 (user decision 2026-11-16): how a question reaches the user in UPDATE, PROJECT and SETUP — the session runs the commands itself, every question is a selection with the recommended option first, and one table names the question tool per host (Claude Code, Codex CLI, OMP) with its plain-text fallback. Named by update.md, project.md, setup.md, internal/interview and the PROJECT row of chains/index.md instead of being repeated."
       }
     }
   }

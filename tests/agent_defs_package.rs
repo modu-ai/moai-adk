@@ -446,6 +446,8 @@ fn internal_references_say_when_to_read_them() {
         "review",
         "decide",
         "interview",
+        // C-51/C-52 (user decision 2026-11-16): how a question reaches the user.
+        "questions",
         "test-design",
         "git-safety",
         // #2582: adopted from the Go generation (leader confirmation 6856677422).
@@ -588,7 +590,9 @@ fn interview_question_bank_covers_the_project_axes() {
         ]
     );
     for r in &rows {
-        assert_eq!(r.len(), 4, "{r:?}");
+        // C-51 D6 (user decision 2026-11-16): a fifth cell, the options with the recommended
+        // one named, between the question and where the answer goes.
+        assert_eq!(r.len(), 5, "{r:?}");
         let always = r[1] == "always";
         let id = r[0].trim_matches('`');
         assert_eq!(
@@ -596,7 +600,13 @@ fn interview_question_bank_covers_the_project_axes() {
             ["protected", "done", "review_blocks", "autonomy"].contains(&id),
             "{id}"
         );
-        let to = r[3].as_str();
+        assert!(r[2].contains('?'), "{id}: the question cell asks");
+        assert!(
+            r[3].contains("(recommended") && r[3].contains(';'),
+            "{id}: options with a recommended one: {}",
+            r[3]
+        );
+        let to = r[4].as_str();
         assert!(
             to == "decisions"
                 || [

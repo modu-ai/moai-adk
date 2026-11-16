@@ -105,5 +105,39 @@ class DeveloperEnvTest(unittest.TestCase):
         self.assertEqual(source.count("**developer_env()"), 2, "each carries DEVELOPER_DIR")
 
 
+class CopySetupTest(unittest.TestCase):
+    """Card C-65: the `copy` setup step puts a checked-in fixture file (the ledger of
+    `b13-card-counts`) into the temporary HOME's `.moai`, byte for byte, and takes its source
+    only from inside the fixture folder."""
+
+    def apply(self, tmp, step):
+        root = pathlib.Path(tmp)
+        moai_home = root / "home" / ".moai"
+        statusline_golden.apply_setup(step, root, root / "project", moai_home)
+        return moai_home
+
+    def test_a_fixture_file_is_copied_under_the_moai_home(self):
+        step = {"kind": "copy", "from": "ledger/cards-5-50-12.sqlite", "under": "moai_home",
+                "path": "projects/demo/ledger.db"}
+        with tempfile.TemporaryDirectory() as tmp:
+            moai_home = self.apply(tmp, step)
+            copied = (moai_home / "projects" / "demo" / "ledger.db").read_bytes()
+        source = statusline_golden.FIXTURES / "ledger" / "cards-5-50-12.sqlite"
+        self.assertEqual(copied, source.read_bytes())
+        self.assertEqual(copied[:16], b"SQLite format 3\x00")
+
+    def test_a_source_outside_the_fixtures_or_another_base_is_refused(self):
+        for step in [
+            {"kind": "copy", "from": "../statusline/cases.json", "under": "moai_home", "path": "x"},
+            {"kind": "copy", "from": "/etc/hosts", "under": "moai_home", "path": "x"},
+            {"kind": "copy", "from": "ledger/cards-5-50-12.sqlite", "path": "x"},
+            {"kind": "copy", "from": "ledger/cards-5-50-12.sqlite", "under": "cli_home", "path": "x"},
+        ]:
+            with tempfile.TemporaryDirectory() as tmp:
+                with self.assertRaises(ValueError, msg=step):
+                    self.apply(tmp, step)
+                self.assertFalse((pathlib.Path(tmp) / "home").exists(), step)
+
+
 if __name__ == "__main__":
     unittest.main()

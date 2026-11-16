@@ -273,8 +273,9 @@ pub fn preview(project: &Path) -> Result<Value> {
 // The apply moves the script folder into a receipt folder, takes the Go entries out of
 // `.claude/settings.json` (the `hooks` key goes; every other key stays byte for byte), then
 // installs the MoAI hook set through `hooks::plan` / `hooks::apply` — the writer and ownership
-// receipt `hooks-apply` uses, so `moai update` sees the hooks as installed afterwards. A failure
-// after the first write puts everything back. The receipt keeps the replaced bytes, and
+// receipt `hooks-apply` uses, so `moai update` sees the hooks as installed afterwards — and reads
+// the file back: it must hold the previewed `hooks_after` (C-55). A failure after the first write
+// puts everything back. The receipt keeps the replaced bytes, and
 // `go-hooks-revert` restores them while the files still hold what the apply wrote.
 
 const RECEIPT_PREFIX: &str = "go-hooks-";
@@ -539,7 +540,17 @@ pub fn apply_in(
             return Err(format!("hooks-plan conflict: {}", hp["conflicts"]));
         }
         let digest = hp["plan_digest"].as_str().unwrap_or_default().to_string();
-        crate::hooks::apply(&root, "claude", home, &digest, permission)
+        crate::hooks::apply(&root, "claude", home, &digest, permission)?;
+        // C-55: read back in the same step. An install that reports success and leaves the
+        // file without the previewed `hooks` would end with the Go guards gone and nothing in
+        // their place, so it fails here and everything is put back.
+        let written = crate::claude::read_existing(&settings_path)?
+            .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
+            .map(|v| v["hooks"].clone());
+        if written.as_ref() != Some(&p["hooks_after"]) {
+            return Err(format!("{SETTINGS} does not hold the previewed hooks"));
+        }
+        Ok(())
     });
     if let Err(e) = installed {
         let now = crate::claude::read_existing(&settings_path)?;
