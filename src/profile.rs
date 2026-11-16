@@ -1035,6 +1035,19 @@ mod tests {
             (json!({"scheme": "semver", "x": 1}), "unknown field"),
             (json!({"format": "YYYY.0M"}), "no scheme"),
             (json!("semver"), "wrong shape"),
+            (json!(["semver"]), "an array, not an object"),
+            (
+                json!({"scheme": "headver", "head": 10000}),
+                "head over 9999",
+            ),
+            (
+                json!({"scheme": "custom", "format": "run `id` first"}),
+                "a backtick in the custom text",
+            ),
+            (
+                json!({"scheme": "calver", "format": "YYYY.0M.0M"}),
+                "a CalVer token twice",
+            ),
             (json!({"scheme": "headver", "head": -1}), "negative head"),
             (json!({"scheme": "headver", "head": "3"}), "head as text"),
             (

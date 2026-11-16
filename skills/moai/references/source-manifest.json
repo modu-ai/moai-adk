@@ -154,7 +154,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "29d440f71754412063aac336c2e375ddbc7fc451786dfb847dca71afc8a0dc97",
+      "sha256": "ce473604d99c71d00bdc4e5eb4e7728d9166805c903137cbab687493c8fe396f",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
@@ -190,7 +190,7 @@
       }
     },
     "references/internal/interview.md": {
-      "sha256": "d76c53772dd7bf4af6a00489f2b0904c3b5ac9197c26e14dee723becbcaeae45",
+      "sha256": "2b600399bb2392cb95bf729e382fa10bb307f21ca53952076fd32f2882d1fb04",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-interview",
@@ -349,7 +349,7 @@
       }
     },
     "references/internal/versioning.md": {
-      "sha256": "e515079982aed776ed55f20ebd629e7aa50044351dc7025b54bf8d9b1cc1b538",
+      "sha256": "cc873c2ad375075c8850c67bfe8cea8e91a99b6a059509daf82aadb195e71d06",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-versioning",

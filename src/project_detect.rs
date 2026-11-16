@@ -5,9 +5,9 @@
 //! an existing one (a manifest or a code file makes it existing), names the languages and the
 //! language servers they call for, the MCP servers the project already configures, and the
 //! databases its dependencies name. Only project facts are recorded: no HOME read, no PATH
-//! probe, no process start, because `.moai-cli/project.yaml` is tracked. The one exception is
-//! the `versioning` fact (card C-69), reported beside `detected` and never recorded: it lists
-//! the newest tag names with one read-only `git for-each-ref`. MCP configuration is
+//! probe, no process start, because `.moai-cli/project.yaml` is tracked. The `versioning`
+//! fact (card C-69) is reported beside `detected` and never recorded; it reads the project's
+//! tag names from the files of its own `.git` and starts no program either. MCP configuration is
 //! read for server names only and is never created or changed (decision 21 keeps MCP itself
 //! on HOLD). The result carries a complete profile for `project-plan`; `index-build` is only
 //! suggested, never run.
@@ -618,7 +618,7 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
         // #2725 S2a: whose `.moai/` this is, before anything may write or move it.
         "state_root": state_root.to_json(),
         "commands": commands_fact(root),
-        // C-69: the versioning scheme the tags and root manifests already show, a fact
+        // C-69: the versioning scheme the tag names and root manifests already show, a fact
         // beside `detected` like the commands; the interview offers keeping it.
         "versioning": crate::versioning::fact(root),
         "next_actions": next_actions,

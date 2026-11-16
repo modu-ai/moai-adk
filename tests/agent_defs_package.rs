@@ -672,7 +672,8 @@ fn versioning_rows_and_reference_cover_the_three_schemes() {
         format[3].starts_with("`YYYY.0M.MICRO` (recommended"),
         "{format:?}"
     );
-    for text in ["`YY.0M.MICRO`", "`YYYY.0M.0D`"] {
+    // Audit N9: the two-part format is offered too.
+    for text in ["`YY.0M.MICRO`", "`YYYY.0M.0D`", "`YY.0M`"] {
         assert!(format[3].contains(text), "{text}");
     }
     let head = row("versioning_head");
@@ -716,7 +717,35 @@ fn versioning_rows_and_reference_cover_the_three_schemes() {
             assert!(section.contains(point), "{scheme} lacks {point:?}");
         }
     }
-    assert!(read("workflows/project.md").contains("`internal/versioning`"));
+    // Audit N9: what "Other" does on each row, and that the keep option can be corrected.
+    for text in [
+        "An answer through the host's \"Other\" to the `versioning` row is recorded as `{\"scheme\": \"custom\"",
+        "An \"Other\" answer to `versioning_format` stays CalVer when it is a format the profile takes",
+        "so the user can correct a wrong reading",
+    ] {
+        assert!(interview.contains(text), "interview.md lacks {text:?}");
+    }
+    // Audit N2 and N3: the overlap is named, and the limits are the ones the profile enforces.
+    for text in [
+        "Every HeadVer version is also valid SemVer",
+        "at most 128 characters",
+        "at most 9999",
+        "version order, not date",
+        "no program is started",
+    ] {
+        assert!(reference.contains(text), "versioning.md lacks {text:?}");
+    }
+    let project = read("workflows/project.md");
+    // Audit B1: detection starts no program, the versioning fact included.
+    for text in [
+        "`internal/versioning`",
+        "It never reads HOME, never probes PATH and never starts a program, because `project.yaml` is tracked and holds project facts only. That holds for `result.versioning` too",
+        "never from a git object or the git configuration",
+        "is followed only for a linked worktree",
+        "`tags: unavailable` with the reason",
+    ] {
+        assert!(project.contains(text), "project.md lacks {text:?}");
+    }
     assert!(read("references/chains/index.md").contains(
         "The `versioning` rows of the PROJECT interview are asked with `internal/versioning`"
     ));
