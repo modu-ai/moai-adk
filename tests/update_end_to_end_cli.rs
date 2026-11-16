@@ -600,6 +600,21 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
             assert!(c.starts_with(w), "{step}: {c}");
         }
     }
+    // Which receipt each command takes is part of the order: the instruction file's own receipt
+    // first, then the generation's; the plan before the revert it digests.
+    for step in ["omp-hooks", "codex-config", "codex-hooks"] {
+        let note = steps.iter().find(|s| s["step"] == step).unwrap()["note"].as_str();
+        assert!(
+            note.is_some_and(|n| n.contains("no revert command")),
+            "{step}"
+        );
+    }
+    let generation_commands = commands("generation");
+    assert!(generation_commands[0].contains("<agents_receipt of the generation step>"));
+    assert!(generation_commands[1].contains("<receipt of the generation step>"));
+    let state_commands = commands("go-state");
+    assert!(state_commands[0].starts_with("moai go-state-revert-plan"));
+    assert!(state_commands[1].contains("--plan-digest"));
     let id = |step: &str, key: &str| applied(&w, step)[key].as_str().unwrap().to_string();
     let hooks = id("hooks", "receipt");
     let agents = id("generation", "agents_receipt");
