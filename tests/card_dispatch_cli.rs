@@ -260,6 +260,20 @@ fn a_card_goes_from_draft_to_taken_handed_over_and_released() {
     assert_eq!(released["reservation"]["status"], json!("released"));
     let again = result(&take(&home, &project, "C-1", "agent-c"));
     assert_eq!(again["reservation"]["generation"], json!(3));
+    let a = &again["reservation"];
+    assert_eq!(
+        a["lease_until"].as_i64().unwrap() - a["acquired_at"].as_i64().unwrap(),
+        14_400,
+        "the default lease is four hours"
+    );
+    // The ready event carries the actor that was given.
+    assert_eq!(
+        count(
+            &home,
+            "SELECT count(*) FROM event WHERE kind = 'card.ready' AND actor = 'leader'"
+        ),
+        1
+    );
 }
 
 #[test]
