@@ -623,6 +623,95 @@ fn generation_paths(plan: &Value) -> Vec<String> {
         .collect()
 }
 
+/// #2936 L1: a Go project whose settings the manifest does not record. The settings files
+/// name `.moai/` in the keys the tests give.
+fn go_project_with_unrecorded_settings(settings: &str, local: &str) -> Fx {
+    let fx = Fx::new();
+    let body = "a: 1\n";
+    let h = format!("sha256:{:x}", Sha256::digest(body.as_bytes()));
+    fx.write(".moai/config/sections/a.yaml", body);
+    // An earlier `.moai-cli/project.yaml` that is no Rust profile: the install steps are then
+    // planned from the files (as in the project the reproduction in #2936 follows) and not
+    // all waiting for `/moai project`.
+    fx.write(".moai-cli/project.yaml", "project_id: demo\n");
+    fx.write(
+        ".moai/manifest.json",
+        &json!({"version": "v3.2.1-rc.6", "files": {".moai/config/sections/a.yaml": {
+            "provenance": "template_managed", "template_hash": h,
+            "deployed_hash": h, "current_hash": h}}})
+        .to_string(),
+    );
+    fx.write(".claude/settings.json", settings);
+    fx.write(".claude/settings.local.json", local);
+    fx
+}
+
+/// #2936 L1: the backup step's `settings reference .moai/` hold names the file and the keys
+/// (never their values) and says what to do next; the settings step does not call such a file
+/// "current" and lists the same keys in its preview.
+#[test]
+fn the_settings_hold_names_the_keys_and_the_settings_step_does_not_say_current() {
+    let fx = go_project_with_unrecorded_settings(
+        r#"{"model":"opus","statusLine":{"type":"command","command":".moai/secret-name.sh"},"plansDirectory":".moai/plans"}"#,
+        r#"{"env":{"A":".moai/x"},"other":1}"#,
+    );
+    let plan = fx.plan();
+    assert_tied(
+        &plan,
+        "blocked",
+        "held by .claude/settings.json (plansDirectory, statusLine); \
+         .claude/settings.local.json (env); this update does not change those keys, so change \
+         or remove them yourself and run the update again",
+    );
+    assert!(
+        !plan.to_string().contains("secret-name"),
+        "a value is never printed: {plan}"
+    );
+    let settings = step(&plan, "claude-settings");
+    assert_eq!(settings["state"], "unchanged", "{settings}");
+    let reason = settings["reason"].as_str().unwrap();
+    assert!(
+        reason.contains("still naming .moai/ and holding the Go .moai/ folder (go-state step)")
+            && reason.contains(".claude/settings.json (plansDirectory, statusLine)"),
+        "{settings}"
+    );
+    assert_eq!(
+        settings["preview"]["go_references"],
+        json!([
+            {"file": ".claude/settings.json", "keys": ["plansDirectory", "statusLine"]},
+            {"file": ".claude/settings.local.json", "keys": ["env"]}
+        ]),
+        "{settings}"
+    );
+}
+
+/// #2936 L1: the note is for the earlier generation's folder only. A settings file with the
+/// same keys in a project that is not Go-generation keeps the plain "current" reason.
+#[test]
+fn a_project_without_go_state_gets_no_go_reference_note() {
+    let fx = Fx::new();
+    fx.with_profile(false);
+    // MoAI's own status line is already there, so the step has nothing to write.
+    fx.write(
+        ".claude/settings.json",
+        r#"{"statusLine":{"type":"command","command":"moai statusline"},"plansDirectory":".moai/plans"}"#,
+    );
+    let plan = fx.plan();
+    let settings = step(&plan, "claude-settings");
+    assert_eq!(settings["state"], "unchanged", "{settings}");
+    assert!(
+        !settings["reason"]
+            .as_str()
+            .unwrap()
+            .contains("still naming"),
+        "{settings}"
+    );
+    assert!(
+        settings["preview"].get("go_references").is_none(),
+        "{settings}"
+    );
+}
+
 /// #2953 F1: earlier state that stays where it is reads `state` with a reason, prints no
 /// command, and keeps `all_unchanged` false.
 fn assert_tied(plan: &Value, state: &str, needle: &str) {
