@@ -20,6 +20,8 @@ Project
   card                    Work with the project's local cards
   ledger-register-plan    Preview registering the project's ledger
   ledger-register-apply   Create the previewed project ledger
+  ledger-recover-plan     Preview recovering a damaged project ledger
+  ledger-recover-apply    Recover the previewed project ledger
   agents-plan             Preview the AGENTS.md managed section
   agents-apply            Write a previewed AGENTS.md managed section
   generation-plan         Preview the project's generated agent and skill files
