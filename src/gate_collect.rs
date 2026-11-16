@@ -1014,6 +1014,12 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         Some(b) => is_commit(dir, b)?,
         None => false,
     };
+    // #3066 P3: the base must also be the tip or one of its ancestors (`merge-base
+    // --is-ancestor` counts a commit as its own ancestor). Asked only about a known commit.
+    let verdict_base_in_tip = match (&verdict_base, verdict_base_known) {
+        (Some(b), true) => is_ancestor(dir, b, &tip)?,
+        _ => false,
+    };
     // What the tip changed since the verdict: measured from where the verdict's base meets the
     // tip. A verdict base that is an earlier PR head (not on the tip) would otherwise count the
     // PR's own changes, undone, as tip changes — a false overlap.
@@ -1086,6 +1092,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         review_confirmed_prs: target.review_confirmed_prs.clone(),
         body_check_ok: body_check(&body),
         verdict_base_known,
+        verdict_base_in_tip,
         verdict_base_full,
         pr_authors: Some(authors),
         tip_ci: Some(tip_ci),

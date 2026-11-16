@@ -802,6 +802,40 @@ branch=issue/{issue}-x head=0123456789abcdef0123456789abcdef01234567 uncommitted
         assert!(claims_from_threads("agent-9", &[released, handed]).is_empty());
     }
 
+    /// #3015 C7c: `lane-safe-to-reset` and `claim-verify` read a release or handoff line by
+    /// one rule: it closes an earlier claim comment of the thread, and only that.
+    #[test]
+    fn a_line_that_names_no_earlier_claim_leaves_the_claim_open_as_claim_verify_reads_it() {
+        use crate::claim_verify::{evaluate, IssueComment, Verifier};
+        let before_lease = crate::forge::policy::parse_utc("2026-11-15T07:00:00Z").unwrap();
+        for stray in [
+            "moai-claim-release: comment=6000099",
+            "moai-claim-handoff: comment=6000099 to=agent-3 by=leader",
+            "moai-claim-release: comment=6000072",
+        ] {
+            let comments = vec![claim(6000070, "Bot", "agent-9"), cc(6000072, "Bot", stray)];
+            let items = claims_from_threads("agent-9", &[thread(7, comments.clone())]);
+            assert_eq!(items.len(), 1, "{stray}");
+            let verdict = evaluate(
+                &comments
+                    .iter()
+                    .map(|c| IssueComment {
+                        id: c.id as i64,
+                        author: c.author.clone(),
+                        body: c.body.clone(),
+                    })
+                    .collect::<Vec<_>>(),
+                &Verifier {
+                    session: "agent-9",
+                    comment_id: Some(6000070),
+                    allowed_authors: &[],
+                    now: before_lease,
+                },
+            );
+            assert_eq!(verdict["status"], "owner", "{stray}: {verdict}");
+        }
+    }
+
     #[test]
     fn another_lanes_claim_is_not_this_lanes() {
         let t = thread(7, vec![claim(6000070, "Bot", "agent-90")]);

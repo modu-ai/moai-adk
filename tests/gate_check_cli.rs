@@ -62,6 +62,7 @@ fn passing() -> Value {
         "merge_clean": true,
         "body_check_ok": true,
         "verdict_base_known": true,
+        "verdict_base_in_tip": true,
         "pr_authors": ["agent-26"],
         "tip_ci": {"state": "green", "tip": OTHER, "decided_by": OTHER, "detail": "green"},
         "commits_without_claim": [],
@@ -439,6 +440,248 @@ fn g5_the_last_local_check_line_for_this_head_decides() {
     }
 }
 
+const TREE: &str = "4444444444444444444444444444444444444444";
+const SCRIPT: &str = "5555555555555555555555555555555555555555";
+const RUN: &str = "0123456789ab";
+
+/// The fields of the longer `local-check:` line (#3066 P1), in order, for the head `H`: a
+/// passing run with a real base and a real tree.
+fn evidence_fields(result: &str) -> Vec<(&'static str, String)> {
+    [
+        ("head", H),
+        ("result", result),
+        ("base", B),
+        ("tree", TREE),
+        ("script", SCRIPT),
+        ("rustc", "1.91.0"),
+        ("run", RUN),
+        ("cmd", "tools/local_check.sh"),
+        ("at", "2026-11-14T12:00:00Z"),
+    ]
+    .into_iter()
+    .map(|(k, v)| (k, v.to_string()))
+    .collect()
+}
+
+fn evidence_join(fields: &[(&str, String)]) -> String {
+    let parts: Vec<String> = fields.iter().map(|(k, v)| format!("{k}={v}")).collect();
+    format!("local-check: {}", parts.join(" "))
+}
+
+/// The new-form line for `head` with this `result` and the default evidence fields.
+fn evidence_line(head: &str, result: &str) -> String {
+    let mut f = evidence_fields(result);
+    f[0].1 = head.to_string();
+    evidence_join(&f)
+}
+
+/// The passing new-form line for `H` with one field's value replaced.
+fn evidence_set(key: &str, value: &str) -> String {
+    let mut f = evidence_fields("pass");
+    f.iter_mut().find(|(k, _)| *k == key).unwrap().1 = value.to_string();
+    evidence_join(&f)
+}
+
+/// The passing new-form line for `H` with one field removed.
+fn evidence_drop(key: &str) -> String {
+    let mut f = evidence_fields("pass");
+    f.retain(|(k, _)| *k != key);
+    evidence_join(&f)
+}
+
+fn evidence_comment(id: u64, line: &str) -> Value {
+    json!({"id": id, "author_association": "MEMBER", "body": format!("{line}\n")})
+}
+
+fn raw_comment(id: u64, line: &str) -> Value {
+    json!({"id": id, "author_association": "MEMBER", "body": line})
+}
+
+const NONE_REASON: &str = "no local-check line for this head";
+const FAILED_REASON: &str = "local-check result=fail on this head";
+
+fn assert_g5_passes(extra: &[Value]) {
+    let s = with_local_checks(extra);
+    assert_eq!(stopped(&gate(&s)), (true, String::new()), "{}", gate(&s));
+}
+
+/// #3066 P1: the longer line (base, tree, script, rustc, run) is read like the old one: a
+/// `pass` line for this head lets G5 through, a `fail` line stops it with the old reason.
+#[test]
+fn g5_reads_the_new_local_check_line() {
+    assert_g5_passes(&[evidence_comment(300, &evidence_line(H, "pass"))]);
+    // On any line of a comment, as with the old form.
+    assert_g5_passes(&[raw_comment(
+        300,
+        &format!("ran it\n\n{}\n", evidence_line(H, "pass")),
+    )]);
+    let s = with_local_checks(&[evidence_comment(300, &evidence_line(H, "fail"))]);
+    assert!(g5_reason(&s).contains(FAILED_REASON));
+}
+
+/// #3066 P1: the edges of the new line. Each rejected line counts as absent, exactly like a
+/// rejected old line; each accepted edge is read.
+#[test]
+fn g5_new_local_check_line_edges() {
+    let hex39 = &B[..39];
+    let hex41 = format!("{B}2");
+    let upper = "A".repeat(40);
+    let nonhex = "g".repeat(40);
+    let none_pass_fail = |line: String| {
+        let s = with_local_checks(&[evidence_comment(300, &line)]);
+        assert!(g5_reason(&s).contains(NONE_REASON), "{line}");
+    };
+    let mut rejected: Vec<String> = Vec::new();
+    // Hex fields: 39 and 41 digits, uppercase, a non-hex letter.
+    for key in ["head", "base", "tree", "script"] {
+        for bad in [hex39, hex41.as_str(), upper.as_str(), nonhex.as_str(), ""] {
+            rejected.push(evidence_set(key, bad));
+        }
+    }
+    for bad in [
+        &RUN[..11],
+        "0123456789abc",
+        "0123456789AB",
+        "0123456789ag",
+        "",
+    ] {
+        rejected.push(evidence_set("run", bad));
+    }
+    // `rustc`: 33 characters, empty, a space, `=`, `/`, and other characters.
+    for bad in [
+        "a".repeat(33),
+        String::new(),
+        "1.91 0".into(),
+        "1=2".into(),
+        "1/2".into(),
+        "1.91.0:x".into(),
+        "\u{e9}".into(),
+    ] {
+        rejected.push(evidence_set("rustc", &bad));
+    }
+    // `none` only on a failed run, and `base=none` needs `tree=none`.
+    for (base, tree, result) in [
+        ("none", "none", "pass"),
+        (B, "none", "pass"),
+        ("none", TREE, "fail"),
+        ("none", TREE, "pass"),
+        ("NONE", "none", "fail"),
+        ("none", "NONE", "fail"),
+        ("None", "None", "fail"),
+    ] {
+        let mut f = evidence_fields(result);
+        f[2].1 = base.to_string();
+        f[3].1 = tree.to_string();
+        rejected.push(evidence_join(&f));
+    }
+    // Another result word.
+    rejected.push(evidence_set("result", "ok"));
+    rejected.push(evidence_set("result", ""));
+    // Fields in another order.
+    for (a, b) in [(2, 3), (4, 5), (5, 6), (0, 1), (6, 7), (7, 8)] {
+        let mut f = evidence_fields("pass");
+        f.swap(a, b);
+        rejected.push(evidence_join(&f));
+    }
+    // A missing field, one case per field.
+    for (key, _) in evidence_fields("pass") {
+        rejected.push(evidence_drop(key));
+    }
+    // Another command or time.
+    rejected.push(evidence_set("cmd", "tools/other.sh"));
+    rejected.push(evidence_set("at", "2026-11-14T12:00:00"));
+    rejected.push(evidence_set("at", "2026-11-14 12:00:00Z"));
+    // A `dirty=1` field anywhere, extra trailing text, a second space, a leading space or
+    // quote, no `local-check: ` prefix spacing.
+    let good = evidence_line(H, "pass");
+    rejected.push(good.replacen(" cmd=", " dirty=1 cmd=", 1));
+    rejected.push(good.replacen(" base=", " dirty=1 base=", 1));
+    rejected.push(good.replacen(" run=", " dirty=1 run=", 1));
+    rejected.push(format!("{good} dirty=1"));
+    rejected.push(format!("{good} extra"));
+    rejected.push(format!("{good} "));
+    rejected.push(good.replacen(" base=", "  base=", 1));
+    rejected.push(good.replacen(" run=", "  run=", 1));
+    rejected.push(good.replacen(" cmd=", "  cmd=", 1));
+    rejected.push(good.replacen("local-check: ", "local-check:  ", 1));
+    rejected.push(format!(" {good}"));
+    rejected.push(format!("> {good}"));
+    for line in rejected {
+        none_pass_fail(line);
+    }
+
+    // Accepted edges. `rustc` of 32 characters from the whole allowed set passes.
+    let rustc32 = "aZ09._+-".repeat(4);
+    assert_eq!(rustc32.len(), 32);
+    assert_g5_passes(&[evidence_comment(300, &evidence_set("rustc", &rustc32))]);
+    // One character is enough.
+    assert_g5_passes(&[evidence_comment(300, &evidence_set("rustc", "x"))]);
+    // A failed run may have no tree (a conflict: real base) or no base and no tree; both are
+    // read, and both stop G5 with the failure reason rather than "no line".
+    for (base, tree) in [(B, "none"), ("none", "none")] {
+        let mut f = evidence_fields("fail");
+        f[2].1 = base.to_string();
+        f[3].1 = tree.to_string();
+        let s = with_local_checks(&[evidence_comment(300, &evidence_join(&f))]);
+        assert!(g5_reason(&s).contains(FAILED_REASON), "{base} {tree}");
+    }
+}
+
+/// #3066 P1: the last line for the head decides whichever form it is in: a higher comment id
+/// beats a lower one, and within a comment the later line wins.
+#[test]
+fn g5_old_and_new_lines_for_one_head_are_ordered_by_comment() {
+    let old = |r: &str| local_check_line(H, r);
+    let new = |r: &str| evidence_line(H, r);
+    for (low, high, passes) in [
+        (old("pass"), new("fail"), false),
+        (old("fail"), new("pass"), true),
+        (new("pass"), old("fail"), false),
+        (new("fail"), old("pass"), true),
+    ] {
+        // Listed in both orders: the comment id orders them, not the position in the list.
+        for flip in [false, true] {
+            let mut extra = vec![evidence_comment(300, &low), evidence_comment(310, &high)];
+            if flip {
+                extra.reverse();
+            }
+            if passes {
+                assert_g5_passes(&extra);
+            } else {
+                let s = with_local_checks(&extra);
+                assert!(g5_reason(&s).contains(FAILED_REASON), "{low} / {high}");
+            }
+        }
+        // Inside one comment the later line wins.
+        let both = [raw_comment(300, &format!("{low}\n{high}\n"))];
+        if passes {
+            assert_g5_passes(&both);
+        } else {
+            let s = with_local_checks(&both);
+            assert!(g5_reason(&s).contains(FAILED_REASON), "{low} / {high}");
+        }
+    }
+}
+
+/// #3066 P1: a new-form line for another head is ignored, pass or fail, like an old one.
+#[test]
+fn g5_a_new_local_check_line_for_another_head_is_ignored() {
+    let s = with_local_checks(&[evidence_comment(300, &evidence_line(OTHER, "pass"))]);
+    assert!(g5_reason(&s).contains(NONE_REASON));
+    for r in ["pass", "fail"] {
+        assert_g5_passes(&[
+            evidence_comment(300, &evidence_line(H, "pass")),
+            evidence_comment(310, &evidence_line(OTHER, r)),
+        ]);
+    }
+    // The head field is the head of the line; the base is not mistaken for it.
+    let mut f = evidence_fields("pass");
+    f[0].1 = OTHER.to_string();
+    f[2].1 = H.to_string();
+    let s = with_local_checks(&[evidence_comment(300, &evidence_join(&f))]);
+    assert!(g5_reason(&s).contains(NONE_REASON));
+}
+
 /// #2906 S5b: GitHub check runs no longer block the merge; `ci_info` reports them.
 #[test]
 fn g5_check_runs_are_information_only() {
@@ -603,6 +846,52 @@ fn audit_notes_title_head_rc_ci_withdrawal_and_known_base() {
     assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
     s.as_object_mut().unwrap().remove("verdict_base_known");
     assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
+}
+
+/// #3066 P3: a verdict base that exists but is not an ancestor of the base-branch tip says
+/// nothing about the tip the PR merges onto, so G1 stops with its own reason. Known and in
+/// the tip passes; an unknown base keeps the old reason; a snapshot without the
+/// `verdict_base_in_tip` key reads as false (fail-closed).
+#[test]
+fn g1_stops_a_verdict_base_that_is_not_an_ancestor_of_the_tip() {
+    let reason = |v: &Value| v["result"]["reason"].as_str().unwrap().to_string();
+
+    // known + in the tip: passes.
+    let v = gate(&passing());
+    assert_eq!(stopped(&v), (true, "".into()), "{v}");
+
+    // known, not in the tip: G1 with the new reason.
+    let mut s = passing();
+    s["verdict_base_in_tip"] = json!(false);
+    let v = gate(&s);
+    assert_eq!(stopped(&v), (false, "G1".into()), "{v}");
+    assert!(
+        reason(&v).contains("not an ancestor of the base-branch tip"),
+        "{v}"
+    );
+    assert!(reason(&v).contains(B), "{v}");
+    assert!(!reason(&v).contains("not a known commit"), "{v}");
+
+    // The key removed: fail-closed, same stop.
+    let mut s = passing();
+    s.as_object_mut().unwrap().remove("verdict_base_in_tip");
+    let v = gate(&s);
+    assert_eq!(stopped(&v), (false, "G1".into()), "{v}");
+    assert!(
+        reason(&v).contains("not an ancestor of the base-branch tip"),
+        "{v}"
+    );
+
+    // unknown base: the old reason stays, whatever `in_tip` says.
+    for in_tip in [true, false] {
+        let mut s = passing();
+        s["verdict_base_known"] = json!(false);
+        s["verdict_base_in_tip"] = json!(in_tip);
+        let v = gate(&s);
+        assert_eq!(stopped(&v), (false, "G1".into()), "{v}");
+        assert!(reason(&v).contains("is not a known commit"), "{v}");
+        assert!(!reason(&v).contains("ancestor"), "{v}");
+    }
 }
 
 /// Audit 6850638994 B2: a withdrawal removes a claim only when its lane matches that claim's
