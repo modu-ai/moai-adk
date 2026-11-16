@@ -12,7 +12,8 @@
 //!
 //! Scan B. Nothing under `src/ledger/` spawns a process (`Command::new(`), opens a socket
 //! (`std::net`), names a program (`"gh"`, `"git"`, `"curl"`, `"ssh"`), holds an `http(s)://`
-//! endpoint or reaches into `crate::forge`. Comments are not code and are ignored.
+//! endpoint or reaches into `crate::forge`. Comments are not code and are ignored. The same
+//! holds for `src/decide/` (cards C-37 and C-54), except the two provider endpoint constants.
 //!
 //! Both scans are text matches: they show a name is absent, not that a path is never reached.
 //! The entry-count tool `tools/home_entry_count.py` measures the real `~/.moai` before and
@@ -473,6 +474,106 @@ fn the_ledger_library_has_no_external_call_names() {
     let (files, found) = external_call_hits(root, &root.join("src/ledger"));
     assert!(files >= 6, "src/ledger has {files} files; moved?");
     assert!(found.is_empty(), "{}", found.join("\n"));
+}
+
+/// The two provider endpoints of `moai decide` (cards C-37 and C-54): the only URLs the code
+/// under `src/decide/` may hold, each as a whole string literal.
+const DECIDE_ENDPOINTS: [&str; 2] = [
+    "\"https://api.typesafe.ai/v1/systemone\"",
+    "\"https://api.openai.com/v1/decisions\"",
+];
+
+/// Scan B over the decide library at `dir`, with one exception: a URL hit on a line whose
+/// every URL is one of [`DECIDE_ENDPOINTS`]. The line is read as written, so a URL in a
+/// comment beside an endpoint is a hit too. Returns the number of files read and one
+/// `path:line name` per hit.
+fn decide_external_hits(root: &Path, dir: &Path) -> (usize, Vec<String>) {
+    let files = rust_files(dir, &[]);
+    let mut found = Vec::new();
+    for path in &files {
+        let text = fs::read_to_string(path).unwrap();
+        let lines: Vec<&str> = text.lines().collect();
+        for (line, name) in find(&text, &EXTERNAL_TOKENS) {
+            if name.ends_with("://") {
+                let mut rest = lines[line - 1].to_string();
+                for endpoint in DECIDE_ENDPOINTS {
+                    rest = rest.replace(endpoint, "");
+                }
+                if !rest.contains("http://") && !rest.contains("https://") {
+                    continue;
+                }
+            }
+            found.push(format!("{}:{line} {name}", rel(root, path)));
+        }
+    }
+    found.dedup();
+    (files.len(), found)
+}
+
+/// Second audit of card C-37 S2, N11: the decide library builds bytes and reads bytes. It
+/// opens no socket, starts no process and names no URL but the two endpoint constants.
+/// (Slice S4 adds the one place that sends; it gets its own exception here then.)
+#[test]
+fn the_decide_library_has_no_external_call_names() {
+    let root = Path::new(ROOT);
+    let (files, found) = decide_external_hits(root, &root.join("src/decide"));
+    assert!(files >= 5, "src/decide has {files} files; moved?");
+    assert!(found.is_empty(), "{}", found.join("\n"));
+}
+
+#[test]
+fn the_decide_scan_allows_the_two_endpoints_and_nothing_else() {
+    let dir = tempfile::tempdir().unwrap();
+    let decide = dir.path().join("src/decide");
+    fs::create_dir_all(&decide).unwrap();
+    let allowed = [
+        "pub const A: &str = \"https://api.typesafe.ai/v1/systemone\";",
+        "pub const B: &str = \"https://api.openai.com/v1/decisions\";",
+        "assert_eq!((a, b), (\"https://api.typesafe.ai/v1/systemone\", \"https://api.openai.com/v1/decisions\"));",
+        "// see https://example.com/docs",
+    ];
+    let refused = [
+        (
+            "let u = \"https://api.openai.com/v1/decisions/x\";",
+            "https://",
+        ),
+        (
+            "let u = \"https://api.openai.com/v1/decision\";",
+            "https://",
+        ),
+        ("let u = \"http://api.openai.com/v1/decisions\";", "http://"),
+        (
+            "let u = \"https://api.typesafe.ai.example.com/v1/systemone\";",
+            "https://",
+        ),
+        (
+            "let u = format!(\"https://{host}/v1/decisions\");",
+            "https://",
+        ),
+        (
+            "let p = (\"https://api.openai.com/v1/decisions\", \"https://example.com\");",
+            "https://",
+        ),
+        ("let c = std::process::Command::new(x);", "Command::new("),
+        ("let s = std::net::TcpStream::connect(a);", "TcpStream"),
+        ("let p = \"curl\";", "\"curl\""),
+    ];
+    fs::write(decide.join("ok.rs"), allowed.join("\n")).unwrap();
+    assert_eq!(decide_external_hits(dir.path(), &decide), (1, vec![]));
+    for (at, (sample, name)) in refused.iter().enumerate() {
+        let text = format!("{}\n{sample}\n", allowed[0]);
+        fs::write(decide.join("bad.rs"), text).unwrap();
+        let (files, found) = decide_external_hits(dir.path(), &decide);
+        assert_eq!(files, 2);
+        let want = format!("src/decide/bad.rs:2 {name}");
+        assert!(found.contains(&want), "sample {at}: {found:?}");
+        assert!(
+            found
+                .iter()
+                .all(|hit| hit.starts_with("src/decide/bad.rs:2 ")),
+            "sample {at}: {found:?}"
+        );
+    }
 }
 
 #[test]

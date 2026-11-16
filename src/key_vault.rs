@@ -21,8 +21,9 @@
 //! new `0600` file in the same folder, then is renamed over the entry.
 //!
 //! No value, length or fingerprint ever appears in an answer, error or log. A value comes in
-//! on stdin only (never argv), and an interactive terminal is refused: nothing here can turn
-//! echo off without a terminal library, so the value would be shown while typed.
+//! on stdin (never argv), and an interactive terminal is refused, since the value would be
+//! shown while typed; only `key-set --prompt` reads a terminal, with echo off
+//! ([`crate::key_prompt`], card C-54 S1).
 
 use chacha20poly1305::aead::{Aead, AeadCore, KeyInit, OsRng, Payload};
 use chacha20poly1305::{XChaCha20Poly1305, XNonce};
