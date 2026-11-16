@@ -724,6 +724,83 @@ fn the_users_own_values_of_the_go_key_names_are_named() {
     assert!(keys_of(&plan(&shape_g())["yours"]).is_empty());
 }
 
+/// #3111 re-audit B4: the file is written again, so a number that would be spelled differently
+/// (a 65-bit integer that becomes a float, `-0`, `1E2`, `1.10`) holds the plan and its key is
+/// named; plain numbers pass and keep their text; with nothing of ours to clean nothing is said.
+#[test]
+fn numbers_the_rewrite_would_spell_differently_hold_the_plan() {
+    let body = "{\"q\":\"a\\\"b, 7.50\",\"big\":18446744073709551616,\"neg\":-0,\"exp\":1E2,\"f\":1.10,\"nested\":{\"a\":[0.5,1e3]},\"plansDirectory\":\".moai/plans\"}\n";
+    let fx = base_fx();
+    fx.manifest();
+    fx.write(SETTINGS, body);
+    let p = plan(&fx);
+    assert_eq!(p["action"], json!("held"), "{p}");
+    let why = p["reason"].as_str().unwrap();
+    assert!(why.contains("(keys: big, exp, f, neg, nested)"), "{why}");
+    assert!(
+        !p.to_string().contains("18446744073709551616"),
+        "a value was printed: {p}"
+    );
+    assert!(
+        p["next"].as_str().unwrap().contains("go-settings-plan"),
+        "{p}"
+    );
+    let out = apply_with(&fx, p["plan_digest"].as_str().unwrap(), REF, &[]);
+    assert_eq!(out["ok"], json!(false), "{out}");
+    assert_eq!(read(&fx, SETTINGS), body.as_bytes());
+    assert!(receipts(&fx).is_empty());
+
+    let plain = "{\"a\":1,\"b\":-3,\"c\":2.5,\"d\":18446744073709551615,\"e\":0.1,\"plansDirectory\":\".moai/plans\"}\n";
+    let fx = base_fx();
+    fx.manifest();
+    fx.write(SETTINGS, plain);
+    let p = plan(&fx);
+    assert_eq!(p["action"], json!("replace"), "{p}");
+    let out = apply(&fx, &p);
+    assert_eq!(out["ok"], json!(true), "{out}");
+    let text = String::from_utf8(read(&fx, SETTINGS)).unwrap();
+    for kept in [
+        "\"a\": 1",
+        "\"b\": -3",
+        "\"c\": 2.5",
+        "\"d\": 18446744073709551615",
+        "\"e\": 0.1",
+    ] {
+        assert!(text.contains(kept), "{kept} in {text}");
+    }
+
+    let fx = base_fx();
+    fx.manifest();
+    fx.write(SETTINGS, "{\"big\":18446744073709551616}\n");
+    let p = plan(&fx);
+    assert_eq!(p["action"], json!("none"), "{p}");
+    assert!(p.get("reason").is_none(), "{p}");
+}
+
+/// #3111 re-audit N2: the preview and the apply say where the old file is kept and that it can
+/// hold secrets.
+#[test]
+fn the_plan_and_the_apply_say_where_the_kept_copy_is() {
+    let fx = shape_g();
+    let p = plan(&fx);
+    let note = p["kept_copy"].as_str().expect("kept_copy in the plan");
+    assert!(
+        note.contains("before/settings.json") && note.contains("secrets"),
+        "{note}"
+    );
+    assert!(
+        note.contains("0600") && note.contains(".gitignore"),
+        "{note}"
+    );
+    let out = apply(&fx, &p);
+    assert_eq!(out["result"]["kept_copy"], json!(note), "{out}");
+    // Nothing to clean: nothing is kept, so nothing is said.
+    let fx = base_fx();
+    fx.manifest();
+    fx.write(SETTINGS, "{\"model\":\"x\"}\n");
+    assert_eq!(plan(&fx)["kept_copy"], Value::Null);
+}
+
 /// D1 condition 3: the local file is never written, even when it holds Go references.
 #[test]
 fn the_local_settings_are_byte_identical_after_apply_and_revert() {
