@@ -42,6 +42,8 @@ pub const GROUPS: &[Group] = &[
             ("ledger-status", false),
             ("ledger-register-plan", false),
             ("ledger-register-apply", false),
+            ("card-import-plan", false),
+            ("card-import-apply", false),
             ("agents-plan", false),
             ("agents-apply", false),
             ("generation-plan", false),
@@ -311,6 +313,8 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("ledger-status", &["ledger-status ."]),
     ("ledger-register-plan", &["ledger-register-plan .", "ledger-register-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("ledger-register-apply", &["ledger-register-apply --plan-digest <digest> --permission-reference <ref> ."]),
+    ("card-import-plan", &["card-import-plan --from github --repo owner/repo .", "card-import-apply --from github --repo owner/repo --plan-digest <digest> --permission-reference <ref> ."]),
+    ("card-import-apply", &["card-import-apply --from github --repo owner/repo --plan-digest <digest> --permission-reference <ref> ."]),
     ("update", &["update"]),
     ("go-state-plan", &["go-state-plan .", "go-state-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("go-state-apply", &["go-state-apply --plan-digest <digest> --permission-reference <ref> ."]),
@@ -1434,6 +1438,21 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          않아요. 이미 있는 유효한 원장은 그대로 두고, 이 프로젝트 것이 아닌 파일은 대체하지 않아요.",
     ),
     (
+        "card-import-plan",
+        "코드 호스트의 열린 이슈를 로컬 원장의 카드로 가져오면 무엇이 되는지 미리 봐요(#3071) — \
+         모든 페이지를 읽고(끝까지 못 읽으면 오류), 이슈마다 만들어질 카드와 읽어 낸 합격 기준, \
+         표를 읽지 못한 이슈, 남길 구성원 댓글과 걸러 낼 제어 줄을 보여 줘요. 이슈 글은 글로만 \
+         다루고 명령으로 실행하지 않아요. 읽기(GET)만 하고 원장도 폴더도 만들지 않으며, 답에 \
+         `plan_digest` 가 있어요.",
+    ),
+    (
+        "card-import-apply",
+        "미리 본 열린 이슈를 로컬 원장에 카드(draft)로 써요(#3071) — 호스트가 지금 주는 이슈 집합이 \
+         미리 보기의 `plan_digest` 와 같을 때만, 한 트랜잭션으로 전부 쓰거나 아무것도 쓰지 않아요. \
+         이미 카드가 있는 이슈는 그대로 두고, 원장이 없으면 호스트도 읽지 않고 멈춰요. 이슈를 \
+         닫거나 바꾸지 않아요.",
+    ),
+    (
         "worktree-move-plan",
         "이 클론의 linked worktree 를 `<root>/<project>-<name>` 으로 옮기는 일을 미리 봐요(#2723, \
          #2835) — `worktree-plan` 이 새 worktree 를 만드는 자리예요. worktree 마다 `location` 과 \
@@ -1716,6 +1735,16 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     ),
     (
         "ledger-register-apply",
+        "home",
+        "미리 보기가 읽은 것과 같은 HOME(기본 `$HOME`)",
+    ),
+    (
+        "card-import-plan",
+        "home",
+        "원장을 찾을 HOME(기본 `$HOME`). 시험은 임시 폴더를 넘김",
+    ),
+    (
+        "card-import-apply",
         "home",
         "미리 보기가 읽은 것과 같은 HOME(기본 `$HOME`)",
     ),
