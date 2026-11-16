@@ -1040,3 +1040,273 @@ fn a_bad_card_name_is_not_repeated_raw_on_stderr_or_stdout() {
         assert_eq!(refusal(&out).0, "invalid_input");
     }
 }
+
+// ---- scope (card C-53: a card added without --scope is skipped by `next`) ------------------------
+
+fn sql(home: &TempHome, statement: &str) {
+    let mut w = ledger::open_write(home.path(), "demo").unwrap();
+    w.with_write_tx(|tx, _| {
+        tx.execute_batch(statement)?;
+        Ok(())
+    })
+    .unwrap();
+}
+
+fn set_scope(home: &TempHome, project: &str, card: &str, scope: &[&str]) -> Output {
+    let mut args = vec!["card", "scope", card];
+    for s in scope {
+        args.extend_from_slice(&["--scope", s]);
+    }
+    args.extend_from_slice(&["--by", "leader", "--project", project]);
+    run(home, &args)
+}
+
+fn write_scope(home: &TempHome, card_id: i64) -> Value {
+    let l = ledger::open_read_only(home.path(), "demo").unwrap();
+    let text: String = l
+        .conn()
+        .query_row(
+            "SELECT write_scope FROM card WHERE card_id = ?1",
+            [card_id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    serde_json::from_str(&text).unwrap()
+}
+
+/// Adds a card without a scope; returns its name.
+fn bare_card(home: &TempHome, project: &str) -> String {
+    let added = result(&run(
+        home,
+        &["card", "add", "--title", "no scope", "--project", project],
+    ));
+    added["name"].as_str().unwrap().to_string()
+}
+
+#[test]
+fn scope_lets_next_offer_a_card_that_was_added_without_one() {
+    let (home, project) = registered();
+    let card = bare_card(&home, &project);
+    result(&run(
+        &home,
+        &["card", "ready", &card, "--project", &project],
+    ));
+    // `next` takes the project folder as its last word, not as --project.
+    let before = result(&as_session(&home, S_A, &["card", "next", &project]));
+    assert_eq!(before["next"], Value::Null, "{before}");
+    assert_eq!(before["skipped"][0]["reason"], json!("empty_scope"));
+
+    let set = result(&set_scope(
+        &home,
+        &project,
+        &card,
+        &["src/login/", "docs/a.md"],
+    ));
+    assert_eq!(set["action"], json!("scope"));
+    assert_eq!(set["state"], json!("ready"));
+    assert_eq!(set["from"], json!([]));
+    assert_eq!(set["write_scope"], json!(["src/login/", "docs/a.md"]));
+    assert_eq!(write_scope(&home, 1), json!(["src/login/", "docs/a.md"]));
+    // One event with the old scope, the new one and who set it.
+    let l = ledger::open_read_only(home.path(), "demo").unwrap();
+    let (actor, payload): (String, String) = l
+        .conn()
+        .query_row(
+            "SELECT actor, payload FROM event WHERE kind = 'card.scope'",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(actor, "leader");
+    assert_eq!(
+        serde_json::from_str::<Value>(&payload).unwrap(),
+        json!({"from": [], "to": ["src/login/", "docs/a.md"]})
+    );
+
+    let after = result(&as_session(&home, S_A, &["card", "next", &project]));
+    assert_eq!(after["next"], json!(card), "{after}");
+    assert_eq!(after["skipped"], json!([]));
+    // A second call replaces the scope, and the event keeps what it replaced.
+    let again = result(&set_scope(&home, &project, &card, &["src/other.rs"]));
+    assert_eq!(again["from"], json!(["src/login/", "docs/a.md"]));
+    assert_eq!(write_scope(&home, 1), json!(["src/other.rs"]));
+    // `take` without --scope reserves the card's new scope.
+    let taken = result(&take(&home, &project, &card, S_A));
+    assert_eq!(taken["reservation"]["write_scope"], json!(["src/other.rs"]));
+}
+
+#[test]
+fn scope_is_set_only_on_a_draft_or_ready_card_that_nobody_holds() {
+    let (home, project) = registered();
+    // draft (C-1): allowed.
+    let draft = bare_card(&home, &project);
+    assert_eq!(
+        result(&set_scope(&home, &project, &draft, &["src/d.rs"]))["state"],
+        json!("draft")
+    );
+    // active (C-2, taken): refused with the state and the holder.
+    let active = ready_card(&home, &project, "src/a.rs");
+    result(&take(&home, &project, &active, S_A));
+    // review (C-3): refused the same way.
+    let review = ready_card(&home, &project, "src/r.rs");
+    result(&take(&home, &project, &review, S_A));
+    result(&as_session(
+        &home,
+        S_A,
+        &generation_args("review", &review, &project),
+    ));
+    // hold (C-4): refused, nobody holds it.
+    let hold = ready_card(&home, &project, "src/h.rs");
+    sql(&home, "UPDATE card SET state = 'hold' WHERE card_id = 4");
+    // done (C-5): refused.
+    sql(
+        &home,
+        "INSERT INTO card (title, state, created_by, created_at, updated_at, closed_at) \
+         VALUES ('closed', 'done', 'user', 1, 1, 1)",
+    );
+    let done = "C-5".to_string();
+    // ready (C-6), but a live reservation is left on it: refused for the holder.
+    let held = ready_card(&home, &project, "src/x.rs");
+    result(&take(&home, &project, &held, S_B));
+    sql(&home, "UPDATE card SET state = 'ready' WHERE card_id = 6");
+
+    let events = count(&home, "SELECT count(*) FROM event");
+    for (card, state, holder) in [
+        (&active, "active", Some(S_A)),
+        (&review, "review", Some(S_A)),
+        (&hold, "hold", None),
+        (&done, "done", None),
+        (&held, "ready", Some(S_B)),
+    ] {
+        let (kind, message) = refusal(&set_scope(&home, &project, card, &["src/new.rs"]));
+        assert_eq!(kind, "conflict", "{card}: {message}");
+        assert!(
+            message.contains(&format!("{card} is `{state}`")),
+            "{card}: {message}"
+        );
+        match holder {
+            Some(h) => assert!(
+                message.contains(&format!("held by {h} at generation 1")),
+                "{card}: {message}"
+            ),
+            None => assert!(!message.contains("held by"), "{card}: {message}"),
+        }
+    }
+    assert_eq!(count(&home, "SELECT count(*) FROM event"), events);
+    assert_eq!(
+        count(
+            &home,
+            "SELECT count(*) FROM card WHERE write_scope LIKE '%src/new.rs%'"
+        ),
+        0
+    );
+    let (kind, _) = refusal(&set_scope(&home, &project, "C-99", &["src/a.rs"]));
+    assert_eq!(kind, "not_found");
+}
+
+#[test]
+fn scope_entries_are_checked_like_add_and_within_the_reservation_limits() {
+    let (home, project) = registered();
+    let card = bare_card(&home, &project);
+    for (scope, says) in [
+        (vec!["/abs/dir"], "not a relative path"),
+        (vec!["."], "names no place"),
+        (vec!["src/../etc"], "leaves the repository"),
+        (vec![""], "is empty"),
+        (vec!["src\\a"], "backslash"),
+        (vec!["src/a.rs", "src/a.rs"], "repeats entry 1"),
+    ] {
+        let (kind, message) = refusal(&set_scope(&home, &project, &card, &scope));
+        assert_eq!(kind, "invalid_input", "{scope:?}: {message}");
+        assert!(message.contains(says), "{scope:?}: {message}");
+    }
+    // At most 64 entries (64 passes, 65 is refused), each at most 512 characters.
+    let many: Vec<String> = (0..65).map(|i| format!("src/f{i}.rs")).collect();
+    let many: Vec<&str> = many.iter().map(String::as_str).collect();
+    let (kind, message) = refusal(&set_scope(&home, &project, &card, &many));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("65 entries, at most 64"), "{message}");
+    result(&set_scope(&home, &project, &card, &many[..64]));
+    let long = format!("src/{}", "a".repeat(508));
+    assert_eq!(long.chars().count(), 512);
+    result(&set_scope(&home, &project, &card, &[&long]));
+    let longer = format!("{long}b");
+    let (kind, message) = refusal(&set_scope(&home, &project, &card, &[&longer]));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("longer than 512"), "{message}");
+    // No --scope, or no --by, is a usage error before the ledger is opened.
+    for args in [
+        vec![
+            "card",
+            "scope",
+            card.as_str(),
+            "--by",
+            "leader",
+            "--project",
+            &project,
+        ],
+        vec![
+            "card",
+            "scope",
+            card.as_str(),
+            "--scope",
+            "src/a.rs",
+            "--project",
+            &project,
+        ],
+    ] {
+        let out = run(&home, &args);
+        assert_eq!(out.status.code(), Some(2), "{args:?}");
+    }
+    assert_eq!(
+        count(
+            &home,
+            "SELECT count(*) FROM event WHERE kind = 'card.scope'"
+        ),
+        2
+    );
+}
+
+/// Card C-68 N-e: `take --scope` is checked as `add --scope` is: no absolute path, no `.`.
+#[test]
+fn take_refuses_a_scope_that_add_would_refuse() {
+    let (home, project) = registered();
+    let card = ready_card(&home, &project, "src/t.rs");
+    for (scope, says) in [
+        ("/abs/dir", "not a relative path"),
+        (".", "names no place"),
+        ("../up", "leaves the repository"),
+    ] {
+        let (kind, message) = refusal(&as_session(
+            &home,
+            S_A,
+            &[
+                "card",
+                "take",
+                &card,
+                "--scope",
+                scope,
+                "--project",
+                &project,
+            ],
+        ));
+        assert_eq!(kind, "invalid_input", "{scope}: {message}");
+        assert!(message.starts_with("card take refused: "), "{message}");
+        assert!(message.contains(says), "{scope}: {message}");
+    }
+    assert_eq!(count(&home, "SELECT count(*) FROM reservation"), 0);
+    let taken = result(&as_session(
+        &home,
+        S_A,
+        &[
+            "card",
+            "take",
+            &card,
+            "--scope",
+            "src/t/",
+            "--project",
+            &project,
+        ],
+    ));
+    assert_eq!(taken["reservation"]["write_scope"], json!(["src/t/"]));
+}
