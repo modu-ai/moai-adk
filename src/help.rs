@@ -315,9 +315,9 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     (
         "card",
         &[
-            "card list .",
-            "card show C-1 --project .",
             "card add --title fix-login --ac login-works --project .",
+            "card ready C-1 --project .",
+            "card take C-1 --project .",
         ],
     ),
     ("ledger-register-plan", &["ledger-register-plan .", "ledger-register-apply --plan-digest <digest> --permission-reference <ref> ."]),
@@ -1440,7 +1440,7 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     (
         "card",
         "프로젝트의 로컬 카드를 읽고 써요(#3070): `list`(목록), `show C-n`(카드 하나와 기준·메모·링크), \
-         `add`(draft 카드 하나와 기준을 한 트랜잭션으로). `list`·`show` 는 읽기만 하고, 원장 파일과 \
+         `add`(draft 카드 하나와 기준을 한 트랜잭션으로), `ready`(draft 를 ready 로), `take`·`release`·`handoff`(예약을 잡고, 돌려주고, 넘겨요). `list`·`show` 는 읽기만 하고, 원장 파일과 \
          폴더는 어떤 동작도 만들지 않아요(`ledger-register-apply` 만 만들어요). 원장이 없으면 \
          `list` 는 빈 목록, 나머지는 `ledger not found` 오류와 안내를 줘요.",
     ),

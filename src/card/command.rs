@@ -31,6 +31,17 @@ fn project_id(project: &Path) -> Result<String> {
     ledger::command::project_id_of(project)
 }
 
+/// The project id and a write connection to its existing ledger. An absent ledger is the
+/// `ledger not found` answer with the two register commands; nothing is created.
+pub fn open_for_write(project: &Path, home: &Path) -> Result<(String, ledger::WriteLedger)> {
+    let id = project_id(project)?;
+    let ledger = ledger::open_write(home, &id).map_err(|e| match e {
+        LedgerError::Absent => ABSENT_HINT.to_string(),
+        other => other.to_string(),
+    })?;
+    Ok((id, ledger))
+}
+
 fn card_json(conn: &Connection, card_id: i64) -> std::result::Result<Option<Value>, LedgerError> {
     let row = conn
         .query_row(
@@ -254,12 +265,13 @@ pub struct AddRequest<'a> {
     pub by: Option<&'a str>,
 }
 
-fn actor(given: Option<&str>) -> Result<String> {
+/// `--by`: one line of 1 to [`ACTOR_MAX_CHARS`] characters, `user` when not given.
+pub fn actor(given: Option<&str>, action: &str) -> Result<String> {
     let by = given.unwrap_or(DEFAULT_ACTOR);
     let chars = by.chars().count();
     if by.trim().is_empty() || chars > ACTOR_MAX_CHARS || by.chars().any(char::is_control) {
         return Err(format!(
-            "card add refused: --by must be one line of 1 to {ACTOR_MAX_CHARS} characters"
+            "card {action} refused: --by must be one line of 1 to {ACTOR_MAX_CHARS} characters"
         ));
     }
     Ok(by.to_string())
@@ -276,12 +288,8 @@ pub fn add(project: &Path, home: &Path, req: &AddRequest<'_>) -> Result<Value> {
         criteria: req.criteria,
     })
     .map_err(|e| format!("card add refused: {e}"))?;
-    let by = actor(req.by)?;
-    let id = project_id(project)?;
-    let mut ledger = ledger::open_write(home, &id).map_err(|e| match e {
-        LedgerError::Absent => ABSENT_HINT.to_string(),
-        other => other.to_string(),
-    })?;
+    let by = actor(req.by, "add")?;
+    let (id, mut ledger) = open_for_write(project, home)?;
     let (card_id, rev) = ledger
         .with_write_tx(|tx, now| {
             tx.execute(
