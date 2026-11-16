@@ -47,15 +47,9 @@ On a blocker report the exact action and target, the reason, the denial/pending/
 
 A blocked lane reports the kind, the owner and the next check, and moves to independent work (MODE-AGENT `report` step). Never tick a checkbox from a document or agent claim alone. Where a lane cannot post its own comment, the leader relays it verbatim, marked as a relay with the lane named.
 
-## Development build versions (HeadVer)
+## Development build versions
 
-Local development builds of this repository are numbered with HeadVer (`https://github.com/line/headver`): `{head}.{yearweek}.{build}`. This rule covers development builds on a developer's machine. Releases of this generation are to follow the same `4.{yearweek}.{build}` form; until card C-67 changes the build and release steps, no tag and no package version in `Cargo.toml` is changed by this rule.
-
-- `{head}`: the one manual number. It is `4`: the generation already released is v3, and this generation is v4 (user decision 2026-11-17). Only the user raises it.
-- `{yearweek}`: automatic, always four digits: two-digit year and two-digit ISO-8601 week of the build's UTC date (2026-11-17 is `2647`). Read the date from a clock in the same step.
-- `{build}`: automatic, one counter that only goes up and never restarts with a new week or head. It continues the local build numbers already used (`+local.3` was build 3, so the next is 4).
-- Never commit a change only to move a development version, and never reuse a build number, also not for a rebuild of the same commit.
-- Until the binary prints this form itself (card C-67), pass the build number as `MOAI_LOCAL_BUILD=<build>`; the binary then shows `<package version>+local.<build>`. Reports name both, for example `4.2647.4 (2026.11.0-rc.2+local.4)`.
+Development builds use HeadVer `{head}.{yearweek}.{build}`, e.g. `4.2647.4`: head `4` is manual (the released generation is v3), yearweek is the UTC ISO week, build only goes up. Rules: `AGENTS.local.md`.
 
 ## Language
 
