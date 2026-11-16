@@ -46,6 +46,29 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Reads the ledger only. Writes files only inside --out. Export every card to a folder
+    ///
+    /// Reads the ledger only. Writes files only inside --out. Writes `index.json`, `events.jsonl`
+    /// and one `C-<n>.md` per card (title, body, criteria, notes, links) into an empty or new
+    /// folder; the same ledger gives the same bytes. Nothing already in the folder is replaced,
+    /// and a project without a ledger gets `ledger not found` and no folder.
+    ///
+    /// The export is private to you (new folder 0700, files 0600; an existing empty folder that
+    /// others can open is refused: `chmod 700` it first) and holds what the ledger holds: card
+    /// text, criteria, notes, links and every event with its payload, which includes reservation
+    /// holders (session ids) and lease times. Look at it before you share it. The folder may not be inside
+    /// `<HOME>/.moai`. Links in the parent folders are followed; the real path is printed as `out`.
+    Export {
+        /// The folder to write: new, or empty and closed to other users (its parent must exist).
+        #[arg(long)]
+        out: PathBuf,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Writes the ledger. Add a card in the draft state
     ///
     /// Writes the ledger. Stores one `draft` card, its acceptance criteria (numbered from 1 in the
@@ -190,6 +213,9 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             project,
             home,
         } => c::show(&project, &resolve_home(home)?, &card),
+        Action::Export { out, project, home } => {
+            c::export(&project, &resolve_home(home)?, &out)
+        }
         Action::Add {
             title,
             body,
