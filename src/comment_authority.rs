@@ -186,6 +186,7 @@ pub fn control_kind(body: &str) -> Option<&'static str> {
         ("moai-claim:", "claim"),
         ("moai-audit-claim", "audit_claim"),
         ("moai-resume:", "resume"),
+        ("pr-wait:", "pr_wait"),
         ("moai-tip-repair:", "tip_repair"),
         ("AUDIT #", "audit_verdict"),
         ("CLOSE-TABLE #", "close_table"),

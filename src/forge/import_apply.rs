@@ -17,71 +17,10 @@ use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::fmt;
 
-/// One acceptance criterion. The ledger numbers the rows `AC1`… in this order.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BatchAc {
-    pub text: String,
-    pub verify: String,
-}
-
-/// One note, always `origin = 'import'`. `reference` is the host's comment id as text.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BatchNote {
-    pub reference: String,
-    /// `comment` or `observation`.
-    pub kind: &'static str,
-    pub author: String,
-    pub body: String,
-}
-
-/// One card to create unless its source is already in the ledger.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BatchCard {
-    pub source_host: &'static str,
-    pub source_project: String,
-    pub source_number: u64,
-    pub title: String,
-    pub kind: &'static str,
-    /// The issue body exactly as written.
-    pub body: String,
-    pub acs: Vec<BatchAc>,
-    pub notes: Vec<BatchNote>,
-    /// The `event.event_key` of the `import` event: `import:<host>:<project>:<number>:<hash>`.
-    pub event_key: String,
-    /// The `event.payload` JSON.
-    pub event_payload: String,
-}
-
-/// Everything one import writes.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ImportBatch {
-    /// The digest the plan had, which the user was shown.
-    pub digest: String,
-    pub cards: Vec<BatchCard>,
-}
-
-/// What the ledger did with one card.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum CardOutcome {
-    Created,
-    /// A card with this source was there; nothing of it was written, notes included.
-    AlreadyThere,
-}
-
-/// The ledger's answer: one outcome per card, in the order of the batch.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ImportCommit {
-    pub outcomes: Vec<CardOutcome>,
-}
-
-/// The ledger could not write the batch; it wrote none of it.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ImportFault(pub String);
-
-/// The ledger side of an import. An implementation writes all or none of a batch.
-pub trait ImportLedger {
-    fn commit(&mut self, batch: &ImportBatch) -> Result<ImportCommit, ImportFault>;
-}
+pub use crate::ledger::import::{
+    BatchAc, BatchCard, BatchNote, CardOutcome, ImportBatch, ImportCommit, ImportFault,
+    ImportLedger,
+};
 
 #[derive(Debug)]
 pub enum ApplyError {

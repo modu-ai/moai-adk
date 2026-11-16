@@ -14,6 +14,7 @@
 //! Nothing here calls a model, the network or `git`.
 
 pub mod command;
+pub mod import;
 pub mod location;
 pub mod migrate;
 pub mod open;
