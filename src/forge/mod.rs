@@ -9,6 +9,8 @@
 //! The CLI wraps the result in the 01-C envelope (`crate::contract`); errors become messages
 //! whose kind `contract::classify` derives, so each message here carries its kind's phrase.
 pub mod audit_status;
+pub mod card_export;
+pub mod card_import;
 pub mod connector;
 pub mod gitlab;
 pub mod import_apply;
@@ -17,6 +19,7 @@ pub mod labels;
 pub mod links;
 pub mod outbox;
 pub mod policy;
+pub mod public_text;
 pub mod report;
 pub mod transport;
 pub mod wait;
@@ -246,6 +249,26 @@ impl<'a, T: Transport, C: Clock> Client<'a, T, C> {
                     ))
                 }
             }
+        }
+    }
+
+    /// Sends `req` once. A rate-limit answer is an error here, never a wait and a second send:
+    /// for a write, a first send that timed out may already have reached the host, so sending
+    /// the same body again could post it twice (audit of #3119, B2). The caller finds out what
+    /// happened by reading the host again.
+    pub fn send_once(&self, req: &HttpRequest) -> Result<HttpResponse, ForgeError> {
+        let resp = self.transport.send(req).map_err(ForgeError::transport)?;
+        self.note_headers(&resp);
+        self.log
+            .borrow_mut()
+            .push(json!({"method": req.method, "url": req.url, "status": resp.status}));
+        match policy::judge(&resp, 0, self.clock.now()) {
+            Verdict::Use => Ok(resp),
+            Verdict::Blocked(why) => Err(ForgeError::blocked(why, false)),
+            Verdict::Retry(_) => Err(ForgeError::blocked(
+                "rate limited; the write was not sent again, read the host before trying again",
+                true,
+            )),
         }
     }
 

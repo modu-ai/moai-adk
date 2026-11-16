@@ -314,6 +314,12 @@ fn a_marker_written_by_a_non_member_does_not_stop_the_summary() {
                     &comments_url(42),
                     json_response(200, json!([comment(5, association, marker())])),
                 ),
+                // The comment is not a member's, so the connector asks whose token this is;
+                // the writer is somebody else, so the marker does not count.
+                get(
+                    "https://api.github.com/user",
+                    json_response(200, json!({"login": "someone-else"})),
+                ),
                 exchange(
                     "POST",
                     &format!("{BASE}/issues/42/comments"),
@@ -328,8 +334,171 @@ fn a_marker_written_by_a_non_member_does_not_stop_the_summary() {
             SummaryOutcome::Posted { comment_id: 6 },
             "{association:?}"
         );
-        assert_eq!(transport.sent.borrow().len(), 2);
+        assert_eq!(
+            transport.sent.borrow().len(),
+            3,
+            "the comments, the account lookup, the POST"
+        );
     }
+}
+
+fn user_url() -> &'static str {
+    "https://api.github.com/user"
+}
+
+#[test]
+fn a_marker_on_the_token_accounts_own_comment_stops_the_summary_even_when_it_is_no_member() {
+    let target = SummaryTarget {
+        project: project(),
+        number: 42,
+    };
+    // `comment()` is written by "writer"; the lookup answers the same login in another case.
+    let (outcome, transport) = with_connector(
+        vec![
+            get(
+                &comments_url(42),
+                json_response(200, json!([comment(5, "CONTRIBUTOR", marker())])),
+            ),
+            get(user_url(), json_response(200, json!({"login": "Writer"}))),
+        ],
+        Config::default(),
+        |c| c.post_summary(&target, "summary", marker()),
+    );
+    assert_eq!(
+        outcome.unwrap(),
+        SummaryOutcome::AlreadyPosted { comment_id: 5 }
+    );
+    assert_eq!(transport.sent.borrow().len(), 2, "no POST");
+}
+
+#[test]
+fn a_comment_without_the_marker_never_asks_whose_token_this_is() {
+    let target = SummaryTarget {
+        project: project(),
+        number: 42,
+    };
+    let (outcome, transport) = with_connector(
+        vec![
+            get(
+                &comments_url(42),
+                json_response(200, json!([comment(5, "NONE", "unrelated")])),
+            ),
+            exchange(
+                "POST",
+                &format!("{BASE}/issues/42/comments"),
+                json_response(201, json!({"id": 6})),
+            ),
+        ],
+        Config::default(),
+        |c| c.post_summary(&target, "summary", marker()),
+    );
+    assert_eq!(outcome.unwrap(), SummaryOutcome::Posted { comment_id: 6 });
+    assert_eq!(transport.sent.borrow().len(), 2);
+}
+
+#[test]
+fn when_the_account_cannot_be_read_nothing_is_posted() {
+    let target = SummaryTarget {
+        project: project(),
+        number: 42,
+    };
+    for answer in [json_response(404, json!({})), json_response(200, json!({}))] {
+        let (outcome, transport) = with_connector(
+            vec![
+                get(
+                    &comments_url(42),
+                    json_response(200, json!([comment(5, "NONE", marker())])),
+                ),
+                get(user_url(), answer),
+            ],
+            Config::default(),
+            |c| c.post_summary(&target, "summary", marker()),
+        );
+        assert!(outcome.is_err());
+        assert_eq!(transport.sent.borrow().len(), 2, "no POST");
+    }
+}
+
+#[test]
+fn a_rate_limited_post_is_not_sent_again() {
+    let target = SummaryTarget {
+        project: project(),
+        number: 42,
+    };
+    let mut limited = json_response(429, json!({"message": "slow down"}));
+    limited
+        .headers
+        .insert("retry-after".to_string(), "1".to_string());
+    let (outcome, transport) = with_connector(
+        vec![
+            get(&comments_url(42), json_response(200, json!([]))),
+            exchange("POST", &format!("{BASE}/issues/42/comments"), limited),
+        ],
+        Config::default(),
+        |c| c.post_summary(&target, "summary", marker()),
+    );
+    let error = outcome.unwrap_err().to_string();
+    assert!(error.contains("not sent again"), "{error}");
+    let sent = transport.sent.borrow();
+    assert_eq!(sent.iter().filter(|r| r.method == "POST").count(), 1);
+}
+
+#[test]
+fn a_post_that_may_have_reached_the_host_says_to_read_it_before_trying_again() {
+    let target = SummaryTarget {
+        project: project(),
+        number: 42,
+    };
+    // The recorded transport has no exchange for the POST, so the send itself fails, as a
+    // timeout would.
+    let (outcome, transport) = with_connector(
+        vec![get(&comments_url(42), json_response(200, json!([])))],
+        Config::default(),
+        |c| c.post_summary(&target, "summary", marker()),
+    );
+    let error = outcome.unwrap_err().to_string();
+    assert!(error.contains("may have reached the host"), "{error}");
+    assert_eq!(
+        transport
+            .sent
+            .borrow()
+            .iter()
+            .filter(|r| r.method == "POST")
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn the_comment_body_helper_is_the_body_that_is_posted() {
+    use moai_cli::forge::connector::summary_comment_body;
+    let target = SummaryTarget {
+        project: project(),
+        number: 42,
+    };
+    let text = "status\n";
+    let (_, transport) = with_connector(
+        vec![
+            get(&comments_url(42), json_response(200, json!([]))),
+            exchange(
+                "POST",
+                &format!("{BASE}/issues/42/comments"),
+                json_response(201, json!({"id": 6})),
+            ),
+        ],
+        Config::default(),
+        |c| c.post_summary(&target, text, marker()),
+    );
+    let sent = transport.sent.borrow();
+    assert_eq!(
+        sent[1].body.as_ref().unwrap()["body"].as_str().unwrap(),
+        summary_comment_body(text, marker())
+    );
+    assert_eq!(
+        summary_comment_body("a  \n\n", marker()),
+        format!("a\n\n{}", marker()),
+        "trailing blanks are cut"
+    );
 }
 
 #[test]

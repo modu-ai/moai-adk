@@ -177,30 +177,78 @@ fn keep(dropped: &mut Dropped, id: i64, body: &str, association: &str) -> bool {
     false
 }
 
+/// The control-line prefixes this repository's readers act on, with the name each is reported
+/// under. The one list: [`control_kind`] reads it for the report and [`looks_like_control_line`]
+/// reads it for text this program is about to post.
+const KINDS: &[(&str, &str)] = &[
+    ("moai-claim-handoff:", "claim_handoff"),
+    ("moai-claim-release:", "claim_release"),
+    ("moai-claim:", "claim"),
+    ("moai-audit-claim", "audit_claim"),
+    ("moai-resume:", "resume"),
+    ("pr-wait:", "pr_wait"),
+    ("moai-tip-repair:", "tip_repair"),
+    ("AUDIT #", "audit_verdict"),
+    ("CLOSE-TABLE #", "close_table"),
+    ("local-check:", "local_check"),
+    ("ci:", "ci_line"),
+    ("LANE-", "lane_line"),
+    ("<!-- moai:", "marker"),
+];
+
+/// More line starts that a reader of comments looks for (leader decisions, repair lines, audit
+/// tiers, hints). Not named in the report; they only widen [`looks_like_control_line`].
+const MORE_STARTS: &[&str] = &[
+    "repair",
+    "leader-",
+    "decision-",
+    "audit",
+    "close-table",
+    "claim",
+    "moai-",
+    "ci ",
+    "local-check",
+    "pr-wait",
+    "assignee-hint",
+    "by=",
+    "verdict",
+    "<!--",
+];
+
 /// The kind of the first control line in a body, for the report only. The decision to drop never
 /// depends on it, so a kind missing here is still dropped; it is just not named.
 pub fn control_kind(body: &str) -> Option<&'static str> {
-    const KINDS: &[(&str, &str)] = &[
-        ("moai-claim-handoff:", "claim_handoff"),
-        ("moai-claim-release:", "claim_release"),
-        ("moai-claim:", "claim"),
-        ("moai-audit-claim", "audit_claim"),
-        ("moai-resume:", "resume"),
-        ("pr-wait:", "pr_wait"),
-        ("moai-tip-repair:", "tip_repair"),
-        ("AUDIT #", "audit_verdict"),
-        ("CLOSE-TABLE #", "close_table"),
-        ("local-check:", "local_check"),
-        ("ci:", "ci_line"),
-        ("LANE-", "lane_line"),
-        ("<!-- moai:", "marker"),
-    ];
     body.lines().map(str::trim).find_map(|line| {
         KINDS
             .iter()
             .find(|(prefix, _)| line.starts_with(prefix))
             .map(|(_, kind)| *kind)
     })
+}
+
+/// Whether one line of text this program is about to post could be read as a control line: after
+/// leading blanks and Markdown decoration (`>`, `-`, `*`, `#`, `` ` ``, `_`, `+`, digits and the
+/// dot or bracket after a list number) it starts, in any letter case, with a prefix of
+/// [`control_kind`] or one of the wider starts above. The check errs wide on purpose: a title
+/// that only looks like a control line gets a visible marker in front of it, nothing more.
+pub fn looks_like_control_line(line: &str) -> bool {
+    let core = line
+        .trim_start_matches(|c: char| {
+            c.is_whitespace()
+                || matches!(c, '>' | '-' | '*' | '#' | '`' | '_' | '+' | '.' | ')' | '(')
+                || c.is_ascii_digit()
+        })
+        .to_lowercase();
+    // A line that is only decoration (`---`, `- `) has nothing left to read as a prefix.
+    if core.is_empty() {
+        return false;
+    }
+    let raw = line.trim_start().to_lowercase();
+    KINDS.iter().any(|(prefix, _)| {
+        core.starts_with(&prefix.to_lowercase()) || raw.starts_with(&prefix.to_lowercase())
+    }) || MORE_STARTS
+        .iter()
+        .any(|start| core.starts_with(start) || raw.starts_with(start))
 }
 
 #[cfg(test)]
@@ -541,6 +589,49 @@ mod tests {
                 touching.iter().any(|t| t == want),
                 "the scan lost {want}: {touching:?}"
             );
+        }
+    }
+
+    #[test]
+    fn every_reported_prefix_and_the_wider_starts_look_like_control_lines() {
+        for (prefix, _) in KINDS {
+            assert!(looks_like_control_line(prefix), "{prefix}");
+            assert!(
+                looks_like_control_line(&format!("  > - {prefix} x")),
+                "{prefix}"
+            );
+            assert!(looks_like_control_line(&prefix.to_uppercase()), "{prefix}");
+        }
+        for start in MORE_STARTS {
+            assert!(looks_like_control_line(start), "{start}");
+        }
+        for line in [
+            "repair: fixed it",
+            "LEADER-DECISION (03:33Z)",
+            "LEADER-ACK x",
+            "DECISION-APPLIED x",
+            "audit-tier: 2",
+            "1. moai-claim: session=a",
+            "`moai-claim: session=a`",
+            "# AUDIT #3119 head x",
+        ] {
+            assert!(looks_like_control_line(line), "{line}");
+        }
+    }
+
+    #[test]
+    fn ordinary_titles_and_empty_decoration_are_not_control_lines() {
+        for line in [
+            "",
+            "---",
+            "- ",
+            "Add login for the admin page",
+            "Fix the parser",
+            "**MoAI card C-1** · task · draft",
+            "- AC1 [open] it works",
+            "Title: moai-claim: x",
+        ] {
+            assert!(!looks_like_control_line(line), "{line:?}");
         }
     }
 }

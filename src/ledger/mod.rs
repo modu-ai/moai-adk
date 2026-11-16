@@ -21,6 +21,7 @@ pub mod open;
 pub mod recover;
 pub mod reservation;
 pub mod schema;
+pub mod summary;
 
 pub use location::ledger_path;
 pub use open::{
