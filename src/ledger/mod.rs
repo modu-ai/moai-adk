@@ -19,6 +19,7 @@ pub mod location;
 pub mod migrate;
 pub mod open;
 pub mod schema;
+pub mod summary;
 
 pub use location::ledger_path;
 pub use open::{

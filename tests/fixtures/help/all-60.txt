@@ -30,6 +30,10 @@ Project
                           issues as cards
   card-import-apply       Import a host's open issues as
                           cards, only the previewed set
+  card-summary-plan       Preview the summary a card would
+                          post to its issue
+  card-summary-apply      Post a card's summary to its
+                          issue, once
   agents-plan             Preview the AGENTS.md managed
                           section
   agents-apply            Write a previewed AGENTS.md

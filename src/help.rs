@@ -44,6 +44,8 @@ pub const GROUPS: &[Group] = &[
             ("ledger-register-apply", false),
             ("card-import-plan", false),
             ("card-import-apply", false),
+            ("card-summary-plan", false),
+            ("card-summary-apply", false),
             ("agents-plan", false),
             ("agents-apply", false),
             ("generation-plan", false),
@@ -315,6 +317,8 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("ledger-register-apply", &["ledger-register-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("card-import-plan", &["card-import-plan --from github --repo owner/repo .", "card-import-apply --from github --repo owner/repo --plan-digest <digest> --permission-reference <ref> ."]),
     ("card-import-apply", &["card-import-apply --from github --repo owner/repo --plan-digest <digest> --permission-reference <ref> ."]),
+    ("card-summary-plan", &["card-summary-plan --card C-1 --to github .", "card-summary-apply --card C-1 --to github --plan-digest <digest> --permission-reference <ref> ."]),
+    ("card-summary-apply", &["card-summary-apply --card C-1 --to github --plan-digest <digest> --permission-reference <ref> ."]),
     ("update", &["update"]),
     ("go-state-plan", &["go-state-plan .", "go-state-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("go-state-apply", &["go-state-apply --plan-digest <digest> --permission-reference <ref> ."]),
@@ -1453,6 +1457,19 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          닫거나 바꾸지 않아요.",
     ),
     (
+        "card-summary-plan",
+        "카드 한 장의 요약을 그 카드의 이슈(또는 `--number` 로 정한 PR)에 올리면 무엇이 올라가는지 \
+         미리 봐요(#3071) — 올라갈 글, 대상, 두 번 올라가지 않게 하는 표지, `plan_digest` 를 보여 \
+         줘요. 카드는 `--to` 로 적은 호스트에서 온 것이어야 해요. 로컬 원장만 읽고 통신도 쓰기도 \
+         하지 않아요.",
+    ),
+    (
+        "card-summary-apply",
+        "미리 본 카드 요약을 이슈에 한 번 올려요(#3071) — 미리 보기의 `plan_digest` 가 그대로이고 \
+         권한 참조가 있을 때만, 호스트에 쓰는 유일한 명령이에요. 올리기 전에 호스트를 읽어 구성원의 \
+         댓글에 이 카드의 표지가 이미 있으면 아무것도 올리지 않고 `already_posted` 로 답해요.",
+    ),
+    (
         "worktree-move-plan",
         "이 클론의 linked worktree 를 `<root>/<project>-<name>` 으로 옮기는 일을 미리 봐요(#2723, \
          #2835) — `worktree-plan` 이 새 worktree 를 만드는 자리예요. worktree 마다 `location` 과 \
@@ -1745,6 +1762,16 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     ),
     (
         "card-import-apply",
+        "home",
+        "미리 보기가 읽은 것과 같은 HOME(기본 `$HOME`)",
+    ),
+    (
+        "card-summary-plan",
+        "home",
+        "원장을 찾을 HOME(기본 `$HOME`). 시험은 임시 폴더를 넘김",
+    ),
+    (
+        "card-summary-apply",
         "home",
         "미리 보기가 읽은 것과 같은 HOME(기본 `$HOME`)",
     ),
