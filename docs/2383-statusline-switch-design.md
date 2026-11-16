@@ -119,10 +119,13 @@ PATH="$HOME/go/hook-bin:$PATH"  # #2383: Go hooks call the Go binary by absolute
 
 ```bash
 #!/bin/bash
-# MoAI statusline wrapper (#2383, #2871) - renders with the Rust moai-cli.
+# MoAI statusline wrapper (#2383, #2871, #3004 P6a) - renders with the Rust build.
 # Looks in the HOME state folder where the install is (`~/.moai` after the move, `~/.moai-cli`
-# before it), then for the name `moai-cli` on PATH. No PATH lookup of `moai`: the Go `moai`
-# name leaves PATH after PR #2374 (#2383).
+# before it) for the link `path/moai` (the one name, #3004) and then for `path/moai-cli` (the
+# link of an install that has not moved to `moai` yet), then for the name `moai-cli` on PATH.
+# No PATH lookup of `moai`: an earlier Go `moai` can sit first on PATH (#2383).
+# `path/moai` counts only when it is a link: the install lays a link there, while a plain file
+# of that name can be an old Go shim that routes the status line back to Go (#3004 P4-3).
 # stdin is handed straight to the exec'd process; this script creates no temporary
 # file (an exec'd process never runs an EXIT trap, so a temp buffer would leak).
 
@@ -131,8 +134,9 @@ PATH="$HOME/go/hook-bin:$PATH"  # #2383: Go hooks call the Go binary by absolute
 # Only an absolute path counts: with `.` or an empty entry in PATH, `command -v` answers the bare
 # name `moai-cli` (or a shell function of that name), and exec would then run whatever sits in
 # the project folder the status line is started from - #3008 audit B1.
-for MOAI_CLI in "$HOME/.moai/path/moai-cli" "$HOME/.moai-cli/path/moai-cli" "$(command -v moai-cli)"; do
+for MOAI_CLI in "$HOME/.moai/path/moai" "$HOME/.moai-cli/path/moai" "$HOME/.moai/path/moai-cli" "$HOME/.moai-cli/path/moai-cli" "$(command -v moai-cli)"; do
 	case "$MOAI_CLI" in /*) ;; *) continue ;; esac
+	case "$MOAI_CLI" in */path/moai) [ -L "$MOAI_CLI" ] || continue ;; esac
 	if [ -f "$MOAI_CLI" ] && [ -x "$MOAI_CLI" ]; then
 		exec "$MOAI_CLI" statusline
 	fi
@@ -155,6 +159,7 @@ exit 0
 - 존재 검사를 `-f`에서 `-x`로 바꿨다. 실행 권한 없는 파일을 exec해 126으로 끝나는 경우를 막는다(재감사 F2와 같은 원인).
 - #2503에서 `-f`를 다시 함께 둔다(`[ -f X ] && [ -x X ]`, Rust·Go 두 경로 모두). `-x`만으로는 디렉터리(또는 디렉터리를 가리키는 링크)도 참이라 exec가 126으로 끝나고 폴백이 돌지 않았다(PR #2482 감사 N1). 이제 디렉터리는 없는 것과 같게 다음 단계로 넘어간다.
 - #2871(U3c, 리더 기록 6886405676)에서 Rust 경로를 고정 한 곳에서 순서 있는 세 곳으로 넓혔다: `~/.moai/path/moai-cli`(HOME 이동 뒤) → `~/.moai-cli/path/moai-cli`(이동 전) → PATH 의 `moai-cli`. 이동 전·후 어느 배치에서도 상태줄이 나온다. PATH 에서 찾는 이름은 Rust 의 `moai-cli` 뿐이고 Go 의 `moai` 는 여전히 찾지 않는다. PATH 가 알려 준 값은 `/` 로 시작할 때만 쓴다: PATH 에 `.` 이나 빈 칸이 있으면 `command -v` 가 상대 이름만 돌려주고, 그대로 `exec` 하면 상태줄이 시작된 프로젝트 폴더의 파일이 실행되기 때문이다(#3008 감사 B1). `install/install.sh` 는 내려받은 바이너리의 `install-inspect` 가 알려 주는 `home_state_root` 를 따르므로(폴더를 직접 적지 않는다) 이 PR 에서 바꿀 것이 없다.
+- #3004 P6a: 이름 통일(`moai`)에 맞춰 후보 앞에 `~/.moai/path/moai`·`~/.moai-cli/path/moai` 를 더했다. 둘은 **심링크일 때만** 실행한다(`[ -L ]`): 설치가 깔아 두는 것은 링크이고, 같은 이름의 일반 파일은 `--version` 만 Rust 로 보내고 `statusline` 은 Go 로 보내는 옛 shim 일 수 있다(#3004 P4-3 과 같은 위험). 이 링크는 아직 설치가 깔지 않으므로(깔기는 P6) 지금은 후보가 비어 있어 동작이 그대로이고, `moai-cli` 두 곳과 PATH 의 `moai-cli` 는 P5 가 `[[bin]] moai-cli` 를 없앨 때까지 뒤에 남는다. PATH 의 `moai` 는 여전히 찾지 않는다(앞에 Go `moai` 가 있을 수 있다).
 - 이동 전 배치의 Rust 경로는 `~/.moai-cli/path/moai-cli`(§0, 심링크)다(이동 뒤는 위 `~/.moai/path/moai-cli`). **#2374가 병합·재설치되기 전의 설치본에는 `statusline` op가 없다.** 그래서 §5-5는 #2374 재설치 뒤에만 실행한다. 그 전에 실행하면 Rust가 사용 오류로 끝나고 폴백이 돌지 않는다(exec 뒤라서).
 - Go 폴백은 shim을 거치지 않고 `moai.old`를 직접 부른다. shim이 `statusline` 단어를 `moai.old`로 그대로 넘기므로(§2.2) 출력은 같다.
 - **현행 9–11행의 `~/.moai/.env.glm` source를 넣지 않았다.** Rust는 `~/.moai`를 읽지 않는다는 결정(#2393)을 따르고, 상태줄 렌더에 자격 증명이 필요하지 않기 때문이다. 이 env가 Go 렌더 결과를 바꾸는지는 아직 확인하지 않았다(not_run). §5-2(b)에서 같은 stdin으로 env 유무를 비교하고, 출력이 다르면 중단해 #2393에 올린다.

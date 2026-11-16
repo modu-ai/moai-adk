@@ -109,7 +109,7 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "616cc2309f8840f44539a0b9bb95976e4a39c18280b432056415b78c7c234c6e",
+      "sha256": "442602ff1751dc1f7e07d014f0ca8fc7d2786051347f4ffbc72e1df4e704292a",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "f1683efb5b0bd36a330bc975c617079ca2698c22c8e701f69d87d7c89b1161ec",
+      "sha256": "a45c2a15d97771b8a10edbda2ab5828ceafafbf1f139065f639f90d73b5bd1a0",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
@@ -321,15 +321,6 @@
         "reason": "Written for rc.2 #2876 (I4 of #2871: rules inside the moai skill, only what changes behaviour on every host) from the MoAI ADK Go generation .claude/rules/moai/** at 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 (Apache-2.0): of 113 rule files 1 kept and 9 merged (core/moai-constitution, core/agent-common-protocol, core/native-idiom-and-register, core/verification-claim-integrity, workflow/graceful-exit-mutation-contract, workflow/read-only-status-contract; git, security, dependency and CI-repair rules went to internal/git-safety, internal/review and workflows/run.md), 103 dropped as Go-only, host-specific or already covered (comparison table in the #2876 pull request). Host-neutral wording, no host tool names; at most 4096 bytes (tests/core_rules_2876.rs). Read once per session through the route table's `core_rules` entry, which SKILL.md names, and by every base agent through `reads:`. Rules 19-21 (public prior art, no design for unrequested cases, code wins over instruction files) and the report-first sentence of rule 18 added by #3096 S1 (user instruction 2026-11-16); still at most 4096 bytes."
       }
     },
-    "references/internal/lenses.md": {
-      "sha256": "7583f55985f6ee5b66bd0273ecc49e6a9d3055aca3ba40f7b33f07e8c242884b",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "internal-lenses",
-        "adoption": "new",
-        "reason": "Written for rc.2 #3096 S1 (user instruction 2026-11-16, record in #1975): four ways of looking (state machine, CI in three stretches, what to keep if built again, refactor risk) read only when a question or plan needs one; each reports and changes no code."
-      }
-    },
     "workflows/optimize.md": {
       "sha256": "47617dc6dc94e747eeb59c25b469bd2530a4240d07eb6945ea925c7abca9fa18",
       "origin": {
@@ -337,6 +328,15 @@
         "template_id": "workflow-optimize",
         "adoption": "new",
         "reason": "Written for rc.2 #2724 (leader decision A, Issue #2724 comment of 2026-11-13T16:20Z): the route runs only the read-only `optimize-plan` preview; deletion stays the user's yes and the existing worktree-gc apply step. No design-22 template exists for OPTIMIZE. Shows the preview's worktree-count warning line (#2930 item 6)."
+      }
+    },
+    "references/internal/lenses.md": {
+      "sha256": "7583f55985f6ee5b66bd0273ecc49e6a9d3055aca3ba40f7b33f07e8c242884b",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-lenses",
+        "adoption": "new",
+        "reason": "Written for rc.2 #3096 S1 (user instruction 2026-11-16, record in #1975): four ways of looking (state machine, CI in three stretches, what to keep if built again, refactor risk) read only when a question or plan needs one; each reports and changes no code."
       }
     }
   }
