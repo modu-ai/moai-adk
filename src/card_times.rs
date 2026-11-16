@@ -142,6 +142,12 @@ pub struct PrRead {
     pub head: String,
     pub branch: String,
     pub body: String,
+    /// The PR author's `authorAssociation`; `""` when the payload did not carry it. Only a
+    /// member's PR counts for a card ([`claims_pr`]).
+    pub author_association: String,
+    /// A field a stage depends on (`isDraft`, `merged`) was not a boolean in the payload, so
+    /// `draft` and `merged` are guesses and the stages that read them are `unknown`.
+    pub fields_missing: bool,
     /// Comments a repository member wrote, oldest first.
     pub comments: Vec<Comment>,
     pub comments_complete: bool,
@@ -175,11 +181,18 @@ pub struct CardRead {
     pub issue_node_id: String,
 }
 
-/// Does `pr` belong to card `card`: its body names `Moai-Claim: <card>#…`, or its branch is
+/// Does `pr` name card `card`: its body names `Moai-Claim: <card>#…`, or its branch is
 /// `issue/<card>-…`.
-pub fn claims_pr(card: u64, pr: &PrRead) -> bool {
+pub fn names_card(card: u64, pr: &PrRead) -> bool {
     body_claim(&pr.body).is_some_and(|(issue, _)| issue == card)
         || pr.branch.starts_with(&format!("issue/{card}-"))
+}
+
+/// Does `pr` belong to card `card`: it names the card ([`names_card`]) and a repository member
+/// opened it. A non-member's PR that names the card is listed under `ignored_prs`, never timed
+/// (N1 of the audit of #3109).
+pub fn claims_pr(card: u64, pr: &PrRead) -> bool {
+    names_card(card, pr) && comment_authority::is_member(&pr.author_association)
 }
 
 /// The earliest claim of the card. A card whose newest comments only were read cannot say which
@@ -261,10 +274,14 @@ fn earliest(source: &str, times: &[String], complete: bool, none: &str, now: i64
 fn ready_stage(pr: &PrRead, now: i64) -> Stage {
     const SOURCE: &str = "ready_for_review_event";
     if !pr.ready_events.is_empty() {
-        return earliest(SOURCE, &pr.ready_events, true, "", now);
+        // A cut list (`last:20`) may hide an earlier event: then the earliest read is unknown.
+        return earliest(SOURCE, &pr.ready_events, pr.events_complete, "", now);
     }
     if !pr.events_complete {
         return Stage::unknown(SOURCE, "timeline events were cut");
+    }
+    if pr.fields_missing {
+        return Stage::unknown(SOURCE, "isDraft was not read for this pull request");
     }
     if pr.draft {
         return Stage::absent(SOURCE, "still a draft");
@@ -278,6 +295,9 @@ fn ready_stage(pr: &PrRead, now: i64) -> Stage {
 
 fn merged_stage(pr: &PrRead, now: i64) -> Stage {
     const SOURCE: &str = "pr_merged_at";
+    if pr.fields_missing {
+        return Stage::unknown(SOURCE, "merged was not read for this pull request");
+    }
     if !pr.merged {
         return Stage::absent(SOURCE, "not merged");
     }
@@ -432,7 +452,7 @@ pub const API_BUDGET: u32 = crate::lane_next::API_BUDGET;
 
 const GRAPHQL_URL: &str = "https://api.github.com/graphql";
 
-const PR_FIELDS: &str = "number state isDraft createdAt mergedAt merged headRefOid headRefName body \
+const PR_FIELDS: &str = "number state isDraft createdAt mergedAt merged headRefOid headRefName body authorAssociation \
 comments(last:100){totalCount nodes{databaseId authorAssociation body createdAt}} \
 timelineItems(itemTypes:[READY_FOR_REVIEW_EVENT,CONVERT_TO_DRAFT_EVENT],last:20){totalCount nodes{__typename ...on ReadyForReviewEvent{createdAt} ...on ConvertToDraftEvent{createdAt}}} \
 allCommits:commits(last:100){totalCount nodes{commit{oid committedDate}}} \
@@ -614,6 +634,8 @@ fn parse_pr(node: &Value, dropped: &mut Dropped) -> Option<PrRead> {
         state: node["state"].as_str().unwrap_or("").to_string(),
         draft: node["isDraft"].as_bool().unwrap_or(false),
         merged: node["merged"].as_bool().unwrap_or(false),
+        fields_missing: node["isDraft"].as_bool().is_none() || node["merged"].as_bool().is_none(),
+        author_association: comment_authority::graphql_association(node),
         created_at: node["createdAt"].as_str().unwrap_or("").to_string(),
         merged_at: node["mergedAt"].as_str().map(str::to_string),
         head: node["headRefOid"].as_str().unwrap_or("").to_string(),
@@ -877,6 +899,7 @@ fn blank_card(n: u64, state: &str, reason: &str) -> Value {
         "pr_wait": [],
         "prs_complete": false,
         "prs": [],
+        "ignored_prs": [],
     })
 }
 
@@ -891,6 +914,15 @@ pub fn card_json(card: &CardRead, owner: &str, repo: &str, repo_id: u64, now: i6
         .collect();
     mine.sort_by_key(|p| p.number);
     mine.dedup_by_key(|p| p.number);
+    // PRs that name the card but a non-member opened: shown by number, never timed.
+    let mut ignored: Vec<(u64, &str)> = card
+        .prs
+        .iter()
+        .filter(|p| names_card(card.number, p) && !claims_pr(card.number, p))
+        .map(|p| (p.number, p.author_association.as_str()))
+        .collect();
+    ignored.sort_unstable();
+    ignored.dedup();
     json!({
         "card": card.number,
         "state": card.state.to_ascii_lowercase(),
@@ -903,6 +935,10 @@ pub fn card_json(card: &CardRead, owner: &str, repo: &str, repo_id: u64, now: i6
         "pr_wait": wait,
         "prs_complete": card.prs_complete,
         "prs": mine.iter().map(|p| pr_json(p, now)).collect::<Vec<_>>(),
+        "ignored_prs": ignored
+            .iter()
+            .map(|(n, a)| json!({"number": n, "author_association": a}))
+            .collect::<Vec<_>>(),
     })
 }
 
@@ -1048,6 +1084,7 @@ mod tests {
             created_at: "2026-11-16T08:00:00Z".into(),
             head: head('b'),
             branch: "issue/3067-x".into(),
+            author_association: "MEMBER".into(),
             comments_complete: true,
             events_complete: true,
             commits_complete: true,
@@ -1443,6 +1480,66 @@ mod tests {
         assert!(!claims_pr(306, &p), "issue/306- is not issue/3067-");
         p.branch = "issue/30670-x".into();
         assert!(!claims_pr(3067, &p));
+    }
+
+    #[test]
+    fn a_pr_a_non_member_opened_is_not_the_cards_pr() {
+        let mut p = pr();
+        assert!(claims_pr(3067, &p));
+        for assoc in ["NONE", "CONTRIBUTOR", "FIRST_TIMER", "member", ""] {
+            p.author_association = assoc.into();
+            assert!(names_card(3067, &p), "{assoc}: it still names the card");
+            assert!(
+                !claims_pr(3067, &p),
+                "{assoc}: a non-member's PR is not timed"
+            );
+        }
+        for assoc in ["OWNER", "MEMBER", "COLLABORATOR"] {
+            p.author_association = assoc.into();
+            assert!(claims_pr(3067, &p), "{assoc}");
+        }
+        let card = CardRead {
+            number: 3067,
+            prs: vec![p.clone(), {
+                let mut q = pr();
+                q.number = 8;
+                q.author_association = "NONE".into();
+                q
+            }],
+            ..CardRead::default()
+        };
+        let v = card_json(&card, "o", "r", 1, now());
+        assert_eq!(v["prs"].as_array().unwrap().len(), 1);
+        assert_eq!(v["prs"][0]["number"], 7);
+        assert_eq!(
+            v["ignored_prs"],
+            json!([{"number": 8, "author_association": "NONE"}])
+        );
+    }
+
+    #[test]
+    fn a_cut_ready_list_is_unknown_not_the_earliest_read() {
+        let mut p = pr();
+        p.ready_events = vec!["2026-11-16T09:00:00Z".into()];
+        assert_eq!(ready_stage(&p, now()).state, OBSERVED);
+        p.events_complete = false;
+        assert_eq!(ready_stage(&p, now()).state, UNKNOWN);
+    }
+
+    #[test]
+    fn a_pr_without_its_draft_or_merged_field_is_unknown_not_unmerged() {
+        let mut dropped = Dropped::default();
+        let node = json!({"number": 9, "state": "OPEN", "createdAt": "2026-11-16T08:00:00Z",
+                          "headRefName": "issue/3067-x", "authorAssociation": "MEMBER"});
+        let p = parse_pr(&node, &mut dropped).unwrap();
+        assert!(p.fields_missing);
+        assert_eq!(merged_stage(&p, now()).state, UNKNOWN);
+        assert_eq!(ready_stage(&p, now()).state, UNKNOWN);
+        let whole = json!({"number": 9, "state": "OPEN", "isDraft": true, "merged": false,
+                           "createdAt": "2026-11-16T08:00:00Z", "authorAssociation": "MEMBER"});
+        let q = parse_pr(&whole, &mut dropped).unwrap();
+        assert!(!q.fields_missing);
+        assert_eq!(merged_stage(&q, now()).state, ABSENT);
     }
 
     #[test]

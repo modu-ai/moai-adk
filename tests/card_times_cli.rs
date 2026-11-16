@@ -66,6 +66,7 @@ fn pr(number: u64, branch: &str, merged_at: Option<&str>, comments: Vec<Value>) 
         "headRefOid": h('b'),
         "headRefName": branch,
         "body": "",
+        "authorAssociation": "MEMBER",
         "comments": conn(comments, total),
         "timelineItems": conn(vec![], 0),
         "allCommits": conn(vec![json!({"commit": {"oid": h('b'), "committedDate": "2026-11-10T07:50:00Z"}})], 1),
@@ -513,6 +514,22 @@ fn only_graphql_queries_are_sent() {
         assert!(query.trim_start().starts_with("query"), "{query}");
         assert!(!query.to_lowercase().contains("mutation"), "{query}");
     }
+}
+
+#[test]
+fn the_query_asks_for_the_pr_author_and_a_stranger_pr_is_listed_not_timed() {
+    let fake = Fake::new(world());
+    let out = card_times::run(&request(&[101, 102]), &fake, &At(now())).unwrap();
+    for req in fake.sent.borrow().iter() {
+        let query = req.body.as_ref().unwrap()["query"].as_str().unwrap();
+        assert!(
+            query.contains("headRefName body authorAssociation"),
+            "{query}"
+        );
+    }
+    let c = card(&out, 101);
+    assert_eq!(c["ignored_prs"], json!([]), "a member's PRs are all timed");
+    assert!(!c["prs"].as_array().unwrap().is_empty());
 }
 
 #[test]
