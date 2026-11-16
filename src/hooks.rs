@@ -899,11 +899,20 @@ pub(crate) fn env_home() -> Option<std::path::PathBuf> {
         .filter(|h| !h.as_os_str().is_empty())
 }
 
-/// The HOME-side `receipts` folder of the project at `root`: `Some` only when `home` is given,
-/// its state root is a real folder, and the project's key is its fixed id (a key made from the
-/// folder path is never written under, see [`crate::project_home::ProjectHome::write_area`]).
-/// Nothing is created.
+/// The HOME-side `receipts` folder of the project at `root` (see [`home_area_dir`]).
 fn home_receipts_dir(home: Option<&Path>, root: &Path) -> Option<std::path::PathBuf> {
+    home_area_dir(home, root, "receipts")
+}
+
+/// The HOME-side folder `area` (one of [`crate::project_home::AREAS`]) of the project at
+/// `root`: `Some` only when `home` is given, its state root is a real folder, and the project's
+/// key is its fixed id (a key made from the folder path is never written under, see
+/// [`crate::project_home::ProjectHome::write_area`]). Nothing is created.
+pub(crate) fn home_area_dir(
+    home: Option<&Path>,
+    root: &Path,
+    area: &str,
+) -> Option<std::path::PathBuf> {
     let home = home?;
     let home_state = crate::home_root::path(home);
     if !fs::symlink_metadata(&home_state).is_ok_and(|m| m.is_dir()) {
@@ -911,7 +920,7 @@ fn home_receipts_dir(home: Option<&Path>, root: &Path) -> Option<std::path::Path
     }
     crate::project_home::resolve(home, root)
         .ok()?
-        .write_area("receipts")
+        .write_area(area)
         .ok()
         .flatten()
 }
@@ -1124,7 +1133,7 @@ pub(crate) fn append_receipt_line_in(
 /// Creates `dir` and the folders between it and the existing `base` (the HOME state root),
 /// each private (0700). Every folder must end up a real folder: a link or a file in the way is
 /// refused. `dir` must lie under `base`.
-fn make_private_dirs(dir: &Path, base: &Path) -> std::result::Result<(), &'static str> {
+pub(crate) fn make_private_dirs(dir: &Path, base: &Path) -> std::result::Result<(), &'static str> {
     let Ok(rel) = dir.strip_prefix(base) else {
         return Err("receipts directory unavailable");
     };

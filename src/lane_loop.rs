@@ -397,14 +397,103 @@ fn save_state(root: &Path, path: &Path, state: &StopState) -> Result<(), ()> {
     std::fs::write(path, bytes).map_err(|_| ())
 }
 
+/// The state file of `lane` in the project's folder in the HOME (#3009 S4c):
+/// `<project folder>/state/lane-stop-hook/<lane>.json`. `Some` only when the project has a
+/// fixed id, `home` is given and its state root is a real folder
+/// ([`crate::hooks::home_area_dir`]) and the lane is a plain name; every other case keeps the
+/// project's own file ([`stop_state_path`]).
+fn home_stop_state_path(
+    home: Option<&Path>,
+    root: &Path,
+    lane: &str,
+) -> Option<std::path::PathBuf> {
+    let plain = !lane.is_empty()
+        && lane.len() <= 64
+        && lane
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'));
+    if !plain {
+        return None;
+    }
+    crate::hooks::home_area_dir(home, root, "state")
+        .map(|dir| dir.join("lane-stop-hook").join(format!("{lane}.json")))
+}
+
+/// The state both places hold, HOME first: when the HOME file exists (even as something that is
+/// not a readable state) it alone is read; only without one is the project's own earlier file
+/// read. Nothing is copied or removed.
+fn load_state_from(home_path: Option<&Path>, legacy: &Path) -> StopState {
+    if let Some(path) = home_path {
+        if std::fs::symlink_metadata(path).is_ok() {
+            return load_state(path);
+        }
+    }
+    load_state(legacy)
+}
+
+/// Writes the state in the HOME: the folders private (0700), the file private (0600), written
+/// whole to a new file and moved over the old one so a reader never sees half a state. Never
+/// through a link; a path that is not a regular file is refused.
+fn save_state_home(home: &Path, path: &Path, state: &StopState) -> Result<(), ()> {
+    let dir = path.parent().ok_or(())?;
+    crate::hooks::make_private_dirs(dir, &crate::home_root::path(home)).map_err(|_| ())?;
+    if std::fs::symlink_metadata(path).is_ok_and(|m| !m.is_file()) {
+        return Err(());
+    }
+    let bytes = serde_json::to_vec(state).map_err(|_| ())?;
+    let name = path.file_name().and_then(|n| n.to_str()).ok_or(())?;
+    let tmp = dir.join(format!(".{name}.tmp-{}", std::process::id()));
+    let mut open = std::fs::OpenOptions::new();
+    open.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        open.mode(0o600);
+    }
+    let written = open
+        .open(&tmp)
+        .and_then(|mut f| std::io::Write::write_all(&mut f, &bytes))
+        .and_then(|()| std::fs::rename(&tmp, path));
+    if written.is_err() {
+        let _ = std::fs::remove_file(&tmp);
+        return Err(());
+    }
+    Ok(())
+}
+
 /// The Codex Stop answer of `lane` in the project `root`: `{"decision":"block","reason":…}`,
 /// or empty to let the turn end. A block whose count cannot be saved (no state root, a link)
 /// is not sent: an uncounted block could not be bounded.
 pub fn stop_hook(root: &Path, lane: &str, repo: &str, reading: &Reading) -> String {
-    let path = stop_state_path(root, lane);
-    let mut state = load_state(&path);
+    stop_hook_in(
+        crate::hooks::env_home().as_deref(),
+        root,
+        lane,
+        repo,
+        reading,
+    )
+}
+
+/// [`stop_hook`] with the HOME named by the caller (#3009 S4c). A project with a fixed id keeps
+/// the count in its folder in the HOME, one file per lane for every worktree of the project;
+/// any other project keeps it under its own state root as before. The count is read from the
+/// HOME file when there is one, else from the project's earlier file.
+pub(crate) fn stop_hook_in(
+    home: Option<&Path>,
+    root: &Path,
+    lane: &str,
+    repo: &str,
+    reading: &Reading,
+) -> String {
+    let legacy = stop_state_path(root, lane);
+    let home_path = home_stop_state_path(home, root, lane);
+    let mut state = load_state_from(home_path.as_deref(), &legacy);
     let reason = stop_decision(lane, repo, reading, &mut state);
-    match (reason, save_state(root, &path, &state)) {
+    let saved = match (&home_path, home) {
+        (Some(path), Some(home)) => save_state_home(home, path, &state),
+        _ => save_state(root, &legacy, &state),
+    };
+    match (reason, saved) {
         (Some(reason), Ok(())) => json!({"decision": "block", "reason": reason}).to_string(),
         _ => String::new(),
     }
@@ -974,9 +1063,10 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path();
         // No state root: nothing can be counted, so nothing blocks.
-        assert_eq!(stop_hook(root, "a", "o/r", &issue(7)), "");
+        assert_eq!(stop_hook_in(None, root, "a", "o/r", &issue(7)), "");
         std::fs::create_dir_all(crate::state_root::path(root, "")).unwrap();
-        let out: Value = serde_json::from_str(&stop_hook(root, "a", "o/r", &issue(7))).unwrap();
+        let out: Value =
+            serde_json::from_str(&stop_hook_in(None, root, "a", "o/r", &issue(7))).unwrap();
         assert_eq!(out["decision"], json!("block"));
         let saved: StopState =
             serde_json::from_slice(&std::fs::read(stop_state_path(root, "a")).unwrap()).unwrap();
@@ -995,7 +1085,7 @@ mod tests {
         let target = outside.path().join("victim.json");
         std::fs::write(&target, b"keep").unwrap();
         symlink(&target, stop_state_path(&root, "a")).unwrap();
-        assert_eq!(stop_hook(&root, "a", "o/r", &issue(7)), "");
+        assert_eq!(stop_hook_in(None, &root, "a", "o/r", &issue(7)), "");
         assert_eq!(std::fs::read(&target).unwrap(), b"keep");
         // The `lane-stop-hook` folder is a link to a folder elsewhere: nothing is written there.
         let root = dir.path().join("p2");
@@ -1005,7 +1095,7 @@ mod tests {
             crate::state_root::path(&root, "lane-stop-hook"),
         )
         .unwrap();
-        assert_eq!(stop_hook(&root, "a", "o/r", &issue(7)), "");
+        assert_eq!(stop_hook_in(None, &root, "a", "o/r", &issue(7)), "");
         assert!(!outside.path().join("a.json").exists());
         // The state root itself is a link (#2926 audit N3): nothing is created behind it.
         let root = dir.path().join("p3");
@@ -1015,8 +1105,277 @@ mod tests {
         std::fs::create_dir(&elsewhere).unwrap();
         symlink(&elsewhere, &state_root).unwrap();
         assert_eq!(crate::state_root::path(&root, ""), state_root);
-        assert_eq!(stop_hook(&root, "a", "o/r", &issue(7)), "");
+        assert_eq!(stop_hook_in(None, &root, "a", "o/r", &issue(7)), "");
         assert!(!elsewhere.join("lane-stop-hook").exists());
+    }
+
+    /// Where the Stop hook keeps its count (#3009 S4c). A project (its `project.yaml` names `id`
+    /// when given) and a HOME (with its state root when `home_state`).
+    fn s4c_world(id: Option<&str>, home_state: bool) -> (tempfile::TempDir, tempfile::TempDir) {
+        let (home, project) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        let state = project.path().join(crate::PROJECT_STATE_DIR);
+        std::fs::create_dir_all(&state).unwrap();
+        if let Some(id) = id {
+            std::fs::write(
+                state.join("project.yaml"),
+                format!("{{\"project_id\":\"{id}\"}}"),
+            )
+            .unwrap();
+        }
+        if home_state {
+            std::fs::create_dir(home.path().join(crate::HOME_STATE_DIR)).unwrap();
+        }
+        (home, project)
+    }
+
+    fn s4c_home_file(home: &Path, id: &str, lane: &str) -> std::path::PathBuf {
+        home.join(crate::HOME_STATE_DIR)
+            .join("projects")
+            .join(id)
+            .join("state")
+            .join("lane-stop-hook")
+            .join(format!("{lane}.json"))
+    }
+
+    fn s4c_saved(path: &Path) -> StopState {
+        serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap()
+    }
+
+    /// Every path under `dir`, so a test can show nothing was created.
+    fn s4c_listing(dir: &Path) -> Vec<String> {
+        let mut out = Vec::new();
+        let mut stack = vec![dir.to_path_buf()];
+        while let Some(d) = stack.pop() {
+            for e in std::fs::read_dir(&d).unwrap().flatten() {
+                out.push(e.path().strip_prefix(dir).unwrap().display().to_string());
+                if e.path().is_dir() {
+                    stack.push(e.path());
+                }
+            }
+        }
+        out.sort();
+        out
+    }
+
+    #[test]
+    fn a_project_with_an_id_counts_in_the_home_and_leaves_its_own_folder_alone() {
+        let (home, project) = s4c_world(Some("demo"), true);
+        let before = s4c_listing(project.path());
+        let out = stop_hook_in(Some(home.path()), project.path(), "a", "o/r", &issue(7));
+        assert!(out.contains("\"block\""), "{out}");
+        assert_eq!(
+            s4c_saved(&s4c_home_file(home.path(), "demo", "a")).blocks,
+            1
+        );
+        assert_eq!(
+            s4c_listing(project.path()),
+            before,
+            "the project is untouched"
+        );
+        assert!(!stop_state_path(project.path(), "a").exists());
+        // The count goes on in the same file.
+        stop_hook_in(Some(home.path()), project.path(), "a", "o/r", &issue(7));
+        assert_eq!(
+            s4c_saved(&s4c_home_file(home.path(), "demo", "a")).blocks,
+            2
+        );
+    }
+
+    #[test]
+    fn every_other_case_counts_in_the_project_as_before_and_leaves_the_home_alone() {
+        // No id (a key made from the path is never written under), no HOME state root, no HOME.
+        for (id, home_state, with_home) in [
+            (None, true, true),
+            (Some("demo"), false, true),
+            (Some("demo"), true, false),
+        ] {
+            let (home, project) = s4c_world(id, home_state);
+            let home_before = s4c_listing(home.path());
+            let given = with_home.then_some(home.path());
+            let out = stop_hook_in(given, project.path(), "a", "o/r", &issue(7));
+            assert!(
+                out.contains("\"block\""),
+                "{id:?} {home_state} {with_home}: {out}"
+            );
+            assert_eq!(
+                s4c_saved(&stop_state_path(project.path(), "a")).blocks,
+                1,
+                "{id:?} {home_state} {with_home}"
+            );
+            assert_eq!(s4c_listing(home.path()), home_before, "{id:?} {home_state}");
+        }
+    }
+
+    #[test]
+    fn the_earlier_project_file_is_read_until_the_home_has_one_and_is_never_changed() {
+        let (home, project) = s4c_world(Some("demo"), true);
+        // A count the hook kept in the project before the HOME place existed.
+        let legacy = stop_state_path(project.path(), "a");
+        std::fs::create_dir_all(legacy.parent().unwrap()).unwrap();
+        let earlier = br#"{"key":"issue #7","blocks":5}"#;
+        std::fs::write(&legacy, earlier).unwrap();
+        let key = {
+            let mut probe = StopState::default();
+            stop_decision("a", "o/r", &issue(7), &mut probe);
+            probe.key
+        };
+        std::fs::write(&legacy, format!("{{\"key\":{key:?},\"blocks\":5}}")).unwrap();
+        let legacy_bytes = std::fs::read(&legacy).unwrap();
+
+        stop_hook_in(Some(home.path()), project.path(), "a", "o/r", &issue(7));
+        let saved = s4c_saved(&s4c_home_file(home.path(), "demo", "a"));
+        assert_eq!(saved.blocks, 6, "the count went on from the project's file");
+        assert_eq!(
+            std::fs::read(&legacy).unwrap(),
+            legacy_bytes,
+            "not copied away, not edited"
+        );
+        // Now the HOME file wins: change the project file and the count does not follow it.
+        std::fs::write(&legacy, format!("{{\"key\":{key:?},\"blocks\":40}}")).unwrap();
+        stop_hook_in(Some(home.path()), project.path(), "a", "o/r", &issue(7));
+        assert_eq!(
+            s4c_saved(&s4c_home_file(home.path(), "demo", "a")).blocks,
+            7
+        );
+    }
+
+    #[test]
+    fn the_count_is_bounded_in_the_home_at_the_same_cap() {
+        let (home, project) = s4c_world(Some("demo"), true);
+        let mut blocked = 0;
+        for _ in 0..(STOP_BLOCK_CAP + 3) {
+            if !stop_hook_in(Some(home.path()), project.path(), "a", "o/r", &issue(7)).is_empty() {
+                blocked += 1;
+            }
+        }
+        assert_eq!(blocked, STOP_BLOCK_CAP, "the turn ends after the cap");
+        assert_eq!(
+            s4c_saved(&s4c_home_file(home.path(), "demo", "a")).blocks,
+            STOP_BLOCK_CAP
+        );
+    }
+
+    #[test]
+    fn worktrees_with_one_id_and_one_lane_share_one_count_and_lanes_do_not_mix() {
+        let (home, first) = s4c_world(Some("demo"), true);
+        let second = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(second.path().join(crate::PROJECT_STATE_DIR)).unwrap();
+        std::fs::copy(
+            first
+                .path()
+                .join(crate::PROJECT_STATE_DIR)
+                .join("project.yaml"),
+            second
+                .path()
+                .join(crate::PROJECT_STATE_DIR)
+                .join("project.yaml"),
+        )
+        .unwrap();
+        stop_hook_in(Some(home.path()), first.path(), "a", "o/r", &issue(7));
+        stop_hook_in(Some(home.path()), second.path(), "a", "o/r", &issue(7));
+        stop_hook_in(Some(home.path()), second.path(), "b", "o/r", &issue(7));
+        assert_eq!(
+            s4c_saved(&s4c_home_file(home.path(), "demo", "a")).blocks,
+            2
+        );
+        assert_eq!(
+            s4c_saved(&s4c_home_file(home.path(), "demo", "b")).blocks,
+            1
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_home_state_is_private_and_a_rename_leaves_no_temporary_file() {
+        use std::os::unix::fs::PermissionsExt;
+        let (home, project) = s4c_world(Some("demo"), true);
+        stop_hook_in(Some(home.path()), project.path(), "a", "o/r", &issue(7));
+        let file = s4c_home_file(home.path(), "demo", "a");
+        let mode = |p: &Path| std::fs::metadata(p).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode(&file), 0o600);
+        assert_eq!(mode(file.parent().unwrap()), 0o700);
+        assert_eq!(mode(file.parent().unwrap().parent().unwrap()), 0o700);
+        let names: Vec<_> = std::fs::read_dir(file.parent().unwrap())
+            .unwrap()
+            .flatten()
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names, vec!["a.json".to_string()]);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_home_state_is_never_written_through_a_link_or_over_a_folder() {
+        use std::os::unix::fs::symlink;
+        let outside = tempfile::tempdir().unwrap();
+        let victim = outside.path().join("victim.json");
+        std::fs::write(&victim, b"keep").unwrap();
+
+        // The state file is a link: no block, the target is untouched.
+        let (home, project) = s4c_world(Some("demo"), true);
+        let file = s4c_home_file(home.path(), "demo", "a");
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        symlink(&victim, &file).unwrap();
+        assert_eq!(
+            stop_hook_in(Some(home.path()), project.path(), "a", "o/r", &issue(7)),
+            ""
+        );
+        assert_eq!(std::fs::read(&victim).unwrap(), b"keep");
+
+        // The `lane-stop-hook` folder is a link to a folder elsewhere.
+        let (home, project) = s4c_world(Some("demo"), true);
+        let file = s4c_home_file(home.path(), "demo", "a");
+        std::fs::create_dir_all(file.parent().unwrap().parent().unwrap()).unwrap();
+        symlink(outside.path(), file.parent().unwrap()).unwrap();
+        assert_eq!(
+            stop_hook_in(Some(home.path()), project.path(), "a", "o/r", &issue(7)),
+            ""
+        );
+        assert!(!outside.path().join("a.json").exists());
+
+        // The state file is a folder.
+        let (home, project) = s4c_world(Some("demo"), true);
+        let file = s4c_home_file(home.path(), "demo", "a");
+        std::fs::create_dir_all(&file).unwrap();
+        assert_eq!(
+            stop_hook_in(Some(home.path()), project.path(), "a", "o/r", &issue(7)),
+            ""
+        );
+        assert!(file.is_dir());
+    }
+
+    #[test]
+    fn an_oversized_or_unreadable_home_file_reads_as_no_count_and_does_not_fall_back() {
+        let (home, project) = s4c_world(Some("demo"), true);
+        let legacy = stop_state_path(project.path(), "a");
+        std::fs::create_dir_all(legacy.parent().unwrap()).unwrap();
+        std::fs::write(&legacy, br#"{"key":"x","blocks":47}"#).unwrap();
+        let file = s4c_home_file(home.path(), "demo", "a");
+        std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+        // 4097 bytes: one over the bound.
+        std::fs::write(&file, vec![b' '; 4097]).unwrap();
+        stop_hook_in(Some(home.path()), project.path(), "a", "o/r", &issue(7));
+        assert_eq!(
+            s4c_saved(&file).blocks,
+            1,
+            "started again, not from the project's 47"
+        );
+        // 4096 bytes of valid JSON padded with spaces is still read.
+        let mut body = br#"{"key":"k","blocks":9}"#.to_vec();
+        body.resize(4096, b' ');
+        std::fs::write(&file, &body).unwrap();
+        let probe = load_state(&file);
+        assert_eq!(probe.blocks, 9);
+    }
+
+    #[test]
+    fn a_lane_name_that_is_not_plain_never_names_a_home_file() {
+        let (home, project) = s4c_world(Some("demo"), true);
+        for lane in ["", "a/b", "..", "a b", "a\\b", &"x".repeat(65)] {
+            let path = home_stop_state_path(Some(home.path()), project.path(), lane);
+            assert_eq!(path.is_some(), lane == "..", "{lane:?}");
+        }
+        assert!(home_stop_state_path(Some(home.path()), project.path(), &"x".repeat(64)).is_some());
     }
 
     #[test]
