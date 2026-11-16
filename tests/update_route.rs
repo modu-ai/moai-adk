@@ -288,7 +288,12 @@ fn the_go_generation_move_runs_preview_cancel_apply_rerun_and_revert() {
     assert_eq!(plan["go_backup"], json!(".moai-backup"), "{plan}");
     assert_eq!(plan["backup_to"], json!(".moai/backups/<UTC>"), "{plan}");
     let embedded = fx.call(&["project-update-plan", fx.p()]);
-    let preview = &embedded["phases"][0]["steps"][0]["preview"];
+    // #2936 L2a: `go-settings` is the backup phase's first step; the go-state step is by name.
+    let go_state = embedded["phases"][0]["steps"]
+        .as_array()
+        .and_then(|s| s.iter().find(|s| s["step"] == "go-state"))
+        .expect("a go-state step");
+    let preview = &go_state["preview"];
     for key in ["layout", "go_backup", "backup_to"] {
         assert_eq!(preview[key], plan[key], "{key}: {preview}");
     }

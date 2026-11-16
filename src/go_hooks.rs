@@ -25,7 +25,7 @@ const SETTINGS: &str = ".claude/settings.json";
 
 /// What may stand before [`GO_HOOK_DIR`] in a Go-generation handler: nothing (the project is
 /// the hook's working folder) or the project folder variable, as the Go generation wrote it.
-const PROJECT_PREFIXES: &[&str] = &[
+pub(crate) const PROJECT_PREFIXES: &[&str] = &[
     "${CLAUDE_PROJECT_DIR}/",
     "$CLAUDE_PROJECT_DIR/",
     "\"$CLAUDE_PROJECT_DIR\"/",

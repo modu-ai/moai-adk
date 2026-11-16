@@ -242,6 +242,7 @@ pub const TIER2_PREFIXES: &[&str] = &[
     "src/migrat",
     "src/go_state",
     "src/go_settings",
+    "src/ops/go_settings",
     "src/state_root",
     "src/secret",
     "src/vault",
