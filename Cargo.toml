@@ -51,6 +51,12 @@ cap-std = "=4.0.3"
 cap-fs-ext = "=4.0.3"
 chacha20poly1305 = "=0.10.1"
 tempfile = "=3.27.0"
+# The local project ledger (Issue #3068 P1, schema contract comment 6896940106): one SQLite file
+# per project. `bundled` compiles the SQLite the crate ships, so `unixepoch()` (3.38+), `STRICT`
+# tables (3.37+) and the JSON functions exist on every machine and no system library is needed;
+# it needs a C compiler at build time (the `cc` build dependency). No default features: no
+# statement cache and no extra type conversions. MIT.
+rusqlite = { version = "=0.43.0", default-features = false, features = ["bundled"] }
 
 [target.'cfg(unix)'.dependencies]
 # Already locked transitively; O_NONBLOCK prevents FIFO opens from waiting.

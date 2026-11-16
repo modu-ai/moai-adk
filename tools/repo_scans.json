@@ -108,6 +108,27 @@
       "rejects": "a copy of the permission-reference rule outside src/contract.rs (#2642 + #2632)"
     },
     {
+      "id": "ledger-file-name-spelled-once",
+      "tests": [
+        "src/ledger/location.rs::tests::the_ledger_file_name_is_spelled_once"
+      ],
+      "checks": [
+        "cargo test --offline --locked --lib the_ledger_file_name_is_spelled_once"
+      ],
+      "rules": [
+        "src/ledger/location.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "src/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "the ledger file name spelled in src/ outside src/ledger/location.rs instead of ledger::location::ledger_path (#3068 P1)"
+    },
+    {
       "id": "git-spawns-scrubbed",
       "tests": [
         "tests/git_env_scrub.rs::every_git_subprocess_in_src_is_scrubbed"

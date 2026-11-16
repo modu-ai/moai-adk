@@ -39,6 +39,9 @@ pub const GROUPS: &[Group] = &[
             ("language-set", false),
             ("index-build", true),
             ("check-tree", false),
+            ("ledger-status", false),
+            ("ledger-register-plan", false),
+            ("ledger-register-apply", false),
             ("agents-plan", false),
             ("agents-apply", false),
             ("generation-plan", false),
@@ -305,6 +308,9 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("agents-merge-revert", &["agents-merge-revert --receipt <id> --permission-reference <ref> ."]),
     ("agents-project-plan", &["agents-project-plan . skills/moai agents", "agents-project-apply --plan-digest <digest> --permission-reference <ref> . skills/moai agents"]),
     ("agents-project-apply", &["agents-project-apply --plan-digest <digest> --permission-reference <ref> . skills/moai agents"]),
+    ("ledger-status", &["ledger-status ."]),
+    ("ledger-register-plan", &["ledger-register-plan .", "ledger-register-apply --plan-digest <digest> --permission-reference <ref> ."]),
+    ("ledger-register-apply", &["ledger-register-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("update", &["update"]),
     ("go-state-plan", &["go-state-plan .", "go-state-apply --plan-digest <digest> --permission-reference <ref> ."]),
     ("go-state-apply", &["go-state-apply --plan-digest <digest> --permission-reference <ref> ."]),
@@ -1410,6 +1416,24 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          되돌려요. 그 밖에는 아무것도 지우지 않아요.",
     ),
     (
+        "ledger-status",
+        "프로젝트의 로컬 SQLite 원장 상태를 읽기만 하고 보여 줘요(#3068): 있는지, 스키마 버전, WAL \
+         모드가 아닌지, 카드가 상태별로 몇 장인지. 원장이 없는 것은 정상 답(`exists: false`)이고 \
+         폴더도 파일도 만들지 않아요. 쓸 수 없는 파일은 `problem` 코드로 알리고 고치지 않아요.",
+    ),
+    (
+        "ledger-register-plan",
+        "프로젝트의 로컬 원장을 `<HOME>/.moai/projects/<project_id>/` 에 만들면 무엇이 생기는지 \
+         미리 봐요(#3068). 프로젝트 id 는 프로파일의 `project_id` 예요. 이미 있는 파일은 읽기만 \
+         하고 바꾸지 않아요. 아무것도 쓰지 않고, 답에 `plan_digest` 가 있어요.",
+    ),
+    (
+        "ledger-register-apply",
+        "미리 본 프로젝트 원장을 만들어요(#3068) — 같은 입력으로 다시 계산한 계획의 `plan_digest` 가 \
+         같을 때만, 원장 폴더와 파일을 만드는 유일한 명령이에요. Go 세대의 `~/.moai` 에는 만들지 \
+         않아요. 이미 있는 유효한 원장은 그대로 두고, 이 프로젝트 것이 아닌 파일은 대체하지 않아요.",
+    ),
+    (
         "worktree-move-plan",
         "이 클론의 linked worktree 를 `<root>/<project>-<name>` 으로 옮기는 일을 미리 봐요(#2723, \
          #2835) — `worktree-plan` 이 새 worktree 를 만드는 자리예요. worktree 마다 `location` 과 \
@@ -1679,6 +1703,21 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "home-state-plan",
         "home",
         "읽을 HOME(기본 `$HOME`). 시험은 임시 폴더를 넘김",
+    ),
+    (
+        "ledger-status",
+        "home",
+        "읽을 HOME(기본 `$HOME`). 시험은 임시 폴더를 넘김",
+    ),
+    (
+        "ledger-register-plan",
+        "home",
+        "읽을 HOME(기본 `$HOME`). 시험은 임시 폴더를 넘김",
+    ),
+    (
+        "ledger-register-apply",
+        "home",
+        "미리 보기가 읽은 것과 같은 HOME(기본 `$HOME`)",
     ),
     (
         "",

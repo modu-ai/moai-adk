@@ -92,6 +92,7 @@ pub mod launcher_terminal;
 pub mod layout;
 pub mod leader;
 pub mod leader_round;
+pub mod ledger;
 pub mod local_build;
 pub mod message;
 pub mod migrate;
