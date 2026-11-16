@@ -16,7 +16,7 @@ pub struct Args {
     /// The key every project uses (`~/.moai-cli/vault/_shared/`).
     #[arg(long)]
     shared: bool,
-    /// Type the value at a hidden prompt (echo off); only when stdin is a terminal.
+    /// Type the value at a hidden prompt (echo off); only on a terminal (stdin and stderr).
     #[arg(long)]
     prompt: bool,
 }
@@ -45,8 +45,8 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
 }
 
 /// `--prompt`: the value is typed at the terminal with echo off. Everything that can refuse
-/// without the value (the system, the terminal, the provider name, the scope) is checked
-/// before anything is asked; stdin that is not a terminal is never read.
+/// without the value (the system, the terminal on stdin and on stderr, the provider name, the
+/// scope) is checked before anything is asked; stdin that is not a terminal is never read.
 fn prompt(args: &Args) -> Result<serde_json::Value, String> {
     if !cfg!(unix) {
         return Err(moai_cli::key_prompt::UNSUPPORTED.into());
@@ -56,6 +56,16 @@ fn prompt(args: &Args) -> Result<serde_json::Value, String> {
             "--prompt reads the value from a terminal with echo off, and stdin is not a \
              terminal; nothing was read or stored (run it in your own terminal window, or \
              drop --prompt and pipe the value in)"
+                .into(),
+        );
+    }
+    // The question goes to stderr: asked where nobody can see it, a person would type into
+    // a silent terminal.
+    if !std::io::stderr().is_terminal() {
+        return Err(
+            "--prompt shows its question on stderr, and stderr is not a terminal; nothing was \
+             read or stored (run it in your own terminal window, or drop --prompt and pipe the \
+             value in)"
                 .into(),
         );
     }
