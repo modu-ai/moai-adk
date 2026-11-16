@@ -82,12 +82,12 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "69291347bb1b70a22adc9f8d887c6dfddd664f6ef75187e67767918515047243",
+      "sha256": "333e6b0624850abdb01e28466a1a25526e59ac01ae0f29fd57d7f0a04e770e92",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template. The 2026.11.0-rc.1 UPDATE implementation (04-B #1999) replaced the not-implemented status note with the implemented scope; the backup/rollback step remains 04-C. Step 6 (#2483) adds the user-confirmed backup-then-replace of an unmanaged moai skill folder (decision row 22)."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template. The 2026.11.0-rc.1 UPDATE implementation (04-B #1999) replaced the not-implemented status note with the implemented scope; the backup/rollback step remains 04-C. Step 6 (#2483) adds the user-confirmed backup-then-replace of an unmanaged moai skill folder (decision row 22). Step 1 (#2936 S-AGENTS-STAY, decision 6901387505) says a staying-layout backup area whose own .gitignore git does not honour reads backup_ignore and stops the go-state step without a command, and that Go settings a revert put back are proposed for the move again."
       }
     },
     "workflows/plan.md": {
@@ -154,12 +154,12 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "e24ec2ca5925727065fd2c4b8a7ad3b8ab55c98af82e547033059f933a4937f6",
+      "sha256": "a8d0603f90490ef130ce590cd601a1d2a7bf0f81bfab591cf015eaee7f6c88b7",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
         "adoption": "new",
-        "reason": "Written for rc.2 #2496 from user decisions 16 = B and 17 = all three (#1975 comment 6815357071) and the gap analysis #2286 6811414257; no design-22 template exists for PROJECT. Go `/moai project` was read as reference only; its product/structure/tech documents are not ported (decision 16 = B). Step 2 says the root instruction files are moved, not copied, into the backup's root-files/ and that a not-copied restore says why (#2936 S1b repair, audit 6879582411 B2)."
+        "reason": "Written for rc.2 #2496 from user decisions 16 = B and 17 = all three (#1975 comment 6815357071) and the gap analysis #2286 6811414257; no design-22 template exists for PROJECT. Go `/moai project` was read as reference only; its product/structure/tech documents are not ported (decision 16 = B). Step 2 says the root instruction files are moved, not copied, into the backup's root-files/ and that a not-copied restore says why (#2936 S1b repair, audit 6879582411 B2). Step 2 adds the staying-layout backup_ignore stop and the re-proposal of reverted Go settings (#2936 S-AGENTS-STAY, decision 6901387505)."
       }
     },
     "references/chains/index.md": {
