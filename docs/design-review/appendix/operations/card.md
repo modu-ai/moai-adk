@@ -20,7 +20,7 @@ operation `card` · 코드 `src/ops/card.rs`, `src/card/command.rs` · Issue #30
 
 - **보유자는 입력이 아니라 이 세션의 id** 다: `take`·`release`·`handoff` 는 호스트가 세션에 설정한 `CLAUDE_CODE_SESSION_ID`(없으면 `CODEX_THREAD_ID`)를 `session_current::resolve` 로 읽어 쓴다. 없거나 모양이 틀리면 `card <동작> refused: this session has no id …`(`invalid_input`)이고 아무것도 안 바뀐다. `--holder` 옵션은 없다(#3115 판정 N1: 보유자 이름만 알면 남의 카드를 풀 수 없게). 환경변수를 위조하는 호출자까지 막지는 않는다.
 - `take` 는 `--scope` 가 없을 때 카드의 쓰기 범위를 쓰기 트랜잭션 **밖에서** 읽는다. 카드 범위를 바꾸는 명령(K3 `edit`)이 아직 없어 지금은 경쟁이 없다. `edit` 를 더하는 조각은 이 읽기를 트랜잭션 안으로 옮기거나 범위가 바뀌면 예약을 거절해야 한다(#3121 판정 N).
-- `ready` 는 살아 있는 예약(`held`·`expired_candidate`·`held_for_review`)이 있는 카드를 거절한다(`hold` 를 만드는 명령이 생기기 전에 두 번째 보유자 자리를 막는 장치, #3121 판정 D4).
-- 잘못된 종류·우선순위·상태·카드 이름을 오류 문장이 되풀이할 때는 40자까지만, 제어 문자는 `?` 로 바꾼다(`input::echo`, 판정 D3).
+- `ready` 는 살아 있는 예약(`held`·`expired_candidate`·`held_for_review`)이 있는 카드를 거절한다(`hold` 를 만드는 명령이 생기기 전에 두 번째 보유자 자리를 막는 장치, #3121 판정 D4). 상태 확인이 먼저라서 `active` 카드는 예약이 아니라 상태("is `active`" 문구)로 거절된다(#3122 판정 메모).
+- 잘못된 종류·우선순위·상태·카드 이름을 오류 문장이 되풀이할 때는 40자까지만, 제어 문자(C0·DEL·C1)·줄/문단 구분(U+2028·2029)·방향 표식과 덮어쓰기·격리(U+200E·200F·061C·202A–202E·2066–2069)·폭 없는 글자(U+200B·2060·FEFF)는 `?` 로 바꾼다. 글자를 잇는 U+200C·200D 는 그대로 둔다(`input::echo`, 판정 D3 와 #3122 판정 메모). 본문은 데이터라 JSON 에 바이트 그대로 나간다(JSON 은 U+0020 아래만 이스케이프).
 - 예약 규칙(세대·lease·쓰기 범위·울타리)은 #3068 P3(`src/ledger/reservation.rs`, `ledger_reservation.md`)의 것이다. `ready`·`take`·`release`·`handoff` 는 `C-n` 으로만 부르고(`#번호` 는 거절), P3 의 거절 문장이 그대로 나가 계약 분류가 `not_found`(`card not found`)·`conflict`(`conflict in`)·`invalid_input`(`invalid reservation input`)을 정한다.
 - 아직 없는 동작: `edit`·`note`·`renew`·`review`·`done`·`export`·`restore`·`backup`.
