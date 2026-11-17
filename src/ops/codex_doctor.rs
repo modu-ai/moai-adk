@@ -13,7 +13,8 @@ pub struct Args {
     /// Working directory inside the project (default: the project root).
     #[arg(long)]
     cwd: Option<PathBuf>,
-    /// Codex home holding the global AGENTS files (default: $CODEX_HOME, else ~/.codex).
+    /// Codex home holding the global AGENTS files (default: $CODEX_HOME for your own home, an
+    /// absolute path; else ~/.codex).
     #[arg(long)]
     codex_home: Option<PathBuf>,
     /// Home holding `.agents/skills` (default: $HOME).
@@ -34,10 +35,12 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         .home
         .or_else(|| std::env::var_os("HOME").map(PathBuf::from))
         .ok_or("home directory missing; pass --home")?;
-    let codex_home = args
-        .codex_home
-        .or_else(|| std::env::var_os("CODEX_HOME").map(PathBuf::from))
-        .unwrap_or_else(|| home.join(".codex"));
+    // `--codex-home` wins; else the one host-folder rule (card C-79): `CODEX_HOME` for the
+    // account's home (absolute only), else `<home>/.codex`.
+    let codex_home = match args.codex_home {
+        Some(dir) => dir,
+        None => moai_cli::host_home::resolve(moai_cli::host_home::Host::Codex, &home)?,
+    };
     let cwd = args.cwd.unwrap_or_else(|| args.project.clone());
     moai_cli::hosts::codex::doctor(
         &args.project,

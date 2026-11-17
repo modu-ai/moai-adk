@@ -72,6 +72,7 @@ pub mod hook_engine;
 pub mod hook_guards;
 pub mod hook_legacy;
 pub mod hooks;
+pub mod host_home;
 pub mod hosts;
 pub mod hygiene;
 pub mod identity;

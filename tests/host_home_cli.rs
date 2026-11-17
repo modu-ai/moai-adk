@@ -96,14 +96,18 @@ fn routing_writes_and_reverts_in_the_relocated_folders() {
     let w = World::new();
     let conf = w.outside("claude-conf");
     let cx = w.outside("codex-home");
-    let vars = [
-        ("CLAUDE_CONFIG_DIR", s(&conf)),
-        ("CODEX_HOME", s(&cx)),
-    ];
+    let vars = [("CLAUDE_CONFIG_DIR", s(&conf)), ("CODEX_HOME", s(&cx))];
     let vars: Vec<(&str, &str)> = vars.iter().map(|(k, v)| (*k, v.as_str())).collect();
     let plan = ok(&w.run(&vars, true, &["home-routing-plan", w.h(), w.pkg()]));
-    assert_eq!(host(&plan, "claude")["file"], json!(s(&conf.join("CLAUDE.md"))), "{plan}");
-    assert_eq!(host(&plan, "codex")["file"], json!(s(&cx.join("AGENTS.md"))));
+    assert_eq!(
+        host(&plan, "claude")["file"],
+        json!(s(&conf.join("CLAUDE.md"))),
+        "{plan}"
+    );
+    assert_eq!(
+        host(&plan, "codex")["file"],
+        json!(s(&cx.join("AGENTS.md")))
+    );
     let applied = ok(&w.run(
         &vars,
         true,
@@ -146,7 +150,10 @@ fn the_variables_count_only_for_the_account_home() {
     let conf = w.outside("claude-conf");
     let cx = w.outside("codex-home");
     let (c, x) = (s(&conf), s(&cx));
-    let vars = [("CLAUDE_CONFIG_DIR", c.as_str()), ("CODEX_HOME", x.as_str())];
+    let vars = [
+        ("CLAUDE_CONFIG_DIR", c.as_str()),
+        ("CODEX_HOME", x.as_str()),
+    ];
     let plan = ok(&w.run(&vars, false, &["home-routing-plan", w.h(), w.pkg()]));
     assert_eq!(
         host(&plan, "claude")["file"],
@@ -183,7 +190,10 @@ fn an_empty_or_relative_variable_blocks_its_host_by_name() {
         let claude = host(&plan, "claude");
         assert_eq!(claude["preflight"], json!("blocked"), "{plan}");
         let why = claude["blocked_reason"].as_str().unwrap();
-        assert!(why.contains("CLAUDE_CONFIG_DIR") && why.contains(says), "{why}");
+        assert!(
+            why.contains("CLAUDE_CONFIG_DIR") && why.contains(says),
+            "{why}"
+        );
         assert_eq!(host(&plan, "codex")["preflight"], json!("ok"));
         // Agents and the output style block the Claude host the same way.
         let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -192,7 +202,11 @@ fn an_empty_or_relative_variable_blocks_its_host_by_name() {
             true,
             &["agents-home-plan", w.h(), w.pkg(), &s(&repo.join("agents"))],
         ));
-        assert_eq!(host(&plan, "claude")["preflight"], json!("blocked"), "{plan}");
+        assert_eq!(
+            host(&plan, "claude")["preflight"],
+            json!("blocked"),
+            "{plan}"
+        );
         assert_eq!(host(&plan, "codex")["preflight"], json!("ok"));
         let style = ok(&w.run(
             &[("CLAUDE_CONFIG_DIR", value)],
@@ -220,7 +234,12 @@ fn an_empty_or_relative_variable_blocks_its_host_by_name() {
         true,
         &["codex-doctor", &s(&project), "--home", w.h()],
     );
-    assert_eq!(out.status.code(), Some(1), "{}", String::from_utf8_lossy(&out.stdout));
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
     let v: Value = serde_json::from_slice(&out.stdout).unwrap();
     let m = v["error"]["message"].as_str().unwrap();
     assert!(m.contains("CODEX_HOME") && m.contains("absolute"), "{m}");
@@ -233,11 +252,18 @@ fn agents_and_the_output_style_follow_the_variables() {
     let conf = w.outside("claude-conf");
     let cx = w.outside("codex-home");
     let (c, x) = (s(&conf), s(&cx));
-    let vars = [("CLAUDE_CONFIG_DIR", c.as_str()), ("CODEX_HOME", x.as_str())];
+    let vars = [
+        ("CLAUDE_CONFIG_DIR", c.as_str()),
+        ("CODEX_HOME", x.as_str()),
+    ];
     let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
     let agents = s(&repo.join("agents"));
     let plan = ok(&w.run(&vars, true, &["agents-home-plan", w.h(), w.pkg(), &agents]));
-    assert_eq!(host(&plan, "claude")["dir"], json!(s(&conf.join("agents"))), "{plan}");
+    assert_eq!(
+        host(&plan, "claude")["dir"],
+        json!(s(&conf.join("agents"))),
+        "{plan}"
+    );
     assert_eq!(host(&plan, "codex")["dir"], json!(s(&cx.join("agents"))));
     if let Some(omp) = plan["hosts"]
         .as_array()
@@ -316,7 +342,10 @@ fn the_skill_copy_follows_claude_config_dir() {
     let conf = w.outside("claude-conf");
     let cx = w.outside("codex-home");
     let (c, x) = (s(&conf), s(&cx));
-    let vars = [("CLAUDE_CONFIG_DIR", c.as_str()), ("CODEX_HOME", x.as_str())];
+    let vars = [
+        ("CLAUDE_CONFIG_DIR", c.as_str()),
+        ("CODEX_HOME", x.as_str()),
+    ];
     let pkg = w.base.join("stage");
     stage(&pkg);
     let plan = ok(&w.run(&vars, true, &["update-plan", w.h(), &s(&pkg)]));
@@ -336,10 +365,7 @@ fn the_skill_copy_follows_claude_config_dir() {
         &["update-plan", w.h(), &s(&pkg)],
     ));
     let claude = host(&plan, "claude");
-    assert!(
-        claude.to_string().contains("CLAUDE_CONFIG_DIR"),
-        "{plan}"
-    );
+    assert!(claude.to_string().contains("CLAUDE_CONFIG_DIR"), "{plan}");
 }
 
 /// REQ-4: a relocated folder that is a link is refused, as a linked `~/.claude` is.
@@ -359,7 +385,10 @@ fn a_linked_config_folder_is_refused_not_followed() {
     let claude = host(&plan, "claude");
     assert_eq!(claude["preflight"], json!("blocked"), "{plan}");
     assert!(
-        claude["blocked_reason"].as_str().unwrap().contains("symlink"),
+        claude["blocked_reason"]
+            .as_str()
+            .unwrap()
+            .contains("symlink"),
         "{plan}"
     );
     let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -368,7 +397,11 @@ fn a_linked_config_folder_is_refused_not_followed() {
         true,
         &["agents-home-plan", w.h(), w.pkg(), &s(&repo.join("agents"))],
     ));
-    assert_eq!(host(&plan, "claude")["preflight"], json!("blocked"), "{plan}");
+    assert_eq!(
+        host(&plan, "claude")["preflight"],
+        json!("blocked"),
+        "{plan}"
+    );
     let pkg = w.base.join("stage");
     stage(&pkg);
     let plan = ok(&w.run(
@@ -380,7 +413,11 @@ fn a_linked_config_folder_is_refused_not_followed() {
         host(&plan, "claude").to_string().contains("symlink"),
         "{plan}"
     );
-    assert_eq!(fs::read_dir(&real).unwrap().count(), 0, "nothing written through the link");
+    assert_eq!(
+        fs::read_dir(&real).unwrap().count(),
+        0,
+        "nothing written through the link"
+    );
 }
 
 /// REQ-1: the Codex doctor reads the global AGENTS file from `CODEX_HOME`; `--codex-home`

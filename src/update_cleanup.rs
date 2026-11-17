@@ -444,7 +444,11 @@ fn projection_items(
 ) {
     let install_id = crate::update::current_install_id(home);
     for host in crate::update::HOSTS {
-        let root = crate::update::projection_root(home, host);
+        // Items are HOME-relative paths: a projection the host folder relocates outside HOME
+        // (CLAUDE_CONFIG_DIR, card C-79), or one it cannot name, is not swept here.
+        let Ok(root) = crate::update::projection_root(home, host) else {
+            continue;
+        };
         let Some(rel_root) = root
             .strip_prefix(home)
             .ok()

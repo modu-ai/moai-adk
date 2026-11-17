@@ -37,9 +37,11 @@ pub const SECTION: &str = "moai-output-style";
 pub const STYLE_NAME: &str = "MoAI-Easy";
 /// Hosts written.
 pub const HOSTS: [&str; 2] = ["claude", "codex"];
-const CLAUDE_STYLE_FILE: &str = ".claude/output-styles/MoAI-Easy.md";
-const CLAUDE_SETTINGS: &str = ".claude/settings.json";
-const CODEX_FILE: &str = ".codex/AGENTS.md";
+/// The targets, each below its host folder ([`crate::host_home`]: `~/.claude` or
+/// `CLAUDE_CONFIG_DIR`, `~/.codex` or `CODEX_HOME`; card C-79).
+const CLAUDE_STYLE_FILE: &str = "output-styles/MoAI-Easy.md";
+const CLAUDE_SETTINGS: &str = "settings.json";
+const CODEX_FILE: &str = "AGENTS.md";
 /// The start of the block people pasted by hand before this module existed.
 const HAND_BLOCK: &str = "<!-- moai:output-style";
 const SOURCE_LIMIT: usize = 64 * 1024;
@@ -131,6 +133,22 @@ fn rel_path(host: &str, kind: &str) -> &'static str {
     }
 }
 
+/// The target's host folder and its path below that folder.
+fn place(home: &Path, host: &str, kind: &str) -> Result<(PathBuf, &'static str)> {
+    let rel = rel_path(host, kind);
+    Ok((crate::host_home::resolve_named(host, home)?, rel))
+}
+
+/// The target file, after its host folder and every folder down to the file's parent were
+/// found plain or absent; its bytes, `None` when absent.
+fn read_target(home: &Path, host: &str, kind: &str) -> Result<(PathBuf, Option<Vec<u8>>)> {
+    let (root, rel) = place(home, host, kind)?;
+    folders_plain(&root, rel)?;
+    let path = root.join(rel);
+    let cur = current_file(&path)?;
+    Ok((path, cur))
+}
+
 fn state_root(home: &Path) -> PathBuf {
     crate::home_root::path(home).join(STATE_DIR)
 }
@@ -148,9 +166,11 @@ fn plain_dir_or_absent(path: &Path) -> Result<()> {
     }
 }
 
-/// Every folder from HOME (exclusive) down to the target's parent must be plain or absent.
-fn folders_plain(home: &Path, rel: &str) -> Result<()> {
-    let mut dir = home.to_path_buf();
+/// The host folder and every folder below it down to the target's parent must be plain or
+/// absent.
+fn folders_plain(root: &Path, rel: &str) -> Result<()> {
+    plain_dir_or_absent(root)?;
+    let mut dir = root.to_path_buf();
     let parts: Vec<&str> = rel.split('/').collect();
     for part in &parts[..parts.len() - 1] {
         dir.push(part);
@@ -250,13 +270,18 @@ pub fn render_block(source: &str) -> String {
 }
 
 fn target(home: &Path, host: &str, kind: &str) -> TargetPlan {
+    // An unnamed host folder shows the path under HOME; reading it blocks the target.
+    let path = match place(home, host, kind) {
+        Ok((root, rel)) => root.join(rel),
+        Err(_) => {
+            let default = crate::host_home::Host::from_name(host).map_or(".", |h| h.default_dir());
+            home.join(default).join(rel_path(host, kind))
+        }
+    };
     TargetPlan {
         host: host.into(),
         kind: kind.into(),
-        path: home
-            .join(rel_path(host, kind))
-            .to_string_lossy()
-            .into_owned(),
+        path: path.to_string_lossy().into_owned(),
         action: String::new(),
         expected_sha256: None,
         baseline_sha256: None,
@@ -272,9 +297,8 @@ fn blocked(mut t: TargetPlan, reason: String) -> TargetPlan {
 
 fn style_file_plan(home: &Path, rendered: &str) -> TargetPlan {
     let mut t = target(home, "claude", "style_file");
-    let read = folders_plain(home, CLAUDE_STYLE_FILE)
-        .and_then(|()| current_file(&home.join(CLAUDE_STYLE_FILE)))
-        .and_then(|cur| read_state(home, "claude").map(|s| (cur, s)));
+    let read = read_target(home, "claude", "style_file")
+        .and_then(|(_, cur)| read_state(home, "claude").map(|s| (cur, s)));
     let (cur, state) = match read {
         Ok(v) => v,
         Err(e) => return blocked(t, e),
@@ -309,10 +333,8 @@ fn settings_object(bytes: &[u8]) -> std::result::Result<Map<String, Value>, Stri
 
 fn setting_plan(home: &Path, style: &TargetPlan) -> TargetPlan {
     let mut t = target(home, "claude", "setting");
-    let cur = match folders_plain(home, CLAUDE_SETTINGS)
-        .and_then(|()| current_file(&home.join(CLAUDE_SETTINGS)))
-    {
-        Ok(c) => c,
+    let cur = match read_target(home, "claude", "setting") {
+        Ok((_, c)) => c,
         Err(e) => return blocked(t, e),
     };
     t.expected_sha256 = cur.as_deref().map(sha);
@@ -350,9 +372,8 @@ fn setting_plan(home: &Path, style: &TargetPlan) -> TargetPlan {
 
 fn block_plan(home: &Path, rendered: &str) -> TargetPlan {
     let mut t = target(home, "codex", "block");
-    let read = folders_plain(home, CODEX_FILE)
-        .and_then(|()| current_file(&home.join(CODEX_FILE)))
-        .and_then(|cur| read_state(home, "codex").map(|s| (cur, s)));
+    let read = read_target(home, "codex", "block")
+        .and_then(|(_, cur)| read_state(home, "codex").map(|s| (cur, s)));
     let (cur, state) = match read {
         Ok(v) => v,
         Err(e) => return blocked(t, e),
@@ -585,13 +606,13 @@ pub fn apply_for(
     write_json(&receipt_path, &receipt)?;
     let mut written = Vec::new();
     for t in writes {
-        let rel = rel_path(&t.host, &t.kind);
-        let path = home.join(rel);
+        let (root, rel) = place(&home, &t.host, &t.kind)?;
+        let path = root.join(rel);
         let folder = path.parent().expect("target folder");
         // Checked before creating (create_dir_all would follow a linked parent) and after.
-        folders_plain(&home, rel)?;
+        folders_plain(&root, rel)?;
         fs::create_dir_all(folder).map_err(|_| format!("{} unavailable", folder.display()))?;
-        folders_plain(&home, rel)?;
+        folders_plain(&root, rel)?;
         let before = current_file(&path)?;
         if before.as_deref().map(sha) != t.expected_sha256 {
             return Err(format!(
@@ -718,13 +739,13 @@ pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<Value> 
         ) {
             return Err("style receipt names an unknown target".into());
         }
-        let rel = rel_path(&e.host, &e.kind);
         let name = format!("{}:{}", e.host, e.kind);
-        if let Err(reason) = folders_plain(&home, rel) {
+        let (root, rel) = place(&home, &e.host, &e.kind)?;
+        if let Err(reason) = folders_plain(&root, rel) {
             skipped.push(json!({"target": name, "reason": format!("folder_not_plain: {reason}")}));
             continue;
         }
-        let target = home.join(rel);
+        let target = root.join(rel);
         if e.kind == "setting" {
             match revert_setting(&target, &dir, e) {
                 Ok(()) => reverted.push(name),

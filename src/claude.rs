@@ -196,7 +196,9 @@ fn imports_agents(path: &Path) -> bool {
 /// The user-settings `instructionFiles` value under the first of `plugin_ids` that has one:
 /// `Ok(None)` when absent, `Err` when the file cannot be read as JSON.
 fn user_instruction_files(home: &Path, plugin_ids: &[&str]) -> Result<Option<String>> {
-    let path = home.join(".claude/settings.json");
+    // The user's settings sit in the Claude folder (`CLAUDE_CONFIG_DIR` or `~/.claude`, C-79).
+    let path =
+        crate::host_home::resolve(crate::host_home::Host::Claude, home)?.join("settings.json");
     if fs::symlink_metadata(&path).is_err() {
         return Ok(None);
     }
@@ -233,11 +235,13 @@ pub fn doctor(project: &Path) -> Result<Value> {
     let home = std::env::var_os("HOME")
         .filter(|h| !h.is_empty())
         .map(PathBuf::from);
-    // The user's own ~/.claude/CLAUDE.md loads alongside AGENTS.md and does not suppress it.
+    // The user's own CLAUDE.md (in `CLAUDE_CONFIG_DIR` or `~/.claude`, C-79) loads alongside
+    // AGENTS.md and does not suppress it.
     let user_claude = home
         .as_ref()
         .and_then(|h| fs::canonicalize(h).ok())
-        .map(|h| h.join(".claude/CLAUDE.md"));
+        .and_then(|h| crate::host_home::resolve(crate::host_home::Host::Claude, &h).ok())
+        .map(|dir| fs::canonicalize(&dir).unwrap_or(dir).join("CLAUDE.md"));
     let agents = found_upward(&dir, &AGENTS_FILES);
     let claude_files: Vec<PathBuf> = found_upward(&dir, &SUPPRESSING)
         .into_iter()
@@ -855,7 +859,12 @@ fn replacement(
 fn refuse_user_scope(root: &Path) -> Result<()> {
     let canon = |v: Option<std::ffi::OsString>| v.and_then(|p| fs::canonicalize(p).ok());
     let home = canon(std::env::var_os("HOME"));
-    let config = canon(std::env::var_os("CLAUDE_CONFIG_DIR"));
+    // Whatever folder `CLAUDE_CONFIG_DIR` names is a user folder; an empty or relative value
+    // is refused by name (card C-79).
+    let config =
+        crate::host_home::variable_dir(crate::host_home::Host::Claude, |k| std::env::var_os(k))
+            .map_err(|e| format!("user-scope claude settings refused: {e}"))?
+            .and_then(|p| fs::canonicalize(p).ok());
     let claude_dir = fs::canonicalize(root.join(".claude")).ok();
     if home.as_deref() == Some(root)
         || (config.is_some() && claude_dir.is_some() && config == claude_dir)

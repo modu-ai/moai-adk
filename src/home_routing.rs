@@ -32,7 +32,8 @@ const STATE_DIR: &str = "home-routing";
 pub const SECTION: &str = "moai-routing";
 /// The section source inside the skill package.
 pub const SOURCE: &str = "references/home/routing.md";
-/// Hosts written: (host, file under HOME, how the user invokes the skill there).
+/// Hosts written: (host, file under HOME when the host folder is not relocated — see
+/// [`crate::host_home`] — and how the user invokes the skill there).
 pub const HOSTS: [(&str, &str, &str); 2] = [
     ("claude", ".claude/CLAUDE.md", "/moai"),
     ("codex", ".codex/AGENTS.md", "$moai"),
@@ -121,13 +122,16 @@ fn sha(bytes: &[u8]) -> String {
     crate::digest(bytes)
 }
 
-fn host_file(home: &Path, host: &str) -> PathBuf {
+/// The host's instruction file: `CLAUDE.md` or `AGENTS.md` in the host folder that
+/// [`crate::host_home`] names (`~/.claude`, `~/.codex`, or the relocated folder, card C-79).
+fn host_file(home: &Path, host: &str) -> Result<PathBuf> {
     let rel = HOSTS
         .iter()
         .find(|(h, _, _)| *h == host)
         .map(|(_, f, _)| *f)
         .unwrap_or_else(|| unreachable!("unknown routing host {host}"));
-    home.join(rel)
+    let (_, name) = rel.split_once('/').expect("host folder and file name");
+    Ok(crate::host_home::resolve_named(host, home)?.join(name))
 }
 
 fn state_root(home: &Path) -> PathBuf {
@@ -162,7 +166,7 @@ fn current_file(path: &Path) -> Result<Option<Vec<u8>>> {
 }
 
 fn host_folder_plain(home: &Path, host: &str) -> Result<()> {
-    let file = host_file(home, host);
+    let file = host_file(home, host)?;
     plain_dir_or_absent(file.parent().expect("host folder"))
 }
 
@@ -232,7 +236,18 @@ pub fn render(source: &str, host: &str) -> Result<String> {
 }
 
 fn host_plan(home: &Path, host: &str, rendered: &str) -> HostPlan {
-    let file = host_file(home, host);
+    // A host folder that cannot be named (an empty or relative relocation variable) blocks
+    // the host; the file shown is then the one under HOME.
+    let (file, unnamed) = match host_file(home, host) {
+        Ok(f) => (f, None),
+        Err(e) => {
+            let rel = HOSTS
+                .iter()
+                .find(|(h, _, _)| *h == host)
+                .map_or("", |(_, f, _)| *f);
+            (home.join(rel), Some(e))
+        }
+    };
     let mut plan = HostPlan {
         host: host.into(),
         file: file.to_string_lossy().into_owned(),
@@ -240,6 +255,11 @@ fn host_plan(home: &Path, host: &str, rendered: &str) -> HostPlan {
         blocked_reason: None,
         section: None,
     };
+    if let Some(e) = unnamed {
+        plan.preflight = "blocked".into();
+        plan.blocked_reason = Some(e);
+        return plan;
+    }
     let current = host_folder_plain(home, host)
         .and_then(|()| current_file(&file))
         .and_then(|cur| read_state(home, host).map(|s| (cur, s)));
@@ -390,7 +410,7 @@ pub fn apply_for(
     let (begin, end) = markers(SECTION, "html");
     let mut written = Vec::new();
     for (host, section) in writes {
-        let target = host_file(&home, &host.host);
+        let target = host_file(&home, &host.host)?;
         let folder = target.parent().expect("host folder");
         // Checked before creating (create_dir_all would follow a linked parent) and after.
         host_folder_plain(&home, &host.host)?;
@@ -475,7 +495,7 @@ pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<serde_j
             skipped.push(serde_json::json!({"host": e.host, "reason": format!("host_folder_not_plain: {reason}")}));
             continue;
         }
-        let target = host_file(&home, &e.host);
+        let target = host_file(&home, &e.host)?;
         let current = match current_file(&target) {
             Ok(c) => c,
             Err(reason) => {
