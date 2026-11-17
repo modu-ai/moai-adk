@@ -135,32 +135,50 @@ function Read-LanguageChoice([string]$Default) {
     return $Default
 }
 
+# The supported platforms (user decision 2026-11-17, SPEC-20261117-supported-platforms): macOS on
+# Apple silicon, Linux x86_64 and Windows x86_64. Anything else stops before a download or a write.
+$SupportedPlatforms = "macOS arm64 (Apple silicon), Linux x86_64, Windows x86_64"
+
+# Windows: the triple for the architecture Windows reports, or $null when it is not supported.
+# A 32-bit PowerShell on 64-bit x86 Windows reports x86 (the Go installer's 64-bit OS check).
+function Get-WindowsTarget([string]$Arch, [bool]$Is64BitOs) {
+    if ($Arch -eq "x86" -and $Is64BitOs) { $Arch = "AMD64" }
+    switch -Exact ($Arch.ToUpper()) {
+        "AMD64" { return "x86_64-pc-windows-msvc" }
+        "X64" { return "x86_64-pc-windows-msvc" }
+    }
+    return $null
+}
+
+# macOS and Linux (pwsh): the triple for `uname -s` / `uname -m`, or $null when not supported.
+# An x86_64 shell under Rosetta 2 on Apple silicon ($Translated "1") runs on an arm64 machine.
+function Get-UnixTarget([string]$Os, [string]$Machine, [string]$Translated) {
+    if ($Os -eq "Darwin" -and $Machine -eq "x86_64" -and $Translated -eq "1") { $Machine = "arm64" }
+    if ($Os -eq "Darwin" -and $Machine -in "arm64", "aarch64") { return "aarch64-apple-darwin" }
+    if ($Os -eq "Linux" -and $Machine -in "x86_64", "amd64") { return "x86_64-unknown-linux-gnu" }
+    return $null
+}
+
 # Windows architecture detection keeps the Go installer's layers (env vars, 64-bit OS check).
 function Get-Target {
     if ($IsWin) {
         $arch = if ($env:ARCHITEW6432) { $env:ARCHITEW6432 } else { $env:PROCESSOR_ARCHITECTURE }
-        if ($arch -eq "x86" -and [Environment]::Is64BitOperatingSystem) { $arch = "AMD64" }
-        switch -Exact ("$arch".ToUpper()) {
-            "AMD64" { $t = "x86_64-pc-windows-msvc" }
-            "X64" { $t = "x86_64-pc-windows-msvc" }
-            "ARM64" { $t = "aarch64-pc-windows-msvc" }
-            default { Print-Info "Supported architectures: AMD64, ARM64"; Fail "Unsupported architecture: $arch" }
-        }
+        $t = Get-WindowsTarget "$arch" ([Environment]::Is64BitOperatingSystem)
+        $what = "Windows $arch"
     }
     else {
         $os = (& uname -s).Trim()
         $machine = (& uname -m).Trim()
-        switch ($os) {
-            "Darwin" { $osPart = "apple-darwin" }
-            "Linux" { $osPart = "unknown-linux-gnu" }
-            default { Fail "Unsupported OS: $os" }
+        $translated = ""
+        if ($os -eq "Darwin" -and $machine -eq "x86_64") {
+            try { $translated = "$(& sysctl -n sysctl.proc_translated 2>$null)".Trim() } catch { $translated = "" }
         }
-        switch ($machine) {
-            { $_ -in "x86_64", "amd64" } { $archPart = "x86_64" }
-            { $_ -in "arm64", "aarch64" } { $archPart = "aarch64" }
-            default { Fail "Unsupported architecture: $machine" }
-        }
-        $t = "$archPart-$osPart"
+        $t = Get-UnixTarget $os $machine $translated
+        $what = "$os $machine"
+    }
+    if (-not $t) {
+        Print-Info "Supported platforms: $SupportedPlatforms"
+        Fail "Unsupported platform: $what"
     }
     Print-Success "Detected platform: $t"
     return $t

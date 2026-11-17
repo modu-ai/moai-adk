@@ -825,6 +825,59 @@ class InstallShTest(unittest.TestCase):
         r = self.run_sh()
         self.assertNotIn("Choose 1-5", r.stdout)
 
+    # --- SPEC-20261117-supported-platforms: exactly macOS arm64, Linux x86_64, Windows x86_64 ---
+
+    SUPPORTED_LINE = "Supported platforms: macOS arm64 (Apple silicon), Linux x86_64, Windows x86_64"
+
+    def fake_platform(self, system, machine, translated=None):
+        """PATH with a fake `uname` first (and a fake `sysctl` answering
+        `sysctl.proc_translated`, the Rosetta 2 flag, when `translated` is given)."""
+        d = os.path.join(self.tmp, f"fakebin-{system}-{machine}-{translated}")
+        os.makedirs(d, exist_ok=True)
+        tools = {"uname": f'#!/bin/sh\ncase "$1" in -m) echo {machine} ;; *) echo {system} ;; esac\n'}
+        if translated is not None:
+            tools["sysctl"] = ('#!/bin/sh\n[ "$1 $2" = "-n sysctl.proc_translated" ] && '
+                               f'{{ echo {translated}; exit 0; }}\nexit 1\n')
+        for name, body in tools.items():
+            path = os.path.join(d, name)
+            with open(path, "w") as f:
+                f.write(body)
+            os.chmod(path, 0o755)
+        return d + ":/usr/bin:/bin"
+
+    def test_the_three_supported_platforms_are_detected(self):
+        for system, machine, translated, triple in [
+            ("Darwin", "arm64", None, "aarch64-apple-darwin"),
+            ("Darwin", "aarch64", None, "aarch64-apple-darwin"),
+            # An x86_64 shell under Rosetta 2 on Apple silicon: the machine is arm64.
+            ("Darwin", "x86_64", "1", "aarch64-apple-darwin"),
+            ("Linux", "x86_64", None, "x86_64-unknown-linux-gnu"),
+            ("Linux", "amd64", None, "x86_64-unknown-linux-gnu"),
+        ]:
+            with self.subTest(platform=f"{system} {machine} translated={translated}"):
+                r = self.run_sh(PATH=self.fake_platform(system, machine, translated))
+                out = r.stdout + r.stderr
+                self.assertIn(f"Detected platform: {triple}", out)
+                self.assertNotIn("Unsupported", out)
+
+    def test_an_unsupported_platform_stops_with_the_supported_list_and_writes_nothing(self):
+        for system, machine, translated in [
+            ("Darwin", "x86_64", None),  # Intel Mac: no sysctl answer
+            ("Darwin", "x86_64", "0"),   # Intel Mac: not translated
+            ("Linux", "aarch64", None),
+            ("Linux", "arm64", None),
+            ("Linux", "i686", None),
+            ("FreeBSD", "amd64", None),
+        ]:
+            with self.subTest(platform=f"{system} {machine} translated={translated}"):
+                r = self.assert_refused_without_writes(
+                    PATH=self.fake_platform(system, machine, translated))
+                out = r.stdout + r.stderr
+                self.assertIn(f"Unsupported platform: {system} {machine}", out)
+                self.assertIn(self.SUPPORTED_LINE, out)
+                self.assertNotIn("Detected platform", out)
+                self.assertNotIn("Downloading", out)
+
     def test_shellcheck_passes(self):
         if shutil.which("shellcheck") is None:
             self.skipTest("shellcheck not installed on this machine")
@@ -880,6 +933,36 @@ class InstallPs1Test(InstallShTest):
 
     def test_shellcheck_passes(self):
         self.skipTest("shell-only check")
+
+    def test_windows_takes_only_x86_64(self):
+        """SPEC-20261117-supported-platforms: the Windows branch cannot run here, so its decision,
+        `Get-WindowsTarget`, is taken from the script's own syntax tree and called with each
+        architecture Windows reports (PROCESSOR_ARCHITECTURE / ARCHITEW6432)."""
+        probe = (
+            "$a = [System.Management.Automation.Language.Parser]::ParseFile("
+            f"'{PS1}', [ref]$null, [ref]$null); "
+            "$f = $a.Find({ param($n) $n -is "
+            "[System.Management.Automation.Language.FunctionDefinitionAst] -and "
+            "$n.Name -eq 'Get-WindowsTarget' }, $true); "
+            ". ([scriptblock]::Create($f.Extent.Text)); "
+            "foreach ($c in 'AMD64:1','x64:1','amd64:1','x86:1','ARM64:1','x86:0','IA64:1','') { "
+            "$arch, $bits = $c.Split(':'); "
+            "'{0}:{1} -> {2}' -f $arch, $bits, (Get-WindowsTarget $arch ($bits -eq '1')) }"
+        )
+        r = subprocess.run([shutil.which("pwsh"), "-NoProfile", "-NonInteractive", "-Command", probe],
+                           capture_output=True, text=True, timeout=120)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(r.stdout.splitlines(), [
+            "AMD64:1 -> x86_64-pc-windows-msvc",
+            "x64:1 -> x86_64-pc-windows-msvc",
+            "amd64:1 -> x86_64-pc-windows-msvc",
+            # A 32-bit PowerShell on 64-bit x86 Windows.
+            "x86:1 -> x86_64-pc-windows-msvc",
+            "ARM64:1 -> ",
+            "x86:0 -> ",
+            "IA64:1 -> ",
+            ": -> ",
+        ])
 
     def test_the_script_parses_as_posix_sh(self):
         r = subprocess.run(

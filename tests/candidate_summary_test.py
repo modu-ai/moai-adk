@@ -11,7 +11,9 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPT = os.path.join(REPO_ROOT, "tools", "candidate_summary.py")
 SHA = "0123456789abcdef0123456789abcdef01234567"
 OTHER = "fedcba9876543210fedcba9876543210fedcba98"
-TARGETS = ["linux-x86_64", "linux-arm64", "macos-arm64", "macos-x86_64", "windows-x86_64"]
+# The supported platforms (SPEC-20261117-supported-platforms): macOS arm64, Linux x86_64,
+# Windows x86_64.
+TARGETS = ["linux-x86_64", "macos-arm64", "windows-x86_64"]
 
 
 def load_module():
@@ -46,13 +48,16 @@ class CandidateSummaryTest(unittest.TestCase):
     def judge(self, needs, expected=SHA):
         return self.cs.judge(needs, expected)
 
-    def test_five_targets_on_the_pinned_sha_with_tests_run_pass(self):
+    def test_three_targets_on_the_pinned_sha_with_tests_run_pass(self):
         ok, text = self.judge(needs_all_good())
         self.assertTrue(ok, text)
-        self.assertIn("verdict: PASS", text)
+        self.assertIn("verdict: PASS - three targets", text)
         for t in TARGETS:
             self.assertIn(t, text)
-        self.assertEqual(text.count(SHA), 6)  # heading + five rows
+        self.assertEqual(text.count(SHA), 4)  # heading + three rows
+        # The dropped platforms are no targets: no row, not required.
+        for gone in ("linux-arm64", "macos-x86_64"):
+            self.assertNotIn(gone, text)
 
     def test_a_missing_target_fails(self):
         for t in TARGETS:
@@ -68,17 +73,17 @@ class CandidateSummaryTest(unittest.TestCase):
         for result in ("failure", "cancelled", "skipped", ""):
             with self.subTest(result=result):
                 needs = needs_all_good()
-                needs["macos-x86_64"]["result"] = result
+                needs["macos-arm64"]["result"] = result
                 ok, text = self.judge(needs)
                 self.assertFalse(ok)
-                self.assertIn("macos-x86_64", text)
+                self.assertIn("macos-arm64: result", text)
 
     def test_a_target_that_checked_out_another_sha_fails(self):
         needs = needs_all_good()
-        needs["linux-arm64"]["outputs"]["sha"] = OTHER
+        needs["linux-x86_64"]["outputs"]["sha"] = OTHER
         ok, text = self.judge(needs)
         self.assertFalse(ok)
-        self.assertIn("linux-arm64", text)
+        self.assertIn("linux-x86_64: checked out", text)
         self.assertIn(OTHER, text)
 
     def test_zero_or_unreadable_tests_never_pass_windows_included(self):
