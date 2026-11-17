@@ -28,9 +28,14 @@
     "asset_map": {
       "path": ".moai-cli/manifests/legacy-asset-map.json",
       "location": "repository only; not part of the installed package",
-      "sha256": "24cb01bcb32dc9fa9b94fc5138c9f312ff0400c4f80c385ddd2d3ff09fff16fa",
+      "sha256": "4e8e357b54b2de3619658cc36b9b05892004fc1d382948ae9d476f64af6b83fb",
       "rows": 1107,
-      "status": "all unchecked",
+      "status": "every row has a verdict (user decision 2026-11-17); none unchecked",
+      "verdicts": {
+        "adopted": 16,
+        "deferred": 286,
+        "rejected": 805
+      },
       "rows_by_intent": {
         "read": 359,
         "setup": 328,

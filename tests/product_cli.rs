@@ -2195,9 +2195,27 @@ mod skill_package {
         "model",
     ];
     const ALLOWED_KEYS: [&str; 4] = ["name", "description", "license", "metadata"];
+    /// The four new designs a legacy row may be deferred to (user decision 2026-11-17, Go
+    /// generation inheritance: concepts are redesigned, files are not ported).
+    const LEGACY_DESIGNS: [&str; 4] = [
+        "design:code-atlas-read-plan",
+        "design:language-domain-guides",
+        "design:edit-time-diagnostics-hook",
+        "design:project-agent-skill-generation",
+    ];
 
     fn root() -> PathBuf {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
+    }
+
+    /// Splits a legacy row's status `adopted(<path>)`, `rejected(<reason>)` or
+    /// `deferred(<design or SPEC id>)` into the verdict and its argument; anything else,
+    /// including an empty or placeholder argument, is not a verdict.
+    fn legacy_verdict(status: &str) -> Option<(&str, &str)> {
+        let (verdict, rest) = status.split_once('(')?;
+        let arg = rest.strip_suffix(')')?.trim();
+        let known = ["adopted", "rejected", "deferred"].contains(&verdict);
+        (known && !arg.is_empty() && !arg.starts_with('<')).then_some((verdict, arg))
     }
     fn files(dir: &Path, base: &Path, out: &mut Vec<String>) {
         for entry in fs::read_dir(dir).unwrap() {
@@ -3076,9 +3094,36 @@ mod skill_package {
                 .count();
             assert_eq!(map_ref["rows_by_intent"][i], json!(n), "{i}");
         }
+        let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let mut counts = serde_json::Map::new();
         for a in assets {
-            // Unmapped originals stay unchecked; nothing is marked done or dropped.
-            assert_eq!(a["status"], json!("unchecked"), "{}", a["path"]);
+            // Every row has a verdict and none stays `unchecked` (user decision 2026-11-17,
+            // replacing REQ-02A-04's "unchecked until adopted"): an adoption names the file that
+            // carries it, a rejection its reason, a deferral one of the new designs or a SPEC.
+            let status = a["status"].as_str().unwrap();
+            let (verdict, arg) = legacy_verdict(status)
+                .unwrap_or_else(|| panic!("{}: `{status}` is not a verdict", a["path"]));
+            match verdict {
+                "adopted" => assert!(
+                    !arg.starts_with('/') && !arg.contains("..") && repo.join(arg).is_file(),
+                    "{}: adopted path `{arg}` is not a file of this repository",
+                    a["path"]
+                ),
+                "rejected" => assert!(
+                    arg.split_whitespace().count() >= 3,
+                    "{}: `{arg}` is not a reason",
+                    a["path"]
+                ),
+                _ => assert!(
+                    LEGACY_DESIGNS.contains(&arg)
+                        || (arg.starts_with("SPEC-")
+                            && repo.join(".moai/specs").join(arg).is_dir()),
+                    "{}: deferred to unknown `{arg}`",
+                    a["path"]
+                ),
+            }
+            let n = counts.entry(verdict).or_insert(json!(0));
+            *n = json!(n.as_u64().unwrap() + 1);
             assert_eq!(a["sha256"].as_str().unwrap().len(), 64);
             let mapped = a["intents"].as_array().unwrap();
             assert!(mapped
@@ -3088,6 +3133,8 @@ mod skill_package {
                 assert!(a["proposed_route"].is_string(), "{}", a["path"]);
             }
         }
+        // The package keeps the verdict counts next to the map's sha256.
+        assert_eq!(map_ref["verdicts"], Value::Object(counts));
         // Pointers only: no legacy bytes are copied into the package.
         assert!(package_files()
             .iter()
