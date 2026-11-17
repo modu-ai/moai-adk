@@ -108,4 +108,51 @@ parent: null
 
 ## Result
 
-(구현 뒤 채워요.)
+구현 에이전트가 2026-11-17 08:49Z–09:00Z에 채웠어요. SYNC와 AUDIT가 다시 확인해요. macOS arm64(개발 Mac). 설치된
+slot이 옛 swap 규칙으로 거절해서(exit 75) cargo는 slot 밖에서 한 번에 하나, `CARGO_BUILD_JOBS=4`,
+`CARGO_INCREMENTAL=0`, 빌드 폴더는 이 worktree의 `target/`.
+
+커밋: 기준 `c0b858de8c` 위에 `4252d6ff88`(변경), 그 위에 이 Result.
+
+측정(이 저장소를 `git archive HEAD`로 임시 git 저장소에 풀어서, 1,620 파일, 41 MB, 임시 HOME, debug 바이너리):
+
+| 단계 | 명령 | exit | 시간 | stdout | 상태 |
+|---|---|---|---|---|---|
+| 빌드 전 | `index-query` | 0 | 0.67 s | 267 B | `unavailable` ("no generation has been built") |
+| 첫 빌드 | `index-build` | 0 | 6.78 s | 406 B | `complete` |
+| 빌드 뒤 | `index-query` | 0 | 0.47 s | 393 B | `fresh` |
+| 다시 빌드(변화 없음) | `index-build` | 0 | 2.39 s | 408 B | `complete` |
+| 파일 하나 | `atlas-map` paths `src/heavy_slot.rs` | 0 | 1.30 s | 618 B | `fresh` |
+| 폴더 | `atlas-map` prefixes `src`(기본 200개) | 0 | 1.36 s | 71,505 B | `fresh` |
+| 폴더 | `atlas-map` prefixes `src`, `max_files` 2000 | 0 | 1.43 s | 114,088 B | `fresh` |
+| 1홉 | `atlas-graph` `file:src/heavy_slot.rs` | 0 | 1.38 s | 4,390 B | `fresh` |
+| 2홉 | `atlas-graph` 같은 시작, `max_hops` 2 | 0 | 1.34 s | 93,243 B | `fresh` |
+| 문자열 | `search` literals `CRITICAL_PRESSURE_LEVEL` | 0 | 2.45 s | 2,704 B | 결과마다 `fresh` |
+| 파일 수정 + 새 파일 | `index-query` | 0 | 0.39 s | 437 B | `stale`, `modified` [`src/heavy_slot.rs`], `new_files` [`c11-untracked-probe.txt`] |
+| 같은 때 | `atlas-map` | 0 | 0.97 s | 618 B | `stale` |
+| 되돌린 뒤 | `index-query` | 0 | 0.39 s | 393 B | `fresh` |
+
+색인 크기: `.moai-cli/index` 5.8 MB. 결론: 신선도 판정(`state`, `changes`, `branch_switched`)과 각 답의 `state`가 이미
+있어서 새 CLI 기능은 필요 없었어요.
+
+- AC-1: 충족 — `code_atlas_reference` exit 0, 3 passed. RED(지시 연결 전): `read.md` 줄 수 0.
+- AC-2: 충족 — 같은 실행(빌드 전 읽기 세 번 뒤 `index` 폴더 없음).
+- AC-3: 충족 — 같은 실행(`file:src/b.rs` → `file:src/a.rs` 간선, `evidence_refs` 있음); `generation_id` 문장 있음.
+- AC-4: 충족 — `read.md` 1줄, `plan.md` 1줄.
+- AC-5: 충족 — `agent_defs_package` exit 0, 17 passed. RED: `reads_lists_match_the_design_and_render_on_every_host`·
+  `internal_references_say_when_to_read_them` 실패(exit 101).
+- AC-6: 충족 — `git ls-files` → 이 파일; `moai spec check --all --project .` exit 0, SPEC 3개 오류 0·경고 0.
+- AC-7: 충족 — manifest `write`(read.md·plan.md·code-atlas.md 바뀜) 뒤 `check` exit 0; `package-inspect skills/moai`
+  exit 0, 65,536바이트 넘는 파일 없음(`read.md` 3,235·`plan.md` 3,119·`code-atlas.md` 2,415바이트);
+  `--bin moai` 27 passed; `cargo fmt --check` 0(새 시험 파일을 한 번 `rustfmt`한 뒤); clippy 0; Python 85개 OK,
+  커밋 뒤 `skill_references_test` 2개 OK. 패키지를 읽는 시험도 모두 0: `ac_command_lint` 5, `mode_workflow_steps` 42,
+  `core_rules_2876` 4, `update_route` 8, `question_bank_hosts` 1, `install_cli` 7, `cli_name_moai` 5,
+  `release_suite` 4, `go_state_codex_cli` 37, `product_cli` 75, `review_package_cli` 12, `update_tux_golden` 14,
+  `home_isolation_scan` 16.
+
+mutation(커밋 뒤, 셋 다 되돌린 뒤 `git status` 비어 있음): `read.md` 줄 삭제 → `code_atlas_reference` 1개 실패;
+참조의 그래프 요청 `start` → `starts` → 1개 실패; `agents/research.md`의 `reads:`에서 항목 삭제 →
+`agent_defs_package` 1개 실패.
+
+실행 안 함: 전체 `cargo test`, Python 전체, 실제 호스트(Claude Code·Codex)에서 READ·PLAN 세션을 돌려 지시를 따르는지
+보는 일(호스트 E2E), Linux·Windows.
