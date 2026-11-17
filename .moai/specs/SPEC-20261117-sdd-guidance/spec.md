@@ -105,4 +105,35 @@ REQ-3의 "ordering document"는 chain 표(`chains/index.md`)와 RUN·VERIFY·SYN
 
 ## Result
 
-(구현 뒤 채워요.)
+구현 에이전트가 2026-11-17 09:02Z–09:21Z에 채웠어요(09:08Z–09:14Z에는 리더 지시로 atlas 감사 수리를 먼저 하려고
+멈췄어요). SYNC와 AUDIT가 다시 확인해요. macOS arm64, cargo는 slot 밖에서 한 번에 하나(설치된 slot이 옛 swap
+규칙으로 exit 75), `CARGO_BUILD_JOBS=4`, `CARGO_INCREMENTAL=0`, 빌드 폴더는 이 worktree의 `target/`.
+
+커밋: 기준 `daf8c68c69` 위에 `eb70b57ef0`(WIP, 멈추기 전 저장), `8ae2d8aa2c`(나머지와 SPEC), 그 위에 이 Result.
+
+도움말 확인(이 빌드): `moai spec new|check|list|show --help` 모두 exit 0; `moai card spec --help` exit 2(없음) →
+카드 연결은 "planned, available once that change lands"로 적었어요.
+
+- AC-1: met — `sdd_guidance` exit 0, 4 passed. RED(지침 전): `the_reference_states_…`(순서 문장 없음),
+  `every_place_states_one_order`, `no_card_number_or_ddd_wording_…`(project.md의 DDD) 실패.
+- AC-2: met — 같은 실행.
+- AC-3: met — `agent_defs_package` exit 0, 17 passed. RED: chain 행 `"PLAN, RUN"`.
+- AC-4: met — 같은 실행; `grep -rn DDD skills agents` → 출력 없음.
+- AC-5: met — 같은 실행. RED: `moai-docs`의 `reads:`에 `internal/sdd` 없음.
+- AC-6: met — `git ls-files` → 이 파일; `moai spec check --all --project .` exit 0, SPEC 4개 오류 0·경고 0(처음엔
+  REQ-3 주어의 쉼표로 `req_gears` 오류와 AC 글의 표시로 경고 1개 → 고침).
+- AC-7: met — manifest `write`(9개 파일 바뀜) 뒤 `check` 0; `package-inspect skills/moai` exit 0, 65,536바이트 넘는
+  파일 0(`mode-agent.md` 47,998바이트 그대로); `cargo fmt --check` 0(시험 두 파일 `rustfmt` 뒤); clippy 0; Python
+  85개 OK(처음 `repo_scans_test`가 새 시험의 `read_dir`을 저장소 순회로 판정 → 이름 붙인 파일만 읽게 바꾼 뒤 OK).
+  넓은 실행 28개 대상 모두 exit 0, 387 passed(`--bin moai` 27, `product_cli` 75, `mode_cards_53`,
+  `mode_workflow_steps` 42, `core_rules_2876`, `lane_rules_2401·2836·2879`, `gate_collect`, `release_suite` 등).
+
+mutation(커밋 뒤, 셋 다 되돌린 뒤 `git status` 비어 있음): 빌드 chain을 옛 순서로 → 2개 실패; 카드 연결을
+"available"로 → 1개 실패; audit.md 순서 문장 삭제 → 1개 실패.
+
+병합 확인(`git merge-tree`): atlas 가지와는 `plan.md`가 충돌 없이 합쳐지고, `source-manifest.json`·
+`tests/agent_defs_package.rs`가 충돌해요(둘 다 같은 목록 끝에 항목을 더함 — 늦게 들어가는 쪽이 두 항목을 모두
+남기고 `source_manifest.py write`). 지원 플랫폼 가지와는 `verify.md`가 충돌 없이 합쳐지고 `source-manifest.json`만
+충돌해요(같은 방법).
+
+실행 안 함: 전체 `cargo test`, Python 전체, 실제 호스트에서 이 지침대로 PLAN→…→AUDIT를 도는 일, Linux·Windows.
