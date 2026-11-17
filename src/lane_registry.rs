@@ -83,6 +83,11 @@ pub fn new_instance() -> String {
 
 /// `<clone common dir>/.moai-cli/sessions/`, shared by every worktree of the clone.
 pub fn registry_dir(project: &Path) -> Result<PathBuf, String> {
+    Ok(registry_paths(project)?.1)
+}
+
+/// The clone's git common dir and its registry folder.
+fn registry_paths(project: &Path) -> Result<(PathBuf, PathBuf), String> {
     let id = crate::identity::identity(project).map_err(|e| format!("session registry: {e}"))?;
     if id["identity_status"].as_str() != Some("ok") {
         return Err(format!(
@@ -90,10 +95,30 @@ pub fn registry_dir(project: &Path) -> Result<PathBuf, String> {
             id["identity_status"].as_str().unwrap_or("unknown")
         ));
     }
-    let common = id["clone_anchor"]
-        .as_str()
-        .ok_or("session registry requires a git repository")?;
-    Ok(crate::clone_root::path(Path::new(common)).join("sessions"))
+    let common = PathBuf::from(
+        id["clone_anchor"]
+            .as_str()
+            .ok_or("session registry requires a git repository")?,
+    );
+    let dir = crate::clone_root::path(&common).join("sessions");
+    Ok((common, dir))
+}
+
+/// [`registry_dir`] for a reader that must not be misled through a link (C-80 audit N1): every
+/// path component below the git common dir — the clone state folder and `sessions` — is read
+/// with `lstat`, and a symbolic link on any of them is an error. Without this, a linked state
+/// folder pointing at an empty registry reads as "no session".
+pub fn registry_dir_unlinked(project: &Path) -> Result<PathBuf, String> {
+    let (common, dir) = registry_paths(project)?;
+    let below = dir
+        .strip_prefix(&common)
+        .map_err(|_| format!("session registry {} is not below its clone", dir.display()))?;
+    let mut at = common.clone();
+    for part in below.components() {
+        at.push(part);
+        refuse_symlink(&at)?;
+    }
+    Ok(dir)
 }
 
 /// Whether `name` has a live entry in the registry folder `dir`: the entry exists and its lease

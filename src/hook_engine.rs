@@ -664,6 +664,11 @@ fn tool_preflight_deny(
     if crate::claim_verify::has_local_record(cwd, &dir) {
         return Verdict::Allow;
     }
+    // SPEC-20261117-commit-guard-users: a lane safety only; no live lane session in this
+    // clone means an ordinary user, whose commit is not refused.
+    if !crate::claim_verify::lane_clone(&dir) {
+        return Verdict::Allow;
+    }
     Verdict::Deny(format!(
         "MoAI tool-preflight: {}; put `Moai-Claim: {issue}#<claim comment id>` in the -m \
          message.",
