@@ -99,6 +99,8 @@ fn verify_names_the_build_folder_warning() {
     says(
         &verify,
         "verify.md",
-        &["prints one warning line when it wraps `cargo` with any other `CARGO_TARGET_DIR`, unset included"],
+        // Card C-82 follow-up: only a folder shared with or inside another worktree is named
+        // (was: "with any other `CARGO_TARGET_DIR`, unset included").
+        &["prints one warning line when it wraps `cargo` with a `CARGO_TARGET_DIR` shared with another worktree or inside another worktree"],
     );
 }
