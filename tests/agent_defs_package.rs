@@ -566,7 +566,10 @@ fn chains_name_real_routes_agents_and_references() {
     assert_eq!(build[2], "moai-plan, moai-impl, moai-docs, moai-audit");
     let fix = rows.iter().find(|r| r[0] == "Fix a bug").unwrap();
     assert_eq!(fix[1], "PLAN, RUN, VERIFY, SYNC, AUDIT");
-    assert_eq!(fix[2], "moai-research, moai-plan, moai-impl, moai-docs, moai-audit");
+    assert_eq!(
+        fix[2],
+        "moai-research, moai-plan, moai-impl, moai-docs, moai-audit"
+    );
 }
 
 /// The question bank (#2639): one row per question, every always-asked axis of the PROJECT

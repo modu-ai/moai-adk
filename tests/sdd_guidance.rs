@@ -4,11 +4,7 @@
 mod common;
 
 use common::CleanEnv;
-use std::{
-    fs,
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::{fs, path::PathBuf, process::Command};
 
 const ORDER: &str = "PLAN → RUN → VERIFY → SYNC → AUDIT → merge";
 
@@ -66,7 +62,9 @@ fn the_reference_names_only_commands_this_build_has() {
         .match_indices("`moai spec ")
         .map(|(i, m)| {
             let rest = &text[i + m.len()..];
-            rest.split(|c: char| !c.is_ascii_lowercase()).next().unwrap()
+            rest.split(|c: char| !c.is_ascii_lowercase())
+                .next()
+                .unwrap()
         })
         .collect();
     actions.sort_unstable();
@@ -110,16 +108,33 @@ fn no_card_number_or_ddd_wording_in_the_package_and_agents() {
             .any(|(i, _)| s[i + 2..].starts_with(|c: char| c.is_ascii_digit()))
     };
     assert!(!card(&sdd()), "sdd.md names a card number");
-    let mut files = Vec::new();
-    for dir in ["skills/moai/workflows", "skills/moai/references/internal", "agents"] {
-        for e in fs::read_dir(root().join(dir)).unwrap() {
-            files.push(e.unwrap().path());
-        }
+    // Named files only (no folder walk): every workflow the route table names, the internal
+    // references the method question and the order live in, the skill entry and the agents.
+    let routes: serde_json::Value =
+        serde_json::from_str(&read("skills/moai/references/routes.json")).unwrap();
+    let mut files: Vec<String> = routes["routes"]
+        .as_object()
+        .unwrap()
+        .values()
+        .map(|r| {
+            let rel = r["reference"].as_str().unwrap();
+            format!(
+                "skills/moai/{}",
+                rel.strip_prefix("../").expect("route reference")
+            )
+        })
+        .collect();
+    for name in ["sdd", "interview", "questions", "test-design", "core-rules"] {
+        files.push(format!("skills/moai/references/internal/{name}.md"));
     }
-    for path in files {
-        let text = fs::read_to_string(&path).unwrap();
-        let shown = path.strip_prefix(root()).unwrap_or(Path::new("?")).display();
-        assert!(!text.contains("DDD"), "{shown} still says DDD");
+    files.push("skills/moai/references/chains/index.md".into());
+    files.push("skills/moai/SKILL.md".into());
+    for agent in ["plan", "research", "impl", "audit", "docs"] {
+        files.push(format!("agents/{agent}.md"));
+    }
+    assert!(files.len() >= 22, "{files:?}");
+    for rel in files {
+        assert!(!read(&rel).contains("DDD"), "{rel} still says DDD");
     }
 }
 
@@ -154,6 +169,9 @@ fn every_place_states_one_order() {
         "skills/moai/workflows/sync.md",
         "skills/moai/workflows/audit.md",
     ] {
-        assert!(read(rel).contains("`internal/sdd`"), "{rel} does not point to internal/sdd");
+        assert!(
+            read(rel).contains("`internal/sdd`"),
+            "{rel} does not point to internal/sdd"
+        );
     }
 }
