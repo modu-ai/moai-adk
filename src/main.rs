@@ -737,17 +737,18 @@ enum Command {
     },
     /// Print a lane's cargo folders
     ///
-    /// Print a lane's build environment as shell `export` lines (#2841): one
-    /// `CARGO_TARGET_DIR` per lane for all its worktrees, and a prepared `CARGO_HOME` (the
-    /// lane's own, else the shared one, else unset). Use it as
-    /// `e=$(moai lane-env --lane NAME) && eval "$e"`. Reads only. Raw text, not the envelope; a refusal
-    /// prints nothing on stdout and exits 1, a usage error exits 2.
+    /// Print a lane's build environment as shell `export` lines (#2841): `CARGO_TARGET_DIR` is
+    /// this worktree's own build folder `~/.moai/build/<project>-<worktree>` (card C-82; made
+    /// with its owner record when missing), and a prepared `CARGO_HOME` (the lane's own, else the
+    /// shared one, else unset). Use it as `e=$(moai lane-env --lane NAME) && eval "$e"`. Raw
+    /// text, not the envelope; a refusal prints nothing on stdout and exits 1, a usage error
+    /// exits 2.
     LaneEnv {
         /// The lane name, as in the claim line (`session=`).
         #[arg(long)]
         lane: String,
-        /// Absolute folder that holds the lane folders (default `/tmp`, on Windows the system
-        /// temporary folder).
+        /// Absolute folder that holds the lane's cargo homes (default `/tmp`, on Windows the
+        /// system temporary folder).
         #[arg(long)]
         base: Option<PathBuf>,
     },
@@ -2461,7 +2462,12 @@ fn lane_env(lane: &str, base: Option<&std::path::Path>) -> ExitCode {
     let base = base
         .map(std::path::Path::to_path_buf)
         .unwrap_or_else(moai_cli::lane_env::default_base);
-    match moai_cli::lane_env::resolve(lane, &base) {
+    let resolved = std::env::current_dir()
+        .map_err(|e| format!("lane-env: no working folder: {e}"))
+        .and_then(|cwd| {
+            moai_cli::lane_env::resolve(lane, &base, std::env::var_os("HOME").as_deref(), &cwd)
+        });
+    match resolved {
         Ok(env) => {
             print!("{}", moai_cli::lane_env::render(lane, &env));
             ExitCode::SUCCESS
@@ -2690,11 +2696,18 @@ pub(crate) fn main() -> ExitCode {
         for note in notes {
             eprintln!("{note}");
         }
+        // Card C-82 follow-up: git is asked where this runs only when cargo is wrapped.
+        let here = moai_cli::heavy_slot::wraps_cargo(command)
+            .then(std::env::current_dir)
+            .and_then(Result::ok)
+            .and_then(|cwd| {
+                moai_cli::heavy_slot::Here::of(&cwd, std::env::var_os("HOME").as_deref())
+            });
         if let Some(note) = moai_cli::heavy_slot::build_folder_note(
             name,
             command,
             std::env::var_os("CARGO_TARGET_DIR").as_deref(),
-            &moai_cli::lane_env::default_base(),
+            here.as_ref(),
         ) {
             eprintln!("{note}");
         }

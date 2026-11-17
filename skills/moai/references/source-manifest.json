@@ -51,7 +51,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "150331ec1c1d39b58ce1ed549be399a55919448eb9a2c7b8ba5fd1f36f197463",
+      "sha256": "fcdbd5636affa7774b56052765ba8857cf4e5b19f32975504383e517f117b37f",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -114,7 +114,7 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "2594571b3cfc476dafc2d1e23efda224130c53a3165df3615fae4c870bdfcd0e",
+      "sha256": "9ea1a8460d45dc52a0f603df3f92db8f337362e794413757e595ed09801262ad",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
@@ -141,7 +141,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "8a3cd5d721331e010b9ed04857ac05df5638b53c5eef8735f2cf9220260dfdf9",
+      "sha256": "2d11c015d1dc4b269c175d7ebfa917cf9a289492cfc0287b0ac9bbc678f3eb2a",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -186,7 +186,7 @@
       }
     },
     "references/internal/decide.md": {
-      "sha256": "cd71a1351e8cbfab462478996c67a5c6b0f96520263402b4a8ff3faf4b232652",
+      "sha256": "94e4017f61de1b65044d653d9bed98454f0b94a309f5c18cc4406712ef74b214",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-decide",
@@ -195,7 +195,7 @@
       }
     },
     "references/internal/interview.md": {
-      "sha256": "d55737b17d948c9ff28b9d99674646d8be42789a4d07d0ad9462b322b96df71b",
+      "sha256": "e747ed117b2585704ffeb326a1b0a2e5315ccc16560b49b52f03df1ffb71d84e",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-interview",
@@ -354,12 +354,21 @@
       }
     },
     "references/internal/versioning.md": {
-      "sha256": "64343cdc4ebc0c517a5c416fb66a4e02764d158d5b54826da4b134e91a62a394",
+      "sha256": "2963efdc7633f96589058904478d2fdc25520ac0e074593651a800961e6e3498",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-versioning",
         "adoption": "new",
         "reason": "Written for rc.2 card C-69 (user instruction 2026-11-17): the three versioning schemes the PROJECT interview offers — SemVer (default), HeadVer and CalVer — each with its format, who bumps what, when to pick it, how the next version is computed, its pre-release marking and two examples, plus the rule to keep the scheme a project already uses and how `project-detect` reads a version. Sources read 2026-11-17: semver.org 2.0.0, github.com/line/headver, calver.org spec 26.0. Named by project.md, internal/interview and chains/index.md."
+      }
+    },
+    "references/internal/build-folder.md": {
+      "sha256": "d501167bbf87e9c9974270530ebe91216057ae0ca99fc195a3c74e25025dbb82",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-build-folder",
+        "adoption": "new",
+        "reason": "Written for card C-82 (user decision 2026-11-17, selection '빌드 폴더를 한 곳으로 모으기'; SPEC-20261117-agent-build-folder): where agent and audit builds put CARGO_TARGET_DIR (one folder per worktree under ~/.moai/build/, CARGO_INCREMENTAL=0, an owner record), what a refusal does, where evidence stays, the end-of-task cleanup and the user-picked removal of leftovers. Read by moai-impl and moai-audit (`reads:`); its moai-adk helper is the repository's tools/build_folder.py."
       }
     },
     "references/internal/self-check.md": {
@@ -468,15 +477,6 @@
         "template_id": "language-guide",
         "adoption": "new",
         "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language swift (SwiftPM or Xcode by its files, format and lint with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
-      }
-    },
-    "references/internal/build-folder.md": {
-      "sha256": "fb667d61cb5a405cccc593f1cb31f214a7a55dbb714f0b7d76618b4c3716926a",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "internal-build-folder",
-        "adoption": "new",
-        "reason": "Written for card C-82 (user decision 2026-11-17, selection '빌드 폴더를 한 곳으로 모으기'; SPEC-20261117-agent-build-folder): where agent and audit builds put CARGO_TARGET_DIR (one folder per worktree under ~/.moai/build/, CARGO_INCREMENTAL=0, an owner record), what a refusal does, where evidence stays, the end-of-task cleanup and the user-picked removal of leftovers. Read by moai-impl and moai-audit (`reads:`); its moai-adk helper is the repository's tools/build_folder.py."
       }
     }
   }

@@ -180,6 +180,31 @@ fn an_unreadable_registry_keeps_the_guard_on() {
     assert_eq!(guards(&root, PLAIN), (true, Some(2)));
 }
 
+/// C-80 audit N1 (probe case 7): a link anywhere below the git common dir is refused, not only a
+/// linked `sessions` folder. A linked clone state folder that points at an empty registry (with
+/// or without an empty `sessions` folder in it) keeps the guard on: the lookup fails closed.
+#[test]
+fn a_linked_clone_state_folder_keeps_the_guard_on() {
+    for with_sessions in [false, true] {
+        let (_d, root) = repo("issue/12-fix-typo");
+        let empty = root.join("home/empty-registry");
+        fs::create_dir_all(&empty).unwrap();
+        if with_sessions {
+            fs::create_dir(empty.join("sessions")).unwrap();
+        }
+        std::os::unix::fs::symlink(&empty, root.join(".git/.moai-cli")).unwrap();
+        assert_eq!(
+            guards(&root, PLAIN),
+            (true, Some(2)),
+            "with_sessions={with_sessions}"
+        );
+        // The same layout as a real folder is an empty registry: no lane, no guard.
+        fs::remove_file(root.join(".git/.moai-cli")).unwrap();
+        fs::create_dir_all(root.join(".git/.moai-cli/sessions")).unwrap();
+        assert_eq!(guards(&root, PLAIN), (false, Some(0)));
+    }
+}
+
 #[test]
 fn spec_branches_are_not_guarded_with_or_without_a_lane() {
     let (_d, root) = repo("spec/20261117-commit-guard-users");

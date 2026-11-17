@@ -1,0 +1,13 @@
+{
+  "source": "GET /repos/modu-ai/moai-adk/actions/runs/43728008190/attempts/1/jobs and GET /repos/modu-ai/moai-adk/check-runs/132854068092/annotations, read 2026-11-17 (the I6 run of the full survey; its four-target matrix predates SPEC-20261117-supported-platforms). Fields the script does not read are dropped and steps are cut to the first three.",
+  "event": "push",
+  "check_result": "cancelled",
+  "jobs": [
+    {"id": 132854067796, "name": "windows-build", "status": "completed", "conclusion": "success", "runner_name": "GitHub Actions 1000141861", "steps": [{"name": "Set up job", "conclusion": "success"}, {"name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1", "conclusion": "success"}, {"name": "Scope (docs-only detection)", "conclusion": "success"}], "annotations": []},
+    {"id": 132854068092, "name": "ci / macos-x86_64", "status": "completed", "conclusion": "cancelled", "runner_name": "", "steps": [], "annotations": ["Canceling since a higher priority waiting request for ci-push-macos-x86_64 exists"]},
+    {"id": 132854068172, "name": "ci / macos-arm64", "status": "completed", "conclusion": "success", "runner_name": "GitHub Actions 1000141864", "steps": [{"name": "Set up job", "conclusion": "success"}, {"name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1", "conclusion": "success"}, {"name": "Scope (docs-only detection)", "conclusion": "success"}], "annotations": []},
+    {"id": 132854068244, "name": "ci / linux-arm64", "status": "completed", "conclusion": "success", "runner_name": "GitHub Actions 1000141863", "steps": [{"name": "Set up job", "conclusion": "success"}, {"name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1", "conclusion": "success"}, {"name": "Scope (docs-only detection)", "conclusion": "success"}], "annotations": []},
+    {"id": 132854068249, "name": "ci / linux-x86_64", "status": "completed", "conclusion": "success", "runner_name": "GitHub Actions 1000141862", "steps": [{"name": "Set up job", "conclusion": "success"}, {"name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1", "conclusion": "success"}, {"name": "Scope (docs-only detection)", "conclusion": "success"}], "annotations": []},
+    {"id": 132861325600, "name": "ci", "status": "completed", "conclusion": "failure", "runner_name": "GitHub Actions 1000141918", "steps": [{"name": "Set up job", "conclusion": "success"}, {"name": "All targets passed", "conclusion": "failure"}, {"name": "Complete job", "conclusion": "success"}], "annotations": []}
+  ]
+}
