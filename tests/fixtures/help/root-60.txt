@@ -1,4 +1,4 @@
-MoAI-ADK 2026.11.0-rc.1 — agentic development kit
+MoAI-ADK <version> — agentic development kit
 
 Usage: moai <command> [options]
        moai cc|codex|glm -l|-a    lead or agent session

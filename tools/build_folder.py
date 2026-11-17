@@ -18,7 +18,8 @@ cargo output when the task ends; skills/moai/references/internal/build-folder.md
 
 `<project>` is the primary checkout's folder name, `<worktree name>` the worktree's folder name;
 the primary checkout and a worktree whose name already starts with `<project>-` use the name
-alone. HOME must be absolute. A link anywhere on the folder's path, an unwritable HOME, or a
+alone. HOME must be absolute; on Windows USERPROFILE stands in when HOME is unset (the rule of
+`moai lane-env`). A link anywhere on the folder's path, an unwritable HOME, or a
 record of another worktree refuses: stdout stays empty and the exit code is 1 (2 for usage).
 Use `e=$(python3 -I tools/build_folder.py env) && eval "$e"`: a bare eval of an empty output
 would go on.
@@ -52,8 +53,16 @@ def git(cwd, *args):
     return out.stdout.strip()
 
 
-def home():
-    value = os.environ.get("HOME", "")
+def home(environ=None, windows=None):
+    """HOME, or on Windows USERPROFILE when HOME is unset — the rule of `moai lane-env` and
+    the rest of MoAI (`key_vault::home_from`). It must be absolute."""
+    environ = os.environ if environ is None else environ
+    windows = os.name == "nt" if windows is None else windows
+    value = environ.get("HOME", "")
+    if not value and windows:
+        value = environ.get("USERPROFILE", "")
+        if not value:
+            raise Refused("neither HOME nor USERPROFILE is set")
     if not value or not os.path.isabs(value):
         raise Refused(f"HOME must be an absolute folder, got {value!r}")
     return Path(value)

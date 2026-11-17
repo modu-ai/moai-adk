@@ -19,8 +19,27 @@ pub const MAX: u32 = u32::MAX;
 /// Unset or empty means no local number: the package version alone. Otherwise the value must be
 /// 1 to [`MAX`] in plain decimal digits with no sign, no leading zero and no spaces.
 pub fn version(package: &str, raw: Option<&str>) -> Result<String, String> {
+    Ok(match number(raw)? {
+        Some(n) => format!("{package}+local.{n}"),
+        None => package.to_string(),
+    })
+}
+
+/// The variable a CI build sets to its build number (SPEC-20261117-headver-ci-number): the
+/// workflow's run number on the run's first attempt, nothing on a re-run.
+pub const CI_ENV: &str = "MOAI_BUILD_NUMBER";
+
+/// The local build number in the raw `MOAI_LOCAL_BUILD` value: `None` when unset or empty,
+/// otherwise 1 to [`MAX`] in plain decimal digits (card C-67 S1: the HeadVer `{build}`).
+pub fn number(raw: Option<&str>) -> Result<Option<u32>, String> {
+    number_of(ENV, raw)
+}
+
+/// [`number`] for the variable `env` ([`ENV`] or [`CI_ENV`]): the same values, and a refusal
+/// that names `env`.
+pub fn number_of(env: &str, raw: Option<&str>) -> Result<Option<u32>, String> {
     let Some(raw) = raw.filter(|r| !r.is_empty()) else {
-        return Ok(package.to_string());
+        return Ok(None);
     };
     let digits = raw.bytes().all(|b| b.is_ascii_digit());
     let number = if digits && !raw.starts_with('0') {
@@ -28,13 +47,12 @@ pub fn version(package: &str, raw: Option<&str>) -> Result<String, String> {
     } else {
         None
     };
-    match number {
-        Some(n) => Ok(format!("{package}+local.{n}")),
-        None => Err(format!(
-            "{ENV}={raw:?} refused: use a build number from 1 to {MAX} in decimal digits, \
+    number.map(Some).ok_or_else(|| {
+        format!(
+            "{env}={raw:?} refused: use a build number from 1 to {MAX} in decimal digits, \
              without a sign or leading zero"
-        )),
-    }
+        )
+    })
 }
 
 #[cfg(test)]
@@ -65,6 +83,22 @@ mod tests {
             "2026.11.0-rc.1+local.4294967295"
         );
         assert!(version(PKG, Some("4294967296")).is_err());
+    }
+
+    /// SPEC-20261117-headver-ci-number: the CI number takes the same values and its refusal
+    /// names its own variable.
+    #[test]
+    fn the_ci_number_has_the_same_bounds_and_names_its_variable() {
+        use super::{number_of, CI_ENV, MAX};
+        assert_eq!(CI_ENV, "MOAI_BUILD_NUMBER");
+        assert_eq!(number_of(CI_ENV, None).unwrap(), None);
+        assert_eq!(number_of(CI_ENV, Some("")).unwrap(), None);
+        assert_eq!(number_of(CI_ENV, Some("1")).unwrap(), Some(1));
+        assert_eq!(number_of(CI_ENV, Some("4294967295")).unwrap(), Some(MAX));
+        for raw in ["0", "4294967296", "01", "x"] {
+            let err = number_of(CI_ENV, Some(raw)).unwrap_err();
+            assert!(err.starts_with("MOAI_BUILD_NUMBER="), "{raw:?}: {err}");
+        }
     }
 
     #[test]

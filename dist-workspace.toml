@@ -14,3 +14,8 @@ cargo-auditable = true
 installers = []
 # Target platforms to build apps for (Rust target-triple syntax)
 targets = ["aarch64-apple-darwin"]
+# The skill package and the base agents travel beside the binary: each folder lands at the
+# archive root under its own name (paths relative to this file, no globs), and the installers
+# copy them into <version>/skills/moai and <version>/agents, where `moai update` reads them
+# (SPEC-20261117-dist-include-skill).
+include = ["skills/", "agents/"]

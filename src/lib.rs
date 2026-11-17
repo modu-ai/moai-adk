@@ -10,6 +10,7 @@ pub mod audit;
 pub mod audit_claim;
 pub mod audit_clone;
 pub mod audit_delta;
+pub mod audit_gate;
 pub mod audit_stale;
 pub mod banner;
 pub mod baseline;
@@ -36,6 +37,7 @@ pub mod decision;
 pub mod decision_file;
 pub mod decision_log;
 pub mod dispatch;
+pub mod edit_diagnostics;
 pub mod error_next;
 pub mod flake;
 pub mod flake_record;
@@ -55,6 +57,7 @@ pub mod go_state;
 pub mod goal;
 pub mod goal_block;
 pub mod handoff;
+pub mod headver;
 pub mod heavy_slot;
 pub mod help;
 pub mod home_install;
@@ -141,6 +144,8 @@ pub mod startable;
 pub mod state_root;
 pub mod status_line;
 pub mod statusline;
+pub mod tdd;
+pub mod trailers;
 pub mod ui;
 pub mod ui_summary;
 pub mod ui_text;
@@ -174,13 +179,28 @@ use std::{
 };
 
 type Result<T> = std::result::Result<T, String>;
-/// The version this binary reports: the package version, plus `+local.<n>` when the build set
-/// `MOAI_LOCAL_BUILD=<n>` (#2722 AC-5; see [`local_build`]). Set by `build.rs`.
+/// The version this binary reports, HeadVer `{head}.{yearweek}.{build}` (card C-67 S1, see
+/// [`headver`]): `head` from the tracked `HEADVER` file, the ISO week of the UTC build date, and
+/// `MOAI_LOCAL_BUILD` (0 for an unnumbered build). `--version`, the status line and update
+/// records show and compare it, and it names the build's `versions/<version>/` folder. Set by
+/// `build.rs`.
 pub const BUILD_VERSION: &str = env!("MOAI_BUILD_VERSION");
 /// What `--version` prints after the command name (#2790 R1): the build version and the
 /// generation mark `(rust)`, so `moai --version` tells this build from the Go `moai`
 /// (`moai version v3…`). Both binary names print the same line, `moai-cli <ver> (rust)`.
 pub const VERSION_SIGNATURE: &str = concat!(env!("MOAI_BUILD_VERSION"), " (rust)");
+/// What kind of build this is (`local build 5 (MOAI_LOCAL_BUILD)` or `unnumbered build …`),
+/// its UTC build date and ISO week, and the package version: the second line of `--version`,
+/// which tells a local build from any other. Set by `build.rs` (card C-67 S1).
+pub const BUILD_NOTE: &str = env!("MOAI_BUILD_NOTE");
+/// `--version`: [`VERSION_SIGNATURE`], then [`BUILD_NOTE`] on a second line. Readers of the
+/// version (`install-inspect`, the status line harness) take the first line only; `-V` prints
+/// that line alone.
+pub const LONG_VERSION: &str = concat!(
+    env!("MOAI_BUILD_VERSION"),
+    " (rust)\n",
+    env!("MOAI_BUILD_NOTE")
+);
 /// The one spelling of the project state directory (Issue #2725 S1): `project_state!()` is the
 /// directory, `project_state!("sub/path")` a path under it, both `&'static str` so constants
 /// and tables can use them. Every project-tree path in `src` goes through this macro or
@@ -233,6 +253,26 @@ pub(crate) const SECRET_SHAPES: [&str; 7] = [
     "token=",
     "api_key=",
 ];
+
+/// True when `s` carries one of [`SECRET_SHAPES`], compared lower-case. `sk-` counts only at the
+/// start of a word — first in `s`, or after a character that is not an ASCII letter or digit —
+/// so ordinary words such as `task-based`, `risk-free` or `desk-top` are not refused (card
+/// C-90); every other shape counts anywhere. `spec::check_text` used this `sk-` rule first
+/// (#2001 r26); profile text, scope paths and spec text share it — text a person writes, where a
+/// false refusal is the cost. Logs and receipts (`redact::contains_secret_shape`, install
+/// receipts) keep counting `sk-` anywhere (C-90 audit B1, N2).
+pub(crate) fn secret_shaped(s: &str) -> bool {
+    let lower = s.to_ascii_lowercase();
+    SECRET_SHAPES.iter().any(|shape| match *shape {
+        "sk-" => lower.match_indices(shape).any(|(i, _)| {
+            lower[..i]
+                .chars()
+                .next_back()
+                .is_none_or(|c| !c.is_ascii_alphanumeric())
+        }),
+        _ => lower.contains(shape),
+    })
+}
 // Digest v1: sorted UTF-8 relative file paths and bytes, each framed by a u64 big-endian length.
 // Symlinks and special files are rejected. This is content integrity, not publisher trust.
 pub fn package_digest(root: &Path) -> Result<String> {

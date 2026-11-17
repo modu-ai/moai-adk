@@ -709,30 +709,79 @@ fn calver_format(format: &str) -> bool {
             .any(|w| w == [CalverUnit::Year, CalverUnit::Modifier])
 }
 
-/// A character that shows nothing or turns the text's direction where the managed section
-/// shows it: the soft hyphen, the Arabic letter mark, the Mongolian vowel separator, the
-/// zero-width and direction marks, the line and paragraph separators, the embeddings and
-/// overrides, the word joiner and invisible operators and isolates, the byte order mark,
-/// variation selectors and tag characters.
+/// Unicode 18.0.0 Default_Ignorable_Code_Point (DerivedCoreProperties.txt,
+/// https://www.unicode.org/Public/18.0.0/ucd/DerivedCoreProperties.txt, read 2026-11-17), with
+/// adjacent source lines joined: 4,174 code points. A unit test compares it with the source
+/// excerpt in `tests/fixtures/unicode/default-ignorable-18.0.0.txt`.
+const DEFAULT_IGNORABLE: [(u32, u32); 17] = [
+    (0x00AD, 0x00AD),
+    (0x034F, 0x034F),
+    (0x061C, 0x061C),
+    (0x115F, 0x1160),
+    (0x17B4, 0x17B5),
+    (0x180B, 0x180F),
+    (0x200B, 0x200F),
+    (0x202A, 0x202E),
+    (0x2060, 0x206F),
+    (0x3164, 0x3164),
+    (0xFE00, 0xFE0F),
+    (0xFEFF, 0xFEFF),
+    (0xFFA0, 0xFFA0),
+    (0xFFF0, 0xFFF8),
+    (0x1BCA0, 0x1BCA3),
+    (0x1D173, 0x1D17A),
+    (0xE0000, 0xE0FFF),
+];
+
+/// Unicode 18.0.0 General_Category=Format (Cf) (extracted/DerivedGeneralCategory.txt,
+/// https://www.unicode.org/Public/18.0.0/ucd/extracted/DerivedGeneralCategory.txt, read
+/// 2026-11-17T16:34:16Z), with adjacent source lines joined: 170 code points. It holds what
+/// Default_Ignorable_Code_Point leaves out on purpose: the interlinear annotation characters
+/// U+FFF9–U+FFFB, the Egyptian hieroglyph format controls U+13430–U+1343F and the prepended
+/// concatenation marks, which draw over the digits after them (C-71 audit N3). A unit test
+/// compares it with the source excerpt in `tests/fixtures/unicode/general-category-cf-18.0.0.txt`.
+const FORMAT: [(u32, u32); 21] = [
+    (0x00AD, 0x00AD),
+    (0x0600, 0x0605),
+    (0x061C, 0x061C),
+    (0x06DD, 0x06DD),
+    (0x070F, 0x070F),
+    (0x0890, 0x0891),
+    (0x08E2, 0x08E2),
+    (0x180E, 0x180E),
+    (0x200B, 0x200F),
+    (0x202A, 0x202E),
+    (0x2060, 0x2064),
+    (0x2066, 0x206F),
+    (0xFEFF, 0xFEFF),
+    (0xFFF9, 0xFFFB),
+    (0x110BD, 0x110BD),
+    (0x110CD, 0x110CD),
+    (0x13430, 0x1343F),
+    (0x1BCA0, 0x1BCA3),
+    (0x1D173, 0x1D17A),
+    (0xE0001, 0xE0001),
+    (0xE0020, 0xE007F),
+];
+
+/// A character that shows nothing, changes how the text around it is drawn, or breaks the
+/// line where the managed section shows it: every Unicode default-ignorable code point
+/// ([`DEFAULT_IGNORABLE`]: the soft hyphen, joiners, fillers, zero-width, direction and format
+/// marks, variation selectors, tag characters and the reserved code points next to them),
+/// every format character ([`FORMAT`]) and the line and paragraph separators U+2028–U+2029.
 fn hidden(c: char) -> bool {
-    matches!(
-        u32::from(c),
-        0x00AD
-            | 0x061C
-            | 0x180E
-            | 0x200B..=0x200F
-            | 0x2028..=0x202E
-            | 0x2060..=0x206F
-            | 0xFE00..=0xFE0F
-            | 0xFEFF
-            | 0xE0000..=0xE007F
-            | 0xE0100..=0xE01EF
-    )
+    let code = u32::from(c);
+    (0x2028..=0x2029).contains(&code)
+        || DEFAULT_IGNORABLE
+            .iter()
+            .chain(FORMAT.iter())
+            .any(|&(first, last)| (first..=last).contains(&code))
 }
 
 /// One line of the user's own words, at most [`MAX_CUSTOM_CHARS`] characters, that cannot be
 /// read as markup or hide text where the managed section shows it: no control character, no
-/// `<`, `>`, backtick, `[`, `]`, `*` or `_`, no `#` at the start, no [`hidden`] character.
+/// `<`, `>`, backtick, `[`, `]`, `*` or `_`, no `#` at the start, no [`hidden`] character. The
+/// profile's portable filter (`src/profile.rs`) also refuses `/` and `\` in it.
 fn custom_text(text: &str) -> bool {
     !text.trim().is_empty()
         && text.chars().count() <= MAX_CUSTOM_CHARS
@@ -1253,41 +1302,224 @@ mod tests {
         assert!(validate(&settings("headver", None, Some(10000))).is_err());
     }
 
-    /// Re-audit N3: custom text refuses markup characters and every character of the hidden
-    /// ranges, at both ends of each range; the visible neighbours of a range are taken.
+    /// The Default_Ignorable_Code_Point ranges of the Unicode 18.0.0 source excerpt, adjacent
+    /// lines joined, and the file's own total.
+    fn source_default_ignorable() -> (Vec<(u32, u32)>, u32) {
+        let text = include_str!("../tests/fixtures/unicode/default-ignorable-18.0.0.txt");
+        assert!(text.starts_with("# DerivedCoreProperties-18.0.0.txt\n"));
+        let mut ranges: Vec<(u32, u32)> = Vec::new();
+        let mut total = None;
+        for line in text.lines() {
+            if let Some(n) = line.strip_prefix("# Total code points: ") {
+                total = Some(n.trim().parse::<u32>().unwrap());
+            }
+            if line.starts_with('#') {
+                continue;
+            }
+            let Some((codes, rest)) = line.split_once(';') else {
+                continue;
+            };
+            assert!(rest
+                .trim_start()
+                .starts_with("Default_Ignorable_Code_Point "));
+            let codes = codes.trim();
+            let (first, last) = codes.split_once("..").unwrap_or((codes, codes));
+            let first = u32::from_str_radix(first, 16).unwrap();
+            let last = u32::from_str_radix(last, 16).unwrap();
+            match ranges.last_mut() {
+                Some(prev) if prev.1 + 1 == first => prev.1 = last,
+                _ => ranges.push((first, last)),
+            }
+        }
+        (ranges, total.expect("total line"))
+    }
+
+    /// C-71 (C-69 audit R2-N2): the embedded table is exactly Unicode 18.0.0's
+    /// Default_Ignorable_Code_Point set, read from the source excerpt.
+    #[test]
+    fn default_ignorable_table_matches_the_unicode_source() {
+        let (ranges, total) = source_default_ignorable();
+        assert_eq!(DEFAULT_IGNORABLE.to_vec(), ranges);
+        let count: u32 = DEFAULT_IGNORABLE.iter().map(|(a, b)| b - a + 1).sum();
+        assert_eq!(count, total);
+        assert_eq!(total, 4174);
+        // The refusal lists the interview and the operations appendix carry name the same
+        // ranges and the path characters (C-71 audit N1: the appendix too).
+        let reference = include_str!("../skills/moai/references/internal/versioning.md");
+        let appendix = include_str!("../docs/design-review/appendix/operations/project_plan.md");
+        for (first, last) in DEFAULT_IGNORABLE {
+            let name = if first == last {
+                format!("U+{first:04X}")
+            } else {
+                format!("U+{first:04X}–U+{last:04X}")
+            };
+            assert!(reference.contains(&name), "versioning.md lacks {name}");
+            assert!(appendix.contains(&name), "project_plan.md lacks {name}");
+        }
+        assert!(reference.contains("`_`, `/` or `\\`"));
+        assert!(appendix.contains("`_`·`/`·`\\`"));
+        // The excerpt names the license notice it is copied under, and that notice is there.
+        let excerpt = include_str!("../tests/fixtures/unicode/default-ignorable-18.0.0.txt");
+        assert!(excerpt.contains("LICENSE-Unicode-V3.txt in this folder"));
+        let license = include_str!("../tests/fixtures/unicode/LICENSE-Unicode-V3.txt");
+        assert!(license.starts_with("UNICODE LICENSE V3\n\nCOPYRIGHT AND PERMISSION NOTICE\n"));
+    }
+
+    /// The General_Category=Format ranges of the Unicode 18.0.0 source excerpt, adjacent lines
+    /// joined, and the file's own total.
+    fn source_format() -> (Vec<(u32, u32)>, u32) {
+        let text = include_str!("../tests/fixtures/unicode/general-category-cf-18.0.0.txt");
+        assert!(text.starts_with("# DerivedGeneralCategory-18.0.0.txt\n"));
+        let mut ranges: Vec<(u32, u32)> = Vec::new();
+        let mut total = None;
+        for line in text.lines() {
+            if let Some(n) = line.strip_prefix("# Total code points: ") {
+                total = Some(n.trim().parse::<u32>().unwrap());
+            }
+            if line.starts_with('#') {
+                continue;
+            }
+            let Some((codes, rest)) = line.split_once(';') else {
+                continue;
+            };
+            assert!(rest.trim_start().starts_with("Cf "), "{line}");
+            let codes = codes.trim();
+            let (first, last) = codes.split_once("..").unwrap_or((codes, codes));
+            let first = u32::from_str_radix(first, 16).unwrap();
+            let last = u32::from_str_radix(last, 16).unwrap();
+            match ranges.last_mut() {
+                Some(prev) if prev.1 + 1 == first => prev.1 = last,
+                _ => ranges.push((first, last)),
+            }
+        }
+        (ranges, total.expect("total line"))
+    }
+
+    /// C-71 audit N3: the embedded Cf table is exactly Unicode 18.0.0's General_Category=Format
+    /// set, read from the source excerpt, and both refusal lists name every range.
+    #[test]
+    fn format_table_matches_the_unicode_source() {
+        let (ranges, total) = source_format();
+        assert_eq!(FORMAT.to_vec(), ranges);
+        let count: u32 = FORMAT.iter().map(|(a, b)| b - a + 1).sum();
+        assert_eq!((count, total), (170, 170));
+        let reference = include_str!("../skills/moai/references/internal/versioning.md");
+        let appendix = include_str!("../docs/design-review/appendix/operations/project_plan.md");
+        for (first, last) in FORMAT {
+            let name = if first == last {
+                format!("U+{first:04X}")
+            } else {
+                format!("U+{first:04X}–U+{last:04X}")
+            };
+            assert!(reference.contains(&name), "versioning.md lacks {name}");
+            assert!(appendix.contains(&name), "project_plan.md lacks {name}");
+        }
+        let excerpt = include_str!("../tests/fixtures/unicode/general-category-cf-18.0.0.txt");
+        assert!(excerpt.contains("LICENSE-Unicode-V3.txt in this folder"));
+    }
+
+    /// C-71 audit N3: every Cf code point is refused, at both ends of each range (N); the
+    /// neighbour just outside each end (N+1) is taken unless it is refused for another reason.
+    /// Ordinary Arabic, Devanagari and Korean text and emoji without joiners stay accepted.
+    #[test]
+    fn custom_text_refuses_every_format_character() {
+        let custom = |text: String| validate(&settings("custom", Some(&text), None));
+        let (ranges, _) = source_format();
+        let (ignorable, _) = source_default_ignorable();
+        let refused_elsewhere = |code: u32| {
+            ranges
+                .iter()
+                .chain(ignorable.iter())
+                .any(|&(a, b)| (a..=b).contains(&code))
+                || (0x2028..=0x2029).contains(&code)
+        };
+        let mut neighbours = 0;
+        for &(first, last) in &ranges {
+            for code in [first, last] {
+                let c = char::from_u32(code).unwrap();
+                assert!(custom(format!("a{c}b")).is_err(), "U+{code:04X}");
+            }
+            for code in [first - 1, last + 1] {
+                let c = char::from_u32(code).unwrap();
+                if refused_elsewhere(code) || c.is_control() {
+                    continue;
+                }
+                assert!(custom(format!("a{c}b")).is_ok(), "U+{code:04X}");
+                neighbours += 1;
+            }
+        }
+        // 42 outside neighbours less the 10 refused for another reason: U+180D and U+180F
+        // (Mongolian variation selectors), U+2029 (a separator), U+2065 (twice), U+FFF8 and
+        // U+E0000, U+E0002, U+E001F, U+E0080 (default-ignorable).
+        assert_eq!(neighbours, 32, "taken outside neighbours");
+        // The two ranges the audit named, and U+13440 (Mn, not Cf) next to the second.
+        for code in [0xFFF9, 0xFFFA, 0xFFFB, 0x13430, 0x13438, 0x1343F] {
+            let c = char::from_u32(code).unwrap();
+            assert!(custom(format!("a{c}b")).is_err(), "U+{code:04X}");
+        }
+        for code in [0xFFFC, 0x1342F, 0x13440] {
+            let c = char::from_u32(code).unwrap();
+            assert!(custom(format!("a{c}b")).is_ok(), "U+{code:04X}");
+        }
+        for text in [
+            "إصدار ٤ الربيع",
+            "release 4 ٢٠٢٦",
+            "संस्करण चार",
+            "봄 출시 4",
+            "spring 🚀 train",
+        ] {
+            assert!(custom(text.into()).is_ok(), "{text}");
+        }
+    }
+
+    /// Re-audit N3 and C-71: custom text refuses markup characters, the line and paragraph
+    /// separators, and every default-ignorable character, at both ends of each range (N); the
+    /// neighbour just outside each end (N+1) is taken unless it is refused for another reason.
     #[test]
     fn custom_text_refuses_markup_and_every_hidden_range() {
         let custom = |text: String| validate(&settings("custom", Some(&text), None));
         for c in ['[', ']', '*', '_', '<', '>', '`'] {
             assert!(custom(format!("a {c} b")).is_err(), "{c:?}");
         }
-        let ranges: [(u32, u32); 10] = [
-            (0x00AD, 0x00AD),
-            (0x061C, 0x061C),
-            (0x180E, 0x180E),
-            (0x200B, 0x200F),
-            (0x202A, 0x202E),
-            (0x2060, 0x206F),
-            (0xFEFF, 0xFEFF),
-            (0xFE00, 0xFE0F),
-            (0xE0000, 0xE007F),
-            (0xE0100, 0xE01EF),
-        ];
-        for (first, last) in ranges {
+        for code in [0x2028, 0x2029] {
+            let c = char::from_u32(code).unwrap();
+            assert!(custom(format!("a{c}b")).is_err(), "U+{code:04X}");
+        }
+        let (ranges, _) = source_default_ignorable();
+        let (format, _) = source_format();
+        let refused_elsewhere = |code: u32| {
+            ranges
+                .iter()
+                .chain(format.iter())
+                .any(|&(a, b)| (a..=b).contains(&code))
+                || (0x2028..=0x2029).contains(&code)
+        };
+        let mut neighbours = 0;
+        for &(first, last) in &ranges {
             for code in [first, last] {
                 let c = char::from_u32(code).unwrap();
                 assert!(custom(format!("a{c}b")).is_err(), "U+{code:04X}");
             }
+            for code in [first - 1, last + 1] {
+                let c = char::from_u32(code).unwrap();
+                if refused_elsewhere(code) || c.is_control() {
+                    continue;
+                }
+                assert!(custom(format!("a{c}b")).is_ok(), "U+{code:04X}");
+                neighbours += 1;
+            }
         }
-        // The neighbours outside each range, where the neighbour is not itself refused for
-        // another reason (U+180D and U+180F are variation selectors outside the list, U+2029
-        // is a paragraph separator, U+FEFE is unassigned).
+        // Every one of the 17 ranges has two outside neighbours that are taken, except
+        // U+202A's lower neighbour U+2029 (a paragraph separator) and, since C-71 audit N3,
+        // U+FFF0–U+FFF8's upper neighbour U+FFF9 (a format character).
+        assert_eq!(neighbours, 2 * ranges.len() - 2);
+        // The ones the C-69 audit named are refused now.
         for code in [
-            0x00AC, 0x00AE, 0x061B, 0x061D, 0x200A, 0x2010, 0x202F, 0x205F, 0x2070, 0xFDFF, 0xFE10,
-            0xE0080, 0xE00FF, 0xE01F0,
+            0x034F, 0x115F, 0x1160, 0x17B4, 0x17B5, 0x180B, 0x180F, 0x3164, 0xFFA0, 0xFFF0, 0xFFF8,
+            0x1BCA0, 0x1BCA3, 0x1D173, 0x1D17A, 0xE0080, 0xE00FF, 0xE01F0, 0xE0FFF,
         ] {
             let c = char::from_u32(code).unwrap();
-            assert!(custom(format!("a{c}b")).is_ok(), "U+{code:04X}");
+            assert!(custom(format!("a{c}b")).is_err(), "U+{code:04X}");
         }
         // Plain text with other punctuation is taken.
         assert!(custom("release/train 4 (build #2), weekly; 50% + x".into()).is_ok());

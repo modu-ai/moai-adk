@@ -52,6 +52,9 @@ pub enum Event {
     ToolPreflight,
     ToolObserve,
     TurnValidation,
+    /// SPEC-20261117-edit-diagnostics S1: the user's checker after a file edit (Claude Code,
+    /// opt-in `[hooks.edit_diagnostics]`).
+    EditDiagnostics,
 }
 
 impl Event {
@@ -61,6 +64,7 @@ impl Event {
             "tool-preflight" => Some(Event::ToolPreflight),
             "tool-observe" => Some(Event::ToolObserve),
             "turn-validation" => Some(Event::TurnValidation),
+            "edit-diagnostics" => Some(Event::EditDiagnostics),
             _ => None,
         }
     }
@@ -70,7 +74,7 @@ impl Event {
         match self {
             Event::SessionCheck => "SessionStart",
             Event::ToolPreflight => "PreToolUse",
-            Event::ToolObserve => "PostToolUse",
+            Event::ToolObserve | Event::EditDiagnostics => "PostToolUse",
             Event::TurnValidation => "Stop",
         }
     }
@@ -79,6 +83,9 @@ impl Event {
 /// The opt-in deny rules of stage 7 (B3, B9; decision 6779829826), off unless
 /// `~/.moai-cli/hook-config.toml` turns them on (see `hook_config`).
 pub const OPT_IN_RULES: &str = "[hooks.outside_project_writes] enabled + allow: file writes outside the project (after symlinks and ..) are refused unless under allow; [hooks.primary_checkout] enabled + repos + allow_commands: switch, checkout <branch>, reset, stash (not list/show) and rebase are refused in a listed primary checkout that has linked worktrees. A missing or broken config turns both off";
+
+/// How edit-diagnostics is turned on (SPEC-20261117-edit-diagnostics S1).
+pub const EDIT_OPT_IN: &str = "[hooks.edit_diagnostics] enabled + checkers (extension -> argv, the edited file appended, no shell) in the HOME hook-config.toml; timeout_secs 1-30 (10), max_lines 1-200 (20), max_chars 200-9000 (4000). Off when absent; a malformed table is off and logged as config_error";
 
 /// The confirmation class of tool-preflight (B2, Issue #2391 classification row B2).
 pub const CONFIRM_COMMANDS: &str =
@@ -132,7 +139,7 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
     };
     let Some(event) = Event::parse(event) else {
         return engine_error(
-            "unknown hook event; must be session-check, tool-preflight, tool-observe or turn-validation",
+            "unknown hook event; must be session-check, tool-preflight, tool-observe, turn-validation or edit-diagnostics",
         );
     };
     // OMP's turn-end event is `session_stop` (OMP 18.18.7, extensions.md), but the generated
@@ -143,11 +150,15 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
             "turn-validation is not wired for OMP (session_stop exists; no rule uses it yet)",
         );
     }
+    // Slice S1 of SPEC-20261117-edit-diagnostics is Claude Code only (leader decision Q6).
+    if event == Event::EditDiagnostics && host != Host::Claude {
+        return engine_error("edit-diagnostics is Claude Code only in this release");
+    }
     let Ok(Value::Object(input)) = serde_json::from_slice::<Value>(stdin) else {
         // A PostToolUse input carries the whole tool result; one past the stdin bound is cut
         // off and no longer parses. Observation is best-effort and the tool already ran, so
         // that is a quiet skip, not an error the host would surface on every large result.
-        if event == Event::ToolObserve {
+        if matches!(event, Event::ToolObserve | Event::EditDiagnostics) {
             return allow_quietly();
         }
         return engine_error("hook input is not a JSON object");
@@ -165,6 +176,9 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
                 && name == "PostToolUseFailure" => {}
         Some(_) => return engine_error("hook_event_name does not match the requested duty"),
     }
+    if event == Event::EditDiagnostics {
+        return edit_diagnostics(&input, cwd, now_unix_ms, host);
+    }
     let verdict = match event {
         Event::SessionCheck => session_check(host, &input, cwd),
         Event::ToolPreflight => {
@@ -178,6 +192,8 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
         }
         Event::ToolObserve => tool_observe(&input, cwd, now_unix_ms, host),
         Event::TurnValidation => turn_validation_with(STOP_RULES, &input, cwd, now_unix_ms),
+        // Answered above, before any verdict.
+        Event::EditDiagnostics => Verdict::Allow,
     };
     if let (Event::ToolPreflight, Verdict::Deny(_)) = (event, &verdict) {
         record_deny(&input, cwd, now_unix_ms, host);
@@ -273,6 +289,43 @@ fn record_deny(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) {
     let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line);
 }
 
+/// edit-diagnostics (SPEC-20261117-edit-diagnostics S1, Claude Code): off unless
+/// `[hooks.edit_diagnostics]` is enabled and well formed; an unusable file or a malformed table
+/// leaves one `config_error` line and nothing runs. The answer is the documented PostToolUse
+/// `hookSpecificOutput.additionalContext` (code.claude.com/docs/en/hooks, read 2026-11-17),
+/// always exit 0: this slice never blocks.
+fn edit_diagnostics(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) -> Answer {
+    let loaded = crate::hook_config::load();
+    if let Some(problem) = loaded.problem {
+        record_config_error(input, cwd, now_unix_ms, host, problem);
+        return allow_quietly();
+    }
+    if loaded.config.edit_invalid {
+        record_config_error(
+            input,
+            cwd,
+            now_unix_ms,
+            host,
+            crate::hook_config::ConfigProblem::InvalidEditDiagnostics,
+        );
+        return allow_quietly();
+    }
+    let Some(rule) = loaded.config.edit else {
+        return allow_quietly();
+    };
+    match crate::edit_diagnostics::run(input, cwd, &rule) {
+        Some(text) => Answer {
+            stdout: json!({
+                "hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": text}
+            })
+            .to_string(),
+            stderr: String::new(),
+            exit: 0,
+        },
+        None => allow_quietly(),
+    }
+}
+
 /// An unusable `~/.moai-cli/hook-config.toml` leaves one `config_error` line (session, host, fixed
 /// reason, time) in the engine log when `.moai-cli/` exists (#2391 N1): no path and no config
 /// text. Best effort, never changes the answer.
@@ -365,6 +418,10 @@ pub fn capabilities(host: &str) -> Value {
             "tool-observe": {"events": ["PostToolUse", "PostToolUseFailure"], "records": "observe line", "blocks": false},
             "turn-validation": {"event": "Stop", "rules": STOP_RULES.len(), "answer": "decision=block + reason",
                                 "host_cap": "8 consecutive continuations (CLAUDE_CODE_STOP_HOOK_BLOCK_CAP)", "moai_cap": MOAI_STOP_BLOCK_CAP},
+            "edit-diagnostics": {"event": "PostToolUse", "matcher": crate::edit_diagnostics::MATCHER,
+                                 "opt_in": EDIT_OPT_IN, "generated": "only while the setting is enabled",
+                                 "answer": "hookSpecificOutput.additionalContext", "blocks": false,
+                                 "not_covered": ["a blocking mode (slice S2)", "language servers (slice S3)", "files outside the project or behind a link", "edits made by Bash"]},
             "on_engine_error": "exit 1: non-blocking by the host's rules",
         }),
         Some(Host::Codex) => json!({
@@ -387,6 +444,7 @@ pub fn capabilities(host: &str) -> Value {
             "turn-validation": {"event": "Stop", "rules": STOP_RULES.len(), "answer": "decision=block + reason",
                                 "host_cap": "not documented", "moai_cap": MOAI_STOP_BLOCK_CAP,
                                 "unverified": "empty stdout on exit 0 for Stop (stated generally, not for Stop)"},
+            "edit-diagnostics": {"supported": false, "reason": "slice S1 is Claude Code only; Codex apply_patch is slice S2"},
             "on_engine_error": "exit 1: not documented for command hooks (unverified)",
         }),
         Some(Host::Omp) => json!({
@@ -406,6 +464,7 @@ pub fn capabilities(host: &str) -> Value {
                              "outcome": "tool_result.isError"},
             "turn-validation": {"supported": false, "event": "session_stop", "answer": "{decision: \"block\", reason} (OMP 18.18.7 extensions.md)",
                                 "reason": "not wired: STOP_RULES is empty, so the extension module does not subscribe to session_stop"},
+            "edit-diagnostics": {"supported": false, "reason": "slice S1 is Claude Code only; OMP tool_result is slice S2"},
             "on_engine_error": "exit 1: the module does not block",
         }),
         None => json!({"error": "unknown hook host; must be claude, codex or omp"}),
@@ -662,6 +721,11 @@ fn tool_preflight_deny(
         Err(gap) => gap,
     };
     if crate::claim_verify::has_local_record(cwd, &dir) {
+        return Verdict::Allow;
+    }
+    // SPEC-20261117-commit-guard-users: a lane safety only; no live lane session in this
+    // clone means an ordinary user, whose commit is not refused.
+    if !crate::claim_verify::lane_clone(&dir) {
         return Verdict::Allow;
     }
     Verdict::Deny(format!(

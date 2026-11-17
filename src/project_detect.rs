@@ -342,6 +342,18 @@ fn capped(set: BTreeSet<String>) -> Vec<String> {
 }
 
 /// Detects the facts of the project at `root`. Reads only; follows no symbolic link.
+/// The languages of the manifest files at `root` alone, sorted: the cheap part of [`detect`]
+/// (no walk of the code files), for readers that must stay fast, such as the tool-preflight
+/// hook (`crate::tdd::TestPaths`).
+pub fn manifest_languages(root: &Path) -> Vec<String> {
+    let languages: BTreeSet<String> = MANIFESTS
+        .iter()
+        .filter(|(file, _)| is_file_in(root, &[file]))
+        .map(|(_, lang)| (*lang).to_string())
+        .collect();
+    languages.into_iter().collect()
+}
+
 pub fn detect(root: &Path) -> Result<Detected> {
     let meta = fs::symlink_metadata(root).map_err(|_| "project directory unavailable")?;
     if !meta.is_dir() {

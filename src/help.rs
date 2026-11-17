@@ -42,6 +42,7 @@ pub const GROUPS: &[Group] = &[
             ("ledger-status", false),
             ("card", false),
             ("spec", false),
+            ("tdd", false),
             ("ledger-register-plan", false),
             ("ledger-register-apply", false),
             ("card-import-plan", false),
@@ -204,6 +205,9 @@ pub const GROUPS: &[Group] = &[
             ("pr-confirm", false),
             ("audit-claim", false),
             ("audit-verdict-line", false),
+            ("audit-gate", false),
+            ("trailers", false),
+            ("trailer-check", false),
             ("audit-clone-plan", false),
             ("labels-check", false),
             ("decision-due", false),
@@ -339,6 +343,14 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
             "spec new login-fix --title fix-login --minimal --project .",
             "spec check --all --project .",
             "spec show SPEC-20261117-login-fix --project .",
+        ],
+    ),
+    (
+        "tdd",
+        &[
+            "tdd red --check ./test-login.sh --project .",
+            "tdd green --project .",
+            "tdd reopen --reason the-test-named-the-wrong-error --project .",
         ],
     ),
     ("ledger-register-plan", &["ledger-register-plan .", "ledger-register-apply --plan-digest <digest> --permission-reference <ref> ."]),
@@ -495,6 +507,12 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("pr-confirm", &["pr-confirm --task <task> --operation-id <operation-id> --observed-state <observed-state> ."]),
     ("audit-claim", &["audit-claim < request.json"]),
     ("audit-verdict-line", &["audit-verdict-line --pr 2850 --head <head> --verdict PASS --title <scope>", "audit-verdict-line --pr 2850 --head <head> --verdict FAIL --title <scope> --base <earlier-head>"]),
+    ("trailers", &["trailers --spec SPEC-20261117-session-trailer"]),
+    ("trailer-check", &["trailer-check origin/v2026.11.0..HEAD"]),
+    (
+        "audit-gate",
+        &["audit-gate < input.json", "audit-gate --require-pass < input.json"],
+    ),
     ("audit-clone-plan", &["audit-clone-plan --pr 2824 --head <sha> --head-branch <head-branch> --base-branch <base-branch> ."]),
     ("labels-check", &["labels-check --repo modu-ai/moai-adk ."]),
     ("decision-due", &["decision-due docs/decisions/bundle.md"]),
@@ -1799,6 +1817,12 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "미리 보기의 `home.confirm_token`(#2871): 거기 적힌 Go 세대 `~/.moai` 항목을 \
          `~/.moai-go-retired/<UTC>/` 로 옮김. --confirm 이 없으면 나머지는 미리 보기로 남고, \
          --confirm-cleanup 과 같이 못 씀",
+    ),
+    (
+        "update",
+        "allow_older",
+        "설치된 더 새 버전 위로 이 옛 빌드로 돌아감(없으면 막힘). 미리 보기가 호스트마다 \
+         경고하고, 확인할 때도 이 플래그가 다시 필요함",
     ),
     (
         "go-state-plan",

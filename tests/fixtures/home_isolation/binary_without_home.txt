@@ -18,7 +18,6 @@ tests/cli_project.rs
 tests/close_check_cli.rs
 tests/close_step_2903.rs
 tests/common/cli.rs
-tests/common/mod.rs
 tests/context_cli.rs
 tests/decision_append_cli.rs
 tests/decision_file_cli.rs

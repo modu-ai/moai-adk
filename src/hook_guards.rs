@@ -25,6 +25,23 @@
 //!   block or a GitHub token. A file extension alone (`.pem`, `.key`) decides nothing: public
 //!   certificates and test fixtures use them too. Writes outside the project are not refused
 //!   here (decision pending: the hook cannot see a session's extra directories).
+//! - A5 SPEC before code (card C-86, user decision 2026-11-17 "권고 말고 강제",
+//!   SPEC-20261117-spec-before-code): on a SPEC work branch `spec/<yyyymmdd>-<slug>`, a file
+//!   write inside the work tree but outside `.moai/specs/` waits until
+//!   `.moai/specs/SPEC-<yyyymmdd>-<slug>/spec.md` exists and its frontmatter names that id.
+//!   Writing under `.moai/specs/` is always allowed, so the SPEC itself is the way out. Paths
+//!   are judged after `..` and symbolic links are resolved, each in the work tree that holds
+//!   it (the nearest `.git` above the written path, C-86 audit N2), whatever the session's
+//!   folder; a path in no work tree, or in a work tree without a `.moai` folder at its root
+//!   (not a MoAI project, #3176 audit N2), is not this rule's. One call that writes the SPEC
+//!   and code together waits while the SPEC is not on disk. Shell redirections are not seen
+//!   (the A4 gap).
+//! - A6 the GREEN test lock (card C-86, SPEC-20261117-green-test-lock): while a work tree's
+//!   TDD record (`<git-dir>/moai/tdd.json`, written by `moai tdd red`) is GREEN or REFACTOR, a
+//!   write to a test path its RED commit changed, or a new file on a test path, is refused
+//!   ([`crate::tdd::lock_refusal`]). Each written path is judged by the record of the work
+//!   tree that holds it (as A5), whatever the session's folder (#3177 audit N1). Files only, no
+//!   program; no record locks nothing. Runs after A5.
 //!
 //! Known gaps (allowed, not refused): shell redirections (`>`, `tee`) into protected paths; a
 //! force push with no refspec while `main` is checked out (the branch is not read here); a
@@ -676,7 +693,95 @@ pub fn write_guard(tool: &str, tool_input: &Value, cwd: &Path) -> Option<&'stati
     if contents.iter().any(|c| carries_secret(c)) {
         return Some(SECRET_CONTENT);
     }
-    None
+    // A5, then A6 (SPEC-20261117-green-test-lock): the GREEN test lock of this worktree's TDD
+    // cycle.
+    spec_before_code(&paths, cwd).or_else(|| crate::tdd::lock_refusal(&paths, cwd))
+}
+
+const SPEC_FIRST: &str = "MoAI tool-preflight: on a SPEC work branch (spec/<yyyymmdd>-<slug>), files outside .moai/specs/ are written only after the branch's SPEC exists; write .moai/specs/SPEC-<yyyymmdd>-<slug>/spec.md first (`moai spec new`; when the branch date is not today, `moai spec new --date YYYY-MM-DD`).";
+
+/// The SPEC id a work branch is for: `spec/<yyyymmdd>-<slug>` with eight digits and a slug of
+/// lower-case letters, digits and inner hyphens (the `moai spec new` naming) gives
+/// `SPEC-<yyyymmdd>-<slug>`; any other branch gives `None`.
+fn spec_branch_id(branch: &str) -> Option<String> {
+    let rest = branch.strip_prefix("spec/")?;
+    let (date, slug) = rest.split_once('-')?;
+    let date_ok = date.len() == 8 && date.bytes().all(|b| b.is_ascii_digit());
+    let slug_ok = !slug.is_empty()
+        && !slug.starts_with('-')
+        && !slug.ends_with('-')
+        && slug
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-');
+    (date_ok && slug_ok).then(|| format!("SPEC-{date}-{slug}"))
+}
+
+/// The branch HEAD names in the work tree at `top`, read from the file system: `.git` is the
+/// git folder, or a file `gitdir: <folder>` for a linked worktree. `None` when detached or
+/// unreadable.
+fn work_tree_branch(top: &Path) -> Option<String> {
+    let git = top.join(".git");
+    let dir = if git.is_dir() {
+        git
+    } else {
+        let pointer = std::fs::read_to_string(&git).ok()?;
+        let target = PathBuf::from(pointer.trim().strip_prefix("gitdir:")?.trim());
+        if target.is_absolute() {
+            target
+        } else {
+            top.join(target)
+        }
+    };
+    let head = std::fs::read_to_string(dir.join("HEAD")).ok()?;
+    head.trim()
+        .strip_prefix("ref: refs/heads/")
+        .map(str::to_string)
+}
+
+/// Whether `spec` is a file whose frontmatter (between the first two `---` lines) has the line
+/// `id: <id>`.
+fn spec_names(spec: &Path, id: &str) -> bool {
+    let Ok(text) = std::fs::read_to_string(spec) else {
+        return false;
+    };
+    let mut lines = text.lines();
+    if lines.next().map(str::trim_end) != Some("---") {
+        return false;
+    }
+    let want = format!("id: {id}");
+    lines
+        .take_while(|l| l.trim_end() != "---")
+        .any(|l| l.trim_end() == want)
+}
+
+/// A5: the reason a write is refused because its SPEC work branch has no SPEC yet, or `None`.
+/// The work tree is the one holding each WRITTEN file — the nearest `.git` (folder or file)
+/// above its resolved path — not the one holding the session's folder (C-86 audit N2): a
+/// worktree nested in the primary checkout (`.claude/worktrees/<x>`) has its own branch.
+fn spec_before_code(paths: &[String], cwd: &Path) -> Option<&'static str> {
+    let waits = paths.iter().any(|p| {
+        let path = Path::new(p);
+        let absolute = if path.is_absolute() {
+            path.to_path_buf()
+        } else {
+            cwd.join(path)
+        };
+        let resolved = crate::hook_config::canonical(&absolute);
+        let Some(top) = work_tree_top(&resolved) else {
+            return false;
+        };
+        // #3176 audit N2: a work tree without a `.moai` folder at its root is not a MoAI
+        // project; its `spec/…` branch is not this rule's.
+        if !top.join(".moai").is_dir() {
+            return false;
+        }
+        let Some(id) = work_tree_branch(&top).and_then(|b| spec_branch_id(&b)) else {
+            return false;
+        };
+        let specs = top.join(".moai").join("specs");
+        !resolved.starts_with(&specs) && !spec_names(&specs.join(&id).join("spec.md"), &id)
+    });
+    waits.then_some(SPEC_FIRST)
 }
 
 const OUTSIDE_PROJECT: &str = "MoAI tool-preflight: a write outside the project is refused; add the folder to `allow` under [hooks.outside_project_writes] in ~/.moai-cli/hook-config.toml to permit it.";

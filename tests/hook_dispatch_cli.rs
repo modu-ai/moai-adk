@@ -97,6 +97,12 @@ fn repo(branch: &str) -> (tempfile::TempDir, PathBuf) {
     fs::write(root.join(".gitignore"), "home/\n").unwrap();
     git(&root, &["add", "a.txt", ".gitignore"]);
     git(&root, &["commit", "-q", "-m", "init"]);
+    // SPEC-20261117-commit-guard-users: the `issue/<n>` guard applies in a clone with a live
+    // lane session, so an `issue/` fixture is a lane clone (tests/commit_guard_users.rs has
+    // the ordinary-user side).
+    if branch.starts_with("issue/") {
+        common::register_lane(&root);
+    }
     (dir, root)
 }
 
@@ -1326,7 +1332,12 @@ fn a_commit_with_its_token_spawns_one_git_and_one_without_spawns_three() {
     assert_eq!(n, 1, "token present: the branch lookup only");
     let (n, r) = calls("git commit -m x");
     assert_deny(&r);
-    assert_eq!(n, 3, "no token: branch + two rev-parse for the journal");
+    // SPEC-20261117-commit-guard-users: a refusal also reads the clone's session registry,
+    // located by the same two rev-parse calls; the token path above is unchanged.
+    assert_eq!(
+        n, 5,
+        "no token: branch + two rev-parse for the journal + two for the session registry"
+    );
     let (n, r) = calls("ls");
     assert_allow(&r);
     assert_eq!(n, 0, "not a commit: no git at all");
@@ -1907,6 +1918,8 @@ fn git_dash_c_names_the_worktree_the_commit_runs_in() {
         &primary,
         &["worktree", "add", "-q", "-b", "issue/77-k", "wt77"],
     );
+    // A lane worktree belongs to a lane clone (SPEC-20261117-commit-guard-users).
+    common::register_lane(&primary);
     let wt = primary.join("wt77");
     // From the primary checkout, a commit in the lane worktree without its token: denied.
     let r = dispatch(

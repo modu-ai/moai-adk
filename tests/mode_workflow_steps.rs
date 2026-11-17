@@ -1299,7 +1299,9 @@ fn a_dispatch_is_a_card_and_semi_keeps_only_four_things_for_the_person() {
             "never a dispatch whose only job is to look",
             "\"Open pull requests first\" orders the work, it is not a gate that holds every ready card back",
             "write the reason in one line and give the lane a ready card instead",
-            "new Issues, lifting a HOLD, merge-policy changes and releases",
+            // Card C-81 (was: "new Issues, lifting a HOLD, merge-policy changes and releases",
+            // all at `semi`).
+            "at both levels a tag or release, at `semi` also new Issues, lifting a HOLD and merge-policy changes",
             // C-53 S5 repair (audit B1, user decision 2026-11-17): a lane starts its self-audit
             // and the audit agent of its own tier 0-1 pull request, never another lane's audit
             // (was: "starting an audit and changing code in a claimed card are lane work at both

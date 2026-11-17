@@ -261,8 +261,10 @@ class WorkflowTest(unittest.TestCase):
         paths = sorted(WORKFLOWS.glob("*.yml"))
         # #2554 PR-A adds the candidate verification path: candidate.yml (the three supported
         # targets and the verdict) and candidate-target.yml (one target, called three times).
+        # SPEC-20261117-audit-gate adds audit-gate.yml (the audit check from verdict comments).
         self.assertEqual([p.name for p in paths],
-                         ["candidate-target.yml", "candidate.yml", "ci.yml", "moai-label-sync.yml"])
+                         ["audit-gate.yml", "candidate-target.yml", "candidate.yml", "ci.yml",
+                          "moai-label-sync.yml"])
         return [(p, yaml.safe_load(p.read_text(encoding="utf-8"))) for p in paths]
 
     def test_permissions_are_least_privilege(self):
@@ -273,6 +275,47 @@ class WorkflowTest(unittest.TestCase):
                     self.assertIn("permissions", job, "every job states its own permissions")
                     writes = {k for k, v in job["permissions"].items() if v == "write"}
                     self.assertEqual(writes, ALLOWED_WRITES.get((path.name, job_id), set()), job_id)
+
+    def test_ci_builds_carry_the_run_number_on_the_first_attempt_only(self):
+        """SPEC-20261117-headver-ci-number: a ci build stamps HeadVer's build number from the
+        run number, and only on the run's first attempt (a re-run keeps `run_number`, so it
+        builds unnumbered instead of repeating a number, internal/versioning)."""
+        flows = dict((p.name, f) for p, f in self.workflows())
+        for job_id in ("check", "windows-build"):
+            with self.subTest(job=job_id):
+                env = flows["ci.yml"]["jobs"][job_id]["env"]
+                self.assertEqual(env["MOAI_BUILD_NUMBER"],
+                                 "${{ github.run_attempt == '1' && github.run_number || '' }}")
+                self.assertNotIn("MOAI_LOCAL_BUILD", env)
+
+    def test_audit_gate_reads_verdicts_with_a_read_only_token(self):
+        """SPEC-20261117-audit-gate: `pull_request` only (never `pull_request_target`), read-only
+        job permissions, the same pinned actions ci.yml uses, the gate built from the base
+        commit, and PR values reaching the script through `env` only."""
+        flows = dict((p.name, f) for p, f in self.workflows())
+        text = (WORKFLOWS / "audit-gate.yml").read_text(encoding="utf-8")
+        flow = flows["audit-gate.yml"]
+        self.assertNotIn("pull_request_target:", text)
+        self.assertEqual(set(flow.get("on", flow.get(True)).keys()), {"pull_request"})
+        self.assertEqual(flow["permissions"], {"contents": "read"})
+        (job,) = flow["jobs"].values()
+        self.assertEqual(job["permissions"],
+                         {"contents": "read", "pull-requests": "read", "issues": "read"})
+        ci_uses = {s["uses"] for j in flows["ci.yml"]["jobs"].values()
+                   for s in j.get("steps", []) if "uses" in s}
+        uses = [s["uses"] for s in job["steps"] if "uses" in s]
+        self.assertTrue(uses and set(uses) <= ci_uses, uses)
+        (checkout,) = [s for s in job["steps"] if s.get("uses", "").startswith("actions/checkout@")]
+        self.assertEqual(checkout["with"], {"ref": "${{ github.event.pull_request.base.sha }}",
+                                            "persist-credentials": False})
+        for step in job["steps"]:
+            if "run" in step:
+                with self.subTest(step=step.get("name")):
+                    self.assertNotIn("${{", step["run"])
+        gate = [s for s in job["steps"] if "audit-gate" in s.get("run", "")]
+        self.assertEqual(len(gate), 1)
+        self.assertIn("--require-pass", gate[0]["run"])
+        self.assertEqual(gate[0]["env"]["GH_TOKEN"], "${{ github.token }}")
 
     def test_every_action_is_pinned_to_a_commit_sha(self):
         for path, flow in self.workflows():
@@ -433,12 +476,33 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(caps, {"linux-x86_64": 30, "macos-arm64": 45})
         self.assertEqual(check["timeout-minutes"], "${{ matrix.timeout }}")
         aggregate = flow["jobs"]["ci"]
-        self.assertEqual(aggregate["needs"], ["check"])
+        self.assertEqual(aggregate["needs"], ["check", "ci-verdict"])
         # #2312: runs after a failed target (so the check fails, not skips) but not after a
-        # cancellation (always() reported a cancel-in-progress run as a failure).
-        self.assertEqual(aggregate.get("if"), "${{ !cancelled() }}")
+        # cancellation (always() reported a cancel-in-progress run as a failure). C-83: it is
+        # skipped only when ci-verdict wrote `superseded`.
+        self.assertEqual(aggregate.get("if"),
+                         "${{ !cancelled() && needs.ci-verdict.outputs.state != 'superseded' }}")
         gate = "\n".join(s.get("run", "") for s in aggregate["steps"])
         self.assertIn('[ "${{ needs.check.result }}" = "success" ]', gate)
+
+    def test_rc_ci_reads_a_superseded_push_run_as_neutral_only_through_the_verdict(self):
+        """C-83 (SPEC-20261117-ci-superseded-neutral): ci-verdict runs only on a push whose
+        matrix result is `cancelled`, reads the run's jobs and their annotations with read-only
+        permissions, and hands the decision to tools/ci_superseded.py; a PR never runs it."""
+        flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
+        verdict = flow["jobs"]["ci-verdict"]
+        self.assertEqual(verdict["needs"], ["check"])
+        self.assertEqual(verdict["if"], "${{ !cancelled() && github.event_name == 'push' "
+                                        "&& needs.check.result == 'cancelled' }}")
+        self.assertEqual(verdict["permissions"],
+                         {"actions": "read", "checks": "read", "contents": "read"})
+        self.assertEqual(verdict["outputs"], {"state": "${{ steps.verdict.outputs.state }}"})
+        step = next(s for s in verdict["steps"] if s.get("id") == "verdict")
+        self.assertIn("python3 -I tools/ci_superseded.py", step["run"])
+        self.assertIn('exit "${PIPESTATUS[0]}"', step["run"])
+        self.assertEqual(step["env"]["CHECK_RESULT"], "${{ needs.check.result }}")
+        self.assertEqual(step["env"]["EVENT"], "${{ github.event_name }}")
+        self.assertNotIn("concurrency", verdict)
 
     def test_label_sync_is_a_dry_run_unless_applied_by_hand(self):
         flow = dict(self.workflows())[WORKFLOWS / "moai-label-sync.yml"]
