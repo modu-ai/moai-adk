@@ -51,7 +51,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "150331ec1c1d39b58ce1ed549be399a55919448eb9a2c7b8ba5fd1f36f197463",
+      "sha256": "fcdbd5636affa7774b56052765ba8857cf4e5b19f32975504383e517f117b37f",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -114,7 +114,7 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "25186d06a41184e383553bd13dba10bcff8312dc7462f597f6ae3f50de2e00bf",
+      "sha256": "d5d3a0d90e244c79dc4d9a50cb34383d7c1fa24539a69a8aaeb6a51f605c5e40",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
@@ -141,7 +141,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "8a3cd5d721331e010b9ed04857ac05df5638b53c5eef8735f2cf9220260dfdf9",
+      "sha256": "2d11c015d1dc4b269c175d7ebfa917cf9a289492cfc0287b0ac9bbc678f3eb2a",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -186,7 +186,7 @@
       }
     },
     "references/internal/decide.md": {
-      "sha256": "cd71a1351e8cbfab462478996c67a5c6b0f96520263402b4a8ff3faf4b232652",
+      "sha256": "94e4017f61de1b65044d653d9bed98454f0b94a309f5c18cc4406712ef74b214",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-decide",
@@ -354,7 +354,7 @@
       }
     },
     "references/internal/versioning.md": {
-      "sha256": "6518213c69b12f808c9e86e0e2c7d4f856b444de38cc248a48a174460c4a56d9",
+      "sha256": "2963efdc7633f96589058904478d2fdc25520ac0e074593651a800961e6e3498",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-versioning",
@@ -381,7 +381,7 @@
       }
     },
     "references/internal/build-folder.md": {
-      "sha256": "fb667d61cb5a405cccc593f1cb31f214a7a55dbb714f0b7d76618b4c3716926a",
+      "sha256": "d501167bbf87e9c9974270530ebe91216057ae0ca99fc195a3c74e25025dbb82",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-build-folder",
