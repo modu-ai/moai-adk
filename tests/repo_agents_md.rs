@@ -76,6 +76,10 @@ fn shortened_agents_md_keeps_its_gate_and_hold_sentences() {
         "never declares PASS for its own change or reserves another lane's pull request.",
         "the latest-tip requirement is off. The leader checks this and merges; lanes and bots never merge.",
         "A new push, including a tip merge for an overlapping file, needs its CI and a delta re-audit.",
+        // Leader decision 2026-11-17 ~07:1xZ (docs/decisions-2026-11-08.md, "FAIL 판정과 tier 0
+        // 병합"), as in the mode-leader merge-train: the PASS is per tier, a FAIL stops every tier.
+        "Tier 1 or 2 also needs a non-author PASS that cites that run; tier 0 needs `ci` alone.",
+        "A posted FAIL stops the merge at every tier.",
         "New worktrees go to `~/.moai/worktrees/<project>-<id>`",
         "are never moved or deleted by a lane.",
     ] {
@@ -85,6 +89,8 @@ fn shortened_agents_md_keeps_its_gate_and_hold_sentences() {
     for gone in [
         "The leader assigns each formal audit",
         "asks for the audit with one `감사 요청` line",
+        // The tier-blind merge rule replaced by the leader decision of 2026-11-17 ~07:1xZ.
+        "a successful `ci` run and a non-author PASS that cites that run",
     ] {
         assert!(!text.contains(gone), "AGENTS.md still says `{gone}`");
     }
