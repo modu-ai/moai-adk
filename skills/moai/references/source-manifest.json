@@ -240,7 +240,7 @@
       }
     },
     "references/internal/sdd.md": {
-      "sha256": "87491208b7b2866e7467a4ad485974b19574812928806646f06b3a5fa665d833",
+      "sha256": "55a33bee5a350a3065925f591a87ee14436a544a34dd7390ad606f0db7386045",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-sdd",

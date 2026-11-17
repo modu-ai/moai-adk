@@ -1,8 +1,8 @@
 # `spec`
 
-operation `spec` · 코드 `src/ops/spec.rs`, `src/spec_doc.rs`, `templates/spec/full.md`, `templates/spec/minimal.md` · SDD 생애 주기 계획(2026-11-17) SDD-1·SDD-2, SPEC-20261117-spec-tooling
+operation `spec` · 코드 `src/ops/spec.rs`, `src/spec_doc.rs`, `src/spec_take.rs`, `templates/spec/full.md`, `templates/spec/minimal.md` · SDD 생애 주기 계획(2026-11-17) SDD-1·SDD-2·SDD-7, SPEC-20261117-spec-tooling, SPEC-20261118-spec-take
 
-`spec <동작>` 은 프로젝트의 SPEC 문서 `<project>/.moai/specs/<SPEC-ID>/spec.md` 를 만들고, 검사하고, 목록으로 보이고, 하나를 JSON 으로 보여 준다. 낱말 하나에 동작이 중첩돼 있고 봉투의 `operation` 은 항상 `spec`, 동작은 결과의 `action` 으로 나간다. **어떤 동작도 프로그램을 실행하거나 네트워크에 나가지 않는다**: `verify:` 명령은 읽기만 하고 돌리지 않는다. 각 동작의 도움말 첫 문장은 `Writes one new SPEC.` 또는 `Reads only.` 이다.
+`spec <동작>` 은 프로젝트의 SPEC 문서 `<project>/.moai/specs/<SPEC-ID>/spec.md` 를 만들고, 검사하고, 목록으로 보이고, 하나를 JSON 으로 보여 주고, 그 SPEC 의 가지에서 일을 시작한다(`take`). 낱말 하나에 동작이 중첩돼 있고 봉투의 `operation` 은 항상 `spec`, 동작은 결과의 `action` 으로 나간다. **`take` 말고는 어떤 동작도 프로그램을 실행하지 않고, `take --push`·`--draft-pr` 말고는 네트워크에 나가지 않는다**: `verify:` 명령은 읽기만 하고 돌리지 않는다. 각 동작의 도움말 첫 문장은 `Writes one new SPEC.`, `Reads only.` 또는 `Writes the branch.` 이다.
 
 | 동작 | 파일을 | 입력 | 결과 |
 | --- | --- | --- | --- |
@@ -10,6 +10,7 @@ operation `spec` · 코드 `src/ops/spec.rs`, `src/spec_doc.rs`, `templates/spec
 | `spec check (ID \| --all) [--closure] [--project .]` | 읽기만 | `ID` 는 새 id 또는 Go 세대 id 모양이어야 하고(아니면 거절, 입력을 되풀이하지 않음), 폴더가 없으면 `not_found`. `--all` 은 `.moai/specs/` 의 폴더와 링크 전부(일반 파일은 건너뜀) | 오류가 하나도 없을 때만 종료 0: `files[]`(`id`·`path`·`errors`·`warnings`·`findings[]`), `errors: 0`, `warnings`, `closure`, `specs`(`present`\|`absent`). 오류가 있으면 종료 1, `spec check refused: N error(s) and M warning(s) in K SPEC(s): <경로>:<줄> <코드>; …`(`invalid_input`, 처음 50개까지). 폴더가 없으면 빈 목록과 종료 0 |
 | `spec list [--project .]` | 읽기만 | — | `rows[]`(폴더 이름 순: `id`·`folder`·`status`·`title`·`parent`·`legacy`·`errors`·`warnings`), `count`, `specs` |
 | `spec show ID [--project .] [--home DIR]` | 읽기만(SPEC 파일, 그리고 이 컴퓨터의 원장을 `open_read_only` 로) | `check` 의 `ID` 와 같음. `--home` 은 원장을 읽을 HOME(기본 `$HOME`) | `path`, `spec`(앞머리 값, `form`, `sections`, `requirements[]`, `acceptance[]`(`refs`·`verify`·`manual`·`unknown`), `scope`(`write`·`read_only`·`forbidden`), `result[]`, `digest`, `findings[]`), `local_cards`(SDD-4: 이 컴퓨터의 원장에서 지금 이 SPEC 을 가리키는 카드 `cards[]`(`name`·`card_id`·`title`·`kind`·`state`, 번호 순), `count`, `local: true`, `ledger`(`ready`\|`absent`\|`no_project`\|`no_home`\|원장 오류 코드)). 오류가 있어도 보여 주고, 원장이 없거나 쓸 수 없어도 SPEC 은 보여 준다(카드는 빈 목록). 카드는 개인 것이라 SPEC 파일에는 쓰지 않는다 |
+| `spec take ID [--base B] [--card C-n] [--remote origin] [--push] [--draft-pr] [--project .] [--home DIR]` | 저장소의 가지만: `spec/<yyyymmdd>-<slug>` 를 base 에서 만들고 옮기거나(있으면 옮기기만), 저장소 설정 `branch.<가지>.moai-base` 에 base 를 적는다. `--card` 는 원장에 `card.spec` 사건 하나(`moai card spec` 과 같음). `--push` 는 원격에 가지를 올리고, `--draft-pr` 은 `gh pr create --draft` 를 부른다 | `ID` 는 새 모양 id 여야 하고(Go 세대 id 는 가지가 없어 거절) SPEC 이 있고 오류가 없어야 한다. base 기본은 지금 가지(가지가 이미 있으면 적어 둔 base). `--draft-pr` 은 `--push` 가 필요하다 | `branch`, `base`, `status`, `created`·`switched`, `card`(`card spec` 의 결과 또는 `null`), `next[]`(`moai trailers --spec ID`, `git push -u <remote> <가지>`, `gh pr create --draft --base <base> --head <가지> --title <SPEC 제목> --body 'SPEC: <ID>'` — 미리 보기, 돌리지 않음), `pushed`, `draft_pr`(`{url}` 또는 `null`), `writes`. 거절(`spec take refused: …`)은 아무것도 바꾸지 않는다: 없는·옛·오류 있는 SPEC, git 작업 트리가 아님, SPEC 자기 폴더 밖의 변화(`spec new` 직후의 새 SPEC 파일은 함께 옮긴다), 그 가지에 다른 SPEC 의 `Moai-Spec` 꼬리표가 있음, `--push` 없는 `--draft-pr`. git 은 호출자의 `GIT_*` 변수를 지우고(`scrub_git_env`) 사용자 자신의 git 설정은 그대로 쓰며 터미널에 묻지 않는다(`GIT_TERMINAL_PROMPT=0`). PR 본문에 카드 번호는 넣지 않는다 |
 
 ## `spec.md` 형식 (`src/spec_doc.rs`)
 
@@ -31,4 +32,4 @@ operation `spec` · 코드 `src/ops/spec.rs`, `src/spec_doc.rs`, `templates/spec
 - 템플릿은 바이너리에 들어 있다(`include_str!`, `templates/spec/`). 키와 제목은 영어, 자리 표시(`<…>`)는 작성자가 채운다. 새 템플릿은 `check` 를 오류 없이 통과한다.
 - `spec new` 는 `.moai/` 가 없는 프로젝트(`.moai-cli` 프로젝트 포함)에도 `.moai/specs/<ID>/` 를 만들고, 표식은 쓰지 않는다. **`.moai/` 에 진짜 폴더 `specs/` 하나만 있으면 상태가 아니다**(감사 B1, 리더 결정 2026-11-17): SPEC 을 추적하는 저장소의 새 클론이 바로 이 모양이라, `state_root::classify` 와 `project-detect` 의 `go_state` 는 이것을 `.moai/` 가 없는 것처럼 읽는다(판정 `none`, `unknown` 이 아님; `state_root::specs_only`). 그래서 `spec new` 앞뒤로 판정·`project-detect`·`project-update-plan` 의 답이 같다. 프로젝트 첫 설정(`adopt_new`)은 이 폴더를 그대로 두고 표식만 더하고, `.moai-cli` 상태를 새 `.moai/` 로 옮기는 `go-state-apply` 는 이 폴더 안으로 옮기며, 그 되돌리기는 `.moai/` 를 치운 뒤 `specs/` 만 `.moai/specs` 로 돌려놓는다. `specs/` 옆에 다른 것이 하나라도 있으면 예전 판정(`unknown` 등) 그대로다. `.moai` 가 링크이거나 `interrupted`·`refuse` 면 거절하고, 폴더를 만든 뒤 길 위의 폴더가 링크로 바뀌었으면 파일을 쓰기 전에 거절하고 만든 폴더를 치운다(감사 N7).
 - `check` 의 거절 문장은 오류를 50개까지 적고, 51개부터는 `; and N more (spec show <id> lists them)` 를 붙인다(감사 N4 경계 시험).
-- 아직 없는 동작: `take`(SDD-7), `close`(SDD-8), 승인 기록 쓰기, 카드 연결(SDD-4).
+- 아직 없는 동작: `close`(SDD-8), 승인 기록 쓰기. 카드 연결은 `moai card spec`(SDD-4)과 `spec take --card`.
