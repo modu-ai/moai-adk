@@ -7,19 +7,47 @@
 
 use std::{env, fs, path::Path};
 
+// `version` (the earlier `+local.<n>` form) is not used here.
+#[allow(dead_code)]
 #[path = "src/local_build.rs"]
 mod local_build;
 
-/// `MOAI_BUILD_VERSION` for `crate::BUILD_VERSION` (#2722 AC-5): the package version, plus
-/// `+local.<n>` from `MOAI_LOCAL_BUILD`. A malformed number stops the build.
+// `compare` and `is_newer` are the library's.
+#[allow(dead_code)]
+#[path = "src/headver.rs"]
+mod headver;
+
+/// `MOAI_BUILD_VERSION` and `MOAI_BUILD_NOTE` for `crate::BUILD_VERSION` and
+/// `crate::BUILD_NOTE` (card C-67 S1): HeadVer `{head}.{yearweek}.{build}` from the `HEADVER`
+/// file, the UTC build date (`SOURCE_DATE_EPOCH` when it is set, else the clock) and
+/// `MOAI_LOCAL_BUILD` (0 when unset). A missing or malformed head file, a malformed build
+/// number or a malformed `SOURCE_DATE_EPOCH` stops the build.
 fn build_version() {
     println!("cargo:rerun-if-env-changed={}", local_build::ENV);
+    println!("cargo:rerun-if-env-changed=SOURCE_DATE_EPOCH");
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=src/local_build.rs");
+    println!("cargo:rerun-if-changed=src/headver.rs");
+    println!("cargo:rerun-if-changed={}", headver::HEAD_FILE);
     let package = env::var("CARGO_PKG_VERSION").expect("package version");
     let raw = env::var(local_build::ENV).ok();
-    match local_build::version(&package, raw.as_deref()) {
-        Ok(version) => println!("cargo:rustc-env=MOAI_BUILD_VERSION={version}"),
+    let local = local_build::number(raw.as_deref()).unwrap_or_else(|reason| panic!("{reason}"));
+    let root = env::var("CARGO_MANIFEST_DIR").expect("manifest dir");
+    let head = fs::read_to_string(Path::new(&root).join(headver::HEAD_FILE)).ok();
+    let now = match env::var("SOURCE_DATE_EPOCH") {
+        Ok(s) => s.parse::<i64>().unwrap_or_else(|_| {
+            panic!("SOURCE_DATE_EPOCH={s:?} refused: whole seconds since 1970-01-01 UTC")
+        }),
+        Err(_) => std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("a clock after 1970")
+            .as_secs() as i64,
+    };
+    match headver::build(head.as_deref(), now, local, &package) {
+        Ok(build) => {
+            println!("cargo:rustc-env=MOAI_BUILD_VERSION={}", build.version);
+            println!("cargo:rustc-env=MOAI_BUILD_NOTE={}", build.note);
+        }
         Err(reason) => panic!("{reason}"),
     }
 }

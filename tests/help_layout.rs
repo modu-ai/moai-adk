@@ -55,6 +55,9 @@ const CASES: [Case; 8] = [
     ("all-80", &["help", "--all"], &[("COLUMNS", "80")]),
 ];
 
+/// What the goldens hold in place of this build's version.
+const VERSION_TOKEN: &str = "<version>";
+
 #[test]
 fn help_matches_its_goldens() {
     let write = std::env::var_os("MOAI_HELP_GOLDEN_WRITE").is_some();
@@ -65,6 +68,18 @@ fn help_matches_its_goldens() {
         let text = String::from_utf8(out.stdout).unwrap();
         // A pipe never carries a style code (#3004 AC-5).
         assert!(!text.contains('\x1b'), "{name}: escape in piped help");
+        // Card C-67 S1: the build version is HeadVer, whose yearweek and build change with
+        // every build, so the goldens hold `<version>` where the help names it.
+        let first = text.lines().next().unwrap_or("");
+        assert_eq!(
+            first,
+            format!(
+                "MoAI-ADK {} — agentic development kit",
+                moai_cli::BUILD_VERSION
+            ),
+            "{name}"
+        );
+        let text = text.replacen(moai_cli::BUILD_VERSION, VERSION_TOKEN, 1);
         let path = golden_dir().join(format!("{name}.txt"));
         if write {
             std::fs::create_dir_all(golden_dir()).unwrap();
@@ -112,7 +127,8 @@ fn the_root_help_is_short_and_fits_sixty_and_eighty_columns() {
 }
 
 /// Every name prints `moai` in help and usage text (#3004 AC-1): `moai` and `moai-cli` give the
-/// same bytes, and `--version` stays the one signature line (D3 decision 2).
+/// same bytes, and the first `--version` line stays the signature line (D3 decision 2; the
+/// second line names the kind of build, card C-67 S1).
 #[test]
 fn every_name_prints_moai_and_the_version_line_is_unchanged() {
     let reference = |args: &[&str]| run(common::MOAI_BIN, args, &[]);
@@ -149,7 +165,12 @@ fn every_name_prints_moai_and_the_version_line_is_unchanged() {
             assert_eq!(got.stderr, want.stderr, "{bin} {args:?} stderr");
         }
         let version = String::from_utf8(run(bin, &["--version"], &[]).stdout).unwrap();
-        assert!(version.starts_with("moai-cli ") && version.trim_end().ends_with(" (rust)"));
+        let first = version.lines().next().unwrap_or("");
+        assert!(
+            first.starts_with("moai-cli ") && first.ends_with(" (rust)"),
+            "{version}"
+        );
+        assert_eq!(version.lines().count(), 2, "{version}");
     }
 }
 
