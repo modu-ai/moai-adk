@@ -46,7 +46,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "678861a2150358462c4cec0c88cfd1a7b493eb469f8389f0d483fabea618cc6b",
+      "sha256": "150331ec1c1d39b58ce1ed549be399a55919448eb9a2c7b8ba5fd1f36f197463",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -136,7 +136,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "3003958096b4dc76ba0969dd1acb32e043420669dc6f9e03094aaada54a5d53a",
+      "sha256": "a3c3da7bee22a55e942a0491c5a5fa36558227ac7982c73dcc447c614c9fcf08",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "581192b1cea3ab7c2cfeee4315942c8e93dce98ba67558704f0405d6399d1d92",
+      "sha256": "4d22d0ad20f7d46969d465082da755c1b8f0997e470c6d785addd2cafdd959bc",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",

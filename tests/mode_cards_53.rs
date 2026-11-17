@@ -280,8 +280,10 @@ fn the_agent_section_maps_each_step_of_the_round_to_a_card_command() {
              project needs `--repo`)",
             "run `card review <card> --generation <g>`: the card in `review` with an open pull \
              request is your audit request to the leader",
+            // Repair N9: the criteria carry the new head's evidence before the next review.
             "On a FAIL: `card reopen <card> --generation <g>`, repair every blocking finding, \
-             push, and run `card review` again",
+             push, re-mark each criterion with the new head's evidence, and run `card review` \
+             again",
             "run `card pr` again (it records the merge) and `card done <card> --generation <g>`",
             // Giving a card back or on.
             "`card release <card> --generation <g>` (never in `review`: `card reopen` first)",
@@ -330,9 +332,11 @@ fn the_leader_section_makes_cards_ready_assigns_audits_and_names_the_transition(
             "`empty_scope`",
             "`moai card ready <card> --by <leader>`",
             "a hint, never a grant",
-            // Audits: one read-only agent per pull request, never the implementer.
-            "read-only audit agent",
-            "never the session that implemented it",
+            // Audits: one read-only agent per pull request, never a lane and never the
+            // implementer (repair B1: AGENTS.md "Independent review"; the S5 head widened it to
+            // "or to a lane that did not write it" and this pin still passed).
+            "assign the audit to one read-only audit agent you start (`moai-audit`), never to a \
+             lane and never the session that implemented it",
             "`moai card note <card> --kind report --by <leader> < file`",
             "`moai card note <card> --kind decision --by <leader> < file`",
             // The holder closes; the leader merges through the gate.
@@ -344,6 +348,111 @@ fn the_leader_section_makes_cards_ready_assigns_audits_and_names_the_transition(
             "`review_no_holder`",
         ],
     );
+    let leader = workflow("mode-leader.md");
+    for widened in [
+        "or to a lane that did not write it",
+        "starting an audit and changing code",
+        "Before dispatching a card or an audit",
+    ] {
+        assert!(
+            !leader.contains(widened),
+            "mode-leader.md hands a formal audit to a lane: `{widened}`"
+        );
+    }
+}
+
+/// Repair of the C-53 S5 audit: B1 (formal audits stay with the leader's audit agent), B2 (a
+/// `mine` card in `review` is not the next card: `card next` answers `next_is: "mine"` for it),
+/// N1 (no session id on OMP), N2 (the PLAN ref date), N4 (the lane's limits), N5 (non-Issue
+/// rules restored) and N6 (host smoke without the lifted HOLD).
+#[test]
+fn the_round_keeps_audits_with_the_leader_and_moves_on_from_a_card_in_review() {
+    // B1.
+    let pick = step("mode-agent.md", "self-pick");
+    for p in [
+        "(2) Formal audits go to the leader's audit agent; a lane reserves no other lane's pull \
+         request",
+        "A pull request you did not author or repair is not yours to audit or change",
+    ] {
+        assert!(pick.contains(p), "self-pick must say `{p}`");
+    }
+    let agent = workflow("mode-agent.md");
+    for gone in [
+        "An audit the leader dispatched to you",
+        "audit worktree",
+        "except an audit reservation",
+        "When you audit",
+    ] {
+        assert!(!agent.contains(gone), "mode-agent.md still says `{gone}`");
+    }
+    // B2: in the claim step and in the self-pick order, and the hand-off goes on.
+    const REVIEW_WAITS: &str =
+        "a `mine` card in `review` waits on its audit; take the first `ready` card instead";
+    assert!(step("mode-agent.md", "claim").contains(REVIEW_WAITS));
+    assert!(pick.contains(REVIEW_WAITS));
+    assert!(step("mode-agent.md", "hand-off")
+        .contains("Then start the next round without waiting for the merge"));
+    // N1.
+    assert!(step("mode-agent.md", "session-id").contains(
+        "refuses a session without one: there (OMP) report `LANE-BLOCKED <lane> card take · \
+         kind=host reason=no session id (OMP, card C-62)` once"
+    ));
+    // N2: the date gives the seven digits in a row `pr-self-audit-check` wants on `plan:`.
+    assert!(pick.contains("(`<UTC>` from `date -u +%Y%m%dT%H%M%SZ`)"));
+    // N4: the lane's limits.
+    let limits = section_of_agent("Exceptions and Permissions");
+    assert!(limits.contains(
+        "Never decide a HOLD, merge, or post an audit status; those belong to the leader and the \
+         audit gate"
+    ));
+    // N5: restored without the Issue words.
+    for (key, p) in [
+        (
+            "session-id",
+            "a duplicate id stops the round (SPEC §4, item 6)",
+        ),
+        (
+            "pr-gate",
+            "an auditor or the leader may raise it, and a missing or malformed line counts as 2",
+        ),
+        (
+            "pr-gate",
+            "a shared file only under `docs/**` that merges cleanly, keeping both sides' lines, \
+             does not count",
+        ),
+        (
+            "heavy-checks",
+            "Every build, a self-audit's too, builds into the lane's one build folder",
+        ),
+        (
+            "report",
+            "Independent audit, required CI and HOLD stay as they are.",
+        ),
+    ] {
+        assert!(
+            step("mode-agent.md", key).contains(p),
+            "{key} must say `{p}`"
+        );
+    }
+    assert!(agent.contains("re-post nothing and do not rewrite a pull request body"));
+    // N6: both host smokes are `not_run` without the lifted HOLD of user decision 1.
+    for name in ["mode-agent.md", "mode-leader.md"] {
+        let text = workflow(name);
+        assert!(
+            text.contains("\nNot run yet (`not_run`): in a clean clone with a registered ledger"),
+            "{name}"
+        );
+        assert!(!text.contains("user decision 1, HOLD"), "{name}");
+    }
+}
+
+/// The text of one `## ` section of MODE-AGENT.
+fn section_of_agent(title: &str) -> String {
+    let text = workflow("mode-agent.md");
+    let head = format!("\n## {title}\n");
+    let start = text.find(&head).expect("the section") + head.len();
+    let rest = &text[start..];
+    rest[..rest.find("\n## ").unwrap_or(rest.len())].to_string()
 }
 
 /// Every package file is read with the bound `profile::LIMIT` (`profile::read`, used by

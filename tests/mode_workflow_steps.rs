@@ -599,12 +599,15 @@ fn bottleneck_rules_are_pinned_in_both_mode_workflows() {
     assert!(agent.contains(
         "That interval applies only to re-reading a state that has not changed: take, `card check`, push and pull request follow one another in the same turn"
     ));
-    // 6. a lost reservation posts no verdict.
+    // 6. a lost reservation posts no verdict. C-53 S5 repair (audit B1, AGENTS.md
+    // "Independent review"): a lane reserves no other lane's pull request at all, so the
+    // read-back rule for a lane's reservation is gone; the leader's audit agent reserves.
     assert_says(
         &agent,
         "self-pick",
-        &["when an earlier reservation names the same head, that lane holds it — withdraw and post no verdict"],
+        &["(2) Formal audits go to the leader's audit agent; a lane reserves no other lane's pull request"],
     );
+    assert!(!agent.contains("withdraw and post no verdict"));
     // 7. pre-push checks that only CI caught.
     assert_says(
         &agent,
@@ -838,7 +841,8 @@ fn blocked_lines_name_kind_owner_and_next_check() {
         "report",
         &[
             "`LANE-BLOCKED <lane> <target> <reason and state> · kind=<kind> owner=<who> next=<check>`",
-            "A `LANE-BLOCKED` line names the kind (`decision`, `ci`, `audit`, `pr-slot`, `claim`, `tip-red`, `outside`)",
+            // C-53 S5 repair N1: `host` for a host that cannot take a card (OMP, no session id).
+            "A `LANE-BLOCKED` line names the kind (`decision`, `ci`, `audit`, `pr-slot`, `claim`, `tip-red`, `outside`, `host`)",
             "who unblocks it (`owner=<leader|user|lane|author>`)",
             "the next check (`next=<what, and when or on which event>`), then the lane takes other work in the same turn",
         ],
@@ -910,10 +914,10 @@ fn inspection_p2_rules_are_written_where_they_are_used() {
         &agent,
         "self-pick",
         &[
-            "An external pull request — its author's association is not `OWNER`, `MEMBER` or `COLLABORATOR`, or it does not target the integration branch — is never a lane's to reserve or audit",
-            // C-53 S5: a card lane reads no `lane-next` list, so the `external_pr` key is gone
-            // from the lane text; who reports it stays.
-            "the leader reports it to the user",
+            // C-53 S5 repair (audit B1): a lane reserves and audits no pull request it did not
+            // author or repair, external ones included (was: the external-PR sentence, now kept
+            // only in the leader's `merge-train`, pinned below); it reports what it sees.
+            "A pull request you did not author or repair is not yours to audit or change: report what you see in it to the leader",
         ],
     );
     assert_says(
@@ -1292,7 +1296,10 @@ fn a_dispatch_is_a_card_and_semi_keeps_only_four_things_for_the_person() {
             "\"Open pull requests first\" orders the work, it is not a gate that holds every ready card back",
             "write the reason in one line and give the lane a ready card instead",
             "new Issues, lifting a HOLD, merge-policy changes and releases",
-            "starting an audit and changing code in a claimed card are lane work at both levels",
+            // C-53 S5 repair (audit B1): formal audits are the leader's audit agent's, so a lane
+            // starts only its self-audit (was: "starting an audit and changing code in a claimed
+            // card are lane work at both levels").
+            "a lane's self-audit and changing code in a card it holds are lane work at both levels",
             "A dispatch never outranks a message the person typed into that lane's own session",
         ],
     );
@@ -1308,8 +1315,9 @@ fn the_modes_never_ask_through_a_non_blocking_question_tool() {
     for p in [
         "In `--mode-leader` and `--mode-agent` never put a question through a non-blocking question tool",
         "`request_user_input_async`",
-        "A lane writes `LANE-BLOCKED kind=decision …` on its coordination Issue",
-        "the leader writes the question on the Issue and on the affected lane's screen",
+        // C-53 S5 repair N6: on the card (was: the coordination Issue).
+        "A lane writes `LANE-BLOCKED kind=decision …` as a note on its card and on its screen",
+        "the leader writes the question as a note on that card and on the affected lane's screen",
     ] {
         assert!(skill.contains(p), "SKILL.md must say `{p}`");
     }
