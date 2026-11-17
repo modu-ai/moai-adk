@@ -85,5 +85,15 @@ revision 2(리더 결정, 감사 B1 뒤): 첫 판은 HOLD 해제도 경우 (2)�
 revision 1: 기준 `25881165be` 위 `df4f62c075`. 감사 FAIL(B1: HOLD 해제를 사용자 결정 기록 없이 경우 (2)로 옮김, K1: §6
 `full` 행의 release 항목이 시험에 없어 mutation이 살아남음).
 
-revision 2: 아래 커밋들에서 HOLD 해제 문구를 tip으로 되돌리고 릴리스 규칙만 남겼어요. 검사 결과는 이 커밋 뒤
-보고에 적어요(같은 커밋에 결과를 넣으면 head가 바뀌므로).
+revision 2: `def8349a40`에서 HOLD 해제 문구를 tip으로 되돌리고 릴리스 규칙만 남겼어요. 그 뒤 `cbf1c7d959`를
+병합했어요(`092c882ef6`; manifest는 병합 드라이버가 스스로 맞췄고 check 0). 병합된 head에서(무거운 작업 슬롯 안,
+2026-11-17 10:09–10:12Z):
+
+- AC-1: met — `product_cli` 75, `core_rules_2876` 6. mutation N1(`SKILL.md`가 HOLD 해제를 다시 경우 (2)로) KILLED
+- AC-2: met — `mode_workflow_steps` 42, `agent_defs_package` 18. mutation K1(§6 `full` 행의 release 항목 빼기, 감사에서
+  살아남았던 것) KILLED, N2(`decide`의 릴리스 규칙 빼기) KILLED
+- AC-3: met — `mode_cards_53` 9, `spec_cli` 17, `--bin moai` 27, `cargo fmt --check` 0; Python 4개 모듈 88개 OK;
+  manifest check 0; `moai spec check --all` 0; `moai package-inspect skills/moai` 0
+
+실행 안 함: 전체 `cargo test`, clippy(Rust 코드는 시험 파일 문자열만 바뀜), Linux·Windows.
+크기: `SKILL.md` 6,662바이트, `mode-leader.md` 병합 뒤 44,580바이트(둘 다 65,536 아래).
