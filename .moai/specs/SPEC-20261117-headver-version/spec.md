@@ -2,7 +2,7 @@
 id: SPEC-20261117-headver-version
 title: HeadVer 빌드 버전 — 카드 C-67 조각 1 (AC1·AC2)
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-17
 parent: SPEC-20261117-sdd-foundation
 ---
@@ -30,10 +30,11 @@ parent: SPEC-20261117-sdd-foundation
 - REQ-4: The version function shall take the ISO week-year and week of the UTC date, so the last days of December can belong to week 1 of the next year and the first days of January to week 52 or 53 of the year before.
 - REQ-5: Where `MOAI_LOCAL_BUILD` is not set, the build shall use build number 0 and mark itself as an unnumbered build.
 - REQ-6: The `--version` output shall keep `<name> <version> (rust)` as its first line and name the kind of build, local or unnumbered, on its second line.
-- REQ-7: The comparison function shall order every HeadVer version above every `YYYY.M.P[-rc.N]` version of the earlier scheme and order HeadVer versions by head, then yearweek, then build.
+- REQ-7: The comparison function shall order every HeadVer version, head 0 to 9999 included, above every `YYYY.M.P[-rc.N]` version of the earlier scheme (`YYYY` from 2000, `M` a month from 1 to 12 in one or two digits) and order HeadVer versions by head, then yearweek, then build.
 - REQ-8: The status line shall show its own version as the update target only when that version is newer than the template version.
 - REQ-9: When `update-plan` finds a host receipt, the plan shall record the receipt's version as the source and this build's version as the target. · failure: none — 막는 경우는 REQ-10이에요.
-- REQ-10 (REQ-9): IF the host receipt's version is newer than this build's version, THEN the plan shall block that host so the build never updates back.
+- REQ-10 (REQ-9): IF the host receipt's version is newer than this build's version and the user did not pass `--allow-older`, THEN the plan shall block that host and name `moai update --allow-older` as the way back.
+- REQ-11: Where the user runs `moai update --allow-older`, the preview shall plan a host whose receipt is newer than this build and show a warning line for that host, and the apply shall go back only with the same flag on the confirm.
 
 ## Acceptance
 
@@ -44,12 +45,20 @@ parent: SPEC-20261117-sdd-foundation
 - AC-3 (REQ-6): `--version`의 첫 줄과 둘째 줄.
   verify: `cargo test --locked --offline --bin moai version_flag_reports_the_headver_build`; `cargo test --locked --offline --test cli_name_moai`
 - AC-4 (REQ-7): 비교 순서(HeadVer > 옛 rc, head → yearweek → build, 메타데이터 무시, 모르는 모양은 비교하지 않음).
+  head 1999·2000·9999(`1999.2647.5`·`2000.2647.5`·`9999.2647.5`)도 `4.2647.5`·`2026.11.0-rc.2+local.4`보다 새것,
+  달 12(`2026.12.0`)는 옛 CalVer, 달 13·0과 `1999.11.0`은 읽지 않는 모양.
   verify: `cargo test --locked --offline --lib headver::`
 - AC-5 (REQ-8): 상태줄은 더 새 바이너리만 업데이트 대상으로 보여요.
   verify: `cargo test --locked --offline --lib statusline::state::`
-- AC-6 (REQ-9, REQ-10): 임시 HOME에서 옛 `2026.11.0-rc.2+local.4` 설치 기록 위로 이 빌드가 깨끗하게 update하고, 더 새 HeadVer 기록 위로는 막혀요.
+- AC-6 (REQ-9, REQ-10): 임시 HOME에서 옛 `2026.11.0-rc.2+local.4` 설치 기록 위로 이 빌드가 깨끗하게 update하고(같은
+  버전으로 다시 계획하면 막히지 않음), 더 새 HeadVer 기록 위로는 막혀요.
   verify: `cargo test --locked --offline --test update_headver`
-- AC-7 (REQ-1…REQ-10): 이웃 검사가 모두 통과해요.
+- AC-8 (REQ-11): `moai update`는 기본으로 막고 `--allow-older`를 알려 줘요; `--allow-older` 미리보기는 호스트마다 경고
+  줄(`going_back`)과 `moai update --allow-older --confirm …`을 보여 주고, 플래그 없는 확인은 stale로 거절돼 아무것도
+  쓰지 않으며, 플래그와 함께 확인하면 옛 빌드로 돌아가요. 같은 버전 폴더 사이의 A → B → A는 그대로예요.
+  verify: `cargo test --locked --offline --test update_headver going_back_to_an_older_build_needs_allow_older`;
+  `cargo test --locked --offline --test update_version_folders`
+- AC-7 (REQ-1…REQ-11): 이웃 검사가 모두 통과해요.
   verify: `cargo test --locked --offline --bin moai`; `cargo test --locked --offline --test help_layout`;
   `cargo test --locked --offline --test product_cli`; `cargo test --locked --offline --test home_isolation_scan`;
   `cargo test --locked --offline --test statusline_golden`; `cargo fmt --check`;
@@ -59,7 +68,8 @@ parent: SPEC-20261117-sdd-foundation
 ## Scope
 
 - write: `HEADVER`, `build.rs`, `src/headver.rs`, `src/local_build.rs`, `src/lib.rs`, `src/main.rs`,
-  `src/statusline/state.rs`, `src/update.rs`, `tests/update_headver.rs`, `tests/cli_name_moai.rs`,
+  `src/statusline/state.rs`, `src/update.rs`, `src/update_tux.rs`, `tests/update_headver.rs`,
+  `tests/update_version_folders.rs`, `tests/cli_name_moai.rs`, `tests/help_layout.rs`, `tests/fixtures/help/*.txt`,
   `docs/local-rc1-kit.md`, `AGENTS.local.md`, `.moai/specs/SPEC-20261117-headver-version/spec.md`
 - read-only: `skills/moai/references/internal/versioning.md`, `AGENTS.md`, `src/install.rs`, `src/bin_names.rs`
 - forbidden: `install/**`, `.github/workflows/**`, `Cargo.toml`의 `version`, 실제 HOME, 네트워크 쓰기
@@ -76,6 +86,10 @@ parent: SPEC-20261117-sdd-foundation
 - 번호 없는 빌드(CI, `cargo build`)도 `4.<yearweek>.0`이 돼요. AC3가 릴리스 번호를 찍기 전에 릴리스를 만들면
   태그(`moai-cli-v2026.11.0-rc.N`)와 바이너리 버전이 달라요 → Decisions와 남은 일에 적었어요.
 - 2100년에는 yearweek의 두 자리 연도가 `00`으로 돌아가요 → 그 전에 head를 올려야 순서가 지켜져요.
+- (감사 N4) 번호 없는 증분 빌드(`cargo build`, `MOAI_LOCAL_BUILD` 없음)는 지난주 yearweek를 그대로 가질 수 있어요:
+  빌드 스크립트는 적어 둔 입력(`HEADVER`, `MOAI_LOCAL_BUILD`, `SOURCE_DATE_EPOCH` 등)이 바뀔 때만 다시 돌아요.
+  번호 있는 빌드는 `MOAI_LOCAL_BUILD`가 바뀌어 다시 돌고, CI는 매번 새로 빌드하므로 영향이 없어요. 코드는 고치지
+  않았어요(매 빌드 다시 돌리면 증분 빌드가 매번 다시 링크돼요).
 
 ## Decisions
 
@@ -86,7 +100,8 @@ parent: SPEC-20261117-sdd-foundation
 | D3 | 빌드 번호: `MOAI_LOCAL_BUILD`, 없으면 0(번호 없는 빌드); 릴리스 번호는 AC3 | 카드 AC1 | 번호 없으면 옛 패키지 버전 |
 | D4 | 로컬과 다른 빌드의 구분은 `--version` 둘째 줄(`local build 5 …`/`unnumbered build …`); 폴더·비교 키는 `4.2647.5` | 조정자 제안 | `+local` 메타데이터 |
 | D5 | `Cargo.toml` 버전은 그대로: 버전을 파일에 적으면 버전만 바꾸는 커밋이 생겨요 | HeadVer 규칙 | AC3에서 다시 정하기 |
-| D6 | 옛 CalVer(첫 수 2000 이상)는 모든 HeadVer보다 낮음; 모르는 모양은 비교하지 않음(막지 않음) | 카드 AC2 | 순서 표 바꾸기 |
+| D6 | 옛 CalVer는 모든 HeadVer보다 낮음; 모르는 모양은 비교하지 않음(막지 않음). 감사 B1 뒤: 옛 CalVer = 네 자리 첫 수 2000 이상 **그리고** 가운데가 한두 자리 달 1–12(HeadVer 가운데는 늘 네 자리 yearweek라 head 2000–9999도 HeadVer); 셋째 수는 크기 제한 없는 patch(날짜 아님, 옛 버전 `2026.11.0`의 0은 patch) | 카드 AC2, 감사 B1 | 달 검사 빼고 `a >= 2000`만 |
+| D8 | 옛 빌드로 돌아가기(#2521 A → B → A)는 기본으로 막고, `moai update --allow-older`가 명시적인 길: 호스트마다 `going_back` 경고 줄(계획에 들어가 digest가 묶음), 확인에도 같은 플래그 필요; 낮은 단계 `update-plan`/`update-apply`에는 플래그 없음(늘 막음) | 리더 결정(감사 N1, 되돌릴 수 있음) | 플래그 빼면 늘 막음, 또는 막기 자체를 빼기 |
 | D7 | 2099는 `99xx`, 2100은 `00xx`(두 자리 연도 그대로, head로 순서를 지킴) | HeadVer README | 세 자리 연도 |
 
 ## Result

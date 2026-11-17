@@ -212,6 +212,11 @@ pub struct HostPlan {
     /// this installation's own receipt or there is none, so other plans keep their bytes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub receipt_from: Option<String>,
+    /// Card C-67 (audit N1): the warning line when `--allow-older` plans this build over a
+    /// newer installed version (going back, #2521 A → B → A). Left out otherwise, so other
+    /// plans keep their bytes; being part of the plan, it is bound by `plan_digest`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub going_back: Option<String>,
 }
 
 /// One file of the folder a backup-then-replace moves (#2483).
@@ -929,7 +934,9 @@ fn earlier_install_ids(
 /// Only a build inside the layout looks beyond its own receipt: it also reads the host
 /// receipts of the other folders under `versions/` — each id derived from the same path
 /// shape this build has — and takes the one that finished last, its own included (so going
-/// back A → B → A reads B's newer state, not A's stale receipt). A folder or receipt
+/// back A → B → A reads B's newer state, not A's stale receipt). Card C-67 (audit N1): when
+/// that receipt names a version newer than this build, [`plan_update_in`] blocks the host
+/// unless the user asked for the older build with `moai update --allow-older`. A folder or receipt
 /// directory that is a symlink lends nothing; a build outside the layout neither adopts nor
 /// lends. The adopted receipt is only read: apply writes the new receipt under this
 /// installation's id. Own pending → returned as is (the existing pending block applies);
@@ -1098,8 +1105,20 @@ pub(crate) fn resolve_host_receipt(
     })
 }
 
-/// Read-only three-way plan over every host (REQ-04B-01/02/03). Writes nothing.
+/// Read-only three-way plan over every host (REQ-04B-01/02/03). Writes nothing. A host whose
+/// installed version is newer than this build is blocked (see [`plan_update_in`]).
 pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
+    plan_update_in(home, staged, false)
+}
+
+/// [`plan_update`] with the user's explicit way back (card C-67, audit N1): with
+/// `allow_older`, a host whose installed version is newer than this build is planned instead
+/// of blocked, and carries the `going_back` warning line.
+pub fn plan_update_in(
+    home: &Path,
+    staged: &StagedPackage,
+    allow_older: bool,
+) -> Result<UpdatePlan> {
     let canonical_home = fs::canonicalize(home).map_err(|_| "home directory unavailable")?;
     let install_id = current_install_id(&canonical_home)?;
     let mut hosts = Vec::new();
@@ -1129,25 +1148,38 @@ pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
         // REQ-04C-04 (04-C #2000): a pending host takes no new apply until recovered; the
         // other hosts plan as usual. A baseline that cannot be chosen safely blocks the
         // same way.
+        let mut going_back = None;
         let (blocked, scan) = match (&receipt, source.blocked) {
             (_, Some(reason)) => (Some(reason), None),
             (Some(r), None) if r.status == "pending" => (
                 Some("host receipt is pending; run recovery-plan first".to_string()),
                 None,
             ),
-            // Card C-67 S1: a build never updates back over a newer installed version.
+            // Card C-67 S1: a build never updates back over a newer installed version, unless
+            // the user asks for it with `--allow-older` (audit N1).
             (Some(r), None)
                 if crate::headver::is_newer(&r.package_version, crate::BUILD_VERSION) =>
             {
-                (
-                    Some(format!(
-                        "the installed package version {} is newer than this build's {}; this \
-                     build never updates back",
+                if allow_older {
+                    going_back = Some(format!(
+                        "going back: the installed package version {} is newer than this \
+                         build's {}; --allow-older plans this older build over it",
                         r.package_version,
                         crate::BUILD_VERSION
-                    )),
-                    None,
-                )
+                    ));
+                    (blocked, scan)
+                } else {
+                    (
+                        Some(format!(
+                            "the installed package version {} is newer than this build's {}; \
+                             this build never updates back unless asked: preview again with \
+                             `moai update --allow-older`",
+                            r.package_version,
+                            crate::BUILD_VERSION
+                        )),
+                        None,
+                    )
+                }
             }
             _ => (blocked, scan),
         };
@@ -1321,6 +1353,7 @@ pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
             files,
             backup_then_replace,
             receipt_from,
+            going_back,
         });
     }
 
@@ -1464,7 +1497,18 @@ fn user_layer_plan(
     agents: &Path,
     staged: &StagedPackage,
 ) -> Result<UserLayerPlan> {
-    let skills = plan_update(home, staged)?;
+    user_layer_plan_in(home, package, agents, staged, false)
+}
+
+/// [`user_layer_plan`] with `allow_older` passed to [`plan_update_in`] (audit N1).
+fn user_layer_plan_in(
+    home: &Path,
+    package: &Path,
+    agents: &Path,
+    staged: &StagedPackage,
+    allow_older: bool,
+) -> Result<UserLayerPlan> {
+    let skills = plan_update_in(home, staged, allow_older)?;
     let skill_ok = |h: &str| {
         skills
             .hosts
@@ -1790,18 +1834,23 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
 /// (`--confirm-home`, the preview's `home.confirm_token`) moves them to the dated backup,
 /// after the layer or alone. It is refused together with `confirm_cleanup`: both move items of
 /// `~/.moai`, so each would leave the other's preview stale.
+///
+/// Card C-67 (audit N1): `allow_older` (`--allow-older`) plans this build over a newer
+/// installed version instead of blocking it; each such host carries a `going_back` warning,
+/// and the digest binds the choice, so the confirm needs the flag again.
 pub fn update_command(
     home: &Path,
     confirm: Option<&str>,
     confirm_cleanup: Option<&str>,
     confirm_home: Option<&str>,
+    allow_older: bool,
     ask: impl FnOnce(&str, &serde_json::Value) -> Result<bool>,
 ) -> Result<serde_json::Value> {
     const PERMISSION: &str = "moai-cli update confirmation";
     let package = installed_package_dir()?;
     let agents_dir = installed_agents_dir()?;
     let staged = stage_package(&package)?;
-    let layer = user_layer_plan(home, &package, &agents_dir, &staged)?;
+    let layer = user_layer_plan_in(home, &package, &agents_dir, &staged, allow_older)?;
     let package_text = package
         .to_str()
         .ok_or("non UTF-8 package path")?
@@ -1838,7 +1887,11 @@ pub fn update_command(
             "bin_names": layer.bin_names.to_json(),
             "hooks": layer.hooks.to_json(),
             "skipped": layer.skipped,
-            "confirm_with": format!("moai update --confirm {}", layer.plan_digest),
+            "confirm_with": format!(
+                "moai update {}--confirm {}",
+                if allow_older { "--allow-older " } else { "" },
+                layer.plan_digest
+            ),
         });
         // #2871 I2 S3: only a HOME with legacy key files has a `keys` part.
         if !layer.keys.rows.is_empty() {
@@ -1878,17 +1931,18 @@ pub fn update_command(
         }
     };
     // Verify the whole layer before any write.
-    let fresh = user_layer_plan(home, &package, &agents_dir, &staged)?;
+    let fresh = user_layer_plan_in(home, &package, &agents_dir, &staged, allow_older)?;
     if fresh.plan_digest != digest {
         return Err("stale or altered plan; re-preview required".into());
     }
-    let skills = apply_update(
+    let skills = apply_update_in(
         home,
         &staged,
         &fresh.skills,
         &fresh.skills.plan_digest,
         PERMISSION,
         &[],
+        allow_older,
     )?;
     let gate = gate_on_skills(&skills, &fresh);
     let mut skipped = fresh.skipped.clone();
@@ -2051,6 +2105,9 @@ pub fn plan_summary(plan: &UpdatePlan) -> String {
                 .map(|r| format!(" ({r})"))
                 .unwrap_or_default()
         ));
+        if let Some(w) = &h.going_back {
+            out.push_str(&format!("  warning: {}: {w}\n", h.host));
+        }
     }
     out
 }
@@ -2067,8 +2124,30 @@ pub fn apply_update(
     permission_reference: &str,
     confirm_backup_replace: &[String],
 ) -> Result<serde_json::Value> {
+    apply_update_in(
+        home,
+        staged,
+        plan,
+        plan_digest,
+        permission_reference,
+        confirm_backup_replace,
+        false,
+    )
+}
+
+/// [`apply_update`] recomputing the plan with `allow_older` (audit N1): only `moai update
+/// --allow-older` passes it, so `update-apply` never goes back to an older build.
+fn apply_update_in(
+    home: &Path,
+    staged: &StagedPackage,
+    plan: &UpdatePlan,
+    plan_digest: &str,
+    permission_reference: &str,
+    confirm_backup_replace: &[String],
+    allow_older: bool,
+) -> Result<serde_json::Value> {
     validate_permission(permission_reference)?;
-    let fresh = plan_update(home, staged)?;
+    let fresh = plan_update_in(home, staged, allow_older)?;
     // The whole plan BODY must equal a fresh recompute (a tampered body with a stolen
     // digest field is still refused), and the caller's digest must bind both.
     if plan.schema_version != UPDATE_SCHEMA_VERSION

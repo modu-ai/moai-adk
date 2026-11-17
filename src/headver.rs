@@ -152,7 +152,10 @@ fn shape(v: &str) -> Option<Shape> {
     }
     let n = |i: usize| parts[i].parse::<u64>().ok();
     let (a, b, c) = (n(0)?, n(1)?, n(2)?);
-    if parts[0].len() == 4 && a >= 2000 {
+    // The earlier scheme is a four-digit year from 2000 and a month 1–12 written in one or two
+    // digits (audit B1): a HeadVer middle is always the four-digit yearweek, so a head of 2000
+    // or more (`2000.2647.5`) stays HeadVer. The third part is a patch number of any size.
+    if parts[0].len() == 4 && a >= 2000 && parts[1].len() <= 2 && (1..=12).contains(&b) {
         let rc = match pre {
             None => None,
             Some(p) => Some(p.strip_prefix("rc.")?.parse::<u64>().ok()?),
@@ -164,8 +167,8 @@ fn shape(v: &str) -> Option<Shape> {
 }
 
 /// The order of two versions, or `None` when either is a shape this build does not read
-/// (it is then never called newer or older). Every HeadVer version is newer than every
-/// `YYYY.M.P[-rc.N]` version; HeadVer versions compare head, then yearweek, then build; the
+/// (it is then never called newer or older). Every HeadVer version (head 0–9999) is newer than
+/// every `YYYY.M.P[-rc.N]` version (`YYYY` ≥ 2000, `M` 1–12); HeadVer versions compare head, then yearweek, then build; the
 /// earlier scheme compares its numbers, then a release above its `rc.N`, then `N`.
 pub fn compare(a: &str, b: &str) -> Option<Ordering> {
     use Shape::{Earlier, HeadVer};
@@ -352,9 +355,39 @@ mod tests {
         );
     }
 
+    /// Audit B1: a head of 2000 or more is still HeadVer (the middle part is a four-digit
+    /// yearweek, never a month), so `parse_head`'s whole range 0–9999 orders above every
+    /// version of the earlier scheme.
+    #[test]
+    fn a_head_of_2000_or_more_is_still_headver() {
+        for new in ["1999.2647.5", "2000.2647.5", "9999.2647.5", "2026.0011.0"] {
+            for old in [
+                "4.2647.5",
+                "2026.11.0-rc.2+local.4",
+                "2026.12.0",
+                "2026.11.0",
+            ] {
+                assert_eq!(compare(new, old), Some(Ordering::Greater), "{new} > {old}");
+                assert_eq!(compare(old, new), Some(Ordering::Less), "{old} < {new}");
+            }
+        }
+        assert_eq!(
+            compare("2000.2647.5", "1999.2647.5"),
+            Some(Ordering::Greater)
+        );
+        // The month bound: 12 is the earlier scheme, 13 is no shape this build reads.
+        assert_eq!(compare("2026.12.0", "2026.11.0"), Some(Ordering::Greater));
+        assert_eq!(compare("2026.12.0", "4.2647.5"), Some(Ordering::Less));
+        assert_eq!(compare("2026.13.0", "4.2647.5"), None);
+        assert_eq!(compare("2026.1.0", "2026.0.0"), None);
+    }
+
     #[test]
     fn a_shape_this_build_does_not_read_is_never_newer_or_older() {
         for odd in [
+            "1999.11.0",
+            "2026.13.0",
+            "2026.0.1",
             "3.2.1",
             "4.26.5",
             "4.2654.1",

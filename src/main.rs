@@ -908,6 +908,10 @@ enum Command {
         /// not combinable with --confirm-cleanup.
         #[arg(long, value_name = "TOKEN")]
         confirm_home: Option<String>,
+        /// Go back to this older build over a newer installed version (blocked otherwise); the
+        /// preview warns per host, and the confirm needs this flag again.
+        #[arg(long)]
+        allow_older: bool,
         /// Print the JSON envelope on a terminal too, instead of the screens.
         #[arg(long)]
         json: bool,
@@ -1999,6 +2003,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             confirm,
             confirm_cleanup,
             confirm_home,
+            allow_older,
             json: _,
         } => {
             use moai_cli::update_tux::{self as tux, Asked};
@@ -2014,6 +2019,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 confirm.as_deref(),
                 confirm_cleanup.as_deref(),
                 confirm_home.as_deref(),
+                allow_older,
                 |summary, preview| {
                     use moai_cli::ui_text::Msg;
                     if !tux::human() {
@@ -2052,7 +2058,14 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                         && (e.contains("stale or altered plan") || e.contains("preview again")) =>
                 {
                     tux::set_asked(Asked::Stale);
-                    moai_cli::update::update_command(&home, None, None, None, |_, _| Ok(false))
+                    moai_cli::update::update_command(
+                        &home,
+                        None,
+                        None,
+                        None,
+                        allow_older,
+                        |_, _| Ok(false),
+                    )
                 }
                 other => other,
             }

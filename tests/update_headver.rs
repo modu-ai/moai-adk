@@ -144,7 +144,8 @@ fn host<'a>(v: &'a Value, name: &str) -> &'a Value {
         .unwrap_or_else(|| panic!("{name}: {v}"))
 }
 
-/// Every host receipt under `~/.moai-cli/installations/`.
+/// Every skill host receipt under `~/.moai-cli/installations/<id>/hosts/moai/` (the other
+/// layers' receipts are not the version the update compares).
 fn receipt_files(home: &Path) -> Vec<PathBuf> {
     let mut out = Vec::new();
     let mut stack = vec![home.join(".moai-cli/installations")];
@@ -153,10 +154,12 @@ fn receipt_files(home: &Path) -> Vec<PathBuf> {
             let p = e.unwrap().path();
             if p.is_dir() {
                 stack.push(p);
-            } else if HOSTS.iter().any(|h| {
-                p.file_name()
-                    .is_some_and(|n| n == format!("{h}.json").as_str())
-            }) {
+            } else if p.parent().is_some_and(|d| d.ends_with("hosts/moai"))
+                && HOSTS.iter().any(|h| {
+                    p.file_name()
+                        .is_some_and(|n| n == format!("{h}.json").as_str())
+                })
+            {
                 out.push(p);
             }
         }
@@ -229,6 +232,11 @@ fn an_earlier_rc_install_reads_older_and_this_build_updates_it() {
         json!(moai_cli::BUILD_VERSION),
         "{again}"
     );
+    // Audit N5: the same version installed again is not "newer", so the re-plan is not blocked.
+    for h in HOSTS {
+        assert_eq!(host(&again, h)["preflight"], json!("ok"), "{h}: {again}");
+        assert!(host(&again, h)["blocked_reason"].is_null(), "{h}: {again}");
+    }
 }
 
 #[test]
@@ -255,9 +263,12 @@ fn an_install_newer_than_this_build_is_never_updated_back() {
         assert_eq!(hp["preflight"], json!("blocked"), "{h}: {p}");
         let reason = hp["blocked_reason"].as_str().unwrap();
         assert!(
-            reason.contains(&newer) && reason.contains("never updates back"),
+            reason.contains(&newer)
+                && reason.contains("never updates back")
+                && reason.contains("moai update --allow-older"),
             "{h}: {reason}"
         );
+        assert!(hp["going_back"].is_null(), "{h}: {p}");
     }
     // The apply either refuses or applies no host; either way nothing changes.
     let digest = p["plan_digest"].as_str().unwrap().to_string();
@@ -290,5 +301,128 @@ fn an_install_newer_than_this_build_is_never_updated_back() {
     let p = plan(&me, &f.home, &f.v2);
     for h in HOSTS {
         assert_eq!(host(&p, h)["preflight"], json!("ok"), "{h}: {p}");
+    }
+}
+
+fn copy_tree(from: &Path, to: &Path) {
+    fs::create_dir_all(to).unwrap();
+    for entry in fs::read_dir(from).unwrap() {
+        let p = entry.unwrap().path();
+        let dest = to.join(p.file_name().unwrap());
+        if p.is_dir() {
+            copy_tree(&p, &dest);
+        } else {
+            fs::copy(&p, &dest).unwrap();
+        }
+    }
+}
+
+/// `moai-cli update` from the copy's own folder (its package and agents beside it), with the
+/// temporary HOME as the current folder too, so no project outside it is read.
+fn update(exe: &Path, home: &Path, args: &[&str]) -> Value {
+    let out = Command::new(exe)
+        .arg("update")
+        .args(args)
+        .clean_env()
+        .env("HOME", home)
+        .env("PATH", "/usr/bin:/bin")
+        .env("LC_ALL", "C")
+        .current_dir(home)
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
+        panic!(
+            "{}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        )
+    })
+}
+
+/// Audit N1 (leader decision, #2521 A → B → A): going back to an older build is blocked by
+/// default; `moai-cli update --allow-older` is the explicit way back. Its preview says so in a
+/// warning per host, its digest binds the choice (a confirm without the flag is refused as
+/// stale) and only the confirmed run with the flag writes.
+#[test]
+fn going_back_to_an_older_build_needs_allow_older() {
+    let f = fixture();
+    let me = version_exe(&f.home, moai_cli::BUILD_VERSION);
+    let folder = me.parent().unwrap().parent().unwrap().to_path_buf();
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
+    copy_tree(&repo.join("skills/moai"), &folder.join("skills/moai"));
+    copy_tree(&repo.join("agents"), &folder.join("agents"));
+    let first = update(&me, &f.home, &[]);
+    let digest = first["result"]["plan_digest"].as_str().unwrap().to_string();
+    let applied = update(&me, &f.home, &["--confirm", &digest]);
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+
+    // A newer build installed since: one head above this build.
+    let head: u32 = moai_cli::BUILD_VERSION
+        .split('.')
+        .next()
+        .unwrap()
+        .parse()
+        .unwrap();
+    let newer = format!("{}.0001.1", head + 1);
+    set_receipt_versions(&f.home, &newer);
+    // A changed skill file, so going back has something to write.
+    let skill = folder.join("skills/moai/SKILL.md");
+    let mut text = fs::read_to_string(&skill).unwrap();
+    text.push_str("\nolder build\n");
+    fs::write(&skill, text).unwrap();
+    let before = installed(&f.home);
+
+    // Default: blocked, and the reason names the way back.
+    let p = update(&me, &f.home, &[]);
+    for h in HOSTS {
+        let hp = host(&p["result"]["plan"], h);
+        assert_eq!(hp["preflight"], json!("blocked"), "{h}: {p}");
+        assert!(
+            hp["blocked_reason"]
+                .as_str()
+                .unwrap()
+                .contains("moai update --allow-older"),
+            "{h}: {p}"
+        );
+    }
+
+    // With the flag: planned, with a warning line per host and a confirm line that keeps it.
+    let p = update(&me, &f.home, &["--allow-older"]);
+    let r = &p["result"];
+    for h in HOSTS {
+        let hp = host(&r["plan"], h);
+        assert_eq!(hp["preflight"], json!("ok"), "{h}: {p}");
+        let warning = hp["going_back"].as_str().unwrap_or_default();
+        assert!(
+            warning.contains(&newer) && warning.contains(moai_cli::BUILD_VERSION),
+            "{h}: {p}"
+        );
+    }
+    let digest = r["plan_digest"].as_str().unwrap().to_string();
+    assert_eq!(
+        r["confirm_with"],
+        json!(format!("moai update --allow-older --confirm {digest}")),
+        "{p}"
+    );
+    assert_eq!(installed(&f.home), before, "a preview writes nothing");
+
+    // The digest binds the choice: confirmed without the flag, it is stale.
+    let refused = update(&me, &f.home, &["--confirm", &digest]);
+    assert_eq!(refused["ok"], json!(false), "{refused}");
+    assert_eq!(installed(&f.home), before, "nothing was updated back");
+
+    let back = update(&me, &f.home, &["--allow-older", "--confirm", &digest]);
+    assert_eq!(back["ok"], json!(true), "{back}");
+    assert_ne!(installed(&f.home), before, "the older build was installed");
+    for path in receipt_files(&f.home) {
+        let receipt: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        if receipt.get("package_version").is_some() {
+            assert_eq!(
+                receipt["package_version"],
+                json!(moai_cli::BUILD_VERSION),
+                "{receipt}"
+            );
+        }
     }
 }
