@@ -87,3 +87,21 @@ SPEC을 나중에 써도 아무것도 막지 않아요. 이 조각은 tool-prefl
 | D-2 | `hook_engine.rs`가 아니라 `write_guard` 안에 넣는다 | 다른 가지(commit-guard-users)가 `hook_engine.rs`를 바꿈; 같은 기본 규칙 묶음 | 엔진에서 따로 부르게 옮김 |
 | D-3 | SPEC의 `status`는 보지 않는다(draft도 통과) | 지금 SPEC은 draft로 병합되고 승인은 사용자가 모아서 고름(리더 메모 09:1xZ); 승인 상태를 요구할지는 사용자 결정 | 다음 조각에서 `status: approved` 요구 |
 | D-4 | 이유 문장은 고정 문자열이고 경로·가지 이름을 싣지 않는다 | A1–A4와 같은 규칙(입력 반복 금지) | — |
+
+## Result
+
+구현 에이전트가 2026-11-17에 채웠어요. SYNC와 AUDIT가 다시 확인해요. 기준 `cbf1c7d959`(origin/v2026.11.0), 변경 커밋
+`7a6c7e2abb`. 빌드 폴더는 이 worktree의 `target/`, `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=4`, macOS arm64, cargo는
+`moai heavy-slot-acquire` 슬롯 안에서 한 번에 하나.
+
+- AC-1…AC-5: met — RED(구현 전): exit 101, 4개 FAILED(거부가 와야 할 곳이 허용, "stdout is one JSON object: EOF"),
+  `other_branches…`만 통과. GREEN: exit 0, 5 passed.
+- AC-6: met — `--lib hook_guards::` 0(17); `hook_dispatch_cli` 0(56); `hooks_cli` 0(22); `hook_mode_cli` 0(5);
+  `hook_status_cli` 0(10); `hook_legacy_cli` 0(10); `home_isolation_scan` 0(16); `product_cli` 0(75); `--bin moai` 0(27);
+  `ac_command_lint` 0(5); `git_env_scrub` 0(3); `cargo fmt --check` 0(처음 1, 시험 파일 줄바꿈 세 곳 뒤 0); clippy 0;
+  Python `ci_scope`·`repo_scans`·`skill_references` OK; `moai spec check --all` 0(처음 `section_missing`: Risks가 있으면
+  Non-goals도 필요, 절을 더한 뒤 0); `git diff --check` 0.
+- mutation 3개(커밋 뒤, 각각 `git restore` 뒤 tree 깨끗): 아무 `id:` 줄이나 인정 → 1 FAIL(AC-2); `..`·링크를 풀지 않고
+  글자로 판단 → 1 FAIL(AC-3); worktree `.git` 파일을 읽지 않음 → 1 FAIL(AC-5). 되돌린 뒤 5 passed.
+
+실행 안 함: 전체 `cargo test`, 실제 Claude Code·Codex 세션에서의 hook 실행(설치된 `moai`가 이 판이 아님), Linux·Windows.
