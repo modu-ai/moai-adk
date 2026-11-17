@@ -1,10 +1,11 @@
 ---
 id: SPEC-20261117-agent-build-folder
-title: 에이전트·감사 빌드 폴더를 작업 폴더 밖 한 곳으로 (C-82)
-status: draft
+title: 에이전트·감사 빌드 폴더를 작업 폴더 밖 한 곳으로
+status: approved
 revision: 1
 created: 2026-11-17
 parent: null
+approval: {by: user, at: 2026-11-17, basis: "in-session selection 2026-11-17 08:22:21Z: 세 SPEC 승인 — 감사 PASS 6da0fa1e00 내용 그대로", digest: "sha256:554460f502cc8e3d2a259551803747c9603197a465c48fc7f470ba32a36c1075"}
 ---
 
 ## Intent
