@@ -16,29 +16,30 @@ fn the_agent_workflow_closes_its_own_card_through_close_check() {
         .lines()
         .find(|l| l.starts_with("10. **hand-off**"))
         .expect("hand-off step");
+    // Card C-53 S5: the lane closes its card in the ledger (decision L5) — criteria marked,
+    // `card pr` after the merge, `card done`, whose refusal names the rule — instead of the
+    // Issue's close table, `close-check` and `gh issue close`. A criterion the merge does not
+    // meet is withdrawn naming the follow-up card (was: `keep_open` rows with follow-up cards).
     for phrase in [
-        "The lane closes its own card (Issue #2903, #2899 G7",
+        "The lane closes its own card (Issue #2903",
         "once the card's last pull request has merged",
-        "first line is `CLOSE-TABLE #<n>`",
-        "a verdict column (`상태`, `판정` or `결과`)",
-        "the verdict cell is the met word alone (`충족`, `해당 없음`, `끝`) or followed only by commits, numbers and code",
-        "any explanation goes in the evidence column",
-        "`moai close-check <n> --repo <owner>/<repo>`",
-        "On `close`, release the claim and close the Issue with `gh issue close <n> --comment` naming the close table by its link",
-        "read the Issue's state back",
-        "On `keep_open`, write the follow-up card number into each row the answer lists under `unmet`",
-        "a lane opens no new Issue",
-        "leave the closing to the leader",
-        "an open pull request that still claims the Issue means the card is not done",
-        "`no_table` and `uncertain` close nothing",
+        "`card criterion <card> <n> --generation <g> --met --evidence <ref>`",
+        "run `card pr` again (it records the merge) and `card done <card> --generation <g>`",
+        "`done` refuses a card with no met criterion, an open criterion or no merged pull request, and its refusal names the rule",
+        "withdrawn with a reason that names the follow-up card the leader adds (a lane adds no card)",
+        "an open pull request of the card means it is not done",
         "The leader only confirms a lane's closing (MODE-LEADER `lane-done` step)",
     ] {
         assert!(hand_off.contains(phrase), "hand-off step must say `{phrase}`");
     }
-    // The old sentence, which left closing to nobody in particular, is gone.
+    // The old sentence, which left closing to nobody in particular, is gone; so are the Issue
+    // close table and `close-check`.
     assert!(!text.contains("After the merge the Issue is closed and no longer a candidate"));
+    for gone in ["CLOSE-TABLE", "close-check", "gh issue close"] {
+        assert!(!text.contains(gone), "mode-agent.md still names `{gone}`");
+    }
     assert!(text.contains(
-        "- (4) An Issue-closing comparison table for a merged pull request, then `moai close-check` and, on `close`, the Issue's closing (`hand-off` step)."
+        "- (3) A card of yours whose pull request has merged: `card pr`, `card done` and the cleanup (`hand-off` step)."
     ));
     // The leader side (O1, #2910) defers to a lane that already closed.
     assert!(read("skills/moai/workflows/mode-leader.md").contains("unless the lane already did"));

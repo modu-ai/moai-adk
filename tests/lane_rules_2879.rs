@@ -30,20 +30,29 @@ fn a_lane_cleans_its_card_after_the_closing_table() {
             "then `moai worktree-gc-apply` with the same arguments, its `plan_digest`",
             "never forced",
             "Keep the lane's one build folder (`moai lane-env`)",
-            "never in a new worktree per audit (Issue #2879)",
+            // C-53 S5 repair (audit B1): a lane runs no formal audit, so its one detached audit
+            // worktree is gone (was: "never in a new worktree per audit (Issue #2879)"); its
+            // self-audit builds into the lane's one build folder.
+            "Every build, a self-audit's too, builds into the lane's one build folder (`moai lane-env`)",
         ],
     );
 }
 
-/// Audit C1 on PR #2896: the blanket "never delete" rule names the card cleanup as its one
-/// exception, so the two instructions no longer contradict each other.
+/// Audit C1 on PR #2896: the blanket "never delete" rule names the card cleanup as its
+/// exception, so the two instructions no longer contradict each other. C-53 S5 repair N8: the
+/// unused worktree and branch of a refused `card take` is the second exception, and the
+/// `claim` step names the two commands and "that branch only".
 #[test]
 fn the_never_delete_rule_names_the_card_cleanup_as_its_exception() {
     let agent = workflow("mode-agent.md");
     says(
         &agent,
         "mode-agent.md",
-        &["Never delete files, branches or worktrees — except the cleanup in `self-pick` (4): `moai worktree-gc-apply` on your own merged card's worktree, with that plan's `plan_digest` (Issue #2879) — never touch the real HOME"],
+        // C-53 S5: the cleanup is self-pick item (3) since the pre-audit item left (was (4)).
+        &[
+            "Never delete files, branches or worktrees — except the cleanup in `self-pick` (3): `moai worktree-gc-apply` on your own merged card's worktree, with that plan's `plan_digest` (Issue #2879), and a refused take's unused worktree and branch (`claim` step) — never touch the real HOME",
+            "On `conflict` (held by another session, a scope overlap, not `ready`) remove the unused worktree and its branch (`git worktree remove <w>`, `git branch -D card/<n>-<slug>`, that branch only), then take the next candidate",
+        ],
     );
 }
 

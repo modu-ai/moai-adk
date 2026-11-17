@@ -272,7 +272,9 @@ fn a_missing_flag_is_a_usage_error_that_names_it() {
     }
 }
 
-/// D2: the lane workflow shows the flag form first and keeps the stdin form.
+/// D2, re-pointed by card C-53 S5: MODE-AGENT checks a write with `card check` in its flag form
+/// (its flags are checked against `--help` in tests/mode_cards_53.rs) and no longer shows the
+/// Issue `claim-verify` request; the flag form itself stays pinned by the tests above.
 #[test]
 fn mode_agent_shows_the_flag_form() {
     let doc = fs::read_to_string(
@@ -280,10 +282,13 @@ fn mode_agent_shows_the_flag_form() {
     )
     .unwrap();
     for phrase in [
-        "`moai claim-verify . --issue <n> --comment <claim id> --lane <session> --allowed-author <login>`",
-        "with the same typed request on stdin",
-        "both forms give the same verdict, and a missing flag is a usage error that names it (Issue #2838)",
+        "`moai card check <card> --generation <g> --path <p>`",
+        "with every path the change touches; write only when it answers `allowed: true`",
     ] {
         assert!(doc.contains(phrase), "mode-agent.md must say `{phrase}`");
     }
+    assert!(
+        !doc.contains("moai claim-verify . --issue"),
+        "the Issue claim request is gone from MODE-AGENT"
+    );
 }

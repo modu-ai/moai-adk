@@ -15,23 +15,29 @@ fn mode_agent() -> String {
 #[test]
 fn the_agent_loop_runs_lane_next_and_goes_on_with_reversible_defaults() {
     let text = mode_agent();
+    // Card C-53 S5: the next task comes from the ledger (`moai card next`) and a wait is
+    // `moai wait`; `lane-next` reads Issue claims, so MODE-AGENT no longer names it, nor its
+    // `open_draft_pr` and `card_pr_merged` tasks (was: `moai lane-next --lane … --wait`, "reads
+    // GitHub afresh each time", its 3,600-second cap, Issue #2831, `open_draft_pr`,
+    // `card_pr_merged`, Issue #2873).
     for phrase in [
-        "moai lane-next --lane <lane> --repo <owner>/<repo> --wait <seconds>",
-        "reads GitHub afresh each time",
+        "Read the state afresh each time (`moai card next`, your pull requests) — never what you remember",
         "a restart, a usage-limit stop or a compacted conversation misses nothing",
         "go on with the safe default you named",
         "only a `guarded` one waits for the answer",
-        "`moai lane-next --wait <seconds>` (at most 3,600",
-        "Issue #2831",
+        "or a background `moai wait`",
         "open it as a draft (`gh pr create --draft …`)",
         "Issue #1975 comment 6870150891",
-        "`open_draft_pr`",
         "`DECISION-APPLIED <decision id>`",
-        "`card_pr_merged`",
-        "Issue #2873",
+        "A card of yours whose pull request has merged: `card pr`, `card done` and the cleanup",
+        "While a pull request with a `moai-tip-repair:` line is open, a red tip is that pull request's author's to repair",
     ] {
         assert!(text.contains(phrase), "mode-agent.md must say `{phrase}`");
     }
+    assert!(
+        !text.contains("lane-next"),
+        "mode-agent.md still names `lane-next`"
+    );
 }
 
 /// #2880 W4 (AC-3): the project rules say the lane's PLAN comment is part of the design, next
@@ -73,11 +79,30 @@ fn the_flags_the_workflow_names_are_the_commands_own() {
         assert!(help.contains(flag), "lane-next --help lacks {flag}: {help}");
     }
     assert!(help.contains("at most 3600"), "{help}");
+    assert!(help.contains("1 to 50"), "{help}");
+    // C-53 S5: MODE-AGENT waits with `moai wait` (was: `lane-next --wait`, its 3,600-second
+    // cap, its 432-second read interval and `--shared-lanes`); every flag the lane's watch shows
+    // is the command's own.
+    let out = Command::new(crate::common::MOAI_BIN)
+        .args(["wait", "--help"])
+        .output()
+        .unwrap();
+    assert!(out.status.success());
+    let wait = String::from_utf8_lossy(&out.stdout);
     let text = mode_agent();
-    assert!(text.contains("at most 3,600") && text.contains("every 432 seconds"));
-    assert!(
-        help.contains("1 to 50")
-            && text.contains("`--shared-lanes <n>`")
-            && text.contains("1 to 50")
-    );
+    for (shown, flag) in [
+        ("`moai wait --repo <owner/repo> <kind>`", "--repo"),
+        ("`ci --head <h>`", "--head"),
+        (
+            "`comment --issue <pr> --after <id> --prefix AUDIT`",
+            "--prefix",
+        ),
+        ("`pr --pr <pr> --head <h>`", "--pr"),
+    ] {
+        assert!(text.contains(shown), "mode-agent.md must show {shown}");
+        assert!(wait.contains(flag), "wait --help lacks {flag}: {wait}");
+    }
+    for flag in ["--issue", "--after"] {
+        assert!(wait.contains(flag), "wait --help lacks {flag}: {wait}");
+    }
 }

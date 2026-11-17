@@ -166,7 +166,9 @@ fn every_orca_command_in_a_mode_sits_next_to_its_rule_for_no_orca() {
     for (file, entry_rule) in [
         (
             "skills/moai/workflows/mode-agent.md",
-            "in the autonomous mode (no Orca, or no channel between sessions) go straight to the self-claim round",
+            // C-53 S5: the lane takes what `card next` names (was: "go straight to the
+            // self-claim round").
+            "in the autonomous mode (no Orca, or no channel between sessions) take what `card next` names",
         ),
         (
             "skills/moai/workflows/mode-leader.md",
