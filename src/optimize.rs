@@ -1,8 +1,10 @@
 //! `optimize.plan` (Issue #2724, parent #2380): a read-only preview of what space the
 //! repository's leftovers hold and which of them could go — linked worktrees after their
 //! merge, cargo build folders outside the worktrees (`/tmp/moai-rc-target-*` and the like,
-//! only under roots the caller names), and reports. One table: size, last change, retention,
-//! the reasons a row is kept, and how to get it back.
+//! only under roots the caller names), the agent build folders under `<HOME>/.moai/build/`
+//! (C-82: a candidate only when its owner record proves the worktree gone or merged), and
+//! reports. One table: size, last change, retention, the reasons a row is kept, and how to get
+//! it back.
 //!
 //! Nothing is deleted or written. `worktrees.count` is the repository's worktree count, and
 //! `warnings` names it when it is above [`WORKTREE_WARN_OVER`] (#2930 item 6). The worktree rows reuse `worktree.gc.plan` with its
@@ -339,6 +341,182 @@ fn build_folder_rows(
     Ok(rows)
 }
 
+/// C-82: the owner record `tools/build_folder.py env` writes into an agent build folder
+/// (`<HOME>/.moai/build/<project>-<worktree>/`): `schema_version` 1, the repository's
+/// `git_common_dir` and the `worktree` the folder builds, both absolute.
+pub const AGENT_BUILD_RECORD: &str = ".moai-build.json";
+
+/// The longest owner record read; a longer file counts as no record.
+const AGENT_BUILD_RECORD_MAX: u64 = 4096;
+
+/// The owner of an agent build folder, from its record, or why it is unknown.
+fn agent_build_owner(dir: &Path) -> Option<(PathBuf, PathBuf)> {
+    let rec = dir.join(AGENT_BUILD_RECORD);
+    let meta = fs::symlink_metadata(&rec).ok()?;
+    if !meta.is_file() || meta.len() > AGENT_BUILD_RECORD_MAX {
+        return None;
+    }
+    let v: Value = serde_json::from_slice(&fs::read(&rec).ok()?).ok()?;
+    if v["schema_version"] != 1 {
+        return None;
+    }
+    let common = PathBuf::from(v["git_common_dir"].as_str()?);
+    let worktree = PathBuf::from(v["worktree"].as_str()?);
+    (common.is_absolute() && worktree.is_absolute()).then_some((common, worktree))
+}
+
+/// C-82 (user decision 2026-11-17, "빌드 폴더를 한 곳으로 모으기"): rows for the agent build
+/// folders under `<home>/.moai/build/`. A folder is a `trim` candidate only when its owner record
+/// names this repository and a worktree that is gone (not in `git worktree list`) or whose branch
+/// the gc plan counts as merged, and the folder holds only cargo output and the record. A link is
+/// never followed. Returns the rows and the warning lines.
+#[allow(clippy::too_many_arguments)]
+fn agent_build_rows(
+    home: Option<&Path>,
+    common: Option<&Path>,
+    listed: &BTreeSet<PathBuf>,
+    merged: &BTreeSet<PathBuf>,
+    now: u64,
+    cwds: &Option<Vec<PathBuf>>,
+    deadline: Instant,
+) -> (Vec<Value>, Vec<String>) {
+    let (mut rows, mut warnings) = (Vec::new(), Vec::new());
+    let Some(home) = home else {
+        return (rows, warnings);
+    };
+    // Audit B1: every step below HOME is read without following a link, `.moai` included.
+    let moai = home.join(".moai");
+    match fs::symlink_metadata(&moai) {
+        Ok(m) if m.is_dir() => {}
+        Ok(m) if m.file_type().is_symlink() => {
+            warnings.push(format!(
+                "{} is a link; agent build folders under it are not listed (C-82)",
+                moai.display()
+            ));
+            return (rows, warnings);
+        }
+        Ok(_) => {
+            warnings.push(format!(
+                "{} is not a folder; no agent build folder is listed (C-82)",
+                moai.display()
+            ));
+            return (rows, warnings);
+        }
+        Err(_) => return (rows, warnings),
+    }
+    let root = moai.join("build");
+    match fs::symlink_metadata(&root) {
+        Ok(m) if m.is_dir() => {}
+        Ok(m) if m.file_type().is_symlink() => {
+            warnings.push(format!(
+                "{} is a link; agent build folders under it are not listed (C-82)",
+                root.display()
+            ));
+            return (rows, warnings);
+        }
+        Ok(_) => {
+            warnings.push(format!(
+                "{} is not a folder; no agent build folder is listed (C-82)",
+                root.display()
+            ));
+            return (rows, warnings);
+        }
+        Err(_) => return (rows, warnings),
+    }
+    let Ok(rd) = fs::read_dir(&root) else {
+        warnings.push(format!("{} is unreadable (C-82)", root.display()));
+        return (rows, warnings);
+    };
+    let mut entries: Vec<PathBuf> = rd.flatten().map(|e| e.path()).collect();
+    entries.sort();
+    let canon = |p: &Path| fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
+    for path in entries {
+        let Ok(meta) = fs::symlink_metadata(&path) else {
+            continue;
+        };
+        let mut reasons: Vec<&str> = Vec::new();
+        let mut worktree = Value::Null;
+        let why = if meta.file_type().is_symlink() {
+            reasons.push("symlink");
+            "symlink"
+        } else if !meta.is_dir() {
+            continue;
+        } else {
+            match agent_build_owner(&path) {
+                None => {
+                    reasons.push("no_owner_record");
+                    "no_owner_record"
+                }
+                Some((rec_common, rec_worktree)) => {
+                    worktree = json!(rec_worktree.to_string_lossy());
+                    if common.map(|c| canon(&rec_common) != c).unwrap_or(true) {
+                        reasons.push("other_repository");
+                        "other_repository"
+                    } else if !listed.contains(&canon(&rec_worktree)) {
+                        "worktree_gone"
+                    } else if merged.contains(&canon(&rec_worktree)) {
+                        "branch_merged"
+                    } else {
+                        reasons.push("worktree_live");
+                        "worktree_live"
+                    }
+                }
+            }
+        };
+        let (cargo, other) = if why == "symlink" {
+            (Vec::new(), Vec::new())
+        } else {
+            let (cargo, other) = worktree_gc::split_target(&path);
+            let other: Vec<String> = other
+                .into_iter()
+                .filter(|n| n != AGENT_BUILD_RECORD)
+                .collect();
+            (cargo, other)
+        };
+        if why != "symlink" {
+            if cargo.is_empty() {
+                reasons.push("not_cargo_output");
+            }
+            if !other.is_empty() {
+                reasons.push("other_files_in_folder");
+            }
+            match cwds.as_ref().map(|list| {
+                let c = canon(&path);
+                list.iter().any(|p| p.starts_with(&c))
+            }) {
+                Some(false) => {}
+                Some(true) => reasons.push("process_in_use"),
+                None => reasons.push("process_check_unavailable"),
+            }
+        }
+        let action = if reasons.is_empty() { "trim" } else { "skip" };
+        let (bytes, partial) = if why == "symlink" {
+            (0, false)
+        } else {
+            bytes_under(std::slice::from_ref(&path), deadline)
+        };
+        let modified = newest_build_change(&path, &cargo);
+        rows.push(json!({
+            "kind": "agent_build_folder",
+            "path": path.to_string_lossy(),
+            "action": action,
+            "why": why,
+            "reasons": reasons,
+            "worktree": worktree,
+            "trim_paths": cargo.iter().map(|c| c.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default()).collect::<Vec<_>>(),
+            "preserved": other,
+            "bytes": bytes,
+            "bytes_partial": partial,
+            "modified_unix": modified,
+            "age_secs": modified.map(|t| now.saturating_sub(t)),
+            "retention_until_unix": Value::Null,
+            "restore": "cargo rebuilds it on the next build with CARGO_TARGET_DIR set to this folder",
+            "apply": "only after the user picks this row: delete its cargo output (internal/build-folder; in the moai-adk repository `tools/build_folder.py remove`)",
+        }));
+    }
+    (rows, warnings)
+}
+
 /// #2930 item 6: a repository with more worktrees than this (the primary one included) gets a
 /// warning line in the preview; exactly this many does not.
 pub const WORKTREE_WARN_OVER: usize = 200;
@@ -462,6 +640,19 @@ pub fn plan(req: &Request) -> Result<Value> {
         .map(|e| fs::canonicalize(&e.path).unwrap_or_else(|_| e.path.clone()))
         .ok_or("git failed: no worktree listed")?;
 
+    let canon = |p: &Path| fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
+    let listed_paths: BTreeSet<PathBuf> = listed.iter().map(|e| canon(&e.path)).collect();
+    let mut merged_paths = BTreeSet::new();
+    let common_dir =
+        worktree_gc::git_out(req.project, &["rev-parse", "--git-common-dir"]).map(|s| {
+            let p = PathBuf::from(s.trim());
+            canon(&if p.is_absolute() {
+                p
+            } else {
+                req.project.join(p)
+            })
+        });
+
     let mut rows = Vec::new();
     for c in gc["candidates"].as_array().into_iter().flatten() {
         let rel = c["path"].as_str().unwrap_or_default();
@@ -472,6 +663,12 @@ pub fn plan(req: &Request) -> Result<Value> {
         } else {
             primary.join(rel)
         };
+        // Audit N2: a branch counts as merged for its build folder only when the gc plan would
+        // act on that worktree; a fresh worktree with no commit of its own is an ancestor of the
+        // tip too, but the plan keeps it (`recent_change`, a dirty tree, a process in it).
+        if !c["merged_by"].is_null() && c["action"] != "skip" {
+            merged_paths.insert(canon(&abs));
+        }
         let trim_paths = c["trim_paths"].as_array().cloned().unwrap_or_default();
         let (action, added, evidence) = judge_worktree(
             c["action"].as_str().unwrap_or("skip"),
@@ -535,6 +732,16 @@ pub fn plan(req: &Request) -> Result<Value> {
             deadline,
         )?);
     }
+    let (agent_rows, agent_warnings) = agent_build_rows(
+        req.home,
+        common_dir.as_deref(),
+        &listed_paths,
+        &merged_paths,
+        now,
+        &cwds,
+        deadline,
+    );
+    rows.extend(agent_rows);
 
     // Reports are kept, never trimmed. A migration leaves them in the earlier root (#2725 D5),
     // and a project on `.moai/` may write new ones there (#2696 C4d): both are listed.
@@ -606,10 +813,10 @@ pub fn plan(req: &Request) -> Result<Value> {
             "freeable_bytes": freeable,
         },
         "worktrees": {"count": worktree_count, "warn_over": WORKTREE_WARN_OVER},
-        "warnings": worktree_count_warning(worktree_count).into_iter().collect::<Vec<_>>(),
+        "warnings": worktree_count_warning(worktree_count).into_iter().chain(agent_warnings).collect::<Vec<_>>(),
         "rows": rows,
         "preview_digest": digest,
-        "apply": "optimize-plan applies nothing. Worktree rows: worktree-gc-apply recomputes its own plan, where only an ancestor of the integration tip counts as merged, and runs only after the user confirms (#2389 comment 6774899518 item 2). Build folders outside the worktrees and reports: no apply step in #2724.",
+        "apply": "optimize-plan applies nothing. Worktree rows: worktree-gc-apply recomputes its own plan, where only an ancestor of the integration tip counts as merged, and runs only after the user confirms (#2389 comment 6774899518 item 2). Build folders outside the worktrees and reports: no apply step in #2724. Agent build folders under <HOME>/.moai/build: only the rows the user picks, after this preview (C-82).",
         "network": "disabled",
         "writes": false,
     }))

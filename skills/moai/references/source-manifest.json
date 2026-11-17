@@ -109,7 +109,7 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "e23b0dc7417da9b43960edc5d081b6ffb19cfda035167766d52306c347118f9d",
+      "sha256": "2b7abbbe974ac93aeba97a0db71f7971e3e4fb6d7dc7fb220de1ff31d125a4fa",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "3930d57b9120941fd186f1608ef54f107e73bbb980a17e801fe344a7aeb3f11a",
+      "sha256": "4849b6589611aa38eb51a4a86b09c559345d60323d9321a62fe1086a9ec83f91",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
@@ -208,7 +208,7 @@
       }
     },
     "references/internal/git-safety.md": {
-      "sha256": "8f1ead515cfd4747c95091e832983cd16ad9dc8f903d116e9c15f38b47b6bba2",
+      "sha256": "f6b532814d26c0a304fce6d462d9e1c8ff698d622e35c3efdf66c396ba1e71de",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-git-safety",
@@ -322,7 +322,7 @@
       }
     },
     "workflows/optimize.md": {
-      "sha256": "02f29786c87148964661dbbb36b1162a17adf2bc2bd996b959f5acdccc910a7b",
+      "sha256": "798283ee690d2ab316d45039cc536d83e18dd4a82e14c3737929bb5813ef518b",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-optimize",
@@ -357,8 +357,17 @@
         "reason": "Written for rc.2 card C-69 (user instruction 2026-11-17): the three versioning schemes the PROJECT interview offers — SemVer (default), HeadVer and CalVer — each with its format, who bumps what, when to pick it, how the next version is computed, its pre-release marking and two examples, plus the rule to keep the scheme a project already uses and how `project-detect` reads a version. Sources read 2026-11-17: semver.org 2.0.0, github.com/line/headver, calver.org spec 26.0. Named by project.md, internal/interview and chains/index.md."
       }
     },
+    "references/internal/build-folder.md": {
+      "sha256": "fb667d61cb5a405cccc593f1cb31f214a7a55dbb714f0b7d76618b4c3716926a",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-build-folder",
+        "adoption": "new",
+        "reason": "Written for card C-82 (user decision 2026-11-17, selection '빌드 폴더를 한 곳으로 모으기'; SPEC-20261117-agent-build-folder): where agent and audit builds put CARGO_TARGET_DIR (one folder per worktree under ~/.moai/build/, CARGO_INCREMENTAL=0, an owner record), what a refusal does, where evidence stays, the end-of-task cleanup and the user-picked removal of leftovers. Read by moai-impl and moai-audit (`reads:`); its moai-adk helper is the repository's tools/build_folder.py."
+      }
+    },
     "references/internal/self-check.md": {
-      "sha256": "a634d1f847d9e7f03689f323a07b2ca85a28762ef8c5a9b650a7e4942d95dfad",
+      "sha256": "cfa07303ae26ec0eb30dbeeccd069bd6d80b978e185a02b8df11591d403d7272",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-self-check",
