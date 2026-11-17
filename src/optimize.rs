@@ -384,7 +384,27 @@ fn agent_build_rows(
     let Some(home) = home else {
         return (rows, warnings);
     };
-    let root = home.join(".moai/build");
+    // Audit B1: every step below HOME is read without following a link, `.moai` included.
+    let moai = home.join(".moai");
+    match fs::symlink_metadata(&moai) {
+        Ok(m) if m.is_dir() => {}
+        Ok(m) if m.file_type().is_symlink() => {
+            warnings.push(format!(
+                "{} is a link; agent build folders under it are not listed (C-82)",
+                moai.display()
+            ));
+            return (rows, warnings);
+        }
+        Ok(_) => {
+            warnings.push(format!(
+                "{} is not a folder; no agent build folder is listed (C-82)",
+                moai.display()
+            ));
+            return (rows, warnings);
+        }
+        Err(_) => return (rows, warnings),
+    }
+    let root = moai.join("build");
     match fs::symlink_metadata(&root) {
         Ok(m) if m.is_dir() => {}
         Ok(m) if m.file_type().is_symlink() => {
@@ -643,7 +663,10 @@ pub fn plan(req: &Request) -> Result<Value> {
         } else {
             primary.join(rel)
         };
-        if !c["merged_by"].is_null() {
+        // Audit N2: a branch counts as merged for its build folder only when the gc plan would
+        // act on that worktree; a fresh worktree with no commit of its own is an ancestor of the
+        // tip too, but the plan keeps it (`recent_change`, a dirty tree, a process in it).
+        if !c["merged_by"].is_null() && c["action"] != "skip" {
             merged_paths.insert(canon(&abs));
         }
         let trim_paths = c["trim_paths"].as_array().cloned().unwrap_or_default();

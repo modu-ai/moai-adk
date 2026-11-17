@@ -10,9 +10,11 @@ cargo output when the task ends; skills/moai/references/internal/build-folder.md
                                            the folder's owner record (.moai-build.json)
   python3 -I tools/build_folder.py clean   delete this worktree's cargo output; files that are
                                            not cargo output (evidence) stay and are listed
-  python3 -I tools/build_folder.py remove --preview <optimize-plan JSON> <name>...
+  python3 -I tools/build_folder.py remove --preview <optimize-plan JSON> [--moai <bin>] <name>...
                                            delete the cargo output of folders the user picked
-                                           from the preview; every name must be a `trim` row
+                                           from the preview; every name must be a `trim` row of
+                                           that preview and of a fresh `moai optimize-plan` run
+                                           on its integration_ref (from this repository)
 
 `<project>` is the primary checkout's folder name, `<worktree name>` the worktree's folder name;
 the primary checkout and a worktree whose name already starts with `<project>-` use the name
@@ -193,17 +195,45 @@ def cmd_clean():
     return 0
 
 
-def cmd_remove(preview_path, names):
-    root = home() / ".moai" / "build"
-    if os.path.islink(root) or not os.path.isdir(root):
-        raise Refused(f"{root} is not a real folder")
+def trim_paths(doc):
+    """The `agent_build_folder` rows marked `trim` in an optimize-plan answer (or its result)."""
+    result = doc.get("result") if isinstance(doc, dict) and "result" in doc else doc
+    rows = result.get("rows", []) if isinstance(result, dict) else []
+    return {r.get("path") for r in rows if isinstance(r, dict)
+            and r.get("kind") == "agent_build_folder" and r.get("action") == "trim"}
+
+
+def fresh_preview(moai, ref):
+    """Audit N1: the preview as it is now, from `moai optimize-plan` on the same integration
+    ref, so a hand-written or stale preview never decides a deletion alone."""
+    project = git(".", "rev-parse", "--show-toplevel")
+    out = subprocess.run([moai, "optimize-plan", project, "--integration-ref", ref],
+                         capture_output=True, text=True)
+    try:
+        doc = json.loads(out.stdout)
+    except ValueError as e:
+        raise Refused(f"fresh preview unreadable (exit {out.returncode}): {e}") from e
+    if out.returncode != 0 or not doc.get("ok"):
+        raise Refused(f"fresh preview failed (exit {out.returncode}): {out.stdout.strip()}")
+    return trim_paths(doc)
+
+
+def cmd_remove(preview_path, moai, names):
     try:
         doc = json.loads(Path(preview_path).read_text())
     except (OSError, ValueError) as e:
         raise Refused(f"preview unreadable: {e}") from e
-    rows = (doc.get("result") or doc).get("rows", []) if isinstance(doc, dict) else []
-    picked_ok = {r.get("path") for r in rows if isinstance(r, dict)
-                 and r.get("kind") == "agent_build_folder" and r.get("action") == "trim"}
+    result = doc.get("result") if isinstance(doc, dict) and "result" in doc else doc
+    ref = result.get("integration_ref") if isinstance(result, dict) else None
+    if not isinstance(ref, str) or not ref or ref.startswith("-"):
+        raise Refused("the preview names no integration_ref; nothing deleted")
+    picked_ok = trim_paths(doc)
+    # Audit B1: lstat every step, `.moai` and `build` included, never following a link.
+    root = home()
+    for part in (".moai", "build"):
+        root = root / part
+        if not real_dir(root, create=False):
+            raise Refused(f"{root} is missing; nothing deleted")
     folders = []
     for name in names:
         if safe(name) != name or "/" in name:
@@ -211,11 +241,15 @@ def cmd_remove(preview_path, names):
         folder = root / name
         if str(folder) not in picked_ok:
             raise Refused(f"{name} is not a `trim` row of the preview; nothing deleted")
-        if os.path.islink(folder) or not os.path.isdir(folder):
-            raise Refused(f"{folder} is not a real folder now; nothing deleted")
+        if not real_dir(folder, create=False):
+            raise Refused(f"{folder} is missing; nothing deleted")
         if read_record(folder) is None:
             raise Refused(f"{folder} has no owner record now; nothing deleted")
         folders.append(folder)
+    fresh = fresh_preview(moai, ref)
+    stale = [str(f) for f in folders if str(f) not in fresh]
+    if stale:
+        raise Refused(f"not a `trim` row of the fresh preview: {', '.join(stale)}; nothing deleted")
     report = []
     for folder in folders:
         removed, kept = empty_cargo(folder)
@@ -230,10 +264,13 @@ def main(argv):
     elif argv[:1] == ["clean"] and len(argv) == 1:
         action = cmd_clean
     elif argv[:2] == ["remove", "--preview"] and len(argv) >= 4:
-        action = lambda: cmd_remove(argv[2], argv[3:])  # noqa: E731
+        rest, moai = argv[3:], "moai"
+        if rest[:1] == ["--moai"] and len(rest) >= 3:
+            rest, moai = rest[2:], rest[1]
+        action = lambda: cmd_remove(argv[2], moai, rest)  # noqa: E731
     else:
-        print("usage: build_folder.py env | clean | remove --preview <file> <name>...",
-              file=sys.stderr)
+        print("usage: build_folder.py env | clean | remove --preview <file> [--moai <bin>] "
+              "<name>...", file=sys.stderr)
         return 2
     try:
         return action()

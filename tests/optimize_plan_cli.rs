@@ -901,3 +901,63 @@ fn a_linked_agent_build_root_is_not_followed() {
     let warnings = r["warnings"].to_string();
     assert!(warnings.contains("is a link"), "{warnings}");
 }
+
+/// C-82 audit B1: a `<HOME>/.moai` that is itself a link is not followed either; a folder
+/// behind it that would be a leftover is never listed as `trim`.
+#[test]
+fn a_linked_moai_folder_is_not_followed() {
+    let fx = fixture();
+    let common = fs::canonicalize(fx.root.join(".git")).unwrap();
+    let elsewhere = fx.builds.join("moai-elsewhere");
+    let gone = fx.root.join(".moai-cli/worktrees/gone");
+    let dir = elsewhere.join("build/repo-gone");
+    cargo_output(&dir);
+    fs::write(
+        dir.join(".moai-build.json"),
+        serde_json::to_vec(&json!({
+            "schema_version": 1,
+            "git_common_dir": common.to_str().unwrap(),
+            "worktree": gone.to_str().unwrap(),
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    std::os::unix::fs::symlink(&elsewhere, fx.home.join(".moai")).unwrap();
+    let r = optimize(&fx, Some(&observations(&fx)), now_plus_days(1), &[]);
+    assert!(
+        !r["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|x| x["kind"] == "agent_build_folder"),
+        "{r}"
+    );
+    assert!(r["warnings"].to_string().contains("is a link"), "{r}");
+}
+
+/// C-82 audit N2: a worktree made just now, with no commit of its own, is an ancestor of the
+/// tip but not a merged card: its build folder stays `skip` (`worktree_live`), because the gc
+/// plan itself keeps that worktree (`recent_change`).
+#[test]
+fn a_fresh_worktree_without_commits_keeps_its_build_folder() {
+    let fx = fixture();
+    let fresh = wt(&fx, "f");
+    git(
+        &fx.root,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "issue/16-f",
+            fresh.to_str().unwrap(),
+            "integ",
+        ],
+    );
+    let common = fs::canonicalize(fx.root.join(".git")).unwrap();
+    agent_build(&fx, "repo-f", Some((&common, &fresh)));
+    let r = optimize(&fx, Some(&observations(&fx)), now_plus_days(0), &[]);
+    let f = row(&r, "agent_build_folder", "/repo-f");
+    assert_eq!(f["action"], "skip", "{f}");
+    assert!(reasons(f).contains(&"worktree_live".to_string()), "{f}");
+}

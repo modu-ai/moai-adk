@@ -965,9 +965,11 @@ fn build_folder_reference_is_read_by_the_builders_and_states_the_rule() {
             "{name}"
         );
         assert!(d.body.contains("`CARGO_INCREMENTAL=0`"), "{name}");
+        // Audit N6: the HOME exception names the parents `env` makes, too.
         assert!(
-            d.body
-                .contains("`~/.moai/build/` (`internal/build-folder`)"),
+            d.body.contains(
+                "`~/.moai/build/` (`internal/build-folder`) and its parents `~/.moai` and `~/.moai/build`, made 0700 when missing"
+            ),
             "{name}"
         );
     }

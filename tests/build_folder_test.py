@@ -181,27 +181,51 @@ class CleanTest(unittest.TestCase):
         self.assertFalse(self.folder.exists())
 
 
+def moai_bin():
+    """The built binary `remove` reruns the preview with (`MOAI_CLI_BIN` or the cargo target
+    folder), as tests/self_audit_run.py finds it; a missing binary fails the case."""
+    explicit = os.environ.get("MOAI_CLI_BIN")
+    if explicit:
+        return Path(explicit)
+    target = os.environ.get("CARGO_TARGET_DIR")
+    path = (Path(target) if target else ROOT / "target") / "debug" / "moai-cli"
+    if not path.exists():
+        raise AssertionError(f"moai-cli not built at {path}; run cargo build first")
+    return path
+
+
 class RemoveTest(unittest.TestCase):
+    """`remove` deletes a picked folder only when it is a `trim` row of the handed preview AND
+    of a fresh `optimize-plan` run on the same integration ref (audit N1: a hand-written
+    preview is not enough)."""
+
     def setUp(self):
         self.fx = Fixture()
         self.addCleanup(self.fx.close)
-        for name in ["repo-gone", "repo-live"]:
+        # repo-gone: its worktree is gone; repo-live: the fixture's fresh, live worktree.
+        for name, worktree in [("repo-gone", self.fx.home / "gone-worktree"),
+                               ("repo-live", self.fx.wt)]:
             self.fx.folder(name).mkdir(parents=True)
             cargo_output(self.fx.folder(name))
             (self.fx.folder(name) / ".moai-build.json").write_text(json.dumps({
                 "schema_version": 1, "git_common_dir": str(self.fx.repo / ".git"),
-                "worktree": str(self.fx.home / name)}))
-        rows = [
-            {"kind": "agent_build_folder", "path": str(self.fx.folder("repo-gone")),
-             "action": "trim"},
-            {"kind": "agent_build_folder", "path": str(self.fx.folder("repo-live")),
-             "action": "skip"},
-        ]
-        self.preview = self.fx.home / "preview.json"
-        self.preview.write_text(json.dumps({"ok": True, "result": {"rows": rows}}))
+                "worktree": str(worktree)}))
+        self.preview = self.write_preview({"repo-gone": "trim", "repo-live": "skip"})
+
+    def write_preview(self, actions, name="preview.json"):
+        rows = [{"kind": "agent_build_folder", "path": str(self.fx.folder(n)), "action": a}
+                for n, a in actions.items()]
+        path = self.fx.home / name
+        path.write_text(json.dumps(
+            {"ok": True, "result": {"integration_ref": "main", "rows": rows}}))
+        return path
+
+    def remove(self, preview, *names):
+        return self.fx.run("remove", "--preview", str(preview), "--moai", str(moai_bin()),
+                           *names)
 
     def test_remove_deletes_only_a_picked_trim_row(self):
-        out = self.fx.run("remove", "--preview", str(self.preview), "repo-gone")
+        out = self.remove(self.preview, "repo-gone")
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertFalse(self.fx.folder("repo-gone").exists())
         self.assertTrue(self.fx.folder("repo-live").is_dir())
@@ -209,10 +233,19 @@ class RemoveTest(unittest.TestCase):
     def test_remove_refuses_every_name_when_one_is_not_a_trim_row(self):
         for names in [["repo-live"], ["repo-gone", "repo-live"], ["../repo-gone"],
                       ["repo-missing"]]:
-            out = self.fx.run("remove", "--preview", str(self.preview), *names)
+            out = self.remove(self.preview, *names)
             self.assertEqual(out.returncode, 1, names)
             self.assertTrue((self.fx.folder("repo-gone") / "debug").is_dir(), names)
             self.assertTrue((self.fx.folder("repo-live") / "debug").is_dir(), names)
+
+    def test_remove_refuses_a_hand_written_preview_that_marks_a_live_folder_trim(self):
+        forged = self.write_preview({"repo-gone": "trim", "repo-live": "trim"}, "forged.json")
+        for names in [["repo-live"], ["repo-gone", "repo-live"]]:
+            out = self.remove(forged, *names)
+            self.assertEqual(out.returncode, 1, (names, out.stderr))
+            self.assertIn("fresh preview", out.stderr)
+            self.assertTrue((self.fx.folder("repo-live") / "debug").is_dir(), names)
+            self.assertTrue((self.fx.folder("repo-gone") / "debug").is_dir(), names)
 
     def test_remove_refuses_a_folder_that_became_a_link(self):
         target = self.fx.home / "t"
@@ -220,9 +253,20 @@ class RemoveTest(unittest.TestCase):
         (target / "keep.txt").write_text("k\n")
         os.rename(self.fx.folder("repo-gone"), self.fx.home / "moved")
         self.fx.folder("repo-gone").symlink_to(target)
-        out = self.fx.run("remove", "--preview", str(self.preview), "repo-gone")
+        out = self.remove(self.preview, "repo-gone")
         self.assertEqual(out.returncode, 1)
         self.assertTrue((target / "keep.txt").is_file())
+
+    def test_remove_refuses_a_linked_moai_folder(self):
+        # Audit B1: `~/.moai` itself is a link to a folder holding a would-be leftover.
+        elsewhere = self.fx.home / "elsewhere"
+        os.rename(self.fx.home / ".moai", elsewhere)
+        (self.fx.home / ".moai").symlink_to(elsewhere)
+        out = self.remove(self.preview, "repo-gone")
+        self.assertEqual(out.returncode, 1)
+        self.assertIn("is a link", out.stderr)
+        self.assertTrue((elsewhere / "build" / "repo-gone" / "debug").is_dir())
+        self.assertTrue((elsewhere / "build" / "repo-gone" / "CACHEDIR.TAG").is_file())
 
 
 class ScriptsTest(unittest.TestCase):
