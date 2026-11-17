@@ -46,3 +46,15 @@ changed"를 시험이 바이트로 고정하지 않아요. N3: `docs/design-revi
 
 - D1 시각(mtime)은 비교하지 않아요. 원장을 쓰기로 여는 일이 폴더 시각을 바꿀 수 있고, 지적 N1은 바이트였어요.
 - D2 코드를 고치지 않고 동작만 고정해요. 그래서 RED 대신 mutation으로 시험이 잡는지 보여요.
+
+## Result
+
+구현 에이전트가 채웠어요. 기준 `17c19a2759`(origin/v2026.11.0, #3174 병합 `224d4bfb76` 포함), 변경 커밋 `c105eae6ca`.
+
+- AC-1: met — `ac_verify_required` 6 통과(새 `a_refused_card_done_changes_no_byte`). mutation(커밋 뒤, 각각 `git restore` 뒤
+  tree 깨끗): 거부 길에서 프로젝트에 파일 하나를 남김 → 새 시험만 FAIL; SPEC 검사를 카드 조건 뒤로 → 3 FAIL.
+- AC-2: met — grep `1`.
+- 함께 돌림: `card_work_cli` 24, `product_cli` 75, `cargo fmt --check`, clippy `-D warnings`, `moai spec check --all`
+  (21개, errors 0), Python `ci_scope`·`skill_references` 24 OK.
+
+실행 안 함: 전체 cargo test, Linux CI.
