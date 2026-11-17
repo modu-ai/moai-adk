@@ -211,12 +211,25 @@ pub fn required_evidence(m: &ResolvedMethod) -> Vec<String> {
 
 /// Test, fixture and golden paths among `paths`, sorted: changes to what judges the code. The
 /// paths are those of the one test-path table, [`crate::tdd::is_test_path`]
-/// (SPEC-20261117-green-test-lock), which the GREEN test lock reads too.
+/// (SPEC-20261117-green-test-lock), which the GREEN test lock reads too; every language's row
+/// applies, as for a project whose languages are unknown. `run` uses [`oracle_changes_in`].
 pub fn oracle_changes(paths: &[String]) -> Vec<String> {
+    oracle_filter(paths, |p| crate::tdd::is_test_path(p, &[]))
+}
+
+/// [`oracle_changes`] narrowed to the languages of the project at `project` and its declared
+/// `test_paths` ([`crate::tdd::TestPaths::for_project`], green-test-lock audit N1); a project
+/// whose languages are unknown keeps every row.
+pub fn oracle_changes_in(project: &Path, paths: &[String]) -> Vec<String> {
+    let tests = crate::tdd::TestPaths::for_project(project);
+    oracle_filter(paths, |p| tests.matches(p))
+}
+
+fn oracle_filter(paths: &[String], test: impl Fn(&str) -> bool) -> Vec<String> {
     let mut out: Vec<String> = paths
         .iter()
         .map(|p| p.trim().trim_start_matches("./").to_string())
-        .filter(|p| crate::tdd::is_test_path(p, &[]))
+        .filter(|p| test(p))
         .collect();
     out.sort();
     out.dedup();
@@ -482,7 +495,7 @@ pub fn run(project: &Path, req: &RunRequest, current_revision: &str) -> Result<R
             }
         })
         .collect();
-    let oracle = oracle_changes(&req.diff_paths);
+    let oracle = oracle_changes_in(project, &req.diff_paths);
     let receipt = Receipt {
         producer: Producer {
             kind: ProducerKind::RunnerReceipt,

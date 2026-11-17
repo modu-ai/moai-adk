@@ -1,9 +1,10 @@
 //! The TDD phase record and the GREEN test lock (card C-86 slice 3,
 //! SPEC-20261117-green-test-lock; user decision 2026-11-17 "권고 말고 강제", research proposal B).
 //!
-//! - [`is_test_path`]: one table of test paths per language the project detector knows
-//!   ([`TEST_PATTERNS`]) plus the paths the project declares (profile `test_paths`). `run`'s
-//!   oracle check and the tool-preflight lock read the same table.
+//! - [`TestPaths`]: one table of test paths per language the project detector knows
+//!   ([`TEST_PATTERNS`]); a project uses the rows of its own languages and `common`, plus the
+//!   paths it declares (profile `test_paths`). `run`'s oracle check and the tool-preflight lock
+//!   read the same table.
 //! - `moai tdd red|green|reopen|done|status`: the record `<git-dir>/moai/tdd.json` and the log
 //!   `<git-dir>/moai/tdd-log.jsonl` live in the worktree's own git folder, so they are never
 //!   committed and a linked worktree has its own. `red` needs a head commit with the trailer
@@ -123,15 +124,26 @@ fn matches(pattern: &Pattern, dirs: &[String], name: &str) -> bool {
     }
 }
 
-/// Whether `path` (relative to the repository root) is a test path: it matches a pattern of
-/// [`TEST_PATTERNS`], or it is or lies under one of the `declared` paths.
+/// Whether `path` (relative to the repository root) is a test path of a project whose
+/// languages are unknown: it matches a pattern of any row of [`TEST_PATTERNS`], or it is or
+/// lies under one of the `declared` paths. A project whose languages are known uses
+/// [`TestPaths::for_project`] instead.
 pub fn is_test_path(path: &str, declared: &[String]) -> bool {
+    test_path_in(path, None, declared)
+}
+
+/// The rows of `languages` and `common` (every row when `languages` is `None`), then the
+/// declared paths.
+fn test_path_in(path: &str, languages: Option<&[String]>, declared: &[String]) -> bool {
     let all = parts(path);
     let Some((name, dirs)) = all.split_last() else {
         return false;
     };
     let table = TEST_PATTERNS
         .iter()
+        .filter(|(lang, _)| {
+            *lang == "common" || languages.is_none_or(|l| l.iter().any(|x| x == lang))
+        })
         .flat_map(|(_, patterns)| patterns.iter())
         .any(|p| matches(p, dirs, name));
     table
@@ -139,6 +151,47 @@ pub fn is_test_path(path: &str, declared: &[String]) -> bool {
             let d = parts(d);
             !d.is_empty() && all.len() >= d.len() && all[..d.len()] == d[..]
         })
+}
+
+/// The test paths of one project (green-test-lock audit N1): the [`TEST_PATTERNS`] rows of its
+/// languages, the `common` row and its declared `test_paths`. The languages are the profile's
+/// `detected.languages`; without them, the languages of the manifests at the project root
+/// ([`crate::project_detect::manifest_languages`]); when neither names one, every row applies.
+/// Files only, no program.
+pub struct TestPaths {
+    languages: Option<Vec<String>>,
+    declared: Vec<String>,
+}
+
+impl TestPaths {
+    pub fn for_project(root: &Path) -> Self {
+        let profile = crate::read_profile(root).ok().map(|(p, _)| p);
+        let declared = profile
+            .as_ref()
+            .and_then(|p| p.test_paths.clone())
+            .unwrap_or_default();
+        let languages = profile
+            .and_then(|p| p.detected)
+            .map(|d| d.languages)
+            .filter(|l| !l.is_empty())
+            .or_else(|| {
+                let l = crate::project_detect::manifest_languages(root);
+                (!l.is_empty()).then_some(l)
+            });
+        TestPaths {
+            languages,
+            declared,
+        }
+    }
+
+    /// The languages whose rows apply, or `None` when every row does.
+    pub fn languages(&self) -> Option<&[String]> {
+        self.languages.as_deref()
+    }
+
+    pub fn matches(&self, path: &str) -> bool {
+        test_path_in(path, self.languages.as_deref(), &self.declared)
+    }
 }
 
 /// Declared test paths: at most [`MAX_DECLARED`], each relative, without `..`, a control
@@ -256,10 +309,7 @@ const LOCKED: &str = "MoAI tool-preflight: the TDD cycle of this worktree is in 
 pub fn lock_refusal(paths: &[String], cwd: &Path) -> Option<&'static str> {
     let top = work_tree_top(cwd)?;
     let record = read_record(&git_dir(&top)?)?;
-    let declared = crate::read_profile(&top)
-        .ok()
-        .and_then(|(p, _)| p.test_paths)
-        .unwrap_or_default();
+    let tests = TestPaths::for_project(&top);
     let refused = paths.iter().any(|p| {
         let path = Path::new(p);
         let absolute = if path.is_absolute() {
@@ -273,7 +323,7 @@ pub fn lock_refusal(paths: &[String], cwd: &Path) -> Option<&'static str> {
         };
         let rel = rel.to_string_lossy().replace('\\', "/");
         record.locked.contains(&rel)
-            || (is_test_path(&rel, &declared) && fs::symlink_metadata(&resolved).is_err())
+            || (tests.matches(&rel) && fs::symlink_metadata(&resolved).is_err())
     });
     refused.then_some(LOCKED)
 }
@@ -418,13 +468,6 @@ fn check_summary(runs: &[CheckRun]) -> Value {
         .collect::<Vec<_>>())
 }
 
-fn declared(top: &Path) -> Vec<String> {
-    crate::read_profile(top)
-        .ok()
-        .and_then(|(p, _)| p.test_paths)
-        .unwrap_or_default()
-}
-
 /// `moai tdd red`: records the head commit as the RED of this worktree's cycle.
 pub fn red(project: &Path, checks: &[String], timeout: Duration) -> Result<Value> {
     if checks.is_empty() || checks.len() > MAX_CHECKS {
@@ -455,10 +498,10 @@ pub fn red(project: &Path, checks: &[String], timeout: Duration) -> Result<Value
         ],
     )
     .map_err(|e| format!("tdd red refused: {e}"))?;
-    let declared = declared(&top);
+    let tests = TestPaths::for_project(&top);
     let locked: Vec<String> = changed
         .lines()
-        .filter(|p| is_test_path(p, &declared))
+        .filter(|p| tests.matches(p))
         .map(str::to_string)
         .collect();
     if locked.is_empty() {
@@ -569,11 +612,26 @@ pub fn status(project: &Path) -> Result<Value> {
             .collect()
     };
     let record = read_record(&gd);
+    // Audit N2: a log whose last event opened or advanced a cycle while no record can be read
+    // means the record was removed or damaged outside `moai tdd`. Reported only; nothing locks.
+    let last = log
+        .last()
+        .and_then(|e| e["event"].as_str())
+        .map(str::to_string);
+    let open_in_log = matches!(last.as_deref(), Some("red" | "green"));
+    let problem = (open_in_log && record.is_none()).then(|| {
+        format!(
+            "the log's last event is `{}` but the record is missing or unreadable; nothing is \
+             locked. Start again with `moai tdd red` on a new RED commit",
+            last.as_deref().unwrap_or_default()
+        )
+    });
     Ok(json!({
         "action": "status",
         "phase": record.as_ref().map(|r| r.phase.clone()),
         "record": record,
         "log": log,
+        "problem": problem,
         "writes": false,
     }))
 }
