@@ -153,8 +153,8 @@ impl From<LedgerError> for ReserveError {
 }
 
 /// Why [`renew`], [`release`], [`handoff`] or [`fence`] refused. Every variant that names a
-/// reservation problem (all but `InvalidInput`, `CardNotFound` and `Ledger`) is also written to
-/// `event` as `fence_reject`.
+/// reservation problem (all but `InvalidInput`, `CardNotFound`, `CardInReview` and `Ledger`) is
+/// also written to `event` as `fence_reject`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FenceError {
     /// A value is out of its limits or malformed. Nothing was read or written.
@@ -185,6 +185,14 @@ pub enum FenceError {
         lease_until: i64,
         now: i64,
     },
+    /// [`release`] only: the caller is the holder, but the card is `review`. Given back, it
+    /// would have nobody who can close or reopen it. Not a reservation problem, so no event.
+    /// `lease_live` says whether `card reopen` (which needs a live lease) is still a way out.
+    CardInReview {
+        card_id: i64,
+        generation: i64,
+        lease_live: bool,
+    },
     /// The ledger itself failed (busy, unavailable, constraint ...).
     Ledger(LedgerError),
 }
@@ -200,6 +208,7 @@ impl FenceError {
             FenceError::NotHeld { .. } => "not_held",
             FenceError::WrongHolder { .. } => "wrong_holder",
             FenceError::LeaseExpired { .. } => "lease_expired",
+            FenceError::CardInReview { .. } => "card_in_review",
             FenceError::Ledger(e) => e.code(),
         }
     }
@@ -208,7 +217,10 @@ impl FenceError {
     fn is_recorded(&self) -> bool {
         !matches!(
             self,
-            FenceError::InvalidInput(_) | FenceError::CardNotFound(_) | FenceError::Ledger(_)
+            FenceError::InvalidInput(_)
+                | FenceError::CardNotFound(_)
+                | FenceError::CardInReview { .. }
+                | FenceError::Ledger(_)
         )
     }
 }
@@ -240,6 +252,26 @@ impl std::fmt::Display for FenceError {
             FenceError::LeaseExpired { lease_until, now } => write!(
                 f,
                 "reservation conflict in card: the lease ended at {lease_until} (now {now})"
+            ),
+            FenceError::CardInReview {
+                card_id,
+                generation,
+                lease_live: true,
+            } => write!(
+                f,
+                "card conflict in state: C-{card_id} is `review`, and a review card that is given \
+                 back has nobody who can close it; run `card reopen C-{card_id} --generation \
+                 {generation}` and release it then, or `card done` after the merge"
+            ),
+            FenceError::CardInReview {
+                card_id,
+                lease_live: false,
+                ..
+            } => write!(
+                f,
+                "card conflict in state: C-{card_id} is `review` and its lease has ended, so it \
+                 can neither be reopened nor given back; ask the leader (reclaim comes with card \
+                 C-53 S6), or `card done` after the merge"
             ),
             FenceError::Ledger(e) => e.fmt(f),
         }
@@ -475,9 +507,67 @@ pub fn reserve(
     check_optional("worktree", worktree).map_err(ReserveError::InvalidInput)?;
     check_optional("branch", branch).map_err(ReserveError::InvalidInput)?;
     let scope = check_scope(write_scope)?;
+    reserve_in_tx(
+        w,
+        card_id,
+        holder,
+        Some(scope),
+        lease_secs,
+        worktree,
+        branch,
+    )
+}
+
+/// [`reserve`] with the card's own write scope, read inside the same write transaction, so a
+/// scope change that commits at the same moment is either seen whole or refused (it needs a
+/// card nobody holds) — never half: the reservation always gets the scope the card has when
+/// it is taken (card C-53 audit B1). An empty or malformed own scope is refused as `reserve`
+/// refuses that scope ([`ReserveError::EmptyScope`] first, then the checks in order).
+pub fn reserve_own_scope(
+    w: &mut WriteLedger,
+    card_id: i64,
+    holder: &str,
+    lease_secs: i64,
+    worktree: Option<&str>,
+    branch: Option<&str>,
+) -> Result<Reservation, ReserveError> {
+    check_holder(holder).map_err(ReserveError::InvalidInput)?;
+    check_lease(lease_secs).map_err(ReserveError::InvalidInput)?;
+    check_optional("worktree", worktree).map_err(ReserveError::InvalidInput)?;
+    check_optional("branch", branch).map_err(ReserveError::InvalidInput)?;
+    reserve_in_tx(w, card_id, holder, None, lease_secs, worktree, branch)
+}
+
+/// The transaction of [`reserve`] and [`reserve_own_scope`]: `scope` is the checked scope the
+/// caller gave, or `None` for the card's own, read here.
+fn reserve_in_tx(
+    w: &mut WriteLedger,
+    card_id: i64,
+    holder: &str,
+    scope: Option<Vec<String>>,
+    lease_secs: i64,
+    worktree: Option<&str>,
+    branch: Option<&str>,
+) -> Result<Reservation, ReserveError> {
     w.with_write_tx(|tx, now| {
         let Some((state, generation)) = card_row(tx, card_id)? else {
             return Ok(Err(ReserveError::CardNotFound(card_id)));
+        };
+        let scope = match scope {
+            Some(scope) => scope,
+            None => {
+                let own: String = tx.query_row(
+                    "SELECT write_scope FROM card WHERE card_id = ?1",
+                    [card_id],
+                    |r| r.get(0),
+                )?;
+                // The column is a JSON array (schema CHECK); anything but strings is no scope.
+                let own: Vec<String> = serde_json::from_str(&own).unwrap_or_default();
+                match check_scope(&own) {
+                    Ok(scope) => scope,
+                    Err(e) => return Ok(Err(e)),
+                }
+            }
         };
         if let Some(active) = current(tx, card_id)? {
             return Ok(Err(ReserveError::AlreadyHeld {
@@ -679,8 +769,14 @@ pub fn renew(
 
 /// Ends the current reservation of `holder` at `generation` (`released`). A live lease is not
 /// needed: a holder whose lease ran out can still give the card back while nobody reclaimed
-/// it. The card goes `active -> ready`; a card that has meanwhile moved on (`review`, `hold`,
-/// `done` ...) keeps its state.
+/// it. The card goes `active -> ready`; a card that has meanwhile moved on (`hold`, `done` ...)
+/// keeps its state.
+///
+/// A `review` card is refused ([`FenceError::CardInReview`]) and nothing is written: given
+/// back, it would have nobody who can close or reopen it, and nothing reclaims a card yet
+/// (C-53 S6). The state is read inside the transaction that would release, after the fence, so
+/// a `review` that commits at the same moment cannot slip between the check and the write
+/// (card C-68 N-a), and a caller who is not the holder gets the fence refusal first.
 pub fn release(
     w: &mut WriteLedger,
     card_id: i64,
@@ -696,13 +792,21 @@ pub fn release(
         generation,
         false,
         |tx, now, row| {
+            let (state, _) = card_row(tx, card_id)?.ok_or_else(|| {
+                LedgerError::Sql("the card vanished inside the transaction".into())
+            })?;
+            if state == "review" {
+                return Ok(Err(FenceError::CardInReview {
+                    card_id,
+                    generation,
+                    // The same test as the fence's `LeaseExpired`.
+                    lease_live: row.lease_until > now,
+                }));
+            }
             tx.execute(
             "UPDATE reservation SET status = 'released', updated_at = ?1 WHERE reservation_id = ?2",
             params![now, row.reservation_id],
         )?;
-            let (state, _) = card_row(tx, card_id)?.ok_or_else(|| {
-                LedgerError::Sql("the card vanished inside the transaction".into())
-            })?;
             let card_state = if state == "active" {
                 tx.execute(
                     "UPDATE card SET state = 'ready' WHERE card_id = ?1",
@@ -723,12 +827,12 @@ pub fn release(
             let reservation = load_reservation(tx, card_id, generation)?.ok_or_else(|| {
                 LedgerError::Sql("the released reservation cannot be read".into())
             })?;
-            Ok(Released {
+            Ok(Ok(Released {
                 reservation,
                 card_state,
-            })
+            }))
         },
-    )
+    )?
 }
 
 /// Passes the card from `holder` to `to_holder` in one step: the old reservation becomes
@@ -1032,6 +1136,13 @@ mod tests {
         assert!(!FenceError::InvalidInput("x".into()).is_recorded());
         assert!(!FenceError::CardNotFound(1).is_recorded());
         assert!(!FenceError::Ledger(LedgerError::Busy).is_recorded());
+        // The holder's own `release` of a `review` card is a state refusal, not a fence one.
+        assert!(!FenceError::CardInReview {
+            card_id: 1,
+            generation: 1,
+            lease_live: true
+        }
+        .is_recorded());
         assert!(FenceError::NoReservation.is_recorded());
         assert!(FenceError::StaleGeneration {
             offered: 1,

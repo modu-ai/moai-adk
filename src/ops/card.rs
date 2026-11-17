@@ -120,6 +120,30 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Set the write scope of a card nobody holds
+    ///
+    /// Writes the ledger. Replaces the write scope of a `draft` or `ready` card that nobody holds,
+    /// with one `card.scope` event that keeps the old scope, the new one and `--by`. `card next`
+    /// skips a card without a write scope (`empty_scope`); this is how such a card gets one.
+    /// Each entry is checked as `add --scope` checks it. A card in another state, or one with a
+    /// live reservation, is refused (`conflict`) with its state and holder, and nothing is
+    /// written.
+    Scope {
+        /// `C-12`.
+        card: String,
+        /// A path the card may change, relative with `/` (repeat for more; replaces them all).
+        #[arg(long = "scope", required = true)]
+        scope: Vec<String>,
+        /// Who sets it, one line (for example `leader`).
+        #[arg(long)]
+        by: String,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Writes the ledger. Take a ready card for a holder
     ///
     /// Writes the ledger. Reserves the card for this session: the next generation, a lease from the database
@@ -450,6 +474,13 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             project,
             home,
         } => d::ready(&project, &resolve_home(home)?, &card, by.as_deref()),
+        Action::Scope {
+            card,
+            scope,
+            by,
+            project,
+            home,
+        } => d::scope(&project, &resolve_home(home)?, &card, &scope, &by),
         Action::Take {
             card,
             lease_secs,

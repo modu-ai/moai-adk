@@ -1,5 +1,6 @@
-//! What `moai card ready | take | release | handoff` do (Issue #3070 K4a, plan comment
-//! 6906545561): move a card to `ready`, and take, give back and hand over its reservation.
+//! What `moai card ready | scope | take | release | handoff` do (Issue #3070 K4a, plan comment
+//! 6906545561; `scope` from card C-53): move a card to `ready`, set the write scope of a card
+//! nobody holds, and take, give back and hand over its reservation.
 //!
 //! The holder is never typed: `take`, `release` and `handoff` act as **this session**, whose id
 //! is read from the host's environment ([`session_current`](crate::session_current): the
@@ -140,6 +141,125 @@ pub fn ready(project: &Path, home: &Path, reference: &str, by: Option<&str>) -> 
     }))
 }
 
+/// The reservation states that hold a card (the ones `card ready` also refuses).
+const LIVE_RESERVATION: &str = "status IN ('held','expired_candidate','held_for_review')";
+
+/// A write scope a user typed, checked as `add --scope` checks it, and within what
+/// `reservation::reserve` stores, so a card that gets it can also be taken with it. `add`,
+/// `scope` and `take --scope` all use it.
+pub(super) fn checked_scope(action: &str, entries: &[String]) -> Result<Vec<String>> {
+    let scope =
+        input::validate_scope(entries).map_err(|e| format!("card {action} refused: {e}"))?;
+    if scope.len() > reservation::MAX_SCOPE_PATTERNS {
+        return Err(format!(
+            "card {action} refused: the write scope has {} entries, at most {}",
+            scope.len(),
+            reservation::MAX_SCOPE_PATTERNS
+        ));
+    }
+    if let Some(i) = scope
+        .iter()
+        .position(|s| s.chars().count() > reservation::MAX_PATTERN_LEN)
+    {
+        return Err(format!(
+            "card {action} refused: scope entry {} is longer than {} characters",
+            i + 1,
+            reservation::MAX_PATTERN_LEN
+        ));
+    }
+    Ok(scope)
+}
+
+/// `card scope C-n --scope P…`: replaces the write scope of a `draft` or `ready` card that
+/// nobody holds, with one `card.scope` event that keeps the old scope, the new one and `--by`.
+/// A card added without `--scope` is skipped by `card next` (`empty_scope`), and nothing else
+/// sets a card's own scope (card C-53). Any other state, or a live reservation, is a conflict
+/// that names it; nothing is written then.
+pub fn scope(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    entries: &[String],
+    by: &str,
+) -> Result<Value> {
+    let card_id = card_id("scope", reference)?;
+    let new = checked_scope("scope", entries)?;
+    if new.is_empty() {
+        return Err("card scope refused: give at least one --scope".to_string());
+    }
+    let by = actor(Some(by), "scope")?;
+    let new_json = serde_json::to_string(&new).map_err(|e| e.to_string())?;
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let (state, old, rev) = ledger
+        .with_write_tx(|tx, now| {
+            let row: Option<(String, String)> = tx
+                .query_row(
+                    "SELECT state, write_scope FROM card WHERE card_id = ?1",
+                    [card_id],
+                    |r| Ok((r.get(0)?, r.get(1)?)),
+                )
+                .optional()?;
+            let Some((state, old)) = row else {
+                return Ok(Err(format!("card not found: there is no C-{card_id}")));
+            };
+            let holder: Option<(String, i64)> = tx
+                .query_row(
+                    &format!(
+                        "SELECT holder, generation FROM reservation WHERE card_id = ?1 \
+                         AND {LIVE_RESERVATION} ORDER BY generation DESC LIMIT 1"
+                    ),
+                    [card_id],
+                    |r| Ok((r.get(0)?, r.get(1)?)),
+                )
+                .optional()?;
+            let held = holder.as_ref().map_or(String::new(), |(h, g)| {
+                format!(", held by {h} at generation {g}")
+            });
+            if state != "draft" && state != "ready" {
+                return Ok(Err(format!(
+                    "card conflict in state: C-{card_id} is `{state}`{held}; only a `draft` or \
+                     `ready` card that nobody holds gets a new scope; the scope is set before the \
+                     card is taken"
+                )));
+            }
+            if holder.is_some() {
+                return Ok(Err(format!(
+                    "card conflict in state: C-{card_id} is `{state}`{held}; release or hand it \
+                     over first"
+                )));
+            }
+            tx.execute(
+                "UPDATE card SET write_scope = ?2, updated_at = ?3 WHERE card_id = ?1",
+                params![card_id, new_json, now],
+            )?;
+            let old: Value = serde_json::from_str(&old).unwrap_or(Value::Null);
+            let key = ledger::new_event_key(tx, "card.scope", Some(card_id))?;
+            tx.execute(
+                "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+                 VALUES (?1, ?2, ?3, ?4, 'card.scope', ?5)",
+                params![
+                    key,
+                    now,
+                    by,
+                    card_id,
+                    json!({"from": old, "to": new}).to_string()
+                ],
+            )?;
+            let rev: i64 =
+                tx.query_row("SELECT rev FROM card WHERE card_id = ?1", [card_id], |r| {
+                    r.get(0)
+                })?;
+            Ok(Ok((state, old, rev)))
+        })
+        .map_err(|e| e.to_string())??;
+    Ok(json!({
+        "action": "scope", "project_id": id,
+        "name": input::card_name(card_id), "card_id": card_id,
+        "state": state, "from": old, "write_scope": new, "by": by,
+        "rev": rev, "events": 1, "writes": true,
+    }))
+}
+
 /// What `card take` was given.
 pub struct TakeRequest<'a> {
     pub holder: &'a str,
@@ -150,33 +270,37 @@ pub struct TakeRequest<'a> {
 }
 
 /// `card take C-n`: reserves a `ready` card for the holder. Without `--scope` the card's own
-/// write scope is used.
+/// write scope is used, read inside the reserving transaction (`reserve_own_scope`), so a
+/// `card scope` at the same moment cannot leave the reservation with the old scope.
 pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>) -> Result<Value> {
     let card_id = card_id("take", reference)?;
-    let (id, mut ledger) = open_for_write(project, home)?;
-    let scope: Vec<String> = if req.scope.is_empty() {
-        let own: Option<String> = ledger
-            .conn()
-            .query_row(
-                "SELECT write_scope FROM card WHERE card_id = ?1",
-                [card_id],
-                |r| r.get(0),
-            )
-            .ok();
-        own.and_then(|s| serde_json::from_str(&s).ok())
-            .unwrap_or_default()
+    // Checked as `add --scope` checks it: no absolute path, no `.` or `..` (card C-68 N-e).
+    let given = if req.scope.is_empty() {
+        None
     } else {
-        req.scope.to_vec()
+        Some(checked_scope("take", req.scope)?)
     };
-    let r = reservation::reserve(
-        &mut ledger,
-        card_id,
-        req.holder,
-        &scope,
-        req.lease_secs.unwrap_or(DEFAULT_LEASE_SECS),
-        req.worktree,
-        req.branch,
-    )
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let lease = req.lease_secs.unwrap_or(DEFAULT_LEASE_SECS);
+    let r = match given {
+        Some(scope) => reservation::reserve(
+            &mut ledger,
+            card_id,
+            req.holder,
+            &scope,
+            lease,
+            req.worktree,
+            req.branch,
+        ),
+        None => reservation::reserve_own_scope(
+            &mut ledger,
+            card_id,
+            req.holder,
+            lease,
+            req.worktree,
+            req.branch,
+        ),
+    }
     .map_err(|e| e.to_string())?;
     Ok(json!({
         "action": "take", "project_id": id, "reservation": reservation_json(&r),
@@ -185,7 +309,7 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
 }
 
 /// `card release C-n`: gives the card back; an `active` card becomes `ready`. A `review` card
-/// is refused before anything is written.
+/// is refused by `reservation::release`, inside its transaction and after the fence.
 pub fn release(
     project: &Path,
     home: &Path,
@@ -195,15 +319,6 @@ pub fn release(
 ) -> Result<Value> {
     let card_id = card_id("release", reference)?;
     let (id, mut ledger) = open_for_write(project, home)?;
-    // A `review` card that is given back has nobody who can close or reopen it, and nothing
-    // reclaims a card yet (C-53 S6): the holder takes it back to `active` first.
-    if card_state(&ledger, card_id)?.as_deref() == Some("review") {
-        return Err(format!(
-            "card conflict in state: C-{card_id} is `review`, and a review card that is given \
-             back has nobody who can close it; run `card reopen C-{card_id} --generation \
-             {generation}` and release it then, or `card done` after the merge"
-        ));
-    }
     let out = reservation::release(&mut ledger, card_id, holder, generation)
         .map_err(|e| e.to_string())?;
     Ok(json!({
