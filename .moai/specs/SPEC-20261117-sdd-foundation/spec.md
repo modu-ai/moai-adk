@@ -2,10 +2,10 @@
 id: SPEC-20261117-sdd-foundation
 title: SDD 기반 — 2026-11-17 결정 기록과 SPEC 파일 git 추적
 status: approved
-revision: 1
+revision: 2
 created: 2026-11-17
 parent: null
-approval: {by: user, at: 2026-11-17, basis: "in-session selection: 제안대로 모두 진행 (SDD rollout steps 1-2)", digest: null}
+approval: {by: user, at: 2026-11-17, basis: "in-session selection 2026-11-17: revision 2로 올리고 지금 다시 승인 (Risks 절, IF 연결, AC-9 범위, digest 기록)", digest: "sha256:a27bc85e848719f731a7929799026ff4e1376085eed3ccb12ff4eef15f22b5ba"}
 ---
 
 ## Intent
@@ -37,15 +37,15 @@ THEN …`은 원치 않는 동작이에요.
 - REQ-1: The decisions log shall hold one row in the existing table format for each 2026-11-17 user decision of the SDD rollout.
 - REQ-2: Each such row shall name the record it replaces or state that it replaces none.
 - REQ-3: When the generator writes the managed `.gitignore` block of a project, the block shall re-include `<state>/specs/` whatever the profile's `github_issues` value.
-- REQ-4: When a project's existing block lacks the `specs/` line, the next plan shall offer a `merge` that adds only that line.
-- REQ-5: IF a user's own ignore rule already ignores a path under `<state>/specs/`, THEN the generator shall write no `!` line that undoes the rule.
-- REQ-6: IF a user's own rule leaves such a path ignored, THEN the plan `detail` shall name the rule.
+- REQ-4: When a project's existing block lacks the `specs/` line, the next plan shall offer a `merge` that adds only that line. · failure: none — 사용자가 고친 구간이 `conflict`가 되는 기존 동작은 그대로예요.
+- REQ-5 (REQ-3): IF a user's own ignore rule already ignores a path under `<state>/specs/`, THEN the generator shall write no `!` line that undoes the rule.
+- REQ-6 (REQ-3): IF a user's own rule leaves such a path ignored, THEN the plan `detail` shall name the rule.
 - REQ-7: The repository `.gitignore` shall leave each file under `.moai/specs/` that is not secret-shaped not ignored.
 - REQ-8: The repository `.gitignore` shall keep every path under the root `.moai/` outside `specs/` and every `.moai/` folder below the root ignored.
 - REQ-9: IF a file under `.moai/specs/` is credential- or secret-shaped (`credentials.yaml`, `*.credentials`, `.env*`, `*.key`, `id_rsa*`, `secrets.*`), THEN git shall ignore it.
 - REQ-10: The change shall carry its own SPEC at `.moai/specs/SPEC-20261117-sdd-foundation/spec.md`, tracked by git in the same PR.
 
-실패 경로: REQ-3 → REQ-5, REQ-6. REQ-4 → 없음(사용자가 고친 구간이 `conflict`가 되는 기존 동작은 그대로).
+실패 경로: REQ-3 → REQ-5, REQ-6(괄호로 연결). REQ-4 → 없음(줄 끝 `failure: none`).
 REQ-7의 "secret-shaped"는 REQ-9의 목록이에요.
 
 ## Acceptance
@@ -69,7 +69,7 @@ REQ-7의 "secret-shaped"는 REQ-9의 목록이에요.
 - AC-7 (REQ-10): verify: `git ls-files .moai/specs` → `.moai/specs/SPEC-20261117-sdd-foundation/spec.md`
 - AC-8 (REQ-1…REQ-10): `IF`로 시작하지 않는 요구는 모두 `parse_gears`를 통과해요. verify: 커밋하지 않는 임시 시험
   파일로 이 파일의 REQ 줄을 `moai_cli::spec::parse_gears`에 넣어 봐요(결과는 Result).
-- AC-9 (전체): verify: `cargo fmt --check`; `cargo clippy --locked --offline --all-targets -- -D warnings`;
+- AC-9 (REQ-1…REQ-10): verify: `cargo fmt --check`; `cargo clippy --locked --offline --all-targets -- -D warnings`;
   `cargo test --locked --offline --bin moai`; `cargo test --locked --offline --lib agents::`;
   `cargo test --locked --offline --test home_isolation_scan`; `cargo test --locked --offline --test repo_agents_md`;
   `cargo test --locked --offline --test ac_command_lint`; `cargo test --locked --offline --test project_update_plan_cli`;
@@ -97,6 +97,15 @@ REQ-7의 "secret-shaped"는 REQ-9의 목록이에요.
 4. 결정 기록 행(한국어)과 `docs/rust-product-path.md` 문장.
 5. AC-1…AC-9 검사, 커밋 뒤 mutation, GEARS 임시 시험.
 
+## Risks
+
+- 루트 `.moai/` 아래를 다시 넣는 규칙이 비밀값 파일까지 git에 넣을 수 있어요 → REQ-9의 비밀값 모양 규칙과
+  AC-6 시험이 막아요. 목록에 없는 모양의 비밀값은 여전히 들어갈 수 있어요(작성자가 확인).
+- 사용자 프로젝트의 기존 무시 규칙이 `specs/`를 계속 가릴 수 있어요 → REQ-5·REQ-6: 규칙을 되돌리지 않고 계획이
+  이름을 알려 줘요.
+- `.moai/specs/`만 있는 새 클론이 상태 폴더로 읽혀 프로젝트 판정이 `unknown`이 될 수 있었어요 → SPEC 도구
+  가지(SPEC-20261117-spec-tooling)의 B1 수리가 `none`으로 읽게 해요.
+
 ## Decisions
 
 - D1 요구 문장은 영어 GEARS, 나머지 본문은 한국어, 제목은 영어(리더 기본값 2026-11-17, 승인된 템플릿 예시).
@@ -110,6 +119,13 @@ REQ-7의 "secret-shaped"는 REQ-9의 목록이에요.
   수가 바뀌는 별도 변경이라 후속으로 둬요.
 - D6 결정 행의 시각은 `xx:xxZ`예요: 근거 문서(SDD 계획·CI 재설계 메모)에 결정 시각이 없어요.
 - D7 `Moai-Session` 트레일러는 관문 조각(SDD-6)이 정할 때까지 커밋에 넣지 않아요.
+- D8 SPEC 도구 감사 FAIL 수리(리더 결정 2026-11-17 B2, SPEC-20261117-spec-tooling 가지): `moai spec check`를
+  통과하게 `## Risks` 절을 더하고, IF 요구 REQ-5·REQ-6을 `(REQ-3)`으로 연결하고, REQ-4 줄 끝에
+  `failure: none`을 달고, AC-9의 "(전체)"를 `(REQ-1…REQ-10)`으로 바꾸고, `approval.digest`에 `moai spec show`가
+  계산한 내용 digest를 적었어요. 요구·수용 기준 문장 자체는 바꾸지 않았어요. D2의 `null`은 이것으로 대체돼요.
+  사용자가 2026-11-17 세션 선택("revision 2로 올리고 지금 다시 승인")으로 이 내용을 revision 2로 다시
+  승인했어요: `revision: 2`, `approval.basis`가 그 선택이고, `approval.digest`는 모든 수정 뒤에 다시 계산한
+  값이에요. revision 1의 승인(D2, "제안대로 모두 진행")은 이것으로 대체돼요.
 
 ## Result
 

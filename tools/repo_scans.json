@@ -917,6 +917,28 @@
         }
       ],
       "rejects": "a source file that reads Issue or pull request comments (the REST comment URLs or the GraphQL comment connection) without going through comment_authority, so a control line written by a non-member could be honoured (#3052 AC4)"
+    },
+    {
+      "id": "repository-specs-pass-check",
+      "tests": [
+        "tests/spec_cli.rs::the_repository_specs_pass_check"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test spec_cli the_repository_specs_pass_check"
+      ],
+      "rules": [
+        "tests/spec_cli.rs",
+        "src/spec_doc.rs",
+        "src/ops/spec.rs",
+        "templates/spec/full.md",
+        "templates/spec/minimal.md"
+      ],
+      "scope": [
+        {
+          "prefix": ".moai/specs/"
+        }
+      ],
+      "rejects": "a SPEC under .moai/specs/ that `moai spec check --all` refuses (SDD audit B2, SPEC-20261117-spec-tooling)"
     }
   ]
 }

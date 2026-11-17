@@ -542,12 +542,14 @@ fn ci_files(root: &Path) -> Vec<String> {
 /// Go-generation project state as a fact (#2561), read only and without following links:
 /// what `.moai` is (`absent`, `folder`, `link` or `other`) and whether a real folder holds a
 /// regular `manifest.json`. Reported beside `detected`, never inside it, so the profile is
-/// unchanged.
+/// unchanged. A `.moai/` that holds only the project's tracked SPECs is no state and reads
+/// `absent`, as in `state_root::classify` (SDD B1).
 fn go_state_fact(root: &Path) -> Value {
     let moai = root.join(".moai");
     let moai_dir = match fs::symlink_metadata(&moai) {
         Err(_) => "absent",
         Ok(m) if m.file_type().is_symlink() => "link",
+        Ok(_) if crate::state_root::specs_only(&moai) => "absent",
         Ok(m) if m.is_dir() => "folder",
         Ok(_) => "other",
     };

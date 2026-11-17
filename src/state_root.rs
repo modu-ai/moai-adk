@@ -363,17 +363,55 @@ fn holds_go_state_receipt(moai: &Path) -> bool {
         .unwrap_or(false)
 }
 
-/// Classify `root/.moai` (design 6854765655 §2). Reads only.
+/// Classify `root/.moai` (design 6854765655 §2). Reads only. A project's `.moai/` that holds
+/// only a real `specs/` folder reads as absent ([`specs_only`]).
 pub fn classify(root: &Path) -> Classified {
-    classify_with(root, go_markers)
+    classify_inner(root, go_markers, MARKER_SCHEMA, true)
 }
 
 /// The same verdict table over `root/.moai` with another set of Go markers: the HOME state
 /// folder `~/.moai` has different Go files than a project's (#2723 design 6860356009 §2,
 /// #2725 rev2 — one table and one set of rules for both). `go` returns the markers found,
-/// as paths relative to `root`.
+/// as paths relative to `root`. The specs-only rule of [`classify`] is a project rule and does
+/// not apply here.
 pub fn classify_with(root: &Path, go: fn(&Path) -> Vec<String>) -> Classified {
-    classify_inner(root, go, MARKER_SCHEMA)
+    classify_inner(root, go, MARKER_SCHEMA, false)
+}
+
+/// The project's shared SPECs folder inside `.moai/` (SDD, decision U-A): git-tracked, so a
+/// fresh clone of a repository that tracks its SPECs has it without any MoAI state.
+pub const SPECS_DIR: &str = "specs";
+
+/// `moai` (a project's `.moai/`) is a real folder whose only entry (besides a Finder
+/// `.DS_Store` file) is a real `specs/` folder:
+/// what a fresh clone of a repository that tracks its SPECs has. SDD B1 (leader decision
+/// 2026-11-17): it is no MoAI state, so [`classify`] reads it like an absent `.moai/` (verdict
+/// `none` when nothing else is there, never `unknown`), and writing a SPEC never changes a
+/// project's verdict. A link is never followed: a linked `.moai/` or `specs/` is not this.
+pub fn specs_only(moai: &Path) -> bool {
+    if !fs::symlink_metadata(moai).is_ok_and(|m| m.is_dir()) {
+        return false;
+    }
+    let Ok(entries) = fs::read_dir(moai) else {
+        return false;
+    };
+    let mut names = Vec::new();
+    for e in entries {
+        let Ok(e) = e else {
+            return false;
+        };
+        // Finder's `.DS_Store` (a regular file) is no state (RB1 N-c).
+        if e.file_name() == ".DS_Store" && e.file_type().is_ok_and(|t| t.is_file()) {
+            continue;
+        }
+        names.push(e.file_name());
+        if names.len() > 1 {
+            return false;
+        }
+    }
+    names.len() == 1
+        && names[0] == SPECS_DIR
+        && fs::symlink_metadata(moai.join(SPECS_DIR)).is_ok_and(|m| m.is_dir())
 }
 
 /// The HOME verdict (#2871 I2 R1): the table above with the HOME's Go markers, plus one row —
@@ -382,15 +420,26 @@ pub fn classify_with(root: &Path, go: fn(&Path) -> Vec<String>) -> Classified {
 /// verdict of [`classify_with`] (`mixed` stays for schema 1). The way to the layout root
 /// ([`crate::home_layout::RUST_HOME_LAYOUT`]) must be real folders, or the verdict is `refuse`.
 pub fn classify_home(home: &Path) -> Classified {
-    classify_inner(home, crate::home_state::home_go_markers, HOME_MARKER_SCHEMA)
+    classify_inner(
+        home,
+        crate::home_state::home_go_markers,
+        HOME_MARKER_SCHEMA,
+        false,
+    )
 }
 
-fn classify_inner(root: &Path, go: fn(&Path) -> Vec<String>, accept: u64) -> Classified {
+fn classify_inner(
+    root: &Path,
+    go: fn(&Path) -> Vec<String>,
+    accept: u64,
+    specs_as_absent: bool,
+) -> Classified {
     let go_markers = go;
     let moai = root.join(MOAI_DIR);
     let moai_dir = match fs::symlink_metadata(&moai) {
         Err(_) => "absent",
         Ok(m) if m.file_type().is_symlink() => "link",
+        Ok(_) if specs_as_absent && specs_only(&moai) => "absent",
         Ok(m) if m.is_dir() => "folder",
         Ok(_) => "other",
     };
@@ -576,12 +625,16 @@ pub fn home_marker_bytes(created_by: &str, stamp: &str) -> Vec<u8> {
 
 /// Make a new project's `.moai/` and its marker (#2696 C2b), so every later read and write
 /// resolves to `.moai`. Does nothing for any other project and says whether it wrote. The
-/// folder is created exclusively and the marker published without overwriting.
+/// folder is created exclusively and the marker published without overwriting. A `.moai/`
+/// that holds only the project's SPECs ([`specs_only`]) is kept and gets the marker.
 pub fn adopt_new(root: &Path, created_by: &str) -> Result<bool, String> {
     if !is_new_project(root) {
         return Ok(false);
     }
-    fs::create_dir(root.join(MOAI_DIR)).map_err(|_| format!("{MOAI_DIR}: folder create failed"))?;
+    if !specs_only(&root.join(MOAI_DIR)) {
+        fs::create_dir(root.join(MOAI_DIR))
+            .map_err(|_| format!("{MOAI_DIR}: folder create failed"))?;
+    }
     crate::apply::publish_exclusive(
         &root.join(MOAI_DIR).join(RUST_MARKER),
         &marker_bytes(created_by, &[]),

@@ -1916,11 +1916,19 @@ fn plan_state_moves(project: &Path) -> (Vec<StateMove>, Option<String>) {
     names.sort();
     let mut out = Vec::new();
     let mut block = None;
+    // SDD B1/RB1: a `.moai/` that holds only the project's tracked SPECs is the destination,
+    // so the earlier root's `specs/` cannot move as one folder. Each SPEC moves into
+    // `.moai/specs/` on its own; an id on both sides is a conflict that keeps everything.
+    let into_specs = crate::state_root::specs_only(&project.join(MOAI_DIR));
     for name in names {
         let from = format!("{LEGACY_ROOT}/{name}");
         let linked = fs::symlink_metadata(root.join(&name))
             .map(|m| m.file_type().is_symlink())
             .unwrap_or(true);
+        if into_specs && name == crate::state_root::SPECS_DIR && !linked {
+            plan_spec_merge(project, &mut out, &mut block);
+            continue;
+        }
         let (action, reason) = if STATE_ENTRIES.contains(&name.as_str()) {
             if linked {
                 block.get_or_insert_with(|| {
@@ -1956,6 +1964,81 @@ fn plan_state_moves(project: &Path) -> (Vec<StateMove>, Option<String>) {
         });
     }
     (out, block)
+}
+
+/// The revert-plan action for `.moai/specs`: set aside with `.moai/`, then moved straight back.
+const KEEP_SPECS: &str = "restored_to_moai_specs";
+
+/// `.moai/specs`, the project's tracked SPECs.
+fn specs_rel() -> String {
+    format!("{MOAI_DIR}/{}", crate::state_root::SPECS_DIR)
+}
+
+/// `specs/<one name>`: a state entry of the SPEC merge ([`plan_spec_merge`]).
+fn is_spec_entry(e: &str) -> bool {
+    e.strip_prefix(crate::state_root::SPECS_DIR)
+        .and_then(|r| r.strip_prefix('/'))
+        .is_some_and(|n| !n.is_empty() && !n.contains(['/', '\\']) && n != "." && n != "..")
+}
+
+/// The earlier root's `specs/` merged into a `.moai/specs/` that already holds the project's
+/// tracked SPECs (RB1): one `move` per entry, `.moai-cli/specs/<name>` → `.moai/specs/<name>`.
+/// A name on both sides is a `conflict`, and a linked entry stays; either keeps the whole
+/// earlier root where it is (`block`), so nothing moves.
+fn plan_spec_merge(project: &Path, out: &mut Vec<StateMove>, block: &mut Option<String>) {
+    let specs = crate::state_root::SPECS_DIR;
+    let from_dir = project.join(LEGACY_ROOT).join(specs);
+    let to_dir = project.join(MOAI_DIR).join(specs);
+    let mut names: Vec<String> = fs::read_dir(&from_dir)
+        .map(|rd| {
+            rd.filter_map(|e| e.ok())
+                .filter_map(|e| e.file_name().into_string().ok())
+                .collect()
+        })
+        .unwrap_or_default();
+    names.sort();
+    if names.is_empty() {
+        out.push(StateMove {
+            from: format!("{LEGACY_ROOT}/{specs}"),
+            to: String::new(),
+            action: "leave".into(),
+            reason: format!("empty; {MOAI_DIR}/{specs} already holds the project's SPECs"),
+        });
+    }
+    for name in names {
+        let from = format!("{LEGACY_ROOT}/{specs}/{name}");
+        let to = format!("{MOAI_DIR}/{specs}/{name}");
+        let linked = fs::symlink_metadata(from_dir.join(&name))
+            .map(|m| m.file_type().is_symlink())
+            .unwrap_or(true);
+        let (action, reason) = if linked {
+            block.get_or_insert_with(|| {
+                format!(
+                    "{from} is a link; product state is never moved through a link, so it stays"
+                )
+            });
+            ("leave", "a link; never followed".to_string())
+        } else if fs::symlink_metadata(to_dir.join(&name)).is_ok() {
+            block.get_or_insert_with(|| {
+                format!(
+                    "conflict: {name} is in both {LEGACY_ROOT}/{specs}/ and {MOAI_DIR}/{specs}/; \
+                     nothing moves until one of them is renamed or removed"
+                )
+            });
+            ("conflict", format!("{to} already exists; both copies stay"))
+        } else {
+            (
+                "move",
+                format!("a SPEC joins the project's tracked SPECs in {MOAI_DIR}/{specs}/"),
+            )
+        };
+        out.push(StateMove {
+            to: if action == "move" { to } else { String::new() },
+            from,
+            action: action.into(),
+            reason,
+        });
+    }
 }
 
 /// A bounded regular file's bytes, refusing a link at the path itself; `None` otherwise.
@@ -2654,7 +2737,9 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
     let legacy_moves = if state.generation == "none" {
         let (moves, block) = plan_state_moves(&project);
         let any = moves.iter().any(|m| m.action == "move");
-        if let (true, Some(block)) = (any, &block) {
+        // A SPEC conflict (RB1) is shown even when nothing else would move.
+        let conflict = moves.iter().any(|m| m.action == "conflict");
+        if let (true, Some(block)) = (any || conflict, &block) {
             items.push(new_item(
                 LEGACY_ROOT,
                 "leave",
@@ -2663,6 +2748,8 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
             ));
             Vec::new()
         } else if any {
+            // The plan's words stay the same with or without a SPECs-only `.moai/` (SDD B1:
+            // `spec new` changes no plan answer); the apply's receipt message says which.
             items.push(new_item(
                 LEGACY_ROOT,
                 "move",
@@ -4063,11 +4150,18 @@ fn apply_legacy_move(
         });
     }
     receipt.state = "pending".into();
-    let made = fs::create_dir(project.join(MOAI_DIR))
-        .map_err(|_| format!("{MOAI_DIR}: folder create failed"))
-        .and_then(|_| make_private_dirs(project, &area))
-        .and_then(|_| crate::update::test_fault("go_state_legacy_after_mkdir"))
-        .and_then(|_| save_receipt(project, MOAI_DIR, &receipt, None));
+    // A `.moai/` that holds only the project's tracked SPECs is kept: the state moves in beside
+    // them (SDD B1). On a failure below, `remove_dir` leaves that folder as it was.
+    let reused = crate::state_root::specs_only(&project.join(MOAI_DIR));
+    let made = (if reused {
+        Ok(())
+    } else {
+        fs::create_dir(project.join(MOAI_DIR))
+            .map_err(|_| format!("{MOAI_DIR}: folder create failed"))
+    })
+    .and_then(|_| make_private_dirs(project, &area))
+    .and_then(|_| crate::update::test_fault("go_state_legacy_after_mkdir"))
+    .and_then(|_| save_receipt(project, MOAI_DIR, &receipt, None));
     let saved = match made {
         Ok(bytes) => bytes,
         Err(e) => {
@@ -4080,11 +4174,13 @@ fn apply_legacy_move(
     crate::update::test_fault("go_state_legacy_before_ignore")
         .and_then(|_| keep_backups_out_of_git(project, MOAI_DIR))
         .map_err(|e| {
-            ignore_file_failed(
-                &e,
-                &format!("a new {MOAI_DIR}/ holds the pending receipt"),
-                stamp,
-            )
+            // N-f: say which `.moai/` holds the receipt.
+            let holder = if reused {
+                format!("the {MOAI_DIR}/ beside the project's SPECs holds the pending receipt")
+            } else {
+                format!("a new {MOAI_DIR}/ holds the pending receipt")
+            };
+            ignore_file_failed(&e, &holder, stamp)
         })?;
     let saved = move_state_entries(project, &mut receipt, saved)?;
     let marker = crate::state_root::marker_bytes("legacy-move", &[]);
@@ -4211,7 +4307,7 @@ fn read_receipt(project: &Path, backup: &str) -> Result<(Receipt, Vec<u8>, Strin
                 || !m
                     .path
                     .strip_prefix(&format!("{LEGACY_ROOT}/"))
-                    .is_some_and(|e| STATE_ENTRIES.contains(&e))
+                    .is_some_and(|e| STATE_ENTRIES.contains(&e) || is_spec_entry(e))
         }
         _ => true,
     }) {
@@ -4560,6 +4656,19 @@ pub fn revert_plan(project: &Path, backup: &str) -> Result<RevertPlan> {
             path: MOAI_DIR.into(),
             action: action.into(),
         });
+        // The project's tracked SPECs go aside with `.moai/` and come straight back to
+        // `.moai/specs` (SDD B1, RB1 N-e): the plan says so.
+        let whole = format!("{LEGACY_ROOT}/{}", crate::state_root::SPECS_DIR);
+        let specs_moved_whole = receipt
+            .moves
+            .iter()
+            .any(|m| m.kind == "state" && m.path == whole);
+        if action == "set_aside" && !specs_moved_whole && real_dir(&project, &specs_rel()) {
+            items.push(RevertItem {
+                path: specs_rel(),
+                action: KEEP_SPECS.into(),
+            });
+        }
     }
     let mut plan = RevertPlan {
         schema_version: SCHEMA_VERSION,
@@ -4683,7 +4792,8 @@ pub fn revert(
             let entry = path
                 .strip_prefix(&format!("{LEGACY_ROOT}/"))
                 .ok_or("state entry outside the earlier root")?;
-            make_dirs(&project, LEGACY_ROOT)?;
+            // A merged SPEC goes back into `.moai-cli/specs/` (RB1).
+            make_dirs(&project, &parent_of(path)?)?;
             let src = format!("{base}/{entry}");
             refuse_linked(&project, &src)?;
             move_entry(&project.join(&src), &project.join(path))
@@ -4732,6 +4842,26 @@ pub fn revert(
         }
         move_folder(&project.join(MOAI_DIR), &project.join(&receipt.rust_aside))?;
         base = receipt.rust_aside.clone();
+        // The project's tracked SPECs stay where git has them (SDD B1): only they come back,
+        // as the plan's `restored_to_moai_specs` item says.
+        let specs = project
+            .join(&receipt.rust_aside)
+            .join(crate::state_root::SPECS_DIR);
+        let planned = fresh
+            .items
+            .iter()
+            .any(|i| i.path == specs_rel() && i.action == KEEP_SPECS);
+        if planned
+            && fs::symlink_metadata(&specs).is_ok_and(|m| m.is_dir())
+            && fs::symlink_metadata(project.join(MOAI_DIR)).is_err()
+        {
+            fs::create_dir(project.join(MOAI_DIR))
+                .map_err(|_| format!("{MOAI_DIR}: folder create failed"))?;
+            move_folder(
+                &specs,
+                &project.join(MOAI_DIR).join(crate::state_root::SPECS_DIR),
+            )?;
+        }
     }
     receipt.state = "reverted".into();
     save_receipt(&project, &base, &receipt, Some(&saved))?;
