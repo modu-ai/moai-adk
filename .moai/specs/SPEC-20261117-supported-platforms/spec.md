@@ -1,10 +1,11 @@
 ---
 id: SPEC-20261117-supported-platforms
 title: 지원 플랫폼 세 개 — CI target과 설치 스크립트, 지원 문서 (조각 1)
-status: draft
+status: approved
 revision: 1
 created: 2026-11-17
 parent: null
+approval: {by: user, at: 2026-11-17, basis: "in-session selection 2026-11-17 08:22:21Z: 세 SPEC 승인 — 감사 PASS b7f77edf35 내용 그대로", digest: "sha256:8263fe2cae97fe8a7a227021167de817f7d4a1a3fcdc42e6c2fc191edd3d17f2"}
 ---
 
 ## Intent
