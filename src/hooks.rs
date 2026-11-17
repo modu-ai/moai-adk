@@ -502,9 +502,11 @@ fn hook_list_with(binary: &str, host: &str) -> Value {
         })
         .collect();
     if let Some(timeout) = edit_diagnostics_timeout(binary, host) {
-        list.push(json!({"event": "PostToolUse", "matcher": crate::edit_diagnostics::MATCHER,
+        list.push(
+            json!({"event": "PostToolUse", "matcher": crate::edit_diagnostics::MATCHER,
                          "command": command_with(binary, host, Handler::EditDiagnostics),
-                         "timeout": timeout}));
+                         "timeout": timeout}),
+        );
     }
     Value::Array(list)
 }

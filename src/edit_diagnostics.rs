@@ -109,8 +109,7 @@ pub fn inside(root: &Path, file: &Path) -> Option<PathBuf> {
         at.push(part);
         let meta = std::fs::symlink_metadata(&at).ok()?;
         let last = i + 1 == parts.len();
-        if meta.file_type().is_symlink() || (last && !meta.is_file()) || (!last && !meta.is_dir())
-        {
+        if meta.file_type().is_symlink() || (last && !meta.is_file()) || (!last && !meta.is_dir()) {
             return None;
         }
     }
@@ -214,8 +213,14 @@ pub fn run_checker(argv: &[String], root: &Path, rel: &Path, timeout: Duration) 
     };
     let (tx, rx) = mpsc::channel();
     for (i, stream) in [
-        child.stdout.take().map(|s| Box::new(s) as Box<dyn Read + Send>),
-        child.stderr.take().map(|s| Box::new(s) as Box<dyn Read + Send>),
+        child
+            .stdout
+            .take()
+            .map(|s| Box::new(s) as Box<dyn Read + Send>),
+        child
+            .stderr
+            .take()
+            .map(|s| Box::new(s) as Box<dyn Read + Send>),
     ]
     .into_iter()
     .enumerate()
@@ -272,9 +277,7 @@ pub fn run_checker(argv: &[String], root: &Path, rel: &Path, timeout: Duration) 
 /// Reads up to [`READ_MAX`] bytes and drains the rest; `true` when something was left unread.
 fn bounded(mut stream: impl Read) -> (Vec<u8>, bool) {
     let mut kept = Vec::new();
-    let _ = (&mut stream)
-        .take(READ_MAX as u64)
-        .read_to_end(&mut kept);
+    let _ = (&mut stream).take(READ_MAX as u64).read_to_end(&mut kept);
     let mut sink = [0u8; 8192];
     let mut cut = false;
     while let Ok(n) = stream.read(&mut sink) {
@@ -485,7 +488,10 @@ mod tests {
         );
         assert_eq!(d.message, "cannot find x");
         let d = parse_line("a.py:1:8: F401 `os` imported but unused", root).unwrap();
-        assert_eq!((d.severity.as_str(), d.message.as_str()), ("issue", "F401 `os` imported but unused"));
+        assert_eq!(
+            (d.severity.as_str(), d.message.as_str()),
+            ("issue", "F401 `os` imported but unused")
+        );
         let d = parse_line("a.c:9: warning: unused", root).unwrap();
         assert_eq!((d.col, d.severity.as_str()), (None, "warning"));
         let d = parse_line("/p/src/x.ts:2:1: note: n", root).unwrap();
@@ -500,6 +506,9 @@ mod tests {
         assert_eq!(msg.chars().count(), MESSAGE_CHARS);
         assert!(msg.ends_with('…'));
         let exact = format!("a.rs:1:1: error: {}", "y".repeat(MESSAGE_CHARS));
-        assert_eq!(parse_line(&exact, root).unwrap().message, "y".repeat(MESSAGE_CHARS));
+        assert_eq!(
+            parse_line(&exact, root).unwrap().message,
+            "y".repeat(MESSAGE_CHARS)
+        );
     }
 }

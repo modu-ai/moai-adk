@@ -98,7 +98,13 @@ impl Fx {
     fn dispatch_as(&self, host: &str, stdin: &[u8], env: &[(&str, &str)]) -> Output {
         let mut child = self
             .command(
-                &["hook-dispatch", "--host", host, "--event", "edit-diagnostics"],
+                &[
+                    "hook-dispatch",
+                    "--host",
+                    host,
+                    "--event",
+                    "edit-diagnostics",
+                ],
                 env,
             )
             .stdin(Stdio::piped())
@@ -134,7 +140,10 @@ impl Fx {
     /// The hook entries `hooks-plan --host <host>` lists for edit-diagnostics.
     fn planned(&self, host: &str) -> Vec<Value> {
         let out = self
-            .command(&["hooks-plan", self.proj.to_str().unwrap(), "--host", host], &[])
+            .command(
+                &["hooks-plan", self.proj.to_str().unwrap(), "--host", host],
+                &[],
+            )
             .output()
             .unwrap();
         assert!(out.status.success(), "{out:?}");
@@ -143,7 +152,12 @@ impl Fx {
             .as_array()
             .unwrap()
             .iter()
-            .filter(|h| h["command"].as_str().unwrap_or("").contains("edit-diagnostics"))
+            .filter(|h| {
+                h["command"]
+                    .as_str()
+                    .unwrap_or("")
+                    .contains("edit-diagnostics")
+            })
             .cloned()
             .collect()
     }
@@ -164,7 +178,10 @@ fn input(tool: &str, file: &str, cwd: &Path) -> Vec<u8> {
 
 fn context(stdout: &str) -> String {
     let v: Value = serde_json::from_str(stdout).unwrap_or_else(|e| panic!("{e}: {stdout}"));
-    assert_eq!(v["hookSpecificOutput"]["hookEventName"], "PostToolUse", "{v}");
+    assert_eq!(
+        v["hookSpecificOutput"]["hookEventName"], "PostToolUse",
+        "{v}"
+    );
     v["hookSpecificOutput"]["additionalContext"]
         .as_str()
         .unwrap()
@@ -183,7 +200,10 @@ fn off_without_the_setting_no_hook_line_and_no_run() {
             f.config(c);
         }
         assert_eq!(f.planned("claude"), Vec::<Value>::new(), "{config:?}");
-        assert_eq!(f.edit("Write", &f.file(), &[("MODE", "diag")]), (0, String::new()));
+        assert_eq!(
+            f.edit("Write", &f.file(), &[("MODE", "diag")]),
+            (0, String::new())
+        );
         assert!(!f.ran(), "{config:?}: the checker ran while off");
     }
 }
@@ -194,14 +214,20 @@ fn an_enabled_setting_generates_one_hook_line_for_claude_code_only() {
     f.enable("timeout_secs = 7");
     assert_eq!(
         f.planned("claude"),
-        vec![json!({"event": "PostToolUse", "matcher": "Write|Edit|MultiEdit",
+        vec![
+            json!({"event": "PostToolUse", "matcher": "Write|Edit|MultiEdit",
                     "command": "moai hook-dispatch --host claude --event edit-diagnostics",
-                    "timeout": 12})]
+                    "timeout": 12})
+        ]
     );
     assert_eq!(f.planned("codex"), Vec::<Value>::new());
     // Codex and OMP do not run the duty in S1: an engine error, nothing checked.
     for host in ["codex", "omp"] {
-        let out = f.dispatch_as(host, &input("Write", &f.file(), &f.proj), &[("MODE", "diag")]);
+        let out = f.dispatch_as(
+            host,
+            &input("Write", &f.file(), &f.proj),
+            &[("MODE", "diag")],
+        );
         assert_eq!(out.status.code(), Some(1), "{host}");
         assert!(out.stdout.is_empty());
     }
@@ -224,7 +250,10 @@ fn a_malformed_setting_is_off_and_logged_and_its_bounds_hold() {
         f.enable(bad);
         assert_eq!(f.planned("claude"), Vec::<Value>::new(), "{bad}");
         let before = f.engine_log().matches("invalid_edit_diagnostics").count();
-        assert_eq!(f.edit("Write", &f.file(), &[("MODE", "diag")]), (0, String::new()));
+        assert_eq!(
+            f.edit("Write", &f.file(), &[("MODE", "diag")]),
+            (0, String::new())
+        );
         assert!(!f.ran(), "{bad}");
         assert_eq!(
             f.engine_log().matches("invalid_edit_diagnostics").count(),
@@ -238,7 +267,9 @@ fn a_malformed_setting_is_off_and_logged_and_its_bounds_hold() {
         "checkers = { rs = [] }",
         "checkers = { rs = [\"\"] }",
     ] {
-        f.config(&format!("[hooks.edit_diagnostics]\nenabled = true\n{bad_checkers}\n"));
+        f.config(&format!(
+            "[hooks.edit_diagnostics]\nenabled = true\n{bad_checkers}\n"
+        ));
         assert_eq!(f.planned("claude"), Vec::<Value>::new(), "{bad_checkers}");
     }
     f.config("[hooks.edit_diagnostics]\nenabled = \"yes\"\n");
@@ -259,9 +290,15 @@ fn a_malformed_setting_is_off_and_logged_and_its_bounds_hold() {
     }
     // An unusable file turns everything off with its own reason.
     fs::remove_file(f.home.join(".moai-cli/hook-config.toml")).unwrap();
-    std::os::unix::fs::symlink(f.root.join("checker.sh"), f.home.join(".moai-cli/hook-config.toml"))
-        .unwrap();
-    assert_eq!(f.edit("Write", &f.file(), &[("MODE", "diag")]), (0, String::new()));
+    std::os::unix::fs::symlink(
+        f.root.join("checker.sh"),
+        f.home.join(".moai-cli/hook-config.toml"),
+    )
+    .unwrap();
+    assert_eq!(
+        f.edit("Write", &f.file(), &[("MODE", "diag")]),
+        (0, String::new())
+    );
     assert!(f.engine_log().contains("not_regular_file"));
     assert!(!f.ran());
 }
@@ -283,12 +320,21 @@ fn diagnostics_come_back_as_context_within_the_caps() {
         );
     }
     // A clean run says nothing; a Bash call or an unmapped extension runs nothing.
-    assert_eq!(f.edit("Write", &f.file(), &[("MODE", "clean")]), (0, String::new()));
+    assert_eq!(
+        f.edit("Write", &f.file(), &[("MODE", "clean")]),
+        (0, String::new())
+    );
     assert!(f.ran());
     fs::write(f.proj.join("src/b.py"), "x\n").unwrap();
     let py = f.proj.join("src/b.py").display().to_string();
-    assert_eq!(f.edit("Write", &py, &[("MODE", "diag")]), (0, String::new()));
-    assert_eq!(f.edit("Bash", &f.file(), &[("MODE", "diag")]), (0, String::new()));
+    assert_eq!(
+        f.edit("Write", &py, &[("MODE", "diag")]),
+        (0, String::new())
+    );
+    assert_eq!(
+        f.edit("Bash", &f.file(), &[("MODE", "diag")]),
+        (0, String::new())
+    );
     assert!(!f.ran());
     // max_lines at its edge: N lines shown, N + 1 says one is not shown.
     f.enable("max_lines = 2");
@@ -296,7 +342,10 @@ fn diagnostics_come_back_as_context_within_the_caps() {
     assert!(!context(&out).contains("not shown"), "{out}");
     let (_, out) = f.edit("Write", &f.file(), &[("MODE", "diag"), ("N", "3")]);
     let text = context(&out);
-    assert!(text.contains("3 diagnostic line(s), exit 1; 1 not shown"), "{text}");
+    assert!(
+        text.contains("3 diagnostic line(s), exit 1; 1 not shown"),
+        "{text}"
+    );
     assert_eq!(text.lines().count(), 3);
     // max_chars bounds the whole text, summary included.
     f.enable("max_chars = 200");
@@ -308,8 +357,14 @@ fn diagnostics_come_back_as_context_within_the_caps() {
     f.enable("");
     let (_, out) = f.edit("Write", &f.file(), &[("MODE", "absolute")]);
     let text = context(&out);
-    assert!(text.contains("\nsrc/a.rs 2:1 warning absolute path"), "{text}");
-    assert!(text.contains("<outside the project> 9:9 error outside"), "{text}");
+    assert!(
+        text.contains("\nsrc/a.rs 2:1 warning absolute path"),
+        "{text}"
+    );
+    assert!(
+        text.contains("<outside the project> 9:9 error outside"),
+        "{text}"
+    );
     assert!(!text.contains(f.root.to_str().unwrap()), "{text}");
     // Output in no known form: the summary says so.
     let (_, out) = f.edit("Write", &f.file(), &[("MODE", "noform")]);
@@ -374,8 +429,13 @@ fn failures_are_one_line_and_never_block() {
         &[("MODE", "sleep"), ("PIDF", pidf.to_str().unwrap())],
     );
     assert_eq!(code, 0);
-    assert!(start.elapsed() < Duration::from_secs(5), "{:?}", start.elapsed());
-    assert!(context(&out).ends_with("stopped after 1 s with its whole process group; nothing is reported"));
+    assert!(
+        start.elapsed() < Duration::from_secs(5),
+        "{:?}",
+        start.elapsed()
+    );
+    assert!(context(&out)
+        .ends_with("stopped after 1 s with its whole process group; nothing is reported"));
     let pid: i32 = fs::read_to_string(&pidf).unwrap().trim().parse().unwrap();
     let gone = (0..200).any(|_| {
         // SAFETY: kill(2) with signal 0 only asks whether the test's own child still exists.
@@ -390,11 +450,20 @@ fn failures_are_one_line_and_never_block() {
     f.enable("");
     let (code, out) = f.edit("Write", &f.file(), &[("MODE", "huge")]);
     assert_eq!(code, 0);
-    assert!(context(&out).contains("; output cut at 64 KiB per stream"), "{out}");
+    assert!(
+        context(&out).contains("; output cut at 64 KiB per stream"),
+        "{out}"
+    );
     let (_, out) = f.edit("Write", &f.file(), &[("MODE", "nonutf8")]);
     let text = context(&out);
-    assert!(text.contains("; bytes that are not UTF-8 were replaced"), "{text}");
-    assert!(text.contains("src/a.rs 1:1 error bad \u{fffd}\u{fffd} bytes"), "{text}");
+    assert!(
+        text.contains("; bytes that are not UTF-8 were replaced"),
+        "{text}"
+    );
+    assert!(
+        text.contains("src/a.rs 1:1 error bad \u{fffd}\u{fffd} bytes"),
+        "{text}"
+    );
 }
 
 #[test]
@@ -404,7 +473,10 @@ fn credential_shaped_diagnostics_are_masked() {
     let (_, out) = f.edit("Write", &f.file(), &[("MODE", "secret")]);
     let text = context(&out);
     assert!(!text.contains("abc123"), "{text}");
-    assert!(text.contains("src/a.rs 1:1 error [masked: credential-shaped text]"), "{text}");
+    assert!(
+        text.contains("src/a.rs 1:1 error [masked: credential-shaped text]"),
+        "{text}"
+    );
     assert!(text.contains("src/a.rs 2:1 error plain"), "{text}");
 }
 
@@ -414,7 +486,13 @@ fn one_check_runs_per_project_at_a_time() {
     f.enable("");
     let mut first = f
         .command(
-            &["hook-dispatch", "--host", "claude", "--event", "edit-diagnostics"],
+            &[
+                "hook-dispatch",
+                "--host",
+                "claude",
+                "--event",
+                "edit-diagnostics",
+            ],
             &[("MODE", "slow")],
         )
         .stdin(Stdio::piped())
@@ -433,10 +511,17 @@ fn one_check_runs_per_project_at_a_time() {
     let mark = f.root.join("ran");
     let start = Instant::now();
     while !mark.exists() {
-        assert!(start.elapsed() < Duration::from_secs(20), "the first check never started");
+        assert!(
+            start.elapsed() < Duration::from_secs(20),
+            "the first check never started"
+        );
         std::thread::sleep(Duration::from_millis(10));
     }
-    let (code, out) = f.edit("Edit", &f.file(), &[("MODE", "diag"), ("MARK", "/dev/null")]);
+    let (code, out) = f.edit(
+        "Edit",
+        &f.file(),
+        &[("MODE", "diag"), ("MARK", "/dev/null")],
+    );
     assert_eq!(code, 0);
     assert_eq!(
         context(&out),
@@ -455,7 +540,10 @@ fn budget_the_off_path_is_fast() {
     let mut times: Vec<Duration> = (0..21)
         .map(|_| {
             let start = Instant::now();
-            assert_eq!(f.edit("Write", &f.file(), &[("MODE", "diag")]), (0, String::new()));
+            assert_eq!(
+                f.edit("Write", &f.file(), &[("MODE", "diag")]),
+                (0, String::new())
+            );
             start.elapsed()
         })
         .collect();

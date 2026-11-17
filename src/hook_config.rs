@@ -314,7 +314,10 @@ fn parse_checked(text: &str, home: &Path) -> Option<HookConfig> {
             None => (None, true),
         },
         // Present but `enabled` not `true`: off. A non-boolean `enabled` is malformed.
-        Some(t) => (None, t.get("enabled").is_some_and(|e| e.as_bool().is_none())),
+        Some(t) => (
+            None,
+            t.get("enabled").is_some_and(|e| e.as_bool().is_none()),
+        ),
         None => (None, false),
     };
     Some(HookConfig {
@@ -373,8 +376,7 @@ fn edit_rule(t: &dyn toml_edit::TableLike) -> Option<EditRule> {
                 .iter()
                 .map(|v| v.as_str().map(str::to_string))
                 .collect::<Option<_>>()?;
-            if !ext_ok || argv.is_empty() || argv.iter().any(|a| a.is_empty() || a.contains('\0'))
-            {
+            if !ext_ok || argv.is_empty() || argv.iter().any(|a| a.is_empty() || a.contains('\0')) {
                 return None;
             }
             checkers.push((ext.to_string(), argv));
