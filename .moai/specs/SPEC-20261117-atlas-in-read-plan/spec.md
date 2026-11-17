@@ -185,3 +185,19 @@ mutation(커밋 뒤, 셋 다 되돌린 뒤 `git status` 비어 있음): `read.md
   `mode_workflow_steps` 42, `home_isolation_scan` 16, `product_cli` 75 — 모두 exit 0; `cargo fmt --check` 0(새 시험
   `rustfmt` 뒤); clippy 0; Python 85개 OK; `moai spec check --all` exit 0(SPEC 3개 오류 0·경고 0); manifest
   `write`(code-atlas.md 바뀜) 뒤 `check` 0; `package-inspect skills/moai` exit 0, 65,536바이트 넘는 파일 0.
+
+### 재감사 수리 (2026-11-17 09:34Z–09:38Z)
+
+재감사(head `5938ded069`)가 B1 하나로 FAIL: tip `25881165be`와 `tests/agent_defs_package.rs`가 충돌(C-82도 같은
+목록을 고침). 권장 N1: `crate::x` 검색은 묶음 import를 놓쳐요. N2(지운 import가 의존으로 남음)는 보수적이라 그대로.
+
+커밋: `5938ded069` 위에 `fa778e7c9b`(tip 병합: `internal/code-atlas`와 `internal/build-folder` 둘 다 남김, manifest는
+충돌 없이 합쳐졌고 `write` 결과 바뀜 없음, `check` 0) → `92c8ecbc84`(N1) → 이 Result.
+
+- N1: 참조의 검색어를 경로와 모듈 이름의 단어 검색(`rg -w x`)으로 바꿨어요(`grep -rlE "use crate::\{" src` →
+  17개 파일). RED(N1 전 참조로 새 시험): 규칙 문장 고정 단언 실패. AC-8 시험에 묶음 import 파일 `src/d.rs`를
+  더했어요: 낡은 아틀라스는 `c.rs`·`d.rs` 둘 다 모르고, 규칙의 검색이 둘 다 찾아요. mutation: 시험의 검색을 옛
+  `crate::a`로 되돌리면 `src/d.rs`를 놓쳐 실패(`["src/b.rs", "src/c.rs"]`), 되돌린 뒤 `git status` 비어 있음.
+- 다시 돌린 검사: `agent_defs_package` 18, `code_atlas_reference` 4, `product_cli` 75 — 모두 exit 0;
+  `cargo fmt --check` 0(시험 `rustfmt` 뒤); clippy 0; manifest `check` 0; `moai spec check --all` exit 0(SPEC 5개
+  오류 0·경고 0).
