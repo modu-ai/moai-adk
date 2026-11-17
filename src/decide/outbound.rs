@@ -10,7 +10,9 @@
 //! masked and sent, and no reason quotes the text:
 //! 1. the normaliser ([`super::normalise::normalise`]): a bidi or control character refuses
 //!    (`bidi_character`, `control_character`); default-ignorables are taken out and
-//!    full-width forms, `ſ` and the Kelvin sign read as ASCII;
+//!    full-width forms, `ſ` and the Kelvin sign read as ASCII; then a URL with a password in
+//!    its user part, `://<user>:<password>@` (`url_credentials`, V2 audit N1), read before
+//!    any mask could hide part of it;
 //! 2. a word (letters, digits, `_`, `-`) that mixes ASCII letters with Cyrillic or Greek
 //!    letters (`mixed_script`; a Greek mu right after a digit, the micro sign of `10μs`, is
 //!    not one);
@@ -22,8 +24,11 @@
 //!    ([`is_ordinary_part`]): so a commit id, a sha256 digest, a UUID, a path and a snake-case
 //!    name pass;
 //! 5. one layer of encoding read ([`super::normalise::decode_once`]: percent, `\u`, `\U`,
-//!    `\x`, `\u{…}`, HTML numeric entities, base64 and hex runs) and rules 2 to 4 again on
-//!    the decoded text (`secret_encoded`).
+//!    `\x`, `\u{…}`, HTML numeric entities, base64 and hex runs) and the URL rule and rules 2
+//!    to 4 again on the decoded text (`secret_encoded`).
+//!
+//! The key shapes are read in time linear in a field's length (V2 audit N2; a 64 KiB field
+//! of a repeated prefix is pinned by a test).
 //!
 //! Known limits, stated: a secret split across two fields (each field is read alone); an
 //! encoding inside an encoding (one layer is read); a short password in prose (`hunter2`
@@ -174,7 +179,7 @@ pub const EMAIL_MASK: &str = "[email]";
 
 /// The codes of [`screen`] and what each names in a refusal's reason. The text that hit is
 /// never quoted.
-pub const SCREEN: [(&str, &str); 6] = [
+pub const SCREEN: [(&str, &str); 7] = [
     (
         normalise::BIDI,
         "a bidirectional control character (U+202A to U+202E, U+2066 to U+2069)",
@@ -183,6 +188,7 @@ pub const SCREEN: [(&str, &str); 6] = [
         normalise::CONTROL,
         "a control character other than tab and line feed",
     ),
+    ("url_credentials", "a URL with a password in its user part"),
     (
         "mixed_script",
         "a word that mixes ASCII letters with Cyrillic or Greek letters",
@@ -222,6 +228,9 @@ pub fn screen(text: &str) -> Option<&'static str> {
         Ok(normal) => mask_temp_folders(&normal),
         Err(code) => return Some(code),
     };
+    if holds_url_credentials(&normal) {
+        return Some("url_credentials");
+    }
     if holds_mixed_script(&normal) {
         return Some("mixed_script");
     }
@@ -233,8 +242,33 @@ pub fn screen(text: &str) -> Option<&'static str> {
         return Some("high_entropy");
     }
     let decoded = mask_temp_folders(&normalise::fold(&normalise::decode_once(&normal)?));
-    (holds_mixed_script(&decoded) || holds_pattern(&decoded) || holds_high_entropy(&decoded))
-        .then_some("secret_encoded")
+    (holds_url_credentials(&decoded)
+        || holds_mixed_script(&decoded)
+        || holds_pattern(&decoded)
+        || holds_high_entropy(&decoded))
+    .then_some("secret_encoded")
+}
+
+/// V2 audit N1: a URL whose user part holds a password, `://<user>:<password>@` (the user may
+/// be empty; the password is one or more characters without white space, `/` or `@`). Read
+/// before anything is masked: the e-mail mask would otherwise take `<password>@<host>` for an
+/// address and send the user name beside it. `://<user>@`, `git@host:…` and a port
+/// (`host:8443/`) are not hits.
+fn holds_url_credentials(text: &str) -> bool {
+    text.match_indices("://").any(|(at, _)| {
+        // Each scan stops at the next `/`, so no part of the text is read twice.
+        let rest = &text[at + 3..];
+        let user = rest
+            .find(|c: char| c.is_whitespace() || "/@:".contains(c))
+            .unwrap_or(rest.len());
+        let Some(after) = rest[user..].strip_prefix(':') else {
+            return false;
+        };
+        let password = after
+            .find(|c: char| c.is_whitespace() || "/@".contains(c))
+            .unwrap_or(after.len());
+        password > 0 && after[password..].starts_with('@')
+    })
 }
 
 /// True when [`screen`] refuses `text` for any reason.
@@ -361,6 +395,57 @@ fn run(text: &str, part: impl Fn(u8) -> bool) -> usize {
     text.bytes().take_while(|b| part(*b)).count()
 }
 
+/// True when the first `least` bytes of `text` all satisfy `part`. Reads at most `least`
+/// bytes, so a check made at every position of a text stays linear in it (V2 audit N2).
+fn reaches(text: &str, part: impl Fn(u8) -> bool, least: usize) -> bool {
+    text.bytes().take(least).take_while(|b| part(*b)).count() == least
+}
+
+/// A key character: an ASCII letter or digit, `_` or `-`.
+fn is_key(b: u8) -> bool {
+    b.is_ascii_alphanumeric() || b == b'_' || b == b'-'
+}
+
+/// For each byte position of a text (and its end): where the run of ASCII letters and digits
+/// that starts there ends and whether it holds a digit, and where the run of key characters
+/// and dots ([`is_key`], `.`) that starts there ends and how many dots it holds. Built in one
+/// pass from the end, so a rule asked at every position never reads a run again (V2 audit
+/// N2: a 64 KiB field of repeated prefixes took 41 to 67 s).
+struct Runs {
+    alnum_end: Vec<usize>,
+    alnum_digit: Vec<bool>,
+    token_end: Vec<usize>,
+    token_dots: Vec<usize>,
+}
+
+impl Runs {
+    fn of(bytes: &[u8]) -> Runs {
+        let n = bytes.len();
+        let mut runs = Runs {
+            alnum_end: vec![n; n + 1],
+            alnum_digit: vec![false; n + 1],
+            token_end: vec![n; n + 1],
+            token_dots: vec![0; n + 1],
+        };
+        for at in (0..n).rev() {
+            let b = bytes[at];
+            if b.is_ascii_alphanumeric() {
+                runs.alnum_end[at] = runs.alnum_end[at + 1];
+                runs.alnum_digit[at] = b.is_ascii_digit() || runs.alnum_digit[at + 1];
+            } else {
+                runs.alnum_end[at] = at;
+            }
+            if is_key(b) || b == b'.' {
+                runs.token_end[at] = runs.token_end[at + 1];
+                runs.token_dots[at] = usize::from(b == b'.') + runs.token_dots[at + 1];
+            } else {
+                runs.token_end[at] = at;
+            }
+        }
+        runs
+    }
+}
+
 /// More key prefixes (second audit, N7; slice V2) and the fewest letters and digits right
 /// after one that make a hit: Stripe secret, restricted and webhook keys, Hugging Face and
 /// npm tokens. Their tails hold no `_` or `-`, which keeps names like `npm_config_cache` out.
@@ -384,9 +469,11 @@ const GLUED_PREFIXES: [&str; 17] = [
 ];
 pub const GLUED_TAIL_MIN: usize = 16;
 
-/// True when `here`, which follows a letter or digit, starts with one of [`GLUED_PREFIXES`]
-/// and [`GLUED_TAIL_MIN`] or more letters and digits with a digit among them.
-fn holds_glued_after_letter(here: &str) -> bool {
+/// True when the text at `at`, which follows a letter or digit, starts with one of
+/// [`GLUED_PREFIXES`] and [`GLUED_TAIL_MIN`] or more letters and digits with a digit among
+/// them. The run after the prefix is looked up in `runs`, never measured again.
+fn holds_glued_after_letter(text: &str, at: usize, runs: &Runs) -> bool {
+    let here = &text[at..];
     GLUED_PREFIXES.iter().any(|prefix| {
         let case_matters = prefix.bytes().any(|b| b.is_ascii_uppercase());
         let starts = if case_matters {
@@ -394,14 +481,8 @@ fn holds_glued_after_letter(here: &str) -> bool {
         } else {
             starts_with_ignoring_case(here, prefix)
         };
-        // The tail is measured only where a prefix starts: measuring it at every letter of
-        // a long word would read that word once per letter.
-        if !starts {
-            return false;
-        }
-        let tail = &here[prefix.len()..];
-        let len = run(tail, |b| b.is_ascii_alphanumeric());
-        len >= GLUED_TAIL_MIN && tail[..len].bytes().any(|b| b.is_ascii_digit())
+        let tail = at + prefix.len();
+        starts && runs.alnum_end[tail] - tail >= GLUED_TAIL_MIN && runs.alnum_digit[tail]
     })
 }
 
@@ -409,10 +490,13 @@ fn holds_glued_after_letter(here: &str) -> bool {
 /// the start, or after a `%XX` escape): `**sk-…**`, `KEY_sk-…`, a key after Korean text or a
 /// curly quote. The prefixes and lengths are those of [`crate::redact::redact_outgoing`],
 /// plus `glpat-` and `Bearer <token>` (audit N7). After a letter or digit, the narrower
-/// [`holds_glued_after_letter`] reads instead.
+/// [`holds_glued_after_letter`] reads instead. Each length is read only up to the number it
+/// is compared with ([`reaches`]), or looked up in [`Runs`], so the whole check is linear in
+/// the text (V2 audit N2).
 fn holds_glued_shape(text: &str) -> bool {
     let bytes = text.as_bytes();
-    let key = |b: u8| b.is_ascii_alphanumeric() || b == b'_' || b == b'-';
+    let runs = Runs::of(bytes);
+    let key = is_key;
     (0..bytes.len()).any(|at| {
         if !bytes[at].is_ascii_alphanumeric() {
             return false;
@@ -423,48 +507,51 @@ fn holds_glued_shape(text: &str) -> bool {
             && bytes[at - 1].is_ascii_hexdigit();
         if at > 0 && bytes[at - 1].is_ascii_alphanumeric() && !escaped {
             // `at` follows an ASCII byte, so the slice is valid.
-            return holds_glued_after_letter(&text[at..]);
+            return holds_glued_after_letter(text, at, &runs);
         }
         // `at` follows an ASCII byte or starts a character, so the slice is valid.
         let here = &text[at..];
         let starts = |prefix: &str| starts_with_ignoring_case(here, prefix);
-        if starts("sk-") && run(here, key) >= 13 {
+        if starts("sk-") && reaches(here, key, 13) {
             return true;
         }
         if (here.starts_with("AKIA") || here.starts_with("ASIA"))
-            && run(&here[4..], |b| b.is_ascii_uppercase() || b.is_ascii_digit()) >= 16
+            && reaches(
+                &here[4..],
+                |b| b.is_ascii_uppercase() || b.is_ascii_digit(),
+                16,
+            )
         {
             return true;
         }
         if starts("xox")
             && matches!(bytes.get(at + 3), Some(b'a' | b'b' | b'p' | b'r' | b's'))
             && bytes.get(at + 4) == Some(&b'-')
-            && run(here, key) >= 15
+            && reaches(here, key, 15)
         {
             return true;
         }
-        if here.starts_with("AIza") && run(here, key) >= 30 {
+        if here.starts_with("AIza") && reaches(here, key, 30) {
             return true;
         }
-        if here.starts_with("eyJ") {
-            let token = &here[..run(here, |b| key(b) || b == b'.')];
-            if token.len() >= 30 && token.matches('.').count() >= 2 {
-                return true;
-            }
+        if here.starts_with("eyJ") && runs.token_end[at] - at >= 30 && runs.token_dots[at] >= 2 {
+            return true;
         }
-        if starts("glpat-") && run(here, key) >= 14 {
+        if starts("glpat-") && reaches(here, key, 14) {
             return true;
         }
         if MORE_PREFIXES.iter().any(|(prefix, least)| {
-            starts(prefix) && run(&here[prefix.len()..], |b| b.is_ascii_alphanumeric()) >= *least
+            starts(prefix) && reaches(&here[prefix.len()..], |b| b.is_ascii_alphanumeric(), *least)
         }) {
             return true;
         }
         if starts("bearer") {
             let after = &here["bearer".len()..];
+            // The gap ends where a word starts, and a `bearer` word starts after it, so no
+            // gap is read twice.
             let gap = run(after, |b| b == b' ' || b == b'\t');
             let token = |b: u8| b.is_ascii_alphanumeric() || b"._~+/=-".contains(&b);
-            if gap > 0 && run(&after[gap..], token) >= 16 {
+            if gap > 0 && reaches(&after[gap..], token, 16) {
                 return true;
             }
         }
@@ -484,24 +571,36 @@ const SECRET_KEYS: [&str; 6] = [
 ];
 
 /// A JSON, YAML or assignment pair whose key is one of [`SECRET_KEYS`] and whose value, on
-/// the same line, is not empty: `"token": "x"`, `secret: x`, `PASSWORD = x`.
+/// the same line, is not empty: `"token": "x"`, `secret: x`, `PASSWORD = x`. A quote may be
+/// escaped with `\`, as in a pair written inside a JSON string (`{\"password\": \"x\"}`, V2
+/// audit N5); an empty escaped value (`\"\"`) is empty.
 fn holds_secret_pair(text: &str) -> bool {
     let lower = text.to_ascii_lowercase();
     let blank = |b: u8| b == b' ' || b == b'\t';
+    // `s` without a leading quote, escaped or not, and the quote that was there.
+    let unquote = |s: &str| -> (Option<&'static str>, usize) {
+        for quote in ["\\\"", "\\'", "\"", "'"] {
+            if s.starts_with(quote) {
+                return (Some(quote), quote.len());
+            }
+        }
+        (None, 0)
+    };
     SECRET_KEYS.iter().any(|key| {
         lower.match_indices(key).any(|(at, _)| {
             let mut rest = &lower[at + key.len()..];
-            rest = rest.strip_prefix(['"', '\'']).unwrap_or(rest);
+            rest = &rest[unquote(rest).1..];
             rest = &rest[run(rest, blank)..];
             let Some(value) = rest.strip_prefix([':', '=']) else {
                 return false;
             };
             let value = &value[run(value, blank)..];
-            let mut chars = value.chars();
-            match chars.next() {
-                None | Some('\n' | '\r') => false,
-                Some(quote @ ('"' | '\'')) => chars.next().is_some_and(|c| c != quote),
-                Some(_) => true,
+            match unquote(value) {
+                (Some(quote), len) => {
+                    let inside = &value[len..];
+                    !inside.is_empty() && !inside.starts_with(quote)
+                }
+                (None, _) => !value.is_empty() && !value.starts_with(['\n', '\r']),
             }
         })
     })
@@ -1909,6 +2008,97 @@ mod tests {
             screen("see sk-proj-abcdefghijklmnopqrstuvwx."),
             Some("secret_shape")
         );
+    }
+
+    /// V2 audit N1: a password in a URL's user part is refused with its own code before
+    /// anything is masked, in every field: with a dotted host the e-mail mask would otherwise
+    /// hide only part of it and send the rest. Test data, none real.
+    #[test]
+    fn a_url_with_a_password_is_refused_in_every_field_before_masking() {
+        for text in [
+            "postgres://admin:S3cretPass@localhost:5432/app",
+            "redis://:pa55w0rdX@cache:6379/0",
+            "https://user:hunter2@host.internal/x",
+            "postgres://admin:S3cretPass@db.example.com/app",
+            "://u:p@h",
+            "://:p@h",
+        ] {
+            assert_eq!(screen(text), Some("url_credentials"), "{text}");
+            for field in ["what", "evidence", "undo"] {
+                let r = built(|v| put(v, field, format!("it uses {text} now"))).unwrap_err();
+                assert_eq!(r.code, "url_credentials", "{field}: {text}");
+                assert!(!r.reason.contains(text), "{}", r.reason);
+            }
+            let r = built(|v| v["options"][1]["description"] = json!(text)).unwrap_err();
+            assert_eq!(r.code, "url_credentials", "description: {text}");
+            let r = built(|v| v["card"] = json!(text)).unwrap_err();
+            assert_eq!(r.code, "url_credentials", "card: {text}");
+            let r = built(|v| {
+                v["options"][0]["value"] = json!(text);
+                v["default"] = json!(text);
+            })
+            .unwrap_err();
+            assert_eq!(r.code, "url_credentials", "value: {text}");
+        }
+        // A user without a password, an SSH remote, a port, a `:` after the path.
+        for text in [
+            "://u@h",
+            "git@host:org/repo",
+            "ssh://git@host/x",
+            "git@github.com:org/repo.git",
+            "https://host.internal:8443/x",
+            "http://localhost:3000 and https://x.org/a:b@c",
+        ] {
+            assert_eq!(screen(text), None, "{text}");
+            assert!(built(|v| v["evidence"] = evidence(text)).is_ok(), "{text}");
+        }
+    }
+
+    /// V2 audit N5: a pair written inside a JSON string, with its quotes escaped, is a pair.
+    #[test]
+    fn a_json_escaped_secret_pair_is_refused() {
+        for text in [
+            r#"{\"password\": \"Tr0ub4dor&3\"}"#,
+            r#"{\"token\":\"abc\"}"#,
+            r#"\'secret\': \'v\'"#,
+        ] {
+            assert_eq!(screen(text), Some("secret_shape"), "{text}");
+        }
+        for text in [r#"{\"password\": \"\"}"#, r#"{\"token\": \'\'}"#] {
+            assert_eq!(screen(text), None, "{text}");
+        }
+    }
+
+    /// V2 audit N2: every key shape is read in time linear in the text. A 64 KiB field of each
+    /// shape, which took up to 45 s (debug build) when a run was read again at each prefix, is
+    /// screened inside 2 s. Measured in a debug build on 2026-11-17: 11 to 212 ms per shape,
+    /// and twice the text took twice the time; so 2 s leaves ten times room for a loaded
+    /// machine and still fails a scan that reads the text once per occurrence.
+    #[test]
+    fn a_64_kib_field_of_a_repeated_key_prefix_is_screened_quickly() {
+        let fill = |unit: &str| unit.repeat(FIELD_MAX / unit.len());
+        for text in [
+            fill("AKIA"),
+            fill("ASIA"),
+            fill("AIza"),
+            fill("eyJ-"),
+            fill("eyJ."),
+            fill("xAKIA1"),
+            fill("sk-"),
+            fill("xoxb-"),
+            fill("glpat-"),
+            fill("bearer "),
+            fill("://a"),
+        ] {
+            let started = std::time::Instant::now();
+            let _ = screen(&text);
+            let took = started.elapsed();
+            assert!(
+                took < std::time::Duration::from_secs(2),
+                "{}: {took:?}",
+                &text[..8]
+            );
+        }
     }
 
     /// A bidirectional control character is refused in every screened field, by the screen
