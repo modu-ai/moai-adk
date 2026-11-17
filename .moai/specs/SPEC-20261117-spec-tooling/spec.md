@@ -129,17 +129,29 @@ SDD-2(`moai spec` 명령)를 만들고, 독립 감사가 낸 FAIL(B1–B4, N2–
 `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=4`, macOS arm64, cargo는 한 번에 하나.
 
 커밋: 기준 `6aa92fd0dd` 위 SDD-1/2(`3a09377222`…`c241f48eed`) → 감사 FAIL → tip `da4d9e3d10` 병합 →
-`c779c2624c`(B1–B4·N2–N7 수리) → 이 Result와 `tools/repo_scans.json` 항목(다음 커밋). 시험은 모두 먼저
-RED(기대한 단언에서 실패)를 본 뒤 GREEN이에요.
+`c779c2624c`(B1–B4·N2–N7 수리) → `0c28c4751e`(scan 표 항목, Result) → 재감사 FAIL → RB1·N-a…N-g 수리 커밋 →
+`90654afbb9`(두 SPEC 승인 기록) → 이 Result(다음 커밋). 시험은 먼저 RED(기대한 단언에서 실패)를 본 뒤
+GREEN이에요. 예외: 재감사 RB1의 시험은 수리 코드 뒤에 썼고, 대신 mutation R1–R5(수리를 빼거나 경계를
+바꾸면 그 시험이 실패)로 시험이 맞는 것을 고정하는지 확인했어요(모두 KILLED).
 
-- AC-1: met — `spec_cli` exit 0, 12 passed(`new_check_list_show_and_nothing_else_is_written`·`new_refuses_and_writes_nothing` 포함)
-- AC-2: met — `spec_doc` exit 0, 23 passed. 검사기 mutation 5개 모두 KILLED(SDD-1 때)
+승인(재감사 RB2): 사용자가 2026-11-17 세션에서 이 SPEC을 "승인"했어요. 승인된 내용은 `moai spec
+new|check|list|show`, GEARS + IF…THEN, 실패 경로 규칙, 승인 뒤 NEEDS CLARIFICATION·자리 표시 오류,
+12개 요구·400줄 경고, `specs/`만 든 `.moai/`를 새 프로젝트로 읽는 규칙이에요. RB1 수리는 요구를 더하지
+않았고 AC-6의 verify 명령에 RB1 시험 이름만 더했어요. 그래서 `approval.digest`는 모든 수정이 끝난 뒤
+`moai spec show`로 계산한 값이에요(`sha256:e92728ac…945d0b`). 기반 SPEC은 같은 날 revision 2로 다시
+승인됐고, digest는 내용이 그대로라 이전 계산값과 같아요.
+
+- AC-1: met — `90654afbb9`에서 `spec_cli` exit 0, 15 passed(`new_check_list_show_and_nothing_else_is_written`·`new_refuses_and_writes_nothing` 포함)
+- AC-2: met — `90654afbb9`에서 `spec_doc` exit 0, 24 passed(1000/1001 범위 경계 포함). 검사기 mutation 5개 모두 KILLED(SDD-1 때)
 - AC-3: met — 같은 실행. mutation M5(줄 끝 아닌 메모 허용) KILLED
 - AC-4: met — 같은 실행. mutation M2(승인 뒤에도 경고)·M3(12개에서 경고) KILLED
 - AC-5: met — `spec_cli` 같은 실행
-- AC-6: met — `spec_cli` 같은 실행, `project_update_plan_cli` 57 passed, `go_state_cli` 61, `go_state_preview_cli` 44, `state_root_cli` 6, `project_detect_cli` 18, `--lib` state_root·project_detect·go_state·spec·home_root 45 passed. mutation M1(`specs_only` 늘 거짓) KILLED
+- AC-6: met — `spec_cli` 같은 실행(다른 id 합치기·되돌리기, 같은 id 충돌로 아무것도 안 옮김, 링크·파일 `specs`·`.DS_Store` 포함), `project_update_plan_cli` 57 passed, `go_state_cli` 61, `go_state_preview_cli` 44, `state_root_cli` 6, `project_detect_cli` 18, `--lib` state_root·project_detect·go_state·spec·home_root 45 passed. mutation M1(`specs_only` 늘 거짓)·R1–R4 KILLED
 - AC-7: met — `grep` 출력 없음, exit 1
-- AC-8: met — `moai spec check --all --project .` exit 0, 2개 SPEC 오류 0·경고 0. mutation M4(`..` 범위 안 읽음) KILLED
+- AC-8: met — `90654afbb9`에서 `moai spec check --all --project .` exit 0, 2개 SPEC 모두 `approved`, 오류 0·경고 0, 두 digest 일치. mutation M4(`..` 범위 안 읽음)·R5 KILLED
 - AC-9: met — `--bin moai` 27, `help_layout` 10, `home_isolation_scan` 16, `product_cli` 75, `gitignore_block_cli` 32, `ac_command_lint` 5, 저장소 검사 대상 7개 모두 exit 0; `cargo fmt --check` 0; `rustfmt --check --edition 2021 src/ops/*.rs` 0; clippy 0; Python 44개 OK(처음에 `repo_scans_test` 1개가 이 시험을 저장소 순회로 판정 → 표에 항목 추가 뒤 OK), `skill_references_test` 2개 OK
 
+AC-9는 `90654afbb9`에서 다시 돌려 모두 exit 0이에요(위 숫자 그대로, `ac_command_lint` 5, Python 44+2 OK).
+
 실행 안 함: 전체 `cargo test`(바뀐 곳 시험만), Linux·Windows, Go 폴더 되돌리기 길과 `specs/`가 함께 있는 경우.
+남은 모양: SPEC을 하나씩 합친 뒤 빈 `.moai-cli/specs/` 폴더는 되돌리기를 위해 남아요.
