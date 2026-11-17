@@ -12,7 +12,9 @@
 //!   scanner's reader (`archive::frontmatter`) reads three marker keys and refuses indentation,
 //!   so it cannot read `approval`; this one is separate and has no new crate.
 //! - sections: `## Intent`, `## Requirements` (`- REQ-<n>: <GEARS sentence>`, parsed by
-//!   [`crate::spec::parse_gears`]), `## Acceptance` (`- AC-<n> (REQ-…): <result> · verify: `cmd``,
+//!   [`crate::spec::parse_gears`], or the EARS unwanted form `- REQ-<n> (REQ-…): IF …, THEN …
+//!   shall …`; every `When` requirement needs an IF/THEN requirement naming it or a
+//!   `failure: none` note, `req_failure_path`), `## Acceptance` (`- AC-<n> (REQ-…): <result> · verify: `cmd``,
 //!   or `manual:` / `unknown:`, inline or on the next line), `## Scope` (`write:`, `read-only:`,
 //!   `forbidden:` relative paths; an untagged path is `write`) and `## Plan` always;
 //!   `## Non-goals` and `## Risks` make a full SPEC, which then needs both; `## Decisions` and
@@ -140,12 +142,30 @@ pub struct Approval {
     pub digest: Option<String>,
 }
 
+/// The grammar a requirement is written in.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ReqKind {
+    /// `[Where …] [While …] [When …] <subject> shall <behavior>` (`spec::parse_gears`).
+    Gears,
+    /// EARS unwanted behaviour: `IF <condition>, THEN <subject> shall <behavior>`.
+    Unwanted,
+}
+
 /// A `REQ-<n>` line.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct Requirement {
     pub id: String,
     pub number: u32,
     pub line: usize,
+    pub kind: ReqKind,
+    /// The requirements an unwanted one covers: `REQ-2 (REQ-1): IF …`.
+    pub refs: Vec<String>,
+    /// A GEARS sentence with a `When` trigger.
+    pub trigger: bool,
+    /// The line says `failure: none`: its trigger has no failure path to cover.
+    pub failure_none: bool,
+    /// The sentence, without the refs and the `failure: none` note.
     pub text: String,
 }
 
@@ -1058,6 +1078,90 @@ fn body(lines: &[&str], start: usize, doc: &mut SpecDoc) {
     }
 }
 
+/// `(REQ-1, REQ-2)` right after an item's id: the ids named and the rest of the line after
+/// the `)` and an optional `:`.
+fn refs_of(text: &str) -> (Vec<String>, &str) {
+    match text.strip_prefix('(').and_then(|r| r.split_once(')')) {
+        Some((inside, rest)) => (
+            inside
+                .split(',')
+                .map(|r| r.trim().to_string())
+                .filter(|r| !r.is_empty())
+                .collect(),
+            rest.trim_start_matches(':').trim(),
+        ),
+        None => (Vec::new(), text),
+    }
+}
+
+/// The note that a `When` requirement has no failure path to cover.
+const FAILURE_NONE: &str = "failure: none";
+
+/// A requirement sentence without its `failure: none` note (which starts the text or follows
+/// a space, `·` or `(`; anything after it is the author's reason), and whether it had one.
+fn failure_note(text: &str) -> (&str, bool) {
+    for (at, _) in text.match_indices(FAILURE_NONE) {
+        let ok = text[..at]
+            .chars()
+            .next_back()
+            .is_none_or(|c| c.is_whitespace() || c == '·' || c == '(');
+        if ok {
+            let before = text[..at]
+                .trim_end()
+                .trim_end_matches(['·', '('])
+                .trim_end();
+            return (before, true);
+        }
+    }
+    (text, false)
+}
+
+/// `text` starts with `word` (ASCII case ignored) followed by a space.
+fn starts_with_word(text: &str, word: &str) -> bool {
+    text.get(..word.len())
+        .is_some_and(|h| h.eq_ignore_ascii_case(word))
+        && text[word.len()..].starts_with(' ')
+}
+
+/// A GEARS sentence, or the EARS unwanted-behaviour form `IF <condition>, THEN <subject> shall
+/// <behavior>` (the comma is optional; `IF` and `THEN` ignore ASCII case). The unwanted form is
+/// checked by `spec::parse_gears` as `When <condition>, <subject> shall <behavior>`, so it gets
+/// the same text, subject and `shall` rules; its record keeps the original text, syntax
+/// `GEARS-unwanted` and the condition kind `if`. The error names the rule, never the text.
+fn parse_requirement(
+    id: &str,
+    sentence: &str,
+    kind: ReqKind,
+) -> Result<crate::spec::Requirement, String> {
+    if kind == ReqKind::Gears {
+        return crate::spec::parse_gears(id, sentence).map_err(|e| e.reason);
+    }
+    let body = &sentence[2..];
+    let lower = body.to_ascii_lowercase();
+    let then = lower.match_indices("then").map(|(i, _)| i).find(|&i| {
+        let before = lower[..i].chars().next_back();
+        let after = lower[i + 4..].chars().next();
+        before.is_some_and(|c| c == ' ' || c == ',') && after.is_some_and(|c| c == ' ')
+    });
+    let Some(then) = then else {
+        return Err("an IF requirement needs THEN before its subject".into());
+    };
+    let condition = body[..then].trim().trim_end_matches(',').trim();
+    if condition.is_empty() {
+        return Err("empty condition after IF".into());
+    }
+    let rest = body[then + 4..].trim();
+    let mut r =
+        crate::spec::parse_gears(id, &format!("When {condition}, {rest}")).map_err(|e| e.reason)?;
+    if r.condition_kinds.len() != 1 {
+        return Err("an IF requirement takes no Where, While or When clause after THEN".into());
+    }
+    r.text = sentence.to_string();
+    r.syntax = "GEARS-unwanted".into();
+    r.condition_kinds = vec!["if".into()];
+    Ok(r)
+}
+
 fn requirements(doc: &mut SpecDoc, at: usize, content: &[(usize, &str)]) {
     for (n, line) in content {
         if let Some((num, text)) = item(line, "REQ-") {
@@ -1070,20 +1174,35 @@ fn requirements(doc: &mut SpecDoc, at: usize, content: &[(usize, &str)]) {
                 continue;
             }
             let id = format!("REQ-{num}");
-            match crate::spec::parse_gears(&id, &text) {
-                Ok(gears) => doc.gears.push(gears),
+            let (refs, rest) = refs_of(&text);
+            let (sentence, failure_none) = failure_note(rest);
+            let kind = if starts_with_word(sentence, "if") {
+                ReqKind::Unwanted
+            } else {
+                ReqKind::Gears
+            };
+            let mut trigger = false;
+            match parse_requirement(&id, sentence, kind) {
+                Ok(parsed) => {
+                    trigger = kind == ReqKind::Gears && parsed.when.is_some();
+                    doc.gears.push(parsed);
+                }
                 // The reason names the rule, never the text.
-                Err(e) => doc.error(
+                Err(reason) => doc.error(
                     "req_gears",
                     Some(*n),
-                    format!("{id} is not a GEARS sentence: {}", e.reason),
+                    format!("{id} is not a GEARS or IF/THEN sentence: {reason}"),
                 ),
             }
             doc.requirements.push(Requirement {
                 id,
                 number: num,
                 line: *n,
-                text,
+                kind,
+                refs,
+                trigger,
+                failure_none,
+                text: sentence.to_string(),
             });
         }
     }
@@ -1103,17 +1222,7 @@ fn acceptance(doc: &mut SpecDoc, at: usize, content: &[(usize, &str)]) {
         if let Some((num, text)) = item(line, "AC-") {
             done.extend(open.take());
             // `(REQ-1, REQ-2)` right after the id names the requirements it checks.
-            let (refs, rest) = match text.strip_prefix('(').and_then(|r| r.split_once(')')) {
-                Some((inside, rest)) => (
-                    inside
-                        .split(',')
-                        .map(|r| r.trim().to_string())
-                        .filter(|r| !r.is_empty())
-                        .collect(),
-                    rest.trim_start_matches(':').trim(),
-                ),
-                None => (Vec::new(), text.as_str()),
-            };
+            let (refs, rest) = refs_of(&text);
             let (before, tag) = split_tag(rest);
             let mut c = Criterion {
                 id: format!("AC-{num}"),
@@ -1233,6 +1342,54 @@ fn scope(doc: &mut SpecDoc, at: usize, content: &[(usize, &str)]) {
 
 /// The AC → REQ links and the content digest; an approved digest that no longer matches is an
 /// error. The digest exists only when every requirement is a GEARS sentence.
+/// The failure-path rule (user decision 2026-11-17): every GEARS requirement with a `When`
+/// trigger is named by a parsed IF/THEN requirement of the same SPEC, or says `failure: none`.
+/// An error, not a warning: a trigger without its failure path is a requirement nobody wrote,
+/// so no AC can check it, and the exemption costs one explicit note. An IF/THEN requirement that
+/// names a REQ the SPEC lacks is `req_ref_unknown`.
+fn failure_paths(doc: &mut SpecDoc) {
+    let parsed = |id: &str| doc.gears.iter().any(|g| g.id == id);
+    let mut found = Vec::new();
+    for r in doc
+        .requirements
+        .iter()
+        .filter(|r| r.kind == ReqKind::Unwanted)
+    {
+        for to in &r.refs {
+            if !doc.requirements.iter().any(|q| q.id == *to) {
+                found.push((
+                    "req_ref_unknown",
+                    r.line,
+                    format!("{} names {to}, which `## Requirements` lacks", r.id),
+                ));
+            }
+        }
+    }
+    for r in doc
+        .requirements
+        .iter()
+        .filter(|r| r.trigger && !r.failure_none)
+    {
+        let covered = doc.requirements.iter().any(|u| {
+            u.kind == ReqKind::Unwanted && parsed(&u.id) && u.refs.iter().any(|to| *to == r.id)
+        });
+        if !covered {
+            found.push((
+                "req_failure_path",
+                r.line,
+                format!(
+                    "{} has a `When` trigger and no failure path: add `REQ-<n> ({}): IF …, \
+                     THEN … shall …` or end the line with `· {FAILURE_NONE}`",
+                    r.id, r.id
+                ),
+            ));
+        }
+    }
+    for (code, line, message) in found {
+        doc.error(code, Some(line), message);
+    }
+}
+
 fn digest(doc: &mut SpecDoc, approval_line: Option<usize>) {
     let mut unknown = Vec::new();
     for c in &doc.acceptance {
@@ -1248,6 +1405,7 @@ fn digest(doc: &mut SpecDoc, approval_line: Option<usize>) {
     for (line, message) in unknown {
         doc.error("ac_ref_unknown", Some(line), message);
     }
+    failure_paths(doc);
     if doc.requirements.is_empty() || doc.gears.len() != doc.requirements.len() {
         return;
     }

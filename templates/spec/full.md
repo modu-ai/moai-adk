@@ -19,10 +19,12 @@ Why this change is needed and who it serves, in a few sentences.
 ## Requirements
 
 - REQ-1: When <trigger>, the <subject> shall <behavior>.
+- REQ-2 (REQ-1): IF <the step REQ-1 needs fails>, THEN the <subject> shall <safe behavior>.
 
 ## Acceptance
 
 - AC-1 (REQ-1): <observable result that shows REQ-1 holds> · verify: `<command that checks it>`
+- AC-2 (REQ-2): <observable result that shows REQ-2 holds> · verify: `<command that checks it>`
 
 ## Scope
 

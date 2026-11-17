@@ -3,7 +3,7 @@
 
 use moai_cli::spec_doc::{
     self, check_title, id_form, new_id, parse, read_spec, render, valid_date, valid_slug, Form,
-    IdForm, NewSpec, Options, Severity, SpecDoc, MAX_SPEC_BYTES, MAX_TITLE_CHARS,
+    IdForm, NewSpec, Options, ReqKind, Severity, SpecDoc, MAX_SPEC_BYTES, MAX_TITLE_CHARS,
 };
 
 const ID: &str = "SPEC-20261117-login-fix";
@@ -18,7 +18,8 @@ fn front(status: &str, extra: &str) -> String {
 const INTENT: &str = "## Intent\n\nLogins fail for valid passwords.\n\n";
 const REQS: &str =
     "## Requirements\n\n- REQ-1: When a user sends a valid password, the server shall \
-                    accept the login.\n\n";
+                    accept the login.\n- REQ-2 (REQ-1): IF the password check fails, THEN the \
+                    server shall refuse the login.\n\n";
 const ACS: &str = "## Acceptance\n\n- AC-1 (REQ-1): A valid password logs in · verify: \
                    `cargo test --test login`\n\n";
 const SCOPE: &str = "## Scope\n\n- write: `src/login.rs`\n\n";
@@ -426,12 +427,13 @@ fn requirements_and_acceptance_rules() {
     );
     let d = doc(&format!("{fm}{INTENT}{dup_req}{ACS}{SCOPE}{PLAN}"));
     assert_eq!(errors(&d), vec!["req_duplicate"]);
-    let not_gears = REQS.replace("shall", "will");
+    let not_gears = REQS.replacen("shall", "will", 1);
     let d = doc(&format!("{fm}{INTENT}{not_gears}{ACS}{SCOPE}{PLAN}"));
     assert_eq!(errors(&d), vec!["req_gears"]);
     assert!(d.digest.is_none());
-    // Korean body with English GEARS keywords parses.
-    let ko = "## Requirements\n\n- REQ-1: When 사용자가 맞는 비밀번호를 보내면, 서버는 shall 로그인을 받아들인다.\n\n";
+    // Korean body with English GEARS and IF/THEN keywords parses.
+    let ko = "## Requirements\n\n- REQ-1: When 사용자가 맞는 비밀번호를 보내면, 서버는 shall 로그인을 받아들인다.\n\
+              - REQ-2 (REQ-1): IF 비밀번호가 틀리면, THEN 서버는 shall 로그인을 거절한다.\n\n";
     let d = doc(&format!("{fm}{INTENT}{ko}{ACS}{SCOPE}{PLAN}"));
     assert!(d.findings.is_empty(), "{:?}", d.findings);
     let personal = REQS.replace("valid password", "password from /Users/me/x");
@@ -485,6 +487,102 @@ fn requirements_and_acceptance_rules() {
         vec!["ac_ref_unknown"]
     );
     assert!(errors(&acs("Nothing here.\n")).contains(&"ac_missing"));
+}
+
+/// The EARS unwanted-behaviour form (`IF …, THEN … shall …`) and the failure-path rule: every
+/// `When` requirement is named by an IF/THEN requirement or says `failure: none`.
+#[test]
+fn when_requirements_need_a_failure_path() {
+    let fm = front("draft", "");
+    let reqs = |lines: &str| {
+        doc(&format!(
+            "{fm}{INTENT}## Requirements\n\n{lines}\n{ACS}{SCOPE}{PLAN}"
+        ))
+    };
+    let when1 = "- REQ-1: When a user logs in, the server shall check the password.\n";
+    let when3 = "- REQ-3: When a user logs out, the server shall end the session.\n";
+    let if1 = "- REQ-2 (REQ-1): IF the check fails, THEN the server shall refuse the login.\n";
+    let if3 = "- REQ-4 (REQ-3): IF no session exists, THEN the server shall answer 404.\n";
+
+    // Zero covered: the When requirement alone is an error at its line.
+    let alone = reqs(when1);
+    assert_eq!(errors(&alone), vec!["req_failure_path"]);
+    assert_eq!(alone.findings[0].line, Some(17));
+    // N covered: clean, and the IF requirement reads as unwanted.
+    let covered = reqs(&format!("{when1}{if1}"));
+    assert!(covered.findings.is_empty(), "{:?}", covered.findings);
+    assert_eq!(covered.requirements[1].kind, ReqKind::Unwanted);
+    assert_eq!(covered.requirements[1].refs, vec!["REQ-1".to_string()]);
+    assert_eq!(covered.requirements[0].kind, ReqKind::Gears);
+    // N+1: a second When requirement without its own IF is the one error.
+    let one_more = reqs(&format!("{when1}{if1}{when3}"));
+    assert_eq!(errors(&one_more), vec!["req_failure_path"]);
+    assert!(
+        one_more.findings[0].message.contains("REQ-3"),
+        "{:?}",
+        one_more.findings
+    );
+    assert!(reqs(&format!("{when1}{if1}{when3}{if3}"))
+        .findings
+        .is_empty());
+    // An IF requirement that names no REQ covers nothing.
+    let unnamed = reqs(&format!(
+        "{when1}- REQ-2: IF the check fails, THEN the server shall refuse the login.\n"
+    ));
+    assert_eq!(errors(&unnamed), vec!["req_failure_path"]);
+    // Naming a REQ that is not there.
+    let ghost = reqs(&format!(
+        "{when1}- REQ-2 (REQ-9): IF the check fails, THEN the server shall refuse it.\n"
+    ));
+    assert_eq!(errors(&ghost), vec!["req_ref_unknown", "req_failure_path"]);
+    // `failure: none` on the REQ line is the explicit exemption; it is not part of the text.
+    for line in [
+        "- REQ-1: When a user logs in, the server shall log the time · failure: none\n",
+        "- REQ-1: When a user logs in, the server shall log the time. failure: none — a log line only\n",
+        "- REQ-1: When a user logs in, the server shall log the time (failure: none)\n",
+    ] {
+        let d = reqs(line);
+        assert!(d.findings.is_empty(), "{line}: {:?}", d.findings);
+        assert!(d.requirements[0].failure_none, "{line}");
+        assert!(!d.requirements[0].text.contains("failure"), "{line}");
+    }
+    // `failure: none` glued to a word is not the note.
+    assert_eq!(
+        errors(&reqs(
+            "- REQ-1: When a user logs in, the server shall log nofailure: none\n"
+        )),
+        vec!["req_failure_path"]
+    );
+    // Only `When` triggers the rule.
+    let states = reqs(
+        "- REQ-1: While the cache is warm, the server shall answer from it.\n\
+         - REQ-2: Where audit is on, the server shall record each login.\n\
+         - REQ-3: The server shall hash every password.\n",
+    );
+    assert!(states.findings.is_empty(), "{:?}", states.findings);
+    // IF/THEN shapes: case, a missing comma, and what is refused.
+    let lower = reqs(&format!(
+        "{when1}- REQ-2 (REQ-1): if the check fails then the server shall refuse it.\n"
+    ));
+    assert!(lower.findings.is_empty(), "{:?}", lower.findings);
+    for bad in [
+        "- REQ-2 (REQ-1): IF , THEN the server shall refuse it.\n",
+        "- REQ-2 (REQ-1): IF the check fails, the server shall refuse it.\n",
+        "- REQ-2 (REQ-1): IF the check fails, THEN the server refuses it.\n",
+        "- REQ-2 (REQ-1): IF the check fails, THEN shall refuse it.\n",
+        "- REQ-2 (REQ-1): IF the token is ghp_abc, THEN the server shall refuse it.\n",
+    ] {
+        let d = reqs(&format!("{when1}{bad}"));
+        assert_eq!(errors(&d), vec!["req_gears", "req_failure_path"], "{bad}");
+        assert!(d.digest.is_none(), "{bad}");
+    }
+    // A Go-generation SPEC gets the rule as a warning.
+    let legacy = doc(
+        &format!("{fm}{INTENT}## Requirements\n\n{when1}\n{ACS}{SCOPE}{PLAN}")
+            .replace(ID, "SPEC-AUTH-001"),
+    );
+    assert!(errors(&legacy).is_empty(), "{:?}", legacy.findings);
+    assert!(warnings(&legacy).contains(&"req_failure_path"));
 }
 
 #[test]

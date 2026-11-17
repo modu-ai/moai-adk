@@ -293,7 +293,7 @@ fn check_reports_codes_and_exits_one_on_an_error() {
         "{m}"
     );
     assert!(
-        m.contains(&format!(".moai/specs/{ID}/spec.md:22 ac_no_verify")),
+        m.contains(&format!(".moai/specs/{ID}/spec.md:23 ac_no_verify")),
         "{m}"
     );
     // show still answers, with the findings.
