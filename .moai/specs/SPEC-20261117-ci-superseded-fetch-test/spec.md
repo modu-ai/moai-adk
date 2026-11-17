@@ -52,4 +52,11 @@ annotation을 읽는 부분)에 시험이 없어요. N2: `ci.yml` 머리 주석�
 
 ## Result
 
-(검사 뒤에 채워요.)
+구현 에이전트가 2026-11-17에 채웠어요. 기준 `ac4fecd2b7`(#3168 head), 변경 커밋 `ac7614efd5`.
+
+- AC-1: met — `tests/ci_superseded_test.py` OK(12, 새 `Fetch` 2개). mutation(커밋 뒤, 각각 `git restore` 뒤 tree 깨끗):
+  작업 목록을 모든 시도 경로(`runs/<id>/jobs?filter=all`)로 → 1 FAIL; annotation을 모든 대상에 대해 읽게 → 1 FAIL. 되돌린 뒤 OK.
+- AC-2: met — grep `1`; `github_assets_test`·`skill_references`·`ci_scope`·`repo_scans`와 함께 OK; `actionlint` exit 0;
+  `moai spec check --all` 0(SPEC 11개, errors 0, warnings 0).
+
+실행 안 함: Rust 시험(Rust 변경 없음), 실제 GitHub 실행.
