@@ -36,6 +36,7 @@ pub mod decision;
 pub mod decision_file;
 pub mod decision_log;
 pub mod dispatch;
+pub mod edit_diagnostics;
 pub mod error_next;
 pub mod flake;
 pub mod flake_record;
