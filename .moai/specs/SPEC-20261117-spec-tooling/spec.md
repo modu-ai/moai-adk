@@ -1,10 +1,15 @@
 ---
 id: SPEC-20261117-spec-tooling
 title: SPEC 도구 — spec.md 해석기와 moai spec new·check·list·show (SDD-1, SDD-2)
-status: draft
+status: approved
 revision: 1
 created: 2026-11-17
 parent: SPEC-20261117-sdd-foundation
+approval:
+  by: user
+  at: 2026-11-17
+  basis: "in-session selection 2026-11-17: 승인"
+  digest: "sha256:e92728ac5905b4b9bd2e5018472aec4d801a1c01d61e5e34c2472aaba9945d0b"
 ---
 
 ## Intent
@@ -47,8 +52,8 @@ SDD-2(`moai spec` 명령)를 만들고, 독립 감사가 낸 FAIL(B1–B4, N2–
   verify: `cargo test --locked --offline --test spec_doc -- placeholders_and_clarifications_follow_the_status the_size_budget_warns_above_twelve_requirements_and_four_hundred_lines`
 - AC-5 (REQ-9): 마감 검사는 `completed`와 `## Result`의 `met`·`withdrawn`을 요구해요.
   verify: `cargo test --locked --offline --test spec_cli closure_needs_completed_and_a_result`
-- AC-6 (REQ-10): `spec new` 앞뒤로 판정·`project-detect`·`project-update-plan`이 같고, `.moai-cli` 이동과 되돌리기가 SPEC을 지켜요.
-  verify: `cargo test --locked --offline --test spec_cli -- spec_new_keeps_the_state_verdict_and_the_project_answers an_earlier_root_moves_into_a_moai_that_holds_specs_and_back`
+- AC-6 (REQ-10): `spec new` 앞뒤로 판정·`project-detect`·`project-update-plan`이 같고, `.moai-cli` 이동과 되돌리기가 SPEC을 지켜요(옛 `specs/`는 SPEC 하나씩 합치고, 같은 id는 충돌로 아무것도 옮기지 않아요).
+  verify: `cargo test --locked --offline --test spec_cli -- spec_new_keeps_the_state_verdict_and_the_project_answers an_earlier_root_moves_into_a_moai_that_holds_specs_and_back earlier_specs_with_other_ids_merge_and_the_revert_splits_them_again an_earlier_spec_with_the_same_id_blocks_the_move only_a_real_specs_folder_reads_as_no_state`
 - AC-7 (REQ-11): 두 소스 파일에 프로세스·소켓 코드가 없어요.
   verify: `grep -n -e 'Command::new' -e 'std::net' src/spec_doc.rs src/ops/spec.rs` → 출력 없음, exit 1
 - AC-8 (REQ-12): 저장소의 SPEC이 모두 통과해요.
@@ -109,9 +114,14 @@ SDD-2(`moai spec` 명령)를 만들고, 독립 감사가 낸 FAIL(B1–B4, N2–
 | D16 | 크기 예산 12개·400줄은 경고 | 리더 B3 | 숫자 바꾸기 |
 | D17 | AC·범위 글에 `parse_gears`의 글 검사(`text_unsafe`) | 감사 N2 | 검사 빼기 |
 | D18 | `failure: none`은 줄 끝 `· failure: none`만 | 감사 N5 | 아무 자리 허용 |
-| D19 | `approval.at`은 정확히 `YYYY-MM-DD` | 감사 N6 | 앞 10자만 |
-| D20 | 이 SPEC은 `draft`: 승인은 사용자의 선택(U-C)이라 구현 에이전트가 적지 않음 | 결정 U-C | 승인 기록 추가 |
+| D19 | `approval.at`은 시각 없이 날짜만, 정확히 `YYYY-MM-DD`(`2026-11-17T10:00Z`는 거절) | 감사 N6, 재감사 N-g | 앞 10자만 |
+| D20 | 이 SPEC의 승인은 사용자의 세션 선택 "승인"(2026-11-17); `digest`는 모든 수정 뒤 마지막에 계산 | 결정 U-C, 재감사 RB2 | `draft`로 되돌리고 `approval` 삭제 |
 | D21 | tip 병합 커밋에는 트레일러가 없음(병합 기본 메시지) | 지시는 새 커밋만 요구 | 다음 병합에 트레일러 |
+| D22 | 옛 `.moai-cli/specs/`는 `specs/`만 든 `.moai/`로 SPEC 하나씩 옮기고, 같은 id가 양쪽에 있으면 충돌로 이동 전체를 막음(아무것도 안 옮김) | 재감사 RB1 | 폴더째 이동(목적지 충돌로 중간 실패) |
+| D23 | `specs/` 옆 Finder `.DS_Store` 파일은 상태가 아님 | 재감사 N-c | 규칙에서 빼기 |
+| D24 | `go-state-plan`의 문장은 `specs/`만 든 `.moai/`가 있어도 같음(B1: `spec new`가 계획 답을 바꾸지 않음); 적용의 영수증 문장만 어느 `.moai/`인지 말함 | B1과 재감사 N-f | 계획 문장도 바꾸기 |
+| D25 | 되돌리기 계획은 `.moai/specs`에 `restored_to_moai_specs` 항목을 두고, 되돌리기는 그 항목이 있을 때만 `specs/`를 돌려놓음 | 재감사 N-e | 항목 없이 늘 돌려놓기 |
+| D26 | 기반 SPEC은 사용자의 세션 선택으로 revision 2로 다시 승인됨(그 SPEC의 D8) | 재감사 RB2 | revision 1과 그 승인으로 |
 
 ## Result
 

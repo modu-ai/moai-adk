@@ -2,10 +2,10 @@
 id: SPEC-20261117-sdd-foundation
 title: SDD 기반 — 2026-11-17 결정 기록과 SPEC 파일 git 추적
 status: approved
-revision: 1
+revision: 2
 created: 2026-11-17
 parent: null
-approval: {by: user, at: 2026-11-17, basis: "in-session selection: 제안대로 모두 진행 (SDD rollout steps 1-2)", digest: "sha256:a27bc85e848719f731a7929799026ff4e1376085eed3ccb12ff4eef15f22b5ba"}
+approval: {by: user, at: 2026-11-17, basis: "in-session selection 2026-11-17: revision 2로 올리고 지금 다시 승인 (Risks 절, IF 연결, AC-9 범위, digest 기록)", digest: "sha256:a27bc85e848719f731a7929799026ff4e1376085eed3ccb12ff4eef15f22b5ba"}
 ---
 
 ## Intent
@@ -123,6 +123,9 @@ REQ-7의 "secret-shaped"는 REQ-9의 목록이에요.
   통과하게 `## Risks` 절을 더하고, IF 요구 REQ-5·REQ-6을 `(REQ-3)`으로 연결하고, REQ-4 줄 끝에
   `failure: none`을 달고, AC-9의 "(전체)"를 `(REQ-1…REQ-10)`으로 바꾸고, `approval.digest`에 `moai spec show`가
   계산한 내용 digest를 적었어요. 요구·수용 기준 문장 자체는 바꾸지 않았어요. D2의 `null`은 이것으로 대체돼요.
+  사용자가 2026-11-17 세션 선택("revision 2로 올리고 지금 다시 승인")으로 이 내용을 revision 2로 다시
+  승인했어요: `revision: 2`, `approval.basis`가 그 선택이고, `approval.digest`는 모든 수정 뒤에 다시 계산한
+  값이에요. revision 1의 승인(D2, "제안대로 모두 진행")은 이것으로 대체돼요.
 
 ## Result
 
