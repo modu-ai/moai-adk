@@ -429,8 +429,8 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     use moai_cli::card::command as c;
     use moai_cli::card::dispatch as d;
     use moai_cli::card::work as w;
-    use moai_cli::ledger::workflow::CriterionChange;
     use moai_cli::ledger::command::resolve_home;
+    use moai_cli::ledger::workflow::CriterionChange;
     match args.action {
         Action::List {
             project,
@@ -442,9 +442,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             project,
             home,
         } => c::show(&project, &resolve_home(home)?, &card),
-        Action::Export { out, project, home } => {
-            c::export(&project, &resolve_home(home)?, &out)
-        }
+        Action::Export { out, project, home } => c::export(&project, &resolve_home(home)?, &out),
         Action::Add {
             title,
             body,
@@ -571,12 +569,10 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             let change = match (&evidence, &reason) {
                 (Some(evidence), None) => CriterionChange::Met { evidence },
                 (None, Some(reason)) => CriterionChange::Withdrawn { reason },
-                _ => {
-                    return Err(
-                        "card criterion refused: give --met --evidence REF or --withdraw --reason TEXT"
-                            .to_string(),
-                    )
-                }
+                _ => return Err(
+                    "card criterion refused: give --met --evidence REF or --withdraw --reason TEXT"
+                        .to_string(),
+                ),
             };
             w::criterion(
                 &project,

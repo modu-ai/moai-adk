@@ -46,8 +46,6 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             }
         }
     };
-    let table = args
-        .table
-        .unwrap_or_else(|| args.repo.join(TABLE_IN_REPO));
+    let table = args.table.unwrap_or_else(|| args.repo.join(TABLE_IN_REPO));
     Ok(report(&input, &args.repo, &table))
 }

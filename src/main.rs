@@ -267,8 +267,8 @@ enum Command {
     /// Wait for one of N machine-wide heavy-run slots, run COMMAND holding it, and exit with
     /// COMMAND's code (#2677). Same folder and lock as `tools/heavy_check_slot.py`; while
     /// waiting and on failure it prints the load averages and free disk space. The machine's
-    /// limits come from `limits.json` in the slot folder (defaults 3 slots, 50 GB, 80 %); a
-    /// flag only tightens them (#2930). Unix only.
+    /// limits come from `limits.json` in the slot folder (defaults 3 slots, 50 GB, 80 % swap on
+    /// Linux, 10 % memory free on macOS); a flag only tightens them (#2930). Unix only.
     HeavySlotAcquire {
         /// Slot count; only a value below `limits.json`'s (default 3) takes effect.
         #[arg(long)]
@@ -283,10 +283,16 @@ enum Command {
         /// in decimal GB; only a value above `limits.json`'s (default 50) takes effect.
         #[arg(long)]
         min_free_gb: Option<u64>,
-        /// Start nothing (exit 75) while swap use is above this percent; only a value below
-        /// `limits.json`'s (default 80) takes effect.
+        /// Start nothing (exit 75) while swap use is above this percent (Linux; macOS is
+        /// judged on memory pressure); only a value below `limits.json`'s (default 80) takes
+        /// effect.
         #[arg(long)]
         max_swap_pct: Option<u64>,
+        /// macOS: start nothing (exit 75) while the memory free percentage
+        /// (`kern.memorystatus_level`) is below this; only a value above `limits.json`'s
+        /// (default 10) takes effect. Critical memory pressure always refuses.
+        #[arg(long)]
+        min_mem_free_pct: Option<u64>,
         /// The heavy command and its arguments, after `--`.
         #[arg(last = true)]
         command: Vec<String>,
@@ -2633,6 +2639,7 @@ pub(crate) fn main() -> ExitCode {
         dir,
         min_free_gb,
         max_swap_pct,
+        min_mem_free_pct,
         command,
     }) = &cli.command
     {
@@ -2656,8 +2663,13 @@ pub(crate) fn main() -> ExitCode {
                 return ExitCode::from(moai_cli::heavy_slot::REFUSED);
             }
         };
-        let (max, limits, notes) =
-            moai_cli::heavy_slot::effective(file.as_ref(), *max, *min_free_gb, *max_swap_pct);
+        let (max, limits, notes) = moai_cli::heavy_slot::effective(
+            file.as_ref(),
+            *max,
+            *min_free_gb,
+            *max_swap_pct,
+            *min_mem_free_pct,
+        );
         for note in notes {
             eprintln!("{note}");
         }

@@ -412,6 +412,42 @@ class MachineLimitTest(unittest.TestCase):
         self.assertEqual(r.returncode, 75)
         self.assertRegex(r.stderr, r"is below 50 GB; swap use 95% is above 80%")
 
+    def test_c88_macos_is_judged_on_memory_pressure_not_swap(self):
+        """Card C-88: with memory readings (macOS) swap is shown only; level 2 starts, 4 is
+        refused; 10 % free starts, 9 % is refused; without them (Linux) swap still decides."""
+        for machine, extra, body, code, says in [
+            ("free_gb=1000,swap_pct=99,pressure=2,mem_free_pct=37", (), None, 0, []),
+            ("free_gb=1000,swap_pct=0,pressure=2,mem_free_pct=10", (), None, 0, []),
+            # Level 3, the last value under the critical level, starts (AUDIT B1).
+            ("free_gb=1000,swap_pct=99,pressure=3,mem_free_pct=37", (), None, 0, []),
+            ("free_gb=1000,swap_pct=99,pressure=4,mem_free_pct=37", (), None, 75,
+             ["memory pressure level 4 is at the critical level 4",
+              "swap use 99% (shown only; not a limit on macOS)"]),
+            ("free_gb=1000,swap_pct=99,pressure=2,mem_free_pct=9", (), None, 75,
+             ["memory free 9% is below 10%", "swap use 99% (shown only; not a limit on macOS)"]),
+            ("free_gb=1000,swap_pct=0,pressure=2,mem_free_pct=19", (), '{"min_mem_free_pct":20}',
+             75, ["memory free 19% is below 20%"]),
+            ("free_gb=1000,swap_pct=0,pressure=2,mem_free_pct=20", ("--min-mem-free-pct", "5"),
+             '{"min_mem_free_pct":20}', 0,
+             ["--min-mem-free-pct 5 is looser than limits.json (20); using 20"]),
+            ("free_gb=1000,swap_pct=0,pressure=2,mem_free_pct=14", ("--min-mem-free-pct", "15"),
+             None, 75, ["memory free 14% is below 15%"]),
+            ("free_gb=1000,swap_pct=0,pressure=2,mem_free_pct=15", ("--min-mem-free-pct", "15"),
+             None, 0, []),
+            ("free_gb=1000,swap_pct=99,pressure=1,mem_free_pct=50", ("--max-swap-pct", "10"),
+             None, 0, []),
+            ("free_gb=1000,swap_pct=81", ("--min-mem-free-pct", "90"), None, 75,
+             ["swap use 81% is above 80%"]),
+            ("free_gb=1000,swap_pct=80", ("--min-mem-free-pct", "90"), None, 0, []),
+        ]:
+            self.limits(body)
+            r = self.run_python(machine, *extra)
+            self.assertEqual(r.returncode, code, (machine, extra, r.stderr))
+            for want in says:
+                self.assertIn(want, r.stderr, (machine, extra))
+            self.assertEqual(self.ran(), code == 0, machine)
+            self.limits(None)
+
     def limits(self, body):
         """Write `<slots>/limits.json` (#2930 R-2), or remove it for None."""
         path = self.folder / "limits.json"
@@ -487,6 +523,18 @@ class MachineLimitTest(unittest.TestCase):
             ("free_gb=61,swap_pct=0", ("--min-free-gb", "61"), '{"min_free_gb":50}'),
             ("free_gb=1000,swap_pct=81", ("--max-swap-pct", "100"), '{"max_swap_pct":80}'),
             ("free_gb=1000,swap_pct=80", ("--max-swap-pct", "100"), '{"max_swap_pct":80}'),
+            # Card C-88: memory pressure (macOS) at its edges, swap shown only.
+            ("free_gb=1000,swap_pct=99,pressure=2,mem_free_pct=10", (), None),
+            ("free_gb=1000,swap_pct=99,pressure=3,mem_free_pct=37", (), None),
+            ("free_gb=1000,swap_pct=99,pressure=4,mem_free_pct=37", (), None),
+            ("free_gb=1000,swap_pct=99,pressure=2,mem_free_pct=9", (), None),
+            ("free_gb=49,swap_pct=0,pressure=4,mem_free_pct=9", (), None),
+            ("free_gb=1000,swap_pct=0,pressure=2,mem_free_pct=19", (), '{"min_mem_free_pct":20}'),
+            ("free_gb=1000,swap_pct=0,pressure=2,mem_free_pct=20", ("--min-mem-free-pct", "5"),
+             '{"min_mem_free_pct":20}'),
+            ("free_gb=1000,swap_pct=0,pressure=2,mem_free_pct=14", ("--min-mem-free-pct", "15"),
+             None),
+            ("free_gb=1000,swap_pct=81", ("--min-mem-free-pct", "90"), None),
             ("nothing=1", (), None),
         ] + [(ROOMY, (), body) for _, body in BAD_LIMITS_FILES]
         for machine, extra, body in cases:

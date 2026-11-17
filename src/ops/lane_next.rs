@@ -85,20 +85,18 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         })
         .flatten();
     // The count saved so far, so a `--wait` call stops at the Nth empty read in a row.
-    let budget =
-        moai_cli::lane_idle::budget(anchor.as_deref(), &args.lane, &args.repo, max_empty);
+    let budget = moai_cli::lane_idle::budget(anchor.as_deref(), &args.lane, &args.repo, max_empty);
     let mut v = match &args.snapshot {
         Some(file) => {
             let bytes = std::fs::read(file).map_err(|e| format!("snapshot unreadable: {e}"))?;
             let mut snap: moai_cli::lane_next::Snapshot =
                 serde_json::from_slice(&bytes).map_err(|e| format!("snapshot invalid: {e}"))?;
             match &store {
-                Some(Ok(dir)) => moai_cli::lane_proposal::decide_and_record(
-                    dir,
-                    &args.lane,
-                    &mut snap,
-                    || SystemClock.now(),
-                ),
+                Some(Ok(dir)) => {
+                    moai_cli::lane_proposal::decide_and_record(dir, &args.lane, &mut snap, || {
+                        SystemClock.now()
+                    })
+                }
                 _ => moai_cli::lane_next::decide(&args.lane, &snap),
             }
         }

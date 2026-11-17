@@ -24,5 +24,5 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         &args.package,
         &args.agents,
     )?)
-        .map_err(|_| "encode failed".into())
+    .map_err(|_| "encode failed".into())
 }

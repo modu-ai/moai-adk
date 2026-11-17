@@ -364,7 +364,9 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
             "internal/core-rules",
             "internal/test-design",
             "internal/git-safety",
-            "internal/tdd-results"
+            "internal/tdd-results",
+            // C-77: the pre-PR self-check list, run before the change goes to the audit.
+            "internal/self-check"
         ]
     );
     assert_eq!(
@@ -462,6 +464,8 @@ fn internal_references_say_when_to_read_them() {
         "lenses",
         // C-69: the three versioning schemes the PROJECT interview offers.
         "versioning",
+        // C-77: the checks an implementer runs before asking for an audit.
+        "self-check",
     ];
     let mut found: Vec<String> = std::fs::read_dir(package().join("references/internal"))
         .unwrap()
@@ -843,4 +847,84 @@ fn git_safety_tells_each_host_how_to_work_in_a_worktree() {
     ] {
         assert!(text.contains(line), "git-safety.md lacks: {line}");
     }
+}
+
+/// Card C-77: the pre-PR self-check list ships in the package, holds the two rules that turned
+/// pull requests red most often on their own (the whole, unfiltered `--bin moai` run that
+/// carries the help rules, and the package file bound of `profile::LIMIT`), names its one
+/// local runner, and is named by `moai-impl` (its `reads:` and its Verification) and by the
+/// rules every chain follows.
+#[test]
+fn self_check_lists_the_pre_pr_checks_and_is_named_by_impl_and_the_chains() {
+    let read = |rel: &str| std::fs::read_to_string(package().join(rel)).unwrap();
+    let text = read("references/internal/self-check.md");
+    let manifest = read("references/source-manifest.json");
+    assert!(manifest.contains("\"references/internal/self-check.md\""));
+    for needle in [
+        "`cargo test --offline --locked --bin moai` and `cargo test --offline --locked --bin moai-cli`, whole: never with a test-name filter",
+        "`moai package-inspect skills/moai` exits 0 and no package file is over 65,536 bytes (`profile::LIMIT`)",
+        "`cargo clippy --offline --locked --all-targets -- -D warnings`",
+        "`cargo fmt --check`",
+        "`--test git_env_scrub`",
+        "`--test home_isolation_scan`",
+        "`--test ac_command_lint`",
+        "`moai pr-self-audit-check --file BODY.md`",
+        "`audit-tier: ",
+        "skip it with the reason",
+        "`tools/self_check.sh`",
+        // Audit of 421b11a2c9, N1-N6.
+        "`git diff --check <base>...HEAD`",
+        "`--full-python`",
+        "`rustfmt --check --edition 2021 src/ops/*.rs`",
+        "`exit=75 slot-refused (not run)`",
+        "`tools/source_manifest.py write`, then `tools/source_manifest.py check`",
+        "card branches carry no claim token until C-53 S3",
+        "one mutation per new guard, the riskiest first; at most 5 for audit tier 1 and 12 for tier 2",
+    ] {
+        assert!(text.contains(needle), "self-check.md lacks {needle:?}");
+    }
+    // The bound in the text is the bound in the code.
+    let profile =
+        std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("src/profile.rs"))
+            .unwrap();
+    assert!(profile.contains("pub const LIMIT: u64 = 65536;"));
+
+    let defs = package_agents(&agents(), &package()).unwrap();
+    let imp = defs.iter().find(|d| d.name == "moai-impl").unwrap();
+    assert!(imp.reads.contains(&"internal/self-check".to_string()));
+    assert!(
+        imp.body.lines().any(|l| l.starts_with("- ")
+            && l.contains("`internal/self-check`")
+            && l.contains("`Not run`")),
+        "moai-impl Verification does not name internal/self-check"
+    );
+    for d in defs.iter().filter(|d| d.name != "moai-impl") {
+        assert!(
+            !d.reads.contains(&"internal/self-check".to_string()),
+            "{}",
+            d.name
+        );
+    }
+    // Audit N4: the list sends moai-impl only to references its `reads:` gives it, since the
+    // rendered agent says "Read no other internal reference".
+    let mut named = 0;
+    for (at, _) in text.match_indices("`internal/") {
+        let entry = &text[at + 1..];
+        let entry = &entry[..entry.find('`').unwrap()];
+        named += 1;
+        assert!(
+            imp.reads.iter().any(|r| r == entry),
+            "self-check.md names {entry}, which moai-impl does not read"
+        );
+    }
+    assert!(named >= 1, "the internal/ mentions moved");
+    let chains = read("references/chains/index.md");
+    let rules = chains.split("Rules for every chain:").nth(1).unwrap();
+    assert!(
+        rules.lines().any(|l| l.starts_with("- ")
+            && l.contains("`internal/self-check`")
+            && l.contains("before")
+            && l.contains("audit")),
+        "chains/index.md rules do not name internal/self-check"
+    );
 }

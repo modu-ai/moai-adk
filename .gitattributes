@@ -1,0 +1,4 @@
+# The manifest's sha256 lines are rebuilt on merge by tools/merge_driver_manifest.py once a
+# clone registers it (`python3 -I tools/merge_driver_manifest.py --install`); unregistered,
+# git merges the file as text.
+skills/moai/references/source-manifest.json merge=moai-manifest
