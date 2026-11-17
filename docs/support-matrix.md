@@ -8,18 +8,21 @@
 
 rc.1의 지원 대상은 **Darwin/arm64(`aarch64-apple-darwin`) × Claude Code, Darwin/arm64 × Codex** 두 조합뿐이다(사용자 결정 P04, #2262). 아래 표에서 "지원 대상"은 범위를 정한 것이지 지원 보증이 아니다. 보증은 passed receipt가 있는 행만 하고(RL-10), 두 조합의 host 로딩 E2E(T2)는 receipt가 오기 전까지 `not_run`이다.
 
-| 조합 | rc.1 범위 | 현재 결과 |
+**지원 플랫폼(사용자 결정 2026-11-17, `SPEC-20261117-supported-platforms`)**: "windows, macOS 실리콘, linux_x86_64 이렇게 제공하자. claude code, codex에서 지원하는 환경으로 동일하게 지원하자." 지원 플랫폼은 macOS arm64(`aarch64-apple-darwin`), Linux x86_64(`x86_64-unknown-linux-gnu`), Windows x86_64(`x86_64-pc-windows-msvc`) 세 개다. Intel macOS와 Linux arm64는 지원하지 않는다: CI target에서 빠졌고, 설치 스크립트(`install/install.sh`, `install/install.ps1`)는 "Unsupported platform"을 출력하고 0이 아닌 코드로 끝난다. 릴리스(dist) target 목록은 별도 사용자 선택이라 이 변경에서 바꾸지 않았다(`dist-workspace.toml`은 아직 `aarch64-apple-darwin`만). 지원 플랫폼도 host 지원 판정은 아래 receipt 규칙(RL-10)을 따른다.
+
+| 조합 | 범위 | 현재 결과 |
 | --- | --- | --- |
 | Darwin/arm64 × Claude Code | 지원 대상 | T2 not_run(AC-08C-3·6·8 절반), 정적 검증 AC-08C-5만 passed |
 | Darwin/arm64 × Codex | 지원 대상 | T2 not_run(AC-08C-4) |
-| Darwin/x86_64(`x86_64-apple-darwin`, Tier 2) | 미지원(후속) | host 측정 없음. CI check set만 측정(아래 "CI OS matrix") |
-| Linux x86_64·arm64(ubuntu-24.04, ubuntu-24.04-arm) | 미지원(후속) | host 측정 없음. CI check set만 측정(아래 "CI OS matrix") |
-| Windows(windows-2025) | 빌드 + self-replace 구현만(결정 01:1x(11-09), E3 #2195) | **not_run** — CI `windows-build` job은 `--all-targets`로 라이브러리·`moai-cli` binary·portable 시험 target을 컴파일한다. 시험 실행·실행 중 교체·host 로딩은 측정하지 않음 |
+| Linux x86_64(ubuntu-24.04) | 지원 플랫폼(2026-11-17), host 측정 전 | host 측정 없음. CI check set만 측정(아래 "CI OS matrix") |
+| Windows x86_64(windows-2025) | 지원 플랫폼(2026-11-17), host 측정 전. CI는 빌드만(결정 01:1x(11-09), E3 #2195) | **not_run** — CI `windows-build` job은 `--all-targets`로 라이브러리·`moai-cli` binary·portable 시험 target을 컴파일한다. 시험 실행·실행 중 교체·host 로딩은 측정하지 않음(Windows 시험 실행은 후속 조각) |
+| Darwin/x86_64(`x86_64-apple-darwin`, Intel Mac) | 미지원(2026-11-17 결정) | CI target에서 빠짐. 설치 스크립트가 거절 |
+| Linux arm64(`aarch64-unknown-linux-gnu`) | 미지원(2026-11-17 결정) | CI target에서 빠짐. 설치 스크립트가 거절 |
 | ZCode·그 밖의 host | 미지원(후속) | 측정하지 않음 |
 
 ## 조합 범위 (P12)
 
-RC1의 host 실측 조합은 개발 Mac 단일이다: Darwin / arm64 (Rust triple `aarch64-apple-darwin`, Tier 1). 나머지 OS·arch·mode의 host 항목은 전부 `not_run`이다(숨김 없음). rc.2 E2(#2194)부터 `ci`(#2563 전 이름 `rc-ci`)가 결정 01:1x(11-09)의 네 target(Linux x86_64·arm64, macOS arm64·x86_64)에서 check set을 돌린다. 사용자 결정 U10(#2554)부터 PR 에서는 linux-x86_64 만 돌고, 네 target 과 `windows-build` 는 병합하는 push(`v2026.11.0`) 실행에서 같은 check set 으로 돈다. 그 결과는 아래 "CI OS matrix" 절에 따로 적는다. CI check set 통과는 host 지원 판정(receipt)이 아니라서 위 지원 행에 더하지 않는다.
+RC1의 host 실측 조합은 개발 Mac 단일이다: Darwin / arm64 (Rust triple `aarch64-apple-darwin`, Tier 1). 나머지 OS·arch·mode의 host 항목은 전부 `not_run`이다(숨김 없음). rc.2 E2(#2194)부터 `ci`(#2563 전 이름 `rc-ci`)가 결정 01:1x(11-09)의 네 target(Linux x86_64·arm64, macOS arm64·x86_64)에서 check set을 돌렸다. 사용자 결정 U10(#2554)부터 PR 에서는 linux-x86_64 만 돌고, 나머지 target 과 `windows-build` 는 병합하는 push(`v2026.11.0`) 실행에서 같은 check set 으로 돈다. 2026-11-17 지원 플랫폼 결정(`SPEC-20261117-supported-platforms`)부터 target은 linux-x86_64(PR + 병합 뒤), macos-arm64(병합 뒤), `windows-build`(병합 뒤, 빌드만)이고, Linux arm64와 macOS x86_64는 `ci`·`candidate` workflow에서 빠졌다. 필수 check 이름 `ci`는 그대로다. 그 결과는 아래 "CI OS matrix" 절에 따로 적는다. CI check set 통과는 host 지원 판정(receipt)이 아니라서 위 지원 행에 더하지 않는다.
 
 ## 지원 행 (passed receipt 기반 — 6행)
 
@@ -40,7 +43,8 @@ RC1의 host 실측 조합은 개발 Mac 단일이다: Darwin / arm64 (Rust tripl
 | Darwin/arm64 | Claude Code | local | 권한 거부 시 apply 차단·트리 불변 (AC-08C-6) | not_run | 동일(운영자 실측 대기) |
 | Darwin/arm64 | Codex | local | 명시 호출이 SETUP route 도달 (AC-08C-4) | not_run | `CODEX_API_KEY` 필요(운영자 실측 대기) |
 | Darwin/arm64 | Claude Code | local | clean clone READ (AC-08C-8 T2 절반) | not_run | 운영자 실측 대기 |
-| ubuntu-24.04 / arm 변형 / Darwin x86_64 | — | local | host 항목 전체 | not_run | 미지원(후속) — P04로 rc.1 범위 밖. host E2E receipt 없음(CI check set은 아래 "CI OS matrix" 절, host 판정 아님) |
+| ubuntu-24.04 | — | local | host 항목 전체 | not_run | 지원 플랫폼(2026-11-17)이지만 host E2E receipt 없음 — P04로 rc.1 범위 밖(CI check set은 아래 "CI OS matrix" 절, host 판정 아님) |
+| ubuntu-24.04-arm / Darwin x86_64 | — | local | host 항목 전체 | not_run | 미지원(2026-11-17 결정, `SPEC-20261117-supported-platforms`) — 측정하지 않음 |
 | windows-2025 | — | local | 빌드(`cargo build --offline --locked --all-targets`, 라이브러리·binary·portable 시험 target 컴파일) | 병합 뒤 push 실행의 `windows-build` 참조(#2554 이전에는 PR 실행) | E3 #2195 — 컴파일 증거일 뿐 시험 실행이나 host 지원 보증이 아니다 |
 | windows-2025 | — | local | 첫 시험 target 컴파일(`--all-targets`) | failed(run `42707532063`, 수리 전 이력) | 당시 `src/agents.rs:1127·1166·1180`, `src/claude.rs:1149`의 Unix 전용 코드가 조건부 컴파일되지 않아 실패했다. 수리에서는 권한 시험과 symlink 구간만 `cfg(unix)`로 제한하고 `--all-targets` 범위를 유지한다. 수리 후보의 결과는 PR의 최신 run으로 확인한다 |
 | windows-2025 | — | local | 추가 integration 시험 컴파일(`--all-targets`) | failed(run `42716692062`, head `1a29cfb4d`, 수리 중 이력) | library 수리 뒤 `tests/apply_receipt.rs`의 Unix chmod 시험에서 실패했다. 권한 시험만 Unix로 제한하고, context·baseline·tree digest·identity의 혼합 시험은 Unix symlink 구간만 제한하여 portable 검사를 유지한다. 최종 Windows 빌드 결과는 PR의 후속 run으로 확인한다 |
@@ -53,7 +57,7 @@ RC1의 host 실측 조합은 개발 Mac 단일이다: Darwin / arm64 (Rust tripl
 
 입력은 GitHub Actions `ci`(옛 이름 `rc-ci`) run의 job 결과와 job log뿐이다. 이 절의 행은 host E2E receipt가 아니므로 지원 행 수(RL-10)에 들어가지 않는다. 결론 칸은 GitHub job 결론(`success`/`failure`)을 그대로 적는다.
 
-run `42619829090`(PR #2309, `pull_request`, head `15d8178bc2d9a8dd1ba16bfaae54246bd1ecb099`, 2026-11-09). 모든 runner는 공개 저장소용 표준 GitHub-hosted runner(무료)다.
+run `42619829090`(PR #2309, `pull_request`, head `15d8178bc2d9a8dd1ba16bfaae54246bd1ecb099`, 2026-11-09). 모든 runner는 공개 저장소용 표준 GitHub-hosted runner(무료)다. 아래 표는 그날의 측정 기록이다: Linux arm64와 macOS x86_64 행은 2026-11-17 지원 플랫폼 결정으로 CI에서 빠진 target의 이력이다.
 
 | target | runner label | Rust host(`rustup show`) | cargo test(`--offline --locked`) | python unittest | macOS 전용 Rust 시험 2개 | darwin 한정 Python 시험 7개 | job 결론 | job id | 대기 / 실행 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
