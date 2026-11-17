@@ -14,7 +14,7 @@
 //!
 //! **Whose variable.** The variables relocate the folders of the account that runs the host,
 //! so they count only for that account's own home: the home in the password database (Unix),
-//! else `$HOME`. A home that is not it — a temporary HOME of a test, another `--home` — keeps
+//! else [`crate::key_vault::home`] (`HOME`, `USERPROFILE` on Windows). A home that is not it — a temporary HOME of a test, another `--home` — keeps
 //! its folders under it, whatever the variables say. So a process started with a temporary
 //! HOME but the caller's `CLAUDE_CONFIG_DIR` can never write into the caller's real config
 //! folder. `MOAI_ACCOUNT_HOME` names the account home instead (tests set it to their
@@ -108,7 +108,8 @@ pub fn resolve(host: Host, home: &Path) -> Result<PathBuf, String> {
         .filter(|v| !v.is_empty())
         .map(PathBuf::from)
         .or_else(account_home)
-        .or_else(|| get("HOME").filter(|v| !v.is_empty()).map(PathBuf::from));
+        // Without a password database: the one HOME rule (`HOME`, `USERPROFILE` on Windows).
+        .or_else(|| crate::key_vault::home().ok());
     resolve_with(host, home, account.as_deref(), get)
 }
 

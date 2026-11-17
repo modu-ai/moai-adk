@@ -59,7 +59,7 @@ Claude Code는 `CLAUDE_CONFIG_DIR`, Codex는 `CODEX_HOME`으로 사용자 폴더
   verify: `cargo test --locked --offline --test claude_settings_cli --test codex_config_cli`
 - AC-7 (REQ-8): Go 정리·옛 스킬 검사 시험이 그대로 통과하고 그 뿌리 표는 바뀌지 않아요.
   verify: `cargo test --locked --offline --test update_cleanup_cli`;
-  `git diff 25881165be -- src/skills_legacy.rs src/baseline.rs` → 출력 없음
+  `git diff origin/v2026.11.0...HEAD -- src/skills_legacy.rs src/baseline.rs` → 출력 없음
 - AC-8 (REQ-9): 저장소의 SPEC이 모두 통과해요.
   verify: `cargo test --locked --offline --test spec_cli the_repository_specs_pass_check`
 - AC-9 (REQ-1…REQ-9): 이웃 검사가 모두 통과해요.
