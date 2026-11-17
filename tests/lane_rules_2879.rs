@@ -29,12 +29,16 @@ fn a_lane_cleans_its_card_after_the_closing_table() {
             "`moai worktree-gc-plan --integration-ref origin/<base> --worktree <the card's worktree> .`",
             "then `moai worktree-gc-apply` with the same arguments, its `plan_digest`",
             "never forced",
-            "Keep the lane's one build folder (`moai lane-env`)",
-            // C-53 S5 repair (audit B1): a lane runs no formal audit, so its one detached audit
-            // worktree is gone (was: "never in a new worktree per audit (Issue #2879)"); its
-            // self-audit builds into the lane's one build folder.
-            "Every build, a self-audit's too, builds into the lane's one build folder (`moai lane-env`)",
+            // C-82 (user decision 2026-11-17): one build folder per worktree under
+            // `~/.moai/build/`, emptied when the card is done (was: "Keep the lane's one build
+            // folder (`moai lane-env`)" and the self-audit building into that lane folder).
+            "Empty the card's build folder (`internal/build-folder`).",
+            "Every build, a self-audit's too, goes to the worktree's build folder (`internal/build-folder`).",
         ],
+    );
+    assert!(
+        !agent.contains("lane-env"),
+        "mode-agent.md still names the per-lane folder"
     );
 }
 

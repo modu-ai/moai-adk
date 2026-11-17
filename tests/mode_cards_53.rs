@@ -473,7 +473,8 @@ fn the_round_keeps_audits_with_the_leader_and_moves_on_from_a_card_in_review() {
         ),
         (
             "heavy-checks",
-            "Every build, a self-audit's too, builds into the lane's one build folder",
+            // C-82: the worktree's build folder (was: the lane's one build folder).
+            "Every build, a self-audit's too, goes to the worktree's build folder",
         ),
         (
             "report",
