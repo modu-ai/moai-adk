@@ -418,6 +418,8 @@ class MachineLimitTest(unittest.TestCase):
         for machine, extra, body, code, says in [
             ("free_gb=1000,swap_pct=99,pressure=2,mem_free_pct=37", (), None, 0, []),
             ("free_gb=1000,swap_pct=0,pressure=2,mem_free_pct=10", (), None, 0, []),
+            # Level 3, the last value under the critical level, starts (AUDIT B1).
+            ("free_gb=1000,swap_pct=99,pressure=3,mem_free_pct=37", (), None, 0, []),
             ("free_gb=1000,swap_pct=99,pressure=4,mem_free_pct=37", (), None, 75,
              ["memory pressure level 4 is at the critical level 4",
               "swap use 99% (shown only; not a limit on macOS)"]),
@@ -523,6 +525,7 @@ class MachineLimitTest(unittest.TestCase):
             ("free_gb=1000,swap_pct=80", ("--max-swap-pct", "100"), '{"max_swap_pct":80}'),
             # Card C-88: memory pressure (macOS) at its edges, swap shown only.
             ("free_gb=1000,swap_pct=99,pressure=2,mem_free_pct=10", (), None),
+            ("free_gb=1000,swap_pct=99,pressure=3,mem_free_pct=37", (), None),
             ("free_gb=1000,swap_pct=99,pressure=4,mem_free_pct=37", (), None),
             ("free_gb=1000,swap_pct=99,pressure=2,mem_free_pct=9", (), None),
             ("free_gb=49,swap_pct=0,pressure=4,mem_free_pct=9", (), None),

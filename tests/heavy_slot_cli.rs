@@ -720,6 +720,14 @@ fn macos_is_judged_on_memory_pressure_not_swap() {
             true,
             &[][..],
         ),
+        // Level 3 is the last value under the critical level: it starts (AUDIT B1).
+        (
+            "free_gb=1000,swap_pct=99,pressure=3,mem_free_pct=37",
+            None,
+            &[][..],
+            true,
+            &[][..],
+        ),
         (
             "free_gb=1000,swap_pct=99,pressure=4,mem_free_pct=37",
             None,

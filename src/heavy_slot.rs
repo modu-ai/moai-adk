@@ -498,7 +498,8 @@ mod sys {
 
     /// macOS memory readings (card C-88), both by `sysctlbyname`, no child process:
     /// `kern.memorystatus_vm_pressure_level` and `kern.memorystatus_level`, the "System-wide
-    /// memory free percentage" that `memory_pressure` prints (both read 37 on 2026-11-17).
+    /// memory free percentage" that `memory_pressure` prints (on 2026-11-17 the pressure level
+    /// read 2, and `kern.memorystatus_level` and `memory_pressure -Q` both read 37).
     #[cfg(target_os = "macos")]
     pub fn memory() -> Option<super::Memory> {
         fn int(name: &std::ffi::CStr) -> Option<u64> {
