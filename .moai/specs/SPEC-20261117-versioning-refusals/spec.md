@@ -106,3 +106,13 @@ cargo는 `moai heavy-slot-acquire` 슬롯 안에서 한 번에 하나.
   "U+2028". 되돌린 뒤 exit 0.
 
 실행 안 함: 전체 `cargo test`, Linux·Windows.
+
+감사(`b177a50029`) FAIL 수리: tip `d032d0be1f` 병합(`57b50eac73`, 충돌 없음, manifest `write` 변경 없음) 뒤 `5c87e5b8e9`.
+- AC-6: met — 라이선스 파일 sha256 `e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96`(받은 원본과 `cmp`
+  같음); `git ls-files skills | grep -c unicode` → `0`; `--lib profile::` 0(10). 발췌의 데이터 절은 원본과 `diff` 같음.
+- N1·N2 시험은 이미 있는 동작을 고정하므로 RED 대신 mutation(커밋 뒤, 각각 되돌림): portable 목록에서 `\`·`:\` 삭제 →
+  exit 101 "a backslash path in the custom text"; `project_plan.md`에서 U+3164 삭제 → exit 101 "project_plan.md lacks
+  U+3164"; 발췌 머리의 라이선스 파일 이름 삭제 → exit 101. 되돌린 뒤 `versioning::` 0(20), `profile::` 0(10).
+- 다시 돈 검사: `versioning_cli` 0(15), `agent_defs_package` 0(18), `product_cli` 0(75), `--bin moai` 0(27), `cargo fmt --check` 0,
+  clippy `-D warnings` 0, Python `repo_scans`·`ci_scope`·`skill_references`·`source_manifest` OK, manifest check 0,
+  `moai spec check --all` 0(SPEC 10개, errors 0, warnings 0), `git diff --check` 0.
