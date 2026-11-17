@@ -95,7 +95,10 @@ fn the_reference_names_only_commands_this_build_has() {
     for line in lines {
         let planned = line.contains("planned") || line.contains("once that change lands");
         if available {
-            assert!(!planned, "`moai card spec` exists: say it is available: {line}");
+            assert!(
+                !planned,
+                "`moai card spec` exists: say it is available: {line}"
+            );
         } else {
             assert!(
                 line.contains("planned") && line.contains("once that change lands"),
