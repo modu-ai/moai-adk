@@ -57,7 +57,10 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         .ok_or_else(|| format!("invalid --now `{now_text}`: expected YYYY-MM-DDTHH:MM:SSZ"))?;
     now_not_ahead(&now_text, now, SystemClock.now())?;
     if args.issue <= 0 || args.claim <= 0 || args.request <= 0 || args.lane.is_empty() {
-        return Err("invalid claim-timeout-check: --issue, --claim, --request and --lane are required".into());
+        return Err(
+            "invalid claim-timeout-check: --issue, --claim, --request and --lane are required"
+                .into(),
+        );
     }
     // The same OWNER/REPO reading as `claim-verify` (flag first, then `origin`).
     let request = moai_cli::claim_verify::request_from_flags(

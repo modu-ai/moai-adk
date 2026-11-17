@@ -7,7 +7,8 @@
 #   tools/local_check.sh                       run every step, stop at the first failure
 #   LOCAL_CHECK_DRY_RUN=1 tools/local_check.sh  print the steps and the final line, run nothing
 #
-# Steps: fetch, test (cargo-nextest), doctest, clippy, fmt, unittest, diff-check.
+# Steps: fetch, test (cargo-nextest), doctest, clippy, fmt, fmt-ops (rustfmt on src/ops/*.rs,
+# which `cargo fmt` does not reach), unittest, diff-check.
 # Skipped, because they set up the CI machine rather than check the tree: checkout, the
 # docs-only scope step (tools/ci_scope.py; a local run always takes the full set), Python
 # 3.12 + PyYAML, ripgrep, the Rust toolchain (rust-toolchain.toml), the dependency cache,
@@ -365,6 +366,10 @@ step heavy test bash -c 'RUST_MIN_STACK=8388608 cargo nextest run --offline --lo
 step heavy doctest bash -c 'RUST_MIN_STACK=8388608 cargo test --offline --locked --doc 2>&1 | tee ci-doctest.log; exit "${PIPESTATUS[0]}"'
 step heavy clippy cargo clippy --offline --locked --all-targets -- -D warnings
 step light fmt cargo fmt --check
+# C-75 S0: build.rs includes src/ops/*.rs through `#[path]` in a file it writes into
+# OUT_DIR, so `cargo fmt` never reaches them; rustfmt checks them here with the crate's
+# edition (Cargo.toml). With no file the pattern reaches rustfmt as is, and that fails.
+step light fmt-ops bash -c 'rustfmt --check --edition 2021 src/ops/*.rs'
 step light unittest bash -c "python3 -m unittest discover -v -s tests -p '*_test.py' 2>&1 | tee ci-unittest.log; exit \"\${PIPESTATUS[0]}\""
 step light diff-check git diff --check "${diff_range}"
 

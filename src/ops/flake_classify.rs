@@ -26,15 +26,23 @@ pub const OPERATION: &str = "flake.classify";
 const LIMIT: u64 = 64 * 1024 * 1024;
 
 fn read(path: &PathBuf) -> Result<String, String> {
-    let meta = std::fs::metadata(path).map_err(|_| format!("log unavailable: {}", path.display()))?;
+    let meta =
+        std::fs::metadata(path).map_err(|_| format!("log unavailable: {}", path.display()))?;
     if !meta.is_file() || meta.len() > LIMIT {
-        return Err(format!("log must be a regular file up to 64 MiB: {}", path.display()));
+        return Err(format!(
+            "log must be a regular file up to 64 MiB: {}",
+            path.display()
+        ));
     }
     let bytes = std::fs::read(path).map_err(|_| format!("log unreadable: {}", path.display()))?;
     Ok(String::from_utf8_lossy(&bytes).into_owned())
 }
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
-    let c = moai_cli::flake::classify(&read(&args.failed)?, &read(&args.later)?, args.job.as_deref());
+    let c = moai_cli::flake::classify(
+        &read(&args.failed)?,
+        &read(&args.later)?,
+        args.job.as_deref(),
+    );
     serde_json::to_value(c).map_err(|_| "encode failed".into())
 }
