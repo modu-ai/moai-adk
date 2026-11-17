@@ -11,6 +11,7 @@ use moai_cli::ledger::reservation::{
     self, FenceError, ReserveError, MAX_FIELD_LEN, MAX_HOLDER_LEN, MAX_LEASE_SECS, MAX_PATTERN_LEN,
     MAX_SCOPE_PATTERNS, MIN_LEASE_SECS,
 };
+use moai_cli::ledger::workflow::{self, WorkflowError};
 use moai_cli::ledger::{self, LedgerError, WriteLedger};
 use moai_cli::scope;
 use rusqlite::Connection;
@@ -882,20 +883,21 @@ fn release_gives_the_card_back_unless_it_moved_on() {
         None
     );
 
+    // `hold` stands for "moved on" here; `review` is the one state a release refuses (below).
     let moved = ready_card(&mut w);
     take(&mut w, moved, "a", &zone(moved)).unwrap();
     sql(
         &mut w,
-        &format!("UPDATE card SET state = 'review' WHERE card_id = {moved}"),
+        &format!("UPDATE card SET state = 'hold' WHERE card_id = {moved}"),
     );
     let released = reservation::release(&mut w, moved, "a", 1).unwrap();
     assert_eq!(
-        released.card_state, "review",
+        released.card_state, "hold",
         "a card that moved on keeps its state"
     );
     assert_eq!(
         card_state(reader(&home).conn(), moved),
-        ("review".to_string(), 1)
+        ("hold".to_string(), 1)
     );
     assert_eq!(
         rows(reader(&home).conn(), moved),
@@ -903,7 +905,187 @@ fn release_gives_the_card_back_unless_it_moved_on() {
     );
     let ev = events(reader(&home).conn(), "release");
     assert_eq!(ev.len(), 2);
-    assert_eq!(ev[1].2["card_state"], "review");
+    assert_eq!(ev[1].2["card_state"], "hold");
+}
+
+// ---- release and review (card C-68 N-a) -----------------------------------------------------------
+
+fn event_count(home: &TempHome) -> i64 {
+    reader(home)
+        .conn()
+        .query_row("SELECT count(*) FROM event", [], |r| r.get(0))
+        .unwrap()
+}
+
+/// The invariant of C-68 N-a: a `review` card has a `held` reservation.
+fn assert_review_is_held(home: &TempHome, card: i64, what: &str) {
+    let r = reader(home);
+    let (state, _) = card_state(r.conn(), card);
+    if state == "review" {
+        let current = reservation::current(r.conn(), card).unwrap();
+        assert_eq!(
+            current.as_ref().map(|c| c.status.as_str()),
+            Some("held"),
+            "{what}: C-{card} is `review` with no live reservation"
+        );
+    }
+}
+
+#[test]
+fn release_refuses_a_review_card_and_writes_nothing() {
+    let (home, mut w) = setup();
+    let card = ready_card(&mut w);
+    take(&mut w, card, "a", &zone(card)).unwrap();
+    workflow::review(&mut w, card, "a", 1).unwrap();
+    let before = event_count(&home);
+
+    // Review first, release second: the holder is refused, with the way out in the sentence.
+    let err = reservation::release(&mut w, card, "a", 1).unwrap_err();
+    assert_eq!(
+        err,
+        FenceError::CardInReview {
+            card_id: card,
+            generation: 1,
+            lease_live: true
+        }
+    );
+    assert_eq!(err.code(), "card_in_review");
+    let text = err.to_string();
+    assert!(text.starts_with("card conflict in state: "), "{text}");
+    assert!(
+        text.contains(&format!("card reopen C-{card} --generation 1")),
+        "{text}"
+    );
+    assert_eq!(event_count(&home), before, "nothing was written");
+    assert_eq!(
+        card_state(reader(&home).conn(), card),
+        ("review".to_string(), 1)
+    );
+    assert_eq!(
+        rows(reader(&home).conn(), card),
+        vec![(1, "a".to_string(), "held".to_string())]
+    );
+
+    // Someone who is not the holder gets the fence refusal and its event, not the state
+    // sentence: the fence is checked first.
+    assert!(matches!(
+        reservation::release(&mut w, card, "b", 1).unwrap_err(),
+        FenceError::WrongHolder { .. }
+    ));
+    assert!(matches!(
+        reservation::release(&mut w, card, "a", 2).unwrap_err(),
+        FenceError::UnknownGeneration { .. }
+    ));
+    let rejects = events(reader(&home).conn(), "fence_reject");
+    assert_eq!(rejects.len(), 2);
+    assert_eq!(rejects[0].2["op"], "release");
+    assert_eq!(rejects[0].2["reason"], "wrong_holder");
+    assert_eq!(rejects[1].2["reason"], "unknown_generation");
+    assert_eq!(event_count(&home), before + 2);
+
+    // A lease that ended does not open the way either: the card would still be stranded. The
+    // sentence then does not send the holder to `card reopen`, which needs a live lease
+    // (card C-53 audit N1).
+    sql(
+        &mut w,
+        &format!("UPDATE reservation SET lease_until = 1 WHERE card_id = {card}"),
+    );
+    let ended = reservation::release(&mut w, card, "a", 1).unwrap_err();
+    assert_eq!(
+        ended,
+        FenceError::CardInReview {
+            card_id: card,
+            generation: 1,
+            lease_live: false
+        }
+    );
+    let text = ended.to_string();
+    assert!(text.starts_with("card conflict in state: "), "{text}");
+    assert!(text.contains("its lease has ended"), "{text}");
+    assert!(
+        text.contains("ask the leader (reclaim comes with card C-53 S6)"),
+        "{text}"
+    );
+    assert!(!text.contains("card reopen"), "{text}");
+    assert_eq!(event_count(&home), before + 2, "nothing was written");
+    sql(
+        &mut w,
+        &format!("UPDATE reservation SET lease_until = unixepoch() + 3600 WHERE card_id = {card}"),
+    );
+
+    // The way out: reopen, then release.
+    workflow::reopen(&mut w, card, "a", 1).unwrap();
+    let released = reservation::release(&mut w, card, "a", 1).unwrap();
+    assert_eq!(released.card_state, "ready");
+    assert_eq!(
+        rows(reader(&home).conn(), card),
+        vec![(1, "a".to_string(), "released".to_string())]
+    );
+}
+
+#[test]
+fn review_after_a_release_is_a_fence_refusal() {
+    let (home, mut w) = setup();
+    let card = ready_card(&mut w);
+    take(&mut w, card, "a", &zone(card)).unwrap();
+    // Release first, review second: the card is `ready` and the review is refused.
+    reservation::release(&mut w, card, "a", 1).unwrap();
+    assert!(matches!(
+        workflow::review(&mut w, card, "a", 1),
+        Err(WorkflowError::Fence(FenceError::NotHeld { .. }))
+    ));
+    assert_eq!(
+        card_state(reader(&home).conn(), card),
+        ("ready".to_string(), 1)
+    );
+}
+
+/// The holder runs `release` and `review` at the same moment, 100 times, each call on its own
+/// connection. Whichever wins the write lock, exactly one of the two succeeds and a `review`
+/// card always keeps its `held` reservation.
+#[test]
+fn a_hundred_release_and_review_races_never_strand_a_review_card() {
+    const ROUNDS: usize = 100;
+    let (home, mut w) = setup();
+    let cards: Vec<i64> = (0..ROUNDS)
+        .map(|_| {
+            let card = ready_card(&mut w);
+            take(&mut w, card, "a", &zone(card)).unwrap();
+            card
+        })
+        .collect();
+    drop(w);
+    let (mut release_won, mut review_won) = (0, 0);
+    for card in cards {
+        let barrier = std::sync::Barrier::new(2);
+        let (released, reviewed) = std::thread::scope(|s| {
+            let releasing = s.spawn(|| {
+                let mut w = ledger::open_write(home.path(), PROJECT).unwrap();
+                barrier.wait();
+                reservation::release(&mut w, card, "a", 1)
+            });
+            let reviewing = s.spawn(|| {
+                let mut w = ledger::open_write(home.path(), PROJECT).unwrap();
+                barrier.wait();
+                workflow::review(&mut w, card, "a", 1)
+            });
+            (releasing.join().unwrap(), reviewing.join().unwrap())
+        });
+        assert_review_is_held(&home, card, "after the race");
+        let (state, _) = card_state(reader(&home).conn(), card);
+        match (&released, &reviewed) {
+            (Ok(_), Err(WorkflowError::Fence(FenceError::NotHeld { .. }))) => {
+                assert_eq!(state, "ready", "C-{card}");
+                release_won += 1;
+            }
+            (Err(FenceError::CardInReview { .. }), Ok(_)) => {
+                assert_eq!(state, "review", "C-{card}");
+                review_won += 1;
+            }
+            other => panic!("C-{card}: exactly one of the two succeeds, got {other:?}"),
+        }
+    }
+    assert_eq!(release_won + review_won, ROUNDS);
 }
 
 // ---- read-only side -----------------------------------------------------------------------------------

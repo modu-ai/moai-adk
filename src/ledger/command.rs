@@ -201,16 +201,27 @@ pub fn status(project: &Path, home: &Path) -> Result<Value> {
 }
 
 fn card_counts(ledger: &open::ReadLedger) -> std::result::Result<Value, LedgerError> {
-    let mut stmt = ledger
-        .conn()
-        .prepare("SELECT state, count(*) FROM card GROUP BY state ORDER BY state")?;
-    let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))?;
     let mut by_state = serde_json::Map::new();
     let mut total = 0;
-    for row in rows {
-        let (state, n) = row?;
+    for (state, n) in state_counts(ledger)? {
         total += n;
         by_state.insert(state, json!(n));
     }
     Ok(json!({"total": total, "by_state": by_state}))
+}
+
+/// How many cards each state holds, ordered by state name; a state without a card is left out.
+/// One `SELECT`, no write. `ledger-status` and the status line (card C-65) read it.
+pub fn state_counts(
+    ledger: &open::ReadLedger,
+) -> std::result::Result<Vec<(String, i64)>, LedgerError> {
+    let mut stmt = ledger
+        .conn()
+        .prepare("SELECT state, count(*) FROM card GROUP BY state ORDER BY state")?;
+    let rows = stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?)))?;
+    let mut counts = Vec::new();
+    for row in rows {
+        counts.push(row?);
+    }
+    Ok(counts)
 }

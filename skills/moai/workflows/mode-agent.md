@@ -10,6 +10,10 @@ Entered with `/moai --mode-agent` in Claude Code, `$moai --mode-agent` in Codex 
 - If there is truly nothing to do, arm the `wake` step; on Codex and OMP first print the `loop_line` and the host line of the `goal-lines` step (`moai lane-loop-line`), and on Codex the Stop hook install notice.
 - The `report` kind for this wait is `kind=claim`.
 
+## Cards replace the Issue ledger
+
+Where the project has a registered card ledger, this section wins over every Issue-based step of this workflow: Issues are no longer the work ledger (user decision 2026-11-16, card C-53). `moai card list` says `ledger: "ready"` there; on `ledger: "absent"` the Issue steps apply. A round: `moai card next`; `moai card take <card> --scope <p> --worktree <w> --branch card/<n>-<slug>`; each writer then takes `--generation <g>`: `card renew` before the lease ends; `card check <card> --generation <g> --path <p>` before each write (until C-53 S3 the commit guard answers `allowed` on a card branch, checking nothing); `card note --kind report < file`, a PLAN note starting `PLAN C-<n>`, a `--kind decision` note needs `--by`; `card criterion <card> <n> --met --evidence <ref>` or `--withdraw --reason <text>`; `card pr <card> <pr> --repo <o/r>` (local card), then `card review` once the audit is asked; on FAIL `card reopen`; after the merge `card pr` again and `card done`. Also `card show`, `card release` (never in `review`) and `card handoff --to <session>`. When `card next` names nothing, print `LANE-IDLE lane=<lane>` once and wait; never take a GitHub Issue instead. `review_no_holder`: report it; never edit the ledger file. `card add`, `card scope` and `card ready` are the leader's.
+
 ## Watching on your own
 
 When no leader dispatch arrives at the start, when a decision request has gone one round without an answer, or when the Orca channel reports an error, keep your claims and watch the repository yourself. This is the `self-pick` order running by itself, not a pause (user decision, Issue #3005 comment 6887207942).

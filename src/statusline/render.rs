@@ -36,6 +36,12 @@ pub struct Theme {
     pub prs: &'static str,
     /// `🅱️` branch with its behind and dirty counts (green).
     pub branch: &'static str,
+    /// `🔥` cards in progress (maroon).
+    pub cards_active: &'static str,
+    /// `📥` cards created and remaining (sapphire).
+    pub cards_waiting: &'static str,
+    /// `✅` cards done (teal).
+    pub cards_done: &'static str,
     /// `(⚠️ /clear)` soft handoff warning (yellow).
     pub warn: &'static str,
     /// `(🛑/clear!)` hard handoff warning (red).
@@ -54,6 +60,9 @@ pub const MOCHA: Theme = Theme {
     issues: "#FAB387",
     prs: "#F5C2E7",
     branch: "#A6E3A1",
+    cards_active: "#EBA0AC",
+    cards_waiting: "#74C7EC",
+    cards_done: "#94E2D5",
     warn: "#F9E2AF",
     alert: "#F38BA8",
 };
@@ -70,6 +79,9 @@ pub const LATTE: Theme = Theme {
     issues: "#FE640B",
     prs: "#EA76CB",
     branch: "#40A02B",
+    cards_active: "#E64553",
+    cards_waiting: "#209FB5",
+    cards_done: "#179299",
     warn: "#DF8E1D",
     alert: "#D20F39",
 };
@@ -278,11 +290,15 @@ impl Renderer {
 
     fn git_line(&self, s: &Status) -> String {
         let mut segs = Vec::new();
-        if self.enabled("git_branch") {
-            if let Some(rb) = self.repo_branch(s) {
-                segs.push(rb);
-            }
-        }
+        // Card C-65: the card counts sit between the forge counts and the branch. They come
+        // from the local ledger, not from the repository, so without a branch (or with
+        // `git_branch` off) they open the line on their own.
+        let cards = self.cards(s);
+        let repo_branch = self
+            .enabled("git_branch")
+            .then(|| self.repo_branch(s, cards.as_deref()))
+            .flatten();
+        segs.extend(repo_branch.or(cards));
         // #2756 AC-9 (user choice 2026-11-13): which worktree the session is in; absent in
         // the main checkout.
         if self.enabled("worktree") && !s.worktree.is_empty() {
@@ -305,8 +321,23 @@ impl Renderer {
         segs.join(SEPARATOR)
     }
 
-    /// Repository, optional forge counts, and branch retain the `git_branch` switch.
-    fn repo_branch(&self, s: &Status) -> Option<String> {
+    /// Card C-65 (user instructions 2026-11-16 and 2026-11-17): `🔥 <in progress> / 📥
+    /// <remaining> | ✅ <done>` from the project's local ledger, under the one `cards` option.
+    /// A ledger without cards shows zeros; `None` when there is no ledger to read. Each number
+    /// has its icon, so color is never the only signal.
+    fn cards(&self, s: &Status) -> Option<String> {
+        let c = s.cards.filter(|_| self.enabled("cards"))?;
+        Some(format!(
+            "{} / {}{SEPARATOR}{}",
+            self.paint(self.theme.cards_active, &format!("🔥 {}", c.in_progress)),
+            self.paint(self.theme.cards_waiting, &format!("📥 {}", c.remaining)),
+            self.paint(self.theme.cards_done, &format!("✅ {}", c.done))
+        ))
+    }
+
+    /// Repository, optional forge counts, and branch retain the `git_branch` switch; `cards`
+    /// (see [`Renderer::cards`]) goes right before the branch.
+    fn repo_branch(&self, s: &Status, cards: Option<&str>) -> Option<String> {
         let git = s.git.as_ref().filter(|g| !g.branch.is_empty())?;
         let mut branch = format!("🅱️ {}", git.branch);
         // Ahead is deliberately hidden; behind and dirty counts remain visible.
@@ -318,6 +349,10 @@ impl Renderer {
             branch.push_str(&format!(" +{dirty}"));
         }
         let branch = self.paint(self.theme.branch, &branch);
+        let branch = match cards {
+            Some(cards) => format!("{cards}{SEPARATOR}{branch}"),
+            None => branch,
+        };
         let Some((owner, name)) = s
             .repo
             .as_ref()
@@ -386,7 +421,7 @@ fn apply_base_color(text: &str, base: &str) -> String {
 mod tests {
     use super::*;
     use crate::statusline::input::{self, RateWindow};
-    use crate::statusline::state::{self, Context, GitHubCounts, Version};
+    use crate::statusline::state::{self, CardCounts, Context, GitHubCounts, Version};
 
     fn plain(status: &Status, disabled: &[&str]) -> String {
         let config = DisplayConfig {
@@ -794,6 +829,113 @@ mod tests {
         assert!(!plain(&status, &["git_status"]).contains("💾"));
         status.repo = None;
         assert!(plain(&status, &[]).contains("\n🅱️ main ↓2 +3\n"));
+    }
+
+    /// Card C-65 (user instructions 2026-11-16 and 2026-11-17): `🔥 in progress / 📥 remaining`
+    /// right after the forge counts, then `✅ done` as its own segment; zero is shown, and
+    /// absent counts leave the line as it was.
+    #[test]
+    fn card_counts_follow_the_forge_counts_and_done_is_its_own_segment() {
+        let line = |s: &Status, off: &[&str]| plain(s, off).lines().nth(1).unwrap().to_string();
+        let mut status = full_status();
+        let without = plain(&status, &[]);
+        assert_eq!(
+            line(&status, &[]),
+            "📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3",
+            "no counts: no segment"
+        );
+        status.cards = Some(CardCounts {
+            in_progress: 5,
+            remaining: 50,
+            done: 12,
+        });
+        assert_eq!(
+            line(&status, &[]),
+            "📡 owner/repo | ⬇️ 7 / 🔀 3 | 🔥 5 / 📥 50 | ✅ 12 | 🅱️ main ↓2 +3"
+        );
+        // Lines 1 and 3 do not change.
+        let with = plain(&status, &[]);
+        assert_eq!(with.lines().next(), without.lines().next());
+        assert_eq!(with.lines().nth(2), without.lines().nth(2));
+        assert_eq!(with.lines().count(), 3);
+        // The `cards` option hides both parts and nothing else.
+        assert_eq!(plain(&status, &["cards"]), without);
+        // Without forge counts (absent, suppressed or switched off) the cards keep the place.
+        let alone = "📡 owner/repo | 🔥 5 / 📥 50 | ✅ 12 | 🅱️ main ↓2 +3";
+        assert_eq!(line(&status, &["github"]), alone);
+        status.github.suppressed = true;
+        assert_eq!(line(&status, &[]), alone);
+        status.github = GitHubCounts::default();
+        assert_eq!(line(&status, &[]), alone);
+        // An empty ledger is not an absent one.
+        status.cards = Some(CardCounts::default());
+        assert_eq!(
+            line(&status, &[]),
+            "📡 owner/repo | 🔥 0 / 📥 0 | ✅ 0 | 🅱️ main ↓2 +3"
+        );
+    }
+
+    /// Card C-65: the counts come from the local ledger, not from the repository, so they are
+    /// shown without a repository name, without a branch and with `git_branch` off.
+    #[test]
+    fn card_counts_do_not_need_the_repository_or_the_branch() {
+        let line = |s: &Status, off: &[&str]| plain(s, off).lines().nth(1).unwrap().to_string();
+        let mut status = full_status();
+        status.cards = Some(CardCounts {
+            in_progress: 1,
+            remaining: 2,
+            done: 3,
+        });
+        status.worktree = "wt".into();
+        assert_eq!(line(&status, &["git_branch"]), "🔥 1 / 📥 2 | ✅ 3 | 🌳 wt");
+        assert_eq!(line(&status, &["git_branch", "cards"]), "🌳 wt");
+        status.repo = None;
+        assert_eq!(
+            line(&status, &[]),
+            "🔥 1 / 📥 2 | ✅ 3 | 🅱️ main ↓2 +3 | 🌳 wt"
+        );
+        status.git = None;
+        assert_eq!(line(&status, &[]), "🔥 1 / 📥 2 | ✅ 3 | 🌳 wt");
+        status.worktree.clear();
+        assert_eq!(line(&status, &[]), "🔥 1 / 📥 2 | ✅ 3");
+    }
+
+    /// Card C-65: color is never the only signal. Each number keeps its icon, the three parts
+    /// take three colors of their own, and the text is the plain text once the escapes are
+    /// removed.
+    #[test]
+    fn card_counts_keep_their_icons_under_every_color_profile() {
+        let mut status = full_status();
+        status.cards = Some(CardCounts {
+            in_progress: 5,
+            remaining: 50,
+            done: 12,
+        });
+        let text = plain(&status, &[]);
+        for name in ["mocha", "catppuccin-latte"] {
+            let t = theme(name);
+            for profile in [Profile::TrueColor, Profile::Ansi256] {
+                let out = colored(name, profile, &status);
+                assert_eq!(strip_sgr(&out), text, "{name} {profile:?}");
+                for (hex, part) in [
+                    (t.cards_active, "🔥 5"),
+                    (t.cards_waiting, "📥 50"),
+                    (t.cards_done, "✅ 12"),
+                ] {
+                    assert!(out.contains(&profile.paint(hex, part)), "{name} {part}");
+                }
+            }
+            let colors = [
+                t.prs,
+                t.cards_active,
+                t.cards_waiting,
+                t.cards_done,
+                t.branch,
+            ];
+            for pair in colors.windows(2) {
+                assert_ne!(pair[0], pair[1], "{name}: neighbours share a color");
+            }
+        }
     }
 
     #[test]

@@ -266,6 +266,15 @@ fn scope_entry(text: &str, entry: usize) -> Result<String, InputError> {
 }
 
 fn scope(entries: &[String]) -> Result<String, InputError> {
+    let seen = validate_scope(entries)?;
+    // A list of strings always serializes; there is no failure to report.
+    Ok(serde_json::to_string(&seen).unwrap_or_else(|_| "[]".to_string()))
+}
+
+/// A write scope as `add --scope` takes it, for every action that sets one (`add`, `scope`,
+/// `take --scope`): each entry trimmed and checked by [`scope_entry`], no entry twice; the
+/// entries in the order given. An empty list is not refused here.
+pub fn validate_scope(entries: &[String]) -> Result<Vec<String>, InputError> {
     let mut seen: Vec<String> = Vec::with_capacity(entries.len());
     for (i, raw) in entries.iter().enumerate() {
         let clean = scope_entry(raw, i + 1)?;
@@ -277,8 +286,7 @@ fn scope(entries: &[String]) -> Result<String, InputError> {
         }
         seen.push(clean);
     }
-    // A list of strings always serializes; there is no failure to report.
-    Ok(serde_json::to_string(&seen).unwrap_or_else(|_| "[]".to_string()))
+    Ok(seen)
 }
 
 fn criteria(entries: &[String]) -> Result<Vec<NewAc>, InputError> {

@@ -327,9 +327,9 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     (
         "card",
         &[
-            "card add --title fix-login --ac login-works --project .",
+            "card add --title fix-login --ac login-works --scope src/login/ --project .",
             "card ready C-1 --project .",
-            "card take C-1 --project .",
+            "card note C-1 --kind report --project . < note.md",
         ],
     ),
     ("ledger-register-plan", &["ledger-register-plan .", "ledger-register-apply --plan-digest <digest> --permission-reference <ref> ."]),
@@ -383,7 +383,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("home-style-plan", &["home-style-plan ~ skills/moai", "home-style-apply --plan-digest <digest> --permission-reference <ref> ~ skills/moai"]),
     ("home-style-apply", &["home-style-apply --plan-digest <digest> --permission-reference <ref> ~ skills/moai"]),
     ("home-style-revert", &["home-style-revert --receipt <receipt-id> --permission-reference <ref> ~"]),
-    ("key-set", &["key-set glm < key.txt"]),
+    ("key-set", &["key-set glm < key.txt", "key-set glm --prompt"]),
     ("key-status", &["key-status glm"]),
     ("key-remove", &["key-remove glm"]),
     ("key-import-plan", &["key-import-plan glm", "key-import-apply --plan-digest <digest> --permission-reference <ref> glm"]),
@@ -1589,8 +1589,9 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     (
         "key-set",
         "공급자 키를 암호화해 금고에 저장해요(#2393): 지금 프로젝트용, 또는 `--shared` 면 모든 \
-         프로젝트용. 값은 stdin 에서만 읽고(argv 로는 받지 않음) 대화형 터미널이면 거절해요. 답에는 \
-         값이 절대 들어가지 않아요.",
+         프로젝트용. 값은 stdin 에서 읽고(argv 로는 받지 않음) 대화형 터미널이면 거절해요. 다만 \
+         `--prompt` 를 붙이면 터미널에서 화면에 보이지 않게 입력받아요. 답에는 값이 절대 들어가지 \
+         않아요.",
     ),
     (
         "key-status",
@@ -2029,6 +2030,12 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "key-import-apply",
         "shared",
         "프로젝트 대신 `~/.moai-cli/vault/_shared/`(모든 프로젝트)로 가져오기",
+    ),
+    (
+        "key-set",
+        "prompt",
+        "값을 숨긴 입력란에 직접 입력(화면에 보이지 않음). stdin 과 stderr 가 터미널일 때만. \
+         답은 Enter 뒤 1초 지나서 나오고, 그 1초 안에 입력이 더 들어오면 값을 거절",
     ),
     (
         "key-remove",

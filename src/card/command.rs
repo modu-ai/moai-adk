@@ -1,6 +1,8 @@
 //! What `moai card list | show | add` do (Issue #3070 C1, plan comment 6905829690). The
 //! `src/ops/card.rs` file only parses arguments and calls these.
 //!
+//! `show` also prints the reservation that holds the card now (card C-53 S1), or `null`.
+//!
 //! `list` and `show` open the ledger read-only (`open_read_only`: no folder, no file, no journal).
 //! `add` is the only writer here: one `BEGIN IMMEDIATE` transaction that stores the card, its
 //! criteria and one `card.add` event, with every time taken from the transaction's database clock.
@@ -31,7 +33,7 @@ pub const DEFAULT_ACTOR: &str = "user";
 /// The longest `--by`, in characters.
 pub const ACTOR_MAX_CHARS: usize = 80;
 
-const ABSENT_HINT: &str = "ledger not found: no ledger is registered for this project; \
+pub(super) const ABSENT_HINT: &str = "ledger not found: no ledger is registered for this project; \
 run `moai ledger-register-plan`, then `moai ledger-register-apply`";
 
 fn project_id(project: &Path) -> Result<String> {
@@ -145,7 +147,8 @@ pub fn list(project: &Path, home: &Path, state: Option<&str>) -> Result<Value> {
     }))
 }
 
-/// `card show C-n | #number`: the card with its criteria, notes and links.
+/// `card show C-n | #number`: the card with its criteria, notes, links and the reservation that
+/// holds it now.
 pub fn show(project: &Path, home: &Path, reference: &str) -> Result<Value> {
     let which = input::parse_ref(reference).map_err(|e| format!("card show refused: {e}"))?;
     let id = project_id(project)?;
@@ -206,7 +209,13 @@ pub fn show(project: &Path, home: &Path, reference: &str) -> Result<Value> {
 
     let mut stmt = conn
         .prepare(
-            "SELECT note_id, kind, author, origin, body, ref, created_at \
+            // `session`: the session that wrote the note, from its `card.note` event (`null`
+            // for a note written without one, and for an imported note).
+            "SELECT note_id, kind, author, origin, body, ref, created_at, \
+                    (SELECT json_extract(e.payload, '$.session') FROM event e \
+                      WHERE e.card_id = card_note.card_id AND e.kind = 'card.note' \
+                        AND json_extract(e.payload, '$.note_id') = card_note.note_id \
+                      ORDER BY e.event_id LIMIT 1) \
                FROM card_note WHERE card_id = ?1 ORDER BY note_id",
         )
         .map_err(sql_err)?;
@@ -217,6 +226,7 @@ pub fn show(project: &Path, home: &Path, reference: &str) -> Result<Value> {
                 "author": r.get::<_, String>(2)?, "origin": r.get::<_, String>(3)?,
                 "body": r.get::<_, String>(4)?, "ref": r.get::<_, Option<String>>(5)?,
                 "created_at": r.get::<_, i64>(6)?,
+                "session": r.get::<_, Option<String>>(7)?,
             }))
         })
         .map_err(sql_err)?
@@ -257,6 +267,9 @@ pub fn show(project: &Path, home: &Path, reference: &str) -> Result<Value> {
     card["criteria"] = json!(criteria);
     card["notes"] = json!(notes);
     card["links"] = json!(links);
+    card["reservation"] = ledger::reservation::current(conn, card_id)
+        .map_err(|e| e.to_string())?
+        .map_or(Value::Null, |r| super::dispatch::reservation_json(&r));
     card["writes"] = json!(false);
     Ok(card)
 }
@@ -295,6 +308,9 @@ pub fn add(project: &Path, home: &Path, req: &AddRequest<'_>) -> Result<Value> {
         criteria: req.criteria,
     })
     .map_err(|e| format!("card add refused: {e}"))?;
+    // The reservation limits too (64 entries, 512 characters each), so the card can be taken
+    // with its own scope (card C-53 audit N4).
+    super::dispatch::checked_scope("add", req.scope)?;
     let by = actor(req.by, "add")?;
     let (id, mut ledger) = open_for_write(project, home)?;
     let (card_id, rev) = ledger

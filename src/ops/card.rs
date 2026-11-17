@@ -1,5 +1,5 @@
 //! `card` (#3070): the project's local cards. One word, one action each; the logic is
-//! `moai_cli::card::command`.
+//! `moai_cli::card::command`, `dispatch` and `work` (card C-53: the work and finish path).
 
 use std::path::PathBuf;
 
@@ -120,6 +120,30 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Set the write scope of a card nobody holds
+    ///
+    /// Writes the ledger. Replaces the write scope of a `draft` or `ready` card that nobody holds,
+    /// with one `card.scope` event that keeps the old scope, the new one and `--by`. `card next`
+    /// skips a card without a write scope (`empty_scope`); this is how such a card gets one.
+    /// Each entry is checked as `add --scope` checks it. A card in another state, or one with a
+    /// live reservation, is refused (`conflict`) with its state and holder, and nothing is
+    /// written.
+    Scope {
+        /// `C-12`.
+        card: String,
+        /// A path the card may change, relative with `/` (repeat for more; replaces them all).
+        #[arg(long = "scope", required = true)]
+        scope: Vec<String>,
+        /// Who sets it, one line (for example `leader`).
+        #[arg(long)]
+        by: String,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Writes the ledger. Take a ready card for a holder
     ///
     /// Writes the ledger. Reserves the card for this session: the next generation, a lease from the database
@@ -153,7 +177,7 @@ enum Action {
     /// Writes the ledger. Give a taken card back
     ///
     /// Writes the ledger. Ends this session's reservation at the given generation; an `active`
-    /// card becomes `ready`. A stale generation or a card held by another session is refused
+    /// card becomes `ready`. A `review` card is refused: `card reopen` it first. A stale generation or a card held by another session is refused
     /// (`conflict`).
     Release {
         /// `C-12`.
@@ -189,6 +213,209 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Reads the ledger only. Show the card to work on next
+    ///
+    /// Reads the ledger only. Prints the cards this session holds (`mine`: generation, lease
+    /// end, worktree, branch), then the `ready` cards it could take, by priority and then by
+    /// number, then every card it cannot take with the reason (`held` by another session,
+    /// `scope_overlap` with another card's reservation, `empty_scope`: `take` refuses a card
+    /// without a write scope). `next` names the card to work on now: one this session holds,
+    /// else the first `ready` one. A project without a ledger has no cards (`ledger: "absent"`,
+    /// exit 0) and nothing is created.
+    Next {
+        /// The project folder (its profile holds the project id).
+        #[arg(default_value = ".")]
+        project: PathBuf,
+        /// The HOME to read (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Append a note to a card, the text on stdin
+    ///
+    /// Writes the ledger. Stores the text read from stdin as one note with one `card.note`
+    /// event. Notes are only ever added, never changed or removed, and anyone may add one: a
+    /// decision is answered by someone who does not hold the card. The event keeps the id of the
+    /// session that wrote the note, whatever `--by` says, and `card show` prints it. The text is
+    /// at most 1 MiB, with no control character but tabs and line breaks, and no word with the
+    /// shape of a secret: `card export` writes notes out. The answer's `ref` names the note.
+    Note {
+        /// `C-12`.
+        card: String,
+        /// `decision`, `report`, `observation` or `comment`.
+        #[arg(long)]
+        kind: String,
+        /// A name for the note, unique on its card (default: a random one).
+        #[arg(long = "ref")]
+        reference: Option<String>,
+        /// Who signs it (default: this session's id, or `user` without one). A `decision`
+        /// needs it.
+        #[arg(long)]
+        by: Option<String>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Mark an acceptance criterion met or withdrawn
+    ///
+    /// Writes the ledger. As this session, holding the card at `--generation` with a live lease:
+    /// `--met --evidence REF` marks criterion N met, `--withdraw --reason TEXT` withdraws it. A
+    /// stale generation or a card held by another session is refused (`conflict`).
+    Criterion {
+        /// `C-12`.
+        card: String,
+        /// The criterion's number on the card, from 1.
+        number: i64,
+        /// The generation `take` or `handoff` answered with.
+        #[arg(long)]
+        generation: i64,
+        /// The criterion is met; needs `--evidence`.
+        #[arg(long, requires = "evidence", conflicts_with_all = ["withdraw", "reason"], required_unless_present = "withdraw")]
+        met: bool,
+        /// Where the proof is: a command and its result, a run, a commit (one line).
+        #[arg(long, requires = "met")]
+        evidence: Option<String>,
+        /// The criterion no longer applies; needs `--reason`.
+        #[arg(long, requires = "reason")]
+        withdraw: bool,
+        /// Why it is withdrawn (one line).
+        #[arg(long, requires = "withdraw")]
+        reason: Option<String>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Link a pull request and record its state
+    ///
+    /// Writes the ledger. Reads the pull request's state from the code host (one GET, nothing is
+    /// written there) and stores it on the card's link: `open`, `closed`, or `merged` with the
+    /// merge commit. Run it again after the merge; `done` needs a merged link. As this session,
+    /// holding the card at `--generation`; another session is refused before the host is asked.
+    Pr {
+        /// `C-12`.
+        card: String,
+        /// The pull request's number.
+        number: u64,
+        /// The generation `take` or `handoff` answered with.
+        #[arg(long)]
+        generation: i64,
+        /// The host project, written `owner/repo`. A card that came from a host project takes
+        /// only that project (the default); any other card needs this.
+        #[arg(long)]
+        repo: Option<String>,
+        /// The host: `github` (default: the card's own host, else `github`).
+        #[arg(long)]
+        from: Option<String>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Send a taken card to review
+    ///
+    /// Writes the ledger. An `active` card becomes `review`, with one `card.review` event. As
+    /// this session, holding the card at `--generation` with a live lease; the reservation
+    /// stays.
+    Review {
+        /// `C-12`.
+        card: String,
+        /// The generation `take` or `handoff` answered with.
+        #[arg(long)]
+        generation: i64,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Take a card in review back to active
+    ///
+    /// Writes the ledger. A `review` card becomes `active` again, with one `card.reopen` event:
+    /// the way back when the review found something to repair. As this session, holding the
+    /// card at `--generation` with a live lease; the reservation stays.
+    Reopen {
+        /// `C-12`.
+        card: String,
+        /// The generation `take` or `handoff` answered with.
+        #[arg(long)]
+        generation: i64,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Close a card whose pull request is merged
+    ///
+    /// Writes the ledger. A `review` card becomes `done` and its reservation ends, when at least
+    /// one criterion is met, none is open and a merged pull request is linked (`card pr` after
+    /// the merge). Anything else is refused with the rule that is not met. As this session,
+    /// holding the card at `--generation`.
+    Done {
+        /// `C-12`.
+        card: String,
+        /// The generation `take` or `handoff` answered with.
+        #[arg(long)]
+        generation: i64,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Extend the lease of a taken card
+    ///
+    /// Writes the ledger. The lease of this session's reservation at `--generation` ends
+    /// `--lease-secs` from now, never earlier than it already did. Needs a lease that has not
+    /// ended; the generation stays the same.
+    Renew {
+        /// `C-12`.
+        card: String,
+        /// The generation `take` or `handoff` answered with.
+        #[arg(long)]
+        generation: i64,
+        /// Lease length in seconds from now, 60 to 86400 (default 14400).
+        #[arg(long)]
+        lease_secs: Option<i64>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Reads the ledger only. Check that this session may write a path
+    ///
+    /// Reads the ledger only. Exit 0 only when this session holds the card at `--generation`
+    /// with a live lease and every `--path` lies under the reservation's write scope. Anything
+    /// else is refused (`conflict`). Nothing is recorded. The paths are compared as text:
+    /// a symbolic link on disk is not followed.
+    Check {
+        /// `C-12`.
+        card: String,
+        /// The generation `take` or `handoff` answered with.
+        #[arg(long)]
+        generation: i64,
+        /// A path to write, relative to the repository and written with `/` (repeat for more).
+        #[arg(long = "path", required = true)]
+        path: Vec<String>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
 }
 
 pub const OPERATION: &str = "card";
@@ -201,6 +428,8 @@ fn env(name: &str) -> Option<String> {
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
     use moai_cli::card::command as c;
     use moai_cli::card::dispatch as d;
+    use moai_cli::card::work as w;
+    use moai_cli::ledger::workflow::CriterionChange;
     use moai_cli::ledger::command::resolve_home;
     match args.action {
         Action::List {
@@ -245,6 +474,13 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             project,
             home,
         } => d::ready(&project, &resolve_home(home)?, &card, by.as_deref()),
+        Action::Scope {
+            card,
+            scope,
+            by,
+            project,
+            home,
+        } => d::scope(&project, &resolve_home(home)?, &card, &scope, &by),
         Action::Take {
             card,
             lease_secs,
@@ -290,6 +526,163 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             &d::session_holder("handoff", env)?,
             generation,
             &to,
+        ),
+        Action::Next { project, home } => w::next(
+            &project,
+            &resolve_home(home)?,
+            d::session_holder("next", env).ok().as_deref(),
+        ),
+        Action::Note {
+            card,
+            kind,
+            reference,
+            by,
+            project,
+            home,
+        } => {
+            let home = resolve_home(home)?;
+            // The one action that reads standard input (the help rule in `src/main.rs` reads
+            // this arm).
+            let text = w::read_note_text(std::io::stdin().lock())?;
+            w::note(
+                &project,
+                &home,
+                &card,
+                &w::NoteRequest {
+                    kind: &kind,
+                    text: &text,
+                    reference: reference.as_deref(),
+                    by: by.as_deref(),
+                    session: d::session_holder("note", env).ok().as_deref(),
+                },
+            )
+        }
+        Action::Criterion {
+            card,
+            number,
+            generation,
+            met: _,
+            evidence,
+            withdraw: _,
+            reason,
+            project,
+            home,
+        } => {
+            let change = match (&evidence, &reason) {
+                (Some(evidence), None) => CriterionChange::Met { evidence },
+                (None, Some(reason)) => CriterionChange::Withdrawn { reason },
+                _ => {
+                    return Err(
+                        "card criterion refused: give --met --evidence REF or --withdraw --reason TEXT"
+                            .to_string(),
+                    )
+                }
+            };
+            w::criterion(
+                &project,
+                &resolve_home(home)?,
+                &card,
+                &d::session_holder("criterion", env)?,
+                generation,
+                number,
+                change,
+            )
+        }
+        Action::Pr {
+            card,
+            number,
+            generation,
+            repo,
+            from,
+            project,
+            home,
+        } => {
+            let home = resolve_home(home)?;
+            let holder = d::session_holder("pr", env)?;
+            let transport = moai_cli::forge::transport::GhTransport::from_env()?;
+            let clock = moai_cli::forge::policy::SystemClock;
+            let connector = moai_cli::forge::connector::GithubConnector::new(
+                &transport,
+                &clock,
+                moai_cli::forge::Config::default(),
+            );
+            w::pr(
+                &project,
+                &home,
+                &card,
+                &w::PrRequest {
+                    holder: &holder,
+                    generation,
+                    number,
+                    from: from.as_deref(),
+                    repo: repo.as_deref(),
+                },
+                &connector,
+            )
+        }
+        Action::Review {
+            card,
+            generation,
+            project,
+            home,
+        } => w::review(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &d::session_holder("review", env)?,
+            generation,
+        ),
+        Action::Reopen {
+            card,
+            generation,
+            project,
+            home,
+        } => w::reopen(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &d::session_holder("reopen", env)?,
+            generation,
+        ),
+        Action::Done {
+            card,
+            generation,
+            project,
+            home,
+        } => w::done(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &d::session_holder("done", env)?,
+            generation,
+        ),
+        Action::Renew {
+            card,
+            generation,
+            lease_secs,
+            project,
+            home,
+        } => w::renew(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &d::session_holder("renew", env)?,
+            generation,
+            lease_secs,
+        ),
+        Action::Check {
+            card,
+            generation,
+            path,
+            project,
+            home,
+        } => w::check(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &d::session_holder("check", env)?,
+            generation,
+            &path,
         ),
     }
 }

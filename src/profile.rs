@@ -22,7 +22,9 @@ use std::{
 };
 
 type Result<T> = std::result::Result<T, String>;
-const LIMIT: u64 = 65536;
+/// The largest file [`read`] accepts, in bytes. Every skill package file is read through it
+/// (`package_digest`: install, update, `package-inspect`), so it bounds each package file too.
+pub const LIMIT: u64 = 65536;
 /// `decisions` stays small by design (a few interview outcomes, not a transcript).
 const DECISION_ITEM_LIMIT: usize = 32;
 const DECISION_STRING_LIMIT: usize = 256;

@@ -86,7 +86,7 @@ One row per internal operation: the name a skill adapter or a later MCP tool ref
 | `key.import_plan` (#2393 S3) | `key-import-plan PROVIDER` (`glm` only; `--shared` imports into `_shared`, else the current project) | `moai_cli::key_vault::import_plan` | — | `--shared` | `provider`, `scope`, `folder`, `action` (`import`/`already_in_vault`/`nothing_to_import`/`blocked`), `reason`, `sources` (per legacy file: `path`, `exists`, `regular_file`, `size_ok`, `private`, `has_key`), `source`, `destination` (`path`, `entry`), `original_kept: true`, `plan_digest`, `value_shown: false`, `writes: false` | no (reads the legacy files to find the key; never shows it) |
 | `key.import_apply` (#2393 S3) | `key-import-apply PROVIDER` | `moai_cli::key_vault::import_apply` | `key.import_plan` | `--plan-digest`, `--permission-reference`, `--shared` | `provider`, `folder`, `source`, `destination`, `matched`, `original_kept: true`, `receipt`, `value_shown: false` | `~/.moai-cli/vault/<folder>/<provider>.key`, encrypted (as `key-set`), and `~/.moai-cli/receipts/key-import-<ms>-<pid>.json` (0600; paths, time, backend, match result, permission reference — no value); the legacy file is never changed |
 | `key.status` (#2393 S1) | `key-status PROVIDER` | `moai_cli::key_vault::status` | — | `--shared` (else the current directory's project; outside a git work tree only `--shared`) | `provider`, `scope` (`project`/`shared`), `folder`, `entry` (`present`/`absent`/`empty`/`unsafe`), `path`, `blocked` (`code`, `reason`, `next`), `value_shown: false`; `present` means the entry passed the safety rules and decrypted | no |
-| `key.set` (#2393 S1) | `key-set PROVIDER` (value on stdin; a terminal is refused) | `moai_cli::key_vault::set` | — | `--shared` | `provider`, `scope`, `folder`, `path`, `written`, `encrypted: true`, `value_shown: false` | `~/.moai-cli/vault/` and `<folder>/` (0700), `.master.key` (32 random bytes, 0600, made once with create-new; never remade while entries exist), `<folder>/<provider>.key` (0600, temp file + rename). Folder: `<name>-<first 8 hex of clone_id>` (name = profile `project_id`, else the primary worktree folder, reduced to `a-z0-9-`) or `_shared`. Entry: `MOAIKV1\n` + 24-byte nonce + XChaCha20-Poly1305 ciphertext and tag, associated data `moai-cli vault v1\|<folder>\|<provider>` (user decision, Issue #2393 6778671862). Keeps out a copied, synced or pasted entry without `.master.key`; not a program running as the same user |
+| `key.set` (#2393 S1) | `key-set PROVIDER` (value on stdin; a terminal is refused, unless `--prompt` asks there with echo off: Unix terminals only, card C-54 S1) | `moai_cli::key_vault::set` | — | `--shared`, `--prompt` | `provider`, `scope`, `folder`, `path`, `written`, `encrypted: true`, `value_shown: false` | `~/.moai-cli/vault/` and `<folder>/` (0700), `.master.key` (32 random bytes, 0600, made once with create-new; never remade while entries exist), `<folder>/<provider>.key` (0600, temp file + rename). Folder: `<name>-<first 8 hex of clone_id>` (name = profile `project_id`, else the primary worktree folder, reduced to `a-z0-9-`) or `_shared`. Entry: `MOAIKV1\n` + 24-byte nonce + XChaCha20-Poly1305 ciphertext and tag, associated data `moai-cli vault v1\|<folder>\|<provider>` (user decision, Issue #2393 6778671862). Keeps out a copied, synced or pasted entry without `.master.key`; not a program running as the same user |
 | `key.remove` (#2393 S1) | `key-remove PROVIDER` | `moai_cli::key_vault::remove` | — | `--yes` (without it, report only), `--shared` | `provider`, `scope`, `folder`, `path`, `exists`, `removed` | with `--yes`: removes `~/.moai-cli/vault/<folder>/<provider>.key` only (the machine key stays) |
 | `worktree.plan` (06-C #2007) | `worktree-plan PROJECT` | `moai_cli::worktree::plan` | — | `--task` or `--record` + `--claim-comment`, `--branch-prefix` (required, no default), `--path` | `task_key`, `logical_key`, `issue_number`, `epoch`, `branch`, `path`, `base_sha`, `primary`, `lock_reason`, `plan_digest`, `writes` | no |
 | `worktree.apply` (06-C #2007; WT-5 #2380) | `worktree-apply PROJECT` | `moai_cli::worktree::apply` | — | as `worktree-plan`, plus `--plan-digest`; hidden test-only `--disk-floor-bytes`, `--warn-total-bytes` (not for operation; any other value shows as `override: true`) | `decision` (`created` or `conflict`), `reason` (WT-5 adds `disk_free_below_floor`: free space under 30 GiB right before the add, nothing created; `existing[0]` carries `free_bytes`, `floor_bytes`, `warn_bytes`, `override`; free space that cannot be measured — off Unix, or `df -Pk` failing on Unix — does not block and shows `free_bytes: null`), `branch`, `path`, `existing`, `next` (#3030: the `claim-link` command, only on a conflict whose `existing` worktree has a path), `identity`, `capacity` (`free_bytes`, `floor_bytes`, `project_bytes`, `project_bytes_partial`, `warn_bytes`, `warning` above 40 GiB, `override`), `record_update_request`, `record_update_owner`, `record_update` | one linked worktree and its branch (`git worktree add --lock -b`); with `--task`, a `worktree_recorded` journal event |
@@ -891,7 +891,11 @@ is left out together with its separator.
    AC-8), `🤖` Claude Code version and `🗿` MoAI version. The session time (`⏳`) and the
    output style are not shown; their `session_time` and `output_style` options are still
    accepted.
-2. Repository: `📡` owner/repo, available `⬇️` Issue / `🔀` PR counts, `🅱️` branch with
+2. Repository: `📡` owner/repo, available `⬇️` Issue / `🔀` PR counts, the card counts
+   `🔥 N / 📥 M | ✅ D` of the project's local ledger (card C-65, user instructions
+   2026-11-16 and 2026-11-17: `🔥` cards in progress = `active` + `review`, `📥` cards
+   created and remaining = `draft` + `ready` + `hold`, `✅` cards `done`, counted in neither
+   of the other two; `📡 owner/repo | ⬇️ 46 / 🔀 0 | 🔥 5 / 📥 50 | ✅ 12 | 🅱️ main`), `🅱️` branch with
    its behind and dirty counts, `🌳` the worktree name (`worktree.name`, else
    `workspace.git_worktree`; absent in the main checkout, AC-9), `🔗 #N state` this
    branch's pull request (AC-7; an OSC 8 hyperlink to `pr.url` only when color is on and
@@ -899,6 +903,23 @@ is left out together with its separator.
    `💾` file-change segment (leader decision 6862179411 on #2756; the `git_status`
    option is still accepted). Ahead arrows are hidden. Missing forge counts are omitted.
    The `worktree` and `pr` options turn their segments off.
+   The card counts are read from the ledger `moai card list` reads
+   (`$HOME/.moai/projects/<project_id>/`, the project being the one the input names, else
+   the project above the working directory), read-only: no folder, file or journal is
+   made, no process is started and no network is used, and the ledger file is byte for
+   byte the same afterwards. A registered ledger without cards shows `🔥 0 / 📥 0 | ✅ 0`.
+   With no registered ledger, no HOME, no project profile, a file that is not this
+   project's ledger (corrupt, cut short, another project's, a link) or a ledger another
+   process holds locked for more than 50 ms (`CARDS_BUSY_TIMEOUT`, or what is left of the
+   render budget when that is less), the three numbers are absent, the rest of the line is
+   unchanged and the exit code stays 0. Without forge counts the card counts keep the same
+   place; without a repository name or a branch (or with `git_branch` off) they open the
+   line. The one option `cards` in `statusline.yaml` (`statusline.segments.cards: false`)
+   turns all three numbers off. `statusline.yaml` switches segments on and off only; it has
+   no setting for their order. Each number carries its icon, so color is never the only
+   signal. Tests: `tests/statusline_cards.rs`, the golden case `b13-card-counts` (its
+   ledger is the checked-in `tests/fixtures/statusline-claude/ledger/cards-5-50-12.sqlite`,
+   written by the ignored test `write_the_golden_ledger_fixture`).
 3. Usage: the `CTX` and available `Week` bars only (`🔋 CTX: … | 🪫 Week: …`; since #2928
    user instruction 6878415244 the tag is on line 1, not here). With both bars off the
    line is empty and omitted like any empty line. The bar icons (`🔋`/`🪫`) and the

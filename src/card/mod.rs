@@ -1,6 +1,7 @@
 //! `moai card` (#3070). `command` is what `card list | show | add` do with the ledger and
-//! `dispatch` what `card ready | take | release | handoff` do; the rest
-//! needs no ledger connection.
+//! `dispatch` what `card ready | take | release | handoff` do; `work` is the rest of a card's
+//! life (`card next | note | criterion | pr | review | done | renew | check`, card C-53). The
+//! other modules need no ledger connection.
 //!
 //! `export_format` is the file format of the ledger export: plain values in, bytes out, and
 //! the same bytes back in; `export_dir` puts those bytes in a folder and reads them out, under the
@@ -15,3 +16,4 @@ pub mod export_db;
 pub mod export_dir;
 pub mod export_format;
 pub mod input;
+pub mod work;

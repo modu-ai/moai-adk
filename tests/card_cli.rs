@@ -573,3 +573,54 @@ fn a_ledger_that_is_not_usable_is_blocked_for_every_action_and_left_alone() {
         "a file that is not the ledger is never repaired"
     );
 }
+
+/// Card C-68 N-d: the examples under `moai card --help` run as typed, top to bottom, in a
+/// project with a registered ledger. `--project .` is the folder the commands run in, and
+/// ` < file` is that file on standard input.
+#[test]
+fn the_help_examples_of_card_run_as_typed() {
+    let home = TempHome::new();
+    let project = home.project("demo");
+    ledger::register(home.path(), "demo").unwrap();
+    let (_, examples) = moai_cli::help::EXAMPLES
+        .iter()
+        .find(|(word, _)| *word == "card")
+        .expect("card has examples");
+    assert!((1..=3).contains(&examples.len()), "{examples:?}");
+    let mut actions = Vec::new();
+    for example in *examples {
+        let (args, input) = match example.split_once(" < ") {
+            Some((args, file)) => (args, Some(file)),
+            None => (*example, None),
+        };
+        let argv: Vec<&str> = args.split_whitespace().collect();
+        let mut cmd = home.command(&argv);
+        cmd.current_dir(&project);
+        match input {
+            Some(file) => {
+                let path = project.join(file);
+                std::fs::write(&path, "the login test passes\n").unwrap();
+                cmd.stdin(std::fs::File::open(&path).unwrap());
+            }
+            None => {
+                cmd.stdin(std::process::Stdio::null());
+            }
+        }
+        let out = cmd.output().expect("run moai");
+        assert_eq!(
+            out.status.code(),
+            Some(0),
+            "`moai {example}` does not run as typed: {}",
+            String::from_utf8_lossy(&out.stdout)
+        );
+        actions.push(envelope(&out)["result"]["action"].clone());
+    }
+    // The steps a new card goes through before a session takes it.
+    assert_eq!(actions, vec![json!("add"), json!("ready"), json!("note")]);
+    let shown = result(&run(
+        &home,
+        &["card", "show", "C-1", "--project", &p(&project)],
+    ));
+    assert_eq!(shown["state"], json!("ready"));
+    assert_eq!(shown["notes"].as_array().unwrap().len(), 1);
+}

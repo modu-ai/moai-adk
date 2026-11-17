@@ -3545,6 +3545,54 @@ mod help_rules {
         assert_eq!(names(&configured()), names(&Cli::command()));
     }
 
+    /// Flags that make a command take its input from the terminal instead of standard input
+    /// (`key-set --prompt`, card C-54 S1).
+    const TERMINAL_INPUT_FLAGS: [&str; 1] = ["--prompt"];
+
+    /// Whether the example carries one of [`TERMINAL_INPUT_FLAGS`]. Such an example must not
+    /// have ` < file`: the command refuses a standard input that is not a terminal.
+    fn example_reads_terminal(example: &str) -> bool {
+        example
+            .split_whitespace()
+            .any(|word| TERMINAL_INPUT_FLAGS.contains(&word))
+    }
+
+    /// The exception to the stdin rule is by flag, as a whole word, and only for a flag the
+    /// example's command really has.
+    #[test]
+    fn a_terminal_input_example_is_told_by_its_flag() {
+        for (example, wants) in [
+            ("key-set glm --prompt", true),
+            ("key-set glm --shared --prompt", true),
+            ("key-set glm < key.txt", false),
+            ("key-set glm --prompted", false),
+            ("key-set prompt", false),
+            ("statusline < status.json", false),
+        ] {
+            assert_eq!(example_reads_terminal(example), wants, "{example}");
+        }
+        let mut seen = 0;
+        for (_, examples) in moai_cli::help::EXAMPLES {
+            for example in examples.iter().filter(|e| example_reads_terminal(e)) {
+                seen += 1;
+                let word = example.split_whitespace().next().unwrap();
+                let command = Cli::command();
+                let sub = command.find_subcommand(word).unwrap();
+                for flag in TERMINAL_INPUT_FLAGS {
+                    if example.split_whitespace().any(|w| w == flag) {
+                        assert!(
+                            sub.get_arguments()
+                                .any(|a| a.get_long() == flag.strip_prefix("--")),
+                            "`{example}`: {word} has no {flag}"
+                        );
+                    }
+                }
+                assert!(!example.contains(" < "), "`{example}` reads the terminal");
+            }
+        }
+        assert!(seen >= 1, "no example shows a terminal input flag");
+    }
+
     /// Commands `main` answers before the internal dispatch; each reads standard input there
     /// (`statusline`, `pr-self-audit-check`, `hook_dispatch_main` and `lane_stop_hook_main`).
     const READ_BEFORE_DISPATCH: [&str; 4] = [
@@ -3565,11 +3613,10 @@ mod help_rules {
                 .any(|(i, m)| !text[i + m.len()..].trim_start().starts_with(".is_terminal"))
     }
 
-    /// The commands whose handling reads standard input, from the source: each
-    /// `Command::<Variant>` match arm before the first test module, and each `src/ops` file.
-    fn commands_reading_stdin() -> BTreeSet<String> {
-        let source = include_str!("main.rs");
-        let code = &source[..source.find("\n#[cfg(test)]").unwrap()];
+    /// The match arms `<prefix><Variant>` of `code`: the variant in kebab case and the arm's
+    /// first and one-past-last line. An arm runs until the next arm at its indent or a line
+    /// indented less.
+    fn match_arms(code: &str, prefix: &str) -> Vec<(String, usize, usize)> {
         let lines: Vec<&str> = code.lines().collect();
         let indent = |l: &str| l.len() - l.trim_start().len();
         let kebab = |v: &str| {
@@ -3582,9 +3629,9 @@ mod help_rules {
             }
             out
         };
-        let mut reads = BTreeSet::new();
+        let mut arms = Vec::new();
         for (i, line) in lines.iter().enumerate() {
-            let Some(rest) = line.trim_start().strip_prefix("Command::") else {
+            let Some(rest) = line.trim_start().strip_prefix(prefix) else {
                 continue;
             };
             let variant: String = rest.chars().take_while(|c| c.is_alphanumeric()).collect();
@@ -3592,37 +3639,107 @@ mod help_rules {
             if variant.is_empty() || !["{", "(", "=>"].iter().any(|p| after.starts_with(p)) {
                 continue;
             }
-            // The arm runs until the next arm at its indent or a line indented less.
             let depth = indent(line);
             let end = (i + 1..lines.len())
                 .find(|&j| {
                     let l = lines[j];
                     !l.trim().is_empty()
                         && (indent(l) < depth
-                            || (indent(l) == depth && l.trim_start().starts_with("Command::")))
+                            || (indent(l) == depth && l.trim_start().starts_with(prefix)))
                 })
                 .unwrap_or(lines.len());
-            if reads_stdin(&lines[i..end].join("\n")) {
-                reads.insert(kebab(&variant));
+            arms.push((kebab(&variant), i, end));
+        }
+        arms
+    }
+
+    /// What one `src/ops` file says about standard input. A file whose `Action::<Variant>` arms
+    /// hold every read is decided per action: `Some(actions that read)`. Any other file that
+    /// reads is decided as a whole: `None` (also when a read sits outside the arms, in a helper
+    /// function for example, so a read cannot be moved out of sight of the rule). A file that
+    /// reads nothing is `Some(empty)`.
+    fn ops_file_stdin(text: &str) -> Option<BTreeSet<String>> {
+        if !reads_stdin(text) {
+            return Some(BTreeSet::new());
+        }
+        let lines: Vec<&str> = text.lines().collect();
+        let mut actions = BTreeSet::new();
+        let mut outside = vec![true; lines.len()];
+        for (action, start, end) in match_arms(text, "Action::") {
+            if reads_stdin(&lines[start..end].join("\n")) {
+                actions.insert(action);
+                outside[start..end].iter_mut().for_each(|o| *o = false);
             }
         }
+        let rest: Vec<&str> = lines
+            .iter()
+            .zip(&outside)
+            .filter_map(|(l, out)| out.then_some(*l))
+            .collect();
+        (!actions.is_empty() && !reads_stdin(&rest.join("\n"))).then_some(actions)
+    }
+
+    /// An operation decided per action, and its actions that read standard input.
+    type ActionReads = std::collections::BTreeMap<String, BTreeSet<String>>;
+
+    /// The commands whose handling reads standard input, from the source: each
+    /// `Command::<Variant>` match arm before the first test module, and each `src/ops` file.
+    /// An operation with nested actions that is decided per action ([`ops_file_stdin`]) is not
+    /// in the first set; it is in the second, as `word -> the actions that read`.
+    fn commands_reading_stdin() -> (BTreeSet<String>, ActionReads) {
+        let source = include_str!("main.rs");
+        let code = &source[..source.find("\n#[cfg(test)]").unwrap()];
+        let lines: Vec<&str> = code.lines().collect();
+        let mut reads = BTreeSet::new();
+        for (variant, start, end) in match_arms(code, "Command::") {
+            if reads_stdin(&lines[start..end].join("\n")) {
+                reads.insert(variant);
+            }
+        }
+        let mut per_action = ActionReads::new();
         let ops = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/ops");
         for entry in std::fs::read_dir(ops).unwrap() {
             let path = entry.unwrap().path();
             let stem = path.file_stem().unwrap().to_str().unwrap().to_string();
-            if stem != "mod" && reads_stdin(&std::fs::read_to_string(&path).unwrap()) {
-                reads.insert(stem.replace('_', "-"));
+            if stem == "mod" {
+                continue;
+            }
+            let word = stem.replace('_', "-");
+            match ops_file_stdin(&std::fs::read_to_string(&path).unwrap()) {
+                None => {
+                    reads.insert(word);
+                }
+                Some(actions) if actions.is_empty() => {}
+                Some(actions) => {
+                    per_action.insert(word, actions);
+                }
             }
         }
-        reads
+        (reads, per_action)
+    }
+
+    /// Whether the example's command reads standard input: by its word, or by its word and
+    /// action for an operation decided per action.
+    fn example_reads_stdin(
+        example: &str,
+        reads: &BTreeSet<String>,
+        per_action: &ActionReads,
+    ) -> bool {
+        let mut words = example.split_whitespace();
+        let word = words.next().unwrap();
+        match per_action.get(word) {
+            Some(actions) => words.next().is_some_and(|action| actions.contains(action)),
+            None => reads.contains(word) || READ_BEFORE_DISPATCH.contains(&word),
+        }
     }
 
     /// An example carries ` < file` exactly when the command it runs reads standard input, so
     /// an example typed as written gets its input (#2839 audit B1: ten typed-request commands
-    /// lacked it).
+    /// lacked it). One exception: an example with a terminal input flag
+    /// ([`example_reads_terminal`]) never carries it.
     #[test]
     fn stdin_examples_match_the_commands_that_read_stdin() {
-        let reads = commands_reading_stdin();
+        let (reads, per_action) = commands_reading_stdin();
         for word in READ_BEFORE_DISPATCH {
             assert!(
                 !reads.contains(word),
@@ -3630,12 +3747,23 @@ mod help_rules {
             );
         }
         let mut off = Vec::new();
+        let mut shown: BTreeSet<(String, String)> = BTreeSet::new();
         for (_, examples) in moai_cli::help::EXAMPLES {
             for example in *examples {
-                let word = example.split_whitespace().next().unwrap();
-                let wants = reads.contains(word) || READ_BEFORE_DISPATCH.contains(&word);
+                if example_reads_terminal(example) {
+                    // Read from the terminal, not from standard input: no ` < file`.
+                    if example.contains(" < ") {
+                        off.push(format!("`{example}` (reads the terminal)"));
+                    }
+                    continue;
+                }
+                let wants = example_reads_stdin(example, &reads, &per_action);
                 if example.contains(" < ") != wants {
                     off.push(format!("`{example}` (reads stdin: {wants})"));
+                }
+                let mut words = example.split_whitespace();
+                if let (Some(word), Some(action)) = (words.next(), words.next()) {
+                    shown.insert((word.to_string(), action.to_string()));
                 }
             }
         }
@@ -3644,6 +3772,75 @@ mod help_rules {
             "examples off the stdin rule:\n{}",
             off.join("\n")
         );
+        // An action that reads standard input has an example that shows it, so the ` < file`
+        // form is on the help page of its command.
+        for (word, actions) in &per_action {
+            for action in actions {
+                assert!(
+                    shown.contains(&(word.clone(), action.clone())),
+                    "`{word} {action}` reads standard input and has no example in help::EXAMPLES"
+                );
+            }
+        }
+    }
+
+    /// `card` is decided per action: `note` reads standard input, the other actions do not.
+    #[test]
+    fn card_reads_stdin_for_note_only() {
+        let (reads, per_action) = commands_reading_stdin();
+        assert!(!reads.contains("card"), "card is decided per action");
+        let note: BTreeSet<String> = ["note".to_string()].into();
+        assert_eq!(per_action.get("card"), Some(&note));
+        for (example, wants) in [
+            ("card note C-1 --kind report --project . < note.md", true),
+            ("card note C-1 --kind report", true),
+            ("card take C-1 --project .", false),
+            ("card add --title t", false),
+            ("card", false),
+            ("labels-apply . < plan.json", true),
+            ("statusline < status.json", true),
+            ("ledger-status .", false),
+        ] {
+            assert_eq!(
+                example_reads_stdin(example, &reads, &per_action),
+                wants,
+                "{example}"
+            );
+        }
+    }
+
+    /// The per-action decision cannot be used to hide a read: a read outside the reading arms
+    /// (a helper function, another function of the file) makes the whole operation read.
+    #[test]
+    fn an_ops_file_is_decided_per_action_only_when_every_read_is_in_an_arm() {
+        let arms = "fn run(a: Action) {\n    match a {\n        Action::List { x } => list(x),\n        \
+                    Action::Note { y } => {\n            let t = read(std::io::stdin().lock());\n            \
+                    note(y, t)\n        }\n        Action::LongName => long(),\n    }\n}\n";
+        let note: BTreeSet<String> = ["note".to_string()].into();
+        assert_eq!(ops_file_stdin(arms), Some(note));
+        // The same read moved into a helper: the whole file reads.
+        let helper = "fn text() -> T { read(std::io::stdin().lock()) }\nfn run(a: Action) {\n    \
+                      match a {\n        Action::List { x } => list(x),\n        \
+                      Action::Note { y } => note(y, text()),\n    }\n}\n";
+        assert_eq!(ops_file_stdin(helper), None);
+        // A read in an arm and one more outside it: still the whole file.
+        let both = format!("{arms}fn extra() {{ let _ = std::io::stdin().lock(); }}\n");
+        assert_eq!(ops_file_stdin(&both), None);
+        // No nested actions: the whole file, as before.
+        assert_eq!(
+            ops_file_stdin("pub fn run() { let r = plan_input(); }\n"),
+            None
+        );
+        // Nothing read; asking whether stdin is a terminal is not a read.
+        assert_eq!(
+            ops_file_stdin("fn run() { let t = std::io::stdin().is_terminal(); }\n"),
+            Some(BTreeSet::new())
+        );
+        // Two reading arms are both named, in kebab case.
+        let two = "    match a {\n        Action::Note { y } => f(input::<N>()),\n        \
+                   Action::LongName => g(plan_input()),\n        Action::List => h(),\n    }\n";
+        let names: BTreeSet<String> = ["long-name".to_string(), "note".to_string()].into();
+        assert_eq!(ops_file_stdin(two), Some(names));
     }
 
     /// The grouped list goes into clap's help template, where `{name}` is a tag; no about may

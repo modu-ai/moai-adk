@@ -111,9 +111,20 @@ pub fn new_event_key(
 /// Opens an existing ledger for reading. Never creates a folder or a file, and does not write
 /// (no journal, no WAL file): see the module comment for the refusals.
 pub fn open_read_only(home: &Path, project_id: &str) -> Result<ReadLedger, LedgerError> {
+    open_read_only_within(home, project_id, BUSY_TIMEOUT)
+}
+
+/// [`open_read_only`] with the wait for another connection given: a reader that must answer
+/// quickly (the status line, card C-65) gives up after `busy` instead of [`BUSY_TIMEOUT`]. The
+/// wait applies to every statement of the returned connection.
+pub fn open_read_only_within(
+    home: &Path,
+    project_id: &str,
+    busy: Duration,
+) -> Result<ReadLedger, LedgerError> {
     let path = location::ledger_path(home, project_id)?;
     super::folders::refuse_links(home, project_id)?;
-    let (conn, schema_version) = open_at(&path, project_id, false)?;
+    let (conn, schema_version) = open_at_timeout(&path, project_id, false, busy)?;
     Ok(ReadLedger {
         conn,
         project_id: project_id.to_string(),

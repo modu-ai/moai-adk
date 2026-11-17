@@ -171,6 +171,8 @@ pub enum Msg {
     RemoveIt,
     /// After a refused `key-remove` question: what to run instead.
     RemoveWithYes,
+    /// `key-set --prompt`: the hidden prompt; `{provider}` is the provider name.
+    KeySetPrompt,
     /// `update` confirm preview title and question.
     UpdatePreview,
     ApplyUpdate,
@@ -205,7 +207,7 @@ pub enum Msg {
 
 impl Msg {
     /// Every variant, for the tests that walk the table.
-    pub const ALL: [Msg; 45] = [
+    pub const ALL: [Msg; 46] = [
         Msg::WordOk,
         Msg::WordWarning,
         Msg::WordError,
@@ -236,6 +238,7 @@ impl Msg {
         Msg::KeyRemoveWhich,
         Msg::RemoveIt,
         Msg::RemoveWithYes,
+        Msg::KeySetPrompt,
         Msg::UpdatePreview,
         Msg::ApplyUpdate,
         Msg::LabelCause,
@@ -319,6 +322,8 @@ pub fn text(msg: Msg, lang: Lang) -> &'static str {
         (RemoveIt, Ko) => "지울까요?",
         (RemoveWithYes, En) => "run with --yes to remove it without asking",
         (RemoveWithYes, Ko) => "묻지 않고 지우려면 --yes 를 붙여 실행하세요",
+        (KeySetPrompt, En) => "Enter the {provider} key (hidden: nothing shows while you type)",
+        (KeySetPrompt, Ko) => "{provider} 키를 입력하세요(숨김: 입력하는 동안 아무것도 보이지 않아요)",
         (UpdatePreview, En) => "moai update preview:",
         (UpdatePreview, Ko) => "moai update 미리보기:",
         (ApplyUpdate, En) => "Apply this update?",

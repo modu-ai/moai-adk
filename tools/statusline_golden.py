@@ -89,6 +89,17 @@ def apply_setup(step, root, project, moai_home):
         target = base / step["path"]
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(step["content"], encoding="utf-8")
+    elif kind == "copy":
+        # Card C-65: a checked-in binary fixture (a project ledger), copied byte for byte from
+        # the fixture folder into the temporary HOME's `.moai`.
+        if step.get("under") != "moai_home":
+            raise ValueError(f"unknown copy base {step.get('under')!r}")
+        source = (FIXTURES / step["from"]).resolve()
+        if FIXTURES.resolve() not in source.parents:
+            raise ValueError(f"copy source outside the fixtures: {step['from']!r}")
+        target = moai_home / step["path"]
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, target)
     elif kind == "git_init":
         run_git(project, "init", "-q", "-b", step.get("branch", "main"))
     elif kind == "git_commit_all":
