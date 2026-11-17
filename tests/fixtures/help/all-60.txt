@@ -265,6 +265,8 @@ Lane and leader
                           request head
   audit-verdict-line      Print the verdict first line for
                           the audited head
+  audit-gate              Decide whether a PR head has the
+                          audit its tier needs
   audit-clone-plan        Preview an independent audit clone
   labels-check            Report Issues whose labels break
                           the rule

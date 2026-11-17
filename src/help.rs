@@ -204,6 +204,7 @@ pub const GROUPS: &[Group] = &[
             ("pr-confirm", false),
             ("audit-claim", false),
             ("audit-verdict-line", false),
+            ("audit-gate", false),
             ("audit-clone-plan", false),
             ("labels-check", false),
             ("decision-due", false),
@@ -495,6 +496,10 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("pr-confirm", &["pr-confirm --task <task> --operation-id <operation-id> --observed-state <observed-state> ."]),
     ("audit-claim", &["audit-claim < request.json"]),
     ("audit-verdict-line", &["audit-verdict-line --pr 2850 --head <head> --verdict PASS --title <scope>", "audit-verdict-line --pr 2850 --head <head> --verdict FAIL --title <scope> --base <earlier-head>"]),
+    (
+        "audit-gate",
+        &["audit-gate < input.json", "audit-gate --require-pass < input.json"],
+    ),
     ("audit-clone-plan", &["audit-clone-plan --pr 2824 --head <sha> --head-branch <head-branch> --base-branch <base-branch> ."]),
     ("labels-check", &["labels-check --repo modu-ai/moai-adk ."]),
     ("decision-due", &["decision-due docs/decisions/bundle.md"]),

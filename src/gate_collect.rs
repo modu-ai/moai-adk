@@ -168,7 +168,11 @@ pub const MAX_DELTA_FILES: usize = 200;
 const MAX_PR_COMMIT_PAGES: usize = 3;
 
 /// Every page of a GitHub list, at most `max` pages.
-fn get_all<T: Transport>(t: &T, url: &str, max: usize) -> Result<Vec<serde_json::Value>> {
+pub(crate) fn get_all<T: Transport>(
+    t: &T,
+    url: &str,
+    max: usize,
+) -> Result<Vec<serde_json::Value>> {
     let mut items = Vec::new();
     let mut next = Some(url.to_string());
     let mut pages = 0;
