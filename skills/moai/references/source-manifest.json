@@ -78,7 +78,7 @@
       }
     },
     "references/chains/index.md": {
-      "sha256": "b2475a8d48dfe3b39fc19866117b22ebaaa01b1c713a7e7b967f6c0fed72680a",
+      "sha256": "5b48d143df7a7feb7bc9944e48f380d54cfcd7b853a6d6d4d7c5372aba12314a",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",
@@ -144,6 +144,15 @@
         "template_id": "internal-code-atlas",
         "adoption": "new",
         "reason": "Written for SPEC-20261117-atlas-in-read-plan (user decision 2026-11-17: Go concepts are redesigned, no files ported): how READ and PLAN use the code atlas the Rust product already has (`index-query` freshness, `atlas-graph`, `atlas-map`, `search`) when it is fresh, fall back to searching and reading otherwise, and never build it (PROJECT offers `index-build`). Measured on this repository before writing (1,620 files). Named by one line of workflows/read.md and workflows/plan.md and read by moai-research and moai-plan (`reads:`); tests/code_atlas_reference.rs runs its requests."
+      }
+    },
+    "references/internal/commit-trailers.md": {
+      "sha256": "8615708df9ee2d04918323941e52f11b6c620e60805ece606e92cbfef6b5eae6",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-commit-trailers",
+        "adoption": "new",
+        "reason": "Written for SDD-6 (user decision U-B 2026-11-17: the merge gate identity is the commit trailers Moai-Spec and Moai-Session, replacing the planned Moai-Claim C-<n>#<gen>; SPEC-20261117-session-trailer): which two trailers every agent commit carries, where the session id comes from (moai trailers / session-current), what happens without one, how an audit verdict names its auditor's session, and moai trailer-check. Named by the rules of chains/index.md. Kept apart from references/internal/sdd.md until that file lands (SDD-5)."
       }
     },
     "references/internal/core-rules.md": {

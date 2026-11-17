@@ -13,7 +13,10 @@
 //! 4. Tier 1 and 2: a PASS on exactly this head, with a full 40-hex base, by an auditor lane that
 //!    is not an author. Authors are the `Moai-Session:` trailer values of the PR's commits
 //!    (decision U-B, 2026-11-17); when no commit carries one, the authors are unknown and the
-//!    head has no qualifying PASS (fail closed, like G9).
+//!    head has no qualifying PASS (fail closed, like G9). A verdict names its auditor's session
+//!    with a `Moai-Session:` line below its first line (SDD-6, `internal/commit-trailers`); the
+//!    auditor is an author when that session or its lane name is one of the authors, and two
+//!    verdicts come from the same auditor when their sessions match (else their lane names).
 //!
 //! Not checked in this slice: that the PASS cites the run (AGENTS.md workflow 7) — a later slice
 //! adds it; the verdict base's ancestry and the mechanical delta (both need git).
@@ -54,6 +57,29 @@ struct Verdict {
     /// The base reads as 40 hex (a short base is read only for its word).
     full_base: bool,
     auditor: Option<String>,
+    /// The auditor's session id from a `Moai-Session:` line below the first (SDD-6), the same
+    /// key and shape a commit's trailer has.
+    session: Option<String>,
+}
+
+impl Verdict {
+    /// The same auditor: the same session id when both name one, else the same lane name.
+    fn same_auditor(&self, other: &Verdict) -> bool {
+        match (&self.session, &other.session) {
+            (Some(a), Some(b)) => crate::trailers::same_identity(a, b),
+            _ => self.auditor.is_some() && self.auditor == other.auditor,
+        }
+    }
+}
+
+/// The `Moai-Session:` value of a verdict body below its first line, when it has the id shape.
+fn verdict_session(body: &str) -> Option<String> {
+    body.lines()
+        .skip(1)
+        .filter_map(|l| l.trim().strip_prefix("Moai-Session:"))
+        .map(str::trim)
+        .find(|v| crate::trailers::value_shape(v) != crate::trailers::Shape::Bad)
+        .map(String::from)
 }
 
 fn verdicts(comments: &[Comment]) -> Vec<Verdict> {
@@ -62,6 +88,7 @@ fn verdicts(comments: &[Comment]) -> Vec<Verdict> {
         .filter_map(|c| {
             let line = gate::verdict_line(&c.body)?;
             let auditor = gate::auditor(&c.body);
+            let session = verdict_session(&c.body);
             let (head, word, full_base) = match gate::parse_verdict(line) {
                 Some((h, _, v)) => (Some(h), v, true),
                 None => match gate::parse_verdict_short_base(line) {
@@ -75,6 +102,7 @@ fn verdicts(comments: &[Comment]) -> Vec<Verdict> {
                 word,
                 full_base,
                 auditor,
+                session,
             })
         })
         .collect();
@@ -127,9 +155,8 @@ pub fn decide(input: &Input) -> Value {
         .iter()
         .filter(|f| f.word != "PASS")
         .filter(|f| {
-            !all.iter().any(|p| {
-                p.word == "PASS" && p.id > f.id && p.auditor.is_some() && p.auditor == f.auditor
-            })
+            !all.iter()
+                .any(|p| p.word == "PASS" && p.id > f.id && p.same_auditor(f))
         })
         .collect();
     if let Some(f) = open.first() {
@@ -185,11 +212,19 @@ pub fn decide(input: &Input) -> Value {
             "the PR's authors are unknown: no commit carries a `Moai-Session:` trailer".into(),
         );
     }
-    let is_author = |who: &str| authors.iter().any(|a| a.eq_ignore_ascii_case(who));
+    let is_author = |who: &str| {
+        authors
+            .iter()
+            .any(|a| a.eq_ignore_ascii_case(who) || crate::trailers::same_identity(a, who))
+    };
     match on_head
         .iter()
         .rev()
-        .find(|v| v.auditor.as_deref().is_some_and(|w| !is_author(w)))
+        .find(|v| {
+            (v.auditor.is_some() || v.session.is_some())
+                && !v.auditor.as_deref().is_some_and(is_author)
+                && !v.session.as_deref().is_some_and(is_author)
+        })
     {
         Some(v) => out(
             "pass",
@@ -197,7 +232,10 @@ pub fn decide(input: &Input) -> Value {
             "non-author-pass",
             format!(
                 "audit tier {tier}: PASS on this head by {} (comment {}), not an author",
-                v.auditor.as_deref().unwrap_or_default(),
+                v.auditor
+                    .as_deref()
+                    .or(v.session.as_deref())
+                    .unwrap_or_default(),
                 v.id
             ),
         ),
@@ -392,6 +430,95 @@ mod tests {
         let mut reopened = ok;
         reopened.push(verdict(6, H, "FAIL", "agent-9"));
         assert_eq!(state(&input("1", &src, &["agent-1"], reopened)).0, "fail");
+    }
+
+    /// SDD-6: commits carry the author's `Moai-Session:` (a session id); a verdict that names
+    /// its auditor's session the same way is compared by that id, and its lane name too.
+    /// Re-audit B3: a subagent auditor inherits its parent's session id; the worktree key tells
+    /// them apart. A legacy bare author id still counts every value of its session as an author.
+    #[test]
+    fn the_worktree_key_tells_a_subagent_auditor_from_its_parent() {
+        const S: &str = "428e289a-1c67-492e-a23b-a5aca15b4d1f";
+        let author = format!("{S}:aaaaaaaaaaaa");
+        let src = ["src/a.rs"];
+        let pass = |session: &str| {
+            Comment {
+            id: 5,
+            body: format!(
+                "AUDIT #9 (x) head {H} base {B} — verdict: PASS\nauditor: agent-7\nMoai-Session: {session}"
+            ),
+            author_association: "MEMBER".into(),
+        }
+        };
+        let own = format!("{S}:bbbbbbbbbbbb");
+        assert_eq!(
+            state(&input("1", &src, &[author.as_str()], vec![pass(&own)])).0,
+            "pass",
+            "another worktree of the same host session"
+        );
+        assert_eq!(
+            state(&input("1", &src, &[author.as_str()], vec![pass(&author)])).0,
+            "missing",
+            "the author's own worktree"
+        );
+        assert_eq!(
+            state(&input("1", &src, &[S], vec![pass(&own)])).0,
+            "missing",
+            "a legacy bare author id covers its whole session"
+        );
+    }
+
+    #[test]
+    fn a_verdict_names_its_auditors_session_like_a_commit_does() {
+        const AUTHOR: &str = "428e289a-1c67-492e-a23b-a5aca15b4d1f";
+        const AUDITOR: &str = "4d5550e0-88b3-40ca-8c46-07425eedc812";
+        let src = ["src/a.rs"];
+        let pass = |session: &str| {
+            Comment {
+            id: 5,
+            body: format!(
+                "AUDIT #9 (x) head {H} base {B} — verdict: PASS\nauditor: agent-7\nMoai-Session: {session}"
+            ),
+            author_association: "MEMBER".into(),
+        }
+        };
+        assert_eq!(
+            state(&input("1", &src, &[AUTHOR], vec![pass(AUDITOR)])),
+            ("pass".into(), "non-author-pass".into())
+        );
+        // The auditor's session wrote commits of this PR: not an independent PASS.
+        assert_eq!(
+            state(&input("1", &src, &[AUTHOR], vec![pass(AUTHOR)])).0,
+            "missing"
+        );
+        // A FAIL is cleared by a later PASS of the same session, not of another one.
+        let fail = |id: u64, session: &str| {
+            Comment {
+            id,
+            body: format!(
+                "AUDIT #9 (x) head {H} base {B} — verdict: FAIL\nauditor: agent-9\nMoai-Session: {session}"
+            ),
+            author_association: "MEMBER".into(),
+        }
+        };
+        let mut again = pass(AUDITOR);
+        again.id = 7;
+        again.body = again.body.replace("agent-7", "agent-8");
+        assert_eq!(
+            state(&input(
+                "1",
+                &src,
+                &[AUTHOR],
+                vec![fail(6, AUDITOR), again.clone()]
+            ))
+            .0,
+            "pass"
+        );
+        let other = "11111111-2222-3333-4444-555555555555";
+        assert_eq!(
+            state(&input("1", &src, &[AUTHOR], vec![fail(6, other), again])).0,
+            "fail"
+        );
     }
 
     #[test]
