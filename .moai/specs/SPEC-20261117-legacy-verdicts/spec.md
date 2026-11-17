@@ -77,4 +77,27 @@ parent: SPEC-20261117-sdd-foundation
 
 ## Result
 
-(검사 뒤에 채워요.)
+구현 에이전트가 2026-11-17에 채웠어요. SYNC와 AUDIT가 다시 확인해요. 기준 `c0b858de8c`(origin/v2026.11.0), 변경 커밋
+`0cc5c659c4`. 빌드 폴더는 이 worktree의 `target/`, `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=4`, macOS arm64, cargo는
+한 번에 하나. `moai heavy-slot-acquire`가 75(스왑 82%)라 리더 지시대로 슬롯 밖에서 돌렸어요.
+
+판정 개수(종류별): output-style adopted 6 · project-instruction adopted 2 · skill-entry adopted 2, deferred 52,
+rejected 83 · support adopted 6, deferred 184, rejected 441 · rule deferred 42, rejected 190 · command deferred 4,
+rejected 36 · agent deferred 2, rejected 32 · native-agent-projection deferred 2, rejected 21 · native-mapping-manifest
+rejected 1 · distribution-catalog rejected 1. 거절 묶음: 작업 방법 skill 200, 규칙 182, 기반 지식 114, 보관 77,
+라우터 작업 흐름 68, 입구 57, 저장소 전용 47, 역할 43, `@MX` 10, 운영 5, 설치 목록 2.
+
+- AC-1: met — RED(지도 바꾸기 전): exit 101, `tests/product_cli.rs:3105` "`unchecked` is not a verdict". GREEN exit 0
+  (1 passed). mutation 3개(커밋 뒤, 지도 한 행과 manifest sha256을 함께 바꿔 sha 검사를 지나게 함, 각각 `git restore`
+  뒤 tree 깨끗): `rejected()` → exit 101 "is not a verdict"; `adopted(skills/moai/NO-SUCH.md)` → exit 101 "is not a
+  file of this repository"; `deferred(later)` → exit 101 "deferred to unknown `later`". 되돌린 뒤 exit 0.
+- AC-2: met — `0`.
+- AC-3: met — `[('adopted', 16), ('deferred', 286), ('rejected', 805)]`, manifest `verdicts`와 같음.
+- AC-4: met — 세 경로 모두 "No such file or directory", exit 1.
+- AC-5: met — `moai spec check --all --project .` exit 0(SPEC 3개, errors 0, warnings 0); `product_cli` 0(75);
+  `home_isolation_scan` 0(16); `--bin moai` 0(27); `go_state_classes_cli` 0(71)·`launcher_three_hosts` 0(4)
+  (`docs/rust-product-path.md`를 읽는 시험); `ac_command_lint` 0(5); `cargo fmt --check` 0(처음 1, 한 줄 줄바꿈 뒤 0);
+  Python `repo_scans`·`ci_scope`·`source_manifest` 83개 OK.
+
+실행 안 함: 전체 `cargo test`(바뀐 곳 시험만), clippy, Linux·Windows. 편집 시점 진단 hook 설계로 보류한 행은 0이에요
+(지도에 LSP·진단 행이 없음).
