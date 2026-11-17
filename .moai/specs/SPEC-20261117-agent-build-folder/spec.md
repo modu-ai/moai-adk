@@ -98,4 +98,19 @@ parent: null
 
 ## Result
 
-(채우기 전 — 구현 에이전트가 검사 뒤에 채워요.)
+구현 에이전트가 2026-11-17에 채웠어요. 감사가 다시 확인해요. 상태는 `draft` 그대로예요(승인은 사용자 몫).
+기준 `c0b858de8c` 위 `34f657c2b0`(구현) → `8bbdab5162`(시험 두 곳 수리) → 이 Result. 빌드 폴더는 이
+worktree의 `target/`, `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=4`, cargo는 한 번에 하나(무거운 작업 슬롯이
+75로 거절할 때는 슬롯 밖). 시험은 RED(기대한 단언에서 실패, 도구 시험은 도구 파일이 없어서 실패)를 본 뒤
+GREEN이에요.
+
+- AC-1: met — `build_folder_test` 13개 OK(EnvTest 5)
+- AC-2: met — CleanTest 4개 OK. mutation M5(증거도 지움) KILLED
+- AC-3: met — `optimize_plan_cli` 17 passed(새 시험 2개 포함). mutation M1(다른 저장소 기록을 우리 것으로)·M2(병합을 live로) KILLED
+- AC-4: met — RemoveTest 3개 OK. mutation M4(`trim` 행 확인 빼기) KILLED, M3(링크 따라감) KILLED
+- AC-5: met — `agent_defs_package` 18 passed
+- AC-6: met — ScriptsTest OK
+- AC-7: met — `--bin moai` 27, `home_isolation_scan` 16, `lane_rules_2879` 5, `mode_workflow_steps` 42, `mode_cards_53` 9, `spec_cli` 17, `product_cli` 75, `self_audit_cli` 5, 모드 파일을 읽는 시험 모두 exit 0; `cargo fmt --check` 0; clippy 0; Python 217개 OK(`build_folder`, `self_check`, `local_check`, `skill_references`, `source_manifest`, `check_pr_self_audit`, `repo_scans`, `ci_scope`, `github_templates`); `moai spec check --all` 0(오류 0, 경고 0); `moai package-inspect skills/moai` 0
+
+실행 안 함: 전체 `cargo test`(바뀐 곳 시험만), `--bin moai-cli`, Linux·Windows, 실제 HOME의 `~/.moai/build`(시험은 임시 HOME만).
+크기: `mode-agent.md` 47,962바이트(47,998에서 줄음).
