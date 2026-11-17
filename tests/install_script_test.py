@@ -45,9 +45,29 @@ case "$1" in
       printf '{"ok":true,"result":{"written":true,"reason":null}}\\n'
     fi
     ;;
+  update)
+    if [ -n "${FAKE_UPDATE_LOG:-}" ]; then { pwd -P; for a in "$@"; do printf '%s\\n' "$a"; done; echo --; } >> "$FAKE_UPDATE_LOG"; fi
+    case "${FAKE_UPDATE:-}" in
+      ok | current)
+        if [ "${2:-}" = "--confirm" ]; then
+          [ "$3" = "@DIGEST@" ] || { printf '{"ok":false,"error":{"kind":"usage","message":"the plan changed since the preview"}}\\n'; exit 1; }
+          printf '{"protocol_version":1,"operation":"update.run","ok":true,"result":{"mode":"applied","applied":true}}\\n'
+        else
+          fresh=false; [ "$FAKE_UPDATE" = current ] && fresh=true
+          printf '{"protocol_version":1,"operation":"update.run","ok":true,"result":{"mode":"preview","applied":false,"nothing_to_apply":%s,"plan":{"hosts":[{"host":"claude","projection_root":"%s/.claude/skills/moai","preflight":"ok"}]},"agents":{"hosts":[{"host":"claude","dir":"%s/.claude/agents","preflight":"ok"}]},"plan_digest":"@DIGEST@","confirm_with":"moai update --confirm @DIGEST@"}}\\n' "$fresh" "$HOME" "$HOME"
+        fi
+        ;;
+      fail)
+        printf '{"protocol_version":1,"operation":"update.run","ok":false,"error":{"kind":"internal","message":"no skill package installed with this binary"}}\\n'
+        echo "no skill package installed with this binary" >&2
+        exit 1
+        ;;
+      *) exit 2 ;;
+    esac
+    ;;
   *) exit 2 ;;
 esac
-"""
+""".replace("@DIGEST@", "sha256:" + "a" * 64)
 
 # An older moai-cli: no `language-set` (an unknown command exits 2).
 FAKE_CLI_OLD = """#!/bin/sh
@@ -125,18 +145,28 @@ class Release:
         self.triple = host_triple()
         self.asset = f"moai-cli-{self.triple}.tar.xz"
 
-    def add(self, version, cli=None, sha256=None, with_sha=True):
+    def add(self, version, cli=None, sha256=None, with_sha=True, parts=None):
+        """`parts` maps archive paths beside the binary (`skills/moai/SKILL.md`, `agents/x.md`)
+        to their bytes: the skill package and agents a release carries (SPEC-20261117-installer-
+        skill-agents). `cli` is the binary's text, or its bytes for a real binary."""
         tag = f"moai-cli-v{version}"
         d = os.path.join(self.download, tag)
         os.makedirs(d, exist_ok=True)
-        body = (cli or FAKE_CLI.replace("@VERSION@", version)).encode()
+        body = cli or FAKE_CLI.replace("@VERSION@", version)
+        body = body if isinstance(body, bytes) else body.encode()
         buf = io.BytesIO()
-        with tarfile.open(fileobj=buf, mode="w:xz") as tar:
+        # preset 0: a real binary is tens of MB, and the tests only need a valid archive.
+        with tarfile.open(fileobj=buf, mode="w:xz", preset=0) as tar:
             for name in ("moai-cli", "moai"):
                 info = tarfile.TarInfo(f"moai-cli-{self.triple}/{name}")
                 info.size = len(body)
                 info.mode = 0o755
                 tar.addfile(info, io.BytesIO(body))
+            for rel, data in sorted((parts or {}).items()):
+                info = tarfile.TarInfo(f"moai-cli-{self.triple}/{rel}")
+                info.size = len(data)
+                info.mode = 0o644
+                tar.addfile(info, io.BytesIO(data))
         data = buf.getvalue()
         with open(os.path.join(d, self.asset), "wb") as f:
             f.write(data)
@@ -275,7 +305,7 @@ class InstallShTest(unittest.TestCase):
     def test_help_lists_the_go_options_and_unknown_options_fail(self):
         r = self.run_sh("--help")
         self.assertEqual(r.returncode, 0, r.stderr)
-        for opt in ("--version", "--install-dir", "--channel", "--language", "-h, --help"):
+        for opt in ("--version", "--install-dir", "--channel", "--language", "--yes", "-h, --help"):
             self.assertIn(opt, r.stdout)
         r = self.run_sh("--nope")
         self.assertNotEqual(r.returncode, 0)
@@ -302,17 +332,208 @@ class InstallShTest(unittest.TestCase):
     def test_the_end_of_an_install_names_the_next_steps_in_order(self):
         # #2935 L3-b: after the install, a project folder, then a session there, then
         # `/moai project` in it. `moai init` is being removed (PR #2949) and is never named.
+        # SPEC-20261117-installer-skill-agents: `moai update` (the skill and agents) comes first
+        # while they are not installed, and every host gets its own entry.
         r = self.run_sh()
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         out = r.stdout
         done = out.find("Installation complete!")
         self.assertNotEqual(done, -1, out)
+        update = out.find("1. Install the MoAI skill and agents", done)
         folder = out.find("my-project", done)
         session = out.find("moai cc", done)
         setup = out.find("/moai project", done)
+        self.assertNotEqual(update, -1, out)
         self.assertNotEqual(folder, -1, out)
-        self.assertTrue(folder < session < setup, out)
+        self.assertTrue(update < folder < session < setup, out)
+        self.assertIn("moai update", out[update:folder])
         self.assertNotIn("moai init", out + r.stderr)
+
+    # ---- the skill and the agents (SPEC-20261117-installer-skill-agents) -------------------
+
+    HOST_ENTRIES = {
+        "claude": "Claude Code: moai cc",
+        "codex": "Codex: moai codex, then $moai project",
+        "omp": "OMP: omp, then /skill:moai project",
+    }
+
+    @property
+    def update_log(self):
+        return os.path.join(self.tmp, "update.log")
+
+    def update_calls(self):
+        """The `moai-cli update` calls the fake recorded: [working folder, arguments...]."""
+        if not os.path.exists(self.update_log):
+            return []
+        with open(self.update_log) as f:
+            text = f.read()
+        return [chunk.rstrip("\n").split("\n") for chunk in text.split("--\n") if chunk]
+
+    def run_update(self, *args, hosts=(), **env):
+        """An install with these host folders in HOME and the fake `update` answering."""
+        for h in hosts:
+            os.makedirs(os.path.join(self.home, "." + h), exist_ok=True)
+        if os.path.exists(self.update_log):
+            os.remove(self.update_log)
+        env.setdefault("FAKE_UPDATE", "ok")
+        r = self.run_sh(*args, FAKE_UPDATE_LOG=self.update_log, **env)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        return r
+
+    def next_steps(self, out):
+        at = out.find("Next steps:")
+        self.assertNotEqual(at, -1, out)
+        return " ".join(out[at:].split())
+
+    def assert_previewed_in_the_version_folder(self, calls, version="1.2.3"):
+        want = os.path.realpath(self.state("versions", version))
+        self.assertEqual(calls[0], [want, "update", "--json"], calls)
+
+    def test_no_host_found_writes_no_host_folder_and_names_every_entry(self):
+        r = self.run_update()
+        out = r.stdout
+        self.assertIn("No Claude Code, Codex or OMP found", out)
+        self.assertEqual(self.update_calls(), [])
+        self.assertEqual(sorted(os.listdir(self.home)), [".moai-cli"])
+        steps = self.next_steps(out)
+        self.assertIn("1. Install the MoAI skill and agents", steps)
+        for entry in self.HOST_ENTRIES.values():
+            self.assertIn(entry, steps)
+
+    def test_without_a_terminal_the_preview_is_shown_and_nothing_is_written(self):
+        r = self.run_update(hosts=("claude",))
+        out = r.stdout
+        calls = self.update_calls()
+        self.assertEqual(len(calls), 1, calls)
+        self.assert_previewed_in_the_version_folder(calls)
+        self.assertIn(os.path.join(self.home, ".claude", "skills", "moai"), out)
+        self.assertIn(os.path.join(self.home, ".claude", "agents"), out)
+        self.assertIn("Nothing was written to your home folder", out)
+        self.assertEqual(os.listdir(os.path.join(self.home, ".claude")), [])
+        steps = self.next_steps(out)
+        self.assertIn("1. Install the MoAI skill and agents", steps)
+        # Only the host found gets its entry.
+        self.assertIn(self.HOST_ENTRIES["claude"], steps)
+        self.assertIn("then /moai project", steps)
+        self.assertNotIn("$moai", steps)
+        self.assertNotIn("/skill:moai", steps)
+
+    def test_yes_applies_the_previewed_plan_and_drops_the_update_step(self):
+        r = self.run_update("--yes", hosts=("codex",))
+        out = r.stdout
+        calls = self.update_calls()
+        self.assertEqual(len(calls), 2, calls)
+        self.assert_previewed_in_the_version_folder(calls)
+        self.assertEqual(calls[1][1:], ["update", "--confirm", "sha256:" + "a" * 64, "--json"])
+        self.assertEqual(calls[1][0], calls[0][0])
+        self.assertIn("Installed the MoAI skill and agents", out)
+        steps = self.next_steps(out)
+        self.assertNotIn("Install the MoAI skill and agents", steps)
+        self.assertIn("1. Make a project folder", steps)
+        self.assertIn(self.HOST_ENTRIES["codex"], steps)
+        self.assertNotIn("/moai project", steps)
+
+    def test_omp_gets_its_skill_entry(self):
+        r = self.run_update("--yes", hosts=("omp",))
+        steps = self.next_steps(r.stdout)
+        self.assertIn(self.HOST_ENTRIES["omp"], steps)
+        self.assertNotIn("moai cc", steps)
+
+    def test_an_installed_skill_is_not_applied_again(self):
+        r = self.run_update("--yes", hosts=("claude",), FAKE_UPDATE="current")
+        self.assertEqual(len(self.update_calls()), 1, self.update_calls())
+        self.assertIn("already installed and up to date", r.stdout)
+        self.assertNotIn("Install the MoAI skill and agents", self.next_steps(r.stdout))
+
+    def test_a_failing_preview_keeps_the_install_and_says_what_failed(self):
+        r = self.run_update("--yes", hosts=("claude",), FAKE_UPDATE="fail")
+        out = r.stdout
+        self.assertEqual(len(self.update_calls()), 1, self.update_calls())
+        self.assertIn("The MoAI skill and agents were not installed", out)
+        self.assertIn("no skill package installed with this binary", out)
+        self.assertIn("Installation complete!", out)
+        self.assertTrue(os.access(self.state("versions", "1.2.3", "bin", "moai-cli"), os.X_OK))
+        self.assertEqual(os.listdir(os.path.join(self.home, ".claude")), [])
+        self.assertIn("1. Install the MoAI skill and agents", self.next_steps(out))
+
+    def test_at_a_terminal_the_install_is_asked_once(self):
+        os.makedirs(os.path.join(self.home, ".claude"))
+        for answer, applied in (("y\n", True), ("n\n", False), ("\n", False)):
+            with self.subTest(answer=answer):
+                if os.path.exists(self.update_log):
+                    os.remove(self.update_log)
+                code, out = self.run_pty(
+                    ["--language", "en"], answer, after="Install them now?",
+                    FAKE_UPDATE="ok", FAKE_UPDATE_LOG=self.update_log)
+                self.assertEqual(code, 0, out)
+                self.assertEqual(out.count("Install them now?"), 1, out)
+                calls = self.update_calls()
+                self.assertEqual(len(calls), 2 if applied else 1, calls)
+                if not applied:
+                    self.assertIn("Nothing was written to your home folder", out)
+
+    def test_a_release_carries_the_skill_and_agents_into_the_version_folder(self):
+        parts = {"skills/moai/SKILL.md": b"skill\n", "skills/moai/workflows/run.md": b"run\n",
+                 "agents/impl.md": b"agent\n"}
+        self.rel.add("1.4.0", parts=parts)
+        r = self.run_sh("--version", "1.4.0")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        for rel, data in parts.items():
+            with open(self.state("versions", "1.4.0", *rel.split("/")), "rb") as f:
+                self.assertEqual(f.read(), data)
+        self.assertEqual(sorted(os.listdir(self.state("versions"))), ["1.4.0"])
+
+    def test_a_version_folder_without_the_skill_gets_it_and_nothing_else_changes(self):
+        # A folder an earlier installer placed has only bin/: the same binary with the skill and
+        # agents beside it in the archive adds those two folders; bin/ is left as it was.
+        r = self.run_sh("--version", "1.2.3")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        before = snapshot(self.state("versions", "1.2.3"))
+        self.rel.add("1.2.3", parts={"skills/moai/SKILL.md": b"skill\n", "agents/impl.md": b"a\n"})
+        r = self.run_sh("--version", "1.2.3")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        after = snapshot(self.state("versions", "1.2.3"))
+        self.assertEqual({k: v for k, v in after.items() if k.startswith("bin")}, before)
+        self.assertTrue(os.path.isfile(self.state("versions", "1.2.3", "skills", "moai", "SKILL.md")))
+        self.assertTrue(os.path.isfile(self.state("versions", "1.2.3", "agents", "impl.md")))
+        self.assertEqual(sorted(os.listdir(self.state("versions", "1.2.3"))), ["agents", "bin", "skills"])
+        # A third run writes nothing.
+        self.assertEqual(self.run_sh("--version", "1.2.3").returncode, 0)
+        self.assertEqual(snapshot(self.state("versions", "1.2.3")), after)
+
+    def test_the_real_update_installs_the_skill_and_agents_from_a_release(self):
+        # AC1: a release-shaped archive (the real binary, this tree's skill package and agents)
+        # into a fresh temporary HOME ends with the skill and agents in versions/<v>/ and in the
+        # host found, and a second `moai update` preview has nothing left to apply.
+        real = real_cli()
+        if real is None:
+            self.skipTest("no moai-cli built from this tree (set MOAI_TEST_CLI)")
+        parts = {}
+        for top in ("skills/moai", "agents"):
+            base = os.path.join(REPO_ROOT, *top.split("/"))
+            for dirpath, _, files in os.walk(base):
+                for name in files:
+                    p = os.path.join(dirpath, name)
+                    with open(p, "rb") as f:
+                        parts[top + "/" + os.path.relpath(p, base).replace(os.sep, "/")] = f.read()
+        with open(real, "rb") as f:
+            self.rel.add("1.7.0", cli=f.read(), parts=parts)
+        os.makedirs(os.path.join(self.home, ".claude"))
+        env = {"DEVELOPER_DIR": os.environ["DEVELOPER_DIR"]} if "DEVELOPER_DIR" in os.environ else {}
+        r = self.run_sh("--version", "1.7.0", "--language", "en", "--yes", **env)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("Installed the MoAI skill and agents", r.stdout)
+        version = self.state("versions", "1.7.0")
+        self.assertTrue(os.path.isfile(os.path.join(version, "skills", "moai", "SKILL.md")))
+        self.assertTrue(os.path.isfile(os.path.join(version, "agents", "impl.md")))
+        self.assertTrue(os.path.isfile(os.path.join(self.home, ".claude", "skills", "moai", "SKILL.md")))
+        self.assertTrue(os.path.isfile(os.path.join(self.home, ".claude", "agents", "moai-impl.md")))
+        again = subprocess.run(
+            [os.path.join(version, "bin", "moai-cli"), "update", "--json"],
+            env=self.env(**env), cwd=version, capture_output=True, text=True, timeout=120)
+        self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+        result = json.loads(again.stdout)["result"]
+        self.assertTrue(result["nothing_to_apply"], again.stdout[:2000])
 
     def test_channel_rc_and_a_pinned_version(self):
         r = self.run_sh("--channel", "rc")
