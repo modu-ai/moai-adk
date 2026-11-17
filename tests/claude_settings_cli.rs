@@ -994,3 +994,84 @@ fn a_kept_original_keeps_its_mode_and_stays_out_of_git() {
     );
     assert!(!listed.contains("settings.local.json"), "{listed}");
 }
+
+/// Card C-70 AC-3: m-flow's worktree base (`worktree.baseRef: head`) is previewed without a
+/// write, applied only with the preview's digest, keeps every other key's bytes, keeps the keys
+/// MoAI already owns with `--keep-owned`, and a revert (the request without it) restores the
+/// file byte for byte. Values Claude Code does not document are refused.
+#[test]
+fn the_worktree_base_ref_is_previewed_applied_and_reverted() {
+    let (home, project) = (TempDir::new().unwrap(), TempDir::new().unwrap());
+    let p = project.path();
+    let file = p.join(".claude/settings.json");
+    fs::create_dir_all(p.join(".claude")).unwrap();
+    fs::write(&file, "{\n  \"model\": \"user-choice\"\n}\n").unwrap();
+    // MoAI already owns the status line.
+    let sl = json!({"statusLine": desired()["statusLine"].clone()});
+    let first = plan(p, home.path(), &sl);
+    let (code, v) = apply(p, home.path(), &sl, first["plan_digest"].as_str().unwrap());
+    assert_eq!(code, Some(0), "{v}");
+    let before = fs::read(&file).unwrap();
+
+    let head = json!({"worktree": {"baseRef": "head"}});
+    let keep = |verb: &str, extra: &[&str], stdin: &Value| {
+        let mut args = vec![verb, p.to_str().unwrap(), "--keep-owned"];
+        args.extend_from_slice(extra);
+        run(&args, home.path(), stdin)
+    };
+    let (code, preview) = keep("claude-settings-plan", &[], &head);
+    assert_eq!(code, Some(0), "{preview}");
+    assert_eq!(preview["result"]["action"], json!("update"), "{preview}");
+    assert_eq!(fs::read(&file).unwrap(), before, "a preview writes nothing");
+    let digest = preview["result"]["plan_digest"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    // The digest binds the request: without --keep-owned the same request is another plan.
+    let (code, stale) = apply(p, home.path(), &head, &digest);
+    assert_eq!(code, Some(1), "{stale}");
+    assert_eq!(fs::read(&file).unwrap(), before);
+    let (code, v) = keep(
+        "claude-settings-apply",
+        &[
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "test-c70",
+        ],
+        &head,
+    );
+    assert_eq!(code, Some(0), "{v}");
+    let now: Value = serde_json::from_slice(&fs::read(&file).unwrap()).unwrap();
+    assert_eq!(now["worktree"], json!({"baseRef": "head"}));
+    assert_eq!(now["model"], json!("user-choice"), "a user key is kept");
+    assert_eq!(now["statusLine"], sl["statusLine"], "an owned key is kept");
+
+    // Revert: the owned keys without `worktree` (no --keep-owned) restore the earlier bytes.
+    let back = plan(p, home.path(), &sl);
+    assert_eq!(back["action"], json!("update"), "{back}");
+    let (code, v) = apply(p, home.path(), &sl, back["plan_digest"].as_str().unwrap());
+    assert_eq!(code, Some(0), "{v}");
+    assert_eq!(
+        fs::read(&file).unwrap(),
+        before,
+        "the revert restores the file"
+    );
+
+    for bad in [
+        json!({"worktree": {"baseRef": "main"}}),
+        json!({"worktree": {"baseRef": "head", "sparsePaths": ["x"]}}),
+        json!({"worktree": "head"}),
+        json!({"worktree": {}}),
+    ] {
+        let (code, v) = keep("claude-settings-plan", &[], &bad);
+        assert_eq!(code, Some(1), "{bad}: {v}");
+        assert_eq!(fs::read(&file).unwrap(), before);
+    }
+    let (code, v) = keep(
+        "claude-settings-plan",
+        &[],
+        &json!({"worktree": {"baseRef": "fresh"}}),
+    );
+    assert_eq!(code, Some(0), "{v}");
+}

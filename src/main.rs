@@ -571,6 +571,10 @@ enum Command {
         /// file Claude Code also reads for sessions in a linked worktree (#2581).
         #[arg(long, default_value = "project")]
         scope: String,
+        /// Keys the request does not name keep the value MoAI owns, so setting one key never
+        /// drops another (card C-70).
+        #[arg(long)]
+        keep_owned: bool,
     },
     /// Write previewed Claude Code settings keys
     ///
@@ -589,6 +593,9 @@ enum Command {
         /// the existing file in `.moai-cli/settings-backups/` and replace the conflicting keys.
         #[arg(long)]
         confirm_replace: Option<String>,
+        /// The same `--keep-owned` the plan used; the digest binds the merged request.
+        #[arg(long)]
+        keep_owned: bool,
     },
     /// Preview the MoAI hook set for one host
     ///
@@ -1940,9 +1947,13 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             };
             moai_cli::heavy_slot::status(&dir)
         }
-        Command::ClaudeSettingsPlan { project, scope } => {
+        Command::ClaudeSettingsPlan {
+            project,
+            scope,
+            keep_owned,
+        } => {
             let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
-            let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
+            let desired = settings_request(&project, &input()?, scope, keep_owned)?;
             // #3004 P4-3: the status line preview and its gate read HOME and PATH, like hooks-plan.
             let home = std::env::var_os("HOME").map(PathBuf::from);
             let path_env = std::env::var("PATH").unwrap_or_default();
@@ -1954,9 +1965,10 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             permission_reference,
             scope,
             confirm_replace,
+            keep_owned,
         } => {
             let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
-            let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
+            let desired = settings_request(&project, &input()?, scope, keep_owned)?;
             let home = std::env::var_os("HOME").map(PathBuf::from);
             let path_env = std::env::var("PATH").unwrap_or_default();
             moai_cli::status_line::apply_in(
@@ -2332,6 +2344,21 @@ fn usage_line(e: &clap::Error) -> Option<String> {
 fn program_name() -> String {
     let argv0 = std::env::args_os().next().unwrap_or_default();
     moai_cli::help::bin_name(&argv0.to_string_lossy()).to_string()
+}
+
+/// The desired settings of a `claude-settings-plan` / `-apply` request read from stdin; with
+/// `--keep-owned` the keys MoAI owns and the request leaves out are kept (card C-70).
+fn settings_request(
+    project: &std::path::Path,
+    request: &serde_json::Map<String, serde_json::Value>,
+    scope: moai_cli::claude::SettingsScope,
+    keep_owned: bool,
+) -> Result<serde_json::Map<String, serde_json::Value>, String> {
+    if keep_owned {
+        moai_cli::claude::user_settings_desired_keep_owned(project, request, scope)
+    } else {
+        moai_cli::claude::user_settings_desired_in(project, request, scope)
+    }
 }
 
 /// The painter for the stderr error frame: S2's per-stream color decision (#2803).
