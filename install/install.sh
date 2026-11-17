@@ -206,7 +206,7 @@ resolve_language() {
 # already there, and a moai-cli that has no language-set (an older pinned version) or refuses
 # the code costs a warning, not the install.
 record_language() {
-    if ! out=$("$DEST/bin/moai-cli" language-set --home "$LANGUAGE_CODE" 2>/dev/null); then
+    if ! out=$("$DEST/bin/moai-cli" language-set --home "$LANGUAGE_CODE" </dev/null 2>/dev/null); then
         print_warning "Could not record the conversation language ($LANGUAGE_CODE): this moai-cli has no language-set or does not accept the code. The install is complete."
         return 0
     fi
@@ -387,8 +387,13 @@ add_parts() {
 }
 
 # Asks the downloaded binary where its state lives and what `moai` on PATH is. Read only.
+#
+# Every `moai-cli` child below reads its standard input from /dev/null
+# (SPEC-20261118-installer-stdin-null): under `curl ... | sh` this script itself is standard
+# input, and a child that read it would eat the part not yet run. Answers are read by `ask_line`,
+# from standard input or /dev/tty, never by a child.
 inspect() {
-    out=$("$NEW_BIN" install-inspect 2>/dev/null) || die "The downloaded moai-cli does not run on this machine"
+    out=$("$NEW_BIN" install-inspect </dev/null 2>/dev/null) || die "The downloaded moai-cli does not run on this machine"
     STATE_HOME=$(printf '%s' "$out" | sed -n 's/.*"home_state_root":"\([^"\\]*\)".*/\1/p')
     case "$STATE_HOME" in
         /*) ;;
@@ -463,7 +468,7 @@ install_skill() {
     # Both `moai-cli update` calls keep their stderr in a file: on the person's terminal, what
     # the product prints there (or a question it asks) would wait unseen behind this script's
     # own prompt (SPEC-20261117-installer-tty REQ-3).
-    if ! preview=$(cd "$DEST" && "$DEST/bin/moai-cli" update --json 2>"$TMP_DIR/update.err"); then
+    if ! preview=$(cd "$DEST" && "$DEST/bin/moai-cli" update --json </dev/null 2>"$TMP_DIR/update.err"); then
         update_failed "$preview"
         return 0
     fi
@@ -505,7 +510,7 @@ install_skill() {
         print_info "Nothing was written to your home folder (no terminal to ask at). Install them with: moai update (or run this installer with --yes)"
         return 0
     fi
-    if ! out=$(cd "$DEST" && "$DEST/bin/moai-cli" update --confirm "$digest" --json 2>"$TMP_DIR/update.err"); then
+    if ! out=$(cd "$DEST" && "$DEST/bin/moai-cli" update --confirm "$digest" --json </dev/null 2>"$TMP_DIR/update.err"); then
         update_failed "$out"
         return 0
     fi
@@ -549,7 +554,7 @@ link_commands() {
 }
 
 finish() {
-    "$DEST/bin/moai-cli" --version || print_warning "moai-cli did not report its version"
+    "$DEST/bin/moai-cli" --version </dev/null || print_warning "moai-cli did not report its version"
     if [ -n "$GO_ON_PATH" ]; then
         echo ""
         print_warning "The moai first on your PATH is the Go edition; it was not changed."

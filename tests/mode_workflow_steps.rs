@@ -738,6 +738,26 @@ fn claim_verify_names_the_codex_hook_trust_steps() {
     );
 }
 
+/// SPEC-20261118-skill-audit-followups REQ-2 (SDD-6 audit N2): the auditor works in its own
+/// worktree or a clone inside it, never in the implementer's, and the reason is the worktree
+/// key of `Moai-Session`.
+#[test]
+fn the_auditor_works_outside_the_implementers_worktree() {
+    let audit = workflow("audit.md");
+    let line = audit
+        .lines()
+        .find(|l| l.contains("never in the implementer's worktree"))
+        .expect("audit.md says where the auditor works");
+    for text in [
+        "own worktree or a clone inside it",
+        "worktree key",
+        "`Moai-Session`",
+        "`internal/commit-trailers`",
+    ] {
+        assert!(line.contains(text), "audit.md line lacks {text:?}: {line}");
+    }
+}
+
 /// #2680 AC-2/AC-3: a gate that could not run is recorded with substitute evidence,
 /// merges wait by default, and the merge-on-substitute question is asked once per gate.
 #[test]
