@@ -2464,7 +2464,13 @@ fn lane_env(lane: &str, base: Option<&std::path::Path>) -> ExitCode {
     let resolved = std::env::current_dir()
         .map_err(|e| format!("lane-env: no working folder: {e}"))
         .and_then(|cwd| {
-            moai_cli::lane_env::resolve(lane, &base, std::env::var_os("HOME").as_deref(), &cwd)
+            moai_cli::lane_env::resolve(
+                lane,
+                &base,
+                std::env::var_os("HOME").as_deref(),
+                std::env::var_os("USERPROFILE").as_deref(),
+                &cwd,
+            )
         });
     match resolved {
         Ok(env) => {
@@ -2700,7 +2706,11 @@ pub(crate) fn main() -> ExitCode {
             .then(std::env::current_dir)
             .and_then(Result::ok)
             .and_then(|cwd| {
-                moai_cli::heavy_slot::Here::of(&cwd, std::env::var_os("HOME").as_deref())
+                moai_cli::heavy_slot::Here::of(
+                    &cwd,
+                    std::env::var_os("HOME").as_deref(),
+                    std::env::var_os("USERPROFILE").as_deref(),
+                )
             });
         if let Some(note) = moai_cli::heavy_slot::build_folder_note(
             name,

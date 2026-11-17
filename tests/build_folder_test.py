@@ -142,6 +142,27 @@ class EnvTest(unittest.TestCase):
             out = self.fx.run("env", home=home)
             self.assertEqual((out.returncode, out.stdout), (1, ""), home)
 
+    def test_home_takes_userprofile_on_windows_only_when_home_is_unset(self):
+        # C-82 slot audit N1: the rule of `moai lane-env` (`key_vault::home_from`).
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("build_folder", TOOL)
+        bf = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(bf)
+        with tempfile.TemporaryDirectory() as tmp:
+            h, u = str(Path(tmp) / "h"), str(Path(tmp) / "u")
+            self.assertEqual(bf.home({"USERPROFILE": u}, windows=True), Path(u))
+            self.assertEqual(bf.home({"HOME": "", "USERPROFILE": u}, windows=True), Path(u))
+            self.assertEqual(bf.home({"HOME": h, "USERPROFILE": u}, windows=True), Path(h))
+            self.assertEqual(bf.home({"HOME": h, "USERPROFILE": u}, windows=False), Path(h))
+            for environ, windows, says in [
+                ({"USERPROFILE": u}, False, "HOME must be an absolute folder"),
+                ({}, True, "neither HOME nor USERPROFILE"),
+                ({"USERPROFILE": "rel"}, True, "HOME must be an absolute folder"),
+            ]:
+                with self.assertRaises(bf.Refused) as e:
+                    bf.home(environ, windows=windows)
+                self.assertIn(says, str(e.exception), environ)
+
 
 class CleanTest(unittest.TestCase):
     def setUp(self):
