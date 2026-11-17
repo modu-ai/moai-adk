@@ -70,6 +70,30 @@ pub fn cards_of(conn: &Connection, spec_id: &str) -> rusqlite::Result<Vec<Value>
     rows.collect()
 }
 
+/// Why `card done` must refuse card `card` (`C-n`) that names SPEC `spec`, or `None` (card C-86
+/// slice 2, SPEC-20261117-ac-verify-required): the SPEC cannot be read, fails `spec check`, or
+/// has an acceptance criterion with no `verify:` command or `manual:` check. A card that names
+/// no SPEC is not judged here.
+pub fn done_refusal(project: &Path, card: &str, spec: Option<&str>) -> Option<String> {
+    let id = spec?;
+    match spec_doc::find(project, id) {
+        Err(e) => Some(format!("{card}: its SPEC {id} cannot be read: {e}")),
+        Ok(doc) if doc.errors() > 0 => Some(format!(
+            "{card}: its SPEC {id} has {} error(s); `moai spec check {id}` lists them",
+            doc.errors()
+        )),
+        Ok(doc) => {
+            let open = spec_doc::unverified(&doc);
+            (!open.is_empty()).then(|| {
+                format!(
+                    "{card}: its SPEC {id} has no `verify:` command or `manual:` check for {}",
+                    open.join(", ")
+                )
+            })
+        }
+    }
+}
+
 /// What `next` and `take` say about the SPEC of card `card` (`C-n`) of `kind`: the SPEC's state
 /// (`null` when the card names none) and, for a card that changes the repository, a warning
 /// when that SPEC is not approved. Approved means a SPEC of this generation (`SPEC-<yyyymmdd>-

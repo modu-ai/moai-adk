@@ -446,6 +446,22 @@ fn nonportable_or_secret_shaped_input_is_rejected_without_echo() {
         assert!(!root.path().join(".moai-cli").exists());
     }
 }
+/// Card C-90: ordinary words with `sk-` inside (`task-based`, `risk-free`, `desk-top`) are
+/// custom text, not a key shape; `sk-` at the start of a word is still refused (above).
+#[test]
+fn ordinary_words_with_sk_inside_are_accepted() {
+    for value in ["task-based delivery", "risk-free desk-top tool"] {
+        let root = TempDir::new().unwrap();
+        let mut input = profile(None);
+        input["purpose"] = json!(value);
+        let out = cli(&["project-plan", root.path().to_str().unwrap()], &input);
+        assert!(
+            out.status.success(),
+            "{value}: {}",
+            String::from_utf8_lossy(&out.stdout)
+        );
+    }
+}
 #[cfg(unix)]
 #[test]
 fn symlinks_are_preserved_and_not_followed() {
@@ -2662,7 +2678,11 @@ mod skill_package {
             "or that changes a `guarded` setting — permissions, keys, the real HOME and global settings, deletions or repository protection settings — goes to the user and waits",
             "Cost, permissions, external transmission and destructive effects beyond the authorized scope are case (2).",
             // Audit B1 on #2620: the leader's own decision stays inside the autonomy level.
-            "what the chosen autonomy level still reserves for the user (new Issues, lifting a HOLD, merge-policy changes and releases at `semi`) goes to the user as case (4)",
+            // Card C-81 (leader decision after audit B1): a tag or release left case (4), where a
+            // deadline default applies, for case (2) at every autonomy level; lifting a HOLD stays
+            // a `semi` case-(4) choice until the user decides it.
+            "what the chosen autonomy level still reserves for the user (new Issues, lifting a HOLD and merge-policy changes at `semi`) goes to the user as case (4)",
+            "pushing a tag or publishing a release is case (2) at every autonomy level, `full` included",
             "Independent audit and the CI gate are never delegated.",
             "its options, the default, whether it is reversible, its category (`none`, `guarded` or one of the five), its deadline and who decided; a decision without a record does not count.",
             // #2678: a reported figure comes from a named command, and silence is not zero.
@@ -2690,10 +2710,42 @@ mod skill_package {
         for line in [
             "within the autonomy level SPEC §6 gives — at `semi` the choices listed below for that level still go to the user",
             "record it with every field SKILL.md names",
-            "At `semi`, new Issues, lifting a HOLD, merge-policy changes and releases also go to the user.",
+            "Pushing a tag or publishing a release goes to the user and waits at every autonomy level, `full` included, with no deadline default (`SKILL.md` case (2), card C-81).",
+            "At `semi`, new Issues, lifting a HOLD and merge-policy changes also go to the user.",
         ] {
             assert!(leader.contains(line), "mode-leader.md lacks: {line}");
         }
+        // Card C-81: no text still puts a release among the case-(4) choices or limits it to
+        // `semi`; lifting a HOLD is not moved to case (2) without a user decision.
+        for (name, body) in [("SKILL.md", &skill), ("mode-leader.md", &leader)] {
+            for old in [
+                "merge-policy changes and releases",
+                "releases at `semi`",
+                "lifting a HOLD and pushing a tag",
+            ] {
+                assert!(!body.contains(old), "{name} still says {old:?}");
+            }
+        }
+        // Audit K1 on C-81: the autonomy SPEC's §6 rows say the same (the `full` row gives the
+        // user the release tag and publish; the `semi` row adds lifting a HOLD).
+        let spec = fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join(SPEC)).unwrap();
+        let row = |start: &str| {
+            spec.lines()
+                .find(|l| l.starts_with(start))
+                .unwrap_or_else(|| panic!("§6 row {start}"))
+                .to_string()
+        };
+        let full = row("| full(완전자율) |");
+        assert!(
+            full.contains("+ release 태그·게시(SKILL.md 경우 (2), 기한 기본값 없음, 카드 C-81) |"),
+            "{full}"
+        );
+        assert!(!full.contains("HOLD 해제"), "{full}");
+        let semi = row("| semi(반자율) |");
+        assert!(
+            semi.ends_with("| full의 목록 + Issue 신규 발행, HOLD 해제, 병합 정책 변경 |"),
+            "{semi}"
+        );
         assert!(agent.contains("send a choice to the leader — not to the user"));
         assert!(agent.contains(
             "never declare a HOLD outside the five categories, `guarded` and `irreversible`"
