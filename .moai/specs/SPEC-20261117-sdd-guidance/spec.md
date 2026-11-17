@@ -18,8 +18,7 @@ chain에는 PLAN이 없고, 개발 방법을 "DDD"라고 불렀어요. 이 SPEC�
 ## Non-goals
 
 - CLI 변경(`moai spec take`·`close`, 관문의 `Moai-Session` 읽기, 커밋 가드의 `spec/` 가지): 다른 조각(SDD-6~8).
-- `moai card spec` 같은 카드↔SPEC 연결 명령: 별도 변경(SDD-4)이 넣어요. 이 SPEC은 그것을 "들어오면 쓸 수 있는
-  예정 기능"으로만 적어요.
+- `moai card spec` 같은 카드↔SPEC 연결 명령 자체: 별도 변경(SDD-4)이 넣었어요. 이 SPEC은 그 사용법만 적어요.
 - mode 파일(`mode-agent.md`, `mode-leader.md`): 이미 카드 원장 기준으로 다시 쓰여 있어 건드리지 않아요.
 - `sync.md`의 PR·병합 단계(`v2026.11.0`, `Refs #<n>`): 관문 조각과 함께 바꿔요.
 - `@cc:` 표기의 정확한 문법: 별도 SPEC.
@@ -29,7 +28,7 @@ chain에는 PLAN이 없고, 개발 방법을 "DDD"라고 불렀어요. 이 SPEC�
 요구 문장은 영어 GEARS로 써요. `IF …, THEN …`은 원치 않는 동작이에요.
 
 - REQ-1: The `moai` skill shall keep the agent-facing SDD rules in one internal reference, `internal/sdd`.
-- REQ-2: The reference shall name only `moai spec` actions this build has and mark the card ↔ SPEC link as planned until it lands.
+- REQ-2: The reference shall name only `moai spec` actions and card ↔ SPEC link commands that this build has.
 - REQ-3: Each ordering document shall state the order PLAN → RUN → VERIFY → SYNC → AUDIT → merge.
 - REQ-4: The build and bug-fix chains shall run PLAN, RUN, VERIFY, SYNC and AUDIT with `moai-docs` before `moai-audit`.
 - REQ-5: When SYNC runs before the audit, the SYNC workflow shall write the SPEC's Result and status, the documents and the existing `@cc:` comments on the candidate branch. · failure: none — 맞출 수 없는 차이는 같은 문단이 보고하고 멈추게 해요.
@@ -46,8 +45,9 @@ REQ-3의 "ordering document"는 chain 표(`chains/index.md`)와 RUN·VERIFY·SYN
 
 - AC-1 (REQ-1, REQ-2): 참조가 사용자 결정을 적고(SPEC 대상, minimal 기본, GEARS + IF…THEN과 `(REQ-n)`, `· failure:
   none`, 답 없는 질문 표시(NEEDS CLARIFICATION), 선택 승인과 digest, 한 SPEC = 한 PR, `Moai-Spec`, `Moai-Session`은 예정), 적은
-  `moai spec` 동작이 모두 `--help`로 열리고, 카드 연결 명령이 없는 동안 그 줄은 모두 "planned … once that change
-  lands"라고 말해요.
+  `moai spec` 동작이 모두 `--help`로 열리고, 카드 연결 명령(`moai card spec`, `--unlink`, `card next`·`take`의 SPEC
+  상태, `--require-approved-spec`)은 이 빌드에 있을 때 "planned" 없이 적혀요(없는 빌드에서는 반대로 "planned"를
+  요구해요).
   verify: `cargo test --locked --offline --test sdd_guidance`
 - AC-2 (REQ-3, REQ-5, REQ-6, REQ-7, REQ-8): chain 표와 RUN·VERIFY·SYNC·AUDIT에 순서 문장이 있고, 옛 순서 문자열이
   없고, PLAN·RUN·SYNC·AUDIT이 `internal/sdd`를 가리켜요.
@@ -91,8 +91,9 @@ REQ-3의 "ordering document"는 chain 표(`chains/index.md`)와 RUN·VERIFY·SYN
 ## Decisions
 
 - D1 요구 문장은 영어 GEARS, 본문 한국어, 제목 영어(저장소의 다른 SPEC과 같은 형식).
-- D2 카드 연결 명령은 이 빌드에 없어서(`moai card spec --help` exit 2) "planned, available once that change
-  lands"로 적었어요(리더 결정: 에이전트는 이 참조에서 명령을 배워요). 시험은 명령이 생기면 그 조건을 스스로 풀어요.
+- D2 카드 연결 명령은 처음 기반에 없어서(`moai card spec --help` exit 2) "planned"로 적었다가, 카드 연결
+  변경(#3160)이 병합된 tip을 합친 뒤 `--help`로 확인하고 쓸 수 있는 명령으로 고쳤어요(리더 결정: 에이전트는 이
+  참조에서 명령을 배워요). 시험은 빌드에 명령이 있으면 "planned"를 금지하고, 없으면 요구해요.
 - D3 버그 수정 chain: `moai-research, moai-plan, moai-impl, moai-docs, moai-audit`. 빌드 chain:
   `moai-plan, moai-impl, moai-docs, moai-audit`. VERIFY는 에이전트 없이 부모 세션이 해요.
 - D4 SYNC의 글쓰기는 `moai-docs`가 해요: `agents/docs.md`의 쓰기 범위에 SPEC `## Result`·상태와, 범위에 든 코드
@@ -160,3 +161,21 @@ N1: 카드 연결 명령이 생기면 "planned"가 남지 않게. N4: `moai spec
   `mode_workflow_steps` 42, `core_rules_2876` 4, `product_cli` 75 — 모두 exit 0; `cargo fmt --check` 0; clippy 0;
   Python 85개 OK; manifest `check` 0; `package-inspect skills/moai` exit 0, 65,536바이트 넘는 파일 0;
   `moai spec check --all` exit 0(SPEC 5개 오류 0·경고 0).
+
+### 카드 연결 병합 뒤 (2026-11-17 09:53Z–09:58Z)
+
+재감사는 `853f13a811`에서 PASS였지만, 카드 연결 변경(#3160)이 09:45:47Z에 병합돼 병합 트리에서 N1 시험이(의도대로)
+실패했어요: "`moai card spec` exists: say it is available".
+
+커밋: `853f13a811` 위에 `c1981a7111`(tip `d032d0be1f` 병합: `source-manifest.json`만 충돌, `write` 뒤 `check` 0) →
+이 커밋(`sdd.md` 7번 항목 + 이 Result).
+
+- 병합한 빌드의 도움말: `moai card spec --help` exit 0(`<CARD> [SPEC]`, `--unlink`, SPEC은 `moai spec check` 오류 없이
+  통과해야 함, 같은 연결은 아무것도 안 씀); `moai card take --help`에 `--require-approved-spec`(승인된 SPEC이 없으면
+  거절, 아무것도 안 잡음); `moai card next --help`가 `spec` 상태와 `warnings`를 적어요. `sdd.md` 7번을 이대로 "쓸 수
+  있음"으로 고쳤어요.
+- RED(병합 빌드 + 고치기 전 `sdd.md`): `the_reference_names_only_commands_this_build_has` 실패(위 문장). GREEN: exit 0.
+- 다시 돌린 검사(병합 트리): `--bin moai` 27, `agent_defs_package` 18, `core_rules_2876` 5, `mode_workflow_steps` 42,
+  `product_cli` 75, `sdd_guidance` 5, `update_route` 8 — 모두 exit 0; `cargo fmt --check` 0; clippy 0; Python 85개
+  OK; manifest `check` 0; `package-inspect skills/moai` exit 0, 65,536바이트 넘는 파일 0; `moai spec check --all`
+  exit 0(SPEC 10개 오류 0·경고 0).
