@@ -48,8 +48,9 @@ parent: null
   적고, 그 요청들이 임시 저장소에서 실제로 동작해요: 빌드 전 `unavailable`, 빌드 뒤 `fresh`, 파일을 고치면 `stale`과
   `changes.modified`에 그 파일.
   verify: `cargo test --locked --offline --test code_atlas_reference`
-- AC-8 (REQ-4): 빌드 뒤에 추가한 파일(`src/c.rs`가 `crate::a`를 씀)은 낡은 아틀라스의 의존 목록에 없고, 참조의 `stale`
-  규칙(그 규칙이 적은 `changes` 키의 파일을 경로와 import 이름으로 검색해 합침)이 찾아요. 규칙 문장도 고정돼요.
+- AC-8 (REQ-4): 빌드 뒤에 추가한 파일 둘(`src/c.rs`는 `crate::a::alpha`, `src/d.rs`는 묶음 import
+  `use crate::{a::alpha, …}`)은 낡은 아틀라스의 의존 목록에 없고, 참조의 `stale` 규칙(그 규칙이 적은 `changes` 키의
+  파일을 경로와 모듈 이름 단어 `rg -w`로 검색해 합침)이 둘 다 찾아요. 규칙 문장도 고정돼요.
   verify: `cargo test --locked --offline --test code_atlas_reference a_dependent_added_after_the_build_is_found_by_the_stale_rule`
 - AC-2 (REQ-6): 읽기 명령이 아틀라스를 만들지 않고(빌드 전 읽기 뒤 `index` 폴더 없음), READ·PLAN workflow에
   `index-build`가 없고, PROJECT가 동의 뒤 제안을 그대로 가져요.
@@ -103,7 +104,9 @@ parent: null
   바뀐·새 파일이 질문 대상을 새로 쓸 수 있어서요. 그래서 `deleted` 파일을 빼고, `added`·`modified`·`new_files`
   파일을 `rg`로 경로와 import 이름 검색해 합쳐요. 고른 이유: "변경이 있으면 의존 질문에 쓰지 않음"보다 큰 저장소에서
   아틀라스를 계속 쓸 수 있고, 검색 대상이 바뀐 파일뿐이라 짧아요. 되돌리기: 참조 1단계 `stale` 줄을 "쓰지 않음"으로
-  바꾸고 AC-8 시험을 지워요.
+  바꾸고 AC-8 시험을 지워요. 재감사 N1 뒤: 검색어는 경로와 모듈 이름의 단어 검색(`rg -w x`)이에요 — `crate::x`만
+  찾으면 묶음 import(`use crate::{a, x::y}`, 이 저장소 `src/` 17개 파일이 씀)를 놓쳐요. 단어 검색은 넓게 잡으므로
+  더한 파일도 4단계대로 그 줄을 읽어 확인해요. 재감사 N2(지운 import가 의존으로 남음)는 보수적이라 그대로 둬요.
 - D3 `branch_switched`면 `unavailable`로 봐요: HEAD가 빌드 뒤에 움직였으면(커밋이나 가지 전환, `src/index.rs`가
   HEAD와 `base_commit`이 다를 때 참으로 둠) 바뀐 파일 목록만으로는 범위를 믿을 수 없어서요.
 - D4 기본 질의는 1홉 그래프와 이름 붙인 파일이에요(측정: 1홉 4,390바이트, 2홉 93,243바이트; 참조에는 저장소마다

@@ -376,7 +376,7 @@
       }
     },
     "references/internal/code-atlas.md": {
-      "sha256": "c2c7bae50cb803c18f2c59340550e03f776edb23129421243dc513f007f087b7",
+      "sha256": "cf02b8c4a34c8d7616267fefa22e39849262f8e7d9382e230f8cf141d048a664",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-code-atlas",

@@ -127,6 +127,9 @@ fn the_instruction_names_the_requests_the_states_and_the_no_build_rule() {
         "An answer that lists files — dependents above all — is incomplete",
         "drop the `deleted` files from it",
         "with `rg` for the path and the import name of what you asked about",
+        // Re-audit N1: a grouped import names the module only as a bare word.
+        "the bare module name as a whole word, `rg -w x`",
+        "grouped imports such as `use crate::{a, x::y}`",
         "add each file that matches",
     ] {
         assert!(
@@ -160,9 +163,16 @@ fn keys_to_search(stale: &str) -> Vec<&str> {
     stale[from..to].split('`').skip(1).step_by(2).collect()
 }
 
-/// Audit B1: a file added after the build depends on `src/a.rs`. The atlas, being stale,
-/// does not list it; the stale rule's own procedure — search the `changes` files the rule
-/// names for the path and the import name, then merge — finds it.
+/// `rg -w`: `word` appears as a whole identifier word.
+fn has_word(body: &str, word: &str) -> bool {
+    body.split(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+        .any(|w| w == word)
+}
+
+/// Audit B1: files added after the build depend on `src/a.rs` — one with a plain import, one
+/// with a grouped import (re-audit N1). The atlas, being stale, lists neither; the stale rule's
+/// own procedure — search the `changes` files the rule names for the path and the bare module
+/// name as a whole word, then merge — finds both.
 #[test]
 fn a_dependent_added_after_the_build_is_found_by_the_stale_rule() {
     let (tmp, project) = fixture();
@@ -177,9 +187,14 @@ fn a_dependent_added_after_the_build_is_found_by_the_stale_rule() {
         "use crate::a::alpha;\n\npub fn gamma() -> u8 {\n    alpha() + 1\n}\n",
     )
     .unwrap();
+    // A grouped import: no `crate::a` anywhere in the file.
+    let grouped =
+        "use crate::{a::alpha, b::beta};\n\npub fn delta() -> u8 {\n    alpha() + beta()\n}\n";
+    assert!(!grouped.contains("crate::a"));
+    fs::write(project.join("src/d.rs"), grouped).unwrap();
     fs::write(
         project.join("src/lib.rs"),
-        "pub mod a;\npub mod b;\npub mod c;\n",
+        "pub mod a;\npub mod b;\npub mod c;\npub mod d;\n",
     )
     .unwrap();
     let q = run(&home, &project, "index-query", VERSION);
@@ -202,10 +217,12 @@ fn a_dependent_added_after_the_build_is_found_by_the_stale_rule() {
         .map(str::to_string)
         .collect();
     assert!(dependents.contains(&"src/b.rs".to_string()), "{g}");
-    assert!(
-        !dependents.contains(&"src/c.rs".to_string()),
-        "the stale atlas cannot know src/c.rs: {g}"
-    );
+    for new in ["src/c.rs", "src/d.rs"] {
+        assert!(
+            !dependents.contains(&new.to_string()),
+            "the stale atlas cannot know {new}: {g}"
+        );
+    }
 
     // The rule as written: drop `deleted`, search the files of the keys it names.
     let text = reference();
@@ -223,17 +240,19 @@ fn a_dependent_added_after_the_build_is_found_by_the_stale_rule() {
         for path in q["changes"][key].as_array().unwrap() {
             let path = path.as_str().unwrap();
             let body = fs::read_to_string(project.join(path)).unwrap_or_default();
-            if (body.contains("src/a.rs") || body.contains("crate::a"))
+            if (body.contains("src/a.rs") || has_word(&body, "a"))
                 && !dependents.iter().any(|d| d == path)
             {
                 dependents.push(path.to_string());
             }
         }
     }
-    assert!(
-        dependents.contains(&"src/c.rs".to_string()),
-        "the stale rule missed the new dependent: {dependents:?} ({q})"
-    );
+    for new in ["src/c.rs", "src/d.rs"] {
+        assert!(
+            dependents.contains(&new.to_string()),
+            "the stale rule missed the new dependent {new}: {dependents:?} ({q})"
+        );
+    }
 }
 
 #[test]
