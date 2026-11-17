@@ -24,6 +24,7 @@
 //! ordinary ones such as "Remove the unused import?" (design v2, two audits of the first
 //! design).
 
+use super::normalise::normalise;
 use super::request::Request;
 use super::Refusal;
 use crate::decision_file::CATEGORIES;
@@ -77,10 +78,17 @@ pub const DENY: [(&str, &str); 7] = [
 
 /// The code of the first deny-list shape `text` holds, or `None`.
 ///
+/// The text is read after the normaliser ([`normalise`], slice V2, V1 audit N3): a bidi or
+/// control character answers with the normaliser's own code (`bidi_character`,
+/// `control_character`), a character without width is taken out, and full-width forms and
+/// the ideographic space read as ASCII.
+///
 /// The command shapes are read one line at a time, as words split at white space, in lower
 /// case, with quotes, brackets and sentence punctuation taken off each word's ends:
-/// - `deny_force_push`: the word `push` with the word `--force` or `-f` anywhere after it on
-///   the line (`git push origin main --force` too), or the word `--force-with-lease` (also
+/// - `deny_force_push`: the word `push` with, anywhere after it on the line, the word
+///   `--force`, a cluster of `git push` short flags with `f` in it (`-f`, `-fu`, `-uf`; the
+///   letters `4 6 d f n q u v`), or a refspec with a leading `+` before a letter (`+main`,
+///   `+HEAD:main`) (V1 audit N1); or the word `--force-with-lease` (also
 ///   `--force-with-lease=…`) anywhere. `--force` without `push` before it is not this shape.
 /// - `deny_reset_hard`: the word `reset` with `--hard` after it on the line.
 /// - `deny_rm_rf`: the word `rm` with both the `r` and the `f` flag after it on the line, in
@@ -88,8 +96,9 @@ pub const DENY: [(&str, &str); 7] = [
 ///   --force`). `rm -r` alone passes: a recursive delete without force is judged by the
 ///   honest `reversible` and `undo` fields, not by this list.
 /// - `deny_drop_table`: the two words `drop table`, `drop database` or `truncate table`.
-/// - `deny_visibility_public`: `visibility=public` anywhere, or the words `--visibility
-///   public`.
+/// - `deny_visibility_public`: `visibility=public` anywhere, the words `--visibility
+///   public`, or the words `repo create` with the word `--public` after them on the line
+///   (`gh repo create x --public`, V1 audit N2).
 /// - `deny_chmod_777`: the word `chmod` with the word `777` or `0777` after it on the line.
 ///
 /// `deny_currency` reads the text as it is: `$`, `€`, `£`, `₩` or `¥` right before an ASCII
@@ -99,6 +108,10 @@ pub const DENY: [(&str, &str); 7] = [
 /// the leader: a shell argument such as `$1`, and a Korean word that starts with `원` after
 /// a number (`제1원칙`).
 pub fn deny(text: &str) -> Option<&'static str> {
+    let text = match normalise(text) {
+        Ok(text) => text,
+        Err(code) => return Some(code),
+    };
     for line in text.lines() {
         let words = words(line);
         let after = |first: &str, found: &dyn Fn(&str) -> bool| {
@@ -108,7 +121,19 @@ pub fn deny(text: &str) -> Option<&'static str> {
                 .is_some_and(|at| words[at + 1..].iter().any(|w| found(w)))
         };
         let pair = |a: &str, b: &str| words.windows(2).any(|w| w[0] == a && w[1] == b);
-        if after("push", &|w| w == "--force" || w == "-f")
+        let forced = |w: &str| {
+            let flags = w.strip_prefix('-').filter(|f| !f.is_empty());
+            w == "--force"
+                || flags
+                    .is_some_and(|f| f.contains('f') && f.chars().all(|c| "46dfnquv".contains(c)))
+                || w.strip_prefix('+')
+                    .is_some_and(|r| r.starts_with(|c: char| c.is_ascii_alphabetic()))
+        };
+        let create_public = words
+            .windows(2)
+            .position(|w| w[0] == "repo" && w[1] == "create")
+            .is_some_and(|at| words[at + 2..].iter().any(|w| w == "--public"));
+        if after("push", &forced)
             || words
                 .iter()
                 .any(|w| w == "--force-with-lease" || w.starts_with("--force-with-lease="))
@@ -124,14 +149,17 @@ pub fn deny(text: &str) -> Option<&'static str> {
         if pair("drop", "table") || pair("drop", "database") || pair("truncate", "table") {
             return Some("deny_drop_table");
         }
-        if line.to_lowercase().contains("visibility=public") || pair("--visibility", "public") {
+        if line.to_lowercase().contains("visibility=public")
+            || pair("--visibility", "public")
+            || create_public
+        {
             return Some("deny_visibility_public");
         }
         if after("chmod", &|w| w == "777" || w == "0777") {
             return Some("deny_chmod_777");
         }
     }
-    holds_currency_amount(text).then_some("deny_currency")
+    holds_currency_amount(&text).then_some("deny_currency")
 }
 
 /// The words of one line: split at white space, lower case, with quotes, brackets and
@@ -271,8 +299,10 @@ pub fn check(request: &Request) -> Result<Cleared<'_>, Refusal> {
         );
     for (place, text) in texts {
         if let Some(code) = deny(text) {
+            // A deny-list shape, or the normaliser's own refusal (named like the screen's).
             let names = DENY
                 .iter()
+                .chain(super::outbound::SCREEN.iter())
                 .find(|(c, _)| *c == code)
                 .map(|(_, names)| *names)
                 .unwrap_or_default();
@@ -689,7 +719,11 @@ mod tests {
         .unwrap();
         let r = check(&request).unwrap_err();
         assert_eq!(r.code, "bidi_character");
-        assert!(r.reason.starts_with("an option description"), "{}", r.reason);
+        assert!(
+            r.reason.starts_with("an option description"),
+            "{}",
+            r.reason
+        );
         assert!(!r.reason.contains("txt"), "{}", r.reason);
     }
 }

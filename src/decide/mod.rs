@@ -17,9 +17,14 @@
 //!   option, or a text holding one shape of the narrow deny list (known threats only, not a
 //!   risk judge: a force push, `reset --hard`, `rm -rf`, dropping a table, making a
 //!   repository public, `chmod 777`, a currency amount).
-//! - [`outbound`] is the text that would leave the machine. A credential shape in it refuses
-//!   the request (user decision 2026-11-16, D-secret-hit: refuse and fall back, never mask and
-//!   send); the home folder and the user name are masked.
+//! - [`normalise`] is the one reading every screen takes first (design v2, slice V2): bidi and
+//!   control characters refuse, characters without width are taken out, full-width forms read
+//!   as ASCII; and one layer of encoding can be read for a second look.
+//! - [`outbound`] is the text that would leave the machine. Each field is screened on its own,
+//!   and a credential shape, a word mixing scripts, a random-looking token or any of these
+//!   after one decoding refuses the request (user decision 2026-11-16, D-secret-hit: refuse
+//!   and fall back, never mask and send); the home folder, the user name, e-mail addresses
+//!   and temporary folders are masked.
 //! - [`provider`] builds the exact request bytes for `typesafe` (Jev) and `openai`, and reads
 //!   their answers. The endpoints are compile-time constants; no setting, variable or request
 //!   field can aim a request elsewhere.

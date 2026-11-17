@@ -2,9 +2,41 @@
 //! question, the options and the evidence, and nothing else. The card, the default and the
 //! deadline are never sent.
 //!
-//! Three rules, in this order:
-//! 1. A field of more than 64 KiB refuses the request ([`FIELD_MAX`]); the whole body has its
-//!    own bound in [`super::BODY_MAX`]. Refused, never cut: a cut text is another question.
+//! Design v2, slice V2 (the secret and privacy screen). Each field is screened on its own:
+//! `what`, every option value and description, `undo`, the card, and every evidence field's
+//! name and value apart, so a field named `token` with an innocent value passes and a value
+//! holding a key does not ([`build`]). [`screen`] reads one field in this order, and the
+//! first hit refuses the whole request with its own code ([`SCREEN`]); nothing that hits is
+//! masked and sent, and no reason quotes the text:
+//! 1. the normaliser ([`super::normalise::normalise`]): a bidi or control character refuses
+//!    (`bidi_character`, `control_character`); default-ignorables are taken out and
+//!    full-width forms, `ſ` and the Kelvin sign read as ASCII;
+//! 2. a word (letters, digits, `_`, `-`) that mixes ASCII letters with Cyrillic or Greek
+//!    letters (`mixed_script`; a Greek mu right after a digit, the micro sign of `10μs`, is
+//!    not one);
+//! 3. the key shapes below (`secret_shape`), also with each character without width read
+//!    as a break instead of taken out;
+//! 4. a token of [`ENTROPY_LEN_MIN`] or more characters of `A-Z a-z 0-9 _ - + / =` with a
+//!    letter and a digit and a Shannon entropy of [`ENTROPY_BITS_MIN`] bits per character or
+//!    more (`high_entropy`), unless every part of it between `/ _ - + =` is an ordinary word
+//!    ([`is_ordinary_part`]): so a commit id, a sha256 digest, a UUID, a path and a snake-case
+//!    name pass;
+//! 5. one layer of encoding read ([`super::normalise::decode_once`]: percent, `\u`, `\U`,
+//!    `\x`, `\u{…}`, HTML numeric entities, base64 and hex runs) and rules 2 to 4 again on
+//!    the decoded text (`secret_encoded`).
+//!
+//! Known limits, stated: a secret split across two fields (each field is read alone); an
+//! encoding inside an encoding (one layer is read); a short password in prose (`hunter2`
+//! has no shape, and a field named `password` is not itself a hit); a random token whose
+//! parts each read as a word ([`is_ordinary_part`]: `a8f3k2-x9q1m4-…` or
+//! `AbCdEfGhIjKlMnOpQrSt_1` read as names); look-alike letters of scripts other than
+//! Cyrillic and Greek; and any key format not listed here. A false hit costs one fallback to
+//! the leader.
+//!
+//! Rules kept from slice S2:
+//! 1. A field of more than 64 KiB refuses the request ([`FIELD_MAX`]) before any screen reads
+//!    it; the whole body has its own bound in [`super::BODY_MAX`]. Refused, never cut: a cut
+//!    text is another question.
 //! 2. A credential shape anywhere in that text, or in the card, refuses the whole request
 //!    (user decision 2026-11-16, D-secret-hit: refuse and fall back, zero calls; never mask
 //!    and send). [`holds_secret_shape`] reads the shared shapes of
@@ -16,22 +48,32 @@
 //!    and digits (leader decision 2026-11-17, audit N7). A false hit costs one fallback to
 //!    the leader. Commit ids and sha256 digests (lower-case hex) are not hits.
 //!    Second audit (2026-11-17), N7: also the Stripe (`sk_live_`, `sk_test_`, `rk_live_`),
-//!    Hugging Face (`hf_`) and npm (`npm_`) prefixes, and a reading with `\uXXXX` escapes
-//!    and full-width letters taken as ASCII. N6: `sk-` before a lower-case hyphenated name
-//!    (sk-learn-pipeline) and a macOS temporary folder are not hits.
-//! 3. The home folder, the user name and a macOS temporary folder are masked ([`mask`]):
-//!    they say who and where, and a
-//!    decision needs neither. An option value that would change under the mask is refused
-//!    instead, because the answer names an option by its value.
+//!    Hugging Face (`hf_`) and npm (`npm_`) prefixes. N6: `sk-` before a lower-case
+//!    hyphenated name (sk-learn-pipeline) and a macOS temporary folder are not hits.
+//!    Slice V2: also `rk_test_`, `whsec_` and `sk-proj-` (a lower-case tail too), and any of
+//!    the key prefixes glued after a letter or digit (`mysk_live_…`) when at least 16 letters
+//!    and digits with a digit among them follow it.
+//! 3. The home folder, the user name, an e-mail address (`[email]`, user decision U2) and a
+//!    macOS temporary folder (`T` or `C`) are masked ([`mask`]): they say who and where, and
+//!    a decision needs none of them. An option value that would change under the mask is
+//!    refused instead, because the answer names an option by its value. After masking, each
+//!    sent field is held to the request's own bound again (`what` 500 bytes, a description
+//!    300, `undo` 200, an evidence value 4 KiB, all values 16 KiB): too long is refused,
+//!    never cut.
 //!
 //! All of it is a conservative filter over known shapes, not a secret detector.
 //!
 //! The evidence is an object of named fields (design v2, slice V1). It is sent as one text,
-//! one `name: value` line per field in name order ([`render_evidence`]), and that text is
-//! what the rules above read and mask. `undo` is recorded and never sent; like the card it
-//! is screened and masked. The provider slice (V3) may send the fields as an object instead.
+//! one `name: value` line per field in name order ([`render_evidence`]). Each name and value
+//! is masked on its own and then escaped (slice V2, V1 audit N8): `\` as `\\`, a line feed
+//! as `\n`, a carriage return as `\r`, and the other line terminators as `\uXXXX`, so a value
+//! cannot start a line of its own and forge another field. `undo` is recorded and never
+//! sent; like the card it is screened and masked. The provider slice (V3) may send the
+//! fields as an object instead.
 
 use super::gate::Cleared;
+use super::normalise;
+use super::request::{DESCRIPTION_MAX, EVIDENCE_FIELD_MAX, EVIDENCE_MAX, UNDO_MAX, WHAT_MAX};
 use super::Refusal;
 use std::collections::BTreeMap;
 
@@ -58,16 +100,36 @@ pub struct Outbound {
 }
 
 /// The evidence fields as the one text that is sent: `name: value`, one field after the
-/// other in name order, joined by a line break.
-pub fn render_evidence(fields: &BTreeMap<String, String>) -> String {
+/// other in the order given (name order for a map), joined by a line break. Name and value
+/// are escaped ([`escaped`]), so each field is exactly one line.
+pub fn render_evidence<'a>(fields: impl IntoIterator<Item = (&'a String, &'a String)>) -> String {
     fields
-        .iter()
-        .map(|(name, value)| format!("{name}: {value}"))
+        .into_iter()
+        .map(|(name, value)| format!("{}: {}", escaped(name), escaped(value)))
         .collect::<Vec<_>>()
         .join("\n")
 }
 
-/// Largest single text field, in bytes (64 KiB), before and after masking.
+/// `text` with `\` as `\\`, a line feed as `\n`, a carriage return as `\r` and every other
+/// line terminator (vertical tab, form feed, U+0085, U+2028, U+2029) as `\uXXXX`.
+fn escaped(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for c in text.chars() {
+        match c {
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\u{b}' | '\u{c}' | '\u{85}' | '\u{2028}' | '\u{2029}' => {
+                out.push_str(&format!("\\u{:04x}", c as u32))
+            }
+            c => out.push(c),
+        }
+    }
+    out
+}
+
+/// Largest single text field, in bytes (64 KiB), before any screen reads it. After masking,
+/// the request's own smaller bounds apply again ([`build`]).
 pub const FIELD_MAX: usize = 64 * 1024;
 
 impl Outbound {
@@ -110,91 +172,166 @@ pub const ENTROPY_BITS_MIN: f64 = 4.0;
 /// What stands in for an e-mail address (user decision U2, 2026-11-16).
 pub const EMAIL_MASK: &str = "[email]";
 
-/// Shannon entropy of `token`, in bits per character.
+/// The codes of [`screen`] and what each names in a refusal's reason. The text that hit is
+/// never quoted.
+pub const SCREEN: [(&str, &str); 6] = [
+    (
+        normalise::BIDI,
+        "a bidirectional control character (U+202A to U+202E, U+2066 to U+2069)",
+    ),
+    (
+        normalise::CONTROL,
+        "a control character other than tab and line feed",
+    ),
+    (
+        "mixed_script",
+        "a word that mixes ASCII letters with Cyrillic or Greek letters",
+    ),
+    ("secret_shape", "a credential shape"),
+    (
+        "high_entropy",
+        "a random-looking token (20 or more characters with letters and digits, 4.0 or more \
+         bits of entropy per character)",
+    ),
+    (
+        "secret_encoded",
+        "a credential shape or a random-looking token once one layer of encoding is read",
+    ),
+];
+
+/// Shannon entropy of `token`, in bits per character (0 for an empty token).
 pub fn entropy(token: &str) -> f64 {
-    0.0
-}
-
-/// The code of the first screen that refuses `text`, or `None` (stub).
-pub fn screen(text: &str) -> Option<&'static str> {
-    holds_secret_shape(text).then_some("secret_shape")
-}
-
-/// True when `text` holds a credential shape (see the module rules). Read twice: as written,
-/// where a character without width is a break like any other, and with those characters
-/// taken out, so one placed inside a key does not split it.
-///
-/// A third reading takes `\uXXXX` escapes and full-width letters (U+FF01 to U+FF5E) as the
-/// ASCII they stand for (second audit, N7). Look-alike letters of other scripts are not
-/// read. All of it is for the refusal only: text that passes is sent as it was written.
-///
-/// Two shapes are plain text and not hits (second audit, N6): a macOS temporary folder
-/// ([`mask_temp_folders`]; it is masked) and a lower-case hyphenated name after `sk-`
-/// ([`without_sk_names`]).
-pub fn holds_secret_shape(text: &str) -> bool {
-    let reads = |t: &str| {
-        let t = without_sk_names(&mask_temp_folders(t));
-        crate::redact::redact_outgoing(&t).1 > 0
-            || holds_glued_shape(&t)
-            || holds_secret_pair(&t)
-            || holds_long_mixed_run(&t)
-    };
-    let joined = |t: &str| -> String { t.chars().filter(|c| !ZERO_WIDTH.contains(c)).collect() };
-    if reads(text) {
-        return true;
+    let mut counts = BTreeMap::<char, usize>::new();
+    for c in token.chars() {
+        *counts.entry(c).or_default() += 1;
     }
-    let bare = joined(text);
-    if bare.len() != text.len() && reads(&bare) {
-        return true;
-    }
-    let ascii = joined(&as_ascii(text));
-    ascii != bare && reads(&ascii)
-}
-
-/// `text` with each `\uXXXX` escape as the character it names (an escape that names none,
-/// half of a surrogate pair, stays as written) and each full-width form of an ASCII
-/// character (U+FF01 to U+FF5E) as that character.
-fn as_ascii(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    let mut rest = text;
-    while let Some(at) = rest.find("\\u") {
-        out.push_str(&rest[..at]);
-        let named = rest
-            .get(at + 2..at + 6)
-            .filter(|hex| hex.bytes().all(|b| b.is_ascii_hexdigit()))
-            .and_then(|hex| u32::from_str_radix(hex, 16).ok())
-            .and_then(char::from_u32);
-        match named {
-            Some(c) => {
-                out.push(c);
-                rest = &rest[at + 6..];
-            }
-            None => {
-                out.push_str("\\u");
-                rest = &rest[at + 2..];
-            }
-        }
-    }
-    out.push_str(rest);
-    out.chars()
-        .map(|c| match c {
-            '\u{ff01}'..='\u{ff5e}' => char::from_u32(c as u32 - 0xfee0).unwrap_or(c),
-            c => c,
+    let n = counts.values().sum::<usize>() as f64;
+    counts
+        .values()
+        .map(|&count| {
+            let p = count as f64 / n;
+            -p * p.log2()
         })
-        .collect()
+        .sum()
+}
+
+/// The code of the first rule of the module text that refuses `text`, or `None`. Read for
+/// the refusal only: text that passes is sent as it was written (masked).
+pub fn screen(text: &str) -> Option<&'static str> {
+    let normal = match normalise::normalise(text) {
+        Ok(normal) => mask_temp_folders(&normal),
+        Err(code) => return Some(code),
+    };
+    if holds_mixed_script(&normal) {
+        return Some("mixed_script");
+    }
+    let spaced = mask_temp_folders(&normalise::spaced(text));
+    if holds_pattern(&normal) || holds_pattern(&spaced) {
+        return Some("secret_shape");
+    }
+    if holds_high_entropy(&normal) {
+        return Some("high_entropy");
+    }
+    let decoded = mask_temp_folders(&normalise::fold(&normalise::decode_once(&normal)?));
+    (holds_mixed_script(&decoded) || holds_pattern(&decoded) || holds_high_entropy(&decoded))
+        .then_some("secret_encoded")
+}
+
+/// True when [`screen`] refuses `text` for any reason.
+pub fn holds_secret_shape(text: &str) -> bool {
+    screen(text).is_some()
+}
+
+/// The key shapes of rule 3, on text the normaliser has read. Two shapes are plain text and
+/// not hits (second audit, N6): a macOS temporary folder (the caller has masked it) and a
+/// lower-case hyphenated name after `sk-` ([`without_sk_names`]).
+fn holds_pattern(text: &str) -> bool {
+    let text = without_sk_names(text);
+    crate::redact::redact_outgoing(&text).1 > 0
+        || holds_glued_shape(&text)
+        || holds_secret_pair(&text)
+        || holds_long_mixed_run(&text)
+}
+
+/// True for a Cyrillic or Greek letter (the Greek mu too; [`holds_mixed_script`] lets it
+/// stand for the micro sign right after a digit).
+fn is_cyrillic_or_greek(c: char) -> bool {
+    c.is_alphabetic()
+        && matches!(
+            c,
+            '\u{370}'..='\u{3ff}'
+                | '\u{1f00}'..='\u{1fff}'
+                | '\u{400}'..='\u{52f}'
+                | '\u{1c80}'..='\u{1c8f}'
+                | '\u{2de0}'..='\u{2dff}'
+                | '\u{a640}'..='\u{a69f}'
+        )
+}
+
+/// Rule 2: a word (letters and digits of any script, `_`, `-`) with an ASCII letter and a
+/// Cyrillic or Greek letter in it. A Greek mu right after a digit is the micro sign
+/// (`10μs`) and does not count; anywhere else it does (`tokμn`).
+fn holds_mixed_script(text: &str) -> bool {
+    text.split(|c: char| !(c.is_alphanumeric() || c == '_' || c == '-'))
+        .any(|word| {
+            let mut before = None;
+            let other = word.chars().any(|c| {
+                let micro = c == '\u{3bc}' && before.is_some_and(|b: char| b.is_ascii_digit());
+                before = Some(c);
+                is_cyrillic_or_greek(c) && !micro
+            });
+            other && word.chars().any(|c| c.is_ascii_alphabetic())
+        })
+}
+
+/// A part of a token, between `/ _ - + =`, that reads as an ordinary word rather than as
+/// random: empty, only digits, no digit at all (`ProviderResponse`, `CARGO`), at most 8
+/// characters without an upper-case letter (`x86`, `v2026`, `agent9`), a longer one without
+/// an upper-case letter whose letters and digits change places at most twice (`followup3`,
+/// `ubuntu2404`; found by the false-hit measurement of slice V2), or hex digits of one
+/// letter case (a commit id, a digest, a UUID part).
+pub fn is_ordinary_part(part: &str) -> bool {
+    let has = |f: fn(&u8) -> bool| part.bytes().any(|b| f(&b));
+    let changes = part
+        .as_bytes()
+        .windows(2)
+        .filter(|pair| pair[0].is_ascii_digit() != pair[1].is_ascii_digit())
+        .count();
+    part.bytes().all(|b| b.is_ascii_digit())
+        || !has(u8::is_ascii_digit)
+        || (part.len() <= 8 && !has(u8::is_ascii_uppercase))
+        || (changes <= 2 && !has(u8::is_ascii_uppercase))
+        || (part.bytes().all(|b| b.is_ascii_hexdigit())
+            && !(has(u8::is_ascii_uppercase) && has(u8::is_ascii_lowercase)))
+}
+
+/// Rule 4: a token of [`ENTROPY_LEN_MIN`] or more characters of `A-Z a-z 0-9 _ - + / =`,
+/// with a letter and a digit, not made of ordinary parts only ([`is_ordinary_part`]), whose
+/// entropy is [`ENTROPY_BITS_MIN`] or more.
+fn holds_high_entropy(text: &str) -> bool {
+    text.split(|c: char| !(c.is_ascii_alphanumeric() || "_-+/=".contains(c)))
+        .any(|token| {
+            token.len() >= ENTROPY_LEN_MIN
+                && token.bytes().any(|b| b.is_ascii_digit())
+                && token.bytes().any(|b| b.is_ascii_alphabetic())
+                && !token.split(['/', '_', '-', '+', '=']).all(is_ordinary_part)
+                && entropy(token) >= ENTROPY_BITS_MIN
+        })
 }
 
 /// `text` with each name of the kind `sk-learn-pipeline` blanked out (the same number of
 /// `x`): `sk-` where a key could start, then lower-case words joined by at least one more
 /// hyphen, with no digit, upper-case letter or underscore anywhere in the run. A key is
 /// random and does not look like that; a pair around the name (`token: sk-…`) still hits.
+/// `sk-proj-` starts a key whatever follows it (slice V2: a lower-case tail too).
 fn without_sk_names(text: &str) -> String {
     let mut bytes = text.as_bytes().to_vec();
     let key = |b: u8| b.is_ascii_alphanumeric() || b == b'_' || b == b'-';
     let mut at = 0;
     while at < bytes.len() {
-        let starts =
-            bytes[at..].starts_with(b"sk-") && (at == 0 || !bytes[at - 1].is_ascii_alphanumeric());
+        let starts = bytes[at..].starts_with(b"sk-")
+            && !bytes[at..].starts_with(b"sk-proj-")
+            && (at == 0 || !bytes[at - 1].is_ascii_alphanumeric());
         if !starts {
             at += 1;
             continue;
@@ -214,12 +351,6 @@ fn without_sk_names(text: &str) -> String {
     String::from_utf8(bytes).unwrap_or_else(|_| text.to_string())
 }
 
-/// Characters that take no room on the screen: zero-width space, non-joiner and joiner, word
-/// joiner, byte-order mark, soft hyphen.
-const ZERO_WIDTH: [char; 6] = [
-    '\u{200b}', '\u{200c}', '\u{200d}', '\u{2060}', '\u{feff}', '\u{00ad}',
-];
-
 fn starts_with_ignoring_case(text: &str, prefix: &str) -> bool {
     text.len() >= prefix.len()
         && text.as_bytes()[..prefix.len()].eq_ignore_ascii_case(prefix.as_bytes())
@@ -230,21 +361,55 @@ fn run(text: &str, part: impl Fn(u8) -> bool) -> usize {
     text.bytes().take_while(|b| part(*b)).count()
 }
 
-/// More key prefixes (second audit, N7) and the fewest letters and digits right after one
-/// that make a hit: Stripe secret and restricted keys, Hugging Face and npm tokens. Their
-/// tails hold no `_` or `-`, which keeps names like `npm_config_cache` out.
-const MORE_PREFIXES: [(&str, usize); 5] = [
+/// More key prefixes (second audit, N7; slice V2) and the fewest letters and digits right
+/// after one that make a hit: Stripe secret, restricted and webhook keys, Hugging Face and
+/// npm tokens. Their tails hold no `_` or `-`, which keeps names like `npm_config_cache` out.
+const MORE_PREFIXES: [(&str, usize); 7] = [
     ("sk_live_", 16),
     ("sk_test_", 16),
     ("rk_live_", 16),
+    ("rk_test_", 16),
+    ("whsec_", 16),
     ("hf_", 20),
     ("npm_", 20),
 ];
 
+/// The key prefixes that also count glued after a letter or digit (`mysk_live_…`, slice V2),
+/// matched in any letter case but the last three, and the fewest letters and digits right
+/// after one, with a digit among them. The digit keeps words out (`work_test_suite…`,
+/// `task-level-configuration`).
+const GLUED_PREFIXES: [&str; 17] = [
+    "sk-", "sk_live_", "sk_test_", "rk_live_", "rk_test_", "whsec_", "hf_", "npm_", "glpat-",
+    "xoxa-", "xoxb-", "xoxp-", "xoxr-", "xoxs-", "AKIA", "ASIA", "AIza",
+];
+pub const GLUED_TAIL_MIN: usize = 16;
+
+/// True when `here`, which follows a letter or digit, starts with one of [`GLUED_PREFIXES`]
+/// and [`GLUED_TAIL_MIN`] or more letters and digits with a digit among them.
+fn holds_glued_after_letter(here: &str) -> bool {
+    GLUED_PREFIXES.iter().any(|prefix| {
+        let case_matters = prefix.bytes().any(|b| b.is_ascii_uppercase());
+        let starts = if case_matters {
+            here.starts_with(prefix)
+        } else {
+            starts_with_ignoring_case(here, prefix)
+        };
+        // The tail is measured only where a prefix starts: measuring it at every letter of
+        // a long word would read that word once per letter.
+        if !starts {
+            return false;
+        }
+        let tail = &here[prefix.len()..];
+        let len = run(tail, |b| b.is_ascii_alphanumeric());
+        len >= GLUED_TAIL_MIN && tail[..len].bytes().any(|b| b.is_ascii_digit())
+    })
+}
+
 /// A known key prefix right after any character that is not an ASCII letter or digit (or at
 /// the start, or after a `%XX` escape): `**sk-…**`, `KEY_sk-…`, a key after Korean text or a
 /// curly quote. The prefixes and lengths are those of [`crate::redact::redact_outgoing`],
-/// plus `glpat-` and `Bearer <token>` (audit N7).
+/// plus `glpat-` and `Bearer <token>` (audit N7). After a letter or digit, the narrower
+/// [`holds_glued_after_letter`] reads instead.
 fn holds_glued_shape(text: &str) -> bool {
     let bytes = text.as_bytes();
     let key = |b: u8| b.is_ascii_alphanumeric() || b == b'_' || b == b'-';
@@ -257,7 +422,8 @@ fn holds_glued_shape(text: &str) -> bool {
             && bytes[at - 2].is_ascii_hexdigit()
             && bytes[at - 1].is_ascii_hexdigit();
         if at > 0 && bytes[at - 1].is_ascii_alphanumeric() && !escaped {
-            return false;
+            // `at` follows an ASCII byte, so the slice is valid.
+            return holds_glued_after_letter(&text[at..]);
         }
         // `at` follows an ASCII byte or starts a character, so the slice is valid.
         let here = &text[at..];
@@ -390,11 +556,12 @@ const PLAIN_NAMES: [&str; 1] = ["root"];
 /// `text` with the home folder as `~`, the user name as a whole word as `[user]` (also in a
 /// host name made from it, `<name>s-MacBook-Pro`), and the name in any other home-shaped
 /// path (`/Users/<name>`, `/home/<name>`, `\Users\<name>`, `\Documents and Settings\<name>`)
-/// as `[user]`, and a macOS temporary folder as `[tmp]` ([`mask_temp_folders`]). The name is
-/// `who.user` and the last part of `who.home`. Letter case is
+/// as `[user]`, a macOS temporary folder as `[tmp]` ([`mask_temp_folders`]), and an e-mail
+/// address as `[email]` ([`mask_emails`], first, so an address made from the name goes
+/// whole). The name is `who.user` and the last part of `who.home`. Letter case is
 /// ignored when matching (ASCII), since the systems that use these folders ignore it too.
 pub fn mask(text: &str, who: &Who) -> String {
-    let mut out = mask_temp_folders(text);
+    let mut out = mask_temp_folders(&mask_emails(text));
     let home = who
         .home
         .as_deref()
@@ -427,6 +594,50 @@ pub fn mask(text: &str, who: &Who) -> String {
     out
 }
 
+/// `text` with each e-mail address as `[email]` (user decision U2). An address is a local
+/// part of `A-Z a-z 0-9 . _ % + -`, an `@`, and a host of two or more labels of
+/// `A-Z a-z 0-9 -` joined by `.`, the last of two or more letters; a `.` or `-` that ends
+/// the host ends the sentence instead. `git@host:…` is an SSH remote, not a person's
+/// address, and stays.
+fn mask_emails(text: &str) -> String {
+    let bytes = text.as_bytes();
+    let local = |b: &u8| b.is_ascii_alphanumeric() || b"._%+-".contains(b);
+    let host = |b: &u8| b.is_ascii_alphanumeric() || *b == b'.' || *b == b'-';
+    let mut out = String::with_capacity(text.len());
+    let mut from = 0;
+    for (at, _) in text.match_indices('@') {
+        if at < from {
+            continue;
+        }
+        let start = at
+            - bytes[from..at]
+                .iter()
+                .rev()
+                .take_while(|b| local(b))
+                .count();
+        let mut end = at + 1 + bytes[at + 1..].iter().take_while(|b| host(b)).count();
+        while end > at + 1 && matches!(bytes[end - 1], b'.' | b'-') {
+            end -= 1;
+        }
+        // Only ASCII bytes were taken on either side, so both ends are character boundaries.
+        let labels: Vec<&str> = text[at + 1..end].split('.').collect();
+        let shaped = start < at
+            && labels.len() >= 2
+            && labels.iter().all(|label| !label.is_empty())
+            && labels
+                .last()
+                .is_some_and(|tld| tld.len() >= 2 && tld.bytes().all(|b| b.is_ascii_alphabetic()));
+        if !shaped || text[start..=at].eq_ignore_ascii_case("git@") {
+            continue;
+        }
+        out.push_str(&text[from..start]);
+        out.push_str(EMAIL_MASK);
+        from = end;
+    }
+    out.push_str(&text[from..]);
+    out
+}
+
 /// What stands in for a macOS per-user temporary folder.
 pub const TEMP_MASK: &str = "[tmp]";
 
@@ -434,11 +645,12 @@ pub const TEMP_MASK: &str = "[tmp]";
 const TEMP_PARENT: &str = "/var/folders/";
 const TEMP_ID_MAX: usize = 64;
 
-/// `text` with each macOS temporary folder, `/var/folders/<2 characters>/<id>/T` (also
-/// under `/private`), as `[tmp]`. The id is made from the user's account and says nothing a
-/// decision needs; with its `/` and the `T` it would also read as a long mixed run (second
-/// audit, N6). `<2 characters>` and `<id>` are lower-case letters, digits and `_`; the `T`
-/// ends the path or is followed by something that is not part of a name.
+/// `text` with each macOS temporary folder, `/var/folders/<2 characters>/<id>/T` or the
+/// cache folder `…/C` beside it (slice V2; also under `/private`), as `[tmp]`. The id is
+/// made from the user's account and says nothing a decision needs; with its `/` and the `T`
+/// it would also read as a long mixed run (second audit, N6). `<2 characters>` and `<id>`
+/// are lower-case letters, digits and `_`; the `T` or `C` ends the path or is followed by
+/// something that is not part of a name.
 fn mask_temp_folders(text: &str) -> String {
     let part = |b: u8| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'_';
     let mut out = String::with_capacity(text.len());
@@ -454,7 +666,7 @@ fn mask_temp_folders(text: &str) -> String {
             && part(rest[1])
             && rest[2] == b'/'
             && (1..=TEMP_ID_MAX).contains(&id)
-            && rest[3 + id..].starts_with(b"/T")
+            && (rest[3 + id..].starts_with(b"/T") || rest[3 + id..].starts_with(b"/C"))
             && !rest
                 .get(3 + id + 2)
                 .is_some_and(|b| b.is_ascii_alphanumeric() || *b == b'_' || *b == b'-');
@@ -553,32 +765,40 @@ pub(super) fn too_large() -> Refusal {
 }
 
 /// The outbound text of a cleared request, or the refusal of a field over [`FIELD_MAX`], of
-/// rule 1, or of an option value the mask would change. The card and `undo` are not sent,
-/// but they are recorded: they are screened and masked like the fields that are.
+/// the first [`screen`] hit in any field, of an option value the mask would change, or of a
+/// field the mask made longer than its bound. The card and `undo` are not sent, but they are
+/// recorded: they are screened and masked like the fields that are.
 pub fn build(cleared: &Cleared<'_>, who: &Who) -> Result<Outbound, Refusal> {
     let request = cleared.request();
-    let evidence = render_evidence(&request.evidence);
-    let texts = || {
-        [request.what.as_str(), evidence.as_str()]
-            .into_iter()
-            .chain(request.card.as_deref())
-            .chain(request.undo.as_deref())
-            .chain(
-                request
-                    .options
-                    .iter()
-                    .flat_map(|o| [o.value.as_str(), o.description.as_str()]),
-            )
-    };
-    // Size first: nothing below reads a field longer than the bound.
-    if texts().any(|text| text.len() > FIELD_MAX) {
+    // Each field on its own, with the fixed name of its place, so a reason never quotes the
+    // request (an evidence field's name is the request's own text too).
+    let mut fields = vec![("`what`", request.what.as_str())];
+    for option in &request.options {
+        fields.push(("an option value", &option.value));
+        fields.push(("an option description", &option.description));
+    }
+    fields.extend(request.undo.as_deref().map(|undo| ("`undo`", undo)));
+    fields.extend(request.card.as_deref().map(|card| ("the card", card)));
+    for (name, value) in &request.evidence {
+        fields.push(("an evidence field name", name));
+        fields.push(("an evidence value", value));
+    }
+    // Size first: no screen reads a field longer than the bound.
+    if fields.iter().any(|(_, text)| text.len() > FIELD_MAX) {
         return Err(too_large());
     }
-    if texts().any(holds_secret_shape) {
-        return Err(Refusal::new(
-            "secret_shape",
-            "the text to send holds a credential shape: nothing is sent, the leader decides",
-        ));
+    for (place, text) in &fields {
+        if let Some(code) = screen(text) {
+            let names = SCREEN
+                .iter()
+                .find(|(c, _)| *c == code)
+                .map(|(_, names)| *names)
+                .unwrap_or_default();
+            return Err(Refusal::new(
+                code,
+                format!("{place} holds {names}: nothing is sent, the leader decides"),
+            ));
+        }
     }
     if request
         .options
@@ -591,6 +811,12 @@ pub fn build(cleared: &Cleared<'_>, who: &Who) -> Result<Outbound, Refusal> {
              name instead",
         ));
     }
+    // Each name and value masked on its own, then rendered (escaped) as one text.
+    let evidence: Vec<(String, String)> = request
+        .evidence
+        .iter()
+        .map(|(name, value)| (mask(name, who), mask(value, who)))
+        .collect();
     let outbound = Outbound {
         what: mask(&request.what, who),
         options: request
@@ -598,27 +824,48 @@ pub fn build(cleared: &Cleared<'_>, who: &Who) -> Result<Outbound, Refusal> {
             .iter()
             .map(|o| (o.value.clone(), mask(&o.description, who)))
             .collect(),
-        evidence: mask(&evidence, who),
-        evidence_fields: request
-            .evidence
-            .keys()
-            .map(|name| mask(name, who))
-            .collect(),
+        evidence: render_evidence(evidence.iter().map(|(name, value)| (name, value))),
+        evidence_fields: evidence.iter().map(|(name, _)| name.clone()).collect(),
         undo: mask(request.undo.as_deref().unwrap_or_default(), who),
         card: request.card.as_deref().map(|card| mask(card, who)),
     };
-    // `[user]` can be longer than the name it replaces.
-    let grown = [outbound.what.len(), outbound.evidence.len()]
-        .into_iter()
-        .chain(
-            outbound
-                .options
-                .iter()
-                .map(|(_, description)| description.len()),
-        )
-        .any(|len| len > FIELD_MAX);
-    if grown {
-        return Err(too_large());
+    // `[user]` and `[email]` can be longer than what they replace: each sent field is held to
+    // the request's bound again. The card is recorded, never sent, and keeps no bound here.
+    let values = || evidence.iter().map(|(_, value)| value.len());
+    let grown = if outbound.what.len() > WHAT_MAX {
+        Some(("what_too_long", "`what` is longer than 500 bytes"))
+    } else if outbound
+        .options
+        .iter()
+        .any(|(_, description)| description.len() > DESCRIPTION_MAX)
+    {
+        Some((
+            "description_too_long",
+            "an option's description is longer than 300 bytes",
+        ))
+    } else if outbound.undo.len() > UNDO_MAX {
+        Some(("undo_too_long", "`undo` is longer than 200 bytes"))
+    } else if values().any(|len| len > EVIDENCE_FIELD_MAX) {
+        Some((
+            "evidence_field_too_large",
+            "an evidence value is larger than 4 KiB",
+        ))
+    } else if values().sum::<usize>() > EVIDENCE_MAX {
+        Some((
+            "evidence_too_large",
+            "the evidence values together are larger than 16 KiB",
+        ))
+    } else {
+        None
+    };
+    if let Some((code, rule)) = grown {
+        return Err(Refusal::new(
+            code,
+            format!(
+                "{rule} once the home folder, the user name and e-mail addresses are masked: \
+                 refused, never cut; the leader decides"
+            ),
+        ));
     }
     Ok(outbound)
 }
@@ -683,7 +930,14 @@ mod tests {
     /// A short password alone in a value is a stated limit (module text).
     #[test]
     fn field_names_and_values_are_screened_apart() {
-        for name in ["token", "password", "secret", "api_key", "apikey", "authorization"] {
+        for name in [
+            "token",
+            "password",
+            "secret",
+            "api_key",
+            "apikey",
+            "authorization",
+        ] {
             for value in [
                 "the rotation policy says ninety days",
                 "see the vault entry of the deploy step",
@@ -695,9 +949,13 @@ mod tests {
             }
         }
         let key = format!("sk-{}", "a1".repeat(12));
-        for value in [key.clone(), format!("token: {key}"), "password: x".to_string()] {
-            let r = built(|v| v["evidence"] = json!({"notes": "plain", "token": value}))
-                .unwrap_err();
+        for value in [
+            key.clone(),
+            format!("token: {key}"),
+            "password: x".to_string(),
+        ] {
+            let r =
+                built(|v| v["evidence"] = json!({"notes": "plain", "token": value})).unwrap_err();
             assert_eq!(r.code, "secret_shape", "{value}");
             assert!(r.reason.starts_with("an evidence value"), "{}", r.reason);
         }
@@ -705,7 +963,11 @@ mod tests {
         let r = built(|v| v["evidence"] = json!({ format!("hf_{}", "a1".repeat(10)): "plain" }))
             .unwrap_err();
         assert_eq!(r.code, "secret_shape");
-        assert!(r.reason.starts_with("an evidence field name"), "{}", r.reason);
+        assert!(
+            r.reason.starts_with("an evidence field name"),
+            "{}",
+            r.reason
+        );
     }
 
     /// V1 audit N8: a value with a line break and `name:` after it cannot add a field line.
@@ -880,6 +1142,8 @@ mod tests {
             ("sk_live_", 16),
             ("sk_test_", 16),
             ("rk_live_", 16),
+            ("rk_test_", 16),
+            ("whsec_", 16),
             ("hf_", 20),
             ("npm_", 20),
         ] {
@@ -954,7 +1218,11 @@ mod tests {
         }
         let prose = format!("{} \\u0041", wide("Which runner?"));
         let out = built(|v| v["evidence"] = evidence(prose.clone())).unwrap();
-        assert_eq!(out.evidence(), format!("log: {prose}"));
+        // Sent as written, with its backslash escaped by the rendering (slice V2).
+        assert_eq!(
+            out.evidence(),
+            format!("log: {} \\\\u0041", wide("Which runner?"))
+        );
     }
 
     /// Second audit, N6: `sk-` before lower-case words joined by further hyphens is a name
@@ -1335,15 +1603,39 @@ mod tests {
             ),
             ("KEY_ prefix", format!("KEY_{key}"), "secret_shape"),
             ("%20 before", format!("x%20{key}"), "secret_shape"),
-            ("zero-width before", format!("x\u{200b}{key}"), "secret_shape"),
-            ("zero-width inside", format!("s\u{200b}k-{tail}"), "secret_shape"),
-            ("soft hyphen inside", format!("sk\u{ad}-{tail}"), "secret_shape"),
-            ("tag character inside", format!("sk-a1\u{e0041}{}", &key[5..]), "secret_shape"),
+            (
+                "zero-width before",
+                format!("x\u{200b}{key}"),
+                "secret_shape",
+            ),
+            (
+                "zero-width inside",
+                format!("s\u{200b}k-{tail}"),
+                "secret_shape",
+            ),
+            (
+                "soft hyphen inside",
+                format!("sk\u{ad}-{tail}"),
+                "secret_shape",
+            ),
+            (
+                "tag character inside",
+                format!("sk-a1\u{e0041}{}", &key[5..]),
+                "secret_shape",
+            ),
             ("full-width", wide(&key), "secret_shape"),
-            ("full-width prefix", format!("{}{tail}", wide("sk-")), "secret_shape"),
+            (
+                "full-width prefix",
+                format!("{}{tail}", wide("sk-")),
+                "secret_shape",
+            ),
             ("long s", format!("\u{17f}k-{tail}"), "secret_shape"),
             ("plain sk-", key.clone(), "secret_shape"),
-            ("\\U00000073", format!("\\U00000073k-{tail}"), "secret_encoded"),
+            (
+                "\\U00000073",
+                format!("\\U00000073k-{tail}"),
+                "secret_encoded",
+            ),
             ("\\x73", format!("\\x73k-{tail}"), "secret_encoded"),
             ("\\u{73}", format!("\\u{{73}}k-{tail}"), "secret_encoded"),
             ("\\u0073", format!("\\u0073k-{tail}"), "secret_encoded"),
@@ -1351,22 +1643,66 @@ mod tests {
             ("&#115;", format!("&#115;k-{tail}"), "secret_encoded"),
             ("&#x73;", format!("&#x73;k-{tail}"), "secret_encoded"),
             ("Cyrillic s", format!("\u{455}k-{tail}"), "mixed_script"),
-            ("Greek omicron", format!("t\u{3bf}ken-{tail}"), "mixed_script"),
+            (
+                "Greek omicron",
+                format!("t\u{3bf}ken-{tail}"),
+                "mixed_script",
+            ),
             ("base64 of a key", base64(key.as_bytes()), "secret_encoded"),
             ("hex of a key", hex, "secret_encoded"),
-            ("sk_live_", format!("sk_live_{}", "a1".repeat(8)), "secret_shape"),
-            ("sk_test_", format!("sk_test_{}", "a1".repeat(8)), "secret_shape"),
-            ("rk_live_", format!("rk_live_{}", "a1".repeat(8)), "secret_shape"),
-            ("rk_test_", format!("rk_test_{}", "a1".repeat(8)), "secret_shape"),
-            ("whsec_", format!("whsec_{}", "a1".repeat(8)), "secret_shape"),
-            ("whsec_ lower case", format!("whsec_{}", "abcdefgh".repeat(2)), "secret_shape"),
-            ("sk-proj- lower case", format!("sk-proj-{}", "abcdefgh".repeat(3)), "secret_shape"),
+            (
+                "sk_live_",
+                format!("sk_live_{}", "a1".repeat(8)),
+                "secret_shape",
+            ),
+            (
+                "sk_test_",
+                format!("sk_test_{}", "a1".repeat(8)),
+                "secret_shape",
+            ),
+            (
+                "rk_live_",
+                format!("rk_live_{}", "a1".repeat(8)),
+                "secret_shape",
+            ),
+            (
+                "rk_test_",
+                format!("rk_test_{}", "a1".repeat(8)),
+                "secret_shape",
+            ),
+            (
+                "whsec_",
+                format!("whsec_{}", "a1".repeat(8)),
+                "secret_shape",
+            ),
+            (
+                "whsec_ lower case",
+                format!("whsec_{}", "abcdefgh".repeat(2)),
+                "secret_shape",
+            ),
+            (
+                "sk-proj- lower case",
+                format!("sk-proj-{}", "abcdefgh".repeat(3)),
+                "secret_shape",
+            ),
             ("hf_", format!("hf_{}", "a1".repeat(10)), "secret_shape"),
             ("npm_", format!("npm_{}", "a1".repeat(10)), "secret_shape"),
             ("xoxb-", format!("xoxb-{}", "1".repeat(12)), "secret_shape"),
-            ("glued after letters", format!("mysk_live_{}", "a1".repeat(8)), "secret_shape"),
-            ("sk- glued after letters", format!("my{key}"), "secret_shape"),
-            ("random token", "q7Zr2LkX9pWm4TfV8sYb".to_string(), "high_entropy"),
+            (
+                "glued after letters",
+                format!("mysk_live_{}", "a1".repeat(8)),
+                "secret_shape",
+            ),
+            (
+                "sk- glued after letters",
+                format!("my{key}"),
+                "secret_shape",
+            ),
+            (
+                "random token",
+                "q7Zr2LkX9pWm4TfV8sYb".to_string(),
+                "high_entropy",
+            ),
         ]
     }
 
@@ -1428,7 +1764,10 @@ mod tests {
         );
         let ordinary = [
             "at commit c7ef9b1f8c2365fe08963269af718f3d48de7d51".to_string(),
-            format!("sha256:{}", "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"),
+            format!(
+                "sha256:{}",
+                "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+            ),
             "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08".to_string(),
             "run cf998b8a-4360-419c-b982-edacba5e85da failed".to_string(),
             "max_tokens: 4096".to_string(),
@@ -1454,6 +1793,9 @@ mod tests {
             "10\u{3bc}s per call, \u{3b1} = 0.5".to_string(),
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".to_string(),
             "12345678901234567890123456789".to_string(),
+            // Found by the false-hit measurement of slice V2 (a branch name in a merge commit).
+            "Merge pull request #2332 from modu-ai/issue/2330-a9-followup3".to_string(),
+            "images/ubuntu/ubuntu2404-readme and sha256sum-checker2".to_string(),
         ];
         for text in &ordinary {
             assert_eq!(screen(text), None, "{text}");
@@ -1469,8 +1811,9 @@ mod tests {
         assert_eq!((ENTROPY_LEN_MIN, ENTROPY_BITS_MIN), (20, 4.0));
         assert_eq!(entropy("ab"), 1.0);
         assert_eq!(entropy("aaaa"), 0.0);
-        let nineteen = "abcdefghijklmnopqr1";
-        let twenty = "abcdefghijklmnopqr12";
+        // Letters and digits change places three times, so no part reads as a word.
+        let nineteen = "abcdefgh1ijklmnopq2";
+        let twenty = "abcdefgh1ijklmnopq23";
         assert_eq!((nineteen.len(), twenty.len()), (19, 20));
         assert!(entropy(nineteen) >= 4.0);
         assert_eq!(screen(nineteen), None);
@@ -1479,7 +1822,11 @@ mod tests {
         assert_eq!(entropy(&at), 4.0);
         assert_eq!(screen(&at), Some("high_entropy"));
         let below = format!("{}0", &at[..31]);
-        assert!(entropy(&below) < 4.0 && entropy(&below) > 3.97, "{}", entropy(&below));
+        assert!(
+            entropy(&below) < 4.0 && entropy(&below) > 3.97,
+            "{}",
+            entropy(&below)
+        );
         assert_eq!(screen(&below), None);
         // No digit, or no letter: passes at any entropy.
         assert_eq!(screen("abcdefghijklmnopqrstuvwxyz"), None);
@@ -1487,9 +1834,22 @@ mod tests {
         // The same token, split by a space, is two short tokens.
         assert_eq!(screen("abcdefghij klmnopqr12"), None);
         // A path whose every part is an ordinary word passes; one random part refuses it.
-        assert_eq!(screen("moai-adk/actions/runs/19234567890/job/54321098765"), None);
+        assert_eq!(
+            screen("moai-adk/actions/runs/19234567890/job/54321098765"),
+            None
+        );
         assert_eq!(
             screen("wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"),
+            Some("high_entropy")
+        );
+        // A lower-case part is a word when its letters and digits change places at most
+        // twice (`followup3`, `a9b`); three changes (`a9b8`) in a long part read as random.
+        assert!(is_ordinary_part("followup3") && is_ordinary_part("ubuntu2404x"));
+        assert!(is_ordinary_part("abcdefghi9z"));
+        assert!(!is_ordinary_part("abcdefghi9z8"));
+        assert_eq!(screen("x9q1m4k2p7z3w8r5t6y0"), Some("high_entropy"));
+        assert_eq!(
+            screen("modu-ai/issue/2330-x9q1m4k2p7"),
             Some("high_entropy")
         );
     }
@@ -1516,6 +1876,39 @@ mod tests {
         ] {
             assert_eq!(screen(text), None, "{text}");
         }
+        // The Greek mu is the micro sign only right after a digit (`10μs`); elsewhere it is a
+        // look-alike of `u` like any other Greek letter.
+        for text in ["tok\u{3bc}n", "\u{3bc}ser_x", "10\u{3bc}s_t\u{3bc}"] {
+            assert_eq!(screen(text), Some("mixed_script"), "{text}");
+        }
+    }
+
+    /// Slice V2: a key prefix glued after a letter or digit counts from 16 letters and digits
+    /// with a digit among them: 15 pass and 16 refuse; 16 without a digit pass.
+    #[test]
+    fn a_prefix_glued_after_letters_needs_sixteen_letters_and_digits_with_a_digit() {
+        assert_eq!(GLUED_TAIL_MIN, 16);
+        for prefix in ["sk_live_", "rk_test_", "whsec_", "sk-", "AKIA"] {
+            let tail = |n: usize| format!("{}{}", "1", "a".repeat(n - 1));
+            let at = format!("my{prefix}{}", tail(16));
+            let below = format!("my{prefix}{}", tail(15));
+            let no_digit = format!("my{prefix}{}", "a".repeat(16));
+            assert_eq!(screen(&at), Some("secret_shape"), "{at}");
+            assert_eq!(screen(&below), None, "{below}");
+            assert_eq!(screen(&no_digit), None, "{no_digit}");
+        }
+    }
+
+    /// Slice V2: `sk-proj-` starts a key whatever letters follow it, from the 13 characters
+    /// of the shared `sk-` rule: 12 pass and 13 refuse.
+    #[test]
+    fn sk_proj_counts_from_thirteen_characters() {
+        assert_eq!(screen("sk-proj-abcd"), None);
+        assert_eq!(screen("sk-proj-abcde"), Some("secret_shape"));
+        assert_eq!(
+            screen("see sk-proj-abcdefghijklmnopqrstuvwx."),
+            Some("secret_shape")
+        );
     }
 
     /// A bidirectional control character is refused in every screened field, by the screen
