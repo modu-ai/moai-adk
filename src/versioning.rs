@@ -1310,8 +1310,10 @@ mod tests {
         let count: u32 = DEFAULT_IGNORABLE.iter().map(|(a, b)| b - a + 1).sum();
         assert_eq!(count, total);
         assert_eq!(total, 4174);
-        // The refusal list the interview reads names the same ranges and the path characters.
+        // The refusal lists the interview and the operations appendix carry name the same
+        // ranges and the path characters (C-71 audit N1: the appendix too).
         let reference = include_str!("../skills/moai/references/internal/versioning.md");
+        let appendix = include_str!("../docs/design-review/appendix/operations/project_plan.md");
         for (first, last) in DEFAULT_IGNORABLE {
             let name = if first == last {
                 format!("U+{first:04X}")
@@ -1319,8 +1321,15 @@ mod tests {
                 format!("U+{first:04X}–U+{last:04X}")
             };
             assert!(reference.contains(&name), "versioning.md lacks {name}");
+            assert!(appendix.contains(&name), "project_plan.md lacks {name}");
         }
         assert!(reference.contains("`_`, `/` or `\\`"));
+        assert!(appendix.contains("`_`·`/`·`\\`"));
+        // The excerpt names the license notice it is copied under, and that notice is there.
+        let excerpt = include_str!("../tests/fixtures/unicode/default-ignorable-18.0.0.txt");
+        assert!(excerpt.contains("LICENSE-Unicode-V3.txt in this folder"));
+        let license = include_str!("../tests/fixtures/unicode/LICENSE-Unicode-V3.txt");
+        assert!(license.starts_with("UNICODE LICENSE V3\n\nCOPYRIGHT AND PERMISSION NOTICE\n"));
     }
 
     /// Re-audit N3 and C-71: custom text refuses markup characters, the line and paragraph

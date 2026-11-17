@@ -27,20 +27,26 @@ created: 2026-11-17
 - REQ-4: Every refusal list of custom versioning text in the skill references and the operations appendix shall name `/` and `\`.
 - REQ-5: The refusal list of `internal/versioning` shall name every default-ignorable range the code refuses.
 - REQ-6: The change shall add no crate dependency.
+- REQ-7: The repository shall carry the full Unicode License V3 notice beside the copied Unicode excerpt, outside the skill package.
+- REQ-8: The profile check shall refuse `\` in custom versioning text as it refuses `/`.
 
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2): 범위마다 처음과 끝(N)은 거절되고, 바로 바깥 이웃(N+1)은 다른 이유로 거절되는 것이 아니면 통과해요.
   감사가 이름을 든 코드 포인트는 모두 거절돼요.
   verify: `cargo test --locked --offline --lib versioning::tests::custom_text_refuses_markup_and_every_hidden_range`
-- AC-2 (REQ-3, REQ-5): 표가 원본 발췌(`tests/fixtures/unicode/default-ignorable-18.0.0.txt`)의 범위와 합계 4,174와 같고,
-  `internal/versioning`이 모든 범위와 `/`·`\`를 적어요.
+- AC-2 (REQ-3, REQ-5, REQ-7): 표가 원본 발췌(`tests/fixtures/unicode/default-ignorable-18.0.0.txt`)의 범위와 합계 4,174와
+  같고, `internal/versioning`과 `operations/project_plan.md`가 모든 범위와 `/`·`\`를 적고, 발췌 머리가 같은 폴더의
+  `LICENSE-Unicode-V3.txt`를 가리키고 그 파일이 Unicode License V3 전문이에요.
   verify: `cargo test --locked --offline --lib versioning::tests::default_ignorable_table_matches_the_unicode_source`
 - AC-3 (REQ-4): 세 문서가 `/`와 `\`를 적어요.
   verify: `grep -c '`/`' skills/moai/references/internal/versioning.md skills/moai/references/internal/interview.md docs/design-review/appendix/operations/project_plan.md` → 각 1 이상
 - AC-4 (REQ-6): `Cargo.toml`과 `Cargo.lock`이 바뀌지 않았어요.
   verify: `git diff --exit-code origin/v2026.11.0 -- Cargo.toml Cargo.lock`
-- AC-5 (REQ-1…REQ-6): 바뀐 곳에 닿는 검사가 통과해요.
+- AC-6 (REQ-7, REQ-8): 라이선스 파일이 받은 원본과 같고 skill 패키지 밖에 있으며, 프로필이 `\`를 거절해요.
+  verify: `shasum -a 256 tests/fixtures/unicode/LICENSE-Unicode-V3.txt` → `e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96`;
+  `git ls-files skills | grep -c unicode` → `0`; `cargo test --locked --offline --lib profile::`
+- AC-5 (REQ-1…REQ-8): 바뀐 곳에 닿는 검사가 통과해요.
   verify: `cargo test --locked --offline --test versioning_cli`; `cargo test --locked --offline --test agent_defs_package`;
   `cargo test --locked --offline --test product_cli`; `cargo test --locked --offline --bin moai`; `cargo fmt --check`;
   `cargo clippy --locked --offline --all-targets -- -D warnings`; `python3 -I tools/source_manifest.py check`;
@@ -48,11 +54,12 @@ created: 2026-11-17
 
 ## Scope
 
-- write: `src/versioning.rs`, `tests/fixtures/unicode/default-ignorable-18.0.0.txt`,
+- write: `src/versioning.rs`, `src/profile.rs`(시험만), `tests/fixtures/unicode/default-ignorable-18.0.0.txt`,
+  `tests/fixtures/unicode/LICENSE-Unicode-V3.txt`,
   `skills/moai/references/internal/versioning.md`, `skills/moai/references/internal/interview.md`,
   `skills/moai/references/source-manifest.json`, `docs/design-review/appendix/operations/project_plan.md`,
   `.moai/specs/SPEC-20261117-versioning-refusals/spec.md`
-- read-only: `src/profile.rs`, `src/lib.rs`
+- read-only: `src/lib.rs`
 - forbidden: `src/headver.rs`, `src/update.rs`, `Cargo.toml`, `Cargo.lock`, 다른 열린 가지의 파일
 
 ## Plan
@@ -71,6 +78,12 @@ created: 2026-11-17
 - D4 범위 바깥 이웃의 통과 확인은 다른 범위나 U+2028–U+2029, 제어 문자인 이웃을 건너뛰어요. 17개 범위의 이웃 34개 중
   U+2029 하나만 건너뛰어 33개를 확인해요.
 - D5 `/`와 `\`는 코드에 새로 넣지 않았어요: 프로필의 portable 검사가 이미 거절하고, 이번 수리는 문서가 그 사실을 적게 하는 것이에요.
+- D6 (감사 FAIL 수리, 리더 결정) 발췌가 Unicode Data File의 복사본이라 Unicode License V3 19–21행("this copyright and
+  permission notice appear with all copies of the Data Files")에 따라 전문을 같은 폴더에 둬요:
+  `https://www.unicode.org/license.txt`를 2026-11-17 10:02:53Z에 받았고(sha256
+  `e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96`, 39줄, 1,995바이트) 바이트 그대로
+  `tests/fixtures/unicode/LICENSE-Unicode-V3.txt`에 뒀어요. 발췌 머리 주석 3줄이 그 파일을 가리켜요. 데이터 절은 원본과 바이트가
+  같아요. 두 파일은 `tests/` 아래라 skill 패키지(`skills/moai`)와 설치물에 들어가지 않아요(`Cargo.toml`은 `publish = false`).
 
 ## Result
 

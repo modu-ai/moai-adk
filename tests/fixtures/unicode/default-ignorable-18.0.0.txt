@@ -8,6 +8,9 @@
 # section of https://www.unicode.org/Public/18.0.0/ucd/DerivedCoreProperties.txt, copied
 # unchanged from its heading line to its total line; sha256 of the whole file:
 # 09c928886a178fcafd93c29e4bd59073a058e5a100b716d425cb563ab50f68c9 (read 2026-11-17).
+# This excerpt of a Unicode Data File is copied under the Unicode License V3; its full
+# copyright and permission notice is LICENSE-Unicode-V3.txt in this folder
+# (https://www.unicode.org/license.txt, read 2026-11-17).
 
 # Derived Property: Default_Ignorable_Code_Point
 #  Generated from
