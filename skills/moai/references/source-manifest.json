@@ -367,7 +367,7 @@
       }
     },
     "references/internal/sdd.md": {
-      "sha256": "9f1db8f11b536fdceba2b11669418b2d6bea12938d13d727988b8288b410db6f",
+      "sha256": "a2b7e20dda2fa0d3dbed33f8549ff2188af7e15e0323eed08c4b96037db579e3",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-sdd",

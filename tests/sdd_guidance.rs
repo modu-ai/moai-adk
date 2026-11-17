@@ -53,8 +53,8 @@ fn the_reference_states_the_rules_the_user_decided() {
 
 /// Every `moai spec <action>` the reference names is a subcommand of this build. The card
 /// link (`moai card spec`, `--require-approved-spec`) comes with a separate change: while this
-/// build lacks it, every line that names it says it is planned; once the build has it, that
-/// wording may go.
+/// build lacks it, every line that names it says it is planned; once the build has it, no such
+/// line may still say so (audit N1: the reference must then be updated).
 #[test]
 fn the_reference_names_only_commands_this_build_has() {
     let text = sdd();
@@ -86,18 +86,54 @@ fn the_reference_names_only_commands_this_build_has() {
         .args(["card", "spec", "--help"])
         .output()
         .unwrap();
-    if !card.status.success() {
-        let lines: Vec<&str> = text
-            .lines()
-            .filter(|l| l.contains("moai card spec") || l.contains("--require-approved-spec"))
-            .collect();
-        assert!(!lines.is_empty(), "sdd.md does not mention the card link");
-        for line in lines {
+    let lines: Vec<&str> = text
+        .lines()
+        .filter(|l| l.contains("moai card spec") || l.contains("--require-approved-spec"))
+        .collect();
+    assert!(!lines.is_empty(), "sdd.md does not mention the card link");
+    let available = card.status.success();
+    for line in lines {
+        let planned = line.contains("planned") || line.contains("once that change lands");
+        if available {
+            assert!(!planned, "`moai card spec` exists: say it is available: {line}");
+        } else {
             assert!(
                 line.contains("planned") && line.contains("once that change lands"),
                 "the card link is named as available: {line}"
             );
         }
+    }
+}
+
+/// Audit B2: the two user rules no test held — existing code changes start from committed
+/// characterization tests, and agents never add `@cc:` comments on their own.
+#[test]
+fn preserve_then_change_and_the_cc_rule_are_stated() {
+    for (rel, phrase) in [
+        (
+            "skills/moai/workflows/run.md",
+            "For a change to existing code (preserve-then-change), first commit characterization \
+             tests that pass on the base and pin the behaviour the change must keep, then make the \
+             change and show they still pass.",
+        ),
+        (
+            "skills/moai/references/internal/sdd.md",
+            "preserve-then-change for existing code",
+        ),
+        (
+            "skills/moai/references/internal/sdd.md",
+            "Agents never add them on their own; SYNC keeps the existing ones true to the code.",
+        ),
+        (
+            "skills/moai/workflows/sync.md",
+            "keeps the existing `@cc:` comments true to the code (it never adds new ones)",
+        ),
+        (
+            "agents/docs.md",
+            "change only existing `@cc:` comment lines, never add one.",
+        ),
+    ] {
+        assert!(read(rel).contains(phrase), "{rel} lacks {phrase:?}");
     }
 }
 
