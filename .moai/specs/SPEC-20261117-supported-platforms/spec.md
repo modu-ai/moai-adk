@@ -180,5 +180,28 @@ AC-10의 실패 1건: `InstallPs1Test.test_the_locale_is_read_from_lc_all_then_l
 실행 안 함: Windows 분기의 실제 실행(Windows 기계 없음, `Get-WindowsTarget` 구문 트리 시험으로 대신), Linux 기계의
 설치 실행, `shellcheck`(설치 안 됨, 시험은 skip), GitHub Actions의 실제 run(push 안 함), 전체 `cargo test`.
 
-후속(이 조각 밖): `skills/moai/workflows/verify.md:38`("all four `ci / <target>` jobs"),
-`src/flow.rs:92`("five targets") 주석, 릴리스 target 선택(D5), Windows 시험 계획, 위 지역 시험.
+### 감사 수리 (2026-11-17 07:59Z–08:48Z)
+
+독립 감사(head `4d128c7bdd`)가 FAIL이었어요: B1 — tip의 `moai spec check`가 이 SPEC에서 오류 9개
+(`approval_field` ×4, `section_missing`, `ac_ref_unknown`, `req_failure_path` ×3)를 내서 병합 트리의
+`tests/spec_cli.rs::the_repository_specs_pass_check`가 빨개져요. 비차단 N1·N3·N5도 함께 고쳤어요.
+
+커밋: `4d128c7bdd` 위에 `dc3ee64e31`(origin/v2026.11.0 `c0b858de8c` 병합, `git merge-tree` 충돌 없음) →
+`021c1aaba1`(수리) → 이 Result. 병합 커밋의 트레일러 블록에는 `Co-Authored-By`만 있어요(`Moai-Spec`이 따로 된
+본문 문단에 들어감, amend 하지 않음).
+
+- AC-9 (새 뜻, 검사기 통과): RED — 병합한 바이너리로 수리 전 SPEC을 검사하면 exit 1, 오류 9개(감사와 같은 줄).
+  GREEN — `moai spec check --all --project .` exit 0, SPEC 3개 모두 오류 0·경고 0; `--test spec_cli` exit 0, 17 passed.
+  (예전 AC-9인 GEARS 임시 시험 결과는 위 표에 그대로 있어요.)
+- AC-5·AC-6 (N3, N5): RED — 수리 전 스크립트로 새 시험을 돌리면 4개 실패: PATH 앞 가짜 `sysctl`이 Intel Mac을
+  arm64로 바꿈(sh·pwsh), 진짜 `arch -x86_64` 셸이 거절됨(시험 PATH `/usr/bin:/bin`에 `sysctl`이 없어서 — 수리 전
+  스크립트의 실제 결함), ps1 본문에 `& sysctl`. GREEN — 모두 통과, 거절 시험은 exit 1을 고정해요. mutation:
+  `install.sh`를 PATH의 `sysctl`로 되돌리면 2개 실패, `install.ps1`을 되돌리면 2개 실패.
+- AC-11 (N1, D9): `verify.md`에 `ci / macos-arm64` 있음, `all four` 없음; `source_manifest.py write` →
+  `workflows/verify.md` 바뀜, `check` exit 0; `--test agent_defs_package` exit 0, 17 passed.
+- AC-10 다시: Python 14개 파일 312개 중 308 통과, 1 실패(위 지역 시험, 그대로), skip 3(`shellcheck` 2, pwsh Rosetta
+  실행 1); `--bin moai` 0(27); `launcher_three_hosts` 0(4); `gitignore_block_cli` 0(32); `cargo fmt --check` 0;
+  clippy 0; `actionlint` 0; `bash -n`·`sh -n` 0; `check_support_matrix` 0(6 = 6); manifest `check` 0.
+
+후속(이 조각 밖): 릴리스 target 선택과 그 자산(N2, D5), 감사 N4·N6, Windows 시험 계획, 위 지역 시험,
+`src/lane_next.rs:3518`·`tests/gate_collect.rs:1848`의 옛 check 이름(시험 자료).
