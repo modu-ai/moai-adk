@@ -21,7 +21,13 @@
 //! free disk space of the working folder are printed (AC-2). A machine below `--min-free-gb`
 //! free or above `--max-swap-pct` swap use starts nothing and exits 75 with the measured
 //! values (leader's numbers 50 GB and 80 %, Issue #2677 comment 6850581277), judged before
-//! queueing and again after a wait. A run that does start with under 100 GB free
+//! queueing and again after a wait. On macOS (card C-88) memory is judged on the kernel's
+//! memory pressure instead of swap, since macOS keeps pages swapped long after the pressure
+//! drops (measured 2026-11-17: swap 99 % used at pressure level 2 with 37 % free): a run is
+//! refused at `kern.memorystatus_vm_pressure_level` 4 (critical) or with
+//! `kern.memorystatus_level` (the "System-wide memory free percentage" `memory_pressure`
+//! prints) below `--min-mem-free-pct` (default 10); swap is then shown in the refusal for
+//! information only. Linux keeps the swap rule and has no memory-free limit. A run that does start with under 100 GB free
 //! ([`WARN_FREE_GB`]) first prints one warning line on stderr (#2930 item 6). A waiter whose parent process ended leaves the queue and
 //! exits 125 without running COMMAND, so no orphan waits on for hours.
 //!
@@ -31,8 +37,8 @@
 //! Unix only; elsewhere both operations refuse.
 //!
 //! #2930 R-2: the machine's limits live in one file beside the slots, `<folder>/limits.json`
-//! (`max`, `min_free_gb`, `max_swap_pct`; defaults 3, 50, 80). A caller's flag wins only when
-//! it is stricter. A limits file that is not a plain file of at most 4096 bytes holding only
+//! (`max`, `min_free_gb`, `max_swap_pct`, `min_mem_free_pct`; defaults 3, 50, 80, 10). A
+//! caller's flag wins only when it is stricter. A limits file that is not a plain file of at most 4096 bytes holding only
 //! those keys, or that sets `max` 0, is refused: acquire exits 125 without running COMMAND.
 
 use serde_json::Value;
@@ -44,7 +50,7 @@ type Result<T> = std::result::Result<T, String>;
 pub const REFUSED: u8 = 125;
 /// Usage errors (bad `--max`, no command, unsupported platform).
 pub const USAGE: u8 = 2;
-/// The machine is too short of disk or too deep in swap to start a heavy run now: the
+/// The machine is too short of disk or memory to start a heavy run now: the
 /// wrapper's own "try again later" code (sysexits `EX_TEMPFAIL`), apart from COMMAND's codes.
 pub const BUSY: u8 = 75;
 
@@ -56,15 +62,24 @@ pub const BUSY: u8 = 75;
 pub struct Limits {
     /// Free space (decimal GB, 10^9 bytes) the working folder's file system must keep.
     pub min_free_gb: u64,
-    /// Highest swap use, in percent of the swap size, at which a run still starts.
+    /// Highest swap use, in percent of the swap size, at which a run still starts. Linux
+    /// only: macOS is judged on memory pressure (card C-88).
     pub max_swap_pct: u64,
+    /// Lowest memory free percentage (`kern.memorystatus_level`) at which a run still starts.
+    /// macOS only (card C-88).
+    pub min_mem_free_pct: u64,
 }
 
-/// The leader's numbers (comment 6850581277).
+/// The leader's numbers (comment 6850581277); `min_mem_free_pct` 10 is card C-88's.
 pub const DEFAULT_LIMITS: Limits = Limits {
     min_free_gb: 50,
     max_swap_pct: 80,
+    min_mem_free_pct: 10,
 };
+
+/// `kern.memorystatus_vm_pressure_level` values: 1 normal, 2 warn, 4 critical (the
+/// `DISPATCH_MEMORYPRESSURE_*` levels). A run is refused from this level on (card C-88).
+pub const CRITICAL_PRESSURE_LEVEL: u64 = 4;
 
 /// The slot count when neither the limits file nor the caller names one (#2930 R-2).
 pub const DEFAULT_MAX: usize = 3;
@@ -82,6 +97,7 @@ pub struct LimitsFile {
     pub max: Option<usize>,
     pub min_free_gb: Option<u64>,
     pub max_swap_pct: Option<u64>,
+    pub min_mem_free_pct: Option<u64>,
 }
 
 /// The limits file in `folder`: `None` when there is none. A path that is not a plain file
@@ -143,6 +159,7 @@ pub fn effective(
     caller_max: Option<usize>,
     caller_free: Option<u64>,
     caller_swap: Option<u64>,
+    caller_mem_free: Option<u64>,
 ) -> (usize, Limits, Vec<String>) {
     let base_max = file.and_then(|f| f.max).unwrap_or(DEFAULT_MAX);
     let base_free = file
@@ -151,6 +168,9 @@ pub fn effective(
     let base_swap = file
         .and_then(|f| f.max_swap_pct)
         .unwrap_or(DEFAULT_LIMITS.max_swap_pct);
+    let base_mem_free = file
+        .and_then(|f| f.min_mem_free_pct)
+        .unwrap_or(DEFAULT_LIMITS.min_mem_free_pct);
     let source = if file.is_some() {
         LIMITS_FILE
     } else {
@@ -186,44 +206,90 @@ pub fn effective(
         Some(c) => c,
         None => base_swap,
     };
+    let min_mem_free_pct = match caller_mem_free {
+        Some(c) if c < base_mem_free => {
+            note(
+                "--min-mem-free-pct",
+                c.to_string(),
+                base_mem_free.to_string(),
+            );
+            base_mem_free
+        }
+        Some(c) => c,
+        None => base_mem_free,
+    };
     (
         max,
         Limits {
             min_free_gb,
             max_swap_pct,
+            min_mem_free_pct,
         },
         notes,
     )
 }
 
-/// The free bytes and swap percent the limits are judged on. Debug builds take
-/// `MOAI_CLI_TEST_MACHINE=free_gb=<n>,swap_pct=<n>` instead (or `@<file>` holding that text,
-/// read on every call so a test can change the machine during a wait); release builds never
-/// read it.
-fn measured(folder: &Path) -> (Option<u64>, Option<u64>) {
+/// The memory readings of a machine that reports memory pressure (macOS, card C-88); each part
+/// is `None` when the system does not give it.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Memory {
+    /// `kern.memorystatus_vm_pressure_level`: 1 normal, 2 warn, 4 critical.
+    pub pressure_level: Option<u64>,
+    /// `kern.memorystatus_level`: the free percentage `memory_pressure` prints.
+    pub free_pct: Option<u64>,
+}
+
+/// What the limits are judged on: free bytes, swap percent, and the memory readings of a
+/// machine that has them (`None` on Linux, which is judged on swap).
+struct Machine {
+    free: Option<u64>,
+    swap: Option<u64>,
+    memory: Option<Memory>,
+}
+
+/// The machine now. Debug builds take
+/// `MOAI_CLI_TEST_MACHINE=free_gb=<n>,swap_pct=<n>[,pressure=<n>,mem_free_pct=<n>]` instead
+/// (or `@<file>` holding that text, read on every call so a test can change the machine during
+/// a wait); a `pressure` or `mem_free_pct` key makes it a machine with memory readings (macOS).
+/// Release builds never read it.
+fn measured(folder: &Path) -> Machine {
     #[cfg(debug_assertions)]
     if let Ok(mut s) = std::env::var("MOAI_CLI_TEST_MACHINE") {
         if let Some(file) = s.strip_prefix('@') {
             s = std::fs::read_to_string(file).unwrap_or_default();
         }
-        let mut free = None;
-        let mut swap = None;
+        let mut m = Machine {
+            free: None,
+            swap: None,
+            memory: None,
+        };
         for part in s.trim().split(',') {
             match part.split_once('=') {
-                Some(("free_gb", v)) => free = v.parse::<u64>().ok().map(|g| g * 1_000_000_000),
-                Some(("swap_pct", v)) => swap = v.parse().ok(),
+                Some(("free_gb", v)) => m.free = v.parse::<u64>().ok().map(|g| g * 1_000_000_000),
+                Some(("swap_pct", v)) => m.swap = v.parse().ok(),
+                Some(("pressure", v)) => {
+                    m.memory.get_or_insert_with(Memory::default).pressure_level = v.parse().ok()
+                }
+                Some(("mem_free_pct", v)) => {
+                    m.memory.get_or_insert_with(Memory::default).free_pct = v.parse().ok()
+                }
                 _ => {}
             }
         }
-        return (free, swap);
+        return m;
     }
-    (sys::free_bytes(folder), sys::swap_pct())
+    Machine {
+        free: sys::free_bytes(folder),
+        swap: sys::swap_pct(),
+        memory: sys::memory(),
+    }
 }
 
 /// Why a heavy run must not start now, or `None`. A value the system does not give is not a
-/// reason to refuse (it is shown as `unknown` elsewhere).
+/// reason to refuse (it is shown as `unknown` elsewhere). A machine with memory readings
+/// (macOS) is judged on them and its swap is only shown; one without them (Linux) on swap.
 pub fn over_limits(folder: &Path, limits: Limits) -> Option<String> {
-    let (free, swap) = measured(folder);
+    let Machine { free, swap, memory } = measured(folder);
     let mut why = Vec::new();
     if let Some(b) = free {
         if b < limits.min_free_gb.saturating_mul(1_000_000_000) {
@@ -235,9 +301,33 @@ pub fn over_limits(folder: &Path, limits: Limits) -> Option<String> {
             ));
         }
     }
-    if let Some(p) = swap {
-        if p > limits.max_swap_pct {
-            why.push(format!("swap use {p}% is above {}%", limits.max_swap_pct));
+    match memory {
+        Some(mem) => {
+            if let Some(l) = mem.pressure_level {
+                if l >= CRITICAL_PRESSURE_LEVEL {
+                    why.push(format!(
+                        "memory pressure level {l} is at the critical level {CRITICAL_PRESSURE_LEVEL}"
+                    ));
+                }
+            }
+            if let Some(p) = mem.free_pct {
+                if p < limits.min_mem_free_pct {
+                    why.push(format!(
+                        "memory free {p}% is below {}%",
+                        limits.min_mem_free_pct
+                    ));
+                }
+            }
+            if let (false, Some(p)) = (why.is_empty(), swap) {
+                why.push(format!("swap use {p}% (shown only; not a limit on macOS)"));
+            }
+        }
+        None => {
+            if let Some(p) = swap {
+                if p > limits.max_swap_pct {
+                    why.push(format!("swap use {p}% is above {}%", limits.max_swap_pct));
+                }
+            }
         }
     }
     (!why.is_empty()).then(|| why.join("; "))
@@ -341,6 +431,9 @@ mod sys {
     pub fn swap_pct() -> Option<u64> {
         None
     }
+    pub fn memory() -> Option<super::Memory> {
+        None
+    }
 }
 
 #[cfg(unix)]
@@ -401,6 +494,41 @@ mod sys {
         } else {
             u.xsu_used.saturating_mul(100) / u.xsu_total
         })
+    }
+
+    /// macOS memory readings (card C-88), both by `sysctlbyname`, no child process:
+    /// `kern.memorystatus_vm_pressure_level` and `kern.memorystatus_level`, the "System-wide
+    /// memory free percentage" that `memory_pressure` prints (both read 37 on 2026-11-17).
+    #[cfg(target_os = "macos")]
+    pub fn memory() -> Option<super::Memory> {
+        fn int(name: &std::ffi::CStr) -> Option<u64> {
+            let mut v: libc::c_int = 0;
+            let mut len = std::mem::size_of::<libc::c_int>();
+            // SAFETY: sysctlbyname writes at most `len` bytes into the int it is given.
+            let rc = unsafe {
+                libc::sysctlbyname(
+                    name.as_ptr(),
+                    (&mut v as *mut libc::c_int).cast(),
+                    &mut len,
+                    std::ptr::null_mut(),
+                    0,
+                )
+            };
+            if rc != 0 || len != std::mem::size_of::<libc::c_int>() {
+                return None;
+            }
+            u64::try_from(v).ok()
+        }
+        Some(super::Memory {
+            pressure_level: int(c"kern.memorystatus_vm_pressure_level"),
+            free_pct: int(c"kern.memorystatus_level"),
+        })
+    }
+
+    /// Linux is judged on swap (card C-88 leaves it unchanged).
+    #[cfg(not(target_os = "macos"))]
+    pub fn memory() -> Option<super::Memory> {
+        None
     }
 
     #[cfg(not(target_os = "macos"))]
@@ -628,7 +756,7 @@ mod sys {
         };
         // #2930 item 6: the run starts, but the disk is getting short — stderr only, so
         // stdout and the exit code stay COMMAND's own.
-        if let Some(line) = low_space_line(measured(&cwd).0, limits.min_free_gb, &cwd) {
+        if let Some(line) = low_space_line(measured(&cwd).free, limits.min_free_gb, &cwd) {
             eprintln!("heavy-slot: {line}");
         }
         run_holding(slot, file, name, command, &cwd)
@@ -1239,13 +1367,15 @@ mod limits_tests {
             max,
             min_free_gb: free,
             max_swap_pct: swap,
+            min_mem_free_pct: None,
         }
     }
 
     #[test]
     fn no_file_and_no_flags_use_the_defaults() {
-        let (max, l, notes) = effective(None, None, None, None);
+        let (max, l, notes) = effective(None, None, None, None, None);
         assert_eq!((max, l.min_free_gb, l.max_swap_pct), (DEFAULT_MAX, 50, 80));
+        assert_eq!(l.min_mem_free_pct, 10);
         assert_eq!(DEFAULT_MAX, 3);
         assert!(notes.is_empty());
     }
@@ -1253,35 +1383,87 @@ mod limits_tests {
     #[test]
     fn flags_only_tighten() {
         // Looser flags lose to the defaults, each with a note.
-        let (max, l, notes) = effective(None, Some(9), Some(0), Some(100));
+        let (max, l, notes) = effective(None, Some(9), Some(0), Some(100), None);
         assert_eq!((max, l.min_free_gb, l.max_swap_pct), (3, 50, 80));
         assert_eq!(notes.len(), 3, "{notes:?}");
         assert!(notes[1].contains("--min-free-gb 0 is looser than the default (50)"));
         // Stricter flags win, silently; equal flags too.
-        let (max, l, notes) = effective(None, Some(1), Some(51), Some(79));
+        let (max, l, notes) = effective(None, Some(1), Some(51), Some(79), None);
         assert_eq!((max, l.min_free_gb, l.max_swap_pct), (1, 51, 79));
         assert!(notes.is_empty());
-        let (max, l, notes) = effective(None, Some(3), Some(50), Some(80));
+        let (max, l, notes) = effective(None, Some(3), Some(50), Some(80), None);
         assert_eq!((max, l.min_free_gb, l.max_swap_pct), (3, 50, 80));
         assert!(notes.is_empty());
         // The file replaces the defaults, also in the looser direction.
         let f = file(Some(1), Some(10), Some(95));
-        let (max, l, notes) = effective(Some(&f), None, None, None);
+        let (max, l, notes) = effective(Some(&f), None, None, None, None);
         assert_eq!((max, l.min_free_gb, l.max_swap_pct), (1, 10, 95));
         assert!(notes.is_empty());
-        let (max, l, notes) = effective(Some(&f), Some(2), Some(9), Some(96));
+        let (max, l, notes) = effective(Some(&f), Some(2), Some(9), Some(96), None);
         assert_eq!((max, l.min_free_gb, l.max_swap_pct), (1, 10, 95));
         assert!(notes.iter().all(|n| n.contains("limits.json")), "{notes:?}");
         assert_eq!(notes.len(), 3);
     }
 
+    /// Card C-88: the memory free limit only tightens too — 9 loses to the default 10 with a
+    /// note, 10 and 11 are used silently, and the file's value replaces the default both ways.
+    #[test]
+    fn the_memory_free_flag_only_tightens() {
+        let (_, l, notes) = effective(None, None, None, None, Some(9));
+        assert_eq!(l.min_mem_free_pct, 10);
+        assert_eq!(
+            notes,
+            ["heavy-slot: --min-mem-free-pct 9 is looser than the default (10); using 10"]
+        );
+        for c in [10, 11] {
+            let (_, l, notes) = effective(None, None, None, None, Some(c));
+            assert_eq!(l.min_mem_free_pct, c);
+            assert!(notes.is_empty(), "{notes:?}");
+        }
+        let mut f = file(None, None, None);
+        f.min_mem_free_pct = Some(0);
+        let (_, l, notes) = effective(Some(&f), None, None, None, None);
+        assert_eq!(l.min_mem_free_pct, 0);
+        assert!(notes.is_empty());
+        f.min_mem_free_pct = Some(20);
+        let (_, l, notes) = effective(Some(&f), None, None, None, Some(19));
+        assert_eq!(l.min_mem_free_pct, 20);
+        assert!(
+            notes[0].contains("is looser than limits.json (20)"),
+            "{notes:?}"
+        );
+    }
+
     #[test]
     fn extreme_values_are_capped_by_the_stricter_side() {
-        let (max, l, _) = effective(None, Some(usize::MAX), Some(u64::MAX), Some(u64::MAX));
+        let (max, l, _) = effective(
+            None,
+            Some(usize::MAX),
+            Some(u64::MAX),
+            Some(u64::MAX),
+            Some(u64::MAX),
+        );
         assert_eq!((max, l.min_free_gb, l.max_swap_pct), (3, u64::MAX, 80));
+        assert_eq!(l.min_mem_free_pct, u64::MAX);
         let f = file(Some(usize::MAX), Some(u64::MAX), Some(u64::MAX));
-        let (max, l, _) = effective(Some(&f), Some(2), Some(0), Some(100));
+        let (max, l, _) = effective(Some(&f), Some(2), Some(0), Some(100), None);
         assert_eq!((max, l.min_free_gb, l.max_swap_pct), (2, u64::MAX, 100));
+    }
+}
+
+/// Card C-88: the real macOS readings come back, in their ranges (the pressure level is one of
+/// the dispatch levels, the free percentage at most 100).
+#[cfg(all(test, target_os = "macos"))]
+mod memory_tests {
+    #[test]
+    fn macos_gives_a_pressure_level_and_a_free_percentage() {
+        let m = super::sys::memory().expect("macOS has memory readings");
+        let level = m
+            .pressure_level
+            .expect("kern.memorystatus_vm_pressure_level");
+        assert!([1, 2, 4].contains(&level), "{level}");
+        let free = m.free_pct.expect("kern.memorystatus_level");
+        assert!(free <= 100, "{free}");
     }
 }
 

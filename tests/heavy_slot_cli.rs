@@ -692,6 +692,162 @@ fn a_machine_over_the_limits_starts_nothing() {
     }
 }
 
+/// Card C-88: a machine that reports memory pressure (macOS: `pressure=` and `mem_free_pct=`
+/// in the test seam) is judged on it, not on swap — macOS keeps pages swapped long after the
+/// pressure drops (measured 2026-11-17: swap 99 % used at pressure level 2 and 37 % free). The
+/// edges: level 2 starts and level 4 (critical) is refused; 10 % free starts and 9 % is
+/// refused; `min_mem_free_pct` in `limits.json` or `--min-mem-free-pct` moves the free edge,
+/// a flag only tightening it. The refusal names the reading and the limit, and shows swap for
+/// information only. A machine without those readings (Linux) keeps the swap rule.
+#[test]
+fn macos_is_judged_on_memory_pressure_not_swap() {
+    let m = tempfile::tempdir().unwrap();
+    let ran = m.path().join("ran");
+    let touch = format!("touch '{}'", ran.display());
+    for (machine, file, extra, starts, says) in [
+        // The measured machine of 2026-11-17 starts.
+        (
+            "free_gb=1000,swap_pct=99,pressure=2,mem_free_pct=37",
+            None,
+            &[][..],
+            true,
+            &[][..],
+        ),
+        (
+            "free_gb=1000,swap_pct=0,pressure=2,mem_free_pct=10",
+            None,
+            &[][..],
+            true,
+            &[][..],
+        ),
+        (
+            "free_gb=1000,swap_pct=99,pressure=4,mem_free_pct=37",
+            None,
+            &[][..],
+            false,
+            &[
+                "memory pressure level 4 is at the critical level 4",
+                "swap use 99% (shown only; not a limit on macOS)",
+            ][..],
+        ),
+        (
+            "free_gb=1000,swap_pct=99,pressure=2,mem_free_pct=9",
+            None,
+            &[][..],
+            false,
+            &[
+                "memory free 9% is below 10%",
+                "swap use 99% (shown only; not a limit on macOS)",
+            ][..],
+        ),
+        // Both readings at once, and the disk reason before them.
+        (
+            "free_gb=49,swap_pct=0,pressure=4,mem_free_pct=9",
+            None,
+            &[][..],
+            false,
+            &["is below 50 GB; memory pressure level 4 is at the critical level 4; memory free 9% is below 10%; swap use 0% (shown only; not a limit on macOS)"][..],
+        ),
+        // The file moves the free edge, both ways; a looser flag loses to it.
+        (
+            "free_gb=1000,swap_pct=0,pressure=2,mem_free_pct=19",
+            Some(r#"{"min_mem_free_pct":20}"#),
+            &[][..],
+            false,
+            &["memory free 19% is below 20%"][..],
+        ),
+        (
+            "free_gb=1000,swap_pct=0,pressure=2,mem_free_pct=20",
+            Some(r#"{"min_mem_free_pct":20}"#),
+            &["--min-mem-free-pct", "5"][..],
+            true,
+            &["--min-mem-free-pct 5 is looser than limits.json (20); using 20"][..],
+        ),
+        (
+            "free_gb=1000,swap_pct=0,pressure=2,mem_free_pct=0",
+            Some(r#"{"min_mem_free_pct":0}"#),
+            &[][..],
+            true,
+            &[][..],
+        ),
+        // A stricter flag wins over the default 10.
+        (
+            "free_gb=1000,swap_pct=0,pressure=2,mem_free_pct=14",
+            None,
+            &["--min-mem-free-pct", "15"][..],
+            false,
+            &["memory free 14% is below 15%"][..],
+        ),
+        (
+            "free_gb=1000,swap_pct=0,pressure=2,mem_free_pct=15",
+            None,
+            &["--min-mem-free-pct", "15"][..],
+            true,
+            &[][..],
+        ),
+        // The swap flag is not a limit on macOS.
+        (
+            "free_gb=1000,swap_pct=99,pressure=1,mem_free_pct=50",
+            None,
+            &["--max-swap-pct", "10"][..],
+            true,
+            &[][..],
+        ),
+        // Linux (no pressure readings): the swap rule is unchanged and the memory limit is
+        // not applied.
+        (
+            "free_gb=1000,swap_pct=81",
+            None,
+            &["--min-mem-free-pct", "90"][..],
+            false,
+            &["swap use 81% is above 80%"][..],
+        ),
+        (
+            "free_gb=1000,swap_pct=80",
+            None,
+            &["--min-mem-free-pct", "90"][..],
+            true,
+            &[][..],
+        ),
+    ] {
+        let _ = fs::remove_file(&ran);
+        let d = tempfile::tempdir().unwrap();
+        let slots = d.path().join("slots");
+        if let Some(body) = file {
+            fs::create_dir_all(&slots).unwrap();
+            fs::write(slots.join("limits.json"), body).unwrap();
+        }
+        let mut c = Command::new(EXE);
+        c.env("MOAI_CLI_TEST_MACHINE", machine)
+            .args([
+                "heavy-slot-acquire",
+                "--max",
+                "1",
+                "--name",
+                "lane-p",
+                "--dir",
+            ])
+            .arg(&slots)
+            .args(extra)
+            .args(["--", "sh", "-c", &touch]);
+        let out = run(c);
+        let err = String::from_utf8_lossy(&out.stderr);
+        for want in says {
+            assert!(err.contains(want), "{machine} {extra:?}: {err}");
+        }
+        if starts {
+            assert_eq!(out.status.code(), Some(0), "{machine}: {}", text(&out));
+            assert!(ran.exists(), "{machine}");
+            assert!(!err.contains("swap use"), "{machine}: {err}");
+        } else {
+            assert_eq!(out.status.code(), Some(75), "{machine}: {}", text(&out));
+            assert!(err.contains("lane-p not started"), "{machine}: {err}");
+            assert!(!ran.exists(), "{machine}: ran anyway");
+            assert!(!slots.join("slot-0").exists(), "{machine}: slot written");
+        }
+    }
+}
+
 /// A slot folder with only `limits.json` in it (the folder the next caller reads).
 /// #2930 item 6: a run that starts with less than 100 GB free prints one warning line on
 /// stderr only — stdout and the exit code are the ones of a roomy machine; the refusal below

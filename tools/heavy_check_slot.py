@@ -2,13 +2,19 @@
 """Limit how many heavy checks run at once on a shared machine (Issue #2491).
 
     heavy_check_slot.py acquire [--max N] --name LANE [--dir DIR]
-                                [--min-free-gb G] [--max-swap-pct P] -- COMMAND...
+                                [--min-free-gb G] [--max-swap-pct P] [--min-mem-free-pct M]
+                                -- COMMAND...
     heavy_check_slot.py status [--dir DIR]
 
 Machine limits (Issue #2829, the same rule as the Rust `heavy-slot-acquire`, src/heavy_slot.rs):
 when the working folder's file system has less than --min-free-gb free (default 50, decimal
 GB = 10^9 bytes) or swap use is above --max-swap-pct (default 80), `acquire` starts nothing
 and exits 75 (sysexits EX_TEMPFAIL, "try again later") with the measured values on stderr.
+On macOS (card C-88) memory is judged on memory pressure instead of swap, because macOS keeps
+pages swapped long after the pressure drops: a run is refused at
+`kern.memorystatus_vm_pressure_level` 4 (critical) or with `kern.memorystatus_level` (the
+free percentage `memory_pressure` prints) below --min-mem-free-pct (default 10), and swap is
+shown in the refusal for information only. Linux keeps the swap rule.
 It judges before queueing and again right before COMMAND after a wait, since a wait can eat
 the space. A run that does start with under 100 GB free first prints one warning line on
 stderr (Issue #2930 item 6; stdout and the exit code do not change). A value the system does
@@ -16,13 +22,16 @@ not give is not a reason to refuse. Nothing is ever
 deleted (cleanup is a person's job).
 
 The machine's limits live in one file beside the slots, `<folder>/limits.json` (Issue #2930
-R-2): `max`, `min_free_gb`, `max_swap_pct`, each optional (defaults 3, 50, 80). A caller's
+R-2): `max`, `min_free_gb`, `max_swap_pct`, `min_mem_free_pct`, each optional (defaults 3, 50,
+80, 10). A caller's
 flag wins only when it is stricter, so no caller turns a limit off; only the file loosens
 one. A limits file that is not a plain file (a symlink, even to a valid file, or a folder),
 is over 4096 bytes, does not parse, has another key or sets `max` 0 is refused: `acquire`
 exits 125 without running COMMAND or writing anything.
-Tests set MOAI_CLI_TEST_MACHINE=free_gb=<n>,swap_pct=<n> (or `@<file>` holding that text,
-read on every check) — the same test-only input the Rust debug build reads.
+Tests set MOAI_CLI_TEST_MACHINE=free_gb=<n>,swap_pct=<n>[,pressure=<n>,mem_free_pct=<n>] (or
+`@<file>` holding that text, read on every check; a `pressure` or `mem_free_pct` key makes it a
+machine with memory readings, like macOS) — the same test-only input the Rust debug build
+reads.
 
 `acquire` waits for one of N slots, runs COMMAND, and returns COMMAND's exit code
 (128 + signal number when COMMAND ends on a signal). While waiting it prints one line
@@ -72,11 +81,19 @@ except ImportError:  # pragma: no cover - non-unix
 POLL_SECONDS = 0.2
 # The wrapper's own refusal, kept apart from COMMAND's codes like env(1) and timeout(1) do.
 REFUSED = 125
-# Too short of disk or too deep in swap to start now (src/heavy_slot.rs BUSY).
+# Too short of disk or memory to start now (src/heavy_slot.rs BUSY).
 BUSY = 75
-# The leader's numbers (Issue #2677 comment 6850581277), src/heavy_slot.rs DEFAULT_LIMITS.
+# The leader's numbers (Issue #2677 comment 6850581277), src/heavy_slot.rs DEFAULT_LIMITS;
+# the memory free percentage 10 is card C-88's (macOS only).
 DEFAULT_MIN_FREE_GB = 50
 DEFAULT_MAX_SWAP_PCT = 80
+DEFAULT_MIN_MEM_FREE_PCT = 10
+# kern.memorystatus_vm_pressure_level: 1 normal, 2 warn, 4 critical; refused from 4 on
+# (src/heavy_slot.rs CRITICAL_PRESSURE_LEVEL).
+CRITICAL_PRESSURE_LEVEL = 4
+# A sysctl call gets this long and a minimal environment (no inherited PATH or locale).
+SYSCTL_TIMEOUT_SECONDS = 5
+SYSCTL_ENV = {"PATH": "/usr/bin:/bin:/usr/sbin:/sbin", "LC_ALL": "C"}
 # Issue #2930 item 6 (src/heavy_slot.rs WARN_FREE_GB): a run that starts with less free space
 # than this (decimal GB) first prints one warning line on stderr.
 WARN_FREE_GB = 100
@@ -84,12 +101,14 @@ WARN_FREE_GB = 100
 DEFAULT_MAX = 3
 LIMITS_FILE = "limits.json"
 LIMITS_FILE_MAX_BYTES = 4096
-LIMIT_KEYS = {"max": 2**64 - 1, "min_free_gb": 2**64 - 1, "max_swap_pct": 2**64 - 1}
+LIMIT_KEYS = {"max": 2**64 - 1, "min_free_gb": 2**64 - 1, "max_swap_pct": 2**64 - 1,
+              "min_mem_free_pct": 2**64 - 1}
 FORWARDED = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
 
 
 def _test_machine():
-    """(free_bytes, swap_pct) from MOAI_CLI_TEST_MACHINE, or None when it is not set."""
+    """(free_bytes, swap_pct, memory) from MOAI_CLI_TEST_MACHINE, or None when it is not set;
+    memory is (pressure_level, free_pct) when a `pressure` or `mem_free_pct` key is given."""
     text = os.environ.get("MOAI_CLI_TEST_MACHINE")
     if text is None:
         return None
@@ -99,17 +118,23 @@ def _test_machine():
                 text = f.read()
         except OSError:
             text = ""
-    free = swap = None
+    free = swap = memory = None
     for part in text.strip().split(","):
         key, _, value = part.partition("=")
+        if key in ("pressure", "mem_free_pct") and memory is None:
+            memory = [None, None]
         try:
             if key == "free_gb":
                 free = int(value) * 1_000_000_000
             elif key == "swap_pct":
                 swap = int(value)
+            elif key == "pressure":
+                memory[0] = int(value)
+            elif key == "mem_free_pct":
+                memory[1] = int(value)
         except ValueError:
             pass
-    return free, swap
+    return free, swap, None if memory is None else tuple(memory)
 
 
 def free_bytes(folder):
@@ -120,13 +145,41 @@ def free_bytes(folder):
     return s.f_bavail * s.f_frsize
 
 
+def _sysctl(name):
+    """`sysctl -n NAME` on macOS, or None on any failure, a non-zero exit or no answer within
+    SYSCTL_TIMEOUT_SECONDS; run by absolute path with a minimal environment."""
+    try:
+        done = subprocess.run(["/usr/sbin/sysctl", "-n", name], capture_output=True, text=True,
+                              timeout=SYSCTL_TIMEOUT_SECONDS, env=SYSCTL_ENV,
+                              stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return done.stdout if done.returncode == 0 else None
+
+
+def memory():
+    """macOS memory readings (card C-88), (pressure_level, free_pct) with None for a value the
+    system does not give: `kern.memorystatus_vm_pressure_level` and `kern.memorystatus_level`,
+    the free percentage `memory_pressure` prints. None elsewhere (Linux is judged on swap)."""
+    if sys.platform != "darwin":
+        return None
+
+    def number(name):
+        out = _sysctl(name)
+        try:
+            value = int(out.strip())
+        except (AttributeError, ValueError):
+            return None
+        return value if value >= 0 else None
+
+    return number("kern.memorystatus_vm_pressure_level"), number("kern.memorystatus_level")
+
+
 def swap_pct():
     """Swap in use, percent of the swap size (0 without swap); None when unknown."""
     if sys.platform == "darwin":
-        try:
-            out = subprocess.run(["/usr/sbin/sysctl", "-n", "vm.swapusage"], capture_output=True,
-                                 text=True, timeout=5).stdout
-        except (OSError, subprocess.SubprocessError):
+        out = _sysctl("vm.swapusage")
+        if out is None:
             return None
         fields = dict(re.findall(r"(\w+) = ([\d.]+)M", out))
         try:
@@ -144,14 +197,28 @@ def swap_pct():
     return 0 if total == 0 else (total - free) * 100 // total
 
 
-def over_limits(folder, min_free_gb, max_swap_pct):
-    """Why a heavy run must not start now, or None (same text as src/heavy_slot.rs)."""
+def over_limits(folder, min_free_gb, max_swap_pct, min_mem_free_pct=DEFAULT_MIN_MEM_FREE_PCT):
+    """Why a heavy run must not start now, or None (same text as src/heavy_slot.rs). A machine
+    with memory readings (macOS) is judged on them and its swap is only shown; one without
+    them (Linux) on swap."""
     injected = _test_machine()
-    free, swap = injected if injected is not None else (free_bytes(folder), swap_pct())
+    if injected is not None:
+        free, swap, mem = injected
+    else:
+        free, swap, mem = free_bytes(folder), swap_pct(), memory()
     why = []
     if free is not None and free < min_free_gb * 1_000_000_000:
         why.append(f"disk free {free / 1e9:.1f} GB at {folder} is below {min_free_gb} GB")
-    if swap is not None and swap > max_swap_pct:
+    if mem is not None:
+        level, free_pct = mem
+        if level is not None and level >= CRITICAL_PRESSURE_LEVEL:
+            why.append(f"memory pressure level {level} is at the critical level "
+                       f"{CRITICAL_PRESSURE_LEVEL}")
+        if free_pct is not None and free_pct < min_mem_free_pct:
+            why.append(f"memory free {free_pct}% is below {min_mem_free_pct}%")
+        if why and swap is not None:
+            why.append(f"swap use {swap}% (shown only; not a limit on macOS)")
+    elif swap is not None and swap > max_swap_pct:
         why.append(f"swap use {swap}% is above {max_swap_pct}%")
     return "; ".join(why) or None
 
@@ -208,8 +275,9 @@ def read_limits_file(folder):
     return doc
 
 
-def effective(file, caller_max, caller_free, caller_swap):
-    """(max, min_free_gb, max_swap_pct, notes): the stricter of the file (or the defaults) and
+def effective(file, caller_max, caller_free, caller_swap, caller_mem_free=None):
+    """(max, min_free_gb, max_swap_pct, min_mem_free_pct, notes): the stricter of the file (or
+    the defaults) and
     the caller's flags, one note per flag a stricter value overrode (src/heavy_slot.rs
     effective)."""
     file = file or {}
@@ -219,6 +287,8 @@ def effective(file, caller_max, caller_free, caller_swap):
     base_free = DEFAULT_MIN_FREE_GB if base_free is None else base_free
     base_swap = file.get("max_swap_pct")
     base_swap = DEFAULT_MAX_SWAP_PCT if base_swap is None else base_swap
+    base_mem_free = file.get("min_mem_free_pct")
+    base_mem_free = DEFAULT_MIN_MEM_FREE_PCT if base_mem_free is None else base_mem_free
     notes = []
 
     def pick(flag, given, base, stricter):
@@ -233,7 +303,8 @@ def effective(file, caller_max, caller_free, caller_swap):
     maximum = pick("--max", caller_max, base_max, lambda a, b: a < b)
     free = pick("--min-free-gb", caller_free, base_free, lambda a, b: a > b)
     swap = pick("--max-swap-pct", caller_swap, base_swap, lambda a, b: a < b)
-    return maximum, free, swap, notes
+    mem_free = pick("--min-mem-free-pct", caller_mem_free, base_mem_free, lambda a, b: a > b)
+    return maximum, free, swap, mem_free, notes
 
 
 def machine_line(folder):
@@ -355,9 +426,9 @@ def queue_place(waiting, me):
 
 
 def acquire(folder, maximum, name, command, min_free_gb=DEFAULT_MIN_FREE_GB,
-            max_swap_pct=DEFAULT_MAX_SWAP_PCT):
+            max_swap_pct=DEFAULT_MAX_SWAP_PCT, min_mem_free_pct=DEFAULT_MIN_MEM_FREE_PCT):
     cwd = os.getcwd()
-    why = over_limits(cwd, min_free_gb, max_swap_pct)
+    why = over_limits(cwd, min_free_gb, max_swap_pct, min_mem_free_pct)
     if why:
         return busy(name, why, cwd)
     waiting = os.path.join(folder, "waiting")
@@ -387,7 +458,7 @@ def acquire(folder, maximum, name, command, min_free_gb=DEFAULT_MIN_FREE_GB,
     if waited:
         # The machine may have changed during the wait (#2829 D2): judge it again before
         # starting; closing the slot file frees the slot.
-        why = over_limits(cwd, min_free_gb, max_swap_pct)
+        why = over_limits(cwd, min_free_gb, max_swap_pct, min_mem_free_pct)
         if why:
             os.close(fd)
             return busy(name, why, cwd)
@@ -448,8 +519,13 @@ def main(argv=None):
                    help="start nothing below this much free space (decimal GB); only a value "
                         "above limits.json's (default 50) takes effect")
     a.add_argument("--max-swap-pct", type=int, default=None,
-                   help="start nothing above this swap use in percent; only a value below "
-                        "limits.json's (default 80) takes effect")
+                   help="start nothing above this swap use in percent (Linux; macOS is judged "
+                        "on memory pressure); only a value below limits.json's (default 80) "
+                        "takes effect")
+    a.add_argument("--min-mem-free-pct", type=int, default=None,
+                   help="macOS: start nothing below this memory free percentage "
+                        "(kern.memorystatus_level); only a value above limits.json's "
+                        "(default 10) takes effect")
     a.add_argument("command", nargs=argparse.REMAINDER)
     s = sub.add_parser("status", help="list held slots (read only)")
     s.add_argument("--dir", default=None)
@@ -461,9 +537,10 @@ def main(argv=None):
     if args.op == "status":
         return status(folder)
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
-    flags = (args.max, args.min_free_gb, args.max_swap_pct)
+    flags = (args.max, args.min_free_gb, args.max_swap_pct, args.min_mem_free_pct)
     if any(v is not None and v < 0 for v in flags):
-        parser.error("--max, --min-free-gb and --max-swap-pct take whole numbers from 0")
+        parser.error("--max, --min-free-gb, --max-swap-pct and --min-mem-free-pct take whole "
+                     "numbers from 0")
     # Issue #2930 R-2: the machine's limits file beside the slots; a flag only tightens it.
     try:
         file = read_limits_file(folder)
@@ -471,14 +548,15 @@ def main(argv=None):
         print(f"heavy-check-slot: refused {e}; nothing was written and COMMAND did not run",
               file=sys.stderr)
         return REFUSED
-    maximum, min_free_gb, max_swap_pct, notes = effective(file, *flags)
+    maximum, min_free_gb, max_swap_pct, min_mem_free_pct, notes = effective(file, *flags)
     for note in notes:
         print(note, file=sys.stderr)
     if maximum < 1 or not command:
         parser.error("acquire needs --max >= 1 and a command after --")
     os.makedirs(folder, mode=0o700, exist_ok=True)
     try:
-        return acquire(folder, maximum, args.name, command, min_free_gb, max_swap_pct)
+        return acquire(folder, maximum, args.name, command, min_free_gb, max_swap_pct,
+                       min_mem_free_pct)
     except NotASlotFile as e:
         print(f"heavy-check-slot: refused {e}: not a plain file (symlink, FIFO, device, folder "
               f"or hard link); nothing was written and COMMAND did not run — remove it or pass "
