@@ -13,6 +13,8 @@ use std::process::{Command, Stdio};
 
 const BIN: &str = crate::common::MOAI_BIN;
 const BRANCH: &str = "spec/20261117-demo";
+const SPEC: &str = ".moai/specs/SPEC-20261117-demo/spec.md";
+const SPEC_TEXT: &str = "---\nid: SPEC-20261117-demo\ntitle: \"demo\"\nstatus: draft\nrevision: 1\ncreated: 2026-11-17\n---\n\n## Intent\n\nx\n";
 /// Fails with a cargo-style assertion summary until `src/lib.txt` says `fixed`.
 const CHECK: &str = "sh check.sh";
 const CHECK_SH: &str =
@@ -158,6 +160,9 @@ fn repo(branch: &str) -> (tempfile::TempDir, PathBuf) {
     fs::write(root.join("src/lib.txt"), "broken\n").unwrap();
     fs::create_dir_all(root.join("tests")).unwrap();
     fs::write(root.join("tests/old_test.rs"), "old\n").unwrap();
+    // A5 (spec-before-code) refuses code writes on a SPEC branch until its SPEC exists.
+    fs::create_dir_all(root.join(SPEC).parent().unwrap()).unwrap();
+    fs::write(root.join(SPEC), SPEC_TEXT).unwrap();
     commit(&root, "init");
     (dir, root)
 }
@@ -437,6 +442,24 @@ fn a_linked_record_folder_or_record_is_refused() {
         &write_input("tests/login_test.rs", &root)
     )));
     assert!(refused(&tdd(&root, &["done"])).contains("no open TDD cycle"));
+}
+
+/// A5 runs before A6: with the SPEC gone, a write to a locked test gets the SPEC-first reason;
+/// with it back, the lock's.
+#[test]
+fn spec_before_code_is_judged_before_the_test_lock() {
+    let (_d, root) = repo(BRANCH);
+    red_commit(&root);
+    ok(&tdd(&root, &["red", "--check", CHECK]));
+    fs::remove_file(root.join(SPEC)).unwrap();
+    let r = preflight(&root, &write_input("tests/login_test.rs", &root));
+    let spec_first = denied(&r) && r.stdout.contains("moai spec new");
+    assert!(spec_first, "{}", r.stdout);
+    assert!(!r.stdout.contains("moai tdd reopen"), "{}", r.stdout);
+    fs::write(root.join(SPEC), SPEC_TEXT).unwrap();
+    let r = preflight(&root, &write_input("tests/login_test.rs", &root));
+    let locked = denied(&r) && r.stdout.contains("moai tdd reopen");
+    assert!(locked, "{}", r.stdout);
 }
 
 /// The record lives in the linked worktree's own git folder: its cycle does not lock the
