@@ -66,4 +66,34 @@ lease나 launcher가 잡은 `.live` 잠금)로 하고, 새 전역 상태는 만�
 
 ## Result
 
-(구현 뒤 채워요.)
+구현 에이전트가 2026-11-17 09:38Z–10:00Z에 채웠어요(09:51Z–09:57Z에는 리더 지시로 SDD-5를 먼저 고쳤어요). SYNC와
+AUDIT가 다시 확인해요. macOS arm64, cargo는 slot 밖에서 한 번에 하나, `CARGO_BUILD_JOBS=4`, `CARGO_INCREMENTAL=0`.
+
+커밋: 기준 `25881165be` 위에 `b94f0d4544`(변경) → `8ac4e89d09`(tip `2489ad7c39` 병합: #3161 포함, 충돌 없음, 그
+줄들 유지) → `70b06f0c0a`(tip `d032d0be1f` 병합, 충돌 없음) → 이 Result.
+
+실제 clone 확인(읽기만): 이 저장소의 `.git/.moai-cli/`에는 `claims/`가 없고 `sessions/`(레인의 `agent-<n>.live`·
+`.json`)만 있어요 → D1의 신호 선택 근거.
+
+- AC-1: met — `commit_guard_users` exit 0, 6 passed. RED(바꾸기 전): `an_ordinary_user_commits_on_an_issue_branch`와
+  `an_ended_lane_lease_leaves_ordinary_commits_alone`이 `(true, Some(2))`로 실패 — 두 가드 모두 일반 사용자를 막음.
+- AC-2: met — `commit_guard_users`, `hook_dispatch_cli` 56, `claim_verify_cli` 39, `hook_status_cli`, `hook_mode_cli`,
+  `hooks_cli` 22, `git_env_scrub` 모두 exit 0. 기존 레인 시험 fixture는 레인을 등록하도록 고쳤어요(`tests/common`
+  `register_lane`); 그대로 두면 `hook_dispatch_cli` 2개, `git_env_scrub`·`hook_mode_cli`·`hooks_cli` 1개씩,
+  `hook_status_cli` 2개가 "레인 없는 clone" 쪽으로 바뀌어 실패했어요. 거절 경로 git 호출 수 시험은 3 → 5.
+- AC-3: met — `an_unreadable_registry_keeps_the_guard_on` exit 0.
+- AC-4: met — `spec_branches_are_not_guarded_with_or_without_a_lane` exit 0.
+- AC-5: met — `git ls-files` → 이 파일; `moai spec check --all` exit 0(병합 트리 SPEC 10개 오류 0·경고 0).
+
+mutation(변경 커밋 뒤, 셋 다 되돌린 뒤 `git status` 비어 있음): preflight의 `lane_clone` 검사 끄기 → 2개 실패;
+`claim-verify --hook`의 검사 끄기 → 2개 실패; 등록부 오류를 "레인 아님"으로(`map_or(false, …)`) → 1개 실패.
+
+다시 돌린 검사(`8ac4e89d09` 병합 트리): `--bin moai` 27, `commit_guard_users` 6, `hook_dispatch_cli`, `claim_verify_cli`,
+`claim_verify_flags_2838`, `claim_link_cli`, `git_env_scrub`, `hook_mode_cli`, `hook_status_cli`, `hooks_cli`,
+`home_isolation_scan`, `product_cli` 75, `session_registry_cli` — 모두 exit 0; `--lib claim_verify` 1, `--lib
+hook_engine` 11(병합 전); `cargo fmt --check` 0; `rustfmt --check --edition 2021 src/ops/*.rs` 0; clippy 0; Python
+`repo_scans`·`ci_scope` 44개 OK. `70b06f0c0a`에서 다시: `--bin moai` 27, `claim_verify_cli` 39, `commit_guard_users` 6,
+`hook_dispatch_cli` 56, `product_cli` 75, 모두 exit 0.
+
+실행 안 함: 전체 `cargo test`, Linux·Windows, 실제 호스트(Claude Code·Codex)에서 hook이 이 판정을 쓰는지 보는 일,
+launcher `.live` 잠금만 있는 레인(그 판정은 `live_session_count`의 기존 시험이 다뤄요).
