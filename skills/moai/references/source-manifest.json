@@ -109,7 +109,7 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "2b7abbbe974ac93aeba97a0db71f7971e3e4fb6d7dc7fb220de1ff31d125a4fa",
+      "sha256": "19266fdec7c939d815b9b2d5ee20d745e8b809f7e927e6a3f9258eaaacc06a86",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
@@ -358,7 +358,7 @@
       }
     },
     "references/internal/build-folder.md": {
-      "sha256": "fb667d61cb5a405cccc593f1cb31f214a7a55dbb714f0b7d76618b4c3716926a",
+      "sha256": "d501167bbf87e9c9974270530ebe91216057ae0ca99fc195a3c74e25025dbb82",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-build-folder",
