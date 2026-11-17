@@ -473,6 +473,9 @@ fn internal_references_say_when_to_read_them() {
         "build-folder",
         // SDD-6 (user decision U-B): the identity trailers every agent commit carries.
         "commit-trailers",
+        // SPEC-20261117-quality-guides: the project's own check commands, AC-to-test tracing
+        // and the dependency existence check, read by RUN and VERIFY through the chain rules.
+        "quality",
     ];
     let mut found: Vec<String> = std::fs::read_dir(package().join("references/internal"))
         .unwrap()

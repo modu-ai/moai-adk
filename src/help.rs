@@ -1805,6 +1805,12 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
          --confirm-cleanup 과 같이 못 씀",
     ),
     (
+        "update",
+        "allow_older",
+        "설치된 더 새 버전 위로 이 옛 빌드로 돌아감(없으면 막힘). 미리 보기가 호스트마다 \
+         경고하고, 확인할 때도 이 플래그가 다시 필요함",
+    ),
+    (
         "go-state-plan",
         "project",
         "Go `.moai/manifest.json` 이 있는 프로젝트 루트",

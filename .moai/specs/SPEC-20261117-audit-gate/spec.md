@@ -2,7 +2,7 @@
 id: SPEC-20261117-audit-gate
 title: CI audit-gate job — 판정 댓글로 감사 check 보고 (CI 재설계 1단계, D2)
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-17
 parent: SPEC-20261117-sdd-foundation
 ---
@@ -43,7 +43,8 @@ check를 이 job으로 옮기는 일은 guarded 설정이라 이 SPEC이 하지 
 - AC-2 (REQ-8, REQ-9): `--require-pass`는 `pass`가 아니면 실패 종료(exit 1)하고, 기록된 GitHub 응답에서 입력을 모아요.
   verify: `cargo test --locked --offline --test audit_gate_cli require_pass_fails_the_run_unless_it_passes`; `cargo test --locked --offline --lib audit_gate::tests::collect_reads_the_pr_its_files_commits_and_comments`
 - AC-3 (REQ-8, REQ-10): workflow가 actionlint를 통과하고 `pull_request_target`·쓰기 권한이 없고 action이 SHA로 고정돼요.
-  manual: `actionlint .github/workflows/audit-gate.yml` 실행과 파일 읽기
+  verify: `python3 -m unittest tests.github_assets_test`(목록·최소 권한·`test_audit_gate_reads_verdicts_with_a_read_only_token`)
+  manual: `actionlint .github/workflows/audit-gate.yml` 실행
 - AC-4 (REQ-1…REQ-10): 병합 관문 시험이 그대로 통과하고(읽는 함수를 공유), 이웃 검사가 모두 통과해요.
   verify: `cargo test --locked --offline --test gate_check_cli`; `cargo test --locked --offline --bin moai`;
   `cargo test --locked --offline --test help_layout`; `cargo test --locked --offline --test product_cli`;
@@ -53,7 +54,7 @@ check를 이 job으로 옮기는 일은 guarded 설정이라 이 SPEC이 하지 
 ## Scope
 
 - write: `src/audit_gate.rs`, `src/ops/audit_gate.rs`, `src/lib.rs`, `src/gate.rs`, `src/gate_collect.rs`, `src/help.rs`,
-  `tests/audit_gate_cli.rs`, `tests/fixtures/help/*.txt`, `.github/workflows/audit-gate.yml`,
+  `tests/audit_gate_cli.rs`, `tests/github_assets_test.py`, `tests/fixtures/help/*.txt`, `.github/workflows/audit-gate.yml`,
   `docs/design-review/appendix/operations/audit_gate.md`, `CONTRIBUTING.md`, `skills/moai/workflows/sync.md`,
   `skills/moai/references/source-manifest.json`, `.moai/specs/SPEC-20261117-audit-gate/spec.md`
 - read-only: `.github/workflows/ci.yml`, `AGENTS.md`, ruleset 26791615(GET)
@@ -79,6 +80,9 @@ check를 이 job으로 옮기는 일은 guarded 설정이라 이 SPEC이 하지 
   빌드하므로 PR이 자기 규칙을 바꿔 통과할 수 없어요.
 - 이 job이 처음 들어오는 PR(이 SPEC의 PR)에서는 base에 `audit-gate` 명령이 없어 job이 실패해요(필수가 아니라 막지 않음).
 - job이 base 커밋 전체를 빌드해요(캐시 복원만) → 몇 분이 걸려요. 속도는 rollout 5단계.
+- (감사 N1, 리더 결정) 읽히지 않는 `AUDIT #` 첫 줄을 audit-gate는 FAIL로 세고(더 안전한 쪽), 리더 관문 `gate-check`의 G3는
+  건너뛰어요 → 두 관문의 판단이 다를 수 있어요. 이 SPEC은 `gate.rs`를 바꾸지 않아요. 후속: G3도 읽히지 않는 판정 줄을 FAIL로
+  세게 맞추는 조각.
 
 ## Decisions
 

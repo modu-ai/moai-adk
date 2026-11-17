@@ -721,7 +721,8 @@ fn llm_context_windows(ctx: &Context) -> Vec<(String, i64)> {
 // ---- version ----
 
 /// `VersionCollector.CheckUpdate`: the nearest `system.yaml` above the cwd names the
-/// template version; a different binary version is shown as the update target.
+/// template version; a different binary version is shown as the update target, and only a
+/// newer one when both versions are ones `headver::compare` reads.
 fn collect_version(ctx: &Context, binary: &str) -> Version {
     let trim = |v: &str| v.strip_prefix('v').unwrap_or(v).to_string();
     let bv = trim(binary);
@@ -732,7 +733,10 @@ fn collect_version(ctx: &Context, binary: &str) -> Version {
         };
     };
     let tv = trim(&template);
-    let latest = (!bv.is_empty() && !tv.is_empty() && bv != tv).then_some(bv);
+    // Card C-67 S1: when both are versions the HeadVer comparison reads, the binary is the
+    // update target only when it is newer; otherwise any difference shows, as before.
+    let newer = crate::headver::compare(&bv, &tv).is_none_or(|o| o.is_gt());
+    let latest = (!bv.is_empty() && !tv.is_empty() && bv != tv && newer).then_some(bv);
     Version {
         current: tv,
         latest,
@@ -968,6 +972,33 @@ mod tests {
         );
         std::fs::write(sections.join("system.yaml"), "moai:\n  version: 3.2.1\n").unwrap();
         assert_eq!(collect_version(&ctx, "v3.2.1").latest, None);
+    }
+
+    /// Card C-67 S1 (SPEC-20261117-headver-version AC-5): when both versions are ones the
+    /// HeadVer comparison reads, the binary is the update target only when it is newer; a
+    /// binary older than the template is never shown as the update.
+    #[test]
+    fn the_binary_is_the_update_target_only_when_newer() {
+        let tmp = tempfile::tempdir().unwrap();
+        let ctx = Context::for_test(&[], Some(tmp.path()));
+        let sections = tmp.path().join(".moai/config/sections");
+        std::fs::create_dir_all(&sections).unwrap();
+        for (template, binary, latest) in [
+            ("2026.11.0-rc.2", "4.2647.5", Some("4.2647.5")),
+            ("4.2647.4", "4.2647.5", Some("4.2647.5")),
+            ("4.2647.5", "4.2647.5", None),
+            ("4.2648.1", "4.2647.5", None),
+            ("4.2647.5", "2026.11.0-rc.2+local.4", None),
+        ] {
+            std::fs::write(
+                sections.join("system.yaml"),
+                format!("moai:\n  template_version: {template}\n"),
+            )
+            .unwrap();
+            let v = collect_version(&ctx, binary);
+            assert_eq!(v.current, template, "{template} {binary}");
+            assert_eq!(v.latest.as_deref(), latest, "{template} {binary}");
+        }
     }
 
     /// #2455 AC-5 (leader scope 6792437161): the upward search for `llm.yaml` and

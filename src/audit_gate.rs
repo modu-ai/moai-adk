@@ -374,6 +374,19 @@ mod tests {
         let mut same = failed;
         same.push(verdict(6, H, "PASS", "agent-7"));
         assert_eq!(state(&input("0", &docs, &[], same)).0, "pass");
+        // Audit B2: only a LATER PASS clears it; a PASS posted before the FAIL does not.
+        let earlier = vec![
+            verdict(200, H, "PASS", "agent-7"),
+            verdict(300, H, "FAIL", "agent-7"),
+        ];
+        assert_eq!(
+            state(&input("0", &docs, &[], earlier.clone())),
+            ("fail".into(), "open-fail".into())
+        );
+        assert_eq!(
+            state(&input("1", &["src/a.rs"], &["agent-1"], earlier)).0,
+            "fail"
+        );
         // A source path raises a declared tier 0 to 1: no verdict is then missing.
         assert_eq!(
             state(&input("0", &["src/a.rs"], &["agent-1"], vec![])),
