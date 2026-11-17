@@ -56,3 +56,20 @@ General_Category=Format 절(21줄, 170개)을 기준으로, Cf 전체를 거부�
 - D2 지시는 U+13430–U+13440이라 했지만 18.0.0 출처에서 Cf는 U+13430–U+1343F이고 U+13440은 Mn(EGYPTIAN HIEROGLYPH MIRROR
   HORIZONTALLY)이에요. 출처를 따르고, U+13440은 N+1 이웃으로 받아요.
 - D3 출처 전체를 싣지 않고 Cf 절(제목 줄부터 total 줄까지)만 발췌해요. 표를 코드에만 두면 시험이 자기 자신과 비교하게 되니까요.
+
+## Result
+
+구현 에이전트가 채웠어요. 기준 `17c19a2759`(origin/v2026.11.0), 변경 커밋 `a091e3e97a`.
+
+- RED: 새 시험을 쓰고 `hidden()`에서 `FORMAT`을 뺀 옛 동작으로 돌리니 `custom_text_refuses_every_format_character`가
+  U+0600에서 FAIL(EXPECTED_RED). 되돌린 뒤 22 통과.
+- AC-1: met — 표가 발췌와 같고 170개; 21개 범위의 양 끝 거부, 바깥 이웃 32개 받음(다른 이유로 거부되는 10개 제외).
+  C-71 이웃 시험은 U+FFF9가 이제 형식 문자라 기대값을 `2 * 17 - 2`로 고쳤어요.
+- AC-2: met — 아랍어·아랍 숫자, 데바나가리, 한국어, 🚀 문구가 받아져요.
+- AC-3: met — 두 문서가 21개 범위를 모두 적었어요(표-문서 시험).
+- mutation(커밋 뒤, 각각 `git restore` 뒤 tree 깨끗): `hidden()`이 `FORMAT`을 안 봄 → 1 FAIL; U+1343F를 U+13440으로 → 2 FAIL;
+  U+FFF9–U+FFFB 줄 삭제 → 2 FAIL.
+- 함께 돌림: `--lib profile::` 10, `versioning_cli` 15, `agent_defs_package` 18, `product_cli` 75, `--bin moai` 27, fmt,
+  clippy `-D warnings`, Python 4개 88 OK, `source_manifest.py write`(versioning.md 다시 씀)·`check`, `moai spec check --all`.
+
+실행 안 함: 전체 cargo test, Linux CI.
