@@ -178,11 +178,23 @@ fn both_names_print_the_same_output() {
     let first = line.lines().next().unwrap();
     assert!(first.starts_with("moai-cli "), "{first}");
     assert!(first.ends_with(" (rust)"), "{first}");
-    assert!(
-        first.contains(env!("CARGO_PKG_VERSION")),
-        "{first} names the package version"
+    // Card C-67 S1: the first line names the HeadVer build version, the second line which
+    // kind of build it is; `-V` prints the first line alone.
+    assert_eq!(
+        first,
+        format!("moai-cli {} (rust)", moai_cli::BUILD_VERSION),
+        "{first} names the build version"
     );
-    // `--version` is the one line both names print as it is (D3 decision 2).
+    assert_eq!(
+        line,
+        format!("moai-cli {}\n", moai_cli::LONG_VERSION),
+        "{line}"
+    );
+    assert_eq!(
+        text(&run(MOAI, &["-V"], b"").stdout),
+        format!("moai-cli {}\n", moai_cli::VERSION_SIGNATURE)
+    );
+    // `--version` is printed by both names as it is (D3 decision 2).
     assert_eq!(
         text(&run(MOAI, &["--version"], b"").stdout),
         text(&run(MOAI_CLI, &["--version"], b"").stdout)

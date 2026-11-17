@@ -182,6 +182,8 @@ fn hook_mode_transport_setting_only_matters_to_a_guarded_command() {
         "https://github.com/acme/widgets.git",
     ]);
     git(&["checkout", "-q", "-b", "issue/7-widget"]);
+    // A lane worktree's clone has a live lane session (SPEC-20261117-commit-guard-users).
+    common::register_lane(&root);
     let r = run(
         &["claim-verify", ".", "--hook"],
         &root,

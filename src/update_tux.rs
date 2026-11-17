@@ -674,7 +674,11 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
             continue;
         }
         let (m, text) = tally_text(lang, tally(h["files"].as_array().map_or(&[], |a| a)));
-        rows.push(row(m, label, text));
+        rows.push(row(m, label.clone(), text));
+        // Card C-67 (audit N1): `--allow-older` goes back to an older build; say so per host.
+        if let Some(w) = h["going_back"].as_str() {
+            rows.push(row(Mark::Warn, label, w.to_string()));
+        }
     }
     // Agents: one row over the hosts.
     let hosts: Vec<&Value> = v["agents"]["hosts"]
