@@ -469,6 +469,8 @@ fn internal_references_say_when_to_read_them() {
         "versioning",
         // C-77: the checks an implementer runs before asking for an audit.
         "self-check",
+        // C-82: where agent and audit builds go and how the build folder is emptied.
+        "build-folder",
     ];
     let mut found: Vec<String> = std::fs::read_dir(package().join("references/internal"))
         .unwrap()

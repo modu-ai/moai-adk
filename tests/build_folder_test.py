@@ -65,9 +65,7 @@ class Fixture:
         return self.home / ".moai" / "build" / name
 
     def close(self):
-        for p in self.home.rglob("*"):
-            if p.is_dir() and not p.is_symlink():
-                p.chmod(0o755)
+        # Only HOME itself is ever made read-only (the unwritable-HOME test).
         self.home.chmod(0o755)
         self.tmp.cleanup()
 
