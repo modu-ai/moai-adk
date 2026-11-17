@@ -1,0 +1,39 @@
+# DerivedGeneralCategory-18.0.0.txt
+# Date: 2026-06-29, 15:25:02 GMT
+# © 2026 Unicode®, Inc.
+# Unicode and the Unicode Logo are registered trademarks of Unicode, Inc. in the U.S. and other countries.
+# For terms of use and license, see https://www.unicode.org/terms_of_use.html
+#
+# Excerpt for MoAI (SPEC-20261117-versioning-format-chars): the General_Category=Format section
+# of https://www.unicode.org/Public/18.0.0/ucd/extracted/DerivedGeneralCategory.txt, copied
+# unchanged from its heading line to its total line; sha256 of the whole file:
+# d6b151d2d40ee9b1876d26f417980f45ffae47b6055ccf7203cb31f07a030f94 (read 2026-11-17T16:34:16Z).
+# This excerpt of a Unicode Data File is copied under the Unicode License V3; its full
+# copyright and permission notice is LICENSE-Unicode-V3.txt in this folder
+# (https://www.unicode.org/license.txt, read 2026-11-17).
+
+# General_Category=Format
+
+00AD          ; Cf #       SOFT HYPHEN
+0600..0605    ; Cf #   [6] ARABIC NUMBER SIGN..ARABIC NUMBER MARK ABOVE
+061C          ; Cf #       ARABIC LETTER MARK
+06DD          ; Cf #       ARABIC END OF AYAH
+070F          ; Cf #       SYRIAC ABBREVIATION MARK
+0890..0891    ; Cf #   [2] ARABIC POUND MARK ABOVE..ARABIC PIASTRE MARK ABOVE
+08E2          ; Cf #       ARABIC DISPUTED END OF AYAH
+180E          ; Cf #       MONGOLIAN VOWEL SEPARATOR
+200B..200F    ; Cf #   [5] ZERO WIDTH SPACE..RIGHT-TO-LEFT MARK
+202A..202E    ; Cf #   [5] LEFT-TO-RIGHT EMBEDDING..RIGHT-TO-LEFT OVERRIDE
+2060..2064    ; Cf #   [5] WORD JOINER..INVISIBLE PLUS
+2066..206F    ; Cf #  [10] LEFT-TO-RIGHT ISOLATE..NOMINAL DIGIT SHAPES
+FEFF          ; Cf #       ZERO WIDTH NO-BREAK SPACE
+FFF9..FFFB    ; Cf #   [3] INTERLINEAR ANNOTATION ANCHOR..INTERLINEAR ANNOTATION TERMINATOR
+110BD         ; Cf #       KAITHI NUMBER SIGN
+110CD         ; Cf #       KAITHI NUMBER SIGN ABOVE
+13430..1343F  ; Cf #  [16] EGYPTIAN HIEROGLYPH VERTICAL JOINER..EGYPTIAN HIEROGLYPH END WALLED ENCLOSURE
+1BCA0..1BCA3  ; Cf #   [4] SHORTHAND FORMAT LETTER OVERLAP..SHORTHAND FORMAT UP STEP
+1D173..1D17A  ; Cf #   [8] MUSICAL SYMBOL BEGIN BEAM..MUSICAL SYMBOL END PHRASE
+E0001         ; Cf #       LANGUAGE TAG
+E0020..E007F  ; Cf #  [96] TAG SPACE..CANCEL TAG
+
+# Total code points: 170

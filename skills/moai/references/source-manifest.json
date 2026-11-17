@@ -177,7 +177,7 @@
       }
     },
     "references/internal/interview.md": {
-      "sha256": "ec88ae339c939aedaf61d28c1989f95a739569f7ad4745d62f4724bb453600ed",
+      "sha256": "12e531e645efd8c1d97f0ef300d89488c789f21cadd70fa867f7808b5fb84752",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-interview",
@@ -264,7 +264,7 @@
       }
     },
     "references/internal/versioning.md": {
-      "sha256": "2edd875ea1a7967b70800a05783752bec81cded61f398409637d9aa8bf554f3f",
+      "sha256": "937835dcb420d6acf2d51193c991dc16d060bc0831eff6518f2c464f69d268b6",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-versioning",
@@ -417,7 +417,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "01c5df46d6a49bc720d8da1a550b172fb1c97c4c4cf908e75f011a55f8d8051c",
+      "sha256": "c8c20ae95d506cd9ae1914c78f43bd7e8b826cd54d7290350fa11f0b6d4d5c72",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
@@ -453,7 +453,7 @@
       }
     },
     "workflows/sync.md": {
-      "sha256": "a4bb0535175b1b1bd2459017bad7eac713c16c51fd5a08b42f3050ec73f55865",
+      "sha256": "47553fd80df27c9f36b6a11470dddbb0a209ea8749948b85784e221cd43189f4",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-sync",
