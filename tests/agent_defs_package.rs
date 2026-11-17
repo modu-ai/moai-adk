@@ -677,15 +677,22 @@ fn work_flow_row_offers_m_flow_first_and_the_bank_states_each_flow() {
         "`worktree.baseRef: head`",
         "push the branch and open a pull request (recommended)",
         "`{\"flow\": \"m-flow\" | \"github-flow\" | \"trunk-based\" | \"git-flow\"",
+        // Audit B1 (decision 2026-11-17): one SPEC = one branch = one pull request.
+        "branch `spec/<yyyymmdd>-<slug>`",
+        "one SPEC, one branch, one pull request",
     ] {
         assert!(section.contains(text), "the flow section lacks {text:?}");
     }
+    // A card number never goes into a shared place, so no `card/` branch is described.
+    assert!(!section.contains("card/"), "{section}");
     let project = read("workflows/project.md");
     for text in [
         "the `work_flow` row",
         "`moai claude-settings-plan <project> --keep-owned`",
         "`{\"worktree\": {\"baseRef\": \"head\"}}`",
         "only after the user picks it",
+        // Audit N1: a user's own `worktree` object is completed by the user, never replaced.
+        "ask the user to add `\"baseRef\": \"head\"` to their own `worktree` object",
     ] {
         assert!(project.contains(text), "project.md lacks {text:?}");
     }

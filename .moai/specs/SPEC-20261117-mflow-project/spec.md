@@ -2,7 +2,7 @@
 id: SPEC-20261117-mflow-project
 title: /moai project가 git 작업 흐름을 묻고 m-flow를 권장 — 카드 C-70
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-17
 parent: SPEC-20261117-sdd-foundation
 ---
@@ -60,7 +60,10 @@ parent: SPEC-20261117-sdd-foundation
 
 - `worktree`를 통째로 소유해요 → 사용자가 이미 `worktree`를 정했으면 plan이 `conflict`로 보여 주고 쓰지 않아요(기존 규칙).
 - `--keep-owned` 없이 한 키만 보내면 예전처럼 다른 소유 키가 지워져요 → PROJECT 단계는 늘 `--keep-owned`로 보내요.
-- Claude Code 문서의 두 값은 2026-11-10 읽기 기준이에요(재확인은 하지 않았어요).
+- Claude Code 문서의 두 값: 감사자가 2026-11-17T09:59:58Z에 https://code.claude.com/docs/en/worktrees.md를 다시 읽었고 `baseRef`는
+  여전히 `"fresh"`·`"head"`뿐이에요(감사 N2). 문서가 값을 더하면 D4를 다시 봐요.
+- 사용자가 이미 `worktree` 객체(예: `sparsePaths`)를 가지면 plan이 `conflict`예요 → 객체를 바꾸지 않고, 사용자가 자기 객체에
+  `"baseRef": "head"`를 더하도록 PROJECT 단계가 말해요(감사 N1).
 
 ## Decisions
 
@@ -70,7 +73,8 @@ parent: SPEC-20261117-sdd-foundation
 | D2 | 프로젝트 settings 쓰기는 기존 `claude-settings-plan`/`-apply`(미리 보기·digest·영수증)에 `worktree` 관리 키를 더해서 | 조정자 지시(기존 plan/apply) | 관리 키에서 빼기 |
 | D3 | `--keep-owned` 플래그: 요청에 없는 소유 키를 유지(없으면 예전처럼 빠진 키는 지움) | 한 키만 바꾸는 요청이 다른 소유 키를 지우지 않게 | 플래그 빼기 |
 | D4 | `worktree` 값은 `{"baseRef": "head"}`·`{"baseRef": "fresh"}`만(문서 두 값), 다른 worktree 키는 사용자 몫 | `docs/worktree-strategy-2026-11-10.md` H1 | 허용 값 넓히기 |
-| D5 | 통합 가지 이름은 이식 가능한 부분집합(1–100바이트, 영숫자 `.-_/`, `..`·`//`·`.lock` 등 금지) | git refname 규칙의 안전한 부분 | 규칙 넓히기 |
+| D5 | 통합 가지 이름은 이식 가능한 부분집합(1–100바이트, 영숫자 `.-_/`, `..`·`//`·`/.` 금지, `/` 조각마다 `.lock`으로 끝나지 않음, `HEAD` 아님; 감사 B2 뒤 `git check-ref-format --branch`와 시험 이름마다 맞춰 봄) | git refname 규칙의 안전한 부분 | 규칙 넓히기 |
+| D7 | m-flow 설명은 한 SPEC = 한 가지 `spec/<yyyymmdd>-<slug>` = 한 PR, 카드 번호는 가지·커밋·PR에 쓰지 않음(감사 B1) | 결정 2026-11-17(`docs/decisions-2026-11-08.md` SPEC id·담당 표시 행) | 설명 문장 되돌리기 |
 | D6 | "푸시 + PR 열기 (권장)"은 m-flow 설명의 끝맺음 문장으로 | 사용자 선택 | 문장 빼기 |
 
 ## Result

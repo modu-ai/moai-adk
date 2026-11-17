@@ -171,15 +171,16 @@ pub struct WorkFlowSettings {
 
 /// A branch name git takes, kept to a portable subset: 1 to 100 bytes of ASCII letters, digits
 /// and `. - _ /`; no leading `-`, `.` or `/`; no trailing `/` or `.`; no `..`, `//` or `/.`;
-/// not ending in `.lock`.
+/// no `/` component ending in `.lock`; not `HEAD` (as `git check-ref-format --branch` rules).
 fn branch_name(s: &str) -> bool {
     !s.is_empty()
         && s.len() <= 100
+        && s != "HEAD"
         && s.bytes()
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b'_' | b'/'))
         && !s.starts_with(['-', '.', '/'])
         && !s.ends_with(['/', '.'])
-        && !s.ends_with(".lock")
+        && !s.split('/').any(|part| part.ends_with(".lock"))
         && !["..", "//", "/."].iter().any(|x| s.contains(x))
 }
 
@@ -1188,6 +1189,20 @@ mod tests {
                 json!({"flow": "m-flow", "integration_branch": "b".repeat(101)}),
                 "101 bytes",
             ),
+            // Audit B2: `git check-ref-format --branch` refuses `.lock` at the end of any
+            // `/` component, and `HEAD` as a branch name.
+            (
+                json!({"flow": "m-flow", "integration_branch": "x.lock/y"}),
+                "`.lock` ending the first component",
+            ),
+            (
+                json!({"flow": "m-flow", "integration_branch": "a/b.lock/c"}),
+                "`.lock` ending a middle component",
+            ),
+            (
+                json!({"flow": "m-flow", "integration_branch": "HEAD"}),
+                "HEAD",
+            ),
         ] {
             let mut file = serde_json::to_value(v2()).unwrap();
             file["work_flow"] = bad;
@@ -1201,6 +1216,11 @@ mod tests {
             json!({"flow": "trunk-based", "integration_branch": "trunk"}),
             json!({"flow": "git-flow", "integration_branch": "release/next"}),
             json!({"flow": "m-flow", "integration_branch": "b".repeat(100)}),
+            // The N+1 side of the audit B2 edges: one letter off is a branch git takes.
+            json!({"flow": "m-flow", "integration_branch": "x.loc/y"}),
+            json!({"flow": "m-flow", "integration_branch": "a/b.locks/c"}),
+            json!({"flow": "m-flow", "integration_branch": "HEADS"}),
+            json!({"flow": "m-flow", "integration_branch": "release/HEAD"}),
         ] {
             let mut file = serde_json::to_value(v2()).unwrap();
             file["work_flow"] = good.clone();
