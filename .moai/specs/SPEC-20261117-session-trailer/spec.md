@@ -83,4 +83,20 @@ parent: SPEC-20261117-sdd-foundation
 
 ## Result
 
-아직 비어 있어요(구현 뒤 채워요).
+구현 에이전트가 채웠어요. 감사가 다시 확인해요. 기준 `5bf6f29a32`(audit-gate head) 위, audit-gate 수리 `0b12c389b8`를
+합침(`8d586f16ab`), 이 worktree의 `target/`, `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=4`, macOS arm64, cargo는 한 번에 하나.
+
+RED(2026-11-17T10:03:13Z): `trailer_check_cli` 2개는 명령이 없어 usage(exit 2), `audit_gate::tests::a_verdict_names_its_auditors_session_like_a_commit_does`는
+저자 session의 PASS를 통과시킴(`pass` ≠ `missing`). 통과 10:06:13Z.
+
+- AC-1: met — `trailer_check_cli trailers_name_the_spec_and_this_sessions_id`, `--lib trailers::` 2
+- AC-2: met — `trailer_check_cli trailer_check_reports_missing_and_malformed_trailers`(임시 저장소)
+- AC-3: met — `--lib trailers:: audit_gate:: gate:: session_current:: spec_doc::` 38, `audit_gate_cli` 3
+- AC-4: met — `gate_check_cli` 45, `gate_collect` 44, `gate_merge` 16, `gate_stacked_2859` 9, `audit_admission` 7, `git_env_scrub` 3, `home_isolation_scan` 16, `product_cli` 75, `help_layout` 10, `--bin moai` 27, `agent_defs_package` 18, `github_assets_test` 37 OK, 저장소 scan 대상 모두 exit 0; fmt 0, `rustfmt src/ops` 0, clippy 0; Python 88 OK; manifest ok; `package-inspect` ok; `moai spec check --all` ok
+- 스스로 쓰기: 이 가지의 커밋은 `moai trailers --spec SPEC-20261117-session-trailer`가 만든 줄을 써요(`session_source: env:CLAUDE_CODE_SESSION_ID`).
+  `moai trailer-check 0b12c389b8..HEAD`: ok, 커밋 2개, 실패 0 — 첫 WIP 커밋(`2ef8f25529`)은 `Moai-Session`이 없어 알림만(그 커밋은 이 명령이 생기기 전).
+
+mutation 5개 모두 KILLED: Go 세대 SPEC id 받기, `Moai-Spec` 없음을 모든 가지에서 실패, 아무 `Moai-Session` 값 받기, `-`로 시작하는 범위를 git에 넘기기,
+판정의 감사자 session 안 읽기.
+
+실행 안 함: 실제 Codex·OMP 세션의 id 변수 측정, 전체 `cargo test`, Linux·Windows.
