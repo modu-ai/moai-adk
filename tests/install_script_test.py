@@ -6,6 +6,7 @@ Every run uses a temporary HOME and a fake GitHub release served from `file://`:
 `language-set`. Nothing reaches the network, the real HOME or the real PATH.
 """
 
+import fcntl
 import hashlib
 import io
 import json
@@ -18,6 +19,7 @@ import stat
 import subprocess
 import tarfile
 import tempfile
+import termios
 import time
 import unittest
 
@@ -47,6 +49,9 @@ case "$1" in
     ;;
   update)
     if [ -n "${FAKE_UPDATE_LOG:-}" ]; then { pwd -P; for a in "$@"; do printf '%s\\n' "$a"; done; echo --; } >> "$FAKE_UPDATE_LOG"; fi
+    if [ -n "${FAKE_UPDATE_TTY_LOG:-}" ]; then
+      if [ -t 2 ]; then echo stderr=terminal; else echo stderr=redirected; fi >> "$FAKE_UPDATE_TTY_LOG"
+    fi
     case "${FAKE_UPDATE:-}" in
       ok | current)
         if [ "${2:-}" = "--confirm" ]; then
@@ -877,14 +882,26 @@ class InstallShTest(unittest.TestCase):
         with open(SH, "rb") as f:
             return ["/bin/sh", "-s", "--"], f.read()
 
-    def run_half_terminal(self, stdin_is_terminal, argv=None, stdin_data=b"", timeout=300, **env):
+    def run_half_terminal(self, stdin_is_terminal, argv=None, stdin_data=b"", timeout=300,
+                          controlling=False, answers=b"", **env):
         """Run the installer with a terminal on stdin only, or on stdout and stderr only: the
         other side is a pipe. Returns (exit code, stdout, stderr); with the terminal on the
-        output side, stdout and stderr come back together as stdout."""
+        output side, stdout and stderr come back together as stdout.
+
+        `controlling` (output side only) makes the terminal the session's controlling terminal,
+        so `/dev/tty` opens, as it does for a person who types `curl ... | sh` at a terminal;
+        `answers` are then typed at once. Without it the run is a new session with no
+        controlling terminal: `/dev/tty` cannot be opened."""
         master, slave = pty.openpty()
         argv = argv or [*self.pty_argv()]
         common = dict(env=self.pty_env(**env), cwd=self.home, close_fds=True,
-                      start_new_session=True)
+                      start_new_session=not controlling)
+        if controlling:
+            def take_terminal():
+                # A new session whose controlling terminal is the pty on stdout (fd 1).
+                os.setsid()
+                fcntl.ioctl(1, termios.TIOCSCTTY, 0)
+            common["preexec_fn"] = take_terminal
         if stdin_is_terminal:
             # stdout and stderr go to files: the terminal's own output (the echo of what is typed)
             # must be read off the master side, or a process that has the terminal as its stdin
@@ -913,6 +930,8 @@ class InstallShTest(unittest.TestCase):
                         fe.read().decode(errors="replace"))
         proc = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=slave, stderr=slave, **common)
         os.close(slave)
+        if answers:
+            os.write(master, answers)
         try:
             proc.stdin.write(stdin_data)
             proc.stdin.close()
@@ -960,7 +979,9 @@ class InstallShTest(unittest.TestCase):
         return scratch
 
     def test_no_menu_when_stdin_is_a_pipe_even_if_the_output_is_a_terminal(self):
-        # `curl ... | sh`: the script (or nothing) comes in on stdin, the output is the screen.
+        # `curl ... | sh` with no terminal to read an answer from: the script (or nothing) comes
+        # in on stdin, the output is a screen, and the run has no controlling terminal, so
+        # `/dev/tty` cannot be opened (SPEC-20261117-installer-tty).
         scratch = self.prepare_half_terminal_run()
         code, out, err = self.run_half_terminal(
             False, TMPDIR=scratch, LC_ALL="", LANG="ko_KR.UTF-8")
@@ -979,6 +1000,81 @@ class InstallShTest(unittest.TestCase):
         code, out, err = self.run_half_terminal(
             True, TMPDIR=scratch, LC_ALL="", LANG="ko_KR.UTF-8")
         self.assert_no_menu_for_a_half_terminal(code, out, err)
+
+    # ---- `curl ... | sh` at a terminal (SPEC-20261117-installer-tty) -----------------------
+
+    def run_curl_pipe_sh_at_a_terminal(self, answers):
+        """The documented `curl ... | sh`: the script on stdin, the output on the person's
+        terminal, which is the controlling terminal, so the answers come from `/dev/tty`."""
+        piped = self.stdin_argv()
+        if piped is None:
+            self.skipTest("PowerShell reads its console, not standard input; unchanged")
+        argv, script = piped
+        os.makedirs(os.path.join(self.home, ".claude"), exist_ok=True)
+        scratch = self.prepare_half_terminal_run()
+        if os.path.exists(self.update_log):
+            os.remove(self.update_log)
+        code, out, _ = self.run_half_terminal(
+            False, argv=argv, stdin_data=script, controlling=True, answers=answers,
+            TMPDIR=scratch, LC_ALL="", LANG="ko_KR.UTF-8", FAKE_UPDATE="ok",
+            FAKE_UPDATE_LOG=self.update_log)
+        self.assertEqual(code, 0, out)
+        self.assertIn("Installation complete!", out)
+        self.assertEqual(os.listdir(scratch), [], out)
+        return out
+
+    def test_curl_pipe_sh_at_a_terminal_asks_through_dev_tty(self):
+        out = self.run_curl_pipe_sh_at_a_terminal(b"3\ny\n")
+        # The language menu and the install question are each asked once, and the answers typed
+        # at the terminal are the ones taken (not the script text on stdin).
+        self.assertEqual(out.count("Choose 1-5"), 1, out)
+        self.assertEqual(self.calls(), [["language-set", "--home", "ja", ""]], out)
+        self.assertEqual(out.count("Install them now?"), 1, out)
+        calls = self.update_calls()
+        self.assertEqual(len(calls), 2, f"{calls}\n{out}")
+        self.assertEqual(calls[1][1:3], ["update", "--confirm"], calls)
+        self.assertIn("Installed the MoAI skill and agents", out)
+
+    def test_curl_pipe_sh_at_a_terminal_declined_writes_nothing(self):
+        out = self.run_curl_pipe_sh_at_a_terminal(b"\nn\n")
+        self.assertEqual(self.calls(), [["language-set", "--home", "ko", ""]], out)
+        self.assertEqual(out.count("Install them now?"), 1, out)
+        self.assertEqual(len(self.update_calls()), 1, out)
+        self.assertIn("Nothing was written to your home folder", out)
+        self.assertEqual(os.listdir(os.path.join(self.home, ".claude")), [])
+
+    def test_curl_pipe_sh_without_any_terminal_previews_only(self):
+        # The same pipe, with the output a screen but no controlling terminal: nothing is asked
+        # and nothing is written into HOME's host folders.
+        piped = self.stdin_argv()
+        if piped is None:
+            self.skipTest("PowerShell reads its console, not standard input; unchanged")
+        argv, script = piped
+        os.makedirs(os.path.join(self.home, ".claude"), exist_ok=True)
+        scratch = self.prepare_half_terminal_run()
+        if os.path.exists(self.update_log):
+            os.remove(self.update_log)
+        code, out, _ = self.run_half_terminal(
+            False, argv=argv, stdin_data=script, TMPDIR=scratch, LC_ALL="",
+            LANG="ko_KR.UTF-8", FAKE_UPDATE="ok", FAKE_UPDATE_LOG=self.update_log)
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("Install them now?", out)
+        self.assertNotIn("Choose 1-5", out)
+        self.assertEqual(len(self.update_calls()), 1, out)
+        self.assertIn("no terminal to ask at", out)
+        self.assertEqual(os.listdir(os.path.join(self.home, ".claude")), [])
+
+    def test_the_update_calls_never_write_to_the_terminal(self):
+        # N2: `moai-cli update` runs with its stderr in a file, so nothing of the product's own
+        # output, or a prompt it might print there, reaches (and waits at) the person's terminal.
+        os.makedirs(os.path.join(self.home, ".claude"))
+        tty_log = os.path.join(self.tmp, "update-tty.log")
+        code, out = self.run_pty(
+            ["--language", "en", "--yes"], "", FAKE_UPDATE="ok",
+            FAKE_UPDATE_LOG=self.update_log, FAKE_UPDATE_TTY_LOG=tty_log)
+        self.assertEqual(code, 0, out)
+        with open(tty_log) as f:
+            self.assertEqual(f.read().split(), ["stderr=redirected"] * 2, out)
 
     def assert_menu_choice(self, answers, want, prompts=1, after=None, **env):
         if os.path.exists(self.log):

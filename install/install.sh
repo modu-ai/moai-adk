@@ -114,6 +114,31 @@ locale_language() {
     return 0
 }
 
+# Where a question's answer is read from (SPEC-20261117-installer-tty): standard input when it is
+# a terminal; else the session's terminal, /dev/tty, when it can be opened — the documented
+# `curl ... | sh` gives this script on standard input while the person sits at that terminal, as
+# rustup's installer does; else nowhere. A question is asked only when the output is a terminal
+# too, so the person sees it. ANSWER_FROM is `stdin`, `tty` or empty (ask nothing).
+answer_source() {
+    ANSWER_FROM=""
+    [ -t 1 ] || return 0
+    if [ -t 0 ]; then
+        ANSWER_FROM='stdin'
+    elif (exec </dev/tty) 2>/dev/null; then
+        ANSWER_FROM='tty'
+    fi
+}
+
+# Reads one answer line into `answer` from ANSWER_FROM; fails at the end of input. /dev/tty is
+# opened for this read only, so standard input (the rest of a piped script) is never read.
+ask_line() {
+    if [ "$ANSWER_FROM" = tty ]; then
+        read -r answer </dev/tty
+    else
+        read -r answer
+    fi
+}
+
 # Asks for the language at a terminal; the answer goes to LANGUAGE_CODE. A wrong answer is asked
 # again, three answers at most, then the default is used; an empty answer or the end of input
 # takes the default too.
@@ -130,7 +155,7 @@ choose_language() {
     while [ "$tries" -lt 3 ]; do
         tries=$((tries + 1))
         printf 'Choose 1-5 [default: %s]: ' "$default"
-        if ! read -r answer; then
+        if ! ask_line; then
             echo ""
             break
         fi
@@ -142,7 +167,7 @@ choose_language() {
             4) LANGUAGE_CODE="zh"; return 0 ;;
             5)
                 printf 'Language code: '
-                if ! read -r answer; then
+                if ! ask_line; then
                     echo ""
                     break
                 fi
@@ -169,7 +194,8 @@ resolve_language() {
     [ -z "$LANGUAGE_CODE" ] || return 0
     default=$(locale_language)
     [ -n "$default" ] || default="en"
-    if [ -t 0 ] && [ -t 1 ]; then
+    answer_source
+    if [ -n "$ANSWER_FROM" ]; then
         choose_language "$default"
     else
         LANGUAGE_CODE="$default"
@@ -434,6 +460,9 @@ install_skill() {
         return 0
     fi
     print_info "Previewing the MoAI skill and agents for your hosts (writes nothing):"
+    # Both `moai-cli update` calls keep their stderr in a file: on the person's terminal, what
+    # the product prints there (or a question it asks) would wait unseen behind this script's
+    # own prompt (SPEC-20261117-installer-tty REQ-3).
     if ! preview=$(cd "$DEST" && "$DEST/bin/moai-cli" update --json 2>"$TMP_DIR/update.err"); then
         update_failed "$preview"
         return 0
@@ -459,9 +488,9 @@ install_skill() {
     echo "  and MoAI's sections in those hosts' settings files (moai update lists every file)"
     if [ -n "$YES" ]; then
         print_info "--yes: installing them"
-    elif [ -t 0 ] && [ -t 1 ]; then
+    elif answer_source && [ -n "$ANSWER_FROM" ]; then
         printf 'Install them now? [y/N]: '
-        if ! read -r answer; then
+        if ! ask_line; then
             echo ""
             answer=""
         fi

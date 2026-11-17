@@ -6,8 +6,8 @@ A chain is the order in which the parent session uses agents for one kind of req
 
 | Request | Route | Agents in order | Parent reads first |
 | --- | --- | --- | --- |
-| Build something new | PLAN, RUN | moai-plan, moai-impl, moai-audit, moai-docs | internal/decide |
-| Fix a bug | RUN | moai-research, moai-impl, moai-audit | internal/decide |
+| Build something new | PLAN, RUN, VERIFY, SYNC, AUDIT | moai-plan, moai-impl, moai-docs, moai-audit | internal/decide, internal/sdd |
+| Fix a bug | PLAN, RUN, VERIFY, SYNC, AUDIT | moai-research, moai-plan, moai-impl, moai-docs, moai-audit | internal/decide, internal/sdd |
 | Review a pull request | AUDIT | moai-audit | internal/review |
 | Research or compare | READ | moai-research | none |
 | Check a page or do a web task | VERIFY | none | none |
@@ -17,6 +17,7 @@ A chain is the order in which the parent session uses agents for one kind of req
 
 Rules for every chain:
 
+- Every change that modifies the repository has a SPEC, and its order is PLAN → RUN → VERIFY → SYNC → AUDIT → merge (`internal/sdd`): SYNC writes the SPEC Result, documents and `@cc:` comments on the same branch, and AUDIT only checks them.
 - The agent that implemented a change never audits it. `moai-audit` runs in a separate context on the exact head, and the parent session, not the agent, writes the verdict.
 - A bug fix starts with a test that fails for the reported reason (`moai-impl` reads `internal/test-design`).
 - Whoever wrote a change runs `internal/self-check` before asking for an audit or opening a pull request.
