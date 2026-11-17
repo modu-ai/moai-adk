@@ -15,7 +15,11 @@
 //!   project-relative path (absolute paths outside the project are not shown), line and column,
 //!   a severity word, and the message cut to [`MESSAGE_CHARS`] characters. A line with a
 //!   credential shape (`redact::contains_secret_shape`) is masked.
-//! - One checker per project at a time: a second edit while one runs gets a one-line "skipped".
+//! - One checker per project at a time (a lock file in the HOME state folder's
+//!   `edit-diagnostics/`, mode 0700): a second edit while one runs gets a one-line "skipped".
+//! - The checker gets `./<rel>`, never a path that starts with `-` (CWE-88), and its whole
+//!   process group is stopped when it ends, by itself or by the timeout.
+//! - ANSI escape sequences and control characters other than tab are removed from its output.
 //! - A missing checker, a timeout, a cut or non-UTF-8 output each say so in one summary line.
 //!   A clean run (exit 0, no diagnostic, nothing cut) prints nothing.
 
@@ -136,18 +140,41 @@ enum Lock {
     None,
 }
 
-/// One checker per project at a time: an exclusive, non-blocking `flock` on a file in the
-/// system temporary folder named by the project's digest (opened without following a link).
+/// The folder that holds the locks: `edit-diagnostics/` in the user's HOME state folder (S1
+/// audit N3: not the shared temporary folder), made with mode 0700 when the state folder is
+/// there. `None` when HOME is unset, the state folder is missing or not a real folder, or a link
+/// or a non-folder stands at either place: then the check runs without a lock.
+fn lock_dir() -> Option<PathBuf> {
+    let home = PathBuf::from(std::env::var_os("HOME").filter(|h| !h.is_empty())?);
+    let state = crate::home_root::path(&home);
+    let real_dir = |p: &Path| {
+        std::fs::symlink_metadata(p).is_ok_and(|m| m.is_dir() && !m.file_type().is_symlink())
+    };
+    if !real_dir(&state) {
+        return None;
+    }
+    let dir = state.join("edit-diagnostics");
+    if std::fs::symlink_metadata(&dir).is_err() {
+        let mut b = std::fs::DirBuilder::new();
+        #[cfg(unix)]
+        std::os::unix::fs::DirBuilderExt::mode(&mut b, 0o700);
+        let _ = b.create(&dir);
+    }
+    real_dir(&dir).then_some(dir)
+}
+
+/// One checker per project at a time: an exclusive, non-blocking `flock` on a file in
+/// [`lock_dir`] named by the project's digest (opened without following a link).
 fn lock(root: &Path) -> Lock {
     #[cfg(unix)]
     {
         use std::os::unix::fs::OpenOptionsExt;
         use std::os::unix::io::AsRawFd;
+        let Some(dir) = lock_dir() else {
+            return Lock::None;
+        };
         let key = crate::digest(root.as_os_str().as_encoded_bytes());
-        let path = std::env::temp_dir().join(format!(
-            "moai-edit-diagnostics-{}.lock",
-            &key.trim_start_matches("sha256:")[..16]
-        ));
+        let path = dir.join(format!("{}.lock", &key.trim_start_matches("sha256:")[..16]));
         let Ok(file) = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
@@ -188,8 +215,10 @@ pub struct Ran {
 /// Runs `argv` + `rel` in `root` without a shell, bounded by `timeout`.
 pub fn run_checker(argv: &[String], root: &Path, rel: &Path, timeout: Duration) -> Ran {
     let mut cmd = Command::new(&argv[0]);
+    // S1 audit B1 (CWE-88): `./<rel>` can never start with `-`, so a file named `-n.c` or
+    // `--config=x.py` reaches the checker as a path, not as an option.
     cmd.args(&argv[1..])
-        .arg(rel)
+        .arg(Path::new(".").join(rel))
         .current_dir(root)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -238,6 +267,9 @@ pub fn run_checker(argv: &[String], root: &Path, rel: &Path, timeout: Duration) 
         match child.try_wait() {
             Ok(Some(status)) => {
                 ran.exit = Some(status.code());
+                // S1 audit N2: a descendant the checker left in its group (`sleep 120 &`)
+                // would linger and keep the output pipes open; the group goes with it.
+                kill_group(&mut child);
                 break;
             }
             Ok(None) if Instant::now() >= deadline => {
@@ -253,7 +285,8 @@ pub fn run_checker(argv: &[String], root: &Path, rel: &Path, timeout: Duration) 
             }
         }
     }
-    // A descendant in another process group could keep a pipe open: never wait on it long.
+    // The group is gone by now; a descendant that moved to another process group could still
+    // keep a pipe open, so the wait stays bounded.
     let mut parts: Vec<(usize, Vec<u8>, bool)> = Vec::new();
     let until = Instant::now() + Duration::from_millis(500);
     while parts.len() < 2 {
@@ -368,14 +401,49 @@ pub fn parse_line(line: &str, root: &Path) -> Option<Diagnostic> {
 /// A project-relative path; an absolute path outside the project is not shown.
 fn shown_path(path: &str, root: &Path) -> String {
     let p = Path::new(path);
-    if p.is_absolute() {
+    let rel = if p.is_absolute() {
         match p.strip_prefix(root) {
-            Ok(rel) => rel.to_string_lossy().into_owned(),
-            Err(_) => "<outside the project>".into(),
+            Ok(rel) => rel,
+            Err(_) => return "<outside the project>".into(),
         }
     } else {
-        path.to_string()
+        p
+    };
+    // The checker got `./<rel>` and may echo it, or a `/./` inside an absolute path.
+    rel.components()
+        .filter(|c| !matches!(c, Component::CurDir))
+        .collect::<PathBuf>()
+        .to_string_lossy()
+        .into_owned()
+}
+
+/// S1 audit N1: the checker's text without ANSI escape sequences (`ESC [` … final byte, or
+/// `ESC` and one more character) and without C0 control characters other than tab and line
+/// feed (a carriage return included), so none of them reaches the context.
+pub fn clean(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '\u{1b}' => {
+                if chars.peek() == Some(&'[') {
+                    chars.next();
+                    // Parameter and intermediate bytes, then one final byte (0x40-0x7E).
+                    for d in chars.by_ref() {
+                        if ('\u{40}'..='\u{7e}').contains(&d) {
+                            break;
+                        }
+                    }
+                } else {
+                    chars.next();
+                }
+            }
+            '\t' | '\n' => out.push(c),
+            c if c.is_control() => {}
+            c => out.push(c),
+        }
     }
+    out
 }
 
 fn cut_chars(s: &str, n: usize) -> String {
@@ -403,7 +471,7 @@ pub fn render(ran: &Ran, name: &str, shown: &str, root: &Path, rule: &EditRule) 
             rule.timeout_secs
         );
     }
-    let text = String::from_utf8_lossy(&ran.output);
+    let text = clean(&String::from_utf8_lossy(&ran.output));
     let replaced = std::str::from_utf8(&ran.output).is_err();
     let found: Vec<Diagnostic> = text.lines().filter_map(|l| parse_line(l, root)).collect();
     let exit = ran.exit.flatten();
@@ -510,5 +578,28 @@ mod tests {
             parse_line(&exact, root).unwrap().message,
             "y".repeat(MESSAGE_CHARS)
         );
+        // The `./<rel>` the checker was given comes back without `./`.
+        assert_eq!(
+            parse_line("./-x.rs:1:1: error: e", root).unwrap().path,
+            "-x.rs"
+        );
+        assert_eq!(
+            parse_line("/p/./src/a.rs:1:1: error: e", root)
+                .unwrap()
+                .path,
+            "src/a.rs"
+        );
+    }
+
+    #[test]
+    fn control_characters_and_escapes_are_removed() {
+        assert_eq!(
+            clean("a\u{7}b\u{1b}[1;31mc\u{1b}[0m\r\nd\te\u{1b}Mf\u{0}g\u{7f}h"),
+            "abc\nd\tefgh"
+        );
+        assert_eq!(clean("plain text\n"), "plain text\n");
+        // An escape at the very end is dropped, not kept half.
+        assert_eq!(clean("x\u{1b}"), "x");
+        assert_eq!(clean("x\u{1b}[31"), "x");
     }
 }

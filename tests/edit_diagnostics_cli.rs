@@ -34,6 +34,9 @@ case "$MODE" in
   nonutf8) printf '%s:1:1: error: bad \377\376 bytes\n' "$file"; exit 1 ;;
   secret) printf '%s:1:1: error: leaked token=abc123 here\n%s:2:1: error: plain\n' "$file" "$file"; exit 1 ;;
   slow) sleep 2; printf '%s:1:1: error: slow\n' "$file"; exit 1 ;;
+  argv) for a; do printf 'ARG:%s\n' "$a"; done > "$ARGF"; exit 0 ;;
+  control) printf '%s:1:1: error: bell\007 x \033[31mred\033[0m\r end\n' "$file"; exit 1 ;;
+  linger) sleep 120 & echo $! > "$PIDF"; printf '%s:1:1: error: done\n' "$file"; exit 1 ;;
 esac
 exit 0
 "#;
@@ -529,6 +532,119 @@ fn one_check_runs_per_project_at_a_time() {
     );
     let done = first.wait_with_output().unwrap();
     assert!(context(String::from_utf8_lossy(&done.stdout).trim()).contains("error slow"));
+}
+
+/// S1 audit B1 (CWE-88): a file whose name starts with `-` reaches the checker as a path
+/// (`./<rel>`), never as an option; the edge is the first character of the relative path.
+#[test]
+fn a_file_named_like_an_option_reaches_the_checker_as_a_path() {
+    let f = fx();
+    f.enable("");
+    fs::create_dir_all(f.proj.join("sub")).unwrap();
+    let argf = f.root.join("args");
+    for rel in ["-x.rs", "--config=x.rs", "x-.rs", "sub/-x.rs", "src/a.rs"] {
+        fs::write(f.proj.join(rel), "x\n").unwrap();
+        let file = f.proj.join(rel).display().to_string();
+        let (code, out) = f.edit(
+            "Write",
+            &file,
+            &[("MODE", "argv"), ("ARGF", argf.to_str().unwrap())],
+        );
+        assert_eq!((code, out.as_str()), (0, ""), "{rel}");
+        let args: Vec<String> = fs::read_to_string(&argf)
+            .unwrap()
+            .lines()
+            .map(|l| l.trim_start_matches("ARG:").to_string())
+            .collect();
+        assert_eq!(args, vec![format!("./{rel}")], "{rel}");
+        assert!(args.iter().all(|a| !a.starts_with('-')), "{rel}: {args:?}");
+    }
+}
+
+/// S1 audit N1: control characters (other than tab) and ANSI escape sequences in the checker's
+/// output never reach the context.
+#[test]
+fn control_characters_and_escapes_are_stripped() {
+    let f = fx();
+    f.enable("");
+    let (_, out) = f.edit("Write", &f.file(), &[("MODE", "control")]);
+    let text = context(&out);
+    assert!(
+        text.contains("\nsrc/a.rs 1:1 error bell x red end"),
+        "{text:?}"
+    );
+    assert!(
+        !text.chars().any(|c| c.is_control() && c != '\n'),
+        "{text:?}"
+    );
+}
+
+/// S1 audit N2: a checker that exits normally but leaves a background child behind gets its
+/// whole process group stopped too, at once (the child keeps its stdout open).
+#[test]
+fn a_checker_that_leaves_a_background_child_is_cleaned_up() {
+    let f = fx();
+    f.enable("");
+    let pidf = f.root.join("linger.pid");
+    let start = Instant::now();
+    let (code, out) = f.edit(
+        "Write",
+        &f.file(),
+        &[("MODE", "linger"), ("PIDF", pidf.to_str().unwrap())],
+    );
+    assert_eq!(code, 0);
+    assert!(context(&out).contains("src/a.rs 1:1 error done"), "{out}");
+    assert!(
+        start.elapsed() < Duration::from_secs(5),
+        "{:?}",
+        start.elapsed()
+    );
+    let pid: i32 = fs::read_to_string(&pidf).unwrap().trim().parse().unwrap();
+    let gone = (0..100).any(|_| {
+        // SAFETY: kill(2) with signal 0 only asks whether the test's own grandchild exists.
+        let alive = unsafe { libc::kill(pid, 0) } == 0;
+        if alive {
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        !alive
+    });
+    if !gone {
+        // SAFETY: the test's own grandchild; never leave it running.
+        unsafe { libc::kill(pid, libc::SIGKILL) };
+    }
+    assert!(gone, "the background child {pid} was left running");
+}
+
+/// S1 audit N3: the one-check-per-project lock lives in the user's own HOME state folder
+/// (`edit-diagnostics/`, mode 0700), not in the shared temporary folder; a link in its place is
+/// not followed (the check still runs, without a lock).
+#[test]
+fn the_lock_lives_in_the_private_home_state_folder() {
+    use std::os::unix::fs::PermissionsExt;
+    let f = fx();
+    f.enable("");
+    assert_eq!(
+        f.edit("Write", &f.file(), &[("MODE", "clean")]),
+        (0, String::new())
+    );
+    let dir = f.home.join(".moai-cli/edit-diagnostics");
+    let mode = fs::symlink_metadata(&dir).unwrap().permissions().mode() & 0o777;
+    assert_eq!(mode, 0o700);
+    let locks: Vec<_> = fs::read_dir(&dir)
+        .unwrap()
+        .map(|e| e.unwrap().file_name())
+        .collect();
+    assert_eq!(locks.len(), 1, "{locks:?}");
+    assert!(locks[0].to_string_lossy().ends_with(".lock"));
+    // A link in the folder's place is not followed.
+    fs::remove_dir_all(&dir).unwrap();
+    let elsewhere = f.root.join("elsewhere");
+    fs::create_dir(&elsewhere).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, &dir).unwrap();
+    let (code, out) = f.edit("Write", &f.file(), &[("MODE", "diag")]);
+    assert_eq!(code, 0);
+    assert!(context(&out).contains("3 diagnostic line(s)"), "{out}");
+    assert_eq!(fs::read_dir(&elsewhere).unwrap().count(), 0);
 }
 
 /// SPEC REQ-11 / AC-6 budget: with the setting off the duty returns within 50 ms (median of 21

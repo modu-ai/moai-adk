@@ -128,6 +128,10 @@ S1이 맡는 것: AC-1~AC-4, AC-6, AC-7(Claude Code 항목과 Codex·OMP의 "지
 
 ## Risks
 
+- checker 출력에 지시처럼 보이는 글(예: "이전 지시를 무시하라")이 섞여도 걸러 낼 수 없어요 → 진단 첫 줄 200자,
+  `max_lines`·`max_chars`, 제어 문자·ANSI 제거, 비밀 모양 가리기로 양을 줄일 뿐이에요. 사용자가 고른 도구만 돌아요(감사 N1).
+- 파일 이름이 `-`로 시작하면 checker가 옵션으로 읽을 수 있어요(CWE-88) → 늘 `./<rel>`을 넘겨요(감사 B1).
+
 - 언어 서버는 처음 뜰 때 느려요(큰 Rust 저장소의 `rust-analyzer`는 수십 초) → 매 편집마다 새로 띄우면 10초 안에
   못 끝나요. 그래서 S1은 사용자가 고른 파일 단위 checker로 시작하고, LSP는 측정 뒤 S3에서 해요(D9).
 - 같은 이벤트의 hook은 병렬로 돌아서(Claude Code 문서), 빠른 연속 편집이면 checker가 겹쳐 돌 수 있어요 → 프로젝트당
@@ -159,6 +163,10 @@ S1이 맡는 것: AC-1~AC-4, AC-6, AC-7(Claude Code 항목과 Codex·OMP의 "지
 | D14 | S1의 `mode`는 `context`만; `block`은 형식 오류로 보고 꺼짐+`config_error` | S1 범위(막기는 S2) | `block`을 받아 문맥으로 처리 |
 | D15 | 범위: `timeout_secs` 1–30, `max_lines` 1–200, `max_chars` 200–9,000(요약 포함 전체); checker는 소문자 확장자(1–16자) → argv, 편집한 파일을 마지막 인자로 붙임, 모르는 키는 형식 오류 | Claude Code 10,000자 상한 아래, 오타가 조용히 무시되지 않게 | 범위·키 바꾸기 |
 | D16 | 가리기는 `redact::contains_secret_shape`(어디서든 셈) | 이 tip에는 C-90의 `crate::secret_shaped`가 아직 없음; 로그·문맥 쪽은 C-90 수리 뒤에도 어디서든 세는 쪽(D4 of C-90) | 다른 판정 함수 |
+| D18 | checker에 늘 `./<rel>`을 넘김 | 감사 B1(CWE-88) | 상대 경로 그대로 |
+| D19 | checker 출력에서 ANSI escape와 탭 밖의 제어 문자를 지움 | 감사 N1 | 그대로 넘김 |
+| D20 | checker가 스스로 끝나도 그 process group을 SIGKILL | 감사 N2(뒤에 남은 자식과 열린 pipe) | 시간 초과 때만 |
+| D21 | 잠금 파일은 HOME 상태 폴더의 `edit-diagnostics/`(0700, 링크 따라가지 않음); 상태 폴더가 없으면 잠금 없이 돌림 | 감사 N3(공용 임시 폴더 대신) | 시스템 임시 폴더 |
 | D17 | 생성된 handler의 `timeout`은 `timeout_secs + 5` | host가 MoAI보다 먼저 hook을 끊지 않게 | 고정 10초 |
 
 열린 질문 Q1~Q6은 2026-11-17 리더 결정으로 닫혔어요(D8~D13, 모두 권장안).
