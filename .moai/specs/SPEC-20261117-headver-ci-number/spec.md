@@ -79,4 +79,20 @@ tag 모양과 릴리스 번호의 출처는 릴리스 정책이라 사용자 선
 
 ## Result
 
-아직 비어 있어요(구현 뒤 채워요).
+구현 에이전트가 채웠어요. 감사가 다시 확인해요. 기준 tip `17c19a2759`(중복 manifest 키는 `source_manifest.py write`로 고친 커밋
+`90e22f933c` 먼저), 변경 커밋 `7b05e95f89`, 이 worktree의 `target/`, `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=4`, macOS arm64.
+
+RED(2026-11-17T16:59:44Z): `build_numbered`·`number_of`·`CI_ENV`가 없어 lib·bin 시험이 컴파일 실패(새 함수라 예상한 RED),
+`github_assets_test`는 `MOAI_BUILD_NUMBER`가 없어 2개 오류. 통과 17:01:32Z.
+
+- AC-1: met — `--lib headver:: local_build:: statusline:: update::` 141 passed, `--bin moai` 27(`version_flag_reports_the_headver_build`가 세 종류를 받음)
+- AC-2: met — 같은 `--lib` 실행(`the_ci_number_has_the_same_bounds_and_names_its_variable`)
+- AC-3: met — `github_assets_test` OK(`test_ci_builds_carry_the_run_number_on_the_first_attempt_only`), actionlint(ci·candidate 두 파일) 0
+- AC-4: met — `update_headver` 3, `update_version_folders` 11, `cli_name_moai` 5, `help_layout` 10, `product_cli` 75, `home_isolation_scan` 16, `spec_cli` 17, `status_line_cli` 16, `statusline_tag_order` 1, `banner_golden` 12, 저장소 scan 대상 exit 0; fmt 0, clippy 0; Python 138 OK; manifest ok; `moai spec check --all` ok(이 SPEC 경고 3 = NEEDS CLARIFICATION 셋)
+- 실제 빌드: `MOAI_BUILD_NUMBER=812 cargo build` → `moai-cli 4.2647.812 (rust)` / `CI build 812 (MOAI_BUILD_NUMBER), built 2026-11-17 UTC (ISO week 2026-W47), package 2026.11.0-rc.1`;
+  `MOAI_BUILD_NUMBER=812 MOAI_LOCAL_BUILD=5 cargo build` → exit 101, "MOAI_LOCAL_BUILD and MOAI_BUILD_NUMBER are both set"
+
+mutation 3개 모두 KILLED: CI 빌드가 local이라 말하기, 두 번호를 받기(로컬 우선), 다시 실행해도 run number 쓰기(처음 쓴 두 mutant 문장은
+컴파일 실패·두 곳 일치로 다시 써서 돌림).
+
+실행 안 함: GitHub에서 실제 CI 실행(push 없음), 릴리스 workflow(없음, D5·D6 대기), 전체 `cargo test`, Linux·Windows.
