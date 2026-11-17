@@ -118,16 +118,28 @@ parent: SPEC-20261117-sdd-foundation
 mutation 5개 모두 KILLED: M1 모든 종류가 저장소를 바꿈, M2 승인에서 상태를 안 봄, M3 오류 있는 SPEC 연결,
 M4 `--require-approved-spec` 무시, M5 가장 오래된 사건이 이김.
 
-- AC-1: met — `a0889110fb`에서 `card_spec_cli` exit 0, 8 passed
+감사 FAIL(`4b2ad25606`, B1 + N1–N4) 뒤 수리: `af2d7a743f`(시험 셋 먼저) → `225944b281`(수리, REQ-7·AC-4·D5·D9) →
+이 Result(다음 커밋). RED: `card_spec_cli` exit 101, 2 failed — `a_go_generation_spec_is_never_approved_for_a_card`
+(`SPEC-AUTH-001` `in-progress`가 `approved: true`)와 `an_approval_counts_only_while_its_spec_has_no_error`(기록된 승인이
+있는 `completed`가 아직 승인 아님); N2 시험은 지금 동작을 고정하는 것이라 처음부터 통과(mutation A1로 확인). GREEN 11 passed.
+수리 mutation: A1(`research`·`audit`도 경고, 감사의 생존 mutant) KILLED, A5(오류 0 조건 빼기, 감사의 생존 mutant)
+KILLED, R1(Go 세대 조건 빼기) KILLED, R2(`approval` 기록 조건 빼기) 생존 — 같은 동작(equivalent): `spec_doc`이 이 세대
+SPEC의 `approved`·`completed`에서 `approval`이 없으면 `approval_missing`, 칸이 비면 `approval_field` 오류를 내므로
+오류 0이면 기록은 늘 있어요(`src/spec_doc.rs` 1077–1106줄). 기록 조건은 그 규칙이 바뀌어도 지키는 이중 장치로 남겨요.
+
+- AC-1: met — `225944b281`에서 `card_spec_cli` exit 0, 11 passed
 - AC-2: met — 같은 실행; M3 KILLED
 - AC-3: met — 같은 실행(바쁜 시간 5초를 기다림)
-- AC-4: met — 같은 실행, `--lib spec_link` exit 0, 3 passed; M1·M2 KILLED
+- AC-4: met — 같은 실행(새 시험 3개 포함), `--lib card::spec_link` exit 0, 1 passed(감사 N4: `spec_link` 필터는
+  `spec_links::` 시험도 골랐어요); M1·M2·A1·A5·R1 KILLED, R2 equivalent
 - AC-5: met — 같은 실행; M4 KILLED
 - AC-6: met — 같은 실행(`spec_show_` 2개); M5 KILLED
-- AC-7: met — 같은 실행, `card_cli` 14·`card_dispatch_cli` 25·`card_work_cli` 24·`card_export_cli` 17 passed
+- AC-7: met — 같은 실행, `card_cli` 14·`card_dispatch_cli` 25·`card_work_cli` 24·`card_export_cli` 17, `ledger_*` 11개 대상
+  (cli 11·folders 12·forge_only_cli 2·forge_unconnected_cli 1·import 10·open 26·recover 49·recover_cli 9·reservation 23·
+  schema 38·workflow 23) passed
 - AC-8: met — `spec_cli` exit 0, 17 passed; 이 가지에서 빌드한 `moai spec check --all --project .` exit 0, SPEC 3개, 오류 0·경고 0
 - AC-9: met — `--bin moai` 27, `help_layout` 10(도움말 골든 변화 없음), `home_isolation_scan` 16, `product_cli` 75,
   `spec_doc` 24, `mode_cards_53` 9, `ac_command_lint` 5 passed; `cargo fmt --check` 0; `rustfmt --check --edition 2021
-  src/ops/*.rs` 0; clippy `-D warnings` 0; Python 46개 OK; `source_manifest.py check` ok(스킬 변경 없음)
+  src/ops/*.rs` 0; clippy `-D warnings` 0; Python 46개 OK; 스킬 변경 없음(D9)
 
 실행 안 함: 전체 `cargo test`(바뀐 곳과 이웃 시험만), Linux·Windows, `package-inspect`(스킬 변경 없음).
