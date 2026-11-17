@@ -74,4 +74,20 @@ parent: SPEC-20261117-sdd-foundation
 
 ## Result
 
-(검사 뒤에 채워요.)
+구현 에이전트가 2026-11-17에 채웠어요. SYNC와 AUDIT가 다시 확인해요. 기준 `6be96b4fc7`(origin/v2026.11.0), 변경 커밋
+`77302513fc`. 빌드 폴더는 이 worktree의 `target/`, `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=4`, macOS arm64, cargo는
+`moai heavy-slot-acquire` 슬롯 안에서 한 번에 하나.
+
+- AC-1…AC-5: met — RED(구현 전): exit 101, 3 FAILED(completed SPEC에 오류 0개, card done이 닫힘), 2 통과(경고만, SPEC 없는
+  카드). GREEN: exit 0, 5 passed. 처음 GREEN에서 AC-4가 실패했는데, spec.md만 지운 폴더는 오류 있는 SPEC으로 읽혀 "cannot be
+  read"가 아니라 "spec check"로 거부됐어요; 시험을 폴더까지 지우는 경우와 나눠 고쳤어요(구현은 그대로).
+- AC-6: met — `moai spec check --all` 0(SPEC 13개, errors 0, warnings 0); `spec_cli` 0(17); `spec_doc` 0(24); `spec_contract` 0(8);
+  `card_cli` 0(14); `card_dispatch_cli` 0(25); `card_export_cli` 0(17); `card_import_cli` 0(9); `card_spec_cli` 0(11);
+  `card_summary_cli` 0(16); `card_times_cli` 0(7); `card_work_cli` 0(24); `mode_cards_53` 0(9); `product_cli` 0(75);
+  `home_isolation_scan` 0(16); `--bin moai` 0(27); `ac_command_lint` 0(5); `cargo fmt --check` 0(처음 1, 줄바꿈 Edit 뒤 0);
+  clippy 0(처음 1: 시험 머리 문서 목록 다음 줄 들여쓰기, 빈 줄을 넣은 뒤 0); Python `repo_scans`·`ci_scope`·`skill_references`·
+  `source_manifest` OK; `git diff --check` 0.
+- mutation 3개(커밋 뒤, 각각 `git restore` 뒤 tree 깨끗): 규칙을 `approved`에 걸기 → 2 FAIL; `manual:`도 미검증으로 셈 →
+  2 FAIL; card done이 SPEC 오류를 보지 않게 → 1 FAIL. 되돌린 뒤 5 passed.
+
+실행 안 함: 전체 `cargo test`, Linux·Windows.
