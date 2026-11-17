@@ -71,6 +71,17 @@ fn each_tier_reads_the_verdicts_it_needs() {
     assert_eq!(decide(&input(0, &docs, &[], cleared))["state"], "pass");
     let other = vec![fail, verdict(6, H, "PASS", "agent-8")];
     assert_eq!(decide(&input(0, &docs, &[], other))["state"], "fail");
+    // Audit B2: a PASS posted before the FAIL (ids 200 then 300, same auditor) clears nothing.
+    let earlier = vec![
+        verdict(200, H, "PASS", "agent-7"),
+        verdict(300, H, "FAIL", "agent-7"),
+    ];
+    let r = decide(&input(0, &docs, &[], earlier));
+    assert_eq!(
+        (r["state"].clone(), r["rule"].clone()),
+        (json!("fail"), json!("open-fail")),
+        "{r}"
+    );
 
     // Tier 1 and 2: a PASS on exactly this head by a lane that wrote no commit.
     for tier in [1, 2] {
