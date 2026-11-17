@@ -751,6 +751,78 @@ fn versioning_rows_and_reference_cover_the_three_schemes() {
     ));
 }
 
+/// Card C-72: the HeadVer part states what each number means and who sets it, from the author's
+/// article; `## At every release` is the checklist an agent runs at every release, and the SYNC
+/// route, where a release is one of the effects, names it.
+#[test]
+fn versioning_reference_states_headver_numbers_and_the_release_checklist() {
+    let read = |rel: &str| std::fs::read_to_string(package().join(rel)).unwrap();
+    let reference = read("references/internal/versioning.md");
+    let section = |heading: &str| -> String {
+        reference
+            .split(&format!("\n{heading}\n"))
+            .nth(1)
+            .unwrap_or_else(|| panic!("no {heading} section"))
+            .split("\n## ")
+            .next()
+            .unwrap()
+            .to_string()
+    };
+    let headver = section("## HeadVer");
+    for text in [
+        // The three numbers: who sets each and what it means.
+        "`head`: set by a person",
+        "raise it on every delivery that reaches users",
+        "`yearweek`: when it was built",
+        "computed by a program at build time, never typed",
+        "`build`: which build it is",
+        "the build server's counter",
+        "the same code built twice is two builds",
+        // Metadata, tags and how people talk about versions.
+        "is not part of the version",
+        "never make a commit that only edits a version number",
+        "plan by head (`v3`), debug by build (`b79`)",
+        "`date -u +%g%V`",
+        "Observed in the author's team screenshot (the article's image 07), not a rule: development builds tagged with a `-dev` suffix",
+        "A release tag on the same build number as its `-dev` tag names the same build, so it is not a reuse.",
+        "MoAI's rule: a HeadVer release candidate carries no suffix; it is a build tag marked as a pre-release on the release page",
+        "MoAI's rule: never use such an alias.",
+        "UTC is MoAI's choice, since the article names no time zone",
+    ] {
+        assert!(headver.contains(text), "HeadVer section lacks {text:?}");
+    }
+    assert!(reference.contains(
+        "https://techblog.lycorp.co.jp/ko/headver-new-versioning-system-for-product-teams"
+    ));
+    // Audit of C-72: whole sentences, so a negation or a dropped clause fails the test.
+    let release = section("## At every release");
+    for text in [
+        "Run this list yourself, without being asked, whenever you prepare, tag or publish a release or a release candidate.",
+        "The list itself runs autonomously; pushing a tag or publishing a release follows the existing release rule: `SKILL.md` cases (2) and (3) and the autonomy levels in `workflows/mode-leader.md`",
+        "Without the profile key, run the `versioning` interview row (detect first so the keep option is offered) and record the pick; never compute from the detection alone.",
+        "never raise it silently, unless the project's rule says every release raises it.",
+        "GitHub Actions keeps `run_number` on a re-run and raises only `run_attempt`, so there use `run_number` only when `run_attempt` is 1, or a dedicated counter.",
+        "A person decides. Under `0.y.z` anything may change (SemVer item 4), so a breaking change may raise only MINOR.",
+        "The new tag must not exist yet, and a HeadVer build number names one build only",
+        "Never reuse, move or delete a tag: a wrong published version is replaced by the next version.",
+        "Never require or make a version-only commit to put it in a manifest.",
+        "the lock file, the changelog or release notes, install scripts and the built binary's `--version` agree with the tag.",
+        "tag the merge commit on the integration branch after the merge, never on a feature branch.",
+        "when any step fails, do not tag or publish;",
+    ] {
+        assert!(release.contains(text), "At every release lacks {text:?}");
+    }
+    assert!(read("workflows/sync.md").contains(
+        "When a release or release candidate is prepared, run `internal/versioning` `## At every release`"
+    ));
+    assert!(read("references/chains/index.md").contains(
+        "- Any route that prepares, tags or publishes a release or release candidate runs `internal/versioning` `## At every release` first."
+    ));
+    assert!(read("workflows/mode-leader.md").contains(
+        "Before any release or release candidate, at either level, run `internal/versioning` `## At every release`."
+    ));
+}
+
 /// #2673 AC-2: git-safety names, per host, how to enter a worktree — the built-in tool first,
 /// `git -C <worktree>` where there is none — and the Claude Code guard's refused shapes.
 #[test]

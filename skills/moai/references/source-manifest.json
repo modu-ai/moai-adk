@@ -127,7 +127,7 @@
       }
     },
     "workflows/sync.md": {
-      "sha256": "0618c690222633edcbff9461209a53b6edfe4e71376cfc9d374293c7020d896c",
+      "sha256": "a4bb0535175b1b1bd2459017bad7eac713c16c51fd5a08b42f3050ec73f55865",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-sync",
@@ -136,7 +136,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "d646d4a55312e8f48875495d38e61776333433512e80ba70c95832b22b4f333e",
+      "sha256": "c25a527b5cda18546546fd90f49c2eddd6d89bdae979aa05e40c166cb4d41206",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -163,7 +163,7 @@
       }
     },
     "references/chains/index.md": {
-      "sha256": "2e005ad9ecbb5c0b25ba91601002f5f2eaf1f485c07dc51faa7170f7e96d2ba8",
+      "sha256": "00639d24f6b908db1a111009e572867c3473bf628af1a8b7b13c9d7523634783",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",
@@ -349,7 +349,7 @@
       }
     },
     "references/internal/versioning.md": {
-      "sha256": "019189f9f28ae1c2994df338d9eda6f8b07949807aa60c7c6a25bdc48e5921c7",
+      "sha256": "64343cdc4ebc0c517a5c416fb66a4e02764d158d5b54826da4b134e91a62a394",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-versioning",
