@@ -59,7 +59,7 @@ SDD 조각 SDD-7(승인된 SDD 계획 `sdd-lifecycle-plan-20261117` "Slices"): �
 
 ## Scope
 
-- write: `src/spec_take.rs`, `src/lib.rs`, `src/ops/spec.rs`, `tests/spec_take_cli.rs`, `tests/fixtures/help/*.txt`,
+- write: `src/spec_take.rs`, `src/lib.rs`, `src/ops/spec.rs`, `tests/spec_take_cli.rs`, `tests/sdd_guidance.rs`, `tests/fixtures/help/*.txt`,
   `docs/design-review/appendix/operations/spec.md`, `skills/moai/references/internal/sdd.md`,
   `skills/moai/references/source-manifest.json`, `.moai/specs/SPEC-20261118-spec-take/spec.md`
 - read-only: `src/spec_doc.rs`, `src/card/spec_link.rs`, `src/identity.rs`, `src/forge/transport.rs`
@@ -95,4 +95,4 @@ SDD 조각 SDD-7(승인된 SDD 계획 `sdd-lifecycle-plan-20261117` "Slices"): �
 - AC-2: met — 같은 시험 세 개. 첫 GREEN에서 상태 첫 줄의 앞 공백이 잘려 경로가 `.txt`로 읽히는 버그를 `-z` 읽기로 고침. 감사 N1: `--base=--output=<경로>`가 파일을 쓰던 길을 막음(모든 길에서 `rev-parse --verify --end-of-options`, `-`로 시작하면 거절). 감사 N5: D-7.
 - AC-3: met — 감사 B2: 카드 검사(C-번호, 원장, 카드 있음)를 가지 전환·base 기록보다 먼저 읽기 전용으로 해요; 그 뒤의 쓰기 실패는 무엇이 이미 됐는지 말해요.
 - AC-4: met — 감사 N2(살아남은 변이: `--force`, 기록된 base 바꾸기, `GIT_TERMINAL_PROMPT`)를 잡는 시험 두 개. 감사 N4: base 기록이 바뀌면 `base_recorded: true`, `writes: true`.
-- AC-5: met — 이웃 검사(보고서에 종료 코드). 감사 B1: tip 21c43c2af7을 merge, `sdd.md` 7번(이 SPEC)·10번(tip) 둘 다 유지, manifest write·check.
+- AC-5: met — 이웃 검사(보고서에 종료 코드); tip의 `sdd_guidance`가 고정한 `moai spec` 동작 목록에 `take`를 더함. 감사 B1: tip 21c43c2af7을 merge, `sdd.md` 7번(이 SPEC)·10번(tip) 둘 다 유지, manifest write·check.
