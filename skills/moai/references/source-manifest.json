@@ -114,7 +114,7 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "2594571b3cfc476dafc2d1e23efda224130c53a3165df3615fae4c870bdfcd0e",
+      "sha256": "9ea1a8460d45dc52a0f603df3f92db8f337362e794413757e595ed09801262ad",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
@@ -378,6 +378,15 @@
         "template_id": "internal-self-check",
         "adoption": "new",
         "reason": "Written for rc.2 card C-77 (user selection 2026-11-17 after the PR history analysis of 193 audit FAILs): the checks whoever wrote a change runs before asking for an audit or opening a pull request, one line each with its command, grouped as tests, package and documents, and the pull request. Read by moai-impl (`reads:`) and named by the rules of chains/index.md; its machine items run from the repository's tools/self_check.sh."
+      }
+    },
+    "references/internal/build-folder.md": {
+      "sha256": "d501167bbf87e9c9974270530ebe91216057ae0ca99fc195a3c74e25025dbb82",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-build-folder",
+        "adoption": "new",
+        "reason": "Written for card C-82 (user decision 2026-11-17, selection '빌드 폴더를 한 곳으로 모으기'; SPEC-20261117-agent-build-folder): where agent and audit builds put CARGO_TARGET_DIR (one folder per worktree under ~/.moai/build/, CARGO_INCREMENTAL=0, an owner record), what a refusal does, where evidence stays, the end-of-task cleanup and the user-picked removal of leftovers. Read by moai-impl and moai-audit (`reads:`); its moai-adk helper is the repository's tools/build_folder.py."
       }
     },
     "references/internal/quality.md": {
