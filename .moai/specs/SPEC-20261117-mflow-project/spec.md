@@ -75,4 +75,17 @@ parent: SPEC-20261117-sdd-foundation
 
 ## Result
 
-아직 비어 있어요(구현 뒤 채워요).
+구현 에이전트가 2026-11-17에 채웠어요. 감사가 다시 확인해요. 기준 `25881165be`, 커밋 `9671077fd2`, 이 worktree의 `target/`,
+`CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=4`, macOS arm64, cargo는 한 번에 하나.
+
+RED(09:44:10Z): `--lib profile::`은 `WorkFlowSettings`·`work_flow` 필드가 없어 컴파일 실패(새 타입이라 예상한 RED), settings 시험은
+`--keep-owned`가 없어 usage 오류(exit 2), 질문 은행 시험은 `work_flow` 줄 없음. 통과 09:46:55Z.
+
+- AC-1: met — `agent_defs_package` 19 passed(새 시험과, 늘린 고정 목록 두 개: 줄 id·목적지)
+- AC-2: met — `--lib profile:: claude:: status_line:: agents::` 42 passed
+- AC-3: met — `claude_settings_cli` 18(미리 보기 무쓰기, digest가 `--keep-owned` 묶음, 사용자·소유 키 유지, 되돌리기 바이트 일치, 문서 밖 값 거절)
+- AC-4: met — `--bin moai` 27, `product_cli` 75, `home_isolation_scan` 16, `help_layout` 10, `status_line_cli` 16, `apply_receipt` 8, `profile_apply_engine` 4, `project_update_plan_cli` 57, `project_detect_cli` 18, `go_settings_cli` 28, `e2e_host_fixture` 6 등 이웃 시험과 저장소 scan 대상 모두 exit 0; fmt 0, `rustfmt --check src/ops/*.rs` 0, clippy 0; Python 85 OK; `source_manifest.py check` ok; `package-inspect skills/moai` ok; `moai spec check --all` ok
+
+mutation 3개 모두 KILLED: 아무 `baseRef` 받기, `--keep-owned`가 아무것도 유지하지 않기, 가지 이름의 `..` 받기.
+
+실행 안 함: 실제 Claude Code 세션에서 `worktree.baseRef: head`가 worktree 시작점을 바꾸는지(host 확인), 전체 `cargo test`, Linux·Windows.
