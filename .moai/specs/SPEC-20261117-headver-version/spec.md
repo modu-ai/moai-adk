@@ -1,10 +1,11 @@
 ---
 id: SPEC-20261117-headver-version
-title: HeadVer 빌드 버전 — 카드 C-67 조각 1 (AC1·AC2)
-status: draft
+title: HeadVer 빌드 버전 — HeadVer 작업 조각 1 (AC1·AC2)
+status: approved
 revision: 2
 created: 2026-11-17
 parent: SPEC-20261117-sdd-foundation
+approval: {by: user, at: 2026-11-17, basis: "in-session selection 2026-11-17 08:22:21Z: 세 SPEC 승인 — 감사 PASS d8fd3ecd59 내용 그대로", digest: "sha256:989bfc44a44e6fa75584837376cfaee087d4b8af4d1ccae37ed655253482946f"}
 ---
 
 ## Intent
@@ -12,13 +13,13 @@ parent: SPEC-20261117-sdd-foundation
 사용자 결정(2026-11-17): 이 세대의 개발 빌드는 HeadVer `{head}.{yearweek}.{build}`로 번호를 매기고,
 다음 로컬 빌드(빌드 5)는 `2026.11.0-rc.2+local.5`가 아니라 `4.2647.5`로 보여야 해요. 지금은 빌드 번호를
 `+local.<n>` 메타데이터로만 붙여서 `--version`, 상태줄, update의 버전이 옛 CalVer 모양이에요. 이 SPEC은
-카드 C-67의 AC1(버전을 계산하는 함수 하나)과 AC2(그 버전을 쓰는 곳, 옛 rc 설치에서 깨끗하게 넘어오기)만
+HeadVer 작업의 AC1(버전을 계산하는 함수 하나)과 AC2(그 버전을 쓰는 곳, 옛 rc 설치에서 깨끗하게 넘어오기)만
 다뤄요.
 
 ## Non-goals
 
 - `install/install.sh`·`install/install.ps1`, 워크플로, 태그 규칙, 릴리스 빌드 번호 찍기(카드 AC3·AC4):
-  다른 에이전트가 카드 C-89로 `install/**`와 `ci.yml`을 고치는 중이에요.
+  다른 에이전트가 지원 플랫폼 작업으로 `install/**`와 `ci.yml`을 고치는 중이에요.
 - `Cargo.toml`의 패키지 버전 변경, 설치 기록(`install-record`)의 `version`·`channel`, 생성기의 `generator_version`.
 - 버전만 바꾸는 커밋(HeadVer 규칙상 하지 않아요).
 
