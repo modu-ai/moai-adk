@@ -20,6 +20,14 @@
 # commands are linked the script runs `moai-cli language-set --home <code>` once; that never
 # overwrites an earlier choice, and a moai-cli without it only costs a warning. Everything this
 # script prints stays English whatever the language.
+#
+# A release archive carries the skill package and the base agents beside the binary (`skills/`,
+# `agents/`); they go into the version folder next to `bin/`, where `moai update` reads them
+# (SPEC-20261117-installer-skill-agents). Into the hosts (Claude Code, Codex, OMP) they go only
+# through the product's own preview and confirmed apply, `moai-cli update --json` and then
+# `moai-cli update --confirm <plan_digest> --json`: this script copies nothing into a host
+# folder. It shows the folders the preview names, asks once at a terminal (--yes answers for a
+# run without one) and then names the next steps for each host it found.
 
 set -eu
 
@@ -43,7 +51,9 @@ print_error() { printf '%s[ERROR]%s %s\n' "$RED" "$NC" "$1" >&2; }
 
 TMP_DIR=""
 STAGE_DIR=""
+PART_TMP=""
 cleanup() {
+    if [ -n "$PART_TMP" ] && [ -d "$PART_TMP" ]; then rm -rf "$PART_TMP"; fi
     if [ -n "$STAGE_DIR" ] && [ -d "$STAGE_DIR" ]; then rm -rf "$STAGE_DIR"; fi
     if [ -n "$TMP_DIR" ] && [ -d "$TMP_DIR" ]; then rm -rf "$TMP_DIR"; fi
 }
@@ -66,6 +76,9 @@ Options:
   --language CODE       Language of your conversation with the model, for example en, ko, ja or
                         zh (default: asked at a terminal, else MOAI_LANGUAGE, else your locale,
                         else en). MoAI's own messages stay English.
+  --yes                 Install the MoAI skill and agents into the hosts found without asking
+                        (the preview is still shown); without a terminal and without --yes
+                        nothing is written into your home folder's host settings
   -h, --help            Show this help message
 
 Examples:
@@ -327,6 +340,24 @@ extract() {
     NEW_BIN=$(find "$TMP_DIR/x" -maxdepth 2 -type f -name moai-cli | head -n 1)
     [ -n "$NEW_BIN" ] || die "moai-cli not found in the archive"
     chmod 755 "$NEW_BIN"
+    ARCHIVE_ROOT=$(dirname "$NEW_BIN")
+}
+
+# Copies the release parts the archive carries beside the binary (`skills/`, `agents/`) into the
+# version folder $1, each under a temporary name renamed into place. A part the folder already
+# has, or one the archive does not carry (an older release), is left alone.
+add_parts() {
+    for part in skills agents; do
+        src="$ARCHIVE_ROOT/$part"
+        if [ ! -d "$src" ] || [ -L "$src" ] || [ -e "$1/$part" ] || [ -L "$1/$part" ]; then
+            continue
+        fi
+        PART_TMP="$1/.$part.install-$$"
+        cp -R "$src" "$PART_TMP" || die "Could not copy $part/ into $1"
+        mv "$PART_TMP" "$1/$part"
+        PART_TMP=""
+        PARTS_ADDED="$PARTS_ADDED $part/"
+    done
 }
 
 # Asks the downloaded binary where its state lives and what `moai` on PATH is. Read only.
@@ -349,6 +380,10 @@ place() {
     if [ -e "$DEST" ] || [ -L "$DEST" ]; then
         if [ -f "$DEST/bin/moai-cli" ] && [ "$(sha256_of "$DEST/bin/moai-cli")" = "$(sha256_of "$NEW_BIN")" ]; then
             print_success "$VERSION is already installed: $DEST"
+            # A folder an earlier installer placed holds bin/ only: add what this archive carries.
+            PARTS_ADDED=""
+            add_parts "$DEST"
+            [ -z "$PARTS_ADDED" ] || print_success "Added to $DEST:$PARTS_ADDED"
             return
         fi
         print_error "$DEST already exists with different contents; it is left as it is."
@@ -361,9 +396,97 @@ place() {
     chmod 755 "$STAGE_DIR/bin/moai-cli"
     ln "$STAGE_DIR/bin/moai-cli" "$STAGE_DIR/bin/moai"
     chmod 755 "$STAGE_DIR"
+    PARTS_ADDED=""
+    add_parts "$STAGE_DIR"
     mv "$STAGE_DIR" "$DEST"
     STAGE_DIR=""
     print_success "Installed to: $DEST/bin"
+    [ -z "$PARTS_ADDED" ] || print_success "With the release parts:$PARTS_ADDED"
+}
+
+# The hosts this machine has: the host's command on PATH, or its folder in HOME.
+detect_hosts() {
+    HOSTS=""
+    for host in claude codex omp; do
+        if command -v "$host" >/dev/null 2>&1 || [ -d "$HOME/.$host" ]; then
+            HOSTS="$HOSTS $host"
+        fi
+    done
+}
+
+# A failed `moai-cli update`: the binary stays installed, and the product's own message is shown.
+update_failed() {
+    msg=$(printf '%s' "$1" | sed -n 's/.*"message":"\([^"]*\)".*/\1/p' | head -n 1)
+    [ -n "$msg" ] || msg=$(head -n 1 "$TMP_DIR/update.err" 2>/dev/null || true)
+    print_warning "The MoAI skill and agents were not installed: ${msg:-moai-cli update did not succeed}"
+    print_info "The moai command is installed; try again later with: moai update"
+}
+
+# Installs the skill and the agents into the hosts found, through `moai-cli update` run from the
+# version folder (so the hooks of the project the user stands in are not part of the plan).
+install_skill() {
+    SKILL_READY=""
+    detect_hosts
+    echo ""
+    if [ -z "$HOSTS" ]; then
+        print_warning "No Claude Code, Codex or OMP found (no claude, codex or omp command, no ~/.claude, ~/.codex or ~/.omp)."
+        print_info "Install one of them, then install the MoAI skill and agents with: moai update"
+        return 0
+    fi
+    print_info "Previewing the MoAI skill and agents for your hosts (writes nothing):"
+    if ! preview=$(cd "$DEST" && "$DEST/bin/moai-cli" update --json 2>"$TMP_DIR/update.err"); then
+        update_failed "$preview"
+        return 0
+    fi
+    case "$preview" in
+        *'"ok":true'*) ;;
+        *) update_failed "$preview"; return 0 ;;
+    esac
+    case "$preview" in
+        *'"nothing_to_apply":true'*)
+            print_success "The MoAI skill and agents are already installed and up to date"
+            SKILL_READY=1
+            return 0
+            ;;
+    esac
+    digest=$(printf '%s' "$preview" | sed -n 's/.*"confirm_with":"moai update --confirm \(sha256:[0-9a-f]\{64\}\)".*/\1/p')
+    if [ -z "$digest" ]; then
+        update_failed '"message":"the preview named no plan to confirm"'
+        return 0
+    fi
+    printf '%s' "$preview" | grep -o '"projection_root":"[^"]*"' | sed 's/^"projection_root":"\(.*\)"$/  skill:  \1/' || true
+    printf '%s' "$preview" | grep -o '"dir":"[^"]*"' | sed 's/^"dir":"\(.*\)"$/  agents: \1/' || true
+    echo "  and MoAI's sections in those hosts' settings files (moai update lists every file)"
+    if [ -n "$YES" ]; then
+        print_info "--yes: installing them"
+    elif [ -t 0 ] && [ -t 1 ]; then
+        printf 'Install them now? [y/N]: '
+        if ! read -r answer; then
+            echo ""
+            answer=""
+        fi
+        case "$answer" in
+            y | Y | yes | Yes | YES) ;;
+            *)
+                print_info "Nothing was written to your home folder. Install them later with: moai update"
+                return 0
+                ;;
+        esac
+    else
+        print_info "Nothing was written to your home folder (no terminal to ask at). Install them with: moai update (or run this installer with --yes)"
+        return 0
+    fi
+    if ! out=$(cd "$DEST" && "$DEST/bin/moai-cli" update --confirm "$digest" --json 2>"$TMP_DIR/update.err"); then
+        update_failed "$out"
+        return 0
+    fi
+    case "$out" in
+        *'"ok":true'*'"applied":true'*)
+            print_success "Installed the MoAI skill and agents"
+            SKILL_READY=1
+            ;;
+        *) update_failed "$out" ;;
+    esac
 }
 
 link_commands() {
@@ -416,9 +539,23 @@ finish() {
     print_success "Installation complete!"
     echo ""
     print_info "Next steps:"
-    echo "  1. Make a project folder and enter it: mkdir my-project && cd my-project"
-    echo "  2. Start a session there: moai cc (or moai glm, moai codex; -l for leader mode, -a for agent mode)"
-    echo "  3. In the session, set the project up: /moai project"
+    n=1
+    if [ -z "$SKILL_READY" ]; then
+        echo "  $n. Install the MoAI skill and agents (shows what it writes, then asks): moai update"
+        n=$((n + 1))
+    fi
+    echo "  $n. Make a project folder and enter it: mkdir my-project && cd my-project"
+    n=$((n + 1))
+    echo "  $n. Start a session there, then set the project up inside it:"
+    # One entry per host found, or all three when none was: the list is split on purpose.
+    # shellcheck disable=SC2086
+    for host in ${HOSTS:-claude codex omp}; do
+        case "$host" in
+            claude) echo "     Claude Code: moai cc (or moai glm; -l leader, -a agent), then /moai project" ;;
+            codex) echo "     Codex: moai codex, then \$moai project" ;;
+            omp) echo "     OMP: omp, then /skill:moai project" ;;
+        esac
+    done
     echo ""
     print_info "Documentation: $REPO_URL"
 }
@@ -428,6 +565,9 @@ main() {
     INSTALL_DIR="${MOAI_INSTALL_DIR:-}"
     CHANNEL="stable"
     LANGUAGE_CODE=""
+    YES=""
+    HOSTS=""
+    SKILL_READY=""
     while [ $# -gt 0 ]; do
         case "$1" in
             --version)
@@ -454,6 +594,10 @@ main() {
                 valid_language "$2" || die "Not a language code: '$2' (for example en, ko, ja, zh)"
                 LANGUAGE_CODE="$2"
                 shift 2
+                ;;
+            --yes)
+                YES=1
+                shift
                 ;;
             -h | --help)
                 usage
@@ -493,6 +637,7 @@ main() {
     place
     link_commands
     record_language
+    install_skill
     finish
 }
 

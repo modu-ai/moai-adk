@@ -19,6 +19,14 @@
 # commands are linked the script runs `moai-cli language-set --home <code>` once; that never
 # overwrites an earlier choice, and a moai-cli without it only costs a warning. Everything this
 # script prints stays English whatever the language.
+#
+# A release archive carries the skill package and the base agents beside the binary (`skills\`,
+# `agents\`); they go into the version folder next to `bin\`, where `moai update` reads them
+# (SPEC-20261117-installer-skill-agents). Into the hosts (Claude Code, Codex, OMP) they go only
+# through the product's own preview and confirmed apply, `moai-cli update --json` and then
+# `moai-cli update --confirm <plan_digest> --json`: this script copies nothing into a host
+# folder. It shows the folders the preview names, asks once at a terminal (--yes answers for a
+# run without one) and then names the next steps for each host it found.
 
 $ErrorActionPreference = "Stop"
 
@@ -37,8 +45,9 @@ function Print-Error { Write-Host "[ERROR] " -ForegroundColor Red -NoNewline; Wr
 
 $script:TmpDir = $null
 $script:StageDir = $null
+$script:PartTmp = $null
 function Remove-Temp {
-    foreach ($d in @($script:StageDir, $script:TmpDir)) {
+    foreach ($d in @($script:PartTmp, $script:StageDir, $script:TmpDir)) {
         if ($d -and (Test-Path -LiteralPath $d)) { Remove-Item -LiteralPath $d -Recurse -Force -ErrorAction SilentlyContinue }
     }
 }
@@ -58,6 +67,9 @@ function Show-Usage {
     Write-Host "  --language CODE       Language of your conversation with the model, for example en, ko, ja or"
     Write-Host "                        zh (default: asked at a terminal, else MOAI_LANGUAGE, else your locale,"
     Write-Host "                        else en). MoAI's own messages stay English."
+    Write-Host "  --yes                 Install the MoAI skill and agents into the hosts found without asking"
+    Write-Host "                        (the preview is still shown); without a terminal and without --yes"
+    Write-Host "                        nothing is written into your home folder's host settings"
     Write-Host "  -h, --help            Show this help message"
     Write-Host ""
     Write-Host "Examples:"
@@ -251,6 +263,110 @@ function Get-Sha256([string]$Path) {
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLower()
 }
 
+# Copies the release parts the archive carries beside the binary (`skills`, `agents`) into the
+# version folder, each under a temporary name renamed into place. A part the folder already has,
+# or one the archive does not carry (an older release), is left alone. Returns the parts added.
+function Add-ReleaseParts([string]$ArchiveRoot, [string]$Folder) {
+    $added = @()
+    foreach ($part in @("skills", "agents")) {
+        $src = Get-Item -LiteralPath (Join-Path $ArchiveRoot $part) -Force -ErrorAction SilentlyContinue
+        if (-not $src -or -not $src.PSIsContainer -or $src.LinkType) { continue }
+        if (Get-Item -LiteralPath (Join-Path $Folder $part) -Force -ErrorAction SilentlyContinue) { continue }
+        $tmp = Join-Path $Folder ".$part.install-$PID"
+        $script:PartTmp = $tmp
+        try { Copy-Item -LiteralPath $src.FullName -Destination $tmp -Recurse }
+        catch { Fail "Could not copy $part into ${Folder}: $_" }
+        Move-Item -LiteralPath $tmp -Destination (Join-Path $Folder $part)
+        $script:PartTmp = $null
+        $added += "$part"
+    }
+    return $added
+}
+
+# The hosts this machine has: the host's command on PATH, or its folder in HOME.
+function Get-Hosts {
+    $found = @()
+    foreach ($h in @("claude", "codex", "omp")) {
+        if ((Get-Command $h -CommandType Application -ErrorAction SilentlyContinue) -or
+            (Test-Path -LiteralPath (Join-Path $env:HOME ".$h") -PathType Container)) { $found += $h }
+    }
+    return $found
+}
+
+# Runs `moai-cli update` with these arguments from the version folder (so the hooks of the project
+# the user stands in are not part of the plan). Returns the exit code, the parsed envelope ($null
+# for an answer that is not JSON) and the first error line.
+function Invoke-Update([string]$Cli, [string]$Folder, [string[]]$UpdateArgs) {
+    $err = Join-Path $script:TmpDir "update.err"
+    Push-Location -LiteralPath $Folder
+    try {
+        $raw = (& $Cli update @UpdateArgs 2>$err | Out-String)
+        $code = $LASTEXITCODE
+    }
+    catch { $raw = ""; $code = 1 }
+    finally { Pop-Location }
+    $parsed = $null
+    try { $parsed = $raw | ConvertFrom-Json } catch { $parsed = $null }
+    $first = (Get-Content -LiteralPath $err -TotalCount 1 -ErrorAction SilentlyContinue)
+    return [pscustomobject]@{ Code = $code; Json = $parsed; Err = "$first" }
+}
+
+# A failed `moai-cli update`: the binary stays installed, and the product's own message is shown.
+function Write-UpdateFailed($Answer) {
+    $msg = ""
+    if ($Answer -and $Answer.Json -and $Answer.Json.error) { $msg = [string]$Answer.Json.error.message }
+    if (-not $msg -and $Answer) { $msg = $Answer.Err }
+    if (-not $msg) { $msg = "moai-cli update did not succeed" }
+    Print-Warning "The MoAI skill and agents were not installed: $msg"
+    Print-Info "The moai command is installed; try again later with: moai update"
+}
+
+# Installs the skill and the agents into the hosts found, through the product's preview and
+# confirmed apply. Returns $true when they are installed and up to date.
+function Install-Skill([string]$Cli, [string]$Folder, $Hosts, [bool]$Yes) {
+    Write-Host ""
+    if (-not $Hosts) {
+        Print-Warning "No Claude Code, Codex or OMP found (no claude, codex or omp command, no ~/.claude, ~/.codex or ~/.omp)."
+        Print-Info "Install one of them, then install the MoAI skill and agents with: moai update"
+        return $false
+    }
+    Print-Info "Previewing the MoAI skill and agents for your hosts (writes nothing):"
+    $preview = Invoke-Update $Cli $Folder @("--json")
+    if ($preview.Code -ne 0 -or -not $preview.Json -or $preview.Json.ok -ne $true) { Write-UpdateFailed $preview; return $false }
+    $result = $preview.Json.result
+    if ($result.nothing_to_apply -eq $true) {
+        Print-Success "The MoAI skill and agents are already installed and up to date"
+        return $true
+    }
+    $digest = [string]$result.plan_digest
+    if ($digest -notmatch '^sha256:[0-9a-f]{64}$') {
+        Write-UpdateFailed ([pscustomobject]@{ Json = $null; Err = "the preview named no plan to confirm" })
+        return $false
+    }
+    foreach ($h in @($result.plan.hosts)) { if ($h.projection_root) { Write-Host "  skill:  $($h.projection_root)" } }
+    foreach ($h in @($result.agents.hosts)) { if ($h.dir) { Write-Host "  agents: $($h.dir)" } }
+    Write-Host "  and MoAI's sections in those hosts' settings files (moai update lists every file)"
+    if ($Yes) { Print-Info "--yes: installing them" }
+    elseif (-not [Console]::IsInputRedirected -and -not [Console]::IsOutputRedirected) {
+        $answer = Read-Answer "Install them now? [y/N]"
+        if ("$answer".Trim() -notin "y", "yes") {
+            Print-Info "Nothing was written to your home folder. Install them later with: moai update"
+            return $false
+        }
+    }
+    else {
+        Print-Info "Nothing was written to your home folder (no terminal to ask at). Install them with: moai update (or run this installer with --yes)"
+        return $false
+    }
+    $applied = Invoke-Update $Cli $Folder @("--confirm", $digest, "--json")
+    if ($applied.Code -ne 0 -or -not $applied.Json -or $applied.Json.ok -ne $true -or $applied.Json.result.applied -ne $true) {
+        Write-UpdateFailed $applied
+        return $false
+    }
+    Print-Success "Installed the MoAI skill and agents"
+    return $true
+}
+
 function Main {
     param($Arguments)
 
@@ -258,6 +374,7 @@ function Main {
     $InstallDir = $env:MOAI_INSTALL_DIR
     $Channel = "stable"
     $Language = ""
+    $Yes = $false
     for ($i = 0; $i -lt $Arguments.Count; $i++) {
         $arg = $Arguments[$i]
         if ($arg -in "--version", "-version") {
@@ -284,6 +401,7 @@ function Main {
             if (-not (Test-Language $given)) { Fail "Not a language code: '$given' (for example en, ko, ja, zh)" }
             $Language = $given
         }
+        elseif ($arg -in "--yes", "-yes") { $Yes = $true }
         elseif ($arg -in "-h", "--help", "-help") {
             Show-Usage
             exit 0
@@ -376,6 +494,9 @@ function Main {
     if (Test-Path -LiteralPath $dest) {
         if ((Test-Path -LiteralPath $destCli -PathType Leaf) -and ((Get-Sha256 $destCli) -eq (Get-Sha256 $newBin))) {
             Print-Success "$Version is already installed: $dest"
+            # A folder an earlier installer placed holds bin only: add what this archive carries.
+            $added = @(Add-ReleaseParts (Split-Path -Parent $newBin) $dest)
+            if ($added.Count -gt 0) { Print-Success "Added to ${dest}: $($added -join ', ')" }
         }
         else {
             Print-Error "$dest already exists with different contents; it is left as it is."
@@ -390,9 +511,11 @@ function Main {
         Copy-Item -LiteralPath $newBin -Destination (Join-Path $stageBin "moai-cli$Exe")
         if (-not $IsWin) { & chmod 755 (Join-Path $stageBin "moai-cli$Exe") }
         New-Item -ItemType HardLink -Path (Join-Path $stageBin "moai$Exe") -Target (Join-Path $stageBin "moai-cli$Exe") | Out-Null
+        $added = @(Add-ReleaseParts (Split-Path -Parent $newBin) $script:StageDir)
         Move-Item -LiteralPath $script:StageDir -Destination $dest
         $script:StageDir = $null
         Print-Success "Installed to: $(Join-Path $dest 'bin')"
+        if ($added.Count -gt 0) { Print-Success "With the release parts: $($added -join ', ')" }
     }
 
     # The commands: links (copies on Windows, where a symbolic link needs extra rights) in the
@@ -455,6 +578,9 @@ function Main {
     elseif ("$($recorded.result.reason)" -eq "no_home_state") { Print-Info "No MoAI state folder in your home yet; the conversation language was not recorded" }
     else { Print-Warning "The conversation language answer was not understood; it may not be recorded." }
 
+    $hosts = @(Get-Hosts)
+    $skillReady = Install-Skill $cli $dest $hosts $Yes
+
     Remove-Temp
     Write-Host (& $cli --version | Out-String).Trim()
     if ($goOnPath) {
@@ -474,9 +600,22 @@ function Main {
     Print-Success "Installation complete!"
     Write-Host ""
     Print-Info "Next steps:"
-    Write-Host "  1. Make a project folder and enter it: New-Item -ItemType Directory my-project; Set-Location my-project"
-    Write-Host "  2. Start a session there: moai cc (or moai glm, moai codex; -l for leader mode, -a for agent mode)"
-    Write-Host "  3. In the session, set the project up: /moai project"
+    $n = 1
+    if (-not $skillReady) {
+        Write-Host "  $n. Install the MoAI skill and agents (shows what it writes, then asks): moai update"
+        $n++
+    }
+    Write-Host "  $n. Make a project folder and enter it: New-Item -ItemType Directory my-project; Set-Location my-project"
+    $n++
+    Write-Host "  $n. Start a session there, then set the project up inside it:"
+    $entries = if ($hosts.Count -gt 0) { $hosts } else { @("claude", "codex", "omp") }
+    foreach ($h in $entries) {
+        switch ($h) {
+            "claude" { Write-Host "     Claude Code: moai cc (or moai glm; -l leader, -a agent), then /moai project" }
+            "codex" { Write-Host '     Codex: moai codex, then $moai project' }
+            "omp" { Write-Host "     OMP: omp, then /skill:moai project" }
+        }
+    }
     Write-Host ""
     Print-Info "Documentation: $RepoUrl"
 }

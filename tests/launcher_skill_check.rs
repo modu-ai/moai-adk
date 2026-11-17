@@ -23,7 +23,11 @@ fn fixture() -> Fixture {
     let bin = tempfile::tempdir().unwrap();
     for host in ["claude", "codex"] {
         let path = bin.path().join(host);
-        fs::write(&path, "#!/bin/sh\nprintf started > \"$MOAI_TEST_HOST_MARKER\"\n").unwrap();
+        fs::write(
+            &path,
+            "#!/bin/sh\nprintf started > \"$MOAI_TEST_HOST_MARKER\"\n",
+        )
+        .unwrap();
         fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
     }
     // A project that already has its settings: the launch initializes nothing, so the only
@@ -111,7 +115,11 @@ fn a_missing_codex_skill_is_checked_in_the_codex_folder() {
     assert_eq!(lines.len(), 1, "{}", stderr(&out));
     assert!(lines[0].contains("Codex"), "{}", lines[0]);
     let folder = f.home.path().join(".agents/skills/moai");
-    assert!(lines[0].contains(&folder.display().to_string()), "{}", lines[0]);
+    assert!(
+        lines[0].contains(&folder.display().to_string()),
+        "{}",
+        lines[0]
+    );
 }
 
 #[test]
