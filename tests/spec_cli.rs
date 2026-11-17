@@ -845,3 +845,125 @@ fn only_a_real_specs_folder_reads_as_no_state() {
         );
     }
 }
+
+/// Third audit N1: a `.moai-cli` that holds only `specs/<id>`, with the same id in
+/// `.moai/specs/`, has nothing else to move; the plan still shows the conflict and the apply
+/// moves nothing.
+#[test]
+fn a_same_id_conflict_shows_even_when_nothing_else_would_move() {
+    let home = TempHome::new();
+    let p = home.path().join("proj");
+    let earlier = p.join(".moai-cli/specs").join(ID);
+    fs::create_dir_all(&earlier).unwrap();
+    fs::write(earlier.join("spec.md"), "earlier copy\n").unwrap();
+    assert_eq!(new_spec(&home, &p, &[]).0, 0);
+    let before = tree_state(&p);
+    let ps = p.to_str().unwrap();
+    let plan = json_call(&home, &["go-state-plan", ps]);
+    assert_eq!(plan["ok"], true, "{plan}");
+    let item = plan["result"]["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|i| i["path"] == ".moai-cli")
+        .unwrap_or_else(|| panic!("the conflict is not shown: {plan}"))
+        .clone();
+    assert_eq!(item["action"], "leave", "{item}");
+    assert!(
+        item["reason"]
+            .as_str()
+            .unwrap()
+            .starts_with(&format!("conflict: {ID} is in both")),
+        "{item}"
+    );
+    let digest = plan["result"]["plan_digest"].as_str().unwrap().to_string();
+    let v = json_call(
+        &home,
+        &[
+            "go-state-apply",
+            ps,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "test-permission-ref",
+        ],
+    );
+    assert_eq!(v["ok"], true, "{v}");
+    assert_ne!(v["result"]["state"], "committed", "{v}");
+    assert_eq!(tree_state(&p), before, "nothing moved");
+}
+
+/// Third audit N2: the receipt is no authority over SPEC entries. A receipt edited after the
+/// merge to name `specs/..`, a nested or absolute path, or a path under `.moai/` is refused by
+/// the revert plan and by the revert, and nothing moves.
+#[test]
+fn a_receipt_that_forges_a_spec_entry_is_refused() {
+    let home = TempHome::new();
+    let p = earlier_with_specs(&home, &["SPEC-OLD-001"]);
+    let ps = p.to_str().unwrap();
+    let plan = json_call(&home, &["go-state-plan", ps]);
+    let digest = plan["result"]["plan_digest"].as_str().unwrap().to_string();
+    let v = json_call(
+        &home,
+        &[
+            "go-state-apply",
+            ps,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "test-permission-ref",
+        ],
+    );
+    assert_eq!(v["result"]["state"], "committed", "{v}");
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    let receipt_path = p
+        .join(".moai/backups")
+        .join(&backup)
+        .join("go-state-receipt.json");
+    let original = fs::read(&receipt_path).unwrap();
+    let receipt: Value = serde_json::from_slice(&original).unwrap();
+    let at = receipt["moves"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .position(|m| m["path"] == ".moai-cli/specs/SPEC-OLD-001")
+        .unwrap_or_else(|| panic!("{receipt}"));
+    assert_eq!(receipt["moves"][at]["kind"], "state", "{receipt}");
+    // The revert plan of the true receipt is accepted.
+    assert_eq!(
+        json_call(&home, &["go-state-revert-plan", ps, "--backup", &backup])["ok"],
+        true
+    );
+    for forged in [
+        ".moai-cli/specs/..",
+        ".moai-cli/specs/.",
+        ".moai-cli/specs/SPEC-OLD-001/spec.md",
+        ".moai-cli/specs//etc",
+        ".moai-cli/specs/a\\b",
+        "/etc/specs/x",
+        ".moai/specs/SPEC-OLD-001",
+    ] {
+        let mut r = receipt.clone();
+        r["moves"][at]["path"] = json!(forged);
+        fs::write(&receipt_path, serde_json::to_vec(&r).unwrap()).unwrap();
+        let before = tree_state(&p);
+        let rp = json_call(&home, &["go-state-revert-plan", ps, "--backup", &backup]);
+        assert_eq!(rp["ok"], false, "{forged}: {rp}");
+        let v = json_call(
+            &home,
+            &[
+                "go-state-revert",
+                ps,
+                "--backup",
+                &backup,
+                "--plan-digest",
+                "sha256:0",
+                "--permission-reference",
+                "test-permission-ref",
+            ],
+        );
+        assert_eq!(v["ok"], false, "{forged}: {v}");
+        assert_eq!(tree_state(&p), before, "{forged}: nothing moved");
+    }
+    fs::write(&receipt_path, &original).unwrap();
+}

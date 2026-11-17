@@ -153,5 +153,12 @@ new|check|list|show`, GEARS + IF…THEN, 실패 경로 규칙, 승인 뒤 NEEDS 
 
 AC-9는 `90654afbb9`에서 다시 돌려 모두 exit 0이에요(위 숫자 그대로, `ac_command_lint` 5, Python 44+2 OK).
 
+세 번째 감사(PASS) 뒤 사용자 선택 "두 시험을 더하고 짧게 다시 감사한 뒤 PR"로 AC-6 쪽 시험 두 개를 더했어요
+(요구·수용 기준·범위는 그대로라 승인 digest도 그대로예요): `a_same_id_conflict_shows_even_when_nothing_else_would_move`
+(`.moai-cli`에 같은 id의 `specs/<id>`만 있어도 계획이 충돌을 보여 주고 적용이 아무것도 옮기지 않음, 감사 N1)와
+`a_receipt_that_forges_a_spec_entry_is_refused`(영수증의 SPEC 항목을 `specs/..`·중첩·절대 경로·`.moai/` 아래로 바꾸면
+되돌리기 계획과 되돌리기가 거절하고 아무것도 옮기지 않음, 감사 N2). 살아남았던 두 mutation(빈 이동이면 막지
+않음, 영수증의 `specs/…`를 모두 받아들임)이 이제 KILLED예요. `spec_cli` 17 passed.
+
 실행 안 함: 전체 `cargo test`(바뀐 곳 시험만), Linux·Windows, Go 폴더 되돌리기 길과 `specs/`가 함께 있는 경우.
 남은 모양: SPEC을 하나씩 합친 뒤 빈 `.moai-cli/specs/` 폴더는 되돌리기를 위해 남아요.
