@@ -25,6 +25,10 @@
 //!   block or a GitHub token. A file extension alone (`.pem`, `.key`) decides nothing: public
 //!   certificates and test fixtures use them too. Writes outside the project are not refused
 //!   here (decision pending: the hook cannot see a session's extra directories).
+//! - A6 the GREEN test lock (card C-86, SPEC-20261117-green-test-lock): while the worktree's
+//!   TDD record (`<git-dir>/moai/tdd.json`, written by `moai tdd red`) is GREEN or REFACTOR, a
+//!   write to a test path its RED commit changed, or a new file on a test path, is refused
+//!   ([`crate::tdd::lock_refusal`]). Files only, no program; no record locks nothing.
 //!
 //! Known gaps (allowed, not refused): shell redirections (`>`, `tee`) into protected paths; a
 //! force push with no refspec while `main` is checked out (the branch is not read here); a
@@ -676,7 +680,8 @@ pub fn write_guard(tool: &str, tool_input: &Value, cwd: &Path) -> Option<&'stati
     if contents.iter().any(|c| carries_secret(c)) {
         return Some(SECRET_CONTENT);
     }
-    None
+    // A6 (SPEC-20261117-green-test-lock): the GREEN test lock of this worktree's TDD cycle.
+    crate::tdd::lock_refusal(&paths, cwd)
 }
 
 const OUTSIDE_PROJECT: &str = "MoAI tool-preflight: a write outside the project is refused; add the folder to `allow` under [hooks.outside_project_writes] in ~/.moai-cli/hook-config.toml to permit it.";

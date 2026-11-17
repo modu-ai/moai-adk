@@ -77,13 +77,17 @@ parent: SPEC-20261117-sdd-foundation
 - write(구현 조각): `src/tdd.rs`(새), `src/hook_guards.rs`, `src/main.rs`(명령 `tdd`), `src/run.rs`(시험 패턴 공유),
   `tests/green_test_lock.rs`, `tests/tdd_cli.rs`, `skills/moai/workflows/run.md`·`audit.md` 한 줄씩,
   `skills/moai/references/internal/quality.md`, `.moai/specs/SPEC-20261117-green-test-lock/spec.md`
-- write(이번 조각): `.moai/specs/SPEC-20261117-green-test-lock/spec.md`
+- write(2–4단계, 이번 가지): `src/tdd.rs`, `src/ops/tdd.rs`, `src/run.rs`(`oracle_changes`가 표를 씀), `src/hook_guards.rs`(A6),
+  `src/profile.rs`(`test_paths`), `src/lib.rs`, `src/help.rs`(명령 묶음과 예), `tests/green_test_lock.rs`,
+  `tests/fixtures/help/all*.txt`(도움말 golden, `tdd` 한 줄), `docs/design-review/appendix/operations/tdd.md`,
+  `.moai/specs/SPEC-20261117-green-test-lock/spec.md`
 - read-only: `src/run.rs`, `src/self_audit.rs`, `src/project_detect.rs`, `skills/moai/references/languages/**`
 - forbidden: 사용자 HOME, 호스트 설정 파일, 공유 원격 기록 고쳐 쓰기(force-push)
 
 ## Plan
 
-1. 설계(이 SPEC). 아래 질문 3개를 사용자 선택으로 받아요.
+1. 설계(이 SPEC). D-6·D-7은 리더가 정했고(2026-11-17), D-8은 사용자 선택을 기다려요. 이번 가지는 2–4단계까지 구현하고 6단계(관문)는
+   하지 않아요.
 2. 시험 패턴 표: `run::oracle_changes`를 언어별 표(D-4)로 넓혀 `src/tdd.rs`로 옮기고 run.rs가 같은 표를 써요.
 3. `moai tdd red|green|reopen|done|status`: 기록과 로그(D-2), RED 확인은 기존 `run::red_confirmed` 판단을 써요.
 4. hook: `write_guard`의 A6 규칙(REQ-3, REQ-4, REQ-12).
@@ -108,7 +112,7 @@ parent: SPEC-20261117-sdd-foundation
 | D-3 | 잠그는 범위: (A) RED 커밋이 바꾼 시험 경로 + 새로 만드는 시험 패턴 파일 — 추천 · (B) 모든 시험 패턴 파일 · (C) RED 커밋이 바꾼 경로만 | A는 "실패하는 시험을 고치지 않음"과 "GREEN에 새 시험 없음(새 시험은 새 RED)"을 함께 지킴; B는 관계없는 시험 수리까지 막음 | 범위 개정 |
 | D-4 | 시험 패턴: 언어 가이드와 같은 감지 언어별 표(Rust `tests/**`, `benches/**`; Python `tests/**`, `test_*.py`, `*_test.py`, `conftest.py`; JS/TS `*.test.*`, `*.spec.*`, `__tests__/**`, `test/**`, `tests/**`; Go `*_test.go`, `testdata/**`; Java/Kotlin `src/test/**`; Ruby `spec/**`, `test/**`; PHP `tests/**`, `*Test.php`; C/C++ `test/**`, `tests/**`; C# `*.Tests/**`, `*Tests/**`; Swift `Tests/**`; 공통 `fixtures/**`, `golden/**`) + 프로젝트 선언(프로필의 `test_paths`) | 기존 `run::oracle_changes`를 넓힘; 언어 가이드에 한 줄씩 더함 | 표 개정 |
 | D-5 | REFACTOR에도 잠금 유지, `done`에서 해제 | Beck: 구조 변경 전후에 같은 시험을 돌림 | REFACTOR에서 해제로 개정 |
-| D-6 | [NEEDS CLARIFICATION: GREEN 중 시험을 고쳐야 할 때: (A) `moai tdd reopen --reason`으로 GREEN을 끝내고 새 RED부터 — 추천 · (B) `moai tdd unlock <path> --reason`으로 파일 하나만 풀기] | 사용자 선택 대기. A는 이유가 늘 남고 RED가 다시 확인됨; B는 빠르지만 잠금이 약해짐 | — |
-| D-7 | [NEEDS CLARIFICATION: GREEN 중 새 시험 파일: (A) 거부(새 시험 = 새 RED) — 추천 · (B) 허용(기존 시험만 잠금)] | 사용자 선택 대기 | — |
+| D-6 | GREEN 중 시험을 고쳐야 할 때는 `moai tdd reopen --reason`으로 GREEN을 끝내고 새 RED부터(파일 하나만 푸는 `unlock`은 없음) | 리더 결정 2026-11-17(되돌릴 수 있음): 이유가 늘 로그에 남고 RED가 다시 확인됨. 다른 선택지는 `unlock <path> --reason` | 결정 개정 뒤 `unlock` 추가 |
+| D-7 | GREEN 중 새 시험 패턴 파일 쓰기는 거부(새 시험 = 새 RED) | 리더 결정 2026-11-17(되돌릴 수 있음). 다른 선택지는 "허용, 기존 시험만 잠금" | A6에서 새 파일 조건을 뺌 |
 | D-8 | [NEEDS CLARIFICATION: 강제 범위: (A) 변경 전략이 `tdd`인 SPEC의 PR은 RED 기록이 있어야 관문 통과(6단계) — 추천 · (B) 에이전트가 `moai tdd red`를 부를 때만 잠금, 관문은 보지 않음] | 사용자 선택 대기. A가 "권고 말고 강제"에 맞지만 모든 TDD 변경에 RED 커밋을 요구함 | — |
 | D-9 | RED 확인은 `run::red_confirmed`와 같은 판단(실패가 모두 assertion 실패, 컴파일·네트워크·0개 선택은 RED 아님) | `internal/tdd-results`의 `EXPECTED_RED`와 같음 | — |

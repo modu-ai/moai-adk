@@ -53,6 +53,7 @@ const PROFILE_KEYS: &[(&str, bool)] = &[
     ("detected", true),
     ("scopes", true),
     ("versioning", true),
+    ("test_paths", true),
 ];
 
 fn managed_keys() -> impl Iterator<Item = &'static str> {
@@ -147,6 +148,12 @@ pub struct Profile {
     /// unchanged and the managed section renders as before.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub versioning: Option<crate::versioning::VersioningSettings>,
+    /// The project's own test paths beside the per-language table of `crate::tdd`
+    /// (SPEC-20261117-green-test-lock D-4): relative folders or files, at most
+    /// [`crate::tdd::MAX_DECLARED`]. Absent means none were declared; a profile written before
+    /// this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub test_paths: Option<Vec<String>>,
 }
 
 /// What a first launch writes into `tools` and `development_methods` until the project
@@ -285,6 +292,9 @@ fn validate(p: &Profile) -> Result<()> {
         if versioning.format.as_ref().is_some_and(|f| !portable(f)) {
             return Err("invalid or nonportable profile; no values were logged".into());
         }
+    }
+    if let Some(paths) = &p.test_paths {
+        crate::tdd::validate_declared(paths)?;
     }
     let decisions_ok = p.decisions.len() <= DECISION_ITEM_LIMIT
         && p.decisions.iter().all(|d| {
@@ -865,6 +875,7 @@ mod tests {
             detected: None,
             scopes: None,
             versioning: None,
+            test_paths: None,
         }
     }
 
@@ -894,6 +905,7 @@ mod tests {
                 format: None,
                 head: Some(3),
             }),
+            test_paths: Some(vec!["qa/".into()]),
             ..v2()
         };
         let fields: Vec<String> = serde_json::to_value(&full)
@@ -923,7 +935,8 @@ mod tests {
                 "language",
                 "detected",
                 "scopes",
-                "versioning"
+                "versioning",
+                "test_paths"
             ]
         );
     }

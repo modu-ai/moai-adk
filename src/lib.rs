@@ -142,6 +142,7 @@ pub mod startable;
 pub mod state_root;
 pub mod status_line;
 pub mod statusline;
+pub mod tdd;
 pub mod ui;
 pub mod ui_summary;
 pub mod ui_text;
