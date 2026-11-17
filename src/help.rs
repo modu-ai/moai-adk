@@ -41,6 +41,7 @@ pub const GROUPS: &[Group] = &[
             ("check-tree", false),
             ("ledger-status", false),
             ("card", false),
+            ("spec", false),
             ("ledger-register-plan", false),
             ("ledger-register-apply", false),
             ("card-import-plan", false),
@@ -330,6 +331,14 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
             "card add --title fix-login --ac login-works --scope src/login/ --project .",
             "card ready C-1 --project .",
             "card note C-1 --kind report --project . < note.md",
+        ],
+    ),
+    (
+        "spec",
+        &[
+            "spec new login-fix --title fix-login --minimal --project .",
+            "spec check --all --project .",
+            "spec show SPEC-20261117-login-fix --project .",
         ],
     ),
     ("ledger-register-plan", &["ledger-register-plan .", "ledger-register-apply --plan-digest <digest> --permission-reference <ref> ."]),

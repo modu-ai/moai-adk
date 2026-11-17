@@ -56,7 +56,8 @@ fn mode_agent_keeps_a_check_apart_from_the_push_and_the_comments_it_guards() {
         "mode-agent.md",
         &[
             "Never send a check and the push it guards as parallel calls in one response",
-            "The same holds for an Issue or pull request comment and a leader message that report the check",
+            // C-53 S5: a card note (was: an Issue or pull request comment).
+            "The same holds for a card note, a pull request comment and a leader message that report the check",
             "a guard refusal stops only the refused call, so the other calls of the same response still run",
         ],
     );

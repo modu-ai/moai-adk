@@ -32,8 +32,9 @@ fn mode_agent_gates_the_opening_exempts_tip_repairs_and_verifies_before_a_merge(
             // P-B: a tip repair is outside the open-PR limit.
             "A pull request whose body carries a `moai-tip-repair:` line is outside this count",
             "never convert it to a draft",
-            // P-E: a tip merge is a commit.
-            "A tip merge is a commit too: run `moai claim-verify` before `git merge`",
+            // P-E: a tip merge is a commit. C-53 S5: the check is `card check` (was: "A tip
+            // merge is a commit too: run `moai claim-verify` before `git merge`").
+            "and before `git merge` of the tip (a tip merge is a commit too), run `moai card check <card> --generation <g> --path <p>`",
         ],
     );
 }

@@ -135,6 +135,7 @@ pub mod session_current;
 pub mod shim_check;
 pub mod skills_legacy;
 pub mod spec;
+pub mod spec_doc;
 pub mod spec_links;
 pub mod startable;
 pub mod state_root;

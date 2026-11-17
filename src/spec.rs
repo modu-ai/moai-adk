@@ -134,8 +134,8 @@ fn has_personal_path(lower: &str) -> bool {
 /// Size, control characters, secret-shaped strings and personal absolute paths (#2001 r26),
 /// taken from the profile `portable()` rule with two differences for requirement text: line
 /// breaks and tabs are allowed, and only personal absolute paths are refused instead of every
-/// `/`. `sk-` counts only at the start of a word.
-fn check_text(s: &str) -> std::result::Result<(), &'static str> {
+/// `/`. `sk-` counts only at the start of a word. `spec_doc` applies it to AC and scope text too.
+pub(crate) fn check_text(s: &str) -> std::result::Result<(), &'static str> {
     if s.len() > MAX_INPUT {
         return Err("input exceeds 64 KiB");
     }
