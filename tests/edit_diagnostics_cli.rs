@@ -647,6 +647,130 @@ fn the_lock_lives_in_the_private_home_state_folder() {
     assert_eq!(fs::read_dir(&elsewhere).unwrap().count(), 0);
 }
 
+/// SPEC-20261117-edit-diagnostics-followups AC-2 (#3179 audit): every run of one project reuses
+/// its one lock file (N runs, M files: still one), and a second project adds exactly one; the
+/// files are empty and stay after the runs (D1: removing them would race).
+#[test]
+fn one_lock_file_per_project_is_reused() {
+    let f = fx();
+    f.enable("");
+    let dir = f.home.join(".moai-cli/edit-diagnostics");
+    let locks = || -> Vec<(String, u64)> {
+        let mut v: Vec<_> = fs::read_dir(&dir)
+            .unwrap()
+            .map(|e| {
+                let e = e.unwrap();
+                let name = e.file_name().to_string_lossy().into_owned();
+                (name, e.metadata().unwrap().len())
+            })
+            .collect();
+        v.sort();
+        v
+    };
+    fs::write(f.proj.join("src/b.rs"), "fn b() {}\n").unwrap();
+    for file in ["src/a.rs", "src/b.rs", "src/a.rs"] {
+        let path = f.proj.join(file).display().to_string();
+        assert_eq!(f.edit("Write", &path, &[("MODE", "clean")]).0, 0);
+    }
+    let one = locks();
+    assert_eq!(one.len(), 1, "{one:?}");
+    assert_eq!(one[0].1, 0, "the lock file stays empty");
+    // A second project in the same HOME: one more file, the first unchanged.
+    let other = f.root.join("other");
+    fs::create_dir_all(other.join("src")).unwrap();
+    common::git::git(&other, &["init", "-q", "-b", "main"]);
+    let file = other.join("src/c.rs");
+    fs::write(&file, "fn c() {}\n").unwrap();
+    let file = file.display().to_string();
+    for _ in 0..2 {
+        let mut child = f
+            .command(
+                &[
+                    "hook-dispatch",
+                    "--host",
+                    "claude",
+                    "--event",
+                    "edit-diagnostics",
+                ],
+                &[("MODE", "clean")],
+            )
+            .current_dir(&other)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        {
+            use std::io::Write;
+            let stdin = input("Write", &file, &other);
+            child.stdin.take().unwrap().write_all(&stdin).unwrap();
+        }
+        assert!(child.wait_with_output().unwrap().status.success());
+    }
+    let two = locks();
+    assert_eq!(two.len(), 2, "{two:?}");
+    assert!(two.contains(&one[0]), "{two:?}");
+}
+
+/// SPEC-20261117-edit-diagnostics-followups AC-3 (#3179 audit, earlier N5): a malformed
+/// `[hooks.edit_diagnostics]` turns off only that feature. With the same config file the write
+/// guard still refuses a `.git/` write (a default rule) and a write outside the project (the
+/// opt-in rule beside it), and a write inside the project still passes.
+#[test]
+fn a_malformed_table_leaves_the_other_guards_on() {
+    let f = fx();
+    f.config(&format!(
+        "[hooks.edit_diagnostics]\nenabled = true\nmode = \"block\"\ncheckers = {{ rs = [{:?}] }}\n\n\
+         [hooks.outside_project_writes]\nenabled = true\nallow = [\"~/.claude/\"]\n",
+        f.checker.to_str().unwrap()
+    ));
+    assert_eq!(
+        f.edit("Write", &f.file(), &[("MODE", "diag")]),
+        (0, String::new())
+    );
+    assert!(!f.ran(), "the malformed feature is off");
+    let preflight = |path: &Path| -> String {
+        let mut child = f
+            .command(
+                &[
+                    "hook-dispatch",
+                    "--host",
+                    "claude",
+                    "--event",
+                    "tool-preflight",
+                ],
+                &[],
+            )
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()
+            .unwrap();
+        {
+            use std::io::Write;
+            let stdin = json!({"hook_event_name": "PreToolUse", "tool_name": "Write",
+                               "tool_input": {"file_path": path, "content": "x\n"},
+                               "cwd": f.proj});
+            child
+                .stdin
+                .take()
+                .unwrap()
+                .write_all(stdin.to_string().as_bytes())
+                .unwrap();
+        }
+        let out = child.wait_with_output().unwrap();
+        assert_eq!(out.status.code(), Some(0), "{out:?}");
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    };
+    let denied = |stdout: &str| stdout.contains("\"permissionDecision\":\"deny\"");
+    let git = preflight(&f.proj.join(".git/config"));
+    assert!(denied(&git), "{git}");
+    let outside = preflight(&f.root.join("outside/x.txt"));
+    assert!(
+        denied(&outside) && outside.contains("outside the project"),
+        "{outside}"
+    );
+    assert_eq!(preflight(&f.proj.join("src/a.rs")), "");
+}
+
 /// SPEC REQ-11 / AC-6 budget: with the setting off the duty returns within 50 ms (median of 21
 /// runs, process start included). Machine-dependent, so run on demand with `--ignored`.
 #[test]

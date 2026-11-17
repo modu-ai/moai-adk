@@ -166,7 +166,7 @@ S1이 맡는 것: AC-1~AC-4, AC-6, AC-7(Claude Code 항목과 Codex·OMP의 "지
 | D18 | checker에 늘 `./<rel>`을 넘김 | 감사 B1(CWE-88) | 상대 경로 그대로 |
 | D19 | checker 출력에서 ANSI escape와 탭 밖의 제어 문자를 지움 | 감사 N1 | 그대로 넘김 |
 | D20 | checker가 스스로 끝나도 그 process group을 SIGKILL | 감사 N2(뒤에 남은 자식과 열린 pipe) | 시간 초과 때만 |
-| D21 | 잠금 파일은 HOME 상태 폴더의 `edit-diagnostics/`(0700, 링크 따라가지 않음); 상태 폴더가 없으면 잠금 없이 돌림 | 감사 N3(공용 임시 폴더 대신) | 시스템 임시 폴더 |
+| D21 | 잠금 파일은 HOME 상태 폴더의 `edit-diagnostics/`(0700, 링크 따라가지 않음); 상태 폴더가 없으면 잠금 없이 돌림. 프로젝트당 빈 파일 하나를 지우지 않고 다시 씀(SPEC-20261117-edit-diagnostics-followups D1: 지우면 경쟁) | 감사 N3(공용 임시 폴더 대신) | 시스템 임시 폴더 |
 | D17 | 생성된 handler의 `timeout`은 `timeout_secs + 5` | host가 MoAI보다 먼저 hook을 끊지 않게 | 고정 10초 |
 
 열린 질문 Q1~Q6은 2026-11-17 리더 결정으로 닫혔어요(D8~D13, 모두 권장안).
@@ -186,7 +186,7 @@ RED는 mutation M1로 보였어요: 새 의무를 엔진에서 빼면 새 시험
   따라가는 `metadata`) KILLED
 - AC-4: met — `failures_are_one_line_and_never_block`, `credential_shaped_diagnostics_are_masked`,
   `one_check_runs_per_project_at_a_time`. mutation M3(시간 초과 때 process group을 죽이지 않음) KILLED, M5(가리기 빼기) KILLED
-- AC-6: met — 꺼진 상태 21회 중앙값 5.88 ms(`budget_the_off_path_is_fast -- --ignored`, debug 빌드, 프로세스 시작 포함);
+- AC-6: met — 꺼진 상태 21회 중앙값 50 ms 안(측정 debug 9–21 ms; `budget_the_off_path_is_fast -- --ignored`, 프로세스 시작 포함);
   `home_isolation_scan` 16
 - AC-7: met(S1 범위) — capabilities에 Claude Code `edit-diagnostics` 항목, Codex·OMP는 `supported: false`;
   `product_cli` 75, `--lib` edit_diagnostics·hook_config·hook_engine·hooks 42
