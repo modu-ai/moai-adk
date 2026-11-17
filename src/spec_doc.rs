@@ -977,9 +977,13 @@ fn absolute(p: &str) -> bool {
     p.starts_with(['/', '\\', '~']) || (b.len() >= 2 && b[0].is_ascii_alphabetic() && b[1] == b':')
 }
 
+/// The numbered lines of one section.
+type Numbered<'a> = Vec<(usize, &'a str)>;
+
 /// Reads and checks the `##` sections from line index `start`.
 fn body(lines: &[&str], start: usize, doc: &mut SpecDoc) {
-    let mut sections: Vec<(String, usize, Vec<(usize, &str)>)> = Vec::new();
+    // (name, heading line, content lines)
+    let mut sections: Vec<(String, usize, Numbered)> = Vec::new();
     let mut current: Option<usize> = None;
     let mut fence: Option<&str> = None;
     for (i, line) in lines.iter().enumerate().skip(start) {

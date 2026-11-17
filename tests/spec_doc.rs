@@ -500,7 +500,10 @@ fn scope_paths_are_relative_and_inside() {
     );
     assert!(kinds.findings.is_empty(), "{:?}", kinds.findings);
     // A tag with paths names only its own; an untagged item is `write`.
-    assert_eq!(kinds.scope.write, vec!["src/a.rs", "src/b.rs", "notes/d.md"]);
+    assert_eq!(
+        kinds.scope.write,
+        vec!["src/a.rs", "src/b.rs", "notes/d.md"]
+    );
     assert_eq!(kinds.scope.read_only, vec!["src/c.rs"]);
     assert_eq!(kinds.scope.forbidden, vec![".gitignore"]);
     // A tag line without paths sets the kind of the items below it.
