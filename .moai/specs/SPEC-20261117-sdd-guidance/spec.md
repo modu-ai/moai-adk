@@ -116,7 +116,9 @@ REQ-3의 "ordering document"는 chain 표(`chains/index.md`)와 RUN·VERIFY·SYN
 
 - AC-1: met — `sdd_guidance` exit 0, 4 passed. RED(지침 전): `the_reference_states_…`(순서 문장 없음),
   `every_place_states_one_order`, `no_card_number_or_ddd_wording_…`(project.md의 DDD) 실패.
-- AC-2: met — 같은 실행.
+- AC-2: met — 같은 실행. 감사 B2 뒤 고침: 처음 증거는 순서 문장만 고정했고 REQ-8(보존 우선 변경)과 `@cc:` 규칙은
+  시험이 없었어요(감사가 문장을 지워도 초록). `preserve_then_change_and_the_cc_rule_are_stated`가 run.md·sdd.md·
+  sync.md·agents/docs.md의 다섯 문장을 고정해요(아래 감사 수리).
 - AC-3: met — `agent_defs_package` exit 0, 17 passed. RED: chain 행 `"PLAN, RUN"`.
 - AC-4: met — 같은 실행; `grep -rn DDD skills agents` → 출력 없음.
 - AC-5: met — 같은 실행. RED: `moai-docs`의 `reads:`에 `internal/sdd` 없음.
@@ -137,3 +139,24 @@ mutation(커밋 뒤, 셋 다 되돌린 뒤 `git status` 비어 있음): 빌드 c
 충돌해요(같은 방법).
 
 실행 안 함: 전체 `cargo test`, Python 전체, 실제 호스트에서 이 지침대로 PLAN→…→AUDIT를 도는 일, Linux·Windows.
+
+### 감사 수리 (2026-11-17 09:30Z–09:35Z)
+
+독립 감사(head `3223cc9f01`, 09:21:50Z–09:29:13Z)가 FAIL이었어요. B1: tip `25881165be`와
+`source-manifest.json`·`tests/agent_defs_package.rs`가 충돌. B2: 두 사용자 규칙(보존 우선 변경의 특성화 시험
+먼저, 에이전트는 `@cc:`를 스스로 더하지 않음)을 고정하는 시험이 없음(감사의 S1–S3 문장 삭제가 모두 초록).
+N1: 카드 연결 명령이 생기면 "planned"가 남지 않게. N4: `moai spec check (<id> | --all)`.
+
+커밋: `3223cc9f01` 위에 `60d66ed95b`(tip 병합: `agent_defs_package.rs`는 두 쪽 항목 `sdd`와 `build-folder`를 모두
+남기고, manifest는 `source_manifest.py write` 뒤 `check` 0) → `e60b25eeb4`(B2·N1·N4) → `084054f0dd`(새 시험
+`rustfmt`) → 이 Result.
+
+- B2 증거: 새 시험 `preserve_then_change_and_the_cc_rule_are_stated`. 수리 커밋 뒤 S1(run.md 문장 삭제)·S2(sdd.md
+  "Agents never add them on their own" 삭제)·S3(agents/docs.md "never add one" 삭제) 모두 그 시험 실패(exit 101),
+  되돌린 뒤 `git status` 비어 있음.
+- N1: `moai card spec --help`가 성공하는 빌드에서는 그 줄에 "planned"가 있으면 실패하게 바꿨어요. 이 기반에는 그
+  명령이 없어(exit 2) "있을 때" 쪽은 실행되지 않았어요(not_run) — 카드 연결 변경이 병합된 트리에서 돌아요.
+- 다시 돌린 검사: `--bin moai` 27, `sdd_guidance` 5, `agent_defs_package` 18, `update_route` 8,
+  `mode_workflow_steps` 42, `core_rules_2876` 4, `product_cli` 75 — 모두 exit 0; `cargo fmt --check` 0; clippy 0;
+  Python 85개 OK; manifest `check` 0; `package-inspect skills/moai` exit 0, 65,536바이트 넘는 파일 0;
+  `moai spec check --all` exit 0(SPEC 5개 오류 0·경고 0).
