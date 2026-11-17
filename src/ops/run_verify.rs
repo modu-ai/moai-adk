@@ -20,6 +20,10 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         return Err("unsupported protocol_version; supported: 1".into());
     }
     let current = moai_cli::plan::current_revision(&args.project)?;
-    serde_json::to_value(moai_cli::run::run_verify(&args.project, &request, &current)?)
-        .map_err(|_| "encode failed".into())
+    serde_json::to_value(moai_cli::run::run_verify(
+        &args.project,
+        &request,
+        &current,
+    )?)
+    .map_err(|_| "encode failed".into())
 }

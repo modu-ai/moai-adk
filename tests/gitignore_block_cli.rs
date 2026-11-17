@@ -269,20 +269,129 @@ fn the_personal_file_is_listed_only_when_it_is_ignored() {
     }
 }
 
+/// SPEC-20261117-sdd-foundation REQ-3: every project keeps its SPECs in git, with or without
+/// GitHub Issues (user decision 2026-11-17 replaces decision 6892663669 "Issues only").
 #[test]
-fn specs_stay_in_git_only_for_a_project_without_github_issues() {
-    for (issues, kept) in [(None, true), (Some(false), true), (Some(true), false)] {
+fn specs_stay_in_git_for_every_project() {
+    for issues in [None, Some(false), Some(true)] {
         let fx = Fx::new(issues);
         fx.apply_ok("none");
-        assert_eq!(
+        assert!(
             !fx.ignored(".moai-cli/specs/SPEC-1/spec.md"),
-            kept,
+            "github_issues {issues:?}:\n{}",
+            fx.ignore()
+        );
+        assert!(
+            fx.ignore().contains("!.moai-cli/specs/\n"),
             "github_issues {issues:?}:\n{}",
             fx.ignore()
         );
         // The rest of the allow-list does not move with the setting.
         assert!(!fx.ignored(".moai-cli/decisions/D-1.md"), "{issues:?}");
         assert!(fx.ignored(".moai-cli/state/lane.json"), "{issues:?}");
+    }
+}
+
+/// SPEC-20261117-sdd-foundation REQ-4: a project with GitHub Issues whose block was written
+/// before every project kept `specs/` gets the line as a `merge`, and nothing after that.
+#[test]
+fn an_issue_project_block_without_specs_gets_the_line_as_a_merge() {
+    let fx = Fx::new(Some(true));
+    fx.apply_ok("none");
+    let full = fx.ignore();
+    let old = full.replace("!.moai-cli/specs/\n", "");
+    assert_ne!(old, full, "the block lists specs/:\n{full}");
+    fs::write(fx.root.join(".gitignore"), &old).unwrap();
+    let path = fx.root.join(".moai-cli/manifests/generation.json");
+    let mut manifest = fx.manifest();
+    for file in manifest["owned_files"].as_array_mut().unwrap() {
+        if file["path"] == ".gitignore" {
+            file["baseline_sha256"] = json!(sha(old.as_bytes()));
+        }
+    }
+    fs::write(&path, serde_json::to_vec_pretty(&manifest).unwrap()).unwrap();
+    assert!(fx.ignored(".moai-cli/specs/SPEC-1/spec.md"), "{old}");
+
+    let plan = fx.plan("none");
+    let row = Fx::ignore_row(&plan);
+    assert_eq!(row["action"], "merge", "{row}");
+    let detail = row["detail"].as_str().unwrap();
+    for line in [
+        "managed block lines: 1 added, 0 removed",
+        "+ !.moai-cli/specs/",
+    ] {
+        assert!(detail.lines().any(|l| l == line), "{line:?} in:\n{detail}");
+    }
+    assert_eq!(fx.ignore(), old, "the preview wrote");
+
+    fx.apply_ok("none");
+    assert_eq!(fx.ignore(), full);
+    assert!(
+        !fx.ignored(".moai-cli/specs/SPEC-1/spec.md"),
+        "{}",
+        fx.ignore()
+    );
+    let again = fx.plan("none");
+    assert_eq!(Fx::ignore_row(&again)["action"], "unchanged", "{again}");
+}
+
+/// SPEC-20261117-sdd-foundation REQ-7, REQ-8, REQ-9: this repository's own `.gitignore`, read
+/// by git in a temporary repository without global rules, keeps the SPECs in git, ignores the
+/// rest of the root `.moai/` and every `.moai/` below the root, and ignores credential and
+/// secret-shaped files even under `.moai/specs/`.
+#[test]
+fn the_repository_gitignore_tracks_specs_and_ignores_the_rest() {
+    let tmp = TempDir::new().unwrap();
+    let root = fs::canonicalize(tmp.path()).unwrap();
+    git_ok(&root, &["init", "-q", "-b", "main"]);
+    // The one named file is compiled in, so a change to it rebuilds this test.
+    fs::write(root.join(".gitignore"), include_str!("../.gitignore")).unwrap();
+    let ignored = |rel: &str| {
+        git_raw(
+            &root,
+            &[
+                "-c",
+                "core.excludesFile=/dev/null",
+                "check-ignore",
+                "-q",
+                "--no-index",
+                rel,
+            ],
+        )
+        .success
+    };
+    for rel in [
+        ".moai/specs/SPEC-x/spec.md",
+        ".moai/specs/SPEC-x/notes/design.md",
+        ".moai/specs/README.md",
+    ] {
+        assert!(!ignored(rel), "{rel} is ignored");
+    }
+    for rel in [
+        ".moai/backups/x",
+        ".moai/logs/run.log",
+        ".moai/cards-pending/plan.md",
+        ".moai/issue-archive/x.json",
+        ".moai/docs/a.md",
+        ".moai/manifests/m.json",
+        ".moai/reports/plan-audit/a.md",
+        ".moai/project.yaml",
+        ".moai/state/s.json",
+        ".moai/specs.md",
+        "sub/.moai/x",
+        "a/b/.moai/specs/SPEC-x/spec.md",
+        ".moai/specs/SPEC-x/credentials.yaml",
+        ".moai/specs/SPEC-x/github.credentials",
+        ".moai/specs/SPEC-x/.env",
+        ".moai/specs/SPEC-x/.env.local",
+        ".moai/specs/.env",
+        ".moai/specs/SPEC-x/deploy.key",
+        ".moai/specs/SPEC-x/id_rsa",
+        ".moai/specs/SPEC-x/id_rsa.pub",
+        ".moai/specs/SPEC-x/secrets.yaml",
+        ".moai/specs/SPEC-x/deep/secrets.json",
+    ] {
+        assert!(ignored(rel), "{rel} is not ignored");
     }
 }
 
@@ -743,7 +852,7 @@ fn what_git_tracks_in_the_earlier_folder_keeps_its_place_in_the_new_one() {
     let plan = fx.plan("none");
     let row = Fx::ignore_row(&plan);
     let detail = row["detail"].as_str().unwrap();
-    for name in ["specs/", "state/", "evidence/"] {
+    for name in ["state/", "evidence/"] {
         let note = format!(
             "kept because git tracks .moai-cli/{name}, which the update moves to .moai/{name}"
         );
@@ -753,6 +862,15 @@ fn what_git_tracks_in_the_earlier_folder_keeps_its_place_in_the_new_one() {
             "{name}:\n{detail}"
         );
     }
+    // `specs/` is on the fixed list for every project, so it needs no "kept because" note.
+    assert!(
+        detail.lines().any(|l| l == "+ !.moai/specs/"),
+        "specs/:\n{detail}"
+    );
+    assert!(
+        !detail.contains("kept because git tracks .moai-cli/specs/"),
+        "specs/:\n{detail}"
+    );
     fx.apply_ok("none");
     git_ok(&fx.root, &["add", "-A"]);
     let listed = git(

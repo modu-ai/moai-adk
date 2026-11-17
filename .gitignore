@@ -347,13 +347,24 @@ dist-ssr/
 
 # ===========================================
 # RC1 development repository policy (user decision, 2026-11-08)
-# .claude/ and .moai/ are local installed copies, not product source.
+# .claude/ and .moai/ are local installed copies, not product source, except
+# .moai/specs/: the SPECs are shared project files (user decision 2026-11-17, below).
 # AGENTS.md and AGENTS.local.md are tracked: hosts read AGENTS.md only inside the
 # session's own working tree, so a lane worktree needs the tracked copy (user
 # decision 2026-11-13, Issue #2667; replaces the per-machine rule of 2026-11-08).
 # ===========================================
 /.claude/
-/.moai/
+# SPECs are shared project files and stay in git (user decision 2026-11-17, SDD always;
+# SPEC-20261117-sdd-foundation). git cannot re-include a child of an excluded folder, so the
+# folder's contents are excluded instead of the folder itself, and `specs/` is re-included.
+/.moai/*
+!/.moai/specs/
+# Secret-shaped files never ride along with a SPEC (credentials.yaml and *.credentials are
+# ignored at any depth of .moai/ above; .env and .env.* everywhere).
+/.moai/specs/**/.env*
+/.moai/specs/**/*.key
+/.moai/specs/**/id_rsa*
+/.moai/specs/**/secrets.*
 # Rust build output of the root package (isolated builds use CARGO_TARGET_DIR)
 /target/
 # Lane worktrees for every host (user decision 2026-11-08): inside the primary checkout so the Go hook allows
@@ -362,6 +373,7 @@ dist-ssr/
 # Apply receipts and their before-bytes stay local (#2590, docs/rust-product-path.md "Per-file receipts
 # and recovery"); the profile baseline .moai-cli/manifests/profile-baseline.json is tracked with project.yaml
 /.moai-cli/receipts/
-# Go-generation MoAI state at any depth (user instruction 2026-11-08; the root entries above cover the primary)
+# Go-generation MoAI state at any depth (user instruction 2026-11-08; the root entries above cover the primary).
+# The `.moai/` line matches below the root only (`*/**/`), so it does not undo `!/.moai/specs/` above.
 .claude/
-.moai/
+*/**/.moai/

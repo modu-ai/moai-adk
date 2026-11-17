@@ -93,10 +93,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             moai_cli::lane_reset::parse_observations(&text)?
         }
     };
-    let now_text = args
-        .now
-        .clone()
-        .unwrap_or_else(moai_cli::audit::utc_now);
+    let now_text = args.now.clone().unwrap_or_else(moai_cli::audit::utc_now);
     let now = moai_cli::forge::policy::parse_utc(&now_text)
         .ok_or_else(|| format!("invalid --now `{now_text}`: expected YYYY-MM-DDTHH:MM:SSZ"))?;
     if let Some(path) = &args.session_cwd {

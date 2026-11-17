@@ -27,5 +27,9 @@ pub struct Args {
 pub const OPERATION: &str = "home_install.revert";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
-    moai_cli::home_install_apply::revert(&args.home, args.stamp.as_deref(), &args.permission_reference)
+    moai_cli::home_install_apply::revert(
+        &args.home,
+        args.stamp.as_deref(),
+        &args.permission_reference,
+    )
 }

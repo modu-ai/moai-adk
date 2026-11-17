@@ -15,8 +15,7 @@ pub struct Args {
 pub const OPERATION: &str = "project_skill.revert";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
-    let mut request =
-        super::super::input::<moai_cli::project_skills::ProjectSkillRevertRequest>()?;
+    let mut request = super::super::input::<moai_cli::project_skills::ProjectSkillRevertRequest>()?;
     request.project_root = args.project;
     serde_json::to_value(moai_cli::project_skills::project_skill_revert(&request)?)
         .map_err(|_| "encode failed".into())

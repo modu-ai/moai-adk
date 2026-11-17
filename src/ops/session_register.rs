@@ -60,13 +60,9 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         .ok_or("PROJECT is required (only --show may leave it out)")?;
     let instance = args.instance.as_deref();
     match (args.release, instance) {
-        (true, Some(i)) => moai_cli::lane_registry::release(
-            &project,
-            &args.name,
-            i,
-            args.by.as_deref(),
-            now,
-        ),
+        (true, Some(i)) => {
+            moai_cli::lane_registry::release(&project, &args.name, i, args.by.as_deref(), now)
+        }
         _ => moai_cli::lane_registry::register(
             &project,
             &args.name,

@@ -332,9 +332,12 @@ pub fn is_generated_local(bytes: &[u8]) -> bool {
 
 /// What the project's state folder keeps in git (#3009 S3b, design §2): the profile, the
 /// generation manifests and workflows this tool writes into it today, the two generation
-/// markers (a fresh checkout classifies the folder by them), and the team's own `config/`,
-/// `decisions/` and `docs/`. Everything else in the folder is machine output and is ignored.
-const STATE_KEPT: [&str; 8] = [
+/// markers (a fresh checkout classifies the folder by them), the team's own `config/`,
+/// `decisions/` and `docs/`, and the SPECs in `specs/` for every project, with or without GitHub
+/// Issues (user decision 2026-11-17, SDD always; replaces decision 6892663669). `specs/` stays
+/// last so a block written before that decision for a project without Issues keeps its bytes.
+/// Everything else in the folder is machine output and is ignored.
+const STATE_KEPT: [&str; 9] = [
     "project.yaml",
     "moai-cli.json",
     "moai.json",
@@ -343,6 +346,7 @@ const STATE_KEPT: [&str; 8] = [
     "config/",
     "decisions/",
     "docs/",
+    "specs/",
 ];
 
 /// The `kind` an owned `.gitignore` block is recorded with: whether it lists `AGENTS.local.md`
@@ -352,8 +356,7 @@ const IGNORE_KIND_STATE_ONLY: &str = "agents:ignore-state";
 
 /// The managed `.gitignore` block (#3009 S3b, leader decision A): the receipts line, the
 /// state-folder allow-list, and `AGENTS.local.md` only when `list_local` (the personal file is
-/// `ignored`, the behaviour before S3b). `specs/` is kept only for a project without GitHub
-/// Issues (decision 6892663669: with a tracker the spec lives in the Issue, so no local copy).
+/// `ignored`, the behaviour before S3b).
 ///
 /// `allow` is the list of `!` paths the block carries, in order (see [`ignore_block`]).
 fn render_ignore(root: &Path, list_local: bool, allow: &[String]) -> String {
@@ -421,17 +424,9 @@ struct IgnoreBlock {
 ///   take the old paths out of git and leave the new ones ignored.
 ///
 /// Plan and apply both call this, so the preview and the write cannot differ.
-fn ignore_block(
-    root: &Path,
-    github_issues: Option<bool>,
-    list_local: bool,
-    ignore_text: Option<&str>,
-) -> Result<IgnoreBlock> {
+fn ignore_block(root: &Path, list_local: bool, ignore_text: Option<&str>) -> Result<IgnoreBlock> {
     let state = state_root::dir(root);
-    let mut kept: Vec<String> = STATE_KEPT.iter().map(|k| format!("{state}/{k}")).collect();
-    if github_issues != Some(true) {
-        kept.push(format!("{state}/specs/"));
-    }
+    let kept: Vec<String> = STATE_KEPT.iter().map(|k| format!("{state}/{k}")).collect();
     let user = ignore_text.map(outside_block).unwrap_or_default();
     let mut notes: Vec<String> = Vec::new();
     // Names git tracks in the earlier folder, and the path each takes in this one. A name the
@@ -1315,7 +1310,7 @@ pub(crate) fn agents_plan_for(
         let list_local = lists_local(&request, ignore_text);
         let user_rule = request.local_file == "ignored" && !list_local;
         let (begin, end) = markers(IGNORE_SECTION, "hash");
-        let block = ignore_block(&root, profile.github_issues, list_local, ignore_text)?;
+        let block = ignore_block(&root, list_local, ignore_text)?;
         let rendered = block.rendered;
         let mut plan = section_plan(
             ".gitignore",
@@ -1617,8 +1612,7 @@ pub(crate) fn agents_apply_amended_for(
                 let (b, e) = markers(IGNORE_SECTION, "hash");
                 let before_text = before.as_deref().and_then(|x| std::str::from_utf8(x).ok());
                 let list_local = lists_local(&p.request, before_text);
-                let rendered =
-                    ignore_block(&root, profile.github_issues, list_local, before_text)?.rendered;
+                let rendered = ignore_block(&root, list_local, before_text)?.rendered;
                 let out = splice(before.as_deref(), &b, &e, &rendered, "")?;
                 assert_single_block(&out, &b, &e, &rendered)?;
                 (out, Some(IGNORE_SECTION))

@@ -11,12 +11,13 @@
 //! | --- | --- | --- |
 //! | `what` | text, at most 500 bytes | `invalid_request`, `what_too_long` |
 //! | `options` | 2 to 8 | `options_count` |
-//! | option `value` | a name of 1 to 64 bytes on one line with at least one letter; not `none_of_these` (any case), which the provider slice adds itself | `option_value`, `option_reserved` |
-//! | option `description` | required text, at most 300 bytes | `description_missing`, `description_too_long` |
-//! | `undo` | required, one line, at most 200 bytes: how the choice is reversed | `undo_missing`, `undo_invalid` |
+//! | option `value` | a name of 1 to 64 bytes on one line with at least one letter; no bidi character; not `none_of_these` (any case, compared after the normaliser of slice V2, so a character without width, full-width letters or `ſ` do not hide it), which the provider slice adds itself | `option_value`, `bidi_character`, `option_reserved` |
+//! | option `description` | required text (absent counts as empty, V1 audit N10), at most 300 bytes | `description_missing`, `description_too_long` |
+//! | `undo` | required, one line, at most 200 bytes: how the choice is reversed. Absent, `null` or blank is missing; a line feed, carriage return, vertical tab, form feed, U+0085, U+2028 or U+2029 is a second line (V1 audit N7) | `undo_missing`, `undo_multiline`, `undo_too_long`, `undo_invalid` |
 //! | `tier` | required, 1 (undone inside the same pull request) or 2 (seen by others before it is undone) | `tier_missing`, `tier_invalid` |
-//! | `evidence` | an object of 1 to 8 named fields, names `[a-z][a-z0-9_]{0,31}`, each value text of at most 4 KiB, all values together at most 16 KiB; a name given twice is refused | `evidence_count`, `evidence_name`, `evidence_value`, `evidence_field_too_large`, `evidence_too_large` |
+//! | `evidence` | an object of 1 to 8 named fields, names `[a-z][a-z0-9_]{0,31}`, each value text of at most 4 KiB, all values together at most 16 KiB; a name given twice is refused (V1 audit N6) | `evidence_count`, `evidence_name`, `evidence_value`, `evidence_field_too_large`, `evidence_too_large`, `evidence_duplicate` |
 
+use super::normalise::normalise;
 use super::Refusal;
 use serde::{Deserialize, Deserializer};
 use std::collections::BTreeMap;
@@ -48,8 +49,19 @@ pub const RESERVED_VALUE: &str = "none_of_these";
 #[serde(deny_unknown_fields)]
 pub struct Choice {
     pub value: String,
+    /// Absent reads as empty, so it has the code of an empty one (`description_missing`).
+    #[serde(default)]
     pub description: String,
 }
+
+/// The message of the evidence reader for a name given twice; the parser maps it to its own
+/// code (`evidence_duplicate`).
+const NAMED_TWICE: &str = "an evidence field is named twice";
+
+/// The line terminators that make `undo` more than one line.
+const LINE_BREAKS: [char; 7] = [
+    '\n', '\r', '\u{b}', '\u{c}', '\u{85}', '\u{2028}', '\u{2029}',
+];
 
 #[derive(Deserialize, Debug, Clone, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -95,7 +107,7 @@ fn distinct_fields<'de, D: Deserializer<'de>>(d: D) -> Result<BTreeMap<String, S
             let mut out = BTreeMap::new();
             while let Some((name, value)) = map.next_entry::<String, String>()? {
                 if out.insert(name, value).is_some() {
-                    return Err(serde::de::Error::custom("an evidence field is named twice"));
+                    return Err(serde::de::Error::custom(NAMED_TWICE));
                 }
             }
             Ok(out)
@@ -130,6 +142,7 @@ fn is_field_name(s: &str) -> bool {
 fn v2_rule(request: &Request) -> Option<(&'static str, &'static str)> {
     let options = &request.options;
     let evidence = &request.evidence;
+    let undo = request.undo.as_deref();
     let rule = if request.what.len() > WHAT_MAX {
         ("what_too_long", "`what` is at most 500 bytes")
     } else if !(OPTIONS_MIN..=OPTIONS_MAX).contains(&options.len()) {
@@ -143,9 +156,14 @@ fn v2_rule(request: &Request) -> Option<(&'static str, &'static str)> {
             "an option value is a meaningful name: 1 to 64 bytes on one line, without spaces \
              around it, with at least one letter",
         )
+    } else if let Some(code) = options.iter().find_map(|o| normalise(&o.value).err()) {
+        (
+            code,
+            "an option value holds a bidirectional control character",
+        )
     } else if options
         .iter()
-        .any(|o| o.value.eq_ignore_ascii_case(RESERVED_VALUE))
+        .any(|o| normalise(&o.value).is_ok_and(|value| value.eq_ignore_ascii_case(RESERVED_VALUE)))
     {
         (
             "option_reserved",
@@ -161,20 +179,17 @@ fn v2_rule(request: &Request) -> Option<(&'static str, &'static str)> {
             "description_too_long",
             "an option's description is at most 300 bytes",
         )
-    } else if request.undo.is_none() {
+    } else if undo.is_none_or(|u| u.trim().is_empty()) {
         (
             "undo_missing",
             "`undo` is required: one line saying how the choice is reversed",
         )
-    } else if !request
-        .undo
-        .as_deref()
-        .is_some_and(|u| is_text(u) && !u.contains('\n') && u.len() <= UNDO_MAX)
-    {
-        (
-            "undo_invalid",
-            "`undo` is one line of text, not empty, at most 200 bytes",
-        )
+    } else if undo.is_some_and(|u| u.contains(LINE_BREAKS)) {
+        ("undo_multiline", "`undo` is one line")
+    } else if undo.is_some_and(|u| u.len() > UNDO_MAX) {
+        ("undo_too_long", "`undo` is at most 200 bytes")
+    } else if !undo.is_some_and(is_text) {
+        ("undo_invalid", "`undo` is text without control characters")
     } else if request.tier.is_none() {
         ("tier_missing", "`tier` is required: 1 or 2")
     } else if !matches!(request.tier, Some(1 | 2)) {
@@ -217,7 +232,14 @@ fn v2_rule(request: &Request) -> Option<(&'static str, &'static str)> {
 /// The request in `text` (one JSON object). The refusal names the rule that failed, never a
 /// value of the request.
 pub fn parse(text: &str) -> Result<Request, Refusal> {
-    let request: Request = serde_json::from_str(text).map_err(|_| {
+    let request: Request = serde_json::from_str(text).map_err(|e| {
+        if e.to_string().starts_with(NAMED_TWICE) {
+            return Refusal::new(
+                "evidence_duplicate",
+                "invalid request: an evidence field name is given twice: refused, since the \
+                 last one would replace the first",
+            );
+        }
         invalid(
             "one JSON object with what, options, default, reversible, category, deadline, \
              undo, tier, evidence (an object of named text fields) and optionally card; no \
@@ -390,6 +412,34 @@ mod tests {
         }
     }
 
+    /// Slice V2: the reserved value is compared after the normaliser, so a character without
+    /// width, full-width letters or the long s do not hide it; a bidi character in a value is
+    /// refused with its own code.
+    #[test]
+    fn the_reserved_value_is_compared_after_the_normaliser() {
+        let wide: String = "none"
+            .chars()
+            .map(|c| char::from_u32(c as u32 + 0xfee0).unwrap())
+            .collect();
+        for hidden in [
+            "none\u{200b}_of_these".to_string(),
+            "\u{feff}none_of_these".to_string(),
+            format!("{wide}_of_these"),
+            "none_of_the\u{17f}e".to_string(),
+            "none_of_these\u{fe0f}".to_string(),
+        ] {
+            assert_eq!(
+                code(|v| v["options"][1]["value"] = json!(hidden)),
+                "option_reserved",
+                "{hidden}"
+            );
+        }
+        assert_eq!(
+            code(|v| v["options"][1]["value"] = json!("none\u{202e}_of_these")),
+            "bidi_character"
+        );
+    }
+
     /// A description is required, at most 300 bytes: 300 accepted, 301 refused.
     #[test]
     fn a_description_is_required_and_short() {
@@ -401,6 +451,7 @@ mod tests {
                 "{empty:?}"
             );
         }
+        // V1 audit N10: an absent description has the same code as an empty one.
         assert_eq!(
             code(|v| {
                 v["options"][1]
@@ -408,6 +459,10 @@ mod tests {
                     .unwrap()
                     .remove("description");
             }),
+            "description_missing"
+        );
+        assert_eq!(
+            code(|v| v["options"][1]["description"] = Value::Null),
             "invalid_request"
         );
         assert_eq!(
@@ -436,7 +491,8 @@ mod tests {
         );
     }
 
-    /// `undo`: required, one line of text, at most 200 bytes.
+    /// `undo`: required, one line of text, at most 200 bytes. V1 audit N7: each broken rule
+    /// has its own code; every Unicode line terminator counts as a second line.
     #[test]
     fn undo_is_one_required_line() {
         assert_eq!(UNDO_MAX, 200);
@@ -445,11 +501,41 @@ mod tests {
         });
         assert_eq!(missing, "undo_missing");
         assert_eq!(code(|v| v["undo"] = Value::Null), "undo_missing");
-        for bad in ["", "   ", "two\nlines", "cr\rhere", "esc\u{1b}[0m"] {
-            assert_eq!(code(|v| v["undo"] = json!(bad)), "undo_invalid", "{bad:?}");
+        for blank in ["", "   ", "\t"] {
+            assert_eq!(
+                code(|v| v["undo"] = json!(blank)),
+                "undo_missing",
+                "{blank:?}"
+            );
         }
+        for two in [
+            "two\nlines",
+            "cr\rhere",
+            "crlf\r\nhere",
+            "vt\u{b}here",
+            "ff\u{c}here",
+            "nel\u{85}here",
+            "ls\u{2028}here",
+            "ps\u{2029}here",
+            "end\n",
+        ] {
+            assert_eq!(
+                code(|v| v["undo"] = json!(two)),
+                "undo_multiline",
+                "{two:?}"
+            );
+        }
+        assert_eq!(code(|v| v["undo"] = json!("esc\u{1b}[0m")), "undo_invalid");
         assert_eq!(code(|v| v["undo"] = json!("u".repeat(200))), "parsed");
-        assert_eq!(code(|v| v["undo"] = json!("u".repeat(201))), "undo_invalid");
+        assert_eq!(
+            code(|v| v["undo"] = json!("u".repeat(201))),
+            "undo_too_long"
+        );
+        // A long text on two lines: the line rule answers first.
+        assert_eq!(
+            code(|v| v["undo"] = json!(format!("{}\n", "u".repeat(201)))),
+            "undo_multiline"
+        );
         assert_eq!(code(|v| v["undo"] = json!(1)), "invalid_request");
     }
 
@@ -496,11 +582,19 @@ mod tests {
         );
         assert_eq!(code(|v| v["evidence"] = json!({"a": 1})), "invalid_request");
         assert_eq!(code(|v| v["evidence"] = json!(["a"])), "invalid_request");
-        // A name given twice would drop a field: refused.
-        let text = request_json(|_| {})
-            .replace(r#""evidence":{"ci":"#, r#""evidence":{"ci":"first","ci":"#);
-        assert!(text.contains(r#""ci":"first","ci":"#), "{text}");
-        assert_eq!(parse(&text).unwrap_err().code, "invalid_request");
+        // A name given twice would drop a field: refused with its own code (V1 audit N6),
+        // and the reason quotes neither the name nor a value.
+        let text = request_json(|_| {}).replace(
+            r#""evidence":{"ci":"#,
+            r#""evidence":{"ci":"MARKER_FIRST","ci":"#,
+        );
+        assert!(text.contains(r#""ci":"MARKER_FIRST","ci":"#), "{text}");
+        let r = parse(&text).unwrap_err();
+        assert_eq!(r.code, "evidence_duplicate");
+        assert!(!r.reason.contains("MARKER") && !r.reason.contains("\"ci\""));
+        // A field named twice elsewhere in the text is not this rule.
+        let elsewhere = request_json(|_| {}).replace(r#""tier":1"#, r#""tier":1,"tier":1"#);
+        assert_eq!(parse(&elsewhere).unwrap_err().code, "invalid_request");
     }
 
     #[test]

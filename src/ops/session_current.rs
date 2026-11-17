@@ -13,5 +13,7 @@ pub struct Args {}
 pub const OPERATION: &str = "session.current";
 
 pub fn run(_args: Args) -> Result<serde_json::Value, String> {
-    Ok(moai_cli::session_current::resolve(|name| std::env::var(name).ok()))
+    Ok(moai_cli::session_current::resolve(|name| {
+        std::env::var(name).ok()
+    }))
 }
