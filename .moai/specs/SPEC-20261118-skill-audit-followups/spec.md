@@ -42,3 +42,10 @@ holds it (SDD-6 audit N1).
 1. Tests first (RED for REQ-1 and REQ-2; REQ-3 is already written, so its test pins it).
 2. One sentence each in `internal/sdd` and `workflows/audit.md`; manifest write and check.
 3. Checks and the trailers from `moai trailers --spec`.
+
+## Result
+
+- AC-1: met — `tests/sdd_guidance.rs:24` `the_reference_states_the_rules_the_user_decided` (phrases at :58); sentence at `skills/moai/references/internal/sdd.md:16`.
+- AC-2: met — `tests/mode_workflow_steps.rs:745` `the_auditor_works_outside_the_implementers_worktree`; sentence at `skills/moai/workflows/audit.md:49`.
+- AC-3: met — `tests/sdd_guidance.rs:69` `the_trailer_reference_names_the_branch_flag_for_ci`; sentence at `skills/moai/references/internal/commit-trailers.md:17` (unchanged).
+- N2 (a folder in no git worktree) is left to `internal/commit-trailers` item 2.
