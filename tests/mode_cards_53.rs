@@ -499,9 +499,9 @@ fn the_round_keeps_audits_with_the_leader_and_moves_on_from_a_card_in_review() {
 
 /// N3, user decision 2026-11-17 ("CI 성공 + PASS"), which replaces user decisions 6877084436
 /// and 6878414880: a merge needs the head's GitHub `ci` success and, at audit-tier 1 or 2, an
-/// independent PASS; a `local-check:` line is optional and never replaces `ci`. Rule G5 of
-/// `moai gate-check` still reads the local-check line until card C-84 changes it; both modes
-/// say so instead of stating the old rule.
+/// independent PASS; a `local-check:` line is optional and never replaces `ci`. Since card C-84
+/// rule G5 of `moai gate-check` reads the exact head's `ci`; both modes say so (was: "until
+/// card C-84 changes G5 … still posted").
 #[test]
 fn a_merge_needs_ci_success_and_a_pass_and_a_local_check_line_never_replaces_ci() {
     let train = step("mode-leader.md", "merge-train");
@@ -515,8 +515,9 @@ fn a_merge_needs_ci_success_and_a_pass_and_a_local_check_line_never_replaces_ci(
          every tier (leader decision 2026-11-17).",
         "A `local-check:` line is optional and never replaces `ci` (user decision 2026-11-17 \"CI \
          성공 + PASS\", which replaces user decisions 6877084436 and 6878414880)",
-        "Until card C-84 changes rule G5, `moai gate-check` still stops on a missing local-check \
-         line",
+        // C-84 landed (was: "Until card C-84 changes rule G5, … still stops on a missing
+        // local-check line").
+        "`moai gate-check` rule G5 reads that `ci` result on the exact head (card C-84).",
     ] {
         assert!(train.contains(p), "mode-leader merge-train must say `{p}`");
     }
@@ -532,11 +533,14 @@ fn a_merge_needs_ci_success_and_a_pass_and_a_local_check_line_never_replaces_ci(
          2026-11-17)"
     ));
     let gate = step("mode-agent.md", "pr-gate");
-    // N-r2: the same words as mode-leader.
+    // N-r2, C-84: the same rule as mode-leader — the line is optional, G5 reads the head's `ci`.
     assert!(gate.contains(
-        "until card C-84 changes G5, `moai gate-check` stops on a missing local-check line, so \
-         it is still posted."
+        "as a pull request comment: optional evidence; `moai gate-check` (G5) reads the head's \
+         `ci` (C-84)."
     ));
+    for text in [workflow("mode-agent.md"), workflow("mode-leader.md")] {
+        assert!(!text.contains("stops on a missing local-check line"));
+    }
     // N-r3: the lane's tier-0 sentence, whole.
     assert!(gate.contains(
         "0 for documents, wording and tests only, which merge on the `ci` success alone when no \

@@ -52,10 +52,10 @@ fn passing() -> Value {
         "head": H,
         "comments": [claim(100, "agent-10", H), verdict(200, "agent-10", H, "PASS"), lc()],
         "checks": [
-            {"name": "ci", "conclusion": "success"},
-            {"name": "ci / linux-x86_64", "conclusion": "success"},
-            {"name": "windows-build", "conclusion": "skipped"},
-            {"name": "Vercel Preview Comments", "conclusion": "failure"}
+            {"name": "ci", "conclusion": "success", "head_sha": H},
+            {"name": "ci / linux-x86_64", "conclusion": "success", "head_sha": H},
+            {"name": "windows-build", "conclusion": "skipped", "head_sha": H},
+            {"name": "Vercel Preview Comments", "conclusion": "failure", "head_sha": H}
         ],
         "pr_files": ["src/a.rs", doc()],
         "tip_files_since_verdict_base": ["src/b.rs"],
@@ -89,11 +89,14 @@ fn a_complete_snapshot_passes_and_names_its_base() {
 }
 
 /// Issue #3052: the verdict and the local check count only when a repository member wrote
-/// them. Each of the two, written by someone else, stops the gate and is named in the answer;
-/// the same comments from an owner, a member or a collaborator pass.
+/// them. Each of the two, written by someone else, is named in the answer; the verdict then
+/// stops the gate, while the local check — optional evidence since C-84, G5 reads `ci` — is
+/// only dropped. The same comments from an owner, a member or a collaborator pass.
 #[test]
 fn a_verdict_or_local_check_from_a_non_member_does_not_pass_the_gate() {
     for index in [1, 2] {
+        // C-84: comment 2 is the local check; without it the gate still passes on `ci`.
+        let stops = index == 1;
         for association in [
             Some("NONE"),
             Some("CONTRIBUTOR"),
@@ -113,7 +116,7 @@ fn a_verdict_or_local_check_from_a_non_member_does_not_pass_the_gate() {
             let v = gate(&s);
             assert_eq!(
                 v["result"]["pass"],
-                json!(false),
+                json!(!stops),
                 "comment {index} {association:?}: {v}"
             );
             assert_eq!(
@@ -310,37 +313,61 @@ fn g4_the_self_audit_checker_must_pass() {
     assert_eq!(stopped(&gate(&s)), (false, "G4".into()));
 }
 
-/// #2906 S5b: the check-run cases that stopped G5 before (no aggregate, a running, skipped or
-/// failed job) no longer stop the merge; `ci_info` names them. Only `windows-build` may be
-/// skipped; unrelated checks are not read.
+/// C-84 (was #2906 S5b "only inform"): the check-run cases that only informed since #2906 S5b
+/// stop G5 again on this head — no aggregate, a running job, a skipped or failed job, a failed
+/// `windows-build` — and `ci_info` still names them. Only `windows-build` may be skipped;
+/// unrelated checks are not read.
 #[test]
-fn g5_check_runs_without_the_aggregate_or_with_a_bad_job_only_inform() {
+fn g5_check_runs_without_the_aggregate_or_with_a_bad_job_stop_it() {
     let mut s = passing();
-    for (checks, info) in [
+    for (checks, info, stops) in [
         (
-            json!([{"name": "ci / linux-x86_64", "conclusion": "success"}]),
+            json!([run("ci / linux-x86_64", Some("success"), H)]),
             "ci=pending",
+            true,
         ),
         (
-            json!([{"name": "ci", "conclusion": "success"}, {"name": "ci / linux-x86_64", "conclusion": null}]),
+            json!([
+                run("ci", Some("success"), H),
+                run("ci / linux-x86_64", None, H)
+            ]),
             "ci=pending",
+            true,
         ),
         (
-            json!([{"name": "ci", "conclusion": "success"}, {"name": "ci / linux-x86_64", "conclusion": "skipped"}]),
+            json!([
+                run("ci", Some("success"), H),
+                run("ci / linux-x86_64", Some("skipped"), H)
+            ]),
             "ci=failure",
+            true,
         ),
         (
-            json!([{"name": "ci", "conclusion": "success"}, {"name": "windows-build", "conclusion": "failure"}]),
+            json!([
+                run("ci", Some("success"), H),
+                run("windows-build", Some("failure"), H)
+            ]),
             "ci=failure",
+            true,
         ),
         (
-            json!([{"name": "ci", "conclusion": "success"}, {"name": "windows-build", "conclusion": "skipped"}, {"name": "lint", "conclusion": "failure"}]),
+            json!([
+                run("ci", Some("success"), H),
+                run("windows-build", Some("skipped"), H),
+                run("lint", Some("failure"), H)
+            ]),
             "ci=success",
+            false,
         ),
     ] {
         s["checks"] = checks;
         let v = gate(&s);
-        assert_eq!(stopped(&v), (true, String::new()), "{v}");
+        let want = if stops {
+            (false, "G5".to_string())
+        } else {
+            (true, String::new())
+        };
+        assert_eq!(stopped(&v), want, "{v}");
         assert_eq!(v["result"]["ci_info"], json!(info), "{v}");
     }
 }
@@ -374,21 +401,26 @@ fn g5_reason(s: &Value) -> String {
     v["result"]["reason"].as_str().unwrap().to_string()
 }
 
-/// #2906 S5b AC21: G5 passes only on a well-formed `local-check:` line for this head whose
-/// result is `pass`; the last such line (highest comment id, last line in it) decides.
+/// C-84 (was #2906 S5b AC21, "the last local-check line for this head decides"): no form of
+/// the `local-check:` line — none, another head's, a fail, a malformed one, a pass, any order —
+/// decides G5. With the head's `ci` success each case passes; without any `ci` each stops G5
+/// as "no `ci` check run". The line's own parsing stays pinned by the unit tests in
+/// `src/gate.rs` (`a_local_check_head_is_exactly_40_lowercase_hex` and the long-form ones).
 #[test]
-fn g5_the_last_local_check_line_for_this_head_decides() {
-    const NONE: &str = "no local-check line for this head";
-    const FAILED: &str = "local-check result=fail on this head";
-    // No line at all, or one for another head.
-    assert!(g5_reason(&with_local_checks(&[])).contains(NONE));
-    assert!(g5_reason(&with_local_checks(&[local_check(300, OTHER, "pass")])).contains(NONE));
-    // A failed run on this head.
-    assert!(g5_reason(&with_local_checks(&[local_check(300, H, "fail")])).contains(FAILED));
-    // Malformed lines count as absent: 39 or 41 hex, uppercase, no `at=`, another command, an
-    // extra field, a bad time, another result word, not at column 0, quoted.
+fn g5_no_local_check_line_decides_it() {
+    let both = |a: &str, b: &str| json!({"id": 300, "author_association": "MEMBER", "body": format!("{}\n{}\n", local_check_line(H, a), local_check_line(H, b))});
     let at = "at=2026-11-14T12:00:00Z";
     let cmd = "cmd=tools/local_check.sh";
+    let mut cases: Vec<Vec<Value>> = vec![
+        vec![],
+        vec![local_check(300, OTHER, "pass")],
+        vec![local_check(300, H, "fail")],
+        vec![local_check(300, H, "pass")],
+        vec![local_check(300, H, "pass"), local_check(310, H, "fail")],
+        vec![local_check(310, H, "fail"), local_check(300, H, "pass")],
+        vec![both("pass", "fail")],
+        vec![both("fail", "pass")],
+    ];
     for line in [
         format!("local-check: head={} result=pass {cmd} {at}", &H[..39]),
         format!("local-check: head={H}1 result=pass {cmd} {at}"),
@@ -411,32 +443,16 @@ fn g5_the_last_local_check_line_for_this_head_decides() {
         format!(" {}", local_check_line(H, "pass")),
         format!("> {}", local_check_line(H, "pass")),
     ] {
-        let s = with_local_checks(&[
-            json!({"id": 300, "author_association": "MEMBER", "body": line.clone()}),
+        cases.push(vec![
+            json!({"id": 300, "author_association": "MEMBER", "body": line}),
         ]);
-        assert!(g5_reason(&s).contains(NONE), "{line}");
     }
-    // The well-formed line passes (N), on any line of a comment.
-    let s = with_local_checks(&[
-        json!({"id": 300, "author_association": "MEMBER", "body": format!("ran it\n\n{}\n", local_check_line(H, "pass"))}),
-    ]);
-    assert_eq!(stopped(&gate(&s)), (true, String::new()), "{}", gate(&s));
-    // The last line for this head decides, across comments and within one.
-    let s = with_local_checks(&[local_check(300, H, "pass"), local_check(310, H, "fail")]);
-    assert!(g5_reason(&s).contains(FAILED));
-    let s = with_local_checks(&[local_check(300, H, "fail"), local_check(310, H, "pass")]);
-    assert_eq!(stopped(&gate(&s)), (true, String::new()), "{}", gate(&s));
-    let both = |a: &str, b: &str| json!({"id": 300, "author_association": "MEMBER", "body": format!("{}\n{}\n", local_check_line(H, a), local_check_line(H, b))});
-    assert!(g5_reason(&with_local_checks(&[both("pass", "fail")])).contains(FAILED));
-    let s = with_local_checks(&[both("fail", "pass")]);
-    assert_eq!(stopped(&gate(&s)), (true, String::new()), "{}", gate(&s));
-    // Comment ids order the lines, not their place in the list.
-    let s = with_local_checks(&[local_check(310, H, "fail"), local_check(300, H, "pass")]);
-    assert!(g5_reason(&s).contains(FAILED));
-    // A line for another head after this head's pass changes nothing.
-    for r in ["pass", "fail"] {
-        let s = with_local_checks(&[local_check(300, H, "pass"), local_check(310, OTHER, r)]);
-        assert_eq!(stopped(&gate(&s)), (true, String::new()), "{}", gate(&s));
+    for extra in cases {
+        let s = with_local_checks(&extra);
+        assert_eq!(stopped(&gate(&s)), (true, String::new()), "{extra:?}");
+        let mut s = s;
+        s["checks"] = json!([]);
+        assert!(g5_reason(&s).contains("no `ci` check run"), "{extra:?}");
     }
 }
 
@@ -497,39 +513,50 @@ fn raw_comment(id: u64, line: &str) -> Value {
     json!({"id": id, "author_association": "MEMBER", "body": line})
 }
 
-const NONE_REASON: &str = "no local-check line for this head";
-const FAILED_REASON: &str = "local-check result=fail on this head";
-
-fn assert_g5_passes(extra: &[Value]) {
-    let s = with_local_checks(extra);
-    assert_eq!(stopped(&gate(&s)), (true, String::new()), "{}", gate(&s));
+/// C-84 (was #3066 P1, where these lines decided G5): G5 ignores the `local-check:` line in
+/// `s` — the snapshot passes with the head's `ci` success and, with no check run, stops G5 as
+/// "no `ci` check run" whatever the line says. The line's parsing (both forms, every edge)
+/// stays pinned by the unit tests in `src/gate.rs`.
+fn g5_ignores(s: &Value) -> bool {
+    assert_eq!(stopped(&gate(s)), (true, String::new()), "{}", gate(s));
+    let mut without = s.clone();
+    without["checks"] = json!([]);
+    assert!(
+        g5_reason(&without).contains("no `ci` check run"),
+        "{without}"
+    );
+    true
 }
 
-/// #3066 P1: the longer line (base, tree, script, rustc, run) is read like the old one: a
-/// `pass` line for this head lets G5 through, a `fail` line stops it with the old reason.
+fn assert_g5_ignores(extra: &[Value]) {
+    assert!(g5_ignores(&with_local_checks(extra)));
+}
+
+/// C-84 (was #3066 P1, where the longer line decided G5 like the old one): G5 ignores the
+/// longer line too, pass or fail, on any line of a comment.
 #[test]
-fn g5_reads_the_new_local_check_line() {
-    assert_g5_passes(&[evidence_comment(300, &evidence_line(H, "pass"))]);
+fn g5_ignores_the_new_local_check_line() {
+    assert_g5_ignores(&[evidence_comment(300, &evidence_line(H, "pass"))]);
     // On any line of a comment, as with the old form.
-    assert_g5_passes(&[raw_comment(
+    assert_g5_ignores(&[raw_comment(
         300,
         &format!("ran it\n\n{}\n", evidence_line(H, "pass")),
     )]);
     let s = with_local_checks(&[evidence_comment(300, &evidence_line(H, "fail"))]);
-    assert!(g5_reason(&s).contains(FAILED_REASON));
+    assert!(g5_ignores(&s));
 }
 
-/// #3066 P1: the edges of the new line. Each rejected line counts as absent, exactly like a
-/// rejected old line; each accepted edge is read.
+/// C-84 (was #3066 P1, the edges of the new line deciding G5): G5 ignores every edge of the
+/// longer line, rejected or accepted; the edges themselves stay pinned in `src/gate.rs`.
 #[test]
-fn g5_new_local_check_line_edges() {
+fn g5_ignores_every_edge_of_the_new_local_check_line() {
     let hex39 = &B[..39];
     let hex41 = format!("{B}2");
     let upper = "A".repeat(40);
     let nonhex = "g".repeat(40);
     let none_pass_fail = |line: String| {
         let s = with_local_checks(&[evidence_comment(300, &line)]);
-        assert!(g5_reason(&s).contains(NONE_REASON), "{line}");
+        assert!(g5_ignores(&s), "{line}");
     };
     let mut rejected: Vec<String> = Vec::new();
     // Hex fields: 39 and 41 digits, uppercase, a non-hex letter.
@@ -613,9 +640,9 @@ fn g5_new_local_check_line_edges() {
     // Accepted edges. `rustc` of 32 characters from the whole allowed set passes.
     let rustc32 = "aZ09._+-".repeat(4);
     assert_eq!(rustc32.len(), 32);
-    assert_g5_passes(&[evidence_comment(300, &evidence_set("rustc", &rustc32))]);
+    assert_g5_ignores(&[evidence_comment(300, &evidence_set("rustc", &rustc32))]);
     // One character is enough.
-    assert_g5_passes(&[evidence_comment(300, &evidence_set("rustc", "x"))]);
+    assert_g5_ignores(&[evidence_comment(300, &evidence_set("rustc", "x"))]);
     // A failed run may have no tree (a conflict: real base) or no base and no tree; both are
     // read, and both stop G5 with the failure reason rather than "no line".
     for (base, tree) in [(B, "none"), ("none", "none")] {
@@ -623,14 +650,14 @@ fn g5_new_local_check_line_edges() {
         f[2].1 = base.to_string();
         f[3].1 = tree.to_string();
         let s = with_local_checks(&[evidence_comment(300, &evidence_join(&f))]);
-        assert!(g5_reason(&s).contains(FAILED_REASON), "{base} {tree}");
+        assert!(g5_ignores(&s), "{base} {tree}");
     }
 }
 
-/// #3066 P1: the last line for the head decides whichever form it is in: a higher comment id
-/// beats a lower one, and within a comment the later line wins.
+/// C-84 (was #3066 P1, "the last line for the head decides"): no order of old and new lines
+/// decides G5; which line `gate-merge` records is pinned by `local_check_of`'s unit test.
 #[test]
-fn g5_old_and_new_lines_for_one_head_are_ordered_by_comment() {
+fn g5_ignores_old_and_new_lines_in_any_order() {
     let old = |r: &str| local_check_line(H, r);
     let new = |r: &str| evidence_line(H, r);
     for (low, high, passes) in [
@@ -646,30 +673,31 @@ fn g5_old_and_new_lines_for_one_head_are_ordered_by_comment() {
                 extra.reverse();
             }
             if passes {
-                assert_g5_passes(&extra);
+                assert_g5_ignores(&extra);
             } else {
                 let s = with_local_checks(&extra);
-                assert!(g5_reason(&s).contains(FAILED_REASON), "{low} / {high}");
+                assert!(g5_ignores(&s), "{low} / {high}");
             }
         }
         // Inside one comment the later line wins.
         let both = [raw_comment(300, &format!("{low}\n{high}\n"))];
         if passes {
-            assert_g5_passes(&both);
+            assert_g5_ignores(&both);
         } else {
             let s = with_local_checks(&both);
-            assert!(g5_reason(&s).contains(FAILED_REASON), "{low} / {high}");
+            assert!(g5_ignores(&s), "{low} / {high}");
         }
     }
 }
 
-/// #3066 P1: a new-form line for another head is ignored, pass or fail, like an old one.
+/// #3066 P1 (C-84: ignored by G5 like every other local-check line): a new-form line for
+/// another head is ignored, pass or fail, like an old one.
 #[test]
 fn g5_a_new_local_check_line_for_another_head_is_ignored() {
     let s = with_local_checks(&[evidence_comment(300, &evidence_line(OTHER, "pass"))]);
-    assert!(g5_reason(&s).contains(NONE_REASON));
+    assert!(g5_ignores(&s));
     for r in ["pass", "fail"] {
-        assert_g5_passes(&[
+        assert_g5_ignores(&[
             evidence_comment(300, &evidence_line(H, "pass")),
             evidence_comment(310, &evidence_line(OTHER, r)),
         ]);
@@ -679,41 +707,35 @@ fn g5_a_new_local_check_line_for_another_head_is_ignored() {
     f[0].1 = OTHER.to_string();
     f[2].1 = H.to_string();
     let s = with_local_checks(&[evidence_comment(300, &evidence_join(&f))]);
-    assert!(g5_reason(&s).contains(NONE_REASON));
+    assert!(g5_ignores(&s));
 }
 
-/// #2906 S5b: GitHub check runs no longer block the merge; `ci_info` reports them.
+/// C-84 (was #2906 S5b "check runs are information only"): the head's check runs decide G5
+/// again, even with a local-check pass line, and every answer — pass or stop — carries
+/// `ci_info`.
 #[test]
-fn g5_check_runs_are_information_only() {
+fn g5_check_runs_decide_and_every_answer_carries_ci_info() {
     let mut s = with_local_checks(&[local_check(300, H, "pass")]);
     let v = gate(&s);
     assert_eq!(stopped(&v), (true, String::new()), "{v}");
     assert_eq!(v["result"]["ci_info"], json!("ci=success"), "{v}");
     for (checks, info) in [
         (
-            json!([{"name": "ci", "conclusion": "failure"}, {"name": "ci / linux-x86_64", "conclusion": "failure"}]),
+            json!([
+                run("ci", Some("failure"), H),
+                run("ci / linux-x86_64", Some("failure"), H)
+            ]),
             "ci=failure",
         ),
-        (json!([{"name": "ci", "conclusion": null}]), "ci=pending"),
-        (
-            json!([{"name": "lint", "conclusion": "failure"}]),
-            "ci=none",
-        ),
+        (json!([run("ci", None, H)]), "ci=pending"),
+        (json!([run("lint", Some("failure"), H)]), "ci=none"),
         (json!([]), "ci=none"),
     ] {
         s["checks"] = checks;
         let v = gate(&s);
-        assert_eq!(stopped(&v), (true, String::new()), "{v}");
+        assert_eq!(stopped(&v), (false, "G5".into()), "{v}");
         assert_eq!(v["result"]["ci_info"], json!(info), "{v}");
     }
-    // A stop carries it too.
-    s["comments"] = json!([
-        claim(100, "agent-10", H),
-        verdict(200, "agent-10", H, "PASS")
-    ]);
-    let v = gate(&s);
-    assert_eq!(stopped(&v), (false, "G5".into()), "{v}");
-    assert_eq!(v["result"]["ci_info"], json!("ci=none"), "{v}");
 }
 
 #[test]
@@ -813,12 +835,18 @@ fn audit_notes_title_head_rc_ci_withdrawal_and_known_base() {
     assert!(stopped(&gate(&s)).0);
 
     let mut s = passing();
-    s["checks"] = json!([{"name": "rc-ci", "conclusion": "success"}, {"name": "ci / linux-x86_64", "conclusion": "success"}]);
+    s["checks"] = json!([
+        run("rc-ci", Some("success"), H),
+        run("ci / linux-x86_64", Some("success"), H)
+    ]);
     assert_eq!(gate(&s)["result"]["ci_info"], json!("ci=success"));
-    // #2906 S5b: a failed `rc-ci` is reported, not a stop.
-    s["checks"] = json!([{"name": "ci", "conclusion": "success"}, {"name": "rc-ci", "conclusion": "failure"}]);
+    // C-84: a failed `rc-ci` on this head stops G5 (was #2906 S5b: reported, not a stop).
+    s["checks"] = json!([
+        run("ci", Some("success"), H),
+        run("rc-ci", Some("failure"), H)
+    ]);
     let v = gate(&s);
-    assert!(stopped(&v).0, "{v}");
+    assert_eq!(stopped(&v), (false, "G5".into()), "{v}");
     assert_eq!(v["result"]["ci_info"], json!("ci=failure"), "{v}");
 
     let mut s = passing();
@@ -920,9 +948,14 @@ fn a_withdrawal_must_name_the_claims_own_lane_and_rc_ci_jobs_count() {
     assert!(stopped(&gate(&s)).0);
 
     let mut s = passing();
-    s["checks"] = json!([{"name": "rc-ci", "conclusion": "success"}, {"name": "rc-ci / linux-x86_64", "conclusion": "failure"}]);
+    // C-84: a failed `rc-ci / …` job on this head stops G5 like a `ci / …` one (was: reported
+    // in `ci_info` only).
+    s["checks"] = json!([
+        run("rc-ci", Some("success"), H),
+        run("rc-ci / linux-x86_64", Some("failure"), H)
+    ]);
     let v = gate(&s);
-    assert!(stopped(&v).0, "{v}");
+    assert_eq!(stopped(&v), (false, "G5".into()), "{v}");
     assert_eq!(v["result"]["ci_info"], json!("ci=failure"), "{v}");
 }
 
@@ -1152,23 +1185,23 @@ fn a_delta_that_does_not_hold_stops_at_g1() {
     assert_eq!(stopped(&gate(&s)), (false, "G1".into()));
 }
 
-/// #2833 scope 4: the current head's own check still decides (G5) — since #2906 S5b its
-/// `local-check:` line, not its CI: a pass line on the verdict head does not carry over, and
-/// failed check runs alone do not stop.
+/// #2833 scope 4: the current head's own check still decides (G5) — since C-84 its GitHub
+/// `ci` (was #2906 S5b: its `local-check:` line): the verdict head's `ci` success does not
+/// carry over to the merged head, and a failed `ci` on the current head stops it.
 #[test]
-fn a_mechanical_delta_still_needs_the_current_heads_local_check() {
+fn a_mechanical_delta_still_needs_the_current_heads_ci() {
     let mut s = on_delta();
-    s["comments"] = json!([
-        claim(100, "agent-10", OTHER),
-        verdict(200, "agent-10", OTHER, "PASS"),
-        local_check(900, OTHER, "pass")
-    ]);
+    s["checks"] = json!([run("ci", Some("success"), OTHER)]);
     assert_eq!(stopped(&gate(&s)), (false, "G5".into()));
     let mut s = on_delta();
     s["checks"] = json!([
-        {"name": "ci", "conclusion": "failure"},
-        {"name": "ci / linux-x86_64", "conclusion": "failure"}
+        run("ci", Some("failure"), H),
+        run("ci / linux-x86_64", Some("failure"), H)
     ]);
+    assert_eq!(stopped(&gate(&s)), (false, "G5".into()));
+    // The current head's success passes, a local-check line or not.
+    let mut s = on_delta();
+    s["checks"] = json!([run("ci", Some("success"), H)]);
     assert_eq!(stopped(&gate(&s)), (true, String::new()));
 }
 
@@ -1343,13 +1376,14 @@ fn p(parts: &[&str]) -> String {
 }
 
 /// `passing()` as a tier-0 pull request: the body says tier 0, the merge base is known, it
-/// changes one document and one test, and the comments hold only the local-check pass line.
+/// changes one document and one test, the head's `ci` succeeded and there is no comment (C-84:
+/// no local-check line either; was "the comments hold only the local-check pass line").
 fn tier0() -> Value {
     let mut s = passing();
     s["body_tier"] = json!(0);
     s["merge_base"] = json!(MB);
     s["pr_files"] = json!([doc(), p(&["tests", "x.rs"])]);
-    s["comments"] = json!([lc()]);
+    s["comments"] = json!([]);
     s
 }
 
@@ -1357,10 +1391,11 @@ fn tier_of(v: &Value) -> Value {
     v["result"]["effective_tier"].clone()
 }
 
-/// AC25: a tier-0 body with only document and test files and a local-check pass merges with no
-/// verdict and no claim; the base it names is the merge base. Without a merge base it stops.
+/// AC25 (C-84: on the head's `ci` success; was "a local-check pass"): a tier-0 body with only
+/// document and test files merges with no verdict and no claim; the base it names is the merge
+/// base. Without a merge base it stops.
 #[test]
-fn tier0_docs_and_tests_merge_on_the_local_check_alone() {
+fn tier0_docs_and_tests_merge_on_the_ci_success_alone() {
     let v = gate(&tier0());
     assert_eq!(v["result"]["pass"], json!(true), "{v}");
     assert_eq!(tier_of(&v), json!(0), "{v}");
@@ -1487,16 +1522,16 @@ fn an_unknown_body_tier_is_tier2() {
     assert_eq!(v["result"]["body_tier"], json!(null), "{v}");
 }
 
-/// Tier 0 skips only the audit rules: the local check (G5), the overlap with the tip (G6), a
-/// red tip (G8), the body checker (G4), the claim rules (G10, G11), unknown authors (G9) and an
-/// open FAIL on this head (G3) still stop it.
+/// Tier 0 skips only the audit rules: the head's `ci` (G5, C-84), the overlap with the tip
+/// (G6), a red tip (G8), the body checker (G4), the claim rules (G10, G11), unknown authors
+/// (G9) and an open FAIL (G3) still stop it.
 #[test]
 fn tier0_still_meets_every_other_rule() {
     let mut s = tier0();
-    s["comments"] = json!([]);
+    s["checks"] = json!([]);
     assert_eq!(stopped(&gate(&s)), (false, "G5".into()));
     let mut s = tier0();
-    s["comments"] = json!([local_check(900, H, "fail")]);
+    s["checks"] = json!([run("ci", Some("failure"), H)]);
     assert_eq!(stopped(&gate(&s)), (false, "G5".into()));
     let mut s = tier0();
     s["tip_files_since_verdict_base"] = json!([p(&["tests", "x.rs"])]);
@@ -1534,7 +1569,166 @@ fn tier0_still_meets_every_other_rule() {
     let mut s = tier0();
     s["comments"] = json!([verdict(200, "agent-10", H, "FAIL"), lc()]);
     assert_eq!(stopped(&gate(&s)), (false, "G3".into()), "{}", gate(&s));
-    // A FAIL on an older head does not block the current one.
+    // C-84 (leader decision 2026-11-17: a posted FAIL stops the merge at every tier): a FAIL
+    // on an older head blocks a tier-0 merge too, until the same auditor posts a later PASS
+    // (was: "A FAIL on an older head does not block the current one").
     s["comments"] = json!([verdict(200, "agent-10", OTHER, "FAIL"), lc()]);
-    assert_eq!(gate(&s)["result"]["pass"], json!(true), "{}", gate(&s));
+    let v = gate(&s);
+    assert_eq!(stopped(&v), (false, "G3".into()), "{v}");
+}
+
+// ---- C-84 (user decision 2026-11-17 "CI 성공 + PASS"): G5 reads the head's GitHub `ci` ----
+
+/// One check run of the snapshot: name, conclusion (`None` while it runs) and the head it ran on.
+fn run(name: &str, conclusion: Option<&str>, head: &str) -> Value {
+    json!({"name": name, "conclusion": conclusion, "head_sha": head})
+}
+
+/// `passing()` with only these check runs and without its local-check line.
+fn with_checks(checks: Value) -> Value {
+    let mut s = passing();
+    s["comments"] = json!([
+        claim(100, "agent-10", H),
+        verdict(200, "agent-10", H, "PASS")
+    ]);
+    s["checks"] = checks;
+    s
+}
+
+/// C-84 AC: an exact-head `ci` success passes G5 with no `local-check:` line anywhere; the
+/// earlier name of the aggregate, `rc-ci`, counts the same.
+#[test]
+fn g5_passes_on_an_exact_head_ci_success_without_a_local_check_line() {
+    for aggregate in ["ci", "rc-ci"] {
+        let s = with_checks(json!([run(aggregate, Some("success"), H)]));
+        let v = gate(&s);
+        assert_eq!(stopped(&v), (true, String::new()), "{aggregate}: {v}");
+    }
+}
+
+/// C-84 N/N+1 on the head: the success on this exact head passes (N); the same success on the
+/// head before it (an older push) stops G5 (N+1), and so does a run that names no head.
+#[test]
+fn g5_needs_the_ci_success_on_this_exact_head() {
+    let s = with_checks(json!([run("ci", Some("success"), H)]));
+    assert_eq!(stopped(&gate(&s)), (true, String::new()));
+    let s = with_checks(json!([run("ci", Some("success"), OTHER)]));
+    assert!(g5_reason(&s).contains("not on this head"), "{}", gate(&s));
+    let s = with_checks(json!([{"name": "ci", "conclusion": "success"}]));
+    assert!(g5_reason(&s).contains("names no head"), "{}", gate(&s));
+    // An older head's success never outweighs this head's failure.
+    let s = with_checks(json!([
+        run("ci", Some("success"), OTHER),
+        run("ci", Some("failure"), H)
+    ]));
+    assert!(
+        g5_reason(&s).contains("failed on this head"),
+        "{}",
+        gate(&s)
+    );
+}
+
+/// C-84: a failed, cancelled or timed-out `ci` (or one of its jobs, or `windows-build`) stops
+/// G5 and names the run; a running one stops it as still running; no `ci` aggregate at all, or
+/// only unrelated checks, stops it as missing. A skipped `windows-build` is allowed.
+#[test]
+fn g5_stops_on_a_failed_cancelled_running_or_missing_ci() {
+    for (checks, reason) in [
+        (
+            json!([run("ci", Some("failure"), H)]),
+            "failed on this head",
+        ),
+        (
+            json!([run("ci", Some("cancelled"), H)]),
+            "failed on this head",
+        ),
+        (
+            json!([run("ci", Some("timed_out"), H)]),
+            "failed on this head",
+        ),
+        (
+            json!([
+                run("ci", Some("success"), H),
+                run("ci / linux-x86_64", Some("failure"), H)
+            ]),
+            "failed on this head",
+        ),
+        (
+            json!([
+                run("ci", Some("success"), H),
+                run("windows-build", Some("failure"), H)
+            ]),
+            "failed on this head",
+        ),
+        (json!([run("ci", None, H)]), "still running"),
+        (
+            json!([run("ci / linux-x86_64", Some("success"), H)]),
+            "no `ci` check run",
+        ),
+        (
+            json!([run("lint", Some("success"), H)]),
+            "no `ci` check run",
+        ),
+        (json!([]), "no `ci` check run"),
+    ] {
+        let s = with_checks(checks.clone());
+        assert!(g5_reason(&s).contains(reason), "{checks}: {}", gate(&s));
+    }
+    let s = with_checks(json!([
+        run("ci", Some("success"), H),
+        run("windows-build", Some("skipped"), H),
+        run("lint", Some("failure"), H)
+    ]));
+    assert_eq!(stopped(&gate(&s)), (true, String::new()));
+}
+
+/// C-84: the `local-check:` line is optional evidence and never decides G5: a pass line does
+/// not make up for a missing or failed `ci`, and a fail line does not stop a `ci` success.
+#[test]
+fn a_local_check_line_never_decides_g5() {
+    let mut s = with_checks(json!([]));
+    s["comments"].as_array_mut().unwrap().push(lc());
+    assert!(g5_reason(&s).contains("no `ci` check run"), "{}", gate(&s));
+    let mut s = with_checks(json!([run("ci", Some("failure"), H)]));
+    s["comments"].as_array_mut().unwrap().push(lc());
+    assert!(
+        g5_reason(&s).contains("failed on this head"),
+        "{}",
+        gate(&s)
+    );
+    let mut s = with_checks(json!([run("ci", Some("success"), H)]));
+    s["comments"]
+        .as_array_mut()
+        .unwrap()
+        .push(local_check(900, H, "fail"));
+    assert_eq!(stopped(&gate(&s)), (true, String::new()));
+}
+
+/// C-84 (leader decision 2026-11-17): at tier 0 a posted FAIL on any head stops the merge
+/// (G3) until the same auditor posts a later PASS; with that PASS, or with no FAIL, the `ci`
+/// success alone merges it.
+#[test]
+fn a_posted_fail_stops_a_tier_0_merge_until_the_same_auditor_passes() {
+    let mut s = tier0();
+    s["comments"] = json!([]);
+    assert_eq!(stopped(&gate(&s)), (true, String::new()), "{}", gate(&s));
+    s["comments"] = json!([verdict(200, "agent-10", OTHER, "FAIL")]);
+    assert_eq!(stopped(&gate(&s)), (false, "G3".into()), "{}", gate(&s));
+    // Another auditor's later PASS does not lift it; the same auditor's does.
+    s["comments"] = json!([
+        verdict(200, "agent-10", OTHER, "FAIL"),
+        verdict(300, "agent-27", H, "PASS")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (false, "G3".into()), "{}", gate(&s));
+    s["comments"] = json!([
+        verdict(200, "agent-10", OTHER, "FAIL"),
+        verdict(300, "agent-10", H, "PASS")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (true, String::new()), "{}", gate(&s));
+    // An earlier PASS does not lift a later FAIL.
+    s["comments"] = json!([
+        verdict(200, "agent-10", H, "PASS"),
+        verdict(300, "agent-10", OTHER, "FAIL")
+    ]);
+    assert_eq!(stopped(&gate(&s)), (false, "G3".into()), "{}", gate(&s));
 }
