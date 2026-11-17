@@ -274,6 +274,18 @@ class WorkflowTest(unittest.TestCase):
                     writes = {k for k, v in job["permissions"].items() if v == "write"}
                     self.assertEqual(writes, ALLOWED_WRITES.get((path.name, job_id), set()), job_id)
 
+    def test_ci_builds_carry_the_run_number_on_the_first_attempt_only(self):
+        """SPEC-20261117-headver-ci-number: a ci build stamps HeadVer's build number from the
+        run number, and only on the run's first attempt (a re-run keeps `run_number`, so it
+        builds unnumbered instead of repeating a number, internal/versioning)."""
+        flows = dict((p.name, f) for p, f in self.workflows())
+        for job_id in ("check", "windows-build"):
+            with self.subTest(job=job_id):
+                env = flows["ci.yml"]["jobs"][job_id]["env"]
+                self.assertEqual(env["MOAI_BUILD_NUMBER"],
+                                 "${{ github.run_attempt == '1' && github.run_number || '' }}")
+                self.assertNotIn("MOAI_LOCAL_BUILD", env)
+
     def test_every_action_is_pinned_to_a_commit_sha(self):
         for path, flow in self.workflows():
             for job_id, job in flow["jobs"].items():

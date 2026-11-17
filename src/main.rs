@@ -2901,12 +2901,18 @@ mod tests {
     #[test]
     fn version_flag_reports_the_headver_build() {
         let local = moai_cli::local_build::number(option_env!("MOAI_LOCAL_BUILD")).unwrap();
+        // SPEC-20261117-headver-ci-number: a CI build carries `MOAI_BUILD_NUMBER` instead.
+        let ci = moai_cli::local_build::number_of(
+            moai_cli::local_build::CI_ENV,
+            option_env!("MOAI_BUILD_NUMBER"),
+        )
+        .unwrap();
         let head = moai_cli::headver::parse_head(include_str!("../HEADVER")).unwrap();
         let parts: Vec<&str> = moai_cli::BUILD_VERSION.split('.').collect();
         assert_eq!(parts.len(), 3, "{}", moai_cli::BUILD_VERSION);
         assert_eq!(parts[0], head.to_string());
         assert_eq!(parts[1].len(), 4, "{}", moai_cli::BUILD_VERSION);
-        assert_eq!(parts[2], local.unwrap_or(0).to_string());
+        assert_eq!(parts[2], local.or(ci).unwrap_or(0).to_string());
         // The earlier scheme's builds read as older.
         assert!(moai_cli::headver::is_newer(
             moai_cli::BUILD_VERSION,
@@ -2919,9 +2925,12 @@ mod tests {
         let long = format!("{signature}\n{}", moai_cli::BUILD_NOTE);
         assert_eq!(Cli::command().get_long_version(), Some(long.as_str()));
         assert_eq!(moai_cli::LONG_VERSION, long);
-        let kind = match local {
-            Some(n) => format!("local build {n} (MOAI_LOCAL_BUILD), built "),
-            None => "unnumbered build (no MOAI_LOCAL_BUILD), built ".to_string(),
+        let kind = match (local, ci) {
+            (Some(n), _) => format!("local build {n} (MOAI_LOCAL_BUILD), built "),
+            (None, Some(n)) => format!("CI build {n} (MOAI_BUILD_NUMBER), built "),
+            (None, None) => {
+                "unnumbered build (no MOAI_LOCAL_BUILD or MOAI_BUILD_NUMBER), built ".to_string()
+            }
         };
         assert!(
             moai_cli::BUILD_NOTE.starts_with(&kind),
