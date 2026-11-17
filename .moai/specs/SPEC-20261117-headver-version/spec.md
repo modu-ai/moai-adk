@@ -126,3 +126,16 @@ RED: `headver::` 6개와 상태줄 시험·`--version` 시험·"되돌아가지 
 mutation 5개 모두 KILLED: 수요일로 주 정하기, 달력 연도 쓰기, HeadVer를 옛 버전보다 낮게, build를 head보다 먼저 비교, update에서 막는 방향 뒤집기.
 
 실행 안 함: 전체 `cargo test`, Linux·Windows, release 빌드(`--release`), 실제 HOME 설치. 남은 일은 카드 AC3·AC4(설치 스크립트, 릴리스 번호, 태그 규칙, 설치 기록의 버전·channel, 문서).
+
+수리(revision 2, 감사 FAIL 08:30:00Z–08:46:18Z의 B1·N1·N4·N5): 커밋 `30824a759c`(수리), `b481e39161`(한국어
+도움말·scan 표·REQ-11 문장). RED는 08:52:51Z: `headver::` 2개(`2000.2647.5`가 `4.2647.5`보다 낮음, `2026.13.0`이 읽힘),
+`update_headver` 2개(이유에 `--allow-older` 없음); 08:56:16Z에 모두 통과.
+
+- AC-4: met — `--lib headver:: local_build:: statusline:: update:: install:: bin_names:: banner::` 158 passed
+- AC-6: met — `update_headver` 3 passed(같은 버전 재계획이 막히지 않음 포함), `update_cli` 11, `update_known_good` 4, `recovery_cli` 7, `update_tux_golden` 14
+- AC-8: met — `update_headver going_back_to_an_older_build_needs_allow_older`, `update_version_folders` 11(이름 바꾼 같은 버전 A → B → A 포함), `update_user_layer_cli` 11, `update_hooks_cli` 11, `update_keys_cli` 9, `update_home_layer_cli` 11, `agents_home_cli` 7
+- AC-7: met — `--bin moai` 27, `help_layout` 10, `cli_name_moai` 5, `product_cli` 75, `home_isolation_scan` 16, `install_cli` 7, `banner_golden` 12, `bin_names_cli` 4, `ledger_schema` 38, `spec_cli` 17, `ac_command_lint` 5, `statusline_golden` 1, `statusline_tag_order` 1, `status_line_cli` 16, 저장소 scan 대상 exit 0; fmt 0, `rustfmt --check --edition 2021 src/ops/*.rs` 0, clippy 0; Python 75 OK; `moai spec check --all` ok(SPEC 3개 0·0). `MOAI_LOCAL_BUILD=5` 빌드: `moai-cli 4.2647.5 (rust)` / `local build 5 (MOAI_LOCAL_BUILD), built 2026-11-17 UTC (ISO week 2026-W47), package 2026.11.0-rc.1`
+
+mutation: `a >= 1000`(감사), 달 검사 빼기, 달 13 받기, 네 자리 가운데를 달로 읽기, `--allow-older` 무시 — 모두 KILLED.
+확인 쪽 첫 검사만 플래그를 늘 켜는 mutant는 SURVIVED: 스킬 적용이 스스로 다시 계산하는 둘째 검사가 stale로 거절해서
+결과가 같아요(동등). 두 검사를 함께 무너뜨린 mutant는 KILLED(플래그 없는 확인이 거절돼야 하는 단언).
