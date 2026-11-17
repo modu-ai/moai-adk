@@ -5,7 +5,8 @@
 #![cfg(unix)]
 mod common;
 
-use moai_cli::tdd::{is_test_path, validate_declared, TEST_PATTERNS};
+use moai_cli::run::{oracle_changes, oracle_changes_in};
+use moai_cli::tdd::{is_test_path, validate_declared, TestPaths, TEST_PATTERNS};
 use serde_json::{json, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -104,6 +105,78 @@ fn test_paths_match_their_convention_and_not_its_neighbours() {
     assert!(is_test_path("e2e/smoke.sh", &declared));
     assert!(!is_test_path("qa2/login.sh", &declared));
     assert!(!is_test_path("e2e/smoke.sh.bak", &declared));
+}
+
+/// Audit N1: a project uses the rows of its own languages and `common`. This repository's
+/// profile detects Python and Rust, so its SPEC templates under `templates/spec/` and Ruby or
+/// JavaScript conventions are not test paths here; `tests/`, `*_test.py` and golden files are.
+#[test]
+fn this_repository_uses_only_its_own_languages() {
+    // A temporary project holding this repository's profile, byte for byte.
+    let dir = tempfile::TempDir::new().unwrap();
+    fs::create_dir_all(dir.path().join(".moai-cli")).unwrap();
+    fs::write(
+        dir.path().join(".moai-cli/project.yaml"),
+        include_str!("../.moai-cli/project.yaml"),
+    )
+    .unwrap();
+    let here = TestPaths::for_project(dir.path());
+    assert_eq!(
+        here.languages(),
+        Some(&["python".to_string(), "rust".to_string()][..])
+    );
+    for no in [
+        "templates/spec/full.md",
+        "templates/spec/minimal.md",
+        "spec/login_spec.rb",
+        "src/login.test.ts",
+        "test/a.c",
+        "pkg/server_test.go",
+    ] {
+        assert!(!here.matches(no), "{no}");
+        let unknown_project = is_test_path(no, &[]);
+        assert!(unknown_project, "{no} is a test path of an unknown project");
+    }
+    for yes in [
+        "tests/a.rs",
+        "benches/b.rs",
+        "tools/check_test.py",
+        "crates/report/golden/summary.txt",
+    ] {
+        assert!(here.matches(yes), "{yes}");
+    }
+}
+
+/// Audit N1 without a profile: the root manifests name the languages (N: one manifest; N+1: a
+/// second adds its rows); no manifest at all keeps every row. `run`'s oracle list narrows the
+/// same way.
+#[test]
+fn root_manifests_narrow_the_rows_and_none_keeps_them_all() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let root = dir.path();
+    let paths: Vec<String> = [
+        "spec/login_spec.rb",
+        "tests/a.rs",
+        "tools/check_test.py",
+        "a/golden/x.txt",
+    ]
+    .map(String::from)
+    .to_vec();
+    assert_eq!(TestPaths::for_project(root).languages(), None);
+    assert_eq!(oracle_changes_in(root, &paths), oracle_changes(&paths));
+    assert_eq!(oracle_changes(&paths).len(), 4);
+    fs::write(root.join("Cargo.toml"), "[package]\n").unwrap();
+    let rust = TestPaths::for_project(root);
+    assert_eq!(rust.languages(), Some(&["rust".to_string()][..]));
+    assert!(!rust.matches("spec/login_spec.rb") && rust.matches("tests/a.rs"));
+    assert_eq!(
+        oracle_changes_in(root, &paths),
+        ["a/golden/x.txt", "tests/a.rs"]
+    );
+    fs::write(root.join("Gemfile"), "source 'x'\n").unwrap();
+    let both = TestPaths::for_project(root);
+    assert!(both.matches("spec/login_spec.rb") && both.matches("tests/a.rs"));
+    assert!(!both.matches("tools/check_test.py"));
 }
 
 /// The declared list at its edges: 32 paths and 200 characters are taken, one more is not.
@@ -391,6 +464,71 @@ fn green_needs_every_red_test_passing() {
         &root,
         &write_input("tests/login_test.rs", &root)
     )));
+}
+
+/// Audit N2: a record removed outside `moai tdd` (the log still ends in `red` or `green`) is
+/// reported by `status` and locks nothing; after `done` or `reopen` there is no report.
+#[test]
+fn status_reports_an_open_log_without_a_record() {
+    let (_d, root) = repo(BRANCH);
+    red_commit(&root);
+    ok(&tdd(&root, &["red", "--check", CHECK]));
+    assert_eq!(ok(&tdd(&root, &["status"]))["problem"], json!(null));
+    fs::remove_file(record_path(&root)).unwrap();
+    let s = ok(&tdd(&root, &["status"]));
+    assert_eq!(s["phase"], json!(null));
+    let problem = s["problem"].as_str().unwrap_or_default();
+    assert!(
+        problem.contains("`red`") && problem.contains("missing or unreadable"),
+        "{s}"
+    );
+    assert!(allowed(&preflight(
+        &root,
+        &write_input("tests/login_test.rs", &root)
+    )));
+    // An unreadable record after `green` is reported the same way.
+    fs::write(root.join("src/lib.txt"), "fixed\n").unwrap();
+    fs::write(root.join("tests/login_test.rs"), "assert fixed 2\n").unwrap();
+    commit(&root, "test: again\n\nMoai-Phase: red");
+    fs::write(root.join("src/lib.txt"), "broken\n").unwrap();
+    ok(&tdd(&root, &["red", "--check", CHECK]));
+    fs::write(root.join("src/lib.txt"), "fixed\n").unwrap();
+    ok(&tdd(&root, &["green"]));
+    fs::write(record_path(&root), "{oops").unwrap();
+    let problem = ok(&tdd(&root, &["status"]))["problem"].clone();
+    let names_green = problem.as_str().unwrap_or_default().contains("`green`");
+    assert!(names_green, "{problem}");
+    // A log that ends in `reopen` is not a problem.
+    let (_d2, other) = repo(BRANCH);
+    red_commit(&other);
+    ok(&tdd(&other, &["red", "--check", CHECK]));
+    ok(&tdd(&other, &["reopen", "--reason", "x"]));
+    assert_eq!(ok(&tdd(&other, &["status"]))["problem"], json!(null));
+}
+
+/// Audit N4 (the auditor's mutant M2): a record whose phase is not `green` or `refactor`
+/// (`done`, `red`, an unknown word) locks nothing and reads as no cycle.
+#[test]
+fn a_record_with_another_phase_locks_nothing() {
+    let (_d, root) = repo(BRANCH);
+    red_commit(&root);
+    ok(&tdd(&root, &["red", "--check", CHECK]));
+    let mut record: Value = serde_json::from_slice(&fs::read(record_path(&root)).unwrap()).unwrap();
+    for (phase, locks) in [
+        ("refactor", true),
+        ("done", false),
+        ("red", false),
+        ("GREEN", false),
+        ("", false),
+    ] {
+        record["phase"] = json!(phase);
+        fs::write(record_path(&root), record.to_string()).unwrap();
+        let r = preflight(&root, &write_input("tests/login_test.rs", &root));
+        assert_eq!(denied(&r), locks, "{phase:?}: {}", r.stdout);
+        assert_eq!(allowed(&r), !locks, "{phase:?}: {}", r.stdout);
+        let expected = if locks { json!(phase) } else { json!(null) };
+        assert_eq!(ok(&tdd(&root, &["status"]))["phase"], expected, "{phase:?}");
+    }
 }
 
 /// AC-4 (REQ-7, REQ-8): reopen needs a reason, logs it and ends the lock; done ends the cycle
