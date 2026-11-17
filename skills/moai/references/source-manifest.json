@@ -136,7 +136,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "a3c3da7bee22a55e942a0491c5a5fa36558227ac7982c73dcc447c614c9fcf08",
+      "sha256": "4384af8653bb27273a40aceaf987060f74413446fdd831f643cd51c4d0bba741",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -145,7 +145,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "4d22d0ad20f7d46969d465082da755c1b8f0997e470c6d785addd2cafdd959bc",
+      "sha256": "e075e5926586e1814ebb9d798a937e91111221bc4bfbf30b87e2ee300cbe26e0",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",

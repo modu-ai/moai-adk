@@ -278,8 +278,11 @@ fn the_agent_section_maps_each_step_of_the_round_to_a_card_command() {
             "`--withdraw --reason <text>`",
             "`card pr <card> <pr> --generation <g> --repo <owner/repo>` (a card with no host \
              project needs `--repo`)",
-            "run `card review <card> --generation <g>`: the card in `review` with an open pull \
-             request is your audit request to the leader",
+            // User decision 2026-11-17: the lane starts its own audit agent at tier 0 and 1; at
+            // tier 2 `review` is the request to the leader (was: always the leader's).
+            "run `card review <card> --generation <g>`, then start your audit agent (`self-pick` \
+             (2)); at tier 2 the card in `review` with an open pull request is your audit \
+             request to the leader",
             // Repair N9: the criteria carry the new head's evidence before the next review.
             "On a FAIL: `card reopen <card> --generation <g>`, repair every blocking finding, \
              push, re-mark each criterion with the new head's evidence, and run `card review` \
@@ -332,11 +335,19 @@ fn the_leader_section_makes_cards_ready_assigns_audits_and_names_the_transition(
             "`empty_scope`",
             "`moai card ready <card> --by <leader>`",
             "a hint, never a grant",
-            // Audits: one read-only agent per pull request, never a lane and never the
-            // implementer (repair B1: AGENTS.md "Independent review"; the S5 head widened it to
-            // "or to a lane that did not write it" and this pin still passed).
-            "assign the audit to one read-only audit agent you start (`moai-audit`), never to a \
-             lane and never the session that implemented it",
+            // Audits (user decision 2026-11-17): tier 2 stays with the leader's own read-only
+            // agent, never a lane and never the implementer; tier 0 and 1 are the lane's own
+            // agent, whose verdict the leader checks before merging. The S5 head widened the
+            // leader's assignment to "or to a lane that did not write it" and the old pin
+            // ("read-only audit agent") still passed.
+            "At audit-tier 2, when a card is `review` and its pull request is open, assign the \
+             audit to one read-only audit agent you start (`moai-audit`), never to a lane and \
+             never the session that implemented it",
+            "at audit-tier 0 and 1 the lane starts a fresh read-only `moai-audit` agent for its \
+             own pull request and posts its verdict",
+            "before merging, check that the verdict line has the AUDIT format, names that agent, \
+             cites the current head and covers the card's criteria",
+            "No lane audits another lane's pull request.",
             "`moai card note <card> --kind report --by <leader> < file`",
             "`moai card note <card> --kind decision --by <leader> < file`",
             // The holder closes; the leader merges through the gate.
@@ -361,21 +372,34 @@ fn the_leader_section_makes_cards_ready_assigns_audits_and_names_the_transition(
     }
 }
 
-/// Repair of the C-53 S5 audit: B1 (formal audits stay with the leader's audit agent), B2 (a
-/// `mine` card in `review` is not the next card: `card next` answers `next_is: "mine"` for it),
-/// N1 (no session id on OMP), N2 (the PLAN ref date), N4 (the lane's limits), N5 (non-Issue
-/// rules restored) and N6 (host smoke without the lifted HOLD).
+/// Repair of the C-53 S5 audit: B1 as changed by the user decision of 2026-11-17 (the lane
+/// starts its own fresh `moai-audit` agent at tier 0 and 1, the same agent re-audits, tier 2
+/// stays with the leader, no lane audits another lane's pull request), B2 (a `mine` card in
+/// `review` is not the next card: `card next` answers `next_is: "mine"` for it), N1 (no session
+/// id on OMP), N2 (the PLAN ref date), N4 (the lane's limits), N5 (non-Issue rules restored) and
+/// N6 (host smoke without the lifted HOLD).
 #[test]
 fn the_round_keeps_audits_with_the_leader_and_moves_on_from_a_card_in_review() {
-    // B1.
+    // B1 / user decision 2026-11-17: (a) own agent at tier 0 and 1, (b) the same agent
+    // re-audits, (c) tier 2 is the leader's, (d) never another lane's pull request.
     let pick = step("mode-agent.md", "self-pick");
     for p in [
-        "(2) Formal audits go to the leader's audit agent; a lane reserves no other lane's pull \
-         request",
-        "A pull request you did not author or repair is not yours to audit or change",
+        // (a)
+        "(2) Your own pull request's audit (user decision 2026-11-17): at audit-tier 0 or 1 \
+         start one fresh-context, read-only `moai-audit` subagent",
+        "never your conclusions or self-assessment",
+        "your own context never audits",
+        // (b)
+        "A re-audit after FAIL goes to the same agent (SendMessage or resume), never a new one",
+        // (c)
+        "Tier 2 audits are the leader's",
+        // (d), and N4's "you did not author or repair".
+        "Never audit another lane's pull request: one you did not author or repair is not yours \
+         to audit or change",
     ] {
         assert!(pick.contains(p), "self-pick must say `{p}`");
     }
+    assert!(!pick.contains("Formal audits go to the leader's audit agent"));
     let agent = workflow("mode-agent.md");
     for gone in [
         "An audit the leader dispatched to you",

@@ -599,13 +599,17 @@ fn bottleneck_rules_are_pinned_in_both_mode_workflows() {
     assert!(agent.contains(
         "That interval applies only to re-reading a state that has not changed: take, `card check`, push and pull request follow one another in the same turn"
     ));
-    // 6. a lost reservation posts no verdict. C-53 S5 repair (audit B1, AGENTS.md
-    // "Independent review"): a lane reserves no other lane's pull request at all, so the
-    // read-back rule for a lane's reservation is gone; the leader's audit agent reserves.
+    // 6. a lost reservation posts no verdict. C-53 S5 repair (audit B1, user decision
+    // 2026-11-17): a lane audits only its own pull request, with its own agent, so there is no
+    // reservation race between lanes and the read-back rule is gone.
     assert_says(
         &agent,
         "self-pick",
-        &["(2) Formal audits go to the leader's audit agent; a lane reserves no other lane's pull request"],
+        // User decision 2026-11-17: the lane's own audit agent re-audits (no reservation race).
+        &[
+            "Never audit another lane's pull request",
+            "A re-audit after FAIL goes to the same agent",
+        ],
     );
     assert!(!agent.contains("withdraw and post no verdict"));
     // 7. pre-push checks that only CI caught.
@@ -917,7 +921,7 @@ fn inspection_p2_rules_are_written_where_they_are_used() {
             // C-53 S5 repair (audit B1): a lane reserves and audits no pull request it did not
             // author or repair, external ones included (was: the external-PR sentence, now kept
             // only in the leader's `merge-train`, pinned below); it reports what it sees.
-            "A pull request you did not author or repair is not yours to audit or change: report what you see in it to the leader",
+            "one you did not author or repair is not yours to audit or change; report what you see in it to the leader",
         ],
     );
     assert_says(
@@ -1296,10 +1300,11 @@ fn a_dispatch_is_a_card_and_semi_keeps_only_four_things_for_the_person() {
             "\"Open pull requests first\" orders the work, it is not a gate that holds every ready card back",
             "write the reason in one line and give the lane a ready card instead",
             "new Issues, lifting a HOLD, merge-policy changes and releases",
-            // C-53 S5 repair (audit B1): formal audits are the leader's audit agent's, so a lane
-            // starts only its self-audit (was: "starting an audit and changing code in a claimed
-            // card are lane work at both levels").
-            "a lane's self-audit and changing code in a card it holds are lane work at both levels",
+            // C-53 S5 repair (audit B1, user decision 2026-11-17): a lane starts its self-audit
+            // and the audit agent of its own tier 0-1 pull request, never another lane's audit
+            // (was: "starting an audit and changing code in a claimed card are lane work at both
+            // levels").
+            "a lane's self-audit, the audit agent of its own tier 0 or 1 pull request and changing code in a card it holds are lane work at both levels",
             "A dispatch never outranks a message the person typed into that lane's own session",
         ],
     );
