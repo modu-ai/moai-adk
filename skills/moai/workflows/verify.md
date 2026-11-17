@@ -16,6 +16,8 @@ A receipt (returned on stdout by the internal `run-verify` operation; not stored
 4. Bind the task, attempt, tree, SPEC, policy, and tool version to the raw evidence.
 5. State skips, coverage gaps, and artifact expiry explicitly.
 
+In a project described by `/moai project`, the check commands of step 1 and the AC-to-test tracing come from `internal/quality` and the language guide it names; a tool the project does not configure is `not_run`, never guessed.
+
 ## Check-run rules
 
 This section is the single source for who runs which check locally and when an exact-head CI result may be cited instead (#2385). AUDIT, SYNC and the PR form point here and do not restate it. The integration queue, merge order and open-PR cap are the integration-flow rules (#2388); build-artifact sharing is #2380.

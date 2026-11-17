@@ -466,6 +466,9 @@ fn internal_references_say_when_to_read_them() {
         "versioning",
         // C-77: the checks an implementer runs before asking for an audit.
         "self-check",
+        // SPEC-20261117-quality-guides: the project's own check commands, AC-to-test tracing
+        // and the dependency existence check, read by RUN and VERIFY through the chain rules.
+        "quality",
     ];
     let mut found: Vec<String> = std::fs::read_dir(package().join("references/internal"))
         .unwrap()
