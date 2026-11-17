@@ -1,6 +1,6 @@
 # Internal: versioning
 
-When to read: before you ask the `versioning` rows of the question bank (`internal/interview`) in the PROJECT route, and before you compute or check a release version for a project whose profile has a `versioning` key.
+When to read: before you ask the `versioning` rows of the question bank (`internal/interview`) in the PROJECT route, and before you compute or check a release version, which `## At every release` below does at every release.
 
 MoAI offers three schemes (card C-69): SemVer is the default, HeadVer the second, CalVer the third. Anything else is the user's own words, recorded as `custom`. The choice is the profile key `versioning`: `scheme` is `semver`, `headver`, `calver` or `custom`; `format` is the CalVer format, or for `custom` the user's words in one line (at most 128 characters; no control character, no `<`, `>`, backtick, `[`, `]`, `*` or `_`, no `#` at the start, and no character that shows nothing or turns the text's direction: U+00AD, U+061C, U+180E, U+200B–U+200F, U+2028–U+202E, U+2060–U+206F, U+FE00–U+FE0F, U+FEFF, U+E0000–U+E007F, U+E0100–U+E01EF); `head` is the HeadVer head number, at most 9999. `project-plan` refuses any other scheme, a `format` on SemVer or HeadVer, a `head` on anything but HeadVer, and a `versioning` that is not an object. A profile without the key has no recorded choice: ask, never assume SemVer. The `AGENTS.md` managed section carries the choice as one line, `Versioning: …`.
 
@@ -25,6 +25,24 @@ How `project-detect` reads one version, after dropping a leading `v` and a prefi
 | `ambiguous` | Fits two readings: a two-digit year and a month that is also valid SemVer (`26.4.1`), two segments without a padded month (`16.4`, `16.10`), or a HeadVer middle segment behind a four-digit year |
 | `unrecognised` | Anything else |
 
+## At every release
+
+Run this list yourself, without being asked, whenever you prepare, tag or publish a release or a release candidate. The list itself runs autonomously; pushing a tag or publishing a release follows the existing release rule: `SKILL.md` cases (2) and (3) and the autonomy levels in `workflows/mode-leader.md` (at `semi`, releases go to the user).
+
+1. Scheme: read the profile's `versioning`. Without the profile key, run the `versioning` interview row (detect first so the keep option is offered) and record the pick; never compute from the detection alone. With `custom` words you cannot compute from, stop and ask.
+2. Next version, computed, never typed:
+   - HeadVer: `yearweek` from `date -u +%g%V` on the build day; `head` from the newest HeadVer tag, or the profile's `versioning.head` for the first one. For a release that reaches users, offer "raise `head` to N+1 (recommended)" as a selection; never raise it silently, unless the project's rule says every release raises it. `build` must come from a counter that never repeats: a CI run number only where a re-run cannot repeat it. GitHub Actions keeps `run_number` on a re-run and raises only `run_attempt`, so there use `run_number` only when `run_attempt` is 1, or a dedicated counter.
+   - SemVer: propose MAJOR, MINOR or PATCH from the change set since the newest release tag (`git log <tag>..HEAD`) and name the commits that drove it: any breaking change, MAJOR; else any feature, MINOR; else PATCH. A person decides. Under `0.y.z` anything may change (SemVer item 4), so a breaking change may raise only MINOR.
+   - CalVer: from the release day and the profile's `format`, as the CalVer section says.
+   - A release candidate takes the scheme's pre-release form below.
+3. Unique: list the tags (`git tag --list`, and the remote's with `git ls-remote --tags origin`). The new tag must not exist yet, and a HeadVer build number names one build only; a release tag on the build of its `-dev` tag is the same build, not a reuse. Never reuse, move or delete a tag: a wrong published version is replaced by the next version.
+4. Agree, per scheme:
+   - HeadVer, or any version the pipeline stamps: the tag, the built artifact's `--version` and the release note show the same version. Never require or make a version-only commit to put it in a manifest.
+   - SemVer or CalVer kept in the manifest: the manifest (`Cargo.toml`, `package.json`, `pyproject.toml`), the lock file, the changelog or release notes, install scripts and the built binary's `--version` agree with the tag.
+5. Where: tag the merge commit on the integration branch after the merge, never on a feature branch.
+6. Record: the version, its inputs (previous tag; build day and counter, the commits that drove the bump, or the day and format) and the tag name, in the release note and the card.
+7. Refuse: when any step fails, do not tag or publish; report the step, its command and its output.
+
 ## SemVer
 
 - Format: `MAJOR.MINOR.PATCH`, three non-negative integers without leading zeros. A tag usually carries a `v` in front (`v3.2.1`); the `v` is not part of the version.
@@ -36,12 +54,18 @@ How `project-detect` reads one version, after dropping a leading `v` and a prefi
 
 ## HeadVer
 
-- Format: `{head}.{yearweek}.{build}`. `yearweek` always has four digits: the two-digit year, then the two-digit ISO-8601 week number (week 34 of 2021 is `2134`).
-- Who bumps what: `head` is the only number a person sets; it is zero-based and raised when the team decides a release should be noticed. `yearweek` comes from the build date. `build` is an incremental number from the build server.
-- Pick it when: an app or a service ships on a steady rhythm from a build server and nobody depends on its interface by version, so the version should say when it was built and which build it is.
-- Next version: keep `head` unless a person raised it; take `yearweek` from the build day; take `build` from the build server's counter. Without such a counter the next version cannot be computed: say so and never invent the number.
-- Pre-release: the scheme has no marking of its own. A hyphen suffix is allowed and advised against (raise `head` instead); a `+meta` suffix is acceptable.
-- Examples: `3.2647.59` is head 3, week 47 of 2026, build 59; the next build one week later is `3.2648.60`. A project that moves from `v2.1.0` starts at head 3.
+- Format: `{head}.{yearweek}.{build}` (`3.2408.79`). Each number has one meaning:
+  - `head`: set by a person, the only manual number, zero-based. The author recommends that you raise it on every delivery that reaches users; it then grows fast, and a large head (hundreds, past 1000) is fine.
+  - `yearweek`: when it was built. Four digits: the two-digit year, then the two-digit ISO-8601 week (week 34 of 2021 is `2134`). Week rules differ between date libraries, so it is computed by a program at build time, never typed.
+  - `build`: which build it is, from the build server's counter. Every build gets a new number and none is reused: two builds with one number mean the pipeline needs checking, and the same code built twice is two builds (a timestamp or packaging step can change the output).
+- Who bumps what: a person raises `head`; the build pipeline stamps `yearweek` and `build`. Versions are tags the pipeline stamps on the build, never a version-file edit: never make a commit that only edits a version number, so the log holds only changes to behaviour (github.com/line/headver has a script per language).
+- Metadata: text after `+` is not part of the version. It may be added freely; choose what helps communication, such as a platform (`3.2408.79+Android`); a git hash repeats what the build number says.
+- Talk: plan by head (`v3`), debug by build (`b79`), and read the age from `yearweek`. Plan epics per head; a full version fixed before its build (`v4.xxxx.xx`) is usually a document template's demand, not a need. Rough 2024 seasons, in the article's labels: weeks 1–9 early year (to Mar 3), 10s spring (to May 12), 20s summer (to Jul 21), 30s autumn (to Sep 29), 40s winter (to Dec 8), 50–53 year end.
+- Hotfix: raise `head` (it reaches users), or keep `head` and ship the fix as a new build. The article lists a third option, calling the hotfix by an alias such as `v22.1`; the author found it odd, because the alias exists nowhere in the system. MoAI's rule: never use such an alias.
+- Pick it when: an end-user service product (an app or a web service) ships often from a build server, and people ask when it was built and which build it is. A public API or library fits SemVer better: there HeadVer raises the version for refactors that change nothing outside, which can confuse API users. A large, long-cycle product fits CalVer.
+- Next version: keep `head` unless a person raised it; `yearweek` from the build day with `date -u +%g%V` (ISO week-year: 2025-12-29 gives `2601`; UTC is MoAI's choice, since the article names no time zone and the README's example uses the local `date +%V`); `build` from the build server's counter. Without such a counter the next version cannot be computed: say so and never invent the number.
+- Pre-release: the scheme has no marking of its own. A hyphen suffix is allowed and advised against (raise `head` instead); a `+meta` suffix is acceptable. MoAI's rule: a HeadVer release candidate carries no suffix; it is a build tag marked as a pre-release on the release page (GitHub "Set as a pre-release"). Observed in the author's team screenshot (the article's image 07), not a rule: development builds tagged with a `-dev` suffix on the build counter shared with releases (`4.2408.39-dev`, `4.2408.39`, `4.2408.41-dev`, `4.2408.42`), and a release cut by picking a tag. A release tag on the same build number as its `-dev` tag names the same build, so it is not a reuse.
+- Examples: `3.2408.79` is head 3, week 8 of 2024 (early year), build 79. `3.2647.59` is head 3, week 47 of 2026, build 59; the next build one week later is `3.2648.60`. A bug found in `5.2045.119` and fixed in `6.2047.124` was fixed in the next head, two weeks later. A project that moves from `v2.1.0` starts at head 3.
 
 ## CalVer
 
@@ -52,4 +76,4 @@ How `project-detect` reads one version, after dropping a leading `v` and a prefi
 - Pre-release: the `MODIFIER`, written the way the project's tags already write it; with nothing to follow, `-rc.1` (`2026.11.0-rc.1`).
 - Examples: with `YYYY.0M.MICRO`, `2026.11.0` and a second release in November give `2026.11.1`, and the first one in December is `2026.12.0`. Elsewhere: Ubuntu `YY.0M` (`26.04`), yt-dlp `YYYY.0M.0D` (`2026.03.17`), pip `YY.MINOR.MICRO`.
 
-Sources, read 2026-11-17: https://semver.org (2.0.0), https://github.com/line/headver, https://calver.org (spec 26.0).
+Sources, read 2026-11-17: https://semver.org (2.0.0), https://github.com/line/headver, https://calver.org (spec 26.0). HeadVer's number meanings, metadata, tags, hotfixes, `-dev` builds and fit, read 2026-11-16 with every image: the author's article https://techblog.lycorp.co.jp/ko/headver-new-versioning-system-for-product-teams.
