@@ -46,6 +46,32 @@ fn spec_path(project: &Path, id: &str) -> PathBuf {
     project.join(".moai/specs").join(id).join("spec.md")
 }
 
+/// A template's text with every `<…>` placeholder filled with the word `filled`.
+fn filled(text: &str) -> String {
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(open) = rest.find('<') {
+        let Some(close) = rest[open..].find('>') else {
+            break;
+        };
+        out.push_str(&rest[..open]);
+        out.push_str("filled");
+        rest = &rest[open + close + 1..];
+    }
+    out.push_str(rest);
+    out
+}
+
+/// The codes of `show`'s findings.
+fn finding_codes(v: &Value) -> Vec<String> {
+    v["result"]["spec"]["findings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["code"].as_str().unwrap().to_string())
+        .collect()
+}
+
 fn new_spec(home: &TempHome, p: &Path, extra: &[&str]) -> (i32, Value) {
     let mut args = vec![
         "new",
@@ -103,13 +129,28 @@ fn new_check_list_show_and_nothing_else_is_written() {
     assert_eq!(v["result"]["count"], 1);
     let (code, v) = spec(&home, &p, &["list"]);
     assert_eq!(code, 0, "{v}");
-    assert_eq!(
-        v["result"]["rows"],
-        json!([{"id": ID, "folder": ID, "status": "draft", "title": "Fix login", "parent": null,
-                "legacy": false, "errors": 0, "warnings": 0}])
-    );
+    let row = &v["result"]["rows"][0];
+    assert_eq!(v["result"]["count"], 1);
+    for (key, want) in [
+        ("id", json!(ID)),
+        ("folder", json!(ID)),
+        ("status", json!("draft")),
+        ("title", json!("Fix login")),
+        ("parent", Value::Null),
+        ("legacy", json!(false)),
+        ("errors", json!(0)),
+    ] {
+        assert_eq!(row[key], want, "{key}: {row}");
+    }
     let (code, v) = spec(&home, &p, &["show", ID]);
     assert_eq!(code, 0, "{v}");
+    // A fresh draft only warns about the template text still to fill.
+    let codes = finding_codes(&v);
+    assert!(
+        !codes.is_empty() && codes.iter().all(|c| c == "placeholder"),
+        "{codes:?}"
+    );
+    assert_eq!(row["warnings"], json!(codes.len()));
     let s = &v["result"]["spec"];
     assert_eq!(s["id"], ID);
     assert_eq!(s["form"], "full");
@@ -150,7 +191,11 @@ fn minimal_with_parent_and_the_default_date() {
     assert_eq!(code, 0, "{v}");
     assert_eq!(v["result"]["spec"]["form"], "minimal");
     assert_eq!(v["result"]["spec"]["parent"], "SPEC-AUTH-001");
-    assert_eq!(v["result"]["spec"]["findings"], json!([]));
+    let codes = finding_codes(&v);
+    assert!(
+        !codes.is_empty() && codes.iter().all(|c| c == "placeholder"),
+        "{codes:?}"
+    );
 }
 
 #[test]
@@ -271,10 +316,11 @@ fn check_reports_codes_and_exits_one_on_an_error() {
     let p = project(&home);
     assert_eq!(new_spec(&home, &p, &["--minimal"]).0, 0);
     let path = spec_path(&p, ID);
-    let good = fs::read_to_string(&path).unwrap();
+    let template = fs::read_to_string(&path).unwrap();
+    let good = filled(&template);
     fs::write(
         &path,
-        good.replace(" · verify: `<command that checks it>`", "")
+        filled(&template.replace(" · verify: `<command that checks it>`", ""))
             .replace("revision: 1\n", "revision: 1\nowner: me\n"),
     )
     .unwrap();
@@ -380,6 +426,8 @@ fn closure_needs_completed_and_a_result() {
     let home = TempHome::new();
     let p = project(&home);
     assert_eq!(new_spec(&home, &p, &["--minimal"]).0, 0);
+    let path = spec_path(&p, ID);
+    fs::write(&path, filled(&fs::read_to_string(&path).unwrap())).unwrap();
     let (code, v) = spec(&home, &p, &["check", ID, "--closure"]);
     assert_eq!(code, 1, "{v}");
     let m = v["error"]["message"].as_str().unwrap();
@@ -390,7 +438,6 @@ fn closure_needs_completed_and_a_result() {
     // Approve with the digest `show` reports, complete, and record the result.
     let (_, v) = spec(&home, &p, &["show", ID]);
     let digest = v["result"]["spec"]["digest"].as_str().unwrap().to_string();
-    let path = spec_path(&p, ID);
     let text = fs::read_to_string(&path).unwrap().replace(
         "status: draft\n",
         &format!(
@@ -416,4 +463,172 @@ fn closure_needs_completed_and_a_result() {
             .contains("closure_open"),
         "{v}"
     );
+}
+
+/// The refusal names at most 50 errors (N) and says how many more there are from 51 (N+1).
+#[test]
+fn the_refusal_lists_fifty_errors_and_counts_the_rest() {
+    for (count, more) in [
+        (50, None),
+        (51, Some("; and 1 more (spec show <id> lists them)")),
+    ] {
+        let home = TempHome::new();
+        let p = project(&home);
+        for n in 0..count {
+            let id = format!("SPEC-20261117-s{n:02}");
+            let dir = p.join(".moai/specs").join(&id);
+            fs::create_dir_all(&dir).unwrap();
+            // One error each: no `revision`.
+            let text = format!(
+                "---\nid: {id}\ntitle: t\nstatus: draft\ncreated: 2026-11-17\n---\n\n## Intent\n\nx\n\n\
+                 ## Requirements\n\n- REQ-1: The tool shall work.\n\n## Acceptance\n\n\
+                 - AC-1 (REQ-1): works · verify: true\n\n## Scope\n\n- write: `a.rs`\n\n## Plan\n\n1. x\n"
+            );
+            fs::write(dir.join("spec.md"), text).unwrap();
+        }
+        let (code, v) = spec(&home, &p, &["check", "--all"]);
+        assert_eq!(code, 1, "{v}");
+        let m = v["error"]["message"].as_str().unwrap();
+        assert!(
+            m.starts_with(&format!(
+                "spec check refused: {count} error(s) and 0 warning(s)"
+            )),
+            "{m}"
+        );
+        assert_eq!(m.matches(" revision_invalid").count(), 50, "{count}");
+        match more {
+            Some(tail) => assert!(m.ends_with(tail), "{m}"),
+            None => assert!(!m.contains("more"), "{m}"),
+        }
+    }
+}
+
+/// The repository's own SPECs pass the checker (SDD B2): a SPEC merged with an error turns
+/// this red.
+#[test]
+fn the_repository_specs_pass_check() {
+    let home = TempHome::new();
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let (code, v) = spec(&home, root, &["check", "--all"]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(v["result"]["specs"], "present");
+    assert!(v["result"]["count"].as_u64().unwrap() >= 2, "{v}");
+}
+
+/// `(exit code, stdout)` of a read-only command run with the temporary HOME.
+fn raw(home: &TempHome, args: &[&str]) -> (Option<i32>, String) {
+    let out = home.command(args).output().unwrap();
+    (
+        out.status.code(),
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+    )
+}
+
+/// SDD B1 (leader decision 2026-11-17): a `.moai/` that holds only `specs/` is what a fresh
+/// clone of a repository that tracks its SPECs has, and it reads like no state folder at all.
+/// `spec new` in a new project and in a `.moai-cli` project changes neither the state
+/// verdict nor what `project-detect` and `project-update-plan` answer, and writes no marker.
+#[test]
+fn spec_new_keeps_the_state_verdict_and_the_project_answers() {
+    for legacy in [false, true] {
+        let home = TempHome::new();
+        let p = home.path().join("proj");
+        fs::create_dir_all(&p).unwrap();
+        if legacy {
+            fs::create_dir_all(p.join(".moai-cli")).unwrap();
+            fs::write(p.join(".moai-cli/project.yaml"), "schema_version: 2\n").unwrap();
+        }
+        let ps = p.to_str().unwrap();
+        let look = || {
+            let c = moai_cli::state_root::classify(&p);
+            (
+                c.generation,
+                moai_cli::state_root::dir(&p),
+                moai_cli::state_root::is_new_project(&p),
+                raw(&home, &["project-detect", ps]),
+                raw(&home, &["project-update-plan", ps]),
+            )
+        };
+        let before = look();
+        assert_eq!(before.0, "none", "{legacy}");
+        assert_eq!(new_spec(&home, &p, &[]).0, 0);
+        assert!(spec_path(&p, ID).is_file());
+        assert_eq!(look(), before, "legacy={legacy}");
+        assert!(
+            !p.join(".moai/moai.json").exists(),
+            "spec new writes no marker"
+        );
+        assert!(!p.join(".moai/moai-cli.json").exists());
+        // Anything beside specs/ is state again: the old verdict for an unmarked folder.
+        fs::write(p.join(".moai/notes.txt"), "x").unwrap();
+        assert_eq!(moai_cli::state_root::classify(&p).generation, "unknown");
+    }
+}
+
+/// A `.moai-cli` project whose clone already holds `.moai/specs/` moves its earlier state into
+/// that `.moai/` and back; the SPECs stay where git tracks them in both directions.
+#[test]
+fn an_earlier_root_moves_into_a_moai_that_holds_specs_and_back() {
+    let home = TempHome::new();
+    let p = home.path().join("proj");
+    fs::create_dir_all(p.join(".moai-cli/index")).unwrap();
+    fs::write(p.join(".moai-cli/project.yaml"), "schema_version: 2\n").unwrap();
+    fs::write(p.join(".moai-cli/index/a.json"), "{\"a\":1}").unwrap();
+    assert_eq!(new_spec(&home, &p, &[]).0, 0);
+    let spec_bytes = fs::read(spec_path(&p, ID)).unwrap();
+    let ps = p.to_str().unwrap();
+    let call = |args: &[&str]| -> Value {
+        let (_, out) = raw(&home, args);
+        serde_json::from_str(&out).unwrap_or_else(|_| panic!("{args:?}: {out}"))
+    };
+    let plan = call(&["go-state-plan", ps]);
+    assert_eq!(plan["ok"], true, "{plan}");
+    let digest = plan["result"]["plan_digest"].as_str().unwrap().to_string();
+    let v = call(&[
+        "go-state-apply",
+        ps,
+        "--plan-digest",
+        &digest,
+        "--permission-reference",
+        "test-permission-ref",
+    ]);
+    assert_eq!(v["ok"], true, "{v}");
+    assert_eq!(v["result"]["legacy_move"], true, "{v}");
+    assert_eq!(
+        fs::read_to_string(p.join(".moai/project.yaml")).unwrap(),
+        "schema_version: 2\n"
+    );
+    assert_eq!(fs::read(spec_path(&p, ID)).unwrap(), spec_bytes);
+    assert_eq!(moai_cli::state_root::classify(&p).generation, "rust");
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    let rp = call(&["go-state-revert-plan", ps, "--backup", &backup]);
+    assert_eq!(rp["ok"], true, "{rp}");
+    let rd = rp["result"]["plan_digest"].as_str().unwrap().to_string();
+    let v = call(&[
+        "go-state-revert",
+        ps,
+        "--backup",
+        &backup,
+        "--plan-digest",
+        &rd,
+        "--permission-reference",
+        "test-permission-ref",
+    ]);
+    assert_eq!(v["ok"], true, "{v}");
+    assert_eq!(
+        fs::read_to_string(p.join(".moai-cli/project.yaml")).unwrap(),
+        "schema_version: 2\n"
+    );
+    assert_eq!(fs::read(spec_path(&p, ID)).unwrap(), spec_bytes);
+    let mut top: Vec<String> = fs::read_dir(p.join(".moai"))
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    top.sort();
+    assert_eq!(
+        top,
+        vec!["specs".to_string()],
+        "only the SPECs stay in .moai/"
+    );
+    assert_eq!(moai_cli::state_root::classify(&p).generation, "none");
 }

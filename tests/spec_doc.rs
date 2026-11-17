@@ -53,7 +53,7 @@ fn approval_for(body: &str) -> String {
     let draft = doc(&format!("{}{body}", front("draft", "")));
     let digest = draft.digest.expect("a GEARS draft has a digest");
     format!(
-        "approval:\n  by: user\n  at: 2026-11-17T10:00:00Z\n  basis: in-session selection\n  \
+        "approval:\n  by: user\n  at: 2026-11-17\n  basis: in-session selection\n  \
          digest: {digest}\n"
     )
 }
@@ -95,7 +95,13 @@ fn both_templates_render_clean() {
                 closure: false,
             },
         );
-        assert!(d.findings.is_empty(), "{minimal}: {:?}", d.findings);
+        // A fresh draft only warns about the template text still to fill.
+        assert!(errors(&d).is_empty(), "{minimal}: {:?}", d.findings);
+        let w = warnings(&d);
+        assert!(
+            !w.is_empty() && w.iter().all(|c| *c == "placeholder"),
+            "{w:?}"
+        );
         assert_eq!(d.status.as_deref(), Some("draft"));
         assert_eq!(d.revision, Some(1));
         assert_eq!(d.parent.as_deref(), Some("SPEC-20261101-auth"));
@@ -300,14 +306,28 @@ fn approval_fields_and_digest_are_checked() {
         let d = doc(&format!("{}{body}", front("approved", &partial)));
         assert_eq!(errors(&d), vec!["approval_field"], "{line}");
     }
-    let bad_at = approval.replace("2026-11-17T10:00:00Z", "yesterday");
-    let d = doc(&format!("{}{body}", front("approved", &bad_at)));
-    assert_eq!(errors(&d), vec!["approval_field"]);
+    // `at` is exactly YYYY-MM-DD: a time after it or another word is refused.
+    for at in [
+        "yesterday",
+        "2026-11-17T10:00:00Z",
+        "2026-11-17 10:00",
+        "2026-11-31",
+    ] {
+        let bad_at = approval.replace("at: 2026-11-17\n", &format!("at: {at}\n"));
+        let d = doc(&format!("{}{body}", front("approved", &bad_at)));
+        assert_eq!(errors(&d), vec!["approval_field"], "{at:?}");
+    }
+    // A flow map is read like the indented block (B2).
     let flow = doc(&format!(
         "{}{body}",
         front("draft", "approval: {by: user}\n")
     ));
-    assert!(errors(&flow).contains(&"fm_shape"), "{:?}", flow.findings);
+    assert_eq!(
+        errors(&flow),
+        vec!["approval_field", "approval_field", "approval_field"],
+        "{:?}",
+        flow.findings
+    );
 }
 
 #[test]
@@ -535,24 +555,32 @@ fn when_requirements_need_a_failure_path() {
         "{when1}- REQ-2 (REQ-9): IF the check fails, THEN the server shall refuse it.\n"
     ));
     assert_eq!(errors(&ghost), vec!["req_ref_unknown", "req_failure_path"]);
-    // `failure: none` on the REQ line is the explicit exemption; it is not part of the text.
+    // The trailing `· failure: none` note (with an optional ` — reason`) is the explicit
+    // exemption; it is not part of the text (N5).
     for line in [
         "- REQ-1: When a user logs in, the server shall log the time · failure: none\n",
-        "- REQ-1: When a user logs in, the server shall log the time. failure: none — a log line only\n",
-        "- REQ-1: When a user logs in, the server shall log the time (failure: none)\n",
+        "- REQ-1: When a user logs in, the server shall log the time. · failure: none — a log line only\n",
     ] {
         let d = reqs(line);
         assert!(d.findings.is_empty(), "{line}: {:?}", d.findings);
         assert!(d.requirements[0].failure_none, "{line}");
         assert!(!d.requirements[0].text.contains("failure"), "{line}");
     }
-    // `failure: none` glued to a word is not the note.
-    assert_eq!(
-        errors(&reqs(
-            "- REQ-1: When a user logs in, the server shall log nofailure: none\n"
-        )),
-        vec!["req_failure_path"]
-    );
+    // Any other spelling or place is not the note.
+    for line in [
+        "- REQ-1: When a user logs in, the server shall log the time. failure: none\n",
+        "- REQ-1: When a user logs in, the server shall log the time (failure: none)\n",
+        "- REQ-1: When a user logs in, the server shall log nofailure: none\n",
+        "- REQ-1: When a user logs in · failure: none, the server shall log the time\n",
+    ] {
+        let d = reqs(line);
+        assert!(!d.requirements[0].failure_none, "{line}");
+        assert!(
+            errors(&d).contains(&"req_failure_path"),
+            "{line}: {:?}",
+            d.findings
+        );
+    }
     // Only `When` triggers the rule.
     let states = reqs(
         "- REQ-1: While the cache is warm, the server shall answer from it.\n\
@@ -583,6 +611,199 @@ fn when_requirements_need_a_failure_path() {
     );
     assert!(errors(&legacy).is_empty(), "{:?}", legacy.findings);
     assert!(warnings(&legacy).contains(&"req_failure_path"));
+}
+
+/// B2: the YAML shapes a SPEC is written with — a flow map for `approval` and `null`.
+#[test]
+fn frontmatter_reads_flow_maps_and_null() {
+    let body = minimal_body();
+    let block = approval_for(&body);
+    let digest = block.split("digest: ").nth(1).unwrap().trim().to_string();
+    let flow = format!(
+        "parent: null\napproval: {{by: user, at: 2026-11-17, basis: \"in-session: yes, all\", \
+         digest: {digest}}}\n"
+    );
+    let d = doc(&format!("{}{body}", front("approved", &flow)));
+    assert!(d.findings.is_empty(), "{:?}", d.findings);
+    let a = d.approval.unwrap();
+    assert_eq!(a.basis.as_deref(), Some("in-session: yes, all"));
+    assert_eq!(a.digest.as_deref(), Some(digest.as_str()));
+    assert_eq!(d.parent, None);
+    // `null` reads as absent: an approved SPEC without a digest is refused.
+    let null_digest = flow.replace(&digest, "null");
+    let d = doc(&format!("{}{body}", front("approved", &null_digest)));
+    assert_eq!(errors(&d), vec!["approval_field"]);
+    // A flow map that is not closed, or one on a key that takes one value.
+    let open = doc(&format!(
+        "{}{body}",
+        front("draft", "approval: {by: user\n")
+    ));
+    assert!(errors(&open).contains(&"fm_shape"), "{:?}", open.findings);
+    let title = doc(&format!("{}{body}", front("draft", "")).replacen(
+        "title: \"Fix login\"",
+        "title: {a: b}",
+        1,
+    ));
+    assert_eq!(errors(&title), vec!["fm_shape"]);
+}
+
+/// B2: `(REQ-1…REQ-3)` and `(REQ-1..REQ-3)` name every requirement in the range.
+#[test]
+fn refs_take_ranges() {
+    let fm = front("draft", "");
+    let three = "## Requirements\n\n- REQ-1: The server shall a.\n- REQ-2: The server shall b.\n\
+                 - REQ-3: The server shall c.\n\n";
+    let ac = |refs: &str| {
+        doc(&format!(
+            "{fm}{INTENT}{three}## Acceptance\n\n- AC-1 ({refs}): all · verify: x\n\n{SCOPE}{PLAN}"
+        ))
+    };
+    for refs in [
+        "REQ-1…REQ-3",
+        "REQ-1..REQ-3",
+        "REQ-1 … REQ-3",
+        "REQ-2, REQ-1..REQ-1",
+    ] {
+        let d = ac(refs);
+        assert!(d.findings.is_empty(), "{refs}: {:?}", d.findings);
+    }
+    assert_eq!(
+        ac("REQ-1…REQ-3").acceptance[0].refs,
+        vec!["REQ-1", "REQ-2", "REQ-3"]
+    );
+    for refs in ["REQ-3..REQ-1", "REQ-1..REQ-4", "전체", "REQ-1..AC-2"] {
+        assert!(
+            errors(&ac(refs)).contains(&"ac_ref_unknown"),
+            "{refs}: {:?}",
+            ac(refs).findings
+        );
+    }
+}
+
+/// B3: `[NEEDS CLARIFICATION…]` and an unfilled template placeholder are errors in an approved
+/// or completed SPEC and warnings in a draft; text in fenced code and other `<…>` are free.
+#[test]
+fn placeholders_and_clarifications_follow_the_status() {
+    let body = minimal_body();
+    let cases = [
+        (
+            "Logins fail for valid passwords.",
+            "Logins fail. [NEEDS CLARIFICATION: which?]",
+            "needs_clarification",
+        ),
+        ("Fix the comparison.", "<first step>", "placeholder"),
+        (
+            "Fix the comparison.",
+            "Fix <the step REQ-1 needs fails> here",
+            "placeholder",
+        ),
+    ];
+    for (from, to, code) in cases {
+        let changed = body.replace(from, to);
+        let approval = approval_for(&changed);
+        for (status, error) in [
+            ("draft", false),
+            ("approved", true),
+            ("completed", true),
+            ("rejected", false),
+        ] {
+            let extra = if status == "draft" || status == "rejected" {
+                ""
+            } else {
+                &approval
+            };
+            let d = doc(&format!("{}{changed}", front(status, extra)));
+            let (e, w) = (errors(&d), warnings(&d));
+            if error {
+                assert_eq!((e, w), (vec![code], vec![]), "{status} {to}");
+            } else {
+                assert_eq!((e, w), (vec![], vec![code]), "{status} {to}");
+            }
+        }
+    }
+    // Fenced code and `<…>` that is not template text are free.
+    let free = body.replace(
+        "Fix the comparison.",
+        "Read `<state>/specs/` and <n>.\n\n```\n[NEEDS CLARIFICATION]\n<first step>\n```",
+    );
+    let d = doc(&format!("{}{free}", front("draft", "")));
+    assert!(d.findings.is_empty(), "{:?}", d.findings);
+}
+
+/// B3: the size budget warns above 12 requirements (N=12 passes, 13 warns) and above 400
+/// lines (400 passes, 401 warns); it is never an error.
+#[test]
+fn the_size_budget_warns_above_twelve_requirements_and_four_hundred_lines() {
+    let fm = front("draft", "");
+    let reqs = |n: usize| {
+        let lines: String = (1..=n)
+            .map(|i| format!("- REQ-{i}: The server shall do step {i}.\n"))
+            .collect();
+        doc(&format!(
+            "{fm}{INTENT}## Requirements\n\n{lines}\n## Acceptance\n\n- AC-1 (REQ-1): ok · verify: x\n\n{SCOPE}{PLAN}"
+        ))
+    };
+    assert!(reqs(12).findings.is_empty(), "{:?}", reqs(12).findings);
+    assert_eq!(warnings(&reqs(13)), vec!["size_requirements"]);
+    assert!(errors(&reqs(13)).is_empty());
+    let base = format!("{fm}{}", minimal_body());
+    let used = base.lines().count();
+    let pad = |total: usize| {
+        let extra = "Plan detail.\n".repeat(total - used);
+        doc(&format!("{base}{extra}"))
+    };
+    assert_eq!(
+        format!("{base}{}", "x\n".repeat(400 - used))
+            .lines()
+            .count(),
+        400
+    );
+    assert!(pad(400).findings.is_empty(), "{:?}", pad(400).findings);
+    assert_eq!(warnings(&pad(401)), vec!["size_lines"]);
+    assert!(errors(&pad(401)).is_empty());
+}
+
+/// N2: the secret-shape and personal-path checks of `parse_gears` hold for AC and Scope text.
+#[test]
+fn ac_and_scope_text_get_the_text_checks() {
+    let fm = front("draft", "");
+    let with_ac = |ac: &str| {
+        doc(&format!(
+            "{fm}{INTENT}{REQS}## Acceptance\n\n- AC-1 (REQ-1): {ac}\n\n{SCOPE}{PLAN}"
+        ))
+    };
+    for ac in [
+        "Logs in from /Users/me/x · verify: cargo test",
+        "Logs in · verify: curl -H token=abc",
+        "Logs in · manual: read ~/notes",
+        "Logs in · verify: echo ghp_abcdef",
+    ] {
+        assert_eq!(errors(&with_ac(ac)), vec!["text_unsafe"], "{ac}");
+    }
+    assert!(with_ac("Logs in · verify: cargo test --test login")
+        .findings
+        .is_empty());
+    let with_scope = |s: &str| doc(&format!("{fm}{INTENT}{REQS}{ACS}## Scope\n\n{s}\n{PLAN}"));
+    assert_eq!(
+        errors(&with_scope(
+            "- write: `src/a.rs`\n- forbidden: `password=x`\n"
+        )),
+        vec!["text_unsafe"]
+    );
+    assert!(with_scope("- write: `src/a.rs`\n").findings.is_empty());
+}
+
+/// A tag line may wrap: indented lines below it that are not list items add to its kind.
+#[test]
+fn a_wrapped_scope_tag_line_keeps_its_kind() {
+    let fm = front("draft", "");
+    let d = doc(&format!(
+        "{fm}{INTENT}{REQS}{ACS}## Scope\n\n- write: `a.md`, `b.md`,\n  `src/c.rs`\n- read-only: \
+         `src/d.rs`,\n  `e/**`\n- `f.rs`\n  `not-a-path-g`\n\n{PLAN}"
+    ));
+    assert!(d.findings.is_empty(), "{:?}", d.findings);
+    assert_eq!(d.scope.write, vec!["a.md", "b.md", "src/c.rs", "f.rs"]);
+    assert_eq!(d.scope.read_only, vec!["src/d.rs", "e/**"]);
 }
 
 #[test]

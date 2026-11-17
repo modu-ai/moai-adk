@@ -547,6 +547,72 @@ fn unquote(v: &str) -> String {
         .to_string()
 }
 
+/// Records one `approval` pair; a repeated key is `fm_duplicate`, a `null` value is absent.
+fn add_approval(doc: &mut SpecDoc, list: &mut Vec<(String, Field)>, k: &str, v: &str, n: usize) {
+    if list.iter().any(|(seen, _)| seen == k) {
+        doc.error(
+            "fm_duplicate",
+            Some(n),
+            format!("`approval.{k}` is given twice"),
+        );
+        return;
+    }
+    if is_null(v) {
+        return;
+    }
+    list.push((
+        k.to_string(),
+        Field {
+            value: unquote(v),
+            line: n,
+        },
+    ));
+}
+
+/// YAML's null spellings: the key reads as absent.
+fn is_null(v: &str) -> bool {
+    matches!(v.trim(), "null" | "Null" | "NULL" | "~")
+}
+
+/// A one-line YAML flow map `{k: v, k: "v, with comma"}`: its pairs in order, or `None` when
+/// the text is not one (not closed, a nested `{`/`[`, a pair without `key:`). Quotes are
+/// honoured; values are unquoted.
+fn flow_map(v: &str) -> Option<Vec<(String, String)>> {
+    let inner = v.trim().strip_prefix('{')?.strip_suffix('}')?;
+    let mut pieces = Vec::new();
+    let (mut quote, mut start) = (None::<char>, 0);
+    for (i, c) in inner.char_indices() {
+        match (quote, c) {
+            (Some(q), c) if c == q => quote = None,
+            (Some(_), _) => {}
+            (None, '"' | '\'') => quote = Some(c),
+            (None, '{' | '[' | '}' | ']') => return None,
+            (None, ',') => {
+                pieces.push(&inner[start..i]);
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    if quote.is_some() {
+        return None;
+    }
+    pieces.push(&inner[start..]);
+    let mut out = Vec::new();
+    for p in pieces.into_iter().filter(|p| !p.trim().is_empty()) {
+        let (k, val) = p.split_once(':')?;
+        let k = k.trim();
+        let ok = !k.is_empty()
+            && k.bytes()
+                .all(|c| c.is_ascii_alphanumeric() || c == b'_' || c == b'-');
+        if !ok {
+            return None;
+        }
+        out.push((k.to_string(), val.trim().to_string()));
+    }
+    Some(out)
+}
+
 /// A column-0 `key: value` line: the key is one word of letters, digits, `_` and `-`.
 fn key_value(line: &str) -> Option<(&str, &str)> {
     let (k, v) = line.split_once(':')?;
@@ -570,6 +636,8 @@ pub fn parse(text: &str, opts: &Options) -> SpecDoc {
     }
     body(&lines, body_start, &mut doc);
     digest(&mut doc, approval_line);
+    unfinished(&lines, &mut doc);
+    budget(text.lines().count(), &mut doc);
     if opts.closure {
         closure(&mut doc);
     }
@@ -584,6 +652,96 @@ pub fn parse(text: &str, opts: &Options) -> SpecDoc {
         }
     }
     doc
+}
+
+/// The marker of an open question an author left in a SPEC.
+const NEEDS_CLARIFICATION: &str = "[NEEDS CLARIFICATION";
+/// The size budget (B3): above these a SPEC is too big for one PR; a warning, never an error.
+pub const MAX_REQUIREMENTS: usize = 12;
+pub const MAX_LINES: usize = 400;
+
+/// Every `<…>` placeholder of the built-in templates: text `spec new` writes for the author to
+/// replace. Other `<…>` (such as `<state>` or `REQ-<n>`) is the author's own.
+fn template_placeholders() -> Vec<&'static str> {
+    let mut out: Vec<&'static str> = Vec::new();
+    for t in [FULL_TEMPLATE, MINIMAL_TEMPLATE] {
+        let mut rest = t;
+        while let Some(open) = rest.find('<') {
+            let Some(len) = rest[open..].find(['>', '\n']) else {
+                break;
+            };
+            let span = &rest[open..open + len + 1];
+            if span.ends_with('>') && !out.contains(&span) {
+                out.push(span);
+            }
+            rest = &rest[open + 1..];
+        }
+    }
+    out
+}
+
+/// B3: `[NEEDS CLARIFICATION…]` and unfilled template placeholders, outside fenced code. An
+/// error once the SPEC is approved or completed (it would ship an open question), a warning
+/// before.
+fn unfinished(lines: &[&str], doc: &mut SpecDoc) {
+    let severity = if matches!(doc.status_as.as_deref(), Some("approved" | "completed")) {
+        Severity::Error
+    } else {
+        Severity::Warning
+    };
+    let placeholders = template_placeholders();
+    let mut fence: Option<&str> = None;
+    for (i, line) in lines.iter().enumerate() {
+        let t = line.trim_start();
+        if let Some(mark) = fence {
+            if t.starts_with(mark) {
+                fence = None;
+            }
+            continue;
+        }
+        if t.starts_with("```") || t.starts_with("~~~") {
+            fence = Some(&t[..3]);
+            continue;
+        }
+        if line.contains(NEEDS_CLARIFICATION) {
+            doc.push(
+                "needs_clarification",
+                severity,
+                Some(i + 1),
+                "an open `[NEEDS CLARIFICATION …]` question; answer it before approval",
+            );
+        }
+        if placeholders.iter().any(|p| line.contains(p)) {
+            doc.push(
+                "placeholder",
+                severity,
+                Some(i + 1),
+                "template text `<…>` still to fill; fill it before approval",
+            );
+        }
+    }
+}
+
+/// B3: the size budget, a warning above [`MAX_REQUIREMENTS`] requirements or [`MAX_LINES`]
+/// lines (split the work into SPECs linked by `parent`, decision U-D).
+fn budget(line_count: usize, doc: &mut SpecDoc) {
+    if doc.requirements.len() > MAX_REQUIREMENTS {
+        doc.warn(
+            "size_requirements",
+            None,
+            format!(
+                "more than {MAX_REQUIREMENTS} requirements; split the work into SPECs linked by \
+                 `parent`"
+            ),
+        );
+    }
+    if line_count > MAX_LINES {
+        doc.warn(
+            "size_lines",
+            None,
+            format!("more than {MAX_LINES} lines; split the work into SPECs linked by `parent`"),
+        );
+    }
 }
 
 /// Reads and checks the frontmatter; returns the index of the first body line and the line of
@@ -611,6 +769,7 @@ fn frontmatter(lines: &[&str], doc: &mut SpecDoc, opts: &Options) -> (usize, Opt
         return (lines.len(), None);
     };
     let mut fields: Vec<(String, Field)> = Vec::new();
+    let mut nulls: Vec<String> = Vec::new();
     let mut approval: Option<(usize, Vec<(String, Field)>)> = None;
     let mut current: Option<String> = None;
     let mut shaped: Vec<String> = Vec::new();
@@ -629,21 +788,7 @@ fn frontmatter(lines: &[&str], doc: &mut SpecDoc, opts: &Options) -> (usize, Opt
                         continue;
                     };
                     let list = &mut approval.get_or_insert((n, Vec::new())).1;
-                    if list.iter().any(|(seen, _)| seen == k) {
-                        doc.error(
-                            "fm_duplicate",
-                            Some(n),
-                            format!("`approval.{k}` is given twice"),
-                        );
-                        continue;
-                    }
-                    list.push((
-                        k.to_string(),
-                        Field {
-                            value: unquote(v),
-                            line: n,
-                        },
-                    ));
+                    add_approval(doc, list, k, v, n);
                 }
                 Some(k) if KNOWN_KEYS.contains(&k) => {
                     if !shaped.iter().any(|s| s == k) {
@@ -670,15 +815,41 @@ fn frontmatter(lines: &[&str], doc: &mut SpecDoc, opts: &Options) -> (usize, Opt
             doc.error("fm_duplicate", Some(n), format!("`{k}` is given twice"));
             continue;
         }
-        if k == "approval" {
+        if k == "approval" && !is_null(v) {
+            let list = &mut approval.get_or_insert((n, Vec::new())).1;
             if !v.is_empty() {
-                doc.error(
-                    "fm_shape",
-                    Some(n),
-                    "`approval` holds indented `by`, `at` and `basis` lines",
-                );
+                match flow_map(v) {
+                    Some(pairs) => {
+                        for (pk, pv) in pairs {
+                            add_approval(doc, list, &pk, &pv, n);
+                        }
+                    }
+                    None => doc.error(
+                        "fm_shape",
+                        Some(n),
+                        "`approval` holds `by`, `at`, `basis` and `digest`: indented lines or \
+                         one `{…}` map",
+                    ),
+                }
             }
-            approval.get_or_insert((n, Vec::new()));
+        } else if KNOWN_KEYS.contains(&k) && (v.starts_with('{') || v.starts_with('[')) {
+            doc.error(
+                "fm_shape",
+                Some(n),
+                format!("`{k}` takes one value, not a map or a list"),
+            );
+        }
+        if is_null(v) {
+            // `key: null` reads as absent; the key still counts for duplicates.
+            fields.push((
+                k.to_string(),
+                Field {
+                    value: String::new(),
+                    line: n,
+                },
+            ));
+            nulls.push(k.to_string());
+            continue;
         }
         fields.push((
             k.to_string(),
@@ -688,7 +859,12 @@ fn frontmatter(lines: &[&str], doc: &mut SpecDoc, opts: &Options) -> (usize, Opt
             },
         ));
     }
-    let get = |k: &str| fields.iter().find(|(key, _)| key == k).map(|(_, f)| f);
+    let get = |k: &str| {
+        fields
+            .iter()
+            .find(|(key, _)| key == k && !nulls.contains(key))
+            .map(|(_, f)| f)
+    };
     for (k, f) in &fields {
         if k == "cards" {
             doc.error(
@@ -863,14 +1039,14 @@ fn frontmatter(lines: &[&str], doc: &mut SpecDoc, opts: &Options) -> (usize, Opt
                 "basis" => &a.basis,
                 _ => &a.digest,
             };
-            let good = v.as_deref().is_some_and(|v| {
-                !v.trim().is_empty() && (k != "at" || v.get(..10).is_some_and(valid_date))
-            });
+            let good = v
+                .as_deref()
+                .is_some_and(|v| !v.trim().is_empty() && (k != "at" || valid_date(v)));
             if !good {
                 doc.error(
                     "approval_field",
                     Some(line),
-                    format!("`approval.{k}` is missing or empty (`at` starts with YYYY-MM-DD)"),
+                    format!("`approval.{k}` is missing or empty (`at` is a date, YYYY-MM-DD)"),
                 );
             }
         }
@@ -1085,8 +1261,9 @@ fn refs_of(text: &str) -> (Vec<String>, &str) {
         Some((inside, rest)) => (
             inside
                 .split(',')
-                .map(|r| r.trim().to_string())
+                .map(str::trim)
                 .filter(|r| !r.is_empty())
+                .flat_map(expand_range)
                 .collect(),
             rest.trim_start_matches(':').trim(),
         ),
@@ -1094,23 +1271,46 @@ fn refs_of(text: &str) -> (Vec<String>, &str) {
     }
 }
 
+/// The most ids one range may name.
+const MAX_RANGE: u32 = 1000;
+
+/// `REQ-1…REQ-3` or `REQ-1..REQ-3` as `REQ-1`, `REQ-2`, `REQ-3` (B2). Anything else — one id,
+/// a backward range, mixed prefixes, more than [`MAX_RANGE`] ids — stays one literal ref, so
+/// a ref that names nothing real is reported as unknown.
+fn expand_range(r: &str) -> Vec<String> {
+    let num = |s: &str, p: &str| -> Option<u32> {
+        let d = s.trim().strip_prefix(p)?;
+        (!d.is_empty() && d.bytes().all(|c| c.is_ascii_digit()))
+            .then(|| d.parse().ok())
+            .flatten()
+    };
+    let split = r.split_once('…').or_else(|| r.split_once(".."));
+    if let Some((a, b)) = split {
+        for p in ["REQ-", "AC-"] {
+            if let (Some(x), Some(y)) = (num(a, p), num(b, p)) {
+                if x <= y && y - x < MAX_RANGE {
+                    return (x..=y).map(|n| format!("{p}{n}")).collect();
+                }
+            }
+        }
+    }
+    vec![r.to_string()]
+}
+
 /// The note that a `When` requirement has no failure path to cover.
 const FAILURE_NONE: &str = "failure: none";
 
-/// A requirement sentence without its `failure: none` note (which starts the text or follows
-/// a space, `·` or `(`; anything after it is the author's reason), and whether it had one.
+/// A requirement sentence without its `failure: none` note, and whether it had one. The note
+/// is only the trailing `· failure: none`, optionally followed by ` — <reason>` (N5); the same
+/// words anywhere else are part of the sentence.
 fn failure_note(text: &str) -> (&str, bool) {
-    for (at, _) in text.match_indices(FAILURE_NONE) {
-        let ok = text[..at]
-            .chars()
-            .next_back()
-            .is_none_or(|c| c.is_whitespace() || c == '·' || c == '(');
-        if ok {
-            let before = text[..at]
-                .trim_end()
-                .trim_end_matches(['·', '('])
-                .trim_end();
-            return (before, true);
+    for (at, _) in text.match_indices('·') {
+        let rest = text[at + '·'.len_utf8()..].trim_start();
+        if let Some(after) = rest.strip_prefix(FAILURE_NONE) {
+            let after = after.trim();
+            if after.is_empty() || after.starts_with('—') {
+                return (text[..at].trim_end(), true);
+            }
         }
     }
     (text, false)
@@ -1260,6 +1460,24 @@ fn acceptance(doc: &mut SpecDoc, at: usize, content: &[(usize, &str)]) {
             );
             continue;
         }
+        // The text checks `parse_gears` makes on requirements (N2); the reason names the rule,
+        // never the text.
+        let refused = [
+            Some(&c.text),
+            c.verify.as_ref(),
+            c.manual.as_ref(),
+            c.unknown.as_ref(),
+        ]
+        .into_iter()
+        .flatten()
+        .find_map(|t| crate::spec::check_text(t).err());
+        if let Some(reason) = refused {
+            doc.error(
+                "text_unsafe",
+                Some(c.line),
+                format!("{} is refused: {reason}", c.id),
+            );
+        }
         if c.verify.is_none() && c.manual.is_none() && c.unknown.is_none() {
             doc.error(
                 "ac_no_verify",
@@ -1300,6 +1518,9 @@ fn scope(doc: &mut SpecDoc, at: usize, content: &[(usize, &str)]) {
     // A tag line without paths (`write:`) sets the kind of the untagged list items below it;
     // before any such line an untagged item is `write`. A tag with paths names only its own.
     let mut heading = "write:";
+    // A tag line with paths may wrap: indented lines below it that are not list items continue
+    // it, until a list item or a blank line.
+    let mut wrap: Option<&str> = None;
     for (n, line) in content {
         let (listed, t) = unlisted(line);
         let tag = SCOPE_TAGS.iter().find(|tag| t.starts_with(**tag));
@@ -1308,11 +1529,25 @@ fn scope(doc: &mut SpecDoc, at: usize, content: &[(usize, &str)]) {
                 let paths = scope_paths(&t[tag.len()..]);
                 if paths.is_empty() {
                     heading = tag;
+                    wrap = None;
+                } else {
+                    wrap = Some(tag);
                 }
                 (*tag, paths)
             }
-            None if listed => (heading, scope_paths(t).into_iter().take(1).collect()),
-            None => continue,
+            None if listed => {
+                wrap = None;
+                (heading, scope_paths(t).into_iter().take(1).collect())
+            }
+            None => match wrap {
+                Some(kind) if line.starts_with([' ', '\t']) && !t.is_empty() => {
+                    (kind, scope_paths(t))
+                }
+                _ => {
+                    wrap = None;
+                    continue;
+                }
+            },
         };
         for path in paths {
             if absolute(&path) {
@@ -1327,6 +1562,12 @@ fn scope(doc: &mut SpecDoc, at: usize, content: &[(usize, &str)]) {
                     Some(*n),
                     "a scope path must not climb with `..`",
                 );
+            } else if let Err(reason) = crate::spec::check_text(&path) {
+                doc.error(
+                    "text_unsafe",
+                    Some(*n),
+                    format!("a scope path is refused: {reason}"),
+                );
             }
             match kind {
                 "write:" => doc.scope.write.push(path),
@@ -1340,8 +1581,6 @@ fn scope(doc: &mut SpecDoc, at: usize, content: &[(usize, &str)]) {
     }
 }
 
-/// The AC → REQ links and the content digest; an approved digest that no longer matches is an
-/// error. The digest exists only when every requirement is a GEARS sentence.
 /// The failure-path rule (user decision 2026-11-17): every GEARS requirement with a `When`
 /// trigger is named by a parsed IF/THEN requirement of the same SPEC, or says `failure: none`.
 /// An error, not a warning: a trigger without its failure path is a requirement nobody wrote,
@@ -1391,6 +1630,8 @@ fn failure_paths(doc: &mut SpecDoc) {
     }
 }
 
+/// The AC → REQ links, the failure-path rule and the content digest; an approved digest that no
+/// longer matches is an error. The digest exists only when every requirement parses.
 fn digest(doc: &mut SpecDoc, approval_line: Option<usize>) {
     let mut unknown = Vec::new();
     for c in &doc.acceptance {

@@ -236,6 +236,17 @@ fn new(
             }
         })?;
         made.push(dir.clone());
+        // N7: a folder on the way that turned into a link meanwhile is refused before the
+        // file is written (the folders made here are taken back).
+        for d in [&moai, &specs, &dir] {
+            if !fs::symlink_metadata(d).is_ok_and(|m| m.is_dir()) {
+                return Err(
+                    "spec refused: a SPEC folder on the way is a link or not a folder; it is \
+                     never followed"
+                        .to_string(),
+                );
+            }
+        }
         moai_cli::apply::publish_exclusive(&dir.join(sd::SPEC_FILE), text.as_bytes())
     })();
     if let Err(e) = result {

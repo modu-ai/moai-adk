@@ -4063,11 +4063,17 @@ fn apply_legacy_move(
         });
     }
     receipt.state = "pending".into();
-    let made = fs::create_dir(project.join(MOAI_DIR))
-        .map_err(|_| format!("{MOAI_DIR}: folder create failed"))
-        .and_then(|_| make_private_dirs(project, &area))
-        .and_then(|_| crate::update::test_fault("go_state_legacy_after_mkdir"))
-        .and_then(|_| save_receipt(project, MOAI_DIR, &receipt, None));
+    // A `.moai/` that holds only the project's tracked SPECs is kept: the state moves in beside
+    // them (SDD B1). On a failure below, `remove_dir` leaves that folder as it was.
+    let made = (if crate::state_root::specs_only(&project.join(MOAI_DIR)) {
+        Ok(())
+    } else {
+        fs::create_dir(project.join(MOAI_DIR))
+            .map_err(|_| format!("{MOAI_DIR}: folder create failed"))
+    })
+    .and_then(|_| make_private_dirs(project, &area))
+    .and_then(|_| crate::update::test_fault("go_state_legacy_after_mkdir"))
+    .and_then(|_| save_receipt(project, MOAI_DIR, &receipt, None));
     let saved = match made {
         Ok(bytes) => bytes,
         Err(e) => {
@@ -4732,6 +4738,20 @@ pub fn revert(
         }
         move_folder(&project.join(MOAI_DIR), &project.join(&receipt.rust_aside))?;
         base = receipt.rust_aside.clone();
+        // The project's tracked SPECs stay where git has them (SDD B1): only they come back.
+        let specs = project
+            .join(&receipt.rust_aside)
+            .join(crate::state_root::SPECS_DIR);
+        if fs::symlink_metadata(&specs).is_ok_and(|m| m.is_dir())
+            && fs::symlink_metadata(project.join(MOAI_DIR)).is_err()
+        {
+            fs::create_dir(project.join(MOAI_DIR))
+                .map_err(|_| format!("{MOAI_DIR}: folder create failed"))?;
+            move_folder(
+                &specs,
+                &project.join(MOAI_DIR).join(crate::state_root::SPECS_DIR),
+            )?;
+        }
     }
     receipt.state = "reverted".into();
     save_receipt(&project, &base, &receipt, Some(&saved))?;
