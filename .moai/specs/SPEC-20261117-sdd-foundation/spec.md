@@ -113,4 +113,23 @@ REQ-7의 "secret-shaped"는 REQ-9의 목록이에요.
 
 ## Result
 
-(채우는 중)
+구현 에이전트가 2026-11-17에 채웠어요. SYNC와 AUDIT가 다시 확인해요. 빌드 폴더는 이 worktree의 `target/`,
+`CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=4`, macOS arm64, cargo는 한 번에 하나.
+
+커밋: 기준 `41b6d67991` 위에 `1ae3cdfc6f`(변경), `1ff1fca2bf`(Result) → 감사 FAIL → `a5ecde4a50`(origin/v2026.11.0
+`68944fc322` 병합, `git merge-tree` 충돌 없음) → `ddc8349cda`(수리) → `7d74f021f5`(시험 파일 수리).
+
+| AC | 결과 | 증거 |
+|---|---|---|
+| AC-1 | 충족 | `grep -c` → `16` |
+| AC-2 | 충족 | 대체 표시 없는 행 → `0`(`**대체**` 10행, `대체 없음` 6행); 카드 번호 → `0` |
+| AC-3 | 충족 | exit 0, 1 passed. 처음 RED(`1ae3cdfc6f` 전): exit 101, `tests/gitignore_block_cli.rs:279`(`Some(true)`) |
+| AC-4 | 충족 | exit 0, 1 passed. 이미 구현된 동작을 고정하는 시험이라 RED 대신 mutation: `STATE_KEPT`에서 `specs/`를 빼면 이 시험 포함 6개 실패(exit 101) |
+| AC-5 | 충족 | exit 0, 1 passed |
+| AC-6 | 충족 | RED(비밀값 규칙 전): exit 101, `.moai/specs/SPEC-x/deploy.key is not ignored`. GREEN exit 0. mutation: 깊이 무관 줄을 옛 `.moai/`로 → `.moai/specs/SPEC-x/spec.md is ignored`; `*.key` 줄 삭제 → `deploy.key is not ignored`(`include_str!`로 바꾼 뒤에도 다시 확인). `git check-ignore -v --no-index .moai/specs/SPEC-x/spec.md` → 출력 없음, exit 1 |
+| AC-7 | 충족 | `git ls-files .moai/specs` → `.moai/specs/SPEC-20261117-sdd-foundation/spec.md` |
+| AC-8 | 충족 | 임시 시험(`tests/zz_gears_probe.rs`, 실행 뒤 삭제, 커밋 안 함): `PROBE total=10 gears=7 gears_ok=7 unwanted=3`. REQ-1·2·3·4·7·8·10 모두 ok, REQ-5·6·9는 `IF…THEN`(`shall` 1개씩). 옛 REQ-1·REQ-3은 `err … more than one shall; split the requirement` |
+| AC-9 | 충족 | `cargo fmt --check` 0; clippy 0; `--bin moai` 0(27); `--lib agents::` 0(8); `home_isolation_scan` 0(16); `repo_agents_md` 0(3); `ac_command_lint` 0(5); `gitignore_block_cli` 0(32); `project_update_plan_cli` 0(57); `github_profile_cli` 0(9); `github_cli` 0(11); `agents_project_cli` 0(5); `product_cli` 0(75); Python 44개 OK. 중간에 fmt 1(assert 한 줄)과 `repo_scans_test` 1(`CARGO_MANIFEST_DIR` + `ls-files` → 저장소 순회로 판정)이 나와 `7d74f021f5`에서 고친 뒤 다시 0 |
+
+실행 안 함: 전체 `cargo test`(바뀐 곳 시험만, 메모리 부족), Linux·Windows. `Moai-Session` 트레일러는 관문
+조각(SDD-6)이 정할 때까지 넣지 않았어요(D7).
