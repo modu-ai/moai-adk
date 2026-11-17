@@ -1370,9 +1370,10 @@ fn failure_paths(doc: &mut SpecDoc) {
         .iter()
         .filter(|r| r.trigger && !r.failure_none)
     {
-        let covered = doc.requirements.iter().any(|u| {
-            u.kind == ReqKind::Unwanted && parsed(&u.id) && u.refs.iter().any(|to| *to == r.id)
-        });
+        let covered = doc
+            .requirements
+            .iter()
+            .any(|u| u.kind == ReqKind::Unwanted && parsed(&u.id) && u.refs.contains(&r.id));
         if !covered {
             found.push((
                 "req_failure_path",
