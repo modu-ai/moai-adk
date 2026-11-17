@@ -677,6 +677,7 @@ pub fn parse(text: &str, opts: &Options) -> SpecDoc {
         return doc;
     }
     body(&lines, body_start, &mut doc);
+    completion(&mut doc);
     digest(&mut doc, approval_line);
     unfinished(&lines, &mut doc);
     budget(text.lines().count(), &mut doc);
@@ -1781,6 +1782,36 @@ fn result(doc: &mut SpecDoc, content: &[(usize, &str)]) {
                 text,
             });
         }
+    }
+}
+
+/// The acceptance criteria that have no way to verify them yet (`unknown:`), by id.
+pub fn unverified(doc: &SpecDoc) -> Vec<String> {
+    doc.acceptance
+        .iter()
+        .filter(|c| c.verify.is_none() && c.manual.is_none())
+        .map(|c| c.id.clone())
+        .collect()
+}
+
+/// Card C-86 slice 2 (SPEC-20261117-ac-verify-required): a `completed` SPEC has a `verify:`
+/// command or a `manual:` check for every acceptance criterion; an `unknown:` one is an error
+/// that names the criteria. Before completion it stays the `ac_unknown` warning.
+fn completion(doc: &mut SpecDoc) {
+    if doc.status_as.as_deref() != Some("completed") {
+        return;
+    }
+    let open = unverified(doc);
+    if !open.is_empty() {
+        doc.error(
+            "ac_unverified",
+            None,
+            format!(
+                "a completed SPEC needs a `verify:` command or a `manual:` check for every \
+                 acceptance criterion; {} has none",
+                open.join(", ")
+            ),
+        );
     }
 }
 
