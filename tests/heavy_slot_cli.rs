@@ -1387,3 +1387,123 @@ fn without_dir_both_tools_use_the_same_default_folder() {
         assert!(s2.exists(), "{case}: the python command never ran");
     }
 }
+
+/// Card C-82 follow-up (user 2026-11-17 08:22Z): a wrapped `cargo` is warned about only when its
+/// `CARGO_TARGET_DIR` is shared with another worktree (the former per-lane folder, another
+/// worktree's build folder, a folder whose owner record names another worktree) or lies inside
+/// another worktree. This worktree's own build folder, its own `target/` and an unset value say
+/// nothing. A temporary HOME; a stub named `cargo` stands in for cargo.
+#[test]
+fn a_cargo_run_is_warned_about_only_for_a_shared_or_foreign_folder() {
+    use common::git::git;
+    let d = tempfile::tempdir().unwrap();
+    let root = fs::canonicalize(d.path()).unwrap();
+    let (repo, home, slots) = (root.join("repo"), root.join("home"), root.join("slots"));
+    for p in [&repo, &home, &slots, &root.join("bin")] {
+        fs::create_dir(p).unwrap();
+    }
+    git(&repo, &["init", "-q", "-b", "main"]);
+    fs::write(repo.join("f"), "x\n").unwrap();
+    git(&repo, &["add", "f"]);
+    git(
+        &repo,
+        &[
+            "-c",
+            "user.name=F",
+            "-c",
+            "user.email=f@example.invalid",
+            "commit",
+            "-q",
+            "-m",
+            "b",
+        ],
+    );
+    let (one, two) = (root.join("wt-one"), root.join("wt-two"));
+    let nested = repo.join(".claude/worktrees/agent-3");
+    for (p, b) in [(&one, "one"), (&two, "two"), (&nested, "three")] {
+        git(
+            &repo,
+            &["worktree", "add", "-q", "-b", b, p.to_str().unwrap()],
+        );
+    }
+    let cargo = root.join("bin/cargo");
+    common::write_executable(&cargo, "#!/bin/sh\nexit 0\n");
+    let build = home.join(".moai/build");
+    let own = build.join("repo-wt-one");
+    let recorded = build.join("repo-recorded");
+    fs::create_dir_all(&recorded).unwrap();
+    fs::write(
+        recorded.join(".moai-build.json"),
+        format!(
+            r#"{{"schema_version": 1, "git_common_dir": "{}", "worktree": "{}"}}"#,
+            repo.join(".git").display(),
+            two.display()
+        ),
+    )
+    .unwrap();
+    let run_in = |cwd: &Path, target: Option<&Path>, program: &Path| {
+        let mut c = acquire(&slots, "2", "agent-7", &[program.to_str().unwrap()]);
+        c.current_dir(cwd).env("HOME", &home);
+        match target {
+            Some(t) => c.env("CARGO_TARGET_DIR", t),
+            None => c.env_remove("CARGO_TARGET_DIR"),
+        };
+        let out = run(c);
+        assert!(out.status.success(), "{}", text(&out));
+        String::from_utf8_lossy(&out.stderr).into_owned()
+    };
+    for (cwd, target) in [
+        (&one, None),
+        (&one, Some(own.clone())),
+        (&one, Some(one.join("target"))),
+        (&one, Some(PathBuf::from("target"))),
+        (&nested, Some(nested.join("target"))),
+        (&nested, Some(build.join("repo-agent-3"))),
+    ] {
+        let err = run_in(cwd, target.as_deref(), &cargo);
+        assert!(!err.contains("CARGO_TARGET_DIR"), "{target:?}: {err}");
+    }
+    let foreign = |w: &Path| format!("inside the worktree {}", w.display());
+    for (cwd, target, says) in [
+        (
+            &one,
+            root.join("moai-rc-target-agent-7"),
+            "the per-lane folder".to_string(),
+        ),
+        (
+            &one,
+            build.join("repo-wt-two"),
+            "another worktree's build folder".to_string(),
+        ),
+        (
+            &one,
+            recorded.clone(),
+            format!("record names the worktree {}", two.display()),
+        ),
+        (&one, repo.join("target"), foreign(&repo)),
+        (&nested, repo.join("target"), foreign(&repo)),
+        (&nested, two.join("target"), foreign(&two)),
+    ] {
+        let err = run_in(cwd, Some(&target), &cargo);
+        assert!(
+            err.contains("heavy-slot: CARGO_TARGET_DIR"),
+            "{target:?}: {err}"
+        );
+        assert!(err.contains(&says), "{target:?}: {err}");
+        assert!(
+            cwd != &one || err.contains(&own.display().to_string()),
+            "{err}"
+        );
+        assert!(err.contains("moai lane-env --lane agent-7"), "{err}");
+        assert_eq!(
+            err.matches("CARGO_TARGET_DIR").count(),
+            1,
+            "one line: {err}"
+        );
+    }
+    // Not cargo: nothing to say, whatever the folder.
+    let other = root.join("bin/not-cargo");
+    common::write_executable(&other, "#!/bin/sh\nexit 0\n");
+    let err = run_in(&one, Some(&repo.join("target")), &other);
+    assert!(!err.contains("CARGO_TARGET_DIR"), "{err}");
+}

@@ -464,12 +464,33 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(caps, {"linux-x86_64": 30, "macos-arm64": 45})
         self.assertEqual(check["timeout-minutes"], "${{ matrix.timeout }}")
         aggregate = flow["jobs"]["ci"]
-        self.assertEqual(aggregate["needs"], ["check"])
+        self.assertEqual(aggregate["needs"], ["check", "ci-verdict"])
         # #2312: runs after a failed target (so the check fails, not skips) but not after a
-        # cancellation (always() reported a cancel-in-progress run as a failure).
-        self.assertEqual(aggregate.get("if"), "${{ !cancelled() }}")
+        # cancellation (always() reported a cancel-in-progress run as a failure). C-83: it is
+        # skipped only when ci-verdict wrote `superseded`.
+        self.assertEqual(aggregate.get("if"),
+                         "${{ !cancelled() && needs.ci-verdict.outputs.state != 'superseded' }}")
         gate = "\n".join(s.get("run", "") for s in aggregate["steps"])
         self.assertIn('[ "${{ needs.check.result }}" = "success" ]', gate)
+
+    def test_rc_ci_reads_a_superseded_push_run_as_neutral_only_through_the_verdict(self):
+        """C-83 (SPEC-20261117-ci-superseded-neutral): ci-verdict runs only on a push whose
+        matrix result is `cancelled`, reads the run's jobs and their annotations with read-only
+        permissions, and hands the decision to tools/ci_superseded.py; a PR never runs it."""
+        flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
+        verdict = flow["jobs"]["ci-verdict"]
+        self.assertEqual(verdict["needs"], ["check"])
+        self.assertEqual(verdict["if"], "${{ !cancelled() && github.event_name == 'push' "
+                                        "&& needs.check.result == 'cancelled' }}")
+        self.assertEqual(verdict["permissions"],
+                         {"actions": "read", "checks": "read", "contents": "read"})
+        self.assertEqual(verdict["outputs"], {"state": "${{ steps.verdict.outputs.state }}"})
+        step = next(s for s in verdict["steps"] if s.get("id") == "verdict")
+        self.assertIn("python3 -I tools/ci_superseded.py", step["run"])
+        self.assertIn('exit "${PIPESTATUS[0]}"', step["run"])
+        self.assertEqual(step["env"]["CHECK_RESULT"], "${{ needs.check.result }}")
+        self.assertEqual(step["env"]["EVENT"], "${{ github.event_name }}")
+        self.assertNotIn("concurrency", verdict)
 
     def test_label_sync_is_a_dry_run_unless_applied_by_hand(self):
         flow = dict(self.workflows())[WORKFLOWS / "moai-label-sync.yml"]

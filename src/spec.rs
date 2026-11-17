@@ -145,23 +145,7 @@ pub(crate) fn check_text(s: &str) -> std::result::Result<(), &'static str> {
         return Err("invalid spec text: control characters; no values were logged");
     }
     let lower = s.to_ascii_lowercase();
-    let secret = [
-        "ghp_",
-        "github_pat_",
-        "-----begin",
-        "password=",
-        "token=",
-        "api_key=",
-    ]
-    .iter()
-    .any(|x| lower.contains(x))
-        || lower.match_indices("sk-").any(|(i, _)| {
-            lower[..i]
-                .chars()
-                .next_back()
-                .is_none_or(|c| !c.is_ascii_alphanumeric())
-        });
-    if secret {
+    if crate::secret_shaped(s) {
         return Err("invalid spec text: secret-shaped value; no values were logged");
     }
     if has_personal_path(&lower) {

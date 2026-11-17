@@ -267,6 +267,8 @@ fn a_direct_engine_call_never_makes_the_hooks_verified() {
         .env("HOME", root.join("home"))
         .status()
         .unwrap();
+    // A lane clone (SPEC-20261117-commit-guard-users): the deny needs a live lane session.
+    common::register_lane(&root);
     let mut child = Command::new(BIN)
         .args([
             "hook-dispatch",
@@ -330,6 +332,8 @@ fn engine_deny_leaves_a_keyed_line_without_the_raw_call_id() {
         "-m",
         "i",
     ]);
+    // A lane clone (SPEC-20261117-commit-guard-users): the deny needs a live lane session.
+    common::register_lane(&root);
     let input = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash", "session_id": "s",
                        "tool_use_id": "RAWCALLID-123", "tool_input": {"command": "git commit -m x"},
                        "cwd": root});
