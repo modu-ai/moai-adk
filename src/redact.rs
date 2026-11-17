@@ -22,12 +22,18 @@ pub fn secret_shapes() -> Vec<&'static str> {
         .collect()
 }
 
-/// True when `s` carries a credential-shaped substring (lower-cased match): the profile shapes by
-/// [`crate::secret_shaped`] (`sk-` only at the start of a word, card C-90) or a gh token prefix
-/// anywhere.
+/// True when `s` carries a credential-shaped substring (lower-cased match): every shape of the
+/// shared list and the gh token prefixes, each anywhere, `sk-` included. This is the filter for
+/// logs and receipts, where a missed key leaks and a false match only drops a field, so it keeps
+/// the substring rule (C-90 audit B1: `key%3Dsk-…` has a letter before `sk-` and must not reach
+/// the hook log). [`crate::secret_shaped`]'s word-start rule is for text a person writes
+/// (profile, scope paths, spec text), where a false refusal is the cost.
 pub fn contains_secret_shape(s: &str) -> bool {
     let lower = s.to_ascii_lowercase();
-    crate::secret_shaped(s) || TOKEN_PREFIXES.iter().any(|shape| lower.contains(shape))
+    crate::SECRET_SHAPES
+        .iter()
+        .chain(TOKEN_PREFIXES.iter())
+        .any(|shape| lower.contains(shape))
 }
 
 /// Replaces every credential-shaped key and the value that follows it (up to the
@@ -191,7 +197,8 @@ mod tests {
             "ask-first then RISK-FREE",
         ] {
             assert!(!crate::secret_shaped(ordinary), "{ordinary}");
-            assert!(!contains_secret_shape(ordinary), "{ordinary}");
+            // Logs and receipts keep the substring rule (C-90 audit B1): drop, never leak.
+            assert!(contains_secret_shape(ordinary), "{ordinary}");
         }
         // The edge of the rule is the character before `sk-`: an ASCII letter or digit keeps it
         // inside a word; its neighbours in ASCII order (`/` `:` `@` `[` `` ` `` `{`), a space,
@@ -215,6 +222,30 @@ mod tests {
             let s = format!("x{shape}y");
             assert!(crate::secret_shaped(&s), "{s}");
         }
+    }
+
+    /// C-90 audit B1: a key behind an encoded or plain `=` has a letter or `=` right before
+    /// `sk-`; the log and receipt filter counts it anywhere, so none of these reaches a log.
+    #[test]
+    fn logs_count_sk_anywhere_even_after_an_encoded_equals_sign() {
+        let key = format!("{}{}", "sk-", "ant-api03-0123456789abcdef");
+        for s in [
+            format!("key%3D{key}"),
+            format!("key%3d{key}"),
+            format!("x={key}"),
+            format!("x{key}"),
+            format!("q=1&api%3D{key}&z"),
+        ] {
+            assert!(contains_secret_shape(&s), "{s}");
+            assert!(redact_secret_shapes(&s).contains("[redacted]"), "{s}");
+            assert!(
+                !redact_secret_shapes(&s).contains("0123456789abcdef"),
+                "{s}"
+            );
+        }
+        // Person-written text keeps the word-start rule: a letter before `sk-` is a word.
+        assert!(!crate::secret_shaped(&format!("key%3D{key}")));
+        assert!(crate::secret_shaped(&format!("x={key}")));
     }
 
     #[test]

@@ -2,7 +2,7 @@
 id: SPEC-20261117-secret-shape-words
 title: 비밀 모양 검사가 task-based 같은 보통 낱말을 거절하지 않게
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-17
 parent: null
 ---
@@ -13,8 +13,12 @@ parent: null
 글 어디에서나 찾아서 `task-based`, `risk-free`, `desk-top` 같은 보통 낱말도 거절했어요. 같은 목록을 쓰는 곳은
 `scopes::path_ok`, `install` 영수증 필드, `redact::contains_secret_shape`(hook 영수증·로그 필드, 메시지, goal, forge
 보고)예요. `spec::check_text`는 이미 그 앞부분을 낱말 시작에서만 셌어요. 이 규칙을 하나의 함수
-`crate::secret_shaped`로 모아 모든 사용처가 같게 판정해요. 다른 모양(`ghp_`, `github_pat_`, PEM 머리, 비밀번호·
-토큰·API 키 대입)은 그대로 어디서든 거절해요.
+`crate::secret_shaped`로 모아 사람이 쓰는 글(프로필, 범위 경로, spec 글)이 같게 판정해요. 다른 모양(`ghp_`,
+`github_pat_`, PEM 머리, 비밀번호·토큰·API 키 대입)은 그대로 어디서든 거절해요.
+
+revision 2(감사 B1·N2 뒤): 로그·영수증 필터(`redact::contains_secret_shape`, 설치 영수증)는 앞부분을 다시 어디서든
+세요. 낱말 시작 규칙이면 `key%3D`처럼 인코딩된 `=` 뒤의 키(앞 글자가 `D`)가 hook 로그에 기록됐어요. 로그에서는 잘못
+걸러도 필드 하나가 빠질 뿐이고, 놓치면 키가 새어요.
 
 ## Non-goals
 
@@ -25,9 +29,10 @@ parent: null
 ## Requirements
 
 - REQ-1: The shared check shall count the OpenAI-style key prefix only at the start of a word, first in the text or after a character that is not an ASCII letter or digit. · failure: none — a pure predicate; REQ-3 pins what still refuses.
-- REQ-2: Every caller of the shared shape list shall use that one check. · failure: none — the callers are named in Scope.
+- REQ-2: Every check of text a person writes shall use that one check. · failure: none — the callers are profile text, scope paths and spec text.
 - REQ-3 (REQ-1, REQ-2): IF the prefix starts a word or any other listed shape appears anywhere, THEN the caller shall refuse the text as before.
 - REQ-4: The documents that state the custom-text rules shall state the word-start rule. · failure: none — text, pinned by AC-3.
+- REQ-5: The log and receipt filters shall count every listed shape anywhere, the key prefix included. · failure: none — a pure predicate; AC-5 pins an encoded or plain equals sign before the prefix.
 
 ## Acceptance
 
@@ -39,7 +44,10 @@ parent: null
   verify: `cargo test --locked --offline --lib profile`; `cargo test --locked --offline --lib scopes`; `cargo test --locked --offline --test product_cli`; `cargo test --locked --offline --test install_cli`
 - AC-3 (REQ-4): `internal/versioning`의 사용자 글 규칙과 `internal/interview`의 안내 문장이 고정돼요.
   verify: `cargo test --locked --offline --test agent_defs_package`; `python3 -I tools/source_manifest.py check`
-- AC-4 (REQ-1…REQ-4): 이웃 검사가 통과해요.
+- AC-5 (REQ-5): `key%3D`·`key%3d`·`x=`·글자 바로 뒤의 키 앞부분을 로그 필터가 걸러 내고 진단 가리기가 값을 지우며,
+  설치 영수증의 version·channel·binary_path가 같은 값을 거절해요.
+  verify: `cargo test --locked --offline --lib redact`; `cargo test --locked --offline --test install_cli`
+- AC-4 (REQ-1…REQ-5): 이웃 검사가 통과해요.
   verify: `cargo test --locked --offline --lib spec`; `cargo test --locked --offline --test spec_cli`; `cargo test --locked --offline --test home_isolation_scan`;
   `cargo test --locked --offline --bin moai`; `cargo fmt --check`; `cargo clippy --locked --offline --all-targets -- -D warnings`;
   `python3 -m unittest tests.repo_scans_test tests.ci_scope_test tests.source_manifest_test`
@@ -64,7 +72,8 @@ parent: null
 
 - 낱말 시작에서 이 앞부분으로 시작하는 보통 낱말은 여전히 거절돼요 → 드물고, 길이 조건을 더하면 짧은 키 모양 거절이
   약해져서 이번에는 넣지 않아요(D2).
-- `contains_secret_shape`를 쓰는 hook 영수증·로그 필드는 이제 `task-based` 같은 값을 기록해요 → 키 모양은 그대로 빠져요.
+- `contains_secret_shape`를 쓰는 hook 영수증·로그 필드는 `task-based` 같은 값도 계속 빼요(D4) → 필드 하나가 빠질 뿐,
+  키는 새지 않아요.
 
 ## Decisions
 
@@ -73,6 +82,7 @@ parent: null
 | D1 | 규칙을 `spec::check_text`의 기존 낱말 시작 규칙으로 통일 | 이미 시험된 규칙(#2001 r26), 거절이 약해지는 곳 없음 | `secret_shaped`를 모든 곳 substring으로 |
 | D2 | 키 뒤 길이 조건은 넣지 않음 | 리더 지시는 "실제 키 모양 거절을 약하게 하지 말 것"; 뒤 20글자 하한이면 앞부분 뒤 6글자(영수증)와 14글자(프로필) 고정 시험 값이 통과하게 됨 | 앞부분 뒤 글자 수 하한 추가 |
 | D3 | `redact_secret_shapes`(진단 가리기)는 그대로 substring | 더 가리는 쪽이라 안전, 카드 밖 | 같은 함수로 바꾸기 |
+| D4 | 로그·영수증 필터(`redact::contains_secret_shape`, 설치 영수증)는 앞부분을 어디서든 셈; 낱말 시작 규칙은 사람이 쓰는 글에만 | 리더 결정(감사 B1·N2) | 두 필터도 `secret_shaped`로 |
 
 ## Result
 

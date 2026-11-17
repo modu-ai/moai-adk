@@ -73,7 +73,7 @@ pub const PRODUCT: &str = "moai-cli";
 pub const GENERATION: &str = "rust-rc";
 
 /// One installed moai-cli binary (REQ-04A-01). Unknown keys are refused on read; no
-/// field may carry a credential-shaped value (`crate::secret_shaped` over the shared `SECRET_SHAPES` list of
+/// field may carry a credential-shaped value (each of the shared `SECRET_SHAPES` anywhere, list of
 /// the profile filter).
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -118,8 +118,13 @@ fn valid_sha256_field(s: &str) -> bool {
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
 
+/// Every shape anywhere, `sk-` included (C-90 audit N2): a receipt field is machine-written, so
+/// a false match costs nothing a person typed.
 fn secret_shaped(s: &str) -> bool {
-    crate::secret_shaped(s)
+    let lower = s.to_ascii_lowercase();
+    crate::SECRET_SHAPES
+        .iter()
+        .any(|shape| lower.contains(shape))
 }
 
 fn no_control(s: &str) -> bool {

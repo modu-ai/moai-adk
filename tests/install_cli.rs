@@ -139,6 +139,10 @@ fn install_receipt_schema_roundtrip_rejects_unknown_and_secrets() {
         );
     };
     invalid(&|r| r.version = "sk-abc123".into());
+    // C-90 audit N2: a receipt counts `sk-` anywhere, after a letter or an encoded `=` too.
+    invalid(&|r| r.version = "key%3Dsk-abc123".into());
+    invalid(&|r| r.channel = "xsk-abc".into());
+    invalid(&|r| r.binary_path = "~/bin/key%3dsk-abc/moai-cli".into());
     invalid(&|r| r.channel = "token=abc".into());
     invalid(&|r| r.binary_path = "~/x/ghp_secret/binary".into());
     invalid(&|r| r.binary_path = "bin/moai-cli".into()); // relative
