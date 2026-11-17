@@ -741,9 +741,14 @@ fn versioning_rows_and_reference_cover_the_three_schemes() {
         "at most 9999",
         "version order, not date",
         "no program is started",
+        // Card C-90: the credential-shape rule the profile applies to custom text.
+        "a key prefix at the start of a word or a token or password assignment is refused, while a prefix inside a word, as in `task-based` or `risk-free`, is ordinary text, card C-90",
     ] {
         assert!(reference.contains(text), "versioning.md lacks {text:?}");
     }
+    assert!(interview.contains(
+        "the text rules it must pass, credential shapes included, are in `internal/versioning`"
+    ));
     let project = read("workflows/project.md");
     // Audit B1: detection starts no program, the versioning fact included.
     for text in [

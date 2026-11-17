@@ -22,13 +22,12 @@ pub fn secret_shapes() -> Vec<&'static str> {
         .collect()
 }
 
-/// True when `s` carries a credential-shaped substring (lower-cased match).
+/// True when `s` carries a credential-shaped substring (lower-cased match): the profile shapes by
+/// [`crate::secret_shaped`] (`sk-` only at the start of a word, card C-90) or a gh token prefix
+/// anywhere.
 pub fn contains_secret_shape(s: &str) -> bool {
     let lower = s.to_ascii_lowercase();
-    crate::SECRET_SHAPES
-        .iter()
-        .chain(TOKEN_PREFIXES.iter())
-        .any(|shape| lower.contains(shape))
+    crate::secret_shaped(s) || TOKEN_PREFIXES.iter().any(|shape| lower.contains(shape))
 }
 
 /// Replaces every credential-shaped key and the value that follows it (up to the
@@ -178,6 +177,44 @@ mod tests {
         assert!(!redacted.contains("abc123"), "{redacted}");
         assert!(redacted.contains("[redacted]"));
         assert!(redacted.contains("near the end"));
+    }
+
+    /// Card C-90: `sk-` counts only at the start of a word, so ordinary words with `sk-` inside
+    /// pass; every other shape still counts anywhere, inside a word too.
+    #[test]
+    fn sk_counts_only_at_the_start_of_a_word() {
+        for ordinary in [
+            "task-based",
+            "risk-free",
+            "desk-top",
+            "Kiosk-Mode",
+            "ask-first then RISK-FREE",
+        ] {
+            assert!(!crate::secret_shaped(ordinary), "{ordinary}");
+            assert!(!contains_secret_shape(ordinary), "{ordinary}");
+        }
+        // The edge of the rule is the character before `sk-`: an ASCII letter or digit keeps it
+        // inside a word; its neighbours in ASCII order (`/` `:` `@` `[` `` ` `` `{`), a space,
+        // `_`, `-`, a non-ASCII letter or nothing at all start a word.
+        for before in ['0', '9', 'a', 'z', 'A', 'Z'] {
+            let s = format!("{before}sk-abc");
+            assert!(!crate::secret_shaped(&s), "{s}");
+        }
+        for before in [
+            "", " ", "/", ":", "@", "[", "`", "{", "_", "-", "é", "(", "\"",
+        ] {
+            let s = format!("{before}sk-abc");
+            assert!(crate::secret_shaped(&s), "{s:?}");
+            assert!(contains_secret_shape(&s), "{s:?}");
+            assert!(crate::secret_shaped(&s.to_uppercase()), "{s:?}");
+        }
+        // A later word start still counts after an ordinary word.
+        assert!(crate::secret_shaped("task-based sk-abc"));
+        assert!(crate::secret_shaped("sk-"));
+        for shape in crate::SECRET_SHAPES.iter().filter(|s| **s != "sk-") {
+            let s = format!("x{shape}y");
+            assert!(crate::secret_shaped(&s), "{s}");
+        }
     }
 
     #[test]

@@ -233,6 +233,25 @@ pub(crate) const SECRET_SHAPES: [&str; 7] = [
     "token=",
     "api_key=",
 ];
+
+/// True when `s` carries one of [`SECRET_SHAPES`], compared lower-case. `sk-` counts only at the
+/// start of a word — first in `s`, or after a character that is not an ASCII letter or digit —
+/// so ordinary words such as `task-based`, `risk-free` or `desk-top` are not refused (card
+/// C-90); every other shape counts anywhere. `spec::check_text` used this `sk-` rule first
+/// (#2001 r26); profile text, scope paths, install receipts, `redact::contains_secret_shape` and
+/// spec text now share it.
+pub(crate) fn secret_shaped(s: &str) -> bool {
+    let lower = s.to_ascii_lowercase();
+    SECRET_SHAPES.iter().any(|shape| match *shape {
+        "sk-" => lower.match_indices(shape).any(|(i, _)| {
+            lower[..i]
+                .chars()
+                .next_back()
+                .is_none_or(|c| !c.is_ascii_alphanumeric())
+        }),
+        _ => lower.contains(shape),
+    })
+}
 // Digest v1: sorted UTF-8 relative file paths and bytes, each framed by a u64 big-endian length.
 // Symlinks and special files are rejected. This is content integrity, not publisher trust.
 pub fn package_digest(root: &Path) -> Result<String> {

@@ -446,6 +446,22 @@ fn nonportable_or_secret_shaped_input_is_rejected_without_echo() {
         assert!(!root.path().join(".moai-cli").exists());
     }
 }
+/// Card C-90: ordinary words with `sk-` inside (`task-based`, `risk-free`, `desk-top`) are
+/// custom text, not a key shape; `sk-` at the start of a word is still refused (above).
+#[test]
+fn ordinary_words_with_sk_inside_are_accepted() {
+    for value in ["task-based delivery", "risk-free desk-top tool"] {
+        let root = TempDir::new().unwrap();
+        let mut input = profile(None);
+        input["purpose"] = json!(value);
+        let out = cli(&["project-plan", root.path().to_str().unwrap()], &input);
+        assert!(
+            out.status.success(),
+            "{value}: {}",
+            String::from_utf8_lossy(&out.stdout)
+        );
+    }
+}
 #[cfg(unix)]
 #[test]
 fn symlinks_are_preserved_and_not_followed() {
