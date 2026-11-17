@@ -170,8 +170,9 @@ function Get-Target {
         $os = (& uname -s).Trim()
         $machine = (& uname -m).Trim()
         $translated = ""
+        # The system's own sysctl, by absolute path: a `sysctl` earlier on PATH is not asked.
         if ($os -eq "Darwin" -and $machine -eq "x86_64") {
-            try { $translated = "$(& sysctl -n sysctl.proc_translated 2>$null)".Trim() } catch { $translated = "" }
+            try { $translated = "$(& /usr/sbin/sysctl -n sysctl.proc_translated 2>$null)".Trim() } catch { $translated = "" }
         }
         $t = Get-UnixTarget $os $machine $translated
         $what = "$os $machine"

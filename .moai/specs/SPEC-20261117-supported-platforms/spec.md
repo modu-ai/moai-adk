@@ -5,7 +5,6 @@ status: draft
 revision: 1
 created: 2026-11-17
 parent: null
-approval: {by: null, at: null, basis: null, digest: null}
 ---
 
 ## Intent
@@ -30,27 +29,29 @@ x86_64·arm64를 모두 받아들였어요.
   별도 사용자 선택이에요(아래 Decisions D5).
 - Windows에서 시험을 실행하는 일과 `cfg(unix)` 시험 파일 정리(Windows 시험 계획, 후속 조각).
 - 병합 큐(merge_group), `audit-gate` job, 위험 경로의 PR macOS 실행(CI 재설계의 다른 단계).
-- `skills/moai/workflows/verify.md`의 CI target 문장, `src/flow.rs`·`src/lane_next.rs`의 주석·시험 자료에 남은 옛
-  target 이름(이 조각의 쓰기 범위 밖, 아래 Result의 후속 목록).
+- `src/lane_next.rs:3518`·`tests/gate_collect.rs:1848`의 시험 자료에 남은 옛 check 이름(동작과 무관, 후속).
+  `skills/moai/workflows/verify.md`의 CI target 문장과 `src/flow.rs` 주석은 감사 뒤 범위에 넣었어요(D9).
 
 ## Requirements
 
 요구 문장은 영어 GEARS로 써요(`src/spec.rs` `parse_gears`가 읽는 형식). `IF …, THEN …`은 원치 않는 동작이에요.
 
-- REQ-1: When a pull request targets the integration branch, the `ci` workflow shall run the check set on `linux-x86_64` only.
-- REQ-2: When a push merges into the integration branch, the `ci` workflow shall run the check set on `linux-x86_64` and `macos-arm64` and run the `windows-build` job.
+- REQ-1: When a pull request targets the integration branch, the `ci` workflow shall run the check set on `linux-x86_64` only. · failure: none — 한 target 실패는 기존 규칙대로 `ci`를 실패시켜요.
+- REQ-2: When a push merges into the integration branch, the `ci` workflow shall run the check set on `linux-x86_64` and `macos-arm64` and run the `windows-build` job. · failure: none — 한 target 실패는 기존 규칙대로 `ci`를 실패시켜요.
 - REQ-3: The workflows under `.github/workflows/` shall name no Intel macOS or Linux arm64 runner, target or nextest asset.
 - REQ-4: The candidate verdict shall require exactly the targets `linux-x86_64`, `macos-arm64` and `windows-x86_64`.
 - REQ-5: The aggregate check of the `ci` workflow shall keep the name `ci`.
 - REQ-6: Every action a workflow uses shall stay pinned to a full commit SHA.
 - REQ-7: When an installer runs on macOS arm64 (an x86_64 shell under Rosetta 2 included), Linux x86_64 or Windows x86_64, the installer shall select that platform's target triple.
-- REQ-8: IF an installer runs on any other platform, THEN the installer shall exit 1 before any download or write.
-- REQ-9: IF an installer stops for the platform, THEN its message shall name the platform and the three supported platforms.
+- REQ-8 (REQ-7): IF an installer runs on any other platform, THEN the installer shall exit 1 before any download or write.
+- REQ-9 (REQ-7): IF an installer stops for the platform, THEN its message shall name the platform and the three supported platforms.
 - REQ-10: Each support document shall name the three supported platforms and state that Intel macOS and Linux arm64 are not supported.
 - REQ-11: The change shall carry its own SPEC at `.moai/specs/SPEC-20261117-supported-platforms/spec.md`, tracked by git in the same commit.
+- REQ-12: The verify workflow of the `moai` skill shall name `ci / linux-x86_64`, `ci / macos-arm64` and `windows-build` as the post-merge set.
 
-실패 경로: REQ-7 → REQ-8, REQ-9. REQ-1·REQ-2 → 없음(한 target 실패는 기존 규칙대로 `ci`를 실패시켜요).
+실패 경로: REQ-7 → REQ-8, REQ-9. REQ-1·REQ-2 → 없음(줄 끝 `failure: none`).
 REQ-10의 "support document"는 `docs/support-matrix.md`, `docs/host-support-matrix.md`, `README.md`예요.
+REQ-7의 Rosetta 판정은 시스템의 `/usr/sbin/sysctl`만 물어요(PATH 앞의 `sysctl`은 묻지 않아요, D10).
 
 ## Acceptance
 
@@ -65,24 +66,29 @@ REQ-10의 "support document"는 `docs/support-matrix.md`, `docs/host-support-mat
 - AC-3 (REQ-4): verify: `python3 -m unittest tests.candidate_summary_test tests.github_assets_test.WorkflowTest.test_candidate_runs_the_three_targets_and_one_verdict_needs_all_of_them tests.github_assets_test.WorkflowTest.test_candidate_summary_script_judges_the_same_three_targets`
 - AC-4 (REQ-6): verify: `python3 -m unittest tests.github_assets_test.WorkflowTest.test_every_action_is_pinned_to_a_commit_sha`;
   `actionlint .github/workflows/*.yml` → exit 0
-- AC-5 (REQ-7): 가짜 `uname`(과 Rosetta용 가짜 `sysctl`)으로 Darwin arm64·aarch64, Darwin x86_64(번역 중),
-  Linux x86_64·amd64가 각 triple로 잡혀요. `install.ps1`은 같은 시험을 `pwsh`로 돌리고, Windows 분기는 스크립트의
-  구문 트리에서 꺼낸 `Get-WindowsTarget`으로 AMD64·x64·x86(64비트 OS)을 확인해요.
-  verify: `python3 -m unittest tests.install_script_test.InstallShTest.test_the_three_supported_platforms_are_detected tests.install_script_test.InstallPs1Test.test_the_three_supported_platforms_are_detected tests.install_script_test.InstallPs1Test.test_windows_takes_only_x86_64`
-- AC-6 (REQ-8, REQ-9): Darwin x86_64(번역 아님, sysctl 응답 없음), Linux aarch64·arm64·i686, FreeBSD amd64는 exit
-  1, HOME 트리 변화 없음, `Unsupported platform: <os> <arch>`와 지원 목록이 나와요. Windows ARM64·IA64·x86(32비트
-  OS)는 `Get-WindowsTarget`이 `$null`이에요.
-  verify: `python3 -m unittest tests.install_script_test.InstallShTest.test_an_unsupported_platform_stops_with_the_supported_list_and_writes_nothing tests.install_script_test.InstallPs1Test.test_an_unsupported_platform_stops_with_the_supported_list_and_writes_nothing tests.install_script_test.InstallPs1Test.test_windows_takes_only_x86_64`
+- AC-5 (REQ-7): 가짜 `uname`으로 Darwin arm64·aarch64, Linux x86_64·amd64가 각 triple로 잡혀요. Apple
+  silicon에서는 진짜 `arch -x86_64` 셸(진짜 `uname`과 `/usr/sbin/sysctl`)로 `install.sh`가 arm64를 잡아요.
+  `install.ps1`은 같은 시험을 `pwsh`로 돌리고, 구문 트리에서 꺼낸 `Get-UnixTarget`(번역 중 Darwin x86_64 → arm64)과
+  `Get-WindowsTarget`(AMD64·x64·x86(64비트 OS))을 확인해요.
+  verify: `python3 -m unittest tests.install_script_test.InstallShTest.test_the_three_supported_platforms_are_detected tests.install_script_test.InstallShTest.test_an_x86_64_shell_under_rosetta_on_apple_silicon_is_arm64 tests.install_script_test.InstallPs1Test.test_the_three_supported_platforms_are_detected tests.install_script_test.InstallPs1Test.test_unix_targets_take_rosetta_as_arm64_and_nothing_else tests.install_script_test.InstallPs1Test.test_windows_takes_only_x86_64`
+- AC-6 (REQ-8, REQ-9): Darwin x86_64(PATH 앞에 "번역 중"이라고 답하는 가짜 `sysctl`이 있어도), Linux
+  aarch64·arm64·i686, FreeBSD amd64는 exit 1, HOME 트리 변화 없음, `Unsupported platform: <os> <arch>`와 지원 목록이
+  나와요. Windows ARM64·IA64·x86(32비트 OS)는 `Get-WindowsTarget`이 `$null`이에요.
+  verify: `python3 -m unittest tests.install_script_test.InstallShTest.test_an_unsupported_platform_stops_with_the_supported_list_and_writes_nothing tests.install_script_test.InstallPs1Test.test_an_unsupported_platform_stops_with_the_supported_list_and_writes_nothing tests.install_script_test.InstallPs1Test.test_the_rosetta_question_goes_to_the_system_sysctl tests.install_script_test.InstallPs1Test.test_windows_takes_only_x86_64`
 - AC-7 (REQ-10): verify: `python3 -I tools/check_support_matrix.py docs/support-matrix.md docs/e2e-receipts/` → exit 0;
   `grep -c 'x86_64-pc-windows-msvc' docs/support-matrix.md docs/host-support-matrix.md README.md` → 각 1 이상;
   `python3 -m unittest tests/support_matrix_test.py tests/host_matrix_test.py tests/cargo_metadata_test.py tests/oss_docs_test.py`
 - AC-8 (REQ-11): verify: `git ls-files .moai/specs/SPEC-20261117-supported-platforms` → 이 파일
-- AC-9 (REQ-1…REQ-11): `IF`로 시작하지 않는 요구는 모두 `parse_gears`를 통과해요. verify: 커밋하지 않는 임시 시험
-  파일로 이 파일의 REQ 줄을 `moai_cli::spec::parse_gears`에 넣어 봐요(결과는 Result).
-- AC-10 (전체): verify: `python3 -m unittest tests/install_script_test.py tests/github_assets_test.py tests/candidate_summary_test.py tests/ci_scope_test.py tests/repo_scans_test.py tests/ci_install_ripgrep_test.py tests/local_check_test.py tests/self_check_test.py tests/host_live_harness_test.py tests/goal_block_test.py`;
-  `bash -n install/install.sh`; `cargo fmt --check`; `cargo clippy --locked --offline --all-targets -- -D warnings`;
-  `cargo test --locked --offline --bin moai`; `cargo test --locked --offline --test launcher_three_hosts`;
-  `cargo test --locked --offline --test gitignore_block_cli`
+- AC-9 (REQ-1…REQ-12): 저장소의 SPEC 검사기가 이 SPEC을 받아들여요(오류 0).
+  verify: `moai spec check --all --project .` → exit 0; `cargo test --locked --offline --test spec_cli`
+- AC-10 (REQ-1…REQ-12): 이웃 검사가 모두 통과해요. verify: `python3 -m unittest tests/install_script_test.py tests/github_assets_test.py tests/candidate_summary_test.py tests/ci_scope_test.py tests/repo_scans_test.py tests/ci_install_ripgrep_test.py tests/local_check_test.py tests/self_check_test.py tests/host_live_harness_test.py tests/goal_block_test.py tests/support_matrix_test.py tests/host_matrix_test.py tests/cargo_metadata_test.py tests/oss_docs_test.py`;
+  `bash -n install/install.sh`; `sh -n install/install.sh`; `cargo fmt --check`;
+  `cargo clippy --locked --offline --all-targets -- -D warnings`; `cargo test --locked --offline --bin moai`;
+  `cargo test --locked --offline --test launcher_three_hosts`; `cargo test --locked --offline --test gitignore_block_cli`
+- AC-11 (REQ-12): `skills/moai/workflows/verify.md`가 병합 뒤 실행을 `ci / linux-x86_64`, `ci / macos-arm64`,
+  `windows-build`로 적고, skill 원본 manifest가 맞아요.
+  verify: `grep -c 'ci / macos-arm64' skills/moai/workflows/verify.md` → 1 이상; `grep -c 'all four' skills/moai/workflows/verify.md` → 0;
+  `python3 -I tools/source_manifest.py check` → exit 0; `cargo test --locked --offline --test agent_defs_package`
 
 ## Scope
 
@@ -90,7 +96,8 @@ REQ-10의 "support document"는 `docs/support-matrix.md`, `docs/host-support-mat
   `install/install.sh`, `install/install.ps1`, `install/README.md`, `tools/candidate_summary.py`,
   `tests/github_assets_test.py`, `tests/candidate_summary_test.py`, `tests/install_script_test.py`,
   `docs/support-matrix.md`, `docs/host-support-matrix.md`, `README.md`,
-  `.moai/specs/SPEC-20261117-supported-platforms/spec.md`
+  `.moai/specs/SPEC-20261117-supported-platforms/spec.md`; 감사 뒤(D9) `skills/moai/workflows/verify.md`,
+  `skills/moai/references/source-manifest.json`, `src/flow.rs`(주석만)
 - read-only: `dist-workspace.toml`, `tools/ci_scope.py`, `tools/check_support_matrix.py`, `src/spec.rs`,
   `.moai/specs/SPEC-20261117-sdd-foundation/spec.md`
 - forbidden: 릴리스 target 변경, 실제 HOME, 네트워크 쓰기(push, PR, Issue), 저장소 설정·ruleset
@@ -104,6 +111,17 @@ REQ-10의 "support document"는 `docs/support-matrix.md`, `docs/host-support-mat
    `Get-WindowsTarget`·`Get-UnixTarget`·`Get-Target`.
 3. 문서: `docs/support-matrix.md`, `docs/host-support-matrix.md`, `README.md`, `install/README.md`.
 4. AC-1…AC-10, 커밋 뒤 mutation, GEARS 임시 시험.
+5. 감사 수리: tip 병합, SPEC을 `moai spec check` 형식에 맞춤, `/usr/sbin/sysctl` 절대 경로와 시험, 거절 exit 1
+   고정, `verify.md`·`src/flow.rs` 문장.
+
+## Risks
+
+- 릴리스 자산이 아직 `aarch64-apple-darwin`뿐이라, Linux x86_64·Windows x86_64 사용자는 플랫폼 판정을 통과한 뒤
+  내려받기에서 멈춰요(D5). 릴리스 target 선택 전에는 이 두 플랫폼에서 설치가 끝나지 않아요.
+- PR CI는 여전히 Linux만 돌아서 macOS arm64 문제는 병합 뒤에야 보여요(CI 재설계의 병합 큐 단계가 다뤄요).
+- Windows 분기(`Get-Target`의 `$IsWin` 경로)는 Windows 기계에서 실행하지 않았어요. 판정 함수만 구문 트리로 시험해요.
+- 번역 중인(x86_64) Python으로 시험을 돌리면 "PATH 앞 가짜 `sysctl`" 경우가 진짜 `/usr/sbin/sysctl`의 `1`을 받아
+  실패해요. 개발 Mac과 CI의 Python은 네이티브라 해당하지 않아요.
 
 ## Decisions
 
@@ -124,6 +142,14 @@ REQ-10의 "support document"는 `docs/support-matrix.md`, `docs/host-support-mat
 - D7 `tools/ci-install-ripgrep.sh`의 aarch64 Linux 분기는 그대로 둬요: workflow가 더는 그 runner를 쓰지 않지만
   스크립트 자체는 플랫폼 목록이 아니에요.
 - D8 `Moai-Spec` 트레일러를 커밋에 넣어요. `Moai-Session`은 관문 조각(SDD-6)이 정할 때까지 넣지 않아요.
+- D9 쓰기 범위 확대(리더 결정, 2026-11-17 감사 FAIL 뒤 수리 지시 N1): 카드 범위 밖이던
+  `skills/moai/workflows/verify.md`(병합 뒤 target 문장)와 `src/flow.rs`(주석 "five targets")를 이 SPEC에서 고쳐요.
+  skill이 바뀌어 `tools/source_manifest.py write`로 manifest를 다시 만들었어요. 되돌리기: 두 문장을 이전 커밋 값으로
+  돌리고 manifest를 다시 써요.
+- D10 Rosetta 판정은 `/usr/sbin/sysctl`을 절대 경로로 불러요(감사 N3). PATH 앞의 다른 `sysctl`이 판정을 바꾸지
+  못해요. 수리 전 스크립트는 `PATH=/usr/bin:/bin`에서 `sysctl`을 못 찾아 진짜 Rosetta 셸을 거절했어요(아래 Result).
+  되돌리기: `install.sh`·`install.ps1`의 `/usr/sbin/sysctl`을 `sysctl`로.
+- D11 이 SPEC은 초안이라 앞머리에 `approval`이 없어요(검사기는 승인 뒤 상태에서만 요구해요). 승인은 사용자가 해요.
 
 ## Result
 

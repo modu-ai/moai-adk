@@ -829,15 +829,16 @@ class InstallShTest(unittest.TestCase):
 
     SUPPORTED_LINE = "Supported platforms: macOS arm64 (Apple silicon), Linux x86_64, Windows x86_64"
 
-    def fake_platform(self, system, machine, translated=None):
-        """PATH with a fake `uname` first (and a fake `sysctl` answering
-        `sysctl.proc_translated`, the Rosetta 2 flag, when `translated` is given)."""
-        d = os.path.join(self.tmp, f"fakebin-{system}-{machine}-{translated}")
+    def fake_platform(self, system, machine, decoy_translated=None):
+        """PATH with a fake `uname` first. With `decoy_translated`, also a decoy `sysctl` on PATH
+        that answers `sysctl.proc_translated` (the Rosetta 2 flag) with that value: the
+        installers ask `/usr/sbin/sysctl` by absolute path, so the decoy must never decide."""
+        d = os.path.join(self.tmp, f"fakebin-{system}-{machine}-{decoy_translated}")
         os.makedirs(d, exist_ok=True)
         tools = {"uname": f'#!/bin/sh\ncase "$1" in -m) echo {machine} ;; *) echo {system} ;; esac\n'}
-        if translated is not None:
+        if decoy_translated is not None:
             tools["sysctl"] = ('#!/bin/sh\n[ "$1 $2" = "-n sysctl.proc_translated" ] && '
-                               f'{{ echo {translated}; exit 0; }}\nexit 1\n')
+                               f'{{ echo {decoy_translated}; exit 0; }}\nexit 1\n')
         for name, body in tools.items():
             path = os.path.join(d, name)
             with open(path, "w") as f:
@@ -846,32 +847,55 @@ class InstallShTest(unittest.TestCase):
         return d + ":/usr/bin:/bin"
 
     def test_the_three_supported_platforms_are_detected(self):
-        for system, machine, translated, triple in [
-            ("Darwin", "arm64", None, "aarch64-apple-darwin"),
-            ("Darwin", "aarch64", None, "aarch64-apple-darwin"),
-            # An x86_64 shell under Rosetta 2 on Apple silicon: the machine is arm64.
-            ("Darwin", "x86_64", "1", "aarch64-apple-darwin"),
-            ("Linux", "x86_64", None, "x86_64-unknown-linux-gnu"),
-            ("Linux", "amd64", None, "x86_64-unknown-linux-gnu"),
+        for system, machine, triple in [
+            ("Darwin", "arm64", "aarch64-apple-darwin"),
+            ("Darwin", "aarch64", "aarch64-apple-darwin"),
+            ("Linux", "x86_64", "x86_64-unknown-linux-gnu"),
+            ("Linux", "amd64", "x86_64-unknown-linux-gnu"),
         ]:
-            with self.subTest(platform=f"{system} {machine} translated={translated}"):
-                r = self.run_sh(PATH=self.fake_platform(system, machine, translated))
+            with self.subTest(platform=f"{system} {machine}"):
+                r = self.run_sh(PATH=self.fake_platform(system, machine))
                 out = r.stdout + r.stderr
                 self.assertIn(f"Detected platform: {triple}", out)
                 self.assertNotIn("Unsupported", out)
 
+    def rosetta_argv(self):
+        """The installer run in an x86_64 process under Rosetta 2, or None when that cannot run
+        here (not Apple silicon, no Rosetta 2)."""
+        if platform.system() != "Darwin" or platform.machine() != "arm64":
+            return None
+        if subprocess.run(["/usr/bin/arch", "-x86_64", "/usr/bin/true"]).returncode != 0:
+            return None
+        return ["/usr/bin/arch", "-x86_64", "/bin/sh", SH]
+
+    def test_an_x86_64_shell_under_rosetta_on_apple_silicon_is_arm64(self):
+        """The real uname and the real /usr/sbin/sysctl, in a translated x86_64 process."""
+        argv = self.rosetta_argv()
+        if argv is None:
+            self.skipTest("needs Apple silicon with Rosetta 2 (and an x86_64-capable installer host)")
+        r = subprocess.run(argv, env=self.run_env(), cwd=self.home, capture_output=True,
+                           text=True, timeout=300)
+        out = r.stdout + r.stderr
+        self.assertIn("Detected platform: aarch64-apple-darwin", out)
+        self.assertNotIn("Unsupported", out)
+
+    def run_env(self, **env):
+        return self.env(**env)
+
     def test_an_unsupported_platform_stops_with_the_supported_list_and_writes_nothing(self):
-        for system, machine, translated in [
-            ("Darwin", "x86_64", None),  # Intel Mac: no sysctl answer
-            ("Darwin", "x86_64", "0"),   # Intel Mac: not translated
+        for system, machine, decoy in [
+            ("Darwin", "x86_64", None),  # Intel Mac
+            # A `sysctl` earlier on PATH that claims Rosetta 2 is not asked: still an Intel Mac.
+            ("Darwin", "x86_64", "1"),
             ("Linux", "aarch64", None),
             ("Linux", "arm64", None),
             ("Linux", "i686", None),
             ("FreeBSD", "amd64", None),
         ]:
-            with self.subTest(platform=f"{system} {machine} translated={translated}"):
+            with self.subTest(platform=f"{system} {machine} decoy={decoy}"):
                 r = self.assert_refused_without_writes(
-                    PATH=self.fake_platform(system, machine, translated))
+                    PATH=self.fake_platform(system, machine, decoy))
+                self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
                 out = r.stdout + r.stderr
                 self.assertIn(f"Unsupported platform: {system} {machine}", out)
                 self.assertIn(self.SUPPORTED_LINE, out)
@@ -934,25 +958,62 @@ class InstallPs1Test(InstallShTest):
     def test_shellcheck_passes(self):
         self.skipTest("shell-only check")
 
-    def test_windows_takes_only_x86_64(self):
-        """SPEC-20261117-supported-platforms: the Windows branch cannot run here, so its decision,
-        `Get-WindowsTarget`, is taken from the script's own syntax tree and called with each
-        architecture Windows reports (PROCESSOR_ARCHITECTURE / ARCHITEW6432)."""
+    def rosetta_argv(self):
+        # The pwsh on a machine may be arm64 only; the translated case of install.ps1 is
+        # `Get-UnixTarget` with Translated "1", checked from the syntax tree below.
+        return None
+
+    def run_env(self, **env):
+        return self.pwsh_env(**env)
+
+    def call_function(self, name, body):
+        """Takes function `name` from install.ps1's own syntax tree and runs `body` with it."""
         probe = (
             "$a = [System.Management.Automation.Language.Parser]::ParseFile("
             f"'{PS1}', [ref]$null, [ref]$null); "
             "$f = $a.Find({ param($n) $n -is "
             "[System.Management.Automation.Language.FunctionDefinitionAst] -and "
-            "$n.Name -eq 'Get-WindowsTarget' }, $true); "
-            ". ([scriptblock]::Create($f.Extent.Text)); "
-            "foreach ($c in 'AMD64:1','x64:1','amd64:1','x86:1','ARM64:1','x86:0','IA64:1','') { "
-            "$arch, $bits = $c.Split(':'); "
-            "'{0}:{1} -> {2}' -f $arch, $bits, (Get-WindowsTarget $arch ($bits -eq '1')) }"
+            f"$n.Name -eq '{name}' }}, $true); "
+            ". ([scriptblock]::Create($f.Extent.Text)); " + body
         )
         r = subprocess.run([shutil.which("pwsh"), "-NoProfile", "-NonInteractive", "-Command", probe],
                            capture_output=True, text=True, timeout=120)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertEqual(r.stdout.splitlines(), [
+        return r.stdout.splitlines()
+
+    def test_unix_targets_take_rosetta_as_arm64_and_nothing_else(self):
+        lines = self.call_function("Get-UnixTarget", (
+            "foreach ($c in 'Darwin:arm64:','Darwin:aarch64:','Darwin:x86_64:1','Darwin:x86_64:0',"
+            "'Darwin:x86_64:','Linux:x86_64:','Linux:amd64:','Linux:aarch64:1','Linux:arm64:',"
+            "'FreeBSD:amd64:') { $os, $m, $t = $c.Split(':'); "
+            "'{0} -> {1}' -f $c, (Get-UnixTarget $os $m $t) }"))
+        self.assertEqual(lines, [
+            "Darwin:arm64: -> aarch64-apple-darwin",
+            "Darwin:aarch64: -> aarch64-apple-darwin",
+            "Darwin:x86_64:1 -> aarch64-apple-darwin",
+            "Darwin:x86_64:0 -> ",
+            "Darwin:x86_64: -> ",
+            "Linux:x86_64: -> x86_64-unknown-linux-gnu",
+            "Linux:amd64: -> x86_64-unknown-linux-gnu",
+            "Linux:aarch64:1 -> ",
+            "Linux:arm64: -> ",
+            "FreeBSD:amd64: -> ",
+        ])
+
+    def test_the_rosetta_question_goes_to_the_system_sysctl(self):
+        text = open(PS1, encoding="utf-8").read()
+        self.assertIn("& /usr/sbin/sysctl -n sysctl.proc_translated", text)
+        self.assertNotRegex(text, r"&\s+sysctl\b")
+
+    def test_windows_takes_only_x86_64(self):
+        """SPEC-20261117-supported-platforms: the Windows branch cannot run here, so its decision,
+        `Get-WindowsTarget`, is taken from the script's own syntax tree and called with each
+        architecture Windows reports (PROCESSOR_ARCHITECTURE / ARCHITEW6432)."""
+        lines = self.call_function("Get-WindowsTarget", (
+            "foreach ($c in 'AMD64:1','x64:1','amd64:1','x86:1','ARM64:1','x86:0','IA64:1','') { "
+            "$arch, $bits = $c.Split(':'); "
+            "'{0}:{1} -> {2}' -f $arch, $bits, (Get-WindowsTarget $arch ($bits -eq '1')) }"))
+        self.assertEqual(lines, [
             "AMD64:1 -> x86_64-pc-windows-msvc",
             "x64:1 -> x86_64-pc-windows-msvc",
             "amd64:1 -> x86_64-pc-windows-msvc",

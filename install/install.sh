@@ -198,8 +198,9 @@ detect_target() {
     arch=$(uname -m)
     machine="$arch"
     # An x86_64 shell under Rosetta 2 on Apple silicon reports x86_64; the machine is arm64.
+    # The system's own sysctl, by absolute path: a `sysctl` earlier on PATH is not asked.
     if [ "$os" = "Darwin" ] && [ "$arch" = "x86_64" ] &&
-        [ "$(sysctl -n sysctl.proc_translated 2>/dev/null || true)" = "1" ]; then
+        [ "$(/usr/sbin/sysctl -n sysctl.proc_translated 2>/dev/null || true)" = "1" ]; then
         machine="arm64"
     fi
     case "$os/$machine" in
