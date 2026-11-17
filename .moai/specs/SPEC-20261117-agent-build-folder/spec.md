@@ -119,5 +119,14 @@ GREEN이에요.
 - AC-6: met — ScriptsTest OK
 - AC-7: met — `--bin moai` 27, `home_isolation_scan` 16, `lane_rules_2879` 5, `mode_workflow_steps` 42, `mode_cards_53` 9, `spec_cli` 17, `product_cli` 75, `self_audit_cli` 5, 모드 파일을 읽는 시험 모두 exit 0; `cargo fmt --check` 0; clippy 0; Python 217개 OK(`build_folder`, `self_check`, `local_check`, `skill_references`, `source_manifest`, `check_pr_self_audit`, `repo_scans`, `ci_scope`, `github_templates`); `moai spec check --all` 0(오류 0, 경고 0); `moai package-inspect skills/moai` 0
 
+감사 FAIL(2026-11-17 08:18–08:28Z, head `2c8158d900`) 수리: `4e66817587`(B1·N1·N2·N6). 시험은 RED를 먼저 봤어요
+(Rust 새 시험 2개가 의도한 단언에서 실패, Python RemoveTest 3개 실패) → GREEN. 수리 뒤 다시 돌린 결과(위 AC 숫자를 바꿔요):
+`optimize_plan_cli` 19 passed(`a_linked_moai_folder_is_not_followed`, `a_fresh_worktree_without_commits_keeps_its_build_folder` 포함),
+`build_folder_test` 15개 OK(RemoveTest 5: 손으로 쓴 미리보기·링크된 `~/.moai` 거절 포함), `agent_defs_package` 18,
+`spec_cli` 17, `home_isolation_scan` 16, `product_cli` 75, `mode_cards_53` 9, `mode_workflow_steps` 42, `lane_rules_2879` 5,
+`repo_agents_md` 3, `self_audit_cli` 5, `--bin moai` 27, `--lib optimize` 6, fmt 0, clippy 0, Python 9개 모듈 219개 OK,
+`moai spec check --all` 0, `moai package-inspect skills/moai` 0. 수리 mutation R1(미리보기가 링크된 `.moai`를 따라감)·R2(`remove`가
+따라감)·R3(건네받은 미리보기만 믿음)·R4(gc 계획 없이 병합) 모두 KILLED.
+
 실행 안 함: 전체 `cargo test`(바뀐 곳 시험만), `--bin moai-cli`, Linux·Windows, 실제 HOME의 `~/.moai/build`(시험은 임시 HOME만).
 크기: `mode-agent.md` 47,962바이트(47,998에서 줄음).
