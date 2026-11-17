@@ -114,7 +114,7 @@ distribution-catalog rejected 1.
 
 - AC-1: met — 첫 RED(지도 바꾸기 전): exit 101, "`unchecked` is not a verdict". 수리 뒤 GREEN exit 0(1 passed).
   mutation(커밋 뒤, 지도 한 행과 manifest sha256을 함께 바꿔 sha 검사를 지나게 함, 각각 `git restore` 뒤 tree 깨끗):
-  첫 회 `rejected()`·`adopted(skills/moai/NO-SUCH.md)`·`deferred(later)` → 모두 exit 101. 수리 회
+  첫 회 `rejected()`·`adopted(…)`(패키지 폴더 아래 없는 파일 `NO-SUCH.md`)·`deferred(later)` → 모두 exit 101. 수리 회
   `.agents/skills/moai-clean/SKILL.md`에 `adopted(Cargo.toml)` → exit 101 "only the shipped rows are adopted, each by
   its own file"(left `Some("Cargo.toml")`, right `None`); `.claude/skills/moai/SKILL.md`를
   `adopted(skills/moai/workflows/audit.md)`로 → exit 101(right `Some("skills/moai/SKILL.md")`). 되돌린 뒤 exit 0.
