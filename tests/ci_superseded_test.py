@@ -133,5 +133,69 @@ class CommandLine(unittest.TestCase):
         self.assertEqual(written, "state=fail\n")
 
 
+FAKE_GH = """#!{python}
+import json, os, sys
+with open(os.environ["FAKE_GH_LOG"], "a", encoding="utf-8") as log:
+    log.write(json.dumps(sys.argv[1:]) + "\\n")
+answers = json.loads(open(os.environ["FAKE_GH_ANSWERS"], encoding="utf-8").read())
+path = sys.argv[2] if sys.argv[1:2] == ["api"] and len(sys.argv) == 3 else None
+if path not in answers:
+    print("fake gh: no answer for " + repr(sys.argv[1:]), file=sys.stderr)
+    sys.exit(1)
+print(json.dumps(answers[path]))
+"""
+
+
+class Fetch(unittest.TestCase):
+    """C-83 audit N1: in CI the jobs come from `gh api`. The read is scoped to the run's own
+    attempt, asks for up to 100 jobs, and fetches annotations only for cancelled targets."""
+
+    def run_fetch(self, answers):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = pathlib.Path(tmp)
+            gh = tmp / "bin" / "gh"
+            gh.parent.mkdir()
+            gh.write_text(FAKE_GH.format(python=sys.executable), encoding="utf-8")
+            gh.chmod(0o755)
+            (tmp / "answers.json").write_text(json.dumps(answers), encoding="utf-8")
+            env = {k: v for k, v in os.environ.items() if not k.startswith(("GITHUB_", "GH_"))}
+            env.update(PATH=f"{gh.parent}{os.pathsep}{env.get('PATH', '')}",
+                       FAKE_GH_LOG=str(tmp / "log"), FAKE_GH_ANSWERS=str(tmp / "answers.json"),
+                       GITHUB_REPOSITORY="owner/repo", GITHUB_RUN_ID="111", GITHUB_RUN_ATTEMPT="2",
+                       GITHUB_OUTPUT=str(tmp / "output"), EVENT="push", CHECK_RESULT="cancelled")
+            out = subprocess.run([sys.executable, "-I", str(TOOL)], capture_output=True, text=True,
+                                 env=env, check=False)
+            calls = [json.loads(line) for line in (tmp / "log").read_text().splitlines()] \
+                if (tmp / "log").exists() else []
+            written = (tmp / "output").read_text() if (tmp / "output").exists() else ""
+            return out, calls, written
+
+    def answers(self):
+        run = recorded()
+        jobs = [{k: v for k, v in j.items() if k != "annotations"} for j in run["jobs"]]
+        answers = {"repos/owner/repo/actions/runs/111/attempts/2/jobs?per_page=100": {"jobs": jobs}}
+        for j in run["jobs"]:
+            if j["annotations"]:
+                answers[f"repos/owner/repo/check-runs/{j['id']}/annotations"] = [
+                    {"message": m, "annotation_level": "failure"} for m in j["annotations"]]
+        return answers
+
+    def test_the_read_is_attempt_scoped_and_annotations_are_read_only_for_cancelled_targets(self):
+        out, calls, written = self.run_fetch(self.answers())
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertEqual(calls, [
+            ["api", "repos/owner/repo/actions/runs/111/attempts/2/jobs?per_page=100"],
+            ["api", "repos/owner/repo/check-runs/132854068092/annotations"],
+        ])
+        self.assertEqual(written, "state=superseded\n")
+
+    def test_a_failed_read_writes_no_state_and_exits_2(self):
+        answers = self.answers()
+        del answers["repos/owner/repo/check-runs/132854068092/annotations"]
+        out, _calls, written = self.run_fetch(answers)
+        self.assertEqual(out.returncode, 2)
+        self.assertEqual(written, "")
+
+
 if __name__ == "__main__":
     unittest.main()
