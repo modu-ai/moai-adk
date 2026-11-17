@@ -123,9 +123,9 @@ answer_source() {
     ANSWER_FROM=""
     [ -t 1 ] || return 0
     if [ -t 0 ]; then
-        ANSWER_FROM=stdin
+        ANSWER_FROM='stdin'
     elif (exec </dev/tty) 2>/dev/null; then
-        ANSWER_FROM=tty
+        ANSWER_FROM='tty'
     fi
 }
 
