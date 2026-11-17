@@ -2,7 +2,7 @@
 id: SPEC-20261117-session-trailer
 title: 관문 신원 trailer — Moai-Spec와 Moai-Session (SDD-6)
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-17
 parent: SPEC-20261117-sdd-foundation
 ---
@@ -22,15 +22,18 @@ parent: SPEC-20261117-sdd-foundation
 
 ## Requirements
 
-- REQ-1: The session id shall be the value `session-current` reads from the host environment (`CLAUDE_CODE_SESSION_ID`, then `CODEX_THREAD_ID`), accepted only as 8 to 64 hex digits and `-`.
+- REQ-1: The `Moai-Session` value shall be `<session id>:<worktree key>`: the id `session-current` reads from the host environment (`CLAUDE_CODE_SESSION_ID`, then `CODEX_THREAD_ID`, 8 to 64 hex digits and `-`) and the first 12 hex digits of the sha256 of the worktree's canonical git directory.
 - REQ-2: When an agent asks for its commit trailers with a SPEC id, `moai trailers` shall print `Moai-Spec: <id>` and `Moai-Session: <session id>` as trailer lines.
-- REQ-3 (REQ-2): IF no host variable gives a session id in the accepted shape, THEN `moai trailers` shall print the `Moai-Spec` line only and report `session_missing` with the reason.
+- REQ-3 (REQ-2): IF no host variable gives a session id in the accepted shape, or the folder is in no git worktree, THEN `moai trailers` shall print the `Moai-Spec` line only and report `session_missing` with the reason.
 - REQ-4 (REQ-2): IF the SPEC id is not of the form `SPEC-<yyyymmdd>-<slug>`, THEN `moai trailers` shall refuse it and print no trailer.
 - REQ-5: When `moai trailer-check` reads a revision range, it shall report every commit without `Moai-Spec`, with a malformed `Moai-Spec` or `Moai-Session`, or without `Moai-Session`. · failure: none — 실패 판정은 REQ-6·REQ-7이에요.
 - REQ-6 (REQ-5): IF a commit's `Moai-Spec` or `Moai-Session` value is malformed or repeated, THEN the check shall fail.
 - REQ-9: Where the checked branch is not a `spec/` branch, the check shall report a missing `Moai-Spec` without failing.
 - REQ-10 (REQ-5): IF any commit fails the check, THEN `moai trailer-check` shall exit 1 and still print its findings.
 - REQ-11 (REQ-5): IF a trailer value holds the log's field separator, THEN the check shall report that commit as `malformed_trailers` and fail.
+- REQ-12 (REQ-5): IF a `Moai-Session` value is a bare session id without the worktree key, THEN the check shall report it as `legacy_session` without failing.
+- REQ-13: Where `--branch` names a branch, the check shall judge the range for that branch instead of the checkout's HEAD.
+- REQ-14: When the audit gate compares identities, it shall match two full values exactly and a legacy bare id with every value of its session.
 - REQ-7 (REQ-5): IF the range starts with `-` or git cannot read it, THEN the check shall refuse before reading any commit.
 - REQ-8: Where a verdict comment carries a `Moai-Session:` line below its first line, the audit gate shall treat that session as the auditor's identity next to its lane name.
 
@@ -38,11 +41,13 @@ parent: SPEC-20261117-sdd-foundation
 
 - AC-1 (REQ-1…REQ-4): trailer 줄, session 없음, 모양이 틀린 host 값, 카드 번호·옛 SPEC id 거절.
   verify: `cargo test --locked --offline --test trailer_check_cli trailers_name_the_spec_and_this_sessions_id`; `cargo test --locked --offline --lib trailers::`
-- AC-2 (REQ-5…REQ-7, REQ-9…REQ-11): 임시 저장소의 범위에서 다섯 가지 발견, `spec/` 가지와 아닌 가지의 실패 수, 옵션 모양 범위 거절.
+- AC-2 (REQ-5…REQ-7, REQ-9…REQ-13): 임시 저장소의 범위에서 다섯 가지 발견, `spec/` 가지와 아닌 가지의 실패 수, 옵션 모양 범위 거절.
   verify: `cargo test --locked --offline --test trailer_check_cli trailer_check_reports_missing_and_malformed_trailers`; `cargo test --locked --offline --lib trailers::tests::a_value_with_a_separator_or_control_character_is_malformed`
-- AC-3 (REQ-8): 판정의 `Moai-Session`이 저자 session이면 PASS가 아니고, FAIL은 같은 session의 PASS만 풀어요.
+- AC-3 (REQ-8, REQ-14): 판정의 `Moai-Session`이 저자 session이면 PASS가 아니고, FAIL은 같은 session의 PASS만 풀어요.
   verify: `cargo test --locked --offline --lib audit_gate::`; `cargo test --locked --offline --test audit_gate_cli`
-- AC-4 (REQ-1…REQ-11): 이웃 검사.
+- AC-5 (REQ-1, REQ-3): 한 저장소의 두 worktree는 같은 session 환경에서 다른 값을, 한 worktree는 늘 같은 값을 받아요(하위 폴더 포함).
+  verify: `cargo test --locked --offline --test trailer_check_cli the_session_value_names_the_worktree`; `cargo test --locked --offline --lib trailers::`
+- AC-4 (REQ-1…REQ-14): 이웃 검사.
   verify: `cargo test --locked --offline --test gate_check_cli`; `cargo test --locked --offline --test git_env_scrub`;
   `cargo test --locked --offline --test home_isolation_scan`; `cargo test --locked --offline --test product_cli`;
   `cargo test --locked --offline --test help_layout`; `cargo test --locked --offline --bin moai`;
@@ -82,6 +87,7 @@ parent: SPEC-20261117-sdd-foundation
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D1 | session id = 기존 `session-current`가 읽는 host 변수 값(새 출처 없음); `/clear` 뒤 바뀌고 스스로 적는 값(감사 N1·N2) | 이미 있는 것 재사용, 비밀이 아님, 카드 번호 아님 | 출처 목록 바꾸기 |
+| D7 | `Moai-Session` = `<host session id>:<worktree key>`(정식 git dir의 sha256 앞 12자리): Claude Code 하위 에이전트가 부모의 session id를 물려받아 id만으로는 저자와 감사 에이전트를 가르지 못해요(재감사 B3, 감사자가 같은 `c3f1ed16-…`를 측정). 감사 에이전트는 자기 worktree에서 돌아요. 옛 맨 id는 한 번의 이행 기간 동안 `legacy_session`(실패 아님)으로 받고, 관문은 그 id를 그 session 전체로 봐요(보수적). `--branch`(재감사 N4) | 리더 결정 2026-11-17(기록, 되돌릴 수 있음) | 맨 session id로 돌아가기 |
 | D6 | `trailer-check`는 실패가 있으면 결과 JSON을 낸 채 exit 1(감사 B1, `audit-delta`와 같은 방식); 구분 문자를 품은 값은 `malformed_trailers`(감사 N3) | CI·스크립트가 종료 코드로 판단 | exit 0 유지 |
 | D2 | 새 명령 `moai trailers --spec`과 `moai trailer-check <range>` | 조정자 지시 | 명령 빼기 |
 | D3 | `Moai-Session` 없음은 알리기만 하고 실패시키지 않음; `Moai-Spec` 없음은 `spec/` 가지에서만 실패 | session id가 없는 host가 있음 | 둘 다 실패로 |

@@ -66,7 +66,7 @@ impl Verdict {
     /// The same auditor: the same session id when both name one, else the same lane name.
     fn same_auditor(&self, other: &Verdict) -> bool {
         match (&self.session, &other.session) {
-            (Some(a), Some(b)) => a.eq_ignore_ascii_case(b),
+            (Some(a), Some(b)) => crate::trailers::same_identity(a, b),
             _ => self.auditor.is_some() && self.auditor == other.auditor,
         }
     }
@@ -78,7 +78,7 @@ fn verdict_session(body: &str) -> Option<String> {
         .skip(1)
         .filter_map(|l| l.trim().strip_prefix("Moai-Session:"))
         .map(str::trim)
-        .find(|v| crate::session_current::well_formed(v))
+        .find(|v| crate::trailers::value_shape(v) != crate::trailers::Shape::Bad)
         .map(String::from)
 }
 
@@ -212,7 +212,11 @@ pub fn decide(input: &Input) -> Value {
             "the PR's authors are unknown: no commit carries a `Moai-Session:` trailer".into(),
         );
     }
-    let is_author = |who: &str| authors.iter().any(|a| a.eq_ignore_ascii_case(who));
+    let is_author = |who: &str| {
+        authors
+            .iter()
+            .any(|a| a.eq_ignore_ascii_case(who) || crate::trailers::same_identity(a, who))
+    };
     match on_head
         .iter()
         .rev()
@@ -430,6 +434,40 @@ mod tests {
 
     /// SDD-6: commits carry the author's `Moai-Session:` (a session id); a verdict that names
     /// its auditor's session the same way is compared by that id, and its lane name too.
+    /// Re-audit B3: a subagent auditor inherits its parent's session id; the worktree key tells
+    /// them apart. A legacy bare author id still counts every value of its session as an author.
+    #[test]
+    fn the_worktree_key_tells_a_subagent_auditor_from_its_parent() {
+        const S: &str = "428e289a-1c67-492e-a23b-a5aca15b4d1f";
+        let author = format!("{S}:aaaaaaaaaaaa");
+        let src = ["src/a.rs"];
+        let pass = |session: &str| {
+            Comment {
+            id: 5,
+            body: format!(
+                "AUDIT #9 (x) head {H} base {B} — verdict: PASS\nauditor: agent-7\nMoai-Session: {session}"
+            ),
+            author_association: "MEMBER".into(),
+        }
+        };
+        let own = format!("{S}:bbbbbbbbbbbb");
+        assert_eq!(
+            state(&input("1", &src, &[author.as_str()], vec![pass(&own)])).0,
+            "pass",
+            "another worktree of the same host session"
+        );
+        assert_eq!(
+            state(&input("1", &src, &[author.as_str()], vec![pass(&author)])).0,
+            "missing",
+            "the author's own worktree"
+        );
+        assert_eq!(
+            state(&input("1", &src, &[S], vec![pass(&own)])).0,
+            "missing",
+            "a legacy bare author id covers its whole session"
+        );
+    }
+
     #[test]
     fn a_verdict_names_its_auditors_session_like_a_commit_does() {
         const AUTHOR: &str = "428e289a-1c67-492e-a23b-a5aca15b4d1f";

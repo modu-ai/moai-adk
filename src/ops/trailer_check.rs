@@ -17,10 +17,13 @@ pub struct Args {
     /// Repository to read.
     #[arg(long, default_value = ".")]
     dir: PathBuf,
+    /// The branch the range is judged for, when the checkout is detached (CI).
+    #[arg(long)]
+    branch: Option<String>,
 }
 
 pub const OPERATION: &str = "trailers.check";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
-    moai_cli::trailers::check(&args.dir, &args.range)
+    moai_cli::trailers::check(&args.dir, &args.range, args.branch.as_deref())
 }

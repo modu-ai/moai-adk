@@ -23,9 +23,81 @@ type Result<T> = std::result::Result<T, String>;
 pub const SPEC_KEY: &str = "Moai-Spec";
 pub const SESSION_KEY: &str = "Moai-Session";
 
-/// The trailer lines for a commit of `spec`, with this session's id when `get` (an environment
-/// reader) gives one. Only a new-form SPEC id is written.
-pub fn format(spec: &str, get: impl Fn(&str) -> Option<String>) -> Result<Value> {
+/// Hex digits of the worktree key.
+const KEY_LEN: usize = 12;
+
+/// The shape of one `Moai-Session` value (re-audit B3, leader decision 2026-11-17).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Shape {
+    /// `<session id>:<12 lowercase hex>`: the host session and the worktree.
+    Full,
+    /// A bare session id written before the worktree key: read for one transition.
+    Legacy,
+    /// Anything else.
+    Bad,
+}
+
+/// The shape of a `Moai-Session` value.
+pub fn value_shape(v: &str) -> Shape {
+    match v.split_once(':') {
+        Some((id, key))
+            if session_current::well_formed(id)
+                && key.len() == KEY_LEN
+                && key
+                    .bytes()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)) =>
+        {
+            Shape::Full
+        }
+        None if session_current::well_formed(v) => Shape::Legacy,
+        _ => Shape::Bad,
+    }
+}
+
+/// Whether two `Moai-Session` values name the same identity: two full values match exactly; a
+/// legacy bare id matches every value of its session, so the transition never makes an author
+/// look independent (ASCII case ignored).
+pub fn same_identity(a: &str, b: &str) -> bool {
+    let (a, b) = (a.to_ascii_lowercase(), b.to_ascii_lowercase());
+    match (value_shape(&a), value_shape(&b)) {
+        (Shape::Full, Shape::Full) => a == b,
+        _ => {
+            let session = |v: &str| v.split(':').next().unwrap_or(v).to_string();
+            session(&a) == session(&b)
+        }
+    }
+}
+
+/// The worktree key of a git dir: the first 12 hex digits of the sha256 of its path.
+pub fn worktree_key_of(git_dir: &Path) -> String {
+    use sha2::{Digest, Sha256};
+    let hex = format!("{:x}", Sha256::digest(git_dir.to_string_lossy().as_bytes()));
+    hex[..KEY_LEN].to_string()
+}
+
+/// The worktree key of the worktree that holds `dir`: from `git rev-parse --absolute-git-dir`
+/// (scrubbed git environment), made canonical. `None` outside a git worktree.
+pub fn worktree_key(dir: &Path) -> Option<String> {
+    let out = crate::audit_delta::command(dir)
+        .args(["rev-parse", "--absolute-git-dir"])
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let raw = String::from_utf8(out.stdout).ok()?;
+    let git_dir = std::fs::canonicalize(raw.trim()).ok()?;
+    Some(worktree_key_of(&git_dir))
+}
+
+/// The trailer lines for a commit of `spec`, with `Moai-Session: <session id>:<worktree key>`
+/// when `get` (an environment reader) gives this session's id and `key` names the worktree
+/// ([`worktree_key`]). Only a new-form SPEC id is written.
+pub fn format(
+    spec: &str,
+    get: impl Fn(&str) -> Option<String>,
+    key: Option<&str>,
+) -> Result<Value> {
     if spec_doc::id_form(spec) != Some(IdForm::New) {
         return Err(
             "the SPEC id must be SPEC-<yyyymmdd>-<slug>; a card number is never a trailer".into(),
@@ -34,14 +106,21 @@ pub fn format(spec: &str, get: impl Fn(&str) -> Option<String>) -> Result<Value>
     let found = session_current::resolve(get);
     let mut text = format!("{SPEC_KEY}: {spec}\n");
     let mut out = json!({"spec": spec});
-    match found["source_session_id"].as_str() {
-        Some(id) => {
-            text.push_str(&format!("{SESSION_KEY}: {id}\n"));
-            out["session"] = json!(id);
+    match (found["source_session_id"].as_str(), key) {
+        (Some(id), Some(key)) => {
+            let value = format!("{id}:{key}");
+            text.push_str(&format!("{SESSION_KEY}: {value}\n"));
+            out["session"] = json!(value);
             out["session_source"] = found["source"].clone();
             out["session_missing"] = json!(false);
         }
-        None => {
+        (Some(_), None) => {
+            out["session_missing"] = json!(true);
+            out["reason"] = json!(format!(
+                "this folder is not in a git worktree, so no worktree key can be read; the commit carries {SPEC_KEY} only"
+            ));
+        }
+        (None, _) => {
             out["session_missing"] = json!(true);
             out["reason"] = json!(format!(
                 "no host variable gives this session's id ({}); the commit carries {SPEC_KEY} only and the audit gate reads its authors as unknown",
@@ -98,11 +177,27 @@ fn findings(c: &CommitTrailers, spec_branch: bool) -> Vec<Value> {
             false,
             format!("no {SESSION_KEY} trailer; the audit gate reads the authors as unknown"),
         ),
-        [one] if session_current::well_formed(one) => {}
+        [one] => match value_shape(one) {
+            Shape::Full => {}
+            Shape::Legacy => add(
+                "legacy_session",
+                false,
+                format!(
+                    "{SESSION_KEY} is a bare session id from before the worktree key; read for the transition (it counts its whole session as one author)"
+                ),
+            ),
+            Shape::Bad => add(
+                "malformed_session",
+                true,
+                format!(
+                    "{SESSION_KEY} must be <session id>:<12 hex digits> (8 to 64 hex digits and `-`, then the worktree key)"
+                ),
+            ),
+        },
         _ => add(
             "malformed_session",
             true,
-            format!("{SESSION_KEY} must be one session id (8 to 64 hex digits and `-`)"),
+            format!("{SESSION_KEY} must appear once"),
         ),
     }
     out
@@ -146,7 +241,7 @@ pub fn judge(commits: &[CommitTrailers], branch: &str) -> Value {
 
 /// Reads the commits of `range` in the repository at `dir` (merges skipped, oldest first) and
 /// judges their identity trailers. Reads only.
-pub fn check(dir: &Path, range: &str) -> Result<Value> {
+pub fn check(dir: &Path, range: &str, branch: Option<&str>) -> Result<Value> {
     if range.is_empty() || range.starts_with('-') {
         return Err(
             "the range must be a revision range such as <base>..HEAD, not an option".into(),
@@ -174,9 +269,13 @@ pub fn check(dir: &Path, range: &str) -> Result<Value> {
         range,
         "--",
     ])?;
-    let branch = git(&["rev-parse", "--abbrev-ref", "HEAD"])?
-        .trim()
-        .to_string();
+    // Re-audit N4: a detached checkout (CI) names the branch it judges.
+    let branch = match branch {
+        Some(b) => b.to_string(),
+        None => git(&["rev-parse", "--abbrev-ref", "HEAD"])?
+            .trim()
+            .to_string(),
+    };
     Ok(judge(&parse_log(&log), &branch))
 }
 
@@ -195,17 +294,61 @@ mod tests {
         }
     }
 
+    /// Re-audit B3 (leader decision): a Claude Code subagent inherits its parent's session id,
+    /// so the value names the worktree too: `<session id>:<12 hex of sha256(git dir)>`.
+    #[test]
+    fn the_value_joins_the_session_and_the_worktree_key() {
+        let key = worktree_key_of(Path::new("/w/a/.git"));
+        assert_eq!(key.len(), 12);
+        assert!(key
+            .bytes()
+            .all(|b| b.is_ascii_hexdigit() && !b.is_ascii_uppercase()));
+        assert_ne!(key, worktree_key_of(Path::new("/w/b/.git/worktrees/b")));
+        assert_eq!(key, worktree_key_of(Path::new("/w/a/.git")));
+        let v = format!("{S}:{key}");
+        assert_eq!(value_shape(&v), Shape::Full);
+        assert_eq!(value_shape(S), Shape::Legacy);
+        for bad in [
+            format!("{S}:{}", &key[..11]),
+            format!("{S}:{}x", &key[..11]),
+            format!("{S}:{key}:x"),
+            format!("{S}:{}", key.to_uppercase()),
+            format!(":{key}"),
+            "agent-7".to_string(),
+        ] {
+            assert_eq!(value_shape(&bad), Shape::Bad, "{bad}");
+        }
+    }
+
+    /// Full values match exactly; a legacy bare id (before the worktree key) matches every value
+    /// of that session, so the transition never makes an author look independent.
+    #[test]
+    fn identities_match_by_full_value_or_conservatively_by_session() {
+        let a = format!("{S}:aaaaaaaaaaaa");
+        let b = format!("{S}:bbbbbbbbbbbb");
+        assert!(same_identity(&a, &a));
+        assert!(!same_identity(&a, &b));
+        assert!(same_identity(S, &b) && same_identity(&a, S));
+        assert!(!same_identity("11111111-2222", &a));
+        assert!(same_identity(&a.to_uppercase(), &a));
+    }
+
     #[test]
     fn format_writes_the_spec_and_the_session_when_there_is_one() {
-        let v = format("SPEC-20261117-x", env(&[("CODEX_THREAD_ID", S)])).unwrap();
+        const K: &str = "0123456789ab";
+        let v = format("SPEC-20261117-x", env(&[("CODEX_THREAD_ID", S)]), Some(K)).unwrap();
         assert_eq!(
             v["text"],
-            format!("Moai-Spec: SPEC-20261117-x\nMoai-Session: {S}\n")
+            format!("Moai-Spec: SPEC-20261117-x\nMoai-Session: {S}:{K}\n")
         );
-        let v = format("SPEC-20261117-x", env(&[])).unwrap();
+        let v = format("SPEC-20261117-x", env(&[]), Some(K)).unwrap();
         assert_eq!(v["text"], "Moai-Spec: SPEC-20261117-x\n");
         assert_eq!(v["session_missing"], true);
-        assert!(format("SPEC-AUTH-001", env(&[])).is_err());
+        // Outside a git worktree there is no key: the session line is left out too.
+        let v = format("SPEC-20261117-x", env(&[("CODEX_THREAD_ID", S)]), None).unwrap();
+        assert_eq!(v["text"], "Moai-Spec: SPEC-20261117-x\n");
+        assert_eq!(v["session_missing"], true);
+        assert!(format("SPEC-AUTH-001", env(&[]), Some(K)).is_err());
     }
 
     /// Audit N3: a value that holds the log's own separators (or any control character)
@@ -240,6 +383,10 @@ mod tests {
         let v = judge(&c, "spec/x");
         // b: missing spec (fails on spec/) + missing session; c: two specs, two sessions.
         assert_eq!(v["failing"], 3, "{v}");
-        assert_eq!(judge(&c[..1], "spec/x")["ok"], true);
+        // a: a bare id from before the worktree key is reported for the transition, not failed.
+        let a = judge(&c[..1], "spec/x");
+        assert_eq!(a["ok"], true);
+        assert_eq!(a["findings"][0]["kind"], "legacy_session", "{a}");
+        assert_eq!(a["findings"][0]["fails"], false, "{a}");
     }
 }
