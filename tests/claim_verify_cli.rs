@@ -1665,8 +1665,10 @@ fn mode_agent_workflow_names_claim_verify_before_writes() {
         "{step}"
     );
     assert!(step.contains("claim-verify --hook"), "{step}");
+    // C-53 S5: the step checks a card (`card check`) and no card moves by time (was: "never
+    // take the Issue over by time alone").
     assert!(
-        step.contains("never take the Issue over by time alone"),
+        step.contains("never take a card over by time alone"),
         "{step}"
     );
 }
@@ -1689,16 +1691,28 @@ fn claim_order_docs_agree() {
     let step2 = line(&agents, "2. Worktree.");
     let claim = line(&mode, "5. **claim**");
     let state = line(&mode, "3. **state**");
-    for l in [&step1, &claim] {
-        assert!(l.contains("claim in the folder you will work in"), "{l}");
-        assert!(l.contains("moai claim-link"), "{l}");
-    }
+    assert!(
+        step1.contains("claim in the folder you will work in"),
+        "{step1}"
+    );
+    assert!(step1.contains("moai claim-link"), "{step1}");
     assert!(
         step2.contains("create it first, then claim in it"),
         "{step2}"
     );
-    assert!(state.contains("the folder you claim in"), "{state}");
-    assert!(state.contains("moai claim-link"), "{state}");
+    // C-53 S5: MODE-AGENT takes a card with `card take --worktree`, which records the folder
+    // once; no command re-points a reservation, so the folder never moves (was: claim in the
+    // folder, and `moai claim-link` after a move).
+    assert!(
+        claim.contains("Create the worktree first")
+            && claim.contains("then take the card in it")
+            && claim.contains("Take in the folder you will work in and never move it afterwards"),
+        "{claim}"
+    );
+    assert!(state.contains("the folder you take the card in"), "{state}");
+    for l in [&claim, &state] {
+        assert!(!l.contains("claim-link"), "{l}");
+    }
 }
 
 /// #2673 AC-3: `claim-verify --hook` reads the branch, the claim record and the commits in the

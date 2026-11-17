@@ -43,7 +43,8 @@ fn the_never_delete_rule_names_the_card_cleanup_as_its_exception() {
     says(
         &agent,
         "mode-agent.md",
-        &["Never delete files, branches or worktrees — except the cleanup in `self-pick` (4): `moai worktree-gc-apply` on your own merged card's worktree, with that plan's `plan_digest` (Issue #2879) — never touch the real HOME"],
+        // C-53 S5: the cleanup is self-pick item (3) since the pre-audit item left (was (4)).
+        &["Never delete files, branches or worktrees — except the cleanup in `self-pick` (3): `moai worktree-gc-apply` on your own merged card's worktree, with that plan's `plan_digest` (Issue #2879) — never touch the real HOME"],
     );
 }
 
