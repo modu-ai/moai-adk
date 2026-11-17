@@ -111,6 +111,11 @@ fn a_code_write_on_a_spec_branch_waits_for_the_branch_spec() {
         !reason.contains("main.rs") && !reason.contains("demo"),
         "{reason}"
     );
+    // C-86 audit N4: it also names the way to give the SPEC the branch's date.
+    assert!(
+        reason.contains("`moai spec new --date YYYY-MM-DD`"),
+        "{reason}"
+    );
     for path in ["src/main.rs", "README.md", "tests/a.rs", "a.txt"] {
         assert_deny(&preflight("claude", &root, &write(path, &root)));
     }
@@ -241,4 +246,115 @@ fn linked_worktrees_and_every_write_tool_are_covered() {
     assert_allow(&preflight("codex", &wt, &patch));
     // The primary checkout on `main` is untouched by its worktree's branch.
     assert_allow(&preflight("claude", &main, &write("src/main.rs", &main)));
+}
+
+/// `to` written relative to the folder `from` (both absolute real paths).
+fn relative(from: &Path, to: &Path) -> PathBuf {
+    let (a, b): (Vec<_>, Vec<_>) = (from.components().collect(), to.components().collect());
+    let common = a.iter().zip(&b).take_while(|(x, y)| x == y).count();
+    let mut out = PathBuf::new();
+    for _ in common..a.len() {
+        out.push("..");
+    }
+    for part in &b[common..] {
+        out.push(part);
+    }
+    out
+}
+
+/// C-86 audit N1: a linked worktree whose `.git` file names its git folder with a RELATIVE
+/// `gitdir:` (git `worktree.useRelativePaths`, written by hand here) is read from the work
+/// tree, not from the hook's working folder: the session sits in a subfolder, so a path joined
+/// against the process folder would miss the branch and let the write through.
+#[test]
+fn a_relative_gitdir_is_read_from_the_work_tree() {
+    let (_d, main) = repo("main");
+    let parent = tempfile::TempDir::new().unwrap();
+    let wt = fs::canonicalize(parent.path()).unwrap().join("wt");
+    git(
+        &main,
+        &["worktree", "add", "-q", "-b", BRANCH, wt.to_str().unwrap()],
+    );
+    let pointer = fs::read_to_string(wt.join(".git")).unwrap();
+    let target = PathBuf::from(pointer.trim().strip_prefix("gitdir:").unwrap().trim());
+    let rel = relative(&wt, &target);
+    assert!(rel.is_relative(), "{}", rel.display());
+    fs::write(wt.join(".git"), format!("gitdir: {}\n", rel.display())).unwrap();
+    let sub = wt.join("src");
+    for cwd in [&wt, &sub] {
+        fs::create_dir_all(cwd.join("home")).unwrap();
+        let file = wt.join("src/main.rs");
+        assert_deny(&preflight(
+            "claude",
+            cwd,
+            &write(file.to_str().unwrap(), cwd),
+        ));
+    }
+    fs::create_dir_all(wt.join(".moai/specs/SPEC-20261117-demo")).unwrap();
+    fs::write(wt.join(SPEC), spec_text("SPEC-20261117-demo")).unwrap();
+    let file = wt.join("src/main.rs");
+    assert_allow(&preflight(
+        "claude",
+        &sub,
+        &write(file.to_str().unwrap(), &sub),
+    ));
+}
+
+/// C-86 audit N2: the work tree is the one holding the WRITTEN file (the nearest `.git`, a
+/// folder or a file, above it), not the one holding the session's folder. A worktree nested in
+/// the primary checkout (`.claude/worktrees/<x>`) has its own branch, in both directions.
+#[test]
+fn the_written_file_decides_the_work_tree_in_both_directions() {
+    // The primary checkout on a SPEC branch without its SPEC; a nested worktree on `work`.
+    let (_d, primary) = repo(BRANCH);
+    let nested = primary.join(".claude/worktrees/x");
+    git(
+        &primary,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "work",
+            nested.to_str().unwrap(),
+        ],
+    );
+    fs::create_dir_all(nested.join("home")).unwrap();
+    let in_nested = nested.join("src/lib.rs").display().to_string();
+    let in_primary = primary.join("src/lib.rs").display().to_string();
+    // From the primary: the nested worktree's file is on `work` and goes ahead.
+    assert_allow(&preflight("claude", &primary, &write(&in_nested, &primary)));
+    assert_deny(&preflight(
+        "claude",
+        &primary,
+        &write(&in_primary, &primary),
+    ));
+    // From the nested worktree: the primary's file is on the SPEC branch and waits.
+    assert_deny(&preflight("claude", &nested, &write(&in_primary, &nested)));
+    assert_allow(&preflight("claude", &nested, &write(&in_nested, &nested)));
+
+    // The other way round: the primary on `main`, a nested worktree on the SPEC branch.
+    let (_e, main) = repo("main");
+    let spec_wt = main.join(".claude/worktrees/y");
+    git(
+        &main,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            BRANCH,
+            spec_wt.to_str().unwrap(),
+        ],
+    );
+    fs::create_dir_all(spec_wt.join("home")).unwrap();
+    let in_spec_wt = spec_wt.join("src/lib.rs").display().to_string();
+    let in_main = main.join("src/lib.rs").display().to_string();
+    assert_deny(&preflight("claude", &main, &write(&in_spec_wt, &main)));
+    assert_allow(&preflight("claude", &main, &write(&in_main, &main)));
+    assert_allow(&preflight("claude", &spec_wt, &write(&in_main, &spec_wt)));
+    // Its SPEC lets its code through, from either folder.
+    fs::create_dir_all(spec_wt.join(".moai/specs/SPEC-20261117-demo")).unwrap();
+    fs::write(spec_wt.join(SPEC), spec_text("SPEC-20261117-demo")).unwrap();
+    assert_allow(&preflight("claude", &main, &write(&in_spec_wt, &main)));
 }

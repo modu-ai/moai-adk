@@ -195,7 +195,7 @@
       }
     },
     "references/internal/interview.md": {
-      "sha256": "e747ed117b2585704ffeb326a1b0a2e5315ccc16560b49b52f03df1ffb71d84e",
+      "sha256": "ec88ae339c939aedaf61d28c1989f95a739569f7ad4745d62f4724bb453600ed",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-interview",
@@ -354,7 +354,7 @@
       }
     },
     "references/internal/versioning.md": {
-      "sha256": "2963efdc7633f96589058904478d2fdc25520ac0e074593651a800961e6e3498",
+      "sha256": "2edd875ea1a7967b70800a05783752bec81cded61f398409637d9aa8bf554f3f",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-versioning",
