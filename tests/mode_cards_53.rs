@@ -248,6 +248,24 @@ fn step(name: &str, key: &str) -> String {
         .to_string()
 }
 
+/// A numbered step with its indented items (`self-pick` lists its order on lines of their
+/// own), up to the next numbered step or section.
+fn step_block(name: &str, key: &str) -> String {
+    let text = workflow(name);
+    let head = step(name, key);
+    let start = text.find(&head).unwrap();
+    let mut out = String::new();
+    for (i, line) in text[start..].lines().enumerate() {
+        let next_step = line.starts_with(|c: char| c.is_ascii_digit()) && line.contains(". **");
+        if i > 0 && (next_step || line.starts_with("## ")) {
+            break;
+        }
+        out.push_str(line);
+        out.push('\n');
+    }
+    out
+}
+
 #[test]
 fn the_agent_section_maps_each_step_of_the_round_to_a_card_command() {
     assert_says(
@@ -382,7 +400,11 @@ fn the_leader_section_makes_cards_ready_assigns_audits_and_names_the_transition(
 fn the_round_keeps_audits_with_the_leader_and_moves_on_from_a_card_in_review() {
     // B1 / user decision 2026-11-17: (a) own agent at tier 0 and 1, (b) the same agent
     // re-audits, (c) tier 2 is the leader's, (d) never another lane's pull request.
-    let pick = step("mode-agent.md", "self-pick");
+    let pick = step_block("mode-agent.md", "self-pick");
+    assert!(
+        pick.contains("    - (1) ") && pick.contains("    - (4) "),
+        "{pick}"
+    );
     for p in [
         // (a)
         "(2) Your own pull request's audit (user decision 2026-11-17): at audit-tier 0 or 1 \
@@ -422,7 +444,10 @@ fn the_round_keeps_audits_with_the_leader_and_moves_on_from_a_card_in_review() {
          kind=host reason=no session id (OMP, card C-62)` once"
     ));
     // N2: the date gives the seven digits in a row `pr-self-audit-check` wants on `plan:`.
-    assert!(pick.contains("(`<UTC>` from `date -u +%Y%m%dT%H%M%SZ`)"));
+    assert!(step("mode-agent.md", "pr-gate").contains(
+        "the PLAN note, by its `ref`, whose `<UTC>` (`date -u +%Y%m%dT%H%M%SZ`) gives the seven \
+         digits the check wants"
+    ));
     // N4: the lane's limits.
     let limits = section_of_agent("Exceptions and Permissions");
     assert!(limits.contains(
@@ -480,7 +505,7 @@ fn a_merge_needs_ci_success_and_a_pass_and_a_local_check_line_never_replaces_ci(
     let train = step("mode-leader.md", "merge-train");
     for p in [
         "A merge needs the pull request head's GitHub `ci` success and, at effective audit tier \
-         1 or 2, an independent PASS that cites that run",
+         1 or 2, a non-author PASS that cites that run",
         "at effective tier 0 (documents, wording and tests only, after the gate's path rule) the \
          `ci` success alone",
         "A `local-check:` line is optional and never replaces `ci` (user decision 2026-11-17 \"CI \
@@ -497,8 +522,9 @@ fn a_merge_needs_ci_success_and_a_pass_and_a_local_check_line_never_replaces_ci(
          success and, at audit-tier 1 or 2, an independent PASS)"
     ));
     assert!(step("mode-agent.md", "merge-train").contains(
-        "A merge needs the head's GitHub `ci` success and, at audit-tier 1 or 2, an independent \
-         PASS; a `local-check:` line never replaces `ci` (user decision 2026-11-17)"
+        "A merge needs the head's GitHub `ci` success and, at audit-tier 1 or 2, a non-author \
+         PASS that cites that run; a `local-check:` line never replaces `ci` (user decision \
+         2026-11-17)"
     ));
     let gate = step("mode-agent.md", "pr-gate");
     assert!(gate.contains("optional, but `moai gate-check` (G5) reads it until card C-84"));
