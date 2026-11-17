@@ -30,8 +30,10 @@
 //!   write inside the work tree but outside `.moai/specs/` waits until
 //!   `.moai/specs/SPEC-<yyyymmdd>-<slug>/spec.md` exists and its frontmatter names that id.
 //!   Writing under `.moai/specs/` is always allowed, so the SPEC itself is the way out. Paths
-//!   are judged after `..` and symbolic links are resolved; writes outside the work tree are
-//!   not this rule's. Shell redirections are not seen (the A4 gap).
+//!   are judged after `..` and symbolic links are resolved, each in the work tree that holds
+//!   it (the nearest `.git` above the written path, C-86 audit N2), whatever the session's
+//!   folder; a path in no work tree is not this rule's. Shell redirections are not seen (the
+//!   A4 gap).
 //! - A6 the GREEN test lock (card C-86, SPEC-20261117-green-test-lock): while the worktree's
 //!   TDD record (`<git-dir>/moai/tdd.json`, written by `moai tdd red`) is GREEN or REFACTOR, a
 //!   write to a test path its RED commit changed, or a new file on a test path, is refused
@@ -693,7 +695,7 @@ pub fn write_guard(tool: &str, tool_input: &Value, cwd: &Path) -> Option<&'stati
     spec_before_code(&paths, cwd).or_else(|| crate::tdd::lock_refusal(&paths, cwd))
 }
 
-const SPEC_FIRST: &str = "MoAI tool-preflight: on a SPEC work branch (spec/<yyyymmdd>-<slug>), files outside .moai/specs/ are written only after the branch's SPEC exists; write .moai/specs/SPEC-<yyyymmdd>-<slug>/spec.md first (`moai spec new`).";
+const SPEC_FIRST: &str = "MoAI tool-preflight: on a SPEC work branch (spec/<yyyymmdd>-<slug>), files outside .moai/specs/ are written only after the branch's SPEC exists; write .moai/specs/SPEC-<yyyymmdd>-<slug>/spec.md first (`moai spec new`; when the branch date is not today, `moai spec new --date YYYY-MM-DD`).";
 
 /// The SPEC id a work branch is for: `spec/<yyyymmdd>-<slug>` with eight digits and a slug of
 /// lower-case letters, digits and inner hyphens (the `moai spec new` naming) gives
@@ -750,11 +752,11 @@ fn spec_names(spec: &Path, id: &str) -> bool {
 }
 
 /// A5: the reason a write is refused because its SPEC work branch has no SPEC yet, or `None`.
+/// The work tree is the one holding each WRITTEN file — the nearest `.git` (folder or file)
+/// above its resolved path — not the one holding the session's folder (C-86 audit N2): a
+/// worktree nested in the primary checkout (`.claude/worktrees/<x>`) has its own branch.
 fn spec_before_code(paths: &[String], cwd: &Path) -> Option<&'static str> {
-    let top = work_tree_top(cwd)?;
-    let id = spec_branch_id(&work_tree_branch(&top)?)?;
-    let specs = top.join(".moai").join("specs");
-    let code_write = paths.iter().any(|p| {
+    let waits = paths.iter().any(|p| {
         let path = Path::new(p);
         let absolute = if path.is_absolute() {
             path.to_path_buf()
@@ -762,12 +764,16 @@ fn spec_before_code(paths: &[String], cwd: &Path) -> Option<&'static str> {
             cwd.join(path)
         };
         let resolved = crate::hook_config::canonical(&absolute);
-        resolved.starts_with(&top) && !resolved.starts_with(&specs)
+        let Some(top) = work_tree_top(&resolved) else {
+            return false;
+        };
+        let Some(id) = work_tree_branch(&top).and_then(|b| spec_branch_id(&b)) else {
+            return false;
+        };
+        let specs = top.join(".moai").join("specs");
+        !resolved.starts_with(&specs) && !spec_names(&specs.join(&id).join("spec.md"), &id)
     });
-    if !code_write || spec_names(&specs.join(&id).join("spec.md"), &id) {
-        return None;
-    }
-    Some(SPEC_FIRST)
+    waits.then_some(SPEC_FIRST)
 }
 
 const OUTSIDE_PROJECT: &str = "MoAI tool-preflight: a write outside the project is refused; add the folder to `allow` under [hooks.outside_project_writes] in ~/.moai-cli/hook-config.toml to permit it.";

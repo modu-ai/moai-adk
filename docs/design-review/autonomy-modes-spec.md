@@ -79,8 +79,8 @@ handoff는 소유권 부여가 아니다. 지정된 세션도 claim 게시와 �
 
 | 등급 | 리더가 스스로 결정 | 사람에게 넘김 |
 |---|---|---|
-| full(완전자율) | keep-set 밖의 모든 결정. 결정 사다리를 따른다: 디스크 증거 → decision board → 감사 교차 → `jev_ask`(켜져 있을 때만) → 자체 판단과 기록(`<primary>/.claude/rules/moai/workflow/auto-semantics.md:148-163`) | keep-set 3종만: 환경상 불가, 운영자 보유, 되돌릴 수 없는 외부 공유 작업(`auto-semantics.md:208-213`) |
-| semi(반자율) | 위에서 아래 목록을 뺀 나머지 | keep-set 3종 + Issue 신규 발행, HOLD 해제, 병합 정책 변경, release |
+| full(완전자율) | keep-set 밖의 모든 결정. 결정 사다리를 따른다: 디스크 증거 → decision board → 감사 교차 → `jev_ask`(켜져 있을 때만) → 자체 판단과 기록(`<primary>/.claude/rules/moai/workflow/auto-semantics.md:148-163`) | keep-set 3종: 환경상 불가, 운영자 보유, 되돌릴 수 없는 외부 공유 작업(`auto-semantics.md:208-213`) + release 태그·게시(SKILL.md 경우 (2), 기한 기본값 없음, 카드 C-81) |
+| semi(반자율) | 위에서 아래 목록을 뺀 나머지 | full의 목록 + Issue 신규 발행, HOLD 해제, 병합 정책 변경 |
 
 - Jev: RC1에서 Jev는 P10 HOLD다. RC1의 `decision.record`는 `authority`가 `none` 하나뿐이라 아무것도 승인하지 못한다(`src/decision.rs:1-6`). Go 규칙에서도 Jev 답은 참고 입력일 뿐 결정이 아니다(`auto-semantics.md:358-368`). 모드는 "Jev를 쓸 수 있는가"를 먼저 확인하고, 쓸 수 없으면 자체 판단으로 간다. 어느 쪽이든 결정 기록을 남긴다.
 - 안전 경계는 두 등급 모두 같다. ruleset과 `moai/audit` 독립 감사, 비밀 미노출, hook·권한 우회 금지, Go 상태 보존, release/deploy 금지를 지킨다(`docs/decisions-2026-11-08.md:90`의 "HOLD만 해제" 범위).
