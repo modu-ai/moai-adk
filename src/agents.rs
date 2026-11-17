@@ -236,17 +236,17 @@ fn render_agents(p: &Profile, r: &AgentsRequest, root: &Path) -> String {
         _ => "Never share the personal `AGENTS.local.md`, credentials or raw secret logs in the repo or in Issues.",
     };
     // #2293: the writing-language lines appear only when the profile sets `language`, so a
-    // profile without it renders byte-identical to the earlier template.
+    // profile without it renders byte-identical to the earlier template; card C-87 S1: one line
+    // per item the profile sets, none guessed for the others.
     let writing = p
         .language
         .as_ref()
         .map(|l| {
             format!(
                 "{}\n",
-                crate::language::render_lines_in(
+                crate::language::render_lines(
                     l,
                     lang,
-                    &r.language,
                     &crate::state_root::rel(root, "project.yaml"),
                 )
             )

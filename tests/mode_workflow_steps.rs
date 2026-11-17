@@ -194,8 +194,8 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "hooks-plan --host",
             "labels-apply",
             "labels-plan",
-            // #2879: the lane's one build folder and the card cleanup.
-            "lane-env",
+            // #2879's `lane-env` left: C-82 points to `internal/build-folder` (one folder per
+            // worktree under `~/.moai/build/`).
             // #2904: the host's wake line a Codex or OMP lane must print.
             "lane-loop-line",
             "lane-loop-line --host",

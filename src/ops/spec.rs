@@ -2,7 +2,7 @@
 //! `<project>/.moai/specs/<SPEC-ID>/spec.md`. One word, one action each; the parser and the
 //! checks are `moai_cli::spec_doc`. No action runs a program or reaches the network.
 
-use moai_cli::spec_doc::{self as sd, SpecDoc};
+use moai_cli::spec_doc::{self as sd, specs_dir, SpecDoc};
 use serde_json::{json, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -77,13 +77,19 @@ enum Action {
     /// Reads only. Show one SPEC as JSON
     ///
     /// Reads only. The frontmatter, the sections, every REQ and AC, the scope, the content
-    /// digest an approval records, and the findings.
+    /// digest an approval records, and the findings. `local_cards` lists the cards of this
+    /// machine's ledger that name the SPEC (`moai card spec`); they are personal and never
+    /// written to the SPEC. Without a project profile or a ledger the list is empty and
+    /// `ledger` says why; the SPEC is shown all the same.
     Show {
         /// The SPEC id.
         id: String,
         /// The project folder.
         #[arg(long, default_value = ".")]
         project: PathBuf,
+        /// The HOME whose ledger is read (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
     },
 }
 
@@ -113,39 +119,11 @@ pub fn run(args: Args) -> Result<Value, String> {
             project,
         } => check(&project, id.as_deref(), closure),
         Action::List { project } => list(&project),
-        Action::Show { id, project } => show(&project, &id),
+        Action::Show { id, project, home } => show(&project, &id, home),
     }
 }
 
-const SPECS: &str = ".moai/specs";
-
-/// The project root and whether `.moai/specs` is there. `.moai` or `.moai/specs` that is a link
-/// or not a folder is refused; nothing is followed.
-fn specs_dir(project: &Path) -> Result<(PathBuf, bool), String> {
-    let root = moai_cli::apply::root_of(project)?;
-    let mut cur = root.clone();
-    for part in [moai_cli::state_root::MOAI_DIR, "specs"] {
-        cur = cur.join(part);
-        match fs::symlink_metadata(&cur) {
-            Ok(m) if m.is_dir() => {}
-            Ok(_) => {
-                return Err(format!(
-                    "spec refused: {} is a link or not a folder; it is never followed",
-                    rel_of(&root, &cur)
-                ))
-            }
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok((root, false)),
-            Err(_) => return Err("spec read failed: the SPEC folder could not be examined".into()),
-        }
-    }
-    Ok((root, true))
-}
-
-fn rel_of(root: &Path, p: &Path) -> String {
-    p.strip_prefix(root)
-        .map(|r| r.to_string_lossy().replace('\\', "/"))
-        .unwrap_or_default()
-}
+const SPECS: &str = sd::SPECS_DIR;
 
 /// A folder name as it may appear in a message: anything but ASCII letters, digits, `-`, `_`
 /// and `.` reads `?`.
@@ -383,17 +361,38 @@ fn list(project: &Path) -> Result<Value, String> {
     }))
 }
 
-fn show(project: &Path, id: &str) -> Result<Value, String> {
+fn show(project: &Path, id: &str, home: Option<PathBuf>) -> Result<Value, String> {
     typed_id("show", id)?;
-    let (root, present) = specs_dir(project)?;
-    let dir = root.join(SPECS).join(id);
-    if !present || fs::symlink_metadata(&dir).is_err() {
-        return Err(format!("spec not found: {id}"));
-    }
-    let doc = sd::load(&dir, false);
+    let doc = sd::find(project, id)?;
     Ok(json!({
         "action": "show",
         "path": format!("{SPECS}/{id}/{}", sd::SPEC_FILE),
         "spec": doc,
+        "local_cards": local_cards(project, id, home),
     }))
+}
+
+/// The cards of this machine's ledger that name SPEC `id` now (SDD-4): personal, so `local`.
+/// No HOME, no project profile, no ledger or a ledger that cannot be read lists no card and
+/// says why in `ledger`; it never stops `show`.
+fn local_cards(project: &Path, id: &str, home: Option<PathBuf>) -> Value {
+    use moai_cli::ledger::{self, command, LedgerError};
+    let none = |why: &str| json!({"local": true, "ledger": why, "count": 0, "cards": []});
+    let Ok(home) = command::resolve_home(home) else {
+        return none("no_home");
+    };
+    let Ok(project_id) = command::project_id_of(project) else {
+        return none("no_project");
+    };
+    let read = match ledger::open_read_only(&home, &project_id) {
+        Ok(l) => moai_cli::card::spec_link::cards_of(l.conn(), id).map_err(LedgerError::from),
+        Err(e) => Err(e),
+    };
+    match read {
+        Ok(cards) => {
+            json!({"local": true, "ledger": "ready", "count": cards.len(), "cards": cards})
+        }
+        Err(LedgerError::Absent) => none("absent"),
+        Err(e) => none(e.code()),
+    }
 }

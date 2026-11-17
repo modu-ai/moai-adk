@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Summary and verdict of one candidate verification (#2554 PR-A).
 
-`.github/workflows/candidate.yml` runs the check set on five targets for one pinned commit.
+`.github/workflows/candidate.yml` runs the check set on the three supported platforms
+(SPEC-20261117-supported-platforms) for one pinned commit.
 Its last job calls this script with the `needs` context as JSON in $NEEDS and the run's own
 commit in $GITHUB_SHA. The script prints one Markdown summary on stdout (the workflow appends
-it to the step summary) and exits 0 only when every one of the five targets
+it to the step summary) and exits 0 only when every one of the three targets
 
   - ended `success`,
   - reports the same commit the run was pinned to, and
@@ -19,7 +20,7 @@ import os
 import re
 import sys
 
-TARGETS = ("linux-x86_64", "linux-arm64", "macos-arm64", "macos-x86_64", "windows-x86_64")
+TARGETS = ("linux-x86_64", "macos-arm64", "windows-x86_64")
 _SHA = re.compile(r"[0-9a-f]{40}")
 _NUMBER = re.compile(r"[0-9]+")
 
@@ -105,7 +106,7 @@ def judge(needs, expected):
     lines += ["| " + " | ".join(row) + " |" for row in rows]
     lines.append("")
     if ok:
-        lines.append("verdict: PASS - five targets, one commit, tests run on each")
+        lines.append("verdict: PASS - three targets, one commit, tests run on each")
     else:
         lines.append("verdict: FAIL")
         lines.append("")
