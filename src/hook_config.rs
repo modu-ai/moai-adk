@@ -19,7 +19,17 @@
 //! [hooks.commit_identity]          # #2878: no commit under a test identity
 //! enabled = true
 //! deny_emails = ["ci@example.com"] # added to the built-in test addresses
+//!
+//! [hooks.edit_diagnostics]         # SPEC-20261117-edit-diagnostics S1 (Claude Code)
+//! enabled = true
+//! timeout_secs = 10                # 1-30
+//! max_lines = 20                   # 1-200
+//! max_chars = 4000                 # 200-9000
+//! checkers = { py = ["ruff", "check", "--output-format", "concise"] }  # file appended
 //! ```
+//!
+//! A malformed `[hooks.edit_diagnostics]` turns only that feature off, named by
+//! [`ConfigProblem::InvalidEditDiagnostics`]; the guard rules keep their own settings.
 //!
 //! A config that is absent, not a regular file (a symlink too), over 64 KiB or not valid TOML
 //! turns both rules off: a broken config must not block every write (the engine's fail-open
@@ -68,11 +78,36 @@ pub struct IdentityRule {
     pub deny_emails: Vec<String>,
 }
 
+/// SPEC-20261117-edit-diagnostics S1: after a file edit, run the checker the user named for the
+/// file's extension and hand its diagnostics back as context. Off unless enabled.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EditRule {
+    /// Seconds the checker may run, [`EDIT_TIMEOUT_SECS`] by default.
+    pub timeout_secs: u64,
+    /// Diagnostic lines returned at most.
+    pub max_lines: usize,
+    /// Characters returned at most (summary included).
+    pub max_chars: usize,
+    /// Lower-case file extension -> checker argv (the edited file is appended as the last
+    /// argument; no shell).
+    pub checkers: Vec<(String, Vec<String>)>,
+}
+
+/// The defaults and bounds of [`EditRule`] (SPEC-20261117-edit-diagnostics D3, D4).
+pub const EDIT_TIMEOUT_SECS: (u64, u64, u64) = (10, 1, 30);
+pub const EDIT_MAX_LINES: (usize, usize, usize) = (20, 1, 200);
+pub const EDIT_MAX_CHARS: (usize, usize, usize) = (4_000, 200, 9_000);
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct HookConfig {
     pub outside: Option<OutsideRule>,
     pub primary: Option<PrimaryRule>,
     pub identity: Option<IdentityRule>,
+    /// `[hooks.edit_diagnostics]` when it is enabled and well formed.
+    pub edit: Option<EditRule>,
+    /// `[hooks.edit_diagnostics]` is enabled but malformed: the feature is off and the engine
+    /// logs one `config_error` line ([`ConfigProblem::InvalidEditDiagnostics`]).
+    pub edit_invalid: bool,
 }
 
 /// Why a present config file was not used (both rules are then off).
@@ -86,6 +121,9 @@ pub enum ConfigProblem {
     Unreadable,
     /// Not UTF-8 or not valid TOML.
     InvalidToml,
+    /// The file is usable but `[hooks.edit_diagnostics]` is enabled and malformed; only that
+    /// feature is off.
+    InvalidEditDiagnostics,
 }
 
 impl ConfigProblem {
@@ -96,6 +134,7 @@ impl ConfigProblem {
             ConfigProblem::TooLarge => "too_large",
             ConfigProblem::Unreadable => "unreadable",
             ConfigProblem::InvalidToml => "invalid_toml",
+            ConfigProblem::InvalidEditDiagnostics => "invalid_edit_diagnostics",
         }
     }
 }
@@ -269,10 +308,83 @@ fn parse_checked(text: &str, home: &Path) -> Option<HookConfig> {
                 .collect(),
         })
     });
+    let (edit, edit_invalid) = match table("edit_diagnostics") {
+        Some(t) if enabled(t) => match edit_rule(t) {
+            Some(rule) => (Some(rule), false),
+            None => (None, true),
+        },
+        // Present but `enabled` not `true`: off. A non-boolean `enabled` is malformed.
+        Some(t) => (None, t.get("enabled").is_some_and(|e| e.as_bool().is_none())),
+        None => (None, false),
+    };
     Some(HookConfig {
         outside,
         primary,
         identity,
+        edit,
+        edit_invalid,
+    })
+}
+
+/// The keys `[hooks.edit_diagnostics]` takes; any other key makes it malformed.
+const EDIT_KEYS: [&str; 6] = [
+    "enabled",
+    "mode",
+    "timeout_secs",
+    "max_lines",
+    "max_chars",
+    "checkers",
+];
+
+/// An enabled `[hooks.edit_diagnostics]` table, or `None` when anything in it is malformed:
+/// an unknown key, a `mode` other than `context` (blocking is slice S2), a number outside its
+/// bounds, a checker key that is not 1-16 lower-case letters or digits, or a checker that is
+/// not a non-empty list of non-empty strings without NUL.
+fn edit_rule(t: &dyn toml_edit::TableLike) -> Option<EditRule> {
+    if t.iter().any(|(k, _)| !EDIT_KEYS.contains(&k)) {
+        return None;
+    }
+    match t.get("mode") {
+        None => {}
+        Some(m) if m.as_str() == Some("context") => {}
+        Some(_) => return None,
+    }
+    let number = |key: &str, (default, low, high): (u64, u64, u64)| -> Option<u64> {
+        match t.get(key) {
+            None => Some(default),
+            Some(v) => u64::try_from(v.as_integer()?)
+                .ok()
+                .filter(|n| (low..=high).contains(n)),
+        }
+    };
+    let widen = |(a, b, c): (usize, usize, usize)| (a as u64, b as u64, c as u64);
+    let timeout_secs = number("timeout_secs", EDIT_TIMEOUT_SECS)?;
+    let max_lines = number("max_lines", widen(EDIT_MAX_LINES))? as usize;
+    let max_chars = number("max_chars", widen(EDIT_MAX_CHARS))? as usize;
+    let mut checkers = Vec::new();
+    if let Some(item) = t.get("checkers") {
+        for (ext, argv) in item.as_table_like()?.iter() {
+            let ext_ok = (1..=16).contains(&ext.len())
+                && ext
+                    .bytes()
+                    .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit());
+            let argv: Vec<String> = argv
+                .as_array()?
+                .iter()
+                .map(|v| v.as_str().map(str::to_string))
+                .collect::<Option<_>>()?;
+            if !ext_ok || argv.is_empty() || argv.iter().any(|a| a.is_empty() || a.contains('\0'))
+            {
+                return None;
+            }
+            checkers.push((ext.to_string(), argv));
+        }
+    }
+    Some(EditRule {
+        timeout_secs,
+        max_lines,
+        max_chars,
+        checkers,
     })
 }
 

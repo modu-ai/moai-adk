@@ -48,6 +48,25 @@ pub enum Handler {
     /// It replaces the record-only receipt at `SessionStart`: nothing but `hooks-status` read
     /// that receipt.
     SessionCheck,
+    /// `hook-dispatch --event edit-diagnostics` after a `Write|Edit|MultiEdit` (SPEC-20261117-
+    /// edit-diagnostics S1): Claude Code only, generated only while `[hooks.edit_diagnostics]`
+    /// is enabled ([`edit_diagnostics_timeout`]); never blocks.
+    EditDiagnostics,
+}
+
+/// The handler timeout of the edit-diagnostics hook when it is generated: the checker's own
+/// `timeout_secs` plus 5 seconds, so the host does not cancel the hook before MoAI stops the
+/// checker. `None` (no hook line) for any host but Claude Code, for the legacy binary name, and
+/// while the HOME `hook-config.toml` does not enable a well-formed `[hooks.edit_diagnostics]`
+/// (leader decision Q4: generated only when enabled).
+pub fn edit_diagnostics_timeout(binary: &str, host: &str) -> Option<u64> {
+    if host != "claude" || binary != HOOK_BINARY {
+        return None;
+    }
+    crate::hook_config::load()
+        .config
+        .edit
+        .map(|r| r.timeout_secs + 5)
 }
 
 /// The tools the Claude preflight guard sees: the hook engine's Bash and write guards
@@ -221,6 +240,9 @@ pub fn command_with(binary: &str, host: &str, handler: Handler) -> String {
         Handler::Preflight => {
             format!("{binary} hook-dispatch --host {host} --event tool-preflight")
         }
+        Handler::EditDiagnostics => {
+            format!("{binary} hook-dispatch --host {host} --event edit-diagnostics")
+        }
     }
 }
 
@@ -305,6 +327,21 @@ pub fn hooks_object_with(binary: &str, host: &str) -> Result<Map<String, Value>>
             .or_insert_with(|| Value::Array(Vec::new()));
         if let Some(list) = groups.as_array_mut() {
             list.push(Value::Object(group));
+        }
+    }
+    if let Some(timeout) = edit_diagnostics_timeout(binary, host) {
+        let group = json!({
+            "matcher": crate::edit_diagnostics::MATCHER,
+            "hooks": [{"type": "command",
+                       "command": command_with(binary, host, Handler::EditDiagnostics),
+                       "timeout": timeout}],
+        });
+        if let Some(list) = out
+            .entry("PostToolUse".to_string())
+            .or_insert_with(|| Value::Array(Vec::new()))
+            .as_array_mut()
+        {
+            list.push(group);
         }
     }
     Ok(out)
@@ -457,13 +494,19 @@ fn hook_list_with(binary: &str, host: &str) -> Value {
             })
             .collect();
     }
-    hook_set(host)
+    let mut list: Vec<Value> = hook_set(host)
         .into_iter()
         .map(|(event, matcher, handler)| {
             json!({"event": event, "matcher": matcher, "command": command_with(binary, host, handler),
                    "timeout": HOOK_TIMEOUT_SECS})
         })
-        .collect()
+        .collect();
+    if let Some(timeout) = edit_diagnostics_timeout(binary, host) {
+        list.push(json!({"event": "PostToolUse", "matcher": crate::edit_diagnostics::MATCHER,
+                         "command": command_with(binary, host, Handler::EditDiagnostics),
+                         "timeout": timeout}));
+    }
+    Value::Array(list)
 }
 
 /// Refuses a project that is the home directory or lies inside a host's home configuration.

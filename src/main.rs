@@ -657,7 +657,8 @@ enum Command {
         /// `claude` or `codex`.
         #[arg(long)]
         host: String,
-        /// `session-check`, `tool-preflight`, `tool-observe` or `turn-validation`.
+        /// `session-check`, `tool-preflight`, `tool-observe`, `turn-validation` or
+        /// `edit-diagnostics` (Claude Code only, opt-in).
         #[arg(long)]
         event: String,
     },
