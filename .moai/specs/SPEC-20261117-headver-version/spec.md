@@ -91,4 +91,22 @@ parent: SPEC-20261117-sdd-foundation
 
 ## Result
 
-아직 비어 있어요(구현 뒤 채워요).
+구현 에이전트가 2026-11-17에 채웠어요. 감사가 다시 확인해요. 기준 `c0b858de8c`, 이 worktree의 `target/`,
+`CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=4`, macOS arm64, cargo는 한 번에 하나. 커밋 `3f09ced16a`(변경),
+`6b4f9bb29c`(골든·시험 고침) 뒤 검증은 모두 `6b4f9bb29c`에서 돌렸어요.
+
+RED: `headver::` 6개와 상태줄 시험·`--version` 시험·"되돌아가지 않음" 시험이 막아 둔 구현(틀린 값을 돌려주는
+자리 표시)에서 실패했어요(그중 두 개는 단언이 아니라 자리 표시의 `Err`를 `unwrap`하다 실패). `cli_name_moai`와
+"옛 rc 위로 update" 시험은 자리 표시에서도 통과했어요(앞은 자리 표시가 같은 값을 냈고, 뒤는 예전에도 되던 동작).
+
+- AC-1: met — `--lib headver::` 등 157 passed. 기대값은 Python `isocalendar()`(2026-12-31·2027-01-01 → 2653, 2027-01-04 → 2701, 2020·2026의 53주, 2099-12-31 → 9953, 2100-01-04 → 0001)
+- AC-2: met — 머리 파일 0/9999 통과·10000 거절, `MOAI_LOCAL_BUILD` 기존 경계 시험(1/4294967295 통과, 0/4294967296 거절) 그대로 통과
+- AC-3: met — `--bin moai` 27 passed, `cli_name_moai` 5, `help_layout` 10. `MOAI_LOCAL_BUILD=5 cargo build` 뒤 `moai --version` → `moai-cli 4.2647.5 (rust)` / `local build 5 (MOAI_LOCAL_BUILD), built 2026-11-17 UTC (ISO week 2026-W47), package 2026.11.0-rc.1`, `moai -V` → 첫 줄만
+- AC-4: met — 같은 `--lib` 실행
+- AC-5: met — 같은 `--lib` 실행(`statusline::`), `statusline_golden` 1·`statusline_tag_order` 1·`status_line_cli` 16
+- AC-6: met — `update_headver` 2 passed, `update_version_folders` 11, `update_cli` 11, `update_known_good` 4, `recovery_cli` 7, `update_tux_golden` 14
+- AC-7: met — `product_cli` 75, `home_isolation_scan` 16, `install_cli` 7, `banner_golden` 12, `bin_names_cli` 4, `ledger_schema` 38, `spec_cli` 17, `ac_command_lint` 5, 저장소 scan 대상 모두 exit 0; `cargo fmt --check` 0; `rustfmt --check --edition 2021 src/ops/*.rs` 0; clippy 0; Python 46 + 29 OK
+
+mutation 5개 모두 KILLED: 수요일로 주 정하기, 달력 연도 쓰기, HeadVer를 옛 버전보다 낮게, build를 head보다 먼저 비교, update에서 막는 방향 뒤집기.
+
+실행 안 함: 전체 `cargo test`, Linux·Windows, release 빌드(`--release`), 실제 HOME 설치. 남은 일은 카드 AC3·AC4(설치 스크립트, 릴리스 번호, 태그 규칙, 설치 기록의 버전·channel, 문서).
