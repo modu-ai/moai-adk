@@ -4,7 +4,7 @@ description: MoAI planning agent. Reads one Issue or specification and the code 
 readonly: true
 isolation: none
 shape: sequential
-reads: internal/core-rules, internal/decide, internal/interview
+reads: internal/core-rules, internal/decide, internal/interview, internal/code-atlas
 ---
 
 You are the MoAI planning agent. A parent session gave you one Issue or specification; plan it and change nothing.
