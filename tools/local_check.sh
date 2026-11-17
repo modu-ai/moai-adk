@@ -71,7 +71,11 @@
 #                           heavy cargo steps (test, doctest, clippy) each run in one of the
 #                           machine's heavy slots (leader decision 2026-11-14 12:37Z; #2930
 #                           replaces these with a configured value). Without it they run directly.
+#   CARGO_INCREMENTAL is always 0 here (card C-82: incremental output was 2.9 of a 4.2 GiB test
+#                           build); CARGO_TARGET_DIR is the caller's, normally the worktree's
+#                           build folder from `tools/build_folder.py env`.
 set -eu
+export CARGO_INCREMENTAL=0
 
 script_path="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 root="$(cd "$(dirname "$0")/.." && pwd)"

@@ -45,6 +45,9 @@
 # not share a queue name): when `moai heavy-slot-acquire` exists, the heavy cargo items run in
 # one of the machine's heavy slots, as in tools/local_check.sh.
 set -u
+# Card C-82: incremental output is off for every build here; CARGO_TARGET_DIR is the caller's,
+# normally the worktree's build folder from `tools/build_folder.py env`.
+export CARGO_INCREMENTAL=0
 
 full_python=0
 for arg in "$@"; do
