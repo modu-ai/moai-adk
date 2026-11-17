@@ -69,10 +69,16 @@ fn version_exe(home: &Path, version: &str) -> PathBuf {
     exe
 }
 
+/// Runs a copy at `<home>/.moai-cli/versions/<v>/bin/moai-cli` with that temporary HOME.
 fn run(exe: &Path, args: &[&str], stdin: Option<&Value>) -> Output {
+    let home = exe
+        .ancestors()
+        .nth(5)
+        .expect("the copy sits under a temporary HOME");
     let mut child = Command::new(exe)
         .args(args)
         .clean_env()
+        .env("HOME", home)
         .env("PATH", "/usr/bin:/bin")
         .env("LC_ALL", "C")
         .stdin(Stdio::piped())

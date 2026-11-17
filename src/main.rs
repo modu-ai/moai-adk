@@ -2848,9 +2848,10 @@ mod tests {
                 assert_eq!(bin, want, "{argv0}");
                 assert!(!out.contains(".exe"), "{argv0} {args:?}: {out}");
                 if args == ["--version"] {
+                    // Card C-67 S1: the signature line, then the line naming the build kind.
                     assert_eq!(
                         out.trim_end(),
-                        format!("moai-cli {}", moai_cli::VERSION_SIGNATURE),
+                        format!("moai-cli {}", moai_cli::LONG_VERSION),
                         "{argv0}"
                     );
                 } else {

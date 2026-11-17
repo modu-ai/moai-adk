@@ -29,7 +29,7 @@ parent: SPEC-20261117-sdd-foundation
 - REQ-3 (REQ-1): IF `MOAI_LOCAL_BUILD` is set to anything but a decimal number from 1 to 4294967295 without a sign or leading zero, THEN the build script shall stop the build.
 - REQ-4: The version function shall take the ISO week-year and week of the UTC date, so the last days of December can belong to week 1 of the next year and the first days of January to week 52 or 53 of the year before.
 - REQ-5: Where `MOAI_LOCAL_BUILD` is not set, the build shall use build number 0 and mark itself as an unnumbered build.
-- REQ-6: The `--version` first line shall stay `<name> <version> (rust)`, and its second line shall say whether the build is a local build or an unnumbered build.
+- REQ-6: The `--version` output shall keep `<name> <version> (rust)` as its first line and name the kind of build, local or unnumbered, on its second line.
 - REQ-7: The comparison function shall order every HeadVer version above every `YYYY.M.P[-rc.N]` version of the earlier scheme and order HeadVer versions by head, then yearweek, then build.
 - REQ-8: The status line shall show its own version as the update target only when that version is newer than the template version.
 - REQ-9: When `update-plan` finds a host receipt, the plan shall record the receipt's version as the source and this build's version as the target. · failure: none — 막는 경우는 REQ-10이에요.
