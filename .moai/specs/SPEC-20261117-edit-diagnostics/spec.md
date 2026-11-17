@@ -195,3 +195,11 @@ RED는 mutation M1로 보였어요: 새 의무를 엔진에서 빼면 새 시험
   `repo_scans`·`ci_scope` 44개 OK; `moai spec check --all` 0
 
 실행 안 함: 전체 `cargo test`, Linux·Windows, 실제 Claude Code 세션에서 hook이 도는지(host 실행 없음), AC-5(S2).
+
+S1 감사 수리(B1, N1~N3; D18~D21): `bcf1eae9b6`, tip `17c19a2759` 병합 `cd7954b50f`(manifest는 write로 다시 만들었고,
+tip에 두 번 있던 `references/internal/build-folder.md` 키가 하나로 정리됨). RED(2026-11-18 16:27–16:28Z): 새 시험 4개가
+고치기 전 코드에서 실패 — 옵션 모양 이름이 그대로 넘어감, 제어 문자·ESC가 그대로 감, 뒤에 남은 자식이 pipe를 잡아
+출력이 사라짐, 잠금이 HOME에 없음. 병합된 head에서(무거운 작업 슬롯 안, 16:30–16:37Z): `edit_diagnostics_cli` 12(+1 ignored),
+`hooks_cli` 22, `hook_dispatch_cli` 56, `hooks_pre_p4_fixtures` 6, `home_isolation_scan` 16, `product_cli` 75, `help_layout` 10,
+`git_env_scrub` 3, `spec_cli` 17, `--lib` 43, `--bin moai` 27; fmt·`rustfmt src/ops`·clippy 0; Python 44개 OK; `spec check --all` 0;
+꺼진 상태 중앙값 15.58 ms. mutation B1(`./` 빼기)·N1(정리 빼기)·N2(정상 종료 뒤 group 남김) 모두 KILLED.
