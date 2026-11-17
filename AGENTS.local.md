@@ -105,6 +105,7 @@ Development builds of this repository are numbered with HeadVer (`https://github
 - `{build}`: automatic, one counter that only goes up and never restarts with a new week or head. It continues the local build numbers already used (`+local.3` was build 3, so the next is 4).
 - Never commit a change only to move a development version, and never reuse a build number, also not for a rebuild of the same commit.
 - Pass the build number as `MOAI_LOCAL_BUILD=<build>`. Since card C-67 slice 1 the binary prints this form itself: the first `--version` line shows `4.2647.5`, the second line says `local build 5 (MOAI_LOCAL_BUILD), built <UTC date> …`; `head` comes from the tracked `HEADVER` file. Builds before it showed `<package version>+local.<build>`, for example `4.2647.4 (2026.11.0-rc.2+local.4)`.
+- A CI build takes its number from `MOAI_BUILD_NUMBER`, which `ci.yml` sets to the workflow's run number on a run's first attempt only (a re-run keeps the run number, so it builds unnumbered instead); its second `--version` line says `CI build <n> (MOAI_BUILD_NUMBER)`, never `local build`. Never set both variables: the build stops. Which counter and tag a release build uses waits for the user (SPEC-20261117-headver-ci-number).
 
 ## Rule provenance
 

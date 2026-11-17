@@ -19,6 +19,8 @@ Project
   ledger-status           Show the project's ledger state
   card                    Work with the project's local cards
   spec                    Write, check, list and show the project's SPECs
+  tdd                     Record the TDD cycle that locks the RED tests during
+                          GREEN
   ledger-register-plan    Preview registering the project's ledger
   ledger-register-apply   Create the previewed project ledger
   card-import-plan        Preview importing a host's open issues as cards

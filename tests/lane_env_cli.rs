@@ -263,6 +263,35 @@ fn refusals_print_nothing_on_stdout() {
     assert_eq!(out, "");
 }
 
+/// C-82 slot audit N-a: USERPROFILE stands in for an unset HOME on Windows only. On this
+/// (Unix) host, with HOME unset and only USERPROFILE set, `lane-env` refuses with stdout empty
+/// and makes nothing under USERPROFILE: `resolve` passes `cfg!(windows)`, not `true`.
+#[test]
+fn userprofile_alone_is_not_a_home_off_windows() {
+    let f = fx();
+    let out = Command::new(common::MOAI_BIN)
+        .clean_env()
+        .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+        .env("USERPROFILE", &f.home)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .current_dir(&f.repo)
+        .args(["lane-env", "--lane", "agent-7", "--base"])
+        .arg(&f.base)
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(1), "{out:?}");
+    assert!(out.stdout.is_empty());
+    assert!(
+        String::from_utf8_lossy(&out.stderr).contains("HOME must be an absolute folder"),
+        "{out:?}"
+    );
+    assert!(
+        !f.home.join(".moai").exists(),
+        "nothing made under USERPROFILE"
+    );
+}
+
 #[test]
 fn a_missing_lane_is_a_usage_error() {
     let f = fx();

@@ -36,6 +36,12 @@
 //!   (not a MoAI project, #3176 audit N2), is not this rule's. One call that writes the SPEC
 //!   and code together waits while the SPEC is not on disk. Shell redirections are not seen
 //!   (the A4 gap).
+//! - A6 the GREEN test lock (card C-86, SPEC-20261117-green-test-lock): while a work tree's
+//!   TDD record (`<git-dir>/moai/tdd.json`, written by `moai tdd red`) is GREEN or REFACTOR, a
+//!   write to a test path its RED commit changed, or a new file on a test path, is refused
+//!   ([`crate::tdd::lock_refusal`]). Each written path is judged by the record of the work
+//!   tree that holds it (as A5), whatever the session's folder (#3177 audit N1). Files only, no
+//!   program; no record locks nothing. Runs after A5.
 //!
 //! Known gaps (allowed, not refused): shell redirections (`>`, `tee`) into protected paths; a
 //! force push with no refspec while `main` is checked out (the branch is not read here); a
@@ -687,7 +693,9 @@ pub fn write_guard(tool: &str, tool_input: &Value, cwd: &Path) -> Option<&'stati
     if contents.iter().any(|c| carries_secret(c)) {
         return Some(SECRET_CONTENT);
     }
-    spec_before_code(&paths, cwd)
+    // A5, then A6 (SPEC-20261117-green-test-lock): the GREEN test lock of this worktree's TDD
+    // cycle.
+    spec_before_code(&paths, cwd).or_else(|| crate::tdd::lock_refusal(&paths, cwd))
 }
 
 const SPEC_FIRST: &str = "MoAI tool-preflight: on a SPEC work branch (spec/<yyyymmdd>-<slug>), files outside .moai/specs/ are written only after the branch's SPEC exists; write .moai/specs/SPEC-<yyyymmdd>-<slug>/spec.md first (`moai spec new`; when the branch date is not today, `moai spec new --date YYYY-MM-DD`).";

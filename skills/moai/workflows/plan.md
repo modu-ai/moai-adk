@@ -17,6 +17,8 @@ A GEARS SPEC, REQ/AC traces, an approval digest, and a task DAG.
 5. Confirm scope, cost, data, and the required safety conditions, and hand only an approved revision and digest to RUN.
 6. Record each judgment you make (intent, next step) with the internal `decision-record` operation: `decision_source: native`, `authority: none`. A judgment is a candidate next step; when it points past the authorized permissions, cost, external transmission, or destructive effects, ask the user instead of acting.
 
+Before reading the code a plan touches, check the code atlas as `internal/code-atlas` says: use it only when `moai index-query` reports it `fresh` (or for the files a `stale` answer does not name), search and read the files otherwise, and never build it here.
+
 When the plan hinges on how a stateful part behaves, why a pipeline is slow, what of an old part is worth keeping or what a refactor could break, read `internal/lenses` and apply the lens that fits.
 
 ## Base agents

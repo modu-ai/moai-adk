@@ -54,6 +54,7 @@ const PROFILE_KEYS: &[(&str, bool)] = &[
     ("scopes", true),
     ("versioning", true),
     ("work_flow", true),
+    ("test_paths", true),
 ];
 
 fn managed_keys() -> impl Iterator<Item = &'static str> {
@@ -154,6 +155,12 @@ pub struct Profile {
     /// written before this key reads unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub work_flow: Option<WorkFlowSettings>,
+    /// The project's own test paths beside the per-language table of `crate::tdd`
+    /// (SPEC-20261117-green-test-lock D-4): relative folders or files, at most
+    /// [`crate::tdd::MAX_DECLARED`]. Absent means none were declared; a profile written before
+    /// this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub test_paths: Option<Vec<String>>,
 }
 
 /// The flows the `work_flow` key names (card C-70), m-flow first.
@@ -328,6 +335,9 @@ fn validate(p: &Profile) -> Result<()> {
         if versioning.format.as_ref().is_some_and(|f| !portable(f)) {
             return Err("invalid or nonportable profile; no values were logged".into());
         }
+    }
+    if let Some(paths) = &p.test_paths {
+        crate::tdd::validate_declared(paths)?;
     }
     let decisions_ok = p.decisions.len() <= DECISION_ITEM_LIMIT
         && p.decisions.iter().all(|d| {
@@ -909,6 +919,7 @@ mod tests {
             scopes: None,
             versioning: None,
             work_flow: None,
+            test_paths: None,
         }
     }
 
@@ -942,6 +953,7 @@ mod tests {
                 flow: "m-flow".into(),
                 integration_branch: Some("main".into()),
             }),
+            test_paths: Some(vec!["qa/".into()]),
             ..v2()
         };
         let fields: Vec<String> = serde_json::to_value(&full)
@@ -972,7 +984,8 @@ mod tests {
                 "detected",
                 "scopes",
                 "versioning",
-                "work_flow"
+                "work_flow",
+                "test_paths"
             ]
         );
     }
