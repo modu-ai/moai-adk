@@ -471,6 +471,8 @@ fn internal_references_say_when_to_read_them() {
         "self-check",
         // C-82: where agent and audit builds go and how the build folder is emptied.
         "build-folder",
+        // SDD-6 (user decision U-B): the identity trailers every agent commit carries.
+        "commit-trailers",
     ];
     let mut found: Vec<String> = std::fs::read_dir(package().join("references/internal"))
         .unwrap()
