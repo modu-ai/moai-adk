@@ -66,8 +66,13 @@ fn shortened_agents_md_keeps_its_gate_and_hold_sentences() {
         "`AUDIT #<n> (<key>) head <40hex> base <40hex> — verdict: PASS|FAIL` with no qualifiers; conditions make it FAIL.",
         "Where a write guard rejects a path, stop and report; do not bypass.",
         "the token `Moai-Claim: <issue>#<comment-id>` travels in the branch, the commit trailer and the PR body.",
-        // #3096 S3b, user instruction #1975 6904941797 §A: audits are assigned by the leader.
-        "The leader assigns each formal audit to a read-only audit agent.",
+        // #3096 S3b, user instruction #1975 6904941797 §A (audits assigned by the leader),
+        // replaced by the user decision of 2026-11-17 (docs/decisions-2026-11-08.md, "감사
+        // 배정"): tier 0-1 audits are the lane's own fresh `moai-audit` agent, which re-audits
+        // after a FAIL; tier 2 is the leader's; no lane audits another lane's pull request.
+        "Audit tier 0 or 1: the lane starts one fresh-context, read-only `moai-audit` agent for its own pull request, and the same agent re-audits after a FAIL.",
+        "Tier 2: the leader assigns the audit.",
+        "never audits another lane's pull request",
         "never declares PASS for its own change or reserves another lane's pull request.",
         "the latest-tip requirement is off. The leader checks this and merges; lanes and bots never merge.",
         "A new push, including a tip merge for an overlapping file, needs its CI and a delta re-audit.",
@@ -75,6 +80,13 @@ fn shortened_agents_md_keeps_its_gate_and_hold_sentences() {
         "are never moved or deleted by a lane.",
     ] {
         assert!(text.contains(phrase), "AGENTS.md must say `{phrase}`");
+    }
+    // The replaced 11-16 rule is gone (decision 2026-11-17, "감사 배정").
+    for gone in [
+        "The leader assigns each formal audit",
+        "asks for the audit with one `감사 요청` line",
+    ] {
+        assert!(!text.contains(gone), "AGENTS.md still says `{gone}`");
     }
     assert!(text.len() < 9 * 1024, "{} bytes", text.len());
     let longest = text.lines().map(|l| l.chars().count()).max().unwrap();

@@ -407,8 +407,10 @@ fn the_round_keeps_audits_with_the_leader_and_moves_on_from_a_card_in_review() {
     );
     for p in [
         // (a)
-        "(2) Your own pull request's audit (user decision 2026-11-17): at audit-tier 0 or 1 \
-         start one fresh-context, read-only `moai-audit` subagent",
+        // Core rule 17: the decision names the record it replaces (11-16, #1975 6904941797).
+        "(2) Your own pull request's audit (user decision 2026-11-17, replacing #1975 \
+         6904941797): at audit-tier 0 or 1 start one fresh-context, read-only `moai-audit` \
+         subagent",
         "never your conclusions or self-assessment",
         "your own context never audits",
         // (b)
@@ -438,10 +440,10 @@ fn the_round_keeps_audits_with_the_leader_and_moves_on_from_a_card_in_review() {
     assert!(pick.contains(REVIEW_WAITS));
     assert!(step("mode-agent.md", "hand-off")
         .contains("Then start the next round without waiting for the merge"));
-    // N1.
+    // N1 (re-audit N-r1: the line has the `owner=` and `next=` the report step asks for).
     assert!(step("mode-agent.md", "session-id").contains(
-        "refuses a session without one: there (OMP) report `LANE-BLOCKED <lane> card take · \
-         kind=host reason=no session id (OMP, card C-62)` once"
+        "refuses a session without one: there (OMP) report `LANE-BLOCKED <lane> card-take no \
+         session id (OMP) · kind=host owner=user next=card C-62` once"
     ));
     // N2: the date gives the seven digits in a row `pr-self-audit-check` wants on `plan:`.
     assert!(step("mode-agent.md", "pr-gate").contains(
@@ -506,8 +508,11 @@ fn a_merge_needs_ci_success_and_a_pass_and_a_local_check_line_never_replaces_ci(
     for p in [
         "A merge needs the pull request head's GitHub `ci` success and, at effective audit tier \
          1 or 2, a non-author PASS that cites that run",
+        // Re-audit N-r3 (leader decision 2026-11-17): the whole tier-0 sentence, so an added
+        // alternative ("… or a `ci` run", the auditor's M5) fails; a FAIL stops every tier.
         "at effective tier 0 (documents, wording and tests only, after the gate's path rule) the \
-         `ci` success alone",
+         `ci` success alone, when no FAIL is posted. A posted FAIL verdict stops the merge at \
+         every tier (leader decision 2026-11-17).",
         "A `local-check:` line is optional and never replaces `ci` (user decision 2026-11-17 \"CI \
          성공 + PASS\", which replaces user decisions 6877084436 and 6878414880)",
         "Until card C-84 changes rule G5, `moai gate-check` still stops on a missing local-check \
@@ -527,7 +532,16 @@ fn a_merge_needs_ci_success_and_a_pass_and_a_local_check_line_never_replaces_ci(
          2026-11-17)"
     ));
     let gate = step("mode-agent.md", "pr-gate");
-    assert!(gate.contains("optional, but `moai gate-check` (G5) reads it until card C-84"));
+    // N-r2: the same words as mode-leader.
+    assert!(gate.contains(
+        "until card C-84 changes G5, `moai gate-check` stops on a missing local-check line, so \
+         it is still posted."
+    ));
+    // N-r3: the lane's tier-0 sentence, whole.
+    assert!(gate.contains(
+        "0 for documents, wording and tests only, which merge on the `ci` success alone when no \
+         FAIL is posted (a posted FAIL stops a merge at every tier);"
+    ));
     assert!(!gate.contains("the merge gate reads that line, not GitHub CI"));
 }
 
