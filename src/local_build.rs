@@ -19,8 +19,17 @@ pub const MAX: u32 = u32::MAX;
 /// Unset or empty means no local number: the package version alone. Otherwise the value must be
 /// 1 to [`MAX`] in plain decimal digits with no sign, no leading zero and no spaces.
 pub fn version(package: &str, raw: Option<&str>) -> Result<String, String> {
+    Ok(match number(raw)? {
+        Some(n) => format!("{package}+local.{n}"),
+        None => package.to_string(),
+    })
+}
+
+/// The local build number in the raw `MOAI_LOCAL_BUILD` value: `None` when unset or empty,
+/// otherwise 1 to [`MAX`] in plain decimal digits (card C-67 S1: the HeadVer `{build}`).
+pub fn number(raw: Option<&str>) -> Result<Option<u32>, String> {
     let Some(raw) = raw.filter(|r| !r.is_empty()) else {
-        return Ok(package.to_string());
+        return Ok(None);
     };
     let digits = raw.bytes().all(|b| b.is_ascii_digit());
     let number = if digits && !raw.starts_with('0') {
@@ -28,13 +37,12 @@ pub fn version(package: &str, raw: Option<&str>) -> Result<String, String> {
     } else {
         None
     };
-    match number {
-        Some(n) => Ok(format!("{package}+local.{n}")),
-        None => Err(format!(
+    number.map(Some).ok_or_else(|| {
+        format!(
             "{ENV}={raw:?} refused: use a build number from 1 to {MAX} in decimal digits, \
              without a sign or leading zero"
-        )),
-    }
+        )
+    })
 }
 
 #[cfg(test)]

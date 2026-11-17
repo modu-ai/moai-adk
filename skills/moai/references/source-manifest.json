@@ -105,7 +105,7 @@
       }
     },
     "workflows/run.md": {
-      "sha256": "4ccc1a64f5f3cf9c8765bc1148aed58166db06c7b028cc172f5a00880b165a8a",
+      "sha256": "be69c82bb178a3f31d470140000a1ec9f22d13baf20d898f33bb3e1dff994612",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",
@@ -114,7 +114,7 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "54f77d0240b6a06961d6bce65f1ecb3f51de389cb971dbb751fa623ce2af3bf1",
+      "sha256": "25186d06a41184e383553bd13dba10bcff8312dc7462f597f6ae3f50de2e00bf",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
@@ -168,7 +168,7 @@
       }
     },
     "references/chains/index.md": {
-      "sha256": "b109783dc421918414a3796a505e57c58137b76ddec420895dc07d39eb100e93",
+      "sha256": "6dd3e6e1fe98427911bbe8189174d93d303c0dcb6b58e7f81f8f6b5f58edf577",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",
@@ -387,6 +387,105 @@
         "template_id": "internal-build-folder",
         "adoption": "new",
         "reason": "Written for card C-82 (user decision 2026-11-17, selection '빌드 폴더를 한 곳으로 모으기'; SPEC-20261117-agent-build-folder): where agent and audit builds put CARGO_TARGET_DIR (one folder per worktree under ~/.moai/build/, CARGO_INCREMENTAL=0, an owner record), what a refusal does, where evidence stays, the end-of-task cleanup and the user-picked removal of leftovers. Read by moai-impl and moai-audit (`reads:`); its moai-adk helper is the repository's tools/build_folder.py."
+      }
+    },
+    "references/internal/quality.md": {
+      "sha256": "61abd81006401f7ad06756eea2d6a2c82f870b73271c94b7f39a84923dcbd92b",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-quality",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-quality-guides (user approval 2026-11-17 of research proposal G, and the user decision of 2026-11-17 on the Go generation: concepts are redesigned, files are not ported): the quality model from the project's own tools (commands taken from the project's declarations or a guide default with evidence, never guessed or installed), the AC-to-test tracing rule and the dependency existence check. Named by the rules of chains/index.md and by verify.md and run.md."
+      }
+    },
+    "references/languages/rust.md": {
+      "sha256": "17a06c69e1a5e4b1caffbceed607f598e704dab1c3779a4deaa167c8285a37f2",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "language-guide",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language rust (default commands with the evidence each needs, the dependency existence check, traps for agents). Written new; the Go-era language rules deferred to design:language-domain-guides were read for concepts only, nothing copied."
+      }
+    },
+    "references/languages/python.md": {
+      "sha256": "4d98921d0cee97a0a7c23115853693c9b19cc561904d998dd84e0421485bbb59",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "language-guide",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language python (runner by lockfile, default commands with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
+      }
+    },
+    "references/languages/javascript-typescript.md": {
+      "sha256": "e7c8d23fc9d0eeb7846d9461efbd39c5b3254005f3a6943032a4f3cced1830b4",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "language-guide",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected languages javascript and typescript (package manager by lockfile, scripts first, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
+      }
+    },
+    "references/languages/go.md": {
+      "sha256": "63447f509673fc2cc92bf45c5ede910de4d2235876b407b8c1e1bca6d43672be",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "language-guide",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language go (default commands with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
+      }
+    },
+    "references/languages/java-kotlin.md": {
+      "sha256": "d81cd181cf4973272b4290b1d1388520bb709a0a3135a0062011dcbc5db6e0aa",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "language-guide",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected languages java and kotlin (build tool by wrapper and manifest, tasks with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
+      }
+    },
+    "references/languages/ruby.md": {
+      "sha256": "346fa375c7341bc7918ee33ce6b5ed445ae9acbc779a5b5a836bfdc3e8c2d5ab",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "language-guide",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language ruby (Bundler, default commands with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
+      }
+    },
+    "references/languages/php.md": {
+      "sha256": "a5482a6f63828ed069c3e63f21dfb7fb28de0f0f02efc8dbc41163550b8d3a6d",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "language-guide",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language php (Composer scripts first, default commands with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
+      }
+    },
+    "references/languages/c-cpp.md": {
+      "sha256": "b99e7aa0a35b890edcf45b64ba417133703a1de2b44982186d679f6654f3da64",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "language-guide",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected languages c and cpp (build system by its files, format and lint with the evidence each needs, the dependency existence check per package manager, traps for agents). Written new; nothing copied from the Go-era language rules."
+      }
+    },
+    "references/languages/csharp.md": {
+      "sha256": "d1118133180422c848e297ac6eb17a0049196ef56b7ece7abede9d07680a887f",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "language-guide",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language csharp (dotnet commands with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
+      }
+    },
+    "references/languages/swift.md": {
+      "sha256": "23756ccd70ba785c54ed843570c855a8493c896725f2a6e14e2c789c14454e18",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "language-guide",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language swift (SwiftPM or Xcode by its files, format and lint with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
       }
     }
   }

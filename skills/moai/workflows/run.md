@@ -17,6 +17,8 @@ A patch, receipts from actual verification (the internal `run-verify` operation 
 5. When the base or the SPEC changes, mark existing receipts stale. After a stalled or interrupted attempt, do not re-send anything: read the owner and effects back (`claim-show`, `effects-reconcile`) and resume only on what the records prove.
 6. Hand the verified exact candidate to VERIFY, then to SYNC on the same branch, and only then to a separate AUDIT.
 
+The checks of step 4 and the check before adding a dependency follow `internal/quality`.
+
 ## Base agents
 
 Skip this section when you are a base agent yourself: base agents never start other agents.
