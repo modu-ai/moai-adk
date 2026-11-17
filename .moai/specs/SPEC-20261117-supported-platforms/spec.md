@@ -127,4 +127,32 @@ REQ-10의 "support document"는 `docs/support-matrix.md`, `docs/host-support-mat
 
 ## Result
 
-(구현 뒤 채워요.)
+구현 에이전트가 2026-11-17에 채웠어요. SYNC와 AUDIT가 다시 확인해요. macOS arm64(개발 Mac), Python 3.13.1 +
+PyYAML 6.0.3, `pwsh` 있음, `shellcheck` 없음. cargo는 설치된 slot이 거절해서(옛 swap 규칙, exit 75) slot 밖에서
+한 번에 하나, `CARGO_BUILD_JOBS=4`, `CARGO_INCREMENTAL=0`, 빌드 폴더는 이 worktree의 `target/`.
+
+커밋: 기준 `da4d9e3d10` 위에 `a0de2f9d18`(변경), 그 위에 이 Result.
+
+| AC | 결과 | 증거 |
+|---|---|---|
+| AC-1 | 충족 | 4개 시험 OK. RED(변경 전): 병합 뒤 target 목록·macOS 공유 그룹 단언 실패 |
+| AC-2 | 충족 | 시험 OK, `grep` → 출력 없음 exit 1. RED: `ci.yml`·`candidate.yml`에서 이름마다 실패(10건) |
+| AC-3 | 충족 | OK. RED: `candidate_summary`가 다섯 target을 요구해 PASS 시험·CLI 시험 실패 |
+| AC-4 | 충족 | 시험 OK, `actionlint` exit 0 |
+| AC-5 | 충족 | sh·pwsh OK. 실제 기계: 네이티브 `Darwin arm64`(proc_translated 0)와 `arch -x86_64` 셸(`x86_64`, proc_translated 1) 모두 `Detected platform: aarch64-apple-darwin`, HOME 쓰기 없음. mutation: Rosetta 비교를 `"2"`로 → `Darwin x86_64 translated=1` 실패 |
+| AC-6 | 충족 | sh·pwsh OK. RED: 옛 메시지(`Unsupported OS`/`architecture`)와 Intel·arm64 수용으로 실패. mutation: `Darwin/x86_64`를 받아들이면 2건 실패; `Get-WindowsTarget`에 ARM64를 더하면 `ARM64:1 -> aarch64-pc-windows-msvc`로 실패 |
+| AC-7 | 충족 | `check_support_matrix` exit 0(지원 행 6 = passed receipt 6); 문서 시험 OK |
+| AC-8 | 충족 | `git ls-files` → 이 파일 |
+| AC-9 | 충족 | 임시 시험(`tests/zz_gears_probe_c89.rs`, 실행 뒤 삭제, 커밋 안 함): `PROBE total=11 gears=9 gears_ok=9 unwanted=2`. 처음 REQ-10은 주어에 쉼표가 있어 `text before the subject is not a Where, While or When clause`였고, 문장을 고친 뒤 ok |
+| AC-10 | 일부 | Python 14개 파일 308개 중 307 통과, 1 실패(아래). `bash -n` 0, `cargo fmt --check` 0, clippy 0, `--bin moai` 0(27), `launcher_three_hosts` 0(4), `gitignore_block_cli` 0(32) |
+
+AC-10의 실패 1건: `InstallPs1Test.test_the_locale_is_read_from_lc_all_then_lc_messages_then_lang`의
+`{'LC_ALL': ''}` 경우가 `ko`를 받아요(기대 `en`). 지역 변수가 비면 `install.ps1`이 `Get-Culture`를 읽는데 이 Mac의
+시스템 지역이 `ko_KR`이에요. 기준 커밋의 `install.ps1`로 같은 시험을 돌려도 같은 실패라서(이 변경과 무관, 기계
+의존) 이 SPEC에서 고치지 않았어요. 후속으로 남겨요.
+
+실행 안 함: Windows 분기의 실제 실행(Windows 기계 없음, `Get-WindowsTarget` 구문 트리 시험으로 대신), Linux 기계의
+설치 실행, `shellcheck`(설치 안 됨, 시험은 skip), GitHub Actions의 실제 run(push 안 함), 전체 `cargo test`.
+
+후속(이 조각 밖): `skills/moai/workflows/verify.md:38`("all four `ci / <target>` jobs"),
+`src/flow.rs:92`("five targets") 주석, 릴리스 target 선택(D5), Windows 시험 계획, 위 지역 시험.
