@@ -113,4 +113,17 @@ after(선택지 A, 권장: job을 GitHub Actions app(15368)에 고정해서 필�
 
 ## Result
 
-아직 비어 있어요(구현 뒤 채워요).
+구현 에이전트가 2026-11-17에 채웠어요. 감사가 다시 확인해요. 기준 `a0fe2ddd09`(C-89 PR head), 커밋 `d3b08738f0`, 이 worktree의
+`target/`, `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=4`, macOS arm64, cargo는 한 번에 하나.
+
+RED는 기록하지 않았어요: 새 명령이라 시험과 코드를 함께 썼어요. 대신 아래 mutation 3개가 시험이 규칙을 잡는다는 것을 보여요.
+
+- AC-1: met — `--lib audit_gate:: gate:: gate_collect:: comment_authority::` 41 passed, `audit_gate_cli` 3
+- AC-2: met — 같은 실행(`require_pass_fails_the_run_unless_it_passes`, `collect_reads_the_pr_its_files_commits_and_comments`)
+- AC-3: met — `actionlint .github/workflows/audit-gate.yml .github/workflows/ci.yml` exit 0; 파일에 `pull_request_target`·`write` 권한 없음(grep 결과는 "없다"고 적은 주석 한 줄뿐), action 둘 다 40자 SHA
+- AC-4: met — `gate_check_cli` 40, `gate_stacked_2859` 9, `audit_admission` 7, `--bin moai` 27, `--bin moai-cli operations_doc_matches_code fragment_mutations_are_detected` 2, `help_layout` 10(골든 4개에 `audit-gate` 한 줄씩만 더함), `product_cli` 75, `home_isolation_scan` 16, `spec_cli` 17, 저장소 scan 대상 모두 exit 0; fmt 0, clippy 0, Python 85 OK, `source_manifest.py check` ok, `moai spec check --all` ok
+
+mutation 3개 모두 KILLED: 구성원 아닌 댓글도 세기, 다른 감사자의 PASS로 FAIL 풀기, 저자의 PASS 세기.
+
+실행 안 함: GitHub에서 실제 job 실행(push·PR 없음), 전체 `cargo test`, Linux·Windows. 남은 일: ruleset 선택(D3), SDD-6 trailer,
+"실행 인용" 규칙, merge_group trigger(rollout 2단계).
