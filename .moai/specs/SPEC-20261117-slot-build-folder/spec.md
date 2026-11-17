@@ -91,4 +91,21 @@ C-82가 에이전트·감사 빌드 폴더를 `~/.moai/build/<project>-<작업 �
 
 ## Result
 
-(구현 뒤 채워요.)
+구현 에이전트가 2026-11-17에 채웠어요. 감사가 다시 확인해요. 상태는 `draft` 그대로예요(승인은 사용자 몫).
+기준 `7ff551fd84`(C-82)에서 시작했고, C-82가 `25881165be`로 병합된 뒤 그 tip으로 빨리감기했어요. 빌드 폴더는 이
+worktree의 `target/`, `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=4`, cargo는 한 번에 하나(무거운 작업 슬롯이 75로
+거절해서 슬롯 밖). RED: 새 `lane_env_cli` 시험 5개와 `heavy_slot_cli` 새 시험이 바뀌기 전 코드에서 의도한 단언에서
+실패(옛 `/tmp` 폴더, 설정 안 함에도 경고) → GREEN.
+
+- AC-1: met — `lane_env_cli` 7 passed
+- AC-2: met — `the_folder_and_record_match_tools_build_folder`(7가지 작업 폴더). mutation M1(늘 접두사) KILLED
+- AC-3: met — `refusals_print_nothing_on_stdout`, `--lib lane_env` 8 passed. mutation M2(다른 작업 폴더 기록 덮어쓰기) KILLED
+- AC-4: met — `heavy_slot_cli` 21 passed, `heavy_slot::build_folder_tests` 4 passed. mutation M3(가장 바깥 작업 폴더로 판정) KILLED
+- AC-5: met — `lane_rules_2879` 5, `agent_defs_package` 18, manifest check 0
+- AC-6: met — `mode_cards_53` 9, `mode_workflow_steps` 42, `home_isolation_scan` 16, `product_cli` 75, `git_env_scrub` 3,
+  `spec_cli` 17, `hot_file_ops_merge` 3, `lane_rules_2401` 4, `lane_rules_2836` 2, `lane_next_rules` 3, `--bin moai` 27,
+  `--lib lane_env heavy_slot` 28; fmt 0, `rustfmt src/ops` 0, clippy 0; Python 7개 모듈 164개 OK; `moai spec check --all` 0;
+  `moai package-inspect skills/moai` 0
+
+실행 안 함: 전체 `cargo test`(바뀐 곳 시험만), Linux·Windows, 실제 HOME(시험은 임시 HOME만).
+크기: `mode-agent.md` 47,962바이트 그대로(이 SPEC은 고치지 않음).

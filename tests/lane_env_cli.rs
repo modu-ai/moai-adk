@@ -245,7 +245,8 @@ fn refusals_print_nothing_on_stdout() {
         assert!(err.contains(says), "{args:?}: {err}");
     }
     // Nothing was written through the link, and the other worktree's record stays.
-    assert_eq!(fs::read_dir(&elsewhere).unwrap().count(), 0);
+    // (Following the linked `.moai` would have made `build` in its target.)
+    assert!(!elsewhere.join("build").exists());
     assert_eq!(record(&taken)["worktree"], "/x");
     // A relative HOME is refused too.
     let out = lane_env(
