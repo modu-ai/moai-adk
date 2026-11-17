@@ -67,7 +67,7 @@ SDD-2(`moai spec` 명령)를 만들고, 독립 감사가 낸 FAIL(B1–B4, N2–
   `tests/spec_doc.rs`, `tests/spec_cli.rs`, `tests/fixtures/help/all.txt`, `tests/fixtures/help/all-60.txt`,
   `tests/fixtures/help/all-80.txt`, `tests/fixtures/help/all-dumb.txt`,
   `docs/design-review/appendix/operations/spec.md`, `.moai/specs/SPEC-20261117-spec-tooling/spec.md`,
-  `.moai/specs/SPEC-20261117-sdd-foundation/spec.md`
+  `.moai/specs/SPEC-20261117-sdd-foundation/spec.md`, `tools/repo_scans.json`
 - read-only: `src/archive.rs`, `src/main.rs`, `build.rs`, `skills/moai/**`
 - forbidden: `.gitignore`, 실제 HOME, 네트워크 쓰기(push, PR, Issue)
 
@@ -118,12 +118,18 @@ SDD-2(`moai spec` 명령)를 만들고, 독립 감사가 낸 FAIL(B1–B4, N2–
 구현 에이전트가 2026-11-17에 채웠어요. 감사가 다시 확인해요. 빌드 폴더는 이 worktree의 `target/`,
 `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=4`, macOS arm64, cargo는 한 번에 하나.
 
-- AC-1: met — 아래 최종 실행 기록
-- AC-2: met — 아래 최종 실행 기록
-- AC-3: met — 아래 최종 실행 기록
-- AC-4: met — 아래 최종 실행 기록
-- AC-5: met — 아래 최종 실행 기록
-- AC-6: met — 아래 최종 실행 기록
-- AC-7: met — 아래 최종 실행 기록
-- AC-8: met — 아래 최종 실행 기록
-- AC-9: met — 아래 최종 실행 기록
+커밋: 기준 `6aa92fd0dd` 위 SDD-1/2(`3a09377222`…`c241f48eed`) → 감사 FAIL → tip `da4d9e3d10` 병합 →
+`c779c2624c`(B1–B4·N2–N7 수리) → 이 Result와 `tools/repo_scans.json` 항목(다음 커밋). 시험은 모두 먼저
+RED(기대한 단언에서 실패)를 본 뒤 GREEN이에요.
+
+- AC-1: met — `spec_cli` exit 0, 12 passed(`new_check_list_show_and_nothing_else_is_written`·`new_refuses_and_writes_nothing` 포함)
+- AC-2: met — `spec_doc` exit 0, 23 passed. 검사기 mutation 5개 모두 KILLED(SDD-1 때)
+- AC-3: met — 같은 실행. mutation M5(줄 끝 아닌 메모 허용) KILLED
+- AC-4: met — 같은 실행. mutation M2(승인 뒤에도 경고)·M3(12개에서 경고) KILLED
+- AC-5: met — `spec_cli` 같은 실행
+- AC-6: met — `spec_cli` 같은 실행, `project_update_plan_cli` 57 passed, `go_state_cli` 61, `go_state_preview_cli` 44, `state_root_cli` 6, `project_detect_cli` 18, `--lib` state_root·project_detect·go_state·spec·home_root 45 passed. mutation M1(`specs_only` 늘 거짓) KILLED
+- AC-7: met — `grep` 출력 없음, exit 1
+- AC-8: met — `moai spec check --all --project .` exit 0, 2개 SPEC 오류 0·경고 0. mutation M4(`..` 범위 안 읽음) KILLED
+- AC-9: met — `--bin moai` 27, `help_layout` 10, `home_isolation_scan` 16, `product_cli` 75, `gitignore_block_cli` 32, `ac_command_lint` 5, 저장소 검사 대상 7개 모두 exit 0; `cargo fmt --check` 0; `rustfmt --check --edition 2021 src/ops/*.rs` 0; clippy 0; Python 44개 OK(처음에 `repo_scans_test` 1개가 이 시험을 저장소 순회로 판정 → 표에 항목 추가 뒤 OK), `skill_references_test` 2개 OK
+
+실행 안 함: 전체 `cargo test`(바뀐 곳 시험만), Linux·Windows, Go 폴더 되돌리기 길과 `specs/`가 함께 있는 경우.
