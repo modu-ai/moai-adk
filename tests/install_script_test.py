@@ -29,8 +29,10 @@ PS1 = os.path.join(REPO_ROOT, "install", "install.ps1")
 
 # `language-set` (#2935 L1) is what the real moai-cli does, in miniature: record the argv one
 # argument per line (ended by `--`) in $FAKE_LOG, write config/language.yaml only when it is not
-# there, and answer in the real envelope's shape.
+# there, and answer in the real envelope's shape. With $FAKE_STDIN_LOG set, every call first reads
+# its whole standard input and records `<command> <bytes>` there (SPEC-20261118-installer-stdin-null).
 FAKE_CLI = """#!/bin/sh
+if [ -n "${FAKE_STDIN_LOG:-}" ]; then printf '%s %s\\n' "$1" "$(wc -c | tr -d ' ')" >> "$FAKE_STDIN_LOG"; fi
 case "$1" in
   install-inspect)
     printf '{"protocol_version":1,"operation":"install.inspect","ok":true,"result":{"home_state_root":"%s","path_first_moai":{"path":null,"generation":"%s"},"writes":false}}\\n' "${FAKE_STATE_ROOT:-$HOME/.moai-cli}" "${FAKE_GEN:-absent}"
@@ -1075,6 +1077,35 @@ class InstallShTest(unittest.TestCase):
         self.assertEqual(code, 0, out)
         with open(tty_log) as f:
             self.assertEqual(f.read().split(), ["stderr=redirected"] * 2, out)
+
+    def test_the_moai_cli_children_read_nothing_of_a_piped_script(self):
+        # SPEC-20261118-installer-stdin-null: under `curl ... | sh` the script itself is standard
+        # input; a `moai-cli` child that read it would eat the part not yet run. Every child gets
+        # /dev/null instead: each call reads its whole standard input and finds 0 bytes.
+        piped = self.stdin_argv()
+        if piped is None:
+            self.skipTest("PowerShell runs the script from memory or a file, never from stdin")
+        argv, script = piped
+        # Lines after `main "$@"`: today it is the last line, so the shell has read the whole
+        # script before a child runs. Comment lines after it, more than a shell reads ahead
+        # (dash reads blocks), stand for a later script whose `main` is not the end: a child that
+        # read standard input would get them.
+        script += b"\n" + b"# lines the moai-cli children must never read\n" * 2000
+        os.makedirs(os.path.join(self.home, ".claude"))
+        stdin_log = os.path.join(self.tmp, "stdin.log")
+        r = subprocess.run(
+            argv + ["--language", "en", "--yes"], input=script, capture_output=True,
+            env=self.env(FAKE_UPDATE="ok", FAKE_STDIN_LOG=stdin_log), cwd=self.home,
+            timeout=120)
+        self.assertEqual(r.returncode, 0, r.stdout.decode() + r.stderr.decode())
+        self.assertIn(b"Installation complete!", r.stdout)
+        with open(stdin_log) as f:
+            seen = [line.split() for line in f.read().splitlines()]
+        self.assertEqual(
+            seen,
+            [["install-inspect", "0"], ["language-set", "0"], ["update", "0"],
+             ["update", "0"], ["--version", "0"]],
+            r.stdout.decode())
 
     def assert_menu_choice(self, answers, want, prompts=1, after=None, **env):
         if os.path.exists(self.log):
