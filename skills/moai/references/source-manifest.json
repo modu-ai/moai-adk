@@ -159,7 +159,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "01c5df46d6a49bc720d8da1a550b172fb1c97c4c4cf908e75f011a55f8d8051c",
+      "sha256": "c8c20ae95d506cd9ae1914c78f43bd7e8b826cd54d7290350fa11f0b6d4d5c72",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
@@ -195,7 +195,7 @@
       }
     },
     "references/internal/interview.md": {
-      "sha256": "ec88ae339c939aedaf61d28c1989f95a739569f7ad4745d62f4724bb453600ed",
+      "sha256": "12e531e645efd8c1d97f0ef300d89488c789f21cadd70fa867f7808b5fb84752",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-interview",
@@ -354,12 +354,21 @@
       }
     },
     "references/internal/versioning.md": {
-      "sha256": "2edd875ea1a7967b70800a05783752bec81cded61f398409637d9aa8bf554f3f",
+      "sha256": "937835dcb420d6acf2d51193c991dc16d060bc0831eff6518f2c464f69d268b6",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-versioning",
         "adoption": "new",
         "reason": "Written for rc.2 card C-69 (user instruction 2026-11-17): the three versioning schemes the PROJECT interview offers — SemVer (default), HeadVer and CalVer — each with its format, who bumps what, when to pick it, how the next version is computed, its pre-release marking and two examples, plus the rule to keep the scheme a project already uses and how `project-detect` reads a version. Sources read 2026-11-17: semver.org 2.0.0, github.com/line/headver, calver.org spec 26.0. Named by project.md, internal/interview and chains/index.md."
+      }
+    },
+    "references/internal/build-folder.md": {
+      "sha256": "d501167bbf87e9c9974270530ebe91216057ae0ca99fc195a3c74e25025dbb82",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-build-folder",
+        "adoption": "new",
+        "reason": "Written for card C-82 (user decision 2026-11-17, selection '빌드 폴더를 한 곳으로 모으기'; SPEC-20261117-agent-build-folder): where agent and audit builds put CARGO_TARGET_DIR (one folder per worktree under ~/.moai/build/, CARGO_INCREMENTAL=0, an owner record), what a refusal does, where evidence stays, the end-of-task cleanup and the user-picked removal of leftovers. Read by moai-impl and moai-audit (`reads:`); its moai-adk helper is the repository's tools/build_folder.py."
       }
     },
     "references/internal/self-check.md": {
@@ -468,15 +477,6 @@
         "template_id": "language-guide",
         "adoption": "new",
         "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language swift (SwiftPM or Xcode by its files, format and lint with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
-      }
-    },
-    "references/internal/build-folder.md": {
-      "sha256": "d501167bbf87e9c9974270530ebe91216057ae0ca99fc195a3c74e25025dbb82",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "internal-build-folder",
-        "adoption": "new",
-        "reason": "Written for card C-82 (user decision 2026-11-17, selection '빌드 폴더를 한 곳으로 모으기'; SPEC-20261117-agent-build-folder): where agent and audit builds put CARGO_TARGET_DIR (one folder per worktree under ~/.moai/build/, CARGO_INCREMENTAL=0, an owner record), what a refusal does, where evidence stays, the end-of-task cleanup and the user-picked removal of leftovers. Read by moai-impl and moai-audit (`reads:`); its moai-adk helper is the repository's tools/build_folder.py."
       }
     }
   }
