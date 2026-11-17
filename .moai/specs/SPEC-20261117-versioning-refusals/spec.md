@@ -1,0 +1,77 @@
+---
+id: SPEC-20261117-versioning-refusals
+title: "버저닝 custom 글의 거절 목록 — 경로 문자와 Unicode 기본 무시 문자 전체"
+status: draft
+revision: 1
+created: 2026-11-17
+---
+
+## Intent
+
+버저닝 카드(C-69)의 독립 감사가 남긴 두 가지 후속(R2-N1, R2-N2)을 고쳐요. 프로필의 `versioning.format`이 `custom`일
+때 사용자의 글 한 줄을 받는데,
+
+1. 문서(`internal/versioning`, `internal/interview`, `operations/project_plan.md`)의 거절 목록에 `/`와 `\`가 빠졌어요.
+   프로필의 portable 검사(`src/profile.rs` `portable`)는 둘을 거절해요.
+2. 보이지 않는 문자 검사(`src/versioning.rs` `hidden`)가 Unicode의 기본 무시 문자(Default_Ignorable_Code_Point) 일부만
+   막았어요. U+034F, U+115F–U+1160, U+17B4–U+17B5, U+180B–U+180F(U+180E 제외), U+3164, U+FFA0, U+FFF0–U+FFF8,
+   U+1BCA0–U+1BCA3, U+1D173–U+1D17A, U+E0080–U+E00FF, U+E01F0–U+E0FFF가 통과했어요.
+
+## Requirements
+
+요구 문장은 영어 GEARS예요(`src/spec.rs` `parse_gears`). `When` 요구가 없어 실패 경로 요구도 없어요.
+
+- REQ-1: The custom versioning text check shall refuse every code point of the Unicode 18.0.0 Default_Ignorable_Code_Point set.
+- REQ-2: The custom versioning text check shall keep refusing the line and paragraph separators U+2028 and U+2029.
+- REQ-3: The embedded default-ignorable table shall equal the ranges of a verbatim excerpt of the Unicode source file kept in the repository.
+- REQ-4: Every refusal list of custom versioning text in the skill references and the operations appendix shall name `/` and `\`.
+- REQ-5: The refusal list of `internal/versioning` shall name every default-ignorable range the code refuses.
+- REQ-6: The change shall add no crate dependency.
+
+## Acceptance
+
+- AC-1 (REQ-1, REQ-2): 범위마다 처음과 끝(N)은 거절되고, 바로 바깥 이웃(N+1)은 다른 이유로 거절되는 것이 아니면 통과해요.
+  감사가 이름을 든 코드 포인트는 모두 거절돼요.
+  verify: `cargo test --locked --offline --lib versioning::tests::custom_text_refuses_markup_and_every_hidden_range`
+- AC-2 (REQ-3, REQ-5): 표가 원본 발췌(`tests/fixtures/unicode/default-ignorable-18.0.0.txt`)의 범위와 합계 4,174와 같고,
+  `internal/versioning`이 모든 범위와 `/`·`\`를 적어요.
+  verify: `cargo test --locked --offline --lib versioning::tests::default_ignorable_table_matches_the_unicode_source`
+- AC-3 (REQ-4): 세 문서가 `/`와 `\`를 적어요.
+  verify: `grep -c '`/`' skills/moai/references/internal/versioning.md skills/moai/references/internal/interview.md docs/design-review/appendix/operations/project_plan.md` → 각 1 이상
+- AC-4 (REQ-6): `Cargo.toml`과 `Cargo.lock`이 바뀌지 않았어요.
+  verify: `git diff --exit-code origin/v2026.11.0 -- Cargo.toml Cargo.lock`
+- AC-5 (REQ-1…REQ-6): 바뀐 곳에 닿는 검사가 통과해요.
+  verify: `cargo test --locked --offline --test versioning_cli`; `cargo test --locked --offline --test agent_defs_package`;
+  `cargo test --locked --offline --test product_cli`; `cargo test --locked --offline --bin moai`; `cargo fmt --check`;
+  `cargo clippy --locked --offline --all-targets -- -D warnings`; `python3 -I tools/source_manifest.py check`;
+  `python3 -m unittest tests/repo_scans_test.py tests/ci_scope_test.py tests/skill_references_test.py tests/source_manifest_test.py`
+
+## Scope
+
+- write: `src/versioning.rs`, `tests/fixtures/unicode/default-ignorable-18.0.0.txt`,
+  `skills/moai/references/internal/versioning.md`, `skills/moai/references/internal/interview.md`,
+  `skills/moai/references/source-manifest.json`, `docs/design-review/appendix/operations/project_plan.md`,
+  `.moai/specs/SPEC-20261117-versioning-refusals/spec.md`
+- read-only: `src/profile.rs`, `src/lib.rs`
+- forbidden: `src/headver.rs`, `src/update.rs`, `Cargo.toml`, `Cargo.lock`, 다른 열린 가지의 파일
+
+## Plan
+
+1. 원본 받기: `https://www.unicode.org/Public/18.0.0/ucd/DerivedCoreProperties.txt`(파일 sha256 `09c928886a178fca…`,
+   2026-11-17 읽음)에서 Default_Ignorable_Code_Point 절을 그대로 발췌해 시험 자료로 둬요.
+2. RED: 표를 읽는 시험과 범위 끝 N/N+1 시험을 먼저 쓰고, 옛 `hidden`에서 U+034F로 실패하는지 확인해요.
+3. GREEN: `hidden`이 17개 범위 표와 U+2028–U+2029를 써요.
+4. 문서 세 곳의 목록과 manifest, 검사, 커밋, mutation.
+
+## Decisions
+
+- D1 Unicode 판은 18.0.0이에요: `latest` 주소가 2026-11-17에 준 판이고, 시험 자료와 코드 주석에 판과 주소를 적었어요.
+- D2 crate를 더하지 않고 범위를 코드에 넣었어요. 이웃한 원본 줄은 한 범위로 합쳐 17개예요(합계 4,174는 같음).
+- D3 U+2028–U+2029는 기본 무시 문자가 아니지만 줄을 바꾸므로 계속 거절해요.
+- D4 범위 바깥 이웃의 통과 확인은 다른 범위나 U+2028–U+2029, 제어 문자인 이웃을 건너뛰어요. 17개 범위의 이웃 34개 중
+  U+2029 하나만 건너뛰어 33개를 확인해요.
+- D5 `/`와 `\`는 코드에 새로 넣지 않았어요: 프로필의 portable 검사가 이미 거절하고, 이번 수리는 문서가 그 사실을 적게 하는 것이에요.
+
+## Result
+
+(검사 뒤에 채워요.)
