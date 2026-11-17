@@ -56,3 +56,18 @@ green-test-lock 감사(#3177)의 비차단 지적 세 가지를 고쳐요. N1: `
 - D2 둘 다 없으면 모든 행을 적용해요(예전 동작). 모르는 프로젝트에서 잠금과 oracle 경고가 약해지지 않게 하려는 거예요. 그래서
   `tests/run_verify.rs`(README만 있는 임시 프로젝트)의 기대값 4개는 그대로예요. 경로만 받는 `oracle_changes`도 모든 행 그대로예요.
 - D3 이 가지는 #3177이 아직 병합되지 않아 그 head `4d73feb53f` 위에 쌓았어요(리더 지시). #3177 뒤에 병합해요.
+
+## Result
+
+구현 에이전트가 채웠어요. 기준 `4d73feb53f`(#3177 head), 변경 커밋 `a0e79803f6`.
+
+- AC-1: met — 새 시험 2개 통과; `run_verify` 13 통과, 기대값 변경 없음(README만 있는 프로젝트는 모든 행).
+- AC-2: met — `status_reports_an_open_log_without_a_record` 통과.
+- AC-3: met — `a_record_with_another_phase_locks_nothing` 통과(동작은 이미 맞았고 시험으로 고정).
+- RED 대신 mutation(커밋 뒤, 각각 `git restore` 뒤 tree 깨끗): 언어와 상관없이 모든 행 → 2 FAIL; `problem`을 늘 `null`로 → 1 FAIL;
+  `green`·`refactor` 대신 비어 있지 않은 단계면 잠금(감사 M2) → 1 FAIL.
+- 함께 돌림: `green_test_lock` 14, `boundary_repro` 16, `--lib hook_guards::` 17, `--lib profile::` 10, `--lib project_detect::` 3,
+  `hook_dispatch_cli` 56, `product_cli` 75, `help_layout` 10, `--bin moai` 27, `spec_before_code_hook` 5, `worktree_cli` 23, fmt,
+  clippy `-D warnings`, Python 4개 88 OK, `source_manifest.py check`, `moai spec check --all`. `--lib tdd::`는 단위 시험이 없어 0개예요.
+
+실행 안 함: 전체 cargo test, Linux CI.
