@@ -402,7 +402,7 @@ fn take_with_require_approved_spec_refuses_until_the_spec_is_approved() {
     let w = World::new();
     let spec = w.draft_spec("login-fix");
     let linked = w.ready_card("fix", "src/a");
-    let bare = w.ready_card("docs", "docs/b");
+    let bare = w.ready_card("docs", "guide/b");
     let research = w.ready_card("research", "notes/c");
     ok(&w.card(&["spec", &linked, &spec]));
     let take = |card: &str| {
