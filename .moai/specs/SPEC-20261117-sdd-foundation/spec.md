@@ -91,4 +91,18 @@ REQ-2 failure path: REQ-3.
 
 ## Result
 
-(SYNC fills this section.)
+Base `41b6d67991e536d4ab312065140dde0fa350d08d` (origin/v2026.11.0), change commit
+`1ae3cdfc6f0f55cc86db34873f91ce4c27ac4d13`. Filled by the implementing agent, 2026-11-17; SYNC and AUDIT
+re-check it. Build folder: the worktree's own `target/`, `CARGO_INCREMENTAL=0`, macOS arm64.
+
+| AC | Result | Evidence |
+|---|---|---|
+| AC-1 | met | `grep -c` → `11`; rows with `**대체**` → `8` |
+| AC-2 | met | RED before the code change: `--test gitignore_block_cli` exit 101, 28 passed / 2 failed — `specs_stay_in_git_for_every_project` at tests/gitignore_block_cli.rs:279 (`github_issues Some(true)`), the folder-move test at :767 (the `specs/` note). GREEN: exit 0, 30 passed. Mutation M1 (`specs/` removed from `STATE_KEPT`, after the commit): exit 101, 5 failed incl. `specs_stay_in_git_for_every_project`; restored, `git status` clean |
+| AC-3 | met | `a_user_rule_keeps_its_effect_and_the_preview_names_it`: exit 0, 1 passed (29 filtered) |
+| AC-4 | met | `.moai/specs/SPEC-x/spec.md`: no output, exit 1. The 11 other paths: one line each (`.gitignore:359:/.moai/*` ×9, `.gitignore:372:*/**/.moai/` ×2). Probe: with the old any-depth `.moai/` line put back, the SPEC path printed `.gitignore:372:.moai/`; restored |
+| AC-5 | met | `.gitignore:164:.moai/**/credentials.yaml` for `.moai/specs/SPEC-x/credentials.yaml` |
+| AC-6 | met | `git ls-files .moai/specs` → `.moai/specs/SPEC-20261117-sdd-foundation/spec.md` |
+| AC-7 | met | `cargo fmt --check` 0 (first run 1: one signature reflowed, fixed before the commit); clippy 0; `--bin moai` 0 (27 passed); `--lib agents::` 0 (8 passed); `--test home_isolation_scan` 0 (16); `--test repo_agents_md` 0 (3); also `project_update_plan_cli` 0 (57), `github_profile_cli` 0 (9), `github_cli` 0 (11), `agents_project_cli` 0 (5), `product_cli` 0 (75); `python3 -m unittest tests/repo_scans_test.py tests/ci_scope_test.py` 0 (44 tests; the first run had 6 errors from a relative `CARGO_TARGET_DIR`, rerun with an absolute one) |
+
+Not run: the full `cargo test` (targeted tests only, machine under memory pressure); Linux and Windows.
