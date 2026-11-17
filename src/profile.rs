@@ -13,7 +13,7 @@
 //! behaviour: edits are refused with "existing YAML requires preservation review"
 //! until the lossless-editing HOLD is decided.
 
-use crate::{digest, SECRET_SHAPES};
+use crate::digest;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::{
@@ -246,10 +246,9 @@ fn portable(s: &str) -> bool {
     !s.trim().is_empty()
         && s.len() <= 2048
         && !s.chars().any(char::is_control)
-        && !["/", "\\", "~/", ":\\"]
-            .iter()
-            .chain(SECRET_SHAPES.iter())
-            .any(|x| lower.contains(x))
+        && !["/", "\\", "~/", ":\\"].iter().any(|x| lower.contains(x))
+        // Card C-90: `sk-` only at the start of a word, so `task-based` is ordinary text.
+        && !crate::secret_shaped(s)
 }
 pub(crate) fn portable_id(s: &str) -> bool {
     !s.is_empty()
@@ -1215,6 +1214,26 @@ mod tests {
             ..v2()
         })
         .is_err());
+    }
+
+    /// Card C-90: custom text with `sk-` inside a word is portable; a key shape is not.
+    #[test]
+    fn sk_inside_a_word_is_portable_text() {
+        for ok in [
+            "task-based releases",
+            "risk-free, desk-top first",
+            "YYYY.task-N",
+        ] {
+            assert!(portable(ok), "{ok}");
+        }
+        for no in [
+            "sk-abc123",
+            "uses sk-test-not-real",
+            "x token=abc",
+            "a ghp_x",
+        ] {
+            assert!(!portable(no), "{no}");
+        }
     }
 
     #[test]
