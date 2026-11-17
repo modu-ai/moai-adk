@@ -67,5 +67,55 @@ class SkillReferences(unittest.TestCase):
         self.assertEqual(broken, [], "current repository skill references are broken")
 
 
+DETECT = ROOT / "src/project_detect.rs"
+QUALITY = ROOT / "skills/moai/references/internal/quality.md"
+LANGUAGES = ROOT / "skills/moai/references/languages"
+GUIDE_ROW = re.compile(r"^\| ([a-z]+) \| languages/([a-z-]+\.md) \|$", re.M)
+GUIDE_LIMIT = 4096
+
+
+def detector_languages():
+    """Every language `project-detect` can report: the language side of its manifest,
+    extension and language-server tables."""
+    text = DETECT.read_text(encoding="utf-8")
+    found = set()
+    for const, side in (("MANIFESTS", 1), ("EXTENSIONS", 1), ("LSP", 0)):
+        block = re.search(
+            r"const " + const + r": &\[\(&str, &str\)\] = &\[(.*?)\];", text, re.S
+        )
+        assert block, const + " table not found in src/project_detect.rs"
+        pairs = re.findall(r'\("([^"]+)", "([^"]+)"\)', block.group(1))
+        assert pairs, const + " table is empty"
+        found.update(pair[side] for pair in pairs)
+    return found
+
+
+class QualityGuides(unittest.TestCase):
+    """SPEC-20261117-quality-guides AC-2: internal/quality names one guide per detected
+    language, every named guide exists, and no guide is left unnamed."""
+
+    def rows(self):
+        return dict(GUIDE_ROW.findall(QUALITY.read_text(encoding="utf-8")))
+
+    def test_every_detector_language_has_a_guide_row(self):
+        languages = detector_languages()
+        self.assertIn("rust", languages)
+        self.assertEqual(sorted(self.rows()), sorted(languages))
+
+    def test_every_named_guide_exists_and_every_guide_is_named(self):
+        named = set(self.rows().values())
+        present = {p.name for p in LANGUAGES.glob("*.md")}
+        self.assertEqual(sorted(named), sorted(present))
+
+    def test_guides_are_short_and_point_back_to_quality(self):
+        for path in sorted(LANGUAGES.glob("*.md")):
+            with self.subTest(guide=path.name):
+                data = path.read_bytes()
+                self.assertLessEqual(len(data), GUIDE_LIMIT)
+                text = data.decode("utf-8")
+                self.assertTrue(text.startswith("# Language: "))
+                self.assertIn("When to read: `internal/quality` sent you here", text)
+
+
 if __name__ == "__main__":
     unittest.main()
