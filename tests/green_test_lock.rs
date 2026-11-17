@@ -485,4 +485,14 @@ fn a_linked_worktree_keeps_its_own_cycle() {
         &write_input("tests/new_test.rs", &main)
     )));
     assert!(!main.join(".git/moai/tdd.json").exists());
+    // #3177 audit N1: the written path's own work tree decides, not the session's folder. A
+    // session in the primary checkout writing into the GREEN worktree is refused (a locked test
+    // and a new test file); a session in the worktree writing into the primary is not.
+    for target in ["tests/login_test.rs", "tests/another_test.rs"] {
+        let into_wt = wt.join(target).display().to_string();
+        let r = preflight(&main, &write_input(&into_wt, &main));
+        assert!(denied(&r), "{target}: {}", r.stdout);
+    }
+    let into_main = main.join("tests/new_test.rs").display().to_string();
+    assert!(allowed(&preflight(&wt, &write_input(&into_main, &wt))));
 }

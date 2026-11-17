@@ -56,8 +56,19 @@ fn git(cwd: &Path, args: &[&str]) {
     );
 }
 
-/// A temporary repository on `branch` with one commit and its own HOME.
+/// A temporary MoAI repository (a committed `.moai/` folder, so linked worktrees have it too)
+/// on `branch` with one commit and its own HOME.
 fn repo(branch: &str) -> (tempfile::TempDir, PathBuf) {
+    let (dir, root) = plain_repo(branch);
+    fs::create_dir_all(root.join(".moai")).unwrap();
+    fs::write(root.join(".moai/.keep"), "").unwrap();
+    git(&root, &["add", ".moai/.keep"]);
+    git(&root, &["commit", "-q", "-m", "moai"]);
+    (dir, root)
+}
+
+/// A temporary repository without `.moai/` on `branch` with one commit and its own HOME.
+fn plain_repo(branch: &str) -> (tempfile::TempDir, PathBuf) {
     let dir = tempfile::TempDir::new().unwrap();
     let root = fs::canonicalize(dir.path()).unwrap();
     fs::create_dir_all(root.join("home")).unwrap();
@@ -70,6 +81,58 @@ fn repo(branch: &str) -> (tempfile::TempDir, PathBuf) {
     git(&root, &["add", "a.txt", ".gitignore"]);
     git(&root, &["commit", "-q", "-m", "init"]);
     (dir, root)
+}
+
+/// #3176 audit N1: one call that writes the SPEC and a code file together waits while the SPEC
+/// file is not on disk yet: the SPEC in the same call does not count. The same call with the
+/// SPEC alone goes ahead.
+#[test]
+fn one_call_writing_the_spec_and_code_waits_for_the_spec() {
+    let (_d, root) = repo(BRANCH);
+    let both = format!(
+        "*** Begin Patch\n*** Add File: {SPEC}\n+{}\n*** Update File: a.txt\n@@\n-a\n+b\n*** End Patch",
+        spec_text("SPEC-20261117-demo").replace('\n', "\n+")
+    );
+    let spec_only = format!(
+        "*** Begin Patch\n*** Add File: {SPEC}\n+{}\n*** End Patch",
+        spec_text("SPEC-20261117-demo").replace('\n', "\n+")
+    );
+    let patch = |command: &str| {
+        json!({"hook_event_name": "PreToolUse", "tool_name": "apply_patch",
+               "tool_input": {"command": command}, "cwd": root})
+    };
+    let codex_denied = |r: &Run| r.code == 2 || r.stdout.contains("\"deny\"");
+    let r = preflight("codex", &root, &patch(&both));
+    assert!(codex_denied(&r), "codex both: {} {}", r.code, r.stdout);
+    let r = preflight("codex", &root, &patch(&spec_only));
+    let spec_only_passes = !codex_denied(&r);
+    assert!(spec_only_passes, "codex spec only: {} {}", r.code, r.stdout);
+    // The same pair through Claude's tools: one MultiEdit names one file, so the pair is the
+    // code file's MultiEdit while the SPEC is still missing; then the SPEC lands and it passes.
+    let multi = json!({"hook_event_name": "PreToolUse", "tool_name": "MultiEdit",
+                       "tool_input": {"file_path": "a.txt",
+                                      "edits": [{"old_string": "a", "new_string": "b"}]},
+                       "cwd": root});
+    let reason = assert_deny(&preflight("claude", &root, &multi));
+    assert!(reason.contains("moai spec new"), "{reason}");
+    fs::create_dir_all(root.join(SPEC).parent().unwrap()).unwrap();
+    fs::write(root.join(SPEC), spec_text("SPEC-20261117-demo")).unwrap();
+    assert_allow(&preflight("claude", &root, &multi));
+    assert!(!codex_denied(&preflight("codex", &root, &patch(&both))));
+}
+
+/// #3176 audit N2: a repository without a `.moai` folder at its work-tree root is not a MoAI
+/// project, so its `spec/…` branch is left alone; once the folder exists the rule applies. A
+/// `.moai` that is a file does not count.
+#[test]
+fn a_repository_without_a_moai_folder_is_left_alone() {
+    let (_d, root) = plain_repo(BRANCH);
+    assert_allow(&preflight("claude", &root, &write("src/main.rs", &root)));
+    fs::write(root.join(".moai"), "not a folder\n").unwrap();
+    assert_allow(&preflight("claude", &root, &write("src/main.rs", &root)));
+    fs::remove_file(root.join(".moai")).unwrap();
+    fs::create_dir_all(root.join(".moai")).unwrap();
+    assert_deny(&preflight("claude", &root, &write("src/main.rs", &root)));
 }
 
 fn write(path: &str, cwd: &Path) -> Value {
