@@ -29,12 +29,16 @@ impl crate::comment_authority::Authored for Comment {
     }
 }
 
-/// One check run on the head: its name and conclusion (`null` while it runs).
+/// One check run on the head: its name, conclusion (`null` while it runs) and the commit it ran
+/// on (C-84: G5 counts only a run on the exact PR head; the collector reads `head_sha` from
+/// GitHub, or the head it asked for).
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct CheckRun {
     pub name: String,
     pub conclusion: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub head_sha: Option<String>,
 }
 
 /// Everything the gate decides from. File lists are repository paths.
@@ -824,6 +828,39 @@ fn g3(s: &Snapshot, judged: &str) -> Result<(), Stop> {
     }
 }
 
+/// G3 at tier 0 (C-84, leader decision 2026-11-17: a posted FAIL stops the merge at every
+/// tier): a tier-0 PR has no PASS that supersedes an older head's FAIL, so a FAIL verdict on
+/// any head stops it until the same auditor posts a later PASS (a higher comment id).
+fn g3_tier0(s: &Snapshot) -> Result<(), Stop> {
+    let verdicts: Vec<(u64, String, String)> = s
+        .comments
+        .iter()
+        .filter_map(|c| {
+            let (_, _, v) = verdict_of(s, verdict_line(&c.body)?)?;
+            Some((c.id, v, auditor(&c.body).unwrap_or_default()))
+        })
+        .collect();
+    let open = verdicts
+        .iter()
+        .filter(|f| f.1 == "FAIL")
+        .filter(|f| {
+            !verdicts
+                .iter()
+                .any(|p| p.1 == "PASS" && !f.2.is_empty() && p.2 == f.2 && p.0 > f.0)
+        })
+        .count();
+    if open == 0 {
+        Ok(())
+    } else {
+        Err(Stop {
+            rule: "G3",
+            reason: format!(
+                "audit tier 0: {open} FAIL verdict(s) on this pull request and no later PASS by the same auditor"
+            ),
+        })
+    }
+}
+
 /// `YYYY-MM-DDTHH:MM:SSZ`: digits and separators only, 20 bytes, nothing after the `Z`.
 fn is_utc_seconds(at: &str) -> bool {
     at.len() == 20
@@ -954,8 +991,9 @@ pub fn parse_local_check_evidence(line: &str) -> Option<LocalCheckEvidence<'_>> 
     })
 }
 
-/// The `local-check:` line G5 decides from: `(comment id, line, result)` of the last line for
-/// this head (highest comment id, last line within it), or `None` when there is none.
+/// The optional `local-check:` line for this head (C-84: evidence `gate-merge` records; G5
+/// reads `ci`): `(comment id, line, result)` of the last line for this head (highest comment
+/// id, last line within it), or `None` when there is none.
 pub fn local_check_of(s: &Snapshot) -> Option<(u64, &str, &str)> {
     s.comments
         .iter()
@@ -969,21 +1007,72 @@ pub fn local_check_of(s: &Snapshot) -> Option<(u64, &str, &str)> {
         .map(|(id, _, l, r)| (id, l, r))
 }
 
-/// G5 (#2906 S5b, user decision 6877084436): the PR comments carry a `local-check:` line for
-/// this head ([`parse_local_check`]) and the last such line (highest comment id, last line
-/// within it) says `pass`. GitHub check runs do not block; [`ci_info`] reports them.
-fn g5(s: &Snapshot) -> Result<(), Stop> {
-    match local_check_of(s) {
-        Some((_, _, "pass")) => Ok(()),
-        Some(_) => Err(Stop {
-            rule: "G5",
-            reason: "local-check result=fail on this head".into(),
-        }),
-        None => Err(Stop {
-            rule: "G5",
-            reason: "no local-check line for this head".into(),
-        }),
+/// The check runs the merge reads: the `ci` aggregate (`rc-ci` is its earlier name), its jobs
+/// (`ci / …`, `rc-ci / …`) and `windows-build`.
+fn watched_check(name: &str) -> bool {
+    name == "ci"
+        || name == "rc-ci"
+        || name.starts_with("ci / ")
+        || name.starts_with("rc-ci / ")
+        || name.starts_with("windows-build")
+}
+
+/// Whether a finished watched run counts as failed: anything but `success`, except a skipped
+/// `windows-build` (it runs after the merge, U10).
+fn check_failed(c: &CheckRun) -> bool {
+    match c.conclusion.as_deref() {
+        Some("success") | None => false,
+        Some("skipped") => !c.name.starts_with("windows-build"),
+        Some(_) => true,
     }
+}
+
+/// G5 (C-84, user decision 2026-11-17 "CI 성공 + PASS", which replaces user decisions
+/// 6877084436 and 6878414880): the PR head's GitHub `ci` succeeded on this exact head. A
+/// watched run on this head that failed (or was cancelled, timed out, …) stops it, so does a
+/// `ci` still running, a `ci` that ran only on another head or names none, and no `ci` at all.
+/// A `local-check:` line is optional evidence ([`local_check_of`]) and never decides G5.
+fn g5(s: &Snapshot) -> Result<(), Stop> {
+    let stop = |reason: String| Stop { rule: "G5", reason };
+    let on_head: Vec<&CheckRun> = s
+        .checks
+        .iter()
+        .filter(|c| watched_check(&c.name) && c.head_sha.as_deref() == Some(s.head.as_str()))
+        .collect();
+    if let Some(bad) = on_head.iter().find(|c| check_failed(c)) {
+        return Err(stop(format!(
+            "`{}` failed on this head ({})",
+            bad.name,
+            bad.conclusion.as_deref().unwrap_or("")
+        )));
+    }
+    if let Some(c) = on_head.iter().find(|c| c.conclusion.is_none()) {
+        return Err(stop(format!("`{}` is still running on this head", c.name)));
+    }
+    let aggregate = |c: &&CheckRun| c.name == "ci" || c.name == "rc-ci";
+    if on_head
+        .iter()
+        .any(|c| aggregate(c) && c.conclusion.as_deref() == Some("success"))
+    {
+        return Ok(());
+    }
+    let elsewhere: Vec<&CheckRun> = s.checks.iter().filter(aggregate).collect();
+    if let Some(c) = elsewhere.iter().find(|c| c.head_sha.is_none()) {
+        return Err(stop(format!(
+            "the `{}` check run names no head; the gate cannot tell it is this one",
+            c.name
+        )));
+    }
+    if let Some(c) = elsewhere.first() {
+        let other = c.head_sha.as_deref().unwrap_or("");
+        return Err(stop(format!(
+            "`{}` ran on {}, not on this head {}",
+            c.name,
+            other.get(..10).unwrap_or(other),
+            &s.head[..10]
+        )));
+    }
+    Err(stop("no `ci` check run on this head".into()))
 }
 
 /// The head's GitHub CI, as information only (#2906 S5b): `ci=failure` when a `ci`, `rc-ci`,
@@ -991,19 +1080,8 @@ fn g5(s: &Snapshot) -> Result<(), Stop> {
 /// be `skipped`: it runs after the merge, U10), else `ci=pending` while one runs or before a
 /// `ci`/`rc-ci` aggregate succeeded, `ci=success`, or `ci=none` when there is no such run.
 pub fn ci_info(s: &Snapshot) -> String {
-    let watched = |n: &str| {
-        n == "ci"
-            || n == "rc-ci"
-            || n.starts_with("ci / ")
-            || n.starts_with("rc-ci / ")
-            || n.starts_with("windows-build")
-    };
-    let runs: Vec<&CheckRun> = s.checks.iter().filter(|c| watched(&c.name)).collect();
-    let failed = runs.iter().any(|c| match c.conclusion.as_deref() {
-        Some("success") | None => false,
-        Some("skipped") => !c.name.starts_with("windows-build"),
-        Some(_) => true,
-    });
+    let runs: Vec<&CheckRun> = s.checks.iter().filter(|c| watched_check(&c.name)).collect();
+    let failed = runs.iter().any(|c| check_failed(c));
     // `rc-ci` is the aggregate's earlier name (flow.rs `CI_CHECK_NAMES`, audit N1).
     let aggregate = runs.iter().any(|c| {
         (c.name == "ci" || c.name == "rc-ci") && c.conclusion.as_deref() == Some("success")
@@ -1140,6 +1218,7 @@ pub fn check(s: &Snapshot) -> Result<(String, Vec<String>), Stop> {
         }
         g10(s)?;
         g3(s, &s.head)?;
+        g3_tier0(s)?;
         base
     } else {
         // `judged` is the head the last verdict read: the current head, or the earlier head of
@@ -1268,6 +1347,40 @@ mod tests {
     }
 
     /// The time is `YYYY-MM-DDTHH:MM:SSZ` and nothing follows it.
+    /// C-84: the local-check line `gate-merge` records is the last one for this head — the
+    /// highest comment id wins, then the later line inside a comment; another head's line and a
+    /// malformed one are not read. (G5 no longer reads it; this pins what the record cites.)
+    #[test]
+    fn the_recorded_local_check_line_is_the_last_one_for_this_head() {
+        let h = "0123456789abcdef0123456789abcdef01234567";
+        let other = "fedcba9876543210fedcba9876543210fedcba98";
+        let snap = |comments: serde_json::Value| -> super::Snapshot {
+            serde_json::from_value(serde_json::json!({
+                "schema_version": 1, "pr": 9, "head": h, "comments": comments, "checks": [],
+                "pr_files": [], "tip_files_since_verdict_base": [], "merge_clean": true,
+                "body_check_ok": true
+            }))
+            .unwrap()
+        };
+        let c = |id: u64, body: String| serde_json::json!({"id": id, "author_association": "MEMBER", "body": body});
+        let s = snap(serde_json::json!([
+            c(310, line(h, "fail")),
+            c(300, line(h, "pass")),
+            c(320, line(other, "pass"))
+        ]));
+        assert_eq!(
+            super::local_check_of(&s).map(|x| (x.0, x.2)),
+            Some((310, "fail"))
+        );
+        let s = snap(serde_json::json!([c(
+            300,
+            format!("{}\n{}", line(h, "fail"), line(h, "pass"))
+        )]));
+        assert_eq!(super::local_check_of(&s).map(|x| x.2), Some("pass"));
+        let s = snap(serde_json::json!([c(300, format!(" {}", line(h, "pass")))]));
+        assert!(super::local_check_of(&s).is_none());
+    }
+
     #[test]
     fn a_local_check_time_is_utc_seconds() {
         let h = "0123456789abcdef0123456789abcdef01234567";
