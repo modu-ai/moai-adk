@@ -73,7 +73,7 @@ tag 모양과 릴리스 번호의 출처는 릴리스 정책이라 사용자 선
 | D1 | CI 번호는 새 변수 `MOAI_BUILD_NUMBER`(값의 규칙은 `MOAI_LOCAL_BUILD`와 같음); `MOAI_LOCAL_BUILD`를 CI에서 쓰지 않음 | `--version`이 로컬과 CI를 구별(카드 AC3) | 변수 하나로 합치기 |
 | D2 | 두 변수를 함께 주면 빌드를 멈춤 | 추측하지 않음 | 하나를 우선 |
 | D3 | `ci.yml`의 `check`·`windows-build`는 `run_attempt`가 1일 때만 `run_number`, 아니면 비움 | `internal/versioning`("a re-run keeps `run_number`") | 다시 실행도 번호 주기 |
-| D4 | [NEEDS CLARIFICATION: 로컬 번호와 CI 번호가 같은 주에 같은 숫자일 때] 권장: 로컬 빌드는 지금처럼 작은 계수기, 릴리스는 전용 계수기(D5) — 다른 선택: 로컬 빌드에 `-dev` 접미사, 로컬 번호를 CI보다 큰 범위에서 시작 | HeadVer 글의 `-dev` 관찰(규칙 아님) | — |
+| D4 | [NEEDS CLARIFICATION: 로컬 번호와 CI 번호가 같은 주에 같은 숫자일 때, 그리고 순서] (감사 N1) 수백 번대인 CI 빌드는 같은 주의 로컬 빌드보다 위로 정렬돼요(`4.2647.812` > `4.2647.5`): CI 빌드를 설치한 호스트에서는 update가 로컬 빌드를 "더 오래된 빌드"로 막아요(`--allow-older`가 필요). 지금 `ci.yml`은 빌드 산출물을 올리지 않아 CI 빌드가 설치될 길은 없어요. 권장: 로컬 빌드는 지금처럼 작은 계수기, 릴리스는 전용 계수기(D5) — 다른 선택: 로컬 빌드에 `-dev` 접미사, 로컬 번호를 CI보다 큰 범위에서 시작 | HeadVer 글의 `-dev` 관찰(규칙 아님) | — |
 | D5 | [NEEDS CLARIFICATION: 릴리스 빌드의 `{build}` 출처] 권장: 릴리스 workflow 전용 계수기(첫 시도의 그 workflow run number, workflow 하나만 릴리스를 만듦) — 다른 선택: 저장소 변수에 둔 계수기, `ci.yml` run number 재사용 | 카드 AC3, `internal/versioning` 2단계 | — |
 | D6 | [NEEDS CLARIFICATION: 릴리스 tag 모양] 권장: `moai-cli-v{head}.{yearweek}.{build}`(접미사 없음, RC는 GitHub pre-release 표시) — 다른 선택: 이번 세대 RC는 `moai-cli-v2026.11.0-rc.N` 유지, HeadVer는 다음 릴리스부터; cargo-dist의 tag·패키지 버전 일치 요구를 함께 정해야 함 | `internal/versioning` HeadVer pre-release 규칙, `docs/release-attestation.md` | — |
 
