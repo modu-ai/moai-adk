@@ -8,7 +8,8 @@ use std::path::PathBuf;
 /// malformed `Moai-Spec:` / `Moai-Session:` trailer (user decision U-B 2026-11-17). A missing
 /// `Moai-Spec` fails only on a `spec/` branch; a malformed value always fails; a missing
 /// `Moai-Session` is reported and never fails (the audit gate then reads the authors as
-/// unknown). `ok` is true when nothing fails. Reads only.
+/// unknown). `ok` is true when nothing fails; otherwise the result is printed and the command
+/// exits 1. A value holding the log's field separator is `malformed_trailers`. Reads only.
 #[derive(clap::Args)]
 pub struct Args {
     /// Revision range, for example `<base>..HEAD`.

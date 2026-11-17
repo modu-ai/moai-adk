@@ -4,10 +4,14 @@
 //! into a shared place.
 //!
 //! The session id is the one `session-current` reads (`crate::session_current`): the id the host
-//! puts in the session's environment (`CLAUDE_CODE_SESSION_ID`, then `CODEX_THREAD_ID`), stable
-//! for that host session, not a secret and not a card number, accepted only in its id shape
-//! (8 to 64 hex digits and `-`). The audit gate reads the same `Moai-Session:` values as the
-//! authors (`crate::audit_gate::sessions_of`).
+//! puts in the session's environment (`CLAUDE_CODE_SESSION_ID`, then `CODEX_THREAD_ID`), not a
+//! secret and not a card number, accepted only in its id shape (8 to 64 hex digits and `-`). It
+//! is not stable for a whole working stretch: Claude Code gives a new id after `/clear`
+//! (its environment-variable reference: "updated on `/clear`"), so one author's commits can
+//! carry several ids, and the lane-name comparison of the audit gate stays the fallback. The
+//! value is self-declared — an author can write any value — and the gate trusts it the way it
+//! trusts lane names. The audit gate reads the same `Moai-Session:` values as the authors
+//! (`crate::audit_gate::sessions_of`).
 
 use crate::session_current;
 use crate::spec_doc::{self, IdForm};
@@ -55,15 +59,26 @@ pub struct CommitTrailers {
     pub sha: String,
     pub specs: Vec<String>,
     pub sessions: Vec<String>,
+    /// The log line had more fields than it should: a trailer value held the log's own field
+    /// separator (audit N3), so its values cannot be read apart.
+    pub garbled: bool,
 }
 
-/// One finding of [`check`]: `missing_spec`, `malformed_spec`, `missing_session` or
-/// `malformed_session`.
+/// One finding of [`check`]: `missing_spec`, `malformed_spec`, `missing_session`,
+/// `malformed_session`, or `malformed_trailers` for a value holding the log's separator.
 fn findings(c: &CommitTrailers, spec_branch: bool) -> Vec<Value> {
     let mut out = Vec::new();
     let mut add = |kind: &str, fails: bool, detail: String| {
         out.push(json!({"sha": c.sha, "kind": kind, "fails": fails, "detail": detail}));
     };
+    if c.garbled {
+        add(
+            "malformed_trailers",
+            true,
+            "a trailer value holds a control character, so its values cannot be read apart".into(),
+        );
+        return out;
+    }
     match c.specs.as_slice() {
         [] => add(
             "missing_spec",
@@ -104,12 +119,13 @@ pub fn parse_log(text: &str) -> Vec<CommitTrailers> {
     };
     text.lines()
         .filter_map(|l| {
-            let mut parts = l.split('\x1f');
-            let sha = parts.next()?.trim().to_string();
+            let parts: Vec<&str> = l.split('\x1f').collect();
+            let sha = parts.first()?.trim().to_string();
             (!sha.is_empty()).then(|| CommitTrailers {
                 sha,
-                specs: split(parts.next().unwrap_or("")),
-                sessions: split(parts.next().unwrap_or("")),
+                specs: split(parts.get(1).copied().unwrap_or("")),
+                sessions: split(parts.get(2).copied().unwrap_or("")),
+                garbled: parts.len() > 3,
             })
         })
         .collect()
@@ -190,6 +206,28 @@ mod tests {
         assert_eq!(v["text"], "Moai-Spec: SPEC-20261117-x\n");
         assert_eq!(v["session_missing"], true);
         assert!(format("SPEC-AUTH-001", env(&[])).is_err());
+    }
+
+    /// Audit N3: a value that holds the log's own separators (or any control character)
+    /// cannot be told apart from two values; the commit is malformed and fails, never misread.
+    #[test]
+    fn a_value_with_a_separator_or_control_character_is_malformed() {
+        let garbled = format!("a\x1fSPEC-20261117-x\x1fextra\x1f{S}\n");
+        let c = parse_log(&garbled);
+        assert_eq!(c.len(), 1);
+        let v = judge(&c, "main");
+        assert_eq!(v["failing"], 1, "{v}");
+        assert_eq!(v["findings"][0]["kind"], "malformed_trailers", "{v}");
+        let control = format!("b\x1fSPEC-20261117-x\x07\x1f{S}\n");
+        let v = judge(&parse_log(&control), "main");
+        assert_eq!(v["findings"][0]["kind"], "malformed_spec", "{v}");
+        assert_eq!(
+            judge(
+                &parse_log(&format!("c\x1fSPEC-20261117-x\x1f{S}\n")),
+                "main"
+            )["ok"],
+            true
+        );
     }
 
     #[test]

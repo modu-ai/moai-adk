@@ -120,8 +120,14 @@ fn trailer_check_reports_missing_and_malformed_trailers() {
     commit(dir, "no trailers at all");
     commit(dir, &format!("spec only\n\nMoai-Spec: {SPEC}"));
     commit(dir, "card number\n\nMoai-Spec: C-87\nMoai-Session: agent-7");
+    // Audit B1: a failing check exits 1 and still prints its result.
     let (code, v) = moai(dir, home.path(), &["trailer-check", &range], &[]);
-    assert_eq!(code, Some(0), "{v}");
+    assert_eq!(code, Some(1), "{v}");
+    assert_eq!(
+        v["ok"],
+        json!(true),
+        "the envelope still carries the result: {v}"
+    );
     let r = &v["result"];
     assert_eq!(r["ok"], json!(false), "{v}");
     assert_eq!(r["commits"], json!(4));
@@ -146,7 +152,8 @@ fn trailer_check_reports_missing_and_malformed_trailers() {
     // only on a `spec/` branch.
     assert_eq!(r["failing"], json!(3), "{v}");
     common::git::git_ok(dir, &["switch", "-q", "-c", "main"]);
-    let (_, v) = moai(dir, home.path(), &["trailer-check", &range], &[]);
+    let (code, v) = moai(dir, home.path(), &["trailer-check", &range], &[]);
+    assert_eq!(code, Some(1), "{v}");
     assert_eq!(v["result"]["failing"], json!(2), "{v}");
 
     // A range that reads as an option is refused before git runs.

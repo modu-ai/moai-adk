@@ -2,7 +2,7 @@
 id: SPEC-20261117-session-trailer
 title: 관문 신원 trailer — Moai-Spec와 Moai-Session (SDD-6)
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-17
 parent: SPEC-20261117-sdd-foundation
 ---
@@ -29,6 +29,8 @@ parent: SPEC-20261117-sdd-foundation
 - REQ-5: When `moai trailer-check` reads a revision range, it shall report every commit without `Moai-Spec`, with a malformed `Moai-Spec` or `Moai-Session`, or without `Moai-Session`. · failure: none — 실패 판정은 REQ-6·REQ-7이에요.
 - REQ-6 (REQ-5): IF a commit's `Moai-Spec` or `Moai-Session` value is malformed or repeated, THEN the check shall fail.
 - REQ-9: Where the checked branch is not a `spec/` branch, the check shall report a missing `Moai-Spec` without failing.
+- REQ-10 (REQ-5): IF any commit fails the check, THEN `moai trailer-check` shall exit 1 and still print its findings.
+- REQ-11 (REQ-5): IF a trailer value holds the log's field separator, THEN the check shall report that commit as `malformed_trailers` and fail.
 - REQ-7 (REQ-5): IF the range starts with `-` or git cannot read it, THEN the check shall refuse before reading any commit.
 - REQ-8: Where a verdict comment carries a `Moai-Session:` line below its first line, the audit gate shall treat that session as the auditor's identity next to its lane name.
 
@@ -36,11 +38,11 @@ parent: SPEC-20261117-sdd-foundation
 
 - AC-1 (REQ-1…REQ-4): trailer 줄, session 없음, 모양이 틀린 host 값, 카드 번호·옛 SPEC id 거절.
   verify: `cargo test --locked --offline --test trailer_check_cli trailers_name_the_spec_and_this_sessions_id`; `cargo test --locked --offline --lib trailers::`
-- AC-2 (REQ-5…REQ-7, REQ-9): 임시 저장소의 범위에서 다섯 가지 발견, `spec/` 가지와 아닌 가지의 실패 수, 옵션 모양 범위 거절.
-  verify: `cargo test --locked --offline --test trailer_check_cli trailer_check_reports_missing_and_malformed_trailers`
+- AC-2 (REQ-5…REQ-7, REQ-9…REQ-11): 임시 저장소의 범위에서 다섯 가지 발견, `spec/` 가지와 아닌 가지의 실패 수, 옵션 모양 범위 거절.
+  verify: `cargo test --locked --offline --test trailer_check_cli trailer_check_reports_missing_and_malformed_trailers`; `cargo test --locked --offline --lib trailers::tests::a_value_with_a_separator_or_control_character_is_malformed`
 - AC-3 (REQ-8): 판정의 `Moai-Session`이 저자 session이면 PASS가 아니고, FAIL은 같은 session의 PASS만 풀어요.
   verify: `cargo test --locked --offline --lib audit_gate::`; `cargo test --locked --offline --test audit_gate_cli`
-- AC-4 (REQ-1…REQ-9): 이웃 검사.
+- AC-4 (REQ-1…REQ-11): 이웃 검사.
   verify: `cargo test --locked --offline --test gate_check_cli`; `cargo test --locked --offline --test git_env_scrub`;
   `cargo test --locked --offline --test home_isolation_scan`; `cargo test --locked --offline --test product_cli`;
   `cargo test --locked --offline --test help_layout`; `cargo test --locked --offline --bin moai`;
@@ -68,6 +70,10 @@ parent: SPEC-20261117-sdd-foundation
 ## Risks
 
 - OMP와 `codex exec` 같은 곳에는 session id 변수가 없을 수 있어요 → 그 커밋은 `Moai-Spec`만 갖고, 감사 관문은 저자를 모르는 것으로 읽어 tier 1·2 PR이 기다려요. launcher가 변수를 넣는 일은 다음 조각.
+- (감사 N1) `Moai-Session` 값은 스스로 적는 값이에요: 저자가 아무 값이나 쓸 수 있고, 관문은 lane 이름처럼 그 값을 믿어요 → 실수는
+  잡지만 일부러 속이는 것은 못 막아요; 독립 감사와 리더 확인이 그 몫이에요(`internal/commit-trailers` 4).
+- (감사 N2) session id는 작업 내내 같지 않아요: Claude Code는 `/clear` 뒤에 새 id를 줘요(환경 변수 문서 "updated on `/clear`") → 한
+  저자의 커밋이 여러 id를 가질 수 있고, lane 이름 비교가 대비책이에요.
 - `CODEX_THREAD_ID`는 Codex 문서에 없는 변수예요(`session_current`의 주석) → Codex lane이 재서 확인해야 해요.
 - 감사 판정이 `Moai-Session` 줄을 쓰지 않으면 감사자 비교는 lane 이름만으로 해요(예전과 같음).
 
@@ -75,7 +81,8 @@ parent: SPEC-20261117-sdd-foundation
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
-| D1 | session id = 기존 `session-current`가 읽는 host 변수 값(새 출처 없음) | 이미 있는 것 재사용, 비밀이 아님, 카드 번호 아님 | 출처 목록 바꾸기 |
+| D1 | session id = 기존 `session-current`가 읽는 host 변수 값(새 출처 없음); `/clear` 뒤 바뀌고 스스로 적는 값(감사 N1·N2) | 이미 있는 것 재사용, 비밀이 아님, 카드 번호 아님 | 출처 목록 바꾸기 |
+| D6 | `trailer-check`는 실패가 있으면 결과 JSON을 낸 채 exit 1(감사 B1, `audit-delta`와 같은 방식); 구분 문자를 품은 값은 `malformed_trailers`(감사 N3) | CI·스크립트가 종료 코드로 판단 | exit 0 유지 |
 | D2 | 새 명령 `moai trailers --spec`과 `moai trailer-check <range>` | 조정자 지시 | 명령 빼기 |
 | D3 | `Moai-Session` 없음은 알리기만 하고 실패시키지 않음; `Moai-Spec` 없음은 `spec/` 가지에서만 실패 | session id가 없는 host가 있음 | 둘 다 실패로 |
 | D4 | 규칙은 새 참조 `internal/commit-trailers`(SDD-5의 `sdd.md`가 아직 없음), chains 규칙이 이름을 부름; `mode-agent.md`는 그대로 | 조정자 지시, 크기 한도 | SDD-5 뒤 `sdd.md`로 옮기기 |

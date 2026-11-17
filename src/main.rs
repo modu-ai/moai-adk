@@ -2735,7 +2735,11 @@ pub(crate) fn main() -> ExitCode {
         }
         Ok(result) => {
             // A computed delta is evidence, not audit admission; only a pure replay exits 0.
-            let exit = if op == "audit.delta" && result["status"] != "pure_merge" {
+            // A trailer check that found a failing commit keeps its result and exits 1
+            // (SPEC-20261117-session-trailer, audit B1).
+            let exit = if (op == "audit.delta" && result["status"] != "pure_merge")
+                || (op == "trailers.check" && result["ok"] == false)
+            {
                 ExitCode::from(1)
             } else {
                 ExitCode::SUCCESS
