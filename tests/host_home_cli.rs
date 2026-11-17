@@ -418,6 +418,37 @@ fn a_linked_config_folder_is_refused_not_followed() {
         0,
         "nothing written through the link"
     );
+
+    // The same with the linked folder outside HOME: the check starts at the relocated
+    // folder, not at HOME.
+    let away = tempfile::tempdir().unwrap();
+    let away_base = fs::canonicalize(away.path()).unwrap();
+    let far_real = away_base.join("real-conf");
+    fs::create_dir_all(&far_real).unwrap();
+    let far_link = away_base.join("linked-conf");
+    std::os::unix::fs::symlink(&far_real, &far_link).unwrap();
+    assert!(!far_link.starts_with(&w.base));
+    let fl = s(&far_link);
+    let plan = ok(&w.run(
+        &[("CLAUDE_CONFIG_DIR", fl.as_str())],
+        true,
+        &["update-plan", w.h(), &s(&pkg)],
+    ));
+    assert!(
+        host(&plan, "claude").to_string().contains("symlink"),
+        "{plan}"
+    );
+    let plan = ok(&w.run(
+        &[("CLAUDE_CONFIG_DIR", fl.as_str())],
+        true,
+        &["home-routing-plan", w.h(), w.pkg()],
+    ));
+    assert_eq!(
+        host(&plan, "claude")["preflight"],
+        json!("blocked"),
+        "{plan}"
+    );
+    assert_eq!(fs::read_dir(&far_real).unwrap().count(), 0);
 }
 
 /// REQ-1: the Codex doctor reads the global AGENTS file from `CODEX_HOME`; `--codex-home`
