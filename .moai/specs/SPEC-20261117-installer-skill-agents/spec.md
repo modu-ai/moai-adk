@@ -95,3 +95,20 @@ parent: null
   `curl | sh`, `pwsh`에서 같은 흐름이에요.
 - D2: 미리 보기와 적용은 버전 폴더에서 돌려요. 사용자가 서 있는 프로젝트의 hook 계획이 섞이지 않게 해요.
 - D3: 적용 실패와 미리 보기 실패는 경고로 끝나고 exit 0이에요(언어 기록 실패와 같은 규칙). binary 설치는 이미 끝났어요.
+- D4: PowerShell 시험의 터미널 답은 처음부터 넣어요. pwsh가 prompt 곁에서 커서 위치(ESC[6n)를 묻고, 시험 pty는
+  답하지 않아서 prompt 뒤에 친 `y`가 그 답으로 읽혔어요. 진짜 터미널은 이 질문에 답해요.
+
+## Result
+
+2026-11-17, base `d032d0be1f`, tip `17c19a2759`과 충돌 없음(`git merge-tree` exit 0).
+
+- RED: 새 설치 시험은 바꾸기 전에 26 fail, 2 error(sh·ps1). `launcher_skill_check`는 3 fail(설치된 경우는 처음부터
+  통과), help 단위 시험은 fail.
+- GREEN: `tests/install_script_test.py` 101개 중 99개 통과·3 skip. 실패 2개 중 ps1 터미널 시험은 D4로 고쳐서 sh·ps1 모두
+  통과. `InstallPs1Test.test_the_locale_is_read_from_lc_all_then_lc_messages_then_lang`(LC_ALL='')은 바꾸기 전 base에서도
+  실패해요(이 Mac의 `Get-Culture`가 ko).
+- launcher 시험 12개 target, banner_golden, product_cli, home_isolation_scan, install_cli, help_layout, `--lib help::`,
+  `--lib launcher_init::`, `--lib ui_text::`, `--bin moai`, fmt, clippy `-D warnings`, `sh -n`·`bash -n`,
+  repo_scans·ci_scope 통과. shellcheck는 이 기계에 없어서 돌리지 않았어요.
+- mutant 3개 모두 잡혔어요: 터미널과 `--yes` 없이 적용, 사용자 폴더에서 미리 보기, `SKILL.md` 없는 폴더를 설치로 봄.
+- 후속: 릴리스 archive가 `skills/moai`와 `agents`를 싣도록 dist 설정을 바꿔야 실제 설치에서 AC-1이 돼요(Non-goals).
