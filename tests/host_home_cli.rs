@@ -60,6 +60,42 @@ impl World {
         }
         cmd.output().expect("run moai")
     }
+
+    /// [`World::run`] with values that need not be UTF-8 and `stdin` fed to the command.
+    fn run_os(
+        &self,
+        vars: &[(&str, &std::ffi::OsStr)],
+        args: &[&str],
+        stdin: Option<&[u8]>,
+    ) -> Output {
+        let mut cmd = self.home.command(args);
+        cmd.env("HOME", &self.base)
+            .env("MOAI_ACCOUNT_HOME", &self.base);
+        for (k, v) in vars {
+            cmd.env(k, v);
+        }
+        let mut child = cmd
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .expect("run moai");
+        common::feed_stdin(&mut child, stdin.unwrap_or(b""));
+        child.wait_with_output().unwrap()
+    }
+}
+
+/// The refusal: exit 1 and its message.
+fn refused(out: &Output) -> String {
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap_or_else(|e| {
+        panic!(
+            "stdout is not JSON ({e}): {} {}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        )
+    });
+    assert_eq!(out.status.code(), Some(1), "{v}");
+    v["error"]["message"].as_str().unwrap().to_string()
 }
 
 fn ok(out: &Output) -> Value {
@@ -483,4 +519,288 @@ fn the_codex_doctor_reads_codex_home() {
         ],
     ));
     assert!(!v.to_string().contains(&s(&cx)), "{v}");
+}
+
+/// REQ-7 (audit B1): the hook writer refuses a project whose `.claude` or `.codex` is the folder
+/// `CLAUDE_CONFIG_DIR` or `CODEX_HOME` names, or a project inside that folder, for both hosts;
+/// nothing is written. A project elsewhere still plans.
+#[test]
+fn hooks_refuse_the_relocated_user_folders() {
+    let w = World::new();
+    for (host, var, dir) in [
+        ("claude", "CLAUDE_CONFIG_DIR", ".claude"),
+        ("codex", "CODEX_HOME", ".codex"),
+    ] {
+        let project = w.outside(&format!("{host}-project"));
+        fs::create_dir_all(project.join(dir)).unwrap();
+        let user = project.join(dir);
+        let inside = user.join("sub");
+        fs::create_dir_all(&inside).unwrap();
+        let u = std::ffi::OsString::from(&user);
+        for target in [&project, &inside] {
+            let m = refused(&w.run_os(
+                &[(var, u.as_os_str())],
+                &["hooks-plan", &s(target), "--host", host],
+                None,
+            ));
+            assert!(m.contains(var), "{host} {}: {m}", target.display());
+            let m = refused(&w.run_os(
+                &[(var, u.as_os_str())],
+                &[
+                    "hooks-apply",
+                    &s(target),
+                    "--host",
+                    host,
+                    "--plan-digest",
+                    "sha256:00",
+                    "--permission-reference",
+                    PERM,
+                ],
+                None,
+            ));
+            assert!(m.contains(var), "{host} apply: {m}");
+        }
+        assert!(!user.join("hooks.json").exists());
+        assert!(!user.join("settings.json").exists());
+        // An empty or relative value is refused by name too.
+        for bad in ["", "rel"] {
+            let m = refused(&w.run_os(
+                &[(var, std::ffi::OsStr::new(bad))],
+                &["hooks-plan", &s(&project), "--host", host],
+                None,
+            ));
+            assert!(m.contains(var), "{host} {bad:?}: {m}");
+        }
+        // A project elsewhere plans with the variable set.
+        let other = w.outside(&format!("{host}-other"));
+        fs::create_dir_all(&other).unwrap();
+        ok(&w.run_os(
+            &[(var, u.as_os_str())],
+            &["hooks-plan", &s(&other), "--host", host],
+            None,
+        ));
+    }
+}
+
+/// REQ-5, D10 (user decision 2026-11-17, "기본 폴더 링크만 허용"): a folder in the relocated host
+/// folder that is a link is followed only when it resolves to the same folder under the account
+/// home's default host folder; preview and apply then use that folder. A link anywhere else
+/// blocks the host, and the reason names the link.
+#[test]
+fn a_link_to_the_default_folder_is_followed_and_any_other_link_is_blocked() {
+    let w = World::new();
+    let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let agents_src = s(&repo.join("agents"));
+    let pkg = w.base.join("stage");
+    stage(&pkg);
+    // Allowed: conf/skills → ~/.claude/skills, conf/agents → ~/.claude/agents,
+    // cx/agents → ~/.codex/agents.
+    let conf = w.outside("claude-conf");
+    let cx = w.outside("codex-home");
+    fs::create_dir_all(&conf).unwrap();
+    fs::create_dir_all(&cx).unwrap();
+    for (link, target) in [
+        (conf.join("skills"), w.base.join(".claude/skills")),
+        (conf.join("agents"), w.base.join(".claude/agents")),
+        (cx.join("agents"), w.base.join(".codex/agents")),
+    ] {
+        fs::create_dir_all(&target).unwrap();
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+    }
+    let (c, x) = (
+        std::ffi::OsString::from(&conf),
+        std::ffi::OsString::from(&cx),
+    );
+    let vars = [
+        ("CLAUDE_CONFIG_DIR", c.as_os_str()),
+        ("CODEX_HOME", x.as_os_str()),
+    ];
+    let plan = ok(&w.run_os(&vars, &["update-plan", w.h(), &s(&pkg)], None));
+    let claude = host(&plan, "claude");
+    assert_eq!(
+        claude["projection_root"],
+        json!(s(&w.base.join(".claude/skills/moai"))),
+        "{plan}"
+    );
+    assert!(claude["blocked_reason"].is_null(), "{plan}");
+    let out = w.run_os(
+        &vars,
+        &[
+            "update-apply",
+            w.h(),
+            &s(&pkg),
+            "--plan-digest",
+            plan["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            PERM,
+        ],
+        Some(plan.to_string().as_bytes()),
+    );
+    ok(&out);
+    assert!(w.base.join(".claude/skills/moai/SKILL.md").is_file());
+
+    let plan = ok(&w.run_os(
+        &vars,
+        &["agents-home-plan", w.h(), w.pkg(), &agents_src],
+        None,
+    ));
+    assert_eq!(
+        host(&plan, "claude")["dir"],
+        json!(s(&w.base.join(".claude/agents"))),
+        "{plan}"
+    );
+    assert_eq!(host(&plan, "claude")["preflight"], json!("ok"));
+    assert_eq!(
+        host(&plan, "codex")["dir"],
+        json!(s(&w.base.join(".codex/agents")))
+    );
+    assert_eq!(host(&plan, "codex")["preflight"], json!("ok"));
+    ok(&w.run_os(
+        &vars,
+        &[
+            "agents-home-apply",
+            w.h(),
+            w.pkg(),
+            &agents_src,
+            "--plan-digest",
+            plan["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            PERM,
+        ],
+        None,
+    ));
+    assert!(fs::read_dir(w.base.join(".claude/agents")).unwrap().count() > 0);
+    assert!(fs::read_dir(w.base.join(".codex/agents")).unwrap().count() > 0);
+
+    // Blocked: links to any other folder, or to a default folder that is not there.
+    let conf2 = w.outside("claude-conf-2");
+    let elsewhere = w.outside("other-skills");
+    fs::create_dir_all(&conf2).unwrap();
+    fs::create_dir_all(&elsewhere).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, conf2.join("skills")).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, conf2.join("agents")).unwrap();
+    let c2 = std::ffi::OsString::from(&conf2);
+    let vars2 = [("CLAUDE_CONFIG_DIR", c2.as_os_str())];
+    let plan = ok(&w.run_os(&vars2, &["update-plan", w.h(), &s(&pkg)], None));
+    let why = host(&plan, "claude")["blocked_reason"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    assert!(why.contains(&s(&conf2.join("skills"))), "{plan}");
+    let plan = ok(&w.run_os(
+        &vars2,
+        &["agents-home-plan", w.h(), w.pkg(), &agents_src],
+        None,
+    ));
+    let claude = host(&plan, "claude");
+    assert_eq!(claude["preflight"], json!("blocked"), "{plan}");
+    assert!(
+        claude["blocked_reason"]
+            .as_str()
+            .unwrap()
+            .contains(&s(&conf2.join("agents"))),
+        "{plan}"
+    );
+    assert_eq!(fs::read_dir(&elsewhere).unwrap().count(), 0);
+    let codex_missing = w.outside("codex-home-2");
+    fs::create_dir_all(&codex_missing).unwrap();
+    std::os::unix::fs::symlink(w.base.join(".codex/nowhere"), codex_missing.join("agents"))
+        .unwrap();
+    let x2 = std::ffi::OsString::from(&codex_missing);
+    let plan = ok(&w.run_os(
+        &[("CODEX_HOME", x2.as_os_str())],
+        &["agents-home-plan", w.h(), w.pkg(), &agents_src],
+        None,
+    ));
+    assert_eq!(
+        host(&plan, "codex")["preflight"],
+        json!("blocked"),
+        "{plan}"
+    );
+}
+
+/// Audit N1 (M5): the output style refuses a relocated Claude folder that is a link.
+#[test]
+fn the_output_style_refuses_a_linked_config_folder() {
+    let w = World::new();
+    let real = w.outside("real-conf");
+    fs::create_dir_all(&real).unwrap();
+    let link = w.outside("linked-conf");
+    std::os::unix::fs::symlink(&real, &link).unwrap();
+    let l = s(&link);
+    let style = ok(&w.run(
+        &[("CLAUDE_CONFIG_DIR", l.as_str())],
+        true,
+        &["home-style-plan", w.h(), w.pkg()],
+    ));
+    let claude: Vec<&Value> = style["targets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|t| t["host"] == json!("claude"))
+        .collect();
+    assert!(!claude.is_empty(), "{style}");
+    assert!(
+        claude.iter().all(|t| t["action"] == json!("blocked")
+            && t["detail"].as_str().unwrap().contains("symlink")),
+        "{style}"
+    );
+}
+
+/// Audit N1 (M6, M7): the Claude settings and Codex config guards refuse an empty or relative
+/// variable by name and write nothing.
+#[test]
+fn the_user_scope_guards_refuse_empty_and_relative_values() {
+    let w = World::new();
+    let project = w.outside("project");
+    fs::create_dir_all(project.join(".claude")).unwrap();
+    fs::create_dir_all(project.join(".codex")).unwrap();
+    for bad in ["", "rel"] {
+        let m = refused(&w.run_os(
+            &[("CLAUDE_CONFIG_DIR", std::ffi::OsStr::new(bad))],
+            &["claude-settings-plan", &s(&project)],
+            Some(br#"{"outputStyle":"MoAI-Easy"}"#),
+        ));
+        assert!(m.contains("CLAUDE_CONFIG_DIR"), "{bad:?}: {m}");
+        let m = refused(&w.run_os(
+            &[("CODEX_HOME", std::ffi::OsStr::new(bad))],
+            &["codex-config-plan", &s(&project)],
+            Some(br#"{"project_doc_max_bytes":32768}"#),
+        ));
+        assert!(m.contains("CODEX_HOME"), "{bad:?}: {m}");
+    }
+    assert!(!project.join(".claude/settings.json").exists());
+    assert!(!project.join(".codex/config.toml").exists());
+}
+
+/// Audit N3: a variable that is not UTF-8 blocks only that host in `update-plan`, and the Codex
+/// doctor refuses it without a panic.
+#[test]
+fn a_variable_that_is_not_utf8_blocks_only_its_host() {
+    use std::os::unix::ffi::OsStrExt;
+    let w = World::new();
+    let pkg = w.base.join("stage");
+    stage(&pkg);
+    let bad = std::ffi::OsStr::from_bytes(b"/nonexistent-moai-test/conf-\xff");
+    let plan = ok(&w.run_os(
+        &[("CLAUDE_CONFIG_DIR", bad)],
+        &["update-plan", w.h(), &s(&pkg)],
+        None,
+    ));
+    let claude = host(&plan, "claude");
+    assert!(
+        claude["blocked_reason"]
+            .as_str()
+            .is_some_and(|r| r.contains("UTF-8")),
+        "{plan}"
+    );
+    assert!(host(&plan, "codex")["blocked_reason"].is_null(), "{plan}");
+    let project = w.base.join("repo");
+    fs::create_dir_all(&project).unwrap();
+    let m = refused(&w.run_os(
+        &[("CODEX_HOME", bad)],
+        &["codex-doctor", &s(&project), "--home", w.h()],
+        None,
+    ));
+    assert!(m.contains("CODEX_HOME") && m.contains("UTF-8"), "{m}");
 }
