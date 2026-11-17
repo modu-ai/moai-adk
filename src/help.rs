@@ -1024,7 +1024,7 @@ pub const GETTING_STARTED: &[(&str, &str)] = &[
     ("cc", "Start a session in this folder (or: codex, glm)"),
     (
         "/moai project",
-        "Inside the session: prepare this project (Codex: $moai)",
+        "In the session: set up this project ($moai in Codex)",
     ),
 ];
 
