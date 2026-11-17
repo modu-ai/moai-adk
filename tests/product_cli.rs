@@ -2203,6 +2203,38 @@ mod skill_package {
         "design:edit-time-diagnostics-hook",
         "design:project-agent-skill-generation",
     ];
+    /// The only legacy rows that may be `adopted`: the 16 already shipped (card note
+    /// 6783558175), source path without the Go installer's template prefix → the file that
+    /// carries it. Each source appears twice in the map.
+    const LEGACY_ADOPTED: [(&str, &str); 9] = [
+        (".claude/skills/moai/SKILL.md", "skills/moai/SKILL.md"),
+        (
+            ".claude/skills/moai/workflows/plan.md",
+            "skills/moai/workflows/plan.md",
+        ),
+        (
+            ".claude/skills/moai/workflows/run.md",
+            "skills/moai/workflows/run.md",
+        ),
+        (
+            ".claude/skills/moai/workflows/sync.md",
+            "skills/moai/workflows/sync.md",
+        ),
+        ("AGENTS.md", "src/agents.rs"),
+        ("AGENTS.md.tmpl", "src/agents.rs"),
+        (
+            ".claude/output-styles/moai/moai.md",
+            "templates/claude/output-styles/moai.md",
+        ),
+        (
+            ".claude/output-styles/moai/moai-easy.md",
+            "templates/claude/output-styles/moai-easy.md",
+        ),
+        (
+            ".claude/output-styles/moai/moai-learn.md",
+            "templates/claude/output-styles/moai-learn.md",
+        ),
+    ];
 
     fn root() -> PathBuf {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
@@ -3103,6 +3135,16 @@ mod skill_package {
             let status = a["status"].as_str().unwrap();
             let (verdict, arg) = legacy_verdict(status)
                 .unwrap_or_else(|| panic!("{}: `{status}` is not a verdict", a["path"]));
+            let path = a["path"].as_str().unwrap();
+            let source = path
+                .strip_prefix("internal/template/templates/")
+                .unwrap_or(path);
+            let shipped = LEGACY_ADOPTED.iter().find(|(s, _)| *s == source);
+            assert_eq!(
+                (verdict == "adopted").then_some(arg),
+                shipped.map(|(_, target)| *target),
+                "{path}: only the shipped rows are adopted, each by its own file"
+            );
             match verdict {
                 "adopted" => assert!(
                     !arg.starts_with('/') && !arg.contains("..") && repo.join(arg).is_file(),
