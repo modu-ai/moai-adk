@@ -480,6 +480,26 @@ const COMPACTED: &str =
 /// has not been shown to keep (whether `/goal` survives a compaction is not measured).
 const COMPACTED_CODEX_GOAL: &str = "Check the active /goal before you continue.";
 
+/// The conversation language the user chose, as one sentence for session-check (card C-87 S1):
+/// the project's `language.user_chat` (`ui_text::profile_chat`: the profile of the project that
+/// holds `cwd`, below HOME), else the code the user recorded in HOME (`language-set --home`,
+/// the installer's choice). Never guessed: with neither, or a profile that does not read (an
+/// unsupported code makes it unreadable) and nothing in HOME, there is no sentence.
+fn conversation_line(cwd: &Path, home: Option<&Path>) -> Option<String> {
+    let (code, from) = match crate::ui_text::profile_chat(cwd, home) {
+        Some(code) => (code, "the project's `language.user_chat`"),
+        None => (
+            crate::language::home_conversation_supported(home?)?,
+            "the language recorded in HOME",
+        ),
+    };
+    let name = crate::language::english_name(&code)?;
+    Some(format!(
+        "Conversation language: {name} (`{code}`), from {from}: talk with the user in it and \
+         relay subagent reports to the user in it."
+    ))
+}
+
 /// session-check: a short, fixed-vocabulary state summary for the model. Never blocks. After a
 /// compaction (`source: "compact"`, exactly that string) it adds [`COMPACTED`] and, if the work
 /// has a card, points at its newest `moai-resume:` comment; any other `source`, or none, gives
@@ -513,6 +533,12 @@ fn session_check(host: Host, input: &Value, cwd: &Path) -> Verdict {
         env!("CARGO_PKG_VERSION"),
         crate::state_root::dir(cwd),
     );
+    // Card C-87 S1: on every start, resume and compaction, so a compacted session keeps the
+    // conversation language the user chose.
+    if let Some(line) = conversation_line(cwd, std::env::var_os("HOME").as_deref().map(Path::new)) {
+        text.push(' ');
+        text.push_str(&line);
+    }
     if input.get("source").and_then(Value::as_str) == Some("compact") {
         text.push(' ');
         text.push_str(COMPACTED);
@@ -636,6 +662,11 @@ fn tool_preflight_deny(
         Err(gap) => gap,
     };
     if crate::claim_verify::has_local_record(cwd, &dir) {
+        return Verdict::Allow;
+    }
+    // SPEC-20261117-commit-guard-users: a lane safety only; no live lane session in this
+    // clone means an ordinary user, whose commit is not refused.
+    if !crate::claim_verify::lane_clone(&dir) {
         return Verdict::Allow;
     }
     Verdict::Deny(format!(

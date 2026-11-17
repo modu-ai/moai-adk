@@ -1,10 +1,13 @@
-# RC repository check set (00-E #2020; OS matrix rc.2 E2 #2194). The four targets of
-# decision 01:1x(11-09) are Linux x86_64/arm64 and macOS arm64/x86_64. User decision U10
+# RC repository check set (00-E #2020; OS matrix rc.2 E2 #2194). The targets are the three
+# supported platforms (user decision 2026-11-17, SPEC-20261117-supported-platforms, replacing
+# the four Unix targets of decision 01:1x(11-09)): Linux x86_64 and macOS arm64 run the check
+# set below, Windows x86_64 is windows-build. User decision U10
 # (#2554, #1975 comment 6827126248) moves the timing, not the content: a PR to v2026.11.0
 # runs linux-x86_64 only; the push that merges into v2026.11.0 (and workflow_dispatch)
-# runs all four targets plus windows-build with the same check set. The `ci` job
-# aggregates the targets of its run so one `ci` check reports the result (the
-# integration ruleset requires only `moai/audit`; `ci` is read by name).
+# runs linux-x86_64 and macos-arm64 plus windows-build with the same check set. The `ci` job
+# aggregates the targets of its run so one `ci` check reports the result: the integration
+# ruleset 26791615 requires both `moai/audit` and `ci`, the latter from the GitHub Actions app
+# (`gh api repos/modu-ai/moai-adk/rules/branches/v2026.11.0`, read 2026-11-17 10:11Z).
 # Runner labels: standard GitHub-hosted runners for public repositories, free and unlimited
 # (https://docs.github.com/en/actions/reference/runners/github-hosted-runners, read 2026-11-09).
 # For `pull_request`, GITHUB_REF is the PR merge branch (refs/pull/<n>/merge), so this runs
@@ -59,13 +62,12 @@ jobs:
       # Every target is a measurement: one failure must not cancel the others.
       fail-fast: false
       # #2554 (U10): `pull_request` gets the first list (linux-x86_64), every other event
-      # the second (all four). The linux-arm64 cap is 45 min: 20 runs before #2554 took
-      # 28.1 min (median) and 29.1 min (max) there, 1-2 min under the old 30-min cap.
+      # the second (linux-x86_64 and macos-arm64, SPEC-20261117-supported-platforms).
       matrix:
         include: >-
           ${{ fromJSON(github.event_name == 'pull_request'
           && '[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30}]'
-          || '[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30},{"target":"linux-arm64","runner":"ubuntu-24.04-arm","timeout":45},{"target":"macos-arm64","runner":"macos-15","timeout":45},{"target":"macos-x86_64","runner":"macos-15-intel","timeout":60}]') }}
+          || '[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30},{"target":"macos-arm64","runner":"macos-15","timeout":45}]') }}
     env:
       CARGO_TERM_COLOR: never
       PYTHONDONTWRITEBYTECODE: "1"
@@ -166,8 +168,7 @@ jobs:
           version=0.9.151
           case "${{ matrix.target }}" in
             linux-x86_64) asset=x86_64-unknown-linux-gnu; sum=1d4ce302b820c41f4b89c5fb9bce45f0f0c94882c1cf08fc360caf08be6e7df4 ;;
-            linux-arm64) asset=aarch64-unknown-linux-gnu; sum=3e35e8f6913af92558ba09d7155f74e35dd1f0024ef3cd891637433ae4eacbdd ;;
-            macos-arm64|macos-x86_64) asset=universal-apple-darwin; sum=d1d7d025d4bfc9fb154cd76aea3949bd78534829a0589abefa6e5dd4edb135dd ;;
+            macos-arm64) asset=universal-apple-darwin; sum=d1d7d025d4bfc9fb154cd76aea3949bd78534829a0589abefa6e5dd4edb135dd ;;
             *) echo "no pinned cargo-nextest asset for ${{ matrix.target }}" >&2; exit 1 ;;
           esac
           file="$RUNNER_TEMP/cargo-nextest-${version}-${asset}.tar.gz"
@@ -253,6 +254,38 @@ jobs:
           } >> "$summary"
           exit "$failed"
 
+  # C-83 (SPEC-20261117-ci-superseded-neutral, design D6 "superseded cancels are neutral"): on a
+  # push, a macOS target replaced while waiting by a newer merge (D8 (a) above) leaves the matrix
+  # result `cancelled` with no failed test; 40 of 80 push runs read red for that alone. Only
+  # then this job asks tools/ci_superseded.py (tests/ci_superseded_test.py) whether every target
+  # passed or was superseded; `state=superseded` skips `ci` (a neutral check), anything else
+  # lets `ci` run and fail. Pull requests never run it, so `ci` behaves there as before.
+  ci-verdict:
+    name: ci-verdict
+    if: ${{ !cancelled() && github.event_name == 'push' && needs.check.result == 'cancelled' }}
+    needs: [check]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      checks: read
+      contents: read
+    outputs:
+      state: ${{ steps.verdict.outputs.state }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Superseded or failed
+        id: verdict
+        env:
+          EVENT: ${{ github.event_name }}
+          CHECK_RESULT: ${{ needs.check.result }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 -I tools/ci_superseded.py | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "${PIPESTATUS[0]}"
+
   ci:
     name: ci
     # !cancelled() (#2312): a failed target must fail this check, not skip it (a job without
@@ -260,8 +293,10 @@ jobs:
     # a run cancelled by cancel-in-progress stays cancelled instead of always() reporting it
     # as a failure. GitHub's recommended alternative to always():
     # https://docs.github.com/en/actions/reference/workflows-and-actions/expressions (2026-11-09).
-    if: ${{ !cancelled() }}
-    needs: [check]
+    # C-83: skipped only when ci-verdict found the run superseded; ci-verdict skipped or failed
+    # leaves the condition true, so the step below decides as before.
+    if: ${{ !cancelled() && needs.ci-verdict.outputs.state != 'superseded' }}
+    needs: [check, ci-verdict]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
@@ -274,7 +309,9 @@ jobs:
           [ "${{ needs.check.result }}" = "success" ]
 
   # E3 #2195 (decision 01:1x(11-09): Windows is build + self-replace only, support table
-  # not_run). Compile all targets, including portable test targets, without running tests.
+  # not_run). Windows x86_64 is a supported platform since 2026-11-17
+  # (SPEC-20261117-supported-platforms); running its tests here is a later slice of that work.
+  # Compile all targets, including portable test targets, without running tests.
   # Unix-only test setup is cfg(unix)-gated; Windows runtime replacement and host loading
   # remain not_run.
   # Standard GitHub-hosted runner, no secrets. Not part of the required `ci` check.

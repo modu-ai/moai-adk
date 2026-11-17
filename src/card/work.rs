@@ -18,6 +18,7 @@
 use super::command::{actor, open_for_write, ABSENT_HINT};
 use super::dispatch::{reservation_json, DEFAULT_LEASE_SECS};
 use super::input::{self, CardRef};
+use super::spec_link;
 use crate::forge::connector::{HostConnector, HostKind, PrPhase, ProjectRef};
 use crate::ledger::reservation;
 use crate::ledger::workflow::{self, CriterionChange, PrTarget, SkipReason, WorkflowError};
@@ -47,7 +48,9 @@ fn refusal(action: &str, error: WorkflowError) -> String {
 }
 
 /// `card next`: the cards this session holds, then the `ready` cards by priority and number,
-/// then every card that cannot be taken with the reason. Reads only; a project without a ledger
+/// then every card that cannot be taken with the reason. Each held and ready card carries the
+/// SPEC it names and that SPEC's status (`spec`), and `warnings` names each card that changes
+/// the repository without an approved SPEC (SDD-4). Reads only; a project without a ledger
 /// has no cards (exit 0) and nothing is created.
 pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> {
     let id = ledger::command::project_id_of(project)?;
@@ -57,34 +60,42 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
             return Ok(json!({
                 "action": "next", "project_id": id, "ledger": "absent", "holder": holder,
                 "next": null, "next_is": null,
-                "mine": [], "ready": [], "skipped": [], "writes": false,
+                "mine": [], "ready": [], "skipped": [], "warnings": [], "writes": false,
             }));
         }
         Err(e) => return Err(e.to_string()),
     };
     let found = workflow::next(ledger.conn(), holder).map_err(|e| e.to_string())?;
-    let mine: Vec<Value> = found
-        .mine
-        .iter()
-        .map(|m| {
-            let mut v = reservation_json(&m.reservation);
-            v["title"] = json!(m.title);
-            v["state"] = json!(m.state);
-            v["priority"] = json!(m.priority);
-            v["lease_live"] = json!(m.lease_live);
-            v
-        })
-        .collect();
-    let ready: Vec<Value> = found
-        .ready
-        .iter()
-        .map(|c| {
-            json!({
-                "name": input::card_name(c.card_id), "card_id": c.card_id, "title": c.title,
-                "kind": c.kind, "priority": c.priority, "write_scope": c.write_scope,
-            })
-        })
-        .collect();
+    // The SPEC each card names and its status, with a warning for a card that changes the
+    // repository without an approved SPEC (SDD-4), in the order the cards are listed.
+    let mut warnings: Vec<String> = Vec::new();
+    let mut spec_of = |card_id: i64| -> Result<Value> {
+        let (kind, spec) = spec_link::kind_and_spec(ledger.conn(), card_id)
+            .map_err(|e| LedgerError::from(e).to_string())?
+            .unwrap_or_default();
+        let (state, warning) =
+            spec_link::status(project, &input::card_name(card_id), &kind, spec.as_deref());
+        warnings.extend(warning);
+        Ok(state)
+    };
+    let mut mine: Vec<Value> = Vec::new();
+    for m in &found.mine {
+        let mut v = reservation_json(&m.reservation);
+        v["title"] = json!(m.title);
+        v["state"] = json!(m.state);
+        v["priority"] = json!(m.priority);
+        v["lease_live"] = json!(m.lease_live);
+        v["spec"] = spec_of(m.reservation.card_id)?;
+        mine.push(v);
+    }
+    let mut ready: Vec<Value> = Vec::new();
+    for c in &found.ready {
+        ready.push(json!({
+            "name": input::card_name(c.card_id), "card_id": c.card_id, "title": c.title,
+            "kind": c.kind, "priority": c.priority, "write_scope": c.write_scope,
+            "spec": spec_of(c.card_id)?,
+        }));
+    }
     let skipped: Vec<Value> = found
         .skipped
         .iter()
@@ -129,7 +140,8 @@ pub fn next(project: &Path, home: &Path, holder: Option<&str>) -> Result<Value> 
     Ok(json!({
         "action": "next", "project_id": id, "ledger": "ready", "holder": holder,
         "now": found.now, "next": next, "next_is": next_is,
-        "mine": mine, "ready": ready, "skipped": skipped, "writes": false,
+        "mine": mine, "ready": ready, "skipped": skipped, "warnings": warnings,
+        "writes": false,
     }))
 }
 
@@ -425,7 +437,9 @@ pub fn reopen(
 }
 
 /// `card done C-n`: `review` becomes `done` when a criterion is met, none is open and a merged
-/// pull request is linked; the reservation ends.
+/// pull request is linked; the reservation ends. A card that names a SPEC closes only while
+/// that SPEC passes `spec check` and every one of its acceptance criteria has a `verify:`
+/// command or a `manual:` check (card C-86 slice 2, [`spec_link::done_refusal`]).
 pub fn done(
     project: &Path,
     home: &Path,
@@ -435,6 +449,13 @@ pub fn done(
 ) -> Result<Value> {
     let card_id = card_id("done", reference)?;
     let (id, mut ledger) = open_for_write(project, home)?;
+    let spec = spec_link::kind_and_spec(ledger.conn(), card_id)
+        .map_err(|e| LedgerError::from(e).to_string())?
+        .and_then(|(_, spec)| spec);
+    if let Some(why) = spec_link::done_refusal(project, &input::card_name(card_id), spec.as_deref())
+    {
+        return Err(format!("card done refused: {why}; nothing was changed"));
+    }
     let moved =
         workflow::done(&mut ledger, card_id, holder, generation).map_err(|e| refusal("done", e))?;
     Ok(moved_json("done", &id, &moved))

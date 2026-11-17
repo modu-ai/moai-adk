@@ -2195,9 +2195,59 @@ mod skill_package {
         "model",
     ];
     const ALLOWED_KEYS: [&str; 4] = ["name", "description", "license", "metadata"];
+    /// The four new designs a legacy row may be deferred to (user decision 2026-11-17, Go
+    /// generation inheritance: concepts are redesigned, files are not ported).
+    const LEGACY_DESIGNS: [&str; 4] = [
+        "design:code-atlas-read-plan",
+        "design:language-domain-guides",
+        "design:edit-time-diagnostics-hook",
+        "design:project-agent-skill-generation",
+    ];
+    /// The only legacy rows that may be `adopted`: the 16 already shipped (card note
+    /// 6783558175), source path without the Go installer's template prefix → the file that
+    /// carries it. Each source appears twice in the map.
+    const LEGACY_ADOPTED: [(&str, &str); 9] = [
+        (".claude/skills/moai/SKILL.md", "skills/moai/SKILL.md"),
+        (
+            ".claude/skills/moai/workflows/plan.md",
+            "skills/moai/workflows/plan.md",
+        ),
+        (
+            ".claude/skills/moai/workflows/run.md",
+            "skills/moai/workflows/run.md",
+        ),
+        (
+            ".claude/skills/moai/workflows/sync.md",
+            "skills/moai/workflows/sync.md",
+        ),
+        ("AGENTS.md", "src/agents.rs"),
+        ("AGENTS.md.tmpl", "src/agents.rs"),
+        (
+            ".claude/output-styles/moai/moai.md",
+            "templates/claude/output-styles/moai.md",
+        ),
+        (
+            ".claude/output-styles/moai/moai-easy.md",
+            "templates/claude/output-styles/moai-easy.md",
+        ),
+        (
+            ".claude/output-styles/moai/moai-learn.md",
+            "templates/claude/output-styles/moai-learn.md",
+        ),
+    ];
 
     fn root() -> PathBuf {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai")
+    }
+
+    /// Splits a legacy row's status `adopted(<path>)`, `rejected(<reason>)` or
+    /// `deferred(<design or SPEC id>)` into the verdict and its argument; anything else,
+    /// including an empty or placeholder argument, is not a verdict.
+    fn legacy_verdict(status: &str) -> Option<(&str, &str)> {
+        let (verdict, rest) = status.split_once('(')?;
+        let arg = rest.strip_suffix(')')?.trim();
+        let known = ["adopted", "rejected", "deferred"].contains(&verdict);
+        (known && !arg.is_empty() && !arg.starts_with('<')).then_some((verdict, arg))
     }
     fn files(dir: &Path, base: &Path, out: &mut Vec<String>) {
         for entry in fs::read_dir(dir).unwrap() {
@@ -2612,7 +2662,11 @@ mod skill_package {
             "or that changes a `guarded` setting — permissions, keys, the real HOME and global settings, deletions or repository protection settings — goes to the user and waits",
             "Cost, permissions, external transmission and destructive effects beyond the authorized scope are case (2).",
             // Audit B1 on #2620: the leader's own decision stays inside the autonomy level.
-            "what the chosen autonomy level still reserves for the user (new Issues, lifting a HOLD, merge-policy changes and releases at `semi`) goes to the user as case (4)",
+            // Card C-81 (leader decision after audit B1): a tag or release left case (4), where a
+            // deadline default applies, for case (2) at every autonomy level; lifting a HOLD stays
+            // a `semi` case-(4) choice until the user decides it.
+            "what the chosen autonomy level still reserves for the user (new Issues, lifting a HOLD and merge-policy changes at `semi`) goes to the user as case (4)",
+            "pushing a tag or publishing a release is case (2) at every autonomy level, `full` included",
             "Independent audit and the CI gate are never delegated.",
             "its options, the default, whether it is reversible, its category (`none`, `guarded` or one of the five), its deadline and who decided; a decision without a record does not count.",
             // #2678: a reported figure comes from a named command, and silence is not zero.
@@ -2640,10 +2694,42 @@ mod skill_package {
         for line in [
             "within the autonomy level SPEC §6 gives — at `semi` the choices listed below for that level still go to the user",
             "record it with every field SKILL.md names",
-            "At `semi`, new Issues, lifting a HOLD, merge-policy changes and releases also go to the user.",
+            "Pushing a tag or publishing a release goes to the user and waits at every autonomy level, `full` included, with no deadline default (`SKILL.md` case (2), card C-81).",
+            "At `semi`, new Issues, lifting a HOLD and merge-policy changes also go to the user.",
         ] {
             assert!(leader.contains(line), "mode-leader.md lacks: {line}");
         }
+        // Card C-81: no text still puts a release among the case-(4) choices or limits it to
+        // `semi`; lifting a HOLD is not moved to case (2) without a user decision.
+        for (name, body) in [("SKILL.md", &skill), ("mode-leader.md", &leader)] {
+            for old in [
+                "merge-policy changes and releases",
+                "releases at `semi`",
+                "lifting a HOLD and pushing a tag",
+            ] {
+                assert!(!body.contains(old), "{name} still says {old:?}");
+            }
+        }
+        // Audit K1 on C-81: the autonomy SPEC's §6 rows say the same (the `full` row gives the
+        // user the release tag and publish; the `semi` row adds lifting a HOLD).
+        let spec = fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join(SPEC)).unwrap();
+        let row = |start: &str| {
+            spec.lines()
+                .find(|l| l.starts_with(start))
+                .unwrap_or_else(|| panic!("§6 row {start}"))
+                .to_string()
+        };
+        let full = row("| full(완전자율) |");
+        assert!(
+            full.contains("+ release 태그·게시(SKILL.md 경우 (2), 기한 기본값 없음, 카드 C-81) |"),
+            "{full}"
+        );
+        assert!(!full.contains("HOLD 해제"), "{full}");
+        let semi = row("| semi(반자율) |");
+        assert!(
+            semi.ends_with("| full의 목록 + Issue 신규 발행, HOLD 해제, 병합 정책 변경 |"),
+            "{semi}"
+        );
         assert!(agent.contains("send a choice to the leader — not to the user"));
         assert!(agent.contains(
             "never declare a HOLD outside the five categories, `guarded` and `irreversible`"
@@ -3076,9 +3162,46 @@ mod skill_package {
                 .count();
             assert_eq!(map_ref["rows_by_intent"][i], json!(n), "{i}");
         }
+        let repo = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let mut counts = serde_json::Map::new();
         for a in assets {
-            // Unmapped originals stay unchecked; nothing is marked done or dropped.
-            assert_eq!(a["status"], json!("unchecked"), "{}", a["path"]);
+            // Every row has a verdict and none stays `unchecked` (user decision 2026-11-17,
+            // replacing REQ-02A-04's "unchecked until adopted"): an adoption names the file that
+            // carries it, a rejection its reason, a deferral one of the new designs or a SPEC.
+            let status = a["status"].as_str().unwrap();
+            let (verdict, arg) = legacy_verdict(status)
+                .unwrap_or_else(|| panic!("{}: `{status}` is not a verdict", a["path"]));
+            let path = a["path"].as_str().unwrap();
+            let source = path
+                .strip_prefix("internal/template/templates/")
+                .unwrap_or(path);
+            let shipped = LEGACY_ADOPTED.iter().find(|(s, _)| *s == source);
+            assert_eq!(
+                (verdict == "adopted").then_some(arg),
+                shipped.map(|(_, target)| *target),
+                "{path}: only the shipped rows are adopted, each by its own file"
+            );
+            match verdict {
+                "adopted" => assert!(
+                    !arg.starts_with('/') && !arg.contains("..") && repo.join(arg).is_file(),
+                    "{}: adopted path `{arg}` is not a file of this repository",
+                    a["path"]
+                ),
+                "rejected" => assert!(
+                    arg.split_whitespace().count() >= 3,
+                    "{}: `{arg}` is not a reason",
+                    a["path"]
+                ),
+                _ => assert!(
+                    LEGACY_DESIGNS.contains(&arg)
+                        || (arg.starts_with("SPEC-")
+                            && repo.join(".moai/specs").join(arg).is_dir()),
+                    "{}: deferred to unknown `{arg}`",
+                    a["path"]
+                ),
+            }
+            let n = counts.entry(verdict).or_insert(json!(0));
+            *n = json!(n.as_u64().unwrap() + 1);
             assert_eq!(a["sha256"].as_str().unwrap().len(), 64);
             let mapped = a["intents"].as_array().unwrap();
             assert!(mapped
@@ -3088,6 +3211,8 @@ mod skill_package {
                 assert!(a["proposed_route"].is_string(), "{}", a["path"]);
             }
         }
+        // The package keeps the verdict counts next to the map's sha256.
+        assert_eq!(map_ref["verdicts"], Value::Object(counts));
         // Pointers only: no legacy bytes are copied into the package.
         assert!(package_files()
             .iter()

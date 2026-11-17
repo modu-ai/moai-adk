@@ -97,6 +97,12 @@ fn repo(branch: &str) -> (tempfile::TempDir, PathBuf) {
     fs::write(root.join(".gitignore"), "home/\n").unwrap();
     git(&root, &["add", "a.txt", ".gitignore"]);
     git(&root, &["commit", "-q", "-m", "init"]);
+    // SPEC-20261117-commit-guard-users: the `issue/<n>` guard applies in a clone with a live
+    // lane session, so an `issue/` fixture is a lane clone (tests/commit_guard_users.rs has
+    // the ordinary-user side).
+    if branch.starts_with("issue/") {
+        common::register_lane(&root);
+    }
     (dir, root)
 }
 
@@ -1326,7 +1332,12 @@ fn a_commit_with_its_token_spawns_one_git_and_one_without_spawns_three() {
     assert_eq!(n, 1, "token present: the branch lookup only");
     let (n, r) = calls("git commit -m x");
     assert_deny(&r);
-    assert_eq!(n, 3, "no token: branch + two rev-parse for the journal");
+    // SPEC-20261117-commit-guard-users: a refusal also reads the clone's session registry,
+    // located by the same two rev-parse calls; the token path above is unchanged.
+    assert_eq!(
+        n, 5,
+        "no token: branch + two rev-parse for the journal + two for the session registry"
+    );
     let (n, r) = calls("ls");
     assert_allow(&r);
     assert_eq!(n, 0, "not a commit: no git at all");
@@ -1907,6 +1918,8 @@ fn git_dash_c_names_the_worktree_the_commit_runs_in() {
         &primary,
         &["worktree", "add", "-q", "-b", "issue/77-k", "wt77"],
     );
+    // A lane worktree belongs to a lane clone (SPEC-20261117-commit-guard-users).
+    common::register_lane(&primary);
     let wt = primary.join("wt77");
     // From the primary checkout, a commit in the lane worktree without its token: denied.
     let r = dispatch(
@@ -2007,6 +2020,84 @@ fn a_compacted_session_is_told_how_to_check_not_that_instructions_are_done() {
     assert!(!plain.contains("compact"), "{plain}");
     // The branch name's words are not echoed.
     assert!(!compact.contains("-k"), "{compact}");
+}
+
+/// Card C-87 S1 (SPEC-20261117-language-reach AC-3): every session start, resume and compaction
+/// names the conversation language the user chose — the project's `language.user_chat`, else
+/// the one recorded in HOME — so a compacted session keeps it; with neither (or an unreadable
+/// profile and nothing in HOME) no language is named, and the hook still answers.
+#[test]
+fn session_check_names_the_conversation_language() {
+    let (_d, root) = repo("issue/77-k");
+    let sentence = |name: &str, code: &str, from: &str| {
+        format!(
+            "Conversation language: {name} (`{code}`), from {from}: talk with the user in it and \
+             relay subagent reports to the user in it."
+        )
+    };
+    let sources = ["startup", "resume", "compact"];
+    for source in sources {
+        let ctx = session_context("claude", &root, Some(json!(source)));
+        assert!(!ctx.contains("Conversation language"), "{source}: {ctx}");
+    }
+    // The language the user recorded in HOME (the installer's choice); `language-set` writes
+    // only into an existing HOME state folder, as an installed HOME has.
+    fs::create_dir_all(root.join("home/.moai-cli")).unwrap();
+    let set = run_program(
+        Path::new(BIN),
+        &["language-set", "--home", "ja"],
+        &root,
+        b"",
+        &[],
+    )
+    .unwrap();
+    assert_eq!(set.code, 0, "{}{}", set.stdout, set.stderr);
+    assert!(set.stdout.contains("\"written\":true"), "{}", set.stdout);
+    let home_line = sentence("Japanese", "ja", "the language recorded in HOME");
+    for source in sources {
+        let ctx = session_context("claude", &root, Some(json!(source)));
+        assert!(ctx.contains(&home_line), "{source}: {ctx}");
+    }
+    // The project's choice comes first; the compacted text keeps it ahead of the compaction
+    // sentences.
+    let profile = |language: Value| {
+        let mut p = json!({"schema_version": 2, "project_id": "demo", "purpose": "x",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]});
+        p["language"] = language;
+        fs::create_dir_all(root.join(".moai-cli")).unwrap();
+        fs::write(
+            root.join(".moai-cli/project.yaml"),
+            serde_json::to_vec_pretty(&p).unwrap(),
+        )
+        .unwrap();
+    };
+    profile(json!({"user_chat": "ko", "code_comments": "en"}));
+    let project_line = sentence("Korean", "ko", "the project's `language.user_chat`");
+    let plain = session_context("claude", &root, Some(json!("startup")));
+    let compact = session_context("claude", &root, Some(json!("compact")));
+    assert!(plain.ends_with(&project_line), "{plain}");
+    assert!(compact.starts_with(&plain), "{compact}");
+    assert!(
+        compact.contains("This session was just compacted."),
+        "{compact}"
+    );
+    assert!(!compact.contains("Japanese"), "{compact}");
+    let codex = session_context("codex", &root, Some(json!("compact")));
+    assert!(codex.contains(&project_line), "{codex}");
+    // A profile that names no conversation language falls back to HOME.
+    profile(json!({"code_comments": "en"}));
+    let ctx = session_context("claude", &root, Some(json!("startup")));
+    assert!(ctx.contains(&home_line), "{ctx}");
+    // An unreadable profile, or one with an unsupported code, is not read: HOME again.
+    fs::write(root.join(".moai-cli/project.yaml"), "{not yaml: [").unwrap();
+    assert!(session_context("claude", &root, Some(json!("startup"))).contains(&home_line));
+    profile(json!({"user_chat": "fr"}));
+    assert!(session_context("claude", &root, Some(json!("startup"))).contains(&home_line));
+    // Nothing in HOME either: no language is named, and the hook answers as usual.
+    fs::remove_dir_all(root.join("home")).unwrap();
+    fs::create_dir_all(root.join("home")).unwrap();
+    let ctx = session_context("claude", &root, Some(json!("compact")));
+    assert!(!ctx.contains("Conversation language"), "{ctx}");
 }
 
 #[test]
