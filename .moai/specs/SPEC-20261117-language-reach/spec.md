@@ -83,4 +83,21 @@ AC1·AC3을 다루고, AC2는 기존 사용자 결정과 부딪혀서 결정을 
 
 ## Result
 
-아직 비어 있어요(구현 뒤 채워요).
+구현 에이전트가 2026-11-17에 채웠어요. 감사가 다시 확인해요. 기준 `c0b858de8c`, 커밋 `6da6026430`, 이 worktree의
+`target/`, `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=4`, macOS arm64, cargo는 한 번에 하나.
+
+RED(08:35:57Z): `language::` 2개(고르지 않은 항목이 기본값으로 채워짐), `language_setting` 1개, `hook_dispatch_cli
+session_check_names_the_conversation_language`(대화 언어 문장 없음), `core_rules_2876` 1개(규칙 7 문장 없음) — 모두 의도한
+단언에서 실패. 통과 08:38:17Z.
+
+- AC-1: met — `--lib language::` 15 passed(항목마다 한 줄 시험 포함), `language_setting` 7
+- AC-2: met — 같은 `language_setting` 실행(`unknown_items_and_codes_are_refused`)
+- AC-3: met — `hook_dispatch_cli` 56(시작·재개·압축, 프로젝트 값 → HOME 값, 깨진 프로필·지원 안 하는 코드 → HOME, 둘 다 없음 → 문장 없음, codex)
+- AC-4: met — `core_rules_2876` 5, core-rules.md 3961/4096바이트, `source_manifest.py check` ok, `package-inspect skills/moai` ok
+- AC-5: met — `--bin moai` 27, `agents_project_cli` 5, `gitignore_block_cli` 32, `repo_agents_md` 3, `product_cli` 75, `home_isolation_scan` 16, `mode_workflow_steps` 42, `help_layout` 10, `language_set_cli` 18, `go_settings_defaults` 4, `github_cli` 11, `hook_mode_cli` 5, `self_audit_cli` 5, `spec_cli` 17, `ac_command_lint` 5, 저장소 scan 대상 모두 exit 0; `cargo fmt --check` 0, `rustfmt --check --edition 2021 src/ops/*.rs` 0, clippy 0; Python 85 OK; `moai spec check --all` ok
+
+mutation 5개 모두 KILLED: 고르지 않은 항목을 대화 언어로 채우기, 프로젝트 `user_chat` 안 읽기, HOME 값 안 읽기, 모든 언어를
+English로, 관리 구간에서 언어 구간 빼기.
+
+실행 안 함: 전체 `cargo test`, Linux·Windows, 실제 HOME·실제 세션에서 hook 확인. 남은 일: 카드 AC2(D4 결정 뒤), AC4(적용된
+설정 표).
