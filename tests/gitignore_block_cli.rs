@@ -269,14 +269,20 @@ fn the_personal_file_is_listed_only_when_it_is_ignored() {
     }
 }
 
+/// SPEC-20261117-sdd-foundation REQ-2: every project keeps its SPECs in git, with or without
+/// GitHub Issues (user decision 2026-11-17 replaces decision 6892663669 "Issues only").
 #[test]
-fn specs_stay_in_git_only_for_a_project_without_github_issues() {
-    for (issues, kept) in [(None, true), (Some(false), true), (Some(true), false)] {
+fn specs_stay_in_git_for_every_project() {
+    for issues in [None, Some(false), Some(true)] {
         let fx = Fx::new(issues);
         fx.apply_ok("none");
-        assert_eq!(
+        assert!(
             !fx.ignored(".moai-cli/specs/SPEC-1/spec.md"),
-            kept,
+            "github_issues {issues:?}:\n{}",
+            fx.ignore()
+        );
+        assert!(
+            fx.ignore().contains("!.moai-cli/specs/\n"),
             "github_issues {issues:?}:\n{}",
             fx.ignore()
         );
@@ -743,7 +749,7 @@ fn what_git_tracks_in_the_earlier_folder_keeps_its_place_in_the_new_one() {
     let plan = fx.plan("none");
     let row = Fx::ignore_row(&plan);
     let detail = row["detail"].as_str().unwrap();
-    for name in ["specs/", "state/", "evidence/"] {
+    for name in ["state/", "evidence/"] {
         let note = format!(
             "kept because git tracks .moai-cli/{name}, which the update moves to .moai/{name}"
         );
@@ -753,6 +759,15 @@ fn what_git_tracks_in_the_earlier_folder_keeps_its_place_in_the_new_one() {
             "{name}:\n{detail}"
         );
     }
+    // `specs/` is on the fixed list for every project, so it needs no "kept because" note.
+    assert!(
+        detail.lines().any(|l| l == "+ !.moai/specs/"),
+        "specs/:\n{detail}"
+    );
+    assert!(
+        !detail.contains("kept because git tracks .moai-cli/specs/"),
+        "specs/:\n{detail}"
+    );
     fx.apply_ok("none");
     git_ok(&fx.root, &["add", "-A"]);
     let listed = git(

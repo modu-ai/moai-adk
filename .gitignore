@@ -353,7 +353,11 @@ dist-ssr/
 # decision 2026-11-13, Issue #2667; replaces the per-machine rule of 2026-11-08).
 # ===========================================
 /.claude/
-/.moai/
+# SPECs are shared project files and stay in git (user decision 2026-11-17, SDD always;
+# SPEC-20261117-sdd-foundation). git cannot re-include a child of an excluded folder, so the
+# folder's contents are excluded instead of the folder itself, and `specs/` is re-included.
+/.moai/*
+!/.moai/specs/
 # Rust build output of the root package (isolated builds use CARGO_TARGET_DIR)
 /target/
 # Lane worktrees for every host (user decision 2026-11-08): inside the primary checkout so the Go hook allows
@@ -362,6 +366,7 @@ dist-ssr/
 # Apply receipts and their before-bytes stay local (#2590, docs/rust-product-path.md "Per-file receipts
 # and recovery"); the profile baseline .moai-cli/manifests/profile-baseline.json is tracked with project.yaml
 /.moai-cli/receipts/
-# Go-generation MoAI state at any depth (user instruction 2026-11-08; the root entries above cover the primary)
+# Go-generation MoAI state at any depth (user instruction 2026-11-08; the root entries above cover the primary).
+# The `.moai/` line matches below the root only (`*/**/`), so it does not undo `!/.moai/specs/` above.
 .claude/
-.moai/
+*/**/.moai/
