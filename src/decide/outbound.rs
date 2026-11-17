@@ -2084,6 +2084,11 @@ mod tests {
             fill("eyJ-"),
             fill("eyJ."),
             fill("xAKIA1"),
+            // Glued after a letter with no digit in the tail: the whole tail is read at each
+            // prefix and none is a hit.
+            fill("xAKIA"),
+            fill("xASIA"),
+            fill("xAIza"),
             fill("sk-"),
             fill("xoxb-"),
             fill("glpat-"),
