@@ -190,31 +190,32 @@ valid_version() {
     return 1
 }
 
+# The supported platforms (user decision 2026-11-17, SPEC-20261117-supported-platforms): macOS on
+# Apple silicon, Linux x86_64 and Windows x86_64 (install.ps1). Anything else stops here, before a
+# download or a write.
 detect_target() {
     os=$(uname -s)
     arch=$(uname -m)
-    case "$os" in
-        Darwin) os_part="apple-darwin" ;;
-        Linux)
-            os_part="unknown-linux-gnu"
+    machine="$arch"
+    # An x86_64 shell under Rosetta 2 on Apple silicon reports x86_64; the machine is arm64.
+    # The system's own sysctl, by absolute path: a `sysctl` earlier on PATH is not asked.
+    if [ "$os" = "Darwin" ] && [ "$arch" = "x86_64" ] &&
+        [ "$(/usr/sbin/sysctl -n sysctl.proc_translated 2>/dev/null || true)" = "1" ]; then
+        machine="arm64"
+    fi
+    case "$os/$machine" in
+        Darwin/arm64 | Darwin/aarch64) TARGET="aarch64-apple-darwin" ;;
+        Linux/x86_64 | Linux/amd64)
+            TARGET="x86_64-unknown-linux-gnu"
             if [ -n "${WSL_DISTRO_NAME:-}" ]; then
                 print_info "Detected WSL environment: $WSL_DISTRO_NAME"
             fi
             ;;
         *)
-            print_info "Supported operating systems: macOS, Linux (Windows: install.ps1)"
-            die "Unsupported OS: $os"
+            print_info "Supported platforms: macOS arm64 (Apple silicon), Linux x86_64, Windows x86_64 (install.ps1)"
+            die "Unsupported platform: $os $arch"
             ;;
     esac
-    case "$arch" in
-        x86_64 | amd64) arch_part="x86_64" ;;
-        arm64 | aarch64) arch_part="aarch64" ;;
-        *)
-            print_info "Supported architectures: x86_64 (amd64), arm64 (aarch64)"
-            die "Unsupported architecture: $arch"
-            ;;
-    esac
-    TARGET="$arch_part-$os_part"
     print_success "Detected platform: $TARGET"
 }
 

@@ -1,8 +1,10 @@
-# RC repository check set (00-E #2020; OS matrix rc.2 E2 #2194). The four targets of
-# decision 01:1x(11-09) are Linux x86_64/arm64 and macOS arm64/x86_64. User decision U10
+# RC repository check set (00-E #2020; OS matrix rc.2 E2 #2194). The targets are the three
+# supported platforms (user decision 2026-11-17, SPEC-20261117-supported-platforms, replacing
+# the four Unix targets of decision 01:1x(11-09)): Linux x86_64 and macOS arm64 run the check
+# set below, Windows x86_64 is windows-build. User decision U10
 # (#2554, #1975 comment 6827126248) moves the timing, not the content: a PR to v2026.11.0
 # runs linux-x86_64 only; the push that merges into v2026.11.0 (and workflow_dispatch)
-# runs all four targets plus windows-build with the same check set. The `ci` job
+# runs linux-x86_64 and macos-arm64 plus windows-build with the same check set. The `ci` job
 # aggregates the targets of its run so one `ci` check reports the result (the
 # integration ruleset requires only `moai/audit`; `ci` is read by name).
 # Runner labels: standard GitHub-hosted runners for public repositories, free and unlimited
@@ -59,13 +61,12 @@ jobs:
       # Every target is a measurement: one failure must not cancel the others.
       fail-fast: false
       # #2554 (U10): `pull_request` gets the first list (linux-x86_64), every other event
-      # the second (all four). The linux-arm64 cap is 45 min: 20 runs before #2554 took
-      # 28.1 min (median) and 29.1 min (max) there, 1-2 min under the old 30-min cap.
+      # the second (linux-x86_64 and macos-arm64, SPEC-20261117-supported-platforms).
       matrix:
         include: >-
           ${{ fromJSON(github.event_name == 'pull_request'
           && '[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30}]'
-          || '[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30},{"target":"linux-arm64","runner":"ubuntu-24.04-arm","timeout":45},{"target":"macos-arm64","runner":"macos-15","timeout":45},{"target":"macos-x86_64","runner":"macos-15-intel","timeout":60}]') }}
+          || '[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30},{"target":"macos-arm64","runner":"macos-15","timeout":45}]') }}
     env:
       CARGO_TERM_COLOR: never
       PYTHONDONTWRITEBYTECODE: "1"
@@ -166,8 +167,7 @@ jobs:
           version=0.9.151
           case "${{ matrix.target }}" in
             linux-x86_64) asset=x86_64-unknown-linux-gnu; sum=1d4ce302b820c41f4b89c5fb9bce45f0f0c94882c1cf08fc360caf08be6e7df4 ;;
-            linux-arm64) asset=aarch64-unknown-linux-gnu; sum=3e35e8f6913af92558ba09d7155f74e35dd1f0024ef3cd891637433ae4eacbdd ;;
-            macos-arm64|macos-x86_64) asset=universal-apple-darwin; sum=d1d7d025d4bfc9fb154cd76aea3949bd78534829a0589abefa6e5dd4edb135dd ;;
+            macos-arm64) asset=universal-apple-darwin; sum=d1d7d025d4bfc9fb154cd76aea3949bd78534829a0589abefa6e5dd4edb135dd ;;
             *) echo "no pinned cargo-nextest asset for ${{ matrix.target }}" >&2; exit 1 ;;
           esac
           file="$RUNNER_TEMP/cargo-nextest-${version}-${asset}.tar.gz"
@@ -274,7 +274,9 @@ jobs:
           [ "${{ needs.check.result }}" = "success" ]
 
   # E3 #2195 (decision 01:1x(11-09): Windows is build + self-replace only, support table
-  # not_run). Compile all targets, including portable test targets, without running tests.
+  # not_run). Windows x86_64 is a supported platform since 2026-11-17
+  # (SPEC-20261117-supported-platforms); running its tests here is a later slice of that work.
+  # Compile all targets, including portable test targets, without running tests.
   # Unix-only test setup is cfg(unix)-gated; Windows runtime replacement and host loading
   # remain not_run.
   # Standard GitHub-hosted runner, no secrets. Not part of the required `ci` check.

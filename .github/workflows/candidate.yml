@@ -1,7 +1,8 @@
 # Candidate verification (#2554 PR-A, user decision #1975 6907950823).
-# After the user decides on a release, the leader pins one commit and verifies it on all five
-# targets - Linux x86_64, Linux ARM, macOS Intel, macOS ARM and Windows - with the same check
-# set the `ci` workflow runs, including the tests on Windows. The commit is pinned by the
+# After the user decides on a release, the leader pins one commit and verifies it on the three
+# supported platforms - Linux x86_64, macOS arm64 and Windows x86_64 (user decision 2026-11-17,
+# SPEC-20261117-supported-platforms) - with the same check set the `ci` workflow runs,
+# including the tests on Windows. The commit is pinned by the
 # name of the branch that is pushed:
 #
 #   git push origin <sha>:refs/heads/candidate/<sha>      (the name carries all 40 characters)
@@ -70,20 +71,6 @@ jobs:
       nextest_asset: x86_64-unknown-linux-gnu
       nextest_sha256: 1d4ce302b820c41f4b89c5fb9bce45f0f0c94882c1cf08fc360caf08be6e7df4
 
-  linux-arm64:
-    name: candidate / linux-arm64
-    needs: [pin]
-    permissions:
-      contents: read
-    uses: ./.github/workflows/candidate-target.yml
-    with:
-      sha: ${{ needs.pin.outputs.sha }}
-      target: linux-arm64
-      runner: ubuntu-24.04-arm
-      timeout: 45
-      nextest_asset: aarch64-unknown-linux-gnu
-      nextest_sha256: 3e35e8f6913af92558ba09d7155f74e35dd1f0024ef3cd891637433ae4eacbdd
-
   macos-arm64:
     name: candidate / macos-arm64
     needs: [pin]
@@ -95,20 +82,6 @@ jobs:
       target: macos-arm64
       runner: macos-15
       timeout: 45
-      nextest_asset: universal-apple-darwin
-      nextest_sha256: d1d7d025d4bfc9fb154cd76aea3949bd78534829a0589abefa6e5dd4edb135dd
-
-  macos-x86_64:
-    name: candidate / macos-x86_64
-    needs: [pin]
-    permissions:
-      contents: read
-    uses: ./.github/workflows/candidate-target.yml
-    with:
-      sha: ${{ needs.pin.outputs.sha }}
-      target: macos-x86_64
-      runner: macos-15-intel
-      timeout: 60
       nextest_asset: universal-apple-darwin
       nextest_sha256: d1d7d025d4bfc9fb154cd76aea3949bd78534829a0589abefa6e5dd4edb135dd
 
@@ -135,7 +108,7 @@ jobs:
   candidate:
     name: candidate
     if: ${{ !cancelled() }}
-    needs: [pin, linux-x86_64, linux-arm64, macos-arm64, macos-x86_64, windows-x86_64]
+    needs: [pin, linux-x86_64, macos-arm64, windows-x86_64]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:

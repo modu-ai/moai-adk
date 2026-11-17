@@ -2,6 +2,10 @@
 
 이 문서의 열 정의와 Codex 행은 02-C #1993, Claude Code 행은 02-B #1992, ZCode 행은 02-D #1994 소유다. 열 형식은 02-D가 먼저 정했고 02-C가 따른다(리더 결정 2026-11-08). host마다 surface를 나누고 항목마다 출처를 적는다. 출처가 둘 이상이면 ` ; `로 잇는다. 08-D #2015 release 검토가 이 표를 읽는다. Claude Code 행의 소유는 리더 결정(2026-11-08)이다.
 
+## 지원 플랫폼
+
+MoAI-ADK가 제공하는 플랫폼은 macOS arm64(`aarch64-apple-darwin`), Linux x86_64(`x86_64-unknown-linux-gnu`), Windows x86_64(`x86_64-pc-windows-msvc`) 세 개다(사용자 결정 2026-11-17, `SPEC-20261117-supported-platforms`: "claude code, codex에서 지원하는 환경으로 동일하게 지원하자"). Intel macOS와 Linux arm64는 제공하지 않는다. 이 문단은 플랫폼 범위만 정한다: 아래 host 행의 상태(`documented`·`unknown` 등)는 그대로이고, 플랫폼별 실측 결과는 [support-matrix.md](support-matrix.md)에 있다.
+
 ## 상태 어휘
 
 `capability_status`는 설계 10 §2의 capability 상태 모델을 따른다.
