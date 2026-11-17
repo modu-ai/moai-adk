@@ -19,7 +19,6 @@
 //! none of that logic is implemented here.
 
 use crate::contract::PROTOCOL_VERSION;
-use crate::SECRET_SHAPES;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -74,7 +73,7 @@ pub const PRODUCT: &str = "moai-cli";
 pub const GENERATION: &str = "rust-rc";
 
 /// One installed moai-cli binary (REQ-04A-01). Unknown keys are refused on read; no
-/// field may carry a credential-shaped value (the shared `SECRET_SHAPES` token list of
+/// field may carry a credential-shaped value (each of the shared `SECRET_SHAPES` anywhere, list of
 /// the profile filter).
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -119,9 +118,13 @@ fn valid_sha256_field(s: &str) -> bool {
             .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
 
+/// Every shape anywhere, `sk-` included (C-90 audit N2): a receipt field is machine-written, so
+/// a false match costs nothing a person typed.
 fn secret_shaped(s: &str) -> bool {
     let lower = s.to_ascii_lowercase();
-    SECRET_SHAPES.iter().any(|shape| lower.contains(shape))
+    crate::SECRET_SHAPES
+        .iter()
+        .any(|shape| lower.contains(shape))
 }
 
 fn no_control(s: &str) -> bool {
