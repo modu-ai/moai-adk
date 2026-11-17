@@ -95,7 +95,7 @@ fn the_reference_names_only_commands_this_build_has() {
         .collect();
     actions.sort_unstable();
     actions.dedup();
-    assert_eq!(actions, ["check", "list", "new", "show"]);
+    assert_eq!(actions, ["check", "list", "new", "show", "take"]);
     let home = tempfile::tempdir().unwrap();
     for action in &actions {
         let out = Command::new(common::MOAI_BIN)

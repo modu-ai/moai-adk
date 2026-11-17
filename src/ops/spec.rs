@@ -1,18 +1,20 @@
 //! `spec` (SDD-2, SPEC-20261117-spec-tooling): the project's SPEC documents under
 //! `<project>/.moai/specs/<SPEC-ID>/spec.md`. One word, one action each; the parser and the
-//! checks are `moai_cli::spec_doc`. No action runs a program or reaches the network.
+//! checks are `moai_cli::spec_doc`. Only `take` runs a program (`moai_cli::spec_take`, SDD-7),
+//! and only `take --push` and `take --draft-pr` reach the network.
 
 use moai_cli::spec_doc::{self as sd, specs_dir, SpecDoc};
 use serde_json::{json, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Write, check, list and show the project's SPECs
+/// Write, check, list, show and take the project's SPECs
 ///
 /// `moai spec <action>` works on `<project>/.moai/specs/<SPEC-ID>/spec.md`, a SPEC id being
 /// `SPEC-<yyyymmdd>-<slug>`. `new` writes one new SPEC folder and its `spec.md` and nothing
-/// else; `check`, `list` and `show` read only. Go-generation SPECs (`SPEC-AUTH-001`) are read,
-/// never written. No action runs a program or reaches the network.
+/// else; `check`, `list` and `show` read only; `take` creates or switches to the SPEC's branch.
+/// Go-generation SPECs (`SPEC-AUTH-001`) are read, never written. Only `take --push` and
+/// `take --draft-pr` reach the network.
 #[derive(clap::Args)]
 pub struct Args {
     #[command(subcommand)]
@@ -91,6 +93,44 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the branch. Start work on a SPEC on its own branch
+    ///
+    /// Writes the branch. Checks that the SPEC exists, has the form `SPEC-<yyyymmdd>-<slug>` and
+    /// no error, then creates `spec/<yyyymmdd>-<slug>` from the base and switches to it, or
+    /// switches to it when it exists. Refused, with nothing changed, while the work tree has a
+    /// change outside the SPEC's own folder or when the branch carries another SPEC's
+    /// `Moai-Spec` trailer. `--card` links a card in the local ledger (`moai card spec`). Prints
+    /// the next commands (trailers, push, draft pull request) and runs none of them unless
+    /// `--push` (and `--draft-pr`, with the remote `origin` only) is given. git runs with the
+    /// user's own configuration, so the repository's hooks (`post-checkout`, `pre-push`) and
+    /// `core.fsmonitor` run even without `--push`; git never asks for a password, but ssh may
+    /// still ask for a key passphrase on the terminal.
+    Take {
+        /// The SPEC id.
+        id: String,
+        /// The branch or commit to start from and to open the pull request against (default:
+        /// the base recorded when the branch was created, else the current branch).
+        #[arg(long)]
+        base: Option<String>,
+        /// Link this card (C-number) to the SPEC in the local ledger.
+        #[arg(long)]
+        card: Option<String>,
+        /// The remote for the push.
+        #[arg(long, default_value = "origin")]
+        remote: String,
+        /// Push the branch to the remote (an external write).
+        #[arg(long)]
+        push: bool,
+        /// Also open a draft pull request with `gh` (needs `--push` and the remote `origin`).
+        #[arg(long)]
+        draft_pr: bool,
+        /// The project folder.
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME whose ledger `--card` writes (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
 }
 
 pub const OPERATION: &str = "spec";
@@ -120,6 +160,35 @@ pub fn run(args: Args) -> Result<Value, String> {
         } => check(&project, id.as_deref(), closure),
         Action::List { project } => list(&project),
         Action::Show { id, project, home } => show(&project, &id, home),
+        Action::Take {
+            id,
+            base,
+            card,
+            remote,
+            push,
+            draft_pr,
+            project,
+            home,
+        } => {
+            let gh = if draft_pr {
+                moai_cli::forge::transport::GhTransport::from_env()
+                    .map_err(|e| format!("spec take refused: {e}"))?
+                    .bin
+            } else {
+                "gh".to_string()
+            };
+            moai_cli::spec_take::take(&moai_cli::spec_take::Request {
+                project: &project,
+                id: &id,
+                base: base.as_deref(),
+                remote: &remote,
+                card: card.as_deref(),
+                home: home.as_deref(),
+                push,
+                draft_pr,
+                gh: &gh,
+            })
+        }
     }
 }
 

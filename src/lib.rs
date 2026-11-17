@@ -140,6 +140,7 @@ pub mod skills_legacy;
 pub mod spec;
 pub mod spec_doc;
 pub mod spec_links;
+pub mod spec_take;
 pub mod startable;
 pub mod state_root;
 pub mod status_line;
