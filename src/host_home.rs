@@ -129,6 +129,68 @@ pub fn resolve_with(
     Ok(variable_dir(host, get)?.unwrap_or_else(default))
 }
 
+/// Where a path below a host folder really is: `base` is the folder the link checks start at
+/// (it must itself be a real folder or absent) and `rel` the path below it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Place {
+    pub base: PathBuf,
+    pub rel: PathBuf,
+}
+
+impl Place {
+    pub fn path(&self) -> PathBuf {
+        self.base.join(&self.rel)
+    }
+}
+
+/// `rel` (for example `skills/moai`, `agents`, `output-styles/MoAI-Easy.md`) below the host
+/// folder of `home`. When the host folder is relocated and the first part of `rel` is a link to
+/// a folder there (a dangling link counts), the link is followed only when it resolves to that same folder under `home`'s
+/// default host folder (both real paths equal): the place is then that default folder (user
+/// decision 2026-11-17, selection "기본 폴더 링크만 허용"). A link to anything else, or to a default
+/// folder that is not there, is refused naming the link and what to do. Everything else is the
+/// path as it is; the callers check the folders for links as before.
+pub fn place(host: Host, home: &Path, rel: &str) -> Result<Place, String> {
+    let root = resolve(host, home)?;
+    place_in(host, home, &root, rel)
+}
+
+/// [`place`] below a host folder `root` already resolved for `home`.
+pub fn place_in(host: Host, home: &Path, root: &Path, rel: &str) -> Result<Place, String> {
+    let default_root = home.join(host.default_dir());
+    let plain = || Place {
+        base: root.to_path_buf(),
+        rel: PathBuf::from(rel),
+    };
+    let Some(first) = Path::new(rel).components().next() else {
+        return Ok(plain());
+    };
+    if root == default_root {
+        return Ok(plain());
+    }
+    let link = root.join(first);
+    // Only a link to a folder is a projection folder; a linked file (`settings.json`) is left
+    // to the callers, which refuse it.
+    if !std::fs::symlink_metadata(&link).is_ok_and(|m| m.file_type().is_symlink())
+        || std::fs::metadata(&link).is_ok_and(|m| !m.is_dir())
+    {
+        return Ok(plain());
+    }
+    let want = default_root.join(first);
+    match (std::fs::canonicalize(&link), std::fs::canonicalize(&want)) {
+        (Ok(a), Ok(b)) if a == b => Ok(Place {
+            base: default_root,
+            rel: PathBuf::from(rel),
+        }),
+        _ => Err(format!(
+            "{} is a link to a folder other than {}; make it a real folder, or a link to {}",
+            link.display(),
+            want.display(),
+            want.display()
+        )),
+    }
+}
+
 /// [`resolve`] for a host named `claude`, `codex` or `omp`.
 pub fn resolve_named(host: &str, home: &Path) -> Result<PathBuf, String> {
     let h = Host::from_name(host).ok_or_else(|| format!("unknown host {host:?}"))?;

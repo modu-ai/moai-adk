@@ -31,17 +31,17 @@ const STATE_DIR: &str = "agents";
 /// (code.claude.com/docs/en/sub-agents), Codex `~/.codex/agents/` (learn.chatgpt.com
 /// agent-configuration/subagents), OMP `~/.omp/agent/agents/` (github.com/can1357/oh-my-pi
 /// `docs/task-agent-discovery.md`, read 2026-11-13; #2633). The host folder is
-/// [`crate::host_home`]'s (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, card C-79).
+/// [`crate::host_home`]'s (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, card C-79); a relocated
+/// `agents` link to the default folder is followed there (decision "기본 폴더 링크만 허용").
 fn host_dir(home: &Path, host: &str) -> Result<PathBuf> {
-    Ok(host_root(home, host)?.join(host_rel(host)))
+    Ok(host_place(home, host)?.path())
 }
 
-/// The host folder (`~/.claude`, `~/.codex`, `~/.omp`, or the relocated one).
-fn host_root(home: &Path, host: &str) -> Result<PathBuf> {
-    match host {
-        "claude" | "codex" | "omp" => crate::host_home::resolve_named(host, home),
-        other => unreachable!("unknown agent host {other}"),
-    }
+/// The agent folder's place: the folder the link checks start at and the path below it.
+fn host_place(home: &Path, host: &str) -> Result<crate::host_home::Place> {
+    let h = crate::host_home::Host::from_name(host)
+        .unwrap_or_else(|| unreachable!("unknown agent host {host}"));
+    crate::host_home::place(h, home, host_rel(host))
 }
 
 /// The agent folder below the host folder.
@@ -146,9 +146,10 @@ fn plain_dir_or_absent(path: &Path) -> Result<()> {
 /// never a file. OMP's agent folder sits two levels below `~/.omp`, so each level is checked
 /// (#2633). Plan, apply and revert all check it.
 fn host_folders_plain(home: &Path, host: &str) -> Result<()> {
-    let mut path = host_root(home, host)?;
+    let place = host_place(home, host)?;
+    let mut path = place.base;
     plain_dir_or_absent(&path)?;
-    for part in Path::new(host_rel(host)).components() {
+    for part in place.rel.components() {
         path.push(part);
         plain_dir_or_absent(&path)?;
     }

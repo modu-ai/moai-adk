@@ -538,6 +538,28 @@ pub(crate) fn project_root(project: &Path, home: Option<&Path>) -> Result<PathBu
             return Err("home directory refused; hooks are written to a project tree only".into());
         }
     }
+    // C-79 (audit B1): the folders `CLAUDE_CONFIG_DIR` and `CODEX_HOME` name are user folders
+    // wherever they are, so a project inside one, or whose own `.claude`/`.codex` is one, would
+    // write the user-scope hooks; refused like `~/.claude`. An empty or relative value is
+    // refused by name (the same guard as `claude.rs` and `codex_config.rs`).
+    for (host, dir) in [
+        (crate::host_home::Host::Claude, ".claude"),
+        (crate::host_home::Host::Codex, ".codex"),
+    ] {
+        let named = crate::host_home::variable_dir(host, |k| std::env::var_os(k))
+            .map_err(|e| format!("user config folder refused: {e}"))?;
+        let Some(user) = named.and_then(|p| fs::canonicalize(p).ok()) else {
+            continue;
+        };
+        let own = fs::canonicalize(root.join(dir)).ok();
+        if root.starts_with(&user) || own.as_deref() == Some(user.as_path()) {
+            return Err(format!(
+                "user config folder refused: the project or its {dir} is the folder {} names; \
+                 hooks are written to a project tree only",
+                host.variable().unwrap_or_default()
+            ));
+        }
+    }
     Ok(root)
 }
 

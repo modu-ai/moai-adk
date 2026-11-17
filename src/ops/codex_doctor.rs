@@ -41,6 +41,15 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         Some(dir) => dir,
         None => moai_cli::host_home::resolve(moai_cli::host_home::Host::Codex, &home)?,
     };
+    // The report is JSON text: a folder name that is not UTF-8 is refused, never a panic
+    // (C-79 audit N3).
+    if codex_home.to_str().is_none() {
+        return Err(
+            "the Codex home (CODEX_HOME or --codex-home) is not UTF-8; codex-doctor reads only \
+             UTF-8 paths"
+                .into(),
+        );
+    }
     let cwd = args.cwd.unwrap_or_else(|| args.project.clone());
     moai_cli::hosts::codex::doctor(
         &args.project,

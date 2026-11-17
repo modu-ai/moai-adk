@@ -72,8 +72,13 @@ pub fn missing_skill(host: &str) -> Option<String> {
         _ => return None,
     };
     let home = crate::key_vault::home().ok()?;
-    // C-79: the host folder can be relocated; a variable that cannot be used is said by name.
-    let root = match crate::update::projection_root(&home, skill_host) {
+    skill_warning(name, crate::update::projection_root(&home, skill_host))
+}
+
+/// The warning for the skill folder `root` of host `name`. C-79: the host folder can be
+/// relocated; a folder that cannot be named is said with its reason.
+fn skill_warning(name: &str, root: Result<PathBuf, String>) -> Option<String> {
+    let root = match root {
         Ok(root) => root,
         Err(why) => {
             return Some(format!(
@@ -477,6 +482,23 @@ pub fn install_guidance() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// C-79 audit N1 (M8): a skill folder that cannot be named is warned about with the reason;
+    /// a folder without `SKILL.md` gets the install offer, and one with it gets no warning.
+    #[test]
+    fn the_skill_warning_names_an_unusable_folder_and_a_missing_copy() {
+        let why = "CLAUDE_CONFIG_DIR must be an absolute path".to_string();
+        let w = skill_warning("Claude Code", Err(why.clone())).expect("a warning");
+        assert!(w.contains("Claude Code") && w.contains(&why), "{w}");
+        let dir = tempfile::tempdir().unwrap();
+        let w = skill_warning("Codex", Ok(dir.path().to_path_buf())).expect("a warning");
+        assert!(
+            w.contains("has no SKILL.md") && w.contains("moai update"),
+            "{w}"
+        );
+        std::fs::write(dir.path().join("SKILL.md"), "x").unwrap();
+        assert_eq!(skill_warning("Codex", Ok(dir.path().to_path_buf())), None);
+    }
 
     #[test]
     fn the_file_system_root_is_never_a_project_folder() {

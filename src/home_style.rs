@@ -134,9 +134,13 @@ fn rel_path(host: &str, kind: &str) -> &'static str {
 }
 
 /// The target's host folder and its path below that folder.
+/// A relocated `output-styles` link to the default folder is followed there (decision
+/// "기본 폴더 링크만 허용"); the returned folder is where the link checks start.
 fn place(home: &Path, host: &str, kind: &str) -> Result<(PathBuf, &'static str)> {
     let rel = rel_path(host, kind);
-    Ok((crate::host_home::resolve_named(host, home)?, rel))
+    let h = crate::host_home::Host::from_name(host)
+        .unwrap_or_else(|| unreachable!("unknown style host {host}"));
+    Ok((crate::host_home::place(h, home, rel)?.base, rel))
 }
 
 /// The target file, after its host folder and every folder down to the file's parent were

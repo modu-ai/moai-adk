@@ -36,11 +36,12 @@ Claude Code는 `CLAUDE_CONFIG_DIR`, Codex는 `CODEX_HOME`으로 사용자 폴더
 - REQ-2 (REQ-1): IF the variable is set but empty or holds a relative path, THEN the resolver shall refuse with a message that names the variable and not its value.
 - REQ-3: Each MoAI step that reads or writes a host folder for the routing section or the home agents or the output style or the Claude skill copy or the Codex doctor or the Claude user settings shall take that folder from the one resolver.
 - REQ-4: Where the home is not the account's own home, the resolver shall return the folders under that home.
-- REQ-5 (REQ-1): IF the relocated folder or a folder below it on the way to a target is a link, THEN the step shall block that host without following the link.
+- REQ-5 (REQ-1): IF the relocated folder or a folder below it on the way to a target is a link that does not resolve to the same folder under the account home's default host folder, THEN the step shall block that host without following the link and name the link in the reason.
 - REQ-6: The Codex skill copy shall stay in the `.agents/skills` folder under HOME.
-- REQ-7: The user-scope guards shall refuse writing into a folder that `CLAUDE_CONFIG_DIR` or `CODEX_HOME` names.
+- REQ-7: The user-scope guards of the Claude settings and the Codex config and the hook writer shall refuse writing into a folder that `CLAUDE_CONFIG_DIR` or `CODEX_HOME` names.
 - REQ-8: The Go-generation cleanup and legacy scans shall keep their HOME-relative roots.
 - REQ-9: The repository SPECs shall pass `moai spec check --all`.
+- REQ-10 (REQ-1): IF a relocation variable holds a path that is not UTF-8, THEN the skill-copy preview and the Codex doctor shall leave out or refuse only that host without a panic.
 
 ## Acceptance
 
@@ -51,18 +52,22 @@ Claude Code는 `CLAUDE_CONFIG_DIR`, Codex는 `CODEX_HOME`으로 사용자 폴더
   `cargo test --locked --offline --lib host_home::`
 - AC-3 (REQ-4): 계정 홈이 아닌 홈(임시 HOME, 다른 계정 홈)은 변수가 있어도 그 아래 폴더를 써요.
   verify: `cargo test --locked --offline --test host_home_cli the_variables_count_only_for_the_account_home`
-- AC-4 (REQ-5): 링크인 `CLAUDE_CONFIG_DIR`은 라우팅·에이전트·스킬 복사에서 막히고 링크 너머에 아무것도 쓰지 않아요.
-  verify: `cargo test --locked --offline --test host_home_cli a_linked_config_folder_is_refused_not_followed`
+- AC-4 (REQ-5): 링크인 `CLAUDE_CONFIG_DIR`은 라우팅·에이전트·스킬 복사·출력 스타일에서 막히고 링크 너머에 아무것도 쓰지 않아요. 옮겨진 폴더 안의 `skills`·`agents` 링크는 계정 홈의 같은 기본 폴더(`.claude/skills`·`.claude/agents`·`.codex/agents`)로 갈 때만 따라가고, 계획과 적용이 그 폴더를 써요; 다른 곳으로 가는 링크나 없는 기본 폴더로 가는 링크는 막히고 사유가 그 링크 경로를 말해요.
+  verify: `cargo test --locked --offline --test host_home_cli -- a_linked_config_folder_is_refused_not_followed a_link_to_the_default_folder_is_followed_and_any_other_link_is_blocked the_output_style_refuses_a_linked_config_folder`
 - AC-5 (REQ-6): `CODEX_HOME`이 있어도 Codex 스킬 복사 위치는 HOME 아래 `.agents/skills/moai`예요.
   verify: `cargo test --locked --offline --test host_home_cli the_skill_copy_follows_claude_config_dir`
-- AC-6 (REQ-7): 프로젝트 `.claude`가 `CLAUDE_CONFIG_DIR`이거나 `.codex`가 `CODEX_HOME`이면 거절하는 기존 시험이 그대로 통과해요.
-  verify: `cargo test --locked --offline --test claude_settings_cli --test codex_config_cli`
+- AC-6 (REQ-7): 프로젝트 `.claude`가 `CLAUDE_CONFIG_DIR`이거나 `.codex`가 `CODEX_HOME`이면(또는 프로젝트가 그 폴더 안이면) Claude 설정·Codex 설정·훅 쓰기가 두 도구 모두 거절하고 아무것도 쓰지 않으며, 빈 값·상대 경로도 변수 이름으로 거절해요.
+  verify: `cargo test --locked --offline --test host_home_cli -- hooks_refuse_the_relocated_user_folders the_user_scope_guards_refuse_empty_and_relative_values`;
+  `cargo test --locked --offline --test claude_settings_cli --test codex_config_cli --test hooks_cli`
 - AC-7 (REQ-8): Go 정리·옛 스킬 검사 시험이 그대로 통과하고 그 뿌리 표는 바뀌지 않아요.
   verify: `cargo test --locked --offline --test update_cleanup_cli`;
   `git diff origin/v2026.11.0...HEAD -- src/skills_legacy.rs src/baseline.rs` → 출력 없음
 - AC-8 (REQ-9): 저장소의 SPEC이 모두 통과해요.
   verify: `cargo test --locked --offline --test spec_cli the_repository_specs_pass_check`
-- AC-9 (REQ-1…REQ-9): 이웃 검사가 모두 통과해요.
+- AC-10 (REQ-10): UTF-8이 아닌 `CLAUDE_CONFIG_DIR`은 `update-plan`에서 Claude만 막고(Codex는 계획), `codex-doctor`는 UTF-8이 아닌 `CODEX_HOME`을 종료 1로 거절해요; 실행기 경고는 폴더를 못 찾으면 이유를 말해요.
+  verify: `cargo test --locked --offline --test host_home_cli a_variable_that_is_not_utf8_blocks_only_its_host`;
+  `cargo test --locked --offline --lib launcher_init::`
+- AC-9 (REQ-1…REQ-10): 이웃 검사가 모두 통과해요.
   verify: `cargo test --locked --offline --lib`; `cargo test --locked --offline --bin moai`;
   `cargo test --locked --offline --test home_routing_cli --test home_style_cli --test agents_home_cli --test codex_adapter --test codex_config --test recovery_cli --test home_isolation_scan --test git_env_scrub --test product_cli`;
   `cargo test --locked --offline --test update_cli --test update_backup_replace --test update_command_cli --test update_end_to_end_cli --test update_home_layer_cli --test update_hooks_cli --test update_keys_cli --test update_known_good --test update_known_good_replace --test update_moved_receipts --test update_route --test update_tux_golden --test update_unmanaged_failclosed --test update_user_layer_cli --test update_version_folders`;
@@ -73,7 +78,7 @@ Claude Code는 `CLAUDE_CONFIG_DIR`, Codex는 `CODEX_HOME`으로 사용자 폴더
 
 - write: `src/host_home.rs`, `src/lib.rs`, `src/home_routing.rs`, `src/agent_install.rs`, `src/home_style.rs`,
   `src/update.rs`, `src/recovery.rs`, `src/update_cleanup.rs`, `src/claude.rs`, `src/hosts/codex_config.rs`,
-  `src/ops/codex_doctor.rs`, `tests/host_home_cli.rs`, `tools/repo_scans.json`,
+  `src/ops/codex_doctor.rs`, `src/hooks.rs`, `src/launcher_init.rs`, `tests/host_home_cli.rs`, `tools/repo_scans.json`,
   `docs/design-review/appendix/operations/home_routing_plan.md`, `docs/design-review/appendix/operations/agents_home_plan.md`,
   `docs/design-review/appendix/operations/home_style_plan.md`, `docs/design-review/appendix/operations/codex_doctor.md`,
   `.moai/specs/SPEC-20261117-host-home-resolver/spec.md`
@@ -95,6 +100,15 @@ Claude Code는 `CLAUDE_CONFIG_DIR`, Codex는 `CODEX_HOME`으로 사용자 폴더
 - 적용과 되돌리기 사이에 변수를 바꾸면 되돌리기가 다른 폴더를 봐요 → 그 폴더의 바이트가 영수증과 다르면 건너뛰고
   보고해요(기존 `user_changed_since_apply` 규칙).
 - `update_cleanup`은 HOME 밖으로 옮겨진 스킬 폴더의 남은 파일을 정리하지 않아요(Non-goals).
+- 비밀번호 데이터베이스가 없는 시스템(Windows 등)에서는 계정 홈이 `key_vault::home`(`HOME`, Windows는 `USERPROFILE`)이에요
+  (감사 N2). 그래서 거기서는 임시 `HOME`도 계정 홈이 되어, 실제 `CLAUDE_CONFIG_DIR`·`CODEX_HOME`을 물려받은 채
+  임시 `HOME`으로 실행한 시험·명령이 그 실제 폴더를 쓸 수 있어요. 그런 시스템의 시험은 이 변수들을 지운 환경
+  (`clean_env`)에서 돌려야 해요. 이 동작을 확인하는 시험은 없어요(이 SPEC의 시험은 Unix).
+- C-79 전에 만든 영수증(감사 N4): 라우팅·스타일·에이전트 영수증은 도구와 파일 이름만, 스킬 복사 영수증은 스킬 폴더 아래
+  경로만 적고 폴더 자체는 적지 않아요. 되돌리기·복구는 실행할 때 폴더를 다시 정하므로, 그 사이 변수를 설정하면 옛
+  영수증이 옮겨진 폴더를 봐요. 그 폴더의 바이트가 영수증과 다르면 건너뛰거나(`user_changed_since_apply`·
+  `file_not_plain`) 충돌·없음으로 보고하고, HOME 아래 `.claude`·`.codex`의 옛 파일은 지우지도 되돌리지도 않아요. 변수를
+  지우고 실행하면 옛 위치로 되돌릴 수 있어요. 영수증 형식은 바꾸지 않았어요.
 
 ## Decisions
 
@@ -106,9 +120,12 @@ Claude Code는 `CLAUDE_CONFIG_DIR`, Codex는 `CODEX_HOME`으로 사용자 폴더
 | D4 | 변수 경로는 적힌 그대로(정규화 안 함); 그 폴더 자체가 링크면 `~/.claude`처럼 막음 | 리더 지시(링크 처리 바꾸지 않기) | `canonicalize` 뒤 사용 |
 | D5 | 계획에서 폴더를 정할 수 없으면 그 도구만 `blocked`(표시 경로는 HOME 아래), 적용·되돌리기는 오류 | 다른 도구 계속 진행 | 계획 전체 실패 |
 | D6 | Codex 스킬은 `~/.agents/skills` 그대로 | Codex 문서·기존 `hosts/codex.rs` | `CODEX_HOME/skills` |
-| D7 | 사용자 범위 가드(`claude.rs`, `codex_config.rs`)는 계정 홈과 상관없이 변수가 가리키는 폴더를 막고, 빈 값·상대 경로면 거절 | 가드는 넓게 막는 쪽이 안전 | 예전처럼 상대 값을 작업 폴더 기준으로 |
-| D8 | `src/update.rs`는 스킬 폴더를 찾는 줄(`skills_base`·`skills_parent`·`projection_root`)과 그 호출 네 곳, `preflight`의 링크 검사 시작점만 바꿈 | 리더: 피할 수 없을 때만, 보고 | 그 줄들 되돌리기 |
+| D7 | 사용자 범위 가드(`claude.rs`, `codex_config.rs`, 그리고 D11의 `hooks.rs`)는 계정 홈과 상관없이 변수가 가리키는 폴더를 막고, 빈 값·상대 경로면 거절 | 가드는 넓게 막는 쪽이 안전 | 예전처럼 상대 값을 작업 폴더 기준으로 |
+| D8 | `src/update.rs`는 스킬 폴더를 찾는 줄(`skills_place`·`skills_parent`·`projection_root`)과 그 호출 네 곳, `preflight`의 링크 검사 시작점과 UTF-8이 아닌 경로의 그 도구 제외(D12)만 바꿈 | 리더: 피할 수 없을 때만, 보고 | 그 줄들 되돌리기 |
 | D9 | Go 세대 정리(`update_cleanup` 뿌리 표)·`skills_legacy`·`baseline`은 HOME 기준 유지; `projection_extra`는 HOME 밖이면 건너뜀 | Go 도구의 고정 설치 경로 | 각 표를 리졸버로 |
+| D10 | 옮겨진 도구 폴더 안의 폴더 링크(`skills`·`agents`·`output-styles` 등)는 계정 홈의 같은 기본 폴더(예: `<계정 홈>/.claude/skills`)와 실제 경로가 같을 때만 따라가고, 그때 계획·적용·링크 검사는 그 기본 폴더를 써요; 다른 링크·없는 기본 폴더로 가는 링크는 막고 사유가 링크 경로와 할 일을 말해요; 파일 링크(`settings.json` 등)는 그대로 거절 | 사용자 선택 2026-11-17 ~23:2xZ "기본 폴더 링크만 허용"(감사 B2) | 모든 링크를 막기(감사 전 판), 또는 모든 폴더 링크 따라가기 |
+| D11 | 훅 쓰기(`hooks::project_root`)도 D7처럼 변수가 가리키는 폴더(프로젝트 자체나 그 `.claude`·`.codex`)를 거절 | 감사 B1 | 그 검사 빼기 |
+| D12 | UTF-8이 아닌 변수 값: `update-plan`은 그 도구만 `blocked`, `codex-doctor`는 거절 | 감사 N3, D5와 같은 원칙 | 계획 전체 실패 |
 
 ## Result
 
