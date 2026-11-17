@@ -1135,6 +1135,20 @@ pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
                 Some("host receipt is pending; run recovery-plan first".to_string()),
                 None,
             ),
+            // Card C-67 S1: a build never updates back over a newer installed version.
+            (Some(r), None)
+                if crate::headver::is_newer(&r.package_version, crate::BUILD_VERSION) =>
+            {
+                (
+                    Some(format!(
+                        "the installed package version {} is newer than this build's {}; this \
+                     build never updates back",
+                        r.package_version,
+                        crate::BUILD_VERSION
+                    )),
+                    None,
+                )
+            }
             _ => (blocked, scan),
         };
         if receipt.is_some() && latest_version.is_none() {
@@ -1323,7 +1337,8 @@ pub fn plan_update(home: &Path, staged: &StagedPackage) -> Result<UpdatePlan> {
             .to_string(),
         scope: HOSTS.iter().map(|h| (*h).to_string()).collect(),
         source_version: latest_version,
-        target_version: env!("CARGO_PKG_VERSION").to_string(),
+        // Card C-67 S1: the HeadVer build version, the one `headver::compare` orders.
+        target_version: crate::BUILD_VERSION.to_string(),
         package_digest: staged.digest.clone(),
         hosts,
         expected_file_hashes: expected,

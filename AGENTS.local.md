@@ -104,7 +104,7 @@ Development builds of this repository are numbered with HeadVer (`https://github
 - `{yearweek}`: automatic, always four digits: two-digit year and two-digit ISO-8601 week of the build's UTC date (2026-11-17 is `2647`). Read the date from a clock in the same step.
 - `{build}`: automatic, one counter that only goes up and never restarts with a new week or head. It continues the local build numbers already used (`+local.3` was build 3, so the next is 4).
 - Never commit a change only to move a development version, and never reuse a build number, also not for a rebuild of the same commit.
-- Until the binary prints this form itself (card C-67), pass the build number as `MOAI_LOCAL_BUILD=<build>`; the binary then shows `<package version>+local.<build>`. Reports name both, for example `4.2647.4 (2026.11.0-rc.2+local.4)`.
+- Pass the build number as `MOAI_LOCAL_BUILD=<build>`. Since card C-67 slice 1 the binary prints this form itself: the first `--version` line shows `4.2647.5`, the second line says `local build 5 (MOAI_LOCAL_BUILD), built <UTC date> …`; `head` comes from the tracked `HEADVER` file. Builds before it showed `<package version>+local.<build>`, for example `4.2647.4 (2026.11.0-rc.2+local.4)`.
 
 ## Rule provenance
 

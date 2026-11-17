@@ -44,6 +44,9 @@ impl RecordSource {
     // whichever name ran, so the two binaries print the same text.
     bin_name = "moai",
     version = moai_cli::VERSION_SIGNATURE,
+    // Card C-67 S1: `--version` adds a second line naming the kind of build (local or
+    // unnumbered); `-V` and every reader of the first line see the signature alone.
+    long_version = moai_cli::LONG_VERSION,
     about = "MoAI RC internal execution tool",
     args_conflicts_with_subcommands = true
 )]
@@ -2864,23 +2867,40 @@ mod tests {
     /// Raw-text subcommands outside the envelope (#2350); documented in interfaces.md.
     const RAW_OUTPUT: [&str; 3] = ["statusline", "pr-self-audit-check", "lane-env"];
 
-    /// #2722 AC-5: `--version` shows the build version, which is the package version plus
-    /// `+local.<n>` exactly when this build set `MOAI_LOCAL_BUILD`.
+    /// Card C-67 S1 (SPEC-20261117-headver-version AC-3): the build version is HeadVer
+    /// `{head}.{yearweek}.{build}` — head from `HEADVER`, four yearweek digits, the
+    /// `MOAI_LOCAL_BUILD` number or 0 — and `--version` adds a second line that says which kind
+    /// of build it is; `-V` keeps the one line.
     #[test]
-    fn version_flag_reports_the_local_build_number() {
-        let expected = moai_cli::local_build::version(
-            env!("CARGO_PKG_VERSION"),
-            option_env!("MOAI_LOCAL_BUILD"),
-        )
-        .unwrap();
-        assert_eq!(moai_cli::BUILD_VERSION, expected);
+    fn version_flag_reports_the_headver_build() {
+        let local = moai_cli::local_build::number(option_env!("MOAI_LOCAL_BUILD")).unwrap();
+        let head = moai_cli::headver::parse_head(include_str!("../HEADVER")).unwrap();
+        let parts: Vec<&str> = moai_cli::BUILD_VERSION.split('.').collect();
+        assert_eq!(parts.len(), 3, "{}", moai_cli::BUILD_VERSION);
+        assert_eq!(parts[0], head.to_string());
+        assert_eq!(parts[1].len(), 4, "{}", moai_cli::BUILD_VERSION);
+        assert_eq!(parts[2], local.unwrap_or(0).to_string());
+        // The earlier scheme's builds read as older.
+        assert!(moai_cli::headver::is_newer(
+            moai_cli::BUILD_VERSION,
+            env!("CARGO_PKG_VERSION")
+        ));
         // `--version` prints the build version and the generation mark (#2790 R1).
         let signature = format!("{} (rust)", moai_cli::BUILD_VERSION);
         assert_eq!(Cli::command().get_version(), Some(signature.as_str()));
         assert_eq!(moai_cli::VERSION_SIGNATURE, signature);
-        if option_env!("MOAI_LOCAL_BUILD").is_none_or(str::is_empty) {
-            assert_eq!(moai_cli::BUILD_VERSION, env!("CARGO_PKG_VERSION"));
-        }
+        let long = format!("{signature}\n{}", moai_cli::BUILD_NOTE);
+        assert_eq!(Cli::command().get_long_version(), Some(long.as_str()));
+        assert_eq!(moai_cli::LONG_VERSION, long);
+        let kind = match local {
+            Some(n) => format!("local build {n} (MOAI_LOCAL_BUILD), built "),
+            None => "unnumbered build (no MOAI_LOCAL_BUILD), built ".to_string(),
+        };
+        assert!(
+            moai_cli::BUILD_NOTE.starts_with(&kind),
+            "{}",
+            moai_cli::BUILD_NOTE
+        );
     }
 
     /// Every clap subcommand word names exactly one operation through `operation` (#2254): a
