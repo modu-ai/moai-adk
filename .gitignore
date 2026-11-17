@@ -347,7 +347,8 @@ dist-ssr/
 
 # ===========================================
 # RC1 development repository policy (user decision, 2026-11-08)
-# .claude/ and .moai/ are local installed copies, not product source.
+# .claude/ and .moai/ are local installed copies, not product source, except
+# .moai/specs/: the SPECs are shared project files (user decision 2026-11-17, below).
 # AGENTS.md and AGENTS.local.md are tracked: hosts read AGENTS.md only inside the
 # session's own working tree, so a lane worktree needs the tracked copy (user
 # decision 2026-11-13, Issue #2667; replaces the per-machine rule of 2026-11-08).
@@ -358,6 +359,12 @@ dist-ssr/
 # folder's contents are excluded instead of the folder itself, and `specs/` is re-included.
 /.moai/*
 !/.moai/specs/
+# Secret-shaped files never ride along with a SPEC (credentials.yaml and *.credentials are
+# ignored at any depth of .moai/ above; .env and .env.* everywhere).
+/.moai/specs/**/.env*
+/.moai/specs/**/*.key
+/.moai/specs/**/id_rsa*
+/.moai/specs/**/secrets.*
 # Rust build output of the root package (isolated builds use CARGO_TARGET_DIR)
 /target/
 # Lane worktrees for every host (user decision 2026-11-08): inside the primary checkout so the Go hook allows
