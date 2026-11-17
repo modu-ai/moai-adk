@@ -372,7 +372,7 @@
       }
     },
     "references/internal/quality.md": {
-      "sha256": "28cb7c55f308526b536120d522a65c8834502bc0076613b61796cebc12045ce4",
+      "sha256": "61abd81006401f7ad06756eea2d6a2c82f870b73271c94b7f39a84923dcbd92b",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-quality",

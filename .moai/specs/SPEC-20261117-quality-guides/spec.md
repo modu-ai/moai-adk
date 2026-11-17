@@ -72,7 +72,8 @@ SPEC은 1단계로 지침과 데이터만 더해요: `internal/quality`와 감�
   `<SPEC-ID> AC-<n>`을 적어요. `src/spec_links.rs`의 `req_<segs>_<digits>` 이름 규칙은 옛 `REQ-C5-01` 꼴만 읽고 새
   `REQ-n`은 읽지 못해서 쓰지 않았어요. ACC `@cc:proves` 표식이 생기면 그 주석을 대신해요.
 - D4 의존성 존재 확인은 레지스트리 명령이나 404를 주는 공개 주소로 해요. 네트워크가 없으면 `not_run`이고 추가하지
-  않아요. 근거 수치는 Spracklen et al.(USENIX Security 2025)의 5.2%·21.7%예요.
+  않아요. 근거 수치는 Spracklen et al.(USENIX Security 2025, Python·JavaScript 코드 대상)의 평균 최소
+  5.2%(상용 모델)·21.7%(공개 모델)예요(감사 N1로 문장 고침).
 - D5 가이드는 감지기의 13개 언어를 모두 덮어요(리더 지시의 "감지기 언어마다 가이드" 시험). 같은 도구를 쓰는 언어는 한
   파일로 묶었어요: javascript·typescript, java·kotlin, c·cpp.
 - D6 `internal/quality`는 `agents/*.md`의 `reads:`를 바꿀 수 없어(범위 밖) chain 규칙 한 줄로 읽히게 했어요. 시험은 그
@@ -103,3 +104,10 @@ php 1,575 · c-cpp 1,851 · csharp 1,706 · swift 1,567. `internal/quality.md` 4
 
 실행 안 함: 전체 `cargo test`, clippy(Rust는 시험 목록 한 줄만 바뀜), 가이드의 명령을 각 언어 도구로 실제로 돌려 보는
 일(이 기기에 도구가 다 있지 않고, 1단계는 지침만), Linux·Windows.
+
+감사(head `9e6f2a8665`) FAIL B1·N1 수리: tip `2489ad7c39` 병합(`b4d928c98f`) — `tests/agent_defs_package.rs`
+내부 참고 목록에 tip의 `build-folder`와 `quality`를 둘 다 두고, `source-manifest.json`은 `tools/source_manifest.py write`가
+두 쪽 항목을 합쳐 다시 계산(check exit 0). N1: `internal/quality`의 수치 문장을 "Python·JavaScript 코드, 평균 최소
+5.2%·21.7%"로 고침(4,206 B). 수리 뒤: `agent_defs_package` 0(18), `product_cli` 0(75), `mode_workflow_steps` 0(42),
+`moai package-inspect skills/moai` 0(digest `sha256:58de8088726d2f20c58fffaff6a38b8f544a9e5fad2cc0fe3f2cc8ed0b7020d2`),
+`moai spec check --all` 0(SPEC 9개, errors 0, warnings 0), Python `skill_references`·`source_manifest` OK, `cargo fmt --check` 0.

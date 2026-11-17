@@ -39,7 +39,7 @@ The guides live under `references/languages/` of this skill. A language the dete
 
 ## Before adding a dependency
 
-Package names suggested by a model can be invented: in one study 5.2% of the packages that commercial models suggested, and 21.7% of those of open models, did not exist (Spracklen et al., USENIX Security 2025). An invented name can later be registered by someone else.
+Package names suggested by a model can be invented: in one study of Python and JavaScript code, on average at least 5.2% of the packages that commercial models suggested, and 21.7% of those of open-source models, did not exist (Spracklen et al., USENIX Security 2025). An invented name can later be registered by someone else.
 
 1. Check that the exact name exists in the registry the project already uses, with the command of the language guide, and keep its output line as evidence. Without network access, the check is `not_run` and the dependency is not added.
 2. Use the name as the package's own documentation or repository spells it. A name one letter away from a popular package, or a package whose repository link does not match, is a stop and a question.
