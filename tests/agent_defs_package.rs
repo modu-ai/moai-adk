@@ -872,6 +872,14 @@ fn self_check_lists_the_pre_pr_checks_and_is_named_by_impl_and_the_chains() {
         "`audit-tier: ",
         "skip it with the reason",
         "`tools/self_check.sh`",
+        // Audit of 421b11a2c9, N1-N6.
+        "`git diff --check <base>...HEAD`",
+        "`--full-python`",
+        "`rustfmt --check --edition 2021 src/ops/*.rs`",
+        "`exit=75 slot-refused (not run)`",
+        "`tools/source_manifest.py write`, then `tools/source_manifest.py check`",
+        "card branches carry no claim token until C-53 S3",
+        "one mutation per new guard, the riskiest first; at most 5 for audit tier 1 and 12 for tier 2",
     ] {
         assert!(text.contains(needle), "self-check.md lacks {needle:?}");
     }
@@ -897,6 +905,19 @@ fn self_check_lists_the_pre_pr_checks_and_is_named_by_impl_and_the_chains() {
             d.name
         );
     }
+    // Audit N4: the list sends moai-impl only to references its `reads:` gives it, since the
+    // rendered agent says "Read no other internal reference".
+    let mut named = 0;
+    for (at, _) in text.match_indices("`internal/") {
+        let entry = &text[at + 1..];
+        let entry = &entry[..entry.find('`').unwrap()];
+        named += 1;
+        assert!(
+            imp.reads.iter().any(|r| r == entry),
+            "self-check.md names {entry}, which moai-impl does not read"
+        );
+    }
+    assert!(named >= 1, "the internal/ mentions moved");
     let chains = read("references/chains/index.md");
     let rules = chains.split("Rules for every chain:").nth(1).unwrap();
     assert!(

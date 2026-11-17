@@ -3,9 +3,11 @@
 The script runs the machine-checkable items of skills/moai/references/internal/self-check.md
 in the working folder, keeps going past a failure, prints one `self-check: <item> ...` line per
 item with its exit code and ends with one summary line. These tests pin the item list and its
-commands (whole `--bin` runs, never filtered), the keep-going rule, the skip rule, the package
-file bound at 65,536 / 65,537 bytes and the summary line. Real runs use stub `cargo` and
-`python3` in a temporary git repository with a temporary HOME, so no cargo build runs here.
+commands (whole `--bin` runs, never filtered), the keep-going rule, the skip and not_run rules,
+the heavy-slot refusal (exit 75: not run, not failed), the package file bound at 65,536 / 65,537
+bytes, the diff check, the Python files picked from the change, and the summary line. Real runs
+use stub `cargo`, `rustfmt`, `python3` and `moai` in a temporary git repository with a
+temporary HOME, so no cargo build runs here; `git` is real.
 """
 import re
 import shutil
@@ -18,13 +20,16 @@ ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "tools" / "self_check.sh"
 REFERENCE = ROOT / "skills" / "moai" / "references" / "internal" / "self-check.md"
 PROFILE = ROOT / "src" / "profile.rs"
+HEAVY_SLOT = ROOT / "src" / "heavy_slot.rs"
 
-# The items in order with the exact command each runs (package-size is built in).
+# The items in order with the exact command each runs through a stub (package-size is built
+# in; diff-check runs the real git with the merge base in its arguments).
 ITEMS = [
     ("bin-moai", "cargo test --offline --locked --bin moai"),
     ("bin-moai-cli", "cargo test --offline --locked --bin moai-cli"),
     ("clippy", "cargo clippy --offline --locked --all-targets -- -D warnings"),
     ("fmt", "cargo fmt --check"),
+    ("fmt-ops", "rustfmt --check --edition 2021 src/ops/a.rs src/ops/b.rs"),
     ("git-env-scrub", "cargo test --offline --locked --test git_env_scrub"),
     ("home-isolation", "cargo test --offline --locked --test home_isolation_scan"),
     ("ac-command-lint", "cargo test --offline --locked --test ac_command_lint"),
@@ -32,21 +37,27 @@ ITEMS = [
      "cargo run --offline --locked --quiet --bin moai -- package-inspect skills/moai"),
     ("package-size", None),
     ("manifest", "python3 -I tools/source_manifest.py check"),
+    ("diff-check", None),
+    ("python", "python3 -m unittest tests/skill_references_test.py"),
 ]
 LABELS = [label for label, _ in ITEMS]
 COMMANDS = [cmd for _, cmd in ITEMS if cmd]
+HEAVY = ["bin-moai", "bin-moai-cli", "clippy", "git-env-scrub", "home-isolation",
+         "ac-command-lint"]
 ITEM = re.compile(r"^self-check: (?P<label>[a-z-]+) (?P<rest>.*)$")
 LAST = re.compile(
-    r"^self-check: head=(?P<head>[0-9a-f]{40}|unknown) result=(?P<result>pass|fail) "
+    r"^self-check: head=(?P<head>[0-9a-f]{40}|unknown) result=(?P<result>pass|fail|not_run) "
     r"(?P<dirty>dirty=1 )?(?P<dry>dry-run=1 )?failed=(?P<failed>none|[a-z,-]+) "
-    r"logs=(?P<logs>\S+)$")
+    r"not_run=(?P<not_run>none|[a-z,-]+) logs=(?P<logs>\S+)$")
 
 
 class FakeRepo:
-    """A temporary git repository with a copy of the script, the files each item needs and
-    stub `cargo` / `python3` on PATH that record their arguments."""
+    """A temporary git repository with a copy of the script, the files each item needs, a base
+    commit and one change on top, and stub `cargo` / `rustfmt` / `python3` on PATH that record
+    their arguments. With slot=True a stub `moai` offers `heavy-slot-acquire`: it records its
+    arguments and runs the command, or exits 75 when STUB_SLOT_REFUSE is set."""
 
-    def __init__(self):
+    def __init__(self, slot=False):
         self.tmp = Path(tempfile.mkdtemp(prefix="self-check-"))
         self.repo = self.tmp / "repo"
         (self.repo / "tools").mkdir(parents=True)
@@ -56,24 +67,44 @@ class FakeRepo:
         (self.repo / "tests").mkdir()
         for name in ("git_env_scrub", "home_isolation_scan", "ac_command_lint"):
             (self.repo / "tests" / f"{name}.rs").write_text("\n")
+        (self.repo / "tests" / "skill_references_test.py").write_text("# stub\n")
+        (self.repo / "src" / "ops").mkdir(parents=True)
+        for name in ("b", "a"):
+            (self.repo / "src" / "ops" / f"{name}.rs").write_text("\n")
         (self.repo / "skills" / "moai").mkdir(parents=True)
         (self.repo / "skills" / "moai" / "SKILL.md").write_text("# moai\n")
         (self.repo / ".gitignore").write_text("target/\n")
         self.calls = self.tmp / "calls"
+        self.slot_calls = self.tmp / "slot_calls"
         self.bin = self.tmp / "bin"
         self.bin.mkdir()
-        for name in ("cargo", "python3"):
+        for name in ("cargo", "rustfmt", "python3"):
             stub = self.bin / name
             stub.write_text(
                 "#!/bin/sh\n"
                 f"echo \"{name} $*\" >> '{self.calls}'\n"
-                "echo \"stub output of {name} $*\"\n"
+                f"echo \"stub output of {name} $*\"\n"
                 "case \"$*\" in *\"${STUB_FAIL:-@none@}\"*) exit 3;; esac\n"
-                "exit 0\n".replace("{name}", name))
+                "exit 0\n")
+            stub.chmod(0o755)
+        if slot:
+            stub = self.bin / "moai"
+            stub.write_text(
+                "#!/bin/sh\n"
+                "[ \"$1 $2\" = 'heavy-slot-acquire --help' ] && exit 0\n"
+                f"echo \"$*\" >> '{self.slot_calls}'\n"
+                "[ -n \"${STUB_SLOT_REFUSE:-}\" ] && exit 75\n"
+                "while [ \"$#\" -gt 0 ] && [ \"$1\" != -- ]; do shift; done\n"
+                "shift\n"
+                "exec \"$@\"\n")
             stub.chmod(0o755)
         self.git("init", "-q")
         self.git("add", "-A")
-        self.git("commit", "-q", "-m", "one")
+        self.git("commit", "-q", "-m", "base")
+        self.base = self.git("rev-parse", "HEAD")
+        (self.repo / "README.md").write_text("change\n")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "change")
 
     def env(self, **extra):
         env = {"PATH": f"{self.bin}:/usr/bin:/bin", "HOME": str(self.tmp), "LC_ALL": "C",
@@ -87,8 +118,13 @@ class FakeRepo:
         return subprocess.run(["git", *args], cwd=self.repo, env=self.env(), check=True,
                               capture_output=True, text=True).stdout.strip()
 
+    def commit(self, message="more"):
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", message)
+
     def run(self, *args, **extra):
         # Started from outside the repository: the script must find its own root.
+        extra.setdefault("SELF_CHECK_BASE", self.base)
         return subprocess.run(["bash", str(self.repo / "tools" / "self_check.sh"), *args],
                               cwd=self.tmp, env=self.env(**extra), capture_output=True,
                               text=True, timeout=60)
@@ -96,12 +132,15 @@ class FakeRepo:
     def recorded(self):
         return self.calls.read_text().splitlines() if self.calls.exists() else []
 
+    def slot_recorded(self):
+        return self.slot_calls.read_text().splitlines() if self.slot_calls.exists() else []
+
     def close(self):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
 
 def items(stdout):
-    """{label: rest} of the item lines, in order, and the last line."""
+    """[(label, rest)] of the item lines, in order, and the last line."""
     lines = [line for line in stdout.splitlines() if line.strip()]
     found = []
     for line in lines[:-1]:
@@ -124,11 +163,12 @@ class SelfCheckTest(unittest.TestCase):
         for label, rest in found:
             self.assertTrue(rest.startswith("exit=0 "), f"{label}: {rest}")
         self.assertEqual(self.repo.recorded(), COMMANDS)
+        self.assertIn(f"cmd=git diff --check {self.repo.base}", dict(found)["diff-check"])
         m = LAST.match(last)
         self.assertIsNotNone(m, last)
         self.assertEqual(m["head"], self.repo.git("rev-parse", "HEAD"))
-        self.assertEqual((m["result"], m["dirty"], m["dry"], m["failed"]),
-                         ("pass", None, None, "none"))
+        self.assertEqual((m["result"], m["dirty"], m["dry"], m["failed"], m["not_run"]),
+                         ("pass", None, None, "none", "none"))
         # Each item's output goes to its own log, not to the screen.
         self.assertNotIn("stub output", proc.stdout)
         log = self.repo.repo / "target" / "self-check" / "clippy.log"
@@ -150,10 +190,10 @@ class SelfCheckTest(unittest.TestCase):
         self.assertEqual([label for label, _ in found], LABELS)
         rest = dict(found)
         self.assertTrue(rest["clippy"].startswith("exit=3 "), rest["clippy"])
-        self.assertTrue(rest["manifest"].startswith("exit=0 "), rest["manifest"])
+        self.assertTrue(rest["python"].startswith("exit=0 "), rest["python"])
         self.assertEqual(self.repo.recorded(), COMMANDS)
         m = LAST.match(last)
-        self.assertEqual((m["result"], m["failed"]), ("fail", "clippy"))
+        self.assertEqual((m["result"], m["failed"], m["not_run"]), ("fail", "clippy", "none"))
 
     def test_two_failures_are_both_named(self):
         proc = self.repo.run(STUB_FAIL="--bin moai")
@@ -210,7 +250,7 @@ class SelfCheckTest(unittest.TestCase):
         for label, cmd in ITEMS:
             if cmd and cmd.startswith("cargo "):
                 self.assertEqual(rest[label], "skip (no Cargo.toml)", label)
-        self.assertEqual(self.repo.recorded(), ["python3 -I tools/source_manifest.py check"])
+        self.assertEqual([c for c in self.repo.recorded() if c.startswith("cargo")], [])
 
     def test_dry_run_runs_nothing_and_never_passes(self):
         proc = self.repo.run(SELF_CHECK_DRY_RUN="1")
@@ -229,11 +269,216 @@ class SelfCheckTest(unittest.TestCase):
         # The folder was checked; the line says it is not the committed head alone.
         self.assertEqual(proc.returncode, 0)
 
-    def test_an_argument_is_a_usage_error(self):
-        proc = self.repo.run("--bin")
-        self.assertEqual(proc.returncode, 2)
+    def test_an_unknown_argument_is_a_usage_error(self):
+        for args in (["--bin"], ["--full-python", "x"], ["--full-python=1"]):
+            proc = self.repo.run(*args)
+            self.assertEqual(proc.returncode, 2, args)
+            self.assertIn("usage", proc.stderr)
         self.assertEqual(self.repo.recorded(), [])
-        self.assertIn("usage", proc.stderr)
+
+
+class FmtOpsTest(unittest.TestCase):
+    """N2: `cargo fmt` does not see src/ops/*.rs, so rustfmt checks them by name."""
+
+    def setUp(self):
+        self.repo = FakeRepo()
+        self.addCleanup(self.repo.close)
+
+    def test_every_operation_file_is_checked_in_name_order(self):
+        proc = self.repo.run()
+        self.assertIn("rustfmt --check --edition 2021 src/ops/a.rs src/ops/b.rs",
+                      self.repo.recorded())
+        self.assertTrue(dict(items(proc.stdout)[0])["fmt-ops"].startswith("exit=0 "))
+
+    def test_a_badly_formatted_operation_file_fails_the_run(self):
+        proc = self.repo.run(STUB_FAIL="src/ops/b.rs")
+        found, last = items(proc.stdout)
+        self.assertTrue(dict(found)["fmt-ops"].startswith("exit=3 "))
+        self.assertEqual(LAST.match(last)["failed"], "fmt-ops")
+        self.assertEqual(proc.returncode, 1)
+
+    def test_no_operation_folder_is_a_skip(self):
+        shutil.rmtree(self.repo.repo / "src")
+        proc = self.repo.run()
+        self.assertEqual(dict(items(proc.stdout)[0])["fmt-ops"], "skip (no src/ops/*.rs)")
+        self.assertNotIn("rustfmt", " ".join(self.repo.recorded()))
+
+
+class DiffCheckTest(unittest.TestCase):
+    """N1: `git diff --check` from the merge base, committed and uncommitted changes alike."""
+
+    def setUp(self):
+        self.repo = FakeRepo()
+        self.addCleanup(self.repo.close)
+
+    def diff_line(self, proc):
+        found, last = items(proc.stdout)
+        return dict(found)["diff-check"], LAST.match(last)
+
+    def test_a_committed_trailing_space_fails(self):
+        (self.repo.repo / "README.md").write_text("change \n")
+        self.repo.commit()
+        rest, last = self.diff_line(self.repo.run())
+        self.assertFalse(rest.startswith("exit=0 "), rest)
+        self.assertEqual(last["failed"], "diff-check")
+
+    def test_an_uncommitted_trailing_space_fails(self):
+        (self.repo.repo / "README.md").write_text("change \n")
+        rest, last = self.diff_line(self.repo.run())
+        self.assertFalse(rest.startswith("exit=0 "), rest)
+        self.assertEqual(last["failed"], "diff-check")
+
+    def test_a_trailing_space_already_in_the_base_does_not_count(self):
+        (self.repo.repo / "README.md").write_text("change \n")
+        self.repo.commit()
+        self.repo.base = self.repo.git("rev-parse", "HEAD")
+        rest, last = self.diff_line(self.repo.run())
+        self.assertTrue(rest.startswith("exit=0 "), rest)
+
+    def test_a_base_that_does_not_resolve_is_not_run_never_a_pass(self):
+        proc = self.repo.run(SELF_CHECK_BASE="no-such-branch")
+        found, last = items(proc.stdout)
+        rest = dict(found)
+        for label in ("diff-check", "python"):
+            self.assertTrue(rest[label].startswith("not_run (no base: 'no-such-branch'"),
+                            rest[label])
+        m = LAST.match(last)
+        self.assertEqual((m["result"], m["failed"], m["not_run"]),
+                         ("not_run", "none", "diff-check,python"))
+        self.assertEqual(proc.returncode, 1)
+
+    def test_an_option_shaped_base_is_never_passed_to_git(self):
+        proc = self.repo.run(SELF_CHECK_BASE="--all")
+        self.assertEqual(LAST.match(items(proc.stdout)[1])["not_run"], "diff-check,python")
+
+
+class PythonItemTest(unittest.TestCase):
+    """N1: the unittest files the change touched plus the reference scan; --full-python runs
+    CI's whole discover instead."""
+
+    def setUp(self):
+        self.repo = FakeRepo()
+        self.addCleanup(self.repo.close)
+
+    def python_calls(self):
+        return [c for c in self.repo.recorded() if c.startswith("python3 -m unittest")]
+
+    def test_changed_tests_and_the_tests_of_changed_tools_are_run(self):
+        tests = self.repo.repo / "tests"
+        tools = self.repo.repo / "tools"
+        (tests / "zeta_test.py").write_text("# committed change\n")
+        (tests / "bar_test.py").write_text("# test of a changed tool\n")
+        self.repo.git("add", "-A")
+        self.repo.git("commit", "-q", "-m", "tests")
+        self.repo.base = self.repo.git("rev-parse", "HEAD")
+        (tools / "bar.sh").write_text("# changed tool\n")
+        (tools / "lonely.py").write_text("# a tool without a test\n")
+        (tests / "helper.py").write_text("# not a test file\n")
+        self.repo.commit()
+        (tests / "zeta_test.py").write_text("# uncommitted change\n")
+        (tests / "alpha_test.py").write_text("# untracked new test\n")
+        proc = self.repo.run()
+        self.assertEqual(self.python_calls(), [
+            "python3 -m unittest tests/skill_references_test.py tests/alpha_test.py "
+            "tests/bar_test.py tests/zeta_test.py"])
+        self.assertTrue(dict(items(proc.stdout)[0])["python"].startswith("exit=0 "))
+
+    def test_a_deleted_test_file_is_not_run(self):
+        (self.repo.repo / "tests" / "gone_test.py").write_text("# x\n")
+        self.repo.commit()
+        self.repo.base = self.repo.git("rev-parse", "HEAD")
+        (self.repo.repo / "tests" / "gone_test.py").unlink()
+        self.repo.commit()
+        self.repo.run()
+        self.assertEqual(self.python_calls(),
+                         ["python3 -m unittest tests/skill_references_test.py"])
+
+    def test_the_reference_scan_is_listed_once_when_it_changed_too(self):
+        (self.repo.repo / "tests" / "skill_references_test.py").write_text("# changed\n")
+        self.repo.run()
+        self.assertEqual(self.python_calls(),
+                         ["python3 -m unittest tests/skill_references_test.py"])
+
+    def test_nothing_to_run_is_a_skip(self):
+        (self.repo.repo / "tests" / "skill_references_test.py").unlink()
+        self.repo.commit()
+        self.repo.base = self.repo.git("rev-parse", "HEAD")
+        proc = self.repo.run()
+        self.assertEqual(dict(items(proc.stdout)[0])["python"],
+                         "skip (no changed Python test and no tests/skill_references_test.py)")
+        self.assertEqual(self.python_calls(), [])
+
+    def test_full_python_runs_ci_discover_and_only_that(self):
+        proc = self.repo.run("--full-python")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertEqual(self.python_calls(),
+                         ["python3 -m unittest discover -s tests -p *_test.py"])
+        # It needs no base: CI's discover does not depend on the change.
+        self.repo.calls.unlink()
+        proc = self.repo.run("--full-python", SELF_CHECK_BASE="no-such-branch")
+        self.assertEqual(self.python_calls(),
+                         ["python3 -m unittest discover -s tests -p *_test.py"])
+        self.assertEqual(LAST.match(items(proc.stdout)[1])["not_run"], "diff-check")
+
+
+class HeavySlotTest(unittest.TestCase):
+    """N3: the heavy cargo items run in a heavy slot under a per-run name; the slot's own
+    refusal (exit 75) is not run, not a failure."""
+
+    def setUp(self):
+        self.repo = FakeRepo(slot=True)
+        self.addCleanup(self.repo.close)
+
+    def test_heavy_items_run_in_the_slot_under_a_per_run_name(self):
+        proc = self.repo.run()
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        slot = self.repo.slot_recorded()
+        self.assertEqual(len(slot), len(HEAVY))
+        names = {re.search(r"--name (\S+) --", line)[1] for line in slot}
+        self.assertEqual(len(names), 1, names)
+        name = names.pop()
+        self.assertRegex(name, r"^self-check-repo-\d+$")
+        # Light items never take a slot; the heavy ones still ran their command.
+        self.assertFalse(any("cargo fmt" in line or "package-inspect" in line for line in slot))
+        self.assertEqual(self.repo.recorded(), COMMANDS)
+        # Two runs, two names: runs never share the queue name `self-check`.
+        self.repo.slot_calls.unlink()
+        self.repo.run()
+        other = re.search(r"--name (\S+) --", self.repo.slot_recorded()[0])[1]
+        self.assertNotEqual(other, name)
+
+    def test_the_name_can_be_set(self):
+        self.repo.run(MOAI_HEAVY_SLOT_NAME="lane-7")
+        for line in self.repo.slot_recorded():
+            self.assertIn("--name lane-7 --", line)
+
+    def test_a_slot_refusal_is_not_run_and_not_a_failure(self):
+        proc = self.repo.run(STUB_SLOT_REFUSE="1")
+        self.assertEqual(proc.returncode, 1)
+        found, last = items(proc.stdout)
+        rest = dict(found)
+        for label in HEAVY:
+            self.assertEqual(rest[label],
+                             f"exit=75 slot-refused (not run) log=target/self-check/{label}.log")
+        self.assertTrue(rest["fmt"].startswith("exit=0 "))
+        m = LAST.match(last)
+        self.assertEqual((m["result"], m["failed"], m["not_run"]),
+                         ("not_run", "none", ",".join(HEAVY)))
+        # No heavy command ran; the light ones did.
+        self.assertFalse(any(c.startswith("cargo test") for c in self.repo.recorded()))
+
+    def test_a_failure_beside_a_refusal_is_still_a_fail(self):
+        # The stubs match their arguments only: `fmt --check` is the fmt item.
+        proc = self.repo.run(STUB_SLOT_REFUSE="1", STUB_FAIL="fmt --check")
+        m = LAST.match(items(proc.stdout)[1])
+        self.assertEqual((m["result"], m["failed"]), ("fail", "fmt"))
+        self.assertEqual(proc.returncode, 1)
+
+    def test_a_command_failure_inside_the_slot_is_a_failure(self):
+        proc = self.repo.run(STUB_FAIL="clippy")
+        found, last = items(proc.stdout)
+        self.assertTrue(dict(found)["clippy"].startswith("exit=3 "))
+        self.assertEqual(LAST.match(last)["failed"], "clippy")
 
 
 class SelfCheckSourcesTest(unittest.TestCase):
@@ -241,9 +486,14 @@ class SelfCheckSourcesTest(unittest.TestCase):
         self.assertIn("pub const LIMIT: u64 = 65536;", PROFILE.read_text())
         self.assertRegex(SCRIPT.read_text(), r"(?m)^limit=65536 ")
 
+    def test_the_refusal_code_is_the_slot_busy_code(self):
+        self.assertIn("pub const BUSY: u8 = 75;", HEAVY_SLOT.read_text())
+        self.assertRegex(SCRIPT.read_text(), r"(?m)^slot_refused=75 ")
+
     def test_the_reference_names_the_runner_and_every_item(self):
         text = REFERENCE.read_text()
         self.assertIn("`tools/self_check.sh`", text)
+        self.assertIn("`--full-python`", text)
         for label in LABELS:
             self.assertIn(f"`{label}`", text, label)
 
