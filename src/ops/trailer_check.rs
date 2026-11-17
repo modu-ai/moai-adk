@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-/// Report commits whose identity trailers are missing or malformed
+/// Report commits with missing or malformed trailers
 ///
 /// Read the commits of RANGE (merges skipped, oldest first) and report each missing or
 /// malformed `Moai-Spec:` / `Moai-Session:` trailer (user decision U-B 2026-11-17). A missing

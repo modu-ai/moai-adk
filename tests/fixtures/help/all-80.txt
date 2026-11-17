@@ -165,8 +165,7 @@ Lane and leader
   audit-verdict-line      Print the verdict first line for the audited head
   audit-gate              Decide whether a PR head has the audit its tier needs
   trailers                Print the identity trailers for a commit
-  trailer-check           Report commits whose identity trailers are missing or
-                          malformed
+  trailer-check           Report commits with missing or malformed trailers
   audit-clone-plan        Preview an independent audit clone
   labels-check            Report Issues whose labels break the rule
   decision-due            Sort the unanswered decisions of a bundle

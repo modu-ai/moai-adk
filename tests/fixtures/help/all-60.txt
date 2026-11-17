@@ -269,8 +269,8 @@ Lane and leader
                           audit its tier needs
   trailers                Print the identity trailers for a
                           commit
-  trailer-check           Report commits whose identity
-                          trailers are missing or malformed
+  trailer-check           Report commits with missing or
+                          malformed trailers
   audit-clone-plan        Preview an independent audit clone
   labels-check            Report Issues whose labels break
                           the rule
