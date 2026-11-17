@@ -1341,6 +1341,10 @@ fn lane_repo(branch: &str) -> (tempfile::TempDir, std::path::PathBuf) {
         ],
     );
     git(&root, &["checkout", "-q", "-b", branch]);
+    // SPEC-20261117-commit-guard-users: the `issue/<n>` guard applies in a clone with a live
+    // lane session; a lane worktree's clone has one (tests/commit_guard_users.rs has the
+    // ordinary-user side).
+    common::register_lane(&root);
     (dir, root)
 }
 
