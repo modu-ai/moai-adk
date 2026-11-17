@@ -32,8 +32,10 @@
 //!   Writing under `.moai/specs/` is always allowed, so the SPEC itself is the way out. Paths
 //!   are judged after `..` and symbolic links are resolved, each in the work tree that holds
 //!   it (the nearest `.git` above the written path, C-86 audit N2), whatever the session's
-//!   folder; a path in no work tree is not this rule's. Shell redirections are not seen (the
-//!   A4 gap).
+//!   folder; a path in no work tree, or in a work tree without a `.moai` folder at its root
+//!   (not a MoAI project, #3176 audit N2), is not this rule's. One call that writes the SPEC
+//!   and code together waits while the SPEC is not on disk. Shell redirections are not seen
+//!   (the A4 gap).
 //!
 //! Known gaps (allowed, not refused): shell redirections (`>`, `tee`) into protected paths; a
 //! force push with no refspec while `main` is checked out (the branch is not read here); a
@@ -760,6 +762,11 @@ fn spec_before_code(paths: &[String], cwd: &Path) -> Option<&'static str> {
         let Some(top) = work_tree_top(&resolved) else {
             return false;
         };
+        // #3176 audit N2: a work tree without a `.moai` folder at its root is not a MoAI
+        // project; its `spec/…` branch is not this rule's.
+        if !top.join(".moai").is_dir() {
+            return false;
+        }
         let Some(id) = work_tree_branch(&top).and_then(|b| spec_branch_id(&b)) else {
             return false;
         };
