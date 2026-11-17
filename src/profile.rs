@@ -13,7 +13,7 @@
 //! behaviour: edits are refused with "existing YAML requires preservation review"
 //! until the lossless-editing HOLD is decided.
 
-use crate::{digest, SECRET_SHAPES};
+use crate::digest;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::{
@@ -53,6 +53,7 @@ const PROFILE_KEYS: &[(&str, bool)] = &[
     ("detected", true),
     ("scopes", true),
     ("versioning", true),
+    ("work_flow", true),
 ];
 
 fn managed_keys() -> impl Iterator<Item = &'static str> {
@@ -147,6 +148,40 @@ pub struct Profile {
     /// unchanged and the managed section renders as before.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub versioning: Option<crate::versioning::VersioningSettings>,
+    /// The git work flow the project follows (card C-70): `m-flow` (MoAI's own, the
+    /// recommended default), `github-flow`, `trunk-based` or `git-flow`, with the integration
+    /// branch when it was named. Absent means the interview recorded no choice; a profile
+    /// written before this key reads unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub work_flow: Option<WorkFlowSettings>,
+}
+
+/// The flows the `work_flow` key names (card C-70), m-flow first.
+pub const WORK_FLOWS: &[&str] = &["m-flow", "github-flow", "trunk-based", "git-flow"];
+
+/// The `work_flow` key: one of [`WORK_FLOWS`] and, when named, the integration branch every
+/// card branch starts from.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct WorkFlowSettings {
+    pub flow: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub integration_branch: Option<String>,
+}
+
+/// A branch name git takes, kept to a portable subset: 1 to 100 bytes of ASCII letters, digits
+/// and `. - _ /`; no leading `-`, `.` or `/`; no trailing `/` or `.`; no `..`, `//` or `/.`;
+/// no `/` component ending in `.lock`; not `HEAD` (as `git check-ref-format --branch` rules).
+fn branch_name(s: &str) -> bool {
+    !s.is_empty()
+        && s.len() <= 100
+        && s != "HEAD"
+        && s.bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b'_' | b'/'))
+        && !s.starts_with(['-', '.', '/'])
+        && !s.ends_with(['/', '.'])
+        && !s.split('/').any(|part| part.ends_with(".lock"))
+        && !["..", "//", "/."].iter().any(|x| s.contains(x))
 }
 
 /// What a first launch writes into `tools` and `development_methods` until the project
@@ -246,10 +281,9 @@ fn portable(s: &str) -> bool {
     !s.trim().is_empty()
         && s.len() <= 2048
         && !s.chars().any(char::is_control)
-        && !["/", "\\", "~/", ":\\"]
-            .iter()
-            .chain(SECRET_SHAPES.iter())
-            .any(|x| lower.contains(x))
+        && !["/", "\\", "~/", ":\\"].iter().any(|x| lower.contains(x))
+        // Card C-90: `sk-` only at the start of a word, so `task-based` is ordinary text.
+        && !crate::secret_shaped(s)
 }
 pub(crate) fn portable_id(s: &str) -> bool {
     !s.is_empty()
@@ -278,6 +312,15 @@ fn validate(p: &Profile) -> Result<()> {
     }
     if let Some(scopes) = &p.scopes {
         crate::scopes::validate(scopes)?;
+    }
+    if let Some(w) = &p.work_flow {
+        if !WORK_FLOWS.contains(&w.flow.as_str())
+            || w.integration_branch
+                .as_deref()
+                .is_some_and(|b| !branch_name(b))
+        {
+            return Err("invalid work_flow setting; no values were logged".into());
+        }
     }
     if let Some(versioning) = &p.versioning {
         crate::versioning::validate(versioning)?;
@@ -865,6 +908,7 @@ mod tests {
             detected: None,
             scopes: None,
             versioning: None,
+            work_flow: None,
         }
     }
 
@@ -893,6 +937,10 @@ mod tests {
                 scheme: "headver".into(),
                 format: None,
                 head: Some(3),
+            }),
+            work_flow: Some(WorkFlowSettings {
+                flow: "m-flow".into(),
+                integration_branch: Some("main".into()),
             }),
             ..v2()
         };
@@ -923,7 +971,8 @@ mod tests {
                 "language",
                 "detected",
                 "scopes",
-                "versioning"
+                "versioning",
+                "work_flow"
             ]
         );
     }
@@ -1093,6 +1142,108 @@ mod tests {
             .is_none());
     }
 
+    /// Card C-70 AC-2: `work_flow` is additive and validated by `read_profile` on a hand-edited
+    /// file: one of the four flows, and an integration branch name git takes; an older profile
+    /// still loads without it.
+    #[test]
+    fn work_flow_key_is_additive_and_validated() {
+        let base = serde_json::json!({
+            "schema_version": 2, "project_id": "demo", "purpose": "p",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"]
+        });
+        let mut desired = base.clone();
+        desired["work_flow"] = json!({"flow": "m-flow", "integration_branch": "main"});
+        assert_eq!(
+            compute_delta(Some(&base), Some(&base), &desired).added,
+            vec!["work_flow"]
+        );
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp
+            .path()
+            .join(crate::PROJECT_STATE_DIR)
+            .join("project.yaml");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        for (bad, why) in [
+            (json!({"flow": "gitlab-flow"}), "unknown flow"),
+            (json!({"flow": "M-Flow"}), "flow names are lower-case"),
+            (json!({"integration_branch": "main"}), "no flow"),
+            (json!({"flow": "m-flow", "x": 1}), "unknown field"),
+            (json!("m-flow"), "wrong shape"),
+            (
+                json!({"flow": "m-flow", "integration_branch": ""}),
+                "empty branch",
+            ),
+            (
+                json!({"flow": "m-flow", "integration_branch": "a..b"}),
+                "`..`",
+            ),
+            (
+                json!({"flow": "m-flow", "integration_branch": "-x"}),
+                "leading dash",
+            ),
+            (
+                json!({"flow": "m-flow", "integration_branch": "a b"}),
+                "a space",
+            ),
+            (
+                json!({"flow": "m-flow", "integration_branch": "x.lock"}),
+                "`.lock`",
+            ),
+            (
+                json!({"flow": "m-flow", "integration_branch": "a/"}),
+                "trailing slash",
+            ),
+            (
+                json!({"flow": "m-flow", "integration_branch": "b".repeat(101)}),
+                "101 bytes",
+            ),
+            // Audit B2: `git check-ref-format --branch` refuses `.lock` at the end of any
+            // `/` component, and `HEAD` as a branch name.
+            (
+                json!({"flow": "m-flow", "integration_branch": "x.lock/y"}),
+                "`.lock` ending the first component",
+            ),
+            (
+                json!({"flow": "m-flow", "integration_branch": "a/b.lock/c"}),
+                "`.lock` ending a middle component",
+            ),
+            (
+                json!({"flow": "m-flow", "integration_branch": "HEAD"}),
+                "HEAD",
+            ),
+        ] {
+            let mut file = serde_json::to_value(v2()).unwrap();
+            file["work_flow"] = bad;
+            fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+            assert!(read_profile(tmp.path()).is_err(), "{why}");
+        }
+        for good in [
+            json!({"flow": "m-flow", "integration_branch": "v2026.11.0"}),
+            json!({"flow": "m-flow"}),
+            json!({"flow": "github-flow", "integration_branch": "main"}),
+            json!({"flow": "trunk-based", "integration_branch": "trunk"}),
+            json!({"flow": "git-flow", "integration_branch": "release/next"}),
+            json!({"flow": "m-flow", "integration_branch": "b".repeat(100)}),
+            // The N+1 side of the audit B2 edges: one letter off is a branch git takes.
+            json!({"flow": "m-flow", "integration_branch": "x.loc/y"}),
+            json!({"flow": "m-flow", "integration_branch": "a/b.locks/c"}),
+            json!({"flow": "m-flow", "integration_branch": "HEADS"}),
+            json!({"flow": "m-flow", "integration_branch": "release/HEAD"}),
+        ] {
+            let mut file = serde_json::to_value(v2()).unwrap();
+            file["work_flow"] = good.clone();
+            fs::write(&path, serde_json::to_vec(&file).unwrap()).unwrap();
+            let (profile, _) = read_profile(tmp.path()).unwrap();
+            assert_eq!(serde_json::to_value(&profile).unwrap()["work_flow"], good);
+        }
+        fs::write(&path, serde_json::to_vec(&v2()).unwrap()).unwrap();
+        let (profile, _) = read_profile(tmp.path()).unwrap();
+        assert!(serde_json::to_value(&profile)
+            .unwrap()
+            .get("work_flow")
+            .is_none());
+    }
+
     /// AC-1 (#2293): `language` is additive, and an unknown item or an unsupported code is
     /// refused by `validate` and by `read_profile` on a hand-edited file.
     #[test]
@@ -1215,6 +1366,26 @@ mod tests {
             ..v2()
         })
         .is_err());
+    }
+
+    /// Card C-90: custom text with `sk-` inside a word is portable; a key shape is not.
+    #[test]
+    fn sk_inside_a_word_is_portable_text() {
+        for ok in [
+            "task-based releases",
+            "risk-free, desk-top first",
+            "YYYY.task-N",
+        ] {
+            assert!(portable(ok), "{ok}");
+        }
+        for no in [
+            "sk-abc123",
+            "uses sk-test-not-real",
+            "x token=abc",
+            "a ghp_x",
+        ] {
+            assert!(!portable(no), "{no}");
+        }
     }
 
     #[test]
