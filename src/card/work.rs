@@ -437,7 +437,9 @@ pub fn reopen(
 }
 
 /// `card done C-n`: `review` becomes `done` when a criterion is met, none is open and a merged
-/// pull request is linked; the reservation ends.
+/// pull request is linked; the reservation ends. A card that names a SPEC closes only while
+/// that SPEC passes `spec check` and every one of its acceptance criteria has a `verify:`
+/// command or a `manual:` check (card C-86 slice 2, [`spec_link::done_refusal`]).
 pub fn done(
     project: &Path,
     home: &Path,
@@ -447,6 +449,13 @@ pub fn done(
 ) -> Result<Value> {
     let card_id = card_id("done", reference)?;
     let (id, mut ledger) = open_for_write(project, home)?;
+    let spec = spec_link::kind_and_spec(ledger.conn(), card_id)
+        .map_err(|e| LedgerError::from(e).to_string())?
+        .and_then(|(_, spec)| spec);
+    if let Some(why) = spec_link::done_refusal(project, &input::card_name(card_id), spec.as_deref())
+    {
+        return Err(format!("card done refused: {why}; nothing was changed"));
+    }
     let moved =
         workflow::done(&mut ledger, card_id, holder, generation).map_err(|e| refusal("done", e))?;
     Ok(moved_json("done", &id, &moved))
