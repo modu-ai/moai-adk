@@ -101,4 +101,31 @@ parent: SPEC-20261117-sdd-foundation
 
 ## Result
 
-(검사 뒤에 채워요.)
+구현 에이전트가 2026-11-17에 채웠어요. SYNC와 AUDIT가 다시 확인해요. 기준 `c0b858de8c`(origin/v2026.11.0). 커밋
+`0cc5c659c4`(변경), `67ba8f0758`(Result) → 감사 FAIL(08:47–08:54Z, B1·N1–N5) → `32d442ceb4`(수리). 빌드 폴더는 이
+worktree의 `target/`, `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=4`, macOS arm64, cargo는 한 번에 하나.
+`moai heavy-slot-acquire`가 75(스왑 81–82%)라 리더 지시대로 슬롯 밖에서 돌렸어요.
+
+판정 개수: adopted 16, deferred 300(atlas 22, 가이드 232, 진단 hook 10, 생성 36), rejected 791, unchecked 0.
+종류별: output-style adopted 6 · project-instruction adopted 2 · skill-entry adopted 2·deferred 48·rejected 87 ·
+support adopted 6·deferred 202·rejected 423 · rule deferred 42·rejected 190 · command deferred 4·rejected 36 ·
+agent deferred 2·rejected 32 · native-agent-projection deferred 2·rejected 21 · native-mapping-manifest rejected 1 ·
+distribution-catalog rejected 1.
+
+- AC-1: met — 첫 RED(지도 바꾸기 전): exit 101, "`unchecked` is not a verdict". 수리 뒤 GREEN exit 0(1 passed).
+  mutation(커밋 뒤, 지도 한 행과 manifest sha256을 함께 바꿔 sha 검사를 지나게 함, 각각 `git restore` 뒤 tree 깨끗):
+  첫 회 `rejected()`·`adopted(skills/moai/NO-SUCH.md)`·`deferred(later)` → 모두 exit 101. 수리 회
+  `.agents/skills/moai-clean/SKILL.md`에 `adopted(Cargo.toml)` → exit 101 "only the shipped rows are adopted, each by
+  its own file"(left `Some("Cargo.toml")`, right `None`); `.claude/skills/moai/SKILL.md`를
+  `adopted(skills/moai/workflows/audit.md)`로 → exit 101(right `Some("skills/moai/SKILL.md")`). 되돌린 뒤 exit 0.
+- AC-2: met — `0`.
+- AC-3: met — RED(스크립트 커밋 전 지도): `tests/legacy_verdicts_test.py` exit 1 "differs from the regenerated map".
+  GREEN: `python3 -I tools/legacy_verdicts.py` exit 0, `{"verdicts": {"adopted": 16, "deferred": 300, "rejected": 791},
+  "rows": 1107}`; 시험 5개 OK. 스크립트 mutation(moai-workflow-loop 규칙 삭제) → exit 1, 2개 FAIL(재현, 진단 판정);
+  되돌린 뒤 OK.
+- AC-4: met — 세 경로 모두 "No such file or directory", exit 1.
+- AC-5: met — `moai spec check --all --project .` exit 0(SPEC 3개, errors 0, warnings 0); `product_cli` 0(75);
+  `home_isolation_scan` 0(16); `--bin moai` 0(27); `go_state_classes_cli` 0(71); `launcher_three_hosts` 0(4);
+  `ac_command_lint` 0(5); `cargo fmt --check` 0; clippy `-D warnings` 0; Python 88개 OK.
+
+실행 안 함: 전체 `cargo test`(바뀐 곳 시험만), Linux·Windows.
