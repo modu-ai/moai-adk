@@ -298,7 +298,9 @@ class SourceManifestTest(unittest.TestCase):
         r.branches(add("x"), add("y"))
         r.assert_tool("write", 0)
         keys = list(r.manifest()["files"])
-        self.assertEqual(keys[-2:], ["references/x.md", "references/y.md"], keys)
+        # Card C-92: in sorted order, so both sit between the existing keys.
+        self.assertEqual(keys, sorted(keys))
+        self.assertEqual(keys[1:3], ["references/x.md", "references/y.md"], keys)
         r.assert_tool("check", 0)
 
     def test_a_new_file_without_an_entry_and_a_deleted_file(self):
@@ -386,6 +388,36 @@ class SourceManifestTest(unittest.TestCase):
         out = subprocess.run([sys.executable, "-I", str(TOOL), "check", "--root", str(ROOT)],
                              capture_output=True, text=True)
         self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
+
+    def test_files_are_written_in_sorted_order_and_check_wants_it(self):
+        # Card C-92: one order for every tree, whatever the history, so two branches that hold
+        # the same entry hold it on the same line; a new file sorts between existing keys.
+        r = self.repo
+        add_file("m")(r)
+        data = r.manifest()
+        self.assertEqual(list(data["files"])[-1], "references/m.md")  # appended by hand
+        r.assert_tool("check", 1)
+        r.assert_tool("write", 0)
+        keys = list(r.manifest()["files"])
+        self.assertEqual(keys, sorted(keys))
+        self.assertEqual(keys.index("references/m.md"), 1)
+        r.assert_tool("check", 0)
+
+    def test_a_duplicate_key_fails_check_and_names_the_key(self):
+        # Card C-92: a JSON object with one key twice (a text merge of two orders) is refused,
+        # never read as "the last one wins".
+        r = self.repo
+        text = r.read(MANIFEST)
+        entry = text[text.index('    "workflows/a.md"'):text.index('    "workflows/b.md"')]
+        r.put(MANIFEST, text.replace('    "workflows/b.md"', entry + '    "workflows/b.md"', 1))
+        for command in ("check", "write"):
+            report = r.assert_tool(command, 2)
+            self.assertIn("`workflows/a.md`", report["needs_person"], command)
+            self.assertIn("twice", report["needs_person"], command)
+        dup = '{"files": {"a": 1, "a": 2}}'
+        with self.assertRaises(sm.NeedsPerson) as e:
+            sm.parse(dup, "the text")
+        self.assertIn("`a`", str(e.exception))
 
 
 class MergeDriverTest(unittest.TestCase):
@@ -554,7 +586,10 @@ class MergeDriverTest(unittest.TestCase):
         r.install_driver()
         merge = r.branches(add_file("x"), add_file("y"))
         self.assert_clean_and_correct(merge)
-        self.assertEqual(list(r.manifest()["files"])[-2:], ["references/x.md", "references/y.md"])
+        # Card C-92: sorted, so both new entries sit between the existing keys.
+        keys = list(r.manifest()["files"])
+        self.assertEqual(keys, sorted(keys))
+        self.assertEqual(keys[1:3], ["references/x.md", "references/y.md"])
 
     def test_a_rename_on_one_side_merges_with_the_driver(self):
         r = self.repo
@@ -712,6 +747,76 @@ class MergeDriverTest(unittest.TestCase):
         self.assertEqual(out.returncode, 1, out.stdout + out.stderr)
         self.assertIn("<<<<<<< ", files["A"].read_text(encoding="utf-8"))
         self.assertIn("broken", out.stderr)
+
+    def test_the_driver_writes_the_bytes_write_writes(self):
+        # Card C-92: for the same merge, the driver's manifest is byte-identical to a text
+        # conflict resolved by `write`, including a new file that sorts between existing keys.
+        cases = [
+            (add_file("m"), add_file("c")),
+            (both(add_file("m"), edit_line("workflows/a.md", 1, "ours")),
+             both(add_file("n"), edit_line("workflows/a.md", 20, "theirs"))),
+            (edit_line("workflows/b.md", 2, "ours"), add_file("zz")),
+        ]
+        for i, (ours, theirs) in enumerate(cases):
+            results = []
+            for with_driver in (True, False):
+                with tempfile.TemporaryDirectory() as tmp:
+                    r = Repo(tmp)
+                    r.with_driver_files()
+                    if with_driver:
+                        r.install_driver()
+                    merge = r.branches(ours, theirs)
+                    if with_driver:
+                        self.assertEqual(merge.returncode, 0, merge.stdout + merge.stderr)
+                    else:
+                        r.assert_tool("write", 0)
+                    r.assert_tool("check", 0)
+                    results.append(r.read(MANIFEST))
+            self.assertEqual(results[0], results[1], f"case {i}")
+            keys = list(json.loads(results[0])["files"])
+            self.assertEqual(keys, sorted(keys), f"case {i}")
+
+    def test_a_driver_written_side_and_a_text_merge_never_duplicate_a_key(self):
+        # Card C-92, the 2026-11-17 tip (17c19a2759): both sides hold the same new entry, one
+        # side's manifest written by the driver; a text merge (GitHub) must not keep it twice.
+        r = self.repo
+        base = r.git("rev-parse", "HEAD").stdout.strip()
+        r.git("checkout", "-q", "-b", "feat")
+        add_file("x")(r)
+        r.assert_tool("write", 0)
+        r.commit("feat adds x")
+        # main gets the same file and entry on its own, its entry placed by hand after SKILL.md
+        # (before C-92 `write` kept that place; the driver appends at the end).
+        r.git("checkout", "-q", "main")
+        r.put("references/x.md", "x\n")
+        data = r.manifest()
+        files = data["files"]
+        data["files"] = {"SKILL.md": files.pop("SKILL.md"),
+                         "references/x.md": {"sha256": "", "origin": origin("x")}, **files}
+        r.manifest(data)
+        r.assert_tool("write", 0)
+        r.commit("main adds x by hand")
+        # side: adds y, then takes feat through the driver.
+        r.git("checkout", "-q", "-b", "side", base)
+        r.install_driver()
+        add_file("y")(r)
+        r.assert_tool("write", 0)
+        r.commit("side adds y")
+        merge = r.git("merge", "-q", "--no-edit", "feat", check=False)
+        self.assertEqual(merge.returncode, 0, merge.stdout + merge.stderr)
+        # The final merge as GitHub does it: text only, no driver.
+        r.git("config", "--unset-all", "merge.moai-manifest.driver")
+        r.git("checkout", "-q", "main")
+        merge = r.git("merge", "-q", "--no-edit", "side", check=False)
+        text = r.read(MANIFEST)
+        if merge.returncode == 0:
+            sm.parse(text, "the merged manifest")  # raises on a duplicate key
+            r.assert_tool("check", 0)
+        else:
+            self.assertIn("<<<<<<< ", text)  # a visible conflict, never a silent duplicate
+            r.assert_tool("write", 0)
+            r.assert_tool("check", 0)
+        self.assertEqual(r.read(MANIFEST).count('"references/x.md"'), 1)
 
 
 if __name__ == "__main__":
