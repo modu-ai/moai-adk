@@ -101,9 +101,7 @@ impl World {
 
     /// A ready card of `kind` with one write scope of its own; returns its name.
     fn ready_card(&self, kind: &str, scope: &str) -> String {
-        let added = ok(&self.card(&[
-            "add", "--title", "t", "--kind", kind, "--scope", scope,
-        ]));
+        let added = ok(&self.card(&["add", "--title", "t", "--kind", kind, "--scope", scope]));
         let name = added["name"].as_str().unwrap().to_string();
         ok(&self.card(&["ready", &name]));
         name
@@ -204,7 +202,7 @@ fn a_card_links_to_a_spec_unlinks_and_show_and_list_print_it() {
     assert_eq!(linked["writes"], json!(true));
     assert_eq!(linked["by"], json!("leader"));
     assert_eq!(ok(&w.card(&["show", &card]))["spec"], json!(login));
-    let listed = ok(&w.card(&["list"]));
+    let listed = ok(&w.run(&["card", "list", w.p()]));
     assert_eq!(listed["cards"][0]["spec"], json!(login), "{listed}");
 
     // The same link again changes nothing and writes no event.
@@ -225,7 +223,10 @@ fn a_card_links_to_a_spec_unlinks_and_show_and_list_print_it() {
     assert_eq!(unlinked["spec"], Value::Null);
     assert_eq!(unlinked["changed"], json!(true));
     assert_eq!(ok(&w.card(&["show", &card]))["spec"], Value::Null);
-    assert_eq!(ok(&w.card(&["list"]))["cards"][0]["spec"], Value::Null);
+    assert_eq!(
+        ok(&w.run(&["card", "list", w.p()]))["cards"][0]["spec"],
+        Value::Null
+    );
     let none = ok(&w.card(&["spec", &card, "--unlink"]));
     assert_eq!(none["changed"], json!(false), "{none}");
     assert_eq!(none["writes"], json!(false));
@@ -246,13 +247,24 @@ fn a_missing_or_unparsable_spec_is_refused_and_nothing_is_written() {
     let w = World::new();
     let card = w.ready_card("fix", "src/a");
     let good = w.draft_spec("login-fix");
-    let before = w.home.snapshot();
+    // The ledger's folder (`<HOME>/.moai`); the project folder changes below on purpose.
+    let ledger_state = || {
+        let mut s = w.home.snapshot();
+        s.retain(|e| e.path.starts_with(".moai"));
+        s
+    };
+    let before = ledger_state();
 
     let (kind, message) = refusal(&w.card(&["spec", &card, OTHER]));
     assert_eq!(kind, "not_found", "{message}");
     assert!(message.contains(OTHER), "{message}");
 
-    for bad in ["C-3", "SPEC-2026-x", "spec-20261117-login-fix", "../SPEC-20261117-a"] {
+    for bad in [
+        "C-3",
+        "SPEC-2026-x",
+        "spec-20261117-login-fix",
+        "../SPEC-20261117-a",
+    ] {
         let (kind, message) = refusal(&w.card(&["spec", &card, bad]));
         assert_eq!(kind, "invalid_input", "{bad}: {message}");
         assert!(message.starts_with("card spec refused: "), "{message}");
@@ -281,7 +293,8 @@ fn a_missing_or_unparsable_spec_is_refused_and_nothing_is_written() {
     let out = w.card(&["spec", &card, &good, "--unlink"]);
     assert_ne!(out.status.code(), Some(0));
 
-    assert_eq!(w.home.snapshot(), before, "no refusal writes anything");
+    assert!(before.len() >= 4, "{before:?}");
+    assert_eq!(ledger_state(), before, "no refusal writes anything");
     assert_eq!(
         w.count("SELECT count(*) FROM event WHERE kind = 'card.spec'"),
         0
@@ -350,7 +363,9 @@ fn next_and_take_print_the_spec_status_and_warn_until_it_is_approved() {
         warned[1].starts_with(&format!("{bare}: ")) && warned[1].contains("no SPEC"),
         "{warned:?}"
     );
-    assert!(!warned.iter().any(|m| m.contains(&research) || m.contains(&audit)));
+    assert!(!warned
+        .iter()
+        .any(|m| m.contains(&research) || m.contains(&audit)));
 
     // `take` warns too, and the card is taken.
     let taken = ok(&w.run_as(&["card", "take", &linked, "--project", w.p()]));
@@ -360,7 +375,9 @@ fn next_and_take_print_the_spec_status_and_warn_until_it_is_approved() {
     // A taken card is `mine` in `next`, with its SPEC and its warning.
     let next = ok(&w.run_as(&["card", "next", w.p()]));
     assert_eq!(next["mine"][0]["spec"]["id"], json!(spec), "{next}");
-    assert!(warnings(&next).iter().any(|m| m.starts_with(&format!("{linked}: "))));
+    assert!(warnings(&next)
+        .iter()
+        .any(|m| m.starts_with(&format!("{linked}: "))));
 
     // A research card is taken without a word.
     let taken = ok(&w.run_as(&["card", "take", &research, "--project", w.p()]));
@@ -371,7 +388,9 @@ fn next_and_take_print_the_spec_status_and_warn_until_it_is_approved() {
     let next = ok(&w.run_as(&["card", "next", w.p()]));
     assert_eq!(next["mine"][0]["spec"]["approved"], json!(true), "{next}");
     assert!(
-        !warnings(&next).iter().any(|m| m.starts_with(&format!("{linked}: "))),
+        !warnings(&next)
+            .iter()
+            .any(|m| m.starts_with(&format!("{linked}: "))),
         "{next}"
     );
 }
@@ -491,7 +510,15 @@ fn spec_show_without_a_project_profile_has_no_local_cards() {
     let p = project.to_str().unwrap();
     let id = ok(&home
         .command(&[
-            "spec", "new", "login-fix", "--title", "t", "--date", "2026-11-17", "--project", p,
+            "spec",
+            "new",
+            "login-fix",
+            "--title",
+            "t",
+            "--date",
+            "2026-11-17",
+            "--project",
+            p,
         ])
         .output()
         .unwrap())["id"]
@@ -502,7 +529,11 @@ fn spec_show_without_a_project_profile_has_no_local_cards() {
         .command(&["spec", "show", &id, "--project", p])
         .output()
         .unwrap());
-    assert_eq!(shown["local_cards"]["ledger"], json!("no_project"), "{shown}");
+    assert_eq!(
+        shown["local_cards"]["ledger"],
+        json!("no_project"),
+        "{shown}"
+    );
     assert_eq!(shown["local_cards"]["cards"], json!([]));
 }
 
@@ -514,7 +545,8 @@ fn the_link_is_an_event_of_the_current_schema_and_the_export_keeps_it() {
     let card = w.ready_card("feature", "src/a");
     let spec = w.draft_spec("login-fix");
     let version = |c: &rusqlite::Connection| -> i64 {
-        c.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap()
+        c.query_row("PRAGMA user_version", [], |r| r.get(0))
+            .unwrap()
     };
     let before = version(&w.raw());
     ok(&w.card(&["spec", &card, &spec]));
@@ -536,7 +568,9 @@ fn the_link_is_an_event_of_the_current_schema_and_the_export_keeps_it() {
     ok(&w.card(&["export", "--out", out.to_str().unwrap()]));
     let events = fs::read_to_string(out.join("events.jsonl")).unwrap();
     assert!(
-        events.lines().any(|l| l.contains("\"card.spec\"") && l.contains(&spec)),
+        events
+            .lines()
+            .any(|l| l.contains("\"card.spec\"") && l.contains(&spec)),
         "{events}"
     );
 }
