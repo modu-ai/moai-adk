@@ -15,9 +15,13 @@ Official sources checked 2026-11-08; recheck when host behavior changes. [OpenAI
 
 ## Merge driver for the skill source manifest
 
-`skills/moai/references/source-manifest.json` holds a sha256 line per skill file, so two branches that edit one skill file conflict on that line even when the file itself merges cleanly (61 of the 62 tip merges in this history whose only conflict was the manifest, card C-74). `.gitattributes` names the merge driver `moai-manifest` for it. Register the driver once per clone; it writes only that repository's `.git/config`, which its worktrees share, and is safe to run again:
+`skills/moai/references/source-manifest.json` holds a sha256 line per skill file, so two branches that edit one skill file conflict on that line even when the file itself merges cleanly (61 of the 62 tip merges in this history whose only conflict was the manifest, card C-74). `.gitattributes` names the merge driver `moai-manifest` for it. Register the driver once per clone; it writes only that repository's git folder, which its worktrees share, and is safe to run again:
 
     python3 -I tools/merge_driver_manifest.py --install
-    python3 -I tools/merge_driver_manifest.py --check   # exit 0 when registered
+    python3 -I tools/merge_driver_manifest.py --check   # exit 0 when registered and current
 
-Undo with `git config --local --unset merge.moai-manifest.driver`. Unregistered, git merges the manifest as text, as before. The driver resolves the manifest when every skill file merges cleanly; otherwise the manifest stays conflicted with a message, and after the skill files are resolved `python3 -I tools/source_manifest.py write` rebuilds it. `python3 -I tools/source_manifest.py check` (run in CI by `tests/source_manifest_test.py`) still fails on any manifest that does not match the files.
+`--install` copies the driver and `tools/source_manifest.py` into `<git common dir>/moai-manifest-driver/` and registers that copy by its absolute path, so merging into or rebasing a branch never runs the branch's own version of the script. When `tools/` changes, `--check` reports `stale` until `--install` runs again. Undo with `git config --local --unset merge.moai-manifest.driver` and by deleting that folder. Unregistered, git merges the manifest as text, as before.
+
+The driver resolves the manifest when every skill file merges cleanly and no `origin` changed on both sides; otherwise the manifest stays conflicted with a message, and after the skill files are resolved `python3 -I tools/source_manifest.py write` rebuilds it. It also leaves the conflict when a folder disappears on one side while the other side adds or changes files in it, when a skill file has its own `merge` attribute, and when the git config it sees sets `diff.algorithm` to anything but histogram or turns on `merge.renormalize`. Options given as `git merge -X…` never reach a merge driver, so the driver cannot see them; `python3 -I tools/source_manifest.py check` (run in CI by `tests/source_manifest_test.py`) is the safety net and still fails on any manifest that does not match the files.
+
+GitHub's server runs no merge driver. A pull request whose manifest lines conflict with the tip still shows a conflict on GitHub until someone merges the tip into the branch locally; the driver helps those local tip merges only.

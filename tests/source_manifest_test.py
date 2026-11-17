@@ -83,6 +83,11 @@ class Repo:
         if out.returncode != 0:
             raise AssertionError(f"--install: exit {out.returncode}\n{out.stdout}{out.stderr}")
 
+    def driver_copy(self):
+        """The folder `--install` copies the driver into: outside every checkout."""
+        common = self.git("rev-parse", "--path-format=absolute", "--git-common-dir").stdout.strip()
+        return Path(common) / "moai-manifest-driver"
+
     def unmerged(self):
         return sorted({line.split("\t", 1)[1] for line in
                        self.git("ls-files", "-u").stdout.splitlines()})
@@ -181,6 +186,7 @@ def add_file(name):
 def rename_file(old, new):
     """`git mv` a package file and move its manifest entry to the end under the new name."""
     def run(repo):
+        (repo.root / PKG / new).parent.mkdir(parents=True, exist_ok=True)
         repo.git("mv", str(PKG / old), str(PKG / new))
         data = repo.manifest()
         data["files"][new] = data["files"].pop(old)
@@ -420,10 +426,15 @@ class MergeDriverTest(unittest.TestCase):
         r.install_driver()
         values = r.git("config", "--local", "--get-all", "merge.moai-manifest.driver").stdout
         self.assertEqual(len(values.splitlines()), 1, values)
-        self.assertIn("tools/merge_driver_manifest.py", values)
+        copy = r.driver_copy()
+        self.assertIn(str(copy / "merge_driver_manifest.py"), values)
+        self.assertNotIn("tools/merge_driver_manifest.py", values)
+        for name in ("merge_driver_manifest.py", "source_manifest.py"):
+            self.assertEqual((copy / name).read_bytes(), (r.root / "tools" / name).read_bytes())
         after = r.driver("--check")
         self.assertEqual(after.returncode, 0, after.stdout + after.stderr)
         self.assertTrue(json.loads(after.stdout)["registered"])
+        self.assertEqual(json.loads(after.stdout)["status"], "ok")
 
     def test_check_reports_a_driver_line_that_differs(self):
         r = self.repo
@@ -431,6 +442,50 @@ class MergeDriverTest(unittest.TestCase):
         out = r.driver("--check")
         self.assertEqual(out.returncode, 1, out.stdout + out.stderr)
         self.assertFalse(json.loads(out.stdout)["registered"])
+
+    def test_check_reports_a_stale_copy_until_install_runs_again(self):
+        r = self.repo
+        r.install_driver()
+        for name in ("merge_driver_manifest.py", "source_manifest.py"):
+            with self.subTest(name=name):
+                path = r.root / "tools" / name
+                before = path.read_bytes()
+                path.write_bytes(before + b"# changed\n")
+                out = r.driver("--check")
+                self.assertEqual(out.returncode, 1, out.stdout + out.stderr)
+                report = json.loads(out.stdout)
+                self.assertEqual(report["status"], "stale")
+                self.assertIn("--install", report["message"])
+                r.install_driver()
+                self.assertEqual(json.loads(r.driver("--check").stdout)["status"], "ok")
+                path.write_bytes(before)
+                r.install_driver()
+
+    def test_a_branch_never_runs_its_own_driver_script(self):
+        # N1: the registered command names the copy in the git folder, so merging main into a
+        # branch (or rebasing it) never runs the branch's version of the script.
+        r = self.repo
+        r.install_driver()
+        sentinel = Path(self.tmp.name) / "branch-script-ran"
+        evil = f"open({str(sentinel)!r}, 'w').close()\nraise SystemExit(0)\n"
+
+        def theirs(repo):
+            (repo.root / "tools" / "merge_driver_manifest.py").write_text(evil, encoding="utf-8")
+            edit_line("workflows/a.md", 20, "theirs")(repo)
+
+        r.git("checkout", "-q", "-b", "side")
+        theirs(r)
+        r.assert_tool("write", 0)
+        r.commit("side with its own script")
+        r.git("checkout", "-q", "main")
+        edit_line("workflows/a.md", 1, "ours")(r)
+        r.assert_tool("write", 0)
+        r.commit("ours")
+        r.git("checkout", "-q", "side")
+        merge = r.git("merge", "-q", "--no-edit", "main", check=False)
+        self.assertFalse(sentinel.exists(), "the branch's own script ran")
+        self.assertEqual(merge.returncode, 0, merge.stdout + merge.stderr)
+        r.assert_tool("check", 0)
 
     def test_same_file_edited_apart_merges_with_the_driver(self):
         # 61 of the 62 historical manifest-only conflicts: both sides edit one skill file at
@@ -450,12 +505,11 @@ class MergeDriverTest(unittest.TestCase):
         self.assertEqual(r.unmerged(), [(PKG / MANIFEST).as_posix()])
         self.assertIn("<<<<<<< ", r.read(MANIFEST))
 
-    def test_registered_but_missing_from_the_checkout_falls_back_to_a_normal_conflict(self):
-        # An older branch without the tool: the registered command runs git's own text merge.
+    def test_registered_but_the_copy_is_missing_falls_back_to_a_normal_conflict(self):
+        # The copy was removed: the registered command runs git's own text merge.
         r = self.repo
         r.install_driver()
-        r.git("rm", "-q", "tools/merge_driver_manifest.py")
-        r.commit("no driver here")
+        (r.driver_copy() / "merge_driver_manifest.py").unlink()
         merge = r.branches(edit_line("workflows/a.md", 1, "ours"),
                            edit_line("workflows/a.md", 20, "theirs"))
         self.assertNotEqual(merge.returncode, 0)
@@ -561,6 +615,103 @@ class MergeDriverTest(unittest.TestCase):
         merge = r.git("merge", "-q", "--no-edit", "side", check=False)
         self.assertEqual(merge.returncode, 0, merge.stdout + merge.stderr)
         self.assertEqual(r.assert_tool("check", 1)["changed"], ["workflows/a.md"])
+
+    def test_the_file_merge_uses_histogram_like_git(self):
+        # N4: on this triple histogram and myers both merge cleanly but give different text;
+        # git's own merge gives the histogram text, so a myers hash would fail `check`.
+        r = self.repo
+        add_file("t")(r)
+        r.put("references/t.md", "\nb\nx\nx\nx\n")
+        r.assert_tool("write", 0)
+        r.commit("t")
+        r.install_driver()
+        merge = r.branches(lambda repo: repo.put("references/t.md", "\nb\nb\nx\nx\n"),
+                           lambda repo: repo.put("references/t.md", "\nb\nx\nx\n"))
+        self.assert_clean_and_correct(merge)
+        self.assertEqual(r.read("references/t.md"), "\nb\nb\nx\nx\n")
+
+    def test_a_skill_file_with_its_own_merge_attribute_leaves_the_conflict(self):
+        # N4: git merges such a file with its own driver (here `binary`: keep ours, conflict),
+        # which `git merge-file` cannot repeat.
+        r = self.repo
+        r.install_driver()
+
+        def ours(repo):
+            with open(repo.root / ".gitattributes", "a", encoding="utf-8") as f:
+                f.write(f"{(PKG / 'workflows/a.md').as_posix()} merge=binary\n")
+            edit_line("workflows/a.md", 1, "ours")(repo)
+
+        merge = r.branches(ours, edit_line("workflows/a.md", 20, "theirs"))
+        self.assertNotEqual(merge.returncode, 0)
+        self.assertIn((PKG / MANIFEST).as_posix(), r.unmerged())
+        self.assertIn("<<<<<<< ", r.read(MANIFEST))
+
+    def test_a_diff_setting_the_driver_cannot_repeat_leaves_the_conflict(self):
+        # N2: a configured diff algorithm other than histogram, or renormalizing merges.
+        for key, value in (("diff.algorithm", "myers"), ("merge.renormalize", "true")):
+            with self.subTest(key=key), tempfile.TemporaryDirectory() as tmp:
+                r = Repo(tmp)
+                r.with_driver_files()
+                r.install_driver()
+                r.git("config", "--local", key, value)
+                merge = r.branches(edit_line("workflows/a.md", 1, "ours"),
+                                   edit_line("workflows/a.md", 20, "theirs"))
+                self.assertNotEqual(merge.returncode, 0)
+                self.assertEqual(r.unmerged(), [(PKG / MANIFEST).as_posix()])
+                self.assertIn(key, merge.stderr)
+
+    def test_histogram_set_explicitly_is_accepted(self):
+        r = self.repo
+        r.install_driver()
+        r.git("config", "--local", "diff.algorithm", "histogram")
+        merge = r.branches(edit_line("workflows/a.md", 1, "ours"),
+                           edit_line("workflows/a.md", 20, "theirs"))
+        self.assert_clean_and_correct(merge)
+
+    def test_a_folder_renamed_on_one_side_with_a_file_added_on_the_other_leaves_the_conflict(self):
+        # N3: git's directory-rename detection moves our new workflows/n.md to flows/n.md;
+        # the manifests alone cannot know that.
+        r = self.repo
+        r.install_driver()
+
+        def ours(repo):
+            repo.put("workflows/n.md", "n\n")
+            data = repo.manifest()
+            data["files"]["workflows/n.md"] = {"sha256": "", "origin": origin("n")}
+            repo.manifest(data)
+
+        merge = r.branches(ours, both(rename_file("workflows/a.md", "flows/a.md"),
+                                      rename_file("workflows/b.md", "flows/b.md")))
+        self.assertNotEqual(merge.returncode, 0)
+        self.assertIn((PKG / MANIFEST).as_posix(), r.unmerged())
+
+    def test_a_folder_renamed_on_one_side_alone_merges_with_the_driver(self):
+        r = self.repo
+        r.install_driver()
+        merge = r.branches(add_file("x"), both(rename_file("workflows/a.md", "flows/a.md"),
+                                               rename_file("workflows/b.md", "flows/b.md")))
+        self.assert_clean_and_correct(merge)
+        self.assertNotIn("workflows/a.md", r.manifest()["files"])
+
+    def test_an_import_failure_still_writes_conflict_markers(self):
+        # N5: a broken source_manifest module next to the driver leaves git's own conflict.
+        r = self.repo
+        broken = Path(self.tmp.name) / "broken"
+        broken.mkdir()
+        shutil.copyfile(DRIVER, broken / DRIVER.name)
+        (broken / "source_manifest.py").write_text("raise RuntimeError('broken')\n",
+                                                   encoding="utf-8")
+        files = {}
+        for side, text in (("O", "a\nbase\nc\n"), ("A", "a\nours\nc\n"), ("B", "a\ntheirs\nc\n")):
+            files[side] = Path(self.tmp.name) / side
+            files[side].write_text(text, encoding="utf-8")
+        out = subprocess.run([sys.executable, "-I", str(broken / DRIVER.name),
+                              str(files["O"]), str(files["A"]), str(files["B"]),
+                              (PKG / MANIFEST).as_posix()],
+                             cwd=r.root, env=r.env(), capture_output=True, text=True)
+        self.assertEqual(out.returncode, 1, out.stdout + out.stderr)
+        self.assertIn("<<<<<<< ", files["A"].read_text(encoding="utf-8"))
+        self.assertIn("broken", out.stderr)
 
 
 if __name__ == "__main__":
