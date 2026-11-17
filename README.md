@@ -42,7 +42,9 @@ The workflow text the hosts load is in [skills/moai/](skills/moai/SKILL.md).
 
 The two generations use separate state folders and do not update each other. Both commands are called `moai`; `moai --version` tells them apart (the release candidate ends its line with `(rust)`). The release candidate also builds `moai-cli` as an alias: it prints the same `--version` line, and its help names `moai-cli` as the command.
 
-**RC1 target scope** is macOS on Apple silicon (`aarch64-apple-darwin`) with Claude Code or Codex. This is a target, not a support guarantee: end-to-end tests of the hosts loading the skill have not run yet. Linux, Intel macOS and Windows are outside RC1 (CI builds and tests some of them). The measured state of every combination is in [docs/support-matrix.md](docs/support-matrix.md) and [docs/host-support-matrix.md](docs/host-support-matrix.md).
+**Supported platforms** (decided 2026-11-17, `SPEC-20261117-supported-platforms`): macOS on Apple silicon (`aarch64-apple-darwin`), Linux x86_64 (`x86_64-unknown-linux-gnu`) and Windows x86_64 (`x86_64-pc-windows-msvc`). Intel macOS and Linux arm64 are not supported: CI does not run them and the install scripts stop with an "Unsupported platform" message. CI tests Linux x86_64 and macOS arm64 and builds Windows x86_64; release archives are still published for macOS arm64 only.
+
+**RC1 target scope** is macOS on Apple silicon (`aarch64-apple-darwin`) with Claude Code or Codex. This is a target, not a support guarantee: end-to-end tests of the hosts loading the skill have not run yet. The measured state of every combination is in [docs/support-matrix.md](docs/support-matrix.md) and [docs/host-support-matrix.md](docs/host-support-matrix.md).
 
 ## Install
 

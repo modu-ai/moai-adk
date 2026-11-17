@@ -1,5 +1,6 @@
 # One target of the candidate verification (#2554 PR-A, user decision #1975 6907950823).
-# Called five times by candidate.yml, once per target, for the one commit that run is pinned to.
+# Called three times by candidate.yml, once per supported platform, for the one commit that run
+# is pinned to.
 # It runs the same check set as the `ci` workflow (tools/local_check.sh, so CI and a local run
 # cannot drift apart) on that exact commit, then reports the commit it checked out and how many
 # tests ran. It never builds a release, publishes, tags, uploads or reads a secret: the token is

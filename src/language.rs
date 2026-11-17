@@ -149,36 +149,39 @@ pub fn resolve(settings: &LanguageSettings, conversation: &str) -> Vec<(&'static
         .collect()
 }
 
-/// The managed-section lines for a set `language` key, written in `ui` (`en` or `ko`).
-/// Items the profile leaves out are rendered with their default, `ui` standing in for the
-/// conversation language.
+/// The managed-section lines for a set `language` key, written in `ui` (`en` or `ko`): one line
+/// per item the profile sets, in `ITEMS` order. An item the profile leaves out gets no line —
+/// its language is never guessed (card C-87 S1; before, it was rendered with its default and a
+/// conversation-default item took the request language, so `reports` read English beside a
+/// Japanese `user_chat`). `profile_rel` is where the project keeps `project.yaml`
+/// (`state_root::rel`, #2696 C2).
 pub fn render_lines(settings: &LanguageSettings, ui: &str, profile_rel: &str) -> String {
-    render_lines_in(settings, ui, ui, profile_rel)
-}
-
-/// [`render_lines`] with the label language (`ui`, the language the surrounding text is in)
-/// apart from the conversation language that conversation-default items resolve to (#2706).
-/// `profile_rel` is where the project keeps `project.yaml` (`state_root::rel`, #2696 C2).
-pub fn render_lines_in(
-    settings: &LanguageSettings,
-    ui: &str,
-    conversation: &str,
-    profile_rel: &str,
-) -> String {
     let mut out = if ui == "ko" {
         format!("항목별 작성 언어(`{profile_rel}`의 `language`):\n")
     } else {
         format!("Writing language by item (`language` in `{profile_rel}`):\n")
     };
-    for (item, code) in resolve(settings, conversation) {
+    for item in ITEMS {
+        let Some(code) = settings.get(item.id) else {
+            continue;
+        };
         let label = if ui == "ko" {
             item.label_ko
         } else {
             item.label_en
         };
-        out.push_str(&format!("- {label}: {} (`{code}`)\n", code_name(&code, ui)));
+        out.push_str(&format!("- {label}: {} (`{code}`)\n", code_name(code, ui)));
     }
     out
+}
+
+/// The English name of a supported language code (`ko` → `Korean`), or `None` for any other
+/// code.
+pub fn english_name(code: &str) -> Option<&'static str> {
+    CODES
+        .iter()
+        .find(|(c, _, _)| *c == code)
+        .map(|(_, en, _)| *en)
 }
 
 /// The conversation language the input step uses for conversation-default items: the
@@ -832,18 +835,37 @@ mod tests {
         assert_eq!(home_conversation_supported(home.path()), None);
     }
 
+    /// Card C-87 S1: the lines name only the items the profile sets; an item it leaves out gets
+    /// no line, never a guessed default.
     #[test]
-    fn render_lines_lists_every_item_in_the_ui_language() {
-        let s = settings(&[("code_comments", "ko")]);
+    fn render_lines_lists_only_the_items_the_profile_sets() {
+        let s = settings(&[("code_comments", "ko"), ("user_chat", "ja")]);
         let en = render_lines(&s, "en", ".moai/project.yaml");
-        assert_eq!(en.lines().count(), ITEMS.len() + 1);
         // #2696 C2: the heading names where this project keeps its profile.
-        assert!(en.starts_with("Writing language by item (`language` in `.moai/project.yaml`):\n"));
-        assert!(en.contains("- Code comments: Korean (`ko`)\n"));
-        assert!(en.contains("- Commit messages: English (`en`)\n"));
+        assert_eq!(
+            en,
+            "Writing language by item (`language` in `.moai/project.yaml`):\n\
+             - Conversation with the user: Japanese (`ja`)\n\
+             - Code comments: Korean (`ko`)\n"
+        );
         let ko = render_lines(&s, "ko", ".moai/project.yaml");
-        assert!(ko.starts_with("항목별 작성 언어(`.moai/project.yaml`의 `language`):\n"));
-        assert!(ko.contains("- 코드 주석: 한국어 (`ko`)\n"));
-        assert!(ko.contains("- 커밋 메시지: 한국어 (`ko`)\n"));
+        assert_eq!(
+            ko,
+            "항목별 작성 언어(`.moai/project.yaml`의 `language`):\n\
+             - 사용자 대화: 일본어 (`ja`)\n\
+             - 코드 주석: 한국어 (`ko`)\n"
+        );
+    }
+
+    /// Each item alone renders exactly its own line, in `ITEMS` order with the others absent.
+    #[test]
+    fn each_item_renders_its_own_line() {
+        for item in ITEMS {
+            let s = settings(&[(item.id, "ko")]);
+            let en = render_lines(&s, "en", "p.yaml");
+            let lines: Vec<&str> = en.lines().collect();
+            assert_eq!(lines.len(), 2, "{}: {en}", item.id);
+            assert_eq!(lines[1], format!("- {}: Korean (`ko`)", item.label_en));
+        }
     }
 }

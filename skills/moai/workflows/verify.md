@@ -16,6 +16,8 @@ A receipt (returned on stdout by the internal `run-verify` operation; not stored
 4. Bind the task, attempt, tree, SPEC, policy, and tool version to the raw evidence.
 5. State skips, coverage gaps, and artifact expiry explicitly.
 
+In a project described by `/moai project`, the check commands of step 1 and the AC-to-test tracing come from `internal/quality` and the language guide it names; a tool the project does not configure is `not_run`, never guessed.
+
 ## Check-run rules
 
 This section is the single source for who runs which check locally and when an exact-head CI result may be cited instead (#2385). AUDIT, SYNC and the PR form point here and do not restate it. The integration queue, merge order and open-PR cap are the integration-flow rules (#2388); build-artifact sharing is #2380.
@@ -35,7 +37,7 @@ Citation conditions — all must hold, or the CI result is not cited:
 2. Every required job of that run is `completed` with conclusion `success` (in this repository a pull request run has `ci / linux-x86_64` and the `ci` aggregate; take the names from the workflow file, not from memory).
 3. The auditor reads the run back itself and writes it in the verdict as one line, `ci: ci run=<run id> head=<40-hex head SHA>`, with the run's conclusion; the author's `## Self-Audit` section needs no such line, and no verdict waits for one (decision D4, Issue #1975 comment 6840449133). During the transition an author's line in that form is still accepted (the workflow was `rc-ci` before Issue #2563; a line or a check run under the old name still reads the same during the transition, under the same conditions). `moai pr-self-audit-check` passes a body with or without that line and rejects one only when it lacks a keyed field; it cannot see GitHub, so the auditor reads the run back.
 
-Where each target runs (user decision U10, Issue #2554): a pull request to the integration branch runs `ci / linux-x86_64` only; the push that merges it runs all four `ci / <target>` jobs and `windows-build` with the same check set. The scope moves to after merge, it does not shrink. When a post-merge run fails, the leader's first act — before any other merge — is to revert the pull request that caused it or to have it fixed, and the failing run id and the reverted or fixing PR are recorded on that PR's Issue.
+Where each target runs (user decision U10, Issue #2554): a pull request to the integration branch runs `ci / linux-x86_64` only; the push that merges it runs `ci / linux-x86_64`, `ci / macos-arm64` and `windows-build` (build only) with the same check set — the three supported platforms macOS arm64, Linux x86_64 and Windows x86_64 (`SPEC-20261117-supported-platforms`). The scope moves to after merge, it does not shrink. When a post-merge run fails, the leader's first act — before any other merge — is to revert the pull request that caused it or to have it fixed, and the failing run id and the reverted or fixing PR are recorded on that PR's Issue.
 
 A CI result is never cited for a language or suite the change touches, when the repair changed code in it, when no run exists for the head (a `pull_request` run does not start while the PR has a merge conflict; write `ci: not_run` with the reason), or for checks CI does not perform (mutations, behavioural probes, fresh-clone reproduction). Citing never relaxes a gate: the independent audit, `ci` success with no failed `windows-build` on the head, and exact head and base equality stay required.
 

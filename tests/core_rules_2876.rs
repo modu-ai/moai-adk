@@ -54,6 +54,27 @@ fn core_rules_stay_small_numbered_and_host_neutral() {
     }
 }
 
+/// Card C-87 S1: rule 7 says where the conversation language comes from, that it holds after a
+/// compaction, and that a subagent's report reaches the user in it.
+#[test]
+fn rule_seven_keeps_the_conversation_language_for_relayed_reports() {
+    let rules = package("references/internal/core-rules.md");
+    let seven = rules
+        .lines()
+        .find(|l| l.starts_with("7. "))
+        .expect("rule 7");
+    for phrase in [
+        "Answer in the user's conversation language",
+        "the project's language setting, which the session-start note repeats after a compaction",
+        "relay a subagent's report to the user in that language, never as it came",
+    ] {
+        assert!(
+            seven.contains(phrase),
+            "rule 7 must say `{phrase}`: {seven}"
+        );
+    }
+}
+
 /// #3096 S1: rules 19-21 and the report-first sentence of rule 18 keep their scope and reason,
 /// and the lenses file reports without changing code.
 #[test]
