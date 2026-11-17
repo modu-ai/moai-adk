@@ -1031,9 +1031,10 @@ pub fn has_local_record(project: &Path, cwd: &Path) -> bool {
 /// `.live` lock, as `lane_registry::live_session_count` counts them. The `issue/<n>` commit guard
 /// is a lane safety and applies only then, so an ordinary user's commit on an `issue/<n>` branch
 /// of a clone no lane runs in is not refused. Reads only; a registry that cannot be read counts
-/// as a lane (the guard stays on).
+/// as a lane (the guard stays on), and so does a link on any path component below the git
+/// common dir (C-80 audit N1: a linked state folder pointing at an empty registry).
 pub fn lane_clone(dir: &Path) -> bool {
-    let Ok(registry) = crate::lane_registry::registry_dir(dir) else {
+    let Ok(registry) = crate::lane_registry::registry_dir_unlinked(dir) else {
         return true;
     };
     let now = std::time::SystemTime::now()
