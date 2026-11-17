@@ -91,7 +91,7 @@
       }
     },
     "workflows/plan.md": {
-      "sha256": "3ec6d1f8bc00d02df8c52ed2e494296814f02f834da1dd63ecd89beb3d48f911",
+      "sha256": "1a2e8006d48e54f0182814f9d3f184389c275f5d5498119d74fbd6cb463f212c",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-plan",
@@ -100,7 +100,7 @@
       }
     },
     "workflows/run.md": {
-      "sha256": "3d9814182cac39b8b9bc550f9c4fb983a06c99ca96c02bc20eab3f24ce83fc6a",
+      "sha256": "4ccc1a64f5f3cf9c8765bc1148aed58166db06c7b028cc172f5a00880b165a8a",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-run",
@@ -109,7 +109,7 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "e23b0dc7417da9b43960edc5d081b6ffb19cfda035167766d52306c347118f9d",
+      "sha256": "3071c8035afbcc12ead1db9fd9665a25e2e8d8ce610e29e477242352c4efaf42",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
@@ -118,7 +118,7 @@
       }
     },
     "workflows/audit.md": {
-      "sha256": "d8a683bd7432ec1d66f36f4be858a299e644a3951d6311e29986f591b9953e57",
+      "sha256": "881e69cbcaecbd7bbeb7f2391d14999f640a31a31c0ee85951eb83a6059bc306",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
@@ -127,7 +127,7 @@
       }
     },
     "workflows/sync.md": {
-      "sha256": "a4bb0535175b1b1bd2459017bad7eac713c16c51fd5a08b42f3050ec73f55865",
+      "sha256": "7561ca3a4066baede9c8f3d42f4957b9f6f7b8078d3e8e9153525daa6a028d94",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-sync",
@@ -154,7 +154,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "01c5df46d6a49bc720d8da1a550b172fb1c97c4c4cf908e75f011a55f8d8051c",
+      "sha256": "d4aa72f548ad3d712851fff77fdd35fda05de3bbeda50c9a32e38ecb7172aff7",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
@@ -163,7 +163,7 @@
       }
     },
     "references/chains/index.md": {
-      "sha256": "11cf07aba90e484f33699193aca1728a88d72d5d9f435fbcba8caa5b1e0ab646",
+      "sha256": "b109783dc421918414a3796a505e57c58137b76ddec420895dc07d39eb100e93",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",
@@ -190,7 +190,7 @@
       }
     },
     "references/internal/interview.md": {
-      "sha256": "d55737b17d948c9ff28b9d99674646d8be42789a4d07d0ad9462b322b96df71b",
+      "sha256": "e645f46c863e1eeb83fb3daf5b1cc08cf0eda418f42813fce9cbd02dd74ea0ca",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-interview",
@@ -364,6 +364,15 @@
         "template_id": "internal-self-check",
         "adoption": "new",
         "reason": "Written for rc.2 card C-77 (user selection 2026-11-17 after the PR history analysis of 193 audit FAILs): the checks whoever wrote a change runs before asking for an audit or opening a pull request, one line each with its command, grouped as tests, package and documents, and the pull request. Read by moai-impl (`reads:`) and named by the rules of chains/index.md; its machine items run from the repository's tools/self_check.sh."
+      }
+    },
+    "references/internal/sdd.md": {
+      "sha256": "9f1db8f11b536fdceba2b11669418b2d6bea12938d13d727988b8288b410db6f",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-sdd",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-sdd-guidance (SDD rollout slice SDD-5; user decisions 2026-11-17: every repository change has a SPEC, minimal form by default, GEARS + IF…THEN, approval = the user's in-session selection with digest, one SPEC = one PR, SYNC writes and AUDIT checks, @cc: Agent Context Comments, preserve-then-change instead of DDD). The agent-facing SDD rules in one place, naming only `moai spec` actions this build has (checked with --help) and the card link as planned until it lands. Read by moai-docs (`reads:`) and named by chains/index.md and the PLAN, RUN, VERIFY, SYNC and AUDIT workflows."
       }
     }
   }

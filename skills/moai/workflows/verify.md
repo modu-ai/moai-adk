@@ -15,6 +15,7 @@ A receipt (returned on stdout by the internal `run-verify` operation; not stored
 3. Run the commands through a trusted runner, and record start, end, exit code, cancellation, and timeout.
 4. Bind the task, attempt, tree, SPEC, policy, and tool version to the raw evidence.
 5. State skips, coverage gaps, and artifact expiry explicitly.
+6. Run every `verify:` command of the SPEC's acceptance criteria on the exact tree and record each exit code; SYNC writes them into the SPEC's `## Result` before the audit, in the order PLAN → RUN → VERIFY → SYNC → AUDIT → merge (`internal/sdd`).
 
 ## Check-run rules
 

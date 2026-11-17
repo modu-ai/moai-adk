@@ -2,15 +2,19 @@
 
 ## Input
 
-A candidate that passed, the latest base, document and Issue revisions, and the allowed effects.
+A candidate that passed VERIFY, its SPEC, the latest base, the document revisions, and the allowed effects.
 
 ## Output
 
-A document diff, an Issue report, an integration receipt, and a closure. The receipt's field contract is below. In 2026.11.0-rc.1 it is produced by this procedure with `git` and `gh`, not by a dedicated command, and it is carried in the PR body and the Issue report rather than in a file; every field that was not measured is written as `not_run`. Per-file apply receipts are a different record and stay under the project state directory's `receipts` folder.
+The SPEC's `## Result` and status, a document and `@cc:` comment diff, an integration receipt, and a closure. The receipt's field contract is below. In 2026.11.0-rc.1 it is produced by this procedure with `git` and `gh`, not by a dedicated command, and it is carried in the PR body rather than in a file; every field that was not measured is written as `not_run`. Per-file apply receipts are a different record and stay under the project state directory's `receipts` folder.
 
 ## States
 
 `ready → reconciling → document_proposed → authorized → publishing → confirmed → closed`. A run stops in `needs_rebase` (the candidate does not contain the latest base), `needs_amendment` (the SPEC itself must change), `conflict`, `blocked` (a gate, permission or independent verdict is missing) or `publish_unknown` (an external write ended without a confirmed result). A stop state is reported as it is; it is never rounded up to a pass.
+
+## Before the audit
+
+The order is PLAN → RUN → VERIFY → SYNC → AUDIT → merge (`internal/sdd`): SYNC writes, AUDIT checks. On the candidate branch, before the audit, SYNC makes the SPEC, the documents and the `@cc:` comments match the code: it writes `## Result` from the VERIFY results (each AC met with its evidence, withdrawn with the reason, or what is missing), sets the status, fixes the document mismatches of step 3, keeps the existing `@cc:` comments true to the code (it never adds new ones), runs `moai spec check`, and commits these with the `Moai-Spec` trailer. A requirement without code or tests, or a change outside the SPEC's Scope, is reported and stops the step; it is never written as met. Only after the merge: the card is closed, the SPEC archived and the release note written.
 
 ## Procedure
 
@@ -45,7 +49,7 @@ Skip this section when you are a base agent yourself: base agents never start ot
 - Use only what the host itself offers. Never stand in for a missing feature with extra sessions, folders or scripts: name the feature as not supported on this host, with the reason, and use the fallback given below.
 - When the agent is not installed on this host, do the step in this session and say so.
 
-SYNC may hand document mismatches (step 3) to one `moai-docs` at a time, with `scope` naming only the document paths. The effects in steps 4 to 9 (push, pull request, comments, merge) stay with this session: the agent writes files and reports, and never sends anything. Step 7's independent review goes to `moai-audit` as the AUDIT workflow describes, not to the agent that wrote the change.
+SYNC may hand the writing before the audit — the SPEC's `## Result` and status, the document mismatches of step 3 and the `@cc:` comments — to one `moai-docs` at a time, with `scope` naming only those paths. The effects in steps 4 to 9 (push, pull request, comments, merge) stay with this session: the agent writes files and reports, and never sends anything. Step 7's independent review goes to `moai-audit` as the AUDIT workflow describes, not to the agent that wrote the change.
 
 ## Integration receipt fields
 

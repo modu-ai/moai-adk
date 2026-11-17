@@ -6,15 +6,15 @@ The user's goal, a repository snapshot, existing Issues, and constraints.
 
 ## Output
 
-A GEARS SPEC, REQ/AC traces, an approval digest, and a task DAG.
+A SPEC file as `internal/sdd` says — GEARS requirements, acceptance criteria with their verify commands, the user's recorded approval and its digest — and a task order.
 
 ## Procedure
 
 1. Separate established facts from the assumptions that are needed.
-2. Write the GEARS conditions, states, events, actors, and actions. Read legacy EARS through a meaning-preserving import.
+2. Write or update the SPEC (`moai spec new <slug> --title <title> --minimal` for a new one): the GEARS conditions, states, events, actors, and actions, with an IF…THEN failure path for every `When` requirement, and `[NEEDS CLARIFICATION: …]` where an answer is missing. Read legacy EARS through a meaning-preserving import.
 3. Link each AC to its actual means of verification, risks, write scope, and dependencies.
 4. Distinguish an Issue's draft from its approved snapshot.
-5. Confirm scope, cost, data, and the required safety conditions, and hand only an approved revision and digest to RUN.
+5. Confirm scope, cost, data, and the required safety conditions. Run `moai spec check`, record the user's selection as the approval with the digest `moai spec show` prints, and hand only that approved revision to RUN.
 6. Record each judgment you make (intent, next step) with the internal `decision-record` operation: `decision_source: native`, `authority: none`. A judgment is a candidate next step; when it points past the authorized permissions, cost, external transmission, or destructive effects, ask the user instead of acting.
 
 When the plan hinges on how a stateful part behaves, why a pipeline is slow, what of an old part is worth keeping or what a refactor could break, read `internal/lenses` and apply the lens that fits.

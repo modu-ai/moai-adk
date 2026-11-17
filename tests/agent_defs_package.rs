@@ -380,12 +380,14 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
             "internal/security-checklist"
         ]
     );
+    // SPEC-20261117-sdd-guidance: moai-docs is SYNC's writer and keeps the SPEC Result.
     assert_eq!(
         reads("moai-docs"),
         [
             "internal/core-rules",
             "internal/decide",
-            "internal/doc-claims"
+            "internal/doc-claims",
+            "internal/sdd"
         ]
     );
     for d in &defs {
@@ -466,6 +468,8 @@ fn internal_references_say_when_to_read_them() {
         "versioning",
         // C-77: the checks an implementer runs before asking for an audit.
         "self-check",
+        // SPEC-20261117-sdd-guidance: the agent-facing SDD rules.
+        "sdd",
     ];
     let mut found: Vec<String> = std::fs::read_dir(package().join("references/internal"))
         .unwrap()
@@ -555,9 +559,14 @@ fn chains_name_real_routes_agents_and_references() {
     ] {
         assert!(text.contains(rule), "{rule}");
     }
-    // The build chain runs implementation before the audit, never in the same agent.
+    // The build chain runs implementation before the audit, never in the same agent; SYNC
+    // (moai-docs) writes before AUDIT checks (SPEC-20261117-sdd-guidance).
     let build = rows.iter().find(|r| r[0] == "Build something new").unwrap();
-    assert_eq!(build[2], "moai-plan, moai-impl, moai-audit, moai-docs");
+    assert_eq!(build[1], "PLAN, RUN, VERIFY, SYNC, AUDIT");
+    assert_eq!(build[2], "moai-plan, moai-impl, moai-docs, moai-audit");
+    let fix = rows.iter().find(|r| r[0] == "Fix a bug").unwrap();
+    assert_eq!(fix[1], "PLAN, RUN, VERIFY, SYNC, AUDIT");
+    assert_eq!(fix[2], "moai-research, moai-plan, moai-impl, moai-docs, moai-audit");
 }
 
 /// The question bank (#2639): one row per question, every always-asked axis of the PROJECT

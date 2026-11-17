@@ -273,7 +273,7 @@ fn the_ledger_is_local_cards_and_previews_run_without_asking() {
         "`go-settings` comes before `go-state`",
         "never ask about a step that reads `blocked` or `re-run after …` behind an earlier step",
         "ask once, after the preview is shown",
-        "the development method is TDD or DDD only",
+        "the development method is TDD or preserve-then-change only",
         "the work ledger is the local card ledger (`moai card`): it is not asked, it is never recorded under `development_methods`, and GitHub Issues are not offered as a ledger or a method",
         "relay the `--questions` set through the host's question tool",
         "its `suggested` value first",
