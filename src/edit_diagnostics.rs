@@ -17,6 +17,9 @@
 //!   credential shape (`redact::contains_secret_shape`) is masked.
 //! - One checker per project at a time (a lock file in the HOME state folder's
 //!   `edit-diagnostics/`, mode 0700): a second edit while one runs gets a one-line "skipped".
+//!   Each project has one empty lock file, reused by every run and never removed: removing it
+//!   would let a run that opened the old file and a run that made a new one both hold "the"
+//!   lock (SPEC-20261117-edit-diagnostics-followups D1). The files number the projects checked.
 //! - The checker gets `./<rel>`, never a path that starts with `-` (CWE-88), and its whole
 //!   process group is stopped when it ends, by itself or by the timeout.
 //! - ANSI escape sequences and control characters other than tab are removed from its output.
