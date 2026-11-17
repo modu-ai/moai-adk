@@ -632,3 +632,216 @@ fn an_earlier_root_moves_into_a_moai_that_holds_specs_and_back() {
     );
     assert_eq!(moai_cli::state_root::classify(&p).generation, "none");
 }
+
+/// A `.moai-cli` project with earlier SPECs and the tracked `.moai/specs/` (RB1).
+fn earlier_with_specs(home: &TempHome, earlier_ids: &[&str]) -> PathBuf {
+    let p = home.path().join("proj");
+    fs::create_dir_all(p.join(".moai-cli/index")).unwrap();
+    fs::write(p.join(".moai-cli/project.yaml"), "schema_version: 2\n").unwrap();
+    fs::write(p.join(".moai-cli/index/a.json"), "{\"a\":1}").unwrap();
+    for id in earlier_ids {
+        let dir = p.join(".moai-cli/specs").join(id);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("spec.md"), format!("earlier {id}\n")).unwrap();
+    }
+    assert_eq!(new_spec(home, &p, &[]).0, 0);
+    p
+}
+
+/// `go-state-plan` → `go-state-apply` → `go-state-revert-plan` → `go-state-revert`, each
+/// envelope.
+fn json_call(home: &TempHome, args: &[&str]) -> Value {
+    let (_, out) = raw(home, args);
+    serde_json::from_str(&out).unwrap_or_else(|_| panic!("{args:?}: {out}"))
+}
+
+/// RB1: SPEC folders with different ids merge one by one into `.moai/specs/`; the revert puts
+/// each back on its side.
+#[test]
+fn earlier_specs_with_other_ids_merge_and_the_revert_splits_them_again() {
+    let home = TempHome::new();
+    let p = earlier_with_specs(&home, &["SPEC-OLD-001", "SPEC-20261101-old"]);
+    let before = tree_state(&p);
+    let ps = p.to_str().unwrap();
+    let plan = json_call(&home, &["go-state-plan", ps]);
+    assert_eq!(plan["ok"], true, "{plan}");
+    let moves: Vec<(String, String, String)> = plan["result"]["state_moves"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|m| {
+            (
+                m["from"].as_str().unwrap().to_string(),
+                m["to"].as_str().unwrap().to_string(),
+                m["action"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect();
+    for id in ["SPEC-20261101-old", "SPEC-OLD-001"] {
+        let want = (
+            format!(".moai-cli/specs/{id}"),
+            format!(".moai/specs/{id}"),
+            "move".to_string(),
+        );
+        assert!(moves.contains(&want), "{id}: {moves:?}");
+    }
+    assert!(
+        !moves.iter().any(|(from, _, _)| from == ".moai-cli/specs"),
+        "the folder never moves whole: {moves:?}"
+    );
+    let digest = plan["result"]["plan_digest"].as_str().unwrap().to_string();
+    let v = json_call(
+        &home,
+        &[
+            "go-state-apply",
+            ps,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "test-permission-ref",
+        ],
+    );
+    assert_eq!(v["ok"], true, "{v}");
+    assert_eq!(v["result"]["state"], "committed", "{v}");
+    let mut merged: Vec<String> = fs::read_dir(p.join(".moai/specs"))
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    merged.sort();
+    assert_eq!(
+        merged,
+        vec![
+            "SPEC-20261101-old",
+            "SPEC-20261117-login-fix",
+            "SPEC-OLD-001"
+        ]
+    );
+    assert_eq!(
+        fs::read_to_string(p.join(".moai/specs/SPEC-OLD-001/spec.md")).unwrap(),
+        "earlier SPEC-OLD-001\n"
+    );
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    let rp = json_call(&home, &["go-state-revert-plan", ps, "--backup", &backup]);
+    assert_eq!(rp["ok"], true, "{rp}");
+    let items = rp["result"]["items"].as_array().unwrap();
+    assert!(
+        items
+            .iter()
+            .any(|i| i["path"] == ".moai/specs" && i["action"] == "restored_to_moai_specs"),
+        "N-e: {rp}"
+    );
+    let rd = rp["result"]["plan_digest"].as_str().unwrap().to_string();
+    let v = json_call(
+        &home,
+        &[
+            "go-state-revert",
+            ps,
+            "--backup",
+            &backup,
+            "--plan-digest",
+            &rd,
+            "--permission-reference",
+            "test-permission-ref",
+        ],
+    );
+    assert_eq!(v["ok"], true, "{v}");
+    // Both sides as they were; the set-aside `.moai.rust-<UTC>` keeps the receipt.
+    let after: Vec<(String, Vec<u8>)> = tree_state(&p)
+        .into_iter()
+        .filter(|(n, _)| !n.starts_with(".moai.rust-") && !n.starts_with(".moai-cli/backups"))
+        .collect();
+    let before: Vec<(String, Vec<u8>)> = before
+        .into_iter()
+        .filter(|(n, _)| !n.starts_with(".moai-cli/backups"))
+        .collect();
+    assert_eq!(after, before);
+}
+
+/// RB1: the same SPEC id on both sides is a conflict; the whole move waits and nothing moves.
+#[test]
+fn an_earlier_spec_with_the_same_id_blocks_the_move() {
+    let home = TempHome::new();
+    let p = earlier_with_specs(&home, &[ID, "SPEC-OLD-001"]);
+    let before = tree_state(&p);
+    let ps = p.to_str().unwrap();
+    let plan = json_call(&home, &["go-state-plan", ps]);
+    assert_eq!(plan["ok"], true, "{plan}");
+    let item = plan["result"]["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|i| i["path"] == ".moai-cli")
+        .unwrap_or_else(|| panic!("{plan}"))
+        .clone();
+    assert_eq!(item["action"], "leave", "{item}");
+    let reason = item["reason"].as_str().unwrap();
+    assert!(
+        reason.starts_with(&format!(
+            "conflict: {ID} is in both .moai-cli/specs/ and .moai/specs/"
+        )),
+        "{reason}"
+    );
+    let digest = plan["result"]["plan_digest"].as_str().unwrap().to_string();
+    let v = json_call(
+        &home,
+        &[
+            "go-state-apply",
+            ps,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            "test-permission-ref",
+        ],
+    );
+    assert_eq!(v["ok"], true, "{v}");
+    assert_ne!(v["result"]["state"], "committed", "{v}");
+    assert_eq!(tree_state(&p), before, "nothing moved");
+    assert_eq!(moai_cli::state_root::classify(&p).generation, "none");
+}
+
+/// N-a, N-c: only a real `specs/` folder (and a Finder `.DS_Store` beside it) reads as no
+/// state; a linked or plain-file `specs` does not.
+#[test]
+fn only_a_real_specs_folder_reads_as_no_state() {
+    let home = TempHome::new();
+    let verdict = |setup: &dyn Fn(&Path)| {
+        let p = home
+            .path()
+            .join(format!("p{}", fs::read_dir(home.path()).unwrap().count()));
+        fs::create_dir_all(p.join(".moai")).unwrap();
+        setup(&p);
+        moai_cli::state_root::classify(&p).generation
+    };
+    assert_eq!(
+        verdict(&|p| fs::create_dir(p.join(".moai/specs")).unwrap()),
+        "none"
+    );
+    assert_eq!(
+        verdict(&|p| {
+            fs::create_dir(p.join(".moai/specs")).unwrap();
+            fs::write(p.join(".moai/.DS_Store"), "x").unwrap();
+        }),
+        "none"
+    );
+    assert_eq!(
+        verdict(&|p| fs::write(p.join(".moai/specs"), "a file").unwrap()),
+        "unknown"
+    );
+    // A `.DS_Store` that is a folder is something else.
+    assert_eq!(
+        verdict(&|p| {
+            fs::create_dir(p.join(".moai/specs")).unwrap();
+            fs::create_dir(p.join(".moai/.DS_Store")).unwrap();
+        }),
+        "unknown"
+    );
+    #[cfg(unix)]
+    {
+        let elsewhere = home.path().join("elsewhere-specs");
+        fs::create_dir_all(&elsewhere).unwrap();
+        assert_eq!(
+            verdict(&|p| std::os::unix::fs::symlink(&elsewhere, p.join(".moai/specs")).unwrap()),
+            "unknown"
+        );
+    }
+}

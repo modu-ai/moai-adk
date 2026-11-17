@@ -382,7 +382,8 @@ pub fn classify_with(root: &Path, go: fn(&Path) -> Vec<String>) -> Classified {
 /// fresh clone of a repository that tracks its SPECs has it without any MoAI state.
 pub const SPECS_DIR: &str = "specs";
 
-/// `moai` (a project's `.moai/`) is a real folder whose only entry is a real `specs/` folder:
+/// `moai` (a project's `.moai/`) is a real folder whose only entry (besides a Finder
+/// `.DS_Store` file) is a real `specs/` folder:
 /// what a fresh clone of a repository that tracks its SPECs has. SDD B1 (leader decision
 /// 2026-11-17): it is no MoAI state, so [`classify`] reads it like an absent `.moai/` (verdict
 /// `none` when nothing else is there, never `unknown`), and writing a SPEC never changes a
@@ -399,6 +400,10 @@ pub fn specs_only(moai: &Path) -> bool {
         let Ok(e) = e else {
             return false;
         };
+        // Finder's `.DS_Store` (a regular file) is no state (RB1 N-c).
+        if e.file_name() == ".DS_Store" && e.file_type().is_ok_and(|t| t.is_file()) {
+            continue;
+        }
         names.push(e.file_name());
         if names.len() > 1 {
             return false;

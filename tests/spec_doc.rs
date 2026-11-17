@@ -649,6 +649,20 @@ fn frontmatter_reads_flow_maps_and_null() {
 
 /// B2: `(REQ-1…REQ-3)` and `(REQ-1..REQ-3)` name every requirement in the range.
 #[test]
+fn a_range_names_at_most_a_thousand_ids() {
+    let fm = front("draft", "");
+    let refs = |r: &str| {
+        let d = doc(&format!(
+            "{fm}{INTENT}{REQS}## Acceptance\n\n- AC-1 ({r}): all · verify: x\n\n{SCOPE}{PLAN}"
+        ));
+        d.acceptance[0].refs.clone()
+    };
+    // N: 1000 ids are read; N+1: 1001 ids stay one literal ref (unknown).
+    assert_eq!(refs("REQ-1..REQ-1000").len(), 1000);
+    assert_eq!(refs("REQ-1..REQ-1001"), vec!["REQ-1..REQ-1001".to_string()]);
+}
+
+#[test]
 fn refs_take_ranges() {
     let fm = front("draft", "");
     let three = "## Requirements\n\n- REQ-1: The server shall a.\n- REQ-2: The server shall b.\n\

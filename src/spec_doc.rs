@@ -7,15 +7,17 @@
 //!   file is checked leniently: everything but the read, frontmatter-block, id and status codes
 //!   is a warning there. The folder name must equal the id.
 //! - status: [`STATUSES`]; a Go status ([`legacy_status`]) is read as its new word and reported.
-//! - frontmatter: flat `key: value` lines between `---` lines; `approval:` holds the indented
-//!   `by`, `at` and `basis`. This is not YAML: the reader takes only that shape. The archive
-//!   scanner's reader (`archive::frontmatter`) reads three marker keys and refuses indentation,
-//!   so it cannot read `approval`; this one is separate and has no new crate.
+//! - frontmatter: flat `key: value` lines between `---` lines, `null` read as absent;
+//!   `approval:` holds `by`, `at` (a date, YYYY-MM-DD), `basis` and `digest` as indented lines
+//!   or one `{…}` flow map. Not full YAML: only these shapes are read. The archive scanner's
+//!   reader (`archive::frontmatter`) reads three marker keys and refuses indentation, so it
+//!   cannot read `approval`; this one is separate and has no new crate.
 //! - sections: `## Intent`, `## Requirements` (`- REQ-<n>: <GEARS sentence>`, parsed by
 //!   [`crate::spec::parse_gears`], or the EARS unwanted form `- REQ-<n> (REQ-…): IF …, THEN …
-//!   shall …`; every `When` requirement needs an IF/THEN requirement naming it or a
-//!   `failure: none` note, `req_failure_path`), `## Acceptance` (`- AC-<n> (REQ-…): <result> · verify: `cmd``,
-//!   or `manual:` / `unknown:`, inline or on the next line), `## Scope` (`write:`, `read-only:`,
+//!   shall …`; every `When` requirement needs an IF/THEN requirement naming it or a trailing
+//!   `· failure: none` note, `req_failure_path`), `## Acceptance` (`- AC-<n> (REQ-…): <result>
+//!   · verify: <cmd>`, or `manual:` / `unknown:`, on the AC line or at the start of a later line
+//!   of the same AC; refs read `REQ-1…REQ-3` ranges), `## Scope` (`write:`, `read-only:`,
 //!   `forbidden:` relative paths; an untagged path is `write`) and `## Plan` always;
 //!   `## Non-goals` and `## Risks` make a full SPEC, which then needs both; `## Decisions` and
 //!   `## Result` are optional. Headings inside fenced code are text.
