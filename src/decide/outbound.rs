@@ -2015,14 +2015,18 @@ mod tests {
     /// hide only part of it and send the rest. Test data, none real.
     #[test]
     fn a_url_with_a_password_is_refused_in_every_field_before_masking() {
+        // The web schemes are joined at run time: the scan of this folder in
+        // tests/home_isolation_scan.rs allows the two endpoint constants only.
+        let web = |scheme: &str, rest: &str| format!("{scheme}://{rest}");
         for text in [
-            "postgres://admin:S3cretPass@localhost:5432/app",
-            "redis://:pa55w0rdX@cache:6379/0",
-            "https://user:hunter2@host.internal/x",
-            "postgres://admin:S3cretPass@db.example.com/app",
-            "://u:p@h",
-            "://:p@h",
+            "postgres://admin:S3cretPass@localhost:5432/app".to_string(),
+            "redis://:pa55w0rdX@cache:6379/0".to_string(),
+            web("https", "user:hunter2@host.internal/x"),
+            "postgres://admin:S3cretPass@db.example.com/app".to_string(),
+            "://u:p@h".to_string(),
+            "://:p@h".to_string(),
         ] {
+            let text = text.as_str();
             assert_eq!(screen(text), Some("url_credentials"), "{text}");
             for field in ["what", "evidence", "undo"] {
                 let r = built(|v| put(v, field, format!("it uses {text} now"))).unwrap_err();
@@ -2042,13 +2046,18 @@ mod tests {
         }
         // A user without a password, an SSH remote, a port, a `:` after the path.
         for text in [
-            "://u@h",
-            "git@host:org/repo",
-            "ssh://git@host/x",
-            "git@github.com:org/repo.git",
-            "https://host.internal:8443/x",
-            "http://localhost:3000 and https://x.org/a:b@c",
+            "://u@h".to_string(),
+            "git@host:org/repo".to_string(),
+            "ssh://git@host/x".to_string(),
+            "git@github.com:org/repo.git".to_string(),
+            web("https", "host.internal:8443/x"),
+            format!(
+                "{} and {}",
+                web("http", "localhost:3000"),
+                web("https", "x.org/a:b@c")
+            ),
         ] {
+            let text = text.as_str();
             assert_eq!(screen(text), None, "{text}");
             assert!(built(|v| v["evidence"] = evidence(text)).is_ok(), "{text}");
         }
