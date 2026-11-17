@@ -29,7 +29,7 @@
 use serde::Serialize;
 use std::fs;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// The largest `spec.md` read, in bytes (256 KiB).
 pub const MAX_SPEC_BYTES: u64 = 256 * 1024;
@@ -531,6 +531,46 @@ pub fn load(dir: &Path, closure: bool) -> SpecDoc {
             ..SpecDoc::default()
         },
     }
+}
+
+/// The project's SPEC folder, relative to the project root.
+pub const SPECS_DIR: &str = ".moai/specs";
+
+/// The project root and whether `.moai/specs` is there. `.moai` or `.moai/specs` that is a link
+/// or not a folder is refused; nothing is followed.
+pub fn specs_dir(project: &Path) -> Result<(PathBuf, bool), String> {
+    let root = crate::apply::root_of(project)?;
+    let mut cur = root.clone();
+    for part in [crate::state_root::MOAI_DIR, "specs"] {
+        cur = cur.join(part);
+        match fs::symlink_metadata(&cur) {
+            Ok(m) if m.is_dir() => {}
+            Ok(_) => {
+                let rel = cur
+                    .strip_prefix(&root)
+                    .map(|r| r.to_string_lossy().replace('\\', "/"))
+                    .unwrap_or_default();
+                return Err(format!(
+                    "spec refused: {rel} is a link or not a folder; it is never followed"
+                ));
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok((root, false)),
+            Err(_) => return Err("spec read failed: the SPEC folder could not be examined".into()),
+        }
+    }
+    Ok((root, true))
+}
+
+/// The SPEC `id` of the project at `project`, read and parsed ([`load`]); `spec not found: <id>`
+/// when its folder is not there. `id` must have a SPEC id's form ([`id_form`]); any other text
+/// is not found and never joined to a path.
+pub fn find(project: &Path, id: &str) -> Result<SpecDoc, String> {
+    let (root, present) = specs_dir(project)?;
+    let dir = root.join(SPECS_DIR).join(id);
+    if id_form(id).is_none() || !present || fs::symlink_metadata(&dir).is_err() {
+        return Err(format!("spec not found: {id}"));
+    }
+    Ok(load(&dir, false))
 }
 
 /// One `key: value` of the frontmatter.
