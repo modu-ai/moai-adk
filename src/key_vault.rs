@@ -134,12 +134,27 @@ pub fn check_provider(provider: &str) -> Result<()> {
 
 /// The home directory: `HOME`, or `USERPROFILE` on Windows when `HOME` is unset.
 pub fn home() -> Result<PathBuf> {
-    std::env::var_os("HOME")
-        .filter(|h| !h.is_empty())
+    home_from(
+        std::env::var_os("HOME"),
+        std::env::var_os("USERPROFILE"),
+        cfg!(windows),
+    )
+}
+
+/// [`home`] from given values, so the rule is tested on every OS and shared (the build folder
+/// of `lane-env` and `heavy-slot-acquire` reads the home this way too): `HOME`, or on Windows
+/// `USERPROFILE` when `HOME` is unset. An empty value counts as unset.
+pub fn home_from(
+    home: Option<std::ffi::OsString>,
+    userprofile: Option<std::ffi::OsString>,
+    windows: bool,
+) -> Result<PathBuf> {
+    home.filter(|h| !h.is_empty())
         .or_else(|| {
-            cfg!(windows)
-                .then(|| std::env::var_os("USERPROFILE"))
+            windows
+                .then_some(userprofile)
                 .flatten()
+                .filter(|u| !u.is_empty())
         })
         .map(PathBuf::from)
         .ok_or_else(|| "HOME is not set".to_string())

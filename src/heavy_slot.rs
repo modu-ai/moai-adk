@@ -362,9 +362,15 @@ pub struct Here {
 
 impl Here {
     /// `None` outside a git worktree or without an absolute HOME: nothing to compare with.
-    pub fn of(cwd: &Path, home: Option<&std::ffi::OsStr>) -> Option<Here> {
+    /// `home` and `userprofile` are the `HOME` and `USERPROFILE` values (the shared rule of
+    /// `lane_env::home_dir`: USERPROFILE stands in on Windows when HOME is unset).
+    pub fn of(
+        cwd: &Path,
+        home: Option<&std::ffi::OsStr>,
+        userprofile: Option<&std::ffi::OsStr>,
+    ) -> Option<Here> {
         let owner = crate::lane_env::owner(cwd).ok()?;
-        let home = crate::lane_env::home_dir(home).ok()?;
+        let home = crate::lane_env::home_dir(home, userprofile, cfg!(windows)).ok()?;
         Some(Here {
             cwd: cwd.to_path_buf(),
             worktrees: crate::lane_env::worktrees(cwd).ok()?,
@@ -420,11 +426,14 @@ pub fn build_folder_note(
     let here = here?;
     let t = settled(&here.cwd.join(target_dir.filter(|t| !t.is_empty())?));
     let own = settled(&here.folder);
-    let recorded = crate::lane_env::read_record(&t)
+    let owner = crate::lane_env::read_record(&t)
         .ok()
         .flatten()
-        .and_then(|r| r["worktree"].as_str().map(PathBuf::from))
-        .filter(|w| *w != here.worktree);
+        .and_then(|r| r["worktree"].as_str().map(PathBuf::from));
+    // C-82 slot audit N3: a folder whose record names this worktree is its own, whatever its
+    // name (for example made before a rename); only another worktree's folder is warned about.
+    let own_by_record = owner.as_ref().is_some_and(|w| *w == here.worktree);
+    let recorded = owner.filter(|w| *w != here.worktree);
     let holder = here
         .worktrees
         .iter()
@@ -441,7 +450,7 @@ pub fn build_folder_note(
             "a build folder whose record names the worktree {}",
             w.display()
         )
-    } else if t != own && t.parent() == own.parent() {
+    } else if t != own && t.parent() == own.parent() && !own_by_record {
         "another worktree's build folder".to_string()
     } else if let Some(w) = holder {
         format!("inside the worktree {}", w.display())
@@ -1651,6 +1660,32 @@ mod build_folder_tests {
         ));
         rec(&format!("{R}/r/repo/.claude/worktrees/one"));
         assert_eq!(note(Some(t)), None);
+    }
+
+    /// C-82 slot audit N3: a sibling build folder under another name is this worktree's own
+    /// when its record says so (no warning); without that record it is another worktree's.
+    #[test]
+    fn a_sibling_folder_recorded_for_this_worktree_is_its_own() {
+        let d = tempfile::TempDir::new().unwrap();
+        let root = std::fs::canonicalize(d.path()).unwrap();
+        let build = root.join("h/.moai/build");
+        let old = build.join("repo-old-name");
+        std::fs::create_dir_all(&old).unwrap();
+        let mut h = here();
+        h.folder = build.join("repo-one");
+        let cargo = cmd(&["cargo", "test"]);
+        let t = Some(old.as_os_str());
+        let n = build_folder_note("agent-7", &cargo, t, Some(&h)).unwrap();
+        assert!(n.contains("another worktree's build folder"), "{n}");
+        std::fs::write(
+            old.join(".moai-build.json"),
+            format!(
+                r#"{{"schema_version": 1, "worktree": "{}"}}"#,
+                h.worktree.display()
+            ),
+        )
+        .unwrap();
+        assert_eq!(build_folder_note("agent-7", &cargo, t, Some(&h)), None);
     }
 
     #[test]
