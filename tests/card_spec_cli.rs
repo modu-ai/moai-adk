@@ -574,3 +574,151 @@ fn the_link_is_an_event_of_the_current_schema_and_the_export_keeps_it() {
         "{events}"
     );
 }
+
+/// The `spec` entry of card `name` in `next`'s `mine` or `ready` list.
+fn listed<'a>(next: &'a Value, name: &str) -> &'a Value {
+    ["mine", "ready"]
+        .iter()
+        .flat_map(|k| next[*k].as_array().unwrap().iter())
+        .find(|c| c["name"] == json!(name))
+        .unwrap_or_else(|| panic!("{name} not listed: {next}"))
+}
+
+/// REQ-6, REQ-8 (audit B1): a Go-generation SPEC is never approved for a card, whatever its
+/// status says and even with an approval block: approval is the user's selection recorded in
+/// a SPEC of this generation (decision U-C).
+#[test]
+fn a_go_generation_spec_is_never_approved_for_a_card() {
+    let w = World::new();
+    let specs = w.project.join(".moai/specs");
+    for (id, status, approval) in [
+        ("SPEC-AUTH-001", "in-progress", ""),
+        (
+            "SPEC-AUTH-002",
+            "approved",
+            "approval:\n  by: user\n  at: 2026-11-17\n  basis: test\n  digest: sha256:00\n",
+        ),
+    ] {
+        fs::create_dir_all(specs.join(id)).unwrap();
+        fs::write(
+            specs.join(id).join("spec.md"),
+            format!("---\nid: {id}\ntitle: Auth\nstatus: {status}\n{approval}---\n\n# Auth\n"),
+        )
+        .unwrap();
+    }
+    let one = w.ready_card("fix", "src/a");
+    let two = w.ready_card("feature", "src/b");
+    ok(&w.card(&["spec", &one, "SPEC-AUTH-001"]));
+    ok(&w.card(&["spec", &two, "SPEC-AUTH-002"]));
+
+    let next = ok(&w.run(&["card", "next", w.p()]));
+    for name in [&one, &two] {
+        assert_eq!(listed(&next, name)["spec"]["approved"], json!(false), "{next}");
+    }
+    let warned = warnings(&next);
+    assert_eq!(warned.len(), 2, "{warned:?}");
+    assert!(
+        warned.iter().all(|m| m.contains("Go-generation SPEC")),
+        "{warned:?}"
+    );
+    for card in [&one, &two] {
+        let (kind, message) = refusal(&w.run_as(&[
+            "card",
+            "take",
+            card,
+            "--require-approved-spec",
+            "--project",
+            w.p(),
+        ]));
+        assert_eq!(kind, "invalid_input", "{message}");
+        assert!(message.contains("Go-generation SPEC"), "{message}");
+    }
+    assert_eq!(w.count("SELECT count(*) FROM reservation"), 0);
+}
+
+/// REQ-6 (audit N1): approved needs no error finding: an approved SPEC whose requirements
+/// changed after the approval (the digest no longer matches) is not approved; a `completed`
+/// SPEC with its approval record is.
+#[test]
+fn an_approval_counts_only_while_its_spec_has_no_error() {
+    let w = World::new();
+    let changed = w.draft_spec("login-fix");
+    let completed = w.draft_spec("other-fix");
+    let a = w.ready_card("fix", "src/a");
+    let b = w.ready_card("fix", "src/b");
+    w.approve(&changed);
+    w.approve(&completed);
+    ok(&w.card(&["spec", &a, &changed]));
+    ok(&w.card(&["spec", &b, &completed]));
+    let path = w.spec_file(&completed);
+    let text = fs::read_to_string(&path).unwrap();
+    fs::write(
+        &path,
+        text.replace("status: approved\n", "status: completed\n"),
+    )
+    .unwrap();
+    let next = ok(&w.run(&["card", "next", w.p()]));
+    assert_eq!(listed(&next, &a)["spec"]["approved"], json!(true), "{next}");
+    assert_eq!(listed(&next, &b)["spec"]["approved"], json!(true), "{next}");
+    assert_eq!(warnings(&next), Vec::<String>::new());
+
+    // The requirement changes after the approval: `approval_digest` is an error.
+    let path = w.spec_file(&changed);
+    let text = fs::read_to_string(&path).unwrap();
+    assert!(text.contains("the filled shall filled."), "{text}");
+    fs::write(
+        &path,
+        text.replace("the filled shall filled.", "the filled shall change."),
+    )
+    .unwrap();
+    let next = ok(&w.run(&["card", "next", w.p()]));
+    let spec = &listed(&next, &a)["spec"];
+    assert_eq!(spec["status"], json!("approved"), "{next}");
+    assert!(spec["errors"].as_u64().unwrap() >= 1, "{next}");
+    assert_eq!(spec["approved"], json!(false), "{next}");
+    let warned = warnings(&next);
+    assert_eq!(warned.len(), 1, "{warned:?}");
+    assert!(
+        warned[0].starts_with(&format!("{a}: ")) && warned[0].contains("error(s)"),
+        "{warned:?}"
+    );
+    let (_, message) = refusal(&w.run_as(&[
+        "card",
+        "take",
+        &a,
+        "--require-approved-spec",
+        "--project",
+        w.p(),
+    ]));
+    assert!(message.contains("error(s)"), "{message}");
+}
+
+/// REQ-6 (audit N2): `research` and `audit` cards linked to a SPEC that is not approved are
+/// not warned about; a `fix` card linked to the same SPEC is.
+#[test]
+fn research_and_audit_cards_are_not_warned_about_an_unapproved_spec() {
+    let w = World::new();
+    let spec = w.draft_spec("login-fix");
+    let research = w.ready_card("research", "notes/a");
+    let audit = w.ready_card("audit", "notes/b");
+    let fix = w.ready_card("fix", "src/c");
+    for card in [&research, &audit, &fix] {
+        ok(&w.card(&["spec", card, &spec]));
+    }
+    let next = ok(&w.run(&["card", "next", w.p()]));
+    for card in [&research, &audit, &fix] {
+        assert_eq!(listed(&next, card)["spec"]["approved"], json!(false), "{next}");
+    }
+    let warned = warnings(&next);
+    assert_eq!(warned.len(), 1, "{warned:?}");
+    assert!(warned[0].starts_with(&format!("{fix}: ")), "{warned:?}");
+    let taken = ok(&w.run_as(&[
+        "card",
+        "take",
+        &research,
+        "--require-approved-spec",
+        "--project",
+        w.p(),
+    ]));
+    assert_eq!(warnings(&taken), Vec::<String>::new(), "{taken}");
+}
