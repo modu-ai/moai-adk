@@ -253,6 +253,38 @@ jobs:
           } >> "$summary"
           exit "$failed"
 
+  # C-83 (SPEC-20261117-ci-superseded-neutral, design D6 "superseded cancels are neutral"): on a
+  # push, a macOS target replaced while waiting by a newer merge (D8 (a) above) leaves the matrix
+  # result `cancelled` with no failed test; 40 of 80 push runs read red for that alone. Only
+  # then this job asks tools/ci_superseded.py (tests/ci_superseded_test.py) whether every target
+  # passed or was superseded; `state=superseded` skips `ci` (a neutral check), anything else
+  # lets `ci` run and fail. Pull requests never run it, so `ci` behaves there as before.
+  ci-verdict:
+    name: ci-verdict
+    if: ${{ !cancelled() && github.event_name == 'push' && needs.check.result == 'cancelled' }}
+    needs: [check]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      checks: read
+      contents: read
+    outputs:
+      state: ${{ steps.verdict.outputs.state }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Superseded or failed
+        id: verdict
+        env:
+          EVENT: ${{ github.event_name }}
+          CHECK_RESULT: ${{ needs.check.result }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 -I tools/ci_superseded.py | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "${PIPESTATUS[0]}"
+
   ci:
     name: ci
     # !cancelled() (#2312): a failed target must fail this check, not skip it (a job without
@@ -260,8 +292,10 @@ jobs:
     # a run cancelled by cancel-in-progress stays cancelled instead of always() reporting it
     # as a failure. GitHub's recommended alternative to always():
     # https://docs.github.com/en/actions/reference/workflows-and-actions/expressions (2026-11-09).
-    if: ${{ !cancelled() }}
-    needs: [check]
+    # C-83: skipped only when ci-verdict found the run superseded; ci-verdict skipped or failed
+    # leaves the condition true, so the step below decides as before.
+    if: ${{ !cancelled() && needs.ci-verdict.outputs.state != 'superseded' }}
+    needs: [check, ci-verdict]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions: {}
