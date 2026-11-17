@@ -160,6 +160,9 @@ fn repo(branch: &str) -> (tempfile::TempDir, PathBuf) {
 #[test]
 fn claim_guard_ignores_an_inherited_git_dir() {
     let (_lane_dir, lane) = repo("issue/7-widget");
+    // Only the lane's clone has a live lane session (SPEC-20261117-commit-guard-users): a guard
+    // that followed the inherited GIT_DIR would read the other clone's empty registry and allow.
+    common::register_lane(&lane);
     let (_other_dir, other) = repo("main");
     let input = json!({"hook_event_name": "PreToolUse", "tool_name": "Bash",
                        "tool_input": {"command": "git commit -m work"}, "cwd": lane})

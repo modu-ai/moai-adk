@@ -1026,6 +1026,22 @@ pub fn has_local_record(project: &Path, cwd: &Path) -> bool {
     record_for(records, cwd).is_some()
 }
 
+/// Whether the clone `dir` belongs to runs a MoAI lane session now (SPEC-20261117-commit-guard-
+/// users): a live entry in its session registry — a lane's registered lease or a launcher's held
+/// `.live` lock, as `lane_registry::live_session_count` counts them. The `issue/<n>` commit guard
+/// is a lane safety and applies only then, so an ordinary user's commit on an `issue/<n>` branch
+/// of a clone no lane runs in is not refused. Reads only; a registry that cannot be read counts
+/// as a lane (the guard stays on).
+pub fn lane_clone(dir: &Path) -> bool {
+    let Ok(registry) = crate::lane_registry::registry_dir(dir) else {
+        return true;
+    };
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| i64::try_from(d.as_secs()).unwrap_or(i64::MAX));
+    crate::lane_registry::live_session_count(&registry, now).map_or(true, |n| n > 0)
+}
+
 /// How a branch name reads as a lane branch (#2336).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LaneBranch {
@@ -1225,6 +1241,12 @@ pub fn hook_cli<T: Transport, C: Clock>(
             }))
         }
     };
+    if !lane_clone(&cwd) {
+        return allow(
+            "no claim record and no live lane session in this clone; an ordinary commit on \
+             issue/<n> is not guarded",
+        );
+    }
     let uncertain = |why: String| -> Result<Value> {
         Err(format!(
             "claim verify: uncertain; {why}; ask the leader for the claim comment id and put \

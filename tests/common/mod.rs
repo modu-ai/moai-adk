@@ -10,6 +10,31 @@ use std::path::{Path, PathBuf};
 #[allow(dead_code)] // every test crate includes this module; not every one runs the binary
 pub const MOAI_BIN: &str = env!("CARGO_BIN_EXE_moai");
 
+/// Registers a live lane session (`agent-1`) in the clone of the repository at `root`, the way
+/// MODE-AGENT does at start (`session-register`). The `issue/<n>` commit guard applies only in a
+/// clone with a live lane session (SPEC-20261117-commit-guard-users), so a lane fixture calls this.
+#[allow(dead_code)] // only the commit-guard test crates register a lane
+pub fn register_lane(root: &Path) {
+    let out = std::process::Command::new(MOAI_BIN)
+        .args([
+            "session-register",
+            &root.to_string_lossy(),
+            "--name",
+            "agent-1",
+        ])
+        .current_dir(root)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .env_remove("GIT_DIR")
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "session-register: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
 /// The `moai-cli` alias of the same `main` (#2790 R1). Only tests about the alias or about the
 /// two names side by side use it.
 #[allow(dead_code)] // only the alias tests run it

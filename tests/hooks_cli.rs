@@ -188,6 +188,8 @@ fn generated_pre_tool_use_command_blocks_an_unverified_commit() {
         "https://github.com/acme/widgets.git",
     ]);
     git(&["checkout", "-q", "-b", "issue/7-widget"]);
+    // A lane worktree's clone has a live lane session (SPEC-20261117-commit-guard-users).
+    common::register_lane(&root);
 
     for host in hooks::HOSTS {
         let obj = hooks::hooks_object(host).unwrap();
