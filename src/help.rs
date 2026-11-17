@@ -1030,11 +1030,16 @@ pub fn render_groups_in(cmd: &Command, all: bool, width: usize, lang: Lang) -> S
 /// command after the binary name and what it does. A command starting with `/` is typed inside
 /// the session, not to the shell. `the_getting_started_and_example_commands_exist` (in
 /// `main.rs`) parses every one against the real command tree, so a removed command breaks it.
+/// `update` comes before the session (SPEC-20261117-installer-skill-agents REQ-11): it installs
+/// the skill that `/moai project` needs.
 pub const GETTING_STARTED: &[(&str, &str)] = &[
     ("install-inspect", "Check the installed MoAI"),
+    ("update", "Install or update the MoAI skill and agents"),
     ("cc", "Start a session in this folder (or: codex, glm)"),
-    ("/moai project", "Inside the session: prepare this project"),
-    ("update", "Update MoAI from the installed package"),
+    (
+        "/moai project",
+        "In the session: set up this project ($moai in Codex)",
+    ),
 ];
 
 /// A few commands to copy, each with what it does (#3004 P1); parsed against the real command
@@ -2475,6 +2480,22 @@ mod tests {
         let text = render_root(&root_cmd(), "bin-x", 80, false);
         assert!(text.contains("  1. bin-x install-inspect  "), "{text}");
         assert!(!text.contains(" moai "), "{text}");
+    }
+
+    /// SPEC-20261117-installer-skill-agents REQ-11: `update` installs the skill, so it comes
+    /// before the session and before `/moai project` in the first steps.
+    #[test]
+    fn the_first_steps_install_the_skill_before_the_session() {
+        let at = |word: &str| {
+            GETTING_STARTED
+                .iter()
+                .position(|(text, _)| *text == word)
+                .unwrap_or_else(|| panic!("{word} is not a first step"))
+        };
+        assert!(at("update") < at("cc"));
+        assert!(at("cc") < at("/moai project"));
+        let text = render_root(&root_cmd(), "moai", 80, false);
+        assert!(text.contains("  2. moai update  "), "{text}");
     }
 
     /// S6d AC-2: `help --all` shows the root commands in Korean and keeps the other abouts in
