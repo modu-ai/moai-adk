@@ -362,6 +362,15 @@
         "reason": "Written for rc.2 card C-69 (user instruction 2026-11-17): the three versioning schemes the PROJECT interview offers — SemVer (default), HeadVer and CalVer — each with its format, who bumps what, when to pick it, how the next version is computed, its pre-release marking and two examples, plus the rule to keep the scheme a project already uses and how `project-detect` reads a version. Sources read 2026-11-17: semver.org 2.0.0, github.com/line/headver, calver.org spec 26.0. Named by project.md, internal/interview and chains/index.md."
       }
     },
+    "references/internal/build-folder.md": {
+      "sha256": "d501167bbf87e9c9974270530ebe91216057ae0ca99fc195a3c74e25025dbb82",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-build-folder",
+        "adoption": "new",
+        "reason": "Written for card C-82 (user decision 2026-11-17, selection '빌드 폴더를 한 곳으로 모으기'; SPEC-20261117-agent-build-folder): where agent and audit builds put CARGO_TARGET_DIR (one folder per worktree under ~/.moai/build/, CARGO_INCREMENTAL=0, an owner record), what a refusal does, where evidence stays, the end-of-task cleanup and the user-picked removal of leftovers. Read by moai-impl and moai-audit (`reads:`); its moai-adk helper is the repository's tools/build_folder.py."
+      }
+    },
     "references/internal/self-check.md": {
       "sha256": "cfa07303ae26ec0eb30dbeeccd069bd6d80b978e185a02b8df11591d403d7272",
       "origin": {
@@ -468,15 +477,6 @@
         "template_id": "language-guide",
         "adoption": "new",
         "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language swift (SwiftPM or Xcode by its files, format and lint with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
-      }
-    },
-    "references/internal/build-folder.md": {
-      "sha256": "d501167bbf87e9c9974270530ebe91216057ae0ca99fc195a3c74e25025dbb82",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "internal-build-folder",
-        "adoption": "new",
-        "reason": "Written for card C-82 (user decision 2026-11-17, selection '빌드 폴더를 한 곳으로 모으기'; SPEC-20261117-agent-build-folder): where agent and audit builds put CARGO_TARGET_DIR (one folder per worktree under ~/.moai/build/, CARGO_INCREMENTAL=0, an owner record), what a refusal does, where evidence stays, the end-of-task cleanup and the user-picked removal of leftovers. Read by moai-impl and moai-audit (`reads:`); its moai-adk helper is the repository's tools/build_folder.py."
       }
     }
   }
