@@ -83,6 +83,9 @@ tier 구분 없이 요구해서, 같은 날 결정("CI 성공 + PASS", FAIL은 �
 - AC-3: met — RED(새 고정 문장, `AGENTS.md` 수정 전): exit 101, `tests/repo_agents_md.rs:86`
   "AGENTS.md must say `Tier 1 or 2 also needs a non-author PASS that cites that run; tier 0 needs `ci` alone.`".
   GREEN: exit 0, 3 passed. `wc -c < AGENTS.md` → `9174`(전 `9079`), 가장 긴 줄 373바이트.
+  mutation(커밋 `c680428206` 뒤, 각각 `git restore`로 되돌리고 tree 깨끗 확인): FAIL 문장 삭제 → exit 101
+  "must say `A posted FAIL stops the merge at every tier.`"; 37행에 옛 PASS 문구 복원 → exit 101 "still says
+  `a successful `ci` run and a non-author PASS that cites that run`". 되돌린 뒤 exit 0.
 - AC-4: met — `1`.
 - AC-5: met — `moai spec check --all --project .`(이 가지 `target/debug/moai`) exit 0, errors 0, warnings 0, SPEC 3개;
   `decision_append_cli` exit 0(17 passed, 실제 결정 기록 미리보기 포함).
