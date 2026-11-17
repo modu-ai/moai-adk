@@ -12,3 +12,12 @@
 ## Host loading guidance
 
 Official sources checked 2026-11-08; recheck when host behavior changes. [OpenAI AGENTS.md guide](https://learn.chatgpt.com/docs/agent-configuration/agents-md): Codex chains global guidance and project-root-to-cwd files; nearer scope wins; combined budget defaults to 32 KiB. [Anthropic memory guide](https://code.claude.com/docs/en/memory#agentsmd): direct AGENTS.md loading needs v2.1.277+ and applies only when no CLAUDE.md variant exists; `/memory` verifies loading. AGENTS.override.md and AGENTS.local.md are not Claude equivalents. [Anthropic best practices](https://code.claude.com/docs/en/best-practices): specific, short durable instructions with linked procedures and runnable checks. Unsupported sessions report loading as not_run; an explicit request to read this file is session context, not proof of discovery. Measured 2026-11-13 (Issue #2667, comment 6848071468): Claude Code 2.1.323 and Codex CLI 0.167.2 read only the `AGENTS.md` inside the session's own working tree, never the primary checkout's from a linked worktree, so this file is tracked (user decision 2026-11-13, replacing the per-machine rule of 2026-11-08).
+
+## Merge driver for the skill source manifest
+
+`skills/moai/references/source-manifest.json` holds a sha256 line per skill file, so two branches that edit one skill file conflict on that line even when the file itself merges cleanly (61 of the 62 tip merges in this history whose only conflict was the manifest, card C-74). `.gitattributes` names the merge driver `moai-manifest` for it. Register the driver once per clone; it writes only that repository's `.git/config`, which its worktrees share, and is safe to run again:
+
+    python3 -I tools/merge_driver_manifest.py --install
+    python3 -I tools/merge_driver_manifest.py --check   # exit 0 when registered
+
+Undo with `git config --local --unset merge.moai-manifest.driver`. Unregistered, git merges the manifest as text, as before. The driver resolves the manifest when every skill file merges cleanly; otherwise the manifest stays conflicted with a message, and after the skill files are resolved `python3 -I tools/source_manifest.py write` rebuilds it. `python3 -I tools/source_manifest.py check` (run in CI by `tests/source_manifest_test.py`) still fails on any manifest that does not match the files.
