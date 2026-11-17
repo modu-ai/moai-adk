@@ -462,13 +462,16 @@ class InstallShTest(unittest.TestCase):
             with self.subTest(answer=answer):
                 if os.path.exists(self.update_log):
                     os.remove(self.update_log)
+                # Typed at once, as the menu tests do: pwsh asks the terminal for the cursor
+                # position (ESC[6n) around its prompt, and this pty never answers, so text typed
+                # after the prompt can be read as that answer. The only read is this prompt.
                 code, out = self.run_pty(
-                    ["--language", "en"], answer, after="Install them now?",
+                    ["--language", "en"], answer,
                     FAKE_UPDATE="ok", FAKE_UPDATE_LOG=self.update_log)
                 self.assertEqual(code, 0, out)
                 self.assertEqual(out.count("Install them now?"), 1, out)
                 calls = self.update_calls()
-                self.assertEqual(len(calls), 2 if applied else 1, calls)
+                self.assertEqual(len(calls), 2 if applied else 1, f"{calls}\n{out}")
                 if not applied:
                     self.assertIn("Nothing was written to your home folder", out)
 

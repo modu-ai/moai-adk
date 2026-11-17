@@ -46,7 +46,7 @@ parent: null
 - REQ-7 (REQ-3): IF the preview has nothing to apply, THEN the installer shall apply nothing and drop the `moai update` step.
 - REQ-8 (REQ-3): IF the update preview fails, THEN the installer shall keep the installed binary and exit 0 and print the product's message and `moai update`.
 - REQ-9: The next steps shall name `moai update` first while the skill is not installed and then each host found with its entry (`moai cc` then `/moai project`, `moai codex` then `$moai project`, `omp` then `/skill:moai project`).
-- REQ-10: When `moai cc`, `moai glm` or `moai codex` starts and the host's skill copy has no `SKILL.md`, the launcher shall print a warning that names the missing folder and `moai update`.
+- REQ-10: When `moai cc`, `moai glm` or `moai codex` starts and the host's skill copy has no `SKILL.md`, the launcher shall print a warning that names the missing folder and `moai update`. · failure: none — 경고만 하고 host는 그대로 시작해요(HOME을 모르면 경고도 없어요).
 - REQ-11: The root help shall list `update` before `cc` and `/moai project` in its first steps.
 
 실패 경로: REQ-3 → REQ-5, REQ-7, REQ-8. REQ-4 → REQ-6.
@@ -55,20 +55,23 @@ parent: null
 
 검사는 이 worktree에서 Python 3.13과 `pwsh`가 PATH에 있을 때 돌려요. 모든 설치 시험은 임시 HOME을 써요.
 
-- AC-1 (REQ-1, REQ-2, REQ-3, REQ-4): release 모양의 archive(이 tree의 진짜 binary, skill, agent)를 `--yes`로 설치하면
-  `versions/<v>/skills/moai`, `versions/<v>/agents`, `~/.claude/skills/moai/SKILL.md`, `~/.claude/agents/moai-impl.md`가
-  생기고 다시 한 미리 보기는 `nothing_to_apply: true`예요. verify: `python3 -m unittest -k carries_the_skill -k without_the_skill -k real_update -k yes_applies tests/install_script_test.py`
+- AC-1 (REQ-1, REQ-2, REQ-3, REQ-4): verify: `python3 -m unittest -k carries_the_skill -k without_the_skill -k real_update -k yes_applies tests/install_script_test.py`
+  — release 모양의 archive(이 tree의 진짜 binary, skill, agent)를 `--yes`로 설치하면 `versions/<v>/skills/moai`,
+  `versions/<v>/agents`, `~/.claude/skills/moai/SKILL.md`, `~/.claude/agents/moai-impl.md`가 생기고 다시 한 미리 보기는
+  `nothing_to_apply: true`예요.
 - AC-2 (REQ-5, REQ-6, REQ-7, REQ-8): verify: `python3 -m unittest -k no_host -k without_a_terminal -k installed_skill -k failing_preview -k asked_once tests/install_script_test.py`
 - AC-3 (REQ-9): verify: `python3 -m unittest -k next_steps -k omp_gets -k without_a_terminal tests/install_script_test.py`
 - AC-4 (REQ-10): verify: `cargo test --test launcher_skill_check`
 - AC-5 (REQ-11): verify: `cargo test --test help_layout`, `cargo test --lib help::`
-- AC-6 (REQ-1…REQ-9): `sh -n install/install.sh`, `bash -n install/install.sh`, `shellcheck install/install.sh` → exit 0.
+- AC-6 (REQ-1…REQ-9): verify: `sh -n install/install.sh`, `bash -n install/install.sh`, `shellcheck install/install.sh` → exit 0.
 
 ## Scope
 
 - `install/install.sh`, `install/install.ps1`
 - `src/launcher_init.rs`, `src/help.rs`
 - `tests/install_script_test.py`, `tests/launcher_skill_check.rs`, `tests/fixtures/help/*.txt`
+- `tests/launcher_permissions_setting.rs`: compares launches across two temporary HOMEs, so both get the skill
+  copies (the warning names the HOME folder)
 - 이 SPEC
 
 ## Plan
