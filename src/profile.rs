@@ -1055,6 +1055,15 @@ mod tests {
                 json!({"scheme": "custom", "format": "see docs/VERSIONS.md"}),
                 "a path in the custom text",
             ),
+            // C-71 audit N2: `\` is refused like `/`, as the refusal lists say.
+            (
+                json!({"scheme": "custom", "format": "see docs\\VERSIONS.md"}),
+                "a backslash path in the custom text",
+            ),
+            (
+                json!({"scheme": "custom", "format": "a \\ b"}),
+                "a lone backslash in the custom text",
+            ),
         ] {
             let mut file = serde_json::to_value(v2()).unwrap();
             file["versioning"] = bad;

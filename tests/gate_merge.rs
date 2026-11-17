@@ -562,12 +562,13 @@ fn a_mechanical_delta_is_recorded_first_then_merged() {
         "{body}"
     );
     assert!(body.contains("| `src/a.rs` |"), "{body}");
-    // #2906 S5b: the record names the local check line G5 read, not GitHub CI.
+    // C-84: the record names the head's GitHub `ci` that G5 read (was #2906 S5b: the local
+    // check line).
     assert!(
-        body.contains(&format!("local-check on {}: pass (G5).", &n[..10])),
+        body.contains(&format!("ci on {}: success (G5).", &n[..10])),
         "{body}"
     );
-    assert!(!body.contains("CI on"), "{body}");
+    assert!(!body.contains("local-check on"), "{body}");
     // The merge pins the current head, not the verdict head.
     let merge_put = sent.iter().find(|r| r.method == "PUT").unwrap();
     assert_eq!(merge_put.body.as_ref().unwrap()["sha"], json!(n));
@@ -670,6 +671,57 @@ fn a_tier0_merge_records_the_tier_and_the_local_check() {
         "{rec}"
     );
     assert!(!rec.contains("판정"), "{rec}");
+}
+
+/// C-84 (user decision 2026-11-17 "CI 성공 + PASS"): a tier-0 pull request with no comment at
+/// all — no verdict and no local-check line — merges on its head's `ci` success. The status
+/// links the pull request's checks, and the record names the `ci` success, not a local check.
+#[test]
+fn a_tier0_merge_without_a_local_check_cites_the_ci_success() {
+    let dir = TempDir::new().unwrap();
+    let d = dir.path();
+    git_ok(d, &["init", "-q", "-b", "main"]);
+    let doc = ["docs", "a.md"].join("/");
+    commit(d, &[(&doc, "one\n"), ("src/b.rs", "b\n")], "base");
+    git_ok(d, &["checkout", "-q", "-b", "pr"]);
+    let b = commit(d, &[(&doc, "one\ntwo\n")], "pr\n\nMoai-Claim: 9#555");
+    git_ok(d, &["checkout", "-q", "main"]);
+    commit(d, &[("src/b.rs", "b2\n")], "tip");
+    let tip = tip_of(&dir);
+    let body = format!("audit-tier: 0 docs only ({doc})\n{PASS_BODY}");
+    let mut ex = reads(&b, &b, &tip, &body);
+    ex[1] = Exchange {
+        request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
+        response: ok(json!([])),
+    };
+    ex.extend(remote(&b, &tip));
+    ex.extend(status(&b, 201));
+    ex.push(put(200));
+    ex.push(record());
+    let t = RecordedTransport::new(ex);
+    let out = merge(&target(&dir), "fixture-approved", false, &t, &t, &clock()).unwrap();
+    assert_eq!(out["merged"], json!(true), "{out}");
+    assert_eq!(out["effective_tier"], json!(0), "{out}");
+    assert_eq!(out["local_check"], Value::Null, "{out}");
+    assert_eq!(t.remaining(), 0);
+    let sent = t.sent.borrow();
+    let st = sent.iter().find(|r| r.url.contains("/statuses/")).unwrap();
+    let st = st.body.as_ref().unwrap();
+    assert!(
+        st["target_url"]
+            .as_str()
+            .unwrap()
+            .ends_with("/pull/9/checks"),
+        "{st}"
+    );
+    assert!(
+        st["description"].as_str().unwrap().contains("ci success"),
+        "{st}"
+    );
+    let rec = sent.iter().rfind(|r| r.method == "POST").unwrap();
+    let rec = rec.body.as_ref().unwrap()["body"].as_str().unwrap();
+    assert!(rec.contains("ci success on head"), "{rec}");
+    assert!(!rec.contains("local-check"), "{rec}");
 }
 
 /// A tier-1 or tier-2 merge still names its verdict, and now its tier.

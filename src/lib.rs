@@ -55,6 +55,7 @@ pub mod go_state;
 pub mod goal;
 pub mod goal_block;
 pub mod handoff;
+pub mod headver;
 pub mod heavy_slot;
 pub mod help;
 pub mod home_install;
@@ -174,13 +175,28 @@ use std::{
 };
 
 type Result<T> = std::result::Result<T, String>;
-/// The version this binary reports: the package version, plus `+local.<n>` when the build set
-/// `MOAI_LOCAL_BUILD=<n>` (#2722 AC-5; see [`local_build`]). Set by `build.rs`.
+/// The version this binary reports, HeadVer `{head}.{yearweek}.{build}` (card C-67 S1, see
+/// [`headver`]): `head` from the tracked `HEADVER` file, the ISO week of the UTC build date, and
+/// `MOAI_LOCAL_BUILD` (0 for an unnumbered build). `--version`, the status line and update
+/// records show and compare it, and it names the build's `versions/<version>/` folder. Set by
+/// `build.rs`.
 pub const BUILD_VERSION: &str = env!("MOAI_BUILD_VERSION");
 /// What `--version` prints after the command name (#2790 R1): the build version and the
 /// generation mark `(rust)`, so `moai --version` tells this build from the Go `moai`
 /// (`moai version v3…`). Both binary names print the same line, `moai-cli <ver> (rust)`.
 pub const VERSION_SIGNATURE: &str = concat!(env!("MOAI_BUILD_VERSION"), " (rust)");
+/// What kind of build this is (`local build 5 (MOAI_LOCAL_BUILD)` or `unnumbered build …`),
+/// its UTC build date and ISO week, and the package version: the second line of `--version`,
+/// which tells a local build from any other. Set by `build.rs` (card C-67 S1).
+pub const BUILD_NOTE: &str = env!("MOAI_BUILD_NOTE");
+/// `--version`: [`VERSION_SIGNATURE`], then [`BUILD_NOTE`] on a second line. Readers of the
+/// version (`install-inspect`, the status line harness) take the first line only; `-V` prints
+/// that line alone.
+pub const LONG_VERSION: &str = concat!(
+    env!("MOAI_BUILD_VERSION"),
+    " (rust)\n",
+    env!("MOAI_BUILD_NOTE")
+);
 /// The one spelling of the project state directory (Issue #2725 S1): `project_state!()` is the
 /// directory, `project_state!("sub/path")` a path under it, both `&'static str` so constants
 /// and tables can use them. Every project-tree path in `src` goes through this macro or

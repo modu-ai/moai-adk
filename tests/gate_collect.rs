@@ -176,6 +176,55 @@ fn a_clean_pull_request_collects_into_a_passing_snapshot() {
     let _ = &r.c;
 }
 
+/// C-84: each collected check run carries the commit it ran on — GitHub's `head_sha`, or the
+/// head the request named when the field is absent — and G5 reads only runs on this exact
+/// head: a `ci` success that GitHub reports on an older commit stops it.
+#[test]
+fn collected_check_runs_carry_their_head_and_g5_reads_only_this_head() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let t = exchanges(
+        &r.b,
+        &r.c,
+        vec![claim(&r.b), verdict(&r.b, &r.a)],
+        PASS_BODY,
+    );
+    let s = collect(&target(&r), &t).unwrap();
+    assert!(
+        s.checks
+            .iter()
+            .all(|c| c.head_sha.as_deref() == Some(r.b.as_str())),
+        "{:?}",
+        s.checks
+    );
+    let t = RecordedTransport::new(vec![
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/pulls/9")),
+            response: ok(json!({"head": {"sha": r.b}, "body": PASS_BODY})),
+        },
+        Exchange {
+            request: HttpRequest::new("GET", format!("{API}/issues/9/comments?per_page=100")),
+            response: ok(json!([claim(&r.b), verdict(&r.b, &r.a)])),
+        },
+        Exchange {
+            request: HttpRequest::new(
+                "GET",
+                format!("{API}/commits/{}/check-runs?per_page=100", r.b),
+            ),
+            response: ok(json!({"check_runs": [
+                {"name": "ci", "conclusion": "success", "head_sha": r.a}
+            ]})),
+        },
+        claim_comment(555, "moai-claim: session=agent-26 epoch=1"),
+        open_prs(),
+        tip_runs(&r.c, json!([{"name": "ci", "conclusion": "success"}])),
+    ]);
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(s.checks[0].head_sha.as_deref(), Some(r.a.as_str()));
+    let stop = gate::check(&s).unwrap_err();
+    assert_eq!(stop.rule, "G5", "{stop:?}");
+    assert!(stop.reason.contains("not on this head"), "{stop:?}");
+}
+
 #[test]
 fn the_checker_unknown_base_and_missing_head_are_read_not_assumed() {
     let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);

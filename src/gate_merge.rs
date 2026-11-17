@@ -83,8 +83,9 @@ fn merge_snapshot<T: Transport, S: Transport, C: Clock>(
     status_transport: &S,
     clock: &C,
 ) -> Result<Value> {
-    // #2906 T (user decision 6878414880): the audit tier decides what the merge cites — the
-    // verdict for tiers 1 and 2, the local-check line for tier 0, which has no verdict.
+    // #2906 T: the audit tier decides what the merge cites — the verdict for tiers 1 and 2; for
+    // tier 0, which has no verdict, the head's `ci` success (C-84, user decision 2026-11-17
+    // "CI 성공 + PASS"), with the optional local-check comment when one is there.
     let tier = gate::effective_tier(&snapshot);
     let (base, overlap) = match gate::check(&snapshot) {
         Ok(pass) => pass,
@@ -108,15 +109,17 @@ fn merge_snapshot<T: Transport, S: Transport, C: Clock>(
         })
         .map(|c| c.id)
         .max();
-    let (local_check_id, local_check_line) = gate::local_check_of(&snapshot)
-        .map(|(id, line, _)| (id, line.to_string()))
-        .ok_or("no local-check line")?;
-    // The comment the status and the record cite: the verdict, or for tier 0 the local check.
+    // C-84: the local-check line is optional evidence; G5 read the head's `ci`.
+    let local_check = gate::local_check_of(&snapshot).map(|(id, line, _)| (id, line.to_string()));
+    let local_check_id = local_check.as_ref().map(|(id, _)| *id);
+    // The comment the status and the record cite: the verdict; for tier 0 the local-check
+    // comment when there is one, else nothing (the status links the pull request's checks).
     let cited = if tier == 0 {
         local_check_id
     } else {
-        verdict_id.ok_or("no verdict comment")?
+        Some(verdict_id.ok_or("no verdict comment")?)
     };
+    let cited_text = cited.map_or("-".to_string(), |c| c.to_string());
     let (owner, repo, pr) = (target.owner, target.repo, target.pr);
     let tip = crate::audit_delta::command(target.dir)
         .args([
@@ -172,7 +175,7 @@ fn merge_snapshot<T: Transport, S: Transport, C: Clock>(
             .any(|c| c.body.lines().next() == Some(first.as_str()));
         if !already {
             let mut body = format!(
-                "{first}\n\ngate-merge (#2833): {} merges only the base branch into {}; the PASS in comment {cited} on {} counts for {}. local-check on {}: pass (G5).\n\n| file | patch-id |\n| --- | --- |\n",
+                "{first}\n\ngate-merge (#2833): {} merges only the base branch into {}; the PASS in comment {cited_text} on {} counts for {}. ci on {}: success (G5).\n\n| file | patch-id |\n| --- | --- |\n",
                 short(&d.to),
                 short(&d.from),
                 short(&d.from),
@@ -215,10 +218,13 @@ fn merge_snapshot<T: Transport, S: Transport, C: Clock>(
         repo: repo.into(),
         sha: head.clone(),
         state: "success".into(),
-        target_url: format!("https://github.com/{owner}/{repo}/pull/{pr}#issuecomment-{cited}"),
+        target_url: match cited {
+            Some(c) => format!("https://github.com/{owner}/{repo}/pull/{pr}#issuecomment-{c}"),
+            None => format!("https://github.com/{owner}/{repo}/pull/{pr}/checks"),
+        },
         description: if tier == 0 {
             format!(
-                "audit-tier 0 (no audit) head {}; local-check pass; tip {} clean, overlap {}",
+                "audit-tier 0 (no audit) head {}; ci success; tip {} clean, overlap {}",
                 short(&head),
                 short(&tip),
                 overlap.len()
@@ -327,10 +333,14 @@ fn merge_snapshot<T: Transport, S: Transport, C: Clock>(
     } else {
         format!(" 겹친 파일: {}.", overlap.join(", "))
     };
-    // #2906 T: a tier-0 record names the tier and the local-check line in place of a verdict.
+    // #2906 T, C-84: a tier-0 record names the tier and the head's `ci` success in place of a
+    // verdict, and the optional local-check line when there is one.
+    let local_note = local_check.as_ref().map_or(String::new(), |(id, line)| {
+        format!(", local-check {id}: `{line}`")
+    });
     let record = if tier == 0 {
         format!(
-            "리더 병합 기록 (`moai gate-merge`, #2674): audit-tier: 0 (실효 등급 0, 감사 없음 — 사용자 결정 6878414880), local-check {local_check_id}: `{local_check_line}` (head {}, merge base {}), check run success {checks}, Self-Audit checker 통과. 병합 시점 tip {} 과 merge-tree 충돌 0, merge base 이후 tip 변경 파일과 이 PR 변경 파일 겹침 {}.{note} 병합 커밋 {}.\n\n🗿 MoAI",
+            "리더 병합 기록 (`moai gate-merge`, #2674): audit-tier: 0 (실효 등급 0, 감사 없음), ci success on head (head {}, merge base {}; 사용자 결정 2026-11-17 \"CI 성공 + PASS\"){local_note}, check run success {checks}, Self-Audit checker 통과. 병합 시점 tip {} 과 merge-tree 충돌 0, merge base 이후 tip 변경 파일과 이 PR 변경 파일 겹침 {}.{note} 병합 커밋 {}.\n\n🗿 MoAI",
             short(&head),
             short(&base),
             short(&tip),
@@ -339,7 +349,7 @@ fn merge_snapshot<T: Transport, S: Transport, C: Clock>(
         )
     } else {
         format!(
-            "리더 병합 기록 (`moai gate-merge`, #2674): 판정 {cited} PASS(head {}, base {}), audit-tier: {tier}, check run success {checks}, Self-Audit checker 통과. 병합 시점 tip {} 과 merge-tree 충돌 0, 판정 base 이후 tip 변경 파일과 이 PR 변경 파일 겹침 {}.{note} 병합 커밋 {}.\n\n🗿 MoAI",
+            "리더 병합 기록 (`moai gate-merge`, #2674): 판정 {cited_text} PASS(head {}, base {}), audit-tier: {tier}, check run success {checks}, Self-Audit checker 통과. 병합 시점 tip {} 과 merge-tree 충돌 0, 판정 base 이후 tip 변경 파일과 이 PR 변경 파일 겹침 {}.{note} 병합 커밋 {}.\n\n🗿 MoAI",
             short(&head),
             short(&base),
             short(&tip),
