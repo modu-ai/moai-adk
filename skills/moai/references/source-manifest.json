@@ -163,7 +163,7 @@
       }
     },
     "references/chains/index.md": {
-      "sha256": "00639d24f6b908db1a111009e572867c3473bf628af1a8b7b13c9d7523634783",
+      "sha256": "11cf07aba90e484f33699193aca1728a88d72d5d9f435fbcba8caa5b1e0ab646",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",
@@ -355,6 +355,15 @@
         "template_id": "internal-versioning",
         "adoption": "new",
         "reason": "Written for rc.2 card C-69 (user instruction 2026-11-17): the three versioning schemes the PROJECT interview offers — SemVer (default), HeadVer and CalVer — each with its format, who bumps what, when to pick it, how the next version is computed, its pre-release marking and two examples, plus the rule to keep the scheme a project already uses and how `project-detect` reads a version. Sources read 2026-11-17: semver.org 2.0.0, github.com/line/headver, calver.org spec 26.0. Named by project.md, internal/interview and chains/index.md."
+      }
+    },
+    "references/internal/self-check.md": {
+      "sha256": "a634d1f847d9e7f03689f323a07b2ca85a28762ef8c5a9b650a7e4942d95dfad",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-self-check",
+        "adoption": "new",
+        "reason": "Written for rc.2 card C-77 (user selection 2026-11-17 after the PR history analysis of 193 audit FAILs): the checks whoever wrote a change runs before asking for an audit or opening a pull request, one line each with its command, grouped as tests, package and documents, and the pull request. Read by moai-impl (`reads:`) and named by the rules of chains/index.md; its machine items run from the repository's tools/self_check.sh."
       }
     }
   }

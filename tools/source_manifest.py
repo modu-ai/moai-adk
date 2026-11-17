@@ -18,6 +18,9 @@ markers, a new file with no entry (its `origin` is the author's to write), a lin
 manifest or in the package, or a file that is not a regular file (a FIFO would block).
 Entries of deleted files are dropped and reported. The file is written in its existing
 form, `json.dumps(indent=2, ensure_ascii=False)` plus a newline, and only when it changes.
+
+`tools/merge_driver_manifest.py` (card C-74) resolves most manifest conflicts during the merge
+itself once a clone registers it; `write` is for the conflicts it leaves.
 """
 import argparse
 import hashlib
