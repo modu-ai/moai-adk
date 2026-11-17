@@ -206,6 +206,8 @@ pub const GROUPS: &[Group] = &[
             ("audit-claim", false),
             ("audit-verdict-line", false),
             ("audit-gate", false),
+            ("trailers", false),
+            ("trailer-check", false),
             ("audit-clone-plan", false),
             ("labels-check", false),
             ("decision-due", false),
@@ -505,6 +507,8 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("pr-confirm", &["pr-confirm --task <task> --operation-id <operation-id> --observed-state <observed-state> ."]),
     ("audit-claim", &["audit-claim < request.json"]),
     ("audit-verdict-line", &["audit-verdict-line --pr 2850 --head <head> --verdict PASS --title <scope>", "audit-verdict-line --pr 2850 --head <head> --verdict FAIL --title <scope> --base <earlier-head>"]),
+    ("trailers", &["trailers --spec SPEC-20261117-session-trailer"]),
+    ("trailer-check", &["trailer-check origin/v2026.11.0..HEAD"]),
     (
         "audit-gate",
         &["audit-gate < input.json", "audit-gate --require-pass < input.json"],

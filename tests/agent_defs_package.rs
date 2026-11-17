@@ -485,6 +485,8 @@ fn internal_references_say_when_to_read_them() {
         "code-atlas",
         // C-82: where agent and audit builds go and how the build folder is emptied.
         "build-folder",
+        // SDD-6 (user decision U-B): the identity trailers every agent commit carries.
+        "commit-trailers",
         // SPEC-20261117-quality-guides: the project's own check commands, AC-to-test tracing
         // and the dependency existence check, read by RUN and VERIFY through the chain rules.
         "quality",
