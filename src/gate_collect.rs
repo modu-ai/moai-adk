@@ -934,6 +934,9 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         .map(|r| CheckRun {
             name: r["name"].as_str().unwrap_or("").to_string(),
             conclusion: r["conclusion"].as_str().map(String::from),
+            // C-84: the commit GitHub ran it on; the endpoint is the head's own, so a run
+            // without the field is the head's (G5 reads only exact-head runs).
+            head_sha: Some(r["head_sha"].as_str().unwrap_or(&head).to_string()),
         })
         .collect();
 
