@@ -1,0 +1,5 @@
+# `audit-gate`
+
+operation `audit.gate` · 코드 `src/ops/audit_gate.rs`, `src/audit_gate.rs` · SPEC-20261117-audit-gate(CI 재설계 D2)
+
+`audit-gate [--pr N [--head 40HEX] [--repo OWNER/REPO]] [--require-pass]` 는 CI `audit-gate` job 이 쓰는 감사 판정이다. PR 의 판정 댓글(첫 줄 `AUDIT #N (…) head <40hex> base <40hex> — verdict: PASS|FAIL`)을 병합 관문과 같은 함수(`gate::verdict_line`, `gate::parse_verdict`, `gate::auditor`, `gate::parse_body_tier`, `gate::tier_of`)로 읽고 `state` 를 `pass`·`fail`·`missing` 중 하나로 낸다. 저장소 구성원의 댓글만 센다. 규칙: 올린 FAIL(읽히지 않는 `AUDIT #` 첫 줄 포함)은 같은 감사자가 뒤에 PASS 를 올릴 때까지 모든 tier 를 막는다(`fail`); tier 0 은 열린 FAIL 이 없으면 `pass`; tier 1·2 는 바로 이 head 에 40자 base 를 가진 PASS 가 있고 그 감사자 lane 이 PR 커밋의 `Moai-Session:` trailer 값(저자) 어디에도 없어야 `pass`, 아니면 `missing`. 커밋에 `Moai-Session:` 이 하나도 없으면 저자를 모르는 것이라 `missing` 이다. tier 는 PR 본문의 `audit-tier: n` 을 경로 규칙이 올린 값이고, 파일을 못 읽으면 2 다. PASS 가 CI 실행을 인용하는지는 아직 보지 않는다(`cites_run_checked: false`, 다음 조각). `--pr` 이면 GitHub 에서 읽고(GET 만), 없으면 stdin 의 입력 JSON(`schema_version`, `pr`, `head`, `body`, `files`, `commit_messages`, `comments`)으로 정한다. `--require-pass` 는 `pass` 가 아니면 오류로 끝낸다(job 의 종료 코드). 아무것도 쓰지 않는다.

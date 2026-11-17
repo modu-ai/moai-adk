@@ -298,8 +298,14 @@ pub fn parse_body_tier(body: &str) -> Option<u8> {
 /// it declared none (unknown is audited); a [`TIER2_PREFIXES`] path raises it to 2, and any
 /// path that is not [`tier0_safe`] to at least 1. The path rule only raises.
 pub fn effective_tier(s: &Snapshot) -> u8 {
-    let mut tier = s.body_tier.filter(|t| *t <= 2).unwrap_or(2);
-    for f in &s.pr_files {
+    tier_of(s.body_tier, &s.pr_files)
+}
+
+/// [`effective_tier`] from its two inputs: the tier the body declares and the PR's files (the
+/// `audit-gate` job reads them without a snapshot, SPEC-20261117-audit-gate).
+pub fn tier_of(body_tier: Option<u8>, pr_files: &[String]) -> u8 {
+    let mut tier = body_tier.filter(|t| *t <= 2).unwrap_or(2);
+    for f in pr_files {
         if TIER2_PREFIXES.iter().any(|p| f.starts_with(p)) {
             return 2;
         }
@@ -332,7 +338,7 @@ fn is_hex40(s: &str) -> bool {
 
 /// A verdict is a comment whose first line starts with `AUDIT #`; a line quoted further down
 /// (a repair note, a merge record) is never a verdict (audit 6850181707 B1).
-fn verdict_line(body: &str) -> Option<&str> {
+pub fn verdict_line(body: &str) -> Option<&str> {
     body.lines().next().filter(|l| l.starts_with("AUDIT #"))
 }
 

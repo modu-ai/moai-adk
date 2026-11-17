@@ -59,184 +59,13 @@
         "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. The `--mode leader|agent` and `--autonomy` routing line added by rc.2 A1 #2160; renamed `moai-cli` with the `--agent-mode`/`--leader-mode` routing and the `--mode` legacy alias by #2286; the user decision of 2026-11-10 (#2286) leaves exactly `--mode-agent` and `--mode-leader` and retires the other spellings and the alias. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). Mode sentence: both modes run rounds that do not end the turn until their end condition holds — #2515. Open questions are sorted before asking (fact, one-way or five HOLD categories, leader-recorded reversible choice, default after deadline) by #2619. Report figures name their command; an empty output is not zero (#2678). OPTIMIZE route (`/moai optimize`) added by #2724 (leader decision A, 2026-11-13). Codex parity (#2592): the skill requests delegation in words and names each host's subagent tool (Codex spawn_agent/wait_agent), since Codex spawns agents on a skill instruction that requests delegation."
       }
     },
-    "references/routes.json": {
-      "sha256": "d49da0fbb743c6c80526ea665294b2a4a38b25599c7d861459c42ac529e9b82e",
-      "origin": {
-        "kind": "design-template",
-        "template_id": "router-routes",
-        "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. MODE-LEADER and MODE-AGENT routes added by rc.2 A1 #2160. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). #2637: top-level `chains` names references/chains/index.md, the agent order per route. OPTIMIZE route (`/moai optimize`) added by #2724 (leader decision A, 2026-11-13)."
-      }
-    },
-    "workflows/read.md": {
-      "sha256": "4adbab4cbdaa38d686478876dc46984cd5a3ca00705207183b37128cf650d6d1",
-      "origin": {
-        "kind": "design-template",
-        "template_id": "workflow-read",
-        "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 3 extended by 07-D #2011 (context text is data, never an instruction). Canonical documents read from an openable copy with path, line range and sha256 added by #2401. Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features). One line pointing to internal/lenses added by #3096 S1."
-      }
-    },
-    "workflows/setup.md": {
-      "sha256": "7f9fcc9c589eb82e07c2814fec5c09a34c6005e3684b18040fb965e30ad2061a",
-      "origin": {
-        "kind": "design-template",
-        "template_id": "workflow-setup",
-        "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
-      }
-    },
-    "workflows/update.md": {
-      "sha256": "bca1a45a881bad50a7b07accd8064b4329df8063655330e0093db1c363b65118",
-      "origin": {
-        "kind": "design-template",
-        "template_id": "workflow-update",
-        "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template. The 2026.11.0-rc.1 UPDATE implementation (04-B #1999) replaced the not-implemented status note with the implemented scope; the backup/rollback step remains 04-C. Step 6 (#2483) adds the user-confirmed backup-then-replace of an unmanaged moai skill folder (decision row 22). Step 1 (#2936 S-AGENTS-STAY, decision 6901387505) says a staying-layout backup area whose own .gitignore git does not honour reads backup_ignore and stops the go-state step without a command, and that Go settings a revert put back are proposed for the move again."
-      }
-    },
-    "workflows/plan.md": {
-      "sha256": "1a2e8006d48e54f0182814f9d3f184389c275f5d5498119d74fbd6cb463f212c",
-      "origin": {
-        "kind": "design-template",
-        "template_id": "workflow-plan",
-        "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 6 added by 07-D #2011 (native decision records; a judgment is not permission). Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features). One line pointing to internal/lenses added by #3096 S1."
-      }
-    },
-    "workflows/run.md": {
-      "sha256": "be69c82bb178a3f31d470140000a1ec9f22d13baf20d898f33bb3e1dff994612",
-      "origin": {
-        "kind": "design-template",
-        "template_id": "workflow-run",
-        "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 1 reads the claim journal (06-A #2005); step 2 extended by 07-D #2011 (context bundle and verify, host-reported usage versus estimates). Web pages section (browser choice and rules) added by #2517. Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features)."
-      }
-    },
-    "workflows/verify.md": {
-      "sha256": "d5d3a0d90e244c79dc4d9a50cb34383d7c1fa24539a69a8aaeb6a51f605c5e40",
-      "origin": {
-        "kind": "design-template",
-        "template_id": "workflow-verify",
-        "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502. PR runs linux-x86_64 only and the full matrix plus windows-build run after merge, with the post-merge failure rule (#2554, user decision U10). Shell and helper rules (WF-OBS #16, #17, #19) added by #2493. Web pages section (browser choice and rules) added by #2517. Change-specific rules for WF-OBS ledger rows 9, 25, 26, 29 and 30 (#2401). No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Build folder: one per lane, reused across its worktrees, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006). One stderr warning line when a heavy run starts with under 100 GB free (#2930 item 6). Section \"Lane worktrees and build cache\": worktree lifetime rule, user-owned retention information and sccache/cargo official-document citations read 2026-11-14 (#2930 S7, items 3 and 5, R-5)."
-      }
-    },
-    "workflows/audit.md": {
-      "sha256": "7bf329602e2900f1a4f0b7f4fe369eff3d835c16dc3478d51dd690f36f431f2a",
-      "origin": {
-        "kind": "design-template",
-        "template_id": "workflow-audit",
-        "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Audit practice paragraphs (reservation line, interim results on the PR, behaviour from code and test, real mutations, narrowing in both directions, safe revision reads, per-file delta comparison, re-read before posting) added by #2401. Handoff holder rule and the lane name rule added by #2499. Web pages section (browser choice and rules) added by #2517. No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features). Rebuild-by-modification-time sentence (touch restored or extracted sources; cite a run only with the tree's Compiling line and the expected test count) added by #2401 comment 6824103310."
-      }
-    },
-    "workflows/sync.md": {
-      "sha256": "7561ca3a4066baede9c8f3d42f4957b9f6f7b8078d3e8e9153525daa6a028d94",
-      "origin": {
-        "kind": "design-template",
-        "template_id": "workflow-sync",
-        "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 8 merge-train bullet follows the U6 integration gate — #2515. No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features)."
-      }
-    },
-    "workflows/mode-leader.md": {
-      "sha256": "2d11c015d1dc4b269c175d7ebfa917cf9a289492cfc0287b0ac9bbc678f3eb2a",
+    "references/adapters/aside.md": {
+      "sha256": "597f15c46a06d2741e1b7ac2040bb679cf098acf05b9e488ec95566fc972eac0",
       "origin": {
         "kind": "design-spec",
-        "template_id": "workflow-mode-leader",
+        "template_id": "adapter-aside",
         "adoption": "new",
-        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it; user decisions D-2 and D-3 of 2026-11-09. The `--leader-mode` naming, the `--mode leader` legacy alias and the assignment-request reply duty (REQ-6, non-conflicting ready-card pointer or none) added by #2286. The goal step is bound to tools/gen_goal_block.py and its generated output by #2334, preserved in the #2286 rename integration. Step 8 (merge train, pre-stacking announcement, docs-only insertion, audit-scope pinning, WIP cap) added by #2388. Dispatch checks live claims and audit reservations; decision rows published from a tip worktree added by #2401. Entry spelling `--mode-leader` only, legacy alias removed (user decision 2026-11-10, #2286). Label rules added by #2434. Steps 8 and 9: lanes open their own pull requests and the leader names a lane only when the order matters; the U6 integration gate (merge without re-merging the tip when nothing conflicts or overlaps) — #2515. Step 7 restart (not dispatch) of stopped lanes, step 10 same-round answers and same-session handoff lines, step 9 docs-only overlap exception — #2515. Step 7 sorts open Issues and hands ownerless ones (no claim or a dead session's expired claim) to idle lanes (cause 8, #2515). Orca session-control section, identical in both mode workflows (#2516, leader decision B 6823474405). Bottleneck rules (#2612): read the screen before a restart (no line to a lane with a wake, an answer to `LANE-BLOCKED`, no repeated restart), `UNREACHABLE` lanes, found = answered on every return, finish ready work before a user question (method: decision D5), decisions to comment and screen, one handoff line per claim id confirmed by `owner`, the open-PR limit N from decision D7 and operating numbers changed together. Decided values (#2612, #1975 comment 6840449133): same-session renewal without a handoff line (D1), lane timeout takeover by=timeout under three conditions (D2), written user questions (D5), fallback wake up to 1,800 seconds (D6), open-PR limit eight (D7). No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Standing goal (#2679): the state step reads moai-cli goal-show; the goal-line step feeds its exclusions into keep_set and writes a new standing instruction once through goal-plan/goal-apply, asking the person only when asks_person is true. Usage-limit rule added by #2668 S3 (lane renews its claims before a claude.ai usage limit; the leader treats a usage_limit lane as held, not stopped). Report figures name their command; an empty output is not zero (#2678). Step 9 repo-wide scan check (#2681, leader decision 6848942944): no re-merge for disjoint files, but when the scan judge (moai-cli repo-scans since #2708 4/4, formerly tools/repo_scans.py) reports a scan whose rule files changed on one side and scope on the other, its checks run on the git merge-tree result before the merge. The judge reads the tables of both refs and an empty check list holds the merge (#2693 audit B1, N1). The first step is `mode-channel`: the mode follows the channel, not the host, and leader mode is refused only with neither Orca nor a timer (user decision D-O3 replacing D-3); `supervise` gives each lane one of four actions (`restart`, `clear_redispatch`, `answer`, `leave`) with the clear contract on `lane-safe-to-reset` `safe`, and replies go to the Issue and the lane's screen (#2900, #2899 G1-G4, G7). The Orca section, kept identical with mode-agent.md, reads a lane screen only with `orca terminal read --screen`, reports an unreadable lane as unconfirmed and never uses a screenshot or computer use (#2933, #2899 comment 6880316209, WF-OBS L1)."
-      }
-    },
-    "workflows/mode-agent.md": {
-      "sha256": "b9df5622e6271599d605491ed99e7dbba248951a4bb41050836e6b3b04801e10",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "workflow-mode-agent",
-        "adoption": "new",
-        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it. The `--agent-mode` naming, the `--mode agent` legacy alias and the leader-first assignment request with the self-claim fallback (REQ-5) added by #2286. The pre-commit/pre-push claim-verify boundary from A9 #2255 is preserved during the #2286 integration sync. The goal step is bound to tools/gen_goal_block.py and its tested agent-kind generated output by #2334, preserved in the #2286 rename integration. Step 5 names the journal lock-busy retry rule (unavailable, bounded caller-side backoff under a cap) — #2345. Step 7 retains the pr_ready handoff skip rule — #2344. Step 8 (merge train, not_run for conflicting PRs, self-check, WIP cap) and step 10 (default loop: end condition, order, no waiting in place, resume after handoff — user decision in #2390) added by #2388; step 7's stop defers to step 10. Short waits, lean change reports, and outward effects as separate commands added by #2401. Entry spelling `--mode-agent` only, legacy alias removed (user decision 2026-11-10, #2286). Label rules added by #2434. Steps 8, 9, 12 and 13: lanes open their own pull requests below four non-draft ones and settle a simultaneous opening by the four lowest numbers (others become drafts), the U6 integration gate (no tip chasing), the one-line round, and the waiting-branch suffix — #2515. Steps 12 keep-going and 14 wake added, report/pr-gate/heavy-checks/claim/goal-lines/self-pick changed so a round never stops on LANE-DONE, a full open-PR count, a wait or a leader request (#2515 comment 6823975793). Step 3 four-way Issue counts and step 13 LANE-BLOCKED for expired foreign claims (cause 8, #2515 comment 6824158448). Step 13 end condition matches keep-going (audit 6824297146 N1). Worktree sessions without the project settings file run no project hook, so claim-verify is the only boundary there (#2581). Orca session-control section, identical in both mode workflows (#2516, leader decision B 6823474405). Bottleneck rules (#2612): renewal by editing the own claim comment, every earlier claim id in a handoff request, a fresh branch for an unread trailer, the open-PR limit N from decision D7 with cross-lane `pr-wait` order, pre-push checks, a slot wait is no wake reason, a lost reservation posts no verdict, no-op wake backoff and no reprint of unchanged lines, the poll interval only for unchanged state. Decided values (#2612, #1975 comment 6840449133): same-session renewal without a handoff line (D1), lane timeout takeover by=timeout under three conditions (D2), written user questions (D5), fallback wake up to 1,800 seconds (D6), open-PR limit eight (D7). No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Standing goal (#2679): the state step reads moai-cli goal-show (one file per clone, read from every worktree); an active goal's end condition and exclusions hold after a restart without the person repeating it; lanes only read it. Usage-limit rule added by #2668 S3 (lane renews its claims before a claude.ai usage limit; the leader treats a usage_limit lane as held, not stopped). Codex hook trust (#2592): claim-verify names the primary checkout's trust_level and the /hooks review, the measured worktree inheritance of project trust, and that a lane never bypasses hook trust. LANE-BLOCKED kind/owner/next fields and the resume point's who-clears-it (#2769, #2554 leader decision 6861024531). Step 8 checks the PR body locally with moai pr-self-audit-check before the push and before gh pr create (#2840 D3). The self-pick and wake steps name `moai lane-next` (fresh GitHub read each time, reversible decisions go on with the safe default) — #2831; at the open-PR limit the pr-gate step opens a draft instead of waiting (leader decision 6870150891). The self-pick step adds the `DECISION-APPLIED` line, the tip-repair wait and `card_pr_merged`; the wake step names `--shared-lanes` (#2873). The self-pick round adds PLAN, RED, AUDIT, merge and SYNC, and the pr-gate step names the `plan:` and `red:` lines (#2880). Reports go on the screen and as an Issue or pull request comment, the leader request is a screen line plus a comment in the command mode and skipped in the autonomous mode, the end condition points to SPEC §12 (D-O1), every card keeps a resume note, the fixed idle-only `/loop 5m` is allowed, and a Codex lane without Orca keeps one session with `/goal` and a Stop hook (D-O2) (#2900, #2899 G2, G3, G5, G9). The claim step's host sentence (\"Codex CLI and others\") gives way to the channel rule (#2910 audit 6874564526 B1). WF-OBS from a Codex run (#2933, #2899 comment 6880316209): a five-line section \"When the leader is busy or does not answer\" opens the file and names the `claim`, `keep-going`, `wake`, `goal-lines` and `report` steps; the `report` step says a wait on the leader is `kind=claim` or `kind=decision`, never `outside`; the `state` step starts with `git fetch` and the lane's own worktree; the Orca section reads a lane screen only with `orca terminal read --screen`."
-      }
-    },
-    "workflows/project.md": {
-      "sha256": "60d1c27f23d711bc25c8553fbca4038ea636f5c598df9f64ea73f9b9bc03bdc0",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "workflow-project",
-        "adoption": "new",
-        "reason": "Written for rc.2 #2496 from user decisions 16 = B and 17 = all three (#1975 comment 6815357071) and the gap analysis #2286 6811414257; no design-22 template exists for PROJECT. Go `/moai project` was read as reference only; its product/structure/tech documents are not ported (decision 16 = B). Step 2 says the root instruction files are moved, not copied, into the backup's root-files/ and that a not-copied restore says why (#2936 S1b repair, audit 6879582411 B2). Step 2 adds the staying-layout backup_ignore stop and the re-proposal of reverted Go settings (#2936 S-AGENTS-STAY, decision 6901387505)."
-      }
-    },
-    "references/chains/index.md": {
-      "sha256": "6dd3e6e1fe98427911bbe8189174d93d303c0dcb6b58e7f81f8f6b5f58edf577",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "chains-index",
-        "adoption": "new",
-        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): request kind -> route -> agents in order -> what the parent reads first. Agents' own lists stay in their `reads:` key, so the chain never repeats them. A rule line for internal/lenses added by #3096 S1."
-      }
-    },
-    "references/internal/review.md": {
-      "sha256": "c7e7ca51e31f852fd83d99d5c79a89ebf643c2a5c841fd9756ba5191f5409330",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "internal-review",
-        "adoption": "new",
-        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
-      }
-    },
-    "references/internal/decide.md": {
-      "sha256": "94e4017f61de1b65044d653d9bed98454f0b94a309f5c18cc4406712ef74b214",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "internal-decide",
-        "adoption": "new",
-        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
-      }
-    },
-    "references/internal/interview.md": {
-      "sha256": "b5c04dccadd8d054f7e5e76253ad06c7c92d0836b39a8641ddb92e535264fd51",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "internal-interview",
-        "adoption": "new",
-        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
-      }
-    },
-    "references/internal/test-design.md": {
-      "sha256": "7ddc359ff5b031ddf7e9b0d3f9ff2b0e880f3fbf3b45b4e0008f9bbebc56923f",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "internal-test-design",
-        "adoption": "new",
-        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
-      }
-    },
-    "references/internal/git-safety.md": {
-      "sha256": "f6b532814d26c0a304fce6d462d9e1c8ff698d622e35c3efdf66c396ba1e71de",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "internal-git-safety",
-        "adoption": "new",
-        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them. Rule 3: the lane's one build folder, never shared with another lane, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006); new worktrees under `~/.moai/worktrees/<project>-<id>`, existing ones never moved and the Go generation's `~/.moai/worktrees/projects/` never touched (#2811 D3, D8)."
-      }
-    },
-    "references/home/routing.md": {
-      "sha256": "bf77375c082ebf5453be6ec4a9bf8612b7ece2cb84fb3317c63d163365905bc0",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "home-routing",
-        "adoption": "new",
-        "reason": "Written for rc.2 #2638 from the leader's final design (#2634, layer 2) and user decision 6845654776: the routing section moai-cli writes between moai:managed markers into ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md (src/home_routing.rs); {invoke} becomes /moai or $moai. A short pointer to routes.json and chains/index.md, never a copy of the chain table."
-      }
-    },
-    "references/home/output-style.md": {
-      "sha256": "d196125422d7c99a123b35af67917caf5576158dadb3591216c3953f34cdfded",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "home-output-style",
-        "adoption": "new",
-        "reason": "Written for rc.2 #2875 (#2871 I3, user instruction #1975 6872023826): the one MoAI-Easy style source, the same items as the moai-easy block of the user's ~/.claude/CLAUDE.md, in English per the instruction-file language rule. src/home_style.rs renders it per host: ~/.claude/output-styles/MoAI-Easy.md with frontmatter, and a moai:managed block in ~/.codex/AGENTS.md."
+        "reason": "Written for rc.2 #2636 (parent #2634, leader final design of 2026-11-13): when MoAI uses Aside, the commands that print Aside's version-matched guides (aside guide, aside skills), the permission lines (Guard by default, full-access only with the user's confirmation), CLI only and never MCP (user decision #2634 6845653775), and the fallback when Aside is missing. Checked against https://docs.aside.com/help/developers and /help/security and the Aside CLI 1.26.1111.1046 help (read 2026-11-13). No design-22 template exists for adapters."
       }
     },
     "references/adapters/orca.md": {
@@ -248,37 +77,31 @@
         "reason": "Written for rc.2 #2636 (parent #2634, leader final design of 2026-11-13): when MoAI uses Orca, the commands that print Orca's version-matched guides (orca skills get orca-cli, orca agent-context --json), the lines MoAI keeps and the fallback when Orca is missing. Checked against https://orca.dev/docs/cli/overview and /docs/cli/skills and the orca 1.4.257 CLI help (read 2026-11-13). No design-22 template exists for adapters. One line ties Orca to the command mode and to MODE-LEADER's clear contract (#2900, #2899 G2, G4)."
       }
     },
-    "references/adapters/aside.md": {
-      "sha256": "597f15c46a06d2741e1b7ac2040bb679cf098acf05b9e488ec95566fc972eac0",
+    "references/chains/index.md": {
+      "sha256": "6dd3e6e1fe98427911bbe8189174d93d303c0dcb6b58e7f81f8f6b5f58edf577",
       "origin": {
         "kind": "design-spec",
-        "template_id": "adapter-aside",
+        "template_id": "chains-index",
         "adoption": "new",
-        "reason": "Written for rc.2 #2636 (parent #2634, leader final design of 2026-11-13): when MoAI uses Aside, the commands that print Aside's version-matched guides (aside guide, aside skills), the permission lines (Guard by default, full-access only with the user's confirmation), CLI only and never MCP (user decision #2634 6845653775), and the fallback when Aside is missing. Checked against https://docs.aside.com/help/developers and /help/security and the Aside CLI 1.26.1111.1046 help (read 2026-11-13). No design-22 template exists for adapters."
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): request kind -> route -> agents in order -> what the parent reads first. Agents' own lists stay in their `reads:` key, so the chain never repeats them. A rule line for internal/lenses added by #3096 S1."
       }
     },
-    "references/internal/tdd-results.md": {
-      "sha256": "4af11c46edc7e3a894281d332c36fd63651c23218dadfdab5207a7f75bfea3df",
+    "references/home/output-style.md": {
+      "sha256": "d196125422d7c99a123b35af67917caf5576158dadb3591216c3953f34cdfded",
       "origin": {
-        "kind": "go-generation",
-        "template_id": "internal-tdd-results",
-        "adoption": "adapted",
-        "reason": "Adapted for rc.2 #2582 (leader confirmation 6856677422 of the classification table 6831216944) from the MoAI ADK Go generation internal/template/templates/.claude/rules/moai/workflow/tdd-result-contract.md at 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 (Apache-2.0): the four result classes kept; path frontmatter dropped; an empty selection is not_run (internal/test-design). Read first by the base agent whose `reads:` names it.",
-        "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
-        "source_path": "internal/template/templates/.claude/rules/moai/workflow/tdd-result-contract.md",
-        "license": "Apache-2.0"
+        "kind": "design-spec",
+        "template_id": "home-output-style",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2875 (#2871 I3, user instruction #1975 6872023826): the one MoAI-Easy style source, the same items as the moai-easy block of the user's ~/.claude/CLAUDE.md, in English per the instruction-file language rule. src/home_style.rs renders it per host: ~/.claude/output-styles/MoAI-Easy.md with frontmatter, and a moai:managed block in ~/.codex/AGENTS.md."
       }
     },
-    "references/internal/check-completeness.md": {
-      "sha256": "2d016c9036c51fd64cb388210e77fc2095318654ced07d9eb1704490b168ab2a",
+    "references/home/routing.md": {
+      "sha256": "bf77375c082ebf5453be6ec4a9bf8612b7ece2cb84fb3317c63d163365905bc0",
       "origin": {
-        "kind": "go-generation",
-        "template_id": "internal-check-completeness",
-        "adoption": "adapted",
-        "reason": "Adapted for rc.2 #2582 (leader confirmation 6856677422 of the classification table 6831216944) from the MoAI ADK Go generation internal/template/templates/.claude/rules/moai/development/verification-completeness.md at 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 (Apache-2.0): cut from 22 KB to the tool-neutral rules (verdict not report, three-part check, continued firing, red for the stated reason, mutant probe, SHA pinning, run both forms); what internal/test-design already says is pointed to, not repeated; .moai/specs, prediction ledger and policy-citation sections dropped. Read first by the base agent whose `reads:` names it.",
-        "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
-        "source_path": "internal/template/templates/.claude/rules/moai/development/verification-completeness.md",
-        "license": "Apache-2.0"
+        "kind": "design-spec",
+        "template_id": "home-routing",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2638 from the leader's final design (#2634, layer 2) and user decision 6845654776: the routing section moai-cli writes between moai:managed markers into ~/.claude/CLAUDE.md and ~/.codex/AGENTS.md (src/home_routing.rs); {invoke} becomes /moai or $moai. A short pointer to routes.json and chains/index.md, never a copy of the chain table."
       }
     },
     "references/internal/boundary-checks.md": {
@@ -293,6 +116,45 @@
         "license": "Apache-2.0"
       }
     },
+    "references/internal/build-folder.md": {
+      "sha256": "d501167bbf87e9c9974270530ebe91216057ae0ca99fc195a3c74e25025dbb82",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-build-folder",
+        "adoption": "new",
+        "reason": "Written for card C-82 (user decision 2026-11-17, selection '빌드 폴더를 한 곳으로 모으기'; SPEC-20261117-agent-build-folder): where agent and audit builds put CARGO_TARGET_DIR (one folder per worktree under ~/.moai/build/, CARGO_INCREMENTAL=0, an owner record), what a refusal does, where evidence stays, the end-of-task cleanup and the user-picked removal of leftovers. Read by moai-impl and moai-audit (`reads:`); its moai-adk helper is the repository's tools/build_folder.py."
+      }
+    },
+    "references/internal/check-completeness.md": {
+      "sha256": "2d016c9036c51fd64cb388210e77fc2095318654ced07d9eb1704490b168ab2a",
+      "origin": {
+        "kind": "go-generation",
+        "template_id": "internal-check-completeness",
+        "adoption": "adapted",
+        "reason": "Adapted for rc.2 #2582 (leader confirmation 6856677422 of the classification table 6831216944) from the MoAI ADK Go generation internal/template/templates/.claude/rules/moai/development/verification-completeness.md at 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 (Apache-2.0): cut from 22 KB to the tool-neutral rules (verdict not report, three-part check, continued firing, red for the stated reason, mutant probe, SHA pinning, run both forms); what internal/test-design already says is pointed to, not repeated; .moai/specs, prediction ledger and policy-citation sections dropped. Read first by the base agent whose `reads:` names it.",
+        "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
+        "source_path": "internal/template/templates/.claude/rules/moai/development/verification-completeness.md",
+        "license": "Apache-2.0"
+      }
+    },
+    "references/internal/core-rules.md": {
+      "sha256": "8f1e834c9592f143a8add2d08424e904b98fc34619a6735d8f2708750e676170",
+      "origin": {
+        "kind": "go-generation",
+        "template_id": "internal-core-rules",
+        "adoption": "adapted",
+        "reason": "Written for rc.2 #2876 (I4 of #2871: rules inside the moai skill, only what changes behaviour on every host) from the MoAI ADK Go generation .claude/rules/moai/** at 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 (Apache-2.0): of 113 rule files 1 kept and 9 merged (core/moai-constitution, core/agent-common-protocol, core/native-idiom-and-register, core/verification-claim-integrity, workflow/graceful-exit-mutation-contract, workflow/read-only-status-contract; git, security, dependency and CI-repair rules went to internal/git-safety, internal/review and workflows/run.md), 103 dropped as Go-only, host-specific or already covered (comparison table in the #2876 pull request). Host-neutral wording, no host tool names; at most 4096 bytes (tests/core_rules_2876.rs). Read once per session through the route table's `core_rules` entry, which SKILL.md names, and by every base agent through `reads:`. Rules 19-21 (public prior art, no design for unrequested cases, code wins over instruction files) and the report-first sentence of rule 18 added by #3096 S1 (user instruction 2026-11-16); still at most 4096 bytes."
+      }
+    },
+    "references/internal/decide.md": {
+      "sha256": "94e4017f61de1b65044d653d9bed98454f0b94a309f5c18cc4406712ef74b214",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-decide",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
+      }
+    },
     "references/internal/doc-claims.md": {
       "sha256": "edf009f0bb26b6f43a37870d8ca541040efcd20d912daf387005d4e60434d079",
       "origin": {
@@ -303,6 +165,69 @@
         "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
         "source_path": "internal/template/templates/.claude/skills/moai-workflow-docs-claim-check/SKILL.md",
         "license": "Apache-2.0"
+      }
+    },
+    "references/internal/git-safety.md": {
+      "sha256": "f6b532814d26c0a304fce6d462d9e1c8ff698d622e35c3efdf66c396ba1e71de",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-git-safety",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them. Rule 3: the lane's one build folder, never shared with another lane, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006); new worktrees under `~/.moai/worktrees/<project>-<id>`, existing ones never moved and the Go generation's `~/.moai/worktrees/projects/` never touched (#2811 D3, D8)."
+      }
+    },
+    "references/internal/interview.md": {
+      "sha256": "b5c04dccadd8d054f7e5e76253ad06c7c92d0836b39a8641ddb92e535264fd51",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-interview",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
+      }
+    },
+    "references/internal/lenses.md": {
+      "sha256": "7583f55985f6ee5b66bd0273ecc49e6a9d3055aca3ba40f7b33f07e8c242884b",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-lenses",
+        "adoption": "new",
+        "reason": "Written for rc.2 #3096 S1 (user instruction 2026-11-16, record in #1975): four ways of looking (state machine, CI in three stretches, what to keep if built again, refactor risk) read only when a question or plan needs one; each reports and changes no code."
+      }
+    },
+    "references/internal/quality.md": {
+      "sha256": "61abd81006401f7ad06756eea2d6a2c82f870b73271c94b7f39a84923dcbd92b",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-quality",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-quality-guides (user approval 2026-11-17 of research proposal G, and the user decision of 2026-11-17 on the Go generation: concepts are redesigned, files are not ported): the quality model from the project's own tools (commands taken from the project's declarations or a guide default with evidence, never guessed or installed), the AC-to-test tracing rule and the dependency existence check. Named by the rules of chains/index.md and by verify.md and run.md."
+      }
+    },
+    "references/internal/questions.md": {
+      "sha256": "345cfab2d912deaf6e7d4788ac183c91ad445f8c262744a0a3d125187a51544b",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-questions",
+        "adoption": "new",
+        "reason": "Written for rc.2 cards C-51 and C-52 slice S1 (user decision 2026-11-16): how a question reaches the user in UPDATE, PROJECT and SETUP — the session runs the commands itself, every question is a selection with the recommended option first, and one table names the question tool per host (Claude Code, Codex CLI, OMP) with its plain-text fallback. Named by update.md, project.md, setup.md, internal/interview and the PROJECT row of chains/index.md instead of being repeated."
+      }
+    },
+    "references/internal/review.md": {
+      "sha256": "c7e7ca51e31f852fd83d99d5c79a89ebf643c2a5c841fd9756ba5191f5409330",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-review",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
+      }
+    },
+    "references/internal/sdd.md": {
+      "sha256": "243608977a157a9238603579c18631a9daab937019d19619543dc257ff372eb1",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-sdd",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-sdd-guidance (SDD rollout slice SDD-5; user decisions 2026-11-17: every repository change has a SPEC, minimal form by default, GEARS + IF…THEN, approval = the user's in-session selection with digest, one SPEC = one PR, SYNC writes and AUDIT checks, @cc: Agent Context Comments, preserve-then-change instead of DDD). The agent-facing SDD rules in one place, naming only `moai spec` actions this build has (checked with --help) and the card link as planned until it lands. Read by moai-docs (`reads:`) and named by chains/index.md and the PLAN, RUN, VERIFY, SYNC and AUDIT workflows."
       }
     },
     "references/internal/security-checklist.md": {
@@ -317,51 +242,6 @@
         "license": "Apache-2.0"
       }
     },
-    "references/internal/core-rules.md": {
-      "sha256": "8f1e834c9592f143a8add2d08424e904b98fc34619a6735d8f2708750e676170",
-      "origin": {
-        "kind": "go-generation",
-        "template_id": "internal-core-rules",
-        "adoption": "adapted",
-        "reason": "Written for rc.2 #2876 (I4 of #2871: rules inside the moai skill, only what changes behaviour on every host) from the MoAI ADK Go generation .claude/rules/moai/** at 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 (Apache-2.0): of 113 rule files 1 kept and 9 merged (core/moai-constitution, core/agent-common-protocol, core/native-idiom-and-register, core/verification-claim-integrity, workflow/graceful-exit-mutation-contract, workflow/read-only-status-contract; git, security, dependency and CI-repair rules went to internal/git-safety, internal/review and workflows/run.md), 103 dropped as Go-only, host-specific or already covered (comparison table in the #2876 pull request). Host-neutral wording, no host tool names; at most 4096 bytes (tests/core_rules_2876.rs). Read once per session through the route table's `core_rules` entry, which SKILL.md names, and by every base agent through `reads:`. Rules 19-21 (public prior art, no design for unrequested cases, code wins over instruction files) and the report-first sentence of rule 18 added by #3096 S1 (user instruction 2026-11-16); still at most 4096 bytes."
-      }
-    },
-    "workflows/optimize.md": {
-      "sha256": "798283ee690d2ab316d45039cc536d83e18dd4a82e14c3737929bb5813ef518b",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "workflow-optimize",
-        "adoption": "new",
-        "reason": "Written for rc.2 #2724 (leader decision A, Issue #2724 comment of 2026-11-13T16:20Z): the route runs only the read-only `optimize-plan` preview; deletion stays the user's yes and the existing worktree-gc apply step. No design-22 template exists for OPTIMIZE. Shows the preview's worktree-count warning line (#2930 item 6)."
-      }
-    },
-    "references/internal/lenses.md": {
-      "sha256": "7583f55985f6ee5b66bd0273ecc49e6a9d3055aca3ba40f7b33f07e8c242884b",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "internal-lenses",
-        "adoption": "new",
-        "reason": "Written for rc.2 #3096 S1 (user instruction 2026-11-16, record in #1975): four ways of looking (state machine, CI in three stretches, what to keep if built again, refactor risk) read only when a question or plan needs one; each reports and changes no code."
-      }
-    },
-    "references/internal/questions.md": {
-      "sha256": "345cfab2d912deaf6e7d4788ac183c91ad445f8c262744a0a3d125187a51544b",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "internal-questions",
-        "adoption": "new",
-        "reason": "Written for rc.2 cards C-51 and C-52 slice S1 (user decision 2026-11-16): how a question reaches the user in UPDATE, PROJECT and SETUP — the session runs the commands itself, every question is a selection with the recommended option first, and one table names the question tool per host (Claude Code, Codex CLI, OMP) with its plain-text fallback. Named by update.md, project.md, setup.md, internal/interview and the PROJECT row of chains/index.md instead of being repeated."
-      }
-    },
-    "references/internal/versioning.md": {
-      "sha256": "937835dcb420d6acf2d51193c991dc16d060bc0831eff6518f2c464f69d268b6",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "internal-versioning",
-        "adoption": "new",
-        "reason": "Written for rc.2 card C-69 (user instruction 2026-11-17): the three versioning schemes the PROJECT interview offers — SemVer (default), HeadVer and CalVer — each with its format, who bumps what, when to pick it, how the next version is computed, its pre-release marking and two examples, plus the rule to keep the scheme a project already uses and how `project-detect` reads a version. Sources read 2026-11-17: semver.org 2.0.0, github.com/line/headver, calver.org spec 26.0. Named by project.md, internal/interview and chains/index.md."
-      }
-    },
     "references/internal/self-check.md": {
       "sha256": "cfa07303ae26ec0eb30dbeeccd069bd6d80b978e185a02b8df11591d403d7272",
       "origin": {
@@ -371,94 +251,34 @@
         "reason": "Written for rc.2 card C-77 (user selection 2026-11-17 after the PR history analysis of 193 audit FAILs): the checks whoever wrote a change runs before asking for an audit or opening a pull request, one line each with its command, grouped as tests, package and documents, and the pull request. Read by moai-impl (`reads:`) and named by the rules of chains/index.md; its machine items run from the repository's tools/self_check.sh."
       }
     },
-    "references/internal/sdd.md": {
-      "sha256": "243608977a157a9238603579c18631a9daab937019d19619543dc257ff372eb1",
+    "references/internal/tdd-results.md": {
+      "sha256": "4af11c46edc7e3a894281d332c36fd63651c23218dadfdab5207a7f75bfea3df",
       "origin": {
-        "kind": "design-spec",
-        "template_id": "internal-sdd",
-        "adoption": "new",
-        "reason": "Written for SPEC-20261117-sdd-guidance (SDD rollout slice SDD-5; user decisions 2026-11-17: every repository change has a SPEC, minimal form by default, GEARS + IF…THEN, approval = the user's in-session selection with digest, one SPEC = one PR, SYNC writes and AUDIT checks, @cc: Agent Context Comments, preserve-then-change instead of DDD). The agent-facing SDD rules in one place, naming only `moai spec` actions this build has (checked with --help) and the card link as planned until it lands. Read by moai-docs (`reads:`) and named by chains/index.md and the PLAN, RUN, VERIFY, SYNC and AUDIT workflows."
+        "kind": "go-generation",
+        "template_id": "internal-tdd-results",
+        "adoption": "adapted",
+        "reason": "Adapted for rc.2 #2582 (leader confirmation 6856677422 of the classification table 6831216944) from the MoAI ADK Go generation internal/template/templates/.claude/rules/moai/workflow/tdd-result-contract.md at 4fa2aa9db2e0add0f1299e35407141b2b41c5ec0 (Apache-2.0): the four result classes kept; path frontmatter dropped; an empty selection is not_run (internal/test-design). Read first by the base agent whose `reads:` names it.",
+        "source_revision": "4fa2aa9db2e0add0f1299e35407141b2b41c5ec0",
+        "source_path": "internal/template/templates/.claude/rules/moai/workflow/tdd-result-contract.md",
+        "license": "Apache-2.0"
       }
     },
-    "references/internal/build-folder.md": {
-      "sha256": "d501167bbf87e9c9974270530ebe91216057ae0ca99fc195a3c74e25025dbb82",
+    "references/internal/test-design.md": {
+      "sha256": "7ddc359ff5b031ddf7e9b0d3f9ff2b0e880f3fbf3b45b4e0008f9bbebc56923f",
       "origin": {
         "kind": "design-spec",
-        "template_id": "internal-build-folder",
+        "template_id": "internal-test-design",
         "adoption": "new",
-        "reason": "Written for card C-82 (user decision 2026-11-17, selection '빌드 폴더를 한 곳으로 모으기'; SPEC-20261117-agent-build-folder): where agent and audit builds put CARGO_TARGET_DIR (one folder per worktree under ~/.moai/build/, CARGO_INCREMENTAL=0, an owner record), what a refusal does, where evidence stays, the end-of-task cleanup and the user-picked removal of leftovers. Read by moai-impl and moai-audit (`reads:`); its moai-adk helper is the repository's tools/build_folder.py."
+        "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
       }
     },
-    "references/internal/quality.md": {
-      "sha256": "61abd81006401f7ad06756eea2d6a2c82f870b73271c94b7f39a84923dcbd92b",
+    "references/internal/versioning.md": {
+      "sha256": "937835dcb420d6acf2d51193c991dc16d060bc0831eff6518f2c464f69d268b6",
       "origin": {
         "kind": "design-spec",
-        "template_id": "internal-quality",
+        "template_id": "internal-versioning",
         "adoption": "new",
-        "reason": "Written for SPEC-20261117-quality-guides (user approval 2026-11-17 of research proposal G, and the user decision of 2026-11-17 on the Go generation: concepts are redesigned, files are not ported): the quality model from the project's own tools (commands taken from the project's declarations or a guide default with evidence, never guessed or installed), the AC-to-test tracing rule and the dependency existence check. Named by the rules of chains/index.md and by verify.md and run.md."
-      }
-    },
-    "references/languages/rust.md": {
-      "sha256": "17a06c69e1a5e4b1caffbceed607f598e704dab1c3779a4deaa167c8285a37f2",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "language-guide",
-        "adoption": "new",
-        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language rust (default commands with the evidence each needs, the dependency existence check, traps for agents). Written new; the Go-era language rules deferred to design:language-domain-guides were read for concepts only, nothing copied."
-      }
-    },
-    "references/languages/python.md": {
-      "sha256": "4d98921d0cee97a0a7c23115853693c9b19cc561904d998dd84e0421485bbb59",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "language-guide",
-        "adoption": "new",
-        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language python (runner by lockfile, default commands with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
-      }
-    },
-    "references/languages/javascript-typescript.md": {
-      "sha256": "e7c8d23fc9d0eeb7846d9461efbd39c5b3254005f3a6943032a4f3cced1830b4",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "language-guide",
-        "adoption": "new",
-        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected languages javascript and typescript (package manager by lockfile, scripts first, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
-      }
-    },
-    "references/languages/go.md": {
-      "sha256": "63447f509673fc2cc92bf45c5ede910de4d2235876b407b8c1e1bca6d43672be",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "language-guide",
-        "adoption": "new",
-        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language go (default commands with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
-      }
-    },
-    "references/languages/java-kotlin.md": {
-      "sha256": "d81cd181cf4973272b4290b1d1388520bb709a0a3135a0062011dcbc5db6e0aa",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "language-guide",
-        "adoption": "new",
-        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected languages java and kotlin (build tool by wrapper and manifest, tasks with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
-      }
-    },
-    "references/languages/ruby.md": {
-      "sha256": "346fa375c7341bc7918ee33ce6b5ed445ae9acbc779a5b5a836bfdc3e8c2d5ab",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "language-guide",
-        "adoption": "new",
-        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language ruby (Bundler, default commands with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
-      }
-    },
-    "references/languages/php.md": {
-      "sha256": "a5482a6f63828ed069c3e63f21dfb7fb28de0f0f02efc8dbc41163550b8d3a6d",
-      "origin": {
-        "kind": "design-spec",
-        "template_id": "language-guide",
-        "adoption": "new",
-        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language php (Composer scripts first, default commands with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
+        "reason": "Written for rc.2 card C-69 (user instruction 2026-11-17): the three versioning schemes the PROJECT interview offers — SemVer (default), HeadVer and CalVer — each with its format, who bumps what, when to pick it, how the next version is computed, its pre-release marking and two examples, plus the rule to keep the scheme a project already uses and how `project-detect` reads a version. Sources read 2026-11-17: semver.org 2.0.0, github.com/line/headver, calver.org spec 26.0. Named by project.md, internal/interview and chains/index.md."
       }
     },
     "references/languages/c-cpp.md": {
@@ -479,6 +299,69 @@
         "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language csharp (dotnet commands with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
       }
     },
+    "references/languages/go.md": {
+      "sha256": "63447f509673fc2cc92bf45c5ede910de4d2235876b407b8c1e1bca6d43672be",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "language-guide",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language go (default commands with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
+      }
+    },
+    "references/languages/java-kotlin.md": {
+      "sha256": "d81cd181cf4973272b4290b1d1388520bb709a0a3135a0062011dcbc5db6e0aa",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "language-guide",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected languages java and kotlin (build tool by wrapper and manifest, tasks with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
+      }
+    },
+    "references/languages/javascript-typescript.md": {
+      "sha256": "e7c8d23fc9d0eeb7846d9461efbd39c5b3254005f3a6943032a4f3cced1830b4",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "language-guide",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected languages javascript and typescript (package manager by lockfile, scripts first, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
+      }
+    },
+    "references/languages/php.md": {
+      "sha256": "a5482a6f63828ed069c3e63f21dfb7fb28de0f0f02efc8dbc41163550b8d3a6d",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "language-guide",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language php (Composer scripts first, default commands with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
+      }
+    },
+    "references/languages/python.md": {
+      "sha256": "4d98921d0cee97a0a7c23115853693c9b19cc561904d998dd84e0421485bbb59",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "language-guide",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language python (runner by lockfile, default commands with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
+      }
+    },
+    "references/languages/ruby.md": {
+      "sha256": "346fa375c7341bc7918ee33ce6b5ed445ae9acbc779a5b5a836bfdc3e8c2d5ab",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "language-guide",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language ruby (Bundler, default commands with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
+      }
+    },
+    "references/languages/rust.md": {
+      "sha256": "17a06c69e1a5e4b1caffbceed607f598e704dab1c3779a4deaa167c8285a37f2",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "language-guide",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language rust (default commands with the evidence each needs, the dependency existence check, traps for agents). Written new; the Go-era language rules deferred to design:language-domain-guides were read for concepts only, nothing copied."
+      }
+    },
     "references/languages/swift.md": {
       "sha256": "23756ccd70ba785c54ed843570c855a8493c896725f2a6e14e2c789c14454e18",
       "origin": {
@@ -486,6 +369,123 @@
         "template_id": "language-guide",
         "adoption": "new",
         "reason": "Written for SPEC-20261117-quality-guides: the short guide internal/quality names for the detected language swift (SwiftPM or Xcode by its files, format and lint with the evidence each needs, the dependency existence check, traps for agents). Written new; nothing copied from the Go-era language rules."
+      }
+    },
+    "references/routes.json": {
+      "sha256": "d49da0fbb743c6c80526ea665294b2a4a38b25599c7d861459c42ac529e9b82e",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "router-routes",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. MODE-LEADER and MODE-AGENT routes added by rc.2 A1 #2160. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). #2637: top-level `chains` names references/chains/index.md, the agent order per route. OPTIMIZE route (`/moai optimize`) added by #2724 (leader decision A, 2026-11-13)."
+      }
+    },
+    "workflows/audit.md": {
+      "sha256": "7bf329602e2900f1a4f0b7f4fe369eff3d835c16dc3478d51dd690f36f431f2a",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-audit",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Audit practice paragraphs (reservation line, interim results on the PR, behaviour from code and test, real mutations, narrowing in both directions, safe revision reads, per-file delta comparison, re-read before posting) added by #2401. Handoff holder rule and the lane name rule added by #2499. Web pages section (browser choice and rules) added by #2517. No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features). Rebuild-by-modification-time sentence (touch restored or extracted sources; cite a run only with the tree's Compiling line and the expected test count) added by #2401 comment 6824103310."
+      }
+    },
+    "workflows/mode-agent.md": {
+      "sha256": "b9df5622e6271599d605491ed99e7dbba248951a4bb41050836e6b3b04801e10",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "workflow-mode-agent",
+        "adoption": "new",
+        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it. The `--agent-mode` naming, the `--mode agent` legacy alias and the leader-first assignment request with the self-claim fallback (REQ-5) added by #2286. The pre-commit/pre-push claim-verify boundary from A9 #2255 is preserved during the #2286 integration sync. The goal step is bound to tools/gen_goal_block.py and its tested agent-kind generated output by #2334, preserved in the #2286 rename integration. Step 5 names the journal lock-busy retry rule (unavailable, bounded caller-side backoff under a cap) — #2345. Step 7 retains the pr_ready handoff skip rule — #2344. Step 8 (merge train, not_run for conflicting PRs, self-check, WIP cap) and step 10 (default loop: end condition, order, no waiting in place, resume after handoff — user decision in #2390) added by #2388; step 7's stop defers to step 10. Short waits, lean change reports, and outward effects as separate commands added by #2401. Entry spelling `--mode-agent` only, legacy alias removed (user decision 2026-11-10, #2286). Label rules added by #2434. Steps 8, 9, 12 and 13: lanes open their own pull requests below four non-draft ones and settle a simultaneous opening by the four lowest numbers (others become drafts), the U6 integration gate (no tip chasing), the one-line round, and the waiting-branch suffix — #2515. Steps 12 keep-going and 14 wake added, report/pr-gate/heavy-checks/claim/goal-lines/self-pick changed so a round never stops on LANE-DONE, a full open-PR count, a wait or a leader request (#2515 comment 6823975793). Step 3 four-way Issue counts and step 13 LANE-BLOCKED for expired foreign claims (cause 8, #2515 comment 6824158448). Step 13 end condition matches keep-going (audit 6824297146 N1). Worktree sessions without the project settings file run no project hook, so claim-verify is the only boundary there (#2581). Orca session-control section, identical in both mode workflows (#2516, leader decision B 6823474405). Bottleneck rules (#2612): renewal by editing the own claim comment, every earlier claim id in a handoff request, a fresh branch for an unread trailer, the open-PR limit N from decision D7 with cross-lane `pr-wait` order, pre-push checks, a slot wait is no wake reason, a lost reservation posts no verdict, no-op wake backoff and no reprint of unchanged lines, the poll interval only for unchanged state. Decided values (#2612, #1975 comment 6840449133): same-session renewal without a handoff line (D1), lane timeout takeover by=timeout under three conditions (D2), written user questions (D5), fallback wake up to 1,800 seconds (D6), open-PR limit eight (D7). No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Standing goal (#2679): the state step reads moai-cli goal-show (one file per clone, read from every worktree); an active goal's end condition and exclusions hold after a restart without the person repeating it; lanes only read it. Usage-limit rule added by #2668 S3 (lane renews its claims before a claude.ai usage limit; the leader treats a usage_limit lane as held, not stopped). Codex hook trust (#2592): claim-verify names the primary checkout's trust_level and the /hooks review, the measured worktree inheritance of project trust, and that a lane never bypasses hook trust. LANE-BLOCKED kind/owner/next fields and the resume point's who-clears-it (#2769, #2554 leader decision 6861024531). Step 8 checks the PR body locally with moai pr-self-audit-check before the push and before gh pr create (#2840 D3). The self-pick and wake steps name `moai lane-next` (fresh GitHub read each time, reversible decisions go on with the safe default) — #2831; at the open-PR limit the pr-gate step opens a draft instead of waiting (leader decision 6870150891). The self-pick step adds the `DECISION-APPLIED` line, the tip-repair wait and `card_pr_merged`; the wake step names `--shared-lanes` (#2873). The self-pick round adds PLAN, RED, AUDIT, merge and SYNC, and the pr-gate step names the `plan:` and `red:` lines (#2880). Reports go on the screen and as an Issue or pull request comment, the leader request is a screen line plus a comment in the command mode and skipped in the autonomous mode, the end condition points to SPEC §12 (D-O1), every card keeps a resume note, the fixed idle-only `/loop 5m` is allowed, and a Codex lane without Orca keeps one session with `/goal` and a Stop hook (D-O2) (#2900, #2899 G2, G3, G5, G9). The claim step's host sentence (\"Codex CLI and others\") gives way to the channel rule (#2910 audit 6874564526 B1). WF-OBS from a Codex run (#2933, #2899 comment 6880316209): a five-line section \"When the leader is busy or does not answer\" opens the file and names the `claim`, `keep-going`, `wake`, `goal-lines` and `report` steps; the `report` step says a wait on the leader is `kind=claim` or `kind=decision`, never `outside`; the `state` step starts with `git fetch` and the lane's own worktree; the Orca section reads a lane screen only with `orca terminal read --screen`."
+      }
+    },
+    "workflows/mode-leader.md": {
+      "sha256": "2d11c015d1dc4b269c175d7ebfa917cf9a289492cfc0287b0ac9bbc678f3eb2a",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "workflow-mode-leader",
+        "adoption": "new",
+        "reason": "Written for rc.2 A1 #2160 from docs/design-review/autonomy-modes-spec.md (DR-02 #2138); no design-22 template exists for modes. Refers to the SPEC by section instead of restating it; user decisions D-2 and D-3 of 2026-11-09. The `--leader-mode` naming, the `--mode leader` legacy alias and the assignment-request reply duty (REQ-6, non-conflicting ready-card pointer or none) added by #2286. The goal step is bound to tools/gen_goal_block.py and its generated output by #2334, preserved in the #2286 rename integration. Step 8 (merge train, pre-stacking announcement, docs-only insertion, audit-scope pinning, WIP cap) added by #2388. Dispatch checks live claims and audit reservations; decision rows published from a tip worktree added by #2401. Entry spelling `--mode-leader` only, legacy alias removed (user decision 2026-11-10, #2286). Label rules added by #2434. Steps 8 and 9: lanes open their own pull requests and the leader names a lane only when the order matters; the U6 integration gate (merge without re-merging the tip when nothing conflicts or overlaps) — #2515. Step 7 restart (not dispatch) of stopped lanes, step 10 same-round answers and same-session handoff lines, step 9 docs-only overlap exception — #2515. Step 7 sorts open Issues and hands ownerless ones (no claim or a dead session's expired claim) to idle lanes (cause 8, #2515). Orca session-control section, identical in both mode workflows (#2516, leader decision B 6823474405). Bottleneck rules (#2612): read the screen before a restart (no line to a lane with a wake, an answer to `LANE-BLOCKED`, no repeated restart), `UNREACHABLE` lanes, found = answered on every return, finish ready work before a user question (method: decision D5), decisions to comment and screen, one handoff line per claim id confirmed by `owner`, the open-PR limit N from decision D7 and operating numbers changed together. Decided values (#2612, #1975 comment 6840449133): same-session renewal without a handoff line (D1), lane timeout takeover by=timeout under three conditions (D2), written user questions (D5), fallback wake up to 1,800 seconds (D6), open-PR limit eight (D7). No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Standing goal (#2679): the state step reads moai-cli goal-show; the goal-line step feeds its exclusions into keep_set and writes a new standing instruction once through goal-plan/goal-apply, asking the person only when asks_person is true. Usage-limit rule added by #2668 S3 (lane renews its claims before a claude.ai usage limit; the leader treats a usage_limit lane as held, not stopped). Report figures name their command; an empty output is not zero (#2678). Step 9 repo-wide scan check (#2681, leader decision 6848942944): no re-merge for disjoint files, but when the scan judge (moai-cli repo-scans since #2708 4/4, formerly tools/repo_scans.py) reports a scan whose rule files changed on one side and scope on the other, its checks run on the git merge-tree result before the merge. The judge reads the tables of both refs and an empty check list holds the merge (#2693 audit B1, N1). The first step is `mode-channel`: the mode follows the channel, not the host, and leader mode is refused only with neither Orca nor a timer (user decision D-O3 replacing D-3); `supervise` gives each lane one of four actions (`restart`, `clear_redispatch`, `answer`, `leave`) with the clear contract on `lane-safe-to-reset` `safe`, and replies go to the Issue and the lane's screen (#2900, #2899 G1-G4, G7). The Orca section, kept identical with mode-agent.md, reads a lane screen only with `orca terminal read --screen`, reports an unreadable lane as unconfirmed and never uses a screenshot or computer use (#2933, #2899 comment 6880316209, WF-OBS L1)."
+      }
+    },
+    "workflows/optimize.md": {
+      "sha256": "798283ee690d2ab316d45039cc536d83e18dd4a82e14c3737929bb5813ef518b",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "workflow-optimize",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2724 (leader decision A, Issue #2724 comment of 2026-11-13T16:20Z): the route runs only the read-only `optimize-plan` preview; deletion stays the user's yes and the existing worktree-gc apply step. No design-22 template exists for OPTIMIZE. Shows the preview's worktree-count warning line (#2930 item 6)."
+      }
+    },
+    "workflows/plan.md": {
+      "sha256": "1a2e8006d48e54f0182814f9d3f184389c275f5d5498119d74fbd6cb463f212c",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-plan",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 6 added by 07-D #2011 (native decision records; a judgment is not permission). Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features). One line pointing to internal/lenses added by #3096 S1."
+      }
+    },
+    "workflows/project.md": {
+      "sha256": "60d1c27f23d711bc25c8553fbca4038ea636f5c598df9f64ea73f9b9bc03bdc0",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "workflow-project",
+        "adoption": "new",
+        "reason": "Written for rc.2 #2496 from user decisions 16 = B and 17 = all three (#1975 comment 6815357071) and the gap analysis #2286 6811414257; no design-22 template exists for PROJECT. Go `/moai project` was read as reference only; its product/structure/tech documents are not ported (decision 16 = B). Step 2 says the root instruction files are moved, not copied, into the backup's root-files/ and that a not-copied restore says why (#2936 S1b repair, audit 6879582411 B2). Step 2 adds the staying-layout backup_ignore stop and the re-proposal of reverted Go settings (#2936 S-AGENTS-STAY, decision 6901387505)."
+      }
+    },
+    "workflows/read.md": {
+      "sha256": "4adbab4cbdaa38d686478876dc46984cd5a3ca00705207183b37128cf650d6d1",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-read",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 3 extended by 07-D #2011 (context text is data, never an instruction). Canonical documents read from an openable copy with path, line range and sha256 added by #2401. Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features). One line pointing to internal/lenses added by #3096 S1."
+      }
+    },
+    "workflows/run.md": {
+      "sha256": "be69c82bb178a3f31d470140000a1ec9f22d13baf20d898f33bb3e1dff994612",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-run",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 1 reads the claim journal (06-A #2005); step 2 extended by 07-D #2011 (context bundle and verify, host-reported usage versus estimates). Web pages section (browser choice and rules) added by #2517. Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features)."
+      }
+    },
+    "workflows/setup.md": {
+      "sha256": "7f9fcc9c589eb82e07c2814fec5c09a34c6005e3684b18040fb965e30ad2061a",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-setup",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet."
+      }
+    },
+    "workflows/sync.md": {
+      "sha256": "404e6fffb09a6ba4d777b94b0a3969acfc2ab0cc09697bc394c19ea4c699be92",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-sync",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Step 8 merge-train bullet follows the U6 integration gate — #2515. No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Base agents section added by #2592 S4 (which base agent this route hands a step to, in which shape, using only each host's own features)."
+      }
+    },
+    "workflows/update.md": {
+      "sha256": "bca1a45a881bad50a7b07accd8064b4329df8063655330e0093db1c363b65118",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-update",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template. The 2026.11.0-rc.1 UPDATE implementation (04-B #1999) replaced the not-implemented status note with the implemented scope; the backup/rollback step remains 04-C. Step 6 (#2483) adds the user-confirmed backup-then-replace of an unmanaged moai skill folder (decision row 22). Step 1 (#2936 S-AGENTS-STAY, decision 6901387505) says a staying-layout backup area whose own .gitignore git does not honour reads backup_ignore and stops the go-state step without a command, and that Go settings a revert put back are proposed for the move again."
+      }
+    },
+    "workflows/verify.md": {
+      "sha256": "d5d3a0d90e244c79dc4d9a50cb34383d7c1fa24539a69a8aaeb6a51f605c5e40",
+      "origin": {
+        "kind": "design-template",
+        "template_id": "workflow-verify",
+        "adoption": "adopted",
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. Name filters per target and zero selected tests as not_run added by #2401. Child-process budget rule added by #2502. PR runs linux-x86_64 only and the full matrix plus windows-build run after merge, with the post-merge failure rule (#2554, user decision U10). Shell and helper rules (WF-OBS #16, #17, #19) added by #2493. Web pages section (browser choice and rules) added by #2517. Change-specific rules for WF-OBS ledger rows 9, 25, 26, 29 and 30 (#2401). No author ci: line (D4, #2612, #1975 comment 6840449133): the auditor cites the head's CI run in the verdict and the merge gate reads the head's check runs. Build folder: one per lane, reused across its worktrees, with the Compiling-line check after a switch (#2677 N5, leader decision 6859259006). One stderr warning line when a heavy run starts with under 100 GB free (#2930 item 6). Section \"Lane worktrees and build cache\": worktree lifetime rule, user-owned retention information and sccache/cargo official-document citations read 2026-11-14 (#2930 S7, items 3 and 5, R-5)."
       }
     }
   }

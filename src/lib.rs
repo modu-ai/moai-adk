@@ -10,6 +10,7 @@ pub mod audit;
 pub mod audit_claim;
 pub mod audit_clone;
 pub mod audit_delta;
+pub mod audit_gate;
 pub mod audit_stale;
 pub mod banner;
 pub mod baseline;
