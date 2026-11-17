@@ -283,9 +283,12 @@ fn a_newer_version_folder_keeps_updating_the_skill() {
     assert_eq!(tree_bytes(&installations(&f.home).join(&a_id)), a_before);
 }
 
-// A → B → A: the earlier build sees the newer state, not its own stale receipt.
+// A → B → A between folders of the same version: A reads B's newer receipt, not its own stale
+// one, and plans nothing. Card C-67 (audit N1): when B's receipt names a newer version, going
+// back is blocked unless `moai update --allow-older` asks for it (tests/update_headver.rs
+// `going_back_to_an_older_build_needs_allow_older`).
 #[test]
-fn going_back_to_an_older_folder_reads_the_newest_receipt() {
+fn going_back_to_a_folder_of_the_same_version_reads_the_newest_receipt() {
     let f = fixture();
     let a = version_exe(&f.home, "a");
     let b = version_exe(&f.home, "b");

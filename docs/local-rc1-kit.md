@@ -33,7 +33,7 @@ CARGO_INCREMENTAL=0 CARGO_TARGET_DIR=/tmp/moai-rc1-stage-target cargo build --of
 shasum -a 256 /tmp/moai-rc1-stage-target/release/moai-cli   # 바이너리 hash를 기록
 ```
 
-로컬 시험 빌드마다 번호를 붙이려면 빌드할 때 `MOAI_LOCAL_BUILD=<n>`을 주세요(#2722 AC-5, 리더 결정 6855056793). `MOAI_LOCAL_BUILD=3 cargo build …`로 만든 바이너리는 `moai-cli --version`과 상태줄에 `2026.11.0-rc.1+local.3`으로 보입니다. `+local.<n>`은 semver 빌드 메타데이터라서 릴리스 태그 `rc.<n>`과 섞이지 않습니다. `<n>`은 1부터 4294967295까지의 십진수만 받습니다. 부호, 앞자리 0, 공백이 들어가면 빌드가 멈추고, 비우거나 주지 않으면 지금처럼 메타데이터 없이 빌드됩니다. 설치·갱신 기록의 패키지 버전에는 번호를 붙이지 않습니다.
+로컬 시험 빌드마다 번호를 붙이려면 빌드할 때 `MOAI_LOCAL_BUILD=<n>`을 주세요(#2722 AC-5, 리더 결정 6855056793). 카드 C-67 조각 1부터 버전은 HeadVer `{head}.{yearweek}.{build}`예요(`src/headver.rs`): head는 저장소 뿌리의 `HEADVER` 파일(지금 `4`), yearweek는 빌드한 UTC 날짜의 ISO 주(두 자리 연도+두 자리 주), build는 `MOAI_LOCAL_BUILD`예요. 그래서 2026-11-17에 `MOAI_LOCAL_BUILD=5 cargo build …`로 만든 바이너리는 `moai-cli --version` 첫 줄과 상태줄에 `4.2647.5`로 보이고, `--version` 둘째 줄에 `local build 5 (MOAI_LOCAL_BUILD), built 2026-11-17 UTC (ISO week 2026-W47), package …`가 나와 로컬 빌드임을 알려 줘요(`-V`는 첫 줄만). 버전 폴더 이름과 비교 기준은 `4.2647.5`예요. `<n>`은 1부터 4294967295까지의 십진수만 받습니다. 부호, 앞자리 0, 공백이 들어가면 빌드가 멈추고, 비우거나 주지 않으면 build 0의 번호 없는 빌드(`unnumbered build`)가 됩니다. `HEADVER`가 없거나 0–9999의 한 줄 숫자가 아니어도 빌드가 멈춰요. 모든 HeadVer 버전은 옛 `2026.11.0-rc.N[+local.n]`보다 새 버전으로 읽혀서 update가 옛 설치에서 깨끗하게 넘어오고, 이 빌드보다 새 버전이 설치된 호스트는 막혀서 되돌아가지 않아요. 설치 기록(`install-record`)의 버전에는 아직 패키지 버전이 들어가요(카드 C-67 AC4).
 
 바이너리는 PATH에 넣지 말고 경로로 부르세요. 이름이 `moai`가 아니라서 Go `moai`와 섞이지 않습니다. `~/.moai-cli/bin/`에 설치하는 것은 04-A installer의 몫이고, 이 키트는 설치하지 않습니다.
 
