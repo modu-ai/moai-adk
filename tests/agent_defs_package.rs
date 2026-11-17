@@ -346,17 +346,25 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
             .map(String::as_str)
             .collect::<Vec<_>>()
     };
+    // SPEC-20261117-atlas-in-read-plan: the two read-only agents of READ and PLAN check the
+    // code atlas before they search.
     assert_eq!(
         reads("moai-plan"),
         [
             "internal/core-rules",
             "internal/decide",
-            "internal/interview"
+            "internal/interview",
+            "internal/code-atlas"
         ]
     );
     assert_eq!(
         reads("moai-research"),
-        ["internal/core-rules", "adapters/aside", "adapters/orca"]
+        [
+            "internal/core-rules",
+            "adapters/aside",
+            "adapters/orca",
+            "internal/code-atlas"
+        ]
     );
     assert_eq!(
         reads("moai-impl"),
@@ -466,6 +474,8 @@ fn internal_references_say_when_to_read_them() {
         "versioning",
         // C-77: the checks an implementer runs before asking for an audit.
         "self-check",
+        // SPEC-20261117-atlas-in-read-plan: READ and PLAN read the code atlas when it is fresh.
+        "code-atlas",
     ];
     let mut found: Vec<String> = std::fs::read_dir(package().join("references/internal"))
         .unwrap()

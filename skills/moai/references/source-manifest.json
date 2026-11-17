@@ -64,7 +64,7 @@
       }
     },
     "workflows/read.md": {
-      "sha256": "4adbab4cbdaa38d686478876dc46984cd5a3ca00705207183b37128cf650d6d1",
+      "sha256": "ac4fa5b6f0422f248019d48bc5f2125dc77dc985041069a0ab015aa342c05568",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-read",
@@ -91,7 +91,7 @@
       }
     },
     "workflows/plan.md": {
-      "sha256": "3ec6d1f8bc00d02df8c52ed2e494296814f02f834da1dd63ecd89beb3d48f911",
+      "sha256": "68295b494ad43074b6693f645de10383557a2fe64335b7b19c2d1eba6f7b08c1",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-plan",
@@ -364,6 +364,15 @@
         "template_id": "internal-self-check",
         "adoption": "new",
         "reason": "Written for rc.2 card C-77 (user selection 2026-11-17 after the PR history analysis of 193 audit FAILs): the checks whoever wrote a change runs before asking for an audit or opening a pull request, one line each with its command, grouped as tests, package and documents, and the pull request. Read by moai-impl (`reads:`) and named by the rules of chains/index.md; its machine items run from the repository's tools/self_check.sh."
+      }
+    },
+    "references/internal/code-atlas.md": {
+      "sha256": "8bbb907ad5f828b91b4a4fd505c79734396a4fe36b20163735560f92da95f4a9",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-code-atlas",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-atlas-in-read-plan (user decision 2026-11-17: Go concepts are redesigned, no files ported): how READ and PLAN use the code atlas the Rust product already has (`index-query` freshness, `atlas-graph`, `atlas-map`, `search`) when it is fresh, fall back to searching and reading otherwise, and never build it (PROJECT offers `index-build`). Measured on this repository before writing (1,620 files). Named by one line of workflows/read.md and workflows/plan.md and read by moai-research and moai-plan (`reads:`); tests/code_atlas_reference.rs runs its requests."
       }
     }
   }
