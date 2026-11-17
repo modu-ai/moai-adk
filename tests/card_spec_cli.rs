@@ -613,7 +613,11 @@ fn a_go_generation_spec_is_never_approved_for_a_card() {
 
     let next = ok(&w.run(&["card", "next", w.p()]));
     for name in [&one, &two] {
-        assert_eq!(listed(&next, name)["spec"]["approved"], json!(false), "{next}");
+        assert_eq!(
+            listed(&next, name)["spec"]["approved"],
+            json!(false),
+            "{next}"
+        );
     }
     let warned = warnings(&next);
     assert_eq!(warned.len(), 2, "{warned:?}");
@@ -707,7 +711,11 @@ fn research_and_audit_cards_are_not_warned_about_an_unapproved_spec() {
     }
     let next = ok(&w.run(&["card", "next", w.p()]));
     for card in [&research, &audit, &fix] {
-        assert_eq!(listed(&next, card)["spec"]["approved"], json!(false), "{next}");
+        assert_eq!(
+            listed(&next, card)["spec"]["approved"],
+            json!(false),
+            "{next}"
+        );
     }
     let warned = warnings(&next);
     assert_eq!(warned.len(), 1, "{warned:?}");

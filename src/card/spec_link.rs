@@ -72,8 +72,10 @@ pub fn cards_of(conn: &Connection, spec_id: &str) -> rusqlite::Result<Vec<Value>
 
 /// What `next` and `take` say about the SPEC of card `card` (`C-n`) of `kind`: the SPEC's state
 /// (`null` when the card names none) and, for a card that changes the repository, a warning
-/// when that SPEC is not approved. Approved means status `approved` and no error finding; a
-/// SPEC that is gone or cannot be read is not approved.
+/// when that SPEC is not approved. Approved means a SPEC of this generation (`SPEC-<yyyymmdd>-
+/// <slug>`) with status `approved` or `completed`, a recorded `approval` (`by`, `at`, `basis`,
+/// `digest`) and no error finding (decision U-C). A Go-generation SPEC is never approved here,
+/// and a SPEC that is gone or cannot be read is not approved.
 pub fn status(
     project: &Path,
     card: &str,
@@ -93,15 +95,31 @@ pub fn status(
         Ok(doc) => {
             let status = doc.status_as.clone().or_else(|| doc.status.clone());
             let errors = doc.errors();
-            let approved = status.as_deref() == Some("approved") && errors == 0;
-            let problem = if errors > 0 {
+            // Decision U-C: approval is the user's selection recorded in the SPEC. A
+            // Go-generation SPEC has no such record, whatever its status says.
+            let go_generation = doc.id_form != Some(spec_doc::IdForm::New) || doc.status_legacy;
+            let recorded = doc.approval.as_ref().is_some_and(|a| {
+                a.by.is_some() && a.at.is_some() && a.basis.is_some() && a.digest.is_some()
+            });
+            let approved_word = matches!(doc.status.as_deref(), Some("approved" | "completed"));
+            let approved = !go_generation && recorded && approved_word && errors == 0;
+            let problem = if go_generation {
+                Some(format!(
+                    "{card}: its SPEC {id} is a Go-generation SPEC; record an approval to use it \
+                     (a SPEC-<yyyymmdd>-<slug> SPEC with `approval`)"
+                ))
+            } else if errors > 0 {
                 Some(format!(
                     "{card}: its SPEC {id} has {errors} error(s); `moai spec check {id}` lists them"
                 ))
-            } else if !approved {
+            } else if !approved_word {
                 Some(format!(
                     "{card}: its SPEC {id} is `{}`, not approved",
                     status.as_deref().unwrap_or("unknown")
+                ))
+            } else if !recorded {
+                Some(format!(
+                    "{card}: its SPEC {id} has no recorded approval (by, at, basis, digest)"
                 ))
             } else {
                 None

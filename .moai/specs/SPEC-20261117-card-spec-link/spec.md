@@ -31,7 +31,7 @@ parent: SPEC-20261117-sdd-foundation
 - REQ-4: When `--unlink` is given, the tool shall record the removal as one `card.spec` event.
 - REQ-5: The `card show` and `card list` answers shall print the SPEC id each card names.
 - REQ-6: When `card next` or `card take` lists a card, the tool shall print the status of the SPEC it names and warn when a card that changes the repository has no approved SPEC.
-- REQ-7 (REQ-6): IF the named SPEC is gone or cannot be read, THEN the tool shall report it as not approved.
+- REQ-7 (REQ-6): IF the named SPEC is gone, cannot be read, is a Go-generation SPEC, has an error finding or has no recorded approval, THEN the tool shall report it as not approved.
 - REQ-8: Where `--require-approved-spec` is given, `card take` shall refuse a card that changes the repository without an approved SPEC and reserve nothing.
 - REQ-9: When `moai spec show` runs, the tool shall list the cards of this machine's ledger that name the SPEC, marked local.
 - REQ-10 (REQ-9): IF the project has no profile or its ledger is absent or unusable, THEN the tool shall show the SPEC with no local card and the reason.
@@ -46,9 +46,9 @@ parent: SPEC-20261117-sdd-foundation
   verify: `cargo test --locked --offline --test card_spec_cli a_missing_or_unparsable_spec_is_refused_and_nothing_is_written`
 - AC-3 (REQ-3): 다른 연결이 쓰기 잠금을 쥐면 `ledger busy`(`io`)이고 `card.spec` 사건은 0개, 다른 연결의 쓰기는 남아요.
   verify: `cargo test --locked --offline --test card_spec_cli a_busy_ledger_refuses_the_link_and_keeps_the_other_write`
-- AC-4 (REQ-6, REQ-7): `next`·`take`가 `spec`(id·found·status·errors·approved)과 `warnings`를 보여 주고, `research`·`audit` 카드는 경고하지 않으며, 승인 뒤 경고가 사라져요.
-  verify: `cargo test --locked --offline --test card_spec_cli next_and_take_print_the_spec_status_and_warn_until_it_is_approved`;
-  `cargo test --locked --offline --lib spec_link`
+- AC-4 (REQ-6, REQ-7): `next`·`take`가 `spec`(id·found·status·errors·approved)과 `warnings`를 보여 주고, `research`·`audit` 카드는 승인되지 않은 SPEC에 연결돼도 경고하지 않으며(`fix` 카드는 경고), 승인 뒤 경고가 사라져요. 승인은 이 세대 SPEC + `approved`·`completed` + 기록된 `approval` + 오류 0일 때만이고, Go 세대 SPEC은 상태가 무엇이든(`in-progress`, 승인 블록이 있는 `approved`도) 승인이 아니며, 승인 뒤 요구가 바뀐 SPEC(`approval_digest` 오류)도 승인이 아니에요.
+  verify: `cargo test --locked --offline --test card_spec_cli -- next_and_take_print_the_spec_status_and_warn_until_it_is_approved a_go_generation_spec_is_never_approved_for_a_card an_approval_counts_only_while_its_spec_has_no_error research_and_audit_cards_are_not_warned_about_an_unapproved_spec`;
+  `cargo test --locked --offline --lib card::spec_link`
 - AC-5 (REQ-7, REQ-8): `--require-approved-spec`은 초안 SPEC·SPEC 없음·사라진 SPEC을 거절하고 예약을 만들지 않으며, 승인된 SPEC과 `research` 카드는 받아요.
   verify: `cargo test --locked --offline --test card_spec_cli take_with_require_approved_spec_refuses_until_the_spec_is_approved`
 - AC-6 (REQ-9, REQ-10): `spec show`의 `local_cards`가 지금 그 SPEC을 가리키는 카드만 번호 순으로 보여 주고, 원장 없음·프로필 없음·쓸 수 없는 원장은 빈 목록과 이유예요.
@@ -100,11 +100,11 @@ parent: SPEC-20261117-sdd-foundation
 | D2 | 연결은 `card.spec` 사건(payload `from`·`to`)이고 지금 연결 = 가장 새 사건의 `to`; 스키마 버전 1 그대로 | 가장 싼 길(core-rules 3), 내보내기·되살리기가 사건 종류를 가리지 않음 | 버전 2 스키마에 `card.spec_id` 열과 이전 시험 |
 | D3 | "해석된다" = `spec check`가 오류로 보는 발견이 없음(경고는 허용) | 구현 판단 | 읽기만 되면 연결 |
 | D4 | 저장소를 바꾸는 카드 = `research`·`audit`을 뺀 모든 종류; SPEC이 없어도 경고 | 결정 U-A(조사·질문은 카드만) | `NO_REPO_CHANGE` 목록 바꾸기 |
-| D5 | 승인 = 상태 `approved`(옛 Go 상태는 새 낱말로 읽음)이고 오류 0 | 구현 판단 | `completed`도 승인으로 |
+| D5 | 승인 = 이 세대 SPEC(`SPEC-<yyyymmdd>-<slug>`, Go 상태 낱말 아님) + 상태 `approved`·`completed` + `approval`의 `by`·`at`·`basis`·`digest` 기록 + 오류 0. Go 세대 SPEC은 언제나 승인 아님(경고 "Go-generation SPEC; record an approval to use it"). 처음 판(상태만 보고 Go 상태를 새 낱말로 읽음)을 감사 B1이 FAIL로 냄 | 결정 U-C(승인 = 사용자의 세션 선택을 SPEC에 기록), 감사 B1·리더 수리 지시 | `status`·오류만 보기(감사 전 판) |
 | D6 | 같은 연결을 다시 주면 사건 없이 `changed: false`; 끊긴 카드를 다시 끊어도 같음 | 구현 판단 | 매번 사건 |
 | D7 | `--require-approved-spec` 거절은 `card take refused: --require-approved-spec: …`이고 예약 전 | 리더 설계 | 거절 대신 경고만 |
 | D8 | `spec show`는 원장 문제(없음·프로필 없음·쓸 수 없음)로 실패하지 않고 `local_cards.ledger`에 이유를 적음 | 구현 판단 | 원장 오류를 그대로 실패로 |
-| D9 | 스킬 글은 이번에 바꾸지 않음(`mode-agent.md`는 한도 근처, 안내는 SDD-5의 `sdd.md`) | 리더 지시(키우지 않기) | 내부 참조에 한 줄 추가 |
+| D9 | 이 조각에는 스킬 글이 없음. `card spec`과 `--require-approved-spec` 안내는 SDD-5 안내 조각의 `references/internal/sdd.md`가 맡음(`mode-agent.md`는 한도 근처라 키우지 않음) | 리더 결정 N3(감사 N3에 대한 답, 2026-11-17) | 이 조각에서 내부 참조에 한 줄 추가 |
 
 ## Result
 
