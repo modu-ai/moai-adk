@@ -74,4 +74,22 @@ created: 2026-11-17
 
 ## Result
 
-(검사 뒤에 채워요.)
+구현 에이전트가 2026-11-17에 채웠어요. SYNC와 AUDIT가 다시 확인해요. 기준 `25881165be`(origin/v2026.11.0), 변경 커밋
+`949d2ddbc9`. 빌드 폴더는 이 worktree의 `target/`, `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=4`, macOS arm64,
+cargo는 `moai heavy-slot-acquire` 슬롯 안에서 한 번에 하나.
+
+- AC-1: met — RED(표만 넣고 `hidden` 그대로): exit 101, `custom_text_refuses_markup_and_every_hidden_range` "U+034F".
+  (그 전 실행은 시험 해석기가 발췌의 머리 주석 줄을 읽어 실패한 TOOL_FAILURE였고, `#` 줄을 건너뛰게 고쳤어요.)
+  GREEN: `--lib versioning::` exit 0(20 passed).
+- AC-2: met — 같은 실행에서 `default_ignorable_table_matches_the_unicode_source` 통과(범위 17개, 합계 4,174).
+- AC-3: met — `versioning.md` 2, `interview.md` 1, `project_plan.md` 1.
+- AC-4: met — `git diff --exit-code origin/v2026.11.0 -- Cargo.toml Cargo.lock` exit 0.
+- AC-5: met — `versioning_cli` 0(15); `agent_defs_package` 0(18); `product_cli` 0(75); `--bin moai` 0(27);
+  `--lib profile::` 0(10); `cargo fmt --check` 0(처음 1, 줄바꿈 두 곳 뒤 0); `rustfmt --check --edition 2021 src/ops/*.rs` 0;
+  clippy `-D warnings` 0; `tools/source_manifest.py check` 0; Python 4개 파일 OK; `moai spec check --all` 0(처음 1:
+  REQ-4 주어에 쉼표가 있어 GEARS 해석 실패, 문장을 고친 뒤 0); `git diff --check` 0.
+- mutation 3개(커밋 뒤, 각각 `git restore` 뒤 tree 깨끗): U+034F 범위를 다른 범위 복사로 바꿈 → exit 101, 두 시험 FAIL;
+  마지막 범위 끝 U+E0FFF → U+E0FFE → exit 101 "U+E0FFF"와 표 불일치; `hidden`에서 U+2028–U+2029 줄 삭제 → exit 101
+  "U+2028". 되돌린 뒤 exit 0.
+
+실행 안 함: 전체 `cargo test`, Linux·Windows.
