@@ -326,7 +326,11 @@ fn an_issue_project_block_without_specs_gets_the_line_as_a_merge() {
 
     fx.apply_ok("none");
     assert_eq!(fx.ignore(), full);
-    assert!(!fx.ignored(".moai-cli/specs/SPEC-1/spec.md"), "{}", fx.ignore());
+    assert!(
+        !fx.ignored(".moai-cli/specs/SPEC-1/spec.md"),
+        "{}",
+        fx.ignore()
+    );
     let again = fx.plan("none");
     assert_eq!(Fx::ignore_row(&again)["action"], "unchanged", "{again}");
 }
@@ -340,8 +344,8 @@ fn the_repository_gitignore_tracks_specs_and_ignores_the_rest() {
     let tmp = TempDir::new().unwrap();
     let root = fs::canonicalize(tmp.path()).unwrap();
     git_ok(&root, &["init", "-q", "-b", "main"]);
-    let rules = fs::read(Path::new(env!("CARGO_MANIFEST_DIR")).join(".gitignore")).unwrap();
-    fs::write(root.join(".gitignore"), rules).unwrap();
+    // The one named file is compiled in, so a change to it rebuilds this test.
+    fs::write(root.join(".gitignore"), include_str!("../.gitignore")).unwrap();
     let ignored = |rel: &str| {
         git_raw(
             &root,
