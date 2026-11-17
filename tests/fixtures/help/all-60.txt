@@ -26,6 +26,8 @@ Project
                           cards
   spec                    Write, check, list and show the
                           project's SPECs
+  tdd                     Record the TDD cycle that locks
+                          the RED tests during GREEN
   ledger-register-plan    Preview registering the project's
                           ledger
   ledger-register-apply   Create the previewed project

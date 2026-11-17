@@ -114,15 +114,17 @@ fn prepared(home: &Path) -> Result<bool, String> {
 }
 
 /// The environment of `lane` for the worktree that holds `cwd`: the cargo home under `base`
-/// (read only), then the worktree's build folder under `home` (made and recorded).
+/// (read only), then the worktree's build folder under the home that `home` and `userprofile`
+/// give ([`home_dir`]; made and recorded).
 pub fn resolve(
     lane: &str,
     base: &Path,
     home: Option<&OsStr>,
+    userprofile: Option<&OsStr>,
     cwd: &Path,
 ) -> Result<LaneEnv, String> {
     let (cargo_home, cargo_home_why) = cargo_home(lane, base)?;
-    let home = home_dir(home)?;
+    let home = home_dir(home, userprofile, cfg!(windows))?;
     let target_dir = prepare(&home, &owner(cwd)?)?;
     Ok(LaneEnv {
         target_dir,
@@ -272,14 +274,26 @@ pub fn worktrees(cwd: &Path) -> Result<Vec<PathBuf>, String> {
         .collect())
 }
 
-/// HOME as given; it must be absolute.
-pub fn home_dir(home: Option<&OsStr>) -> Result<PathBuf, String> {
-    match home.map(PathBuf::from) {
-        Some(h) if h.is_absolute() => Ok(h),
-        h => Err(format!(
-            "lane-env: HOME must be an absolute folder, got {:?}",
-            h.unwrap_or_default()
+/// The user's home by the rule the rest of MoAI uses (`key_vault::home_from`): `HOME`, or on
+/// Windows `USERPROFILE` when `HOME` is unset (C-82 slot audit N1; `tools/build_folder.py`
+/// reads it the same way). It must be absolute.
+pub fn home_dir(
+    home: Option<&OsStr>,
+    userprofile: Option<&OsStr>,
+    windows: bool,
+) -> Result<PathBuf, String> {
+    let found = crate::key_vault::home_from(
+        home.map(OsStr::to_os_string),
+        userprofile.map(OsStr::to_os_string),
+        windows,
+    );
+    match found {
+        Ok(h) if h.is_absolute() => Ok(h),
+        Ok(h) => Err(format!(
+            "lane-env: HOME must be an absolute folder, got {h:?}"
         )),
+        Err(_) if windows => Err("lane-env: neither HOME nor USERPROFILE is set".into()),
+        Err(_) => Err("lane-env: HOME must be an absolute folder, got \"\"".into()),
     }
 }
 
@@ -459,15 +473,58 @@ mod tests {
         let home = b.join("home");
         fs::create_dir(&home).unwrap();
         let h = Some(home.as_os_str());
-        assert!(resolve("agent-7", Path::new("tmp"), h, &b).is_err());
-        assert!(resolve("a b", &b, h, &b).is_err());
-        let err = resolve("agent-7", &b, h, &b).unwrap_err();
+        assert!(resolve("agent-7", Path::new("tmp"), h, None, &b).is_err());
+        assert!(resolve("a b", &b, h, None, &b).is_err());
+        let err = resolve("agent-7", &b, h, None, &b).unwrap_err();
         assert!(err.contains("git rev-parse"), "{err}");
-        for bad in [None, Some(OsStr::new("")), Some(OsStr::new("rel/home"))] {
-            assert!(home_dir(bad).is_err(), "{bad:?}");
+        for windows in [false, true] {
+            for bad in [None, Some(OsStr::new("")), Some(OsStr::new("rel/home"))] {
+                assert!(home_dir(bad, None, windows).is_err(), "{bad:?}");
+            }
+            assert_eq!(home_dir(h, None, windows).unwrap(), home);
         }
-        assert_eq!(home_dir(h).unwrap(), home);
         assert_eq!(fs::read_dir(&home).unwrap().count(), 0);
+    }
+
+    /// C-82 slot audit N1 (Windows is a supported platform, C-89): with HOME unset, Windows
+    /// takes USERPROFILE — the rule of `key_vault::home_from`, shared, and of
+    /// `tools/build_folder.py`. HOME, when set, wins; elsewhere USERPROFILE is never read.
+    #[test]
+    fn userprofile_stands_in_for_an_unset_home_on_windows_only() {
+        let (_d, b) = base();
+        let (home, profile) = (b.join("home"), b.join("profile"));
+        let (h, p) = (Some(home.as_os_str()), Some(profile.as_os_str()));
+        assert_eq!(home_dir(None, p, true).unwrap(), profile);
+        assert_eq!(home_dir(Some(OsStr::new("")), p, true).unwrap(), profile);
+        assert_eq!(home_dir(h, p, true).unwrap(), home);
+        assert!(home_dir(None, p, false).is_err());
+        assert_eq!(home_dir(h, p, false).unwrap(), home);
+        // Neither set: the Windows message names both.
+        let err = home_dir(None, Some(OsStr::new("")), true).unwrap_err();
+        assert!(err.contains("neither HOME nor USERPROFILE"), "{err}");
+        // A relative USERPROFILE is refused like a relative HOME.
+        let err = home_dir(None, Some(OsStr::new("rel")), true).unwrap_err();
+        assert!(err.contains("must be an absolute folder"), "{err}");
+        // The shared rule itself.
+        use std::ffi::OsString;
+        let k = |h: Option<&str>, u: Option<&str>, w| {
+            crate::key_vault::home_from(h.map(OsString::from), u.map(OsString::from), w)
+        };
+        assert_eq!(k(None, Some("/u"), true).unwrap(), PathBuf::from("/u"));
+        assert_eq!(
+            k(Some("/h"), Some("/u"), true).unwrap(),
+            PathBuf::from("/h")
+        );
+        assert!(k(None, Some("/u"), false).is_err());
+        assert!(k(Some(""), Some(""), true).is_err());
+    }
+
+    /// The same on a Windows host, with a drive-letter path.
+    #[cfg(windows)]
+    #[test]
+    fn a_windows_userprofile_is_the_home() {
+        let p = OsStr::new(r"C:\Users\someone");
+        assert_eq!(home_dir(None, Some(p), true).unwrap(), PathBuf::from(p));
     }
 
     #[cfg(unix)]

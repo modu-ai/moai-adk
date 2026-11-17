@@ -137,6 +137,15 @@
         "license": "Apache-2.0"
       }
     },
+    "references/internal/code-atlas.md": {
+      "sha256": "cf02b8c4a34c8d7616267fefa22e39849262f8e7d9382e230f8cf141d048a664",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-code-atlas",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261117-atlas-in-read-plan (user decision 2026-11-17: Go concepts are redesigned, no files ported): how READ and PLAN use the code atlas the Rust product already has (`index-query` freshness, `atlas-graph`, `atlas-map`, `search`) when it is fresh, fall back to searching and reading otherwise, and never build it (PROJECT offers `index-build`). Measured on this repository before writing (1,620 files). Named by one line of workflows/read.md and workflows/plan.md and read by moai-research and moai-plan (`reads:`); tests/code_atlas_reference.rs runs its requests."
+      }
+    },
     "references/internal/core-rules.md": {
       "sha256": "8f1e834c9592f143a8add2d08424e904b98fc34619a6735d8f2708750e676170",
       "origin": {
@@ -417,7 +426,7 @@
       }
     },
     "workflows/plan.md": {
-      "sha256": "1a2e8006d48e54f0182814f9d3f184389c275f5d5498119d74fbd6cb463f212c",
+      "sha256": "3cc601733b99e3c9fde268735acaf9669972f86363c1f4bd199e3c50bbcb7ec4",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-plan",
@@ -435,7 +444,7 @@
       }
     },
     "workflows/read.md": {
-      "sha256": "4adbab4cbdaa38d686478876dc46984cd5a3ca00705207183b37128cf650d6d1",
+      "sha256": "ac4fa5b6f0422f248019d48bc5f2125dc77dc985041069a0ab015aa342c05568",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-read",
@@ -480,7 +489,7 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "d5d3a0d90e244c79dc4d9a50cb34383d7c1fa24539a69a8aaeb6a51f605c5e40",
+      "sha256": "4d27b2c89f9a4aa54e6c4a55741f55dfcaa41e914ca73694e1f115c947ade297",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",

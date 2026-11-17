@@ -45,6 +45,16 @@ fn config(home: &Path, text: &str) {
     fs::write(home.join(".moai-cli/config/launcher.yaml"), text).unwrap();
 }
 
+/// The skill copies of both hosts, so a launch prints no missing-skill warning: that line names
+/// the HOME folder, and the outputs compared below come from different HOMEs
+/// (SPEC-20261117-installer-skill-agents REQ-10).
+fn with_skill(home: &Path) {
+    for dir in [".claude/skills/moai", ".agents/skills/moai"] {
+        fs::create_dir_all(home.join(dir)).unwrap();
+        fs::write(home.join(dir).join("SKILL.md"), "skill\n").unwrap();
+    }
+}
+
 fn command(project: &Path, home: &Path, args: &[&str]) -> Command {
     let mut c = Command::new(crate::common::MOAI_BIN);
     c.args(args)
@@ -202,6 +212,7 @@ fn absent_key_retains_byte_identical_output_and_project_config_is_ignored() {
     fs::create_dir_all(p.path().join(".moai-cli")).unwrap();
     fs::write(p.path().join(".moai-cli/project.yaml"), "{}").unwrap();
     let home = tempfile::tempdir().unwrap();
+    with_skill(home.path());
     for host in HOSTS {
         for flags in ROLES {
             let mut args = vec![host];
@@ -217,6 +228,7 @@ fn absent_key_retains_byte_identical_output_and_project_config_is_ignored() {
                 r#"{"unrelated":"SECRET-ignored"}"#,
             ] {
                 let alternate = tempfile::tempdir().unwrap();
+                with_skill(alternate.path());
                 config(alternate.path(), text);
                 fs::create_dir_all(p.path().join(".moai-cli")).unwrap();
                 fs::write(

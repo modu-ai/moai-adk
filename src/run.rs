@@ -209,17 +209,14 @@ pub fn required_evidence(m: &ResolvedMethod) -> Vec<String> {
     out
 }
 
-/// Test, fixture and golden paths among `paths`, sorted: changes to what judges the code.
+/// Test, fixture and golden paths among `paths`, sorted: changes to what judges the code. The
+/// paths are those of the one test-path table, [`crate::tdd::is_test_path`]
+/// (SPEC-20261117-green-test-lock), which the GREEN test lock reads too.
 pub fn oracle_changes(paths: &[String]) -> Vec<String> {
     let mut out: Vec<String> = paths
         .iter()
         .map(|p| p.trim().trim_start_matches("./").to_string())
-        .filter(|p| {
-            let parts: Vec<&str> = p.split('/').collect();
-            parts.first() == Some(&"tests")
-                || parts.iter().any(|s| matches!(*s, "fixtures" | "golden"))
-                || p.ends_with("_test.py")
-        })
+        .filter(|p| crate::tdd::is_test_path(p, &[]))
         .collect();
     out.sort();
     out.dedup();

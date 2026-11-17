@@ -71,6 +71,9 @@ jobs:
     env:
       CARGO_TERM_COLOR: never
       PYTHONDONTWRITEBYTECODE: "1"
+      # SPEC-20261117-headver-ci-number: HeadVer's build number is the run number on the
+      # first attempt only; a re-run keeps run_number, so it builds unnumbered instead.
+      MOAI_BUILD_NUMBER: ${{ github.run_attempt == '1' && github.run_number || '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -325,6 +328,9 @@ jobs:
       contents: read
     env:
       CARGO_TERM_COLOR: never
+      # SPEC-20261117-headver-ci-number: HeadVer's build number is the run number on the
+      # first attempt only; a re-run keeps run_number, so it builds unnumbered instead.
+      MOAI_BUILD_NUMBER: ${{ github.run_attempt == '1' && github.run_number || '' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
