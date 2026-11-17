@@ -49,3 +49,16 @@ edit-diagnostics S1 감사(PR #3179, PASS)의 비차단 지적 세 가지를 고
   잠근 뒤 경로와 파일이 같은지 다시 확인해야 해서 더 복잡해요. 그래서 수는 사용자가 검사한 프로젝트 수로 묶이고(실행 수가 아님),
   각 파일은 0바이트예요.
 - D2 이 가지는 #3179가 아직 병합되지 않아 그 head `4c2401120b` 위에 쌓았어요(리더 지시).
+
+## Result
+
+구현 에이전트가 채웠어요. 기준 `4c2401120b`(#3179 head), 변경 커밋 `75b43b3791`.
+
+- AC-1: met — grep `1`. 이번 측정: 꺼진 상태 21회 중앙값 12.74 ms(`budget_the_off_path_is_fast -- --ignored`, debug).
+- AC-2: met — `one_lock_file_per_project_is_reused` 통과. mutation(잠금 파일 이름에 프로세스 id를 붙여 실행마다 새 파일) → 2 FAIL.
+- AC-3: met — `a_malformed_table_leaves_the_other_guards_on` 통과. mutation(잘못된 표가 설정 파일 전체를 못 쓰게 함) → 2 FAIL.
+  두 mutation 모두 커밋 뒤, `git restore` 뒤 tree 깨끗. 두 시험은 이미 맞는 동작을 고정해서 RED 대신 mutation이 근거예요.
+- 함께 돌림: `edit_diagnostics_cli` 14(+1 ignored, `--ignored` 1 통과), `hooks_cli` 22, `hook_dispatch_cli` 56,
+  `home_isolation_scan` 16, `product_cli` 75, `--bin moai` 27, fmt, clippy `-D warnings`, `moai spec check --all`(22개, errors 0).
+
+실행 안 함: 전체 cargo test, Linux CI, Python 모듈(Python·skills 변경 없음).
