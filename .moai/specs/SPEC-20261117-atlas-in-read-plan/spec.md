@@ -163,3 +163,22 @@ mutation(커밋 뒤, 셋 다 되돌린 뒤 `git status` 비어 있음): `read.md
 
 실행 안 함: 전체 `cargo test`, Python 전체, 실제 호스트(Claude Code·Codex)에서 READ·PLAN 세션을 돌려 지시를 따르는지
 보는 일(호스트 E2E), Linux·Windows.
+
+### 감사 수리 (2026-11-17 09:08Z–09:12Z)
+
+독립 감사(head `4f6a90ee57`, 09:01:54Z–09:07:32Z)가 FAIL이었어요. B1: `stale`에서 `changes`에 없는 파일에만
+아틀라스를 쓰라는 규칙은, 바뀐·새 파일에서 나가는 간선을 놓쳐요(감사 탐침: 새 파일이 `crate::worktree_gc`를 썼는데
+낡은 1홉 답에는 옛 의존 4개뿐). N1: `branch_switched`는 HEAD가 움직였다는 뜻(커밋 포함). N2: "약 21배" 대신 일반 표현.
+
+커밋: `4f6a90ee57` 위에 `664eccae0f`(수리), 그 위에 이 Result.
+
+- AC-8 (새): 충족 — RED(수리 전 참조로 새 시험 실행): `the_instruction_names_…` 실패(`stale` 규칙에 "An answer that
+  lists files … is incomplete" 없음), `a_dependent_added_after_the_build_is_found_by_the_stale_rule` 실패(규칙에 검색
+  단계 없음). 같은 실행에서 낡은 아틀라스의 의존 목록은 `src/b.rs`를 담고 `src/c.rs`는 빠져 감사 B1이 재현됐어요.
+  GREEN: `code_atlas_reference` exit 0, 4 passed.
+- mutation(수리 커밋 뒤): 감사의 M3("stale이면 모든 파일에 사용")로 바꾸면 2개 실패; 검색 키를 `new_files`만으로
+  줄이면 1개 실패. 둘 다 되돌린 뒤 `git status` 비어 있음.
+- 다시 돌린 검사: `--bin moai` 27, `agent_defs_package` 17, `code_atlas_reference` 4, `ac_command_lint` 5,
+  `mode_workflow_steps` 42, `home_isolation_scan` 16, `product_cli` 75 — 모두 exit 0; `cargo fmt --check` 0(새 시험
+  `rustfmt` 뒤); clippy 0; Python 85개 OK; `moai spec check --all` exit 0(SPEC 3개 오류 0·경고 0); manifest
+  `write`(code-atlas.md 바뀜) 뒤 `check` 0; `package-inspect skills/moai` exit 0, 65,536바이트 넘는 파일 0.
