@@ -321,14 +321,14 @@ impl Renderer {
         segs.join(SEPARATOR)
     }
 
-    /// Card C-65 (user instructions 2026-11-16 and 2026-11-17): `🔥 <in progress> / 📥
-    /// <remaining> | ✅ <done>` from the project's local ledger, under the one `cards` option.
-    /// A ledger without cards shows zeros; `None` when there is no ledger to read. Each number
-    /// has its icon, so color is never the only signal.
+    /// Card C-65 (user instructions 2026-11-16 and 2026-11-17, card 85): `🔥 <in progress> /
+    /// 📥 <remaining> / ✅ <done>` from the project's local ledger, under the one `cards`
+    /// option. A ledger without cards shows zeros; `None` when there is no ledger to read.
+    /// Each number has its icon, so color is never the only signal.
     fn cards(&self, s: &Status) -> Option<String> {
         let c = s.cards.filter(|_| self.enabled("cards"))?;
         Some(format!(
-            "{} / {}{SEPARATOR}{}",
+            "{} / {} / {}",
             self.paint(self.theme.cards_active, &format!("🔥 {}", c.in_progress)),
             self.paint(self.theme.cards_waiting, &format!("📥 {}", c.remaining)),
             self.paint(self.theme.cards_done, &format!("✅ {}", c.done))
@@ -831,11 +831,11 @@ mod tests {
         assert!(plain(&status, &[]).contains("\n🅱️ main ↓2 +3\n"));
     }
 
-    /// Card C-65 (user instructions 2026-11-16 and 2026-11-17): `🔥 in progress / 📥 remaining`
-    /// right after the forge counts, then `✅ done` as its own segment; zero is shown, and
-    /// absent counts leave the line as it was.
+    /// Card C-65 (user instructions 2026-11-16 and 2026-11-17, card 85):
+    /// `🔥 in progress / 📥 remaining / ✅ done` as one segment right after the forge counts;
+    /// zero is shown, and absent counts leave the line as it was.
     #[test]
-    fn card_counts_follow_the_forge_counts_and_done_is_its_own_segment() {
+    fn card_counts_follow_the_forge_counts_as_one_segment() {
         let line = |s: &Status, off: &[&str]| plain(s, off).lines().nth(1).unwrap().to_string();
         let mut status = full_status();
         let without = plain(&status, &[]);
@@ -851,7 +851,7 @@ mod tests {
         });
         assert_eq!(
             line(&status, &[]),
-            "📡 owner/repo | ⬇️ 7 / 🔀 3 | 🔥 5 / 📥 50 | ✅ 12 | 🅱️ main ↓2 +3"
+            "📡 owner/repo | ⬇️ 7 / 🔀 3 | 🔥 5 / 📥 50 / ✅ 12 | 🅱️ main ↓2 +3"
         );
         // Lines 1 and 3 do not change.
         let with = plain(&status, &[]);
@@ -861,7 +861,7 @@ mod tests {
         // The `cards` option hides both parts and nothing else.
         assert_eq!(plain(&status, &["cards"]), without);
         // Without forge counts (absent, suppressed or switched off) the cards keep the place.
-        let alone = "📡 owner/repo | 🔥 5 / 📥 50 | ✅ 12 | 🅱️ main ↓2 +3";
+        let alone = "📡 owner/repo | 🔥 5 / 📥 50 / ✅ 12 | 🅱️ main ↓2 +3";
         assert_eq!(line(&status, &["github"]), alone);
         status.github.suppressed = true;
         assert_eq!(line(&status, &[]), alone);
@@ -871,7 +871,7 @@ mod tests {
         status.cards = Some(CardCounts::default());
         assert_eq!(
             line(&status, &[]),
-            "📡 owner/repo | 🔥 0 / 📥 0 | ✅ 0 | 🅱️ main ↓2 +3"
+            "📡 owner/repo | 🔥 0 / 📥 0 / ✅ 0 | 🅱️ main ↓2 +3"
         );
     }
 
@@ -887,17 +887,17 @@ mod tests {
             done: 3,
         });
         status.worktree = "wt".into();
-        assert_eq!(line(&status, &["git_branch"]), "🔥 1 / 📥 2 | ✅ 3 | 🌳 wt");
+        assert_eq!(line(&status, &["git_branch"]), "🔥 1 / 📥 2 / ✅ 3 | 🌳 wt");
         assert_eq!(line(&status, &["git_branch", "cards"]), "🌳 wt");
         status.repo = None;
         assert_eq!(
             line(&status, &[]),
-            "🔥 1 / 📥 2 | ✅ 3 | 🅱️ main ↓2 +3 | 🌳 wt"
+            "🔥 1 / 📥 2 / ✅ 3 | 🅱️ main ↓2 +3 | 🌳 wt"
         );
         status.git = None;
-        assert_eq!(line(&status, &[]), "🔥 1 / 📥 2 | ✅ 3 | 🌳 wt");
+        assert_eq!(line(&status, &[]), "🔥 1 / 📥 2 / ✅ 3 | 🌳 wt");
         status.worktree.clear();
-        assert_eq!(line(&status, &[]), "🔥 1 / 📥 2 | ✅ 3");
+        assert_eq!(line(&status, &[]), "🔥 1 / 📥 2 / ✅ 3");
     }
 
     /// Card C-65: color is never the only signal. Each number keeps its icon, the three parts

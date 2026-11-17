@@ -168,7 +168,7 @@ pub struct GitHubCounts {
 }
 
 /// Card C-65 (user instructions 2026-11-16 and 2026-11-17): the cards of the project's local
-/// ledger, as the repository line shows them (`🔥 in_progress / 📥 remaining | ✅ done`).
+/// ledger, as the repository line shows them (`🔥 in_progress / 📥 remaining / ✅ done`).
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct CardCounts {
     /// `active` + `review`.

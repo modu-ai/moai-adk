@@ -1035,7 +1035,7 @@
       "class": "b",
       "stdin": "../statusline/stdin/a02-doc-full.json",
       "covers": [
-        "card C-65: card counts \ud83d\udd25 in progress / \ud83d\udce5 remaining after the forge counts, then \u2705 done",
+        "card C-65: card counts \ud83d\udd25 in progress / \ud83d\udce5 remaining / \u2705 done after the forge counts (card 85: one segment)",
         "counts read from the project's local ledger in the temporary HOME (3 active, 2 review, 20 draft, 25 ready, 5 hold, 12 done)"
       ],
       "setup": [
@@ -1073,17 +1073,17 @@
         "variants": {
           "plain": {
             "version": "2026.11.0-rc.1",
-            "sha256": "de007373a2623927333a8b6184e061c82bc7fd974f4bcd22a681a9710c1a2ca7",
+            "sha256": "1e85c53381b089f135307045dd441691c784556e83020e5f8682b27c44a04448",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "2026.11.0-rc.1",
-            "sha256": "de007373a2623927333a8b6184e061c82bc7fd974f4bcd22a681a9710c1a2ca7",
+            "sha256": "1e85c53381b089f135307045dd441691c784556e83020e5f8682b27c44a04448",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "2026.11.0-rc.1",
-            "sha256": "de007373a2623927333a8b6184e061c82bc7fd974f4bcd22a681a9710c1a2ca7",
+            "sha256": "1e85c53381b089f135307045dd441691c784556e83020e5f8682b27c44a04448",
             "stdout": "PTY"
           }
         }

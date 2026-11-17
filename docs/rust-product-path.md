@@ -892,10 +892,10 @@ is left out together with its separator.
    output style are not shown; their `session_time` and `output_style` options are still
    accepted.
 2. Repository: `📡` owner/repo, available `⬇️` Issue / `🔀` PR counts, the card counts
-   `🔥 N / 📥 M | ✅ D` of the project's local ledger (card C-65, user instructions
-   2026-11-16 and 2026-11-17: `🔥` cards in progress = `active` + `review`, `📥` cards
+   `🔥 N / 📥 M / ✅ D` of the project's local ledger (card C-65, user instructions
+   2026-11-16 and 2026-11-17, card 85: `🔥` cards in progress = `active` + `review`, `📥` cards
    created and remaining = `draft` + `ready` + `hold`, `✅` cards `done`, counted in neither
-   of the other two; `📡 owner/repo | ⬇️ 46 / 🔀 0 | 🔥 5 / 📥 50 | ✅ 12 | 🅱️ main`), `🅱️` branch with
+   of the other two; `📡 owner/repo | ⬇️ 46 / 🔀 0 | 🔥 5 / 📥 50 / ✅ 12 | 🅱️ main`), `🅱️` branch with
    its behind and dirty counts, `🌳` the worktree name (`worktree.name`, else
    `workspace.git_worktree`; absent in the main checkout, AC-9), `🔗 #N state` this
    branch's pull request (AC-7; an OSC 8 hyperlink to `pr.url` only when color is on and
@@ -907,7 +907,7 @@ is left out together with its separator.
    (`$HOME/.moai/projects/<project_id>/`, the project being the one the input names, else
    the project above the working directory), read-only: no folder, file or journal is
    made, no process is started and no network is used, and the ledger file is byte for
-   byte the same afterwards. A registered ledger without cards shows `🔥 0 / 📥 0 | ✅ 0`.
+   byte the same afterwards. A registered ledger without cards shows `🔥 0 / 📥 0 / ✅ 0`.
    With no registered ledger, no HOME, no project profile, a file that is not this
    project's ledger (corrupt, cut short, another project's, a link) or a ledger another
    process holds locked for more than 50 ms (`CARDS_BUSY_TIMEOUT`, or what is left of the
