@@ -103,4 +103,14 @@ revision 2(감사 B1·N2 뒤): 로그·영수증 필터(`redact::contains_secret
 수리 한 번: 첫 Python 실행에서 `ci_scope_test`가 `scopes` 시험 글자의 `docs/` 경로를 문서 참조로 읽었어요 → 시험 경로를
 `web/`로 바꾸고 다시 돌려 85개 OK.
 
+revision 2(감사 B1·N2 수리): `7ff2fa3d54`, tip `ae6512a691` 병합 `41ad351607`(interview·versioning은 tip 줄에 C-90 문장을
+더해 해결, manifest는 write로 다시 만듦). 병합된 head에서(무거운 작업 슬롯 안, 2026-11-17 10:33–10:38Z):
+
+- AC-5: met — `--lib redact`의 `logs_count_sk_anywhere_even_after_an_encoded_equals_sign`, `install_cli` 7. mutation B1(로그가
+  낱말 시작 규칙) KILLED, N2(영수증이 낱말 시작 규칙) KILLED, M1(사람이 쓰는 글이 어디서든 셈) KILLED
+- AC-1~AC-4: 위 목록 다시 통과 — `--lib` 155, `product_cli` 76, `install_cli` 7, `agent_defs_package` 18, `spec_cli` 17,
+  `home_isolation_scan` 16, `archive_privacy_suite` 13, `go_state_cli` 61, `card_summary_cli` 16, `public_text` 6,
+  `binary_state_cli` 11, `--bin moai` 27; fmt 0, `rustfmt src/ops` 0, clippy 0; Python 88개 OK; manifest check 0;
+  `moai spec check --all` 0; `moai package-inspect skills/moai` 0
+
 실행 안 함: 전체 `cargo test`(바뀐 곳 시험만), Linux·Windows.
