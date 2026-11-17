@@ -1491,6 +1491,8 @@ pub struct UserLayerPlan {
     pub cleanup: Option<serde_json::Value>,
 }
 
+/// [`user_layer_plan_in`] without `--allow-older` (the unit tests' entry).
+#[cfg(test)]
 fn user_layer_plan(
     home: &Path,
     package: &Path,

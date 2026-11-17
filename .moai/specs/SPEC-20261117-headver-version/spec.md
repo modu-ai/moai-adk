@@ -34,7 +34,7 @@ parent: SPEC-20261117-sdd-foundation
 - REQ-8: The status line shall show its own version as the update target only when that version is newer than the template version.
 - REQ-9: When `update-plan` finds a host receipt, the plan shall record the receipt's version as the source and this build's version as the target. · failure: none — 막는 경우는 REQ-10이에요.
 - REQ-10 (REQ-9): IF the host receipt's version is newer than this build's version and the user did not pass `--allow-older`, THEN the plan shall block that host and name `moai update --allow-older` as the way back.
-- REQ-11: Where the user runs `moai update --allow-older`, the preview shall plan a host whose receipt is newer than this build and show a warning line for that host, and the apply shall go back only with the same flag on the confirm.
+- REQ-11: Where the user runs `moai update --allow-older`, the preview shall plan a host whose receipt is newer than this build, with a warning line for that host and a digest that a confirm without the same flag does not match.
 
 ## Acceptance
 
@@ -68,7 +68,8 @@ parent: SPEC-20261117-sdd-foundation
 ## Scope
 
 - write: `HEADVER`, `build.rs`, `src/headver.rs`, `src/local_build.rs`, `src/lib.rs`, `src/main.rs`,
-  `src/statusline/state.rs`, `src/update.rs`, `src/update_tux.rs`, `tests/update_headver.rs`,
+  `src/statusline/state.rs`, `src/update.rs`, `src/update_tux.rs`, `src/help.rs`, `tools/repo_scans.json`,
+  `tests/update_headver.rs`,
   `tests/update_version_folders.rs`, `tests/cli_name_moai.rs`, `tests/help_layout.rs`, `tests/fixtures/help/*.txt`,
   `docs/local-rc1-kit.md`, `AGENTS.local.md`, `.moai/specs/SPEC-20261117-headver-version/spec.md`
 - read-only: `skills/moai/references/internal/versioning.md`, `AGENTS.md`, `src/install.rs`, `src/bin_names.rs`
