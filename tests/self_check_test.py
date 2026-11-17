@@ -179,7 +179,9 @@ class SelfCheckTest(unittest.TestCase):
         self.assertTrue(rest.startswith("exit=1 limit=65536 largest=65537 "), rest)
         self.assertIn(" over=1 ", rest)
         log = self.repo.repo / "target" / "self-check" / "package-size.log"
-        self.assertIn("skills/moai/workflows/big.md", log.read_text())
+        # Built at run time: a literal fixture path would read as a broken skill reference to
+        # tests/skill_references_test.py.
+        self.assertIn(big.relative_to(self.repo.repo).as_posix(), log.read_text())
         self.assertEqual(LAST.match(last)["failed"], "package-size")
 
     def test_an_empty_package_folder_is_a_skip_not_a_pass(self):
