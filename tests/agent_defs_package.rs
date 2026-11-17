@@ -366,7 +366,9 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
             "internal/git-safety",
             "internal/tdd-results",
             // C-77: the pre-PR self-check list, run before the change goes to the audit.
-            "internal/self-check"
+            "internal/self-check",
+            // C-82: where builds go and how the build folder is emptied.
+            "internal/build-folder"
         ]
     );
     assert_eq!(
@@ -377,7 +379,8 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
             "internal/test-design",
             "internal/check-completeness",
             "internal/boundary-checks",
-            "internal/security-checklist"
+            "internal/security-checklist",
+            "internal/build-folder"
         ]
     );
     // SPEC-20261117-sdd-guidance: moai-docs is SYNC's writer and keeps the SPEC Result.
@@ -470,6 +473,8 @@ fn internal_references_say_when_to_read_them() {
         "self-check",
         // SPEC-20261117-sdd-guidance: the agent-facing SDD rules.
         "sdd",
+        // C-82: where agent and audit builds go and how the build folder is emptied.
+        "build-folder",
     ];
     let mut found: Vec<String> = std::fs::read_dir(package().join("references/internal"))
         .unwrap()
@@ -939,4 +944,54 @@ fn self_check_lists_the_pre_pr_checks_and_is_named_by_impl_and_the_chains() {
             && l.contains("audit")),
         "chains/index.md rules do not name internal/self-check"
     );
+}
+
+/// C-82 (user decision 2026-11-17, "빌드 폴더를 한 곳으로 모으기"): the build-folder reference
+/// states the rule — one folder per worktree under `~/.moai/build/`, `CARGO_INCREMENTAL=0`, the
+/// owner record, the refusal path, evidence kept in the worktree, the end-of-task cleanup and the
+/// user-picked removal — and both builder agents read it; the places that used to name the
+/// per-lane folder point to it.
+#[test]
+fn build_folder_reference_is_read_by_the_builders_and_states_the_rule() {
+    let read = |rel: &str| std::fs::read_to_string(package().join(rel)).unwrap();
+    let text = read("references/internal/build-folder.md");
+    assert!(
+        read("references/source-manifest.json").contains("\"references/internal/build-folder.md\"")
+    );
+    for needle in [
+        "set `CARGO_TARGET_DIR` to `~/.moai/build/<project>-<worktree name>/`: one folder per worktree, never shared between worktrees, never inside a worktree",
+        "Always set `CARGO_INCREMENTAL=0`",
+        "`.moai-build.json` with `schema_version` 1, `git_common_dir` and `worktree`",
+        "when HOME is not absolute or not writable, or a link sits on the folder's path, do not follow it and do not build there",
+        "never in the build folder; deleting the build output never deletes evidence",
+        "End of task: delete your folder's cargo output and report the freed size under `Cleanup`",
+        "One goes only after the user picks its row",
+    ] {
+        assert!(text.contains(needle), "build-folder.md lacks {needle:?}");
+    }
+    let defs = package_agents(&agents(), &package()).unwrap();
+    for name in ["moai-impl", "moai-audit"] {
+        let d = defs.iter().find(|d| d.name == name).unwrap();
+        assert!(
+            d.reads.iter().any(|r| r == "internal/build-folder"),
+            "{name}"
+        );
+        assert!(d.body.contains("`CARGO_INCREMENTAL=0`"), "{name}");
+        // Audit N6: the HOME exception names the parents `env` makes, too.
+        assert!(
+            d.body.contains(
+                "`~/.moai/build/` (`internal/build-folder`) and its parents `~/.moai` and `~/.moai/build`, made 0700 when missing"
+            ),
+            "{name}"
+        );
+    }
+    for rel in [
+        "references/internal/git-safety.md",
+        "references/internal/self-check.md",
+        "workflows/mode-agent.md",
+        "workflows/verify.md",
+        "workflows/optimize.md",
+    ] {
+        assert!(read(rel).contains("internal/build-folder"), "{rel}");
+    }
 }
