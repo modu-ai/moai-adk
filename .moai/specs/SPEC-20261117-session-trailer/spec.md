@@ -27,13 +27,11 @@ parent: SPEC-20261117-sdd-foundation
 - REQ-3 (REQ-2): IF no host variable gives a session id in the accepted shape, or the folder is in no git worktree, THEN `moai trailers` shall print the `Moai-Spec` line only and report `session_missing` with the reason.
 - REQ-4 (REQ-2): IF the SPEC id is not of the form `SPEC-<yyyymmdd>-<slug>`, THEN `moai trailers` shall refuse it and print no trailer.
 - REQ-5: When `moai trailer-check` reads a revision range, it shall report every commit without `Moai-Spec`, with a malformed `Moai-Spec` or `Moai-Session`, or without `Moai-Session`. · failure: none — 실패 판정은 REQ-6·REQ-7이에요.
-- REQ-6 (REQ-5): IF a commit's `Moai-Spec` or `Moai-Session` value is malformed or repeated, THEN the check shall fail.
-- REQ-9: Where the checked branch is not a `spec/` branch, the check shall report a missing `Moai-Spec` without failing.
+- REQ-6 (REQ-5): IF a commit's `Moai-Spec` or `Moai-Session` value is malformed or repeated, or holds the log's field separator (`malformed_trailers`), THEN the check shall fail.
+- REQ-9: Where the checked branch (the one `--branch` names, else the checkout's HEAD) is not a `spec/` branch, the check shall report a missing `Moai-Spec` without failing.
 - REQ-10 (REQ-5): IF any commit fails the check, THEN `moai trailer-check` shall exit 1 and still print its findings.
-- REQ-11 (REQ-5): IF a trailer value holds the log's field separator, THEN the check shall report that commit as `malformed_trailers` and fail.
-- REQ-12 (REQ-5): IF a `Moai-Session` value is a bare session id without the worktree key, THEN the check shall report it as `legacy_session` without failing.
-- REQ-13: Where `--branch` names a branch, the check shall judge the range for that branch instead of the checkout's HEAD.
-- REQ-14: When the audit gate compares identities, it shall match two full values exactly and a legacy bare id with every value of its session.
+- REQ-11 (REQ-5): IF a `Moai-Session` value is a bare session id without the worktree key, THEN the check shall report it as `legacy_session` without failing.
+- REQ-12: When the audit gate compares identities, it shall match two full values exactly and a legacy bare id with every value of its session. · failure: none — 모양이 틀린 판정 줄의 값은 읽지 않고 lane 이름 비교만 남아요.
 - REQ-7 (REQ-5): IF the range starts with `-` or git cannot read it, THEN the check shall refuse before reading any commit.
 - REQ-8: Where a verdict comment carries a `Moai-Session:` line below its first line, the audit gate shall treat that session as the auditor's identity next to its lane name.
 
@@ -41,13 +39,13 @@ parent: SPEC-20261117-sdd-foundation
 
 - AC-1 (REQ-1…REQ-4): trailer 줄, session 없음, 모양이 틀린 host 값, 카드 번호·옛 SPEC id 거절.
   verify: `cargo test --locked --offline --test trailer_check_cli trailers_name_the_spec_and_this_sessions_id`; `cargo test --locked --offline --lib trailers::`
-- AC-2 (REQ-5…REQ-7, REQ-9…REQ-13): 임시 저장소의 범위에서 다섯 가지 발견, `spec/` 가지와 아닌 가지의 실패 수, 옵션 모양 범위 거절.
+- AC-2 (REQ-5…REQ-7, REQ-9…REQ-11): 임시 저장소의 범위에서 다섯 가지 발견, `spec/` 가지와 아닌 가지의 실패 수, 옵션 모양 범위 거절.
   verify: `cargo test --locked --offline --test trailer_check_cli trailer_check_reports_missing_and_malformed_trailers`; `cargo test --locked --offline --lib trailers::tests::a_value_with_a_separator_or_control_character_is_malformed`
-- AC-3 (REQ-8, REQ-14): 판정의 `Moai-Session`이 저자 session이면 PASS가 아니고, FAIL은 같은 session의 PASS만 풀어요.
+- AC-3 (REQ-8, REQ-12): 판정의 `Moai-Session`이 저자 session이면 PASS가 아니고, FAIL은 같은 session의 PASS만 풀어요.
   verify: `cargo test --locked --offline --lib audit_gate::`; `cargo test --locked --offline --test audit_gate_cli`
 - AC-5 (REQ-1, REQ-3): 한 저장소의 두 worktree는 같은 session 환경에서 다른 값을, 한 worktree는 늘 같은 값을 받아요(하위 폴더 포함).
   verify: `cargo test --locked --offline --test trailer_check_cli the_session_value_names_the_worktree`; `cargo test --locked --offline --lib trailers::`
-- AC-4 (REQ-1…REQ-14): 이웃 검사.
+- AC-4 (REQ-1…REQ-12): 이웃 검사.
   verify: `cargo test --locked --offline --test gate_check_cli`; `cargo test --locked --offline --test git_env_scrub`;
   `cargo test --locked --offline --test home_isolation_scan`; `cargo test --locked --offline --test product_cli`;
   `cargo test --locked --offline --test help_layout`; `cargo test --locked --offline --bin moai`;
