@@ -5,8 +5,9 @@
 # (#2554, #1975 comment 6827126248) moves the timing, not the content: a PR to v2026.11.0
 # runs linux-x86_64 only; the push that merges into v2026.11.0 (and workflow_dispatch)
 # runs linux-x86_64 and macos-arm64 plus windows-build with the same check set. The `ci` job
-# aggregates the targets of its run so one `ci` check reports the result (the
-# integration ruleset requires only `moai/audit`; `ci` is read by name).
+# aggregates the targets of its run so one `ci` check reports the result: the integration
+# ruleset 26791615 requires both `moai/audit` and `ci`, the latter from the GitHub Actions app
+# (`gh api repos/modu-ai/moai-adk/rules/branches/v2026.11.0`, read 2026-11-17 10:11Z).
 # Runner labels: standard GitHub-hosted runners for public repositories, free and unlimited
 # (https://docs.github.com/en/actions/reference/runners/github-hosted-runners, read 2026-11-09).
 # For `pull_request`, GITHUB_REF is the PR merge branch (refs/pull/<n>/merge), so this runs

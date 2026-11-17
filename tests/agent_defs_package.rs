@@ -815,7 +815,9 @@ fn versioning_reference_states_headver_numbers_and_the_release_checklist() {
     let release = section("## At every release");
     for text in [
         "Run this list yourself, without being asked, whenever you prepare, tag or publish a release or a release candidate.",
-        "The list itself runs autonomously; pushing a tag or publishing a release follows the existing release rule: `SKILL.md` cases (2) and (3) and the autonomy levels in `workflows/mode-leader.md`",
+        // Card C-81 (was: "follows the existing release rule: `SKILL.md` cases (2) and (3) and
+        // the autonomy levels", where `semi` sent releases to case (4)).
+        "The list itself runs autonomously; pushing a tag or publishing a release is `SKILL.md` case (2) at every autonomy level, `full` included: the user picks it and it waits, with no deadline default (card C-81).",
         "Without the profile key, run the `versioning` interview row (detect first so the keep option is offered) and record the pick; never compute from the detection alone.",
         "never raise it silently, unless the project's rule says every release raises it.",
         "GitHub Actions keeps `run_number` on a re-run and raises only `run_attempt`, so there use `run_number` only when `run_attempt` is 1, or a dedicated counter.",

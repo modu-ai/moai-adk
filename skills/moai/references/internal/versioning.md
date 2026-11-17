@@ -27,7 +27,7 @@ How `project-detect` reads one version, after dropping a leading `v` and a prefi
 
 ## At every release
 
-Run this list yourself, without being asked, whenever you prepare, tag or publish a release or a release candidate. The list itself runs autonomously; pushing a tag or publishing a release follows the existing release rule: `SKILL.md` cases (2) and (3) and the autonomy levels in `workflows/mode-leader.md` (at `semi`, releases go to the user).
+Run this list yourself, without being asked, whenever you prepare, tag or publish a release or a release candidate. The list itself runs autonomously; pushing a tag or publishing a release is `SKILL.md` case (2) at every autonomy level, `full` included: the user picks it and it waits, with no deadline default (card C-81).
 
 1. Scheme: read the profile's `versioning`. Without the profile key, run the `versioning` interview row (detect first so the keep option is offered) and record the pick; never compute from the detection alone. With `custom` words you cannot compute from, stop and ask.
 2. Next version, computed, never typed:
