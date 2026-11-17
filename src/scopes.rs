@@ -9,7 +9,6 @@
 //! nothing; the profile it lives in goes through `project-plan`/`project-apply` like any other
 //! change. Limits are stated values chosen for the product, not measured ones.
 
-use crate::SECRET_SHAPES;
 use serde::{Deserialize, Serialize};
 
 type Result<T> = std::result::Result<T, String>;
@@ -54,8 +53,7 @@ pub fn path_ok(path: &str) -> bool {
     if path.is_empty() || path.len() > PATH_BYTES {
         return false;
     }
-    let lower = path.to_ascii_lowercase();
-    if SECRET_SHAPES.iter().any(|s| lower.contains(s)) {
+    if crate::secret_shaped(path) {
         return false;
     }
     if path.chars().any(|c| {
@@ -164,6 +162,18 @@ mod tests {
     fn the_path_length_limit_holds_at_its_edge() {
         assert!(path_ok(&"a".repeat(PATH_BYTES)));
         assert!(!path_ok(&"a".repeat(PATH_BYTES + 1)));
+    }
+
+    /// Card C-90: a folder named like an ordinary word with `sk-` inside is a path; `sk-` at the
+    /// start of a part is still refused.
+    #[test]
+    fn sk_inside_a_folder_name_is_allowed_at_a_part_start_refused() {
+        for ok in ["web/task-based", "risk-free/notes", "desk-top"] {
+            assert!(path_ok(ok), "{ok}");
+        }
+        for no in ["web/sk-abc", "sk-abc", "web/x_sk-abc", "web/token=x"] {
+            assert!(!path_ok(no), "{no}");
+        }
     }
 
     #[test]
