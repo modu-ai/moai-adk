@@ -606,7 +606,9 @@ fn interview_question_bank_covers_the_project_axes() {
             // C-69: the versioning scheme, then the one detail the pick may need.
             "versioning",
             "versioning_format",
-            "versioning_head"
+            "versioning_head",
+            // C-70: the git work flow, m-flow recommended.
+            "work_flow"
         ]
     );
     for r in &rows {
@@ -634,7 +636,8 @@ fn interview_question_bank_covers_the_project_axes() {
                     "profile `tools`",
                     "profile `development_methods`",
                     "profile `hosts`",
-                    "profile `versioning`"
+                    "profile `versioning`",
+                    "profile `work_flow`"
                 ]
                 .contains(&to),
             "{id}: {to}"
@@ -643,6 +646,61 @@ fn interview_question_bank_covers_the_project_axes() {
     assert!(bank.contains("skip every row that reading already answered"));
     assert!(bank.contains("\"source\": \"repo\""));
     assert!(bank.contains("\"source\": \"user\""));
+}
+
+/// Card C-70 AC-1/AC-4: the `work_flow` row comes after the versioning rows, offers m-flow
+/// first and recommended with three alternatives, and the bank states each flow in a few lines;
+/// the PROJECT workflow previews the worktree base write and applies it only after the pick.
+#[test]
+fn work_flow_row_offers_m_flow_first_and_the_bank_states_each_flow() {
+    let read = |rel: &str| std::fs::read_to_string(package().join(rel)).unwrap();
+    let interview = read("references/internal/interview.md");
+    let rows: Vec<&str> = interview.lines().filter(|l| l.starts_with("| `")).collect();
+    let at = |id: &str| {
+        rows.iter()
+            .position(|l| l.starts_with(&format!("| `{id}` |")))
+            .unwrap_or_else(|| panic!("no `{id}` row"))
+    };
+    assert!(at("work_flow") > at("versioning_head"));
+    let cells: Vec<String> = rows[at("work_flow")]
+        .trim_matches('|')
+        .split(" | ")
+        .map(|c| c.trim().to_string())
+        .collect();
+    assert_eq!(cells[1], "the profile has no `work_flow`");
+    assert!(cells[3].starts_with("m-flow (recommended)"), "{cells:?}");
+    for alt in ["GitHub flow", "trunk-based", "git-flow"] {
+        assert!(cells[3].contains(alt), "{alt}");
+    }
+    assert_eq!(cells[4], "profile `work_flow`");
+    let section = &interview[interview.find("## Git work flow").expect("flow section")..];
+    for text in [
+        "- **m-flow**",
+        "- **GitHub flow**",
+        "- **trunk-based**",
+        "- **git-flow**",
+        "`worktree.baseRef: head`",
+        "push the branch and open a pull request (recommended)",
+        "`{\"flow\": \"m-flow\" | \"github-flow\" | \"trunk-based\" | \"git-flow\"",
+        // Audit B1 (decision 2026-11-17): one SPEC = one branch = one pull request.
+        "branch `spec/<yyyymmdd>-<slug>`",
+        "one SPEC, one branch, one pull request",
+    ] {
+        assert!(section.contains(text), "the flow section lacks {text:?}");
+    }
+    // A card number never goes into a shared place, so no `card/` branch is described.
+    assert!(!section.contains("card/"), "{section}");
+    let project = read("workflows/project.md");
+    for text in [
+        "the `work_flow` row",
+        "`moai claude-settings-plan <project> --keep-owned`",
+        "`{\"worktree\": {\"baseRef\": \"head\"}}`",
+        "only after the user picks it",
+        // Audit N1: a user's own `worktree` object is completed by the user, never replaced.
+        "ask the user to add `\"baseRef\": \"head\"` to their own `worktree` object",
+    ] {
+        assert!(project.contains(text), "project.md lacks {text:?}");
+    }
 }
 
 /// Card C-69: the `versioning` rows offer keeping the detected scheme first, else SemVer first,

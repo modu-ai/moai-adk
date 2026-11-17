@@ -294,6 +294,40 @@ fn card_done_refuses_a_linked_spec_that_is_gone_or_broken() {
     assert_eq!(w.done(g).unwrap()["state"], json!("done"));
 }
 
+/// #3174 audit N1 (SPEC-20261117-card-done-refusal-pin AC-1): "nothing was changed" holds byte
+/// for byte. Every path, kind and file content under the temporary HOME (the project lies under
+/// it) is the same before and after a refused `card done`; modification times are not compared
+/// (decision D1). The control: once the SPEC is fixed, the same comparison differs.
+#[test]
+fn a_refused_card_done_changes_no_byte() {
+    let w = World::new();
+    let path = w.write_spec(ID, &spec_text(ID, "draft", &[VERIFIED, UNKNOWN_2]));
+    let g = w.closable(ID);
+    let bytes = || -> Vec<(String, &'static str, Vec<u8>)> {
+        w.home
+            .snapshot()
+            .into_iter()
+            .map(|e| (e.path, e.kind, e.bytes))
+            .collect()
+    };
+    let before = bytes();
+    assert!(
+        before.iter().any(|(p, _, _)| p.starts_with("work/demo/")),
+        "the project is not under the HOME"
+    );
+    let refused = w.done(g).unwrap_err();
+    assert!(refused.contains("nothing was changed"), "{refused}");
+    assert_eq!(bytes(), before, "a refused card done changed a byte");
+    fs::write(&path, spec_text(ID, "draft", &[VERIFIED, MANUAL])).unwrap();
+    let fixed = bytes();
+    assert_eq!(w.done(g).unwrap()["state"], json!("done"));
+    assert_ne!(
+        bytes(),
+        fixed,
+        "closing the card must show in the comparison"
+    );
+}
+
 /// A card that names no SPEC closes as before (its own refusals are `tests/card_work_cli.rs`).
 #[test]
 fn a_card_without_a_spec_closes_as_before() {

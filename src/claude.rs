@@ -368,6 +368,8 @@ pub fn doctor(project: &Path) -> Result<Value> {
 /// length clash (PR #2044).
 /// `env` and `model` (#2936 R8) are managed only so the user's earlier values can be merged back
 /// on the user's say-so; they are never set by default.
+/// `worktree` (card C-70) is managed only as `{"baseRef": "head" | "fresh"}`, set when the user
+/// picks m-flow in `/moai project`.
 pub const MANAGED_SETTINGS: &[&str] = &[
     "outputStyle",
     "statusLine",
@@ -375,11 +377,19 @@ pub const MANAGED_SETTINGS: &[&str] = &[
     "hooks",
     "env",
     "model",
+    "worktree",
 ];
 
 /// The managed keys a caller may set through `claude-settings-plan` / `-apply` (#2239, #2244):
 /// every managed key except `hooks`.
-pub const USER_SETTINGS: &[&str] = &["outputStyle", "statusLine", "permissions", "env", "model"];
+pub const USER_SETTINGS: &[&str] = &[
+    "outputStyle",
+    "statusLine",
+    "permissions",
+    "env",
+    "model",
+    "worktree",
+];
 
 /// Bounds for the `env` and `model` values a caller may set (#2936 R8).
 pub const ENV_ENTRIES_MAX: usize = 64;
@@ -462,6 +472,25 @@ fn check_env(value: &Value) -> Result<()> {
     Ok(())
 }
 
+/// Validates a desired `worktree` value (card C-70): exactly `{"baseRef": "head"}` or
+/// `{"baseRef": "fresh"}`, the two values Claude Code documents (`fresh` the remote default
+/// branch, `head` the local HEAD; https://code.claude.com/docs/en/worktrees, as read in
+/// `docs/worktree-strategy-2026-11-10.md` row H1). Other worktree keys are left to the user.
+fn check_worktree(value: &Value) -> Result<()> {
+    let ok = value.as_object().is_some_and(|m| {
+        m.len() == 1
+            && matches!(
+                m.get("baseRef").and_then(Value::as_str),
+                Some("head" | "fresh")
+            )
+    });
+    if ok {
+        Ok(())
+    } else {
+        Err("worktree must be {\"baseRef\": \"head\"} or {\"baseRef\": \"fresh\"}".into())
+    }
+}
+
 /// Validates a desired `model` value: one non-empty line of at most [`MODEL_CHARS_MAX`] characters.
 fn check_model(value: &Value) -> Result<()> {
     let ok = value.as_str().is_some_and(|s| {
@@ -523,6 +552,22 @@ pub fn user_settings_desired_in(
         if let Some(hooks) = owned_settings(project)?.get("hooks") {
             out.insert("hooks".into(), hooks.clone());
         }
+    }
+    Ok(out)
+}
+
+/// [`user_settings_desired_in`] for `--keep-owned` (card C-70): every key MoAI owns in that
+/// scope's file and the request does not name keeps its owned value, so a request that sets
+/// one key (m-flow's `worktree`) never drops another. Without the flag a key the request leaves
+/// out is removed, as before.
+pub fn user_settings_desired_keep_owned(
+    project: &Path,
+    desired: &Map<String, Value>,
+    scope: SettingsScope,
+) -> Result<Map<String, Value>> {
+    let mut out = user_settings_desired_in(project, desired, scope)?;
+    for (key, value) in scope_view(project, scope)?.0 {
+        out.entry(key).or_insert(value);
     }
     Ok(out)
 }
@@ -682,6 +727,9 @@ pub fn plan_settings(
     }
     if let Some(m) = desired.get("model") {
         check_model(m)?;
+    }
+    if let Some(w) = desired.get("worktree") {
+        check_worktree(w)?;
     }
     let mut keys: Vec<&String> = baseline.keys().chain(desired.keys()).collect();
     keys.sort();

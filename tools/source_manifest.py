@@ -17,7 +17,9 @@ top-level value other than `files` that differs, a skill file that still holds c
 markers, a new file with no entry (its `origin` is the author's to write), a link anywhere from the repository root to the
 manifest or in the package, or a file that is not a regular file (a FIFO would block).
 Entries of deleted files are dropped and reported. The file is written in its existing
-form, `json.dumps(indent=2, ensure_ascii=False)` plus a newline, and only when it changes.
+form, `json.dumps(indent=2, ensure_ascii=False)` plus a newline, with `files` in sorted key
+order (card C-92: one order for every tree, so a text merge never keeps an entry twice), and
+only when it changes. A key that appears twice in the manifest is refused and named.
 
 `tools/merge_driver_manifest.py` (card C-74) resolves most manifest conflicts during the merge
 itself once a clone registers it; `write` is for the conflicts it leaves.
@@ -75,8 +77,18 @@ def sides(text):
 
 
 def parse(text, label):
+    def no_duplicates(pairs):
+        # Card C-92: a key twice (a text merge of two orders) is refused, never "last wins".
+        seen = set()
+        for key, _ in pairs:
+            if key in seen:
+                raise NeedsPerson(f"{label} of the manifest has the key `{key}` twice; "
+                                  "keep one entry, then run write")
+            seen.add(key)
+        return dict(pairs)
+
     try:
-        data = json.loads(text)
+        data = json.loads(text, object_pairs_hook=no_duplicates)
     except ValueError as e:
         raise NeedsPerson(f"{label} of the manifest is not JSON: {e}") from None
     if not isinstance(data, dict) or not isinstance(data.get("files"), dict):
@@ -303,7 +315,13 @@ def rebuild(root, stages=None):
 
 
 def render(data):
-    return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+    """The manifest text: `files` in sorted key order (card C-92), every other key in place.
+    `write`, `check` and the merge driver all render through here, so one tree gives one text
+    whatever the merge history, and two branches holding the same entry hold it on the same
+    lines (a text merge then never keeps it twice)."""
+    out = {key: dict(sorted(value.items())) if key == "files" else value
+           for key, value in data.items()}
+    return json.dumps(out, indent=2, ensure_ascii=False) + "\n"
 
 
 def check(root):
