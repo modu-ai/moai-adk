@@ -43,12 +43,20 @@ fn the_reference_states_the_rules_the_user_decided() {
     ] {
         assert!(text.contains(phrase), "sdd.md lacks {phrase:?}");
     }
-    // The session trailer is planned, never presented as available.
+    // The session trailer exists since SDD-6: the line names the commands that print and check
+    // it and the reference that holds its rules, and no longer calls it planned.
     let session = text
         .lines()
         .find(|l| l.contains("Moai-Session"))
         .expect("sdd.md names the session trailer");
-    assert!(session.contains("planned"), "{session}");
+    for phrase in [
+        "`moai trailers --spec <SPEC-ID>`",
+        "`moai trailer-check <base>..HEAD`",
+        "`internal/commit-trailers`",
+    ] {
+        assert!(session.contains(phrase), "{session} lacks {phrase}");
+    }
+    assert!(!session.contains("planned"), "{session}");
 }
 
 /// Every `moai spec <action>` the reference names is a subcommand of this build. The card
@@ -79,6 +87,17 @@ fn the_reference_names_only_commands_this_build_has() {
             .output()
             .unwrap();
         assert!(out.status.success(), "moai spec {action} --help");
+    }
+    // The trailer commands the session line names (SDD-6) are subcommands of this build.
+    for command in ["trailers", "trailer-check"] {
+        assert!(text.contains(&format!("`moai {command} ")), "{command}");
+        let out = Command::new(common::MOAI_BIN)
+            .clean_env()
+            .env("HOME", home.path())
+            .args([command, "--help"])
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "moai {command} --help");
     }
     let card = Command::new(common::MOAI_BIN)
         .clean_env()
