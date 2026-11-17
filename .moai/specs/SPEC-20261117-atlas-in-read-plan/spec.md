@@ -31,8 +31,8 @@ parent: null
 - REQ-1: When READ or PLAN is about to search the code, the session shall run `moai index-query` on the project before any atlas query.
 - REQ-2: When `index-query` reports `fresh`, the session shall use `atlas-graph`, `atlas-map` or `search` to narrow the files before reading them.
 - REQ-3 (REQ-1): IF `index-query` reports `partial` or `unavailable`, THEN the session shall search and read the files without the atlas.
-- REQ-4 (REQ-2): IF `index-query` reports `stale`, THEN the session shall use the atlas only for files its `changes` do not name and read the named files directly.
-- REQ-5 (REQ-2): IF a `stale` answer reports `branch_switched`, THEN the session shall treat the atlas as unavailable.
+- REQ-4 (REQ-2): IF `index-query` reports `stale`, THEN the session shall drop the deleted files from an atlas answer and add every added, modified or new file that names what it asked about.
+- REQ-5 (REQ-2): IF a `stale` answer reports `branch_switched` (HEAD moved since the build), THEN the session shall treat the atlas as unavailable.
 - REQ-6: The READ and PLAN routes shall never run `index-build`.
 - REQ-7: The session shall verify each atlas edge it states by reading the line its `evidence_refs` cite.
 - REQ-8: Each READ answer or PLAN result shall name the `generation_id` and `state` it used or say that it searched without the atlas.
@@ -48,6 +48,9 @@ parent: null
   적고, 그 요청들이 임시 저장소에서 실제로 동작해요: 빌드 전 `unavailable`, 빌드 뒤 `fresh`, 파일을 고치면 `stale`과
   `changes.modified`에 그 파일.
   verify: `cargo test --locked --offline --test code_atlas_reference`
+- AC-8 (REQ-4): 빌드 뒤에 추가한 파일(`src/c.rs`가 `crate::a`를 씀)은 낡은 아틀라스의 의존 목록에 없고, 참조의 `stale`
+  규칙(그 규칙이 적은 `changes` 키의 파일을 경로와 import 이름으로 검색해 합침)이 찾아요. 규칙 문장도 고정돼요.
+  verify: `cargo test --locked --offline --test code_atlas_reference a_dependent_added_after_the_build_is_found_by_the_stale_rule`
 - AC-2 (REQ-6): 읽기 명령이 아틀라스를 만들지 않고(빌드 전 읽기 뒤 `index` 폴더 없음), READ·PLAN workflow에
   `index-build`가 없고, PROJECT가 동의 뒤 제안을 그대로 가져요.
   verify: `cargo test --locked --offline --test code_atlas_reference read_and_plan_point_to_the_instruction_in_one_line_and_project_offers_the_build`
@@ -59,7 +62,7 @@ parent: null
 - AC-5 (REQ-10): verify: `cargo test --locked --offline --test agent_defs_package`
 - AC-6 (REQ-11): verify: `git ls-files .moai/specs/SPEC-20261117-atlas-in-read-plan` → 이 파일;
   `moai spec check --all --project .` → exit 0
-- AC-7 (REQ-1…REQ-11): 패키지와 이웃 검사가 통과해요.
+- AC-7 (REQ-1…REQ-11): 패키지와 이웃 검사가 통과해요(AC-8은 아래 AC-2 앞에 있어요).
   verify: `python3 -I tools/source_manifest.py check`; `moai package-inspect skills/moai` → exit 0, 65,536바이트 넘는
   파일 없음; `cargo test --locked --offline --bin moai`; `cargo fmt --check`;
   `cargo clippy --locked --offline --all-targets -- -D warnings`;
@@ -95,12 +98,16 @@ parent: null
 ## Decisions
 
 - D1 요구 문장은 영어 GEARS, 본문은 한국어, 제목은 영어(저장소의 다른 SPEC과 같은 형식).
-- D2 신선도는 `index-query`의 `state` 하나로 판단해요(이미 있는 기능, 새 플래그 없음). `stale`은 `changes`에 없는
-  파일에만 써요: 낡은 파일의 간선만 의심스럽고, 나머지는 그대로 맞아서요. 되돌리기: 참조 1단계의 `stale` 줄을
-  "쓰지 않음"으로 바꿔요.
-- D3 `branch_switched`면 `unavailable`로 봐요: 가지가 바뀌면 바뀐 파일 목록만으로는 범위를 믿을 수 없어서요.
-- D4 기본 질의는 1홉 그래프와 이름 붙인 파일이에요(측정: 1홉 4,390바이트, 2홉 93,243바이트). 되돌리기: 참조
-  3단계의 크기 문장을 지워요.
+- D2 신선도는 `index-query`의 `state` 하나로 판단해요(이미 있는 기능, 새 플래그 없음). `stale`(감사 B1 뒤 수정):
+  아틀라스는 `changes`에 없는 파일을 그대로 설명하지만, 파일 목록 답(특히 의존 목록)은 빠진 것이 있을 수 있어요 —
+  바뀐·새 파일이 질문 대상을 새로 쓸 수 있어서요. 그래서 `deleted` 파일을 빼고, `added`·`modified`·`new_files`
+  파일을 `rg`로 경로와 import 이름 검색해 합쳐요. 고른 이유: "변경이 있으면 의존 질문에 쓰지 않음"보다 큰 저장소에서
+  아틀라스를 계속 쓸 수 있고, 검색 대상이 바뀐 파일뿐이라 짧아요. 되돌리기: 참조 1단계 `stale` 줄을 "쓰지 않음"으로
+  바꾸고 AC-8 시험을 지워요.
+- D3 `branch_switched`면 `unavailable`로 봐요: HEAD가 빌드 뒤에 움직였으면(커밋이나 가지 전환, `src/index.rs`가
+  HEAD와 `base_commit`이 다를 때 참으로 둠) 바뀐 파일 목록만으로는 범위를 믿을 수 없어서요.
+- D4 기본 질의는 1홉 그래프와 이름 붙인 파일이에요(측정: 1홉 4,390바이트, 2홉 93,243바이트; 참조에는 저장소마다
+  다른 정확한 배율 대신 "수십 배"라고 적어요). 되돌리기: 참조 3단계의 크기 문장을 지워요.
 - D5 참조는 `moai-research`와 `moai-plan`의 `reads:`에 넣고 `chains/index.md`는 바꾸지 않았어요: 부모 세션은
   workflow 한 줄로 읽어요.
 - D6 시험은 참조의 요청 문자열을 그대로 고정하고 실제로 돌려요: 지시와 CLI가 어긋나면 시험이 빨개져요.

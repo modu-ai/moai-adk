@@ -121,6 +121,119 @@ fn the_instruction_names_the_requests_the_states_and_the_no_build_rule() {
     assert!(text.contains("**Never build or rebuild it here.**"));
     assert!(text.contains("never build it silently"));
     assert!(text.contains("evidence_refs"));
+    // Audit B1: a stale answer is incomplete for the changed files, dependents above all.
+    let stale = stale_line(&text);
+    for phrase in [
+        "An answer that lists files — dependents above all — is incomplete",
+        "drop the `deleted` files from it",
+        "with `rg` for the path and the import name of what you asked about",
+        "add each file that matches",
+    ] {
+        assert!(
+            stale.contains(phrase),
+            "the stale rule lacks {phrase:?}: {stale}"
+        );
+    }
+    // Audit N1: `branch_switched` means HEAD moved, by a commit or a branch switch.
+    assert!(text.contains("HEAD moved since the build (a commit or a branch switch)"));
+    // Audit N2: no exact ratio from one repository.
+    assert!(text.contains("two hops can be tens of times larger than one"));
+    assert!(!text.contains("21 times"));
+}
+
+/// The `stale` line of step 1.
+fn stale_line(text: &str) -> &str {
+    text.lines()
+        .find(|l| l.trim_start().starts_with("- `stale`:"))
+        .expect("step 1 has a `stale` line")
+}
+
+/// The `changes` keys the stale rule says to search, in the order it names them.
+fn keys_to_search(stale: &str) -> Vec<&str> {
+    let from = stale
+        .find("search every ")
+        .expect("the stale rule searches");
+    let to = stale[from..]
+        .find(" with `rg`")
+        .expect("the stale rule uses rg")
+        + from;
+    stale[from..to].split('`').skip(1).step_by(2).collect()
+}
+
+/// Audit B1: a file added after the build depends on `src/a.rs`. The atlas, being stale,
+/// does not list it; the stale rule's own procedure — search the `changes` files the rule
+/// names for the path and the import name, then merge — finds it.
+#[test]
+fn a_dependent_added_after_the_build_is_found_by_the_stale_rule() {
+    let (tmp, project) = fixture();
+    let home = tmp.path().join("home");
+    fs::create_dir_all(&home).unwrap();
+    assert_eq!(
+        run(&home, &project, "index-build", VERSION)["status"],
+        "complete"
+    );
+    fs::write(
+        project.join("src/c.rs"),
+        "use crate::a::alpha;\n\npub fn gamma() -> u8 {\n    alpha() + 1\n}\n",
+    )
+    .unwrap();
+    fs::write(
+        project.join("src/lib.rs"),
+        "pub mod a;\npub mod b;\npub mod c;\n",
+    )
+    .unwrap();
+    let q = run(&home, &project, "index-query", VERSION);
+    assert_eq!(q["state"], "stale", "{q}");
+    assert_eq!(q["changes"]["branch_switched"], false, "{q}");
+
+    // What the atlas alone says depends on src/a.rs.
+    let g = run(
+        &home,
+        &project,
+        "atlas-graph",
+        &GRAPH.replace("<path>", "src/a.rs"),
+    );
+    let mut dependents: Vec<String> = g["graph"]["edges"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|e| e["target_id"] == "file:src/a.rs")
+        .filter_map(|e| e["source_id"].as_str()?.strip_prefix("file:"))
+        .map(str::to_string)
+        .collect();
+    assert!(dependents.contains(&"src/b.rs".to_string()), "{g}");
+    assert!(
+        !dependents.contains(&"src/c.rs".to_string()),
+        "the stale atlas cannot know src/c.rs: {g}"
+    );
+
+    // The rule as written: drop `deleted`, search the files of the keys it names.
+    let text = reference();
+    let stale = stale_line(&text);
+    let keys = keys_to_search(stale);
+    assert_eq!(keys, ["added", "modified", "new_files"], "{stale}");
+    let deleted: Vec<&str> = q["changes"]["deleted"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(Value::as_str)
+        .collect();
+    dependents.retain(|d| !deleted.contains(&d.as_str()));
+    for key in keys {
+        for path in q["changes"][key].as_array().unwrap() {
+            let path = path.as_str().unwrap();
+            let body = fs::read_to_string(project.join(path)).unwrap_or_default();
+            if (body.contains("src/a.rs") || body.contains("crate::a"))
+                && !dependents.iter().any(|d| d == path)
+            {
+                dependents.push(path.to_string());
+            }
+        }
+    }
+    assert!(
+        dependents.contains(&"src/c.rs".to_string()),
+        "the stale rule missed the new dependent: {dependents:?} ({q})"
+    );
 }
 
 #[test]
