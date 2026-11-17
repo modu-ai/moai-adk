@@ -50,7 +50,10 @@ CI_LINUX_STEPS = [
                 " 2>&1 | tee ci-doctest.log; exit \"${PIPESTATUS[0]}\""),
     ("clippy", "cargo clippy --offline --locked --all-targets -- -D warnings"),
     ("fmt", "cargo fmt --check"),
-    ("unittest", "bash -c python3 -m unittest discover -v -s tests -p '*_test.py'"
+    # C-75 S0: build.rs includes src/ops/*.rs through `#[path]` in a generated OUT_DIR file,
+    # so `cargo fmt` never reaches them; this step checks them with rustfmt directly.
+    ("fmt-ops", "bash -c rustfmt --check --edition 2021 src/ops/*.rs"),
+    ("unittest","bash -c python3 -m unittest discover -v -s tests -p '*_test.py'"
                  " 2>&1 | tee ci-unittest.log; exit \"${PIPESTATUS[0]}\""),
     ("diff-check", "git diff --check BASE...HEAD"),
 ]
@@ -65,15 +68,15 @@ def git(cwd, *args):
 
 
 def write_stubs(bin_dir, calls, where, fail_label):
-    """Stub `cargo`, `python3` and `rustc` (no real build ever runs here).
+    """Stub `cargo`, `python3`, `rustfmt` and `rustc` (no real build ever runs here).
 
-    `cargo`/`python3` append their arguments to `calls`, and where they ran to `where`
+    `cargo`/`python3`/`rustfmt` append their arguments to `calls`, and where they ran to `where`
     (tab separated: the physical cwd, its HEAD tree, its first and second parent); the one
     named by fail_label exits 1. They also exit 1 when a folder holds both
     `rule_forbids_forbidden.txt` and `forbidden.txt`: a rule the base branch adds that a head
     cannot know (the #3062 shape). `rustc` prints a version, or STUB_RUSTC_OUT with exit
     STUB_RUSTC_EXIT when that is set."""
-    for name in ("cargo", "python3"):
+    for name in ("cargo", "python3", "rustfmt"):
         stub = bin_dir / name
         stub.write_text(
             "#!/bin/sh\n"
@@ -216,6 +219,8 @@ class LocalCheckStepsTest(unittest.TestCase):
             "cargo test --offline --locked --doc",
             "cargo clippy --offline --locked --all-targets -- -D warnings",
             "cargo fmt --check",
+            # No src/ops/ in the fake repository, so bash passes the pattern through as is.
+            "rustfmt --check --edition 2021 src/ops/*.rs",
             "python3 -m unittest discover -v -s tests -p *_test.py",
         ])
 
@@ -283,7 +288,7 @@ class LocalCheckLineTest(unittest.TestCase):
         proc = repo.run(LOCAL_CHECK_KEEP_GOING="1", GITHUB_STEP_SUMMARY=str(summary))
         self.assertEqual(proc.returncode, 1)
         self.assertIn(" result=fail cmd=", last_line(proc.stdout))
-        self.assertEqual(len(repo.recorded()), 6)
+        self.assertEqual(len(repo.recorded()), 7)
         rows = summary.read_text().splitlines()
         self.assertEqual([r.split(" | ")[0] for r in rows],
                          ["| " + label for label, _ in CI_LINUX_STEPS])
@@ -299,6 +304,87 @@ class LocalCheckLineTest(unittest.TestCase):
         proc = repo.run(LOCAL_CHECK_BASE="HEAD~1")
         self.assertEqual(proc.returncode, 1)
         self.assertIn(" result=fail cmd=", last_line(proc.stdout))
+
+
+def real_rustfmt():
+    """The pinned toolchain's rustfmt binary (rust-toolchain.toml), not the rustup proxy: the
+    fake repository runs with a temporary HOME, where a proxy would find no toolchain."""
+    rustup = shutil.which("rustup")
+    if rustup:
+        proc = subprocess.run([rustup, "which", "rustfmt"], cwd=ROOT, capture_output=True,
+                              text=True)
+        if proc.returncode == 0 and proc.stdout.strip():
+            return proc.stdout.strip()
+    return shutil.which("rustfmt")
+
+
+# rustfmt rewrites this to `fn misformatted() -> u8 {\n    1\n}`.
+MISFORMATTED = "\nfn   misformatted( )->u8{1}\n"
+
+
+class LocalCheckOpsFormatTest(unittest.TestCase):
+    """C-75 S0: `cargo fmt --check` never reaches src/ops/*.rs (build.rs includes them by
+    `#[path]` from a file it writes into OUT_DIR), so the fmt-ops step checks them with the
+    real rustfmt. Here `cargo` stays a stub that passes, as `cargo fmt --check` does on such a
+    file; the repository's own src/ops/*.rs are copied into the fake repository."""
+
+    def repo_with_ops(self, change=None, ops=True):
+        rustfmt = real_rustfmt()
+        self.assertIsNotNone(rustfmt, "no rustfmt: install the rust-toolchain.toml toolchain")
+        repo = FakeRepo()
+        self.addCleanup(repo.close)
+        (repo.bin / "rustfmt").unlink()
+        (repo.bin / "rustfmt").symlink_to(rustfmt)
+        if ops:
+            target = repo.repo / "src" / "ops"
+            target.mkdir(parents=True)
+            for source in sorted((ROOT / "src" / "ops").glob("*.rs")):
+                shutil.copy2(source, target / source.name)
+            if change:
+                change(target)
+            env = repo.git_env()
+            for args in (["add", "-A"], ["commit", "-q", "-m", "ops"]):
+                subprocess.run(["git", *args], cwd=repo.repo, env=env, check=True,
+                               capture_output=True)
+        return repo
+
+    def test_the_step_uses_the_crate_edition(self):
+        edition = re.search(r'(?m)^edition = "(\d+)"$',
+                            (ROOT / "Cargo.toml").read_text(encoding="utf-8")).group(1)
+        script = SCRIPT.read_text(encoding="utf-8")
+        self.assertEqual(script.count(f"rustfmt --check --edition {edition} src/ops/*.rs"), 1)
+        self.assertEqual(script.count("rustfmt --check"), 1)
+
+    def test_formatted_ops_files_pass(self):
+        """The repository's src/ops/*.rs as they are: every file must already be formatted."""
+        repo = self.repo_with_ops()
+        proc = repo.run()
+        drift = sorted(set(re.findall(r"(?m)^Diff in .*/src/ops/(\w+\.rs):", proc.stdout)))
+        self.assertEqual(drift, [], "src/ops files rustfmt would change")
+        self.assertNotIn("step fmt-ops: exit", proc.stderr)
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn(" result=pass cmd=", last_line(proc.stdout))
+
+    def test_one_misformatted_ops_file_fails_the_step(self):
+        def misformat(ops):
+            with (ops / "package_inspect.rs").open("a", encoding="utf-8") as f:
+                f.write(MISFORMATTED)
+        repo = self.repo_with_ops(misformat)
+        proc = repo.run(LOCAL_CHECK_KEEP_GOING="1")
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+        self.assertIn(" result=fail cmd=", last_line(proc.stdout))
+        self.assertIn("step fmt-ops: exit 1", proc.stderr)
+        self.assertIn("package_inspect.rs", proc.stdout)
+        # The cargo fmt step (a passing stub, like the real one on this file) is not the one
+        # that failed.
+        self.assertNotIn("step fmt: exit", proc.stderr)
+
+    def test_no_ops_files_fails_the_step(self):
+        """With nothing to check the pattern reaches rustfmt unexpanded; it must not pass."""
+        repo = self.repo_with_ops(ops=False)
+        proc = repo.run()
+        self.assertEqual(proc.returncode, 1, proc.stdout + proc.stderr)
+        self.assertIn("step fmt-ops: exit 1", proc.stderr)
 
 
 def long_fields(case, line):
@@ -486,7 +572,7 @@ class LocalCheckCandidateTest(unittest.TestCase):
         self.assertEqual(fields["result"], "pass")
         self.assertEqual(sum(1 for out in proc.stdout.splitlines()
                              if out.startswith("local-check:")), 1)
-        self.assertEqual(len(repo.recorded()), 6)
+        self.assertEqual(len(repo.recorded()), 7)
         self.assertEqual(repo.leftovers(), [])
 
     def test_base_moving_between_runs_changes_the_base_in_the_line(self):
@@ -555,7 +641,7 @@ class LocalCheckCandidateTest(unittest.TestCase):
                                fields["base"], head).splitlines()[0]
         self.assertEqual(fields["tree"], independent)
         rows = repo.where_rows()
-        self.assertEqual(len(rows), 6)
+        self.assertEqual(len(rows), 7)
         for _, tree, parent1, parent2 in rows:
             self.assertEqual((tree, parent1, parent2), (fields["tree"], fields["base"], head))
         self.assertEqual(fields["script"],
@@ -751,7 +837,7 @@ class LocalCheckCandidateTest(unittest.TestCase):
         self.assertEqual(steps, expected)
         self.assertEqual([c.split()[0] + " " + c.split()[1] for c in repo.recorded()],
                          ["cargo fetch", "cargo nextest", "cargo test", "cargo clippy",
-                          "cargo fmt", "python3 -m"])
+                          "cargo fmt", "rustfmt --check", "python3 -m"])
 
     def test_step_failure_keeps_real_evidence_and_cleans_up(self):
         repo = self.repo(fail_label="clippy")
@@ -762,8 +848,8 @@ class LocalCheckCandidateTest(unittest.TestCase):
         self.assertEqual(fields["result"], "fail")
         self.assertEqual(fields["base"], repo.origin_tip())
         self.assertNotEqual(fields["tree"], "none")
-        self.assertEqual(len(repo.recorded()), 6)
-        self.assertEqual(len(summary.read_text().splitlines()), 7)
+        self.assertEqual(len(repo.recorded()), 7)
+        self.assertEqual(len(summary.read_text().splitlines()), 8)
         self.assertEqual(repo.leftovers(), [])
         self.assertEqual(len(repo.worktrees()), 1)
 
