@@ -240,7 +240,7 @@
       }
     },
     "references/internal/sdd.md": {
-      "sha256": "55a33bee5a350a3065925f591a87ee14436a544a34dd7390ad606f0db7386045",
+      "sha256": "2a5e10afdf5ef5403934b319e35a1ff0b54abd2341899786d8dae8d72ad15c70",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-sdd",
@@ -399,7 +399,7 @@
       }
     },
     "workflows/audit.md": {
-      "sha256": "7bf329602e2900f1a4f0b7f4fe369eff3d835c16dc3478d51dd690f36f431f2a",
+      "sha256": "e60ffcea458af6830ed16e69a75a9f98ca3880dbc52a32740cf4914e7cd30169",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
