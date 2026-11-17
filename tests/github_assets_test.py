@@ -261,8 +261,10 @@ class WorkflowTest(unittest.TestCase):
         paths = sorted(WORKFLOWS.glob("*.yml"))
         # #2554 PR-A adds the candidate verification path: candidate.yml (the three supported
         # targets and the verdict) and candidate-target.yml (one target, called three times).
+        # SPEC-20261117-audit-gate adds audit-gate.yml (the audit check from verdict comments).
         self.assertEqual([p.name for p in paths],
-                         ["candidate-target.yml", "candidate.yml", "ci.yml", "moai-label-sync.yml"])
+                         ["audit-gate.yml", "candidate-target.yml", "candidate.yml", "ci.yml",
+                          "moai-label-sync.yml"])
         return [(p, yaml.safe_load(p.read_text(encoding="utf-8"))) for p in paths]
 
     def test_permissions_are_least_privilege(self):
@@ -285,6 +287,35 @@ class WorkflowTest(unittest.TestCase):
                 self.assertEqual(env["MOAI_BUILD_NUMBER"],
                                  "${{ github.run_attempt == '1' && github.run_number || '' }}")
                 self.assertNotIn("MOAI_LOCAL_BUILD", env)
+
+    def test_audit_gate_reads_verdicts_with_a_read_only_token(self):
+        """SPEC-20261117-audit-gate: `pull_request` only (never `pull_request_target`), read-only
+        job permissions, the same pinned actions ci.yml uses, the gate built from the base
+        commit, and PR values reaching the script through `env` only."""
+        flows = dict((p.name, f) for p, f in self.workflows())
+        text = (WORKFLOWS / "audit-gate.yml").read_text(encoding="utf-8")
+        flow = flows["audit-gate.yml"]
+        self.assertNotIn("pull_request_target:", text)
+        self.assertEqual(set(flow.get("on", flow.get(True)).keys()), {"pull_request"})
+        self.assertEqual(flow["permissions"], {"contents": "read"})
+        (job,) = flow["jobs"].values()
+        self.assertEqual(job["permissions"],
+                         {"contents": "read", "pull-requests": "read", "issues": "read"})
+        ci_uses = {s["uses"] for j in flows["ci.yml"]["jobs"].values()
+                   for s in j.get("steps", []) if "uses" in s}
+        uses = [s["uses"] for s in job["steps"] if "uses" in s]
+        self.assertTrue(uses and set(uses) <= ci_uses, uses)
+        (checkout,) = [s for s in job["steps"] if s.get("uses", "").startswith("actions/checkout@")]
+        self.assertEqual(checkout["with"], {"ref": "${{ github.event.pull_request.base.sha }}",
+                                            "persist-credentials": False})
+        for step in job["steps"]:
+            if "run" in step:
+                with self.subTest(step=step.get("name")):
+                    self.assertNotIn("${{", step["run"])
+        gate = [s for s in job["steps"] if "audit-gate" in s.get("run", "")]
+        self.assertEqual(len(gate), 1)
+        self.assertIn("--require-pass", gate[0]["run"])
+        self.assertEqual(gate[0]["env"]["GH_TOKEN"], "${{ github.token }}")
 
     def test_every_action_is_pinned_to_a_commit_sha(self):
         for path, flow in self.workflows():
