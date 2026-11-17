@@ -1,5 +1,6 @@
 //! `card` (#3070): the project's local cards. One word, one action each; the logic is
-//! `moai_cli::card::command`, `dispatch` and `work` (card C-53: the work and finish path).
+//! `moai_cli::card::command`, `dispatch` and `work` (card C-53: the work and finish path), and
+//! `spec_link` for `card spec` (SDD-4).
 
 use std::path::PathBuf;
 
@@ -151,7 +152,10 @@ enum Action {
     /// Refused when the card is not `ready`, is already held, or its scope overlaps another
     /// card's reservation (`conflict`). The answer's `generation` is what `release` and
     /// `handoff` need. The holder is this session's own id (`CLAUDE_CODE_SESSION_ID` or
-    /// `CODEX_THREAD_ID`), never typed; a session without one is refused.
+    /// `CODEX_THREAD_ID`), never typed; a session without one is refused. The answer's `spec`
+    /// is the SPEC the card names (`card spec`) and its status; `warnings` names a card that
+    /// changes the repository without an approved SPEC, and `--require-approved-spec` refuses
+    /// that card instead (`invalid_input`, nothing taken).
     Take {
         /// `C-12`.
         card: String,
@@ -167,7 +171,37 @@ enum Action {
         /// The branch the holder works on.
         #[arg(long)]
         branch: Option<String>,
+        /// Refuse, instead of warn, when a card that changes the repository has no approved SPEC.
+        #[arg(long)]
+        require_approved_spec: bool,
         /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Link a card to the SPEC it works on, or unlink it
+    ///
+    /// Writes the ledger. Names the SPEC (`SPEC-<yyyymmdd>-<slug>`) the card works on, with one
+    /// `card.spec` event; `--unlink` removes the link. The SPEC must be in the project's
+    /// `.moai/specs` and pass `moai spec check` without an error; it is only read, and it never
+    /// names the card: the link lives in this machine's ledger. `card next` and `card take` then
+    /// print the SPEC's status and warn while a card that changes the repository (any kind but
+    /// `research` and `audit`) has no approved SPEC. The same link again writes nothing.
+    Spec {
+        /// `C-12`.
+        card: String,
+        /// The SPEC id.
+        #[arg(required_unless_present = "unlink", conflicts_with = "unlink")]
+        spec: Option<String>,
+        /// Remove the card's link.
+        #[arg(long)]
+        unlink: bool,
+        /// Who does it (default `user`).
+        #[arg(long)]
+        by: Option<String>,
+        /// The project folder (its profile holds the project id; its `.moai/specs` holds the SPEC).
         #[arg(long, default_value = ".")]
         project: PathBuf,
         /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
@@ -220,8 +254,10 @@ enum Action {
     /// number, then every card it cannot take with the reason (`held` by another session,
     /// `scope_overlap` with another card's reservation, `empty_scope`: `take` refuses a card
     /// without a write scope). `next` names the card to work on now: one this session holds,
-    /// else the first `ready` one. A project without a ledger has no cards (`ledger: "absent"`,
-    /// exit 0) and nothing is created.
+    /// else the first `ready` one. Each held and ready card carries its SPEC and that SPEC's
+    /// status (`spec`); `warnings` names each card that changes the repository without an
+    /// approved SPEC. A project without a ledger has no cards (`ledger: "absent"`, exit 0) and
+    /// nothing is created.
     Next {
         /// The project folder (its profile holds the project id).
         #[arg(default_value = ".")]
@@ -485,6 +521,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             scope,
             worktree,
             branch,
+            require_approved_spec,
             project,
             home,
         } => d::take(
@@ -497,7 +534,22 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 scope: &scope,
                 worktree: worktree.as_deref(),
                 branch: branch.as_deref(),
+                require_approved_spec,
             },
+        ),
+        Action::Spec {
+            card,
+            spec,
+            unlink: _,
+            by,
+            project,
+            home,
+        } => moai_cli::card::spec_link::link(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            spec.as_deref(),
+            by.as_deref(),
         ),
         Action::Release {
             card,

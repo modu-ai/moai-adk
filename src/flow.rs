@@ -89,10 +89,10 @@ pub const CI_CHECK_NAMES: [&str; 2] = ["ci", "rc-ci"];
 
 /// #2554 PR-A: the candidate verification (`.github/workflows/candidate.yml`, run on a pushed
 /// `candidate/<sha>` branch) names its check runs `candidate` (the summary) and
-/// `candidate / <target> / …`. It measures a release candidate on five targets; it is not a
-/// merge-gate CI job. Its check runs land on the commit it checks, which can be the tip, so the
-/// tip judgments must not read them as jobs of the tip's own CI. Only these exact shapes count;
-/// `candidates`, `candidate-x` and `xcandidate / y` are ordinary names.
+/// `candidate / <target> / …`. It measures a release candidate on the three supported targets;
+/// it is not a merge-gate CI job. Its check runs land on the commit it checks, which can be the
+/// tip, so the tip judgments must not read them as jobs of the tip's own CI. Only these exact
+/// shapes count; `candidates`, `candidate-x` and `xcandidate / y` are ordinary names.
 pub fn is_candidate_check(name: &str) -> bool {
     name == "candidate" || name.starts_with("candidate / ")
 }
