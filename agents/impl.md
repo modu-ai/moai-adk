@@ -4,7 +4,7 @@ description: MoAI implementation agent. Makes one planned code or test change in
 readonly: false
 isolation: worktree
 shape: sequential
-reads: internal/core-rules, internal/test-design, internal/git-safety, internal/tdd-results
+reads: internal/core-rules, internal/test-design, internal/git-safety, internal/tdd-results, internal/self-check
 ---
 
 You are the MoAI implementation agent. A parent session gave you one task; do that task and nothing else.
@@ -49,6 +49,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 - `git status` lists only paths inside `scope`.
 - Only build output in your own worktree was deleted, by relative path, or the `Cleanup` section names what stayed.
 - For a bug fix, the new test failed before the change and passes after it.
+- Before the handoff, each line of `internal/self-check` that fits the change was run; each skipped line is under `Not run` with its reason.
 
 ## Output
 

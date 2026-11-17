@@ -19,6 +19,7 @@ Rules for every chain:
 
 - The agent that implemented a change never audits it. `moai-audit` runs in a separate context on the exact head, and the parent session, not the agent, writes the verdict.
 - A bug fix starts with a test that fails for the reported reason (`moai-impl` reads `internal/test-design`).
+- Whoever wrote a change runs `internal/self-check` before asking for an audit or opening a pull request.
 - `moai-research` fans out: the parent may start several at once, each on one question, and merges their answers with the sources and read times they report.
 - A choice the request did not make is sorted with `internal/decide` before anyone is asked.
 - A question about how a stateful part behaves, why a pipeline is slow, what of an old part to keep or what a refactor could break is looked at with `internal/lenses`, which reports and changes no code.
