@@ -304,7 +304,9 @@ fn managed_section_states_each_projects_setting() {
     // The managed section follows instruction_files, so nothing is reported.
     assert!(!plan["warnings"].to_string().contains("instruction_files"));
 
-    // A second project, partial setting: unset items fall back to their defaults.
+    // A second project, partial setting (card C-87 S1): only the items it sets get a line; an
+    // unset item is never filled with a guessed default (before, `reports` read English here
+    // although the conversation is Japanese).
     // Applied through project-apply so the profile has a baseline for the later change.
     let japanese = project(None);
     let mut profile = profile_value(japanese.path());
@@ -321,12 +323,6 @@ fn managed_section_states_each_projects_setting() {
 
 Writing language by item (`language` in `.moai-cli/project.yaml`):
 - Conversation with the user: Japanese (`ja`)
-- Reports to the user: English (`en`)
-- Issue and PR records: English (`en`)
-- Commit messages: English (`en`)
-- Messages between agents: English (`en`)
-- Instruction files (AGENTS.md, rules): English (`en`)
-- Skill instructions: English (`en`)
 - Code comments: Chinese (`zh`)
 
 Confirm the approved";
