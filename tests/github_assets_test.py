@@ -259,8 +259,8 @@ ALLOWED_WRITES = {("moai-label-sync.yml", "apply"): {"issues"}}
 class WorkflowTest(unittest.TestCase):
     def workflows(self):
         paths = sorted(WORKFLOWS.glob("*.yml"))
-        # #2554 PR-A adds the candidate verification path: candidate.yml (the five targets and
-        # the verdict) and candidate-target.yml (one target, called five times).
+        # #2554 PR-A adds the candidate verification path: candidate.yml (the three supported
+        # targets and the verdict) and candidate-target.yml (one target, called three times).
         self.assertEqual([p.name for p in paths],
                          ["candidate-target.yml", "candidate.yml", "ci.yml", "moai-label-sync.yml"])
         return [(p, yaml.safe_load(p.read_text(encoding="utf-8"))) for p in paths]
@@ -296,7 +296,8 @@ class WorkflowTest(unittest.TestCase):
 
     def test_rc_ci_moves_the_full_matrix_after_merge_without_cancelling_it(self):
         """#2554 (user decision U10): PRs run linux-x86_64; the merging push and
-        workflow_dispatch run all four targets and windows-build. Only PR runs cancel an
+        workflow_dispatch run linux-x86_64, macos-arm64 and windows-build
+        (SPEC-20261117-supported-platforms). Only PR runs cancel an
         older run of the same PR; a post-merge run is never cancelled."""
         flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
         triggers = flow.get("on", flow.get(True))
@@ -328,7 +329,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn("github.run_attempt == '1'", group.split("||")[0])
         _on_pr, after_merge = self.rc_ci_matrix(flow["jobs"]["check"])
         shared = sorted(e["target"] for e in after_merge if e["target"].startswith("macos-"))
-        self.assertEqual(shared, ["macos-arm64", "macos-x86_64"])
+        self.assertEqual(shared, ["macos-arm64"])
         # The aggregate and windows-build keep the run-level group only.
         for job in ("ci", "windows-build"):
             self.assertNotIn("concurrency", flow["jobs"][job])
@@ -409,9 +410,11 @@ class WorkflowTest(unittest.TestCase):
                         "GITHUB_STEP_SUMMARY"):
             self.assertIn(command, script)
 
-    def test_rc_ci_runs_the_four_decided_targets_and_fails_when_any_fails(self):
-        """#2194 (decision 01:1x(11-09)): Linux x86_64/arm64 and macOS arm64/x86_64 on standard
-        free GitHub-hosted runner labels; a failing target fails `ci` instead of skipping it."""
+    def test_rc_ci_runs_the_supported_targets_and_fails_when_any_fails(self):
+        """SPEC-20261117-supported-platforms (user decision 2026-11-17, replacing the four
+        targets of decision 01:1x(11-09)): Linux x86_64 and macOS arm64 on standard free
+        GitHub-hosted runner labels (Windows x86_64 is the windows-build job); a failing target
+        fails `ci` instead of skipping it."""
         flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
         check = flow["jobs"]["check"]
         self.assertIs(check["strategy"]["fail-fast"], False)
@@ -420,16 +423,14 @@ class WorkflowTest(unittest.TestCase):
         # a PR leaves out all run after merge, with the same runner labels.
         self.assertEqual({e["target"]: e["runner"] for e in after_merge}, {
             "linux-x86_64": "ubuntu-24.04",
-            "linux-arm64": "ubuntu-24.04-arm",
             "macos-arm64": "macos-15",
-            "macos-x86_64": "macos-15-intel",
         })
         self.assertEqual(on_pr, [e for e in after_merge if e["target"] == "linux-x86_64"])
         self.assertEqual(check["runs-on"], "${{ matrix.runner }}")
-        # #2554: every target's cap leaves room over its measured run time (linux-arm64:
-        # median 28.1 min, max 29.1 min over 20 runs), so a slow day is not a timeout failure.
+        # Every target's cap leaves room over its measured run time, so a slow day is not a
+        # timeout failure.
         caps = {e["target"]: e["timeout"] for e in after_merge}
-        self.assertGreaterEqual(caps["linux-arm64"], 45)
+        self.assertEqual(caps, {"linux-x86_64": 30, "macos-arm64": 45})
         self.assertEqual(check["timeout-minutes"], "${{ matrix.timeout }}")
         aggregate = flow["jobs"]["ci"]
         self.assertEqual(aggregate["needs"], ["check"])
@@ -450,13 +451,26 @@ class WorkflowTest(unittest.TestCase):
 
     # --- #2554 PR-A: candidate verification (user decision #1975 6907950823) -----------------
 
+    # SPEC-20261117-supported-platforms: exactly the three supported platforms.
     CANDIDATE_TARGETS = {
         "linux-x86_64": "ubuntu-24.04",
-        "linux-arm64": "ubuntu-24.04-arm",
         "macos-arm64": "macos-15",
-        "macos-x86_64": "macos-15-intel",
         "windows-x86_64": "windows-2025",
     }
+
+    def test_no_workflow_names_a_dropped_platform(self):
+        """SPEC-20261117-supported-platforms: Intel macOS (`macos-15-intel`, `macos-x86_64`,
+        `x86_64-apple-darwin`) and Linux arm64 (`ubuntu-24.04-arm`, `linux-arm64`,
+        `aarch64-unknown-linux-gnu`) appear in no workflow, and each supported target does."""
+        texts = {p.name: p.read_text(encoding="utf-8") for p, _ in self.workflows()}
+        for name, text in texts.items():
+            for gone in ("macos-15-intel", "macos-x86_64", "x86_64-apple-darwin",
+                         "ubuntu-24.04-arm", "linux-arm64", "aarch64-unknown-linux-gnu"):
+                with self.subTest(workflow=name, gone=gone):
+                    self.assertNotIn(gone, text)
+        both = texts["ci.yml"] + texts["candidate.yml"]
+        for kept in ("linux-x86_64", "macos-arm64", "windows-2025"):
+            self.assertIn(kept, both)
 
     def candidate_flows(self):
         flows = dict(self.workflows())
@@ -490,9 +504,9 @@ class WorkflowTest(unittest.TestCase):
                 with self.subTest(step=step.get("name", step.get("uses"))):
                     self.assertNotIn("${{", step.get("run", ""))
 
-    def test_candidate_runs_the_five_targets_and_one_verdict_needs_all_of_them(self):
-        """(a)(b)(c): five targets on one commit, Windows included, one summary that fails when
-        any target is missing or failed."""
+    def test_candidate_runs_the_three_targets_and_one_verdict_needs_all_of_them(self):
+        """(a)(b)(c): the three supported targets on one commit, Windows included, one summary
+        that fails when any target is missing or failed."""
         caller, _ = self.candidate_flows()
         jobs = caller["jobs"]
         self.assertEqual(set(jobs), {"pin", "candidate", *self.CANDIDATE_TARGETS})
@@ -507,7 +521,7 @@ class WorkflowTest(unittest.TestCase):
                 self.assertEqual((with_["target"], with_["runner"]), (key, runner))
                 self.assertRegex(with_["nextest_sha256"], r"^[0-9a-f]{64}$")
         self.assertEqual(jobs["windows-x86_64"]["with"]["nextest_asset"], "x86_64-pc-windows-msvc")
-        # The four Unix targets are the same runners and the same nextest pins as ci.yml.
+        # The Unix targets are the same runners and the same nextest pins as ci.yml.
         ci = dict(self.workflows())[WORKFLOWS / "ci.yml"]
         _, after_merge = self.rc_ci_matrix(ci["jobs"]["check"])
         self.assertEqual({e["target"]: e["runner"] for e in after_merge},
@@ -535,7 +549,7 @@ class WorkflowTest(unittest.TestCase):
         # The reusable workflow's own job is reported as `<caller job name> / check`.
         self.assertEqual(target["jobs"]["check"]["name"], "check")
 
-    def test_candidate_summary_script_judges_the_same_five_targets(self):
+    def test_candidate_summary_script_judges_the_same_three_targets(self):
         spec = importlib.util.spec_from_file_location("candidate_summary", ROOT / "tools/candidate_summary.py")
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)

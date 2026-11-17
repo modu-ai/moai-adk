@@ -534,6 +534,7 @@ fn every_action_says_first_what_it_does_to_the_ledger() {
         ("take", "Writes the ledger."),
         ("release", "Writes the ledger."),
         ("handoff", "Writes the ledger."),
+        ("spec", "Writes the ledger."),
     ] {
         let out = run(&home, &["card", action, "--help"]);
         assert!(out.status.success());
