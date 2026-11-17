@@ -571,6 +571,10 @@ enum Command {
         /// file Claude Code also reads for sessions in a linked worktree (#2581).
         #[arg(long, default_value = "project")]
         scope: String,
+        /// Keys the request does not name keep the value MoAI owns, so setting one key never
+        /// drops another (card C-70).
+        #[arg(long)]
+        keep_owned: bool,
     },
     /// Write previewed Claude Code settings keys
     ///
@@ -589,6 +593,9 @@ enum Command {
         /// the existing file in `.moai-cli/settings-backups/` and replace the conflicting keys.
         #[arg(long)]
         confirm_replace: Option<String>,
+        /// The same `--keep-owned` the plan used; the digest binds the merged request.
+        #[arg(long)]
+        keep_owned: bool,
     },
     /// Preview the MoAI hook set for one host
     ///
@@ -657,7 +664,8 @@ enum Command {
         /// `claude` or `codex`.
         #[arg(long)]
         host: String,
-        /// `session-check`, `tool-preflight`, `tool-observe` or `turn-validation`.
+        /// `session-check`, `tool-preflight`, `tool-observe`, `turn-validation` or
+        /// `edit-diagnostics` (Claude Code only, opt-in).
         #[arg(long)]
         event: String,
     },
@@ -1939,9 +1947,13 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             };
             moai_cli::heavy_slot::status(&dir)
         }
-        Command::ClaudeSettingsPlan { project, scope } => {
+        Command::ClaudeSettingsPlan {
+            project,
+            scope,
+            keep_owned,
+        } => {
             let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
-            let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
+            let desired = settings_request(&project, &input()?, scope, keep_owned)?;
             // #3004 P4-3: the status line preview and its gate read HOME and PATH, like hooks-plan.
             let home = std::env::var_os("HOME").map(PathBuf::from);
             let path_env = std::env::var("PATH").unwrap_or_default();
@@ -1953,9 +1965,10 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             permission_reference,
             scope,
             confirm_replace,
+            keep_owned,
         } => {
             let scope = moai_cli::claude::SettingsScope::parse(&scope)?;
-            let desired = moai_cli::claude::user_settings_desired_in(&project, &input()?, scope)?;
+            let desired = settings_request(&project, &input()?, scope, keep_owned)?;
             let home = std::env::var_os("HOME").map(PathBuf::from);
             let path_env = std::env::var("PATH").unwrap_or_default();
             moai_cli::status_line::apply_in(
@@ -2333,6 +2346,21 @@ fn program_name() -> String {
     moai_cli::help::bin_name(&argv0.to_string_lossy()).to_string()
 }
 
+/// The desired settings of a `claude-settings-plan` / `-apply` request read from stdin; with
+/// `--keep-owned` the keys MoAI owns and the request leaves out are kept (card C-70).
+fn settings_request(
+    project: &std::path::Path,
+    request: &serde_json::Map<String, serde_json::Value>,
+    scope: moai_cli::claude::SettingsScope,
+    keep_owned: bool,
+) -> Result<serde_json::Map<String, serde_json::Value>, String> {
+    if keep_owned {
+        moai_cli::claude::user_settings_desired_keep_owned(project, request, scope)
+    } else {
+        moai_cli::claude::user_settings_desired_in(project, request, scope)
+    }
+}
+
 /// The painter for the stderr error frame: S2's per-stream color decision (#2803).
 fn stderr_painter() -> moai_cli::ui::Painter {
     moai_cli::ui::Painter::for_stream(moai_cli::ui::Stream::Stderr, moai_cli::ui::ColorFlag::Auto)
@@ -2464,7 +2492,13 @@ fn lane_env(lane: &str, base: Option<&std::path::Path>) -> ExitCode {
     let resolved = std::env::current_dir()
         .map_err(|e| format!("lane-env: no working folder: {e}"))
         .and_then(|cwd| {
-            moai_cli::lane_env::resolve(lane, &base, std::env::var_os("HOME").as_deref(), &cwd)
+            moai_cli::lane_env::resolve(
+                lane,
+                &base,
+                std::env::var_os("HOME").as_deref(),
+                std::env::var_os("USERPROFILE").as_deref(),
+                &cwd,
+            )
         });
     match resolved {
         Ok(env) => {
@@ -2700,7 +2734,11 @@ pub(crate) fn main() -> ExitCode {
             .then(std::env::current_dir)
             .and_then(Result::ok)
             .and_then(|cwd| {
-                moai_cli::heavy_slot::Here::of(&cwd, std::env::var_os("HOME").as_deref())
+                moai_cli::heavy_slot::Here::of(
+                    &cwd,
+                    std::env::var_os("HOME").as_deref(),
+                    std::env::var_os("USERPROFILE").as_deref(),
+                )
             });
         if let Some(note) = moai_cli::heavy_slot::build_folder_note(
             name,
@@ -2735,7 +2773,11 @@ pub(crate) fn main() -> ExitCode {
         }
         Ok(result) => {
             // A computed delta is evidence, not audit admission; only a pure replay exits 0.
-            let exit = if op == "audit.delta" && result["status"] != "pure_merge" {
+            // A trailer check that found a failing commit keeps its result and exits 1
+            // (SPEC-20261117-session-trailer, audit B1).
+            let exit = if (op == "audit.delta" && result["status"] != "pure_merge")
+                || (op == "trailers.check" && result["ok"] == false)
+            {
                 ExitCode::from(1)
             } else {
                 ExitCode::SUCCESS
@@ -2901,12 +2943,18 @@ mod tests {
     #[test]
     fn version_flag_reports_the_headver_build() {
         let local = moai_cli::local_build::number(option_env!("MOAI_LOCAL_BUILD")).unwrap();
+        // SPEC-20261117-headver-ci-number: a CI build carries `MOAI_BUILD_NUMBER` instead.
+        let ci = moai_cli::local_build::number_of(
+            moai_cli::local_build::CI_ENV,
+            option_env!("MOAI_BUILD_NUMBER"),
+        )
+        .unwrap();
         let head = moai_cli::headver::parse_head(include_str!("../HEADVER")).unwrap();
         let parts: Vec<&str> = moai_cli::BUILD_VERSION.split('.').collect();
         assert_eq!(parts.len(), 3, "{}", moai_cli::BUILD_VERSION);
         assert_eq!(parts[0], head.to_string());
         assert_eq!(parts[1].len(), 4, "{}", moai_cli::BUILD_VERSION);
-        assert_eq!(parts[2], local.unwrap_or(0).to_string());
+        assert_eq!(parts[2], local.or(ci).unwrap_or(0).to_string());
         // The earlier scheme's builds read as older.
         assert!(moai_cli::headver::is_newer(
             moai_cli::BUILD_VERSION,
@@ -2919,9 +2967,12 @@ mod tests {
         let long = format!("{signature}\n{}", moai_cli::BUILD_NOTE);
         assert_eq!(Cli::command().get_long_version(), Some(long.as_str()));
         assert_eq!(moai_cli::LONG_VERSION, long);
-        let kind = match local {
-            Some(n) => format!("local build {n} (MOAI_LOCAL_BUILD), built "),
-            None => "unnumbered build (no MOAI_LOCAL_BUILD), built ".to_string(),
+        let kind = match (local, ci) {
+            (Some(n), _) => format!("local build {n} (MOAI_LOCAL_BUILD), built "),
+            (None, Some(n)) => format!("CI build {n} (MOAI_BUILD_NUMBER), built "),
+            (None, None) => {
+                "unnumbered build (no MOAI_LOCAL_BUILD or MOAI_BUILD_NUMBER), built ".to_string()
+            }
         };
         assert!(
             moai_cli::BUILD_NOTE.starts_with(&kind),

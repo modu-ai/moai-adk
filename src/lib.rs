@@ -10,6 +10,7 @@ pub mod audit;
 pub mod audit_claim;
 pub mod audit_clone;
 pub mod audit_delta;
+pub mod audit_gate;
 pub mod audit_stale;
 pub mod banner;
 pub mod baseline;
@@ -36,6 +37,7 @@ pub mod decision;
 pub mod decision_file;
 pub mod decision_log;
 pub mod dispatch;
+pub mod edit_diagnostics;
 pub mod error_next;
 pub mod flake;
 pub mod flake_record;
@@ -143,6 +145,8 @@ pub mod startable;
 pub mod state_root;
 pub mod status_line;
 pub mod statusline;
+pub mod tdd;
+pub mod trailers;
 pub mod ui;
 pub mod ui_summary;
 pub mod ui_text;
@@ -250,6 +254,26 @@ pub(crate) const SECRET_SHAPES: [&str; 7] = [
     "token=",
     "api_key=",
 ];
+
+/// True when `s` carries one of [`SECRET_SHAPES`], compared lower-case. `sk-` counts only at the
+/// start of a word — first in `s`, or after a character that is not an ASCII letter or digit —
+/// so ordinary words such as `task-based`, `risk-free` or `desk-top` are not refused (card
+/// C-90); every other shape counts anywhere. `spec::check_text` used this `sk-` rule first
+/// (#2001 r26); profile text, scope paths and spec text share it — text a person writes, where a
+/// false refusal is the cost. Logs and receipts (`redact::contains_secret_shape`, install
+/// receipts) keep counting `sk-` anywhere (C-90 audit B1, N2).
+pub(crate) fn secret_shaped(s: &str) -> bool {
+    let lower = s.to_ascii_lowercase();
+    SECRET_SHAPES.iter().any(|shape| match *shape {
+        "sk-" => lower.match_indices(shape).any(|(i, _)| {
+            lower[..i]
+                .chars()
+                .next_back()
+                .is_none_or(|c| !c.is_ascii_alphanumeric())
+        }),
+        _ => lower.contains(shape),
+    })
+}
 // Digest v1: sorted UTF-8 relative file paths and bytes, each framed by a u64 big-endian length.
 // Symlinks and special files are rejected. This is content integrity, not publisher trust.
 pub fn package_digest(root: &Path) -> Result<String> {

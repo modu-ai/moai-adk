@@ -1,0 +1,66 @@
+# Audit gate (SPEC-20261117-audit-gate; CI redesign D2, user decision 2026-11-17): the check that
+# says whether a pull request head has the audit its tier needs, read from the PR's verdict
+# comments by `moai audit-gate` (src/audit_gate.rs). Rules: a posted FAIL stops every tier until
+# the same auditor posts a later PASS; tier 0 needs nothing else; tier 1 and 2 need a PASS on
+# exactly this head by an auditor lane that is no `Moai-Session:` author. Whether the PASS cites
+# the CI run is not checked yet (a later slice).
+#
+# The check is named `audit-gate`. The integration ruleset still requires the hand-posted
+# `moai/audit` status; moving that requirement to this job (pinned to the GitHub Actions app) is
+# a ruleset change the user selects (SPEC Decisions D3, before/after JSON there).
+#
+# The gate is built from the base commit, not the PR head, so a PR cannot change the rule that
+# judges it. `pull_request` only (no `pull_request_target`): the token is read-only and a fork
+# PR gets no secrets. A verdict posted after the run does not start a new one (an
+# `issue_comment` workflow runs from the default branch, which is not v2026.11.0): re-run this
+# job after posting a verdict (`gh run rerun <run-id>`); the job reads the comments when it runs.
+name: audit-gate
+
+on:
+  pull_request:
+    branches: [v2026.11.0]
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audit-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  audit-gate:
+    name: audit-gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    # Read-only: the PR (pull-requests) and its comments (issues).
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - name: Toolchain (rust-toolchain.toml)
+        shell: bash
+        run: |
+          rustup show
+          rustc -V
+      - name: Dependency cache (restore only)
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: false
+      - name: Build the gate (base commit)
+        shell: bash
+        run: cargo build --locked --bin moai
+      - name: Audit gate
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          ./target/debug/moai audit-gate --pr "$PR_NUMBER" --head "$PR_HEAD" --repo "$REPO" --require-pass

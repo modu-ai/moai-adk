@@ -17,7 +17,9 @@ Git calls the driver as `%O %A %B %P` before it writes any merged file to the wo
 (measured with git 2.54 for merge, rebase, cherry-pick and merge-tree: the working tree and
 the index still hold our side, and drivers run one path at a time in reverse path order), so
 the driver never reads the package from disk. It merges the three manifests like
-`source_manifest.py write` does (each `origin` three-way) and takes each sha256 three-way:
+`source_manifest.py write` does (each `origin` three-way), writes the result through the same
+`render` (card C-92: `files` in sorted key order, so its bytes equal what `write` makes for the
+same tree, and a duplicate key in a side is refused) and takes each sha256 three-way:
 equal sides, or the side that changed from the common version. For a file both sides changed,
 it finds the three versions of that file by their sha256 among the file's past versions
 (`git log --all`), merges them with `git merge-file --diff-algorithm=histogram` (the algorithm

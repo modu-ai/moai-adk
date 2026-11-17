@@ -346,17 +346,25 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
             .map(String::as_str)
             .collect::<Vec<_>>()
     };
+    // SPEC-20261117-atlas-in-read-plan: the two read-only agents of READ and PLAN check the
+    // code atlas before they search.
     assert_eq!(
         reads("moai-plan"),
         [
             "internal/core-rules",
             "internal/decide",
-            "internal/interview"
+            "internal/interview",
+            "internal/code-atlas"
         ]
     );
     assert_eq!(
         reads("moai-research"),
-        ["internal/core-rules", "adapters/aside", "adapters/orca"]
+        [
+            "internal/core-rules",
+            "adapters/aside",
+            "adapters/orca",
+            "internal/code-atlas"
+        ]
     );
     assert_eq!(
         reads("moai-impl"),
@@ -469,8 +477,12 @@ fn internal_references_say_when_to_read_them() {
         "versioning",
         // C-77: the checks an implementer runs before asking for an audit.
         "self-check",
+        // SPEC-20261117-atlas-in-read-plan: READ and PLAN read the code atlas when it is fresh.
+        "code-atlas",
         // C-82: where agent and audit builds go and how the build folder is emptied.
         "build-folder",
+        // SDD-6 (user decision U-B): the identity trailers every agent commit carries.
+        "commit-trailers",
         // SPEC-20261117-quality-guides: the project's own check commands, AC-to-test tracing
         // and the dependency existence check, read by RUN and VERIFY through the chain rules.
         "quality",
@@ -604,7 +616,9 @@ fn interview_question_bank_covers_the_project_axes() {
             // C-69: the versioning scheme, then the one detail the pick may need.
             "versioning",
             "versioning_format",
-            "versioning_head"
+            "versioning_head",
+            // C-70: the git work flow, m-flow recommended.
+            "work_flow"
         ]
     );
     for r in &rows {
@@ -632,7 +646,8 @@ fn interview_question_bank_covers_the_project_axes() {
                     "profile `tools`",
                     "profile `development_methods`",
                     "profile `hosts`",
-                    "profile `versioning`"
+                    "profile `versioning`",
+                    "profile `work_flow`"
                 ]
                 .contains(&to),
             "{id}: {to}"
@@ -641,6 +656,61 @@ fn interview_question_bank_covers_the_project_axes() {
     assert!(bank.contains("skip every row that reading already answered"));
     assert!(bank.contains("\"source\": \"repo\""));
     assert!(bank.contains("\"source\": \"user\""));
+}
+
+/// Card C-70 AC-1/AC-4: the `work_flow` row comes after the versioning rows, offers m-flow
+/// first and recommended with three alternatives, and the bank states each flow in a few lines;
+/// the PROJECT workflow previews the worktree base write and applies it only after the pick.
+#[test]
+fn work_flow_row_offers_m_flow_first_and_the_bank_states_each_flow() {
+    let read = |rel: &str| std::fs::read_to_string(package().join(rel)).unwrap();
+    let interview = read("references/internal/interview.md");
+    let rows: Vec<&str> = interview.lines().filter(|l| l.starts_with("| `")).collect();
+    let at = |id: &str| {
+        rows.iter()
+            .position(|l| l.starts_with(&format!("| `{id}` |")))
+            .unwrap_or_else(|| panic!("no `{id}` row"))
+    };
+    assert!(at("work_flow") > at("versioning_head"));
+    let cells: Vec<String> = rows[at("work_flow")]
+        .trim_matches('|')
+        .split(" | ")
+        .map(|c| c.trim().to_string())
+        .collect();
+    assert_eq!(cells[1], "the profile has no `work_flow`");
+    assert!(cells[3].starts_with("m-flow (recommended)"), "{cells:?}");
+    for alt in ["GitHub flow", "trunk-based", "git-flow"] {
+        assert!(cells[3].contains(alt), "{alt}");
+    }
+    assert_eq!(cells[4], "profile `work_flow`");
+    let section = &interview[interview.find("## Git work flow").expect("flow section")..];
+    for text in [
+        "- **m-flow**",
+        "- **GitHub flow**",
+        "- **trunk-based**",
+        "- **git-flow**",
+        "`worktree.baseRef: head`",
+        "push the branch and open a pull request (recommended)",
+        "`{\"flow\": \"m-flow\" | \"github-flow\" | \"trunk-based\" | \"git-flow\"",
+        // Audit B1 (decision 2026-11-17): one SPEC = one branch = one pull request.
+        "branch `spec/<yyyymmdd>-<slug>`",
+        "one SPEC, one branch, one pull request",
+    ] {
+        assert!(section.contains(text), "the flow section lacks {text:?}");
+    }
+    // A card number never goes into a shared place, so no `card/` branch is described.
+    assert!(!section.contains("card/"), "{section}");
+    let project = read("workflows/project.md");
+    for text in [
+        "the `work_flow` row",
+        "`moai claude-settings-plan <project> --keep-owned`",
+        "`{\"worktree\": {\"baseRef\": \"head\"}}`",
+        "only after the user picks it",
+        // Audit N1: a user's own `worktree` object is completed by the user, never replaced.
+        "ask the user to add `\"baseRef\": \"head\"` to their own `worktree` object",
+    ] {
+        assert!(project.contains(text), "project.md lacks {text:?}");
+    }
 }
 
 /// Card C-69: the `versioning` rows offer keeping the detected scheme first, else SemVer first,
@@ -744,9 +814,14 @@ fn versioning_rows_and_reference_cover_the_three_schemes() {
         "at most 9999",
         "version order, not date",
         "no program is started",
+        // Card C-90: the credential-shape rule the profile applies to custom text.
+        "a key prefix at the start of a word or a token or password assignment is refused, while a prefix inside a word, as in `task-based` or `risk-free`, is ordinary text, card C-90",
     ] {
         assert!(reference.contains(text), "versioning.md lacks {text:?}");
     }
+    assert!(interview.contains(
+        "the text rules it must pass, credential shapes included, are in `internal/versioning`"
+    ));
     let project = read("workflows/project.md");
     // Audit B1: detection starts no program, the versioning fact included.
     for text in [

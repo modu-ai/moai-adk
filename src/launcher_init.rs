@@ -48,8 +48,49 @@ pub struct Prepared {
 
 /// Initializes `cwd` for a launch on `host` (`claude`, `glm` or `codex`). Refuses — before any
 /// write — when git is missing from PATH, or when `cwd` is not a repository and is HOME itself
-/// or the file-system root. Under `dry_run` it writes nothing and reports the plan.
+/// or the file-system root. Under `dry_run` it writes nothing and reports the plan. A missing
+/// skill copy for the host ([`missing_skill`]) adds its warning as a second line of the note.
 pub fn prepare(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String> {
+    let mut prepared = prepare_project(cwd, host, dry_run)?;
+    if let Some(warning) = missing_skill(host) {
+        prepared.note = Some(match prepared.note.take() {
+            Some(note) => format!("{note}\n{warning}"),
+            None => warning,
+        });
+    }
+    Ok(prepared)
+}
+
+/// SPEC-20261117-installer-skill-agents REQ-10: the warning for a launch whose host has no
+/// `SKILL.md` in its copy of the MoAI skill — the folder is the update code's own projection root
+/// (`crate::update::projection_root`), and the offer is the `moai update` preview that installs
+/// it. Reads only; `None` when the copy is there or HOME is unknown.
+pub fn missing_skill(host: &str) -> Option<String> {
+    let (skill_host, name) = match host {
+        "claude" | "glm" => ("claude", "Claude Code"),
+        "codex" => ("codex", "Codex"),
+        _ => return None,
+    };
+    let home = crate::key_vault::home().ok()?;
+    // C-79: the host folder can be relocated; a variable that cannot be used is said by name.
+    let root = match crate::update::projection_root(&home, skill_host) {
+        Ok(root) => root,
+        Err(why) => {
+            return Some(format!(
+                "moai: the MoAI skill folder for {name} cannot be found: {why}"
+            ))
+        }
+    };
+    if root.join("SKILL.md").is_file() {
+        return None;
+    }
+    Some(format!(
+        "moai: the MoAI skill is not installed for {name} ({} has no SKILL.md); preview what it installs (nothing is written until you confirm): moai update",
+        root.display()
+    ))
+}
+
+fn prepare_project(cwd: &Path, host: &str, dry_run: bool) -> Result<Prepared, String> {
     // An identity error (a git failure, a refused path) initializes nothing and leaves the
     // launch as it was before #2481: numbering reports its own error, other launches go on.
     let Ok(id) = identity(cwd) else {

@@ -20,6 +20,7 @@ Rules for every chain:
 - The agent that implemented a change never audits it. `moai-audit` runs in a separate context on the exact head, and the parent session, not the agent, writes the verdict.
 - A bug fix starts with a test that fails for the reported reason (`moai-impl` reads `internal/test-design`).
 - Whoever wrote a change runs `internal/self-check` before asking for an audit or opening a pull request.
+- Every commit for a SPEC carries the identity trailers of `internal/commit-trailers`, and every audit verdict names its auditor's session the same way.
 - In a user project, RUN and VERIFY take the check commands, the AC-to-test tracing and the dependency existence check from `internal/quality`.
 - `moai-research` fans out: the parent may start several at once, each on one question, and merges their answers with the sources and read times they report.
 - A choice the request did not make is sorted with `internal/decide` before anyone is asked.

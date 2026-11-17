@@ -5,12 +5,12 @@ Usage: moai <command> [options]
 
 Getting started
   1. moai install-inspect  Check the installed MoAI
-  2. moai cc               Start a session in this folder
+  2. moai update           Install or update the MoAI skill
+                           and agents
+  3. moai cc               Start a session in this folder
                            (or: codex, glm)
-  3. /moai project         Inside the session: prepare this
-                           project
-  4. moai update           Update MoAI from the installed
-                           package
+  4. /moai project         In the session: set up this
+                           project ($moai in Codex)
 
 Commands
   Start

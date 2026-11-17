@@ -19,6 +19,7 @@ Project
   ledger-status           Show the project's ledger state
   card                    Work with the project's local cards
   spec                    Write, check, list and show the project's SPECs
+  tdd                     Record the TDD cycle that locks the RED tests during GREEN
   ledger-register-plan    Preview registering the project's ledger
   ledger-register-apply   Create the previewed project ledger
   card-import-plan        Preview importing a host's open issues as cards
@@ -161,6 +162,9 @@ Lane and leader
   pr-confirm              Record a pull request's acknowledgement
   audit-claim             Reserve the audit of one pull request head
   audit-verdict-line      Print the verdict first line for the audited head
+  audit-gate              Decide whether a PR head has the audit its tier needs
+  trailers                Print the identity trailers for a commit
+  trailer-check           Report commits with missing or malformed trailers
   audit-clone-plan        Preview an independent audit clone
   labels-check            Report Issues whose labels break the rule
   decision-due            Sort the unanswered decisions of a bundle

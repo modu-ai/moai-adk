@@ -1506,4 +1506,19 @@ fn a_cargo_run_is_warned_about_only_for_a_shared_or_foreign_folder() {
     common::write_executable(&other, "#!/bin/sh\nexit 0\n");
     let err = run_in(&one, Some(&repo.join("target")), &other);
     assert!(!err.contains("CARGO_TARGET_DIR"), "{err}");
+    // C-82 slot audit N-a: off Windows, USERPROFILE is never the home. With HOME unset and only
+    // USERPROFILE set the worktree's build folder is unknown, so even a foreign folder gets no
+    // line: `Here::of` passes `cfg!(windows)`, not `true`.
+    let mut c = acquire(&slots, "2", "agent-7", &[cargo.to_str().unwrap()]);
+    c.current_dir(&one)
+        .env_remove("HOME")
+        .env("USERPROFILE", &home)
+        .env("CARGO_TARGET_DIR", repo.join("target"));
+    let out = run(c);
+    assert!(out.status.success(), "{}", text(&out));
+    assert!(
+        !String::from_utf8_lossy(&out.stderr).contains("CARGO_TARGET_DIR"),
+        "{}",
+        text(&out)
+    );
 }
