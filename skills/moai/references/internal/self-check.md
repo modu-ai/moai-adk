@@ -2,7 +2,7 @@
 
 When to read: after the change is made and before you ask for an audit or open a pull request, as `moai-impl` or any session that wrote the change. One line per check, with the command to run or the thing to look for. A line that does not fit the change or the project: skip it with the reason, under `Not run` or in the `## Self-Audit` section, never silently.
 
-In the moai-adk repository, `tools/self_check.sh` runs the machine items in one go (`bin-moai`, `bin-moai-cli`, `clippy`, `fmt`, `fmt-ops`, `git-env-scrub`, `home-isolation`, `ac-command-lint`, `package-inspect`, `package-size`, `manifest`, `diff-check`, `python`) and prints one `self-check: <item> exit=<code>` line each; copy those lines into the `## Self-Audit` section. `--full-python` runs CI's whole Python suite instead of the touched files. A heavy item the machine's slot refused prints `exit=75 slot-refused (not run)`: report it as not run, never as passed. Elsewhere, run the project's own equivalents.
+In the moai-adk repository, `tools/self_check.sh` runs the machine items in one go (`bin-moai`, `bin-moai-cli`, `clippy`, `fmt`, `fmt-ops`, `git-env-scrub`, `home-isolation`, `ac-command-lint`, `package-inspect`, `package-size`, `manifest`, `diff-check`, `python`) and prints one `self-check: <item> exit=<code>` line each; copy those lines into the `## Self-Audit` section. `--full-python` runs CI's whole Python suite instead of the touched files. A heavy item the machine's slot refused prints `exit=75 slot-refused (not run)`: report it as not run, never as passed. Elsewhere, run the project's own equivalents. Every build here uses the worktree's build folder and `CARGO_INCREMENTAL=0` (`internal/build-folder`).
 
 ## Tests
 

@@ -1088,8 +1088,9 @@ fn a_failed_fetch_is_reported_and_the_pass_goes_on() {
 /// #2906 S3 AC15: the shell loop's jq list (`auto_loop.sh`) never hands these to its gate —
 /// the last `ci`/`rc-ci` conclusion is not SUCCESS, or the last verdict is not a PASS on the
 /// current head. The dry run reaches the same end: `stopped`, never a `would_*` action.
-/// #2906 S5b: CI no longer blocks, so a failed or running `ci` stops only without a
-/// `local-check:` pass line for the head (G5); with one the PR would merge.
+/// C-84 (user decision 2026-11-17 "CI 성공 + PASS"; was #2906 S5b: a `local-check:` pass line
+/// let a failed or running `ci` merge): a failed or running `ci` on the head stops G5 whether
+/// or not the head has a local-check pass line.
 #[test]
 fn shell_prefilter_cases_stop_in_a_dry_run() {
     let older = "efefefefefefefefefefefefefefefefefefefef";
@@ -1145,7 +1146,11 @@ fn shell_prefilter_cases_stop_in_a_dry_run() {
         let t = RecordedTransport::new(ex);
         let out = once(&target(&dir), "", false, true, &t, &t, &NoClock).unwrap();
         let row = &out["pull_requests"][0];
-        assert_eq!(row["outcome"], json!("would_merge"), "ci={ci}: {out}");
+        assert_eq!(
+            (row["outcome"].as_str(), row["rule"].as_str()),
+            (Some("stopped"), Some("G5")),
+            "ci={ci}: {out}"
+        );
         assert!(writes(&t).is_empty(), "ci={ci}: {:?}", writes(&t));
     }
 }

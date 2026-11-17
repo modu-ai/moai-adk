@@ -13,7 +13,7 @@ When to read: once per session, before the first step of any route or agent task
 
 ## Language and output
 
-7. Answer in the user's conversation language, in native phrasing rather than English mapped word for word; code, identifiers, paths and commands stay as they are. Code comments and commit messages follow the project's language setting.
+7. Answer in the user's conversation language (the project's language setting, which the session-start note repeats after a compaction), in native phrasing rather than English mapped word for word; relay a subagent's report to the user in that language, never as it came. Code, identifiers, paths and commands stay as they are. Code comments and commit messages follow the project's language setting.
 8. Never predict durations in plans or reports; give order and priority.
 9. Show the user Markdown only, never internal agent-to-agent markup.
 

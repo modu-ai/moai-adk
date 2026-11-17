@@ -1,7 +1,8 @@
 //! What `moai card list | show | add` do (Issue #3070 C1, plan comment 6905829690). The
 //! `src/ops/card.rs` file only parses arguments and calls these.
 //!
-//! `show` also prints the reservation that holds the card now (card C-53 S1), or `null`.
+//! `show` also prints the reservation that holds the card now (card C-53 S1), or `null`; `show`
+//! and `list` print the SPEC id the card names (`spec`, SDD-4), or `null`.
 //!
 //! `list` and `show` open the ledger read-only (`open_read_only`: no folder, no file, no journal).
 //! `add` is the only writer here: one `BEGIN IMMEDIATE` transaction that stores the card, its
@@ -109,11 +110,12 @@ pub fn list(project: &Path, home: &Path, state: Option<&str>) -> Result<Value> {
     };
     let conn = ledger.conn();
     let mut stmt = conn
-        .prepare(
+        .prepare(&format!(
             "SELECT card_id, title, kind, state, priority, rev, updated_at, \
-                    source_host, source_project, source_number \
+                    source_host, source_project, source_number, {} \
                FROM card WHERE (?1 IS NULL OR state = ?1) ORDER BY card_id",
-        )
+            super::spec_link::LINKED_COLUMN
+        ))
         .map_err(|e| LedgerError::from(e).to_string())?;
     let rows = stmt
         .query_map([state], |r| {
@@ -134,6 +136,7 @@ pub fn list(project: &Path, home: &Path, state: Option<&str>) -> Result<Value> {
                     (Some(h), Some(p), Some(n)) => json!(format!("{h}:{p}#{n}")),
                     _ => Value::Null,
                 },
+                "spec": r.get::<_, Option<String>>(10)?,
             }))
         })
         .map_err(|e| LedgerError::from(e).to_string())?;
@@ -267,6 +270,9 @@ pub fn show(project: &Path, home: &Path, reference: &str) -> Result<Value> {
     card["criteria"] = json!(criteria);
     card["notes"] = json!(notes);
     card["links"] = json!(links);
+    card["spec"] = json!(super::spec_link::kind_and_spec(conn, card_id)
+        .map_err(sql_err)?
+        .and_then(|(_, spec)| spec));
     card["reservation"] = ledger::reservation::current(conn, card_id)
         .map_err(|e| e.to_string())?
         .map_or(Value::Null, |r| super::dispatch::reservation_json(&r));

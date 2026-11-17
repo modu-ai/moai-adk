@@ -18,6 +18,7 @@
 
 use super::command::{actor, open_for_write};
 use super::input::{self, CardRef};
+use super::spec_link;
 use crate::ledger::reservation::{self, Reservation};
 use crate::ledger::{self};
 use crate::session_current;
@@ -267,11 +268,18 @@ pub struct TakeRequest<'a> {
     pub scope: &'a [String],
     pub worktree: Option<&'a str>,
     pub branch: Option<&'a str>,
+    /// Refuse a card that changes the repository unless the SPEC it names is approved.
+    pub require_approved_spec: bool,
 }
 
 /// `card take C-n`: reserves a `ready` card for the holder. Without `--scope` the card's own
 /// write scope is used, read inside the reserving transaction (`reserve_own_scope`), so a
 /// `card scope` at the same moment cannot leave the reservation with the old scope.
+///
+/// The answer carries the SPEC the card names and its status (`spec`) and a warning when a card
+/// that changes the repository has no approved SPEC (`warnings`, SDD-4). With
+/// `require_approved_spec` that warning is a refusal instead, before anything is reserved. The
+/// link is read before the reserving transaction: this is a warning gate, not the merge gate.
 pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>) -> Result<Value> {
     let card_id = card_id("take", reference)?;
     // Checked as `add --scope` checks it: no absolute path, no `.` or `..` (card C-68 N-e).
@@ -281,6 +289,20 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
         Some(checked_scope("take", req.scope)?)
     };
     let (id, mut ledger) = open_for_write(project, home)?;
+    // A card that is not there has no SPEC; `reserve` answers `card not found` for it.
+    let (spec, warning) = match spec_link::kind_and_spec(ledger.conn(), card_id)
+        .map_err(|e| ledger::LedgerError::from(e).to_string())?
+    {
+        Some((kind, spec)) => {
+            spec_link::status(project, &input::card_name(card_id), &kind, spec.as_deref())
+        }
+        None => (Value::Null, None),
+    };
+    if let (true, Some(why)) = (req.require_approved_spec, &warning) {
+        return Err(format!(
+            "card take refused: --require-approved-spec: {why}; nothing was taken"
+        ));
+    }
     let lease = req.lease_secs.unwrap_or(DEFAULT_LEASE_SECS);
     let r = match given {
         Some(scope) => reservation::reserve(
@@ -304,7 +326,8 @@ pub fn take(project: &Path, home: &Path, reference: &str, req: &TakeRequest<'_>)
     .map_err(|e| e.to_string())?;
     Ok(json!({
         "action": "take", "project_id": id, "reservation": reservation_json(&r),
-        "state": "active", "writes": true,
+        "state": "active", "spec": spec, "warnings": warning.into_iter().collect::<Vec<_>>(),
+        "writes": true,
     }))
 }
 
