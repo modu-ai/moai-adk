@@ -53,10 +53,28 @@ fn the_reference_states_the_rules_the_user_decided() {
         "`moai trailers --spec <SPEC-ID>`",
         "`moai trailer-check <base>..HEAD`",
         "`internal/commit-trailers`",
+        // SPEC-20261118-skill-audit-followups REQ-1 (SDD-5 audit N-a): the session line is
+        // conditional on the host giving an id.
+        "when the host gives a session id",
+        "otherwise `Moai-Spec` only",
     ] {
         assert!(session.contains(phrase), "{session} lacks {phrase}");
     }
     assert!(!session.contains("planned"), "{session}");
+}
+
+/// SPEC-20261118-skill-audit-followups REQ-3 (SDD-6 audit N1): the trailer reference tells CI
+/// and a detached checkout to name the branch, in the `trailer-check` item itself.
+#[test]
+fn the_trailer_reference_names_the_branch_flag_for_ci() {
+    let text = read("skills/moai/references/internal/commit-trailers.md");
+    let item = text
+        .lines()
+        .find(|l| l.contains("`moai trailer-check <base>..HEAD`"))
+        .expect("commit-trailers.md names trailer-check");
+    for phrase in ["`--branch <name>`", "detached", "CI"] {
+        assert!(item.contains(phrase), "{item} lacks {phrase}");
+    }
 }
 
 /// Every `moai spec <action>` the reference names is a subcommand of this build. The card
