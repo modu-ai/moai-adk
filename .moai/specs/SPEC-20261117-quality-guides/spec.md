@@ -82,4 +82,24 @@ SPEC은 1단계로 지침과 데이터만 더해요: `internal/quality`와 감�
 
 ## Result
 
-(검사 뒤에 채워요.)
+구현 에이전트가 2026-11-17에 채웠어요. SYNC와 AUDIT가 다시 확인해요. 기준 `daf8c68c69`(origin/v2026.11.0), 변경 커밋
+`74ef7bf706`. 빌드 폴더는 이 worktree의 `target/`, `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=4`, macOS arm64, cargo는
+한 번에 하나. `moai heavy-slot-acquire`가 75(스왑 81%)라 리더 지시대로 슬롯 밖에서 돌렸어요.
+
+가이드 크기(바이트): rust 1,900 · python 2,328 · javascript-typescript 2,357 · go 1,510 · java-kotlin 1,881 · ruby 1,450 ·
+php 1,575 · c-cpp 1,851 · csharp 1,706 · swift 1,567. `internal/quality.md` 4,148.
+
+- AC-1: met — `agent_defs_package` exit 0(17 passed). mutation: chain 규칙 줄 삭제 → exit 101 "internal/quality is
+  read by no agent and no chain"; 되돌린 뒤 exit 0.
+- AC-2: met — `skill_references_test.py` OK(5). 가이드 시험은 파일을 쓴 뒤에 썼어요(RED 없음); 대신 mutation 2개:
+  swift 행 삭제 → 2개 FAIL(행 목록, 이름·파일 일치); go 행을 `languages/golang.md`로 → 1개 FAIL. 되돌린 뒤 OK.
+- AC-3: met — `verify.md:1`, `run.md:1`. 처음에 `references/internal/quality.md` 경로로 썼다가 `product_cli`
+  `routes_reference_existing_workflows`(작업 흐름은 패키지 경로를 싣지 않음)가 exit 101로 막아 `internal/quality`로 바꿨어요.
+- AC-4: met — `tools/source_manifest.py check` exit 0(새 항목 11개는 origin을 손으로 쓰고 `write`가 sha256을 계산);
+  `product_cli` exit 0(75 passed).
+- AC-5: met — `moai spec check --all --project .` exit 0(SPEC 4개, errors 0, warnings 0); `mode_workflow_steps` 0(42);
+  `--bin moai` 0(27); `cargo fmt --check` 0; `moai package-inspect skills/moai` exit 0(digest
+  `sha256:c3854cf03e960688434430d84a487388dce85f68a993f4e6a6f789c025c13099`); Python 4개 파일 88개 OK.
+
+실행 안 함: 전체 `cargo test`, clippy(Rust는 시험 목록 한 줄만 바뀜), 가이드의 명령을 각 언어 도구로 실제로 돌려 보는
+일(이 기기에 도구가 다 있지 않고, 1단계는 지침만), Linux·Windows.
