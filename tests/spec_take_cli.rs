@@ -300,6 +300,106 @@ fn take_links_the_card_in_the_local_ledger() {
     assert!(!r["next"].to_string().contains(&name), "{r}");
 }
 
+/// Every path and byte under the temporary HOME: the project, its `.git` and the ledger.
+fn everything(w: &World) -> Vec<(String, Vec<u8>)> {
+    common::cli::tree_state(w.home.path())
+}
+
+#[test]
+fn a_card_refusal_changes_nothing() {
+    let w = World::new();
+    let id = w.draft_spec("login-fix");
+    for (card, says) in [
+        ("C-999", "there is no C-999"),
+        ("#5", "C-number"),
+        ("login", "C-number"),
+    ] {
+        let before = everything(&w);
+        let m = refused(&w.take(&id, &["--card", card], &[]));
+        assert!(m.starts_with("spec take refused: "), "{card}: {m}");
+        assert!(m.contains(says), "{card}: {m}");
+        assert_eq!(everything(&w), before, "{card}");
+        assert_eq!(w.branch(), "main");
+    }
+    // A project without a ledger.
+    let bare = World::new();
+    let bare_id = bare.draft_spec("login-fix");
+    fs::remove_dir_all(bare.home.path().join(".moai")).unwrap();
+    let before = everything(&bare);
+    let m = refused(&bare.take(&bare_id, &["--card", "C-1"], &[]));
+    assert!(m.contains("ledger"), "{m}");
+    assert_eq!(everything(&bare), before);
+}
+
+#[test]
+fn an_option_shaped_base_or_remote_is_refused_and_writes_nothing() {
+    let w = World::new();
+    let id = w.draft_spec("login-fix");
+    ok(&w.take(&id, &[], &[]));
+    w.git(&["switch", "-q", "main"]);
+    let planted = w.home.path().join("planted.txt");
+    let base = format!("--base=--output={}", planted.display());
+    for args in [
+        vec![base.as_str()],
+        vec!["--base", "no-such-branch"],
+        vec!["--remote=-x", "--push"],
+        vec!["--remote="],
+    ] {
+        let before = everything(&w);
+        let m = refused(&w.take(&id, &args, &[]));
+        assert!(m.starts_with("spec take refused: "), "{args:?}: {m}");
+        assert_eq!(everything(&w), before, "{args:?}");
+        assert!(!planted.exists(), "{args:?}");
+    }
+    // A recorded base that no longer names a commit is refused as well.
+    w.git(&["config", "branch.spec/20261117-login-fix.moai-base", "gone"]);
+    let before = everything(&w);
+    let m = refused(&w.take(&id, &[], &[]));
+    assert!(m.contains("gone"), "{m}");
+    assert_eq!(everything(&w), before);
+}
+
+#[test]
+fn a_new_base_is_recorded_and_counts_as_a_write() {
+    let w = World::new();
+    let id = w.draft_spec("login-fix");
+    w.git(&["branch", "dev"]);
+    let first = ok(&w.take(&id, &[], &[]));
+    assert_eq!(
+        (first["base"].clone(), first["base_recorded"].clone()),
+        ("main".into(), true.into())
+    );
+    // Already on the branch, nothing else to do: no write.
+    let same = ok(&w.take(&id, &[], &[]));
+    assert_eq!(same["writes"], false, "{same}");
+    assert_eq!(same["base"], "main");
+    // `--base dev` changes only the recorded base, and that is a write.
+    let moved = ok(&w.take(&id, &["--base", "dev"], &[]));
+    assert_eq!(moved["base_recorded"], true, "{moved}");
+    assert_eq!(moved["writes"], true, "{moved}");
+    assert_eq!(
+        w.git(&["config", "branch.spec/20261117-login-fix.moai-base"]),
+        "dev"
+    );
+    // Later takes use the recorded base for the pull request.
+    let later = ok(&w.take(&id, &[], &[]));
+    assert_eq!(later["base"], "dev");
+    assert!(
+        later["next"][2].as_str().unwrap().contains("--base dev"),
+        "{later}"
+    );
+}
+
+#[test]
+fn draft_pr_with_another_remote_is_refused_before_any_write() {
+    let w = World::new();
+    let id = w.draft_spec("login-fix");
+    let before = everything(&w);
+    let m = refused(&w.take(&id, &["--push", "--draft-pr", "--remote", "fork"], &[]));
+    assert!(m.contains("origin"), "{m}");
+    assert_eq!(everything(&w), before);
+}
+
 /// A fake `gh` that records its arguments and prints a pull request URL.
 fn fake_gh(dir: &Path) -> (PathBuf, PathBuf) {
     let log = dir.join("gh-args.txt");
@@ -375,4 +475,53 @@ fn push_and_draft_pr_run_only_when_asked() {
             &format!("SPEC: {id}"),
         ]
     );
+}
+
+#[test]
+fn the_push_never_forces_and_never_prompts() {
+    let w = World::new();
+    let id = w.draft_spec("login-fix");
+    let remote = w.home.path().join("remote.git");
+    common::git::git_ok(
+        w.home.path(),
+        &["init", "-q", "--bare", remote.to_str().unwrap()],
+    );
+    w.git(&["remote", "add", "origin", remote.to_str().unwrap()]);
+    // A pre-push hook records the prompt setting the push runs with.
+    let seen = w.home.path().join("prompt.txt");
+    common::write_executable(
+        &w.project.join(".git/hooks/pre-push"),
+        &format!(
+            "#!/bin/sh\nprintf '%s' \"${{GIT_TERMINAL_PROMPT-unset}}\" > '{}'\n",
+            seen.display()
+        ),
+    );
+    ok(&w.take(&id, &["--push"], &[("GIT_TERMINAL_PROMPT", "1")]));
+    assert_eq!(fs::read_to_string(&seen).unwrap(), "0");
+    // The remote branch moves ahead on its own: the next push must be rejected, not forced.
+    w.git(&["switch", "-q", "--detach", "main"]);
+    fs::write(w.project.join("c.txt"), "c\n").unwrap();
+    w.git(&["add", "c.txt"]);
+    w.commit("elsewhere");
+    let ahead = w.git(&["rev-parse", "HEAD"]);
+    w.git(&[
+        "push",
+        "-q",
+        "--no-verify",
+        "origin",
+        &format!("HEAD:refs/heads/{BRANCH}"),
+    ]);
+    w.git(&["switch", "-q", "main"]);
+    let out = w.take(&id, &["--push"], &[]);
+    assert_ne!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    let on_remote = common::git::git(
+        w.home.path(),
+        &["--git-dir", remote.to_str().unwrap(), "rev-parse", BRANCH],
+    );
+    assert_eq!(on_remote, ahead, "the diverged remote branch was kept");
 }

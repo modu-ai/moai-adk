@@ -4,18 +4,59 @@
 //! external writes: they run only with `--push` and `--draft-pr`.
 //!
 //! Every git call removes the caller's `GIT_*` redirects (`identity::scrub_git_env`) and keeps
-//! the user's own git configuration. The base a branch was created from is kept in
+//! the user's own git configuration — so the repository's hooks (`post-checkout` on the switch,
+//! `pre-push`) and `core.fsmonitor` run as they would for the user's git, even without
+//! `--push`. `GIT_TERMINAL_PROMPT=0` stops git's own password prompt; it does not stop an ssh
+//! passphrase prompt, which ssh reads from the terminal itself. The base a branch was created
+//! from is kept in
 //! the repository's own configuration (`branch.<branch>.moai-base`), so a later `take` on that
 //! branch still names the right base for the pull request.
 
 use crate::spec_doc::{self, IdForm};
 use serde_json::{json, Value};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 type Result<T> = std::result::Result<T, String>;
 
 const REFUSED: &str = "spec take refused: ";
+
+/// The only remote `--draft-pr` works with (decision D-7): `gh` picks the repository from it.
+pub const DEFAULT_REMOTE: &str = "origin";
+
+/// Checks `--card` before anything is written: a C-number of a card in this project's ledger,
+/// read only. Returns the HOME whose ledger [`crate::card::spec_link::link`] writes later.
+fn card_check(project: &Path, home: Option<&Path>, reference: &str) -> Result<PathBuf> {
+    use crate::card::input::{self, CardRef};
+    use crate::ledger::{self, LedgerError};
+    let card_id = match input::parse_ref(reference) {
+        Ok(CardRef::Id(n)) => n,
+        _ => {
+            return Err(refuse(
+                "--card must name a card by its C-number (C-<n>); nothing was changed",
+            ))
+        }
+    };
+    let home = ledger::command::resolve_home(home.map(Path::to_path_buf))
+        .map_err(|e| refuse(format!("{e}; nothing was changed")))?;
+    let project_id = ledger::command::project_id_of(project)
+        .map_err(|e| refuse(format!("{e}; nothing was changed")))?;
+    let read = ledger::open_read_only(&home, &project_id).map_err(|e| match e {
+        LedgerError::Absent => refuse(
+            "--card needs this project's ledger and there is none (`moai card` sets it up); \
+             nothing was changed",
+        ),
+        other => refuse(format!("{other}; nothing was changed")),
+    })?;
+    match crate::card::spec_link::kind_and_spec(read.conn(), card_id) {
+        Ok(Some(_)) => Ok(home),
+        Ok(None) => Err(refuse(format!(
+            "there is no {}; nothing was changed",
+            input::card_name(card_id)
+        ))),
+        Err(e) => Err(refuse(format!("{e}; nothing was changed"))),
+    }
+}
 
 /// What `take` was asked to do.
 pub struct Request<'a> {
@@ -50,6 +91,8 @@ fn git_raw(dir: &Path, args: &[&str]) -> Result<String> {
     crate::identity::scrub_git_env(&mut cmd);
     let out = cmd
         .env("GIT_TERMINAL_PROMPT", "0")
+        // A read (`status`) never refreshes the index, so a refusal leaves `.git` as it was.
+        .arg("--no-optional-locks")
         .arg("-C")
         .arg(dir)
         .args(args)
@@ -107,6 +150,7 @@ fn trailer_specs(dir: &Path, range: &str) -> Result<Vec<String>> {
             "log",
             "--no-merges",
             "--format=%(trailers:key=Moai-Spec,valueonly,separator=%x1e)",
+            "--end-of-options",
             range,
             "--",
         ],
@@ -127,6 +171,20 @@ pub fn take(r: &Request<'_>) -> Result<Value> {
             "--draft-pr needs --push: a draft pull request needs the branch on the remote; nothing was changed",
         ));
     }
+    if r.draft_pr && r.remote != DEFAULT_REMOTE {
+        return Err(refuse(format!(
+            "--draft-pr works with the remote {DEFAULT_REMOTE} only (gh picks the repository from \
+             it); push with --remote {} and open the pull request yourself; nothing was changed",
+            shown(r.remote)
+        )));
+    }
+    for (flag, value) in [("--remote", Some(r.remote)), ("--base", r.base)] {
+        if value.is_some_and(|v| v.is_empty() || v.starts_with('-')) {
+            return Err(refuse(format!(
+                "{flag} must not be empty or start with `-`; nothing was changed"
+            )));
+        }
+    }
     let branch = branch_of(r.id).ok_or_else(|| {
         refuse(format!(
             "{} is not a SPEC id of the form SPEC-<yyyymmdd>-<slug> (a Go-generation SPEC has no branch); nothing was changed",
@@ -145,6 +203,11 @@ pub fn take(r: &Request<'_>) -> Result<Value> {
     let dir = r.project;
     git(dir, &["rev-parse", "--show-toplevel"])
         .map_err(|_| refuse("the project is not in a git work tree; nothing was changed"))?;
+    // The card is checked before any write, so a card refusal changes nothing.
+    let card_home = match r.card {
+        Some(c) => Some(card_check(r.project, r.home, c)?),
+        None => None,
+    };
 
     // A change outside the SPEC's own folder stops the switch (a fresh `spec new` is fine).
     let own = format!("{}/{}/", spec_doc::SPECS_DIR, r.id);
@@ -191,6 +254,25 @@ pub fn take(r: &Request<'_>) -> Result<Value> {
             ))
         }
     };
+    // Every base — given, recorded or the current branch — must name a commit.
+    if base.starts_with('-')
+        || git(
+            dir,
+            &[
+                "rev-parse",
+                "--verify",
+                "--quiet",
+                "--end-of-options",
+                &format!("{base}^{{commit}}"),
+            ],
+        )
+        .is_err()
+    {
+        return Err(refuse(format!(
+            "the base {} is not a commit; nothing was changed",
+            shown(&base)
+        )));
+    }
     let (created, switched) = if exists {
         let others: Vec<String> = trailer_specs(dir, &format!("{base}..{branch}"))?
             .into_iter()
@@ -209,46 +291,29 @@ pub fn take(r: &Request<'_>) -> Result<Value> {
             (false, true)
         }
     } else {
-        git(
-            dir,
-            &[
-                "rev-parse",
-                "--verify",
-                "--quiet",
-                &format!("{base}^{{commit}}"),
-            ],
-        )
-        .map_err(|_| {
-            refuse(format!(
-                "the base {} is not a commit; nothing was changed",
-                shown(&base)
-            ))
-        })?;
         git(dir, &["switch", "--quiet", "-c", &branch, &base]).map_err(refuse)?;
         (true, true)
     };
-    if recorded.is_none() || r.base.is_some() {
+    let base_changed = recorded.as_deref() != Some(base.as_str());
+    if base_changed {
         git(
             dir,
             &["config", &format!("branch.{branch}.moai-base"), &base],
         )
-        .map_err(refuse)?;
+        .map_err(|e| {
+            format!("spec take: {branch} was taken, but its base was not recorded: {e}")
+        })?;
     }
 
-    let card = match r.card {
-        Some(c) => {
-            let home = crate::ledger::command::resolve_home(r.home.map(Path::to_path_buf))
-                .map_err(|e| refuse(e.to_string()))?;
-            Some(crate::card::spec_link::link(
-                r.project,
-                &home,
-                c,
-                Some(r.id),
-                None,
-            )?)
-        }
-        None => None,
+    let card = match (r.card, card_home) {
+        (Some(c), Some(home)) => Some(
+            crate::card::spec_link::link(r.project, &home, c, Some(r.id), None).map_err(|e| {
+                format!("spec take: {branch} was taken, but the card was not linked: {e}")
+            })?,
+        ),
+        _ => None,
     };
+    let card_changed = card.as_ref().is_some_and(|c| c["changed"] == true);
 
     let pr_args = |base: &str| -> Vec<String> {
         vec![
@@ -310,9 +375,9 @@ pub fn take(r: &Request<'_>) -> Result<Value> {
     }
     Ok(json!({
         "action": "take", "spec": r.id, "status": doc.status, "branch": branch, "base": base,
-        "created": created, "switched": switched, "card": card, "next": next,
-        "pushed": pushed, "draft_pr": draft_pr,
-        "writes": created || switched || card.is_some() || pushed,
+        "created": created, "switched": switched, "base_recorded": base_changed,
+        "card": card, "next": next, "pushed": pushed, "draft_pr": draft_pr,
+        "writes": created || switched || base_changed || card_changed || pushed,
     }))
 }
 

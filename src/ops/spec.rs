@@ -101,11 +101,15 @@ enum Action {
     /// change outside the SPEC's own folder or when the branch carries another SPEC's
     /// `Moai-Spec` trailer. `--card` links a card in the local ledger (`moai card spec`). Prints
     /// the next commands (trailers, push, draft pull request) and runs none of them unless
-    /// `--push` (and `--draft-pr`) is given.
+    /// `--push` (and `--draft-pr`, with the remote `origin` only) is given. git runs with the
+    /// user's own configuration, so the repository's hooks (`post-checkout`, `pre-push`) and
+    /// `core.fsmonitor` run even without `--push`; git never asks for a password, but ssh may
+    /// still ask for a key passphrase on the terminal.
     Take {
         /// The SPEC id.
         id: String,
-        /// The branch or commit the new branch starts from (default: the current branch).
+        /// The branch or commit to start from and to open the pull request against (default:
+        /// the base recorded when the branch was created, else the current branch).
         #[arg(long)]
         base: Option<String>,
         /// Link this card (C-number) to the SPEC in the local ledger.
@@ -117,7 +121,7 @@ enum Action {
         /// Push the branch to the remote (an external write).
         #[arg(long)]
         push: bool,
-        /// Also open a draft pull request with `gh` (needs `--push`).
+        /// Also open a draft pull request with `gh` (needs `--push` and the remote `origin`).
         #[arg(long)]
         draft_pr: bool,
         /// The project folder.
