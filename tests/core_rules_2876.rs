@@ -158,3 +158,26 @@ fn merged_rules_live_in_their_workflow_files() {
         assert!(package(file).contains(phrase), "{file} must say `{phrase}`");
     }
 }
+
+/// Card C-81: lifting a HOLD and pushing a tag or publishing a release wait for the user at
+/// every autonomy level (case (2), no deadline default); the internal references that restate
+/// the decision order say so too.
+#[test]
+fn hold_lifting_and_release_tags_wait_for_the_user_at_every_level() {
+    for (file, phrase) in [
+        (
+            "SKILL.md",
+            "lifting a HOLD and pushing a tag or publishing a release are case (2) at every autonomy level, `full` included",
+        ),
+        (
+            "references/internal/decide.md",
+            "goes to the user and waits, and so do lifting a HOLD and pushing a tag or publishing a release at every autonomy level;",
+        ),
+        (
+            "references/internal/versioning.md",
+            "pushing a tag or publishing a release is `SKILL.md` case (2) at every autonomy level, `full` included: the user picks it and it waits, with no deadline default",
+        ),
+    ] {
+        assert!(package(file).contains(phrase), "{file} must say `{phrase}`");
+    }
+}

@@ -46,7 +46,7 @@
   },
   "files": {
     "SKILL.md": {
-      "sha256": "150331ec1c1d39b58ce1ed549be399a55919448eb9a2c7b8ba5fd1f36f197463",
+      "sha256": "42c28df68d0540e5173bb96a6191593900ddc0db512c999c79c9b08f40dc013a",
       "origin": {
         "kind": "design-template",
         "template_id": "router-core",
@@ -136,7 +136,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "c7eb2b8ef03b73eba60b74ac518e1edbf1f608562476a58b7c474930c35aa6b3",
+      "sha256": "1e32690a06d3ce7ac7e646d5d33c8a6d9de1002bcb72223c06dfb8acc7168587",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -181,7 +181,7 @@
       }
     },
     "references/internal/decide.md": {
-      "sha256": "cd71a1351e8cbfab462478996c67a5c6b0f96520263402b4a8ff3faf4b232652",
+      "sha256": "c21dd1d427f1ff9d60b736e41e1baaff774ebc3f294cb15a6183da8e0421c1d5",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-decide",
@@ -349,7 +349,7 @@
       }
     },
     "references/internal/versioning.md": {
-      "sha256": "64343cdc4ebc0c517a5c416fb66a4e02764d158d5b54826da4b134e91a62a394",
+      "sha256": "c0f802da2936cabc4da43918ecd293a7278d535adb0c27533f1dcf8562670379",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-versioning",
