@@ -75,6 +75,7 @@ PR #3162(slot 빌드 폴더) 감사의 후속이에요.
 | D1 | HOME 규칙은 `key_vault::home_from` 하나를 함께 씀(새 규칙 없음) | 리더 지시("다른 moai 코드의 해석을 재사용") | `home_workdir` 규칙으로 |
 | D2 | Windows에서 HOME이 있으면 HOME, 없을 때만 USERPROFILE | `key_vault::home`과 같음; Git Bash가 HOME을 둠 | USERPROFILE 먼저 |
 | D3 | N3은 기록이 이 작업 폴더를 가리킬 때만 경고를 뺌 | 작은 변경, 기록이 증거 | 이름만으로 판정 |
+| D4 | `key_vault::home`은 이제 Windows에서 빈 USERPROFILE을 거절해요("HOME is not set"); 전에는 빈 경로를 돌려줬어요(감사 N-b) | 빈 값은 설정 안 됨과 같다는 HOME의 규칙과 맞춤 | 빈 USERPROFILE을 그대로 돌려주기 |
 
 ## Result
 
