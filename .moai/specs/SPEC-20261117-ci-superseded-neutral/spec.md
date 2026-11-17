@@ -71,4 +71,18 @@ created: 2026-11-17
 
 ## Result
 
-(검사 뒤에 채워요.)
+구현 에이전트가 2026-11-17에 채웠어요. SYNC와 AUDIT가 다시 확인해요. 기준 `d032d0be1f`(origin/v2026.11.0), 변경 커밋
+`334ae7d42a`. 빌드 폴더는 이 worktree의 `target/`, `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=4`, cargo는
+`moai heavy-slot-acquire` 슬롯 안에서 한 번에 하나. 실제 GitHub 실행은 이 가지가 push되어야 볼 수 있어 아직 없어요.
+
+- AC-1: met — `tests/ci_superseded_test.py` OK(10). 스크립트가 없을 때의 첫 실행은 import 오류(TOOL_FAILURE)였어요.
+  기록 자료는 `gh api`로 읽은 실행 43728008190의 작업 목록과 대조해 id·이름·상태·결론·runner·단계가 같음을 확인했어요.
+- AC-2: met — `tests/github_assets_test.py` OK(새 시험 `test_rc_ci_reads_a_superseded_push_run_as_neutral_only_through_the_verdict`
+  포함); `actionlint .github/workflows/ci.yml` exit 0(1.7.10).
+- AC-3: met — `local_check_test`·`ci_install_ripgrep_test`·`ci_scope_test`·`repo_scans_test`와 위 둘 합쳐 147개 OK;
+  `gate_check_cli` 0(45); `product_cli` 0(75); `--bin moai` 0(27); `cargo fmt --check` 0; `moai spec check --all` 0(SPEC 10개,
+  errors 0, warnings 0); `git diff --check` 0.
+- mutation 3개(커밋 뒤, 각각 `git restore` 뒤 tree 깨끗): "시작 안 함(단계 0)" 조건 삭제 → 1 FAIL; push 조건 삭제 → 4 FAIL;
+  `ci-verdict`의 `github.event_name == 'push'` 삭제 → 1 FAIL. 되돌린 뒤 OK.
+
+실행 안 함: 실제 push 실행에서의 확인(병합 뒤 다음 밀려남 때), 전체 `cargo test`, clippy(Rust 변경 없음).
