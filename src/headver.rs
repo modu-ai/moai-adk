@@ -105,16 +105,39 @@ pub fn build(
     local: Option<u32>,
     package: &str,
 ) -> Result<Build, String> {
+    build_numbered(head_text, epoch_secs, local, None, package)
+}
+
+/// [`build`] with a CI build number too (`MOAI_BUILD_NUMBER`, SPEC-20261117-headver-ci-number):
+/// the note says which source the number came from, so a CI build is told apart from a local
+/// build of the same number; a build given both numbers is refused, never guessed.
+pub fn build_numbered(
+    head_text: Option<&str>,
+    epoch_secs: i64,
+    local: Option<u32>,
+    ci: Option<u32>,
+    package: &str,
+) -> Result<Build, String> {
     let head_text = head_text.ok_or_else(|| {
         format!("{HEAD_FILE} missing: the repository root must hold the HeadVer head (one line)")
     })?;
     let head = parse_head(head_text)?;
     let (y, m, d) = civil_from_days(epoch_secs.div_euclid(86_400));
     let (week_year, week) = iso_week(y, m, d);
-    let number = local.unwrap_or(0);
-    let kind = match local {
-        Some(n) => format!("local build {n} (MOAI_LOCAL_BUILD)"),
-        None => "unnumbered build (no MOAI_LOCAL_BUILD)".to_string(),
+    let (number, kind) = match (local, ci) {
+        (Some(_), Some(_)) => {
+            return Err(
+                "MOAI_LOCAL_BUILD and MOAI_BUILD_NUMBER are both set: a build has one number \
+                 source; unset one"
+                    .into(),
+            )
+        }
+        (Some(n), None) => (n, format!("local build {n} (MOAI_LOCAL_BUILD)")),
+        (None, Some(n)) => (n, format!("CI build {n} (MOAI_BUILD_NUMBER)")),
+        (None, None) => (
+            0,
+            "unnumbered build (no MOAI_LOCAL_BUILD or MOAI_BUILD_NUMBER)".to_string(),
+        ),
     };
     Ok(Build {
         version: version(head, yearweek(y, m, d), number),
@@ -277,7 +300,7 @@ mod tests {
         assert_eq!(unnumbered.version, "4.2647.0");
         assert!(unnumbered
             .note
-            .starts_with("unnumbered build (no MOAI_LOCAL_BUILD), built"));
+            .starts_with("unnumbered build (no MOAI_LOCAL_BUILD or MOAI_BUILD_NUMBER), built"));
         // One second before midnight UTC on 2027-01-03 (Sunday) is still week 53 of 2026.
         let sunday = 1_799_020_800 - 1;
         assert_eq!(
@@ -291,6 +314,28 @@ mod tests {
         let missing = build(None, t, Some(5), "p").unwrap_err();
         assert!(missing.starts_with("HEADVER missing"), "{missing}");
         assert!(build(Some("x"), t, Some(5), "p").is_err());
+    }
+
+    /// SPEC-20261117-headver-ci-number: a CI build takes its number from `MOAI_BUILD_NUMBER`,
+    /// says so on the `--version` note (so it is told apart from a local build of the same
+    /// number), and a build given both numbers is refused rather than guessed.
+    #[test]
+    fn a_ci_build_names_its_number_and_two_sources_are_refused() {
+        let t = 1_794_873_600 + 8 * 3600;
+        let ci = build_numbered(Some("4\n"), t, None, Some(812), "2026.11.0-rc.1").unwrap();
+        assert_eq!(ci.version, "4.2647.812");
+        assert_eq!(
+            ci.note,
+            "CI build 812 (MOAI_BUILD_NUMBER), built 2026-11-17 UTC (ISO week 2026-W47), \
+             package 2026.11.0-rc.1"
+        );
+        let local = build_numbered(Some("4"), t, Some(5), None, "p").unwrap();
+        assert_eq!(local, build(Some("4"), t, Some(5), "p").unwrap());
+        let both = build_numbered(Some("4"), t, Some(5), Some(812), "p").unwrap_err();
+        assert!(
+            both.contains("MOAI_LOCAL_BUILD") && both.contains("MOAI_BUILD_NUMBER"),
+            "{both}"
+        );
     }
 
     #[test]
