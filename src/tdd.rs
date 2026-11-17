@@ -307,9 +307,9 @@ const LOCKED: &str = "MoAI tool-preflight: the TDD cycle of this worktree is in 
 /// A6: why a write of `paths` (relative to `cwd`, or absolute) is refused while this
 /// worktree's record is GREEN or REFACTOR, or `None`. Reads files only.
 pub fn lock_refusal(paths: &[String], cwd: &Path) -> Option<&'static str> {
-    let top = work_tree_top(cwd)?;
-    let record = read_record(&git_dir(&top)?)?;
-    let tests = TestPaths::for_project(&top);
+    // #3177 audit N1: each path is judged by the record of the work tree that holds it (the
+    // nearest `.git` above it, as A5), not by the session folder's work tree; its test paths
+    // are that work tree's ([`TestPaths::for_project`]).
     let refused = paths.iter().any(|p| {
         let path = Path::new(p);
         let absolute = if path.is_absolute() {
@@ -318,12 +318,19 @@ pub fn lock_refusal(paths: &[String], cwd: &Path) -> Option<&'static str> {
             cwd.join(path)
         };
         let resolved = crate::hook_config::canonical(&absolute);
+        let Some(top) = work_tree_top(&resolved) else {
+            return false;
+        };
+        let Some(record) = git_dir(&top).and_then(|g| read_record(&g)) else {
+            return false;
+        };
         let Ok(rel) = resolved.strip_prefix(&top) else {
             return false;
         };
         let rel = rel.to_string_lossy().replace('\\', "/");
         record.locked.contains(&rel)
-            || (tests.matches(&rel) && fs::symlink_metadata(&resolved).is_err())
+            || (TestPaths::for_project(&top).matches(&rel)
+                && fs::symlink_metadata(&resolved).is_err())
     });
     refused.then_some(LOCKED)
 }

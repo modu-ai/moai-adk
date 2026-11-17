@@ -32,13 +32,16 @@
 //!   Writing under `.moai/specs/` is always allowed, so the SPEC itself is the way out. Paths
 //!   are judged after `..` and symbolic links are resolved, each in the work tree that holds
 //!   it (the nearest `.git` above the written path, C-86 audit N2), whatever the session's
-//!   folder; a path in no work tree is not this rule's. Shell redirections are not seen (the
-//!   A4 gap).
-//! - A6 the GREEN test lock (card C-86, SPEC-20261117-green-test-lock): while the worktree's
+//!   folder; a path in no work tree, or in a work tree without a `.moai` folder at its root
+//!   (not a MoAI project, #3176 audit N2), is not this rule's. One call that writes the SPEC
+//!   and code together waits while the SPEC is not on disk. Shell redirections are not seen
+//!   (the A4 gap).
+//! - A6 the GREEN test lock (card C-86, SPEC-20261117-green-test-lock): while a work tree's
 //!   TDD record (`<git-dir>/moai/tdd.json`, written by `moai tdd red`) is GREEN or REFACTOR, a
 //!   write to a test path its RED commit changed, or a new file on a test path, is refused
-//!   ([`crate::tdd::lock_refusal`]). Files only, no program; no record locks nothing. Runs
-//!   after A5.
+//!   ([`crate::tdd::lock_refusal`]). Each written path is judged by the record of the work
+//!   tree that holds it (as A5), whatever the session's folder (#3177 audit N1). Files only, no
+//!   program; no record locks nothing. Runs after A5.
 //!
 //! Known gaps (allowed, not refused): shell redirections (`>`, `tee`) into protected paths; a
 //! force push with no refspec while `main` is checked out (the branch is not read here); a
@@ -767,6 +770,11 @@ fn spec_before_code(paths: &[String], cwd: &Path) -> Option<&'static str> {
         let Some(top) = work_tree_top(&resolved) else {
             return false;
         };
+        // #3176 audit N2: a work tree without a `.moai` folder at its root is not a MoAI
+        // project; its `spec/…` branch is not this rule's.
+        if !top.join(".moai").is_dir() {
+            return false;
+        }
         let Some(id) = work_tree_branch(&top).and_then(|b| spec_branch_id(&b)) else {
             return false;
         };
