@@ -319,6 +319,51 @@ class InstallShTest(unittest.TestCase):
         self.assertIn("Unknown option: --nope", r.stdout + r.stderr)
         self.assertEqual(snapshot(self.home), {})
 
+    def test_help_examples_and_channel_name_the_headver_scheme(self):
+        """SPEC-20261118-headver-install-docs AC-1/AC-2: the help names a HeadVer version, not
+        the earlier scheme, and says the `rc` channel takes releases marked as pre-releases
+        (HeadVer has no suffix to tell a candidate by)."""
+        r = self.run_sh("--help")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("--version 4.2647.12", r.stdout)
+        self.assertNotIn("2026.11.0", r.stdout)
+        self.assertIn("rc also takes releases marked as pre-releases", r.stdout)
+        self.assertNotIn("release candidates", r.stdout)
+
+    def test_headver_versions_install_and_the_channel_follows_the_prerelease_flag(self):
+        """AC-3: `4.2647.12` is a version like any other; the release list's pre-release mark,
+        not a `-` in the version, keeps it off the stable channel and onto `rc`."""
+        for v in ("4.2646.9", "4.2647.12"):
+            self.rel.add(v)
+        self.rel.publish_api([
+            ("moai-cli-v4.2647.12", False, True),   # a HeadVer candidate: no suffix, marked
+            ("moai-cli-v4.2646.9", False, False),
+            ("moai-cli-v1.3.0-rc.1", False, True),
+            ("moai-cli-v1.2.3", False, False),
+        ])
+        r = self.run_sh()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(sorted(os.listdir(self.state("versions"))), ["4.2646.9"])
+        r = self.run_sh("--channel", "rc")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(sorted(os.listdir(self.state("versions"))), ["4.2646.9", "4.2647.12"])
+        self.assertEqual(os.path.realpath(self.state("path", "moai-cli")),
+                         os.path.realpath(self.state("versions", "4.2647.12", "bin", "moai-cli")))
+        for given in ("v4.2647.12", "moai-cli-v4.2647.12"):
+            r = self.run_sh("--version", given)
+            self.assertEqual(r.returncode, 0, given + r.stdout + r.stderr)
+        self.assertEqual(sorted(os.listdir(self.state("versions"))), ["4.2646.9", "4.2647.12"])
+
+    def test_the_feed_has_no_prerelease_mark_so_the_newest_headver_release_is_taken(self):
+        """AC-4: with the REST list unreadable the feed is read, and it carries no pre-release
+        mark: a HeadVer candidate cannot be told from a release, so the newest `moai-cli-v*`
+        is taken (docs/release-checklist.md says to pin with `--version` then)."""
+        self.rel.add("4.2647.12")
+        self.rel.publish_feed(["moai-cli-v4.2647.12", "go-v3.1.2", "moai-cli-v1.2.3"])
+        r = self.run_sh()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(sorted(os.listdir(self.state("versions"))), ["4.2647.12"])
+
     def test_latest_stable_installs_into_the_version_folder(self):
         r = self.run_sh()
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
@@ -1384,6 +1429,53 @@ class InstallPs1Test(InstallShTest):
             capture_output=True, text=True,
         )
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+
+class HeadVerTextTest(unittest.TestCase):
+    """SPEC-20261118-headver-install-docs AC-2: both scripts, read as text (no shell, no pwsh),
+    show a HeadVer example and the pre-release wording, and no earlier-scheme example."""
+
+    def test_both_scripts_show_a_headver_example_and_the_prerelease_wording(self):
+        for path in (SH, PS1):
+            with self.subTest(script=os.path.basename(path)):
+                with open(path, encoding="utf-8") as f:
+                    text = f.read()
+                self.assertIn("--version 4.2647.12", text)
+                self.assertNotIn("--version 2026.11.0", text)
+                self.assertIn("rc also takes releases marked as pre-releases", text)
+                self.assertNotIn("rc also takes release candidates", text)
+                # The feed has no pre-release mark: the comment in the script says so for HeadVer.
+                self.assertIn("HeadVer", text)
+
+
+class HeadVerDocsTest(unittest.TestCase):
+    """SPEC-20261118-headver-install-docs AC-5: the release checklist names the scheme, the tag,
+    the pre-release mark, what the scripts do with it, and what waits for the user. The local
+    kit (docs/local-rc1-kit.md) is not read here: a test that reads a docs path needs it in
+    tools/ci_scope.py's deny list, which this SPEC's scope does not cover (SPEC D-4)."""
+
+    def read(self, rel):
+        with open(os.path.join(REPO_ROOT, rel), encoding="utf-8") as f:
+            return f.read()
+
+    def test_release_checklist_names_headver(self):
+        text = self.read("docs/release-checklist.md")
+        for phrase in (
+            "## (a-2) HeadVer 번호 체계",
+            "`4.{yearweek}.{build}`",
+            "moai-cli-v4.2647.12",
+            "접미사를 붙이지 않고",
+            "릴리스 페이지의 prerelease 표시",
+            "`--channel rc`",
+            "Atom 피드",
+            "`--version`으로 고정",
+            "사용자 결정 D5·D6",
+            "install/install.sh",
+            "install/install.ps1",
+        ):
+            self.assertIn(phrase, text)
+        # The rc.1 record stays as it was.
+        self.assertIn("moai-cli-v2026.11.0-rc.1", text)
 
 
 if __name__ == "__main__":

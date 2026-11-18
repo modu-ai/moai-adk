@@ -61,9 +61,9 @@ function Show-Usage {
     Write-Host "Usage: install.ps1 [OPTIONS]"
     Write-Host ""
     Write-Host "Options:"
-    Write-Host "  --version VERSION     Install a specific version (default: latest)"
+    Write-Host "  --version VERSION     Install a specific version, for example 4.2647.12 (default: latest)"
     Write-Host "  --install-dir DIR     Put the moai and moai-cli commands in DIR (default: <state home>\path)"
-    Write-Host "  --channel CHANNEL     stable (default) or rc: rc also takes release candidates"
+    Write-Host "  --channel CHANNEL     stable (default) or rc: rc also takes releases marked as pre-releases"
     Write-Host "  --language CODE       Language of your conversation with the model, for example en, ko, ja or"
     Write-Host "                        zh (default: asked at a terminal, else MOAI_LANGUAGE, else your locale,"
     Write-Host "                        else en). MoAI's own messages stay English."
@@ -74,12 +74,14 @@ function Show-Usage {
     Write-Host ""
     Write-Host "Examples:"
     Write-Host '  irm https://adk.mo.ai.kr/install.ps1 | iex'
-    Write-Host '  & ([scriptblock]::Create((irm https://adk.mo.ai.kr/install.ps1))) --version 2026.11.0'
+    Write-Host '  & ([scriptblock]::Create((irm https://adk.mo.ai.kr/install.ps1))) --version 4.2647.12'
     Write-Host '  & ([scriptblock]::Create((irm https://adk.mo.ai.kr/install.ps1))) --channel rc'
     Write-Host '  & ([scriptblock]::Create((irm https://adk.mo.ai.kr/install.ps1))) --language ko'
 }
 
-# A version is SemVer-shaped text only: it becomes part of a URL and a folder name.
+# A version is SemVer-shaped text only: it becomes part of a URL and a folder name. A HeadVer
+# version (`4.2647.12`, `{head}.{yearweek}.{build}`) is one; so is `2026.11.0-rc.1` of the earlier
+# scheme.
 function Test-Version([string]$V) {
     return ($V -match '^[0-9][0-9A-Za-z.+-]*$') -and ($V -notmatch '\.\.')
 }
@@ -212,7 +214,10 @@ function Get-Url([string]$Url, [string]$OutFile) {
     }
 }
 
-# The first candidate (newest first) that is a moai-cli-v<version> release for the channel.
+# The first candidate (newest first) that is a moai-cli-v<version> release for the channel. A
+# pre-release is told by the release's own mark; a `-` in the version marks one of the earlier
+# scheme only, because a HeadVer version has no suffix. The feed has no mark, so a HeadVer
+# pre-release cannot be told there and the newest tag is taken (docs/release-checklist.md).
 function Select-Version($Candidates, [string]$Channel) {
     foreach ($c in $Candidates) {
         $tag = [string]$c.tag
