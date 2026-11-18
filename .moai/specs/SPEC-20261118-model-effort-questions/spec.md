@@ -90,3 +90,18 @@ It also takes the audit follow-up N1 of slice 1: a saved entry outside the suppo
 | D-5 | The apply plans again from the file and the picks and compares the digest, like the other apply commands | a stale preview must never write | none |
 | D-6 | The digest covers the sorted content before, the sorted picks and the sorted content after | key order of a file is not meaningful and the library keeps insertion order | none |
 | D-7 | Three invalid answers to one question end the loop as cancelled | a bounded loop never hangs a script | change the limit |
+
+## Result
+
+- AC-1: met — `the_tool_question_lists_three_tools_and_defaults_to_the_installed_ones` passes
+- AC-2: met — `model_and_effort_questions_offer_only_table_values_with_the_default_first` passes (default model first, efforts in table order with a default the model offers, no question for an unknown name)
+- AC-3: met — `an_answer_line_is_read_and_a_bad_one_is_never_echoed` passes (empty, numbers, lists, 8 bad lines, end of input)
+- AC-4: met — `the_loop_asks_the_tool_pick_first_and_stops_on_an_empty_or_cancelled_pick` passes (a fourth try would complete, so three tries are pinned)
+- AC-5: met — `enter_everywhere_picks_the_defaults_of_the_installed_tools` passes
+- AC-6: met — `the_plan_changes_only_the_picked_entries_and_lists_unsupported_ones` passes (digest independent of key order)
+- AC-7: met — `an_omp_pick_sets_omp_and_glm` passes
+- AC-8: met — `a_structurally_broken_models_key_is_refused_without_quoting_it` passes (5 shapes)
+- AC-9: met — `apply_writes_through_the_digest_and_reads_back` passes (other root keys, mode 0644 kept, absent file created with mode 0600, no temp file left)
+- AC-10: met — `apply_refuses_a_stale_digest_and_an_unsafe_target_and_writes_nothing` passes (wrong digest, changed file, link, folder, FIFO, oversize file, broken file)
+- AC-11: met — `cargo test --locked --offline --test model_effort_settings` 8 passed, including `unsupported_saved_entries_are_listed_by_key_path_without_quoting_them` and `the_slice_one_audit_cases_are_pinned`
+- AC-12: met — `cargo fmt --check` exits 0 and `cargo clippy --test model_effort_settings --test model_effort_questions -- -D warnings` exits 0
