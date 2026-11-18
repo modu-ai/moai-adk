@@ -59,7 +59,11 @@ fn the_line_is_the_fixed_wording_for_each_host() {
     let slash = format!("/moai --mode-agent 레인 3 — {BODY}");
     assert_eq!(line(&["--lane", "3"]), slash, "claude is the default host");
     assert_eq!(line(&["--lane", "3", "--host", "claude"]), slash);
-    assert_eq!(line(&["--lane", "3", "--host", "omp"]), slash);
+    // OMP takes the skill only as `/skill:moai` (SPEC-20261118-omp-launcher REQ-22; audit #3203 B1).
+    assert_eq!(
+        line(&["--lane", "3", "--host", "omp"]),
+        format!("/skill:moai --mode-agent 레인 3 — {BODY}")
+    );
     assert_eq!(
         line(&["--lane", "3", "--host", "codex"]),
         format!("$moai --mode-agent 레인 3 — {BODY}")

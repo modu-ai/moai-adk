@@ -54,7 +54,7 @@ struct Cli {
     /// Start a leader session on the default host (cc); the role is entered inside it with `/moai --mode-leader`.
     #[arg(short = 'l', long = "leader", conflicts_with = "agent")]
     leader: bool,
-    /// Start an agent session on HOST (cc|glm|codex; default cc); the role is entered inside it with `/moai --mode-agent` (codex: `$moai --mode-agent`, sent as its first prompt).
+    /// Start an agent session on HOST (cc|glm|codex|omp; default cc); the role is entered inside it with `/moai --mode-agent` (codex: `$moai --mode-agent`, sent as its first prompt; omp: `/skill:moai --mode-agent`).
     #[arg(short = 'a', long = "agent", value_name = "HOST", num_args = 0..=1, default_missing_value = "cc")]
     agent: Option<String>,
     /// Color on a terminal: auto, always (even with NO_COLOR or TERM=dumb) or never; put it before the command.
@@ -128,7 +128,7 @@ struct LaunchOpts {
     #[arg(long)]
     permissions: bool,
     /// Print the composed command as JSON instead of starting the host.
-    #[arg(long)]
+    #[arg(long, visible_alias = "print-command")]
     dry_run: bool,
     /// Print the JSON result even on a terminal (a pipe or a file always gets it; #3004 P9).
     #[arg(long, hide = true)]
@@ -161,7 +161,7 @@ impl LaneLoopArgs {
     }
 }
 
-/// `moai-cli cc|glm|codex [-l|-a] [options] [PROMPT]`. Without `-l|-a` it is a plain host
+/// `moai-cli cc|glm|codex|omp [-l|-a] [options] [PROMPT]`. Without `-l|-a` it is a plain host
 /// session: no role is guessed (Issue #2053).
 #[derive(Args)]
 #[command(group(ArgGroup::new("role").args(["leader", "agent"])))]
@@ -169,14 +169,14 @@ struct HostLaunch {
     /// Leader session.
     ///
     /// Names the session `leader` and sets its access. The role is entered inside the session
-    /// with `/moai --mode-leader` (Codex: `$moai --mode-leader`).
+    /// with `/moai --mode-leader` (Codex: `$moai --mode-leader`; OMP: `/skill:moai --mode-leader`).
     #[arg(short = 'l', long = "leader")]
     leader: bool,
     /// Agent session.
     ///
     /// Names the session `agent-N` (or `--name`) and sets its access. The role is entered
     /// inside the session with `/moai --mode-agent`; on Codex the first prompt starts with
-    /// `$moai --mode-agent`.
+    /// `$moai --mode-agent`; on OMP the line typed inside the session is `/skill:moai --mode-agent`.
     #[arg(short = 'a', long = "agent")]
     agent: bool,
     #[command(flatten)]
@@ -1038,9 +1038,17 @@ enum Command {
     /// access; the role is entered inside the session with `$moai --mode-leader` or
     /// `$moai --mode-agent`, and `codex -a` starts its first prompt with `$moai --mode-agent`.
     Codex(HostLaunch),
+    /// Start an Oh My Pi (OMP) session
+    ///
+    /// OMP session launcher: `omp -l|-a`. `-l|-a` only name the session and set its access
+    /// (`--approval-mode yolo`, or `always-ask-cached` with `--permissions`); the role is entered
+    /// inside the session with `/skill:moai --mode-leader` or `/skill:moai --mode-agent`. `--model`
+    /// and `--effort` go to OMP's `--model` and `--thinking`; for a z.ai model the glm key reaches
+    /// OMP as `ZAI_API_KEY`, never in the command.
+    Omp(HostLaunch),
     /// Start a Claude Code session (legacy form)
     ///
-    /// Legacy Claude-only launcher kept for compatibility; prefer `-l|-a` or `cc|glm|codex`.
+    /// Legacy Claude-only launcher kept for compatibility; prefer `-l|-a` or `cc|glm|codex|omp`.
     Session {
         /// leader | agent
         #[arg(long, default_value = "agent")]
@@ -1103,7 +1111,8 @@ fn host_of(word: &str) -> Result<&'static str, String> {
         "cc" => Ok("claude"),
         "glm" => Ok("glm"),
         "codex" => Ok("codex"),
-        other => Err(format!("unknown host {other} (cc|glm|codex)")),
+        "omp" => Ok("omp"),
+        other => Err(format!("unknown host {other} (cc|glm|codex|omp)")),
     }
 }
 
@@ -1231,6 +1240,7 @@ fn operation(command: &Command) -> Option<&'static str> {
         Cc(_)
         | Glm(_)
         | Codex(_)
+        | Omp(_)
         | Session { .. }
         | Statusline { .. }
         | LaneEnv { .. }
@@ -1343,13 +1353,15 @@ fn role_of(h: &HostLaunch) -> Option<bool> {
 fn launcher_is_human(cli: &Cli) -> bool {
     let json = match &cli.command {
         None => cli.launch.json,
-        Some(Command::Cc(h) | Command::Glm(h) | Command::Codex(h)) => h.launch.json,
+        Some(Command::Cc(h) | Command::Glm(h) | Command::Codex(h) | Command::Omp(h)) => {
+            h.launch.json
+        }
         Some(_) => return false,
     };
     moai_cli::launcher_terminal::wants_human(json)
 }
 
-/// Launcher paths (`-l`, `-a`, `cc|glm|codex`, `session`): plain JSON or a plain error line.
+/// Launcher paths (`-l`, `-a`, `cc|glm|codex|omp`, `session`): plain JSON or a plain error line.
 fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
     let Some(command) = cli.command else {
         return match (cli.leader, cli.agent) {
@@ -1360,7 +1372,7 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
                 // (Issue #2363); the usage error contract below is unchanged.
                 moai_cli::banner::maybe_print_banner();
                 Err(
-                    "usage: moai -l | -a [cc|glm|codex] | moai cc|glm|codex -l|-a | moai <command>; see --help".into(),
+                    "usage: moai -l | -a [cc|glm|codex|omp] | moai cc|glm|codex|omp -l|-a | moai <command>; see --help".into(),
                 )
             }
         };
@@ -1369,6 +1381,7 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
         Command::Cc(h) => launch("claude", role_of(&h), h.launch, h.prompt),
         Command::Glm(h) => launch("glm", role_of(&h), h.launch, h.prompt),
         Command::Codex(h) => launch("codex", role_of(&h), h.launch, h.prompt),
+        Command::Omp(h) => launch("omp", role_of(&h), h.launch, h.prompt),
         Command::Session {
             role,
             host,
@@ -1382,7 +1395,7 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
             // Legacy behaviour (REQ-00F-06): Claude only, no permission skip.
             if host != "claude" {
                 return Err(format!(
-                    "host {host} is not available on `session`; use `moai cc|glm|codex -l|-a`"
+                    "host {host} is not available on `session`; use `moai cc|glm|codex|omp -l|-a`"
                 ));
             }
             session_launch(
@@ -2831,7 +2844,7 @@ pub(crate) fn main() -> ExitCode {
 mod tests {
     use super::*;
 
-    const LAUNCHERS: [&str; 4] = ["cc", "glm", "codex", "session"];
+    const LAUNCHERS: [&str; 5] = ["cc", "glm", "codex", "omp", "session"];
 
     /// #2799 ③ C5: a leading valid `--color` is taken out before the word readers look at
     /// position 1; an invalid value, a later `--color` or a bare flag is left for clap.
@@ -3581,7 +3594,12 @@ mod help_rules {
             let text = t.map(|h| h.to_string()).unwrap_or_default();
             text.split_whitespace().collect::<Vec<_>>().join(" ")
         };
-        for (host, prefix) in [("cc", "/moai"), ("glm", "/moai"), ("codex", "$moai")] {
+        for (host, prefix) in [
+            ("cc", "/moai"),
+            ("glm", "/moai"),
+            ("codex", "$moai"),
+            ("omp", "/skill:moai"),
+        ] {
             let cmd = korean.find_subcommand(host).unwrap();
             for (id, mode) in [("leader", "leader"), ("agent", "agent")] {
                 let arg = cmd.get_arguments().find(|a| a.get_id() == id).unwrap();

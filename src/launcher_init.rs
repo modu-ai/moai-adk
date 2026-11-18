@@ -1,4 +1,4 @@
-//! First-launch project initialization for `cc|glm|codex` (Issue #2481; user decisions
+//! First-launch project initialization for `cc|glm|codex|omp` (Issue #2481; user decisions
 //! 6810797000 and 6810818827, 2026-11-12).
 //!
 //! A launch in a folder that is not a git repository runs `git init` there without asking,
@@ -448,7 +448,11 @@ fn primary_name(anchor: &Path) -> String {
 fn default_profile(folder: &str, host: &str) -> Result<profile::Profile, String> {
     let named = crate::key_vault::folder_name(None, folder, "");
     let project_id = named.strip_suffix('-').unwrap_or(&named).to_string();
-    let host = if host == "codex" { "codex" } else { "claude" };
+    let host = match host {
+        "codex" => "codex",
+        "omp" => "omp",
+        _ => "claude",
+    };
     let value: Value = json!({
         "schema_version": 2,
         "project_id": project_id,

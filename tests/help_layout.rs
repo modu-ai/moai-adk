@@ -338,12 +338,12 @@ fn help_all_lists_every_command_and_the_root_a_subset() {
         assert!(all.contains(&format!("\n{}\n", g.heading)), "{}", g.heading);
         for (word, on_root) in g.commands {
             assert!(listed(&all, word), "help --all lacks {word}");
-            if !["cc", "codex", "glm"].contains(word) {
+            if !["cc", "codex", "glm", "omp"].contains(word) {
                 assert_eq!(listed(&root, word), *on_root, "root help and {word}");
             }
         }
     }
-    assert!(root.contains("  cc, codex, glm "), "{root}");
+    assert!(root.contains("  cc, codex, glm, omp "), "{root}");
 }
 
 /// #2824 re-audit B3: a wide `COLUMNS` never takes a help line past 100 columns — the grouped

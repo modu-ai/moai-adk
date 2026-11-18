@@ -98,10 +98,27 @@ class OmpHostSurveyTest(unittest.TestCase):
 
     def test_an_omp_gap_names_the_slice_or_card_that_closes_it(self):
         gaps = [r for r in self.rows if r["omp"] == "gap"]
-        self.assertTrue(gaps, "the launcher is still a gap until slice B")
+        self.assertTrue(gaps, "the leader-card rows are still gaps")
         for r in gaps:
             with self.subTest(feature=r["feature"]):
-                self.assertRegex(r["gap"], r"slice B|card C-\d+|leader card")
+                self.assertRegex(r["gap"], r"card C-\d+|leader card")
+                self.assertNotIn("slice B", r["gap"], "slice B is this PR: it closes its rows")
+
+    def test_the_launcher_rows_are_yes_for_omp(self):
+        # SPEC-20261118-omp-launcher REQ-23: the rows slice B closes read `yes` for omp.
+        closed = (
+            "`src/main.rs::",
+            "`src/help.rs::LAUNCHERS",
+            "`src/launcher_init.rs::default_profile",
+            "`src/session.rs::HOSTS",
+            "`src/session.rs::read_here",
+        )
+        rows = [r for r in self.rows if r["evidence"].startswith(closed)]
+        self.assertEqual(len(rows), 5, "the five rows slice B closes")
+        for r in rows:
+            with self.subTest(feature=r["feature"]):
+                self.assertEqual(r["omp"], "yes")
+                self.assertIn(r["gap"], ("", "-"))
 
     def test_a_row_without_a_gap_has_no_gap_text(self):
         for r in self.rows:
@@ -124,17 +141,16 @@ class OmpHostSurveyTest(unittest.TestCase):
         self.assertEqual(row[0]["omp"], "yes" if same else "gap", f"code {code.group(1)} vs workflow {doc.group(1)}")
 
     def test_the_document_replaces_the_2378_unsupported_line(self):
-        # The old decision stays in the document as history, once, with the words the Rust pin
-        # `tests/launcher_three_hosts.rs` reads (CI #3203: dropping them failed that test); the same
-        # sentence must say it is replaced, so the document never states OMP is unsupported now.
+        # Slice A kept the old words once because the Rust pin `tests/launcher_three_hosts.rs`
+        # read them (CI #3203). Slice B deletes that pin, so the document no longer carries the
+        # words; the decision that replaces #2378 stays, with its date.
         text = DOC.read_text(encoding="utf-8")
-        old = "OMP — 지원하지 않음(2026-11-10 결정"
-        self.assertEqual(text.count(old), 1, "the Rust pin needs this phrase exactly once")
-        for line in text.splitlines():
-            if old in line:
-                self.assertIn("대체", line)
-                self.assertIn("2026-11-17", line)
-                self.assertIn("#2378", line)
+        self.assertEqual(text.count("OMP — 지원하지 않음(2026-11-10 결정"), 0)
+        self.assertNotIn("OMP — 지원하지 않음", text)
+        sentences = [line for line in text.splitlines() if "#2378" in line and "2026-11-17" in line]
+        self.assertTrue(sentences, "the decision that replaces #2378 is recorded with its date")
+        for line in sentences:
+            self.assertIn("대체", line)
 
 
 if __name__ == "__main__":

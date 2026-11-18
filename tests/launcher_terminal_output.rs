@@ -335,3 +335,28 @@ fn an_option_the_launcher_drops_is_said_once_before_the_host_starts() {
     // Informational notes stay out of a normal launch.
     assert!(!out.contains("model aliases map"), "{out}");
 }
+
+/// OMP takes no advisor and no `ultracode` effort: both are said once on the terminal before the
+/// host starts (Codex review on #3211).
+#[cfg(target_os = "macos")]
+#[test]
+fn an_omp_option_the_launcher_drops_is_said_once_before_the_host_starts() {
+    let f = Fixture::new();
+    let stub = f.bin.path().join("omp");
+    fs::write(&stub, format!("#!/bin/sh\necho {MARK}\nexit 0\n")).unwrap();
+    fs::set_permissions(&stub, fs::Permissions::from_mode(0o755)).unwrap();
+    let (_, out) = f.tty(
+        &["omp", "-a", "--effort", "ultracode", "--advisor", "fable"],
+        0,
+    );
+    let at = out
+        .find(MARK)
+        .unwrap_or_else(|| panic!("no host output in:\n{out}"));
+    for note in [
+        moai_cli::session::NOTE_EFFORT_NOT_PASSED_OMP,
+        moai_cli::session::NOTE_ADVISOR_NOT_PASSED_OMP,
+    ] {
+        assert_eq!(out[..at].matches(note).count(), 1, "{note}\n{out}");
+        assert_eq!(out.matches(note).count(), 1, "{note}\n{out}");
+    }
+}
