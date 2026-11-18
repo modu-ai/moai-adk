@@ -689,6 +689,19 @@ fn a_status_line_removed_by_hand_is_named_not_called_current() {
     assert_eq!(out["ok"], json!(true), "{out}");
     let mut s = settings_now(&fx);
     assert!(s["statusLine"].is_object(), "the precondition: {s}");
+    // While the file still holds the status line, the step does not say it was removed.
+    let settled = fx.update_plan();
+    let held = settings(&settled);
+    assert_eq!(held["state"], "unchanged", "{held}");
+    assert!(
+        !held["reason"].as_str().unwrap().contains("removed"),
+        "{held}"
+    );
+    assert_eq!(
+        held["preview"]["status_line_removed"],
+        Value::Null,
+        "{held}"
+    );
     s.as_object_mut().unwrap().remove("statusLine");
     write_settings(&fx, &s);
     let update = fx.update_plan();
