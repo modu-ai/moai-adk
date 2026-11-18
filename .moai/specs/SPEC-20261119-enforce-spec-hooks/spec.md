@@ -29,7 +29,7 @@ created: 2026-11-19
 - REQ-2: IF the target of `rm`, `unlink` or `git rm` does not exist, THEN the guard shall not refuse the command for that target. · failure: none — removing nothing changes no test, and the lock's rule against a new test file is not meant for it.
 - REQ-3: Where the worktree has no TDD record, the record is in RED, no named path is locked, or the repository holds no MoAI state, the guard shall allow the command as before.
 - REQ-4: The guard shall read relative paths against the hook input's `cwd` and shall judge a path where it lands (`..` and symlinks resolved), as the file-write lock does.
-- REQ-5: When the engine denies a tool call, the line it appends to `hook-engine.jsonl` shall carry the denial's reason text, and shall carry no command text, path or file content.
+- REQ-5: When the engine denies a tool call, the line it appends to `hook-engine.jsonl` shall carry the reason sentence of the guard that refused it, and shall carry no command text, path or file content. IF the refusal quotes the call (the commit-identity rule names an email, the claim rule an Issue number, a `git -C` error its text), THEN the line shall carry `reason: null`.
 - REQ-6: The `capabilities` answer of the hook engine shall say that the Bash lock covers `rm`, `unlink`, `git rm`, `mv` and `git mv` only, and that redirections, `sed -i`, `find -delete`, scripts and a command run after a `cd` are not guarded.
 
 ## Acceptance
@@ -69,9 +69,14 @@ created: 2026-11-19
 | --- | --- | --- | --- |
 | D-1 | `lock_refusal` 을 바꾸지 않고 불러요 | 규칙은 한 곳(`tdd.rs`)에 있어야 하고 이 카드의 쓰기 범위 밖이에요 | Bash 용 규칙을 따로 만들기(두 곳이 어긋남) |
 | D-2 | 존재하지 않는 `rm` 대상은 건너뛰어요 | 지울 게 없으니 시험이 바뀌지 않아요 | 모두 `lock_refusal` 에 넘기기(헛거부) |
-| D-3 | 감사 줄에는 정적 reason 문장만 더하고 명령·경로는 안 남겨요 | guard 문장은 정적 글이라 비밀·경로가 없고, 명령 글은 비밀을 품을 수 있어요 | 명령 해시 |
+| D-3 | 감사 줄에는 고정 reason 문장만 더하고 명령·경로는 안 남겨요; 명령을 인용하는 거절(신원·claim·`git -C` 오류)은 `reason: null` | 고정 문장은 비밀·경로가 없고, 인용하는 문장은 이메일·명령 글을 품어요 | 모든 reason 을 그대로 기록(새어 나감), 명령 해시 |
 | D-4 | "approved 여야 쓰기 허용"은 이 조각에서 안 해요 | 정책 결정(note 2278 D-A, 기본값 그대로) | 선택 B 또는 C |
 
 ## Result
 
-(채워지지 않았어요: 구현 뒤에 AC 마다 한 줄을 적어요.)
+- AC-1: met — `cargo test --locked --offline --test hooks_cli green_lock_bash` 3개 통과(GREEN·REFACTOR 에서 rm·unlink·git rm·mv·git mv·`..`·절대 경로·`sh -c` 거부, 잠기지 않은 경로·없는 rm 대상·RED·기록 없음·`.git` 없음 허용, 입력 cwd 기준). RED 먼저: 새 시험 5개 중 4개 실패(허용 시험 1개는 처음부터 통과). 한계: `cd x && rm y` 처럼 폴더를 바꾼 뒤의 명령은 읽지 않아요.
+- AC-2: met — `deny_audit_line_carries_the_reason_and_no_command_or_path` 통과(두 deny 줄에 서로 다른 고정 reason, 명령·경로 문자열 없음). 명령을 인용하는 거절(신원·claim·`git -C`)의 `reason: null` 경로는 시험이 없어요(돌리지 않음).
+- AC-3: met — `capabilities_name_the_bash_lock_limits` 통과(claude·codex·omp 세 host 모두).
+- AC-4: met — `--test hooks_cli` 27, `--test spec_before_code_hook` 9, `--test green_test_lock` 10, `--test hook_dispatch_cli` 43, `--test hook_status_cli` 14, `--lib hook_` 56 모두 통과, `cargo fmt --check` 0, `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `--test ac_command_lint` 5 통과, `python3 -m unittest tests.ci_scope_test` 19 OK, `moai spec lint <spec.md>` 오류 0(경고는 예전 형식 유예분). 돌리지 않은 것: 전체 `cargo test`(CI 가 돌려요), `--test git_env_scrub`(git 을 새로 띄우는 코드가 없어요).
+- mutation: 12개(unlink·mv·git rm·git mv 가지 제거, 존재 확인 끔, cwd 무시, 배선 제거, reason 미보관·항상 null, 없는 mv 대상 건너뛰기, OMP capabilities 문구 제거, 잠금 호출 제거) 모두 KILLED, `git status` 깨끗이 복구(`target/c86/mutants.txt`).
+- 이 조각 밖: AC-1(인터뷰 기록)·AC-3(Stop hook)·AC-4(병합 관문)은 S2·S3·S4 로 이어져요(리더 note 2278: 순서 S1 → S4 → S2 → S3, 범위는 S2 시작 때 넓힘).
