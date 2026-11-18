@@ -1895,7 +1895,7 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
 /// Card C-67 (audit N1): `allow_older` (`--allow-older`) plans this build over a newer
 /// installed version instead of blocking it; each such host carries a `going_back` warning,
 /// and the digest binds the choice, so the confirm needs the flag again.
-pub fn update_command(
+fn update_command_core(
     home: &Path,
     confirm: Option<&str>,
     confirm_cleanup: Option<&str>,
@@ -2128,6 +2128,45 @@ pub fn update_command(
         out["home_result"] = h;
     }
     out["revert_order"] = json!(revert_order(&out["revert"]));
+    Ok(out)
+}
+
+/// The update command with the model stage of card C-47 (SPEC-20261118-update-model-pick): the
+/// update part is `update_command_core` as it was, then an applied result gets a `models` key. On the
+/// person's screen (a terminal on stdin and stderr, screens on, no confirm flag) after an
+/// update that wrote files, the stage asks the tool pick and the model and
+/// effort questions and saves them after a yes; in every other run `models` reports the values
+/// each tool and role would use and nothing is asked. A stage problem is reported inside
+/// `models` and never turns an update result into an error.
+pub fn update_command(
+    home: &Path,
+    confirm: Option<&str>,
+    confirm_cleanup: Option<&str>,
+    confirm_home: Option<&str>,
+    allow_older: bool,
+    ask: impl FnOnce(&str, &serde_json::Value) -> Result<bool>,
+) -> Result<serde_json::Value> {
+    let scripted = confirm.is_some() || confirm_cleanup.is_some() || confirm_home.is_some();
+    let mut out = update_command_core(
+        home,
+        confirm,
+        confirm_cleanup,
+        confirm_home,
+        allow_older,
+        ask,
+    )?;
+    // A preview keeps exactly the keys it had (#2872 stage 2); only an applied result is extended.
+    if out["mode"] != json!("applied") {
+        return Ok(out);
+    }
+    let wrote = out["applied"] == json!(true);
+    out["models"] =
+        if !scripted && wrote && crate::update_tux::human() && crate::update_tux::can_ask() {
+            let stdin = std::io::stdin();
+            crate::update_models::stage(home, &mut stdin.lock(), &mut std::io::stderr())
+        } else {
+            crate::update_models::report(home)
+        };
     Ok(out)
 }
 

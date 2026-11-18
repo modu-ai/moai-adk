@@ -379,13 +379,34 @@ fn in_a_terminal_update_asks_and_applies_only_on_yes() {
         "no envelope on a terminal: {text}"
     );
     assert_eq!(state(&f.home), before);
-    let text = run_in_terminal(&a, &f.home, "y\n");
+    // Card C-47: an update that wrote files goes on to the model stage; the tool pick, the four
+    // model questions of the one installed tool and the save question are answered by Enter and a no.
+    let text = run_in_terminal(&a, &f.home, "y\n\n\n\n\n\nn\n");
     assert!(text.contains("Applied") && text.contains("Done"), "{text}");
+    assert!(text.contains("Save these model settings? [y/N]"), "{text}");
     assert!(
         !text.contains("\"mode\""),
         "no envelope on a terminal: {text}"
     );
     assert!(f.home.join(".claude/skills/moai/SKILL.md").is_file());
+}
+
+// A terminal run that applies the update goes on to the model stage and saves the choice after
+// a yes (card C-47, SPEC-20261118-update-model-pick).
+#[cfg(target_os = "macos")]
+#[test]
+fn in_a_terminal_an_applied_update_asks_the_model_stage_and_saves_after_a_yes() {
+    let f = fx();
+    let a = install_version(&f.home, "a", &v1());
+    let text = run_in_terminal(&a, &f.home, "y\n\n\n\n\n\ny\n");
+    assert!(text.contains("Save these model settings? [y/N]"), "{text}");
+    let saved = fs::read_to_string(moai_cli::update_models::settings_path(&f.home)).unwrap();
+    let saved: Value = serde_json::from_str(&saved).unwrap();
+    assert_eq!(
+        saved["launcher"]["models"]["claude"]["leader"],
+        json!({"model": "claude-opus-5-5", "effort": "medium"}),
+        "{text}"
+    );
 }
 
 // A confirmation piped in without a terminal is not a confirmation: only `--confirm`

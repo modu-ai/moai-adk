@@ -1,16 +1,12 @@
 //! SPEC-20261118-model-effort-settings (card C-47, slice 2): the support table, the defaults and
 //! the `launcher.models.<tool>.<role>` key of the user launcher settings. The module is pure
-//! (no file access), so every test builds a launcher object in memory. The module is included by
-//! path because `src/lib.rs` is outside this card scope; the update slice declares it in the
-//! library and switches this include to the library path.
+//! (no file access), so every test builds a launcher object in memory.
 use serde_json::{json, Map, Value};
 
-#[allow(dead_code)]
-#[path = "../src/model_effort_settings.rs"]
-mod model_effort_settings;
-
-use model_effort_settings::{default_choice, resolve, supported, with_choice, Choice, Source};
-use model_effort_settings::{ROLES, TOOLS};
+use moai_cli::model_effort_settings::{
+    default_choice, resolve, supported, with_choice, Choice, Source,
+};
+use moai_cli::model_effort_settings::{ROLES, TOOLS};
 
 /// A secret-looking marker: it is put into every refused value, and no refusal may contain it.
 const SECRET: &str = "SECRET-saved-text";
@@ -288,7 +284,7 @@ fn every_default_is_inside_the_support_table() {
 
 #[test]
 fn unsupported_saved_entries_are_listed_by_key_path_without_quoting_them() {
-    use model_effort_settings::unsupported_entries;
+    use moai_cli::model_effort_settings::unsupported_entries;
     let launcher = object(json!({
         "models": {
             "claude": {"leader": {"model": SECRET, "effort": "high"}},

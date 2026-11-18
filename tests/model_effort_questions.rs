@@ -1,8 +1,6 @@
 //! SPEC-20261118-model-effort-questions (card C-47, slice 2a): the tool pick, the model and effort
 //! selections, the plan of the `launcher.models` key and its digest-bound apply to the launcher
-//! settings file given by path. Every file lives in a temporary folder. The two modules are
-//! included by path because `src/lib.rs` is outside this card scope; slice 2b declares them in
-//! the library and switches these includes.
+//! settings file given by path. Every file lives in a temporary folder.
 #![cfg(unix)]
 use serde_json::{json, Map, Value};
 use std::fs;
@@ -10,18 +8,11 @@ use std::io::Cursor;
 use std::os::unix::fs::{symlink, PermissionsExt};
 use std::path::Path;
 
-#[allow(dead_code)]
-#[path = "../src/model_effort_questions.rs"]
-mod model_effort_questions;
-#[allow(dead_code)]
-#[path = "../src/model_effort_settings.rs"]
-mod model_effort_settings;
-
-use model_effort_questions::{
-    apply, effort_question, model_question, plan, plan_file, read_answer, run, tool_question,
+use moai_cli::model_effort_questions::{
+    self, apply, effort_question, model_question, plan, plan_file, read_answer, run, tool_question,
     Answer, Kind, Outcome, Pick,
 };
-use model_effort_settings::{resolve, Choice, Source};
+use moai_cli::model_effort_settings::{self, resolve, Choice, Source};
 
 const SECRET: &str = "SECRET-answer-or-saved-text";
 

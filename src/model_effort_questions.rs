@@ -209,7 +209,7 @@ fn show<W: Write>(out: &mut W, question: &Question) -> io::Result<()> {
 
 /// Reads one line of at most [`MAX_LINE_BYTES`]. `None` is the end of input. A longer line is
 /// dropped up to its newline and read as `?`, which no question accepts.
-fn read_line_bounded<R: BufRead>(input: &mut R) -> io::Result<Option<String>> {
+pub fn read_line_bounded<R: BufRead>(input: &mut R) -> io::Result<Option<String>> {
     let mut bytes = Vec::new();
     let read = (&mut *input)
         .take(MAX_LINE_BYTES + 1)
@@ -408,6 +408,12 @@ fn read_root(path: &Path) -> Result<Map<String, Value>, String> {
         Ok(_) => Err("launcher settings must be an object".into()),
         Err(_) => Err("launcher settings must use valid JSON-subset syntax".into()),
     }
+}
+
+/// The `launcher` object of the settings file (empty when the file or the key is absent), read
+/// by the same rules as a plan: a link, a folder, a special file or more than one MiB is refused.
+pub fn read_launcher(path: &Path) -> Result<Map<String, Value>, String> {
+    launcher_of(&read_root(path)?)
 }
 
 fn launcher_of(root: &Map<String, Value>) -> Result<Map<String, Value>, String> {
