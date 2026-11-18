@@ -1059,6 +1059,21 @@ fn deny_audit_line_carries_the_reason_and_no_command_or_path() {
     }
 }
 
+/// REQ-7: a refusal whose sentence is built at run time leaves `reason: null` in the line.
+#[test]
+fn deny_audit_line_is_null_when_the_sentence_is_built_at_run_time() {
+    let repo = GreenRepo::new("green");
+    let reason = repo.deny_reason("git -C src commit -m a && git -C tests commit -m b");
+    assert!(reason.contains("more than one folder"), "{reason}");
+    let lines = repo.audit_lines();
+    let denies: Vec<&Value> = lines
+        .iter()
+        .filter(|l| l["kind"] == json!("deny"))
+        .collect();
+    assert_eq!(denies.len(), 1, "{lines:?}");
+    assert_eq!(denies[0]["reason"], Value::Null, "{lines:?}");
+}
+
 /// REQ-6: every host's answer says what the Bash lock covers and what it does not.
 #[test]
 fn capabilities_name_the_bash_lock_limits() {

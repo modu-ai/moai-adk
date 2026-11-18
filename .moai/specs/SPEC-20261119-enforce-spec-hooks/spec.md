@@ -28,15 +28,16 @@ created: 2026-11-19
 - REQ-1: While a worktree's TDD record is in GREEN or REFACTOR, the preflight guard shall refuse a Bash command whose `rm`, `unlink` or `git rm` names a test path the record locks, or whose `mv` or `git mv` names such a path as a source or as a destination, with the reason the lock already gives.
 - REQ-2: IF the target of `rm`, `unlink` or `git rm` does not exist, THEN the guard shall not refuse the command for that target. · failure: none — removing nothing changes no test, and the lock's rule against a new test file is not meant for it.
 - REQ-3: Where the worktree has no TDD record, the record is in RED, no named path is locked, or the repository holds no MoAI state, the guard shall allow the command as before.
-- REQ-4: The guard shall read relative paths against the hook input's `cwd` and shall judge a path where it lands (`..` and symlinks resolved), as the file-write lock does.
-- REQ-5: When the engine denies a tool call, the line it appends to `hook-engine.jsonl` shall carry the reason sentence of the guard that refused it, and shall carry no command text, path or file content. IF the refusal quotes the call (the commit-identity rule names an email, the claim rule an Issue number, a `git -C` error its text), THEN the line shall carry `reason: null`.
+- REQ-4: The guard shall read relative paths against the hook input's `cwd` and judge a path where it lands (`..` and symlinks resolved), as the file-write lock does.
+- REQ-5: When the engine denies a tool call, the line it appends to `hook-engine.jsonl` shall carry the reason sentence of the guard that refused it and no command text, path or file content.
 - REQ-6: The `capabilities` answer of the hook engine shall say that the Bash lock covers `rm`, `unlink`, `git rm`, `mv` and `git mv` only, and that redirections, `sed -i`, `find -delete`, scripts and a command run after a `cd` are not guarded.
+- REQ-7 (REQ-5): IF a refusal's sentence is built at run time (the commit-identity rule names an email, the claim rule an Issue number, and a command line that commits in more than one folder names the verbs), THEN the line that REQ-5 describes shall carry `reason: null`.
 
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2, REQ-3, REQ-4): GREEN 기록이 있는 임시 저장소에서 `rm`·`unlink`·`git rm`·`mv`·`git mv` 가 잠긴 시험 경로를 건드리면 deny, 잠기지 않은 경로·RED 단계·기록 없음·MoAI 상태 없는 저장소·존재하지 않는 `rm` 대상은 allow, 상대 경로와 `..` 는 착지한 곳으로 판단.
   verify: `cargo test --locked --offline --test hooks_cli green_lock_bash`
-- AC-2 (REQ-5): deny 한 줄에 reason 이 있고 명령·경로·내용은 없어요.
+- AC-2 (REQ-5, REQ-7): deny 한 줄에 reason 이 있고 명령·경로·내용은 없어요; 실행 중에 만든 문장(여러 폴더에 커밋하는 줄)은 `reason: null`.
   verify: `cargo test --locked --offline --test hooks_cli deny_audit_line`
 - AC-3 (REQ-6): `capabilities` 가 Bash 잠금의 범위와 못 막는 길을 말해요.
   verify: `cargo test --locked --offline --test hooks_cli capabilities_name_the_bash_lock_limits`
@@ -47,7 +48,7 @@ created: 2026-11-19
 
 - write: `src/hook_guards.rs`, `src/hook_engine.rs`, `tests/hooks_cli.rs`, `.moai/specs/SPEC-20261119-enforce-spec-hooks/spec.md`
 - read-only: `src/tdd.rs`, `src/claim_verify.rs`, `src/hooks.rs`, `tests/green_test_lock.rs`, `tests/spec_before_code_hook.rs`, `skills/moai/references/internal/sdd.md`
-- forbidden: the real `~/.claude` and `~/.moai-cli` (tests use a temporary HOME), `src/tdd.rs`, `src/spec_doc.rs`, any change that lets a hook allow what it refused before
+- forbidden: the real host settings and MoAI state under the user's home (tests use a temporary HOME), `src/tdd.rs`, `src/spec_doc.rs`, any change that lets a hook allow what it refused before
 
 ## Plan
 
@@ -69,14 +70,14 @@ created: 2026-11-19
 | --- | --- | --- | --- |
 | D-1 | `lock_refusal` 을 바꾸지 않고 불러요 | 규칙은 한 곳(`tdd.rs`)에 있어야 하고 이 카드의 쓰기 범위 밖이에요 | Bash 용 규칙을 따로 만들기(두 곳이 어긋남) |
 | D-2 | 존재하지 않는 `rm` 대상은 건너뛰어요 | 지울 게 없으니 시험이 바뀌지 않아요 | 모두 `lock_refusal` 에 넘기기(헛거부) |
-| D-3 | 감사 줄에는 고정 reason 문장만 더하고 명령·경로는 안 남겨요; 명령을 인용하는 거절(신원·claim·`git -C` 오류)은 `reason: null` | 고정 문장은 비밀·경로가 없고, 인용하는 문장은 이메일·명령 글을 품어요 | 모든 reason 을 그대로 기록(새어 나감), 명령 해시 |
+| D-3 | 감사 줄에는 고정 reason 문장만 더하고 명령·경로는 안 남겨요; 실행 중에 만든 문장(신원·claim·여러 폴더 커밋)은 `reason: null` | 고정 문장은 비밀·경로가 없고, 실행 중에 만든 문장은 이메일·Issue 번호처럼 호출에서 온 글을 품을 수 있어요 | 모든 reason 을 그대로 기록(새어 나감), 명령 해시 |
 | D-4 | "approved 여야 쓰기 허용"은 이 조각에서 안 해요 | 정책 결정(note 2278 D-A, 기본값 그대로) | 선택 B 또는 C |
 
 ## Result
 
 - AC-1: met — `cargo test --locked --offline --test hooks_cli green_lock_bash` 3개 통과(GREEN·REFACTOR 에서 rm·unlink·git rm·mv·git mv·`..`·절대 경로·`sh -c` 거부, 잠기지 않은 경로·없는 rm 대상·RED·기록 없음·`.git` 없음 허용, 입력 cwd 기준). RED 먼저: 새 시험 5개 중 4개 실패(허용 시험 1개는 처음부터 통과). 한계: `cd x && rm y` 처럼 폴더를 바꾼 뒤의 명령은 읽지 않아요.
-- AC-2: met — `deny_audit_line_carries_the_reason_and_no_command_or_path` 통과(두 deny 줄에 서로 다른 고정 reason, 명령·경로 문자열 없음). 명령을 인용하는 거절(신원·claim·`git -C`)의 `reason: null` 경로는 시험이 없어요(돌리지 않음).
+- AC-2: met — `deny_audit_line_carries_the_reason_and_no_command_or_path` 통과(두 deny 줄에 서로 다른 고정 reason, 명령·경로 문자열 없음)와 `deny_audit_line_is_null_when_the_sentence_is_built_at_run_time` 통과(`git -C a commit … && git -C b commit …` 거절은 `reason: null`). 신원·claim 규칙의 null 경로는 시험이 없어요(설정·lane 상태가 필요해 돌리지 않음).
 - AC-3: met — `capabilities_name_the_bash_lock_limits` 통과(claude·codex·omp 세 host 모두).
-- AC-4: met — `--test hooks_cli` 27, `--test spec_before_code_hook` 9, `--test green_test_lock` 10, `--test hook_dispatch_cli` 43, `--test hook_status_cli` 14, `--lib hook_` 56 모두 통과, `cargo fmt --check` 0, `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `--test ac_command_lint` 5 통과, `python3 -m unittest tests.ci_scope_test` 19 OK, `moai spec lint <spec.md>` 오류 0(경고는 예전 형식 유예분). 돌리지 않은 것: 전체 `cargo test`(CI 가 돌려요), `--test git_env_scrub`(git 을 새로 띄우는 코드가 없어요).
+- AC-4: met — `--test hooks_cli` 28(마지막 시험 추가 뒤 다시 돌림), `--test spec_before_code_hook` 9, `--test green_test_lock` 10, `--test hook_dispatch_cli` 43, `--test hook_status_cli` 14, `--lib hook_` 56 모두 통과, `cargo fmt --check` 0, `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `--test ac_command_lint` 5 통과, `python3 -m unittest tests.ci_scope_test` 19 OK, `moai spec lint <spec.md>` 오류 0(경고는 예전 형식 유예분), `moai spec check SPEC-20261119-enforce-spec-hooks` 오류 0·경고 0. 돌리지 않은 것: 전체 `cargo test`(CI 가 돌려요), `--test git_env_scrub`(git 을 새로 띄우는 코드가 없어요).
 - mutation: 12개(unlink·mv·git rm·git mv 가지 제거, 존재 확인 끔, cwd 무시, 배선 제거, reason 미보관·항상 null, 없는 mv 대상 건너뛰기, OMP capabilities 문구 제거, 잠금 호출 제거) 모두 KILLED, `git status` 깨끗이 복구(`target/c86/mutants.txt`).
 - 이 조각 밖: AC-1(인터뷰 기록)·AC-3(Stop hook)·AC-4(병합 관문)은 S2·S3·S4 로 이어져요(리더 note 2278: 순서 S1 → S4 → S2 → S3, 범위는 S2 시작 때 넓힘).

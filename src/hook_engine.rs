@@ -286,9 +286,10 @@ fn record_deny(
     host: Host,
     reason: Option<&'static str>,
 ) {
-    // `reason` is a guard's fixed sentence, or null when the refusal quotes the call (the
-    // commit-identity rule names an email, the claim rule an Issue number and a command's
-    // `git -C` error its text): the line never carries the command, a path or file content.
+    // `reason` is a guard's fixed sentence, or null when the sentence is built at run time
+    // (the commit-identity rule names an email, the claim rule an Issue number, a line that
+    // commits in more than one folder names the verbs): the line never carries the command,
+    // a path or file content.
     let line = json!({
         "schema_version": 1,
         "kind": "deny",
@@ -664,8 +665,8 @@ fn tool_preflight(
 }
 
 /// `fixed_reason` is set to the guard's sentence when a guard with fixed text refuses the
-/// call; a refusal that quotes the call (commit identity, claim token, the `git -C` error)
-/// leaves it unset.
+/// call; a refusal whose sentence is built at run time (commit identity, claim token, a line
+/// that commits in more than one folder) leaves it unset.
 fn tool_preflight_deny(
     input: &Value,
     cwd: &Path,
