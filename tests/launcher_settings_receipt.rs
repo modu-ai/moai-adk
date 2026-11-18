@@ -324,3 +324,129 @@ fn a_failed_restore_changes_nothing_and_stays_revertable() {
     assert_eq!(reverted["state"], json!("reverted"), "{reverted}");
     assert_eq!(fs::read_to_string(&path).unwrap(), before);
 }
+
+/// Saves into a file that exists and returns the settings path, the earlier text and the receipt.
+fn genuine_save(h: &Home) -> (PathBuf, String, String, Value) {
+    let before = r#"{"launcher":{"role_access":"prompt"}}"#.to_string();
+    let path = write_settings(&h.path, &before, 0o600);
+    let (result, _) = save(&h.path);
+    let id = result["receipt"].as_str().unwrap().to_string();
+    let receipt: Value =
+        serde_json::from_str(&fs::read_to_string(receipt_file(&h.path, &id)).unwrap()).unwrap();
+    (path, before, id, receipt)
+}
+
+fn plant(home: &Path, name: &str, value: &Value) {
+    let file = receipts(home).join(format!("{name}.json"));
+    fs::write(&file, value.to_string()).unwrap();
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o600)).unwrap();
+}
+
+#[test]
+fn a_receipt_that_lacks_a_before_field_is_damaged_and_deletes_nothing() {
+    let h = home();
+    let (path, _before, _id, genuine) = genuine_save(&h);
+    let saved = fs::read_to_string(&path).unwrap();
+
+    let without = |keys: &[&str]| {
+        let mut r = genuine.clone();
+        for k in keys {
+            r.as_object_mut().unwrap().remove(*k);
+        }
+        r
+    };
+    let with = |key: &str, value: Value| {
+        let mut r = genuine.clone();
+        r[key] = value;
+        r
+    };
+    let cases: Vec<(&str, Value)> = vec![
+        ("no before_text", without(&["before_text"])),
+        ("no before_sha256", without(&["before_sha256"])),
+        (
+            "neither before field",
+            without(&["before_text", "before_sha256"]),
+        ),
+        (
+            "absent text, present hash",
+            with("before_text", Value::Null),
+        ),
+        (
+            "present text, absent hash",
+            with("before_sha256", Value::Null),
+        ),
+        ("text that is a number", with("before_text", json!(7))),
+        ("hash that is a number", with("before_sha256", json!(7))),
+        (
+            "hash that is not the text's",
+            with("before_sha256", json!(sha("other"))),
+        ),
+    ];
+    for (i, (why, receipt)) in cases.iter().enumerate() {
+        let name = format!("models-{}-1", 100 + i);
+        plant(&h.path, &name, receipt);
+        let refused = revert(&h.path, &name, REF).unwrap_err();
+        assert_eq!(refused, "models receipt is damaged", "{why}");
+        assert_eq!(
+            fs::read_to_string(&path).unwrap(),
+            saved,
+            "{why}: unchanged"
+        );
+        assert!(
+            !receipts(&h.path)
+                .join(format!("{name}.reverted.json"))
+                .exists(),
+            "{why}: no marker"
+        );
+    }
+}
+
+#[test]
+fn a_failed_apply_still_names_its_receipt() {
+    let h = home();
+    let before = r#"{"launcher":{}}"#;
+    let path = write_settings(&h.path, before, 0o600);
+    let dir = path.parent().unwrap().to_path_buf();
+    fs::set_permissions(&dir, fs::Permissions::from_mode(0o555)).unwrap();
+    let probe = dir.join(".probe");
+    let can_write_anyway = fs::write(&probe, "").is_ok(); // running as the superuser
+    let _ = fs::remove_file(&probe);
+    let (result, out) = save(&h.path);
+    fs::set_permissions(&dir, fs::Permissions::from_mode(0o755)).unwrap();
+    if can_write_anyway {
+        return;
+    }
+    assert_eq!(result["state"], json!("error"), "{result}");
+    let id = result["receipt"].as_str().expect("the receipt id is named");
+    assert!(receipt_file(&h.path, id).is_file(), "the receipt exists");
+    assert_eq!(
+        fs::read_to_string(&path).unwrap(),
+        before,
+        "nothing written"
+    );
+    assert!(!result.to_string().contains("role_access") && !out.contains("role_access"));
+}
+
+#[test]
+fn a_receipt_id_outside_the_shape_is_refused_as_unknown() {
+    let h = home();
+    let (path, _before, id, _receipt) = genuine_save(&h);
+    let saved = fs::read_to_string(&path).unwrap();
+    let long = format!("models-{}", "1".repeat(65));
+    let bad = [
+        format!("{id}.reverted"),
+        format!("{id}/"),
+        format!("{id}\n"),
+        "models-1 1".to_string(),
+        "models-1_1".to_string(),
+        "MODELS-1-1".to_string(),
+        "models-\u{661}-1".to_string(),
+        "models-1/../1".to_string(),
+        long,
+    ];
+    for given in bad {
+        let refused = revert(&h.path, &given, REF).unwrap_err();
+        assert_eq!(refused, "unknown models receipt id", "{given:?}");
+    }
+    assert_eq!(fs::read_to_string(&path).unwrap(), saved, "unchanged");
+}

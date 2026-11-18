@@ -200,20 +200,22 @@ fn save(home: &Path, path: &Path, picks: &[questions::Pick], plan: &Plan) -> Val
     }
     let done = match questions::apply(path, picks, &plan.digest) {
         Ok(done) => done,
-        Err(message) => return error(&message),
+        // The receipt is already kept: name it, because the file may or may not have changed.
+        Err(message) => return json!({"state": "error", "receipt": id, "message": message}),
     };
-    match questions::read_text(path) {
-        Ok(Some(text)) if sha(&text) == sha(&after) => json!({
+    if file_has_hash(path, &sha(&after)) {
+        json!({
             "state": "applied",
             "receipt": id,
             "changes": changes_json(&done.changes),
             "unsupported": done.kept_unsupported,
-        }),
-        _ => json!({
+        })
+    } else {
+        json!({
             "state": "error",
             "receipt": id,
             "message": "the settings file differs from what the receipt promised; check the file",
-        }),
+        })
     }
 }
 
@@ -223,6 +225,32 @@ fn receipt_id_ok(id: &str) -> bool {
             && rest.len() <= 64
             && rest.bytes().all(|b| b.is_ascii_digit() || b == b'-')
     })
+}
+
+/// The text before the save that a receipt kept: `Some(Some(text))` for a file that existed,
+/// `Some(None)` for a file that was absent, `None` when the receipt is damaged. Both keys must be
+/// present: a text with its hash, or two nulls — a key that is missing never reads as "absent".
+fn before_of(receipt: &Value) -> Option<Option<&str>> {
+    let object = receipt.as_object()?;
+    let (text, hash) = (object.get("before_text")?, object.get("before_sha256")?);
+    match (text, hash) {
+        (Value::Null, Value::Null) => Some(None),
+        (Value::String(text), Value::String(hash)) if sha(text) == *hash => Some(Some(text)),
+        _ => None,
+    }
+}
+
+/// Whether the file at `path` is exactly `expected` (`None` = no file).
+fn file_is(path: &Path, expected: Option<&str>) -> bool {
+    questions::read_text(path).is_ok_and(|now| now.as_deref() == expected)
+}
+
+/// Whether the file at `path` hashes to `expected_sha`.
+fn file_has_hash(path: &Path, expected_sha: &str) -> bool {
+    questions::read_text(path)
+        .ok()
+        .flatten()
+        .is_some_and(|text| sha(&text) == expected_sha)
 }
 
 /// Puts the settings file back as the receipt kept it, while the file is still the file the save
@@ -252,14 +280,7 @@ pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<Value, 
     let after_sha = receipt["after_sha256"]
         .as_str()
         .ok_or("models receipt is damaged")?;
-    let before = match &receipt["before_text"] {
-        Value::String(text) => Some(text.as_str()),
-        Value::Null => None,
-        _ => return Err("models receipt is damaged".into()),
-    };
-    if receipt["before_sha256"].as_str() != before.map(sha).as_deref() {
-        return Err("models receipt is damaged".into());
-    }
+    let before = before_of(&receipt).ok_or("models receipt is damaged")?;
     let current = questions::read_text(&path)?;
     if current.as_deref().map(sha).as_deref() != Some(after_sha) {
         return Ok(json!({
@@ -273,7 +294,7 @@ pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<Value, 
         Some(text) => questions::write_text(&path, text)?,
         None => questions::remove_settings(&path)?,
     }
-    if questions::read_text(&path)?.as_deref() != before {
+    if !file_is(&path, before) {
         return Err(
             "the settings file read back differently after the revert; check the file".into(),
         );
@@ -294,4 +315,66 @@ pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<Value, 
         "path": path.display().to_string(),
         "file_removed": before.is_none(),
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn temp_file(text: Option<&str>) -> (tempfile::TempDir, std::path::PathBuf) {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("launcher.yaml");
+        if let Some(text) = text {
+            std::fs::write(&path, text).unwrap();
+        }
+        (dir, path)
+    }
+
+    #[test]
+    fn the_read_back_after_a_revert_compares_the_whole_file() {
+        let (_dir, path) = temp_file(Some("one"));
+        assert!(file_is(&path, Some("one")));
+        assert!(!file_is(&path, Some("two")), "a different text");
+        assert!(!file_is(&path, None), "a file where none was expected");
+        let (_dir, absent) = temp_file(None);
+        assert!(file_is(&absent, None));
+        assert!(
+            !file_is(&absent, Some("one")),
+            "no file where one was expected"
+        );
+    }
+
+    #[test]
+    fn the_promise_check_after_a_save_compares_the_hash_of_the_file() {
+        let (_dir, path) = temp_file(Some("promised"));
+        assert!(file_has_hash(&path, &sha("promised")));
+        assert!(!file_has_hash(&path, &sha("something else")));
+        let (_dir, absent) = temp_file(None);
+        assert!(
+            !file_has_hash(&absent, &sha("promised")),
+            "no file keeps no promise"
+        );
+    }
+
+    #[test]
+    fn a_receipt_reads_back_only_with_both_before_fields() {
+        let text = "earlier";
+        let good = json!({"before_text": text, "before_sha256": sha(text)});
+        assert_eq!(before_of(&good), Some(Some(text)));
+        let absent = json!({"before_text": null, "before_sha256": null});
+        assert_eq!(before_of(&absent), Some(None));
+        for bad in [
+            json!({}),
+            json!({"before_text": text}),
+            json!({"before_sha256": sha(text)}),
+            json!({"before_text": null}),
+            json!({"before_text": text, "before_sha256": null}),
+            json!({"before_text": null, "before_sha256": sha(text)}),
+            json!({"before_text": text, "before_sha256": sha("other")}),
+            json!({"before_text": 1, "before_sha256": 1}),
+            json!("not an object"),
+        ] {
+            assert_eq!(before_of(&bad), None, "{bad}");
+        }
+    }
 }
