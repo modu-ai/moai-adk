@@ -2,7 +2,7 @@
 
 **English** · [한국어](README.ko.md)
 
-MoAI ADK is an open-source development kit that runs one workflow (read → plan → run → verify → audit → sync) inside Claude Code and Codex through a single shared `moai` skill, with the project's local cards as the work ledger.
+MoAI ADK is an open-source development kit that runs one workflow (read → plan → run → verify → audit → sync) inside Claude Code and Codex through a single shared `moai` skill, with GitHub Issues as the work ledger.
 
 > **Status: release candidate, not yet released.** This branch (`v2026.11.0`) holds the Rust generation, version `2026.11.0-rc.1` (command `moai`). No release assets are published for it yet. The stable release today is the Go 3.x generation on the [`main`](https://github.com/modu-ai/moai-adk/tree/main) branch ([releases](https://github.com/modu-ai/moai-adk/releases)).
 

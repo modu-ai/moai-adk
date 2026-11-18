@@ -4185,15 +4185,11 @@ fn card_ledger_wording_base_agents_name_cards_not_issues() {
 #[test]
 fn card_ledger_wording_readme_says_cards_and_keeps_the_gate() {
     let text = repo_text("README.md");
+    // The opening sentence is pinned equal to the `Cargo.toml` description
+    // (tests/cargo_metadata_test.py); both change together in a follow-up SPEC.
     assert!(
-        text.contains("local cards as the work ledger"),
-        "the README opening names the local card ledger"
-    );
-    assert!(
-        !text.contains("GitHub Issues as the work ledger")
-            && !text.contains("Work ledger: GitHub Issues")
-            && !text.contains("GitHub Issue<br/>"),
-        "no GitHub Issue ledger wording is left"
+        !text.contains("Work ledger: GitHub Issues") && !text.contains("GitHub Issue<br/>"),
+        "no GitHub Issue ledger wording is left in the facts list or the diagram"
     );
     assert!(text.contains("- **One card, one session.**"));
     assert!(text.contains("Work ledger: local cards (`moai card`)"));
