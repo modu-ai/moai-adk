@@ -253,8 +253,14 @@ fn omp_approval_modes() {
     assert_eq!(modes(&["omp"]), Vec::<String>::new(), "no role: no flag");
     assert_eq!(modes(&["omp", "-l"]), ["yolo"]);
     assert_eq!(modes(&["omp", "-a"]), ["yolo"]);
-    assert_eq!(modes(&["omp", "-l", "--permissions"]), ["always-ask-cached"]);
-    assert_eq!(modes(&["omp", "-a", "--permissions"]), ["always-ask-cached"]);
+    assert_eq!(
+        modes(&["omp", "-l", "--permissions"]),
+        ["always-ask-cached"]
+    );
+    assert_eq!(
+        modes(&["omp", "-a", "--permissions"]),
+        ["always-ask-cached"]
+    );
     assert_eq!(modes(&["omp", "--permissions"]), Vec::<String>::new());
 }
 
@@ -291,9 +297,7 @@ fn omp_advisor_is_a_note() {
     let v = f.dry(&["omp", "--advisor", "opus"]);
     assert!(!argv(&v).contains(&"--advisor".to_string()), "{v}");
     assert!(
-        notes(&v)
-            .iter()
-            .any(|n| n.contains("not passed to omp")),
+        notes(&v).iter().any(|n| n.contains("not passed to omp")),
         "{v}"
     );
 }
@@ -306,7 +310,11 @@ fn omp_key_reaches_the_process_for_a_glm_model_only() {
     let out = f.run(&["omp", "-l", "--model", GLM_MODEL]);
     assert!(out.status.success(), "{out:?}");
     assert!(f.started());
-    assert_eq!(f.zai_seen_by_host(), VAULT_KEY, "z.ai model, key from vault");
+    assert_eq!(
+        f.zai_seen_by_host(),
+        VAULT_KEY,
+        "z.ai model, key from vault"
+    );
 
     let f2 = Fixture::new();
     f2.store_shared_key(VAULT_KEY);
@@ -433,7 +441,10 @@ fn omp_is_named_in_help_usage_and_errors() {
     assert!(root.status.success());
     let root = String::from_utf8_lossy(&root.stdout).to_string();
     for host in ["cc", "glm", "codex", "omp"] {
-        assert!(words(&root).contains(&host.to_string()), "{host} in:\n{root}");
+        assert!(
+            words(&root).contains(&host.to_string()),
+            "{host} in:\n{root}"
+        );
     }
     let all = f.run(&["help", "--all"]);
     assert!(all.status.success());
@@ -450,7 +461,11 @@ fn omp_is_named_in_help_usage_and_errors() {
     let bare = f.run(&[]);
     assert!(text(&bare).contains("cc|glm|codex|omp"), "{}", text(&bare));
     let unknown = f.run(&["-a", "nope", "--dry-run"]);
-    assert!(text(&unknown).contains("(cc|glm|codex|omp)"), "{}", text(&unknown));
+    assert!(
+        text(&unknown).contains("(cc|glm|codex|omp)"),
+        "{}",
+        text(&unknown)
+    );
 
     let help = f.run(&["omp", "--help"]);
     assert!(help.status.success(), "{help:?}");
@@ -468,6 +483,9 @@ fn omp_is_named_in_help_usage_and_errors() {
 fn the_support_matrix_no_longer_says_omp_is_unsupported() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let matrix = fs::read_to_string(root.join("docs/host-support-matrix.md")).unwrap();
-    assert!(!matrix.contains("지원하지 않음(2026-11-10 결정"), "old line is still there");
+    assert!(
+        !matrix.contains("지원하지 않음(2026-11-10 결정"),
+        "old line is still there"
+    );
     assert!(matrix.contains("2026-11-17"));
 }
