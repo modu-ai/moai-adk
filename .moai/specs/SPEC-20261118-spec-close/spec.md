@@ -82,7 +82,8 @@ SDD 조각 SDD-8(승인된 SDD 계획 `sdd-lifecycle-plan-20261117` "Slices"): �
 ## Result
 
 - AC-1: met — `spec_close_cli` (RED 먼저: 4 failed, `close` 없음 → usage 오류); 바뀐 바이트는 상태 줄 하나, 결과는 `--closure` 통과, HEAD 그대로.
-- AC-2: met — 같은 시험, 거절 9가지에서 임시 HOME 아래 모든 바이트가 그대로.
+- AC-2: met — 같은 시험, 거절 10가지(`-`로 시작하는 기록된 base 포함)에서 임시 HOME 아래 모든 바이트가 그대로. 변이 6개 중 5개 KILLED
+  (C2는 시험을 고친 뒤 KILLED); C6(base의 `-` 검사 끄기)은 `rev-parse --end-of-options`가 같은 입력을 거절하는 동등 변이.
 - AC-3: met — 같은 시험 두 개: 가짜 `gh`로 PR을 합친 카드가 `done`; 열린 PR(`card done`의 거절), SPEC 없는 카드, 다른 SPEC의 카드, 세션 없음은 아무것도 바꾸지 않음.
 - AC-4: met — spec_take_cli 9, spec_cli 17, card_spec_cli 11, help_layout 10, product_cli 76, sdd_guidance 6(목록에 `close`), home_isolation_scan 16,
   git_env_scrub 3, ac_command_lint 5, `--lib` 1418, `--bin moai` 27, clippy·fmt 0, Python 39·19·25·5 OK, manifest check 0.
