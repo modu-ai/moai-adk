@@ -77,3 +77,14 @@ The choice lives in the existing user-only launcher settings file under the key 
 | D-4 | Defaults follow decision D-2 of the parent SPEC: claude leader claude-opus-5-5 medium, agent claude-sonnet-5-5 high; codex leader gpt-6.1-sol high, agent gpt-6.1-terra xhigh; omp and glm leader zai/glm-5.3 high, agent zai/glm-5.3-flash max | the card table with the Codex ids corrected | edit the defaults block |
 | D-5 | Efforts offered are low, medium, high, xhigh and max for Claude Code and Codex models, and low, high and max for the two GLM models; ultra and ultracode are not offered | decisions D-5 and D-6 of the parent SPEC | extend the lists |
 | D-6 | A saved model is compared as an exact id; an alias such as opus is not accepted | one id per model keeps the saved file unambiguous | add aliases to the table |
+
+## Result
+
+- AC-1: met — `no_saved_value_answers_the_default_for_every_tool_and_role` passes (all 8 tool and role pairs, also with a launcher object that has no models key)
+- AC-2: met — `a_saved_supported_value_wins_and_is_marked_saved` passes (saved entry wins, sibling role and other tool keep their defaults)
+- AC-3: met — `an_unsupported_or_malformed_saved_value_is_refused_without_quoting_it` passes (14 broken shapes, each refused for two different questions, none quotes the saved text)
+- AC-4: met — `setting_a_choice_changes_one_entry_and_keeps_every_other_key` passes (role_access, advisor, unrelated keys and sibling entries kept, input unchanged)
+- AC-5: met — `an_unsupported_choice_is_refused_and_the_input_is_unchanged` passes (9 refused choices and a models key that is not an object)
+- AC-6: met — `every_default_is_inside_the_support_table` passes (and no table offers ultra or ultracode)
+- AC-7: met — the 10 model ids and their efforts in the module equal the research file of the parent SPEC (compared by reading both and by a script that finds each id in the research file); neither offers ultra or ultracode
+- AC-8: met — `cargo fmt --check` exits 0; `cargo clippy --test model_effort_settings -- -D warnings` exits 0
