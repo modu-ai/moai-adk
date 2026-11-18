@@ -76,6 +76,7 @@ The receipt keeps the text of the file before the write, so the folder is owner-
 - The receipt is written before the settings, so a failed write leaves a receipt that was never applied → the revert finds the file equal to the file before the write and reports `skipped` with `changed_since_apply`, never a false revert; the unused receipt is harmless.
 - Without a command line the revert cannot be run from a shell yet → the receipt id is in the result and the function is tested; the command follows when the main file is free, and this slice does not claim a working undo for a person.
 - A write by another program between the receipt and the settings → the digest-bound apply refuses a changed launcher object, and REQ-4 catches any other difference after the write.
+- Two read-back guards are not reached by any test because they need a file that changes between the write and the read in the same call: the check after the revert write and the hash comparison after the save (mutants R9 and R12 survived) → the apply already reads the whole file back before the stage compares hashes, and the person sees the receipt id with the error; a test would need a fault injection point in the writer, which this slice does not add.
 - The limits of the settings write recorded by the audits of PRs 3207, 3209 and 3212 stay as listed in their SPEC files.
 
 ## Decisions
@@ -90,4 +91,14 @@ The receipt keeps the text of the file before the write, so the folder is owner-
 
 ## Result
 
-- AC-1: pending
+- AC-1: met — `a_save_leaves_a_receipt_with_the_text_before_and_no_text_in_the_result` passes (receipt fields, modes 0600 and 0700, no file text in the result or the printed lines)
+- AC-2: met — `reverting_a_save_into_an_absent_file_removes_it` passes
+- AC-3: met — `the_revert_restores_the_earlier_bytes_and_mode_and_marks_the_receipt` passes (mode 0640, odd layout, marker)
+- AC-4: met — `a_file_changed_after_the_save_is_not_reverted` passes
+- AC-5: met — `the_revert_refuses_what_it_cannot_prove_is_its_own` passes (eight refusals and the second revert)
+- AC-6: met — `no_receipt_means_no_write` passes (receipt over 60000 bytes, receipts place that is a file)
+- AC-7: met — `a_no_and_an_unchanged_run_leave_no_receipt` passes
+- AC-8: met — `a_failed_restore_changes_nothing_and_stays_revertable` passes (returns early when run as the superuser, where a read-only folder still writes)
+- AC-9: met — `update_model_pick` 10, `model_effort_questions` 15, `model_effort_settings` 8, `update_command_cli` 19 passed and `python3 -m unittest tests.update_tux_tty_test` 10 OK
+- AC-10: met — `product_cli` 79 passed (includes the source manifest case)
+- AC-11: met — `cargo fmt --check` and `cargo clippy --lib` with the stage and question test files and `launcher_settings_receipt` with `-D warnings` exit 0
