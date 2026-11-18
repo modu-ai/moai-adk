@@ -580,3 +580,74 @@ fn an_overlong_answer_line_is_one_invalid_answer() {
     .unwrap();
     assert_eq!(outcome, Outcome::Cancelled);
 }
+
+#[test]
+fn the_answer_line_cap_is_exact_and_a_long_tail_never_leaks() {
+    let bad = |out: &[u8]| {
+        String::from_utf8_lossy(out)
+            .matches("not one of the numbers")
+            .count()
+    };
+    let four_questions = "\n".repeat(4);
+    let two_picks = |outcome: &Outcome| matches!(outcome, Outcome::Picks(p) if p.len() == 2);
+
+    // 4096 content bytes are an ordinary line: the answer `1` is read.
+    let line = format!("1{}\n", " ".repeat(4095));
+    let mut out = Vec::new();
+    let outcome = run(
+        &mut Cursor::new(format!("{line}{four_questions}")),
+        &mut out,
+        &[],
+    )
+    .unwrap();
+    assert!(two_picks(&outcome), "{outcome:?}");
+    assert_eq!(bad(&out), 0);
+
+    // 4097 content bytes are one invalid answer; the next line answers.
+    let line = format!("1{}\n", " ".repeat(4096));
+    let mut out = Vec::new();
+    let input = format!("{line}1\n{four_questions}");
+    let outcome = run(&mut Cursor::new(input), &mut out, &[]).unwrap();
+    assert!(two_picks(&outcome), "{outcome:?}");
+    assert_eq!(bad(&out), 1);
+
+    // A long line whose tail looks like a valid answer does not leak into the next question.
+    let line = format!("{}1\n", "a".repeat(8192));
+    let mut out = Vec::new();
+    let input = format!("{line}1\n{four_questions}");
+    let outcome = run(&mut Cursor::new(input), &mut out, &[]).unwrap();
+    assert!(two_picks(&outcome), "{outcome:?}");
+    assert_eq!(bad(&out), 1, "the dropped tail is not a second answer");
+}
+
+#[test]
+fn a_failed_rename_removes_its_temporary_file_and_a_growing_file_is_refused() {
+    let picks = [pick("claude", "agent", "claude-sonnet-5-5", "max")];
+
+    // Renaming onto `..` fails after the temporary file was created: it must be removed.
+    let home = tempfile::tempdir().unwrap();
+    let path = home.path().join("newfolder").join("..");
+    let preview = plan_file(&path, &picks).unwrap();
+    assert!(apply(&path, &picks, &preview.digest).is_err());
+    assert!(
+        entries(&home.path().join("newfolder")).is_empty(),
+        "the temporary file is removed after a failed rename"
+    );
+
+    // A file that the rewrite would grow past one MiB is refused before anything is written.
+    let home = tempfile::tempdir().unwrap();
+    let body = format!(
+        r#"{{"launcher":{{}},"pad":[{}]}}"#,
+        vec!["1"; 480_000].join(",")
+    );
+    assert!(
+        (body.len() as u64) < 1024 * 1024,
+        "the file itself is under the limit"
+    );
+    let path = launcher_file(home.path(), &body, 0o600);
+    let preview = plan_file(&path, &picks).unwrap();
+    let message = apply(&path, &picks, &preview.digest).unwrap_err();
+    assert!(message.contains("larger than one MiB"), "{message}");
+    assert_eq!(fs::read_to_string(&path).unwrap(), body);
+    assert_eq!(entries(path.parent().unwrap()), ["launcher.yaml"]);
+}

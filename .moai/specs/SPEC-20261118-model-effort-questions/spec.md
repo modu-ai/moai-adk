@@ -26,12 +26,12 @@ It also takes the audit follow-up N1 of slice 1: a saved entry outside the suppo
 - REQ-1: When the tool question is built, the module shall list Claude Code, Codex and OMP as a multiple choice whose default is the installed tools the caller passes. · failure: none — no installed tool makes the default an empty pick.
 - REQ-2: When a model or effort question is built for a tool and role, the module shall list only values of the support table, the default model first and the efforts in table order with the default marked. · failure: none — an unknown tool or role has no question.
 - REQ-3: When an answer line is read, the module shall take an empty line as the default, a number or a list of numbers as those options, and end of input as cancelled. · failure: none — a line that is not a valid choice is REQ-4.
-- REQ-4 (REQ-3): IF an answer line is not a valid choice or is longer than 4096 bytes, THEN the loop shall ask the same question again up to three times without echoing the line, and then end as cancelled.
+- REQ-4 (REQ-3): IF an answer line is not a valid choice or has more than 4096 content bytes (the newline is not counted), THEN the loop shall ask the same question again up to three times without echoing the line, and then end as cancelled.
 - REQ-5: When the tool pick is empty, the loop shall ask no model question and return no pick. · failure: none — an empty pick is a valid answer, not an error.
 - REQ-6: When picks are planned, the plan shall change only the entries of the picked tools and roles (an OMP pick sets omp and glm), keep every other key, list every other saved entry outside the support table by key path and leave it unchanged, and carry a digest of the launcher object before, the picks and the launcher object after. · failure: none — structural damage is REQ-7.
 - REQ-7 (REQ-6): IF launcher.models is structurally broken (not an object, a tool or role name this version does not know, a level that is not an object), THEN the plan shall refuse, name the key path above the damage and quote no saved text.
 - REQ-8: When a plan is applied with its digest, the apply shall plan again from the file and the picks, write nothing when the plan changes nothing, otherwise write the file atomically through a temporary name no other writer uses, keep the other root keys and the file mode, remove only a temporary file it created, and read the whole file back. · failure: none — refusals are REQ-9.
-- REQ-9 (REQ-8): IF the digest differs from the new plan, or the target or its folder is a link, or the target is a directory, a special file or larger than one MiB, THEN the apply shall write nothing and name the reason.
+- REQ-9 (REQ-8): IF the digest differs from the new plan, or the target or its folder is a link, or the target is a directory, a special file or larger than one MiB, or the file to write would be larger than one MiB, THEN the apply shall write nothing and name the reason.
 
 ## Acceptance
 
@@ -61,8 +61,10 @@ It also takes the audit follow-up N1 of slice 1: a saved entry outside the suppo
   verify: `cargo fmt --check`
 - AC-13 (REQ-8, REQ-9): a folder that is a link is refused with nothing behind it, a mode the umask would change is kept, a temporary-looking file of another writer is never touched, a folder that cannot be written fails clean, exactly one MiB is read and one byte more is refused, and a plan that changes nothing writes nothing (also for an absent file).
   verify: `cargo test --locked --offline --test model_effort_questions the_apply_guards_hold_at_their_edges`
-- AC-14 (REQ-4): an answer line longer than 4096 bytes is one invalid answer, its rest is dropped, and the next line is read; at the end of input it ends as cancelled.
-  verify: `cargo test --locked --offline --test model_effort_questions an_overlong_answer_line_is_one_invalid_answer`
+- AC-14 (REQ-4): an answer line with 4096 content bytes is an ordinary line, one with 4097 is one invalid answer whose rest is dropped, a long tail never becomes a second answer, and at the end of input it ends as cancelled.
+  verify: `cargo test --locked --offline --test model_effort_questions an_overlong_answer_line_is_one_invalid_answer`; `cargo test --locked --offline --test model_effort_questions the_answer_line_cap_is_exact_and_a_long_tail_never_leaks`
+- AC-15 (REQ-8, REQ-9): a rename that fails removes the temporary file this call created, and a rewrite that would grow a file past one MiB is refused before anything is created.
+  verify: `cargo test --locked --offline --test model_effort_questions a_failed_rename_removes_its_temporary_file_and_a_growing_file_is_refused`
 
 ## Scope
 
@@ -81,7 +83,7 @@ It also takes the audit follow-up N1 of slice 1: a saved entry outside the suppo
 - The loop and the apply are tested on temporary folders only; a live terminal and the real launcher file are slice 2b evidence, reported not_run here.
 - A launcher file written by hand may hold anything → every refusal names a key path and quotes no text, so a secret in the file cannot reach a message.
 - The apply replaces a file under HOME in slice 2b → this slice only takes a path, and the apply re-plans from the file, so a file that changed after the preview is refused.
-- Limits the code does not close and the tests do not pin (slice 1 and 2a audits): a link in an ancestor above the immediate folder is not checked; the lstat before the read and the open are not one atomic step, so a swap between them is not caught (a swap to a link only changes what is read, the write replaces the entry and never writes through it); the failure cleanup after the temporary file was created and the failure of the read-back cannot be induced by a test; a hand-edited file with duplicate root keys keeps the last value, and a number beyond 64 bits loses precision when the file is rewritten → slice 2b shows the plan, which lists the launcher changes, before any write.
+- Limits the code does not close and the tests do not pin (slice 1 and 2a audits): a link in an ancestor above the immediate folder is not checked; the lstat before the read and the open are not one atomic step, so a swap between them is not caught (a swap to a link only changes what is read, the write replaces the entry and never writes through it); the failure of the read-back after the rename cannot be induced by a test (it needs a fault between the rename and the read), and a failed rename can leave behind the empty folder the apply created; a hand-edited file with duplicate root keys keeps the last value, and a number beyond 64 bits loses precision when the file is rewritten → slice 2b shows the plan, which lists the launcher changes, before any write.
 - The two modules are included by path in the tests because the library file is outside this card scope; slice 2b declares them in the library and switches the includes.
 
 ## Decisions
@@ -111,4 +113,5 @@ It also takes the audit follow-up N1 of slice 1: a saved entry outside the suppo
 - AC-11: met — `cargo test --locked --offline --test model_effort_settings` 8 passed, including `unsupported_saved_entries_are_listed_by_key_path_without_quoting_them` and `the_slice_one_audit_cases_are_pinned`
 - AC-12: met — `cargo fmt --check` exits 0 and `cargo clippy --test model_effort_settings --test model_effort_questions -- -D warnings` exits 0
 - AC-13: met — `the_apply_guards_hold_at_their_edges` passes (link folder, mode 0664 kept, foreign temporary file untouched, unwritable folder clean, 1 MiB and 1 MiB + 1, no-op writes nothing)
-- AC-14: met — `an_overlong_answer_line_is_one_invalid_answer` passes
+- AC-14: met — `an_overlong_answer_line_is_one_invalid_answer` and `the_answer_line_cap_is_exact_and_a_long_tail_never_leaks` pass (4096 accepted, 4097 refused, a tail ending in 1 does not leak)
+- AC-15: met — `a_failed_rename_removes_its_temporary_file_and_a_growing_file_is_refused` passes (rename onto a parent entry fails and leaves no temporary file; a 960 KB file that would become 3 MB is refused and left as it was)

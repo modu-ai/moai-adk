@@ -22,7 +22,8 @@ pub const TOOL_CHOICES: [&str; 3] = ["claude", "codex", "omp"];
 const MAX_TRIES: usize = 3;
 /// The launcher settings file is small; a larger one is not read.
 const MAX_FILE_BYTES: u64 = 1024 * 1024;
-/// An answer line longer than this is one invalid answer; the rest of the line is dropped.
+/// An answer line with more content bytes than this (newline not counted) is one invalid answer;
+/// the rest of the line is dropped.
 const MAX_LINE_BYTES: u64 = 4096;
 
 /// Whether a question takes one option or several.
@@ -211,12 +212,12 @@ fn show<W: Write>(out: &mut W, question: &Question) -> io::Result<()> {
 fn read_line_bounded<R: BufRead>(input: &mut R) -> io::Result<Option<String>> {
     let mut bytes = Vec::new();
     let read = (&mut *input)
-        .take(MAX_LINE_BYTES)
+        .take(MAX_LINE_BYTES + 1)
         .read_until(b'\n', &mut bytes)?;
     if read == 0 {
         return Ok(None);
     }
-    if bytes.last() != Some(&b'\n') && read as u64 == MAX_LINE_BYTES {
+    if bytes.last() != Some(&b'\n') && read as u64 == MAX_LINE_BYTES + 1 {
         loop {
             let mut rest = Vec::new();
             let more = (&mut *input)
@@ -434,8 +435,6 @@ fn write_atomic(path: &Path, root: &Map<String, Value>) -> Result<(), String> {
     if fs::symlink_metadata(parent).is_ok_and(|m| m.file_type().is_symlink()) {
         return Err("the folder of the launcher settings must not be a link".into());
     }
-    fs::create_dir_all(parent)
-        .map_err(|_| "launcher settings folder cannot be created".to_string())?;
     #[cfg(unix)]
     let mode = {
         use std::os::unix::fs::PermissionsExt;
@@ -446,6 +445,12 @@ fn write_atomic(path: &Path, root: &Map<String, Value>) -> Result<(), String> {
     let mut text = serde_json::to_string_pretty(&Value::Object(root.clone()))
         .map_err(|_| "launcher settings cannot be written".to_string())?;
     text.push('\n');
+    // The reader refuses a file over the limit, so a file that would grow past it is not written.
+    if text.len() as u64 > MAX_FILE_BYTES {
+        return Err("launcher settings would be larger than one MiB; nothing was changed".into());
+    }
+    fs::create_dir_all(parent)
+        .map_err(|_| "launcher settings folder cannot be created".to_string())?;
     // A name no other writer uses; a file that exists under it is never opened or removed.
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
