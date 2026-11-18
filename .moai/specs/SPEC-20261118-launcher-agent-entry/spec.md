@@ -103,8 +103,14 @@ passed, as it pins unchanged argv), and the updated codex `-a` pins failed in `l
 - AC-3: met — `the_help_says_how_the_role_is_entered` passes for `cc`, `glm` and `codex --help`.
 - AC-4: met — `other_launches_keep_their_argv` and `launcher_roleless` pass; mutant "mode line on every role session" fails it.
 - AC-5: met — `only_the_two_spellings_appear` passes over the three host helps, the root help, notes and argv.
+- AC-6: met — `the_korean_launcher_help_names_the_entry_command` (`src/main.rs` help tests) passes after commit `dbcd46f11a`; before the `src/help.rs` rows changed it failed on `cc -leader: 리더 세션`.
+- AC-7: met — `the_top_level_flags_name_the_entry_command` passes (it failed on the old `-l, --leader` line first); `help_layout` 10 passes on the goldens rewritten with `MOAI_HELP_GOLDEN_WRITE`, whose diff is the `-l`/`-a` lines only (all.txt and all-dumb.txt 2→5 lines at :233, all-80.txt :237 and :239, all-60.txt :380 and :383; `root*.txt` unchanged).
 
-Checks (exit 0): `launcher_agent_entry` 5, `launcher_advisor_setting` 7, `launcher_agent_numbering` 25,
+Second slice (leader decision A, commit `dbcd46f11a`): `launcher_agent_entry` 6, `--bin moai` 28, `--lib help::` 18,
+`help_layout` 10 and the nine launcher tests pass; clippy `-D warnings` and fmt exit 0; `product_cli` still fails only
+`launcher_codex_argv`.
+
+Checks of the first slice (exit 0): `launcher_agent_entry` 5, `launcher_advisor_setting` 7, `launcher_agent_numbering` 25,
 `launcher_codex_effort` 5, `launcher_permissions_setting` 6, `launcher_roleless` 4, `launcher_terminal_output` 10,
 `launcher_auto_init` 18, `launcher_three_hosts` 4, `help_layout` 10 (help goldens unchanged), `--bin moai` 27,
 `ac_command_lint` 5, `statusline_tag_order`, `archive_privacy_suite`, `go_state_classes_cli`, `profile_apply_engine`,
@@ -112,4 +118,5 @@ fmt, clippy `-D warnings`, Python `host_matrix_test`·`ci_scope_test`·`repo_sca
 `product_cli`: 75 passed, `launcher_codex_argv` fails at `tests/product_cli.rs:1272` on the old pin `:1282`; the pin at
 `:1298` needs the same prefix (file held by another change).
 
-Not run: a real host start, the full `cargo test`, Linux CI. Not done: D-2.
+Not run: a real host start, the full `cargo test`, Linux CI. Not done: D-4 (the `moai --help` launcher line and example,
+waiting on the leader).
