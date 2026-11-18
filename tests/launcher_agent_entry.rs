@@ -167,6 +167,34 @@ fn the_help_says_how_the_role_is_entered() {
     assert!(help(&["codex"]).contains("first prompt"));
 }
 
+/// AC-7 (REQ-7): the top-level `-l` and `-a` one-line help of `moai help --all` names the entry
+/// command.
+#[test]
+fn the_top_level_flags_name_the_entry_command() {
+    let home = tempfile::tempdir().unwrap();
+    let out = Command::new(common::MOAI_BIN)
+        .clean_env()
+        .env("HOME", home.path())
+        .env("LANG", "C")
+        .env("MOAI_LANG", "en")
+        .args(["help", "--all"])
+        .output()
+        .unwrap();
+    assert!(out.status.success(), "{out:?}");
+    let text = String::from_utf8(out.stdout).unwrap();
+    let block = |flag: &str| -> String {
+        let start = text.find(flag).unwrap_or_else(|| panic!("{flag}:\n{text}"));
+        let rest = &text[start..];
+        let end = rest[2..].find("\n  -").map_or(rest.len(), |i| i + 2);
+        rest[..end].split_whitespace().collect::<Vec<_>>().join(" ")
+    };
+    let leader = block("-l, --leader");
+    assert!(leader.contains("`/moai --mode-leader`"), "{leader}");
+    let agent = block("-a, --agent");
+    assert!(agent.contains("`/moai --mode-agent`"), "{agent}");
+    assert!(agent.contains("`$moai --mode-agent`"), "{agent}");
+}
+
 /// AC-4 (REQ-4): the other launches compose the argv they composed before.
 #[test]
 fn other_launches_keep_their_argv() {

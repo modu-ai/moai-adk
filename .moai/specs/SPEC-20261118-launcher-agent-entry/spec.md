@@ -21,8 +21,8 @@ and the `--dry-run` notes do not say so, and on 2026-11-16 eight Codex lanes sta
 
 - `codex -l`, every `cc` and `glm` launch, and roleless launches keep their argv byte for byte.
 - No other spelling of the mode commands; no change to how a session enters a role once it reads the line.
-- The top-level `moai -l|-a` one-line help, the `moai --help` launcher line and the Korean help texts live in help
-  goldens and `src/help.rs`, outside this change (D-2).
+- The `moai --help` launcher line and its `cc -l` example are pinned by `tests/fixtures/help/root*.txt`, outside the
+  widened scope; they wait for the leader's answer (D-4).
 
 ## Requirements
 
@@ -32,6 +32,8 @@ and the `--dry-run` notes do not say so, and on 2026-11-16 eight Codex lanes sta
 - REQ-4: IF a launch is roleless or is `codex -l`, `cc` or `glm`, THEN the launcher shall compose the argv it composed before this change.
   · failure: none
 - REQ-5: The launcher help and notes shall name no spelling of a mode command other than `/moai --mode-agent`, `/moai --mode-leader`, `$moai --mode-agent` and `$moai --mode-leader`.
+- REQ-6: The Korean texts of the per-host `-l` and `-a` and of the launcher long about shall name the mode commands and say that `-l|-a` only set the session name and access.
+- REQ-7: The top-level `-l` and `-a` one-line help shall name the mode command that enters the role inside the session.
 
 ## Acceptance
 
@@ -48,15 +50,23 @@ and the `--dry-run` notes do not say so, and on 2026-11-16 eight Codex lanes sta
   verify: `cargo test --locked --offline --test launcher_agent_entry other_launches_keep_their_argv`; `cargo test --locked --offline --test launcher_roleless`
 - AC-5 (REQ-5): every `mode-` in the help and notes is one of the four spellings.
   verify: `cargo test --locked --offline --test launcher_agent_entry only_the_two_spellings_appear`
+- AC-6 (REQ-6): with `configure_in(…, Lang::Ko)` the short and long help of `-l` and `-a` on `cc`, `glm` and `codex`
+  name `/moai --mode-<role>` and `$moai --mode-<role>` and "권한만 정함", and each long about names its host's two
+  commands (the Korean texts stay unused while the CLI prints English only, #2825 R1).
+  verify: `cargo test --locked --offline --bin moai the_korean_launcher_help_names_the_entry_command`
+- AC-7 (REQ-7): the `-l, --leader` and `-a, --agent` lines of `moai help --all` name `/moai --mode-leader` and
+  `/moai --mode-agent` (and `$moai --mode-agent` for codex); the four `help --all` goldens change on those lines only.
+  verify: `cargo test --locked --offline --test launcher_agent_entry the_top_level_flags_name_the_entry_command`; `cargo test --locked --offline --test help_layout`
 
 ## Scope
 
 - write: `src/session.rs`, `src/main.rs`, `tests/launcher_agent_entry.rs`, `tests/launcher_advisor_setting.rs`,
   `tests/launcher_agent_numbering.rs`, `tests/launcher_codex_effort.rs`, `tests/launcher_permissions_setting.rs`,
   `tests/launcher_roleless.rs`, `docs/host-support-matrix.md`, `docs/user-entry-draft.md`, `docs/rust-product-path.md`,
-  `.moai/specs/SPEC-20261118-launcher-agent-entry/spec.md`
+  `.moai/specs/SPEC-20261118-launcher-agent-entry/spec.md`; widened by the leader (option A, card reservation gen 2):
+  `src/help.rs`, `tests/fixtures/help/all.txt`, `all-dumb.txt`, `all-80.txt`, `all-60.txt`
 - read-only: `tests/product_cli.rs` (held by another change; its two codex `-a` prompt pins are reported, not edited)
-- forbidden: `tests/fixtures/help/**`, `src/help.rs`, the real HOME, any real host start
+- forbidden: `tests/fixtures/help/root*.txt` and the other help goldens, the real HOME, any real host start
 
 ## Plan
 
@@ -76,7 +86,9 @@ and the `--dry-run` notes do not say so, and on 2026-11-16 eight Codex lanes sta
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | Help and notes say the role is entered inside the session with `/moai --mode-agent`/`--mode-leader` (Codex `$moai …`); `codex -a` starts its first prompt with `$moai --mode-agent`. This replaces the Codex `-a` part of the 2026-11-10 #2359 first prompt (name line only) | User decision 2026-11-18, card C-47 note 2092; evidence: Codex lanes of 2026-11-15 entered agent mode with the line, eight lanes of 2026-11-16 without it did not | Drop the mode line and the notes |
-| D-2 | The top-level `-l|-a` one-line help, the `moai --help` launcher line and the Korean texts stay as they are in this change | They are pinned by `tests/fixtures/help/all*.txt` and live in `src/help.rs`, outside the write scope; reported to the leader as LANE-BLOCKED kind=decision | Widen the scope and update them |
+| D-2 | Done (revised): the top-level `-l|-a` one-line help and the Korean texts name the entry too; the four `help --all` goldens were rewritten with `MOAI_HELP_GOLDEN_WRITE` (each binary run on its own temporary HOME) and change on the `-l`/`-a` lines only | Leader decision 2026-11-18, option A on the LANE-BLOCKED (card reservation gen 2 widened the scope to `src/help.rs` and `tests/fixtures/help/all*.txt`) | Restore the old texts and goldens |
+| D-4 | The `moai --help` launcher line (`LEAD_OR_AGENT`) and the `cc -l` example stay as they are for now | They are pinned by `tests/fixtures/help/root*.txt` as well, which the widened scope does not name; asked as LANE-BLOCKED kind=decision (A2: widen to `root*.txt`; B2: leave them, since the root help points to `<command> --help`) | Change them once the scope covers `root*.txt` |
+| D-5 | The Korean texts are checked through `configure_in(…, Lang::Ko)`, not on a terminal | The CLI prints English on every stream (`ui::ui_lang`, user decision 6878265192, #2825 R1), so no screen shows Korean today; the texts stay in step for when that changes | Test on a terminal once Korean is shown |
 | D-3 | The entry note is added by the `cc|glm|codex` launchers, not by `session::compose` | The legacy `session` command also composes through it and its answer is recorded in `tests/fixtures/protocol/v1/current/18-session-dry-run.json` (REQ-00F-06: unchanged) | Move the note into `compose` and update that fixture |
 
 ## Result

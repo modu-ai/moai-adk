@@ -51,10 +51,10 @@ impl RecordSource {
     args_conflicts_with_subcommands = true
 )]
 struct Cli {
-    /// Start a leader session on the default host (cc).
+    /// Start a leader session on the default host (cc); the role is entered inside it with `/moai --mode-leader`.
     #[arg(short = 'l', long = "leader", conflicts_with = "agent")]
     leader: bool,
-    /// Start an agent session on HOST (cc|glm|codex; default cc).
+    /// Start an agent session on HOST (cc|glm|codex; default cc); the role is entered inside it with `/moai --mode-agent` (codex: `$moai --mode-agent`, sent as its first prompt).
     #[arg(short = 'a', long = "agent", value_name = "HOST", num_args = 0..=1, default_missing_value = "cc")]
     agent: Option<String>,
     /// Color on a terminal: auto, always (even with NO_COLOR or TERM=dumb) or never; put it before the command.
@@ -3561,6 +3561,44 @@ mod help_rules {
             }
         }
         assert!(seen >= 5, "{seen}");
+    }
+
+    /// SPEC-20261118-launcher-agent-entry AC-6: the Korean texts of the launchers (unused while
+    /// the CLI prints English only, #2825 R1, but kept in step with the English) name the entry
+    /// command for `-l` and `-a`, short and long, and the long about names the host's own
+    /// spelling — not only some Hangul.
+    #[test]
+    fn the_korean_launcher_help_names_the_entry_command() {
+        let mut korean = moai_cli::help::configure_in(
+            Cli::command(),
+            "moai",
+            moai_cli::BUILD_VERSION,
+            false,
+            moai_cli::ui_text::Lang::Ko,
+        );
+        korean.build();
+        let flat = |t: Option<&clap::builder::StyledStr>| {
+            let text = t.map(|h| h.to_string()).unwrap_or_default();
+            text.split_whitespace().collect::<Vec<_>>().join(" ")
+        };
+        for (host, prefix) in [("cc", "/moai"), ("glm", "/moai"), ("codex", "$moai")] {
+            let cmd = korean.find_subcommand(host).unwrap();
+            for (id, mode) in [("leader", "leader"), ("agent", "agent")] {
+                let arg = cmd.get_arguments().find(|a| a.get_id() == id).unwrap();
+                let short = flat(arg.get_help());
+                let long = flat(arg.get_long_help());
+                for text in [&short, &long] {
+                    for spelling in ["/moai", "$moai"] {
+                        let command = format!("`{spelling} --mode-{mode}`");
+                        assert!(text.contains(&command), "{host} -{id}: {text}");
+                    }
+                    assert!(text.contains("권한만 정함"), "{host} -{id}: {text}");
+                }
+            }
+            let about = flat(cmd.get_long_about());
+            let both = format!("`{prefix} --mode-leader`·`{prefix} --mode-agent`");
+            assert!(about.contains(&both), "{host} long about: {about}");
+        }
     }
 
     /// Every command's `--help` carries an `Examples:` section (#2802 S1c).
