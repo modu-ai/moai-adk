@@ -77,3 +77,27 @@ and the `--dry-run` notes do not say so, and on 2026-11-16 eight Codex lanes sta
 | --- | --- | --- | --- |
 | D-1 | Help and notes say the role is entered inside the session with `/moai --mode-agent`/`--mode-leader` (Codex `$moai …`); `codex -a` starts its first prompt with `$moai --mode-agent`. This replaces the Codex `-a` part of the 2026-11-10 #2359 first prompt (name line only) | User decision 2026-11-18, card C-47 note 2092; evidence: Codex lanes of 2026-11-15 entered agent mode with the line, eight lanes of 2026-11-16 without it did not | Drop the mode line and the notes |
 | D-2 | The top-level `-l|-a` one-line help, the `moai --help` launcher line and the Korean texts stay as they are in this change | They are pinned by `tests/fixtures/help/all*.txt` and live in `src/help.rs`, outside the write scope; reported to the leader as LANE-BLOCKED kind=decision | Widen the scope and update them |
+| D-3 | The entry note is added by the `cc|glm|codex` launchers, not by `session::compose` | The legacy `session` command also composes through it and its answer is recorded in `tests/fixtures/protocol/v1/current/18-session-dry-run.json` (REQ-00F-06: unchanged) | Move the note into `compose` and update that fixture |
+
+## Result
+
+Base `1d49d55062` (origin/v2026.11.0), change commit `569c38dfe9`. RED before the change: `launcher_agent_entry` 4 of 5
+failed (the help lacked `/moai --mode-leader`, no entry note, the old codex `-a` prompt; `other_launches_keep_their_argv`
+passed, as it pins unchanged argv), and the updated codex `-a` pins failed in `launcher_advisor_setting` (3),
+`launcher_agent_numbering` (2), `launcher_codex_effort` (1), `launcher_permissions_setting` (3) and `launcher_roleless` (1).
+
+- AC-1: met — `codex_agent_prompt_starts_with_the_mode_line` (`tests/launcher_agent_entry.rs`) and the updated pins in the five launcher tests pass.
+- AC-2: met — `role_notes_say_how_the_role_is_entered` passes; mutant "Codex leader note spelled `/moai`" fails it.
+- AC-3: met — `the_help_says_how_the_role_is_entered` passes for `cc`, `glm` and `codex --help`.
+- AC-4: met — `other_launches_keep_their_argv` and `launcher_roleless` pass; mutant "mode line on every role session" fails it.
+- AC-5: met — `only_the_two_spellings_appear` passes over the three host helps, the root help, notes and argv.
+
+Checks (exit 0): `launcher_agent_entry` 5, `launcher_advisor_setting` 7, `launcher_agent_numbering` 25,
+`launcher_codex_effort` 5, `launcher_permissions_setting` 6, `launcher_roleless` 4, `launcher_terminal_output` 10,
+`launcher_auto_init` 18, `launcher_three_hosts` 4, `help_layout` 10 (help goldens unchanged), `--bin moai` 27,
+`ac_command_lint` 5, `statusline_tag_order`, `archive_privacy_suite`, `go_state_classes_cli`, `profile_apply_engine`,
+fmt, clippy `-D warnings`, Python `host_matrix_test`·`ci_scope_test`·`repo_scans_test` 49 OK, `moai spec check --all`.
+`product_cli`: 75 passed, `launcher_codex_argv` fails at `tests/product_cli.rs:1272` on the old pin `:1282`; the pin at
+`:1298` needs the same prefix (file held by another change).
+
+Not run: a real host start, the full `cargo test`, Linux CI. Not done: D-2.
