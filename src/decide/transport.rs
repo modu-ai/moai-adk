@@ -548,6 +548,52 @@ mod tests {
         assert!(ApiKey::new("sk-abc_DEF.123~+/=").is_ok());
     }
 
+    /// The transport takes a `SocketAddr`, never a name: a host name cannot be parsed into one,
+    /// and the file resolves nothing, so a name cannot lead a request off the machine.
+    #[test]
+    fn a_named_address_cannot_reach_the_transport() {
+        for named in [
+            "example.com:443",
+            "localhost:80",
+            "api.openai.com:443",
+            "127.0.0.1.example.com:80",
+            "http://127.0.0.1:80",
+        ] {
+            assert!(named.parse::<SocketAddr>().is_err(), "{named}");
+        }
+        let text = include_str!("transport.rs");
+        let code = text.split("#[cfg(test)]").next().unwrap();
+        for resolver in [
+            "ToSocketAddrs",
+            "to_socket_addrs",
+            "lookup_host",
+            "getaddrinfo",
+        ] {
+            assert!(
+                !code.contains(resolver),
+                "the transport resolves names: {resolver}"
+            );
+        }
+    }
+
+    /// `ApiKey` has no `Display`: a key cannot be formatted with `{}` by mistake.
+    #[test]
+    fn the_key_type_has_no_display() {
+        use std::fmt::Display;
+        use std::marker::PhantomData;
+        struct Probe<T>(PhantomData<T>);
+        trait Fallback {
+            const HAS_DISPLAY: bool = false;
+        }
+        impl<T> Fallback for Probe<T> {}
+        impl<T: Display> Probe<T> {
+            const HAS_DISPLAY: bool = true;
+        }
+        // The probe sees `Display` on a type that has it, and not on the key.
+        assert!(Probe::<String>::HAS_DISPLAY);
+        assert!(!Probe::<ApiKey>::HAS_DISPLAY);
+    }
+
     #[test]
     fn the_key_is_in_no_debug_output_and_no_refusal() {
         assert!(!format!("{:?}", key()).contains(KEY));
