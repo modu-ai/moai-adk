@@ -39,14 +39,14 @@ This SPEC lets the install preview offer the move when a finished retire is on r
 
 - AC-1 (REQ-1, REQ-3, REQ-7): in a temporary HOME with Go state and kept unknown items, after `home-retire-apply` the install preview is `install` with a token; apply moves the Rust items and writes the marker last; revert restores the tree.
   verify: `cargo test --locked --offline --test home_install_go_retire a_retired_go_home_gets_a_movable_install_preview_and_the_move_reverts`
-- AC-2 (REQ-2): an unknown state folder with no retire manifest, a manifest of another HOME, a manifest that is a link and a manifest of another kind are all still blocked with generation_unknown, a help line, and unchanged bytes under the temporary HOME.
-  verify: `cargo test --locked --offline --test home_install_go_retire an_unknown_home_without_a_retire_record_is_still_refused`
+- AC-2 (REQ-2): an unknown state folder with no retire manifest, a manifest of another HOME, a manifest that is a link and a manifest of another kind and a retire whose journal is pending, reverted, missing or has an item not moved are all still blocked with generation_unknown, a help line, and unchanged bytes under the temporary HOME.
+  verify: `cargo test --locked --offline --test home_install_go_retire an_unknown_home_without_a_retire_record_is_still_refused`; `cargo test --locked --offline --test home_install_go_retire a_retire_that_did_not_finish_does_not_unlock_the_install`
 - AC-3 (REQ-4, REQ-5): after the apply, key-status reads the vault from the new state folder, the home root is .moai, the path stub points into its versions folder, and the listing of the earlier state folder is the same before and after those commands.
   verify: `cargo test --locked --offline --test home_install_go_retire after_the_install_readers_resolve_under_moai_and_moai_cli_stays_untouched`
-- AC-4 (REQ-6): for the same temporary HOME the two previews agree in the three states (retire record, no record, applied).
-  verify: `cargo test --locked --offline --test home_install_go_retire ledger_register_and_install_agree_on_home_readiness`
+- AC-4 (REQ-6): for the same temporary HOME the two previews agree in the three states (retire record, no record, applied); a blocked registration digest never authorizes the registration after the HOME turns ready; an existing ledger keeps its idempotent registration.
+  verify: `cargo test --locked --offline --test home_install_go_retire ledger_register_and_install_agree_on_home_readiness`; `cargo test --locked --offline --test home_install_go_retire a_blocked_registration_digest_cannot_authorize_after_the_home_turns_ready`; `cargo test --locked --offline --test home_install_go_retire an_existing_ledger_keeps_its_idempotent_registration`
 - AC-5 (REQ-8): the writer is the Go generation's hook wrapper `.claude/hooks/moai/handle-*.sh` (`MOAI_HOOK_STDERR_LOG=…/.moai/logs/hook-stderr.log`), started by the Go project's `.claude/settings.json`; no Rust source or skill file names the log.
-  verify: `cargo test --locked --offline --test home_install_go_retire no_rust_source_or_skill_writes_hook_stderr_log`
+  manual: run `grep -rl hook-stderr src skills` in the repository (it prints nothing and exits 1) and read line 3 of any `handle-*.sh` of the Go repository (no test walks the tree: `tools/repo_scans.json` would need an entry)
 - AC-6 (REQ-1…REQ-8): the neighbours.
   verify: `cargo test --locked --offline --test home_install_plan_cli`; `cargo test --locked --offline --test home_install_apply_cli`; `cargo test --locked --offline --test home_retire_cli`; `cargo test --locked --offline --test ledger_cli`; `cargo test --locked --offline --test ledger_open`; `cargo test --locked --offline --bin moai`; `cargo fmt --check`; `cargo clippy --locked --offline --all-targets -- -D warnings`
 
@@ -58,7 +58,7 @@ This SPEC lets the install preview offer the move when a finished retire is on r
 
 ## Plan
 
-1. Tests first (RED): the five tests above in `tests/home_install_go_retire.rs`, each in a temporary HOME.
+1. Tests first (RED): the four tests above in `tests/home_install_go_retire.rs`, each in a temporary HOME.
 2. `home_retire::finished_retire(home)`: newest manifest of kind `go-retire` for this HOME, read by `lstat` (no link followed, size-bounded).
 3. `home_install::plan`: `unknown` with a finished retire is movable; the record's stamp joins the content digest; `generation_unknown` gets a `help` line.
 4. `home_install::registration_blocked`: the two ledger-register commands call it (the preview answers blocked, the apply refuses before writing); the ledger library and opening an existing ledger keep `check_home_ready`. The card write scope has no `src/ledger/**`, so the check lives in the command wrappers.
@@ -76,4 +76,5 @@ This SPEC lets the install preview offer the move when a finished retire is on r
 | D-1 | Evidence is the retire manifest (`retire-manifest-<stamp>.json`, kind `go-retire`, `home` equal to this HOME), not a changed verdict in `classify_home` | the card names the manifest as the evidence; eight verdicts stay | add a verdict later |
 | D-2 | Ledger registration is blocked on `unknown` with no record, like the install | the card wants one answer; the install refusal for an unknown `~/.moai` is kept (card AC-2) | drop the `registration_blocked` calls |
 | D-3 | Opening an existing ledger keeps `check_home_ready` | a registered ledger must keep working whatever `~/.moai` holds | none needed |
+| D-5 | A retire counts as finished only when its journal is committed and every item is moved, not on the manifest alone | the manifest is written before the first rename (Codex review P2 on #3199) | accept the manifest alone |
 | D-4 | `hook-stderr.log` is named, not changed | the writer is the Go repository's hooks, outside this card's scope | a card in the Go hook set |

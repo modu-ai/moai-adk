@@ -29,8 +29,14 @@ pub const OPERATION: &str = "ledger.register.apply";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
     let home = moai_cli::ledger::command::resolve_home(args.home)?;
-    if let Some(why) = moai_cli::home_install::registration_blocked(&home) {
-        return Err(format!("{why}; nothing was written"));
+    // Only a registration that would create the ledger waits for the HOME move; an existing
+    // ledger keeps its idempotent no-op whatever else sits in `~/.moai` (Codex review P2 on #3199).
+    let would_create =
+        moai_cli::ledger::command::register_plan(&args.project, &home)?["action"] == "register";
+    if would_create {
+        if let Some(why) = moai_cli::home_install::registration_blocked(&home) {
+            return Err(format!("{why}; nothing was written"));
+        }
     }
     moai_cli::ledger::command::register_apply(
         &args.project,

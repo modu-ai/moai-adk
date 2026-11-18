@@ -441,30 +441,107 @@ fn ledger_register_and_install_agree_on_home_readiness() {
     assert_eq!(tree(&g.home), before, "the preview wrote");
 }
 
+/// The journal of the retire the fixture ran.
+fn retire_journal(f: &Fx) -> PathBuf {
+    let root = f.home.join(".moai-go-retired");
+    fs::read_dir(&root)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .find(|p| {
+            p.file_name()
+                .is_some_and(|n| n.to_string_lossy().starts_with("move-journal-"))
+        })
+        .unwrap_or_else(|| panic!("no retire journal in {}", root.display()))
+}
+
 #[test]
-fn no_rust_source_or_skill_writes_hook_stderr_log() {
-    // The writer is the Go generation's hook wrapper (`.claude/hooks/moai/handle-*.sh` of the
-    // Go repository sets `MOAI_HOOK_STDERR_LOG` to `$HOME/.moai/logs/hook-stderr.log`); nothing
-    // in this generation's sources or skill names the log.
-    fn scan(dir: &Path, hits: &mut Vec<String>) {
-        for e in fs::read_dir(dir).unwrap() {
-            let p = e.unwrap().path();
-            let m = fs::symlink_metadata(&p).unwrap();
-            if m.is_dir() {
-                scan(&p, hits);
-            } else if m.is_file() {
-                if let Ok(text) = fs::read_to_string(&p) {
-                    if text.contains("hook-stderr") {
-                        hits.push(p.display().to_string());
-                    }
-                }
-            }
-        }
+fn a_retire_that_did_not_finish_does_not_unlock_the_install() {
+    // Codex review P2 on #3199: the manifest is written before the first rename, so it is not
+    // the proof; the journal beside it must be committed with every item moved.
+    for (label, edit) in [
+        (
+            "pending",
+            ("\"state\": \"committed\"", "\"state\": \"pending\""),
+        ),
+        (
+            "reverted",
+            ("\"state\": \"committed\"", "\"state\": \"reverted\""),
+        ),
+        (
+            "an item not moved",
+            ("\"status\": \"moved\"", "\"status\": \"skipped\""),
+        ),
+    ] {
+        let f = fx(true);
+        retire(&f);
+        let journal = retire_journal(&f);
+        let text = fs::read_to_string(&journal).unwrap();
+        assert!(text.contains(edit.0), "{label}: {text}");
+        fs::write(&journal, text.replacen(edit.0, edit.1, 1)).unwrap();
+        assert_eq!(generation(&f), "unknown", "{label}");
+        let p = install_plan(&f);
+        assert_eq!(p["action"], json!("blocked"), "{label}: {p}");
+        assert!(
+            blocks(&p).contains(&"generation_unknown".to_string()),
+            "{label}: {p}"
+        );
     }
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let mut hits = Vec::new();
-    for d in ["src", "skills"] {
-        scan(&root.join(d), &mut hits);
-    }
-    assert!(hits.is_empty(), "{hits:?}");
+    // And with the journal gone.
+    let f = fx(true);
+    retire(&f);
+    fs::remove_file(retire_journal(&f)).unwrap();
+    let p = install_plan(&f);
+    assert_eq!(p["action"], json!("blocked"), "{p}");
+}
+
+fn ledger_apply(f: &Fx, digest: &str) -> Value {
+    call(&[
+        "ledger-register-apply",
+        f.project.to_str().unwrap(),
+        "--home",
+        f.home.to_str().unwrap(),
+        "--plan-digest",
+        digest,
+        "--permission-reference",
+        PERM,
+    ])
+}
+
+#[test]
+fn a_blocked_registration_digest_cannot_authorize_after_the_home_turns_ready() {
+    // Codex review P2 on #3199: the blocked preview advertises no writes, so its digest must
+    // not stay valid for the registration once the unknown entries are gone.
+    let f = fx(false);
+    let l = ledger_plan(&f);
+    assert_eq!(l["action"], json!("blocked"), "{l}");
+    let digest = l["plan_digest"].as_str().unwrap().to_string();
+    fs::remove_dir_all(f.home.join(".moai/my notes")).unwrap();
+    fs::remove_dir_all(f.home.join(".moai/reports")).unwrap();
+    let a = ledger_apply(&f, &digest);
+    assert_eq!(a["ok"], json!(false), "{a}");
+    assert!(
+        a["error"]["message"].as_str().unwrap().contains("stale"),
+        "{a}"
+    );
+    assert!(!f.home.join(".moai/projects").exists(), "a ledger was made");
+}
+
+#[test]
+fn an_existing_ledger_keeps_its_idempotent_registration() {
+    // Codex review P2 on #3199: the new readiness guard applies only where the registration
+    // would create the ledger.
+    let f = fx(false);
+    fs::remove_dir_all(f.home.join(".moai/my notes")).unwrap();
+    fs::remove_dir_all(f.home.join(".moai/reports")).unwrap();
+    let first = ledger_plan(&f);
+    assert_eq!(first["action"], json!("register"), "{first}");
+    let a = result(ledger_apply(&f, first["plan_digest"].as_str().unwrap()));
+    assert!(a.is_object(), "{a}");
+    // Another entry appears without a generation marker or a retire record.
+    write(&f.home, ".moai/logs/x.log", "x\n");
+    assert_eq!(generation(&f), "unknown");
+    let again = ledger_plan(&f);
+    assert_eq!(again["action"], json!("none"), "{again}");
+    let b = result(ledger_apply(&f, again["plan_digest"].as_str().unwrap()));
+    assert_eq!(b["state"], json!("unchanged"), "{b}");
 }

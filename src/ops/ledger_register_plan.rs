@@ -33,6 +33,11 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             plan["message"] = serde_json::json!(why);
             plan["would_create"] = serde_json::json!([]);
             plan["would_tighten"] = serde_json::json!([]);
+            // The library's digest was made for `register`; a blocked preview gets its own, so
+            // it can never authorize the registration once the HOME turns ready.
+            plan["plan_digest"] = serde_json::json!(moai_cli::digest(
+                format!("blocked:{}:{}", plan["plan_digest"], plan["message"]).as_bytes()
+            ));
         }
     }
     Ok(plan)

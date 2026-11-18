@@ -31,7 +31,7 @@ const MANIFEST_PREFIX: &str = "retire-manifest-";
 
 /// The stamp of the newest finished Go retire on record for `home` (SPEC-20261118-home-install-go-retire,
 /// card C-50): a regular `retire-manifest-<stamp>.json` of kind [`KIND`] whose `home` is this
-/// HOME, under `~/.moai-go-retired/`. Read by `lstat` and size-bounded; a link, a folder, a file
+/// HOME, under `~/.moai-go-retired/`, with its journal committed and every item moved. Read by `lstat` and size-bounded; a link, a folder, a file
 /// that is not such a manifest or one written for another HOME gives nothing. It proves only that
 /// a retire ran: the install preview still judges every entry itself.
 pub fn finished_retire(home: &Path) -> Option<String> {
@@ -71,6 +71,20 @@ pub fn finished_retire(home: &Path) -> Option<String> {
         else {
             continue;
         };
+        // The manifest is written before the first rename, so it alone proves nothing: the
+        // journal beside it must be committed with every item moved (Codex review P2 on #3199).
+        let done =
+            move_journal::read_journal(&move_journal::journal_path(&root, stamp)).is_ok_and(|j| {
+                j.kind == KIND
+                    && j.stamp == stamp
+                    && j.state == move_journal::JournalState::Committed
+                    && j.items
+                        .iter()
+                        .all(|i| i.status == move_journal::ItemStatus::Moved)
+            });
+        if !done {
+            continue;
+        }
         if newest.as_deref().is_none_or(|n| stamp > n) {
             newest = Some(stamp.to_string());
         }
