@@ -42,11 +42,11 @@ created: 2026-11-18
 - AC-4 (REQ-7): 워크플로가 `decisions`의 `decision_model` 항목과 기본값 `off`(네트워크 호출 0)를 말하고, 그 항목이 실제 `project-plan`에 받아들여져요.
   verify: `cargo test --locked --offline --test project_decide_model decision_model_pick_is_recorded_as_a_decisions_entry_that_defaults_to_off`
 - AC-5 (REQ-1…REQ-9): 이웃 검사.
-  verify: `cargo test --locked --offline --test question_bank_hosts`; `cargo test --locked --offline --test update_route`; `python3 tools/source_manifest.py check`; `cargo fmt --check`
+  verify: `cargo test --locked --offline --test agent_defs_package`; `cargo test --locked --offline --test question_bank_hosts`; `cargo test --locked --offline --test update_route`; `python3 tools/source_manifest.py check`; `cargo fmt --check`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261118-project-decide-model/spec.md`, `skills/moai/references/internal/interview.md`, `skills/moai/workflows/project.md`, `skills/moai/references/source-manifest.json`, `tests/project_decide_model.rs`
+- write: `.moai/specs/SPEC-20261118-project-decide-model/spec.md`, `skills/moai/references/internal/interview.md`, `skills/moai/workflows/project.md`, `skills/moai/references/source-manifest.json`, `tests/project_decide_model.rs`, `tests/agent_defs_package.rs`(질문 은행 id 목록에 한 줄)
 - read-only: `skills/moai/references/internal/questions.md`, `src/key_prompt.rs`, `src/key_vault.rs`, `src/decide/provider.rs`, `tests/key_set_prompt_tty_test.py`
 - forbidden: 키 값과 실제 HOME의 보관함, 실제 endpoint 호출, 네트워크
 
@@ -69,6 +69,7 @@ created: 2026-11-18
 | D-1 | Jev의 키 이름은 `typesafe`, OpenAI는 `openai`로 해요 | `src/decide/provider.rs`의 `Provider::name()`이 그 이름을 쓰고 키 보관함은 공급자 이름으로 항목을 찾아요 | 이름 바꾸기는 후속 SPEC |
 | D-2 | 고른 공급자는 프로필 `decisions`의 항목 `{"id": "decision_model", "value": "off"\|"typesafe"\|"openai"}`로 기록하고, `moai decide`가 읽는 쪽(설정 명령)은 만들지 않아요 | 이 카드의 쓰기 범위는 글과 시험이고, `moai decide`의 설정 명령은 다른 카드의 기준이에요; `decisions`는 프로필이 이미 받아들이는 형식이라 새 코드가 필요 없어요 | `moai decide` 쪽이 다른 자리를 정하면 후속 SPEC에서 바꾸기 |
 | D-3 | "이미 있는 키"는 `key-status`가 있음일 때만 내놓고 Go 세대의 키 파일은 조용히 읽지 않아요 | 사용자 지시(2026-11-16 19:4xZ): 보관함 가져오기를 거쳐서만 | 가져오기 단계가 생기면 문구에 그 단계를 이름으로 더하기 |
+| D-4 | 질문 은행 id 목록을 고정한 `tests/agent_defs_package.rs`에 `decision_model` 한 줄을 더해요 | 새 행이 그 시험을 깨뜨려요(측정: left에 `decision_model` 하나 더, exit 101); 쓰기 범위는 리더가 넓혔어요(2026-11-18, 카드 노트로 승인) | 그 한 줄을 지우면 은행 행도 함께 지워야 해요 |
 
 ## Result
 
@@ -76,5 +77,5 @@ created: 2026-11-18
 - AC-2: met — 같은 시험. `project.md`의 "Decision model" 단계가 고른 공급자에 대해서만 이미 있는 키/새 키를 묻고, 이미 있는 키는 `key-status`가 있음일 때만 내놓고, 새 키는 사용자 자기 터미널의 `moai key-set <provider> --prompt`와 `key-status` 확인이에요. 취소·무응답·여전히 없음이면 `off` 그대로예요.
 - AC-3: met — 같은 시험. 질문하는 경로의 스킬 파일 6개(이름으로 읽어요)에서 `moai key-set` 명령은 `--prompt`로만 나오고 값 자리표·`--value`·파이프가 없어요; 단계가 키를 질문 도구·명령 인자·세션 출력으로 보내지 않는다고 말해요.
 - AC-4: met — 같은 시험. 선택은 `decisions`의 `decision_model` 항목(`off`/`typesafe`/`openai`)이고 `off`는 기본이며 네트워크 호출이 없다고 말해요; 세 값 모두 실제 `project-plan`이 받아들여요(ok: true).
-- AC-5: partial — `question_bank_hosts` 1 passed; `update_route` 8 passed; `product_cli` 79 passed; `project_update_plan_cli` 59 passed; `python3 tools/source_manifest.py check` ok; `cargo fmt --check` exit 0. `tests/agent_defs_package.rs::interview_question_bank_covers_the_project_axes`는 새 행 때문에 실패해요(id 목록을 정확히 고정): 그 파일은 이 작업의 쓰기 범위 밖이라 리더의 범위 결정을 기다려요.
+- AC-5: met — `agent_defs_package` 19 passed(RED 먼저: `interview_question_bank_covers_the_project_axes` 1 failed, exit 101); `question_bank_hosts` 1 passed; `update_route` 8 passed; `product_cli` 79 passed; `project_update_plan_cli` 59 passed; `python3 tools/source_manifest.py check` ok; `cargo fmt --check` exit 0.
 - 남은 것: `moai decide`가 이 기록(`decisions`의 `decision_model`)을 읽는 쪽(설정 명령)은 다른 카드의 기준이에요(D-2). SPEC은 draft예요: 승인은 사용자의 선택이라 이 레인이 하지 않았어요.
