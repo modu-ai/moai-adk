@@ -14,6 +14,7 @@
 //! (`std::net`), names a program (`"gh"`, `"git"`, `"curl"`, `"ssh"`), holds an `http(s)://`
 //! endpoint or reaches into `crate::forge`. Comments are not code and are ignored. The same
 //! holds for `src/decide/` (cards C-37 and C-54), except the two provider endpoint constants.
+//! The one file that sends (`src/decide/transport.rs`) may also hold four socket names.
 //!
 //! Both scans are text matches: they show a name is absent, not that a path is never reached.
 //! The entry-count tool `tools/home_entry_count.py` measures the real `~/.moai` before and
@@ -483,8 +484,15 @@ const DECIDE_ENDPOINTS: [&str; 2] = [
     "\"https://api.openai.com/v1/decisions\"",
 ];
 
-/// Scan B over the decide library at `dir`, with one exception: a URL hit on a line whose
-/// every URL is one of [`DECIDE_ENDPOINTS`]. The line is read as written, so a URL in a
+/// The one file under `src/decide/` that sends (slice S4, SPEC-20261118-decide-round-trip)
+/// and the four names it may hold; it may hold no other name of the scan, and no other file
+/// may hold these.
+const DECIDE_SENDER: &str = "src/decide/transport.rs";
+const DECIDE_SENDER_NAMES: [&str; 4] = ["std::net", "net::", "TcpStream", "TcpListener"];
+
+/// Scan B over the decide library at `dir`, with two exceptions: a URL hit on a line whose
+/// every URL is one of [`DECIDE_ENDPOINTS`], and the four socket names of
+/// [`DECIDE_SENDER_NAMES`] in [`DECIDE_SENDER`]. The line is read as written, so a URL in a
 /// comment beside an endpoint is a hit too. Returns the number of files read and one
 /// `path:line name` per hit.
 fn decide_external_hits(root: &Path, dir: &Path) -> (usize, Vec<String>) {
@@ -493,7 +501,11 @@ fn decide_external_hits(root: &Path, dir: &Path) -> (usize, Vec<String>) {
     for path in &files {
         let text = fs::read_to_string(path).unwrap();
         let lines: Vec<&str> = text.lines().collect();
+        let is_sender = rel(root, path) == DECIDE_SENDER;
         for (line, name) in find(&text, &EXTERNAL_TOKENS) {
+            if is_sender && DECIDE_SENDER_NAMES.contains(&name) {
+                continue;
+            }
             if name.ends_with("://") {
                 let mut rest = lines[line - 1].to_string();
                 for endpoint in DECIDE_ENDPOINTS {
@@ -512,7 +524,7 @@ fn decide_external_hits(root: &Path, dir: &Path) -> (usize, Vec<String>) {
 
 /// Second audit of card C-37 S2, N11: the decide library builds bytes and reads bytes. It
 /// opens no socket, starts no process and names no URL but the two endpoint constants.
-/// (Slice S4 adds the one place that sends; it gets its own exception here then.)
+/// The one place that sends (slice S4) has its own exception: [`DECIDE_SENDER`].
 #[test]
 fn the_decide_library_has_no_external_call_names() {
     let root = Path::new(ROOT);
@@ -574,6 +586,88 @@ fn the_decide_scan_allows_the_two_endpoints_and_nothing_else() {
             "sample {at}: {found:?}"
         );
     }
+}
+
+/// Slice S4 (SPEC-20261118-decide-round-trip): the one file that sends may hold
+/// the four socket names; nothing else is allowed there or anywhere else under `src/decide/`.
+#[test]
+fn the_decide_scan_allows_the_four_socket_names_in_the_sending_file_only() {
+    let dir = tempfile::tempdir().unwrap();
+    let decide = dir.path().join("src/decide");
+    fs::create_dir_all(&decide).unwrap();
+    let sockets = [
+        "use std::net::{SocketAddr, TcpStream};",
+        "let l = TcpListener::bind(a);",
+        "let s = TcpStream::connect(a);",
+        "let a: net::SocketAddr = x;",
+    ]
+    .join("\n");
+    // Allowed: those four names, in the sending file, and nowhere else.
+    fs::write(decide.join("transport.rs"), &sockets).unwrap();
+    assert_eq!(decide_external_hits(dir.path(), &decide), (1, vec![]));
+    fs::write(decide.join("other.rs"), &sockets).unwrap();
+    let (files, found) = decide_external_hits(dir.path(), &decide);
+    assert_eq!(files, 2);
+    assert!(
+        !found.is_empty(),
+        "the same text in another file must be a hit"
+    );
+    assert!(
+        found
+            .iter()
+            .all(|hit| hit.starts_with("src/decide/other.rs:")),
+        "{found:?}"
+    );
+    fs::remove_file(decide.join("other.rs")).unwrap();
+    // Still a hit in the sending file: any other name of the scan, and a name of the same
+    // family that is not one of the four.
+    for (sample, name) in [
+        ("let c = std::process::Command::new(x);", "Command::new("),
+        ("let u = \"https://example.com\";", "https://"),
+        ("let u = \"http://example.com\";", "http://"),
+        ("let p = \"curl\";", "\"curl\""),
+        ("let p = \"git\";", "\"git\""),
+        ("let s = UdpSocket::bind(a);", "UdpSocket"),
+        ("use crate::forge;", "crate::forge"),
+    ] {
+        fs::write(
+            decide.join("transport.rs"),
+            format!("{sockets}\n{sample}\n"),
+        )
+        .unwrap();
+        let (_, found) = decide_external_hits(dir.path(), &decide);
+        let want = format!("src/decide/transport.rs:5 {name}");
+        assert!(found.contains(&want), "{sample}: {found:?}");
+        assert!(
+            found
+                .iter()
+                .all(|hit| hit.starts_with("src/decide/transport.rs:5 ")),
+            "{sample}: {found:?}"
+        );
+    }
+}
+
+/// The exception above is only as good as the sending file's guard: the real file checks that
+/// the address is a loopback address before it opens a connection, and it keeps the key in a
+/// type with no value in its `Debug`.
+#[test]
+fn the_sending_file_checks_the_address_before_it_connects() {
+    let text = fs::read_to_string(Path::new(ROOT).join("src/decide/transport.rs")).unwrap();
+    let code = blank_comments(&text);
+    let guard = code
+        .find("is_loopback()")
+        .expect("the loopback guard is gone");
+    let connect = code
+        .find("connect_timeout(")
+        .expect("no connection is made?");
+    assert!(
+        guard < connect,
+        "the loopback check must come before the connection"
+    );
+    assert!(
+        code.contains("f.write_str(\"ApiKey(..)\")"),
+        "the key type must print nothing of its value"
+    );
 }
 
 #[test]
