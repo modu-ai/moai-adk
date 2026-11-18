@@ -827,3 +827,256 @@ fn claude_runs_the_preflight_guard_and_codex_does_not() {
         "an ordinary call goes through"
     );
 }
+
+// ---- SPEC-20261119-enforce-spec-hooks S1: the GREEN lock against Bash, the deny audit line ----
+
+const RED_COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
+
+/// A temporary work tree in the GREEN phase of a TDD cycle: a `.git` folder (written by hand,
+/// no `git` is started), the phase record that locks `tests/locked_test.rs`, an unlocked test
+/// file, a source file and a `.moai-cli` folder for the engine's audit log.
+struct GreenRepo {
+    _tmp: tempfile::TempDir,
+    root: std::path::PathBuf,
+}
+
+impl GreenRepo {
+    fn new(phase: &str) -> Self {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let root = fs::canonicalize(tmp.path()).unwrap();
+        fs::create_dir_all(root.join(".git")).unwrap();
+        fs::write(root.join(".git/HEAD"), "ref: refs/heads/main\n").unwrap();
+        for dir in ["home", "src", "tests", ".moai-cli"] {
+            fs::create_dir_all(root.join(dir)).unwrap();
+        }
+        for file in [
+            "src/a.rs",
+            "tests/locked_test.rs",
+            "tests/other_test.rs",
+            "Cargo.toml",
+        ] {
+            fs::write(root.join(file), "x\n").unwrap();
+        }
+        let repo = GreenRepo { _tmp: tmp, root };
+        repo.write_record(phase);
+        repo
+    }
+
+    fn write_record(&self, phase: &str) {
+        fs::create_dir_all(self.root.join(".git/moai")).unwrap();
+        fs::write(
+            self.root.join(".git/moai/tdd.json"),
+            json!({"schema_version": 1, "spec": "SPEC-20261119-fixture", "phase": phase,
+                   "red_commit": RED_COMMIT, "locked": ["tests/locked_test.rs"],
+                   "checks": ["cargo test"], "at_unix": 1})
+            .to_string(),
+        )
+        .unwrap();
+    }
+
+    /// The Bash call as Claude Code sends it, run from the work tree; `cwd` is the folder the
+    /// hook input names.
+    fn bash(&self, command: &str, cwd: &Path) -> (i32, String) {
+        let input = json!({"session_id": "s", "hook_event_name": "PreToolUse",
+            "tool_name": "Bash", "tool_use_id": "t1",
+            "tool_input": {"command": command}, "cwd": cwd});
+        let mut child = Command::new(common::MOAI_BIN)
+            .args([
+                "hook-dispatch",
+                "--host",
+                "claude",
+                "--event",
+                "tool-preflight",
+            ])
+            .current_dir(&self.root)
+            .env("HOME", self.root.join("home"))
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        common::feed_stdin(&mut child, input.to_string().as_bytes());
+        let out = child.wait_with_output().unwrap();
+        (
+            out.status.code().unwrap(),
+            String::from_utf8_lossy(&out.stdout).into_owned(),
+        )
+    }
+
+    fn run(&self, command: &str) -> (i32, String) {
+        self.bash(command, &self.root)
+    }
+
+    fn deny_reason(&self, command: &str) -> String {
+        let (code, stdout) = self.run(command);
+        let v: Value = serde_json::from_str(&stdout).unwrap_or(Value::Null);
+        assert_eq!(code, 0, "{command}: {stdout}");
+        assert_eq!(
+            v["hookSpecificOutput"]["permissionDecision"],
+            json!("deny"),
+            "{command} -> {stdout}"
+        );
+        v["hookSpecificOutput"]["permissionDecisionReason"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    }
+
+    fn assert_allowed(&self, command: &str) {
+        let (code, stdout) = self.run(command);
+        assert_eq!((code, stdout.as_str()), (0, ""), "{command}");
+    }
+
+    fn audit_lines(&self) -> Vec<Value> {
+        fs::read_to_string(self.root.join(".moai-cli/receipts/hook-engine.jsonl"))
+            .unwrap_or_default()
+            .lines()
+            .map(|l| serde_json::from_str(l).unwrap())
+            .collect()
+    }
+}
+
+/// REQ-1, REQ-4: while the cycle is GREEN or REFACTOR, removing or moving a locked test with
+/// Bash is refused with the lock's own reason, however the path is spelled.
+#[test]
+fn green_lock_bash_refuses_removing_or_moving_a_locked_test() {
+    for phase in ["green", "refactor"] {
+        let repo = GreenRepo::new(phase);
+        let absolute = repo.root.join("tests/locked_test.rs");
+        let absolute = absolute.to_str().unwrap();
+        for command in [
+            "rm tests/locked_test.rs".to_string(),
+            "rm -f tests/locked_test.rs".to_string(),
+            "rm -- tests/locked_test.rs".to_string(),
+            "unlink tests/locked_test.rs".to_string(),
+            "git rm tests/locked_test.rs".to_string(),
+            "git rm -f -- tests/locked_test.rs".to_string(),
+            "git mv tests/locked_test.rs old.rs".to_string(),
+            "mv tests/locked_test.rs src/moved.rs".to_string(),
+            // A locked path as the destination, and a new test file as the destination.
+            "mv src/a.rs tests/locked_test.rs".to_string(),
+            "mv src/a.rs tests/brand_new_test.rs".to_string(),
+            "rm tests/other_test.rs tests/locked_test.rs".to_string(),
+            "rm tests/../tests/locked_test.rs".to_string(),
+            "rm ./tests/locked_test.rs".to_string(),
+            format!("rm {absolute}"),
+            "echo hi && rm tests/locked_test.rs".to_string(),
+            "sh -c 'rm tests/locked_test.rs'".to_string(),
+            "FOO=1 rm tests/locked_test.rs".to_string(),
+        ] {
+            let reason = repo.deny_reason(&command);
+            assert!(
+                reason.contains("GREEN or REFACTOR"),
+                "{phase} {command}: {reason}"
+            );
+        }
+    }
+}
+
+/// REQ-2, REQ-3: everything else goes through unchanged: an unlocked file, a read of a locked
+/// one, a removal of nothing, and a cycle that is not in GREEN.
+#[test]
+fn green_lock_bash_allows_everything_else() {
+    let repo = GreenRepo::new("green");
+    for command in [
+        "rm src/a.rs",
+        "rm tests/other_test.rs",
+        "mv src/a.rs src/b.rs",
+        "git rm src/a.rs",
+        "git mv src/a.rs src/c.rs",
+        "unlink src/a.rs",
+        // Nothing to remove: the lock's rule against new test files is not meant for it.
+        "rm -f tests/gone_test.rs",
+        "unlink tests/gone_test.rs",
+        "git rm --cached tests/gone_test.rs",
+        "cat tests/locked_test.rs",
+        "ls tests/locked_test.rs",
+        "cp tests/locked_test.rs /tmp/copy",
+        "git status",
+        "rm",
+        "echo rm tests/locked_test.rs",
+        "grep -n rm tests/locked_test.rs",
+    ] {
+        repo.assert_allowed(command);
+    }
+}
+
+/// REQ-3, REQ-4: no record, an ended cycle, a repository without a work tree, and a relative
+/// path read against the hook input's `cwd`.
+#[test]
+fn green_lock_bash_follows_the_record_and_the_input_cwd() {
+    let repo = GreenRepo::new("green");
+    let sub = repo.root.join("src");
+    // The path is relative to the folder the hook input names, not the process folder.
+    let (code, stdout) = repo.bash("rm ../tests/locked_test.rs", &sub);
+    assert_eq!(code, 0);
+    assert!(
+        stdout.contains("\"permissionDecision\":\"deny\""),
+        "{stdout}"
+    );
+    let (code, stdout) = repo.bash("rm tests/locked_test.rs", &sub);
+    assert_eq!(
+        (code, stdout.as_str()),
+        (0, ""),
+        "src/tests/ does not exist"
+    );
+
+    // The cycle is over (no record), or the record is not one this build reads.
+    fs::remove_file(repo.root.join(".git/moai/tdd.json")).unwrap();
+    repo.assert_allowed("rm tests/locked_test.rs");
+    repo.write_record("red");
+    repo.assert_allowed("rm tests/locked_test.rs");
+    repo.write_record("green");
+    repo.deny_reason("rm tests/locked_test.rs");
+
+    // Not a work tree at all: nothing to read, nothing refused.
+    fs::remove_dir_all(repo.root.join(".git")).unwrap();
+    repo.assert_allowed("rm tests/locked_test.rs");
+}
+
+/// REQ-5: a denied call leaves one line with the reason text, and no command, path or content.
+#[test]
+fn deny_audit_line_carries_the_reason_and_no_command_or_path() {
+    let repo = GreenRepo::new("green");
+    let locked = repo.deny_reason("rm tests/locked_test.rs");
+    let danger = repo.deny_reason("rm -rf /");
+    assert_ne!(locked, danger);
+    repo.assert_allowed("ls");
+
+    let lines = repo.audit_lines();
+    let denies: Vec<&Value> = lines
+        .iter()
+        .filter(|l| l["kind"] == json!("deny"))
+        .collect();
+    assert_eq!(denies.len(), 2, "{lines:?}");
+    assert_eq!(denies[0]["reason"], json!(locked));
+    assert_eq!(denies[1]["reason"], json!(danger));
+    let text = serde_json::to_string(&lines).unwrap();
+    for leak in ["locked_test", "rm -rf", repo.root.to_str().unwrap()] {
+        assert!(!text.contains(leak), "{leak} leaked into {text}");
+    }
+}
+
+/// REQ-6: every host's answer says what the Bash lock covers and what it does not.
+#[test]
+fn capabilities_name_the_bash_lock_limits() {
+    for host in ["claude", "codex", "omp"] {
+        let caps = moai_cli::hook_engine::capabilities(host);
+        let pre = &caps["tool-preflight"];
+        let guards = pre["guards"].to_string();
+        assert!(
+            guards
+                .contains("rm, unlink, git rm, mv or git mv of a test path the GREEN record locks"),
+            "{host}: {guards}"
+        );
+        let open = pre["not_guarded"].to_string();
+        for limit in ["redirections", "sed -i", "find -delete", "scripts", "cd"] {
+            assert!(
+                open.contains("Bash edits of a locked test") && open.contains(limit),
+                "{host} {limit}: {open}"
+            );
+        }
+    }
+}

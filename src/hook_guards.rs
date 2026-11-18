@@ -698,6 +698,60 @@ pub fn write_guard(tool: &str, tool_input: &Value, cwd: &Path) -> Option<&'stati
     spec_before_code(&paths, cwd).or_else(|| crate::tdd::lock_refusal(&paths, cwd))
 }
 
+/// The words of `args` that name paths: everything that does not start with `-`, and every
+/// word after a `--`. An option's value (`mv -t DIR`) is kept as a path too; asking the lock
+/// about one more path never allows a call.
+fn path_words(args: &[String]) -> Vec<&String> {
+    let mut after_dashes = false;
+    let mut out = Vec::new();
+    for word in args {
+        if after_dashes || !word.starts_with('-') {
+            out.push(word);
+        } else if word == "--" {
+            after_dashes = true;
+        }
+    }
+    out
+}
+
+/// A6 for Bash (SPEC-20261119-enforce-spec-hooks REQ-1…REQ-4): why a command line is refused
+/// while this worktree's TDD cycle locks a test, or `None`. Only `rm`, `unlink`, `git rm`,
+/// `mv` and `git mv` are read — redirections, `sed -i`, `find -delete`, scripts and a command
+/// run after a `cd` are not (the engine's `capabilities` says so). A removal's target that
+/// does not exist is left out: removing nothing changes no test, and the lock's rule against
+/// a new test file must not refuse it. Every path of a move counts, the destination too.
+pub fn bash_lock_guard(command: &str, cwd: &Path) -> Option<&'static str> {
+    let mut paths: Vec<String> = Vec::new();
+    let mut collect = |words: Vec<&String>, removal: bool| {
+        for word in words {
+            if removal && std::fs::symlink_metadata(cwd.join(word)).is_err() {
+                continue;
+            }
+            paths.push(word.clone());
+        }
+    };
+    for (name, args) in crate::claim_verify::shell_commands(command) {
+        match name.as_str() {
+            "rm" | "unlink" => collect(path_words(&args), true),
+            "mv" => collect(path_words(&args), false),
+            "git" => {
+                for sub in crate::claim_verify::git_subcommands(&args) {
+                    match sub.verb.as_str() {
+                        "rm" => collect(path_words(&sub.rest), true),
+                        "mv" => collect(path_words(&sub.rest), false),
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    if paths.is_empty() {
+        return None;
+    }
+    crate::tdd::lock_refusal(&paths, cwd)
+}
+
 const SPEC_FIRST: &str = "MoAI tool-preflight: on a SPEC work branch (spec/<yyyymmdd>-<slug>), files outside .moai/specs/ are written only after the branch's SPEC exists; write .moai/specs/SPEC-<yyyymmdd>-<slug>/spec.md first (`moai spec new`; when the branch date is not today, `moai spec new --date YYYY-MM-DD`).";
 
 /// The SPEC id a work branch is for: `spec/<yyyymmdd>-<slug>` with eight digits and a slug of
