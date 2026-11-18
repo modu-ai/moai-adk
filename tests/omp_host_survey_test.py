@@ -124,10 +124,17 @@ class OmpHostSurveyTest(unittest.TestCase):
         self.assertEqual(row[0]["omp"], "yes" if same else "gap", f"code {code.group(1)} vs workflow {doc.group(1)}")
 
     def test_the_document_replaces_the_2378_unsupported_line(self):
+        # The old decision stays in the document as history, once, with the words the Rust pin
+        # `tests/launcher_three_hosts.rs` reads (CI #3203: dropping them failed that test); the same
+        # sentence must say it is replaced, so the document never states OMP is unsupported now.
         text = DOC.read_text(encoding="utf-8")
-        self.assertNotIn("OMP — 지원하지 않음", text)
-        self.assertIn("2026-11-17", text)
-        self.assertIn("#2378", text)
+        old = "OMP — 지원하지 않음(2026-11-10 결정"
+        self.assertEqual(text.count(old), 1, "the Rust pin needs this phrase exactly once")
+        for line in text.splitlines():
+            if old in line:
+                self.assertIn("대체", line)
+                self.assertIn("2026-11-17", line)
+                self.assertIn("#2378", line)
 
 
 if __name__ == "__main__":
