@@ -150,7 +150,8 @@ fn expected(host: &str, role: usize, prompt: bool) -> Vec<&'static str> {
             "danger-full-access",
             "-a",
             "never",
-            "MoAI session name: agent-1",
+            // SPEC-20261118-launcher-agent-entry: `codex -a` starts agent mode.
+            "$moai --mode-agent\nMoAI session name: agent-1",
         ],
         ("codex", 0, true) => vec![
             "codex",
@@ -166,7 +167,7 @@ fn expected(host: &str, role: usize, prompt: bool) -> Vec<&'static str> {
             "workspace-write",
             "-a",
             "on-request",
-            "MoAI session name: agent-1",
+            "$moai --mode-agent\nMoAI session name: agent-1",
         ],
         ("codex", 2, _) => vec!["codex"],
         _ => unreachable!(),

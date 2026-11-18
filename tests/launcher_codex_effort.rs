@@ -106,7 +106,7 @@ fn the_model_comes_first_and_the_prompt_stays_last() {
             "gpt-6.1-terra",
             "-c",
             &effort_arg("xhigh"),
-            "MoAI session name: agent-9"
+            "$moai --mode-agent\nMoAI session name: agent-9"
         ]
     );
 }

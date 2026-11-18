@@ -164,7 +164,8 @@ fn role_paths_are_unchanged() {
             "danger-full-access",
             "-a",
             "never",
-            "MoAI session name: agent-9"
+            // SPEC-20261118-launcher-agent-entry: `codex -a` starts agent mode.
+            "$moai --mode-agent\nMoAI session name: agent-9"
         ]
     );
     let (_, v, _) = dry(&["glm", "-a"], Some("moai-dummy-token-value"));

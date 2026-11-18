@@ -21,7 +21,11 @@
 //! opens a plain host session: no role is guessed, no session name is added and no permission
 //! flag is passed, so the host starts in the mode its own settings choose. A role session
 //! (`-l` named `leader`, `-a` named `agent-N`) starts with full access unless the user setting
-//! `launcher.role_access` selects prompts or `--permissions` is given.
+//! `launcher.role_access` selects prompts or `--permissions` is given. `-l|-a` only name the
+//! session and set its access: the role is entered inside the session with `/moai --mode-agent`
+//! or `/moai --mode-leader` (Codex: `$moai --mode-agent` or `$moai --mode-leader`), which the
+//! `--dry-run` notes say; `codex -a` puts `$moai --mode-agent` first in its first prompt (user
+//! decision 2026-11-18, SPEC-20261118-launcher-agent-entry).
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::fs::{self, OpenOptions};
@@ -44,6 +48,24 @@ pub const NOTE_ADVISOR_NOT_PASSED_CODEX: &str =
     "the advisor applies to Claude hosts only; it was not passed to codex";
 pub const NOTE_ADVISOR_OMITTED_GLM: &str =
     "--advisor omitted on glm: the advisor is Anthropic API only";
+
+/// The first line of a `codex -a` first prompt: it enters agent mode inside the session (user
+/// decision 2026-11-18, card C-47 note 2092; one of the two spellings of #2286).
+pub const CODEX_AGENT_ENTRY: &str = "$moai --mode-agent";
+
+/// How a role session enters its role (SPEC-20261118-launcher-agent-entry): `-l|-a` only name
+/// the session and set its access; the role is entered inside the session with the mode command
+/// of #2286 for that host. `None` for a roleless session. The `cc|glm|codex` launchers add it to
+/// their notes; the legacy `session` command (REQ-00F-06) keeps its recorded answer.
+pub fn role_entry_note(role: Option<&str>, host: &str) -> Option<&'static str> {
+    Some(match (role?, host) {
+        ("leader", "codex") => "role: -l only names the session and sets its access; enter leader mode inside the session with `$moai --mode-leader`",
+        ("agent", "codex") => "role: -a only names the session and sets its access; agent mode is entered inside the session by the first prompt's first line, `$moai --mode-agent`",
+        ("leader", _) => "role: -l only names the session and sets its access; enter leader mode inside the session with `/moai --mode-leader`",
+        ("agent", _) => "role: -a only names the session and sets its access; enter agent mode inside the session with `/moai --mode-agent`",
+        _ => return None,
+    })
+}
 const DEFAULT_MODEL: &str = "opus";
 const DEFAULT_EFFORT: &str = "medium";
 /// User decision 2026-11-08 (#2053 HOLD-L1 = A, #2062): a session without a role still gets the
@@ -697,11 +719,14 @@ fn codex_argv(r: &SessionRequest, notes: &mut Vec<&'static str>) -> Result<Vec<S
     if r.advisor.is_some() {
         notes.push(NOTE_ADVISOR_NOT_PASSED_CODEX);
     }
-    let mut parts: Vec<String> = r
-        .name
-        .iter()
-        .map(|n| format!("MoAI session name: {n}"))
-        .collect();
+    // User decision 2026-11-18 (card C-47 note 2092, SPEC-20261118-launcher-agent-entry): an
+    // agent session's first prompt starts with the line that enters agent mode; Codex lanes given
+    // only the name line never entered it. A leader session and a roleless one keep their prompt.
+    let mut parts: Vec<String> = Vec::new();
+    if r.role.as_deref() == Some("agent") {
+        parts.push(CODEX_AGENT_ENTRY.into());
+    }
+    parts.extend(r.name.iter().map(|n| format!("MoAI session name: {n}")));
     if let Some(extra) = &r.prompt {
         if extra.len() > MAX_PROMPT
             || extra

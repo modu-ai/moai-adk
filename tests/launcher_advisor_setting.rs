@@ -166,7 +166,8 @@ fn plain(host: &str, role: usize) -> Vec<&'static str> {
             "danger-full-access",
             "-a",
             "never",
-            "MoAI session name: agent-1",
+            // SPEC-20261118-launcher-agent-entry: `codex -a` starts agent mode.
+            "$moai --mode-agent\nMoAI session name: agent-1",
         ],
         ("codex", 2) => vec!["codex"],
         _ => unreachable!(),

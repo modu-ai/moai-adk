@@ -167,9 +167,16 @@ impl LaneLoopArgs {
 #[command(group(ArgGroup::new("role").args(["leader", "agent"])))]
 struct HostLaunch {
     /// Leader session.
+    ///
+    /// Names the session `leader` and sets its access. The role is entered inside the session
+    /// with `/moai --mode-leader` (Codex: `$moai --mode-leader`).
     #[arg(short = 'l', long = "leader")]
     leader: bool,
     /// Agent session.
+    ///
+    /// Names the session `agent-N` (or `--name`) and sets its access. The role is entered
+    /// inside the session with `/moai --mode-agent`; on Codex the first prompt starts with
+    /// `$moai --mode-agent`.
     #[arg(short = 'a', long = "agent")]
     agent: bool,
     #[command(flatten)]
@@ -1015,15 +1022,21 @@ enum Command {
     },
     /// Start a Claude Code session
     ///
-    /// Claude Code session launcher: `cc -l|-a`.
+    /// Claude Code session launcher: `cc -l|-a`. `-l|-a` only name the session and set its
+    /// access; the role is entered inside the session with `/moai --mode-leader` or
+    /// `/moai --mode-agent`.
     Cc(HostLaunch),
     /// Start a Claude Code session on z.ai GLM
     ///
     /// Claude Code on z.ai GLM: `glm -l|-a` (needs ANTHROPIC_AUTH_TOKEN in the environment or a key file).
+    /// `-l|-a` only name the session and set its access; the role is entered inside the session
+    /// with `/moai --mode-leader` or `/moai --mode-agent`.
     Glm(HostLaunch),
     /// Start a Codex CLI session
     ///
-    /// Codex CLI session launcher: `codex -l|-a`.
+    /// Codex CLI session launcher: `codex -l|-a`. `-l|-a` only name the session and set its
+    /// access; the role is entered inside the session with `$moai --mode-leader` or
+    /// `$moai --mode-agent`, and `codex -a` starts its first prompt with `$moai --mode-agent`.
     Codex(HostLaunch),
     /// Start a Claude Code session (legacy form)
     ///
@@ -1197,6 +1210,9 @@ fn launch(
     drop(live_number);
     let mut v = launched?;
     if let Some(notes) = v["notes"].as_array_mut() {
+        // SPEC-20261118-launcher-agent-entry: how the role is entered inside the session.
+        let entry = moai_cli::session::role_entry_note(request.role.as_deref(), &request.host);
+        notes.extend(entry.map(Into::into));
         notes.extend(advisor_note.map(Into::into));
         notes.extend(init.note.map(Into::into));
         notes.extend(number_notes.into_iter().map(serde_json::Value::from));

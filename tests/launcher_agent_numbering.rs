@@ -315,11 +315,12 @@ fn numbers_restart_at_1_after_every_session_ended_and_live_in_the_clone_common_d
         .output()
         .unwrap();
     assert_eq!(String::from_utf8_lossy(&status.stdout), "?? .moai-cli/\n");
-    // codex carries the name in its first prompt.
+    // codex carries the name in its first prompt, after the line that enters agent mode
+    // (SPEC-20261118-launcher-agent-entry).
     let v: Value = serde_json::from_slice(&run(&f, &["codex", "-a"]).stdout).unwrap();
     assert_eq!(
         v["argv"].as_array().unwrap().last().unwrap(),
-        "MoAI session name: agent-1"
+        "$moai --mode-agent\nMoAI session name: agent-1"
     );
 }
 
@@ -835,7 +836,7 @@ fn name_and_leader_launch_the_decided_full_access_argv_and_take_no_number() {
         (&["glm", "-a", "--name", "x"], claude("x")),
         (
             &["codex", "-a", "--name", "x"],
-            codex("MoAI session name: x"),
+            codex("$moai --mode-agent\nMoAI session name: x"),
         ),
     ];
     for (args, want) in cases {
