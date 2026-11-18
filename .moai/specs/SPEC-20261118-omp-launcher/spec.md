@@ -87,8 +87,8 @@ verify 명령의 `omp_launcher`는 새 시험 파일 `tests/omp_launcher.rs`예�
 
 ## Scope
 
-- write: `src/main.rs`, `src/session.rs`, `src/help.rs`, `src/launcher_init.rs`, `src/launcher_terminal.rs`, `src/lane_duty.rs`, `docs/host-support-matrix.md`, `tests/omp_launcher.rs`(새 파일), `tests/launcher_three_hosts.rs`(삭제), `tests/lane_duty_line.rs`, `tests/launcher_auto_init.rs`, `tests/omp_host_survey_test.py`, `.moai/specs/SPEC-20261118-omp-launcher/spec.md`
-- 시험이 고쳐야 하면 같은 범위 안의 `tests/launcher_*.rs`(카드 범위에 이름이 있는 파일만)
+- write: `src/main.rs`, `src/session.rs`, `src/help.rs`, `src/launcher_init.rs`, `src/launcher_terminal.rs`, `src/lane_duty.rs`, `docs/host-support-matrix.md`, `tests/omp_launcher.rs`(새 파일), `tests/launcher_three_hosts.rs`(삭제), `tests/lane_duty_line.rs`, `tests/launcher_auto_init.rs`, `tests/launcher_agent_entry.rs`, `tests/omp_host_survey_test.py`, `.moai/specs/SPEC-20261118-omp-launcher/spec.md`
+- 리더가 더한 범위(C-62 노트 2183): `tests/help_layout.rs`, `tests/output_names_moai.rs`, `tests/fixtures/help/{all,all-60,all-80,all-dumb,root,root-60,root-80,root-dumb}.txt`, `tests/fixtures/protocol/v1/current/01-usage-unknown-subcommand.json`. 골든은 도구(`MOAI_HELP_GOLDEN_WRITE`, `MOAI_UPDATE_FIXTURES`)로만 다시 쓰고 폭 한도는 늘리지 않아요.
 - read-only: `skills/moai/**`, `docs/**`(위 문서 제외)
 - forbidden: 실제 HOME, 네트워크, 실제 host 실행, 릴리스 태그
 
@@ -121,4 +121,19 @@ verify 명령의 `omp_launcher`는 새 시험 파일 `tests/omp_launcher.rs`예�
 
 ## Result
 
-(구현 뒤에 AC마다 한 줄씩 적어요.)
+- AC-1: met — `omp_launcher omp_roles_compose_an_omp_command` 통과. RED(구현 전): `omp_launcher` 15개 전부 실패(`error: unrecognized subcommand 'omp'`).
+- AC-2: met — `print_command_is_dry_run_on_every_host`(cc·glm·codex·omp의 `--print-command`와 `--dry-run` JSON이 같음)와 `omp_dry_run_starts_nothing` 통과.
+- AC-3: met — `omp_model_and_thinking`(low·medium·high·xhigh·max)와 `omp_unknown_effort_is_a_note`(ultracode는 안내 줄만) 통과.
+- AC-4: met — `omp_approval_modes` 통과: 역할 없는 세션 플래그 없음, `-l|-a` `yolo`, `--permissions` `always-ask-cached`.
+- AC-5: met — `omp_has_no_role_prompt_and_names_the_entry_lines`, `omp_advisor_is_a_note` 통과. `launcher_agent_entry`의 철자 시험은 `/skill:moai --mode-*` 두 줄을 허용 목록에 더해 7개 통과.
+- AC-6: met — `omp_key_reaches_the_process_for_a_glm_model_only`(stub host가 `ZAI_API_KEY`를 받음: 금고 키, 변수가 금고보다 우선, `zai/…`·`glm` 모델에서만)와 `omp_key_never_appears_in_output`(dry-run·실행·stderr·args 어디에도 값 없음, `env_keys`에 이름만) 통과.
+- AC-7: met — `omp_blocked_vault_stops_like_glm`(옛 키 파일이 있으면 glm 론처와 같은 `blocked: legacy_key_only` 줄, host 시작 안 함, 번호 안 받음)와 `omp_without_a_key_goes_on_with_a_note` 통과.
+- AC-8: met — `omp_agent_takes_a_number_and_a_refusal_takes_none`과 `launcher_auto_init the_first_launch_outside_git_initializes_the_folder_on_every_host`(omp 줄 더함, 프로필 `hosts: ["omp"]`) 통과. RED: 후자 1개 실패(`unrecognized subcommand 'omp'`).
+- AC-9: met — `omp_is_named_in_help_usage_and_errors`, `help_layout` 10개(폭 한도는 늘리지 않음), `help::` 단위 시험 18개 통과. 골든 9개(도움말 8, 프로토콜 1)는 `MOAI_HELP_GOLDEN_WRITE`·`MOAI_UPDATE_FIXTURES`로만 다시 썼고 `git diff --shortstat`은 42 insertions, 34 deletions. omp를 이름 대지 않는 변경 줄은 다시 줄바꿈된 이어지는 줄과 `[aliases: --print-command]` 4줄(D-1)이며 리더에게 보고했어요(카드 노트 `blocked-agent-30-golden-alias`).
+- AC-10: met — `lane_duty_line` 8개 통과(RED 1개 실패), `omp_host_survey_test` 9개 중 `test_the_lane_duty_row_follows_the_omp_entry_spelling` 통과.
+- AC-11: met — `omp_host_survey_test` 9개 OK(RED: 11건 실패), `host_matrix_test` 5개 OK, `the_support_matrix_no_longer_says_omp_is_unsupported` 통과.
+- AC-12: met — `help_layout`, `output_names_moai`, `product_cli`(79), `omp_launcher`, `launcher_agent_entry`, `launcher_roleless`, `launcher_key_vault`, `launcher_glm_key_file`, `launcher_terminal_output`, `launcher_permissions_setting`, `launcher_agent_numbering`, `launcher_auto_init`, `lane_duty_line` 합계 207개 통과; `--lib` 1427개와 `--bins` 28+28개, `ac_command_lint` 5개, `claude_python_adapter_removed` 5개 통과; 파이썬 `ci_scope_test`, `goal_block_test`, `repo_scans_test` OK.
+- AC-13: met — `git ls-files .moai/specs/SPEC-20261118-omp-launcher`로 추적, `moai-cli spec check SPEC-20261118-omp-launcher`는 오류 0, 경고 1건(`size_requirements`, D-6).
+- 변이 시험: 복사본에서 5개를 하나씩 적용(적용은 `cmp`로 확인, 복원도 `cmp`로 확인)하고 모두 시험에 걸렸어요 — 키를 모든 모델에 보냄, 프로세스에 키를 안 줌, 역할 세션이 질문 모드, 막힌 금고 무시, 레인 의무 줄 OMP를 `/moai`로 되돌림(`killed 5/5`).
+- 실제 OMP 18.18.7 관찰: `omp --mode rpc --no-session`을 임시 폴더에서 띄우고 `get_available_commands`를 보내자 `skill:moai`(source `skill`)가 목록에 있었어요(모델 호출 없음). 이는 화면 세션이 아니고 `moai omp -l`이 띄운 것도 아니에요. agent는 `~/.omp/agent/agents/moai-*.md` 파일 5개가 있다는 것만 보았고 OMP가 로드하는 것은 보지 못했어요.
+- 돌리지 않은 것: `moai omp -l`로 띄운 OMP 화면 세션(카드 기준 5, 사람이 필요), OMP가 첫 메시지의 `/skill:`을 풀어 주는지, `ZAI_API_KEY`로 실제 z.ai 요청이 가는지, 전체 `cargo test`와 macOS·Windows(PR CI에 맡겨요), `moai update`의 OMP skill 설치(조사표 leader card gap).
