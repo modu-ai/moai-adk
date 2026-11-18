@@ -31,8 +31,8 @@ The wiring wraps the existing `update_command` function: its signature, `src/mai
 - REQ-6 (REQ-5): IF the settings cannot be read, planned or written, or the digest no longer matches, THEN the model stage shall report the state `error` with the message of the apply and leave the update result and the settings file as they were.
 - REQ-7 (REQ-3): IF the picks would change nothing, THEN the model stage shall write nothing and report the state `unchanged`.
 - REQ-8: When `moai update` ends applied in any other way (a pipe, `--json`, a confirm flag, no terminal or an update part that wrote nothing), the update shall ask no model question and add a `models` object to its result that lists for each tool and role the model, the effort and the source (`saved` or `default`) and names the saved entries outside the support table by key path. · failure: none — an unreadable settings file is reported as the state `error` with its message.
+- REQ-9: When the tool question is asked, the model stage shall pass `claude` as installed when the folder `.claude` of the home exists and `codex` as installed when the folder `.codex` of the home exists, so that Enter picks them. · failure: none — no folder means the empty default and Enter picks nothing.
 - REQ-10 (REQ-8): IF the result is a preview, THEN the update shall leave its keys exactly as they were, as the preview test of the cleanup stage requires.
-- REQ-9: When the tool question is asked, the model stage shall pass `claude` as installed when `~/.claude` is a folder and `codex` as installed when `~/.codex` is a folder, so that Enter picks them. · failure: none — no folder means the empty default and Enter picks nothing.
 
 ## Acceptance
 
@@ -87,19 +87,19 @@ The wiring wraps the existing `update_command` function: its signature, `src/mai
 | D-1 | Wrap `update_command` instead of changing its signature or `src/main.rs` | the main file is held by card C-62 and the signature is called from the stale retry path | move the call into the main file when it is free |
 | D-2 | The stage runs only for the person's screen and only after an update that wrote files | a preview result means the person said no or the run was scripted; asking at every up-to-date run would nag a person who updates often, and the first install and every real update still ask | also ask when nothing is to apply, or add a flag that asks on demand |
 | D-3 | One save question after the full preview, separate from the update question | the update digest does not cover the settings file; the question module has its own digest | fold both into one preview later |
-| D-4 | The installed tools are the folders `~/.claude` and `~/.codex` | the update manages these two hosts; OMP is not an update host and is picked by hand | list more hosts |
+| D-4 | The installed tools are the folders `.claude` and `.codex` of the home | the update manages these two hosts; OMP is not an update host and is picked by hand | list more hosts |
 | D-5 | The report uses the saved value only when the support table lists it, else the default, and names the other entries | REQ-4 of the parent SPEC keeps and reports a value outside the table | none |
 
 ## Result
 
-- AC-1: pending
-- AC-2: pending
-- AC-3: pending
-- AC-4: pending
-- AC-5: pending
-- AC-6: pending
-- AC-7: pending
-- AC-8: pending
-- AC-9: pending
-- AC-10: pending
-- AC-11: pending
+- AC-1: met — `the_tool_pick_comes_first_and_an_empty_pick_asks_nothing` passes (the output starts with the tool question; an empty pick gives `nothing_picked`, three bad answers `cancelled`, no model id printed, no file)
+- AC-2: met — `only_supported_values_are_offered_and_an_unknown_saved_value_is_kept` passes (only claude ids offered, the unsupported omp entry named by key path without its text and kept in the file after a yes)
+- AC-3: met — `enter_selects_the_defaults_and_the_preview_shows_them` passes (nine Enters give the four default rows of claude and codex in the preview while no file exists)
+- AC-4: met — `the_choice_is_written_through_the_digest_bound_apply_and_read_back` passes (other keys kept, codex agent gpt-6.1-terra xhigh read back, the report marks it saved)
+- AC-5: met — `a_no_and_an_unchanged_pick_write_nothing` passes (no gives `declined` and no file; the same picks again give `unchanged` and equal bytes)
+- AC-6: met — `a_broken_or_changed_settings_file_is_an_error_and_stays_as_it_was` passes (invalid file: `error`, marker never shown, bytes kept; file changed between preview and save: `error`, the changed file kept)
+- AC-7: met — `a_non_terminal_run_asks_nothing_and_reports_the_values` passes (the preview has no `models` key; the applied result has 8 values with saved and default sources and the unsupported key path; the settings file is untouched)
+- AC-8: met — `the_installed_tools_follow_the_home_folders` passes (none, claude, a file named .codex is not a folder, both)
+- AC-9: met — `cargo test --test update_command_cli` 19 passed, including the macOS pseudo terminal cases that answer the model stage and save after a yes and the confirmed run that asks nothing; `update_user_layer_cli` 11, `update_home_layer_cli` 11, `update_hooks_cli` 11, `update_keys_cli` 9 and `update_headver` 3 passed
+- AC-10: met — `cargo test --test product_cli source_manifest` passed (the manifest hash of update.md is current)
+- AC-11: met — `cargo fmt --check` exits 0 and `cargo clippy --lib --test model_effort_settings --test model_effort_questions --test update_model_pick --test update_command_cli -- -D warnings` exits 0
