@@ -17,7 +17,7 @@ This SPEC fixes the requirements and records the research the card asked for fir
 ## Non-goals
 
 - The question tool each host uses for these prompts (card C-52, with C-51).
-- Model ids beyond the six in the defaults table; any provider other than the three tools.
+- Model ids beyond the six named in decision D-2; any provider other than the three tools.
 - Code, tests or the settings file in this slice: it adds the SPEC and the research only.
 
 ## Requirements
@@ -49,8 +49,8 @@ This SPEC fixes the requirements and records the research the card asked for fir
   verify: `cargo test --locked --offline --test update_model_pick a_non_terminal_run_asks_nothing_and_reports_the_values`
 - AC-7 (REQ-10): changing the file and relaunching uses the new values.
   verify: `cargo test --locked --offline --test launcher_model_settings a_changed_file_is_used_at_the_next_start`
-- AC-8 (REQ-3): the research table names for every id and effort its source and read time, and marks what was not verified.
-  manual: read `research.md` beside this file; every table row has a source line with a read time and an Not verified line.
+- AC-8 (REQ-3): `research.md` names, for each tool, the sources with the read time their agent stamped (a range where the agent stamped a window), separates quotes from paraphrase, and lists what was not verified.
+  manual: read `research.md` beside this file; each tool section has a Sources line with read times and a Not verified line, and the introduction says which sentences are paraphrase.
 
 ## Scope
 
