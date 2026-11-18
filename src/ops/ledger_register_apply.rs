@@ -29,6 +29,9 @@ pub const OPERATION: &str = "ledger.register.apply";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
     let home = moai_cli::ledger::command::resolve_home(args.home)?;
+    if let Some(why) = moai_cli::home_install::registration_blocked(&home) {
+        return Err(format!("{why}; nothing was written"));
+    }
     moai_cli::ledger::command::register_apply(
         &args.project,
         &home,

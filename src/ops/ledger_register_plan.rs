@@ -23,5 +23,17 @@ pub const OPERATION: &str = "ledger.register.plan";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
     let home = moai_cli::ledger::command::resolve_home(args.home)?;
-    moai_cli::ledger::command::register_plan(&args.project, &home)
+    let mut plan = moai_cli::ledger::command::register_plan(&args.project, &home)?;
+    // One answer with `home-install-plan` for the same HOME (card C-50): an unknown `~/.moai`
+    // with no finished Go retire on record is not ready for the ledger either.
+    if plan["action"] == "register" {
+        if let Some(why) = moai_cli::home_install::registration_blocked(&home) {
+            plan["action"] = serde_json::json!("blocked");
+            plan["problem"] = serde_json::json!("home_not_ready");
+            plan["message"] = serde_json::json!(why);
+            plan["would_create"] = serde_json::json!([]);
+            plan["would_tighten"] = serde_json::json!([]);
+        }
+    }
+    Ok(plan)
 }
