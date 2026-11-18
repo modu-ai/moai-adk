@@ -29,6 +29,69 @@ pub const RETIRED_DIR: &str = ".moai-go-retired";
 pub const KIND: &str = "go-retire";
 const MANIFEST_PREFIX: &str = "retire-manifest-";
 
+/// The stamp of the newest finished Go retire on record for `home` (SPEC-20261118-home-install-go-retire,
+/// card C-50): a regular `retire-manifest-<stamp>.json` of kind [`KIND`] whose `home` is this
+/// HOME, under `~/.moai-go-retired/`, with its journal committed and every item moved. Read by `lstat` and size-bounded; a link, a folder, a file
+/// that is not such a manifest or one written for another HOME gives nothing. It proves only that
+/// a retire ran: the install preview still judges every entry itself.
+pub fn finished_retire(home: &Path) -> Option<String> {
+    const MANIFEST_LIMIT: u64 = 1024 * 1024;
+    let root = home.join(RETIRED_DIR);
+    if !fs::symlink_metadata(&root).is_ok_and(|m| m.is_dir()) {
+        return None;
+    }
+    let chome = canon(home);
+    let mut newest: Option<String> = None;
+    for e in fs::read_dir(&root).ok()?.flatten().take(CANDIDATE_LIMIT) {
+        let Ok(name) = e.file_name().into_string() else {
+            continue;
+        };
+        if !name.starts_with(MANIFEST_PREFIX) || !name.ends_with(".json") {
+            continue;
+        }
+        let path = e.path();
+        let Ok(meta) = fs::symlink_metadata(&path) else {
+            continue;
+        };
+        if !meta.is_file() || meta.len() > MANIFEST_LIMIT {
+            continue;
+        }
+        let Some(v) = fs::read(&path)
+            .ok()
+            .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
+        else {
+            continue;
+        };
+        let same_home = v["home"].as_str().is_some_and(|h| {
+            Path::new(h).is_absolute() && (Path::new(h) == home || canon(Path::new(h)) == chome)
+        });
+        let Some(stamp) = v["stamp"]
+            .as_str()
+            .filter(|_| v["kind"] == KIND && same_home)
+        else {
+            continue;
+        };
+        // The manifest is written before the first rename, so it alone proves nothing: the
+        // journal beside it must be committed with every item moved (Codex review P2 on #3199).
+        let done =
+            move_journal::read_journal(&move_journal::journal_path(&root, stamp)).is_ok_and(|j| {
+                j.kind == KIND
+                    && j.stamp == stamp
+                    && j.state == move_journal::JournalState::Committed
+                    && j.items
+                        .iter()
+                        .all(|i| i.status == move_journal::ItemStatus::Moved)
+            });
+        if !done {
+            continue;
+        }
+        if newest.as_deref().is_none_or(|n| stamp > n) {
+            newest = Some(stamp.to_string());
+        }
+    }
+    newest
+}
+
 /// The kind of a top-level entry, from its own metadata (a link is never followed).
 pub(crate) fn kind_of(p: &Path) -> &'static str {
     match fs::symlink_metadata(p) {

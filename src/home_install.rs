@@ -341,6 +341,31 @@ pub(crate) fn vault_facts(old: &Path) -> Value {
     })
 }
 
+/// Whether the ledger registration may write into the HOME's `~/.moai`: an `unknown` folder with
+/// no finished Go retire on record is refused, as the install preview refuses it, so the two
+/// previews give one answer (SPEC-20261118-home-install-go-retire, REQ-6). The ledger's own
+/// `projects` folder does not count: a HOME that holds only its ledgers is the ledger's doing, not
+/// an unknown owner's. `Some` is the message.
+pub fn registration_blocked(home: &Path) -> Option<String> {
+    let c = classify_home(home);
+    if c.generation != "unknown" || crate::home_retire::finished_retire(home).is_some() {
+        return None;
+    }
+    let (names, unreadable) = names_of(&home.join(MOAI_DIR));
+    let others = names
+        .iter()
+        .filter(|n| !n.eq_ignore_ascii_case("projects"))
+        .count()
+        + unreadable;
+    (others > 0).then(|| {
+        format!(
+            "~/.moai holds {others} entries other than the ledger folder but no generation marker \
+             and no finished Go retire on record; the ledger waits for the HOME move \
+             (home-install-plan)"
+        )
+    })
+}
+
 /// The preview for the HOME at `home`. `moai_home` is the `MOAI_HOME` value, `now` the clock as
 /// `YYYY-MM-DDTHH:MM:SSZ` (names the journal). Writes nothing.
 pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, String> {
@@ -358,7 +383,16 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
         Ok(_) => "other",
     };
     let moved = matches!(c.generation, "rust" | "rust-first");
-    let movable = matches!(c.generation, "none" | "empty" | "go" | "mixed");
+    // A retire takes every Go marker away and keeps what it cannot place (user data, unknown
+    // owners), so its own result is a `~/.moai` the verdict calls `unknown`. A finished retire on
+    // record for this HOME is the evidence that makes that folder movable; without one it stays
+    // refused (SPEC-20261118-home-install-go-retire).
+    let retired = if c.generation == "unknown" {
+        crate::home_retire::finished_retire(home)
+    } else {
+        None
+    };
+    let movable = matches!(c.generation, "none" | "empty" | "go" | "mixed") || retired.is_some();
 
     let mut blocks: Vec<String> = Vec::new();
     if old_kind != "absent" {
@@ -546,6 +580,17 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
         Value::Null
     };
 
+    let mut help: Vec<String> = Vec::new();
+    if blocks.iter().any(|b| b == "generation_unknown") {
+        help.push(format!(
+            "{} holds {} entries but no generation marker and no finished Go retire on record; \
+             move them out of it yourself, then run home-install-plan again; a Go retire \
+             that finished (its manifest and committed journal in ~/.moai-go-retired) unlocks \
+             the move",
+            moai.display(),
+            c.entries
+        ));
+    }
     let mut warnings = Vec::new();
     if total > entry_limit {
         warnings.push(format!(
@@ -587,6 +632,7 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
     let content = json!({
         "mode": "install",
         "generation": c.generation,
+        "retire": retired,
         "state_dir": old_kind,
         "action": action,
         "blocks": blocks,
@@ -619,6 +665,8 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
         "action": action,
         "journal": journal_root.display().to_string(),
         "blocks": blocks,
+        "help": help,
+        "retire": retired,
         "entries": entries,
         "counts": counts,
         "total": total,
