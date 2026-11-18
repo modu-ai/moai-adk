@@ -109,4 +109,28 @@ Codex 공식 문서는 Desktop 앱, CLI, IDE 확장을 함께 설명한다. 세 
 
 호스트 세션은 역할 없이 엽니다: `moai cc|glm|codex`는 평범한 host 세션이고(#2053), MoAI 역할은 세션 안에서 `/moai --mode-leader`·`/moai --mode-agent`로 정합니다. 모드 표기는 이 두 개뿐입니다(사용자 결정 2026-11-10, #2286 — 옛 표기와 별칭은 폐기). 리더·에이전트 론처 플래그 `-l|-a`(`moai -l|-a`, `moai cc|glm|codex -l|-a`)는 세션 이름(`leader`, `agent-N`)과 전체 권한을 붙이는 형태로 유지합니다(사용자 결정 2026-11-10, Issue #2359 댓글 6760976883). `-l|-a`는 이름과 권한만 정하고 역할은 세션 안에서 `/moai --mode-leader`·`/moai --mode-agent`(Codex는 `$moai --mode-leader`·`$moai --mode-agent`)로 들어가며, 도움말과 `--dry-run` notes가 이를 적습니다. `moai codex -a`만은 첫 프롬프트를 `$moai --mode-agent` 줄로 시작합니다(사용자 결정 2026-11-18, SPEC-20261118-launcher-agent-entry: 이름 줄만 받은 Codex 레인은 에이전트 모드에 들어가지 않았음). #2164의 deprecated 경고는 없앴고, 역할 없는 세션에는 권한 플래그를 붙이지 않습니다. `--name`은 여전히 독립 옵션입니다. 상태: 유지(`--dry-run`과 시험으로 확인, 실제 host 실행 not_run). git 저장소가 아닌 폴더에서 처음 실행하면 묻지 않고 `git init`과 프로젝트 설정(`.moai-cli/project.yaml`)·`AGENTS.md` 생성을 먼저 합니다(이미 있는 파일은 그대로, HOME 자체·루트는 안내 후 중단, git 미설치는 OS별 설치 안내 후 중단 — 사용자 결정 2026-11-12, #2481, 상세는 `docs/rust-product-path.md` "First launch initializes the project folder").
 
-론처가 지원하는 host는 `cc`·`glm`·`codex` 세 가지입니다. OMP — 지원하지 않음(2026-11-10 결정, Issue #2378). 같은 날 추가했던 OMP 어댑터(#2362)는 제거했고, `moai omp …`는 사용법 오류(exit 2)로 끝나며 host를 띄우지 않습니다. 이 결정은 론처에만 남습니다. 2026-11-13 사용자 확정(공식 지원 5개: Claude Code, Codex, OMP, Kiro, Cursor CLI)에 따라 OMP는 기본 에이전트 파일(`~/.omp/agent/agents/moai-<역할>.md`, `src/agent_defs.rs`)의 대상 host입니다(Issue #2633).
+론처가 지금 시작하는 host는 `cc`·`glm`·`codex` 세 가지입니다. OMP 론처: 옛 기록 "OMP — 지원하지 않음(2026-11-10 결정, Issue #2378: OMP 어댑터 #2362 제거)"은 사용자 지시 2026-11-17(카드 C-62: OMP를 전체 host로 지원, `moai omp -l|-a`)로 **대체**됩니다(옛 문구는 `tests/launcher_three_hosts.rs`가 읽어서 역사로 남겨 둡니다. 조각 B가 그 시험을 고치면 지웁니다). `moai omp …`는 아직 구현 전이라 사용법 오류(exit 2)로 끝나며 host를 띄우지 않습니다. 구현은 카드 C-62의 다음 조각(slice B)이고, 어디가 빠졌는지는 아래 "MoAI 기능별 host 지원 (C-62)" 표가 줄마다 적습니다. 2026-11-13 사용자 확정(공식 지원 5개: Claude Code, Codex, OMP, Kiro, Cursor CLI)에 따라 OMP는 기본 에이전트 파일(`~/.omp/agent/agents/moai-<역할>.md`, `src/agent_defs.rs`)의 대상 host입니다(Issue #2633).
+
+## MoAI 기능별 host 지원 (C-62)
+
+코드에서 host로 갈라지는 자리마다 한 줄이다(사용자 지시 2026-11-17, 카드 C-62: OMP를 전체 host로 지원). `yes`는 그 자리가 host를 다룬다는 뜻이고, `gap`은 아직 다루지 않는다는 뜻이며 어느 조각이나 카드가 닫는지 `gap` 열에 적는다, `n/a`는 그 host에서 하지 않기로 했거나 그 자리에 해당하는 단계가 없다는 뜻이다. 근거(`evidence`)는 `파일::기호`이고, ` (list)`가 붙은 줄은 그 기호가 가리키는 host 목록이 이 줄의 `yes`와 같아야 한다. `tests/omp_host_survey_test.py`가 근거 파일·기호의 존재와 목록 일치, OMP `gap`의 닫는 곳을 확인한다. 2026-11-18, tip eea59f4ff1에서 코드를 읽어 적었고 host를 띄워 확인한 것은 아니다(`not_run`).
+
+| feature | claude | codex | omp | evidence | gap |
+| --- | --- | --- | --- | --- | --- |
+| 론처 하위 명령 `moai <host> -l\|-a` | yes | yes | gap | `src/main.rs::Codex(HostLaunch)` | slice B (C-62): `moai omp`, `-l`, `-a`, `--print-command` |
+| 론처 도움말과 사용법 줄 | yes | yes | gap | `src/help.rs::LAUNCHERS` | slice B (C-62) |
+| 론처 첫 실행의 프로젝트 설정 | yes | yes | gap | `src/launcher_init.rs::default_profile` | slice B (C-62) |
+| 세션 등록의 host 목록 | yes | yes | gap | `src/session.rs::HOSTS` (list) | slice B (C-62); 이 파일은 카드 C-47의 범위이기도 하다 |
+| glm 키가 세션에 닿는 길 | yes | n/a | gap | `src/session.rs::read_here` | slice B (C-62): 키는 vault에서 읽고 argv와 출력에 쓰지 않는다 |
+| 프로필이 적을 수 있는 host | yes | yes | yes | `src/profile.rs::KNOWN_HOSTS` (list) | - |
+| 에이전트 정의 렌더링 | yes | yes | yes | `src/agent_defs.rs::HOSTS` (list) | - |
+| hook 설치와 전달 | yes | yes | yes | `src/hooks.rs::HOSTS` (list) | - |
+| 레인 의무 줄(`lane-duty-line`) | yes | yes | gap | `src/lane_duty.rs::HOSTS` | leader card: 코드는 omp에 `/moai`를 붙이지만 OMP는 `/skill:moai --mode-agent`로만 에이전트 모드에 들어간다(`skills/moai/workflows/mode-agent.md`); `tests/lane_duty_line.rs`가 슬래시 형태를 고정하고 있어 함께 고쳐야 한다 |
+| host 폴더 해석 | yes | yes | yes | `src/host_home.rs::Omp` | - |
+| 프로젝트 host 단계(codex·omp) | n/a | yes | yes | `src/project_hosts.rs::omp-agents` | - |
+| 사용자 범위 AGENTS 라우팅 | yes | yes | n/a | `src/home_routing.rs::shadows every other user context file` | - |
+| 상태줄 설정 | yes | yes | n/a | `src/project_hosts.rs::OMP_CONFIG_REASON` | - |
+| skill 설치(`moai update`)의 host 목록 | yes | yes | gap | `src/update.rs::HOSTS` (list) | leader card: OMP는 `.agents/skills`(codex 단계가 쓰는 폴더)와 `~/.omp/agent/skills`를 읽으므로(`src/skills_legacy.rs`) 일부는 이미 닿는다; 빠진 것은 이 목록과 `~/.omp/agent/skills`로의 설치이고, `src/update.rs`는 카드 C-47 범위 |
+| 프로젝트 skill 설치 | yes | yes | gap | `src/project_skills.rs::host_folder` | leader card: 같은 폴더 규칙(OMP는 `.agents/skills`를 읽으므로 codex용 설치가 OMP에도 보이는지 먼저 확인) |
+| 출력 스타일 설치 | yes | yes | gap | `src/home_style.rs::HOSTS` (list) | leader card: OMP에 출력 스타일이 있는지 먼저 조사한다 |
+| 감사 독립성 표 | yes | yes | gap | `src/audit.rs::INDEPENDENCE` (list) | leader card: OMP 하위 에이전트가 이전 대화를 이어받는지 문서로 확인한 뒤 줄을 더한다 |
