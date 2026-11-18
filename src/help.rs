@@ -1049,7 +1049,9 @@ pub const GETTING_STARTED: &[(&str, &str)] = &[
 /// A few commands to copy, each with what it does (#3004 P1); parsed against the real command
 /// tree by the same test.
 pub const ROOT_EXAMPLES: &[(&str, &str)] = &[
-    ("cc -l", "lead session"),
+    // SPEC-20261118-launcher-agent-entry: the role is entered inside the session; at 60
+    // columns this ends on column 59, so it never wraps.
+    ("cc -l", "leader, then /moai --mode-leader"),
     ("update", "preview and apply an update"),
     ("project-detect .", "show the facts of this project"),
 ];
@@ -1571,12 +1573,22 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          적었는지 확인해요(아니면 `git worktree repair` 한 번). 옮긴 worktree 마다 되돌리는 명령이 \
          함께 와요.",
     ),
-    ("cc", "Claude Code 세션 실행기: `cc -l|-a`."),
-    ("codex", "Codex CLI 세션 실행기: `codex -l|-a`."),
+    (
+        "cc",
+        "Claude Code 세션 실행기: `cc -l|-a`. `-l|-a` 는 세션 이름과 권한만 정하고, 역할은 세션 \
+         안의 `/moai --mode-leader`·`/moai --mode-agent` 로 시작.",
+    ),
+    (
+        "codex",
+        "Codex CLI 세션 실행기: `codex -l|-a`. `-l|-a` 는 세션 이름과 권한만 정하고, 역할은 세션 \
+         안의 `$moai --mode-leader`·`$moai --mode-agent` 로 시작. `codex -a` 의 첫 프롬프트는 \
+         `$moai --mode-agent` 줄부터.",
+    ),
     (
         "glm",
         "z.ai GLM 위의 Claude Code: `glm -l|-a`(환경의 ANTHROPIC_AUTH_TOKEN 이나 키 파일이 \
-         필요해요).",
+         필요해요). `-l|-a` 는 세션 이름과 권한만 정하고, 역할은 세션 안의 \
+         `/moai --mode-leader`·`/moai --mode-agent` 로 시작.",
     ),
     (
         "claude-doctor",
@@ -1664,8 +1676,18 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "prompt",
         "첫 프롬프트에 덧붙일 글(codex 만)",
     ),
-    ("cc|codex|glm", "leader", "리더 세션"),
-    ("cc|codex|glm", "agent", "에이전트 세션"),
+    (
+        "cc|codex|glm",
+        "leader",
+        "리더 세션(이름 `leader` 와 권한만 정함, 역할은 세션 안의 `/moai --mode-leader`, Codex 는 \
+         `$moai --mode-leader`)",
+    ),
+    (
+        "cc|codex|glm",
+        "agent",
+        "에이전트 세션(이름과 권한만 정함, 역할은 세션 안의 `/moai --mode-agent`, Codex 는 첫 \
+         프롬프트의 `$moai --mode-agent`)",
+    ),
     (
         "cc|codex|glm",
         "name",

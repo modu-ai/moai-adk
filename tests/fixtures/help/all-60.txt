@@ -377,10 +377,14 @@ Internal
 
 Options:
   -l, --leader
-          Start a leader session on the default host (cc)
+          Start a leader session on the default host (cc);
+          the role is entered inside it with `/moai
+          --mode-leader`
   -a, --agent [<HOST>]
           Start an agent session on HOST (cc|glm|codex;
-          default cc)
+          default cc); the role is entered inside it with
+          `/moai --mode-agent` (codex: `$moai --mode-agent`,
+          sent as its first prompt)
       --color <WHEN>
           Color on a terminal: auto, always (even with
           NO_COLOR or TERM=dumb) or never; put it before the
