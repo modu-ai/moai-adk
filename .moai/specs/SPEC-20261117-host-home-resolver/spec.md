@@ -129,42 +129,35 @@ Claude Code는 `CLAUDE_CONFIG_DIR`, Codex는 `CODEX_HOME`으로 사용자 폴더
 
 ## Result
 
-구현 에이전트가 2026-11-17에 채웠어요. 감사가 다시 확인해요. 빌드 폴더는 이 worktree의 `target/`,
-`CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=4`, macOS arm64, cargo는 한 번에 하나(heavy slot 안).
+구현 에이전트가 2026-11-18에 채웠어요(감사 FAIL `75ebca6750` 수리 뒤). 감사가 다시 확인해요. 빌드 폴더는 이 worktree의
+`target/`, `CARGO_INCREMENTAL=0`, `CARGO_BUILD_JOBS=4`, macOS arm64, cargo는 한 번에 하나(heavy slot 안).
 
-커밋: 처음 네 커밋은 다른 세션이 같은 worktree를 SDD-5 커밋 `853f13a811`로 바꿔 놓은 위에 쌓였어요(리더가 확인한
-배정 충돌; 그 판은 `wip/c79-host-home-on-sdd5`에 남김). 이 가지로 옮긴 판: `25881165be` → tip `830c0bd5db`로 ff →
-`bd74b730c2`(시험 7개만, RED) → `c229972aa7`(리졸버·호출하는 곳·문서·이 SPEC; `tools/repo_scans.json`은 tip의
-`update_headver` 항목과 함께) → `2e57485deb`(HOME 밖 링크 경우) → `105d5444d4`(첫 Result) → `7dc37a5235`(tip
-`17c19a2759` 병합; tip manifest의 같은 키 두 번을 `write`로 하나로) → `b2d8a3053a`(tip `e1dc60c2eb` 병합; manifest는
-tip 판, `launcher_init::missing_skill`이 이제 `Result`인 `projection_root`를 받도록 고침) → `23be93aa4a`(계정 홈
-대체를 `key_vault::home`로, AC-7 기준을 `origin/v2026.11.0...HEAD`로) → 이 Result.
+커밋: 첫 구현 `bd74b730c2`…`23be93aa4a`(RED 5 failed → GREEN, mutation M1–M5 KILLED) → 감사 FAIL(B1, B2, N1–N4) →
+`5a546d28ac`(tip `21c43c2af7` 병합) → `16eca65bab`(수리 시험 먼저; RED: B1·B2·N3 시험 3개 실패, M5–M7 고정 시험은 처음부터 통과) →
+`986bc4898a`(수리) → `ceab95a3cb`(tip `1d49d55062` 병합) → 이 Result. 수리 mutation 8개 모두 KILLED(R1 훅 검사 끄기,
+R2 아무 폴더 링크나 따라가기, R3 링크를 아예 안 따라가기, M5 출력 스타일의 도구 폴더 링크 검사 빼기, M6·M7 Claude·Codex
+가드가 빈 값·상대 경로 받기, M8 실행기 경고 끄기, R4 UTF-8이 아니면 계획 전체 실패), 매번 트리 깨끗.
 
-RED: `host_home_cli` exit 101, 5 failed(경로가 여전히 HOME 아래 `.claude`·`.codex`, 빈 값·상대 경로·링크가 막히지 않음);
-계정 홈 고정 시험과 doctor의 `CODEX_HOME` 읽기는 지금 동작이라 처음부터 통과. GREEN 7 passed.
+최종 검사(`ceab95a3cb`, 02:42:37Z–02:56:50Z, 단계마다 종료 코드 0): 시험 대상 42개 한 번에, `--lib` 1425 passed,
+`--bin moai` 27, clippy `-D warnings`, `cargo fmt --check`, `rustfmt --check --edition 2021 src/ops/*.rs`, Python 49개 OK,
+`source_manifest.py check`, `moai spec check --all --project .`(SPEC 45개, 오류 0; 경고 4개는 다른 SPEC의 `needs_clarification`).
 
-mutation 5개 모두 KILLED: M1 계정 홈 규칙 빼기, M2 상대 경로 받기, M3 에이전트가 도구 폴더 자체 링크 검사 빼기,
-M4 스킬 복사의 링크 검사를 HOME부터(처음엔 살아남음 — 시험의 옮긴 폴더가 모두 임시 HOME 안이었음 → HOME 밖 링크
-경우를 더한 뒤 KILLED), M5 doctor가 리졸버를 안 씀.
+실제 홈 안전: 이 세션에는 `CLAUDE_CONFIG_DIR`이 설정돼 있어요. 그 폴더의 `CLAUDE.md`·`settings.json`·`agents`·`skills/moai`·
+`output-styles`와 HOME 아래 `.codex/AGENTS.md`·`.codex/agents`의 수정 시각·크기를 읽기만으로 각 실행 앞뒤에 비교했고 늘
+같았어요. 첫 지문(11-17 09:43Z)과 다른 곳은 `skills/moai`·`.codex/agents` 두 개뿐이고 11-17 10:17:55–56Z의 빌드 5 설치
+(`~/.moai-cli`의 `update.apply` 4.2647.5 영수증, 권한 "moai-cli update confirmation")가 바꾼 것이에요; 그 폴더의 `skills`·
+`agents`는 HOME 아래 `.claude/skills`·`.claude/agents`로 가는 링크예요.
 
-실제 홈 안전: 이 세션에는 `CLAUDE_CONFIG_DIR`이 설정돼 있어요. 그 폴더의 `CLAUDE.md`·`settings.json`·`agents`·
-`skills/moai`·`output-styles`와 HOME 아래 `.codex/AGENTS.md`·`.codex/agents`의 수정 시각·크기를 읽기만으로 비교했어요.
-각 실행(mutation 포함) 앞뒤는 늘 같았어요. 09:43Z와 19:00Z 사이에는 `skills/moai`와 `.codex/agents`가 10:17:55–56Z에
-바뀌었는데, 그 폴더의 `skills`·`agents`는 HOME 아래 `.claude/skills`·`.claude/agents`로 가는 링크이고, 같은 초에
-`~/.moai-cli`에 `update.apply`(4.2647.5, 권한 "moai-cli update confirmation") 영수증이 남아 있어요: 리더가 미리 허락받은
-빌드 5 설치예요. 시험은 임시 HOME만 써요.
+- AC-1: met — `ceab95a3cb`에서 `host_home_cli` 12 passed(라우팅·에이전트·출력 스타일·스킬 복사·doctor가 옮겨진 폴더 사용)
+- AC-2: met — 같은 실행(빈 값·상대 경로는 그 도구만 `blocked`), `--lib` 안의 `host_home::` 6개 통과
+- AC-3: met — 같은 실행의 `the_variables_count_only_for_the_account_home`; mutation M1 KILLED
+- AC-4: met — 같은 실행(링크인 설정 폴더는 막힘, 기본 폴더로 가는 `skills`·`agents` 링크만 따라가고 계획·적용이 같은 폴더, 다른 링크는 링크 경로를 말하며 막힘, 출력 스타일도 막힘); R2·R3·M5 KILLED
+- AC-5: met — 같은 실행(`CODEX_HOME`이 있어도 Codex 스킬은 HOME 아래 `.agents/skills/moai`)
+- AC-6: met — 같은 실행의 훅·가드 시험, `hooks_cli` 22·`claude_settings_cli` 18·`codex_config_cli` 10 passed; R1·M6·M7 KILLED
+- AC-7: met — `update_cleanup_cli` 13 passed; `git diff origin/v2026.11.0...HEAD -- src/skills_legacy.rs src/baseline.rs` 출력 없음
+- AC-8: met — `spec_cli` 17 passed; 이 가지에서 빌드한 `moai spec check --all --project .` exit 0, SPEC 45개, 오류 0
+- AC-9: met — 위 최종 검사의 모든 단계 종료 코드 0(시험 대상 42개, `--lib` 1425, `--bin moai` 27, clippy, fmt, rustfmt, Python 49, manifest)
+- AC-10: met — 같은 실행의 `a_variable_that_is_not_utf8_blocks_only_its_host`와 `--lib` 안의 `launcher_init::` 6개 통과; R4·M8 KILLED
 
-최종 검사(`23be93aa4a`, 19:00:37Z–19:13:51Z, 단계마다 종료 코드):
-- AC-1…AC-5: met — `host_home_cli` 7 passed(시험 대상 40개 한 번에 exit 0 안에서); `--lib` 안의 `host_home::` 6개 포함
-- AC-6: met — 같은 실행의 `claude_settings_cli`·`codex_config_cli` 통과
-- AC-7: met — 같은 실행의 `update_cleanup_cli` 통과; `git diff origin/v2026.11.0...HEAD -- src/skills_legacy.rs src/baseline.rs` 출력 없음
-- AC-8: met — 같은 실행의 `spec_cli` 통과; 이 가지에서 빌드한 `moai spec check --all --project .` exit 0, SPEC 39개, 오류 0
-  (경고 4개는 다른 SPEC `green-test-lock`·`headver-ci-number`의 `needs_clarification`)
-- AC-9: met — 시험 대상 40개(`update_*` 17개, `home_*` 9개, `agents_*` 4개, `codex*` 3개, `claude_settings_cli`, `recovery_cli`,
-  `git_env_scrub`, `host_home_cli`, `product_cli`, `spec_cli`, `ac_command_lint`) exit 0; `--lib` 1420 passed; `--bin moai` 27;
-  clippy `-D warnings` 0; `cargo fmt --check` 0; `rustfmt --check --edition 2021 src/ops/*.rs` 0; Python 49개 OK;
-  `source_manifest.py check` 0. (그 전 `7dc37a5235`의 `--lib`에서 `decide::outbound` 2초 시간 시험이 부하 34에서 2.03초로
-  한 번 실패, 혼자 다시 돌려 1.61초 통과 — 이 가지는 `src/decide`를 바꾸지 않아요.)
-
-실행 안 함: 전체 `cargo test`(바뀐 곳과 이웃 시험만), Linux·Windows(비밀번호 데이터베이스가 없는 Windows는
-`key_vault::home`과 비교 — 시험 없음), 실제 `CLAUDE_CONFIG_DIR`로 `moai update` 실행(실제 홈 쓰기라 하지 않음).
+실행 안 함: 전체 `cargo test`(바뀐 곳과 이웃 시험만), Linux·Windows(비밀번호 데이터베이스가 없는 시스템은 Risks의 N2),
+실제 `CLAUDE_CONFIG_DIR`로 `moai update` 실행(실제 홈 쓰기라 하지 않음).
