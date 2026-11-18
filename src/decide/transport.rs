@@ -557,7 +557,8 @@ mod tests {
             "localhost:80",
             "api.openai.com:443",
             "127.0.0.1.example.com:80",
-            "http://127.0.0.1:80",
+            "127.0.0.1:80/v1/systemone",
+            "127.0.0.1",
         ] {
             assert!(named.parse::<SocketAddr>().is_err(), "{named}");
         }
