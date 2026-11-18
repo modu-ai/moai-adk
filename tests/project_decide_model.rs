@@ -167,6 +167,8 @@ fn no_skill_text_passes_a_key_through_the_question_tool_or_argv() {
 
 fn plan(decision_value: &str) -> Value {
     let root = TempDir::new().unwrap();
+    // The binary never sees the real HOME: it gets a temporary one of its own.
+    let home = TempDir::new().unwrap();
     let profile = json!({
         "schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
         "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"],
@@ -176,6 +178,7 @@ fn plan(decision_value: &str) -> Value {
     });
     let mut child = Command::new(crate::common::MOAI_BIN)
         .args(["project-plan", root.path().to_str().unwrap()])
+        .env("HOME", home.path())
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
