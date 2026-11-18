@@ -59,7 +59,7 @@ impl HostStep {
 /// The host steps for the project `root`; `shown` is the project word the printed commands
 /// carry. One step's error makes that step `blocked` (or `conflict` when the host file was
 /// edited by hand) and the others still run.
-pub fn steps(root: &Path, shown: &str) -> Vec<HostStep> {
+pub fn steps(root: &Path, shown: &str, picked: Option<&[String]>) -> Vec<HostStep> {
     let home = std::env::var_os("HOME").map(PathBuf::from);
     let installed = update::installed_package_dir().and_then(|package| {
         update::installed_agents_dir().map(|agents| Installed { package, agents })
@@ -70,6 +70,7 @@ pub fn steps(root: &Path, shown: &str) -> Vec<HostStep> {
         home.as_deref(),
         codex_config::config_home(root),
         installed,
+        picked,
     )
 }
 
@@ -88,14 +89,46 @@ fn steps_in(
     home: Option<&Path>,
     config_home: Result<PathBuf, String>,
     installed: Result<Installed, String>,
+    picked: Option<&[String]>,
 ) -> Vec<HostStep> {
+    // A host the profile does not list gets no plan at all (SPEC-20261118-profile-host-omp);
+    // `None` (no readable profile) plans every host as before.
+    let listed = |host: &str| picked.is_none_or(|p| p.iter().any(|h| h == host));
+    let unlisted = |name: &'static str, host: &str| {
+        HostStep::bare(name, "skip", &format!("the profile does not list {host}"))
+    };
+    let (codex, omp) = (listed("codex"), listed("omp"));
     vec![
-        hooks_step("codex-hooks", "codex", root, shown, home),
-        codex_config_step(root, shown, config_home),
-        codex_skill_step(root, shown, home, &installed),
-        hooks_step("omp-hooks", "omp", root, shown, home),
-        HostStep::bare("omp-config", "skip", OMP_CONFIG_REASON),
-        omp_agents_step(root, shown, installed),
+        if codex {
+            hooks_step("codex-hooks", "codex", root, shown, home)
+        } else {
+            unlisted("codex-hooks", "codex")
+        },
+        if codex {
+            codex_config_step(root, shown, config_home)
+        } else {
+            unlisted("codex-config", "codex")
+        },
+        if codex {
+            codex_skill_step(root, shown, home, &installed)
+        } else {
+            unlisted("codex-skill", "codex")
+        },
+        if omp {
+            hooks_step("omp-hooks", "omp", root, shown, home)
+        } else {
+            unlisted("omp-hooks", "omp")
+        },
+        if omp {
+            HostStep::bare("omp-config", "skip", OMP_CONFIG_REASON)
+        } else {
+            unlisted("omp-config", "omp")
+        },
+        if omp {
+            omp_agents_step(root, shown, installed)
+        } else {
+            unlisted("omp-agents", "omp")
+        },
     ]
 }
 
@@ -459,6 +492,7 @@ mod tests {
             Some(&root),
             Err("none".into()),
             Err("none".into()),
+            None,
         )
         .iter()
         .filter(|s| s.name.ends_with("-hooks"))
@@ -475,6 +509,7 @@ mod tests {
             Some(&home),
             Err("none".into()),
             Err("none".into()),
+            None,
         )
         .iter()
         .filter(|s| s.name.ends_with("-hooks"))

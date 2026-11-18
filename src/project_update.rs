@@ -998,9 +998,10 @@ const INSTALL: [&str; 11] = [
     "omp-agents",
 ];
 
-/// The host steps (#2936 R9 S5a) as this module's steps.
-fn host_steps(root: &Path, shown: &str) -> Vec<Step> {
-    project_hosts::steps(root, shown)
+/// The host steps (#2936 R9 S5a) as this module's steps; `picked` is the profile's `hosts`, or
+/// `None` when no profile could be read (SPEC-20261118-profile-host-omp).
+fn host_steps(root: &Path, shown: &str, picked: Option<&[String]>) -> Vec<Step> {
+    project_hosts::steps(root, shown, picked)
         .into_iter()
         .map(|h| Step {
             name: h.name,
@@ -1032,7 +1033,7 @@ fn install_steps(
             steps.push(or_blocked("claude-settings", settings_step(root, shown)));
             steps.push(or_blocked("hooks", hooks_step(root, shown)));
             steps.push(or_blocked("github", github_step(root, shown)));
-            steps.extend(host_steps(root, shown));
+            steps.extend(host_steps(root, shown, None));
             hooks_after_settings(&mut steps);
             return steps;
         }
@@ -1050,7 +1051,7 @@ fn install_steps(
         or_blocked("hooks", hooks_step(root, shown)),
         or_blocked("github", github_step(root, shown)),
     ];
-    steps.extend(host_steps(root, shown));
+    steps.extend(host_steps(root, shown, Some(&profile.hosts)));
     hooks_after_settings(&mut steps);
     steps
 }

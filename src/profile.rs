@@ -302,6 +302,10 @@ fn bounded_decision_string(s: &str) -> bool {
     !s.is_empty() && s.len() <= DECISION_STRING_LIMIT && portable(s)
 }
 
+/// The hosts a profile may list (SPEC-20261118-profile-host-omp); one more entry than these is a
+/// duplicate or an unknown name.
+pub const KNOWN_HOSTS: [&str; 3] = ["claude", "codex", "omp"];
+
 /// Accepts both schema versions so v1 files stay readable (fields default); a plan
 /// input must be v2, which `plan` checks separately (REQ-03A-08).
 fn validate(p: &Profile) -> Result<()> {
@@ -355,13 +359,13 @@ fn validate(p: &Profile) -> Result<()> {
         || p.hosts.is_empty()
         || p.tools.len() > 32
         || p.development_methods.len() > 32
-        || p.hosts.len() > 2
+        || p.hosts.len() > KNOWN_HOSTS.len()
         || !p
             .tools
             .iter()
             .chain(&p.development_methods)
             .all(|s| portable(s))
-        || !p.hosts.iter().all(|s| s == "claude" || s == "codex")
+        || !p.hosts.iter().all(|s| KNOWN_HOSTS.contains(&s.as_str()))
         || p.package_pin.as_ref().is_some_and(|s| !valid_digest(s))
         || p.interview_revision
             .as_ref()
@@ -920,6 +924,45 @@ mod tests {
             versioning: None,
             work_flow: None,
             test_paths: None,
+        }
+    }
+
+    fn with_hosts(hosts: &[&str]) -> Profile {
+        Profile {
+            hosts: hosts.iter().map(|h| h.to_string()).collect(),
+            ..v2()
+        }
+    }
+
+    /// SPEC-20261118-profile-host-omp AC-1: the three known hosts validate, alone or together.
+    #[test]
+    fn three_hosts_with_omp_validate() {
+        for hosts in [
+            &["omp"][..],
+            &["claude", "omp"],
+            &["claude", "codex"],
+            &["claude", "codex", "omp"],
+        ] {
+            assert!(
+                validate(&with_hosts(hosts)).is_ok(),
+                "{hosts:?} was refused"
+            );
+        }
+    }
+
+    /// SPEC-20261118-profile-host-omp AC-1: the boundary is three (N/N+1), and a host other
+    /// than the three known ones is refused at any count.
+    #[test]
+    fn four_hosts_and_unknown_hosts_are_refused() {
+        for hosts in [
+            &["claude", "codex", "omp", "claude"][..],
+            &["claude", "codex", "omp", "kiro"],
+            &["claude", "codex", "zcode"],
+            &["zcode"],
+            &["OMP"],
+            &[],
+        ] {
+            assert!(validate(&with_hosts(hosts)).is_err(), "{hosts:?} passed");
         }
     }
 

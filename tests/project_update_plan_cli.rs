@@ -172,7 +172,7 @@ impl Fx {
         let detect = self.call(&["project-detect", self.p()], b"");
         let mut profile = json!({
             "schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
-            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude", "codex"],
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude", "codex", "omp"],
             "detected": detect["detected"],
         });
         for (k, v) in extra.as_object().unwrap() {
@@ -1702,6 +1702,86 @@ fn an_edited_codex_hook_file_is_a_conflict_and_stays_byte_identical() {
         fs::read_to_string(fx.root.join(".codex/hooks.json")).unwrap(),
         mine
     );
+}
+
+const CODEX_STEPS: [&str; 3] = ["codex-hooks", "codex-config", "codex-skill"];
+const OMP_STEPS: [&str; 3] = ["omp-hooks", "omp-config", "omp-agents"];
+
+/// SPEC-20261118-profile-host-omp AC-3: a host's steps are planned only when the profile lists
+/// that host; an unlisted host's steps are `skip` with a reason naming it and no command.
+#[test]
+fn host_steps_follow_the_profile_hosts() {
+    for (hosts, codex_picked, omp_picked) in [
+        (json!(["claude", "codex", "omp"]), true, true),
+        (json!(["claude", "codex"]), true, false),
+        (json!(["claude", "omp"]), false, true),
+        (json!(["claude"]), false, false),
+    ] {
+        let fx = Fx::new();
+        fx.with_profile_extra(json!({"hosts": hosts}));
+        let plan = fx.plan();
+        for (names, host, picked) in [
+            (CODEX_STEPS, "codex", codex_picked),
+            (OMP_STEPS, "omp", omp_picked),
+        ] {
+            for name in names {
+                let s = step(&plan, name);
+                if !picked {
+                    assert_eq!(s["state"], "skip", "{hosts}: {name}: {s}");
+                    assert_eq!(s["apply"], Value::Null, "{hosts}: {name}: {s}");
+                    assert!(
+                        s["reason"].as_str().unwrap().contains(host),
+                        "{hosts}: {name}: {s}"
+                    );
+                }
+            }
+        }
+        for (name, picked) in [("codex-hooks", codex_picked), ("omp-hooks", omp_picked)] {
+            let s = step(&plan, name);
+            assert_eq!(s["state"] == "ready", picked, "{hosts}: {name}: {s}");
+            assert_eq!(
+                s["apply"]["argv"].is_array(),
+                picked,
+                "{hosts}: {name}: {s}"
+            );
+        }
+    }
+}
+
+/// SPEC-20261118-profile-host-omp AC-3: `project-plan` takes a profile with all three hosts and
+/// still refuses a fourth entry or an unknown name, writing nothing.
+#[test]
+fn a_profile_with_omp_passes_project_plan() {
+    let fx = Fx::new();
+    let detect = fx.call(&["project-detect", fx.p()], b"");
+    let profile = |hosts: Value| {
+        json!({
+            "schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": hosts,
+            "detected": detect["detected"],
+        })
+    };
+    for ok in [json!(["omp"]), json!(["claude", "codex", "omp"])] {
+        let plan = fx.call(
+            &["project-plan", fx.p()],
+            &serde_json::to_vec(&profile(ok.clone())).unwrap(),
+        );
+        assert!(plan["plan_digest"].is_string(), "{ok}: {plan}");
+    }
+    for bad in [
+        json!(["claude", "codex", "omp", "claude"]),
+        json!(["claude", "codex", "omp", "kiro"]),
+        json!(["zcode"]),
+    ] {
+        let before = fx.tree();
+        let v = fx.run_exe(
+            EXE,
+            &["project-plan", fx.p()],
+            &serde_json::to_vec(&profile(bad.clone())).unwrap(),
+        );
+        assert_eq!(v["ok"], json!(false), "{bad}: {v}");
+        assert_eq!(before, fx.tree(), "{bad}: project-plan wrote something");
+    }
 }
 
 #[test]
