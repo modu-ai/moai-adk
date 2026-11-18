@@ -55,7 +55,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 
 The first line is fixed so any parent can read it:
 
-`RESULT impl <ok|blocked|not_run> <head 40-hex, Issue number or path>`
+`RESULT impl <ok|blocked|not_run> <head 40-hex, card or SPEC id, or path>`
 
 Then these sections:
 

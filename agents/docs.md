@@ -51,7 +51,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 
 The first line is fixed so any parent can read it:
 
-`RESULT docs <ok|blocked|not_run> <path or Issue number>`
+`RESULT docs <ok|blocked|not_run> <path, card or SPEC id>`
 
 Then these sections:
 
