@@ -13,7 +13,7 @@ use crate::model_effort_settings::{
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
 use std::fs;
-use std::io::{self, BufRead, Write};
+use std::io::{self, BufRead, Read, Write};
 use std::path::Path;
 
 /// The tools a person can pick, in question order. An OMP pick also sets `moai glm`.
@@ -22,6 +22,8 @@ pub const TOOL_CHOICES: [&str; 3] = ["claude", "codex", "omp"];
 const MAX_TRIES: usize = 3;
 /// The launcher settings file is small; a larger one is not read.
 const MAX_FILE_BYTES: u64 = 1024 * 1024;
+/// An answer line longer than this is one invalid answer; the rest of the line is dropped.
+const MAX_LINE_BYTES: u64 = 4096;
 
 /// Whether a question takes one option or several.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -204,6 +206,31 @@ fn show<W: Write>(out: &mut W, question: &Question) -> io::Result<()> {
     out.flush()
 }
 
+/// Reads one line of at most [`MAX_LINE_BYTES`]. `None` is the end of input. A longer line is
+/// dropped up to its newline and read as `?`, which no question accepts.
+fn read_line_bounded<R: BufRead>(input: &mut R) -> io::Result<Option<String>> {
+    let mut bytes = Vec::new();
+    let read = (&mut *input)
+        .take(MAX_LINE_BYTES)
+        .read_until(b'\n', &mut bytes)?;
+    if read == 0 {
+        return Ok(None);
+    }
+    if bytes.last() != Some(&b'\n') && read as u64 == MAX_LINE_BYTES {
+        loop {
+            let mut rest = Vec::new();
+            let more = (&mut *input)
+                .take(MAX_LINE_BYTES)
+                .read_until(b'\n', &mut rest)?;
+            if more == 0 || rest.last() == Some(&b'\n') {
+                break;
+            }
+        }
+        return Ok(Some("?".to_string()));
+    }
+    Ok(Some(String::from_utf8_lossy(&bytes).into_owned()))
+}
+
 /// Asks one question up to [`MAX_TRIES`] times; `None` is cancelled (end of input or too many
 /// bad answers).
 fn ask<R: BufRead, W: Write>(
@@ -213,10 +240,8 @@ fn ask<R: BufRead, W: Write>(
 ) -> io::Result<Option<Vec<String>>> {
     for _ in 0..MAX_TRIES {
         show(out, question)?;
-        let mut line = String::new();
-        let read = input.read_line(&mut line)?;
-        let given = (read > 0).then_some(line.as_str());
-        match read_answer(question, given) {
+        let line = read_line_bounded(input)?;
+        match read_answer(question, line.as_deref()) {
             Answer::Values(values) => return Ok(Some(values)),
             Answer::Cancelled => return Ok(None),
             Answer::Invalid => writeln!(out, "That is not one of the numbers above.")?,
@@ -397,6 +422,9 @@ pub fn plan_file(path: &Path, picks: &[Pick]) -> Result<Plan, String> {
     plan(&launcher_of(&read_root(path)?)?, picks)
 }
 
+/// Distinguishes the temporary files of one process.
+static TEMP_SERIAL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 /// Writes `root` next to `path` and renames it over `path`: the mode of an existing file is kept,
 /// a new file is private to the owner.
 fn write_atomic(path: &Path, root: &Map<String, Value>) -> Result<(), String> {
@@ -418,16 +446,27 @@ fn write_atomic(path: &Path, root: &Map<String, Value>) -> Result<(), String> {
     let mut text = serde_json::to_string_pretty(&Value::Object(root.clone()))
         .map_err(|_| "launcher settings cannot be written".to_string())?;
     text.push('\n');
-    let temp = parent.join(format!(".launcher.tmp-{}", std::process::id()));
+    // A name no other writer uses; a file that exists under it is never opened or removed.
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos());
+    let serial = TEMP_SERIAL.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let temp = parent.join(format!(
+        ".launcher.tmp-{}-{stamp}-{serial}",
+        std::process::id()
+    ));
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(mode);
+    }
+    // Only a file this call created is ever removed.
+    let mut file = options
+        .open(&temp)
+        .map_err(|_| "launcher settings cannot be written; nothing was changed".to_string())?;
     let written = (|| -> io::Result<()> {
-        let mut options = fs::OpenOptions::new();
-        options.write(true).create_new(true);
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::OpenOptionsExt;
-            options.mode(mode);
-        }
-        let mut file = options.open(&temp)?;
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
@@ -435,9 +474,10 @@ fn write_atomic(path: &Path, root: &Map<String, Value>) -> Result<(), String> {
         }
         file.write_all(text.as_bytes())?;
         file.sync_all()?;
-        fs::rename(&temp, path)
+        Ok(())
     })();
-    if written.is_err() {
+    drop(file);
+    if written.and_then(|()| fs::rename(&temp, path)).is_err() {
         let _ = fs::remove_file(&temp);
         return Err("launcher settings cannot be written; nothing was changed".into());
     }
@@ -448,19 +488,26 @@ fn write_atomic(path: &Path, root: &Map<String, Value>) -> Result<(), String> {
 /// preview's, keeps every other root key, and reads the result back.
 pub fn apply(path: &Path, picks: &[Pick], digest: &str) -> Result<Plan, String> {
     let root = read_root(path)?;
-    let planned = plan(&launcher_of(&root)?, picks)?;
+    let current = launcher_of(&root)?;
+    let planned = plan(&current, picks)?;
     if planned.digest != digest {
         return Err(
             "the launcher settings or the picks changed since the preview; preview again, nothing was written"
                 .into(),
         );
     }
+    // Nothing to change: the file is left as it is, byte for byte, and an absent file stays absent.
+    if planned.after == current {
+        return Ok(planned);
+    }
     let mut next = root;
     next.insert("launcher".to_string(), Value::Object(planned.after.clone()));
     write_atomic(path, &next)?;
-    let back = launcher_of(&read_root(path)?)?;
-    if back != planned.after {
-        return Err("launcher settings read back differently than written".into());
+    if read_root(path)? != next {
+        return Err(
+            "launcher settings were replaced but read back differently than written; check the file"
+                .into(),
+        );
     }
     Ok(planned)
 }

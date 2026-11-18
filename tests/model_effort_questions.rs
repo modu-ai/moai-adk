@@ -477,3 +477,106 @@ fn apply_refuses_a_stale_digest_and_an_unsafe_target_and_writes_nothing() {
     assert!(!message.contains(SECRET), "{message}");
     assert_eq!(fs::read_to_string(&broken).unwrap(), broken_body);
 }
+
+#[test]
+fn the_apply_guards_hold_at_their_edges() {
+    let picks = [pick("claude", "agent", "claude-sonnet-5-5", "max")];
+    let digest = plan(&Map::new(), &picks).unwrap().digest;
+
+    // The folder of the file is a link: refused, and nothing appears behind the link.
+    let home = tempfile::tempdir().unwrap();
+    let real = home.path().join("real");
+    fs::create_dir_all(&real).unwrap();
+    let linked = home.path().join("config");
+    symlink(&real, &linked).unwrap();
+    assert!(apply(&linked.join("launcher.yaml"), &picks, &digest).is_err());
+    assert!(entries(&real).is_empty());
+
+    // A mode the umask would change is kept (0664 becomes 0644 without the explicit permission call).
+    let home = tempfile::tempdir().unwrap();
+    let path = launcher_file(home.path(), r#"{"launcher":{}}"#, 0o664);
+    let preview = plan_file(&path, &picks).unwrap();
+    apply(&path, &picks, &preview.digest).unwrap();
+    assert_eq!(
+        fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+        0o664
+    );
+
+    // A temporary-looking file of someone else is never touched.
+    let dir = path.parent().unwrap();
+    let foreign = dir.join(format!(".launcher.tmp-{}", std::process::id()));
+    fs::write(&foreign, "foreign").unwrap();
+    let other = [pick("codex", "leader", "gpt-6.1-sol", "low")];
+    let preview = plan_file(&path, &other).unwrap();
+    apply(&path, &other, &preview.digest).unwrap();
+    assert_eq!(fs::read_to_string(&foreign).unwrap(), "foreign");
+    assert_eq!(
+        entries(dir).len(),
+        2,
+        "only the foreign file and the settings file"
+    );
+
+    // A folder that cannot be written fails clean: the file is as it was and nothing is left.
+    let home = tempfile::tempdir().unwrap();
+    let body = r#"{"launcher":{"role_access":"prompt"}}"#;
+    let path = launcher_file(home.path(), body, 0o600);
+    let dir = path.parent().unwrap();
+    let preview = plan_file(&path, &picks).unwrap();
+    fs::set_permissions(dir, fs::Permissions::from_mode(0o555)).unwrap();
+    let probe = dir.join(".probe");
+    let can_write_anyway = fs::write(&probe, "").is_ok(); // running as the superuser
+    let _ = fs::remove_file(&probe);
+    let result = apply(&path, &picks, &preview.digest);
+    fs::set_permissions(dir, fs::Permissions::from_mode(0o755)).unwrap();
+    if !can_write_anyway {
+        assert!(result.is_err());
+        assert_eq!(fs::read_to_string(&path).unwrap(), body);
+        assert_eq!(entries(dir), ["launcher.yaml"]);
+    }
+
+    // The size limit: exactly one MiB is read, one byte more is refused.
+    let home = tempfile::tempdir().unwrap();
+    let head = r#"{"launcher":{}}"#;
+    let exact = format!("{head}{}", " ".repeat(1024 * 1024 - head.len()));
+    assert_eq!(exact.len(), 1024 * 1024);
+    let path = launcher_file(home.path(), &exact, 0o600);
+    assert!(plan_file(&path, &picks).is_ok());
+    fs::write(&path, format!("{exact} ")).unwrap();
+    assert!(plan_file(&path, &picks).is_err());
+
+    // Nothing to change writes nothing: the same pick again leaves odd formatting as it is, and
+    // an empty pick list leaves an absent file (and its folder) absent.
+    let home = tempfile::tempdir().unwrap();
+    let odd = r#"{ "z" : 1 ,"launcher":{"models":{"claude":{"agent":{"model":"claude-sonnet-5-5","effort":"max"}}}} }"#;
+    let path = launcher_file(home.path(), odd, 0o600);
+    let preview = plan_file(&path, &picks).unwrap();
+    apply(&path, &picks, &preview.digest).unwrap();
+    assert_eq!(fs::read_to_string(&path).unwrap(), odd);
+    let fresh = tempfile::tempdir().unwrap();
+    let absent = fresh.path().join("config").join("launcher.yaml");
+    let empty = plan_file(&absent, &[]).unwrap();
+    apply(&absent, &[], &empty.digest).unwrap();
+    assert!(!fresh.path().join("config").exists());
+}
+
+#[test]
+fn an_overlong_answer_line_is_one_invalid_answer() {
+    // The long line counts as one bad answer, its rest is dropped, and the next line is read.
+    let long = "a".repeat(10_000);
+    let input = format!("{long}\n\n{}", "\n".repeat(4));
+    let mut out = Vec::new();
+    let outcome = run(&mut Cursor::new(input), &mut out, &["claude"]).unwrap();
+    assert!(
+        matches!(outcome, Outcome::Picks(ref p) if p.len() == 2),
+        "{outcome:?}"
+    );
+    assert!(!String::from_utf8(out).unwrap().contains("aaaa"));
+    // A long line at the end of input, with no newline, ends as cancelled.
+    let outcome = run(
+        &mut Cursor::new("b".repeat(5000)),
+        &mut Vec::new(),
+        &["claude"],
+    )
+    .unwrap();
+    assert_eq!(outcome, Outcome::Cancelled);
+}
