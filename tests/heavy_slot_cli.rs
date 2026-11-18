@@ -748,6 +748,41 @@ fn macos_is_judged_on_memory_pressure_not_swap() {
                 "swap use 99% (shown only; not a limit on macOS)",
             ][..],
         ),
+        // One reading alone decides; the missing one never refuses (SPEC REQ-9).
+        (
+            "free_gb=1000,swap_pct=99,pressure=4",
+            None,
+            &[][..],
+            false,
+            &[
+                "memory pressure level 4 is at the critical level 4",
+                "swap use 99% (shown only; not a limit on macOS)",
+            ][..],
+        ),
+        (
+            "free_gb=1000,swap_pct=99,pressure=2",
+            None,
+            &[][..],
+            true,
+            &[][..],
+        ),
+        (
+            "free_gb=1000,swap_pct=99,mem_free_pct=9",
+            None,
+            &[][..],
+            false,
+            &[
+                "memory free 9% is below 10%",
+                "swap use 99% (shown only; not a limit on macOS)",
+            ][..],
+        ),
+        (
+            "free_gb=1000,swap_pct=99,mem_free_pct=37",
+            None,
+            &[][..],
+            true,
+            &[][..],
+        ),
         // Both readings at once, and the disk reason before them.
         (
             "free_gb=49,swap_pct=0,pressure=4,mem_free_pct=9",
