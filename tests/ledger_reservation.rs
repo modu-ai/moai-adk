@@ -1003,7 +1003,9 @@ fn release_refuses_a_review_card_and_writes_nothing() {
     assert!(text.starts_with("card conflict in state: "), "{text}");
     assert!(text.contains("its lease has ended"), "{text}");
     assert!(
-        text.contains("ask the leader (reclaim comes with card C-53 S6)"),
+        text.contains(&format!(
+            "reclaim it with `card reclaim C-{card} --generation 1 --by <who> --reason <text>`"
+        )),
         "{text}"
     );
     assert!(!text.contains("card reopen"), "{text}");
@@ -1405,5 +1407,391 @@ fn a_reserve_killed_mid_transaction_leaves_no_trace_and_its_generation_is_reused
         ),
         vec!["ledger.db"],
         "no leftover journal or temporary file"
+    );
+}
+
+// ---- reclaim (SPEC-20261119-card-reclaim) ------------------------------------------------------
+
+/// Every row of the tables a reclaim could touch, as text, in a fixed order: what a refused
+/// call must leave exactly as it was.
+fn dump(conn: &Connection) -> Vec<String> {
+    let mut out = Vec::new();
+    for table in [
+        "card",
+        "card_ac",
+        "card_note",
+        "card_link",
+        "reservation",
+        "reservation_scope",
+        "event",
+    ] {
+        let mut st = conn
+            .prepare(&format!("SELECT * FROM {table} ORDER BY 1, 2"))
+            .unwrap();
+        let n = st.column_count();
+        let lines: Vec<String> = st
+            .query_map([], |r| {
+                let mut line = format!("{table}:");
+                for i in 0..n {
+                    line.push_str(&format!("{:?}|", r.get_ref(i)?));
+                }
+                Ok(line)
+            })
+            .unwrap()
+            .map(Result::unwrap)
+            .collect();
+        out.extend(lines);
+    }
+    out
+}
+
+fn reclaim(
+    w: &mut WriteLedger,
+    card: i64,
+    to: &str,
+    generation: i64,
+) -> Result<reservation::Reclaimed, reservation::ReclaimError> {
+    reservation::reclaim(
+        w,
+        card,
+        to,
+        generation,
+        "leader",
+        "holder gone; PR merged",
+        3600,
+    )
+}
+
+/// Ends the lease of the card's held reservation five seconds ago.
+fn end_lease(w: &mut WriteLedger, card: i64) {
+    sql(
+        w,
+        &format!(
+            "UPDATE reservation SET lease_until = unixepoch() - 5 \
+             WHERE card_id = {card} AND status = 'held'"
+        ),
+    );
+}
+
+#[test]
+fn reclaim_hands_an_ended_lease_to_the_reclaimer() {
+    let (home, mut w) = setup();
+    let card = ready_card(&mut w);
+    let taken = reservation::reserve(
+        &mut w,
+        card,
+        "gone",
+        &s(&["src/b.rs", "src/a.rs"]),
+        900,
+        Some("/work/tree"),
+        Some("card/1-x"),
+    )
+    .unwrap();
+    // The card is in review, as the stuck cards were.
+    sql(&mut w, "UPDATE card SET state = 'review' WHERE card_id = 1");
+    end_lease(&mut w, card);
+    let before = db_now(reader(&home).conn());
+    let done = reclaim(&mut w, card, "heir", 1).unwrap();
+    let after = db_now(reader(&home).conn());
+
+    assert_eq!(done.previous.generation, 1);
+    assert_eq!(done.previous.holder, "gone");
+    assert_eq!(done.previous.status, "reclaimed");
+    let now = &done.reservation;
+    assert_eq!(
+        (now.generation, now.holder.as_str(), now.status.as_str()),
+        (2, "heir", "held")
+    );
+    assert_eq!(now.write_scope, taken.write_scope);
+    assert_eq!(now.worktree.as_deref(), Some("/work/tree"));
+    assert_eq!(now.branch.as_deref(), Some("card/1-x"));
+    assert!(
+        (before + 3600..=after + 3600).contains(&now.lease_until),
+        "{before} {after} {}",
+        now.lease_until
+    );
+    assert_eq!(done.card_state, "review");
+
+    let r = reader(&home);
+    assert_eq!(
+        rows(r.conn(), card),
+        vec![
+            (1, "gone".to_string(), "reclaimed".to_string()),
+            (2, "heir".to_string(), "held".to_string())
+        ]
+    );
+    assert_eq!(card_state(r.conn(), card), ("review".to_string(), 2));
+    let log = events(r.conn(), "card.reclaim");
+    assert_eq!(log.len(), 1);
+    assert_eq!(log[0].0, Some(card));
+    assert_eq!(log[0].1, "leader", "the actor is who reclaimed");
+    let p = &log[0].2;
+    assert_eq!(p["from_holder"], "gone");
+    assert_eq!(p["from_generation"], 1);
+    assert_eq!(p["from_lease_until"], done.previous.lease_until);
+    assert!(
+        done.previous.lease_until < taken.lease_until,
+        "the lease had been ended"
+    );
+    assert_eq!(p["holder"], "heir");
+    assert_eq!(p["generation"], 2);
+    assert_eq!(p["by"], "leader");
+    assert_eq!(p["reason"], "holder gone; PR merged");
+    // The old generation is stale for every fence call; the new one passes.
+    for e in [
+        reservation::fence(&mut w, card, "gone", 1).unwrap_err(),
+        reservation::renew(&mut w, card, "gone", 1, 600)
+            .map(|_| ())
+            .unwrap_err(),
+    ] {
+        assert!(matches!(e, FenceError::StaleGeneration { .. }), "{e:?}");
+    }
+    reservation::fence(&mut w, card, "heir", 2).unwrap();
+}
+
+#[test]
+fn reclaim_refuses_and_writes_nothing() {
+    use reservation::ReclaimError as E;
+    let (home, mut w) = setup();
+    let live = ready_card(&mut w);
+    take(&mut w, live, "a", &zone(live)).unwrap();
+    let released = ready_card(&mut w);
+    take(&mut w, released, "a", &zone(released)).unwrap();
+    reservation::release(&mut w, released, "a", 1).unwrap();
+    let fresh = ready_card(&mut w);
+    // A closed card that still shows an ended `held` reservation (inserted directly: the
+    // commands never leave one): its state is what refuses the reclaim.
+    let done = ready_card(&mut w);
+    sql(
+        &mut w,
+        &format!(
+            "INSERT INTO reservation (card_id, generation, holder, status, acquired_at, \
+                 lease_until, updated_at) VALUES ({done}, 1, 'a', 'held', 1, 2, 1); \
+             UPDATE card SET generation = 1 WHERE card_id = {done};"
+        ),
+    );
+    sql(
+        &mut w,
+        &format!(
+            "DROP TRIGGER card_done_guard; \
+             UPDATE card SET state = 'active' WHERE card_id = {done}; \
+             UPDATE card SET state = 'review' WHERE card_id = {done}; \
+             UPDATE card SET state = 'done', closed_at = 5 WHERE card_id = {done};"
+        ),
+    );
+    let review_set = ready_card(&mut w);
+    take(&mut w, review_set, "a", &zone(review_set)).unwrap();
+    let recovered = ready_card(&mut w);
+    take(&mut w, recovered, "a", &zone(recovered)).unwrap();
+    let again = ready_card(&mut w);
+    take(&mut w, again, "a", &zone(again)).unwrap();
+    end_lease(&mut w, again);
+    // `review_set` (lease ended, status `held_for_review` as ledger recovery leaves it) and
+    // `recovered` (status `reclaimed` with nothing newer) are not `held`.
+    end_lease(&mut w, review_set);
+    sql(
+        &mut w,
+        &format!("UPDATE reservation SET status = 'held_for_review' WHERE card_id = {review_set}"),
+    );
+    end_lease(&mut w, recovered);
+    sql(
+        &mut w,
+        &format!("UPDATE reservation SET status = 'reclaimed' WHERE card_id = {recovered}"),
+    );
+
+    type Case = (&'static str, i64, i64, Box<dyn Fn(&E) -> bool>);
+    let cases: Vec<Case> = vec![
+        (
+            "live lease",
+            live,
+            1,
+            Box::new(|e| matches!(e, E::LeaseLive { .. })),
+        ),
+        (
+            "released",
+            released,
+            1,
+            Box::new(|e| matches!(e, E::NotHeld { status } if status == "released")),
+        ),
+        (
+            "no reservation yet",
+            fresh,
+            1,
+            Box::new(|e| matches!(e, E::NoReservation)),
+        ),
+        (
+            "done card",
+            done,
+            1,
+            Box::new(|e| matches!(e, E::CardDone(_))),
+        ),
+        (
+            "missing card",
+            9999,
+            1,
+            Box::new(|e| matches!(e, E::CardNotFound(_))),
+        ),
+        (
+            "held_for_review",
+            review_set,
+            1,
+            Box::new(|e| matches!(e, E::NotHeld { status } if status == "held_for_review")),
+        ),
+        (
+            "reclaimed",
+            recovered,
+            1,
+            Box::new(|e| matches!(e, E::NotHeld { status } if status == "reclaimed")),
+        ),
+        (
+            "never issued generation",
+            again,
+            2,
+            Box::new(|e| {
+                matches!(
+                    e,
+                    E::UnknownGeneration {
+                        offered: 2,
+                        current: 1
+                    }
+                )
+            }),
+        ),
+        (
+            "generation zero",
+            again,
+            0,
+            Box::new(|e| {
+                matches!(
+                    e,
+                    E::StaleGeneration {
+                        offered: 0,
+                        current: 1
+                    }
+                )
+            }),
+        ),
+    ];
+    for (name, card, generation, expected) in &cases {
+        let before = dump(reader(&home).conn());
+        let err = reclaim(&mut w, *card, "heir", *generation).unwrap_err();
+        assert!(expected(&err), "{name}: {err:?}");
+        assert_eq!(dump(reader(&home).conn()), before, "{name} wrote something");
+    }
+    // A second reclaim at the old generation is stale, after a real one.
+    reclaim(&mut w, again, "heir", 1).unwrap();
+    let before = dump(reader(&home).conn());
+    let err = reclaim(&mut w, again, "other", 1).unwrap_err();
+    assert!(
+        matches!(
+            err,
+            E::StaleGeneration {
+                offered: 1,
+                current: 2
+            }
+        ),
+        "{err:?}"
+    );
+    assert_eq!(dump(reader(&home).conn()), before);
+    // The refusals keep the words the contract classes by.
+    let words = |e: E| e.to_string();
+    assert!(words(E::LeaseLive {
+        lease_until: 9,
+        now: 5
+    })
+    .contains("conflict in"));
+    assert!(words(E::CardNotFound(3)).starts_with("card not found"));
+    assert!(words(E::CardDone(3)).contains("conflict in"));
+    assert!(words(E::InvalidInput("x".into())).starts_with("invalid reservation input"));
+}
+
+#[test]
+fn reclaim_input_limits_accept_n_and_refuse_n_plus_one() {
+    let (home, mut w) = setup();
+    let card = ready_card(&mut w);
+    take(&mut w, card, "a", &zone(card)).unwrap();
+    end_lease(&mut w, card);
+    let call = |w: &mut WriteLedger, to: &str, by: &str, reason: &str, lease: i64| {
+        reservation::reclaim(w, card, to, 1, by, reason, lease)
+    };
+    let before = dump(reader(&home).conn());
+    for (to, by, reason, lease) in [
+        ("", "leader", "r", 3600),
+        (" heir", "leader", "r", 3600),
+        ("heir", "", "r", 3600),
+        ("heir", "leader", "", 3600),
+        ("heir", "leader", "two\nlines", 3600),
+        ("heir", "leader", "bell\u{7}", 3600),
+        ("heir", &"b".repeat(reservation::MAX_BY_LEN + 1), "r", 3600),
+        (
+            "heir",
+            "leader",
+            &"r".repeat(reservation::MAX_REASON_LEN + 1),
+            3600,
+        ),
+        ("heir", "leader", "r", MIN_LEASE_SECS - 1),
+        ("heir", "leader", "r", MAX_LEASE_SECS + 1),
+    ] {
+        let e = call(&mut w, to, by, reason, lease).unwrap_err();
+        assert_eq!(
+            e.code(),
+            "invalid_input",
+            "{to:?} {by:?} {reason:?} {lease}"
+        );
+        assert_eq!(
+            dump(reader(&home).conn()),
+            before,
+            "{reason:?} wrote something"
+        );
+    }
+    // The limits themselves are accepted: the lease bounds, and the longest `by` and reason.
+    let done = call(
+        &mut w,
+        "heir",
+        &"b".repeat(reservation::MAX_BY_LEN),
+        &"r".repeat(reservation::MAX_REASON_LEN),
+        MIN_LEASE_SECS,
+    )
+    .unwrap();
+    assert_eq!(done.reservation.generation, 2);
+    end_lease(&mut w, card);
+    let done = reservation::reclaim(&mut w, card, "heir2", 2, "u", "r", MAX_LEASE_SECS).unwrap();
+    assert_eq!(done.reservation.generation, 3);
+}
+
+#[test]
+fn reclaim_lease_end_second_is_the_edge() {
+    let (home, mut w) = setup();
+    let card = ready_card(&mut w);
+    take(&mut w, card, "a", &zone(card)).unwrap();
+    // Live by a margin the test cannot outrun: refused.
+    sql(
+        &mut w,
+        "UPDATE reservation SET lease_until = unixepoch() + 30 WHERE card_id = 1",
+    );
+    assert!(matches!(
+        reclaim(&mut w, card, "a", 1).unwrap_err(),
+        reservation::ReclaimError::LeaseLive { .. }
+    ));
+    // The lease-end second itself no longer holds (the same test as the fence's), and the
+    // holder may reclaim its own ended lease.
+    sql(
+        &mut w,
+        "UPDATE reservation SET lease_until = unixepoch() WHERE card_id = 1",
+    );
+    let again = reclaim(&mut w, card, "a", 1).unwrap();
+    assert_eq!(
+        (
+            again.reservation.generation,
+            again.reservation.holder.as_str()
+        ),
+        (2, "a")
+    );
+    assert_eq!(
+        rows(reader(&home).conn(), card),
+        vec![
+            (1, "a".to_string(), "reclaimed".to_string()),
+            (2, "a".to_string(), "held".to_string())
+        ]
     );
 }
