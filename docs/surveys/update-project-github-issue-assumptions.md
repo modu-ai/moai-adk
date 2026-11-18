@@ -42,7 +42,7 @@ The method and the limits are those of Survey A (`docs/surveys/update-project-us
 ## Findings the parent should read first
 
 1. **The generated AGENTS.md says "Issue scope" (B13).** It reaches every project's managed section, and the repository's own `AGENTS.md:73` carries it. Changing it needs the three pins named in the row and a regenerated managed section.
-2. **The generated hook set still checks Issue-claim trailers (B16-B18).** `claim-verify` refuses a commit whose message has no `Moai-Claim: <issue>#<id>` on an `issue/<n>-...` lane branch. With cards as the ledger the guard must read the card reservation or be optional.
+2. **The generated hook set still checks Issue-claim trailers (B16; B17 and B18 follow it only weakly).** `claim-verify` refuses a commit whose message has no `Moai-Claim: <issue>#<id>` on an `issue/<n>-...` lane branch. With cards as the ledger the guard must read the card reservation or be optional.
 3. **The GitHub Issue forms are a work-ledger design (B5-B12).** Eight forms and `labels.yml` assume an owner, an owner report comment, leader-added labels and native dependencies. Whether the forms stay at all is a decision for the leader and the user, because the embedded `template_sha256` values and four test families pin them.
 
 ## Follow-up groups (for the leader to card; a lane adds no card)
