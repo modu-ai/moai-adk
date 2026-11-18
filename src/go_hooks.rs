@@ -428,6 +428,10 @@ pub fn apply(
     )
 }
 
+/// The install step of [`apply_with_installer`]: it gets the project root, HOME and the
+/// permission reference, and must leave the MoAI hook set in `.claude/settings.json`.
+pub type Installer<'a> = &'a dyn Fn(&Path, Option<&Path>, &str) -> Result<()>;
+
 /// [`apply`] with the PATH the gate probes the `moai` on given. The install of the MoAI set is a
 /// fresh create for the gate: only a `moai` of the wrong generation refuses it (`hook_legacy::check`);
 /// no `moai` on PATH, or one inside the project, is reported by the install and still allowed.
@@ -437,6 +441,38 @@ pub fn apply_in(
     plan_digest: &str,
     permission: &str,
     path_env: &str,
+) -> Result<Value> {
+    apply_with_installer(
+        project,
+        home,
+        plan_digest,
+        permission,
+        path_env,
+        &install_moai_hooks,
+    )
+}
+
+/// The install step of [`apply_in`]: the MoAI hook set through the `hooks-apply` writer.
+fn install_moai_hooks(root: &Path, home: Option<&Path>, permission: &str) -> Result<()> {
+    let hp = crate::hooks::plan(root, "claude", home)?;
+    if hp["action"] == json!("conflict") {
+        return Err(format!("hooks-plan conflict: {}", hp["conflicts"]));
+    }
+    let digest = hp["plan_digest"].as_str().unwrap_or_default().to_string();
+    crate::hooks::apply(root, "claude", home, &digest, permission)?;
+    Ok(())
+}
+
+/// [`apply_in`] with the install step given, so a test can run it with an installer of its own
+/// (SPEC-20261119-hooks-followups). Whatever the installer reports, the settings file is read
+/// back: it must hold the previewed hooks, or everything is put back.
+pub fn apply_with_installer(
+    project: &Path,
+    home: Option<&Path>,
+    plan_digest: &str,
+    permission: &str,
+    path_env: &str,
+    install: Installer<'_>,
 ) -> Result<Value> {
     if !crate::contract::permission_reference_ok(permission) {
         return Err("a permission reference is required; nothing was written".into());
@@ -535,20 +571,19 @@ pub fn apply_in(
     }
 
     // 3. The MoAI hook set through the hooks-apply writer.
-    let installed = crate::hooks::plan(&root, "claude", home).and_then(|hp| {
-        if hp["action"] == json!("conflict") {
-            return Err(format!("hooks-plan conflict: {}", hp["conflicts"]));
-        }
-        let digest = hp["plan_digest"].as_str().unwrap_or_default().to_string();
-        crate::hooks::apply(&root, "claude", home, &digest, permission)?;
+    let installed = install(&root, home, permission).and_then(|()| {
         // C-55: read back in the same step. An install that reports success and leaves the
         // file without the previewed `hooks` would end with the Go guards gone and nothing in
-        // their place, so it fails here and everything is put back.
+        // their place, so it fails here and everything is put back. The words "digest
+        // mismatch" make the failure a `conflict` (a refusal on the project's state), like the
+        // other disagreements between a preview and the file (`contract::classify`).
         let written = crate::claude::read_existing(&settings_path)?
             .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
             .map(|v| v["hooks"].clone());
         if written.as_ref() != Some(&p["hooks_after"]) {
-            return Err(format!("{SETTINGS} does not hold the previewed hooks"));
+            return Err(format!(
+                "{SETTINGS} does not hold the previewed hooks (digest mismatch)"
+            ));
         }
         Ok(())
     });
