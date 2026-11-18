@@ -25,6 +25,7 @@ const STUB: &str = "#!/bin/sh
 printf started > \"$MOAI_TEST_MARK/started\"
 printf '%s' \"${ZAI_API_KEY-<unset>}\" > \"$MOAI_TEST_MARK/zai\"
 printf '%s\\n' \"$@\" > \"$MOAI_TEST_MARK/args\"
+env | cut -d= -f1 | sort > \"$MOAI_TEST_MARK/envnames\"
 exit 0
 ";
 
@@ -333,6 +334,55 @@ fn omp_key_reaches_the_process_for_a_glm_model_only() {
     let out = c.output().unwrap();
     assert!(out.status.success(), "{out:?}");
     assert_eq!(f3.zai_seen_by_host(), ENV_KEY);
+}
+
+/// AC-6: the key goes to the OMP process only. A codex or claude process started with a z.ai model
+/// name never sees `ZAI_API_KEY` (audit #3211 N2).
+#[test]
+fn the_key_is_given_to_omp_only() {
+    for host in ["codex", "claude"] {
+        let f = Fixture::new();
+        f.store_shared_key(VAULT_KEY);
+        let stub = f.bin.path().join(host);
+        fs::write(&stub, STUB).unwrap();
+        fs::set_permissions(&stub, fs::Permissions::from_mode(0o755)).unwrap();
+        let word = if host == "claude" { "cc" } else { host };
+        let mut c = f.command(&[word, "-l", "--model", GLM_MODEL]);
+        c.env("ANTHROPIC_AUTH_TOKEN", ENV_KEY);
+        let out = c.output().unwrap();
+        assert!(out.status.success(), "{host}: {out:?}");
+        assert!(f.started(), "{host}");
+        assert_eq!(
+            f.zai_seen_by_host(),
+            "<unset>",
+            "{host} must not get the key"
+        );
+    }
+}
+
+/// AC-6: for a z.ai model the OMP process gets exactly one more variable than for any other
+/// model, `ZAI_API_KEY` (audit #3211 N3).
+#[test]
+fn omp_gets_one_more_variable_for_a_zai_model() {
+    let f = Fixture::new();
+    f.store_shared_key(VAULT_KEY);
+    let names = |f: &Fixture| -> Vec<String> {
+        fs::read_to_string(f.bin.path().join("envnames"))
+            .unwrap()
+            .lines()
+            .map(str::to_string)
+            .collect()
+    };
+    let out = f.run(&["omp", "-l", "--model", "opus"]);
+    assert!(out.status.success(), "{out:?}");
+    let plain = names(&f);
+    assert!(!plain.contains(&"ZAI_API_KEY".to_string()), "{plain:?}");
+    let out = f.run(&["omp", "-l", "--model", GLM_MODEL]);
+    assert!(out.status.success(), "{out:?}");
+    let with_key = names(&f);
+    let extra: Vec<&String> = with_key.iter().filter(|n| !plain.contains(n)).collect();
+    assert_eq!(extra, ["ZAI_API_KEY"], "{with_key:?}");
+    assert_eq!(with_key.len(), plain.len() + 1, "{with_key:?}");
 }
 
 /// AC-6: the value is in no command, JSON, note or stream; the JSON lists the name only.
