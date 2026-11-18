@@ -70,9 +70,9 @@ usage() {
 Usage: install.sh [OPTIONS]
 
 Options:
-  --version VERSION     Install a specific version (default: latest)
+  --version VERSION     Install a specific version, for example 4.2647.12 (default: latest)
   --install-dir DIR     Put the moai and moai-cli commands in DIR (default: <state home>/path)
-  --channel CHANNEL     stable (default) or rc: rc also takes release candidates
+  --channel CHANNEL     stable (default) or rc: rc also takes releases marked as pre-releases
   --language CODE       Language of your conversation with the model, for example en, ko, ja or
                         zh (default: asked at a terminal, else MOAI_LANGUAGE, else your locale,
                         else en). MoAI's own messages stay English.
@@ -83,7 +83,7 @@ Options:
 
 Examples:
   curl -fsSL https://adk.mo.ai.kr/install.sh | sh
-  curl -fsSL https://adk.mo.ai.kr/install.sh | sh -s -- --version 2026.11.0
+  curl -fsSL https://adk.mo.ai.kr/install.sh | sh -s -- --version 4.2647.12
   curl -fsSL https://adk.mo.ai.kr/install.sh | sh -s -- --channel rc
   curl -fsSL https://adk.mo.ai.kr/install.sh | sh -s -- --language ko
 EOF
@@ -218,7 +218,9 @@ record_language() {
     esac
 }
 
-# A version is SemVer-shaped text only: it becomes part of a URL and a folder name.
+# A version is SemVer-shaped text only: it becomes part of a URL and a folder name. A HeadVer
+# version (`4.2647.12`, `{head}.{yearweek}.{build}`) is one; so is `2026.11.0-rc.1` of the earlier
+# scheme.
 valid_version() {
     case "$1" in
         "" | *[!0-9A-Za-z.+-]* | .* | *..*) return 1 ;;
@@ -279,6 +281,8 @@ pick_version() {
         v="${tag#"$TAG_PREFIX"}"
         valid_version "$v" || continue
         if [ "$CHANNEL" != "rc" ]; then
+            # A pre-release is told by the release's own mark; a `-` in the version marks one of
+            # the earlier scheme only, because a HeadVer version has no suffix.
             [ "$pre" = "true" ] && continue
             case "$v" in *-*) continue ;; esac
         fi
@@ -313,7 +317,9 @@ EOF
             die "Could not read the release list from GitHub"
         fi
         # The feed lists published releases only and has no prerelease field: a `-` in the
-        # version marks a release candidate.
+        # version marks a release candidate of the earlier scheme, and a HeadVer pre-release
+        # (no suffix) cannot be told here, so the newest `moai-cli-v*` is taken. Pin a version
+        # with --version when the REST list is out of reach (docs/release-checklist.md).
         pick_version <<EOF
 $(tr '<' '\n' <"$feed_file" | tr '>' '\n' | tr '"' '\n' | sed -n "s|^.*/releases/tag/\\(${TAG_PREFIX}[^/?#]*\\)\$|\\1 false false|p")
 EOF

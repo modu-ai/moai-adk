@@ -125,3 +125,10 @@ BIN=/tmp/moai-rc1-stage-target/release/moai-cli
 | G3 | `recovery-plan`·`recovery-apply`는 `pending` host만 되돌림. `committed` 설치를 지우는 명령은 없음 | 설계 범위. 기록만 |
 | G4 | 실제 host가 투영된 skill을 로드하는지 | not_run(T2, #2014) |
 | G5 | 리더 쪽 스테이징 빌드 결과와 대조 | 아직 받지 못함 — 받으면 1절에 인용 |
+
+## 8. 설치 스크립트로 받는 HeadVer 버전
+
+- 내 Mac에서 `MOAI_LOCAL_BUILD=5 cargo build …`로 만든 `4.2647.5`는 1절의 로컬 빌드예요. 설치 스크립트(`install/install.sh`, `install/install.ps1`)는 빌드가 아니라 **릴리스 자산**만 받아요. 둘은 서로 다른 길이에요.
+- 릴리스 버전은 같은 HeadVer 형식이에요. `install.sh --version 4.2647.12`(접두사 `v`·`moai-cli-v`는 붙어도 돼요)는 상태 폴더의 `versions/4.2647.12/`에 놓고, 기존 `versions/2026.11.0-rc.1/`은 그대로 남아요. `moai update`는 모든 HeadVer 버전을 옛 `2026.11.0-rc.N`보다 새 버전으로 읽어요(`docs/release-checklist.md`의 (a-2)도 보세요).
+- 후보(pre-release) 구분은 버전 글자가 아니라 릴리스 페이지의 표시예요: 기본 채널은 표시된 릴리스를 건너뛰고 `--channel rc`는 받아요.
+- 이 스크립트들은 **임시 HOME**에서만 시험해요. `tests/install_script_test.py`(`python3 -m unittest tests.install_script_test`)는 `file://` 가짜 릴리스와 임시 폴더를 쓰고 실제 HOME을 건드리지 않아요(`pwsh`가 없으면 PowerShell 쪽만 건너뛰어요). `shellcheck`는 로컬에 없어서 CI 결과로 확인해요.

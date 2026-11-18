@@ -8,6 +8,15 @@
 - [x] tag는 `moai-cli-v2026.11.0-rc.1`(04-A 결정 B: 같은 repo, `moai-cli-v<version>` 접두사). Go RC 채널의 `v`/`go-v` 접두사 필터에는 걸리지 않는다. rc.N은 prerelease라 GitHub가 latest로 지정하지 않으므로 Go stable updater의 `/releases/latest`에도 나오지 않는다. **정식판은 다르다**: `/releases/latest`는 접두사로 거르지 않으므로, 접미사 없는 `moai-cli-v<version>`을 `make_latest` 기본값(true)으로 게시하면 그 릴리스가 latest가 되어 Go stable updater가 실패한다. 정식판은 `--latest=false`(또는 `docs/release-attestation.md` 운영자 승인 항목 6의 해결안)로만 게시한다. 근거: `docs/release-attestation.md` "prerelease와 정식판의 latest"·승인 항목 6, `tests/release_suite.rs` `go_feed_contamination_table_reproduces_plain_v_risk`·`rust_final_release_hides_newer_go_release_from_stable_clients`(E6 #2198).
 - [ ] **적용·readback 완료, 동작 증명 not_run — tag ruleset**: 리더가 2026-11-12T06:46Z 에 적용하고 readback 했다(#2197 댓글 6816816319, AC-2). ruleset 27096500 `Release tag immutability (moai-cli-v*)`는 target=tag, enforcement=active, include `["refs/tags/moai-cli-v*"]`, rules `deletion`·`update`, bypass 없음이다(2026-11-15T08:45Z `gh api repos/modu-ai/moai-adk/rulesets/27096500`로 다시 읽음). 기존 `Release tag immutability (v*)`(19583648, `refs/tags/v*`)는 `moai-cli-v*`를 덮지 않아 둘은 따로 있다(2026-11-12T03:59Z `gh api …/rulesets/19583648 --jq .conditions.ref_name.include` → `["refs/tags/v*"]`). 시험용 tag 를 올려 삭제·갱신이 막히는지 보는 probe 는 실행하지 않았고(not_run; 실행 또는 면제는 사용자 결정), REQ-08D-09의 동작 증명은 첫 실제 `moai-cli-v*` tag 가 생긴 뒤에야 성립한다.
 
+## (a-2) HeadVer 번호 체계 (카드 C-67 seq 4)
+
+위 (a)의 `2026.11.0-rc.1`은 rc.1 리허설 기록이라 그대로 두고, 이 세대의 개발 빌드와 앞으로의 릴리스는 HeadVer를 따라요.
+
+- [x] 버전 형식은 HeadVer `4.{yearweek}.{build}`예요(github.com/line/headver, `src/headver.rs`). head는 저장소 뿌리의 `HEADVER` 파일(지금 `4`)이고, yearweek는 빌드한 UTC 날짜의 ISO 주(두 자리 연도+두 자리 주), build는 빌드 서버의 번호예요. 모든 HeadVer 버전은 옛 `2026.11.0-rc.N`보다 새 버전으로 읽혀서 update가 옛 설치에서 깨끗하게 넘어와요(`tests/update_headver.rs`).
+- [x] tag 접두사는 그대로 `moai-cli-v<version>`이에요(예: `moai-cli-v4.2647.12`, 위 (a)의 ruleset `moai-cli-v*`가 덮어요). HeadVer에는 prerelease 표시가 없어서 후보 빌드에 `-rc.1` 같은 접미사를 붙이지 않고, 릴리스 페이지의 prerelease 표시(`gh release create --prerelease --latest=false`)로만 가려요.
+- [x] 설치 스크립트(`install/install.sh`, `install/install.ps1`)는 버전을 숫자로 시작하는 SemVer 모양 글자로만 읽어서 `4.2647.12`를 그대로 받고, `--version 4.2647.12`(접두사 `v`·`moai-cli-v`는 붙어도 돼요)는 `versions/4.2647.12/`에 놓아요. 기본(stable) 채널은 prerelease 표시된 릴리스를 건너뛰고 `--channel rc`는 받아요. 이 표시는 REST 목록에만 있어요: API를 읽지 못해 Atom 피드로 돌아가면 표시가 없어서 HeadVer 후보와 정식판을 가릴 수 없고 가장 새 `moai-cli-v*`를 받아요. 그럴 때는 `--version`으로 고정해요(`tests/install_script_test.py`가 이 동작을 고정해요).
+- [ ] **not_run — 첫 HeadVer 릴리스의 번호와 tag**: head 값, build 번호의 출처, CI 번호 정렬(D4)은 사용자 결정 D5·D6을 기다려요(카드 C-67 seq 3). 이 체크리스트는 번호를 정하지 않고, tag 게시와 릴리스는 아래 "릴리스 게시 절차"대로 별도 권한 단계예요(게시한 tag는 되돌리지 않아요).
+
 ## (b) exact candidate SHA · base SHA
 
 - [x] 내용 커밋(이 체크리스트가 기록하는 exact candidate content SHA): **`c29451fc08f6c5976bdb589d75567c576b9eb76f`** (8-D 산출물 전체를 담은 커밋). PR head는 이 위의 최종 커밋이며 감사는 PR head == audited SHA로 대조한다(PR 본문 head 필드 참조).
