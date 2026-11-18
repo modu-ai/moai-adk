@@ -115,7 +115,12 @@ fn preview<W: Write>(out: &mut W, plan: &Plan) -> std::io::Result<()> {
 /// a yes, and a refusal of the apply leaves the file as it was.
 pub fn stage<R: BufRead, W: Write>(home: &Path, input: &mut R, out: &mut W) -> Value {
     let path = settings_path(home);
-    let picks = match questions::run(input, out, &installed_tools(home)) {
+    // The saved choices are the defaults of the questions; an unusable file ends the stage here.
+    let launcher = match questions::read_launcher(&path) {
+        Ok(launcher) => launcher,
+        Err(message) => return error(&message),
+    };
+    let picks = match questions::run_with(input, out, &installed_tools(home), &launcher) {
         Ok(Outcome::Picks(picks)) if picks.is_empty() => return json!({"state": "nothing_picked"}),
         Ok(Outcome::Picks(picks)) => picks,
         Ok(Outcome::Cancelled) => return json!({"state": "cancelled"}),

@@ -642,3 +642,47 @@ fn a_failed_rename_removes_its_temporary_file_and_a_growing_file_is_refused() {
     assert_eq!(fs::read_to_string(&path).unwrap(), body);
     assert_eq!(entries(path.parent().unwrap()), ["launcher.yaml"]);
 }
+
+#[test]
+fn a_saved_value_is_the_default_of_its_questions_and_enter_keeps_it() {
+    use moai_cli::model_effort_questions::{effort_question_with, model_question_with, run_with};
+    let saved = Choice {
+        model: "claude-sonnet-5-5".into(),
+        effort: "max".into(),
+    };
+    // The saved model comes first and is the default; the saved effort is the default effort of
+    // that model, and another model keeps the table default.
+    let models = model_question_with("claude", "leader", Some(&saved)).unwrap();
+    assert_eq!(models.options[0].value, "claude-sonnet-5-5");
+    assert_eq!(models.defaults, vec![0]);
+    assert_eq!(models.options.len(), 4, "every model once: {models:?}");
+    let efforts =
+        effort_question_with("claude", "leader", "claude-sonnet-5-5", Some(&saved)).unwrap();
+    assert_eq!(efforts.options[efforts.defaults[0]].value, "max");
+    let other = effort_question_with("claude", "leader", "claude-opus-5-5", Some(&saved)).unwrap();
+    assert_eq!(other.options[other.defaults[0]].value, "medium");
+
+    // Enter at every question keeps the saved leader and gives the table default to the rest.
+    let launcher = object(json!({"models": {"claude": {"leader": {
+        "model": "claude-sonnet-5-5", "effort": "max"}}}}));
+    let outcome = run_with(
+        &mut Cursor::new("1\n\n\n\n\n"),
+        &mut Vec::new(),
+        &[],
+        &launcher,
+    )
+    .unwrap();
+    let Outcome::Picks(picks) = outcome else {
+        panic!("picks expected");
+    };
+    let leader = picks.iter().find(|p| p.role == "leader").unwrap();
+    assert_eq!(
+        (leader.model.as_str(), leader.effort.as_str()),
+        ("claude-sonnet-5-5", "max")
+    );
+    let agent = picks.iter().find(|p| p.role == "agent").unwrap();
+    assert_eq!(
+        (agent.model.as_str(), agent.effort.as_str()),
+        ("claude-sonnet-5-5", "high")
+    );
+}
