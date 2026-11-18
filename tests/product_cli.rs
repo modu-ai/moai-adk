@@ -1279,7 +1279,8 @@ fn launcher_codex_argv() {
             "never",
             "-m",
             "some-model",
-            "MoAI session name: agent-2"
+            // SPEC-20261118-launcher-agent-entry: `codex -a` starts agent mode.
+            "$moai --mode-agent\nMoAI session name: agent-2"
         ])
     );
     let v = launched(&launcher(
@@ -1295,7 +1296,7 @@ fn launcher_codex_argv() {
     ));
     assert_eq!(
         v["argv"].as_array().unwrap().last().unwrap(),
-        &json!("MoAI session name: agent-5\nfirst task")
+        &json!("$moai --mode-agent\nMoAI session name: agent-5\nfirst task")
     );
     assert!(!v["argv"].to_string().contains("dangerously"));
     // A PROMPT on a Claude host is not passed on, and the output says so.

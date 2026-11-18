@@ -71,7 +71,7 @@ and the `--dry-run` notes do not say so, and on 2026-11-16 eight Codex lanes sta
   `.moai/specs/SPEC-20261118-launcher-agent-entry/spec.md`; widened by the leader (option A, card reservation gen 2):
   `src/help.rs`, `tests/fixtures/help/all.txt`, `all-dumb.txt`, `all-80.txt`, `all-60.txt`; then (option A2,
   gen 3) `tests/fixtures/help/root.txt`, `root-dumb.txt`, `root-60.txt`, `root-80.txt`
-- read-only: `tests/product_cli.rs` (held by another change; its two codex `-a` prompt pins are reported, not edited)
+- write after C-53 (#3197) merged (reservation gen 4): `tests/product_cli.rs`, its two codex `-a` prompt pins only
 - forbidden: the other help goldens, loosening any help width or length rule, the real HOME, any real host start
 
 ## Plan
@@ -85,7 +85,7 @@ and the `--dry-run` notes do not say so, and on 2026-11-16 eight Codex lanes sta
 
 - A Codex session that does not take `$moai` as its first line would show the line as text; the 2026-11-15 lanes show
   it entering agent mode, and a roleless or leader start is unchanged.
-- `tests/product_cli.rs` keeps the old codex `-a` prompt until it is updated after its other change merges.
+- `tests/product_cli.rs` kept the old codex `-a` prompt until C-53 merged; its two pins were then updated here.
 
 ## Decisions
 
@@ -104,7 +104,7 @@ failed (the help lacked `/moai --mode-leader`, no entry note, the old codex `-a`
 passed, as it pins unchanged argv), and the updated codex `-a` pins failed in `launcher_advisor_setting` (3),
 `launcher_agent_numbering` (2), `launcher_codex_effort` (1), `launcher_permissions_setting` (3) and `launcher_roleless` (1).
 
-- AC-1: met — `codex_agent_prompt_starts_with_the_mode_line` (`tests/launcher_agent_entry.rs`) and the updated pins in the five launcher tests pass.
+- AC-1: met — `codex_agent_prompt_starts_with_the_mode_line` (`tests/launcher_agent_entry.rs`) and the updated pins in the five launcher tests pass; after the tip merge `a2a954419d` (C-53 #3197), `product_cli` `launcher_codex_argv` failed on the old pins (`tests/product_cli.rs:1282`, `:1298`; 78 passed, 1 failed) and passes with `$moai --mode-agent\n` before the name line (`product_cli` 79 passed).
 - AC-2: met — `role_notes_say_how_the_role_is_entered` passes; mutant "Codex leader note spelled `/moai`" fails it.
 - AC-3: met — `the_help_says_how_the_role_is_entered` passes for `cc`, `glm` and `codex --help`.
 - AC-4: met — `other_launches_keep_their_argv` and `launcher_roleless` pass; mutant "mode line on every role session" fails it.
@@ -113,6 +113,10 @@ passed, as it pins unchanged argv), and the updated codex `-a` pins failed in `l
 - AC-7: met — `the_top_level_flags_name_the_entry_command` passes (it failed on the old `-l, --leader` line first); `help_layout` 10 passes on the goldens rewritten with `MOAI_HELP_GOLDEN_WRITE`, whose diff is the `-l`/`-a` lines only (all.txt and all-dumb.txt 2→5 lines at :233, all-80.txt :237 and :239, all-60.txt :380 and :383; `root*.txt` unchanged).
 
 - AC-8: met — `the_root_example_names_the_entry_command` passes at 60, 80 and no `COLUMNS` after commit `58dfddca5c` (it failed before on `lead session`); `help_layout` 10 passes with the four `root*.txt` goldens changed on the `cc -l` line only (+4/−4, 59 columns, line counts 54/54/72/54 unchanged), and the root width and length tests and `--lib help::` 18 (help.rs:2684) pass unchanged.
+
+Last slice (tip `6e25ac09b6` merged in `a2a954419d`, then the two `product_cli` pins): `product_cli` 79, the nine
+launcher tests, `help_layout` 10, `--bin moai` 28, `--lib help::` 18 pass; clippy `-D warnings`, fmt and
+`rustfmt --check src/ops/*.rs` exit 0.
 
 Third slice (leader decision A2, commit `58dfddca5c`): `help_layout` 10, `launcher_agent_entry` 7, `--bin moai` 28,
 `--lib help::` 18 and the nine launcher tests pass; clippy and fmt exit 0; `product_cli` still fails only
