@@ -12,7 +12,7 @@ parent: SPEC-20261117-sdd-foundation
 ## Intent
 
 Card C-47 (user instruction 2026-11-16): during `moai update` and the moai-adk install the user first picks which coding tools to set up (Codex, Claude Code, OMP), then for each picked tool chooses a leader model with its effort and an agent model with its effort from the values that tool really supports. One settings file keeps the choice, and the launchers `moai cc`, `moai glm` and `moai codex` read it when they start the tool (`-l` leader values, `-a` agent values) instead of hard-coded values.
-This SPEC fixes the requirements and records the research the card asked for first: the supported ids and efforts per tool, with source and read time (`research.md` beside this file). The code lands in later slices under this SPEC; the launcher entry text (PR #3201) is already merged and is not repeated.
+This SPEC fixes the requirements and records the research the card asked for first: the supported ids and efforts per tool, with source and read time (`research.md` beside this file). The code lands in later slices, each with its own SPEC and its own pull request (leader decision, card C-47 note 2167); the launcher entry text (PR #3201) is already merged and is not repeated.
 
 ## Non-goals
 
@@ -64,7 +64,7 @@ This SPEC fixes the requirements and records the research the card asked for fir
 2. Slice settings: the settings file, its schema and the read and write functions, tests first.
 3. Slice update: the tool pick and the model and effort selections in `moai update` and the install, with the preview.
 4. Slice launchers: `moai cc|glm|codex` read the file for `-l` and `-a`; the argv and environment tests per launcher and role.
-5. Each later slice states its own write scope on the card before it starts.
+5. Each slice 2 to 4 gets its own SPEC and its own pull request, tests first, and states its write scope on the card before it starts; AC-1 to AC-7 move to those SPECs.
 
 ## Risks
 
@@ -84,3 +84,14 @@ This SPEC fixes the requirements and records the research the card asked for fir
 | D-6 | OMP efforts offered are `low`, `high` and `max` only | OMP offers exactly these for GLM-5.3; `--thinking off` is clamped to `low` | none |
 | D-7 | The support table is a repository table with read times, not a live query | a live `codex debug models` or `omp models` call would make install depend on the tool being present | add a refresh command later |
 | D-8 | The settings file path, schema and the `moai glm` transport are decided in their own slices | not researched here | none |
+
+## Result
+
+- AC-1: withdrawn — moved to the update-prompts slice SPEC (one SPEC, one PR; leader note 2167)
+- AC-2: withdrawn — moved to the update-prompts slice SPEC (one SPEC, one PR; leader note 2167)
+- AC-3: withdrawn — moved to the update-prompts slice SPEC (one SPEC, one PR; leader note 2167)
+- AC-4: withdrawn — moved to the settings-file slice SPEC (one SPEC, one PR; leader note 2167)
+- AC-5: withdrawn — moved to the launchers slice SPEC (one SPEC, one PR; leader note 2167)
+- AC-6: withdrawn — moved to the update-prompts slice SPEC (one SPEC, one PR; leader note 2167)
+- AC-7: withdrawn — moved to the launchers slice SPEC (one SPEC, one PR; leader note 2167)
+- AC-8: met — `research.md` has a Sources line with read times and a Not verified line in each of its three tool sections and an introduction that separates quotes from paraphrase; PR #3204 audit PASS on head ff40c5c125 (comment 6970883574)
