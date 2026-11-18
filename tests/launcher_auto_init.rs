@@ -27,7 +27,7 @@ struct Fixture {
 
 fn fixture() -> Fixture {
     let bin = tempfile::tempdir().unwrap();
-    for host in ["claude", "codex"] {
+    for host in ["claude", "codex", "omp"] {
         let path = bin.path().join(host);
         fs::write(&path, STUB).unwrap();
         fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
@@ -188,7 +188,12 @@ fn profile(dir: &Path) -> Value {
 
 #[test]
 fn the_first_launch_outside_git_initializes_the_folder_on_every_host() {
-    for (host, profile_host) in [("cc", "claude"), ("glm", "claude"), ("codex", "codex")] {
+    for (host, profile_host) in [
+        ("cc", "claude"),
+        ("glm", "claude"),
+        ("codex", "codex"),
+        ("omp", "omp"),
+    ] {
         let f = fixture();
         let plain = tempfile::tempdir().unwrap();
         let dir = plain.path().join("My Project");

@@ -12,7 +12,11 @@ pub const BODY: &str = "Issue/PR 을 배차받거나 self-pick 해서 열린 Iss
 pub const MAX_FIRST_CHARS: usize = 300;
 
 /// The hosts a lane runs on, with the prefix that starts the `moai` skill there.
-pub const HOSTS: &[(&str, &str)] = &[("claude", "/moai"), ("codex", "$moai"), ("omp", "/moai")];
+pub const HOSTS: &[(&str, &str)] = &[
+    ("claude", "/moai"),
+    ("codex", "$moai"),
+    ("omp", "/skill:moai"),
+];
 
 /// A character that must not reach another terminal: C0 and C1 controls (tab, line feed,
 /// carriage return, ESC, DEL …), the Unicode line and paragraph separators, every format

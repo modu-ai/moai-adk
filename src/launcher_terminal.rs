@@ -1,4 +1,4 @@
-//! What the launcher (`moai cc|glm|codex -l|-a`) prints around a session (#3004 P9).
+//! What the launcher (`moai cc|glm|codex|omp -l|-a`) prints around a session (#3004 P9).
 //!
 //! After the host exits the launcher used to print one JSON line (`executed:true`), which a
 //! person at a terminal should never see. The JSON envelope stays for a pipe, a file and
@@ -223,6 +223,7 @@ mod tests {
             ("claude", json!("leader"), "cc", " -l"),
             ("glm", json!("agent"), "glm", " -a"),
             ("codex", Value::Null, "codex", ""),
+            ("omp", json!("leader"), "omp", " -l"),
         ] {
             let text = after_text(&ran(host, role, json!(3))).expect("a failure prints");
             assert!(

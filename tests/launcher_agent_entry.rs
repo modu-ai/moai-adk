@@ -267,11 +267,12 @@ fn other_launches_keep_their_argv() {
     );
 }
 
-/// AC-5 (REQ-5): every mode command the launcher help and notes name is one of the four
-/// spellings of #2286.
+/// AC-5 (REQ-5): every mode command the launcher help and notes name is one of the six
+/// spellings of #2286 (the four of Claude Code and Codex, and OMP's `/skill:moai` form from
+/// SPEC-20261118-omp-launcher).
 #[test]
 fn only_the_two_spellings_appear() {
-    let mut texts: Vec<String> = ["cc", "glm", "codex"].iter().map(|h| help(&[h])).collect();
+    let mut texts: Vec<String> = ["cc", "glm", "codex", "omp"].iter().map(|h| help(&[h])).collect();
     texts.push(help(&[]));
     for (args, token) in [
         (&["cc", "-l"][..], None),
@@ -279,6 +280,8 @@ fn only_the_two_spellings_appear() {
         (&["glm", "-a"][..], Some("t")),
         (&["codex", "-l"][..], None),
         (&["codex", "-a"][..], None),
+        (&["omp", "-l"][..], None),
+        (&["omp", "-a"][..], None),
     ] {
         let v = dry(args, token);
         texts.push(v["notes"].to_string());
@@ -289,6 +292,8 @@ fn only_the_two_spellings_appear() {
         "/moai --mode-leader",
         "$moai --mode-agent",
         "$moai --mode-leader",
+        "/skill:moai --mode-agent",
+        "/skill:moai --mode-leader",
     ];
     let mut seen = 0;
     for text in &texts {
