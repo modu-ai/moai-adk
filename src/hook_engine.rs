@@ -89,7 +89,7 @@ pub const EDIT_OPT_IN: &str = "[hooks.edit_diagnostics] enabled + checkers (exte
 
 /// The confirmation class of tool-preflight (B2, Issue #2391 classification row B2).
 pub const CONFIRM_COMMANDS: &str =
-    "git reset --hard, a forced git clean (not a dry run), a force push to a branch other than main or master";
+    "git reset --hard, a forced git clean (not a dry run), a force push to a branch other than main or master, and in a MoAI project a direct pull request merge (gh pr merge, gh api PUT .../merge, the GraphQL merge mutations) outside `moai gate-merge`";
 
 /// Appended to a confirmation on Codex, which cannot ask.
 pub const CODEX_ASK_SUFFIX: &str =
@@ -637,7 +637,13 @@ fn tool_preflight(input: &Value, cwd: &Path, config: &crate::hook_config::HookCo
         return verdict;
     }
     let command = input["tool_input"]["command"].as_str().unwrap_or("");
-    match crate::hook_guards::bash_confirm(command) {
+    let dir = input["cwd"]
+        .as_str()
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| cwd.to_path_buf());
+    match crate::hook_guards::bash_confirm(command)
+        .or_else(|| crate::hook_guards::merge_confirm(command, &dir))
+    {
         Some(reason) => Verdict::Ask(reason.to_string()),
         None => Verdict::Allow,
     }

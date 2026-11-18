@@ -742,6 +742,151 @@ fn omp_symlinked_folders_are_refused() {
     }
 }
 
+// ---- SPEC-20261119-enforce-merge-confirm: a direct pull request merge asks first ----
+
+/// Commands that merge a pull request outside the gate.
+const DIRECT_MERGES: &[&str] = &[
+    "gh pr merge 123",
+    "gh pr merge 123 --auto --merge --match-head-commit abc",
+    "gh pr merge --squash",
+    "gh pr merge 5 -R o/r",
+    "gh api -X PUT repos/o/r/pulls/123/merge",
+    "gh api -XPUT repos/o/r/pulls/9/merge -f merge_method=merge",
+    "gh api --method PUT /repos/o/r/pulls/9/merge",
+    "gh api --method=put repos/o/r/pulls/9/merge",
+    "gh api graphql -f query='mutation { mergePullRequest(input: {pullRequestId: \"x\"}) { clientMutationId } }'",
+    "gh api graphql -f query='mutation { enablePullRequestAutoMerge(input: {pullRequestId: \"x\"}) { clientMutationId } }'",
+    "echo hi && gh pr merge 5",
+    "FOO=1 gh pr merge 5",
+    "sh -c 'gh pr merge 5'",
+];
+
+/// A temporary work tree (a hand-made `.git` folder) with or without a `.moai` folder.
+fn merge_repo(moai: bool) -> (tempfile::TempDir, std::path::PathBuf) {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let root = fs::canonicalize(tmp.path()).unwrap();
+    fs::create_dir_all(root.join(".git")).unwrap();
+    fs::write(root.join(".git/HEAD"), "ref: refs/heads/main\n").unwrap();
+    fs::create_dir_all(root.join("home")).unwrap();
+    if moai {
+        fs::create_dir_all(root.join(".moai")).unwrap();
+    }
+    (tmp, root)
+}
+
+/// The answer to one Bash call, as a host would get it: (exit code, decision, reason); the
+/// decision is empty for an allowed call.
+fn merge_preflight(host: &str, root: &Path, command: &str) -> (i32, String, String) {
+    let input = json!({"session_id": "s", "hook_event_name": "PreToolUse",
+        "tool_name": "Bash", "tool_use_id": "t1",
+        "tool_input": {"command": command}, "cwd": root});
+    let mut child = Command::new(common::MOAI_BIN)
+        .args(["hook-dispatch", "--host", host, "--event", "tool-preflight"])
+        .current_dir(root)
+        .env("HOME", root.join("home"))
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    common::feed_stdin(&mut child, input.to_string().as_bytes());
+    let out = child.wait_with_output().unwrap();
+    let stdout = String::from_utf8_lossy(&out.stdout).into_owned();
+    let v: Value = serde_json::from_str(&stdout).unwrap_or(Value::Null);
+    let h = &v["hookSpecificOutput"];
+    (
+        out.status.code().unwrap(),
+        h["permissionDecision"].as_str().unwrap_or("").to_string(),
+        h["permissionDecisionReason"]
+            .as_str()
+            .unwrap_or("")
+            .to_string(),
+    )
+}
+
+/// REQ-1, REQ-4: in a MoAI project every direct merge asks on Claude, and is refused on Codex,
+/// which cannot ask.
+#[test]
+fn merge_confirm_asks_for_a_direct_merge_in_a_moai_project() {
+    let (_tmp, root) = merge_repo(true);
+    for command in DIRECT_MERGES {
+        let (code, decision, reason) = merge_preflight("claude", &root, command);
+        assert_eq!((code, decision.as_str()), (0, "ask"), "{command}: {reason}");
+        assert!(reason.contains("moai gate-merge"), "{command}: {reason}");
+        let (code, decision, reason) = merge_preflight("codex", &root, command);
+        assert_eq!(
+            (code, decision.as_str()),
+            (0, "deny"),
+            "{command}: {reason}"
+        );
+        assert!(reason.contains("Codex cannot ask"), "{command}: {reason}");
+    }
+}
+
+/// REQ-2: the gate itself, reads, comments and anything that only mentions a merge go through.
+#[test]
+fn merge_confirm_leaves_the_gate_and_reads_alone() {
+    let (_tmp, root) = merge_repo(true);
+    for command in [
+        "moai gate-merge --pr 5 --permission-reference x",
+        "moai gate-loop --fetch",
+        "gh pr view 5",
+        "gh pr list --state open",
+        "gh pr comment 5 --body ok",
+        "gh pr checks 5",
+        "gh pr create --title t --body b",
+        "gh api repos/o/r/pulls/5/merge",
+        "gh api -X GET repos/o/r/pulls/5/merge",
+        "gh api repos/o/r/pulls/5",
+        // A PUT that does not merge a pull request.
+        "gh api -X PUT repos/o/r/pulls/5/labels",
+        "gh api -X PUT repos/o/r/branches/merge",
+        "gh api graphql -f query='query { viewer { login } }'",
+        "git merge feature",
+        "echo gh pr merge 5",
+        "gh issue comment 5 -b 'gh pr merge 5'",
+        "grep -n 'gh pr merge' README.md",
+    ] {
+        let (code, decision, reason) = merge_preflight("claude", &root, command);
+        assert_eq!(
+            (code, decision.as_str(), reason.as_str()),
+            (0, "", ""),
+            "{command}"
+        );
+    }
+}
+
+/// REQ-3: a work tree without a `.moai` folder is not a MoAI project; nothing is asked there.
+#[test]
+fn merge_confirm_is_off_outside_a_moai_project() {
+    let (_tmp, root) = merge_repo(false);
+    for command in DIRECT_MERGES {
+        for host in ["claude", "codex"] {
+            let (code, decision, reason) = merge_preflight(host, &root, command);
+            assert_eq!(
+                (code, decision.as_str(), reason.as_str()),
+                (0, "", ""),
+                "{host} {command}"
+            );
+        }
+    }
+}
+
+/// REQ-5: every host's confirmation list names the direct merge.
+#[test]
+fn merge_confirm_capabilities_name_the_direct_merge() {
+    for host in ["claude", "codex", "omp"] {
+        let caps = moai_cli::hook_engine::capabilities(host);
+        let commands = caps["tool-preflight"]["confirm"]["commands"].to_string();
+        assert!(
+            commands.contains("gh pr merge") && commands.contains("moai gate-merge"),
+            "{host}: {commands}"
+        );
+    }
+}
+
 /// #2877 Q1: the Claude set carries the hook engine's preflight guard after the claim guard, and
 /// the generated command, run as the host runs it, denies a dangerous Bash call and a write
 /// into `.git`, and lets an ordinary call through. Codex keeps its three hooks and has no

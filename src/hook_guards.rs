@@ -301,6 +301,60 @@ pub fn bash_confirm(command: &str) -> Option<&'static str> {
     None
 }
 
+const CONFIRM_MERGE: &str = "MoAI tool-preflight: a pull request is merged through the gate (`moai gate-merge`, or `moai gate-loop`), which checks the CI run, the audit PASS and the head; a direct merge skips those checks. Confirm it.";
+
+/// SPEC-20261119-enforce-merge-confirm: a direct merge of a pull request from a Bash command
+/// (`gh pr merge`, a PUT to `…/pulls/<n>/merge` or the GraphQL merge mutations through
+/// `gh api`) is asked about in a MoAI project, a work tree with a `.moai` folder at its root.
+/// The gate's own merge is the `moai gate-merge` process, whose child `gh api` call no hook
+/// sees. Only consulted when no deny applies to the line, like [`bash_confirm`].
+pub fn merge_confirm(command: &str, cwd: &Path) -> Option<&'static str> {
+    let merges = crate::claim_verify::shell_commands(command)
+        .iter()
+        .any(|(name, args)| name == "gh" && gh_merges(args));
+    if !merges {
+        return None;
+    }
+    let top = work_tree_top(cwd)?;
+    top.join(".moai").is_dir().then_some(CONFIRM_MERGE)
+}
+
+/// True when the arguments of a `gh` call merge a pull request: `pr merge`, or `api` with a
+/// PUT (`-X PUT`, `-XPUT`, `--method PUT`, `--method=PUT`, any case) to a `…/pulls/…/merge`
+/// endpoint, or with a GraphQL merge mutation.
+fn gh_merges(args: &[String]) -> bool {
+    let words: Vec<&String> = args.iter().filter(|a| !a.starts_with('-')).collect();
+    if words.windows(2).any(|w| w[0] == "pr" && w[1] == "merge") {
+        return true;
+    }
+    if words.first().map(|w| w.as_str()) != Some("api") {
+        return false;
+    }
+    if args
+        .iter()
+        .any(|a| a.contains("mergePullRequest") || a.contains("enablePullRequestAutoMerge"))
+    {
+        return true;
+    }
+    let mut put = false;
+    let mut it = args.iter();
+    while let Some(a) = it.next() {
+        let value = if a == "-X" || a == "--method" {
+            it.next().map(String::as_str)
+        } else if let Some(v) = a.strip_prefix("--method=") {
+            Some(v)
+        } else {
+            a.strip_prefix("-X")
+        };
+        if value.is_some_and(|v| v.eq_ignore_ascii_case("put")) {
+            put = true;
+        }
+    }
+    put && words
+        .iter()
+        .any(|w| w.contains("/pulls/") && w.trim_end_matches('/').ends_with("/merge"))
+}
+
 /// The option letters of every short-option cluster (`-vf` → v, f) up to `--`. A letter in
 /// `value_opts` takes the rest of its cluster, or the next word when it ends the cluster, as
 /// its value (pre-audit H5-B3: git aggregates short options).
