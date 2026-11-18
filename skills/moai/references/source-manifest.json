@@ -489,12 +489,12 @@
       }
     },
     "workflows/update.md": {
-      "sha256": "bca1a45a881bad50a7b07accd8064b4329df8063655330e0093db1c363b65118",
+      "sha256": "073af8368fe9b1395efc5c60acb4d88979be197fc67d21377041458697eb9c0d",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-update",
         "adoption": "adopted",
-        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template. The 2026.11.0-rc.1 UPDATE implementation (04-B #1999) replaced the not-implemented status note with the implemented scope; the backup/rollback step remains 04-C. Step 6 (#2483) adds the user-confirmed backup-then-replace of an unmanaged moai skill folder (decision row 22). Step 1 (#2936 S-AGENTS-STAY, decision 6901387505) says a staying-layout backup area whose own .gitignore git does not honour reads backup_ignore and stops the go-state step without a command, and that Go settings a revert put back are proposed for the move again."
+        "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template. The 2026.11.0-rc.1 UPDATE implementation (04-B #1999) replaced the not-implemented status note with the implemented scope; the backup/rollback step remains 04-C. Step 6 (#2483) adds the user-confirmed backup-then-replace of an unmanaged moai skill folder (decision row 22). Step 1 (#2936 S-AGENTS-STAY, decision 6901387505) says a staying-layout backup area whose own .gitignore git does not honour reads backup_ignore and stops the go-state step without a command, and that Go settings a revert put back are proposed for the move again. Card C-47 slice 3 adds the `models` key of the applied update result and the terminal model stage, and says this session has no command to change the values."
       }
     },
     "workflows/verify.md": {

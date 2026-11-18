@@ -138,9 +138,18 @@ class UpdateScreens(unittest.TestCase):
     def test_yes_applies_and_ends_with_the_project_step(self):
         """U-4 and U-9: `y` writes, the end screen says what changed and sends each project to
         its own session's /moai update; a second run is all up to date with the same step."""
-        text, code = run_pty(["update"], self.env, self.work, answer=b"y\n")
+        # Card C-47: an update that wrote files goes on to the model stage. The answers: `y` for the
+        # update, `1` (Claude Code) for the tool pick, Enter for the four model questions, `y` to save.
+        text, code = run_pty(["update"], self.env, self.work, answer=b"y\n1\n\n\n\n\ny\n")
         self.assertEqual(code, 0, text)
         self.assertTrue(os.path.isfile(self.skill_file()), text)
+        self.assertIn("Which coding tools do you want to set up?", text)
+        self.assertIn("Save these model settings? [y/N]", text)
+        saved = [p for p in tree(self.home) if p.endswith("launcher.yaml")]
+        self.assertEqual(len(saved), 1, text)
+        with open(os.path.join(self.home, saved[0])) as f:
+            models = json.load(f)["launcher"]["models"]
+        self.assertEqual(models["claude"]["leader"], {"model": "claude-opus-5-5", "effort": "medium"})
         flat = text.replace("\n  ", " ").replace(" ", " ")
         self.assertIn("Done", text)
         self.assertIn("run /moai update in a session there", flat)
@@ -150,6 +159,17 @@ class UpdateScreens(unittest.TestCase):
         self.assertIn("Everything is up to date", again)
         self.assertNotIn("[y/N]", again)
         self.assertIn("$moai update", again.replace("\n  ", " ").replace(" ", " "))
+
+    def test_end_of_input_at_the_model_stage_keeps_the_applied_update(self):
+        """Card C-47: Ctrl-D at the tool pick ends the stage as cancelled; the update itself stays
+        applied and no settings file is written."""
+        text, code = run_pty(["update"], self.env, self.work, answer=b"y\n\x04")
+        self.assertEqual(code, 0, text)
+        self.assertTrue(os.path.isfile(self.skill_file()), text)
+        self.assertIn("Which coding tools do you want to set up?", text)
+        self.assertNotIn("Save these model settings?", text)
+        self.assertIn("Done", text)
+        self.assertEqual([p for p in tree(self.home) if p.endswith("launcher.yaml")], [], text)
 
     def test_end_of_input_writes_nothing(self):
         """U-4: end of input (Ctrl-D) at the question is a no."""

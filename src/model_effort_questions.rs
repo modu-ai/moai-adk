@@ -88,7 +88,16 @@ pub fn tool_question(installed: &[&str]) -> Question {
 
 /// The model of a tool and role: the default first, then the rest of the table in order.
 pub fn model_question(tool: &str, role: &str) -> Option<Question> {
-    let default = default_choice(tool, role)?;
+    model_question_with(tool, role, None)
+}
+
+/// [`model_question`] where a saved supported choice is the default instead of the table default,
+/// so that Enter keeps what the person saved earlier.
+pub fn model_question_with(tool: &str, role: &str, saved: Option<&Choice>) -> Option<Question> {
+    let default = match saved {
+        Some(choice) => choice.clone(),
+        None => default_choice(tool, role)?,
+    };
     let rows = supported(tool)?;
     let mut options = vec![option(&default.model, &default.model)];
     options.extend(
@@ -108,7 +117,21 @@ pub fn model_question(tool: &str, role: &str) -> Option<Question> {
 /// The effort of a model for a tool and role: the efforts that model offers in table order. The
 /// default is the tool and role default when the model offers it, else `high`, else the first.
 pub fn effort_question(tool: &str, role: &str, model: &str) -> Option<Question> {
-    let preferred = default_choice(tool, role)?.effort;
+    effort_question_with(tool, role, model, None)
+}
+
+/// [`effort_question`] where the saved effort is the default when the saved model is the model
+/// asked about and still offers it.
+pub fn effort_question_with(
+    tool: &str,
+    role: &str,
+    model: &str,
+    saved: Option<&Choice>,
+) -> Option<Question> {
+    let preferred = match saved {
+        Some(choice) if choice.model == model => choice.effort.clone(),
+        _ => default_choice(tool, role)?.effort,
+    };
     let row = supported(tool)?.iter().find(|row| row.id == model)?;
     let position = |name: &str| row.efforts.iter().position(|e| *e == name);
     let default = position(&preferred)
@@ -209,7 +232,7 @@ fn show<W: Write>(out: &mut W, question: &Question) -> io::Result<()> {
 
 /// Reads one line of at most [`MAX_LINE_BYTES`]. `None` is the end of input. A longer line is
 /// dropped up to its newline and read as `?`, which no question accepts.
-fn read_line_bounded<R: BufRead>(input: &mut R) -> io::Result<Option<String>> {
+pub fn read_line_bounded<R: BufRead>(input: &mut R) -> io::Result<Option<String>> {
     let mut bytes = Vec::new();
     let read = (&mut *input)
         .take(MAX_LINE_BYTES + 1)
@@ -258,6 +281,18 @@ pub fn run<R: BufRead, W: Write>(
     out: &mut W,
     installed: &[&str],
 ) -> io::Result<Outcome> {
+    run_with(input, out, installed, &Map::new())
+}
+
+/// [`run`] where the saved supported choices of the launcher object are the defaults of the
+/// questions: Enter keeps what the person saved, and only an entry nobody saved gets the table
+/// default.
+pub fn run_with<R: BufRead, W: Write>(
+    input: &mut R,
+    out: &mut W,
+    installed: &[&str],
+    launcher: &Map<String, Value>,
+) -> io::Result<Outcome> {
     let Some(tools) = ask(input, out, &tool_question(installed))? else {
         return Ok(Outcome::Cancelled);
     };
@@ -267,14 +302,15 @@ pub fn run<R: BufRead, W: Write>(
         .filter(|t| tools.iter().any(|p| p.as_str() == **t))
     {
         for role in ROLES {
-            let Some(models) = model_question(tool, role) else {
+            let saved = saved_choice(launcher, tool, role);
+            let Some(models) = model_question_with(tool, role, saved.as_ref()) else {
                 continue;
             };
             let Some(model) = ask(input, out, &models)? else {
                 return Ok(Outcome::Cancelled);
             };
             let model = model[0].clone();
-            let Some(efforts) = effort_question(tool, role, &model) else {
+            let Some(efforts) = effort_question_with(tool, role, &model, saved.as_ref()) else {
                 continue;
             };
             let Some(effort) = ask(input, out, &efforts)? else {
@@ -408,6 +444,12 @@ fn read_root(path: &Path) -> Result<Map<String, Value>, String> {
         Ok(_) => Err("launcher settings must be an object".into()),
         Err(_) => Err("launcher settings must use valid JSON-subset syntax".into()),
     }
+}
+
+/// The `launcher` object of the settings file (empty when the file or the key is absent), read
+/// by the same rules as a plan: a link, a folder, a special file or more than one MiB is refused.
+pub fn read_launcher(path: &Path) -> Result<Map<String, Value>, String> {
+    launcher_of(&read_root(path)?)
 }
 
 fn launcher_of(root: &Map<String, Value>) -> Result<Map<String, Value>, String> {
