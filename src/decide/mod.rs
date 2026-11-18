@@ -28,6 +28,9 @@
 //! - [`transport`] sends a [`Prepared`] request over HTTP/1.1 to a loopback address and returns
 //!   the response body for [`conclude`]; any other address is refused before a socket is
 //!   opened (SPEC-20261118-decide-round-trip).
+//! - [`control`] decides whether the model is called at all: off until the settings say it is
+//!   on, and at most a set number of calls a day; every other case refuses and the sender is
+//!   never called (SPEC-20261118-decide-control).
 //! - [`provider`] builds the exact request bytes for `typesafe` (Jev) and `openai`, and reads
 //!   their answers. The endpoints are compile-time constants; no setting, variable or request
 //!   field can aim a request elsewhere.
@@ -40,6 +43,7 @@
 //! stands in; the model gives no written reason and none is recorded (leader default
 //! D-reason).
 
+pub mod control;
 pub mod gate;
 pub mod normalise;
 pub mod outbound;
