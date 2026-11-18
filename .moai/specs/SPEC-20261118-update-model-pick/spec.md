@@ -20,6 +20,7 @@ The wiring wraps the existing `update_command` function: its signature, `src/mai
 - The launchers reading the values (launcher slice, after C-62 slice B) and the install script (install slice, after C-67).
 - A localized wording of the stage: the stage prints English lines; `src/ui_text.rs` is outside this card scope.
 - Any change to the update part, its plan digest or its receipts.
+- A receipt and a revert command for the settings write: the stage has a preview, a yes and the digest-bound apply, but no way back of its own; slice 4 of card C-47 adds the receipt and the revert (audit note N1 of PR 3212).
 
 ## Requirements
 
@@ -33,6 +34,8 @@ The wiring wraps the existing `update_command` function: its signature, `src/mai
 - REQ-8: When `moai update` ends applied in any other way (a pipe, `--json`, a confirm flag, no terminal or an update part that wrote nothing), the update shall ask no model question and add a `models` object to its result that lists for each tool and role the model, the effort and the source (`saved` or `default`) and names the saved entries outside the support table by key path. · failure: none — an unreadable settings file is reported as the state `error` with its message.
 - REQ-9: When the tool question is asked, the model stage shall pass `claude` as installed when the folder `.claude` of the home exists and `codex` as installed when the folder `.codex` of the home exists, so that Enter picks them. · failure: none — no folder means the empty default and Enter picks nothing.
 - REQ-10 (REQ-8): IF the result is a preview, THEN the update shall leave its keys exactly as they were, as the preview test of the cleanup stage requires.
+- REQ-11 (REQ-3): When a tool and role have a saved value the support table lists, the model stage shall make that model and effort the default of its questions, so that Enter keeps the saved value and only an unsaved entry gets the table default. · failure: none — a saved value outside the table is named and kept (REQ-3).
+- REQ-12 (REQ-8): When the stage or the report names the settings file, the update shall use the file the launcher reads, `config/launcher.yaml` under the state folder of the home. · failure: none — a different path would be found by AC-13.
 
 ## Acceptance
 
@@ -58,6 +61,10 @@ The wiring wraps the existing `update_command` function: its signature, `src/mai
   verify: `cargo test --locked --offline --test product_cli source_manifest_covers_every_package_file`
 - AC-11 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7, REQ-8, REQ-9): the code style checks.
   verify: `cargo fmt --check`
+- AC-12 (REQ-11): a saved value is the default model and effort of its questions, Enter at every question keeps the saved leader and gives the table default only to the unsaved agent, and the preview shows the saved leader unchanged.
+  verify: `cargo test --locked --offline --test model_effort_questions a_saved_value_is_the_default_of_its_questions_and_enter_keeps_it`; `cargo test --locked --offline --test update_model_pick enter_keeps_a_saved_value_instead_of_the_table_default`
+- AC-13 (REQ-12): a value written at the settings path of this module reaches the launcher command line (the user advisor setting), so both name the same file.
+  verify: `cargo test --locked --offline --test update_model_pick the_settings_path_is_the_file_the_launcher_reads`
 
 ## Scope
 
@@ -77,7 +84,10 @@ The wiring wraps the existing `update_command` function: its signature, `src/mai
 - The stage runs only after an update that wrote files, so a person whose files are already up to date is not asked and cannot change the values by `moai update` until the next real update → a later slice adds a command or flag that asks on demand; `models` still reports the values.
 - A new key in the update result could break a test that compares the whole result → only the applied result gets the key (REQ-10), and AC-9 runs the update test files.
 - The stage prints English lines on the person's screen while the update screens are localized → the follow-up listed in Non-goals.
-- The terminal path is covered by the stage tests with a captured input and output, not by a pseudo terminal: a real terminal run is `not_run` until a person or a later slice does it.
+- The terminal path is covered by the stage tests with a captured input and output and by pseudo terminal runs: the Rust cases are macOS only (the BSD script tool) and the Python cases of the update screens run on Linux in CI. A session with a real tool on a real terminal is `not_run`.
+- Limits of the settings write that the audits of PR 3209 recorded and this slice does not change: a rewrite that would be exactly 1048576 bytes is written and one byte more is refused (the boundary is correct but only the growth case is tested), and a carriage return at the end of an answer line counts as a content byte, so a line of 4096 content bytes with CRLF is read as 4097.
+- The stage has no receipt and no revert (audit note N1 of PR 3212): a wrong choice is fixed by running the stage again; slice 4 adds the revert.
+- The survivors of the mutation runs are conditions only a real terminal reaches: the check of the terminal itself and the `wrote` condition (an unscripted terminal run asks only when files will be written, so no command reaches the other case).
 - The saved file limits found in the audits of PRs #3207 and #3209 stay (ancestor links, the lstat and read race, duplicate keys, a read-back fault) → they are listed in `SPEC-20261118-model-effort-questions`.
 
 ## Decisions
@@ -100,6 +110,8 @@ The wiring wraps the existing `update_command` function: its signature, `src/mai
 - AC-6: met — `a_broken_or_changed_settings_file_is_an_error_and_stays_as_it_was` passes (invalid file: `error`, marker never shown, bytes kept; file changed between preview and save: `error`, the changed file kept)
 - AC-7: met — `a_non_terminal_run_asks_nothing_and_reports_the_values` passes (the preview has no `models` key; the applied result has 8 values with saved and default sources and the unsupported key path; the settings file is untouched)
 - AC-8: met — `the_installed_tools_follow_the_home_folders` passes (none, claude, a file named .codex is not a folder, both)
-- AC-9: met — `cargo test --test update_command_cli` 19 passed, including the macOS pseudo terminal cases that answer the model stage and save after a yes and the confirmed run that asks nothing; `update_user_layer_cli` 11, `update_home_layer_cli` 11, `update_hooks_cli` 11, `update_keys_cli` 9 and `update_headver` 3 passed; `python3 -m unittest tests.update_tux_tty_test` 9 passed (the old test timed out after 60 seconds on the new stage, which was the CI failure of PR 3212; it answers the stage with Ctrl-D now)
-- AC-10: met — `cargo test --test product_cli source_manifest` passed (the manifest hash of update.md is current)
+- AC-9: met — `cargo test --test update_command_cli` 19 passed, including the macOS pseudo terminal cases that answer the model stage and save after a yes and the confirmed run that asks nothing; `update_user_layer_cli` 11, `update_home_layer_cli` 11, `update_hooks_cli` 11, `update_keys_cli` 9 and `update_headver` 3 passed; `python3 -m unittest tests.update_tux_tty_test` 10 passed (the yes flow timed out after 60 seconds on the new stage, which was the CI failure and the blocking audit item of PR 3212; it now answers the stage and checks the saved leader, and a new case ends the stage with Ctrl-D and keeps the applied update)
 - AC-11: met — `cargo fmt --check` exits 0 and `cargo clippy --lib --test model_effort_settings --test model_effort_questions --test update_model_pick --test update_command_cli -- -D warnings` exits 0
+- AC-10: met — `cargo test --test product_cli source_manifest` passed (the manifest hash of update.md is current)
+- AC-12: met — `a_saved_value_is_the_default_of_its_questions_and_enter_keeps_it` (the saved sonnet-5-5 max is first and default, another model keeps its table default) and `enter_keeps_a_saved_value_instead_of_the_table_default` pass; mutants that ignore the saved launcher, the saved model or the saved effort are killed
+- AC-13: met — `the_settings_path_is_the_file_the_launcher_reads` passes (the advisor written at the module path reaches the dry-run argv of `moai cc -l`; a mutant path is killed)
