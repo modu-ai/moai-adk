@@ -27,8 +27,8 @@ created: 2026-11-18
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-3, REQ-4): `docs/surveys/update-project-user-requests.md` lists the workflow side (12 rows) and the CLI side (61 rows) with `path:line`, the line as read, a class and the planned change.
-  verify: `rg -c '^\| [AW][0-9]+ ' docs/surveys/update-project-user-requests.md` prints 73
+- AC-1 (REQ-1, REQ-3, REQ-4): `docs/surveys/update-project-user-requests.md` lists the workflow side (15 rows) and the CLI side (68 rows) with `path:line`, the line as read, a class and the planned change.
+  verify: `rg -c '^\| [AW][0-9]+ ' docs/surveys/update-project-user-requests.md` prints 83
 - AC-2 (REQ-2, REQ-3, REQ-4): `docs/surveys/update-project-github-issue-assumptions.md` lists 22 rows, each a defect or a keep.
   verify: `rg -c '^\| B[0-9]+ ' docs/surveys/update-project-github-issue-assumptions.md` prints 22
 - AC-3 (REQ-5): the UPDATE workflow has the session run the user-layer update and its confirm steps itself (`skills/moai/workflows/update.md:5`).
@@ -67,9 +67,9 @@ created: 2026-11-18
 
 ## Result
 
-- AC-1: met — `docs/surveys/update-project-user-requests.md` has 12 workflow rows and 61 CLI rows (`rg -c '^\| [AW][0-9]+ '` printed 73); each row's cited line contains its key word in the file at head `eea59f4ff1` (95 of 95 after 25 corrections, with the survey B rows); classes and planned changes are a reading, stated in the document. Not covered: `src/hook_engine.rs`, claim/lane/gate/trailer modules, the `docs/design-review/appendix/operations` files.
+- AC-1: met — `docs/surveys/update-project-user-requests.md` has 15 workflow rows and 68 CLI rows (`rg -c '^\| [AW][0-9]+ '` printed 83); each row's cited line contains the key word shown in its row, in the file at head `eea59f4ff1` (105 of 105 rows with survey B; the first pass over the first 95 found 25 wrong and they were corrected; 10 rows were added after the tier-1 audit of the first version); classes and planned changes are a reading, stated in the document. Not covered: `src/hook_engine.rs`, claim/lane/gate/trailer modules, the `docs/design-review/appendix/operations` files.
 - AC-2: met — `docs/surveys/update-project-github-issue-assumptions.md` has 22 rows, 16 defects and 6 kept (`rg -c '^\| B[0-9]+ '` printed 22); the wording fix of B13 (`src/agents.rs:269`, `:290`) is a follow-up row because three pins sit outside this card's scope.
 - AC-3: met — `cargo test --locked --offline --test update_route` 8 passed, including `the_update_route_runs_the_commands_itself_after_the_pick` (`skills/moai/workflows/update.md:5`).
 - AC-4: met — same run, `every_question_is_a_selection_through_the_hosts_question_tool` (`skills/moai/references/internal/questions.md:7-8`).
 - AC-5: met — same run, `the_ledger_is_local_cards_and_previews_run_without_asking` (`skills/moai/workflows/project.md:41`, `skills/moai/references/internal/interview.md:17`).
-- AC-6: met — `python3 -I tools/source_manifest.py check` exit 0, `{"ok": true, "changed": []}`; `python3 -m unittest tests.ci_scope_test` OK.
+- AC-6: met — `python3 -I tools/source_manifest.py check` exit 0, `{"conflicted": false, "changed": [], "dropped": [], "ok": true}`; `python3 -m unittest tests.ci_scope_test` OK.
