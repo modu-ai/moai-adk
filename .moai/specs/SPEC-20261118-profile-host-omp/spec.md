@@ -65,3 +65,10 @@ created: 2026-11-18
 | D-1 | 상한은 셋(알려진 호스트 수) | 이름이 세 개로 막혀 있어 넷은 중복이나 모르는 이름이에요 | 상한 없애기 |
 | D-2 | 프로필을 읽을 수 없을 때는 모든 호스트 단계를 그대로 보여 줌 | 기존 시험과 동작을 지키고, 깨진 프로필에서도 호스트 단계가 계획돼요 | 모두 skip |
 | D-3 | 호스트 상한은 둘이 아니라 셋 | 리더 note 2098은 C-62와 맞추라며 '두 host 상한'이라 적었지만, 카드 C-56 AC-1은 `[claude, codex, omp]` 통과를, C-62는 OMP를 정식 호스트로 정해요. 둘은 모순이라 카드 기준(셋)을 따랐고 리더에게 알렸어요 | 둘 유지(AC-1과 충돌) |
+
+## Result
+
+- AC-1: met — `profile::tests::three_hosts_with_omp_validate` and `four_hosts_and_unknown_hosts_are_refused` (RED 먼저: `["omp"] was refused`); 3개 통과, 넷·`zcode`·`OMP`(대소문자)·빈 목록 거절, `KNOWN_HOSTS.len()+1`로 풀면 경계 시험이 실패(감사 변이 D 잡힘).
+- AC-2: met — `question_bank_hosts`(RED 먼저: `OMP not offered`): 인터뷰 `hosts` 행이 세 호스트 다중 선택이고 현재 호스트가 `(recommended)`; `python3 -I tools/source_manifest.py check` 0.
+- AC-3: met — `project_update_plan_cli` 59개 중 `host_steps_follow_the_profile_hosts`(네 조합), `a_profile_with_omp_passes_project_plan`, `a_broken_profile_blocks_its_steps_and_not_the_host_hook_steps`; 게이팅을 항상 켜면 실패(변이 잡힘), `install_steps`가 `None`을 넘기거나 `omp-agents`를 게이트하지 않으면 실패(감사 변이 A·E 잡힘).
+- AC-4: met — `--lib` 1420, `update_end_to_end_cli` 8, `go_*`·`project_update_hooks_cli`·`product_cli` 76, `cargo fmt --check` 0, `cargo clippy -D warnings` 0, python 시험 통과, PR #3200 `ci` 성공(run 44232193101). 감사의 비차단 N1(`omp-config`가 고른 호스트에 묶였는지 시험이 못 잡음)·N2(셋 안의 중복이 통과)는 후속으로 남김.
