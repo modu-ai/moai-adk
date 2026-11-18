@@ -1,4 +1,4 @@
-//! The one place of `moai decide` that sends (card C-37 S4, SPEC-20261118-decide-round-trip):
+//! The one place of `moai decide` that sends (slice S4, SPEC-20261118-decide-round-trip):
 //! the bytes of a [`Prepared`] request go to a loopback HTTP server and the response body
 //! comes back for [`conclude`](super::conclude). Plain HTTP/1.1 over `std::net`, no new
 //! dependency.

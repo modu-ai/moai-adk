@@ -13,8 +13,8 @@
 //! Scan B. Nothing under `src/ledger/` spawns a process (`Command::new(`), opens a socket
 //! (`std::net`), names a program (`"gh"`, `"git"`, `"curl"`, `"ssh"`), holds an `http(s)://`
 //! endpoint or reaches into `crate::forge`. Comments are not code and are ignored. The same
-//! holds for `src/decide/` (cards C-37 and C-54), except the two provider endpoint constants
-//! and, in the one file that sends (`src/decide/transport.rs`), the four socket names.
+//! holds for `src/decide/` (cards C-37 and C-54), except the two provider endpoint constants.
+//! The one file that sends (`src/decide/transport.rs`) may also hold four socket names.
 //!
 //! Both scans are text matches: they show a name is absent, not that a path is never reached.
 //! The entry-count tool `tools/home_entry_count.py` measures the real `~/.moai` before and
@@ -484,7 +484,7 @@ const DECIDE_ENDPOINTS: [&str; 2] = [
     "\"https://api.openai.com/v1/decisions\"",
 ];
 
-/// The one file under `src/decide/` that sends (slice S4 of card C-37, SPEC-20261118-decide-round-trip)
+/// The one file under `src/decide/` that sends (slice S4, SPEC-20261118-decide-round-trip)
 /// and the four names it may hold; it may hold no other name of the scan, and no other file
 /// may hold these.
 const DECIDE_SENDER: &str = "src/decide/transport.rs";
@@ -588,7 +588,7 @@ fn the_decide_scan_allows_the_two_endpoints_and_nothing_else() {
     }
 }
 
-/// Slice S4 of card C-37 (SPEC-20261118-decide-round-trip): the one file that sends may hold
+/// Slice S4 (SPEC-20261118-decide-round-trip): the one file that sends may hold
 /// the four socket names; nothing else is allowed there or anywhere else under `src/decide/`.
 #[test]
 fn the_decide_scan_allows_the_four_socket_names_in_the_sending_file_only() {
