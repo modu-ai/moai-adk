@@ -113,7 +113,7 @@ Codex 공식 문서는 Desktop 앱, CLI, IDE 확장을 함께 설명한다. 세 
 
 ## MoAI 기능별 host 지원 (C-62)
 
-코드에서 host로 갈라지는 자리마다 한 줄이다(사용자 지시 2026-11-17, 카드 C-62: OMP를 전체 host로 지원). `yes`는 그 자리가 host를 다룬다는 뜻이고, `gap`은 아직 다루지 않는다는 뜻이며 어느 조각이나 카드가 닫는지 `gap` 열에 적는다, `n/a`는 그 host에서 하지 않기로 한 것이다. 근거(`evidence`)는 `파일::기호`이고, ` (list)`가 붙은 줄은 그 기호가 가리키는 host 목록이 이 줄의 `yes`와 같아야 한다. `tests/omp_host_survey_test.py`가 근거 파일·기호의 존재와 목록 일치, OMP `gap`의 닫는 곳을 확인한다. 2026-11-18, tip eea59f4ff1에서 코드를 읽어 적었고 host를 띄워 확인한 것은 아니다(`not_run`).
+코드에서 host로 갈라지는 자리마다 한 줄이다(사용자 지시 2026-11-17, 카드 C-62: OMP를 전체 host로 지원). `yes`는 그 자리가 host를 다룬다는 뜻이고, `gap`은 아직 다루지 않는다는 뜻이며 어느 조각이나 카드가 닫는지 `gap` 열에 적는다, `n/a`는 그 host에서 하지 않기로 했거나 그 자리에 해당하는 단계가 없다는 뜻이다. 근거(`evidence`)는 `파일::기호`이고, ` (list)`가 붙은 줄은 그 기호가 가리키는 host 목록이 이 줄의 `yes`와 같아야 한다. `tests/omp_host_survey_test.py`가 근거 파일·기호의 존재와 목록 일치, OMP `gap`의 닫는 곳을 확인한다. 2026-11-18, tip eea59f4ff1에서 코드를 읽어 적었고 host를 띄워 확인한 것은 아니다(`not_run`).
 
 | feature | claude | codex | omp | evidence | gap |
 | --- | --- | --- | --- | --- | --- |
@@ -125,12 +125,12 @@ Codex 공식 문서는 Desktop 앱, CLI, IDE 확장을 함께 설명한다. 세 
 | 프로필이 적을 수 있는 host | yes | yes | yes | `src/profile.rs::KNOWN_HOSTS` (list) | - |
 | 에이전트 정의 렌더링 | yes | yes | yes | `src/agent_defs.rs::HOSTS` (list) | - |
 | hook 설치와 전달 | yes | yes | yes | `src/hooks.rs::HOSTS` (list) | - |
-| 레인 의무 줄(`lane-duty-line`) | yes | yes | yes | `src/lane_duty.rs::HOSTS` (list) | - |
+| 레인 의무 줄(`lane-duty-line`) | yes | yes | gap | `src/lane_duty.rs::HOSTS` | leader card: 코드는 omp에 `/moai`를 붙이지만 OMP는 `/skill:moai --mode-agent`로만 에이전트 모드에 들어간다(`skills/moai/workflows/mode-agent.md`); `tests/lane_duty_line.rs`가 슬래시 형태를 고정하고 있어 함께 고쳐야 한다 |
 | host 폴더 해석 | yes | yes | yes | `src/host_home.rs::Omp` | - |
-| 프로젝트 host 단계(OMP hook·agents) | n/a | yes | yes | `src/project_hosts.rs::omp-agents` | - |
+| 프로젝트 host 단계(codex·omp) | n/a | yes | yes | `src/project_hosts.rs::omp-agents` | - |
 | 사용자 범위 AGENTS 라우팅 | yes | yes | n/a | `src/home_routing.rs::shadows every other user context file` | - |
 | 상태줄 설정 | yes | yes | n/a | `src/project_hosts.rs::OMP_CONFIG_REASON` | - |
-| skill 설치(`moai update`)의 host 목록 | yes | yes | gap | `src/update.rs::HOSTS` (list) | leader card: OMP는 `.agents/skills`와 `~/.omp/agent/skills`를 읽는다(`src/skills_legacy.rs`); `src/update.rs`는 카드 C-47 범위 |
-| 프로젝트 skill 설치 | yes | yes | gap | `src/project_skills.rs::host_folder` | leader card: 같은 폴더 규칙 |
+| skill 설치(`moai update`)의 host 목록 | yes | yes | gap | `src/update.rs::HOSTS` (list) | leader card: OMP는 `.agents/skills`(codex 단계가 쓰는 폴더)와 `~/.omp/agent/skills`를 읽으므로(`src/skills_legacy.rs`) 일부는 이미 닿는다; 빠진 것은 이 목록과 `~/.omp/agent/skills`로의 설치이고, `src/update.rs`는 카드 C-47 범위 |
+| 프로젝트 skill 설치 | yes | yes | gap | `src/project_skills.rs::host_folder` | leader card: 같은 폴더 규칙(OMP는 `.agents/skills`를 읽으므로 codex용 설치가 OMP에도 보이는지 먼저 확인) |
 | 출력 스타일 설치 | yes | yes | gap | `src/home_style.rs::HOSTS` (list) | leader card: OMP에 출력 스타일이 있는지 먼저 조사한다 |
 | 감사 독립성 표 | yes | yes | gap | `src/audit.rs::INDEPENDENCE` (list) | leader card: OMP 하위 에이전트가 이전 대화를 이어받는지 문서로 확인한 뒤 줄을 더한다 |

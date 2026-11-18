@@ -63,7 +63,7 @@ class OmpHostSurveyTest(unittest.TestCase):
 
     def test_the_survey_has_the_columns_and_rows(self):
         self.assertEqual(self.header, COLUMNS)
-        self.assertGreaterEqual(len(self.rows), 12, "one row per host-keyed place")
+        self.assertGreaterEqual(len(self.rows), 17, "one row per host-keyed place")
         features = [r["feature"] for r in self.rows]
         self.assertEqual(len(features), len(set(features)), "one row per feature")
 
@@ -94,7 +94,7 @@ class OmpHostSurveyTest(unittest.TestCase):
                 self.assertIsNotNone(found, f"no array assigned to {symbol} in {path}")
                 claimed = {h for h in HOSTS if r[h] == "yes"}
                 self.assertEqual(claimed, found, f"{path}::{symbol}")
-        self.assertGreaterEqual(lists, 6, "the survey pins at least six host lists")
+        self.assertGreaterEqual(lists, 7, "the survey pins at least seven host lists")
 
     def test_an_omp_gap_names_the_slice_or_card_that_closes_it(self):
         gaps = [r for r in self.rows if r["omp"] == "gap"]
@@ -108,6 +108,20 @@ class OmpHostSurveyTest(unittest.TestCase):
             if r["omp"] != "gap":
                 with self.subTest(feature=r["feature"]):
                     self.assertTrue(r["gap"] in ("", "-") or r["omp"] == "n/a", r["gap"])
+
+    def test_the_lane_duty_row_follows_the_omp_entry_spelling(self):
+        # Audit #3203 B1: a host in a list is not a host that works. The lane-duty line types the
+        # prefix the code pairs with omp; the mode workflow names the only spelling OMP accepts.
+        duty = (ROOT / "src" / "lane_duty.rs").read_text(encoding="utf-8")
+        mode = (ROOT / "skills" / "moai" / "workflows" / "mode-agent.md").read_text(encoding="utf-8")
+        code = re.search(r'\("omp",\s*"([^"]+)"\)', duty)
+        doc = re.search(r"`(\S+) --mode-agent` in OMP", mode)
+        self.assertIsNotNone(code, "no omp entry in src/lane_duty.rs")
+        self.assertIsNotNone(doc, "mode-agent.md names no OMP spelling")
+        row = [r for r in self.rows if r["evidence"].startswith("`src/lane_duty.rs::HOSTS")]
+        self.assertEqual(len(row), 1)
+        same = code.group(1) == doc.group(1)
+        self.assertEqual(row[0]["omp"], "yes" if same else "gap", f"code {code.group(1)} vs workflow {doc.group(1)}")
 
     def test_the_document_replaces_the_2378_unsupported_line(self):
         text = DOC.read_text(encoding="utf-8")
