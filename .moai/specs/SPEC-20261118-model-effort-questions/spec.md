@@ -24,7 +24,7 @@ It also takes the audit follow-up N1 of slice 1: a saved entry outside the suppo
 ## Requirements
 
 - REQ-1: When the tool question is built, the module shall list Claude Code, Codex and OMP as a multiple choice whose default is the installed tools the caller passes. · failure: none — no installed tool makes the default an empty pick.
-- REQ-2: When a model or effort question is built for a tool and role, the module shall list only values of the support table, the default first. · failure: none — an unknown tool or role has no question.
+- REQ-2: When a model or effort question is built for a tool and role, the module shall list only values of the support table, the default model first and the efforts in table order with the default marked. · failure: none — an unknown tool or role has no question.
 - REQ-3: When an answer line is read, the module shall take an empty line as the default, a number or a list of numbers as those options, and end of input as cancelled. · failure: none — a line that is not a valid choice is REQ-4.
 - REQ-4 (REQ-3): IF an answer line is not a valid choice, THEN the loop shall ask the same question again up to three times without echoing the line, and then end as cancelled.
 - REQ-5: When the tool pick is empty, the loop shall ask no model question and return no pick. · failure: none — an empty pick is a valid answer, not an error.
@@ -37,7 +37,7 @@ It also takes the audit follow-up N1 of slice 1: a saved entry outside the suppo
 
 - AC-1 (REQ-1): the tool question lists the three tools, and its default is the installed ones.
   verify: `cargo test --locked --offline --test model_effort_questions the_tool_question_lists_three_tools_and_defaults_to_the_installed_ones`
-- AC-2 (REQ-2): model and effort questions list only table values with the default first, and an effort question for a non-default model still offers a default.
+- AC-2 (REQ-2): model questions list only table values with the default first, effort questions list the efforts of the chosen model in table order with a default the model offers, and a name the table does not know has no question.
   verify: `cargo test --locked --offline --test model_effort_questions model_and_effort_questions_offer_only_table_values_with_the_default_first`
 - AC-3 (REQ-3, REQ-4): an empty line, a number and a list are read; a bad line or a number out of range is invalid; end of input is cancelled; no result or message contains the line.
   verify: `cargo test --locked --offline --test model_effort_questions an_answer_line_is_read_and_a_bad_one_is_never_echoed`

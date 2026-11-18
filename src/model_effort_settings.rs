@@ -127,9 +127,9 @@ fn models_of(launcher: &Map<String, Value>) -> Result<Option<&Map<String, Value>
     }
 }
 
-/// Checks every saved entry, not only the one asked for, so a broken file is never skipped
-/// silently. Tool and role names are printed only after they matched a known name.
-fn validate(models: &Map<String, Value>) -> Result<(), String> {
+/// The structure of `launcher.models`: known tool names, known role names, and objects at the
+/// tool and role level. Names are printed only after they matched a known name.
+fn check_structure(models: &Map<String, Value>) -> Result<(), String> {
     for (tool, per_tool) in models {
         if !TOOLS.contains(&tool.as_str()) {
             return Err("launcher.models names a tool this version does not know".into());
@@ -143,35 +143,91 @@ fn validate(models: &Map<String, Value>) -> Result<(), String> {
                     "launcher.models.{tool} names a role this version does not know"
                 ));
             }
-            let Value::Object(fields) = entry else {
+            if !entry.is_object() {
                 return Err(format!("launcher.models.{tool}.{role} must be an object"));
-            };
-            if fields.len() != 2 {
-                return Err(format!(
-                    "launcher.models.{tool}.{role} must hold exactly model and effort"
-                ));
-            }
-            let (Some(Value::String(model)), Some(Value::String(effort))) =
-                (fields.get("model"), fields.get("effort"))
-            else {
-                return Err(format!(
-                    "launcher.models.{tool}.{role} must hold model and effort as text"
-                ));
-            };
-            let rows = supported(tool).unwrap_or(&[]);
-            if !rows.iter().any(|row| row.id == model) {
-                return Err(format!(
-                    "launcher.models.{tool}.{role}.model is not a supported model of {tool}"
-                ));
-            }
-            if !offers(tool, model, effort) {
-                return Err(format!(
-                    "launcher.models.{tool}.{role}.effort is not an effort that model offers"
-                ));
             }
         }
     }
     Ok(())
+}
+
+/// One saved entry (its tool and role names are known): exactly `model` and `effort` as text, a
+/// model of the tool's table, an effort that model offers.
+fn check_entry(tool: &str, role: &str, entry: &Value) -> Result<(), String> {
+    let Value::Object(fields) = entry else {
+        return Err(format!("launcher.models.{tool}.{role} must be an object"));
+    };
+    if fields.len() != 2 {
+        return Err(format!(
+            "launcher.models.{tool}.{role} must hold exactly model and effort"
+        ));
+    }
+    let (Some(Value::String(model)), Some(Value::String(effort))) =
+        (fields.get("model"), fields.get("effort"))
+    else {
+        return Err(format!(
+            "launcher.models.{tool}.{role} must hold model and effort as text"
+        ));
+    };
+    let rows = supported(tool).unwrap_or(&[]);
+    if !rows.iter().any(|row| row.id == model) {
+        return Err(format!(
+            "launcher.models.{tool}.{role}.model is not a supported model of {tool}"
+        ));
+    }
+    if !offers(tool, model, effort) {
+        return Err(format!(
+            "launcher.models.{tool}.{role}.effort is not an effort that model offers"
+        ));
+    }
+    Ok(())
+}
+
+/// Checks every saved entry, not only the one asked for, so a broken file is never skipped
+/// silently.
+fn validate(models: &Map<String, Value>) -> Result<(), String> {
+    check_structure(models)?;
+    for (tool, per_tool) in models {
+        if let Value::Object(roles) = per_tool {
+            for (role, entry) in roles {
+                check_entry(tool, role, entry)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// The key paths (`launcher.models.<tool>.<role>`) of the saved entries the support table does
+/// not accept: the launcher refuses such a file until they are replaced. Structural damage (an
+/// unknown tool or role name, a level that is not an object, `models` not an object) is refused
+/// instead of listed, because it cannot be named without quoting saved text.
+pub fn unsupported_entries(launcher: &Map<String, Value>) -> Result<Vec<String>, String> {
+    let Some(models) = models_of(launcher)? else {
+        return Ok(Vec::new());
+    };
+    check_structure(models)?;
+    let mut listed = Vec::new();
+    for (tool, per_tool) in models {
+        if let Value::Object(roles) = per_tool {
+            for (role, entry) in roles {
+                if check_entry(tool, role, entry).is_err() {
+                    listed.push(format!("launcher.models.{tool}.{role}"));
+                }
+            }
+        }
+    }
+    Ok(listed)
+}
+
+/// The saved choice of a tool and role when it is there and supported, else `None`. It does not
+/// look at any other entry (see [`resolve`] and [`unsupported_entries`]).
+pub fn saved_choice(launcher: &Map<String, Value>, tool: &str, role: &str) -> Option<Choice> {
+    let entry = launcher.get("models")?.get(tool)?.get(role)?;
+    check_entry(tool, role, entry).ok()?;
+    Some(Choice {
+        model: entry.get("model")?.as_str()?.to_string(),
+        effort: entry.get("effort")?.as_str()?.to_string(),
+    })
 }
 
 /// The model and effort of a tool and role: the saved choice when the launcher object holds one
