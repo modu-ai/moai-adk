@@ -139,7 +139,8 @@ enum Action {
     /// approval) and no error, that its work is merged (its local branch, if any, is reachable
     /// from the base, and a commit reachable from the base carries `Moai-Spec: <id>`), and that
     /// it passes `spec check --closure` once completed. Then `--card` closes the card through
-    /// `card done`, with that command's refusals, and the status line becomes `completed`;
+    /// `card done`, with that command's refusals (its reservation is checked first, read only,
+    /// as `card done` checks it; an ended lease is no refusal), and the status line becomes `completed`;
     /// nothing else in the file changes. Every refusal changes nothing. Commits and pushes
     /// nothing: the commit command is printed.
     Close {

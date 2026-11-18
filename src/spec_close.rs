@@ -87,8 +87,18 @@ fn trailer_commit(dir: &Path, base: &str, id: &str) -> Result<Option<String>> {
 }
 
 /// Checks `--card` read-only before anything is written: a C-number of a card in this
-/// project's ledger that names this SPEC.
-fn card_check(project: &Path, home: &Path, reference: &str, id: &str) -> Result<()> {
+/// project's ledger that names this SPEC, held by `holder` at `generation` the way `card done`
+/// needs it (`reservation::fence_check_with`, no live lease needed, as `workflow::done`). A
+/// reservation problem refused here is refused before `card done` runs, so it is not recorded
+/// as a `fence_reject` event: the ledger keeps every byte.
+fn card_check(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    id: &str,
+    holder: &str,
+    generation: i64,
+) -> Result<()> {
     use crate::card::input::{self, CardRef};
     use crate::ledger::{self, LedgerError};
     let card_id = match input::parse_ref(reference) {
@@ -102,7 +112,10 @@ fn card_check(project: &Path, home: &Path, reference: &str, id: &str) -> Result<
         other => refuse(other),
     })?;
     match crate::card::spec_link::kind_and_spec(read.conn(), card_id) {
-        Ok(Some((_, Some(spec)))) if spec == id => Ok(()),
+        Ok(Some((_, Some(spec)))) if spec == id => {
+            ledger::reservation::fence_check_with(&read, card_id, holder, generation, false)
+                .map_err(|e| refuse(format!("card done would refuse: {e}; nothing was changed")))
+        }
         Ok(Some((_, Some(spec)))) => Err(refuse(format!(
             "{name} names {}, not {id}; nothing was changed",
             shown(&spec)
@@ -265,7 +278,7 @@ pub fn close<G: Fn(&str) -> Option<String>>(r: &Request<'_, G>) -> Result<Value>
             let generation = r
                 .generation
                 .ok_or_else(|| refuse("--card needs --generation"))?;
-            card_check(r.project, &home, c, r.id)?;
+            card_check(r.project, &home, c, r.id, &holder, generation)?;
             Some(
                 crate::card::work::done(r.project, &home, c, &holder, generation)
                     .map_err(refuse)?,
@@ -276,7 +289,11 @@ pub fn close<G: Fn(&str) -> Option<String>>(r: &Request<'_, G>) -> Result<Value>
 
     crate::apply::publish_replace(&path, Some(&before), after.as_bytes()).map_err(|e| {
         if card.is_some() {
-            format!("spec close: the card is done, but {rel} was not written: {e}")
+            format!(
+                "spec close: the card is done, but {rel} was not written: {e}; run `moai spec \
+                 close {}` again without --card to complete the SPEC",
+                r.id
+            )
         } else {
             refuse(format!("{rel} was not written: {e}; nothing was changed"))
         }

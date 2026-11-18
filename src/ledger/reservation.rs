@@ -934,12 +934,25 @@ pub fn fence_check(
     holder: &str,
     generation: i64,
 ) -> Result<(), FenceError> {
+    fence_check_with(r, card_id, holder, generation, true)
+}
+
+/// [`fence_check`] with the lease rule of the write it predicts: `need_live: false` is the
+/// check `card done` makes (`workflow::done`), so a caller can refuse, read-only and before any
+/// write, exactly the reservation problems `card done` would refuse and record.
+pub fn fence_check_with(
+    r: &ReadLedger,
+    card_id: i64,
+    holder: &str,
+    generation: i64,
+    need_live: bool,
+) -> Result<(), FenceError> {
     check_holder(holder).map_err(FenceError::InvalidInput)?;
     let now: i64 = r
         .conn()
         .query_row("SELECT unixepoch()", [], |row| row.get(0))
         .map_err(LedgerError::from)?;
-    evaluate(r.conn(), card_id, holder, generation, now, true)??;
+    evaluate(r.conn(), card_id, holder, generation, now, need_live)??;
     Ok(())
 }
 

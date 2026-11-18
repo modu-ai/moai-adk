@@ -450,3 +450,117 @@ fn a_card_refusal_changes_nothing() {
     assert!(m.contains("session"), "{m}");
     assert_eq!(open_pr.everything(), before);
 }
+
+const S_B: &str = "bbbbbbbb-0000-4000-8000-00000000000b";
+
+/// Changes the ledger directly: the fixture of a state no command reaches in a test's time
+/// (a lease that ended, a reservation that is released while the card is in review).
+fn ledger_sql(w: &World, sql: &str) {
+    let path = ledger::ledger_path(w.home.path(), "demo").unwrap();
+    rusqlite::Connection::open(path)
+        .unwrap()
+        .execute(sql, [])
+        .unwrap();
+}
+
+/// Audit B1: `card done` records a reservation refusal as a `fence_reject` event. `spec close`
+/// checks the reservation read-only first, so these refusals change no byte of the ledger.
+#[test]
+fn reservation_refusals_change_nothing() {
+    let cases: [(&str, Option<&str>, &str, &str); 3] = [
+        ("unknown generation", None, "2", "generation 2"),
+        ("another session", Some(S_B), "1", "card done would refuse"),
+        (
+            "released",
+            Some("UPDATE reservation SET status = 'released'"),
+            "1",
+            "card done would refuse",
+        ),
+    ];
+    for (name, extra, generation, says) in cases {
+        let w = World::new();
+        w.merged(true, MET);
+        w.review_card(Some(ID), true);
+        let session = match (name, extra) {
+            ("another session", Some(s)) => s,
+            (_, Some(sql)) => {
+                ledger_sql(&w, sql);
+                S_A
+            }
+            _ => S_A,
+        };
+        let before = w.everything();
+        let out = w.run(
+            &[
+                "spec",
+                "close",
+                ID,
+                "--project",
+                w.p(),
+                "--card",
+                "C-1",
+                "--generation",
+                generation,
+            ],
+            Some(session),
+        );
+        let m = refused(&out);
+        assert!(m.starts_with("spec close refused: "), "{name}: {m}");
+        assert!(m.contains(says), "{name}: {m}");
+        assert_eq!(w.everything(), before, "{name}");
+    }
+}
+
+/// `card done` needs no live lease (`workflow::done`), so neither does `spec close --card`: a
+/// lease that ended is no refusal, and the card and the SPEC both close.
+#[test]
+fn an_ended_lease_does_not_stop_the_close() {
+    let w = World::new();
+    w.merged(true, MET);
+    w.review_card(Some(ID), true);
+    ledger_sql(&w, "UPDATE reservation SET lease_until = 1");
+    let r = ok(&w.close(ID, &["--card", "C-1", "--generation", "1"]));
+    assert_eq!(r["card"]["state"], "done", "{r}");
+    assert_eq!(r["status"], "completed");
+}
+
+/// Audit N2: when the SPEC cannot be written after `card done`, the message says the card is
+/// done and that the next step is the same close without `--card`.
+#[cfg(unix)]
+#[test]
+fn a_spec_write_failure_after_card_done_names_the_next_step() {
+    use std::os::unix::fs::PermissionsExt;
+    let w = World::new();
+    w.merged(true, MET);
+    w.review_card(Some(ID), true);
+    let folder = w.spec_file(ID).parent().unwrap().to_path_buf();
+    let spec_before = fs::read(w.spec_file(ID)).unwrap();
+    fs::set_permissions(&folder, fs::Permissions::from_mode(0o555)).unwrap();
+    let out = w.close(ID, &["--card", "C-1", "--generation", "1"]);
+    fs::set_permissions(&folder, fs::Permissions::from_mode(0o755)).unwrap();
+    let v = envelope(&out);
+    assert_ne!(out.status.code(), Some(0), "{v}");
+    let m = v["error"]["message"].as_str().unwrap_or_default();
+    assert!(m.starts_with("spec close: the card is done, but "), "{m}");
+    assert!(
+        m.contains(&format!("`moai spec close {ID}` again without --card")),
+        "{m}"
+    );
+    assert_eq!(fs::read(w.spec_file(ID)).unwrap(), spec_before);
+    assert_eq!(ok(&w.card(&["show", "C-1"]))["state"], "done");
+    // The step it names completes the SPEC.
+    assert_eq!(ok(&w.close(ID, &[]))["status"], "completed");
+}
+
+/// Audit N3: a trailer naming a longer id (`<ID>-extra`) is not this SPEC's merge evidence.
+#[test]
+fn a_trailer_of_a_longer_id_is_not_merge_evidence() {
+    let w = World::new();
+    w.write_spec("login-fix", true, MET);
+    w.git(&["add", "-A"]);
+    w.commit(&format!("docs(spec): add {ID}\n\nMoai-Spec: {ID}-extra"));
+    let before = w.everything();
+    let m = refused(&w.close(ID, &[]));
+    assert!(m.contains(&format!("carries `Moai-Spec: {ID}`")), "{m}");
+    assert_eq!(w.everything(), before);
+}

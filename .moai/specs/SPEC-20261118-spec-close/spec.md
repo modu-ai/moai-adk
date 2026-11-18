@@ -29,7 +29,7 @@ SDD 조각 SDD-8(승인된 SDD 계획 `sdd-lifecycle-plan-20261117` "Slices"): �
 - REQ-5: When the work is merged, the command shall change the SPEC's status line to `completed` and nothing else in the file.
 - REQ-6 (REQ-5): IF the SPEC with status `completed` would not pass `spec check --closure`, THEN the command shall refuse and change nothing.
 - REQ-7: Where `--card` names a card, the command shall close that card through `card done` before it writes the SPEC.
-- REQ-8 (REQ-7): IF the card names no SPEC or another SPEC, or `card done` refuses, THEN the command shall refuse with that reason and change nothing.
+- REQ-8 (REQ-7): IF the card names no SPEC or another SPEC, its reservation is not held by this session at `--generation` (checked read-only as `card done` checks it, so no `fence_reject` event is recorded), or `card done` refuses, THEN the command shall refuse with that reason and change nothing.
 - REQ-9: The command shall print the commit command for the SPEC file as a preview without running it.
 
 ## Acceptance
@@ -38,10 +38,13 @@ SDD 조각 SDD-8(승인된 SDD 계획 `sdd-lifecycle-plan-20261117` "Slices"): �
   verify: `cargo test --locked --offline --test spec_close_cli close_completes_a_merged_spec_and_prints_the_commit`
 - AC-2 (REQ-2, REQ-4, REQ-6): 없는 SPEC, 옛 id, 오류 있는 SPEC, draft, 이미 completed, 커밋이 아닌 base, 합쳐지지 않은 가지, trailer 커밋 없음,
   Result 없음·열린 AC는 거절되고 임시 HOME 아래 모든 바이트가 그대로예요.
-  verify: `cargo test --locked --offline --test spec_close_cli close_refuses_and_changes_nothing`
-- AC-3 (REQ-7, REQ-8): `--card`는 카드를 `done`으로 닫고 SPEC을 써요; 다른 SPEC의 카드, SPEC 없는 카드, `card done`의 거절(합쳐진 PR 없음)은
-  아무것도 바꾸지 않아요.
-  verify: `cargo test --locked --offline --test spec_close_cli close_with_a_card_marks_it_done`; `cargo test --locked --offline --test spec_close_cli a_card_refusal_changes_nothing`
+  verify: `cargo test --locked --offline --test spec_close_cli close_refuses_and_changes_nothing`; `cargo test --locked --offline --test spec_close_cli a_trailer_of_a_longer_id_is_not_merge_evidence`
+- AC-3 (REQ-7, REQ-8): `--card`는 카드를 `done`으로 닫고 SPEC을 써요; 다른 SPEC의 카드, SPEC 없는 카드, `card done`의 거절(합쳐진 PR 없음),
+  예약 거절(모르는 generation, 다른 세션, 풀린 예약)은 원장 바이트까지 아무것도 바꾸지 않아요. 끝난 lease는 `card done`처럼 거절이 아니에요.
+  SPEC 쓰기가 `card done` 뒤에 실패하면 메시지가 `--card` 없이 다시 실행하라고 말해요.
+  verify: `cargo test --locked --offline --test spec_close_cli close_with_a_card_marks_it_done`; `cargo test --locked --offline --test spec_close_cli a_card_refusal_changes_nothing`;
+  `cargo test --locked --offline --test spec_close_cli reservation_refusals_change_nothing`; `cargo test --locked --offline --test spec_close_cli an_ended_lease_does_not_stop_the_close`;
+  `cargo test --locked --offline --test spec_close_cli a_spec_write_failure_after_card_done_names_the_next_step`
 - AC-4 (REQ-1…REQ-9): 이웃 검사.
   verify: `cargo test --locked --offline --test spec_cli`; `cargo test --locked --offline --test spec_take_cli`; `cargo test --locked --offline --test card_spec_cli`;
   `cargo test --locked --offline --test help_layout`; `cargo test --locked --offline --test product_cli`; `cargo test --locked --offline --test sdd_guidance`;
@@ -50,10 +53,10 @@ SDD 조각 SDD-8(승인된 SDD 계획 `sdd-lifecycle-plan-20261117` "Slices"): �
 
 ## Scope
 
-- write: `src/spec_close.rs`, `src/spec_take.rs`, `src/lib.rs`, `src/ops/spec.rs`, `tests/spec_close_cli.rs`, `tests/sdd_guidance.rs`,
+- write: `src/spec_close.rs`, `src/spec_take.rs`, `src/ledger/reservation.rs`, `src/lib.rs`, `src/ops/spec.rs`, `tests/spec_close_cli.rs`, `tests/sdd_guidance.rs`,
   `tests/fixtures/help/*.txt`, `docs/design-review/appendix/operations/spec.md`, `skills/moai/references/internal/sdd.md`,
   `skills/moai/references/source-manifest.json`, `.moai/specs/SPEC-20261118-spec-close/spec.md`
-- read-only: `src/spec_doc.rs`, `src/card/work.rs`, `src/card/spec_link.rs`, `src/card/dispatch.rs`, `src/apply.rs`, `src/trailers.rs`
+- read-only: `src/spec_doc.rs`, `src/card/work.rs`, `src/ledger/workflow.rs`, `src/card/spec_link.rs`, `src/card/dispatch.rs`, `src/apply.rs`, `src/trailers.rs`
 - forbidden: 실제 HOME과 원장, 네트워크, 실제 원격 저장소
 
 ## Plan
@@ -66,6 +69,9 @@ SDD 조각 SDD-8(승인된 SDD 계획 `sdd-lifecycle-plan-20261117` "Slices"): �
 
 - squash merge는 가지를 base의 조상으로 만들지 않아요 → 로컬 가지가 남아 있으면 거절되고, 메시지가 가지를 지우거나 `--base`를 보라고 말해요.
   squash 메시지가 `Moai-Spec` trailer를 버리면 trailer 검사도 실패해요.
+- 로컬 가지가 없으면 base에서 닿는 trailer 커밋 하나가 판단해요: 원격 추적 가지나 다른 클론은 보지 않아요(감사 N1).
+- `card done`은 예약 거절을 `fence_reject` 사건으로 원장에 남겨요 → `spec close`는 같은 검사(`fence_check_with`, live lease 불필요)를 읽기만으로 먼저 해서,
+  그 거절은 `card done`까지 가지 않아요. 읽기와 쓰기 사이에 다른 세션이 예약을 바꾸는 경쟁이면 `card done`이 거절하고 기록해요(D-7).
 - `--card` 뒤에 SPEC 쓰기가 실패하면(파일이 그 사이 바뀜) 카드는 이미 `done`이에요 → 메시지가 그 사실을 말해요.
 
 ## Decisions
@@ -78,12 +84,16 @@ SDD 조각 SDD-8(승인된 SDD 계획 `sdd-lifecycle-plan-20261117` "Slices"): �
 | D-4 | `--card`는 SPEC을 쓰기 전에 `card done`(그 거절 그대로)으로 닫음; 카드가 이 SPEC을 가리켜야 함 | 거절은 아무것도 바꾸지 않음; `card done`은 한 거래 | SPEC 먼저 쓰기 |
 | D-5 | 이미 `completed`인 SPEC은 거절(아무 일 없는 성공이 아님) | 두 번 닫기는 실수일 가능성이 큼 | 변화 없는 성공 |
 | D-6 | SPEC 파일은 읽은 바이트 그대로일 때만 원자적으로 바꿈(`apply::publish_replace`) | 그 사이 편집을 덮어쓰지 않음 | 그냥 쓰기 |
+| D-7 | `--card`의 예약은 `card done`과 같은 규칙으로 읽기만 해서 먼저 확인(`reservation::fence_check_with`, `need_live: false`); `card done`의 기록 동작은 그대로 | 감사 B1, 리더 선택 가: 거절이 원장을 바꾸지 않음; 끝난 lease는 `card done`도 받아들이므로 거절이 아님 | 예측 못 하는 경우를 문서로만 남기기(선택 나) |
 
 ## Result
 
 - AC-1: met — `spec_close_cli` (RED 먼저: 4 failed, `close` 없음 → usage 오류); 바뀐 바이트는 상태 줄 하나, 결과는 `--closure` 통과, HEAD 그대로.
 - AC-2: met — 같은 시험, 거절 10가지(`-`로 시작하는 기록된 base 포함)에서 임시 HOME 아래 모든 바이트가 그대로. 변이 6개 중 5개 KILLED
-  (C2는 시험을 고친 뒤 KILLED); C6(base의 `-` 검사 끄기)은 `rev-parse --end-of-options`가 같은 입력을 거절하는 동등 변이.
-- AC-3: met — 같은 시험 두 개: 가짜 `gh`로 PR을 합친 카드가 `done`; 열린 PR(`card done`의 거절), SPEC 없는 카드, 다른 SPEC의 카드, 세션 없음은 아무것도 바꾸지 않음.
+  (C2는 시험을 고친 뒤 KILLED); C6(base의 `-` 검사 끄기)은 `rev-parse --end-of-options`가 같은 입력을 거절하는 동등 변이. 감사 N3: `Moai-Spec: <ID>-extra`만
+  가진 커밋은 증거가 아니에요(`a_trailer_of_a_longer_id_is_not_merge_evidence`).
+- AC-3: met — 같은 시험 다섯 개: 가짜 `gh`로 PR을 합친 카드가 `done`; 열린 PR(`card done`의 거절), SPEC 없는 카드, 다른 SPEC의 카드, 세션 없음,
+  감사 B1의 예약 거절 세 가지(generation 2, 세션 S_B, 풀린 예약)는 원장 바이트까지 그대로; 끝난 lease는 닫힘(`card done`도 live lease를 요구하지 않음);
+  감사 N2: SPEC 폴더를 읽기 전용으로 해서 `card done` 뒤 쓰기를 실패시키면 메시지가 `--card` 없이 다시 실행하라고 하고, 그대로 하면 닫혀요.
 - AC-4: met — spec_take_cli 9, spec_cli 17, card_spec_cli 11, help_layout 10, product_cli 76, sdd_guidance 6(목록에 `close`), home_isolation_scan 16,
   git_env_scrub 3, ac_command_lint 5, `--lib` 1418, `--bin moai` 27, clippy·fmt 0, Python 39·19·25·5 OK, manifest check 0.
