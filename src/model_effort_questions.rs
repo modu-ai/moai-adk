@@ -421,11 +421,12 @@ pub fn plan(launcher: &Map<String, Value>, picks: &[Pick]) -> Result<Plan, Strin
     })
 }
 
-/// The root object of the launcher settings file; an absent file is an empty object. The entry is
-/// checked by `lstat` before it is opened, so a link, a folder or a special file is never read.
-fn read_root(path: &Path) -> Result<Map<String, Value>, String> {
+/// The bytes of the settings file, `None` when it is absent. The entry is checked by `lstat` before
+/// it is opened, so a link, a folder or a special file is never read, and a file over one MiB is
+/// refused.
+fn read_bytes(path: &Path) -> Result<Option<Vec<u8>>, String> {
     match fs::symlink_metadata(path) {
-        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(Map::new()),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(None),
         Err(_) => return Err("launcher settings cannot be read".into()),
         Ok(meta) if !meta.file_type().is_file() => {
             return Err("launcher settings must be a regular file".into())
@@ -439,6 +440,24 @@ fn read_root(path: &Path) -> Result<Map<String, Value>, String> {
     if bytes.len() as u64 > MAX_FILE_BYTES {
         return Err("launcher settings are larger than one MiB".into());
     }
+    Ok(Some(bytes))
+}
+
+/// The text of the settings file, `None` when it is absent (same rules as a plan reads it).
+pub fn read_text(path: &Path) -> Result<Option<String>, String> {
+    read_bytes(path)?
+        .map(|bytes| {
+            String::from_utf8(bytes).map_err(|_| "launcher settings must be UTF-8 text".to_string())
+        })
+        .transpose()
+}
+
+/// The root object of the launcher settings file; an absent file is an empty object. The entry is
+/// checked by `lstat` before it is opened, so a link, a folder or a special file is never read.
+fn read_root(path: &Path) -> Result<Map<String, Value>, String> {
+    let Some(bytes) = read_bytes(path)? else {
+        return Ok(Map::new());
+    };
     match serde_json::from_slice::<Value>(&bytes) {
         Ok(Value::Object(root)) => Ok(root),
         Ok(_) => Err("launcher settings must be an object".into()),
@@ -471,6 +490,38 @@ static TEMP_SERIAL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64:
 /// Writes `root` next to `path` and renames it over `path`: the mode of an existing file is kept,
 /// a new file is private to the owner.
 fn write_atomic(path: &Path, root: &Map<String, Value>) -> Result<(), String> {
+    write_text(path, &render_root(root)?)
+}
+
+/// The text a write of `root` puts into the file: pretty JSON and one newline.
+pub fn render_root(root: &Map<String, Value>) -> Result<String, String> {
+    let mut text = serde_json::to_string_pretty(&Value::Object(root.clone()))
+        .map_err(|_| "launcher settings cannot be written".to_string())?;
+    text.push('\n');
+    Ok(text)
+}
+
+/// The text of the file after the apply of `plan` on the file now at `path`: the other root keys
+/// as they are, the launcher object of the plan.
+pub fn after_text(path: &Path, plan: &Plan) -> Result<String, String> {
+    let mut next = read_root(path)?;
+    next.insert("launcher".to_string(), Value::Object(plan.after.clone()));
+    render_root(&next)
+}
+
+/// Removes the settings file when it is a regular file (never a link, folder or special file).
+pub fn remove_settings(path: &Path) -> Result<(), String> {
+    match fs::symlink_metadata(path) {
+        Ok(meta) if meta.file_type().is_file() => {
+            fs::remove_file(path).map_err(|_| "launcher settings cannot be removed".to_string())
+        }
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(()),
+        _ => Err("launcher settings must be a regular file".into()),
+    }
+}
+
+/// Writes `text` next to `path` and renames it over `path` (the rules of [`write_atomic`]).
+pub fn write_text(path: &Path, text: &str) -> Result<(), String> {
     let parent = path
         .parent()
         .ok_or_else(|| "launcher settings path has no folder".to_string())?;
@@ -484,9 +535,6 @@ fn write_atomic(path: &Path, root: &Map<String, Value>) -> Result<(), String> {
             .map(|m| m.permissions().mode() & 0o777)
             .unwrap_or(0o600)
     };
-    let mut text = serde_json::to_string_pretty(&Value::Object(root.clone()))
-        .map_err(|_| "launcher settings cannot be written".to_string())?;
-    text.push('\n');
     // The reader refuses a file over the limit, so a file that would grow past it is not written.
     if text.len() as u64 > MAX_FILE_BYTES {
         return Err("launcher settings would be larger than one MiB; nothing was changed".into());

@@ -6,12 +6,25 @@
 //! [`report`] lists the model and effort each tool and role would use. Neither function quotes
 //! saved text: a message names a key path or a fixed reason.
 
+use crate::key_vault;
 use crate::model_effort_questions::{self as questions, Change, Outcome, Plan};
 use crate::model_effort_settings::{self as settings, Choice, ROLES, TOOLS};
 use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
 use std::fs;
 use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
+
+/// The permission reference of the receipt: the person answered yes to the save question.
+const PERMISSION: &str = "user-pick:update-models";
+/// The prefix of the receipt ids of this write.
+const RECEIPT_PREFIX: &str = "models-";
+/// A receipt larger than this is not written (the reader of receipts stops at 65536 bytes).
+const RECEIPT_MAX_BYTES: usize = 60_000;
+
+fn sha(text: &str) -> String {
+    format!("{:x}", Sha256::digest(text.as_bytes()))
+}
 
 /// The user launcher settings file: `config/launcher.yaml` under the state folder of the home,
 /// the file `session.rs` reads.
@@ -145,12 +158,140 @@ pub fn stage<R: BufRead, W: Write>(home: &Path, input: &mut R, out: &mut W) -> V
     if !matches!(answer.trim().to_ascii_lowercase().as_str(), "y" | "yes") {
         return json!({"state": "declined", "changes": changes_json(&plan.changes), "unsupported": plan.kept_unsupported});
     }
-    match questions::apply(&path, &picks, &plan.digest) {
-        Ok(done) => json!({
+    save(home, &path, &picks, &plan)
+}
+
+/// The save after a yes: the receipt first (the text before the write, the hashes before and
+/// after), then the digest-bound apply, then a read back against the promised hash. No receipt
+/// means no write.
+fn save(home: &Path, path: &Path, picks: &[questions::Pick], plan: &Plan) -> Value {
+    let before = match questions::read_text(path) {
+        Ok(text) => text,
+        Err(message) => return error(&message),
+    };
+    let after = match questions::after_text(path, plan) {
+        Ok(text) => text,
+        Err(message) => return error(&message),
+    };
+    // A plan that leaves the launcher object as it is writes nothing (the apply keeps the file).
+    if questions::read_launcher(path).is_ok_and(|launcher| launcher == plan.after) {
+        return json!({"state": "unchanged", "unsupported": plan.kept_unsupported});
+    }
+    let unix_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    let id = format!("{RECEIPT_PREFIX}{unix_ms}-{}", std::process::id());
+    let receipt = json!({
+        "schema_version": 1,
+        "operation": "update.models",
+        "path": path.display().to_string(),
+        "before_text": before,
+        "before_sha256": before.as_deref().map(sha),
+        "after_sha256": sha(&after),
+        "permission_reference": PERMISSION,
+        "unix_ms": unix_ms,
+    });
+    if receipt.to_string().len() > RECEIPT_MAX_BYTES {
+        return error("the launcher settings are too large to keep a receipt (60000 bytes); nothing was changed");
+    }
+    if key_vault::write_home_receipt(home, &id, &receipt).is_err() {
+        return error("the receipt could not be written; nothing was changed");
+    }
+    let done = match questions::apply(path, picks, &plan.digest) {
+        Ok(done) => done,
+        Err(message) => return error(&message),
+    };
+    match questions::read_text(path) {
+        Ok(Some(text)) if sha(&text) == sha(&after) => json!({
             "state": "applied",
+            "receipt": id,
             "changes": changes_json(&done.changes),
             "unsupported": done.kept_unsupported,
         }),
-        Err(message) => error(&message),
+        _ => json!({
+            "state": "error",
+            "receipt": id,
+            "message": "the settings file differs from what the receipt promised; check the file",
+        }),
     }
+}
+
+fn receipt_id_ok(id: &str) -> bool {
+    id.strip_prefix(RECEIPT_PREFIX).is_some_and(|rest| {
+        !rest.is_empty()
+            && rest.len() <= 64
+            && rest.bytes().all(|b| b.is_ascii_digit() || b == b'-')
+    })
+}
+
+/// Puts the settings file back as the receipt kept it, while the file is still the file the save
+/// wrote (its hash equals the receipt's): the text before the write byte for byte, or no file when
+/// there was none. A file changed since is left alone (`skipped`, no marker). Nothing is changed
+/// when the reference, the id, the receipt or the settings path is not the one that wrote.
+pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<Value, String> {
+    if !crate::contract::permission_reference_ok(permission) {
+        return Err("permission reference required".into());
+    }
+    if !receipt_id_ok(receipt_id) {
+        return Err("unknown models receipt id".into());
+    }
+    let marker = format!("{receipt_id}.reverted");
+    if key_vault::read_home_receipt(home, &marker)?.is_some() {
+        return Err("models receipt already reverted".into());
+    }
+    let receipt =
+        key_vault::read_home_receipt(home, receipt_id)?.ok_or("models receipt not found")?;
+    if receipt["operation"] != json!("update.models") {
+        return Err("not a models receipt".into());
+    }
+    let path = settings_path(home);
+    if receipt["path"] != json!(path.display().to_string()) {
+        return Err("models receipt names another settings file".into());
+    }
+    let after_sha = receipt["after_sha256"]
+        .as_str()
+        .ok_or("models receipt is damaged")?;
+    let before = match &receipt["before_text"] {
+        Value::String(text) => Some(text.as_str()),
+        Value::Null => None,
+        _ => return Err("models receipt is damaged".into()),
+    };
+    if receipt["before_sha256"].as_str() != before.map(sha).as_deref() {
+        return Err("models receipt is damaged".into());
+    }
+    let current = questions::read_text(&path)?;
+    if current.as_deref().map(sha).as_deref() != Some(after_sha) {
+        return Ok(json!({
+            "state": "skipped",
+            "reason": "changed_since_apply",
+            "receipt": receipt_id,
+            "path": path.display().to_string(),
+        }));
+    }
+    match before {
+        Some(text) => questions::write_text(&path, text)?,
+        None => questions::remove_settings(&path)?,
+    }
+    if questions::read_text(&path)?.as_deref() != before {
+        return Err(
+            "the settings file read back differently after the revert; check the file".into(),
+        );
+    }
+    key_vault::write_home_receipt(
+        home,
+        &marker,
+        &json!({
+            "schema_version": 1,
+            "operation": "update.models_revert",
+            "receipt": receipt_id,
+            "permission_reference": permission,
+        }),
+    )?;
+    Ok(json!({
+        "state": "reverted",
+        "receipt": receipt_id,
+        "path": path.display().to_string(),
+        "file_removed": before.is_none(),
+    }))
 }
