@@ -347,17 +347,25 @@ fn close_refuses_and_changes_nothing() {
     let w = World::new();
     w.merged(true, MET);
     cases.push(("option base", w, ID, vec!["--base=--output=x"], "--base"));
-    // The SPEC is on `main` without a trailer; its branch carries unmerged work.
+    // Merged once (the trailer is on `main`), then the branch got more work, not merged.
     let w = World::new();
-    w.write_spec("login-fix", true, MET);
-    w.git(&["add", "-A"]);
-    w.commit("docs(spec): login fix");
-    w.git(&["switch", "-q", "-c", BRANCH]);
+    w.merged(true, MET);
+    w.git(&["switch", "-q", BRANCH]);
     fs::write(w.project.join("b.txt"), "b\n").unwrap();
     w.git(&["add", "-A"]);
-    w.commit(&format!("work\n\nMoai-Spec: {ID}"));
+    w.commit(&format!("more work\n\nMoai-Spec: {ID}"));
     w.git(&["switch", "-q", "main"]);
     cases.push(("unmerged branch", w, ID, vec![], "not merged"));
+    // A recorded base shaped like an option names no commit and writes nothing.
+    let w = World::new();
+    w.merged(true, MET);
+    let planted = w.home.path().join("planted.txt");
+    w.git(&[
+        "config",
+        &format!("branch.{BRANCH}.moai-base"),
+        &format!("--output={}", planted.display()),
+    ]);
+    cases.push(("option recorded base", w, ID, vec![], "not a commit"));
     // No branch and no trailer commit on the base.
     let w = World::new();
     w.write_spec("login-fix", true, MET);
