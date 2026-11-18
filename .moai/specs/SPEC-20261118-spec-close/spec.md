@@ -94,6 +94,7 @@ SDD 조각 SDD-8(승인된 SDD 계획 `sdd-lifecycle-plan-20261117` "Slices"): �
   가진 커밋은 증거가 아니에요(`a_trailer_of_a_longer_id_is_not_merge_evidence`).
 - AC-3: met — 같은 시험 다섯 개: 가짜 `gh`로 PR을 합친 카드가 `done`; 열린 PR(`card done`의 거절), SPEC 없는 카드, 다른 SPEC의 카드, 세션 없음,
   감사 B1의 예약 거절 세 가지(generation 2, 세션 S_B, 풀린 예약)는 원장 바이트까지 그대로; 끝난 lease는 닫힘(`card done`도 live lease를 요구하지 않음);
-  감사 N2: SPEC 폴더를 읽기 전용으로 해서 `card done` 뒤 쓰기를 실패시키면 메시지가 `--card` 없이 다시 실행하라고 하고, 그대로 하면 닫혀요.
+  감사 N2: SPEC 폴더를 읽기 전용으로 해서 `card done` 뒤 쓰기를 실패시키면 메시지가 `--card` 없이 다시 실행하라고 하고, 그대로 하면 닫혀요. 수리 전 코드(a74fcd13c7)에서는 새 시험 두 개가 실패했고,
+  변이 R1(예약 사전 검사 없음)·R2(live lease 요구)·C8(부분 실패 메시지)·C1(더 긴 id 인정)은 모두 KILLED.
 - AC-4: met — spec_take_cli 9, spec_cli 17, card_spec_cli 11, help_layout 10, product_cli 76, sdd_guidance 6(목록에 `close`), home_isolation_scan 16,
   git_env_scrub 3, ac_command_lint 5, `--lib` 1418, `--bin moai` 27, clippy·fmt 0, Python 39·19·25·5 OK, manifest check 0.
