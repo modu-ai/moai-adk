@@ -112,6 +112,12 @@ passed, as it pins unchanged argv), and the updated codex `-a` pins failed in `l
 - AC-6: met — `the_korean_launcher_help_names_the_entry_command` (`src/main.rs` help tests) passes after commit `dbcd46f11a`; before the `src/help.rs` rows changed it failed on `cc -leader: 리더 세션`.
 - AC-7: met — `the_top_level_flags_name_the_entry_command` passes (it failed on the old `-l, --leader` line first); `help_layout` 10 passes on the goldens rewritten with `MOAI_HELP_GOLDEN_WRITE`, whose diff is the `-l`/`-a` lines only (all.txt and all-dumb.txt 2→5 lines at :233, all-80.txt :237 and :239, all-60.txt :380 and :383; `root*.txt` unchanged).
 
+- AC-8: met — `the_root_example_names_the_entry_command` passes at 60, 80 and no `COLUMNS` after commit `58dfddca5c` (it failed before on `lead session`); `help_layout` 10 passes with the four `root*.txt` goldens changed on the `cc -l` line only (+4/−4, 59 columns, line counts 54/54/72/54 unchanged), and the root width and length tests and `--lib help::` 18 (help.rs:2684) pass unchanged.
+
+Third slice (leader decision A2, commit `58dfddca5c`): `help_layout` 10, `launcher_agent_entry` 7, `--bin moai` 28,
+`--lib help::` 18 and the nine launcher tests pass; clippy and fmt exit 0; `product_cli` still fails only
+`launcher_codex_argv`.
+
 Second slice (leader decision A, commit `dbcd46f11a`): `launcher_agent_entry` 6, `--bin moai` 28, `--lib help::` 18,
 `help_layout` 10 and the nine launcher tests pass; clippy `-D warnings` and fmt exit 0; `product_cli` still fails only
 `launcher_codex_argv`.
@@ -124,5 +130,4 @@ fmt, clippy `-D warnings`, Python `host_matrix_test`·`ci_scope_test`·`repo_sca
 `product_cli`: 75 passed, `launcher_codex_argv` fails at `tests/product_cli.rs:1272` on the old pin `:1282`; the pin at
 `:1298` needs the same prefix (file held by another change).
 
-Not run: a real host start, the full `cargo test`, Linux CI. Not done: D-4 (the `moai --help` launcher line and example,
-waiting on the leader).
+Not run: a real host start, the full `cargo test`, Linux CI. Kept as it is by design: the root launcher line (D-4).
