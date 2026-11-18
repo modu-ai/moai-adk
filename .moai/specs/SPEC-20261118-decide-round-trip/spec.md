@@ -73,4 +73,9 @@ created: 2026-11-18
 
 ## Result
 
-(구현 뒤에 채워요)
+- AC-1: met — `cargo test --locked --offline decide::transport::tests::a_prepared_request_makes_a_round_trip_for_each_provider` (RED 먼저: 5개 시험 모두 실패, exit 101, 전송 본문이 껍데기여서). 127.0.0.1의 가짜 서버가 `POST /v1/systemone`(typesafe)·`POST /v1/decisions`(openai) `HTTP/1.1`, `Authorization: Bearer <가짜 키>`, `Content-Type`, `Content-Length`, `Connection: close`와 `prepared.body()`와 같은 바이트를 받았고, `conclude()`의 `Record`가 `nextest`와 `model:typesafe/jev-test-1`·`model:openai/gpt-6-luna`를 담아요.
+- AC-2: met — 같은 실행의 `a_non_loopback_address_or_a_bad_key_is_refused_before_any_socket`과 `the_key_is_in_no_debug_output_and_no_refusal`. `192.0.2.1`·`10.0.0.1`·`[2001:db8::1]`·`0.0.0.0`은 `transport_address`로 즉시(2초 미만, 연결 대기 5초 설정에서) 거절되고, 빈 키·공백·탭·줄바꿈·NUL·비ASCII·4097바이트 키는 `key_invalid`예요. 7가지 실패 상황의 `Debug`와 이유 글에 가짜 키와 `Bearer`가 없어요.
+- AC-3: met — `a_status_other_than_200_is_a_fixed_refusal_and_a_redirect_is_not_followed`. 401·403은 `transport_unauthorized`, 429는 `transport_rate_limited`, 5xx는 `transport_server_error`, 404·204는 `transport_status`, 301·302·307은 `transport_redirect`이고, 응답 본문의 글(`SECRET-ECHO…`)이 거절 어디에도 없고, 두 번째 서버는 연결을 받지 못했어요(따라가지 않음).
+- AC-4: met — `a_response_that_is_too_big_short_early_closed_or_slow_is_refused`. 상한 초과는 `transport_too_large`(상한과 같은 크기는 통과), 본문이 짧음·일찍 닫음·`Content-Length` 없음·청크·잘못된 길이·길이 두 개·이상한 상태줄·끝나지 않는 헤더는 `transport_response`, 느린 서버는 `transport_timeout`(총 150ms 설정에서 0.9초 안에 돌아옴), 닫힌 포트는 `transport_connect`예요.
+- AC-5: partial — `decide::` 단위 시험 105 passed; `cargo clippy --offline --locked --all-targets -- -D warnings` exit 0; `cargo fmt --check` exit 0; 변이 10개를 모두 걸렀어요. `home_isolation_scan`의 `the_decide_library_has_no_external_call_names`는 `src/decide/transport.rs`의 `std::net` 2·`net::` 2·`TcpStream` 6·`TcpListener` 4에서 실패해요(그 밖의 이름·URL·프로세스 없음): 스캔 B의 예외(D-4)는 `tests/home_isolation_scan.rs`가 범위에 들어온 뒤에 더하고, 그 뒤에 이 줄을 met으로 바꿔요.
+- 남은 것: 실제 endpoint 호출과 TLS(D-2), `moai decide` 명령과 설정(CLI 조각). SPEC은 draft예요: 승인은 사용자의 선택이라 이 레인이 하지 않았어요.
