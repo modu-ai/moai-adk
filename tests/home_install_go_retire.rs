@@ -527,6 +527,25 @@ fn a_blocked_registration_digest_cannot_authorize_after_the_home_turns_ready() {
 }
 
 #[test]
+fn the_registration_apply_refuses_a_blocked_home_and_writes_nothing() {
+    // Audit N2 (M1) on #3199: the apply itself refuses, not only the preview.
+    let f = fx(false);
+    let l = ledger_plan(&f);
+    assert_eq!(l["action"], json!("blocked"), "{l}");
+    let before = tree(&f.home);
+    let a = ledger_apply(&f, l["plan_digest"].as_str().unwrap());
+    assert_eq!(a["ok"], json!(false), "{a}");
+    assert!(
+        a["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("nothing was written"),
+        "{a}"
+    );
+    assert_eq!(tree(&f.home), before);
+}
+
+#[test]
 fn an_existing_ledger_keeps_its_idempotent_registration() {
     // Codex review P2 on #3199: the new readiness guard applies only where the registration
     // would create the ledger.
@@ -537,6 +556,9 @@ fn an_existing_ledger_keeps_its_idempotent_registration() {
     assert_eq!(first["action"], json!("register"), "{first}");
     let a = result(ledger_apply(&f, first["plan_digest"].as_str().unwrap()));
     assert!(a.is_object(), "{a}");
+    // A HOME that holds only the ledger's own folder is the ledger's doing: still ready.
+    assert_eq!(generation(&f), "unknown");
+    assert_eq!(ledger_plan(&f)["action"], json!("none"));
     // Another entry appears without a generation marker or a retire record.
     write(&f.home, ".moai/logs/x.log", "x\n");
     assert_eq!(generation(&f), "unknown");
@@ -544,4 +566,44 @@ fn an_existing_ledger_keeps_its_idempotent_registration() {
     assert_eq!(again["action"], json!("none"), "{again}");
     let b = result(ledger_apply(&f, again["plan_digest"].as_str().unwrap()));
     assert_eq!(b["state"], json!("unchanged"), "{b}");
+}
+
+#[test]
+fn a_manifest_that_names_its_home_as_a_relative_path_is_not_evidence() {
+    // Audit N4 on #3199: `"home": "."` would match whatever folder the command runs in.
+    let f = fx(true);
+    retire(&f);
+    let root = f.home.join(".moai-go-retired");
+    let manifest = fs::read_dir(&root)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .find(|p| {
+            p.file_name()
+                .is_some_and(|n| n.to_string_lossy().starts_with("retire-manifest-"))
+        })
+        .unwrap();
+    let mut v: Value = serde_json::from_slice(&fs::read(&manifest).unwrap()).unwrap();
+    v["home"] = json!(".");
+    fs::write(&manifest, serde_json::to_vec(&v).unwrap()).unwrap();
+    let out = Command::new(BIN)
+        .args([
+            "home-install-plan",
+            "--home",
+            f.home.to_str().unwrap(),
+            "--now",
+            NOW,
+            "--project",
+            f.project.to_str().unwrap(),
+        ])
+        .current_dir(&f.home)
+        .env_remove("MOAI_HOME")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    let p = result(serde_json::from_slice(&out.stdout).unwrap());
+    assert_eq!(p["action"], json!("blocked"), "{p}");
+    assert!(
+        blocks(&p).contains(&"generation_unknown".to_string()),
+        "{p}"
+    );
 }

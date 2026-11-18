@@ -78,3 +78,12 @@ This SPEC lets the install preview offer the move when a finished retire is on r
 | D-3 | Opening an existing ledger keeps `check_home_ready` | a registered ledger must keep working whatever `~/.moai` holds | none needed |
 | D-5 | A retire counts as finished only when its journal is committed and every item is moved, not on the manifest alone | the manifest is written before the first rename (Codex review P2 on #3199) | accept the manifest alone |
 | D-4 | `hook-stderr.log` is named, not changed | the writer is the Go repository's hooks, outside this card's scope | a card in the Go hook set |
+
+## Result
+
+- AC-1: met — `a_retired_go_home_gets_a_movable_install_preview_and_the_move_reverts` passes: after a real retire in a temporary HOME the preview is install with a token, the apply moves the Rust items and writes the marker last, the revert restores them
+- AC-2: met — `an_unknown_home_without_a_retire_record_is_still_refused` (five variants) and `a_retire_that_did_not_finish_does_not_unlock_the_install` (pending, reverted, item not moved, journal missing) pass with unchanged bytes
+- AC-3: met — `after_the_install_readers_resolve_under_moai_and_moai_cli_stays_untouched` passes: key-status, home root and path stub resolve under the new folder, the earlier folder listing is unchanged
+- AC-4: met — `ledger_register_and_install_agree_on_home_readiness`, `a_blocked_registration_digest_cannot_authorize_after_the_home_turns_ready` and `an_existing_ledger_keeps_its_idempotent_registration` pass
+- AC-5: met — writer is the Go hook wrapper handle-*.sh (`MOAI_HOOK_STDERR_LOG` line 3); `grep -rl hook-stderr src skills` prints nothing and exits 1
+- AC-6: met — fmt, clippy -D warnings, the neighbour test files, repo_scans_test, ci_scope_test and the CI run of the PR head pass

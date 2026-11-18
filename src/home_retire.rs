@@ -62,9 +62,9 @@ pub fn finished_retire(home: &Path) -> Option<String> {
         else {
             continue;
         };
-        let same_home = v["home"]
-            .as_str()
-            .is_some_and(|h| Path::new(h) == home || canon(Path::new(h)) == chome);
+        let same_home = v["home"].as_str().is_some_and(|h| {
+            Path::new(h).is_absolute() && (Path::new(h) == home || canon(Path::new(h)) == chome)
+        });
         let Some(stamp) = v["stamp"]
             .as_str()
             .filter(|_| v["kind"] == KIND && same_home)

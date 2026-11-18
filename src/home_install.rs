@@ -584,8 +584,9 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
     if blocks.iter().any(|b| b == "generation_unknown") {
         help.push(format!(
             "{} holds {} entries but no generation marker and no finished Go retire on record; \
-             move them out of it yourself, or put back a retire with home-retire-revert, then \
-             run home-install-plan again",
+             move them out of it yourself, then run home-install-plan again; a Go retire \
+             that finished (its manifest and committed journal in ~/.moai-go-retired) unlocks \
+             the move",
             moai.display(),
             c.entries
         ));
