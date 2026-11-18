@@ -18,7 +18,7 @@ Project
   check-tree              Warn about what the tracked MoAI folders hold
   ledger-status           Show the project's ledger state
   card                    Work with the project's local cards
-  spec                    Write, check, list, show and take the project's SPECs
+  spec                    Write, check, list, show, take and close the project's SPECs
   tdd                     Record the TDD cycle that locks the RED tests during GREEN
   ledger-register-plan    Preview registering the project's ledger
   ledger-register-apply   Create the previewed project ledger

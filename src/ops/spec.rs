@@ -1,18 +1,20 @@
 //! `spec` (SDD-2, SPEC-20261117-spec-tooling): the project's SPEC documents under
 //! `<project>/.moai/specs/<SPEC-ID>/spec.md`. One word, one action each; the parser and the
-//! checks are `moai_cli::spec_doc`. Only `take` runs a program (`moai_cli::spec_take`, SDD-7),
-//! and only `take --push` and `take --draft-pr` reach the network.
+//! checks are `moai_cli::spec_doc`. Only `take` (`moai_cli::spec_take`, SDD-7) and `close`
+//! (`moai_cli::spec_close`, SDD-8) run a program (git; `gh` with `take --draft-pr`), and only
+//! `take --push` and `take --draft-pr` reach the network.
 
 use moai_cli::spec_doc::{self as sd, specs_dir, SpecDoc};
 use serde_json::{json, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Write, check, list, show and take the project's SPECs
+/// Write, check, list, show, take and close the project's SPECs
 ///
 /// `moai spec <action>` works on `<project>/.moai/specs/<SPEC-ID>/spec.md`, a SPEC id being
 /// `SPEC-<yyyymmdd>-<slug>`. `new` writes one new SPEC folder and its `spec.md` and nothing
-/// else; `check`, `list` and `show` read only; `take` creates or switches to the SPEC's branch.
+/// else; `check`, `list` and `show` read only; `take` creates or switches to the SPEC's branch;
+/// `close` sets a merged SPEC's status to `completed`.
 /// Go-generation SPECs (`SPEC-AUTH-001`) are read, never written. Only `take --push` and
 /// `take --draft-pr` reach the network.
 #[derive(clap::Args)]
@@ -131,6 +133,36 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the SPEC. Close an approved SPEC whose work is merged
+    ///
+    /// Writes the SPEC. Checks that the SPEC has status `approved` (a draft waits for the user's
+    /// approval) and no error, that its work is merged (its local branch, if any, is reachable
+    /// from the base, and a commit reachable from the base carries `Moai-Spec: <id>`), and that
+    /// it passes `spec check --closure` once completed. Then `--card` closes the card through
+    /// `card done`, with that command's refusals (its reservation is checked first, read only,
+    /// as `card done` checks it; an ended lease is no refusal), and the status line becomes `completed`;
+    /// nothing else in the file changes. Every refusal changes nothing. Commits and pushes
+    /// nothing: the commit command is printed.
+    Close {
+        /// The SPEC id.
+        id: String,
+        /// The branch or commit the work must be merged into (default: the base `spec take`
+        /// recorded, else the current branch).
+        #[arg(long)]
+        base: Option<String>,
+        /// Close this card (C-number, naming this SPEC) through `card done`, as this session.
+        #[arg(long, requires = "generation")]
+        card: Option<String>,
+        /// The generation this session holds the card at (`card take` answered it).
+        #[arg(long, requires = "card")]
+        generation: Option<i64>,
+        /// The project folder.
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME whose ledger `--card` writes (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
 }
 
 pub const OPERATION: &str = "spec";
@@ -189,6 +221,22 @@ pub fn run(args: Args) -> Result<Value, String> {
                 gh: &gh,
             })
         }
+        Action::Close {
+            id,
+            base,
+            card,
+            generation,
+            project,
+            home,
+        } => moai_cli::spec_close::close(&moai_cli::spec_close::Request {
+            project: &project,
+            id: &id,
+            base: base.as_deref(),
+            card: card.as_deref(),
+            generation,
+            home: home.as_deref(),
+            get: |name: &str| std::env::var(name).ok(),
+        }),
     }
 }
 

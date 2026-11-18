@@ -81,7 +81,7 @@ fn refuse(why: impl std::fmt::Display) -> String {
 /// redirects are removed; the user's own configuration stays, since a switch and a push must
 /// behave as the user's git does (line endings, credential helpers, URL rewrites). git never
 /// asks on the terminal: a push that needs a password fails instead of waiting.
-fn git(dir: &Path, args: &[&str]) -> Result<String> {
+pub(crate) fn git(dir: &Path, args: &[&str]) -> Result<String> {
     git_raw(dir, args).map(|s| s.trim().to_string())
 }
 
@@ -131,7 +131,7 @@ pub fn branch_of(id: &str) -> Option<String> {
 }
 
 /// A value shown in a printed command: single-quoted when it holds anything but a plain word.
-fn quoted(s: &str) -> String {
+pub(crate) fn quoted(s: &str) -> String {
     if !s.is_empty()
         && s.bytes()
             .all(|b| b.is_ascii_alphanumeric() || b"-_./:".contains(&b))
@@ -382,7 +382,7 @@ pub fn take(r: &Request<'_>) -> Result<Value> {
 }
 
 /// Text shown in a message: anything but ASCII letters, digits and `-_./` reads `?`.
-fn shown(s: &str) -> String {
+pub(crate) fn shown(s: &str) -> String {
     s.chars()
         .map(|c| {
             if c.is_ascii_alphanumeric() || "-_./".contains(c) {
