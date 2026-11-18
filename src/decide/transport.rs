@@ -590,8 +590,8 @@ mod tests {
             const HAS_DISPLAY: bool = true;
         }
         // The probe sees `Display` on a type that has it, and not on the key.
-        assert!(Probe::<String>::HAS_DISPLAY);
-        assert!(!Probe::<ApiKey>::HAS_DISPLAY);
+        assert!(std::hint::black_box(Probe::<String>::HAS_DISPLAY));
+        assert!(!std::hint::black_box(Probe::<ApiKey>::HAS_DISPLAY));
     }
 
     #[test]
