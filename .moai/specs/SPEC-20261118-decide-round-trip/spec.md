@@ -42,11 +42,11 @@ created: 2026-11-18
 - AC-4 (REQ-6, REQ-8): 크기 상한 초과, 본문이 짧음, 일찍 닫음, 느린 서버가 각각 고정된 코드의 거절이에요.
   verify: `cargo test --locked --offline decide::transport::tests::a_response_that_is_too_big_short_early_closed_or_slow_is_refused`
 - AC-5 (REQ-1…REQ-9): 이웃 검사.
-  verify: `cargo test --locked --offline decide::`; `cargo test --locked --offline --test home_isolation_scan`; `cargo clippy --offline --locked --all-targets -- -D warnings`; `cargo fmt --check`
+  verify: `cargo test --locked --offline decide::`; `cargo test --locked --offline --test home_isolation_scan`; `cargo test --locked --offline --test home_isolation_scan the_decide_scan_allows_the_four_socket_names_in_the_sending_file_only`; `cargo test --locked --offline --test home_isolation_scan the_sending_file_checks_the_address_before_it_connects`; `cargo clippy --offline --locked --all-targets -- -D warnings`; `cargo fmt --check`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261118-decide-round-trip/spec.md`, `src/decide/transport.rs`, `src/decide/mod.rs`(모듈 한 줄), 그리고 리더가 범위에 넣어 주면 `tests/home_isolation_scan.rs`(스캔 B에 `src/decide/transport.rs` 한 파일의 예외)
+- write: `.moai/specs/SPEC-20261118-decide-round-trip/spec.md`, `src/decide/transport.rs`, `src/decide/mod.rs`(모듈 한 줄과 머리 주석), `tests/home_isolation_scan.rs`(스캔 B에 `src/decide/transport.rs` 한 파일·네 이름의 예외와 그 시험; 리더가 범위에 넣었어요)
 - read-only: `src/decide/provider.rs`, `src/decide/outbound.rs`, `src/key_vault.rs`
 - forbidden: 실제 endpoint·실제 키·실제 HOME의 보관함, 루프백 밖 네트워크, 새 의존성
 
@@ -69,7 +69,7 @@ created: 2026-11-18
 | D-1 | 루프백이 아닌 주소는 소켓을 열기 전에 거절해요 | 키가 든 요청이 이 조각에서 기계 밖으로 나갈 길이 없게 하려는 거예요; `provider.rs`는 엔드포인트를 컴파일 시간 상수로 두어 요청을 다른 호스트로 돌릴 수 없게 했고, 같은 원칙이에요 | 다음 조각이 TLS 전송을 더할 때 함수를 따로 만들고 이 함수는 그대로 둬요 |
 | D-2 | 새 의존성을 넣지 않고 표준 라이브러리 `TcpStream`만 써요 | 가짜 `127.0.0.1` 서버와의 왕복에는 충분해요. 실제 endpoint는 https라서 TLS가 필요한데 표준 라이브러리에 없어요; 다음 조각(V5 감사 뒤)이 `ureq`+`rustls`, `reqwest`(blocking), 시스템 `curl` 실행(프로세스 스캔 금지와 부딪힘) 중에서 고르고 이유와 대안을 그 SPEC에 적어요 | 없음(의존성 변경 없음) |
 | D-3 | 응답은 `Content-Length`가 있는 것만 읽고, 청크 전송·리다이렉트·재시도는 하지 않아요 | 읽는 코드를 작게 두어 감사가 쉽고, 처음 보는 응답 모양은 거절(리더가 결정)로 떨어지는 쪽이 안전해요 | 실제 서버가 청크로 답하면 다음 조각에서 해석을 더해요 |
-| D-4 | 스캔 B의 예외는 `src/decide/transport.rs` 한 파일의 `std::net` 계열 이름만이에요 | 스캔 주석이 "S4는 보내는 한 곳이고 자기 예외를 갖는다"고 적어 둬서 그 약속대로예요; 카드 범위에 `tests/home_isolation_scan.rs`가 없어서 리더의 범위 결정(카드 노트)을 기다려요 | 예외를 지우면 소켓 코드도 함께 지워야 해요 |
+| D-4 | 스캔 B의 예외는 `src/decide/transport.rs` 한 파일의 `std::net`·`net::`·`TcpStream`·`TcpListener` 네 이름만이에요 | 스캔 주석이 "S4는 보내는 한 곳이고 자기 예외를 갖는다"고 적어 둬서 그 약속대로예요; 예외는 `std::net`·`net::`·`TcpStream`·`TcpListener` 네 이름과 그 한 파일뿐이에요; 리더가 카드 범위에 `tests/home_isolation_scan.rs`를 넣는 것을 승인했어요(2026-11-18, 카드 노트 2214 뒤) | 예외를 지우면 소켓 코드도 함께 지워야 해요 |
 
 ## Result
 
@@ -77,5 +77,5 @@ created: 2026-11-18
 - AC-2: met — 같은 실행의 `a_non_loopback_address_or_a_bad_key_is_refused_before_any_socket`과 `the_key_is_in_no_debug_output_and_no_refusal`. `192.0.2.1`·`10.0.0.1`·`[2001:db8::1]`·`0.0.0.0`은 `transport_address`로 즉시(2초 미만, 연결 대기 5초 설정에서) 거절되고, 빈 키·공백·탭·줄바꿈·NUL·비ASCII·4097바이트 키는 `key_invalid`예요. 7가지 실패 상황의 `Debug`와 이유 글에 가짜 키와 `Bearer`가 없어요.
 - AC-3: met — `a_status_other_than_200_is_a_fixed_refusal_and_a_redirect_is_not_followed`. 401·403은 `transport_unauthorized`, 429는 `transport_rate_limited`, 5xx는 `transport_server_error`, 404·204는 `transport_status`, 301·302·307은 `transport_redirect`이고, 응답 본문의 글(`SECRET-ECHO…`)이 거절 어디에도 없고, 두 번째 서버는 연결을 받지 못했어요(따라가지 않음).
 - AC-4: met — `a_response_that_is_too_big_short_early_closed_or_slow_is_refused`. 상한 초과는 `transport_too_large`(상한과 같은 크기는 통과), 본문이 짧음·일찍 닫음·`Content-Length` 없음·청크·잘못된 길이·길이 두 개·이상한 상태줄·끝나지 않는 헤더는 `transport_response`, 느린 서버는 `transport_timeout`(총 150ms 설정에서 0.9초 안에 돌아옴), 닫힌 포트는 `transport_connect`예요.
-- AC-5: partial — `decide::` 단위 시험 105 passed; `cargo clippy --offline --locked --all-targets -- -D warnings` exit 0; `cargo fmt --check` exit 0; 변이 10개를 모두 걸렀어요. `home_isolation_scan`의 `the_decide_library_has_no_external_call_names`는 `src/decide/transport.rs`의 `std::net` 2·`net::` 2·`TcpStream` 6·`TcpListener` 4에서 실패해요(그 밖의 이름·URL·프로세스 없음): 스캔 B의 예외(D-4)는 `tests/home_isolation_scan.rs`가 범위에 들어온 뒤에 더하고, 그 뒤에 이 줄을 met으로 바꿔요.
+- AC-5: met — `decide::` 단위 시험 105 passed(`cargo test --locked --offline --lib decide::`); `home_isolation_scan` 18 passed(예외 시험 `the_decide_scan_allows_the_four_socket_names_in_the_sending_file_only`는 RED 먼저: 2 failed, exit 101, 그 뒤 GREEN)이고 `project_decide_model` 4 passed; `cargo clippy --offline --locked --all-targets -- -D warnings` exit 0; `cargo fmt --check` exit 0. 변이: `transport.rs` 10개와 스캔·가드 5개를 모두 걸렀고, 가드의 글자만 남기고 동작을 끈 변이는 스캔 시험이 아니라 `transport` 단위 시험이 걸러요. Python `repo_scans_test`·`ci_scope_test`의 19 실패는 모두 `moai-cli not built at …/target/debug/moai-cli`(이 작업 폴더가 빌드 폴더를 따로 써서)이고 CI에서 확인할 몫이에요.
 - 남은 것: 실제 endpoint 호출과 TLS(D-2), `moai decide` 명령과 설정(CLI 조각). SPEC은 draft예요: 승인은 사용자의 선택이라 이 레인이 하지 않았어요.
