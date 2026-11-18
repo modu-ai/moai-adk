@@ -90,17 +90,7 @@ fn fx(go_state: bool) -> Fx {
     }
     let pdir = tempfile::tempdir().unwrap();
     let project = fs::canonicalize(pdir.path()).unwrap();
-    let ok = Command::new("git")
-        .args(["init", "-q"])
-        .current_dir(&project)
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .unwrap()
-        .success();
-    assert!(ok, "git init");
+    common::git::git_ok(&project, &["init", "-q"]);
     write(
         &project,
         ".moai-cli/project.yaml",
