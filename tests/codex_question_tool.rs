@@ -67,6 +67,55 @@ fn urls(sec: &str) -> Vec<String> {
         .collect()
 }
 
+/// Every `- sha256: <64 hex> (fetched <UTC>, <n> bytes)` line of a section, as (hash, fetch time).
+fn checksums(sec: &str) -> Vec<(String, String)> {
+    sec.lines()
+        .filter_map(|l| l.trim().strip_prefix("- sha256: "))
+        .map(|rest| {
+            let hash = rest.split_whitespace().next().unwrap_or("").to_string();
+            let when = rest
+                .split("(fetched ")
+                .nth(1)
+                .and_then(|t| t.split([',', ')']).next())
+                .unwrap_or("")
+                .to_string();
+            (hash, when)
+        })
+        .collect()
+}
+
+/// AGENTS.md rule 4 (authority 4): a source is used only with its source, retrieval time and
+/// checksum recorded. Every source entry carries the sha256 of the bytes fetched, and two entries
+/// of the same source carry the same hash.
+#[test]
+fn research_note_records_a_checksum_for_every_source_it_cites() {
+    let text = research();
+    for heading in ["Codex CLI", "OMP"] {
+        let sec = section(&text, heading);
+        let found = urls(&sec);
+        let sums = checksums(&sec);
+        assert_eq!(
+            found.len(),
+            sums.len(),
+            "{heading}: every `- url:` needs its own `- sha256:` line"
+        );
+        let mut seen: std::collections::HashMap<&str, &str> = std::collections::HashMap::new();
+        for (u, (hash, when)) in found.iter().zip(&sums) {
+            assert!(
+                hash.len() == 64 && hash.bytes().all(|c| matches!(c, b'0'..=b'9' | b'a'..=b'f')),
+                "{heading}: {hash:?} is not a lowercase sha256"
+            );
+            assert!(is_utc_time(when), "{heading}: fetch time {when:?}");
+            let prior = seen.entry(u.as_str()).or_insert(hash.as_str());
+            assert_eq!(
+                *prior,
+                hash.as_str(),
+                "{heading}: {u} has two different hashes"
+            );
+        }
+    }
+}
+
 /// AC-1 (card criterion 1): each host's facts carry a source URL and the UTC read time.
 #[test]
 fn research_note_quotes_each_host_from_its_source_with_url_and_read_time() {
