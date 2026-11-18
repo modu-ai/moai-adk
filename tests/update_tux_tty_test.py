@@ -138,9 +138,13 @@ class UpdateScreens(unittest.TestCase):
     def test_yes_applies_and_ends_with_the_project_step(self):
         """U-4 and U-9: `y` writes, the end screen says what changed and sends each project to
         its own session's /moai update; a second run is all up to date with the same step."""
-        text, code = run_pty(["update"], self.env, self.work, answer=b"y\n")
+        # Card C-47: an update that wrote files goes on to the model stage, which asks the tool pick;
+        # the Ctrl-D after the yes ends that question as cancelled, so nothing more is written.
+        text, code = run_pty(["update"], self.env, self.work, answer=b"y\n\x04")
         self.assertEqual(code, 0, text)
         self.assertTrue(os.path.isfile(self.skill_file()), text)
+        self.assertIn("Which coding tools do you want to set up?", text)
+        self.assertNotIn("launcher.yaml", "".join(tree(self.home)), "the cancelled pick saves nothing")
         flat = text.replace("\n  ", " ").replace(" ", " ")
         self.assertIn("Done", text)
         self.assertIn("run /moai update in a session there", flat)
