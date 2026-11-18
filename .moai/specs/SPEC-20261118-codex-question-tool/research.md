@@ -29,11 +29,11 @@ Source kind: the official Codex documentation at `learn.chatgpt.com/docs` (the o
 
 ### Modes and the feature flag
 
-- quote: `pub const fn allows_request_user_input(self) -> bool { matches!(self, Self::Plan) }`
+- quote: `pub const fn allows_request_user_input(self) -> bool { matches!(self, Self::Plan) }` (the source breaks this over several lines; the line breaks are joined here)
 - url: https://raw.githubusercontent.com/openai/codex/rust-v0.170.0/codex-rs/protocol/src/config_types.rs
 - read: 2026-11-18T06:15:06Z
 - kind: source
-- quote: `mode.allows_request_user_input() || (features.enabled(Feature::DefaultModeRequestUserInput) && *mode == ModeKind::Default)`
+- quote: `mode.allows_request_user_input() || (features.enabled(Feature::DefaultModeRequestUserInput) && *mode == ModeKind::Default)` (the source breaks this over several lines; the line breaks are joined here)
 - url: https://raw.githubusercontent.com/openai/codex/rust-v0.170.0/codex-rs/tools/src/tool_config.rs
 - read: 2026-11-18T06:15:03Z
 - kind: source
@@ -50,9 +50,17 @@ So the key is `features.default_mode_request_user_input`, default: false, stage:
 - url: https://raw.githubusercontent.com/openai/codex/rust-v0.170.0/codex-rs/collaboration-mode-templates/templates/default.md
 - read: 2026-11-18T06:14:59Z
 - kind: source
-- quote: `"request_user_input was cancelled before receiving a response"` — and a client or connection error makes the app server submit an empty answer map, which the tool returns as a success with no answers; the core has no timeout of its own.
+- quote: `"{REQUEST_USER_INPUT_TOOL_NAME} was cancelled before receiving a response"` (a format string over the tool-name constant, so the model reads `request_user_input was cancelled before receiving a response`)
+- url: https://raw.githubusercontent.com/openai/codex/rust-v0.170.0/codex-rs/core/src/tools/handlers/request_user_input.rs
+- read: 2026-11-18T06:22:50Z
+- kind: source
+- quote: `rx_response.await.ok()` (line 3720) — the core waits for the answer with no timeout of its own.
 - url: https://raw.githubusercontent.com/openai/codex/rust-v0.170.0/codex-rs/core/src/session/mod.rs
-- read: 2026-11-18T06:15:15Z
+- read: 2026-11-18T06:22:50Z
+- kind: source
+- quote: `error!("request failed with client error: {err:?}"); let empty = CoreRequestUserInputResponse { answers: HashMap::new(), };` (lines 1721-1727) — when the client request fails, the app server submits an empty answer map.
+- url: https://raw.githubusercontent.com/openai/codex/rust-v0.170.0/codex-rs/app-server/src/bespoke_event_handling.rs
+- read: 2026-11-18T06:22:51Z
 - kind: source
 
 This is why a case-(2) question must not go on by best judgment when nothing comes back (`questions.md` rule 3): Codex's own text asks for the opposite.
@@ -67,9 +75,9 @@ This is why a case-(2) question must not go on by best judgment when nothing com
 - url: https://raw.githubusercontent.com/openai/codex/rust-v0.170.0/codex-rs/exec/src/lib.rs
 - read: 2026-11-18T06:15:15Z
 - kind: source
-- quote: `"request_user_input can only be used by the root thread"`
-- url: https://raw.githubusercontent.com/openai/codex/rust-v0.170.0/codex-rs/core/src/session/mod.rs
-- read: 2026-11-18T06:15:04Z
+- quote: `"request_user_input can only be used by the root thread"` (line 69; the restriction flag `root_capabilities_restricted` is set for non-root agents in `core/src/session/mod.rs:1010`)
+- url: https://raw.githubusercontent.com/openai/codex/rust-v0.170.0/codex-rs/core/src/tools/handlers/request_user_input.rs
+- read: 2026-11-18T06:22:50Z
 - kind: source
 
 `codex exec` and a subagent cannot use the dialog; `questions.md` sends those to the plain-text fallback.
@@ -123,8 +131,12 @@ So a form left unanswered is submitted with whatever the model preselected: that
 
 ### Print mode, RPC and subagents
 
-- quote: `const isInteractive = !parsedArgs.print && !autoPrint && parsedArgs.mode === undefined;` and `return (session.canPromptUser ?? session.hasUI) || session.advertiseHeadlessAsk ? new AskTool(session) : null;` — in print mode the tool is not offered; a call without a UI throws `ToolAbortError("Ask tool requires interactive mode")`.
+- quote: `const isInteractive = !parsedArgs.print && !autoPrint && parsedArgs.mode === undefined;` — in print mode there is no UI.
 - url: /src/main.ts
+- read: 2026-11-18T06:14:28Z
+- kind: source
+- quote: `return (session.canPromptUser ?? session.hasUI) || session.advertiseHeadlessAsk ? new AskTool(session) : null;` (line 371) — without a UI the tool is not offered; a call without one throws `ToolAbortError("Ask tool requires interactive mode")` (line 402).
+- url: /src/tools/ask.ts
 - read: 2026-11-18T06:14:28Z
 - kind: source
 - quote: `"In `rpc-ui`, tool UI such as `ask` still sends `extension_ui_request` frames for the host to answer."`
