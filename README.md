@@ -2,7 +2,7 @@
 
 **English** · [한국어](README.ko.md)
 
-MoAI ADK is an open-source development kit that runs one workflow (read → plan → run → verify → audit → sync) inside Claude Code and Codex through a single shared `moai` skill, with GitHub Issues as the work ledger.
+MoAI ADK is an open-source development kit that runs one workflow (read → plan → run → verify → audit → sync) inside Claude Code and Codex through a single shared `moai` skill, with the project's local cards as the work ledger.
 
 > **Status: release candidate, not yet released.** This branch (`v2026.11.0`) holds the Rust generation, version `2026.11.0-rc.1` (command `moai`). No release assets are published for it yet. The stable release today is the Go 3.x generation on the [`main`](https://github.com/modu-ai/moai-adk/tree/main) branch ([releases](https://github.com/modu-ai/moai-adk/releases)).
 
@@ -14,17 +14,17 @@ Developers and teams who build software with Claude Code or Codex and want every
 
 ```mermaid
 flowchart LR
-    I["GitHub Issue<br/>design and scope"] --> C["Claim"]
+    I["SPEC and card<br/>design and scope"] --> C["Take the card"]
     C --> W["Isolated worktree"]
     W --> R["Implement"]
     R --> V["Verify: run the checks,<br/>record exit codes"]
-    V --> P["Pull request<br/>Refs #issue"]
+    V --> P["Pull request<br/>Moai-Spec trailer"]
     P --> A["Independent audit<br/>by another session"]
     A --> S["moai/audit status<br/>on the exact head"]
     S --> M["Merge"]
 ```
 
-- **One Issue, one session.** Each Issue is the design; its report comment is the state.
+- **One card, one session.** The SPEC is the design; the card and its notes are the state.
 - **No unobserved claims.** A check counts as passed only when its command ran and its output was read. Checks that did not run are reported as `not_run`, never as passed.
 - **Independent audit.** A session other than the author reviews the exact head commit. The branch ruleset requires the `moai/audit` commit status before a pull request can merge.
 
@@ -87,7 +87,7 @@ Adding the `moai` skill to a project and these first-run requests have **not bee
 - RC1 implementation language: Rust; binary names `moai` and its alias `moai-cli`
 - RC1 version: `2026.11.0-rc.1` (prerelease, not yet released)
 - RC1 target hosts: Claude Code and Codex on macOS arm64 (host end-to-end tests `not_run`)
-- Work ledger: GitHub Issues; merge gate: the `moai/audit` commit status
+- Work ledger: local cards (`moai card`); merge gate: the `moai/audit` commit status
 - Previous generation: Go `moai` 3.x on the `main` branch
 - Website: https://adk.mo.ai.kr (currently documents the Go 3.x generation)
 

@@ -4142,3 +4142,60 @@ fn generation_manifest_entries_carry_kind() {
         .collect();
     assert_eq!(tag_partition, kind_partition);
 }
+
+// SPEC-20261118-card-ledger-wording: the base agents, the README and the decisions table say the
+// work ledger is the local card ledger. Only text files of the repository are read.
+fn repo_text(rel: &str) -> String {
+    fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(rel))
+        .unwrap_or_else(|e| panic!("{rel}: {e}"))
+}
+
+#[test]
+fn card_ledger_wording_decision_row_replaces_the_forge_only_row() {
+    let text = repo_text("docs/decisions-2026-11-08.md");
+    let row = text
+        .lines()
+        .find(|l| l.starts_with("| ") && l.contains("(11-16)") && l.contains("작업 원장"))
+        .expect("a 11-16 row about the work ledger");
+    assert!(row.contains("#2384"), "the row names the replaced decision");
+    assert!(row.contains("대체"), "the row says it replaces it");
+    assert!(row.contains("moai card"), "the row names the card ledger");
+}
+
+#[test]
+fn card_ledger_wording_base_agents_name_cards_not_issues() {
+    for name in ["plan", "impl", "docs"] {
+        let rel = format!("agents/{name}.md");
+        let text = repo_text(&rel);
+        assert!(
+            !text.contains("Issue"),
+            "{rel} still names an Issue as the unit of work"
+        );
+        let result = text
+            .lines()
+            .find(|l| l.starts_with(&format!("`RESULT {name} ")))
+            .unwrap_or_else(|| panic!("{rel}: a RESULT line"));
+        assert!(
+            result.contains("card"),
+            "{rel}: the RESULT line names a card"
+        );
+    }
+}
+
+#[test]
+fn card_ledger_wording_readme_says_cards_and_keeps_the_gate() {
+    let text = repo_text("README.md");
+    assert!(
+        text.contains("local cards as the work ledger"),
+        "the README opening names the local card ledger"
+    );
+    assert!(
+        !text.contains("GitHub Issues as the work ledger")
+            && !text.contains("Work ledger: GitHub Issues")
+            && !text.contains("GitHub Issue<br/>"),
+        "no GitHub Issue ledger wording is left"
+    );
+    assert!(text.contains("- **One card, one session.**"));
+    assert!(text.contains("Work ledger: local cards (`moai card`)"));
+    assert!(text.contains("merge gate: the `moai/audit` commit status"));
+}
