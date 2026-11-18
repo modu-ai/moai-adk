@@ -72,3 +72,15 @@ created: 2026-11-18
 | D-2 | rc.1 기록(옛 번호 예시)은 문서에 남겨요 | 리허설 기록이라 지우면 근거가 사라져요 | 모두 새 번호로 고쳐 쓰기 |
 | D-4 | `docs/local-rc1-kit.md`는 시험으로 읽지 않고 `rg` 확인 명령으로 검증해요 | 문서를 읽는 시험은 `tools/ci_scope.py` 거부 목록에 그 경로가 있어야 하고(`ci_scope_test`가 요구해요) 그 파일은 이 카드 범위 밖이에요 | 범위를 넓혀 거부 목록에 한 줄 추가 후 시험으로 고정(후속) |
 | D-3 | seq 3은 Result에서 "이 SPEC 밖"으로 적어요 | 리더 지시(사용자 결정 대기) | withdrawn |
+
+## Result
+
+C-67 seq 3 (release workflow, tag numbers, CI number rule) is outside this SPEC: it waits for the user's decisions D5 and D6 and nothing under `.github/` or any tag was touched.
+
+- AC-1: met — RED first: `InstallShTest.test_help_examples_and_channel_name_the_headver_scheme` failed on the old text (`'--version 4.2647.12' not found`), passes after the edit; reverting the example in `install/install.sh` makes it fail again (mutant M2 caught).
+- AC-2: met — `HeadVerTextTest` reads both scripts as text (RED first: 2 failures, `install.sh` and `install.ps1`); the pwsh run of the same help test passes on this Mac (`InstallPs1Test`, 3 new tests OK); reverting the ps1 channel wording fails `HeadVerTextTest` (mutant M3 caught).
+- AC-3: met — `test_headver_versions_install_and_the_channel_follows_the_prerelease_flag` passes on sh and pwsh (stable takes `4.2646.9`, rc takes `4.2647.12`, `v` and `moai-cli-v` prefixes land in `versions/4.2647.12`); removing the pre-release check from `pick_version` fails it (mutant M1 caught). It pins existing behaviour, so it was green before the edit.
+- AC-4: met — `test_the_feed_has_no_prerelease_mark_so_the_newest_headver_release_is_taken` passes on sh and pwsh; a `pick_version` that skips `4.*` tags fails it (mutant M5 caught). The limitation (the feed cannot tell a HeadVer candidate) is in `docs/release-checklist.md` (a-2) and in the script comments.
+- AC-5: met — `HeadVerDocsTest.test_release_checklist_names_headver` (RED first, then green); dropping the "Atom 피드" sentence fails it (mutant M4 caught).
+- AC-6: met — `rg -c` with the three patterns of the verify line prints 3 on `docs/local-rc1-kit.md` (section 8). Not pinned by a test: a test reading that path needs `tools/ci_scope.py`, outside the Scope (D-4).
+- AC-7: met — `python3 -m unittest tests.github_assets_test tests.ci_scope_test tests.support_matrix_test` 65 OK; `tests.install_script_test` 120 run, 1 failure, 13 skipped: the failure is `InstallPs1Test.test_the_locale_is_read_from_lc_all_then_lc_messages_then_lang`, which fails the same way on the unchanged primary checkout (`1d49d55062`, `LANG=en_US.UTF-8`), so it is this Mac's pwsh locale, not this change; `git diff --name-only origin/v2026.11.0...HEAD` lists only the six Scope paths. `shellcheck` is not installed locally: the CI result is the check, not run here.
