@@ -35,13 +35,6 @@ fn error(message: &str) -> Value {
     json!({"state": "error", "message": message})
 }
 
-fn is_supported(tool: &str, choice: &Choice) -> bool {
-    settings::supported(tool).is_some_and(|rows| {
-        rows.iter()
-            .any(|r| r.id == choice.model && r.efforts.contains(&choice.effort.as_str()))
-    })
-}
-
 /// The model and effort each tool and role would use: the saved value when the support table
 /// lists it, else the default, with the source, and the saved entries outside the table by key
 /// path. An unusable settings file is the state `error`.
@@ -57,8 +50,8 @@ pub fn report(home: &Path) -> Value {
     let mut values = Vec::new();
     for tool in TOOLS {
         for role in ROLES {
-            let saved = settings::saved_choice(&launcher, tool, role)
-                .filter(|choice| is_supported(tool, choice));
+            // `saved_choice` answers only a supported entry.
+            let saved = settings::saved_choice(&launcher, tool, role);
             let source = if saved.is_some() { "saved" } else { "default" };
             let Some(choice) = saved.or_else(|| settings::default_choice(tool, role)) else {
                 continue;

@@ -409,6 +409,40 @@ fn in_a_terminal_an_applied_update_asks_the_model_stage_and_saves_after_a_yes() 
     );
 }
 
+// A scripted run (`--confirm`) asks nothing, also on a terminal: the model stage is for the
+// person who answered the update question (card C-47, SPEC-20261118-update-model-pick).
+#[cfg(target_os = "macos")]
+#[test]
+fn in_a_terminal_a_confirmed_update_asks_no_model_question() {
+    let f = fx();
+    let a = install_version(&f.home, "a", &v1());
+    let p = preview(&a, &f.home);
+    let out = Command::new("/usr/bin/script")
+        .args(["-q", "/dev/null"])
+        .arg(&a)
+        .args(["update", "--confirm", &digest(&p)])
+        .clean_env()
+        .env("PATH", "/usr/bin:/bin")
+        .env("HOME", &f.home)
+        .env("LC_ALL", "C")
+        .current_dir(&f.home)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output()
+        .unwrap();
+    let text = String::from_utf8_lossy(&out.stdout).to_string();
+    assert!(
+        f.home.join(".claude/skills/moai/SKILL.md").is_file(),
+        "{text}"
+    );
+    assert!(
+        !text.contains(&moai_cli::model_effort_questions::tool_question(&[]).prompt),
+        "{text}"
+    );
+    assert!(!text.contains("Save these model settings"), "{text}");
+}
+
 // A confirmation piped in without a terminal is not a confirmation: only `--confirm`
 // applies outside a terminal.
 #[test]
