@@ -212,7 +212,7 @@ impl GoFx {
         let detect = self.call(&["project-detect", self.p()], b"");
         let profile = json!({
             "schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
-            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"],
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude", "codex", "omp"],
             "detected": detect["detected"],
         });
         let plan = self.call(

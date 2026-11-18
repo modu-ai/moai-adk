@@ -9,8 +9,12 @@ use std::process::{Command, Stdio};
 use tempfile::TempDir;
 
 /// The tool names the row offers and the profile value each one records.
-const OFFERED: [(&str, &str); 2] = [("Claude Code", "claude"), ("Codex CLI", "codex")];
-const NOT_YET: [(&str, &str); 3] = [("OMP", "omp"), ("Kiro", "kiro"), ("Cursor CLI", "cursor")];
+const OFFERED: [(&str, &str); 3] = [
+    ("Claude Code", "claude"),
+    ("Codex CLI", "codex"),
+    ("OMP", "omp"),
+];
+const NOT_YET: [(&str, &str); 2] = [("Kiro", "kiro"), ("Cursor CLI", "cursor")];
 
 fn hosts_row() -> String {
     let text = std::fs::read_to_string(concat!(
@@ -56,6 +60,11 @@ fn hosts_question_offers_exactly_the_hosts_the_profile_accepts() {
         assert_eq!(plan(&[value])["ok"], json!(true), "{value}");
     }
     assert_eq!(plan(&["claude", "codex"])["ok"], json!(true));
+    // All three can be picked together (SPEC-20261118-profile-host-omp AC-2), and the row says
+    // so: a multi-select with the host this session runs in recommended.
+    assert_eq!(plan(&["claude", "codex", "omp"])["ok"], json!(true));
+    assert!(row.contains("multi-select"), "{row}");
+    assert!(row.contains("(recommended)"), "{row}");
     for (name, value) in NOT_YET {
         assert!(
             !offered.contains(name),
