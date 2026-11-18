@@ -528,20 +528,19 @@ fn a_blocked_registration_digest_cannot_authorize_after_the_home_turns_ready() {
 
 #[test]
 fn the_registration_apply_refuses_a_blocked_home_and_writes_nothing() {
-    // Audit N2 (M1) on #3199: the apply itself refuses, not only the preview.
+    // Audit N2 (M1) on #3199: the apply itself refuses, not only the stale digest. The digest
+    // below is the library's own, taken while the HOME was ready.
     let f = fx(false);
-    let l = ledger_plan(&f);
-    assert_eq!(l["action"], json!("blocked"), "{l}");
+    fs::remove_dir_all(f.home.join(".moai/my notes")).unwrap();
+    fs::remove_dir_all(f.home.join(".moai/reports")).unwrap();
+    let ready = ledger_plan(&f);
+    assert_eq!(ready["action"], json!("register"), "{ready}");
+    write(&f.home, ".moai/my notes/n.txt", "mine\n");
     let before = tree(&f.home);
-    let a = ledger_apply(&f, l["plan_digest"].as_str().unwrap());
+    let a = ledger_apply(&f, ready["plan_digest"].as_str().unwrap());
     assert_eq!(a["ok"], json!(false), "{a}");
-    assert!(
-        a["error"]["message"]
-            .as_str()
-            .unwrap()
-            .contains("nothing was written"),
-        "{a}"
-    );
+    let message = a["error"]["message"].as_str().unwrap();
+    assert!(message.contains("no finished Go retire"), "{message}");
     assert_eq!(tree(&f.home), before);
 }
 
@@ -552,6 +551,10 @@ fn an_existing_ledger_keeps_its_idempotent_registration() {
     let f = fx(false);
     fs::remove_dir_all(f.home.join(".moai/my notes")).unwrap();
     fs::remove_dir_all(f.home.join(".moai/reports")).unwrap();
+    // A HOME that holds only a ledger folder of another project is still ready (audit N2, M10).
+    write(&f.home, ".moai/projects/other/note.txt", "x\n");
+    assert_eq!(generation(&f), "unknown");
+    assert_eq!(ledger_plan(&f)["action"], json!("register"));
     let first = ledger_plan(&f);
     assert_eq!(first["action"], json!("register"), "{first}");
     let a = result(ledger_apply(&f, first["plan_digest"].as_str().unwrap()));
