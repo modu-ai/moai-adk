@@ -334,7 +334,7 @@ fn close_refuses_and_changes_nothing() {
     ));
     let w = World::new();
     w.merged(false, MET);
-    cases.push(("draft", w, ID, vec![], "approv"));
+    cases.push(("draft", w, ID, vec![], "approval is the user's"));
     let w = World::new();
     w.merged(true, "");
     cases.push(("no result", w, ID, vec![], "closure_result"));
@@ -362,7 +362,10 @@ fn close_refuses_and_changes_nothing() {
     let w = World::new();
     w.write_spec("login-fix", true, MET);
     w.git(&["add", "-A"]);
-    w.commit("docs(spec): login fix");
+    // The message names the SPEC, but no trailer does; another SPEC's trailer is no evidence.
+    w.commit(&format!(
+        "docs(spec): add {ID}\n\nMoai-Spec: SPEC-20261117-other-fix"
+    ));
     cases.push(("no trailer", w, ID, vec![], "Moai-Spec"));
 
     for (name, w, id, extra, says) in cases {
