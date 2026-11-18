@@ -524,7 +524,12 @@ pub fn config_home(project: &Path) -> Result<PathBuf> {
         .ok_or("home directory missing; config target refused")?;
     let home = std::fs::canonicalize(home)
         .map_err(|_| "home directory unavailable; config target refused")?;
-    if let Some(path) = std::env::var_os("CODEX_HOME") {
+    // Whatever folder `CODEX_HOME` names is a user folder (card C-79: an empty or relative
+    // value is refused by name, as everywhere).
+    let named =
+        crate::host_home::variable_dir(crate::host_home::Host::Codex, |k| std::env::var_os(k))
+            .map_err(|e| format!("{e}; user config target refused"))?;
+    if let Some(path) = named {
         let user = std::fs::canonicalize(path)
             .map_err(|_| "CODEX_HOME unavailable; user config target refused")?;
         if std::fs::canonicalize(project.join(".codex")).is_ok_and(|target| target == user) {

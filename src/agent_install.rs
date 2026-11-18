@@ -30,13 +30,25 @@ const STATE_DIR: &str = "agents";
 /// The user-level agent folder of a host: Claude Code `~/.claude/agents/`
 /// (code.claude.com/docs/en/sub-agents), Codex `~/.codex/agents/` (learn.chatgpt.com
 /// agent-configuration/subagents), OMP `~/.omp/agent/agents/` (github.com/can1357/oh-my-pi
-/// `docs/task-agent-discovery.md`, read 2026-11-13; #2633).
-fn host_dir(home: &Path, host: &str) -> PathBuf {
+/// `docs/task-agent-discovery.md`, read 2026-11-13; #2633). The host folder is
+/// [`crate::host_home`]'s (`CLAUDE_CONFIG_DIR`, `CODEX_HOME`, card C-79); a relocated
+/// `agents` link to the default folder is followed there (decision "기본 폴더 링크만 허용").
+fn host_dir(home: &Path, host: &str) -> Result<PathBuf> {
+    Ok(host_place(home, host)?.path())
+}
+
+/// The agent folder's place: the folder the link checks start at and the path below it.
+fn host_place(home: &Path, host: &str) -> Result<crate::host_home::Place> {
+    let h = crate::host_home::Host::from_name(host)
+        .unwrap_or_else(|| unreachable!("unknown agent host {host}"));
+    crate::host_home::place(h, home, host_rel(host))
+}
+
+/// The agent folder below the host folder.
+fn host_rel(host: &str) -> &'static str {
     match host {
-        "claude" => home.join(".claude").join("agents"),
-        "codex" => home.join(".codex").join("agents"),
-        "omp" => home.join(".omp").join("agent").join("agents"),
-        other => unreachable!("unknown agent host {other}"),
+        "omp" => "agent/agents",
+        _ => "agents",
     }
 }
 
@@ -134,10 +146,10 @@ fn plain_dir_or_absent(path: &Path) -> Result<()> {
 /// never a file. OMP's agent folder sits two levels below `~/.omp`, so each level is checked
 /// (#2633). Plan, apply and revert all check it.
 fn host_folders_plain(home: &Path, host: &str) -> Result<()> {
-    let dir = host_dir(home, host);
-    let below_home = dir.strip_prefix(home).expect("host folder under HOME");
-    let mut path = home.to_path_buf();
-    for part in below_home.components() {
+    let place = host_place(home, host)?;
+    let mut path = place.base;
+    plain_dir_or_absent(&path)?;
+    for part in place.rel.components() {
         path.push(part);
         plain_dir_or_absent(&path)?;
     }
@@ -189,7 +201,12 @@ fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<()> {
 }
 
 fn host_plan(home: &Path, host: &str, rendered: &[RenderedFile]) -> HostPlan {
-    let dir = host_dir(home, host);
+    // An unnamed host folder (an empty or relative relocation variable) shows the folder
+    // under HOME and is blocked below by `host_folders_plain`.
+    let dir = host_dir(home, host).unwrap_or_else(|_| {
+        let default = crate::host_home::Host::from_name(host).map_or(".", |h| h.default_dir());
+        home.join(default).join(host_rel(host))
+    });
     let mut plan = HostPlan {
         host: host.to_string(),
         dir: dir.to_string_lossy().into_owned(),
@@ -398,7 +415,7 @@ pub fn apply_for(
     write_json(&receipt_path, &receipt)?;
     let mut written = Vec::new();
     for (host, file) in writes {
-        let dir = host_dir(&home, &host.host);
+        let dir = host_dir(&home, &host.host)?;
         // Checked before creating (create_dir_all would follow a linked parent) and after.
         host_folders_plain(&home, &host.host)?;
         fs::create_dir_all(&dir).map_err(|_| format!("{} unavailable", dir.display()))?;
@@ -487,7 +504,7 @@ pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<serde_j
             skipped.push(serde_json::json!({"host": e.host, "file": e.file, "reason": format!("agent_folder_not_plain: {reason}")}));
             continue;
         }
-        let target = host_dir(&home, &e.host).join(&e.file);
+        let target = host_dir(&home, &e.host)?.join(&e.file);
         let current = current_file(&target)?;
         if current.as_deref().map(sha) != Some(e.after_sha256.clone()) {
             skipped.push(serde_json::json!({"host": e.host, "file": e.file, "reason": "user_changed_since_apply"}));

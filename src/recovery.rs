@@ -356,7 +356,7 @@ pub fn recovery_plan(home: &Path) -> Result<RecoveryPlan> {
         // committed; its per-file entries are not classified separately.
         if let Some(b) = &receipt.backup {
             if receipt.status == "pending" || receipt.status == "committed" {
-                let root = projection_root(&canonical_home, host);
+                let root = projection_root(&canonical_home, host)?;
                 h.restore_backup = Some(classify_backup(&canonical_home, &root, &receipt, b));
             }
             hosts.push(h);
@@ -387,7 +387,7 @@ pub fn recovery_plan(home: &Path) -> Result<RecoveryPlan> {
             }
         }
         if receipt.status == "pending" {
-            let root = projection_root(&canonical_home, host);
+            let root = projection_root(&canonical_home, host)?;
             if fs::symlink_metadata(&root).is_ok_and(|m| m.file_type().is_symlink()) {
                 h.receipt_status = "blocked".into();
                 h.blocked_reason = Some("projection path is a symlink; refused".into());
@@ -491,7 +491,7 @@ fn restore_backup_host(
         .clone()
         .ok_or("host receipt changed since recovery-plan")?;
     // Re-classify right before any move (REQ-04C-02 style re-verification).
-    let root = projection_root(home, &h.host);
+    let root = projection_root(home, &h.host)?;
     if classify_backup(home, &root, &receipt, &backup) != *rb {
         return Err("backup or projection changed since recovery-plan; nothing moved".into());
     }
@@ -590,7 +590,7 @@ pub fn recovery_apply(
                 "recovered": [], "conflicts": [], "written": false}));
             continue;
         }
-        let root = projection_root(&home, &h.host);
+        let root = projection_root(&home, &h.host)?;
         let started = now_rfc3339();
         let conflicts: Vec<Value> = h
             .files

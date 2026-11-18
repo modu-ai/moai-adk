@@ -74,8 +74,39 @@ pub(crate) const GO_ERA_GUIDANCE: &str = "this can be an earlier-generation (Go-
      MoAI `moai` skill at that path; moai-cli will not replace it — move it aside \
      yourself, or wait for a confirmed backup-then-replace procedure";
 
-pub(crate) fn projection_root(home: &Path, host: &str) -> PathBuf {
-    home.join(skills_dir(host)).join(SKILL_DIR)
+/// The folder that holds the host's `skills/` folder: Claude's host folder
+/// ([`crate::host_home`]: `~/.claude` or `CLAUDE_CONFIG_DIR`, card C-79); Codex reads
+/// `~/.agents/skills`, which `CODEX_HOME` does not move, so its base is HOME.
+/// A relocated `skills` link to the default `~/.claude/skills` is followed there (user decision
+/// 2026-11-17, "기본 폴더 링크만 허용"), so preview and apply name the same folder; `base` is where
+/// the link checks start.
+fn skills_place(home: &Path, host: &str) -> Result<crate::host_home::Place> {
+    let rel = skills_dir(host);
+    match host {
+        "claude" => crate::host_home::place(
+            crate::host_home::Host::Claude,
+            home,
+            &format!(
+                "{}/{SKILL_DIR}",
+                rel.strip_prefix(".claude/").unwrap_or(rel)
+            ),
+        ),
+        _ => Ok(crate::host_home::Place {
+            base: home.to_path_buf(),
+            rel: PathBuf::from(rel).join(SKILL_DIR),
+        }),
+    }
+}
+
+fn skills_parent(home: &Path, host: &str) -> Result<PathBuf> {
+    let root = projection_root(home, host)?;
+    Ok(root
+        .parent()
+        .map_or_else(|| root.clone(), Path::to_path_buf))
+}
+
+pub(crate) fn projection_root(home: &Path, host: &str) -> Result<PathBuf> {
+    Ok(skills_place(home, host)?.path())
 }
 
 /// UTC RFC3339 second precision; local copy of install.rs's private formatter.
@@ -817,8 +848,20 @@ fn writable(path: &Path) -> bool {
 /// an empty scan, not a block). Every hazard becomes a reason; nothing escapes as a
 /// global error.
 fn preflight(home: &Path, host: &str) -> (Option<String>, Option<ProjectionScan>) {
-    let root = projection_root(home, host);
-    if let Err(e) = ancestor_symlinks(home, &root) {
+    let root = match projection_root(home, host) {
+        Ok(r) => r,
+        Err(e) => return (Some(e), None),
+    };
+    // Links are checked from the host folder down: below HOME for `~/.claude`, below the
+    // relocated folder's parent for `CLAUDE_CONFIG_DIR` (that folder itself included).
+    let base = skills_place(home, host).map_or_else(|_| home.to_path_buf(), |p| p.base);
+    let top = if base == home {
+        home.to_path_buf()
+    } else {
+        base.parent()
+            .map_or_else(|| base.clone(), Path::to_path_buf)
+    };
+    if let Err(e) = ancestor_symlinks(&top, &root) {
         return (Some(e), None);
     }
     let meta = match fs::symlink_metadata(&root) {
@@ -1127,12 +1170,24 @@ pub fn plan_update_in(
     let mut latest_version: Option<String> = None;
 
     for host in HOSTS {
-        let root = projection_root(&canonical_home, host);
-        let root_text = root
-            .to_str()
-            .ok_or("non UTF-8 projection path")?
-            .to_string();
-        let (blocked, scan) = preflight(&canonical_home, host);
+        // An unnamed host folder (C-79) shows the root under HOME; `preflight` blocks it.
+        let root = projection_root(&canonical_home, host)
+            .unwrap_or_else(|_| canonical_home.join(skills_dir(host)).join(SKILL_DIR));
+        // A relocated host folder can name a path that is not UTF-8 (C-79 audit N3): that host
+        // is left out with the reason; the others plan as usual.
+        let root_text = root.to_string_lossy().into_owned();
+        let (blocked, scan) = if root.to_str().is_some() {
+            preflight(&canonical_home, host)
+        } else {
+            (
+                Some(
+                    "the skill folder path is not UTF-8 (check CLAUDE_CONFIG_DIR); this host is \
+                     left out"
+                        .to_string(),
+                ),
+                None,
+            )
+        };
         // #2521: the baseline may come from an earlier version folder's receipt.
         let source = if blocked.is_some() {
             ReceiptSource {
@@ -2221,7 +2276,7 @@ fn apply_update_in(
             continue;
         }
 
-        let root = projection_root(&canonical_home, host);
+        let root = projection_root(&canonical_home, host)?;
         let writes: Vec<&FilePlan> = host_plan
             .files
             .iter()
@@ -2281,7 +2336,7 @@ fn apply_update_in(
         // read, never written; the new receipt goes under this installation's id).
         let previous = resolve_host_receipt(&canonical_home, &install_id, host)?.receipt;
         let pre_owned = owned_map(previous.as_ref());
-        let top_skills_existed = fs::symlink_metadata(home.join(skills_dir(host))).is_ok();
+        let top_skills_existed = fs::symlink_metadata(skills_parent(home, host)?).is_ok();
         let mut receipt = HostReceipt {
             schema_version: crate::install::RECEIPT_SCHEMA_VERSION,
             install_id: install_id.clone(),
@@ -2604,7 +2659,7 @@ fn run_backup_then_replace(
     receipt_out: &mut Option<HostReceipt>,
     backup_out: &mut Option<PathBuf>,
 ) -> Result<()> {
-    let root = projection_root(home, host);
+    let root = projection_root(home, host)?;
     if source_files(&root)? != btr.source_files {
         return Err("projection changed since the plan; nothing moved".into());
     }
