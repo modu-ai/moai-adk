@@ -285,3 +285,93 @@ fn every_default_is_inside_the_support_table() {
         }
     }
 }
+
+#[test]
+fn unsupported_saved_entries_are_listed_by_key_path_without_quoting_them() {
+    use model_effort_settings::unsupported_entries;
+    let launcher = object(json!({
+        "models": {
+            "claude": {"leader": {"model": SECRET, "effort": "high"}},
+            "codex": {"agent": {"model": "gpt-6.2-sol", "effort": "max"}},
+            "glm": {"agent": {"model": "zai/glm-5.3-flash"}, "leader": {"model": "zai/glm-5.3", "effort": SECRET}}
+        }
+    }));
+    let mut listed = unsupported_entries(&launcher).unwrap();
+    listed.sort();
+    assert_eq!(
+        listed,
+        [
+            "launcher.models.claude.leader",
+            "launcher.models.glm.agent",
+            "launcher.models.glm.leader"
+        ]
+    );
+    assert!(!format!("{listed:?}").contains(SECRET));
+    // No models key and an all-supported models key list nothing.
+    assert!(unsupported_entries(&Map::new()).unwrap().is_empty());
+    let fine =
+        object(json!({"models": {"codex": {"agent": {"model": "gpt-6.2-sol", "effort": "max"}}}}));
+    assert!(unsupported_entries(&fine).unwrap().is_empty());
+    // Structural damage is refused by key path, never listed.
+    for broken in [
+        json!({"models": SECRET}),
+        json!({"models": {SECRET: {}}}),
+        json!({"models": {"codex": SECRET}}),
+        json!({"models": {"codex": {SECRET: {}}}}),
+        json!({"models": {"codex": {"agent": SECRET}}}),
+    ] {
+        let message = unsupported_entries(&object(broken)).unwrap_err();
+        assert!(
+            message.contains("launcher.models") && !message.contains(SECRET),
+            "{message}"
+        );
+    }
+}
+
+#[test]
+fn the_slice_one_audit_cases_are_pinned() {
+    // A non-object tool entry cannot be merged into; the refusal names the key path only.
+    let base = object(json!({"models": {"codex": SECRET}}));
+    let before = base.clone();
+    let message = with_choice(&base, "codex", "leader", "gpt-6.1-sol", "high").unwrap_err();
+    assert!(
+        message.contains("launcher.models.codex") && !message.contains(SECRET),
+        "{message}"
+    );
+    assert_eq!(base, before);
+
+    // Replacing an entry drops its extra fields.
+    let base = object(json!({
+        "models": {"codex": {"agent": {"model": "gpt-6.2-sol", "effort": "max", "extra": 1}}}
+    }));
+    let after = with_choice(&base, "codex", "agent", "gpt-6.1-terra", "xhigh").unwrap();
+    assert_eq!(
+        after["models"]["codex"]["agent"],
+        json!({"model": "gpt-6.1-terra", "effort": "xhigh"})
+    );
+
+    // The omp tool with a saved value and with a set; glm is a separate entry.
+    let saved =
+        object(json!({"models": {"omp": {"leader": {"model": "zai/glm-5.3", "effort": "low"}}}}));
+    assert_eq!(
+        resolve("omp", "leader", Some(&saved)).unwrap(),
+        (choice("zai/glm-5.3", "low"), Source::Saved)
+    );
+    assert_eq!(
+        resolve("glm", "leader", Some(&saved)).unwrap().1,
+        Source::Default
+    );
+    let set = with_choice(&saved, "omp", "agent", "zai/glm-5.3-flash", "high").unwrap();
+    assert_eq!(
+        set["models"]["omp"]["leader"],
+        saved["models"]["omp"]["leader"]
+    );
+    assert_eq!(
+        resolve("omp", "agent", Some(&set)).unwrap(),
+        (choice("zai/glm-5.3-flash", "high"), Source::Saved)
+    );
+
+    // A refused set quotes no caller text.
+    let message = with_choice(&Map::new(), "codex", "leader", SECRET, "high").unwrap_err();
+    assert!(!message.contains(SECRET), "{message}");
+}
