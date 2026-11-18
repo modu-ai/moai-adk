@@ -1,7 +1,7 @@
 //! `moai decide`, the pure half (card C-37 S2): a reversible, category-`none` choice may be
 //! put to a decision model instead of the leader. Nothing here opens a socket, starts a
-//! process or reads a key; the round trip is a later slice (S4) and uses only what this
-//! module hands it.
+//! process or reads a key, except [`transport`], the one place that sends (slice S4): it
+//! posts what [`prepare`] built to a loopback server and uses only what this module hands it.
 //!
 //! The order is fixed, and the types keep it: a [`request::Request`] becomes a
 //! [`gate::Cleared`] only through [`gate::check`], a `Cleared` becomes an
@@ -25,6 +25,9 @@
 //!   after one decoding refuses the request (user decision 2026-11-16, D-secret-hit: refuse
 //!   and fall back, never mask and send); the home folder, the user name, e-mail addresses
 //!   and temporary folders are masked.
+//! - [`transport`] sends a [`Prepared`] request over HTTP/1.1 to a loopback address and returns
+//!   the response body for [`conclude`]; any other address is refused before a socket is
+//!   opened (SPEC-20261118-decide-round-trip).
 //! - [`provider`] builds the exact request bytes for `typesafe` (Jev) and `openai`, and reads
 //!   their answers. The endpoints are compile-time constants; no setting, variable or request
 //!   field can aim a request elsewhere.
@@ -42,6 +45,7 @@ pub mod normalise;
 pub mod outbound;
 pub mod provider;
 pub mod request;
+pub mod transport;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
