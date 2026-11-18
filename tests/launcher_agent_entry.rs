@@ -195,6 +195,34 @@ fn the_top_level_flags_name_the_entry_command() {
     assert!(agent.contains("`$moai --mode-agent`"), "{agent}");
 }
 
+/// AC-8 (REQ-8): the root screen's `cc -l` example names the command that enters the role, on
+/// one line at 60 and 80 columns (the launcher line itself has no room left, SPEC D-4).
+#[test]
+fn the_root_example_names_the_entry_command() {
+    for columns in ["60", "80", ""] {
+        let home = tempfile::tempdir().unwrap();
+        let mut cmd = Command::new(common::MOAI_BIN);
+        cmd.clean_env()
+            .env("HOME", home.path())
+            .env("LANG", "C")
+            .arg("--help");
+        if !columns.is_empty() {
+            cmd.env("COLUMNS", columns);
+        }
+        let out = cmd.output().unwrap();
+        assert!(out.status.success(), "{out:?}");
+        let text = String::from_utf8(out.stdout).unwrap();
+        let line = text
+            .lines()
+            .find(|l| l.trim_start().starts_with("moai cc -l "))
+            .unwrap_or_else(|| panic!("COLUMNS={columns}: no cc -l example:\n{text}"));
+        assert!(
+            line.ends_with("leader, then /moai --mode-leader"),
+            "COLUMNS={columns}: {line:?}"
+        );
+    }
+}
+
 /// AC-4 (REQ-4): the other launches compose the argv they composed before.
 #[test]
 fn other_launches_keep_their_argv() {

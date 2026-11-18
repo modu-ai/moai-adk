@@ -1049,7 +1049,9 @@ pub const GETTING_STARTED: &[(&str, &str)] = &[
 /// A few commands to copy, each with what it does (#3004 P1); parsed against the real command
 /// tree by the same test.
 pub const ROOT_EXAMPLES: &[(&str, &str)] = &[
-    ("cc -l", "lead session"),
+    // SPEC-20261118-launcher-agent-entry: the role is entered inside the session; at 60
+    // columns this ends on column 59, so it never wraps.
+    ("cc -l", "leader, then /moai --mode-leader"),
     ("update", "preview and apply an update"),
     ("project-detect .", "show the facts of this project"),
 ];
