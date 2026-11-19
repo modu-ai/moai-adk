@@ -901,3 +901,46 @@ fn secret_screen_leaves_stored_rows_alone() {
     let list = result(&run(&home, &["card", "list", &project]));
     assert_eq!(list["count"], json!(2), "{list}");
 }
+
+/// REQ-5, AC-8: `card criterion-add --ac` takes its texts through the same function as
+/// `card add --ac` (`input::criterion_texts`), so the same screen refuses a secret-named word
+/// and no criterion is added.
+#[test]
+fn secret_screen_covers_criterion_add() {
+    let (home, project) = with_seed_card();
+    let bad = words(&["run --to", "ken=100"]);
+    let (kind, message) = refusal(&run(
+        &home,
+        &[
+            "card",
+            "criterion-add",
+            "C-1",
+            "--ac",
+            "fine",
+            "--ac",
+            &bad,
+            "--project",
+            &project,
+        ],
+    ));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("criterion 2 has 1 word"), "{message}");
+    assert_eq!(
+        count(&home, "card_ac"),
+        0,
+        "a refused criterion-add adds none"
+    );
+    let ok = result(&run(
+        &home,
+        &[
+            "card",
+            "criterion-add",
+            "C-1",
+            "--ac",
+            "plain words only",
+            "--project",
+            &project,
+        ],
+    ));
+    assert_eq!(ok["added"], json!([1]), "{ok}");
+}
