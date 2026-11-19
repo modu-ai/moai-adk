@@ -82,7 +82,7 @@ created: 2026-11-19
 ## Result
 
 - AC-1: met — `prop_headver` 3 통과(성분 순서·대칭·자기동일·is_newer 일치 1000사례, 배치 무역전 1000 묶음×8, 0.12 초); `prop_manifest_test` 2 통과(render 멱등·순열 불변·키 정렬, 드라이버 병합이 어느 항목 순서에서도 같은 바이트·canonical 과 동일, 2.43 초; git 설정 탐침은 시험 안 1회 캐시 — D-5, 도구 미변경).
-- AC-2: met — `prop_reservation` 1 통과: 1000 사례 × 무작위 12 연산(take/renew/release/handoff/review/reopen/done/lease 만료/reclaim, 오류는 합법적 거부로 배제) 뒤 (a) review 카드는 보유(held/held_for_review) 예약 (b) live 예약 둘은 scope::overlap 무공유 — 19.99 초.
+- AC-2: met(1차 감사 FAIL B1 수리 후, -r2 가지) — 첫 구동부는 사례 종료 처리가 lease 만 깎아 과거 held 행이 take 를 계속 막아 공소했어요(reserve 5·review 1, 불변식 짝 비교 0회 — 감사 측정). 수리: fenced 연산이 현재 예약의 holder·generation 을 쓰고, 사례 종료를 시스템 전이(reopen→release, 끝난 lease 는 reclaim→release)로 마감. 최종 실측(기본 시드, 1000 사례): reserve 915·renew 135·release 147·review 126·reopen 15·handoff 98·reclaim 15·lease 만료 1122, 검사기 실행 review 판정 111회·live 짝 비교 115회 — 바닥(reserve≥500·renew≥50·review≥50·handoff≥20·reclaim≥5·review_checks≥50·live_pairs≥100)을 시험이 못박고, 6.4~11.6 초 안에 돌아요.
 - AC-3: met — `prop_scope_paths` 1 통과(1.56 초): `.`·`..`·이중 구분자·대소문자·심볼릭 링크 트리에서 탈출 경로 불허가·트리 존재 무의존; 하네스 시험 `the_generator_and_the_canary`(결정성·이름 알파벳·거짓 성질의 실패 전파 PROP_SEED/PROP_ONLY); 최장 성질 19.99 초 < 30 초.
 - AC-4: met — clippy `--all-targets -D warnings` 0, `cargo fmt --check`·rustfmt 0, repo_scans 25 OK, ac_command_lint 5 OK(Python 시험이 git 을 구동해 실행), Python prop 묶음 2 OK. 전량 cargo·CI 범위는 묶음 검증·CI 인용.
   개발 중 붉어진 것은 대상 코드가 아니라 시험 생성기 결함 4건(이중 구분자 변형이 한 글자 잘라먹기, 이름 `.`/`..` 충돌, 생성 패턴과 검사 패턴 불일치, Python 해시 재추첨) — 하네스가 스스로 잡아 고쳤고, 카나리가 검출력을 입증해요.
