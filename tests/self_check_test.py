@@ -9,10 +9,12 @@ bytes, the diff check, the Python files picked from the change, and the summary 
 use stub `cargo`, `rustfmt`, `python3` and `moai` in a temporary git repository with a
 temporary HOME, so no cargo build runs here; `git` is real.
 """
+import os
 import re
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -479,6 +481,262 @@ class HeavySlotTest(unittest.TestCase):
         found, last = items(proc.stdout)
         self.assertTrue(dict(found)["clippy"].startswith("exit=3 "))
         self.assertEqual(LAST.match(last)["failed"], "clippy")
+
+
+class PythonSlotTest(unittest.TestCase):
+    """SPEC-20261119-python-slot-pre-ready: a whole `unittest discover` waits in a python slot,
+    a slot folder apart from the cargo slots; the touched-files item stays out of any slot."""
+
+    def setUp(self):
+        self.repo = FakeRepo(slot=True)
+        self.addCleanup(self.repo.close)
+        self.default_dir = self.repo.tmp / ".cache" / "moai-cli" / "python-slots"
+
+    def python_lines(self):
+        return [l for l in self.repo.slot_recorded() if " --dir " in l]
+
+    def test_full_python_runs_in_the_python_slot_with_the_default_folder_and_limit(self):
+        proc = self.repo.run("--full-python")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        lines = self.python_lines()
+        self.assertEqual(len(lines), 1, lines)
+        self.assertRegex(lines[0], (
+            rf"^heavy-slot-acquire --dir {re.escape(str(self.default_dir))} --max 2 "
+            r"--min-free-gb 50 --name self-check-repo-\d+-py -- "
+            r"python3 -m unittest discover -s tests -p \*_test\.py$"))
+        # The cargo items still use the heavy slot, without a folder of their own.
+        self.assertEqual(len(self.repo.slot_recorded()) - 1, len(HEAVY))
+
+    def test_the_touched_files_item_takes_no_slot(self):
+        self.repo.run()
+        self.assertEqual(self.python_lines(), [])
+
+    def test_xdg_cache_home_and_the_two_settings_change_folder_and_limit(self):
+        xdg = self.repo.tmp / "xdg"
+        self.repo.run("--full-python", XDG_CACHE_HOME=str(xdg))
+        self.assertIn(f" --dir {xdg}/moai-cli/python-slots ", self.python_lines()[0])
+        self.repo.slot_calls.unlink()
+        self.repo.run("--full-python", MOAI_PYTHON_SLOT_DIR="/x/y", MOAI_PYTHON_SLOT_MAX="1")
+        self.assertIn(" --dir /x/y --max 1 ", self.python_lines()[0])
+
+    def test_empty_settings_mean_the_defaults(self):
+        self.repo.run("--full-python", MOAI_PYTHON_SLOT_DIR="", MOAI_PYTHON_SLOT_MAX="")
+        self.assertIn(f" --dir {self.default_dir} --max 2 ", self.python_lines()[0])
+
+    def test_the_python_slot_never_uses_the_cargo_slot_folder(self):
+        self.repo.run("--full-python")
+        for line in self.repo.slot_recorded():
+            if " --dir " not in line:
+                self.assertNotIn("python-slots", line)
+        self.assertNotIn("heavy-slots", self.python_lines()[0])
+
+    def test_a_refusal_of_the_python_slot_is_not_run_not_a_failure(self):
+        proc = self.repo.run("--full-python", STUB_SLOT_REFUSE="1")
+        self.assertEqual(proc.returncode, 1)
+        found, last = items(proc.stdout)
+        self.assertEqual(dict(found)["python"],
+                         "exit=75 slot-refused (not run) log=target/self-check/python.log")
+        m = LAST.match(last)
+        self.assertEqual((m["result"], m["failed"], m["not_run"]),
+                         ("not_run", "none", ",".join(HEAVY + ["python"])))
+
+    def test_without_the_slot_command_full_python_runs_directly(self):
+        repo = FakeRepo()
+        self.addCleanup(repo.close)
+        repo.run("--full-python")
+        self.assertEqual(repo.slot_recorded(), [])
+        self.assertIn("python3 -m unittest discover -s tests -p *_test.py", repo.recorded())
+
+
+PRE_READY = [
+    ("diff-check", None),
+    ("fmt", "cargo fmt --check"),
+    ("fmt-ops", "rustfmt --check --edition 2021 src/ops/a.rs src/ops/b.rs"),
+    ("manifest", "python3 -I tools/source_manifest.py check"),
+    ("spec-check", "moai-cli spec check SPEC-20261119-demo --closure --project ."),
+    ("py-source-manifest", "python3 -m unittest tests.source_manifest_test"),
+    ("py-repo-scans", "python3 -m unittest tests.repo_scans_test"),
+    ("skill-package",
+     "cargo test --offline --locked --test product_cli skill_package"),
+]
+PRE_READY_LABELS = [label for label, _ in PRE_READY]
+PRE_READY_COMMANDS = [cmd for _, cmd in PRE_READY if cmd]
+BIN_ITEMS = ["spec-check", "py-repo-scans"]
+SPEC_PATH = ".moai/specs/SPEC-20261119-demo/spec.md"
+
+
+def prepare_pre_ready(repo, spec=True, binary=True):
+    """Adds what the --pre-ready items need to a FakeRepo: the two test files, product_cli, one
+    changed SPEC, and a stub built `moai-cli` newer than every source file. The stub records
+    its arguments and answers STUB_SPEC_OUT with exit STUB_SPEC_EXIT."""
+    root = repo.repo
+    (root / "tests" / "source_manifest_test.py").write_text("# stub\n")
+    (root / "tests" / "repo_scans_test.py").write_text("# stub\n")
+    (root / "tests" / "product_cli.rs").write_text("\n")
+    if spec:
+        (root / SPEC_PATH).parent.mkdir(parents=True)
+        (root / SPEC_PATH).write_text("# demo\n")
+    repo.commit("pre-ready files")
+    past = time.time() - 100
+    for path in [root / "Cargo.toml", *(root / "src").rglob("*.rs")]:
+        os.utime(path, (past, past))
+    if binary:
+        built = root / "target" / "debug" / "moai-cli"
+        built.parent.mkdir(parents=True)
+        built.write_text(
+            "#!/bin/sh\n"
+            f"echo \"moai-cli $*\" >> '{repo.calls}'\n"
+            "printf '%s\\n' \"${STUB_SPEC_OUT:-}\"\n"
+            "exit \"${STUB_SPEC_EXIT:-0}\"\n")
+        built.chmod(0o755)
+
+
+class PreReadyTest(unittest.TestCase):
+    """--pre-ready: the whole-tree checks that held pull requests back before READY, fast ones
+    first; the two items that read the built moai-cli are not_run while it is missing or stale."""
+
+    def setUp(self):
+        self.repo = FakeRepo()
+        self.addCleanup(self.repo.close)
+        prepare_pre_ready(self.repo)
+
+    def lines(self, proc):
+        found, last = items(proc.stdout)
+        return dict(found), LAST.match(last)
+
+    def test_it_runs_only_its_items_in_order_and_passes(self):
+        proc = self.repo.run("--pre-ready")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        found, last = items(proc.stdout)
+        self.assertEqual([label for label, _ in found], PRE_READY_LABELS)
+        for label, rest in found:
+            self.assertTrue(rest.startswith("exit=0 "), f"{label}: {rest}")
+        self.assertEqual(self.repo.recorded(), PRE_READY_COMMANDS)
+        m = LAST.match(last)
+        self.assertEqual((m["result"], m["failed"], m["not_run"]), ("pass", "none", "none"))
+        # None of the ordinary items ran.
+        self.assertFalse(any(c.startswith("cargo test --offline --locked --bin")
+                             for c in self.repo.recorded()))
+
+    def test_python_items_use_the_python_slot_and_the_cargo_item_the_heavy_slot(self):
+        repo = FakeRepo(slot=True)
+        self.addCleanup(repo.close)
+        prepare_pre_ready(repo)
+        proc = repo.run("--pre-ready")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        slot = repo.slot_recorded()
+        python = [l for l in slot if " --dir " in l]
+        cargo = [l for l in slot if " --dir " not in l]
+        self.assertEqual(len(python), 2, slot)
+        self.assertIn("-- python3 -m unittest tests.source_manifest_test", python[0])
+        self.assertIn("-- python3 -m unittest tests.repo_scans_test", python[1])
+        self.assertEqual(len(cargo), 1, slot)
+        self.assertIn("-- cargo test --offline --locked --test product_cli skill_package",
+                      cargo[0])
+        # The light items take no slot.
+        self.assertFalse(any("cargo fmt" in l or "source_manifest.py" in l for l in slot))
+
+    def test_a_missing_binary_is_not_run_for_the_two_items_that_read_it(self):
+        (self.repo.repo / "target" / "debug" / "moai-cli").unlink()
+        proc = self.repo.run("--pre-ready")
+        self.assertEqual(proc.returncode, 1)
+        rest, m = self.lines(proc)
+        for label in BIN_ITEMS:
+            self.assertEqual(rest[label],
+                             "not_run (no built moai-cli: target/debug/moai-cli)", label)
+        self.assertEqual((m["result"], m["failed"], m["not_run"]),
+                         ("not_run", "none", ",".join(BIN_ITEMS)))
+        recorded = " ".join(self.repo.recorded())
+        self.assertNotIn("tests.repo_scans_test", recorded)
+        self.assertNotIn("spec check", recorded)
+        # The items that need no binary still ran.
+        for label in ("py-source-manifest", "skill-package"):
+            self.assertTrue(rest[label].startswith("exit=0 "), label)
+
+    def test_a_binary_older_than_a_source_file_is_stale_not_a_pass(self):
+        future = time.time() + 100
+        os.utime(self.repo.repo / "src" / "ops" / "a.rs", (future, future))
+        proc = self.repo.run("--pre-ready")
+        rest, m = self.lines(proc)
+        for label in BIN_ITEMS:
+            self.assertEqual(
+                rest[label],
+                "not_run (stale moai-cli: target/debug/moai-cli is older than src/ops/a.rs)",
+                label)
+        self.assertEqual(m["not_run"], ",".join(BIN_ITEMS))
+
+    def test_the_binary_path_can_be_named(self):
+        elsewhere = self.repo.tmp / "elsewhere" / "moai-cli"
+        elsewhere.parent.mkdir()
+        shutil.move(self.repo.repo / "target" / "debug" / "moai-cli", elsewhere)
+        proc = self.repo.run("--pre-ready", MOAI_CLI_BIN=str(elsewhere))
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertEqual(self.repo.recorded(), PRE_READY_COMMANDS)
+
+    def test_a_draft_specs_closure_status_alone_passes_spec_check(self):
+        proc = self.repo.run("--pre-ready", STUB_SPEC_EXIT="1",
+                             STUB_SPEC_OUT=f"spec check refused: 1 error(s): {SPEC_PATH} closure_status")
+        rest, m = self.lines(proc)
+        self.assertTrue(rest["spec-check"].startswith("exit=0 "), rest["spec-check"])
+        self.assertEqual(m["failed"], "none")
+
+    def test_any_other_code_fails_spec_check_even_beside_closure_status(self):
+        for out in (f"{SPEC_PATH}:31 req_gears; {SPEC_PATH} closure_status",
+                    f"{SPEC_PATH} closure_result",
+                    f"{SPEC_PATH} closure_status; {SPEC_PATH} closure_result"):
+            with self.subTest(out=out):
+                proc = self.repo.run("--pre-ready", STUB_SPEC_EXIT="1", STUB_SPEC_OUT=out)
+                rest, m = self.lines(proc)
+                self.assertTrue(rest["spec-check"].startswith("exit=1 "), rest["spec-check"])
+                self.assertEqual(m["failed"], "spec-check")
+                self.assertEqual(proc.returncode, 1)
+
+    def test_a_refusal_with_no_readable_code_fails_spec_check(self):
+        proc = self.repo.run("--pre-ready", STUB_SPEC_EXIT="2", STUB_SPEC_OUT="crashed")
+        self.assertEqual(self.lines(proc)[1]["failed"], "spec-check")
+
+    def test_no_changed_spec_is_a_skip_that_needs_no_binary(self):
+        repo = FakeRepo()
+        self.addCleanup(repo.close)
+        prepare_pre_ready(repo, spec=False, binary=False)
+        proc = repo.run("--pre-ready")
+        rest, m = self.lines(proc)
+        self.assertEqual(rest["spec-check"], "skip (no changed SPEC)")
+        self.assertEqual(m["not_run"], "py-repo-scans")
+
+    def test_a_base_that_does_not_resolve_is_not_run_for_diff_and_spec_checks(self):
+        proc = self.repo.run("--pre-ready", SELF_CHECK_BASE="no-such-branch")
+        rest, m = self.lines(proc)
+        for label in ("diff-check", "spec-check"):
+            self.assertTrue(rest[label].startswith("not_run (no base: 'no-such-branch'"), label)
+        self.assertEqual(m["not_run"], "diff-check,spec-check")
+
+    def test_a_missing_test_file_is_a_skip_with_the_reason(self):
+        (self.repo.repo / "tests" / "repo_scans_test.py").unlink()
+        rest, m = self.lines(self.repo.run("--pre-ready"))
+        self.assertEqual(rest["py-repo-scans"], "skip (no tests/repo_scans_test.py)")
+        self.assertNotIn("tests.repo_scans_test", " ".join(self.repo.recorded()))
+
+    def test_a_failing_item_is_named_and_the_later_items_still_run(self):
+        proc = self.repo.run("--pre-ready", STUB_FAIL="fmt --check")
+        rest, m = self.lines(proc)
+        self.assertEqual(m["failed"], "fmt")
+        self.assertTrue(rest["skill-package"].startswith("exit=0 "))
+
+    def test_dry_run_lists_the_items_and_runs_nothing(self):
+        proc = self.repo.run("--pre-ready", SELF_CHECK_DRY_RUN="1")
+        self.assertEqual(proc.returncode, 1)
+        found, last = items(proc.stdout)
+        self.assertEqual([label for label, _ in found], PRE_READY_LABELS)
+        self.assertEqual(self.repo.recorded(), [])
+        self.assertEqual(LAST.match(last)["dry"], "dry-run=1 ")
+
+    def test_it_cannot_be_combined_with_full_python(self):
+        for args in (["--pre-ready", "--full-python"], ["--full-python", "--pre-ready"]):
+            proc = self.repo.run(*args)
+            self.assertEqual(proc.returncode, 2, args)
+            self.assertIn("usage", proc.stderr)
+        self.assertEqual(self.repo.recorded(), [])
 
 
 class SelfCheckSourcesTest(unittest.TestCase):
