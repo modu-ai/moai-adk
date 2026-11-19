@@ -186,6 +186,24 @@ fn lane_send_refuses_a_yes_no_confirmation_and_sends_nothing() {
     }
 }
 
+/// Audit of slice A (note 3212, B1): these three numbered Yes/No dialogs once read as `working`
+/// or `idle`, so a text with Enter would have picked Yes.
+#[test]
+fn lane_send_refuses_a_numbered_yes_no_dialog_in_any_dress_and_sends_nothing() {
+    for name in [
+        "synthetic-ascii-cursor-dialog.txt",
+        "synthetic-bordered-dialog.txt",
+        "synthetic-no-cursor-dialog.txt",
+    ] {
+        let fake = Fake::screen(name);
+        let r = run(&fake, "do the next card", &["--enter"]);
+        let message = r.error();
+        assert!(message.contains("permission_prompt"), "{name}: {message}");
+        assert!(message.contains("refused"), "{name}: {message}");
+        assert_eq!(fake.sent(), None, "{name}");
+    }
+}
+
 #[test]
 fn lane_send_refuses_every_state_that_is_not_working_or_idle() {
     for (name, state) in [
