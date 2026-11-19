@@ -23,8 +23,9 @@ C-63 N1 대 #2936 AC 13, C-93 D4). 두 경우 모두 레인이 일을 시작한 
   옮겨 받았어요(기준 3 withdraw, 리더 결정 note 2368).
 - 네트워크 없음: 열린 PR 이나 GitHub 검색을 읽지 않아요. 병합된 PR 은 통합 브랜치의 병합 커밋 제목
   (`Merge pull request #N from …`)에서 읽어요.
-- `src/ops/card.rs` 의 서브액션 배선: C-43 예약 안에 있어요. 이 SPEC 은 로직(`src/card/precheck.rs`)과 시험을
-  만들고, 배선은 리더가 C-43 후속 조각 뒤 넘겨줘요(리더 결정 note 2368).
+- (개정) `src/ops/card.rs` 의 서브액션 배선: 처음에는 C-43 예약 안이라 리더 전달을 기다렸어요(리더 결정 note
+  2368). C-43 이 release 되고 C-116 도 release 된 뒤 리더가 이 카드를 C-116 head 위에 쌓아 진행하라고 배차해서
+  이 SPEC 이 `Action::Precheck` 변형과 match arm 두 편집을 직접 해요(범위에 `src/ops/card.rs` 추가).
 
 ## Requirements
 
@@ -48,15 +49,15 @@ C-63 N1 대 #2936 AC 13, C-93 D4). 두 경우 모두 레인이 일을 시작한 
 
 ## Scope
 
-- write: `src/card/precheck.rs`, `src/card/mod.rs`, `tests/card_precheck_cli.rs`, `.moai/specs/SPEC-20261119-card-precheck/spec.md`
-- read-only: `src/ops/card.rs` (배선은 리더 전달), `src/card/spec_link.rs`, `src/card/input.rs`, `src/ledger/`, `tests/common/`
-- forbidden: 실제 HOME 과 원장, 네트워크, `card ready`/`take` 동작, `src/ops/card.rs` 쓰기(C-43 예약), `skills/moai/**`(C-103)
+- write: `src/card/precheck.rs`, `src/card/mod.rs`, `src/ops/card.rs` (배선 두 편집만), `tests/card_precheck_cli.rs`, `.moai/specs/SPEC-20261119-card-precheck/**`
+- read-only: `src/card/spec_link.rs`, `src/card/input.rs`, `src/ledger/`, `tests/common/`
+- forbidden: 실제 HOME 과 원장, 네트워크, `card ready`/`take` 동작, `skills/moai/**`(C-103)
 
 ## Plan
 
 1. 시험 먼저: `tests/card_precheck_cli.rs` 에 AC-1..AC-3 의 통합 시험을 쓰고 RED 를 읽어요(서브액션이 아직 없어 거부).
 2. `src/card/precheck.rs` 에 로직(원장 읽기, git 스캔, 매칭, JSON 조립)과 AC-4 단위 시험을 넣고 `src/card/mod.rs` 에 모듈을 더해요. 단위 시험이 먼저 GREEN.
-3. 통합 시험은 배선(`src/ops/card.rs`, 리더 전달) 뒤 GREEN; 그 전에 가지만 push 해요.
+3. 배선(`src/ops/card.rs` 두 편집, `wiring.md`)을 넣고 통합 시험을 GREEN 으로 만든 뒤 가지를 push 해요.
 4. 이웃 검사(`--test card_spec_cli`, `--test card_work_cli`, `cargo fmt --check`)를 돌려요.
 
 ## Risks
@@ -76,9 +77,13 @@ C-63 N1 대 #2936 AC 13, C-93 D4). 두 경우 모두 레인이 일을 시작한 
 
 ## Result
 
-- AC-1: red(배선 대기) — `cargo test --offline --locked --test card_precheck_cli` 0 passed; 3 failed, 모두 `unrecognized subcommand 'precheck'`: 서브액션 배선은 `src/ops/card.rs`(C-43 예약)라 리더 전달 대기(리더 결정 note 2368). 논리와 시험은 `src/card/precheck.rs`·`tests/card_precheck_cli.rs` 에 다 들어 있고, 배선 조각은 `wiring.md`.
-- AC-2: red(배선 대기) — 같은 시험, 같은 이유.
-- AC-3: red(배선 대기) — 같은 시험, 같은 이유.
-- AC-4: met — `cargo test --offline --locked --test card_precheck_cli` 는 위와 같고, `cargo test --offline --locked --lib precheck` 7 passed/0 failed(대소문자·`C-960` 워드 경계·불용어·`**` 글로브·경로 양방향·트레일러 매치·빈 입력 일곱 경계).
-- 이웃: `--test card_spec_cli` 11/0, `--test card_work_cli` 24/0, `cargo fmt --check` exit 0, `cargo clippy --offline --locked --lib -- -D warnings` exit 0(2026-11-19, worktree moai-adk-96).
-- 남은 것: 리더가 `src/ops/card.rs` 배선을 넘기면(안건은 note 2368) AC-1..AC-3 재판정·PR·감사.
+이 SPEC 의 구현 가지는 C-116 head `be33e4d3528e1dd8008558f45b61d9245c1d2b61` 위에 쌓여요. 옛 가지 `card/96-card-precheck`(agent-7, 커밋 `5b2b63e6d1`)의 한 커밋을 옮겼고(`src/card/mod.rs` 문서 주석 한 문장만 충돌), 그 위에 배선 커밋이 있어요. 아래 실행은 2026-11-19 에 heavy-slot 안에서 worktree `moai-adk-96` 의 `target/` 으로 돌렸어요.
+
+- 이력(내가 다시 돌린 것이 아니에요): agent-7 은 배선이 없어 시험 셋이 `unrecognized subcommand 'precheck'` 로 RED 였다고 적었어요. 그 시험은 한 번도 GREEN 으로 돈 적이 없었고, 처음 GREEN 으로 가져오다 시험 서식 결함 하나가 드러났어요: JSON 문자열 값을 `format!` 로 찍으면 따옴표가 붙어(`"commit"`) 기대 문자열과 어긋났어요 — 로직의 결함이 아니라 시험의 서식이었고 `as_str()` 로 고쳤어요(결과 값과 순서는 그대로).
+- AC-1: met — `cargo test --locked --offline --test card_precheck_cli`(필터 없이 전체) 3 passed 중 `lists_merged_prs_commits_and_spec_folders_naming_the_card`(제목·병합 커밋 `#31`·`Moai-Spec` 트레일러·본문 매치 다섯 항목을 새것 순으로, 소음 `C-10`·`C-19`·`AC-100` 은 안 나열, 연결 SPEC 과 카드를 이름하는 SPEC 폴더, HOME 스냅샷과 `HEAD` 불변). 변이 M1(낱말 경계 오른쪽 검사 끄기)이 이 시험과 단위 시험 `names_card_keeps_word_edges` 로 `FAILED`.
+- AC-2: met — `lists_decision_notes_sharing_a_path_or_a_criteria_phrase`(경로 공유·기준 문구 공유 둘만, 겹침 없는 결정과 `comment` 종류는 안 나열). 변이 M2(`WHERE n.kind = 'decision'` 를 `WHERE 1 = 1` 로)가 이 시험으로 `FAILED`; 단위 시험은 이 SQL 을 못 봐서 통과해요(7 passed).
+- AC-3: met — `advisory_on_failures_refuses_bad_names_and_bounds_the_scan`(실패는 `ok` 보고 안에 이름, 잘못된 카드 이름은 읽기 거부, 스캔 상한).
+- AC-4: met — `cargo test --locked --offline --lib precheck` 7 passed(대소문자·`C-960` 워드 경계·불용어·`**` 글로브·경로 양방향·트레일러 매치·빈 입력). 변이 M3(`/**` 범위가 하위 경로를 덮는 규칙을 정확히 같은 경로로 줄임)는 단위 시험 `scope_covers_glob_and_exact`·`note_collisions_match_both_path_directions_and_phrases` 가 `FAILED` 로 잡아요; CLI 시험은 이 변이를 못 잡아요(3 passed) — 하위 경로 규칙은 단위 시험만 지켜요.
+- 이웃: `card_cli` 14, `card_inbox_cli` 4, `card_spec_cli` 11, `card_work_cli` 24, `help_layout` 10 passed(`--no-fail-fast`, 종료 0); `cargo fmt --check` 종료 0; `cargo clippy --all-targets --offline --locked -- -D warnings` 종료 0.
+- 변이는 세 개를 한 번에 하나씩 넣었고 각각 복원(`git checkout` + `touch`, 미커밋 0).
+- 돌리지 않은 것: 전체 `cargo test`(PR 이 없어 리더의 묶음 `ci` 가 인용), 실제 HOME·원장, 병합 커밋 제목이 아닌 PR 만 읽는 열린 PR 조회(Non-goals), Windows·Linux.
