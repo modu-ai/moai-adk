@@ -1121,6 +1121,84 @@ pub fn index_records(project: &Path, req: &IndexQueryRequest) -> Result<Value> {
 mod tests {
     use super::*;
 
+    fn paths(items: &[&str]) -> Vec<String> {
+        items.iter().map(|s| s.to_string()).collect()
+    }
+
+    /// SPEC-20261119-index-scope AC-2: the folders a refusal names. Files are grouped by their
+    /// first two path components (`apps/bo`), files directly in a top folder by that folder,
+    /// root files as `.`; largest first, ties by path, at most ten.
+    #[test]
+    fn largest_folders() {
+        let mut list = Vec::new();
+        for n in 0..3 {
+            list.push(format!("apps/bo/src/f{n}.ts"));
+        }
+        list.extend(["apps/bo/x.ts".to_string(), "apps/bo/deep/er/y.ts".to_string()]);
+        for n in 0..2 {
+            list.push(format!("apps/web/f{n}.ts"));
+        }
+        list.extend(paths(&["tools/run.sh", "tools/gen/a.py", "README.md", "LICENSE"]));
+        // Equal counts sort by path: `apps/web` and `tools/gen`… are checked below.
+        assert_eq!(
+            largest_folders(&list),
+            vec![
+                ("apps/bo".to_string(), 5),
+                ("apps/web".to_string(), 2),
+                (".".to_string(), 2),
+                ("tools".to_string(), 1),
+                ("tools/gen".to_string(), 1),
+            ]
+        );
+        // Ten at most, whatever the number of folders.
+        let many: Vec<String> = (0..25).map(|n| format!("pkg/p{n:02}/f")).collect();
+        let named = largest_folders(&many);
+        assert_eq!(named.len(), 10);
+        assert_eq!(named[0], ("pkg/p00".to_string(), 1));
+        assert_eq!(named[9], ("pkg/p09".to_string(), 1));
+        assert!(largest_folders(&[]).is_empty());
+    }
+
+    /// SPEC-20261119-index-scope AC-5: what a scope entry may be, and how it matches.
+    #[test]
+    fn scope_normalization() {
+        let ok = |items: &[&str]| normalize_scope(&paths(items)).unwrap();
+        assert!(ok(&[]).is_empty());
+        assert_eq!(ok(&["apps/bo/"]), paths(&["apps/bo"]));
+        assert_eq!(ok(&["b", "a", "a"]), paths(&["a", "b"]));
+        assert_eq!(ok(&["apps", "apps/bo"]), paths(&["apps"]));
+        assert_eq!(ok(&["apps/bo", "apps"]), paths(&["apps"]));
+        assert_eq!(
+            ok(&["apps/bobby", "apps/bo"]),
+            paths(&["apps/bo", "apps/bobby"]),
+            "a folder name that merely starts with another is another folder"
+        );
+        for bad in [
+            "", "/", "/abs", "../x", "a/../b", "./a", "a/./b", "a//b", "a//", "a\\b", "a\u{1}b", "a\0b",
+        ] {
+            let err = normalize_scope(&paths(&[bad])).unwrap_err();
+            assert!(err.starts_with("invalid index scope: "), "{bad:?}: {err}");
+        }
+        // Edges: 512 bytes and 64 entries are accepted, one more is not.
+        let long = "x".repeat(512);
+        assert!(normalize_scope(&paths(&[&long])).is_ok());
+        assert!(normalize_scope(&paths(&[&format!("{long}x")])).is_err());
+        let sixty_four: Vec<String> = (0..64).map(|n| format!("d{n}")).collect();
+        assert!(normalize_scope(&sixty_four).is_ok());
+        let mut sixty_five = sixty_four;
+        sixty_five.push("d64".into());
+        assert!(normalize_scope(&sixty_five).is_err());
+
+        // Matching is on whole path components.
+        let scope = paths(&["apps/bo", "tools"]);
+        assert!(in_scope("apps/bo/a.ts", &scope));
+        assert!(in_scope("apps/bo", &scope), "a path equal to the entry");
+        assert!(in_scope("tools/x/y", &scope));
+        assert!(!in_scope("apps/bobby/a.ts", &scope));
+        assert!(!in_scope("apps/web/a.ts", &scope));
+        assert!(in_scope("anything/at/all", &[]), "no scope: everything");
+    }
+
     #[test]
     fn protocol_gates_refuse_other_versions() {
         let tmp = tempfile::tempdir().unwrap();
