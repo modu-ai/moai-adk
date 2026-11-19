@@ -270,6 +270,31 @@ fn a_detached_head_without_any_base_still_refuses() {
 }
 
 #[test]
+fn a_given_base_wins_over_the_profile_integration_branch() {
+    // Bundle-4 audit B1: the profile names a branch, `--base main` is given —
+    // main wins, and the result says so (given), from main's own commit.
+    let w = World::new();
+    w.git(&["switch", "-q", "-c", "m-flow/integration"]);
+    fs::write(w.project.join("b.txt"), "b\n").unwrap();
+    w.git(&["add", "-A"]);
+    w.commit("integration");
+    w.git(&["switch", "-q", "main"]);
+    w.profile_flow("m-flow/integration");
+    let id = w.draft_spec("login-fix");
+    w.git(&["add", "-A"]);
+    w.commit("spec");
+    let r = ok(&w.take(&id, &["--base", "main"], &[]));
+    assert_eq!(r["base"], "main", "{r}");
+    assert_eq!(r["base_source"], "given", "{r}");
+    assert_eq!(w.branch(), BRANCH);
+    assert_eq!(w.git(&["rev-parse", "HEAD"]), w.git(&["rev-parse", "main"]));
+    assert_eq!(
+        w.git(&["config", &format!("branch.{BRANCH}.moai-base")]),
+        "main"
+    );
+}
+
+#[test]
 fn take_creates_the_branch_and_prints_the_next_commands() {
     let w = World::new();
     let id = w.draft_spec("login-fix");
