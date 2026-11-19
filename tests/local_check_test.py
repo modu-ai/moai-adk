@@ -108,7 +108,7 @@ def last_line(text):
 class FakeRepo:
     """A temporary git repository holding a copy of the script, with stub tools on PATH."""
 
-    def __init__(self, fail_label=None):
+    def __init__(self, fail_label=None, slot=False):
         self.tmp = Path(tempfile.mkdtemp(prefix="local-check-"))
         self.repo = self.tmp / "repo"
         (self.repo / "tools").mkdir(parents=True)
@@ -128,6 +128,20 @@ class FakeRepo:
         self.bin = self.tmp / "bin"
         self.bin.mkdir()
         write_stubs(self.bin, self.calls, self.where, fail_label)
+        self.slot_calls = self.tmp / "slot_calls"
+        if slot:
+            # A stub `moai` offering `heavy-slot-acquire`: it records its arguments and runs the
+            # command after `--`, or exits 75 (the slot's refusal) when STUB_SLOT_REFUSE is set.
+            stub = self.bin / "moai"
+            stub.write_text(
+                "#!/bin/sh\n"
+                "[ \"$1 $2\" = 'heavy-slot-acquire --help' ] && exit 0\n"
+                f"echo \"$*\" >> '{self.slot_calls}'\n"
+                "[ -n \"${STUB_SLOT_REFUSE:-}\" ] && exit 75\n"
+                "while [ \"$#\" -gt 0 ] && [ \"$1\" != -- ]; do shift; done\n"
+                "shift\n"
+                "exec \"$@\"\n")
+            stub.chmod(0o755)
 
     def git_env(self):
         env = {"PATH": "/usr/bin:/bin", "HOME": str(self.tmp), "LC_ALL": "C",
@@ -137,8 +151,10 @@ class FakeRepo:
 
     def run(self, **extra):
         env = self.git_env()
-        env["PATH"] = f"{self.bin}:/usr/bin:/bin"  # no `moai`: steps run without a slot
+        env["PATH"] = f"{self.bin}:/usr/bin:/bin"  # no `moai` unless slot=True: no slot
         env.update(extra)
+        # A value of None removes the variable (an unset HOME is not an empty one).
+        env = {k: v for k, v in env.items() if v is not None}
         # These tests pin the in-place behaviour (CI's); the candidate mode has its own class.
         env.setdefault("LOCAL_CHECK_MODE", "in-place")
         return subprocess.run(["bash", str(self.repo / "tools" / "local_check.sh")],
@@ -147,6 +163,9 @@ class FakeRepo:
 
     def recorded(self):
         return self.calls.read_text().splitlines() if self.calls.exists() else []
+
+    def slot_recorded(self):
+        return self.slot_calls.read_text().splitlines() if self.slot_calls.exists() else []
 
     def head(self):
         return git(self.repo, "rev-parse", "HEAD")
@@ -223,6 +242,100 @@ class LocalCheckStepsTest(unittest.TestCase):
             "rustfmt --check --edition 2021 src/ops/*.rs",
             "python3 -m unittest discover -v -s tests -p *_test.py",
         ])
+
+
+class LocalCheckPythonSlotTest(unittest.TestCase):
+    """SPEC-20261119-python-slot-pre-ready: the whole unittest discover waits in a python slot,
+    a slot folder apart from the cargo slots; without `moai heavy-slot-acquire` it runs directly."""
+
+    def setUp(self):
+        self.repo = FakeRepo(slot=True)
+        self.addCleanup(self.repo.close)
+        self.default_dir = self.repo.tmp / ".cache" / "moai-cli" / "python-slots"
+
+    def split(self):
+        slot = self.repo.slot_recorded()
+        return [l for l in slot if " --dir " in l], [l for l in slot if " --dir " not in l]
+
+    def test_only_the_unittest_step_uses_the_python_slot_with_the_default_folder_and_limit(self):
+        proc = self.repo.run()
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        python, cargo = self.split()
+        self.assertEqual(len(python), 1, python)
+        self.assertEqual(len(cargo), 3, cargo)  # test, doctest, clippy keep the heavy slot
+        self.assertTrue(python[0].startswith(
+            f"heavy-slot-acquire --dir {self.default_dir} --max 2 --min-free-gb 50 "
+            "--name local-check-py -- bash -c python3 -m unittest discover"), python[0])
+        self.assertTrue(all(l.startswith("heavy-slot-acquire --max 3 ") for l in cargo), cargo)
+        # The command still ran inside the slot.
+        self.assertIn("python3 -m unittest discover -v -s tests -p *_test.py",
+                      self.repo.recorded())
+
+    def test_xdg_cache_home_names_the_default_folder(self):
+        xdg = self.repo.tmp / "xdg"
+        self.repo.run(XDG_CACHE_HOME=str(xdg))
+        python, _ = self.split()
+        self.assertIn(f" --dir {xdg}/moai-cli/python-slots ", python[0])
+
+    def test_the_folder_and_the_limit_can_be_set(self):
+        self.repo.run(MOAI_PYTHON_SLOT_DIR="/x/y", MOAI_PYTHON_SLOT_MAX="1")
+        python, _ = self.split()
+        self.assertIn(" --dir /x/y --max 1 ", python[0])
+
+    def test_empty_settings_mean_the_defaults(self):
+        self.repo.run(MOAI_PYTHON_SLOT_DIR="", MOAI_PYTHON_SLOT_MAX="")
+        python, _ = self.split()
+        self.assertIn(f" --dir {self.default_dir} --max 2 ", python[0])
+
+    def test_an_unset_or_empty_home_never_stops_the_script_and_the_step_runs_directly(self):
+        # Audit B1: the folder default read $HOME at start-up and died with `unbound variable`
+        # before the EXIT trap, so not even the last line was printed.
+        for label, extra in (("unset", {"HOME": None}), ("empty", {"HOME": ""})):
+            with self.subTest(home=label):
+                repo = FakeRepo(slot=True)
+                self.addCleanup(repo.close)
+                proc = repo.run(**extra)
+                self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+                self.assertNotIn("unbound variable", proc.stderr)
+                self.assertIn("no python slot folder", proc.stderr)
+                self.assertTrue(LINE.match(last_line(proc.stdout)), proc.stdout)
+                self.assertEqual([l for l in repo.slot_recorded() if " --dir " in l], [])
+                # Never the cargo slot folder either (REQ-12): no slot line carries the python run.
+                self.assertEqual([l for l in repo.slot_recorded() if "unittest" in l], [])
+                self.assertIn("python3 -m unittest discover -v -s tests -p *_test.py",
+                              repo.recorded())
+
+    def test_an_empty_xdg_cache_home_falls_back_to_home(self):
+        self.repo.run(XDG_CACHE_HOME="")
+        python, _ = self.split()
+        self.assertIn(f" --dir {self.default_dir} --max 2 ", python[0])
+
+    def test_the_folder_setting_alone_works_without_home(self):
+        self.repo.run(HOME=None, MOAI_PYTHON_SLOT_DIR="/x/y")
+        python, _ = self.split()
+        self.assertIn(" --dir /x/y --max 2 ", python[0])
+
+    def test_the_python_slot_name_is_the_heavy_name_with_a_suffix(self):
+        self.repo.run(MOAI_HEAVY_SLOT_NAME="lane-7")
+        python, cargo = self.split()
+        self.assertIn(" --name lane-7-py -- ", python[0])
+        for line in cargo:
+            self.assertIn(" --name lane-7 -- ", line)
+
+    def test_a_refusal_of_the_python_step_fails_the_run_with_its_exit_code(self):
+        proc = self.repo.run(STUB_SLOT_REFUSE="1", LOCAL_CHECK_KEEP_GOING="1")
+        self.assertEqual(proc.returncode, 1)
+        self.assertIn("step unittest: exit 75", proc.stderr)
+        self.assertIn(" result=fail ", last_line(proc.stdout))
+        self.assertNotIn("python3 -m unittest", " ".join(self.repo.recorded()))
+
+    def test_without_the_slot_command_the_step_runs_directly(self):
+        repo = FakeRepo()
+        self.addCleanup(repo.close)
+        proc = repo.run()
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertEqual(repo.slot_recorded(), [])
+        self.assertIn("python3 -m unittest discover -v -s tests -p *_test.py", repo.recorded())
 
 
 class LocalCheckLineTest(unittest.TestCase):

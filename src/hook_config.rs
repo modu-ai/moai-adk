@@ -26,7 +26,15 @@
 //! max_lines = 20                   # 1-200
 //! max_chars = 4000                 # 200-9000
 //! checkers = { py = ["ruff", "check", "--output-format", "concise"] }  # file appended
+//!
+//! [hooks.modes]                    # card C-86, leader decision note 2346
+//! merge_confirm = "enforce"        # off | observe | enforce; absent or anything else: observe
 //! ```
+//!
+//! `[hooks.modes]` sets, per rule id, how a refusing rule acts ([`RuleMode`]): `off` does
+//! nothing, `observe` (the default, also for a value that is not one of the three words) logs
+//! what the rule would have done and lets the call through, `enforce` acts. It never turns a
+//! rule that has its own `enabled` switch on or off.
 //!
 //! A malformed `[hooks.edit_diagnostics]` turns only that feature off, named by
 //! [`ConfigProblem::InvalidEditDiagnostics`]; the guard rules keep their own settings.
@@ -98,8 +106,32 @@ pub const EDIT_TIMEOUT_SECS: (u64, u64, u64) = (10, 1, 30);
 pub const EDIT_MAX_LINES: (usize, usize, usize) = (20, 1, 200);
 pub const EDIT_MAX_CHARS: (usize, usize, usize) = (4_000, 200, 9_000);
 
+/// How a refusing hook rule acts (card C-86, leader decision note 2346): `Observe` records
+/// what it would have refused and lets the call through, and is the default.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum RuleMode {
+    Off,
+    #[default]
+    Observe,
+    Enforce,
+}
+
+impl RuleMode {
+    /// The mode a setting names, or `None` for anything but `off`, `observe` and `enforce`.
+    pub fn parse(word: &str) -> Option<RuleMode> {
+        match word {
+            "off" => Some(RuleMode::Off),
+            "observe" => Some(RuleMode::Observe),
+            "enforce" => Some(RuleMode::Enforce),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct HookConfig {
+    /// `[hooks.modes]`: rule id → mode. A rule without an entry is in [`RuleMode::Observe`].
+    pub modes: std::collections::BTreeMap<String, RuleMode>,
     pub outside: Option<OutsideRule>,
     pub primary: Option<PrimaryRule>,
     pub identity: Option<IdentityRule>,
@@ -320,13 +352,32 @@ fn parse_checked(text: &str, home: &Path) -> Option<HookConfig> {
         ),
         None => (None, false),
     };
+    // A word that is not one of the three modes leaves the rule in observe.
+    let modes = table("modes")
+        .map(|t| {
+            t.iter()
+                .filter_map(|(rule, item)| {
+                    let mode = RuleMode::parse(item.as_str()?)?;
+                    Some((rule.to_string(), mode))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
     Some(HookConfig {
+        modes,
         outside,
         primary,
         identity,
         edit,
         edit_invalid,
     })
+}
+
+impl HookConfig {
+    /// The mode of rule `rule`: its `[hooks.modes]` entry, or observe.
+    pub fn mode_of(&self, rule: &str) -> RuleMode {
+        self.modes.get(rule).copied().unwrap_or_default()
+    }
 }
 
 /// The keys `[hooks.edit_diagnostics]` takes; any other key makes it malformed.
@@ -464,6 +515,48 @@ mod tests {
             let c = parse(text, home);
             assert_eq!(c, HookConfig::default(), "{text:?}");
         }
+    }
+
+    /// Card C-86 (note 2346): `[hooks.modes]` names a mode per rule; a missing entry, a word that
+    /// is not off, observe or enforce, and a value that is not a string all leave observe.
+    #[test]
+    fn rule_modes_default_to_observe() {
+        let home = Path::new("/home/u");
+        let rule = "merge_confirm";
+        for (text, want) in [
+            ("", RuleMode::Observe),
+            ("[hooks.modes]\n", RuleMode::Observe),
+            ("[hooks.modes]\nmerge_confirm = \"off\"\n", RuleMode::Off),
+            (
+                "[hooks.modes]\nmerge_confirm = \"observe\"\n",
+                RuleMode::Observe,
+            ),
+            (
+                "[hooks.modes]\nmerge_confirm = \"enforce\"\n",
+                RuleMode::Enforce,
+            ),
+            (
+                "[hooks.modes]\nmerge_confirm = \"Enforce\"\n",
+                RuleMode::Observe,
+            ),
+            (
+                "[hooks.modes]\nmerge_confirm = \"yes\"\n",
+                RuleMode::Observe,
+            ),
+            ("[hooks.modes]\nmerge_confirm = 3\n", RuleMode::Observe),
+            ("[hooks.modes]\nother = \"enforce\"\n", RuleMode::Observe),
+        ] {
+            assert_eq!(parse(text, home).mode_of(rule), want, "{text:?}");
+        }
+        // A bad word for one rule leaves the other rules' words alone.
+        let c = parse(
+            "[hooks.modes]\nmerge_confirm = \"x\"\nother = \"off\"\n",
+            home,
+        );
+        assert_eq!(
+            (c.mode_of(rule), c.mode_of("other")),
+            (RuleMode::Observe, RuleMode::Off)
+        );
     }
 
     #[test]

@@ -427,3 +427,36 @@ fn an_absent_go_build_skips_with_a_reason() {
     fs::write(&given, "").unwrap();
     assert_eq!(locate(Some(given.clone()), Some(home)).unwrap(), given);
 }
+
+/// Every case name the tests above consult through `approved` — the approved list may hold no
+/// other entry, so a fake or stale entry fails instead of passing silently (leader note 2687
+/// N7, the audit of PR #3226).
+const CONSULTED_CASES: [&str; 4] = [
+    "layout_of_the_status_line",
+    "hook_call_pre_tool",
+    "hook_deny_reason_text",
+    "hook_allow_is_silent",
+];
+
+/// The approved list holds nothing that no test consults, and every entry keeps its reason —
+/// a made-up entry, or one whose test was deleted, makes this test fail.
+#[test]
+fn every_approved_difference_entry_is_consulted_by_a_test() {
+    let list: Value = serde_json::from_str(APPROVED).unwrap();
+    let entries = list["differences"].as_array().expect("differences array");
+    assert!(!entries.is_empty(), "the approved list is empty");
+    for entry in entries {
+        let case = entry["case"]
+            .as_str()
+            .unwrap_or_else(|| panic!("an approved entry without a case name: {entry}"));
+        assert!(
+            CONSULTED_CASES.contains(&case),
+            "approved-differences.json holds {case:?}, which no test consults — remove the \
+             entry or write the test that checks the difference still exists"
+        );
+        assert!(
+            entry["reason"].as_str().is_some_and(|r| !r.is_empty()),
+            "the approved entry {case:?} has no reason"
+        );
+    }
+}

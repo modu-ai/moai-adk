@@ -42,6 +42,11 @@ type Result<T> = std::result::Result<T, String>;
 pub const SCHEMA_VERSION: u32 = 1;
 /// Scan guard: a tracked-file table beyond this is refused, not silently truncated.
 pub const MAX_FILES: usize = 16384;
+/// A scope names at most this many folders, each at most this many bytes.
+pub const MAX_SCOPE_ENTRIES: usize = 64;
+const MAX_SCOPE_ENTRY_BYTES: usize = 512;
+/// A refusal over the file limit names this many folders.
+const NAMED_FOLDERS: usize = 10;
 const GIT_OUTPUT_LIMIT: usize = 4 * 1024 * 1024;
 /// A manifest file-count cap on read (a hand-edited generation must not blow memory).
 const MAX_MANIFEST_FILES: usize = MAX_FILES;
@@ -208,6 +213,10 @@ impl IndexIo {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct IndexBuildRequest {
     pub protocol_version: u32,
+    /// Folders (relative to the project) to index; empty means the whole project. Only the
+    /// tracked files under them are indexed and the manifest records the list.
+    #[serde(default)]
+    pub scope: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -233,6 +242,10 @@ pub struct IndexManifest {
     /// generation built before them.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub records: Option<RecordsRef>,
+    /// The folders a scoped build indexed (normalized, sorted); absent for a whole-project
+    /// build and in a generation built before scopes, which read as unscoped.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub scope: Vec<String>,
 }
 
 /// Digests and counts of `map.jsonl` / `graph.jsonl` — a reader rejects a view whose
@@ -318,35 +331,182 @@ fn failure_marker_path(project: &Path) -> PathBuf {
     index_root(project).join("last-build.json")
 }
 
+/// A scope as a request may spell it, made canonical: one trailing `/` allowed, every other
+/// component a plain name (no empty, `.` or `..` component, no backslash, no control
+/// character), at most [`MAX_SCOPE_ENTRY_BYTES`] bytes an entry and [`MAX_SCOPE_ENTRIES`]
+/// entries. The result is sorted and without duplicates, and an entry under another entry is
+/// dropped (`apps` already holds `apps/bo`). An empty list is no scope. An entry is never
+/// echoed in an error: it is the caller's text and the message is classified by its words.
+pub fn normalize_scope(scope: &[String]) -> Result<Vec<String>> {
+    if scope.len() > MAX_SCOPE_ENTRIES {
+        return Err(format!(
+            "invalid index scope: {} entries, at most {MAX_SCOPE_ENTRIES}",
+            scope.len()
+        ));
+    }
+    let mut entries: Vec<String> = Vec::new();
+    for (n, raw) in scope.iter().enumerate() {
+        let entry = raw.strip_suffix('/').unwrap_or(raw);
+        let plain = !entry.is_empty()
+            && entry.len() <= MAX_SCOPE_ENTRY_BYTES
+            && !entry.chars().any(|c| c.is_control() || c == '\\')
+            && entry
+                .split('/')
+                .all(|part| !part.is_empty() && part != "." && part != "..");
+        if !plain {
+            return Err(format!(
+                "invalid index scope: entry {} is not a plain relative path of 1 to \
+                 {MAX_SCOPE_ENTRY_BYTES} bytes",
+                n + 1
+            ));
+        }
+        entries.push(entry.to_string());
+    }
+    entries.sort();
+    entries.dedup();
+    let all = entries.clone();
+    entries.retain(|e| {
+        !all.iter()
+            .any(|other| other != e && in_scope(e, std::slice::from_ref(other)))
+    });
+    Ok(entries)
+}
+
+/// Whether `path` lies under the scope, matched on whole path components (`apps/bobby` is not
+/// under `apps/bo`); a path equal to an entry counts. No scope holds every path.
+fn in_scope(path: &str, scope: &[String]) -> bool {
+    scope.is_empty()
+        || scope.iter().any(|entry| {
+            path == entry
+                || path
+                    .strip_prefix(entry.as_str())
+                    .is_some_and(|rest| rest.starts_with('/'))
+        })
+}
+
+/// The folders a refusal names: files grouped by their first two path components (`apps/bo`),
+/// a file directly in a top folder by that folder, a root file as `.`; largest first, equal
+/// counts by path, at most [`NAMED_FOLDERS`].
+fn largest_folders(paths: &[String]) -> Vec<(String, usize)> {
+    let mut counts: BTreeMap<String, usize> = BTreeMap::new();
+    for path in paths {
+        let mut parts = path.splitn(3, '/');
+        let folder = match (parts.next(), parts.next(), parts.next()) {
+            (Some(a), Some(b), Some(_)) => format!("{a}/{b}"),
+            (Some(a), Some(_), None) => a.to_string(),
+            _ => ".".to_string(),
+        };
+        *counts.entry(folder).or_default() += 1;
+    }
+    let mut ranked: Vec<(String, usize)> = counts.into_iter().collect();
+    ranked.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    ranked.truncate(NAMED_FOLDERS);
+    ranked
+}
+
+/// The refusal over the file limit: how many files, where they are, and a request that scopes
+/// the build. The class stays `invalid_input` (`index file limit exceeded`, `contract.rs`).
+fn too_many_files(count: usize, limit: usize, paths: &[String], scoped: bool) -> String {
+    let folders = largest_folders(paths);
+    let named: Vec<String> = folders
+        .iter()
+        .map(|(folder, n)| format!("{folder} ({n})"))
+        .collect();
+    // The example must be a request this build would accept: the first listed folder (not the
+    // root bucket) whose whole subtree, counted from the path list, fits under the limit. The
+    // listed count is not enough: a folder grouped by its first component counts direct files only.
+    let example = folders
+        .iter()
+        .map(|(folder, _)| folder)
+        .filter(|folder| folder.as_str() != ".")
+        .find(|folder| {
+            let whole = std::slice::from_ref(*folder);
+            paths.iter().filter(|p| in_scope(p, whole)).count() <= limit
+        })
+        .map(|folder| {
+            format!(
+                " Send a scope to index part of it, for example {}.",
+                json!({"protocol_version": SCHEMA_VERSION, "scope": [folder]})
+            )
+        })
+        .unwrap_or_else(|| {
+            " No listed folder fits under the limit by itself; send a scope that names deeper \
+             folders."
+                .to_string()
+        });
+    format!(
+        "index file limit exceeded ({limit}): {count} tracked files{}; the scan is refused, not \
+         truncated. Largest folders: {}.{example}",
+        if scoped { " in the scope" } else { "" },
+        named.join(", ")
+    )
+}
+
+/// The tracked paths of the project (sorted, without duplicates) less the index's own folder,
+/// limited to the scope. A scope is handed to git as literal pathspecs, so the output stays
+/// small for a repository whose full list would pass the output limit.
+fn tracked_paths(project: &Path, state: &str, scope: &[String]) -> Result<Vec<String>> {
+    let mut args = vec!["ls-files", "-z"];
+    if !scope.is_empty() {
+        args.push("--");
+        args.extend(scope.iter().map(String::as_str));
+    }
+    let raw = git_out(project, &args)?;
+    let index_dir = format!("{state}/index");
+    let index_prefix = format!("{index_dir}/");
+    let mut paths: Vec<String> = raw
+        .split(|b| *b == 0)
+        .filter(|e| !e.is_empty())
+        .map(|e| String::from_utf8_lossy(e).into_owned())
+        .filter(|p| !p.starts_with(&index_prefix) && *p != index_dir && in_scope(p, scope))
+        .collect();
+    paths.sort();
+    paths.dedup();
+    Ok(paths)
+}
+
 /// Tracked files with content digests (sorted by path), and the `HEAD` commit the scan
 /// is bound to. Untracked files are deliberately not part of the index content — they
 /// are reported by query change detection instead. The index never indexes itself:
 /// `.moai-cli/index/**` is excluded even when a repository tracks it, or every build
 /// would flip the pointer it just wrote into a "modification". Symlinks are digested by
 /// their target text (the same rule the 07-D snapshot uses).
+#[cfg(test)]
 fn scan(project: &Path, source: &IndexIo) -> Result<(String, Vec<IndexedFile>)> {
     scan_with_hook(project, source, |_, _| {})
 }
 
+#[cfg(test)]
 fn scan_with_hook(
     project: &Path,
     source: &IndexIo,
+    hook: impl FnMut(ReadPoint, &Path),
+) -> Result<(String, Vec<IndexedFile>)> {
+    scan_scoped_with_hook(project, source, &[], hook)
+}
+
+/// [`scan`] limited to a normalized scope (empty: the whole project).
+fn scan_scoped(
+    project: &Path,
+    source: &IndexIo,
+    scope: &[String],
+) -> Result<(String, Vec<IndexedFile>)> {
+    scan_scoped_with_hook(project, source, scope, |_, _| {})
+}
+
+fn scan_scoped_with_hook(
+    project: &Path,
+    source: &IndexIo,
+    scope: &[String],
     mut hook: impl FnMut(ReadPoint, &Path),
 ) -> Result<(String, Vec<IndexedFile>)> {
-    let raw = git_out(project, &["ls-files", "-z"])?;
-    let index_dir = format!("{}/index", source.state);
-    let index_prefix = format!("{index_dir}/");
-    let mut paths: Vec<String> = raw
-        .split(|b| *b == 0)
-        .filter(|e| !e.is_empty())
-        .map(|e| String::from_utf8_lossy(e).into_owned())
-        .filter(|p| !p.starts_with(&index_prefix) && *p != index_dir)
-        .collect();
-    paths.sort();
-    paths.dedup();
+    let paths = tracked_paths(project, source.state, scope)?;
     if paths.len() > MAX_FILES {
-        return Err(format!(
-            "index file limit exceeded ({MAX_FILES}); the scan is refused, not truncated"
+        return Err(too_many_files(
+            paths.len(),
+            MAX_FILES,
+            &paths,
+            !scope.is_empty(),
         ));
     }
     let base_commit = git_line(project, &["rev-parse", "--verify", "HEAD^{commit}"])
@@ -407,7 +567,7 @@ fn scan_with_hook(
 
 /// Untracked files (`??` in `git status --porcelain=v1 -z --untracked-files=all
 /// --no-renames`), capped, sorted — the "new file" detection input.
-fn untracked(project: &Path) -> Result<Vec<String>> {
+fn untracked(project: &Path, scope: &[String]) -> Result<Vec<String>> {
     let raw = git_out(
         project,
         &[
@@ -426,7 +586,7 @@ fn untracked(project: &Path) -> Result<Vec<String>> {
             // The tool's own state directory (this index, receipts, claims) is never a
             // project change: the index writes there itself, so counting it would make
             // `fresh` unreachable.
-            if path.starts_with(&own) {
+            if path.starts_with(&own) || !in_scope(&path, scope) {
                 continue;
             }
             out.push(path);
@@ -456,7 +616,7 @@ fn canonical_manifest_bytes(m: &IndexManifest) -> Result<Vec<u8>> {
 /// and files can reach a different commit history (a shallow clone later unshallowed),
 /// and that changes the Graph, so it must change the id — an immutable generation never
 /// stands for two different Graphs.
-fn content_id(base_commit: &str, files: &[IndexedFile], history: &str) -> String {
+fn content_id(base_commit: &str, files: &[IndexedFile], history: &str, scope: &[String]) -> String {
     let mut sorted: Vec<&IndexedFile> = files.iter().collect();
     sorted.sort_by(|a, b| a.path.cmp(&b.path));
     let mut h = Sha256::new();
@@ -470,6 +630,14 @@ fn content_id(base_commit: &str, files: &[IndexedFile], history: &str) -> String
     }
     h.update((base_commit.len() as u64).to_be_bytes());
     h.update(base_commit.as_bytes());
+    // A scope is content only when there is one, so a whole-project generation keeps its id.
+    if !scope.is_empty() {
+        h.update(b"scope\0");
+        for entry in scope {
+            h.update((entry.len() as u64).to_be_bytes());
+            h.update(entry.as_bytes());
+        }
+    }
     for f in sorted {
         h.update((f.path.len() as u64).to_be_bytes());
         h.update(f.path.as_bytes());
@@ -532,6 +700,7 @@ fn same_snapshot(stored: &IndexManifest, expected: &IndexManifest) -> bool {
     stored.base_commit == expected.base_commit
         && stored.files == expected.files
         && stored.records == expected.records
+        && stored.scope == expected.scope
 }
 
 /// A simultaneous publisher may win the rename. Reuse only a validated identical
@@ -749,9 +918,15 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
     if req.protocol_version != SCHEMA_VERSION {
         return Err("unsupported protocol_version; supported: 1".into());
     }
+    let scope = normalize_scope(&req.scope)?;
     let root = fs::canonicalize(project).map_err(|_| "path unavailable".to_string())?;
     let source =
         IndexIo::new(&root).map_err(|_| "index directory handle unavailable".to_string())?;
+    // A scope that holds no tracked file is a wrong request, not a failed build: refuse it
+    // before the failure marker could turn the previous generation into `partial`.
+    if !scope.is_empty() && tracked_paths(&root, source.state, &scope)?.is_empty() {
+        return Err("invalid index scope: no tracked file lies under it".into());
+    }
     let build = || -> Result<Value> {
         for rel in [
             crate::state_root::rel(&root, "index/generations"),
@@ -762,10 +937,10 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
         }
         // Three static progress lines (#2806); silent without a stderr sink.
         crate::progress::note_msg(crate::ui_text::Msg::ScanningTrackedFiles, &[]);
-        let (base_commit, files) = scan(&root, &source)?;
+        let (base_commit, files) = scan_scoped(&root, &source, &scope)?;
         let total_bytes: u64 = files.iter().map(|f| f.bytes).sum();
         let (history, history_digest) = build_history(&root, &base_commit);
-        let gen_id = content_id(&base_commit, &files, &history_digest);
+        let gen_id = content_id(&base_commit, &files, &history_digest, &scope);
         crate::progress::note_msg(crate::ui_text::Msg::BuildingViews, &[]);
         let (views, records, reused, extracted) =
             build_views(&root, &source, &gen_id, &base_commit, &files, history)?;
@@ -776,6 +951,7 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
             files: files.clone(),
             built_at: utc_now(),
             records: Some(records.clone()),
+            scope: scope.clone(),
         };
         let gens = generations_dir(&root);
         fs::create_dir_all(&gens).map_err(|_| "index directory unavailable".to_string())?;
@@ -825,7 +1001,7 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
         };
         swap_pointer(&root, &gen_id)?;
         let _ = fs::remove_file(failure_marker_path(&root));
-        Ok(json!({
+        let mut answer = json!({
             "protocol_version": SCHEMA_VERSION,
             "schema_version": SCHEMA_VERSION,
             "generation_id": gen_id,
@@ -842,7 +1018,12 @@ pub fn index_build(project: &Path, req: &IndexBuildRequest) -> Result<Value> {
             "status": "complete",
             "swap": "atomic",
             "orphan_candidates": orphan_candidates(&root),
-        }))
+        });
+        // Only a scoped build names its scope: a whole-project answer stays as it was.
+        if !scope.is_empty() {
+            answer["scope"] = json!(scope);
+        }
+        Ok(answer)
     };
     match build() {
         Ok(v) => Ok(v),
@@ -962,6 +1143,17 @@ fn is_empty_changes(c: &Value) -> bool {
         && c["branch_switched"] == json!(false)
 }
 
+/// The scope the published generation was built with (empty: whole project, or nothing is
+/// published or readable). `index_query` judges freshness inside it.
+fn published_scope(source: &IndexIo) -> Vec<String> {
+    read_pointer(source)
+        .ok()
+        .flatten()
+        .and_then(|gen_id| load_manifest(source, &gen_id))
+        .map(|manifest| manifest.scope)
+        .unwrap_or_default()
+}
+
 /// The published generation id and its indexed file list, for read-only consumers such as
 /// `search` (C7 #2183). `None` when no generation is published or it cannot be read; the
 /// caller reports that through `index_query`'s freshness answer instead of guessing.
@@ -1015,10 +1207,11 @@ pub fn index_query(project: &Path, req: &IndexQueryRequest) -> Result<Value> {
         Ok(None) => None,
         Err(_) => return unavailable("index failure marker unreadable"),
     };
+    let scope = published_scope(&source);
     if let Some(marker) = marker {
         let pointer = read_pointer(&source).ok().flatten();
-        let changes = scan(&root, &source)
-            .and_then(|(base, files)| untracked(&root).map(|new| (base, files, new)))
+        let changes = scan_scoped(&root, &source, &scope)
+            .and_then(|(base, files)| untracked(&root, &scope).map(|new| (base, files, new)))
             .ok()
             .and_then(|(base, files, new)| {
                 pointer
@@ -1038,7 +1231,9 @@ pub fn index_query(project: &Path, req: &IndexQueryRequest) -> Result<Value> {
             "writes": false,
         }));
     }
-    let scan = match scan(&root, &source).and_then(|(b, f)| untracked(&root).map(|n| (b, f, n))) {
+    let scan = match scan_scoped(&root, &source, &scope)
+        .and_then(|(b, f)| untracked(&root, &scope).map(|n| (b, f, n)))
+    {
         Ok(v) => v,
         Err(e) => return unavailable(&e),
     };
@@ -1121,11 +1316,124 @@ pub fn index_records(project: &Path, req: &IndexQueryRequest) -> Result<Value> {
 mod tests {
     use super::*;
 
+    fn paths(items: &[&str]) -> Vec<String> {
+        items.iter().map(|s| s.to_string()).collect()
+    }
+
+    /// SPEC-20261119-index-scope AC-2: the folders a refusal names. Files are grouped by their
+    /// first two path components (`apps/bo`), files directly in a top folder by that folder,
+    /// root files as `.`; largest first, ties by path, at most ten.
+    #[test]
+    fn largest_folders_are_ranked_and_capped() {
+        let mut list = Vec::new();
+        for n in 0..3 {
+            list.push(format!("apps/bo/src/f{n}.ts"));
+        }
+        list.extend([
+            "apps/bo/x.ts".to_string(),
+            "apps/bo/deep/er/y.ts".to_string(),
+        ]);
+        for n in 0..2 {
+            list.push(format!("apps/web/f{n}.ts"));
+        }
+        list.extend(paths(&[
+            "tools/run.sh",
+            "tools/gen/a.py",
+            "README.md",
+            "LICENSE",
+        ]));
+        // Equal counts sort by path (`.` sorts before `apps/web`).
+        assert_eq!(
+            largest_folders(&list),
+            vec![
+                ("apps/bo".to_string(), 5),
+                (".".to_string(), 2),
+                ("apps/web".to_string(), 2),
+                ("tools".to_string(), 1),
+                ("tools/gen".to_string(), 1),
+            ]
+        );
+        // Ten at most, whatever the number of folders.
+        let many: Vec<String> = (0..25).map(|n| format!("pkg/p{n:02}/f")).collect();
+        let named = largest_folders(&many);
+        assert_eq!(named.len(), 10);
+        assert_eq!(named[0], ("pkg/p00".to_string(), 1));
+        assert_eq!(named[9], ("pkg/p09".to_string(), 1));
+        assert!(largest_folders(&[]).is_empty());
+    }
+
+    /// SPEC-20261119-index-scope REQ-6: a published snapshot is reused only when its scope is the same.
+    #[test]
+    fn a_published_snapshot_is_reused_only_for_the_same_scope() {
+        let manifest = |scope: &[&str]| IndexManifest {
+            schema_version: 1,
+            generation_id: "gen-x".into(),
+            base_commit: "aaaa".into(),
+            files: Vec::new(),
+            built_at: "2026-11-10T00:00:00Z".into(),
+            records: None,
+            scope: scope.iter().map(|entry| entry.to_string()).collect(),
+        };
+        assert!(same_snapshot(
+            &manifest(&["apps/bo"]),
+            &manifest(&["apps/bo"])
+        ));
+        assert!(same_snapshot(&manifest(&[]), &manifest(&[])));
+        assert!(!same_snapshot(&manifest(&["apps/bo"]), &manifest(&[])));
+        assert!(!same_snapshot(&manifest(&[]), &manifest(&["apps/bo"])));
+        assert!(!same_snapshot(
+            &manifest(&["apps/bo"]),
+            &manifest(&["apps/web"])
+        ));
+    }
+
+    /// SPEC-20261119-index-scope AC-5: what a scope entry may be, and how it matches.
+    #[test]
+    fn scope_normalization() {
+        let ok = |items: &[&str]| normalize_scope(&paths(items)).unwrap();
+        assert!(ok(&[]).is_empty());
+        assert_eq!(ok(&["apps/bo/"]), paths(&["apps/bo"]));
+        assert_eq!(ok(&["b", "a", "a"]), paths(&["a", "b"]));
+        assert_eq!(ok(&["apps", "apps/bo"]), paths(&["apps"]));
+        assert_eq!(ok(&["apps/bo", "apps"]), paths(&["apps"]));
+        assert_eq!(
+            ok(&["apps/bobby", "apps/bo"]),
+            paths(&["apps/bo", "apps/bobby"]),
+            "a folder name that merely starts with another is another folder"
+        );
+        for bad in [
+            "", "/", "/abs", "../x", "a/../b", "./a", "a/./b", "a//b", "a//", "a\\b", "a\u{1}b",
+            "a\0b",
+        ] {
+            let err = normalize_scope(&paths(&[bad])).unwrap_err();
+            assert!(err.starts_with("invalid index scope: "), "{bad:?}: {err}");
+        }
+        // Edges: 512 bytes and 64 entries are accepted, one more is not.
+        let long = "x".repeat(512);
+        assert!(normalize_scope(&paths(&[&long])).is_ok());
+        assert!(normalize_scope(&paths(&[&format!("{long}x")])).is_err());
+        let sixty_four: Vec<String> = (0..64).map(|n| format!("d{n}")).collect();
+        assert!(normalize_scope(&sixty_four).is_ok());
+        let mut sixty_five = sixty_four;
+        sixty_five.push("d64".into());
+        assert!(normalize_scope(&sixty_five).is_err());
+
+        // Matching is on whole path components.
+        let scope = paths(&["apps/bo", "tools"]);
+        assert!(in_scope("apps/bo/a.ts", &scope));
+        assert!(in_scope("apps/bo", &scope), "a path equal to the entry");
+        assert!(in_scope("tools/x/y", &scope));
+        assert!(!in_scope("apps/bobby/a.ts", &scope));
+        assert!(!in_scope("apps/web/a.ts", &scope));
+        assert!(in_scope("anything/at/all", &[]), "no scope: everything");
+    }
+
     #[test]
     fn protocol_gates_refuse_other_versions() {
         let tmp = tempfile::tempdir().unwrap();
         let bad = IndexBuildRequest {
             protocol_version: 2,
+            scope: Vec::new(),
         };
         let err = index_build(tmp.path(), &bad).unwrap_err();
         assert_eq!(err, "unsupported protocol_version; supported: 1");
@@ -1161,6 +1469,7 @@ mod tests {
             ],
             built_at: "2026-11-10T00:00:00Z".into(),
             records: None,
+            scope: Vec::new(),
         };
         let now = vec![
             IndexedFile {
@@ -1206,22 +1515,32 @@ mod tests {
         };
         // Same base and files give the same id regardless of order; any content or
         // base change moves the id.
-        let a = content_id("base1", &files(&[("a.md", "s1"), ("b.md", "s2")]), "h");
-        let b = content_id("base1", &files(&[("b.md", "s2"), ("a.md", "s1")]), "h");
+        let a = content_id("base1", &files(&[("a.md", "s1"), ("b.md", "s2")]), "h", &[]);
+        let b = content_id("base1", &files(&[("b.md", "s2"), ("a.md", "s1")]), "h", &[]);
         assert_eq!(a, b, "file order must not change identity");
         assert_ne!(
             a,
-            content_id("base2", &files(&[("a.md", "s1"), ("b.md", "s2")]), "h")
+            content_id("base2", &files(&[("a.md", "s1"), ("b.md", "s2")]), "h", &[])
         );
         assert_ne!(
             a,
-            content_id("base1", &files(&[("a.md", "OTHER"), ("b.md", "s2")]), "h")
+            content_id(
+                "base1",
+                &files(&[("a.md", "OTHER"), ("b.md", "s2")]),
+                "h",
+                &[]
+            )
         );
-        assert_ne!(a, content_id("base1", &files(&[("a.md", "s1")]), "h"));
+        assert_ne!(a, content_id("base1", &files(&[("a.md", "s1")]), "h", &[]));
         // Same base and files, different reachable history: a different Graph.
         assert_ne!(
             a,
-            content_id("base1", &files(&[("a.md", "s1"), ("b.md", "s2")]), "h2")
+            content_id(
+                "base1",
+                &files(&[("a.md", "s1"), ("b.md", "s2")]),
+                "h2",
+                &[]
+            )
         );
     }
 
@@ -1239,7 +1558,7 @@ mod tests {
         ] {
             let matching = case == "matching";
             let tmp = tempfile::tempdir().unwrap();
-            let gen_id = content_id("base", &[], "h");
+            let gen_id = content_id("base", &[], "h", &[]);
             let file_set = crate::index_records::file_set_digest(&[]);
             let views = crate::index_records::assemble(
                 Default::default(),
@@ -1263,6 +1582,7 @@ mod tests {
                     map_records: views.map_records,
                     graph_records: views.graph_records,
                 }),
+                scope: Vec::new(),
             };
             let winner = generations_dir(tmp.path()).join(&expected.generation_id);
             let staging = generations_dir(tmp.path()).join(".tmp-loser");
@@ -1365,7 +1685,7 @@ mod handle_io_tests {
         let (base, files) = scan(&root, &source).unwrap();
         let views = |root: &Path| {
             let (history, digest) = build_history(root, &base);
-            let id = content_id(&base, &files, &digest);
+            let id = content_id(&base, &files, &digest, &[]);
             build_views(root, &source, &id, &base, &files, history)
         };
         assert!(views(&root).is_ok());
