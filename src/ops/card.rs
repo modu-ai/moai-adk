@@ -121,23 +121,34 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
-    /// Writes the ledger. Set the write scope of a card nobody holds
+    /// Writes the ledger. Set the write scope of a card, or widen a held card's
     ///
     /// Writes the ledger. Replaces the write scope of a `draft` or `ready` card that nobody holds,
     /// with one `card.scope` event that keeps the old scope, the new one and `--by`. `card next`
     /// skips a card without a write scope (`empty_scope`); this is how such a card gets one.
-    /// Each entry is checked as `add --scope` checks it. A card in another state, or one with a
-    /// live reservation, is refused (`conflict`) with its state and holder, and nothing is
+    /// A card that has an active reservation (`active` or `review`) is widened instead, under
+    /// the same generation: no release and no retake, and the holder, lease, worktree and branch
+    /// stay. A held card's scope only grows: the list must keep every pattern the reservation
+    /// has (a list that leaves one out is a `conflict` naming it), and the added patterns must
+    /// not overlap another card's reservation (a `conflict` naming that card). `--reason` is
+    /// required for a held card; the `card.scope` event records `--by`, the reason, the
+    /// generation and the holder; the card's own scope is not changed, so a later `card take`
+    /// without `--scope` still reads the old one. Each entry is checked as `add --scope` checks
+    /// it. Any other state is refused (`conflict`) with its state and holder, and nothing is
     /// written.
     Scope {
         /// `C-12`.
         card: String,
-        /// A path the card may change, relative with `/` (repeat for more; replaces them all).
+        /// A path the card may change, relative with `/` (repeat for more; replaces them all, and
+        /// for a held card the list must contain the current patterns plus the new ones).
         #[arg(long = "scope", required = true)]
         scope: Vec<String>,
         /// Who sets it, one line (for example `leader`).
         #[arg(long)]
         by: String,
+        /// Why, one line of 1 to 500 characters; required to widen a held card.
+        #[arg(long)]
+        reason: Option<String>,
         /// The project folder (its profile holds the project id).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -367,6 +378,29 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Add acceptance criteria to a card
+    ///
+    /// Writes the ledger. Appends each `--ac` text to the card as an open criterion, numbered
+    /// after the card's highest (a withdrawn one keeps its number), with one
+    /// `card.criterion_add` event: criteria are only added, never changed or removed. It needs
+    /// no generation and no holder, so a card nobody holds, such as a migrated Issue card, can be
+    /// given one; the reservation of a held card is left as it is; a `done` card is refused.
+    CriterionAdd {
+        /// `C-12`.
+        card: String,
+        /// An acceptance criterion, one line (repeat for more; numbered after the card's last).
+        #[arg(long = "ac", required = true)]
+        criteria: Vec<String>,
+        /// Who adds it (default `user`).
+        #[arg(long)]
+        by: Option<String>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Writes the ledger. Link a pull request and record its state
     ///
     /// Writes the ledger. Reads the pull request's state from the code host (one GET, nothing is
@@ -502,6 +536,43 @@ fn env(name: &str) -> Option<String> {
     std::env::var(name).ok()
 }
 
+/// `card criterion-add C-n --ac TEXT… [--by W]`: what is wrong with the request is found before
+/// the ledger is opened (the card's name, each text, `--by`), then the ledger appends the
+/// criteria in one transaction (`workflow::add_criteria`, card C-108).
+fn criterion_add(
+    project: &std::path::Path,
+    home: &std::path::Path,
+    reference: &str,
+    entries: &[String],
+    by: Option<&str>,
+) -> Result<serde_json::Value, String> {
+    use moai_cli::card::command as c;
+    use moai_cli::card::input::{self, CardRef};
+    use moai_cli::ledger::workflow::{self, WorkflowError};
+    let refused = |why: String| format!("card criterion-add refused: {why}");
+    let card_id = match input::parse_ref(reference).map_err(|e| refused(e.to_string()))? {
+        CardRef::Id(n) => n,
+        CardRef::SourceNumber(_) => {
+            return Err(refused(
+                "name the card by its C-number (`card show #N` finds it)".to_string(),
+            ))
+        }
+    };
+    let texts = input::criterion_texts(entries).map_err(|e| refused(e.to_string()))?;
+    let by = c::actor(by, "criterion-add")?;
+    let (project_id, mut ledger) = c::open_for_write(project, home)?;
+    let added = workflow::add_criteria(&mut ledger, card_id, &by, &texts).map_err(|e| match e {
+        WorkflowError::InvalidInput(why) => refused(why),
+        other => other.to_string(),
+    })?;
+    Ok(serde_json::json!({
+        "action": "criterion-add", "project_id": project_id,
+        "name": input::card_name(card_id), "card_id": card_id,
+        "by": by, "added": added.added, "criteria": added.total, "rev": added.rev,
+        "events": 1, "writes": true,
+    }))
+}
+
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
     use moai_cli::card::command as c;
     use moai_cli::card::dispatch as d;
@@ -553,9 +624,17 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             card,
             scope,
             by,
+            reason,
             project,
             home,
-        } => d::scope(&project, &resolve_home(home)?, &card, &scope, &by),
+        } => d::scope(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &scope,
+            &by,
+            reason.as_deref(),
+        ),
         Action::Take {
             card,
             lease_secs,
@@ -697,6 +776,19 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 change,
             )
         }
+        Action::CriterionAdd {
+            card,
+            criteria,
+            by,
+            project,
+            home,
+        } => criterion_add(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &criteria,
+            by.as_deref(),
+        ),
         Action::Pr {
             card,
             number,
