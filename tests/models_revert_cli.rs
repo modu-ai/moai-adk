@@ -210,8 +210,11 @@ fn models_revert_is_in_the_help() {
 
 /// SPEC-20261119-models-revert-skill-text AC-1: the line of `update.md` that tells a session about
 /// the saved models choice names the undo command with its arguments, the rule that the person
-/// asks and gives the permission reference, the two answers and the refusal shape, and no longer
-/// says the undo "is not a command yet". Only names and short tails are read (SPEC decision D-2).
+/// asks and the session composes the permission reference (the apply step of the same file forbids
+/// asking the person for one), the two answers and the refusal shape including the refusal that
+/// may leave the file touched, and no longer says the undo "is not a command yet" or that a refusal
+/// "changes nothing" (audit B1 and B2 of the first head). Only names and short tails are read
+/// (SPEC decision D-2).
 #[test]
 fn update_md_names_the_models_revert_command() {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/update.md");
@@ -231,16 +234,19 @@ fn update_md_names_the_models_revert_command() {
         "--receipt",
         "--permission-reference",
         "only when the person asks for the undo",
-        "a permission reference the person gave",
+        "composes from that request",
+        "never ask the person to type one",
         "`reverted`",
+        "removed when there was none",
         "`skipped`",
         "`changed_since_apply`",
         "exits 1 with an error envelope",
+        "read back differently",
+        "check the file",
     ] {
         assert!(line.contains(name), "update.md lacks {name}");
     }
-    assert!(
-        !line.contains("not a command yet"),
-        "update.md still says the undo is not a command yet"
-    );
+    for stale in ["not a command yet", "changes nothing", "the person gave"] {
+        assert!(!line.contains(stale), "update.md still says {stale}");
+    }
 }
