@@ -16,7 +16,7 @@ const SPEC: &str = "SPEC-20261120-demo-feature";
 fn sha(c: char) -> String {
     // A 40-character lowercase hex stand-in: the digit repeated.
     let d = if c.is_ascii_hexdigit() { c } else { 'a' };
-    std::iter::repeat(d).take(40).collect()
+    std::iter::repeat_n(d, 40).collect()
 }
 
 fn row(seq: i64, kind: &str, scope: &str, content: serde_json::Value) -> StoredRow {
@@ -100,7 +100,7 @@ fn the_link_view_shows_the_run_the_shas_and_the_pr_head_together() {
         (pr.number, pr.head.as_str(), pr.state.as_str()),
         (7, a.as_str(), "open")
     );
-    assert_eq!(b.run_effect, Effect::InEffect);
+    assert_eq!(b.run_effect, Effect::Standing);
     // A bundle with no pull request yet is not stale: it simply has none.
     let early = link(Some(&rows[..1]), &no_lane());
     let b = one_bundle(&early);
@@ -117,7 +117,7 @@ fn a_head_change_marks_the_earlier_pass_as_no_longer_in_effect() {
     let before = vec![run_row(1, &a, 0), pr_row(2, 7, &a, pass(&a))];
     let view = link(Some(&before), &no_lane());
     let b = one_bundle(&view);
-    assert_eq!(b.run_effect, Effect::InEffect);
+    assert_eq!(b.run_effect, Effect::Standing);
     let audit = &b.pr.as_ref().unwrap().audit;
     assert_eq!(audit.len(), 1);
     assert!(audit[0].in_effect && audit[0].verdict == Verdict::Pass);
@@ -127,7 +127,7 @@ fn a_head_change_marks_the_earlier_pass_as_no_longer_in_effect() {
     after.push(pr_row(3, 7, &b2, pass(&a)));
     let view = link(Some(&after), &no_lane());
     let b = one_bundle(&view);
-    assert_eq!(b.run_effect, Effect::NoLongerInEffect, "{view:?}");
+    assert_eq!(b.run_effect, Effect::Lapsed, "{view:?}");
     let pr = b.pr.as_ref().unwrap();
     assert_eq!(pr.head, b2);
     assert_eq!(

@@ -65,8 +65,10 @@ pub struct CommandResult {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Effect {
-    InEffect,
-    NoLongerInEffect,
+    /// The pull request still shows the run's source SHA as its head.
+    Standing,
+    /// The pull request's head moved on: the run is history, no longer in effect.
+    Lapsed,
     NoPullRequest,
 }
 
@@ -310,8 +312,8 @@ fn bundle(run: Run, prs: &[Pr], lane: &LaneInput) -> Bundle {
     });
     let run_effect = match &pr {
         None => Effect::NoPullRequest,
-        Some(p) if p.head == run.source_sha => Effect::InEffect,
-        Some(_) => Effect::NoLongerInEffect,
+        Some(p) if p.head == run.source_sha => Effect::Standing,
+        Some(_) => Effect::Lapsed,
     };
     let lane_layers = run
         .specs
