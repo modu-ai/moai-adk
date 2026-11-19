@@ -71,4 +71,12 @@ Measured on this machine against `moai.old` v3.2.1-rc.6 before any test was writ
 
 ## Result
 
-- AC-1: pending
+- AC-1: met — with `MOAI_GO_BIN=/Users/goos/go/bin/moai.old` (v3.2.1-rc.6) `the_status_line_reads_the_model_of_a_payload_like_the_go_build` passes: seven payloads, Rust equals Go, and Go equals the written expectation
+- AC-2: met — with `MOAI_GO_BIN=/nonexistent/moai.old` all four tests pass and print `diff_go: skipped, the Go build /nonexistent/moai.old is absent (set MOAI_GO_BIN)`; `an_absent_go_build_skips_with_a_reason` tests the lookup for a missing path, no value, the variable and the home folder
+- AC-3: met — `the_layout_of_the_status_line_differs_on_purpose` and `a_go_hook_call_is_ignored_by_the_rust_build_on_purpose` pass; both cases are in `tests/fixtures/diff_go/approved-differences.json` with a reason
+- AC-4: met — `test_isolation_rules` 3 passed with the new file (every binary starts with `clean_env`, a temporary HOME and a temporary folder); also `git_env_scrub` 3, `ac_command_lint` 5, `cargo clippy --test diff_go -- -D warnings` 0, `python3 -m unittest tests.repo_scans_test tests.ci_scope_test` OK
+- AC-5: met — `cargo fmt --check` 0
+
+RED: before `tests/diff_go.rs` existed there was no comparison at all; the first run of the hook case failed on a wrong expectation of mine (`{}` against the measured allow decision, which depends on the folder having no MoAI settings), and the test was corrected to the measured answer.
+Mutation: test side 6 mutants, 4 killed (D2 wrong expectation, D3 duplicate-key payload changed, D5 hook decision, D6 lookup ignores the variable), D4 layout case compared Go with Go killed in the corrected run; D1 (Rust compared with itself) survives because a mutant that empties the Rust check cannot be seen by the test that holds it. Source side, in a scratch worktree removed afterwards: a string model emptied in `src/statusline/godecode.rs` made `the_status_line_reads_the_model_of_a_payload_like_the_go_build` FAIL (`rust: 🏷️ agent | 🗿 v4.2647.0`); two earlier source mutants (clearing the display name only, clearing display name and name) survived because the status line falls back to the id, which Go also does.
+Not run: the full local `cargo test`, Linux, Windows, any Go build other than v3.2.1-rc.6.
