@@ -578,7 +578,7 @@ def prepare_pre_ready(repo, spec=True, binary=True):
         (root / SPEC_PATH).write_text("# demo\n")
     repo.commit("pre-ready files")
     past = time.time() - 100
-    for path in [root / "Cargo.toml", *(root / "src").rglob("*.rs")]:
+    for path in (root / "Cargo.toml", root / "src" / "ops" / "a.rs", root / "src" / "ops" / "b.rs"):
         os.utime(path, (past, past))
     if binary:
         built = root / "target" / "debug" / "moai-cli"
