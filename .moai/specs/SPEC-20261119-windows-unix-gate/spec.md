@@ -52,7 +52,7 @@ created: 2026-11-19
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261119-windows-unix-gate/spec.md`, `tests/windows_unix_gate_scan.rs`
+- write: `.moai/specs/SPEC-20261119-windows-unix-gate/spec.md`, `tests/windows_unix_gate_scan.rs`, `tools/repo_scans.json`(리더 노트 2907: 실제로 `tests/` 를 걷는 스캔은 표에 올려요)
 - forbidden: 실제 HOME 쓰기, `tests/hooks_cli.rs`(C-86 예약; agent-3이 게이트 커밋을 올려요), `src/**`, `.github/workflows/**`
 
 ## Plan
@@ -87,5 +87,7 @@ created: 2026-11-19
 변이(스캔 코드를 한 곳씩 틀고 `--skip no_file_under_tests` 로 상자 시험만 돌림, 변이마다 `git checkout --` 뒤 작업 트리 clean): M1 `"unix" => false` → `true` KILLED(5개 실패); M2 `;` 가 괄호 안에서도 게이트를 끝냄 KILLED(`a_gate_covers_exactly_the_item_it_stands_on`); M3 `not(...)` 뒤집지 않음 KILLED(2개); M4 includers `all` → `any` KILLED(`a_helper_under_common_…`); M5 중첩 블록이 바깥 게이트를 잃음 → 처음에는 SURVIVED(시험이 중첩 블록을 안 봤어요) → 중첩 블록 상자를 더한 뒤 KILLED. 5/5 KILLED. 변이 스크립트의 판정 글자는 래퍼(`run.sh`)가 마지막에 `echo exit=$?` 를 해서 늘 0 이라 믿지 않고, 실패한 시험 이름과 `test result` 줄로 판정했어요. 감사 수리(04eb226cc9) 뒤 다시: 기준선(변이 없음) `11 passed`; N1 `not(...)` 의 모름을 다시 참으로 읽음(옛 동작) KILLED(`a_name_the_scan_cannot_decide_never_gates`); N2 모름 부분이 `all`·`any` 를 모름으로 만드는 갈래 삭제 KILLED(2개: `a_name_the_scan_cannot_decide_never_gates`, `a_cfg_that_keeps_the_item_on_windows_does_not_gate_it`); N3 brace 묶음의 첫 이름만 읽음 KILLED(`the_names_of_a_brace_group_are_read_one_by_one`); N4 중괄호 속 쉼표를 세지 않음 KILLED(같은 시험, 중첩 `other::{a, unix}` 상자); N5 하한 `>` → `>=` KILLED(`the_file_count_floor_has_a_boundary`). 5/5 KILLED, 변이마다 `git checkout --` 뒤 작업 트리 clean. N4 는 중첩 상자 `other::{a, unix}`(쉼표 분리가 결과를 바꾸는 꼴)로 돌렸어요.
 
 검사: `cargo fmt --check` 출력 없음; `cargo clippy --locked --offline --all-targets -- -D warnings` `exit=0`(처음에는 `slice::from_ref` 지적 하나 → 고침); `cargo test --locked --offline --lib` 1452 passed, 1 failed(`decide::outbound::tests::a_64_kib_field_of_a_repeated_key_prefix_is_screened_quickly`, 2초 벽시계 시험, 그때 기계 부하 77): 같은 시험을 따로 다시 돌리면 `1 passed … 2.87s` 였어요(`src/` 는 건드리지 않았어요; 시간 제한은 올리지 않았어요). 수리 head 04eb226cc9 에서는 lib 전체를 다시 돌리지 않았어요(시험 파일 하나만 바뀌어 `not_run`). 로컬 Windows 확인 `cargo check --tests --target x86_64-pc-windows-msvc` 는 처음에는 `libsqlite3-sys` 의 C 컴파일(CLT 헤더에 `stdlib.h` 없음)에서 멈췄고, 가짜 C 도구로 통과시켜 AC-1 에 적은 대로 `exit 0` 을 읽었어요.
+
+수리(repo_scans, 리더 노트 2907): 스캔 시험이 실제로 `tests/` 를 걸으므로 `tools/repo_scans.json` 에 `windows-unix-gate` 항목(규칙 파일 `tests/windows_unix_gate_scan.rs`, 범위 `tests/` 의 `.rs`)을 올렸어요. RED: 항목 없이 `CARGO_TARGET_DIR=<이 작업 트리의 빌드 폴더> python3 -m unittest tests.repo_scans_test` → `FAILED (failures=1)`, 메시지 `a test walks the repository tree: add it to tools/repo_scans.json …`, 걸린 파일 `tests/windows_unix_gate_scan.rs`. GREEN: 항목을 더한 뒤 `Ran 25 tests … OK`, `python3 -m unittest tests.ci_scope_test` `Ran 40 tests … OK`, `cargo test --locked --offline --lib repo_scans` `4 passed`.
 
 S4 가지: `origin/spec/20261119-enforce-merge-confirm-r2` 의 `tests/hooks_cli.rs:1917` 에 같은 꼴(cfg 없는 `std::os::unix::fs::symlink`)이 있어요. 이 SPEC 에서 고치지 않고 카드 노트로 보고했어요(note 2761).
