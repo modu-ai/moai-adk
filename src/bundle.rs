@@ -1054,8 +1054,7 @@ pub fn body(
             .unwrap_or_default();
         let audit = match (&j.pass_note, &j.pass_line) {
             (Some(id), Some(line)) => {
-                let tier = j
-                    .pass_tier
+                let tier = stated_tier(line)
                     .map(|t| format!(" (tier {t})"))
                     .unwrap_or_default();
                 format!("`PASS` card note {id}{tier}: {}", line.replace('|', "/"))

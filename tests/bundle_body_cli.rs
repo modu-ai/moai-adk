@@ -748,6 +748,18 @@ fn the_body_shows_the_stated_tier_and_refuses_a_low_one() {
         "{row1}"
     );
 
+    // A newer PASS with no tier: the cell shows that note and no tier (the tier belongs to the
+    // line shown, not to an older note).
+    let newer = b.w.pass_note(&b.cards[0], &b.heads[0]);
+    let (v, code) = b.body(&[]);
+    assert_eq!(code, 0, "{v}");
+    let body = v["result"]["body"].as_str().unwrap();
+    let row = body.lines().find(|l| l.contains(&b.heads[0])).unwrap();
+    assert!(
+        row.contains(&format!("card note {newer}:")) && !row.contains("(tier "),
+        "{row}"
+    );
+
     // A third head under `.claude/` (floor 2) whose only PASS states tier 1: refused, named.
     let h3 = b.w.head(
         "spec/h3",

@@ -818,6 +818,18 @@ fn a_date_that_is_not_a_date_is_refused_and_a_tag_head_is_the_commit() {
     }
     assert_eq!(w.repo_state(), before, "nothing was created");
     assert!(!w.home.path().join(".moai").join("worktrees").exists());
+    // The edges are dates: 12 and 31 are accepted. The worktree folder has no date in its name,
+    // so the second build takes the number 2.
+    for (d, n) in [("20261231", 1), ("20260131", 2)] {
+        let (v, code) = w.bundle(&["build", &c, "--date", d]);
+        assert_eq!(code, 0, "{d}: {v}");
+        assert_eq!(v["result"]["number"], n, "{d}: {v}");
+        assert_eq!(
+            v["result"]["branch"],
+            format!("m-flow/bundle-{d}-{n}").as_str(),
+            "{v}"
+        );
+    }
     // A tag object's SHA as a head: the commit the tag points to is merged and reported.
     w.git(&["tag", "-a", "-m", "a tag", "v-a", &a]);
     let tag = w.git(&["rev-parse", "v-a"]);
@@ -865,12 +877,17 @@ fn all_999_numbers_used_is_refused_before_anything_is_created() {
     let tip = w.tip_sha();
     let a = w.head("spec/a", TIP, &[("notes/a.md", "a\n")], SPEC, &[1, 2], true);
     let c = w.ready_card(&a);
-    // 999 loose branch refs written as files: much cheaper than 999 `git branch` runs.
+    // 998 loose branch refs written as files: much cheaper than 998 `git branch` runs.
     let dir = w.work.join(".git/refs/heads/m-flow");
     fs::create_dir_all(&dir).unwrap();
-    for n in 1..=999 {
+    for n in 1..=998 {
         fs::write(dir.join(format!("bundle-{DATE}-{n}")), format!("{tip}\n")).unwrap();
     }
+    // The 999th number is still free and is taken (the edge: `1..=999`, not `1..=998`).
+    let (v, code) = w.build(&[&c]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(v["result"]["number"], 999, "{v}");
+    // Now all 999 are used: refused, nothing created.
     let before = w.refs();
     let (v, code) = w.build(&[&c]);
     assert_eq!(code, 1, "{v}");
@@ -882,7 +899,14 @@ fn all_999_numbers_used_is_refused_before_anything_is_created() {
         "{v}"
     );
     assert_eq!(w.refs(), before);
-    assert!(!w.home.path().join(".moai").join("worktrees").exists());
+    assert!(!w.worktree_of(1).exists());
+    assert!(w.worktree_of(999).exists());
+    w.git(&[
+        "worktree",
+        "remove",
+        "--force",
+        w.worktree_of(999).to_str().unwrap(),
+    ]);
 }
 
 #[test]
@@ -938,6 +962,13 @@ fn the_rebuild_line_is_quoted_and_empty_when_no_head_is_left() {
         format!("moai bundle build {ce}={e} --tip 'odd;tip'").as_str(),
         "{v}"
     );
+    // The conflicting head and a head already in the tip: only the in-tip one would be left, and
+    // that build is refused ("no head left"), so `rebuild` is empty too.
+    let cx = w.new_card();
+    let trunk = w.tip_sha();
+    let v = build(&[&cb, &format!("{cx}={trunk}")]);
+    assert_eq!(v["result"]["ok"], false, "{v}");
+    assert_eq!(v["result"]["rebuild"], "", "{v}");
     // Only the conflicting head: nothing would be left, so `rebuild` is empty.
     let v = build(&[&cb]);
     assert_eq!(v["result"]["ok"], false, "{v}");

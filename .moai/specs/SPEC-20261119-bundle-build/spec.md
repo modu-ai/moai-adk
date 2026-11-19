@@ -124,7 +124,9 @@ Revision 2. Run on the code commit `2565f863b3` plus the commit that carries thi
 - AC-4: met - `a_head_in_the_tip_or_in_the_branch_is_skipped` (unchanged, passes).
 - AC-5: met - `the_number_is_the_lowest_unused_and_existing_names_are_never_touched`, new `a_registered_worktree_whose_folder_is_gone_still_takes_its_number` (`git worktree list --porcelain` shows `prunable`, the build takes `-2`) and new `all_999_numbers_used_is_refused_before_anything_is_created` (999 loose refs; the message "the numbers 1 to 999 of this date are all used"; refs and `worktrees` unchanged). The numbers now come from one `git for-each-ref` of `refs/heads/m-flow/` and `refs/remotes/origin/m-flow/`.
 - AC-6: met - `creation_refuses_a_taken_branch_or_folder`, now also with an existing branch checked out nowhere that points to another commit: `create` refuses, the branch did not move, no folder (it pins `-b`, which `-B` would have broken).
-- AC-7, AC-8, AC-9: met - `a_git_failure_after_creation_names_what_is_left_behind`, `build_changes_only_the_new_branch_and_worktree`, `the_help_and_the_ops_doc_say_what_build_writes` (unchanged, pass).
+- AC-7: met - `a_git_failure_after_creation_names_what_is_left_behind` (unchanged, passes).
+- AC-8: met - `build_changes_only_the_new_branch_and_worktree` (unchanged, passes).
+- AC-9: met - `the_help_and_the_ops_doc_say_what_build_writes` (unchanged, passes).
 - AC-10: met - `the_rebuild_line_is_quoted_and_empty_when_no_head_is_left`: tip `odd;tip` gives `moai bundle build <card>=<sha> --tip 'odd;tip'`; when the only head conflicts the line is empty (killed M4 quoting off, M5 empty rule off).
 
 Audit notes of slice 3: N1 (second driver) AC-3, N2 (no head left) AC-10, N3 (`-b` pinned) AC-6, N4 (registered folder gone) AC-5, N5 (quoting) AC-10, N6 (tag, `--date`, 999 limit, docs heading with `--project`) AC-2 and AC-5, N7 (the earlier Result said trailer-check 10 commits, the range had 11) is fixed below by the number measured now. Open and left for later: none from slice 3.
