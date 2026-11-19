@@ -122,7 +122,10 @@ fn the_repair_rule_is_in_the_mode_agent_workflow() {
         "deleted",
         "the card and the SPEC",
     ] {
-        assert!(s.contains(word), "the repair sentence must say {word:?}: {s}");
+        assert!(
+            s.contains(word),
+            "the repair sentence must say {word:?}: {s}"
+        );
     }
 }
 
