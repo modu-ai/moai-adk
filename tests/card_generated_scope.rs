@@ -19,8 +19,8 @@ const S_B: &str = "bbbbbbbb-0000-4000-8000-00000000000b";
 const S_C: &str = "cccccccc-0000-4000-8000-00000000000c";
 
 const MANIFEST: &str = "skills/moai/references/source-manifest.json";
-const A_MD: &str = "skills/moai/workflows/a.md";
-const B_MD: &str = "skills/moai/workflows/b.md";
+const PLAN_MD: &str = "skills/moai/workflows/plan.md";
+const RUN_MD: &str = "skills/moai/workflows/run.md";
 
 fn as_session(home: &TempHome, session: &str, args: &[&str]) -> Output {
     home.command(args)
@@ -97,14 +97,14 @@ fn take(home: &TempHome, project: &str, card: &str, session: &str) -> Output {
 #[test]
 fn two_cards_may_both_list_the_generated_manifest() {
     let (home, project) = registered();
-    let a = ready_card(&home, &project, &[A_MD, MANIFEST]);
-    let b = ready_card(&home, &project, &[B_MD, MANIFEST]);
+    let a = ready_card(&home, &project, &[PLAN_MD, MANIFEST]);
+    let b = ready_card(&home, &project, &[RUN_MD, MANIFEST]);
     result(&take(&home, &project, &a, S_A));
     let taken = result(&take(&home, &project, &b, S_B));
     // The ledger keeps a scope sorted, so the manifest (`references/`) comes before `workflows/`.
     assert_eq!(
         taken["reservation"]["write_scope"],
-        json!([MANIFEST, B_MD]),
+        json!([MANIFEST, RUN_MD]),
         "{taken}"
     );
     // The manifest alone is no reason either.
@@ -115,29 +115,29 @@ fn two_cards_may_both_list_the_generated_manifest() {
 #[test]
 fn a_real_overlap_is_still_refused_and_names_its_own_pair() {
     let (home, project) = registered();
-    let a = ready_card(&home, &project, &[A_MD, MANIFEST]);
-    let same_file = ready_card(&home, &project, &[A_MD, MANIFEST]);
+    let a = ready_card(&home, &project, &[PLAN_MD, MANIFEST]);
+    let same_file = ready_card(&home, &project, &[PLAN_MD, MANIFEST]);
     let broad = ready_card(&home, &project, &["skills/moai/**"]);
     result(&take(&home, &project, &a, S_A));
 
     // The same skill file: refused, and the refusal is about that file, not the manifest.
     let (kind, msg) = refusal(&take(&home, &project, &same_file, S_B));
     assert_eq!(kind, "conflict", "{msg}");
-    assert!(msg.contains(A_MD), "{msg}");
+    assert!(msg.contains(PLAN_MD), "{msg}");
     assert!(!msg.contains("source-manifest"), "{msg}");
 
-    // A folder pattern that reaches a.md: refused for a.md; the manifest pair never carries it.
+    // A folder pattern that reaches plan.md: refused for plan.md; the manifest pair never carries it.
     let (kind, msg) = refusal(&take(&home, &project, &broad, S_B));
     assert_eq!(kind, "conflict", "{msg}");
-    assert!(msg.contains(A_MD), "{msg}");
+    assert!(msg.contains(PLAN_MD), "{msg}");
     assert!(!msg.contains("source-manifest"), "{msg}");
 }
 
 #[test]
 fn the_ready_listing_agrees_with_take() {
     let (home, project) = registered();
-    let a = ready_card(&home, &project, &[A_MD, MANIFEST]);
-    let b = ready_card(&home, &project, &[B_MD, MANIFEST]);
+    let a = ready_card(&home, &project, &[PLAN_MD, MANIFEST]);
+    let b = ready_card(&home, &project, &[RUN_MD, MANIFEST]);
     result(&take(&home, &project, &a, S_A));
     // `next` takes the project folder as its last word.
     let listing = result(&as_session(&home, S_B, &["card", "next", &project]));
@@ -146,7 +146,7 @@ fn the_ready_listing_agrees_with_take() {
     assert_eq!(skipped(&listing), vec![(a.clone(), "held".to_string())]);
 
     // A card whose scope really overlaps is still skipped, with the overlap as the reason.
-    let c = ready_card(&home, &project, &[A_MD]);
+    let c = ready_card(&home, &project, &[PLAN_MD]);
     result(&take(&home, &project, &b, S_B));
     let listing = result(&as_session(&home, S_C, &["card", "next", &project]));
     assert_eq!(listing["next"], Value::Null, "{listing}");
@@ -179,8 +179,8 @@ fn skipped(listing: &Value) -> Vec<(String, String)> {
 #[test]
 fn card_check_still_requires_the_path_in_scope() {
     let (home, project) = registered();
-    let a = ready_card(&home, &project, &[A_MD, MANIFEST]);
-    let d = ready_card(&home, &project, &[B_MD]);
+    let a = ready_card(&home, &project, &[PLAN_MD, MANIFEST]);
+    let d = ready_card(&home, &project, &[RUN_MD]);
     let ta = result(&take(&home, &project, &a, S_A));
     let td = result(&take(&home, &project, &d, S_B));
     let gen = |t: &Value| t["reservation"]["generation"].as_i64().unwrap().to_string();

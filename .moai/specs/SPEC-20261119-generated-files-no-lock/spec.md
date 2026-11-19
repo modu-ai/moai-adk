@@ -38,7 +38,7 @@ created: 2026-11-19
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2, REQ-3): 같은 임시 원장에서 C-A(범위 `skills/moai/workflows/a.md`, `skills/moai/references/source-manifest.json`)가 예약된 뒤 C-B(범위 `skills/moai/workflows/b.md`, 같은 manifest)의 `take` 가 성공해요. 같은 두 카드에서 둘 다 `skills/moai/workflows/a.md` 를 넣으면 C-B 의 `take` 는 `a.md` 쌍을 대며 거부돼요(manifest 쌍이 아니라). 범위가 `skills/moai/**` 인 C-C 는 C-A 의 `a.md` 와 겹쳐 거부돼요(manifest 쌍 때문이 아니라 `a.md` 쌍 때문). `ready` 목록은 위 성공 경우에 C-B 를 건너뛴 카드로 적지 않아요.
+- AC-1 (REQ-1, REQ-2, REQ-3): 같은 임시 원장에서 C-A(범위 `skills/moai/workflows/plan.md`, `skills/moai/references/source-manifest.json`)가 예약된 뒤 C-B(범위 `skills/moai/workflows/run.md`, 같은 manifest)의 `take` 가 성공해요. 같은 두 카드에서 둘 다 `skills/moai/workflows/plan.md` 를 넣으면 C-B 의 `take` 는 `plan.md` 쌍을 대며 거부돼요(manifest 쌍이 아니라). 범위가 `skills/moai/**` 인 C-C 는 C-A 의 `plan.md` 와 겹쳐 거부돼요(manifest 쌍 때문이 아니라 `plan.md` 쌍 때문). `ready` 목록은 위 성공 경우에 C-B 를 건너뛴 카드로 적지 않아요.
   verify: `cargo test --locked --offline --test card_generated_scope two_cards_may_both_list_the_generated_manifest`
   verify: `cargo test --locked --offline --test card_generated_scope a_real_overlap_is_still_refused_and_names_its_own_pair`
   verify: `cargo test --locked --offline --test card_generated_scope the_ready_listing_agrees_with_take`

@@ -757,11 +757,14 @@ mod tests {
         assert!(!card_overlap(m, "skills/moai/**"));
         // Everything else is `overlap`'s answer.
         for (a, b) in [
-            ("skills/moai/workflows/a.md", "skills/moai/workflows/a.md"),
-            ("skills/moai/**", "skills/moai/workflows/a.md"),
+            (
+                "skills/moai/workflows/plan.md",
+                "skills/moai/workflows/plan.md",
+            ),
+            ("skills/moai/**", "skills/moai/workflows/plan.md"),
             (
                 "skills/moai/references/*",
-                "skills/moai/references/other.json",
+                "skills/moai/references/routes.json",
             ),
             ("src/lib.rs", "src"),
             ("../x", m),
@@ -769,8 +772,8 @@ mod tests {
             assert_eq!(card_overlap(a, b), overlap(a, b), "{a} vs {b}");
         }
         assert!(!card_overlap(
-            "skills/moai/workflows/a.md",
-            "skills/moai/workflows/b.md"
+            "skills/moai/workflows/plan.md",
+            "skills/moai/workflows/run.md"
         ));
         // The claim-side predicate still sees the generated file as written by both.
         assert!(overlap(m, m));
