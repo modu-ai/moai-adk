@@ -75,7 +75,7 @@ parent: SPEC-20261118-install-model-per-tool
 
 ## Risks
 
-- `src/session.rs` 는 여러 카드가 고치는 파일이에요(OMP 호스트 C-62 등): 이 조각은 함수 둘(`apply_saved_choice`, `saved_note`)을 더하고 `compose`, `launch()` 의 첫 줄만 바꾸며 `*_argv` 함수들은 건드리지 않아 병합 충돌 면을 줄여요. `card take` 가 겹치는 예약을 거절하면 그 사실을 보고해요.
+- `src/session.rs` 는 여러 카드가 고치는 파일이에요(OMP 호스트 C-62 등): 이 조각은 함수 셋(`apply_saved_choice`, `saved_note`, 옛 `compose` 본문을 옮긴 `compose_resolved`)을 더하고, `compose_resolved` 안에 `notes.extend(saved)` 한 줄을 더하며, `compose` 는 두 함수를 부르는 한 줄로, `launch()` 는 첫 3줄만 바꿔요. `*_argv` 함수들은 건드리지 않아 병합 충돌 면을 줄여요. `card take` 가 겹치는 예약을 거절하면 그 사실을 보고해요.
 - 손으로 고친 항목 하나가 지원표 밖이면 claude, codex, omp 의 역할 세션이 전부 거절돼요(다른 도구의 항목이어도): `unsupported_entries` 주석이 이미 정한 방식이지만, 사람은 거절 문구의 키 경로를 보고 그 항목을 고치거나 `moai update` 로 바꿔야 해요. 구조가 깨진 파일은 `moai update` 도 거절하므로 손으로 고쳐야 해요(감사 3번).
 - 저장 모델이 `claude-fable-5-2` 이고 `launcher.advisor` 가 `opus` 나 `sonnet` 이면 `--advisor` 랭킹 검사가 새로 거절해요(`--model` 을 직접 줘도 같은 규칙이에요). 거절 문구가 저장값 때문이라고 말하지 않고 이 조각에는 그 시험이 없어요: 다음 조각 후보예요(감사 N3).
 - 저장값 노트는 `--dry-run` 과 `--json` 출력에만 나오고 터미널 시작 화면의 경고 줄(`launcher_terminal.rs` 의 `WARNINGS`)에는 안 나와요: 사람이 직접 저장한 값이라 비용이 몰래 바뀌는 건 아니지만 시작 화면에 한 줄 보이게 하는 일은 다음 조각 후보예요(감사 N4).
