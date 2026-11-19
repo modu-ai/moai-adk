@@ -131,6 +131,6 @@ Codex 공식 문서는 Desktop 앱, CLI, IDE 확장을 함께 설명한다. 세 
 | 사용자 범위 AGENTS 라우팅 | yes | yes | n/a | `src/home_routing.rs::shadows every other user context file` | - |
 | 상태줄 설정 | yes | yes | n/a | `src/project_hosts.rs::OMP_CONFIG_REASON` | - |
 | skill 설치(`moai update`)의 host 목록 | yes | yes | gap | `src/update.rs::HOSTS` (list) | leader card: OMP는 `.agents/skills`(codex 단계가 쓰는 폴더)와 `~/.omp/agent/skills`를 읽으므로(`src/skills_legacy.rs`) 일부는 이미 닿는다; 2026-11-19 `omp skills list` 관찰(무비용)은 Claude 사용자 skill 폴더도 읽어 moai 스킬을 `source claude:user`로 발견함을 보여 주므로 읽는 폴더는 이 가정보다 넓다; 빠진 것은 이 목록과 `~/.omp/agent/skills`로의 설치이고, `src/update.rs`는 카드 C-47 범위 |
-| 프로젝트 skill 설치 | yes | yes | gap | `src/project_skills.rs::host_folder` | leader card: 같은 폴더 규칙(OMP는 `.agents/skills`를 읽으므로 codex용 설치가 OMP에도 보이는지 먼저 확인; 2026-11-19 `omp skills list` 관찰은 OMP가 가정 밖의 Claude 사용자 skill 폴더도 읽음을 보여 주므로, 확인할 폴더에 그 폴더와 `~/.omp/agent/skills`도 더한다) |
+| 프로젝트 skill 설치 | yes | yes | gap | `src/project_skills.rs::host_folder` | leader card: 같은 폴더 규칙(OMP는 `.agents/skills`를 읽으므로 codex용 설치가 OMP에도 보이는지 먼저 확인; 2026-11-19 `omp skills list` 관찰은 OMP가 가정 밖의 Claude 사용자 skill 폴더도 `source claude:user`로 읽음을 보여 주므로, 확인할 폴더에 그 폴더와 `~/.omp/agent/skills`도 더한다) |
 | 출력 스타일 설치 | yes | yes | gap | `src/home_style.rs::HOSTS` (list) | leader card: OMP에 출력 스타일이 있는지 먼저 조사한다 |
 | 감사 독립성 표 | yes | yes | gap | `src/audit.rs::INDEPENDENCE` (list) | leader card: OMP 하위 에이전트가 이전 대화를 이어받는지 문서로 확인한 뒤 줄을 더한다 |
