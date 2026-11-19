@@ -85,11 +85,14 @@ fn fresh_cards(w: &mut WriteLedger) -> Vec<i64> {
     .unwrap()
 }
 
-/// REQ-7, REQ-8: the two invariants for one case's cards, read-only.
-fn assert_invariants(world: &mut World, cards: &[i64]) {
+/// REQ-7, REQ-8: the two invariants for one case's cards, read-only. Returns how many review
+/// cards the first invariant judged and how many live pairs the second compared — the audit
+/// of the first version (B1) showed a checker that never runs is green and worthless.
+fn assert_invariants(world: &mut World, cards: &[i64]) -> (u32, u32) {
     let conn = world.reader.conn();
     let now = db_now(&mut world.w);
     let mut live: Vec<reservation::Reservation> = Vec::new();
+    let mut review_checks = 0;
     for card in cards {
         let (state, _): (String, i64) = conn
             .query_row(
@@ -100,6 +103,7 @@ fn assert_invariants(world: &mut World, cards: &[i64]) {
             .unwrap();
         let current = reservation::current(conn, *card).unwrap();
         if state == "review" {
+            review_checks += 1;
             let _held = current
                 .as_ref()
                 .filter(|r| r.status == "held" || r.status == "held_for_review")
@@ -111,11 +115,13 @@ fn assert_invariants(world: &mut World, cards: &[i64]) {
             live.push(r);
         }
     }
+    let mut live_pairs = 0;
     for (i, a) in live.iter().enumerate() {
         for b in live.iter().skip(i + 1) {
             if a.card_id == b.card_id {
                 continue;
             }
+            live_pairs += 1;
             for m in &a.write_scope {
                 for t in &b.write_scope {
                     assert!(
@@ -128,49 +134,100 @@ fn assert_invariants(world: &mut World, cards: &[i64]) {
             }
         }
     }
+    (review_checks, live_pairs)
+}
+
+/// How many of each transition the run actually achieved — the audit of the first version
+/// (B1) showed a driver can be green while exercising almost nothing, so the counts are
+/// asserted against floors the run must clear.
+#[derive(Default, Debug)]
+struct Coverage {
+    reserve: u32,
+    renew: u32,
+    release: u32,
+    review: u32,
+    reopen: u32,
+    handoff: u32,
+    reclaim: u32,
+    aged: u32,
+    review_checks: u32,
+    live_pairs: u32,
+}
+
+/// The card's current holder, read through the world's reader.
+fn holder(world: &World, card: i64) -> String {
+    world
+        .reader
+        .conn()
+        .query_row("SELECT holder FROM card WHERE card_id = ?1", [card], |r| {
+            r.get(0)
+        })
+        .unwrap_or_default()
 }
 
 /// REQ-7: random interleavings; errors are legal refusals and are simply dropped. The world
-/// is one temporary ledger for the whole property; each case takes three fresh cards and ages
-/// every lease out at its end, so the next case starts overlap-free.
+/// is one temporary ledger for the whole property; each case takes three fresh cards and, at
+/// its end, walks them back through the system's own transitions (`reopen` then `release` for
+/// its holder and generation), so the next case starts overlap-free without the harness
+/// manufacturing a state the state machine itself cannot reach.
 #[test]
 fn random_interleavings_keep_the_two_invariants() {
     let mut world = setup_world();
+    let mut coverage = Coverage::default();
     run_property("reservation interleave", MIN_CASES, |rng| {
         let cards = fresh_cards(&mut world.w);
         let scopes: Vec<Vec<String>> = cards
             .iter()
             .map(|_| vec![(*rng.pick(SCOPES)).to_string()])
             .collect();
-        for _ in 0..12 {
+        for _ in 0..10 {
             let at = rng.below(cards.len() as u64) as usize;
             let card = cards[at];
             let session = *rng.pick(SESSIONS);
             let scope = scopes[at].clone();
-            let gen = generation(&world, card);
+            // The fenced calls answer to the CURRENT reservation's holder and generation
+            // (the card table can lag a handoff), the way a lane that holds the card knows them.
+            let cur = reservation::current(world.reader.conn(), card).unwrap();
+            let (holder, gen) = match &cur {
+                Some(r) => (r.holder.as_str(), r.generation),
+                None => ("", 0),
+            };
             match rng.below(9) {
                 0 => {
-                    let _ =
-                        reservation::reserve(&mut world.w, card, session, &scope, 60, None, None);
+                    if reservation::reserve(&mut world.w, card, session, &scope, 60, None, None)
+                        .is_ok()
+                    {
+                        coverage.reserve += 1;
+                    }
                 }
                 1 => {
-                    let _ = reservation::renew(&mut world.w, card, session, gen, 60);
+                    if reservation::renew(&mut world.w, card, holder, gen, 60).is_ok() {
+                        coverage.renew += 1;
+                    }
                 }
                 2 => {
-                    let _ = reservation::release(&mut world.w, card, session, gen);
+                    if reservation::release(&mut world.w, card, holder, gen).is_ok() {
+                        coverage.release += 1;
+                    }
                 }
                 3 => {
-                    let _ = workflow::review(&mut world.w, card, session, gen);
+                    if workflow::review(&mut world.w, card, holder, gen).is_ok() {
+                        coverage.review += 1;
+                    }
                 }
                 4 => {
-                    let _ = workflow::reopen(&mut world.w, card, session, gen);
+                    if workflow::reopen(&mut world.w, card, holder, gen).is_ok() {
+                        coverage.reopen += 1;
+                    }
                 }
                 5 => {
-                    let _ = workflow::done(&mut world.w, card, session, gen);
+                    let _ = workflow::done(&mut world.w, card, holder, gen);
                 }
                 6 => {
                     let to = *rng.pick(SESSIONS);
-                    let _ = reservation::handoff(&mut world.w, card, session, gen, to);
+                    if reservation::handoff(&mut world.w, card, holder, gen, to).is_ok() {
+                        coverage.handoff += 1;
+                    }
                 }
                 7 => {
                     // Time passes: the lease ages out (the reclaim path's precondition).
@@ -182,9 +239,10 @@ fn random_interleavings_keep_the_two_invariants() {
                         )?;
                         Ok(())
                     });
+                    coverage.aged += 1;
                 }
                 _ => {
-                    let _ = reservation::reclaim(
+                    if reservation::reclaim(
                         &mut world.w,
                         card,
                         session,
@@ -192,18 +250,56 @@ fn random_interleavings_keep_the_two_invariants() {
                         "prop",
                         "property case",
                         60,
-                    );
+                    )
+                    .is_ok()
+                    {
+                        coverage.reclaim += 1;
+                    }
                 }
             }
         }
-        assert_invariants(&mut world, &cards);
-        // This case's reservations stop being live: the next case starts overlap-free.
-        let _ = world.w.with_write_tx(|tx, _| {
-            tx.execute(
-                "UPDATE reservation SET lease_until = lease_until - 100_000",
-                [],
-            )?;
-            Ok(())
-        });
+        let (review_checks, live_pairs) = assert_invariants(&mut world, &cards);
+        coverage.review_checks += review_checks;
+        coverage.live_pairs += live_pairs;
+        // This case's cards go back to `ready` through the system's own transitions, so the
+        // next case's takes are not blocked by rows this case left behind. The holder and the
+        // generation come from the reservation itself; a review card whose lease has ended is
+        // reclaimed first (the system's own way back for it), then released.
+        for card in &cards {
+            for _ in 0..3 {
+                let Some(r) = reservation::current(world.reader.conn(), *card).unwrap() else {
+                    break;
+                };
+                let _ = workflow::reopen(&mut world.w, *card, &r.holder, r.generation);
+                if reservation::release(&mut world.w, *card, &r.holder, r.generation).is_ok() {
+                    break;
+                }
+                if reservation::reclaim(
+                    &mut world.w,
+                    *card,
+                    *rng.pick(SESSIONS),
+                    r.generation,
+                    "prop",
+                    "case cleanup",
+                    60,
+                )
+                .is_err()
+                {
+                    break;
+                }
+            }
+        }
     });
+    // The driver must actually exercise the state machine (audit B1): the floors sit far
+    // below the observed counts of a healthy run.
+    assert!(coverage.reserve >= 500, "{coverage:?}");
+    assert!(coverage.renew >= 50, "{coverage:?}");
+    assert!(coverage.release >= 50, "{coverage:?}");
+    assert!(coverage.review >= 50, "{coverage:?}");
+    assert!(coverage.reopen >= 5, "{coverage:?}");
+    assert!(coverage.handoff >= 20, "{coverage:?}");
+    assert!(coverage.reclaim >= 5, "{coverage:?}");
+    assert!(coverage.aged >= 500, "{coverage:?}");
+    assert!(coverage.review_checks >= 50, "{coverage:?}");
+    assert!(coverage.live_pairs >= 100, "{coverage:?}");
 }
