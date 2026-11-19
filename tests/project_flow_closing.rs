@@ -233,6 +233,7 @@ fn procedure_snapshots_the_status_around_every_apply() {
         "After each apply",
         "the \"Track it\" edit",
         "new or whose status changed",
+        "Never read the paths from an apply's result",
         "name none",
         "already changed before the route began",
         "never given to an apply",
