@@ -8,6 +8,9 @@
 //! - [`add_note`] appends one note. Notes are not fenced: a decision is answered by someone who
 //!   does not hold the card. Every note gets a `ref` that is unique on its card, and its event
 //!   records the session that wrote it next to the author it is signed with.
+//! - [`add_criteria`] appends criteria to a card that exists (card C-108). It is not fenced either:
+//!   a criterion changes nothing a lane may write, and a card nobody holds (a migrated Issue card)
+//!   must be able to get one. A `done` card is refused.
 //! - [`reopen`] is `review -> active` for the holder, the way back after a failed review.
 //! - [`set_criterion`], [`link_pr`], [`review`] and [`done`] are fenced writers: they accept only
 //!   the current generation of the offered holder, and a refusal is recorded as a
@@ -62,6 +65,10 @@ pub enum WorkflowError {
     },
     /// `done` was refused by one of the three closing rules; the text is the schema's own.
     NotClosable(String),
+    /// The card is `done`: a closed card keeps the criteria it had.
+    Closed {
+        card_id: i64,
+    },
     /// The card's link to this pull request was retired; it is not made live again.
     LinkRetired {
         card_id: i64,
@@ -81,6 +88,7 @@ impl WorkflowError {
             WorkflowError::DuplicateRef { .. } => "duplicate_ref",
             WorkflowError::WrongState { .. } => "wrong_state",
             WorkflowError::NotClosable(_) => "not_closable",
+            WorkflowError::Closed { .. } => "closed",
             WorkflowError::LinkRetired { .. } => "link_retired",
             WorkflowError::Ledger(e) => e.code(),
         }
@@ -110,6 +118,10 @@ impl std::fmt::Display for WorkflowError {
                 "card conflict in state: C-{card_id} is `{state}`; only a `{needs}` card can be {action}"
             ),
             WorkflowError::NotClosable(why) => write!(f, "card done refused: {why}"),
+            WorkflowError::Closed { card_id } => write!(
+                f,
+                "card conflict in state: C-{card_id} is `done`; a closed card keeps the criteria it had"
+            ),
             WorkflowError::LinkRetired { card_id, target } => write!(
                 f,
                 "card conflict in pr link: C-{card_id}'s link to {target} is retired; a retired link is not linked again"
@@ -356,14 +368,31 @@ pub fn add_note(
     if body.contains('\0') {
         return Err(invalid("the note text contains a NUL character".into()));
     }
+    // C-68 AC-3: Windows line endings become line feeds, so a note written on one system is
+    // stored one way; a carriage return that is not part of a line ending is judged below.
+    let body = &body.replace("\r\n", "\n");
     // A note is shown on terminals and written out by `card export`: an escape sequence or a
     // carriage return could repaint what a reader sees. Tabs and line breaks are text.
+    if body.contains('\r') {
+        return Err(invalid(
+            "the note text contains a control character: a carriage return outside a line \
+             ending; normalise Windows line endings"
+                .into(),
+        ));
+    }
     if body
         .chars()
         .any(|c| c.is_control() && c != '\t' && c != '\n')
     {
         return Err(invalid(
             "the note text contains a control character; only tabs and line breaks are kept".into(),
+        ));
+    }
+    if body.chars().any(is_directional) {
+        return Err(invalid(
+            "the note text contains a directional or formatting character \
+             (U+2028–U+202E, U+2066–U+2069); take it out"
+                .into(),
         ));
     }
     if body.len() > MAX_NOTE_BYTES {
@@ -536,6 +565,74 @@ pub fn set_criterion(
             }))
         },
     )?
+}
+
+/// What [`add_criteria`] stored.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CriteriaAdded {
+    pub card_id: i64,
+    /// The numbers the new criteria got, in the order given.
+    pub added: Vec<i64>,
+    /// How many criteria the card has now (withdrawn ones included).
+    pub total: i64,
+    pub rev: i64,
+}
+
+/// Appends `texts` to the card as `open` criteria, numbered after the card's highest criterion
+/// number (a withdrawn criterion keeps its number), and writes one `card.criterion_add` event
+/// with who added them, the first number and the count. Nobody has to hold the card: the
+/// criteria change nothing a lane may write, so there is no fence. A `done` card is refused.
+/// The texts are one line each, checked by the caller (`card::input`); an empty list is refused.
+pub fn add_criteria(
+    w: &mut WriteLedger,
+    card_id: i64,
+    by: &str,
+    texts: &[String],
+) -> Result<CriteriaAdded, WorkflowError> {
+    one_line("the author", by, MAX_AUTHOR_CHARS).map_err(WorkflowError::InvalidInput)?;
+    if texts.is_empty() {
+        return Err(WorkflowError::InvalidInput(
+            "there is no criterion to add".into(),
+        ));
+    }
+    w.with_write_tx(|tx, now| {
+        if !card_exists(tx, card_id)? {
+            return Ok(Err(WorkflowError::CardNotFound(card_id)));
+        }
+        if card_state(tx, card_id)? == "done" {
+            return Ok(Err(WorkflowError::Closed { card_id }));
+        }
+        // The highest number over every row, withdrawn included: rows are never deleted, so a
+        // number is never given twice.
+        let highest: i64 = tx.query_row(
+            "SELECT COALESCE(MAX(seq), 0) FROM card_ac WHERE card_id = ?1",
+            [card_id],
+            |r| r.get(0),
+        )?;
+        let mut added = Vec::with_capacity(texts.len());
+        for (offset, text) in texts.iter().enumerate() {
+            let seq = highest + 1 + offset as i64;
+            tx.execute(
+                "INSERT INTO card_ac (card_id, seq, text, updated_at) VALUES (?1, ?2, ?3, ?4)",
+                params![card_id, seq, text, now],
+            )?;
+            added.push(seq);
+        }
+        reservation::add_event(
+            tx,
+            now,
+            by,
+            card_id,
+            "card.criterion_add",
+            &json!({"first": added[0], "count": added.len()}),
+        )?;
+        Ok(Ok(CriteriaAdded {
+            card_id,
+            total: highest + added.len() as i64,
+            added,
+            rev: card_rev(tx, card_id)?,
+        }))
+    })?
 }
 
 // ---- pull request link -------------------------------------------------------------------------
@@ -974,9 +1071,19 @@ fn one_line(what: &str, value: &str, max: usize) -> Result<(), String> {
         Err(format!("{what} is longer than {max} characters ({n})"))
     } else if value.chars().any(char::is_control) {
         Err(format!("{what} is not one line"))
+    } else if value.chars().any(is_directional) {
+        Err(format!(
+            "{what} holds a directional or formatting character (U+2028–U+202E, U+2066–U+2069)"
+        ))
     } else {
         Ok(())
     }
+}
+
+/// A bidi or directional character (C-68 AC-3): one of these changes how the text around it
+/// is drawn, whatever it claims to be, the same set `decide`'s normaliser refuses.
+fn is_directional(c: char) -> bool {
+    matches!(c, '\u{2028}'..='\u{202e}' | '\u{2066}'..='\u{2069}')
 }
 
 fn card_exists(conn: &Connection, card_id: i64) -> Result<bool, LedgerError> {

@@ -938,3 +938,172 @@ fn reads_are_bounded_regular_utf8_files() {
         assert_eq!(errors(&d), vec!["read_not_file"]);
     }
 }
+
+// ---- SPEC-20261119-enforce-interview-record -------------------------------------------------
+
+const NEW_ID: &str = "SPEC-20261119-login-fix";
+
+fn front_on(created: &str, status: &str, extra: &str) -> String {
+    format!(
+        "---\nid: {NEW_ID}\ntitle: \"Fix login\"\nstatus: {status}\nrevision: 1\ncreated: {created}\n\
+         {extra}---\n\n# Fix login\n\n"
+    )
+}
+
+/// An approved SPEC created on `created` with `interview` after its body.
+fn approved_on(created: &str, status: &str, interview: &str) -> String {
+    let body = minimal_body();
+    let digest = doc(&format!("{}{body}", front_on(created, "draft", "")))
+        .digest
+        .expect("a GEARS draft has a digest");
+    let approval = format!(
+        "approval:\n  by: user\n  at: {created}\n  basis: in-session selection\n  \
+         digest: {digest}\n"
+    );
+    format!("{}{body}{interview}", front_on(created, status, &approval))
+}
+
+const GOOD_INTERVIEW: &str =
+    "## Interview\n\n- Q1: Which logins fail? → A: Valid passwords only.\n\
+    - Q2: Is the API contract fixed? -> A: Yes, no change.\n\n";
+
+/// REQ-1, REQ-4: an approved SPEC created on or after 2026-11-19 needs its interview; an older
+/// one, a draft and a Go-generation SPEC do not.
+#[test]
+fn interview_is_required() {
+    for status in ["approved", "completed", "superseded"] {
+        for created in ["2026-11-19", "2026-11-20", "2027-01-01"] {
+            let d = doc(&approved_on(created, status, ""));
+            assert_eq!(errors(&d), vec!["interview_missing"], "{status} {created}");
+            let ok = doc(&approved_on(created, status, GOOD_INTERVIEW));
+            assert!(
+                errors(&ok).is_empty() && warnings(&ok).is_empty(),
+                "{status} {created}: {:?}",
+                ok.findings
+            );
+        }
+    }
+    // Created the day before: not asked.
+    let old = doc(&approved_on("2026-11-18", "approved", ""));
+    assert!(old.findings.is_empty(), "{:?}", old.findings);
+    // A draft is not asked, on any date.
+    let draft = doc(&format!(
+        "{}{}",
+        front_on("2026-11-19", "draft", ""),
+        minimal_body()
+    ));
+    assert!(draft.findings.is_empty(), "{:?}", draft.findings);
+    // Other statuses before approval are not asked either.
+    for status in ["proposed", "in-review", "planned"] {
+        let d = doc(&format!(
+            "{}{}",
+            front_on("2026-11-19", status, ""),
+            minimal_body()
+        ));
+        assert!(
+            !d.findings.iter().any(|f| f.code.starts_with("interview")),
+            "{status}: {:?}",
+            d.findings
+        );
+    }
+    // A `created` that is no calendar date has its own error and is not asked for an interview.
+    let bad = doc(&approved_on("2026-13-45", "approved", ""));
+    assert!(
+        !bad.findings.iter().any(|f| f.code.starts_with("interview")),
+        "{:?}",
+        bad.findings
+    );
+    // A Go-generation SPEC is read, never asked.
+    let legacy = approved_on("2026-11-19", "approved", "").replace(NEW_ID, "SPEC-AUTH-001");
+    let d = doc(&legacy);
+    assert!(
+        !d.findings.iter().any(|f| f.code.starts_with("interview")),
+        "{:?}",
+        d.findings
+    );
+}
+
+/// REQ-2, REQ-3: the two entry forms, and the six shapes that are not entries.
+#[test]
+fn interview_entries() {
+    let none = "## Interview\n\n- none: The change is a typo in one comment.\n\n";
+    let ok = doc(&approved_on("2026-11-19", "approved", none));
+    assert!(ok.findings.is_empty(), "{:?}", ok.findings);
+    // An arrow inside the question is part of the question: the arrow before `A:` counts.
+    let arrows = "## Interview\n\n- Q1: Does a -> b hold, or a → c? -> A: a -> b holds.\n\n";
+    let ok = doc(&approved_on("2026-11-19", "approved", arrows));
+    assert!(ok.findings.is_empty(), "{:?}", ok.findings);
+    // Prose lines between entries are read as prose.
+    let prose = "## Interview\n\nAsked in the planning session.\n\n- Q1: Why? → A: Because.\n\n";
+    let ok = doc(&approved_on("2026-11-19", "approved", prose));
+    assert!(ok.findings.is_empty(), "{:?}", ok.findings);
+
+    for (what, section) in [
+        ("not an entry form", "## Interview\n\n- just some text\n\n"),
+        ("empty question", "## Interview\n\n- Q1: → A: yes\n\n"),
+        ("empty answer", "## Interview\n\n- Q1: why? → A:\n\n"),
+        ("reason too short", "## Interview\n\n- none: short\n\n"),
+        (
+            "none beside a question",
+            "## Interview\n\n- none: A reason that is long enough.\n- Q1: x → A: y\n\n",
+        ),
+        (
+            "no entry at all",
+            "## Interview\n\nNothing was written here.\n\n",
+        ),
+    ] {
+        let approved = doc(&approved_on("2026-11-19", "approved", section));
+        assert_eq!(errors(&approved), vec!["interview_entry"], "{what}");
+        // The same shape in a SPEC that is not approved is a warning.
+        let draft = doc(&format!(
+            "{}{}{section}",
+            front_on("2026-11-19", "draft", ""),
+            minimal_body()
+        ));
+        assert!(errors(&draft).is_empty(), "{what}: {:?}", draft.findings);
+        assert_eq!(warnings(&draft), vec!["interview_entry"], "{what}");
+        // An approved SPEC created before the date is held to the same entry rules.
+        let old = doc(&approved_on("2026-11-18", "approved", section));
+        assert_eq!(errors(&old), vec!["interview_entry"], "{what} (old)");
+    }
+    // The reason's minimum is ten characters, not bytes.
+    let nine = "## Interview\n\n- none: 아홉글자입니다아아\n\n";
+    let ten = "## Interview\n\n- none: 열글자입니다열글자야\n\n";
+    assert_eq!(
+        errors(&doc(&approved_on("2026-11-19", "approved", nine))),
+        vec!["interview_entry"]
+    );
+    assert!(doc(&approved_on("2026-11-19", "approved", ten))
+        .findings
+        .is_empty());
+}
+
+/// REQ-5: `## Interview` is a known section, once, and outside the digest.
+#[test]
+fn interview_section() {
+    let with = doc(&format!(
+        "{}{}{GOOD_INTERVIEW}",
+        front_on("2026-11-19", "draft", ""),
+        minimal_body()
+    ));
+    assert!(with.findings.is_empty(), "{:?}", with.findings);
+    assert!(with.sections.iter().any(|s| s == "Interview"));
+    let without = doc(&format!(
+        "{}{}",
+        front_on("2026-11-19", "draft", ""),
+        minimal_body()
+    ));
+    assert_eq!(
+        with.digest, without.digest,
+        "the interview is not in the digest"
+    );
+    let twice = doc(&format!(
+        "{}{}{GOOD_INTERVIEW}{GOOD_INTERVIEW}",
+        front_on("2026-11-19", "draft", ""),
+        minimal_body()
+    ));
+    assert_eq!(errors(&twice), vec!["section_duplicate"]);
+    // A SPEC of the older generation without the section reads as before.
+    let plain = doc(&approved_on("2026-11-17", "approved", ""));
+    assert!(plain.findings.is_empty(), "{:?}", plain.findings);
+}

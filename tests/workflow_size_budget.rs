@@ -76,6 +76,38 @@ fn flaky_rule_names_the_card_and_what_it_records() {
     }
 }
 
+/// SPEC-20261119-flaky-rule-ac (card C-108 criterion 3): the `card add` example of the rule carries
+/// a criterion, so the flaky card it makes can be closed (`card done` refuses a card without a met
+/// criterion), and the criterion says what closes the card.
+#[test]
+fn flaky_rule_card_add_example_carries_a_criterion() {
+    let text = workflow();
+    let rule = rule(&text);
+    let head = "moai card add --kind task --title \"flaky: <test>\"";
+    let at = rule
+        .find(head)
+        .unwrap_or_else(|| panic!("the flaky rule lost its `card add` example: {rule}"));
+    let example = &rule[at..];
+    let example = &example[..example
+        .find("`)")
+        .expect("the example ends with a backtick")];
+    let criterion = example
+        .strip_prefix(head)
+        .and_then(|rest| rest.strip_prefix(" --ac \""))
+        .and_then(|rest| rest.strip_suffix('"'))
+        .unwrap_or_else(|| panic!("the example has no ` --ac \"…\"` criterion: {example}"));
+    assert!(
+        !criterion.contains('"') && criterion.len() > 10,
+        "the criterion is one quoted phrase: {criterion}"
+    );
+    for word in ["fixed", "retired", "reason"] {
+        assert!(
+            criterion.contains(word),
+            "the criterion does not say what closes the card (`{word}`): {criterion}"
+        );
+    }
+}
+
 #[test]
 fn the_not_a_stop_sentence_points_to_the_flaky_rule() {
     let text = workflow();
@@ -86,22 +118,51 @@ fn the_not_a_stop_sentence_points_to_the_flaky_rule() {
     );
 }
 
+/// The one place the budget bound is applied; the tests below drive it at N and N+1.
+fn budget_ok(len: usize) -> bool {
+    len <= RULE_BUDGET
+}
+
 #[test]
 fn flaky_rule_stays_within_its_byte_budget() {
     let text = workflow();
     let rule = rule(&text);
     assert!(
-        rule.len() <= RULE_BUDGET,
+        budget_ok(rule.len()),
         "the flaky rule is {} bytes, over the {RULE_BUDGET}-byte budget",
         rule.len()
     );
-    // N and N+1 on the bound itself: the file is under it, and the bound is not the budget.
+    // N and N+1 on the bound itself, through the one helper the check uses: 700 passes,
+    // 701 fails (audit N10: the edge is committed, not only probed).
+    assert!(budget_ok(RULE_BUDGET), "the bound rejects its own N");
+    assert!(!budget_ok(RULE_BUDGET + 1), "the bound accepts N+1");
+    // The file stays far under the package-file bound (its own check, not the budget helper's).
     assert!(
         text.len() <= PACKAGE_FILE_BOUND,
         "{FILE} is {} bytes, over the {PACKAGE_FILE_BOUND}-byte package file bound",
         text.len()
     );
-    const { assert!(RULE_BUDGET < PACKAGE_FILE_BOUND) };
+}
+
+/// The rule lives inside the merge-train step, not appended after the procedure
+/// (audit N1: the placement is pinned, a move to the file's end must fail here).
+#[test]
+fn the_flaky_rule_sits_inside_the_merge_train_step() {
+    let text = workflow();
+    let step = "9. **merge-train**";
+    let from = text
+        .find(step)
+        .unwrap_or_else(|| panic!("{FILE} has no `{step}` step"));
+    let to = text[from + step.len()..]
+        .find("\n10. **")
+        .map_or(text.len(), |i| from + step.len() + i);
+    let at = text
+        .find(RULE_START)
+        .unwrap_or_else(|| panic!("{FILE} has no `{RULE_START}…` rule"));
+    assert!(
+        at > from && at < to,
+        "the flaky rule sits outside the merge-train step (rule at byte {at}, step 9 spans {from}..{to})"
+    );
 }
 
 #[test]

@@ -36,9 +36,11 @@ pub struct Theme {
     pub prs: &'static str,
     /// `🅱️` branch with its behind and dirty counts (green).
     pub branch: &'static str,
-    /// `🔥` cards in progress (maroon).
+    /// `▶️` cards being worked on (maroon).
     pub cards_active: &'static str,
-    /// `📥` cards created and remaining (sapphire).
+    /// `🔃` cards pushed and waiting for integration or an audit (rosewater).
+    pub cards_posted: &'static str,
+    /// `🗂️` cards created and remaining (sapphire).
     pub cards_waiting: &'static str,
     /// `✅` cards done (teal).
     pub cards_done: &'static str,
@@ -61,6 +63,7 @@ pub const MOCHA: Theme = Theme {
     prs: "#F5C2E7",
     branch: "#A6E3A1",
     cards_active: "#EBA0AC",
+    cards_posted: "#F5E0DC",
     cards_waiting: "#74C7EC",
     cards_done: "#94E2D5",
     warn: "#F9E2AF",
@@ -80,6 +83,7 @@ pub const LATTE: Theme = Theme {
     prs: "#EA76CB",
     branch: "#40A02B",
     cards_active: "#E64553",
+    cards_posted: "#DC8A78",
     cards_waiting: "#209FB5",
     cards_done: "#179299",
     warn: "#DF8E1D",
@@ -321,18 +325,26 @@ impl Renderer {
         segs.join(SEPARATOR)
     }
 
-    /// Card C-65 (user instructions 2026-11-16 and 2026-11-17, card 85): `🔥 <in progress> /
-    /// 📥 <remaining> / ✅ <done>` from the project's local ledger, under the one `cards`
-    /// option. A ledger without cards shows zeros; `None` when there is no ledger to read.
-    /// Each number has its icon, so color is never the only signal.
+    /// Card C-65 (user instructions 2026-11-16 and 2026-11-17, card 85; order and icons by the
+    /// user's decision 2026-11-19): `🗂️ <remaining> / ▶️ <working> / 🔃 <waiting for
+    /// integration> / ✅ <done>` from the project's local ledger, under the one `cards` option;
+    /// `🔃` is left out when the notes could not be read. A ledger without cards shows zeros;
+    /// `None` when there is no ledger to read. Each number has its icon, so color is never the
+    /// only signal.
     fn cards(&self, s: &Status) -> Option<String> {
         let c = s.cards.filter(|_| self.enabled("cards"))?;
-        Some(format!(
-            "{} / {} / {}",
-            self.paint(self.theme.cards_active, &format!("🔥 {}", c.in_progress)),
-            self.paint(self.theme.cards_waiting, &format!("📥 {}", c.remaining)),
-            self.paint(self.theme.cards_done, &format!("✅ {}", c.done))
-        ))
+        let remaining = self.paint(self.theme.cards_waiting, &format!("🗂️ {}", c.remaining));
+        let working = self.paint(self.theme.cards_active, &format!("▶️ {}", c.in_progress));
+        let done = self.paint(self.theme.cards_done, &format!("✅ {}", c.done));
+        // `🔃` only when the notes could be read; otherwise three numbers in the same order and
+        // with the same icons, never a guess.
+        Some(match c.waiting {
+            Some(w) => format!(
+                "{remaining} / {working} / {} / {done}",
+                self.paint(self.theme.cards_posted, &format!("🔃 {w}"))
+            ),
+            None => format!("{remaining} / {working} / {done}"),
+        })
     }
 
     /// Repository, optional forge counts, and branch retain the `git_branch` switch; `cards`
@@ -832,7 +844,7 @@ mod tests {
     }
 
     /// Card C-65 (user instructions 2026-11-16 and 2026-11-17, card 85):
-    /// `🔥 in progress / 📥 remaining / ✅ done` as one segment right after the forge counts;
+    /// `🗂️ remaining / ▶️ in progress / ✅ done` as one segment right after the forge counts;
     /// zero is shown, and absent counts leave the line as it was.
     #[test]
     fn card_counts_follow_the_forge_counts_as_one_segment() {
@@ -846,12 +858,13 @@ mod tests {
         );
         status.cards = Some(CardCounts {
             in_progress: 5,
+            waiting: None,
             remaining: 50,
             done: 12,
         });
         assert_eq!(
             line(&status, &[]),
-            "📡 owner/repo | ⬇️ 7 / 🔀 3 | 🔥 5 / 📥 50 / ✅ 12 | 🅱️ main ↓2 +3"
+            "📡 owner/repo | ⬇️ 7 / 🔀 3 | 🗂️ 50 / ▶️ 5 / ✅ 12 | 🅱️ main ↓2 +3"
         );
         // Lines 1 and 3 do not change.
         let with = plain(&status, &[]);
@@ -861,7 +874,7 @@ mod tests {
         // The `cards` option hides both parts and nothing else.
         assert_eq!(plain(&status, &["cards"]), without);
         // Without forge counts (absent, suppressed or switched off) the cards keep the place.
-        let alone = "📡 owner/repo | 🔥 5 / 📥 50 / ✅ 12 | 🅱️ main ↓2 +3";
+        let alone = "📡 owner/repo | 🗂️ 50 / ▶️ 5 / ✅ 12 | 🅱️ main ↓2 +3";
         assert_eq!(line(&status, &["github"]), alone);
         status.github.suppressed = true;
         assert_eq!(line(&status, &[]), alone);
@@ -871,33 +884,65 @@ mod tests {
         status.cards = Some(CardCounts::default());
         assert_eq!(
             line(&status, &[]),
-            "📡 owner/repo | 🔥 0 / 📥 0 / ✅ 0 | 🅱️ main ↓2 +3"
+            "📡 owner/repo | 🗂️ 0 / ▶️ 0 / ✅ 0 | 🅱️ main ↓2 +3"
         );
     }
 
     /// Card C-65: the counts come from the local ledger, not from the repository, so they are
     /// shown without a repository name, without a branch and with `git_branch` off.
+    /// A known waiting count gives the four-number form with `🔃` between the working and the
+    /// done number; `None` (notes unreadable) gives the three-number form without it, and
+    /// `cards` off hides all of it.
+    #[test]
+    fn waiting_cards_get_their_own_number_and_none_gives_the_three_number_form() {
+        let line = |s: &Status, off: &[&str]| plain(s, off).lines().nth(1).unwrap().to_string();
+        let mut status = full_status();
+        status.worktree = "wt".into();
+        status.cards = Some(CardCounts {
+            in_progress: 2,
+            waiting: Some(26),
+            remaining: 50,
+            done: 12,
+        });
+        assert_eq!(
+            line(&status, &["git_branch"]),
+            "🗂️ 50 / ▶️ 2 / 🔃 26 / ✅ 12 | 🌳 wt"
+        );
+        assert_eq!(line(&status, &["git_branch", "cards"]), "🌳 wt");
+        status.cards = Some(CardCounts {
+            in_progress: 28,
+            waiting: None,
+            remaining: 50,
+            done: 12,
+        });
+        assert_eq!(
+            line(&status, &["git_branch"]),
+            "🗂️ 50 / ▶️ 28 / ✅ 12 | 🌳 wt"
+        );
+    }
+
     #[test]
     fn card_counts_do_not_need_the_repository_or_the_branch() {
         let line = |s: &Status, off: &[&str]| plain(s, off).lines().nth(1).unwrap().to_string();
         let mut status = full_status();
         status.cards = Some(CardCounts {
             in_progress: 1,
+            waiting: None,
             remaining: 2,
             done: 3,
         });
         status.worktree = "wt".into();
-        assert_eq!(line(&status, &["git_branch"]), "🔥 1 / 📥 2 / ✅ 3 | 🌳 wt");
+        assert_eq!(line(&status, &["git_branch"]), "🗂️ 2 / ▶️ 1 / ✅ 3 | 🌳 wt");
         assert_eq!(line(&status, &["git_branch", "cards"]), "🌳 wt");
         status.repo = None;
         assert_eq!(
             line(&status, &[]),
-            "🔥 1 / 📥 2 / ✅ 3 | 🅱️ main ↓2 +3 | 🌳 wt"
+            "🗂️ 2 / ▶️ 1 / ✅ 3 | 🅱️ main ↓2 +3 | 🌳 wt"
         );
         status.git = None;
-        assert_eq!(line(&status, &[]), "🔥 1 / 📥 2 / ✅ 3 | 🌳 wt");
+        assert_eq!(line(&status, &[]), "🗂️ 2 / ▶️ 1 / ✅ 3 | 🌳 wt");
         status.worktree.clear();
-        assert_eq!(line(&status, &[]), "🔥 1 / 📥 2 / ✅ 3");
+        assert_eq!(line(&status, &[]), "🗂️ 2 / ▶️ 1 / ✅ 3");
     }
 
     /// Card C-65: color is never the only signal. Each number keeps its icon, the three parts
@@ -908,6 +953,7 @@ mod tests {
         let mut status = full_status();
         status.cards = Some(CardCounts {
             in_progress: 5,
+            waiting: Some(26),
             remaining: 50,
             done: 12,
         });
@@ -918,8 +964,9 @@ mod tests {
                 let out = colored(name, profile, &status);
                 assert_eq!(strip_sgr(&out), text, "{name} {profile:?}");
                 for (hex, part) in [
-                    (t.cards_active, "🔥 5"),
-                    (t.cards_waiting, "📥 50"),
+                    (t.cards_waiting, "🗂️ 50"),
+                    (t.cards_active, "▶️ 5"),
+                    (t.cards_posted, "🔃 26"),
                     (t.cards_done, "✅ 12"),
                 ] {
                     assert!(out.contains(&profile.paint(hex, part)), "{name} {part}");
@@ -927,8 +974,9 @@ mod tests {
             }
             let colors = [
                 t.prs,
-                t.cards_active,
                 t.cards_waiting,
+                t.cards_active,
+                t.cards_posted,
                 t.cards_done,
                 t.branch,
             ];
