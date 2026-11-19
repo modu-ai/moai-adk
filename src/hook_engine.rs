@@ -769,9 +769,8 @@ pub const ENGINE_LOG: &str = "hook-engine.jsonl";
 
 /// SPEC-20261119-enforce-spec-hooks REQ-6: what the Bash side of the GREEN test lock covers,
 /// and what it does not (shown in every host's `capabilities`).
-const BASH_LOCK_GUARD: &str =
-    "Bash: rm, unlink, git rm, mv or git mv of a test path the GREEN record locks";
-const BASH_LOCK_OPEN: &str = "Bash edits of a locked test other than rm, unlink, git rm, mv and git mv: redirections, tee, sed -i, find -delete, scripts, and any command run after a cd";
+const BASH_LOCK_GUARD: &str = "Bash: rm, unlink, git rm, mv or git mv of a test path the GREEN record locks, of a folder holding one, or of a glob (*, ?, [..]) or brace ({a,b}) pattern that names one";
+const BASH_LOCK_OPEN: &str = "Bash edits of a locked test other than that rm, unlink, git rm, mv and git mv on literal, glob or brace words: redirections, tee, sed -i, scripts, variables (rm $F), xargs, find -exec and find -delete, the bodies of compound statements (if, for, while, case, functions), and any command run after a cd";
 
 /// A short, stable key for a host session id: the first 16 hex digits of its sha256. The raw
 /// id is host input and never becomes a path or a log value.

@@ -1036,6 +1036,121 @@ fn green_lock_bash_follows_the_record_and_the_input_cwd() {
     repo.assert_allowed("rm tests/locked_test.rs");
 }
 
+/// REQ-8: removing or moving the folder that holds a locked test, and a glob or a brace group
+/// that names one, are refused like the file itself; a folder or a pattern that holds or
+/// names no locked test is not.
+#[test]
+fn green_lock_bash_covers_folders_globs_and_braces() {
+    let repo = GreenRepo::new("green");
+    let absolute = repo.root.join("tests");
+    let absolute = absolute.to_str().unwrap();
+    for command in [
+        "rm -rf tests".to_string(),
+        "rm -r tests/".to_string(),
+        "rm -r ./tests".to_string(),
+        "rm -rf src tests".to_string(),
+        "git rm -r tests".to_string(),
+        "git rm -rf --cached tests".to_string(),
+        "mv tests tests_old".to_string(),
+        "git mv tests tests_old".to_string(),
+        format!("rm -rf {absolute}"),
+        "rm tests/locked_*.rs".to_string(),
+        "rm tests/locked_test.r?".to_string(),
+        "rm tests/locked_tes[t].rs".to_string(),
+        "rm tests/[a-m]ocked_test.rs".to_string(),
+        "rm tests/*".to_string(),
+        "rm te*/locked_test.rs".to_string(),
+        // A glob that stops at the folder names the folder.
+        "rm -rf t*".to_string(),
+        "rm -r te?ts".to_string(),
+        "rm -rf [t]ests".to_string(),
+        "mv te* /tmp/".to_string(),
+        "git rm -r tes*".to_string(),
+        "mv tests/locked_* src/".to_string(),
+        "rm tests/{locked_test.rs,other_test.rs}".to_string(),
+        "rm tests/{other,locked}_test.rs".to_string(),
+        "rm tests/{x,{locked_test.rs,y}}".to_string(),
+        "FOO=1 rm -rf tests".to_string(),
+        "echo hi && rm -rf tests".to_string(),
+    ] {
+        let reason = repo.deny_reason(&command);
+        assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+    }
+    for command in [
+        "rm -rf src",
+        "rm -r target",
+        "mv src src2",
+        "git mv src src2",
+        "rm tests/other_*.rs",
+        "rm tests/zz*.rs",
+        "rm tests/[a-m]ther_test.rs",
+        "rm tests/{other,zz}_test.rs",
+        "rm src/*.rs",
+        "rm -r s*",
+        "rm zz*",
+        "rm -r [a-s]rc",
+        "ls tests",
+        "cat tests/*",
+        "cp -r tests /tmp/tests_copy",
+        "echo ${HOME}/x",
+    ] {
+        repo.assert_allowed(command);
+    }
+}
+
+/// N1 (audit of #3216, mutant H7): after `--` a word that starts with a dash is a path; before
+/// it, it is an option.
+#[test]
+fn green_lock_bash_reads_dash_names_after_double_dash() {
+    let repo = GreenRepo::new("green");
+    fs::write(repo.root.join("tests/-odd_test.rs"), "x\n").unwrap();
+    fs::write(
+        repo.root.join(".git/moai/tdd.json"),
+        json!({"schema_version": 1, "spec": "SPEC-20261119-fixture", "phase": "green",
+               "red_commit": RED_COMMIT, "locked": ["tests/-odd_test.rs"],
+               "checks": ["cargo test"], "at_unix": 1})
+        .to_string(),
+    )
+    .unwrap();
+    let tests = repo.root.join("tests");
+    let (code, stdout) = repo.bash("rm -- -odd_test.rs", &tests);
+    assert!(
+        code == 0 && stdout.contains("\"permissionDecision\":\"deny\""),
+        "{code} {stdout}"
+    );
+    let (code, stdout) = repo.bash("rm -f -- -odd_test.rs", &tests);
+    assert!(
+        stdout.contains("\"permissionDecision\":\"deny\""),
+        "{code} {stdout}"
+    );
+    // Without `--` the same word is an option, and nothing is named.
+    let (code, stdout) = repo.bash("rm -odd_test.rs", &tests);
+    assert_eq!((code, stdout.as_str()), (0, ""));
+}
+
+/// The forms `capabilities` names as not guarded stay allowed, so that its words and the
+/// guard cannot drift apart: when one of these is closed, the test and the named limit change
+/// together.
+#[test]
+fn green_lock_bash_named_limits_are_not_guarded() {
+    let repo = GreenRepo::new("green");
+    for command in [
+        "F=tests/locked_test.rs; rm $F",
+        "rm \"$LOCKED\"",
+        "echo tests/locked_test.rs | xargs rm",
+        "xargs rm < list.txt",
+        "find tests -name locked_test.rs -exec rm {} +",
+        "find tests -name locked_test.rs -delete",
+        "if true; then rm tests/locked_test.rs; fi",
+        "for f in tests/locked_test.rs; do rm $f; done",
+        "cd tests && rm locked_test.rs",
+        "echo x > tests/locked_test.rs",
+        "sed -i s/a/b/ tests/locked_test.rs",
+    ] {
+        repo.assert_allowed(command);
+    }
+}
+
 /// REQ-5: a denied call leaves one line with the reason text, and no command, path or content.
 #[test]
 fn deny_audit_line_carries_the_reason_and_no_command_or_path() {
@@ -1081,13 +1196,29 @@ fn capabilities_name_the_bash_lock_limits() {
         let caps = moai_cli::hook_engine::capabilities(host);
         let pre = &caps["tool-preflight"];
         let guards = pre["guards"].to_string();
-        assert!(
-            guards
-                .contains("rm, unlink, git rm, mv or git mv of a test path the GREEN record locks"),
-            "{host}: {guards}"
-        );
+        for covered in [
+            "rm, unlink, git rm, mv or git mv of a test path the GREEN record locks",
+            "of a folder holding one",
+            "glob (*, ?, [..])",
+            "brace ({a,b}) pattern",
+        ] {
+            assert!(guards.contains(covered), "{host} {covered}: {guards}");
+        }
         let open = pre["not_guarded"].to_string();
-        for limit in ["redirections", "sed -i", "find -delete", "scripts", "cd"] {
+        // Each form that the guard lets through (`green_lock_bash_named_limits_are_not_guarded`)
+        // is named, not only the redirections.
+        for limit in [
+            "redirections",
+            "tee",
+            "sed -i",
+            "scripts",
+            "variables (rm $F)",
+            "xargs",
+            "find -exec",
+            "find -delete",
+            "compound statements (if, for, while, case, functions)",
+            "any command run after a cd",
+        ] {
             assert!(
                 open.contains("Bash edits of a locked test") && open.contains(limit),
                 "{host} {limit}: {open}"

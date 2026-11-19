@@ -2,7 +2,7 @@
 id: SPEC-20261119-enforce-spec-hooks
 title: "The GREEN test lock also holds against Bash deletions and moves, and a denied call leaves its reason in the audit line"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-19
 ---
 
@@ -19,7 +19,7 @@ created: 2026-11-19
 
 - 카드의 AC-1(인터뷰 기록), AC-3(Stop hook), AC-4(병합 관문): 각각 별도 SPEC·PR 이에요. AC-1·AC-3 은 이 카드의 쓰기 범위 밖 파일이 필요해 범위 요청을 했어요(card note 2278 D-B).
 - "SPEC 이 approved 여야 쓰기 허용"으로 조이기(AC-2 의 첫 절반): 지금 hook 은 SPEC 파일이 있으면 통과해요. 승인은 사용자의 대화 중 선택만 줄 수 있어서 조이면 모든 레인이 멈춰요. 정책 결정이라 리더에게 물었고(note 2278 D-A) 기본값은 그대로 두기예요.
-- 셸이 파일을 바꾸는 모든 길: 리다이렉트(`>`, `tee`), `sed -i`, `find -delete`, 스크립트, `cd` 로 폴더를 바꾼 뒤의 상대 경로는 이 조각도 막지 못해요(REQ-6 이 한계를 적어요).
+- 셸이 파일을 바꾸는 나머지 길은 이 조각도 막지 못해요. 이름으로: 리다이렉트(`>`), `tee`, `sed -i`, 스크립트, 변수로 만든 경로(`F=…; rm $F`), `xargs`, `find -exec`·`find -delete`, 복합문의 몸통(`if`·`for`·`while`·`case`·함수), `cd` 로 폴더를 바꾼 뒤의 상대 경로. REQ-6 이 `capabilities` 에 같은 이름들을 적고, 시험 `green_lock_bash_named_limits_are_not_guarded` 가 이 형태들이 지금 통과한다는 사실을 고정해요(하나를 막게 되면 시험과 문구를 같이 바꿔요).
 - 실제 `~/.claude` 설정과 hook 의 변경, OMP(편집 경로를 번역하지 않아요).
 - `src/tdd.rs` 의 잠금 규칙 바꾸기: 이 조각은 `lock_refusal` 을 그대로 불러요.
 
@@ -30,7 +30,8 @@ created: 2026-11-19
 - REQ-3: Where the worktree has no TDD record, the record is in RED, no named path is locked, or the repository holds no MoAI state, the guard shall allow the command as before.
 - REQ-4: The guard shall read relative paths against the hook input's `cwd` and judge a path where it lands (`..` and symlinks resolved), as the file-write lock does.
 - REQ-5: When the engine denies a tool call, the line it appends to `hook-engine.jsonl` shall carry the reason sentence of the guard that refused it and no command text, path or file content.
-- REQ-6: The `capabilities` answer of the hook engine shall say that the Bash lock covers `rm`, `unlink`, `git rm`, `mv` and `git mv` only, and that redirections, `sed -i`, `find -delete`, scripts and a command run after a `cd` are not guarded.
+- REQ-6: The `capabilities` answer of the hook engine shall say that the Bash lock covers `rm`, `unlink`, `git rm`, `mv` and `git mv` on literal, glob and brace words and on folders only, and name each form it does not guard: redirections, `tee`, `sed -i`, scripts, variables, `xargs`, `find -exec`, `find -delete`, the bodies of compound statements and a command run after a `cd`.
+- REQ-8: The guard shall read a folder that exists and holds a locked test as that test, and a glob (`*`, `?`, `[..]`) or brace (`{a,b}`) word as the locked tests it names or holds.
 - REQ-7 (REQ-5): IF a refusal's sentence is built at run time (the commit-identity rule names an email, the claim rule an Issue number, and a command line that commits in more than one folder names the verbs), THEN the line that REQ-5 describes shall carry `reason: null`.
 
 ## Acceptance
@@ -39,8 +40,10 @@ created: 2026-11-19
   verify: `cargo test --locked --offline --test hooks_cli green_lock_bash`
 - AC-2 (REQ-5, REQ-7): deny 한 줄에 reason 이 있고 명령·경로·내용은 없어요; 실행 중에 만든 문장(여러 폴더에 커밋하는 줄)은 `reason: null`.
   verify: `cargo test --locked --offline --test hooks_cli deny_audit_line`
-- AC-3 (REQ-6): `capabilities` 가 Bash 잠금의 범위와 못 막는 길을 말해요.
-  verify: `cargo test --locked --offline --test hooks_cli capabilities_name_the_bash_lock_limits`
+- AC-3 (REQ-6): `capabilities` 가 Bash 잠금의 범위와 못 막는 형태를 이름으로 말하고, 그 형태들이 실제로 통과한다는 사실을 시험이 고정해요.
+  verify: `cargo test --locked --offline --test hooks_cli capabilities_name_the_bash_lock_limits`; `cargo test --locked --offline --test hooks_cli green_lock_bash_named_limits`
+- AC-5 (REQ-8): 폴더째(`rm -rf tests`, `git rm -r tests`, `mv tests …`), glob(`tests/locked_*.rs`, `t*`), 중괄호(`tests/{a,b}`)는 deny, 잠긴 시험이 없는 폴더·패턴은 allow. `--` 뒤의 `-` 로 시작하는 이름도 경로예요(감사 N1).
+  verify: `cargo test --locked --offline --test hooks_cli green_lock_bash_covers`; `cargo test --locked --offline --test hooks_cli green_lock_bash_reads_dash`
 - AC-4 (REQ-1…REQ-6): 이웃 시험.
   verify: `cargo test --locked --offline --test hooks_cli`; `cargo test --locked --offline --test spec_before_code_hook`; `cargo test --locked --offline --test green_test_lock`; `cargo test --locked --offline --lib hook_guards::`; `cargo test --locked --offline --lib hook_engine::`; `cargo fmt --check`; `cargo clippy --locked --offline --all-targets -- -D warnings`
 
@@ -60,7 +63,7 @@ created: 2026-11-19
 
 ## Risks
 
-- 셸 파싱은 한계가 있어요(Non-goals). 이 조각은 "막을 수 있는 가장 흔한 길"을 막을 뿐이고, 못 막는 길은 `capabilities` 가 말해요. 허위로 안전하다고 말하지 않아요.
+- 셸 파싱은 한계가 있어요(Non-goals). 이 조각은 `rm`·`unlink`·`git rm`·`mv`·`git mv` 를 글자 그대로·glob·중괄호·폴더째로 읽어 막고, 못 막는 형태는 Non-goals 에 이름으로 적고 `capabilities` 가 같은 이름으로 말하며, 그 형태들이 통과한다는 사실은 시험이 고정해요(첫 감사 #3216 B1 이 "막는 것처럼 읽힌다"고 지적해 고친 부분). 이 이름들 밖의 우회 길이 더 있을 수 있어요(찾지 못했을 뿐이에요).
 - `lock_refusal` 의 둘째 조건("새 시험 파일")은 존재하지 않는 경로를 거부해요. `rm` 대상이 없는 경우를 건너뛰지 않으면 `rm -f tests/gone.rs` 가 헛거부돼요(REQ-2).
 - deny 줄에 필드를 더하면 줄 모양을 고정한 시험이 깰 수 있어요(AC-4 가 이웃 시험으로 확인해요).
 
