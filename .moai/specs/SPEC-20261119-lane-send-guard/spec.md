@@ -2,7 +2,7 @@
 id: SPEC-20261119-lane-send-guard
 title: "A lane send reads the target's screen first and sends nothing unless the lane is working or idle"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-19
 parent: SPEC-20261119-lane-screen-guard
 ---
@@ -13,58 +13,62 @@ parent: SPEC-20261119-lane-screen-guard
 
 카드 C-120 의 둘째 조각이에요. 2026-11-19 에 레인 화면에 `git reset --hard` 의 Yes/No 확인 창이 떠 있는데 지침 글을 Enter 와 함께 보내서 강조된 Yes 가 눌렸어요(C-108 노트 2813). `orca terminal send` 는 대상 화면을 보지 않고 글자를 넣어요(`orca terminal send --help`, 2026-11-19 읽음). 이 SPEC 은 `moai lane-send` 를 만들어요: 보내기 전에 대상 터미널의 **그려진 화면**(rendered screen)을 읽고, 바탕 SPEC(`SPEC-20261119-lane-screen-guard`)의 분류기로 상태를 정해서 `working`·`idle` 일 때만 보내요. 확인 창·선택 창·사용 한도·접근 불가·모름이면 아무것도 보내지 않고 이유를 말해요.
 
-이 SPEC 은 분류기가 병합된 뒤에 구현해요(분류 모듈 `src/lane_screen.rs` 에 기대요). 이 조각(1)은 SPEC 뿐이고 코드와 시험은 만들지 않아요.
+revision 2: 분류기(조각 A, `src/lane_screen.rs`)가 이 가지의 바탕 안에 있어서 바로 구현해요. 조각 A 가 아직 묶음에 병합되지 않았으므로 이 가지는 조각 A 의 head(`f5070a92a8`) 위에 쌓여요: 조각 A 가 병합되면 이 가지의 새 커밋만 남아요.
 
 ## Interview
 
-- Q1: 보낼 글의 안전 검사는요? → A: `src/lane_duty.rs` 의 "다른 터미널에 입력으로 들어가는 글" 규칙(제어 문자·줄 구분자·양방향 문자 거절)을 그대로 써요. 화면 상태 검사와 글 검사가 둘 다 통과해야 보내요.
+- Q1: 보낼 글의 안전 검사는요? → A: `src/lane_duty.rs` 의 "다른 터미널에 입력으로 들어가는 글" 규칙(제어 문자·줄 구분자·양방향 문자 거절)을 그대로 써요. 같은 판정 함수를 `pub` 으로 열어 쓰고 복사하지 않아요. 화면 상태 검사와 글 검사가 둘 다 통과해야 보내요.
 - Q2: 화면을 읽은 뒤 보내기 전에 화면이 바뀌면요? → A: 읽기와 보내기 사이가 비어 있는 점은 남아요(Risks). 보내기 직전에 한 번 더 읽고 둘의 상태가 다르면 보내지 않아요.
-- Q3: 거절하면 종료 코드는요? → A: 0 이 아니에요(성공 흉내를 내지 않아요). 출력에 상태·이유·읽은 화면 줄 하나가 있어요.
-- Q4: 시험은 어떻게 하나요? → A: 가짜 `orca` 프로그램(`MOAI_ORCA_BIN` 으로 바이너리를 바꿔요)이 읽기 요청에는 녹화한 화면을 주고, 보내기 요청은 받은 글을 파일에 남겨서 "보내지 않았음"을 파일이 비었는지로 확인해요.
+- Q3: 거절하면 종료 코드는요? → A: 0 이 아니에요(성공 흉내를 내지 않아요). 오류 글에 상태·이유·읽은 화면 줄 하나가 있어요.
+- Q4: 시험은 어떻게 하나요? → A: 가짜 `orca` 프로그램(`MOAI_ORCA_BIN` 으로 바이너리를 바꿔요)이 읽기 요청에는 합성 화면을 주고, 보내기 요청은 받은 인자를 파일에 남겨서 "보내지 않았음"을 파일이 없거나 비었는지로 확인해요.
+- Q5: Enter 는 언제 보내나요? → A: `--enter` 를 줄 때만이에요. 기본은 글만 넣어요(사고가 글과 Enter 를 함께 보낸 것이었어서, Enter 는 명시한 호출만 보내요).
+- Q6: 글이 `-` 로 시작하면요? → A: 거절해요. 글이 `orca` 의 옵션(`--interrupt` 같은 것)으로 읽힐 수 있어서예요.
 
 ## Non-goals
 
 - 확인 창에 대신 답하기: 이 도구는 보내지 않는 쪽만 맡아요.
 - 한도가 풀릴 때까지 기다렸다 보내기(재시도, 대기열): 거절하고 해제 시각을 보여 주기까지예요.
 - `hc send` 와 `orca orchestration send` 의 동작 변경: 이 도구는 `orca terminal send` 길 앞에만 서요.
+- 보낸 글이 제출됐는지 관찰하기(`--wait-submit`): `orca` 가 돌려준 접수 결과를 그대로 보여 주기까지예요.
 
 ## Requirements
 
 - REQ-1: When `moai lane-send` is given a terminal and a text, the command shall read that terminal's rendered screen and classify it before it sends anything.
 - REQ-2 (REQ-1): IF the screen is classified as anything other than `working` or `idle`, THEN `moai lane-send` shall send nothing and exit with a non-zero code that names the state and the screen line it was read from.
-- REQ-3: When the screen is classified as `working` or `idle`, `moai lane-send` shall send the text to that terminal and print the state it sent under.
+- REQ-3: When the screen is classified as `working` or `idle`, `moai lane-send` shall send the text to that terminal, with Enter only when `--enter` is given, and print the state it sent under.
 - REQ-4 (REQ-3): IF the screen read just before the send is classified differently from the first read, THEN `moai lane-send` shall send nothing and exit with a non-zero code.
-- REQ-5 (REQ-2): IF the screen is classified as `usage_limit`, THEN `moai lane-send` shall print the reset time of the limit in UTC with its refusal.
-- REQ-6 (REQ-1): IF the text carries a control character or a line separator that the input-safety rule of `lane-duty` refuses, THEN `moai lane-send` shall send nothing and exit with a non-zero code.
+- REQ-5 (REQ-2): IF the screen is classified as `usage_limit`, THEN `moai lane-send` shall print the reset time of the limit in UTC, or say that it is unknown, with its refusal.
+- REQ-6 (REQ-1): IF the text is empty, begins with `-`, is longer than 2000 characters, or carries a control character or a line separator that the input-safety rule of `lane-duty` refuses, THEN `moai lane-send` shall send nothing and exit with a non-zero code.
 - REQ-7 (REQ-1): IF the terminal cannot be read or the Orca program is absent, THEN `moai lane-send` shall send nothing and exit with a non-zero code that says the lane was unreachable.
+- REQ-8 (REQ-3): IF the Orca program fails to send, THEN `moai lane-send` shall exit with a non-zero code that says the send failed, never that the text was sent.
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2, REQ-4): 확인 창·선택 창·한도·셸·모름 화면에는 아무것도 보내지 않아요(가짜 `orca` 의 보내기 기록 파일이 비어 있고 종료 코드가 0 이 아니에요). 첫 읽기가 대기 중이고 둘째 읽기가 확인 창이면 보내지 않아요(사고 1).
+- AC-1 (REQ-1, REQ-2, REQ-4, REQ-5): 확인 창·선택 창·한도·셸·모름 화면에는 아무것도 보내지 않아요(가짜 `orca` 의 보내기 기록 파일이 없고 종료 코드가 0 이 아니에요). 첫 읽기가 대기 중이고 둘째 읽기가 확인 창이면 보내지 않아요(사고 1). 한도 화면 거절에 해제 시각이 UTC 로(모르면 모른다고) 있어요.
   verify: `cargo test --locked --offline --test lane_send_cli lane_send_refuses`
-- AC-2 (REQ-3, REQ-5): 작업 중·대기 중 화면에는 글이 한 번 그대로 가요. 한도 화면 거절에 해제 시각이 UTC 로 있어요.
+- AC-2 (REQ-3, REQ-8): 작업 중·대기 중 화면에는 글이 한 번 그대로 가요(`--enter` 는 줄 때만 가요). 보내기가 실패하면 보냈다고 하지 않아요.
   verify: `cargo test --locked --offline --test lane_send_cli lane_send_sends`
-- AC-3 (REQ-6, REQ-7): 안전하지 않은 글과 읽지 못한 터미널은 보내지 않아요.
+- AC-3 (REQ-6, REQ-7): 안전하지 않은 글과 읽지 못한 터미널·없는 `orca` 는 보내지 않아요.
   verify: `cargo test --locked --offline --test lane_send_cli lane_send_unsafe`
-- AC-4 (REQ-1…REQ-7): 이웃 시험이 통과해요.
-  verify: `cargo test --locked --offline --test lane_duty_line`
+- AC-4 (REQ-1…REQ-8): 이웃 시험이 통과해요.
+  verify: `cargo test --locked --offline --test lane_duty_line` `cargo test --locked --offline --test lane_screen_cli`
 
 ## Scope
 
-- write(이 조각): `.moai/specs/SPEC-20261119-lane-send-guard/**`
-- write(구현 조각 B, 쓰기 범위를 새로 받아요, 분류기 병합 뒤): `src/ops/lane_send.rs`, `src/ops/mod.rs`·`src/main.rs`·`src/help.rs`(등록), `tests/lane_send_cli.rs`, `tests/fixtures/lane_screens/**`(바탕 SPEC 의 화면 재사용)
-- read-only: `src/lane_screen.rs`(분류기), `src/lane_duty.rs`(입력 안전 규칙)
+- write: `.moai/specs/SPEC-20261119-lane-send-guard/**`, `src/lane_send.rs`(판정 로직, `src/lane_status.rs` 에서 `#[path]` 로 등록), `src/ops/lane_send.rs`, `src/help.rs`(등록), `src/lane_screen.rs`(화면 읽기 한 함수를 열어요), `src/lane_duty.rs`(입력 안전 판정을 `pub` 으로), `tests/lane_send_cli.rs`, `tests/fixtures/lane_screens/**`(바탕 SPEC 의 화면 재사용), `tests/fixtures/help/*.txt`(골든), `docs/design-review/appendix/operations/lane_send.md`
+- read-only: 그 밖의 파일
 
 ## Plan
 
-1. (이 조각) SPEC.
-2. 구현 조각 B: 가짜 `orca` 로 `lane_send_*` 시험을 먼저 써서 실패를 보고 `moai lane-send` 를 만든 뒤 이웃 시험과 변이 시험(상한 12).
+1. (조각 1) SPEC.
+2. 구현 조각 B: 가짜 `orca` 로 `lane_send_*` 시험을 먼저 써서 실패를 보고 `moai lane-send` 를 만든 뒤 이웃 시험과 변이 시험(상한 5).
 
 ## Risks
 
 - 읽기와 보내기 사이: 두 번 읽어도 두 읽기 사이에 확인 창이 뜰 수 있어요. 그 틈을 0 으로 만들지 못해요; 틈을 줄이는 것이고, 보내기 쪽의 근본 보호는 `orca terminal send` 자체에 없어요.
 - 분류기가 모르는 화면은 `unknown` 이라 거절돼요: 안전한 쪽이지만 정상 레인이 막힐 수 있어요. 막히면 사람이 `orca terminal send` 를 직접 써요.
 - 바탕 SPEC 의 화면 녹화(D-5)가 없으면 시험의 화면이 합성이에요.
+- `orca terminal send --help` 는 다른 에이전트에게는 `orca orchestration send` 를 쓰라고 해요: 이 도구는 그 길을 대체하지 않고 `terminal send` 길 앞에서 화면만 지켜요(D-1 은 리더가 받아들였어요).
 
 ## Decisions
 
@@ -72,12 +76,36 @@ parent: SPEC-20261119-lane-screen-guard
 | --- | --- | --- | --- |
 | D-1 | 보내기 직전에 한 번 더 읽고 다르면 거절 | 읽고 보내는 사이의 변화를 줄여요 | 한 번만 읽기 |
 | D-2 | 거절은 종료 코드 0 이 아님 | 호출자가 성공으로 읽지 않아요 | 0 + 메시지 |
+| D-3 | Enter 는 `--enter` 를 줄 때만 | 사고가 글과 Enter 를 함께 보낸 것이었어요 | 항상 Enter |
+| D-4 | 글은 `-` 로 시작하지 않고 2000자까지 | `orca` 옵션으로 읽히는 것을 막아요; 길이는 입력 안전 규칙의 취지예요 | 따옴표 처리 |
+| D-5 | `orca` 는 `MOAI_ORCA_BIN`(없으면 PATH 의 `orca`)로 부르고 호출마다 15초 제한(`MOAI_ORCA_TIMEOUT_SECS` 로 1에서 300초) | 시험이 가짜로 바꾸고, 멈춘 `orca` 가 보내기를 붙잡지 않아요 | 제한 없음 |
+| D-6 | 글은 `--text` 인자로 받음 | 한 줄 글이고 표준 입력 예시 규칙을 피해요 | 표준 입력 |
 
 ## Result
 
-이 조각은 SPEC 뿐이에요: 코드·시험을 만들지 않았어요.
+구현 조각 B(`moai lane-send`, 코드 커밋 `ff78e0d60a`, 2026-11-19T12:33:53Z 에 `date -u` 로 읽은 때)예요. 시험은 RED 먼저: 명령 뼈대만 있는 스텁에서 `lane_send_cli` 14개가 모두 실패했고 구현 뒤 14개 모두 통과해요. 실제 `orca` 는 부르지 않았고 가짜 `orca`(셸 스크립트)와 합성 화면만 썼어요.
 
-- AC-1: 아직 안 했어요(구현 조각 B).
-- AC-2: 아직 안 했어요(구현 조각 B).
-- AC-3: 아직 안 했어요(구현 조각 B).
-- AC-4: 아직 안 했어요(구현 조각 B).
+- AC-1: 충족 — `cargo test --locked --offline --test lane_send_cli lane_send_refuses` 가 통과해요(확인 창 둘·선택 창·한도 둘·셸·좁은 tail 은 `sent.txt` 없음과 종료 코드 1, 첫 읽기 대기·둘째 읽기 확인 창은 거절하고 읽기 2번, 작업 중→대기도 거절, 한도 거절에 `2026-11-20T10:00:00Z`, 시간대 없는 한도는 "unknown"; 그려진 화면이 아닌 읽기와 글자만 온 답은 거절).
+- AC-2: 충족 — `... --test lane_send_cli lane_send_sends` 가 통과해요(대기 중·작업 중에는 읽기 2번 뒤 보내기 한 번, `--enter` 는 줄 때만 가고 한글 글도 그대로, 보내기 실패는 "send failed" 이고 "sent" 라 하지 않으며 한 번만 시도).
+- AC-3: 충족 — `... --test lane_send_cli lane_send_unsafe` 가 통과해요(빈 글·`-` 시작·줄바꿈·탭·ESC·양방향 문자·줄 구분자·2001자는 `orca` 를 한 번도 부르지 않고 거절하고 글을 되풀이하지 않으며 2000자는 통과, 위험한 터미널 핸들, 없는 `orca`·읽기 실패·종료된 터미널은 unreachable, 멈춘 `orca` 는 2초 제한에 끊겨 5초 안에 거절, `--now` 형식 오류).
+- AC-4: 충족 — `--test lane_duty_line` 8 passed, `--test lane_screen_cli` 22 passed, `--lib lane_send` 10 passed(`--lib lane_` 197), `--bin moai` 28 passed(`every_example_parses`·`operations_doc_matches_code` 포함; 처음에는 예시의 따옴표 때문에 `every_example_parses` 가 실패해 예시를 `<one-line-text>` 로 고쳤어요), `--test help_layout` 10(골든 넷에 `lane-send` 한 줄), `hot_file_ops_merge` 3, `spec_cli` 18, `cargo_env_developer_dir` 4, `home_isolation_scan` 18, `git_env_scrub` 3, `doc_references` 7, `ac_command_lint` 5 모두 통과. `cargo fmt --check` 0, `rustfmt --check --edition 2021 src/ops/*.rs` 0, `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `python3 -m unittest tests.repo_scans_test tests.source_manifest_test tests.local_check_test` 104 OK(이 가지로 빌드한 `moai-cli` 로). 변이 다섯(둘째 읽기 비교 끄기, 핸들 `-` 시작 허용, 글 `-` 시작 허용, Enter 뒤집기, unknown 에도 보내기)이 모두 KILLED, 변이 뒤 작업 트리 깨끗. 돌리지 않은 것: 전체 cargo 시험, 파이썬 discover, 실제 `orca` 터미널에 붙인 실행, `git diff --check` 와 `moai-cli trailer-check` 의 READY 전 확인(READY 때 돌려요).
+- 구현에서 SPEC 보다 구체화한 것: `MOAI_ORCA_TIMEOUT_SECS`(1에서 300, 기본 15)로 호출 제한을 시험이 줄일 수 있게 했어요(D-5); 읽은 답이 Orca 의 JSON 이 아니면 `unreachable` 이에요; 첫 읽기와 둘째 읽기가 다르면 새 화면이 막는 이유도 같은 오류 글에 적어요.
+
+**R-N1 수리(재감사 note 3256, 리더 결정 — 조각 B 의 READY 조건)**: `Do you want` 류 확인 질문(`do you want`·`would you like`·`are you sure`·`proceed?`·`[y/n]`·`(y/n)`)이 비어 있지 않은 마지막 8줄 안에 있는데 번호 줄을 못 읽었으면(앞머리 `»`·`[1]` 처럼 읽기 규칙 밖) 작업 중·대기 표지가 있어도 `unknown` 이에요(`src/lane_screen.rs` 의 `classify`, `evidence` 는 그 질문 줄). 그래서 `lane-send` 는 그 화면에 보내지 않아요(AC-1 의 거절이 한 가지 늘었어요). 대가: 대기 중인 레인이 대화 끝에 질문 글을 남겨 두면 마지막 8줄 안에서는 `unknown` 이라 보내기가 거절돼요(안전한 쪽으로 틀려요; 문서 `lane_screen.md`·`lane_send.md` 에 적었어요). 조각 B 가지는 조각 A 수리 head `8071820b9f` 를 병합했어요(`72510cecfa`).
+- 증거(코드 head `731364eb6e`, 2026-11-19, 같은 날 `date -u` 로 읽은 시계): RED 먼저 — 새 단위 시험이 수리 전 코드에서 `left: Working right: Unknown` 으로 실패했어요. 수리 뒤 `--lib lane_` 201 passed, `--test lane_screen_cli` 26, `--test lane_send_cli` 16(새 시험 `lane_send_refuses_a_question_whose_choices_cannot_be_read_and_sends_nothing`: 합성 화면 둘에 `sent.txt` 없음), `--test lane_status_cli` 25 passed. 경계: 질문이 아래에서 8번째 줄이면 `unknown`, 9번째 줄이면 `working`·`idle`; 질문이 없으면 그대로. 변이 5/5 KILLED(창 +1, 창 −1, `do you want` 를 질문에서 빼기, 창을 앞쪽 줄로 잡기, 빈 줄을 창의 줄로 세기; 변이마다 `git checkout` 으로 복원, 끝나고 깨끗). 여섯 검사 종료 코드: (1) `git diff --check v2026.11.0...HEAD` 0 (2) `cargo fmt --all -- --check` 0 (3) `rustfmt --check --edition 2021 src/ops/*.rs` 0 (4) `cargo clippy --locked --offline --all-targets -- -D warnings` 0 (5) `cargo test --test cargo_env_developer_dir --test home_isolation_scan --test git_env_scrub --test doc_references --test ac_command_lint` 0(5+4+7+3+18 passed)와 `python3 -m unittest tests.repo_scans_test tests.source_manifest_test tests.local_check_test` 0(104 OK) (6) head 로 빌드한 `moai-cli trailer-check v2026.11.0..HEAD` 0(commits 12, findings 0). `cargo test --bins` 0(28 passed).
+- 안 된 것: `cargo test --test orca_optional_3005` 가 1 실패예요(`the_word_orca_stays_in_the_known_src_files`: 이 가지에서 Orca 를 이름으로 쓰는 `src/lane_screen.rs`·`src/ops/lane_screen.rs`(조각 A, 노트 3274)와 `src/lane_send.rs`·`src/ops/lane_send.rs`·`src/lane_status.rs`(조각 B)가 `SRC_ORCA_FILES` 에 없어요). 시험 파일은 C-103 예약 안이라 리더 결정 note 3282 에 따라 풀리면 조각 A 에서 두 파일, 이 조각에서 세 파일을 더해요. 그 전까지 READY 줄은 쓰지 않아요. 돌리지 않은 것: 전체 cargo 시험, 파이썬 discover(CI), 실제 Orca 터미널에 붙인 실행.
+
+**감사 FAIL 수리(리더 판정 note 3362, head 343c022b0a → 코드 커밋 `c1123e8fbb`)**: 세 가지를 고쳤어요.
+- B1(AC-1): 번호 앞의 글자·숫자가 아닌 앞머리는 무엇이든 건너뛰어요(`numbered`, 커서 목록 `CURSORS` 는 `input_pending` 의 커서 판정에만 써요). 번호가 붙은 `Yes`·`No` 줄이 둘 다 읽히면 질문이 없거나 아는 질문 낱말이 아니어도 `permission_prompt` 예요. 시험: `--test lane_send_cli lane_send_refuses_numbered_yes_no_rows_after_any_prefix_and_sends_nothing`(합성 화면 셋, 보내기 기록 없음), `--test lane_screen_cli lane_screen_state_numbered_yes_no_after_any_prefix_is_a_permission_prompt`(감사가 직접 실행한 두 화면과 앞머리 13가지; 글자·숫자 앞머리 `ok 1. Yes` 는 문장이라 `working`), 단위 `a_numbered_yes_and_no_after_any_mark_is_a_prompt_whatever_the_footer`·`numbered_skips_any_mark_and_keeps_only_a_listed_cursor_as_a_cursor`.
+- B2(AC-2, REQ-8): 보내기 답이 JSON 객체이고 `ok` 가 `true` 일 때만 `sent: true` 예요(`read_send_answer`). `ok:false`·글자뿐인 답·빈 답·`ok` 가 없거나 불리언 `true` 가 아닌 답은 "lane send failed" 이고 글이 닿았을 수 있다고 말해요. 시험: `lane_send_cli lane_send_does_not_report_a_send_whose_answer_is_not_ok_true`(가짜 `orca` 가 종료 코드 0 으로 네 가지 답), 단위 `a_send_is_sent_only_when_the_answer_says_ok_true`.
+- S-N2(리더 결정): 확인 질문 줄 아래의 줄에 `yes`·`no` 가 온전한 낱말로 있을 때만 `unknown`, `[y/n]`·`(y/n)` 질문 줄은 그 자체로 `unknown`, 질문으로 끝내고 입력 줄에서 기다리는 레인은 평소 판정(`idle`)이라 보내져요. 시험: `lane_send_cli lane_send_sends_to_a_lane_that_ended_its_turn_with_a_question`, `lane_screen_cli lane_screen_state_a_lane_that_ended_on_a_question_is_idle`·`..._a_question_above_unreadable_yes_and_no_rows_is_unknown`(창 경계 8번째 안·9번째 밖 포함), 단위 둘. 판단으로 정한 것 하나: `[y/n]` 질문은 리더 문구("아래에 yes·no 낱말 줄이 있을 때만")를 그대로 따르면 아무것도 없을 때 보내지는데, 그 질문은 그 줄이 곧 선택이라 아래에 없어도 `unknown` 으로 남겼어요(리더가 뒤집을 수 있는 결정, repair 노트에 적었어요).
+- 증거(코드 head `c1123e8fbb`, 2026-11-19, `date -u` 로 읽은 시계): RED 먼저 — 새 시험 9개가 수리 전 코드에서 실패했어요(단위 4, `lane_screen_cli` 2, `lane_send_cli` 3). 수리 뒤 `--lib lane_` 205 passed, `--test lane_screen_cli` 28, `--test lane_send_cli` 19 passed. 변이 5/5 KILLED(앞머리를 공백만 건너뛰기, `no` 낱말 빼기, `[y/n]` 규칙 빼기, 질문 아래 대신 위를 읽기, `ok:false` 를 성공으로; 변이마다 `git checkout` 으로 복원, 끝나고 깨끗). 여섯 검사와 등재 검사의 종료 코드는 repair 노트에 있어요. 기록(후속, 이번 수리 밖): S-N4 자식이 출력 관을 쥐면 join 이 기다릴 수 있음, S-N5 `lane_send_cli` 벽시계 5초 시험이 부하에서 흔들릴 수 있음, S-N6 빗금 든 상대 경로 프로그램은 작업 폴더 기준 — 문서 한 줄은 아직 안 적었어요.
+
+**델타 재감사 FAIL 수리(리더 판정 note 3433, head 9eeb46a7ee → 코드 커밋 `4f042f1b36`)**: S-N2 의 좁히기가 연 구멍 둘을 닫았어요. 위 S-N2 줄의 "`yes`·`no` 낱말이 질문 줄 아래에 있을 때만" 은 아래로 바뀌었어요.
+- R-B1(AC-1): 선택이 질문과 같은 줄에 있으면(`Do you want to proceed? (yes/no)`, `Are you sure you want to continue connecting (yes/no/[fingerprint])?`) 보내기가 나갔어요. 이제 질문 줄 자신도 선택 낱말을 세요(`lower[*i..]`).
+- R-N1(AC-1, 리더가 차단으로 올림): 아는 질문 아래의 선택이 `Allow / Deny`, `1. Allow once` `2. Allow always` `3. Deny`, `1. Y` `2. N` 처럼 yes·no 가 아니어도 보내기가 나갔어요. 이제 선택 낱말(`yes`·`no`·`allow`·`deny`·`y`·`n`, 낱말 전체)이 질문 줄이나 그 아래에 있거나, 그 아래에 번호 줄(`numbered`)이 둘 이상이면 낱말과 상관없이 `unknown` 이에요(`CHOICE_WORDS`, `has_choice_word`). `[y/n]`·`(y/n)` 전용 규칙(`BRACKET_QUESTIONS`)은 질문 줄 자신을 세는 것에 포함돼 없앴어요. 질문으로 끝내고 입력 줄에서 기다리는 레인(질문 줄과 아래에 선택 낱말 없음, 번호 줄 둘 미만)은 그대로 보내져요.
+- 시험(다섯 화면은 fixture 다섯 개): `lane_screen_cli lane_screen_state_a_question_with_its_choices_on_the_row_or_below_is_unknown`, `lane_send_cli lane_send_refuses_a_question_with_its_choices_on_the_row_or_below_and_sends_nothing`(다섯 화면 모두 `sent.txt` 없음), 단위 `a_question_with_a_choice_word_on_its_row_or_below_or_two_numbered_rows_is_unknown`(선택 낱말 낱말 경계 `Allowance`·`denied`·`yard`·`yesterday` 는 `working`, 번호 줄 하나는 `working`, 질문 위의 선택 낱말·번호 줄은 세지 않음).
+- 증거(코드 head `4f042f1b36`, 2026-11-19): RED 먼저 — 새 시험 3개가 수리 전 코드에서 실패했어요(단위 1, `lane_screen_cli` 1, `lane_send_cli` 1; 나머지는 통과). 수리 뒤 `--lib lane_` 206 passed, `--test lane_screen_cli` 29, `--test lane_send_cli` 20, `--test lane_status_cli` 25, `--test lane_duty_line` 8 passed. 변이 5/5 KILLED(질문 줄 자신을 빼기, `allow`·`deny` 빼기, `y`·`n` 빼기, 번호 줄 기준 2→3, 번호 줄을 세지 않기; 변이마다 `git checkout` 으로 복원, 끝나고 깨끗). 여섯 검사와 등재 검사와 같은 접두 시험 16개 대상의 종료 코드는 repair 노트에 있어요.
+- 기록(후속 카드 후보, 이번 델타가 만든 것이 아니에요 — 재감사 R-N2·R-N3): 아는 질문 낱말이 없고 번호 꼴이 `N.`·`N)` 이 아닌 선택(`[1] Yes`, `1: Yes`, `1 - Yes`, `① Yes`, `a. Yes`, `1.Yes`, 번호 없는 `Yes`/`No`)은 지난 head 와 같이 보내져요. `Overwrite? (y/N/a)` 같은 괄호 질문 변형도 마찬가지예요(질문 낱말 목록에 없어요).
+
+읽은 것(조각 1 계획 때): `orca terminal read --help`·`orca terminal send --help`(보호 없음, "다른 에이전트에는 `orca orchestration send`")는 위 Risks 에 있어요.

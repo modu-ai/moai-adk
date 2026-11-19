@@ -109,26 +109,45 @@ fn cut(row: &str) -> String {
     s
 }
 
-/// Characters of a vertical frame a dialog may be drawn in.
-const FRAME: [char; 6] = ['│', '┃', '║', '|', '╎', '┆'];
-/// The cursor a menu draws before the highlighted choice: `❯` is Claude Code's own, `>` is its
-/// plain-text form, the others are the arrows other menus use.
-const CURSORS: [char; 8] = ['❯', '>', '›', '▶', '▸', '→', '➜', '➤'];
+/// How many of the last non-blank rows may hold a confirmation question (R-N1).
+const BOTTOM_ROWS: usize = 8;
 
-fn is_blank_or_frame(c: char) -> bool {
-    c.is_whitespace() || FRAME.contains(&c)
+/// Words of a confirmation question, lower case.
+const QUESTIONS: [&str; 6] = [
+    "do you want",
+    "would you like",
+    "are you sure",
+    "proceed?",
+    "[y/n]",
+    "(y/n)",
+];
+
+/// The words a confirmation's choices are written with, lower case. A real dialog does not always
+/// say yes and no: `Allow` and `Deny`, `1. Y` and `2. N` (leader note 3433, R-N1).
+const CHOICE_WORDS: [&str; 6] = ["yes", "no", "allow", "deny", "y", "n"];
+
+/// Whether a (lower case) row holds a choice word as a whole word: `Yes, go`, `(No)`, `Allow /
+/// Deny`, `(y/N/a)` do, `Yesterday`, `Nobody`, `Allowance` and `Not now` do not.
+fn has_choice_word(row: &str) -> bool {
+    row.split(|c: char| !c.is_alphanumeric())
+        .any(|w| CHOICE_WORDS.contains(&w))
 }
 
-/// A choice row `❯ 2. text`: whether the cursor is on it, its number and its text. A vertical
-/// frame before the row and any cursor glyph in [`CURSORS`] are read through (audit note 3212 B1:
-/// `> 1. Yes` and `│ ❯ 1. Yes │` are choice rows too).
+/// The cursor a menu draws before the highlighted choice: `❯` is Claude Code's own, `>` is its
+/// plain-text form, the others are the arrows other menus use. Only a dialog with two or more
+/// choice rows and one of these in front of a row is `input_pending`; every other mark in front
+/// of a number is skipped without being a cursor.
+const CURSORS: [char; 8] = ['❯', '>', '›', '▶', '▸', '→', '➜', '➤'];
+
+/// A choice row `❯ 2. text`: whether a cursor from [`CURSORS`] is on it, its number and its
+/// text. Everything before the first letter or digit is a mark and is skipped, whatever it is
+/// (a frame, a cursor, a bullet, a glyph nobody listed): audit note 3212 B1 (`> 1. Yes` and
+/// `│ ❯ 1. Yes │`) and audit note 3362 B1 (a cursor outside the list). A letter or a digit
+/// before the number makes the row a sentence, not a choice.
 fn numbered(row: &str) -> Option<(bool, u32, &str)> {
-    let mut rest = row.trim_start_matches(is_blank_or_frame);
-    let mut cursor = false;
-    if let Some(c) = rest.chars().next().filter(|c| CURSORS.contains(c)) {
-        cursor = true;
-        rest = rest[c.len_utf8()..].trim_start();
-    }
+    let start = row.find(char::is_alphanumeric)?;
+    let (marks, rest) = row.split_at(start);
+    let cursor = marks.chars().any(|c| CURSORS.contains(&c));
     let digits = rest.chars().take_while(char::is_ascii_digit).count();
     if digits == 0 || digits > 2 {
         return None;
@@ -233,6 +252,39 @@ pub fn classify(rows: &[String]) -> Seen {
             State::Unknown,
             None,
             "fewer than six non-blank rows; working and idle need six",
+        );
+    }
+    // A confirmation question near the bottom with its choices on the question row itself or
+    // below it, and no numbered Yes and No rows the reader could use (the choices are drawn in a
+    // way it does not know, or in other words): Enter may pick the first choice, so the lane is
+    // not `working` or `idle` whatever its footer says (leader R-N1, note 3256). The choices
+    // are there when a choice word (`yes no allow deny y n`) is on the question row or a row
+    // below it (R-B1, note 3433: `proceed? (yes/no)` is one row), or when two or more numbered
+    // rows are below it whatever they say (R-N1, note 3433: `1. Allow once`, `3. Deny`). A
+    // question with only the input line under it is a lane that ended its turn and waits: that
+    // is the screen a send is for (leader S-N2, note 3362).
+    let near_bottom = rows
+        .iter()
+        .enumerate()
+        .filter(|(_, r)| !r.is_empty())
+        .rev()
+        .take(BOTTOM_ROWS);
+    if let Some((i, _)) = near_bottom.into_iter().find(|(i, _)| {
+        let Some(row) = lower.get(*i) else {
+            return false;
+        };
+        QUESTIONS.iter().any(|q| row.contains(q))
+            && (lower[*i..].iter().any(|r| has_choice_word(r))
+                || rows[*i + 1..]
+                    .iter()
+                    .filter(|r| numbered(r).is_some())
+                    .count()
+                    >= 2)
+    }) {
+        return seen(
+            State::Unknown,
+            rows.get(i),
+            "a question is near the bottom of the screen and its choices could not be read as Yes and No rows",
         );
     }
     if let Some(i) = find("esc to interrupt") {
@@ -621,13 +673,9 @@ pub fn read_input(input: &str) -> Screen {
     }
 }
 
-/// The answer of `moai lane-screen`: the state, its evidence row and reason, the reset time of a
-/// usage limit (from the lane's `home` when given), the `pane` object `lane-status` takes, and
-/// the count of non-blank rows. `now` is Unix seconds.
-pub fn report(input: &str, home: Option<&std::path::Path>, now: i64) -> serde_json::Value {
-    use crate::forge::policy::{format_utc, parse_utc};
-    use serde_json::{json, Value};
-
+/// Reads `input` and classifies it: the verdict the input itself settles, else the state of its
+/// rows. Shared by `lane-screen` and `lane-send` so both read a screen the same way.
+pub fn observe(input: &str) -> (Screen, Seen) {
     let screen = read_input(input);
     let non_blank = screen.rows.iter().filter(|r| !clean(r).is_empty()).count();
     let seen = match screen.verdict {
@@ -639,6 +687,17 @@ pub fn report(input: &str, home: Option<&std::path::Path>, now: i64) -> serde_js
         },
         None => classify(&screen.rows),
     };
+    (screen, seen)
+}
+
+/// The answer of `moai lane-screen`: the state, its evidence row and reason, the reset time of a
+/// usage limit (from the lane's `home` when given), the `pane` object `lane-status` takes, and
+/// the count of non-blank rows. `now` is Unix seconds.
+pub fn report(input: &str, home: Option<&std::path::Path>, now: i64) -> serde_json::Value {
+    use crate::forge::policy::{format_utc, parse_utc};
+    use serde_json::{json, Value};
+
+    let (screen, seen) = observe(input);
 
     // The reset time of a usage limit: the lane's own record when a window is at its limit,
     // else the screen's text.
@@ -734,6 +793,162 @@ mod tests {
         assert!(!starts_with_word("Yesterday", "yes"));
         assert!(!starts_with_word("Not now", "no"));
         assert!(!starts_with_word("", "no"));
+    }
+
+    #[test]
+    fn a_question_above_yes_and_no_words_that_are_no_choice_rows_is_unknown() {
+        // The rows below the question: `[1] Yes` and `[2] No` are no choice rows (the number
+        // is closed by `]`), then filler rows with no yes or no word.
+        let with = |question: &str, below: usize| {
+            let mut v = filler(6, &["✳ Frosting… (esc to interrupt)", question]);
+            v.extend(["[1] Yes".to_string(), "[2] No".to_string()]);
+            v.extend((0..below).map(|i| format!("below {i}")));
+            classify(&v)
+        };
+        for q in [
+            "Do you want to proceed?",
+            "Would you like to continue?",
+            "Are you sure?",
+            "Proceed? [y/N]",
+            "Overwrite the file (y/n)",
+        ] {
+            let seen = with(q, 0);
+            assert_eq!(seen.state, State::Unknown, "{q}");
+            assert_eq!(seen.evidence.as_deref(), Some(q), "{q}");
+        }
+        // The window is the last 8 non-blank rows: the 8th still counts, the 9th is transcript.
+        assert_eq!(with("Do you want to proceed?", 5).state, State::Unknown);
+        assert_eq!(with("Do you want to proceed?", 6).state, State::Working);
+        // A blank row is not a row of the window.
+        let mut blanks = filler(
+            6,
+            &[
+                "✳ Frosting… (esc to interrupt)",
+                "Do you want to proceed?",
+                "[1] Yes",
+            ],
+        );
+        blanks.extend(std::iter::repeat_n(String::new(), 20));
+        assert_eq!(classify(&blanks).state, State::Unknown);
+        // No question: still working.
+        assert_eq!(with("All done.", 2).state, State::Working);
+    }
+
+    #[test]
+    fn a_question_that_ends_the_turn_is_not_unknown_without_a_yes_or_no_word_below() {
+        let ends = |question: &str, below: &[&str]| {
+            let mut v = filler(6, &["✳ Frosting… (esc to interrupt)", question]);
+            v.extend(below.iter().map(|s| s.to_string()));
+            classify(&v).state
+        };
+        let q = "Would you like me to run the lint step next?";
+        assert_eq!(ends(q, &[]), State::Working);
+        assert_eq!(
+            ends(q, &["❯ ", "⏵⏵ bypass (shift+tab to cycle)"]),
+            State::Working
+        );
+        for word in ["Yesterday", "Nobody", "Not now", "Yeses", "Noted"] {
+            assert_eq!(ends(q, &[word]), State::Working, "{word}");
+        }
+        for word in ["yes", "No.", "(Yes)", "[no]", "yes/no", "answer: NO"] {
+            assert_eq!(ends(q, &[word]), State::Unknown, "{word}");
+        }
+        // A yes or no ABOVE the question does not count.
+        let mut v = filler(6, &["yes it ran", "✳ Frosting… (esc to interrupt)", q]);
+        assert_eq!(classify(&v).state, State::Working);
+        // A bracket question is its own choice: unknown with nothing below it.
+        v.push("Overwrite the file? [y/n]".to_string());
+        assert_eq!(classify(&v).state, State::Unknown);
+    }
+
+    #[test]
+    fn a_question_with_a_choice_word_on_its_row_or_below_or_two_numbered_rows_is_unknown() {
+        let screen = |rows: &[&str]| {
+            let mut v = filler(6, &["✳ Frosting… (esc to interrupt)"]);
+            v.extend(rows.iter().map(|s| s.to_string()));
+            classify(&v)
+        };
+        // The choice is on the question row (note 3433, R-B1).
+        for q in [
+            "Do you want to proceed? (yes/no)",
+            "Are you sure you want to continue connecting (yes/no/[fingerprint])?",
+            "Do you want to proceed? (y/N/a)",
+            "Do you want to proceed? Allow or deny",
+        ] {
+            let seen = screen(&[q]);
+            assert_eq!(seen.state, State::Unknown, "{q}");
+            assert_eq!(seen.evidence.as_deref(), Some(q), "{q}");
+        }
+        // The choices use other words (note 3433, R-N1): a choice word below, or two numbered rows.
+        let q = "Do you want to proceed?";
+        for below in [
+            &["Allow / Deny"][..],
+            &["allow"],
+            &["Deny"],
+            &["y"],
+            &["N"],
+            &["1. Allow once", "2. Allow always", "3. Deny"],
+            &["◆ 1. Y", "  2. N"],
+            &["  1. Proceed", "  2. Cancel"],
+        ] {
+            let mut rows = vec![q];
+            rows.extend_from_slice(below);
+            assert_eq!(screen(&rows).state, State::Unknown, "{below:?}");
+        }
+        // One numbered row, or words that only contain a choice word, are not enough.
+        assert_eq!(screen(&[q, "  1. maybe later"]).state, State::Working);
+        for word in ["Allowance", "denied", "yard", "Nine", "yesterday", "nobody"] {
+            assert_eq!(screen(&[q, word]).state, State::Working, "{word}");
+        }
+        // A choice word ABOVE the question does not count, and neither does one in an unrelated row.
+        assert_eq!(screen(&["yes", "All done.", q]).state, State::Working);
+        // Numbered rows ABOVE the question do not count.
+        assert_eq!(screen(&["1. a", "2. b", q]).state, State::Working);
+    }
+
+    #[test]
+    fn a_numbered_yes_and_no_after_any_mark_is_a_prompt_whatever_the_footer() {
+        let dialog = |prefix: &str| {
+            let mut v = filler(6, &["✳ Frosting… (esc to interrupt)"]);
+            v.push(format!("{prefix}1. Yes"));
+            v.push("   2. No".to_string());
+            classify(&v)
+        };
+        for prefix in [
+            "◆ ", "» ", "• ", "- ", "* ", "→→ ", ">>> ", "✓ ", "· ", "│ ◆ ", "[•] ", "☞ ", "◆",
+            "  ", "",
+        ] {
+            let seen = dialog(prefix);
+            assert_eq!(seen.state, State::PermissionPrompt, "prefix {prefix:?}");
+            assert!(seen.evidence.is_some(), "prefix {prefix:?}");
+        }
+        // A letter or a digit before the number is a word of a sentence, not a mark.
+        assert_eq!(dialog("ok ").state, State::Working);
+        assert_eq!(dialog("2 ").state, State::Working);
+        // A question the reader does not know, far from the known words, changes nothing.
+        let mut v = filler(
+            6,
+            &[
+                "✳ Frosting… (esc to interrupt)",
+                "Continue with the reset of the branch?",
+            ],
+        );
+        v.push("◆ 1. Yes".to_string());
+        v.push("  2. No".to_string());
+        assert_eq!(classify(&v).state, State::PermissionPrompt);
+    }
+
+    #[test]
+    fn numbered_skips_any_mark_and_keeps_only_a_listed_cursor_as_a_cursor() {
+        assert_eq!(numbered("◆ 1. Yes"), Some((false, 1, "Yes")));
+        assert_eq!(numbered("» 2) No"), Some((false, 2, "No")));
+        assert_eq!(numbered("❯ 1. Yes"), Some((true, 1, "Yes")));
+        assert_eq!(numbered("│ ❯ 1. Yes │"), Some((true, 1, "Yes │")));
+        assert_eq!(numbered("◆1. Yes"), Some((false, 1, "Yes")));
+        assert_eq!(numbered("ok 1. Yes"), None);
+        assert_eq!(numbered("1.Yes"), None);
+        assert_eq!(numbered("[1] Yes"), None);
+        assert_eq!(numbered("123. Yes"), None);
     }
 
     #[test]
