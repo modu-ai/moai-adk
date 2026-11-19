@@ -29,6 +29,7 @@ EXACT_DENY = frozenset(
         "docs/codex-adapter-contract.md",
         "docs/design-review/appendix/interfaces.md",
         "docs/design-review/appendix/state-vocabulary-crosswalk.md",
+        "docs/design-review/appendix/ledger_reservation.md",
         "docs/design-review/autonomy-modes-spec.md",
         "docs/release-attestation.md",
         "docs/2383-statusline-switch-design.md",

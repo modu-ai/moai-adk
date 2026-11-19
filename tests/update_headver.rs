@@ -447,15 +447,30 @@ fn build_parts() -> (u32, u32, u32) {
 #[test]
 fn a_build_of_the_same_week_with_a_higher_number_reads_newer_than_the_installed_release() {
     let (head, week, build) = build_parts();
-    if build < 2 {
-        // An unnumbered build (a CI re-run) has no lower number in its own week to install.
-        eprintln!("skipped: build number {build} has no lower release in its week");
-        return;
-    }
     let f = fixture();
     let me = version_exe(&f.home, moai_cli::BUILD_VERSION);
     let p = plan(&me, &f.home, &f.v1);
     apply(&me, &f.home, &f.v1, &p);
+    if build < 2 {
+        // Card C-93 follow-up N3: with no build number (a local run or a CI re-run) or the
+        // first-ever run's 1, no release of this week sits below this build — the release
+        // {head}.{week}.{build + 1} reads newer, and the plan says so with `going_back`. This
+        // used to be a silent early return.
+        let release = format!("{head}.{week:04}.{}", build + 1);
+        set_receipt_versions(&f.home, &release);
+        let p = plan(&me, &f.home, &f.v2);
+        assert_eq!(p["source_version"], json!(release), "{p}");
+        for h in HOSTS {
+            let hp = host(&p, h);
+            assert_eq!(hp["preflight"], json!("blocked"), "{h}: {p}");
+            let reason = hp["blocked_reason"].as_str().unwrap();
+            assert!(
+                reason.contains(&release) && reason.contains("moai update --allow-older"),
+                "{h}: {reason}"
+            );
+        }
+        return;
+    }
     let release = format!("{head}.{week:04}.{}", build - 1);
     set_receipt_versions(&f.home, &release);
 

@@ -8,9 +8,12 @@
 //! - [`add_note`] appends one note. Notes are not fenced: a decision is answered by someone who
 //!   does not hold the card. Every note gets a `ref` that is unique on its card, and its event
 //!   records the session that wrote it next to the author it is signed with.
-//! - [`add_criteria`] appends criteria to a card that exists (card C-108). It is not fenced either:
-//!   a criterion changes nothing a lane may write, and a card nobody holds (a migrated Issue card)
-//!   must be able to get one. A `done` card is refused.
+//! - [`add_criteria_as`] (and [`add_criteria`], the call without a session) appends criteria to a
+//!   card that exists (card C-108). It is not fenced either: a criterion changes nothing a lane may
+//!   write, and a card nobody holds (a migrated Issue card) must be able to get one. A `done` card
+//!   is refused. Its event records the session that added the criteria next to the author it is
+//!   signed with (`null` without one, card C-125), and the total it answers is the card's row
+//!   count.
 //! - [`reopen`] is `review -> active` for the holder, the way back after a failed review.
 //! - [`set_criterion`], [`link_pr`], [`review`] and [`done`] are fenced writers: they accept only
 //!   the current generation of the offered holder, and a refusal is recorded as a
@@ -580,7 +583,8 @@ pub struct CriteriaAdded {
 
 /// Appends `texts` to the card as `open` criteria, numbered after the card's highest criterion
 /// number (a withdrawn criterion keeps its number), and writes one `card.criterion_add` event
-/// with who added them, the first number and the count. Nobody has to hold the card: the
+/// with who added them, the first number, the count and `session` as `null` (this call has no
+/// session id; [`add_criteria_as`] records one). Nobody has to hold the card: the
 /// criteria change nothing a lane may write, so there is no fence. A `done` card is refused.
 /// The texts are one line each, checked by the caller (`card::input`); an empty list is refused.
 /// The call without a session (card C-125): [`add_criteria_as`] with `None`.

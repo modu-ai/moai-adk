@@ -433,9 +433,12 @@ enum Action {
     ///
     /// Writes the ledger. Appends each `--ac` text to the card as an open criterion, numbered
     /// after the card's highest (a withdrawn one keeps its number), with one
-    /// `card.criterion_add` event: criteria are only added, never changed or removed. It needs
-    /// no generation and no holder, so a card nobody holds, such as a migrated Issue card, can be
-    /// given one; the reservation of a held card is left as it is; a `done` card is refused.
+    /// `card.criterion_add` event that records the session that added them next to `--by` (null
+    /// when the caller has no session id): criteria are only added, never changed or removed. In
+    /// the answer, `session` is that id and `criteria` is the number of the card's criteria
+    /// (withdrawn ones included), not its highest number. It needs no generation and no holder, so
+    /// a card nobody holds, such as a migrated Issue card, can be given one; the reservation of a
+    /// held card is left as it is; a `done` card is refused.
     CriterionAdd {
         /// `C-12`.
         card: String,
@@ -589,7 +592,9 @@ fn env(name: &str) -> Option<String> {
 
 /// `card criterion-add C-n --ac TEXT… [--by W]`: what is wrong with the request is found before
 /// the ledger is opened (the card's name, each text, `--by`), then the ledger appends the
-/// criteria in one transaction (`workflow::add_criteria`, card C-108).
+/// criteria in one transaction (`workflow::add_criteria_as`, cards C-108 and C-125). The event and
+/// the answer carry the caller's session id as `card.note` does (`null` without one); `--by`
+/// stays the author.
 fn criterion_add(
     project: &std::path::Path,
     home: &std::path::Path,
@@ -598,6 +603,7 @@ fn criterion_add(
     by: Option<&str>,
 ) -> Result<serde_json::Value, String> {
     use moai_cli::card::command as c;
+    use moai_cli::card::dispatch as d;
     use moai_cli::card::input::{self, CardRef};
     use moai_cli::ledger::workflow::{self, WorkflowError};
     let refused = |why: String| format!("card criterion-add refused: {why}");
@@ -611,16 +617,19 @@ fn criterion_add(
     };
     let texts = input::criterion_texts(entries).map_err(|e| refused(e.to_string()))?;
     let by = c::actor(by, "criterion-add")?;
+    // No session id is not a refusal here: nobody has to hold the card, so the event says `null`.
+    let session = d::session_holder("criterion-add", env).ok();
     let (project_id, mut ledger) = c::open_for_write(project, home)?;
-    let added = workflow::add_criteria(&mut ledger, card_id, &by, &texts).map_err(|e| match e {
-        WorkflowError::InvalidInput(why) => refused(why),
-        other => other.to_string(),
-    })?;
+    let added = workflow::add_criteria_as(&mut ledger, card_id, &by, session.as_deref(), &texts)
+        .map_err(|e| match e {
+            WorkflowError::InvalidInput(why) => refused(why),
+            other => other.to_string(),
+        })?;
     Ok(serde_json::json!({
         "action": "criterion-add", "project_id": project_id,
         "name": input::card_name(card_id), "card_id": card_id,
-        "by": by, "added": added.added, "criteria": added.total, "rev": added.rev,
-        "events": 1, "writes": true,
+        "by": by, "session": session, "added": added.added, "criteria": added.total,
+        "rev": added.rev, "events": 1, "writes": true,
     }))
 }
 
