@@ -121,6 +121,7 @@ fn profile_tracking_step_states_the_checks_the_selection_and_the_undo() {
         "`git ls-files --error-unmatch",
         "`git check-ignore -q",
         "`git check-ignore -v",
+        "Exit 0 means tracked and nothing more is asked",
         "Track it (recommended)",
         "Keep it local",
         "`!<profile path>`",
