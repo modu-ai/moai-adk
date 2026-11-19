@@ -49,8 +49,8 @@ created: 2026-11-19
 - AC-3 (REQ-4, REQ-5): `--title-prefix "flaky: "` 가 접두어가 맞는 카드만, 빈 값과 제어 문자는 거부(원장을 읽기 전), 옵션이 없으면 전과 같은 출력이에요.
   verify: `cargo test --locked --offline --test card_list_title_prefix`
 - AC-4 (REQ-6, REQ-7, REQ-8): 스냅샷에 시도 번호가 있는 성공 `ci` 가 `attempt=<n>` 을 정보 줄에 더하고 G5 판정은 같아요; 시도 번호 없는 스냅샷은 줄이 전과 같아요(기존 골든 불변).
-  verify: `cargo test --locked --offline --lib gate::tests::ci_info`
-  verify: `cargo test --locked --offline --test gate_cli`
+  verify: `cargo test --locked --offline --test gate_check_cli ci_info_names`
+  verify: `cargo test --locked --offline --test gate_collect a_`
 - AC-5 (REQ-9, REQ-10): 크기 예산·위치 핀·manifest 검사가 통과해요.
   verify: `cargo test --locked --offline --test workflow_size_budget`
   verify: `python3 -m unittest tests.source_manifest_test`
@@ -61,7 +61,7 @@ created: 2026-11-19
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261119-flaky-followups/**`; 조각 A(문구): `skills/moai/workflows/mode-leader.md`, `skills/moai/workflows/mode-agent.md`, `skills/moai/workflows/verify.md`, `skills/moai/references/source-manifest.json`, `tests/flaky_followups.rs`; 조각 B(필터): `src/card/command.rs`, `src/main.rs`, `src/help.rs`, `docs/rust-product-path.md`, `tests/card_list_title_prefix.rs`; 조각 C(재실행 신호): `src/gate.rs`, `tests/gate_cli.rs`(+ 수집기가 읽는 파일은 조사 뒤에 확정)
+- write: `.moai/specs/SPEC-20261119-flaky-followups/**`; 조각 A(문구): `skills/moai/workflows/mode-leader.md`, `skills/moai/workflows/mode-agent.md`, `skills/moai/workflows/verify.md`, `skills/moai/references/source-manifest.json`, `tests/flaky_followups.rs`; 조각 B(필터): `src/card/command.rs`, `src/main.rs`, `src/help.rs`, `docs/rust-product-path.md`, `tests/card_list_title_prefix.rs`; 조각 C(재실행 신호): `src/gate.rs`, `src/gate_collect.rs`, `src/flow.rs`(`run_id` 를 `pub(crate)` 로 한 줄), `tests/gate_check_cli.rs`, `tests/gate_collect.rs`
 - read-only: `src/flake.rs`, `tests/workflow_size_budget.rs`, `src/ledger/**`(`card done` 의 기준 규칙)
 - forbidden: 실제 HOME, 네트워크 쓰기, 원장 행 수편, G5 판정 규칙 변경, 다른 카드의 문장 편집
 
@@ -84,4 +84,18 @@ created: 2026-11-19
 
 ## Result
 
-(조각 1 은 계획과 SPEC 만이에요. 조각 A~C 뒤에 채워요.)
+**조각 C(재실행 신호) — 2026-11-19~20, 가지 `spec/20261120-flaky-rerun-attempt`(로컬 `v2026.11.0` `e341e361cc` 에서 시작).** 조각 A·B 는 아직이에요(아래 "남은 것").
+
+조사(문서 읽기만, moai-research, 2026-11-19 15:43 UTC 읽음, WebFetch 요약을 거친 인용이라 원문과 글자 대조는 못 했어요):
+- 체크 실행 객체(`GET /commits/{ref}/check-runs`)에는 시도 번호가 없어요. 문서화된 식별 필드는 `details_url`, `external_id`, `app`, `check_suite.id`, `head_sha` 뿐이고 페이지에 "attempt" 라는 단어가 없어요(https://docs.github.com/en/rest/checks/runs).
+- 워크플로 실행 객체에는 `run_attempt`(integer)가 있어요(`GET /repos/{o}/{r}/actions/runs/{run_id}`, https://docs.github.com/en/rest/actions/workflow-runs). 재실행은 같은 `run_id` 를 두고 시도 번호만 올려요: "This number does not change if you re-run the workflow run." / "`github.run_attempt` … begins at 1 for the workflow run's first attempt, and increments with each re-run."(https://docs.github.com/en/actions/reference/workflows-and-actions/contexts).
+- 문서에 없는 것: `details_url` 의 형식(`…/actions/runs/<id>/job/<job>` 는 `src/flow.rs::run_id` 가 이미 쓰는 가정이에요), check-runs `filter=all` 이 이전 시도를 어떻게 돌려주는지. 그래서 수집기는 `details_url` 에서 run id 를 얻지 못하거나 읽기가 실패하면 시도 없음(=1)으로 둬요.
+
+정한 것(리더 결정 노트 3373, 요청은 노트 3120 — 되돌릴 수 있고 범주 none): N4 모양은 (가) 정보 줄 `attempt=<n>` 만, G5 는 그대로. N3 기록 장소는 카드가 기본, `[flake]` Issue·`flake-record` 는 원장 없는 프로젝트용. 감사 tier 는 A·B 가 1, C 는 2(리더 감사 — 판정은 안 바뀌어도 `src/gate.rs` 의 출력을 다른 도구가 읽을 수 있어서예요). 순서는 B → C → A.
+
+바꾼 것: `gate::CheckRun.attempt: Option<u32>`(선택, 직렬화에서 빠짐, 기존 스냅샷·골든 불변), `gate_collect::run_attempt`(성공한 `ci`/`rc-ci` 집계마다 `GET /actions/runs/<id>` 한 번, 다른 실행·`details_url` 없는 실행·실패한 실행은 읽지 않음, 읽기 실패는 정보 없음), `gate::ci_info`(성공 상태에서 집계의 시도가 2 이상이면 `ci=success attempt=<n>`), `flow::run_id` `pub(crate)`.
+
+AC-4 증거(RED→GREEN): RED 는 `tests/gate_collect.rs` 가 `no field attempt` 로 컴파일 실패, `tests/gate_check_cli.rs` 새 시험이 `attempt` 를 가진 스냅샷을 파싱하지 못해 실패. GREEN 뒤 `gate_check_cli` 46 + 1, `gate_collect` 47 + 1, `gate_loop` 18, `gate_merge` 16 통과(`ci_info_names_the_attempt_of_a_re_run_that_succeeded_and_the_verdict_does_not_move`, `a_ci_success_gets_its_attempt_from_the_workflow_run`, `a_run_without_a_details_url_has_no_attempt_and_no_extra_read`, `a_failed_workflow_run_read_leaves_the_attempt_empty_and_the_gate_unchanged`, `a_failed_ci_is_not_asked_for_its_attempt`). 판정 불변(REQ-8)은 같은 스냅샷에서 `ci_info` 만 비운 응답 전체가 같음을 비교해요.
+변이 5개(한 줄씩, 모두 시험이 잡음): M1 문턱 2→1, M2 성공이 아닌 상태에서도 표시, M3 번호 없음을 2 로 간주, M4 실패한 실행도 조회, M5 성공한 모든 실행 조회. 처음엔 M2·M4 가 살아남아 시험 둘(다른 잡 실패 사례, 실패한 `ci` 에 `details_url`)을 더한 뒤 잡혔어요.
+
+남은 것: 조각 A(문구 둘 + manifest 줄 하나: REQ-1 의 `--ac` 는 C-108 조각 2 가 tip 에 이미 넣었어요 — `mode-leader.md` 32행의 명령이 `--ac "the flake is fixed, or the test is retired with its reason"` 를 가져요(커밋 040c8b49bd) — 그래서 `mode-agent.md`(REQ-2)·`verify.md`(REQ-3)만 남고, manifest 대기열은 C-126 다음), 조각 B(`card list --title-prefix`: `card::command::list_filtered` 와 시험 4개는 로컬 가지 `keep/c99-3b-old` 에 있고, CLI 연결 32줄은 `src/ops/card.rs`(C-125 보유)가 풀리면 해요).
