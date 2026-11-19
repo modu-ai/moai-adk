@@ -172,6 +172,162 @@ fn lane_screen_state_a_numbered_yes_no_choice_is_never_working_or_idle() {
     }
 }
 
+/// Leader decision after the audit of slice B (note 3362, B1): a numbered `Yes` row together with
+/// a numbered `No` row is a confirmation whatever stands before the numbers (a cursor glyph the
+/// reader never listed, `»`) and with or without a question the reader knows: Enter would pick
+/// Yes. Each of these screens read as `working` before the repair.
+#[test]
+fn lane_screen_state_numbered_yes_no_after_any_prefix_is_a_permission_prompt() {
+    for name in [
+        // A working footer, `◆` before the number, no question row at all.
+        "synthetic-foreign-cursor-no-question-working.txt",
+        // A working footer, a question sentence that is none of the known question words.
+        "synthetic-foreign-cursor-far-question-working.txt",
+        // Slice A's R-N1 screen: `»` before the number, under a working footer.
+        "synthetic-unreadable-choice-working.txt",
+    ] {
+        let r = run(&fixture(name), &[]);
+        assert_eq!(r.result()["state"], json!("permission_prompt"), "{name}");
+        let evidence = r.result()["evidence"].as_str().unwrap();
+        assert!(!evidence.is_empty(), "{name}");
+        assert_eq!(r.result()["pane"]["state"], json!("permission_prompt"));
+    }
+    // Any prefix of marks is skipped: the nine of the audit and a few more. A prefix with a
+    // letter or a digit is no mark, so `ok 1. Yes` is a sentence and not a choice.
+    for prefix in [
+        "◆ ", "» ", "• ", "- ", "* ", "→→ ", ">>> ", "✓ ", "· ", "│ ◆ ", "[•] ", "☞ ", "◆",
+    ] {
+        let screen =
+            format!("row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\n{prefix}1. Yes\n   2. No\n");
+        assert_eq!(state_of(&screen), "permission_prompt", "prefix {prefix:?}");
+    }
+    let screen = "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nok 1. Yes\nok 2. No\n";
+    assert_eq!(state_of(screen), "working");
+}
+
+/// Leader decision of note 3256 (R-N1) narrowed by note 3362 (S-N2): a confirmation question in
+/// the last 8 non-blank rows with a `yes` or `no` word on a row below it, and no choice rows the
+/// reader can use (here `[1] Yes` and `[2] No`), is `unknown`. A question that ends the lane's
+/// turn, with only the input line below it, is not (see the next test).
+#[test]
+fn lane_screen_state_a_question_above_unreadable_yes_and_no_rows_is_unknown() {
+    let r = run(&fixture("synthetic-unreadable-choice-idle.txt"), &[]);
+    assert_eq!(r.result()["state"], json!("unknown"));
+    let evidence = r.result()["evidence"].as_str().unwrap();
+    assert!(evidence.contains("Do you want"), "{evidence}");
+    assert!(
+        r.result()["reason"].as_str().unwrap().contains("question"),
+        "{}",
+        r.result()["reason"]
+    );
+    assert_eq!(r.result()["pane"], json!(null));
+    // A bracket question marks itself: `[y/n]` is the choice, so it is unknown with no row below.
+    let screen = "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nOverwrite the file [y/n]\n";
+    assert_eq!(state_of(screen), "unknown");
+    // The window is the last 8 non-blank rows. The question with `[1] Yes`, `[2] No` and five
+    // more rows under it is the 8th row from the bottom (inside), with six more it is the 9th.
+    let window = |below: usize| {
+        let mut rows = vec![
+            "row 1".to_string(),
+            "row 2".to_string(),
+            "row 3".to_string(),
+            "row 4".to_string(),
+            "esc to interrupt".to_string(),
+            "Do you want me to look at this?".to_string(),
+            "[1] Yes".to_string(),
+            "[2] No".to_string(),
+        ];
+        rows.extend((0..below).map(|i| format!("more {i}")));
+        state_of(&rows.join("\n"))
+    };
+    assert_eq!(
+        window(5),
+        "unknown",
+        "the question is the 8th from the bottom"
+    );
+    assert_eq!(
+        window(6),
+        "working",
+        "the question is the 9th from the bottom"
+    );
+}
+
+/// Re-audit of slice B (note 3433, R-B1 and R-N1): a known question near the bottom is `unknown`
+/// when a choice word (`yes no allow deny y n`) is on the question row itself or below it, or
+/// when two or more numbered rows are below it, whatever the words of the choices are. Each of
+/// these five screens read as `working` (a send went in) before the repair.
+#[test]
+fn lane_screen_state_a_question_with_its_choices_on_the_row_or_below_is_unknown() {
+    for name in [
+        // R-B1: the choice is on the question row.
+        "synthetic-question-same-line-working.txt",
+        "synthetic-fingerprint-question-working.txt",
+        // R-N1: the choices do not use the words yes and no.
+        "synthetic-question-allow-deny-working.txt",
+        "synthetic-question-allow-once-always-deny-working.txt",
+        "synthetic-question-numbered-y-n-working.txt",
+    ] {
+        let r = run(&fixture(name), &[]);
+        assert_eq!(r.result()["state"], json!("unknown"), "{name}");
+        let evidence = r.result()["evidence"].as_str().unwrap();
+        assert!(
+            evidence.contains("Do you want") || evidence.contains("Are you sure"),
+            "{name}: {evidence}"
+        );
+        assert_eq!(r.result()["pane"], json!(null), "{name}");
+    }
+    // Two numbered rows under a known question are enough, whatever they say; one is not.
+    let two = "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\n  1. Proceed\n  2. Cancel\n";
+    assert_eq!(state_of(two), "unknown");
+    let one = "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\n  1. maybe later\n";
+    assert_eq!(state_of(one), "working");
+    // Each choice word makes a row below the question a choice row, as a whole word only.
+    for word in ["Allow", "deny", "y", "N", "yes", "No", "(y/N/a)"] {
+        let screen = format!(
+            "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\n{word}\n"
+        );
+        assert_eq!(state_of(&screen), "unknown", "{word}");
+    }
+    for word in ["Allowance", "denied", "yard", "Nine", "maybe"] {
+        let screen = format!(
+            "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\n{word}\n"
+        );
+        assert_eq!(state_of(&screen), "working", "{word}");
+    }
+    // The same on the question row itself.
+    let same = "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nDo you want to proceed? (y/N/a)\n";
+    assert_eq!(state_of(same), "unknown");
+}
+
+/// Leader decision S-N2 (note 3362): a lane that ended its turn with a question (`Would you like
+/// me to …?`) and waits at its input line is the screen a send is meant for. Only a `yes` or a
+/// `no` as a whole word on a row below the question makes it `unknown`.
+#[test]
+fn lane_screen_state_a_lane_that_ended_on_a_question_is_idle() {
+    let idle = fixture("synthetic-question-then-input-idle.txt");
+    assert_eq!(state_of(&idle), "idle");
+    // The same under a working footer.
+    let working = "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\n";
+    assert_eq!(state_of(working), "working");
+    // Words that only contain yes or no are no answer row: `Yesterday`, `Nobody`, `Not now`.
+    for below in ["Yesterday it ran", "Nobody", "Not now"] {
+        let screen = format!(
+            "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\n{below}\n"
+        );
+        assert_eq!(state_of(&screen), "working", "{below}");
+    }
+    // A whole word below the question is unknown, in any case and with any mark next to it.
+    for below in ["yes, go ahead", "No - wait", "(Yes)", "answer: NO."] {
+        let screen = format!(
+            "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\n{below}\n"
+        );
+        assert_eq!(state_of(&screen), "unknown", "{below}");
+    }
+    // A yes above the question does not count: the rule looks below it.
+    let screen = "row 1\nrow 2\nrow 3\nyes it did\nesc to interrupt\nWould you like me to push?\n";
+    assert_eq!(state_of(screen), "working");
+}
+
 #[test]
 fn lane_screen_state_numbered_rows_that_are_not_yes_and_no_do_not_make_a_prompt() {
     // `Yesterday` and `Not now` only start with the letters of Yes and No.
