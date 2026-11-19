@@ -483,8 +483,15 @@ fn every_command_of_the_list_runs_in_the_branch_worktree() {
     let audit = w.root.path().join("self-audit.json");
     fs::write(
         &audit,
-        json!({"plan": "p", "red": "r", "mutation": "m", "clone": "c", "host": "h", "receipt": "x"})
-            .to_string(),
+        json!({
+            "plan": "card PLAN note 2447001 of each lane",
+            "red": "recorded by each lane in its SPEC Result",
+            "mutation": "not run by the leader: merge commits only, no new code to turn a test FAILED",
+            "clone": "not_run - no clone path changes",
+            "host": "macOS arm64; temp HOME only",
+            "receipt": "not_run - no receipt path changes",
+        })
+        .to_string(),
     )
     .unwrap();
     let out = w.out();
@@ -567,7 +574,10 @@ fn every_command_of_the_list_runs_in_the_branch_worktree() {
     let record: Value = serde_json::from_str(&fs::read_to_string(&run).unwrap()).unwrap();
     assert_eq!(record["commands"].as_array().unwrap().len(), 10);
     assert_eq!(record["not_run"], json!([]));
-    assert_eq!(record["self_audit"]["plan"], "p");
+    assert_eq!(
+        record["self_audit"]["plan"],
+        "card PLAN note 2447001 of each lane"
+    );
     for c in record["commands"].as_array().unwrap() {
         assert_eq!(c["exit"], 0);
         assert!(c["started"].as_i64().unwrap() <= c["ended"].as_i64().unwrap());
@@ -794,7 +804,7 @@ fn a_failed_command_does_not_stop_the_list_and_a_missing_binary_is_not_run() {
     // `build` fails: the three checks that need the built binary are not run, with the reason,
     // and are not among the failed commands.
     fs::write(w.root.path().join("stub.log"), "").unwrap();
-    w.rules(&["cargo build|101|error: boom"]);
+    w.rules(&["build --locked|101|error: boom"]);
     let out = w.out();
     let (v, code) = w.verify(&[
         heads[0],

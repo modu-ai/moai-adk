@@ -107,4 +107,11 @@ and, as commands without a key, `cargo test --locked --offline --test <name>` fo
 
 ## Result
 
-(filled when the slice is built)
+- AC-1: met — `cargo test --locked --offline --test bundle_verify_cli every_command_of_the_list_runs_in_the_branch_worktree`: ok (ten commands in the table's order, each logged in the worktree, `run.json` accepted by `bundle body`).
+- AC-2: met — `refusals_run_nothing_and_write_nothing`: ok (no stub ran, no folder, state unchanged).
+- AC-3: met — `a_failed_command_does_not_stop_the_list_and_a_missing_binary_is_not_run` and `a_bundle_that_names_no_spec_has_no_result_coverage_to_run`: ok.
+- AC-4: met — `a_failure_names_the_head_that_touches_its_file`: ok; unit tests in `src/bundle/verify.rs` (`heads_are_named_by_their_own_diff_in_the_order_given`) ok.
+- AC-5: met — `the_list_is_the_documented_data`: ok.
+- AC-6: met — `verify_writes_no_ref_and_no_ledger_row`: ok.
+- AC-7: met — `the_help_and_the_ops_doc_name_what_verify_does`: ok.
+- AC-8: met — `cargo test --locked --offline --test <name>` for bundle_build_cli, bundle_check_cli, bundle_body_cli, bundle_ready_cli: ok (every `tests/bundle*.rs`, 5 targets, 0 non-zero); the pre-READY checks are in the card's READY note.
