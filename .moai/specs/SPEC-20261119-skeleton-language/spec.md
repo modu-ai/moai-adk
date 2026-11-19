@@ -68,4 +68,12 @@ Measured at tip 061177768c: the only first-creation strings outside markers are 
 
 ## Result
 
-- AC-1: pending
+- AC-1: met — `a_new_review_file_has_a_heading_in_the_instruction_language` passes (seven combinations: setting and request `ko`/`en`, mixed, no setting, and code `ja` falling back to the request language)
+- AC-2: met — `an_existing_review_file_keeps_its_own_heading` passes (English file with a `ko` profile, Korean file with an `en` profile; every byte outside the block unchanged, one block)
+- AC-3: met — `every_first_creation_text_follows_its_language` passes (AGENTS.md, REVIEW.md, AGENTS.local.md and `.gitignore` for `ko` and `en`: no English skeleton words in `ko`, no Hangul outside markers in `en`; AGENTS.md heading is the project id; `.gitignore` has nothing outside its block)
+- AC-4: met — `the_plan_reads_unchanged_right_after_the_apply` passes (every row `unchanged`, `ko` and `en`)
+- AC-5: met — `review_section_cli` 8, `language_setting` 7, `agents_project_cli` 5 passed, `cargo fmt --check` 0
+
+RED before the fix: `a_new_review_file_has_a_heading_in_the_instruction_language` failed with `# Review instructions` for `instruction_files` `ko` and `every_first_creation_text_follows_its_language` failed with `REVIEW.md in ko holds Review instructions outside its markers` (2 failed, 2 passed).
+Mutation 6 mutants, 6 killed: K1 heading always English, K2 always Korean, K3 request language only, K4 argument ignored at the call, K5 Korean wording changed, K6 code `ja` not falling back.
+Not run: the full local `cargo test`, `project-update-plan` itself (the plan rows of `agents-plan` are checked instead), Linux, Windows.
