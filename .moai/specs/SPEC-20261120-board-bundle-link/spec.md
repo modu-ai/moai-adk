@@ -58,6 +58,7 @@ created: 2026-11-20
 - `pr-state@1`·`bundle-run@1` 내용 모양은 한 번 정하면 바뀌지 않아요(`SPEC-20261120-board-observation-store` 의 REQ-3, D-5). 수집기(BOARD 02 조각 3)와 이 SPEC 이 같은 필드 이름을 써야 해서, 조각 2 전에 BOARD 02 담당과 카드 노트로 맞춰요 → D-2.
 - `src/board/` 는 BOARD 02 가 만든 폴더이고 `pub mod board;` 한 줄도 BOARD 02 몫이에요. 같은 폴더에 `link.rs` 를 더하려면 모듈 선언 순서를 맞춰야 해요(조각 2 착수 전 그 카드의 `card show`·`card check` 로 겹침 확인).
 - 묶음 PR 감사의 통과는 GitHub 의 PR 댓글에 있어요(`src/audit_gate.rs` 가 읽는 판정 댓글). 설계의 PR 네 값(번호, 상태, 리뷰 판정, head)에는 그 감사 판정이 따로 없어요 → D-3.
+- 같은 head 의 FAIL 과 PASS 는 둘 다 "효력 있음"으로 나와요(이 조각은 head 만 비교하고 `src/audit_gate.rs` 의 순서·감사자 규칙은 보지 않아요: 같은 감사자의 더 나중 PASS 가 FAIL 을 푸는지, 저자 제외). "효력 있음"을 게이트와 같은 뜻으로 읽으면 오해라서, 이 규칙은 BOARD 01 화면과 합치는 마감 조각에서 정해요.
 - 효력 판정을 읽을 때 계산하니 행이 늘수록 읽기가 길어져요. 조각 2 시험에서 행 수에 따른 시간을 재요(BOARD 02 의 읽기 API 는 `limit` 로 끊어 읽어요).
 
 ## Decisions
@@ -65,7 +66,7 @@ created: 2026-11-20
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | "효력 없음"은 저장하지 않고 읽을 때 계산해요: 통과의 head 가 그 층의 지금 head 와 같을 때만 효력이 있어요 | 설계 5.4(이력으로만 남기고 "효력 없음" 표시)와 5.7 불변식 8(저장을 지우고 다시 모아도 같아야 해요), 읽기 명령은 아무것도 쓰지 않아요 | 효력 표시를 행으로 저장(읽기·쓰기가 섞여서 하지 않아요) |
-| D-2 | 연결 열쇠는 SHA 하나예요: 묶음 실행 행의 소스 SHA 와 같은 head 의 PR 행이 그 묶음의 PR 이고, 같은 PR 번호의 더 새로운 행이 지금 head 예요. 새 종류 없이 기존 `bundle-run@1`·`pr-state@1`·`local-check@1` 을 읽어요 | 설계 5.3(종류 여섯 고정)과 `run.json`(`pinned`, `tip`, `commands`), `card pr` 가 읽는 `head`(`src/card/work.rs`) | 새 종류 추가(되돌릴 수 있지만 버전은 영구) |
+| D-2 | 연결 열쇠는 SHA 하나예요: 묶음 실행 행의 소스 SHA 와 같은 head 의 PR 행이 그 묶음의 PR 이고(그런 PR 이 둘 이상이면 지금도 그 head 인 PR 을 먼저, 없으면 그 head 를 가장 늦게 보인 PR), 같은 PR 번호의 더 새로운 행이 지금 head 예요. 새 종류 없이 기존 `bundle-run@1`·`pr-state@1`·`local-check@1` 을 읽어요 | 설계 5.3(종류 여섯 고정)과 `run.json`(`pinned`, `tip`, `commands`), `card pr` 가 읽는 `head`(`src/card/work.rs`) | 새 종류 추가(되돌릴 수 있지만 버전은 영구) |
 | D-3 | 두 층의 출처가 달라요: SPEC 감사는 원장의 판정 노트(첫 줄 `AUDIT C-n head … verdict: PASS`)를 읽기 전용으로, 묶음 PR 감사는 `pr-state@1` 의 리뷰 판정과 head 를 읽어요. 묶음 PR 감사 판정 댓글을 수집기가 `pr-state@1` 에 싣는지는 BOARD 02 조각 3 에 맞춰요 | 설계 5.4 표(두 층), `src/audit_gate.rs` 헤더(판정 댓글 규칙) | 두 층을 한 줄로 합치기(설계가 금지: 레인 통과가 묶음 감사를 대신하지 않아요) |
 | D-4 | **리더가 고르는 결정**: 밖으로 나가는 글의 범위. (가) 새 렌더러와 거절 규칙만 더하고 `bundle body` 는 그대로 둔다(빠르지만 지금 PR 본문의 카드 번호는 남아요, 기준 "0건"을 이 SPEC 이 못 지켜요). (나) `bundle body` 의 `Card` 열과 `card note` id, 판정 줄의 카드 번호를 SPEC id 와 링크로 바꿔요(기준을 지키고 `src/bundle.rs` 한 곳과 그 시험을 고쳐요). 권장 (나) | 설계 승인 결정 3(밖에는 SPEC id 와 링크만), 카드 기준 2("카드 번호 0건") | (나)를 되돌리면 이전 본문 형식 |
 | D-5 | 이번 조각에서 코드는 쓰지 않아요: PLAN 노트를 리더가 읽은 뒤 조각 2 를 정해요 | 리더 배차(조각 1 = SPEC 과 PLAN) | 없음 |
@@ -78,6 +79,7 @@ created: 2026-11-20
 - `src/board/link.rs`: `link(rows, lane) -> LinkView` 순수 함수(표준 라이브러리·serde 만 쓰고 `crate::` 를 쓰지 않아서 `src/lib.rs` 선언 없이 시험돼요). 연결 열쇠는 SHA 하나: 묶음 실행의 소스 SHA 와 같은 head 를 보인 적 있는 PR 이 그 묶음의 PR 이고, 같은 번호의 가장 새 행이 지금 head 예요. 효력은 저장하지 않고 읽을 때 계산해요(통과가 말하는 head 가 그 층의 지금 head 와 같을 때만).
 - RED 먼저: `todo!()` 껍데기로 시험 5개가 모두 실패(`0 passed; 5 failed`), 구현 뒤 5개 통과.
 - 독립 감사(head 53335a3dba, 차단 0)가 구현을 일부러 망가뜨린 변이 8개가 모두 살아남는다고 알렸어요(seq 정렬 삭제, FAIL 을 PASS 로 읽기, 레인 층의 SPEC 구분 삭제, 읽지 못한 head 의 효력 판정, 같은 head 의 FAIL·PASS 합치기, 소속 PR 을 가장 오래된 행으로, 같은 묶음의 뒤 실행 기록 무시, PR 상태를 첫 행에서). 시험 여섯을 더해 11개가 됐고 그 8개 변이를 모두 시험이 잡아요(변이마다 복원 뒤 `git status` 깨끗).
+- 같은 감사의 그 밖의 비차단 둘을 고쳤어요: (N-2) 같은 head 를 보인 PR 이 둘이면 지금도 그 head 인 PR 을 먼저 붙여요(시험 `a_pull_request_that_still_shows_the_head_is_preferred`, 그 선택을 끈 변이를 잡아요). (N-4) AC-5 의 순수성 검사를 금지어 목록에서 허용 목록으로 바꿨어요(`use` 줄이 정확히 serde·serde_json·BTreeMap 셋이고 `std::` 가 그 한 곳뿐이며 `crate::`·`println!` 등이 없어요; `std::fs` 가져오기·`std::io` 경로·`println!` 변이를 잡아요). 시험은 12개예요.
 - AC-1·2·3·5·6 met — 변이 5개를 시험이 잡았어요(`!=` 로 뒤집은 PR head 비교 → AC-1·2, `==` 를 `!=` 로 뒤집은 효력 판정 → AC-2·3, 한 층의 통과를 항상 무효로 → AC-3, 읽지 못한 행 이름 빼기 → AC-6, 같은 판정 중복 제거 빼기 → AC-2). 변이마다 `git status` 깨끗하게 복원했어요.
 - AC-4(밖으로 나가는 글, REQ-4·5)는 조각 3 이에요: 아직 하지 않았어요.
 - 돌리지 않은 것: 실제 관측 저장과의 연결(저장 모듈은 아직 가지에 없어요; `Row` 변환 한 줄은 마감 조각), `src/lib.rs` 의 모듈 선언(`pub mod board;` 는 BOARD 02 와 순서 맞추기), CI.
