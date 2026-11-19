@@ -23,6 +23,12 @@ use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
+/// What a lane's rendered screen says, the source of the pane observation this file takes from
+/// its caller (SPEC-20261119-lane-screen-guard). Registered here, not in `lib.rs`, while another
+/// card holds that file; moving the line to `lib.rs` changes no behavior.
+#[path = "lane_screen.rs"]
+pub mod lane_screen;
+
 type Result<T> = std::result::Result<T, String>;
 
 const API: &str = "https://api.github.com";
