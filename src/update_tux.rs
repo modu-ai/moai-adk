@@ -154,6 +154,13 @@ enum W {
     HomeNext,
     Retired,
     HomeFailed,
+    Switch,
+    SwitchReplace,
+    SwitchLeft,
+    SwitchNext,
+    SwitchDone,
+    SwitchReverted,
+    SwitchFailed,
     Keys,
     KeyImport,
     KeyInVault,
@@ -170,6 +177,12 @@ fn cleanup_ok(v: &Value) -> bool {
 fn home_ok(v: &Value) -> bool {
     let r = &v["home_result"];
     r.is_null() || (r["state"].as_str() == Some("applied") && r["journal_state"] == "committed")
+}
+
+/// Whether a confirmed switch part (C-33 S3), when there is one, ended applied.
+fn switch_ok(v: &Value) -> bool {
+    let r = &v["switch_result"];
+    r.is_null() || r["state"].as_str() == Some("applied")
 }
 
 fn w(lang: Lang, word: W) -> &'static str {
@@ -556,6 +569,55 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "Retiring the Go items did not finish"
             }
         }
+        Switch => {
+            if ko {
+                "moai 전환 스크립트"
+            } else {
+                "moai switch script"
+            }
+        }
+        SwitchReplace => {
+            if ko {
+                "v1 → v2 · 옛 파일은 moai.before-<UTC> 로 남겨요"
+            } else {
+                "v1 → v2 · the old file is kept as moai.before-<UTC>"
+            }
+        }
+        SwitchLeft => {
+            if ko {
+                "건드리지 않아요 — 아는 스크립트가 아니에요"
+            } else {
+                "left as it is — not a script this update knows"
+            }
+        }
+        SwitchNext => {
+            if ko {
+                "전환 스크립트는 따로 확인해요:"
+            } else {
+                "the switch script is replaced on its own:"
+            }
+        }
+        SwitchDone => {
+            if ko {
+                "전환 스크립트를 v2 로 바꿨어요 — 옛 파일:"
+            } else {
+                "Switch script replaced by v2 — the old file:"
+            }
+        }
+        SwitchReverted => {
+            if ko {
+                "전환 스크립트를 저장해 둔 옛 파일(v1)로 되돌렸어요"
+            } else {
+                "Switch script put back to the saved old file (v1)"
+            }
+        }
+        SwitchFailed => {
+            if ko {
+                "전환 스크립트 바꾸기가 끝나지 않았어요"
+            } else {
+                "Replacing the switch script did not finish"
+            }
+        }
     }
 }
 
@@ -865,6 +927,17 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
             )
         };
         rows.push(row(Mark::Warn, w(lang, W::Home).into(), text));
+    }
+    // C-33 S3: the switch script a `--confirm-switch` run would replace (confirmed apart, never
+    // by the y); an unknown file is shown as left alone.
+    let s = &v["switch"];
+    if s.is_object() && v["switch_result"].is_null() {
+        let (mark, word) = if s["confirm_token"].is_string() {
+            (Mark::Update, W::SwitchReplace)
+        } else {
+            (Mark::Skip, W::SwitchLeft)
+        };
+        rows.push(row(mark, w(lang, W::Switch).into(), w(lang, word).into()));
     }
     rows
 }
@@ -1192,6 +1265,63 @@ impl Out<'_> {
             self.buf.push_str(&line);
         }
     }
+    /// C-33 S3: the switch script is confirmed with its own token, never by the `y`; the command
+    /// is shown whole so it can be copied.
+    fn switch_next(&mut self, v: &Value) {
+        let Some(flag) = v["switch"]["apply_flag"].as_str() else {
+            return;
+        };
+        if !v["switch_result"].is_null() {
+            return;
+        }
+        self.blank();
+        let line = format!(
+            "{} {}\n",
+            self.p().mark(Token::Info),
+            visible(w(self.lang(), W::SwitchNext))
+        );
+        self.buf.push_str(&line);
+        let line = format!(
+            "  {}\n",
+            self.p()
+                .paint(Token::Code, &visible(&format!("moai update {flag}")))
+        );
+        self.buf.push_str(&line);
+    }
+    /// A switch part that ran (`--confirm-switch`): where the old file is kept and the revert.
+    fn switch_done(&mut self, v: &Value, with_revert: bool) {
+        let r = &v["switch_result"];
+        if r.is_null() {
+            return;
+        }
+        let lang = self.lang();
+        self.blank();
+        if !switch_ok(v) {
+            let msg = r["message"]
+                .as_str()
+                .or(r["reason"].as_str())
+                .unwrap_or(r["state"].as_str().unwrap_or(""));
+            self.status(
+                Mark::Error,
+                &format!("{}: {}", w(lang, W::SwitchFailed), visible(msg)),
+            );
+            return;
+        }
+        let saved = self.home(r["saved"].as_str().unwrap_or(""));
+        self.status(
+            Mark::Ok,
+            &format!("{} {}", w(lang, W::SwitchDone), visible(&saved)),
+        );
+        if let Some(c) = v["revert"]["switch"].as_str().filter(|_| with_revert) {
+            let line = format!(
+                "  {} {}\n",
+                self.p()
+                    .paint(Token::Muted, &format!("{}:", w(lang, W::Revert))),
+                self.p().paint(Token::Code, &visible(c))
+            );
+            self.buf.push_str(&line);
+        }
+    }
     /// A cleanup that ran (`--confirm-cleanup`): how many entries were archived and the revert.
     fn cleanup_done(&mut self, v: &Value, with_revert: bool) {
         let r = &v["cleanup_result"];
@@ -1459,6 +1589,9 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
     if result["mode"].as_str() == Some("applied") {
         return applied(result, view);
     }
+    if result["mode"].as_str() == Some("revert_switch") {
+        return reverted_switch(result, view);
+    }
     let mut o = Out {
         v: view,
         buf: String::new(),
@@ -1472,6 +1605,7 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
             o.status(Mark::Skip, w(lang, W::NotWritten));
             o.cleanup_next(result);
             o.home_next(result);
+            o.switch_next(result);
             return o.buf;
         }
         Asked::Stale => {
@@ -1515,6 +1649,8 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
         o.cleanup_next(result);
         o.home_done(result, true);
         o.home_next(result);
+        o.switch_done(result, true);
+        o.switch_next(result);
         o.project_next();
         return o.buf;
     }
@@ -1541,6 +1677,28 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
     o.cleanup_next(result);
     o.home_done(result, true);
     o.home_next(result);
+    o.switch_done(result, true);
+    o.switch_next(result);
+    o.buf
+}
+
+/// The end of `--revert-switch`: the saved old script is back in place. It has no preview, no
+/// layer rows and no next step, so it gets its own one-line screen instead of the preview's.
+fn reverted_switch(v: &Value, view: &View) -> String {
+    let mut o = Out {
+        v: view,
+        buf: String::new(),
+    };
+    let lang = o.lang();
+    if v["switch_result"]["state"].as_str() == Some("reverted") {
+        o.status(Mark::Ok, w(lang, W::SwitchReverted));
+    } else {
+        let state = v["switch_result"]["state"].as_str().unwrap_or("");
+        o.status(
+            Mark::Error,
+            &format!("{}: {}", w(lang, W::SwitchFailed), visible(state)),
+        );
+    }
     o.buf
 }
 
@@ -1651,6 +1809,7 @@ fn applied(v: &Value, view: &View) -> String {
     // A cleanup that did not commit leaves the run partly applied (AUDIT #2908 B1).
     bad |= !cleanup_ok(v);
     bad |= !home_ok(v);
+    bad |= !switch_ok(v);
     let head = if bad { W::Partial } else { W::Done };
     let m = if bad { Mark::Warn } else { Mark::Ok };
     let total = if lang == Lang::Ko {
@@ -1686,6 +1845,7 @@ fn applied(v: &Value, view: &View) -> String {
     }
     o.cleanup_done(v, false);
     o.home_done(v, false);
+    o.switch_done(v, false);
     // A partly applied run ends with what failed, not the next step (#2894 7b).
     if !bad {
         o.project_next();

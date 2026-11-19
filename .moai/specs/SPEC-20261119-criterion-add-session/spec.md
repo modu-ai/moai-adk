@@ -1,0 +1,92 @@
+---
+id: SPEC-20261119-criterion-add-session
+title: "card criterion-add: record the session in the event and report the real criteria count"
+status: draft
+revision: 1
+created: 2026-11-19
+---
+
+# card criterion-add: record the session in the event and report the real criteria count
+
+## Intent
+
+Card C-125, the follow-up of the C-108 tier 2 audit (card note on C-108, head 472b6bf2da, in PR 3230; findings N1 and N3). `card criterion-add` is the action C-108 added (`SPEC-20261119-card-criterion-add`); its code has been on the tip since PR 3230 merged, and this SPEC changes it from there.
+
+N1. `workflow::add_criteria` (`src/ledger/workflow.rs`) writes the `card.criterion_add` event with the actor `--by` only, and `--by` is free text. `card.note` also records the session that wrote it (`session_holder("note", env).ok()` in `src/ops/card.rs`, stored in the note event as `session`). A criterion added by another session can keep `card done` refused (an open criterion blocks it, `card_done_guard`); the holder can withdraw it, but the ledger cannot say which session added it.
+
+N3. `add_criteria` answers `total` as `highest + added.len()`, and `card criterion-add` prints it as `criteria`. The code comment says "how many criteria the card has now (withdrawn ones included)", which is the row count. The two numbers are equal while the numbers have no gap and differ when they do: the table accepts an insert with any `seq` (`card add` and the Issue import write numbers 1 to n, but nothing in the schema forces it), so a card with rows 1 and 5 answers 7 after two adds instead of 4.
+
+This slice changes two things in `card criterion-add`: the event and the answer carry the caller's session, and `criteria` is the number of rows. It does not change how a new criterion is numbered (after the highest number, withdrawn included).
+
+## Non-goals
+
+- Authenticating the session: the id is read from the environment as `card note` reads it, so it says which session wrote the row, not who typed `--by`.
+- Writing the session into rows that exist already: older `card.criterion_add` events keep the payload they have (no `session` key); a reader treats a missing key as unknown.
+- Showing the event in `card show`: the event table is where an auditor looks; a display is a later card.
+- Changing the numbering, the text rules or the refusals of `card criterion-add` (SPEC-20261119-card-criterion-add keeps them).
+- `docs/design-review/appendix/operations/card.md` and `src/ops/card.rs` were reserved by other cards while this SPEC was written (C-116, then C-96 for `src/ops/card.rs`); slice B took `src/ops/card.rs` after C-96 released it, and the operations document row stays with the card that holds that file (Decisions D-4).
+
+## Requirements
+
+- REQ-1: The `card.criterion_add` event payload shall record the id of the session that added the criteria as `session`, next to `first` and `count`, as the `card.note` event records its session.
+- REQ-2 (REQ-1): IF the session has no id, THEN the event payload shall hold `session` as null while the criteria are added as usual.
+- REQ-3 (REQ-1): The recorded `session` shall be the session's own id, whatever `--by` says.
+- REQ-4: The answer of `card criterion-add` shall carry the same `session` as the event payload.
+- REQ-5: The `criteria` of the answer and the `total` of `workflow::add_criteria` shall be the number of criterion rows the card has after the add, withdrawn ones included.
+- REQ-6: The new criteria shall be numbered after the card's highest criterion number, as before this change.
+- REQ-7: The help of `card criterion-add` shall state that the event records the adding session and that `criteria` counts the card's rows.
+
+## Acceptance
+
+- AC-1 (REQ-1, REQ-3, REQ-4): with `CLAUDE_CODE_SESSION_ID` set to a session id, `card criterion-add C-1 --ac "a" --by leader` stores one `card.criterion_add` event whose actor is `leader` and whose payload has `session` equal to that id, `first` and `count`; the answer has the same `session`; a different `--by` gives the same `session`.
+  verify: `cargo test --locked --offline --test card_criterion_add_cli the_event_and_the_answer_record_the_adding_session`
+- AC-2 (REQ-2): with no session variable, the criteria are added, the payload holds `session` as null and the answer holds `session` as null; a malformed session variable reads as no id.
+  verify: `cargo test --locked --offline --test card_criterion_add_cli without_a_session_id_the_session_is_null_and_the_criteria_are_added`
+- AC-3 (REQ-5, REQ-6): on a card whose criterion rows are 1 and 5, two adds answer `added [6, 7]` and `criteria 4`; the table holds four rows; `workflow::add_criteria` returns the same total.
+  verify: `cargo test --locked --offline --test card_criterion_add_cli the_criteria_count_is_the_row_count_when_numbers_have_a_gap`; `cargo test --locked --offline --test ledger_workflow criteria_total_is_the_row_count`
+- AC-4 (REQ-7): the help of `card criterion-add` names the recorded session and the row count.
+  verify: `cargo test --locked --offline --test card_criterion_add_cli the_help_names_the_session_and_the_row_count`
+- AC-5 (REQ-1…REQ-7): neighbours; every earlier `card_criterion_add_cli` and `ledger_workflow` test still passes.
+  verify: `cargo test --locked --offline --test card_criterion_add_cli`; `cargo test --locked --offline --test ledger_workflow`; `cargo test --locked --offline --test card_work_cli`; `cargo test --locked --offline --test help_layout`; `cargo test --locked --offline --test product_cli`; `cargo test --locked --offline --test home_isolation_scan`; `cargo test --locked --offline --lib`; `cargo fmt --check`; `cargo clippy --locked --offline --all-targets -- -D warnings`
+
+## Scope
+
+- write: `src/ledger/workflow.rs` (the writer takes the session and counts rows), `src/ops/card.rs` (reads the session as `card note` does, the answer, the help; reserved for C-116 until it releases), `tests/card_criterion_add_cli.rs`, `tests/ledger_workflow.rs`, `.moai/specs/SPEC-20261119-criterion-add-session/spec.md`
+- read-only: `src/card/dispatch.rs` (`session_holder`), `src/session_current.rs`, `src/ledger/schema.rs`, `tests/common/**`
+- forbidden: the real HOME and ledger, the network, a change of table definitions or triggers, `docs/design-review/appendix/operations/card.md` while another card holds it (C-129 when slice B was written; Decisions D-4)
+
+## Plan
+
+Two slices, because `src/ops/card.rs` was reserved by another card (C-96 then) and the writer can change without it:
+
+- Slice A (`src/ledger/workflow.rs`, `tests/ledger_workflow.rs`): REQ-1, REQ-2, REQ-3 and REQ-5, REQ-6 at the writer. `workflow::add_criteria_as(w, card, by, session, texts)` takes `session: Option<&str>` (one line, the author limit, as a note's session is checked), writes it into the payload (`null` without one) and returns the row count read in the same transaction; `add_criteria` stays as the call without a session and forwards `None`, so `src/ops/card.rs` compiles unchanged.
+- Slice B (after `src/ops/card.rs` is free): `card criterion-add` reads the session with `session_holder("criterion-add", env).ok()`, calls `add_criteria_as`, prints `session`, the help says it (REQ-4, REQ-7, AC-1, AC-2, AC-4 and the `card_criterion_add_cli` half of AC-3); `add_criteria` stays as the call without a session, because its tests call it (D-5).
+
+Order inside a slice: tests first (RED), then the code, then mutants, neighbours and the SPEC Result with one line per AC.
+
+## Risks
+
+- The id is read from the environment, so a caller who sets the variable by hand can claim another session; the field says which session wrote the row, not who the person was. It is the same trust as a note's session.
+- The writer gets a new function, `add_criteria_as`, with the session; `add_criteria` keeps its shape and forwards `None` (D-5), so no caller broke when slice A landed. Slice B moves `src/ops/card.rs` to the new function; `add_criteria` stays for the callers that have no session (its tests).
+- The row count needs one more read in the write transaction; it runs in the same transaction as the inserts, so two adds at once cannot report a stale count.
+- Before this change the two numbers are equal on every card made through `card add` and the import, so the answer changes only for a card with a gap in its numbers.
+
+## Decisions
+
+- D-1: the session goes in the event payload under the key `session`, the name the note event uses, so one query reads both kinds. Option not taken: a second actor column (a table change, forbidden).
+- D-2: a missing session is `null`, not an absent key, so a reader tells "this session had no id" from "the row is older than this change" by `session` being present.
+- D-3: the count is `SELECT COUNT(*)` after the inserts, in the same transaction. Option not taken: counting in memory from the highest number, which is the defect.
+- D-5: the writer gets a new function with the session instead of one more parameter on `add_criteria`, so slice A compiles while `src/ops/card.rs` is held by another card; the earlier writer test changes its expected payload to carry `"session": null`, because every write now goes through the same function and REQ-2 says a missing id is `null`. Option not taken: leave `add_criteria` writing no key, which keeps two shapes of event for one kind.
+- D-4: slice B waits for the card that holds `src/ops/card.rs` (C-116, then C-96) to release it; the document row for `card criterion-add` in `docs/design-review/appendix/operations/card.md` is updated in the implementation only if that file is free by then. It was held by card C-129 when slice B was written, so the row still says `first` and `count` for the payload and the help is the contract; the row is a note on the card.
+
+## Result
+
+Both slices are done. Slice A (the writer, `src/ledger/workflow.rs`) is on the local integration branch since its READY (RED 0fee1189ee: the writer test file did not compile for want of `add_criteria_as`, and the total was 7 where 4 was expected; GREEN 286ae16efb). Slice B (`src/ops/card.rs`: the session read, the answer, the help) was written from local `v2026.11.0` 8f51970f11 after C-96 released that file; the code was tested on head 18a4fe100d, the merge of local `v2026.11.0` 126cd72784 (this Result is the only change after it; the READY note names the final head). RED 2af3e1e9ee: three of the four new CLI tests fail for the right reasons (the answer has no `session` key twice, the help lacks the sentence); the fourth, the gap count, already passes because slice A's writer returns the row count and the CLI prints it, so it stays as a regression guard. GREEN 50ca2c5052. Fixes for the slice A audit notes N1 to N3, N5 and N6 (SPEC wording, a withdrawn row in the gap tests, doc comments): 56e983ac17. Gates ran through the heavy-slot wrapper in this worktree's own build folder.
+
+- AC-1: met — `card_criterion_add_cli::the_event_and_the_answer_record_the_adding_session` passes: three adds (session A as `leader`, session A as `someone-else`, session B as `leader`) store events whose actor is `--by` and whose `session` is the caller's own id, and each answer carries `session`; `first` and `count` are still in the payload. The writer half is `ledger_workflow::criteria_event_records_the_adding_session` (slice A). Mutants B1 (session always `None`), B2 (answer without `session`) and B3 (`by` written as the session) were killed (`test result: FAILED`).
+- AC-2: met — `without_a_session_id_the_session_is_null_and_the_criteria_are_added` passes: with no variable and with a variable that is not a session id (`not a session id`) the criteria are added (`added [2]`, `[3]`), and the event payload and the answer hold the key `session` as null. At the writer: the same case plus a line break, 201 characters refused and 200 accepted (slice A). Mutant B4 (no session refuses the request) was killed: 7 of the 11 tests in the file fail.
+- AC-3: met — CLI: `the_criteria_count_is_the_row_count_when_numbers_have_a_gap` passes with rows 1 (open) and 5 (withdrawn): two adds answer `added [6, 7]` and `criteria 4`, the table holds 4 rows, one more add answers `[8]` and 5. Writer: `criteria_total_is_the_row_count` uses the same rows. This test passed before slice B (slice A's writer already returns the row count), so it is a regression guard, not a RED proof; mutant A2 of slice A (total back to `highest + n`) was killed then.
+- AC-4: met — `the_help_names_the_session_and_the_row_count` passes; mutant B5 (the sentence about the session dropped from the help) was killed.
+- AC-5: met — neighbours on head 18a4fe100d, each file's `test result` line read from the run's log, all `ok` with 0 failed: `card_criterion_add_cli` 11, `ledger_workflow` 26, `card_work_cli` 25, `card_dispatch_cli` 25, `help_layout` 10, `product_cli` 79, `home_isolation_scan` 18, `--lib` 1545, `--bins` 28 on each of two targets. Every `tests/card*.rs` and `tests/ledger*.rs` target (26 targets, 395 tests, 26 `test result: ok` lines, one cargo run, exit 0) also passes, the leader's same-prefix rule for the changed areas `src/ops/card.rs` and `src/ledger/workflow.rs`. `cargo fmt --check`, `rustfmt --check --edition 2021 src/ops/*.rs` and `cargo clippy --locked --offline --all-targets -- -D warnings` exit 0. Mutants B1 to B5 on `src/ops/card.rs` were killed, the file was restored (`git diff HEAD` empty for it). The other pre-READY exit codes are in the READY note.
+
+Not done: the operations document row for `card criterion-add` (D-4; card C-129 holds `card.md`, so it still says `first` and `count`; the help is the contract, audit note N7 of slice A stays open) and a Windows run (the CLI test file is unix only).

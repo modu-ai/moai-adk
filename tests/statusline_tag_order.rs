@@ -1,6 +1,8 @@
 //! #2928 (user instruction 6878415244, 2026-11-14, replacing S-1's tag-first line 3): line 1 of
 //! the Claude statusline starts with `🏷️ <Leader|Agent-N|agent> | ` (#2871), and line 3 is `🔋 CTX … | 🪫 Week …`
-//! without the tag, the same bytes under every language and width.
+//! without the tag, the same bytes under every language and width. Since C-124 the worktree
+//! label (`🌳 <name> | `, or `🌳 WT-c<card>-<name> | `) opens line 3 when there is one; the CTX
+//! bar then follows it, so the check below skips that one label and still requires CTX next.
 //!
 //! The renderer has no language text and does not read `COLUMNS` (docs/rust-product-path.md,
 //! line 1), so "Korean and English, 80 and 40 columns" is proven as "byte-equal to the recorded
@@ -175,6 +177,11 @@ fn line1_tag_first_under_ko_en_and_80_40_columns() {
                         "{name} {variant} LANG={lang} COLUMNS={columns}: line 1 {line1:?}"
                     );
                     let line3 = text.lines().nth(2).unwrap_or_default();
+                    // The worktree label (C-124) may open the line; the CTX bar comes right after.
+                    let line3 = match line3.strip_prefix("🌳 ") {
+                        Some(rest) => rest.split_once(" | ").map_or(line3, |(_, after)| after),
+                        None => line3,
+                    };
                     assert!(
                         line3.starts_with("🔋 CTX: ") || line3.starts_with("🪫 CTX: "),
                         "{name} {variant} LANG={lang} COLUMNS={columns}: line 3 {line3:?}"

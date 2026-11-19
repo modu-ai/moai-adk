@@ -149,6 +149,14 @@ const LIVE_RESERVATION: &str = "status IN ('held','expired_candidate','held_for_
 /// `reservation::reserve` stores, so a card that gets it can also be taken with it. `add`,
 /// `scope` and `take --scope` all use it.
 pub(super) fn checked_scope(action: &str, entries: &[String]) -> Result<Vec<String>> {
+    // On the raw text: `trim` strips U+2028 and U+2029 at the ends, so after it only an inner
+    // one would be seen (SPEC-20261119-card-scope-widen-followup REQ-1).
+    if let Some(i) = entries.iter().position(|e| has_line_separator(e)) {
+        return Err(format!(
+            "card {action} refused: scope entry {} has a line separator (U+2028 or U+2029)",
+            i + 1
+        ));
+    }
     let scope =
         input::validate_scope(entries).map_err(|e| format!("card {action} refused: {e}"))?;
     if scope.len() > reservation::MAX_SCOPE_PATTERNS {
@@ -180,7 +188,11 @@ pub(super) fn checked_scope(action: &str, entries: &[String]) -> Result<Vec<Stri
 /// against every other card's active reservation, and they are inserted into the same
 /// reservation under the same generation, with a `card.scope` event that also names the
 /// generation, the holder and the `--reason` (required then). The card's own `write_scope` is
-/// not touched by a widening. A card added without `--scope` is skipped by `card next`
+/// not touched by a widening. `generation`, when given, is the generation the caller read: the
+/// card's live reservation must be at it, else a `conflict` that names the generation the card
+/// has (or that it is not held), checked in the same write transaction (card C-129, SPEC
+/// SPEC-20261119-card-scope-widen-followup REQ-4 and REQ-5). A card added without `--scope` is
+/// skipped by `card next`
 /// (`empty_scope`), and nothing else sets a card's own scope (card C-53). Any other state is a
 /// conflict that names it; nothing is written then.
 pub fn scope(
@@ -190,6 +202,7 @@ pub fn scope(
     entries: &[String],
     by: &str,
     reason: Option<&str>,
+    generation: Option<i64>,
 ) -> Result<Value> {
     let card_id = card_id("scope", reference)?;
     let new = checked_scope("scope", entries)?;
@@ -225,6 +238,23 @@ pub fn scope(
             let held = holder.as_ref().map_or(String::new(), |(h, g)| {
                 format!(", held by {h} at generation {g}")
             });
+            if let Some(want) = generation {
+                match &holder {
+                    Some((_, have)) if *have == want => {}
+                    Some((_, have)) => {
+                        return Ok(Err(format!(
+                            "card conflict in generation: C-{card_id} is at generation {have}, \
+                             not {want}; read the card again (`card show`) before widening it"
+                        )));
+                    }
+                    None => {
+                        return Ok(Err(format!(
+                            "card conflict in generation: C-{card_id} is `{state}` and not held, \
+                             so there is no generation {want} to widen at"
+                        )));
+                    }
+                }
+            }
             if holder.is_some() && (state == "active" || state == "review") {
                 let Some(reason) = reason.as_deref() else {
                     return Ok(Err(format!(
@@ -431,18 +461,22 @@ pub fn handoff(
 /// what the reclaimer found out about the old holder.
 /// A `--reason` that is kept for good: one line of 1 to [`reservation::MAX_REASON_LEN`]
 /// characters, with no word that has the shape of a secret (the check `card note` uses,
-/// `redact::redact_outgoing`; `card export` writes it out). The text is never repeated.
+/// `redact::redact_outgoing`; `card export` writes it out). The text is never repeated. The
+/// text is kept without its leading and trailing blanks; a line separator (U+2028, U+2029) or a
+/// control character anywhere in what was typed is refused.
 fn checked_reason(action: &str, reason: &str) -> Result<String> {
-    if reason.trim().is_empty()
-        || reason.chars().count() > reservation::MAX_REASON_LEN
+    let kept = reason.trim();
+    if kept.is_empty()
+        || kept.chars().count() > reservation::MAX_REASON_LEN
         || reason.chars().any(char::is_control)
+        || has_line_separator(reason)
     {
         return Err(format!(
             "card {action} refused: --reason must be one line of 1 to {} characters",
             reservation::MAX_REASON_LEN
         ));
     }
-    let (_, shaped) = crate::redact::redact_outgoing(reason);
+    let (_, shaped) = crate::redact::redact_outgoing(kept);
     if shaped > 0 {
         return Err(format!(
             "card {action} refused: --reason has {shaped} word(s) with the shape of a secret \
@@ -450,7 +484,13 @@ fn checked_reason(action: &str, reason: &str) -> Result<String> {
              `card export`, so take them out"
         ));
     }
-    Ok(reason.to_string())
+    Ok(kept.to_string())
+}
+
+/// U+2028 (line separator) and U+2029 (paragraph separator): not control characters, so
+/// `char::is_control` lets them through, but they end a line in many readers.
+fn has_line_separator(text: &str) -> bool {
+    text.chars().any(|c| matches!(c, '\u{2028}' | '\u{2029}'))
 }
 
 fn reclaim_reason(reason: &str) -> Result<String> {

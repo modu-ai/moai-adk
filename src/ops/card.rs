@@ -47,6 +47,31 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Reads the ledger only. Show what a dispatch should know before it starts: commits and
+    /// PRs already naming the card, its SPEC folders, and decision notes colliding with the
+    /// card's scope or criteria
+    ///
+    /// Reads the ledger only. Also reads the project's git history (nothing is written, no
+    /// network is used): commits of `--integration-ref` (default: the current branch's
+    /// upstream) whose subject, body or `Moai-Spec:` trailer names the card, the SPEC the
+    /// ledger links to it, the SPEC folders naming it, and every `decision` note sharing a
+    /// path with the card's write scope or a phrase from its criteria (card C-96, W3).
+    Precheck {
+        /// `C-12` or `#3066`.
+        card: String,
+        /// The integration ref to scan (default: the current branch's upstream).
+        #[arg(long)]
+        integration_ref: Option<String>,
+        /// Scan at most this many commits (default 500; the report names a cut-short scan).
+        #[arg(long)]
+        max_commits: Option<usize>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Reads the ledger only. Writes files only inside --out. Export every card to a folder
     ///
     /// Reads the ledger only. Writes files only inside --out. Writes `index.json`, `events.jsonl`
@@ -133,8 +158,11 @@ enum Action {
     /// not overlap another card's reservation (a `conflict` naming that card). `--reason` is
     /// required for a held card; the `card.scope` event records `--by`, the reason, the
     /// generation and the holder; the card's own scope is not changed, so a later `card take`
-    /// without `--scope` still reads the old one. Each entry is checked as `add --scope` checks
-    /// it. Any other state is refused (`conflict`) with its state and holder, and nothing is
+    /// without `--scope` still reads the old one. `--generation` is the generation the caller
+    /// read (`card show`): given, the card's live reservation must be at that generation, else
+    /// `conflict` naming the generation it has (or that the card is not held) and nothing is
+    /// written; left out, nothing is checked. Each entry is checked as `add --scope` checks it.
+    /// Any other state is refused (`conflict`) with its state and holder, and nothing is
     /// written.
     Scope {
         /// `C-12`.
@@ -149,6 +177,10 @@ enum Action {
         /// Why, one line of 1 to 500 characters; required to widen a held card.
         #[arg(long)]
         reason: Option<String>,
+        /// The generation the card has now (`card show` prints it); a card at another
+        /// generation, or one nobody holds, is a `conflict`. Left out, nothing is checked.
+        #[arg(long, value_parser = clap::value_parser!(i64).range(1..))]
+        generation: Option<i64>,
         /// The project folder (its profile holds the project id).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -403,9 +435,12 @@ enum Action {
     ///
     /// Writes the ledger. Appends each `--ac` text to the card as an open criterion, numbered
     /// after the card's highest (a withdrawn one keeps its number), with one
-    /// `card.criterion_add` event: criteria are only added, never changed or removed. It needs
-    /// no generation and no holder, so a card nobody holds, such as a migrated Issue card, can be
-    /// given one; the reservation of a held card is left as it is; a `done` card is refused.
+    /// `card.criterion_add` event that records the session that added them next to `--by` (null
+    /// when the caller has no session id): criteria are only added, never changed or removed. In
+    /// the answer, `session` is that id and `criteria` is the number of the card's criteria
+    /// (withdrawn ones included), not its highest number. It needs no generation and no holder, so
+    /// a card nobody holds, such as a migrated Issue card, can be given one; the reservation of a
+    /// held card is left as it is; a `done` card is refused.
     CriterionAdd {
         /// `C-12`.
         card: String,
@@ -559,7 +594,9 @@ fn env(name: &str) -> Option<String> {
 
 /// `card criterion-add C-n --ac TEXT… [--by W]`: what is wrong with the request is found before
 /// the ledger is opened (the card's name, each text, `--by`), then the ledger appends the
-/// criteria in one transaction (`workflow::add_criteria`, card C-108).
+/// criteria in one transaction (`workflow::add_criteria_as`, cards C-108 and C-125). The event and
+/// the answer carry the caller's session id as `card.note` does (`null` without one); `--by`
+/// stays the author.
 fn criterion_add(
     project: &std::path::Path,
     home: &std::path::Path,
@@ -568,6 +605,7 @@ fn criterion_add(
     by: Option<&str>,
 ) -> Result<serde_json::Value, String> {
     use moai_cli::card::command as c;
+    use moai_cli::card::dispatch as d;
     use moai_cli::card::input::{self, CardRef};
     use moai_cli::ledger::workflow::{self, WorkflowError};
     let refused = |why: String| format!("card criterion-add refused: {why}");
@@ -581,16 +619,19 @@ fn criterion_add(
     };
     let texts = input::criterion_texts(entries).map_err(|e| refused(e.to_string()))?;
     let by = c::actor(by, "criterion-add")?;
+    // No session id is not a refusal here: nobody has to hold the card, so the event says `null`.
+    let session = d::session_holder("criterion-add", env).ok();
     let (project_id, mut ledger) = c::open_for_write(project, home)?;
-    let added = workflow::add_criteria(&mut ledger, card_id, &by, &texts).map_err(|e| match e {
-        WorkflowError::InvalidInput(why) => refused(why),
-        other => other.to_string(),
-    })?;
+    let added = workflow::add_criteria_as(&mut ledger, card_id, &by, session.as_deref(), &texts)
+        .map_err(|e| match e {
+            WorkflowError::InvalidInput(why) => refused(why),
+            other => other.to_string(),
+        })?;
     Ok(serde_json::json!({
         "action": "criterion-add", "project_id": project_id,
         "name": input::card_name(card_id), "card_id": card_id,
-        "by": by, "added": added.added, "criteria": added.total, "rev": added.rev,
-        "events": 1, "writes": true,
+        "by": by, "session": session, "added": added.added, "criteria": added.total,
+        "rev": added.rev, "events": 1, "writes": true,
     }))
 }
 
@@ -611,6 +652,20 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             project,
             home,
         } => c::show(&project, &resolve_home(home)?, &card),
+        Action::Precheck {
+            card,
+            integration_ref,
+            max_commits,
+            project,
+            home,
+        } => moai_cli::card::precheck::precheck(
+            &card,
+            integration_ref.as_deref(),
+            max_commits,
+            &project,
+            home.as_deref(),
+        )
+        .map_err(|r| r.message),
         Action::Export { out, project, home } => c::export(&project, &resolve_home(home)?, &out),
         Action::Add {
             title,
@@ -646,6 +701,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             scope,
             by,
             reason,
+            generation,
             project,
             home,
         } => d::scope(
@@ -655,6 +711,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             &scope,
             &by,
             reason.as_deref(),
+            generation,
         ),
         Action::Take {
             card,

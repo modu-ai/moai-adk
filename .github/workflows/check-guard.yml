@@ -1,0 +1,86 @@
+# check-guard (C-97, SPEC-20261119-check-guard): a pull request cannot weaken the checks
+# that judge it. The protected path list lives in tools/protected_checks.json ON THE BASE
+# BRANCH; this job checks out the base commit and runs THAT copy of tools/check_guard.py,
+# so a PR never executes or reads its own copy of the rule (the audit-gate.yml precedent:
+# the gate is built from the base commit for the same reason).
+#
+# Changed paths come from the GitHub files API — filename AND previous_filename, so renames
+# and deletions are judged too — and the body from `gh pr view`; both are read-only.
+# A protected-path change passes only when the body declares exactly `audit-tier: 2`; the
+# declared tier 2 is what `moai audit-gate` judges by, so the requirement reaches the merge
+# gate. The `self-modifying check` label is created on the fly (the label manifest
+# .github/moai/labels.yml is a separate, manual process) and a label failure never flips
+# the verdict. Making this check required in the ruleset is a separate user decision
+# (SPEC Decisions D3) — this card changes no ruleset and no required-check name.
+#
+# `pull_request` only (no `pull_request_target`): the token is read-only except the label
+# (issues: write) and a fork PR gets no secrets.
+name: check-guard
+
+on:
+  pull_request:
+    branches: [v2026.11.0]
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-guard-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check-guard:
+    name: check-guard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # Read-only over the PR (pull-requests) and its body; issues: write is the label.
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - name: Changed paths (files API, old and new names)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh api "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" --paginate \
+            --jq '.[] | (.filename, (.previous_filename // empty))' \
+            | sort -u > "$RUNNER_TEMP/check-guard-files.txt"
+          # The files API serves at most 3000 files (30 pages); a bigger PR would be
+          # judged on a truncated list, so fail safe instead (SPEC Risks).
+          total="$(gh pr view "$PR_NUMBER" --repo "$REPO" --json changedFiles --jq .changedFiles)"
+          listed="$(grep -c . "$RUNNER_TEMP/check-guard-files.txt" || true)"
+          if [ "${listed:-0}" -lt "${total:-0}" ]; then
+            echo "check-guard: the files API served $listed of $total changed files; refusing to judge a truncated list" >&2
+            exit 1
+          fi
+      - name: Pull request body
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh pr view "$PR_NUMBER" --repo "$REPO" --json body --jq '.body // ""' \
+            > "$RUNNER_TEMP/check-guard-body.md"
+      - name: check-guard (the base checkout's copy)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          python3 tools/check_guard.py \
+            --list tools/protected_checks.json \
+            --files "$RUNNER_TEMP/check-guard-files.txt" \
+            --body "$RUNNER_TEMP/check-guard-body.md" \
+            --summary "$GITHUB_STEP_SUMMARY" \
+            --pr "$PR_NUMBER" --repo "$REPO" --label "self-modifying check"
