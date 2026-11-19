@@ -2,7 +2,7 @@
 id: SPEC-20261119-flaky-policy
 title: "A flaky check never passes by re-running: the merge train records it on a card"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-19
 ---
 
@@ -26,6 +26,8 @@ This slice (the part of C-99 whose files are free; see Non-goals) makes the merg
 - REQ-4 (REQ-1): IF the flaky card cannot be written, THEN the leader shall put the same four facts in the merge comment and say that the card is missing, and the merge still goes through.
 - REQ-2: The `mode-leader.md` sentence that calls such a result not a stop shall point to the flaky card rule.
 - REQ-3: The flaky card rule in `mode-leader.md` shall take at most 700 bytes while the file stays within the package file bound of 65536 bytes.
+- REQ-5 (REQ-3): IF the flaky rule is moved out of the merge-train step to the file's end, THEN the pinning suite shall fail, so the rule's placement is pinned (audit N1).
+- REQ-6 (REQ-3): The budget bound shall be applied at N and N+1 through the one helper the check uses — 700 passes, 701 fails — replacing the compile-time-only guard (audit N10, N11).
 
 ## Acceptance
 
@@ -37,6 +39,10 @@ This slice (the part of C-99 whose files are free; see Non-goals) makes the merg
   verify: `cargo test --locked --offline --test workflow_size_budget flaky_rule_stays_within_its_byte_budget`
 - AC-4 (REQ-1…REQ-4): neighbours.
   verify: `cargo test --locked --offline --test mode_cards_53`; `cargo test --locked --offline --test mode_workflow_steps`; `cargo test --locked --offline --test agent_defs_package`; `cargo test --locked --offline --test ac_command_lint`; `cargo fmt --check`
+- AC-5 (REQ-5): the placement pin `the_flaky_rule_sits_inside_the_merge_train_step` passes on the current text and fails when the rule is moved after the procedure.
+  verify: `cargo test --locked --offline --test workflow_size_budget the_flaky_rule_sits_inside_the_merge_train_step`
+- AC-6 (REQ-6): the budget test drives 700 as passing and 701 as failing through the helper.
+  verify: `cargo test --locked --offline --test workflow_size_budget flaky_rule_stays_within_its_byte_budget`
 
 ## Scope
 
@@ -48,7 +54,8 @@ This slice (the part of C-99 whose files are free; see Non-goals) makes the merg
 
 1. Tests first: the three checks in `tests/workflow_size_budget.rs` read `mode-leader.md`; they fail before the text is written.
 2. Edit `mode-leader.md` step 9: point from the "not a stop" sentence to the rule and add the rule right after it.
-3. Run the neighbour tests; record which test would fail because the manifest is stale (the manifest follows in the second SPEC).
+3. Run the neighbour tests; the manifest hash of `mode-leader.md` is rewritten in this SPEC with the tool (Scope, D-2) — the AC-4 neighbour `skill_package` test failed before that rewrite and passes after it.
+4. Slice 2 (this revision): pin the rule's placement inside the merge-train step and drive the 700-byte bound at N and N+1 in `tests/workflow_size_budget.rs` (audit #3225 N1, N10, N11); the wording fixes for N2 and N3 need `mode-leader.md` and `verify.md`, which other cards hold.
 
 ## Risks
 
