@@ -5,6 +5,7 @@
 mod common;
 
 use serde_json::{json, Value};
+use std::fs;
 use std::process::{Command, Output, Stdio};
 
 const H: &str = "1111111111111111111111111111111111111111";
@@ -152,4 +153,223 @@ fn require_pass_fails_the_run_unless_it_passes() {
     assert_eq!(bad.status.code(), Some(1));
     let r = decide(&json!({"schema_version": 2, "pr": 9, "head": H, "body": "", "comments": []}));
     assert_eq!(r["state"], "fail", "{r}");
+}
+
+/// Card C-95 (SPEC-20261119-leader-auditor-verdict) AC-2: the pass and fail decisions name the
+/// comment that decided them, and the CI workflow posts the `moai/audit` commit status itself —
+/// `statuses: write`, success on pass, failure otherwise, on the head the job judged.
+#[test]
+fn the_result_names_the_comment_and_the_workflow_posts_the_status() {
+    let src = vec!["src/a.rs".to_string()];
+    let r = decide(&input(
+        1,
+        &src,
+        &["agent-1"],
+        vec![verdict(5, H, "PASS", "agent-7")],
+    ));
+    assert_eq!(r["comment"], json!(5), "{r}");
+    let r = decide(&input(
+        0,
+        &[doc()],
+        &[],
+        vec![verdict(6, OLD, "FAIL", "agent-7")],
+    ));
+    assert_eq!(r["comment"], json!(6), "{r}");
+    let r = decide(&input(0, &[doc()], &[], vec![]));
+    assert!(r["comment"].is_null(), "{r}");
+    let yaml = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(".github/workflows/audit-gate.yml"),
+    )
+    .unwrap();
+    for pin in [
+        "statuses: write",
+        "statuses/$PR_HEAD",
+        "moai/audit",
+        "-f state=",
+    ] {
+        assert!(yaml.contains(pin), "audit-gate.yml lacks {pin:?}");
+    }
+}
+
+/// Card C-95 audit B2 (tier 2): the status-posting step is executed, not grepped. The literal
+/// `run:` block of the Audit gate step runs under bash with a stub `gh` that records what it
+/// posts and a stub gate binary that answers per scenario (the real python3 parses the
+/// envelope). pass posts `success` and exits 0; fail and missing post `failure` and exit 1; a
+/// gate error posts `failure` too and exits 1 (audit N1 — an earlier success must not survive a
+/// broken gate run).
+#[test]
+fn the_workflow_step_posts_the_status_the_gate_decides() {
+    let yaml = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(".github/workflows/audit-gate.yml"),
+    )
+    .unwrap();
+    let step_at = yaml
+        .find("- name: Audit gate")
+        .expect("the Audit gate step");
+    let run_at = yaml[step_at..].find("run: |").expect("the run block") + step_at;
+    let block: Vec<&str> = yaml[run_at + "run: |".len()..]
+        .lines()
+        .skip(1)
+        .take_while(|l| l.starts_with("          ") || l.trim().is_empty())
+        .map(|l| l.strip_prefix("          ").unwrap_or(l))
+        .collect();
+    let block = block.join("\n");
+    assert!(
+        block.contains("statuses/$PR_HEAD"),
+        "the wrong block: {block}"
+    );
+
+    let scenarios: &[(&str, &str, i32, &str, Option<i32>)] = &[
+        (
+            "pass",
+            r#"{"ok":true,"result":{"state":"pass","comment":5}}"#,
+            0,
+            "success",
+            Some(0),
+        ),
+        (
+            "fail",
+            r#"{"ok":true,"result":{"state":"fail","comment":6}}"#,
+            1,
+            "failure",
+            Some(1),
+        ),
+        (
+            "missing",
+            r#"{"ok":true,"result":{"state":"missing","comment":null}}"#,
+            1,
+            "failure",
+            Some(1),
+        ),
+        (
+            "error envelope",
+            r#"{"ok":false,"error":{"message":"boom"}}"#,
+            1,
+            "failure",
+            Some(1),
+        ),
+        (
+            // Tier-2 audit B1: a crashed gate under the runner's `-e` used to stop the step
+            // before any status was posted, leaving an older success standing.
+            "crash",
+            "not json at all",
+            101,
+            "failure",
+            Some(1),
+        ),
+    ];
+    for (name, envelope, moai_exit, want_state, want_code) in scenarios {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let bin = tmp.path().join("bin");
+        fs::create_dir_all(&bin).unwrap();
+        // Re-audit B1: the envelope file lives in the runner's temp folder and is removed at the
+        // end. The test owns both temp folders the block may use, and the stub gh lists the
+        // runner's one at the moment it posts, so a file made anywhere else (a fixed `/tmp`
+        // path, the user's own temp folder) or left behind fails the asserts below.
+        let runner_temp = tmp.path().join("runner-temp");
+        let tmpdir = tmp.path().join("tmpdir");
+        fs::create_dir_all(&runner_temp).unwrap();
+        fs::create_dir_all(&tmpdir).unwrap();
+        fs::write(
+            bin.join("gh"),
+            format!(
+                "#!/bin/sh\nfor a in \"$@\"; do printf '%s\\n' \"$a\"; done >> {}\nls \"$RUNNER_TEMP\" >> {}\n",
+                bin.join("gh-args.txt").display(),
+                bin.join("runner-temp-at-post.txt").display()
+            ),
+        )
+        .unwrap();
+        let target = tmp.path().join("target/debug");
+        fs::create_dir_all(&target).unwrap();
+        let envelope_file = tmp.path().join("envelope.json");
+        fs::write(&envelope_file, envelope).unwrap();
+        fs::write(
+            target.join("moai"),
+            format!(
+                "#!/bin/sh\ncat \"{}\"\nexit {moai_exit}\n",
+                envelope_file.display()
+            ),
+        )
+        .unwrap();
+        for exe in [bin.join("gh"), target.join("moai")] {
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let mut perm = fs::metadata(&exe).unwrap().permissions();
+                perm.set_mode(0o755);
+                fs::set_permissions(&exe, perm).unwrap();
+            }
+        }
+        // The runner's `shell: bash` is `bash --noprofile --norc -eo pipefail`: the block must
+        // survive the gate's non-zero exit under those flags (tier-2 audit B1).
+        let script = tmp.path().join("step.sh");
+        fs::write(&script, format!("#!/bin/bash\n{block}\n")).unwrap();
+        let out = std::process::Command::new("bash")
+            .args(["--noprofile", "--norc", "-eo", "pipefail"])
+            .arg(&script)
+            .env(
+                "PATH",
+                format!(
+                    "{}:{}",
+                    bin.display(),
+                    std::env::var("PATH").unwrap_or_default()
+                ),
+            )
+            .env("GH_TOKEN", "fixture-token")
+            .env("PR_NUMBER", "9")
+            .env("PR_HEAD", H)
+            .env("REPO", "o/r")
+            .env("RUNNER_TEMP", &runner_temp)
+            .env("TMPDIR", &tmpdir)
+            .current_dir(tmp.path())
+            .output()
+            .expect("run the step block");
+        let at_post = fs::read_to_string(bin.join("runner-temp-at-post.txt")).unwrap_or_default();
+        assert!(
+            at_post.lines().any(|l| l.starts_with("audit-gate.")),
+            "{name}: the envelope was not made in RUNNER_TEMP: {at_post:?}"
+        );
+        // Listed with `ls -A`, as the stub gh lists RUNNER_TEMP: this test walks only its own
+        // two temporary folders, and the repository-scan table is for tests that walk the tree.
+        for dir in [&runner_temp, &tmpdir] {
+            let listing = std::process::Command::new("ls")
+                .arg("-A")
+                .arg(dir)
+                .output()
+                .expect("list the temporary folder");
+            // A listing that failed (no such folder, not runnable) has an empty stdout too and
+            // must not read as "nothing left".
+            assert!(
+                listing.status.success(),
+                "{name}: ls {} failed: {}",
+                dir.display(),
+                String::from_utf8_lossy(&listing.stderr)
+            );
+            assert!(
+                listing.stdout.is_empty(),
+                "{name}: left in {}: {}",
+                dir.display(),
+                String::from_utf8_lossy(&listing.stdout)
+            );
+        }
+        let recorded = fs::read_to_string(bin.join("gh-args.txt")).unwrap_or_default();
+        assert!(
+            recorded.contains(&format!("state={want_state}")),
+            "{name}: posted {recorded:?}"
+        );
+        assert!(
+            recorded.contains("context=moai/audit"),
+            "{name}: {recorded:?}"
+        );
+        assert!(
+            recorded.contains(&format!("repos/o/r/statuses/{H}")),
+            "{recorded:?}"
+        );
+        assert_eq!(
+            out.status.code(),
+            *want_code,
+            "{name}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
 }

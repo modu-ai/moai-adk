@@ -176,7 +176,7 @@ fn outside_code_spans(line: &str) -> String {
 }
 
 /// True when the file holds an `@...AGENTS.md` import outside code fences and code spans.
-fn imports_agents(path: &Path) -> bool {
+pub(crate) fn imports_agents(path: &Path) -> bool {
     let Some(bytes) = read_bounded(path) else {
         return false;
     };

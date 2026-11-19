@@ -32,8 +32,8 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 /// Extractor identity of the code-reference edges.
 pub const EXTRACTOR_NAME: &str = "code-refs";
-/// Bump on any change to what `scan` or `resolve` records.
-pub const EXTRACTOR_VERSION: &str = "5";
+/// Bump on any change to what `scan` or `resolve` records. 6: concept alias rows.
+pub const EXTRACTOR_VERSION: &str = "6";
 /// Node kind holding one Rust file's stored scan.
 pub(crate) const SCAN_NODE_KIND: &str = "code_scan";
 /// Node kind holding one Cargo manifest's library crate name.
@@ -49,6 +49,73 @@ pub const INFERRED_CALL_UNCERTAINTY: &str = "crate-name-not-read; callee-binding
 pub const MAX_USE_DEPTH: usize = 32;
 
 const EXTERNAL_ROOTS: [&str; 5] = ["std", "core", "alloc", "proc_macro", "test"];
+
+/// One explicit concept alias (C-17 #2450 G-006): a natural-language concept label bound
+/// to the machine token a plain doc block can mention and the file that defines and
+/// explains that concept. User decision A (2026-11-15T10:16:15Z, record sha256
+/// `6d567695372616c7e76ac95ec4b1304c86c2faa26ead6ee4b34b8f364cb1d0a8`; recommendation
+/// 6793132456, decision sheet 6813237309 #62): the contract is product data, never an
+/// evaluation fixture, and no new concept node kind or public identity is introduced —
+/// the existing `documents` edge kind carries the relation. A row alone creates nothing:
+/// resolution still requires the definition file to be in the file set and to declare
+/// the confirm symbol exactly once.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ConceptAlias {
+    /// The natural-language concept name a query target may name.
+    pub label: &'static str,
+    /// The machine token a backtick code span must start with to count as a mention.
+    pub token: &'static str,
+    /// The file that defines and explains the concept.
+    pub definition_file: &'static str,
+    /// The item name the definition file must declare exactly once.
+    pub confirm_symbol: &'static str,
+    /// Provenance of the binding: the deciding record and its digest.
+    pub source: &'static str,
+}
+
+impl ConceptAlias {
+    /// The machine token as chars, for string-body prefix matching.
+    fn token_chars(&self) -> Vec<char> {
+        self.token.chars().collect()
+    }
+}
+
+/// The alias contract: exactly one row today. Extending it is a SPEC decision.
+pub const CONCEPT_ALIASES: &[ConceptAlias] = &[ConceptAlias {
+    label: "handoff protocol",
+    token: "moai-claim-handoff:",
+    definition_file: "src/handoff.rs",
+    confirm_symbol: "claim_handoff",
+    source: "user decision A 2026-11-15T10:16:15Z, record sha256 6d567695372616c7e76ac95ec4b1304c86c2faa26ead6ee4b34b8f364cb1d0a8; handoff protocol 06-B #2006, src/handoff.rs",
+}];
+
+/// The contract row a stored concept reference's token names, if any.
+fn alias_of_token(token: &str) -> Option<&'static ConceptAlias> {
+    CONCEPT_ALIASES.iter().find(|a| a.token == token)
+}
+
+/// The definition file the contract binds a concept label to — the typed-target
+/// adjudication resolves non-file GRAPH targets through this accessor, then demands a
+/// direct `documents` edge with real digests (nothing is taken from the contract alone).
+pub fn alias_definition_file(label: &str) -> Option<&'static str> {
+    CONCEPT_ALIASES
+        .iter()
+        .find(|a| a.label == label)
+        .map(|a| a.definition_file)
+}
+
+/// The contract token a string literal's body starts with, if any. The body is the raw
+/// chars between the quotes: an escaped first character never matches, which is the
+/// conservative direction (an escaped token is not a literal mention). Doc comments are
+/// a different channel — the plain-doc block contract (user decision 6801346885) stays
+/// untouched; the code-level mention is the string literal itself, e.g. a
+/// `const X: &str = "moai-claim-handoff:";` declaration.
+fn string_concept(body: &[char]) -> Option<&'static str> {
+    CONCEPT_ALIASES
+        .iter()
+        .find(|a| body.starts_with(&a.token_chars()))
+        .map(|a| a.token)
+}
 
 /// One `mod` item: `scope` is the chain of enclosing inline modules in the same file.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -100,6 +167,9 @@ enum T {
     Ident(String),
     Doc(String, bool, bool),
     Lit,
+    /// A string literal whose body starts with a contracted machine token (C-17):
+    /// the code-level mention the alias contract resolves on.
+    Concept(&'static str),
     ColCol,
     P(char),
 }
@@ -248,11 +318,10 @@ fn lex(src: &str) -> Vec<Tok> {
             }
         } else if ch == '"' {
             let at = line;
-            i = skip_str(&c, i + 1, &mut line);
-            out.push(Tok {
-                t: T::Lit,
-                line: at,
-            });
+            let body_start = i + 1;
+            i = skip_str(&c, body_start, &mut line);
+            let t = string_concept(&c[body_start..i - 1]).map_or(T::Lit, T::Concept);
+            out.push(Tok { t, line: at });
         } else if ch == '\'' {
             i = skip_quote(&c, i);
         } else if ident_start(ch) {
@@ -265,11 +334,10 @@ fn lex(src: &str) -> Vec<Tok> {
             let next = c.get(i).copied();
             match (word.as_str(), next) {
                 ("b" | "c", Some('"')) => {
-                    i = skip_str(&c, i + 1, &mut line);
-                    out.push(Tok {
-                        t: T::Lit,
-                        line: at,
-                    });
+                    let body_start = i + 1;
+                    i = skip_str(&c, body_start, &mut line);
+                    let t = string_concept(&c[body_start..i - 1]).map_or(T::Lit, T::Concept);
+                    out.push(Tok { t, line: at });
                     continue;
                 }
                 ("b", Some('\'')) => {
@@ -282,11 +350,12 @@ fn lex(src: &str) -> Vec<Tok> {
                 }
                 ("r" | "br" | "cr", Some('"' | '#')) => {
                     if let Some(end) = skip_raw(&c, i, &mut line) {
+                        let hashes = c[i..end].iter().take_while(|&&x| x == '#').count();
+                        let q = i + hashes;
+                        let body = &c[q + 1..end - 1];
+                        let t = string_concept(body).map_or(T::Lit, T::Concept);
                         i = end;
-                        out.push(Tok {
-                            t: T::Lit,
-                            line: at,
-                        });
+                        out.push(Tok { t, line: at });
                         continue;
                     }
                     if word == "r" && c.get(i + 1).is_some_and(|&x| ident_start(x)) {
@@ -566,6 +635,18 @@ pub fn scan(src: &str) -> Scan {
                 }
                 collect_doc_block(&lines, *block, &scope, &mut s);
                 i = end;
+            }
+            // A code-level string literal mention of a contracted machine token
+            // (C-17). Opaque macro token trees are excluded, like every reference.
+            T::Concept(token) if !opaque[i] => {
+                s.refs.push(Ref {
+                    kind: "concept".into(),
+                    scope: scope.clone(),
+                    path: vec![(*token).to_string()],
+                    alias: None,
+                    line: toks[i].line,
+                });
+                i += 1;
             }
             T::P('{') => {
                 depth += 1;
@@ -876,9 +957,15 @@ pub fn decode(text: &str) -> Option<Scan> {
                 path_attr: *attr == "1",
             }),
             ["r", kind, scope, path, alias, l]
-                if matches!(*kind, "imports" | "calls" | "documents") =>
+                if matches!(*kind, "imports" | "calls" | "documents" | "concept") =>
             {
                 if *kind == "documents" && (path.is_empty() || split_path(path).len() < 2) {
+                    return None;
+                }
+                // A concept row is only valid for a token the contract still binds;
+                // anything else means the stored scan predates the contract and is
+                // re-extracted instead of being reinterpreted.
+                if *kind == "concept" && alias_of_token(path).is_none() {
                     return None;
                 }
                 s.refs.push(Ref {
@@ -1250,7 +1337,11 @@ pub fn resolve(
                 lib_root: scans.contains_key(&lib_root).then_some(lib_root.as_str()),
                 lib_name: manifests.get(&pkg).and_then(|n| n.as_deref()),
             };
-            for r in scan.refs.iter().filter(|r| r.kind != "documents") {
+            for r in scan
+                .refs
+                .iter()
+                .filter(|r| !matches!(r.kind.as_str(), "documents" | "concept"))
+            {
                 let mut cur = modpath.clone();
                 cur.extend(r.scope.iter().cloned());
                 let Some(mut l) = ctx.land(&cur, &r.scope, &r.path, 0) else {
@@ -1290,6 +1381,9 @@ pub fn resolve(
         .collect();
     let (mut docs, mut misses) = resolve_docs(scans, manifests, &pkgs, &tree);
     refs.append(&mut docs);
+    let (mut concepts, mut concept_misses) = resolve_concepts(scans);
+    refs.append(&mut concepts);
+    misses.append(&mut concept_misses);
     for (file, (_, scan)) in scans {
         for excluded in &scan.excluded_doc_blocks {
             misses.push(json!({"kind":"doc_reference_unsupported", "path":file, "line":excluded.line, "count":1, "reason":format!("unsupported doc block: {}", excluded.reason)}));
@@ -1404,6 +1498,58 @@ fn resolve_docs(
                         inferred: true,
                     });
                 }
+            }
+        }
+    }
+    (refs, misses)
+}
+
+/// Concept alias references (C-17 #2450 G-006, user decision A 2026-11-15): a
+/// contracted machine token mentioned in a plain doc block resolves through the
+/// explicit contract to the file that defines the concept, as an ordinary `documents`
+/// edge with both-ends line and digest evidence. The contract alone creates nothing —
+/// the definition file must be in the file set and must declare the confirm symbol
+/// exactly once (absent or several: a reasoned `doc_reference_missing`, never an
+/// edge). A mention inside the definition file itself follows resolve_docs' rule:
+/// neither an edge nor a diagnostic. No new concept node kind or public identity is
+/// introduced; the edge kind stays `documents` (ontology HOLD remains).
+fn resolve_concepts(scans: &BTreeMap<String, (String, Scan)>) -> (Vec<Resolved>, Vec<Value>) {
+    let mut refs = Vec::new();
+    let mut misses = Vec::new();
+    for (file, (sha, scan)) in scans {
+        for r in scan.refs.iter().filter(|r| r.kind == "concept") {
+            let token = r.path.join("::");
+            let Some(alias) = alias_of_token(&token) else {
+                continue;
+            };
+            if alias.definition_file == file {
+                continue;
+            }
+            let Some((target_sha, target_scan)) = scans.get(alias.definition_file) else {
+                misses.push(json!({"kind": "doc_reference_missing", "path": file, "line": r.line, "reference": token, "reason": "alias_definition_absent"}));
+                continue;
+            };
+            let confirm: Vec<&Definition> = target_scan
+                .definitions
+                .iter()
+                .filter(|d| d.name == alias.confirm_symbol)
+                .collect();
+            if confirm.len() != 1 {
+                misses.push(json!({"kind": "doc_reference_missing", "path": file, "line": r.line, "reference": token, "reason": if confirm.is_empty() { "alias_definition_absent" } else { "alias_definition_ambiguous" }}));
+                continue;
+            }
+            let target = alias.definition_file;
+            for evidence in [
+                format!("file:{file}#L{}@{sha}", r.line),
+                format!("file:{target}#L{}@{target_sha}", confirm[0].line),
+            ] {
+                refs.push(Resolved {
+                    kind: "documents".into(),
+                    source: file.clone(),
+                    target: target.to_string(),
+                    evidence,
+                    inferred: true,
+                });
             }
         }
     }
@@ -1775,5 +1921,74 @@ fn f() {
             deep.refs.last().map(|r| r.path.join("::")),
             Some("crate::after::call".to_string())
         );
+    }
+
+    fn concept_of(s: &Scan) -> Vec<(String, u32)> {
+        s.refs
+            .iter()
+            .filter(|r| r.kind == "concept")
+            .map(|r| (r.path.join("::"), r.line))
+            .collect()
+    }
+
+    #[test]
+    fn the_alias_contract_carries_exactly_one_verified_row() {
+        assert_eq!(CONCEPT_ALIASES.len(), 1);
+        let a = &CONCEPT_ALIASES[0];
+        assert_eq!(a.label, "handoff protocol");
+        assert_eq!(a.token, "moai-claim-handoff:");
+        assert_eq!(a.definition_file, "src/handoff.rs");
+        assert_eq!(a.confirm_symbol, "claim_handoff");
+        assert!(a.source.contains("2026-11-15T10:16:15Z"));
+        assert!(a
+            .source
+            .contains("6d567695372616c7e76ac95ec4b1304c86c2faa26ead6ee4b34b8f364cb1d0a8"));
+        assert_eq!(
+            alias_definition_file("handoff protocol"),
+            Some("src/handoff.rs")
+        );
+        assert_eq!(alias_definition_file("unbound concept"), None);
+        assert_eq!(alias_of_token("moai-claim-handoff:"), Some(a));
+        assert_eq!(alias_of_token("moai-claim-release:"), None);
+    }
+
+    #[test]
+    fn string_literals_mention_contracted_tokens_and_comments_do_not() {
+        // The code-level mention: a string literal whose body starts with the token.
+        let s = scan("const HANDOFF_PREFIX: &str = \"moai-claim-handoff: comment=<id>\";\n");
+        assert_eq!(concept_of(&s), [("moai-claim-handoff:".to_string(), 1)]);
+        // Byte and raw string literals mention the token the same way.
+        let s = scan("const B: &[u8] = b\"moai-claim-handoff:\";\nconst R: &str = r#\"moai-claim-handoff: x\"#;\n");
+        assert_eq!(
+            concept_of(&s),
+            [
+                ("moai-claim-handoff:".to_string(), 1),
+                ("moai-claim-handoff:".to_string(), 2),
+            ]
+        );
+        // Doc blocks, even with the token in a backtick span, are another channel:
+        // the plain-doc contract (user decision 6801346885) stays untouched.
+        let s = scan("//! `moai-claim-handoff: comment=<id>`\n");
+        assert!(concept_of(&s).is_empty());
+        // Without the token's colon, outside a string, or inside a macro token tree:
+        // not a mention.
+        for src in [
+            "const S: &str = \"the moai-claim-handoff prefix without the colon\";\n",
+            "const S: &str = \"moai-claim-release: comment=<id>\";\n",
+            "//! see moai-claim-handoff: below\n",
+            "const T: &str = stringify!(\"moai-claim-handoff: x\");\n",
+        ] {
+            assert!(concept_of(&scan(src)).is_empty(), "{src}");
+        }
+    }
+
+    #[test]
+    fn concept_rows_round_trip_and_the_extractor_version_tracks_them() {
+        assert_eq!(EXTRACTOR_VERSION, "6");
+        let s = scan("const HANDOFF_PREFIX: &str = \"moai-claim-handoff:\";\n");
+        assert_eq!(decode(&encode(&s)), Some(s));
+        assert!(decode("r\tconcept\t\tmoai-claim-handoff:\t\t7\n").is_some());
+        assert!(decode("r\tconcept\t\tmoai-claim-release:\t\t7\n").is_none());
+        assert!(decode("r\tconcept\t\tunbound-token\t\t7\n").is_none());
     }
 }

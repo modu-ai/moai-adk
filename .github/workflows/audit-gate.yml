@@ -5,13 +5,16 @@
 # exactly this head by an auditor lane that is no `Moai-Session:` author. Whether the PASS cites
 # the CI run is not checked yet (a later slice).
 #
-# The check is named `audit-gate`. The integration ruleset still requires the hand-posted
-# `moai/audit` status; moving that requirement to this job (pinned to the GitHub Actions app) is
-# a ruleset change the user selects (SPEC Decisions D3, before/after JSON there).
+# The check is named `audit-gate`. This job posts the `moai/audit` commit status itself from the
+# gate's decision — success on pass, failure otherwise (card C-95) — so a PR does not wait for a
+# hand-posted status; a status posted by hand is overwritten by the next run of this job, and the
+# ruleset change that pins the status creator to the GitHub Actions app stays the user's click
+# (SPEC-20261119-leader-auditor-verdict, Risks).
 #
 # The gate is built from the base commit, not the PR head, so a PR cannot change the rule that
-# judges it. `pull_request` only (no `pull_request_target`): the token is read-only and a fork
-# PR gets no secrets. A verdict posted after the run does not start a new one (an
+# judges it. `pull_request` only (no `pull_request_target`): a fork PR gets no secrets, and the
+# token's one write is the `moai/audit` status itself (statuses: write, card C-95). A verdict
+# posted after the run does not start a new one (an
 # `issue_comment` workflow runs from the default branch, which is not v2026.11.0): re-run this
 # job after posting a verdict (`gh run rerun <run-id>`); the job reads the comments when it runs.
 name: audit-gate
@@ -33,11 +36,13 @@ jobs:
     name: audit-gate
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    # Read-only: the PR (pull-requests) and its comments (issues).
+    # Read-only over the PR (pull-requests, issues); `statuses: write` posts the `moai/audit`
+    # commit status itself (card C-95), so no PR waits for a hand-posted status.
     permissions:
       contents: read
       pull-requests: read
       issues: read
+      statuses: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -63,4 +68,27 @@ jobs:
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
           REPO: ${{ github.repository }}
         run: |
-          ./target/debug/moai audit-gate --pr "$PR_NUMBER" --head "$PR_HEAD" --repo "$REPO" --require-pass
+          # The gate's exit code must not kill this script (the runner's shell runs -e): a
+          # crashed or failing gate lands in the error path below and posts the failure
+          # (tier-2 audit B1). The envelope rides a mktemp file in the runner's temp folder, not
+          # a fixed /tmp path (B2), and is removed when the step ends (re-audit B1).
+          result_file="$(mktemp "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/audit-gate.XXXXXX")"
+          trap 'rm -f "$result_file"' EXIT
+          ./target/debug/moai audit-gate --pr "$PR_NUMBER" --head "$PR_HEAD" --repo "$REPO" \
+            | tee "$result_file" > /dev/null || true
+          # The parses are guarded too: a crashed gate leaves garbage in the file, and under
+          # -e a failing parse would stop the step before the failure is posted (B1).
+          state=$(RESULT_FILE="$result_file" python3 -c 'import json, os; d=json.load(open(os.environ["RESULT_FILE"])); print(d["result"]["state"] if d.get("ok") else "")') || true
+          comment=$(RESULT_FILE="$result_file" python3 -c 'import json, os; d=json.load(open(os.environ["RESULT_FILE"])); c=d["result"].get("comment"); print(f"#issuecomment-{c}" if c else "")') || true
+          if [ -z "$state" ]; then
+            gh api -X POST "repos/$REPO/statuses/$PR_HEAD" -f state=failure -f context=moai/audit -f "target_url=https://github.com/$REPO/pull/$PR_NUMBER" -f description="audit gate error"
+            echo "audit-gate run failed; moai/audit failure posted" >&2
+            exit 1
+          fi
+          if [ "$state" = pass ]; then
+            gh api -X POST "repos/$REPO/statuses/$PR_HEAD" -f state=success -f context=moai/audit -f "target_url=https://github.com/$REPO/pull/$PR_NUMBER$comment" -f description="audit gate pass"
+            echo "audit gate pass; moai/audit status posted"
+          else
+            gh api -X POST "repos/$REPO/statuses/$PR_HEAD" -f state=failure -f context=moai/audit -f "target_url=https://github.com/$REPO/pull/$PR_NUMBER$comment" -f description="audit gate $state"
+            exit 1
+          fi
