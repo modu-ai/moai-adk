@@ -10,7 +10,9 @@
 //! is not here yet. `input` checks what a user types for `card add` and reads a card's name
 //! (`C-12`, `#3066`). `spec_link` is the card's link to the SPEC it works on (`card spec`,
 //! SDD-4). `inbox` is the leader's read-only list of the lane notes that wait for an answer
-//! (`card inbox`, card C-116).
+//! (`card inbox`, card C-116). `precheck` is the leader's read-only look before readying or
+//! dispatching a card (card C-96): already-done on the tip, or colliding with a recorded
+//! decision.
 
 pub mod command;
 pub mod dispatch;
@@ -19,5 +21,6 @@ pub mod export_dir;
 pub mod export_format;
 pub mod inbox;
 pub mod input;
+pub mod precheck;
 pub mod spec_link;
 pub mod work;
