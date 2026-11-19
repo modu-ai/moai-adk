@@ -585,5 +585,47 @@ class UsageTest(unittest.TestCase):
         decoy.assert_untouched(self)
 
 
+VERIFY_FILE = REPO_ROOT / "skills" / "moai" / "workflows" / "verify.md"
+
+
+class VerifyStepTest(unittest.TestCase):
+    """SPEC-20261119-smoke-verify-step: the VERIFY workflow names this harness as the first
+    check before a commit, so a lane or an auditor does not pass it by."""
+
+    # The sentences REQ-1 to REQ-4 and REQ-8 require, each as the exact words of verify.md.
+    SENTENCES = (
+        "In the moai-adk repository, before the first commit of a change that touches install, "
+        "update, `/moai project` or the launcher, run the smoke harness first: "
+        "`tools/smoke/run.sh <area>`",
+        "on the debug binary just built (`--bin PATH` names another one)",
+        "a missing binary is a usage error (exit 2) and not a pass",
+        "It boots the built binary in an empty temporary HOME and a temporary git project and "
+        "never reads the real HOME",
+        "Take its last line, `smoke: <area> pass|fail steps=<n>`, as the evidence of the check",
+        "a smoke run that was not made is `not_run`, never `passed`",
+    )
+
+    @staticmethod
+    def verify_text():
+        # Line breaks and runs of spaces do not change a sentence.
+        return " ".join(VERIFY_FILE.read_text(encoding="utf-8").split())
+
+    def test_every_sentence_is_in_verify_md(self):
+        text = self.verify_text()
+        for sentence in self.SENTENCES:
+            self.assertIn(sentence, text, f"verify.md lacks {sentence!r}")
+
+    def test_the_areas_named_are_the_areas_the_harness_accepts(self):
+        text = self.verify_text()
+        start = text.find(self.SENTENCES[0])
+        self.assertGreaterEqual(start, 0, "verify.md lacks the smoke paragraph")
+        last = "never `passed`."
+        end = text.find(last, start)
+        self.assertGreater(end, start, "the smoke paragraph does not end where it should")
+        paragraph = text[start : end + len(last)]
+        for area in (*TOOL.AREAS, "all"):
+            self.assertIn(f"`{area}`", paragraph, f"the paragraph does not name `{area}`")
+
+
 if __name__ == "__main__":
     unittest.main()

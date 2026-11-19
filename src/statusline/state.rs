@@ -876,6 +876,10 @@ fn github_counts(anchor: &Path) -> GitHubCounts {
 /// never the render budget.
 pub const CARDS_BUSY_TIMEOUT: Duration = Duration::from_millis(50);
 
+// Card C-68 AC-2 (the C-65 audit's N1): the ledger wait stays a bounded part of the render
+// budget — 50 ms today, 100 ms at the very most. A value above the bound fails this build.
+const _: () = assert!(CARDS_BUSY_TIMEOUT.as_millis() <= 100);
+
 /// Card C-65: the card counts of `project`'s local ledger
 /// (`$HOME/.moai/projects/<project_id>/`), the one `moai card list` reads. Read-only like that
 /// command (`ledger::open`: no folder, no file, no journal; no process and no network), with

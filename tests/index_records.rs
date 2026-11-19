@@ -70,6 +70,7 @@ fn build(root: &Path) -> Value {
         root,
         &IndexBuildRequest {
             protocol_version: 1,
+            scope: Vec::new(),
         },
     )
     .unwrap()
@@ -322,6 +323,7 @@ fn a_view_that_does_not_match_its_manifest_is_unavailable() {
             &root,
             &IndexBuildRequest {
                 protocol_version: 1,
+                scope: Vec::new(),
             },
         )
         .unwrap_err();
