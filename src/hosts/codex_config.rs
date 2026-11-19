@@ -414,7 +414,6 @@ fn config_state(
         root.join(".codex"),
         state_dir.clone(),
         state_dir.join("manifests"),
-        state_dir.join(BACKUP_DIR),
     ] {
         refuse_symlink_dir(&dir)?;
     }
@@ -463,6 +462,10 @@ fn config_state(
     } else {
         (found, Vec::new())
     };
+    // Only a replacement keeps a copy, so only it needs the copies' folder to be a real folder.
+    if !replaced.is_empty() {
+        refuse_symlink_dir(&state_dir.join(BACKUP_DIR))?;
+    }
     let after = if conflicts.is_empty() && !changes.is_empty() {
         for (key, value) in &changes {
             match value {
@@ -684,7 +687,9 @@ fn write_backup(b: &Backup) -> Result<()> {
             "backup {} holds other bytes; exclusive create refused",
             b.rel
         )),
-        None => crate::agents::write_replace(&b.path, None, &b.bytes),
+        // Private: the config can hold secrets (an MCP server's `env`), and the copy must not
+        // be more readable than the file it keeps, whatever the original's mode was.
+        None => crate::apply::publish_exclusive_mode(&b.path, &b.bytes, Some(0o600)),
     }
 }
 

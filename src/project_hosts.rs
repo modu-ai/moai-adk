@@ -208,6 +208,10 @@ fn codex_config_step(root: &Path, shown: &str, config_home: Result<PathBuf, Stri
         Ok(plan) => {
             let mut step = config_from_plan(shown, &desired, &plan);
             if step.state == "conflict" {
+                // The two values are in the step itself: reading the `diff` needs no command.
+                if plan["diff"].is_array() {
+                    step.preview["diff"] = plan["diff"].clone();
+                }
                 // The replacement's own plan (read-only) gives the digest its command needs;
                 // without it the user still gets `keep` and `diff`.
                 let replace = codex_config::config_plan_with(root, &home, request, true).ok();
@@ -246,7 +250,11 @@ fn conflict_choices(shown: &str, desired: &Value, replace: Option<&Value>) -> Va
     {
         choices.push(json!({
             "id": "replace", "recommended": false, "writes": true,
-            "label": "keep a copy of your Codex config, then set the MoAI value",
+            "label": if replace["backup"]["path"].is_string() {
+                "keep a copy of your Codex config, then set the MoAI value"
+            } else {
+                "set the MoAI value (there is no config file to keep a copy of)"
+            },
             "backup": replace["backup"]["path"],
             "command": {
                 "argv": words(&[

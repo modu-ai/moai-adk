@@ -10,6 +10,7 @@ use common::CleanEnv;
 use serde_json::{json, Value};
 use std::{
     fs,
+    os::unix::fs::PermissionsExt,
     path::PathBuf,
     process::{Command, Stdio},
 };
@@ -100,21 +101,31 @@ impl Fx {
 
     /// `codex-config-plan`, with or without the replace flag.
     fn config_plan(&self, replace: bool) -> Value {
+        self.config_plan_for(&want(), replace)
+    }
+
+    /// [`Fx::config_plan`] for another request.
+    fn config_plan_for(&self, request: &Value, replace: bool) -> Value {
         let mut args = vec!["codex-config-plan", self.p()];
         if replace {
             args.push("--replace-with-backup");
         }
-        self.call(&args, want().to_string().as_bytes())
+        self.call(&args, request.to_string().as_bytes())
     }
 
     /// `codex-config-apply` of `digest`, with or without the replace flag.
     fn config_apply(&self, digest: &str, replace: bool) -> (i32, Value) {
+        self.config_apply_for(&want(), digest, replace)
+    }
+
+    /// [`Fx::config_apply`] for another request.
+    fn config_apply_for(&self, request: &Value, digest: &str, replace: bool) -> (i32, Value) {
         let mut args = vec!["codex-config-apply", self.p()];
         if replace {
             args.push("--replace-with-backup");
         }
         args.extend(["--plan-digest", digest, "--permission-reference", REF]);
-        self.run(&args, want().to_string().as_bytes())
+        self.run(&args, request.to_string().as_bytes())
     }
 
     /// Every file under the project and HOME with its bytes, in path order.
@@ -231,9 +242,15 @@ fn plan_lists_each_conflicting_key_with_both_values() {
     assert_eq!(diff.len(), 1, "{plan}");
     assert_eq!(diff[0]["key"], "tui.status_line", "{plan}");
     assert_eq!(diff[0]["current"], json!(["model"]), "{plan}");
+    // The value MoAI would write is the one the replace plan says the key holds afterwards.
+    let replace = fx.config_plan(true);
     assert!(
         diff[0]["desired"].as_array().is_some_and(|d| !d.is_empty()),
         "{plan}"
+    );
+    assert_eq!(
+        diff[0]["desired"], replace["status_line"]["after"],
+        "{plan} / {replace}"
     );
     assert!(
         plan.get("backup").is_none(),
@@ -272,7 +289,7 @@ fn plan_with_the_flag_reports_replace_and_a_digest_of_its_own_and_writes_nothing
     assert_eq!(before, fx.tree(), "the plan wrote something");
 }
 
-/// AC-1 (REQ-7): without a conflict the flag changes nothing: same action, same digest, no
+/// AC-1 (REQ-8): without a conflict the flag changes nothing: same action, same digest, no
 /// backup.
 #[test]
 fn plan_with_the_flag_and_no_conflict_is_the_plain_plan() {
@@ -287,7 +304,7 @@ fn plan_with_the_flag_and_no_conflict_is_the_plain_plan() {
 
 // ---- apply ------------------------------------------------------------------------------
 
-/// AC-2 (REQ-4, REQ-5, REQ-10): the replace apply backs the original up byte for byte, sets the
+/// AC-2 (REQ-4, REQ-6, REQ-12): the replace apply backs the original up byte for byte, sets the
 /// key, keeps every other key and comment, and the next plan has nothing to do.
 #[test]
 fn apply_replace_backs_the_file_up_then_writes_and_settles() {
@@ -302,8 +319,17 @@ fn apply_replace_backs_the_file_up_then_writes_and_settles() {
         "the backup is the original"
     );
     assert_eq!(out["result"]["backup"]["path"], json!(path), "{out}");
+    // Private whatever the original's mode was: a config can hold secrets.
+    let mode = fs::metadata(fx.root.join(&path))
+        .unwrap()
+        .permissions()
+        .mode();
+    assert_eq!(mode & 0o777, 0o600, "backup mode {mode:o}");
+    // Everything before the replaced value is the user's text, byte for byte.
     let now = String::from_utf8(fx.read(CONFIG)).unwrap();
-    assert!(now.contains("# mine\nmodel = \"x\" # keep\n"), "{now}");
+    let kept = "# mine\nmodel = \"x\" # keep\n\n[tui]\nstatus_line = [";
+    assert!(now.starts_with(kept), "{now}");
+    assert!(USER_CONFIG.starts_with(kept), "{USER_CONFIG}");
     assert!(!now.contains("status_line = [\"model\"]"), "{now}");
     assert_ne!(now, USER_CONFIG);
     for flag in [false, true] {
@@ -324,7 +350,7 @@ fn apply_with_the_flag_refuses_the_plain_digest() {
     assert_eq!(before, fx.tree(), "a refused apply wrote something");
 }
 
-/// AC-2 (REQ-6): without the flag a conflict is refused and nothing is written, as before.
+/// AC-2 (REQ-7): without the flag a conflict is refused and nothing is written, as before.
 #[test]
 fn apply_without_the_flag_refuses_a_conflict_and_writes_nothing() {
     let fx = Fx::with_user_config();
@@ -356,7 +382,7 @@ fn apply_refuses_a_backup_name_that_holds_other_bytes() {
     );
 }
 
-/// AC-2 (REQ-5): a backup of the same bytes left by an interrupted run is reused, so the apply
+/// AC-2 (REQ-4, REQ-6): a backup of the same bytes left by an interrupted run is reused, so the apply
 /// can be run again.
 #[test]
 fn apply_reuses_a_backup_that_already_holds_the_same_bytes() {
@@ -369,7 +395,7 @@ fn apply_reuses_a_backup_that_already_holds_the_same_bytes() {
     assert_eq!(fx.read(&path), USER_CONFIG.as_bytes());
 }
 
-/// AC-2 (REQ-7): the flag on a config without a conflict applies as usual and writes no backup.
+/// AC-2 (REQ-8): the flag on a config without a conflict applies as usual and writes no backup.
 #[test]
 fn apply_with_the_flag_and_no_conflict_writes_no_backup() {
     let fx = Fx::new();
@@ -383,6 +409,66 @@ fn apply_with_the_flag_and_no_conflict_writes_no_backup() {
     );
 }
 
+/// AC-2 (REQ-1, REQ-4): every conflicting key is listed and replaced together, in one backup.
+#[test]
+fn apply_replaces_every_conflicting_key_with_one_backup() {
+    let user = "project_doc_max_bytes = 65536 # mine\n\n[tui]\nstatus_line = [\"model\"]\n";
+    let fx = Fx::new();
+    fx.write(CONFIG, user);
+    let two = json!({"tui.status_line": "moai", "project_doc_max_bytes": 32768});
+    let plain = fx.config_plan_for(&two, false);
+    let keys: Vec<&str> = plain["diff"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|d| d["key"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        keys,
+        ["project_doc_max_bytes", "tui.status_line"],
+        "{plain}"
+    );
+    let plan = fx.config_plan_for(&two, true);
+    assert_eq!(
+        plan["replaced"],
+        json!(["project_doc_max_bytes", "tui.status_line"]),
+        "{plan}"
+    );
+    let (code, out) = fx.config_apply_for(&two, &digest(&plan), true);
+    assert_eq!(code, 0, "{out}");
+    assert_eq!(fx.read(&backup_rel(&plan)), user.as_bytes());
+    let now = String::from_utf8(fx.read(CONFIG)).unwrap();
+    assert!(now.contains("project_doc_max_bytes = 32768"), "{now}");
+    assert!(!now.contains("65536"), "{now}");
+    assert_eq!(fx.config_plan_for(&two, false)["action"], "unchanged");
+}
+
+/// AC-2 (REQ-5): a backup folder that is a link is refused for a replacement, and a plain plan,
+/// which keeps no copy, is not blocked by it.
+#[test]
+fn a_linked_backup_folder_blocks_the_replacement_only() {
+    let fx = Fx::with_user_config();
+    let rel = backup_rel(&fx.config_plan(true));
+    let folder = std::path::Path::new(&rel).parent().unwrap().to_path_buf();
+    let elsewhere = fx.root.join("elsewhere");
+    fs::create_dir_all(&elsewhere).unwrap();
+    fs::create_dir_all(fx.root.join(folder.parent().unwrap())).unwrap();
+    std::os::unix::fs::symlink(&elsewhere, fx.root.join(&folder)).unwrap();
+
+    assert_eq!(fx.config_plan(false)["action"], "conflict");
+    let (code, out) = fx.run(
+        &["codex-config-plan", fx.p(), "--replace-with-backup"],
+        want().to_string().as_bytes(),
+    );
+    assert_eq!((code, &out["ok"]), (1, &json!(false)), "{out}");
+    assert_eq!(
+        fs::read_dir(&elsewhere).unwrap().count(),
+        0,
+        "a copy went through the link"
+    );
+    assert_eq!(fx.read(CONFIG), USER_CONFIG.as_bytes());
+}
+
 // ---- project-update-plan step -----------------------------------------------------------
 
 fn choices(plan: &Value) -> Vec<Value> {
@@ -392,7 +478,7 @@ fn choices(plan: &Value) -> Vec<Value> {
         .clone()
 }
 
-/// AC-3 (REQ-8, REQ-9): the conflict step lists `keep` (recommended, no command), `diff`
+/// AC-3 (REQ-9, REQ-11): the conflict step lists `keep` (recommended, no command), `diff`
 /// (read-only) and `replace` (the apply with the replace digest and the backup path).
 #[test]
 fn step_lists_keep_diff_and_replace_in_that_order() {
@@ -401,6 +487,9 @@ fn step_lists_keep_diff_and_replace_in_that_order() {
     let plan = fx.update_plan();
     let s = step(&plan, "codex-config");
     assert_eq!(s["state"], "conflict", "{s}");
+    // The values are in the step itself, so `diff` needs no command to be read.
+    assert_eq!(s["preview"]["diff"][0]["key"], "tui.status_line", "{s}");
+    assert_eq!(s["preview"]["diff"][0]["current"], json!(["model"]), "{s}");
     let list = choices(&plan);
     let ids: Vec<&str> = list.iter().map(|c| c["id"].as_str().unwrap()).collect();
     assert_eq!(ids, ["keep", "diff", "replace"], "{s}");
@@ -428,7 +517,7 @@ fn step_lists_keep_diff_and_replace_in_that_order() {
     );
 }
 
-/// AC-3 (REQ-9, REQ-10): the printed `diff` and `replace` commands run as printed, the digest
+/// AC-3 (REQ-11, REQ-12): the printed `diff` and `replace` commands run as printed, the digest
 /// the step prints is the one the replace plan computes, and the project settles afterwards.
 #[test]
 fn step_printed_commands_run_as_printed() {
@@ -474,7 +563,7 @@ fn step_printed_commands_run_as_printed() {
     );
 }
 
-/// AC-3 (REQ-8): only a conflict carries choices.
+/// AC-3 (REQ-9): only a conflict carries choices.
 #[test]
 fn step_without_a_conflict_carries_no_choices() {
     let fx = Fx::new();
