@@ -6,11 +6,12 @@
 //! worktree or folder is never moved, reset, forced or deleted (REQ-6).
 
 use super::{
-    card_notes, newest_marker, parse_head_args, tip_json, tip_of, Git, HeadArg, Out, Ready, Result,
-    Tip, TEXT_DRIVER,
+    card_notes, driver_names, newest_marker, parse_head_args, text_merge_args, tip_json, tip_of,
+    Git, HeadArg, Out, Ready, Result, Tip,
 };
 use crate::{home_workdir, hygiene, worktree};
 use serde_json::{json, Value};
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -55,13 +56,34 @@ fn short(sha: &str) -> &str {
 /// The date part of the branch name: `--date` when given, else today (UTC).
 fn date_part(date: Option<&str>) -> Result<String> {
     match date {
-        Some(d) if d.len() == 8 && d.bytes().all(|b| b.is_ascii_digit()) => Ok(d.to_string()),
+        Some(d) if is_date(d) => Ok(d.to_string()),
         Some(d) => Err(format!(
-            "bundle build refused: --date `{d}` is eight digits, YYYYMMDD"
+            "bundle build refused: --date `{d}` is eight digits YYYYMMDD with a month 01 to 12 and a day 01 to 31"
         )),
         None => Ok(
             hygiene::utc_date(crate::statusline::counts::now_unix().max(0) as u64).replace('-', ""),
         ),
+    }
+}
+
+/// Eight digits with a month 01 to 12 and a day 01 to 31 (D-13).
+fn is_date(d: &str) -> bool {
+    d.len() == 8
+        && d.bytes().all(|b| b.is_ascii_digit())
+        && matches!(d[4..6].parse::<u8>(), Ok(1..=12))
+        && matches!(d[6..8].parse::<u8>(), Ok(1..=31))
+}
+
+/// A word of a command line, quoted for a shell when it holds a character outside the safe set
+/// (D-11): a ref name may hold `;` or `$(…)`.
+fn shell_word(s: &str) -> String {
+    let safe = !s.is_empty()
+        && s.bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b"_./@:=,+%^~-".contains(&b));
+    if safe {
+        s.to_string()
+    } else {
+        format!("'{}'", s.replace('\'', r"'\''"))
     }
 }
 
@@ -102,18 +124,19 @@ fn resolve(
                 },
             },
         };
-        if git.commit(&head).is_none() {
+        // D-13: a name for a tag is the commit the tag points to; that commit is what is merged.
+        let Some(commit) = git.commit(&head) else {
             problems.push(format!(
                 "{}: the head {} is not a commit here (fetch first)",
                 a.card,
                 short(&head)
             ));
             continue;
-        }
-        let in_tip = git.is_ancestor(&head, &tip.sha);
+        };
+        let in_tip = git.is_ancestor(&commit, &tip.sha);
         out.push(Wanted {
             card: a.card.clone(),
-            head,
+            head: commit,
             in_tip,
         });
     }
@@ -130,9 +153,18 @@ fn resolve(
     Ok(out)
 }
 
-fn ref_exists(git: &Git, name: &str) -> bool {
-    git.raw(&["show-ref", "--verify", "--quiet", name])
-        .is_ok_and(|o| o.code == Some(0))
+/// The local and `origin` branches under `m-flow/`, as full ref names (one read for all the
+/// numbers of `number`).
+fn m_flow_refs(git: &Git) -> Result<HashSet<String>> {
+    Ok(git
+        .lines(&[
+            "for-each-ref",
+            "--format=%(refname)",
+            "refs/heads/m-flow/",
+            "refs/remotes/origin/m-flow/",
+        ])?
+        .into_iter()
+        .collect())
 }
 
 /// REQ-5: the lowest `n` whose branch (local and `origin`), registered worktree and folder are
@@ -147,11 +179,12 @@ fn number(git: &Git, dir: &Path, home: &Path, date: &str) -> Result<(u32, String
         .iter()
         .map(|e| worktree::resolve_existing(Path::new(&e.path)))
         .collect();
+    let refs = m_flow_refs(git)?;
     for n in 1..=999u32 {
         let branch = format!("m-flow/bundle-{date}-{n}");
         let folder = home_workdir::worktree_dir(home, &primary, &format!("bundle-{n}"))?;
-        let taken = ref_exists(git, &format!("refs/heads/{branch}"))
-            || ref_exists(git, &format!("refs/remotes/origin/{branch}"))
+        let taken = refs.contains(&format!("refs/heads/{branch}"))
+            || refs.contains(&format!("refs/remotes/origin/{branch}"))
             || registered.contains(&worktree::resolve_existing(&folder))
             || std::fs::symlink_metadata(&folder).is_ok();
         if !taken {
@@ -208,7 +241,16 @@ fn merge_one(folder: &Path, branch: &str, card: &str, head: &str, before: &str) 
     let w = Writer { dir: folder };
     let read = Git { dir: folder };
     let message = format!("Merge {card} head {} into {branch}", short(head));
-    let o = w.run(&["-c", TEXT_DRIVER, "merge", "--no-ff", "-m", &message, head])?;
+    // D-12: no merge driver the configuration names (the clone's or the user's) decides.
+    let cfg = w.run(&["config", "--get-regexp", r"^merge\..*\.driver$"])?;
+    let drivers = text_merge_args(&if cfg.code == Some(0) {
+        driver_names(&cfg.out)
+    } else {
+        Vec::new()
+    });
+    let mut all: Vec<&str> = drivers.iter().map(String::as_str).collect();
+    all.extend(["merge", "--no-ff", "-m", &message, head]);
+    let o = w.run(&all)?;
     match o.code {
         Some(0) => read
             .commit("HEAD")
@@ -294,15 +336,24 @@ pub fn build(
     let pinned = wt
         .commit(&format!("refs/heads/{branch}"))
         .ok_or_else(|| left_behind(&branch, &folder, "the branch cannot be read back"))?;
-    let rebuild = if dropped.is_empty() {
+    // REQ-11, D-11: the same build without the dropped heads, every word quoted for a shell; empty
+    // when nothing was dropped or no head that is not in the tip would be left (audit N2, N5).
+    let kept: Vec<&Wanted> = wanted
+        .iter()
+        .filter(|w| !dropped.iter().any(|d| d["card"] == w.card.as_str()))
+        .collect();
+    let rebuild = if dropped.is_empty() || kept.iter().all(|w| w.in_tip) {
         String::new()
     } else {
-        let kept: Vec<String> = wanted
+        let heads: Vec<String> = kept
             .iter()
-            .filter(|w| !dropped.iter().any(|d| d["card"] == w.card.as_str()))
-            .map(|w| format!("{}={}", w.card, w.head))
+            .map(|w| shell_word(&format!("{}={}", w.card, w.head)))
             .collect();
-        format!("moai bundle build {} --tip {}", kept.join(" "), tip.name)
+        format!(
+            "moai bundle build {} --tip {}",
+            heads.join(" "),
+            shell_word(&tip.name)
+        )
     };
     Ok(json!({
         "action": "build", "number": n, "branch": branch,
