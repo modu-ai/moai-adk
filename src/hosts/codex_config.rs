@@ -381,16 +381,17 @@ struct ConfigState {
     digest: String,
 }
 
-/// The copy of the config a replacement keeps (SPEC-20261119-codex-conflict-choices).
-struct Backup {
-    rel: String,
-    path: PathBuf,
-    bytes: Vec<u8>,
+/// The copy of the config a replacement keeps (SPEC-20261119-codex-conflict-choices). The hook
+/// files keep theirs the same way (SPEC-20261120-hooks-conflict-choices), so the writer is shared.
+pub(crate) struct Backup {
+    pub(crate) rel: String,
+    pub(crate) path: PathBuf,
+    pub(crate) bytes: Vec<u8>,
 }
 
 /// The folder of the copies, under the project state folder, which the managed `.gitignore`
 /// block already ignores; a copy is named by the digest of the bytes it holds.
-const BACKUP_DIR: &str = "backups";
+pub(crate) const BACKUP_DIR: &str = "backups";
 
 fn config_state(
     project: &Path,
@@ -680,7 +681,7 @@ pub fn config_plan_with(
 
 /// Keeps the copy of the config before a replacement. A copy of the same bytes left by an
 /// interrupted run is reused; a file of that name with other bytes is never overwritten.
-fn write_backup(b: &Backup) -> Result<()> {
+pub(crate) fn write_backup(b: &Backup) -> Result<()> {
     match read_existing(&b.path)? {
         Some(held) if held == b.bytes => Ok(()),
         Some(_) => Err(format!(

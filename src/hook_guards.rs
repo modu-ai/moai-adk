@@ -26,7 +26,8 @@
 //!   certificates and test fixtures use them too. Writes outside the project are not refused
 //!   here (decision pending: the hook cannot see a session's extra directories).
 //! - A5 SPEC before code (card C-86, user decision 2026-11-17 "권고 말고 강제",
-//!   SPEC-20261117-spec-before-code): on a SPEC work branch `spec/<yyyymmdd>-<slug>`, a file
+//!   SPEC-20261117-spec-before-code): on a SPEC work branch `spec/<slug>-<yyyymmdd>` (the older
+//!   `spec/<yyyymmdd>-<slug>` is read too, SPEC-20261119-spec-branch-name-first), a file
 //!   write inside the work tree but outside `.moai/specs/` waits until
 //!   `.moai/specs/SPEC-<yyyymmdd>-<slug>/spec.md` exists and its frontmatter names that id.
 //!   Writing under `.moai/specs/` is always allowed, so the SPEC itself is the way out. Paths
@@ -52,6 +53,7 @@
 //! path check (its added lines are still checked for secrets); input past the 4 MiB stdin
 //! bound is an engine error and not checked at all (decision D1).
 
+use crate::spec_take::spec_branch::{self, Resolved};
 use serde_json::Value;
 use std::path::{Component, Path, PathBuf};
 
@@ -1103,23 +1105,12 @@ pub fn bash_lock_guard(command: &str, cwd: &Path) -> Option<&'static str> {
     crate::tdd::lock_refusal(&paths, cwd)
 }
 
-const SPEC_FIRST: &str = "MoAI tool-preflight: on a SPEC work branch (spec/<yyyymmdd>-<slug>), files outside .moai/specs/ are written only after the branch's SPEC exists; write .moai/specs/SPEC-<yyyymmdd>-<slug>/spec.md first (`moai spec new`; when the branch date is not today, `moai spec new --date YYYY-MM-DD`).";
+const SPEC_FIRST: &str = "MoAI tool-preflight: on a SPEC work branch (spec/<slug>-<yyyymmdd>; the older spec/<yyyymmdd>-<slug> is still read), files outside .moai/specs/ are written only after the branch's SPEC exists; write .moai/specs/SPEC-<yyyymmdd>-<slug>/spec.md first (`moai spec new`; when the branch date is not today, `moai spec new --date YYYY-MM-DD`).";
 
-/// The SPEC id a work branch is for: `spec/<yyyymmdd>-<slug>` with eight digits and a slug of
-/// lower-case letters, digits and inner hyphens (the `moai spec new` naming) gives
-/// `SPEC-<yyyymmdd>-<slug>`; any other branch gives `None`.
-fn spec_branch_id(branch: &str) -> Option<String> {
-    let rest = branch.strip_prefix("spec/")?;
-    let (date, slug) = rest.split_once('-')?;
-    let date_ok = date.len() == 8 && date.bytes().all(|b| b.is_ascii_digit());
-    let slug_ok = !slug.is_empty()
-        && !slug.starts_with('-')
-        && !slug.ends_with('-')
-        && slug
-            .bytes()
-            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-');
-    (date_ok && slug_ok).then(|| format!("SPEC-{date}-{slug}"))
-}
+/// Refusal for a branch name that reads as two SPEC ids with no SPEC folder of exactly one of
+/// them (SPEC-20261119-spec-branch-name-first REQ-5). A fixed string: the branch name is input
+/// and is not echoed.
+const SPEC_TWO_IDS: &str = "MoAI tool-preflight: this SPEC work branch name reads as two SPEC ids (read name first as spec/<slug>-<yyyymmdd> or date first as spec/<yyyymmdd>-<slug>, and with or without a trailing repair suffix -r<N>, it gives different ids), so files outside .moai/specs/ are refused; create the branch with `moai spec take` (it names it spec/<slug>-<yyyymmdd> and refuses a name that reads two ways), or make the SPEC folder of only the intended id under .moai/specs/.";
 
 /// The branch HEAD names in the work tree at `top`, read from the file system: `.git` is the
 /// git folder, or a file `gitdir: <folder>` for a linked worktree. `None` when detached or
@@ -1230,7 +1221,8 @@ fn verify_commands(value: &str) -> Vec<String> {
         .collect()
 }
 
-/// The branch SPEC of the work tree holding `dir`: the branch must be `spec/<yyyymmdd>-<slug>`,
+/// The branch SPEC of the work tree holding `dir`: the branch must be a SPEC branch in either
+/// form (`spec/<slug>-<yyyymmdd>` or the old `spec/<yyyymmdd>-<slug>`, with an optional `-rN`),
 /// the SPEC `.moai/specs/SPEC-<yyyymmdd>-<slug>/spec.md` must read (at most 1 MiB), and HEAD's
 /// commit must read. Every `verify:` command of its criteria is listed by criterion and position;
 /// criteria with `manual:` or `unknown:` and commands with a placeholder are not. `None` when any
@@ -1238,7 +1230,12 @@ fn verify_commands(value: &str) -> Vec<String> {
 pub fn ac_work(dir: &Path) -> Option<AcWork> {
     let top = work_tree_top(dir)?;
     let branch = work_tree_branch(&top)?;
-    let spec = spec_branch_id(&branch)?;
+    // Both branch forms, with or without a repair suffix; a name that reads as two SPECs is
+    // settled by the SPEC folder of exactly one reading, else it names no SPEC here.
+    let spec = match spec_branch::resolve(&branch, Some(&top.join(".moai").join("specs"))) {
+        Resolved::One(id) => id,
+        Resolved::NotSpec | Resolved::Ambiguous(_) => return None,
+    };
     let head = head_sha(&top)?;
     let path = top.join(".moai/specs").join(&spec).join("spec.md");
     let meta = std::fs::symlink_metadata(&path).ok()?;
@@ -1297,7 +1294,7 @@ fn spec_names(spec: &Path, id: &str) -> bool {
 /// above its resolved path — not the one holding the session's folder (C-86 audit N2): a
 /// worktree nested in the primary checkout (`.claude/worktrees/<x>`) has its own branch.
 fn spec_before_code(paths: &[String], cwd: &Path) -> Option<&'static str> {
-    let waits = paths.iter().any(|p| {
+    paths.iter().find_map(|p| {
         let path = Path::new(p);
         let absolute = if path.is_absolute() {
             path.to_path_buf()
@@ -1305,21 +1302,25 @@ fn spec_before_code(paths: &[String], cwd: &Path) -> Option<&'static str> {
             cwd.join(path)
         };
         let resolved = crate::hook_config::canonical(&absolute);
-        let Some(top) = work_tree_top(&resolved) else {
-            return false;
-        };
+        let top = work_tree_top(&resolved)?;
         // #3176 audit N2: a work tree without a `.moai` folder at its root is not a MoAI
         // project; its `spec/…` branch is not this rule's.
         if !top.join(".moai").is_dir() {
-            return false;
+            return None;
         }
-        let Some(id) = work_tree_branch(&top).and_then(|b| spec_branch_id(&b)) else {
-            return false;
-        };
         let specs = top.join(".moai").join("specs");
-        !resolved.starts_with(&specs) && !spec_names(&specs.join(&id).join("spec.md"), &id)
-    });
-    waits.then_some(SPEC_FIRST)
+        let branch = work_tree_branch(&top)?;
+        // Both branch forms, with or without a repair suffix; a name that reads two ways is
+        // settled by the SPEC folder of exactly one of the readings.
+        match spec_branch::resolve(&branch, Some(&specs)) {
+            Resolved::NotSpec => None,
+            _ if resolved.starts_with(&specs) => None,
+            Resolved::One(id) => {
+                (!spec_names(&specs.join(&id).join("spec.md"), &id)).then_some(SPEC_FIRST)
+            }
+            Resolved::Ambiguous(_) => Some(SPEC_TWO_IDS),
+        }
+    })
 }
 
 const OUTSIDE_PROJECT: &str = "MoAI tool-preflight: a write outside the project is refused; add the folder to `allow` under [hooks.outside_project_writes] in ~/.moai-cli/hook-config.toml to permit it.";
@@ -1779,6 +1780,76 @@ mod tests {
 
     fn bypass() -> String {
         format!("--no-{}", "verify")
+    }
+
+    /// A work tree on `branch` (a `.git` folder with HEAD and the branch ref, no git process)
+    /// holding one SPEC folder per id in `specs`, each with one criterion and one command.
+    fn ac_tree(branch: &str, specs: &[&str]) -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        std::fs::create_dir_all(root.join(".git")).unwrap();
+        std::fs::write(
+            root.join(".git/HEAD"),
+            format!("ref: refs/heads/{branch}\n"),
+        )
+        .unwrap();
+        let reference = root.join(".git/refs/heads").join(branch);
+        std::fs::create_dir_all(reference.parent().unwrap()).unwrap();
+        std::fs::write(reference, "0123456789abcdef0123456789abcdef01234567\n").unwrap();
+        for id in specs {
+            let folder = root.join(".moai/specs").join(id);
+            std::fs::create_dir_all(&folder).unwrap();
+            std::fs::write(
+                folder.join("spec.md"),
+                format!(
+                    "---\nid: {id}\ntitle: \"demo\"\nstatus: draft\nrevision: 1\ncreated: 2026-11-17\n---\n\n## Acceptance\n\n- AC-1 (REQ-1): it works\n  verify: `cargo test demo`\n"
+                ),
+            )
+            .unwrap();
+        }
+        dir
+    }
+
+    /// Audit of C-112 (note 3228): `ac_work` (C-86 S3) read only the date-first branch form; it
+    /// reads both forms and a repair suffix through the shared resolver.
+    #[test]
+    fn ac_work_reads_both_branch_forms_and_a_repair_suffix() {
+        for branch in [
+            "spec/demo-20261117",
+            "spec/20261117-demo",
+            "spec/demo-20261117-r2",
+            "spec/20261117-demo-r2",
+        ] {
+            let dir = ac_tree(branch, &["SPEC-20261117-demo"]);
+            let work = ac_work(dir.path()).unwrap_or_else(|| panic!("{branch}: no work read"));
+            assert_eq!(work.spec, "SPEC-20261117-demo", "{branch}");
+            assert_eq!(work.head, "0123456789abcdef0123456789abcdef01234567");
+            assert_eq!(work.commands.len(), 1, "{branch}");
+            assert_eq!(work.commands[0].command, "cargo test demo", "{branch}");
+        }
+    }
+
+    #[test]
+    fn ac_work_reads_no_work_for_a_branch_that_names_no_single_spec() {
+        // Not a SPEC branch.
+        assert!(ac_work(ac_tree("main", &["SPEC-20261117-demo"]).path()).is_none());
+        // Reads as two SPEC ids and no folder settles it.
+        let two_ways = "spec/20261117-demo-20261118";
+        assert!(ac_work(ac_tree(two_ways, &["SPEC-20261117-demo"]).path()).is_none());
+        assert!(ac_work(
+            ac_tree(
+                two_ways,
+                &["SPEC-20261117-demo-20261118", "SPEC-20261118-20261117-demo"]
+            )
+            .path()
+        )
+        .is_none());
+        // Exactly one of the two folders exists: that SPEC is the one.
+        let one = ac_tree(two_ways, &["SPEC-20261117-demo-20261118"]);
+        assert_eq!(
+            ac_work(one.path()).map(|w| w.spec),
+            Some("SPEC-20261117-demo-20261118".to_string())
+        );
     }
 
     #[test]
