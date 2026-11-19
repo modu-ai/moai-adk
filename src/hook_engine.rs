@@ -934,27 +934,70 @@ fn target_path(input: &Value, cwd: &Path) -> Value {
     if !loggable(raw, 1024) {
         return json!("unrecorded");
     }
+    let Some(rel) = project_relative(raw, input["cwd"].as_str(), cwd) else {
+        return json!("outside");
+    };
+    match rel.to_str() {
+        Some(s) if loggable(s, 256) => json!(s),
+        _ => json!("unrecorded"),
+    }
+}
+
+/// `raw` as a path below the project folder `cwd` (the folder the hook runs in, canonical), or
+/// `None` when it leaves it (SPEC-20261119-ac-verify-recorded-limits REQ-10). The host names
+/// paths its own way, so an absolute path is placed against `cwd` first, then against the
+/// host's own `cwd` field when that names the same folder (a link to it), then by the file
+/// system (the path's existing part resolved, so a link or `/var` for `/private/var` does not
+/// make a project path look outside). `.` and `..` are settled by name: `src/../x.rs` is
+/// `x.rs`, and a path that climbs above the folder is outside.
+fn project_relative(raw: &str, host_cwd: Option<&str>, cwd: &Path) -> Option<std::path::PathBuf> {
+    use std::path::{Component, PathBuf};
     let path = Path::new(raw);
-    let rel = if path.is_absolute() {
-        match path.strip_prefix(cwd) {
-            Ok(rel) => rel.to_path_buf(),
-            Err(_) => return json!("outside"),
+    let below: PathBuf = if path.is_absolute() {
+        if let Ok(rel) = path.strip_prefix(cwd) {
+            rel.to_path_buf()
+        } else if let Some(rel) = host_cwd
+            .map(Path::new)
+            .filter(|h| h.is_absolute() && std::fs::canonicalize(h).is_ok_and(|c| c == cwd))
+            .and_then(|h| path.strip_prefix(h).ok())
+        {
+            rel.to_path_buf()
+        } else {
+            canonical_below(path, cwd)?
         }
     } else {
         path.to_path_buf()
     };
-    let escapes = rel.components().any(|c| {
-        !matches!(
-            c,
-            std::path::Component::Normal(_) | std::path::Component::CurDir
-        )
-    });
-    if escapes {
-        return json!("outside");
+    let mut clean = PathBuf::new();
+    for part in below.components() {
+        match part {
+            Component::Normal(name) => clean.push(name),
+            Component::CurDir => {}
+            Component::ParentDir => {
+                if !clean.pop() {
+                    return None;
+                }
+            }
+            Component::RootDir | Component::Prefix(_) => return None,
+        }
     }
-    match rel.to_str() {
-        Some(s) if loggable(s, 256) => json!(s),
-        _ => json!("unrecorded"),
+    Some(clean)
+}
+
+/// `path` below `cwd` by the file system: the longest existing part of `path` is resolved
+/// (links followed), the rest is appended by name; `None` when the result is not below `cwd`.
+fn canonical_below(path: &Path, cwd: &Path) -> Option<std::path::PathBuf> {
+    let mut rest: Vec<std::ffi::OsString> = Vec::new();
+    let mut head = path.to_path_buf();
+    loop {
+        if let Ok(resolved) = std::fs::canonicalize(&head) {
+            let full = rest.iter().rev().fold(resolved, |acc, name| acc.join(name));
+            return full.strip_prefix(cwd).ok().map(Path::to_path_buf);
+        }
+        rest.push(head.file_name()?.to_os_string());
+        if !head.pop() {
+            return None;
+        }
     }
 }
 
@@ -1585,5 +1628,69 @@ mod tests {
         );
         // Without the HOME the HOME-side lines are not seen.
         assert_eq!(consecutive_blocks_in(None, p.path(), session), 2);
+    }
+
+    /// SPEC-20261119-ac-verify-recorded-limits REQ-10 (audit of 0ca2f8892b, findings 1 and 2):
+    /// the project is the folder the hook runs in (canonical), but the host names paths its own
+    /// way: through a link to the project folder, in its own `cwd` field, or with `..` that stays
+    /// inside. Those are project paths; a path that really leaves the folder is `outside`, and one
+    /// the log cannot keep is `unrecorded`.
+    #[cfg(unix)]
+    #[test]
+    fn target_path_places_a_project_path_the_host_names_through_a_link_or_dots() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let base = std::fs::canonicalize(tmp.path()).unwrap();
+        let real = base.join("proj");
+        std::fs::create_dir_all(real.join("src")).unwrap();
+        std::fs::create_dir_all(base.join("other")).unwrap();
+        let link = base.join("link");
+        std::os::unix::fs::symlink(&real, &link).unwrap();
+        let path = |file: &str, host_cwd: &Path| {
+            target_path(
+                &json!({"cwd": host_cwd, "tool_input": {"file_path": file}}),
+                &real,
+            )
+        };
+        let abs = |p: std::path::PathBuf| p.to_str().unwrap().to_string();
+        // Plain.
+        assert_eq!(path(&abs(real.join("src/x.rs")), &real), json!("src/x.rs"));
+        assert_eq!(path("src/x.rs", &real), json!("src/x.rs"));
+        assert_eq!(path("./src/x.rs", &real), json!("src/x.rs"));
+        // Through a link to the project: the host's cwd is the link, or only the path is.
+        assert_eq!(path(&abs(link.join("src/x.rs")), &link), json!("src/x.rs"));
+        assert_eq!(path(&abs(link.join("src/x.rs")), &real), json!("src/x.rs"));
+        assert_eq!(
+            path(&abs(link.join("src/new.rs")), &real),
+            json!("src/new.rs")
+        );
+        // `..` that stays inside.
+        assert_eq!(path("src/../x.rs", &real), json!("x.rs"));
+        assert_eq!(path(&abs(real.join("src/../x.rs")), &real), json!("x.rs"));
+        // Really outside.
+        assert_eq!(path("../x.rs", &real), json!("outside"));
+        assert_eq!(path("src/../../x.rs", &real), json!("outside"));
+        assert_eq!(
+            path(&abs(real.join("src/../../x.rs")), &real),
+            json!("outside")
+        );
+        assert_eq!(path(&abs(base.join("other/x.rs")), &real), json!("outside"));
+        assert_eq!(path("/tmp/moai-c130-scratch.txt", &real), json!("outside"));
+        // The host's own cwd field does not make a path outside the hook's folder inside.
+        assert_eq!(
+            path(&abs(base.join("other/x.rs")), &base.join("other")),
+            json!("outside")
+        );
+        // What the log cannot keep.
+        assert_eq!(path("", &real), json!("unrecorded"));
+        assert_eq!(path("src/x\u{7}.rs", &real), json!("unrecorded"));
+        assert_eq!(
+            path(&format!("src/{}.rs", "a".repeat(1100)), &real),
+            json!("unrecorded")
+        );
+        assert_eq!(
+            target_path(&json!({"tool_input": {}}), &real),
+            Value::Null,
+            "no path"
+        );
     }
 }

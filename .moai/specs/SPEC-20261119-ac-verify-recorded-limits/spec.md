@@ -17,7 +17,7 @@ C-86 S3(SPEC-20261119-enforce-ac-verify-recorded)의 규칙 `ac_verify_recorded`
 
 ## Non-goals
 
-- `ac_verify_recorded` 를 `enforce` 로 올리는 일과 기본 모드 변경: 사용자 몫이에요(N10 은 제안 노트로만, D-3).
+- `ac_verify_recorded` 를 `enforce` 로 올리는 일과 기본 모드 변경: 사용자 몫이에요(N10 의 쓰기 판정은 D-3 이 정하고, `enforce` 승격은 이 SPEC 이 하지 않아요).
 - 실제 Claude·Codex·OMP 호스트를 띄워서 하는 확인: 호스트의 문서에서 읽은 모양을 시험으로 고정하고, 실제 호스트 실행은 이 SPEC 이 하지 않아요.
 - 로그 줄의 새 종류 추가: Stop 의 풀어 줌은 이미 있는 `rule_release` 줄을 써요(D-1).
 - 설정 파일 읽기(`src/hook_config.rs`)와 `tests/hook_dispatch_cli.rs` 의 변경: C-86 이 예약하고 있어요.
@@ -39,19 +39,19 @@ C-86 S3(SPEC-20261119-enforce-ac-verify-recorded)의 규칙 `ac_verify_recorded`
 
 - AC-1 (REQ-1): `hook-dispatch --event session-check` capabilities 의 `limits` 가 프로세스 폴더·4096바이트·detached HEAD 와 sha256·reftable·symref·하위 폴더 한계를 말해요. · verify: `cargo test --locked --offline --test hooks_cli the_ac_verify_limits_name_the_process_folder_the_command_size_the_unreadable_heads_and_the_subfolder`
 - AC-2 (REQ-2): 세션이 이미 두 번 막혔고 규칙이 또 막으려 하면 턴이 끝나게 두고 `rule_release` 한 줄(규칙 id·세션)을 남겨요; 규칙이 막지 않으려 하면 줄이 없어요. · verify: `cargo test --locked --offline --test hooks_cli the_stop_release_after_the_cap_writes_one_rule_release_line`; `cargo test --locked --offline --test hooks_cli no_rule_release_line_is_written_when_no_rule_would_block`
-- AC-3 (REQ-3): 따옴표 안의 공백 두 개와 줄바꿈과 NBSP 는 접히지 않고, 따옴표 밖의 공백·탭 연속은 한 칸이 돼요. · manual: `these tests are written after C-112 releases src/hook_guards.rs (card C-130 slice 2, part 2); until then the criterion is open`
-- AC-4 (REQ-4): 따옴표 없는 `<name>` 자리표시자가 든 명령은 목록에서 빠지고 `< in.txt > out.txt` 와 따옴표 안 `'<b>'` 는 남아요. · manual: `these tests are written after C-112 releases src/hook_guards.rs (card C-130 slice 2, part 2); until then the criterion is open`
-- AC-5 (REQ-5, REQ-6): HEAD·ref 파일·`packed-refs` 가 FIFO 이거나 한도보다 크면 커밋을 읽을 수 없는 것으로 보고 기다리지 않아요(FIFO 시험은 제한 시간 안에 끝나요). · manual: `these tests are written after C-112 releases src/hook_guards.rs (card C-130 slice 2, part 2); until then the criterion is open`
+- AC-3 (REQ-3): 따옴표 안의 공백 두 개와 줄바꿈과 NBSP 는 접히지 않고, 따옴표 밖의 공백·탭 연속은 한 칸이 돼요. · verify: `cargo test --locked --offline --lib collapse_whitespace_keeps_quotes_newlines_and_no_break_spaces`; `cargo test --locked --offline --test hooks_cli a_call_with_a_newline_or_a_no_break_space_inside_is_not_recorded_as_the_verify_command`
+- AC-4 (REQ-4): 따옴표 없는 `<name>` 자리표시자가 든 명령은 목록에서 빠지고 `< in.txt > out.txt` 와 따옴표 안 `'<b>'` 는 남아요. · verify: `cargo test --locked --offline --lib verify_commands_read_shell_syntax_when_they_judge_a_placeholder`
+- AC-5 (REQ-5, REQ-6): HEAD·ref 파일·`packed-refs` 가 FIFO 이거나 한도보다 크면 커밋을 읽을 수 없는 것으로 보고 기다리지 않아요(FIFO 시험은 제한 시간 안에 끝나요). · verify: `cargo test --locked --offline --lib head_sha_reads_regular_files_up_to_a_bound_and_never_waits_on_a_fifo`
 - AC-6 (REQ-7): 문자열 `"true"`·숫자 1·snake_case·camelCase 로 온 백그라운드·중단 표시는 기록하지 않아요. · verify: `cargo test --locked --offline --test hooks_cli ac_verify_run_ignores_a_call_marked_unfinished_in_every_documented_spelling`
 - AC-7 (REQ-8): 엔진 로그가 한도에 닿으면 규칙은 줄을 읽지 않고 턴이 끝나게 두고, 그 시험이 있어요. · verify: `cargo test --locked --offline --test hooks_cli the_ac_verify_rule_lets_the_turn_end_when_the_log_is_full`
 - AC-8 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7, REQ-8, REQ-9, REQ-10): 이웃 검사: 훅 시험과 문서·SPEC 검사가 그대로 통과해요. · verify: `cargo test --locked --offline --test hooks_cli`; `cargo test --locked --offline --test hook_dispatch_cli`; `cargo test --locked --offline --test doc_references`; `cargo test --locked --offline --test spec_cli the_repository_specs_pass_check`
 - AC-9 (REQ-9): 문서의 `hook.dispatch` 행이 Stop 규칙의 `rule_release` 줄, 프로세스 폴더 한계, "unfinished" 읽기, OMP 한계를 말해요(그 행 안에서만 읽어요). · verify: `sh -c 'row=$(grep -E "^\| .hook\.dispatch. \(rc\.2" docs/rust-product-path.md | head -1); for w in "the Stop rule" "writes the same line" "process folder" "read as unfinished" "sends only"; do printf %s "$row" | grep -qF -- "$w" || { echo "row lacks: $w"; exit 1; }; done'`
-- AC-10 (REQ-10): 실패한 Edit 와 프로젝트 밖 쓰기(절대 경로·`..` 로 나가는 경로)는 세지 않고, 프로젝트 쓰기·결과 모름(Codex `apply_patch`)·경로 없는 줄은 세요. · verify: `cargo test --locked --offline --test hooks_cli ac_verify_rule_counts_only_writes_that_did_not_fail_and_are_inside_the_project`
+- AC-10 (REQ-10): 실패한 Edit 와 프로젝트 밖 쓰기(절대 경로·`..` 로 나가는 경로)는 세지 않고, 프로젝트 쓰기·결과 모름(Codex `apply_patch`)·경로 없는 줄은 세요. · verify: `cargo test --locked --offline --test hooks_cli ac_verify_rule_counts_only_writes_that_did_not_fail_and_are_inside_the_project`; `cargo test --locked --offline --lib target_path_places_a_project_path_the_host_names_through_a_link_or_dots`
 
 ## Scope
 
 - write: `.moai/specs/SPEC-20261119-ac-verify-recorded-limits/spec.md`, `src/hook_engine.rs`, `tests/hooks_cli.rs`, `docs/rust-product-path.md`, `.moai/specs/SPEC-20261119-enforce-ac-verify-recorded/spec.md`
-- write (after C-112 releases it): `src/hook_guards.rs`
+- write: `src/hook_guards.rs`
 - read-only: `src/hook_config.rs`, `src/hooks.rs`, `tests/hook_dispatch_cli.rs`
 - forbidden: 실제 HOME·실제 프로젝트의 훅 설정, 네트워크, 새 의존성, `src/main.rs`
 
