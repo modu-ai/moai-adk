@@ -473,6 +473,25 @@ fn the_body_carries_the_facts_and_passes_the_self_audit_checker() {
         body.contains(&format!("Integration: `bundle` built from the tip `{tip}` with 2 merge commits → pinned SHA `{}`", b.branch_sha)),
         "{body}"
     );
+    // The size is what `git diff --numstat` gives from the merge base (here the tip itself).
+    let numstat = b.w.git(&["diff", "--numstat", &tip, &b.branch_sha]);
+    let (mut files, mut ins, mut del) = (0u64, 0u64, 0u64);
+    for l in numstat.lines() {
+        let mut it = l.split('\t');
+        files += 1;
+        ins += it.next().unwrap().parse::<u64>().unwrap();
+        del += it.next().unwrap().parse::<u64>().unwrap();
+    }
+    let plural = |n: u64| if n == 1 { "" } else { "s" };
+    assert!(
+        body.contains(&format!(
+            "{files} file{} changed, {ins} insertion{}(+), {del} deletion{}(-).",
+            plural(files),
+            plural(ins),
+            plural(del)
+        )),
+        "{body}"
+    );
     assert!(
         body.contains("\n## Self-Audit\n")
             && body.contains("- plan: card PLAN note 2447001 of each lane")
@@ -535,6 +554,94 @@ fn a_body_with_missing_facts_is_refused_naming_all_of_them() {
         "{m}"
     );
     assert!(!out.exists(), "a refused body writes no file");
+}
+
+#[test]
+fn the_integration_line_counts_what_the_branch_adds_when_the_tip_moved() {
+    let b = bundle_world(true);
+    let before_tip = b.w.tip_sha();
+    // The tip moves on after the bundle branch was built.
+    b.w.git(&["checkout", "-q", "trunk"]);
+    b.w.put("moved/a.txt", "a\nb\nc\n");
+    b.w.git(&["add", "-A"]);
+    b.w.git(&["commit", "-q", "-m", "chore: the tip moves on"]);
+    b.w.git(&["push", "-q", "origin", "trunk"]);
+    b.w.git(&["fetch", "-q", "origin"]);
+    let new_tip = b.w.tip_sha();
+    assert_ne!(before_tip, new_tip);
+    let (v, code) = b.body(&[]);
+    assert_eq!(code, 0, "{v}");
+    let body = v["result"]["body"].as_str().unwrap();
+    assert!(
+        body.contains(&format!(
+            "built from `{before_tip}` (the tip `{new_tip}` has moved on since)"
+        )),
+        "{body}"
+    );
+    // The size is counted from the merge base, not against the moved tip.
+    let files =
+        b.w.git(&["diff", "--numstat", &before_tip, &b.branch_sha])
+            .lines()
+            .count();
+    assert!(body.contains(&format!("{files} files changed")), "{body}");
+    assert!(
+        !body.contains("moved/a.txt"),
+        "the tip's own file is not the bundle's: {body}"
+    );
+}
+
+#[test]
+fn more_records_the_body_refuses() {
+    let b = bundle_world(true);
+    let refused = |record: Value| -> String {
+        fs::write(&b.record, record.to_string()).unwrap();
+        let (v, _) = b.body(&[]);
+        assert_eq!(v["ok"], false, "{v}");
+        v["error"]["message"].as_str().unwrap().to_string()
+    };
+    // A check both run and named not run.
+    let mut r = record_json(false, false, false);
+    r["not_run"]
+        .as_array_mut()
+        .unwrap()
+        .push(serde_json::json!({"check": "fmt", "reason": "also"}));
+    assert!(refused(r).contains("the check `fmt` is both run and named not run"));
+    // A record value with a line break.
+    let mut r = record_json(false, false, false);
+    r["self_audit"]["host"] = "macOS\n## Result".into();
+    assert!(refused(r).contains("the Self-Audit line `host` has a line break"));
+    // REQ-10: a Self-Audit text the product's checker rejects (a mutation line without FAILED).
+    let mut r = record_json(false, false, false);
+    r["self_audit"]["mutation"] = "none run".into();
+    let m = refused(r);
+    assert!(m.contains("fails the Self-Audit checker"), "{m}");
+    // A head with a finding of `check` (a floor-1 head with no verdict) refuses the body.
+    let h3 = b.w.head(
+        "spec/h3",
+        TIP,
+        &[("src/h3.rs", "fn h3() {}\n")],
+        "SPEC-20261119-demo3",
+        &[1, 2],
+        true,
+    );
+    let c3 = b.w.new_card();
+    b.w.ready_note(&c3, &h3);
+    b.w.git(&["checkout", "-q", "bundle"]);
+    b.w.git(&["merge", "-q", "--no-ff", "-m", "Merge h3", &h3]);
+    fs::write(&b.record, record_json(false, false, false).to_string()).unwrap();
+    let (v, _) = b.w.bundle(&[
+        "body",
+        &b.cards[0],
+        &b.cards[1],
+        &c3,
+        "--branch",
+        "bundle",
+        "--run",
+        b.record.to_str().unwrap(),
+    ]);
+    assert_eq!(v["ok"], false, "{v}");
+    let m = v["error"]["message"].as_str().unwrap();
+    assert!(m.contains(&format!("{c3} audit_missing")), "{m}");
 }
 
 #[test]

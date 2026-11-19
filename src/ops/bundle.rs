@@ -11,6 +11,8 @@ use std::path::PathBuf;
 /// does: `Reads only.` (no ledger row, ref, branch, card note or remote is written) or, for
 /// `body --out`, `Reads only. Writes one new file.` None of them fetches, pushes or opens a pull
 /// request: fetch first, and the leader chooses the heads, pushes and opens the pull request.
+/// `check` and `body` run `git merge-tree --write-tree` (git 2.38 or newer), which leaves
+/// unreferenced tree and blob objects in the object store that `git gc` removes; no ref moves.
 #[derive(clap::Args)]
 pub struct Args {
     #[command(subcommand)]
@@ -45,7 +47,8 @@ enum Action {
     ///
     /// Reads only. HEADS are `C-<n>` (the card's newest readable READY head) or `C-<n>=<40 hex>`.
     /// Every head gets every check: `no_ready_line`, `head_missing` (fetch first),
-    /// `not_on_origin`, `already_merged`, `audit_missing` (the changed paths `<tip>...<head>` set an
+    /// `no_merge_base` (an unrelated history; the other heads are still judged), `not_on_origin`,
+    /// `already_merged`, `audit_missing` (the changed paths `<tip>...<head>` set an
     /// audit floor of 1 or more and no note of the card is a `PASS` verdict naming exactly the
     /// head; the nearest `PASS` on an ancestor is shown), `trailers`, `spec`, `result_missing`
     /// and `conflict` (each head with the tip and with every earlier head, by the text merge
@@ -75,8 +78,9 @@ enum Action {
     /// `host`, `receipt`; the check keys are build, lib_tests, home_isolation_scan, product_cli,
     /// fmt, clippy, trailer_check, spec_check, result_coverage, unittest) writes the body: the
     /// `audit-tier:` line, the `Moai-Spec:` lines, the heads table, the `Integration:` line with
-    /// the branch's SHA, `## Self-Audit` and `## Result`. A fact with no record refuses the
-    /// whole body and names every missing fact; the body must pass the Self-Audit checker.
+    /// the branch's SHA, `## Self-Audit` and `## Result`. A fact with no record, or any finding of
+    /// `check` for a head, refuses the whole body and names every one; the body must pass the
+    /// Self-Audit checker.
     Body {
         /// `C-<n>` or `C-<n>=<40 hex>`: the heads the branch was built from.
         #[arg(required = true)]

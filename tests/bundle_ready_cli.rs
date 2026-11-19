@@ -414,3 +414,15 @@ fn ready_lists_the_newest_readable_line_per_card_and_names_the_unreadable_ones()
     );
     assert_eq!(r["count"], 3);
 }
+
+#[test]
+fn a_ledger_without_ready_lines_lists_nothing() {
+    let w = World::new();
+    let c = w.new_card();
+    w.note(&c, "a note that is not a READY line");
+    let (v, code) = w.bundle(&["ready"]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(v["result"]["heads"], serde_json::json!([]));
+    assert_eq!(v["result"]["unreadable"], serde_json::json!([]));
+    assert_eq!(v["result"]["count"], 0);
+}

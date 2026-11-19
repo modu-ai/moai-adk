@@ -405,10 +405,18 @@ fn the_audit_floor_decides_which_heads_need_a_pass() {
     let w = World::new();
     // C-1: only docs change: floor 0, no verdict needed.
     let x = w.head("spec/x", TIP, &[("notes/x.md", "x\n")], SPEC, &[1, 2], true);
-    // C-2: src changes and a PASS names exactly the head.
+    // C-2: src changes (on top of an earlier commit y0) and a PASS names exactly the head.
+    let y0 = w.head(
+        "spec/y0",
+        TIP,
+        &[("src/y0.rs", "fn y0() {}\n")],
+        SPEC,
+        &[1, 2],
+        true,
+    );
     let y = w.head(
         "spec/y",
-        TIP,
+        &y0,
         &[("src/y.rs", "fn y() {}\n")],
         SPEC,
         &[1, 2],
@@ -428,6 +436,9 @@ fn the_audit_floor_decides_which_heads_need_a_pass() {
     w.ready_note(&c2, &y);
     let pass = w.pass_note(&c2, &y);
     w.ready_note(&c3, &z);
+    // Two ancestors of z have a PASS on this card: the nearer one (y, one commit behind) is shown,
+    // not the farther one (y0, two behind).
+    w.pass_note(&c3, &y0);
     w.pass_note(&c3, &y);
     let tip = w.tip_sha();
     w.note(
@@ -539,6 +550,42 @@ fn a_head_that_is_not_here_is_reported_and_the_rest_are_judged() {
     let c3 = w.new_card();
     let (v, _) = w.bundle(&["check", &c3]);
     assert_eq!(findings(&v), vec![(c3, "no_ready_line".to_string())]);
+}
+
+#[test]
+fn a_head_with_no_merge_base_is_one_finding_and_not_an_abort() {
+    let w = World::new();
+    // A commit of an unrelated history, pushed so that `origin` has it.
+    w.git(&["checkout", "-q", "--orphan", "unrelated"]);
+    w.git(&["rm", "-rfq", "."]);
+    w.put("other.txt", "other\n");
+    w.git(&["add", "-A"]);
+    w.git(&["commit", "-q", "-m", "feat: unrelated"]);
+    let orphan = w.git(&["rev-parse", "HEAD"]);
+    w.git(&["push", "-q", "origin", "unrelated:refs/heads/unrelated"]);
+    w.git(&["fetch", "-q", "origin"]);
+    let ok = w.head(
+        "spec/ok",
+        TIP,
+        &[("notes/ok.md", "ok\n")],
+        SPEC,
+        &[1, 2],
+        true,
+    );
+    let (c1, c2) = (w.new_card(), w.new_card());
+    w.ready_note(&c1, &orphan);
+    w.ready_note(&c2, &ok);
+    let (v, code) = w.bundle(&["check", &c1, &c2]);
+    assert_eq!(code, 0, "an unrelated head must not abort the run: {v}");
+    assert_eq!(v["result"]["ok"], false, "{v}");
+    // Only the unrelated head has a finding: the other head is judged and clean, and the
+    // unrelated head is not an earlier head for its conflict check.
+    assert_eq!(
+        findings(&v),
+        vec![(c1.clone(), "no_merge_base".to_string())],
+        "{v}"
+    );
+    assert_eq!(v["result"]["heads"][1]["findings"], 0, "{v}");
 }
 
 #[test]

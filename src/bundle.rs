@@ -518,7 +518,16 @@ fn judge(
         ));
     }
     // audit evidence
-    let paths = git.changed_paths(&tip.sha, &head)?;
+    // A head with no merge base with the tip (an unrelated history) is one finding, not an abort:
+    // the other heads are still judged (REQ-3).
+    let paths = match git.changed_paths(&tip.sha, &head) {
+        Ok(p) => p,
+        Err(e) => {
+            j.findings
+                .push(finding("no_merge_base", &arg.card, &head, json!(e)));
+            return Ok(j);
+        }
+    };
     j.floor = gate::tier_of(Some(0), &paths);
     let mut passes: Vec<(i64, String, String)> = Vec::new(); // (note, head, line)
     for n in &notes {
@@ -703,8 +712,9 @@ fn judge_all(
     let mut earlier: Vec<(String, String)> = Vec::new();
     for a in args {
         let j = judge(git, project, home, tip, a, &earlier)?;
+        let unrelated = j.findings.iter().any(|f| f["code"] == "no_merge_base");
         if let Some(h) = &j.head {
-            if git.commit(h).is_some() {
+            if git.commit(h).is_some() && !unrelated {
                 earlier.push((a.card.clone(), h.clone()));
             }
         }
@@ -803,6 +813,25 @@ fn read_record(path: &Path, gaps: &mut Vec<String>) -> Result<Record> {
             None => gaps.push(format!("the Self-Audit line `{k}` has no text")),
         }
     }
+    let line_break = |s: &str| s.contains(['\n', '\r']);
+    for (cmd, _, counts, _) in &rec.commands {
+        if line_break(cmd) || counts.as_deref().is_some_and(line_break) {
+            gaps.push(format!(
+                "a command text or its counts has a line break: `{}`",
+                cmd.lines().next().unwrap_or("")
+            ));
+        }
+    }
+    for (c, r) in &rec.not_run {
+        if line_break(r) {
+            gaps.push(format!("the not_run reason of `{c}` has a line break"));
+        }
+    }
+    for (k, v) in &rec.self_audit {
+        if line_break(v) {
+            gaps.push(format!("the Self-Audit line `{k}` has a line break"));
+        }
+    }
     for key in CHECKS {
         let ran = rec.commands.iter().any(|c| c.3.as_deref() == Some(key));
         let not = rec.not_run.iter().any(|n| n.0 == key);
@@ -845,13 +874,9 @@ pub fn body(
     let judged = judge_all(&git, project, home, &tip, &args)?;
     for j in &judged {
         for f in &j.findings {
+            // A body is written only for heads that pass every check of `check`.
             let code = f["code"].as_str().unwrap_or("");
-            if matches!(
-                code,
-                "no_ready_line" | "head_missing" | "audit_missing" | "result_missing"
-            ) {
-                gaps.push(format!("{} {}: {}", j.card, code, f["detail"]));
-            }
+            gaps.push(format!("{} {}: {}", j.card, code, f["detail"]));
         }
         if let Some(h) = &j.head {
             if git.commit(h).is_some() && !git.is_ancestor(h, &pinned) {
@@ -878,6 +903,15 @@ pub fn body(
             ));
         }
     }
+    // What the branch adds is counted from its merge base with the tip: when the tip has moved on
+    // since the branch was built, the tip's own changes are not the bundle's.
+    let base = git
+        .ok(&["merge-base", &tip.sha, &pinned])
+        .map(|s| s.trim().to_string())
+        .filter(|s| gate::is_full_sha(s))
+        .ok_or_else(|| {
+            format!("bundle body refused: the branch `{branch}` has no merge base with the tip")
+        })?;
     let paths = git.changed_paths(&tip.sha, &pinned)?;
     let tier = gate::tier_of(Some(0), &paths);
     let merges = git
@@ -885,14 +919,14 @@ pub fn body(
             "rev-list",
             "--merges",
             "--count",
-            &format!("{}..{}", tip.sha, pinned),
+            &format!("{base}..{pinned}"),
         ])
         .unwrap_or_default()
         .trim()
         .to_string();
     let (mut files, mut ins, mut del) = (0u64, 0u64, 0u64);
     for l in git
-        .lines(&["diff", "--numstat", &tip.sha, &pinned])
+        .lines(&["diff", "--numstat", &base, &pinned])
         .unwrap_or_default()
     {
         let mut it = l.split('\t');
@@ -903,7 +937,11 @@ pub fn body(
     let all_specs: BTreeSet<&String> = judged.iter().flat_map(|j| j.specs.iter()).collect();
 
     let mut b = String::new();
-    b.push_str(&format!("audit-tier: {tier} {}\n\n", paths.join(" ")));
+    if paths.is_empty() {
+        b.push_str(&format!("audit-tier: {tier}\n\n"));
+    } else {
+        b.push_str(&format!("audit-tier: {tier} {}\n\n", paths.join(" ")));
+    }
     for s in &all_specs {
         b.push_str(&format!("Moai-Spec: {s}\n"));
     }
@@ -929,10 +967,21 @@ pub fn body(
             j.card
         ));
     }
+    let built = if base == tip.sha {
+        format!("built from the tip `{base}`")
+    } else {
+        format!(
+            "built from `{base}` (the tip `{}` has moved on since)",
+            tip.sha
+        )
+    };
+    let s = |n: u64| if n == 1 { "" } else { "s" };
     b.push_str(&format!(
-        "\nIntegration: `{branch}` built from the tip `{}` with {merges} merge commits → pinned SHA `{pinned}`. \
-         {files} files changed, {ins} insertions(+), {del} deletions(-).\n\n## Self-Audit\n\n",
-        tip.sha
+        "\nIntegration: `{branch}` {built} with {merges} merge commits → pinned SHA `{pinned}`. \
+         {files} file{} changed, {ins} insertion{}(+), {del} deletion{}(-).\n\n## Self-Audit\n\n",
+        s(files),
+        s(ins),
+        s(del)
     ));
     for (k, v) in &rec.self_audit {
         b.push_str(&format!("- {k}: {v}\n"));
