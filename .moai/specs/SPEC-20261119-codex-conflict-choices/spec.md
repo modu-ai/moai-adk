@@ -87,4 +87,9 @@ created: 2026-11-19
 
 ## Result
 
-(구현 뒤에 채워요)
+- AC-1: met — `cargo test --locked --offline --test codex_conflict_choices_cli` 12 passed (plan 계열 3개 포함). 구현 전에는 같은 파일 12개 중 11개가 실패했어요(RED: 플래그와 `diff`가 없어서; 통과한 1개는 "충돌 없으면 선택지 없음"). 충돌 계획이 키별 `diff`(`tui.status_line`, 현재 `["model"]`)를 싣고, 플래그 계획이 `replace`·`replaced`·백업 경로·다른 digest를 내며 시험 전후 파일 트리가 같아요. 충돌이 없으면 플래그 계획이 일반 계획과 JSON이 같아요.
+- AC-2: met — 같은 파일의 apply 계열 6개. 백업이 원본 바이트이고(`USER_CONFIG`와 비교), 설정에서 `# mine`·`model = "x" # keep` 두 줄이 남고 사용자의 `status_line` 값이 사라지며, 다음 계획(플래그 있음·없음 둘 다)이 `unchanged`예요. 일반 계획의 digest는 `--replace-with-backup` 적용에서, replace digest는 플래그 없는 적용에서 거절되고(`conflict`) 거절 때 트리가 그대로예요. 같은 이름에 다른 바이트의 백업은 거절되고 설정이 안 바뀌며, 같은 바이트의 백업은 재사용돼요.
+- AC-3: met — `step` 계열 3개와 `cargo test --locked --offline --lib project_hosts` 14 passed(새 단위 시험 2개 포함). 단계가 `keep`(권장, 명령 없음)·`diff`·`replace` 순서로 싣고, 출력된 `diff` 명령과 `replace` 명령을 그대로 돌렸을 때(자리표시자만 권한 참조로 바꿈) replace 계획의 digest가 `replace` 명령의 `--plan-digest`와 같고, 적용 뒤 다음 `project-update-plan`의 `codex-config` 단계가 `unchanged`이며 `choices`가 없어요. replace 계획이 없을 때(`None`, 다른 action, digest 없음)는 단위 시험이 `keep`·`diff`만 남는 것을 확인해요.
+- AC-4: met — `fmt --check` 출력 없음, `cargo clippy --offline --locked --all-targets -- -D warnings` exit 0, 이웃 시험 11개 파일(`codex_conflict_choices_cli`, `codex_config_cli`, `codex_config`, `host_home_cli`, `project_update_plan_cli`, `spec_cli`, `ac_command_lint`, `home_isolation_scan`, `help_layout`, `hot_file_ops_merge`, `git_env_scrub`)을 필터 없이 한 번에 돌려 11개 `test result: ok`, 0 failed예요(`spec_cli` 17 passed 포함 — 이 SPEC을 쓰는 중 한 번 실패했다가 `spec check` 규칙에 맞게 고친 뒤 통과). `spec check SPEC-20261119-codex-conflict-choices` errors 0·warnings 0.
+- 변이 시험(commit `bde0cb4c69` 뒤, 5개, 모두 KILLED·각 회차 뒤 `git status` 깨끗): K1 일반 모드가 충돌을 바꿈으로 취급 → 4개 실패 / K2 같은 이름 다른 바이트 백업을 덮어씀 → `apply_refuses_a_backup_name_that_holds_other_bytes` / K3 백업에 새 바이트를 넣음 → 4개 실패 / K4 바꿈 키를 쓰지 않음 → 4개 실패 / K5 `replace` 선택지를 뺌 → 2개 실패.
+- 남은 것: 같은 카드의 `codex-hooks` 충돌(파일 전체 교체), 표식 없는 `AGENTS.md`·번들 풀기·`CLAUDE.md` 그림자(`src/agents.rs`), 워크플로 글의 선택지 문장(`skills/moai/**`와 manifest)은 이 SPEC 밖이에요(D-1, Non-goals). SPEC은 draft예요: 승인은 사용자의 선택이라 이 레인이 하지 않았어요.
