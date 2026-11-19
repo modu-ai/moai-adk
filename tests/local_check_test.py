@@ -300,6 +300,8 @@ class LocalCheckPythonSlotTest(unittest.TestCase):
                 self.assertIn("no python slot folder", proc.stderr)
                 self.assertTrue(LINE.match(last_line(proc.stdout)), proc.stdout)
                 self.assertEqual([l for l in repo.slot_recorded() if " --dir " in l], [])
+                # Never the cargo slot folder either (REQ-12): no slot line carries the python run.
+                self.assertEqual([l for l in repo.slot_recorded() if "unittest" in l], [])
                 self.assertIn("python3 -m unittest discover -v -s tests -p *_test.py",
                               repo.recorded())
 
