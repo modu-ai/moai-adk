@@ -101,7 +101,7 @@ fn flaky_rule_stays_within_its_byte_budget() {
         "{FILE} is {} bytes, over the {PACKAGE_FILE_BOUND}-byte package file bound",
         text.len()
     );
-    assert!(RULE_BUDGET < PACKAGE_FILE_BOUND);
+    const { assert!(RULE_BUDGET < PACKAGE_FILE_BOUND) };
 }
 
 #[test]
