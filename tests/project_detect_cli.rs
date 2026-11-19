@@ -375,11 +375,12 @@ fn a_malformed_detected_value_is_refused() {
     }
 }
 
-/// #2535 AC-2 (item 2): manifests, dependency databases and compose images are read at the
-/// root only; a subfolder's code still counts for `languages`. The root control shows the same
-/// dependency is found when it sits at the root.
+/// #2535 AC-2 (item 2) before C-61 read manifests and databases at the root only; C-61 opens
+/// the manifest list to nested paths (listed by their path, a root manifest by its name), while
+/// dependency databases and compose images stay at the root: a nested manifest's bytes are
+/// never read. The root control shows the same dependency is found when it sits at the root.
 #[test]
-fn detection_reads_manifests_and_databases_at_the_root_only() {
+fn nested_manifests_are_listed_but_databases_stay_at_the_root() {
     let root = TempDir::new().unwrap();
     write(
         root.path(),
@@ -394,7 +395,7 @@ fn detection_reads_manifests_and_databases_at_the_root_only() {
     );
     let d = detect(&root)["detected"].clone();
     assert_eq!(d["project_kind"], "existing");
-    assert_eq!(d["manifests"], json!([]));
+    assert_eq!(d["manifests"], json!(["web/package.json"]), "{d}");
     assert_eq!(d["languages"], json!(["javascript"]));
     assert_eq!(d["databases"], json!([]));
 
@@ -404,7 +405,11 @@ fn detection_reads_manifests_and_databases_at_the_root_only() {
         r#"{"dependencies":{"pg":"8"}}"#,
     );
     let d = detect(&root)["detected"].clone();
-    assert_eq!(d["manifests"], json!(["package.json"]));
+    assert_eq!(
+        d["manifests"],
+        json!(["package.json", "web/package.json"]),
+        "{d}"
+    );
     assert_eq!(d["databases"], json!(["postgres"]));
 }
 
@@ -856,4 +861,169 @@ fn the_host_folders_are_not_the_projects_code() {
             "{dir} was read as project code: {found}"
         );
     }
+}
+
+/// C-61 AC-1 (REQ-1, REQ-3, REQ-4): manifests below the root are found and listed by their
+/// path (a root manifest by its file name, both in one sorted list); a folder whose only
+/// project files are nested manifests is `existing`. Names only: the manifest bodies below the
+/// root are junk on purpose — detection never reads them.
+#[test]
+fn nested_manifests_are_listed_with_their_paths() {
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    write(r, "Cargo.toml", "[package]\nname = \"x\"\n");
+    write(
+        r,
+        "plugins/moai-atp/package.json",
+        "{\"scripts\": {\"build\": \"",
+    );
+    write(
+        r,
+        "plugins/moai-atp/server/package.json",
+        "{\"dependencies\": {\"pg\": \"8\"",
+    );
+    write(r, "plugins/moai-atp/tsconfig.json", "{ not json");
+    write(r, "plugins/py/requirements.txt", "flask\n");
+    let d = detect(&root)["detected"].clone();
+    assert_eq!(d["project_kind"], "existing");
+    assert_eq!(
+        d["manifests"],
+        json!([
+            "Cargo.toml",
+            "plugins/moai-atp/package.json",
+            "plugins/moai-atp/server/package.json",
+            "plugins/moai-atp/tsconfig.json",
+            "plugins/py/requirements.txt",
+        ]),
+        "{d}"
+    );
+
+    let nested_only = TempDir::new().unwrap();
+    write(nested_only.path(), "plugins/x/package.json", "{}");
+    let d = detect(&nested_only)["detected"].clone();
+    assert_eq!(d["project_kind"], "existing", "{d}");
+    assert_eq!(d["manifests"], json!(["plugins/x/package.json"]), "{d}");
+}
+
+/// C-61 AC-1 (REQ-2): the manifest walk is bounded by `MAX_DEPTH` folder levels — a manifest
+/// in a folder at depth 3 is found, one at depth 4 is not (boundary N/N+1 at the limit).
+#[test]
+fn the_manifest_depth_limit_is_three_folder_levels() {
+    let root = TempDir::new().unwrap();
+    write(root.path(), "a/b/c/package.json", "{}");
+    write(root.path(), "a/b/c/d/package.json", "{}");
+    let d = detect(&root)["detected"].clone();
+    assert_eq!(d["manifests"], json!(["a/b/c/package.json"]), "{d}");
+
+    let with_root = TempDir::new().unwrap();
+    write(with_root.path(), "package.json", "{}");
+    write(with_root.path(), "a/b/c/d/package.json", "{}");
+    assert_eq!(
+        detect(&with_root)["detected"]["manifests"],
+        json!(["package.json"])
+    );
+}
+
+/// C-61 AC-1 (REQ-2, REQ-3): folders the ignore lines exclude are not read — the root
+/// `.gitignore`, `.git/info/exclude`, a nested `.gitignore` (its patterns judge paths from its
+/// own folder), an unanchored name matching at any depth — and neither are the walk's skip
+/// folders. A negation cannot re-include under an excluded folder (git semantics), and a file
+/// pattern (`*.cache`) excludes no folder.
+#[test]
+fn folders_the_ignore_lists_or_the_walk_skip_are_not_read() {
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    write(r, ".gitignore", "generated/\n*.cache\n!generated/keep\n");
+    write(r, ".git/info/exclude", "scratch\n");
+    write(r, "generated/package.json", "{}");
+    write(r, "generated/keep/package.json", "{}");
+    write(r, "plugins/legacy/.gitignore", "**/old\n");
+    write(r, "plugins/legacy/old/package.json", "{}");
+    write(r, "scratch/package.json", "{}");
+    write(r, "other/package.json", "{}");
+    write(r, "node_modules/dep/package.json", "{}");
+    let d = detect(&root)["detected"].clone();
+    assert_eq!(d["manifests"], json!(["other/package.json"]), "{d}");
+
+    // An unanchored name (no `/` in the pattern) excludes the folder at any depth.
+    let deep = TempDir::new().unwrap();
+    write(deep.path(), ".gitignore", "generated\n");
+    write(deep.path(), "plugins/generated/package.json", "{}");
+    write(deep.path(), "plugins/kept/package.json", "{}");
+    assert_eq!(
+        detect(&deep)["detected"]["manifests"],
+        json!(["plugins/kept/package.json"])
+    );
+}
+
+/// C-61 AC-1 (REQ-2): a symbolic link is never followed, below the root too — a linked folder
+/// counts for nothing (#2496 pre-audit B1, now for the manifest walk).
+#[cfg(unix)]
+#[test]
+fn a_linked_nested_folder_is_not_followed() {
+    let outside = TempDir::new().unwrap();
+    write(outside.path(), "package.json", "{}");
+    let root = TempDir::new().unwrap();
+    std::os::unix::fs::symlink(outside.path(), root.path().join("plugins")).unwrap();
+    let d = detect(&root)["detected"].clone();
+    assert_eq!(d["manifests"], json!([]), "{d}");
+    assert_eq!(d["project_kind"], "new", "{d}");
+}
+
+/// C-61 AC-1 (REQ-5): the manifest list is capped like every detected list — at `MAX_ITEMS`
+/// (64) entries the sorted set keeps its first 64 (boundary N/N+1 on the cap).
+#[test]
+fn nested_manifests_are_capped_like_every_list() {
+    let root = TempDir::new().unwrap();
+    for i in 0..65 {
+        write(root.path(), &format!("plugins/p{i:02}/package.json"), "{}");
+    }
+    let d = detect(&root)["detected"]["manifests"].clone();
+    let list = d.as_array().unwrap();
+    assert_eq!(list.len(), 64, "{d}");
+    assert_eq!(list.first().unwrap(), "plugins/p00/package.json");
+    assert_eq!(list.last().unwrap(), "plugins/p63/package.json");
+}
+
+/// C-61 AC-2 (REQ-5): detected manifests (nested ones included) feed the tools question: the
+/// `tools` fact beside `detected` names each tool a manifest name implies with the paths that
+/// imply it, sorted, capped like every list; `detected` itself stays free of it, and no byte
+/// read from a manifest (the token in the script body) reaches the output.
+#[test]
+fn nested_manifests_feed_the_tools_fact() {
+    let root = TempDir::new().unwrap();
+    let r = root.path();
+    write(r, "Cargo.toml", "[package]\nname = \"x\"\n");
+    write(
+        r,
+        "plugins/moai-atp/package.json",
+        &format!("{{\"scripts\": {{\"build\": \"echo {TOKEN}\"}}}}"),
+    );
+    write(r, "plugins/moai-atp/server/package.json", "{}");
+    write(r, "plugins/moai-atp/tsconfig.json", "{}");
+    write(r, "plugins/py/requirements.txt", "flask\n");
+    let result = detect(&root);
+    assert_eq!(
+        result["tools"],
+        json!({
+            "cargo": ["Cargo.toml"],
+            "node": [
+                "plugins/moai-atp/package.json",
+                "plugins/moai-atp/server/package.json"
+            ],
+            "npm": [
+                "plugins/moai-atp/package.json",
+                "plugins/moai-atp/server/package.json"
+            ],
+            "python": ["plugins/py/requirements.txt"],
+            "typescript": ["plugins/moai-atp/tsconfig.json"],
+        }),
+        "{result}"
+    );
+    assert!(result["detected"].get("tools").is_none(), "{result}");
+    assert!(!result.to_string().contains(TOKEN), "{result}");
+    // Only names were read: the tree is unchanged.
+    let before = tree(r);
+    detect(&root);
+    assert_eq!(tree(r), before);
 }
