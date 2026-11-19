@@ -1340,6 +1340,9 @@ fn green_lock_bash_named_limits_are_not_guarded() {
         "echo x > tests/locked_test.rs",
         "sed -i s/a/b/ tests/locked_test.rs",
         "tee tests/locked_test.rs < /dev/null",
+        "bash cleanup.sh",
+        "python3 -c \"import os; os.remove('tests/locked_test.rs')\"",
+        "rm ~/../tests/locked_test.rs",
     ] {
         repo.assert_allowed(command);
     }

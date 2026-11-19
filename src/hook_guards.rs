@@ -934,7 +934,7 @@ fn open_shell_structure(command: &str) -> String {
 /// line is refused while this worktree's TDD cycle locks a test, or `None`. Only `rm`,
 /// `unlink`, `git rm`, `mv` and `git mv` are read (also as `busybox rm`, under `git -C dir`,
 /// and behind the shell structure [`open_shell_structure`] opens up). Each word is read as it
-/// is written, and again spelled the way the shell does first: `\` removed, `{a,b}` groups
+/// is written, and again spelled the way the shell does first: `{a,b}` groups
 /// opened, and `*`, `?` and `[..]` matched against the record's locked files. A folder that
 /// exists and holds a locked file, or holds the whole work tree, counts as that file. A
 /// removal's target that does not exist is left out: removing nothing changes no test, and
@@ -948,9 +948,10 @@ pub fn bash_lock_guard(command: &str, cwd: &Path) -> Option<&'static str> {
     let mut paths: Vec<String> = Vec::new();
     let mut collect = |words: Vec<String>, removal: bool| {
         for word in words {
+            // The word as written (the tokenizer has already removed quotes and backslashes),
+            // then each spelling its braces open to.
             let mut spellings = vec![word.clone()];
-            let plain = word.replace('\\', "");
-            for spelled in std::iter::once(plain).chain(expand_braces(&word)) {
+            for spelled in expand_braces(&word) {
                 if !spellings.contains(&spelled) {
                     spellings.push(spelled);
                 }

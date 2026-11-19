@@ -2,7 +2,7 @@
 id: SPEC-20261119-enforce-spec-hooks
 title: "The GREEN test lock also holds against Bash deletions and moves, and a denied call leaves its reason in the audit line"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-19
 ---
 
@@ -19,7 +19,7 @@ created: 2026-11-19
 
 - 카드의 AC-1(인터뷰 기록), AC-3(Stop hook), AC-4(병합 관문): 각각 별도 SPEC·PR 이에요. AC-1·AC-3 은 이 카드의 쓰기 범위 밖 파일이 필요해 범위 요청을 했어요(card note 2278 D-B).
 - "SPEC 이 approved 여야 쓰기 허용"으로 조이기(AC-2 의 첫 절반): 지금 hook 은 SPEC 파일이 있으면 통과해요. 승인은 사용자의 대화 중 선택만 줄 수 있어서 조이면 모든 레인이 멈춰요. 정책 결정이라 리더에게 물었고(note 2278 D-A) 기본값은 그대로 두기예요.
-- 셸이 파일을 바꾸는 나머지 길은 이 조각도 막지 못해요. 이름으로: 리다이렉트(`>`), `tee`, `sed -i`, 스크립트, 변수로 만든 경로(`F=…; rm $F`), `xargs`, `find -exec`·`find -delete`, 복합문의 몸통(`if`·`for`·`while`·`case`·함수), `cd` 로 폴더를 바꾼 뒤의 상대 경로. REQ-6 이 `capabilities` 에 같은 이름들을 적고, 시험 `green_lock_bash_named_limits_are_not_guarded` 가 이 형태들이 지금 통과한다는 사실을 고정해요(하나를 막게 되면 시험과 문구를 같이 바꿔요).
+- 셸이 파일을 바꾸는 나머지 길은 이 조각도 막지 못해요. 이름으로: 리다이렉트(`>`), `tee`, `sed -i`, 스크립트(`bash cleanup.sh`, `python3 -c …`), 변수로 만든 경로(`F=…; rm $F`), `xargs`, `find -exec`·`find -delete`, 확장 글롭(`@(..)`, `+(..)`), `~` 확장, 중괄호 256개 초과·4단계 초과, `cd` 로 폴더를 바꾼 뒤의 상대 경로. REQ-6 이 `capabilities` 에 같은 이름들을 적고, 시험 `green_lock_bash_named_limits_are_not_guarded` 와 `green_lock_bash_brace_limits_are_the_named_ones` 가 이 형태들이 지금 통과한다는 사실을 고정해요(하나를 막게 되면 시험과 문구를 같이 바꿔요). `!`, `{ …; }`, `if`·`while`·`for` 몸통, 백틱, `busybox`, `git -C dir`, 작업 트리 위 폴더는 이제 읽어요(REQ-10).
 - 실제 `~/.claude` 설정과 hook 의 변경, OMP(편집 경로를 번역하지 않아요).
 - `src/tdd.rs` 의 잠금 규칙 바꾸기: 이 조각은 `lock_refusal` 을 그대로 불러요.
 
@@ -30,8 +30,10 @@ created: 2026-11-19
 - REQ-3: Where the worktree has no TDD record, the record is in RED, no named path is locked, or the repository holds no MoAI state, the guard shall allow the command as before.
 - REQ-4: The guard shall read relative paths against the hook input's `cwd` and judge a path where it lands (`..` and symlinks resolved), as the file-write lock does.
 - REQ-5: When the engine denies a tool call, the line it appends to `hook-engine.jsonl` shall carry the reason sentence of the guard that refused it and no command text, path or file content.
-- REQ-6: The `capabilities` answer of the hook engine shall say that the Bash lock covers `rm`, `unlink`, `git rm`, `mv` and `git mv` on literal, glob and brace words and on folders only, and name each form it does not guard: redirections, `tee`, `sed -i`, scripts, variables, `xargs`, `find -exec`, `find -delete`, the bodies of compound statements and a command run after a `cd`.
+- REQ-6: The `capabilities` answer of the hook engine shall say that the Bash lock covers `rm`, `unlink`, `git rm`, `mv` and `git mv` on literal, glob and brace words, on folders and behind the shell structures it reads, and name each form it does not guard: redirections, `tee`, `sed -i`, scripts, variables, `xargs`, `find -exec`, `find -delete`, extended globs, `~` expansion, more than 256 brace alternatives, braces nested deeper than 4 and a command run after a `cd`.
 - REQ-8: The guard shall read a folder that exists and holds a locked test as that test, and a glob (`*`, `?`, `[..]`) or brace (`{a,b}`) word as the locked tests it names or holds.
+- REQ-9: The guard shall read each word of those commands as written as well as matched or opened, so that a locked test whose real name holds `[..]`, `{a,b}`, `*` or `?` stays protected.
+- REQ-10: The guard shall read those commands also behind `!`, a `{ …; }` group, the `then`, `do` and `else` bodies of `if`, `while` and `for`, backticks, `busybox` or `toybox`, and `git -C <dir>`, and as holding the locked tests when the folder is above the work tree.
 - REQ-7 (REQ-5): IF a refusal's sentence is built at run time (the commit-identity rule names an email, the claim rule an Issue number, and a command line that commits in more than one folder names the verbs), THEN the line that REQ-5 describes shall carry `reason: null`.
 
 ## Acceptance
@@ -42,8 +44,10 @@ created: 2026-11-19
   verify: `cargo test --locked --offline --test hooks_cli deny_audit_line`
 - AC-3 (REQ-6): `capabilities` 가 Bash 잠금의 범위와 못 막는 형태를 이름으로 말하고, 그 형태들이 실제로 통과한다는 사실을 시험이 고정해요.
   verify: `cargo test --locked --offline --test hooks_cli capabilities_name_the_bash_lock_limits`; `cargo test --locked --offline --test hooks_cli green_lock_bash_named_limits`
-- AC-5 (REQ-8): 폴더째(`rm -rf tests`, `git rm -r tests`, `mv tests …`), glob(`tests/locked_*.rs`, `t*`), 중괄호(`tests/{a,b}`)는 deny, 잠긴 시험이 없는 폴더·패턴은 allow. `--` 뒤의 `-` 로 시작하는 이름도 경로예요(감사 N1).
-  verify: `cargo test --locked --offline --test hooks_cli green_lock_bash_covers`; `cargo test --locked --offline --test hooks_cli green_lock_bash_reads_dash`
+- AC-5 (REQ-8, REQ-9): 폴더째(`rm -rf tests`, `git rm -r tests`, `mv tests …`), glob(`tests/locked_*.rs`, `t*`, 클래스의 양 끝, `*` 가 빈 글자, 심볼릭 링크 폴더), 중괄호(`tests/{a,b}`)는 deny, 잠긴 시험이 없는 폴더·패턴은 allow. 이름에 `[id]`·`{b,c}`·`*`·`?` 가 든 잠긴 시험은 쓴 그대로도 deny(재감사 B1). `--` 뒤의 `-` 로 시작하는 이름도 경로예요(감사 N1).
+  verify: `cargo test --locked --offline --test hooks_cli green_lock_bash_covers`; `cargo test --locked --offline --test hooks_cli green_lock_bash_reads_locked_names`; `cargo test --locked --offline --test hooks_cli green_lock_bash_edges`; `cargo test --locked --offline --test hooks_cli green_lock_bash_reads_dash`
+- AC-6 (REQ-10): `! rm`, `{ rm …; }`, `if`·`while`·`for` 몸통, 백틱, `busybox rm`, `git -C tests rm`, 작업 트리 위 폴더(`rm -rf <부모>`)는 deny, 같은 모양의 안 막혀야 할 줄(`echo '{ rm …; }'`, `git -C tests status`)은 allow.
+  verify: `cargo test --locked --offline --test hooks_cli green_lock_bash_reads_wrapped
 - AC-4 (REQ-1…REQ-6): 이웃 시험.
   verify: `cargo test --locked --offline --test hooks_cli`; `cargo test --locked --offline --test spec_before_code_hook`; `cargo test --locked --offline --test green_test_lock`; `cargo test --locked --offline --lib hook_guards::`; `cargo test --locked --offline --lib hook_engine::`; `cargo fmt --check`; `cargo clippy --locked --offline --all-targets -- -D warnings`
 
@@ -78,10 +82,15 @@ created: 2026-11-19
 
 ## Result
 
-- AC-1: met — `cargo test --locked --offline --test hooks_cli green_lock_bash` 6개 통과(GREEN·REFACTOR 에서 rm·unlink·git rm·mv·git mv·`..`·절대 경로·`sh -c` 거부, 잠기지 않은 경로·없는 rm 대상·RED·기록 없음·`.git` 없음 허용, 입력 cwd 기준). 첫 구현은 RED 먼저(새 시험 5개 중 4개 실패, 허용 시험 1개는 처음부터 통과).
-- AC-2: met — `deny_audit_line_carries_the_reason_and_no_command_or_path` 통과(두 deny 줄에 서로 다른 고정 reason, 명령·경로 문자열 없음)와 `deny_audit_line_is_null_when_the_sentence_is_built_at_run_time` 통과(`git -C a commit … && git -C b commit …` 거절은 `reason: null`). 신원·claim 규칙의 null 경로는 시험이 없어요(설정·lane 상태가 필요해 돌리지 않음).
-- AC-3: met — `capabilities_name_the_bash_lock_limits` 통과(claude·codex·omp 세 host 모두가 막는 형태(폴더째·glob·중괄호)와 못 막는 형태 10개를 이름으로 말해요)와 `green_lock_bash_named_limits_are_not_guarded` 통과(그 형태 11줄이 지금 실제로 통과한다는 사실을 고정).
-- AC-5: met — `green_lock_bash_covers_folders_globs_and_braces`(deny 26줄: `rm -rf tests`, `rm -r tests/`, `git rm -r tests`, `mv tests tests_old`, 절대 경로 폴더, `tests/locked_*.rs`, `?`·`[..]`·`[!x]`·`[^x]`, `rm -rf t*`·`te?ts`, `tests/{a,b}` 중첩 포함; allow 19줄: 잠긴 시험이 없는 폴더·패턴·중괄호)와 `green_lock_bash_reads_dash_names_after_double_dash`(`rm -- -odd_test.rs` deny, `rm -odd_test.rs` 는 옵션이라 allow) 통과. 이 AC 는 첫 감사(#3216 B1·N1) 뒤의 수리로 더했고, 시험은 구현 뒤에 썼어요(RED 로 먼저 보지 않았고, 아래 mutant 11개가 각각 시험을 빨갛게 만든다는 사실로 시험의 힘을 확인).
-- AC-4: met — `--test hooks_cli` 31(수리 뒤 다시 돌림), `--test spec_before_code_hook` 9, `--test green_test_lock` 10, `--test hook_dispatch_cli` 43, `--test hook_status_cli` 14, `--lib hook_` 56 모두 통과, `cargo fmt --check` 0, `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `--test ac_command_lint` 5 통과, `python3 -m unittest tests.ci_scope_test` OK, `moai spec lint <spec.md>` 오류 0(경고는 예전 형식 유예분), `moai spec check SPEC-20261119-enforce-spec-hooks` 오류 0·경고 0. 돌리지 않은 것: 전체 `cargo test`(CI 가 돌려요), `--test git_env_scrub`(git 을 새로 띄우는 코드가 없어요).
-- mutation: 12개(unlink·mv·git rm·git mv 가지 제거, 존재 확인 끔, cwd 무시, 배선 제거, reason 미보관·항상 null, 없는 mv 대상 건너뛰기, OMP capabilities 문구 제거, 잠금 호출 제거) 모두 KILLED, `git status` 깨끗이 복구(`target/c86/mutants.txt`). 수리(B1·N1) 뒤 새 코드에 11개(폴더 포함 판정 끔, glob 대기 끔, 폴더 단어 읽기 끔, 중괄호 펼침 끔, `?`·`*` 끔, 클래스 부정·범위 끔, 폴더에서 멈추는 glob 끔, `--` 처리 제거(감사의 H7), 없는 대상 유지) 모두 KILLED(`target/c86/mutants2.txt`). 처음의 12개는 수리 전 코드에서 돌렸어요(수리 뒤 다시 돌리지 않음).
-- 이 조각 밖: AC-1(인터뷰 기록)·AC-3(Stop hook)·AC-4(병합 관문)은 S2·S3·S4 로 이어져요(리더 note 2278: 순서 S1 → S4 → S2 → S3, 범위는 S2 시작 때 넓힘).
+구현 에이전트가 채웠어요. 감사가 다시 확인해요. macOS arm64, 이 worktree(`spec/20261119-enforce-spec-hooks`), 빌드 폴더 `~/.moai/build/moai-adk-86`, `CARGO_INCREMENTAL=0`, cargo cache `/tmp/moai-rc-cargo-agent-3`. 이 절은 세 번째 수리(커밋 2ed3a16f93 뒤)의 값이에요. 시험 개수는 `cargo test --test <이름>` 을 파일마다 돌려 그 파일 로그의 `test result` 줄에서 읽었어요.
+
+RED 먼저: 첫 구현은 새 시험 5개 중 4개가 실패한 뒤 통과했어요. 세 번째 수리는 소스 변경을 치워 두고 새 시험을 돌려 `capabilities_name_the_bash_lock_limits`, `green_lock_bash_edges_of_folders_globs_and_moves`, `green_lock_bash_named_limits_are_not_guarded`, `green_lock_bash_reads_locked_names_with_pattern_characters`, `green_lock_bash_reads_wrapped_grouped_and_rebased_commands` 5개가 실패하는 것을 본 뒤(`target/c86/red3.log`) 구현했어요. 두 번째 수리의 시험은 구현 뒤에 썼고 RED 를 보지 못했어요.
+
+- AC-1: met — `cargo test --locked --offline --test hooks_cli green_lock_bash` 통과(GREEN·REFACTOR 에서 `rm`·`unlink`·`git rm`·`mv`·`git mv`·`..`·절대 경로·`sh -c` 거부; 잠기지 않은 경로·없는 `rm` 대상·RED·기록 없음·`.git` 없음 허용; 입력 `cwd` 기준).
+- AC-2: met — `deny_audit_line_carries_the_reason_and_no_command_or_path` 통과(두 deny 줄에 서로 다른 고정 reason, 명령·경로 문자열 없음)와 `deny_audit_line_is_null_when_the_sentence_is_built_at_run_time` 통과(`git -C a commit … && git -C b commit …` 거절은 `reason: null`). 신원·claim 규칙의 `null` 경로는 시험이 없어요(설정·lane 상태가 필요해 돌리지 않음). 재감사가 지적한 opt-in 규칙의 `reason` 변이용 시험도 더하지 않았어요(not_run).
+- AC-3: met — `capabilities_name_the_bash_lock_limits` 통과(claude·codex·omp 세 host 가 막는 형태와 못 막는 형태 13개의 이름을 말해요: 리다이렉트, `tee`, `sed -i`, 스크립트, 변수, `xargs`, `find -exec`, `find -delete`, 확장 글롭, `~` 확장, 중괄호 256개 초과, 중괄호 4단계 초과, `cd` 뒤 명령)와 `green_lock_bash_named_limits_are_not_guarded`·`green_lock_bash_brace_limits_are_the_named_ones` 통과(이 이름마다 지금 통과하는 줄이 하나 이상 고정돼 있어요). `case` 문은 문구에서 뺐어요: 단순한 `case x in x) rm tests/…;; esac` 가 실제로 거절돼서 "막지 않음"이라고 쓰면 틀려요.
+- AC-4: met — `--test hooks_cli` 35, `spec_before_code_hook` 9, `green_test_lock` 14, `hook_dispatch_cli` 56, `hook_status_cli` 10, `ac_command_lint` 5, `--lib hook_` 43 모두 통과, `cargo fmt --check` 0, `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `python3 -m unittest tests.ci_scope_test` OK, `moai spec check SPEC-20261119-enforce-spec-hooks` 오류 0·경고 0. 돌리지 않은 것: 전체 `cargo test`(CI 가 돌려요), `--test git_env_scrub`(git 을 새로 띄우는 코드가 없어요), codex·omp host 실행.
+- AC-5: met — `green_lock_bash_covers_folders_globs_and_braces`, `green_lock_bash_reads_locked_names_with_pattern_characters`(재감사 표 7행 모두와 같은 모양의 변형: 따옴표 없는 `[id]`, `\[id\]`, `*`·`?` 가 든 이름, 새 시험 경로 `new_[1]_test.rs`·`new_{1,2}_test.rs`), `green_lock_bash_edges_of_folders_globs_and_moves`(작업 트리 루트 폴더, 클래스 양 끝, `*` 가 빈 글자, 심볼릭 링크 폴더, `git mv` 의 새 시험 경로), `green_lock_bash_reads_dash_names_after_double_dash` 통과.
+- AC-6: met — `green_lock_bash_reads_wrapped_grouped_and_rebased_commands` 통과(`! rm`, `{ rm …; }`, 괄호 묶음, `if`·`while`·`for` 몸통, 함수 정의, 백틱, `busybox`·`git -C` 의 `rm`·`mv`, 작업 트리 위 폴더 deny; `echo '{ rm … }'`, `echo "then rm …"`, `git -C tests status`, `busybox ls` allow). `rm -rf .`·`..`·`/` 는 정적 `rm` 규칙이 먼저 거절하고 시험이 그 문장을 확인해요.
+- mutation: 처음 12개(수리 전 코드)와 첫 수리의 11개는 모두 KILLED(`target/c86/mutants.txt`, `mutants2.txt`). 세 번째 수리 코드에 12개(작업 트리 위 폴더, 중괄호 펼침, 역슬래시, 백틱, `!`, `{`, `then/do/else`, 구조어 전체, `busybox`, `git -C`, 글롭, 원래 철자)를 돌려 10개 KILLED, 2개(역슬래시·원래 철자)는 SURVIVED 였고 동작이 같은 중복 코드(토크나이저가 이미 역슬래시를 벗기고, 쓴 그대로의 단어는 다른 경로로 이미 들어가요)라 코드를 지웠어요(`target/c86/mutants3-s1.txt`, 지운 뒤 이 둘은 다시 돌리지 않았고 위 시험은 다시 통과). 재감사가 살아남았다고 한 N3 의 변이(작업 트리 루트, 클래스 위쪽 끝, `*` 빈 글자, 심볼릭 링크 접두사, `git mv` 새 경로, 중괄호 상한 8)는 시험을 더했지만 그 변이를 다시 돌리지는 않았어요(not_run).
+- 이 조각 밖: AC-1(인터뷰 기록)·AC-3(Stop hook)·AC-4(병합 관문)은 S2·S3·S4 로 이어져요(리더 note 2278: 순서 S1 → S4 → S2 → S3).
