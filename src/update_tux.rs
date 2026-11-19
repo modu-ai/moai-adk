@@ -159,6 +159,7 @@ enum W {
     SwitchLeft,
     SwitchNext,
     SwitchDone,
+    SwitchReverted,
     SwitchFailed,
     Keys,
     KeyImport,
@@ -601,6 +602,13 @@ fn w(lang: Lang, word: W) -> &'static str {
                 "전환 스크립트를 v2 로 바꿨어요 — 옛 파일:"
             } else {
                 "Switch script replaced by v2 — the old file:"
+            }
+        }
+        SwitchReverted => {
+            if ko {
+                "전환 스크립트를 저장해 둔 옛 파일(v1)로 되돌렸어요"
+            } else {
+                "Switch script put back to the saved old file (v1)"
             }
         }
         SwitchFailed => {
@@ -1581,6 +1589,9 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
     if result["mode"].as_str() == Some("applied") {
         return applied(result, view);
     }
+    if result["mode"].as_str() == Some("revert_switch") {
+        return reverted_switch(result, view);
+    }
     let mut o = Out {
         v: view,
         buf: String::new(),
@@ -1668,6 +1679,26 @@ pub fn screen(result: &Value, asked: Asked, view: &View) -> String {
     o.home_next(result);
     o.switch_done(result, true);
     o.switch_next(result);
+    o.buf
+}
+
+/// The end of `--revert-switch`: the saved old script is back in place. It has no preview, no
+/// layer rows and no next step, so it gets its own one-line screen instead of the preview's.
+fn reverted_switch(v: &Value, view: &View) -> String {
+    let mut o = Out {
+        v: view,
+        buf: String::new(),
+    };
+    let lang = o.lang();
+    if v["switch_result"]["state"].as_str() == Some("reverted") {
+        o.status(Mark::Ok, w(lang, W::SwitchReverted));
+    } else {
+        let state = v["switch_result"]["state"].as_str().unwrap_or("");
+        o.status(
+            Mark::Error,
+            &format!("{}: {}", w(lang, W::SwitchFailed), visible(state)),
+        );
+    }
     o.buf
 }
 

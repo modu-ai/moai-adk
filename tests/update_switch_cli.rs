@@ -243,3 +243,40 @@ fn revert_switch_is_refused_beside_any_confirm_flag_and_for_a_bad_stamp() {
         assert_eq!(fs::read(moai_file(&home)).unwrap(), V2, "{bad}");
     }
 }
+
+/// Audit B1 (d99930df2a): on a terminal `--revert-switch` drew the preview's screen, which called a
+/// reverted result "did not finish" and "up to date". The result the CLI prints is drawn as one
+/// line that says the old script is back, in both languages and without colour or symbols.
+#[test]
+fn the_revert_switch_result_is_drawn_as_a_success_line() {
+    use moai_cli::ui::Painter;
+    use moai_cli::ui_text::Lang;
+    use moai_cli::update_tux::{screen, Asked, View};
+
+    let (_t, home, exe) = setup();
+    let p = preview(&exe, &home);
+    let t = p["switch"]["confirm_token"].as_str().unwrap().to_string();
+    let r = result(&run(&exe, &home, &["update", "--confirm-switch", &t]));
+    let stamp = r["switch_result"]["stamp"].as_str().unwrap().to_string();
+    let out = result(&run(&exe, &home, &["update", "--revert-switch", &stamp]));
+    assert_eq!(out["mode"], json!("revert_switch"), "{out}");
+
+    for (lang, ok_word) in [(Lang::En, "put back"), (Lang::Ko, "되돌렸어요")] {
+        let view = View {
+            painter: Painter {
+                color: false,
+                unicode: false,
+                lang,
+            },
+            width: 80,
+            home: "/home/u".into(),
+            project: None,
+        };
+        let text = screen(&out, Asked::NotAsked, &view);
+        assert!(text.contains(ok_word), "{text}");
+        assert_eq!(text.lines().count(), 1, "one line: {text}");
+        for wrong in ["did not finish", "끝나지 않았어요", "up to date", "Next"] {
+            assert!(!text.contains(wrong), "{wrong}: {text}");
+        }
+    }
+}

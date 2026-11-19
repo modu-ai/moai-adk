@@ -3087,6 +3087,9 @@ mod user_layer_tests {
         assert!(!asks(Some("cleanup:0123456789abcdef"), None, true));
         // #2871 U2b: a home token alone leaves the layer a preview too.
         assert!(!asks(None, Some("home:0123456789abcdef"), true));
+        // C-33 S3: `update_command_switch` passes `home_token.or(switch_token)`, so a switch
+        // token alone leaves the layer a preview too: the terminal yes never confirms the switch.
+        assert!(!asks(None, Some("switch:0123456789abcdef"), true));
     }
 
     /// Audit 6847256437 B1: a host whose skill copy passed the preview but did not land in the
