@@ -1,9 +1,10 @@
 ---
 id: SPEC-20261119-card-scope-widen-followup
 title: "card scope widening: line separators, case variants, a generation to widen at, a true spec status"
-status: draft
+status: approved
 revision: 2
 created: 2026-11-19
+approval: {by: user, at: 2026-11-19, basis: "사용자 선택 2026-11-19T21:22:41Z 리더 대화 (선택지 질문: 둘 다 승인 / 하나만 / 승인 안 함) — 독립 감사 PASS(C-129 노트 3492) 내용 그대로 승인", digest: "sha256:ca228c0db0c722b833ef092753a47f5c02380cd4e53588c08aa48ff4125c9ff2"}
 ---
 
 # card scope widening: line separators, case variants, a generation to widen at, a true spec status
@@ -18,6 +19,11 @@ Card C-129 (follow-up of the C-94 audit, PASS note 2859, head 15b333fe73; the ca
 - N6: SPEC-20261119-card-scope-widen says `status: draft` while its Result is filled. Measured here: its Scope already lists `tests/card_dispatch_cli.rs` (audit repair b205de81ea), and the status cannot be raised by a lane: an `approved` SPEC needs `approval: {by: user, at, basis, digest}` and an interview record, and `spec check` refuses a bare `status: approved` (`approval_missing`, `interview_missing`, measured on a trial edit). The status therefore stays `draft` and the approval is the user's, asked for through the leader (D-5).
 
 This SPEC is built in two slices. Slice A (N2, N3, N6) touched `src/card/dispatch.rs`, `src/ledger/reservation.rs`, tests and documents only. Slice B (N1) adds an optional `--generation` option, a change of `src/ops/card.rs` (the clap argument, the help and the call) and of `src/card/dispatch.rs` (the check inside the write transaction). It was built when `src/ops/card.rs` was free again (card C-99 gave it back, C-129 note 3432). Revision 2 adds its requirements REQ-4 and REQ-5, the acceptance lines AC-5 and AC-6, and the tests of audit notes N-1 and N-2 of slice A (a non-ASCII case variant; the reason at 500 and 501 characters with blanks around it).
+
+## Interview
+
+- Q1: 이 SPEC 을 승인하나요(둘 다 승인 / 하나만 / 승인 안 함)? → A: 승인해요(사용자 선택, 리더 대화 2026-11-19T21:22:41Z, 리더 결정 note 3582 of card C-129). 근거는 독립 감사 PASS(note 3492)예요.
+- Q2: 같은 선택이 SPEC-20261119-card-scope-widen(C-94)도 승인하나요? → A: 아니요. 이 일은 이 SPEC 하나만 승인해요; 그쪽 상태는 그대로예요(note 3582 는 이 SPEC 만 이름을 불러요).
 
 ## Non-goals
 
@@ -55,9 +61,9 @@ This SPEC is built in two slices. Slice A (N2, N3, N6) touched `src/card/dispatc
 
 ## Scope
 
-- write: `src/card/dispatch.rs`, `src/ledger/reservation.rs`, `tests/card_scope_widen_followup_cli.rs`, `docs/design-review/appendix/operations/card.md` (the `card scope` row only), `.moai/specs/SPEC-20261119-card-scope-widen-followup/**`; slice B adds `src/ops/card.rs` (the `--generation` argument, its help and the call only) and `tests/card_scope_widen_cli.rs` only if a neighbour needs the new argument; `src/card/command.rs` is not touched (card C-99 holds it)
+- write: `src/card/dispatch.rs`, `src/ledger/reservation.rs`, `tests/card_scope_widen_followup_cli.rs`, `docs/design-review/appendix/operations/card.md` (the card scope row only), `.moai/specs/SPEC-20261119-card-scope-widen-followup/**`, and `.moai/specs/SPEC-20261119-card-scope-widen/spec.md` (the C-94 SPEC: slice A wrote its Result and one Scope line, commits f837d0a906 and b1bd9ea3d4); slice B adds `src/ops/card.rs` (the generation argument, its help and the call only) and `tests/card_scope_widen_cli.rs` only if a neighbour needs the new argument
 - read-only: `src/card/input.rs`, `src/scope.rs`, `tests/card_scope_widen_cli.rs`, `tests/common/**`
-- forbidden: the real HOME and ledger, the network, a change of table definitions or triggers, `skills/moai/**`
+- forbidden: the real HOME and ledger, the network, a change of table definitions or triggers, `skills/moai/**`, `src/card/command.rs` (card C-99 holds it)
 
 ## Plan
 
@@ -98,4 +104,5 @@ Not changed: `src/card/input.rs` (reserved by C-122; the separator check sits in
 
 - AC-5: met - `a_stale_generation_is_refused` (generation 1 and 3 on a card at generation 2: `conflict`, `generation 2` and the given number named, every row unchanged and no `card.scope` event; `--generation 2` widens and answers generation 2, the released reservation of generation 1 keeps its pattern; no `--generation` widens as before; a ready card with `--generation 1` is `conflict` `not held`) and `a_generation_that_is_not_a_positive_number_is_a_usage_error` (`0`, `-1`, `x` and an empty value: clap exit 2, kind `usage`, rows unchanged).
 - AC-6: met - `a_non_ascii_case_variant_is_not_a_new_pattern` (`café/` and `CAFÉ/`: `invalid_input` naming both) and `a_reason_of_500_characters_with_blanks_is_kept_and_501_is_refused` (500 kept as 500 with blanks around, 501 refused, nothing written).
-- Slice B not changed: `src/ledger/reservation.rs` (card C-127 holds it; the comparison sits in `dispatch.rs`, D-7), `src/card/command.rs` (card C-99 holds it). N6 (the SPEC status) stays the user's decision (D-5).
+- Slice B not changed: `src/ledger/reservation.rs` (card C-127 holds it; the comparison sits in `dispatch.rs`, D-7), `src/card/command.rs` (card C-99 holds it). N6 (the SPEC status) was the user's decision (D-5): see the next line.
+- N6: met - the user approved this SPEC in a session selection on 2026-11-19 (leader note 3582 of card C-129; the options were both SPECs, one, or none); the header carries `status: approved` and the `approval` block in one commit, its digest read from `spec show` after the Scope was corrected (the same commit added the C-94 SPEC file to the write list and moved the `src/card/command.rs` note to forbidden; requirements and acceptance are unchanged), and `spec check` reports 0 errors and 0 warnings. An `## Interview` section was added because an approved SPEC created on 2026-11-19 or later needs one. The Scope lists every file the six C-129 commits touched (`git show --name-only` of f837d0a906, 7edc675d2e, b1bd9ea3d4, e93897b421, b1b38109a6, 8c88b03ef0: `src/card/dispatch.rs`, `src/ledger/reservation.rs`, `src/ops/card.rs`, `tests/card_scope_widen_followup_cli.rs`, `docs/design-review/appendix/operations/card.md`, this SPEC folder and `.moai/specs/SPEC-20261119-card-scope-widen/spec.md`, which this commit added to the Scope). SPEC-20261119-card-scope-widen (the C-94 SPEC) keeps its own status: this approval does not cover it.
