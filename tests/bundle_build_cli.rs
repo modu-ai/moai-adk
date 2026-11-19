@@ -101,7 +101,7 @@ impl World {
             "-c",
             "user.name=Test",
             "-c",
-            "user.email=test@example.test",
+            "user.email=test@example.invalid",
             "-c",
             "commit.gpgsign=false",
             "-c",
@@ -327,7 +327,7 @@ impl World {
     /// (the tool runs git with the user's own settings).
     fn identity(&self) {
         self.git(&["config", "user.name", "Test"]);
-        self.git(&["config", "user.email", "test@example.test"]);
+        self.git(&["config", "user.email", "test@example.invalid"]);
     }
 
     /// A card whose newest READY line names `head`.

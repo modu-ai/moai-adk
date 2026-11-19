@@ -101,7 +101,7 @@ impl World {
             "-c",
             "user.name=Test",
             "-c",
-            "user.email=test@example.test",
+            "user.email=test@example.invalid",
             "-c",
             "commit.gpgsign=false",
             "-c",
