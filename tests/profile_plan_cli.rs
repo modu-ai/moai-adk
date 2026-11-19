@@ -338,21 +338,23 @@ fn without_work_flow_or_without_a_remote_the_key_is_absent() {
         v["result"]
     );
 
-    // A repository with no remote at all: the key stays absent too.
+    // A repository with no remote at all: the key stays absent too. The init goes
+    // through the shared guarded helper (audit N1: this bare spawn had no fixture
+    // guards and no exit-status check; the bundle's command lint caught it).
     let n = NEXT.fetch_add(1, Ordering::SeqCst);
     let root =
         std::env::temp_dir().join(format!("c105-plan-noremote-{}-{}", std::process::id(), n));
     fs::create_dir_all(root.join("home")).unwrap();
-    Command::new("git")
-        .arg("init")
-        .arg("-q")
-        .arg("-b")
-        .arg("main")
-        .arg(root.join("demo"))
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
-        .output()
-        .unwrap();
+    common::git::git_ok(
+        &root,
+        &[
+            "init",
+            "-q",
+            "-b",
+            "main",
+            root.join("demo").to_str().unwrap(),
+        ],
+    );
     let w2 = World {
         home: root.join("home"),
         project: root.join("demo"),

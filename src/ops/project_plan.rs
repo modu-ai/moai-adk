@@ -23,8 +23,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     // belongs to this entry alone — `project-update-plan` shares `plan()` but must
     // not run `git ls-remote` (a network call) in its preview. The value this op
     // returns becomes the envelope's `result`, so the object attaches here directly.
-    if let Some(wf) = moai_cli::profile::plan_work_flow_remote(&args.project, work_flow.as_ref())
-    {
+    if let Some(wf) = moai_cli::profile::plan_work_flow_remote(&args.project, work_flow.as_ref()) {
         answer["work_flow_remote"] = wf;
     }
     Ok(answer)
