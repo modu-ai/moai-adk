@@ -353,3 +353,50 @@ fn a_saved_value_adds_a_note_with_its_key_path() {
         );
     }
 }
+
+/// AC-1 (the start path, not only `--dry-run`): a saved z.ai model for OMP reaches the host with
+/// its argv and with the glm key, the way a model named on the command line does. A stub `omp`
+/// records the arguments and the value of `ZAI_API_KEY`.
+#[test]
+fn a_saved_zai_model_reaches_an_omp_host_that_is_started() {
+    let f = Fixture::new();
+    f.config(SAVED);
+    let stub = f.bin.path().join("omp");
+    fs::write(
+        &stub,
+        "#!/bin/sh\nprintf '%s' \"${ZAI_API_KEY-<unset>}\" > \"$MOAI_TEST_MARK/zai\"\nprintf '%s\\n' \"$@\" > \"$MOAI_TEST_MARK/args\"\nexit 0\n",
+    )
+    .unwrap();
+    fs::set_permissions(&stub, fs::Permissions::from_mode(0o755)).unwrap();
+    let out = Command::new(crate::common::MOAI_BIN)
+        .args(["omp", "-l"])
+        .current_dir(f.project.path())
+        .env("PATH", format!("{}:/usr/bin:/bin", f.bin.path().display()))
+        .env("HOME", f.home.path())
+        .env("MOAI_TEST_MARK", f.bin.path())
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .env_remove("ZAI_API_KEY")
+        .env("ANTHROPIC_AUTH_TOKEN", "moai-test-token-not-real")
+        .stdin(std::process::Stdio::null())
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let seen_key = fs::read_to_string(f.bin.path().join("zai")).unwrap();
+    assert_eq!(seen_key, "moai-test-token-not-real");
+    let args = fs::read_to_string(f.bin.path().join("args")).unwrap();
+    let args: Vec<&str> = args.lines().collect();
+    assert!(
+        args.windows(2)
+            .any(|w| w == ["--model", "zai/glm-5.3-flash"]),
+        "{args:?}"
+    );
+    assert!(
+        args.windows(2).any(|w| w == ["--thinking", "max"]),
+        "{args:?}"
+    );
+}
