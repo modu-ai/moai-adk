@@ -224,6 +224,11 @@ impl Renderer {
         let mut segs = Vec::new();
         // #2928 (user instruction 6878415244, 2026-11-14): line 3 is the bars alone; the tag
         // moved to the front of line 1.
+        // User instruction 2026-11-19 (was #2756 AC-9 at the end of line 2): which worktree the
+        // session is in opens line 3; absent in the main checkout.
+        if self.enabled("worktree") && !s.worktree.is_empty() {
+            segs.push(self.paint(self.theme.branch, &worktree_text(s)));
+        }
         if self.enabled("context") {
             if s.memory.available && s.memory.token_budget > 0 {
                 let pct = segments::usage_percent(s.memory.tokens_used, s.memory.token_budget);
@@ -303,11 +308,6 @@ impl Renderer {
             .then(|| self.repo_branch(s, cards.as_deref()))
             .flatten();
         segs.extend(repo_branch.or(cards));
-        // #2756 AC-9 (user choice 2026-11-13): which worktree the session is in; absent in
-        // the main checkout.
-        if self.enabled("worktree") && !s.worktree.is_empty() {
-            segs.push(self.paint(self.theme.branch, &format!("🌳 {}", s.worktree)));
-        }
         // #2756 AC-7 (user choice 2026-11-13): this branch's pull request, linked to its URL.
         if self.enabled("pr") {
             if let Some(pr) = &s.pr {
@@ -395,6 +395,17 @@ impl Renderer {
 ///   name is only a display hint and is never an authority decision.
 /// - `agent-<decimal u32 without a leading zero>` (`session::agent_number_of`) → `Agent-<n>`.
 /// - Any other name, or none → `agent`.
+/// User instruction 2026-11-19: `🌳 WT-c<card>-<name>` when a held reservation names the
+/// worktree, `🌳 WT-c<card>` when nothing says what the work is, else the worktree name the host
+/// gave, alone.
+fn worktree_text(s: &Status) -> String {
+    match &s.worktree_label {
+        Some(l) if l.name.is_empty() => format!("🌳 WT-c{}", l.card),
+        Some(l) => format!("🌳 WT-c{}-{}", l.card, l.name),
+        None => format!("🌳 {}", s.worktree),
+    }
+}
+
 fn tag_text(s: &Status) -> String {
     if s.leader || s.session_name == "leader" {
         return "Leader".to_string();
@@ -904,21 +915,20 @@ mod tests {
             remaining: 50,
             done: 12,
         });
+        // The worktree opens line 3 (user instruction 2026-11-19), so line 2 is the cards alone.
         assert_eq!(
             line(&status, &["git_branch"]),
-            "🗂️ 50 / ▶️ 2 / 🔃 26 / ✅ 12 | 🌳 wt"
+            "🗂️ 50 / ▶️ 2 / 🔃 26 / ✅ 12"
         );
-        assert_eq!(line(&status, &["git_branch", "cards"]), "🌳 wt");
+        // With nothing else on line 2 the line is gone and the bars line is the second one.
+        assert!(line(&status, &["git_branch", "cards"]).starts_with("🌳 wt | 🔋 CTX:"));
         status.cards = Some(CardCounts {
             in_progress: 28,
             waiting: None,
             remaining: 50,
             done: 12,
         });
-        assert_eq!(
-            line(&status, &["git_branch"]),
-            "🗂️ 50 / ▶️ 28 / ✅ 12 | 🌳 wt"
-        );
+        assert_eq!(line(&status, &["git_branch"]), "🗂️ 50 / ▶️ 28 / ✅ 12");
     }
 
     #[test]
@@ -932,15 +942,11 @@ mod tests {
             done: 3,
         });
         status.worktree = "wt".into();
-        assert_eq!(line(&status, &["git_branch"]), "🗂️ 2 / ▶️ 1 / ✅ 3 | 🌳 wt");
-        assert_eq!(line(&status, &["git_branch", "cards"]), "🌳 wt");
+        assert_eq!(line(&status, &["git_branch"]), "🗂️ 2 / ▶️ 1 / ✅ 3");
         status.repo = None;
-        assert_eq!(
-            line(&status, &[]),
-            "🗂️ 2 / ▶️ 1 / ✅ 3 | 🅱️ main ↓2 +3 | 🌳 wt"
-        );
+        assert_eq!(line(&status, &[]), "🗂️ 2 / ▶️ 1 / ✅ 3 | 🅱️ main ↓2 +3");
         status.git = None;
-        assert_eq!(line(&status, &[]), "🗂️ 2 / ▶️ 1 / ✅ 3 | 🌳 wt");
+        assert_eq!(line(&status, &[]), "🗂️ 2 / ▶️ 1 / ✅ 3");
         status.worktree.clear();
         assert_eq!(line(&status, &[]), "🗂️ 2 / ▶️ 1 / ✅ 3");
     }
@@ -1024,6 +1030,35 @@ mod tests {
         assert!(output.contains("🔗 #987 approved"), "{output:?}");
     }
 
+    /// User instruction 2026-11-19: the worktree opens line 3 as `🌳 WT-c<card>-<name>`, as
+    /// `🌳 WT-c<card>` when the label has no name, and as the host's name alone without a
+    /// label; the bars follow it unchanged and `worktree` off removes it.
+    #[test]
+    fn the_worktree_label_opens_line_3_in_three_shapes() {
+        let bars = |s: &Status, off: &[&str]| plain(s, off).lines().nth(2).unwrap().to_string();
+        let mut status = full_status();
+        let rest = bars(&status, &[]);
+        status.worktree = "host-name".into();
+        assert_eq!(bars(&status, &[]), format!("🌳 host-name | {rest}"));
+        status.worktree_label = Some(state::WorktreeLabel {
+            card: 103,
+            name: "statusline-waiting-cards".into(),
+        });
+        assert_eq!(
+            bars(&status, &[]),
+            format!("🌳 WT-c103-statusline-waiting-cards | {rest}")
+        );
+        status.worktree_label = Some(state::WorktreeLabel {
+            card: 7,
+            name: String::new(),
+        });
+        assert_eq!(bars(&status, &[]), format!("🌳 WT-c7 | {rest}"));
+        assert_eq!(bars(&status, &["worktree"]), rest);
+        // The main checkout (no host name) has no segment, whatever a label says.
+        status.worktree.clear();
+        assert_eq!(bars(&status, &[]), rest);
+    }
+
     /// #2756 AC-7–AC-9: the cache timer sits in the `♻️` segment, the worktree and the pull
     /// request on the repository line, each left out with its separator when absent.
     #[test]
@@ -1044,8 +1079,10 @@ mod tests {
         );
         assert_eq!(
             lines[1],
-            "📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3 | 🌳 wt | 🔗 #42 pending"
+            "📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3 | 🔗 #42 pending"
         );
+        // The worktree opens line 3 (user instruction 2026-11-19), before the bars.
+        assert!(lines[2].starts_with("🌳 wt | 🔋 CTX:"), "{}", lines[2]);
         assert!(
             !out.contains('\x1b'),
             "plain output carries no link escape: {out:?}"
