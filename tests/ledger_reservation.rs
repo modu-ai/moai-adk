@@ -1773,8 +1773,9 @@ fn reclaim_lease_end_second_is_the_edge() {
         reclaim(&mut w, card, "a", 1).unwrap_err(),
         reservation::ReclaimError::LeaseLive { .. }
     ));
-    // The lease-end second itself no longer holds (the same test as the fence's), and the
-    // holder may reclaim its own ended lease.
+    // A lease that ends at the second the ledger reads, or any later second, is ended whichever
+    // second the clock shows by the time `reclaim` runs; the exact edge (N-1, N, N+1) is pinned
+    // on `lease_ended` itself, in the library's tests. The holder may reclaim its own ended lease.
     sql(
         &mut w,
         "UPDATE reservation SET lease_until = unixepoch() WHERE card_id = 1",

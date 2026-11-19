@@ -205,9 +205,67 @@ fn codex_config_step(root: &Path, shown: &str, config_home: Result<PathBuf, Stri
         return HostStep::bare(NAME, "blocked", "the config request is not an object");
     };
     match codex_config::config_plan(root, &home, request) {
-        Ok(plan) => config_from_plan(shown, &desired, &plan),
+        Ok(plan) => {
+            let mut step = config_from_plan(shown, &desired, &plan);
+            if step.state == "conflict" {
+                // The two values are in the step itself: reading the `diff` needs no command.
+                if plan["diff"].is_array() {
+                    step.preview["diff"] = plan["diff"].clone();
+                }
+                // The replacement's own plan (read-only) gives the digest its command needs;
+                // without it the user still gets `keep` and `diff`.
+                let replace = codex_config::config_plan_with(root, &home, request, true).ok();
+                step.preview["choices"] = conflict_choices(shown, &desired, replace.as_ref());
+            }
+            step
+        }
         Err(e) => HostStep::bare(NAME, "blocked", &e),
     }
+}
+
+/// What the user can pick when a key MoAI manages was set differently (SPEC-20261119-codex-
+/// conflict-choices), recommended first. `keep` has no command; `diff` is the read-only replace
+/// plan; `replace` is the apply of that plan, which keeps a copy of the file first, and is left
+/// out when there is no replace plan (`None`, or one whose action is not `replace`).
+fn conflict_choices(shown: &str, desired: &Value, replace: Option<&Value>) -> Value {
+    let words = |list: &[&str]| list.iter().map(|w| w.to_string()).collect::<Vec<_>>();
+    let mut choices = vec![
+        json!({
+            "id": "keep", "recommended": true, "writes": false,
+            "label": "keep your Codex config as it is; nothing is written",
+            "command": Value::Null,
+        }),
+        json!({
+            "id": "diff", "recommended": false, "writes": false,
+            "label": "show your value next to the one MoAI would write; nothing is written",
+            "command": {
+                "argv": words(&["moai", "codex-config-plan", shown, "--replace-with-backup"]),
+                "stdin": desired,
+            },
+        }),
+    ];
+    if let Some((replace, digest)) = replace
+        .filter(|r| r["action"] == "replace")
+        .and_then(|r| Some((r, r["plan_digest"].as_str()?)))
+    {
+        choices.push(json!({
+            "id": "replace", "recommended": false, "writes": true,
+            "label": if replace["backup"]["path"].is_string() {
+                "keep a copy of your Codex config, then set the MoAI value"
+            } else {
+                "set the MoAI value (there is no config file to keep a copy of)"
+            },
+            "backup": replace["backup"]["path"],
+            "command": {
+                "argv": words(&[
+                    "moai", "codex-config-apply", shown, "--replace-with-backup",
+                    "--plan-digest", digest, "--permission-reference", PLACEHOLDER,
+                ]),
+                "stdin": desired,
+            },
+        }));
+    }
+    Value::Array(choices)
 }
 
 fn config_from_plan(shown: &str, desired: &Value, plan: &Value) -> HostStep {
@@ -765,5 +823,58 @@ mod tests {
                 None => assert_ne!(state, "ready", "{action}"),
             }
         }
+    }
+
+    fn ids(choices: &Value) -> Vec<&str> {
+        choices
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| c["id"].as_str().unwrap())
+            .collect()
+    }
+
+    /// SPEC-20261119-codex-conflict-choices REQ-10: no replace plan (it could not be made, or it
+    /// is not a replacement) leaves `keep` and `diff`; a replace plan adds `replace` last.
+    #[test]
+    fn conflict_choices_drop_replace_without_a_replace_plan() {
+        let want = codex_config_request();
+        const BACKUP: &str = crate::project_state!("backups/x.toml");
+        let replace = json!({"action": "replace", "plan_digest": "sha256:d",
+                             "backup": {"path": BACKUP}});
+        let all = conflict_choices("/p", &want, Some(&replace));
+        assert_eq!(ids(&all), ["keep", "diff", "replace"]);
+        assert_eq!(all[2]["backup"], json!(BACKUP));
+        for none_or_other in [
+            None,
+            Some(json!({"action": "conflict", "plan_digest": "sha256:d"})),
+            Some(json!({"action": "replace"})),
+        ] {
+            let kept = conflict_choices("/p", &want, none_or_other.as_ref());
+            assert_eq!(ids(&kept), ["keep", "diff"], "{none_or_other:?}");
+        }
+    }
+
+    /// REQ-9, REQ-11: `keep` is first, recommended and has no command; only `replace` writes;
+    /// the `replace` command carries the digest of the plan it was built from.
+    #[test]
+    fn conflict_choices_put_keep_first_and_only_replace_writes() {
+        let want = codex_config_request();
+        let replace = json!({"action": "replace", "plan_digest": "sha256:d", "backup": null});
+        let all = conflict_choices("/p", &want, Some(&replace));
+        let list = all.as_array().unwrap();
+        assert_eq!(list[0]["recommended"], json!(true));
+        assert_eq!(list[0]["command"], Value::Null);
+        let recommended = list.iter().filter(|c| c["recommended"] == json!(true));
+        assert_eq!(recommended.count(), 1);
+        let writes: Vec<&str> = list
+            .iter()
+            .filter(|c| c["writes"] == json!(true))
+            .map(|c| c["id"].as_str().unwrap())
+            .collect();
+        assert_eq!(writes, ["replace"]);
+        let argv = list[2]["command"]["argv"].as_array().unwrap();
+        let at = argv.iter().position(|w| w == "--plan-digest").unwrap();
+        assert_eq!(argv[at + 1], json!("sha256:d"));
     }
 }

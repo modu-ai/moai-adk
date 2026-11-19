@@ -1,15 +1,19 @@
-//! `trailer-check` (SPEC-20261117-session-trailer, SDD-6): the identity trailers of a range.
+//! `trailer-check` (SPEC-20261117-session-trailer, SDD-6; SPEC-20261119-verified-trailer): the
+//! identity trailers of a range.
 
 use std::path::PathBuf;
 
 /// Report commits with missing or malformed trailers
 ///
 /// Read the commits of RANGE (merges skipped, oldest first) and report each missing or
-/// malformed `Moai-Spec:` / `Moai-Session:` trailer (user decision U-B 2026-11-17). A missing
-/// `Moai-Spec` fails only on a `spec/` branch; a malformed value always fails; a missing
-/// `Moai-Session` is reported and never fails (the audit gate then reads the authors as
-/// unknown). `ok` is true when nothing fails; otherwise the result is printed and the command
-/// exits 1. A value holding the log's field separator is `malformed_trailers`. Reads only.
+/// malformed `Moai-Spec:` / `Moai-Session:` / `Moai-Verified:` trailer (user decision U-B
+/// 2026-11-17). A missing `Moai-Spec` fails only on a `spec/` branch; a malformed value always
+/// fails; a missing `Moai-Session` is reported and never fails (the audit gate then reads the
+/// authors as unknown). A missing `Moai-Verified` line fails only after the rule's start commit
+/// — the range's first commit carrying the line, or the commit `--verified-since` names (itself
+/// exempt); before it the line reads as `none`. `ok` is true when nothing fails; otherwise the
+/// result is printed and the command exits 1. A value holding the log's field separator is
+/// `malformed_trailers`. Reads only.
 #[derive(clap::Args)]
 pub struct Args {
     /// Revision range, for example `<base>..HEAD`.
@@ -20,10 +24,19 @@ pub struct Args {
     /// The branch the range is judged for, when the checkout is detached (CI).
     #[arg(long)]
     branch: Option<String>,
+    /// The revision the Moai-Verified rule starts at, in place of the range's first commit
+    /// carrying the line (that commit itself stays exempt).
+    #[arg(long)]
+    verified_since: Option<String>,
 }
 
 pub const OPERATION: &str = "trailers.check";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
-    moai_cli::trailers::check(&args.dir, &args.range, args.branch.as_deref())
+    moai_cli::trailers::check(
+        &args.dir,
+        &args.range,
+        args.branch.as_deref(),
+        args.verified_since.as_deref(),
+    )
 }
