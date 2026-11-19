@@ -39,9 +39,9 @@ C-86 S3(SPEC-20261119-enforce-ac-verify-recorded)의 규칙 `ac_verify_recorded`
 
 - AC-1 (REQ-1): `hook-dispatch --event session-check` capabilities 의 `limits` 가 프로세스 폴더·4096바이트·detached HEAD 와 sha256·reftable·symref·하위 폴더 한계를 말해요. · verify: `cargo test --locked --offline --test hooks_cli the_ac_verify_limits_name_the_process_folder_the_command_size_the_unreadable_heads_and_the_subfolder`
 - AC-2 (REQ-2): 세션이 이미 두 번 막혔고 규칙이 또 막으려 하면 턴이 끝나게 두고 `rule_release` 한 줄(규칙 id·세션)을 남겨요; 규칙이 막지 않으려 하면 줄이 없어요. · verify: `cargo test --locked --offline --test hooks_cli the_stop_release_after_the_cap_writes_one_rule_release_line`; `cargo test --locked --offline --test hooks_cli no_rule_release_line_is_written_when_no_rule_would_block`
-- AC-3 (REQ-3): 따옴표 안의 공백 두 개와 줄바꿈과 NBSP 는 접히지 않고, 따옴표 밖의 공백·탭 연속은 한 칸이 돼요. · verify: `cargo test --locked --offline --lib collapse_whitespace_keeps_quotes_newlines_and_no_break_spaces`; `cargo test --locked --offline --test hooks_cli a_call_with_a_newline_or_a_no_break_space_inside_is_not_recorded_as_the_verify_command`
-- AC-4 (REQ-4): 따옴표 없는 `<name>` 자리표시자가 든 명령은 목록에서 빠지고 `< in.txt > out.txt` 와 따옴표 안 `'<b>'` 는 남아요. · verify: `cargo test --locked --offline --lib verify_commands_read_shell_syntax_when_they_judge_a_placeholder`
-- AC-5 (REQ-5, REQ-6): HEAD·ref 파일·`packed-refs` 가 FIFO 이거나 한도보다 크면 커밋을 읽을 수 없는 것으로 보고 기다리지 않아요(FIFO 시험은 제한 시간 안에 끝나요). · verify: `cargo test --locked --offline --lib head_sha_reads_regular_files_up_to_a_bound_and_never_waits_on_a_fifo`
+- AC-3 (REQ-3): 따옴표 안의 공백 두 개와 줄바꿈과 NBSP 는 접히지 않고, 따옴표 밖의 공백·탭 연속은 한 칸이 돼요. · manual: `these tests are written after C-112 releases src/hook_guards.rs (card C-130 slice 2, part 2); until then the criterion is open`
+- AC-4 (REQ-4): 따옴표 없는 `<name>` 자리표시자가 든 명령은 목록에서 빠지고 `< in.txt > out.txt` 와 따옴표 안 `'<b>'` 는 남아요. · manual: `these tests are written after C-112 releases src/hook_guards.rs (card C-130 slice 2, part 2); until then the criterion is open`
+- AC-5 (REQ-5, REQ-6): HEAD·ref 파일·`packed-refs` 가 FIFO 이거나 한도보다 크면 커밋을 읽을 수 없는 것으로 보고 기다리지 않아요(FIFO 시험은 제한 시간 안에 끝나요). · manual: `these tests are written after C-112 releases src/hook_guards.rs (card C-130 slice 2, part 2); until then the criterion is open`
 - AC-6 (REQ-7): 문자열 `"true"`·숫자 1·snake_case·camelCase 로 온 백그라운드·중단 표시는 기록하지 않아요. · verify: `cargo test --locked --offline --test hooks_cli ac_verify_run_ignores_a_call_marked_unfinished_in_every_documented_spelling`
 - AC-7 (REQ-8): 엔진 로그가 한도에 닿으면 규칙은 줄을 읽지 않고 턴이 끝나게 두고, 그 시험이 있어요. · verify: `cargo test --locked --offline --test hooks_cli the_ac_verify_rule_lets_the_turn_end_when_the_log_is_full`
 - AC-8 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7, REQ-8, REQ-9): 이웃 검사: 훅 시험과 문서·SPEC 검사가 그대로 통과해요. · verify: `cargo test --locked --offline --test hooks_cli`; `cargo test --locked --offline --test hook_dispatch_cli`; `cargo test --locked --offline --test doc_references`; `cargo test --locked --offline --test spec_cli the_repository_specs_pass_check`
@@ -76,3 +76,12 @@ C-86 S3(SPEC-20261119-enforce-ac-verify-recorded)의 규칙 `ac_verify_recorded`
 | D-1 | Stop 규칙의 한도 뒤 풀어 줌은 새 줄 종류가 아니라 기존 `rule_release` 줄(규칙 id·사유·세션)로 남긴다 | 합치기 확인의 풀어 줌이 이미 같은 뜻의 줄을 쓰고(`src/hook_engine.rs` `apply_rule_mode`), 새 종류를 더하면 조각 1 의 문서 행과 AC 목록이 또 바뀌어요(레인 agent-16, 리더 확인 대기) | 다른 이름의 줄로 바꾸고 문서 행의 낱말을 함께 바꿔요 |
 | D-2 | 하위 폴더에서 돌린 같은 명령은 기록한다(한계로 적고 시험으로 고정) | 작업 트리 루트를 요구하면 하위 폴더에서 시작한 세션은 `enforce` 에서 기록이 없어 매번 막히고(한도로만 풀려요), 하위 폴더 실행이 만드는 위험은 상대 경로의 다른 결과인데 그 경우 명령이 실패해서 기록이 안 돼요(레인 agent-16, 리더 확인 대기) | 기록 조건에 "cwd 가 작업 트리 루트"를 더하고 시험을 뒤집어요 |
 | D-3 | 쓰기 판정(N10)과 `enforce` 승격은 이 SPEC 이 정하지 않고 리더에게 제안 노트만 쓴다 | 카드 C-130 기준 5 와 감사 N10: 승격 전에 리더가 정할 일이고 승격은 사용자 결정이에요(레인 agent-16) | 해당 없음(코드 변경 없음) |
+
+## Result
+
+- 부분 결과(조각 2 앞부분, 기준 2·5): REQ-1·REQ-2·REQ-7·REQ-8·REQ-9 와 AC-1·AC-2·AC-6·AC-7·AC-9 는 닫혔고, REQ-3~REQ-6 와 AC-3·AC-4·AC-5 는 `src/hook_guards.rs`(C-112 가 예약 중)가 필요해서 열려 있어요. 열린 AC 는 `manual:` 로 두어서 있지도 않은 시험을 증거로 말하지 않아요; 예약이 풀리면 시험을 먼저 쓰고(RED) AC 를 `verify:` 로 되돌려요.
+- RED→GREEN: 새 시험을 먼저 썼을 때 한계 문구·Stop 풀어 줌 줄·줄바꿈/NBSP 세 시험이 실패했고(왜 실패하는지 메시지로 확인: 한계 낱말 없음, `rule_release` 줄 0개, 줄바꿈 호출이 기록됨), 코드를 고친 뒤 `cargo test --test hooks_cli` 가 61개 통과했어요(줄바꿈 시험은 커밋에서 빼 두었고 `src/hook_guards.rs` 가 풀리면 되돌려요). 한도 가득 시험(`the_ac_verify_rule_lets_the_turn_end_when_the_log_is_full`), 하위 폴더 시험(`a_run_from_a_subfolder_of_the_work_tree_is_recorded`), "풀 줄이 없을 때 풀어 줌 줄 없음" 시험은 지금 동작을 고정하는 핀이라 처음부터 통과했어요(RED 가 아니에요).
+- 변이(`target/mut130.sh`, 다섯 개, 파일은 해시로 복원 확인): M1 `run_in_background` 를 `== true` 로 되돌림, M2 `timedOutAfterMs` 무시, M3 Stop 풀어 줌 끄기, M4 응답 모양 검사 끄기, M5 한도 비교를 `>` 로 → 모두 KILLED. 문서 변이(AC-9, 다섯 개)도 모두 KILLED.
+- 결정: D-2 는 시험으로 확인했어요: 하위 폴더 실행은 프로세스 폴더의 로그에 기록돼요(`a_run_from_a_subfolder_of_the_work_tree_is_recorded`). N10(쓰기 판정)은 코드 변경 없이 카드 노트의 제안(옵션 a/b/c)으로만 남겼어요.
+- 알려진 한계: OMP 확장은 `isError` 만 보내서 OMP 의 백그라운드·시간 초과 호출은 완료로 읽혀요(`capabilities` 한계와 문서에 적었고 코드 변경은 `src/hooks.rs` 의 생성 모듈이라 이 조각 밖이에요).
+
