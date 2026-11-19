@@ -203,6 +203,35 @@ fn the_card_counts_keep_their_place_without_forge_counts() {
     );
 }
 
+/// SPEC-20261120-statusline-line2-order REQ-8: the renderer shortens nothing and reads no
+/// `COLUMNS`, so the whole output, line 2 with all its groups included, has the same bytes under
+/// 80 and 40 columns, with and without color.
+#[test]
+fn line_two_has_the_same_bytes_under_80_and_40_columns() {
+    let f = fixture();
+    f.with_mix();
+    let render = |columns: &str, plain: bool| {
+        let env: Vec<(&str, &str)> = if plain {
+            vec![("COLUMNS", columns), ("NO_COLOR", "1")]
+        } else {
+            vec![("COLUMNS", columns), ("COLORTERM", "truecolor")]
+        };
+        f.render_from(&f.project, &env)
+    };
+    for plain in [true, false] {
+        let wide = render("80", plain);
+        let narrow = render("40", plain);
+        assert_eq!(wide, narrow, "plain={plain}");
+        // The colored line carries the plain text (the colored-line test pins that), so the
+        // shape is read from the plain render.
+        assert_eq!(
+            f.plain().lines().nth(1),
+            Some("⬇️ 46 🔀 0 | 🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 modu-ai/moai-adk | 🅱️ main +1"),
+            "plain={plain}"
+        );
+    }
+}
+
 #[test]
 fn a_registered_ledger_without_cards_shows_zeros() {
     let f = fixture();

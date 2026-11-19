@@ -23,7 +23,6 @@ created: 2026-11-20
 - 줄 1·줄 3, 색, 숫자의 뜻, `statusline.yaml` 의 옵션 이름을 바꾸기.
 - 40칸에서 무언가를 줄이는 새 동작 만들기(지금 없어요).
 - `tests/fixtures/statusline/` 의 옛 Go 기록 고치기(읽기 전용 보관본).
-- `docs/rust-product-path.md` 항목 2의 글: 그 문서는 아직 제가 쥔 C-131 이 예약하고 있어서 이 조각에 없고, C-131 이 닫힌 뒤 별도 조각이에요(D-4).
 
 ## Requirements
 
@@ -37,8 +36,8 @@ created: 2026-11-20
 - REQ-8: The renderer shall give the same bytes under `COLUMNS` 40 and `COLUMNS` 80 for line 2, dropping nothing at either width.
 - REQ-9: Every item that line 2 leaves out today shall stay left out for the same reasons, together with its separator.
 - REQ-10: The renderer shall count the cards of a ledger as before, with the C-121 waiting rule and markers unchanged.
-- REQ-11: The golden files and the fixtures and every test that reads line 2 shall carry the new shape.
-- REQ-12: Every `tests/statusline*.rs` target shall pass.
+- REQ-11: Every `tests/statusline*.rs` target shall pass with the golden files and the fixtures and the tests that read line 2 carrying the new shape.
+- REQ-12: The statusline documentation shall state the order, the groups and the spacing of line 2 and carry lines 2 and 3 of the golden `b14-card-counts-waiting` as its example.
 
 ## Acceptance
 
@@ -48,15 +47,17 @@ created: 2026-11-20
   verify: `cargo test --locked --offline --test statusline_golden`
 - AC-3 (REQ-3, REQ-9, REQ-10): a registered ledger without cards shows `🗂️ 0 ▶️ 0 🔃 0 ✅ 0`; the cases without a repository, without a branch, with `git_branch` off, with `cards` off and without forge counts keep their items and drop what they dropped before; the counts are the same numbers as before for the same ledgers.
   verify: `cargo test --locked --offline --test statusline_cards`
-- AC-4 (REQ-8): line 2 is byte-equal under `COLUMNS` 80 and 40, ko and en, plain and truecolor.
-  verify: `cargo test --locked --offline --test statusline_tag_order`
-- AC-5 (REQ-11, REQ-12): every statusline rendering target passes: `statusline_cards`, `statusline_golden`, `statusline_tag_order`, `statusline_worktree_label`, `statusline_git_env`, `statusline_counts_refresh`, `statusline_home_state`, `statusline_guard_false_positive`, and `python3 -m unittest tests.statusline_fixtures_test`.
+- AC-4 (REQ-8): the whole output, line 2 with all four groups included, is byte-equal under `COLUMNS` 80 and 40, with and without color (`line_two_has_the_same_bytes_under_80_and_40_columns`); the tag test keeps the same for the cases without groups, ko and en, plain and truecolor.
+  verify: `cargo test --locked --offline --test statusline_cards --test statusline_tag_order`
+- AC-5 (REQ-11): every statusline rendering target passes: `statusline_cards`, `statusline_golden`, `statusline_tag_order`, `statusline_worktree_label`, `statusline_git_env`, `statusline_counts_refresh`, `statusline_home_state`, `statusline_guard_false_positive`, and `python3 -m unittest tests.statusline_fixtures_test`.
   verify: `cargo test --locked --offline --test statusline_cards --test statusline_golden --test statusline_tag_order --test statusline_worktree_label --test statusline_git_env --test statusline_counts_refresh --test statusline_home_state --test statusline_guard_false_positive`
+- AC-6 (REQ-12): lines 2 and 3 of `tests/fixtures/statusline-claude/golden/b14-card-counts-waiting.plain.txt` each appear verbatim in the document, and the old slash shapes of the git counts and the card counts are gone from it.
+  verify: `python3 -I -c "import pathlib; g=pathlib.Path('tests/fixtures/statusline-claude/golden/b14-card-counts-waiting.plain.txt').read_text().splitlines(); d=pathlib.Path('docs/rust-product-path.md').read_text(); assert g[1] in d and g[2] in d, [l for l in g[1:3] if l not in d]; assert '⬇️ 46 / 🔀 0' not in d and '🗂️ 0 / ▶️ 0' not in d and '🗂️ <remaining> /' not in d"`
 
 ## Scope
 
-- write: `src/statusline/render.rs`, `src/statusline/state.rs` and `src/statusline/counts.rs` (doc comments only), `tests/statusline_*.rs`, `tests/statusline_fixtures_test.py`, `tests/fixtures/statusline-claude/cases.json` and `golden/**`, `.moai/specs/SPEC-20261120-statusline-line2-order/**`
-- read-only: `tests/fixtures/statusline/**` (historical Go archive), `docs/rust-product-path.md` (held by C-131; its statusline item 2 follows in a later piece), `docs/design-review/**`
+- write: `src/statusline/render.rs`, `src/statusline/state.rs` and `src/statusline/counts.rs` (doc comments only), `tests/statusline_*.rs`, `tests/statusline_fixtures_test.py`, `tests/fixtures/statusline-claude/cases.json` and `golden/**`, `docs/rust-product-path.md` (statusline items 2 and 3 only), `.moai/specs/SPEC-20261120-statusline-line2-order/**`
+- read-only: `tests/fixtures/statusline/**` (historical Go archive), `docs/design-review/**`
 - forbidden: the real HOME and ledger, the network, a change of the counts or their markers
 
 ## Plan
@@ -78,10 +79,10 @@ created: 2026-11-20
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
-| D-1 | one space after every icon and between the items of a group (git counts too), ` | ` between groups | leader decision, card note 3570: the two spaces of the user's example are the terminal's drawing of the variation-selector icons; the user may reassign | the four gap constants at the top of `src/statusline/render.rs`, then the goldens are rewritten |
+| D-1 | one space after every icon and between the items of a group (git counts too), ` | ` between groups | leader decision, card note 3570: the two spaces of the user's example are the terminal's drawing of the variation-selector icons; the user may reassign | the gap constants at the top of `src/statusline/render.rs` (between git counts, between card items, after the repository and branch icons; the one space after each other icon is in its `format!`), then the goldens are rewritten |
 | D-2 | "40 columns" means byte equality with 80 columns | the renderer never shortens (read in code, docs and a test) | add a width reading later as its own card |
 | D-3 | the forge counts stay shown only with a repository name, the repository and branch only with a git branch, the cards on their own without both | these are the rules today; this change reorders, it does not add or drop items | none |
-| D-4 | the documentation of item 2 is a later piece | `docs/rust-product-path.md` is reserved by C-131, which is READY and waits for the release PR | a `card scope` widening once C-131 is done |
+| D-4 | the documentation of item 2 and the example of item 3 change in this same SPEC | the other documentation SPEC that held the file was closed (its release PR merged), so the file is free; the document and the goldens must change together or the example of item 3 stops matching `b14` | none |
 
 ## Result
 
@@ -90,11 +91,12 @@ created: 2026-11-20
 - AC-1 (REQ-1, REQ-2, REQ-4…REQ-7): `cargo test --locked --offline --lib statusline::render` passes (27 tests; `--lib statusline::` 139). The new test `line_two_reads_git_counts_then_cards_then_repository_then_branch` pins `⬇️ 7 🔀 3 | 🗂️ 50 ▶️ 5 🔃 15 ✅ 65 | 📡 owner/repo | 🅱️ main ↓2 +3 | 🔗 #42 pending`, the order of every icon position, the three-item form, and each group left out on its own. RED before the change: 10 of the 27 failed (the new test among them) with the old line in `left`.
 - AC-2 (REQ-1, REQ-2, REQ-4…REQ-7, REQ-11): `tests/fixtures/statusline-claude/golden/b14-card-counts-waiting.plain.txt` line 2 is `⬇️ 46 🔀 0 | 🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 anthropics/claude-code | 🅱️ main | 🔗 #1234 pending`. Against the local tip 12 golden files differ (4 cases × plain, ansi, ansi256: `b08`, `b09`, `b13`, `b14`), each in line 2 only (checked by a script that reads both versions line by line, 0 unexpected); the harness writes this binary's own version into line 1, which was put back from the tip, and `cases.json` is unchanged. `cargo test --test statusline_golden` passes (1 passed).
 - AC-3 (REQ-3, REQ-9, REQ-10): `statusline_cards` 8 passed (1 ignored, the fixture writer); the cases without a repository, without a branch, with `git_branch` off, with `cards` off and without forge counts keep what they dropped; the empty ledger shows `🗂️ 0 ▶️ 0 🔃 0 ✅ 0`.
-- AC-4 (REQ-8): `statusline_tag_order` passes: line 2 under `COLUMNS` 80 and 40 is byte-equal.
-- AC-5 (REQ-11, REQ-12): all eight `tests/statusline*.rs` targets pass (cards 8, counts_refresh 5, git_env 2, golden 1, guard_false_positive 3, and tag_order, worktree_label, home_state), `python3 -m unittest tests.statusline_fixtures_test` 11 OK.
+- AC-4 (REQ-8): `line_two_has_the_same_bytes_under_80_and_40_columns` (new, in `tests/statusline_cards.rs`, the full four-group line, plain and truecolor) and `statusline_tag_order` (the four cases without groups: `a02`, `d01`, `d03`, `d04`) pass; the audit found that the tag test alone did not reach a line with groups, so the first test was added.
+- AC-5 (REQ-11): all eight `tests/statusline*.rs` targets pass (cards 8, counts_refresh 5, git_env 2, golden 1, guard_false_positive 3, and tag_order, worktree_label, home_state), `python3 -m unittest tests.statusline_fixtures_test` 11 OK.
 - Mutants (5, each applied with an edit, `git diff --stat` read, then restored with `git checkout`; tests = lib `statusline::render` + `statusline_cards`): m1 repository before the card counts, killed by 3+4; m2 the slash back between the git counts, 7+3; m3 two spaces between the git counts, 7+3; m4 the git counts after the card counts, 3+4; m5 two spaces after `📡`, 8+4. (m3 and m5 were first run against the earlier two-space default and run again against the final one-space constants.)
 - Pre-READY checks (exit codes read from each command at `eda669d036`, 53 steps, all 0): `git diff --check` (origin and local tip ranges), `cargo fmt --check`, `rustfmt --check --edition 2021 src/ops/*.rs`, `cargo clippy --locked --offline --all-targets -- -D warnings`, the five named test files and `tests.repo_scans_test tests.source_manifest_test tests.local_check_test`, head-built `moai trailer-check v2026.11.0..HEAD --dir .`, `cargo test --bins` (28+28), neighbours `spec_cli` 18 and `doc_references` 12 and the eight statusline targets, `--lib statusline::` 139, the 39 checks of `tools/repo_scans.json`, `tests.skill_references_test`, `tests.statusline_fixtures_test`.
 
-Open: `docs/rust-product-path.md` statusline item 2 still shows the old slash shape and its example lines (the other SPEC's check compares them with `b14`); a later piece writes it once the file is free (D-4).
+- AC-6 (REQ-12): `docs/rust-product-path.md` statusline item 2 states the order, the groups, the spacing and the no-slash rule (and the three-item shape of the unreadable-notes case), and its example is lines 2 and 3 of `b14-card-counts-waiting.plain.txt`; the AC-6 command exits 0, and the closed documentation SPEC's `check.py` (names of tests, ledgers and golden cases in the section) still exits 0.
+- Repair after the first audit (verdict candidate PASS, findings N-1 to N-4, none blocking): N-1 the doc comment of the new unit test said two spaces, now one; N-2 the comment above the gap constants said all spacing is in them, now it names what they hold and says the space after the other icons is in its `format!`; N-3 the tag test reaches no line with groups, so `line_two_has_the_same_bytes_under_80_and_40_columns` was added to `tests/statusline_cards.rs` (full four-group line, `COLUMNS` 80 and 40, plain and truecolor); N-4 was a mistake of the audit request (`statusline_git_env.rs` is not in the diff), nothing to repair. The documentation piece (D-4) was added in the same repair because the other SPEC that held the file is closed.
 
 Not run: the whole `cargo test`, Linux-only checks.

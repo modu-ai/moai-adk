@@ -13,7 +13,8 @@ const SEPARATOR: &str = " | ";
 /// counts and the text after the repository and the branch icons are one space apart (leader
 /// decision, card note 3570, decision D-1 of SPEC-20261120-statusline-line2-order: the two
 /// spaces of the user's example are the terminal's drawing of the variation-selector icons).
-/// One place for each gap, so a different answer changes these four lines and the goldens.
+/// The gap between the two git counts, between the card items and after the repository and the
+/// branch icons is set here; the one space after each other icon sits in its own `format!`.
 const GIT_COUNTS_GAP: &str = " ";
 const CARD_ITEMS_GAP: &str = " ";
 const REPO_ICON_GAP: &str = " ";
@@ -934,10 +935,10 @@ mod tests {
         );
     }
 
-    /// Card C-137 (user instruction 2026-11-19): line 2 reads git counts, card counts, repository,
-    /// branch, then the pull request, groups joined by ` | `, and no group has a slash in it: the
-    /// two git counts are two spaces apart, the card counts one space. Every pair of the groups
-    /// keeps that order when the others are left out.
+    /// SPEC-20261120-statusline-line2-order (user instruction 2026-11-19): line 2 reads git counts,
+    /// card counts, repository, branch, then the pull request, groups joined by ` | `, and no
+    /// group has a slash in it: the items of a group, the two git counts too, are one space
+    /// apart. Every pair of the groups keeps that order when the others are left out.
     #[test]
     fn line_two_reads_git_counts_then_cards_then_repository_then_branch() {
         let line = |s: &Status, off: &[&str]| plain(s, off).lines().nth(1).unwrap().to_string();
