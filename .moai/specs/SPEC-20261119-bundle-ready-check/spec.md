@@ -1,0 +1,122 @@
+---
+id: SPEC-20261119-bundle-ready-check
+title: "moai bundle ready, check, body: read the READY heads, judge them, write the bundle PR body"
+status: draft
+revision: 1
+created: 2026-11-19
+parent: SPEC-20261119-bundle-tool
+---
+
+# moai bundle ready, check, body: read the READY heads, judge them, write the bundle PR body
+
+## Intent
+
+Card C-119, slice 2 (the first code slice of `SPEC-20261119-bundle-tool`, whose Plan fixes the boundary: the CLI reads and judges and writes a text, the leader chooses, pushes and opens the pull request). The leader directed this slice: audit notes N-a to N-j of slice 1 are applied, the slice is read-only verification plus the pull request body, and it goes on the same branch, pushed only (no pull request).
+
+Three actions under one `moai bundle`, none of which writes the ledger, a ref, a branch or a remote:
+
+- `bundle ready`: the READY heads of the ledger, one line per card, newest line wins.
+- `bundle check`: every per-head check for the heads the caller names, all findings in one result (bundle 5 lost two hours because each failure stopped the whole bundle).
+- `bundle body`: the bundle pull request body from the heads' facts and a run record file, refused with every missing fact named when a fact has no record.
+
+`build` (slice 3) and `verify` (slice 4) are not here. Until `verify` exists the leader writes the run record file by hand; the body is still generated from facts, never from memory of what ran.
+
+Measured facts this slice rests on are those of `SPEC-20261119-bundle-tool` (Intent; counts pinned at note 2931). Two more, read in this slice from the code at tip `d25ecb1ba1`: `git merge-tree --write-tree` exits 0 clean and 1 with conflicts and prints the tree id first, then, with `--name-only`, the conflicted file names up to an empty line; the Self-Audit checker (`self_audit::check`, `src/self_audit.rs`) requires the `## Self-Audit` section to hold `mutation:` (the line must say FAILED), `clone:`, `host:`, `receipt:`, `plan:` (a number of seven digits or more) and `red:`.
+
+## Non-goals
+
+- Fetching, pushing, opening, editing or merging a pull request, writing a card note, a ref or any ledger row (REQ-12). The caller fetches first.
+- Choosing heads, accepting an audit, deciding a repair delta is enough: `check` reports `audit_missing` with the nearest ancestor `PASS` (`ancestor_pass`) and the leader decides.
+- Building the integration branch (slice 3) and running the check list (slice 4). A conflict found by `check` is a finding, never resolved.
+- A conflict check over three or more heads together: `check` merges each head with the tip and each head with every earlier head named, two at a time; the exact three-way result is `build`'s.
+- Reading the verdict's tier or author: any `PASS` naming the head counts, and the result says so.
+
+## Requirements
+
+- REQ-1: When `moai bundle ready` is run, `moai bundle ready` shall list, for each card whose newest note with the first-line marker `LANE-READY-INTEGRATION` reads under the grammar of D-6 of the parent SPEC, the card, the note number, the head, the SPEC ids named by the `Moai-Spec` trailers of `tip..head` and whether the head is on `origin`, with the tip's SHA and commit time.
+- REQ-2 (REQ-1): IF the newest marker note of a card does not read under that grammar or names another card, THEN `moai bundle ready` shall list the note as `unreadable` with its card and note number and use no head from the card's older notes.
+- REQ-3: When `moai bundle check` is given heads as `C-<n>` (the card's newest readable READY head) or `C-<n>=<40 hex>`, `moai bundle check` shall judge every head on every check and report all findings in one result, each with its code, card, head and detail.
+- REQ-4 (REQ-3): IF a head fails a check, THEN `moai bundle check` shall report it under one stable code: `no_ready_line`, `head_missing`, `not_on_origin`, `already_merged`, `audit_missing`, `trailers`, `spec`, `result_missing` or `conflict`, and for a conflict the files and the other head, if any.
+- REQ-5 (REQ-4): IF the audit floor of a head (`gate::tier_of(Some(0), <paths of tip...head>)`) is 1 or more and no note of the head's card is a verdict (first line `AUDIT `, read by `gate::parse_verdict` unchanged) with the word `PASS` naming exactly that head, THEN `moai bundle check` shall report `audit_missing` with the floor and the nearest `PASS` on an ancestor of the head.
+- REQ-6 (REQ-3): IF a head is not present in the local repository, THEN `moai bundle check` shall report `head_missing` ("fetch first"), skip that head's other checks and judge the remaining heads.
+- REQ-7 (REQ-3): IF `moai bundle check` finds anything, THEN `moai bundle check` shall print the whole result with `ok` false and exit 1.
+- REQ-8: When `moai bundle body` is given heads, a bundle branch and a run record file, `moai bundle body` shall write a pull request body with the `audit-tier:` line from `gate::tier_of(Some(0), <paths of tip...branch>)`, one `Moai-Spec:` line per SPEC, a table of the heads, an `Integration:` line with the SHA that `git rev-parse` gives for the branch, `## Self-Audit` from the record and `## Result` from the record and from each SPEC's own `## Result`.
+- REQ-9 (REQ-8): IF a fact the body needs has no record, THEN `moai bundle body` shall refuse, name every such fact in one answer and write no body: a head not contained in the branch, a head with the `audit_missing` finding, a check of the list in the Plan that neither ran nor is named in `not_run` with a reason, a command whose exit is not 0, a Self-Audit line, a SPEC with no `## Result` line for one of its ACs.
+- REQ-10 (REQ-8): IF the text fails `self_audit::check`, THEN `moai bundle body` shall refuse with the names it prints and write no body.
+- REQ-11: IF the path named by `--out` already holds a file, THEN `moai bundle body` shall refuse and leave that file unchanged.
+- REQ-12: `moai bundle` shall not fetch, push, open, edit or merge a pull request, create or move a ref or branch, write a card note or any ledger row, or change a setting; the git commands it runs are the read-only list of the Plan, through the scrubbed git environment.
+
+## Acceptance
+
+- AC-1 (REQ-1, REQ-2): in a temporary ledger with a card whose notes are an old line, a newer repair line and a note that starts with the marker but does not read, `moai bundle ready` lists the newest readable head per card, the SPEC ids from the trailers, `on_origin`, and the unreadable note with its card and note number; a card whose newest marker note is unreadable lists no head.
+  verify: `cargo test --locked --offline --test bundle_ready_cli ready_lists_the_newest_readable_line_per_card_and_names_the_unreadable_ones`
+- AC-2 (REQ-3, REQ-4, REQ-7): `check` on a clean head answers `ok` true with no finding and exit 0; on two heads that each fail something it answers every finding of both heads, with the codes `not_on_origin`, `already_merged`, `trailers`, `spec` and `result_missing` each produced once, and exits 1.
+  verify: `cargo test --locked --offline --test bundle_check_cli a_clean_head_has_no_finding`; `cargo test --locked --offline --test bundle_check_cli findings_of_all_heads_come_together_with_stable_codes`
+- AC-3 (REQ-5): a head that changes only `docs/` and `tests/` needs no verdict; a head that changes `src/` needs a `PASS` naming exactly its SHA; a `PASS` for an ancestor is reported as `ancestor_pass` and still `audit_missing`; a note starting `AUDIT ` that does not read is listed as `unreadable_verdict` and does not fail the check.
+  verify: `cargo test --locked --offline --test bundle_check_cli the_audit_floor_decides_which_heads_need_a_pass`
+- AC-4 (REQ-4): two heads that change the same lines conflict with each other and with the tip when one of them is merged first; the files are named; a repository whose config registers a merge driver for `skills/moai/references/source-manifest.json` that always succeeds still reports the conflict, because the check runs the text merge GitHub runs.
+  verify: `cargo test --locked --offline --test bundle_check_cli a_conflict_is_found_without_the_merge_driver`
+- AC-5 (REQ-6): a head SHA that does not exist locally gives `head_missing` for that head, the other head is judged, and the exit is 1.
+  verify: `cargo test --locked --offline --test bundle_check_cli a_head_that_is_not_here_is_reported_and_the_rest_are_judged`
+- AC-6 (REQ-8, REQ-10): on a bundle branch of two merged heads and a complete run record, `body` writes text whose first line is `audit-tier: N <paths>`, one `Moai-Spec:` line per SPEC, the heads table with each head's verdict note, an `Integration:` line with the branch's SHA, and which passes `self_audit::check`.
+  verify: `cargo test --locked --offline --test bundle_body_cli the_body_carries_the_facts_and_passes_the_self_audit_checker`
+- AC-7 (REQ-9): a record with a missing check, a failed command and a missing Self-Audit line, and a branch that lacks one head, is refused with all four facts named in one answer and no body or file.
+  verify: `cargo test --locked --offline --test bundle_body_cli a_body_with_missing_facts_is_refused_naming_all_of_them`
+- AC-8 (REQ-11): `--out` to an existing path is refused and the file is unchanged; to a new path the file holds the body.
+  verify: `cargo test --locked --offline --test bundle_body_cli out_writes_a_new_file_only`
+- AC-9 (REQ-12): after `ready`, `check` and `body`, every ledger table, `git for-each-ref`, the branch list and `git status` are as before.
+  verify: `cargo test --locked --offline --test bundle_check_cli the_commands_change_no_ledger_row_and_no_ref`
+- AC-10 (REQ-12): the first line of each action's help says what it does to the repository, and the operations document has a `bundle` page naming the three actions, the finding codes and the run record file.
+  verify: `cargo test --locked --offline --test bundle_body_cli the_help_and_the_ops_doc_say_what_each_action_does`
+- AC-11 (REQ-1 … REQ-12): neighbours.
+  verify: `cargo test --locked --offline --test git_env_scrub`; `cargo test --locked --offline --test home_isolation_scan`; `cargo test --locked --offline --test help_layout`; `cargo test --locked --offline --test product_cli`
+
+## Scope
+
+- write: `src/bundle.rs`, `src/ops/bundle.rs`, `tests/bundle_ready_cli.rs`, `tests/bundle_check_cli.rs`, `tests/bundle_body_cli.rs`, `docs/design-review/appendix/operations/bundle.md`, `.moai/specs/SPEC-20261119-bundle-ready-check/**`, `.moai/specs/SPEC-20261119-bundle-tool/**`, and one line in `src/lib.rs` (`pub mod bundle;`, reserved by card C-75; the leader's decision is on the card as note 2966).
+- read-only: `src/gate.rs`, `src/trailers.rs`, `src/spec_doc.rs`, `src/self_audit.rs`, `src/identity.rs`, `src/card/command.rs`, `src/ledger/command.rs`, `src/ops/card.rs`, `src/ops/trailer_check.rs`.
+- forbidden: any other change under `src/`, the real HOME and ledger as a write target, `skills/`, `.github/`, any push of a ref other than this branch, any pull request.
+
+## Plan
+
+**Code.** `src/bundle.rs` in the library crate (the git calls and the scrubbed environment live there; `src/ops` spawns no git): `ready`, `check` and `body` as functions returning `serde_json::Value`; the ledger is read through `card::command::list` and `card::command::show`; the SPEC text of a head is read with `git show <head>:.moai/specs/<id>/spec.md` and parsed by `spec_doc::parse` (no closure: the status is `draft` until the integration). `src/ops/bundle.rs` is the clap layer (`--project`, `--home`, `--dir`, `--tip`, default tip `origin/v2026.11.0`), the same one-word-per-action shape as `card`.
+
+**Git commands (the whole list; REQ-12).** `rev-parse --verify <rev>^{commit}`, `merge-base --is-ancestor`, `branch -r --contains` and `for-each-ref refs/remotes/origin`, `log --no-merges --format=…`, `diff --name-only <tip>...<head>`, `show <head>:<path>`, `-c merge.moai-manifest.driver='git merge-file -L ours -L base -L theirs %A %O %B' merge-tree --write-tree --name-only <a> <b>` (exit status read from the process; 0 clean, 1 conflict; the driver override because GitHub never runs a registered driver), `rev-list --count`. No `fetch`, `push`, `merge`, `checkout`, `branch` write, `update-ref`, `worktree`. Every command runs through `identity::scrub_git_env`.
+
+**Findings.** Each finding is `{code, card, head, detail}`; codes are the nine of REQ-4 plus `unreadable_verdict` as a note (not a failure). `trailers` is `trailers::check(dir, "<tip>..<head>", <branch>, None)`, where branch is the `origin` branch whose tip is the head (`detached` when none: the SPEC check below then catches a missing `Moai-Spec`). `spec` is any error of `spec_doc::parse` for each SPEC the head names, or a missing file, or no `Moai-Spec` trailer at all. `result_missing` lists the ACs of a named SPEC without a line in its `## Result`.
+
+**Run record file (JSON, one object).**
+
+```
+{
+  "commands": [ {"check": "<key>", "command": "<text>", "exit": 0, "counts": "<optional text>"} ],
+  "not_run":  [ {"check": "<key>", "reason": "<text>"} ],
+  "self_audit": { "mutation": "…FAILED…", "clone": "…", "host": "…", "receipt": "…", "plan": "<text with a 7-digit id>", "red": "…" }
+}
+```
+
+The check keys are data in the code, pinned by a test (D-4 of the parent): `build`, `lib_tests`, `home_isolation_scan`, `product_cli`, `fmt`, `clippy`, `trailer_check`, `spec_check`, `result_coverage`, `unittest`. A command whose `check` is not a key is carried into `## Result` as an extra line. `body` takes the `Moai-Spec` line, the table row and the SPEC result line from the heads; the `Self-Audit` lines and the `## Result` command lines from the record.
+
+**Order.** (1) `src/lib.rs` line once the leader decides; (2) `bundle ready`; (3) `bundle check`; (4) `bundle body`; (5) help, operations page, tests, mutants; each step a commit.
+
+## Risks
+
+- `check` trusts the card notes it reads (see the parent's Risks): a `PASS` note is a note, not proof of an independent audit. The result carries `audit_note` saying so.
+- The pairwise conflict check can miss a three-way conflict; `build` (slice 3) is the exact check. The result names the limit.
+- Every ledger read goes through `card show` JSON; a change of its keys breaks the reader, which is why the tests build a real temporary ledger through the product commands.
+- `src/lib.rs` is reserved by C-75; without the one-line decision the module cannot be registered and the slice cannot be compiled or tested.
+
+## Decisions
+
+| Id | Decision | Basis | Undo |
+| --- | --- | --- | --- |
+| D-1 | `body` is in this slice and reads a run record file | the leader's direction on card C-119; until `verify` exists a file written by hand carries what ran | move `body` back to a later slice |
+| D-2 | Heads are `C-<n>` or `C-<n>=<sha>`, never a bare SHA | the audit check needs the card; a bare SHA could be on two cards | accept a bare SHA when exactly one READY line names it |
+| D-3 | `check` exits 1 when anything is found, as `trailer-check` does | a script can stop on it; the result is still printed in full | exit 0 with `ok:false` |
+| D-4 | The conflict check is pairwise (each head with the tip, each with every earlier head) | one `merge-tree` per pair needs no worktree; the exact three-way merge is `build` | a temporary index per bundle |
+| D-5 | `body` refuses on every missing fact in one answer | the card's rule: no placeholder; one round, not one refusal per fact | stop at the first |
+| D-6 | The check keys are ten fixed words | the union of the two merged bodies' lists (parent D-4) | a configuration file |
+
+## Result
+
+- AC-1 … AC-11: pending — the SPEC is written first; each AC gets its outcome line when the code, the tests and the checks of this slice have run.
