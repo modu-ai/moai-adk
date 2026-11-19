@@ -237,6 +237,19 @@ fn append_pick_leaves_an_edited_block_and_malformed_markers_as_conflict() {
 }
 
 #[test]
+fn append_pick_does_not_recreate_a_deleted_file() {
+    // The pick appends to a file that is there. A deleted AGENTS.md whose baseline no longer
+    // matches stays a conflict: creating the file is a different choice than the user made.
+    let root = applied_project();
+    fs::remove_file(root.path().join("AGENTS.md")).unwrap();
+    let plain = plan_ok(&root, &request("ko", "none", &[]));
+    let picked = plan_ok(&root, &request("ko", "none", &["append-managed"]));
+    assert_eq!(action(&plain, "AGENTS.md"), "conflict");
+    assert_eq!(action(&picked, "AGENTS.md"), "conflict");
+    assert!(!root.path().join("AGENTS.md").exists());
+}
+
+#[test]
 fn append_receipt_recovers_the_bytes_the_file_held_before() {
     let root = conflict_project();
     let picked = plan_ok(&root, &request("ko", "none", &["append-managed"]));

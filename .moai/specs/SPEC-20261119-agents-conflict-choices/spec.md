@@ -32,7 +32,7 @@ tip(d25ecb1ba1)의 `section_plan`은 매니페스트에 기준선이 없는 표�
 
 - REQ-1: The agents plan shall accept an optional `picks` list in the request with the ids `append-managed`, `skip-conflicts` and `claude-import`.
 - REQ-2 (REQ-1): IF `picks` holds any other id, THEN the plan shall refuse the request as invalid input and write nothing.
-- REQ-3: WHEN `append-managed` is picked and `AGENTS.md` holds no managed block while the manifest holds a baseline for it, the plan shall report the action `append` for `AGENTS.md` with its own digest and write nothing.
+- REQ-3: WHEN `append-managed` is picked and `AGENTS.md` exists and holds no managed block while the manifest holds a baseline for it, the plan shall report the action `append` for `AGENTS.md` with its own digest and write nothing.
 - REQ-4: WHEN the `append` plan is applied, `AGENTS.md` shall keep every earlier byte and hold exactly one begin marker and one end marker after them. · failure: none
 - REQ-5 (REQ-3): IF an apply carries the digest of the plan made without the pick, THEN the apply shall refuse it as a stale plan and write nothing.
 - REQ-6 (REQ-3): IF the conflict of `AGENTS.md` is an edited block or malformed markers, THEN `append-managed` shall leave the row as `conflict`.
