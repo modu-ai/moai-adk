@@ -81,10 +81,7 @@ impl Fixture {
     /// leader-bound `LANE-READY-INTEGRATION` marker: it waits for integration, the other two
     /// `active` cards (no notes) are being worked on, and the 2 `review` cards wait.
     fn with_mix(&self) {
-        self.register();
-        for (state, n) in MIX {
-            self.add(state, n);
-        }
+        self.with_cards();
         let mut l = ledger::open_write(self.home.path(), "demo").unwrap();
         l.with_write_tx(|tx, now| {
             tx.execute(
@@ -97,6 +94,14 @@ impl Fixture {
             Ok(())
         })
         .unwrap();
+    }
+
+    /// The [`MIX`] cards alone, with no note: the 3 `active` cards are all being worked on.
+    fn with_cards(&self) {
+        self.register();
+        for (state, n) in MIX {
+            self.add(state, n);
+        }
     }
 
     fn ledger_file(&self) -> PathBuf {
@@ -335,17 +340,25 @@ fn the_colored_line_carries_the_same_text() {
     assert_eq!(stripped, f.plain());
 }
 
-/// Writes the ledger the golden case `b13-card-counts` copies into its HOME
-/// (`tests/fixtures/statusline-claude/ledger/cards-5-50-12.sqlite`: project `demo`, the [`MIX`]).
+/// Writes the two ledgers the golden cases copy into their HOME, project `demo`, both the
+/// [`MIX`]: `cards-5-50-12.sqlite` (case `b13-card-counts`) with no note, and
+/// `cards-5-50-12-waiting.sqlite` (case `b14-card-counts-waiting`) with the
+/// `LANE-READY-INTEGRATION` note of [`Fixture::with_mix`].
 /// Not a check: run it by name with `--ignored` after a ledger schema change, then record the
 /// goldens again.
 #[test]
-#[ignore = "regenerates a checked-in fixture"]
+#[ignore = "regenerates the checked-in fixtures"]
 fn write_the_golden_ledger_fixture() {
-    let f = fixture();
-    f.with_mix();
-    let target = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/fixtures/statusline-claude/ledger/cards-5-50-12.sqlite");
-    std::fs::create_dir_all(target.parent().unwrap()).unwrap();
-    std::fs::copy(f.ledger_file(), target).unwrap();
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/statusline-claude/ledger");
+    std::fs::create_dir_all(&dir).unwrap();
+    let plain = fixture();
+    plain.with_cards();
+    std::fs::copy(plain.ledger_file(), dir.join("cards-5-50-12.sqlite")).unwrap();
+    let waiting = fixture();
+    waiting.with_mix();
+    std::fs::copy(
+        waiting.ledger_file(),
+        dir.join("cards-5-50-12-waiting.sqlite"),
+    )
+    .unwrap();
 }

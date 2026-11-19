@@ -910,9 +910,16 @@ fn card_counts(project: &Path, ctx: &Context) -> Option<CardCounts> {
     // and the line shows the three-number form.
     counts.waiting = waiting_cards(&ledger, ctx.deadline);
     if let Some(waiting) = counts.waiting {
-        counts.in_progress -= waiting;
+        counts.in_progress = split_in_progress(counts.in_progress, waiting);
     }
     Some(counts)
+}
+
+/// The working number once the waiting cards are taken out of the `active` + `review` total.
+/// The state count and the note read are two reads of a ledger that may change between them, so
+/// a card that moved can make `waiting` larger than the total: never below zero.
+fn split_in_progress(total: i64, waiting: i64) -> i64 {
+    (total - waiting).max(0)
 }
 
 /// How many characters of a note's body are read: enough for its first line, so a long report
@@ -959,7 +966,15 @@ fn waiting_cards(
     ledger: &crate::ledger::open::ReadLedger,
     deadline: Option<Instant>,
 ) -> Option<i64> {
-    let spent = || deadline.is_some_and(|d| Instant::now() >= d);
+    waiting_cards_with(ledger, &|| deadline.is_some_and(|d| Instant::now() >= d))
+}
+
+/// [`waiting_cards`] with the "is the render budget spent" question as a parameter, so a test
+/// can spend it in the middle of the row loop.
+fn waiting_cards_with(
+    ledger: &crate::ledger::open::ReadLedger,
+    spent: &dyn Fn() -> bool,
+) -> Option<i64> {
     if spent() {
         return None;
     }
@@ -2079,6 +2094,91 @@ mod card_counts_tests {
         let left = Instant::now() + Duration::from_secs(60);
         assert_eq!(waiting_cards(&ledger, Some(left)), Some(2));
         assert_eq!(waiting_cards(&ledger, None), Some(2));
+    }
+
+    /// A deadline that passes in the middle of the row loop (not only before it) gives `None`:
+    /// the first question is "no", the next ones are "yes".
+    #[test]
+    fn a_deadline_that_passes_between_rows_gives_the_three_number_form() {
+        let f = fixture();
+        crate::ledger::register(&f.home, "demo").unwrap();
+        add_with_notes(&f, "active", &[("report", READY), ("comment", "plain")]);
+        let ledger =
+            crate::ledger::open::open_read_only_within(&f.home, "demo", Duration::from_millis(100))
+                .unwrap();
+        let asked = std::cell::Cell::new(0_u32);
+        let spent = || {
+            asked.set(asked.get() + 1);
+            asked.get() > 1
+        };
+        assert_eq!(waiting_cards_with(&ledger, &spent), None);
+        assert!(asked.get() >= 2, "the loop asked again after the first row");
+        // Never spent: the same ledger reads.
+        assert_eq!(waiting_cards_with(&ledger, &|| false), Some(1));
+    }
+
+    /// Several waiting notes on one card count that card once, and a waiting note keeps
+    /// deciding even when an older working note sits under it.
+    #[test]
+    fn several_waiting_notes_on_one_card_count_it_once() {
+        assert_eq!(
+            active_card(&[("report", READY), ("report", READY), ("report", PASS)]),
+            (0, Some(1))
+        );
+        assert_eq!(
+            active_card(&[("comment", ACK), ("report", READY), ("report", READY)]),
+            (0, Some(1))
+        );
+    }
+
+    /// One line carrying both verdicts is read by the first word that decides it: `PASS` is
+    /// tested before `FAIL`, so a FAIL line that quotes an earlier PASS reads as waiting. The
+    /// real verdict line ends at the verdict word, so this only pins the rule.
+    #[test]
+    fn a_line_with_both_verdicts_reads_as_waiting() {
+        let both = "AUDIT C-1 (x) head abc base def — verdict: FAIL (was verdict: PASS)";
+        assert_eq!(marker_of(both), Some(Marker::Waiting));
+        assert_eq!(marker_of(FAIL), Some(Marker::Working));
+        assert_eq!(marker_of(PASS), Some(Marker::Waiting));
+    }
+
+    /// Only the first `NOTE_HEAD_CHARS` characters of a note are read: a `LANE-DONE` line whose
+    /// `audit requested` ends at that character still waits, one character later it is cut off
+    /// and the card keeps working. Korean text counts by characters, not bytes.
+    #[test]
+    fn the_note_head_cut_is_at_exactly_one_thousand_characters() {
+        let line = |pad: usize, key: &str| {
+            let mut s = String::from("LANE-DONE agent-1 C-1 ");
+            s.push_str(&"x".repeat(pad));
+            s.push(' ');
+            s.push_str(key);
+            s
+        };
+        for key in ["audit requested", "감사 요청"] {
+            let base = line(0, key).chars().count();
+            let edge = line(NOTE_HEAD_CHARS - base, key);
+            assert_eq!(edge.chars().count(), NOTE_HEAD_CHARS);
+            assert_eq!(
+                active_card(&[("report", &edge)]),
+                (0, Some(1)),
+                "{key} at the cut"
+            );
+            let past = line(NOTE_HEAD_CHARS - base + 1, key);
+            assert_eq!(
+                active_card(&[("report", &past)]),
+                (1, Some(0)),
+                "{key} one past"
+            );
+        }
+    }
+
+    /// The working number never goes below zero: a card that moved between the state count and
+    /// the note read must not show `▶️ -1`.
+    #[test]
+    fn the_working_number_never_goes_below_zero() {
+        assert_eq!(split_in_progress(5, 2), 3);
+        assert_eq!(split_in_progress(2, 2), 0);
+        assert_eq!(split_in_progress(1, 3), 0);
     }
 
     #[test]

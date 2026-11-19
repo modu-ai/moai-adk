@@ -26,7 +26,7 @@ created: 2026-11-19
 - REQ-2: While a card is in `review`, the status line shall count it as waiting.
 - REQ-3: While a card is in `active`, the status line shall count it as waiting only when the newest of its notes whose first line starts with a marker is a waiting marker, and as working in every other case.
 - REQ-4: When a note's first line starts with `LANE-READY-INTEGRATION`, or starts with `LANE-DONE` and carries `audit requested` or `감사 요청`, or starts with `감사 요청`, or starts with `AUDIT` and carries `verdict: PASS`, the status line shall read it as a waiting marker. · failure: none — 첫 줄이 이 모양이 아니면 마커가 아니라서 읽는 쪽에 실패 경로가 없어요.
-- REQ-5: When a note's first line starts with `ACK` or `PLAN`, or starts with `AUDIT` and carries `verdict: FAIL`, the status line shall read it as a working marker. · failure: none — 첫 줄이 이 모양이 아니면 중립 노트라 읽음이 바뀌지 않아요.
+- REQ-5: When a note's first line starts with `ACK ` or `PLAN ` (the word and one space, as the lane rules write them), or starts with `AUDIT` and carries `verdict: FAIL`, the status line shall read it as a working marker. · failure: none — 첫 줄이 이 모양이 아니면 중립 노트라 읽음이 바뀌지 않아요.
 - REQ-6 (REQ-1): IF the notes cannot be read within the render budget, THEN the status line shall show the three-number form `🗂️ <remaining> / ▶️ <active + review> / ✅ <done>` and no `🔃`.
 - REQ-7: The status line shall read the notes with the connection and the budget it already uses for the counts, with no folder, file, journal, process or network use.
 - REQ-8: The status line shall give each of the four numbers its own icon, so color is never the only signal.
@@ -37,10 +37,10 @@ created: 2026-11-19
 
 - AC-1 (REQ-1, REQ-2, REQ-3): a ledger with 3 `active` (one newest-marker waiting, two working), 2 `review`, 20 `draft`, 25 `ready`, 5 `hold`, 12 `done` renders `🗂️ 50 / ▶️ 2 / 🔃 3 / ✅ 12`.
   verify: `cargo test --locked --offline --test statusline_cards`
-- AC-2 (REQ-3, REQ-4, REQ-5): the marker reading is pinned at its edges — a waiting marker newest, a working marker newer than it, a neutral note newer than it, no marker at all, a marker on the second line only.
+- AC-2 (REQ-3, REQ-4, REQ-5): the marker reading is pinned at its edges — a waiting marker newest, a working marker newer than it, a neutral note newer than it, no marker at all, a marker on the second line only, a note head cut at exactly 1000 characters, several waiting notes on one card counted once.
   verify: `cargo test --locked --offline --lib statusline::state::card_counts_tests`
-- AC-3 (REQ-6, REQ-7, REQ-9): a failing note read gives the three-number form, and the HOME tree is the same before and after a render.
-  verify: `cargo test --locked --offline --test statusline_cards`
+- AC-3 (REQ-6, REQ-7, REQ-9): a failing note read — a deadline spent before or in the middle of the read — gives the three-number form, the working number never goes below zero, and the HOME tree is the same before and after a render.
+  verify: `cargo test --locked --offline --lib statusline::`
 - AC-4 (REQ-1, REQ-8, REQ-10): the golden for the four-number segment is checked in (plain, ansi, ansi256) and the existing card golden follows the new form.
   verify: `cargo test --locked --offline --test statusline_golden`
 
