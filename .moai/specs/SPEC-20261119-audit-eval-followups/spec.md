@@ -22,8 +22,8 @@ created: 2026-11-19
 
 - REQ-1: While a file under `.moai/evals/` carries a secret-shaped name (`*.key`, `id_rsa*`, `secrets.*`), the repository shall ignore it, so eval records never commit key material.
 - REQ-2: When `tools/audit_eval.py` runs `git cat-file` to check a ref, it shall set `GIT_NO_LAZY_FETCH=1` in the child environment, so a partial clone reports the ref missing instead of fetching. · failure: none — 환경 변수 설정 자체에 거부 경로가 없고, 실패는 ref 누락 보고로 흘러요.
-- REQ-3: When a case's head or base ref is missing, the tool's `missing_ref` output shall name which ref of which case is missing, not the case alone, and the case shall stay excluded from the score's cases, controls and findings rows, as the module contract says.
-- REQ-4 (REQ-3): IF a case id holds a path separator (`/` or `\`) or is `.` or `..`, THEN the tool shall refuse the set before writing anything, so a case id never aims a prompt file outside the output folder.
+- REQ-3: When a case's head or base ref is missing, the tool's `missing_ref` output shall name which ref of which case is missing, not the case alone, and leave the case out of the score's cases, controls and findings rows as the module contract says.
+- REQ-4 (REQ-3): IF a case id holds a path separator (`/` or `\`) or a colon (`:`) or is `.` or `..`, THEN the tool shall refuse the set before writing anything, so a case id never aims a prompt file outside the output folder and cannot forge another case's `id:which` entry.
 
 ## Acceptance
 
