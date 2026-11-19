@@ -945,11 +945,13 @@ fn folders_the_ignore_lists_or_the_walk_skip_are_not_read() {
     let d = detect(&root)["detected"].clone();
     assert_eq!(d["manifests"], json!(["other/package.json"]), "{d}");
 
-    // An unanchored name (no `/` in the pattern) excludes the folder at any depth.
+    // An unanchored name (no `/` in the pattern) excludes the folder at any depth, and a line
+    // naming one manifest file excludes that file alone, not its sibling or its folder.
     let deep = TempDir::new().unwrap();
-    write(deep.path(), ".gitignore", "generated\n");
+    write(deep.path(), ".gitignore", "generated\nplugins/kept/go.mod\n");
     write(deep.path(), "plugins/generated/package.json", "{}");
     write(deep.path(), "plugins/kept/package.json", "{}");
+    write(deep.path(), "plugins/kept/go.mod", "module x\n");
     assert_eq!(
         detect(&deep)["detected"]["manifests"],
         json!(["plugins/kept/package.json"])
