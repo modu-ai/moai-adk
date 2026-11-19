@@ -87,3 +87,13 @@ created: 2026-11-19
 | D-6 | `done` 카드와 가져온 노트는 뺍니다 | 닫힌 카드의 옛 `LANE-BLOCKED` 와 GitHub 댓글 2,054개가 잡음이에요 | 상태·출처 걸러내기를 옵션으로 |
 
 ## Result
+
+구현 head `494c79924e0a014a92027fd18d4322a082c63897`(시험 먼저 `df13864c27`: 네 시험 모두 `unrecognized subcommand 'inbox'` 로 RED). 모든 빌드·시험은 heavy-slot 안에서, 이 worktree 의 `target/` 에서 돌렸어요(2026-11-19).
+
+- AC-1: met — `cargo test --locked --offline --test card_inbox_cli` 4 통과 중 `the_inbox_lists_each_request_family_in_note_order`: 가족 다섯 항목이 note id 오름차순으로 나오고, 접두어가 아닌 줄(`LANE-DONE … done`, `LANE-NOTE` 질문, 줄 가운데 `LANE-BLOCKED`)과 `done` 카드의 요청은 안 나와요. `age_secs == now - created_at`.
+- AC-2: met — `a_later_leader_note_answers_and_a_newer_note_supersedes`: 뒤의 리더 노트는 답, 바로 앞의 리더 노트는 답 아님, 옛 것에 답이 있어도 새 것이 나오고, 같은 가족의 옛 노트는 숨겨져요. 변이 M1(카드에 리더 노트가 하나라도 있으면 답)과 M2(가족의 가장 오래된 노트 선택)가 이 시험으로 KILLED.
+- AC-3: met — `the_leader_name_and_imported_notes_decide_what_counts`: `--leader boss`, 80자 통과·81자·빈 값·제어 문자 거절(`card inbox refused`, `invalid_input`, 스냅샷 같음), 가져온 노트는 요청도 아니고 대체도 아님. 변이 M3(`origin = 'local'` 거르기 삭제)가 이 시험으로 KILLED(`FAILED`, 1 failed).
+- AC-4: met — `the_inbox_reads_only_and_an_absent_ledger_is_empty`: 실행 전후 HOME 스냅샷 같음, 원장 없는 프로젝트는 `ledger: "absent"`·`count: 0`, 낯선 파일은 `blocked`(`ledger_unavailable`)이고 파일을 건드리지 않으며, `--help` 첫 문장은 `Reads the ledger only.`.
+- AC-5: met — `cargo test --locked --offline --lib card::inbox` 6 통과(접두어 판별, 답 경계, 가족 대체, 리더 이름 경계, 줄 자르기); `--test card_cli` 14, `--test card_work_cli` 24 통과; `cargo fmt --check` exit 0; `cargo clippy --offline --locked --all-targets -- -D warnings` exit 0. `ac_command_lint` 5, `spec_cli` 18, `python3 -m unittest tests.ci_scope_test` 40 통과(`ci_scope_exit=0`).
+- 실제 원장에 읽기 전용 실행(Plan 6, 2026-11-19 09:42Z 무렵, `./target/debug/moai-cli card inbox .`): `ledger: "ready"`, 15건 — `LANE-READY-INTEGRATION` 9, `LANE-BLOCKED` 4, `audit_request` 2(C-107, C-121). 나이는 515초(C-121)부터 16,976초(C-107)까지고 note id 순이에요. 이 중 C-116 자신의 막힘 노트(2950)도 나와요: 그 질문은 리더가 노트가 아닌 메시지로 답했어서 이 규칙으로는 안 닫혀요. 같은 이유로 리더가 이미 묶은 `LANE-READY-INTEGRATION` 이 카드에 리더 노트가 없으면 남아 있을 수 있어요(Risks 의 거짓 양성이 아니라 D-3 의 반대 방향) — 그 15건 가운데 몇 건이 실제로 처리됐는지는 확인하지 않았어요(not_run).
+- 전체 `cargo test` 는 이 가지에 PR 이 없어서 돌리지 않았어요(M-Flow: 리더가 묶음 PR 의 `ci` 로 인용).
