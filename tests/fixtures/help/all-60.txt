@@ -221,6 +221,7 @@ Lane and leader
                           a lane
   lane-status             Show the status table of the named
                           lanes
+  lane-screen             Read a lane's screen into a state
   lane-handoff-check      Check that a worktree is safe to
                           leave
   lane-safe-to-reset      Check that a lane's session is

@@ -2,7 +2,7 @@
 id: SPEC-20261119-lane-screen-guard
 title: "Read a lane's rendered screen into a state, with a usage limit's reset time in UTC"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-19
 ---
 
@@ -45,8 +45,10 @@ created: 2026-11-19
 - REQ-5 (REQ-4): IF the message names no zone or a zone `moai lane-screen` does not know, THEN `moai lane-screen` shall report the reset time as unknown together with the printed text instead of taking the printed time as local time or as UTC.
 - REQ-6: Where a lane's home folder is given with `--home`, `moai lane-screen` shall take the reset time of a usage limit from the `resets_at` of that home's `usage-limits.json` in preference to the screen text.
 - REQ-7 (REQ-1): IF the input is not a rendered screen (an Orca read whose source is not `screen` or no screen row at all) or matches no known marker, THEN `moai lane-screen` shall report `unknown` and never `idle`.
-- REQ-8: The `pane` object that `moai lane-screen` prints shall carry the fields `state`, `source`, `observed_at` and `until` of the `lane-status` pane observation.
+- REQ-8: Where the state is one that `lane-status` names, the `pane` object of `moai lane-screen` shall carry the fields `state`, `source`, `observed_at` and `until` of the `lane-status` pane observation.
 - REQ-9: The command `moai lane-screen` shall write no file and send no input to any terminal.
+- REQ-10: The `pane` object of `moai lane-screen` shall be null for the states `idle` and `unknown`, which `lane-status` has no name for.
+- REQ-11 (REQ-7): IF the screen has fewer than six non-blank rows and shows no marker of `permission_prompt`, `input_pending` or `usage_limit`, THEN `moai lane-screen` shall report `unknown` and never `working` or `idle`.
 
 ## Acceptance
 
@@ -54,18 +56,18 @@ created: 2026-11-19
   verify: `cargo test --locked --offline --test lane_screen_cli lane_screen_state`
 - AC-2 (REQ-4, REQ-5, REQ-6): 한도 화면의 해제 시각이 UTC 로 나와요: `UTC`·`UTC+8`·`Asia/Seoul` 꼴은 바뀌고, 모르는 시간대와 시간대 없는 글은 "모름"과 원문이며, `--home` 의 `resets_at` 이 있으면 화면 글자보다 우선이에요. 같은 글이 UTC+8 이면 UTC+9 일 때보다 한 시간 늦게 나와요(사고 2).
   verify: `cargo test --locked --offline --test lane_screen_cli lane_screen_reset`
-- AC-3 (REQ-7, REQ-8, REQ-9): 그려진 화면이 아니거나 표지가 없거나 비어 있으면 `unknown` 이고(`idle` 이 아니에요), `pane` 객체가 `lane-status` 의 `PaneObservation` 으로 그대로 읽혀요. 도구는 파일을 쓰지 않아요.
+- AC-3 (REQ-7…REQ-11): 그려진 화면이 아니거나 표지가 없거나 비어 있거나 줄이 여섯 줄 미만이면 `unknown` 이고(`idle` 이 아니에요; 줄이 다섯 줄이면 `unknown`, 여섯 줄이면 판정해요), `lane-status` 가 아는 다섯 상태의 `pane` 객체는 `PaneObservation` 으로 그대로 읽히고 `idle`·`unknown` 의 `pane` 은 null 이에요. 도구는 파일을 쓰지 않아요.
   verify: `cargo test --locked --offline --test lane_screen_cli lane_screen_unknown`
-- AC-4 (REQ-1…REQ-9): 이웃 시험과 린트가 통과해요.
+- AC-4 (REQ-1…REQ-11): 이웃 시험과 린트가 통과해요.
   verify: `cargo test --locked --offline --lib lane_screen` `cargo test --locked --offline --test lane_duty_line`
-- AC-5 (REQ-1…REQ-9): 도구 설명 문서 한 쪽이 있어요.
+- AC-5 (REQ-1…REQ-11): 도구 설명 문서 한 쪽이 있어요.
   verify: manual: 문서 한 쪽이라 시험으로 고정하지 않아요(시험이 `docs/` 경로를 읽으면 `tools/ci_scope.py` 거부 목록에 더해야 해요). 감사가 `docs/design-review/appendix/operations/lane_screen.md` 를 읽어요.
 
 ## Scope
 
 - write(이 조각, 계획과 SPEC 셋): `.moai/specs/SPEC-20261119-lane-screen-guard/**`, `.moai/specs/SPEC-20261119-lane-send-guard/**`, `.moai/specs/SPEC-20261119-lane-screen-scan/**`
-- write(이 SPEC 의 구현 조각 A, 쓰기 범위를 새로 받아요): `src/lane_screen.rs`(분류·시간 변환, 순수 함수), `src/ops/lane_screen.rs`, `src/ops/mod.rs`·`src/lib.rs`·`src/main.rs`·`src/help.rs`(등록), `tests/lane_screen_cli.rs`, `tests/fixtures/lane_screens/**`(녹화한 화면), `docs/design-review/appendix/operations/lane_screen.md`
-- read-only: `src/lane_status.rs`(`PaneObservation`·`PaneState`), `src/usage_limit.rs`(`usage-limits.json` 읽기), `src/forge/policy.rs`(`parse_utc`·`format_utc`)
+- write(이 SPEC 의 구현 조각 A, 리더 배차 note 3114 로 범위를 받았어요): `src/lane_screen.rs`(분류·시간 변환, 순수 함수), `src/lane_status.rs`(모듈 등록 한 줄만, D-8), `src/ops/lane_screen.rs`(명령, `build.rs` 가 `src/ops/*.rs` 를 모아서 `main.rs` 등록은 필요 없어요), `src/help.rs`(`GROUPS`·`EXAMPLES` 한 줄씩), `tests/fixtures/help/all.txt`·`all-60.txt`·`all-80.txt`·`all-dumb.txt`(도움말 고정 파일), `tests/lane_screen_cli.rs`, `tests/fixtures/lane_screens/**`(화면 파일), `docs/design-review/appendix/operations/lane_screen.md`
+- read-only: `src/lane_status.rs` 의 `PaneObservation`·`PaneState`, `src/usage_limit.rs`(`evaluate`: `usage-limits.json` 읽기), `src/forge/policy.rs`(`parse_utc`·`format_utc`)
 
 ## Plan
 
@@ -91,7 +93,11 @@ created: 2026-11-19
 | D-2 | 1차 길은 `orca terminal read --screen --json` 과 `orca terminal send` | 사고가 난 길이고, `hc send` 는 이미 막힌 프로그램을 거절해요 | `hc`, `orca orchestration` |
 | D-3 | 보내는 상태는 `working`·`idle` 뿐, 나머지는 거절(자식 `lane-send-guard`) | 확인 창(사고 1)·한도(사고 2)·셸(2026-11-10)·모름 모두 "보내면 잘못 읽히는" 상태예요 | 확인 창에서만 거절 |
 | D-4 | 해제 시각은 `--home` 의 `resets_at` 우선, 화면 글자는 아는 시간대만 바꾸고 모르면 모름 | 사고 2 가 시간대 추측에서 났고 의존성에 날짜 라이브러리가 없어요 | 시간대 데이터베이스 의존성 추가 |
-| D-5 | 시험 화면은 녹화한 실제 화면을 쓴다: 확인 창과 한도 화면은 리더가 원문을 주거나 다음에 녹화 | 지금 저장소에 원문이 없어요; 실제로 읽은 것은 작업 중·대기 중뿐이에요 | 인용한 문장으로 만든 합성 화면(녹화 전까지 `synthetic` 표시) |
+| D-5 | 시험 화면은 합성 화면(`synthetic` 표시)으로 시작하고, 실제로 본 사실 둘을 시험에 넣는다(리더 결정 note 3114): (1) glm 레인의 한도 화면 글은 `Your limit will reset at 2026-11-19 17:30:55` 꼴이고 시간대 표시가 없는데 실제로는 UTC+8 이었어요 → 시간대 없는 시각은 "모름+원문"; (2) 확인 창의 판별 글자는 `Do you want` 와 `1. Yes` 이고, 폭이 좁아 tail 이 세 줄뿐이면 working 표시(`esc to interrupt`)만 보여요 → 줄이 모자라면 모름. 실제 화면이 생기면 합성본을 바꿔요 | 지금 떠 있는 확인 창이나 한도 화면이 없어 원문을 줄 수 없어요; 저장소에 실제 세션 내용을 넣지 않아요 | 실제 화면 녹화 |
+| D-7 | `pane` 은 `lane-status` 가 아는 다섯 상태(`working`·`permission_prompt`·`input_pending`·`unreachable`·`usage_limit`)일 때만 채우고 `idle`·`unknown` 은 null | `PaneState` 에 `idle`·`unknown` 이 없고 `PaneObservation` 은 모르는 상태를 거절해요(`deny_unknown_fields`) | `lane-status` 에 두 상태를 더하는 일은 이 SPEC 밖이에요 |
+| D-8 | 분류기 모듈은 `src/lane_screen.rs` 에 두고 `src/lane_status.rs` 안에서 `#[path = "lane_screen.rs"] pub mod lane_screen;` 로 등록해요(`moai_cli::lane_status::lane_screen`) | `src/lib.rs` 를 C-119 가 예약해서 take 할 수 없었어요; `lane-status` 의 이웃 모듈이라 `--lib lane_screen` 시험이 그대로 닿아요. C-119 가 풀리면 `lib.rs` 한 줄로 옮겨도 동작은 같아요 | `lib.rs` 로 옮기기 |
+| D-9 | 해제 시각의 `--home` 쪽은 `usage_limit::evaluate(home, now)` 를 그대로 써요: `state` 가 `reached`(창 하나가 100% 이상이고 해제 전)일 때만 그 `resets_at` 을 쓰고, `near`·`ok`·기록 없음이면 화면 글자로 돌아가요 | 같은 파일을 읽는 기존 함수가 이미 있고(symlink 거절·스키마 확인 포함) 100% 가 아닌 창은 지금 한도 메시지의 시각이 아니에요 | 없음 |
+| D-10 | 줄이 여섯 줄 미만(비어 있지 않은 줄)이면 `working`·`idle` 을 판정하지 않아요(`MIN_ROWS`=6) | 리더가 본 사고: 폭이 좁아 tail 이 세 줄뿐이어서 working 표시만 보였어요; 보내기를 허락하는 상태는 증거가 충분해야 하고 거절하는 상태(확인 창·선택 창·한도)는 자기 표지 하나로 충분해요 | 상수 한 줄 |
 | D-6 | SPEC 셋: 분류기(이 SPEC)·보내기 보호·목록, 구현도 세 조각 | 한 SPEC = 한 가지 = 한 PR 이고 `spec check` 가 요구 12개 초과를 쪼개라고 해요; 분류기가 둘의 바탕이에요 | SPEC 하나(요구 15개, 경고 1) |
 
 ## Result

@@ -1,0 +1,10 @@
+ ▐▛███▜▌   Claude Code
+▝▜█████▛▘  /Users/example/project
+  ▘▘ ▝▝    Opus
+
+● All 12 tests pass.
+
+────────────────────────────────────────
+❯
+────────────────────────────────────────
+  ⏵⏵ bypass permissions on (shift+tab to cycle)

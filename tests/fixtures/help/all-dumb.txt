@@ -137,6 +137,7 @@ Lane and leader
   lane-resume-check       Read a card's resume note from a comment
   lane-duty-line          Print the line a leader types into a lane
   lane-status             Show the status table of the named lanes
+  lane-screen             Read a lane's screen into a state
   lane-handoff-check      Check that a worktree is safe to leave
   lane-safe-to-reset      Check that a lane's session is safe to clear
   close-check             Check whether an Issue may close
