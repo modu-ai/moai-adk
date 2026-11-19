@@ -59,6 +59,7 @@ created: 2026-11-19
 - AC-5 (REQ-11): the built-in v2 and the known v1 have the pinned digests.
   verify: `cargo test --locked --offline --test update_switch_layer the_pinned_digests_are_the_s2a_scripts`
 - AC-6 (REQ-10): the flags combine as written, in a temporary HOME with the installed layout: preview, `--confirm-switch`, `--confirm` plus `--confirm-switch`, a terminal yes, `--revert-switch`, and the refusals. (S3b: needs the flags in `src/main.rs`, which card C-75 holds until its merge.)
+  verify: `cargo test --locked --offline --test update_switch_layer revert_switch_runs_alone_and_is_refused_beside_a_confirming_flag`
   verify: `cargo test --locked --offline --test update_switch_cli`
 - AC-7 (REQ-4, REQ-7): the apply and revert tests write no file outside their temporary folders (the HOME is a temporary folder); the scope's `forbidden` line is checked by the repository's home isolation scan.
   verify: `cargo test --locked --offline --test home_isolation_scan`

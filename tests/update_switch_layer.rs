@@ -488,3 +488,37 @@ fn revert_puts_v1_back_and_refuses_anything_else() {
     // And the preview offers v2 again.
     assert_eq!(h.part().unwrap()["action"], json!("replace"));
 }
+
+// ---- AC-6, library part (REQ-10) --------------------------------------------
+
+#[test]
+fn revert_switch_runs_alone_and_is_refused_beside_a_confirming_flag() {
+    use moai_cli::update::update_command_switch;
+    let _g = gate();
+    let h = Home::new();
+    switch::apply(&h.root, &h.token(), NOW).unwrap();
+    let ask = |_: &str, _: &Value| Ok(false);
+    let flags: [[Option<&str>; 4]; 4] = [
+        [Some("x"), None, None, None],
+        [None, Some("x"), None, None],
+        [None, None, Some("x"), None],
+        [None, None, None, Some("x")],
+    ];
+    for [c, cc, ch, cs] in flags {
+        let e = update_command_switch(&h.root, c, cc, ch, cs, Some(STAMP), false, ask).unwrap_err();
+        assert!(e.contains("cannot be combined"), "{e}");
+        assert_eq!(h.read(), V2, "nothing changed");
+        assert!(h.saved(STAMP).exists());
+    }
+    // Alone it runs without any installed package: only the saved copy and `moai` are read.
+    let r =
+        update_command_switch(&h.root, None, None, None, None, Some(STAMP), false, ask).unwrap();
+    assert_eq!(r["mode"], json!("revert_switch"), "{r}");
+    assert_eq!(r["switch_result"]["state"], json!("reverted"), "{r}");
+    assert_eq!(h.read(), V1);
+    // An apply result's `revert` line comes first in the revert order.
+    let order = moai_cli::update::revert_order(&json!({
+        "switch": "moai-cli update --revert-switch X", "home": "h", "agents": "a"
+    }));
+    assert_eq!(order, vec!["switch", "home", "agents"]);
+}
