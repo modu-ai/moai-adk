@@ -98,9 +98,11 @@ fn raw_string_open(b: &[u8]) -> Option<(usize, usize)> {
     (b.get(1 + hashes) == Some(&b'"')).then_some((hashes, 2 + hashes))
 }
 
-/// Value of a `cfg` expression when the target is Windows. A name this scan does not know
-/// (`test`, `debug_assertions`, a feature) counts as true: the item stays in the build.
-fn cfg_on_windows(expr: &str) -> bool {
+/// Value of a `cfg` expression when the target is Windows: `Some(true)` or `Some(false)` for
+/// what this scan can decide (`unix`, `windows`, `target_os`, `target_family`), `None` for a name
+/// it cannot (`test`, `debug_assertions`, a feature, `target_vendor`). `None` never gates: the
+/// item stays in the build as far as the scan knows, and `not(...)` of it stays `None` too.
+fn cfg_on_windows(expr: &str) -> Option<bool> {
     let expr = expr.trim();
     for op in ["all", "any", "not"] {
         if let Some(inner) = expr
@@ -109,39 +111,76 @@ fn cfg_on_windows(expr: &str) -> bool {
             .and_then(|r| r.strip_prefix('('))
             .and_then(|r| r.strip_suffix(')'))
         {
-            let values: Vec<bool> = split_top_level(inner)
+            let values: Vec<Option<bool>> = split_top_level(inner)
                 .iter()
                 .map(|p| cfg_on_windows(p))
                 .collect();
             return match op {
-                "all" => values.iter().all(|v| *v),
-                "any" => values.iter().any(|v| *v),
-                _ => !values.first().copied().unwrap_or(true),
+                // One false part settles `all`; one true part settles `any`; otherwise a
+                // part the scan cannot decide leaves the whole unknown.
+                "all" if values.contains(&Some(false)) => Some(false),
+                "any" if values.contains(&Some(true)) => Some(true),
+                "all" | "any" if values.contains(&None) => None,
+                "all" => Some(true),
+                "any" => Some(false),
+                _ => values.first().copied().flatten().map(|v| !v),
             };
         }
     }
     match expr {
-        "unix" => false,
-        "windows" => true,
+        "unix" => Some(false),
+        "windows" => Some(true),
         _ => match expr.split_once('=') {
             Some((key, value)) => {
                 let value = value.trim().trim_matches('"');
                 match key.trim() {
-                    "target_family" | "target_os" => value == "windows",
-                    _ => true,
+                    "target_family" | "target_os" => Some(value == "windows"),
+                    _ => None,
                 }
             }
-            None => true,
+            None => None,
         },
     }
+}
+
+/// Whether the text after `os::` names the `unix` module: `unix::fs::…`, or `unix` as one of
+/// the names of a brace group (`{raw, unix}`, `{self, unix::fs::PermissionsExt}`).
+fn names_unix(after_os: &str) -> bool {
+    let word_is_unix = |s: &str| {
+        s.trim_start()
+            .strip_prefix("unix")
+            .is_some_and(|tail| !tail.starts_with(|c: char| c.is_ascii_alphanumeric() || c == '_'))
+    };
+    let rest = after_os.trim_start();
+    let Some(group) = rest.strip_prefix('{') else {
+        return word_is_unix(rest);
+    };
+    let (mut depth, mut end) = (1usize, group.len());
+    for (k, ch) in group.char_indices() {
+        match ch {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    end = k;
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+    split_top_level(&group[..end])
+        .iter()
+        .any(|part| word_is_unix(part))
 }
 
 fn split_top_level(s: &str) -> Vec<String> {
     let (mut parts, mut depth, mut cur) = (Vec::new(), 0i32, String::new());
     for ch in s.chars() {
+        // Parentheses for `cfg(all(a, b))`, braces for `use a::{b, c}`.
         match ch {
-            '(' => depth += 1,
-            ')' => depth -= 1,
+            '(' | '{' => depth += 1,
+            ')' | '}' => depth -= 1,
             _ => {}
         }
         if ch == ',' && depth == 0 {
@@ -195,7 +234,7 @@ fn read_file(src: &str) -> Reading {
                 .and_then(|r| r.strip_prefix('('))
                 .and_then(|r| r.strip_suffix(')'))
             {
-                if !cfg_on_windows(expr) {
+                if cfg_on_windows(expr) == Some(false) {
                     if inner {
                         file_gated = true;
                     } else {
@@ -219,12 +258,8 @@ fn read_file(src: &str) -> Reading {
             b')' | b']' => paren = paren.saturating_sub(1),
             b';' if paren == 0 => pending = false,
             b'o' if b[i..].starts_with(b"os::") && (i == 0 || !ident(b[i - 1])) => {
-                let rest = code[i + 4..].trim_start();
-                let rest = rest.strip_prefix('{').map_or(rest, str::trim_start);
-                let names_unix = rest.starts_with("unix")
-                    && !rest[4..].starts_with(|c: char| c.is_ascii_alphanumeric() || c == '_');
                 let gated = file_gated || pending || stack.last().copied().unwrap_or(false);
-                if names_unix && !gated {
+                if names_unix(&code[i + 4..]) && !gated {
                     lines.push(code[..i].matches('\n').count() + 1);
                 }
             }
@@ -298,13 +333,21 @@ fn ungated(files: &[(String, String)]) -> Vec<String> {
     found
 }
 
+/// The scan must see more than this many `.rs` files under `tests/` (the tree holds a few
+/// hundred), so a moved folder or a failed walk is a failure and not an empty, passing list.
+const MIN_FILES: usize = 100;
+
+fn saw_enough_files(count: usize) -> bool {
+    count > MIN_FILES
+}
+
 #[test]
 fn no_file_under_tests_names_std_os_unix_outside_cfg_unix() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let files = test_files(root);
     assert!(
-        files.len() > 100,
-        "the scan saw {} files under tests/; the folder moved?",
+        saw_enough_files(files.len()),
+        "the scan saw {} files under tests/ (it needs more than {MIN_FILES}); the folder moved?",
         files.len()
     );
     let found = ungated(&files);
@@ -350,6 +393,50 @@ fn a_cfg_that_turns_the_item_off_on_windows_gates_it() {
     ] {
         let src = format!("{gate}\nfn t() {{\n    std::os::unix::fs::symlink(a, b);\n}}\n");
         assert!(lines(&src).is_empty(), "{gate}");
+    }
+}
+
+#[test]
+fn the_file_count_floor_has_a_boundary() {
+    assert!(!saw_enough_files(0));
+    assert!(!saw_enough_files(MIN_FILES));
+    assert!(saw_enough_files(MIN_FILES + 1));
+}
+
+#[test]
+fn a_name_the_scan_cannot_decide_never_gates() {
+    // `None` stays `None` through `not`, and one false part still settles `all`.
+    for gate in [
+        "#[cfg(not(test))]",
+        "#[cfg(not(feature = \"x\"))]",
+        "#[cfg(target_vendor = \"apple\")]",
+        "#[cfg(any(feature = \"x\", unix))]",
+        "#[cfg(not(debug_assertions))]",
+        "#[cfg(all(feature = \"x\", not(test)))]",
+    ] {
+        let src = format!("{gate}\nfn t() {{\n    std::os::unix::fs::symlink(a, b);\n}}\n");
+        assert_eq!(lines(&src), [3], "{gate}");
+    }
+    let src =
+        "#[cfg(all(unix, feature = \"x\"))]\nfn t() {\n    std::os::unix::fs::symlink(a, b);\n}\n";
+    assert!(lines(src).is_empty());
+    let src = "#[cfg(not(any(windows, feature = \"x\")))]\nfn t() {\n    std::os::unix::fs::symlink(a, b);\n}\n";
+    assert!(lines(src).is_empty());
+}
+
+#[test]
+fn the_names_of_a_brace_group_are_read_one_by_one() {
+    for (src, expected) in [
+        ("use std::os::{raw, unix};\n", vec![1]),
+        ("use std::os::{self, unix::fs::PermissionsExt};\n", vec![1]),
+        // The line is the one that holds `os::`, even when `unix` sits on a later line.
+        ("use std::os::{ raw ,\n    unix::fs };\n", vec![1]),
+        // A `unix` inside a nested group belongs to `other::`, not to `os::`.
+        ("use std::os::{raw, unixish, other::{a, unix}};\n", vec![]),
+        ("use std::os::{raw, fd};\n", vec![]),
+        ("use a::os::{b, unix_x};\nuse std::os::unix_like;\n", vec![]),
+    ] {
+        assert_eq!(lines(src), expected, "{src}");
     }
 }
 
