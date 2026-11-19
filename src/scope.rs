@@ -30,6 +30,32 @@ pub const SHARED_INTERFACE_PATHS: &[&str] = &[
     "AGENTS.md",
 ];
 
+/// Files that are a pure function of other files and that the repository's merge driver joins
+/// three-way (`merge=moai-manifest` in `.gitattributes`; a test pins the two lists equal, C-118).
+/// Two cards may both list one of these in their write scope: [`card_overlap`] ignores a pair in
+/// which one side is exactly such a path, so a regenerated line never locks the second card out.
+pub const GENERATED_SHARED_PATHS: &[&str] = &["skills/moai/references/source-manifest.json"];
+
+/// True when `path` is exactly one of [`GENERATED_SHARED_PATHS`] (same folding as [`overlap`]).
+fn is_generated(path: &str) -> bool {
+    let Some(p) = segments(path) else {
+        return false;
+    };
+    GENERATED_SHARED_PATHS
+        .iter()
+        .any(|g| segments(g).as_deref() == Some(p.as_slice()))
+}
+
+/// [`overlap`] for two card write-scope entries: the pair is no overlap when one side is exactly a
+/// generated shared path. Every other pair, including a folder pattern that reaches the generated
+/// file together with other files, is judged by [`overlap`] alone; claims keep using [`overlap`].
+pub fn card_overlap(a: &str, b: &str) -> bool {
+    // A path that climbs out of the repository names an unknown file: it is never ignored.
+    let ignored =
+        (is_generated(a) && segments(b).is_some()) || (is_generated(b) && segments(a).is_some());
+    overlap(a, b) && !ignored
+}
+
 /// The path's segments, lowercased and with `.` and `..` resolved lexically; `None` when a
 /// `..` climbs above the repository root. Lowercasing is conservative: on a case-sensitive
 /// file system two spellings are two files, but treating them as one only adds conflicts,
@@ -585,7 +611,7 @@ pub fn check_and_record<C: crate::forge::policy::Clock>(
 
 #[cfg(test)]
 mod tests {
-    use super::{inspect_entry, overlap};
+    use super::{card_overlap, inspect_entry, overlap, GENERATED_SHARED_PATHS};
 
     fn reasons(root: &std::path::Path, pattern: &str, budget: usize) -> Vec<String> {
         inspect_entry(root, pattern, budget)
@@ -717,5 +743,37 @@ mod tests {
         assert!(!overlap("src/*.rs", "src/lib.md"));
         assert!(!overlap("docs/a.md", "src/a.md"));
         assert!(!overlap("src/lib.rs", "src/lib.rs.bak"));
+    }
+
+    #[test]
+    fn card_overlap_ignores_only_the_generated_path_itself() {
+        let m = GENERATED_SHARED_PATHS[0];
+        // The generated file against itself, a spelling of it and a folder pattern: no overlap.
+        assert!(!card_overlap(m, m));
+        assert!(!card_overlap(
+            "./SKILLS/moai/references/../references/source-manifest.json",
+            m
+        ));
+        assert!(!card_overlap(m, "skills/moai/**"));
+        // Everything else is `overlap`'s answer.
+        for (a, b) in [
+            ("skills/moai/workflows/a.md", "skills/moai/workflows/a.md"),
+            ("skills/moai/**", "skills/moai/workflows/a.md"),
+            (
+                "skills/moai/references/*",
+                "skills/moai/references/other.json",
+            ),
+            ("src/lib.rs", "src"),
+            ("../x", m),
+        ] {
+            assert_eq!(card_overlap(a, b), overlap(a, b), "{a} vs {b}");
+        }
+        assert!(!card_overlap(
+            "skills/moai/workflows/a.md",
+            "skills/moai/workflows/b.md"
+        ));
+        // The claim-side predicate still sees the generated file as written by both.
+        assert!(overlap(m, m));
+        assert!(overlap(m, "skills/moai/**"));
     }
 }

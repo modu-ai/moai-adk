@@ -48,8 +48,8 @@ created: 2026-11-19
   verify: `cargo test --locked --offline --test card_generated_scope card_check_still_requires_the_path_in_scope`
   verify: `cargo test --locked --offline --lib scope`
 - AC-4 (REQ-8, REQ-9): 임시 git 저장소에서 두 가지(branch)가 서로 다른 skill 파일을 고치고 각자 `write` 로 manifest 를 다시 쓴 뒤 드라이버로 병합하면 병합 결과의 manifest 가 병합본에서 `write` 한 것과 바이트까지 같고 `check` 가 통과해요. 한쪽 줄을 손으로 틀리게 두고 병합하면 `check` 가 0 이 아닌 코드로 끝나요.
-  verify: `python3 -I -m unittest tests.source_manifest_test -k two_heads_regenerating_their_own_line`
-  verify: `python3 -I -m unittest tests.source_manifest_test -k a_stale_line_after_the_merge_fails_check`
+  verify: `python3 -m unittest tests.source_manifest_test -k two_heads_regenerating_their_own_line_merge_to_what_write_produces`
+  verify: `python3 -m unittest tests.source_manifest_test -k a_stale_line_after_the_merge_fails_check`
 - AC-5: 이웃 검사(대상 한정; 전량은 PR 의 CI run 이 인용).
   verify: `cargo test --locked --offline --test card_generated_scope`
   verify: `cargo fmt --check`
