@@ -172,6 +172,51 @@ fn lane_screen_state_a_numbered_yes_no_choice_is_never_working_or_idle() {
     }
 }
 
+/// Leader decision after the re-audit of slice A (note 3256, R-N1): a question such as
+/// `Do you want …` near the bottom of the screen whose choices cannot be read (here `»` and
+/// `[1]` in front of the numbers) is not `working` or `idle`: when it is not known, it is unknown.
+#[test]
+fn lane_screen_state_a_question_near_the_bottom_with_unreadable_choices_is_unknown() {
+    for name in [
+        "synthetic-unreadable-choice-working.txt",
+        "synthetic-unreadable-choice-idle.txt",
+    ] {
+        let r = run(&fixture(name), &[]);
+        assert_eq!(r.result()["state"], json!("unknown"), "{name}");
+        let evidence = r.result()["evidence"].as_str().unwrap();
+        assert!(evidence.contains("Do you want"), "{name}: {evidence}");
+        assert!(
+            r.result()["reason"].as_str().unwrap().contains("question"),
+            "{name}: {}",
+            r.result()["reason"]
+        );
+        assert_eq!(r.result()["pane"], json!(null), "{name}");
+    }
+    // The same words above the bottom window (the last 8 non-blank rows) are the transcript, not
+    // a dialog: the lane still reads as `working` or `idle`. The idle fixture has exactly 8
+    // non-blank rows, so a question put on top of it is the 9th row from the bottom.
+    for (name, state) in [
+        ("synthetic-working.txt", "working"),
+        ("synthetic-idle.txt", "idle"),
+    ] {
+        let screen = format!("Do you want me to look at this?\n{}", fixture(name));
+        assert_eq!(
+            state_of(&screen),
+            state,
+            "{name}: the question is above the window"
+        );
+    }
+    // Boundary N / N-1: the same question as the 8th row from the bottom is inside the window.
+    let idle = fixture("synthetic-idle.txt");
+    let (first, rest) = idle.split_once('\n').unwrap();
+    let inside = format!("{first}\nDo you want me to look at this?\n{rest}");
+    assert_eq!(
+        state_of(&inside),
+        "unknown",
+        "the question is the 8th row from the bottom"
+    );
+}
+
 #[test]
 fn lane_screen_state_numbered_rows_that_are_not_yes_and_no_do_not_make_a_prompt() {
     // `Yesterday` and `Not now` only start with the letters of Yes and No.

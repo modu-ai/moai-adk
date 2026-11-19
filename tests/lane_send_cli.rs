@@ -204,6 +204,23 @@ fn lane_send_refuses_a_numbered_yes_no_dialog_in_any_dress_and_sends_nothing() {
     }
 }
 
+/// R-N1 (leader, note 3256): a `Do you want …` question near the bottom whose choices cannot be
+/// read is `unknown`, so a `working` or `idle` footer never lets a text reach the dialog.
+#[test]
+fn lane_send_refuses_a_question_whose_choices_cannot_be_read_and_sends_nothing() {
+    for name in [
+        "synthetic-unreadable-choice-working.txt",
+        "synthetic-unreadable-choice-idle.txt",
+    ] {
+        let fake = Fake::screen(name);
+        let r = run(&fake, "do the next card", &["--enter"]);
+        let message = r.error();
+        assert!(message.contains("unknown"), "{name}: {message}");
+        assert!(message.contains("refused"), "{name}: {message}");
+        assert_eq!(fake.sent(), None, "{name}");
+    }
+}
+
 #[test]
 fn lane_send_refuses_every_state_that_is_not_working_or_idle() {
     for (name, state) in [

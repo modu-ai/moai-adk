@@ -9,4 +9,6 @@ Two facts that were seen for real are in the tests as given:
 
 A confirmation prompt is told apart by a numbered `Yes` row together with a numbered `No` row; the `Do you want` question is not required. Three synthetic screens guard against such a prompt being read as `working` or `idle` (audit note 3212, B1, found each of them read that way): `synthetic-ascii-cursor-dialog.txt` (the cursor is `>`), `synthetic-bordered-dialog.txt` (the dialog is inside a vertical frame) and `synthetic-no-cursor-dialog.txt` (no cursor mark and no `Do you want`, above an idle input line).
 
+A question such as `Do you want …` in the last 8 non-blank rows, whose choices cannot be read, makes the screen `unknown` (leader R-N1, note 3256): `synthetic-unreadable-choice-working.txt` (`» 1. Yes` and `   2. No` under a working footer) and `synthetic-unreadable-choice-idle.txt` (`[1] Yes` and `[2] No` above an idle input line).
+
 Replace a synthetic file with a recorded one when a real screen is at hand.

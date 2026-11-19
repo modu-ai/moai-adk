@@ -109,6 +109,19 @@ fn cut(row: &str) -> String {
     s
 }
 
+/// How many of the last non-blank rows may hold a confirmation question (R-N1).
+const BOTTOM_ROWS: usize = 8;
+
+/// Words of a confirmation question, lower case.
+const QUESTIONS: [&str; 6] = [
+    "do you want",
+    "would you like",
+    "are you sure",
+    "proceed?",
+    "[y/n]",
+    "(y/n)",
+];
+
 /// Characters of a vertical frame a dialog may be drawn in.
 const FRAME: [char; 6] = ['│', '┃', '║', '|', '╎', '┆'];
 /// The cursor a menu draws before the highlighted choice: `❯` is Claude Code's own, `>` is its
@@ -233,6 +246,26 @@ pub fn classify(rows: &[String]) -> Seen {
             State::Unknown,
             None,
             "fewer than six non-blank rows; working and idle need six",
+        );
+    }
+    // A confirmation question near the bottom whose choices could not be read (a cursor or a
+    // bracket the reader does not know in front of the numbers): Enter may pick Yes, so the
+    // lane is not `working` or `idle` whatever its footer says (leader R-N1, note 3256).
+    let near_bottom = rows
+        .iter()
+        .enumerate()
+        .filter(|(_, r)| !r.is_empty())
+        .rev()
+        .take(BOTTOM_ROWS);
+    if let Some((i, _)) = near_bottom.into_iter().find(|(i, _)| {
+        QUESTIONS
+            .iter()
+            .any(|q| lower.get(*i).is_some_and(|l| l.contains(q)))
+    }) {
+        return seen(
+            State::Unknown,
+            rows.get(i),
+            "a question is near the bottom of the screen but no Yes and No rows could be read",
         );
     }
     if let Some(i) = find("esc to interrupt") {
@@ -741,6 +774,38 @@ mod tests {
         assert!(!starts_with_word("Yesterday", "yes"));
         assert!(!starts_with_word("Not now", "no"));
         assert!(!starts_with_word("", "no"));
+    }
+
+    #[test]
+    fn a_question_near_the_bottom_with_unreadable_choices_is_unknown() {
+        let with = |question: &str, below: usize| {
+            let mut v = filler(6, &["✳ Frosting… (esc to interrupt)", question]);
+            v.extend((0..below).map(|i| format!("below {i}")));
+            classify(&v)
+        };
+        for q in [
+            "Do you want to proceed?",
+            "Would you like to continue?",
+            "Are you sure?",
+            "Proceed? [y/N]",
+            "Overwrite the file (y/n)",
+        ] {
+            let seen = with(q, 2);
+            assert_eq!(seen.state, State::Unknown, "{q}");
+            assert_eq!(seen.evidence.as_deref(), Some(q), "{q}");
+        }
+        // The window is the last 8 non-blank rows: the 8th still counts, the 9th is transcript.
+        assert_eq!(with("Do you want to proceed?", 7).state, State::Unknown);
+        assert_eq!(with("Do you want to proceed?", 8).state, State::Working);
+        // A blank row is not a row of the window.
+        let mut blanks = filler(
+            6,
+            &["✳ Frosting… (esc to interrupt)", "Do you want to proceed?"],
+        );
+        blanks.extend(std::iter::repeat(String::new()).take(20));
+        assert_eq!(classify(&blanks).state, State::Unknown);
+        // No question: still working.
+        assert_eq!(with("All done.", 2).state, State::Working);
     }
 
     #[test]
