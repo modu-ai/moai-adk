@@ -307,6 +307,27 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Reads the ledger only. List the lane notes that still wait for the leader
+    ///
+    /// Reads the ledger only. A request is a note whose first line starts with `감사 요청` (or is
+    /// a `LANE-DONE` line that says `audit requested`: `audit_request`), `LANE-BLOCKED`
+    /// (`blocked`), `LANE-READY-INTEGRATION` (`ready_for_integration`) or `DECISION-QUESTION`
+    /// (`decision_question`). On each card that is not `done`, the newest request of each
+    /// family is listed unless the card holds a later note (a larger note id) written by the
+    /// leader. Notes imported from a code host are left out. The items come oldest first with
+    /// their age in seconds; `LANE-NOTE` progress lines are not requests. A project without a
+    /// ledger has nothing waiting (`ledger: "absent"`, exit 0) and nothing is created.
+    Inbox {
+        /// The project folder (its profile holds the project id).
+        #[arg(default_value = ".")]
+        project: PathBuf,
+        /// The author name of the leader's notes (default `leader`).
+        #[arg(long)]
+        leader: Option<String>,
+        /// The HOME to read (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Writes the ledger. Append a note to a card, the text on stdin
     ///
     /// Writes the ledger. Stores the text read from stdin as one note with one `card.note`
@@ -643,6 +664,11 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             &resolve_home(home)?,
             d::session_holder("next", env).ok().as_deref(),
         ),
+        Action::Inbox {
+            project,
+            leader,
+            home,
+        } => moai_cli::card::inbox::inbox(&project, &resolve_home(home)?, leader.as_deref()),
         Action::Note {
             card,
             kind,
