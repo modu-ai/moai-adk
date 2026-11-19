@@ -217,6 +217,105 @@ fn read_entry(file: &Path, name: &str) -> Result<Option<Entry>, String> {
 /// The session modes an entry may carry (#2928, decision D1 = (A)).
 pub const MODES: &[&str] = &["leader", "agent"];
 
+/// BOARD 03 (가), SPEC-20261120-launcher-liveness REQ-2: the three answers of the liveness
+/// lookup.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Liveness {
+    Alive,
+    LauncherExited,
+    Unknown,
+}
+
+/// This session's own host id, as `session-current` resolves it (the environment only);
+/// `None` when the host gives none.
+fn own_session_id() -> Option<String> {
+    crate::session_current::resolve(|name| std::env::var(name).ok())["source_session_id"]
+        .as_str()
+        .map(str::to_string)
+}
+
+/// The `session` field of the entry at `file`, read leniently: `None` when the file cannot be
+/// read as JSON or carries no session id.
+fn session_field(file: &Path) -> Option<String> {
+    let v: Value = serde_json::from_str(&fs::read_to_string(file).ok()?).ok()?;
+    v["session"].as_str().map(str::to_string)
+}
+
+/// REQ-2·REQ-3: the liveness of a session id — the name whose entry registers the id, then
+/// that name's `.live` lock in the sessions folder. Reads only: no file is created, changed
+/// or removed (a missing `.live` file answers `LauncherExited` without being created); an
+/// entry the scan cannot read is skipped, never an error. Several names may carry one session
+/// id: the longest lease answers. The answer leans on the lock, not on the registry lease
+/// (design 5.2, 6.2).
+pub fn liveness_of_session(project: &Path, session: &str) -> (Liveness, Value) {
+    if !crate::session_current::well_formed(session) {
+        return (
+            Liveness::Unknown,
+            json!({"reason": "the session id is not well formed"}),
+        );
+    }
+    let Some(name) = registered_name_of(project, session) else {
+        return (
+            Liveness::Unknown,
+            json!({"reason": "no registry entry names this session id"}),
+        );
+    };
+    let Ok(dir) = registry_dir(project) else {
+        return (
+            Liveness::Unknown,
+            json!({"name": name, "reason": "the sessions folder cannot be resolved"}),
+        );
+    };
+    let lock = dir.join(format!("{name}.live"));
+    match crate::session::live_lock_held(&lock) {
+        Ok(true) => (
+            Liveness::Alive,
+            json!({"name": name, "lock": lock.to_string_lossy()}),
+        ),
+        Ok(false) => (
+            Liveness::LauncherExited,
+            json!({"name": name, "lock": lock.to_string_lossy()}),
+        ),
+        Err(reason) => (Liveness::Unknown, json!({"name": name, "reason": reason})),
+    }
+}
+
+/// The name of the entry that carries `session`, longest lease first; `None` when no readable
+/// entry names it (the name's entry now names another session id, so the old id is gone).
+fn registered_name_of(project: &Path, session: &str) -> Option<String> {
+    let dir = registry_dir(project).ok()?;
+    let mut best: Option<(i64, String)> = None;
+    for e in fs::read_dir(&dir).ok()?.flatten() {
+        let path = e.path();
+        if path.extension().and_then(|x| x.to_str()) != Some("json") {
+            continue;
+        }
+        if fs::symlink_metadata(&path)
+            .map(|m| m.file_type().is_symlink())
+            .unwrap_or(true)
+        {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        let Ok(v) = serde_json::from_str::<Value>(&text) else {
+            continue;
+        };
+        if v["session"].as_str() != Some(session) {
+            continue;
+        }
+        let Some(name) = v["name"].as_str().map(str::to_string) else {
+            continue;
+        };
+        let lease = v["lease_until"].as_i64().unwrap_or(0);
+        if best.as_ref().is_none_or(|(l, _)| lease >= *l) {
+            best = Some((lease, name));
+        }
+    }
+    best.map(|(_, name)| name)
+}
+
 /// An entry's `mode` when it is exactly `leader` or `agent`; any other text — a made-up word,
 /// another case, escape bytes — is no mode at all, so it is never shown or trusted.
 fn accepted_mode(raw: Option<&str>) -> Option<&'static str> {
@@ -507,6 +606,18 @@ pub fn register(
     });
     if let Some(m) = mode {
         entry["mode"] = json!(m);
+    }
+    // BOARD 03 (가), SPEC-20261120-launcher-liveness REQ-1: the host session id rides along
+    // as one more field under schema version 1 — an older binary that ignores unknown keys
+    // still reads the entry — and a renewal by the same instance keeps the session id of the
+    // first registration (the host id does not change with the renewing process).
+    let session = if previous == "same_instance" {
+        session_field(&file)
+    } else {
+        own_session_id()
+    };
+    if let Some(s) = session {
+        entry["session"] = json!(s);
     }
     let tmp = dir.join(format!("{name}.json.tmp-{}", std::process::id()));
     let written = OpenOptions::new()
