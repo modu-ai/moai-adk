@@ -36,7 +36,7 @@
 //! (REQ-03C-08).
 
 use crate::agents::{
-    agents_apply_amended_for, agents_plan_for, AgentsPlan, AgentsRequest, FilePlan,
+    agents_apply_amended_for, agents_plan_for, AgentsPlan, AgentsRequest, ClaudeShadow, FilePlan,
 };
 use crate::apply::{
     decide, new_request_id, publish_exclusive, publish_replace, read_opt, root_of,
@@ -155,6 +155,11 @@ pub struct GenerationRequest {
     /// Absent when empty, so a request without project skills digests as before.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub project_skills: Vec<ProjectSkill>,
+    /// The choices the user picked for the AGENTS.md conflict (`agents::PICKS`), passed to the
+    /// agents plan and apply unchanged. Absent when empty, so a request without picks digests
+    /// as before (SPEC-20261119-agents-choices-step REQ-1).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub picks: Vec<String>,
 }
 
 fn project_skill_hosts(s: &ProjectSkill) -> Vec<String> {
@@ -201,6 +206,10 @@ pub struct GenerationPlan {
     /// warnings (read-only-intent, license gate).
     pub host_notes: Vec<String>,
     pub warnings: Vec<String>,
+    /// The agents plan's `claude_shadow`: a CLAUDE.md that shadows AGENTS.md and does not
+    /// import it. Not part of the plan digest, like the agents plan's own (REQ-5).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub claude_shadow: Option<ClaudeShadow>,
     pub plan_digest: String,
 }
 
@@ -616,6 +625,7 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
         language: request.language.clone(),
         workflow_reference: request.workflow_reference.clone(),
         local_file: request.local_file.clone(),
+        picks: request.picks.clone(),
     };
     let agents = agents_plan_for(
         &root,
@@ -919,6 +929,7 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
         files,
         host_notes,
         warnings,
+        claude_shadow: agents.claude_shadow.clone(),
         plan_digest: String::new(),
     };
     // #2936 Q3 B: the manifest line from the agents plan knows nothing of the generation
@@ -1172,6 +1183,7 @@ pub fn generation_apply(
         language: p.request.language.clone(),
         workflow_reference: p.request.workflow_reference.clone(),
         local_file: p.request.local_file.clone(),
+        picks: p.request.picks.clone(),
     };
     let own_output = reference_is_own_output(&root, &p.request);
     let agents_plan: AgentsPlan = agents_plan_for(&root, agents_request.clone(), own_output)?;

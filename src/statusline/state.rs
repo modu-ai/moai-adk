@@ -168,11 +168,17 @@ pub struct GitHubCounts {
 }
 
 /// Card C-65 (user instructions 2026-11-16 and 2026-11-17): the cards of the project's local
-/// ledger, as the repository line shows them (`🔥 in_progress / 📥 remaining / ✅ done`).
+/// ledger, as the repository line shows them (`🗂️ remaining / ▶️ in_progress / 🔃 waiting /
+/// ✅ done`; without `waiting` the three-number form `🗂️ / ▶️ / ✅`).
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct CardCounts {
-    /// `active` + `review`.
+    /// The cards being worked on: `active` ones whose newest marker note is not a waiting one.
+    /// When `waiting` is `None` (the notes could not be read) it is `active` + `review`.
     pub in_progress: i64,
+    /// The cards pushed and waiting for integration or an audit: every `review` card and each
+    /// `active` card whose newest marker note is a waiting one. `None` when the notes could not
+    /// be read, and the line then shows the three-number form.
+    pub waiting: Option<i64>,
     /// `draft` + `ready` + `hold`.
     pub remaining: i64,
     /// `done`; counted in neither of the other two.
@@ -904,7 +910,117 @@ fn card_counts(project: &Path, ctx: &Context) -> Option<CardCounts> {
             _ => {}
         }
     }
+    // Split the `active` + `review` total; when the notes cannot be read the total stays whole
+    // and the line shows the three-number form.
+    counts.waiting = waiting_cards(&ledger, ctx.deadline);
+    if let Some(waiting) = counts.waiting {
+        counts.in_progress = split_in_progress(counts.in_progress, waiting);
+    }
     Some(counts)
+}
+
+/// The working number once the waiting cards are taken out of the `active` + `review` total.
+/// The state count and the note read are two reads of a ledger that may change between them, so
+/// a card that moved can make `waiting` larger than the total: never below zero.
+fn split_in_progress(total: i64, waiting: i64) -> i64 {
+    (total - waiting).max(0)
+}
+
+/// How many characters of a note's body are read: enough for its first line, so a long report
+/// costs no more than a short one.
+const NOTE_HEAD_CHARS: usize = 1000;
+
+/// What a note's first line says about its card.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Marker {
+    /// The card was pushed and waits for an audit or for the leader's integration.
+    Waiting,
+    /// The lane is working on the card again (took or resumed it, planned, or was told FAIL).
+    Working,
+}
+
+/// The marker a note's first line carries, if any. Only the lines the lanes already write by
+/// rule count; any other first line is no marker and changes nothing.
+fn marker_of(body: &str) -> Option<Marker> {
+    let first = body.lines().next().unwrap_or("");
+    let audit = first.starts_with("AUDIT");
+    if first.starts_with("LANE-READY-INTEGRATION")
+        || first.starts_with("감사 요청")
+        || (first.starts_with("LANE-DONE")
+            && (first.contains("audit requested") || first.contains("감사 요청")))
+        || (audit && first.contains("verdict: PASS"))
+    {
+        Some(Marker::Waiting)
+    } else if first.starts_with("ACK ")
+        || first.starts_with("PLAN ")
+        || (audit && first.contains("verdict: FAIL"))
+    {
+        Some(Marker::Working)
+    } else {
+        None
+    }
+}
+
+/// The cards pushed and waiting for integration: every `review` card and each `active` card
+/// whose newest note with a marker (see [`marker_of`]) is a waiting one. One more `SELECT` over
+/// the notes of the `active` cards, newest first, each body cut to [`NOTE_HEAD_CHARS`]; no
+/// write. `None` when the render `deadline` has passed (checked before the read and on every
+/// row) or the read fails, so the caller shows the three-number form instead of a guess.
+fn waiting_cards(
+    ledger: &crate::ledger::open::ReadLedger,
+    deadline: Option<Instant>,
+) -> Option<i64> {
+    waiting_cards_with(ledger, &|| deadline.is_some_and(|d| Instant::now() >= d))
+}
+
+/// [`waiting_cards`] with the "is the render budget spent" question as a parameter, so a test
+/// can spend it in the middle of the row loop.
+fn waiting_cards_with(
+    ledger: &crate::ledger::open::ReadLedger,
+    spent: &dyn Fn() -> bool,
+) -> Option<i64> {
+    if spent() {
+        return None;
+    }
+    let review: i64 = ledger
+        .conn()
+        .query_row(
+            "SELECT count(*) FROM card WHERE state = 'review'",
+            [],
+            |r| r.get(0),
+        )
+        .ok()?;
+    let mut stmt = ledger
+        .conn()
+        .prepare(&format!(
+            "SELECT n.card_id, substr(n.body, 1, {NOTE_HEAD_CHARS}) FROM card_note n \
+             JOIN card c ON c.card_id = n.card_id WHERE c.state = 'active' \
+             ORDER BY n.card_id, n.note_id DESC"
+        ))
+        .ok()?;
+    let rows = stmt
+        .query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?)))
+        .ok()?;
+    let mut decided: Option<i64> = None;
+    let mut waiting = review;
+    for row in rows {
+        if spent() {
+            return None;
+        }
+        let (card, body) = row.ok()?;
+        if decided == Some(card) {
+            continue;
+        }
+        match marker_of(&body) {
+            Some(Marker::Waiting) => {
+                waiting += 1;
+                decided = Some(card);
+            }
+            Some(Marker::Working) => decided = Some(card),
+            None => {}
+        }
+    }
+    Some(waiting)
 }
 
 /// An explicit `statusline.forge` naming neither github nor gitlab.
@@ -1788,12 +1904,286 @@ mod card_counts_tests {
         }
     }
 
+    /// Counts with no card waiting for integration.
     fn counts(in_progress: i64, remaining: i64, done: i64) -> Option<CardCounts> {
+        counts_w(in_progress, 0, remaining, done)
+    }
+
+    fn counts_w(in_progress: i64, waiting: i64, remaining: i64, done: i64) -> Option<CardCounts> {
         Some(CardCounts {
             in_progress,
+            waiting: Some(waiting),
             remaining,
             done,
         })
+    }
+
+    /// Adds one card in `state` and its notes oldest first, `(kind, body)` each; the note ids
+    /// grow with the order, which is what "newest" means.
+    fn add_with_notes(f: &Fixture, state: &str, notes: &[(&str, &str)]) {
+        let mut ledger = crate::ledger::open_write(&f.home, "demo").unwrap();
+        ledger
+            .with_write_tx(|tx, now| {
+                tx.execute(
+                    "INSERT INTO card (title, state, created_by, created_at, updated_at, closed_at) \
+                     VALUES ('t', ?1, 'test', ?2, ?2, iif(?1 = 'done', ?2, NULL))",
+                    rusqlite::params![state, now],
+                )?;
+                let card_id = tx.last_insert_rowid();
+                for (kind, body) in notes {
+                    tx.execute(
+                        "INSERT INTO card_note (card_id, kind, author, body, created_at) \
+                         VALUES (?1, ?2, 'test', ?3, ?4)",
+                        rusqlite::params![card_id, kind, body, now],
+                    )?;
+                }
+                Ok(())
+            })
+            .unwrap();
+    }
+
+    /// The reading of one `active` card with the given notes: `(working, waiting)`.
+    fn active_card(notes: &[(&str, &str)]) -> (i64, Option<i64>) {
+        let f = fixture();
+        crate::ledger::register(&f.home, "demo").unwrap();
+        add_with_notes(&f, "active", notes);
+        let c = f.counts().unwrap();
+        (c.in_progress, c.waiting)
+    }
+
+    const READY: &str = "LANE-READY-INTEGRATION C-1 head=abc spec=SPEC-20261119-x";
+    const ACK: &str = "ACK agent-1 C-1 2026-11-19T00:00:00Z\naccepted";
+    const FAIL: &str = "AUDIT C-1 (x) head abc base def — verdict: FAIL";
+    const PASS: &str = "AUDIT C-1 (x) head abc base def — verdict: PASS";
+
+    #[test]
+    fn a_review_card_is_waiting_and_an_active_card_without_notes_is_working() {
+        let f = fixture();
+        crate::ledger::register(&f.home, "demo").unwrap();
+        add_with_notes(&f, "review", &[]);
+        add_with_notes(&f, "active", &[]);
+        assert_eq!(f.counts(), counts_w(1, 1, 0, 0));
+    }
+
+    #[test]
+    fn an_active_card_is_waiting_by_its_newest_marker_note() {
+        // The waiting markers, each as the first line of a note.
+        for line in [
+            READY,
+            "LANE-DONE agent-1 C-1 PR 없음 — pushed head abc — audit requested (08:00Z)",
+            "LANE-DONE agent-1 C-1 pushed head abc — 감사 요청 tier 2",
+            "감사 요청 tier 2 head=abc spec=SPEC-20261119-x",
+            PASS,
+        ] {
+            assert_eq!(active_card(&[("report", line)]), (0, Some(1)), "{line}");
+        }
+        // Newest wins: a working marker after a waiting one puts the card back to work, and a
+        // waiting one after a working one sends it back to waiting.
+        assert_eq!(
+            active_card(&[("report", READY), ("comment", ACK)]),
+            (1, Some(0))
+        );
+        assert_eq!(
+            active_card(&[("report", READY), ("decision", FAIL)]),
+            (1, Some(0))
+        );
+        assert_eq!(
+            active_card(&[("report", "PLAN C-1\nscope"), ("report", PASS)]),
+            (0, Some(1))
+        );
+        assert_eq!(
+            active_card(&[("decision", FAIL), ("report", READY)]),
+            (0, Some(1))
+        );
+    }
+
+    #[test]
+    fn notes_that_are_no_marker_do_not_change_the_reading() {
+        // A neutral note newer than the waiting marker leaves the card waiting.
+        assert_eq!(
+            active_card(&[
+                ("report", READY),
+                ("report", "waiting: audit since 08:00Z"),
+                ("decision", "LEADER 2026-11-19 — 감사 중, 받지 말 것"),
+            ]),
+            (0, Some(1))
+        );
+        // A neutral note newer than the working one leaves the card working.
+        assert_eq!(
+            active_card(&[("comment", ACK), ("report", "RESUME head abc")]),
+            (1, Some(0))
+        );
+        // `LANE-DONE` without an audit request is no waiting marker.
+        assert_eq!(
+            active_card(&[("report", "LANE-DONE agent-1 C-1 slice 1 done")]),
+            (1, Some(0))
+        );
+        // The words that make a `LANE-DONE` or an `AUDIT` line a marker must sit on that first
+        // line: the same words on a later line change nothing.
+        for body in [
+            "LANE-DONE agent-1 C-1 slice 1 done\nnext: audit requested",
+            "LANE-DONE agent-1 C-1 slice 1 done\n감사 요청 tier 2",
+            "AUDIT C-1 (x) head abc base def\nverdict: PASS",
+        ] {
+            assert_eq!(active_card(&[("report", body)]), (1, Some(0)), "{body}");
+        }
+        assert_eq!(
+            active_card(&[
+                ("report", READY),
+                ("report", "AUDIT C-1 head abc\nverdict: FAIL")
+            ]),
+            (0, Some(1)),
+            "a FAIL verdict only on a later line does not put the card back to work"
+        );
+        // Only the first line counts: a marker on the second line is no marker.
+        assert_eq!(
+            active_card(&[("report", &format!("summary\n{READY}"))]),
+            (1, Some(0))
+        );
+        // The marker must start the line, not sit inside it.
+        assert_eq!(
+            active_card(&[("report", &format!("see {READY}"))]),
+            (1, Some(0))
+        );
+    }
+
+    #[test]
+    fn only_active_and_review_cards_are_split() {
+        let f = fixture();
+        crate::ledger::register(&f.home, "demo").unwrap();
+        // A waiting marker on a card in another state changes no number but its own state's.
+        for state in ["draft", "ready", "hold", "done"] {
+            add_with_notes(&f, state, &[("report", READY)]);
+        }
+        assert_eq!(f.counts(), counts_w(0, 0, 3, 1));
+    }
+
+    #[test]
+    fn the_split_adds_up_across_a_mix_and_the_read_changes_nothing() {
+        let f = fixture();
+        crate::ledger::register(&f.home, "demo").unwrap();
+        add_with_notes(&f, "active", &[("report", READY)]);
+        add_with_notes(&f, "active", &[("comment", ACK)]);
+        add_with_notes(&f, "active", &[]);
+        f.add("review", 2);
+        f.add("draft", 20);
+        f.add("ready", 25);
+        f.add("hold", 5);
+        f.add("done", 12);
+        let before = f.home_tree();
+        let digest = crate::digest(&std::fs::read(f.ledger_file()).unwrap());
+        // 2 working (active), 1 + 2 waiting (active by marker, review), 50 remaining, 12 done.
+        assert_eq!(f.counts(), counts_w(2, 3, 50, 12));
+        assert_eq!(
+            crate::digest(&std::fs::read(f.ledger_file()).unwrap()),
+            digest,
+            "the ledger file is byte for byte the same"
+        );
+        assert_eq!(f.home_tree(), before, "no journal, no new file");
+    }
+
+    #[test]
+    fn a_failed_note_read_gives_the_three_number_form() {
+        let f = fixture();
+        crate::ledger::register(&f.home, "demo").unwrap();
+        add_with_notes(&f, "active", &[("report", READY)]);
+        f.add("review", 1);
+        let ledger =
+            crate::ledger::open::open_read_only_within(&f.home, "demo", Duration::from_millis(100))
+                .unwrap();
+        // The render deadline has passed: no reading of the notes.
+        let spent = Instant::now() - Duration::from_millis(1);
+        assert_eq!(waiting_cards(&ledger, Some(spent)), None);
+        // With time left the same ledger reads: the active card and the review card wait.
+        let left = Instant::now() + Duration::from_secs(60);
+        assert_eq!(waiting_cards(&ledger, Some(left)), Some(2));
+        assert_eq!(waiting_cards(&ledger, None), Some(2));
+    }
+
+    /// A deadline that passes in the middle of the row loop (not only before it) gives `None`:
+    /// the first question is "no", the next ones are "yes".
+    #[test]
+    fn a_deadline_that_passes_between_rows_gives_the_three_number_form() {
+        let f = fixture();
+        crate::ledger::register(&f.home, "demo").unwrap();
+        add_with_notes(&f, "active", &[("report", READY), ("comment", "plain")]);
+        let ledger =
+            crate::ledger::open::open_read_only_within(&f.home, "demo", Duration::from_millis(100))
+                .unwrap();
+        let asked = std::cell::Cell::new(0_u32);
+        let spent = || {
+            asked.set(asked.get() + 1);
+            asked.get() > 1
+        };
+        assert_eq!(waiting_cards_with(&ledger, &spent), None);
+        assert!(asked.get() >= 2, "the loop asked again after the first row");
+        // Never spent: the same ledger reads.
+        assert_eq!(waiting_cards_with(&ledger, &|| false), Some(1));
+    }
+
+    /// Several waiting notes on one card count that card once, and a waiting note keeps
+    /// deciding even when an older working note sits under it.
+    #[test]
+    fn several_waiting_notes_on_one_card_count_it_once() {
+        assert_eq!(
+            active_card(&[("report", READY), ("report", READY), ("report", PASS)]),
+            (0, Some(1))
+        );
+        assert_eq!(
+            active_card(&[("comment", ACK), ("report", READY), ("report", READY)]),
+            (0, Some(1))
+        );
+    }
+
+    /// One line carrying both verdicts is read by the first word that decides it: `PASS` is
+    /// tested before `FAIL`, so a FAIL line that quotes an earlier PASS reads as waiting. The
+    /// real verdict line ends at the verdict word, so this only pins the rule.
+    #[test]
+    fn a_line_with_both_verdicts_reads_as_waiting() {
+        let both = "AUDIT C-1 (x) head abc base def — verdict: FAIL (was verdict: PASS)";
+        assert_eq!(marker_of(both), Some(Marker::Waiting));
+        assert_eq!(marker_of(FAIL), Some(Marker::Working));
+        assert_eq!(marker_of(PASS), Some(Marker::Waiting));
+    }
+
+    /// Only the first `NOTE_HEAD_CHARS` characters of a note are read: a `LANE-DONE` line whose
+    /// `audit requested` ends at that character still waits, one character later it is cut off
+    /// and the card keeps working. Korean text counts by characters, not bytes.
+    #[test]
+    fn the_note_head_cut_is_at_exactly_one_thousand_characters() {
+        let line = |pad: usize, key: &str| {
+            let mut s = String::from("LANE-DONE agent-1 C-1 ");
+            s.push_str(&"x".repeat(pad));
+            s.push(' ');
+            s.push_str(key);
+            s
+        };
+        for key in ["audit requested", "감사 요청"] {
+            let base = line(0, key).chars().count();
+            // The literal 1000 on purpose: the test must fail when the constant moves.
+            let edge = line(1000 - base, key);
+            assert_eq!(edge.chars().count(), 1000);
+            assert_eq!(
+                active_card(&[("report", &edge)]),
+                (0, Some(1)),
+                "{key} at the cut"
+            );
+            let past = line(1000 - base + 1, key);
+            assert_eq!(
+                active_card(&[("report", &past)]),
+                (1, Some(0)),
+                "{key} one past"
+            );
+        }
+    }
+
+    /// The working number never goes below zero: a card that moved between the state count and
+    /// the note read must not show `▶️ -1`.
+    #[test]
+    fn the_working_number_never_goes_below_zero() {
+        assert_eq!(split_in_progress(5, 2), 3);
+        assert_eq!(split_in_progress(2, 2), 0);
+        assert_eq!(split_in_progress(1, 3), 0);
     }
 
     #[test]
@@ -1816,7 +2206,7 @@ mod card_counts_tests {
     fn each_state_is_counted_in_exactly_one_number() {
         for (state, want) in [
             ("active", counts(1, 0, 0)),
-            ("review", counts(1, 0, 0)),
+            ("review", counts_w(0, 1, 0, 0)),
             ("draft", counts(0, 1, 0)),
             ("ready", counts(0, 1, 0)),
             ("hold", counts(0, 1, 0)),
@@ -1845,7 +2235,8 @@ mod card_counts_tests {
         }
         let before = f.home_tree();
         let digest = crate::digest(&std::fs::read(f.ledger_file()).unwrap());
-        assert_eq!(f.counts(), counts(5, 50, 12));
+        // 3 `active` without notes are working, the 2 `review` cards wait.
+        assert_eq!(f.counts(), counts_w(3, 2, 50, 12));
         assert_eq!(
             crate::digest(&std::fs::read(f.ledger_file()).unwrap()),
             digest,

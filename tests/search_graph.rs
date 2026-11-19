@@ -85,7 +85,7 @@ fn task(id: &str) -> Value {
 
 fn kinds(id: &str) -> &'static [&'static str] {
     match id {
-        "G-002" => &["documents"],
+        "G-002" | "G-006" => &["documents"],
         "G-003" | "G-007" => &["imports"],
         "G-009" => &["calls", "imports"],
         _ => &["calls"],
@@ -183,13 +183,18 @@ fn assert_matrix(expanded: bool) {
             let t = task(id);
             let rel = t["ground_truth"]["relation"].as_array().unwrap();
             let (source, target) = (rel[0].as_str().unwrap(), rel[2].as_str().unwrap());
+            // A non-file target is a typed concept target while the explicit alias
+            // contract (C-17, user decision A) binds it to its definition file.
+            let to = moai_cli::code_refs::alias_definition_file(target).unwrap_or(target);
             let r = search(dir.path(), source, expanded);
-            if found(&r, id, source, target) {
+            if found(&r, id, source, to) {
                 eprintln!("search GRAPH found {id} expanded={expanded}");
                 hits.push(id.to_string());
             } else {
-                let reason = if snapshot["files"].get(target).is_none() {
-                    "target is not a frozen file; concept identity/alias HOLD".to_string()
+                let reason = if moai_cli::code_refs::alias_definition_file(target).is_none()
+                    && snapshot["files"].get(target).is_none()
+                {
+                    "target is neither a frozen file nor a contracted concept".to_string()
                 } else {
                     format!("direct relation citation absent; omitted={}", r["omitted"])
                 };
@@ -201,17 +206,20 @@ fn assert_matrix(expanded: bool) {
             "search GRAPH expanded={expanded}: {} found; gaps={gaps:?}",
             hits.len()
         );
-        assert_eq!(gaps, ["G-006"], "only the approved concept gap may remain");
-        assert_eq!(hits.len(), 8);
+        assert!(
+            gaps.is_empty(),
+            "the contracted concept target is found like the rest; gaps={gaps:?}"
+        );
+        assert_eq!(hits.len(), 9);
     }
 }
 
 #[test]
-fn default_graph_matrix_has_eight_direct_hits_and_only_the_decided_gap() {
+fn default_graph_matrix_has_nine_direct_hits() {
     assert_matrix(false);
 }
 
 #[test]
-fn expanded_graph_matrix_has_eight_direct_hits_and_only_the_decided_gap() {
+fn expanded_graph_matrix_has_nine_direct_hits() {
     assert_matrix(true);
 }

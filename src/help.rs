@@ -211,6 +211,7 @@ pub const GROUPS: &[Group] = &[
             ("audit-gate", false),
             ("trailers", false),
             ("trailer-check", false),
+            ("bundle", false),
             ("audit-clone-plan", false),
             ("labels-check", false),
             ("decision-due", false),
@@ -528,6 +529,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("audit-verdict-line", &["audit-verdict-line --pr 2850 --head <head> --verdict PASS --title <scope>", "audit-verdict-line --pr 2850 --head <head> --verdict FAIL --title <scope> --base <earlier-head>"]),
     ("trailers", &["trailers --spec SPEC-20261117-session-trailer"]),
     ("trailer-check", &["trailer-check origin/v2026.11.0..HEAD"]),
+    ("bundle", &["bundle check C-119 C-120", "bundle build C-119 C-120"]),
     (
         "audit-gate",
         &["audit-gate < input.json", "audit-gate --require-pass < input.json"],

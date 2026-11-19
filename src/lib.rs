@@ -15,6 +15,7 @@ pub mod audit_stale;
 pub mod banner;
 pub mod baseline;
 pub mod bin_names;
+pub mod bundle;
 pub mod card;
 pub mod card_times;
 pub mod check_tree;

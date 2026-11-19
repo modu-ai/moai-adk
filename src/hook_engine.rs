@@ -146,8 +146,9 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
         );
     };
     // OMP's turn-end event is `session_stop` (OMP 18.18.7, extensions.md), but the generated
-    // extension module does not subscribe to it: the turn-validation rules are empty
-    // (`STOP_RULES`). A call is a configuration error, never a guess.
+    // extension module does not subscribe to it, so no Stop rule of `STOP_RULES` can run for
+    // OMP (the rules run for Claude and Codex only). A call is a configuration error, never a
+    // guess.
     if host == Host::Omp && event == Event::TurnValidation {
         return engine_error(
             "turn-validation is not wired for OMP (session_stop exists; no rule uses it yet)",
@@ -440,7 +441,8 @@ pub fn capabilities(host: &str) -> Value {
                                            "note": "a deny anywhere on the line wins; ask in a bypass-permissions or -p session is not documented"},
                                "never_uses": ["allow", "defer", "decision/reason (deprecated)"]},
             "tool-observe": {"events": ["PostToolUse", "PostToolUseFailure"], "records": "observe line", "blocks": false},
-            "turn-validation": {"event": "Stop", "rules": STOP_RULES.len(), "answer": "decision=block + reason",
+            "turn-validation": {"event": "Stop", "rules": STOP_RULES.len(), "rule_ids": stop_rule_ids(), "answer": "decision=block + reason",
+                                "modes": STOP_MODES, "limits": AC_VERIFY_LIMITS,
                                 "host_cap": "8 consecutive continuations (CLAUDE_CODE_STOP_HOOK_BLOCK_CAP)", "moai_cap": MOAI_STOP_BLOCK_CAP},
             "edit-diagnostics": {"event": "PostToolUse", "matcher": crate::edit_diagnostics::MATCHER,
                                  "opt_in": EDIT_OPT_IN, "generated": "only while the setting is enabled",
@@ -466,7 +468,8 @@ pub fn capabilities(host: &str) -> Value {
             "tool-observe": {"events": ["PostToolUse"], "records": "observe line", "blocks": false,
                              "note": "Codex has no PostToolUseFailure; apply_patch has no file_path, so its path is not recorded",
                              "outcome": "PostToolUse also runs after a failed Bash command, so the event never means success: outcome is unknown unless a Bash tool_response carries an integer exit_code (a field the docs do not name)"},
-            "turn-validation": {"event": "Stop", "rules": STOP_RULES.len(), "answer": "decision=block + reason",
+            "turn-validation": {"event": "Stop", "rules": STOP_RULES.len(), "rule_ids": stop_rule_ids(), "answer": "decision=block + reason",
+                                "modes": STOP_MODES, "limits": AC_VERIFY_LIMITS,
                                 "host_cap": "not documented", "moai_cap": MOAI_STOP_BLOCK_CAP,
                                 "unverified": "empty stdout on exit 0 for Stop (stated generally, not for Stop)"},
             "edit-diagnostics": {"supported": false, "reason": "slice S1 is Claude Code only; Codex apply_patch is slice S2"},
@@ -489,7 +492,7 @@ pub fn capabilities(host: &str) -> Value {
             "tool-observe": {"events": ["tool_result"], "records": "observe line", "blocks": false,
                              "outcome": "tool_result.isError"},
             "turn-validation": {"supported": false, "event": "session_stop", "answer": "{decision: \"block\", reason} (OMP 18.18.7 extensions.md)",
-                                "reason": "not wired: STOP_RULES is empty, so the extension module does not subscribe to session_stop"},
+                                "reason": "not wired: the extension module does not subscribe to session_stop, so no turn-validation rule runs on OMP"},
             "edit-diagnostics": {"supported": false, "reason": "slice S1 is Claude Code only; OMP tool_result is slice S2"},
             "on_engine_error": "exit 1: the module does not block",
         }),
@@ -1027,7 +1030,67 @@ fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) -> Ver
     });
     // Best effort: a project without `.moai-cli/`, or a refused log, is simply not recorded.
     let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line);
+    if class == "bash" && outcome == "success" && ran_to_its_end(input, host) {
+        record_ac_run(input, cwd, now_unix_ms);
+    }
     Verdict::Allow
+}
+
+/// Whether a Bash call that [`observe_outcome`] calls a success also ran to its end, which is
+/// what a recorded run of a verify command needs (SPEC-20261119-enforce-ac-verify-recorded REQ-1,
+/// tier 2 audit B1). Claude's "success" is only an event name that is not `PostToolUseFailure`,
+/// so for Claude the input must say it is a finished `PostToolUse`: a missing or other event name
+/// is an unknown state, which is not a success. For every host a call started in the background
+/// (`tool_input.run_in_background`, or a `tool_response.backgroundTaskId`, which says the command
+/// is still running) and a call the host reports as `tool_response.interrupted` did not run to
+/// its end. A flag that is absent or `false` hides nothing.
+fn ran_to_its_end(input: &Value, host: Host) -> bool {
+    if host == Host::Claude && input["hook_event_name"] != json!("PostToolUse") {
+        return false;
+    }
+    let started_in_background = input["tool_input"]["run_in_background"] == json!(true)
+        || input["tool_response"]["backgroundTaskId"].is_string();
+    !started_in_background && input["tool_response"]["interrupted"] != json!(true)
+}
+
+/// The longest Bash command line [`record_ac_run`] compares with a SPEC's `verify:` commands.
+const AC_RUN_COMMAND_LIMIT: usize = 4096;
+
+/// SPEC-20261119-enforce-ac-verify-recorded REQ-1, REQ-2: a successful Bash call whose command,
+/// white space collapsed, equals a `verify:` command of the SPEC of the branch it ran on leaves
+/// one `ac_run` line per matching command (SPEC id, AC id, the command's position, the full
+/// HEAD commit, the session, the time) and no command text. Anything unreadable records nothing.
+fn record_ac_run(input: &Value, cwd: &Path, now_unix_ms: u128) {
+    let Some(command) = input["tool_input"]["command"].as_str() else {
+        return;
+    };
+    if command.len() > AC_RUN_COMMAND_LIMIT {
+        return;
+    }
+    let wanted = crate::hook_guards::collapse_whitespace(command);
+    if wanted.is_empty() {
+        return;
+    }
+    let dir = input["cwd"]
+        .as_str()
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| cwd.to_path_buf());
+    let Some(work) = crate::hook_guards::ac_work(&dir) else {
+        return;
+    };
+    for verify in work.commands.iter().filter(|v| v.command == wanted) {
+        let line = json!({
+            "schema_version": 1,
+            "kind": "ac_run",
+            "spec": work.spec,
+            "ac": verify.ac,
+            "cmd": verify.position,
+            "head": work.head,
+            "session": session_key(input),
+            "unix_ms": now_unix_ms as u64,
+        });
+        let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line);
+    }
 }
 
 /// What a Stop rule sees.
@@ -1036,6 +1099,8 @@ pub struct StopContext<'a> {
     pub cwd: &'a Path,
     /// The host's `stop_hook_active`: this turn is already continuing because of a stop hook.
     pub stop_hook_active: bool,
+    /// The key of the session whose turn ends ([`session_key`]).
+    pub session: &'a str,
 }
 
 /// One turn-validation rule: `check` returns the reason to keep working, or `None`. A rule
@@ -1044,11 +1109,97 @@ pub struct StopContext<'a> {
 pub struct StopRule {
     pub id: &'static str,
     pub check: fn(&StopContext) -> Option<String>,
+    /// Whether `[hooks.modes]` sets how the rule acts (`off`, `observe` by default, `enforce`);
+    /// a rule without a mode asks every time it finds something.
+    pub moded: bool,
 }
 
-/// The decided Stop rules. Empty: no rule is decided yet (leader decision, Issue #2391), so
-/// turn-validation never blocks. A rule is added here only with its decision record.
-pub const STOP_RULES: &[StopRule] = &[];
+/// The decided Stop rules. A rule is added here only with its decision record (leader decision,
+/// Issue #2391): `ac_verify_recorded` has note 2711 of card C-86 (2026-11-19).
+pub const STOP_RULES: &[StopRule] = &[StopRule {
+    id: AC_VERIFY_RULE,
+    check: ac_verify_recorded,
+    moded: true,
+}];
+
+/// The ids of [`STOP_RULES`], for `capabilities`.
+fn stop_rule_ids() -> Vec<&'static str> {
+    STOP_RULES.iter().map(|r| r.id).collect()
+}
+
+/// The rule id of the AC verify record in `[hooks.modes]` and in the engine log.
+pub const AC_VERIFY_RULE: &str = "ac_verify_recorded";
+
+/// How a Stop rule with a mode acts, shown in `capabilities` (SPEC-20261119-enforce-ac-verify-
+/// recorded REQ-5).
+const STOP_MODES: &str = "per rule in [hooks.modes] of the HOME hook-config.toml (for example ac_verify_recorded = enforce): off does nothing; observe, the default and what any other word reads as, writes one would_block line and lets the turn end; enforce keeps the session working with decision=block, at most moai_cap turns in a row";
+
+/// What the rule `ac_verify_recorded` does not do, shown in `capabilities` (SPEC-20261119-
+/// enforce-ac-verify-recorded Risks).
+const AC_VERIFY_LIMITS: [&str; 7] = [
+    "the generated host settings do not call tool-observe or turn-validation yet, so the rule runs only where hook-dispatch is called directly (a later slice wires them)",
+    "a commit changes HEAD, so runs recorded before it no longer count and the verify commands run again",
+    "shell writes (sed -i) are not writes, and a redirection is not one either: only the file-writing tools count as the session's last write",
+    "a run counts only when the called command must equal the verify command, white space collapsed: a pipe, an env prefix or an added word does not match",
+    "the engine log is a plain file: a line can be written by hand, so the rule stops forgetting, not cheating (the auditor checks the rest)",
+    "the log has a size limit: past it nothing more is recorded and the rule reads no lines, so it lets the turn end",
+    "an AC with manual:, with unknown: or with a <...> placeholder in its verify value is not asked",
+];
+
+/// The rule `ac_verify_recorded` (SPEC-20261119-enforce-ac-verify-recorded REQ-3, REQ-4,
+/// REQ-6): on a SPEC work branch, after a file-writing tool call of this session, every runnable
+/// `verify:` command of the branch's SPEC needs an `ac_run` line for the current HEAD commit
+/// written at or after that write; the reason names the acceptance criteria that lack one.
+/// Nothing readable, nothing written by the session or nothing to run gives `None`.
+fn ac_verify_recorded(ctx: &StopContext) -> Option<String> {
+    let work = crate::hook_guards::ac_work(ctx.cwd)?;
+    if work.commands.is_empty() {
+        return None;
+    }
+    let home = crate::hooks::env_home();
+    let lines = crate::hooks::receipt_lines_in(home.as_deref(), ctx.cwd, ENGINE_LOG);
+    let wrote = lines
+        .iter()
+        .filter(|l| {
+            l["kind"] == json!("observe")
+                && l["class"] == json!("write")
+                && l["session"] == json!(ctx.session)
+        })
+        .filter_map(|l| l["unix_ms"].as_u64())
+        .max()?;
+    let mut missing: Vec<&str> = Vec::new();
+    for verify in &work.commands {
+        let recorded = lines.iter().any(|l| {
+            l["kind"] == json!("ac_run")
+                && l["spec"] == json!(work.spec)
+                && l["ac"] == json!(verify.ac)
+                && l["cmd"] == json!(verify.position)
+                && l["head"] == json!(work.head)
+                && l["unix_ms"].as_u64().is_some_and(|t| t >= wrote)
+        });
+        if !recorded && !missing.contains(&verify.ac.as_str()) {
+            missing.push(&verify.ac);
+        }
+    }
+    if missing.is_empty() {
+        return None;
+    }
+    let shown = missing
+        .iter()
+        .take(5)
+        .copied()
+        .collect::<Vec<_>>()
+        .join(", ");
+    let more = match missing.len() {
+        n if n > 5 => format!(" and {} more", n - 5),
+        _ => String::new(),
+    };
+    Some(format!(
+        "{} has verify commands with no recorded run at commit {} since your last file write ({shown}{more}). Run each `verify:` command exactly as the SPEC writes it (one command line, nothing added), or tell the user which one cannot run and why.",
+        work.spec,
+        &work.head[..7],
+    ))
+}
 
 /// How many times in a row MoAI itself may keep one session working before it lets the turn
 /// end. Claude Code's own cap (8 continuations, shared by every stop hook) stays the outer
@@ -1113,9 +1264,31 @@ pub fn turn_validation_with(
     let ctx = StopContext {
         cwd,
         stop_hook_active: active,
+        session: &session,
     };
     for rule in rules {
         if let Some(reason) = (rule.check)(&ctx) {
+            // A rule with a mode acts by `[hooks.modes]` (read only now that it would ask):
+            // `off` skips it, `observe` (the default) writes one `would_block` line and goes on.
+            if rule.moded {
+                use crate::hook_config::RuleMode;
+                match crate::hook_config::load().config.mode_of(rule.id) {
+                    RuleMode::Off => continue,
+                    RuleMode::Observe => {
+                        let line = json!({
+                            "schema_version": 1,
+                            "kind": "would_block",
+                            "rule": rule.id,
+                            "reason": reason,
+                            "session": session,
+                            "unix_ms": now_unix_ms as u64,
+                        });
+                        let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line);
+                        continue;
+                    }
+                    RuleMode::Enforce => {}
+                }
+            }
             let line = json!({
                 "schema_version": 1,
                 "kind": "stop_block",
@@ -1140,6 +1313,7 @@ mod tests {
     const FAKE: &[StopRule] = &[StopRule {
         id: "fake-always",
         check: |_| Some("fixture rule asks for one more pass".into()),
+        moded: false,
     }];
 
     fn project(with_state: bool) -> tempfile::TempDir {
@@ -1161,8 +1335,9 @@ mod tests {
     }
 
     #[test]
-    fn shipped_rule_set_is_empty_and_never_blocks_or_writes() {
-        assert_eq!(STOP_RULES.len(), 0);
+    fn shipped_rule_set_is_the_ac_verify_rule_and_outside_a_spec_branch_never_blocks_or_writes() {
+        assert_eq!(stop_rule_ids(), vec!["ac_verify_recorded"]);
+        assert!(STOP_RULES.iter().all(|r| r.moded));
         let p = project(true);
         for active in [false, true] {
             assert_eq!(
