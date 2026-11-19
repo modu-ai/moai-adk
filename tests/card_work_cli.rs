@@ -1469,13 +1469,30 @@ fn directional_characters_are_named_prose_passes_and_fields_are_screened() {
     let args = ["note", card.as_str(), "--kind", "report"];
     let key = format!("{}{}", ["s", "k-"].concat(), "a1B2".repeat(6));
 
-    // The two listed false positives pass (C-53 S1 re-audit N-c).
+    // The two listed false positives pass (C-53 S1 re-audit N-c): a lower-case hyphenated name
+    // after `sk` and an option assignment whose name is not a secret word. Since C-122
+    // (SPEC-20261119-card-secret-screen, user decision 2026-11-19) a secret-named option
+    // assignment is refused whatever its value is, so the passing prose uses `--mode=VALUE`.
     let plain = result(&w.card_stdin(
         None,
         &args,
-        b"migration: sk-learn-pipeline tuned; run with --token=VALUE in dry mode\n",
+        b"migration: sk-learn-pipeline tuned; run with --mode=VALUE in dry mode\n",
     ));
     assert_eq!(plain["action"], json!("note"), "{}", plain);
+    let (kind, message) = refusal(
+        &w.card_stdin(
+            None,
+            &args,
+            format!(
+                "migration: run with --{}{}VALUE in dry mode\n",
+                ["to", "ken"].concat(),
+                "="
+            )
+            .as_bytes(),
+        ),
+    );
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("secret"), "{message}");
     // A real key run still goes, alone or behind an option name.
     for text in [format!("key {key}\n"), format!("run --flag={key}\n")] {
         let (kind, message) = refusal(&w.card_stdin(None, &args, text.as_bytes()));
@@ -1570,4 +1587,83 @@ fn directional_characters_are_named_prose_passes_and_fields_are_screened() {
     ));
     assert_eq!(kind, "invalid_input", "{message}");
     assert!(message.contains("direction"), "{message}");
+}
+
+/// Audit N2 (C-122, leader note 3297): the note reference, a criterion's evidence and a
+/// criterion's withdrawal reason pass the same screen as the note text: a secret-named
+/// assignment (also behind an `sk` prefix) and a credential-shaped value after a separator are
+/// refused with the field named once; plain values are taken as before. Inputs are joined from
+/// pieces so this file holds no secret-shaped word.
+#[test]
+fn the_reference_evidence_and_reason_pass_the_secret_screen() {
+    let w = world(true);
+    let card = w.ready_card("src/a/", 0, "p2");
+    let eq = "=";
+    let aws = ["AK", "IA", "ABCDEFGHIJKLMNOP"].concat();
+    let sk = ["s", "k-"].concat();
+    // The first two are shapes the earlier screen let through (a secret-word flag with a plain
+    // value, a limit flag with a token piece and a number), so a field that goes back to the
+    // earlier screen fails this test.
+    let bad = [
+        format!("run --{}{eq}1", ["pass", "word"].concat()),
+        format!("run --max-{}{eq}100", ["to", "ken"].concat()),
+        format!("{}{eq}", ["to", "ken"].concat()),
+        format!("{sk}learn-{}{eq}1", ["sec", "ret"].concat()),
+        format!("config{eq}{aws}"),
+        format!("key:{aws}"),
+        format!("a,{aws}"),
+    ];
+    for text in &bad {
+        let (kind, message) = refusal(&w.card_stdin(
+            None,
+            &["note", card.as_str(), "--kind", "report", "--ref", text],
+            b"plain body\n",
+        ));
+        assert_eq!(kind, "invalid_input", "ref `{text}`: {message}");
+        assert!(message.contains("the note ref has 1 word"), "{message}");
+        let (kind, message) = refusal(&w.card(
+            Some(S_A),
+            &[
+                "criterion",
+                card.as_str(),
+                "1",
+                "--generation",
+                "1",
+                "--met",
+                "--evidence",
+                text,
+            ],
+        ));
+        assert_eq!(kind, "invalid_input", "evidence `{text}`: {message}");
+        assert!(message.contains("the evidence has 1 word"), "{message}");
+        let (kind, message) = refusal(&w.card(
+            Some(S_A),
+            &[
+                "criterion",
+                card.as_str(),
+                "1",
+                "--generation",
+                "1",
+                "--withdraw",
+                "--reason",
+                text,
+            ],
+        ));
+        assert_eq!(kind, "invalid_input", "reason `{text}`: {message}");
+        assert!(message.contains("the reason has 1 word"), "{message}");
+    }
+    // Plain values are not screened away: the note ref goes in.
+    let ok = result(&w.card_stdin(
+        None,
+        &[
+            "note",
+            card.as_str(),
+            "--kind",
+            "report",
+            "--ref",
+            "plan:1, see:2",
+        ],
+        b"plain body\n",
+    ));
+    assert_eq!(ok["action"], json!("note"), "{ok}");
 }
