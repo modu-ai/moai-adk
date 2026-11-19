@@ -1286,6 +1286,7 @@ fn green_lock_bash_reads_structure_words_at_every_boundary() {
         "until false;do git rm tests/locked_test.rs;done",
         "if false;then :;else rm tests/locked_test.rs;fi",
         "if false;then :;elif true;then rm tests/locked_test.rs;fi",
+        "if false;then :;elif rm tests/locked_test.rs;then :;fi",
         "(if true;then rm tests/locked_test.rs;fi)",
         "(! rm tests/locked_test.rs)",
         "true&&{ rm tests/locked_test.rs;}",
