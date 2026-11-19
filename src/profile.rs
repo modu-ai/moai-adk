@@ -264,12 +264,6 @@ pub struct Plan {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub drift: Vec<String>,
     pub plan_digest: String,
-    /// C-105 slice 2 (SPEC-20261119-plan-remote-branch): the remote state of the profile's
-    /// `work_flow.integration_branch` — `on_remote`, `warnings` — or absent when there is
-    /// nothing to check (no work_flow value, no git repository, no remote). Never serialized
-    /// when absent, so plans for profiles without the key keep their previous output.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub work_flow_remote: Option<Value>,
 }
 
 /// What `project-apply` last wrote, read back as the reconfigure baseline. Anything
@@ -550,8 +544,6 @@ fn plan_digest(p: &Plan) -> String {
     )
 }
 pub fn plan(root: &Path, mut profile: Profile) -> Result<Plan> {
-    // The remote check reads work_flow before `profile` moves into the delta table.
-    let work_flow = profile.work_flow.clone();
     if profile.project_id.is_empty() {
         profile.project_id = match existing_project_id(root)? {
             Some(id) => id,
@@ -602,7 +594,6 @@ pub fn plan(root: &Path, mut profile: Profile) -> Result<Plan> {
         action: action.into(),
         delta,
         drift,
-        work_flow_remote: work_flow_remote(root, work_flow.as_ref()),
         plan_digest: String::new(),
     };
     p.plan_digest = plan_digest(&p);
@@ -611,12 +602,15 @@ pub fn plan(root: &Path, mut profile: Profile) -> Result<Plan> {
 
 /// C-105 slice 2 (SPEC-20261119-plan-remote-branch): whether the profile's integration
 /// branch exists on the project's remote, and how far it sits behind the remote's default
-/// branch. A name that must never reach git as an argument (leading `-`, whitespace, `..`,
-/// over 100 bytes, `HEAD`) is refused without running any git command; a repository or a
-/// remote that is missing answers `None` (the plan output stays as it was); a git failure
-/// becomes an `unavailable` warning and the plan still succeeds. Only fixed words and
-/// verified 40-hex SHAs travel as git arguments — the branch name never does.
-fn work_flow_remote(root: &Path, work_flow: Option<&WorkFlowSettings>) -> Option<Value> {
+/// branch. Called by the `project-plan` entry only — `project-update-plan` shares `plan()`
+/// but must not run `git ls-remote` (a network call) in its preview (audit B4). A name that
+/// must never reach git as an argument (leading `-`, whitespace, `..`, over 100 bytes,
+/// `HEAD`) is refused without running any git command (the profile validation refuses it
+/// first — this is the second layer for internal callers); a repository or a remote that is
+/// missing answers `None` (the plan output stays as it was); a git failure becomes an
+/// `unavailable` warning and the plan still succeeds. Only fixed words and verified 40-hex
+/// SHAs travel as git arguments — the branch name never does.
+pub fn plan_work_flow_remote(root: &Path, work_flow: Option<&WorkFlowSettings>) -> Option<Value> {
     let branch = work_flow?.integration_branch.as_deref()?;
     if !branch_name(branch) {
         return Some(json!({
@@ -684,15 +678,23 @@ fn work_flow_remote(root: &Path, work_flow: Option<&WorkFlowSettings>) -> Option
     }
     let mut warnings: Vec<String> = Vec::new();
     if on_remote {
+        // Audit B1: a measurement that cannot run is a warning, never silence — a stale
+        // local clone (the objects missing) used to read as a healthy branch.
         if let (Some(b), Some(d)) = (branch_sha, default_sha) {
-            if let Ok(count) = git(&["rev-list", "--count", &format!("{b}..{d}")]) {
-                if let Ok(n) = count.trim().parse::<u64>() {
-                    if n > 0 {
-                        warnings.push(format!(
-                            "behind: {branch} is {n} commits behind the remote default branch"
-                        ));
-                    }
-                }
+            match git(&["rev-list", "--count", &format!("{b}..{d}")]) {
+                Ok(count) => match count.trim().parse::<u64>() {
+                    Ok(n) if n > 0 => warnings.push(format!(
+                        "behind: {branch} is {n} commits behind the remote default branch"
+                    )),
+                    Ok(_) => {}
+                    Err(_) => warnings.push(
+                        "unavailable: could not read the behind count from git rev-list output"
+                            .to_string(),
+                    ),
+                },
+                Err(e) => warnings.push(format!(
+                    "unavailable: could not measure how far {branch} is behind: {e}"
+                )),
             }
         }
     } else {

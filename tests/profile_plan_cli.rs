@@ -17,12 +17,12 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 static NEXT: AtomicUsize = AtomicUsize::new(0);
 
 fn git(dir: &Path, args: &[&str]) {
-    let ok = Command::new("git")
+    // Audit B3: every fixture git call goes through the shared guard (gc.auto=0,
+    // maintenance off, isolated config, LC_ALL=C) — no bare `git` spawns here.
+    let ok = common::git::command()
         .arg("-C")
         .arg(dir)
         .args(args)
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .output()
         .expect("git");
     assert!(
@@ -54,27 +54,25 @@ impl World {
             project,
             remote,
         };
-        Command::new("git")
+        let init_ok = common::git::command()
             .arg("init")
             .arg("-q")
             .arg("-b")
             .arg("main")
             .arg(&w.project)
-            .env("GIT_CONFIG_GLOBAL", "/dev/null")
-            .env("GIT_CONFIG_SYSTEM", "/dev/null")
             .output()
             .expect("git init");
-        Command::new("git")
+        assert!(init_ok.status.success(), "git init");
+        let bare_ok = common::git::command()
             .arg("init")
             .arg("-q")
             .arg("--bare")
             .arg("-b")
             .arg("main")
             .arg(&w.remote)
-            .env("GIT_CONFIG_GLOBAL", "/dev/null")
-            .env("GIT_CONFIG_SYSTEM", "/dev/null")
             .output()
             .expect("git init --bare");
+        assert!(bare_ok.status.success(), "git init --bare");
         git(
             &w.project,
             &["remote", "add", "origin", w.remote.to_str().unwrap()],
@@ -149,7 +147,7 @@ impl World {
 }
 
 fn commit(dir: &Path, message: &str) {
-    let ok = Command::new("git")
+    let ok = common::git::command()
         .arg("-C")
         .arg(dir)
         .args([
@@ -164,8 +162,6 @@ fn commit(dir: &Path, message: &str) {
             "-m",
             message,
         ])
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .output()
         .unwrap();
     assert!(ok.status.success());
@@ -175,7 +171,7 @@ fn commit(dir: &Path, message: &str) {
 fn make_fake_git(dir: &Path) {
     fs::write(
         dir.join("git"),
-        "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$C105_GIT_LOG\"\nexec /usr/bin/git \"$@\"\n",
+        "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$C105_GIT_LOG\"\nexec git \"$@\"\n",
     )
     .unwrap();
     make_executable(&dir.join("git"));
@@ -326,6 +322,42 @@ fn without_work_flow_or_without_a_remote_the_key_is_absent() {
         v["result"].get("work_flow_remote").is_none(),
         "{}",
         v["result"]
+    );
+}
+
+#[test]
+fn a_stale_clone_warns_unavailable_instead_of_reading_healthy() {
+    // Audit B1 (P6): the integration branch and the remote default exist on the
+    // remote, but a second clone made those commits — this repository never
+    // fetched them, so the behind measurement cannot run. It must warn, never
+    // report a healthy branch.
+    let w = World::new();
+    w.push_branch("m-flow/integration");
+    // A second clone advances the remote by two commits.
+    let second = w.home.join("second");
+    let clone_ok = common::git::command()
+        .args([
+            "clone",
+            "-q",
+            w.remote.to_str().unwrap(),
+            second.to_str().unwrap(),
+        ])
+        .output()
+        .expect("git clone");
+    assert!(clone_ok.status.success(), "git clone");
+    fs::write(second.join("late.txt"), "late\n").unwrap();
+    git(&second, &["add", "-A"]);
+    commit(&second, "late work");
+    git(&second, &["push", "-q", "origin", "main"]);
+    let v = w.plan(Some("m-flow/integration"), None);
+    let wf = v["result"]["work_flow_remote"]
+        .as_object()
+        .expect("work_flow_remote");
+    assert_eq!(wf["on_remote"], true, "{wf:?}");
+    let warnings = serde_json::to_string(&wf["warnings"]).unwrap();
+    assert!(
+        warnings.to_lowercase().contains("unavailable"),
+        "a stale clone must not read healthy: {warnings}"
     );
 }
 

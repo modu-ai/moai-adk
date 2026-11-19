@@ -21,10 +21,10 @@ parent: SPEC-20261119-spec-take-profile-base
 
 ## Requirements
 
-- REQ-1: When `project plan` previews a profile whose `work_flow.integration_branch` is set and the project folder is a git repository with a remote, the plan answer shall carry a `work_flow_remote` object telling whether the branch exists on that remote (`git ls-remote`).
+- REQ-1: When `project plan` previews a profile whose `work_flow.integration_branch` is set and the project folder is a git repository with a remote, the plan answer shall carry a `work_flow_remote` object telling whether the branch exists on that remote (`git ls-remote`). The check runs in the `project-plan` entry alone — `project-update-plan` shares `plan()` but must not run it (audit B4: the preview must stay off the network).
 - REQ-2 (REQ-1): IF the branch does not exist on the remote, THEN `work_flow_remote.warnings` shall say so and name the branch.
 - REQ-3 (REQ-1): IF the remote names a default branch (symref) and the integration branch exists there and is behind it, THEN `work_flow_remote.warnings` shall name the behind count.
-- REQ-4 (REQ-1): IF the integration branch value is not a safe branch name (leading `-`, whitespace, `..`, over 100 bytes, `HEAD`), THEN the plan shall answer `work_flow_remote` with a refusal warning and run no git command for it.
+- REQ-4 (REQ-1): IF the integration branch value is not a safe branch name (leading `-`, whitespace, `..`, over 100 bytes, `HEAD`), THEN the profile validation shall refuse the plan before any git command runs for that name (audit B2: the CLI refuses outright — the in-function refusal branch stays as the second layer for internal callers only).
 - REQ-5: When the profile has no `work_flow.integration_branch` or the folder is not a git repository with a remote, the plan answer shall omit `work_flow_remote` entirely (byte-identical output to before this change).
 - REQ-6 (REQ-5): IF any git command for this check fails (no remote, network, timeout), THEN the plan shall warn `work_flow_remote.unavailable` with the reason and succeed as a plan.
 
@@ -34,7 +34,7 @@ parent: SPEC-20261119-spec-take-profile-base
   verify: `cargo test --offline --locked --test profile_plan_cli`
 - AC-2 (REQ-3): 통합 가지가 기본 가지보다 뒤처진 임시 원격 → behind 수치 경고.
   verify: `cargo test --offline --locked --test profile_plan_cli`
-- AC-3 (REQ-4): `-x`·`a b`·`a..b`·100바이트 초과·`HEAD` 가지 이름 → 거부 경고, git 미실행(하네스 git 로그로 확인).
+- AC-3 (REQ-4): `-x`·`a b`·`a..b`·100바이트 초과·`HEAD` 가지 이름 → 프로필 검증이 plan을 거절(exit≠0, "invalid or nonportable profile")하고 하네스 로깅 git 으로 어떤 git 호출도 안 난 것을 확인(감사 B2 정정: 거부는 검증 계층에서).
   verify: `cargo test --offline --locked --test profile_plan_cli`
 - AC-4 (REQ-5, REQ-6, REQ-1…REQ-4): work_flow 없음/원격 없음 → `work_flow_remote` 키 부재(기존 출력 불변); git 실패 → unavailable 경고. 이웃: `cargo test --offline --locked --lib`; `cargo fmt --check`; `cargo clippy --offline --locked --all-targets -- -D warnings`
   verify: `cargo test --offline --locked --test profile_plan_cli`; `cargo test --offline --locked --lib`
