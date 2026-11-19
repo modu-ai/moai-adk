@@ -22,7 +22,7 @@ created: 2026-11-19
 ## Requirements
 
 - REQ-1: The file `AGENTS.local.md` shall state that a bundle PR's verdict is written by a lane that wrote none of the PR's commits and that the comment names the lane (`agent-N`) and its `Moai-Session` value, with the date 2026-11-19 and the cause.
-- REQ-2: The file `AGENTS.local.md` shall state that a verdict written by the leader's own subagent is not read by `audit-gate` (rule `non-author-pass`).
+- REQ-2: The file `AGENTS.local.md` shall state that `audit-gate` counts a PASS only when it names an auditor lane or `Moai-Session` that is not an author of the PR's commits (rule `non-author-pass`).
 - REQ-3: The file `AGENTS.local.md` shall state that the `audit-gate` run is re-run after the verdict and that the leader posts `moai/audit` only when that job succeeded on the same head, never on a green `ci` and a PASS comment alone.
 - REQ-4: The file `AGENTS.local.md` shall state that an audit dispatch names its caps: no whole `cargo test`, no `python3 -m unittest discover`, named modules only, with the date and the cause.
 - REQ-5: The file `AGENTS.local.md` shall state that `python3 -m unittest tests.repo_scans_test tests.source_manifest_test` runs first, right after a bundle is assembled and before every lane push, with the date and the cause.
@@ -41,7 +41,7 @@ created: 2026-11-19
   manual: `AGENTS.local.md` 에서 `repo_scans_test` 를 찾아 Result 에 적어요.
 - AC-4 (REQ-6): `Agent loop` 절이 규칙 (4)를 `SESSION-END-READY` 와 함께 적어요.
   manual: `AGENTS.local.md` 에서 `SESSION-END-READY` 를 찾아 Result 에 적어요.
-- AC-5 (REQ-7): `Leader supervision` 절이 규칙 (5)를 날짜·원인(묶음 5 가 13개 head 였고 셋을 빼야 했으며 감사가 41분 걸림)과 함께 적어요.
+- AC-5 (REQ-7): `Leader supervision` 절이 규칙 (5)를 날짜·원인(묶음 5 가 13개 head 를 보냈고 지역 검증이 실패한 셋을 뺐으며 감사가 41분 걸림)과 함께 적어요.
   manual: `AGENTS.local.md` 에서 `5 to 7` 을 찾아 Result 에 적어요.
 - AC-6 (REQ-8): `Rule provenance` 표에 여섯 행이 늘어요(규칙 (1)은 두 줄이라 두 행).
   manual: `AGENTS.local.md` 에서 `card C-123` 이 든 표 행을 세어 Result 에 적어요.
@@ -81,6 +81,6 @@ created: 2026-11-19
 - AC-2: met — `AGENTS.local.md:82` (`## Gate`): `no whole` 이 든 줄 둘(82 본문, 133 provenance), `unittest discover` 가 든 줄 셋(50 은 이미 있던 `Check set` 코드 블록, 82 본문, 133 provenance), 원인 PR #3229 감사가 41분 걸림. 명령 `grep -n "no whole" AGENTS.local.md` 와 `grep -n "unittest discover" AGENTS.local.md`. 50줄의 `Check set` 은 작성자가 PR 전에 돌리는 목록이고 새 규칙은 감사 배차의 한도라서 그대로 뒀어요(둘의 관계는 후속으로 리더가 정해요).
 - AC-3: met — `AGENTS.local.md:41` (`## Agent loop`): `tests.repo_scans_test tests.source_manifest_test` 1회, 날짜 2026-11-19, 원인 다섯 head 가 목록에 없는 훑기 시험이나 낡은 manifest 로 실패.
 - AC-4: met — `AGENTS.local.md:42` (`## Agent loop`): `SESSION-END-READY` 가 파일에 2회(본문 1줄, provenance 1줄), `review` 카드는 풀 수 없다는 문장 포함.
-- AC-5: met — `AGENTS.local.md:73` (`## Leader supervision`): `5 to 7` 이 파일에 2회(본문, provenance), 원인 묶음 5 가 13개 head 였고 C-103·C-59·C-110 셋을 뺐고 감사가 41분 걸림.
+- AC-5: met — `AGENTS.local.md:73` (`## Leader supervision`): `5 to 7` 이 파일에 2회(본문, provenance), 원인 묶음 5 가 13개 head 를 보냈고 C-103·C-59·C-110 셋은 지역 검증 실패로 빠졌으며 감사가 41분 걸림(감사 한도 줄로 이어져요).
 - AC-6: met — `grep -c '^| `AGENTS.local.md` ' AGENTS.local.md` = 6 (`AGENTS.local.md:131-136`), 모두 `card C-123` 을 이름해요.
 - AC-7: met — `cargo test --offline --locked --test doc_references --test doc_reference_boundaries --test ac_command_lint --test spec_cli`: doc_references 7, doc_reference_boundaries 15, ac_command_lint 5, spec_cli 18 통과(exit 0); `python3 -m unittest tests.repo_scans_test tests.source_manifest_test` 68 OK; `python3 -m unittest tests.ci_scope_test` OK; 빌드한 `moai-cli spec check` errors 0. 전체 `cargo test`·`python3 -m unittest discover`·CI 는 돌리지 않았어요(`not_run`).
