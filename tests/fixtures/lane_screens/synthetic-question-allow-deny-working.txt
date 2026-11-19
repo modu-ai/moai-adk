@@ -1,0 +1,11 @@
+ ▐▛███▜▌   Claude Code
+▝▜█████▛▘  /Users/example/project
+  ▘▘ ▝▝    Opus
+
+● Bash(git reset --hard HEAD~1)
+  ⎿  Running…
+
+✳ Frosting… (1m 17s · ↓ 6.9k tokens · esc to interrupt)
+
+ Do you want to proceed?
+ Allow / Deny

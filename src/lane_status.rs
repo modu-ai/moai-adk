@@ -29,6 +29,11 @@ use std::path::Path;
 #[path = "lane_screen.rs"]
 pub mod lane_screen;
 
+/// The guard in front of `orca terminal send` (card C-120 slice B,
+/// SPEC-20261119-lane-send-guard); registered here for the same reason as `lane_screen`.
+#[path = "lane_send.rs"]
+pub mod lane_send;
+
 type Result<T> = std::result::Result<T, String>;
 
 const API: &str = "https://api.github.com";

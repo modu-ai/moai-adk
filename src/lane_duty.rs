@@ -23,7 +23,7 @@ pub const HOSTS: &[(&str, &str)] = &[
 /// character (general category Cf, Unicode 15.1: bidirectional and invisible controls, the
 /// soft hyphen, tag characters …) and the combining grapheme joiner U+034F, which reorder
 /// or hide text (#2912 audit I3).
-fn unsafe_char(c: char) -> bool {
+pub fn unsafe_char(c: char) -> bool {
     c.is_control() || c == '\u{2028}' || c == '\u{2029}' || c == '\u{034f}' || format_char(c)
 }
 
