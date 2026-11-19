@@ -10,13 +10,96 @@
 
 mod common;
 
-use common::git::{git, git_in};
 use common::home::TempHome;
 use moai_cli::ledger;
 use serde_json::{json, Value};
 use std::fs;
-use std::path::PathBuf;
-use std::process::Output;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Output, Stdio};
+
+// ---- fixture git: scrubbed, and checked to be in its own repository ----
+//
+// A test that runs under a git hook or another git command inherits `GIT_DIR`,
+// `GIT_INDEX_FILE` and `GIT_WORK_TREE` pointing at the real repository, and those variables
+// win over `git -C <dir>`: a fixture `git commit` would then land in the real repository.
+// So every call here removes them (the list `identity::scrub_git_env` removes, which is
+// `pub(crate)` and out of reach of an integration test), and a call that writes first checks
+// that git's top level is the temporary repository itself (card C-96, leader incident
+// 2026-11-19).
+
+/// The variables that can point a git child at another repository, object store or config.
+const GIT_ENV_REMOVED: &[&str] = &[
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_COMMON_DIR",
+    "GIT_INDEX_FILE",
+    "GIT_NAMESPACE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_PREFIX",
+    "GIT_CONFIG_PARAMETERS",
+    "GIT_CONFIG_COUNT",
+    "GIT_CEILING_DIRECTORIES",
+    "GIT_DISCOVERY_ACROSS_FILESYSTEM",
+];
+
+/// A fixture git command in `dir`: the shared guarded command of `tests/common/git.rs` (no
+/// user or system config, `LC_ALL=C`, no background maintenance) plus what that helper does
+/// not do — remove the variables above — a fixed identity, `-C dir` and the same current
+/// directory.
+fn scrubbed_git(dir: &Path) -> Command {
+    let mut cmd = common::git::command();
+    for key in GIT_ENV_REMOVED {
+        cmd.env_remove(key);
+    }
+    for (key, _) in std::env::vars_os() {
+        let k = key.to_string_lossy();
+        if k.starts_with("GIT_CONFIG_KEY_") || k.starts_with("GIT_CONFIG_VALUE_") {
+            cmd.env_remove(&key);
+        }
+    }
+    cmd.args(["-c", "user.name=fixture"])
+        .args(["-c", "user.email=fixture@example.invalid"])
+        .args(["-c", "commit.gpgsign=false", "-c", "core.autocrlf=false"])
+        .args(["-c", "core.excludesFile=/dev/null"])
+        .arg("-C")
+        .arg(dir)
+        .current_dir(dir)
+        .stdin(Stdio::null());
+    cmd
+}
+
+/// Panics unless git's top level, seen from `dir`, is `dir` itself: a write must never reach
+/// a repository that merely contains the folder (or the real one).
+fn assert_own_repo(dir: &Path) {
+    let out = scrubbed_git(dir)
+        .args(["rev-parse", "--show-toplevel"])
+        .output()
+        .expect("run git");
+    let top = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    let own = fs::canonicalize(dir).unwrap();
+    assert!(
+        out.status.success() && fs::canonicalize(&top).ok().as_deref() == Some(own.as_path()),
+        "refusing to write: git's top level from {} is {top:?}, not the temporary repository",
+        dir.display()
+    );
+}
+
+/// Runs one fixture git command; every command but `init` first checks it is in its own repo.
+fn git_in(dir: &Path, args: &[&str]) {
+    if args.first() != Some(&"init") {
+        assert_own_repo(dir);
+    }
+    let out = scrubbed_git(dir).args(args).output().expect("run git");
+    assert!(out.status.success(), "git {args:?}: {:?}", out.stderr);
+}
+
+/// The trimmed standard output of one read-only fixture git command.
+fn git(dir: &Path, args: &[&str]) -> String {
+    let out = scrubbed_git(dir).args(args).output().expect("run git");
+    assert!(out.status.success(), "git {args:?}: {:?}", out.stderr);
+    String::from_utf8_lossy(&out.stdout).trim().to_string()
+}
 
 fn envelope(out: &Output) -> Value {
     serde_json::from_slice(&out.stdout).unwrap_or_else(|e| {
