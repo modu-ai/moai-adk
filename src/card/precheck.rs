@@ -12,10 +12,11 @@
 //! included — that shares a path with the card's write scope or a distinctive token of its
 //! criteria, so a collision is read before a lane starts.
 //!
-//! Nothing is written and no finding refuses the run: a missing ref or an absent ledger is an
-//! advisory inside an `ok` answer, because the check advises and the leader decides. Only a
-//! malformed card name, a card the ledger does not have, or an unreadable environment refuses,
-//! the way the other read-only card actions do. The git half needs no network: a merged pull
+//! Nothing is written and no finding refuses the run: a missing ref, an absent ledger or an
+//! unreadable one is an advisory inside an `ok` answer, because the check advises and the
+//! leader decides. Only a malformed card name, a card the ledger does not have (and a `#<n>`
+//! name, which only the ledger can resolve), or an unreadable environment refuses, the way the
+//! other read-only card actions do. The git half needs no network: a merged pull
 //! request is its merge commit on the integration ref.
 
 use super::input::{self, CardRef};
@@ -31,6 +32,10 @@ use std::path::Path;
 /// the report whenever it cuts the scan short (`truncated`).
 pub const DEFAULT_MAX_COMMITS: usize = 500;
 
+/// The largest `--max-commits` honoured: `git log -n` takes a 31-bit count, and a bound that
+/// large is already "everything". A larger value is read as this one, never as an overflow.
+pub const MAX_COMMITS_CEILING: usize = 1_000_000;
+
 /// A refusal shaped like the other card actions' error frames: `kind` and `message`.
 pub struct Refusal {
     pub kind: &'static str,
@@ -43,6 +48,21 @@ fn refused<E: std::fmt::Display>(what: &str, error: E) -> Refusal {
     Refusal {
         kind: "invalid_input",
         message: format!("card precheck refused: {what}: {error}"),
+    }
+}
+
+/// A ledger that cannot be opened. The open error already starts with `ledger blocked`, so the
+/// prefix is added only when it is missing.
+fn ledger_blocked<E: std::fmt::Display>(error: E) -> Refusal {
+    let text = error.to_string();
+    let message = if text.starts_with("ledger blocked") {
+        text
+    } else {
+        format!("ledger blocked: {text}")
+    };
+    Refusal {
+        kind: "blocked",
+        message,
     }
 }
 
@@ -77,7 +97,9 @@ pub fn precheck(
     home: Option<&Path>,
 ) -> Result<Value> {
     let card_ref = input::parse_ref(card).map_err(|e| refused("bad card name", e))?;
-    let max = max_commits.unwrap_or(DEFAULT_MAX_COMMITS).max(1);
+    let max = max_commits
+        .unwrap_or(DEFAULT_MAX_COMMITS)
+        .clamp(1, MAX_COMMITS_CEILING);
     let home = resolve_home(home.map(Path::to_path_buf)).map_err(|e| refused("no home", e))?;
     let project_id = project_id_of(project).map_err(|e| refused("no project profile", e))?;
     let ledger_file =
@@ -95,10 +117,7 @@ pub fn precheck(
             )))
         }
         CardRef::SourceNumber(n) => {
-            let read = ledger::open::open_read_only(&home, &project_id).map_err(|e| Refusal {
-                kind: "blocked",
-                message: format!("ledger blocked: {e}"),
-            })?;
+            let read = ledger::open::open_read_only(&home, &project_id).map_err(ledger_blocked)?;
             let rows = cards_of_source(read.conn(), n)?;
             match rows.as_slice() {
                 [one] => (*one, input::card_name(*one)),
@@ -115,7 +134,22 @@ pub fn precheck(
 
     // The ledger half first: the linked SPEC feeds the git half's trailer matching.
     let (mut report, linked) = if ledger_present {
-        ledger_report(&home, &project_id, card_id, &name)?
+        match ledger_report(&home, &project_id, card_id, &name) {
+            Ok(done) => done,
+            // A card the ledger does not have is the caller's mistake; every other ledger
+            // failure (not a database, unreadable rows) is named inside the answer and the
+            // sections that need no ledger still fill (REQ-2).
+            Err(r) if r.kind != "not_found" => (
+                json!({
+                    "ledger": "unreadable",
+                    "ledger_error": r.message,
+                    "spec": {"linked": null, "folders_naming_the_card": []},
+                    "decision_notes": [],
+                }),
+                None,
+            ),
+            Err(r) => return Err(r),
+        }
     } else {
         (
             json!({
@@ -168,6 +202,9 @@ fn names_card(text: &str, n: i64) -> Option<String> {
 /// neither alphanumeric nor `_`, or the edge is the text's end. `C-1` does not match `C-10`,
 /// `C-19` or `AC-100`; `card/1` does not match `card/10`.
 fn word_match(haystack: &str, needle: &str) -> bool {
+    let Some(first) = needle.chars().next() else {
+        return false;
+    };
     let hay = haystack.to_lowercase();
     let mut at = 0;
     while let Some(found) = hay[at..].find(needle) {
@@ -186,7 +223,9 @@ fn word_match(haystack: &str, needle: &str) -> bool {
         if before_ok && after_ok {
             return true;
         }
-        at = start + 1;
+        // Step over the whole first character of the match: a byte step lands inside a
+        // multi-byte character (Hangul is three bytes) and slicing there panics.
+        at = start + first.len_utf8();
     }
     false
 }
@@ -340,10 +379,7 @@ fn ledger_report(
     card_id: i64,
     name: &str,
 ) -> Result<(Value, Option<String>)> {
-    let read = ledger::open::open_read_only(home, project_id).map_err(|e| Refusal {
-        kind: "blocked",
-        message: format!("ledger blocked: {e}"),
-    })?;
+    let read = ledger::open::open_read_only(home, project_id).map_err(ledger_blocked)?;
     let conn = read.conn();
 
     let row: Option<(String, String)> = conn
@@ -496,13 +532,18 @@ fn git_report(
             }
         }
     };
+    // `--end-of-options` makes a ref that starts with `-` a revision, never an option
+    // (`--output=<file>` once overwrote that file). `-z` with NUL between the fields: a commit
+    // message cannot hold a NUL, so no message can forge a record.
     let log = git(
         project,
         &[
             "log",
-            "--format=%H%x1f%s%x1f%b%x1e",
+            "--format=%H%x00%s%x00%b",
+            "-z",
             "-n",
-            &(max + 1).to_string(),
+            &max.saturating_add(1).to_string(),
+            "--end-of-options",
             &ref_arg,
         ],
     );
@@ -517,16 +558,15 @@ fn git_report(
     };
     let text = String::from_utf8_lossy(&out.stdout).into_owned();
     let mut records: Vec<(String, String, String)> = Vec::new();
-    for record in text.split('\x1e') {
-        let record = record.trim_matches('\n');
-        if record.is_empty() {
-            continue;
-        }
-        let mut fields = record.splitn(3, '\x1f');
+    let mut fields: Vec<&str> = text.split('\0').collect();
+    if fields.last() == Some(&"") {
+        fields.pop(); // the terminator after the last commit
+    }
+    for record in fields.chunks_exact(3) {
         records.push((
-            fields.next().unwrap_or_default().to_string(),
-            fields.next().unwrap_or_default().to_string(),
-            fields.next().unwrap_or_default().to_string(),
+            record[0].trim().to_string(),
+            record[1].to_string(),
+            record[2].to_string(),
         ));
     }
     let truncated = records.len() > max;
@@ -562,6 +602,16 @@ mod tests {
             names_card("the PR title (card 1)", 1).as_deref(),
             Some("card 1")
         );
+    }
+
+    /// Audit B2: the scan steps by whole characters, so a needle that starts with a multi-byte
+    /// character does not slice inside it after a failed word edge.
+    #[test]
+    fn word_match_steps_by_whole_characters() {
+        assert!(!word_match("그원장에서는 다르게", "원장에서는"));
+        assert!(word_match("그원장에서는 원장에서는", "원장에서는"));
+        assert!(word_match("가 C-1 나", "c-1"));
+        assert!(!word_match("anything", ""));
     }
 
     /// AC-4: a longer number is a different card — `C-1` does not match `C-10`, `C-19`,

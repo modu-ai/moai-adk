@@ -496,3 +496,106 @@ fn advisory_on_failures_refuses_bad_names_and_bounds_the_scan() {
     assert_eq!(v["git"]["truncated"], json!(true));
     assert_eq!(v["merged_mentions"].as_array().unwrap().len(), 0);
 }
+
+/// Audit B1 (REQ-5): an `--integration-ref` that looks like a git option is a ref, never an
+/// option — `--output=<file>` once made `git log` overwrite or create that file. The answer is
+/// still `ok`, with the bad ref named as the git failure, and no file is touched.
+#[test]
+fn an_integration_ref_that_looks_like_a_git_option_is_a_ref_not_an_option() {
+    let w = World::new();
+    let card = w.card_with(&["src/a.rs"], &["a criterion"]);
+    let sentinel = w.home.path().join("sentinel.txt");
+    fs::write(&sentinel, "keep").unwrap();
+    let created = w.home.path().join("injected.txt");
+    for value in [
+        format!("--output={}", sentinel.display()),
+        format!("--output={}", created.display()),
+        "-p".to_string(),
+        "--all".to_string(),
+    ] {
+        let arg = format!("--integration-ref={value}");
+        let v = ok(&w.card(&["precheck", &card, &arg]));
+        assert!(v["git"]["error"].is_string(), "{value}: {v}");
+        assert_eq!(v["git"]["scanned"], json!(0), "{value}: {v}");
+    }
+    assert_eq!(fs::read_to_string(&sentinel).unwrap(), "keep");
+    assert!(!created.exists(), "an option-shaped ref created a file");
+}
+
+/// Audit B2: a criteria token that starts with Hangul used to panic the word scan (a byte step
+/// inside a three-byte character). A note that holds the token inside a longer word is not a
+/// match; a note that holds it as a word is.
+#[test]
+fn a_criteria_token_that_starts_with_hangul_does_not_panic_the_word_scan() {
+    let w = World::new();
+    let card = w.card_with(&["src/a.rs"], &["원장에서는 카드를 읽어요"]);
+    w.note(1, "decision", "DECISION: 그원장에서는 다르게 해요", None);
+    let word = w.note(1, "decision", "DECISION: 원장에서는 같은 말이에요", None);
+    let v = ok(&w.card(&["precheck", &card, "--integration-ref", "main"]));
+    let notes = v["decision_notes"].as_array().unwrap();
+    assert_eq!(notes.len(), 1, "{v}");
+    assert_eq!(notes[0]["note_id"], json!(word), "{v}");
+}
+
+/// Audit B3 (REQ-2): a ledger that cannot be read does not refuse a `C-<n>` run: the answer is
+/// `ok`, the ledger failure is named, the decision list is empty and the git half still fills.
+/// A `#<n>` name cannot be resolved without the ledger, so that form still refuses, once
+/// prefixed.
+#[test]
+fn an_unreadable_ledger_still_answers_ok_with_the_git_half() {
+    let w = World::new();
+    let card = w.card_with(&["src/a.rs"], &["a criterion"]);
+    w.commit("fix: lands (C-1)", &[]);
+    let file = ledger::ledger_path(w.home.path(), "demo").unwrap();
+    fs::write(&file, vec![0x5au8; 4096]).unwrap();
+    let v = ok(&w.precheck(&card));
+    assert_eq!(v["ledger"], json!("unreadable"), "{v}");
+    assert!(
+        v["ledger_error"].as_str().unwrap().contains("ledger"),
+        "{v}"
+    );
+    assert_eq!(v["decision_notes"], json!([]));
+    assert_eq!(v["merged_mentions"].as_array().unwrap().len(), 1, "{v}");
+    let (kind, message) = refusal(&w.precheck("#1"));
+    assert_eq!(kind, "blocked", "{message}");
+    assert!(
+        !message.contains("ledger blocked: ledger blocked"),
+        "{message}"
+    );
+}
+
+/// Audit N3: record separators inside a commit message cannot forge a commit record.
+#[test]
+fn separator_bytes_in_a_commit_message_cannot_forge_a_record() {
+    let w = World::new();
+    let card = w.card_with(&["src/a.rs"], &["a criterion"]);
+    let forged = format!(
+        "body\u{1e}{}\u{1f}forged C-1\u{1f}fake body",
+        "0".repeat(40)
+    );
+    w.commit("fix: real (C-1)", &[forged.as_str()]);
+    let v = ok(&w.precheck(&card));
+    assert_eq!(v["git"]["scanned"], json!(2), "{v}");
+    let mentions = v["merged_mentions"].as_array().unwrap();
+    assert_eq!(mentions.len(), 1, "{v}");
+    assert_ne!(mentions[0]["sha"], json!("0".repeat(40)), "{v}");
+}
+
+/// Audit N2: the largest `--max-commits` does not overflow; it scans everything there is.
+#[test]
+fn the_largest_scan_bound_scans_everything_without_overflow() {
+    let w = World::new();
+    let card = w.card_with(&["src/a.rs"], &["a criterion"]);
+    w.commit("fix: lands (C-1)", &[]);
+    let v = ok(&w.card(&[
+        "precheck",
+        &card,
+        "--integration-ref",
+        "main",
+        "--max-commits",
+        "18446744073709551615",
+    ]));
+    assert!(v["git"]["error"].is_null(), "{v}");
+    assert_eq!(v["git"]["scanned"], json!(2), "{v}");
+    assert_eq!(v["git"]["truncated"], json!(false), "{v}");
+}
