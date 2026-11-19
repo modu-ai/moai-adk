@@ -61,4 +61,16 @@ created: 2026-11-20
 
 ## Result
 
-(채우는 중 — RED·GREEN·검사 기록.)
+커밋: SPEC `ea1dc30f72`, 수리+시험 `7683be5b44`, base `70707144ba`. worktree moai-adk-c152(새 규칙
+대로 새 HEAD 에서), heavy-slot agent-21-c152.
+
+- RED: 왕복 시험이 `plan input refused: unknown field 'work_flow_remote', expected one of …` 로
+  실패(원래 결함 그대로). 첫 초안의 시험 전제는 두 번 고쳤다: 안전하지 않은 가지 이름은 프로필 검증이
+  먼저 거부하고(`invalid work_flow setting`), 원격 없는 폴더는 `work_flow_remote` 를 아예 안 만든다(REQ-5) —
+  결정적 경고 모양은 "로컬 bare 원격 + 그 위에 없는 가지"(C-105 시험 패턴)로 잡았다.
+- GREEN: `cargo test --locked --offline --test profile_apply_engine` 5 passed 0 failed(왕복 포함;
+  apply 답 모양 state created·profile_digest, 새 프로젝트의 상태 폴더는 .moai/).
+- 변이 KILLED: ops 층 키 제거를 비우니 왕복 시험이 원래 거절 문구와 함께 실패 → git checkout 복원.
+- 이웃 검사: profile_scopes_cli 0, home_isolation_scan 0, clippy --all-targets -D warnings 0,
+  spec check 0 errors 0 warnings(REQ-2 의 shall 중복 한 번 수정), spec_cli 18 통과.
+- 돌리지 않은 것: 전체 cargo test(PR 없음 — 리더 묶음 ci), MOAI_GIT_BIN/타임아웃 경로의 추가 변이.
