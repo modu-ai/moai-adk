@@ -7,12 +7,11 @@
 # running Claude Code sessions call. Without this routing the Rust binary would answer
 # `moai hook ...` with exit 2, which Claude Code treats as "block this tool call".
 #
+# v2 (SPEC-20261119-switch-script-v2, C-33 S2a). Differs from v1 in three words: `statusline` goes
+# to Rust, and `spec` and `session` go to Rust except for the actions only the Go build has.
 #
-# v2 PREVIEW (SPEC-20261119-switch-script-v2, C-33 S2a): not installed. Differs from v1 in three
-# words only: `statusline` and `session` go to Rust, and `spec` goes to Rust except for the actions
-# only the Go build has. Applying it to the real HOME is a separate step the user picks (S4).
-#
-# Undo: mv "$HOME/go/bin/moai.old" "$HOME/go/bin/moai"  (and remove ~/.moai-cli/path/moai)
+# Undo: put back the copy the apply step saved beside this file:
+#   mv "<this folder>/moai.before-<stamp>" "<this folder>/moai"
 RUST="${MOAI_RUST_BIN:-$HOME/.moai-cli/path/moai-cli}"
 GO="${MOAI_GO_BIN:-$HOME/go/bin/moai.old}"
 
@@ -20,12 +19,13 @@ case "${1:-}" in
   # Launcher words always go to Rust.
   cc|glm|codex|omp|-l|-a|--leader|--agent)
     exec "$RUST" "$@" ;;
-  # v2 (preview, C-33 S2a): `statusline` and `session` are no longer listed below, so they reach
-  # Rust. `spec` is split by action: the actions only the Go build has stay with Go (Go-generation
-  # projects still call `moai spec lint` and `moai spec audit`), every other `spec` call is Rust's.
-  spec)
-    case "${2:-}" in
-      status|drift|view|lint|audit|archive|ceiling) ;;
+  # v2: `statusline` is no longer listed below, so it reaches Rust. `spec` and `session` are split
+  # by action: the actions only the Go build has stay with Go (Go-generation projects still call
+  # `moai spec lint`, `moai spec audit` and `moai session list`), every other call is Rust's.
+  spec|session)
+    case "$1:${2:-}" in
+      spec:status|spec:drift|spec:view|spec:lint|spec:audit|spec:archive|spec:ceiling) ;;
+      session:register|session:heartbeat|session:deregister|session:list|session:purge|session:current|session:doctor) ;;
       *) exec "$RUST" "$@" ;;
     esac
     if [ -x "$GO" ]; then

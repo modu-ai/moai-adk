@@ -29,10 +29,21 @@ const RUST_SPEC_ACTIONS: [&str; 6] = ["new", "check", "list", "show", "take", "c
 const GO_ONLY_SPEC_ACTIONS: [&str; 7] = [
     "status", "drift", "view", "lint", "audit", "archive", "ceiling",
 ];
+/// The actions only the Go build has for `session` (`moai.old session --help`; the Rust `session`
+/// is the legacy launcher: `moai session --name <NAME>`, no actions).
+const GO_ONLY_SESSION_ACTIONS: [&str; 7] = [
+    "register",
+    "heartbeat",
+    "deregister",
+    "list",
+    "purge",
+    "current",
+    "doctor",
+];
 const LAUNCHER_WORDS: [&str; 8] = [
     "cc", "glm", "codex", "omp", "-l", "-a", "--leader", "--agent",
 ];
-/// The three words v2 moves from the Go build to the Rust build (`spec` by action).
+/// The three words v2 takes off the Go list (`spec` and `session` stay Go by action).
 const MOVED: [&str; 3] = ["spec", "statusline", "session"];
 
 fn script(name: &str) -> PathBuf {
@@ -43,8 +54,9 @@ fn text(path: &Path) -> String {
     fs::read_to_string(path).unwrap_or_else(|e| panic!("{} is missing: {e}", path.display()))
 }
 
-/// Two fake builds in a temporary folder: each prints `<WHO> oneshot=<flag> <args…>` and exits
-/// with `FAKE_EXIT` (default 0).
+/// Two fake builds in a temporary folder: each prints `<WHO> oneshot=<flag>` and then every
+/// argument in its own brackets, `[a b] [c]`, so one argument with a space differs from two
+/// arguments, and exits with `FAKE_EXIT` (default 0).
 struct Fakes {
     dir: TempDir,
 }
@@ -56,7 +68,7 @@ impl Fakes {
             let path = dir.path().join(who.to_lowercase());
             let body = format!(
                 "#!/bin/sh\nprintf '%s oneshot=%s' {who} \"${{MOAI_MCP_ONESHOT-unset}}\"\n\
-                 for a in \"$@\"; do printf ' %s' \"$a\"; done\nprintf '\\n'\nexit \"${{FAKE_EXIT:-0}}\"\n"
+                 for a in \"$@\"; do printf ' [%s]' \"$a\"; done\nprintf '\\n'\nexit \"${{FAKE_EXIT:-0}}\"\n"
             );
             fs::write(&path, body).unwrap();
             fs::set_permissions(&path, fs::Permissions::from_mode(0o755)).unwrap();
@@ -124,24 +136,56 @@ fn go_words(script_text: &str) -> BTreeSet<String> {
 fn called(who: &str, oneshot: &str, args: &[&str]) -> String {
     let mut s = format!("{who} oneshot={oneshot}");
     for a in args {
-        s.push(' ');
-        s.push_str(a);
+        s.push_str(&format!(" [{a}]"));
     }
     s
 }
 
 #[test]
-fn v2_sends_statusline_and_session_to_rust() {
+fn v2_sends_statusline_and_the_session_launcher_form_to_rust() {
     let f = Fakes::new();
     let v2 = script("moai.v2");
     for args in [
         vec!["statusline"],
         vec!["statusline", "--refresh-counts"],
+        vec!["statusline", "a b", "*"],
         vec!["session"],
+        vec!["session", "--name", "y z", "--role", "leader"],
         vec!["session", "-x", "y z"],
     ] {
         let o = run(&v2, &f, &args);
         assert_eq!(o.code, 0, "{args:?}: {}", o.stderr);
+        assert_eq!(o.stdout, called("RUST", "unset", &args), "{args:?}");
+    }
+}
+
+#[test]
+fn v2_keeps_the_go_session_actions_on_go() {
+    // Go-generation templates tell agents to run `moai session list --json` and
+    // `moai session current`; the Rust `session` has no such actions (exit 2).
+    let f = Fakes::new();
+    let v2 = script("moai.v2");
+    for action in GO_ONLY_SESSION_ACTIONS {
+        let args = ["session", action, "--json", "a b"];
+        let o = run(&v2, &f, &args);
+        assert_eq!(o.stdout, called("GO", "unset", &args), "session {action}");
+    }
+}
+
+#[test]
+fn v2_routes_by_the_first_two_words_only() {
+    // Documented limits (spec Risks): a flag before the action, a wrong case, an empty action and
+    // `help <action>` all read as "not a Go-only action" and go to Rust.
+    let f = Fakes::new();
+    let v2 = script("moai.v2");
+    for args in [
+        vec!["spec", "--project", ".", "lint"],
+        vec!["spec", "help", "lint"],
+        vec!["spec", "Lint"],
+        vec!["spec", ""],
+        vec!["session", "--name", "x", "list"],
+    ] {
+        let o = run(&v2, &f, &args);
         assert_eq!(o.stdout, called("RUST", "unset", &args), "{args:?}");
     }
 }
@@ -258,6 +302,7 @@ fn v2_without_a_go_build_fails_only_for_go_words() {
     for args in [
         vec!["hook", "pre-tool"],
         vec!["spec", "lint"],
+        vec!["session", "list"],
         vec!["status"],
     ] {
         let o = run_with(&v2, &f, &missing, &args, &[]);
@@ -277,6 +322,7 @@ fn v2_without_a_go_build_fails_only_for_go_words() {
     for args in [
         vec!["statusline"],
         vec!["session"],
+        vec!["session", "--name", "x"],
         vec!["spec", "check"],
         vec!["card", "list"],
         vec![],
@@ -291,10 +337,16 @@ fn v2_without_a_go_build_fails_only_for_go_words() {
 fn v2_hands_over_arguments_and_exit_status() {
     let f = Fakes::new();
     let v2 = script("moai.v2");
-    let args = ["spec", "check", "a b", "*", "--x=y", "it's"];
+    // Every route: the spec branch, the final Rust exec (statusline, an unknown word), the
+    // launcher branch and the Go list. One argument with a space stays one `[…]`.
     for (args, who) in [
-        (&args[..], "RUST"),
+        (&["spec", "check", "a b", "*", "--x=y", "it's"][..], "RUST"),
         (&["spec", "lint", "a b", "*", "--x=y", "it's"][..], "GO"),
+        (&["statusline", "a b", "*", "--x=y", "it's"][..], "RUST"),
+        (&["session", "list", "a b", "*", "it's"][..], "GO"),
+        (&["card", "list", "a b", "*", "it's"][..], "RUST"),
+        (&["cc", "a b", "*", "it's"][..], "RUST"),
+        (&["hook", "a b", "*", "it's"][..], "GO"),
     ] {
         let o = run_with(&v2, &f, &f.go(), args, &[("FAKE_EXIT", "7")]);
         assert_eq!(o.code, 7, "{who} exit status passes through");
@@ -322,7 +374,11 @@ fn result_line(spec: &str, prefix: &str) -> String {
 fn the_spec_names_every_word_it_changes_and_the_undo_line() {
     let spec = text(Path::new(SPEC));
     let result = spec.split("\n## Result").nth(1).expect("a Result section");
-    for word in MOVED.iter().chain(GO_ONLY_SPEC_ACTIONS.iter()) {
+    for word in MOVED
+        .iter()
+        .chain(GO_ONLY_SPEC_ACTIONS.iter())
+        .chain(GO_ONLY_SESSION_ACTIONS.iter())
+    {
         assert!(
             result.contains(&format!("`{word}`")),
             "the Result names `{word}`"
@@ -344,72 +400,133 @@ fn the_spec_names_every_word_it_changes_and_the_undo_line() {
     );
 }
 
-#[test]
-fn the_undo_line_restores_v1_byte_for_byte() {
-    let spec = text(Path::new(SPEC));
-    let undo = result_line(&spec, "- undo line: ");
-    let apply = result_line(&spec, "- apply lines (S4 only, after the user picks): ");
-    let home = TempDir::new().unwrap();
-    let (v1, v2) = (
-        fs::read(script("moai.v1")).unwrap(),
-        fs::read(script("moai.v2")).unwrap(),
-    );
-    let dirs = [
-        home.path().join(".moai-cli/path"),
-        home.path().join("go/bin"),
-    ];
-    for d in &dirs {
-        fs::create_dir_all(d).unwrap();
-        fs::write(d.join("moai"), &v1).unwrap();
-        fs::set_permissions(d.join("moai"), fs::Permissions::from_mode(0o755)).unwrap();
+const STAMP: &str = "20261119T000000Z";
+
+/// A temporary HOME holding v1 as `.moai-cli/path/moai` and `go/bin/moai` (both regular files,
+/// mode 0755, like the real ones), and the apply and undo lines read from the SPEC Result.
+struct Home {
+    dir: TempDir,
+    apply: String,
+    undo: String,
+    v1: Vec<u8>,
+    v2: Vec<u8>,
+}
+
+impl Home {
+    fn new() -> Self {
+        let spec = text(Path::new(SPEC));
+        let home = Home {
+            dir: TempDir::new().unwrap(),
+            undo: result_line(&spec, "- undo line: "),
+            apply: result_line(&spec, "- apply lines (S4 only, after the user picks): "),
+            v1: fs::read(script("moai.v1")).unwrap(),
+            v2: fs::read(script("moai.v2")).unwrap(),
+        };
+        for d in home.dirs() {
+            fs::create_dir_all(&d).unwrap();
+            fs::write(d.join("moai"), &home.v1).unwrap();
+            fs::set_permissions(d.join("moai"), fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        home
     }
-    let sh = |line: &str| {
-        let out = Command::new("sh")
-            .arg("-c")
+    fn dirs(&self) -> [PathBuf; 2] {
+        [
+            self.dir.path().join(".moai-cli/path"),
+            self.dir.path().join("go/bin"),
+        ]
+    }
+    /// Runs one line with `sh -c`; `stamp` None leaves STAMP unset. Returns (status ok, stderr).
+    fn sh(&self, line: &str, stamp: Option<&str>) -> (bool, String) {
+        let mut cmd = Command::new("sh");
+        cmd.arg("-c")
             .arg(line)
             .env_clear()
             .env("PATH", "/usr/bin:/bin")
-            .env("HOME", home.path())
-            .env("PREVIEW", PREVIEW)
-            .env("STAMP", "20261119T000000Z")
-            .output()
-            .unwrap();
-        assert!(
+            .env("HOME", self.dir.path())
+            .env("PREVIEW", PREVIEW);
+        if let Some(s) = stamp {
+            cmd.env("STAMP", s);
+        }
+        let out = cmd.output().unwrap();
+        (
             out.status.success(),
-            "{line}: {}",
-            String::from_utf8_lossy(&out.stderr)
-        );
-    };
-    sh(&apply);
-    for d in &dirs {
+            String::from_utf8_lossy(&out.stderr).to_string(),
+        )
+    }
+    fn moai(&self, i: usize) -> Vec<u8> {
+        fs::read(self.dirs()[i].join("moai")).unwrap()
+    }
+    fn saved(&self, i: usize, stamp: &str) -> PathBuf {
+        self.dirs()[i].join(format!("moai.before-{stamp}"))
+    }
+}
+
+#[test]
+fn the_undo_line_restores_v1_byte_for_byte() {
+    let h = Home::new();
+    assert!(h.sh(&h.apply, Some(STAMP)).0, "apply succeeds");
+    for i in 0..2 {
+        assert_eq!(h.moai(i), h.v2, "apply put v2 in folder {i}");
+        let mode = fs::metadata(h.dirs()[i].join("moai"))
+            .unwrap()
+            .permissions()
+            .mode();
+        assert_eq!(mode & 0o111, 0o111, "v2 is executable");
         assert_eq!(
-            fs::read(d.join("moai")).unwrap(),
-            v2,
-            "apply put v2 in {}",
-            d.display()
-        );
-        assert_eq!(
-            fs::metadata(d.join("moai")).unwrap().permissions().mode() & 0o111,
-            0o111,
-            "v2 is executable"
-        );
-        assert_eq!(
-            fs::read(d.join("moai.before-20261119T000000Z")).unwrap(),
-            v1,
+            fs::read(h.saved(i, STAMP)).unwrap(),
+            h.v1,
             "apply saved v1 beside it"
         );
     }
-    sh(&undo);
-    for d in &dirs {
-        assert_eq!(
-            fs::read(d.join("moai")).unwrap(),
-            v1,
-            "undo restored v1 in {}",
-            d.display()
-        );
-        assert!(
-            !d.join("moai.before-20261119T000000Z").exists(),
-            "the saved copy was moved back"
-        );
+    assert!(h.sh(&h.undo, Some(STAMP)).0, "undo succeeds");
+    for i in 0..2 {
+        assert_eq!(h.moai(i), h.v1, "undo restored v1 in folder {i}");
+        assert!(!h.saved(i, STAMP).exists(), "the saved copy was moved back");
     }
+}
+
+#[test]
+fn a_second_apply_with_the_same_stamp_refuses_and_keeps_the_saved_v1() {
+    // Audit M3: the old line copied the already-installed v2 over the saved v1.
+    let h = Home::new();
+    assert!(h.sh(&h.apply, Some(STAMP)).0);
+    let (ok, err) = h.sh(&h.apply, Some(STAMP));
+    assert!(!ok, "the second apply must fail");
+    assert!(err.contains("apply stopped"), "it says so: {err}");
+    for i in 0..2 {
+        assert_eq!(fs::read(h.saved(i, STAMP)).unwrap(), h.v1, "v1 copy intact");
+    }
+    assert!(h.sh(&h.undo, Some(STAMP)).0);
+    for i in 0..2 {
+        assert_eq!(h.moai(i), h.v1, "undo still gives v1 in folder {i}");
+    }
+}
+
+#[test]
+fn apply_and_undo_report_failure_through_the_exit_status() {
+    // Audit M4: a failed apply or undo must not look like success.
+    let h = Home::new();
+    // An empty or missing STAMP changes nothing and fails.
+    for stamp in [None, Some("")] {
+        let (ok, _) = h.sh(&h.apply, stamp);
+        assert!(!ok, "apply with STAMP {stamp:?} fails");
+        for i in 0..2 {
+            assert_eq!(h.moai(i), h.v1, "nothing changed in folder {i}");
+        }
+        let (ok, _) = h.sh(&h.undo, stamp);
+        assert!(!ok, "undo with STAMP {stamp:?} fails");
+    }
+    // The second folder has no script: apply stops there with a failing status; the first folder
+    // is already v2 and the undo puts it back, then reports the folder that had nothing saved.
+    fs::remove_file(h.dirs()[1].join("moai")).unwrap();
+    let (ok, err) = h.sh(&h.apply, Some(STAMP));
+    assert!(!ok, "apply fails when the second script is missing");
+    assert!(err.contains("apply stopped"), "it says so: {err}");
+    assert_eq!(h.moai(0), h.v2, "the first folder was applied");
+    let (ok, err) = h.sh(&h.undo, Some(STAMP));
+    assert!(!ok, "undo fails for the folder with nothing saved");
+    assert!(err.contains("undo stopped"), "it says so: {err}");
+    assert_eq!(h.moai(0), h.v1, "the first folder was still restored");
+    // A repeated undo has nothing left to move and fails.
+    assert!(!h.sh(&h.undo, Some(STAMP)).0, "a second undo fails");
 }
