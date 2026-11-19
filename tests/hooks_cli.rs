@@ -842,8 +842,21 @@ struct GreenRepo {
 
 impl GreenRepo {
     fn new(phase: &str) -> Self {
+        Self::build(phase, false)
+    }
+
+    /// The work tree three folders below the temporary folder, so that its parent is deep
+    /// enough not to be a top-level directory on any platform (`/tmp` is one on Linux).
+    fn nested(phase: &str) -> Self {
+        Self::build(phase, true)
+    }
+
+    fn build(phase: &str, nested: bool) -> Self {
         let tmp = tempfile::TempDir::new().unwrap();
-        let root = fs::canonicalize(tmp.path()).unwrap();
+        let mut root = fs::canonicalize(tmp.path()).unwrap();
+        if nested {
+            root = root.join("outer/inner/repo");
+        }
         fs::create_dir_all(root.join(".git")).unwrap();
         fs::write(root.join(".git/HEAD"), "ref: refs/heads/main\n").unwrap();
         for dir in ["home", "src", "tests", ".moai-cli"] {
@@ -1196,7 +1209,6 @@ fn green_lock_bash_reads_locked_names_with_pattern_characters() {
 #[test]
 fn green_lock_bash_reads_wrapped_grouped_and_rebased_commands() {
     let repo = GreenRepo::new("green");
-    let parent = repo.root.parent().unwrap().to_str().unwrap().to_string();
     for command in [
         "! rm tests/locked_test.rs".to_string(),
         "{ rm tests/locked_test.rs; }".to_string(),
@@ -1216,10 +1228,20 @@ fn green_lock_bash_reads_wrapped_grouped_and_rebased_commands() {
         "git -C . rm tests/locked_test.rs".to_string(),
         "git -C tests -C .. rm tests/locked_test.rs".to_string(),
         "git -C tests rm -r .".to_string(),
-        format!("rm -rf {parent}"),
-        format!("mv {parent} /tmp/moved"),
     ] {
         let reason = repo.deny_reason(&command);
+        assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+    }
+    // A folder above the work tree holds the whole tree. The tree sits three folders down, so
+    // the parent is no top-level directory and the static `rm` guard does not answer first.
+    let deep = GreenRepo::nested("green");
+    let parent = deep.root.parent().unwrap().to_str().unwrap().to_string();
+    for command in [
+        format!("rm -rf {parent}"),
+        format!("rm -rf {parent}/"),
+        format!("mv {parent} /tmp/moved"),
+    ] {
+        let reason = deep.deny_reason(&command);
         assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
     }
     // The static rm guard already refuses these, with its own sentence.
