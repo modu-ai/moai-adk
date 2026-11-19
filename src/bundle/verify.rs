@@ -118,13 +118,19 @@ fn counts(log: &str) -> Option<String> {
 }
 
 /// Paths a failing output names that the branch changed: each whitespace-separated word, cut at
-/// the first `:` (a `file:line:col`), that is one of `changed`.
-fn named_paths(log: &str, changed: &BTreeSet<String>) -> BTreeSet<String> {
+/// the first `:` (a `file:line:col`) and without a leading `<worktree>/` (`cargo fmt --check`
+/// prints `Diff in <absolute path>:<line>:`), that is one of `changed`. `roots` are the spellings
+/// of the worktree folder (as given and canonical).
+fn named_paths(log: &str, changed: &BTreeSet<String>, roots: &[String]) -> BTreeSet<String> {
     let mut out = BTreeSet::new();
     for w in log.split_whitespace() {
         let w =
             w.trim_matches(|c: char| matches!(c, '"' | '\'' | '`' | '(' | ')' | ',' | '[' | ']'));
         let w = w.split(':').next().unwrap_or("");
+        let w = roots
+            .iter()
+            .find_map(|r| w.strip_prefix(r.trim_end_matches('/'))?.strip_prefix('/'))
+            .unwrap_or(w);
         let w = w.strip_prefix("./").unwrap_or(w);
         if changed.contains(w) {
             out.insert(w.to_string());
@@ -173,8 +179,36 @@ fn short(sha: &str) -> &str {
     sha.get(..10).unwrap_or(sha)
 }
 
+/// A file's text; a byte that is not UTF-8 becomes U+FFFD so a log with one never loses its counts
+/// or its attribution.
 fn read_text(path: &Path) -> Option<String> {
-    std::fs::read_to_string(path).ok()
+    Some(String::from_utf8_lossy(&std::fs::read(path).ok()?).into_owned())
+}
+
+/// A path as an absolute one: a relative path is the caller's, so it is read against the current
+/// folder here, before anything runs in the worktree.
+fn absolute(p: &Path) -> PathBuf {
+    if p.is_absolute() {
+        p.to_path_buf()
+    } else {
+        std::env::current_dir().map_or_else(|_| p.to_path_buf(), |d| d.join(p))
+    }
+}
+
+/// The file stem of a command's log and exit status: its place in the list, then its label with
+/// every character a file name or a shell could mind turned into `-`.
+fn stem(i: usize, label: &str) -> String {
+    let clean: String = label
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | '-') {
+                c
+            } else {
+                '-'
+            }
+        })
+        .collect();
+    format!("{:02}-{clean}", i + 1)
 }
 
 fn read_int(path: &Path) -> Option<i64> {
@@ -304,7 +338,7 @@ fn script(worktree: &Path, out: &Path, bin: &str, list: &[Cmd]) -> String {
         quote(&worktree.to_string_lossy())
     ));
     for (i, c) in list.iter().enumerate() {
-        let n = format!("{:02}-{}", i + 1, c.label.replace([':', '/'], "-"));
+        let n = stem(i, &c.label);
         let run = format!(
             "date +%s > \"$OUT/{n}.start\"\n{cmd} > \"$OUT/{n}.log\" 2>&1\nprintf '%s' \"$?\" > \"$OUT/{n}.exit\"\ndate +%s > \"$OUT/{n}.end\"\n",
             cmd = c.text()
@@ -438,7 +472,7 @@ pub fn verify(
         return Err(refused(&problems));
     };
     let out_dir = match opts.out {
-        Some(p) => p.to_path_buf(),
+        Some(p) => absolute(p),
         None => worktree
             .join("target")
             .join("bundle-verify")
@@ -471,7 +505,7 @@ pub fn verify(
         .map(|d| worktree.join(d))
         .unwrap_or_else(|| worktree.join("target"));
     let bin: String = match opts.moai_cli {
-        Some(p) => p.to_string_lossy().into_owned(),
+        Some(p) => absolute(p).to_string_lossy().into_owned(),
         None => target_dir
             .join("debug")
             .join("moai-cli")
@@ -509,7 +543,7 @@ pub fn verify(
         slot.args(["--min-free-gb", &n.to_string()]);
     }
     if let Some(d) = opts.slot_dir {
-        slot.arg("--dir").arg(d);
+        slot.arg("--dir").arg(absolute(d));
     }
     slot.args(["--name", "bundle-verify", "--", "sh"])
         .arg(&script_path)
@@ -546,17 +580,27 @@ pub fn verify(
             (a.card.clone(), paths)
         })
         .collect();
+    let mut roots = vec![worktree.to_string_lossy().into_owned()];
+    if let Ok(c) = std::fs::canonicalize(&worktree) {
+        roots.push(c.to_string_lossy().into_owned());
+    }
     let mut commands: Vec<Value> = Vec::new();
     let mut failed: Vec<Value> = Vec::new();
     for (i, c) in list.iter().enumerate() {
-        let n = format!("{:02}-{}", i + 1, c.label.replace([':', '/'], "-"));
+        let n = stem(i, &c.label);
         if let Some(reason) = read_text(&out_dir.join(format!("{n}.skip"))) {
             not_run.push((c.key.unwrap_or(&c.label).to_string(), reason));
             continue;
         }
         let log_name = format!("{n}.log");
         let log = read_text(&out_dir.join(&log_name)).unwrap_or_default();
-        let exit = read_int(&out_dir.join(format!("{n}.exit"))).unwrap_or(-1);
+        let Some(exit) = read_int(&out_dir.join(format!("{n}.exit"))) else {
+            not_run.push((
+                c.key.unwrap_or(&c.label).to_string(),
+                "the command did not run (no exit status was recorded)".to_string(),
+            ));
+            continue;
+        };
         let mut entry = json!({
             "command": c.text(), "exit": exit,
             "started": read_int(&out_dir.join(format!("{n}.start"))).unwrap_or(0),
@@ -571,7 +615,7 @@ pub fn verify(
         }
         commands.push(entry);
         if exit != 0 {
-            let mut paths = named_paths(&log, &changed_set);
+            let mut paths = named_paths(&log, &changed_set, &roots);
             if let Some(name) = c.label.strip_prefix("test:") {
                 let file = format!("tests/{name}.rs");
                 if changed_set.contains(&file) {
@@ -646,11 +690,30 @@ mod tests {
     fn paths_are_the_words_of_an_output_that_the_branch_changed() {
         let changed = set(&["src/a.rs", "tests/alpha.rs"]);
         let log = "error: x\n --> src/a.rs:12:5\nDiff in ./tests/alpha.rs:3:\n(src/other.rs)";
+        let roots = vec!["/wt".to_string(), "/private/wt/".to_string()];
         assert_eq!(
-            named_paths(log, &changed),
+            named_paths(log, &changed, &roots),
             set(&["src/a.rs", "tests/alpha.rs"])
         );
-        assert_eq!(named_paths("nothing here", &changed), set(&[]));
+        assert_eq!(named_paths("nothing here", &changed, &roots), set(&[]));
+        // `cargo fmt --check` names the absolute path, in either spelling of the worktree.
+        let fmt = "Diff in /wt/src/a.rs:1:\nDiff in /private/wt/tests/alpha.rs:3:";
+        assert_eq!(
+            named_paths(fmt, &changed, &roots),
+            set(&["src/a.rs", "tests/alpha.rs"])
+        );
+        assert_eq!(
+            named_paths("Diff in /other/src/a.rs:1:", &changed, &roots),
+            set(&[])
+        );
+    }
+
+    #[test]
+    fn a_stem_keeps_only_name_characters_and_the_place() {
+        assert_eq!(stem(0, "build"), "01-build");
+        assert_eq!(stem(9, "rc-SPEC-1\"x $(y)"), "10-rc-SPEC-1-x---y-");
+        assert_eq!(stem(2, "test:a/b"), "03-test-a-b");
+        assert!(absolute(Path::new("x")).is_absolute());
     }
 
     #[test]

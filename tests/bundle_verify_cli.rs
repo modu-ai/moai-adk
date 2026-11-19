@@ -86,6 +86,8 @@ struct World {
     work: PathBuf,
     cards: Cell<u32>,
     runs: Cell<u32>,
+    /// `--min-free-gb` given to `verify`: 0 asks for no free disk; a huge value refuses the slot.
+    min_free: Cell<u64>,
 }
 
 #[allow(dead_code)]
@@ -111,6 +113,7 @@ impl World {
             work,
             cards: Cell::new(0),
             runs: Cell::new(0),
+            min_free: Cell::new(0),
         };
         let bare_s = bare.to_str().unwrap().to_string();
         w.git_in(
@@ -324,7 +327,12 @@ impl World {
         for (k, v) in env {
             cmd.env(k, v);
         }
-        let out = cmd.stdin(Stdio::null()).output().expect("run moai");
+        // Run from the folder that holds the stubs and outputs, so a relative path means that.
+        let out = cmd
+            .current_dir(self.root.path())
+            .stdin(Stdio::null())
+            .output()
+            .expect("run moai");
         let line = String::from_utf8_lossy(&out.stdout)
             .lines()
             .next()
@@ -356,6 +364,7 @@ impl World {
         let stub_cli = self.stub_dir().join("moai-cli");
         let cli = cli.unwrap_or(&stub_cli).to_str().unwrap().to_string();
         let slots = self.root.path().join("slots");
+        let free = self.min_free.get().to_string();
         let mut all = vec!["verify"];
         all.extend_from_slice(args);
         all.extend_from_slice(&[
@@ -364,7 +373,7 @@ impl World {
             "--slot-dir",
             slots.to_str().unwrap(),
             "--min-free-gb",
-            "0",
+            &free,
             "--max",
             "2",
         ]);
@@ -776,8 +785,11 @@ fn a_failed_command_does_not_stop_the_list_and_a_missing_binary_is_not_run() {
     );
     let heads = [b.cards[0].as_str(), b.cards[1].as_str()];
 
-    // `fmt` fails: everything after it still runs.
-    w.rules(&["fmt --check|1|Diff in notes/a.md:1"]);
+    // `fmt` fails: everything after it still runs. `cargo fmt --check` names the file by its
+    // absolute path (`Diff in <worktree>/notes/a.md:1:`), which only the first head adds.
+    let wt = fs::canonicalize(&b.worktree).unwrap().display().to_string();
+    let fmt_rule = format!("fmt --check|1|Diff in {wt}/notes/a.md:1:");
+    w.rules(&[fmt_rule.as_str()]);
     let out = w.out();
     let (v, code) = w.verify(&[
         heads[0],
@@ -801,6 +813,10 @@ fn a_failed_command_does_not_stop_the_list_and_a_missing_binary_is_not_run() {
     assert_eq!(w.log().len(), 10, "the list went on after the failure");
     assert_eq!(v["result"]["failed"].as_array().unwrap().len(), 1);
     assert_eq!(v["result"]["failed"][0]["check"], "fmt");
+    assert_eq!(
+        v["result"]["failed"][0]["heads"],
+        json!([b.cards[0].clone()])
+    );
     assert_eq!(not_run_of(&v), vec![]);
 
     // `build` fails: the three checks that need the built binary are not run, with the reason,
@@ -1114,4 +1130,130 @@ fn the_help_and_the_ops_doc_name_what_verify_does() {
     ] {
         assert!(doc.contains(word), "the operations page lacks `{word}`");
     }
+}
+
+#[test]
+fn a_relative_path_is_the_callers_own_not_the_worktrees() {
+    let w = World::new();
+    let b = w.built(
+        &Head {
+            files: vec![("notes/a.md", "a\n")],
+            spec: Some((SPEC, vec![])),
+        },
+        &Head {
+            files: vec![("notes/b.md", "b\n")],
+            spec: Some((SPEC, vec![])),
+        },
+    );
+    // The command runs in the folder holding `stubs/` and `outs/`; both paths are relative to it.
+    let (v, code) = w.verify_cli(
+        &[
+            &b.cards[0],
+            &b.cards[1],
+            "--branch",
+            &b.branch,
+            "--out",
+            "outs/relative",
+        ],
+        Some(Path::new("stubs/moai-cli")),
+    );
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(v["result"]["ok"], true, "{v}");
+    assert!(w.root.path().join("outs/relative/run.json").is_file());
+    assert_eq!(not_run_of(&v), vec![]);
+    // The caller's folder is `/private/var/...` where the temporary folder says `/var/...`: compare
+    // the canonical spelling.
+    let stubs = fs::canonicalize(w.stub_dir())
+        .unwrap()
+        .display()
+        .to_string();
+    assert!(
+        commands_of(&v)
+            .iter()
+            .any(|c| c.0 == "trailer_check" && c.1.starts_with(&stubs)),
+        "the binary is the absolute path of the stub: {v}"
+    );
+}
+
+#[test]
+fn the_default_folder_is_under_the_worktree_target_and_untracked_files_are_allowed() {
+    let w = World::new();
+    let b = w.built(
+        &Head {
+            files: vec![("notes/a.md", "a\n")],
+            spec: Some((SPEC, vec![])),
+        },
+        &Head {
+            files: vec![("notes/b.md", "b\n")],
+            spec: Some((SPEC, vec![])),
+        },
+    );
+    // An untracked file is not a change to a tracked file (REQ-2).
+    fs::write(b.worktree.join("untracked.txt"), "x\n").unwrap();
+    let (v, code) = w.verify(&[&b.cards[0], &b.cards[1], "--branch", &b.branch]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(v["result"]["ok"], true, "{v}");
+    let want = fs::canonicalize(&b.worktree)
+        .unwrap()
+        .join("target")
+        .join("bundle-verify")
+        .join(&b.pinned[..10]);
+    let got = fs::canonicalize(v["result"]["out"].as_str().unwrap()).unwrap();
+    assert_eq!(got, want);
+    assert!(want.join("run.json").is_file());
+}
+
+#[test]
+fn a_missing_branch_and_a_busy_slot_are_refused_with_nothing_left() {
+    let w = World::new();
+    let b = w.built(
+        &Head {
+            files: vec![("notes/a.md", "a\n")],
+            spec: Some((SPEC, vec![])),
+        },
+        &Head {
+            files: vec![("notes/b.md", "b\n")],
+            spec: Some((SPEC, vec![])),
+        },
+    );
+    let out = w.out();
+    let (v, code) = w.verify(&[
+        &b.cards[0],
+        &b.cards[1],
+        "--branch",
+        "m-flow/nope",
+        "--out",
+        out.to_str().unwrap(),
+    ]);
+    assert_eq!(code, 1, "{v}");
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("is not here"),
+        "{v}"
+    );
+    assert!(!out.exists());
+
+    // A machine that has less free disk than asked: the slot is refused (exit 75), the script
+    // never starts, and the folder this run made is removed again.
+    w.min_free.set(999_999_999);
+    let (v, code) = w.verify(&[
+        &b.cards[0],
+        &b.cards[1],
+        "--branch",
+        &b.branch,
+        "--out",
+        out.to_str().unwrap(),
+    ]);
+    assert_eq!(code, 1, "{v}");
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("heavy slot"),
+        "{v}"
+    );
+    assert!(!out.exists(), "the folder of a refused run is gone");
+    assert!(w.log().is_empty(), "no command ran: {:?}", w.log());
 }

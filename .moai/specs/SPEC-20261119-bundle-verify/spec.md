@@ -57,11 +57,11 @@ and, as commands without a key, `cargo test --locked --offline --test <name>` fo
 
 - AC-1 (REQ-1, REQ-3, REQ-5): in a temporary repository with a bundle branch built from two heads, stub `cargo` and `python3` on `PATH`, `bundle verify` runs every command of the list with the worktree as its folder, prints the pinned SHA, writes the folder with `run.json` and a log per command, and `bundle body --run run.json` accepts the record when every command exited 0.
   verify: `cargo test --locked --offline --test bundle_verify_cli every_command_of_the_list_runs_in_the_branch_worktree`
-- AC-2 (REQ-2, REQ-6): a branch without a worktree, a worktree at another commit, a worktree with a modified tracked file, a head that is in neither the tip nor the branch, an existing output folder and a `--self-audit` file that is not an object are each refused with every fact named, and no stub ran and no file was written.
-  verify: `cargo test --locked --offline --test bundle_verify_cli refusals_run_nothing_and_write_nothing`
+- AC-2 (REQ-2, REQ-6): a branch without a worktree, a worktree at another commit, a worktree with a modified tracked file, a head that is in neither the tip nor the branch, an existing output folder, a branch that is not there and a `--self-audit` file that is not an object are each refused with every fact named, and no stub ran and no file was written; a slot that is refused leaves no folder; an untracked file is allowed; a relative `--out` or `--moai-cli` is the caller's own.
+  verify: `cargo test --locked --offline --test bundle_verify_cli refusals_run_nothing_and_write_nothing`; `cargo test --locked --offline --test bundle_verify_cli a_missing_branch_and_a_busy_slot_are_refused_with_nothing_left`; `cargo test --locked --offline --test bundle_verify_cli a_relative_path_is_the_callers_own_not_the_worktrees`; `cargo test --locked --offline --test bundle_verify_cli the_default_folder_is_under_the_worktree_target_and_untracked_files_are_allowed`
 - AC-3 (REQ-3, REQ-4): a failing `fmt` does not stop `clippy`, the tests or the rest; a failing `build` puts `trailer_check`, `spec_check` and `result_coverage` in `not_run` with the reason and not among the failed commands; a bundle that names no SPEC puts `result_coverage` in `not_run`.
   verify: `cargo test --locked --offline --test bundle_verify_cli a_failed_command_does_not_stop_the_list_and_a_missing_binary_is_not_run`; `cargo test --locked --offline --test bundle_verify_cli a_bundle_that_names_no_spec_has_no_result_coverage_to_run`
-- AC-4 (REQ-7): a failing `--test <name>` target is attributed to the head whose diff adds that test file, a failure naming a file two heads touch names both, and a failure naming no changed file is `unattributed`.
+- AC-4 (REQ-7): a failing `--test <name>` target is attributed to the head whose diff adds that test file, a failure naming a file two heads touch names both, a failure that names a changed file by its absolute path in the worktree (`cargo fmt --check` prints `Diff in <path>:<line>:`) is attributed too, and a failure naming no changed file is `unattributed`.
   verify: `cargo test --locked --offline --test bundle_verify_cli a_failure_names_the_head_that_touches_its_file`
 - AC-5 (REQ-8): the keys and commands are the table of the Intent, in order; a changed or added `tests/<name>.rs` and a `--test <name>` of a changed SPEC's `verify:` line each add one command, with no repeat; a name with no `tests/<name>.rs` is in `not_run`.
   verify: `cargo test --locked --offline --test bundle_verify_cli the_list_is_the_documented_data`
@@ -108,9 +108,9 @@ and, as commands without a key, `cargo test --locked --offline --test <name>` fo
 ## Result
 
 - AC-1: met — `cargo test --locked --offline --test bundle_verify_cli every_command_of_the_list_runs_in_the_branch_worktree`: ok (ten commands in the table's order, each logged in the worktree, `run.json` accepted by `bundle body`).
-- AC-2: met — `refusals_run_nothing_and_write_nothing`: ok (no stub ran, no folder, state unchanged).
+- AC-2: met — `refusals_run_nothing_and_write_nothing`, `a_missing_branch_and_a_busy_slot_are_refused_with_nothing_left`, `a_relative_path_is_the_callers_own_not_the_worktrees` and `the_default_folder_is_under_the_worktree_target_and_untracked_files_are_allowed`: ok (no stub ran, no folder, state unchanged).
 - AC-3: met — `a_failed_command_does_not_stop_the_list_and_a_missing_binary_is_not_run` and `a_bundle_that_names_no_spec_has_no_result_coverage_to_run`: ok.
-- AC-4: met — `a_failure_names_the_head_that_touches_its_file`: ok; unit tests in `src/bundle/verify.rs` (`heads_are_named_by_their_own_diff_in_the_order_given`) ok.
+- AC-4: met — `a_failure_names_the_head_that_touches_its_file` and the fmt case of `a_failed_command_does_not_stop_the_list_and_a_missing_binary_is_not_run` (absolute path): ok; unit tests in `src/bundle/verify.rs` (`heads_are_named_by_their_own_diff_in_the_order_given`) ok.
 - AC-5: met — `the_list_is_the_documented_data`: ok.
 - AC-6: met — `verify_writes_no_ref_and_no_ledger_row`: ok.
 - AC-7: met — `the_help_and_the_ops_doc_name_what_verify_does`: ok.
