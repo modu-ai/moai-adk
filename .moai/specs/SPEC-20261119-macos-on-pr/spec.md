@@ -88,4 +88,4 @@ merge 전에 `check` 매트릭스에 macos-arm64를 넣고, aggregate `ci`가 �
 - AC-2: met — 비민감 목록(docs·skills·원장 로직) `false`; 접두사 누출 경계(`src/statusline_notes.rs`, `adapters/claude/statusline.py`)도 `false`.
 - AC-3: met — 빈 입력·제어문자 경로·내부 오류가 모두 `true`; 돌연변이 M1·M2·M3로 안전실패 분기가 시험에 묶여 있음을 확인(6/6 KILLED, `target/c76/mut.log`).
 - AC-4: met — 역대 실패 69 run의 파일 목록 전수 판정: 29 true / 40 false, false는 run id로 시험에 명명(`HISTORICAL_FALSE_RUN_IDS`). 간극: 47건 macOS-only의 run별 분리는 run마다 jobs API 1호출이 필요해 하지 않았고(D-4), 40 false 중 일부가 macOS-only였을 수 있어요.
-- AC-5: 부분 진행 — YAML 계약 시험·YAML 파싱(PyYAML, job 그래프 확인) 통과; `tests/github_assets_test.py`의 4시험(`rc_ci_matrix` 옛 표현식)은 그 파일이 만료된 C-67 예약에 잡혀 리더 인계(#3217 병합 뒤)를 기다려요(카드 note 2348·2354). 인계 후 수정하고 이 줄을 마저 채워요.
+- AC-5: met — YAML 계약 시험·YAML 파싱(PyYAML, job 그래프 확인) 통과; `tests/github_assets_test.py`의 `rc_ci_matrix` 4시험은 새 구조(`targets` job의 `full=`/`linux=` 목록)로 고쳐 39 시험 전부 통과(리더 인계 뒤, 카드 note 2383·2386; `python3 -m unittest tests.github_assets_test tests.ci_scope_test` → Ran 73 tests, OK).
