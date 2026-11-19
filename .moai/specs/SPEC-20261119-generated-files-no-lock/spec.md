@@ -67,7 +67,7 @@ created: 2026-11-19
 1. (조각 1, 지금) 이 SPEC — 읽기로 확인한 사실만 쓰고 push 해요(코드 변경 0).
 2. (조각 2) RED: `tests/card_generated_scope.rs` 에 AC-1~3 시험을 먼저(임시 원장·임시 HOME 만) — 현 코드에서 첫 시험이 `scope_overlap` 으로 실패해야 하고 그 출력을 기록해요. 그리고 `tests/source_manifest_test.py` 에 AC-4 시험 둘.
 3. (조각 2) GREEN: `src/scope.rs` 에 `GENERATED_SHARED_PATHS` 와 카드용 술어 `card_overlap(a, b)`(= `overlap(a, b)` 이고 한쪽이 생성 경로와 정확히 같은 쌍이 아님), `src/ledger/reservation.rs::find_overlap` 가 그 술어를 불러요(`src/ledger/workflow.rs` 의 `ready` 목록은 `find_overlap` 을 그대로 부르니 고치지 않아요). 클레임 쪽 `overlap`·`overlaps` 는 건드리지 않아요.
-4. (조각 2) 변이 ≤5(커밋된 파일에서 하나씩): 예외 조건을 "한쪽만"에서 "양쪽"으로, 대소문자 접기 제거, 술어 대신 `overlap` 호출 복원, 목록 비움, `workflow.rs` 가 옛 술어를 부르게 — 모두 시험이 잡아야 해요.
+4. (조각 2) 변이 5개(커밋된 파일에서 하나씩, 모두 시험이 잡아야 해요): K1 예외 조건을 "한쪽만"에서 "양쪽"으로(or→and 뒤집기), K2 알 수 없는 경로 보호 제거, K3 아무것도 무시하지 않음, K4 모든 경로를 생성 경로로 취급(`src/scope.rs`), R1 연결 줄을 옛 `overlap` 호출로 되돌림(`src/ledger/reservation.rs`). `workflow.rs` 는 고치지 않아서 변이 대상이 아니에요.
 5. (조각 2) fmt, clippy `--all-targets`, `cargo test --lib` 전체, `home_isolation_scan`, `python3 -m unittest tests.source_manifest_test tests.repo_scans_test`, trailer-check, tip 과 `git merge-tree`, 다른 맥락의 감사, 내 판정 줄, `LANE-READY-INTEGRATION`.
 6. (조각 3) `verify.md` 의 manifest 규칙에 "생성 파일은 예약이 겹쳐도 돼요 — 새 tip 을 받은 뒤 `source_manifest.py write` 로 다시 쓰고 sha 줄을 손으로 고치지 않아요"를 한 줄 더해요(skill 파일이라 manifest 를 다시 써야 하니 조각 2 병합 뒤, 다른 skill 카드가 비어 있을 때).
 
@@ -80,4 +80,14 @@ created: 2026-11-19
 
 ## Result
 
-(조각 1 은 계획과 SPEC 만이에요. 조각 2 구현 뒤에 채워요.)
+조각 2(코드와 시험) — 2026-11-19, 가지 `spec/20261119-generated-files-no-lock`, C-43 READY head `5622c48473` 과 tip `747738af63` 을 합친 위에서 확인했어요(핵심 판정 `card_overlap` 은 `src/scope.rs`, 연결 한 줄은 `src/ledger/reservation.rs::find_overlap`).
+
+- AC-1: `card_generated_scope` 5/5 통과(`cargo test --locked --offline --test card_generated_scope`). 연결 줄을 되돌린 변이 R1 은 `two_cards_may_both_list_the_generated_manifest`, `the_ready_listing_agrees_with_take`, `a_real_overlap_is_still_refused_and_names_its_own_pair` 세 시험이 잡았어요(2 통과 · 3 실패).
+- AC-2: `the_list_equals_the_gitattributes_merge_lines` 통과(위 5/5 에 포함).
+- AC-3: `card_check_still_requires_the_path_in_scope` 통과, `--lib` 전체 1458 통과(클레임 쪽 `scope` 시험은 수정 없음).
+- AC-4: `python3 -m unittest tests.source_manifest_test` 45 개 OK, `tests.repo_scans_test` 25 개 OK.
+- AC-5: `cargo fmt --check` exit 0, `cargo clippy --locked --offline --all-targets -- -D warnings` exit 0.
+- 이웃: `ledger_reservation` 28, `card_reclaim_cli` 16, `card_dispatch_cli` 25, `card_cli` 14, `home_isolation_scan` 18 모두 통과.
+- 변이 5개(K1–K4 `src/scope.rs`, R1 `src/ledger/reservation.rs`): 5개 모두 시험이 잡았어요.
+
+돌리지 않은 것: 저장소 전체 `cargo test`(PR CI run 이 인용), Linux 전용 검사. 조각 3(`verify.md` 한 줄 안내)은 조각 2 병합 뒤예요.
