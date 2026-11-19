@@ -98,8 +98,10 @@ enum Action {
     /// Writes the branch. Start work on a SPEC on its own branch
     ///
     /// Writes the branch. Checks that the SPEC exists, has the form `SPEC-<yyyymmdd>-<slug>` and
-    /// no error, then creates `spec/<yyyymmdd>-<slug>` from the base and switches to it, or
-    /// switches to it when it exists. Refused, with nothing changed, while the work tree has a
+    /// no error, then creates `spec/<slug>-<yyyymmdd>` from the base and switches to it, or
+    /// switches to it when it exists (the older `spec/<yyyymmdd>-<slug>` counts, and a SPEC with
+    /// both, or a new name that reads as two SPEC ids, is refused). Refused, with nothing
+    /// changed, while the work tree has a
     /// change outside the SPEC's own folder or when the branch carries another SPEC's
     /// `Moai-Spec` trailer. `--card` links a card in the local ledger (`moai card spec`). Prints
     /// the next commands (trailers, push, draft pull request) and runs none of them unless

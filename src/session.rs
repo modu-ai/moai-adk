@@ -834,6 +834,8 @@ fn saved_note(host: &str, role: &str) -> &'static str {
         ("claude", _) => "model and effort not given on the command line come from launcher.models.claude.agent (saved by moai update)",
         ("codex", "leader") => "model and effort not given on the command line come from launcher.models.codex.leader (saved by moai update)",
         ("codex", _) => "model and effort not given on the command line come from launcher.models.codex.agent (saved by moai update)",
+        ("glm", "leader") => "model and effort not given on the command line come from launcher.models.glm.leader (saved by moai update)",
+        ("glm", _) => "model and effort not given on the command line come from launcher.models.glm.agent (saved by moai update)",
         (_, "leader") => "model and effort not given on the command line come from launcher.models.omp.leader (saved by moai update)",
         _ => "model and effort not given on the command line come from launcher.models.omp.agent (saved by moai update)",
     }
@@ -841,15 +843,20 @@ fn saved_note(host: &str, role: &str) -> &'static str {
 
 /// Fills the model and effort a person did not give from the choice `moai update` saved under
 /// `launcher.models.<host>.<role>` of the user launcher settings file (card C-47 criteria 5 and 7,
-/// SPEC-20261119-launcher-reads-models). It applies to a session with a role on `claude`, `codex`
-/// and `omp`; a roleless session and `glm` keep their own rules. The file is read at every call, so
-/// a rewritten file is used by the next launch. A saved entry outside the support table, anywhere
-/// under `launcher.models`, refuses the launch with key paths only (`unsupported_entries`). The
-/// second value is the note to add when a saved value was used.
+/// SPEC-20261119-launcher-reads-models; the glm host in SPEC-20261119-glm-launcher-settings-receipt).
+/// It applies to a session with a role on `claude`, `codex`, `omp` and `glm`; a roleless session
+/// keeps its own rules. The file is read at every call, so a rewritten file is used by the next
+/// launch. A saved entry outside the support table, anywhere under `launcher.models`, refuses the
+/// launch with key paths only (`unsupported_entries`). The glm host is Claude Code on z.ai: its
+/// saved id comes from the table shared with OMP and carries the `zai/` provider prefix, which the
+/// z.ai endpoint does not take, so the prefix is removed here (research note C-47 note 3452: Claude
+/// Code sends a full unknown id as written; the alias mapping of the environment is unchanged).
+/// The second value is the note to add when a saved value was used.
 fn apply_saved_choice(
     r: &SessionRequest,
 ) -> Result<(SessionRequest, Option<&'static str>), String> {
-    let (Some(role), "claude" | "codex" | "omp") = (r.role.as_deref(), r.host.as_str()) else {
+    let (Some(role), "claude" | "codex" | "omp" | "glm") = (r.role.as_deref(), r.host.as_str())
+    else {
         return Ok((r.clone(), None));
     };
     let Some(launcher) = user_launcher()? else {
@@ -865,10 +872,15 @@ fn apply_saved_choice(
     let Some(choice) = crate::model_effort_settings::saved_choice(&launcher, &r.host, role) else {
         return Ok((r.clone(), None));
     };
+    let saved_model = if r.host == "glm" {
+        choice.model.strip_prefix("zai/").unwrap_or(&choice.model)
+    } else {
+        choice.model.as_str()
+    };
     let mut filled = r.clone();
     let mut used = false;
     if filled.model.is_none() {
-        filled.model = Some(choice.model);
+        filled.model = Some(saved_model.to_string());
         used = true;
     }
     if filled.effort.is_none() {

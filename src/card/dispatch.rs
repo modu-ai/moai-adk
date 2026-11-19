@@ -188,7 +188,11 @@ pub(super) fn checked_scope(action: &str, entries: &[String]) -> Result<Vec<Stri
 /// against every other card's active reservation, and they are inserted into the same
 /// reservation under the same generation, with a `card.scope` event that also names the
 /// generation, the holder and the `--reason` (required then). The card's own `write_scope` is
-/// not touched by a widening. A card added without `--scope` is skipped by `card next`
+/// not touched by a widening. `generation`, when given, is the generation the caller read: the
+/// card's live reservation must be at it, else a `conflict` that names the generation the card
+/// has (or that it is not held), checked in the same write transaction (card C-129, SPEC
+/// SPEC-20261119-card-scope-widen-followup REQ-4 and REQ-5). A card added without `--scope` is
+/// skipped by `card next`
 /// (`empty_scope`), and nothing else sets a card's own scope (card C-53). Any other state is a
 /// conflict that names it; nothing is written then.
 pub fn scope(
@@ -198,6 +202,7 @@ pub fn scope(
     entries: &[String],
     by: &str,
     reason: Option<&str>,
+    generation: Option<i64>,
 ) -> Result<Value> {
     let card_id = card_id("scope", reference)?;
     let new = checked_scope("scope", entries)?;
@@ -233,6 +238,23 @@ pub fn scope(
             let held = holder.as_ref().map_or(String::new(), |(h, g)| {
                 format!(", held by {h} at generation {g}")
             });
+            if let Some(want) = generation {
+                match &holder {
+                    Some((_, have)) if *have == want => {}
+                    Some((_, have)) => {
+                        return Ok(Err(format!(
+                            "card conflict in generation: C-{card_id} is at generation {have}, \
+                             not {want}; read the card again (`card show`) before widening it"
+                        )));
+                    }
+                    None => {
+                        return Ok(Err(format!(
+                            "card conflict in generation: C-{card_id} is `{state}` and not held, \
+                             so there is no generation {want} to widen at"
+                        )));
+                    }
+                }
+            }
             if holder.is_some() && (state == "active" || state == "review") {
                 let Some(reason) = reason.as_deref() else {
                     return Ok(Err(format!(
