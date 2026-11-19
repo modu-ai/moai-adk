@@ -68,6 +68,7 @@ fn sentence_from<'a>(line: &'a str, mark: &str) -> &'a str {
     &rest[..end]
 }
 
+/// SPEC-20261119-flaky-followups AC-1 (REQ-1).
 #[test]
 fn the_flaky_card_command_carries_an_ac_and_the_card_can_be_read_with_it() {
     let line = flaky_command();
@@ -106,6 +107,7 @@ fn the_flaky_card_command_carries_an_ac_and_the_card_can_be_read_with_it() {
     );
 }
 
+/// SPEC-20261119-flaky-followups AC-2 (REQ-2).
 #[test]
 fn the_repair_rule_is_in_the_mode_agent_workflow() {
     let step = line_with(MODE_AGENT, "Flaky repair (card C-99): ");
@@ -114,13 +116,11 @@ fn the_repair_rule_is_in_the_mode_agent_workflow() {
         "the sentence sits in the heavy-checks step"
     );
     let s = sentence_from(step, "Flaky repair (card C-99): ");
+    // Whole phrases, so a sentence that turns the rule round ("is never deleted") does not pass.
     for word in [
-        "sleep",
-        "retry",
-        "skip",
+        "never adds a sleep, a retry or a skip",
         "root cause",
-        "deleted",
-        "the card and the SPEC",
+        "is deleted, with the reason written in the card and the SPEC",
     ] {
         assert!(
             s.contains(word),
@@ -129,6 +129,7 @@ fn the_repair_rule_is_in_the_mode_agent_workflow() {
     }
 }
 
+/// SPEC-20261119-flaky-followups AC-2 (REQ-3).
 #[test]
 fn the_record_home_is_in_the_verify_workflow() {
     let para = line_with(VERIFY, "Record home (card C-99): ");
@@ -137,12 +138,10 @@ fn the_record_home_is_in_the_verify_workflow() {
         "the sentence sits in the flaky paragraph"
     );
     let s = sentence_from(para, "Record home (card C-99): ");
+    // Whole phrases: the card is the home where a ledger exists, the Issue only where none does.
     for word in [
-        "flaky card",
-        "merge-train",
-        "`flaky: <test>`",
-        "without a card ledger",
-        "`[flake]` Issue",
+        "the record is the flaky card of the merge-train step (`flaky: <test>`)",
+        "the `[flake]` Issue and the two commands below are for a project without a card ledger",
     ] {
         assert!(
             s.contains(word),

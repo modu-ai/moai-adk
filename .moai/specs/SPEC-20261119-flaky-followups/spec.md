@@ -42,10 +42,11 @@ created: 2026-11-19
 
 ## Acceptance
 
-- AC-1 (REQ-1): `mode-leader.md` 의 간헐 규칙 명령이 `--ac` 한 줄을 갖고, 그 문장 그대로 `moai card add` 를 임시 원장에서 돌려 만든 카드가 기준 하나를 갖고 충족 표시 뒤 `card done` 이 닫아요.
-  verify: `cargo test --locked --offline --test flaky_followups the_flaky_card_command_carries_an_ac_and_the_card_can_close`
+- AC-1 (REQ-1): `mode-leader.md` 의 간헐 규칙 명령이 `--ac` 한 줄을 갖고, 그 문장 그대로 `moai card add` 를 임시 원장에서 돌려 만든 카드가 기준 하나(열림, "flake" 를 담음)를 갖고 `card show` 로 읽혀요. 닫는 일(`card done`)은 병합된 PR 연결을 요구해서 이 시험 밖이에요.
+  verify: `cargo test --locked --offline --test flaky_followups the_flaky_card_command_carries_an_ac_and_the_card_can_be_read_with_it`
 - AC-2 (REQ-2, REQ-3): `mode-agent.md` 에 sleep·재시도·건너뛰기 금지와 삭제 규칙 문장이, `verify.md` 에 기록 장소 문장이 있고 `[flake]` Issue 경로는 "원장이 없는 프로젝트"로 한정돼요(이름 붙인 파일만 읽는 문구 핀).
-  verify: `cargo test --locked --offline --test flaky_followups the_repair_rule_and_the_record_home_are_in_their_workflows`
+  verify: `cargo test --locked --offline --test flaky_followups the_repair_rule_is_in_the_mode_agent_workflow`
+  verify: `cargo test --locked --offline --test flaky_followups the_record_home_is_in_the_verify_workflow`
 - AC-3 (REQ-4, REQ-5): `--title-prefix "flaky: "` 가 접두어가 맞는 카드만, 빈 값과 제어 문자는 거부(원장을 읽기 전), 옵션이 없으면 전과 같은 출력이에요.
   verify: `cargo test --locked --offline --test card_list_title_prefix`
 - AC-4 (REQ-6, REQ-7, REQ-8): 스냅샷에 시도 번호가 있는 성공 `ci` 가 `attempt=<n>` 을 정보 줄에 더하고 G5 판정은 같아요; 시도 번호 없는 스냅샷은 줄이 전과 같아요(기존 골든 불변).
