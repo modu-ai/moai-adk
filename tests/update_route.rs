@@ -201,7 +201,7 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
                 "At most 3 questions per call, 2 or 3 options each",
                 "`features.default_mode_request_user_input`",
                 // N1: true at this head — the launcher does not turn the feature on yet.
-                "(under development, off by default; the `moai codex` launcher is to turn it on — card C-52, not in this version): go by the tool list",
+                "(under development, off by default): go by the tool list",
                 // B1: Codex's own Default-mode instruction must not decide a case-(2) question.
                 "continue with best judgment",
                 "for a case-(2) question never do that: no answer is not a pick (rule 3)",
