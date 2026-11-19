@@ -485,7 +485,6 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
         &[
             "lane-screen < screen.txt",
             "lane-screen --home <dir> < screen.json",
-            "lane-screen --scan",
         ],
     ),
     (
