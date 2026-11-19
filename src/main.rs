@@ -612,6 +612,10 @@ enum Command {
         /// `claude` (.claude/settings.json `hooks`) or `codex` (.codex/hooks.json).
         #[arg(long)]
         host: String,
+        /// With `--host codex` or `omp`, plan the replacement of a hook file MoAI does not own:
+        /// the plan names the copy kept first and lists the differing lines; writes nothing.
+        #[arg(long)]
+        replace_with_backup: bool,
         #[command(flatten)]
         lane: LaneLoopArgs,
     },
@@ -626,6 +630,10 @@ enum Command {
         plan_digest: String,
         #[arg(long)]
         permission_reference: String,
+        /// The same `--replace-with-backup` the plan used: keep a copy of the existing hook
+        /// file in the `backups` folder of the project state folder, then replace it.
+        #[arg(long)]
+        replace_with_backup: bool,
         #[command(flatten)]
         lane: LaneLoopArgs,
     },
@@ -1914,11 +1922,17 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
         Command::HooksPlan {
             project,
             host,
+            replace_with_backup,
             lane,
         } => {
             let home = std::env::var_os("HOME").map(PathBuf::from);
-            let mut out =
-                moai_cli::hooks::plan_with(&project, &host, home.as_deref(), lane.lane_loop())?;
+            let mut out = moai_cli::hooks::plan_with_replace(
+                &project,
+                &host,
+                home.as_deref(),
+                lane.lane_loop(),
+                replace_with_backup,
+            )?;
             merge_binary_state(&mut out, &project, home.as_deref());
             // Outside the plan digest: the #2391 hook state from local evidence, read only.
             let path_env = std::env::var("PATH").unwrap_or_default();
@@ -1950,6 +1964,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             host,
             plan_digest,
             permission_reference,
+            replace_with_backup,
             lane,
         } => {
             let home = std::env::var_os("HOME").map(PathBuf::from);
@@ -1961,6 +1976,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 &plan_digest,
                 &permission_reference,
                 lane.lane_loop(),
+                replace_with_backup,
                 &path_env,
             )?;
             merge_binary_state(&mut out, &project, home.as_deref());

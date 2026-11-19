@@ -2,7 +2,13 @@
 only non-passing target is a macOS job replaced while still waiting by a newer merge is
 `superseded`, so the `ci` aggregate is skipped (neutral) instead of red. Everything else stays
 `fail`: a failed target, a cancel with any other reason (timeout, manual), a cancel of a job
-that started, any event but push. The recorded run is the survey's I6 example."""
+that started, any event but push. The recorded run is the survey's I6 example.
+
+C-20 (SPEC-20261119-ci-check-set-legs REQ-8): the check jobs are `ci / <target> / <leg>`, so
+the verdict parses the target as the first ` / `-separated segment and matches the
+wait-replacement annotation of the leg's own group `ci-push-<target>-<leg>`. The recorded
+fixture predates the split, so `legged()` below re-voices its `ci / ` jobs under the
+leg-suffixed names at run time (the fixture file itself stays the recorded bytes)."""
 
 import copy
 import importlib.util
@@ -21,9 +27,39 @@ spec = importlib.util.spec_from_file_location("ci_superseded", TOOL)
 ci_superseded = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ci_superseded)
 
+LEGS = ("nextest", "rest")
+
 
 def recorded():
     return json.loads(RECORDED.read_text(encoding="utf-8"))
+
+
+def legged(run, wrong_group_legs=()):
+    """The run under SPEC-20261119-ci-check-set-legs names: every `ci / <target>` job becomes
+    one job per leg with the leg-suffixed name and its own concurrency-group annotation
+    (`ci-push-<target>-<leg>`), ids minted per leg (the leg jobs are distinct check runs).
+    A leg named in `wrong_group_legs` keeps the target-only group string — the pre-split
+    shape, which the verdict must not read as that leg's replacement."""
+    jobs = []
+    for j in run["jobs"]:
+        name = j.get("name", "")
+        if not name.startswith("ci / "):
+            jobs.append(copy.deepcopy(j))
+            continue
+        target = name[len("ci / "):]
+        for i, leg in enumerate(LEGS):
+            leg_job = copy.deepcopy(j)
+            leg_job["name"] = f"{name} / {leg}"
+            leg_job["id"] = j["id"] * 10 + i
+            old = f"ci-push-{target} exists"
+            new = f"ci-push-{target}-{leg} exists"
+            leg_job["annotations"] = [
+                (annotation if leg in wrong_group_legs else annotation.replace(old, new))
+                for annotation in (j.get("annotations") or [])]
+            jobs.append(leg_job)
+    out = copy.deepcopy(run)
+    out["jobs"] = jobs
+    return out
 
 
 def job(run, name):
@@ -35,76 +71,86 @@ def decide(run):
 
 
 class Decide(unittest.TestCase):
-    def test_the_recorded_superseded_run_is_neutral(self):
-        self.assertEqual(decide(recorded()), "superseded")
+    def test_every_leg_of_every_target_passed_but_one_wait_is_superseded(self):
+        self.assertEqual(decide(legged(recorded())), "superseded")
 
-    def test_a_failed_target_beside_the_superseded_one_fails(self):
-        run = recorded()
-        job(run, "ci / linux-x86_64")["conclusion"] = "failure"
+    def test_a_failed_leg_beside_the_superseded_one_fails(self):
+        for name in ("ci / linux-x86_64 / rest", "ci / macos-x86_64 / nextest"):
+            with self.subTest(name=name):
+                run = legged(recorded())
+                job(run, name)["conclusion"] = "failure"
+                self.assertEqual(decide(run), "fail")
+        run = legged(recorded())
+        job(run, "ci / linux-x86_64 / rest")["conclusion"] = "failure"
         run["check_result"] = "failure"
         self.assertEqual(decide(run), "fail")
-        run["check_result"] = "cancelled"
-        self.assertEqual(decide(run), "fail")
+
+    def test_a_wait_with_the_target_only_group_fails(self):
+        """The pre-split group string `ci-push-<target>` (no leg) is not this leg's group."""
+        for leg in LEGS:
+            with self.subTest(leg=leg):
+                self.assertEqual(decide(legged(recorded(), wrong_group_legs=(leg,))), "fail")
 
     def test_a_cancel_for_any_other_reason_fails(self):
         for message in [
             "The job running on runner GitHub Actions 1 has exceeded the maximum execution time of 45 minutes.",
             "The operation was canceled.",
-            "Canceling since a higher priority waiting request for ci-push-macos-arm64 exists",
-            "Canceling since a higher priority waiting request for ci-push-macos-x86_64 exists!",
+            "Canceling since a higher priority waiting request for ci-push-macos-x86_64-rest exists",
+            "Canceling since a higher priority waiting request for ci-push-macos-x86_64-nextest exists!",
         ]:
             with self.subTest(message=message):
-                run = recorded()
-                job(run, "ci / macos-x86_64")["annotations"] = [message]
+                run = legged(recorded())
+                job(run, "ci / macos-x86_64 / nextest")["annotations"] = [message]
                 self.assertEqual(decide(run), "fail")
-        run = recorded()
-        job(run, "ci / macos-x86_64")["annotations"] = []
+        run = legged(recorded())
+        job(run, "ci / macos-x86_64 / nextest")["annotations"] = []
         self.assertEqual(decide(run), "fail")
         # The message as a bare string (not a list) is not read as a substring match.
-        run = recorded()
-        job(run, "ci / macos-x86_64")["annotations"] = (
-            "Canceling since a higher priority waiting request for ci-push-macos-x86_64 exists")
+        run = legged(recorded())
+        job(run, "ci / macos-x86_64 / nextest")["annotations"] = (
+            "Canceling since a higher priority waiting request for ci-push-macos-x86_64-nextest exists")
         self.assertEqual(decide(run), "fail")
 
     def test_a_cancelled_job_that_started_fails(self):
-        run = recorded()
-        job(run, "ci / macos-x86_64")["steps"] = [{"name": "Set up job", "conclusion": "success"}]
+        run = legged(recorded())
+        job(run, "ci / macos-x86_64 / rest")["steps"] = [{"name": "Set up job", "conclusion": "success"}]
         self.assertEqual(decide(run), "fail")
-        run = recorded()
-        job(run, "ci / macos-x86_64")["runner_name"] = "GitHub Actions 7"
+        run = legged(recorded())
+        job(run, "ci / macos-x86_64 / rest")["runner_name"] = "GitHub Actions 7"
         self.assertEqual(decide(run), "fail")
 
     def test_only_a_macos_target_can_be_superseded(self):
-        run = recorded()
-        linux = job(run, "ci / linux-x86_64")
+        run = legged(recorded())
+        linux = job(run, "ci / linux-x86_64 / nextest")
         linux.update(conclusion="cancelled", runner_name="", steps=[],
-                     annotations=["Canceling since a higher priority waiting request for ci-push-linux-x86_64 exists"])
+                     annotations=["Canceling since a higher priority waiting request for ci-push-linux-x86_64-nextest exists"])
         self.assertEqual(decide(run), "fail")
 
     def test_only_a_push_run_can_be_superseded(self):
         for event in ["pull_request", "workflow_dispatch", "merge_group", ""]:
             with self.subTest(event=event):
-                run = recorded()
+                run = legged(recorded())
                 run["event"] = event
                 self.assertEqual(decide(run), "fail")
 
     def test_the_aggregate_result_must_be_cancelled(self):
         for result in ["success", "failure", "skipped", ""]:
             with self.subTest(result=result):
-                run = recorded()
+                run = legged(recorded())
                 run["check_result"] = result
                 self.assertEqual(decide(run), "fail")
 
     def test_no_target_or_no_superseded_target_fails(self):
-        run = recorded()
+        run = legged(recorded())
         run["jobs"] = [j for j in run["jobs"] if not j["name"].startswith("ci / ")]
         self.assertEqual(decide(run), "fail")
-        run = recorded()
-        job(run, "ci / macos-x86_64").update(conclusion="success")
+        run = legged(recorded())
+        for leg in LEGS:
+            job(run, f"ci / macos-x86_64 / {leg}").update(conclusion="success")
         self.assertEqual(decide(run), "fail")
 
     def test_unreadable_jobs_fail_instead_of_raising(self):
-        for jobs in [None, "x", [None], [{"name": 3}], [{"name": "ci / macos-arm64"}]]:
+        for jobs in [None, "x", [None], [{"name": 3}], [{"name": "ci / macos-arm64 / nextest"}]]:
             with self.subTest(jobs=jobs):
                 self.assertEqual(ci_superseded.decide("push", "cancelled", jobs)[0], "fail")
 
@@ -122,12 +168,12 @@ class CommandLine(unittest.TestCase):
             return out, output.read_text(encoding="utf-8") if output.exists() else ""
 
     def test_the_state_line_goes_to_the_step_output(self):
-        out, written = self.run_tool(recorded())
+        out, written = self.run_tool(legged(recorded()))
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertEqual(written, "state=superseded\n")
-        self.assertIn("ci / macos-x86_64", out.stdout)
-        run = recorded()
-        job(run, "ci / linux-x86_64")["conclusion"] = "failure"
+        self.assertIn("ci / macos-x86_64 / rest", out.stdout)
+        run = legged(recorded())
+        job(run, "ci / linux-x86_64 / rest")["conclusion"] = "failure"
         out, written = self.run_tool(run)
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertEqual(written, "state=fail\n")
@@ -171,7 +217,7 @@ class Fetch(unittest.TestCase):
             return out, calls, written
 
     def answers(self):
-        run = recorded()
+        run = legged(recorded())
         jobs = [{k: v for k, v in j.items() if k != "annotations"} for j in run["jobs"]]
         answers = {"repos/owner/repo/actions/runs/111/attempts/2/jobs?per_page=100": {"jobs": jobs}}
         for j in run["jobs"]:
@@ -185,13 +231,14 @@ class Fetch(unittest.TestCase):
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertEqual(calls, [
             ["api", "repos/owner/repo/actions/runs/111/attempts/2/jobs?per_page=100"],
-            ["api", "repos/owner/repo/check-runs/132854068092/annotations"],
+            ["api", "repos/owner/repo/check-runs/1328540680920/annotations"],
+            ["api", "repos/owner/repo/check-runs/1328540680921/annotations"],
         ])
         self.assertEqual(written, "state=superseded\n")
 
     def test_a_failed_read_writes_no_state_and_exits_2(self):
         answers = self.answers()
-        del answers["repos/owner/repo/check-runs/132854068092/annotations"]
+        del answers["repos/owner/repo/check-runs/1328540680921/annotations"]
         out, _calls, written = self.run_fetch(answers)
         self.assertEqual(out.returncode, 2)
         self.assertEqual(written, "")

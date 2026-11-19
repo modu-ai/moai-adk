@@ -590,6 +590,10 @@ struct CodexState {
     digest: String,
     /// The lane Stop hook the rendered file carries (Codex only).
     lane: Option<Lane>,
+    /// A file no receipt matches is replaced (`--replace-with-backup`): the apply keeps `backup`
+    /// first. Never set without the flag (SPEC-20261120-hooks-conflict-choices).
+    replaced: bool,
+    backup: Option<crate::hosts::codex_config::Backup>,
 }
 
 fn codex_render(lane: Option<&Lane>) -> Result<Vec<u8>> {
@@ -624,7 +628,7 @@ fn codex_owned(receipt: &[u8], fh: &FileHost) -> Result<(Option<String>, Option<
     Ok((sha("sha256"), sha("pending_sha256")))
 }
 
-fn codex_state(root: &Path, fh: &FileHost, want: &LaneLoop) -> Result<CodexState> {
+fn codex_state(root: &Path, fh: &FileHost, want: &LaneLoop, replace: bool) -> Result<CodexState> {
     let state_dir = crate::state_root::path(root, "");
     let mut dirs: Vec<PathBuf> = fh.dirs.iter().map(|d| root.join(d)).collect();
     dirs.extend([state_dir.clone(), state_dir.join("manifests")]);
@@ -634,6 +638,7 @@ fn codex_state(root: &Path, fh: &FileHost, want: &LaneLoop) -> Result<CodexState
     let (file, receipt) = (root.join(fh.file), state_dir.join(fh.receipt));
     let before = crate::claude::read_existing(&file)?;
     let receipt_before = crate::claude::read_existing(&receipt)?;
+    let mut replaced = false;
     if let Some(bytes) = &before {
         // A file MoAI never wrote, or one changed since, is not overwritten.
         let now = Some(crate::digest(bytes));
@@ -645,7 +650,20 @@ fn codex_state(root: &Path, fh: &FileHost, want: &LaneLoop) -> Result<CodexState
             }
         };
         if !owned {
-            return Err(format!("existing {} requires preservation review", fh.file));
+            // Only the flag lets a file MoAI does not own be replaced, and only after its copy.
+            if !replace {
+                return Err(format!("existing {} requires preservation review", fh.file));
+            }
+            crate::claude::refuse_symlink_dir(
+                &state_dir.join(crate::hosts::codex_config::BACKUP_DIR),
+            )
+            .map_err(|_| {
+                format!(
+                    "the backups folder {} is a link; replacement refused",
+                    crate::state_root::rel(root, crate::hosts::codex_config::BACKUP_DIR)
+                )
+            })?;
+            replaced = true;
         }
     }
     let lane = match want {
@@ -663,12 +681,48 @@ fn codex_state(root: &Path, fh: &FileHost, want: &LaneLoop) -> Result<CodexState
         receipt_before.as_deref().map(crate::digest),
         after.as_deref().map(crate::digest),
     );
-    // The lane joins the digest only when set, so a plan without one keeps its old digest.
-    let bound = match &lane {
-        None => serde_json::to_vec(&(1, fh.host, b, r, a)),
-        Some(l) => serde_json::to_vec(&(1, fh.host, b, r, a, l.json())),
+    // The lane joins the digest only when set, so a plan without one keeps its old digest. A
+    // replacement binds its mode and the file it replaces, so no other plan's digest applies it.
+    let bound = match (&lane, replaced) {
+        (None, false) => serde_json::to_vec(&(1, fh.host, b, r, a)),
+        (Some(l), false) => serde_json::to_vec(&(1, fh.host, b, r, a, l.json())),
+        (None, true) => {
+            serde_json::to_vec(&(1, fh.host, b, r, a, "replace-with-backup", [fh.file]))
+        }
+        (Some(l), true) => serde_json::to_vec(&(
+            1,
+            fh.host,
+            b,
+            r,
+            a,
+            "replace-with-backup",
+            [fh.file],
+            l.json(),
+        )),
     };
     let digest = crate::digest(&bound.map_err(|_| "encode failed")?);
+    // The copy is named by the bytes it holds, like the Codex config's: the first 16 hex digits.
+    let backup = match (&before, replaced) {
+        (Some(bytes), true) => {
+            let sha = crate::digest(bytes);
+            let ext = Path::new(fh.file)
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("bak");
+            let name = format!(
+                "{}/{}-hooks-{}.{ext}",
+                crate::hosts::codex_config::BACKUP_DIR,
+                fh.host,
+                sha.trim_start_matches("sha256:").get(..16).unwrap_or("0")
+            );
+            Some(crate::hosts::codex_config::Backup {
+                rel: crate::state_root::rel(root, &name),
+                path: state_dir.join(&name),
+                bytes: bytes.clone(),
+            })
+        }
+        _ => None,
+    };
     Ok(CodexState {
         file,
         receipt,
@@ -678,6 +732,8 @@ fn codex_state(root: &Path, fh: &FileHost, want: &LaneLoop) -> Result<CodexState
         rendered,
         digest,
         lane,
+        replaced,
+        backup,
     })
 }
 
@@ -713,7 +769,95 @@ pub fn plan(project: &Path, host: &str, home: Option<&Path>) -> Result<Value> {
 /// [`plan`] with the Codex lane Stop hook set, kept or removed (#2904 stage 2). `Keep` is what
 /// the ownership receipt records; a plan with a lane reports it under `lane_loop`.
 pub fn plan_with(project: &Path, host: &str, home: Option<&Path>, lane: LaneLoop) -> Result<Value> {
+    plan_with_replace(project, host, home, lane, false)
+}
+
+/// The flag `--replace-with-backup` is for the hosts whose file MoAI writes whole.
+fn check_replace(host: &str, replace: bool) -> Result<()> {
+    if replace && host == "claude" {
+        return Err("--replace-with-backup must be used with --host codex or omp".into());
+    }
+    Ok(())
+}
+
+/// The most lines a replacement's `diff` lists on each side, and the most characters of a line.
+const DIFF_LINES: usize = 40;
+const DIFF_LINE_CHARS: usize = 200;
+
+/// Words that name a credential. A line holding one is withheld from the diff whatever follows it:
+/// the diff shows a person's own file, where hiding a line costs a marker and the file is still
+/// theirs to read, and a leaked key costs far more.
+const CREDENTIAL_WORDS: &[&str] = &[
+    "authorization",
+    "bearer ",
+    "secret",
+    "apikey",
+    "api-key",
+    "passwd",
+    "credential",
+    "private_key",
+    "access_key",
+];
+
+/// True for a line the diff must not print: the shapes [`crate::secret_shaped`] knows, the key
+/// prefixes [`crate::redact::redact_outgoing`] knows (cloud, chat and gh tokens, `eyJ` tokens) and
+/// the credential words above.
+fn diff_line_withheld(line: &str) -> bool {
+    let lower = line.to_ascii_lowercase();
+    crate::secret_shaped(line)
+        || crate::redact::redact_outgoing(line).1 > 0
+        || CREDENTIAL_WORDS.iter().any(|w| lower.contains(w))
+}
+
+/// The two sides of a replacement as lines: the lines only the file has and the lines only the
+/// planned file has, in file order, at most [`DIFF_LINES`] each; a line shaped like a secret is
+/// withheld, because a hook command may carry one.
+fn hook_diff(file: &str, current: &[u8], desired: &[u8]) -> Value {
+    let (cur, des) = (
+        String::from_utf8_lossy(current),
+        String::from_utf8_lossy(desired),
+    );
+    let side = |from: &str, other: &str| -> (Vec<String>, bool) {
+        let other: std::collections::HashSet<&str> = other.lines().collect();
+        let mut lines = Vec::new();
+        for line in from
+            .lines()
+            .filter(|l| !l.trim().is_empty() && !other.contains(l))
+        {
+            if lines.len() == DIFF_LINES {
+                return (lines, true);
+            }
+            lines.push(if diff_line_withheld(line) {
+                "[withheld: secret-shaped line]".to_string()
+            } else {
+                line.chars().take(DIFF_LINE_CHARS).collect()
+            });
+        }
+        (lines, false)
+    };
+    let ((removed, cut_removed), (added, cut_added)) = (side(&cur, &des), side(&des, &cur));
+    json!({
+        "path": file,
+        "current": {"sha256": crate::digest(current), "bytes": current.len()},
+        "desired": {"sha256": crate::digest(desired), "bytes": desired.len()},
+        "removed": removed,
+        "added": added,
+        "truncated": {"removed": cut_removed, "added": cut_added},
+    })
+}
+
+/// [`plan_with`] that may replace a hook file no receipt matches (`replace`, Codex and OMP
+/// only): the plan then reports the action `replace`, the file, the copy it will keep first, a
+/// `diff` and a digest of its own. Without a file to replace the flag changes nothing.
+pub fn plan_with_replace(
+    project: &Path,
+    host: &str,
+    home: Option<&Path>,
+    lane: LaneLoop,
+    replace: bool,
+) -> Result<Value> {
     check_host(host)?;
+    check_replace(host, replace)?;
     check_lane(host, &lane)?;
     let root = project_root(project, home)?;
     let mut planned_lane = None;
@@ -733,7 +877,7 @@ pub fn plan_with(project: &Path, host: &str, home: Option<&Path>, lane: LaneLoop
         v
     } else {
         let fh = file_host(host);
-        let s = codex_state(&root, fh, &lane)?;
+        let s = codex_state(&root, fh, &lane, replace)?;
         planned_lane = s.lane.clone();
         before = s.before.clone();
         after_sha256 = s.after.as_deref().map(crate::digest);
@@ -742,11 +886,12 @@ pub fn plan_with(project: &Path, host: &str, home: Option<&Path>, lane: LaneLoop
             _ => None,
         };
         let action = match (&s.after, &s.before) {
+            _ if s.replaced => "replace",
             (None, _) => "unchanged",
             (Some(_), None) => "create",
             (Some(_), Some(_)) => "update",
         };
-        json!({
+        let mut v = json!({
             "action": action,
             "path": fh.file,
             "conflicts": [],
@@ -754,7 +899,19 @@ pub fn plan_with(project: &Path, host: &str, home: Option<&Path>, lane: LaneLoop
             "planned_sha256": s.after.as_deref().map(crate::digest),
             "plan_digest": s.digest,
             "writes": false,
-        })
+        });
+        if let (true, Some(file), Some(b)) = (s.replaced, &s.before, &s.backup) {
+            // A file already holding MoAI's bytes is adopted: the plan still names them.
+            v["planned_sha256"] = json!(crate::digest(&s.rendered));
+            v["replaced"] = json!([fh.file]);
+            v["backup"] = json!({
+                "path": b.rel,
+                "sha256": crate::digest(&b.bytes),
+                "bytes": b.bytes.len(),
+            });
+            v["diff"] = hook_diff(fh.file, file, &s.rendered);
+        }
+        v
     };
     out["host"] = json!(host);
     out["hooks"] = hook_list_for(host, planned_lane.as_ref());
@@ -800,7 +957,23 @@ pub fn apply_with(
     permission: &str,
     lane: LaneLoop,
 ) -> Result<Value> {
+    apply_with_replace(project, host, home, plan_digest, permission, lane, false)
+}
+
+/// [`apply_with`] of a [`plan_with_replace`] plan: the same `lane` and the same `replace` the
+/// plan was made with. A replacement keeps the copy of the file first, then writes the pending
+/// receipt, the file and the final receipt.
+pub fn apply_with_replace(
+    project: &Path,
+    host: &str,
+    home: Option<&Path>,
+    plan_digest: &str,
+    permission: &str,
+    lane: LaneLoop,
+    replace: bool,
+) -> Result<Value> {
     check_host(host)?;
+    check_replace(host, replace)?;
     check_lane(host, &lane)?;
     check_permission(permission)?;
     let root = project_root(project, home)?;
@@ -819,11 +992,15 @@ pub fn apply_with(
         v
     } else {
         let fh = file_host(host);
-        let s = codex_state(&root, fh, &lane)?;
+        let s = codex_state(&root, fh, &lane, replace)?;
         if s.digest != plan_digest {
             return Err("stale or altered plan; re-preview required".into());
         }
         applied_lane = s.lane.clone();
+        // The copy comes first: whatever stops the apply later, the user's bytes are kept.
+        if let Some(backup) = &s.backup {
+            crate::hosts::codex_config::write_backup(backup)?;
+        }
         let rel = crate::state_root::rel(&root, fh.receipt);
         let rendered_sha = crate::digest(&s.rendered);
         let final_receipt = codex_receipt_bytes(fh, Some(&rendered_sha), None, s.lane.as_ref());
@@ -855,8 +1032,8 @@ pub fn apply_with(
                 });
             }
         }
-        json!({
-            "state": if files.is_empty() { "unchanged" } else { "applied" },
+        let mut v = json!({
+            "state": if files.is_empty() && !s.replaced { "unchanged" } else { "applied" },
             "files_changed": files,
             "files_created": if s.before.is_none() { files.clone() } else { vec![] },
             "hooks_sha256_before": s.before.as_deref().map(crate::digest),
@@ -864,7 +1041,15 @@ pub fn apply_with(
             "receipt_path": rel,
             "host_loaded": "not_run",
             "execution_verified": "not_run",
-        })
+        });
+        if let Some(b) = &s.backup {
+            v["backup"] = json!({
+                "path": b.rel,
+                "sha256": crate::digest(&b.bytes),
+                "bytes": b.bytes.len(),
+            });
+        }
+        v
     };
     out["host"] = json!(host);
     out["hooks_generated"] = hook_list_for(host, applied_lane.as_ref());

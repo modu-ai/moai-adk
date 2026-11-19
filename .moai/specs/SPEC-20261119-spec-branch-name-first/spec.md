@@ -1,9 +1,14 @@
 ---
 id: SPEC-20261119-spec-branch-name-first
 title: "A SPEC work branch is named spec/<slug>-<yyyymmdd>, and every reader still resolves the old date-first form"
-status: draft
+status: approved
 revision: 3
 created: 2026-11-19
+approval:
+  by: user
+  at: 2026-11-19
+  basis: "사용자 선택 2026-11-19T21:22:41Z 리더 대화 (카드 C-133 리더 노트 3581): 감사 PASS 내용 그대로 승인"
+  digest: "sha256:7c423a06a5c6ce338b15a2a26b88081317751f92b45e44bf2871926121aa5c1e"
 ---
 
 # A SPEC work branch is named spec/<slug>-<yyyymmdd>, and every reader still resolves the old date-first form
