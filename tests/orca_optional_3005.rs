@@ -62,12 +62,17 @@ fn mentions_orca(text: &str) -> bool {
 /// migration reads (`go_hooks.rs`), a status line command in a settings fixture
 /// (`claude.rs`), and the leader round's description of the screen it is given
 /// (`leader_round.rs`, `ops/leader_round.rs`). None of them starts the program.
-const SRC_ORCA_FILES: [&str; 8] = [
+const SRC_ORCA_FILES: [&str; 10] = [
     "src/claude.rs",
     "src/go_hooks.rs",
     // The `session_cwd` example of `lane-safe-to-reset` names the source `orca` (#3015 C1); the
     // text is an example the command reads, and nothing there runs the program.
     "src/lane_reset.rs",
+    // `lane-screen` (C-120 slice A) reads one screen from standard input; the word is the
+    // `orca:screen` source value and the doc comment on the Orca answer it parses. Neither file
+    // starts a program.
+    "src/lane_screen.rs",
+    "src/ops/lane_screen.rs",
     // `leader-pulse` (#3015 C5) builds the `orca terminal send` argument list and prints it; it
     // never starts the program (`leader_pulse_cli` puts a recording `orca` first on PATH).
     "src/leader_pulse.rs",
@@ -79,9 +84,12 @@ const SRC_ORCA_FILES: [&str; 8] = [
 
 /// The only places in the skill package and the agent files that name Orca. The research
 /// agent lists the adapter among the documents it reads (checked below to be that line only).
-const PACKAGE_ORCA_FILES: [&str; 4] = [
+/// `rule-history.md` (C-103) is the record of the rule sentences the two modes carried: it quotes
+/// them word for word, so it names Orca; it holds no `orca` command line and no step of its own.
+const PACKAGE_ORCA_FILES: [&str; 5] = [
     "agents/research.md",
     "skills/moai/references/adapters/orca.md",
+    "skills/moai/references/rule-history.md",
     "skills/moai/workflows/mode-agent.md",
     "skills/moai/workflows/mode-leader.md",
 ];

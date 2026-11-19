@@ -101,7 +101,7 @@ impl World {
             "-c",
             "user.name=Test",
             "-c",
-            "user.email=test@example.test",
+            "user.email=test@example.invalid",
             "-c",
             "commit.gpgsign=false",
             "-c",
@@ -722,4 +722,75 @@ fn the_help_and_the_ops_doc_say_what_each_action_does() {
     ] {
         assert!(doc.contains(word), "the operations page lacks `{word}`");
     }
+}
+
+#[test]
+fn the_body_shows_the_stated_tier_and_refuses_a_low_one() {
+    let b = bundle_world(true);
+    let tip = b.w.tip_sha();
+    // The first lane's head gets a second PASS that states tier 1: the table shows it.
+    b.w.note(
+        &b.cards[0],
+        &format!(
+            "AUDIT {} ({SPEC}, tier 1) head {} base {tip} — verdict: PASS\nbody",
+            b.cards[0], b.heads[0]
+        ),
+    );
+    let (v, code) = b.body(&[]);
+    assert_eq!(code, 0, "{v}");
+    let body = v["result"]["body"].as_str().unwrap();
+    let row1 = body
+        .lines()
+        .find(|l| l.contains(&b.heads[0]))
+        .expect("a table row for the first head");
+    assert!(
+        row1.contains("`PASS` card note") && row1.contains("(tier 1):"),
+        "{row1}"
+    );
+
+    // A newer PASS with no tier: the cell shows that note and no tier (the tier belongs to the
+    // line shown, not to an older note).
+    let newer = b.w.pass_note(&b.cards[0], &b.heads[0]);
+    let (v, code) = b.body(&[]);
+    assert_eq!(code, 0, "{v}");
+    let body = v["result"]["body"].as_str().unwrap();
+    let row = body.lines().find(|l| l.contains(&b.heads[0])).unwrap();
+    assert!(
+        row.contains(&format!("card note {newer}:")) && !row.contains("(tier "),
+        "{row}"
+    );
+
+    // A third head under `.claude/` (floor 2) whose only PASS states tier 1: refused, named.
+    let h3 = b.w.head(
+        "spec/h3",
+        TIP,
+        &[(".claude/h3.md", "h3\n")],
+        "SPEC-20261119-demo3",
+        &[1, 2],
+        true,
+    );
+    let c3 = b.w.new_card();
+    b.w.ready_note(&c3, &h3);
+    b.w.note(
+        &c3,
+        &format!("AUDIT {c3} ({SPEC}, tier 1) head {h3} base {tip} — verdict: PASS\nbody"),
+    );
+    b.w.git(&["checkout", "-q", "bundle"]);
+    b.w.git(&["merge", "-q", "--no-ff", "-m", "Merge h3", &h3]);
+    let out = b.w.home.path().join("never3.md");
+    let (v, _) = b.w.bundle(&[
+        "body",
+        &b.cards[0],
+        &c3,
+        "--branch",
+        "bundle",
+        "--run",
+        b.record.to_str().unwrap(),
+        "--out",
+        out.to_str().unwrap(),
+    ]);
+    assert_eq!(v["ok"], false, "{v}");
+    let m = v["error"]["message"].as_str().unwrap();
+    assert!(m.contains(&format!("{c3} audit_tier_low")), "{m}");
+    assert!(!out.exists(), "a refused body writes no file");
 }
