@@ -102,7 +102,7 @@ fn only_supported_values_are_offered_and_an_unknown_saved_value_is_kept() {
     );
     assert_eq!(
         saved["launcher"]["models"]["claude"]["leader"],
-        json!({"model": "claude-opus-5-5", "effort": "medium"})
+        json!({"model": "claude-opus-5-5", "effort": "high"})
     );
 }
 
@@ -117,7 +117,7 @@ fn enter_selects_the_defaults_and_the_preview_shows_them() {
     for expected in [
         "claude-opus-5-5",
         "claude-sonnet-5-5",
-        "gpt-6.1-sol",
+        "gpt-6.2-sol",
         "gpt-6.1-terra",
     ] {
         assert!(out.contains(expected), "{expected} in the preview: {out}");
@@ -339,7 +339,7 @@ fn a_non_terminal_run_asks_nothing_and_reports_the_values() {
     );
     assert_eq!(
         find("claude", "leader"),
-        json!({"tool": "claude", "role": "leader", "model": "claude-opus-5-5", "effort": "medium", "source": "default"})
+        json!({"tool": "claude", "role": "leader", "model": "claude-opus-5-5", "effort": "high", "source": "default"})
     );
     assert_eq!(models["unsupported"], json!(["launcher.models.omp.leader"]));
     assert!(!models.to_string().contains("SECRET-MODEL"));
