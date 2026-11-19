@@ -41,12 +41,21 @@ def snapshot(folder: Path) -> dict:
     """Every entry under `folder` (files by content hash, folders by name): what a read-only
     caller leaves unchanged."""
     seen = {}
-    for path in sorted(folder.rglob("*")):
-        rel = str(path.relative_to(folder))
-        if path.is_file():
-            seen[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
-        else:
-            seen[rel] = "dir"
+
+    def visit(current: Path):
+        # os.scandir, one folder at a time: this only ever walks the temporary decoy folder
+        # (tests/repo_scans_test.py flags a test that globs the repository tree).
+        with os.scandir(current) as entries:
+            for entry in sorted(entries, key=lambda e: e.name):
+                path = Path(entry.path)
+                rel = str(path.relative_to(folder))
+                if entry.is_dir(follow_symlinks=False):
+                    seen[rel] = "dir"
+                    visit(path)
+                else:
+                    seen[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
+
+    visit(folder)
     return seen
 
 
