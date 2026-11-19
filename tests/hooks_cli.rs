@@ -2077,3 +2077,448 @@ fn capabilities_name_the_bash_lock_limits() {
         }
     }
 }
+
+// ---- SPEC-20261119-enforce-ac-verify-recorded -------------------------------------------------
+
+const AC_SPEC: &str = "SPEC-20261119-ac-demo";
+const AC_BRANCH: &str = "spec/20261119-ac-demo";
+const AC_HEAD: &str = "1111111111111111111111111111111111111111";
+const AC_HEAD_2: &str = "2222222222222222222222222222222222222222";
+const AC_HEAD_PART: &str = "---\nid: SPEC-20261119-ac-demo\ntitle: \"demo\"\nstatus: draft\nrevision: 1\ncreated: 2026-11-19\n---\n\n# demo\n\n## Acceptance\n\n";
+/// Six criteria: two with one command, one with two, and three the rule must leave out.
+const AC_BODY: &str = "- AC-1 (REQ-1): one · verify: `cargo test --test one`\n\
+- AC-2 (REQ-2): two · verify: `cargo test --test two -- --exact x`\n\
+- AC-3 (REQ-3): three · manual: `read the page`\n\
+- AC-4 (REQ-4): four · verify: `<command that checks it>`\n\
+- AC-5 (REQ-5): five · unknown: `no way yet`\n\
+- AC-6 (REQ-6): six · verify: `cargo test --test six_a`; `cargo test --test six_b`\n";
+/// Only criteria the rule leaves out.
+const AC_BODY_LEFT_OUT: &str = "- AC-3 (REQ-3): three · manual: `read the page`\n\
+- AC-4 (REQ-4): four · verify: `<command that checks it>`\n\
+- AC-5 (REQ-5): five · unknown: `no way yet`\n";
+
+/// A temporary work tree on `branch` (a hand-made `.git`: `HEAD` and the branch's ref file with
+/// `head`, when there is one) holding the demo SPEC `body` when `spec` is given.
+fn ac_repo(
+    branch: &str,
+    head: Option<&str>,
+    spec: Option<&str>,
+) -> (tempfile::TempDir, std::path::PathBuf) {
+    let (tmp, root) = merge_repo(false);
+    fs::write(
+        root.join(".git/HEAD"),
+        format!("ref: refs/heads/{branch}\n"),
+    )
+    .unwrap();
+    if let Some(sha) = head {
+        let r = root.join(".git/refs/heads").join(branch);
+        fs::create_dir_all(r.parent().unwrap()).unwrap();
+        fs::write(r, format!("{sha}\n")).unwrap();
+    }
+    if let Some(body) = spec {
+        let d = root.join(".moai/specs").join(AC_SPEC);
+        fs::create_dir_all(&d).unwrap();
+        fs::write(d.join("spec.md"), format!("{AC_HEAD_PART}{body}")).unwrap();
+    }
+    (tmp, root)
+}
+
+fn ac_dispatch(event: &str, host: &str, root: &Path, input: &Value) -> (i32, String) {
+    let mut child = Command::new(common::MOAI_BIN)
+        .args(["hook-dispatch", "--host", host, "--event", event])
+        .current_dir(root)
+        .env("HOME", root.join("home"))
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    common::feed_stdin(&mut child, input.to_string().as_bytes());
+    let out = child.wait_with_output().unwrap();
+    (
+        out.status.code().unwrap(),
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+    )
+}
+
+/// One finished (or, with `failed`, failed) Bash call as the host reports it to tool-observe.
+fn ac_bash(root: &Path, session: &str, command: &str, failed: bool) -> (i32, String) {
+    let event = if failed {
+        "PostToolUseFailure"
+    } else {
+        "PostToolUse"
+    };
+    let input = json!({"session_id": session, "hook_event_name": event,
+        "tool_name": "Bash", "tool_use_id": "t", "tool_input": {"command": command},
+        "tool_response": {}, "cwd": root});
+    ac_dispatch("tool-observe", "claude", root, &input)
+}
+
+/// One file write of the session.
+fn ac_write(root: &Path, session: &str) -> (i32, String) {
+    let input = json!({"session_id": session, "hook_event_name": "PostToolUse",
+        "tool_name": "Write", "tool_use_id": "t",
+        "tool_input": {"file_path": root.join("src/x.rs"), "content": "x"},
+        "tool_response": {}, "cwd": root});
+    ac_dispatch("tool-observe", "claude", root, &input)
+}
+
+fn ac_stop(root: &Path, session: &str, active: bool) -> (i32, String) {
+    let input = json!({"session_id": session, "hook_event_name": "Stop",
+        "stop_hook_active": active, "cwd": root});
+    ac_dispatch("turn-validation", "claude", root, &input)
+}
+
+fn ac_runs(root: &Path) -> Vec<Value> {
+    merge_log(root)
+        .into_iter()
+        .filter(|l| l["kind"] == json!("ac_run"))
+        .collect()
+}
+
+/// The rule's mode in the HOME hook config of the temporary project.
+fn ac_mode(root: &Path, mode: &str) {
+    merge_config(
+        root,
+        &format!("[hooks.modes]\nac_verify_recorded = \"{mode}\"\n"),
+    );
+}
+
+/// Whether Claude's Stop answer keeps the session working; the reason when it does.
+fn ac_reason(answer: &(i32, String)) -> Option<String> {
+    assert_eq!(answer.0, 0, "{answer:?}");
+    let v: Value = serde_json::from_str(&answer.1).ok()?;
+    (v["decision"] == json!("block")).then(|| v["reason"].as_str().unwrap_or("").to_string())
+}
+
+/// Lets a later log line carry a later millisecond than the one before it.
+fn ac_pause() {
+    std::thread::sleep(std::time::Duration::from_millis(5));
+}
+
+/// REQ-1: a successful Bash call equal to a verify command (white space collapsed) leaves one
+/// `ac_run` line with the SPEC, the AC, the command's position, the full commit, the session
+/// and the time; the observe line is still written and no command text is kept.
+#[test]
+fn ac_verify_run_is_recorded_for_the_verify_command() {
+    let (_tmp, root) = ac_repo(AC_BRANCH, Some(AC_HEAD), Some(AC_BODY));
+    for (command, ac, position) in [
+        ("cargo test --test one", "AC-1", 0),
+        ("  cargo   test\t--test one  ", "AC-1", 0),
+        ("cargo test --test two -- --exact x", "AC-2", 0),
+        ("cargo test --test six_a", "AC-6", 0),
+        ("cargo test --test six_b", "AC-6", 1),
+    ] {
+        let before = ac_runs(&root).len();
+        let (code, out) = ac_bash(&root, "s1", command, false);
+        assert_eq!((code, out.as_str()), (0, ""), "{command}");
+        let runs = ac_runs(&root);
+        assert_eq!(runs.len(), before + 1, "{command}: {runs:?}");
+        let run = runs.last().unwrap();
+        assert_eq!(run["spec"], json!(AC_SPEC), "{command}");
+        assert_eq!(run["ac"], json!(ac), "{command}");
+        assert_eq!(run["cmd"], json!(position), "{command}");
+        assert_eq!(run["head"], json!(AC_HEAD), "{command}");
+        assert_eq!(run["session"].as_str().map(str::len), Some(16), "{command}");
+        assert!(run["unix_ms"].as_u64().unwrap() > 0, "{command}");
+    }
+    let log = merge_log(&root);
+    let observes = log.iter().filter(|l| l["kind"] == json!("observe")).count();
+    assert_eq!(observes, 5, "{log:?}");
+    let text = fs::read_to_string(root.join(".moai-cli/receipts/hook-engine.jsonl")).unwrap();
+    assert!(!text.contains("cargo test"), "a command leaked: {text}");
+}
+
+/// REQ-1, REQ-2: what is not exactly a verify command, a failed call, a call outside a SPEC
+/// work branch and a SPEC, commit or state folder that cannot be read leave no `ac_run` line,
+/// and every one of those calls goes through.
+#[test]
+fn ac_verify_run_ignores_what_is_not_the_verify_command() {
+    let (_tmp, root) = ac_repo(AC_BRANCH, Some(AC_HEAD), Some(AC_BODY));
+    for command in [
+        "cargo test --test one extra",
+        "cargo test --test one | tail -3",
+        "FOO=1 cargo test --test one",
+        "cargo test --test",
+        "cargo test --test one; true",
+        "read the page",
+        "no way yet",
+        "",
+    ] {
+        let (code, out) = ac_bash(&root, "s1", command, false);
+        assert_eq!((code, out.as_str()), (0, ""), "{command:?}");
+    }
+    let (code, out) = ac_bash(&root, "s1", "cargo test --test one", true);
+    assert_eq!((code, out.as_str()), (0, ""), "a failed call");
+    assert_eq!(ac_runs(&root), Vec::<Value>::new());
+
+    for (branch, head, spec) in [
+        ("main", Some(AC_HEAD), Some(AC_BODY)),
+        (AC_BRANCH, Some(AC_HEAD), None),
+        (AC_BRANCH, None, Some(AC_BODY)),
+        (AC_BRANCH, Some("not-a-commit"), Some(AC_BODY)),
+        ("spec/20261119-other", Some(AC_HEAD), Some(AC_BODY)),
+    ] {
+        let (_tmp, root) = ac_repo(branch, head, spec);
+        let (code, out) = ac_bash(&root, "s1", "cargo test --test one", false);
+        assert_eq!((code, out.as_str()), (0, ""), "{branch} {head:?}");
+        assert_eq!(
+            ac_runs(&root),
+            Vec::<Value>::new(),
+            "{branch} {head:?} {spec:?}"
+        );
+    }
+
+    let (_tmp, root) = ac_repo(AC_BRANCH, Some(AC_HEAD), Some(AC_BODY));
+    fs::remove_dir_all(root.join(".moai-cli")).unwrap();
+    let (code, out) = ac_bash(&root, "s1", "cargo test --test one", false);
+    assert_eq!((code, out.as_str()), (0, ""), "no state folder");
+    assert!(!root.join(".moai-cli").exists(), "nothing is created");
+}
+
+/// REQ-3, REQ-6: after the session wrote a file, the Stop answer names the verify commands
+/// (by AC) that have no `ac_run` line at the current commit, written at or after that write;
+/// criteria with `manual:`, `unknown:` or a placeholder are not named; a new write or a new
+/// commit makes the older lines not count; a line of another session counts.
+#[test]
+fn ac_verify_rule_stop_asks_for_unrecorded_commands() {
+    let (_tmp, root) = ac_repo(AC_BRANCH, Some(AC_HEAD), Some(AC_BODY));
+    ac_mode(&root, "enforce");
+    assert_eq!(
+        ac_reason(&ac_stop(&root, "s1", false)),
+        None,
+        "no write yet"
+    );
+    ac_write(&root, "s1");
+    ac_pause();
+    let reason = ac_reason(&ac_stop(&root, "s1", false)).expect("asks");
+    assert!(reason.contains(AC_SPEC), "{reason}");
+    for ac in ["AC-1", "AC-2", "AC-6"] {
+        assert!(reason.contains(ac), "{ac}: {reason}");
+    }
+    for ac in ["AC-3", "AC-4", "AC-5"] {
+        assert!(!reason.contains(ac), "{ac}: {reason}");
+    }
+
+    ac_bash(&root, "s1", "cargo test --test one", false);
+    let reason = ac_reason(&ac_stop(&root, "s1", false)).expect("still asks");
+    assert!(!reason.contains("AC-1"), "{reason}");
+    assert!(
+        reason.contains("AC-2") && reason.contains("AC-6"),
+        "{reason}"
+    );
+
+    ac_bash(&root, "s1", "cargo test --test two -- --exact x", false);
+    ac_bash(&root, "s1", "cargo test --test six_a", false);
+    let reason = ac_reason(&ac_stop(&root, "s1", false)).expect("one command of AC-6 is left");
+    assert!(
+        reason.contains("AC-6") && !reason.contains("AC-2"),
+        "{reason}"
+    );
+
+    ac_bash(&root, "s1", "cargo test --test six_b", false);
+    assert_eq!(
+        ac_reason(&ac_stop(&root, "s1", false)),
+        None,
+        "all recorded"
+    );
+
+    // A write after the runs: the earlier lines do not count.
+    ac_pause();
+    ac_write(&root, "s1");
+    ac_pause();
+    let reason = ac_reason(&ac_stop(&root, "s1", false)).expect("a later write");
+    for ac in ["AC-1", "AC-2", "AC-6"] {
+        assert!(reason.contains(ac), "{ac}: {reason}");
+    }
+    for command in [
+        "cargo test --test one",
+        "cargo test --test two -- --exact x",
+        "cargo test --test six_a",
+        "cargo test --test six_b",
+    ] {
+        ac_bash(&root, "s1", command, false);
+    }
+    assert_eq!(ac_reason(&ac_stop(&root, "s1", false)), None);
+
+    // A new commit: the lines of the old one do not count.
+    fs::write(
+        root.join(".git/refs/heads").join(AC_BRANCH),
+        format!("{AC_HEAD_2}\n"),
+    )
+    .unwrap();
+    assert!(
+        ac_reason(&ac_stop(&root, "s1", false)).is_some(),
+        "new commit"
+    );
+    // Another session that wrote nothing is not asked; its runs at the new commit count for
+    // the first session.
+    assert_eq!(
+        ac_reason(&ac_stop(&root, "s2", false)),
+        None,
+        "wrote nothing"
+    );
+    for command in [
+        "cargo test --test one",
+        "cargo test --test two -- --exact x",
+        "cargo test --test six_a",
+        "cargo test --test six_b",
+    ] {
+        ac_bash(&root, "s2", command, false);
+    }
+    assert_eq!(
+        ac_reason(&ac_stop(&root, "s1", false)),
+        None,
+        "recorded by s2"
+    );
+    let runs = ac_runs(&root);
+    assert_eq!(runs.last().unwrap()["head"], json!(AC_HEAD_2));
+}
+
+/// REQ-4, REQ-6: the turn ends, although the session wrote a file, when the branch is not a SPEC
+/// work branch, the SPEC or the commit cannot be read, or no criterion has a runnable verify
+/// command.
+#[test]
+fn ac_verify_rule_stop_lets_the_turn_end() {
+    for (branch, head, spec) in [
+        ("main", Some(AC_HEAD), Some(AC_BODY)),
+        (AC_BRANCH, Some(AC_HEAD), None),
+        (AC_BRANCH, None, Some(AC_BODY)),
+        (AC_BRANCH, Some("not-a-commit"), Some(AC_BODY)),
+        (AC_BRANCH, Some(AC_HEAD), Some(AC_BODY_LEFT_OUT)),
+        (AC_BRANCH, Some(AC_HEAD), Some("no acceptance here\n")),
+        ("spec/20261119-other", Some(AC_HEAD), Some(AC_BODY)),
+    ] {
+        let (_tmp, root) = ac_repo(branch, head, spec);
+        ac_mode(&root, "enforce");
+        ac_write(&root, "s1");
+        ac_pause();
+        let answer = ac_stop(&root, "s1", false);
+        assert_eq!(
+            (answer.0, ac_reason(&answer)),
+            (0, None),
+            "{branch} {head:?} {spec:?}"
+        );
+        assert!(
+            merge_log(&root)
+                .iter()
+                .all(|l| l["kind"] != json!("stop_block") && l["kind"] != json!("would_block")),
+            "{branch} {head:?} {spec:?}"
+        );
+    }
+}
+
+/// REQ-5: `off` writes nothing, the default and `observe` write one `would_block` line and let
+/// the turn end, `enforce` keeps the session working twice in a row and lets the third turn
+/// end; a turn the host already continues ends at once.
+#[test]
+fn ac_verify_rule_modes_off_observe_enforce() {
+    for config in [
+        None,
+        Some(""),
+        Some("[hooks.modes]\n"),
+        Some("[hooks.modes]\nac_verify_recorded = \"observe\"\n"),
+        Some("[hooks.modes]\nac_verify_recorded = \"yes\"\n"),
+        Some("[hooks.modes]\nmerge_confirm = \"enforce\"\n"),
+        Some("this is = not [valid toml"),
+    ] {
+        let (_tmp, root) = ac_repo(AC_BRANCH, Some(AC_HEAD), Some(AC_BODY));
+        if let Some(text) = config {
+            merge_config(&root, text);
+        }
+        ac_write(&root, "s1");
+        ac_pause();
+        let answer = ac_stop(&root, "s1", false);
+        assert_eq!((answer.0, ac_reason(&answer)), (0, None), "{config:?}");
+        assert_eq!(answer.1, "", "{config:?}");
+        let log = merge_log(&root);
+        let would: Vec<&Value> = log
+            .iter()
+            .filter(|l| l["kind"] == json!("would_block"))
+            .collect();
+        assert_eq!(would.len(), 1, "{config:?}: {log:?}");
+        assert_eq!(would[0]["rule"], json!("ac_verify_recorded"), "{config:?}");
+        assert!(
+            would[0]["reason"].as_str().unwrap().contains("AC-1"),
+            "{config:?}"
+        );
+        assert!(
+            log.iter().all(|l| l["kind"] != json!("stop_block")),
+            "{config:?}: {log:?}"
+        );
+    }
+
+    let (_tmp, root) = ac_repo(AC_BRANCH, Some(AC_HEAD), Some(AC_BODY));
+    ac_mode(&root, "off");
+    ac_write(&root, "s1");
+    ac_pause();
+    assert_eq!(ac_stop(&root, "s1", false), (0, String::new()));
+    assert!(
+        merge_log(&root)
+            .iter()
+            .all(|l| l["kind"] == json!("observe")),
+        "off writes nothing but the observe line"
+    );
+
+    let (_tmp, root) = ac_repo(AC_BRANCH, Some(AC_HEAD), Some(AC_BODY));
+    ac_mode(&root, "enforce");
+    ac_write(&root, "s1");
+    ac_pause();
+    assert!(
+        ac_reason(&ac_stop(&root, "s1", true)).is_none(),
+        "already continued"
+    );
+    assert!(ac_reason(&ac_stop(&root, "s1", false)).is_some(), "first");
+    assert!(ac_reason(&ac_stop(&root, "s1", false)).is_some(), "second");
+    assert!(
+        ac_reason(&ac_stop(&root, "s1", false)).is_none(),
+        "third ends"
+    );
+    let blocks = merge_log(&root)
+        .iter()
+        .filter(|l| l["kind"] == json!("stop_block") && l["rule"] == json!("ac_verify_recorded"))
+        .count();
+    assert_eq!(blocks, 2);
+}
+
+/// REQ-7: Claude's and Codex's capabilities name the rule, its modes and its named limits;
+/// OMP still says it is not wired, without the old "STOP_RULES is empty" reason.
+#[test]
+fn ac_verify_rule_capabilities_name_the_rule_and_its_limits() {
+    for host in ["claude", "codex"] {
+        let caps = moai_cli::hook_engine::capabilities(host);
+        let tv = &caps["turn-validation"];
+        assert_eq!(tv["rules"], json!(1), "{host}: {tv}");
+        assert_eq!(
+            tv["rule_ids"],
+            json!(["ac_verify_recorded"]),
+            "{host}: {tv}"
+        );
+        let modes = tv["modes"].to_string();
+        for word in [
+            "off",
+            "observe",
+            "enforce",
+            "[hooks.modes]",
+            "ac_verify_recorded",
+        ] {
+            assert!(modes.contains(word), "{host} {word}: {modes}");
+        }
+        let limits = tv["limits"].to_string();
+        for limit in [
+            "do not call tool-observe or turn-validation",
+            "a commit changes HEAD",
+            "shell writes (sed -i) are not writes",
+            "must equal the verify command",
+            "plain file",
+        ] {
+            assert!(limits.contains(limit), "{host} {limit}: {limits}");
+        }
+    }
+    let omp = moai_cli::hook_engine::capabilities("omp");
+    let reason = omp["turn-validation"]["reason"].as_str().unwrap();
+    assert!(reason.contains("not wired"), "{reason}");
+    assert!(!reason.contains("STOP_RULES is empty"), "{reason}");
+}
