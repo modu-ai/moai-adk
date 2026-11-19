@@ -177,6 +177,54 @@ class FailureTest(unittest.TestCase):
         self.assertIn("moai 2.0.0 (go)", out)
         self.assertRegex(last_line(result), r"failed=version\b")
 
+    def test_an_install_inspection_that_writes_into_the_home_is_a_failure(self):
+        decoy = Decoy(self)
+        binary = fake_binary(
+            self,
+            'case "$1" in\n'
+            '  --version) echo "moai-cli 0.0.0 (rust)";;\n'
+            '  install-inspect) echo leak > "$HOME/leak.txt"\n'
+            '    echo "{\\"ok\\":true,\\"result\\":{\\"home_state_root\\":\\"$HOME/.moai-cli\\"}}";;\n'
+            "esac\n",
+        )
+        result = smoke(["install", "--bin", str(binary)], decoy.path)
+        out = result.stdout
+        self.assertEqual(result.returncode, 1, out + result.stderr)
+        self.assertRegex(out, r"(?m)^\[ok\] +install-inspect ")
+        self.assertRegex(out, r"(?m)^\[FAIL\] +home-untouched .*holds 1 files")
+        self.assertRegex(last_line(result), r"failed=home-untouched\b")
+
+    def launcher_fake(self, host_line: str) -> Path:
+        """A binary whose `cc -a --dry-run` answers and whose `cc -a` starts the fake host
+        the way `host_line` says (the harness puts that host first on PATH)."""
+        return fake_binary(
+            self,
+            'case "$1" in\n'
+            '  cc) case "$*" in\n'
+            '    *--dry-run*) echo \'{"host":"claude","argv":["claude"],"executed":false}\';;\n'
+            f"    *) {host_line};;\n"
+            "  esac;;\n"
+            "esac\n",
+        )
+
+    def test_a_host_that_gets_no_terminal_fails_the_launcher_step(self):
+        decoy = Decoy(self)
+        binary = self.launcher_fake("claude --name agent-1 < /dev/null")
+        result = smoke(["launcher", "--bin", str(binary)], decoy.path)
+        out = result.stdout
+        self.assertEqual(result.returncode, 1, out + result.stderr)
+        self.assertRegex(out, r"(?m)^\[ok\] +dry-run ")
+        self.assertRegex(out, r"(?m)^\[FAIL\] +host-in-pty .*did not get a terminal")
+        self.assertRegex(last_line(result), r"failed=host-in-pty\b")
+
+    def test_a_host_that_sees_another_home_fails_the_launcher_step(self):
+        decoy = Decoy(self)
+        binary = self.launcher_fake("HOME=/nonexistent-elsewhere claude --name agent-1")
+        result = smoke(["launcher", "--bin", str(binary)], decoy.path)
+        out = result.stdout
+        self.assertEqual(result.returncode, 1, out + result.stderr)
+        self.assertRegex(out, r"(?m)^\[FAIL\] +host-in-pty .*did not see the temporary HOME")
+
     def test_an_update_preview_that_writes_into_the_home_is_a_failure(self):
         decoy = Decoy(self)
         binary = fake_binary(
