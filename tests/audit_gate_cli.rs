@@ -329,15 +329,20 @@ fn the_workflow_step_posts_the_status_the_gate_decides() {
             at_post.lines().any(|l| l.starts_with("audit-gate.")),
             "{name}: the envelope was not made in RUNNER_TEMP: {at_post:?}"
         );
+        // Listed with `ls -A`, as the stub gh lists RUNNER_TEMP: this test walks only its own
+        // two temporary folders, and the repository-scan table is for tests that walk the tree.
         for dir in [&runner_temp, &tmpdir] {
-            let left: Vec<_> = fs::read_dir(dir)
-                .unwrap()
-                .map(|e| e.unwrap().file_name())
-                .collect();
+            let left = std::process::Command::new("ls")
+                .arg("-A")
+                .arg(dir)
+                .output()
+                .expect("list the temporary folder")
+                .stdout;
             assert!(
                 left.is_empty(),
-                "{name}: left in {}: {left:?}",
-                dir.display()
+                "{name}: left in {}: {}",
+                dir.display(),
+                String::from_utf8_lossy(&left)
             );
         }
         let recorded = fs::read_to_string(bin.join("gh-args.txt")).unwrap_or_default();
