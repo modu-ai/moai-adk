@@ -2,7 +2,7 @@
 id: SPEC-20261119-card-scope-widen-followup
 title: "card scope widening: line separators, case variants, a generation to widen at, a true spec status"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-19
 ---
 
@@ -17,7 +17,7 @@ Card C-129 (follow-up of the C-94 audit, PASS note 2859, head 15b333fe73; the ca
 - N1: `card scope` on a held card takes no `--generation`. A lane that read the card at generation 2 and a leader that widens it after a reclaim (generation 3) act on different screens without knowing.
 - N6: SPEC-20261119-card-scope-widen says `status: draft` while its Result is filled. Measured here: its Scope already lists `tests/card_dispatch_cli.rs` (audit repair b205de81ea), and the status cannot be raised by a lane: an `approved` SPEC needs `approval: {by: user, at, basis, digest}` and an interview record, and `spec check` refuses a bare `status: approved` (`approval_missing`, `interview_missing`, measured on a trial edit). The status therefore stays `draft` and the approval is the user's, asked for through the leader (D-5).
 
-This SPEC is built in two slices. Slice A (N2, N3, N6) touches `src/card/dispatch.rs`, `src/ledger/reservation.rs`, tests and documents only. Slice B (N1) adds a `--generation` option, which is a change of `src/ops/card.rs` (the clap arguments and the help); that file is reserved by card C-125, so slice B waits until it is free or the leader allows the exact lines. Its requirement and acceptance line (REQ: `card scope --generation <n>` widens only a reservation at generation `n`, otherwise `conflict` naming the generation it has; AC with its test `a_stale_generation_is_refused`) are added in revision 2 together with the code, because a recorded verify command that names a test that does not exist yet fails `ac_command_lint`.
+This SPEC is built in two slices. Slice A (N2, N3, N6) touched `src/card/dispatch.rs`, `src/ledger/reservation.rs`, tests and documents only. Slice B (N1) adds an optional `--generation` option, a change of `src/ops/card.rs` (the clap argument, the help and the call) and of `src/card/dispatch.rs` (the check inside the write transaction). It was built when `src/ops/card.rs` was free again (card C-99 gave it back, C-129 note 3432). Revision 2 adds its requirements REQ-4 and REQ-5, the acceptance lines AC-5 and AC-6, and the tests of audit notes N-1 and N-2 of slice A (a non-ASCII case variant; the reason at 500 and 501 characters with blanks around it).
 
 ## Non-goals
 
@@ -25,12 +25,17 @@ This SPEC is built in two slices. Slice A (N2, N3, N6) touches `src/card/dispatc
 - Changing which characters `card add` accepts in titles or criteria (`src/card/input.rs` is reserved by card C-122): only scope entries and the `--reason` are judged here, in `dispatch.rs`, before `input::validate_scope` is called.
 - Any change of what `find_overlap` judges between two cards (that is SPEC-20261119-card-generated-scope and `src/scope.rs`).
 - Narrowing a held card or deleting a pattern: unchanged, refused.
+- Making `--generation` required: a caller that has no number to give (a plain widening by the leader) keeps working; the option is an expectation the caller may state (D-6).
+- A check inside `reservation::widen_in_tx` (`src/ledger/reservation.rs` is reserved by card C-127): the generation is compared in `dispatch.rs`, in the same transaction, before `widen_in_tx` is called (D-7).
 
 ## Requirements
 
 - REQ-1: IF a `--scope` entry or the `--reason` of `card scope`, `card add`, `card take` or `card reclaim` holds a line separator (U+2028 or U+2029), THEN the command shall refuse it as `invalid_input`, before any trimming, and write nothing.
 - REQ-2: When `--reason` is accepted, the command shall keep it without its leading and trailing blanks, in the answer and in the event. · failure: none
 - REQ-3: IF an added pattern of a widening differs from a pattern the reservation has, or from another added pattern, only by letter case, THEN `card scope` shall refuse it as `invalid_input`, name both spellings, and write nothing.
+
+- REQ-4: When `--generation <n>` is given to `card scope` for a held card, the command shall widen the reservation only if the card's live reservation is at generation `n`.
+- REQ-5 (REQ-4): IF `--generation <n>` is given and the card has no live reservation at generation `n`, THEN `card scope` shall refuse it as `conflict`, name the generation the card has (or that it is not held), and write nothing.
 
 ## Acceptance
 
@@ -40,12 +45,17 @@ This SPEC is built in two slices. Slice A (N2, N3, N6) touches `src/card/dispatc
   verify: `cargo test --locked --offline --test card_scope_widen_followup_cli a_reason_is_kept_without_its_surrounding_blanks`
 - AC-3 (REQ-3): `Apps/Web/` next to a held `apps/web/`, two case variants in one call, and a variant of a pattern added earlier are `invalid_input` naming both spellings with nothing written; a different path with the same letters in another folder is still added.
   verify: `cargo test --locked --offline --test card_scope_widen_followup_cli a_case_variant_is_not_a_new_pattern`
-- AC-4 (REQ-1…REQ-3): neighbours.
+- AC-4 (REQ-1…REQ-5): neighbours.
   verify: `cargo test --locked --offline --test card_scope_widen_cli`; `cargo test --locked --offline --test card_dispatch_cli`; `cargo test --locked --offline --test card_reclaim_cli`; `cargo test --locked --offline --test ledger_reservation`
+
+- AC-5 (REQ-4, REQ-5): a card released and taken again is at generation 2; `card scope --generation 1` and `--generation 3` are `conflict` naming `generation 2` and the given number with every row unchanged; `--generation 2` widens (the answer's `generation` is 2); no `--generation` widens as before; a card nobody holds with `--generation 1` is `conflict` (`not held`) with nothing written; a `--generation` that is not a positive number is refused.
+  verify: `cargo test --locked --offline --test card_scope_widen_followup_cli a_stale_generation_is_refused`; `cargo test --locked --offline --test card_scope_widen_followup_cli a_generation_that_is_not_a_positive_number_is_a_usage_error`
+- AC-6 (REQ-2, REQ-3): a non-ASCII case variant (`café/` and `CAFÉ/`) is `invalid_input` naming both; a reason of 500 characters with blanks around it is kept as 500 and one of 501 characters with blanks around it is `invalid_input` with nothing written.
+  verify: `cargo test --locked --offline --test card_scope_widen_followup_cli a_non_ascii_case_variant_is_not_a_new_pattern`; `cargo test --locked --offline --test card_scope_widen_followup_cli a_reason_of_500_characters_with_blanks_is_kept_and_501_is_refused`
 
 ## Scope
 
-- write: `src/card/dispatch.rs`, `src/ledger/reservation.rs`, `tests/card_scope_widen_followup_cli.rs`, `docs/design-review/appendix/operations/card.md` (the `card scope` row only), `.moai/specs/SPEC-20261119-card-scope-widen-followup/**`; slice B adds `src/ops/card.rs` (the `--generation` argument and the help only) and `src/card/command.rs` if the parser needs it
+- write: `src/card/dispatch.rs`, `src/ledger/reservation.rs`, `tests/card_scope_widen_followup_cli.rs`, `docs/design-review/appendix/operations/card.md` (the `card scope` row only), `.moai/specs/SPEC-20261119-card-scope-widen-followup/**`; slice B adds `src/ops/card.rs` (the `--generation` argument, its help and the call only) and `tests/card_scope_widen_cli.rs` only if a neighbour needs the new argument; `src/card/command.rs` is not touched (card C-99 holds it)
 - read-only: `src/card/input.rs`, `src/scope.rs`, `tests/card_scope_widen_cli.rs`, `tests/common/**`
 - forbidden: the real HOME and ledger, the network, a change of table definitions or triggers, `skills/moai/**`
 
@@ -55,7 +65,7 @@ This SPEC is built in two slices. Slice A (N2, N3, N6) touches `src/card/dispatc
 2. `dispatch.rs`: a line-separator check on the raw entries and the raw reason before trimming; `checked_reason` returns the trimmed text. `reservation.rs`: `widen_in_tx` folds added patterns and refuses a variant.
 3. The `card scope` row of the operations document names the three rules.
 4. Mutants for each rule; the SPEC Result.
-5. Slice B, when `src/ops/card.rs` is free: revision 2 with the requirement and AC for `--generation`, its test, the option, the help and the document.
+5. Slice B (revision 2): tests first (`a_stale_generation_is_refused` and the notes N-1, N-2), then the option and help in `src/ops/card.rs`, the comparison in `dispatch.rs`, the `card scope` row of the operations document.
 
 ## Risks
 
@@ -71,6 +81,8 @@ This SPEC is built in two slices. Slice A (N2, N3, N6) touches `src/card/dispatc
 | D-2 | Line separators are checked on the raw text, before `trim` | `trim` strips U+2028 and U+2029 at the ends, so a check after it sees only the inner ones | Check after trimming |
 | D-3 | The check lives in `dispatch.rs`, not in `input.rs` | `src/card/input.rs` is reserved by C-122; `checked_scope` runs for `add`, `scope` and `take` | Move it into `input::scope_entry` |
 | D-4 | Slice B (`--generation`) waits for `src/ops/card.rs` | C-125 holds the file; narrow slices land sooner | Take both files now with the leader's allowance |
+| D-6 | `--generation` is optional | the audit note N1 asked for an expected value that refuses a stale screen; requiring it would break every plain widening and the tests of C-94 | Make it required for a held card |
+| D-7 | The generation is compared in `dispatch.rs` | `src/ledger/reservation.rs` is reserved by C-127; the comparison reads the live reservation in the same write transaction, so a retake between read and write cannot slip through | Move it into `widen_in_tx` |
 | D-5 | A lane does not set `status: approved` | the approval is the user's: `spec check` wants `approval.by`, a digest and an interview | The user approves SPEC-20261119-card-scope-widen (and this one) and the leader writes the block |
 
 ## Result
