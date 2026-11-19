@@ -71,6 +71,11 @@
 #                           heavy cargo steps (test, doctest, clippy) each run in one of the
 #                           machine's heavy slots (leader decision 2026-11-14 12:37Z; #2930
 #                           replaces these with a configured value). Without it they run directly.
+#   MOAI_PYTHON_SLOT_MAX (default 2), MOAI_PYTHON_SLOT_DIR (default
+#                           ${XDG_CACHE_HOME:-$HOME/.cache}/moai-cli/python-slots): the unittest
+#                           step runs in a python slot, a slot folder apart from the cargo slots,
+#                           so a whole discover never holds a cargo slot. Without `moai
+#                           heavy-slot-acquire` it runs directly, as before.
 #   CARGO_INCREMENTAL is always 0 here (card C-82: incremental output was 2.9 of a 4.2 GiB test
 #                           build); CARGO_TARGET_DIR is the caller's, normally the worktree's
 #                           build folder from `tools/build_folder.py env`.
@@ -118,6 +123,17 @@ fi
 slot_max="${MOAI_HEAVY_SLOT_MAX:-3}"
 slot_min_free="${MOAI_HEAVY_SLOT_MIN_FREE_GB:-50}"
 slot_name="${MOAI_HEAVY_SLOT_NAME:-local-check}"
+# The whole Python discover (38 minutes under load) waits in a slot folder of its own, so it
+# never holds one of the cargo slots (SPEC-20261119-python-slot-pre-ready).
+py_slot_max="${MOAI_PYTHON_SLOT_MAX:-2}"
+py_slot_dir="${MOAI_PYTHON_SLOT_DIR:-}"
+if [ -z "$py_slot_dir" ]; then
+  if [ -n "${XDG_CACHE_HOME:-}" ]; then
+    py_slot_dir="$XDG_CACHE_HOME/moai-cli/python-slots"
+  elif [ -n "${HOME:-}" ]; then
+    py_slot_dir="$HOME/.cache/moai-cli/python-slots"
+  fi
+fi
 
 use_slot=0
 if command -v moai >/dev/null 2>&1 && moai heavy-slot-acquire --help >/dev/null 2>&1; then
@@ -335,7 +351,7 @@ if [ "$mode" = candidate ] && [ "$stopped" = 0 ]; then
   fi
 fi
 
-# step heavy|light <label> <command>...
+# step heavy|python|light <label> <command>...
 step() {
   local weight="$1" label="$2"
   shift 2
@@ -346,6 +362,13 @@ step() {
   if [ "$weight" = heavy ] && [ "$use_slot" = 1 ]; then
     moai heavy-slot-acquire --max "$slot_max" --min-free-gb "$slot_min_free" \
       --name "$slot_name" -- "$@" || code=$?
+  elif [ "$weight" = python ] && [ "$use_slot" = 1 ] && [ -z "$py_slot_dir" ]; then
+    # No folder can be named: never fall back to the cargo slot folder; say so and run directly.
+    echo "tools/local_check.sh: no python slot folder (MOAI_PYTHON_SLOT_DIR, XDG_CACHE_HOME and HOME are all empty); step $label runs without a slot" >&2
+    "$@" || code=$?
+  elif [ "$weight" = python ] && [ "$use_slot" = 1 ]; then
+    moai heavy-slot-acquire --dir "$py_slot_dir" --max "$py_slot_max" \
+      --min-free-gb "$slot_min_free" --name "${slot_name}-py" -- "$@" || code=$?
   else
     "$@" || code=$?
   fi
@@ -374,7 +397,7 @@ step light fmt cargo fmt --check
 # OUT_DIR, so `cargo fmt` never reaches them; rustfmt checks them here with the crate's
 # edition (Cargo.toml). With no file the pattern reaches rustfmt as is, and that fails.
 step light fmt-ops bash -c 'rustfmt --check --edition 2021 src/ops/*.rs'
-step light unittest bash -c "python3 -m unittest discover -v -s tests -p '*_test.py' 2>&1 | tee ci-unittest.log; exit \"\${PIPESTATUS[0]}\""
+step python unittest bash -c "python3 -m unittest discover -v -s tests -p '*_test.py' 2>&1 | tee ci-unittest.log; exit \"\${PIPESTATUS[0]}\""
 step light diff-check git diff --check "${diff_range}"
 
 trap - EXIT

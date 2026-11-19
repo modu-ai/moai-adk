@@ -18,7 +18,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::{
     fs,
+    io::Read,
     path::{Path, PathBuf},
+    process::{Command, Stdio},
+    sync::mpsc,
+    time::{Duration, Instant},
 };
 
 type Result<T> = std::result::Result<T, String>;
@@ -597,6 +601,179 @@ pub fn plan(root: &Path, mut profile: Profile) -> Result<Plan> {
     };
     p.plan_digest = plan_digest(&p);
     Ok(p)
+}
+
+/// C-105 slice 2 (SPEC-20261119-plan-remote-branch): whether the profile's integration
+/// branch exists on the project's remote, and how far it sits behind the remote's default
+/// branch. Called by the `project-plan` entry only — `project-update-plan` shares `plan()`
+/// but must not run `git ls-remote` (a network call) in its preview (audit B4). A name that
+/// must never reach git as an argument (leading `-`, whitespace, `..`, over 100 bytes,
+/// `HEAD`) is refused without running any git command (the profile validation refuses it
+/// first — this is the second layer for internal callers); a repository or a remote that is
+/// missing answers `None` (the plan output stays as it was); a git failure becomes an
+/// `unavailable` warning and the plan still succeeds. The remote check never prompts on
+/// the terminal (`GIT_TERMINAL_PROMPT=0`) and never waits forever: the wait is bounded
+/// (audit B6) and the child's process group is killed when it lapses; tests shrink the
+/// bound with `MOAI_GIT_TIMEOUT_SECS`, the same injection shape as `MOAI_FORGE_GH_BIN`.
+/// Only fixed words and verified 40-hex
+/// SHAs travel as git arguments — the branch name never does.
+pub fn plan_work_flow_remote(root: &Path, work_flow: Option<&WorkFlowSettings>) -> Option<Value> {
+    let branch = work_flow?.integration_branch.as_deref()?;
+    if !branch_name(branch) {
+        return Some(json!({
+            "on_remote": false,
+            "warnings": [format!(
+                "refused: the integration branch is not a safe branch name; no git command ran for it"
+            )],
+        }));
+    }
+    let git = |args: &[&str]| -> std::result::Result<String, String> {
+        let timeout = std::env::var("MOAI_GIT_TIMEOUT_SECS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(10);
+        let mut cmd = Command::new("git");
+        crate::identity::scrub_git_env(&mut cmd);
+        // Its own process group, so everything a remote check starts can be ended with it.
+        #[cfg(unix)]
+        std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
+        let mut child = cmd
+            .env("GIT_TERMINAL_PROMPT", "0")
+            .arg("-C")
+            .arg(root)
+            .args(args)
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| format!("cannot run git: {e}"))?;
+        // Readers hand their bytes over a channel, so a full pipe cannot deadlock the wait.
+        let drain = |pipe: Option<Box<dyn Read + Send>>| {
+            let (tx, rx) = mpsc::channel();
+            std::thread::spawn(move || {
+                let mut buf = Vec::new();
+                if let Some(mut p) = pipe {
+                    let _ = p.read_to_end(&mut buf);
+                }
+                let _ = tx.send(buf);
+            });
+            rx
+        };
+        let stdout = drain(
+            child
+                .stdout
+                .take()
+                .map(|p| Box::new(p) as Box<dyn Read + Send>),
+        );
+        let stderr = drain(
+            child
+                .stderr
+                .take()
+                .map(|p| Box::new(p) as Box<dyn Read + Send>),
+        );
+        let deadline = Instant::now() + Duration::from_secs(timeout);
+        let status = loop {
+            match child.try_wait() {
+                Ok(Some(s)) => break Some(s),
+                Ok(None) if Instant::now() >= deadline => {
+                    // The group goes with it, so an ssh or helper the remote check started
+                    // cannot outlive the timeout holding the pipes.
+                    #[cfg(unix)]
+                    {
+                        let _ = Command::new("kill")
+                            .args(["-KILL", "--", &format!("-{}", child.id())])
+                            .stdin(Stdio::null())
+                            .stdout(Stdio::null())
+                            .stderr(Stdio::null())
+                            .status();
+                    }
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return Err(format!("timed out after {timeout}s"));
+                }
+                Ok(None) => std::thread::sleep(Duration::from_millis(10)),
+                Err(_) => return Err("git wait failed".to_string()),
+            }
+        };
+        let grace = Duration::from_millis(500);
+        let out = stdout.recv_timeout(grace).unwrap_or_default();
+        let err_out = stderr.recv_timeout(grace).unwrap_or_default();
+        let Some(s) = status else {
+            return Err("git wait failed".to_string());
+        };
+        if s.success() {
+            Ok(String::from_utf8_lossy(&out).into_owned())
+        } else {
+            Err(String::from_utf8_lossy(&err_out).trim().to_string())
+        }
+    };
+    // REQ-5: nothing to check without a repository and a remote.
+    let has_remote = git(&["remote"])
+        .map(|s| !s.trim().is_empty())
+        .unwrap_or(false);
+    if !has_remote {
+        return None;
+    }
+    let ls = match git(&["ls-remote", "--symref", "origin"]) {
+        Ok(s) => s,
+        Err(e) => {
+            return Some(json!({
+                "on_remote": false,
+                "warnings": [format!("unavailable: git ls-remote failed: {e}")],
+            }))
+        }
+    };
+    let is_sha = |s: &str| s.len() == 40 && s.bytes().all(|b| b.is_ascii_hexdigit());
+    let mut on_remote = false;
+    let mut default_target: Option<String> = None;
+    let mut default_sha: Option<&str> = None;
+    let mut branch_sha: Option<&str> = None;
+    for line in ls.lines() {
+        // `--symref` prints the symref first, as `ref: <target>\tHEAD`; the ref lines follow
+        // as `<sha>\t<ref>`.
+        let Some((value, r)) = line.split_once('\t') else {
+            continue;
+        };
+        if r == "HEAD" {
+            // The symref line (`ref: <target>\tHEAD`) names the default branch; the plain
+            // `HEAD` sha line after it carries no target and must not reset ours.
+            if let Some(target) = value.strip_prefix("ref: ") {
+                default_target = Some(target.to_string());
+            }
+        } else if r == format!("refs/heads/{branch}") && is_sha(value) {
+            on_remote = true;
+            branch_sha = Some(value);
+        } else if default_target.as_deref() == Some(r) && is_sha(value) {
+            default_sha = Some(value);
+        }
+    }
+    let mut warnings: Vec<String> = Vec::new();
+    if on_remote {
+        // Audit B1: a measurement that cannot run is a warning, never silence — a stale
+        // local clone (the objects missing) used to read as a healthy branch.
+        if let (Some(b), Some(d)) = (branch_sha, default_sha) {
+            match git(&["rev-list", "--count", &format!("{b}..{d}")]) {
+                Ok(count) => match count.trim().parse::<u64>() {
+                    Ok(n) if n > 0 => warnings.push(format!(
+                        "behind: {branch} is {n} commits behind the remote default branch"
+                    )),
+                    Ok(_) => {}
+                    Err(_) => warnings.push(
+                        "unavailable: could not read the behind count from git rev-list output"
+                            .to_string(),
+                    ),
+                },
+                Err(e) => warnings.push(format!(
+                    "unavailable: could not measure how far {branch} is behind: {e}"
+                )),
+            }
+        }
+    } else {
+        warnings.push(format!(
+            "missing: {branch} does not exist on the remote the branches go to"
+        ));
+    }
+    Some(json!({"on_remote": on_remote, "warnings": warnings}))
 }
 
 /// Rebuilds the profile object for an `update`: applied keys take the desired value,

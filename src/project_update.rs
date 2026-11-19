@@ -599,6 +599,7 @@ fn generation_request(
         native_roles: Vec::new(),
         skill_projections: Vec::new(),
         project_skills: Vec::new(),
+        picks: Vec::new(),
     })
 }
 
@@ -652,7 +653,8 @@ fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> 
         Ok(r) => r,
         Err(reason) => return Ok(Step::waiting("generation", "needs_decision", &reason)),
     };
-    let plan = generation::generation_plan(root, request)?;
+    let plan = generation::generation_plan(root, request.clone())?;
+    let choices = generation_choices(root, shown, &request, &plan)?;
     let files: Vec<Value> = plan
         .files
         .iter()
@@ -673,14 +675,101 @@ fn generation_step(root: &Path, shown: &str, profile: &Profile) -> Result<Step> 
             ))
         })
         .transpose()?;
+    let mut preview =
+        json!({"files": files, "warnings": plan.warnings, "host_notes": plan.host_notes});
+    // The keys are absent when there is nothing to choose, so a preview without a conflict or
+    // a shadowing CLAUDE.md reads as it did before (SPEC-20261119-agents-choices-step REQ-9).
+    if !choices.is_empty() {
+        preview["choices"] = Value::Array(choices);
+    }
+    if let Some(shadow) = &plan.claude_shadow {
+        preview["claude_shadow"] = encode(shadow)?;
+    }
     Ok(Step {
         name: "generation",
         state,
         reason: reason.into(),
-        preview: json!({"files": files, "warnings": plan.warnings, "host_notes": plan.host_notes}),
+        preview,
         plan_digest: Some(plan.plan_digest),
         apply,
     })
+}
+
+/// The choices a session can run after the user's pick (SPEC-20261119-agents-choices-step
+/// REQ-6..8, card C-57). Each one is the whole request planned again with that choice in
+/// `picks`, so its digest and its `generation-apply` command belong to that choice alone.
+///
+/// - `AGENTS.md` is a conflict for a missing managed block: `append-managed` (recommended)
+///   and `skip-conflicts`, and with a shadowing CLAUDE.md also `append-managed+claude-import`
+///   (an import alone would be refused while the conflict stands).
+/// - No file conflicts and a CLAUDE.md shadows AGENTS.md: `claude-import`.
+///
+/// A choice whose own plan still has a conflict row is left out: it could not be applied.
+/// Nothing here writes.
+fn generation_choices(
+    root: &Path,
+    shown: &str,
+    request: &GenerationRequest,
+    plan: &generation::GenerationPlan,
+) -> Result<Vec<Value>> {
+    let missing_block = plan.files.iter().any(|f| {
+        f.path == "AGENTS.md"
+            && f.action == "conflict"
+            && f.detail
+                .as_deref()
+                .is_some_and(|d| d.contains(crate::agents::BLOCK_MISSING))
+    });
+    let any_conflict = plan.files.iter().any(|f| f.action == "conflict");
+    let shadow = plan.claude_shadow.is_some();
+    let mut sets: Vec<(&str, Vec<&str>, &str)> = Vec::new();
+    if missing_block {
+        sets.push((
+            "append-managed",
+            vec!["append-managed"],
+            "add the managed section at the end of AGENTS.md; every other byte stays",
+        ));
+        sets.push((
+            "skip-conflicts",
+            vec!["skip-conflicts"],
+            "keep AGENTS.md as it is; the other files are still written",
+        ));
+        if shadow {
+            sets.push((
+                "append-managed+claude-import",
+                vec!["append-managed", "claude-import"],
+                "append the managed section and add the one import line of AGENTS.md to CLAUDE.md",
+            ));
+        }
+    } else if shadow && !any_conflict {
+        sets.push((
+            "claude-import",
+            vec!["claude-import"],
+            "add the one import line of AGENTS.md to CLAUDE.md",
+        ));
+    }
+    let mut out = Vec::new();
+    for (id, picks, effect) in sets {
+        let mut picked = request.clone();
+        picked.picks = picks.iter().map(|p| p.to_string()).collect();
+        let Ok(choice_plan) = generation::generation_plan(root, picked) else {
+            continue;
+        };
+        if choice_plan.files.iter().any(|f| f.action == "conflict") {
+            continue;
+        }
+        out.push(json!({
+            "id": id,
+            "recommended": id == "append-managed",
+            "picks": picks,
+            "effect": effect,
+            "plan_digest": choice_plan.plan_digest,
+            "apply": {
+                "argv": argv("generation-apply", shown, &choice_plan.plan_digest),
+                "stdin": encode(&choice_plan)?,
+            },
+        }));
+    }
+    Ok(out)
 }
 
 /// Q2 A (#2936): the keys MoAI already owns, without `hooks` (only `hooks-apply` writes

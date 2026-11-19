@@ -1179,7 +1179,19 @@ fn scope_is_set_only_on_a_draft_or_ready_card_that_nobody_holds() {
         (&held, "ready", Some(S_B)),
     ] {
         let (kind, message) = refusal(&set_scope(&home, &project, card, &["src/new.rs"]));
-        assert_eq!(kind, "conflict", "{card}: {message}");
+        // A card with an active reservation is widened, not refused for being held (card C-94,
+        // `tests/card_scope_widen_cli.rs`): without `--reason` it is a missing input, and it
+        // still names the state and the holder. Every other card keeps its conflict.
+        let widenable = state == "active" || state == "review";
+        let want = if widenable {
+            "invalid_input"
+        } else {
+            "conflict"
+        };
+        assert_eq!(kind, want, "{card}: {message}");
+        if widenable {
+            assert!(message.contains("needs --reason"), "{card}: {message}");
+        }
         assert!(
             message.contains(&format!("{card} is `{state}`")),
             "{card}: {message}"

@@ -1,5 +1,44 @@
-# `models-revert`
+<!-- moai:operations models.revert -->
 
-operation `models.revert` · 코드 `src/ops/models_revert.rs`, `src/update_models.rs` · SPEC-20261119-models-revert-command (card C-47)
+# models-revert
 
-`models-revert HOME --receipt ID --permission-reference REF` 는 `moai update` 의 모델 저장(`models.receipt`)이 바꾼 `config/launcher.yaml` 을 저장 전 모양 그대로 되돌린다(저장 전에 파일이 없었으면 파일을 지운다). 파일이 아직 그 저장이 쓴 해시와 같을 때만 되돌리고, 그 뒤 바뀐 파일은 `state: skipped`, `reason: changed_since_apply` 로 건드리지 않는다(표지 파일도 안 쓴다). 사유 없이 거절하는 경우: 빈·자리표시 참조, `models-…` 모양이 아닌 id, 없는 영수증, 다른 operation 의 영수증, 다른 설정 경로, 앞 필드가 빠졌거나 짝이 안 맞는 영수증, 이미 되돌린 영수증. 설정 파일 내용은 어디에도 출력되지 않는다.
+`moai models-revert <HOME> --receipt models-… --permission-reference <ref>` puts the launcher
+settings file back as the receipt of one `moai update` model save kept it: the text before the
+save, byte for byte, or no file when there was none. This happens only while the file is still
+the one that save wrote (its hash equals the receipt's `after_sha256`); a file changed since is
+left alone and named.
+
+## Order and the resume rule
+
+The revert marker (`<receipt id>.reverted` in the receipts folder) is written **before** the
+settings file is touched (SPEC-20261119-models-revert-reporting REQ-1). A failed marker write
+refuses before anything changed — the message says `nothing was changed`, the kind is `io`
+(retryable), and the same command re-runs whole. A run that dies after the marker but before the
+revert leaves the marker with the file still at the saved state: the next attempt sees marker +
+matching hash and **resumes** the revert (REQ-2). A marker whose file no longer matches refuses
+`already reverted`; a plain changed-since file (no marker) answers `skipped` with
+`changed_since_apply` and writes no marker.
+
+## Refusals, kinds and exit codes
+
+Every refusal exits 1 with the error envelope; `retryable` is true only for the `io` marker
+failure. The kind comes from the message table (`src/contract.rs`), not a per-op mapping.
+
+| refusal message | kind | exit | retryable |
+| --- | --- | --- | --- |
+| `permission reference required` | `permission_reference_missing` | 1 | no |
+| `invalid models receipt id` | `invalid_input` | 1 | no |
+| `models receipt not found` | `not_found` | 1 | no |
+| `conflict in models revert: the receipt is not a models receipt` | `conflict` | 1 | no |
+| `conflict in models revert: the receipt names another settings file` | `conflict` | 1 | no |
+| `invalid models receipt: the fields the revert needs are missing or do not hash` | `invalid_input` | 1 | no |
+| `models receipt already reverted` | `conflict` | 1 | no |
+| `conflict in models revert: the settings file read back differently after the revert; check the file` | `conflict` | 1 | no |
+| `models revert marker write failed: …; nothing was changed` | `io` | 1 | **yes** |
+
+## Success
+
+`{"state":"reverted","receipt":…,"path":…}` with the marker on file; a changed-since file answers
+`{"state":"skipped","reason":"changed_since_apply",…}`. The receipt id a save printed under
+`models.receipt` is the `--receipt` argument; the permission reference is recorded in the marker
+and checked by `permission_reference_ok`.

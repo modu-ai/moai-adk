@@ -1796,3 +1796,37 @@ fn reclaim_lease_end_second_is_the_edge() {
         ]
     );
 }
+
+#[test]
+fn reclaim_limit_refuses_the_fourth_reclaim_and_writes_nothing() {
+    // SPEC-20261119-card-reclaim-guard REQ-5: three `card.reclaim` events are the card's
+    // lifetime allowance; the fourth is refused in its own transaction, rows unchanged.
+    let (home, mut w) = setup();
+    let card = ready_card(&mut w);
+    reservation::reserve(
+        &mut w,
+        card,
+        "first",
+        &s(&["src/b.rs"]),
+        3600,
+        Some("/work/tree"),
+        Some("card/1-x"),
+    )
+    .unwrap();
+    for generation in 1..=3i64 {
+        end_lease(&mut w, card);
+        reclaim(&mut w, card, "heir", generation).unwrap();
+    }
+    end_lease(&mut w, card);
+    let before = dump(reader(&home).conn());
+    let refused = reclaim(&mut w, card, "heir", 4);
+    assert!(
+        matches!(refused, Err(reservation::ReclaimError::ReclaimLimit { .. })),
+        "{refused:?}"
+    );
+    assert_eq!(
+        dump(reader(&home).conn()),
+        before,
+        "the refusal leaves every row as it was"
+    );
+}
