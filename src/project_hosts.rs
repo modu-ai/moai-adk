@@ -839,11 +839,12 @@ mod tests {
     #[test]
     fn conflict_choices_drop_replace_without_a_replace_plan() {
         let want = codex_config_request();
+        const BACKUP: &str = crate::project_state!("backups/x.toml");
         let replace = json!({"action": "replace", "plan_digest": "sha256:d",
-                             "backup": {"path": ".moai-cli/backups/x.toml"}});
+                             "backup": {"path": BACKUP}});
         let all = conflict_choices("/p", &want, Some(&replace));
         assert_eq!(ids(&all), ["keep", "diff", "replace"]);
-        assert_eq!(all[2]["backup"], json!(".moai-cli/backups/x.toml"));
+        assert_eq!(all[2]["backup"], json!(BACKUP));
         for none_or_other in [
             None,
             Some(json!({"action": "conflict", "plan_digest": "sha256:d"})),
