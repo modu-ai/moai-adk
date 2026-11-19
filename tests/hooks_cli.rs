@@ -2878,3 +2878,87 @@ fn ac_verify_run_ignores_a_call_marked_unfinished_in_every_documented_spelling()
         assert_eq!(ac_runs(&root).len(), before + 1, "{what}");
     }
 }
+
+/// SPEC-20261119-ac-verify-recorded-limits REQ-10 (card C-130 criterion 5, leader decision of
+/// note 3387 on audit N10): the rule counts a write of the session only when its outcome is not a
+/// failure (a success and an unknown outcome both count: dropping the unknown would weaken the
+/// rule quietly) and its path is not outside the project folder; a line with no path counts,
+/// conservatively. After a write that does not count the Stop rule has no write to ask about.
+#[test]
+fn ac_verify_rule_counts_only_writes_that_did_not_fail_and_are_inside_the_project() {
+    // (what, host, event, tool, tool_input builder, counts)
+    let project_file = |root: &Path| json!({"file_path": root.join("src/x.rs"), "content": "x"});
+    let cases: Vec<(&str, &str, &str, &str, Box<dyn Fn(&Path) -> Value>, bool)> = vec![
+        (
+            "a project write that succeeded",
+            "claude",
+            "PostToolUse",
+            "Write",
+            Box::new(project_file),
+            true,
+        ),
+        (
+            "a failed Edit",
+            "claude",
+            "PostToolUseFailure",
+            "Edit",
+            Box::new(project_file),
+            false,
+        ),
+        (
+            "a write outside the project folder",
+            "claude",
+            "PostToolUse",
+            "Write",
+            Box::new(|_| json!({"file_path": "/tmp/moai-c130-scratch.txt", "content": "x"})),
+            false,
+        ),
+        (
+            "a write that climbs out of the folder",
+            "claude",
+            "PostToolUse",
+            "Write",
+            Box::new(|_| json!({"file_path": "../elsewhere.txt", "content": "x"})),
+            false,
+        ),
+        (
+            "an unknown outcome (Codex apply_patch)",
+            "codex",
+            "PostToolUse",
+            "apply_patch",
+            Box::new(project_file),
+            true,
+        ),
+        (
+            "a write line with no path",
+            "claude",
+            "PostToolUse",
+            "Write",
+            Box::new(|_| json!({"content": "x"})),
+            true,
+        ),
+    ];
+    for (what, host, event, tool, tool_input, counts) in cases {
+        let (_tmp, root) = ac_repo(AC_BRANCH, Some(AC_HEAD), Some(AC_BODY));
+        ac_mode(&root, "enforce");
+        let input = json!({"session_id": "s1", "hook_event_name": event,
+            "tool_name": tool, "tool_use_id": "t",
+            "tool_input": tool_input(&root), "tool_response": {}, "cwd": root});
+        let (code, _) = ac_dispatch("tool-observe", host, &root, &input);
+        assert_eq!(code, 0, "{what}");
+        // Every one of these calls is a write line of the session in the log.
+        let writes = merge_log(&root)
+            .iter()
+            .filter(|l| l["kind"] == json!("observe") && l["class"] == json!("write"))
+            .count();
+        assert_eq!(writes, 1, "{what}: the call is observed as a write");
+        ac_pause();
+        let answer = ac_stop(&root, "s1", false);
+        assert_eq!(
+            ac_reason(&answer).is_some(),
+            counts,
+            "{what}: {answer:?} {:?}",
+            merge_log(&root)
+        );
+    }
+}
