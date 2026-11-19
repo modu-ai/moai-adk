@@ -21,6 +21,12 @@ pub struct Args {
     /// The lane's name, as in its claim comments (`agent-8`).
     #[arg(long)]
     name: String,
+    /// A holder session id to answer liveness for (read-only, BOARD 03 (가),
+    /// SPEC-20261120-launcher-liveness REQ-2): `alive` (the name's `.live` lock is held),
+    /// `launcher-exited` (the lock is free) or `unknown` (no entry names the id, or the lock
+    /// cannot be probed). Writes nothing.
+    #[arg(long, conflicts_with_all = ["instance", "release", "show", "mode"])]
+    liveness_of: Option<String>,
     /// The `instance` a previous registration of this session returned; absent on the first.
     #[arg(long)]
     instance: Option<String>,
@@ -54,6 +60,27 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     if args.show {
         let project = args.project.unwrap_or_else(|| PathBuf::from("."));
         return moai_cli::lane_registry::show(&project, &args.name, now);
+    }
+    // BOARD 03 (가), SPEC-20261120-launcher-liveness REQ-2: a read-only liveness answer for a
+    // holder session id; nothing is written.
+    if let Some(id) = &args.liveness_of {
+        let project = args
+            .project
+            .clone()
+            .ok_or("PROJECT is required (only --show may leave it out)")?;
+        let (state, evidence) = moai_cli::lane_registry::liveness_of_session(&project, id);
+        use moai_cli::lane_registry::Liveness;
+        return Ok(serde_json::json!({
+            "action": "session.liveness",
+            "session": id,
+            "state": match state {
+                Liveness::Alive => "alive",
+                Liveness::LauncherExited => "launcher-exited",
+                Liveness::Unknown => "unknown",
+            },
+            "evidence": evidence,
+            "writes": false,
+        }));
     }
     let project = args
         .project
