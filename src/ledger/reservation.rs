@@ -1105,6 +1105,12 @@ pub enum ReclaimError {
         lease_until: i64,
         now: i64,
     },
+    /// The card already carries three `card.reclaim` events; a fourth would exceed the
+    /// lifetime allowance (SPEC-20261119-card-reclaim-guard REQ-5).
+    ReclaimLimit {
+        card_id: i64,
+        reclaims: i64,
+    },
     /// The ledger itself failed (busy, unavailable, constraint ...).
     Ledger(LedgerError),
 }
@@ -1120,6 +1126,7 @@ impl ReclaimError {
             ReclaimError::UnknownGeneration { .. } => "unknown_generation",
             ReclaimError::NotHeld { .. } => "not_held",
             ReclaimError::LeaseLive { .. } => "lease_live",
+            ReclaimError::ReclaimLimit { .. } => "reclaim_limit",
             ReclaimError::Ledger(e) => e.code(),
         }
     }
@@ -1154,6 +1161,11 @@ impl std::fmt::Display for ReclaimError {
                 f,
                 "reservation conflict in card: the lease runs until {lease_until} (now {now}); \
                  only an ended lease is reclaimed"
+            ),
+            ReclaimError::ReclaimLimit { card_id, reclaims } => write!(
+                f,
+                "card conflict in reclaim limit: C-{card_id} was already reclaimed {reclaims} time(s); \
+                 a card is reclaimed three times at most (SPEC-20261119-card-reclaim-guard)"
             ),
             ReclaimError::Ledger(e) => e.fmt(f),
         }
@@ -1238,6 +1250,19 @@ pub fn reclaim(
                 lease_until: old.lease_until,
                 now,
             }));
+        }
+        // REQ-5 (SPEC-20261119-card-reclaim-guard): three reclaims are a card's lifetime
+        // allowance, counted from its own events so the cap survives any caller; the fourth
+        // is refused in this transaction and nothing is written.
+        let reclaims: i64 = tx
+            .query_row(
+                "SELECT COUNT(*) FROM event WHERE card_id = ?1 AND kind = 'card.reclaim'",
+                [card_id],
+                |r| r.get(0),
+            )
+            .map_err(LedgerError::from)?;
+        if reclaims >= 3 {
+            return Ok(Err(ReclaimError::ReclaimLimit { card_id, reclaims }));
         }
         tx.execute(
             "UPDATE reservation SET status = 'reclaimed', updated_at = ?1 WHERE reservation_id = ?2",

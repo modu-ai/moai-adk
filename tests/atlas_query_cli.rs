@@ -433,8 +433,11 @@ fn fixture(name: &str) -> Value {
 
 /// The frozen GRAPH relations require direct evidence, not incidental multi-hop reach.
 /// #2450 decision 6793749743 permits typed targets and `documents` edges without changing
-/// the corpus, truth or baseline. Non-file concept targets remain unresolved under H1;
-/// only G-006 may remain a gap. The seven original code relations retain exact regressions.
+/// the corpus, truth or baseline. A non-file target is a typed concept target: the
+/// product's explicit alias contract (user decision A 2026-11-15, C-17) names its
+/// definition file, and the adjudication still demands a direct `documents` edge whose
+/// evidence digests match the snapshot's real file digests. The seven original code
+/// relations retain exact regressions.
 #[test]
 fn graph_suite_relations_are_found_or_their_gap_is_stated() {
     let (dir, snapshot) = snapshot_project();
@@ -460,9 +463,18 @@ fn graph_suite_relations_are_found_or_their_gap_is_stated() {
         let rel = tasks[id]["ground_truth"]["relation"].as_array().unwrap();
         let (source, target) = (rel[0].as_str().unwrap(), rel[2].as_str().unwrap());
         let from = format!("file:{source}");
-        let to = snapshot["files"]
+        // A non-file target is typed as a concept only while the explicit alias
+        // contract binds it; an unbound non-file target stays an honest gap.
+        let concept_file = snapshot["files"]
             .get(target)
-            .map(|_| format!("file:{target}"));
+            .is_none()
+            .then(|| moai_cli::code_refs::alias_definition_file(target))
+            .flatten();
+        let to = concept_file.map(|file| format!("file:{file}")).or_else(|| {
+            snapshot["files"]
+                .get(target)
+                .map(|_| format!("file:{target}"))
+        });
         let r = ok(
             root,
             "atlas-graph",
@@ -478,7 +490,7 @@ fn graph_suite_relations_are_found_or_their_gap_is_stated() {
         );
         let direct: Vec<String> = to
             .as_ref()
-            .map(|_| direct_edges(root, source, target))
+            .map(|to| direct_edges(root, source, &to[5..]))
             .unwrap_or_default()
             .into_iter()
             .filter(|e| {
@@ -488,11 +500,21 @@ fn graph_suite_relations_are_found_or_their_gap_is_stated() {
             })
             .collect();
         if !direct.is_empty() {
+            if let Some(file) = concept_file {
+                // The contract alone proves nothing: both evidence digests must be
+                // the snapshot's own file digests.
+                assert!(
+                    concept_edge_digests_match(root, &snapshot, source, file),
+                    "{id}: the concept edge's evidence digests must match the snapshot"
+                );
+            }
             found.push(id.to_string());
             continue;
         }
-        let reason = if snapshot["files"].get(target).is_none() {
-            format!("target {target:?} is not a file of the snapshot")
+        let reason = if snapshot["files"].get(target).is_none() && concept_file.is_none() {
+            format!(
+                "target {target:?} is not a file of the snapshot and no alias contract binds it"
+            )
         } else {
             let wider = match to.as_ref().and_then(|to| r["distance"].get(to)) {
                 Some(d) => format!("; reached only through other files at hop {d}"),
@@ -513,12 +535,11 @@ fn graph_suite_relations_are_found_or_their_gap_is_stated() {
         gaps.len()
     );
     assert_eq!(found.len() + gaps.len(), 9, "every GRAPH case queried");
-    assert_eq!(
-        gaps.keys().map(String::as_str).collect::<Vec<_>>(),
-        ["G-006"],
-        "only the concept identity/alias HOLD may remain (decision 6793749743)"
+    assert!(
+        gaps.is_empty(),
+        "the contracted concept target is found like the rest; gaps: {gaps:?}"
     );
-    assert_eq!(found.len(), 8);
+    assert_eq!(found.len(), 9);
 }
 
 /// Builds the frozen GRAPH snapshot (#2346) as a committed repository with an index.
@@ -578,11 +599,37 @@ fn direct_edges(root: &Path, from: &str, to: &str) -> Vec<String> {
     out
 }
 
+/// The typed concept target's edge must carry the snapshot's real digests — the
+/// contract names the definition file, the generation must prove both ends.
+fn concept_edge_digests_match(root: &Path, snapshot: &Value, from: &str, to: &str) -> bool {
+    let r = ok(
+        root,
+        "atlas-graph",
+        &json!({"protocol_version": 1, "query": {"start": [format!("file:{from}")]}, "limits": {"max_hops": 1, "max_edges": 5000}}),
+    );
+    r["graph"]["edges"].as_array().unwrap().iter().any(|e| {
+        e["kind"] == "documents"
+            && e["source_id"] == format!("file:{from}")
+            && e["target_id"] == format!("file:{to}")
+            && e["evidence_refs"].as_array().unwrap().iter().all(|r| {
+                let r = r.as_str().unwrap();
+                let file = &r[5..r.find('#').unwrap()];
+                let digest = &r[r.find('@').unwrap() + 1..];
+                snapshot["files"][file]["sha256"]
+                    .as_str()
+                    .is_some_and(|sha| format!("sha256:{sha}") == digest)
+            })
+    })
+}
+
 /// Per-case evidence for the GRAPH suite (#2442 AC-3): the direct edge, its direction,
 /// basis and evidence lines, measured on the frozen snapshot. The suite walk is three hops
 /// in both directions, so reaching a target there does not prove a direct reference.
 /// G-008/G-009 retain their inferred library crate names. G-002 is a documents edge
-/// with both the mention and definition evidence; it is never a call. G-006 retains H1.
+/// with both the mention and definition evidence; it is never a call. G-006 is the
+/// contract-bound concept edge (C-17, user decision A): the mention is the code-level
+/// string literal that declares the machine token, the definition is the confirm
+/// symbol's line.
 #[test]
 fn graph_cases_have_direct_code_reference_edges() {
     let (dir, _) = snapshot_project();
@@ -608,7 +655,10 @@ fn graph_cases_have_direct_code_reference_edges() {
             "G-005",
             vec!["calls file:src/audit.rs file:src/baseline.rs static_resolved L257"],
         ),
-        ("G-006", vec![]),
+        (
+            "G-006",
+            vec!["documents file:src/claim_verify.rs file:src/handoff.rs inferred L48,L165"],
+        ),
         (
             "G-007",
             vec!["imports file:src/flow.rs file:src/forge/transport.rs static_resolved L8"],
@@ -632,11 +682,9 @@ fn graph_cases_have_direct_code_reference_edges() {
         }
         let id = t["id"].as_str().unwrap();
         let rel = t["ground_truth"]["relation"].as_array().unwrap();
-        let got = direct_edges(
-            dir.path(),
-            rel[0].as_str().unwrap(),
-            rel[2].as_str().unwrap(),
-        );
+        let to = moai_cli::code_refs::alias_definition_file(rel[2].as_str().unwrap())
+            .unwrap_or(rel[2].as_str().unwrap());
+        let got = direct_edges(dir.path(), rel[0].as_str().unwrap(), to);
         assert_eq!(got, want[id], "{id}");
         seen += 1;
     }
