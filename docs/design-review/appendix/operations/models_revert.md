@@ -1,5 +1,3 @@
-<!-- moai:operations models.revert -->
-
 # models-revert
 
 `moai models-revert <HOME> --receipt models-… --permission-reference <ref>` puts the launcher
