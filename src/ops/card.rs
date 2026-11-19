@@ -47,6 +47,31 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Reads the ledger only. Show what a dispatch should know before it starts: commits and
+    /// PRs already naming the card, its SPEC folders, and decision notes colliding with the
+    /// card's scope or criteria
+    ///
+    /// Reads the ledger only. Also reads the project's git history (nothing is written, no
+    /// network is used): commits of `--integration-ref` (default: the current branch's
+    /// upstream) whose subject, body or `Moai-Spec:` trailer names the card, the SPEC the
+    /// ledger links to it, the SPEC folders naming it, and every `decision` note sharing a
+    /// path with the card's write scope or a phrase from its criteria (card C-96, W3).
+    Precheck {
+        /// `C-12` or `#3066`.
+        card: String,
+        /// The integration ref to scan (default: the current branch's upstream).
+        #[arg(long)]
+        integration_ref: Option<String>,
+        /// Scan at most this many commits (default 500; the report names a cut-short scan).
+        #[arg(long)]
+        max_commits: Option<usize>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Reads the ledger only. Writes files only inside --out. Export every card to a folder
     ///
     /// Reads the ledger only. Writes files only inside --out. Writes `index.json`, `events.jsonl`
@@ -540,6 +565,20 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             project,
             home,
         } => c::show(&project, &resolve_home(home)?, &card),
+        Action::Precheck {
+            card,
+            integration_ref,
+            max_commits,
+            project,
+            home,
+        } => moai_cli::card::precheck::precheck(
+            &card,
+            integration_ref.as_deref(),
+            max_commits,
+            &project,
+            home.as_deref(),
+        )
+        .map_err(|r| r.message),
         Action::Export { out, project, home } => c::export(&project, &resolve_home(home)?, &out),
         Action::Add {
             title,

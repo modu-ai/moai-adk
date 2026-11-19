@@ -254,7 +254,16 @@ fn lists_merged_prs_commits_and_spec_folders_naming_the_card() {
     let m = v["merged_mentions"].as_array().unwrap();
     let rows: Vec<String> = m
         .iter()
-        .map(|e| format!("{}|{}|{}|{}", e["kind"], e["pr"], e["where"], e["matched"]))
+        .map(|e| {
+            // A JSON string prints with its quotes; read the text so a row is `kind|pr|where|key`.
+            format!(
+                "{}|{}|{}|{}",
+                e["kind"].as_str().unwrap(),
+                e["pr"],
+                e["where"].as_str().unwrap(),
+                e["matched"].as_str().unwrap()
+            )
+        })
         .collect();
     assert_eq!(
         rows,
