@@ -34,7 +34,7 @@ parent: SPEC-20261119-lane-screen-guard
 
 ## Acceptance
 
-- AC-1 (REQ-1): 평범한 글 속 `1. Yes, …`·`2. No, …` 줄이 있는 보통 레인 화면(대기 표지와 작업 중 표지 둘)이 `permission_prompt` 이고 근거 줄이 그 `Yes` 줄이에요. 번호가 없는 같은 두 줄은 `idle` 로 남아요. 같은 일이 `lane-send` 에서는 거절이에요.
+- AC-1 (REQ-1): 평범한 글 속 `1. Yes, …`·`2. No, …` 줄이 있는 보통 레인 화면(대기 표지와 작업 중 표지 둘)이 `permission_prompt` 이고 근거 줄이 그 `Yes` 줄이에요. 번호가 없는 같은 두 줄은 `idle` 로 남아요. `lane-send` 는 `permission_prompt` 에 보내지 않으므로 같은 화면의 보내기도 거절되지만, 이 가지에는 그 보내기 시험이 없어요(`tests/lane_send_cli.rs` 는 C-120 의 범위이고, 같은 상태를 조각 B 의 `lane_send_refuses_numbered_yes_no_rows_after_any_prefix_and_sends_nothing` 이 시험해요).
   verify: `cargo test --locked --offline --test lane_screen_cli lane_screen_state_a_prose_list_of_numbered_yes_and_no_lines_reads_as_permission_prompt`
 - AC-2 (REQ-2): `9999-12-31 23:59 -0800` 같은 시각은 `unknown` 과 원문이고, 경계는 위쪽(UTC 9999-12-31 23:59:00 은 읽히고 1분 뒤는 `unknown`)과 아래쪽(UTC 1970-01-01 00:00:00 은 읽히고 1분 앞은 `unknown`) 둘 다 짝으로 있어요.
   verify: `cargo test --locked --offline --test lane_screen_cli lane_screen_reset_a_time_outside_the_years_1970_to_9999_in_utc_is_unknown` `cargo test --locked --offline --lib lane_screen`
