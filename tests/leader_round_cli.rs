@@ -445,3 +445,140 @@ fn an_idle_lane_is_left_for_a_dispatch_and_named_in_the_round() {
     assert_eq!(act(&r), (Some("restart"), Some("continue")), "{r}");
     assert_eq!(r["idle_lanes"], json!([]), "{r}");
 }
+
+/// The epoch of `NOW` (2026-11-14T09:21:00Z), so registry entries can name lease ends around
+/// it without re-deriving the calendar in the test.
+const NOW_EPOCH: i64 = 1_794_648_060;
+/// A valid instance id for a fixture entry (32 lowercase hex digits).
+const LEADER_INSTANCE: &str = "0123456789abcdef0123456789abcdef";
+
+/// Writes one session-registry entry file for the name `leader` into the clone's registry.
+fn leader_entry(f: &Fixture, lease_until: i64) {
+    let dir = f.primary.join(".git/.moai-cli/sessions");
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(
+        dir.join("leader.json"),
+        format!(
+            "{{\"schema_version\":1,\"name\":\"leader\",\"instance\":\"{LEADER_INSTANCE}\",\
+             \"lease_until\":{lease_until},\"mode\":\"leader\"}}"
+        ),
+    )
+    .unwrap();
+}
+
+/// The registration part of the round (the design's 3.1 finding: a leader lease that ended 38
+/// hours earlier stayed invisible, because every public registry reader answers only for leases
+/// that still run). RED until `round()` carries the part.
+#[test]
+fn the_round_reports_a_leader_lease_that_ended() {
+    let f = fixture();
+    leader_entry(&f, NOW_EPOCH - 38 * 3600);
+    let r = round(&f, &observations(&f), None);
+    let reg = &r["round"]["registration"];
+    assert_eq!(reg["status"], "expired", "{r}");
+    let leaders = reg["leaders"].as_array().unwrap();
+    assert_eq!(leaders.len(), 1, "{r}");
+    assert_eq!(leaders[0]["name"], "leader", "{r}");
+    assert_eq!(leaders[0]["lease_until"], "2026-11-12T19:21:00Z", "{r}");
+    assert_eq!(leaders[0]["expired_for_secs"], 38 * 3600, "{r}");
+}
+
+/// A live leader lease reports `ok` and names no elapsed seconds.
+#[test]
+fn a_live_leader_lease_reports_ok() {
+    let f = fixture();
+    leader_entry(&f, NOW_EPOCH + 3600);
+    let r = round(&f, &observations(&f), None);
+    let reg = &r["round"]["registration"];
+    assert_eq!(reg["status"], "ok", "{r}");
+    assert_eq!(reg["leaders"][0]["name"], "leader", "{r}");
+    assert!(reg["leaders"][0].get("expired_for_secs").is_none(), "{r}");
+}
+
+/// No registry folder at all reports `absent` — and still not `not_run`, because the part needs
+/// no GitHub snapshot (the other shared parts stay `not_run` without one).
+#[test]
+fn without_a_registry_the_part_is_absent_and_not_not_run() {
+    let f = fixture();
+    let r = round(&f, &observations(&f), None);
+    let reg = &r["round"]["registration"];
+    assert_eq!(reg["status"], "absent", "{r}");
+    assert_eq!(reg["leaders"], json!([]), "{r}");
+    for key in ["close_candidates", "gate"] {
+        assert_eq!(r["round"][key]["status"], "not_run", "{key}: {r}");
+    }
+}
+
+/// The part's note names the renewal step of the mode-leader banner, so a leader reading the
+/// round can renew at once.
+#[test]
+fn the_note_names_the_renewal_step() {
+    let f = fixture();
+    leader_entry(&f, NOW_EPOCH - 38 * 3600);
+    let r = round(&f, &observations(&f), None);
+    let note = r["round"]["registration"]["note"].as_str().unwrap();
+    assert!(note.contains("session-register"), "{note}");
+    assert!(note.contains("--instance"), "{note}");
+}
+
+/// An entry that cannot be read makes the part `error` with that message and leaves every other
+/// shared part as it was.
+#[test]
+fn an_unreadable_entry_makes_the_part_error() {
+    let f = fixture();
+    let dir = f.primary.join(".git/.moai-cli/sessions");
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(dir.join("leader.json"), "not json").unwrap();
+    let r = round(&f, &observations(&f), None);
+    let reg = &r["round"]["registration"];
+    assert_eq!(reg["status"], "error", "{r}");
+    let message = reg["message"].as_str().unwrap();
+    assert!(message.contains("leader.json"), "{message}");
+    for key in [
+        "close_candidates",
+        "handoff_candidates",
+        "gate",
+        "end_condition",
+    ] {
+        assert_eq!(r["round"][key]["status"], "not_run", "{key}: {r}");
+    }
+}
+
+/// Reading the part writes nothing: the whole clone state folder is byte for byte as it was.
+#[test]
+fn the_registration_read_writes_nothing() {
+    let f = fixture();
+    leader_entry(&f, NOW_EPOCH - 38 * 3600);
+    let before = tree_snapshot(&f.primary.join(".git"));
+    let r = round(&f, &observations(&f), None);
+    assert_eq!(r["writes"], false, "{r}");
+    let after = tree_snapshot(&f.primary.join(".git"));
+    assert_eq!(before, after);
+}
+
+/// Every file below `root` as `(path, bytes)` pairs, sorted.
+fn tree_snapshot(root: &Path) -> Vec<(String, Vec<u8>)> {
+    fn walk(out: &mut Vec<(String, Vec<u8>)>, dir: &Path, prefix: &str) {
+        let mut names: Vec<_> = fs::read_dir(dir)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        for name in names {
+            let path = dir.join(&name);
+            let rel = if prefix.is_empty() {
+                name.clone()
+            } else {
+                format!("{prefix}/{name}")
+            };
+            if path.is_dir() {
+                walk(out, &path, &rel);
+            } else {
+                out.push((rel, fs::read(&path).unwrap()));
+            }
+        }
+    }
+    let mut out = Vec::new();
+    walk(&mut out, root, "");
+    out
+}
