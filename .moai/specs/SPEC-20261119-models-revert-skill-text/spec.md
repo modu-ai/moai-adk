@@ -74,3 +74,13 @@ C-47 조각 5(SPEC-20261119-models-revert-command)가 되돌리기 명령 `model
 | D-1 | `update.md` 7번 줄의 한 문장만 고치고 줄을 나누지 않는다 | 이 스킬의 규칙들이 한 줄에 한 규칙이고, 시험도 그 줄을 이름으로 읽어요 | 문장 이동 |
 | D-2 | 시험은 이름과 짧은 꼬리만 읽는다(문장 전체 못박기 없음) | 문장을 다듬을 때마다 시험이 깨지는 것을 막으려고 이름 목록만 읽어요(C-114 조각 3 의 D-3 와 같은 방침) | 시험 추가 |
 | D-3 | manifest 해시는 이 가지의 마지막 커밋에서만 쓴다 | manifest 는 여러 카드가 기다리는 파일이라 쥐는 시간을 줄여요(리더 결정, C-59 노트 3081) | 마지막 단계에서 `write` |
+
+## Result
+
+- AC-1: met — 2026-11-19 이 worktree 에서 `rg -n -o -e "moai models-revert" -e "changed_since_apply" -e "not a command yet" skills/moai/workflows/update.md` 가 7번째 줄에서 `moai models-revert` 와 `changed_since_apply` 를 찾고 "not a command yet" 은 찾지 못해요(그 줄은 21,819 바이트 파일의 한 줄). `cargo test --offline --locked --test models_revert_cli update_md_names_the_models_revert_command` 는 문서를 고치기 전 실패(`update.md lacks moai models-revert`, 0 passed 1 failed), 고친 뒤 통과예요.
+- AC-2: met — `python3 -I tools/source_manifest.py check` 는 exit 0(`changed`: []): 쓰기 전 `changed` 는 `workflows/update.md` 하나뿐이었고 `write` 가 그 한 줄(sha256)만 바꿨어요. `cargo run --offline --locked --quiet --bin moai -- package-inspect skills/moai` 는 ok.
+- AC-3: met — `cargo test --offline --locked --test models_revert_cli` 5개 통과(새 시험 포함), `--test worktree_include_guard` 2개, `--test agent_defs_package` 19개 통과, `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.skill_references_test tests.source_manifest_test` 48개 OK(파이썬 슬롯). 이 문서를 읽는 다른 시험도 통과: `project_decide_model` 4, `update_known_good` 4, `workflow_size_budget` 4, `product_cli skill_package` 18.
+- 변이: 문서에서 이름 하나씩 바꾸는 변이 8개(명령 이름, `--permission-reference` 지움, "only when the person asks for the undo" 를 "whenever you like" 로, "a permission reference the person gave" 지움, `reverted` 이름 바꿈, `changed_since_apply` 이름 바꿈, "exits 1" 을 "exits 0" 으로, 옛 문장 "not a command yet" 되돌림)가 모두 새 시험 하나만 실패시켰고 이유 문장이 각각 달랐어요(원복은 `cmp` 로 확인, 변이 실행 뒤 `git status --short` 0줄).
+- 이웃 점검(앞선 커밋 head 에서): `cargo fmt --check` 0, `cargo clippy --offline --locked --all-targets -- -D warnings` 0, `python3 -m unittest tests.repo_scans_test` 25개 OK(새 시험은 파일 하나를 읽고 저장소 트리를 훑지 않아요). 엄격 `trailer-check origin/v2026.11.0..HEAD --verified-since origin/v2026.11.0` 은 커밋 9개 failing 0.
+- 병합 확인(읽기 전용): `git merge-tree --write-tree origin/v2026.11.0 <이 가지>` exit 0 이고 병합 결과 트리를 스크래치에 풀어 `python3 -I tools/source_manifest.py check` 가 exit 0(`changed`: [])예요.
+- 아직 안 한 것: `status: completed`(승인)는 이 레인의 몫이 아니에요. 이 가지의 `tools/self_check.sh` 에는 `--pre-ready` 가 없어서(조각 2 의 `-r2` 가지에만 있어요) 위 항목을 하나씩 돌렸고, 전체 로컬 `cargo test`, Windows, 파이썬 전체 실행은 돌리지 않았어요. 이 가지는 조각 6 의 head a54c62a237 위에 서요: 조각 5 와 6 이 먼저 묶음에 들어가야 해요.
