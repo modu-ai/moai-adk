@@ -117,7 +117,7 @@ pub fn is_tip_repair(body: &str) -> bool {
 }
 
 /// The run id in a check run's `details_url` (`…/actions/runs/<id>/job/<job>`).
-fn run_id(run: &Value) -> Option<u64> {
+pub(crate) fn run_id(run: &Value) -> Option<u64> {
     let url = run["details_url"].as_str()?;
     let rest = url.split("/runs/").nth(1)?;
     rest.split('/').next()?.parse().ok()

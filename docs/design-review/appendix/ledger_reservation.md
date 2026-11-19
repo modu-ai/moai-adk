@@ -16,7 +16,7 @@ Issue #3068 P3 · 라이브러리 API 뿐이며 명령은 없다(`moai card` 는
 | `fence_check(r: &ReadLedger, ...) -> Result<(), FenceError>` | 같은 판정을 읽기 전용으로. 기록하지 않고 파일을 만들지 않는다 |
 | `current(conn, card_id)`, `history(conn, card_id)` | 읽기 전용 조회(`ReadLedger::conn()` 도 가능) |
 
-범위 겹침은 `crate::scope::overlap` 을 같은 트랜잭션에서 다른 카드의 활성 예약(`held`·`expired_candidate`·`held_for_review`)과 쌍마다 불러 판정한다. 비어 있는 범위는 겹침을 보일 수 없어 거절한다.
+범위 겹침은 같은 트랜잭션에서 다른 카드의 활성 예약(`held`·`expired_candidate`·`held_for_review`)과 쌍마다 판정한다. 판정은 둘이다: 겹침 술어 `crate::scope::overlap`(대소문자를 접고 `.`·`..` 를 풀어 "둘 다 쓸 수 있는 경로가 있나"를 본다)과, 그 위에서 카드 쪽에만 쓰는 생성 경로 규칙 `crate::scope::card_overlap`(한쪽이 `GENERATED_SHARED_PATHS` 의 경로와 대소문자까지 정확히 같으면 그 쌍은 겹침이 아니다). 예약·넓히기(`card scope`)·`card next` 는 `find_overlap` 을 거쳐 `card_overlap` 을 부르고, 클레임 쪽 범위 검사(`scope::overlaps`)는 `overlap` 만 쓴다. `card check` 는 겹침이 아니라 경로가 예약 범위 안인지만 본다. 비어 있는 범위는 겹침을 보일 수 없어 거절한다.
 
 ## 한도 (N 받고 N+1 거절)
 
