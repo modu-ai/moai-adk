@@ -66,4 +66,13 @@ This slice adds `--ac "<criterion>"` to the example and says what the criterion 
 
 ## Result
 
-Plan only. Tests and the edit follow in this branch; this section then gets one `- AC-n: met — evidence` line per criterion.
+RED first: commit e9b95c5f6a (SPEC and one test; the test failed on the tip text with "the example has no ` --ac "…"` criterion: moai card add --kind task --title "flaky: <test>""). GREEN: commit 040c8b49bd. Base tip 747738af63. Gates ran through the heavy-slot wrapper in this worktree's own build folder.
+
+- AC-1: met — `flaky_rule_card_add_example_carries_a_criterion` passes: the rule now reads `moai card add --kind task --title "flaky: <test>" --ac "the flake is fixed, or the test is retired with its reason"`, and the old example without `--ac` is gone. Mutants M1 (`retired` replaced by `dropped`) and M2 (`--ac` replaced by `--by`) were both killed (`test result: FAILED`), and the file was restored and `git status` was clean after each. The example was also run against a temporary ledger (project `c122-scratch` under the scratchpad, never the real HOME): `card add --kind task --title "flaky: example_test" --ac "…" --scope x --priority p3` answered `ok`, `criteria` 1.
+- AC-2: met — `workflow_size_budget` 6 passed, 0 failed: the rule is 567 bytes (501 before, budget 700; read with a script that cuts between `Flaky rule (card C-99): ` and `touches that test.`), and the five earlier pins pass.
+- AC-3: met — `product_cli source_manifest_covers_every_package_file` 1 passed; the manifest entry of `workflows/mode-leader.md` is now the file's `shasum -a 256` (7e336803…48e3, was 02c83e52…).
+- AC-4: met — `python3 -m unittest tests.repo_scans_test tests.source_manifest_test tests.ci_scope_test` 108 tests OK (with `CARGO_TARGET_DIR` set to the build folder), `spec_cli` 18 passed, `cargo fmt --check` exit 0 (the first run found one line wrap in the new test, fixed before the GREEN commit), `cargo clippy --locked --offline --all-targets -- -D warnings` exit 0, `git diff --check` empty.
+
+Not run here: the full `--lib` and the other integration test files (the change is one sentence in a package file, one manifest hash and one test); Windows and Linux.
+
+Not done: card C-108 criteria 1 and 2 belong to slice 1 (PR 3230, not merged when this was written).
