@@ -223,6 +223,11 @@ fn explicit_flags_win_per_field() {
     let a = argv(&f.dry(&["glm", "-l", "--model", "opus"]));
     assert!(has_pair(&a, "--model", "opus"), "{a:?}");
     assert!(has_pair(&a, "--effort", "max"), "{a:?}");
+    // A prefixed explicit model also stays as written: the strip is a translation of the saved
+    // table's OMP form, not input handling (audit N2 — a pin with a prefix on the flag).
+    let a = argv(&f.dry(&["glm", "-l", "--model", "zai/glm-5.3"]));
+    assert!(has_pair(&a, "--model", "zai/glm-5.3"), "{a:?}");
+    assert!(has_pair(&a, "--effort", "max"), "{a:?}");
     // both given: nothing of the file is used and no saved-value note is added.
     let v = f.dry(&[
         "cc",

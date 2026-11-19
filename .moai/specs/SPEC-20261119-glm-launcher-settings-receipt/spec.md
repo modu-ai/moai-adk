@@ -42,7 +42,7 @@ parent: SPEC-20261118-install-model-per-tool
 - AC-2 (REQ-3): on `glm -l` an explicit `--model opus` keeps that alias in the argv and only the effort comes from the file; an explicit `--effort` keeps that level and only the model comes from the file.
   verify: `cargo test --locked --offline --test launcher_reads_models explicit_flags_win_per_field`
 - AC-3 (REQ-4): a roleless `glm` session and a `glm` role session with no saved `glm` entry compose byte for byte like the same session in a HOME without the file; with no file at all the role session keeps `--model opus --effort medium`.
-  verify: `cargo test --locked --offline --test launcher_reads_models a_roleless_session_and_glm_ignore_saved_choices`
+  verify: `cargo test --locked --offline --test launcher_reads_models a_roleless_session_ignores_saved_choices`
   verify: `cargo test --locked --offline --test launcher_reads_models without_a_saved_choice_nothing_changes`
 - AC-4 (REQ-5): a file with a saved entry outside the support table refuses `glm -l` with exit 1 and nothing on stdout, the message holding key paths only, while a roleless `glm` launch still starts.
   verify: `cargo test --locked --offline --test launcher_reads_models an_unsupported_saved_entry_refuses_a_role_launch`
