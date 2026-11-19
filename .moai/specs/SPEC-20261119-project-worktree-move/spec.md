@@ -64,7 +64,8 @@ created: 2026-11-19
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | 새 명령이나 새 단계를 만들지 않고 단계 2 에 항목 하나를 더해요 | 두 명령이 이미 있고 `project.md` 는 apply 이름을 단계 8 에서 부르기만 해요; 같은 규칙을 두 곳에 쓰면 어긋나요 | 항목 하나를 지워요 |
-| D-2 | holds 관측 파일은 이 라우트가 본 가지 보류만 적고, 보지 않았으면 이동을 쓸 수 없다고 보고해요 | `worktree-move-plan` 은 관측 없이는 모든 worktree 를 `hold_check_not_run` 으로 막고, 빈 목록은 "막힌 가지 없음을 관측했다"는 뜻이에요 | 문장 하나를 지워요 |
+| D-2 | 기준 1 감사(note audit-c59a-aaedc57)의 N1·N2 문구 고침이 이 조각에 같이 실려요: Completion Check 의 merge 단계 대기 이유를 backup·install 두 가지로 정확히 쓰고, 단계 5 에 "이미 yes 한 앞 단계에만 해당, 거절하거나 뺀 앞 단계는 그대로 두고 뒤 단계는 이유와 함께 보고"를 더해요; 두 문장은 `tests/project_preview_order.rs` 에 묶여요 | 같은 파일을 한 번만 고치려고, 그리고 기준 1 가지는 이미 감사를 마쳐서 다시 밀지 않으려고 | 두 문장과 시험 줄 둘을 지워요 |
+| D-3 | holds 관측 파일은 이 라우트가 본 가지 보류만 적고, 보지 않았으면 이동을 쓸 수 없다고 보고해요 | `worktree-move-plan` 은 관측 없이는 모든 worktree 를 `hold_check_not_run` 으로 막고, 빈 목록은 "막힌 가지 없음을 관측했다"는 뜻이에요 | 문장 하나를 지워요 |
 
 ## Result
 
