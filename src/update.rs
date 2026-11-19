@@ -34,6 +34,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
+/// The name-switch script part of `moai update` (card C-33 S3, SPEC-20261119-update-switch-layer).
+pub mod switch;
+
 type Result<T> = std::result::Result<T, String>;
 
 const UPDATE_SCHEMA_VERSION: u32 = 1;
