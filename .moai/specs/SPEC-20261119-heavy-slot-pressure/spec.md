@@ -59,7 +59,7 @@ created: 2026-11-19
 2. Rust `src/heavy_slot.rs`: `Memory` 판독(`sysctlbyname` 두 번, 하위 프로세스 없음), `Limits`·`DEFAULT_LIMITS`·`limits.json` 에 `min_mem_free_pct`(기본 10), `over_limits` 의 macOS 분기(압력 수준 4 이상·여유 % 미만 거부, 스왑은 표시), `--min-mem-free-pct` 플래그는 `src/main.rs` 에.
 3. Python `tools/heavy_check_slot.py`: 같은 판단을 `/usr/sbin/sysctl` 절대 경로·5 초 제한·고정 환경으로; 문서(`docs/rust-product-path.md`, `skills/moai/workflows/verify.md`)와 소스 매니페스트 동기.
 4. 감사 반영: a46481ff2e(압력 수준 3 경계 시험 B1, 판독 설명 N2).
-5. SDD 뒤붙이기 라운드(2026-11-19): 이 SPEC 을 쓰고, REQ-9(판독 하나만 읽히는 경계)의 스텁 사례를 세 시험 표(`tests/heavy_slot_cli.rs` 의 macOS 표와 `tests/heavy_check_slot_test.py` 의 C-88 표·패리티 표)에 추가해요 — 제품 코드는 그대로예요.
+5. SDD 뒤붙이기 라운드(2026-11-19): 이 SPEC 을 쓰고, REQ-9(판독 하나만 읽히는 경계)의 스텁 사례를 세 시험 표(`tests/heavy_slot_cli.rs` 의 macOS 판단 표와 `tests/heavy_check_slot_test.py` 의 macOS 판단 표·패리티 표)에 추가해요 — 제품 코드는 그대로예요.
 
 ## Risks
 
@@ -79,6 +79,6 @@ created: 2026-11-19
 ## Result
 
 - AC-1: met — 팁 192f6fa7e2(2026-11-19, 이 worktree)에서 `cargo test --locked --offline --test heavy_slot_cli` 21 passed 0 failed(`macos_is_judged_on_memory_pressure_not_swap` 포함), Python 25 tests OK(`test_c88_macos_is_judged_on_memory_pressure_not_swap` 포함); 실측(같은 날 이 Mac): 압력 수준 2·여유 37 %·스왑 97.7 % 에서 `heavy-slot-acquire -- /usr/bin/true` exit 0.
-- AC-2: met — `cargo test --locked --offline --lib heavy_slot::` 21 passed 0 failed(`limits_tests::the_memory_free_flag_only_tightens` 포함); Python C-88 표의 같은 경계(9→10 각주, `limits.json` 20>5·20/19, 0 으로 하향, 15 대 14/15) 통과.
+- AC-2: met — `cargo test --locked --offline --lib heavy_slot::` 21 passed 0 failed(`limits_tests::the_memory_free_flag_only_tightens` 포함); Python 의 macOS 판단 표가 같은 경계(9→10 각주, `limits.json` 20>5·20/19, 0 으로 하향, 15 대 14/15)를 통과.
 - AC-3: met — Python 25 tests OK(Linux 스왑 80 통과·81 거부, `--min-mem-free-pct 90` 내주어도 메모리 거부 없음, 부분 판독 사례 포함); `heavy_slot_cli` 21 passed(Linux 사례 포함).
 - AC-4: met — `cargo fmt --check` exit 0, `cargo clippy --offline --locked --all-targets -- -D warnings` exit 0(2026-11-19, 같은 worktree); 병합 시점 전수 기록은 PR #3151 본문.
