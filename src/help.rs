@@ -179,6 +179,7 @@ pub const GROUPS: &[Group] = &[
             ("lane-resume-check", false),
             ("lane-duty-line", false),
             ("lane-status", false),
+            ("lane-screen", false),
             ("lane-handoff-check", false),
             ("lane-safe-to-reset", false),
             ("close-check", false),
@@ -478,6 +479,13 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
         ],
     ),
     ("lane-status", &["lane-status . < request.json"]),
+    (
+        "lane-screen",
+        &[
+            "lane-screen < screen.txt",
+            "lane-screen --home <dir> < screen.json",
+        ],
+    ),
     ("lane-handoff-check", &["lane-handoff-check . < request.json"]),
     ("lane-safe-to-reset", &["lane-safe-to-reset --lane agent-1 ."]),
     ("close-check", &["close-check 2903 --repo modu-ai/moai-adk"]),
@@ -1851,6 +1859,19 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "미리 보기의 `home.confirm_token`(#2871): 거기 적힌 Go 세대 `~/.moai` 항목을 \
          `~/.moai-go-retired/<UTC>/` 로 옮김. --confirm 이 없으면 나머지는 미리 보기로 남고, \
          --confirm-cleanup 과 같이 못 씀",
+    ),
+    (
+        "update",
+        "confirm_switch",
+        "미리 보기의 `switch.confirm_token`(C-33 S3): 이름 전환 스크립트 `<상태 폴더>/path/moai` 를 \
+         새 것으로 바꿈. 옛 파일은 옆에 `moai.before-<UTC>` 로 보관됨. --confirm 이 없으면 \
+         나머지는 미리 보기로 남음",
+    ),
+    (
+        "update",
+        "revert_switch",
+        "앞선 --confirm-switch 가 `moai.before-<STAMP>` 로 보관한 옛 전환 스크립트를 되돌림. \
+         혼자 실행되며 --confirm 류 플래그와 같이 못 씀",
     ),
     (
         "update",
