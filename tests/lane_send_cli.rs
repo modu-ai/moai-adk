@@ -38,6 +38,7 @@ read)
 send)
   printf '%s\n' "$*" >> "$d/sent.txt"
   if [ -f "$d/send-fail" ]; then echo "send refused" >&2; exit 4; fi
+  if [ -f "$d/send-child-holds" ]; then sleep 6 & echo '{"id":"x","ok":true}'; exit 0; fi
   if [ -f "$d/send-ok-false" ]; then echo '{"id":"x","ok":false,"error":{"message":"no such terminal"}}'; exit 0; fi
   if [ -f "$d/send-garbage" ]; then echo 'sent it, thanks'; exit 0; fi
   if [ -f "$d/send-no-ok" ]; then echo '{"id":"x","result":{}}'; exit 0; fi
@@ -415,6 +416,32 @@ fn lane_send_sends_failure_is_never_reported_as_sent() {
     assert!(message.contains("send failed"), "{message}");
     assert!(!message.to_lowercase().contains("sent"), "{message}");
     // The send was attempted once and not repeated.
+    assert_eq!(fake.sent().map(|s| s.len()), Some(1));
+}
+
+/// Re-audit of the scan slice (delta note 3648, N1): a send that has happened, whose `orca` then
+/// leaves a child holding its output, fails as "did not finish its output" and must say the text
+/// may have reached the lane, as a send that did not answer does: otherwise the reader sends
+/// again and the text goes in twice.
+#[test]
+fn lane_send_a_send_whose_output_a_child_holds_says_the_text_may_have_reached_the_lane() {
+    let fake = Fake::screen("synthetic-idle.txt");
+    fake.flag("send-child-holds");
+    let started = Instant::now();
+    let r = run(&fake, "hello", &[]);
+    let message = r.error().to_string();
+    assert!(message.contains("did not finish its output"), "{message}");
+    assert!(
+        message.contains("the text may have reached the lane"),
+        "{message}"
+    );
+    assert!(!message.to_lowercase().contains("sent"), "{message}");
+    assert!(
+        started.elapsed() < Duration::from_secs(5),
+        "cut off after the 2 second limit, took {:?}",
+        started.elapsed()
+    );
+    // The send happened once and was not repeated.
     assert_eq!(fake.sent().map(|s| s.len()), Some(1));
 }
 

@@ -364,7 +364,7 @@ impl Orca for ProcessOrca {
         }
         args.push("--json");
         let called = self.call(&args).map_err(|d| {
-            if d.contains("did not answer") {
+            if d.contains("did not answer") || d.contains("did not finish its output") {
                 format!("{d}; the text may have reached the lane")
             } else {
                 d
