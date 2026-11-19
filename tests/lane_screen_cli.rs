@@ -252,6 +252,53 @@ fn lane_screen_state_a_question_above_unreadable_yes_and_no_rows_is_unknown() {
     );
 }
 
+/// Re-audit of slice B (note 3433, R-B1 and R-N1): a known question near the bottom is `unknown`
+/// when a choice word (`yes no allow deny y n`) is on the question row itself or below it, or
+/// when two or more numbered rows are below it, whatever the words of the choices are. Each of
+/// these five screens read as `working` (a send went in) before the repair.
+#[test]
+fn lane_screen_state_a_question_with_its_choices_on_the_row_or_below_is_unknown() {
+    for name in [
+        // R-B1: the choice is on the question row.
+        "synthetic-question-same-line-working.txt",
+        "synthetic-fingerprint-question-working.txt",
+        // R-N1: the choices do not use the words yes and no.
+        "synthetic-question-allow-deny-working.txt",
+        "synthetic-question-allow-once-always-deny-working.txt",
+        "synthetic-question-numbered-y-n-working.txt",
+    ] {
+        let r = run(&fixture(name), &[]);
+        assert_eq!(r.result()["state"], json!("unknown"), "{name}");
+        let evidence = r.result()["evidence"].as_str().unwrap();
+        assert!(
+            evidence.contains("Do you want") || evidence.contains("Are you sure"),
+            "{name}: {evidence}"
+        );
+        assert_eq!(r.result()["pane"], json!(null), "{name}");
+    }
+    // Two numbered rows under a known question are enough, whatever they say; one is not.
+    let two = "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\n  1. Proceed\n  2. Cancel\n";
+    assert_eq!(state_of(two), "unknown");
+    let one = "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\n  1. maybe later\n";
+    assert_eq!(state_of(one), "working");
+    // Each choice word makes a row below the question a choice row, as a whole word only.
+    for word in ["Allow", "deny", "y", "N", "yes", "No", "(y/N/a)"] {
+        let screen = format!(
+            "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\n{word}\n"
+        );
+        assert_eq!(state_of(&screen), "unknown", "{word}");
+    }
+    for word in ["Allowance", "denied", "yard", "Nine", "maybe"] {
+        let screen = format!(
+            "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\n{word}\n"
+        );
+        assert_eq!(state_of(&screen), "working", "{word}");
+    }
+    // The same on the question row itself.
+    let same = "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nDo you want to proceed? (y/N/a)\n";
+    assert_eq!(state_of(same), "unknown");
+}
+
 /// Leader decision S-N2 (note 3362): a lane that ended its turn with a question (`Would you like
 /// me to …?`) and waits at its input line is the screen a send is meant for. Only a `yes` or a
 /// `no` as a whole word on a row below the question makes it `unknown`.

@@ -13,4 +13,6 @@ A numbered `Yes` row together with a numbered `No` row is a confirmation whateve
 
 A question such as `Do you want …` in the last 8 non-blank rows with a `yes` or `no` word on a row below it, whose choices cannot be read as numbered rows, makes the screen `unknown` (leader R-N1, note 3256, narrowed by S-N2, note 3362): `synthetic-unreadable-choice-idle.txt` (`[1] Yes` and `[2] No` above an idle input line; the number is closed by `]`). A lane that ended its turn with a question and waits at its input line is not: `synthetic-question-then-input-idle.txt` is `idle`.
 
+A known question whose choices are on the question row itself, or are written with other words than yes and no, is `unknown` too (re-audit note 3433, R-B1 and R-N1): `synthetic-question-same-line-working.txt` (`Do you want to proceed? (yes/no)`), `synthetic-fingerprint-question-working.txt` (`Are you sure you want to continue connecting (yes/no/[fingerprint])?`), `synthetic-question-allow-deny-working.txt` (`Allow / Deny` under the question), `synthetic-question-allow-once-always-deny-working.txt` (`1. Allow once`, `2. Allow always`, `3. Deny`) and `synthetic-question-numbered-y-n-working.txt` (`◆ 1. Y` and `2. N`). Each of the five once read as `working` and a send went in.
+
 Replace a synthetic file with a recorded one when a real screen is at hand.
