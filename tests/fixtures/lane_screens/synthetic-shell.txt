@@ -1,0 +1,7 @@
+Last login: Thu Nov 19 09:00:00 on ttys003
+goos@host project % ls
+Cargo.toml  src  tests
+goos@host project % git status
+On branch main
+nothing to commit, working tree clean
+goos@host project %
