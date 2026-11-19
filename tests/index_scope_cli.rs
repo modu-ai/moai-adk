@@ -498,8 +498,14 @@ fn a_failure_marker_keeps_a_scoped_generation_scoped() {
     let (kind, _, _) = refused(&build(&project, json!({"protocol_version": 1})));
     assert_eq!(kind, "invalid_input");
     write(&project, "apps/bo/a.ts", "bo changed");
+    write(&project, "apps/web/untracked.ts", "u");
     let partial = query(&project);
     assert_eq!(partial["state"], json!("partial"), "{partial}");
+    assert_eq!(
+        partial["changes"]["new_files"],
+        json!([]),
+        "an untracked file outside the scope is not a change: {partial}"
+    );
     assert_eq!(
         partial["changes"]["modified"],
         json!(["apps/bo/a.ts"]),
