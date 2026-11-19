@@ -1322,7 +1322,13 @@ class InstallPs1Test(InstallShTest):
         e = self.env(**env)
         # pwsh needs its own folders under HOME; keep them out of the snapshot's way.
         return {**e, "PATH": e["PATH"] + ":" + os.path.dirname(shutil.which("pwsh")),
-                "POWERSHELL_TELEMETRY_OPTOUT": "1", "XDG_CACHE_HOME": os.path.join(self.tmp, "cache"),
+                "POWERSHELL_TELEMETRY_OPTOUT": "1",
+                # C-113: with LC_ALL, LC_MESSAGES and LANG all empty, install.ps1 falls back to
+                # Get-Culture. On macOS that reads the system language (ko-KR on a Korean Mac)
+                # whatever the environment says; the invariant mode makes it "iv" on every host,
+                # as on the CI runner, so the locale tests do not depend on the machine's language.
+                "DOTNET_SYSTEM_GLOBALIZATION_INVARIANT": "1",
+                "XDG_CACHE_HOME": os.path.join(self.tmp, "cache"),
                 "XDG_DATA_HOME": os.path.join(self.tmp, "data"),
                 "XDG_CONFIG_HOME": os.path.join(self.tmp, "config")}
 
