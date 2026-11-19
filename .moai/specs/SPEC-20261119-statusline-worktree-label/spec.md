@@ -28,7 +28,7 @@ created: 2026-11-19
 - REQ-2: When a held reservation of the project names the folder of the session's worktree, the status line shall write the segment as `🌳 WT-c<card>-<name>`, where `<card>` is the number of the card that holds it. · failure: none — 이 모양이 안 되는 경우(예약 없음·원장 못 읽음)는 REQ-5 가 정해요.
 - REQ-3: The status line shall take `<card>` from the card with the lowest number when more than one held reservation names the folder.
 - REQ-4: The status line shall take `<name>` from the branch of that reservation: the part after the eight-digit date and a dash in its last path segment (`spec/20261119-statusline-waiting-cards` gives `statusline-waiting-cards`), else the folder name without its `<project>-` prefix and without the card number, else nothing, and then the segment is `🌳 WT-c<card>`.
-- REQ-5 (REQ-2): IF no held reservation names the folder, or the ledger cannot be read within the render budget, THEN the status line shall write the worktree name the host gave, with no `WT-` prefix and no card number, at the same place on line 3.
+- REQ-5 (REQ-2): IF no held reservation names the folder, or the ledger cannot be read within the render budget, THEN the status line shall write the worktree name the host gave, with no `WT-` prefix and no card number, at the same place on the last line.
 - REQ-6: The status line shall show at most 32 characters of `<name>`, cut with `…` after the 31st.
 - REQ-7: The status line shall drop control characters and the invisible format characters that reorder or hide text (zero-width and bidirectional marks) from `<name>`, and use the next source of the name when none is left.
 - REQ-8: The status line shall read the reservations through the read-only open and the budget it uses for the card counts, creating no folder, file or journal and starting no process or network use.
@@ -39,13 +39,13 @@ created: 2026-11-19
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-10, REQ-11): the real binary, in a linked worktree, prints the segment first on line 3 and nothing on line 2; in a main checkout it prints none; with the `worktree` option off none.
+- AC-1 (REQ-1, REQ-10, REQ-11): the real binary, in a linked worktree, prints the segment first on the last line (line 3) and nothing on the repository line; in a main checkout it prints none; with the `worktree` option off none.
   verify: `cargo test --locked --offline --test statusline_worktree_label`
 - AC-2 (REQ-2, REQ-3, REQ-4, REQ-6, REQ-7, REQ-12): the label is pinned at its edges — a spec branch, a branch of another shape with a folder name that keeps a rest, one that keeps nothing, two cards holding one folder (the lowest, also when the lower card was reserved last), a name of exactly 32 and of 33 characters, a name with control or format characters and one that nothing visible is left of, a relative recorded path that would resolve to the folder from the process.
   verify: `cargo test --locked --offline --lib statusline::state::worktree_label_tests`
 - AC-3 (REQ-5, REQ-8, REQ-9): with no reservation for the folder, with a released one, with a budget spent before the open and with one that runs out between two rows, the segment is the host's name alone; the session folder comes from `workspace.current_dir`, else `cwd`; the ledger file digest and the HOME tree are the same before and after.
   verify: `cargo test --locked --offline --lib statusline::`
-- AC-4 (REQ-1, REQ-5): the golden files that carried the worktree on line 2 carry it first on line 3 with the host's name (plain, ansi, ansi256), and nothing else in them changes. The label shape with a held reservation is pinned by AC-1's real-binary tests, not by a golden file: a golden case runs in a temporary folder whose path is new each run, and its stdin names a fixed folder, so a ledger fixture cannot name the worktree folder.
+- AC-4 (REQ-1, REQ-5): the golden files that carried the worktree on line 2 carry it first on the last line with the host's name (plain, ansi, ansi256), and nothing else in them changes. The label shape with a held reservation is pinned by AC-1's real-binary tests, not by a golden file: a golden case runs in a temporary folder whose path is new each run, and its stdin names a fixed folder, so a ledger fixture cannot name the worktree folder.
   verify: `cargo test --locked --offline --test statusline_golden`
 
 ## Scope
@@ -84,4 +84,10 @@ created: 2026-11-19
 
 ## Result
 
-(draft: filled in with evidence at RUN.)
+- AC-1: met — 2026-11-19 `cargo test --locked --offline --test statusline_worktree_label` 9 passed 0 failed(실제 바이너리가 임시 HOME 의 원장과 `git worktree add` 로 만든 linked worktree 로: 줄 3 이 `🌳 WT-c1-demo-work | CTX: …`, 줄 2 에 🌳 없음, 줄 수 3; 예약 없음·released 는 호스트 이름만, 두 카드는 낮은 번호, 가지가 다른 모양은 `WT-c1-hooks`, 폴더에 남는 게 없으면 `WT-c1`, 메인 체크아웃은 조각 없음, `worktree: false` 는 어느 줄에도 없음; 렌더 앞뒤로 HOME 트리가 바이트·시각까지 같음). RED: 구현 전 9개 중 7개 실패(`CTX:` 만 있는 줄 3 과 줄 2 끝의 🌳).
+- AC-2: met — `cargo test --locked --offline --lib statusline::state::worktree_label_tests` 16 passed 0 failed(spec 가지 slug, 다른 모양, 32/33자·한글 문자 수·제어/서식 문자, 보이는 글자가 없으면 폴더 이름, 상태 다섯 값, 낮은 카드를 나중에 예약, 폴더 이름에서 `<project>-` 접두와 카드 번호를 뺌, 링크 철자 양방향, 상대 경로는 어느 폴더도 가리키지 않음, 읽기 뒤 원장 파일·HOME 불변). 변이 5(절대 경로 가드·`ORDER BY`·`session_dir` 의 cwd 대체·행마다 예산 확인·bidi 범위)가 모두 killed, 감사가 찾은 살아남은 변이 둘(`ORDER BY` 제거·cwd 대체)도 이제 killed.
+- AC-3: met — `cargo test --locked --offline --lib statusline::` 138 passed 0 failed(`a_ledger_that_cannot_be_read_gives_no_label`: HOME 없음·profile 없음·지난 마감은 `None`, 시간이 남으면 읽힘; `the_budget_is_asked_before_every_row`: 첫 행 뒤 마감이면 `None`; `the_session_folder_is_current_dir_then_cwd`; `reading_the_label_leaves_the_ledger_and_the_home_as_they_were`).
+- AC-4: met — `cargo test --locked --offline --test statusline_golden` ok(11개 케이스·33개 파일을 다시 기록, `python3 -I tools/statusline_golden.py --bin target/debug/moai --check` 78 golden outputs 실패 0). 33개 파일을 이전/이후로 조각 모음(ANSI·`🗿` 버전 토큰 제외)을 견줘 어긋남 0, 🌳 가 마지막 줄 맨 앞인지도 기계로 확인. 새 골든 케이스는 없음(AC-4 가 이유를 적음).
+- 이웃: `cargo fmt --check` 0, `rustfmt --check --edition 2021 src/ops/*.rs` 0, `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `git diff --check` 0, `spec check` 0/0, 스캔 5(`cargo_env_developer_dir`·`home_isolation_scan`·`git_env_scrub`·`doc_references`·`ac_command_lint`) 통과, 파이썬 `repo_scans_test`·`source_manifest_test`·`local_check_test` 114 OK 와 `statusline_fixtures_test`·`ci_scope_test` 51 OK 는 첫 head `9d74d2d75d` 에서 돌렸고, 수리 head 에서는 다시 돌리지 않았어요(수리가 `state.rs`·`render.rs` 문서·SPEC 뿐).
+- 감사: 첫 head `9d74d2d75d` 는 차단 B1(상대 경로로 기록된 예약이 상태줄 프로세스의 cwd 기준으로 풀려 엉뚱한 세션에 붙음)과 비차단 N1-N9; 수리 `c297d752fe`(상대 경로는 이름 없음, 행마다 예산 확인, 읽을 수 없는 행 건너뛰기, `LIMIT` 제거, 서식 문자 제거, 시험 5개, SPEC REQ-1·7·8·12)를 같은 감사자가 다시 보고 PASS 후보. 남은 사소한 점: 읽을 수 없는 행을 건너뛰는 분기는 시험이 없음, U+2028·2029·061C·00AD 는 걸러지지 않음, 상대 경로 시험은 다른 시험이 프로세스 cwd 를 바꾸지 않는다는 가정에 기대요.
+- 돌리지 않은 것: 전체 `cargo test`·doctest·파이썬 `discover`, Linux·Windows. `cargo test --bins` 는 5건 실패(`help_table_names_every_command_once`·`every_one_line_about_follows_the_rule`·`every_command_has_examples`: `bundle` 명령, `operations_doc_matches_code`·`fragment_mutations_are_detected`: `models-revert` 조각) — 로컬 팁 190de2d8d7 만 놓은 worktree 에서도 같은 5건이 같은 메시지로 실패하고(23 passed 5 failed) 이 SPEC 의 파일은 건드리지 않아요. 후속 조각: 새 worktree 이름 규칙(D-7, 사용자 확인), `docs/rust-product-path.md`·`docs/codex-adapter-contract.md` 문구(D-8).
