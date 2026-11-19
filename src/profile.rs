@@ -18,8 +18,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use std::{
     fs,
+    io::Read,
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    sync::mpsc,
+    time::{Duration, Instant},
 };
 
 type Result<T> = std::result::Result<T, String>;
@@ -608,7 +611,11 @@ pub fn plan(root: &Path, mut profile: Profile) -> Result<Plan> {
 /// `HEAD`) is refused without running any git command (the profile validation refuses it
 /// first — this is the second layer for internal callers); a repository or a remote that is
 /// missing answers `None` (the plan output stays as it was); a git failure becomes an
-/// `unavailable` warning and the plan still succeeds. Only fixed words and verified 40-hex
+/// `unavailable` warning and the plan still succeeds. The remote check never prompts on
+/// the terminal (`GIT_TERMINAL_PROMPT=0`) and never waits forever: the wait is bounded
+/// (audit B6) and the child's process group is killed when it lapses; tests shrink the
+/// bound with `MOAI_GIT_TIMEOUT_SECS`, the same injection shape as `MOAI_FORGE_GH_BIN`.
+/// Only fixed words and verified 40-hex
 /// SHAs travel as git arguments — the branch name never does.
 pub fn plan_work_flow_remote(root: &Path, work_flow: Option<&WorkFlowSettings>) -> Option<Value> {
     let branch = work_flow?.integration_branch.as_deref()?;
@@ -621,19 +628,83 @@ pub fn plan_work_flow_remote(root: &Path, work_flow: Option<&WorkFlowSettings>) 
         }));
     }
     let git = |args: &[&str]| -> std::result::Result<String, String> {
+        let timeout = std::env::var("MOAI_GIT_TIMEOUT_SECS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(10);
         let mut cmd = Command::new("git");
         crate::identity::scrub_git_env(&mut cmd);
-        let out = cmd
+        // Its own process group, so everything a remote check starts can be ended with it.
+        #[cfg(unix)]
+        std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
+        let mut child = cmd
+            .env("GIT_TERMINAL_PROMPT", "0")
             .arg("-C")
             .arg(root)
             .args(args)
             .stdin(Stdio::null())
-            .output()
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
             .map_err(|e| format!("cannot run git: {e}"))?;
-        if out.status.success() {
-            Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+        // Readers hand their bytes over a channel, so a full pipe cannot deadlock the wait.
+        let drain = |pipe: Option<Box<dyn Read + Send>>| {
+            let (tx, rx) = mpsc::channel();
+            std::thread::spawn(move || {
+                let mut buf = Vec::new();
+                if let Some(mut p) = pipe {
+                    let _ = p.read_to_end(&mut buf);
+                }
+                let _ = tx.send(buf);
+            });
+            rx
+        };
+        let stdout = drain(
+            child
+                .stdout
+                .take()
+                .map(|p| Box::new(p) as Box<dyn Read + Send>),
+        );
+        let stderr = drain(
+            child
+                .stderr
+                .take()
+                .map(|p| Box::new(p) as Box<dyn Read + Send>),
+        );
+        let deadline = Instant::now() + Duration::from_secs(timeout);
+        let status = loop {
+            match child.try_wait() {
+                Ok(Some(s)) => break Some(s),
+                Ok(None) if Instant::now() >= deadline => {
+                    // The group goes with it, so an ssh or helper the remote check started
+                    // cannot outlive the timeout holding the pipes.
+                    #[cfg(unix)]
+                    {
+                        let _ = Command::new("kill")
+                            .args(["-KILL", "--", &format!("-{}", child.id())])
+                            .stdin(Stdio::null())
+                            .stdout(Stdio::null())
+                            .stderr(Stdio::null())
+                            .status();
+                    }
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return Err(format!("timed out after {timeout}s"));
+                }
+                Ok(None) => std::thread::sleep(Duration::from_millis(10)),
+                Err(_) => return Err("git wait failed".to_string()),
+            }
+        };
+        let grace = Duration::from_millis(500);
+        let out = stdout.recv_timeout(grace).unwrap_or_default();
+        let err_out = stderr.recv_timeout(grace).unwrap_or_default();
+        let Some(s) = status else {
+            return Err("git wait failed".to_string());
+        };
+        if s.success() {
+            Ok(String::from_utf8_lossy(&out).into_owned())
         } else {
-            Err(String::from_utf8_lossy(&out.stderr).trim().to_string())
+            Err(String::from_utf8_lossy(&err_out).trim().to_string())
         }
     };
     // REQ-5: nothing to check without a repository and a remote.
