@@ -1250,12 +1250,12 @@ mod tests {
 
     #[test]
     fn card_numbers_are_found_at_word_starts_only() {
-        let spans = |t: &str| {
+        fn spans(t: &str) -> Vec<&str> {
             card_number_spans(t)
                 .into_iter()
                 .map(|(a, b)| &t[a..b])
-                .collect::<Vec<_>>()
-        };
+                .collect()
+        }
         assert_eq!(spans("C-1"), ["C-1"]);
         assert_eq!(spans("see C-123, C-4)"), ["C-123", "C-4"]);
         assert_eq!(spans("(C-9)"), ["C-9"]);
