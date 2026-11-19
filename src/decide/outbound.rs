@@ -2085,13 +2085,15 @@ mod tests {
     /// load the rework reproduced it 6 of 6 times (2026-11-19). The baseline is one linear
     /// pass over the text's bytes in this crate, measured just before each `screen` call, so
     /// machine load scales both sides of the ratio. Measured in a debug build on 2026-11-19:
-    /// a 64 KiB field screens in 6 to 1,100 baseline passes across the 14 shapes below, while
+    /// a 64 KiB field screens in 6 to 1,104 baseline passes across the 14 shapes below, while
     /// a quadratic re-scan — reading the text again at each occurrence, the 2026-11-17 defect
-    /// — costs at least about 160,000 of them at this text length; `COST_RATIO_LIMIT`
-    /// separates the two with room on both sides (the mutant run is in the SPEC Result).
+    /// — lands at about 24,000 of them at this text length (measured 24,489; the same per-byte
+    /// cost on both sides caps the ratio near half the text length), so `COST_RATIO_LIMIT`
+    /// keeps more than ten times room over the linear side and a wide floor under the
+    /// quadratic one (the mutant run is in the SPEC Result).
     #[test]
     fn a_64_kib_field_of_a_repeated_key_prefix_is_screened_quickly() {
-        const COST_RATIO_LIMIT: f64 = 20_000.0;
+        const COST_RATIO_LIMIT: f64 = 15_000.0;
         let fill = |unit: &str| unit.repeat(FIELD_MAX / unit.len());
         for text in [
             fill("AKIA"),
