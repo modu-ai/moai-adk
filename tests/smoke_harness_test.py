@@ -167,6 +167,34 @@ class FailureTest(unittest.TestCase):
         self.assertIn("not json at all", out)
         self.assertRegex(last_line(result), r"failed=install-inspect\b")
 
+    def test_a_binary_of_the_wrong_generation_fails_the_version_step(self):
+        decoy = Decoy(self)
+        binary = fake_binary(self, 'echo "moai 2.0.0 (go)"\n')
+        result = smoke(["install", "--bin", str(binary)], decoy.path)
+        out = result.stdout
+        self.assertEqual(result.returncode, 1, out + result.stderr)
+        self.assertRegex(out, r"(?m)^\[FAIL\] +version .*Rust signature")
+        self.assertIn("moai 2.0.0 (go)", out)
+        self.assertRegex(last_line(result), r"failed=version\b")
+
+    def test_an_update_preview_that_writes_into_the_home_is_a_failure(self):
+        decoy = Decoy(self)
+        binary = fake_binary(
+            self,
+            'case "$1" in\n'
+            '  --version) echo "moai-cli 0.0.0 (rust)";;\n'
+            '  update) echo leak > "$HOME/leak.txt"\n'
+            '    echo \'{"ok":true,"result":{"applied":false,"nothing_to_apply":false,'
+            '"plan_digest":"sha256:abc"}}\';;\n'
+            "esac\n",
+        )
+        result = smoke(["update", "--bin", str(binary)], decoy.path)
+        out = result.stdout
+        self.assertEqual(result.returncode, 1, out + result.stderr)
+        self.assertRegex(out, r"(?m)^\[FAIL\] +preview .*wrote 1 files")
+        self.assertRegex(last_line(result), r"failed=preview\b")
+        decoy.assert_untouched(self)
+
 
 class IsolationTest(unittest.TestCase):
     """AC-3: the caller's HOME and environment never reach a step."""
@@ -209,6 +237,13 @@ class IsolationTest(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
         self.assertIn("real home", result.stdout + result.stderr)
+        self.assertEqual(before, snapshot(decoy.path), "something was created inside HOME")
+        # the base being the home itself is refused the same way
+        same = smoke(
+            ["install", "--bin", str(binary)], decoy.path, {"TMPDIR": str(decoy.path)}
+        )
+        self.assertEqual(same.returncode, 2, same.stdout + same.stderr)
+        self.assertIn("real home", same.stdout + same.stderr)
         self.assertEqual(before, snapshot(decoy.path), "something was created inside HOME")
 
     def test_there_is_no_option_that_points_a_step_at_a_home(self):
