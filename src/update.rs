@@ -1699,6 +1699,17 @@ fn asks(cleanup: Option<&str>, home: Option<&str>, writes: bool) -> bool {
     cleanup.is_none() && home.is_none() && writes
 }
 
+/// [`asks`] for the layer question with every part's own token: a home token or a switch token
+/// (C-33 S3) alone leaves the layer a preview, so the terminal yes never applies either part.
+fn layer_asks(
+    cleanup: Option<&str>,
+    home: Option<&str>,
+    switch: Option<&str>,
+    writes: bool,
+) -> bool {
+    asks(cleanup, home.or(switch), writes)
+}
+
 /// Archive the cleanup items (`update_cleanup::apply` re-plans and checks the token again).
 fn run_cleanup(
     home: &Path,
@@ -1985,7 +1996,7 @@ fn update_command_core(
         Some(d) => d.to_string(),
         // A cleanup or home run without `--confirm` leaves the layer a preview: a yes at the
         // question never applies a part with its own token.
-        None if asks(cleanup, home_token.or(switch_token), writes)
+        None if layer_asks(cleanup, home_token, switch_token, writes)
             && ask(&layer_summary(&layer), &preview())? =>
         {
             layer.plan_digest.clone()
@@ -3087,9 +3098,18 @@ mod user_layer_tests {
         assert!(!asks(Some("cleanup:0123456789abcdef"), None, true));
         // #2871 U2b: a home token alone leaves the layer a preview too.
         assert!(!asks(None, Some("home:0123456789abcdef"), true));
-        // C-33 S3: `update_command_switch` passes `home_token.or(switch_token)`, so a switch
-        // token alone leaves the layer a preview too: the terminal yes never confirms the switch.
-        assert!(!asks(None, Some("switch:0123456789abcdef"), true));
+        // C-33 S3: a switch token alone leaves the layer a preview too — the terminal yes never
+        // confirms the switch — and no token at all still asks.
+        let sw = Some("switch:0123456789abcdef");
+        assert!(layer_asks(None, None, None, true));
+        assert!(!layer_asks(None, None, sw, true));
+        assert!(!layer_asks(None, Some("home:0123456789abcdef"), None, true));
+        assert!(!layer_asks(
+            Some("cleanup:0123456789abcdef"),
+            None,
+            sw,
+            true
+        ));
     }
 
     /// Audit 6847256437 B1: a host whose skill copy passed the preview but did not land in the
