@@ -813,3 +813,38 @@ fn the_undo_order_names_hooks_revert_for_a_hooks_apply_update() {
         "{hooks_note}"
     );
 }
+
+/// Card C-107 slice 2: the profile mutant the merged hooks SPEC recorded as surviving
+/// (`let claude = true;` at the profile check) is now pinned. A project whose profile does not
+/// list claude and whose settings carry no hooks key has its hooks step decided by the Go plan
+/// alone: `unchanged` with the Go reason — not the claude-plan words the mutant's `true` would
+/// print ("no MoAI hook set is installed … hooks-plan reads …").
+#[test]
+fn a_profile_without_claude_keeps_the_go_reason_on_the_hooks_step() {
+    let fx = GoFx::new();
+    profile_with_hosts(&fx, &["codex"]);
+    write_settings(&fx, &json!({"model": "opus"}));
+    let plan = after_settings(&fx);
+    let step = hooks(&plan);
+    assert_eq!(step["state"], "unchanged", "{step}");
+    let reason = step["reason"].as_str().unwrap();
+    assert_eq!(reason, "no Go-generation hooks are left", "{step}");
+    assert!(!reason.contains("hooks-plan"), "{step}");
+}
+
+/// Card C-107 slice 2 (audit follow-up): a symlinked ownership record is refused and the
+/// refusal names the record file, like an unreadable one does — the settings-state refusals
+/// ("symlink target refused") reach the step undecorated today.
+#[test]
+fn a_symlinked_record_refusal_names_the_file() {
+    let fx = project_with_go_hooks();
+    let record = with_the_hook_set_installed(&fx);
+    fs::remove_file(&record).unwrap();
+    std::os::unix::fs::symlink("/nonexistent/claude-settings.json", &record).unwrap();
+    let update = fx.update_plan();
+    let step = hooks(&update);
+    assert_eq!(step["state"], "blocked", "{step}");
+    let reason = step["reason"].as_str().unwrap();
+    assert!(reason.contains("manifests/claude-settings.json"), "{step}");
+    assert!(reason.contains("symlink"), "{step}");
+}

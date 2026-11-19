@@ -14,6 +14,16 @@
     "files": {"type": "array", "items": {"$ref": "#/$defs/file_plan"}},
     "host_notes": {"type": "array", "items": {"type": "string"}},
     "warnings": {"type": "array", "items": {"type": "string"}},
+    "claude_shadow": {
+      "description": "A CLAUDE.md that shadows AGENTS.md and does not import it. Absent when there is none; not part of plan_digest.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "import_line"],
+      "properties": {
+        "path": {"enum": ["CLAUDE.md", ".claude/CLAUDE.md"]},
+        "import_line": {"type": "string"}
+      }
+    },
     "plan_digest": {"$ref": "urn:moai:protocol:v1:digest"}
   },
   "$defs": {
@@ -23,7 +33,7 @@
       "required": ["path", "action", "tracked_by_default", "expected_sha256", "section_id", "baseline_sha256", "rendered_sha256", "detail"],
       "properties": {
         "path": {"type": "string"},
-        "action": {"enum": ["create", "merge", "append", "unchanged", "conflict"]},
+        "action": {"enum": ["create", "merge", "append", "unchanged", "conflict", "skip"]},
         "tracked_by_default": {"type": "boolean"},
         "expected_sha256": {"type": ["string", "null"]},
         "section_id": {"type": ["string", "null"]},

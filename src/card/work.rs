@@ -193,6 +193,81 @@ pub struct NoteRequest<'a> {
     pub session: Option<&'a str>,
 }
 
+/// The note path only (C-68 AC-3): the two prose shapes the C-53 S1 re-audit named as false
+/// positives are blanked before the shared secret screen — a lower-case hyphenated name after
+/// `sk` (a key is random and does not look like that; `sk-proj-` starts a key whatever
+/// follows, the rule `decide`'s own `without_sk_names` states) and the name of an option
+/// assignment whose value is not itself secret-shaped. The value is screened on its own and
+/// counted in the second return: the shared screen sees a word like `--flag=sk-…` as one
+/// word that starts with the option name, so the value alone decides.
+fn blank_prose(text: &str) -> (String, usize) {
+    let mut bytes = without_sk_names(text).into_bytes();
+    let mut shaped_values = 0;
+    let mut at = 0;
+    while at < bytes.len() {
+        let starts =
+            bytes[at..].starts_with(b"--") && (at == 0 || !bytes[at - 1].is_ascii_alphanumeric());
+        if !starts {
+            at += 1;
+            continue;
+        }
+        let name_end = (at + 2..bytes.len())
+            .find(|&i| !(bytes[i].is_ascii_alphanumeric() || bytes[i] == b'-' || bytes[i] == b'_'))
+            .unwrap_or(bytes.len());
+        if name_end < bytes.len() && bytes[name_end] == b'=' {
+            let value_end = (name_end + 1..bytes.len())
+                .find(|&i| bytes[i].is_ascii_whitespace())
+                .unwrap_or(bytes.len());
+            let value = std::str::from_utf8(&bytes[name_end + 1..value_end]).unwrap_or("");
+            let (_, shaped) = crate::redact::redact_outgoing(value);
+            if shaped == 0 {
+                bytes[at + 2..name_end].fill(b'x');
+            } else {
+                shaped_values += shaped;
+            }
+            at = value_end;
+        } else {
+            at = name_end;
+        }
+    }
+    // Only ASCII bytes were replaced, each by one ASCII byte.
+    (
+        String::from_utf8(bytes).unwrap_or_else(|_| text.to_string()),
+        shaped_values,
+    )
+}
+
+/// `sk-` before lower-case hyphenated words, blanked the way `decide` states it: no digit,
+/// upper-case letter or underscore anywhere in the run, `sk-proj-` apart.
+fn without_sk_names(text: &str) -> String {
+    let mut bytes = text.as_bytes().to_vec();
+    let key = |b: u8| b.is_ascii_alphanumeric() || b == b'_' || b == b'-';
+    let mut at = 0;
+    while at < bytes.len() {
+        let starts = bytes[at..].starts_with(b"sk-")
+            && !bytes[at..].starts_with(b"sk-proj-")
+            && (at == 0 || !bytes[at - 1].is_ascii_alphanumeric());
+        if !starts {
+            at += 1;
+            continue;
+        }
+        let mut len = 0;
+        while at + len < bytes.len() && key(bytes[at + len]) {
+            len += 1;
+        }
+        let words = &bytes[at + 3..at + len];
+        let name = words.contains(&b'-')
+            && words
+                .split(|b| *b == b'-')
+                .all(|word| !word.is_empty() && word.iter().all(u8::is_ascii_lowercase));
+        if name {
+            bytes[at..at + len].fill(b'x');
+        }
+        at += len;
+    }
+    String::from_utf8(bytes).unwrap_or_else(|_| text.to_string())
+}
+
 /// `card note C-n --kind K`: appends the text as one note. The line breaks and blanks a pipe
 /// leaves at the end are not part of the note.
 pub fn note(project: &Path, home: &Path, reference: &str, req: &NoteRequest<'_>) -> Result<Value> {
@@ -207,14 +282,30 @@ pub fn note(project: &Path, home: &Path, reference: &str, req: &NoteRequest<'_>)
         );
     }
     // The check the repository uses for text that leaves it (`redact::redact_outgoing`): a note
-    // is kept for good and `card export` writes it out. The text is not repeated.
-    let (_, shaped) = crate::redact::redact_outgoing(text);
-    if shaped > 0 {
+    // is kept for good and `card export` writes it out. The text is not repeated. The two prose
+    // shapes the C-53 S1 re-audit named are blanked first (`blank_prose`), and an option value
+    // that is itself secret-shaped is counted on its own.
+    let (screened, shaped_values) = blank_prose(text);
+    let (_, shaped) = crate::redact::redact_outgoing(&screened);
+    if shaped + shaped_values > 0 {
         return Err(format!(
-            "card note refused: the note text has {shaped} word(s) with the shape of a secret \
+            "card note refused: the note text has {} word(s) with the shape of a secret \
              (a token, a key, `password=`); a note is kept for good and written out by \
-             `card export`, so take them out"
+             `card export`, so take them out",
+            shaped + shaped_values
         ));
+    }
+    // C-68 AC-3: the one-line fields pass the same screen as the body.
+    if let Some(r) = req.reference {
+        let (screened, shaped_values) = blank_prose(r);
+        let (_, shaped) = crate::redact::redact_outgoing(&screened);
+        if shaped + shaped_values > 0 {
+            return Err(format!(
+                "card note refused: the note ref has {} word(s) with the shape of a secret \
+                 (a token, a key, `password=`); take them out",
+                shaped + shaped_values
+            ));
+        }
     }
     let author = match (req.by, req.session) {
         (Some(by), _) => actor(Some(by), "note")?,
@@ -253,6 +344,23 @@ pub fn criterion(
     change: CriterionChange<'_>,
 ) -> Result<Value> {
     let card_id = card_id("criterion", reference)?;
+    // C-68 AC-3: the one-line fields pass the same screen as the note body.
+    let (what, screened, shaped_values) = match &change {
+        CriterionChange::Met { evidence } => {
+            let (masked, shaped) = blank_prose(evidence);
+            ("the evidence", masked, shaped)
+        }
+        CriterionChange::Withdrawn { reason } => {
+            let (masked, shaped) = blank_prose(reason);
+            ("the reason", masked, shaped)
+        }
+    };
+    if crate::redact::redact_outgoing(&screened).1 + shaped_values > 0 {
+        return Err(format!(
+            "card criterion refused: {what} has a word with the shape of a secret (a token, a \
+             key, `password=`); take it out"
+        ));
+    }
     let (id, mut ledger) = open_for_write(project, home)?;
     let c = workflow::set_criterion(&mut ledger, card_id, holder, generation, seq, change)
         .map_err(|e| refusal("criterion", e))?;

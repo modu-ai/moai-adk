@@ -967,3 +967,52 @@ fn a_receipt_that_forges_a_spec_entry_is_refused() {
     }
     fs::write(&receipt_path, &original).unwrap();
 }
+
+/// SPEC-20261119-enforce-interview-record REQ-6: `spec check` refuses an approved SPEC created on
+/// 2026-11-19 or later without an interview record, and passes it once the record is there.
+#[test]
+fn interview_is_checked_by_the_command() {
+    let id = "SPEC-20261119-login-fix";
+    let home = TempHome::new();
+    let p = project(&home);
+    let body = "## Intent\n\nLogins fail.\n\n## Requirements\n\n- REQ-1: When a user sends a \
+        valid password, the server shall accept the login.\n- REQ-2 (REQ-1): IF the check fails, \
+        THEN the server shall refuse the login.\n\n## Acceptance\n\n- AC-1 (REQ-1): A valid \
+        password logs in · verify: `cargo test --test login`\n\n## Scope\n\n- write: \
+        `src/login.rs`\n\n## Plan\n\n1. Fix it.\n\n";
+    let front = |status: &str, extra: &str| {
+        format!(
+            "---\nid: {id}\ntitle: \"Fix login\"\nstatus: {status}\nrevision: 1\ncreated: \
+             2026-11-19\n{extra}---\n\n# Fix login\n\n"
+        )
+    };
+    let path = spec_path(&p, id);
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(&path, format!("{}{body}", front("draft", ""))).unwrap();
+    let (code, v) = spec(&home, &p, &["show", id]);
+    assert_eq!(code, 0, "{v}");
+    let digest = v["result"]["spec"]["digest"].as_str().unwrap().to_string();
+    let approval =
+        format!("approval:\n  by: user\n  at: 2026-11-19\n  basis: in-session selection\n  digest: {digest}\n");
+    fs::write(&path, format!("{}{body}", front("approved", &approval))).unwrap();
+    let before = tree_state(home.path());
+    let (code, v) = spec(&home, &p, &["check", id]);
+    assert_eq!(code, 1, "{v}");
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("interview_missing"),
+        "{v}"
+    );
+    assert_eq!(tree_state(home.path()), before, "a refusal writes nothing");
+    let interview = "## Interview\n\n- Q1: Which logins fail? → A: Valid passwords only.\n";
+    fs::write(
+        &path,
+        format!("{}{body}{interview}", front("approved", &approval)),
+    )
+    .unwrap();
+    let (code, v) = spec(&home, &p, &["check", id]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(v["result"]["errors"], 0, "{v}");
+}

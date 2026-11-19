@@ -244,15 +244,27 @@ pub fn take(r: &Request<'_>) -> Result<Value> {
     )
     .is_ok();
     let recorded = git(dir, &["config", &format!("branch.{branch}.moai-base")]).ok();
-    let base = match (r.base, &recorded) {
-        (Some(b), _) => b.to_string(),
-        (None, Some(b)) if exists => b.clone(),
-        (None, _) if current != "HEAD" && current != branch => current.clone(),
-        (None, _) => {
-            return Err(refuse(
-                "no base: pass --base <branch> (the checkout is detached or already on the SPEC branch without a recorded base); nothing was changed",
-            ))
-        }
+    // C-105 slice 1: without `--base`, a fresh take starts from the profile's
+    // `work_flow.integration_branch` when one is set. A missing or unreadable
+    // profile changes nothing — the current branch stays the default — and the
+    // recorded base of an existing branch (a re-take) still wins over it.
+    let profile_base = crate::profile::read_profile(dir)
+        .ok()
+        .and_then(|(p, _)| p.work_flow)
+        .and_then(|w| w.integration_branch)
+        .filter(|b| !b.trim().is_empty());
+    let (base, base_source) = if let Some(b) = r.base {
+        (b.to_string(), "given")
+    } else if let Some(b) = recorded.as_ref().filter(|_| exists) {
+        (b.clone(), "recorded")
+    } else if let Some(pb) = profile_base.as_ref() {
+        (pb.clone(), "profile")
+    } else if current != "HEAD" && current != branch {
+        (current.clone(), "current-branch")
+    } else {
+        return Err(refuse(
+            "no base: pass --base <branch> (the checkout is detached or already on the SPEC branch without a recorded base); nothing was changed",
+        ));
     };
     // Every base — given, recorded or the current branch — must name a commit.
     if base.starts_with('-')
@@ -375,6 +387,7 @@ pub fn take(r: &Request<'_>) -> Result<Value> {
     }
     Ok(json!({
         "action": "take", "spec": r.id, "status": doc.status, "branch": branch, "base": base,
+        "base_source": base_source,
         "created": created, "switched": switched, "base_recorded": base_changed,
         "card": card, "next": next, "pushed": pushed, "draft_pr": draft_pr,
         "writes": created || switched || base_changed || card_changed || pushed,

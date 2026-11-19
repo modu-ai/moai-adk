@@ -858,7 +858,7 @@ fn tool_observe_refuses_a_symlinked_receipts_dir() {
 }
 
 #[test]
-fn turn_validation_ships_with_no_rule_and_never_blocks() {
+fn turn_validation_never_blocks_outside_a_spec_branch() {
     let (_d, root) = repo("issue/77-k");
     fs::create_dir(root.join(".moai-cli")).unwrap();
     for active in [false, true] {
@@ -867,7 +867,12 @@ fn turn_validation_ships_with_no_rule_and_never_blocks() {
         let r = dispatch("turn-validation", &root, stop.to_string().as_bytes(), &[]);
         assert_eq!((r.code, r.stdout.as_str(), r.stderr.as_str()), (0, "", ""));
     }
-    assert!(!engine_log(&root).exists(), "no rule, nothing written");
+    // The one shipped rule (`ac_verify_recorded`) reads SPEC work branches only; this is an
+    // issue branch, so it asks for nothing and writes nothing.
+    assert!(
+        !engine_log(&root).exists(),
+        "no SPEC branch, nothing written"
+    );
     assert_engine_error(&dispatch("turn-validation", &root, b"{oops", &[]));
     let wrong = json!({"hook_event_name": "PreToolUse"});
     assert_engine_error(&dispatch(

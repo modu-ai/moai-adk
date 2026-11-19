@@ -1,0 +1,30 @@
+{
+  "format": 1,
+  "note": "Behaviours where the Rust build intentionally differs from the Go build moai.old. Each entry names a case of tests/diff_go.rs, says in what the two differ, and gives the reason. The test checks that the difference is still there, so a stale entry fails.",
+  "differences": [
+    {
+      "case": "layout_of_the_status_line",
+      "go": "three lines starting with the model and the Go version, then CW/5H/7D bars, then folder, branch and git counts",
+      "rust": "a role segment, the model, the Rust version, the branch and one CTX bar",
+      "reason": "the Rust status line is its own design (card #2350, design 2383); only the reading of the payload is kept"
+    },
+    {
+      "case": "hook_call_pre_tool",
+      "go": "`moai hook pre-tool` answers an allow decision on stdout (`hookSpecificOutput.permissionDecision` = `allow`) in a folder with no MoAI settings, and creates a `.moai` folder in the current folder",
+      "rust": "`moai hook pre-tool` prints nothing on stdout; stderr says it ignored a Go-generation hook call",
+      "reason": "the Rust build does not run Go hooks (its hooks are `hook-dispatch --host H --event E`, card #2391); nothing is blocked"
+    },
+    {
+      "case": "hook_deny_reason_text",
+      "go": "`moai hook pre-tool` denies `rm -rf /` with `permissionDecisionReason` = `Dangerous command blocked: removal of protected path \"/\"`",
+      "rust": "`moai hook-dispatch --host claude --event tool-preflight` denies the same command with the same `hookEventName` and `permissionDecision`, and its own reason text (`MoAI tool-preflight: rm aimed at the root, ...`)",
+      "reason": "the decision shape is the kept protection (src/hook_engine.rs); the wording is the Rust build's own"
+    },
+    {
+      "case": "hook_allow_is_silent",
+      "go": "`moai hook pre-tool` answers an explicit allow decision (`permissionDecision` = `allow`) for `ls`",
+      "rust": "`moai hook-dispatch --host claude --event tool-preflight` prints nothing for `ls` and exits 0",
+      "reason": "the Rust build speaks only when it refuses; silence lets the command run (card #2391)"
+    }
+  ]
+}

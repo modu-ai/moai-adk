@@ -262,27 +262,33 @@ pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<Value, 
         return Err("permission reference required".into());
     }
     if !receipt_id_ok(receipt_id) {
-        return Err("unknown models receipt id".into());
+        return Err("invalid models receipt id".into());
     }
     let marker = format!("{receipt_id}.reverted");
-    if key_vault::read_home_receipt(home, &marker)?.is_some() {
-        return Err("models receipt already reverted".into());
-    }
+    // An unreadable marker reads as "not written": the honest failure then comes from the
+    // marker write itself, which names the path and says nothing was changed.
+    let marker_written = matches!(key_vault::read_home_receipt(home, &marker), Ok(Some(_)));
     let receipt =
         key_vault::read_home_receipt(home, receipt_id)?.ok_or("models receipt not found")?;
     if receipt["operation"] != json!("update.models") {
-        return Err("not a models receipt".into());
+        return Err("conflict in models revert: the receipt is not a models receipt".into());
     }
     let path = settings_path(home);
     if receipt["path"] != json!(path.display().to_string()) {
-        return Err("models receipt names another settings file".into());
+        return Err("conflict in models revert: the receipt names another settings file".into());
     }
     let after_sha = receipt["after_sha256"]
         .as_str()
-        .ok_or("models receipt is damaged")?;
-    let before = before_of(&receipt).ok_or("models receipt is damaged")?;
+        .ok_or("invalid models receipt: the fields the revert needs are missing or do not hash")?;
+    let before = before_of(&receipt)
+        .ok_or("invalid models receipt: the fields the revert needs are missing or do not hash")?;
     let current = questions::read_text(&path)?;
     if current.as_deref().map(sha).as_deref() != Some(after_sha) {
+        // A marker without the reverted file is a dead run's window: resume below. A file
+        // that no longer matches is either already reverted or changed since — refused.
+        if marker_written {
+            return Err("models receipt already reverted".into());
+        }
         return Ok(json!({
             "state": "skipped",
             "reason": "changed_since_apply",
@@ -290,25 +296,46 @@ pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<Value, 
             "path": path.display().to_string(),
         }));
     }
-    match before {
-        Some(text) => questions::write_text(&path, text)?,
-        None => questions::remove_settings(&path)?,
+    // The marker goes first (SPEC-20261119-models-revert-reporting REQ-1): a failed marker
+    // write leaves the settings untouched and retryable, and a run that dies after the
+    // marker resumes here through the window check above.
+    if !marker_written {
+        key_vault::write_home_receipt(
+            home,
+            &marker,
+            &json!({
+                "schema_version": 1,
+                "operation": "update.models_revert",
+                "receipt": receipt_id,
+                "permission_reference": permission,
+            }),
+        )
+        .map_err(|e| format!("models revert marker write failed: {e}; nothing was changed"))?;
     }
-    if !file_is(&path, before) {
-        return Err(
-            "the settings file read back differently after the revert; check the file".into(),
+    let restored = (|| -> std::result::Result<(), String> {
+        match before {
+            Some(text) => questions::write_text(&path, text)?,
+            None => questions::remove_settings(&path)?,
+        }
+        if !file_is(&path, before) {
+            return Err(
+                "conflict in models revert: the settings file read back differently after the \
+                 revert; check the file"
+                    .into(),
+            );
+        }
+        Ok(())
+    })();
+    restored.inspect_err(|_| {
+        // The settings are not back, so the marker must not say they were: best effort
+        // removal. A marker that survives this cleanup is a dead run's window, and the
+        // marker+hash check above resumes it on the next attempt.
+        let _ = std::fs::remove_file(
+            crate::home_root::path(home)
+                .join("receipts")
+                .join(format!("{marker}.json")),
         );
-    }
-    key_vault::write_home_receipt(
-        home,
-        &marker,
-        &json!({
-            "schema_version": 1,
-            "operation": "update.models_revert",
-            "receipt": receipt_id,
-            "permission_reference": permission,
-        }),
-    )?;
+    })?;
     Ok(json!({
         "state": "reverted",
         "receipt": receipt_id,
@@ -370,6 +397,7 @@ mod tests {
             json!({"before_text": null}),
             json!({"before_text": text, "before_sha256": null}),
             json!({"before_text": null, "before_sha256": sha(text)}),
+            json!({"before_sha256": null}),
             json!({"before_text": text, "before_sha256": sha("other")}),
             json!({"before_text": 1, "before_sha256": 1}),
             json!("not an object"),
