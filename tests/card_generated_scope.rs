@@ -239,3 +239,136 @@ fn the_list_equals_the_gitattributes_merge_lines() {
     assert_eq!(listed, attributed);
     assert!(listed.contains(&MANIFEST));
 }
+
+const REFS_STAR: &str = "skills/moai/references/*";
+const ROUTES_JSON: &str = "skills/moai/references/routes.json";
+const MANIFEST_CASED: &str = "Skills/Moai/References/Source-Manifest.json";
+const WHY: &str = "the task also regenerates the manifest";
+
+/// `moai card show <card>` as the ledger reports it.
+fn shown(home: &TempHome, project: &str, card: &str) -> Value {
+    result(&as_session(
+        home,
+        S_C,
+        &["card", "show", card, "--project", project],
+    ))
+}
+
+/// `moai card scope <card> --scope… --by leader --reason …` (a held card is widened).
+fn widen(home: &TempHome, project: &str, card: &str, scope: &[&str]) -> Output {
+    let mut args = vec!["card", "scope", card];
+    for entry in scope {
+        args.extend_from_slice(&["--scope", entry]);
+    }
+    args.extend_from_slice(&["--by", "leader", "--reason", WHY, "--project", project]);
+    as_session(home, S_C, &args)
+}
+
+#[test]
+fn a_manifest_only_card_is_taken_beside_a_card_holding_the_whole_skills_folder() {
+    let (home, project) = registered();
+    let whole = ready_card(&home, &project, &["skills/moai/**"]);
+    let manifest_only = ready_card(&home, &project, &[MANIFEST]);
+    let cased = ready_card(&home, &project, &[MANIFEST_CASED]);
+    let skill_file = ready_card(&home, &project, &[PLAN_MD]);
+    result(&take(&home, &project, &whole, S_A));
+
+    // Exactly the generated path: not a reason to refuse, although the folder reaches it.
+    let taken = result(&take(&home, &project, &manifest_only, S_B));
+    assert_eq!(
+        taken["reservation"]["write_scope"],
+        json!([MANIFEST]),
+        "{taken}"
+    );
+
+    // A skill file the folder reaches is still refused, naming that file.
+    let (kind, msg) = refusal(&take(&home, &project, &skill_file, S_C));
+    assert_eq!(kind, "conflict", "{msg}");
+    assert!(msg.contains(PLAN_MD), "{msg}");
+
+    // Audit N3: a spelling that differs only in case is no generated path, so it is refused too.
+    let (kind, msg) = refusal(&take(&home, &project, &cased, S_C));
+    assert_eq!(kind, "conflict", "{msg}");
+    assert!(
+        msg.to_lowercase().contains("source-manifest.json"),
+        "names the cased spelling: {msg}"
+    );
+}
+
+#[test]
+fn widening_a_held_card_follows_the_same_generated_path_rule() {
+    let (home, project) = registered();
+    let holder = ready_card(&home, &project, &[REFS_STAR]);
+    let wide = ready_card(&home, &project, &["docs/a.md"]);
+    result(&take(&home, &project, &holder, S_A));
+    result(&take(&home, &project, &wide, S_B));
+    let scope_of = |card: &str| shown(&home, &project, card)["reservation"]["write_scope"].clone();
+    assert_eq!(scope_of(&wide), json!(["docs/a.md"]));
+
+    // The generated manifest: allowed, although the holder's folder pattern reaches it.
+    let done = result(&widen(&home, &project, &wide, &["docs/a.md", MANIFEST]));
+    assert_eq!(
+        done["write_scope"],
+        json!(["docs/a.md", MANIFEST]),
+        "{done}"
+    );
+    assert_eq!(done["added"], json!([MANIFEST]), "{done}");
+    assert_eq!(done["generation"], json!(1), "{done}");
+    assert_eq!(scope_of(&wide), done["write_scope"], "the ledger agrees");
+    let kept = scope_of(&wide);
+
+    // Another file the holder's pattern reaches: refused, naming that file, nothing written.
+    let (kind, msg) = refusal(&widen(
+        &home,
+        &project,
+        &wide,
+        &["docs/a.md", MANIFEST, ROUTES_JSON],
+    ));
+    assert_eq!(kind, "conflict", "{msg}");
+    assert!(msg.contains(ROUTES_JSON), "{msg}");
+    assert!(!msg.contains("source-manifest"), "{msg}");
+    assert_eq!(scope_of(&wide), kept, "a refusal writes nothing");
+
+    // Audit N3 through the CLI: the cased spelling is another file, so it is refused too.
+    let (kind, msg) = refusal(&widen(
+        &home,
+        &project,
+        &wide,
+        &["docs/a.md", MANIFEST, MANIFEST_CASED],
+    ));
+    assert_eq!(kind, "conflict", "{msg}");
+    assert!(msg.to_lowercase().contains("source-manifest.json"), "{msg}");
+    assert_eq!(scope_of(&wide), kept, "a refusal writes nothing");
+
+    // A file nobody else reaches: allowed.
+    let done = result(&widen(
+        &home,
+        &project,
+        &wide,
+        &["docs/a.md", MANIFEST, "src/new.rs"],
+    ));
+    assert_eq!(done["added"], json!(["src/new.rs"]), "{done}");
+    assert_eq!(scope_of(&wide), done["write_scope"], "the ledger agrees");
+}
+
+/// Audit N1 of the first slice: the reservation page names the generated-path rule next to the
+/// overlap predicate and does not call overlap the only judgement. The page is read at build
+/// time, so a later edit that drops the rule fails here.
+#[test]
+fn the_reservation_docs_name_the_generated_path_rule() {
+    let page = include_str!("../docs/design-review/appendix/ledger_reservation.md");
+    let paragraph = page
+        .lines()
+        .find(|l| l.starts_with("범위 겹침은"))
+        .expect("the paragraph on scope overlap");
+    for needed in [
+        "crate::scope::overlap",
+        "crate::scope::card_overlap",
+        "GENERATED_SHARED_PATHS",
+    ] {
+        assert!(paragraph.contains(needed), "{needed}: {paragraph}");
+    }
+    for forbidden in ["하나뿐", "유일한 판정", "the only", "the one predicate"] {
+        assert!(!page.contains(forbidden), "{forbidden}");
+    }
+}
