@@ -44,7 +44,7 @@ created: 2026-11-19
   verify: `cargo test --locked --offline --lib statusline::state::worktree_label_tests`
 - AC-3 (REQ-5, REQ-8, REQ-9): with no reservation for the folder, with a released one, and with a read that runs out of budget, the segment is the host's name alone; the ledger file digest and the HOME tree are the same before and after.
   verify: `cargo test --locked --offline --lib statusline::`
-- AC-4 (REQ-1, REQ-5, REQ-11): the golden files that carried the worktree on line 2 carry it first on line 3 (plain, ansi, ansi256), and a case with a held reservation carries the label.
+- AC-4 (REQ-1, REQ-5): the golden files that carried the worktree on line 2 carry it first on line 3 with the host's name (plain, ansi, ansi256), and nothing else in them changes. The label shape with a held reservation is pinned by AC-1's real-binary tests, not by a golden file: a golden case runs in a temporary folder whose path is new each run, and its stdin names a fixed folder, so a ledger fixture cannot name the worktree folder.
   verify: `cargo test --locked --offline --test statusline_golden`
 
 ## Scope
@@ -58,7 +58,7 @@ created: 2026-11-19
 1. RED first: `tests/statusline_worktree_label.rs` runs the real binary against a temporary HOME whose ledger holds a reservation for a temporary linked worktree, and fails because the segment is still at the end of line 2 and has the host's name.
 2. `state.rs`: `Status` gains the label parts (`card`, `name`); one more read of the `reservation` table for the folder, by the same read-only connection (`SELECT card_id, branch FROM reservation WHERE worktree = ? AND status IN ('held','held_for_review','expired_candidate') ORDER BY card_id LIMIT 1`); a pure function builds the name from the branch, the folder name and the project id. The folder is the nearest ancestor of `workspace.current_dir` (else `cwd`) that holds a `.git` entry, compared as a canonical path.
 3. `render.rs`: the worktree segment leaves `git_line` and opens `bars_line`; the label text is built there; `worktree` still switches it.
-4. Goldens: every case that showed `🌳` on line 2 is recorded again; a new case carries a ledger fixture with a held reservation. The documents follow in a later slice.
+4. Goldens: every case that showed `🌳` on line 2 is recorded again (11 cases, 33 files); no new golden case, see AC-4. The documents follow in a later slice.
 5. Whole `--lib` once, fmt, fmt-ops, `clippy --all-targets`, `spec check`, then push the spec branch only (M-Flow).
 
 ## Risks
