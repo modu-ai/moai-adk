@@ -1035,8 +1035,8 @@
       "class": "b",
       "stdin": "../statusline/stdin/a02-doc-full.json",
       "covers": [
-        "card C-65: card counts \ud83d\udd25 in progress / \ud83d\udce5 remaining / \u2705 done after the forge counts (card 85: one segment)",
-        "counts read from the project's local ledger in the temporary HOME (3 active, 2 review, 20 draft, 25 ready, 5 hold, 12 done)"
+        "card C-65: card counts \ud83d\udd25 being worked on / \ud83d\udcee waiting for integration / \ud83d\udce5 remaining / \u2705 done after the forge counts (card 85: one segment)",
+        "counts read from the project's local ledger in the temporary HOME (3 active without notes, 2 review, 20 draft, 25 ready, 5 hold, 12 done): no note marks an active card as waiting, so only the review cards wait"
       ],
       "setup": [
         {
@@ -1072,18 +1072,77 @@
         "implementation": "Rust moai-cli",
         "variants": {
           "plain": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "1e85c53381b089f135307045dd441691c784556e83020e5f8682b27c44a04448",
+            "version": "4.2647.0",
+            "sha256": "19c62e672cab9c6f8a5114d97824e041e1691a87304fbd5346044a01c82655fa",
             "stdout": "pipe"
           },
           "ansi": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "1e85c53381b089f135307045dd441691c784556e83020e5f8682b27c44a04448",
+            "version": "4.2647.0",
+            "sha256": "19c62e672cab9c6f8a5114d97824e041e1691a87304fbd5346044a01c82655fa",
             "stdout": "PTY"
           },
           "ansi256": {
-            "version": "2026.11.0-rc.1",
-            "sha256": "1e85c53381b089f135307045dd441691c784556e83020e5f8682b27c44a04448",
+            "version": "4.2647.0",
+            "sha256": "19c62e672cab9c6f8a5114d97824e041e1691a87304fbd5346044a01c82655fa",
+            "stdout": "PTY"
+          }
+        }
+      }
+    },
+    {
+      "name": "b14-card-counts-waiting",
+      "class": "b",
+      "stdin": "../statusline/stdin/a02-doc-full.json",
+      "covers": [
+        "card counts split into \ud83d\udd25 being worked on / \ud83d\udcee pushed and waiting for integration / \ud83d\udce5 remaining / \u2705 done (one segment after the forge counts)",
+        "a card in review waits, and an active card waits when its newest marker note is LANE-READY-INTEGRATION (3 active of which 1 waits, 2 review, 20 draft, 25 ready, 5 hold, 12 done)"
+      ],
+      "setup": [
+        {
+          "kind": "git_init",
+          "branch": "main"
+        },
+        {
+          "kind": "write",
+          "path": "README.md",
+          "content": "fixture\n"
+        },
+        {
+          "kind": "write",
+          "path": ".moai-cli/project.yaml",
+          "content": "{\"schema_version\":2,\"project_id\":\"demo\"}\n"
+        },
+        {
+          "kind": "write",
+          "path": ".moai-cli/state/github/counts.json",
+          "content": "{\"open_issues\":46,\"open_prs\":0,\"fetched_at\":4102444800}\n"
+        },
+        {
+          "kind": "git_commit_all"
+        },
+        {
+          "kind": "copy",
+          "from": "ledger/cards-5-50-12-waiting.sqlite",
+          "under": "moai_home",
+          "path": "projects/demo/ledger.db"
+        }
+      ],
+      "recorded_with": {
+        "implementation": "Rust moai-cli",
+        "variants": {
+          "plain": {
+            "version": "4.2647.0",
+            "sha256": "19c62e672cab9c6f8a5114d97824e041e1691a87304fbd5346044a01c82655fa",
+            "stdout": "pipe"
+          },
+          "ansi": {
+            "version": "4.2647.0",
+            "sha256": "19c62e672cab9c6f8a5114d97824e041e1691a87304fbd5346044a01c82655fa",
+            "stdout": "PTY"
+          },
+          "ansi256": {
+            "version": "4.2647.0",
+            "sha256": "19c62e672cab9c6f8a5114d97824e041e1691a87304fbd5346044a01c82655fa",
             "stdout": "PTY"
           }
         }

@@ -36,8 +36,10 @@ pub struct Theme {
     pub prs: &'static str,
     /// `🅱️` branch with its behind and dirty counts (green).
     pub branch: &'static str,
-    /// `🔥` cards in progress (maroon).
+    /// `🔥` cards being worked on (maroon).
     pub cards_active: &'static str,
+    /// `📮` cards pushed and waiting for integration or an audit (rosewater).
+    pub cards_posted: &'static str,
     /// `📥` cards created and remaining (sapphire).
     pub cards_waiting: &'static str,
     /// `✅` cards done (teal).
@@ -61,6 +63,7 @@ pub const MOCHA: Theme = Theme {
     prs: "#F5C2E7",
     branch: "#A6E3A1",
     cards_active: "#EBA0AC",
+    cards_posted: "#F5E0DC",
     cards_waiting: "#74C7EC",
     cards_done: "#94E2D5",
     warn: "#F9E2AF",
@@ -80,6 +83,7 @@ pub const LATTE: Theme = Theme {
     prs: "#EA76CB",
     branch: "#40A02B",
     cards_active: "#E64553",
+    cards_posted: "#DC8A78",
     cards_waiting: "#209FB5",
     cards_done: "#179299",
     warn: "#DF8E1D",
@@ -321,18 +325,24 @@ impl Renderer {
         segs.join(SEPARATOR)
     }
 
-    /// Card C-65 (user instructions 2026-11-16 and 2026-11-17, card 85): `🔥 <in progress> /
-    /// 📥 <remaining> / ✅ <done>` from the project's local ledger, under the one `cards`
-    /// option. A ledger without cards shows zeros; `None` when there is no ledger to read.
+    /// Card C-65 (user instructions 2026-11-16 and 2026-11-17, card 85): `🔥 <working> /
+    /// 📮 <waiting for integration> / 📥 <remaining> / ✅ <done>` from the project's local
+    /// ledger, under the one `cards` option; `📮` is left out when the notes could not be read.
+    /// A ledger without cards shows zeros; `None` when there is no ledger to read.
     /// Each number has its icon, so color is never the only signal.
     fn cards(&self, s: &Status) -> Option<String> {
         let c = s.cards.filter(|_| self.enabled("cards"))?;
-        Some(format!(
-            "{} / {} / {}",
-            self.paint(self.theme.cards_active, &format!("🔥 {}", c.in_progress)),
-            self.paint(self.theme.cards_waiting, &format!("📥 {}", c.remaining)),
-            self.paint(self.theme.cards_done, &format!("✅ {}", c.done))
-        ))
+        let working = self.paint(self.theme.cards_active, &format!("🔥 {}", c.in_progress));
+        let remaining = self.paint(self.theme.cards_waiting, &format!("📥 {}", c.remaining));
+        let done = self.paint(self.theme.cards_done, &format!("✅ {}", c.done));
+        // `📮` only when the notes could be read; otherwise the old three numbers, never a guess.
+        Some(match c.waiting {
+            Some(w) => format!(
+                "{working} / {} / {remaining} / {done}",
+                self.paint(self.theme.cards_posted, &format!("📮 {w}"))
+            ),
+            None => format!("{working} / {remaining} / {done}"),
+        })
     }
 
     /// Repository, optional forge counts, and branch retain the `git_branch` switch; `cards`
@@ -846,6 +856,7 @@ mod tests {
         );
         status.cards = Some(CardCounts {
             in_progress: 5,
+            waiting: None,
             remaining: 50,
             done: 12,
         });
@@ -877,12 +888,44 @@ mod tests {
 
     /// Card C-65: the counts come from the local ledger, not from the repository, so they are
     /// shown without a repository name, without a branch and with `git_branch` off.
+    /// A known waiting count gives the four-number form with `📮` between the working and the
+    /// remaining number; `None` (notes unreadable) gives the three-number form without it, and
+    /// `cards` off hides all of it.
+    #[test]
+    fn waiting_cards_get_their_own_number_and_none_gives_the_three_number_form() {
+        let line = |s: &Status, off: &[&str]| plain(s, off).lines().nth(1).unwrap().to_string();
+        let mut status = full_status();
+        status.worktree = "wt".into();
+        status.cards = Some(CardCounts {
+            in_progress: 2,
+            waiting: Some(26),
+            remaining: 50,
+            done: 12,
+        });
+        assert_eq!(
+            line(&status, &["git_branch"]),
+            "🔥 2 / 📮 26 / 📥 50 / ✅ 12 | 🌳 wt"
+        );
+        assert_eq!(line(&status, &["git_branch", "cards"]), "🌳 wt");
+        status.cards = Some(CardCounts {
+            in_progress: 28,
+            waiting: None,
+            remaining: 50,
+            done: 12,
+        });
+        assert_eq!(
+            line(&status, &["git_branch"]),
+            "🔥 28 / 📥 50 / ✅ 12 | 🌳 wt"
+        );
+    }
+
     #[test]
     fn card_counts_do_not_need_the_repository_or_the_branch() {
         let line = |s: &Status, off: &[&str]| plain(s, off).lines().nth(1).unwrap().to_string();
         let mut status = full_status();
         status.cards = Some(CardCounts {
             in_progress: 1,
+            waiting: None,
             remaining: 2,
             done: 3,
         });
@@ -908,6 +951,7 @@ mod tests {
         let mut status = full_status();
         status.cards = Some(CardCounts {
             in_progress: 5,
+            waiting: Some(26),
             remaining: 50,
             done: 12,
         });
@@ -919,6 +963,7 @@ mod tests {
                 assert_eq!(strip_sgr(&out), text, "{name} {profile:?}");
                 for (hex, part) in [
                     (t.cards_active, "🔥 5"),
+                    (t.cards_posted, "📮 26"),
                     (t.cards_waiting, "📥 50"),
                     (t.cards_done, "✅ 12"),
                 ] {
@@ -928,6 +973,7 @@ mod tests {
             let colors = [
                 t.prs,
                 t.cards_active,
+                t.cards_posted,
                 t.cards_waiting,
                 t.cards_done,
                 t.branch,
