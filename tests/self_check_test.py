@@ -832,5 +832,56 @@ class SelfCheckSourcesTest(unittest.TestCase):
             self.assertIn(f"`{label}`", text, label)
 
 
+MODE_AGENT = ROOT / "skills" / "moai" / "workflows" / "mode-agent.md"
+VERIFY = ROOT / "skills" / "moai" / "workflows" / "verify.md"
+
+
+def paragraph(path, start):
+    """The one line of `path` that starts with `start` (the skill files keep a rule on one line)."""
+    lines = [l for l in path.read_text().splitlines() if l.startswith(start)]
+    if len(lines) != 1:
+        raise AssertionError(f"{path.name}: {len(lines)} lines start with {start!r}, want 1")
+    return lines[0]
+
+
+class SkillDocsNameThePythonSlotTest(unittest.TestCase):
+    """SPEC-20261119-skills-python-slot-lines: the three documents lanes and audits read name
+    what the scripts do (the python slot and `--pre-ready`), so a later edit that drops a name
+    turns a test red. Only names are read, never a whole sentence (SPEC decision D-3)."""
+
+    def test_self_check_lists_the_pre_ready_items_in_the_scripts_order(self):
+        text = REFERENCE.read_text()
+        self.assertIn("`--pre-ready`", text)
+        at = -1
+        for label in PRE_READY_LABELS:
+            found = text.find(f"`{label}`", at + 1)
+            self.assertGreater(found, at, f"{label} is not named after the item before it")
+            at = found
+
+    def test_self_check_says_a_head_passes_the_list_before_ready(self):
+        text = REFERENCE.read_text()
+        self.assertRegex(text, r"(?i)before the lane reports (it )?ready|before (a )?READY")
+
+    def test_self_check_names_the_python_slot_and_its_two_variables(self):
+        text = REFERENCE.read_text()
+        for name in ("python slot", "MOAI_PYTHON_SLOT_DIR", "MOAI_PYTHON_SLOT_MAX"):
+            self.assertIn(name, text, name)
+        self.assertIn("not run", text)
+
+    def test_mode_agent_heavy_checks_names_pre_ready_and_the_python_slot(self):
+        line = paragraph(MODE_AGENT, "7. **heavy-checks**")
+        self.assertIn("`tools/self_check.sh --pre-ready`", line)
+        self.assertIn("python slot", line)
+
+    def test_verify_serialised_paragraph_names_the_python_slot(self):
+        line = paragraph(VERIFY, "Heavy checks are serialised")
+        self.assertIn("python slot", line)
+
+    def test_the_names_the_documents_use_are_the_scripts_own(self):
+        script = SCRIPT.read_text()
+        for name in ("--pre-ready", "MOAI_PYTHON_SLOT_DIR", "MOAI_PYTHON_SLOT_MAX"):
+            self.assertIn(name, script, name)
+
+
 if __name__ == "__main__":
     unittest.main()
