@@ -450,3 +450,60 @@ fn a_receipt_id_outside_the_shape_is_refused_as_unknown() {
     }
     assert_eq!(fs::read_to_string(&path).unwrap(), saved, "unchanged");
 }
+
+/// Moves the settings folder of `home` to `outside` and puts a link to it in its place, so the
+/// path of the settings file now reaches a folder that is not below the state folder.
+fn link_config_to(home: &Path, outside: &Path) {
+    let config = settings_path(home).parent().unwrap().to_path_buf();
+    fs::rename(&config, outside).unwrap();
+    std::os::unix::fs::symlink(outside, &config).unwrap();
+}
+
+#[test]
+fn a_revert_never_removes_a_file_behind_a_linked_settings_folder() {
+    // The save created the file (before = absent); the folder then became a link to an outside
+    // folder that holds the very file the save wrote.
+    let h = home();
+    let (result, _) = save(&h.path);
+    let id = result["receipt"].as_str().unwrap().to_string();
+    let outside = h.path.parent().unwrap().join("outside-config");
+    link_config_to(&h.path, &outside);
+    let target = outside.join("launcher.yaml");
+    let kept = fs::read(&target).unwrap();
+
+    let refused = revert(&h.path, &id, REF).unwrap_err();
+    assert!(refused.contains("must not be a link"), "{refused}");
+    assert_eq!(
+        fs::read(&target).unwrap(),
+        kept,
+        "the outside file is untouched"
+    );
+    assert!(
+        !receipts(&h.path)
+            .join(format!("{id}.reverted.json"))
+            .exists(),
+        "no marker after a refusal"
+    );
+}
+
+#[test]
+fn a_revert_never_writes_a_file_behind_a_linked_settings_folder() {
+    // The same layout with an earlier text: the write path refuses it too.
+    let h = home();
+    let before = r#"{"launcher":{}}"#;
+    write_settings(&h.path, before, 0o600);
+    let (result, _) = save(&h.path);
+    let id = result["receipt"].as_str().unwrap().to_string();
+    let outside = h.path.parent().unwrap().join("outside-config");
+    link_config_to(&h.path, &outside);
+    let target = outside.join("launcher.yaml");
+    let kept = fs::read(&target).unwrap();
+
+    let refused = revert(&h.path, &id, REF).unwrap_err();
+    assert!(refused.contains("must not be a link"), "{refused}");
+    assert_eq!(
+        fs::read(&target).unwrap(),
+        kept,
+        "the outside file is untouched"
+    );
+}
