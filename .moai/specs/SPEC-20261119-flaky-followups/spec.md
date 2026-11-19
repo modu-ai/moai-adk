@@ -62,7 +62,7 @@ created: 2026-11-19
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261119-flaky-followups/**`; 조각 A(문구): `skills/moai/workflows/mode-leader.md`, `skills/moai/workflows/mode-agent.md`, `skills/moai/workflows/verify.md`, `skills/moai/references/source-manifest.json`, `tests/flaky_followups.rs`; 조각 B(필터): `src/card/command.rs`, `src/main.rs`, `src/help.rs`, `docs/rust-product-path.md`, `tests/card_list_title_prefix.rs`; 조각 C(재실행 신호): `src/gate.rs`, `src/gate_collect.rs`, `src/flow.rs`(`run_id` 를 `pub(crate)` 로 한 줄), `tests/gate_check_cli.rs`, `tests/gate_collect.rs`
+- write: `.moai/specs/SPEC-20261119-flaky-followups/**`; 조각 A(문구): `skills/moai/workflows/mode-leader.md`, `skills/moai/workflows/mode-agent.md`, `skills/moai/workflows/verify.md`, `skills/moai/references/source-manifest.json`, `tests/flaky_followups.rs`; 조각 B(필터): `src/card/command.rs`, `src/ops/card.rs`(clap 옵션과 호출 — `card list` 의 인자는 여기에 있고 `src/main.rs`·`src/help.rs` 는 건드리지 않아요), `tests/card_list_title_prefix.rs`; 문서 행 `docs/design-review/appendix/operations/card.md` 9행(`[--title-prefix P]`)은 C-129 가 그 파일을 쥐고 있어서 이 조각에서 못 했어요; 조각 C(재실행 신호): `src/gate.rs`, `src/gate_collect.rs`, `src/flow.rs`(`run_id` 를 `pub(crate)` 로 한 줄), `tests/gate_check_cli.rs`, `tests/gate_collect.rs`
 - read-only: `src/flake.rs`, `tests/workflow_size_budget.rs`, `src/ledger/**`(`card done` 의 기준 규칙)
 - forbidden: 실제 HOME, 네트워크 쓰기, 원장 행 수편, G5 판정 규칙 변경, 다른 카드의 문장 편집
 
@@ -107,4 +107,10 @@ AC-4 증거(RED→GREEN): RED 는 `tests/gate_collect.rs` 가 `no field attempt`
 **조각 A 감사(head `dd0a677ed8`, 구현자가 아닌 새 읽기 전용 에이전트): FAIL, 막는 것 1.** B1 — SPEC 의 AC-1·AC-2 `verify:` 명령이 시험 이름과 달라 시험 0개를 골랐어요(AC-1 문구도 `card done` 까지라고 해서 시험과 달랐어요). 수리: `verify:` 이름을 실제 시험(`the_flaky_card_command_carries_an_ac_and_the_card_can_be_read_with_it`, `the_repair_rule_is_in_the_mode_agent_workflow`, `the_record_home_is_in_the_verify_workflow`)으로, AC-1 문구를 시험이 보이는 것(`card show` 로 읽힌 기준 하나; `card done` 은 병합된 PR 연결이 필요해 시험 밖)으로 고치고, 시험에 `SPEC-20261119-flaky-followups AC-<n>` 주석을 달았어요. N4 도 시험으로 닫았어요: 낱말 목록 대신 문장 전체를 핀해서 뜻이 뒤집힌 문장(`adds a sleep, a retry or a skip`, `is never deleted, without a reason`, `are for a project with a card ledger`)을 변이 3개로 넣었더니 모두 시험이 잡았어요.
 재감사(같은 감사자, head `d4c5a0c551`): AUDIT-VERDICT: PASS. 새 비차단 N6(앞 조건절 "where the project has a card ledger," 를 "has no card ledger," 로 뒤집어도 시험이 통과) 는 시험이 그 절까지 핀하도록 고쳤고(변이로 확인), 문구는 건드리지 않았어요. 비차단으로 남긴 것(문구 수리는 `verify.md`·`mode-agent.md` 와 manifest 를 다시 잡아야 해서 이번에 하지 않아요 — 필요하면 별도 한 조각): N1 `verify.md` 의 두 문장이 같은 말을 되풀이하고 "the two commands below" 가 분류만 하는 `flake-classify` 까지 카드 원장 없는 프로젝트용으로 묶어요. N2 "the merge-train step" 이 MODE-LEADER 의 단계(`mode-leader.md:32`)라는 말이 없어요. N3 `mode-agent.md` 7번 끝에 앞 문장과 이어지지 않고 덧붙은 느낌이고 "deleted"(여기)와 "retired"(`mode-leader.md:32` 의 기준)가 낱말이 달라요; 삭제 규칙은 flaky 시험에 한한 예외라는 말이 문장에 없어요(`core-rules` 4번과 약한 긴장). N5 `Moai-Session` 값이 감사를 맡긴 세션과 같다는 점은 형식상 사실이고, 감사자는 컨텍스트가 분리된 새 에이전트예요.
 
-남은 것: 조각 B(`card list --title-prefix`: `card::command::list_filtered` 와 시험 4개는 로컬 가지 `keep/c99-3b-old` 에 있고, CLI 연결 32줄은 `src/ops/card.rs`(C-125 보유)가 풀리면 해요). 조각 A 는 위에 적은 대로 끝났어요.
+**조각 B(`card list --title-prefix`) — 2026-11-19, 같은 가지(로컬 `v2026.11.0` `05cbe0ac67` 병합 위).** `src/ops/card.rs` 는 C-125 가 17:30Z 에 풀어서(노트 3417) 한 커밋에 쓰고 곧바로 반납했어요(C-129 카드에 한 줄).
+- 바꾼 것: `card::command::list_filtered`(`list` 는 `list_filtered(.., None)`), 접두어는 입력 그대로(자르지 않음), 비었거나 제어 문자가 있으면 원장을 읽기 전에 `card list refused: the title prefix is empty` / `… has a control character`(`invalid_input`), 비교는 같은 쿼리에서 `substr(title, 1, length(?2)) = ?2`(대소문자 구분)와 `--state` 를 AND 로. clap 옵션 `--title-prefix`(설명은 문서 주석이라 `card list --help` 에 보여요).
+- AC-3 증거: RED 는 `tests/card_list_title_prefix.rs` 4개가 `unexpected argument '--title-prefix'` 로 실패, 연결 뒤 4/4, `tests/card_cli.rs` 18 통과. 시험은 접두어 일치·대소문자·시험 없음과 전과 같은 출력(카드마다 필드가 같음)·`--state` 와 함께·빈 값/제어 문자(원장이 없는 프로젝트에서도 거부, 유효한 접두어는 `absent` 로 성공)를 지켜요.
+- 변이 4개(모두 시험이 잡음): 빈 값 거부 삭제(M1), 제어 문자 거부 삭제(M2), 대소문자 무시(M3), `--state` 와 접두를 OR 로(M4).
+- 못 한 것: `docs/design-review/appendix/operations/card.md` 9행의 옵션 표기(C-129 가 보유) — 후속 한 줄 또는 C-129 쪽 반영이 필요해요.
+
+남은 것: 조각 A 문구의 비차단 N1~N3(위 감사 참조)와 위 문서 행 하나. 조각 C 는 리더 감사(tier 2) 중이에요.
