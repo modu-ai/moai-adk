@@ -484,3 +484,418 @@ fn lane_screen_unknown_a_bad_now_or_an_oversize_input_is_refused() {
     let r = run_in(dir.path(), dir.path(), &at_limit, &["--now", NOW_TEXT]);
     assert_eq!(r.code, 0, "{}", r.envelope);
 }
+
+/// SPEC-20261119-lane-screen-scan (slice C): `moai lane-screen --scan` lists every terminal that
+/// `orca terminal list` reports with its screen state. The Orca program is a fake shell script
+/// (`MOAI_ORCA_BIN`) that records every call in `calls.txt`, so "sent nothing" is "no `send` call
+/// and no `sent.txt`".
+#[cfg(unix)]
+mod scan_tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    /// The fake `orca`. `list.json` is what `terminal list` prints (`list-fail` makes it exit 5),
+    /// `read-<handle>.json` what `terminal read` prints (`read-fail-<handle>` makes it exit 3).
+    const FAKE_ORCA: &str = r#"#!/bin/sh
+d="$FAKE_ORCA_DIR"
+printf '%s\n' "$*" >> "$d/calls.txt"
+case "$2" in
+list)
+  if [ -f "$d/list-fail" ]; then echo "orca is not running" >&2; exit 5; fi
+  cat "$d/list.json"
+  ;;
+read)
+  if [ -f "$d/read-fail-$4" ]; then echo "terminal not found" >&2; exit 3; fi
+  cat "$d/read-$4.json"
+  ;;
+send)
+  printf '%s\n' "$*" >> "$d/sent.txt"
+  echo '{"ok":true}'
+  ;;
+*)
+  exit 9
+  ;;
+esac
+"#;
+
+    struct Fake {
+        dir: tempfile::TempDir,
+        bin: PathBuf,
+    }
+
+    impl Fake {
+        /// A fake whose `terminal list` prints `list` as it is.
+        fn new(list: &str) -> Fake {
+            let dir = tempfile::tempdir().unwrap();
+            let bin = dir.path().join("orca");
+            common::write_executable(&bin, FAKE_ORCA);
+            fs::write(dir.path().join("list.json"), list).unwrap();
+            Fake { dir, bin }
+        }
+
+        /// `handle` reads as the rendered screen of `text`.
+        fn screen(&self, handle: &str, text: &str) {
+            let rows: Vec<&str> = text.lines().collect();
+            self.raw(handle, &orca(&rows, "screen"));
+        }
+
+        /// `handle` reads as exactly `content`.
+        fn raw(&self, handle: &str, content: &str) {
+            fs::write(self.dir.path().join(format!("read-{handle}.json")), content).unwrap();
+        }
+
+        fn flag(&self, name: &str) {
+            fs::write(self.dir.path().join(name), "").unwrap();
+        }
+
+        /// Every call of the fake, one line each, in order.
+        fn calls(&self) -> Vec<String> {
+            fs::read_to_string(self.dir.path().join("calls.txt"))
+                .map(|t| t.lines().map(String::from).collect())
+                .unwrap_or_default()
+        }
+
+        fn sent(&self) -> bool {
+            self.dir.path().join("sent.txt").exists()
+        }
+
+        /// `moai lane-screen --scan ARGS` with this fake as the Orca program.
+        fn run(&self, cwd: &Path, home: &Path, extra: &[&str]) -> Run {
+            run_scan(&self.bin, self.dir.path(), cwd, home, extra)
+        }
+    }
+
+    fn run_scan(bin: &Path, fake_dir: &Path, cwd: &Path, home: &Path, extra: &[&str]) -> Run {
+        let out = Command::new(BIN)
+            .args(["lane-screen", "--scan", "--now", NOW_TEXT])
+            .args(extra)
+            .current_dir(cwd)
+            .env("HOME", home)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .env("MOAI_ORCA_BIN", bin)
+            .env("FAKE_ORCA_DIR", fake_dir)
+            .stdin(Stdio::null())
+            .output()
+            .unwrap();
+        Run {
+            code: out.status.code().unwrap(),
+            envelope: serde_json::from_slice(&out.stdout).unwrap_or(Value::Null),
+            stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
+        }
+    }
+
+    /// An `orca terminal list --json` answer.
+    fn list(terminals: &[Value], total: usize, truncated: bool) -> String {
+        json!({
+            "id": "fixture", "ok": true,
+            "result": {
+                "terminals": terminals, "hostScope": "local", "topologyRevisions": {},
+                "totalCount": total, "truncated": truncated,
+            }
+        })
+        .to_string()
+    }
+
+    fn term(handle: &str, title: &str, branch: &str) -> Value {
+        json!({
+            "handle": handle, "title": title, "branch": branch, "connected": true,
+            "writable": true, "worktreePath": "/example/work", "preview": "",
+        })
+    }
+
+    fn lines(result: &Value) -> Vec<String> {
+        result["table"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|l| l.as_str().unwrap().to_string())
+            .collect()
+    }
+
+    /// The failure message of a run that must have failed with an error envelope.
+    fn failure(r: &Run) -> &str {
+        assert_eq!(r.code, 1, "{} / {}", r.envelope, r.stderr);
+        assert_eq!(r.envelope["ok"], json!(false), "{}", r.envelope);
+        r.envelope["error"]["message"].as_str().unwrap()
+    }
+
+    #[test]
+    fn lane_screen_scan_lists_every_terminal_and_reads_them_one_by_one() {
+        let fake = Fake::new(&list(
+            &[
+                term("t_work", "work lane", "spec/a"),
+                term("t_ask", "ask lane", "spec/b"),
+                term("t_gone", "gone lane", "spec/c"),
+            ],
+            3,
+            false,
+        ));
+        fake.screen("t_work", &fixture("synthetic-working.txt"));
+        fake.screen("t_ask", &fixture("synthetic-permission-prompt.txt"));
+        fake.flag("read-fail-t_gone");
+        let cwd = tempfile::tempdir().unwrap();
+        let home = tempfile::tempdir().unwrap();
+        let before = (
+            common::cli::tree_state(cwd.path()),
+            common::cli::tree_state(home.path()),
+        );
+        let r = fake.run(cwd.path(), home.path(), &[]);
+        let res = r.result();
+        let rows = res["terminals"].as_array().unwrap();
+        let handles: Vec<_> = rows.iter().map(|t| t["handle"].as_str().unwrap()).collect();
+        assert_eq!(handles, ["t_work", "t_ask", "t_gone"]);
+        let states: Vec<_> = rows.iter().map(|t| t["state"].as_str().unwrap()).collect();
+        assert_eq!(states, ["working", "permission_prompt", "unreachable"]);
+        assert_eq!(rows[0]["title"], json!("work lane"));
+        assert_eq!(rows[1]["branch"], json!("spec/b"));
+        assert!(
+            rows[1]["evidence"].as_str().unwrap().contains("Yes"),
+            "{}",
+            rows[1]
+        );
+        assert!(
+            rows[2]["reason"]
+                .as_str()
+                .unwrap()
+                .contains("exited with code 3"),
+            "{}",
+            rows[2]
+        );
+        assert_eq!(res["count"], json!(3));
+        assert_eq!(res["total"], json!(3));
+        assert_eq!(res["truncated"], json!(false));
+        assert_eq!(
+            res["by_state"],
+            json!({"working": 1, "permission_prompt": 1, "unreachable": 1})
+        );
+        let table = lines(res);
+        assert_eq!(table.len(), 4, "{table:?}");
+        for (line, (handle, state)) in table[1..]
+            .iter()
+            .zip([("t_work", "working"), ("t_ask", "permission_prompt"), ("t_gone", "unreachable")])
+        {
+            assert!(
+                line.contains(handle) && line.contains(state),
+                "{line} / {handle} {state}"
+            );
+        }
+        assert!(!table.last().unwrap().contains("cut short"), "{table:?}");
+        // One list, then one read per terminal in list order, and nothing else.
+        assert_eq!(
+            fake.calls(),
+            [
+                "terminal list --json",
+                "terminal read --terminal t_work --screen --json",
+                "terminal read --terminal t_ask --screen --json",
+                "terminal read --terminal t_gone --screen --json",
+            ]
+        );
+        assert!(!fake.sent());
+        assert_eq!(
+            (
+                common::cli::tree_state(cwd.path()),
+                common::cli::tree_state(home.path())
+            ),
+            before
+        );
+    }
+
+    #[test]
+    fn lane_screen_scan_a_handle_orca_could_read_as_an_option_is_not_read() {
+        let fake = Fake::new(&list(
+            &[
+                term("-bad", "dash", "b"),
+                json!({"title": "no handle"}),
+                term("has space", "space", "b"),
+                term("ok1", "fine", "b"),
+            ],
+            4,
+            false,
+        ));
+        fake.screen("ok1", &fixture("synthetic-idle.txt"));
+        let dir = tempfile::tempdir().unwrap();
+        let r = fake.run(dir.path(), dir.path(), &[]);
+        let res = r.result();
+        let rows = res["terminals"].as_array().unwrap();
+        let states: Vec<_> = rows.iter().map(|t| t["state"].as_str().unwrap()).collect();
+        assert_eq!(states, ["unreachable", "unreachable", "unreachable", "idle"]);
+        for row in &rows[..3] {
+            assert!(
+                row["reason"].as_str().unwrap().contains("handle"),
+                "{row}"
+            );
+        }
+        assert_eq!(rows[1]["handle"], Value::Null);
+        // Only the good handle reached Orca.
+        assert_eq!(
+            fake.calls(),
+            [
+                "terminal list --json",
+                "terminal read --terminal ok1 --screen --json",
+            ]
+        );
+    }
+
+    #[test]
+    fn lane_screen_scan_an_answer_that_is_plain_text_is_not_a_screen() {
+        let fake = Fake::new(&list(&[term("t_text", "text", "b")], 1, false));
+        // The text of a working screen, but not an Orca answer: it must not read as `working`.
+        fake.raw("t_text", &fixture("synthetic-working.txt"));
+        let dir = tempfile::tempdir().unwrap();
+        let r = fake.run(dir.path(), dir.path(), &[]);
+        let row = &r.result()["terminals"][0];
+        assert_eq!(row["state"], json!("unreachable"), "{row}");
+        assert!(
+            row["reason"].as_str().unwrap().contains("not an Orca answer"),
+            "{row}"
+        );
+    }
+
+    #[test]
+    fn lane_screen_scan_title_and_branch_are_cleaned_and_cut() {
+        let title = format!("evil\u{1b}[31m\ttitle{}", "x".repeat(200));
+        let fake = Fake::new(&list(&[term("t_one", &title, "a\nb\u{7}")], 1, false));
+        fake.screen("t_one", &fixture("synthetic-working.txt"));
+        let dir = tempfile::tempdir().unwrap();
+        let r = fake.run(dir.path(), dir.path(), &[]);
+        let res = r.result();
+        let row = &res["terminals"][0];
+        let shown = row["title"].as_str().unwrap();
+        assert!(shown.starts_with("evil title"), "{shown:?}");
+        assert!(shown.chars().count() <= 81, "{}", shown.chars().count());
+        assert!(!shown.chars().any(char::is_control), "{shown:?}");
+        let branch = row["branch"].as_str().unwrap();
+        assert!(!branch.chars().any(char::is_control), "{branch:?}");
+        for line in lines(res) {
+            assert!(!line.chars().any(char::is_control), "{line:?}");
+        }
+    }
+
+    #[test]
+    fn lane_screen_scan_reset_is_in_utc_next_to_the_state() {
+        let fake = Fake::new(&list(
+            &[
+                term("t_claude", "claude", "b"),
+                term("t_glm", "glm", "b"),
+                term("t_work", "work", "b"),
+            ],
+            3,
+            false,
+        ));
+        fake.screen("t_claude", &fixture("synthetic-usage-limit-claude.txt"));
+        fake.screen("t_glm", &fixture("synthetic-usage-limit-glm.txt"));
+        fake.screen("t_work", &fixture("synthetic-working.txt"));
+        let dir = tempfile::tempdir().unwrap();
+        let r = fake.run(dir.path(), dir.path(), &[]);
+        let res = r.result();
+        let rows = res["terminals"].as_array().unwrap();
+        assert_eq!(rows[0]["state"], json!("usage_limit"));
+        assert_eq!(rows[0]["reset"]["utc"], json!("2026-11-20T10:00:00Z"));
+        assert_eq!(rows[0]["reset"]["source"], json!("screen"));
+        let table = lines(res);
+        assert!(
+            table[1].contains("t_claude")
+                && table[1].contains("usage_limit")
+                && table[1].contains("2026-11-20T10:00:00Z"),
+            "{}",
+            table[1]
+        );
+        // A reset time with no zone is never turned into a UTC time.
+        assert_eq!(rows[1]["state"], json!("usage_limit"));
+        assert_eq!(rows[1]["reset"]["utc"], Value::Null);
+        assert_eq!(rows[1]["reset"]["unknown"], json!(true));
+        assert!(table[2].contains("unknown"), "{}", table[2]);
+        assert!(!table[2].contains("T17:30:55Z"), "{}", table[2]);
+        assert!(!table[2].contains("T09:30:55Z"), "{}", table[2]);
+        // A lane that is not at a limit has no reset time.
+        assert_eq!(rows[2]["reset"], Value::Null);
+    }
+
+    #[test]
+    fn lane_screen_scan_truncated_list_says_how_many_of_how_many() {
+        let fake = Fake::new(&list(
+            &[term("t_a", "a", "b"), term("t_b", "b", "b")],
+            5,
+            true,
+        ));
+        fake.screen("t_a", &fixture("synthetic-working.txt"));
+        fake.screen("t_b", &fixture("synthetic-idle.txt"));
+        let dir = tempfile::tempdir().unwrap();
+        let r = fake.run(dir.path(), dir.path(), &[]);
+        let res = r.result();
+        assert_eq!(res["truncated"], json!(true));
+        assert_eq!(res["total"], json!(5));
+        assert_eq!(res["count"], json!(2));
+        let table = lines(res);
+        let last = table.last().unwrap();
+        assert!(
+            last.contains("2 of 5") && last.contains("cut short"),
+            "{table:?}"
+        );
+    }
+
+    #[test]
+    fn lane_screen_scan_fails_when_the_list_cannot_be_read_and_sends_and_writes_nothing() {
+        type Setup = fn(&Fake);
+        let cases: [(&str, Setup, &str); 4] = [
+            ("list exits non-zero", |f| f.flag("list-fail"), "exited with code 5"),
+            (
+                "list is not JSON",
+                |f| fs::write(f.dir.path().join("list.json"), "orca says hello").unwrap(),
+                "list could not be read",
+            ),
+            (
+                "list says ok false",
+                |f| {
+                    fs::write(
+                        f.dir.path().join("list.json"),
+                        r#"{"ok":false,"error":{"message":"no runtime"}}"#,
+                    )
+                    .unwrap()
+                },
+                "list could not be read",
+            ),
+            (
+                "list has no terminals array",
+                |f| fs::write(f.dir.path().join("list.json"), r#"{"ok":true,"result":{}}"#).unwrap(),
+                "list could not be read",
+            ),
+        ];
+        for (name, setup, detail) in cases {
+            let fake = Fake::new("{}");
+            setup(&fake);
+            let cwd = tempfile::tempdir().unwrap();
+            let home = tempfile::tempdir().unwrap();
+            let r = fake.run(cwd.path(), home.path(), &[]);
+            let message = failure(&r);
+            assert!(message.contains("list could not be read"), "{name}: {message}");
+            assert!(message.contains(detail), "{name}: {message}");
+            // Only the list was asked for: no read, no send, no file.
+            assert_eq!(fake.calls(), ["terminal list --json"], "{name}");
+            assert!(!fake.sent(), "{name}");
+            assert!(common::cli::tree_state(cwd.path()).is_empty(), "{name}");
+            assert!(common::cli::tree_state(home.path()).is_empty(), "{name}");
+        }
+        // The Orca program is absent.
+        let fake = Fake::new("{}");
+        let cwd = tempfile::tempdir().unwrap();
+        let missing = cwd.path().join("no-such-orca");
+        let r = run_scan(&missing, fake.dir.path(), cwd.path(), cwd.path(), &[]);
+        let message = failure(&r);
+        assert!(message.contains("list could not be read"), "{message}");
+        assert!(message.contains("cannot run"), "{message}");
+        assert!(fake.calls().is_empty());
+        assert!(!fake.sent());
+    }
+
+    #[test]
+    fn lane_screen_scan_cannot_be_combined_with_home() {
+        let fake = Fake::new(&list(&[term("t_a", "a", "b")], 1, false));
+        let dir = tempfile::tempdir().unwrap();
+        let r = fake.run(dir.path(), dir.path(), &["--home", dir.path().to_str().unwrap()]);
+        assert_ne!(r.code, 0, "{}", r.envelope);
+        assert!(r.stderr.contains("--home"), "{}", r.stderr);
+        assert!(fake.calls().is_empty(), "Orca must not run: {:?}", fake.calls());
+    }
+}
