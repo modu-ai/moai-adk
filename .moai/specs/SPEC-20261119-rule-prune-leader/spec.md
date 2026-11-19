@@ -35,7 +35,7 @@ parent: SPEC-20261119-rule-prune
 - REQ-6: IF a sentence of `mode-leader.md` names a path, command or check that does not exist at the base tip, THEN it shall move to the history section too. · failure: none — a missing name is read from `moai help --all` and the tree, and found by the audit.
 - REQ-7: When the slice completes, `references/rule-history.md` shall report the byte count of `mode-leader.md` against its base count. · failure: none — a missing report is the audit's to find (AC-1).
 - REQ-8 (REQ-7): IF `mode-leader.md` did not get smaller, THEN `references/rule-history.md` shall name the rule that had to stay and why.
-- REQ-9: When the tests run, `rule_history_guard` shall fail on a history entry whose text occurs verbatim in a live rule file, on a test file name written in `rule-history.md` that does not exist under `tests/`, and on an inventory row or section heading that lacks the fields of REQ-1 and REQ-2. · failure: none — the failing test names the entry, the file or the row.
+- REQ-9: When the tests run, `rule_history_guard` shall fail on a history entry whose text occurs verbatim in the live rule file its heading names as the source, on a test file name written in `rule-history.md` that exists neither under `tests/` nor as a path from the root, and on an inventory row or section heading that lacks the fields of REQ-1 and REQ-2. · failure: none — the failing test names the entry, the file or the row.
 - REQ-10: IF `moai card precheck` does not exist at the base tip, THEN `mode-leader.md` shall not name it. · failure: none — `help --all` is the check; the carried criterion goes to the card note.
 - REQ-11: When the last text commit is made, `skills/moai/references/source-manifest.json` shall carry the written hash of every package file this slice edited. · failure: none — `python3 -I tools/source_manifest.py check` and `tests.source_manifest_test` fail on a stale hash.
 
@@ -47,7 +47,7 @@ parent: SPEC-20261119-rule-prune
 - AC-2 (REQ-1, REQ-2, REQ-9): the three mechanical inventories name, per row, the test files that read the line or `text only`, every named test file exists, and each section heading carries the short sha of the base tip.
   verify: `cargo test --locked --offline --test rule_history_guard every_inventory_row_names_its_enforcers_or_text_only`
   verify: `cargo test --locked --offline --test rule_history_guard every_test_file_named_in_the_history_exists`
-- AC-3 (REQ-4, REQ-5, REQ-9): no history entry occurs verbatim in a live rule file, and a sentence that was merged names where the kept one stands.
+- AC-3 (REQ-4, REQ-5, REQ-9): no history entry occurs verbatim in the live rule file it was moved from (a merged sentence may stay in the other file's copy), and a sentence that was merged names where the kept one stands.
   verify: `cargo test --locked --offline --test rule_history_guard no_history_entry_is_still_live`
 - AC-4 (REQ-10): `moai help --all` of the built binary lists no `card precheck` while the leader file does not name it, and the carried criterion is on the card.
   verify: `cargo test --locked --offline --test mode_workflow_steps ops_named_by_the_mode_workflows_exist_with_their_flags`
