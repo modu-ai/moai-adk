@@ -126,7 +126,14 @@ slot_name="${MOAI_HEAVY_SLOT_NAME:-local-check}"
 # The whole Python discover (38 minutes under load) waits in a slot folder of its own, so it
 # never holds one of the cargo slots (SPEC-20261119-python-slot-pre-ready).
 py_slot_max="${MOAI_PYTHON_SLOT_MAX:-2}"
-py_slot_dir="${MOAI_PYTHON_SLOT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/moai-cli/python-slots}"
+py_slot_dir="${MOAI_PYTHON_SLOT_DIR:-}"
+if [ -z "$py_slot_dir" ]; then
+  if [ -n "${XDG_CACHE_HOME:-}" ]; then
+    py_slot_dir="$XDG_CACHE_HOME/moai-cli/python-slots"
+  elif [ -n "${HOME:-}" ]; then
+    py_slot_dir="$HOME/.cache/moai-cli/python-slots"
+  fi
+fi
 
 use_slot=0
 if command -v moai >/dev/null 2>&1 && moai heavy-slot-acquire --help >/dev/null 2>&1; then
@@ -355,6 +362,10 @@ step() {
   if [ "$weight" = heavy ] && [ "$use_slot" = 1 ]; then
     moai heavy-slot-acquire --max "$slot_max" --min-free-gb "$slot_min_free" \
       --name "$slot_name" -- "$@" || code=$?
+  elif [ "$weight" = python ] && [ "$use_slot" = 1 ] && [ -z "$py_slot_dir" ]; then
+    # No folder can be named: never fall back to the cargo slot folder; say so and run directly.
+    echo "tools/local_check.sh: no python slot folder (MOAI_PYTHON_SLOT_DIR, XDG_CACHE_HOME and HOME are all empty); step $label runs without a slot" >&2
+    "$@" || code=$?
   elif [ "$weight" = python ] && [ "$use_slot" = 1 ]; then
     moai heavy-slot-acquire --dir "$py_slot_dir" --max "$py_slot_max" \
       --min-free-gb "$slot_min_free" --name "${slot_name}-py" -- "$@" || code=$?

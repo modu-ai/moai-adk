@@ -153,6 +153,8 @@ class FakeRepo:
         env = self.git_env()
         env["PATH"] = f"{self.bin}:/usr/bin:/bin"  # no `moai` unless slot=True: no slot
         env.update(extra)
+        # A value of None removes the variable (an unset HOME is not an empty one).
+        env = {k: v for k, v in env.items() if v is not None}
         # These tests pin the in-place behaviour (CI's); the candidate mode has its own class.
         env.setdefault("LOCAL_CHECK_MODE", "in-place")
         return subprocess.run(["bash", str(self.repo / "tools" / "local_check.sh")],
@@ -284,6 +286,32 @@ class LocalCheckPythonSlotTest(unittest.TestCase):
         self.repo.run(MOAI_PYTHON_SLOT_DIR="", MOAI_PYTHON_SLOT_MAX="")
         python, _ = self.split()
         self.assertIn(f" --dir {self.default_dir} --max 2 ", python[0])
+
+    def test_an_unset_or_empty_home_never_stops_the_script_and_the_step_runs_directly(self):
+        # Audit B1: the folder default read $HOME at start-up and died with `unbound variable`
+        # before the EXIT trap, so not even the last line was printed.
+        for label, extra in (("unset", {"HOME": None}), ("empty", {"HOME": ""})):
+            with self.subTest(home=label):
+                repo = FakeRepo(slot=True)
+                self.addCleanup(repo.close)
+                proc = repo.run(**extra)
+                self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+                self.assertNotIn("unbound variable", proc.stderr)
+                self.assertIn("no python slot folder", proc.stderr)
+                self.assertTrue(LINE.match(last_line(proc.stdout)), proc.stdout)
+                self.assertEqual([l for l in repo.slot_recorded() if " --dir " in l], [])
+                self.assertIn("python3 -m unittest discover -v -s tests -p *_test.py",
+                              repo.recorded())
+
+    def test_an_empty_xdg_cache_home_falls_back_to_home(self):
+        self.repo.run(XDG_CACHE_HOME="")
+        python, _ = self.split()
+        self.assertIn(f" --dir {self.default_dir} --max 2 ", python[0])
+
+    def test_the_folder_setting_alone_works_without_home(self):
+        self.repo.run(HOME=None, MOAI_PYTHON_SLOT_DIR="/x/y")
+        python, _ = self.split()
+        self.assertIn(" --dir /x/y --max 2 ", python[0])
 
     def test_the_python_slot_name_is_the_heavy_name_with_a_suffix(self):
         self.repo.run(MOAI_HEAVY_SLOT_NAME="lane-7")
