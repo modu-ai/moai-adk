@@ -825,9 +825,11 @@ fn settings_from_plan(shown: &str, plan: &Value, owned: Map<String, Value>) -> S
 /// not touched), `blocked` (entries of other tools share `hooks`) waits for the user without a
 /// command, `none` is `unchanged`. HOME is not read (O-3).
 ///
-/// SPEC-20261119-hooks-followups: where the profile lists `claude` (`claude`), the hooks plan of
-/// the Claude host is consulted whenever no Go entry is left, so a project with no hooks and no
-/// record reads what `hooks-plan` reads (`ready`), not `unchanged` with no command.
+/// SPEC-20261119-hooks-followups: where the profile lists `claude`, the hooks plan of the
+/// Claude host is consulted even with no Go entry left and no record (leader decision B on N1),
+/// so the step's words say what the file holds and name the manual `hooks-plan` command; the
+/// step itself stays `unchanged` and prints no command there. Without `claude` in the profile
+/// the Go plan alone decides the step.
 fn hooks_step(root: &Path, shown: &str, claude: bool) -> Result<Step> {
     let plan = crate::go_hooks::plan(root, None)?;
     let digest = plan["plan_digest"].as_str().map(String::from);
@@ -1034,8 +1036,20 @@ fn unchanged_hooks(root: &Path, preview: &mut Value) -> Result<(&'static str, &'
 /// record is MoAI's own file under the state folder and no command repairs it. A message that is
 /// not about the record (the settings file itself) stays as it is.
 fn record_error(root: &Path, e: &str) -> String {
+    // The claude record is read through the settings state, whose refusals name the cause
+    // ("symlink target refused", "target is not a bounded regular file", "target read failed")
+    // but not the file, and none of them carries "receipt" — name the record here, like the
+    // receipt errors below do (card C-107 slice 2: a refusal names its file).
+    let e = if e.starts_with("symlink target refused")
+        || e.starts_with("target is not a bounded regular file")
+        || e.starts_with("target read failed")
+    {
+        format!("{e}: the ownership receipt is unreadable")
+    } else {
+        e.to_string()
+    };
     if !e.contains("receipt") {
-        return e.to_string();
+        return e;
     }
     format!(
         "the ownership record {} cannot be read ({e}); no moai command repairs it: read it, \
