@@ -321,10 +321,19 @@ pub fn take(r: &Request<'_>) -> Result<Value> {
     // Audit note 3228, N3: the older branch only as a remote-tracking branch (a fresh clone) is
     // still the SPEC's branch; a second, name-first branch beside it would split the work.
     if !has_old && remote_branch_exists(dir, &date_first) {
-        return Err(refuse(format!(
-            "{} has the older branch {date_first} on a remote only; run `git switch {date_first}` first (it makes the local branch from the remote one), then take again; nothing was changed",
-            r.id
-        )));
+        // Audit note 3418, N9: with the name-first branch already local, `git switch` alone would
+        // leave both forms and the next take would refuse again, so the hint ends in one form.
+        return Err(refuse(if has_new {
+            format!(
+                "{} has the name-first branch {name_first} here and the older branch {date_first} on a remote only; keep one form: run `git switch {date_first}` (it makes the local branch from the remote one), merge {name_first} into it, delete {name_first} (`git branch -d {name_first}`), switch back to your base branch (for example `git switch main`; a take from the SPEC branch itself has no recorded base) and take again; nothing was changed",
+                r.id
+            )
+        } else {
+            format!(
+                "{} has the older branch {date_first} on a remote only; run `git switch {date_first}` first (it makes the local branch from the remote one), switch back to your base branch (for example `git switch main`; a take from the SPEC branch itself has no recorded base) and take again; nothing was changed",
+                r.id
+            )
+        }));
     }
     let exists = has_new || has_old;
     let branch = if has_old { date_first } else { name_first };
