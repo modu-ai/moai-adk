@@ -136,12 +136,6 @@ impl Fx {
         self.call(&["project-update-plan", self.p()], b"")
     }
 
-    /// The request the update preview builds for its own generation step.
-    fn request(&self) -> Value {
-        let plan = self.update_plan();
-        step(&plan, "generation")["apply"]["stdin"]["request"].clone()
-    }
-
     /// A project whose generation was applied once in English, whose AGENTS.md was then replaced
     /// by a hand-written text without managed markers, and whose profile then asks for Korean
     /// instruction files, so the rendered block differs from the recorded baseline and the
@@ -163,13 +157,19 @@ impl Fx {
 
     /// A project whose generation was applied through the step's own command.
     fn settled(hosts: &[&str]) -> Fx {
+        Fx::settled_with_request(hosts).0
+    }
+
+    /// [`Fx::settled`] with the request of that apply (a settled step prints none any more).
+    fn settled_with_request(hosts: &[&str]) -> (Fx, Value) {
         let fx = Fx::new();
         fx.with_profile(hosts);
         let plan = fx.update_plan();
         let generation = step(&plan, "generation");
         assert_eq!(generation["state"], "ready", "{generation}");
+        let request = generation["apply"]["stdin"]["request"].clone();
         assert_eq!(fx.apply(generation)["ok"], json!(true));
-        fx
+        (fx, request)
     }
 
     /// Runs the printed command of a step or of one choice, the way a session does.
@@ -319,8 +319,10 @@ fn generation_an_unknown_pick_is_refused_as_invalid_input_and_writes_nothing() {
 // REQ-5: the shadow rides the plan and stays out of the digest.
 #[test]
 fn generation_plan_carries_the_claude_shadow_outside_the_digest() {
-    let fx = Fx::settled(&["claude", "codex"]);
-    let request = fx.request();
+    // A CLAUDE.md is already named in `host_notes` (and so in the digest) whatever it holds;
+    // what the shadow adds is only whether it imports AGENTS.md, and that must not move it.
+    let (fx, request) = Fx::settled_with_request(&["claude", "codex"]);
+    fx.write("CLAUDE.md", "@AGENTS.md\n# mine\n");
     let (without, without_digest) = plan_digest(&fx, &request);
     assert!(without.get("claude_shadow").is_none(), "{without}");
     fx.write("CLAUDE.md", "# mine\n");
@@ -379,21 +381,24 @@ fn choices_the_append_command_keeps_every_byte_and_settles_the_next_plan() {
 fn choices_the_skip_command_keeps_agents_md_and_applies_the_rest() {
     let (fx, _) = Fx::conflict(&["claude", "codex"]);
     let generation = step(&fx.update_plan(), "generation").clone();
-    let out = fx.apply(choice(&generation, "skip-conflicts"));
-    assert_eq!(out["ok"], json!(true), "{out}");
-    assert_eq!(fx.read("AGENTS.md"), HUMAN);
-    // A file the conflict did not touch was written.
+    // The Korean profile changes the workflow file the conflict does not touch.
     let workflow = generation["preview"]["files"]
         .as_array()
         .unwrap()
         .iter()
-        .find(|f| f["path"].as_str().unwrap().ends_with("/SKILL.md") && f["action"] == "create")
-        .unwrap_or_else(|| panic!("no workflow row: {generation}"));
-    assert!(
-        Path::new(&fx.root)
-            .join(workflow["path"].as_str().unwrap())
-            .is_file(),
-        "{workflow}"
+        .find(|f| f["path"].as_str().unwrap().ends_with("/SKILL.md") && f["action"] == "merge")
+        .unwrap_or_else(|| panic!("no workflow row: {generation}"))["path"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let before = fx.read(&workflow);
+    let out = fx.apply(choice(&generation, "skip-conflicts"));
+    assert_eq!(out["ok"], json!(true), "{out}");
+    assert_eq!(fx.read("AGENTS.md"), HUMAN);
+    assert_ne!(
+        fx.read(&workflow),
+        before,
+        "the other files are still written"
     );
     // The skip records no baseline: the plain plan conflicts again and offers the choices again.
     let again = fx.update_plan();

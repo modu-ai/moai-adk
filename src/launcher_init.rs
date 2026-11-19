@@ -414,6 +414,8 @@ fn agents(top: &Path) -> Result<Vec<String>, String> {
         native_roles: Vec::new(),
         skill_projections: Vec::new(),
         project_skills: Vec::new(),
+        // No pick on a first launch: a conflict still stops it (SPEC-20261119-agents-choices-step).
+        picks: Vec::new(),
     };
     let plan = generation_plan(top, request)?;
     if plan.files.iter().any(|f| f.action == "conflict") {
