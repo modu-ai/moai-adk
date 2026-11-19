@@ -88,7 +88,9 @@ fn flaky_rule_card_add_example_carries_a_criterion() {
         .find(head)
         .unwrap_or_else(|| panic!("the flaky rule lost its `card add` example: {rule}"));
     let example = &rule[at..];
-    let example = &example[..example.find("`)").expect("the example ends with a backtick")];
+    let example = &example[..example
+        .find("`)")
+        .expect("the example ends with a backtick")];
     let criterion = example
         .strip_prefix(head)
         .and_then(|rest| rest.strip_prefix(" --ac \""))
