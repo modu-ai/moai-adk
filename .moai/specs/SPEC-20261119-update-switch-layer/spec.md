@@ -124,6 +124,12 @@ created: 2026-11-19
 - N8(비차단): 바이너리의 `ui_lang` 이 영어만 돌려줘서(`src/ui.rs`) 터미널에서는 한국어 한 줄이 안 나와요. 한국어 줄은 `Lang::Ko` View 로 시험이 확인해요.
 - N4(문구): 적용 뒤 화면 문구는 감사가 "정상" 으로 봤어요. N1(기준 가지가 감사 도중 움직임): `d2966629e5` 는 리더 공지대로 알려진 예외예요.
 
+### 로컬 `v2026.11.0`(`e84d7c46ce`) 병합 뒤 (head `fb3961a016`, 2026-11-19)
+
+- 여섯 검사: (1) `git diff --check` 0 · (2) `cargo fmt --check` 0 · (3) `rustfmt --check --edition 2021 src/ops/*.rs` 0 · (4) `cargo clippy --locked --offline --all-targets -- -D warnings` 0 · (5a) cargo test 5개 대상 0 · (5b) `python3 -m unittest tests.repo_scans_test tests.source_manifest_test tests.local_check_test tests.skill_references_test` 0 · (5c) `cargo test --locked --offline --bins` 0(상류 5개 실패는 C-119 수리로 사라졌어요) · (6) `moai-cli trailer-check v2026.11.0..HEAD` 0.
+- `tools/repo_scans.json` 에 등재된 검사 명령 39개 전부 exit 0(`REGISTERED-CHECKS count=39 failing=0`).
+- 재감사 PASS 는 이 병합 이전 head `07233585c5` 에서 받았어요(그 뒤 코드 변경은 병합뿐이에요).
+
 ### 이 컴퓨터에서 읽은 사실 (읽기 전용, 2026-11-19, 쓰기 0)
 
 - `shasum -a 256 ~/.moai-cli/path/moai ~/go/bin/moai` → 둘 다 `3c3446a3…6658ac`(= `V1_SHA256`), 둘 다 1747 B, 모드 `-rwxr-xr-x`. 그래서 이 컴퓨터에서 `moai update` 미리보기는 `replace` 를 제안하고, `go/bin/moai` 는 `same_as_v1: true` 로 안내만 해요.
