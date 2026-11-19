@@ -65,4 +65,7 @@ created: 2026-11-20
 
 ## Result
 
-- (채우는 중) 조각 (가) 진행 중; 런처 배선과 mode-agent.md 한 줄은 카드 예약이 풀리는 뒤 남은 조각으로 붙어요.
+- 조각 (가) 첫 판(2026-11-19T21:5xZ, agent-18, head e59556bb67): 등록 세션 id 기록(스키마 1·갱신 유지), `lock_named_live`(배타·심볼릭 거부), `liveness_of_session` 세 답(읽기 무쓰기 — 빠진 잠금 파일 생성 없음), `session-register --liveness-of`, mode-leader.md 회수 순서·낡은 문장 제거(핀 시험 갱신, 원천 명세 재생성).
+- 시험: launcher_liveness_cli 4 passed(RED 는 구현과 함께 돌아 따로 관측 못함 — 커밋 본문에 기록), lib lane_registry 11, lane_next 7, commit_guard 5, leader_round 7, mode_workflow_steps 43, 파이썬 repo_scans·local_check·skill_references 통과 + source_manifest 45 OK(명세 재생성 뒤).
+- 검사: fmt 0, ops rustfmt 0, clippy --all-targets -D warnings 0, trailer-check failing 0, diff --check 0, spec check 0/0.
+- 남은 것(다음 배선 조각): src/main.rs 런처가 이름 세션도 lock_named_live 를 잡게(C-57 예약), mode-agent.md 임대 네 시간 한 줄(C-99 예약), 7절의 런처 강제 종료 실측(배선 뒤).
