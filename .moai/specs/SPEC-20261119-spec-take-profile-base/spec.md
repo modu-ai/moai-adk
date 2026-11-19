@@ -70,3 +70,4 @@ parent: SPEC-20261118-spec-take
 - AC-2: met — 무프로필 `current-branch`(기존 시험 보강), `given`·`recorded` 보고, 빈 integration_branch 폴백, 재수행 recorded > 나중 프로필 값(D-1) 시험.
 - AC-3: met — 프로필 base 비커밋 → invalid-base 거절·상태 무변화; detached 무base 기존 거절 유지(분리 시험).
 - AC-4: met — `cargo test --offline --locked --test spec_take_cli` 14 통과(TEST_EXIT=0), `cargo fmt --check`(FMT_EXIT=0), clippy -D warnings(CLIPPY_EXIT=0), 도움말 무변경; 변이 3/3 KILLED(프로필 분기 제거·우선순위 뒤집기·base_source 미보고, target/c105/mut.log — M2는 픽스처 결함(프로필을 가지에만 커밋)을 고친 뒤 올바른 단언에서 사살 확인).
+- 묶음 4 감사 B1 수리(2026-11-19T06:0xZ): `--base` > 프로필 경계 시험 신설(`a_given_base_wins_over_the_profile_integration_branch` — 프로필이 통합 가지를 이름해도 `--base main`이 이기고 `given`으로 보고·HEAD가 main 커밋·기록 base main); 가드 변이(given arm을 profile arm 뒤로)에서 3 실패로 사살, 수트 15 통과로 복원.
