@@ -75,4 +75,23 @@ parent: SPEC-20261119-card-reclaim-guard
 
 ## Result
 
-(채우는 중 — 시험 실행 뒤 결과와 근거를 적습니다.)
+시험 커밋 `09b016cea7`, SPEC 커밋 `7fdf7cf891`, 형식 수정 `9f075a776b`, base `330c84bbdc`. 시험·검사는
+heavy-slot(agent-21-c43) 안에서 이 worktree 의 `target/` 로 돌렸다(2026-11-19T19:5xZ–20:1xZ).
+
+- RED: 첫 실행은 두 시험 모두 실패 — 원인은 시험 준비 결함이었다: `card list`·`card next` 는
+  `--project` 플래그가 없고 위치 인자 `[PROJECT]` 를 받는데 초안이 플래그를 썼다(usage 거절로 측정).
+  고친 뒤 2 통과. 성질 자체는 처음부터 지켜졌다.
+- AC-1: met — `cargo test --locked --offline --test ledger_readonly_cli` 2 passed 0 failed(초록 확인
+  재실행 포함 세 번).
+- AC-2(변이 탐침): met — `src/card/command.rs` `list()` 에 임시 HOME 아래 `mutation-probe.txt` 를 쓰는
+  한 줄을 넣었더니 `show_and_list_leave_the_home_byte_for_byte_as_it_was` 가 실패했다(1 passed 1
+  failed; 어긋남 목록에 탐침 파일 이름 등장). `git checkout --` 로 복원해 status 깨끗함. 변이는
+  커밋되지 않았다.
+- AC-3: met — home_isolation_scan 18 · card_dispatch_cli 25 · card_work_cli 26 · ledger_open 26 통과
+  (0 실패), cargo fmt --check 통과(첫 검사 1 → 시험 파일 줄바꿈 수정 뒤 0), rustfmt --edition 2021
+  --check src/ops/*.rs 0, clippy --offline --locked --all-targets -- -D warnings 0, git diff --check
+  base...HEAD 0, 커밋 꼬리표 interpret-trailers --parse 0, spec check 0 errors 0 warnings(첫 검사
+  req_gears 1·req_failure_path 3 → REQ 문형 수정 뒤), spec_cli 18 통과(첫 검사 17 통과 1 실패 → 수정
+  뒤), python 네 모듈(repo_scans·source_manifest·local_check·skill_references) 0.
+- 돌리지 않은 것: 전체 cargo test(PR 없음 — 리더 묶음 ci 가 인용한다), codex 샌드박스 안 재실행(이
+  조각은 실제 HOME·네트워크를 만지지 않는다).
