@@ -49,7 +49,7 @@ This slice lets `card scope` take a card that has an active reservation: the new
 - AC-5 (REQ-8): a `ready` card nobody holds still gets its scope replaced, with the same answer and event as before (no `held` key; a `--reason` is recorded when given), and a card that was held and then given back is replaceable again; a card in any other state still gets the refusal it got before.
   verify: `cargo test --locked --offline --test card_scope_widen_cli a_card_nobody_holds_keeps_the_old_scope_rules`
 - AC-6 (REQ-1, REQ-3): two lanes widening toward the same path at once: exactly one wins.
-  verify: `cargo test --locked --offline --lib ledger::reservation::tests::widen`
+  verify: `cargo test --locked --offline --test card_scope_widen_cli two_widenings_toward_one_path_have_one_winner`
 - AC-7 (REQ-9): the help of `card scope` and the operations document name the four statements of REQ-9.
   verify: `cargo test --locked --offline --test card_scope_widen_cli the_help_and_the_ops_doc_name_the_rule`
 - AC-8 (REQ-1…REQ-9): neighbours.

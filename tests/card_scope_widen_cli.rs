@@ -323,7 +323,9 @@ fn a_card_in_review_can_be_widened_too() {
         ],
     ));
     result(&w.card(Some(S_A), &["review", &card, "--generation", "1"]));
-    assert_eq!(w.reservation(&card)["status"], json!("held_for_review"));
+    let shown = result(&w.card(None, &["show", &card]));
+    assert_eq!(shown["state"], json!("review"), "{shown}");
+    assert_eq!(shown["reservation"]["status"], json!("held"), "{shown}");
     let done = result(&w.widen(&card, &["apps/bo/", "docs/"], Some(WHY)));
     assert_eq!(done["state"], json!("review"), "{done}");
     assert_eq!(done["write_scope"], json!(["apps/bo/", "docs/"]), "{done}");
@@ -465,6 +467,56 @@ fn a_card_nobody_holds_keeps_the_old_scope_rules() {
     result(&w.card(Some(S_A), &["release", &card, "--generation", "1"]));
     let done = result(&w.widen(&card, &["tests/"], None));
     assert_eq!(done["write_scope"], json!(["tests/"]), "{done}");
+}
+
+/// Two lanes widen toward the same path at the same moment: the ledger serializes the writes,
+/// so exactly one wins and the other is refused by the winner's card name.
+#[test]
+fn two_widenings_toward_one_path_have_one_winner() {
+    let w = world();
+    let a = w.held(S_A, "a", &["apps/bo/"]);
+    let b = w.held(S_B, "b", &["apps/web/"]);
+    let spawn = |card: &str, keep: &str| {
+        let mut args = vec!["card", "scope", card, "--scope", keep, "--scope", "shared/"];
+        args.extend_from_slice(&["--by", "leader", "--reason", WHY, "--project", &w.project]);
+        w.home
+            .command(&args)
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("run moai")
+    };
+    let first = spawn(&a, "apps/bo/");
+    let second = spawn(&b, "apps/web/");
+    let outcomes = [
+        first.wait_with_output().unwrap(),
+        second.wait_with_output().unwrap(),
+    ];
+    let won: Vec<&Output> = outcomes
+        .iter()
+        .filter(|o| o.status.code() == Some(0))
+        .collect();
+    let lost: Vec<&Output> = outcomes
+        .iter()
+        .filter(|o| o.status.code() == Some(1))
+        .collect();
+    assert_eq!((won.len(), lost.len()), (1, 1), "{outcomes:?}");
+    let (kind, message) = refusal(lost[0]);
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(
+        message.contains("C-1") || message.contains("C-2"),
+        "names the winner: {message}"
+    );
+    let holders = w.rows(
+        "SELECT r.card_id FROM reservation_scope s JOIN reservation r \
+         ON r.reservation_id = s.reservation_id WHERE s.pattern = 'shared/'",
+    );
+    assert_eq!(
+        holders.len(),
+        1,
+        "one reservation holds shared/: {holders:?}"
+    );
 }
 
 #[test]
