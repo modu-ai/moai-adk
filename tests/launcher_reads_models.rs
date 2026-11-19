@@ -303,15 +303,25 @@ fn a_rewritten_file_is_used_by_the_next_launch() {
 /// not refuse a roleless or a `glm` launch.
 #[test]
 fn an_unsupported_saved_entry_refuses_a_role_launch() {
+    // The file and the key path the refusal has to name (audit N5 of the first head).
     let bad_files = [
         // An unknown model for the tool.
-        r#"{"launcher":{"models":{"claude":{"leader":{"model":"SECRET-unknown-model","effort":"high"}}}}}"#,
+        (
+            r#"{"launcher":{"models":{"claude":{"leader":{"model":"SECRET-unknown-model","effort":"high"}}}}}"#,
+            "launcher.models.claude.leader",
+        ),
         // An effort the model does not offer (the glm models take low, high and max only).
-        r#"{"launcher":{"models":{"omp":{"agent":{"model":"zai/glm-5.3","effort":"medium"}}}}}"#,
+        (
+            r#"{"launcher":{"models":{"omp":{"agent":{"model":"zai/glm-5.3","effort":"medium"}}}}}"#,
+            "launcher.models.omp.agent",
+        ),
         // The bad entry belongs to another tool than the one launched below.
-        r#"{"launcher":{"models":{"codex":{"agent":{"model":"SECRET-other-tool","effort":"low"}}}}}"#,
+        (
+            r#"{"launcher":{"models":{"codex":{"agent":{"model":"SECRET-other-tool","effort":"low"}}}}}"#,
+            "launcher.models.codex.agent",
+        ),
     ];
-    for bad in bad_files {
+    for (bad, key_path) in bad_files {
         let f = Fixture::new();
         f.config(bad);
         for args in [["cc", "-l"], ["codex", "-a"], ["omp", "-l"]] {
@@ -320,7 +330,7 @@ fn an_unsupported_saved_entry_refuses_a_role_launch() {
             assert!(out.stdout.is_empty(), "{args:?} {bad}");
             let err = String::from_utf8_lossy(&out.stderr).to_string();
             assert!(!err.contains("SECRET"), "{args:?} {bad}: {err}");
-            assert!(err.contains("launcher.models"), "{args:?} {bad}: {err}");
+            assert!(err.contains(key_path), "{args:?} {bad}: {err}");
         }
         for args in [vec!["cc"], vec!["glm", "-l"]] {
             let out = f.run(&args);

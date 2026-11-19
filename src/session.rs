@@ -826,9 +826,6 @@ fn omp_key(r: &SessionRequest) -> Result<Option<(String, KeySource)>, String> {
     glm_token().map_err(|b| blocked_line(&b))
 }
 
-/// Composes the host command without running it. Returns
-/// `{host, role, name, argv, env_keys, notes, executed:false, host_loaded:false}`.
-/// `env_keys` lists variable names only, never values.
 /// The note that says a value came from the choice `moai update` saved for the host and role
 /// (SPEC-20261119-launcher-reads-models REQ-9): the key path and nothing else of the file.
 fn saved_note(host: &str, role: &str) -> &'static str {
@@ -881,6 +878,9 @@ fn apply_saved_choice(
     Ok((filled, used.then(|| saved_note(&r.host, role))))
 }
 
+/// Composes the host command without running it. Returns
+/// `{host, role, name, argv, env_keys, notes, executed:false, host_loaded:false}`.
+/// `env_keys` lists variable names only, never values.
 pub fn compose(r: &SessionRequest) -> Result<Value, String> {
     let (resolved, saved) = apply_saved_choice(r)?;
     compose_resolved(&resolved, saved)
