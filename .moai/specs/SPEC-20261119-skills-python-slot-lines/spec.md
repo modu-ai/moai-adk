@@ -72,3 +72,12 @@ SPEC-20261119-python-slot-pre-ready(C-114 조각 2)는 파이썬 전체 실행�
 | D-1 | 세 문서와 manifest 와 시험 한 파일만 바꾼다 | 리더 배차("skills 쪽 줄")와 C-114 계획이 정한 범위 | 항목 추가 |
 | D-2 | push 점검표의 자리는 mode-agent 의 heavy-checks 단계(7)다 | pr-gate(8)는 PR 개수 게이트이고 M-Flow 는 PR 을 열지 않아서, "푸시 전 무엇을 돌리나"를 말하는 곳은 7번이에요 | 문장 이동 |
 | D-3 | 시험은 문서가 이름을 적는지만 읽는다(문장 전체 못박기 없음) | 문장을 다듬을 때마다 시험이 깨지는 것을 막으려고 이름 목록만 읽어요 | 시험 추가 |
+| D-4 | manifest 해시는 이 가지의 마지막 커밋에서만 쓴다 | 리더 결정(C-59 노트 3081, 2026-11-19): `source-manifest.json` 을 C-59 가 먼저 쓰고, C-114 는 그 뒤에 다시 받아요 | 마지막 단계에서 `write` |
+
+## Result
+
+- AC-1: met — 2026-11-19 이 worktree 에서 `rg -n -e "--pre-ready" -e "MOAI_PYTHON_SLOT_MAX" -e "MOAI_PYTHON_SLOT_DIR" skills/moai/references/internal/self-check.md` 가 5번째 줄 하나를 찾아요(그 한 줄이 `--pre-ready`, 여덟 항목, 파이썬 슬롯 폴더와 두 환경 변수, 거절은 not run). `python3 -m unittest tests.self_check_test` 는 새 SkillDocsNameThePythonSlotTest 6개를 포함해 통과(네 시험 파일을 한 번에 돌린 Ran 138 tests, OK).
+- AC-2: met — `rg -n -o -e "--pre-ready" -e "python slot" skills/moai/workflows/mode-agent.md skills/moai/workflows/verify.md` 가 mode-agent.md:63 에서 둘 다, verify.md:45 에서 `python slot` 을 찾아요. 같은 시험(위 138개 안)이 통과해요.
+- AC-3: open — `cargo run --offline --locked --quiet --bin moai -- package-inspect skills/moai` 는 exit 0, 세 문서는 65,536 바이트 한도 안(self-check.md 5,447, mode-agent.md 48,767, verify.md 25,323 바이트). 그러나 `python3 -I tools/source_manifest.py check` 는 이 head 에서 exit 1 이에요(`changed`: self-check.md, mode-agent.md, verify.md): manifest 파일이 C-59 몫이라 이 가지에서 아직 쓰지 않았어요(D-4). 마지막 단계에서 `write` 한 뒤 이 줄을 `met` 로 바꿔요.
+- AC-4: open — 시험 6개는 문서를 고치기 전 5개 실패(RED 커밋 c5846ccde9, `failures=5`)에서 통과로 바뀌었고, 문장 하나씩 지우는 변이 5개(--pre-ready 이름, python slot 이름, 항목 순서 바꿈, 변수 이름 바꿈, READY 규칙)가 각각 시험 하나만 빨갛게 만들었어요(원복은 `cmp` 로 확인). `cargo test --offline --locked --test agent_defs_package` 는 19개 통과, `--test workflow_size_budget` 는 4개 통과. 다만 네 시험 파일의 138개 OK 는 manifest 해시를 로컬에서 써 둔 상태(커밋 안 함)의 결과이고, 커밋된 head 에서는 `tests.source_manifest_test` 1개(`test_this_repository_manifest_is_what_the_tool_writes`)와 `product_cli skill_package::source_manifest_covers_every_package_file` 이 manifest 해시가 낡았다고 실패해요. 마지막 단계의 `write` 뒤에 다시 돌려 이 줄을 `met` 로 바꿔요.
+- 아직 안 한 것: manifest `write`(D-4). `tools/self_check.sh --pre-ready` 진짜 실행은 이 head 에서 `diff-check`, `fmt`, `fmt-ops`, `py-repo-scans` 가 exit 0, `manifest`, `py-source-manifest`, `skill-package` 는 위 이유로 exit 1, `spec-check` 는 이 Result 가 없던 때 exit 1(`closure_result`)이었어요. 모두 manifest 단계 뒤에 다시 돌려야 해요.
