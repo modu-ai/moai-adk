@@ -69,4 +69,12 @@ created: 2026-11-19
 
 ## Result
 
-- (실행 뒤 채움)
+측정 환경: 이 레인 worktree(`/Users/goos/.moai/worktrees/moai-adk-111`), 디버그 빌드, 이 커밋의 부모 `fb3521bdd0c9d67793ae05b5c89a4732af92ed13` 코드 상태(이 커밋은 문서만). 각 항목에 명령과 그 실행에서 관측한 수치를 적어요.
+
+- AC-1 RED(옛 벽시계 단언의 부하 실패 재현): 스피너 32개 병행 부하에서 옛 테스트 `a_64_kib_field_of_a_repeated_key_prefix_is_screened_quickly` 가 6회 실행 6회 실패(본체 2.39–6.31 s, 2026-11-19T06:26Z, load 평균 ~37). C-93 tier 2 감사의 관찰(부하 ~38, 3.12 s, lib 전량 중 유일 실패)과 같은 결함 — 벽시계 단언은 부하에서 깨져요.
+- AC-1 GREEN(수리, 커밋 `6350ebb75e`): 14개 키 모양 각각에 대해 (a) 같은 프로세스에서 텍스트 바이트를 한 번 도는 in-crate 선형 기준선(`black_box` 로 접기 방지)을 재고 (b) `screen` 비용이 그 기준선의 `COST_RATIO_LIMIT` 배 미만임을 단언. 같은 부하에서 통과. 벽시계 단언과 2초 한도는 테스트에서 완전히 제거됨(REQ-1).
+- AC-1 변이(REQ-2): `screen` 에 이차 재스캔(각 위치에서 전체 재판정)을 주입 → 같은 테스트 실패, exit 101 `"ratio 21,316 at limit 15,000"`(KILL). `COST_RATIO_LIMIT=20,000` 시험에서도 24,489 로 KILL — 두 한도 모두 변이를 잡아요. 원복 `git diff --exit-code -- src/decide/outbound.rs` → CLEAN(제품 코드 무변경).
+- `COST_RATIO_LIMIT` 산정(커밋 `fb3521bdd0`): 실측(디버그, load 평균 ~68) — 정상 선형 비율 범위 6–1,104, 이차 재스캔 변이 비율 약 160,000 이상. 15,000 으로 고정: 정상 최대의 13.6배 여유, 변이 최저의 1/10 아래 — 양쪽 10배 이상 여유(Risks 의 노이즈 흡수 근거).
+- AC-2(lib 20연속 부하): `zsh target/load20-lib.sh` — 스피너 32개 병행 + `cargo test --locked --offline --lib` 20회 → **20/20 통과**(매 회 1453 passed; 회당 155–207 s; 2026-11-19T06:59–08:02Z; 부하 30–78).
+- AC-3 이웃 검사(위 코드 상태에서 2026-11-19T09:41–09:47Z 재실행, 전부 exit 0): `cargo fmt --check` / `cargo clippy --locked --offline --all-targets -- -D warnings`(25.2 s) / `cargo test --locked --offline --test home_isolation_scan`(18 passed, 0 failed) / `python3 -m unittest tests.repo_scans_test tests.source_manifest_test`(68 tests OK, 79.6 s) / `./target/debug/moai-cli spec check SPEC-20261119-outbound-screen-flake --project .`(errors 0, warnings 0) / `moai trailer-check origin/v2026.11.0..HEAD`(3 commits, failing 0 — 이 Result 커밋 뒤 4 commits 로 재실행해 failing 0 확인).
+- 남은 것: lib 전량·전체 cargo test 는 이 묶음의 PR CI run 이 인용해요(AC-3 전언; tier 0).
