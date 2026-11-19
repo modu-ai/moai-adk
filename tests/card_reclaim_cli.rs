@@ -665,9 +665,77 @@ fn reclaim_help_names_reopen_and_the_refusal_kinds() {
         help.contains("`card reopen`") && help.contains("`card release`"),
         "a `review` card is reopened before it is given back: {help}"
     );
-    for kind in ["`conflict`", "`not_found`", "`invalid_input`"] {
+    for kind in ["`conflict`", "`not_found`", "`usage`", "`invalid_input`"] {
         assert!(help.contains(kind), "{kind} missing: {help}");
     }
+    // An option that is missing or cannot be read is a usage error (exit 2), not an
+    // `invalid_input` (audit of #3223, B1).
+    assert!(
+        help.contains("`usage` (exit 2"),
+        "the help does not say a missing option is `usage`: {help}"
+    );
+}
+
+/// Audit of #3223 B1: a missing or unreadable option is a `usage` error (exit 2, the parser's
+/// refusal before any ledger is read); a value that reads but is out of range is `invalid_input`
+/// (exit 1). The help says the same; nothing is written either way.
+#[test]
+fn a_missing_or_unreadable_option_is_usage_and_an_out_of_range_value_is_invalid_input() {
+    let w = world();
+    let card = w.stuck_review_card();
+    let before = w.dump();
+    let usage = |args: &[&str]| {
+        let mut all = vec!["reclaim", card.as_str()];
+        all.extend_from_slice(args);
+        let out = w.card(Some(S_B), &all);
+        assert_eq!(
+            out.status.code(),
+            Some(2),
+            "{args:?}: {}",
+            String::from_utf8_lossy(&out.stdout)
+        );
+        let v = envelope(&out);
+        assert_eq!(v["ok"], json!(false), "{args:?}: {v}");
+        assert_eq!(v["error"]["kind"], json!("usage"), "{args:?}: {v}");
+    };
+    usage(&["--by", "leader", "--reason", REASON]); // no --generation
+    usage(&["--generation", "1", "--reason", REASON]); // no --by
+    usage(&["--generation", "1", "--by", "leader"]); // no --reason
+    usage(&["--generation", "x", "--by", "leader", "--reason", REASON]);
+    usage(&["--generation", "-1", "--by", "leader", "--reason", REASON]);
+
+    // Out of range: the option reads, the value is refused by the command.
+    let (kind, _) = refusal(&w.card(
+        Some(S_B),
+        &[
+            "reclaim",
+            &card,
+            "--generation",
+            "1",
+            "--by",
+            "leader",
+            "--reason",
+            " ",
+        ],
+    ));
+    assert_eq!(kind, "invalid_input");
+    let (kind, _) = refusal(&w.card(
+        Some(S_B),
+        &[
+            "reclaim",
+            &card,
+            "--generation",
+            "1",
+            "--by",
+            "leader",
+            "--reason",
+            REASON,
+            "--lease-secs",
+            "59",
+        ],
+    ));
+    assert_eq!(kind, "invalid_input");
+    assert_eq!(w.dump(), before, "a refused reclaim writes nothing");
 }
 
 /// AC-3: `--reason` is kept for good and `card export` writes it out, so it gets the filter

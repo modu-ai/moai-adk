@@ -250,10 +250,13 @@ enum Action {
     /// Writes the ledger. Take over a card whose reservation has ended
     ///
     /// Writes the ledger. For a card whose holder is gone: the reservation at `--generation` must be
-    /// `held` with a lease that has ended. Refusals write nothing and come in three kinds:
+    /// `held` with a lease that has ended. Refusals write nothing and come in four kinds:
     /// `conflict` (a live lease, another generation, a `done` card, a reservation that is not
-    /// `held`, or a card nobody holds), `not_found` (no such card) and `invalid_input` (a missing
-    /// or malformed option, or a `--reason` with a word shaped like a secret). The reservation
+    /// `held`, or a card nobody holds), `not_found` (no such card), `usage` (exit 2: an option
+    /// that is missing or cannot be read, such as no `--generation` or `--generation x`) and
+    /// `invalid_input` (exit 1: a value out of range, a blank or longer `--reason`, a `--by` over
+    /// 80 characters, a `--lease-secs` outside 60 to 86400, or a `--reason` with a word shaped
+    /// like a secret). The reservation
     /// becomes `reclaimed`, and this session gets the next generation with the same scope, worktree
     /// and branch and a new lease; the card keeps its state, notes, criteria and links, so this
     /// session can then close it with `card criterion`, `card pr` and `card done`. To give a card
