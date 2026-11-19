@@ -1,0 +1,12 @@
+ ▐▛███▜▌   Claude Code
+▝▜█████▛▘  /Users/example/project
+  ▘▘ ▝▝    Opus
+
+● Would you like to proceed?
+  1. Yes
+  2. No
+
+────────────────────────────────────────
+❯
+────────────────────────────────────────
+  ⏵⏵ bypass permissions on (shift+tab to cycle)

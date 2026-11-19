@@ -109,13 +109,25 @@ fn cut(row: &str) -> String {
     s
 }
 
-/// A choice row `❯ 2. text`: whether the cursor is on it, its number and its text.
+/// Characters of a vertical frame a dialog may be drawn in.
+const FRAME: [char; 6] = ['│', '┃', '║', '|', '╎', '┆'];
+/// The cursor a menu draws before the highlighted choice: `❯` is Claude Code's own, `>` is its
+/// plain-text form, the others are the arrows other menus use.
+const CURSORS: [char; 8] = ['❯', '>', '›', '▶', '▸', '→', '➜', '➤'];
+
+fn is_blank_or_frame(c: char) -> bool {
+    c.is_whitespace() || FRAME.contains(&c)
+}
+
+/// A choice row `❯ 2. text`: whether the cursor is on it, its number and its text. A vertical
+/// frame before the row and any cursor glyph in [`CURSORS`] are read through (audit note 3212 B1:
+/// `> 1. Yes` and `│ ❯ 1. Yes │` are choice rows too).
 fn numbered(row: &str) -> Option<(bool, u32, &str)> {
-    let mut rest = row.trim_start();
+    let mut rest = row.trim_start_matches(is_blank_or_frame);
     let mut cursor = false;
-    if let Some(r) = rest.strip_prefix('❯') {
+    if let Some(c) = rest.chars().next().filter(|c| CURSORS.contains(c)) {
         cursor = true;
-        rest = r.trim_start();
+        rest = rest[c.len_utf8()..].trim_start();
     }
     let digits = rest.chars().take_while(char::is_ascii_digit).count();
     if digits == 0 || digits > 2 {
@@ -127,6 +139,14 @@ fn numbered(row: &str) -> Option<(bool, u32, &str)> {
         .or_else(|| after.strip_prefix(')'))?;
     let text = after.strip_prefix(' ')?.trim_start();
     Some((cursor, n.parse().ok()?, text))
+}
+
+/// Whether `text` starts with `word` as a whole word, ignoring case: `Yes, and …` and `No (esc)`
+/// do, `Yesterday` and `Not now` do not.
+fn starts_with_word(text: &str, word: &str) -> bool {
+    text.to_ascii_lowercase()
+        .strip_prefix(word)
+        .is_some_and(|after| !after.starts_with(char::is_alphanumeric))
 }
 
 /// Whether a (cleaned) row is a usage-limit message.
@@ -156,19 +176,27 @@ pub fn classify(rows: &[String]) -> Seen {
         .enumerate()
         .filter_map(|(i, r)| numbered(r).map(|(cursor, _, text)| (i, cursor, text)))
         .collect();
-    let starts = |word: &str| {
+    let choice_row = |word: &str| {
         choices
             .iter()
-            .any(|(_, _, t)| t.to_ascii_lowercase().starts_with(word))
+            .find(|(_, _, t)| starts_with_word(t, word))
+            .map(|(i, _, _)| *i)
     };
-    if let Some(q) = find("do you want") {
-        if starts("yes") && starts("no") {
-            return seen(
+    // A numbered Yes row together with a numbered No row is a confirmation, with or without the
+    // `Do you want` question and whatever draws its cursor or frame: Enter would pick Yes.
+    if let (Some(yes), Some(_)) = (choice_row("yes"), choice_row("no")) {
+        return match find("do you want") {
+            Some(q) => seen(
                 State::PermissionPrompt,
                 rows.get(q),
                 "a Yes/No confirmation is on the screen",
-            );
-        }
+            ),
+            None => seen(
+                State::PermissionPrompt,
+                rows.get(yes),
+                "numbered Yes and No rows are on the screen",
+            ),
+        };
     }
     if let Some(i) = rows.iter().position(|r| is_limit_row(r)) {
         return seen(
@@ -466,7 +494,10 @@ pub fn parse_reset(row: &str, now: i64) -> Reset {
         return unknown("unknown zone name; only UTC, UTC offsets and a few Asia zones are read");
     };
     let at_zone = |y: i64, m: i64, d: i64| -> Option<i64> {
-        if !(1..=12).contains(&m) || d < 1 || d > days_in_month(y, m) {
+        // A year outside 1970..=9999 is no reset time (audit note 3212 N1: a huge year made the
+        // day count overflow). It also keeps `days_from_civil` far from the `i64` limits.
+        if !(1970..=9999).contains(&y) || !(1..=12).contains(&m) || d < 1 || d > days_in_month(y, m)
+        {
             return None;
         }
         Some(days_from_civil(y, m, d) * 86_400 + tod - offset)
@@ -687,6 +718,49 @@ mod tests {
     }
 
     #[test]
+    fn a_choice_row_is_read_through_a_frame_and_any_cursor_glyph() {
+        assert_eq!(numbered("❯ 1. Yes"), Some((true, 1, "Yes")));
+        assert_eq!(numbered("> 1. Yes"), Some((true, 1, "Yes")));
+        assert_eq!(numbered("› 2) No"), Some((true, 2, "No")));
+        assert_eq!(numbered("│ ❯ 1. Yes │"), Some((true, 1, "Yes │")));
+        assert_eq!(numbered("│   2. No   │"), Some((false, 2, "No   │")));
+        assert_eq!(numbered("  3. Maybe"), Some((false, 3, "Maybe")));
+        // Not choice rows: no number, three digits, no dot, no space after the dot.
+        assert_eq!(numbered("> Yes"), None);
+        assert_eq!(numbered("│ Do you want to proceed? │"), None);
+        assert_eq!(numbered("123. x"), None);
+        assert_eq!(numbered("1 Yes"), None);
+        assert_eq!(numbered("1.Yes"), None);
+    }
+
+    #[test]
+    fn yes_and_no_are_whole_words() {
+        assert!(starts_with_word("Yes", "yes"));
+        assert!(starts_with_word("Yes, and don't ask again", "yes"));
+        assert!(starts_with_word("No (esc)", "no"));
+        assert!(!starts_with_word("Yesterday", "yes"));
+        assert!(!starts_with_word("Not now", "no"));
+        assert!(!starts_with_word("", "no"));
+    }
+
+    #[test]
+    fn a_numbered_yes_and_no_is_a_prompt_in_any_dress_and_never_working_or_idle() {
+        let dialog = |yes: &str, no: &str| {
+            let mut v = filler(6, &["esc to interrupt"]);
+            v.push(yes.to_string());
+            v.push(no.to_string());
+            classify(&v).state
+        };
+        assert_eq!(dialog("> 1. Yes", "  2. No"), State::PermissionPrompt);
+        assert_eq!(
+            dialog("│ ❯ 1. Yes │", "│   2. No │"),
+            State::PermissionPrompt
+        );
+        assert_eq!(dialog("  1. Yes", "  2. No"), State::PermissionPrompt);
+        assert_eq!(dialog("  1. Yesterday", "  2. Not now"), State::Working);
+    }
+
+    #[test]
     fn the_state_names_are_the_lane_status_names() {
         assert_eq!(State::Working.as_str(), "working");
         assert_eq!(State::Idle.as_str(), "idle");
@@ -735,8 +809,12 @@ mod tests {
     fn a_dialog_needs_both_a_yes_row_and_a_no_row() {
         let only_yes = rows("Do you want to continue?\n ❯ 1. Yes\n   2. Maybe");
         assert_eq!(classify(&only_yes).state, State::InputPending);
+        // Without the `Do you want` question a numbered Yes and No are still a confirmation
+        // (audit note 3212 B1): Enter would pick Yes.
         let no_question = rows(" ❯ 1. Yes\n   2. No");
-        assert_eq!(classify(&no_question).state, State::InputPending);
+        let seen = classify(&no_question);
+        assert_eq!(seen.state, State::PermissionPrompt);
+        assert!(seen.evidence.unwrap().contains("Yes"));
     }
 
     #[test]
