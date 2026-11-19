@@ -428,6 +428,7 @@ pub fn reclaim(
     let card_id = card_id("reclaim", reference)?;
     let by = actor(Some(req.by), "reclaim")?;
     let reason = reclaim_reason(req.reason)?;
+    takeover_gates(project, home, card_id, req.to_holder)?;
     let (id, mut ledger) = open_for_write(project, home)?;
     let out = reservation::reclaim(
         &mut ledger,
@@ -459,6 +460,99 @@ fn card_state(ledger: &ledger::WriteLedger, card_id: i64) -> Result<Option<Strin
         )
         .optional()
         .map_err(|e| ledger::LedgerError::from(e).to_string())
+}
+
+// ---- takeover gates (SPEC-20261119-card-reclaim-guard) ----
+
+/// The takeover gates run before the ledger write: a self-reclaim is a renewal, not a
+/// takeover, and skips them (REQ-4); otherwise the recorded worktree must not hold work a
+/// reclaim would orphan. The holder-liveness gate has no mechanical join yet — the session
+/// registry records no host session id — so it stays a follow-up (card C-43 note 2836).
+/// Refusals keep the `conflict in` wording so `contract::classify` maps them to `conflict`.
+fn takeover_gates(project: &Path, home: &Path, card_id: i64, to_holder: &str) -> Result<()> {
+    let id = crate::ledger::command::project_id_of(project)
+        .map_err(|e| format!("card reclaim refused: {e}"))?;
+    // Read-only peek: an absent ledger reaches its own refusal at `open_for_write`, and the
+    // peek never creates anything (`open_read_only`).
+    let Ok(ro) = ledger::open_read_only(home, &id) else {
+        return Ok(());
+    };
+    let current = reservation::current(ro.conn(), card_id).map_err(|e| e.to_string())?;
+    let Some(cur) = current else {
+        return Ok(()); // the ledger refuses with its own `no reservation`
+    };
+    if cur.holder == to_holder {
+        return Ok(()); // a self-reclaim renews its own reservation
+    }
+    worktree_gate(cur.worktree.as_deref())
+}
+
+/// REQ-1..3: refuse a worktree that exists and holds uncommitted or unpushed work, go on
+/// only when the path is known to be gone (nothing there can be orphaned), refuse as
+/// unverifiable when the path cannot be told apart from "gone" or git cannot be read.
+fn worktree_gate(worktree: Option<&str>) -> Result<()> {
+    let Some(wt) = worktree.filter(|w| !w.is_empty()) else {
+        return Ok(());
+    };
+    let unreadable =
+        || format!("card conflict in worktree unknown: the worktree {wt} could not be read");
+    let path = Path::new(wt);
+    // A relative path means a different folder under another working directory, so "it does
+    // not exist here" proves nothing (audit-c43 B1).
+    if !path.is_absolute() {
+        return Err(format!(
+            "card conflict in worktree unknown: the recorded worktree {wt} is not an absolute \
+             path, so it cannot be checked from here"
+        ));
+    }
+    // `Path::exists` turns a permission error into "gone"; only a clean "not found" is gone.
+    match path.try_exists() {
+        Ok(false) => return Ok(()),
+        Ok(true) => {}
+        Err(_) => return Err(unreadable()),
+    }
+    // One changed or untracked path per line.
+    let uncommitted = git_output(
+        path,
+        &["status", "--porcelain=v1", "--untracked-files=normal"],
+    )
+    .ok_or_else(unreadable)?
+    .lines()
+    .filter(|l| !l.trim().is_empty())
+    .count() as u64;
+    let unpushed = git_output(path, &["rev-list", "--count", "HEAD", "--not", "--remotes"])
+        .and_then(|n| n.trim().parse::<u64>().ok())
+        .ok_or_else(unreadable)?;
+    if uncommitted > 0 || unpushed > 0 {
+        return Err(format!(
+            "card conflict in worktree dirty: {wt} holds {uncommitted} uncommitted change(s) \
+             and {unpushed} unpushed commit(s); a reclaim would orphan them"
+        ));
+    }
+    Ok(())
+}
+
+/// The standard output of one read-only git command in `dir`: the environment is scrubbed like
+/// every spawn (`identity::scrub_git_env`) and the meaning matches `lane_reset`'s probes — no
+/// fetch, untracked files counted, `None` on any failure.
+fn git_output(dir: &Path, args: &[&str]) -> Option<String> {
+    // `MOAI_GIT_BIN` names the git program for a runner whose child carries no `PATH`
+    // (the same seam as `MOAI_FORGE_GH_BIN`); everyone else spawns `git`.
+    let program = std::env::var("MOAI_GIT_BIN").unwrap_or_else(|_| "git".to_string());
+    let mut cmd = std::process::Command::new(program);
+    crate::identity::scrub_git_env(&mut cmd);
+    let out = cmd
+        .arg("--no-optional-locks")
+        .arg("-C")
+        .arg(dir)
+        .args(args)
+        .stdin(std::process::Stdio::null())
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    Some(String::from_utf8_lossy(&out.stdout).into_owned())
 }
 
 #[cfg(test)]
