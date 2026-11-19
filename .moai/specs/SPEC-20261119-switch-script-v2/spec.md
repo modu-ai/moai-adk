@@ -108,7 +108,7 @@ v2 가 v1 과 다른 점은 세 가지뿐이에요:
 |---|---|---|
 | `statusline --help` | Go "Generate a compact statusline string…" | Rust "Render the Claude Code status line" |
 | `session --help` (Go 동작 없음) | Go "Manage the multi-session coordination registry…" | Rust "Start a Claude Code session (legacy form)" |
-| `session list --json` | Go | Go (가짜 빌드 시험으로 확인; 실제 Rust 는 `session list` 를 모르고 종료 2) |
+| `session list --help` | Go "List active sessions (optionally filtered by --filter-spec)" | Go (같음; 실제 Rust `session list` 는 종료 2) |
 | `spec check --help` | Go "Manage SPEC documents in .moai/specs/ directory." | Rust "Reads only. Check SPEC files and report problems by code" |
 | `spec lint --help` | Go "Accepted arguments (SPEC-SPEC-LINT-ID-ARG-001)…" | Go (같음) |
 | `spec audit --help` | Go "Scan .moai/specs/SPEC-*/ directories…" | Go (같음) |
@@ -135,14 +135,20 @@ v2 가 v1 과 다른 점은 세 가지뿐이에요:
 
 ### 검사 (이 레인, 2026-11-19, 전용 빌드 폴더·무거운 작업 칸)
 
-- RED: 새 시험 파일을 v2 가 v1 과 같은 채로 돌리면 10개 중 7개 실패(3개 통과: v1 기준선·바뀌지 않는 동작).
-- GREEN: `cargo test --locked --offline --test switch_script_v2` 10/10 통과(`rustfmt` 정리 뒤 다시: 10/10).
-- 변이 5개(스크립트 `preview/moai.v2` 에 하나씩, 커밋된 파일에서): M1 `lint` 를 Rust 쪽으로, M2 `spec` 기본값을 Go 로, M3 `statusline` 을 Go 목록에 되돌림, M4 one-shot 표시를 모든 낱말에, M5 `spec` 의 Go 없음 종료를 0 으로 — 5/5 처음에 시험이 잡았어요.
-- `cargo fmt --check` 0(처음에 시험 파일 줄바꿈 4곳 지적 → 정리), `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `cargo test --locked --offline --test home_isolation_scan` 통과, `cargo test --locked --offline --lib` 1453 통과 0 실패.
-- 돌리지 않은 것: 실제 HOME 에 적용(S4), 실제 훅 이벤트·`statusline` 렌더 실행, Linux/macOS 이외, 프로젝트 전체 `cargo test`(통합 시험 전량은 묶음 PR 의 CI 가 맡아요).
+첫 판(head 0ea3db730d):
+- RED: 새 시험 파일을 v2 가 v1 과 같은 채로 돌리면 10개 중 7개 실패(3개 통과: v1 기준선·바뀌지 않는 동작). GREEN 10/10. 변이 5개(`lint` 를 Rust 쪽으로, `spec` 기본값을 Go 로, `statusline` 을 Go 목록에 되돌림, one-shot 표시를 모든 낱말에, `spec` 의 Go 없음 종료를 0 으로) 5/5 처음에 잡혔어요. `cargo fmt --check` 처음에 시험 파일 줄바꿈 4곳 지적 → 정리. `cargo test --locked --offline --lib` 1453 통과 0 실패(src 는 이 SPEC 이 안 건드려서 수리 뒤에도 같은 소스예요).
+- 첫 감사(c33a-audit, tier 1): 차단 0, MAJOR 5(M1 `session` 호출자, M2 `statusline` 호출자 누락, M3 적용 줄이 같은 STAMP 로 두 번 돌면 백업을 덮어씀, M4 적용·되돌리기 줄이 실패해도 종료 코드 0, M5 시험이 인자 경계를 못 잡음) → 이 판이 수리예요.
+
+수리판(커밋 a9380d9882):
+- RED(수리 전 v2 로 새 시험): `session` 을 통째로 Rust 로 보내는 이전 v2 에서 14개 중 3개 실패(`v2_keeps_the_go_session_actions_on_go`, `v2_without_a_go_build_fails_only_for_go_words`, `v2_hands_over_arguments_and_exit_status`). 적용·되돌리기 시험 3개는 새 줄을 읽는 시험이라 이전 v2 로는 RED 를 못 만들어서 변이로 확인했어요(아래).
+- GREEN: `cargo test --locked --offline --test switch_script_v2` 14/14 통과.
+- 변이 5개(커밋된 파일에서 하나씩): S1 스크립트에서 `session:list|` 삭제, S2 마지막 `exec "$RUST" "$@"` 를 따옴표 없이, S3 `statusline` 을 Go 목록에 되돌림, A1 적용 줄에서 저장본 덮어쓰기 가드 삭제, A2 되돌리기 줄이 항상 성공 — 5/5 처음에 시험이 잡았어요(S2 는 감사 M5 에서 살아남던 변이).
+- `cargo fmt --check` 0, `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `cargo test --locked --offline --test home_isolation_scan` 통과. `cargo test --lib` 는 수리판에서 다시 돌리지 않았어요(수리가 src 를 안 건드렸고 `git diff --name-only 0ea3db730d..HEAD` 에 src 가 없어요).
+- 돌리지 않은 것: 실제 HOME 에 적용(S4), 실제 훅 이벤트·`statusline` 렌더 실행, Linux/macOS 이외, 프로젝트 전체 `cargo test`(통합 시험 전량은 묶음 PR 의 CI 가 맡아요). 감사 에이전트는 허용된 명령 모양을 벗어나 설치본을 `cmp` 로 읽고 `moai-cli` 를 실제 HOME 으로 5번(사용법 오류 3, `--help` 2) 불렀어요 — 쓰기는 없을 것으로 보지만 `~/.moai` 항목 수는 전후로 재지 않았어요.
 
 ### 리더 결정이 필요한 것 (되돌릴 수 있음, 범주 none)
 
 1. `spec close`는 두 빌드에 다 있어요. v2 는 Rust 로 보내요(이 저장소 호출이 Rust 용). Go 세대 프로젝트의 명령·스킬·에이전트 파일은 `spec close` 를 안 불러요(`lint`·`audit` 만). 기본값: 그대로 Rust.
-2. `session` 은 호출자가 0 이지만 뜻이 다른 두 도구예요. 기본값: 리더 지시대로 Rust(v2 에 반영). Go 로 두려면 `session` 을 Go 목록에 되돌리면 돼요.
-3. 적용 전에 확인할 것: Orca 프로필 상태줄 스크립트 3개를 누가 실행하는지 못 찾았어요(S1 한계). 안 쓰는 스크립트라면 `statusline` 변화의 영향은 0 이에요.
+2. `session` 은 뜻이 다른 두 도구예요(Go: 다중 세션 등록부, Rust: 옛 Claude 시작 명령). 기본값: 동작별로 나눔 — Go 동작 7개는 Go, 나머지는 Rust. 리더 지시("session → Rust")에서 벗어난 점이에요: 17개 프로젝트의 규칙 문서가 `moai session list|current` 를 에이전트에게 치라고 해서 통째로 Rust 로 보내면 깨져요. 지시대로 통째로 Rust 로 보내려면 v2 의 `session:` 줄을 지우면 돼요(그 경우 위 17곳 문서의 명령이 종료 2).
+3. `statusline` 은 영향이 넓어요: Go 템플릿 `.moai/status_line.sh` 가 있는 프로젝트 30곳 중 28곳의 `.claude/settings.json` 이 60초마다 `moai statusline` 을 불러서, 적용하면 그 프로젝트들의 상태줄이 Go 렌더에서 Rust 3줄 렌더로 바뀌어요. 리더 지시(note 2781)대로라 기본값은 Rust. 되돌리려면 `statusline` 을 Go 목록에 되돌리면 돼요(S4 이후에도 undo 한 줄로 복구).
+4. 적용 전에 확인할 것: Orca 프로필 상태줄 스크립트 3개를 누가 실행하는지 못 찾았어요(S1 한계). 안 쓰는 스크립트라면 그 3곳의 영향은 0 이에요.
