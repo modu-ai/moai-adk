@@ -109,6 +109,8 @@ Checks on head `d2b590f2a5` (the leader's seven, plus the two added at 14:00Z):
 
 Open for the leader:
 
-- AC-4 holds on this branch (no `card precheck` here). The local `v2026.11.0` at `8f51970f11` now has `src/card/precheck.rs` (C-96): the one-line naming of D-4 is possible after that tip is merged, in a later slice.
+- AC-4: the branch merged the local `v2026.11.0` at `8f51970f11` as `0b594c4e20`, and that tip has `src/card/precheck.rs` (C-96; `git cat-file -s 0b594c4e20:src/card/precheck.rs` answers 28528). REQ-10's condition ("does not exist at the base tip") no longer holds at the final head, so the AC-4 line "no `card precheck` listed" is true only for the base the slice was written from (`e84d7c46ce`, where `git grep -i precheck -- src` found none). `mode-leader.md` still does not name the command, which REQ-10 allows; the one-line naming of D-4 belongs to a later slice.
+- Checks on the final head `0b594c4e20` (run 2026-11-19, merge of `8f51970f11` included): the leader's seven checks exit 0 and all 39 registered check commands exit 0 (`failed=0`, 15:28:56Z), after the two earlier runs recorded above.
+- Repair after the independent read of the final head (non-blocking findings): the reason of the first history entry and the S24 row now say that `src/leader.rs:234` states the older claim-comment form, not the card-reservation wording; the S26 row names `src/comment_authority.rs`; the method paragraph says what `text only` means and that a command may still read such a rule (`audit.md` audit reservation line, `moai audit-claim`).
 - Sentence 2 of `mode-leader.md` (the line saying nothing reclaims a card) is stale since `moai card reclaim` exists; a rewrite belongs to C-53 S6 or the leader, not to a prune.
 - `workflows/audit.md` has 21 of 33 rule lines no test reads; `workflows/mode-agent.md` has 30 unpinned sentences (4,432 bytes): a pool for a later prune.

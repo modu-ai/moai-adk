@@ -16,7 +16,10 @@ numbering of core-rules.md is fixed by `tests/core_rules_2876.rs` (rules 19–21
 Last slice (SPEC-20261119-rule-prune-leader): the enforcer of a mechanical-inventory row is a
 measured field, not a claim. A line is `pins:` the test files that hold a string literal of at
 least 20 characters lying inside that line (`tests/*.rs`, `tests/*.py`, found by a script that
-only reads), and `text only` when none does. A row that pins a test of this repository's own CI
+only reads), and `text only` when none does. `text only` says no test literal lies in the line;
+a command may still read the rule (the `audit.md` line on the audit reservation is read by
+`moai audit-claim`, which `tests/audit_claim_cli.rs` runs), and only the sentence reading of
+`mode-leader.md` below went on to look for readers in the code. A row that pins a test of this repository's own CI
 script carries `(moai-adk repository)` after its first words: a shipped skill file must say that
 script belongs to this repository, not to a user project (#2708). The unit of an inventory row is the line; the unit
 of the sentence reading below is the sentence, split after `. ` before a capital letter, a
@@ -88,7 +91,7 @@ every time it opens this file.
 Each entry keeps the moved sentence's full text and the reason it left the live file. Each
 reason names the copy that stays.
 
-- A dispatch is a pointer: ownership still comes only from the lane's own reservation (SPEC §4). · reason: the same rule stays in the "Ownership comes only from a card's reservation (SPEC §4)…" sentence of the same file, in the runtime text of `src/leader.rs`, and in `workflows/mode-agent.md`.
+- A dispatch is a pointer: ownership still comes only from the lane's own reservation (SPEC §4). · reason: the same rule stays in the "Ownership comes only from a card's reservation (SPEC §4)…" sentence of the same file and in `workflows/mode-agent.md` (the `claim` step and its ownership line, which `mode_workflow_steps.rs` pins); the runtime text of `src/leader.rs:234` says the older claim-comment form of the rule, not this wording.
 - Without Orca (a timer only, `mode-channel` step) there is no `restart` or `clear_redispatch`: answer and dispatch through card notes alone. · reason: the `mode-channel` step keeps "a timer without Orca leads through card notes and pull request comments alone"; the moved sentence only repeated it.
 - Never report a verification or external effect that was not performed as complete. · reason: `SKILL.md` ("Report completion only after verifying…") and the `plan`, `read` and `audit` workflows say it; it was the only copy that stood alone at the end of this file.
 
@@ -116,9 +119,9 @@ decides it. `single` = the only copy of a contract or policy, no test, no code; 
 - S18 L32 code — `src/lane_next.rs`, `src/ops/audit_verdict_line.rs`
 - S19, S20, S21, S22 single — merge-train policy sentences
 - S23 L38 code — `src/forge/audit_status.rs` names the keep-set as an operator step
-- S24 L38 code — runtime text `src/leader.rs:234`
+- S24 L38 code — runtime text `src/leader.rs:234` states the older claim-comment form of this rule; the card-reservation wording is kept in this sentence and in `workflows/mode-agent.md`
 - S25 L38 code — `.github/workflows/audit-gate.yml`, the audit gate
-- S26 L40 code — `src/gate_collect.rs`, `src/claim_expired.rs`, `src/card_times.rs`, `src/message.rs` (`author_association`)
+- S26 L40 code — `src/gate_collect.rs`, `src/claim_expired.rs`, `src/card_times.rs`, `src/message.rs` (`author_association`), `src/comment_authority.rs` (`is_member`)
 - S27, S28, S29 single — decision-note, receipt and completion rules
 - S30 L92 moved — duplicate of `SKILL.md`
 
