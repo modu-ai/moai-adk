@@ -2156,14 +2156,15 @@ mod card_counts_tests {
         };
         for key in ["audit requested", "감사 요청"] {
             let base = line(0, key).chars().count();
-            let edge = line(NOTE_HEAD_CHARS - base, key);
-            assert_eq!(edge.chars().count(), NOTE_HEAD_CHARS);
+            // The literal 1000 on purpose: the test must fail when the constant moves.
+            let edge = line(1000 - base, key);
+            assert_eq!(edge.chars().count(), 1000);
             assert_eq!(
                 active_card(&[("report", &edge)]),
                 (0, Some(1)),
                 "{key} at the cut"
             );
-            let past = line(NOTE_HEAD_CHARS - base + 1, key);
+            let past = line(1000 - base + 1, key);
             assert_eq!(
                 active_card(&[("report", &past)]),
                 (1, Some(0)),
