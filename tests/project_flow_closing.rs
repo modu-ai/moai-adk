@@ -128,6 +128,7 @@ fn profile_tracking_step_states_the_checks_the_selection_and_the_undo() {
         "at the end of the root `.gitignore`",
         "after the rule",
         "outside any block MoAI manages",
+        "whether or not this route changed it",
         "removes exactly that line",
         "a fresh clone will not have the profile",
         "cancelled, empty or unanswered",
@@ -169,6 +170,9 @@ fn closing_commit_step_lists_by_apply_stages_only_those_paths_and_never_pushes()
         "`.moai-backup/`",
         "`.moai/backups/`",
         "`.moai/receipts/`",
+        "`.moai-cli/backups/`",
+        "`.moai-cli/receipts/`",
+        "even when its digest did not change",
         "`.before/`",
         "`*.pem`",
         "`*secret*`",
@@ -229,14 +233,18 @@ fn procedure_snapshots_the_status_around_every_apply() {
     let para = snapshot_paragraph();
     for text in [
         "`git status --porcelain=v1 -z --untracked-files=all`",
-        "before the first apply",
+        "before the first apply of any kind",
+        "`go-settings-apply`",
+        "`git hash-object -- <path>`",
+        "content digest",
         "After each apply",
         "the \"Track it\" edit",
-        "new or whose status changed",
+        "new, whose status changed or whose digest changed",
+        "already untracked or modified before the route",
         "Never read the paths from an apply's result",
         "name none",
-        "already changed before the route began",
-        "never given to an apply",
+        "is never given to an apply",
+        "the user can leave it uncommitted",
     ] {
         assert!(para.contains(text), "{text:?} is missing from: {para}");
     }
@@ -255,9 +263,15 @@ fn looks_secret(path: &str) -> bool {
 
 /// The backup and receipt paths the text keeps local.
 fn kept_local(path: &str) -> bool {
-    [".moai-backup/", ".moai/backups/", ".moai/receipts/"]
-        .iter()
-        .any(|p| path.starts_with(p))
+    [
+        ".moai-backup/",
+        ".moai/backups/",
+        ".moai/receipts/",
+        ".moai-cli/backups/",
+        ".moai-cli/receipts/",
+    ]
+    .iter()
+    .any(|p| path.starts_with(p))
         || path.split('/').any(|part| part == ".before")
 }
 
@@ -395,6 +409,97 @@ fn snapshot_differences_give_each_new_path_to_the_step_that_wrote_it() {
             "{name} still holds the earlier changes"
         );
     }
+}
+
+/// One snapshot as the Procedure paragraph defines it: for every path of the `-z` status list
+/// (`--untracked-files=all`), its status code and its content digest (`git hash-object`, or
+/// `deleted` for a path that no longer exists).
+fn snapshot(dir: &Path) -> std::collections::BTreeMap<String, (String, String)> {
+    status_entries(dir, true)
+        .into_iter()
+        .map(|e| {
+            let (status, path) = (e[..2].to_string(), e[3..].to_string());
+            let digest = if dir.join(&path).exists() {
+                git(dir, &["hash-object", "--", &path]).trim().to_string()
+            } else {
+                "deleted".to_string()
+            };
+            (path, (status, digest))
+        })
+        .collect()
+}
+
+/// Paths a step gets: new, a changed status, or a changed digest since the last snapshot.
+fn given_to_step(
+    before: &std::collections::BTreeMap<String, (String, String)>,
+    after: &std::collections::BTreeMap<String, (String, String)>,
+) -> Vec<String> {
+    after
+        .iter()
+        .filter(|(path, now)| before.get(*path) != Some(*now))
+        .map(|(path, _)| path.clone())
+        .collect()
+}
+
+/// REQ-12 (re-audit B3): a first launch already left the profile untracked (`??`); the route's
+/// `project-apply` changes it further. The status list reads the same before and after, so a
+/// status-only difference gives the step nothing; the content digest gives it exactly the
+/// changed file and still leaves the user's own untouched edit out.
+#[test]
+fn a_path_already_dirty_before_the_route_is_given_to_the_step_by_its_digest() {
+    let fx = fresh_repo_with_one_commit();
+    let dir = fx.path();
+    write_file(
+        dir,
+        ".moai/project.yaml",
+        "schema_version: 2\npurpose: first\n",
+    );
+    write_file(dir, "AGENTS.md", "managed\n");
+    write_file(dir, "README.md", "project, edited by the user\n");
+    let s0 = snapshot(dir);
+
+    // `project-apply` (update) rewrites the profile that was already untracked.
+    write_file(
+        dir,
+        ".moai/project.yaml",
+        "schema_version: 2\npurpose: changed\n",
+    );
+    let s1 = snapshot(dir);
+
+    let status_only =
+        |a: &std::collections::BTreeMap<String, (String, String)>,
+         b: &std::collections::BTreeMap<String, (String, String)>| {
+            b.iter()
+                .filter(|(p, (st, _))| a.get(*p).map(|(s, _)| s) != Some(st))
+                .count()
+        };
+    assert_eq!(
+        status_only(&s0, &s1),
+        0,
+        "the status lists are the same, so a status-only rule misses the change"
+    );
+    assert_eq!(given_to_step(&s0, &s1), [".moai/project.yaml"]);
+
+    // A path that stays the same (README.md, AGENTS.md) is never given to the step.
+    let s2 = snapshot(dir);
+    assert!(given_to_step(&s1, &s2).is_empty());
+
+    // A deletion shows as a status change; a path deleted by a step is given to it.
+    fs::remove_file(dir.join("AGENTS.md")).unwrap();
+    let s3 = snapshot(dir);
+    assert_eq!(
+        given_to_step(&s2, &s3),
+        Vec::<String>::new(),
+        "an untracked file that is removed leaves the list, so nothing remains to stage"
+    );
+    fs::remove_file(dir.join("README.md")).unwrap();
+    let s4 = snapshot(dir);
+    assert_eq!(
+        given_to_step(&s3, &s4),
+        ["README.md"],
+        "tracked file deleted"
+    );
+    assert_eq!(s4["README.md"].1, "deleted");
 }
 
 /// AC-2 (REQ-1, REQ-3, REQ-10): the exit codes and outputs the text relies on, in real git.
