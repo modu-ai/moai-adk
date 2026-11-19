@@ -1539,7 +1539,7 @@ pub struct UserLayerPlan {
     /// #2871 I2 U2b: the Go generation's `~/.moai` items a `--confirm-home <token>` run retires.
     /// Not part of `plan_digest`: only its own token applies it.
     pub home: crate::update_home::Layer,
-    /// C-33 S3: the name-switch script `path/moai` (v1 -> v2) that only `--confirm-switch
+    /// C-33 S3, C-136: the name-switch script `path/moai` (v1 or v2 -> v3) that only `--confirm-switch
     /// <token>` replaces. Not part of `plan_digest`, like `home`.
     pub switch: switch::Layer,
     /// Agent, routing and style hosts left out because their skill copy is blocked.

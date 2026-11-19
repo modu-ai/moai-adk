@@ -1,9 +1,10 @@
 //! C-33 S3 (SPEC-20261119-update-switch-layer): the switch part of `moai update` at library level.
-//! Temporary HOME folders only; the real HOME is never read or written. The v1 script is read
-//! from the S2a preview at build time; the v2 script is the one built into the program.
+//! Temporary HOME folders only; the real HOME is never read or written. The v1 and v2 scripts are
+//! read from the S2a preview at build time; the v3 script is the one built into the program
+//! (card C-136).
 #![cfg(unix)]
 
-use moai_cli::update::switch::{self, V1_SHA256, V2, V2_SHA256};
+use moai_cli::update::switch::{self, V1_SHA256, V2_SHA256, V3, V3_SHA256};
 use serde_json::{json, Value};
 use std::fs;
 use std::os::unix::fs::{symlink, PermissionsExt};
@@ -12,6 +13,8 @@ use std::sync::{Mutex, MutexGuard};
 use tempfile::TempDir;
 
 const V1: &[u8] = include_bytes!("../.moai/specs/SPEC-20261119-switch-script-v2/preview/moai.v1");
+const OLD_V2: &[u8] =
+    include_bytes!("../.moai/specs/SPEC-20261119-switch-script-v2/preview/moai.v2");
 const NOW: &str = "2026-11-19T07:47:22Z";
 const STAMP: &str = "20261119T074722Z";
 
@@ -102,9 +105,10 @@ impl Home {
 // ---- AC-5 -----------------------------------------------------------------
 
 #[test]
-fn the_pinned_digests_are_the_s2a_scripts() {
+fn the_pinned_digests_are_the_known_scripts() {
     assert_eq!(sha(V1), V1_SHA256);
-    assert_eq!(sha(V2), V2_SHA256);
+    assert_eq!(sha(OLD_V2), V2_SHA256);
+    assert_eq!(sha(V3), V3_SHA256);
     assert_eq!(
         V1_SHA256,
         "3c3446a3dbd7d918a7d6465c0765ae66b2dafe3231b9be11cd3181737b6658ac"
@@ -113,13 +117,17 @@ fn the_pinned_digests_are_the_s2a_scripts() {
         V2_SHA256,
         "36dd242bf1337efa9b4759ba7166fb6adea04427800334a374027cc246eb26e4"
     );
+    assert_eq!(
+        V3_SHA256,
+        "c9a4791683d1c941adef25be281d7846f60638c5dc0443bd113a9f01f0535498"
+    );
     assert_eq!(V1.len(), 1747, "the installed v1 script is 1747 B");
 }
 
 // ---- AC-1 -----------------------------------------------------------------
 
 #[test]
-fn plan_offers_v2_for_the_known_v1_script() {
+fn plan_offers_v3_for_the_known_v1_script() {
     let _g = gate();
     let h = Home::new();
     let before = h.names();
@@ -130,6 +138,8 @@ fn plan_offers_v2_for_the_known_v1_script() {
     assert_eq!(p["saved_as"], json!("moai.before-<UTC>"));
     assert_eq!(p["v1_sha256"], json!(V1_SHA256));
     assert_eq!(p["v2_sha256"], json!(V2_SHA256));
+    assert_eq!(p["v3_sha256"], json!(V3_SHA256));
+    assert_eq!(p["from"], json!("v1"));
     assert_eq!(p["writes"], json!(false));
     let t = layer.token().expect("a token");
     assert!(t.starts_with("switch:") && t.len() == 7 + 16, "{t}");
@@ -145,11 +155,11 @@ fn plan_offers_v2_for_the_known_v1_script() {
 }
 
 #[test]
-fn plan_has_no_part_for_a_link_an_absent_file_or_v2() {
+fn plan_has_no_part_for_a_link_an_absent_file_or_v3() {
     let _g = gate();
-    // v2 already there.
+    // v3 already there.
     let h = Home::new();
-    h.put(V2);
+    h.put(V3);
     assert!(h.part().is_none() && switch::plan(&h.root).unwrap().token().is_none());
     assert_eq!(switch::plan(&h.root).unwrap().summary(), "");
     // absent
@@ -245,7 +255,7 @@ fn go_bin_is_reported_and_never_written() {
 // ---- AC-2 -----------------------------------------------------------------
 
 #[test]
-fn apply_saves_v1_and_installs_v2() {
+fn apply_saves_v1_and_installs_v3() {
     let _g = gate();
     let h = Home::new();
     let token = h.token();
@@ -263,7 +273,7 @@ fn apply_saves_v1_and_installs_v2() {
         fs::metadata(&saved).unwrap().permissions().mode() & 0o777,
         0o755
     );
-    assert_eq!(h.read(), V2);
+    assert_eq!(h.read(), V3);
     assert_eq!(
         fs::metadata(h.moai()).unwrap().permissions().mode() & 0o777,
         0o755
@@ -311,7 +321,7 @@ fn apply_refuses_a_wrong_or_stale_token() {
     for bad in ["switch:bbbbbbbbbbbbbbbb", "home:aaaaaaaaaaaaaaaa", ""] {
         assert!(switch::check_token(&layer, Some(bad)).is_err(), "{bad}");
     }
-    h.put(V2);
+    h.put(V3);
     let none = switch::plan(&h.root).unwrap();
     assert!(switch::check_token(&none, Some(token.as_str())).is_err());
     // Stale: the file changed after the preview.
@@ -421,7 +431,7 @@ fn a_failed_step_leaves_a_whole_file() {
         // The next apply, with a new stamp, still works.
         let r = switch::apply(&h.root, &h.token(), "2026-11-19T07:48:00Z").unwrap();
         assert_eq!(r["state"], json!("applied"), "{point}: {r}");
-        assert_eq!(h.read(), V2);
+        assert_eq!(h.read(), V3);
     }
 }
 
@@ -454,25 +464,25 @@ fn revert_puts_v1_back_and_refuses_anything_else() {
     let e = switch::revert(&h.root, STAMP).unwrap_err();
     assert!(e.contains("not the v1"), "{e}");
     assert_eq!(fs::read(h.saved(STAMP)).unwrap(), b"#!/bin/sh\nnot v1\n");
-    assert_eq!(h.read(), V2);
+    assert_eq!(h.read(), V3);
     // The saved copy is a link: refused.
     fs::remove_file(h.saved(STAMP)).unwrap();
     let real = h.root.join("v1-elsewhere");
     fs::write(&real, V1).unwrap();
     symlink(&real, h.saved(STAMP)).unwrap();
     assert!(switch::revert(&h.root, STAMP).is_err());
-    assert_eq!(h.read(), V2);
+    assert_eq!(h.read(), V3);
     fs::remove_file(h.saved(STAMP)).unwrap();
     fs::write(h.saved(STAMP), V1).unwrap();
     fs::set_permissions(h.saved(STAMP), fs::Permissions::from_mode(0o755)).unwrap();
-    // `moai` is not v2 any more (edited since): refused, the saved copy stays.
+    // `moai` is not v2 or v3 any more (edited since): refused, the saved copy stays.
     h.put(b"#!/bin/sh\nmy own edit\n");
     let e = switch::revert(&h.root, STAMP).unwrap_err();
-    assert!(e.contains("not the v2"), "{e}");
+    assert!(e.contains("not a v2 or v3"), "{e}");
     assert_eq!(h.read(), b"#!/bin/sh\nmy own edit\n");
     assert_eq!(fs::read(h.saved(STAMP)).unwrap(), V1);
-    // The good case: v2 back to v1 by one rename; the saved name is gone.
-    h.put(V2);
+    // The good case: v3 back to v1 by one rename; the saved name is gone.
+    h.put(V3);
     let r = switch::revert(&h.root, STAMP).unwrap();
     assert_eq!(r["state"], json!("reverted"), "{r}");
     assert_eq!(h.read(), V1);
@@ -485,7 +495,7 @@ fn revert_puts_v1_back_and_refuses_anything_else() {
     let e = switch::revert(&h.root, STAMP).unwrap_err();
     assert!(e.contains("no saved copy"), "{e}");
     assert_eq!(h.read(), V1);
-    // And the preview offers v2 again.
+    // And the preview offers v3 again.
     assert_eq!(h.part().unwrap()["action"], json!("replace"));
 }
 
@@ -507,7 +517,7 @@ fn revert_switch_runs_alone_and_is_refused_beside_a_confirming_flag() {
     for [c, cc, ch, cs] in flags {
         let e = update_command_switch(&h.root, c, cc, ch, cs, Some(STAMP), false, ask).unwrap_err();
         assert!(e.contains("cannot be combined"), "{e}");
-        assert_eq!(h.read(), V2, "nothing changed");
+        assert_eq!(h.read(), V3, "nothing changed");
         assert!(h.saved(STAMP).exists());
     }
     // Alone it runs without any installed package: only the saved copy and `moai` are read.
@@ -521,4 +531,80 @@ fn revert_switch_runs_alone_and_is_refused_beside_a_confirming_flag() {
         "switch": "moai-cli update --revert-switch X", "home": "h", "agents": "a"
     }));
     assert_eq!(order, vec!["switch", "home", "agents"]);
+}
+
+// ---- C-136: v2 is a known older script too ---------------------------------------------------
+
+#[test]
+fn plan_offers_v3_for_the_known_v2_script_with_its_own_token() {
+    let _g = gate();
+    let h = Home::new();
+    let v1_token = h.token();
+    h.put(OLD_V2);
+    let layer = switch::plan(&h.root).unwrap();
+    let p = layer.to_json().expect("a v2 script has a switch part");
+    assert_eq!(p["action"], json!("replace"), "{p}");
+    assert_eq!(p["from"], json!("v2"));
+    assert_eq!(p["saved_as"], json!("moai.before-<UTC>"));
+    assert_eq!(p["writes"], json!(false));
+    let t = layer.token().expect("a token");
+    assert!(t.starts_with("switch:") && t.len() == 7 + 16, "{t}");
+    assert_ne!(t, v1_token, "the token names the script it replaces");
+    let line = layer.summary();
+    assert!(
+        line.contains("v2 -> v3") && line.contains("bundle"),
+        "{line}"
+    );
+    // The token is for what the preview saw: the v1 token does not apply to a v2 file.
+    assert!(switch::apply(&h.root, &v1_token, NOW).is_err());
+    assert_eq!(h.read(), OLD_V2);
+}
+
+#[test]
+fn apply_over_v2_keeps_v2_byte_for_byte_and_the_revert_puts_it_back() {
+    let _g = gate();
+    let h = Home::new();
+    h.put(OLD_V2);
+    let r = switch::apply(&h.root, &h.token(), NOW).unwrap();
+    assert_eq!(r["state"], json!("applied"), "{r}");
+    assert_eq!(r["from"], json!("v2"));
+    assert_eq!(r["v3_sha256"], json!(V3_SHA256));
+    assert_eq!(h.read(), V3);
+    assert_eq!(fs::read(h.saved(STAMP)).unwrap(), OLD_V2);
+    assert!(h.part().is_none(), "v3 is not offered again");
+    let back = switch::revert(&h.root, STAMP).unwrap();
+    assert_eq!(back["state"], json!("reverted"), "{back}");
+    assert_eq!(back["restored"], json!("v2"));
+    assert_eq!(h.read(), OLD_V2);
+    assert!(!h.saved(STAMP).exists());
+}
+
+#[test]
+fn revert_over_v3_restores_a_saved_v1_and_still_refuses_a_saved_v3() {
+    let _g = gate();
+    let h = Home::new();
+    switch::apply(&h.root, &h.token(), NOW).unwrap();
+    // A saved copy that is v3 itself is not an older script: refused, nothing changes.
+    fs::write(h.saved(STAMP), V3).unwrap();
+    let e = switch::revert(&h.root, STAMP).unwrap_err();
+    assert!(e.contains("not the v1 or v2"), "{e}");
+    assert_eq!(h.read(), V3);
+    assert_eq!(fs::read(h.saved(STAMP)).unwrap(), V3);
+    // v1 saved over a v3 `moai`: restored.
+    fs::write(h.saved(STAMP), V1).unwrap();
+    let back = switch::revert(&h.root, STAMP).unwrap();
+    assert_eq!(back["restored"], json!("v1"), "{back}");
+    assert_eq!(h.read(), V1);
+}
+
+#[test]
+fn a_v2_script_that_was_applied_by_an_earlier_build_still_reverts_to_v1() {
+    let _g = gate();
+    // The earlier build left `moai` = v2 and `moai.before-<stamp>` = v1.
+    let h = Home::new();
+    h.put(OLD_V2);
+    fs::write(h.saved(STAMP), V1).unwrap();
+    let back = switch::revert(&h.root, STAMP).unwrap();
+    assert_eq!(back["restored"], json!("v1"), "{back}");
+    assert_eq!(h.read(), V1);
 }

@@ -18,9 +18,11 @@ use std::{
 use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
-/// The old script (S2a's pinned copy) and the new one the binary carries.
+/// The two old scripts (S2a's pinned copies) and the new one the binary carries (card C-136).
 const V1: &[u8] = include_bytes!("../.moai/specs/SPEC-20261119-switch-script-v2/preview/moai.v1");
-const V2: &[u8] = include_bytes!("../install/moai-switch.sh");
+const OLD_V2: &[u8] =
+    include_bytes!("../.moai/specs/SPEC-20261119-switch-script-v2/preview/moai.v2");
+const V3: &[u8] = include_bytes!("../install/moai-switch.sh");
 
 fn copy_tree(from: &Path, to: &Path) {
     fs::create_dir_all(to).unwrap();
@@ -132,7 +134,7 @@ fn confirm_switch_alone_replaces_only_the_script_and_keeps_the_old_one() {
     let r = result(&run(&exe, &home, &["update", "--confirm-switch", &t]));
     assert_eq!(r["switch_result"]["state"], json!("applied"), "{r}");
     let stamp = r["switch_result"]["stamp"].as_str().unwrap().to_string();
-    assert_eq!(fs::read(moai_file(&home)).unwrap(), V2);
+    assert_eq!(fs::read(moai_file(&home)).unwrap(), V3);
     let saved = home.join(format!(".moai-cli/path/moai.before-{stamp}"));
     assert_eq!(fs::read(&saved).unwrap(), V1);
     assert_eq!(
@@ -160,7 +162,7 @@ fn confirm_and_confirm_switch_together_apply_the_layer_then_the_script() {
     assert_eq!(r["applied"], json!(true), "{r}");
     assert_eq!(r["switch_result"]["state"], json!("applied"), "{r}");
     assert!(home.join(".claude/skills/moai/SKILL.md").is_file());
-    assert_eq!(fs::read(moai_file(&home)).unwrap(), V2);
+    assert_eq!(fs::read(moai_file(&home)).unwrap(), V3);
     // The undo line is reported and comes first in the revert order.
     let stamp = r["switch_result"]["stamp"].as_str().unwrap();
     assert_eq!(
@@ -235,12 +237,12 @@ fn revert_switch_is_refused_beside_any_confirm_flag_and_for_a_bad_stamp() {
         args.extend(extra.iter());
         let msg = refused(&run(&exe, &home, &args));
         assert!(msg.contains("cannot be combined"), "{msg}");
-        assert_eq!(fs::read(moai_file(&home)).unwrap(), V2, "{args:?}");
+        assert_eq!(fs::read(moai_file(&home)).unwrap(), V3, "{args:?}");
     }
     for bad in ["../x", "2026-11-19", "20261119T074722Z/../x", ""] {
         let msg = refused(&run(&exe, &home, &["update", "--revert-switch", bad]));
         assert!(!msg.is_empty(), "{bad}");
-        assert_eq!(fs::read(moai_file(&home)).unwrap(), V2, "{bad}");
+        assert_eq!(fs::read(moai_file(&home)).unwrap(), V3, "{bad}");
     }
 }
 
@@ -279,4 +281,63 @@ fn the_revert_switch_result_is_drawn_as_a_success_line() {
             assert!(!text.contains(wrong), "{wrong}: {text}");
         }
     }
+}
+
+/// C-136 criterion 3: a machine that already carries v2 (what an earlier build of this update
+/// installed) is offered v3 with its own token, the old file is kept as `moai.before-<UTC>` byte for
+/// byte, and the revert puts the v2 back.
+#[test]
+fn a_v2_script_is_offered_v3_and_the_revert_puts_v2_back() {
+    let (_t, home, exe) = setup();
+    fs::write(moai_file(&home), OLD_V2).unwrap();
+    let v1_token = {
+        // The token of the same file holding v1 is a different one.
+        fs::write(moai_file(&home), V1).unwrap();
+        let t = preview(&exe, &home)["switch"]["confirm_token"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        fs::write(moai_file(&home), OLD_V2).unwrap();
+        t
+    };
+    let p = preview(&exe, &home);
+    let s = &p["switch"];
+    assert_eq!(s["action"], json!("replace"), "{s}");
+    assert_eq!(s["from"], json!("v2"), "{s}");
+    let token = s["confirm_token"].as_str().unwrap().to_string();
+    assert!(token.starts_with("switch:"), "{token}");
+    assert_ne!(
+        token, v1_token,
+        "a v1 preview's token is not a v2 preview's"
+    );
+    assert_eq!(
+        fs::read(moai_file(&home)).unwrap(),
+        OLD_V2,
+        "preview writes nothing"
+    );
+    // The old token (made for v1) is refused for a file that holds v2.
+    let out = run(&exe, &home, &["update", "--confirm-switch", &v1_token]);
+    assert!(refused(&out).contains("preview again"), "{}", refused(&out));
+    assert_eq!(fs::read(moai_file(&home)).unwrap(), OLD_V2);
+    // The right token applies: v3 in place, v2 kept beside it.
+    let applied = result(&run(&exe, &home, &["update", "--confirm-switch", &token]));
+    let r = &applied["switch_result"];
+    assert_eq!(r["state"], json!("applied"), "{applied}");
+    assert_eq!(r["from"], json!("v2"), "{applied}");
+    assert_eq!(fs::read(moai_file(&home)).unwrap(), V3);
+    let saved = PathBuf::from(r["saved"].as_str().unwrap());
+    assert!(saved
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .starts_with("moai.before-"));
+    assert_eq!(fs::read(&saved).unwrap(), OLD_V2);
+    // Nothing is offered for v3.
+    assert!(preview(&exe, &home).get("switch").is_none());
+    // The revert puts v2 back.
+    let stamp = r["stamp"].as_str().unwrap().to_string();
+    let back = result(&run(&exe, &home, &["update", "--revert-switch", &stamp]));
+    assert_eq!(back["switch_result"]["state"], json!("reverted"), "{back}");
+    assert_eq!(fs::read(moai_file(&home)).unwrap(), OLD_V2);
+    assert!(!saved.exists(), "the saved name is gone");
 }

@@ -3,15 +3,17 @@
 //! `path/moai` of the HOME state folder is, on a machine that was switched by hand, a short `sh`
 //! script that sends `moai` to the Rust build or, for the words only it has, to the Go build
 //! (`moai.old`). The installer leaves a `moai` that is not a link alone, and nothing else writes
-//! it, so nobody updates that script. This part previews the step that replaces the known v1
-//! script with the v2 one built into the program, and applies it only with its own token.
+//! it, so nobody updates that script. This part previews the step that replaces a known older
+//! script (v1, or v2 of card C-33 S2a) with the v3 one built into the program (card C-136: `bundle`
+//! is split by action), and applies it only with its own token.
 //!
 //! Like the home part (`update_home`) it has its own token (`--confirm-switch`): the preview's
 //! clock-free content digest; it is not part of the layer's `plan_digest`; a yes at the terminal
 //! question never applies it. The apply checks every condition before its first write, keeps
 //! the old file as `moai.before-<UTC>`, and replaces `moai` by one rename, so the file is never
-//! partial. The revert moves back only a saved copy that is byte-equal to v1, and only over a
-//! `moai` that is still v2. `go/bin/moai` is read and reported, never written.
+//! partial. The revert moves back only a saved copy that is byte-equal to v1 or v2, and only over
+//! a `moai` that is still v2 or v3 (a script this update installed). `go/bin/moai` is read and
+//! reported, never written.
 
 use super::test_fault;
 use serde_json::{json, Value};
@@ -23,10 +25,13 @@ type Result<T> = std::result::Result<T, String>;
 
 /// sha256 (hex) of the known v1 switch script, the 1747 B file a person put in `path/moai`.
 pub const V1_SHA256: &str = "3c3446a3dbd7d918a7d6465c0765ae66b2dafe3231b9be11cd3181737b6658ac";
-/// sha256 (hex) of the v2 script built into the program.
+/// sha256 (hex) of the v2 script (`preview/moai.v2` of SPEC-20261119-switch-script-v2): a known
+/// older script now, and what an earlier build of this update installed.
 pub const V2_SHA256: &str = "36dd242bf1337efa9b4759ba7166fb6adea04427800334a374027cc246eb26e4";
-/// The v2 script: a byte copy of `preview/moai.v2` of SPEC-20261119-switch-script-v2.
-pub const V2: &[u8] = include_bytes!("../../install/moai-switch.sh");
+/// sha256 (hex) of the v3 script built into the program.
+pub const V3_SHA256: &str = "c9a4791683d1c941adef25be281d7846f60638c5dc0443bd113a9f01f0535498";
+/// The v3 script (SPEC-20261119-switch-script-v3): `install/moai-switch.sh`.
+pub const V3: &[u8] = include_bytes!("../../install/moai-switch.sh");
 
 /// The token prefix, so a token of another part is never taken for this one.
 const PREFIX: &str = "switch:";
@@ -37,12 +42,37 @@ const SAVED_PATTERN: &str = "moai.before-<UTC>";
 const NOT_REVIEWED: &str =
     "the switch token differs from the preview's; nothing applied, preview again";
 
+/// Which known older script `path/moai` holds.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Old {
+    V1,
+    V2,
+}
+
+impl Old {
+    fn name(self) -> &'static str {
+        match self {
+            Old::V1 => "v1",
+            Old::V2 => "v2",
+        }
+    }
+
+    fn sha256(self) -> &'static str {
+        match self {
+            Old::V1 => V1_SHA256,
+            Old::V2 => V2_SHA256,
+        }
+    }
+}
+
 /// What `path/moai` is.
 enum Found {
     Absent,
     Link,
-    V1(Vec<u8>),
-    V2,
+    /// A known older script (offered for replacement), with its bytes.
+    Older(Old, Vec<u8>),
+    /// The v3 script of this program.
+    Current,
     /// A file this update does not know, with the reason.
     Other(String),
 }
@@ -104,17 +134,19 @@ fn classify(file: &Path) -> Found {
         );
     }
     match hex_of(&bytes) {
-        h if h == V1_SHA256 => Found::V1(bytes),
-        h if h == V2_SHA256 => Found::V2,
+        h if h == V1_SHA256 => Found::Older(Old::V1, bytes),
+        h if h == V2_SHA256 => Found::Older(Old::V2, bytes),
+        h if h == V3_SHA256 => Found::Current,
         h => Found::Other(format!(
             "the file is not a script this update knows (sha256 {h})"
         )),
     }
 }
 
-/// The token of one preview: sixteen hex digits of the digest of what it is about.
-fn token_for(file: &Path) -> String {
-    let d = hex_of(format!("{}|{V1_SHA256}|{V2_SHA256}", file.display()).as_bytes());
+/// The token of one preview: sixteen hex digits of the digest of what it is about: the file, the
+/// old script it holds (so a v1 preview's token is never a v2 preview's) and the script it gets.
+fn token_for(file: &Path, from: Old) -> String {
+    let d = hex_of(format!("{}|{}|{V3_SHA256}", file.display(), from.sha256()).as_bytes());
     format!("{PREFIX}{}", &d[..16])
 }
 
@@ -147,7 +179,8 @@ fn go_bin_report(home: &Path) -> Value {
 fn notes() -> Value {
     json!([
         "Projects the Go build set up call `moai hook ...` from their hook files; after the switch `moai hook` still goes to the Go build (moai.old). Nothing in those projects is changed.",
-        "Their `.moai/status_line.sh` runs `moai statusline`; after the switch that is the Rust three-line render, not the Go one. Nothing in those projects is changed."
+        "Their `.moai/status_line.sh` runs `moai statusline`; after the switch that is the Rust three-line render, not the Go one. Nothing in those projects is changed.",
+        "`moai bundle add`, `remove` and `list` (the opt-in skill bundles) still go to the Go build; every other `moai bundle` action (`ready`, `check`, `body`, `build`, `verify`) reaches the Rust M-Flow bundle."
     ])
 }
 
@@ -162,23 +195,32 @@ pub fn plan(home: &Path) -> Result<Layer> {
         return Ok(none);
     }
     let file = dir.join("moai");
-    let (action, reason, token) = match classify(&file) {
-        Found::Absent | Found::Link | Found::V2 => return Ok(none),
-        Found::V1(_) => ("replace", None, Some(token_for(&file))),
-        Found::Other(why) => ("left", Some(why), None),
+    let (action, reason, token, from) = match classify(&file) {
+        Found::Absent | Found::Link | Found::Current => return Ok(none),
+        Found::Older(old, _) => ("replace", None, Some(token_for(&file, old)), Some(old)),
+        Found::Other(why) => ("left", Some(why), None, None),
     };
-    let summary_line = match (&token, &reason) {
-        (Some(t), _) => format!(
-            "v1 -> v2 (statusline to Rust; spec and session by action) · the old file is kept as {SAVED_PATTERN} · confirm with: moai update --confirm-switch {t}"
-        ),
-        (None, why) => format!("left as it is: {}", why.as_deref().unwrap_or("")),
+    let summary_line = match (&token, &reason, from) {
+        (Some(t), _, Some(old)) => {
+            let what = match old {
+                Old::V1 => "statusline to Rust; spec, session and bundle by action",
+                Old::V2 => "bundle by action: ready, check, body, build and verify to Rust; add, remove and list stay Go",
+            };
+            format!(
+                "{} -> v3 ({what}) · the old file is kept as {SAVED_PATTERN} · confirm with: moai update --confirm-switch {t}",
+                old.name()
+            )
+        }
+        (_, why, _) => format!("left as it is: {}", why.as_deref().unwrap_or("")),
     };
     let preview = json!({
         "action": action,
         "file": file.display().to_string(),
         "saved_as": SAVED_PATTERN,
+        "from": from.map(Old::name),
         "v1_sha256": V1_SHA256,
         "v2_sha256": V2_SHA256,
+        "v3_sha256": V3_SHA256,
         "reason": reason,
         "summary": summary_line,
         "confirm_token": token,
@@ -319,9 +361,9 @@ pub fn apply(home: &Path, token: &str, now: &str) -> Result<Value> {
             dir.display()
         ));
     }
-    let Found::V1(v1) = classify(&file) else {
+    let Found::Older(old, old_bytes) = classify(&file) else {
         return Err(format!(
-            "{} is not the v1 script any more; nothing written, preview again",
+            "{} is not a known older script any more; nothing written, preview again",
             file.display()
         ));
     };
@@ -334,13 +376,14 @@ pub fn apply(home: &Path, token: &str, now: &str) -> Result<Value> {
         .map(|m| mode_of(&m))
         .map_err(|e| format!("{}: {e}", file.display()))?;
     // The first write: the old script, kept byte for byte.
-    create_new(&saved, &v1, mode)
+    create_new(&saved, &old_bytes, mode)
         .map_err(|e| format!("saving {}: {e}; nothing replaced", saved.display()))?;
-    if read_bounded(&saved).map(|b| hex_of(&b)).as_deref() != Some(V1_SHA256) {
+    if read_bounded(&saved).map(|b| hex_of(&b)).as_deref() != Some(old.sha256()) {
         let _ = fs::remove_file(&saved);
         return Err(format!(
-            "the saved copy {} did not read back as v1; nothing replaced",
-            saved.display()
+            "the saved copy {} did not read back as {}; nothing replaced",
+            saved.display(),
+            old.name()
         ));
     }
     let after_first = |e: String| {
@@ -350,12 +393,12 @@ pub fn apply(home: &Path, token: &str, now: &str) -> Result<Value> {
         )
     };
     test_fault("switch-after-save").map_err(after_first)?;
-    if let Err(e) = create_new(&temp, V2, 0o755) {
+    if let Err(e) = create_new(&temp, V3, 0o755) {
         let _ = fs::remove_file(&temp);
         return Err(after_first(format!("writing {}: {e}", temp.display())));
     }
     // Still the script the preview was about, right before the replace.
-    if !matches!(classify(&file), Found::V1(_)) {
+    if !matches!(classify(&file), Found::Older(o, _) if o == old) {
         let _ = fs::remove_file(&temp);
         return Err(after_first(
             "`moai` changed while the apply ran, so it was not replaced".into(),
@@ -368,9 +411,9 @@ pub fn apply(home: &Path, token: &str, now: &str) -> Result<Value> {
         return Err(after_first(e));
     }
     sync_dir(&dir);
-    if !matches!(classify(&file), Found::V2) {
+    if !matches!(classify(&file), Found::Current) {
         return Err(format!(
-            "{} did not read back as v2 after the replace; the old script is saved as {}",
+            "{} did not read back as v3 after the replace; the old script is saved as {}",
             file.display(),
             saved.display()
         ));
@@ -380,7 +423,8 @@ pub fn apply(home: &Path, token: &str, now: &str) -> Result<Value> {
         "file": file.display().to_string(),
         "stamp": stamp,
         "saved": saved.display().to_string(),
-        "v2_sha256": V2_SHA256,
+        "from": old.name(),
+        "v3_sha256": V3_SHA256,
         "revert": format!("moai-cli update --revert-switch {stamp}"),
         "revert_plain": format!("mv \"{}\" \"{}\"", saved.display(), file.display()),
     }))
@@ -416,31 +460,38 @@ pub fn revert(home: &Path, stamp: &str) -> Result<Value> {
         }
         Ok(_) => {}
     }
-    if read_bounded(&saved).map(|b| hex_of(&b)).as_deref() != Some(V1_SHA256) {
+    let saved_hash = read_bounded(&saved).map(|b| hex_of(&b));
+    let Some(restored) = [Old::V1, Old::V2]
+        .into_iter()
+        .find(|o| saved_hash.as_deref() == Some(o.sha256()))
+    else {
         return Err(format!(
-            "{} is not the v1 script; left as it is, nothing changed",
+            "{} is not the v1 or v2 script; left as it is, nothing changed",
             saved.display()
         ));
-    }
-    if !matches!(classify(&file), Found::V2) {
+    };
+    if !matches!(classify(&file), Found::Current | Found::Older(Old::V2, _)) {
         return Err(format!(
-            "{} is not the v2 script this update installs; left as it is, the saved copy stays",
+            "{} is not a v2 or v3 script this update installs; left as it is, the saved copy stays",
             file.display()
         ));
     }
     test_fault("switch-revert-rename")?;
     fs::rename(&saved, &file).map_err(|e| format!("putting {} back: {e}", saved.display()))?;
     sync_dir(&dir);
-    if read_bounded(&file).map(|b| hex_of(&b)).as_deref() != Some(V1_SHA256) {
+    if read_bounded(&file).map(|b| hex_of(&b)).as_deref() != Some(restored.sha256()) {
         return Err(format!(
-            "{} did not read back as v1 after the revert",
-            file.display()
+            "{} did not read back as {} after the revert",
+            file.display(),
+            restored.name()
         ));
     }
     Ok(json!({
         "state": "reverted",
         "file": file.display().to_string(),
         "restored_from": saved.display().to_string(),
+        "restored": restored.name(),
         "v1_sha256": V1_SHA256,
+        "v2_sha256": V2_SHA256,
     }))
 }
