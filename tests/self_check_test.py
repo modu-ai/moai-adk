@@ -849,24 +849,34 @@ class SkillDocsNameThePythonSlotTest(unittest.TestCase):
     what the scripts do (the python slot and `--pre-ready`), so a later edit that drops a name
     turns a test red. Only names are read, never a whole sentence (SPEC decision D-3)."""
 
-    def test_self_check_lists_the_pre_ready_items_in_the_scripts_order(self):
+    @staticmethod
+    def pre_ready_span():
+        """The words of self-check.md that describe `--pre-ready`: from its name to the end of its
+        item list. The list is read inside this span only, because `fmt`, `manifest`,
+        `diff-check` and others are named earlier in the file for the other runs."""
         text = REFERENCE.read_text()
-        self.assertIn("`--pre-ready`", text)
-        at = -1
-        for label in PRE_READY_LABELS:
-            found = text.find(f"`{label}`", at + 1)
-            self.assertGreater(found, at, f"{label} is not named after the item before it")
-            at = found
+        start = text.find("`--pre-ready` is the whole-tree list")
+        end = text.find("fast ones first", start)
+        if start == -1 or end == -1:
+            raise AssertionError("self-check.md has no `--pre-ready` sentence ending in 'fast ones first'")
+        return text[start:end]
+
+    def test_self_check_lists_the_pre_ready_items_in_the_scripts_order(self):
+        names = re.findall(r"`([^`]+)`", self.pre_ready_span())
+        self.assertEqual(names, ["--pre-ready"] + PRE_READY_LABELS)
 
     def test_self_check_says_a_head_passes_the_list_before_ready(self):
-        text = REFERENCE.read_text()
-        self.assertRegex(text, r"(?i)before the lane reports (it )?ready|before (a )?READY")
+        self.assertIn("before the lane reports it ready", self.pre_ready_span())
 
     def test_self_check_names_the_python_slot_and_its_two_variables(self):
         text = REFERENCE.read_text()
-        for name in ("python slot", "MOAI_PYTHON_SLOT_DIR", "MOAI_PYTHON_SLOT_MAX"):
+        for name in ("python slot", "MOAI_PYTHON_SLOT_DIR"):
             self.assertIn(name, text, name)
-        self.assertIn("not run", text)
+        self.assertIn("`MOAI_PYTHON_SLOT_MAX` runs at a time (default 2)", text)
+
+    def test_self_check_says_a_refused_slot_is_not_run_never_passed(self):
+        text = REFERENCE.read_text()
+        self.assertIn("`exit=75 slot-refused (not run)`: report it as not run, never as passed", text)
 
     def test_mode_agent_heavy_checks_names_pre_ready_and_the_python_slot(self):
         line = paragraph(MODE_AGENT, "7. **heavy-checks**")
