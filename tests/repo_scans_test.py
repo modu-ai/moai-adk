@@ -45,6 +45,8 @@ EXEMPT = {
                                  "snapshot of its working folder); reads the named "
                                  "tools/local_check.sh and .github/workflows/ci.yml",
     "tests/mutate_test.py": "ls-files and scandir on temporary clones",
+    "tests/project_flow_closing.rs": "reads only the named skills/moai/workflows/project.md; "
+                                    "`git ls-files --error-unmatch` runs in TempDir repos",
     "tests/status_line_cli.rs": "read_dir of a TempDir settings-backups folder",
     "tests/update_route.rs": "walks its TempDir project; reads the named update.md and routes.json",
     "tests/worktree_report.rs": "read_dir of temporary worktrees",
