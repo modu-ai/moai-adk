@@ -50,9 +50,8 @@ created: 2026-11-19
 
 ## Scope
 
-- write: `src/card/input.rs`, `src/card/work.rs`, `tests/card_cli.rs`, `.moai/specs/SPEC-20261119-card-secret-screen/spec.md`
-- write (후속, 범위가 열린 뒤): `tests/card_work_cli.rs` 의 못박은 한 줄(C-68 AC-3 시험이 옵션 token 의 등호 값 꼴을 통과로 못박은 곳)
-- read-only: `src/redact.rs`, `src/card/command.rs`, `src/decide/outbound.rs`, `tests/card_work_cli.rs`
+- write: `src/card/input.rs`, `src/card/work.rs`, `tests/card_cli.rs`, `tests/card_work_cli.rs`(C-68 AC-3 시험이 옵션 token 의 등호 값 꼴을 통과로 못박은 한 곳만), `.moai/specs/SPEC-20261119-card-secret-screen/spec.md`
+- read-only: `src/redact.rs`, `src/card/command.rs`, `src/card/dispatch.rs`, `src/decide/outbound.rs`
 - forbidden: 실제 HOME, 네트워크, `src/redact.rs` 수정, `card criterion-add`
 
 ## Plan
@@ -61,7 +60,7 @@ created: 2026-11-19
 2. RED: `tests/card_cli.rs` 에 표 시험 네 개와 `input.rs` 단위 시험을 먼저 쓰고, 지금 코드에서 실패하는 것을 눈으로 확인해요(입력은 조각을 이어 붙여 만들어 소스에 비밀 모양 한 줄도 남기지 않아요).
 3. 검사 함수 `secret_words` 를 `src/card/input.rs` 에 두고(`blank_prose`·`without_sk_names` 를 옮겨요), `work.rs` 의 노트·ref·criterion 이 그것을 불러요. 한 낱말은 한 번만 세요(거절문의 낱말 수 표시 오류도 같이 고쳐져요).
 4. `validate_add` 가 제목·본문·`--ac` 에 같은 함수를 걸어요.
-5. `tests/card_work_cli.rs` 의 못박은 한 줄을 결정 3143 에 맞게 고쳐요(범위가 열린 뒤).
+5. `tests/card_work_cli.rs` 의 못박은 한 줄을 결정 3143 에 맞게 고쳐요(C-116 이 풀린 뒤 카드를 release → 전체 범위로 다시 take 해서 열었어요).
 6. 시험을 돌려요: `--test card_cli`, `--test card_work_cli`, `--lib secret_screen`, fmt, clippy `--all-targets`.
 
 ## Risks
@@ -83,4 +82,13 @@ created: 2026-11-19
 
 ## Result
 
-(구현 뒤에 채워요.)
+- AC-1: met — `cargo test --locked --offline --test card_cli secret_screen_refuses_secret_named_assignments_on_every_surface` 통과: 이름 8종(password·token·secret·api_key·api-key·max-token·skip-password·DB_PASSWORD) × 값 4종(평범·빔·수·참거짓) × 대시 2종 × 표면 4곳(노트·제목·본문·`--ac`) 256 호출이 모두 `invalid_input`, 카드·기준 글·노트 행 수 불변.
+- AC-2: met — `--test card_cli secret_screen_lets_plain_text_and_hyphenated_sk_names_through` 와 `cargo test --locked --offline --lib secret_screen`(단위 5개) 통과: 비밀 낱말 없는 이름·평범한 값·띄어 쓴 값·소문자 하이픈 sk 이름 통과, AKIA·깃허브 토큰 접두·숫자 섞인 sk 거절.
+- AC-3: met — `--test card_cli secret_screen_refusals_name_the_field_and_write_nothing` 통과: 문구가 "the title has 1 word"·"the body has 1 word"·"criterion 2 has 1 word"·"the note text has 1 word"·"the note ref has 1 word" 로 필드를 말하고 값(`zz9top`)을 되풀이하지 않으며, 거절된 add 는 카드·기준 글·이벤트 행을 만들지 않음.
+- AC-4: met — `--test card_cli secret_screen_counts_each_word_once` 통과: 이름도 값도 걸리는 낱말 하나 = 1, 걸리는 낱말 둘 = 2(이전 화면은 하나를 2로 셌어요).
+- AC-5: met — `cargo test --locked --offline --test card_work_cli` 25/25 통과(`--test card_cli` 19, `card_reclaim_cli` 9, `card_dispatch_cli` 25, `--lib card::` 77 도 통과). 못박은 한 줄은 `tests/card_work_cli.rs` 의 C-68 AC-3 시험: 통과하던 옵션 token 의 등호 꼴을 옵션 mode 의 등호 꼴로 바꾸고, token 꼴이 거절되는 단언을 더했어요.
+- AC-6: met — `--test card_cli secret_screen_leaves_stored_rows_alone` 통과: 원장에 직접 넣은 제목·기준 글(새 규칙이 거절할 글)을 `card show`·`card list` 가 오류 없이 보여 줘요(이 시험은 구현 전에도 통과했어요 — REQ-8 은 새 쓰기만 검사해서 처음부터 참).
+- AC-7: met — 읽기 전용으로 센 값. 구현 전(노트 3152, 정규식 근사): 기준 글 0/268, 제목 1/125, 본문 3/113, 노트 5/3147. 구현 뒤(이 가지 `moai-cli` 를 임시 HOME·임시 장부에서 `card add`·`card note` 로 돌려서 센 값, `scratchpad c122/count_after.py`, 2026-11-19): 기준 글 0/268, 제목 1/125(C-122), 본문 3/113(C-3·C-68·C-122), 노트 7/3205(C-3·C-22·C-32; 노트 수는 그 사이 늘었어요). 실제 장부에는 쓰지 않았고 기존 행은 그대로예요.
+- 변이: 5개를 하나씩 적용해 새 시험이 잡는지 봤어요(모두 사살, 복원 뒤 `git status` 깨끗): (1) `secret` 조각을 목록에서 뺌 → `secret_screen_name_pieces_decide` 실패, (2) `api`+`key` 쌍 규칙을 무력화 → 같은 시험 실패, (3) 빈 값 허용 → `secret_screen_refuses_secret_named_assignments_on_every_surface` 실패, (4) 낱말 수를 최대 1로 → 단위 2개와 `secret_screen_counts_each_word_once` 실패, (5) 소문자 하이픈 sk 이름 예외 끄기 → `secret_screen_passes_plain_assignments_and_names` 와 `secret_screen_lets_plain_text_and_hyphenated_sk_names_through` 실패.
+- 따로 남긴 것(범위 밖): `card reclaim --reason`(`src/card/dispatch.rs:389-391`)은 아직 예전 공유 화면을 직접 불러요 — 이 조각의 화면과 다른 규칙이에요(후속 후보). `card criterion-add` 는 C-108 병합 뒤.
+- 돌리지 않은 것: 전체 `cargo test`, CI, 실제 HOME, 점·카멜 이름.
