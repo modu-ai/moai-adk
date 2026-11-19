@@ -50,7 +50,7 @@ Measured from the code at tip 9bd09c2eff (`src/index.rs`): the limit counts **tr
 
 ## Scope
 
-- write: `src/index.rs`, `src/contract.rs` (one phrase, `index scope`), `tests/index_scope_cli.rs`, `docs/index-generation.md`, `docs/design-review/appendix/interfaces.md`, `.moai/specs/SPEC-20261119-index-scope/spec.md`
+- write: `src/index.rs`, `tests/index_scope_cli.rs`, `tests/index_records.rs` (two request literals get the new field, `scope: Vec::new()`), `docs/index-generation.md`, `.moai/specs/SPEC-20261119-index-scope/spec.md`
 - read-only: `src/main.rs` (the request is read with `input::<IndexBuildRequest>()`, no change needed), `tests/index_cli.rs`, `tests/common/**`
 - forbidden: the real HOME and ledger, the network, `skills/moai/**` (second slice), a change of `MAX_FILES`
 
@@ -58,7 +58,7 @@ Measured from the code at tip 9bd09c2eff (`src/index.rs`): the limit counts **tr
 
 1. Tests first: the CLI tests and the two unit tests; they fail to compile or fail before the code.
 2. `IndexBuildRequest.scope`, `normalize_scope`, `largest_folders`, a scan that takes the limit and the scope, `IndexManifest.scope`, the generation id and `same_snapshot` with the scope, `index-query` using the manifest scope.
-3. `contract.rs` phrase so a wrapped scope refusal stays `invalid_input`; docs.
+3. Docs (`docs/index-generation.md`). `src/contract.rs` needs no phrase: a scope refusal is raised before the build wrapper and its words (`invalid index scope`) already class as `invalid_input`; the over-limit refusal keeps `index file limit exceeded`, the phrase the table already has. `docs/design-review/appendix/interfaces.md` only lists operation names and is not changed.
 
 ## Risks
 

@@ -12,9 +12,15 @@
 - 읽기는 문자열 경로의 `lstat` 뒤 같은 경로를 다시 여는 방식에 의존하지 않는다. project directory handle에서 각 상위 구성 요소를 no-follow로 열고, 최종 파일도 no-follow로 연 뒤 그 handle의 metadata를 검사하고 같은 handle에서 hash를 계산한다. 정적 상위 symlink는 `deleted`이고, 열린 상위 폴더가 rename·symlink로 교체돼도 바깥 파일을 열지 않는다. leaf symlink의 target 문자열 digest는 유지한다.
 - 추적 파일이 일반 디렉터리로 바뀌면 삭제로 처리한다. Git index의 mode가 `160000`인 항목만 submodule commit으로 기록하며, FIFO 등 지원하지 않는 특수 파일은 열지 않고 실제 원인으로 실패한다.
 - 경계는 추적 파일 16,384개, 개별 파일 16,777,216 bytes, Git stdout 4,194,304 bytes다. 각 N은 허용하고 N+1은 거부한다. 추적 파일 수 초과는 `invalid_input`·`retryable: false`이며, Git stdout 초과는 command 실패가 아니라 output limit 원인으로 보고한다.
+- 개수 한도는 `git ls-files` 가 보고하는 **추적 파일**만 센다(상태 폴더 `<state>/index/` 제외). `.gitignore` 로 빠진 untracked 파일(`node_modules` 등)은 세지 않고, 커밋된 vendor 폴더는 센다.
+- 한도를 넘는 거절(`invalid_input`)은 파일 수와 함께 **가장 큰 폴더 열 개**를 `폴더 (개수)` 로 큰 순서, 같은 수는 경로 순으로 적는다. 폴더는 경로 앞 두 칸(`apps/bo`)으로 묶고, 최상위 폴더 바로 아래 파일은 그 폴더, 루트 파일은 `.` 로 묶는다. 거절 글은 받아들여질 요청의 예(`{"protocol_version":1,"scope":["apps/bo"]}`)도 보여 준다. 스캔은 여전히 자르지 않고 거절한다.
+- 요청의 `scope` (폴더 목록, 프로젝트 상대 경로, 기본은 빈 목록 = 프로젝트 전체)를 주면 그 폴더 아래 추적 파일만 색인한다. 경로 구성 요소 단위로 맞춘다(`apps/bo` 는 `apps/bobby` 를 포함하지 않는다). 끝의 `/` 하나는 허용하고, 정렬·중복 제거하며 다른 항목 아래의 항목은 뺀다. 빈 항목·`.`·`..`·절대 경로·역슬래시·제어 문자·512 bytes 초과·64개 초과, 또는 추적 파일이 하나도 없는 범위는 `invalid_input` 이며 **아무것도 쓰기 전에** 거절하므로 실패 표식(`partial`)도 남지 않는다. 오류 글은 호출자의 항목 텍스트를 되풀이하지 않는다.
+- 범위가 있는 빌드는 manifest 에 정규화한 `scope` 를 기록하고 answer 에도 `scope` 를 적는다. generation id 는 범위가 **있을 때만** 범위를 내용으로 삼는다(범위 없는 빌드의 id·manifest 바이트는 그대로, `scope` 키 없음). `index-query` 는 게시된 generation 의 범위 안의 추적·untracked 파일로만 신선도를 판단하므로 범위 밖 변경은 `fresh` 를 바꾸지 않는다. 범위가 생기기 전의 generation 은 범위 없음으로 읽는다.
 - untracked 목록도 16,384개를 넘으면 조용히 자르지 않는다. 일반 질의는 `unavailable`·`changes: null`, 기존 실패 표식이 있는 질의는 `partial`을 유지하되 알 수 없는 변경 목록을 빈 배열로 대신하지 않는다.
 - 원자 포인터 회귀는 기존 포인터의 hard link가 이전 바이트를 유지하고 새 경로가 새 generation을 가리키는지 확인한다. 제자리 덮어쓰기와 copy-overwrite는 이 reader 보존 계약을 위반한다.
 - pointer·manifest·실패 표식도 directory-relative no-follow IO를 사용하고 일반 파일인지 확인한다. Unix에서는 FIFO 교체 때도 open이 기다리지 않도록 `O_NONBLOCK`을 사용한다. cache JSON은 33,554,432 bytes까지 읽으며 N+1은 거부한다. 읽을 수 없는 실패 표식을 무시하고 `fresh`로 승인하지 않는다.
+
+범위·한도 시험: `tests/index_scope_cli.rs` 7개와 `src/index.rs` 의 `index::tests::largest_folders_are_ranked_and_capped`, `index::tests::scope_normalization`.
 
 시험: `tests/index_cli.rs`의 `identical_rebuild_across_seconds_keeps_generation_and_manifest`, `pointer_generation_id_is_validated_before_path_resolution`, `damaged_reusable_manifest_keeps_previous_pointer_and_marks_partial`. 기존 freshness·원자 포인터 시험도 유지한다.
 

@@ -52,7 +52,11 @@ fn git_stdin(dir: &Path, args: &[&str], input: &[u8]) {
         .unwrap();
     child.stdin.take().unwrap().write_all(input).unwrap();
     let out = child.wait_with_output().unwrap();
-    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
 }
 
 /// A repository with one committed file, `a.txt`.
@@ -100,14 +104,23 @@ fn numbered(folder: &str, count: usize) -> Vec<String> {
 }
 
 fn cli(project: &Path, op: &str, stdin: &str) -> std::process::Output {
+    // HOME is a folder of its own, never the real one and never inside the project: the
+    // binary must not see a file the build would count.
+    let home = tempfile::tempdir().unwrap();
     let mut child = command(project, common::MOAI_BIN)
+        .env("HOME", home.path())
         .args([op, "."])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    child.stdin.take().unwrap().write_all(stdin.as_bytes()).unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(stdin.as_bytes())
+        .unwrap();
     child.wait_with_output().unwrap()
 }
 
@@ -138,7 +151,12 @@ fn built(project: &Path, request: Value) -> Value {
 
 /// The error of a refused request: `(kind, retryable, message)`.
 fn refused(out: &std::process::Output) -> (String, bool, String) {
-    assert_eq!(out.status.code(), Some(1), "{}", String::from_utf8_lossy(&out.stdout));
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
     let v = envelope(out);
     assert_eq!(v["ok"], json!(false), "{v}");
     (
@@ -150,7 +168,11 @@ fn refused(out: &std::process::Output) -> (String, bool, String) {
 
 fn query(project: &Path) -> Value {
     let out = cli(project, "index-query", r#"{"protocol_version":1}"#);
-    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
     envelope(&out)["result"].clone()
 }
 
@@ -166,8 +188,13 @@ fn pointer_gen(project: &Path) -> Option<String> {
 
 fn manifest(project: &Path) -> (String, Value) {
     let gen = pointer_gen(project).expect("a published generation");
-    let text = fs::read_to_string(index_dir(project).join("generations").join(&gen).join("manifest.json"))
-        .unwrap();
+    let text = fs::read_to_string(
+        index_dir(project)
+            .join("generations")
+            .join(&gen)
+            .join("manifest.json"),
+    )
+    .unwrap();
     let v = serde_json::from_str(&text).unwrap();
     (text, v)
 }
@@ -193,12 +220,20 @@ fn the_limit_counts_tracked_files_only() {
         write(&project, &format!("node_modules/pkg/x{n}.js"), "x");
     }
     let ignored = built(&project, json!({"protocol_version": 1}));
-    assert_eq!(ignored["files"], json!(2), "a.txt and .gitignore: {ignored}");
+    assert_eq!(
+        ignored["files"],
+        json!(2),
+        "a.txt and .gitignore: {ignored}"
+    );
 
     git(&project, &["add", "-f", "node_modules"]);
     git(&project, &["commit", "-q", "-m", "vendor"]);
     let tracked = built(&project, json!({"protocol_version": 1}));
-    assert_eq!(tracked["files"], json!(22), "the committed folder counts: {tracked}");
+    assert_eq!(
+        tracked["files"],
+        json!(22),
+        "the committed folder counts: {tracked}"
+    );
 }
 
 /// AC-2 (REQ-3): 16384 files build, 16385 are refused, and the refusal says where the files are.
@@ -212,7 +247,11 @@ fn the_limit_is_n_built_and_n_plus_one_refused_naming_the_folders() {
     assert_eq!(paths.len(), LIMIT);
     set_index(&project, &paths);
     let accepted = built(&project, json!({"protocol_version": 1}));
-    assert_eq!(accepted["files"], json!(1), "only a.txt is on disk: {accepted}");
+    assert_eq!(
+        accepted["files"],
+        json!(1),
+        "only a.txt is on disk: {accepted}"
+    );
     let previous = pointer_gen(&project).unwrap();
 
     paths.push("apps/bo/one-more".into());
@@ -220,17 +259,30 @@ fn the_limit_is_n_built_and_n_plus_one_refused_naming_the_folders() {
     let (kind, retryable, message) = refused(&build(&project, json!({"protocol_version": 1})));
     assert_eq!(kind, "invalid_input", "{message}");
     assert!(!retryable);
-    assert!(message.contains("index file limit exceeded (16384)"), "{message}");
+    assert!(
+        message.contains("index file limit exceeded (16384)"),
+        "{message}"
+    );
     assert!(message.contains("16385"), "the count is named: {message}");
-    let bo = message.find("apps/bo (9001)").unwrap_or_else(|| panic!("{message}"));
-    let web = message.find("apps/web (5000)").unwrap_or_else(|| panic!("{message}"));
-    let ui = message.find("packages/ui (1383)").unwrap_or_else(|| panic!("{message}"));
+    let bo = message
+        .find("apps/bo (9001)")
+        .unwrap_or_else(|| panic!("{message}"));
+    let web = message
+        .find("apps/web (5000)")
+        .unwrap_or_else(|| panic!("{message}"));
+    let ui = message
+        .find("packages/ui (2383)")
+        .unwrap_or_else(|| panic!("{message}"));
     assert!(bo < web && web < ui, "largest first: {message}");
     assert!(
         message.contains(r#"{"protocol_version":1,"scope":["apps/bo"]}"#),
         "the accepted request is shown: {message}"
     );
-    assert_eq!(pointer_gen(&project).as_deref(), Some(previous.as_str()), "the previous generation stays");
+    assert_eq!(
+        pointer_gen(&project).as_deref(),
+        Some(previous.as_str()),
+        "the previous generation stays"
+    );
 }
 
 /// AC-3 (REQ-1): only the files under the scope are indexed, whole path components are
@@ -244,7 +296,10 @@ fn a_scoped_build_indexes_only_the_scope_and_records_it() {
     write(&project, "packages/ui/c.ts", "ui");
     commit_all(&project);
 
-    let one = built(&project, json!({"protocol_version": 1, "scope": ["apps/bo"]}));
+    let one = built(
+        &project,
+        json!({"protocol_version": 1, "scope": ["apps/bo"]}),
+    );
     assert_eq!(one["files"], json!(1), "{one}");
     assert_eq!(manifest_paths(&project), vec!["apps/bo/a.ts"]);
     assert_eq!(manifest(&project).1["scope"], json!(["apps/bo"]));
@@ -254,8 +309,14 @@ fn a_scoped_build_indexes_only_the_scope_and_records_it() {
         json!({"protocol_version": 1, "scope": ["packages/ui/", "apps/bo", "apps/bo/"]}),
     );
     assert_eq!(two["files"], json!(2), "{two}");
-    assert_eq!(manifest_paths(&project), vec!["apps/bo/a.ts", "packages/ui/c.ts"]);
-    assert_eq!(manifest(&project).1["scope"], json!(["apps/bo", "packages/ui"]));
+    assert_eq!(
+        manifest_paths(&project),
+        vec!["apps/bo/a.ts", "packages/ui/c.ts"]
+    );
+    assert_eq!(
+        manifest(&project).1["scope"],
+        json!(["apps/bo", "packages/ui"])
+    );
 }
 
 /// AC-3 (REQ-6, REQ-7): an unscoped manifest has no `scope` key, an empty list is unscoped,
@@ -266,12 +327,22 @@ fn an_unscoped_manifest_has_no_scope_key() {
     write(&project, "apps/bo/a.ts", "bo");
     commit_all(&project);
     let plain = built(&project, json!({"protocol_version": 1}));
-    assert!(!manifest(&project).0.contains("\"scope\""), "{}", manifest(&project).0);
+    assert!(
+        !manifest(&project).0.contains("\"scope\""),
+        "{}",
+        manifest(&project).0
+    );
     let empty = built(&project, json!({"protocol_version": 1, "scope": []}));
-    assert_eq!(empty["generation_id"], plain["generation_id"], "an empty scope is no scope");
+    assert_eq!(
+        empty["generation_id"], plain["generation_id"],
+        "an empty scope is no scope"
+    );
     assert_eq!(empty["action"], json!("unchanged"));
 
-    let everything = built(&project, json!({"protocol_version": 1, "scope": ["apps", "a.txt"]}));
+    let everything = built(
+        &project,
+        json!({"protocol_version": 1, "scope": ["apps", "a.txt"]}),
+    );
     assert_eq!(everything["files"], plain["files"], "the same files");
     assert_ne!(
         everything["generation_id"], plain["generation_id"],
@@ -293,20 +364,39 @@ fn a_scope_builds_a_repository_over_the_limit() {
     assert!(message.contains("apps/bo (16383)"), "{message}");
 
     // 16383 under apps/bo (a.txt is outside the scope): below the edge.
-    let below = built(&project, json!({"protocol_version": 1, "scope": ["apps/bo"]}));
-    assert_eq!(below["files"], json!(0), "nothing of the scope is on disk: {below}");
+    let below = built(
+        &project,
+        json!({"protocol_version": 1, "scope": ["apps/bo"]}),
+    );
+    assert_eq!(
+        below["files"],
+        json!(0),
+        "nothing of the scope is on disk: {below}"
+    );
     // Exactly 16384 under the scope: accepted.
     let mut at = paths.clone();
     at.push("apps/bo/edge-0".into());
     set_index(&project, &at);
-    built(&project, json!({"protocol_version": 1, "scope": ["apps/bo"]}));
+    built(
+        &project,
+        json!({"protocol_version": 1, "scope": ["apps/bo"]}),
+    );
     // 16385 under the scope: refused, naming the folder.
     at.push("apps/bo/edge-1".into());
     set_index(&project, &at);
-    let (kind, retryable, message) =
-        refused(&build(&project, json!({"protocol_version": 1, "scope": ["apps/bo"]})));
-    assert_eq!((kind.as_str(), retryable), ("invalid_input", false), "{message}");
-    assert!(message.contains("index file limit exceeded (16384)"), "{message}");
+    let (kind, retryable, message) = refused(&build(
+        &project,
+        json!({"protocol_version": 1, "scope": ["apps/bo"]}),
+    ));
+    assert_eq!(
+        (kind.as_str(), retryable),
+        ("invalid_input", false),
+        "{message}"
+    );
+    assert!(
+        message.contains("index file limit exceeded (16384)"),
+        "{message}"
+    );
     assert!(message.contains("apps/bo (16385)"), "{message}");
 }
 
@@ -342,7 +432,11 @@ fn scope_refusals_write_nothing() {
             String::from_utf8_lossy(&out.stdout)
         );
         let (kind, retryable, message) = refused(&out);
-        assert_eq!((kind.as_str(), retryable), ("invalid_input", false), "{scope}: {message}");
+        assert_eq!(
+            (kind.as_str(), retryable),
+            ("invalid_input", false),
+            "{scope}: {message}"
+        );
         assert!(
             !index_dir(&project).join("current.json").exists()
                 && !index_dir(&project).join("last-build.json").exists(),
@@ -352,8 +446,16 @@ fn scope_refusals_write_nothing() {
     // The edges that are accepted: 64 entries (one matches), 512 bytes.
     let at_limit: Vec<String> = (0..64).map(|n| format!("d{n}")).collect();
     built(&project, json!({"protocol_version": 1, "scope": at_limit}));
-    let long = format!("{}/x", "y".repeat(510));
-    write(&project, &format!("{}/x", "y".repeat(510)), "y");
+    // 512 bytes in three components (a file name over 255 bytes is not allowed on disk).
+    let long = format!(
+        "{}/{}/{}",
+        "a".repeat(170),
+        "b".repeat(170),
+        "c".repeat(170)
+    );
+    assert_eq!(long.len(), 512);
+    write(&project, &format!("{long}/x"), "y");
+    let long = long.to_string();
     commit_all(&project);
     built(&project, json!({"protocol_version": 1, "scope": [long]}));
 }
@@ -365,7 +467,10 @@ fn a_scoped_generation_ignores_changes_outside_the_scope() {
     write(&project, "apps/bo/a.ts", "bo");
     write(&project, "apps/web/b.ts", "web");
     commit_all(&project);
-    built(&project, json!({"protocol_version": 1, "scope": ["apps/bo"]}));
+    built(
+        &project,
+        json!({"protocol_version": 1, "scope": ["apps/bo"]}),
+    );
     assert_eq!(query(&project)["state"], json!("fresh"));
 
     // Outside the scope: a modified tracked file, an untracked file, a staged new file.
