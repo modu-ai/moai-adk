@@ -530,18 +530,21 @@ fn the_refusal_kinds_reach_the_envelope() {
     let (result, _) = save(&h.path);
     let id = result["receipt"].as_str().unwrap().to_string();
     let home_arg = h.path.to_string_lossy().into_owned();
+    // The child's HOME is the same temporary folder (the scan keeps binary-running tests
+    // off the real HOME), though models-revert reads everything from its arguments.
     let run = |receipt: &str, permission: &str| {
-        common::cli::cli(
-            &[
+        std::process::Command::new(common::MOAI_BIN)
+            .args([
                 "models-revert",
                 home_arg.as_str(),
                 "--receipt",
                 receipt,
                 "--permission-reference",
                 permission,
-            ],
-            &json!({}),
-        )
+            ])
+            .env("HOME", home_arg.as_str())
+            .output()
+            .expect("run moai models-revert")
     };
     let kind_of = |receipt: &str, permission: &str| {
         let out = run(receipt, permission);
