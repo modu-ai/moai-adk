@@ -391,7 +391,7 @@ fn bundle_world(merge_second: bool) -> Bundle {
     let h2 = w.head(
         "spec/h2",
         TIP,
-        &[("docs/h2.md", "h2\n")],
+        &[("notes/h2.md", "h2\n")],
         "SPEC-20261119-demo2",
         &[1, 2],
         true,
@@ -446,7 +446,7 @@ fn the_body_carries_the_facts_and_passes_the_self_audit_checker() {
     let first = body.lines().next().unwrap();
     assert!(first.starts_with("audit-tier: 1 "), "{first}");
     assert!(
-        first.contains("src/h1.rs") && first.contains("docs/h2.md"),
+        first.contains("src/h1.rs") && first.contains("notes/h2.md"),
         "{first}"
     );
     assert!(

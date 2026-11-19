@@ -325,7 +325,7 @@ fn ready_lists_the_newest_readable_line_per_card_and_names_the_unreadable_ones()
     let h2 = w.head(
         "spec/two",
         TIP,
-        &[("docs/two.md", "two\n")],
+        &[("notes/two.md", "two\n")],
         SPEC,
         &[1, 2],
         true,
@@ -333,7 +333,7 @@ fn ready_lists_the_newest_readable_line_per_card_and_names_the_unreadable_ones()
     let h3 = w.head(
         "spec/three",
         TIP,
-        &[("docs/three.md", "three\n")],
+        &[("notes/three.md", "three\n")],
         SPEC,
         &[1, 2],
         false,

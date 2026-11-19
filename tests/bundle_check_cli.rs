@@ -325,7 +325,7 @@ fn a_clean_head_has_no_finding() {
     let h = w.head(
         "spec/clean",
         TIP,
-        &[("docs/clean.md", "c\n")],
+        &[("notes/clean.md", "c\n")],
         SPEC,
         &[1, 2],
         true,
@@ -349,7 +349,13 @@ fn a_clean_head_has_no_finding() {
 fn findings_of_all_heads_come_together_with_stable_codes() {
     let w = World::new();
     // C-1: only here, a trailer that is not a SPEC id.
-    let a = w.head_raw("spec/a", TIP, &[("docs/a.md", "a\n")], Some("bogus"), false);
+    let a = w.head_raw(
+        "spec/a",
+        TIP,
+        &[("notes/a.md", "a\n")],
+        Some("bogus"),
+        false,
+    );
     // C-2: the tip itself.
     let b = w.tip_sha();
     // C-3: pushed, a SPEC whose Result lacks AC-2, a change under src/ without a verdict.
@@ -398,7 +404,7 @@ fn findings_of_all_heads_come_together_with_stable_codes() {
 fn the_audit_floor_decides_which_heads_need_a_pass() {
     let w = World::new();
     // C-1: only docs change: floor 0, no verdict needed.
-    let x = w.head("spec/x", TIP, &[("docs/x.md", "x\n")], SPEC, &[1, 2], true);
+    let x = w.head("spec/x", TIP, &[("notes/x.md", "x\n")], SPEC, &[1, 2], true);
     // C-2: src changes and a PASS names exactly the head.
     let y = w.head(
         "spec/y",
@@ -512,7 +518,7 @@ fn a_head_that_is_not_here_is_reported_and_the_rest_are_judged() {
     let ok = w.head(
         "spec/ok",
         TIP,
-        &[("docs/ok.md", "ok\n")],
+        &[("notes/ok.md", "ok\n")],
         SPEC,
         &[1, 2],
         true,
@@ -598,7 +604,7 @@ fn a_head_behind_the_tip_does_not_count_the_tips_own_changes() {
     let h = w.head(
         "spec/behind",
         TIP,
-        &[("docs/behind.md", "b\n")],
+        &[("notes/behind.md", "b\n")],
         SPEC,
         &[1, 2],
         true,

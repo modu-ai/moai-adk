@@ -845,11 +845,12 @@ pub fn body(
     let judged = judge_all(&git, project, home, &tip, &args)?;
     for j in &judged {
         for f in &j.findings {
-            match f["code"].as_str().unwrap_or("") {
-                code @ ("no_ready_line" | "head_missing" | "audit_missing" | "result_missing") => {
-                    gaps.push(format!("{} {}: {}", j.card, code, f["detail"]));
-                }
-                _ => {}
+            let code = f["code"].as_str().unwrap_or("");
+            if matches!(
+                code,
+                "no_ready_line" | "head_missing" | "audit_missing" | "result_missing"
+            ) {
+                gaps.push(format!("{} {}: {}", j.card, code, f["detail"]));
             }
         }
         if let Some(h) = &j.head {

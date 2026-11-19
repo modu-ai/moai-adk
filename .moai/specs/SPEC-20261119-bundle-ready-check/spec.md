@@ -120,4 +120,20 @@ The check keys are data in the code, pinned by a test (D-4 of the parent): `buil
 
 ## Result
 
-- AC-1 … AC-11: pending — the SPEC is written first; each AC gets its outcome line when the code, the tests and the checks of this slice have run.
+Run on the head `a98161107b` plus the edits of the commit that carries this Result and the one-line `pub mod bundle;` in `src/lib.rs` (uncommitted, leader decision B), with a binary built from that tree; tip `924da079d5`.
+
+- AC-1: met — `cargo test --test bundle_ready_cli` → 1 passed. Read-only smoke on the real ledger (`moai bundle ready --project /Users/goos/MoAI/moai-adk`): 20 heads, `unreadable` = C-33 note 2854 and C-60 note 2646, C-99 `already_in_tip` true.
+- AC-2: met — `cargo test --test bundle_check_cli` → 7 passed, among them `a_clean_head_has_no_finding` and `findings_of_all_heads_come_together_with_stable_codes` (six codes over three heads, exact set).
+- AC-3: met — `the_audit_floor_decides_which_heads_need_a_pass` (floor 0 and 1, an ancestor `PASS` shown with `commits_behind` 1, a `FAIL` and an unreadable note not counted) and `a_head_behind_the_tip_does_not_count_the_tips_own_changes` (killed the three-dot mutant M1).
+- AC-4: met — `a_conflict_is_found_without_the_merge_driver`: the clone's driver (`true`) hides the conflict from a plain `git merge-tree` (exit 0, asserted), and the check still reports it with the file (killed M2).
+- AC-5: met — `a_head_that_is_not_here_is_reported_and_the_rest_are_judged` (also `no_ready_line`).
+- AC-6: met — `cargo test --test bundle_body_cli` → 4 passed; `the_body_carries_the_facts_and_passes_the_self_audit_checker` also runs `moai pr-self-audit-check --file` on the body, exit 0.
+- AC-7: met — `a_body_with_missing_facts_is_refused_naming_all_of_them`: "4 missing fact(s)" naming the missing `fmt` check, the failed command, the empty `host` line and the head not in the branch; no file (killed M5).
+- AC-8: met — `out_writes_a_new_file_only` (an existing file and a folder refused, file unchanged).
+- AC-9: met — `the_commands_change_no_ledger_row_and_no_ref`: the HOME snapshot (ledger bytes included) and the refs, status and HEAD of the work clone and the bare origin are equal before and after `ready`, `check` and a refused `body`; `body` with a result also leaves the refs as before.
+- AC-10: met — `the_help_and_the_ops_doc_say_what_each_action_does`: each action's help starts `Reads only.`; the operations page names the actions, codes and record keys.
+- AC-11: met — `git_env_scrub` 3 passed, `home_isolation_scan` 18, `help_layout` 10, `product_cli` 79, `hot_file_ops_merge` 3.
+
+Also run: `cargo fmt --check` exit 0; `cargo clippy --locked --offline --all-targets -- -D warnings` exit 0; the whole `cargo test --lib` 1458 passed (5 are this slice's: the READY grammar, the check keys, the head arguments); `python3 -m unittest tests.ci_scope_test tests.repo_scans_test` 65 OK (it caught `docs/…` literals in the tests, renamed to `notes/…`); five mutants (`target/agent-4/mutate119.py`: M1 three dots, M2 driver override, M3 oldest note, M4 floor 2, M5 exit threshold) all KILLED; `moai trailer-check origin/v2026.11.0..HEAD` 4 commits, failing 0; `git merge-tree` against the tip exit 0 and no file shared with the tip's change.
+
+Not run: the whole Python discover (about 40 minutes here), Linux, the unfiltered full `cargo test` (the head's CI run is cited once it exists), mutants beyond the tier-1 cap of five. First failures on the way, all fixed: the refusal text "exited N" was classified as an `io` error by `contract::classify` (reworded "ended with status N"); `clippy::single_match`; a help-test word.
