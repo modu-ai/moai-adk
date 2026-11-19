@@ -389,7 +389,10 @@ class WorkflowTest(unittest.TestCase):
         newer merge replaces a macOS job that is still waiting; a running job is never
         cancelled, and every other target and event keeps a group of its own. Only a run's
         first attempt shares the group: a re-run of an older SHA must not replace the
-        current tip's waiting job, which the tip watch would read as red (#2739 audit F1)."""
+        current tip's waiting job, which the tip watch would read as red (#2739 audit F1).
+        C-20 (SPEC-20261119-ci-check-set-legs REQ-7): the group is per (macOS target, leg)
+        — the two legs of one target must never share a group, or one waits for the other
+        and the split stops being parallel."""
         flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
         conc = flow["jobs"]["check"]["concurrency"]
         self.assertIs(conc["cancel-in-progress"], False)
@@ -397,13 +400,14 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(group,
                          "${{ github.event_name == 'push' && github.run_attempt == '1' "
                          "&& startsWith(matrix.target, 'macos-') "
-                         "&& format('ci-push-{0}', matrix.target) "
-                         "|| format('ci-run-{0}-{1}-{2}', github.run_id, github.run_attempt, "
-                         "matrix.target) }}")
+                         "&& format('ci-push-{0}-{1}', matrix.target, matrix.leg) "
+                         "|| format('ci-run-{0}-{1}-{2}-{3}', github.run_id, github.run_attempt, "
+                         "matrix.target, matrix.leg) }}")
         self.assertIn("github.run_attempt == '1'", group.split("||")[0])
         _on_pr, after_merge = self.rc_ci_matrix(flow)
-        shared = sorted(e["target"] for e in after_merge if e["target"].startswith("macos-"))
-        self.assertEqual(shared, ["macos-arm64"])
+        shared = sorted((e["target"], e["leg"]) for e in after_merge
+                        if e["target"].startswith("macos-"))
+        self.assertEqual(shared, [("macos-arm64", "nextest"), ("macos-arm64", "rest")])
         # The aggregate and windows-build keep the run-level group only.
         for job in ("ci", "windows-build"):
             self.assertNotIn("concurrency", flow["jobs"][job])
@@ -439,6 +443,9 @@ class WorkflowTest(unittest.TestCase):
         cache = steps[names.index("Dependency cache")]
         self.assertRegex(cache["uses"], r"^Swatinem/rust-cache@[0-9a-f]{40}$")
         self.assertEqual(cache["with"]["save-if"], "${{ github.event_name == 'push' }}")
+        # C-20 repair N2: one cache entry per leg — the two leg jobs of one push build in
+        # one target folder each and must not overwrite each other's saved entry.
+        self.assertEqual(cache["with"]["key"], "leg-${{ matrix.leg }}")
         self.assertLess(names.index("Dependency cache"), names.index("Check set"))
         script = steps[names.index("Check set")]["run"]
         self.assertIn("cargo fetch --locked", script)
@@ -469,6 +476,64 @@ class WorkflowTest(unittest.TestCase):
         self.assertRegex(script, r"(?m)^\s*step heavy doctest bash -c 'RUST_MIN_STACK=8388608 "
                                  r"cargo test --offline --locked --doc ")
         self.assertNotRegex(script, r"cargo test --offline --locked 2>&1")
+
+    def test_rc_ci_runs_every_target_as_a_nextest_and_a_rest_leg(self):
+        """C-20 (SPEC-20261119-ci-check-set-legs, leader decision 2837): the Check set runs
+        as two parallel jobs per target — the nextest leg (fetch, test, doctest) and the
+        rest leg — because nextest and the python unittest were 94–97% of its wall time
+        (card note 2833; the split turns linux ≈15m→9m, macOS ≈36m→20m). The required check
+        names stay untouched (REQ-9): the aggregate keeps the name `ci`; the matrix jobs are
+        `ci / <target> / <leg>`, which the tip gate still reads by its `ci / ` prefix."""
+        flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
+        check = flow["jobs"]["check"]
+        self.assertEqual(check["name"], "ci / ${{ matrix.target }} / ${{ matrix.leg }}")
+        self.assertEqual(check["strategy"]["matrix"]["include"],
+                         "${{ fromJSON(needs.targets.outputs.matrix) }}")
+        on_pr, after_merge = self.rc_ci_matrix(flow)
+        # The matrix is the targets output times exactly the two legs (REQ-5); every entry
+        # still carries its target's runner and timeout.
+        self.assertEqual({(e["target"], e["leg"]) for e in on_pr},
+                         {("linux-x86_64", "nextest"), ("linux-x86_64", "rest")})
+        self.assertEqual({(e["target"], e["leg"]) for e in after_merge},
+                         {("linux-x86_64", "nextest"), ("linux-x86_64", "rest"),
+                          ("macos-arm64", "nextest"), ("macos-arm64", "rest")})
+        for entry in after_merge:
+            with self.subTest(entry=entry):
+                self.assertEqual(entry["runner"],
+                                 "macos-15" if entry["target"] == "macos-arm64" else "ubuntu-24.04")
+                self.assertEqual(entry["timeout"],
+                                 45 if entry["target"] == "macos-arm64" else 30)
+        steps = check["steps"]
+        names = [s.get("name") for s in steps]
+        # REQ-6: cargo-nextest is installed on the nextest leg only …
+        install = steps[names.index("cargo-nextest (pinned, sha256-checked)")]
+        self.assertEqual(install["if"],
+                         "${{ env.CI_SCOPE == 'full' && matrix.leg == 'nextest' }}")
+        # … and the leg reaches the script through env:, never an expression in run:.
+        check_set = steps[names.index("Check set")]
+        self.assertEqual(check_set["env"]["LOCAL_CHECK_LEG"], "${{ matrix.leg }}")
+        self.assertNotIn("matrix.leg", check_set["run"])
+        self.assertIn("bash tools/local_check.sh", check_set["run"])
+        # REQ-5: MOAI_BUILD_NUMBER stays a job-level env, so both legs carry it as before.
+        self.assertIn("MOAI_BUILD_NUMBER", check["env"])
+        # The rest leg's python unittest runs tests that execute target/debug/moai-cli; the
+        # single check set relied on nextest having linked it in the same job, so the rest
+        # leg builds it before the check set (clippy only checks, it links nothing).
+        build = steps[names.index("Build moai-cli (unittest input)")]
+        self.assertEqual(build["if"], "${{ env.CI_SCOPE == 'full' && matrix.leg == 'rest' }}")
+        self.assertEqual(build["run"], "cargo build --locked --bin moai-cli")
+        self.assertLess(names.index("Build moai-cli (unittest input)"), names.index("Check set"))
+        # Each leg's job summary keeps its own macOS-only rows (SPEC Risks): the Rust rows
+        # read ci-test.log on the nextest leg, the python rows read ci-unittest.log on the
+        # rest leg, and neither leg reports the other leg's cases.
+        run = check_set["run"]
+        first = run.index('[ "${LOCAL_CHECK_LEG:-}" != rest ]')
+        second = run.index('[ "${LOCAL_CHECK_LEG:-}" != nextest ]')
+        rust_rows = run.index("for t in e2e_never_writes_outside_temp_home")
+        python_rows = run.index("for t in e2e_host_claude_verdict_test")
+        self.assertLess(first, rust_rows)
+        self.assertLess(rust_rows, second)
+        self.assertLess(second, python_rows)
 
     def test_rc_ci_reports_the_rc_ci_check_on_prs_to_the_integration_branch(self):
         flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
