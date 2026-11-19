@@ -85,6 +85,7 @@ created: 2026-11-19
 ## Risks
 
 - The branch is stacked on S2a (`spec/20261119-switch-script-v2`, head 95e02aaaeb); the leader bundles S2a first. The built-in v2 is a copy, pinned by digest, not a read of the S2a SPEC folder (SPEC folders may be archived).
+- `tests/update_switch_layer.rs` reads the v1 script from the S2a preview folder at build time (`include_bytes!`); if that SPEC folder is ever archived, the test needs the 1747 B file kept somewhere else. The program itself reads nothing from a SPEC folder.
 - A person who edited the old script by hand gets `left` and no token: the update never overwrites a file it did not recognise.
 - The installer keeps leaving a regular `moai` file alone (install.sh:549-550); after the apply `moai` is still a regular file, so the next install does not replace it.
 - `~/go/bin/moai` keeps the old script after the apply. A person who runs the Go build's `moai` from that folder keeps the v1 routing until they copy the new file there themselves; the guidance text says so.
@@ -94,4 +95,38 @@ created: 2026-11-19
 
 ## Result
 
-(S3a 구현 뒤에 채워요.)
+### S3a (이 가지의 지금 상태) — S3b(CLI 플래그)는 C-75 병합 뒤
+
+| 부분 | 어디 | 상태 |
+| --- | --- | --- |
+| 계획·적용·되돌리기 | `src/update/switch.rs`(update.rs 의 자식 모듈 — `src/lib.rs` 를 안 건드려요) | 구현·시험 완료 |
+| 내장 v2 스크립트 | `install/moai-switch.sh`(S2a `preview/moai.v2` 와 `cmp` 같음, sha256 36dd242b…) | 완료 |
+| 미리보기·적용·화면 연결 | `src/update.rs`(`update_command_switch`; `update_command` 는 시그니처 그대로) · `src/update_tux.rs`(행·다음 단계·결과 줄) | 완료 |
+| `--confirm-switch`·`--revert-switch` 플래그 | `src/main.rs`·`src/help.rs`·`docs/rust-product-path.md`(C-75 가 쥐고 있어요) | **S3b** — 이 가지는 READY 가 아니에요 |
+| CLI 시험(`update_switch_cli`) | 새 파일 | **S3b** |
+
+### 이 컴퓨터에서 읽은 사실 (읽기 전용, 2026-11-19, 쓰기 0)
+
+- `shasum -a 256 ~/.moai-cli/path/moai ~/go/bin/moai` → 둘 다 `3c3446a3…6658ac`(= `V1_SHA256`), 둘 다 1747 B, 모드 `-rwxr-xr-x`. 그래서 이 컴퓨터에서 `moai update` 미리보기는 `replace` 를 제안하고, `go/bin/moai` 는 `same_as_v1: true` 로 안내만 해요.
+- `~/.moai` 가 있지만 Rust 표지(`~/.moai/moai.json`·`moai-cli.json`)는 없어서 상태 폴더는 `~/.moai-cli`(`home_root::path`)예요 → 대상 파일은 `~/.moai-cli/path/moai`.
+- 코드로 확인한 사실은 Intent 의 1–3(설치기·`update` 는 `path/moai` 를 쓰지 않아요).
+
+### 검사 (이 레인, 전용 빌드 폴더 `moai-adk-33c`·무거운 작업 칸, 2026-11-19)
+
+- RED(뼈대가 아무것도 제안하지 않을 때): `cargo test --locked --offline --test update_switch_layer` 10개 중 8개 실패, 2개 통과(`target/lane/s3red1.log`). GREEN: 10/10(`s3green1.log`), 되돌리기 시험을 더한 뒤 11/11(`s3t2.log`).
+- 연결 뒤(`target/lane/v1-*.log`): `cargo fmt --check` 0 · `update_switch_layer` 10/10 · `update_home_layer_cli` 11/11 · `update_tux_golden` 14/14 · `cargo clippy --locked --offline --all-targets -- -D warnings` 0.
+- 변이 5개(커밋된 `src/update/switch.rs` 에서 하나씩, `target/lane/c33-mutants.log`): S1 저장본 이름 검사 삭제 → `apply_checks_everything_before_the_first_write`, S2 되돌리기의 v1 검사 삭제 → `revert_puts_v1_back_and_refuses_anything_else`, S3 토큰 무시 → `apply_refuses_a_wrong_or_stale_token`, S4 저장본 모드 600 → `apply_saves_v1_and_installs_v2`, S5 rename 실패 뒤 임시 파일 남김 → `a_failed_step_leaves_a_whole_file` — 5/5 처음에 잡혔고 매번 `git restore` 로 되돌렸어요(끝에 `git status` 0줄).
+- 돌리지 않은 것: `--confirm-switch`·`--revert-switch` 를 실제 명령줄로(S3b), `cargo test --lib` 전체와 `home_isolation_scan`(S3b 와 함께), 자체 감사(S3b 뒤), 실제 HOME 적용(S4, guarded), macOS 이외(`#[cfg(unix)]`; Windows 에서는 부분이 없어요).
+
+### 안내 문구 (미리보기 `switch.notes`·`switch.go_bin.note`, 시험이 `moai hook`·`moai statusline` 낱말을 고정)
+
+- Go 세대가 만든 프로젝트는 훅 파일에서 `moai hook ...` 을 불러요. 전환 뒤에도 `moai hook` 은 Go 빌드(moai.old)로 가요. 그 프로젝트의 파일은 바꾸지 않아요.
+- 그 프로젝트의 `.moai/status_line.sh` 는 `moai statusline` 을 실행해요. 전환 뒤에는 Go 렌더가 아니라 Rust 3줄 렌더가 나와요. 그 프로젝트의 파일은 바꾸지 않아요.
+- `go/bin/moai` 가 같은 옛 스크립트면: update 는 건드리지 않아요. 미리보기를 적용한 뒤 그 이름도 따라가길 원하면 새 스크립트를 직접 복사해요.
+- 이 컴퓨터의 숫자(Go 훅 프로젝트 5곳, 상태줄 스크립트 30곳)는 S2a SPEC 의 Result 에 있고, 제품 문구에는 넣지 않았어요(컴퓨터마다 달라요).
+
+### 리더 결정이 필요한 것 (되돌릴 수 있어요, 범주 none)
+
+1. 이 가지는 S2a(`spec/20261119-switch-script-v2`) 위에 쌓였어요. 병합 순서: S2a → 이 가지. 내장 v2 는 S2a 미리보기의 복사본이고 sha256 으로 고정했어요.
+2. READY 는 S3b(플래그) 뒤에 한 번만 올려요: C-75 가 `src/main.rs`·`src/help.rs`·`docs/rust-product-path.md` 를 쥐고 있어요. 대안: 플래그 없이 라이브러리 수준으로만 먼저 병합하면 미리보기가 "없는 플래그"를 안내하니 비추천.
+3. `--revert-switch` 의 이름·인자(`<stamp>`)와 되돌리기 명령을 `moai-cli` 로 쓴 것(스크립트가 깨졌을 때도 도는 이름): 다른 이름을 원하면 `switch.rs` 두 곳과 시험 한 곳.
