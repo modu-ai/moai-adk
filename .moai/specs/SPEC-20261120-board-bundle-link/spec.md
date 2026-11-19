@@ -36,7 +36,7 @@ created: 2026-11-20
 - AC-2 (REQ-2, REQ-8): 같은 PR 에 새 head 행을 더하면 앞선 통과가 "효력 없음"과 이력으로 보이고, 새 head 의 통과는 효력이 있어요. head 를 읽을 수 없는 통과는 효력 없음으로 나와요. 읽기 비교 조건을 `==` 에서 `!=` 로 뒤집은 변이가 이 시험을 실패시켜요 · verify: `cargo test --locked --offline --test board_bundle_link_cli a_head_change_marks_the_earlier_pass_as_no_longer_in_effect`
 - AC-3 (REQ-3): 같은 묶음의 SPEC 감사 통과와 묶음 PR 감사 통과가 두 층으로 나뉘어 각자의 head 와 함께 나오고, 한 층의 통과가 다른 층의 통과가 되지 않아요 · verify: `cargo test --locked --offline --test board_bundle_link_cli the_two_audit_layers_stay_apart`
 - AC-4 (REQ-4, REQ-5): 카드 번호, 세션 id, 타임라인 상태, 로그 원문이 섞인 입력으로 밖으로 나가는 글을 그려도 출력의 카드 번호 줄 수와 세션 id 줄 수가 0이고, 그런 값이 들어간 필드는 출력 없이 거절돼요 · verify: `cargo test --locked --offline --test board_bundle_link_cli outward_text_carries_no_card_number_and_no_session_id`
-- AC-5 (REQ-6): 보기 앞뒤로 원장 파일과 관측 저장 파일의 내용이 바이트까지 같아요 · verify: `cargo test --locked --offline --test board_bundle_link_cli the_link_view_writes_nothing`
+- AC-5 (REQ-6): 보기는 파일·데이터베이스·프로세스·네트워크를 이름으로 쓰지 않고, 호출해도 입력이 그대로이며 같은 답을 두 번 줘요(원장·관측 저장 파일의 바이트 비교는 저장 모듈이 착지한 뒤 마감 조각에서) · verify: `cargo test --locked --offline --test board_bundle_link_cli the_link_view_writes_nothing`
 - AC-6 (REQ-7): 관측 저장이 없거나 행 하나가 읽히지 않으면 연결은 "알 수 없음"이고 읽히지 않은 행이 이름으로 나와요 · verify: `cargo test --locked --offline --test board_bundle_link_cli a_missing_store_or_an_unreadable_row_is_unknown`
 
 ## Scope
@@ -72,4 +72,11 @@ created: 2026-11-20
 
 ## Result
 
-(구현 뒤에 채워요.)
+조각 2 (연결 계산, 명령 없음; 리더 결정 노트 3636 의 D-4 (나)·필드 이름 확정):
+
+- 내용 모양을 확정했어요(BOARD 02 수집기와 맞추려고 그쪽 카드에 노트 3638 로 알렸어요). `pr-state@1` = `{number, state, head, review: null | {verdict: PASS|FAIL, head}}` (`review.head` 는 그 판정이 말하는 정확한 head), `bundle-run@1` = `{branch, source_sha, target_sha, commands[{check, exit}], not_run[], run_digest, specs[]}`. 둘 다 참조와 종료 코드뿐이고 명령 줄·로그 원문·세션 id·카드 번호가 없어요.
+- `src/board/link.rs`: `link(rows, lane) -> LinkView` 순수 함수(표준 라이브러리·serde 만 쓰고 `crate::` 를 쓰지 않아서 `src/lib.rs` 선언 없이 시험돼요). 연결 열쇠는 SHA 하나: 묶음 실행의 소스 SHA 와 같은 head 를 보인 적 있는 PR 이 그 묶음의 PR 이고, 같은 번호의 가장 새 행이 지금 head 예요. 효력은 저장하지 않고 읽을 때 계산해요(통과가 말하는 head 가 그 층의 지금 head 와 같을 때만).
+- RED 먼저: `todo!()` 껍데기로 시험 5개가 모두 실패(`0 passed; 5 failed`), 구현 뒤 5개 통과.
+- AC-1·2·3·5·6 met — 변이 5개를 시험이 잡았어요(`!=` 로 뒤집은 PR head 비교 → AC-1·2, `==` 를 `!=` 로 뒤집은 효력 판정 → AC-2·3, 한 층의 통과를 항상 무효로 → AC-3, 읽지 못한 행 이름 빼기 → AC-6, 같은 판정 중복 제거 빼기 → AC-2). 변이마다 `git status` 깨끗하게 복원했어요.
+- AC-4(밖으로 나가는 글, REQ-4·5)는 조각 3 이에요: 아직 하지 않았어요.
+- 돌리지 않은 것: 실제 관측 저장과의 연결(저장 모듈은 아직 가지에 없어요; `Row` 변환 한 줄은 마감 조각), `src/lib.rs` 의 모듈 선언(`pub mod board;` 는 BOARD 02 와 순서 맞추기), CI.
