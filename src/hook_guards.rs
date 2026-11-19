@@ -309,9 +309,24 @@ const CONFIRM_MERGE: &str = "MoAI tool-preflight: a pull request is merged throu
 /// The gate's own merge is the `moai gate-merge` process, whose child `gh api` call no hook
 /// sees. Only consulted when no deny applies to the line, like [`bash_confirm`].
 pub fn merge_confirm(command: &str, cwd: &Path) -> Option<&'static str> {
+    /// Shell words that open a command inside a compound statement.
+    const COMMAND_OPENERS: &[&str] = &[
+        "if", "then", "else", "elif", "while", "until", "do", "!", "{",
+    ];
     let merges = crate::claim_verify::shell_commands(command)
         .iter()
-        .any(|(name, args)| name == "gh" && gh_merges(args));
+        .any(|(name, args)| {
+            // A keyword that opens a command (`then gh …`, `do gh …`, `! gh …`, `{ gh …`) is
+            // not the command: read the word after it.
+            let mut words: Vec<&str> = std::iter::once(name.as_str())
+                .chain(args.iter().map(String::as_str))
+                .collect();
+            while words.len() > 1 && COMMAND_OPENERS.contains(&words[0]) {
+                words.remove(0);
+            }
+            let rest: Vec<String> = words[1..].iter().map(|w| w.to_string()).collect();
+            words[0] == "gh" && gh_merges(&rest)
+        });
     if !merges {
         return None;
     }

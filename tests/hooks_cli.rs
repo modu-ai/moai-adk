@@ -759,6 +759,14 @@ const DIRECT_MERGES: &[&str] = &[
     "echo hi && gh pr merge 5",
     "FOO=1 gh pr merge 5",
     "sh -c 'gh pr merge 5'",
+    // Compound statements: the command after a keyword is still a command.
+    "if true; then gh pr merge 5; fi",
+    "if true; then echo a; else gh pr merge 5; fi",
+    "for i in 1 2; do gh pr merge 5; done",
+    "while true; do gh pr merge 5; done",
+    "until false; do gh pr merge 5; done",
+    "! gh pr merge 5",
+    "{ gh pr merge 5; }",
 ];
 
 /// A temporary work tree (a hand-made `.git` folder) with or without a `.moai` folder.
@@ -884,6 +892,12 @@ fn merge_confirm_leaves_the_gate_and_reads_alone() {
         "echo gh pr merge 5",
         "gh issue comment 5 -b 'gh pr merge 5'",
         "grep -n 'gh pr merge' README.md",
+        // Keywords of compound statements do not turn other commands into merges.
+        "if true; then echo gh pr merge 5; fi",
+        "if gh pr view 5; then gh pr comment 5 --body ok; fi",
+        "for i in 1 2; do gh pr checks $i; done",
+        "! gh pr view 5",
+        "{ git merge feature; }",
     ] {
         let (code, decision, reason) = merge_preflight("claude", &root, command);
         assert_eq!(
