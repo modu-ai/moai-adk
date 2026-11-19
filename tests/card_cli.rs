@@ -8,7 +8,7 @@ use common::home::TempHome;
 use moai_cli::ledger;
 use serde_json::{json, Value};
 use std::path::Path;
-use std::process::Output;
+use std::process::{Output, Stdio};
 
 fn run(home: &TempHome, args: &[&str]) -> Output {
     home.command(args).output().expect("run moai")
@@ -624,4 +624,422 @@ fn the_help_examples_of_card_run_as_typed() {
     ));
     assert_eq!(shown["state"], json!("ready"));
     assert_eq!(shown["notes"].as_array().unwrap().len(), 1);
+}
+
+// ---- SPEC-20261119-card-secret-screen (C-122): one text screen for note, title, body and --ac.
+// Every input below is joined from pieces at run time, so this file holds no secret-shaped word.
+
+const EQ: &str = "=";
+
+fn words(parts: &[&str]) -> String {
+    parts.concat()
+}
+
+/// The card `C-1` of these tests, so a note has a card to go on.
+fn with_seed_card() -> (TempHome, String) {
+    let (home, project) = registered();
+    result(&run(
+        &home,
+        &["card", "add", "--title", "seed", "--project", &project],
+    ));
+    (home, project)
+}
+
+/// `card note C-1 --kind report --by agent-7 [extra]` with `text` on stdin.
+fn note_with(home: &TempHome, project: &str, extra: &[&str], text: &str) -> Output {
+    let mut args = vec!["card", "note", "C-1", "--kind", "report", "--by", "agent-7"];
+    args.extend_from_slice(extra);
+    args.extend_from_slice(&["--project", project]);
+    let mut child = home
+        .command(&args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("run moai");
+    common::feed_stdin(&mut child, text.as_bytes());
+    child.wait_with_output().unwrap()
+}
+
+/// The four text surfaces the screen covers: a note, a title, a body and a `--ac` entry.
+fn on_every_surface(home: &TempHome, project: &str, text: &str) -> Vec<(&'static str, Output)> {
+    vec![
+        ("note", note_with(home, project, &[], text)),
+        (
+            "title",
+            run(
+                home,
+                &["card", "add", "--title", text, "--project", project],
+            ),
+        ),
+        (
+            "body",
+            run(
+                home,
+                &[
+                    "card",
+                    "add",
+                    "--title",
+                    "t",
+                    "--body",
+                    text,
+                    "--project",
+                    project,
+                ],
+            ),
+        ),
+        (
+            "criterion",
+            run(
+                home,
+                &[
+                    "card",
+                    "add",
+                    "--title",
+                    "t",
+                    "--ac",
+                    text,
+                    "--project",
+                    project,
+                ],
+            ),
+        ),
+    ]
+}
+
+fn secret_names() -> Vec<String> {
+    vec![
+        words(&["pass", "word"]),
+        words(&["to", "ken"]),
+        words(&["sec", "ret"]),
+        words(&["api", "_", "key"]),
+        words(&["api", "-", "key"]),
+        words(&["max", "-", "to", "ken"]),
+        words(&["skip", "-", "pass", "word"]),
+        words(&["DB", "_", "PASS", "WORD"]),
+    ]
+}
+
+/// REQ-1, AC-1: a name whose `-`/`_` pieces hold a secret word is refused with any value (plain,
+/// empty, a number, a boolean), with or without leading dashes, on all four surfaces.
+#[test]
+fn secret_screen_refuses_secret_named_assignments_on_every_surface() {
+    let (home, project) = with_seed_card();
+    for name in secret_names() {
+        for value in ["abc123", "", "100", "true"] {
+            for dashes in ["--", ""] {
+                let text = format!("run {dashes}{name}{EQ}{value}");
+                for (surface, out) in on_every_surface(&home, &project, &text) {
+                    let (kind, message) = refusal(&out);
+                    assert_eq!(
+                        kind, "invalid_input",
+                        "{surface}: name `{name}` value `{value}` dashes `{dashes}`: {message}"
+                    );
+                }
+            }
+        }
+    }
+    assert_eq!(count(&home, "card"), 1, "only the seed card exists");
+    assert_eq!(count(&home, "card_note"), 0);
+    assert_eq!(count(&home, "card_ac"), 0);
+}
+
+/// REQ-2, REQ-3, REQ-4, AC-2: a name with no secret piece and a plain value goes through, a
+/// space-separated value goes through, a credential-shaped value is refused whatever the name,
+/// and a lower-case hyphenated `sk` name goes through.
+#[test]
+fn secret_screen_lets_plain_text_and_hyphenated_sk_names_through() {
+    let (home, project) = with_seed_card();
+    let ok = [
+        "login works after a restart".to_string(),
+        "run --foo=bar".to_string(),
+        "run --config=prod.yaml".to_string(),
+        words(&["run --to", "kens=3"]),
+        words(&["run --pass", "wordless=1"]),
+        "run --api-version=2".to_string(),
+        words(&["run --sec", "retive=1"]),
+        words(&["run --pass", "word hunter2"]),
+        words(&["see s", "k-learn-pipeline tuned"]),
+    ];
+    for text in &ok {
+        for (surface, out) in on_every_surface(&home, &project, text) {
+            let r = result(&out);
+            assert!(
+                r["action"] == json!("note") || r["action"] == json!("add"),
+                "{surface}: {text}: {r}"
+            );
+        }
+    }
+    let a36 = "A".repeat(36);
+    let shaped = [
+        words(&["run --out=", "AK", "IA", "ABCDEFGHIJKLMNOP"]),
+        words(&["gh", "p_", &a36]),
+        words(&["s", "k-", "Ab3", "cdefghijklmnop"]),
+        words(&["run --flag=", "s", "k-", "Ab3", "cdefghijklmnop"]),
+    ];
+    for text in &shaped {
+        for (surface, out) in on_every_surface(&home, &project, text) {
+            let (kind, message) = refusal(&out);
+            assert_eq!(kind, "invalid_input", "{surface}: {message}");
+        }
+    }
+}
+
+/// REQ-6, REQ-7, AC-3: a refusal is `invalid_input`, names the field, does not repeat the text,
+/// and a refused `card add` writes nothing.
+#[test]
+fn secret_screen_refusals_name_the_field_and_write_nothing() {
+    let (home, project) = with_seed_card();
+    let bad = words(&["run --pass", "word=zz9top"]);
+    let events = count(&home, "event");
+    let cards = count(&home, "card");
+
+    let (kind, m) = refusal(&run(
+        &home,
+        &["card", "add", "--title", &bad, "--project", &project],
+    ));
+    assert_eq!(kind, "invalid_input", "{m}");
+    assert!(m.contains("the title has 1 word"), "{m}");
+    let (_, m) = refusal(&run(
+        &home,
+        &[
+            "card",
+            "add",
+            "--title",
+            "t",
+            "--body",
+            &bad,
+            "--project",
+            &project,
+        ],
+    ));
+    assert!(m.contains("the body has 1 word"), "{m}");
+    let (_, m) = refusal(&run(
+        &home,
+        &[
+            "card",
+            "add",
+            "--title",
+            "t",
+            "--ac",
+            "fine",
+            "--ac",
+            &bad,
+            "--project",
+            &project,
+        ],
+    ));
+    assert!(m.contains("criterion 2 has 1 word"), "{m}");
+    let (_, m) = refusal(&note_with(&home, &project, &[], &bad));
+    assert!(m.contains("the note text has 1 word"), "{m}");
+    let (_, m) = refusal(&note_with(&home, &project, &["--ref", &bad], "plain body"));
+    assert!(m.contains("the note ref has 1 word"), "{m}");
+    assert!(!m.contains("zz9top"), "the value is not repeated: {m}");
+
+    assert_eq!(count(&home, "card"), cards, "a refused add makes no card");
+    assert_eq!(count(&home, "card_ac"), 0, "and no criterion");
+    assert_eq!(
+        count(&home, "card_note"),
+        0,
+        "a refused note stores nothing"
+    );
+    assert_eq!(count(&home, "event"), events, "and no event");
+}
+
+/// REQ-6, AC-4: one word counts once, however many things are wrong with it.
+#[test]
+fn secret_screen_counts_each_word_once() {
+    let (home, project) = with_seed_card();
+    let key = words(&["AK", "IA", "ABCDEFGHIJKLMNOP"]);
+    let one = format!("run --{}{EQ}{key}", words(&["to", "ken"]));
+    let two = format!("{one} and --{}{EQ}x", words(&["pass", "word"]));
+    for (text, n) in [(&one, 1), (&two, 2)] {
+        let (_, m) = refusal(&note_with(&home, &project, &[], text));
+        assert!(
+            m.contains(&format!("the note text has {n} word")),
+            "{n}: {m}"
+        );
+        let (_, m) = refusal(&run(
+            &home,
+            &["card", "add", "--title", text, "--project", &project],
+        ));
+        assert!(m.contains(&format!("the title has {n} word")), "{n}: {m}");
+    }
+}
+
+/// REQ-8, AC-6: rows that were stored before the screen existed are shown, not refused and not
+/// changed.
+#[test]
+fn secret_screen_leaves_stored_rows_alone() {
+    let (home, project) = with_seed_card();
+    result(&run(
+        &home,
+        &[
+            "card",
+            "add",
+            "--title",
+            "t",
+            "--ac",
+            "plain",
+            "--project",
+            &project,
+        ],
+    ));
+    let stored = words(&["run --pass", "word=zz9top"]);
+    raw(&home)
+        .execute(
+            "UPDATE card_ac SET text = ?1 WHERE card_id = 2 AND seq = 1",
+            [&stored],
+        )
+        .unwrap();
+    raw(&home)
+        .execute("UPDATE card SET title = ?1 WHERE card_id = 2", [&stored])
+        .unwrap();
+    let show = result(&run(&home, &["card", "show", "C-2", "--project", &project]));
+    assert_eq!(show["criteria"][0]["text"], json!(stored), "{show}");
+    assert_eq!(show["title"], json!(stored), "{show}");
+    let list = result(&run(&home, &["card", "list", &project]));
+    assert_eq!(list["count"], json!(2), "{list}");
+}
+
+/// REQ-5, AC-8: `card criterion-add --ac` takes its texts through the same function as
+/// `card add --ac` (`input::criterion_texts`), so the same screen refuses a secret-named word
+/// and no criterion is added.
+#[test]
+fn secret_screen_covers_criterion_add() {
+    let (home, project) = with_seed_card();
+    let bad = words(&["run --to", "ken=100"]);
+    let (kind, message) = refusal(&run(
+        &home,
+        &[
+            "card",
+            "criterion-add",
+            "C-1",
+            "--ac",
+            "fine",
+            "--ac",
+            &bad,
+            "--project",
+            &project,
+        ],
+    ));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("criterion 2 has 1 word"), "{message}");
+    assert_eq!(
+        count(&home, "card_ac"),
+        0,
+        "a refused criterion-add adds none"
+    );
+    let ok = result(&run(
+        &home,
+        &[
+            "card",
+            "criterion-add",
+            "C-1",
+            "--ac",
+            "plain words only",
+            "--project",
+            &project,
+        ],
+    ));
+    assert_eq!(ok["added"], json!([1]), "{ok}");
+}
+
+/// Audit B1 (leader note 3297): a name that starts with the `sk` prefix and holds hyphenated
+/// lower-case words is a name only while no `=` follows it. When the run is the name of an
+/// assignment and one of its pieces is a secret word (first, second or third piece, with or
+/// without leading dashes) the word is refused on all four surfaces; a bare run and an
+/// assignment whose pieces are all plain still go through.
+#[test]
+fn secret_screen_refuses_secret_names_behind_an_sk_prefix() {
+    let (home, project) = with_seed_card();
+    let sk = words(&["s", "k-"]);
+    let refused = [
+        format!("run {sk}learn-{}{EQ}1", words(&["pass", "word"])),
+        format!("run --{sk}foo-{}{EQ}1", words(&["to", "ken"])),
+        format!("run {sk}a-{}-b{EQ}x", words(&["sec", "ret"])),
+        format!("run {sk}a-b-{}{EQ}", words(&["to", "ken"])),
+        format!("run {sk}{}{EQ}1", words(&["api", "-", "key"])),
+        format!("run {sk}{}{EQ}1", words(&["pass", "word", "-", "x"])),
+    ];
+    for text in &refused {
+        for (surface, out) in on_every_surface(&home, &project, text) {
+            let (kind, message) = refusal(&out);
+            assert_eq!(kind, "invalid_input", "{surface}: {text}: {message}");
+            assert!(message.contains("1 word"), "{surface}: {text}: {message}");
+        }
+    }
+    let passes = [
+        format!("see {sk}learn-pipeline tuned"),
+        format!("see {sk}learn-{} tuned", words(&["pass", "word"])),
+        format!("run {sk}learn-pipeline{EQ}on"),
+        format!("run --{sk}learn-pipeline{EQ}on"),
+    ];
+    for text in &passes {
+        for (surface, out) in on_every_surface(&home, &project, text) {
+            let r = result(&out);
+            assert!(
+                r["action"] == json!("note") || r["action"] == json!("add"),
+                "{surface}: {text}: {r}"
+            );
+        }
+    }
+}
+
+/// Audit N1 (REQ-3): a value with the shape of a credential is refused after any separator inside
+/// a word (an equals sign, a colon, a comma), after a plain name, not only after `--flag=`. Plain
+/// sentences with colons and commas still go through.
+#[test]
+fn secret_screen_refuses_credential_shapes_after_any_separator() {
+    let (home, project) = with_seed_card();
+    let aws = words(&["AK", "IA", "ABCDEFGHIJKLMNOP"]);
+    let sk = words(&["s", "k-", "Ab3", "cdefghijklmnop"]);
+    let jwt = words(&[
+        "ey",
+        "J",
+        "hbGciOiJIUzI1NiJ9abcdefg.payload123.signature123",
+    ]);
+    let refused = [
+        format!("config{EQ}{aws}"),
+        format!("key:{aws}"),
+        format!("ids a,{aws} done"),
+        format!("x{EQ}y,{aws}"),
+        format!("run --opt{EQ}a,{aws}"),
+        format!("note:{sk}"),
+        format!("cfg{EQ}{sk}"),
+        format!("ref:{jwt}"),
+        format!("a,{jwt}"),
+        format!("(see:{aws})"),
+    ];
+    for text in &refused {
+        for (surface, out) in on_every_surface(&home, &project, text) {
+            let (kind, message) = refusal(&out);
+            assert_eq!(kind, "invalid_input", "{surface}: {text}: {message}");
+            assert!(message.contains("1 word"), "{surface}: {text}: {message}");
+        }
+    }
+    // Twelve plain texts, with colons, commas and equals signs, keep going through.
+    let plain = [
+        "see: the list, then run it",
+        "ratio 3:1, ok",
+        "steps: build, test, ship",
+        "url https://example.com/a:b,c",
+        "mode=fast, retries=3",
+        "time 12:30, room b",
+        "key: value pairs, one per line",
+        "a,b,c and d:e:f",
+        "see section 4.2: naming, scope",
+        "env=dev:eu,us",
+        "the a1:b2 pair, sorted",
+        "skills: plan, impl",
+    ];
+    for text in plain {
+        for (surface, out) in on_every_surface(&home, &project, text) {
+            let r = result(&out);
+            assert!(
+                r["action"] == json!("note") || r["action"] == json!("add"),
+                "{surface}: {text}: {r}"
+            );
+        }
+    }
 }
