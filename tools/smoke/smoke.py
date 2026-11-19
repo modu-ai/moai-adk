@@ -22,11 +22,14 @@ The last line is always `smoke: <area> pass|fail steps=<n> ...`. Exit codes: 0 =
 
 Isolation: the environment of every step is built from nothing but HOME, PATH, TMPDIR, the
 locale, the terminal and the git settings, so the caller's keys, host variables and HOME never
-reach a step. The temporary base must not lie inside the caller's real home folder (it is
-refused before anything is created), and the harness only compares the real home's name (HOME
-and the account entry) with the base; it lists and opens nothing under it. No network, no real host: the launcher's host is
-a fake executable the harness writes. PATH is never used to find the binary under test: a
-`moai` wrapper on PATH follows `$HOME/.moai-cli/path`, which an empty HOME does not have.
+reach a step; the step PATH is the harness's own folder plus /usr/bin and /bin. The temporary
+base must not lie inside the caller's real home folder (it is refused before anything is
+created); the harness compares file identity, by `stat` on the base's ancestors and on the real
+home (HOME and the account entry), so another letter case or a firmlink spelling is refused
+too. It lists and opens nothing under the real home. If the temporary root cannot be removed
+the harness names it and fails. No network, no real host: the launcher's host is a fake
+executable the harness writes. PATH is never used to find the binary under test: a `moai`
+wrapper on PATH follows `$HOME/.moai-cli/path`, which an empty HOME does not have.
 """
 
 import argparse
@@ -75,22 +78,92 @@ class Usage(Exception):
     """A usage error or a refused base: exit 2."""
 
 
-def real_homes() -> set:
-    """The caller's real home folder, as names only (from HOME and the account entry)."""
+def account_home():
+    """The home folder the account entry names, or None."""
+    try:
+        return pwd.getpwuid(os.getuid()).pw_dir
+    except (KeyError, OSError):
+        return None
+
+
+def real_homes(environ=None, account=account_home) -> set:
+    """The caller's real home folder (from HOME and the account entry), resolved."""
     homes = set()
-    env_home = os.environ.get("HOME")
+    env_home = (os.environ if environ is None else environ).get("HOME")
     if env_home:
         homes.add(os.path.realpath(env_home))
-    try:
-        homes.add(os.path.realpath(pwd.getpwuid(os.getuid()).pw_dir))
-    except (KeyError, OSError):
-        pass
+    entry = account()
+    if entry:
+        homes.add(os.path.realpath(entry))
     homes.discard(os.sep)
     return homes
 
 
+def same_folder(one: str, other: str) -> bool:
+    try:
+        return os.path.samefile(one, other)
+    except OSError:
+        return False
+
+
 def inside(path: str, folder: str) -> bool:
-    return path == folder or path.startswith(folder.rstrip(os.sep) + os.sep)
+    """True when `path` is `folder` or lies under it, by file identity: another letter case
+    on a case-insensitive volume or a firmlink spelling (`/System/Volumes/Data/Users/...`)
+    names the same folder and compares equal here, which a string comparison misses."""
+    current = os.path.realpath(path)
+    while True:
+        if same_folder(current, folder):
+            return True
+        parent = os.path.dirname(current)
+        if parent == current:
+            return False
+        current = parent
+
+
+def entries(folder: Path, skip: str = "") -> list:
+    """Every entry under `folder` (files, folders and links; links are not followed), as
+    relative names; a top-level entry called `skip` is left out."""
+    found = []
+
+    def visit(current: Path):
+        with os.scandir(current) as listing:
+            for item in sorted(listing, key=lambda e: e.name):
+                if skip and current == folder and item.name == skip:
+                    continue
+                found.append(str(Path(item.path).relative_to(folder)))
+                if item.is_dir(follow_symlinks=False):
+                    visit(Path(item.path))
+
+    visit(folder)
+    return found
+
+
+def make_removable(path: str):
+    """Give every folder under `path` back its owner permissions (a step may have left a
+    mode-000 folder), so the removal can list it. Links are not followed."""
+    try:
+        if os.path.islink(path):
+            return
+        os.chmod(path, 0o700)
+        with os.scandir(path) as listing:
+            children = [e.path for e in listing if e.is_dir(follow_symlinks=False)]
+    except OSError:
+        return
+    for child in children:
+        make_removable(child)
+
+
+def remove_root(root: Path) -> str:
+    """Remove the temporary root; returns "" when it is gone, else why it is still there."""
+    reason = ""
+    make_removable(str(root))
+    try:
+        shutil.rmtree(root)
+    except OSError as e:
+        reason = f"{e.filename or root}: {e.strerror or e}"
+    if os.path.lexists(root):
+        return reason or "it is still there after the removal"
+    return ""
 
 
 def clip(text: str) -> str:
@@ -120,11 +193,10 @@ class Smoke:
     # -- the environment of every step ------------------------------------------------
 
     def env(self) -> dict:
-        path = [str(self.fakebin)]
-        git_dir = os.path.dirname(self.git)
-        if git_dir and git_dir not in path:
-            path.append(git_dir)
-        path += ["/usr/bin", "/bin"]
+        # Only the harness's own folder and the system folders: the caller's PATH, and the
+        # folder the caller's git lives in (a version manager's shim folder would expose an
+        # installed `moai`), never reach a step. `git` is linked into fakebin instead.
+        path = [str(self.fakebin), "/usr/bin", "/bin"]
         env = {
             "HOME": str(self.home),
             "PATH": os.pathsep.join(path),
@@ -143,6 +215,8 @@ class Smoke:
     def prepare(self):
         for folder in (self.home, self.proj, self.fakebin, self.tmp):
             folder.mkdir(parents=True)
+        if os.path.isabs(self.git) and not (self.fakebin / "git").exists():
+            (self.fakebin / "git").symlink_to(os.path.realpath(self.git))
         done = subprocess.run(
             [self.git, "-c", "gc.auto=0", "init", "-q"],
             cwd=self.proj,
@@ -210,21 +284,31 @@ class Smoke:
         out = b""
         deadline = time.monotonic() + timeout
         timed_out = False
-        while True:
-            left = deadline - time.monotonic()
-            if left <= 0:
-                timed_out = True
-                break
-            ready, _, _ = select.select([fd], [], [], min(left, 0.5))
-            if not ready:
-                continue
+        try:
+            while True:
+                left = deadline - time.monotonic()
+                if left <= 0:
+                    timed_out = True
+                    break
+                ready, _, _ = select.select([fd], [], [], min(left, 0.5))
+                if not ready:
+                    continue
+                try:
+                    chunk = os.read(fd, 4096)
+                except OSError:
+                    break
+                if not chunk:
+                    break
+                out += chunk
+        except BaseException:
+            # interrupted: do not leave the child running
             try:
-                chunk = os.read(fd, 4096)
+                os.kill(pid, signal.SIGKILL)
             except OSError:
-                break
-            if not chunk:
-                break
-            out += chunk
+                pass
+            os.waitpid(pid, 0)
+            os.close(fd)
+            raise
         if timed_out:
             os.kill(pid, signal.SIGKILL)
         _, status = os.waitpid(pid, 0)
@@ -238,19 +322,13 @@ class Smoke:
 
     # -- small checks -------------------------------------------------------------------
 
-    def home_files(self) -> list:
-        return sorted(
-            str(Path(root, name).relative_to(self.home))
-            for root, _, names in os.walk(self.home)
-            for name in names
-        )
+    def home_entries(self) -> list:
+        """Everything under the temporary HOME: files, folders and links."""
+        return entries(self.home)
 
-    def project_files(self) -> list:
-        found = []
-        for root, dirs, names in os.walk(self.proj):
-            dirs[:] = [d for d in dirs if d != ".git"]
-            found += [str(Path(root, n).relative_to(self.proj)) for n in names]
-        return sorted(found)
+    def project_entries(self) -> list:
+        """Everything the steps wrote into the temporary project (its own `.git` aside)."""
+        return entries(self.proj, skip=".git")
 
     # -- the trace ----------------------------------------------------------------------
 
@@ -260,9 +338,10 @@ class Smoke:
         started = time.monotonic()
         try:
             fn()
-        except StepFailed as e:
+        except Exception as e:  # a StepFailed, or anything the step did not expect
+            reason = str(e) if isinstance(e, StepFailed) else f"unexpected {type(e).__name__}: {e}"
             took = time.monotonic() - started
-            print(f"[FAIL] {name} ({took:.2f}s): {e}", flush=True)
+            print(f"[FAIL] {name} ({took:.2f}s): {reason}", flush=True)
             if self.last:
                 print(f"  command: {' '.join(self.last['command'])}")
                 print(f"  exit: {self.last['exit']}")
@@ -306,9 +385,9 @@ class Smoke:
             raise StepFailed(f"home_state_root {state} is not inside the temporary HOME")
 
     def home_untouched(self):
-        files = self.home_files()
-        if files:
-            raise StepFailed(f"the temporary HOME holds {len(files)} files: {files[:5]}")
+        found = self.home_entries()
+        if found:
+            raise StepFailed(f"the temporary HOME holds {len(found)} entries: {found[:5]}")
 
     def update_preview(self):
         result = self.envelope(self.exec([self.staged, "update"]))
@@ -317,9 +396,9 @@ class Smoke:
         digest = result.get("plan_digest")
         if not isinstance(digest, str) or not digest.startswith("sha256:"):
             raise StepFailed("the preview has no plan_digest")
-        files = self.home_files()
-        if files:
-            raise StepFailed(f"the preview wrote {len(files)} files: {files[:5]}")
+        found = self.home_entries()
+        if found:
+            raise StepFailed(f"the preview wrote {len(found)} entries: {found[:5]}")
         self.digest = digest
 
     def update_confirm(self):
@@ -348,9 +427,9 @@ class Smoke:
         digest = result.get("plan_digest")
         if not isinstance(digest, str) or not digest.startswith("sha256:"):
             raise StepFailed("the plan has no plan_digest")
-        files = self.project_files()
-        if files:
-            raise StepFailed(f"the plan wrote {len(files)} files: {files[:5]}")
+        found = self.project_entries()
+        if found:
+            raise StepFailed(f"the plan wrote {len(found)} entries: {found[:5]}")
         self.digest = digest
         self.plan_text = json.dumps(result)
 
@@ -443,13 +522,14 @@ def resolve_binary(arg, repo: Path) -> Path:
     return binary.resolve()
 
 
-def temp_base() -> str:
-    """The folder the temporary root goes in; refused when it is inside the real home."""
-    base = os.environ.get("TMPDIR") or "/tmp"
+def temp_base(tmpdir=None, homes=None) -> str:
+    """The folder the temporary root goes in; refused when it is inside the real home
+    (compared by file identity, see `inside`)."""
+    base = tmpdir or os.environ.get("TMPDIR") or "/tmp"
     if not os.path.isdir(base):
         raise Usage(f"the temporary folder base {base} is not a folder")
     resolved = os.path.realpath(base)
-    for home in sorted(real_homes()):
+    for home in sorted(real_homes() if homes is None else homes):
         if inside(resolved, home):
             raise Usage(
                 f"the temporary folder base {base} lies inside the real home folder {home}; "
@@ -465,13 +545,17 @@ def run_area(area: str, binary: Path, repo: Path, base: Path, name_in_all: bool)
         print(f"== area {area} ==", flush=True)
     try:
         smoke.prepare()
-    except StepFailed as e:
+    except (StepFailed, OSError) as e:
         print(f"[FAIL] prepare (0.00s): {e}", flush=True)
         return 1, "prepare"
     for name, fn in smoke.plan(area):
         if not smoke.step(name, fn):
             break
     return smoke.steps, smoke.failed
+
+
+def terminate(signum, frame):
+    raise KeyboardInterrupt
 
 
 def main(argv=None) -> int:
@@ -495,6 +579,7 @@ def main(argv=None) -> int:
     print(f"smoke: start area={args.area} bin={binary} root={root}", flush=True)
     steps = 0
     failed = None
+    previous = signal.signal(signal.SIGTERM, terminate)
     try:
         areas = AREAS if args.area == "all" else (args.area,)
         for area in areas:
@@ -504,11 +589,19 @@ def main(argv=None) -> int:
             if bad:
                 failed = f"{area}/{bad}" if args.area == "all" else bad
                 break
+    except KeyboardInterrupt:
+        # SIGTERM or Ctrl-C: the running command is already stopped; clean up and say so.
+        failed = "interrupted"
+        print("[FAIL] interrupted: the run was stopped by a signal", flush=True)
     finally:
+        signal.signal(signal.SIGTERM, previous)
         if args.keep:
             print(f"smoke: kept root={root}", flush=True)
         else:
-            shutil.rmtree(root, ignore_errors=True)
+            left = remove_root(root)
+            if left:
+                print(f"smoke: could not remove root={root}: {left}", flush=True)
+                failed = failed or "cleanup"
     took = time.monotonic() - started
     if failed:
         print(f"smoke: {args.area} fail steps={steps} failed={failed} time={took:.1f}s", flush=True)
