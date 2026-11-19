@@ -176,3 +176,32 @@ fn an_empty_prefix_or_one_with_a_control_character_is_refused_before_the_ledger_
         assert!(message.contains("title prefix"), "{bad:?}: {message}");
     }
 }
+
+/// The prefix is taken as typed (a trailing space is part of it, nothing is trimmed) and its length
+/// counts characters, not bytes: Hangul titles match a Hangul prefix.
+#[test]
+fn the_prefix_is_taken_as_typed_and_counts_characters() {
+    let home = TempHome::new();
+    let project = home.project("demo");
+    ledger::register(home.path(), "demo").unwrap();
+    let project = project.to_str().unwrap().to_string();
+    for title in ["flaky: one", "flaky:tight", "간헐: a", "간헐 b"] {
+        result(&run(
+            &home,
+            &["card", "add", "--title", title, "--project", &project],
+        ));
+    }
+    let with = |prefix: &str| {
+        let r = result(&run(
+            &home,
+            &["card", "list", &project, "--title-prefix", prefix],
+        ));
+        names(&r)
+    };
+    // The trailing space is kept: `flaky:tight` does not start with `flaky: `.
+    assert_eq!(with("flaky: "), vec!["C-1"]);
+    assert_eq!(with("flaky:"), vec!["C-1", "C-2"]);
+    // Characters, not bytes.
+    assert_eq!(with("간헐: "), vec!["C-3"]);
+    assert_eq!(with("간헐"), vec!["C-3", "C-4"]);
+}

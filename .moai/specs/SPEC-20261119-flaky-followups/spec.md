@@ -109,7 +109,8 @@ AC-4 증거(RED→GREEN): RED 는 `tests/gate_collect.rs` 가 `no field attempt`
 
 **조각 B(`card list --title-prefix`) — 2026-11-19, 같은 가지(로컬 `v2026.11.0` `05cbe0ac67` 병합 위).** `src/ops/card.rs` 는 C-125 가 17:30Z 에 풀어서(노트 3417) 한 커밋에 쓰고 곧바로 반납했어요(C-129 카드에 한 줄).
 - 바꾼 것: `card::command::list_filtered`(`list` 는 `list_filtered(.., None)`), 접두어는 입력 그대로(자르지 않음), 비었거나 제어 문자가 있으면 원장을 읽기 전에 `card list refused: the title prefix is empty` / `… has a control character`(`invalid_input`), 비교는 같은 쿼리에서 `substr(title, 1, length(?2)) = ?2`(대소문자 구분)와 `--state` 를 AND 로. clap 옵션 `--title-prefix`(설명은 문서 주석이라 `card list --help` 에 보여요).
-- AC-3 증거: RED 는 `tests/card_list_title_prefix.rs` 4개가 `unexpected argument '--title-prefix'` 로 실패, 연결 뒤 4/4, `tests/card_cli.rs` 18 통과. 시험은 접두어 일치·대소문자·시험 없음과 전과 같은 출력(카드마다 필드가 같음)·`--state` 와 함께·빈 값/제어 문자(원장이 없는 프로젝트에서도 거부, 유효한 접두어는 `absent` 로 성공)를 지켜요.
+- AC-3 증거: RED 는 `tests/card_list_title_prefix.rs` 4개가 `unexpected argument '--title-prefix'` 로 실패, 연결 뒤 4/4, `tests/card_cli.rs` 22 통과. 시험은 접두어 일치·대소문자·시험 없음과 전과 같은 출력(카드마다 필드가 같음)·`--state` 와 함께·빈 값/제어 문자(원장이 없는 프로젝트에서도 거부, 유효한 접두어는 `absent` 로 성공)를 지켜요.
+- 감사(구현자가 아닌 새 읽기 전용 에이전트, head `a22188fb04`): AUDIT-VERDICT: PASS, 막는 것 0. 비차단 N1(시험이 접두어 `trim` 변이와 `length` 를 바이트로 세는 변이를 못 잡음)은 시험 `the_prefix_is_taken_as_typed_and_counts_characters`(끝 공백·`flaky:tight`·한글 제목)로 닫았고 두 변이를 다시 돌려 잡혔어요. N2(`card_cli` 개수 18 → 22)는 고쳤어요. N3(`U+2028/9` 는 거부하지 않음 — 제목에 못 들어가 해 없음)·N4(앞이 `-` 인 접두어는 `--title-prefix=-x` 형으로만 — clap 동작)·N5(문서 행 미반영)·N6(`Moai-Session` 형식)은 비차단으로 남겨요. 감사가 돌린 것: 새 시험 4 + `card_cli` 22, `bundle_build_cli` 14·`bundle_verify_cli` 12(`list(.., None)` 호출자), clippy 0, 변이 M1·M3 재현.
 - 변이 4개(모두 시험이 잡음): 빈 값 거부 삭제(M1), 제어 문자 거부 삭제(M2), 대소문자 무시(M3), `--state` 와 접두를 OR 로(M4).
 - 못 한 것: `docs/design-review/appendix/operations/card.md` 9행의 옵션 표기(C-129 가 보유) — 후속 한 줄 또는 C-129 쪽 반영이 필요해요.
 
