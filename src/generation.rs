@@ -616,6 +616,7 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
         language: request.language.clone(),
         workflow_reference: request.workflow_reference.clone(),
         local_file: request.local_file.clone(),
+        picks: Vec::new(),
     };
     let agents = agents_plan_for(
         &root,
@@ -1172,6 +1173,7 @@ pub fn generation_apply(
         language: p.request.language.clone(),
         workflow_reference: p.request.workflow_reference.clone(),
         local_file: p.request.local_file.clone(),
+        picks: Vec::new(),
     };
     let own_output = reference_is_own_output(&root, &p.request);
     let agents_plan: AgentsPlan = agents_plan_for(&root, agents_request.clone(), own_output)?;

@@ -41,13 +41,26 @@ pub struct AgentsRequest {
     /// `none` (do not create), `ignored` (create once and add a .gitignore rule) or
     /// `tracked` (create once, no ignore rule). The personal file is opt-in by design.
     pub local_file: String,
+    /// What the user picked for a conflict (SPEC-20261119-agents-conflict-choices): ids from
+    /// [`PICKS`]. Absent when empty, so a request without picks digests as before.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub picks: Vec<String>,
+}
+
+/// The ids a request's `picks` may hold. `append-managed` appends the managed section to an
+/// AGENTS.md whose block was removed; `skip-conflicts` leaves each conflicting file as it is;
+/// `claude-import` adds the `@AGENTS.md` line to a CLAUDE.md that shadows AGENTS.md.
+pub const PICKS: [&str; 3] = ["append-managed", "skip-conflicts", "claude-import"];
+
+fn picked(r: &AgentsRequest, id: &str) -> bool {
+    r.picks.iter().any(|p| p == id)
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct FilePlan {
     pub path: String,
-    /// create | merge | append | unchanged | conflict
+    /// create | merge | append | unchanged | conflict | skip (a conflict the user chose to leave)
     pub action: String,
     /// Design intent for generated projects, not a measured git state. The `.gitignore` row
     /// asks git read-only questions (`ignore_block`: up to five calls, one of them a throw-away
@@ -73,7 +86,20 @@ pub struct AgentsPlan {
     /// preserved, never edited; actual host loading stays not_run.
     pub host_notes: Vec<String>,
     pub warnings: Vec<String>,
+    /// A CLAUDE.md that shadows AGENTS.md on Claude Code and does not import it. Information
+    /// for the user's pick: absent when none shadows, and not part of the plan digest.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub claude_shadow: Option<ClaudeShadow>,
     pub plan_digest: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct ClaudeShadow {
+    /// `CLAUDE.md` or `.claude/CLAUDE.md`, relative to the project.
+    pub path: String,
+    /// The line `claude-import` appends to it.
+    pub import_line: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -123,7 +149,40 @@ fn validate(r: &AgentsRequest) -> Result<()> {
     {
         return Err("invalid agents request; no values were logged".into());
     }
+    if r.picks.iter().any(|p| !PICKS.contains(&p.as_str())) {
+        // Same phrase as above, so the error keeps its `invalid_input` kind (contract.rs).
+        return Err(
+            "invalid agents request; no values were logged; picks holds an id this tool does not know"
+                .into(),
+        );
+    }
     Ok(())
+}
+
+/// The CLAUDE.md that shadows AGENTS.md, from the project files alone (no HOME, no `claude`
+/// run): the first of `CLAUDE.md` and `.claude/CLAUDE.md` that exists and does not import it.
+/// Only a profile that targets the `claude` host has one. The import line is relative to the
+/// file it goes into.
+fn claude_shadow(root: &Path, hosts: &[String]) -> Option<ClaudeShadow> {
+    if !hosts.iter().any(|h| h == "claude") {
+        return None;
+    }
+    [
+        ("CLAUDE.md", "@AGENTS.md"),
+        (".claude/CLAUDE.md", "@../AGENTS.md"),
+    ]
+    .into_iter()
+    .find(|(rel, _)| {
+        // A link is not a file this tool may write through (`apply::target` refuses it), and a
+        // CLAUDE.md linked to AGENTS.md already loads it.
+        let path = root.join(rel);
+        std::fs::symlink_metadata(&path).is_ok_and(|m| m.is_file())
+            && !crate::claude::imports_agents(&path)
+    })
+    .map(|(rel, line)| ClaudeShadow {
+        path: rel.into(),
+        import_line: line.into(),
+    })
 }
 
 pub(crate) fn markers(id: &str, comment: &str) -> (String, String) {
@@ -335,6 +394,7 @@ pub fn is_generated_local(bytes: &[u8]) -> bool {
                 language: (*language).into(),
                 workflow_reference: String::new(),
                 local_file: (*local_file).into(),
+                picks: Vec::new(),
             };
             render_local(&request).as_bytes() == bytes
         })
@@ -928,6 +988,14 @@ fn baseline_for(m: Option<&Manifest>, path: &str) -> Option<String> {
 const BLOCK_ABSENT: &str =
     "managed block absent; user deletion preserved (re-adopt requires an explicit request)";
 
+/// The conflict detail of a baseline that has no block in the file any more.
+const BLOCK_MISSING: &str = "managed block missing or removed; baseline mismatch";
+const APPEND_PICKED: &str =
+    "append-managed picked: the managed section is added at the end; every other byte is kept";
+const SKIP_PICKED: &str = "skip-conflicts picked: the file is kept as it is";
+/// Marks the CLAUDE.md import write inside the apply loop; it is not a manifest section id.
+const CLAUDE_IMPORT: &str = "claude-import";
+
 /// Three-way plan of one managed file. Exposed (Issue #1989, 5b) so 03-C's
 /// `generation.rs` can call the engine per `FileKind` instead of reimplementing it.
 pub fn section_plan(
@@ -984,7 +1052,7 @@ pub fn section_plan(
         (Decision::Apply, true, true) => "merge",
         (Decision::Conflict, _, _) => {
             plan.detail = Some(if block_digest.is_none() {
-                "managed block missing or removed; baseline mismatch".into()
+                BLOCK_MISSING.into()
             } else {
                 "managed block edited after baseline; preserve and review".into()
             });
@@ -1230,15 +1298,40 @@ pub(crate) fn agents_plan_for(
     .collect();
 
     let agents = read_opt(&target(&root, "AGENTS.md")?)?;
-    files.push(section_plan(
+    let agents_rendered = render_agents(&profile, &request, &root);
+    let mut agents_row = section_plan(
         "AGENTS.md",
         true,
         AGENTS_SECTION,
         "html",
         agents.as_deref(),
         baseline_for(m, "AGENTS.md"),
-        &render_agents(&profile, &request, &root),
-    )?);
+        &agents_rendered,
+    )?;
+    // `append-managed`: a baseline whose block is gone is planned as a first append (no
+    // baseline), which keeps every other byte. An edited block or malformed markers stay
+    // conflicts: only the missing-block conflict is turned.
+    if picked(&request, "append-managed")
+        && agents_row.action == "conflict"
+        && agents_row.detail.as_deref() == Some(BLOCK_MISSING)
+    {
+        let appended = section_plan(
+            "AGENTS.md",
+            true,
+            AGENTS_SECTION,
+            "html",
+            agents.as_deref(),
+            None,
+            &agents_rendered,
+        )?;
+        if appended.action == "append" {
+            agents_row = FilePlan {
+                detail: Some(APPEND_PICKED.into()),
+                ..appended
+            };
+        }
+    }
+    files.push(agents_row);
 
     if let Some(agents_file) = files.first() {
         let rendered_len = render_agents(&profile, &request, &root).len();
@@ -1353,13 +1446,48 @@ pub(crate) fn agents_plan_for(
         files.push(plan);
     }
 
+    // `claude-import`: the one line that makes a shadowing CLAUDE.md load AGENTS.md. Not a
+    // managed section: the file stays the user's (no baseline, never recorded as owned).
+    let shadow = claude_shadow(&root, &profile.hosts);
+    if let Some(s) = shadow
+        .as_ref()
+        .filter(|_| picked(&request, "claude-import"))
+    {
+        let current = read_opt(&target(&root, &s.path)?)?;
+        files.push(FilePlan {
+            path: s.path.clone(),
+            action: "append".into(),
+            tracked_by_default: true,
+            expected_sha256: current.as_deref().map(digest),
+            section_id: None,
+            baseline_sha256: None,
+            rendered_sha256: Some(digest(s.import_line.as_bytes())),
+            detail: Some(format!(
+                "claude-import picked: `{}` is added at the end; every other byte is kept",
+                s.import_line
+            )),
+        });
+    }
+
+    // `skip-conflicts`: a conflicting file is left as it is and the rest of the plan applies.
+    if picked(&request, "skip-conflicts") {
+        for f in files.iter_mut().filter(|f| f.action == "conflict") {
+            let why = f.detail.take().unwrap_or_else(|| "conflict".into());
+            f.action = "skip".into();
+            f.detail = Some(format!("{SKIP_PICKED} ({why})"));
+        }
+    }
+
     let manifest_bytes = read_opt(&target(&root, &manifest_rel)?)?;
     // #2936 Q3 B: the manifest is `unchanged` when every other file is and the bytes an apply
-    // would publish equal the file on disk, so a re-run plans `unchanged` throughout.
+    // would publish equal the file on disk, so a re-run plans `unchanged` throughout. A
+    // skipped file adds nothing to the manifest either, so it counts like `unchanged`.
     let manifest_action = match &manifest_bytes {
         None => "create",
         Some(disk)
-            if files.iter().all(|f| f.action == "unchanged")
+            if files
+                .iter()
+                .all(|f| f.action == "unchanged" || f.action == "skip")
                 && manifest_bytes_of(&predict_manifest(
                     &root,
                     &profile,
@@ -1394,6 +1522,7 @@ pub(crate) fn agents_plan_for(
         files,
         host_notes,
         warnings,
+        claude_shadow: shadow,
         plan_digest: String::new(),
     };
     plan.plan_digest = plan_digest(&plan);
@@ -1555,6 +1684,19 @@ pub(crate) fn agents_apply_amended_for(
         if f.path == manifest_rel {
             continue;
         }
+        if f.action == "skip" {
+            // The user picked to leave this file: no write, no baseline. The receipt names it so
+            // recovery tooling sees why a planned file was not touched.
+            receipt.entry(
+                &f.path,
+                "skip",
+                f.expected_sha256.as_deref(),
+                f.expected_sha256.as_deref(),
+                false,
+                f.detail.clone(),
+            );
+            continue;
+        }
         if f.action == "unchanged" {
             // Recovery after an interrupted apply: a managed block that already equals the
             // rendered text becomes the baseline (first write or interrupted update); a
@@ -1624,6 +1766,20 @@ pub(crate) fn agents_apply_amended_for(
                 (out, Some(IGNORE_SECTION))
             }
             "AGENTS.local.md" => (render_local(&p.request).into_bytes(), None),
+            // `claude-import`: only the import line, after every earlier byte. The path is
+            // checked against the shadow this tool finds now, so a plan cannot name another file.
+            path if p.request.picks.iter().any(|x| x == "claude-import")
+                && claude_shadow(&root, &profile.hosts).is_some_and(|s| s.path == path) =>
+            {
+                let shadow = claude_shadow(&root, &profile.hosts).ok_or("unknown planned path")?;
+                let mut out = before.clone().unwrap_or_default();
+                if !out.is_empty() && !out.ends_with(b"\n") {
+                    out.push(b'\n');
+                }
+                out.extend_from_slice(shadow.import_line.as_bytes());
+                out.push(b'\n');
+                (out, Some(CLAUDE_IMPORT))
+            }
             _ => return Err("unknown planned path".into()),
         };
         // REQ-01B-08: keep the before bytes before publishing so recovery can restore
@@ -1715,6 +1871,8 @@ pub(crate) fn agents_apply_amended_for(
                     Some(ignore_kind(ignore_has_rule(block))),
                 );
             }
+            // The user's own CLAUDE.md gained a line: it is neither owned nor created once.
+            Some(CLAUDE_IMPORT) => {}
             _ => {
                 if !created.contains(&f.path) {
                     created.push(f.path.clone());
@@ -1896,6 +2054,7 @@ mod tests {
             language: language.into(),
             workflow_reference: "skills/moai/workflows/".into(),
             local_file: "none".into(),
+            picks: Vec::new(),
         };
         let plain: Profile = serde_json::from_value(base.clone()).unwrap();
         let without = render_agents(&plain, &request("en"), root.path());
@@ -1947,6 +2106,7 @@ mod tests {
             language: language.into(),
             workflow_reference: "skills/moai/workflows/".into(),
             local_file: "tracked".into(),
+            picks: Vec::new(),
         };
         let first = agents_plan(root.path(), request("en")).unwrap();
         let digest = first.plan_digest.clone();
@@ -2043,6 +2203,7 @@ mod tests {
                 language: "en".into(),
                 workflow_reference: "skills/moai/workflows/".into(),
                 local_file: "tracked".into(),
+                picks: Vec::new(),
             },
         )
         .unwrap();
@@ -2056,6 +2217,7 @@ mod tests {
                     language: "en".into(),
                     workflow_reference: "skills/moai/workflows/".into(),
                     local_file: "tracked".into(),
+                    picks: Vec::new(),
                 },
             )
             .unwrap()
@@ -2073,6 +2235,7 @@ mod tests {
                 language: "ko".into(),
                 workflow_reference: "skills/moai/workflows/".into(),
                 local_file: "tracked".into(),
+                picks: Vec::new(),
             },
         )
         .unwrap();
@@ -2112,6 +2275,7 @@ mod tests {
                 language: "en".into(),
                 workflow_reference: "skills/moai/workflows/".into(),
                 local_file: "tracked".into(),
+                picks: Vec::new(),
             },
         )
         .unwrap();
@@ -2125,6 +2289,7 @@ mod tests {
                     language: "en".into(),
                     workflow_reference: "skills/moai/workflows/".into(),
                     local_file: "tracked".into(),
+                    picks: Vec::new(),
                 },
             )
             .unwrap()
@@ -2144,6 +2309,7 @@ mod tests {
                 language: "ko".into(),
                 workflow_reference: "skills/moai/workflows/".into(),
                 local_file: "tracked".into(),
+                picks: Vec::new(),
             },
         )
         .unwrap();
@@ -2204,6 +2370,7 @@ mod tests {
             language: "en".into(),
             workflow_reference: "skills/moai/workflows/".into(),
             local_file: "tracked".into(),
+            picks: Vec::new(),
         };
         let p = agents_plan(root.path(), request).unwrap();
         let digest = p.plan_digest.clone();
