@@ -57,7 +57,7 @@ This slice lets `card scope` take a card that has an active reservation: the new
 
 ## Scope
 
-- write: `src/card/dispatch.rs`, `src/ledger/reservation.rs`, `src/ops/card.rs` (the new `--reason` option and the help only), `src/card/command.rs` (only if the option needs a parser change), `tests/card_scope_widen_cli.rs`, `docs/design-review/appendix/operations/card.md`, `.moai/specs/SPEC-20261119-card-scope-widen/spec.md`
+- write: `src/card/dispatch.rs`, `src/ledger/reservation.rs`, `src/ops/card.rs` (the new `--reason` option and the help only), `src/card/command.rs` (only if the option needs a parser change), `tests/card_scope_widen_cli.rs`, `tests/card_dispatch_cli.rs` (the one test that pinned "a held card is refused"; added in the build, see Result), `docs/design-review/appendix/operations/card.md`, `.moai/specs/SPEC-20261119-card-scope-widen/spec.md`
 - read-only: `src/ledger/schema.rs`, `src/ledger/recover.rs`, `src/card/export_db.rs`, `src/scope.rs`, `tests/common/**`, `tests/card_reclaim_cli.rs` (as a pattern)
 - forbidden: the real HOME and ledger, the network, a change of table definitions or triggers, `skills/moai/**`
 
