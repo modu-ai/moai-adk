@@ -28,6 +28,7 @@ The settings write and the revert themselves do not change. The skill text `skil
 - REQ-3: When the settings file changed after the save, the command shall answer ok with the state `skipped` and the reason `changed_since_apply`, write no marker and leave the file as it is. · failure: none — REQ-2 covers a refusal.
 - REQ-4: When the help is printed, the command list and the per-command examples shall name `models-revert`. · failure: none — a missing entry fails the help fixtures.
 - REQ-5: IF a receipt holds only one of its two before fields, or a null with a value, THEN the receipt reader shall treat it as damaged.
+- REQ-7: IF the folder that holds the settings file is a link, THEN the revert shall refuse, remove or write nothing, and leave the file behind the link as it was. (audit B1 of the first head)
 - REQ-6: When the command prints, the output shall hold ids, paths, states and reasons only and never the text of the settings file. · failure: none — a pinned output test finds a leak.
 
 ## Acceptance
@@ -42,12 +43,14 @@ The settings write and the revert themselves do not change. The skill text `skil
   verify: `cargo test --locked --offline --test help_layout`; `cargo test --locked --offline --test models_revert_cli models_revert_is_in_the_help`
 - AC-5 (REQ-5): a receipt reader test holds `{"before_sha256": null}` alone, `{"before_text": null}` alone, and the other half-null pairs, and each is damaged.
   verify: `cargo test --locked --offline --lib update_models::`
+- AC-7 (REQ-7): with the settings folder replaced by a link to an outside folder, a revert whose receipt has no earlier text (the delete path) and a revert whose receipt has one (the write path) each refuse with the folder-link reason and the outside file stays byte for byte, with no marker written.
+  verify: `cargo test --locked --offline --test launcher_settings_receipt a_revert_never_removes_a_file_behind_a_linked_settings_folder`; `cargo test --locked --offline --test launcher_settings_receipt a_revert_never_writes_a_file_behind_a_linked_settings_folder`
 - AC-6 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6): the neighbour checks and the style checks pass.
   verify: `cargo test --locked --offline --test launcher_settings_receipt`; `cargo test --locked --offline --test hot_file_ops_merge`; `cargo fmt --check`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261119-models-revert-command/spec.md`, `src/ops/models_revert.rs`, `src/update_models.rs`, `src/help.rs`, `tests/fixtures/help/all.txt`, `tests/fixtures/help/all-60.txt`, `tests/fixtures/help/all-80.txt`, `tests/fixtures/help/all-dumb.txt`, `docs/design-review/appendix/operations/models_revert.md`, `tests/models_revert_cli.rs`, `tests/launcher_settings_receipt.rs`
+- write: `.moai/specs/SPEC-20261119-models-revert-command/spec.md`, `src/ops/models_revert.rs`, `src/update_models.rs`, `src/model_effort_questions.rs`, `src/help.rs`, `tests/fixtures/help/all.txt`, `tests/fixtures/help/all-60.txt`, `tests/fixtures/help/all-80.txt`, `tests/fixtures/help/all-dumb.txt`, `docs/design-review/appendix/operations/models_revert.md`, `tests/models_revert_cli.rs`, `tests/launcher_settings_receipt.rs`
 - read-only: `src/ops/keys_revert.rs`, `src/update_keys.rs`, `src/key_vault.rs`, `src/home_root.rs`
 - forbidden: `src/main.rs`, `skills/moai/references/source-manifest.json`, `skills/moai/workflows/update.md`, the real HOME, a live tool session, the network
 

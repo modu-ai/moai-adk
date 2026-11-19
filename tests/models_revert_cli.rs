@@ -201,4 +201,9 @@ fn models_revert_is_in_the_help() {
         String::from_utf8_lossy(&one.stdout).to_string() + &String::from_utf8_lossy(&one.stderr);
     assert!(text.contains("--receipt"), "{text}");
     assert!(text.contains("--permission-reference"), "{text}");
+    // Audit N3: the per-command help prints the example row of `EXAMPLES`.
+    assert!(
+        text.contains("moai models-revert --receipt <models-id> --permission-reference <ref> ~"),
+        "{text}"
+    );
 }
