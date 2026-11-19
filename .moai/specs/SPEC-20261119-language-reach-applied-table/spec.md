@@ -78,3 +78,10 @@ created: 2026-11-19
 - manifest 예약은 한 커밋에 쓰고 약 25초 만에 풀었어요(리더 결정 3338 의 대기열).
 - 돌리지 않은 것: 저장소 전체 `cargo test`(PR CI 가 인용), macOS 이외, 실제 `/moai project` 세션에서 표가 그려지는지(문구는 사람이 읽는 안내라 시험은 문구만 고정해요 — Completion Check 가 요구해요).
 - 카드 기준 1 은 이 SPEC 의 일이 아니에요: `SPEC-20261117-language-reach` AC-1 이 met 이고 증거가 거기 있어요(카드 표시는 리더 확인 대기).
+
+### 자체 감사 (head `443cd71011`, 구현자가 아닌 새 읽기 전용 에이전트)
+
+- AUDIT-VERDICT: PASS, 막는 문제 0. 이 head 에서 다시 돌린 것: `source_manifest.py check` ok, `git diff --check` 0, `spec check` 0/0, `project_applied_table` 2/2 와 `workflow_size_budget` 6/6(이름 필터 없이), `tests.skill_references_test` 5, `product_cli -- skill_package` 18/18, trailer-check 4커밋 실패 0. 변이 M1·M3 를 재현해 시험이 잡았어요.
+- 비차단(후속 문구 수리 후보 — manifest 를 다시 잡아야 해서 이 조각에서 고치지 않았어요): N1 표 위치 — 단락은 "before the final report", Completion Check 는 "The final report carries" 라서 핵심 규칙 18(결론 먼저, 끝의 두 목록)과 함께 읽으면 표가 결론 앞인지 뒤인지 한 방향으로 정해지지 않아요. N2 행 목록이 닫힌 목록처럼 읽혀요(REVIEW.md 구간의 `review_blocks`·`protected`, `worktree.baseRef`, 코드 지도 등이 빠지기 쉬워요) — "for example" 이나 "every key of `decisions` and every file a step wrote" 가 필요해요. N3 `HOLD` 행은 값이 적용된 것처럼 보일 수 있어요 — "a HOLD row is not in effect and is asked again next run" 한 줄. N4 `the closing commit` 행의 "written to" 는 커밋 id 도 받아야 해요. N5 `workflow_size_budget` 은 `mode-leader.md` 만 봐서 `project.md` 크기는 `product_cli skill_package` 와 65536 바이트 한계가 지켜요(현재 32968 바이트).
+- 감사자 환경: `git worktree add` 가 격리 규칙에 막혀 자기 격리 worktree 에서 이 head 를 detached 로 열었고, 제 worktree 는 읽기만 했어요. 정리 완료(빌드 폴더 삭제).
+- 감사에서 돌리지 않은 것: `cargo fmt`·`clippy`(Rust 소스는 시험 파일 하나), `tests.source_manifest_test`, 변이 M2, 실제 `/moai project` 세션.
