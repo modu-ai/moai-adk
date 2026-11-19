@@ -54,7 +54,7 @@ parent: SPEC-20261119-lane-screen-guard
 ## Scope
 
 - write: `.moai/specs/SPEC-20261119-lane-screen-scan/**`
-- write(구현 조각 C): `src/lane_screen.rs`(`scan`), `src/lane_send.rs`(`Orca::list` 와 `ProcessOrca::list`), `src/ops/lane_screen.rs`(`--scan` 가지), `src/help.rs`(예시), 도움말 골든 넷, `docs/design-review/appendix/operations/lane_screen.md`, `tests/lane_screen_cli.rs`, `tests/fixtures/lane_screens/**`
+- write(구현 조각 C): `src/lane_screen.rs`(`scan`), `src/lane_send.rs`(`Orca::list` 와 `ProcessOrca::list`, 그리고 재감사 C-N2 수리로 `ProcessOrca::call` 의 출력 기다림), `src/ops/lane_send.rs`(조각 B 의 명령; 이 조각은 쓰지 않아요, 재감사 C-N6 이 빠졌다고 짚어서 적어요), `src/ops/lane_screen.rs`(`--scan` 가지), `tests/orca_optional_3005.rs`(`SRC_ORCA_FILES` 의 주석), `src/help.rs`(예시), 도움말 골든 넷, `docs/design-review/appendix/operations/lane_screen.md`, `tests/lane_screen_cli.rs`, `tests/fixtures/lane_screens/**`
 - read-only: 그 밖의 모든 것
 
 ## Plan

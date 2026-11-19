@@ -721,10 +721,12 @@ d="$FAKE_ORCA_DIR"
 printf '%s\n' "$*" >> "$d/calls.txt"
 case "$2" in
 list)
+  if [ -f "$d/list-fail-msg" ]; then cat "$d/list-fail-msg" >&2; exit 5; fi
   if [ -f "$d/list-fail" ]; then echo "orca is not running" >&2; exit 5; fi
   cat "$d/list.json"
   ;;
 read)
+  if [ -f "$d/read-fail-msg-$4" ]; then cat "$d/read-fail-msg-$4" >&2; exit 3; fi
   if [ -f "$d/read-fail-$4" ]; then echo "terminal not found" >&2; exit 3; fi
   cat "$d/read-$4.json"
   ;;
@@ -766,6 +768,11 @@ esac
 
         fn flag(&self, name: &str) {
             fs::write(self.dir.path().join(name), "").unwrap();
+        }
+
+        /// A file of the fake holding `content` (the message of a failing call, for example).
+        fn file(&self, name: &str, content: &str) {
+            fs::write(self.dir.path().join(name), content).unwrap();
         }
 
         /// Every call of the fake, one line each, in order.
@@ -1203,5 +1210,251 @@ esac
             "Orca must not run: {:?}",
             fake.calls()
         );
+    }
+
+    /// The three synthetic secret shapes of re-audit C-B1 (note 3497), each built from pieces at
+    /// run time so no shape stands in this file: (GitHub token prefix, key-like `sk` shape,
+    /// `password=` pair) with the value that must not come out of the answer.
+    fn secrets() -> [(String, &'static str); 3] {
+        let gh_value = "A1b2C3d4E5f6G7h8I9j0";
+        let sk_value = "abcdefghij0123456789";
+        let pw_value = "hunter2hunter2";
+        [
+            (["gh", "p_"].concat() + gh_value, gh_value),
+            (["s", "k-"].concat() + sk_value, sk_value),
+            (["pass", "word="].concat() + pw_value, pw_value),
+        ]
+    }
+
+    /// Re-audit C-B1: `--scan` takes text from terminals the caller has never seen (a title a
+    /// shell sets from the command line it runs, the screen, the error of a failed read, the
+    /// error of a failed list); a secret shape in any of the five places never reaches the answer.
+    #[test]
+    fn lane_screen_scan_secret_shapes_from_other_terminals_never_reach_the_answer() {
+        for (secret, value) in secrets() {
+            let fake = Fake::new(&list(
+                &[
+                    term(
+                        "t_title",
+                        &format!("deploy {secret}"),
+                        &format!("fix/{secret}"),
+                    ),
+                    term("t_ask", "ask", "b"),
+                    term("t_limit", "limit", "b"),
+                    term("t_gone", "gone", "b"),
+                ],
+                4,
+                false,
+            ));
+            fake.screen("t_title", &fixture("synthetic-working.txt"));
+            let ask = format!(
+                "{}Do you want to proceed? (yes/no) {secret}\n",
+                fixture("synthetic-working.txt")
+            );
+            fake.screen("t_ask", &ask);
+            let limit = fixture("synthetic-usage-limit-glm.txt")
+                .replace("17:30:55", &format!("17:30:55 {secret}"));
+            fake.screen("t_limit", &limit);
+            fake.file("read-fail-msg-t_gone", &format!("denied {secret}\n"));
+            let dir = tempfile::tempdir().unwrap();
+            let r = fake.run(dir.path(), dir.path(), &[]);
+            let res = r.result();
+            let everything = format!("{} {}", r.envelope, r.stderr);
+            assert!(!everything.contains(value), "{secret}: {everything}");
+            let rows = res["terminals"].as_array().unwrap();
+            for (i, key) in [(0, "title"), (0, "branch")] {
+                assert!(
+                    rows[i][key].as_str().unwrap().contains("[redacted]"),
+                    "{key}: {}",
+                    rows[i]
+                );
+            }
+            assert_eq!(rows[1]["state"], json!("unknown"), "{}", rows[1]);
+            assert!(rows[1]["evidence"].as_str().unwrap().contains("[redacted]"));
+            assert_eq!(rows[2]["state"], json!("usage_limit"), "{}", rows[2]);
+            assert!(rows[2]["reset"]["raw"]
+                .as_str()
+                .unwrap()
+                .contains("[redacted]"));
+            assert!(rows[2]["evidence"].as_str().unwrap().contains("[redacted]"));
+            assert_eq!(rows[3]["state"], json!("unreachable"), "{}", rows[3]);
+            assert!(rows[3]["reason"].as_str().unwrap().contains("[redacted]"));
+            for line in lines(res) {
+                assert!(!line.contains(value), "{line}");
+            }
+        }
+        // The error of a list that cannot be read.
+        for (secret, value) in secrets() {
+            let fake = Fake::new("{}");
+            fake.file("list-fail-msg", &format!("no runtime {secret}\n"));
+            let dir = tempfile::tempdir().unwrap();
+            let r = fake.run(dir.path(), dir.path(), &[]);
+            let message = failure(&r);
+            assert!(message.contains("exited with code 5"), "{message}");
+            assert!(message.contains("[redacted]"), "{message}");
+            assert!(!message.contains(value), "{message}");
+            assert!(!r.stderr.contains(value), "{}", r.stderr);
+        }
+    }
+
+    /// Re-audit C-N1 and C-N5 (mutant C5): the bidirectional and zero-width characters of text a
+    /// terminal chose are removed from the same five places as the control characters.
+    #[test]
+    fn lane_screen_scan_bidi_and_zero_width_characters_are_removed_from_every_shown_text() {
+        let marks = "\u{202e}a\u{200b}b\u{2066}c\u{feff}d\u{2028}e";
+        let fake = Fake::new(&list(
+            &[
+                term("t_title", &format!("lane {marks}"), &format!("br{marks}")),
+                term("t_ask", "ask", "b"),
+                term("t_limit", "limit", "b"),
+                term("t_gone", "gone", "b"),
+            ],
+            4,
+            false,
+        ));
+        fake.screen("t_title", &fixture("synthetic-working.txt"));
+        let ask = format!(
+            "{}Do you want to proceed? (yes/no) {marks}\n",
+            fixture("synthetic-working.txt")
+        );
+        fake.screen("t_ask", &ask);
+        let limit = fixture("synthetic-usage-limit-glm.txt")
+            .replace("17:30:55", &format!("17:30:55 {marks}"));
+        fake.screen("t_limit", &limit);
+        fake.file("read-fail-msg-t_gone", &format!("denied {marks}\n"));
+        let dir = tempfile::tempdir().unwrap();
+        let r = fake.run(dir.path(), dir.path(), &[]);
+        let res = r.result();
+        let rows = res["terminals"].as_array().unwrap();
+        assert_eq!(rows[0]["title"], json!("lane abcde"), "{}", rows[0]);
+        assert_eq!(rows[0]["branch"], json!("brabcde"), "{}", rows[0]);
+        assert!(rows[1]["evidence"].as_str().unwrap().ends_with("abcde"));
+        assert!(rows[2]["reset"]["raw"].as_str().unwrap().ends_with("abcde"));
+        assert!(rows[3]["reason"].as_str().unwrap().ends_with("abcde"));
+        let all = res.to_string();
+        for c in ['\u{202e}', '\u{200b}', '\u{2066}', '\u{feff}', '\u{2028}'] {
+            assert!(!all.contains(c), "{c:?} left in {all}");
+        }
+        // The error of a list that cannot be read.
+        let fake = Fake::new("{}");
+        fake.file("list-fail-msg", &format!("no runtime {marks}\n"));
+        let r = fake.run(dir.path(), dir.path(), &[]);
+        let message = failure(&r);
+        assert!(message.ends_with("abcde"), "{message}");
+    }
+
+    /// Re-audit C-N5 (mutants C2 and C3): the list is cut short when Orca says it has more
+    /// terminals than it listed, and also when Orca says `truncated` alone; neither is needed
+    /// for the other.
+    #[test]
+    fn lane_screen_scan_each_of_the_two_cut_short_signals_is_enough() {
+        let two = [term("t_a", "a", "b"), term("t_b", "b", "b")];
+        for (total, truncated, cut) in [(5, false, true), (2, true, true), (2, false, false)] {
+            let fake = Fake::new(&list(&two, total, truncated));
+            fake.screen("t_a", &fixture("synthetic-working.txt"));
+            fake.screen("t_b", &fixture("synthetic-idle.txt"));
+            let dir = tempfile::tempdir().unwrap();
+            let r = fake.run(dir.path(), dir.path(), &[]);
+            let res = r.result();
+            assert_eq!(
+                res["truncated"],
+                json!(cut),
+                "total={total} truncated={truncated}"
+            );
+            assert_eq!(
+                res["total"],
+                json!(total),
+                "total={total} truncated={truncated}"
+            );
+            let last = lines(res).last().unwrap().clone();
+            assert_eq!(last.contains("cut short"), cut, "{last}");
+        }
+    }
+
+    /// Re-audit C-N5 (mutant C4): `by_state` counts every terminal of a state, not only the first.
+    #[test]
+    fn lane_screen_scan_by_state_counts_every_terminal_of_a_state() {
+        let fake = Fake::new(&list(
+            &[
+                term("t_a", "a", "b"),
+                term("t_b", "b", "b"),
+                term("t_c", "c", "b"),
+                term("t_d", "d", "b"),
+            ],
+            4,
+            false,
+        ));
+        fake.screen("t_a", &fixture("synthetic-working.txt"));
+        fake.screen("t_b", &fixture("synthetic-working.txt"));
+        fake.screen("t_c", &fixture("synthetic-working.txt"));
+        fake.screen("t_d", &fixture("synthetic-idle.txt"));
+        let dir = tempfile::tempdir().unwrap();
+        let r = fake.run(dir.path(), dir.path(), &[]);
+        let by = &r.result()["by_state"];
+        assert_eq!(by["working"], json!(3), "{by}");
+        assert_eq!(by["idle"], json!(1), "{by}");
+    }
+
+    /// Re-audit C-N2 (slice B code): an `orca` that has exited but whose child still holds its
+    /// output open must not hold the scan: the call ends within its limit, that one terminal is
+    /// `unreachable`, and the others are read. Before the repair the call waited for the child.
+    #[test]
+    fn lane_screen_scan_an_orca_child_holding_the_output_does_not_hold_the_scan() {
+        let dir = tempfile::tempdir().unwrap();
+        let bin = dir.path().join("orca");
+        common::write_executable(
+            &bin,
+            r#"#!/bin/sh
+d="$FAKE_ORCA_DIR"
+case "$2" in
+list) cat "$d/list.json" ;;
+read)
+  if [ "$4" = t_hold ]; then sleep 10 & fi
+  cat "$d/read-$4.json"
+  ;;
+*) exit 9 ;;
+esac
+"#,
+        );
+        fs::write(
+            dir.path().join("list.json"),
+            list(
+                &[term("t_hold", "hold", "b"), term("t_ok", "ok", "b")],
+                2,
+                false,
+            ),
+        )
+        .unwrap();
+        let screen = fixture("synthetic-working.txt");
+        let rows: Vec<&str> = screen.lines().collect();
+        fs::write(dir.path().join("read-t_hold.json"), orca(&rows, "screen")).unwrap();
+        fs::write(dir.path().join("read-t_ok.json"), orca(&rows, "screen")).unwrap();
+        let started = std::time::Instant::now();
+        let out = Command::new(BIN)
+            .args(["lane-screen", "--scan", "--now", NOW_TEXT])
+            .current_dir(dir.path())
+            .env("HOME", dir.path())
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .env("MOAI_ORCA_BIN", &bin)
+            .env("MOAI_ORCA_TIMEOUT_SECS", "1")
+            .env("FAKE_ORCA_DIR", dir.path())
+            .stdin(Stdio::null())
+            .output()
+            .unwrap();
+        let elapsed = started.elapsed();
+        assert!(elapsed.as_secs() < 6, "the scan waited {elapsed:?}");
+        let envelope: Value = serde_json::from_slice(&out.stdout).unwrap();
+        let rows = envelope["result"]["terminals"].as_array().unwrap();
+        assert_eq!(rows[0]["state"], json!("unreachable"), "{}", rows[0]);
+        assert!(
+            rows[0]["reason"]
+                .as_str()
+                .unwrap()
+                .contains("within 1 seconds"),
+            "{}",
+            rows[0]
+        );
+        assert_eq!(rows[1]["state"], json!("working"), "{}", rows[1]);
     }
 }

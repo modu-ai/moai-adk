@@ -99,9 +99,26 @@ fn clean(row: &str) -> String {
     out.trim().to_string()
 }
 
-/// `row` cut to [`EVIDENCE_CHARS`] characters.
+/// Text that came from a terminal this program does not own, for the answer: no character
+/// [`crate::lane_duty::unsafe_char`] names (a bidirectional or zero-width one included, removed
+/// first so it cannot split a secret shape), and every credential-shaped word replaced by
+/// `[redacted]` (re-audit C-B1 and C-N1, note 3497: an evidence row, a reset text, a title or an
+/// error message of another terminal may carry a key, and the answer goes into a session record).
+/// Two shape filters run, the word filter for shapes such as `AKIA…` and the substring filter for
+/// `sk-`, `ghp_`, `password=` and the like; a word such as `task-list` is shortened too, which a
+/// list of terminals can bear and a leaked key cannot.
+fn safe_text(text: &str) -> String {
+    let plain: String = text
+        .chars()
+        .filter(|c| !crate::lane_duty::unsafe_char(*c))
+        .collect();
+    let (words, _) = crate::redact::redact_outgoing(&plain);
+    crate::redact::redact_secret_shapes(&words)
+}
+
+/// `row` made safe and cut to [`EVIDENCE_CHARS`] characters.
 fn cut(row: &str) -> String {
-    cut_to(row, EVIDENCE_CHARS)
+    cut_to(&safe_text(row), EVIDENCE_CHARS)
 }
 
 /// `row` cut to `max` characters; a longer row ends with `…`.
@@ -771,13 +788,10 @@ pub fn list_error(detail: &str) -> String {
 }
 
 /// A text somebody else chose (a terminal title or branch), for display: no escape or control
-/// characters, no line-separator or bidirectional character, cut to [`SHOWN_CHARS`].
+/// characters, no line-separator or bidirectional character, no credential-shaped word (see
+/// [`safe_text`]), cut to [`SHOWN_CHARS`].
 fn shown(text: &str) -> String {
-    let safe: String = clean(text)
-        .chars()
-        .filter(|c| !crate::lane_duty::unsafe_char(*c))
-        .collect();
-    cut_to(&safe, SHOWN_CHARS)
+    cut_to(&safe_text(&clean(text)), SHOWN_CHARS)
 }
 
 /// The scan of `orca terminal list --json` (`list_json`): one row per listed terminal with the
@@ -1282,6 +1296,46 @@ mod tests {
         let seen = classify(&rows(control));
         let evidence = seen.evidence.unwrap();
         assert!(!evidence.chars().any(|c| c.is_control()), "{evidence:?}");
+    }
+
+    #[test]
+    fn text_from_a_terminal_hides_secret_shapes_and_unsafe_characters() {
+        // The shapes are built from pieces so none stands in this file (re-audit C-B1, C-N1).
+        let gh = ["gh", "p_"].concat() + "A1b2C3d4E5f6G7h8I9j0";
+        let sk = ["s", "k-"].concat() + "abcdefghij0123456789";
+        let pw = ["pass", "word="].concat() + "hunter2hunter2";
+        for secret in [&gh, &sk, &pw] {
+            let shown_text = shown(&format!("deploy {secret} now"));
+            assert_eq!(shown_text, "deploy [redacted] now", "{secret}");
+            let seen = classify(&rows(&format!(
+                "Do you want to proceed? (yes/no) {secret}\nrow\nrow\nrow\nrow\nrow"
+            )));
+            let evidence = seen.evidence.unwrap();
+            assert!(evidence.ends_with("[redacted]"), "{evidence}");
+            assert!(!evidence.contains("A1b2") && !evidence.contains("hunter2"));
+            assert!(
+                list_error(&format!("no runtime {secret}")).ends_with("[redacted]"),
+                "{secret}"
+            );
+        }
+        // A zero-width or bidirectional character cannot split a shape and hide it.
+        let split = format!("{}\u{200b}{}", &gh[..4], &gh[4..]);
+        assert_eq!(shown(&split), "[redacted]");
+        assert_eq!(shown("a\u{202e}b\u{200b}c\u{2066}d\u{2028}e"), "abcde");
+        // An ordinary row is not changed.
+        assert_eq!(shown("work lane"), "work lane");
+        assert_eq!(cut("Do you want to proceed?"), "Do you want to proceed?");
+        // The reset text of an unknown zone is safe too.
+        let found = reset_of(
+            &rows(&format!(
+                "Your limit will reset at 2026-11-19 17:30:55 {sk}"
+            )),
+            NOW,
+        );
+        let found = found.expect("a limit row has a reset");
+        assert!(matches!(found, Reset::Unknown { .. }), "{found:?}");
+        let raw = reset_json(&found)["raw"].as_str().unwrap().to_string();
+        assert!(raw.ends_with("[redacted]"), "{raw}");
     }
 
     #[test]
