@@ -1,12 +1,15 @@
-//! `moai bundle ready | check | body | build` (card C-119, SPEC-20261119-bundle-ready-check and
-//! SPEC-20261119-bundle-build): read the `LANE-READY-INTEGRATION` heads of the ledger, judge each
-//! head, write the M-Flow bundle pull request body from facts, and build the integration branch.
+//! `moai bundle ready | check | body | build | verify` (card C-119, SPEC-20261119-bundle-ready-check,
+//! SPEC-20261119-bundle-build and SPEC-20261119-bundle-verify): read the `LANE-READY-INTEGRATION`
+//! heads of the ledger, judge each head, write the M-Flow bundle pull request body from facts,
+//! build the integration branch and run the check list on it (`verify`, which runs commands).
 //! Nothing here fetches, pushes, opens a pull request, writes a card note or a ledger row
 //! (REQ-12). `ready`, `check` and `body` write no ref and no branch either: their git commands
 //! are the list of the SPEC's Plan, run through [`crate::audit_delta::command`] (scrubbed
-//! environment). Only [`build`] writes, and only a new branch, its worktree and merge commits.
+//! environment). [`build`] writes a new branch, its worktree and merge commits; [`verify`] writes one new
+//! folder and runs commands.
 
 pub mod build;
+pub mod verify;
 
 use crate::card::{command as card_command, input as card_input};
 use crate::{gate, self_audit, spec_doc, trailers};
