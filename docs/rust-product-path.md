@@ -931,22 +931,25 @@ is left out together with its separator.
    turns all the numbers off. `statusline.yaml` switches segments on and off only; it has
    no setting for their order. Each number carries its icon, so color is never the only
    signal. Tests: `tests/statusline_cards.rs`, the golden cases `b13-card-counts` and
-   `b14-card-counts-waiting` (their ledger is the checked-in
-   `tests/fixtures/statusline-claude/ledger/cards-5-50-12.sqlite`, written by the ignored
-   test `write_the_golden_ledger_fixture`; `b14` adds the notes that make one card wait).
+   `b14-card-counts-waiting` (their ledgers are the checked-in
+   `tests/fixtures/statusline-claude/ledger/cards-5-50-12.sqlite` for `b13` and
+   `cards-5-50-12-waiting.sqlite` for `b14`, which adds the notes that make one card wait;
+   the ignored test `write_the_golden_ledger_fixture` writes both).
 3. Usage and worktree: the worktree segment when there is one, then the `CTX` and
    available `Week` bars (`🌳 WT-c124-statusline-worktree-label | 🔋 CTX: … | 🪫 Week: …`;
    since #2928 user instruction 6878415244 the tag is on line 1, not here; the worktree
    segment moved here from the end of line 2 by the user's instruction 2026-11-19, card
-   C-124). The segment stands at the front of the last line: line 3, or line 2 when the
-   repository line is empty and left out. In a linked worktree it has three shapes.
-   `🌳 WT-c<card>-<name>` when a held reservation of the project names the session's folder
-   (`<card>` is the number of the card that holds it, the lowest number when several do;
-   `<name>` is the part of the reservation's branch after the eight-digit date and a dash
-   in its last path segment, else the folder name without its `<project>-` prefix and
-   without the card number). `🌳 WT-c<card>` when no name is left. `🌳 <worktree name>`
+   C-124). The segment stands at the front of the last line: line 3 while lines 1 and 2
+   are shown, and one line up when an empty line is left out. In a linked worktree it has
+   three shapes. `🌳 WT-c<card>-<name>` when a live reservation of the project (status
+   `held`, `held_for_review` or `expired_candidate`, with an absolute worktree path)
+   names the session's folder (`<card>` is the number of the card that holds it, the
+   lowest number when several do; `<name>` is the part of the reservation's branch after
+   the eight-digit date and a dash in its last path segment, else the folder name without
+   its `<project_id>-` prefix (the project profile's `project_id`) and without the card
+   number). `🌳 WT-c<card>` when no name is left. `🌳 <worktree name>`
    alone, with no `WT-` and no card number (the name the host gave: `worktree.name`, else
-   `workspace.git_worktree`), when no held reservation names the folder or the ledger
+   `workspace.git_worktree`), when no live reservation names the folder or the ledger
    cannot be read within the render budget. A reservation whose recorded worktree path is
    not absolute names no folder. `<name>` shows at most 32 characters, cut with `…` after
    the 31st, and drops control characters and the invisible format characters that
@@ -958,7 +961,11 @@ is left out together with its separator.
        📡 anthropics/claude-code | ⬇️ 46 / 🔀 0 | 🗂️ 50 / ▶️ 2 / 🔃 3 / ✅ 12 | 🅱️ main | 🔗 #1234 pending
        🌳 feature-xyz | 🔋 CTX: ░░░░░░░░░░ 9% | 🔋 Week: ████░░░░░░ 41%
 
-   Tests: `tests/statusline_worktree_label.rs` and the golden cases `a02-doc-full` and
+   Tests: `tests/statusline_worktree_label.rs` (the three shapes, a released reservation
+   is no holder, the lowest card number, the main checkout, the `worktree` option, the
+   line), the unit tests in `src/statusline/state.rs`
+   (`the_name_is_cut_at_thirty_two_characters_and_drops_control_characters`,
+   `a_relative_recorded_path_never_matches`) and the golden cases `a02-doc-full` and
    `b14-card-counts-waiting`. With both bars off and no worktree segment the line is
    empty and omitted like any empty line. The bar icons (`🔋`/`🪫`) and the
    `(⚠️ /clear)` handoff mark keep their rules. The five-hour bar is not shown — the user did not choose it (#2756,
