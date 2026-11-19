@@ -172,7 +172,13 @@ fn claude_shadow(root: &Path, hosts: &[String]) -> Option<ClaudeShadow> {
         (".claude/CLAUDE.md", "@../AGENTS.md"),
     ]
     .into_iter()
-    .find(|(rel, _)| root.join(rel).is_file() && !crate::claude::imports_agents(&root.join(rel)))
+    .find(|(rel, _)| {
+        // A link is not a file this tool may write through (`apply::target` refuses it), and a
+        // CLAUDE.md linked to AGENTS.md already loads it.
+        let path = root.join(rel);
+        std::fs::symlink_metadata(&path).is_ok_and(|m| m.is_file())
+            && !crate::claude::imports_agents(&path)
+    })
     .map(|(rel, line)| ClaudeShadow {
         path: rel.into(),
         import_line: line.into(),

@@ -410,6 +410,18 @@ fn claude_import_in_the_claude_folder_uses_the_relative_path() {
     );
 }
 
+#[cfg(unix)]
+#[test]
+fn a_claude_md_that_is_a_link_is_not_a_shadow_and_the_pick_still_plans() {
+    // CLAUDE.md linked to AGENTS.md is already the setup the pick would make. A write through
+    // the link is refused by the apply engine, so it must not turn the plan into an error.
+    let root = applied_project();
+    std::os::unix::fs::symlink("AGENTS.md", root.path().join("CLAUDE.md")).unwrap();
+    let picked = plan_ok(&root, &request("en", "none", &["claude-import"]));
+    assert!(picked.get("claude_shadow").is_none(), "{picked}");
+    assert!(row(&picked, "CLAUDE.md").is_none(), "{picked}");
+}
+
 #[test]
 fn claude_that_already_imports_agents_md_gets_no_row() {
     let root = with_claude_md("CLAUDE.md", "# mine\n@AGENTS.md\n");
