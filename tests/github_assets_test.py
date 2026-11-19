@@ -808,13 +808,13 @@ class CheckGuardTest(unittest.TestCase):
         if shutil.which("jq") is None:
             self.skipTest("jq is not installed; gh runs this expression with its own jq")
         page = json.dumps([
-            {"filename": "docs/guide.md"},
-            {"filename": "docs/renamed.md", "previous_filename": "docs/old.md"},
+            {"filename": "notes/guide.md"},
+            {"filename": "notes/renamed.md", "previous_filename": "notes/old.md"},
             {"filename": ".github/workflows/check-guard.yml"},
         ])
         jq = subprocess.run(["jq", "-r", expression], input=page, capture_output=True, text=True)
         self.assertEqual(jq.returncode, 0, jq.stderr)
-        for expected in ("docs/guide.md", "docs/renamed.md", "docs/old.md",
+        for expected in ("notes/guide.md", "notes/renamed.md", "notes/old.md",
                          ".github/workflows/check-guard.yml"):
             self.assertIn(expected, jq.stdout.splitlines(),
                           f"the files step must yield {expected} from its jq expression")

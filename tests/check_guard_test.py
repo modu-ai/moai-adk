@@ -173,7 +173,7 @@ class CheckGuardMatchTest(TempCase):
 
     def test_exact_entries_do_not_match_subpaths(self):
         mod = load_guard()
-        code, verdict, _ = self.run_guard(mod, "docs/notes/REVIEW.md\n", "audit-tier: 0\n")
+        code, verdict, _ = self.run_guard(mod, "notes/REVIEW.md\n", "audit-tier: 0\n")
         self.assertEqual(code, 0)
         self.assertFalse(verdict["protected"])
 
@@ -231,7 +231,7 @@ class CheckGuardUnprotectedTest(TempCase):
         mod = load_guard()
         for body in ("audit-tier: 0\n", "no declaration at all\n"):
             with self.subTest(body=body):
-                code, verdict, summary = self.run_guard(mod, "docs/guide.md\n", body)
+                code, verdict, summary = self.run_guard(mod, "notes/guide.md\n", body)
                 self.assertEqual(code, 0)
                 self.assertFalse(verdict["protected"])
                 self.assertIn("no protected path", summary)
@@ -243,7 +243,7 @@ class CheckGuardSafeTest(TempCase):
     def test_broken_list_json_fails_safe(self):
         mod = load_guard()
         self.list_text = "{ not json"
-        code, verdict, summary = self.run_guard(mod, "docs/guide.md\n", "audit-tier: 0\n")
+        code, verdict, summary = self.run_guard(mod, "notes/guide.md\n", "audit-tier: 0\n")
         self.assertEqual(code, 1)
         self.assertIsNone(verdict)
         self.assertIn("protected list", summary)
@@ -252,7 +252,7 @@ class CheckGuardSafeTest(TempCase):
         mod = load_guard()
         args = [
             "--list", str(self.tmp / "absent.json"),
-            "--files", self.write("files.txt", "docs/guide.md\n"),
+            "--files", self.write("files.txt", "notes/guide.md\n"),
             "--body", self.write("body.md", "audit-tier: 0\n"),
             "--summary", str(self.tmp / "summary.md"),
         ]
@@ -272,7 +272,7 @@ class CheckGuardSafeTest(TempCase):
 
     def test_control_characters_in_a_path_fail_safe(self):
         mod = load_guard()
-        code, verdict, summary = self.run_guard(mod, "docs/a\x07b.md\n", "audit-tier: 2\n")
+        code, verdict, summary = self.run_guard(mod, "notes/a\x07b.md\n", "audit-tier: 2\n")
         self.assertEqual(code, 1)
         self.assertIn("readable text", summary)
 
@@ -280,7 +280,7 @@ class CheckGuardSafeTest(TempCase):
         mod = load_guard()
         args = [
             "--list", self.write("list.json", self.list_text),
-            "--files", self.write("files.txt", "docs/guide.md\n"),
+            "--files", self.write("files.txt", "notes/guide.md\n"),
             "--body", str(self.tmp / "absent-body.md"),
             "--summary", str(self.tmp / "summary.md"),
         ]
