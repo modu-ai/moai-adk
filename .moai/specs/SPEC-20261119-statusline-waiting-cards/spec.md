@@ -77,4 +77,9 @@ created: 2026-11-19
 
 ## Result
 
-(RUN fills this.)
+- AC-1: met — 2026-11-19 이 worktree(팁 d25ecb1ba1)에서 `cargo test --locked --offline --test statusline_cards` 8 passed 0 failed(실제 바이너리가 3 active 중 대기 마커 노트가 있는 1장·2 review·20 draft·25 ready·5 hold·12 done 원장에서 `🔥 2 / 📮 3 / 📥 50 / ✅ 12` 를 그려요; 원장 없음·빈 원장 `🔥 0 / 📮 0 / 📥 0 / ✅ 0`·done 만의 사례·`cards` 옵션 끔·입력의 프로젝트 사례도 같은 형태).
+- AC-2: met — `cargo test --locked --offline --lib statusline::` 116 passed 0 failed(`statusline::state::card_counts_tests` 의 마커 시험: 대기 마커 다섯 모양 각각, 더 새 일하는 마커·더 새 대기 마커의 번갈아 이김, 더 새 중립 노트는 건너뜀, 마커 없음, 둘째 줄·줄 중간의 마커와 둘째 줄에만 있는 `audit requested`·`verdict: PASS`·`verdict: FAIL` 는 마커 아님, draft·ready·hold·done 카드의 노트는 나누지 않음). RED 먼저: 필드만 있는 뼈대에서 새·바뀐 시험 15개가 단언에서 실패했어요. 변이 5(가장 오래된 노트가 결정·review 를 대기로 안 셈·일하는 마커 무시·본문 전체를 첫 줄로 읽음·읽기 실패에 `📮 0` 표시): M1·M2·M3·M5 는 첫 실행에서 exit 101, M4 는 첫 실행에서 생존(시험 공백 — 둘째 줄에만 있는 문구 사례 없음) 후 사례를 더해 exit 101. 복원 후 변이 문구 0건.
+- AC-3: met — `statusline::state::card_counts_tests::a_failed_note_read_gives_the_three_number_form`: 지난 렌더 마감에 `waiting_cards` 가 `None`, 시간이 남으면 `Some(2)`; `statusline::render::tests::waiting_cards_get_their_own_number_and_none_gives_the_three_number_form`: `None` 은 `🔥 28 / 📥 50 / ✅ 12` 세 숫자. HOME 불변은 `statusline_cards` 의 `render_from` 이 렌더 앞뒤 HOME 트리(항목·바이트·수정 시각)를 비교하고, 단위 시험은 원장 파일 다이제스트와 HOME 트리를 비교해요.
+- AC-4: met — `python3 -I tools/statusline_golden.py --bin target/debug/moai --check` checked 111 golden outputs, 실패 0(`b13-card-counts` 를 `🔥 3 / 📮 2 / 📥 50 / ✅ 12` 로 다시 기록, `b14-card-counts-waiting` 3 변형과 원장 fixture `cards-5-50-12-waiting.sqlite` 신규: `🔥 2 / 📮 3 / 📥 50 / ✅ 12`); `python3 -m unittest tests.statusline_fixtures_test tests.ci_scope_test` 51 OK. `statusline_golden` 시험 바이너리는 이 하니스를 그대로 돌려요.
+- 이웃: `cargo fmt --check` 0, `rustfmt --check --edition 2021 src/ops/*.rs` 0, `cargo clippy --offline --locked --all-targets -- -D warnings` 0, `spec check` 0/0. `CardCounts` 를 쓰는 곳은 `src/statusline/` 뿐이에요(저장소 전체 grep).
+- 돌리지 않은 것: lib 전체(통합 전 리더 점검 세트), Linux·Windows. 후속 조각: `docs/rust-product-path.md` 항목 2 의 문구(다른 예약이 잡고 있어 이 SPEC 범위 밖, D-5).

@@ -1999,6 +1999,23 @@ mod card_counts_tests {
             active_card(&[("report", "LANE-DONE agent-1 C-1 slice 1 done")]),
             (1, Some(0))
         );
+        // The words that make a `LANE-DONE` or an `AUDIT` line a marker must sit on that first
+        // line: the same words on a later line change nothing.
+        for body in [
+            "LANE-DONE agent-1 C-1 slice 1 done\nnext: audit requested",
+            "LANE-DONE agent-1 C-1 slice 1 done\n감사 요청 tier 2",
+            "AUDIT C-1 (x) head abc base def\nverdict: PASS",
+        ] {
+            assert_eq!(active_card(&[("report", body)]), (1, Some(0)), "{body}");
+        }
+        assert_eq!(
+            active_card(&[
+                ("report", READY),
+                ("report", "AUDIT C-1 head abc\nverdict: FAIL")
+            ]),
+            (0, Some(1)),
+            "a FAIL verdict only on a later line does not put the card back to work"
+        );
         // Only the first line counts: a marker on the second line is no marker.
         assert_eq!(
             active_card(&[("report", &format!("summary\n{READY}"))]),
