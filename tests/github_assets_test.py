@@ -253,7 +253,11 @@ PR_TEMPLATE = ROOT / ".github/pull_request_template.md"
 LOCAL_CHECK = ROOT / "tools/local_check.sh"
 PINNED_USES = re.compile(r"^[\w.-]+/[\w./-]+@[0-9a-f]{40}$")
 # The only write scope a workflow may hold: moai-label-sync's manual apply job creates labels.
-ALLOWED_WRITES = {("moai-label-sync.yml", "apply"): {"issues"}}
+ALLOWED_WRITES = {
+    ("moai-label-sync.yml", "apply"): {"issues"},
+    # C-97 (SPEC-20261119-check-guard): the label is the job's only write.
+    ("check-guard.yml", "check-guard"): {"issues"},
+}
 
 
 class WorkflowTest(unittest.TestCase):
@@ -262,9 +266,10 @@ class WorkflowTest(unittest.TestCase):
         # #2554 PR-A adds the candidate verification path: candidate.yml (the three supported
         # targets and the verdict) and candidate-target.yml (one target, called three times).
         # SPEC-20261117-audit-gate adds audit-gate.yml (the audit check from verdict comments).
+        # C-97 (SPEC-20261119-check-guard) adds check-guard.yml (the base-branch judge).
         self.assertEqual([p.name for p in paths],
-                         ["audit-gate.yml", "candidate-target.yml", "candidate.yml", "ci.yml",
-                          "moai-label-sync.yml"])
+                         ["audit-gate.yml", "candidate-target.yml", "candidate.yml",
+                          "check-guard.yml", "ci.yml", "moai-label-sync.yml"])
         return [(p, yaml.safe_load(p.read_text(encoding="utf-8"))) for p in paths]
 
     def test_permissions_are_least_privilege(self):
@@ -719,6 +724,61 @@ class PreviousGenerationTest(unittest.TestCase):
         block = re.search(r"Removed paths:\n\n```text\n(.*?)\n```", readme, re.S)
         self.assertIsNotNone(block)
         self.assertEqual(sorted(block.group(1).splitlines()), sorted(self.removed()))
+
+
+CHECK_GUARD_WORKFLOW = ROOT / ".github/workflows/check-guard.yml"
+CHECKOUT_PIN = re.compile(r"uses: actions/checkout@[0-9a-f]{40}\b")
+
+
+class CheckGuardTest(unittest.TestCase):
+    """C-97 (SPEC-20261119-check-guard) REQ-11: the workflow judges from the base
+    checkout only, and the audit instructions read REVIEW.md/agents/audit.md from the
+    base ref. Structural, offline — the behaviour lives in tests/check_guard_test.py."""
+
+    def workflow(self):
+        text = CHECK_GUARD_WORKFLOW.read_text(encoding="utf-8")
+        data = yaml.safe_load(text)
+        # PyYAML reads the bare key `on:` as the boolean True (YAML 1.1).
+        trigger = data.get("on", data.get(True))
+        return text, data, trigger
+
+    def test_check_guard_workflow_judges_from_the_base_checkout(self):
+        text, data, trigger = self.workflow()
+        self.assertNotIn("pull_request_target:", text, "`pull_request` only (SPEC header)")
+        self.assertIn("pull_request", trigger)
+        self.assertEqual(trigger["pull_request"]["branches"], ["v2026.11.0"])
+        self.assertTrue(CHECKOUT_PIN.search(text), "the checkout action is pinned to a SHA")
+        steps = data["jobs"]["check-guard"]["steps"]
+        checkout = [s for s in steps if "uses" in s and s["uses"].startswith("actions/checkout@")]
+        self.assertEqual(len(checkout), 1)
+        self.assertEqual(
+            checkout[0]["with"]["ref"], "${{ github.event.pull_request.base.sha }}"
+        )
+        self.assertFalse(checkout[0]["with"]["persist-credentials"])
+        guard_runs = [s for s in steps if "python3 tools/check_guard.py" in s.get("run", "")]
+        self.assertEqual(len(guard_runs), 1, "the guard runs once, from the base checkout")
+        run = guard_runs[0]["run"]
+        self.assertIn("--list tools/protected_checks.json", run)
+        self.assertIn("GH_TOKEN: ${{ github.token }}", text)
+        self.assertNotIn("${{ secrets.", text, "the read-only token, never a secret")
+        job = data["jobs"]["check-guard"]
+        self.assertEqual(
+            job["permissions"],
+            {"contents": "read", "issues": "write", "pull-requests": "read"},
+        )
+
+    def test_check_guard_reads_files_and_body_from_the_api(self):
+        text = CHECK_GUARD_WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("--paginate", text)
+        self.assertIn("previous_filename", text, "rename old names are judged too")
+        self.assertIn("gh pr view", text)
+        self.assertIn("changed_files", text, "a truncated files list fails safe")
+
+    def test_audit_instructions_read_the_review_rules_from_the_base_ref(self):
+        audit = (ROOT / "agents" / "audit.md").read_text(encoding="utf-8")
+        self.assertIn("git show <base-sha>:REVIEW.md", audit)
+        self.assertIn("git show <base-sha>:agents/audit.md", audit)
+        self.assertIn("judged by the base text", audit)
 
 
 if __name__ == "__main__":
