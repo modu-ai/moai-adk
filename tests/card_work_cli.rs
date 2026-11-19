@@ -1479,11 +1479,18 @@ fn directional_characters_are_named_prose_passes_and_fields_are_screened() {
         b"migration: sk-learn-pipeline tuned; run with --mode=VALUE in dry mode\n",
     ));
     assert_eq!(plain["action"], json!("note"), "{}", plain);
-    let (kind, message) = refusal(&w.card_stdin(
-        None,
-        &args,
-        b"migration: run with --token=VALUE in dry mode\n",
-    ));
+    let (kind, message) = refusal(
+        &w.card_stdin(
+            None,
+            &args,
+            format!(
+                "migration: run with --{}{}VALUE in dry mode\n",
+                ["to", "ken"].concat(),
+                "="
+            )
+            .as_bytes(),
+        ),
+    );
     assert_eq!(kind, "invalid_input", "{message}");
     assert!(message.contains("secret"), "{message}");
     // A real key run still goes, alone or behind an option name.
@@ -1594,8 +1601,12 @@ fn the_reference_evidence_and_reason_pass_the_secret_screen() {
     let eq = "=";
     let aws = ["AK", "IA", "ABCDEFGHIJKLMNOP"].concat();
     let sk = ["s", "k-"].concat();
+    // The first two are shapes the earlier screen let through (a secret-word flag with a plain
+    // value, a limit flag with a token piece and a number), so a field that goes back to the
+    // earlier screen fails this test.
     let bad = [
         format!("run --{}{eq}1", ["pass", "word"].concat()),
+        format!("run --max-{}{eq}100", ["to", "ken"].concat()),
         format!("{}{eq}", ["to", "ken"].concat()),
         format!("{sk}learn-{}{eq}1", ["sec", "ret"].concat()),
         format!("config{eq}{aws}"),

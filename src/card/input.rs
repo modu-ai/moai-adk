@@ -253,8 +253,9 @@ fn name_is_secret(name: &str) -> bool {
 }
 
 /// Whether any `=` of the word follows a secret name: the name is the run of letters, digits,
-/// `-` and `_` right before the `=`, so `--max-token=100` and `x--password=1` are named and
-/// `--config=password=1` is named by its second assignment.
+/// `-` and `_` right before the `=`, so a limit flag with a token piece and a number is named,
+/// and so is a name with a password piece behind other dashes; a plain flag whose value is an
+/// assignment with a secret name is named by its second assignment.
 fn secret_named_assignment(word: &str) -> bool {
     let bytes = word.as_bytes();
     let name_byte = |b: &u8| b.is_ascii_alphanumeric() || *b == b'_' || *b == b'-';
