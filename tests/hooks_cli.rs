@@ -767,6 +767,9 @@ const DIRECT_MERGES: &[&str] = &[
     "until false; do gh pr merge 5; done",
     "! gh pr merge 5",
     "{ gh pr merge 5; }",
+    // Named false confirmation (the closed rule of `open_shell_structure`): a structure word
+    // standing as an argument still counts as one, so this only echoes and still asks.
+    "echo do gh pr merge 5",
     // Two keywords in a row: both are peeled.
     "if true; then ! gh pr merge 5; fi",
     "while true; do { gh pr merge 5; }; done",
