@@ -64,7 +64,8 @@ C-93 의 tier 2 감사(카드 노트 2759, PASS)의 비차단 후속 세 가지:
 
 ## Result
 
-- AC-1: (검증 후 채움)
-- AC-2: (검증 후 채움)
-- AC-3: (검증 후 채움)
-- AC-4: (검증 후 채움)
+- AC-1: met — RED 소급: 구 워크플로에서 새 시험 둘 실패(exit 1); GREEN: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.release_workflow_test` 29 tests OK(2026-11-19, 이 worktree, C-93 head 5ca027dd4c 기반) — 여덟 잘못된 모양이 각각 "does not match moai-adk-v" 로 거부되고 `v3.1.3` 등 다른 계열은 계속 막지 않아요.
+- AC-2: met — 같은 실행의 `test_a_build_number_over_the_32_bit_cap_is_refused`: 4294967296 은 "over 4294967295" 거부, 4294967295 는 "not above" 거절로 이름이 불려요.
+- AC-3: met — `cargo test --locked --offline --test update_headver` 5 passed(로컬 build 0 → 번호 없는 갈래가 preflight blocked·`moai update --allow-older` 이유를 단언 — 조용한 통과 제거).
+- AC-4: met — `moai spec check` 두 SPEC 모두 errors 0, warnings 0(REQ-2 문구는 실제 강제 범위: plan 이 번호를 매기는 유일 잡, build-only 재실행은 같은 커밋·번호).
+- 이웃과 변이: github_assets_test 39 OK, lib 전체 1451 passed, `cargo fmt --check` 0, `cargo clippy --offline --locked --all-targets -- -D warnings` 0; 변이 M1(엄격 모양을 구 정규식으로 되돌림) → 잘못된 태그 시험 FAILED exit 1(KILLED), 복원 `diff -q` 클린.
