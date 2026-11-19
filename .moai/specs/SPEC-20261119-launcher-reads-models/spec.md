@@ -41,6 +41,7 @@ parent: SPEC-20261118-install-model-per-tool
 
 - AC-1 (REQ-1, REQ-2): with a saved choice in a synthetic HOME, `moai cc|codex|omp -l|-a --dry-run` prints the argv with the saved model and effort in each host's own flag (claude `--model` and `--effort`, codex `-m` and `-c model_reasoning_effort="…"`, omp `--model` and `--thinking`), for every host × role of the three.
   verify: `cargo test --locked --offline --test launcher_reads_models saved_values_reach_the_argv_of_each_host_and_role`
+  verify: `cargo test --locked --offline --test launcher_reads_models a_saved_zai_model_reaches_an_omp_host_that_is_started`
 - AC-2 (REQ-3): `--model` alone replaces only the model and `--effort` alone replaces only the effort, the other field still from the file.
   verify: `cargo test --locked --offline --test launcher_reads_models explicit_flags_win_per_field`
 - AC-3 (REQ-4, REQ-5, REQ-6): with no saved choice the three hosts compose as before (claude `--model opus --effort medium` for a role, codex and omp without a model or effort flag); a roleless session and a `glm` session with saved entries compose byte for byte like the same session with no file.
@@ -90,3 +91,15 @@ parent: SPEC-20261118-install-model-per-tool
 | D-6 | 지원표 밖 저장 항목이 있으면 역할 있는 세션(claude, codex, omp)을 고정 문구로 거절한다(읽지 못하거나 파싱 못 하는 파일은 기존 검사가 이미 모든 실행에서 거절해요) | `unsupported_entries` 의 주석이 이미 "런처가 그런 파일을 거절한다" 고 적어 두었어요. 파일 내용은 인용하지 않고 키 경로만 말해요 | 거절을 무시로 |
 
 (D-4, D-5 는 오늘 사람이 받는 것을 바꾸는 쪽이라 리더가 다르게 정하면 REQ 와 시험이 같이 바뀌어요: 카드 노트 3150.)
+
+## Result
+
+- AC-1: met — 2026-11-19 이 worktree 에서 `cargo test --offline --locked --test launcher_reads_models` 는 구현 전(RED 커밋 e990ee9270) 2 passed 5 failed(저장값을 읽는 시험 5개가 실패, 기존 동작을 못 박는 시험 2개 통과), 구현 뒤 8 passed 예요. `saved_values_reach_the_argv_of_each_host_and_role` 는 claude(`--model`·`--effort`), codex(`-m`·`-c model_reasoning_effort="…"`), omp(`--model`·`--thinking`) × 리더·에이전트 6가지의 argv 를 읽고, `a_saved_zai_model_reaches_an_omp_host_that_is_started` 는 스텁 `omp` 를 실제로 시작해 인자(`--model zai/glm-5.3-flash`, `--thinking max`)와 `ZAI_API_KEY` 값이 닿는 것을 읽어요(`launch()` 가 채운 요청을 쓰는 이유).
+- AC-2: met — `explicit_flags_win_per_field` 통과: `--model` 만 주면 노력은 파일에서, `--effort` 만 주면 모델은 파일에서, 둘 다 주면 파일 값도 `launcher.models` 노트도 없어요.
+- AC-3: met — `without_a_saved_choice_nothing_changes`(파일 없음: claude `--model opus --effort medium`, codex·omp 는 모델·노력 플래그 없음; 다른 도구만 저장된 파일에서도 같음)와 `a_roleless_session_and_glm_ignore_saved_choices`(역할 없는 `cc`·`codex`·`omp` 와 `glm`·`glm -l`·`glm -a` 가 저장값이 있는 홈과 없는 홈에서 같은 프로젝트로 argv·env 키·노트가 같아요) 둘 다 구현 전에도 통과였고 구현 뒤에도 통과예요.
+- AC-4: met — `a_rewritten_file_is_used_by_the_next_launch` 통과: 파일을 다른 값으로 고쳐 다시 띄우면 새 값(claude-sonnet-5-5 / medium), 파일을 지우면 오늘의 기본값(opus / medium).
+- AC-5: met — `an_unsupported_saved_entry_refuses_a_role_launch` 통과: 모르는 모델, 모델이 제공하지 않는 노력(glm 모델의 `medium`), 다른 도구의 나쁜 항목 세 파일이 `cc -l`·`codex -a`·`omp -l` 를 exit 1, stdout 비어 있음, stderr 에 `launcher.models` 키 경로만 있고 파일 값(`SECRET`)은 없게 거절하고, 같은 파일에서 역할 없는 `cc` 와 `glm -l` 은 성공해요.
+- AC-6: met — `a_saved_value_adds_a_note_with_its_key_path` 통과: 여섯 경우 모두 노트에 `launcher.models.<도구>.<역할>` 이 있고 출력에 파일의 다른 값(`SENTINEL-SAVED-TEXT`)은 없어요.
+- AC-7: met — 이웃 시험 통과(`cargo test --offline --locked`): `launcher_permissions_setting` 6, `launcher_advisor_setting` 7, `launcher_agent_numbering` 25, `launcher_codex_effort` 5, `launcher_roleless` 4, `omp_launcher` 17, `launcher_agent_entry` 7, `launcher_terminal_output` 11, `launcher_glm_key_file` 8, `launcher_skill_check` 4, `launcher_auto_init` 18, `--lib session` 27. `cargo fmt --check` exit 0, `git diff --check origin/v2026.11.0...HEAD` exit 0.
+- 변이: `src/session.rs` 에서 한 군데씩 뒤집는 변이 9개(glm 을 호스트에 넣음, codex 를 뺌, 저장 모델이 `--model` 을 이김, 저장 노력이 `--effort` 를 이김, 지원표 밖 항목을 거절하지 않음, 노트를 지움, `launch()` 가 채우지 않은 요청을 씀, 저장 모델을 다른 값으로 바꿈, 역할 없는 세션이 리더 선택을 읽음)가 모두 `launcher_reads_models` 에서 1개 이상 실패시켰고 실패한 시험 이름이 변이마다 달랐어요(원복은 `cmp` 로 확인, 실행 뒤 `git status --short` 0줄).
+- 안 한 것: 실제 Claude Code·Codex·OMP 호스트는 시작하지 않았어요(argv 와 스텁 `omp` 만 확인). 호스트가 전체 id(`claude-opus-5-5` 등)를 받아들이는지는 지원표의 공식 문서 근거(카드 기준 2)에 기대요. `glm` 호스트는 이 조각 밖이에요(D-5). 스킬 문서(`update.md` 등)의 문장은 이 조각에서 바꾸지 않았어요. 전체 로컬 `cargo test`, Windows, 파이썬 전체 실행은 돌리지 않았고, 리더 공지(2026-11-19)의 여섯 점검은 READY 노트에 종료 코드로 적어요. `status: completed`(승인)는 이 레인의 몫이 아니에요.
