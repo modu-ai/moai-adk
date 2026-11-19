@@ -35,13 +35,14 @@ created: 2026-11-20
 - AC-1 (REQ-1): 시험 저장에 묶음 실행 행(소스 SHA, 대상 SHA, 명령 결과)과 PR 행(번호, 상태, 리뷰 판정, head)을 넣으면 한 묶음의 보기에 다섯 값이 함께 나와요 · verify: `cargo test --locked --offline --test board_bundle_link_cli the_link_view_shows_the_run_the_shas_and_the_pr_head_together`
 - AC-2 (REQ-2, REQ-8): 같은 PR 에 새 head 행을 더하면 앞선 통과가 "효력 없음"과 이력으로 보이고, 새 head 의 통과는 효력이 있어요. head 를 읽을 수 없는 통과는 효력 없음으로 나와요. 읽기 비교 조건을 `==` 에서 `!=` 로 뒤집은 변이가 이 시험을 실패시켜요 · verify: `cargo test --locked --offline --test board_bundle_link_cli a_head_change_marks_the_earlier_pass_as_no_longer_in_effect`
 - AC-3 (REQ-3): 같은 묶음의 SPEC 감사 통과와 묶음 PR 감사 통과가 두 층으로 나뉘어 각자의 head 와 함께 나오고, 한 층의 통과가 다른 층의 통과가 되지 않아요 · verify: `cargo test --locked --offline --test board_bundle_link_cli the_two_audit_layers_stay_apart`
-- AC-4 (REQ-4, REQ-5): 카드 번호, 세션 id, 타임라인 상태, 로그 원문이 섞인 입력으로 밖으로 나가는 글을 그려도 출력의 카드 번호 줄 수와 세션 id 줄 수가 0이고, 그런 값이 들어간 필드는 출력 없이 거절돼요 · verify: `cargo test --locked --offline --test board_bundle_link_cli outward_text_carries_no_card_number_and_no_session_id`
+- AC-4 (REQ-4): `bundle body` 가 만든 PR 본문에는 카드 번호 `C-<숫자>` 가 한 줄도 없고 세션 id 도 없어요: 표에 카드 열이 없고, 감사 칸은 판정과 head(와 tier)만 보이고, SPEC 별 결과 줄은 SPEC id 로 시작하고, 실행 기록의 명령 글에 든 카드 번호는 자리표시자 `<lane>` 으로 바뀌어요 · verify: `cargo test --locked --offline --test bundle_body_cli the_body_carries_no_card_number_and_no_session_id`
+- AC-7 (REQ-5): 실행 기록·Self-Audit 의 자유 글 값에 카드 번호나 세션 id 가 있으면 본문 전체를 거절하고 아무것도 쓰지 않아요(`--out` 파일도 만들지 않아요) · verify: `cargo test --locked --offline --test bundle_body_cli a_card_number_or_a_session_id_in_a_free_text_value_refuses_the_body`
 - AC-5 (REQ-6): 보기는 파일·데이터베이스·프로세스·네트워크를 이름으로 쓰지 않고, 호출해도 입력이 그대로이며 같은 답을 두 번 줘요(원장·관측 저장 파일의 바이트 비교는 저장 모듈이 착지한 뒤 마감 조각에서) · verify: `cargo test --locked --offline --test board_bundle_link_cli the_link_view_writes_nothing`
 - AC-6 (REQ-7): 관측 저장이 없거나 행 하나가 읽히지 않으면 연결은 "알 수 없음"이고 읽히지 않은 행이 이름으로 나와요 · verify: `cargo test --locked --offline --test board_bundle_link_cli a_missing_store_or_an_unreadable_row_is_unknown`
 
 ## Scope
 
-- write(조각 2 이후, 리더가 PLAN 을 읽은 뒤): 이 SPEC, `src/board/link.rs`(새), `tests/board_bundle_link_cli.rs`(새), 운영 문서의 연결 문단. D-4 에서 리더가 고르면 `src/bundle.rs` 의 `body` 한 곳과 그 시험.
+- write(조각 2 이후): 이 SPEC, `src/board/link.rs`(새), `tests/board_bundle_link_cli.rs`(새), 운영 문서의 연결 문단. 조각 3(리더 결정 3636 의 D-4 (나)): `src/bundle.rs` 의 `body` 와 그 시험 `tests/bundle_body_cli.rs`, `bundle body` 를 설명하는 `docs/design-review/appendix/operations/bundle.md` 문단.
 - read-only: `src/board/observation.rs`(BOARD 02 의 읽기 API), `src/audit_gate.rs`, `src/bundle.rs`, `src/bundle/verify.rs`(`run.json` 모양), `src/card/work.rs`(`card pr` 의 `head`)
 - forbidden: 원장 스키마·표·색인·journal_mode, 읽기 명령의 어떤 쓰기, 호스트 훅 설치, GitHub 쓰기, 카드 번호를 SPEC id·가지·커밋·PR 에 쓰는 것, 타인 회수 3회 한도·4시간 임대 바꾸기, 실제 원장·실제 HOME
 
@@ -72,6 +73,7 @@ created: 2026-11-20
 | D-3 | 두 층의 출처가 달라요: SPEC 감사는 원장의 판정 노트(첫 줄 `AUDIT C-n head … verdict: PASS`)를 읽기 전용으로, 묶음 PR 감사는 `pr-state@1` 의 리뷰 판정과 head 를 읽어요. 묶음 PR 감사 판정 댓글을 수집기가 `pr-state@1` 에 싣는지는 BOARD 02 조각 3 에 맞춰요 | 설계 5.4 표(두 층), `src/audit_gate.rs` 헤더(판정 댓글 규칙) | 두 층을 한 줄로 합치기(설계가 금지: 레인 통과가 묶음 감사를 대신하지 않아요) |
 | D-4 | **리더가 고르는 결정**: 밖으로 나가는 글의 범위. (가) 새 렌더러와 거절 규칙만 더하고 `bundle body` 는 그대로 둔다(빠르지만 지금 PR 본문의 카드 번호는 남아요, 기준 "0건"을 이 SPEC 이 못 지켜요). (나) `bundle body` 의 `Card` 열과 `card note` id, 판정 줄의 카드 번호를 SPEC id 와 링크로 바꿔요(기준을 지키고 `src/bundle.rs` 한 곳과 그 시험을 고쳐요). 권장 (나) | 설계 승인 결정 3(밖에는 SPEC id 와 링크만), 카드 기준 2("카드 번호 0건") | (나)를 되돌리면 이전 본문 형식 |
 | D-5 | 이번 조각에서 코드는 쓰지 않아요: PLAN 노트를 리더가 읽은 뒤 조각 2 를 정해요 | 리더 배차(조각 1 = SPEC 과 PLAN) | 없음 |
+| D-6 | 밖으로 나가는 글의 렌더러는 지금 있는 `bundle body`(`src/bundle.rs`)예요(리더 결정 3636 의 (나)). 바꾸는 곳 넷: 머리 표의 `Card` 열 삭제, 감사 칸을 `card note <id>` 와 판정 줄 인용 대신 `` `PASS` on `<head>` (tier N) `` 꼴로, SPEC 별 결과 줄을 `<SPEC id>: …` 로, 실행 기록의 명령 글 속 `C-<숫자>` 를 `<lane>` 으로(기계가 만든 인자라서 거절하지 않고 바꿔요). 그다음 만든 본문 전체를 한 번 더 훑어 카드 번호나 세션 id(UUID 꼴)가 남아 있으면 본문 전체를 거절해요(리더가 손으로 쓰는 Self-Audit 값·가지 이름 등 자유 글이 몫이에요) | 설계 승인 결정 3, 리더 결정 노트 3636; 사실은 head 와 실행 기록에서만 온다는 `bundle body` 의 기존 규칙 | 이전 본문 형식(표의 `Card` 열과 `card note` 인용) |
 
 ## Result
 

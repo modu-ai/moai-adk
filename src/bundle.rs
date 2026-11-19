@@ -74,6 +74,75 @@ fn driver_names(config_output: &str) -> Vec<String> {
 
 const AUDIT_NOTE: &str = "a `PASS` note naming the head counts; a stated `tier <N>` before ` head ` is read (a head whose floor is above it has `audit_tier_low`); the tool cannot tell who wrote it";
 
+/// Byte ranges of the card numbers in `text`: `C-` and one or more digits, the `C` not inside a
+/// longer word (`AC-1` and `SPEC-2026…` are not card numbers). SPEC-20261120-board-bundle-link.
+fn card_number_spans(text: &str) -> Vec<(usize, usize)> {
+    let b = text.as_bytes();
+    let mut spans = Vec::new();
+    let mut i = 0;
+    while i + 2 < b.len() {
+        let word_start = i == 0 || !b[i - 1].is_ascii_alphanumeric();
+        if word_start && b[i] == b'C' && b[i + 1] == b'-' && b[i + 2].is_ascii_digit() {
+            let end = b[i + 2..]
+                .iter()
+                .position(|c| !c.is_ascii_digit())
+                .map_or(b.len(), |p| i + 2 + p);
+            spans.push((i, end));
+            i = end;
+        } else {
+            i += 1;
+        }
+    }
+    spans
+}
+
+/// `text` with every card number replaced by the placeholder `<lane>`.
+fn without_card_numbers(text: &str) -> String {
+    let mut out = String::new();
+    let mut at = 0;
+    for (start, end) in card_number_spans(text) {
+        out.push_str(&text[at..start]);
+        out.push_str("<lane>");
+        at = end;
+    }
+    out.push_str(&text[at..]);
+    out
+}
+
+/// Whether `text` holds a session-id-shaped string: hex groups of 8, 4, 4, 4 and 12 joined by `-`.
+fn has_session_id(text: &str) -> bool {
+    const SHAPE: [usize; 5] = [8, 4, 4, 4, 12];
+    let b = text.as_bytes();
+    (0..b.len()).any(|start| {
+        let mut at = start;
+        for (k, n) in SHAPE.iter().enumerate() {
+            if k > 0 {
+                if b.get(at) != Some(&b'-') {
+                    return false;
+                }
+                at += 1;
+            }
+            if !(0..*n).all(|j| b.get(at + j).is_some_and(|c| c.is_ascii_hexdigit())) {
+                return false;
+            }
+            at += n;
+        }
+        true
+    })
+}
+
+/// What a text that leaves the repository must not carry and still does: a card number or a
+/// session id (SPEC-20261120-board-bundle-link REQ-5).
+pub fn outward_leak(text: &str) -> Option<&'static str> {
+    if !card_number_spans(text).is_empty() {
+        Some("a card number (`C-` and digits)")
+    } else if has_session_id(text) {
+        Some("a session id (hex groups 8-4-4-4-12)")
+    } else {
+        None
+    }
+}
+
 /// The tier a verdict line states before its last ` head ` (the verdict's own, as
 /// `gate::parse_verdict` takes it): the word `tier`, a space and one digit from 0 to 2, the word
 /// starting the text or following a space, `(` or `,` and the digit followed by the end of the
@@ -1046,7 +1115,7 @@ pub fn body(
     b.push_str(
         "\nM-Flow bundle (lanes push only, the leader integrates audited heads locally, verifies the \
          pinned SHA locally, then opens one pull request; CI, independent audit and the ruleset are unchanged).\n\n\
-         | SPEC | Card | Branch head | Audit before integration |\n| --- | --- | --- | --- |\n",
+         | SPEC | Branch head | Audit before integration |\n| --- | --- | --- |\n",
     );
     for j in &judged {
         let head = j.head.as_deref().unwrap_or("");
@@ -1055,19 +1124,20 @@ pub fn body(
             .as_deref()
             .map(|n| format!(" (branch `{n}`)"))
             .unwrap_or_default();
+        // The text leaves the repository: it names the verdict and the exact head, never the card
+        // or the note that holds the verdict (SPEC-20261120-board-bundle-link REQ-4, D-6).
         let audit = match (&j.pass_note, &j.pass_line) {
-            (Some(id), Some(line)) => {
+            (Some(_), Some(line)) => {
                 let tier = stated_tier(line)
                     .map(|t| format!(" (tier {t})"))
                     .unwrap_or_default();
-                format!("`PASS` card note {id}{tier}: {}", line.replace('|', "/"))
+                format!("`PASS` on `{head}`{tier}")
             }
             _ => format!("audit floor {}: no verdict needed", j.floor),
         };
         b.push_str(&format!(
-            "| {} | {} | `{head}`{branch_name} | {audit} |\n",
-            j.specs.join(", "),
-            j.card
+            "| {} | `{head}`{branch_name} | {audit} |\n",
+            j.specs.join(", ")
         ));
     }
     let built = if base == tip.sha {
@@ -1101,6 +1171,9 @@ pub fn body(
         "\n## Result\n\nLocal verification on `{pinned}`:\n\n"
     ));
     for (cmd, exit, counts, _) in &rec.commands {
+        // A card number inside a command (`bundle check C-1 C-2`) is a machine-made argument:
+        // it becomes a placeholder instead of leaving the repository.
+        let cmd = &without_card_numbers(cmd);
         match counts {
             Some(c) => b.push_str(&format!("- `{cmd}` → exit {exit}, {c}.\n")),
             None => b.push_str(&format!("- `{cmd}` → exit {exit}.\n")),
@@ -1134,12 +1207,18 @@ pub fn body(
                 )
             };
             b.push_str(&format!(
-                "{id} ({}): {acs} AC, {met} met, {withdrawn} withdrawn{tail} — see the SPEC's Result.\n\n",
-                j.card
+                "{id}: {acs} AC, {met} met, {withdrawn} withdrawn{tail} — see the SPEC's Result.\n\n"
             ));
         }
     }
     b.push_str("🤖 Generated with [Claude Code](https://claude.com/claude-code)\n");
+    // The whole text is read once more: a card number or a session id that is still in it (a
+    // free-text value the leader wrote, a branch name) refuses the body and nothing is written.
+    if let Some(what) = outward_leak(&b) {
+        return Err(format!(
+            "bundle body refused: the text carries {what}; reword that value (the text leaves the repository with SPEC ids and links only)"
+        ));
+    }
     if let Err(missing) = self_audit::check(&b, false) {
         return Err(format!(
             "bundle body refused: the text fails the Self-Audit checker: {}",
@@ -1168,6 +1247,48 @@ mod tests {
     use super::*;
 
     const H: &str = "0123456789abcdef0123456789abcdef01234567";
+
+    #[test]
+    fn card_numbers_are_found_at_word_starts_only() {
+        let spans = |t: &str| {
+            card_number_spans(t)
+                .into_iter()
+                .map(|(a, b)| &t[a..b])
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(spans("C-1"), ["C-1"]);
+        assert_eq!(spans("see C-123, C-4)"), ["C-123", "C-4"]);
+        assert_eq!(spans("(C-9)"), ["C-9"]);
+        assert_eq!(spans("check C-1=0123 C-22"), ["C-1", "C-22"]);
+        // Not card numbers: inside a longer word, without digits, or lowercase.
+        assert!(spans("AC-1 SPEC-20261119-x xC-1 C- C-x c-1 AC-12").is_empty());
+        assert!(spans("").is_empty() && spans("C").is_empty() && spans("C-").is_empty());
+        assert_eq!(
+            without_card_numbers("moai-cli bundle check C-1=abc C-22"),
+            "moai-cli bundle check <lane>=abc <lane>"
+        );
+        assert_eq!(without_card_numbers("no card here"), "no card here");
+    }
+
+    #[test]
+    fn a_session_id_is_exactly_five_hex_groups() {
+        assert!(has_session_id("x 00000000-0000-4000-8000-000000000000 y"));
+        assert!(has_session_id("ABCDEF01-2345-6789-abcd-ef0123456789"));
+        // One character short or long in a group, a non-hex character, or a missing dash.
+        assert!(!has_session_id("0000000-0000-4000-8000-000000000000"));
+        assert!(!has_session_id("00000000-000-4000-8000-000000000000"));
+        assert!(!has_session_id("00000000-0000-4000-8000-00000000000"));
+        assert!(!has_session_id("0000000g-0000-4000-8000-000000000000"));
+        assert!(!has_session_id("00000000_0000-4000-8000-000000000000"));
+        assert!(!has_session_id(
+            "a 40-hex sha 0123456789abcdef0123456789abcdef01234567"
+        ));
+        assert_eq!(outward_leak("fine text"), None);
+        assert!(outward_leak("note C-7").unwrap().contains("card number"));
+        assert!(outward_leak("00000000-0000-4000-8000-000000000000")
+            .unwrap()
+            .contains("session id"));
+    }
 
     #[test]
     fn the_stated_tier_is_read_from_before_the_last_head() {
