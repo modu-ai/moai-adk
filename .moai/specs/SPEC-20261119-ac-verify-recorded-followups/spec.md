@@ -33,7 +33,7 @@ C-86 S3(SPEC-20261119-enforce-ac-verify-recorded)는 tier 2 감사에서 차단 
 
 - AC-1 (REQ-1, REQ-3, REQ-4, REQ-5): `docs/rust-product-path.md` 의 `hook.dispatch` 행 안에서(파일 전체가 아니라 그 행만 읽어요) `[hooks.modes]`·`merge_confirm`·`ac_verify_recorded`·`enforce`·기본값 낱말 `observe`("reads as `observe`)" 꼴)·"goes through instead"·"successful, finished"·"record nothing"·"Codex and OMP refuse"·"third refusal"·"not its text"·"switches the rule off"·"work tree root holds" 가 나오고, 코드(`src/hook_engine.rs`)의 `"kind"` 값과 `line("…")` 값 전부가 그 행에 "`종류` line" 꼴로 나와요(코드에 새 줄 종류가 생기면 이 명령이 실패해요). · verify: `sh -c 'row=$(grep -E "^\| .hook\.dispatch. \(rc\.2" docs/rust-product-path.md | head -1); [ -n "$row" ] || { echo no row; exit 1; }; for w in "[hooks.modes]" merge_confirm ac_verify_recorded enforce "absent or any other word reads as" "line per tool-observe" "goes through instead" "successful, finished" "record nothing" "Codex and OMP refuse" "third refusal" "not its text" "switches the rule off" "work tree root holds"; do printf %s "$row" | grep -qF -- "$w" || { echo "row lacks: $w"; exit 1; }; done; printf %s "$row" | grep -qE "reads as .observe.[)]" || { echo "default word"; exit 1; }; for k in $(grep -ohE "\"kind\": \"[a-z_]+\"|line\(\"[a-z_]+\"\)" src/hook_engine.rs | sed -E "s/.*\"([a-z_]+)\".*/\1/" | sort -u); do printf %s "$row" | grep -qE "$k. line" || { echo "row lacks kind: $k"; exit 1; }; done'`
 - AC-2 (REQ-2): `hooks-plan` 설명 줄이 `ac_verify_recorded`·"turn-validation rule, "·`--host claude`·`--host codex`·`--host omp`·`tool_result` 를 말하고 "rules are empty" 가 없어요. · verify: `sh -c 'l=$(grep -E "^.hooks-plan PROJECT --host claude.codex. previews" docs/rust-product-path.md | head -1); [ -n "$l" ] || { echo no line; exit 1; }; for w in "turn-validation rule, " ac_verify_recorded "--host claude" "--host codex" "--host omp" tool_result; do printf %s "$l" | grep -qF -- "$w" || { echo "line lacks: $w"; exit 1; }; done; ! printf %s "$l" | grep -qF "rules are empty"'`
-- AC-3 (REQ-1, REQ-2, REQ-3, REQ-4): 이웃 검사: 문서를 읽는 시험과 SPEC 검사가 그대로 통과해요. · verify: `cargo test --locked --offline --test doc_references`; `cargo test --locked --offline --test spec_cli the_repository_specs_pass_check`
+- AC-3 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5): 이웃 검사: 문서를 읽는 시험과 SPEC 검사가 그대로 통과해요. · verify: `cargo test --locked --offline --test doc_references`; `cargo test --locked --offline --test spec_cli the_repository_specs_pass_check`
 
 ## Scope
 
@@ -52,6 +52,7 @@ C-86 S3(SPEC-20261119-enforce-ac-verify-recorded)는 tier 2 감사에서 차단 
 
 - 문서의 낱말이 코드보다 먼저 낡을 수 있어요. AC-1 의 명령이 코드의 줄 종류 값을 직접 읽어 문서 행에 없으면 실패해요. 반대로 문서가 코드에 없는 줄 종류를 더 말하는 것과, 한 낱말이 행에 두 번 나올 때 한 곳만 바뀐 것은 못 잡아요(알려진 한계).
 - 이 조각만으로 기준 2~5 는 열린 채예요. 카드는 닫지 않아요.
+- AC-1 의 한계(재감사 N1·N2): 문구가 행에 있는지만 보므로 값 수준의 문장(4096, `.moai`, 호스트별 성공값, "calls neither" 등)이 틀리게 바뀌는 것은 못 잡아요(감사의 변이 열세 개 중 여덟 개가 살아남았어요). 줄 종류 검사도 `"kind": "…"` 와 `line("…")` 두 꼴의 리터럴만 읽어서, 대입으로 쓰는 종류나 `src/hook_engine.rs` 밖에서 쓰는 종류는 못 잡고, 이 파일의 시험 코드에 그 꼴의 리터럴이 생기면 거짓 실패가 나요. 이 값들은 읽는 사람의 검토와 감사가 지켜요.
 - 문서의 enforce 설명은 줄 쓰기 실패 시 통과라는 코드의 선택(`Err(_) => Verdict::Allow`)을 그대로 옮긴 것이고, 그 선택이 옳은지는 이 SPEC 의 판단 밖이에요.
 
 ## Decisions
