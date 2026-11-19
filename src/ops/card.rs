@@ -121,23 +121,34 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
-    /// Writes the ledger. Set the write scope of a card nobody holds
+    /// Writes the ledger. Set the write scope of a card, or widen a held card's
     ///
     /// Writes the ledger. Replaces the write scope of a `draft` or `ready` card that nobody holds,
     /// with one `card.scope` event that keeps the old scope, the new one and `--by`. `card next`
     /// skips a card without a write scope (`empty_scope`); this is how such a card gets one.
-    /// Each entry is checked as `add --scope` checks it. A card in another state, or one with a
-    /// live reservation, is refused (`conflict`) with its state and holder, and nothing is
+    /// A card that has an active reservation (`active` or `review`) is widened instead, under
+    /// the same generation: no release and no retake, and the holder, lease, worktree and branch
+    /// stay. A held card's scope only grows: the list must keep every pattern the reservation
+    /// has (a list that leaves one out is a `conflict` naming it), and the added patterns must
+    /// not overlap another card's reservation (a `conflict` naming that card). `--reason` is
+    /// required for a held card; the `card.scope` event records `--by`, the reason, the
+    /// generation and the holder; the card's own scope is not changed, so a later `card take`
+    /// without `--scope` still reads the old one. Each entry is checked as `add --scope` checks
+    /// it. Any other state is refused (`conflict`) with its state and holder, and nothing is
     /// written.
     Scope {
         /// `C-12`.
         card: String,
-        /// A path the card may change, relative with `/` (repeat for more; replaces them all).
+        /// A path the card may change, relative with `/` (repeat for more; replaces them all, and
+        /// for a held card the list must contain the current patterns plus the new ones).
         #[arg(long = "scope", required = true)]
         scope: Vec<String>,
         /// Who sets it, one line (for example `leader`).
         #[arg(long)]
         by: String,
+        /// Why, one line of 1 to 500 characters; required to widen a held card.
+        #[arg(long)]
+        reason: Option<String>,
         /// The project folder (its profile holds the project id).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -553,9 +564,17 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             card,
             scope,
             by,
+            reason,
             project,
             home,
-        } => d::scope(&project, &resolve_home(home)?, &card, &scope, &by),
+        } => d::scope(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &scope,
+            &by,
+            reason.as_deref(),
+        ),
         Action::Take {
             card,
             lease_secs,

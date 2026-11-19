@@ -171,17 +171,25 @@ pub(super) fn checked_scope(action: &str, entries: &[String]) -> Result<Vec<Stri
     Ok(scope)
 }
 
-/// `card scope C-n --scope P…`: replaces the write scope of a `draft` or `ready` card that
-/// nobody holds, with one `card.scope` event that keeps the old scope, the new one and `--by`.
-/// A card added without `--scope` is skipped by `card next` (`empty_scope`), and nothing else
-/// sets a card's own scope (card C-53). Any other state, or a live reservation, is a conflict
-/// that names it; nothing is written then.
+/// `card scope C-n --scope P…`: sets the write scope of a card.
+///
+/// A `draft` or `ready` card that nobody holds gets its scope replaced, with one `card.scope`
+/// event that keeps the old scope, the new one and `--by` (and the `--reason` when one is given).
+/// A card that has an active reservation (`active`, or `review`) is widened instead (card C-94):
+/// the new list must keep every pattern the reservation has, the added patterns are checked
+/// against every other card's active reservation, and they are inserted into the same
+/// reservation under the same generation, with a `card.scope` event that also names the
+/// generation, the holder and the `--reason` (required then). The card's own `write_scope` is
+/// not touched by a widening. A card added without `--scope` is skipped by `card next`
+/// (`empty_scope`), and nothing else sets a card's own scope (card C-53). Any other state is a
+/// conflict that names it; nothing is written then.
 pub fn scope(
     project: &Path,
     home: &Path,
     reference: &str,
     entries: &[String],
     by: &str,
+    reason: Option<&str>,
 ) -> Result<Value> {
     let card_id = card_id("scope", reference)?;
     let new = checked_scope("scope", entries)?;
@@ -189,9 +197,10 @@ pub fn scope(
         return Err("card scope refused: give at least one --scope".to_string());
     }
     let by = actor(Some(by), "scope")?;
+    let reason = reason.map(|r| checked_reason("scope", r)).transpose()?;
     let new_json = serde_json::to_string(&new).map_err(|e| e.to_string())?;
     let (id, mut ledger) = open_for_write(project, home)?;
-    let (state, old, rev) = ledger
+    let outcome = ledger
         .with_write_tx(|tx, now| {
             let row: Option<(String, String)> = tx
                 .query_row(
@@ -216,11 +225,32 @@ pub fn scope(
             let held = holder.as_ref().map_or(String::new(), |(h, g)| {
                 format!(", held by {h} at generation {g}")
             });
+            if holder.is_some() && (state == "active" || state == "review") {
+                let Some(reason) = reason.as_deref() else {
+                    return Ok(Err(format!(
+                        "card scope refused: C-{card_id} is `{state}`{held}; widening a held \
+                         card needs --reason (one line: who asked for the wider scope and why)"
+                    )));
+                };
+                let widened = match reservation::widen_in_tx(tx, now, card_id, &new, &by, reason)? {
+                    Ok(widened) => widened,
+                    Err(refused) => return Ok(Err(refused.to_string())),
+                };
+                touch_card(tx, card_id)?;
+                let rev = card_rev(tx, card_id)?;
+                return Ok(Ok(json!({
+                    "state": state, "held": true,
+                    "generation": widened.reservation.generation,
+                    "holder": widened.reservation.holder,
+                    "from": widened.from, "write_scope": widened.reservation.write_scope,
+                    "added": widened.added, "reason": reason, "rev": rev,
+                })));
+            }
             if state != "draft" && state != "ready" {
                 return Ok(Err(format!(
                     "card conflict in state: C-{card_id} is `{state}`{held}; only a `draft` or \
-                     `ready` card that nobody holds gets a new scope; the scope is set before the \
-                     card is taken"
+                     `ready` card that nobody holds gets a new scope, and a held card only \
+                     grows; the scope is set before the card is taken"
                 )));
             }
             if holder.is_some() {
@@ -235,30 +265,53 @@ pub fn scope(
             )?;
             let old: Value = serde_json::from_str(&old).unwrap_or(Value::Null);
             let key = ledger::new_event_key(tx, "card.scope", Some(card_id))?;
+            let mut payload = json!({"from": old, "to": new});
+            if let Some(reason) = reason.as_deref() {
+                payload["reason"] = json!(reason);
+            }
             tx.execute(
                 "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
                  VALUES (?1, ?2, ?3, ?4, 'card.scope', ?5)",
-                params![
-                    key,
-                    now,
-                    by,
-                    card_id,
-                    json!({"from": old, "to": new}).to_string()
-                ],
+                params![key, now, by, card_id, payload.to_string()],
             )?;
-            let rev: i64 =
-                tx.query_row("SELECT rev FROM card WHERE card_id = ?1", [card_id], |r| {
-                    r.get(0)
-                })?;
-            Ok(Ok((state, old, rev)))
+            let rev = card_rev(tx, card_id)?;
+            let mut answer = json!({
+                "state": state, "from": old, "write_scope": new, "rev": rev,
+            });
+            if let Some(reason) = reason.as_deref() {
+                answer["reason"] = json!(reason);
+            }
+            Ok(Ok(answer))
         })
         .map_err(|e| e.to_string())??;
-    Ok(json!({
+    let mut answer = json!({
         "action": "scope", "project_id": id,
         "name": input::card_name(card_id), "card_id": card_id,
-        "state": state, "from": old, "write_scope": new, "by": by,
-        "rev": rev, "events": 1, "writes": true,
-    }))
+        "by": by, "events": 1, "writes": true,
+    });
+    if let (Some(base), Some(extra)) = (answer.as_object_mut(), outcome.as_object()) {
+        for (key, value) in extra {
+            base.insert(key.clone(), value.clone());
+        }
+    }
+    Ok(answer)
+}
+
+/// The `rev` of a card (it moves on every update of the card row).
+fn card_rev(tx: &rusqlite::Connection, card_id: i64) -> rusqlite::Result<i64> {
+    tx.query_row("SELECT rev FROM card WHERE card_id = ?1", [card_id], |r| {
+        r.get(0)
+    })
+}
+
+/// A widening changes the reservation, not the card row; touching the card moves `updated_at`
+/// and `rev` so `card show` readers see that the card changed.
+fn touch_card(tx: &rusqlite::Connection, card_id: i64) -> rusqlite::Result<()> {
+    tx.execute(
+        "UPDATE card SET updated_at = unixepoch() WHERE card_id = ?1",
+        [card_id],
+    )
+    .map(|_| ())
 }
 
 /// What `card take` was given.
@@ -376,27 +429,32 @@ pub fn handoff(
 /// `--reason` of `reclaim`: one line of 1 to [`reservation::MAX_REASON_LEN`] characters with
 /// something visible in it and no word shaped like a secret (the filter `card note` uses). It is
 /// what the reclaimer found out about the old holder.
-fn reclaim_reason(reason: &str) -> Result<String> {
+/// A `--reason` that is kept for good: one line of 1 to [`reservation::MAX_REASON_LEN`]
+/// characters, with no word that has the shape of a secret (the check `card note` uses,
+/// `redact::redact_outgoing`; `card export` writes it out). The text is never repeated.
+fn checked_reason(action: &str, reason: &str) -> Result<String> {
     if reason.trim().is_empty()
         || reason.chars().count() > reservation::MAX_REASON_LEN
         || reason.chars().any(char::is_control)
     {
         return Err(format!(
-            "card reclaim refused: --reason must be one line of 1 to {} characters",
+            "card {action} refused: --reason must be one line of 1 to {} characters",
             reservation::MAX_REASON_LEN
         ));
     }
-    // The check `card note` uses (`redact::redact_outgoing`): the reason is kept for good and
-    // `card export` writes it out. The text is not repeated.
     let (_, shaped) = crate::redact::redact_outgoing(reason);
     if shaped > 0 {
         return Err(format!(
-            "card reclaim refused: --reason has {shaped} word(s) with the shape of a secret \
+            "card {action} refused: --reason has {shaped} word(s) with the shape of a secret \
              (a token, a key, `password=`); a reason is kept for good and written out by \
              `card export`, so take them out"
         ));
     }
     Ok(reason.to_string())
+}
+
+fn reclaim_reason(reason: &str) -> Result<String> {
+    checked_reason("reclaim", reason)
 }
 
 /// What `card reclaim` was given.
