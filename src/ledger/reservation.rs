@@ -879,6 +879,21 @@ pub fn widen_in_tx(
     if added.is_empty() {
         return Ok(Err(WidenError::NothingNew));
     }
+    // `src/scope.rs` folds case when it judges what a pattern covers (`to_lowercase`), so a
+    // spelling that differs from one already held, or from one added earlier in this call, only
+    // by letter case is the same pattern, not a new one (SPEC-20261119-card-scope-widen-followup
+    // REQ-3).
+    let mut seen: Vec<(String, &String)> = from.iter().map(|p| (p.to_lowercase(), p)).collect();
+    for pattern in &added {
+        let key = pattern.to_lowercase();
+        if let Some((_, held)) = seen.iter().find(|(k, _)| *k == key) {
+            return Ok(Err(WidenError::InvalidInput(format!(
+                "`{pattern}` differs from `{held}` only by letter case, so it is not a new \
+                 pattern; leave one spelling out"
+            ))));
+        }
+        seen.push((key, pattern));
+    }
     if let Some((other_card, mine, theirs)) = find_overlap(tx, card_id, &added)? {
         return Ok(Err(WidenError::ScopeOverlap {
             other_card,
