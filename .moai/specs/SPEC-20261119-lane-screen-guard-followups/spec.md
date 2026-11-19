@@ -29,7 +29,7 @@ parent: SPEC-20261119-lane-screen-guard
 
 ## Requirements
 
-- REQ-1: IF the screen holds a numbered line that starts with `Yes` and a numbered line that starts with `No` inside ordinary prose (a list the lane wrote to the conversation, not a dialog), THEN `moai lane-screen` shall report `permission_prompt`, the same as for a dialog, and the lane shall be refused a send while the list is on its screen.
+- REQ-1: IF the screen holds a numbered line that starts with `Yes` and a numbered line that starts with `No` inside ordinary prose (a list the lane wrote to the conversation, not a dialog), THEN `moai lane-screen` shall report `permission_prompt`, the same as for a dialog.
 - REQ-2: IF the reset time written in a limit message, once turned into UTC, falls before the year 1970 or after the year 9999, THEN `moai lane-screen` shall report the reset time as unknown together with the printed text, never a time whose year has other than four digits.
 
 ## Acceptance
