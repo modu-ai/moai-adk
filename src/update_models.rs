@@ -370,6 +370,7 @@ mod tests {
             json!({"before_text": null}),
             json!({"before_text": text, "before_sha256": null}),
             json!({"before_text": null, "before_sha256": sha(text)}),
+            json!({"before_sha256": null}),
             json!({"before_text": text, "before_sha256": sha("other")}),
             json!({"before_text": 1, "before_sha256": 1}),
             json!("not an object"),
