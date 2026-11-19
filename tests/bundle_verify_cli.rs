@@ -586,17 +586,16 @@ fn every_command_of_the_list_runs_in_the_branch_worktree() {
     }
     assert_eq!(record["commands"][1]["counts"], "3 passed");
     assert_eq!(record["commands"][9]["counts"], "Ran 4 tests");
-    let logs = fs::read_dir(&out)
+    let mut log_names: Vec<&str> = record["commands"]
+        .as_array()
         .unwrap()
-        .filter(|e| {
-            e.as_ref()
-                .unwrap()
-                .path()
-                .extension()
-                .is_some_and(|x| x == "log")
-        })
-        .count();
-    assert_eq!(logs, 10);
+        .iter()
+        .map(|c| c["log"].as_str().unwrap())
+        .collect();
+    log_names.sort_unstable();
+    log_names.dedup();
+    assert_eq!(log_names.len(), 10, "one log per command");
+    assert!(out.join("run.sh").is_file());
     let (body, code) = w.bundle(&[
         "body",
         &b.cards[0],
@@ -716,7 +715,10 @@ fn refusals_run_nothing_and_write_nothing() {
         "{v}"
     );
     assert!(w.log().is_empty());
-    assert_eq!(fs::read_dir(&taken).unwrap().count(), 0, "left as it was");
+    assert!(
+        !taken.join("run.json").exists() && !taken.join("run.sh").exists(),
+        "left as it was"
+    );
     let array = w.root.path().join("array.json");
     fs::write(&array, "[1, 2]").unwrap();
     let out = w.out();
