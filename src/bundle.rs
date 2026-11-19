@@ -1,8 +1,12 @@
-//! `moai bundle ready | check | body` (card C-119, SPEC-20261119-bundle-ready-check): read the
-//! `LANE-READY-INTEGRATION` heads of the ledger, judge each head, and write the M-Flow bundle
-//! pull request body from facts. Nothing here fetches, pushes, opens a pull request, writes a
-//! ref, a branch, a card note or a ledger row (REQ-12): the git commands are the read-only list
-//! of the SPEC's Plan, run through [`crate::audit_delta::command`] (scrubbed environment).
+//! `moai bundle ready | check | body | build` (card C-119, SPEC-20261119-bundle-ready-check and
+//! SPEC-20261119-bundle-build): read the `LANE-READY-INTEGRATION` heads of the ledger, judge each
+//! head, write the M-Flow bundle pull request body from facts, and build the integration branch.
+//! Nothing here fetches, pushes, opens a pull request, writes a card note or a ledger row
+//! (REQ-12). `ready`, `check` and `body` write no ref and no branch either: their git commands
+//! are the list of the SPEC's Plan, run through [`crate::audit_delta::command`] (scrubbed
+//! environment). Only [`build`] writes, and only a new branch, its worktree and merge commits.
+
+pub mod build;
 
 use crate::card::{command as card_command, input as card_input};
 use crate::{gate, self_audit, spec_doc, trailers};

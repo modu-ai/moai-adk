@@ -56,7 +56,7 @@ The tool writes a branch, a worktree and merge commits and nothing else: no push
 - AC-5 (REQ-5, REQ-6): with a local branch for `-1`, an `origin` branch for `-2`, a worktree folder for `-3` and a registered worktree for `-4`, the build uses `-5`; every pre-existing ref, folder and worktree is byte-equal afterwards; a second build is `-6`.
   verify: `cargo test --locked --offline --test bundle_build_cli the_number_is_the_lowest_unused_and_existing_names_are_never_touched`
 - AC-6 (REQ-7): the creation step on a branch name or folder that already exists returns an error and changes no ref and no folder.
-  verify: `cargo test --locked --offline --lib bundle::build::tests::creation_refuses_a_taken_branch_or_folder`
+  verify: `cargo test --locked --offline --test bundle_build_cli creation_refuses_a_taken_branch_or_folder`
 - AC-7 (REQ-8): in a clone whose git has no author identity (`user.useConfigOnly`), the build stops at the first merge, the error names the branch and the worktree, both still exist and the branch is at the tip's commit.
   verify: `cargo test --locked --offline --test bundle_build_cli a_git_failure_after_creation_names_what_is_left_behind`
 - AC-8 (REQ-10): after a build the primary clone's HEAD, status and every ref except the one new branch, the bare `origin`'s refs and the ledger bytes are as before.
@@ -83,7 +83,7 @@ The tool writes a branch, a worktree and merge commits and nothing else: no push
 
 **Git.** Reads go through `crate::audit_delta::command` (a scrubbed environment, global and system configuration off). The writes of steps 3 and 4 need the user's own author identity and hook settings, so they run through `std::process::Command` with `identity::scrub_git_env` (the pattern of `worktree.rs`), in the lib crate (D-4). No `--no-verify`: a hook that refuses a merge commit is REQ-8.
 
-**Tests** (`tests/bundle_build_cli.rs`, a temp HOME, a bare `origin` and a work clone as in slice 2; the clone's `merge.moai-manifest.driver` is `true`): the nine AC lines above. A unit test of the creation step lives in `src/bundle/build.rs`.
+**Tests** (`tests/bundle_build_cli.rs`, a temp HOME, a bare `origin` and a work clone as in slice 2; the clone's `merge.moai-manifest.driver` is `true`): the nine AC lines above. The creation step is `pub fn create` of the module, so the test of AC-6 calls it directly in a temporary repository.
 
 ## Risks
 

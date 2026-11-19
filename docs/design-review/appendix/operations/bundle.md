@@ -1,8 +1,8 @@
 # `bundle`
 
-operation `bundle` · 코드 `src/ops/bundle.rs`, `src/bundle.rs` · 카드 C-119, SPEC-20261119-bundle-tool(계획), SPEC-20261119-bundle-ready-check(조각 2)
+operation `bundle` · 코드 `src/ops/bundle.rs`, `src/bundle.rs`, `src/bundle/build.rs` · 카드 C-119, SPEC-20261119-bundle-tool(계획), SPEC-20261119-bundle-ready-check(조각 2), SPEC-20261119-bundle-build(조각 3)
 
-`bundle <동작>` 은 M-Flow 묶음 PR 을 조립하는 리더를 돕는다. 레인이 카드에 `LANE-READY-INTEGRATION` 줄을 남긴 head 를 읽고, head 마다 검사하고, 묶음 PR 본문을 사실에서 만든다. 봉투의 `operation` 은 항상 `bundle`, 동작은 결과의 `action` 으로 나간다. 모든 동작의 도움말 첫 문장은 `Reads only.` 로 시작한다(`body --out` 만 `Writes one new file.` 을 덧붙인다). **어떤 동작도 fetch, push, PR 열기·고치기·병합, ref·가지 만들기·옮기기, 카드 노트와 원장 행 쓰기, 설정 바꾸기를 하지 않는다.** head 고르기, push, PR 은 리더의 몫이고 CI·독립 감사·ruleset 은 그대로다. git 은 ref·색인·작업 트리를 쓰지 않는 명령만, 환경을 비운 채 부른다(`audit_delta::command`). 다만 `check`·`body` 가 쓰는 `git merge-tree --write-tree`(git 2.38 이상)는 어느 ref 도 가리키지 않는 tree·blob 객체를 객체 저장소에 남긴다(`git gc` 가 지운다).
+`bundle <동작>` 은 M-Flow 묶음 PR 을 조립하는 리더를 돕는다. 레인이 카드에 `LANE-READY-INTEGRATION` 줄을 남긴 head 를 읽고, head 마다 검사하고, 묶음 PR 본문을 사실에서 만들고, 묶음 가지를 만든다. 봉투의 `operation` 은 항상 `bundle`, 동작은 결과의 `action` 으로 나간다. `ready`·`check`·`body` 의 도움말 첫 문장은 `Reads only.` 로 시작한다(`body --out` 만 `Writes one new file.` 을 덧붙인다). `build` 만 쓰는 동작이고 도움말 첫 문장이 `Writes a new branch and worktree.` 다. **어떤 동작도 fetch, push, PR 열기·고치기·병합, 카드 노트와 원장 행 쓰기, 설정 바꾸기를 하지 않는다. `ready`·`check`·`body` 는 ref·가지도 쓰지 않고, `build` 는 새 가지·새 worktree·병합 커밋만 쓴다.** head 고르기, push, PR 은 리더의 몫이고 CI·독립 감사·ruleset 은 그대로다. `build` 를 뺀 동작의 git 은 ref·색인·작업 트리를 쓰지 않는 명령만, 환경을 비운 채 부른다(`audit_delta::command`). 다만 `check`·`body` 가 쓰는 `git merge-tree --write-tree`(git 2.38 이상)는 어느 ref 도 가리키지 않는 tree·blob 객체를 객체 저장소에 남긴다(`git gc` 가 지운다).
 
 ## `bundle ready [--project .] [--home H] [--dir .] [--tip origin/v2026.11.0]`
 
@@ -34,3 +34,11 @@ HEADS 는 `C-<n>`(카드의 가장 새 읽히는 READY head) 또는 `C-<n>=<40�
 실행 기록 파일은 JSON 객체 하나다: `commands`(`check`, `command`, `exit`, 선택 `counts`), `not_run`(`check`, `reason`), `self_audit`(`plan`, `red`, `mutation`, `clone`, `host`, `receipt`). 검사 키는 코드에 고정돼 시험이 묶는다: `build`, `lib_tests`, `home_isolation_scan`, `product_cli`, `fmt`, `clippy`, `trailer_check`, `spec_check`, `result_coverage`, `unittest`. 키마다 `commands` 에 있거나 `not_run` 에 이유와 함께 있어야 하고(둘 다는 안 된다), 키 없는 `commands` 항목은 `## Result` 에 덧줄로 간다.
 
 빠진 사실이 하나라도 있으면 본문 전체를 거절하고 빠진 사실을 모두 한 번에 이름 붙인다(자리표시자를 쓰지 않는다): 가지에 없는 head, `check` 의 발견이 하나라도 있는 head(`audit_missing`, `spec`, `trailers`, `conflict`, `no_merge_base` …), 실행도 `not_run` 도 아닌 검사, 줄바꿈이 든 기록 값, exit 가 0 이 아닌 명령, 비어 있는 Self-Audit 줄, `## Result` 에 줄이 없는 AC. 만든 본문이 `self_audit::check` 를 통과하지 못해도 거절한다. `--out` 은 새 파일만 만들고 이미 있는 경로는 거절하며 파일을 그대로 둔다. `Integration:` 줄의 가지 크기는 tip 과의 merge base 에서 센다(가지를 만든 뒤 tip 이 움직였으면 "built from `<base>` (the tip … has moved on since)" 로 적는다). 본문에는 기록·head 에서 오지 않는 고정 문장이 있다: M-Flow 한 줄 소개, `built from`, `Local verification on`, `see the SPEC's Result`, 끝의 Claude Code 표지.
+
+## `bundle build HEADS… [--date YYYYMMDD] [--home H] [--dir .] [--tip origin/v2026.11.0]`
+
+새 가지 `m-flow/bundle-<날짜>-<n>` 과 새 worktree `<HOME>/.moai/worktrees/<프로젝트>-bundle-<n>` 을 tip 의 커밋에서 만들고, HEADS(`C-<n>` 또는 `C-<n>=<40자리 16진수>`)를 준 순서대로 head 마다 병합 커밋 하나씩 합친다. `<날짜>` 는 오늘(UTC)이고 `--date` 로 정한다. `<n>` 은 다음이 모두 없는 가장 작은 양의 정수다: 같은 이름의 로컬 가지, `origin` 가지, 등록된 worktree, 그 폴더. 병합은 GitHub 가 돌리는 글자 병합이다(복제본에 등록된 병합 드라이버가 정하지 못한다). **이미 있는 가지·ref·worktree·폴더는 옮기거나 지우거나 강제하지 않는다**: 다시 만들 때는 늘 새 번호의 새 가지다. 쓰는 것은 새 가지, 그 worktree, 병합 커밋뿐이고 fetch·push·PR·카드 노트·원장 행·설정은 건드리지 않는다. 쓰기 git 은 사용자의 작성자 신원과 훅 설정을 따르려고 `identity::scrub_git_env` 로만 환경을 정리해 부른다(`--no-verify` 를 쓰지 않는다).
+
+결과 키: `action`, `number`, `branch`, `worktree`, `tip`, `pinned`(병합을 마친 뒤 `git rev-parse` 로 읽은 가지의 SHA), `merged[]`(`card`, `head`, `merge`), `dropped[]`(`card`, `head`, `files`), `skipped[]`(`card`, `head`, `reason`: `in_tip` 또는 `in_branch`), `rebuild`, `ok`, `writes`. 병합이 충돌한 head 는 `git merge --abort` 로 되돌려 가지에 넣지 않고 `dropped` 에 충돌 파일과 함께 올리며 다음 head 로 간다. `ok` 는 `dropped` 가 비었을 때만 참이고(`skipped` 는 실패가 아니다), `rebuild` 는 떨어뜨린 head 만 뺀 같은 빌드의 명령줄(`moai bundle build C-<n>=<sha> … --tip <tip>`)이거나 떨어뜨린 것이 없으면 빈 문자열이다.
+
+만들기 전에 쓸 수 없는 head 를 한 번에 모두 이름 붙여 거절한다(읽히는 READY 줄이 없는 카드, 이 저장소에 커밋이 없는 head, 같은 카드를 두 번 준 것, 모두 이미 tip 에 있어 합칠 것이 없는 경우): 가지도 폴더도 생기지 않는다. 가지를 만든 뒤 git 이 실패하면(작성자 신원 없음, 병합 커밋을 거절하는 훅, 되돌리기 실패) 멈추고 남겨 둔 가지와 worktree 를 이름 붙이며 아무것도 지우지 않는다. `ok:false` 로 exit 1 을 내는 규칙은 연산 이름으로 `src/main.rs` 에 있어 이 동작도 결과로 알리는 발견은 exit 0 이다.

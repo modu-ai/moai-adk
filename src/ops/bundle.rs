@@ -1,16 +1,20 @@
-//! `bundle` (card C-119, SPEC-20261119-bundle-ready-check): the READY heads of the ledger, the
-//! checks of each head, and the bundle pull request body. One word, one action each; the logic
-//! is `moai_cli::bundle`.
+//! `bundle` (card C-119, SPEC-20261119-bundle-ready-check and SPEC-20261119-bundle-build): the
+//! READY heads of the ledger, the checks of each head, the bundle pull request body and the
+//! integration branch. One word, one action each; the logic is `moai_cli::bundle`.
 
 use std::path::PathBuf;
 
-/// Read the READY heads, judge them, and write the M-Flow bundle pull request body
+/// Read the READY heads, judge them, write the M-Flow bundle pull request body, build the branch
 ///
 /// `moai bundle <action>` helps the leader assemble one M-Flow bundle pull request from the
 /// heads that lanes marked `LANE-READY-INTEGRATION`. Every action's help starts with what it
 /// does: `Reads only.` (no ledger row, ref, branch, card note or remote is written) or, for
 /// `body --out`, `Reads only. Writes one new file.` None of them fetches, pushes or opens a pull
 /// request: fetch first, and the leader chooses the heads, pushes and opens the pull request.
+/// `build` is the one action that writes: `Writes a new branch and worktree.` It creates
+/// `m-flow/bundle-<date>-<n>` and a worktree under `<HOME>/.moai/worktrees/`, merges the heads one
+/// merge commit each, drops a head that conflicts and names it; it never moves or deletes an
+/// existing branch or worktree.
 /// `check` and `body` run `git merge-tree --write-tree` (git 2.38 or newer), which leaves
 /// unreferenced tree and blob objects in the object store that `git gc` removes; no ref moves.
 #[derive(clap::Args)]
@@ -107,6 +111,36 @@ enum Action {
         #[arg(long, default_value = "origin/v2026.11.0")]
         tip: String,
     },
+    /// Writes a new branch and worktree. Merge heads, one merge commit each
+    ///
+    /// Writes a new branch and worktree. Creates `m-flow/bundle-<date>-<n>` (the lowest unused
+    /// `n`) and the worktree `<HOME>/.moai/worktrees/<project>-bundle-<n>` at the tip, merges each
+    /// head in the order given with one merge commit under the text merge GitHub runs, and prints
+    /// the pinned SHA. HEADS are `C-<n>` (the card's newest readable READY head) or
+    /// `C-<n>=<40 hex>`. A head whose merge conflicts is aborted, left out and named with its
+    /// files, and `rebuild` is the command that builds again without it (a new branch: an
+    /// existing branch or worktree is never moved or deleted). Heads already in the tip or in the
+    /// branch are skipped and named. Never fetches, pushes or opens a pull request.
+    Build {
+        /// `C-<n>` or `C-<n>=<40 hex>`, in the order they are merged.
+        #[arg(required = true)]
+        heads: Vec<String>,
+        /// The date part of the branch name, YYYYMMDD (default today, UTC).
+        #[arg(long)]
+        date: Option<String>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger and the worktrees folder (default `$HOME`).
+        #[arg(long)]
+        home: Option<PathBuf>,
+        /// The repository to build in.
+        #[arg(long, default_value = ".")]
+        dir: PathBuf,
+        /// The branch bundles are merged into.
+        #[arg(long, default_value = "origin/v2026.11.0")]
+        tip: String,
+    },
 }
 
 pub const OPERATION: &str = "bundle";
@@ -146,6 +180,21 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             &branch,
             &run,
             out.as_deref(),
+        ),
+        Action::Build {
+            heads,
+            date,
+            project,
+            home,
+            dir,
+            tip,
+        } => b::build::build(
+            &project,
+            &resolve_home(home)?,
+            &dir,
+            &tip,
+            &heads,
+            date.as_deref(),
         ),
     }
 }
