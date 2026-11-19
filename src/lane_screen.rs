@@ -802,7 +802,7 @@ mod tests {
             6,
             &["✳ Frosting… (esc to interrupt)", "Do you want to proceed?"],
         );
-        blanks.extend(std::iter::repeat(String::new()).take(20));
+        blanks.extend(std::iter::repeat_n(String::new(), 20));
         assert_eq!(classify(&blanks).state, State::Unknown);
         // No question: still working.
         assert_eq!(with("All done.", 2).state, State::Working);
