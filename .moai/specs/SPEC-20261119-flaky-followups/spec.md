@@ -84,7 +84,7 @@ created: 2026-11-19
 
 ## Result
 
-**조각 C(재실행 신호) — 2026-11-19~20, 가지 `spec/20261120-flaky-rerun-attempt`(로컬 `v2026.11.0` `e341e361cc` 에서 시작).** 조각 A·B 는 아직이에요(아래 "남은 것").
+**조각 C(재실행 신호) — 2026-11-19~20, 가지 `spec/20261120-flaky-rerun-attempt`(로컬 `v2026.11.0` `e341e361cc` 에서 시작).** 조각 A 는 아래에, 조각 B 는 "남은 것"에 있어요.
 
 조사(문서 읽기만, moai-research, 2026-11-19 15:43 UTC 읽음, WebFetch 요약을 거친 인용이라 원문과 글자 대조는 못 했어요):
 - 체크 실행 객체(`GET /commits/{ref}/check-runs`)에는 시도 번호가 없어요. 문서화된 식별 필드는 `details_url`, `external_id`, `app`, `check_suite.id`, `head_sha` 뿐이고 페이지에 "attempt" 라는 단어가 없어요(https://docs.github.com/en/rest/checks/runs).
@@ -98,4 +98,9 @@ created: 2026-11-19
 AC-4 증거(RED→GREEN): RED 는 `tests/gate_collect.rs` 가 `no field attempt` 로 컴파일 실패, `tests/gate_check_cli.rs` 새 시험이 `attempt` 를 가진 스냅샷을 파싱하지 못해 실패. GREEN 뒤 새 시험 5개를 포함해 `gate_check_cli` 46, `gate_collect` 48, `gate_loop` 18, `gate_merge` 16, `gate_schedule_cli` 14, `gate_stacked_2859` 9, `flow_cli` 1 이 통과하고 `--lib -- gate flow` 45 가 통과해요(접두 시험 전부, 리더 안내 2026-11-19). 새 시험은 `ci_info_names_the_attempt_of_a_re_run_that_succeeded_and_the_verdict_does_not_move`, `a_ci_success_gets_its_attempt_from_the_workflow_run`, `a_run_without_a_details_url_has_no_attempt_and_no_extra_read`, `a_failed_workflow_run_read_leaves_the_attempt_empty_and_the_gate_unchanged`, `a_failed_ci_is_not_asked_for_its_attempt`). `tests.flow_metrics_test`(flow 접두의 파이썬 시험)는 PATH 의 `python3` 가 Xcode 3.9 라서 `datetime.fromisoformat('…Z')` 로 실패했고, pyenv 3.13.1 을 PATH 앞에 두면 7개가 통과해요(이 가지는 그 파일을 바꾸지 않았어요). 판정 불변(REQ-8)은 같은 스냅샷에서 `ci_info` 만 비운 응답 전체가 같음을 비교해요.
 변이 5개(한 줄씩, 모두 시험이 잡음): M1 문턱 2→1, M2 성공이 아닌 상태에서도 표시, M3 번호 없음을 2 로 간주, M4 실패한 실행도 조회, M5 성공한 모든 실행 조회. 처음엔 M2·M4 가 살아남아 시험 둘(다른 잡 실패 사례, 실패한 `ci` 에 `details_url`)을 더한 뒤 잡혔어요.
 
-남은 것: 조각 A(문구 둘 + manifest 줄 하나: REQ-1 의 `--ac` 는 C-108 조각 2 가 tip 에 이미 넣었어요 — `mode-leader.md` 32행의 명령이 `--ac "the flake is fixed, or the test is retired with its reason"` 를 가져요(커밋 040c8b49bd) — 그래서 `mode-agent.md`(REQ-2)·`verify.md`(REQ-3)만 남고, manifest 대기열은 C-126 다음), 조각 B(`card list --title-prefix`: `card::command::list_filtered` 와 시험 4개는 로컬 가지 `keep/c99-3b-old` 에 있고, CLI 연결 32줄은 `src/ops/card.rs`(C-125 보유)가 풀리면 해요).
+**조각 A(문구) — 2026-11-20, 가지 `spec/20261119-flaky-followups-r2`(원격 이름; 조각 C 의 head `e428e9f5e2` 위에 쌓았어요).** REQ-1 은 글을 바꾸지 않았어요: C-108 조각 2 가 tip 에 `--ac` 를 이미 넣어서(커밋 040c8b49bd) 새 시험의 AC-1 은 RED 때부터 통과하고, 그 문장을 그대로 임시 원장에서 돌려 만든 카드가 기준 하나를 가진다는 것(`card show`)을 지켜요. 닫는 일(`card done`)은 병합된 PR 연결을 요구해서 이 시험 밖이에요.
+- 바꾼 것: `skills/moai/workflows/mode-agent.md` 7번(heavy-checks) 끝에 한 문장 "Flaky repair (card C-99): …"(sleep·retry·skip 금지, 원인을 못 찾은 시험은 이유를 카드와 SPEC 에 적고 삭제), `skills/moai/workflows/verify.md` 의 간헐 시험 문단 앞에 한 문장 "Record home (card C-99): …"(카드 원장이 있는 프로젝트는 merge-train 단계의 flaky 카드가 기록 장소, `[flake]` Issue·두 명령은 카드 원장이 없는 프로젝트용), `source-manifest.json` 줄 둘(`source_manifest.py write` 가 쓴 값, 같은 커밋; manifest 예약은 약 1초 쥐고 풀었어요).
+- RED→GREEN: `tests/flaky_followups.rs` 3개 중 둘이 RED(두 문장이 없어서), 문장 뒤 3/3. 변이 3개(`retry·skip` 삭제, 삭제 이유 삭제, 카드 원장 한정 삭제) 모두 시험이 잡았어요.
+- 검사(head `f4cc4052c5`, 이후는 rustfmt 한 줄 모양 커밋과 C 병합·SPEC 문서): (1) `git diff --check` 0 · (2) `cargo fmt --check` 1 → `cargo fmt` 로 시험 파일 모양을 고친 뒤 0 · (3) `rustfmt --check --edition 2021 src/ops/*.rs` 0 · (4) clippy `--all-targets -D warnings` 0 · (5a) 5개 대상 0 · (5b) 파이썬 4개 0 · (5c) `--bins` 0 · (6) trailer-check 0 · 등재 검사 39개 전부 0. 두 문서를 읽는 시험 전부: `--test agent_defs_package --test claim_renew_doc_3042 --test claim_verify_cli --test claim_verify_flags_2838 --test close_step_2903 --test flaky_followups --test lane_next_rules --test orca_optional_3005 --test product_cli --test sdd_guidance --test test_isolation_rules` 0(164 통과), `tests.check_pr_self_audit_test tests.ci_scope_test tests.github_templates_test` 0(91 통과).
+
+남은 것: 조각 B(`card list --title-prefix`: `card::command::list_filtered` 와 시험 4개는 로컬 가지 `keep/c99-3b-old` 에 있고, CLI 연결 32줄은 `src/ops/card.rs`(C-125 보유)가 풀리면 해요). 조각 A 는 위에 적은 대로 끝났어요.
