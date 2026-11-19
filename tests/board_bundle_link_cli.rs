@@ -284,3 +284,176 @@ fn a_missing_store_or_an_unreadable_row_is_unknown() {
     assert_eq!(view.state, State::Known);
     assert!(view.unreadable.is_empty() && view.bundles.is_empty());
 }
+
+fn run_with(seq: i64, branch: &str, source: &str, exit: i64, specs: &[&str]) -> StoredRow {
+    row(
+        seq,
+        "bundle-run@1",
+        &format!("bundle:{branch}"),
+        json!({"branch": branch, "source_sha": source, "target_sha": target(),
+            "commands": [{"check": "clippy", "exit": exit}], "not_run": [],
+            "run_digest": "sha256:00", "specs": specs}),
+    )
+}
+
+fn pr_with(seq: i64, number: u64, head: &str, state: &str, review: serde_json::Value) -> StoredRow {
+    row(
+        seq,
+        "pr-state@1",
+        &format!("pr:{number}"),
+        json!({"number": number, "state": state, "head": head, "review": review}),
+    )
+}
+
+fn verdict(word: &str, head: &str) -> serde_json::Value {
+    json!({"verdict": word, "head": head})
+}
+
+/// Rows are read by their own `seq`, not by the order they are handed over in.
+#[test]
+fn rows_are_read_in_seq_order_not_slice_order() {
+    let (a, b) = (sha('a'), sha('b'));
+    let rows = vec![
+        pr_with(3, 7, &b, "open", serde_json::Value::Null),
+        pr_with(2, 7, &a, "open", serde_json::Value::Null),
+        run_with(5, "m-flow/bundle-1", &a, 0, &[SPEC]),
+        run_with(1, "m-flow/bundle-1", &a, 1, &[SPEC]),
+    ];
+    let view = link(Some(&rows), &no_lane());
+    let bundle = one_bundle(&view);
+    assert_eq!(bundle.pr.as_ref().unwrap().head, b, "{view:?}");
+    assert_eq!(bundle.run_effect, Effect::Lapsed);
+    assert_eq!(
+        bundle.commands[0].exit, 0,
+        "the run record with the larger seq is the later one"
+    );
+}
+
+/// A FAIL is read as a FAIL, and a FAIL and a PASS for the same head are two entries.
+#[test]
+fn a_fail_verdict_is_read_and_stays_apart_from_a_pass_on_the_same_head() {
+    let a = sha('a');
+    let rows = vec![
+        run_with(1, "m-flow/bundle-1", &a, 0, &[SPEC]),
+        pr_with(2, 7, &a, "open", verdict("FAIL", &a)),
+        pr_with(3, 7, &a, "open", verdict("PASS", &a)),
+    ];
+    let lane = LaneInput {
+        heads: BTreeMap::from([(SPEC.to_string(), a.clone())]),
+        audits: vec![LaneAudit {
+            spec: SPEC.into(),
+            head: a.clone(),
+            verdict: Verdict::Fail,
+        }],
+    };
+    let view = link(Some(&rows), &lane);
+    let bundle = one_bundle(&view);
+    let words: Vec<Verdict> = bundle
+        .pr
+        .as_ref()
+        .unwrap()
+        .audit
+        .iter()
+        .map(|e| e.verdict)
+        .collect();
+    assert_eq!(words, vec![Verdict::Fail, Verdict::Pass], "{bundle:?}");
+    assert_eq!(bundle.lane[0].audit.len(), 1);
+    assert_eq!(bundle.lane[0].audit[0].verdict, Verdict::Fail);
+    assert!(bundle.lane[0].audit[0].in_effect);
+}
+
+/// A bundle of two SPECs gets one lane layer per SPEC, each compared with its own lane head.
+#[test]
+fn the_lane_layer_keeps_each_spec_apart() {
+    let (a, l1, l2, old) = (sha('a'), sha('1'), sha('2'), sha('3'));
+    let (s1, s2) = ("SPEC-20261120-first", "SPEC-20261120-second");
+    let rows = vec![run_with(1, "m-flow/bundle-1", &a, 0, &[s1, s2])];
+    let lane = LaneInput {
+        heads: BTreeMap::from([(s1.to_string(), l1.clone()), (s2.to_string(), l2.clone())]),
+        audits: vec![
+            LaneAudit {
+                spec: s1.into(),
+                head: l1.clone(),
+                verdict: Verdict::Pass,
+            },
+            LaneAudit {
+                spec: s2.into(),
+                head: old.clone(),
+                verdict: Verdict::Pass,
+            },
+        ],
+    };
+    let view = link(Some(&rows), &lane);
+    let bundle = one_bundle(&view);
+    assert_eq!(bundle.lane.len(), 2);
+    assert_eq!(bundle.lane[0].spec, s1);
+    assert_eq!(bundle.lane[0].audit.len(), 1, "{bundle:?}");
+    assert!(bundle.lane[0].audit[0].in_effect);
+    assert_eq!(bundle.lane[1].spec, s2);
+    assert_eq!(bundle.lane[1].audit.len(), 1, "{bundle:?}");
+    assert!(!bundle.lane[1].audit[0].in_effect, "{bundle:?}");
+}
+
+/// A lane head that cannot be read leaves its passes out of effect (REQ-8 on the lane layer).
+#[test]
+fn a_lane_head_that_cannot_be_read_is_never_in_effect() {
+    let a = sha('a');
+    let rows = vec![run_with(1, "m-flow/bundle-1", &a, 0, &[SPEC])];
+    let lane = LaneInput {
+        heads: BTreeMap::from([(SPEC.to_string(), "not-a-sha".to_string())]),
+        audits: vec![LaneAudit {
+            spec: SPEC.into(),
+            head: "not-a-sha".into(),
+            verdict: Verdict::Pass,
+        }],
+    };
+    let view = link(Some(&rows), &lane);
+    let layer = &one_bundle(&view).lane[0];
+    assert_eq!(layer.head, None);
+    assert_eq!(layer.audit.len(), 1);
+    assert_eq!(layer.audit[0].head, None);
+    assert!(!layer.audit[0].in_effect, "{layer:?}");
+}
+
+/// The pull request of a bundle is the newest row that showed its source SHA, and its state and
+/// head are those of the newest row of that number.
+#[test]
+fn the_newest_pull_request_row_wins() {
+    let a = sha('a');
+    // Two pull requests showed the same head: the newer row names the bundle's pull request.
+    let rows = vec![
+        run_with(1, "m-flow/bundle-1", &a, 0, &[SPEC]),
+        pr_with(2, 7, &a, "closed", serde_json::Value::Null),
+        pr_with(4, 9, &a, "open", serde_json::Value::Null),
+    ];
+    let view = link(Some(&rows), &no_lane());
+    assert_eq!(one_bundle(&view).pr.as_ref().unwrap().number, 9, "{view:?}");
+    // The state is the newest row's, not the first.
+    let rows = vec![
+        run_with(1, "m-flow/bundle-1", &a, 0, &[SPEC]),
+        pr_with(2, 7, &a, "open", serde_json::Value::Null),
+        pr_with(5, 7, &a, "merged", serde_json::Value::Null),
+    ];
+    let view = link(Some(&rows), &no_lane());
+    assert_eq!(one_bundle(&view).pr.as_ref().unwrap().state, "merged");
+}
+
+/// A later run record of the same bundle replaces the earlier one; a new source SHA is a new bundle.
+#[test]
+fn a_later_run_record_replaces_the_earlier_and_a_new_source_is_a_new_bundle() {
+    let (a, b) = (sha('a'), sha('b'));
+    let rows = vec![
+        run_with(1, "m-flow/bundle-1", &a, 1, &[SPEC]),
+        run_with(3, "m-flow/bundle-1", &a, 0, &[SPEC]),
+        run_with(4, "m-flow/bundle-1", &b, 0, &[SPEC]),
+    ];
+    let view = link(Some(&rows), &no_lane());
+    assert_eq!(view.state, State::Known);
+    assert_eq!(view.bundles.len(), 2, "{view:?}");
+    assert_eq!(view.bundles[0].source_sha, a);
+    assert_eq!(
+        view.bundles[0].commands[0].exit, 0,
+        "the later record of the pair wins"
+    );
+    assert_eq!(view.bundles[1].source_sha, b);
+}
