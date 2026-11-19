@@ -2,7 +2,7 @@
 id: SPEC-20261119-index-scope
 title: "index-build can be scoped to folders, and a refusal over the file limit names where the files are"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-19
 ---
 
@@ -24,8 +24,8 @@ Measured from the code at tip 9bd09c2eff (`src/index.rs`): the limit counts **tr
 ## Requirements
 
 - REQ-1: When the request of `index-build` carries a `scope` list, `index-build` shall index only the tracked files under the listed folders and record the normalized list in the manifest.
-- REQ-2 (REQ-1): IF a scope entry is not a plain relative folder path, the list has more than 64 entries, or no tracked file lies under the list, THEN `index-build` shall refuse the request as `invalid_input` before it writes anything.
-- REQ-3: When more than 16384 files would be indexed, `index-build` shall refuse the build as `invalid_input`, name the ten largest folders with their file counts and show the request with a `scope` that would be accepted. · failure: none — the refusal is the behavior; the previous generation stays and queries report `partial` as before.
+- REQ-2 (REQ-1): IF a scope entry is not a plain relative path (a folder, or one tracked file), the list has more than 64 entries, or no tracked file lies under the list, THEN `index-build` shall refuse the request as `invalid_input` before it writes anything.
+- REQ-3: When more than 16384 files would be indexed, `index-build` shall refuse the build as `invalid_input`, name the ten largest folders with their file counts and, when a listed folder (not the root bucket) holds at most 16384 tracked files in all, show the request with that folder as `scope`; when none does, it shall say so and show no request. · failure: none — the refusal is the behavior; the previous generation stays and queries report `partial` as before.
 - REQ-4: The limit shall count the tracked files of the scan only, so that gitignored untracked files do not count.
 - REQ-5: While the published generation records a scope, `index-query` shall judge freshness from the tracked and untracked files under that scope only.
 - REQ-6: Where a build has a scope, the generation id shall depend on the scope.
@@ -35,16 +35,16 @@ Measured from the code at tip 9bd09c2eff (`src/index.rs`): the limit counts **tr
 
 - AC-1 (REQ-4): in a fixture, 20 gitignored untracked files under `node_modules/` do not count while the same folder committed does; the count shows in `files`.
   verify: `cargo test --locked --offline --test index_scope_cli the_limit_counts_tracked_files_only`
-- AC-2 (REQ-3): at exactly 16384 files the build succeeds, at 16385 it is refused as `invalid_input` and the message names the ten largest folders in count order with their counts, and shows `"scope"` in an example request; the unit test pins the folder ranking and its tie-break.
-  verify: `cargo test --locked --offline --test index_scope_cli the_limit_is_n_built_and_n_plus_one_refused_naming_the_folders`; `cargo test --locked --offline --lib index::tests::largest_folders`
+- AC-2 (REQ-3): at exactly 16384 files the build succeeds, at 16385 it is refused as `invalid_input` and the message names the ten largest folders in count order with their counts, and shows a request whose `scope` is a folder that fits, which is accepted when sent (no example when no folder fits; never the root bucket `.`; a folder counted by its first component is judged by everything under it); the unit test pins the folder ranking and its tie-break.
+  verify: `cargo test --locked --offline --test index_scope_cli the_limit_is_n_built_and_n_plus_one_refused_naming_the_folders`; `cargo test --locked --offline --test index_scope_cli the_request_a_refusal_shows_is_one_that_is_accepted`; `cargo test --locked --offline --lib index::tests::largest_folders`
 - AC-3 (REQ-1, REQ-6, REQ-7): a scoped build indexes only the files under the scope, records it in the manifest, and an unscoped build writes no `scope` key.
-  verify: `cargo test --locked --offline --test index_scope_cli a_scoped_build_indexes_only_the_scope_and_records_it`; `cargo test --locked --offline --test index_scope_cli an_unscoped_manifest_has_no_scope_key`
+  verify: `cargo test --locked --offline --test index_scope_cli a_scoped_build_indexes_only_the_scope_and_records_it`; `cargo test --locked --offline --test index_scope_cli an_unscoped_manifest_has_no_scope_key`; `cargo test --locked --offline --test index_scope_cli an_unscoped_build_of_a_repository_with_no_file_still_succeeds`
 - AC-4 (REQ-1, REQ-3): a repository over the limit builds with a scope under it; the scoped count has its own N and N+1 edge.
   verify: `cargo test --locked --offline --test index_scope_cli a_scope_builds_a_repository_over_the_limit`
 - AC-5 (REQ-2): an absolute path, `..`, an empty entry, a control character, more than 64 entries (64 accepted) and a scope with no tracked file are `invalid_input` and leave no generation and no failure marker.
   verify: `cargo test --locked --offline --test index_scope_cli scope_refusals_write_nothing`; `cargo test --locked --offline --lib index::tests::scope_normalization`
 - AC-6 (REQ-5): after a scoped build `index-query` is `fresh`; a change, an added file or an untracked file outside the scope keeps it `fresh`, one inside turns it `stale`.
-  verify: `cargo test --locked --offline --test index_scope_cli a_scoped_generation_ignores_changes_outside_the_scope`
+  verify: `cargo test --locked --offline --test index_scope_cli a_scoped_generation_ignores_changes_outside_the_scope`; `cargo test --locked --offline --test index_scope_cli a_failure_marker_keeps_a_scoped_generation_scoped`
 - AC-7 (REQ-1…REQ-7): neighbours.
   verify: `cargo test --locked --offline --test index_cli`; `cargo test --locked --offline --test freshness_fixture`; `cargo test --locked --offline --test atlas_query_cli`; `cargo test --locked --offline --test code_atlas_reference`; `cargo test --locked --offline --test doc_reference_boundaries`; `cargo test --locked --offline --test product_cli`; `cargo test --locked --offline --lib`; `cargo fmt --check`; `cargo clippy --locked --offline --all-targets -- -D warnings`
 
@@ -66,6 +66,9 @@ Measured from the code at tip 9bd09c2eff (`src/index.rs`): the limit counts **tr
 - A refused over-limit build marks the index `partial` (existing behavior, kept): the previous generation stays readable but queries report `partial` until the next good build.
 - Other readers of the manifest (`search`, `atlas`) read `files` as written, so they see the scoped file list; none re-scans the repository to compare, and `index_records` calls `index_query`, which honors the scope.
 
+- `untracked()` still runs `git status --porcelain` over the whole repository and filters by scope afterwards: a very large untracked list outside the scope can still make `index-query` report `unavailable` (git output limit). Only `ls-files` gets the pathspec.
+- The manifest's `scope` is read back as written (local state, like the rest of the manifest); `published_scope` hands it to `git ls-files` after `--` with literal pathspecs, so an odd entry matches nothing and is never run as an option or a glob.
+
 ## Decisions
 
 | Id | Decision | Basis | Undo |
@@ -74,6 +77,7 @@ Measured from the code at tip 9bd09c2eff (`src/index.rs`): the limit counts **tr
 | D-2 | Folders in the refusal are grouped by their first two path components (`apps/bo`), files nearer the root by their first component; ten are named, largest first, ties by path | the monorepo shape of the card (7 apps, 22 packages) | Change the depth |
 | D-3 | Scope entries are deduplicated and an entry under another entry is dropped | `apps` and `apps/bo` mean `apps` | Keep both |
 | D-4 | The scope is part of the generation id only when it is not empty | old ids and manifests stay byte-identical | Always include it |
+| D-5 | A scope entry may name one tracked file as well as a folder; the example in a refusal is the first listed folder (not `.`) whose whole subtree holds at most 16384 tracked files, counted from the path list, else no example | audit B1 of e60c5743d6: the largest folder suggested itself again; the grouped count of a first-component bucket leaves out its subfolders | Suggest the largest folder again; restrict entries to folders |
 
 ## Result
 

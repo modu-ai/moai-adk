@@ -398,6 +398,131 @@ fn a_scope_builds_a_repository_over_the_limit() {
         "{message}"
     );
     assert!(message.contains("apps/bo (16385)"), "{message}");
+    assert!(
+        message.contains("16385 tracked files in the scope"),
+        "a refusal inside a scope says so: {message}"
+    );
+}
+
+/// The request a refusal shows, read back out of its text: the JSON after `for example`.
+fn suggested_request(message: &str) -> Value {
+    let at = message
+        .find("for example ")
+        .unwrap_or_else(|| panic!("no example request in: {message}"))
+        + "for example ".len();
+    serde_json::from_str(message[at..].trim_end_matches('.'))
+        .unwrap_or_else(|e| panic!("the example is not JSON ({e}): {message}"))
+}
+
+/// AC-2 (REQ-3), audit B1: the request a refusal shows is one that is accepted. A folder that is
+/// over the limit by itself is never the suggestion; with no folder that fits there is no
+/// example; the root bucket (`.`) is never one; and a folder grouped by its first component is
+/// judged by everything under it, not by its direct files.
+#[test]
+fn the_request_a_refusal_shows_is_one_that_is_accepted() {
+    // One folder holds everything: nothing fits, so there is nothing to suggest.
+    let (_tmp, project) = setup();
+    let mut paths = vec!["a.txt".to_string()];
+    paths.extend(numbered("apps/bo", LIMIT + 1));
+    set_index(&project, &paths);
+    let (kind, _, message) = refused(&build(&project, json!({"protocol_version": 1})));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("apps/bo (16385)"), "{message}");
+    assert!(
+        !message.contains(r#""scope":["#),
+        "the folder is over the limit by itself, no example: {message}"
+    );
+    assert!(
+        message.contains("No listed folder fits under the limit by itself"),
+        "{message}"
+    );
+    // Following the old advice inside the scope gives the same refusal, still without an example.
+    let (_, _, again) = refused(&build(
+        &project,
+        json!({"protocol_version": 1, "scope": ["apps/bo"]}),
+    ));
+    assert!(!again.contains(r#""scope":["#), "{again}");
+
+    // Root files are the largest group: the example skips `.` and names the folder that fits,
+    // and sending it builds.
+    let (_tmp, project) = setup();
+    let mut paths: Vec<String> = (0..LIMIT).map(|n| format!("r-{n:05}")).collect();
+    paths.extend(numbered("apps/bo", 3));
+    set_index(&project, &paths);
+    let (_, _, message) = refused(&build(&project, json!({"protocol_version": 1})));
+    assert!(message.contains(". (16384)"), "the r-* files: {message}");
+    let suggestion = suggested_request(&message);
+    assert_eq!(
+        suggestion,
+        json!({"protocol_version": 1, "scope": ["apps/bo"]}),
+        "{message}"
+    );
+    built(&project, suggestion);
+
+    // `tools` has 6000 direct files and five subfolders of 5000: it is the largest bucket but
+    // 31000 files in all, so the example is the next folder, and sending it builds.
+    let (_tmp, project) = setup();
+    let mut paths = vec!["a.txt".to_string()];
+    paths.extend(numbered("tools", 6000));
+    for sub in ["a", "b", "c", "d", "e"] {
+        paths.extend(numbered(&format!("tools/{sub}"), 5000));
+    }
+    set_index(&project, &paths);
+    let (_, _, message) = refused(&build(&project, json!({"protocol_version": 1})));
+    assert!(message.contains("tools (6000)"), "{message}");
+    let suggestion = suggested_request(&message);
+    assert_eq!(
+        suggestion,
+        json!({"protocol_version": 1, "scope": ["tools/a"]}),
+        "{message}"
+    );
+    built(&project, suggestion);
+}
+
+/// Audit N3: after a refused build leaves a failure marker, a scoped generation is still judged
+/// inside its scope (the marker branch of `index-query` reads the same scope).
+#[test]
+fn a_failure_marker_keeps_a_scoped_generation_scoped() {
+    let (_tmp, project) = setup();
+    write(&project, "apps/bo/a.ts", "bo");
+    commit_all(&project);
+    built(
+        &project,
+        json!({"protocol_version": 1, "scope": ["apps/bo"]}),
+    );
+    // An unscoped build now fails (16385 tracked files outside the scope) and leaves the marker.
+    // `set_index` replaces the whole list, so the tracked files of the scope are named again.
+    let mut tracked = vec!["a.txt".to_string(), "apps/bo/a.ts".to_string()];
+    tracked.extend(numbered("apps/web", LIMIT + 1));
+    set_index(&project, &tracked);
+    let (kind, _, _) = refused(&build(&project, json!({"protocol_version": 1})));
+    assert_eq!(kind, "invalid_input");
+    write(&project, "apps/bo/a.ts", "bo changed");
+    let partial = query(&project);
+    assert_eq!(partial["state"], json!("partial"), "{partial}");
+    assert_eq!(
+        partial["changes"]["modified"],
+        json!(["apps/bo/a.ts"]),
+        "the changes are read inside the scope, not over 16385 files outside it: {partial}"
+    );
+}
+
+/// Audit N4: a repository with no tracked file still builds without a scope; only a scope that
+/// matches nothing is refused.
+#[test]
+fn an_unscoped_build_of_a_repository_with_no_file_still_succeeds() {
+    let tmp = tempfile::tempdir().unwrap();
+    let project = tmp.path().join("project");
+    fs::create_dir_all(&project).unwrap();
+    git(&project, &["init", "-q", "--initial-branch=main"]);
+    git(&project, &["commit", "-q", "--allow-empty", "-m", "init"]);
+    let empty = built(&project, json!({"protocol_version": 1}));
+    assert_eq!(empty["files"], json!(0), "{empty}");
+    let (kind, _, message) = refused(&build(
+        &project,
+        json!({"protocol_version": 1, "scope": ["apps"]}),
+    ));
+    assert_eq!(kind, "invalid_input", "{message}");
 }
 
 /// AC-5 (REQ-2): a request that is not a plain relative folder list, or that matches no

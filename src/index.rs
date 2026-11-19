@@ -355,7 +355,7 @@ pub fn normalize_scope(scope: &[String]) -> Result<Vec<String>> {
                 .all(|part| !part.is_empty() && part != "." && part != "..");
         if !plain {
             return Err(format!(
-                "invalid index scope: entry {} is not a plain relative folder path of 1 to \
+                "invalid index scope: entry {} is not a plain relative path of 1 to \
                  {MAX_SCOPE_ENTRY_BYTES} bytes",
                 n + 1
             ));
@@ -412,16 +412,28 @@ fn too_many_files(count: usize, limit: usize, paths: &[String], scoped: bool) ->
         .iter()
         .map(|(folder, n)| format!("{folder} ({n})"))
         .collect();
+    // The example must be a request this build would accept: the first listed folder (not the
+    // root bucket) whose whole subtree, counted from the path list, fits under the limit. The
+    // listed count is not enough: a folder grouped by its first component counts direct files only.
     let example = folders
         .iter()
-        .find(|(folder, _)| folder != ".")
-        .map(|(folder, _)| {
+        .map(|(folder, _)| folder)
+        .filter(|folder| folder.as_str() != ".")
+        .find(|folder| {
+            let whole = std::slice::from_ref(*folder);
+            paths.iter().filter(|p| in_scope(p, whole)).count() <= limit
+        })
+        .map(|folder| {
             format!(
                 " Send a scope to index part of it, for example {}.",
                 json!({"protocol_version": SCHEMA_VERSION, "scope": [folder]})
             )
         })
-        .unwrap_or_default();
+        .unwrap_or_else(|| {
+            " No listed folder fits under the limit by itself; send a scope that names deeper \
+             folders."
+                .to_string()
+        });
     format!(
         "index file limit exceeded ({limit}): {count} tracked files{}; the scan is refused, not \
          truncated. Largest folders: {}.{example}",
@@ -1350,7 +1362,7 @@ mod tests {
         assert!(largest_folders(&[]).is_empty());
     }
 
-    /// SPEC-20261119-index-scope AC-5: what a scope entry may be, and how it matches.
+    /// SPEC-20261119-index-scope REQ-6: a published snapshot is reused only when its scope is the same.
     #[test]
     fn a_published_snapshot_is_reused_only_for_the_same_scope() {
         let manifest = |scope: &[&str]| IndexManifest {
@@ -1375,6 +1387,7 @@ mod tests {
         ));
     }
 
+    /// SPEC-20261119-index-scope AC-5: what a scope entry may be, and how it matches.
     #[test]
     fn scope_normalization() {
         let ok = |items: &[&str]| normalize_scope(&paths(items)).unwrap();
