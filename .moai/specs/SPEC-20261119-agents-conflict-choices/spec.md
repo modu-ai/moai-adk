@@ -22,7 +22,7 @@ tip(d25ecb1ba1)의 `section_plan`은 매니페스트에 기준선이 없는 표�
 
 ## Non-goals
 
-- 단계 JSON(`project-update-plan`의 `generation` 단계)에 선택지와 명령을 싣기: `src/project_update.rs`가 C-107 예약이라 조각 2b로 미뤄요.
+- 단계 JSON(`project-update-plan`의 `generation` 단계)에 선택지와 명령을 싣기, 그리고 `generation-plan`·`generation-apply` 요청이 `picks`를 `agents` 계획으로 넘기기: `GenerationRequest`를 만드는 곳(`src/project_update.rs:593`)이 C-107 예약이라 조각 2b로 미뤄요. 이 조각의 `picks`는 `agents-plan`·`agents-apply`에서만 받아요.
 - 워크플로 글(`skills/moai/**`)에 선택지 문장 넣기(카드 기준 5): manifest 예약이 풀린 뒤 별도 SPEC.
 - 편집된 관리 블록(`managed block edited after baseline`)과 깨진 표식(`malformed managed markers`)의 충돌: `append-managed`가 풀지 않아요(`skip-conflicts`만 적용돼요).
 - `CLAUDE.local.md`·`AGENTS.override.md` 쓰기, 번들 풀기, `codex-hooks` 충돌.
@@ -30,7 +30,7 @@ tip(d25ecb1ba1)의 `section_plan`은 매니페스트에 기준선이 없는 표�
 
 ## Requirements
 
-- REQ-1: The agents plan and the generation plan shall accept an optional `picks` list in the request with the ids `append-managed`, `skip-conflicts` and `claude-import`.
+- REQ-1: The agents plan shall accept an optional `picks` list in the request with the ids `append-managed`, `skip-conflicts` and `claude-import`.
 - REQ-2 (REQ-1): IF `picks` holds any other id, THEN the plan shall refuse the request as invalid input and write nothing.
 - REQ-3: WHEN `append-managed` is picked and `AGENTS.md` holds no managed block while the manifest holds a baseline for it, the plan shall report the action `append` for `AGENTS.md` with its own digest and write nothing.
 - REQ-4: WHEN the `append` plan is applied, `AGENTS.md` shall keep every earlier byte and hold exactly one begin marker and one end marker after them. · failure: none
@@ -63,7 +63,7 @@ tip(d25ecb1ba1)의 `section_plan`은 매니페스트에 기준선이 없는 표�
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261119-agents-conflict-choices/spec.md`, `src/agents.rs`, `src/generation.rs`, `src/claude.rs`, `src/launcher_init.rs`, `tests/agents_conflict_choices_cli.rs`
+- write: `.moai/specs/SPEC-20261119-agents-conflict-choices/spec.md`, `src/agents.rs`, `src/generation.rs`(`AgentsRequest` 리터럴 두 곳에 `picks: Vec::new()`만), `src/claude.rs`(`imports_agents`를 `pub(crate)`로), `tests/agents_conflict_choices_cli.rs`
 - read-only: `src/project_update.rs`, `src/contract.rs`, `src/apply.rs`
 - forbidden: 실제 HOME 쓰기, `src/main.rs`, `src/help.rs`, `src/ops/**`, `skills/moai/**`, `src/project_update.rs` 편집
 
@@ -71,8 +71,8 @@ tip(d25ecb1ba1)의 `section_plan`은 매니페스트에 기준선이 없는 표�
 
 1. 시험을 먼저 써요(RED): `picks` 필드가 없어서 요청이 거절되거나 충돌로 끝나야 해요. 기준선이 있고 표식이 없는 상태는 `product_cli.rs`의 충돌 시험처럼 만들어요(프로필 → `generation-apply` → 사람 글로 교체 → 언어 변경).
 2. `agents.rs`: `picks`와 검증, `append-managed`(기준선 없이 다시 계획), `skip-conflicts` 후처리와 적용·기준선 기록 규칙, `claude_shadow`와 import 행.
-3. `generation.rs`: `picks`를 받아 `AgentsRequest`로 넘기고 `skip` 행을 건너뛰며 매니페스트 갱신에서 `skip`을 보존해요.
-4. `claude.rs`는 `imports_agents`를 `pub(crate)`로, `launcher_init.rs`는 리터럴 한 줄만 고쳐요.
+3. `generation.rs`는 `AgentsRequest` 리터럴 두 곳에 `picks: Vec::new()`만 더해요(`generation` 요청으로 `picks`를 넘기는 일은 2b).
+4. `claude.rs`는 `imports_agents`를 `pub(crate)`로 바꿔요.
 5. 이웃 시험, 변이 시험, fmt·clippy·`spec check`.
 
 ## Risks
