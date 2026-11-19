@@ -99,6 +99,6 @@ C-20 조각 2 실측(카드 노트 2833, 최근 10개 push run): ci 잡 시간�
 
 그 외는 설계 그대로: local_check.sh 는 `LOCAL_CHECK_LEG`(기본 전체·nextest·rest·모르는 값 exit 2)와 `on_leg` 목록으로 단계를 가려요(REQ-1…4); ci_superseded.py 는 첫 ` / ` 조각을 target 으로, 주석은 `ci-push-<target>-<leg>` 로 읽어요(REQ-8); D8a 그룹은 (target, leg) 단위, 집계 잡 이름·needs·조건 무변경(REQ-7·9). AC-6(첫 push run 관측)은 통합 뒤 리더 몫으로 남아요.
 
-**자체 확인 기록(agent-20, 감사 에이전트 audit-c20-legs, 2026-11-19T20:5xZ)** — 지정 검증 전부 exit 0. 발견 세 건과 처리: B1(AC-4 의 다리 이름 fixture 한 행이 gate 시험에 없고 Result 에도 미기록) → fixture 파일이 C-99 예약이라 이 가지에서는 쓸 수 없어 연기로 못 박고 이 문서에 기록(리더·C-99 몫; 접두사 분류라 행동은 같음); N1(tests/ci_scope_test.py 변경이 Scope 밖이고 미기록) → Scope 쓰기 목록에 추가; N2(Risks 의 동적×정적 곱 문장이 구현과 불일치) → 구현 모양(리터럴 곱)으로 문장 교체. REQ-1…9 와 Result 세 다듬기는 코드·시험과 일치 확인.
+**자체 확인 기록(agent-20, 감사 에이전트 audit-c20-legs, 2026-11-19T20:47Z)** — 지정 검증 전부 exit 0. 발견 세 건과 처리: B1(AC-4 의 다리 이름 fixture 한 행이 gate 시험에 없고 Result 에도 미기록) → fixture 파일이 C-99 예약이라 이 가지에서는 쓸 수 없어 연기로 못 박고 이 문서에 기록(리더·C-99 몫; 접두사 분류라 행동은 같음); N1(tests/ci_scope_test.py 변경이 Scope 밖이고 미기록) → Scope 쓰기 목록에 추가; N2(Risks 의 동적×정적 곱 문장이 구현과 불일치) → 구현 모양(리터럴 곱)으로 문장 교체. REQ-1…9 와 Result 세 다듬기는 코드·시험과 일치 확인.
 
 **리더 tier 2 감사와 수리(2026-11-19T20:4xZ)** — tier 2 감사 PASS(head 7c1d7ca70b, 차단 0). READY 전 리더 수리 넷 중 이 문서가 이미 담은 것: N4(AC-4·Result 문구)·N5(Scope 의 ci_scope_test) — 위 자체 확인 수리와 같은 내용. 새로 더한 것: 리더 수리 N1 — 후보 모드에서 어떤 다리 값이든 exit 2 로 거절(REQ-10, 다리 하나만 돈 실행이 전체 통과 증거로 읽히지 않게; legs 는 CI in-place 병렬 장치); 리더 수리 N2 — rust-cache key 에 다리 접두(leg-nextest/leg-rest)를 넣어 한 push 의 두 다리 잡이 서로의 캐시 항목을 덮어쓰지 않게. N2 는 REQ-6 의 save-if 무변경과 별개의 key 값이에요.
