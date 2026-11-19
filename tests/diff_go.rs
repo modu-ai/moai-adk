@@ -60,12 +60,22 @@ struct Run {
 
 /// Runs `exe args` with `stdin` in a fresh temporary HOME and folder.
 fn run(exe: &std::path::Path, args: &[&str], stdin: &str) -> Run {
+    run_with(exe, args, stdin, &[])
+}
+
+/// [`run`] with `files` (path below the folder, text) written into the temporary folder first.
+fn run_with(exe: &std::path::Path, args: &[&str], stdin: &str, files: &[(&str, &str)]) -> Run {
     let tmp = TempDir::new().unwrap();
     let root = fs::canonicalize(tmp.path()).unwrap();
     let home = root.join("home");
     let work = root.join("work");
     fs::create_dir_all(&home).unwrap();
     fs::create_dir_all(&work).unwrap();
+    for (rel, text) in files {
+        let path = work.join(rel);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, text).unwrap();
+    }
     let mut child = Command::new(exe)
         .args(args)
         .clean_env()
@@ -80,13 +90,9 @@ fn run(exe: &std::path::Path, args: &[&str], stdin: &str) -> Run {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .unwrap();
-    child
-        .stdin
-        .take()
-        .unwrap()
-        .write_all(stdin.as_bytes())
-        .unwrap();
+        .unwrap_or_else(|e| panic!("cannot start {}: {e}", exe.display()));
+    // A binary that exits without reading its input closes the pipe; its answer is still read.
+    let _ = child.stdin.take().unwrap().write_all(stdin.as_bytes());
     let out = child.wait_with_output().unwrap();
     Run {
         code: out.status.code(),
@@ -214,6 +220,14 @@ fn the_layout_of_the_status_line_differs_on_purpose() {
     let payload = r#"{"model":{"display_name":"Layout Probe"}}"#;
     let g = run(&go, &["statusline"], payload);
     let r = run(&PathBuf::from(RUST), &["statusline"], payload);
+    for (who, out) in [("Go", &g), ("Rust", &r)] {
+        assert_eq!(out.code, Some(0), "the {who} build exits 0: {}", out.stderr);
+        assert!(
+            plain(&out.stdout).contains("Layout Probe"),
+            "the {who} build shows the model, so the comparison is not of two empty texts: {}",
+            out.stdout
+        );
+    }
     assert_ne!(
         plain(&g.stdout),
         plain(&r.stdout),
@@ -248,6 +262,144 @@ fn a_go_hook_call_is_ignored_by_the_rust_build_on_purpose() {
         "{}",
         r.stderr
     );
+}
+
+/// A dangerous command is denied with the same decision in both builds: the answer is a
+/// `hookSpecificOutput` object with `hookEventName` `PreToolUse` and `permissionDecision` `deny`
+/// and a reason. The reason text is each build's own (approved difference
+/// `hook_deny_reason_text`). Go answers on `hook pre-tool`, the Rust build on
+/// `hook-dispatch --host claude --event tool-preflight` (the kept protection, `src/hook_engine.rs`).
+#[test]
+fn a_dangerous_command_is_denied_with_the_same_decision_as_the_go_build() {
+    let Some(go) = go_binary() else { return };
+    assert!(
+        approved("hook_deny_reason_text"),
+        "not on the approved list"
+    );
+    let payload = r#"{"session_id":"s1","hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"rm -rf /"}}"#;
+    let g = run(&go, &["hook", "pre-tool"], payload);
+    let r = run(
+        &PathBuf::from(RUST),
+        &[
+            "hook-dispatch",
+            "--host",
+            "claude",
+            "--event",
+            "tool-preflight",
+        ],
+        payload,
+    );
+    let answer = |who: &str, out: &Run| -> Value {
+        serde_json::from_str(out.stdout.trim())
+            .unwrap_or_else(|e| panic!("the {who} build answers JSON ({e}): {}", out.stdout))
+    };
+    let (ga, ra) = (answer("Go", &g), answer("Rust", &r));
+    // Oracle sanity: the Go build denies this command with the written shape.
+    assert_eq!(
+        ga["hookSpecificOutput"]["hookEventName"], "PreToolUse",
+        "{ga}"
+    );
+    assert_eq!(
+        ga["hookSpecificOutput"]["permissionDecision"], "deny",
+        "{ga}"
+    );
+    for key in ["hookEventName", "permissionDecision"] {
+        assert_eq!(
+            ra["hookSpecificOutput"][key], ga["hookSpecificOutput"][key],
+            "{key}: Rust {ra} against Go {ga}"
+        );
+    }
+    let reason = |a: &Value| {
+        a["hookSpecificOutput"]["permissionDecisionReason"]
+            .as_str()
+            .unwrap_or("")
+            .to_string()
+    };
+    let (gr, rr) = (reason(&ga), reason(&ra));
+    assert!(
+        !gr.is_empty() && !rr.is_empty(),
+        "both say why: {gr:?} {rr:?}"
+    );
+    assert_ne!(
+        gr, rr,
+        "the reasons are equal now: remove the entry from the approved list"
+    );
+}
+
+/// A harmless command: Go answers an explicit allow decision, the Rust build stays silent (both
+/// let it run). On the approved list as `hook_allow_is_silent`.
+#[test]
+fn a_harmless_command_is_allowed_silently_by_the_rust_build_on_purpose() {
+    let Some(go) = go_binary() else { return };
+    assert!(approved("hook_allow_is_silent"), "not on the approved list");
+    let payload = r#"{"session_id":"s1","hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"ls"}}"#;
+    let g = run(&go, &["hook", "pre-tool"], payload);
+    let r = run(
+        &PathBuf::from(RUST),
+        &[
+            "hook-dispatch",
+            "--host",
+            "claude",
+            "--event",
+            "tool-preflight",
+        ],
+        payload,
+    );
+    assert_eq!(g.code, Some(0), "{}", g.stderr);
+    assert_eq!(r.code, Some(0), "{}", r.stderr);
+    let answer: Value = serde_json::from_str(g.stdout.trim()).expect("the Go build answers JSON");
+    assert_eq!(
+        answer["hookSpecificOutput"]["permissionDecision"], "allow",
+        "{answer}"
+    );
+    assert_eq!(
+        r.stdout.trim(),
+        "",
+        "the Rust build prints nothing for an allow"
+    );
+}
+
+/// Both builds read `.moai/config/sections/statusline.yaml` of the folder and obey the model
+/// switch `statusline.segments.model` (the Rust build reads the Go file on purpose,
+/// `src/statusline/state.rs`): `false` hides the model name, `true` shows it. A folder without
+/// the file shows it too.
+#[test]
+fn the_status_line_obeys_the_model_switch_of_statusline_yaml_like_the_go_build() {
+    let Some(go) = go_binary() else { return };
+    let rust = PathBuf::from(RUST);
+    let payload = r#"{"model":{"display_name":"Cfg Probe"}}"#;
+    let file = ".moai/config/sections/statusline.yaml";
+    // (case, file text, shown)
+    let cases: [(&str, Option<&str>, bool); 3] = [
+        (
+            "model_false_hides_the_name",
+            Some("statusline:\n  segments:\n    model: false\n"),
+            false,
+        ),
+        (
+            "model_true_shows_the_name",
+            Some("statusline:\n  segments:\n    model: true\n"),
+            true,
+        ),
+        ("no_file_shows_the_name", None, true),
+    ];
+    for (case, text, visible) in cases {
+        let files: Vec<(&str, &str)> = text.map(|t| (file, t)).into_iter().collect();
+        let g = run_with(&go, &["statusline"], payload, &files);
+        let r = run_with(&rust, &["statusline"], payload, &files);
+        let (gs, rs) = (shown(&g, &["Cfg Probe"]), shown(&r, &["Cfg Probe"]));
+        assert_eq!(
+            !gs.is_empty(),
+            visible,
+            "{case}: the Go build shows {gs:?} (oracle sanity)"
+        );
+        assert_eq!(
+            rs,
+            gs,
+            "{case}: Rust {rs:?} against Go {gs:?}\nrust: {}",
+            plain(&r.stdout)
+        );
+    }
 }
 
 /// Without the Go build the tests print the reason and pass: the lookup answers the reason for
