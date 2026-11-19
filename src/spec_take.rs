@@ -1,6 +1,7 @@
 //! `moai spec take <SPEC-ID>` (SDD-7, SPEC-20261118-spec-take): start work on a SPEC. It checks
-//! the SPEC, creates or switches to its branch `spec/<yyyymmdd>-<slug>`, links a card on request
-//! (SDD-4) and prints the next commands. Pushing the branch and opening a draft pull request are
+//! the SPEC, creates or switches to its branch `spec/<slug>-<yyyymmdd>` (an existing older
+//! `spec/<yyyymmdd>-<slug>` is switched to instead; SPEC-20261119-spec-branch-name-first), links
+//! a card on request (SDD-4) and prints the next commands. Pushing the branch and opening a draft pull request are
 //! external writes: they run only with `--push` and `--draft-pr`.
 //!
 //! Every git call removes the caller's `GIT_*` redirects (`identity::scrub_git_env`) and keeps
@@ -12,10 +13,15 @@
 //! the repository's own configuration (`branch.<branch>.moai-base`), so a later `take` on that
 //! branch still names the right base for the pull request.
 
-use crate::spec_doc::{self, IdForm};
+use crate::spec_doc;
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+
+/// The branch-name reader (SPEC-20261119-spec-branch-name-first). It is registered here, not in
+/// `lib.rs`, while another card holds that file; moving the line to `lib.rs` changes no behavior.
+#[path = "spec_branch.rs"]
+pub mod spec_branch;
 
 type Result<T> = std::result::Result<T, String>;
 
@@ -124,10 +130,35 @@ fn changed_paths(z: &str) -> Vec<String> {
     out
 }
 
-/// The branch of a new-form SPEC id: `SPEC-20261118-spec-take` → `spec/20261118-spec-take`.
+/// The branch `spec take` makes for a new-form SPEC id, name first:
+/// `SPEC-20261118-spec-take` → `spec/spec-take-20261118`. The older date-first name is still
+/// found when it exists ([`existing_branch_of`]).
 pub fn branch_of(id: &str) -> Option<String> {
-    (spec_doc::id_form(id) == Some(IdForm::New))
-        .then(|| format!("spec/{}", id.strip_prefix("SPEC-").unwrap_or(id)))
+    spec_branch::names_of(id).map(|(name_first, _)| name_first)
+}
+
+/// The local branch of a new-form SPEC id in `dir`: the date-first one when only that exists,
+/// otherwise the name-first one (existing or not). `None` for an id that has no branch name.
+/// A SPEC with a branch in both forms is refused by `spec take`, so it is not met here.
+pub fn existing_branch_of(dir: &Path, id: &str) -> Option<String> {
+    let (name_first, date_first) = spec_branch::names_of(id)?;
+    let has = |name: &str| {
+        git(
+            dir,
+            &[
+                "rev-parse",
+                "--verify",
+                "--quiet",
+                &format!("refs/heads/{name}"),
+            ],
+        )
+        .is_ok()
+    };
+    Some(if !has(&name_first) && has(&date_first) {
+        date_first
+    } else {
+        name_first
+    })
 }
 
 /// A value shown in a printed command: single-quoted when it holds anything but a plain word.
@@ -185,7 +216,7 @@ pub fn take(r: &Request<'_>) -> Result<Value> {
             )));
         }
     }
-    let branch = branch_of(r.id).ok_or_else(|| {
+    let (name_first, date_first) = spec_branch::names_of(r.id).ok_or_else(|| {
         refuse(format!(
             "{} is not a SPEC id of the form SPEC-<yyyymmdd>-<slug> (a Go-generation SPEC has no branch); nothing was changed",
             shown(r.id)
@@ -233,16 +264,40 @@ pub fn take(r: &Request<'_>) -> Result<Value> {
     }
 
     let current = git(dir, &["rev-parse", "--abbrev-ref", "HEAD"]).map_err(refuse)?;
-    let exists = git(
-        dir,
-        &[
-            "rev-parse",
-            "--verify",
-            "--quiet",
-            &format!("refs/heads/{branch}"),
-        ],
-    )
-    .is_ok();
+    let has_branch = |name: &str| {
+        git(
+            dir,
+            &[
+                "rev-parse",
+                "--verify",
+                "--quiet",
+                &format!("refs/heads/{name}"),
+            ],
+        )
+        .is_ok()
+    };
+    // SPEC-20261119-spec-branch-name-first: the branch is `spec/<slug>-<yyyymmdd>`; a SPEC that
+    // already has the older `spec/<yyyymmdd>-<slug>` keeps it. Two branches of one SPEC, or a
+    // new name that reads as two SPEC ids, are refused before anything changes. The refusal
+    // does not look at SPEC folders: a SPEC made later must not turn a made branch ambiguous.
+    let (has_new, has_old) = (has_branch(&name_first), has_branch(&date_first));
+    if has_new && has_old {
+        return Err(refuse(format!(
+            "{} has a branch in both forms, {name_first} and {date_first}; keep one (merge or delete the other); nothing was changed",
+            r.id
+        )));
+    }
+    let exists = has_new || has_old;
+    let branch = if has_old { date_first } else { name_first };
+    if !exists {
+        if let spec_branch::Resolved::Ambiguous(ids) = spec_branch::resolve(&branch, None) {
+            return Err(refuse(format!(
+                "the branch {branch} for {} reads as two SPEC ids ({}); `moai spec new` a slug that neither starts nor ends with an eight-digit date; nothing was changed",
+                r.id,
+                ids.join(", ")
+            )));
+        }
+    }
     let recorded = git(dir, &["config", &format!("branch.{branch}.moai-base")]).ok();
     // C-105 slice 1: without `--base`, a fresh take starts from the profile's
     // `work_flow.integration_branch` when one is set. A missing or unreadable
@@ -415,7 +470,7 @@ mod tests {
     fn the_branch_follows_the_new_form_id_only() {
         assert_eq!(
             branch_of("SPEC-20261118-spec-take").as_deref(),
-            Some("spec/20261118-spec-take")
+            Some("spec/spec-take-20261118")
         );
         assert_eq!(branch_of("SPEC-AUTH-001"), None);
         assert_eq!(branch_of("C-87"), None);

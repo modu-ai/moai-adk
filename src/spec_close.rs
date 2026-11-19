@@ -130,7 +130,7 @@ fn card_check(
 
 /// `moai spec close`: see the module documentation. Every refusal happens before any write.
 pub fn close<G: Fn(&str) -> Option<String>>(r: &Request<'_, G>) -> Result<Value> {
-    let Some(branch) = crate::spec_take::branch_of(r.id) else {
+    let Some(branch) = crate::spec_take::existing_branch_of(r.project, r.id) else {
         return Err(refuse(format!(
             "{} is not a SPEC id of the form SPEC-<yyyymmdd>-<slug> (a Go-generation SPEC is \
              read, never closed); nothing was changed",

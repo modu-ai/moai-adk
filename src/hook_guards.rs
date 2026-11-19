@@ -26,7 +26,8 @@
 //!   certificates and test fixtures use them too. Writes outside the project are not refused
 //!   here (decision pending: the hook cannot see a session's extra directories).
 //! - A5 SPEC before code (card C-86, user decision 2026-11-17 "권고 말고 강제",
-//!   SPEC-20261117-spec-before-code): on a SPEC work branch `spec/<yyyymmdd>-<slug>`, a file
+//!   SPEC-20261117-spec-before-code): on a SPEC work branch `spec/<slug>-<yyyymmdd>` (the older
+//!   `spec/<yyyymmdd>-<slug>` is read too, SPEC-20261119-spec-branch-name-first), a file
 //!   write inside the work tree but outside `.moai/specs/` waits until
 //!   `.moai/specs/SPEC-<yyyymmdd>-<slug>/spec.md` exists and its frontmatter names that id.
 //!   Writing under `.moai/specs/` is always allowed, so the SPEC itself is the way out. Paths
@@ -52,6 +53,7 @@
 //! path check (its added lines are still checked for secrets); input past the 4 MiB stdin
 //! bound is an engine error and not checked at all (decision D1).
 
+use crate::spec_take::spec_branch::{self, Resolved};
 use serde_json::Value;
 use std::path::{Component, Path, PathBuf};
 
@@ -1103,23 +1105,12 @@ pub fn bash_lock_guard(command: &str, cwd: &Path) -> Option<&'static str> {
     crate::tdd::lock_refusal(&paths, cwd)
 }
 
-const SPEC_FIRST: &str = "MoAI tool-preflight: on a SPEC work branch (spec/<yyyymmdd>-<slug>), files outside .moai/specs/ are written only after the branch's SPEC exists; write .moai/specs/SPEC-<yyyymmdd>-<slug>/spec.md first (`moai spec new`; when the branch date is not today, `moai spec new --date YYYY-MM-DD`).";
+const SPEC_FIRST: &str = "MoAI tool-preflight: on a SPEC work branch (spec/<slug>-<yyyymmdd>; the older spec/<yyyymmdd>-<slug> is still read), files outside .moai/specs/ are written only after the branch's SPEC exists; write .moai/specs/SPEC-<yyyymmdd>-<slug>/spec.md first (`moai spec new`; when the branch date is not today, `moai spec new --date YYYY-MM-DD`).";
 
-/// The SPEC id a work branch is for: `spec/<yyyymmdd>-<slug>` with eight digits and a slug of
-/// lower-case letters, digits and inner hyphens (the `moai spec new` naming) gives
-/// `SPEC-<yyyymmdd>-<slug>`; any other branch gives `None`.
-fn spec_branch_id(branch: &str) -> Option<String> {
-    let rest = branch.strip_prefix("spec/")?;
-    let (date, slug) = rest.split_once('-')?;
-    let date_ok = date.len() == 8 && date.bytes().all(|b| b.is_ascii_digit());
-    let slug_ok = !slug.is_empty()
-        && !slug.starts_with('-')
-        && !slug.ends_with('-')
-        && slug
-            .bytes()
-            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-');
-    (date_ok && slug_ok).then(|| format!("SPEC-{date}-{slug}"))
-}
+/// Refusal for a branch name that reads as two SPEC ids with no SPEC folder of exactly one of
+/// them (SPEC-20261119-spec-branch-name-first REQ-5). A fixed string: the branch name is input
+/// and is not echoed.
+const SPEC_TWO_IDS: &str = "MoAI tool-preflight: this SPEC work branch name reads as two SPEC ids (spec/<slug>-<yyyymmdd> and spec/<yyyymmdd>-<slug> give different ids), so files outside .moai/specs/ are refused; create the branch with `moai spec take` (it names it spec/<slug>-<yyyymmdd> and refuses a name that reads two ways), or make the SPEC folder of only the intended id under .moai/specs/.";
 
 /// The branch HEAD names in the work tree at `top`, read from the file system: `.git` is the
 /// git folder, or a file `gitdir: <folder>` for a linked worktree. `None` when detached or
@@ -1164,7 +1155,7 @@ fn spec_names(spec: &Path, id: &str) -> bool {
 /// above its resolved path — not the one holding the session's folder (C-86 audit N2): a
 /// worktree nested in the primary checkout (`.claude/worktrees/<x>`) has its own branch.
 fn spec_before_code(paths: &[String], cwd: &Path) -> Option<&'static str> {
-    let waits = paths.iter().any(|p| {
+    paths.iter().find_map(|p| {
         let path = Path::new(p);
         let absolute = if path.is_absolute() {
             path.to_path_buf()
@@ -1172,21 +1163,25 @@ fn spec_before_code(paths: &[String], cwd: &Path) -> Option<&'static str> {
             cwd.join(path)
         };
         let resolved = crate::hook_config::canonical(&absolute);
-        let Some(top) = work_tree_top(&resolved) else {
-            return false;
-        };
+        let top = work_tree_top(&resolved)?;
         // #3176 audit N2: a work tree without a `.moai` folder at its root is not a MoAI
         // project; its `spec/…` branch is not this rule's.
         if !top.join(".moai").is_dir() {
-            return false;
+            return None;
         }
-        let Some(id) = work_tree_branch(&top).and_then(|b| spec_branch_id(&b)) else {
-            return false;
-        };
         let specs = top.join(".moai").join("specs");
-        !resolved.starts_with(&specs) && !spec_names(&specs.join(&id).join("spec.md"), &id)
-    });
-    waits.then_some(SPEC_FIRST)
+        let branch = work_tree_branch(&top)?;
+        // Both branch forms, with or without a repair suffix; a name that reads two ways is
+        // settled by the SPEC folder of exactly one of the readings.
+        match spec_branch::resolve(&branch, Some(&specs)) {
+            Resolved::NotSpec => None,
+            _ if resolved.starts_with(&specs) => None,
+            Resolved::One(id) => {
+                (!spec_names(&specs.join(&id).join("spec.md"), &id)).then_some(SPEC_FIRST)
+            }
+            Resolved::Ambiguous(_) => Some(SPEC_TWO_IDS),
+        }
+    })
 }
 
 const OUTSIDE_PROJECT: &str = "MoAI tool-preflight: a write outside the project is refused; add the folder to `allow` under [hooks.outside_project_writes] in ~/.moai-cli/hook-config.toml to permit it.";
