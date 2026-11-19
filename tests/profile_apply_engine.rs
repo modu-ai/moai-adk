@@ -212,3 +212,79 @@ fn receipts_are_ignored_and_the_baseline_is_tracked_here() {
         );
     }
 }
+
+/// The plan answer's own fields must not refuse the round trip: a work_flow profile whose
+/// remote check prints warnings (the integration branch is absent on the project's local
+/// bare remote) plans with `work_flow_remote`, and the unchanged plan result applies.
+#[test]
+fn roundtrip_a_work_flow_plan_applies_unchanged() {
+    let dir = tempfile::tempdir().unwrap();
+    let project = dir.path().join("demo");
+    let bare = dir.path().join("remote.git");
+    let git = |args: &[&str]| {
+        let out = common::git::command()
+            .arg("-C")
+            .arg(&project)
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    };
+    for init in [&project, &bare] {
+        let out = common::git::command()
+            .arg("init")
+            .arg("-q")
+            .arg("-b")
+            .arg("main")
+            .arg(init)
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "git init");
+    }
+    git(&["remote", "add", "origin", bare.to_str().unwrap()]);
+    fs::write(project.join("seed.txt"), "base\n").unwrap();
+    git(&["add", "-A"]);
+    git(&[
+        "-c",
+        "user.name=fixture",
+        "-c",
+        "user.email=f@example.invalid",
+        "commit",
+        "-q",
+        "-m",
+        "base",
+    ]);
+    let p = project.to_str().unwrap();
+    let mut profile = profile("round trip");
+    profile["work_flow"] = json!({"flow": "m-flow", "integration_branch": "v2026.11.0"});
+    let plan = cli(&["project-plan", p], &profile);
+    assert_eq!(plan["action"], json!("create"));
+    let remote = plan["work_flow_remote"].clone();
+    assert!(
+        remote["warnings"].as_array().is_some_and(|w| !w.is_empty()),
+        "the remote check printed warnings (the branch is absent on the remote): {remote}"
+    );
+    let applied = cli(
+        &[
+            "project-apply",
+            p,
+            "--plan-digest",
+            plan["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "fixture-approved",
+        ],
+        &plan,
+    );
+    assert_eq!(applied["state"], json!("created"), "{applied}");
+    assert!(applied["profile_digest"].as_str().is_some(), "{applied}");
+    // A fresh project adopts `.moai/` as its state root (#2696 C2b), so the profile lands
+    // there, not in `.moai-cli/`.
+    let written: Value =
+        serde_json::from_str(&fs::read_to_string(project.join(".moai/project.yaml")).unwrap())
+            .unwrap();
+    assert_eq!(written["work_flow"]["flow"], json!("m-flow"));
+}
