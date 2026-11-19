@@ -2,7 +2,7 @@
 id: SPEC-20261119-spec-branch-name-first
 title: "A SPEC work branch is named spec/<slug>-<yyyymmdd>, and every reader still resolves the old date-first form"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-19
 ---
 
@@ -66,7 +66,7 @@ created: 2026-11-19
 ## Scope
 
 - write(이 조각, 계획과 RED): `.moai/specs/SPEC-20261119-spec-branch-name-first/**`, `tests/spec_branch_name_first.rs`
-- write(구현 조각, 묶음 5 병합 뒤 범위를 새로 받아요): `src/spec_branch.rs`(새 해석기), `src/lib.rs`(모듈 등록), `src/hook_guards.rs`, `src/tdd.rs`, `src/spec_take.rs`, `src/ops/spec.rs`, `src/ops/tdd.rs`, `tests/spec_take_cli.rs`, `tests/spec_before_code_hook.rs`, `tests/green_test_lock.rs`, `tests/trailer_check_cli.rs`, `tests/spec_close_cli.rs`, `tests/commit_guard_users.rs`, `tests/sdd_guidance.rs`, `tests/agent_defs_package.rs`, `skills/moai/references/internal/sdd.md`, `skills/moai/references/internal/interview.md`(+ 원본 목록 `skills/moai/references/source-manifest.json` 을 C-59 가 놓은 뒤), `docs/design-review/appendix/operations/spec.md`, `docs/design-review/appendix/operations/tdd.md`
+- write(구현 조각, 묶음 5 병합 뒤 범위를 새로 받아요): `src/spec_branch.rs`(새 해석기; `src/lib.rs` 를 다른 카드 C-119 가 잡고 있어서 `src/spec_take.rs` 안에서 `#[path]` 로 등록해요, D-8), `src/hook_guards.rs`, `src/tdd.rs`, `src/spec_take.rs`, `src/spec_close.rs`(합칠 가지를 두 꼴에서 찾아요, D-9), `src/ops/spec.rs`, `src/ops/tdd.rs`, `tests/spec_take_cli.rs`, `tests/spec_before_code_hook.rs`, `tests/green_test_lock.rs`, `tests/trailer_check_cli.rs`, `tests/spec_close_cli.rs`, `tests/commit_guard_users.rs`, `tests/sdd_guidance.rs`, `tests/agent_defs_package.rs`, `skills/moai/references/internal/sdd.md`, `skills/moai/references/internal/interview.md`(+ 원본 목록 `skills/moai/references/source-manifest.json` 을 C-59 가 놓은 뒤), `docs/design-review/appendix/operations/spec.md`, `docs/design-review/appendix/operations/tdd.md`
 - read-only: `src/trailers.rs`(`spec/` 접두사만 봐요), `src/spec_doc.rs`(`valid_slug`), `src/card/spec_link.rs`, `docs/decisions-2026-11-08.md`(옛 결정 기록이라 고치지 않아요)
 
 ## Plan
@@ -97,18 +97,24 @@ created: 2026-11-19
 - D-5: 카드 본문 "슬러그가 8자리 숫자로 끝난다"는 옛 꼴의 모호함이고, 새 꼴은 반대로 "슬러그가 날짜로 시작한다"가 모호해요. 둘 다 "두 SPEC 으로 읽힘"이라는 하나의 판정(해석기가 후보를 둘 만들 때)으로 처리해요. 리더가 보기에 카드 뜻과 다르면 note 로 알려 주세요.
 - D-6: hook 의 이유 문구는 고정 문자열이고 가지 이름을 되풀이하지 않아요(지금 시험이 고정한 성질). 명령줄 읽는 쪽(`tdd`·`spec take`)은 후보 id 를 이유에 적어요(`a-z0-9-` 로만 이뤄진 것을 확인한 id 만이에요).
 - D-7: 이 조각의 가지 이름은 아직 옛 꼴이에요(`spec/20261119-spec-branch-name-first`): 코드가 새 꼴을 알기 전엔 SPEC-first hook 이 새 꼴 가지를 SPEC 가지로 읽지 못해요.
+- D-8: 해석기는 `src/spec_branch.rs` 에 있고 `src/spec_take.rs` 안에서 `#[path = "spec_branch.rs"] pub mod spec_branch;` 로 등록해요(호출은 `crate::spec_take::spec_branch::…`). 이유: `src/lib.rs` 를 C-119(bundle-tool)가 예약하고 있어 C-112 가 take 할 수 없었어요. C-119 가 풀리면 `src/lib.rs` 에 `pub mod spec_branch;` 한 줄을 두고 `#[path]` 줄을 지우면 되고 동작은 같아요. 되돌릴 수 있고 범주는 none 이에요(리더에게 note 로 알렸어요).
+- D-9: `spec close` 도 합칠 가지를 찾아야 해서 `src/spec_close.rs` 가 범위에 들어왔어요: 옛 꼴 가지만 있으면 그것을, 아니면 새 꼴을 가리켜요(`spec_take::existing_branch_of`). 둘 다 있는 SPEC 은 `spec take` 가 거절하므로 close 는 만나지 않아요.
+- D-10: 해석기의 반환은 SPEC 본문의 `Two(a, b)` 대신 `Ambiguous(Vec<String>)` 예요: 수리 접미사가 붙으면 후보가 둘보다 많아질 수 있어서요(이름 그대로·접미사 뗀 것 × 이름 앞·날짜 앞). 판정은 같아요: 후보가 하나면 `One`, 둘 이상이면 SPEC 폴더가 정확히 하나일 때만 그것, 아니면 `Ambiguous`.
+- D-11: 슬러그의 길이 상한(`spec_doc::valid_slug` 의 48자)은 해석기가 적용하지 않아요. 지금 hook 은 상한 없이 읽으므로, 상한을 두면 긴 이름의 가지에서 hook 이 조용히 꺼져요(강제력이 약해져요). `moai spec new` 의 상한은 그대로예요.
 
 ## Result
 
-이 조각은 SPEC 과 RED 시험까지예요(리더 배차 note 2851): 코드는 바뀌지 않았어요. 아래는 tip `d25ecb1ba1` 에 이 SPEC 과 `tests/spec_branch_name_first.rs`(시험 11개)만 얹은 작업 폴더에서 `cargo test --locked --offline --test spec_branch_name_first` 를 돌린 결과예요: exit 101, 3 통과 8 실패(로그 `target/c112/red.log`). 실패는 모두 컴파일 오류가 아니라 동작 차이로 나요. `moai spec check SPEC-20261119-spec-branch-name-first` 는 오류 0 경고 0 이에요.
+구현 조각(리더 배차 note 2851, 묶음 5 병합 `747738af63` 뒤 새 tip 위)의 결과예요. 먼저 RED 조각(`a2db8d8f69`)에서는 같은 시험 11개가 3 통과 8 실패였고, 해석기 단위 시험은 껍데기(stub)로 11개 중 10개가 실패(1 통과)하는 것을 먼저 봤고, 12번째(긴 슬러그)는 추가한 뒤 고치기 전에 11 통과 1 실패를 따로 봤어요(로그는 scratchpad 의 `red-lib.txt`, `red-long.txt`). 아래 줄은 각 AC 의 `verify:` 명령을 하나씩 그대로 돌린 결과예요. `moai spec check` 는 구현 조각 마지막에 다시 돌려요.
 
-- AC-1: RED. `name_first_take_creates_the_name_first_branch` 실패(`left: spec/20261117-login-fix`, `right: spec/login-fix-20261117`: 지금 `spec take` 는 옛 이름을 만들어요). `name_first_take_switches_to_an_existing_old_form_branch` 는 이미 통과해요(옛 이름 가지로 옮기는 지금 동작을 고정하는 시험이에요).
-- AC-2: RED. `name_first_hook_resolves_both_forms_and_repair_suffixes_to_one_spec` 실패(`spec/demo-20261117: a code write must wait`: 새 이름을 SPEC 가지로 읽지 못해요). `name_first_hook_leaves_other_names_alone` 는 이미 통과해요(고정하는 시험).
-- AC-3: RED. `name_first_tdd_resolves_both_forms_and_repair_suffixes_to_one_spec` 실패(`tdd red refused: the branch is not a SPEC work branch spec/<yyyymmdd>-<slug>`).
-- AC-4: 이미 통과(고정하는 시험). `name_first_trailer_check_knows_both_forms_as_spec_branches` 1 통과: `trailer-check` 는 `spec/` 접두사만 봐요.
-- AC-5: RED. 시험 4개 모두 실패: hook 은 두 SPEC 이라는 이유 대신 평소의 SPEC-first 문구로 거절하고, `tdd red` 는 거절하지 않고 옛 꼴로 추측해 `SPEC-20261117-demo-20261118` 을 기록하고(exit 0), `spec take` 두 시험은 거절(exit 1)을 기대했는데 가지를 만들어 exit 0 이었어요.
-- AC-6: RED. `name_first_skills_show_the_new_form` 실패(`sdd.md` 에 `spec/<slug>-<yyyymmdd>` 가 없어요).
-- AC-7: 아직 못 돌렸어요. 해석기 단위 시험(`--lib spec_branch`)은 구현 조각에서 써요: 지금은 시험이 0개라 통과해도 증거가 아니에요.
-- AC-8: 아직 안 했어요. 문서 두 쪽은 구현 조각에서 고쳐요(`manual:`).
+- AC-1: 통과. `cargo test --locked --offline --test spec_branch_name_first name_first_take` → exit 0, 2 passed(새 이름 `spec/login-fix-20261117` 을 만들고 결과·다음 명령에 쓰며 옛 이름은 안 만들어요, 옛 이름 가지가 있으면 그리로 옮기기만 해요).
+- AC-2: 통과. `… name_first_hook` → exit 0, 2 passed(새·옛 이름과 각각의 `-r2` 가 `SPEC-20261117-demo` 로 읽혀요; 이유는 고정 문구이고 `demo` 를 되풀이하지 않아요; SPEC 가지가 아닌 이름은 그냥 둬요).
+- AC-3: 통과. `… name_first_tdd` → exit 0, 1 passed(네 이름 모두 같은 SPEC id 를 기록해요).
+- AC-4: 통과(고정하는 시험). `… name_first_trailer` → exit 0, 1 passed.
+- AC-5: 통과. `… name_first_ambiguous` → exit 0, 4 passed(hook·tdd 는 두 id 를 이유에 적고 거절하되 폴더 하나는 증거로 받아들이고 둘은 거절해요; `spec take` 는 두 꼴 가지가 함께 있거나 만들 이름이 두 SPEC 으로 읽히면 아무것도 바꾸지 않아요).
+- AC-6: 아직 안 했어요(실패). `… name_first_skills` → exit 101, 1 failed: `skills/moai/references/internal/sdd.md`·`interview.md` 는 C-59 가 `skills/moai/**` 와 원본 목록을 예약하고 있어서 이 조각의 범위가 아니에요. C-59 가 풀린 뒤 고쳐요.
+- AC-7: 통과. `cargo test --locked --offline --test spec_take_cli` → exit 0, 15 passed(옛 이름을 고정하던 곳을 새 이름으로 고쳤어요: `BRANCH` 와 `moai-base` 설정 키 두 곳). `--test spec_before_code_hook` → exit 0, 9 passed. `--test green_test_lock` → exit 0, 14 passed. `--lib spec_branch` → exit 0, 12 passed(해석기 단위 시험).
+- AC-8: 했어요(`manual:`). `docs/design-review/appendix/operations/spec.md`(take·close 두 줄)와 `tdd.md`(가지 한 줄)가 새 이름과 옛 이름 읽기, 두 SPEC 으로 읽히는 이름의 거절을 말해요. 감사가 `git grep -n 'spec/<' -- docs/design-review/appendix/operations` 로 읽어요.
 
-돌리지 않은 것: 이웃 시험 전체(`spec_take_cli`, `spec_before_code_hook`, `green_test_lock`)와 `--lib`·`ac_command_lint`·`ci_scope`: 코드를 안 바꿔서 지금은 의미가 없어요. 구현 조각에서 돌려요.
+이웃으로 더 돌린 것(이 AC 의 명령은 아니에요): `--test trailer_check_cli` 3, `commit_guard_users` 7, `sdd_guidance` 6, `agent_defs_package` 19, `spec_close_cli` 8, `hooks_cli` 48, `hook_dispatch_cli` 56, `workflow_e2e` 1, `worktree_cli` 23, `audit_admission` 7, `run_verify` 13, `boundary_repro` 16 모두 exit 0. `cargo fmt --all -- --check` exit 0, `cargo clippy --locked --offline --all-targets -- -D warnings` exit 0, `python3 tests/ci_scope_test.py` 40 OK.
+
+돌리지 않은 것: AC-6(스킬, 위 이유), 실제 windows 빌드 잡(병합 뒤 CI), 변이 시험(다음 단계), 호스트의 실제 세션에서 새 이름 가지로 hook 이 도는지(실제 세션은 아니에요: 시험은 모두 임시 저장소의 실제 바이너리예요).
