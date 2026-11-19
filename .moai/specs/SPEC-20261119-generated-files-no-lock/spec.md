@@ -57,7 +57,7 @@ created: 2026-11-19
 
 ## Scope
 
-- write: `src/scope.rs`, `src/ledger/reservation.rs`, `src/ledger/workflow.rs`, `tests/card_generated_scope.rs`, `tests/source_manifest_test.py`, `.moai/specs/SPEC-20261119-generated-files-no-lock/spec.md`
+- write: `src/scope.rs`, `src/ledger/reservation.rs`(한 줄: `find_overlap` 이 `scope::card_overlap` 을 불러요 — C-43 이 먼저 병합된 뒤 그 head 위에서), `tests/card_generated_scope.rs`, `tests/source_manifest_test.py`, `.moai/specs/SPEC-20261119-generated-files-no-lock/spec.md`
 - read-only: `.gitattributes`, `tools/source_manifest.py`, `tools/merge_driver_manifest.py`, `skills/moai/workflows/verify.md`(78행 규칙; 문구 갱신은 조각 3)
 - forbidden: 실제 HOME, 네트워크, 기존 예약·원장 행의 수편, `skills/**` 쓰기(이 카드의 조각 1·2), 병합 드라이버·`source_manifest.py` 동작 변경
 - 조각별 take: 조각 1 = 이 SPEC 폴더만(지금). 조각 2 = 위 `src/`·`tests/` 파일 — take 때 다른 카드(C-94 등)가 같은 파일을 쥐고 있는지 먼저 `card take` 거부 여부로 확인하고, 막히면 `LANE-BLOCKED kind=decision` 을 카드에 적어요.
@@ -66,7 +66,7 @@ created: 2026-11-19
 
 1. (조각 1, 지금) 이 SPEC — 읽기로 확인한 사실만 쓰고 push 해요(코드 변경 0).
 2. (조각 2) RED: `tests/card_generated_scope.rs` 에 AC-1~3 시험을 먼저(임시 원장·임시 HOME 만) — 현 코드에서 첫 시험이 `scope_overlap` 으로 실패해야 하고 그 출력을 기록해요. 그리고 `tests/source_manifest_test.py` 에 AC-4 시험 둘.
-3. (조각 2) GREEN: `src/scope.rs` 에 `GENERATED_SHARED_PATHS` 와 카드용 술어 `card_overlap(a, b)`(= `overlap(a, b)` 이고 한쪽이 생성 경로와 정확히 같은 쌍이 아님), `src/ledger/reservation.rs::find_overlap` 와 `src/ledger/workflow.rs` 의 호출이 같은 술어를 쓰게 해요. 클레임 쪽 `overlap`·`overlaps` 는 건드리지 않아요.
+3. (조각 2) GREEN: `src/scope.rs` 에 `GENERATED_SHARED_PATHS` 와 카드용 술어 `card_overlap(a, b)`(= `overlap(a, b)` 이고 한쪽이 생성 경로와 정확히 같은 쌍이 아님), `src/ledger/reservation.rs::find_overlap` 가 그 술어를 불러요(`src/ledger/workflow.rs` 의 `ready` 목록은 `find_overlap` 을 그대로 부르니 고치지 않아요). 클레임 쪽 `overlap`·`overlaps` 는 건드리지 않아요.
 4. (조각 2) 변이 ≤5(커밋된 파일에서 하나씩): 예외 조건을 "한쪽만"에서 "양쪽"으로, 대소문자 접기 제거, 술어 대신 `overlap` 호출 복원, 목록 비움, `workflow.rs` 가 옛 술어를 부르게 — 모두 시험이 잡아야 해요.
 5. (조각 2) fmt, clippy `--all-targets`, `cargo test --lib` 전체, `home_isolation_scan`, `python3 -m unittest tests.source_manifest_test tests.repo_scans_test`, trailer-check, tip 과 `git merge-tree`, 다른 맥락의 감사, 내 판정 줄, `LANE-READY-INTEGRATION`.
 6. (조각 3) `verify.md` 의 manifest 규칙에 "생성 파일은 예약이 겹쳐도 돼요 — 새 tip 을 받은 뒤 `source_manifest.py write` 로 다시 쓰고 sha 줄을 손으로 고치지 않아요"를 한 줄 더해요(skill 파일이라 manifest 를 다시 써야 하니 조각 2 병합 뒤, 다른 skill 카드가 비어 있을 때).
