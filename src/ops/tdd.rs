@@ -11,7 +11,8 @@ use std::time::Duration;
 /// `moai tdd <action>` keeps this worktree's TDD cycle in `<git-dir>/moai/tdd.json` and logs every
 /// step in `<git-dir>/moai/tdd-log.jsonl` (never committed). While the cycle is in GREEN or
 /// REFACTOR, the tool-preflight hook refuses writes to the tests the RED commit changed and new
-/// test files. Runs on a SPEC work branch `spec/<yyyymmdd>-<slug>`.
+/// test files. Runs on a SPEC work branch `spec/<slug>-<yyyymmdd>` (or the older
+/// `spec/<yyyymmdd>-<slug>`).
 #[derive(clap::Args)]
 pub struct Args {
     #[command(subcommand)]
