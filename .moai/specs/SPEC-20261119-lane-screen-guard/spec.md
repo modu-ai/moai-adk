@@ -102,12 +102,14 @@ created: 2026-11-19
 
 ## Result
 
-이 조각은 계획과 SPEC 뿐이에요: 코드·시험을 만들지 않았어요. 아래는 계획을 세우며 읽은 것이에요(2026-11-19, tip `d25ecb1ba1`).
+구현 조각 A(`moai lane-screen`, 코드 머리 `9fb92dd868`, 2026-11-19T11:13:32Z 에 `date -u` 로 읽은 때)예요. 시험은 RED 먼저: 스텁에서 `lane_screen_cli` 22개 중 19개가 실패했고 구현 뒤 22개 모두 통과해요.
 
-- AC-1: 아직 안 했어요(구현 조각 A).
-- AC-2: 아직 안 했어요(구현 조각 A).
-- AC-3: 아직 안 했어요(구현 조각 A).
-- AC-4: 아직 안 했어요(구현 조각 A).
-- AC-5: 아직 안 했어요(문서, `manual:`).
+- AC-1: 충족 — `cargo test --locked --offline --test lane_screen_cli lane_screen_state` 가 통과해요(전체 `lane_screen_cli` 22 passed; 상태 여섯과 확인 창+작업 중 표지, 상태마다 읽은 줄 하나, 화면 전체는 출력하지 않는 것까지).
+- AC-2: 충족 — `... --test lane_screen_cli lane_screen_reset` 이 통과해요(`UTC`·`UTC+8`·`Asia/Seoul` 변환, 시간대 없음·모르는 시간대·불가능한 시각은 `utc: null` 과 원문, `--home` 의 `reached` 가 화면 글자보다 우선하고 `near`·기록 없음은 화면 글자, UTC+8 이 UTC+9 보다 3600 초 뒤).
+- AC-3: 충족 — `... --test lane_screen_cli lane_screen_unknown` 이 통과해요(`source` 가 `screen` 이 아니거나 비어 있으면 `unknown`, 5줄 `unknown`·6줄 판정, 세 줄 tail `unknown`, 터미널 종료는 `unreachable`, `pane` 키 넷과 idle·unknown 의 null, 파일을 쓰지 않아요). `lane-status` 의 `PaneObservation` 으로 읽히는지는 `--lib lane_screen` 의 `five_states_read_as_a_lane_status_pane_and_two_do_not` 이 확인해요.
+- AC-4: 충족 — `--lib lane_screen` 24 passed, `--test lane_duty_line` 8 passed, 이웃으로 `--bin moai` 28 passed(`help_table_names_every_command_once`·`every_command_has_examples`·`every_example_parses`·`stdin_examples_match_the_commands_that_read_stdin`·`operations_doc_matches_code` 포함), `--test help_layout` 10 passed(골든 넷에 `lane-screen` 한 줄), `--test hot_file_ops_merge` 3 passed, `tests/ci_scope_test.py` 40 OK, `cargo fmt --all -- --check` 0, `cargo clippy --locked --offline --all-targets -- -D warnings` 0. 변이 다섯(여섯 줄 하한 5로, UTC 부호 뒤집기, `--home` 을 `near` 로, 번호 목록에 `❯` 불요, 종료 상태 못 읽기)이 모두 KILLED 예요. 전체 시험을 이 컴퓨터에서 한 번에 돌리지는 않았어요(cap).
+- AC-5: 충족(`manual:`) — `docs/design-review/appendix/operations/lane_screen.md` 가 상태·표지·시간 규칙·출력 필드를 적어요. 시험이 `docs/` 를 읽지는 않으며, `operations_doc_matches_code` 가 명령과 문서 쪽이 짝인지 확인해요.
 
-읽은 것: `orca terminal read --help`(`--screen`: 그려진 화면, 기본은 겹쳐 쌓인 출력), `orca terminal send --help`(보호 없음, "다른 에이전트에는 `orca orchestration send`"), `hc send --help`(`--force`, `--if idle|working`), `src/lane_status.rs`(`PaneObservation`·`PaneState`), `src/usage_limit.rs`(`resets_at`), `src/lane_duty.rs`(입력 안전 규칙), `Cargo.toml`(날짜 라이브러리 없음), 레인 화면 둘(`orca terminal read --screen --json`). 확인 창과 한도 화면의 원문은 저장소에 없어요.
+실제로 본 화면 둘은 시험에 넣었어요(합성 화면이 바탕): 2026-11-19 glm 레인의 시간대 없는 한도 줄(`lane_screen_reset_a_time_with_no_zone_…`)과 좁은 창의 세 줄 tail(`lane_screen_unknown_a_narrow_tail_…`). 확인 창·한도 화면의 원문 전체는 저장소에 없고 `tests/fixtures/lane_screens/` 는 모두 손으로 쓴 합성이에요. 아직 안 한 것: `lane-send`(조각 B)와 `lane-screen --scan`(조각 C)은 두 하위 SPEC 에 있어요.
+
+계획을 세우며 읽은 것: `orca terminal read --help`(`--screen`: 그려진 화면, 기본은 겹쳐 쌓인 출력), `orca terminal send --help`(보호 없음, "다른 에이전트에는 `orca orchestration send`"), `hc send --help`(`--force`, `--if idle|working`), `src/lane_status.rs`(`PaneObservation`·`PaneState`), `src/usage_limit.rs`(`resets_at`), `src/lane_duty.rs`(입력 안전 규칙), `Cargo.toml`(날짜 라이브러리 없음), 레인 화면 둘(`orca terminal read --screen --json`). 확인 창과 한도 화면의 원문은 저장소에 없어요.
