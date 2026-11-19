@@ -1396,7 +1396,9 @@ fn next_lists_a_review_card_nobody_holds_under_its_own_reason() {
 
 /// SPEC-20261119-criterion-add-session REQ-5, REQ-6 (card C-125, C-108 audit N3): the total is the
 /// number of rows the card has, not its highest number. Rows 1 and 5 make a gap (the table takes
-/// any `seq`); two adds are numbered after 5 and the total is 4.
+/// any `seq`) and row 5 is withdrawn, so the count includes a withdrawn row and the new numbers
+/// still go after it (REQ-5, REQ-6; C-108 audit N5); two adds are numbered after 5 and the total
+/// is 4.
 #[test]
 fn criteria_total_is_the_row_count() {
     let (_home, mut w) = setup();
@@ -1404,7 +1406,8 @@ fn criteria_total_is_the_row_count() {
     sql(
         &mut w,
         &format!(
-            "INSERT INTO card_ac (card_id, seq, text, updated_at) VALUES ({card}, 5, 'five', 1)"
+            "INSERT INTO card_ac (card_id, seq, text, status, withdrawn_reason, updated_at) \
+             VALUES ({card}, 5, 'five', 'withdrawn', 'gone', 1)"
         ),
     );
     let texts = vec!["a".to_string(), "b".to_string()];
