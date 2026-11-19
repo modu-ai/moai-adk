@@ -257,6 +257,13 @@ fn plan_with_the_flag_reports_replace_and_a_digest_of_its_own_and_writes_nothing
     assert_ne!(digest(&replace), digest(&plain), "{replace}");
     let path = backup_rel(&replace);
     assert!(path.contains("backups/"), "{path}");
+    // The copy is named by the bytes it holds: the first 16 hex digits of the file's sha256.
+    let sha = replace["expected_sha256"].as_str().unwrap();
+    let hex = sha.trim_start_matches("sha256:");
+    assert!(
+        path.ends_with(&format!("codex-config-{}.toml", &hex[..16])),
+        "{path}"
+    );
     assert!(!fx.exists(&path), "the plan wrote the backup");
     assert_eq!(
         replace["backup"]["sha256"], replace["expected_sha256"],
