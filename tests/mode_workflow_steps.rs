@@ -188,6 +188,9 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             "goal-plan",
             "goal-show",
             "heavy-slot-acquire",
+            // C-114 slice 3: mode-agent.md step 7 shows the python slot, the same slot with its
+            // own folder (`--dir`, `moai heavy-slot-acquire --help`).
+            "heavy-slot-acquire --dir",
             // #2904 (C3 of #2899 comment 6880316209): a Codex lane's Stop hook is installed
             // through the preview and the person's confirmation.
             "hooks-apply --host",
