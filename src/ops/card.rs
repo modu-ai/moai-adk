@@ -29,6 +29,11 @@ enum Action {
         /// Only cards in this state (`draft`, `ready`, `active`, `review`, `done`, `hold`).
         #[arg(long)]
         state: Option<String>,
+        /// Only cards whose title starts with this text (case-sensitive, taken as typed; not empty,
+        /// no control character). The flaky rule's cards are `flaky: <test>`: `--title-prefix
+        /// "flaky: "`.
+        #[arg(long)]
+        title_prefix: Option<String>,
         /// The HOME to read (default `$HOME`). Tests pass a temporary folder.
         #[arg(long)]
         home: Option<PathBuf>,
@@ -645,8 +650,14 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         Action::List {
             project,
             state,
+            title_prefix,
             home,
-        } => c::list(&project, &resolve_home(home)?, state.as_deref()),
+        } => c::list_filtered(
+            &project,
+            &resolve_home(home)?,
+            state.as_deref(),
+            title_prefix.as_deref(),
+        ),
         Action::Show {
             card,
             project,

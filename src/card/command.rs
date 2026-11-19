@@ -94,8 +94,36 @@ fn card_json(conn: &Connection, card_id: i64) -> std::result::Result<Option<Valu
 
 /// `card list [--state S]`: every card, oldest first. An absent ledger is "no cards" (exit 0).
 pub fn list(project: &Path, home: &Path, state: Option<&str>) -> Result<Value> {
+    list_filtered(project, home, state, None)
+}
+
+/// A `--title-prefix` typed for `card list` (card C-99, SPEC-20261119-flaky-followups): not
+/// empty and without a control character. It is taken as typed, not trimmed: `flaky: ` ends in
+/// the space that tells the rule's title from `flakiness`.
+fn title_prefix(given: &str) -> std::result::Result<&str, &'static str> {
+    if given.is_empty() {
+        return Err("the title prefix is empty");
+    }
+    if given.chars().any(char::is_control) {
+        return Err("the title prefix has a control character");
+    }
+    Ok(given)
+}
+
+/// `card list [--state S] [--title-prefix P]`: the cards in that state whose title starts with
+/// `P` (case-sensitive), oldest first, each card in the shape `list` gives. Both options are
+/// checked before the ledger is read.
+pub fn list_filtered(
+    project: &Path,
+    home: &Path,
+    state: Option<&str>,
+    title_prefix_given: Option<&str>,
+) -> Result<Value> {
     let state = state
         .map(|s| input::state(s).map_err(|e| format!("card list refused: {e}")))
+        .transpose()?;
+    let prefix = title_prefix_given
+        .map(|p| title_prefix(p).map_err(|e| format!("card list refused: {e}")))
         .transpose()?;
     let id = project_id(project)?;
     let ledger = match ledger::open_read_only(home, &id) {
@@ -113,12 +141,14 @@ pub fn list(project: &Path, home: &Path, state: Option<&str>) -> Result<Value> {
         .prepare(&format!(
             "SELECT card_id, title, kind, state, priority, rev, updated_at, \
                     source_host, source_project, source_number, {} \
-               FROM card WHERE (?1 IS NULL OR state = ?1) ORDER BY card_id",
+               FROM card WHERE (?1 IS NULL OR state = ?1) \
+                           AND (?2 IS NULL OR substr(title, 1, length(?2)) = ?2) \
+              ORDER BY card_id",
             super::spec_link::LINKED_COLUMN
         ))
         .map_err(|e| LedgerError::from(e).to_string())?;
     let rows = stmt
-        .query_map([state], |r| {
+        .query_map(params![state, prefix], |r| {
             let host: Option<String> = r.get(7)?;
             let proj: Option<String> = r.get(8)?;
             let number: Option<i64> = r.get(9)?;
