@@ -65,4 +65,7 @@ This slice (the part of C-99 whose files are free; see Non-goals) makes the merg
 
 ## Result
 
-(RED and the checks come first; one line per AC is written after them.)
+- AC-1: met — `workflow_size_budget` `flaky_rule_names_the_card_and_what_it_records` (RED first: `mode-leader.md has no Flaky rule…`); mutants G2 (merge stops), G3 (missing-card path gone), G4 (passing run id not recorded), G5 (re-run pass allowed), G6 (one card per test dropped) killed
+- AC-2: met — `the_not_a_stop_sentence_points_to_the_flaky_rule` (RED first); mutant G1 (pointer removed) killed
+- AC-3: met — `flaky_rule_stays_within_its_byte_budget`: the rule is 501 bytes (budget 700), `mode-leader.md` 45,128 bytes (bound 65,536); mutant G7 (rule grows past the budget) killed
+- AC-4: not met yet — `mode_cards_53` 9, `mode_workflow_steps` 43, `agent_defs_package` 19, `ac_command_lint` 5, `help_layout` 10, `home_isolation_scan` 18 and `cargo fmt --check` pass; `product_cli` `skill_package::source_manifest_covers_every_package_file` fails with `workflows/mode-leader.md: manifest sha256 is stale` because `skills/moai/references/source-manifest.json` is reserved by card C-77 and not in this card's scope. The hash is updated when C-77 releases the path; this line is then rewritten.
