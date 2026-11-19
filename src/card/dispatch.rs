@@ -374,7 +374,8 @@ pub fn handoff(
 }
 
 /// `--reason` of `reclaim`: one line of 1 to [`reservation::MAX_REASON_LEN`] characters with
-/// something visible in it. It is what the reclaimer found out about the old holder.
+/// something visible in it and no word shaped like a secret (the filter `card note` uses). It is
+/// what the reclaimer found out about the old holder.
 fn reclaim_reason(reason: &str) -> Result<String> {
     if reason.trim().is_empty()
         || reason.chars().count() > reservation::MAX_REASON_LEN
@@ -383,6 +384,16 @@ fn reclaim_reason(reason: &str) -> Result<String> {
         return Err(format!(
             "card reclaim refused: --reason must be one line of 1 to {} characters",
             reservation::MAX_REASON_LEN
+        ));
+    }
+    // The check `card note` uses (`redact::redact_outgoing`): the reason is kept for good and
+    // `card export` writes it out. The text is not repeated.
+    let (_, shaped) = crate::redact::redact_outgoing(reason);
+    if shaped > 0 {
+        return Err(format!(
+            "card reclaim refused: --reason has {shaped} word(s) with the shape of a secret \
+             (a token, a key, `password=`); a reason is kept for good and written out by \
+             `card export`, so take them out"
         ));
     }
     Ok(reason.to_string())

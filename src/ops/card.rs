@@ -250,15 +250,19 @@ enum Action {
     /// Writes the ledger. Take over a card whose reservation has ended
     ///
     /// Writes the ledger. For a card whose holder is gone: the reservation at `--generation` must be
-    /// `held` with a lease that has ended (a live lease, another generation, a `done` card or a card
-    /// nobody holds is refused as `conflict`, and nothing is written). It becomes `reclaimed`, and this
-    /// session gets the next generation with the same scope, worktree and branch and a new lease; the
-    /// card keeps its state, notes, criteria and links, so this session can then close it with `card
-    /// criterion`, `card pr` and `card done`, or give it back with `card release`. One `card.reclaim`
-    /// event names the old holder, generation and lease end, the new holder, `--by` and `--reason`.
-    /// Nothing checks that the old holder is really gone: say in `--reason` what was found (process
-    /// ended, pull request merged, uncommitted work). The old generation is stale from then on. The new
-    /// holder is this session's own id, never typed.
+    /// `held` with a lease that has ended. Refusals write nothing and come in three kinds:
+    /// `conflict` (a live lease, another generation, a `done` card, a reservation that is not
+    /// `held`, or a card nobody holds), `not_found` (no such card) and `invalid_input` (a missing
+    /// or malformed option, or a `--reason` with a word shaped like a secret). The reservation
+    /// becomes `reclaimed`, and this session gets the next generation with the same scope, worktree
+    /// and branch and a new lease; the card keeps its state, notes, criteria and links, so this
+    /// session can then close it with `card criterion`, `card pr` and `card done`. To give a card
+    /// back instead: a card in `review` is reopened with `card reopen` first, then given back with
+    /// `card release` (`release` refuses a card in `review`). One `card.reclaim` event names the old
+    /// holder, generation and lease end, the new holder, `--by` and `--reason`. Nothing checks that
+    /// the old holder is really gone: say in `--reason` what was found (process ended, pull request
+    /// merged, uncommitted work). The old generation is stale from then on. The new holder is this
+    /// session's own id, never typed.
     Reclaim {
         /// `C-12`.
         card: String,

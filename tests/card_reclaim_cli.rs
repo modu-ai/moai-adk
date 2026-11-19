@@ -648,3 +648,120 @@ fn the_help_says_the_command_writes_the_ledger() {
         assert!(help.contains(option), "{option} missing: {help}");
     }
 }
+
+/// SPEC-20261119-card-reclaim-followups AC-1: the help says what a reader needs to act on it.
+#[test]
+fn reclaim_help_names_reopen_and_the_refusal_kinds() {
+    let w = world();
+    let out = w
+        .home
+        .command(&["card", "reclaim", "--help"])
+        .output()
+        .expect("run moai");
+    let help = String::from_utf8_lossy(&out.stdout);
+    // The help is wrapped at the terminal width: compare words, not line breaks.
+    let help = help.split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(
+        help.contains("`card reopen`") && help.contains("`card release`"),
+        "a `review` card is reopened before it is given back: {help}"
+    );
+    for kind in ["`conflict`", "`not_found`", "`invalid_input`"] {
+        assert!(help.contains(kind), "{kind} missing: {help}");
+    }
+}
+
+/// AC-3: `--reason` is kept for good and `card export` writes it out, so it gets the filter
+/// `card note` uses. The refusal does not repeat the word and nothing is written.
+#[test]
+fn reclaim_refuses_a_secret_shaped_reason() {
+    let w = world();
+    let card = w.stuck_review_card();
+    let key = format!("{}{}", ["s", "k-"].concat(), "a1B2".repeat(6));
+    let before = w.dump();
+    for reason in [
+        format!("old holder gone, key {key} left in its shell"),
+        format!("{}=hunter2 was in the log", ["pass", "word"].concat()),
+    ] {
+        let (kind, message) = refusal(&w.card(
+            Some(S_B),
+            &[
+                "reclaim",
+                &card,
+                "--generation",
+                "1",
+                "--by",
+                "leader",
+                "--reason",
+                &reason,
+            ],
+        ));
+        assert_eq!(kind, "invalid_input", "{message}");
+        assert!(
+            message.starts_with("card reclaim refused: ") && message.contains("secret"),
+            "{message}"
+        );
+        assert!(
+            !message.contains(&key) && !message.contains("hunter2"),
+            "the refusal does not repeat the text: {message}"
+        );
+        assert_eq!(w.dump(), before, "a refused reclaim writes nothing");
+    }
+    // An ordinary reason is taken (the card was not touched above).
+    result(&w.reclaim(Some(S_B), &card, "1"));
+}
+
+/// AC-4: after a reclaim the old holder's `pr`, `done`, `reopen` and `review` are refused as
+/// stale. They leave one `fence_reject` event each and change no other table.
+#[test]
+fn the_old_generation_cannot_move_or_close_the_card() {
+    let w = world();
+    let card = w.stuck_review_card();
+    result(&w.reclaim(Some(S_B), &card, "1"));
+    let tables = |w: &World| -> Vec<String> {
+        w.dump()
+            .into_iter()
+            .filter(|line| !line.starts_with("event:"))
+            .collect()
+    };
+    let before = tables(&w);
+    let events_before = w.rows("SELECT COUNT(*) FROM event")[0][0].as_i64().unwrap();
+
+    let attempts: [&[&str]; 4] = [
+        &["pr", &card, "7", "--generation", "1", "--repo", "octo/demo"],
+        &["done", &card, "--generation", "1"],
+        &["reopen", &card, "--generation", "1"],
+        &["review", &card, "--generation", "1"],
+    ];
+    for args in attempts {
+        let (kind, message) = refusal(&w.card(Some(S_A), args));
+        assert_eq!(kind, "conflict", "{args:?}: {message}");
+        assert!(message.contains("is stale"), "{args:?}: {message}");
+    }
+
+    assert_eq!(tables(&w), before, "no card, reservation or link changed");
+    let rejects = w.rows("SELECT kind FROM event ORDER BY event_id DESC LIMIT 4");
+    assert!(
+        rejects.iter().all(|r| r[0] == json!("fence_reject")),
+        "{rejects:?}"
+    );
+    assert_eq!(
+        w.rows("SELECT COUNT(*) FROM event")[0][0].as_i64().unwrap(),
+        events_before + 4
+    );
+    // The new holder still closes the card (criterion 3 was open; the pull request is merged).
+    result(&w.card(
+        Some(S_B),
+        &[
+            "criterion",
+            &card,
+            "3",
+            "--generation",
+            "2",
+            "--met",
+            "--evidence",
+            "x",
+        ],
+    ));
+    let done = result(&w.card(Some(S_B), &["done", &card, "--generation", "2"]));
+    assert_eq!(done["state"], json!("done"), "{done}");
+}

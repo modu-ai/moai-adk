@@ -639,6 +639,14 @@ fn reserve_in_tx(
     })?
 }
 
+/// Whether a lease has ended at ledger-clock second `now`: the lease-end second itself no longer
+/// holds (`lease_until <= now`). The fence, `release` and `reclaim` all decide with this one
+/// function, so a lease the fence calls expired is one `reclaim` may take and `release` may
+/// report as not live.
+pub fn lease_ended(lease_until: i64, now: i64) -> bool {
+    lease_until <= now
+}
+
 /// The shared check of renew, release, handoff and fence: the offered `(holder, generation)`
 /// must be the current reservation, `held`, and (when `need_live`) with a lease that has not
 /// ended. Returns the reservation, or the refusal; a SQL failure is the outer `Err`.
@@ -673,7 +681,7 @@ fn evaluate(
             held_by: row.holder,
         }));
     }
-    if need_live && row.lease_until <= now {
+    if need_live && lease_ended(row.lease_until, now) {
         return Ok(Err(FenceError::LeaseExpired {
             lease_until: row.lease_until,
             now,
@@ -806,7 +814,7 @@ pub fn release(
                     card_id,
                     generation,
                     // The same test as the fence's `LeaseExpired`.
-                    lease_live: row.lease_until > now,
+                    lease_live: !lease_ended(row.lease_until, now),
                 }));
             }
             tx.execute(
@@ -1087,7 +1095,7 @@ pub fn reclaim(
         if old.status != "held" {
             return Ok(Err(ReclaimError::NotHeld { status: old.status }));
         }
-        if old.lease_until > now {
+        if !lease_ended(old.lease_until, now) {
             return Ok(Err(ReclaimError::LeaseLive {
                 lease_until: old.lease_until,
                 now,
@@ -1207,6 +1215,15 @@ mod tests {
 
     fn scope(n: usize) -> Vec<String> {
         (0..n).map(|i| format!("src/p{i}/")).collect()
+    }
+
+    /// SPEC-20261119-card-reclaim-followups AC-2: the one test every lease-end decision uses,
+    /// pinned at N-1, N and N+1 seconds so no test needs the clock to stand still.
+    #[test]
+    fn lease_ended_includes_the_lease_end_second() {
+        assert!(!lease_ended(100, 99), "one second left: live");
+        assert!(lease_ended(100, 100), "the lease-end second: ended");
+        assert!(lease_ended(100, 101), "one second past: ended");
     }
 
     #[test]
