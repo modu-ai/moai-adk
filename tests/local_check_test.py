@@ -253,8 +253,9 @@ class LocalCheckLegTest(unittest.TestCase):
     rules hold inside a leg exactly as in the full set."""
 
     def dry_steps(self, repo, **extra):
+        # The legs are CI's (in-place under GITHUB_ACTIONS); these pins speak from the runner.
         proc = repo.run(LOCAL_CHECK_DRY_RUN="1", LOCAL_CHECK_BASE="BASE",
-                        LOCAL_CHECK_DIFF_HEAD="HEAD", **extra)
+                        LOCAL_CHECK_DIFF_HEAD="HEAD", GITHUB_ACTIONS="true", **extra)
         self.assertEqual(proc.returncode, 1, proc.stderr)
         return [STEP.match(line).groups() for line in proc.stdout.splitlines()
                 if STEP.match(line)], proc
@@ -306,6 +307,21 @@ class LocalCheckLegTest(unittest.TestCase):
                 self.assertNotIn("step ", proc.stdout)
                 self.assertNotIn("local-check:", proc.stdout)
 
+    def test_a_leg_is_refused_in_local_in_place_mode(self):
+        """Slice 4 (audit record 1): in-place mode prints a pass line too, so a local
+        one-leg run (no GITHUB_ACTIONS) must refuse before any stage — on CI
+        (GITHUB_ACTIONS=true) the legs keep running, which the tests below pin."""
+        for leg in ("nextest", "rest"):
+            with self.subTest(leg=leg):
+                repo = FakeRepo()
+                self.addCleanup(repo.close)
+                proc = repo.run(LOCAL_CHECK_LEG=leg)
+                self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+                self.assertIn("LOCAL_CHECK_LEG", proc.stderr)
+                self.assertIn("full set", proc.stderr)
+                self.assertNotIn("step ", proc.stdout)
+                self.assertNotIn("local-check:", proc.stdout)
+
     def test_a_leg_ignores_the_other_legs_failure(self):
         """The nextest leg's `test` step failing must not touch the rest leg (they are
         separate CI jobs), and vice versa."""
@@ -313,13 +329,13 @@ class LocalCheckLegTest(unittest.TestCase):
             with self.subTest(leg=leg):
                 repo = FakeRepo(fail_label=fail_label)
                 self.addCleanup(repo.close)
-                proc = repo.run(LOCAL_CHECK_LEG=leg)
+                proc = repo.run(LOCAL_CHECK_LEG=leg, GITHUB_ACTIONS="true")
                 self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
 
     def test_a_leg_stops_at_its_own_first_failure_and_keep_going_runs_all_of_it(self):
         repo = FakeRepo(fail_label="cargo clippy")
         self.addCleanup(repo.close)
-        proc = repo.run(LOCAL_CHECK_LEG="rest")
+        proc = repo.run(LOCAL_CHECK_LEG="rest", GITHUB_ACTIONS="true")
         self.assertEqual(proc.returncode, 1)
         self.assertEqual(repo.recorded(), [
             "cargo fetch --locked",
@@ -327,7 +343,7 @@ class LocalCheckLegTest(unittest.TestCase):
         ])
         repo2 = FakeRepo(fail_label="cargo clippy")
         self.addCleanup(repo2.close)
-        proc2 = repo2.run(LOCAL_CHECK_LEG="rest", LOCAL_CHECK_KEEP_GOING="1")
+        proc2 = repo2.run(LOCAL_CHECK_LEG="rest", GITHUB_ACTIONS="true", LOCAL_CHECK_KEEP_GOING="1")
         self.assertEqual(proc2.returncode, 1)
         # Every rest step ran (diff-check is `git`, so the stub log holds the other five).
         self.assertEqual(repo2.recorded(), [
