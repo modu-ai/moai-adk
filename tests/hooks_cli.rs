@@ -1388,15 +1388,19 @@ fn green_lock_bash_edges_of_folders_globs_and_moves() {
         assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
     }
     // A symlink as the glob's folder part: the real folder is the one that is read.
-    std::os::unix::fs::symlink(repo.root.join("tests"), repo.root.join("link")).unwrap();
-    for command in [
-        "rm link/*",
-        "rm link/locked_*.rs",
-        "rm -rf link",
-        "rm -rf link/",
-    ] {
-        let reason = repo.deny_reason(command);
-        assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+    // Unix only: `std::os::unix` does not exist on Windows (SPEC-20261119-windows-unix-gate).
+    #[cfg(unix)]
+    {
+        std::os::unix::fs::symlink(repo.root.join("tests"), repo.root.join("link")).unwrap();
+        for command in [
+            "rm link/*",
+            "rm link/locked_*.rs",
+            "rm -rf link",
+            "rm -rf link/",
+        ] {
+            let reason = repo.deny_reason(command);
+            assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+        }
     }
 }
 
