@@ -12,7 +12,7 @@
 +#   mv "<this folder>/moai.before-<stamp>" "<this folder>/moai"
  RUST="${MOAI_RUST_BIN:-$HOME/.moai-cli/path/moai-cli}"
  GO="${MOAI_GO_BIN:-$HOME/go/bin/moai.old}"
- 
+
 @@ -15,8 +19,22 @@
    # Launcher words always go to Rust.
    cc|glm|codex|omp|-l|-a|--leader|--agent)
