@@ -387,7 +387,9 @@ impl KeptApply<'_> {
 /// PATH now), then the apply. A plan that changes an existing file (`update`, which includes the
 /// rewrite of an old `moai-cli` set) keeps the replaced bytes under a receipt and names the
 /// `hooks-revert` command that restores them; a first install or a plan that writes nothing
-/// has nothing to restore and leaves no receipt.
+/// has nothing to restore and leaves no receipt. `replace` is `--replace-with-backup`: a plan of
+/// the action `replace` keeps a copy of the file first and leaves no revert receipt either.
+#[allow(clippy::too_many_arguments)]
 pub fn apply_direct(
     project: &Path,
     host: &str,

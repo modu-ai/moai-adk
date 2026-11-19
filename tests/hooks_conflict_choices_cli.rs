@@ -23,13 +23,12 @@ const SYSTEM_PATH: &str = "/usr/bin:/bin";
 const RUST_MOAI: &str = "moai 1.2.3 (rust)";
 const GO_MOAI: &str = "moai-adk v3.2.1-rc.6";
 
-/// One host: its hook file, the file's extension and a file of the user's own.
+/// One host: its hook file and a file of the user's own.
 #[derive(Clone, Copy)]
 struct H {
     name: &'static str,
     step: &'static str,
     file: &'static str,
-    ext: &'static str,
     user: &'static str,
 }
 
@@ -37,14 +36,12 @@ const CODEX: H = H {
     name: "codex",
     step: "codex-hooks",
     file: ".codex/hooks.json",
-    ext: "json",
     user: "{\n  \"hooks\": {\n    \"Stop\": [\n      {\n        \"hooks\": [{\"type\": \"command\", \"command\": \"echo mine\"}]\n      }\n    ]\n  }\n}\n",
 };
 const OMP: H = H {
     name: "omp",
     step: "omp-hooks",
     file: ".omp/extensions/moai-hooks.ts",
-    ext: "ts",
     user: "// mine\nexport default function () {}\n",
 };
 const BOTH: [H; 2] = [CODEX, OMP];
