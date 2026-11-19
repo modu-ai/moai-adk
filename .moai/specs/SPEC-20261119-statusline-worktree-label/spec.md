@@ -24,25 +24,26 @@ created: 2026-11-19
 
 ## Requirements
 
-- REQ-1: While the session runs in a linked worktree and the `worktree` option is on, the status line shall write the worktree segment at the front of line 3, before the `CTX:` and `Week:` bars, and not on line 2.
+- REQ-1: While the session runs in a linked worktree and the `worktree` option is on, the status line shall write the worktree segment at the front of the last line, the one that holds the `CTX:` and `Week:` bars (line 3; line 2 when the repository line is empty and so left out), and not at the end of the repository line.
 - REQ-2: When a held reservation of the project names the folder of the session's worktree, the status line shall write the segment as `🌳 WT-c<card>-<name>`, where `<card>` is the number of the card that holds it. · failure: none — 이 모양이 안 되는 경우(예약 없음·원장 못 읽음)는 REQ-5 가 정해요.
 - REQ-3: The status line shall take `<card>` from the card with the lowest number when more than one held reservation names the folder.
 - REQ-4: The status line shall take `<name>` from the branch of that reservation: the part after the eight-digit date and a dash in its last path segment (`spec/20261119-statusline-waiting-cards` gives `statusline-waiting-cards`), else the folder name without its `<project>-` prefix and without the card number, else nothing, and then the segment is `🌳 WT-c<card>`.
 - REQ-5 (REQ-2): IF no held reservation names the folder, or the ledger cannot be read within the render budget, THEN the status line shall write the worktree name the host gave, with no `WT-` prefix and no card number, at the same place on line 3.
 - REQ-6: The status line shall show at most 32 characters of `<name>`, cut with `…` after the 31st.
-- REQ-7: The status line shall drop control characters from `<name>`.
-- REQ-8: The status line shall read the reservations with the connection and the budget it already uses for the card counts, with no folder, file, journal, process or network use.
+- REQ-7: The status line shall drop control characters and the invisible format characters that reorder or hide text (zero-width and bidirectional marks) from `<name>`, and use the next source of the name when none is left.
+- REQ-8: The status line shall read the reservations through the read-only open and the budget it uses for the card counts, creating no folder, file or journal and starting no process or network use.
 - REQ-9: The status line shall leave the ledger file byte for byte the same.
 - REQ-10: While the session is not in a linked worktree, the status line shall write no worktree segment.
 - REQ-11: While the `worktree` option is off, the status line shall write the worktree segment on no line.
+- REQ-12: The status line shall treat a reservation whose recorded worktree path is not absolute as naming no folder.
 
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-10, REQ-11): the real binary, in a linked worktree, prints the segment first on line 3 and nothing on line 2; in a main checkout it prints none; with the `worktree` option off none.
   verify: `cargo test --locked --offline --test statusline_worktree_label`
-- AC-2 (REQ-2, REQ-3, REQ-4, REQ-6, REQ-7): the label is pinned at its edges — a spec branch, a branch of another shape with a folder name that keeps a rest, one that keeps nothing, two cards holding one folder (the lowest), a name of exactly 32 and of 33 characters, a name with control characters.
+- AC-2 (REQ-2, REQ-3, REQ-4, REQ-6, REQ-7, REQ-12): the label is pinned at its edges — a spec branch, a branch of another shape with a folder name that keeps a rest, one that keeps nothing, two cards holding one folder (the lowest, also when the lower card was reserved last), a name of exactly 32 and of 33 characters, a name with control or format characters and one that nothing visible is left of, a relative recorded path that would resolve to the folder from the process.
   verify: `cargo test --locked --offline --lib statusline::state::worktree_label_tests`
-- AC-3 (REQ-5, REQ-8, REQ-9): with no reservation for the folder, with a released one, and with a read that runs out of budget, the segment is the host's name alone; the ledger file digest and the HOME tree are the same before and after.
+- AC-3 (REQ-5, REQ-8, REQ-9): with no reservation for the folder, with a released one, with a budget spent before the open and with one that runs out between two rows, the segment is the host's name alone; the session folder comes from `workspace.current_dir`, else `cwd`; the ledger file digest and the HOME tree are the same before and after.
   verify: `cargo test --locked --offline --lib statusline::`
 - AC-4 (REQ-1, REQ-5): the golden files that carried the worktree on line 2 carry it first on line 3 with the host's name (plain, ansi, ansi256), and nothing else in them changes. The label shape with a held reservation is pinned by AC-1's real-binary tests, not by a golden file: a golden case runs in a temporary folder whose path is new each run, and its stdin names a fixed folder, so a ledger fixture cannot name the worktree folder.
   verify: `cargo test --locked --offline --test statusline_golden`

@@ -975,14 +975,37 @@ fn worktree_label(project: &Path, dir: &Path, ctx: &Context) -> Option<WorktreeL
     let (found, _) = find_dot_git(dir)?;
     let canonical = std::fs::canonicalize(&found).unwrap_or_else(|_| found.clone());
     let (ledger, project_id) = open_project_ledger(project, ctx)?;
-    // The holder typed the path (`card take --worktree`), so it may be a link spelling: every
-    // holding reservation is compared as written and as a canonical path, lowest card first.
-    let mut stmt = ledger
-        .conn()
+    let expired = || {
+        ctx.deadline
+            .is_some_and(|deadline| Instant::now() >= deadline)
+    };
+    let (card, branch) = holding_card(ledger.conn(), &found, &canonical, &expired)?;
+    let folder = canonical
+        .file_name()
+        .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
+    Some(WorktreeLabel {
+        card,
+        name: label_name(branch.as_deref(), &folder, &project_id, card),
+    })
+}
+
+/// The lowest card whose holding reservation names the folder `found` (as found) or `canonical`,
+/// with that reservation's branch. The holder typed the path (`card take --worktree`), so it may
+/// be a link spelling: each holding reservation is compared as written and as a canonical path.
+/// A path that is not absolute names no folder from here (it would be read against this
+/// process's working directory), so it never matches; a row that cannot be read is skipped.
+/// `expired` is asked before every row, and `None` comes back as soon as it is true.
+fn holding_card(
+    conn: &rusqlite::Connection,
+    found: &Path,
+    canonical: &Path,
+    expired: &dyn Fn() -> bool,
+) -> Option<(i64, Option<String>)> {
+    let mut stmt = conn
         .prepare(
             "SELECT card_id, branch, worktree FROM reservation \
              WHERE status IN ('held', 'held_for_review', 'expired_candidate') \
-             AND worktree IS NOT NULL ORDER BY card_id LIMIT 500",
+             AND worktree IS NOT NULL ORDER BY card_id",
         )
         .ok()?;
     let rows = stmt
@@ -994,38 +1017,42 @@ fn worktree_label(project: &Path, dir: &Path, ctx: &Context) -> Option<WorktreeL
             ))
         })
         .ok()?;
-    let mut hit = None;
     for row in rows {
-        let (card, branch, held) = row.ok()?;
+        if expired() {
+            return None;
+        }
+        let Ok((card, branch, held)) = row else {
+            continue;
+        };
         let named = Path::new(&held);
+        if !named.is_absolute() {
+            continue;
+        }
         if named == found
             || named == canonical
             || std::fs::canonicalize(named).is_ok_and(|c| c == canonical)
         {
-            hit = Some((card, branch));
-            break;
+            return Some((card, branch));
         }
     }
-    let (card, branch) = hit?;
-    let folder = canonical
-        .file_name()
-        .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
-    Some(WorktreeLabel {
-        card,
-        name: label_name(branch.as_deref(), &folder, &project_id, card),
-    })
+    None
 }
 
 /// The name part of `WT-c<card>-<name>`, from the reservation's `branch`: the part after the
 /// eight-digit date and a dash in its last path segment, else the worktree folder name without
-/// its `<project>-` prefix and its card number, else nothing; control characters dropped and at
-/// most [`LABEL_NAME_CHARS`] characters.
+/// its `<project>-` prefix and its card number, else nothing; control and invisible format
+/// characters dropped ([`is_unseen`]) before the length is counted, a source nothing is left of
+/// giving way to the next, and at most [`LABEL_NAME_CHARS`] characters.
 fn label_name(branch: Option<&str>, folder: &str, project_id: &str, card: i64) -> String {
+    // Each source is cleaned first; a slug that nothing is left of gives way to the folder name.
+    let clean = |raw: String| -> String { raw.chars().filter(|c| !is_unseen(*c)).collect() };
     let raw = branch
         .and_then(branch_slug)
-        .or_else(|| folder_rest(folder, project_id, card))
+        .map(clean)
+        .filter(|s| !s.is_empty())
+        .or_else(|| folder_rest(folder, project_id, card).map(clean))
         .unwrap_or_default();
-    let mut chars = raw.chars().filter(|c| !c.is_control());
+    let mut chars = raw.chars();
     let mut name: String = chars.by_ref().take(LABEL_NAME_CHARS).collect();
     if chars.next().is_some() {
         // One character too many: keep 31 and mark the cut.
@@ -1033,6 +1060,21 @@ fn label_name(branch: Option<&str>, folder: &str, project_id: &str, card: i64) -
         name.push('…');
     }
     name
+}
+
+/// A character the terminal would not show as itself: a control character, or one of the
+/// invisible format characters that reorder or hide text (zero-width and bidirectional marks,
+/// the byte order mark). The name is free text from a branch or a folder.
+fn is_unseen(c: char) -> bool {
+    c.is_control()
+        || matches!(
+            c,
+            '\u{200b}'..='\u{200f}'
+                | '\u{202a}'..='\u{202e}'
+                | '\u{2060}'..='\u{2064}'
+                | '\u{2066}'..='\u{206f}'
+                | '\u{feff}'
+        )
 }
 
 /// `spec/20261119-statusline-waiting-cards` gives `statusline-waiting-cards`: the last path
@@ -2675,6 +2717,42 @@ mod worktree_label_tests {
             worktree_label(&self.project, dir, &self.ctx())
         }
 
+        /// One card with no reservation; returns its number. Cards are numbered in the order
+        /// they are made, so a later `reserve_card` can give the lower card its reservation
+        /// after a higher one has had its own.
+        fn add_card(&self) -> i64 {
+            let mut ledger = crate::ledger::open_write(&self.home, "demo").unwrap();
+            let mut card = 0;
+            ledger
+                .with_write_tx(|tx, now| {
+                    tx.execute(
+                        "INSERT INTO card (title, state, created_by, created_at, updated_at) \
+                         VALUES ('t', 'active', 'test', ?1, ?1)",
+                        rusqlite::params![now],
+                    )?;
+                    card = tx.last_insert_rowid();
+                    Ok(())
+                })
+                .unwrap();
+            card
+        }
+
+        /// A `held` reservation of the existing `card` naming `worktree` (any spelling).
+        fn reserve_card(&self, card: i64, worktree: &str, branch: &str) {
+            let mut ledger = crate::ledger::open_write(&self.home, "demo").unwrap();
+            ledger
+                .with_write_tx(|tx, now| {
+                    tx.execute(
+                        "INSERT INTO reservation (card_id, generation, holder, status, \
+                         acquired_at, lease_until, updated_at, worktree, branch) \
+                         VALUES (?1, 1, 'test', 'held', ?2, ?3, ?2, ?4, ?5)",
+                        rusqlite::params![card, now, now + 14400, worktree, branch],
+                    )?;
+                    Ok(())
+                })
+                .unwrap();
+        }
+
         /// One card in `card_state` and a reservation of it in `status` naming `worktree`.
         /// An `INSERT` has no transition check. Returns the card number.
         fn reserve(
@@ -2760,6 +2838,140 @@ mod worktree_label_tests {
         let _gone = g.reserve("ready", "released", &g.wt, Some("spec/20261119-gone"));
         let kept = g.reserve("active", "held", &g.wt, Some("spec/20261119-kept"));
         assert_eq!(g.label(&g.wt), label(kept, "kept"));
+    }
+
+    /// REQ-3 against the order the rows were written in: the lower card is reserved AFTER the
+    /// higher one, so only the ordering of the read puts it first.
+    #[test]
+    fn the_lowest_card_wins_even_when_it_was_reserved_last() {
+        let f = fixture();
+        let low = f.add_card();
+        let high = f.add_card();
+        assert!(low < high);
+        f.reserve_card(high, f.wt.to_str().unwrap(), "spec/20261119-high");
+        f.reserve_card(low, f.wt.to_str().unwrap(), "spec/20261119-low");
+        assert_eq!(f.label(&f.wt), label(low, "low"));
+    }
+
+    /// A recorded path that is not absolute names no folder from here: read against this
+    /// process's working directory it could name the session's folder by accident. The path
+    /// below is relative and, from this process, does resolve to the worktree.
+    #[test]
+    fn a_relative_recorded_path_never_matches() {
+        let f = fixture();
+        let here = std::env::current_dir().unwrap();
+        let mut relative = PathBuf::new();
+        for _ in here.components().skip(1) {
+            relative.push("..");
+        }
+        relative.push(f.wt.strip_prefix("/").unwrap());
+        assert!(relative.is_relative());
+        assert_eq!(
+            std::fs::canonicalize(&relative).unwrap(),
+            f.wt,
+            "the probe path resolves to the folder from this process"
+        );
+        let (by_walk, by_dot) = (f.add_card(), f.add_card());
+        f.reserve_card(
+            by_walk,
+            relative.to_str().unwrap(),
+            "spec/20261119-elsewhere",
+        );
+        f.reserve_card(by_dot, ".", "spec/20261119-dot");
+        assert_eq!(f.label(&f.wt), None);
+        // An absolute entry of a higher card is still found past the relative ones.
+        let other = f.add_card();
+        f.reserve_card(other, f.wt.to_str().unwrap(), "spec/20261119-real");
+        assert_eq!(f.label(&f.wt), label(other, "real"));
+    }
+
+    /// The read stops at once when the budget runs out, even between two rows: the first row
+    /// names another folder, the second would match.
+    #[test]
+    fn the_budget_is_asked_before_every_row() {
+        let f = fixture();
+        let elsewhere = f.wt.parent().unwrap().join("demo-2-other");
+        std::fs::create_dir_all(&elsewhere).unwrap();
+        let first = f.add_card();
+        let second = f.add_card();
+        f.reserve_card(first, elsewhere.to_str().unwrap(), "spec/20261119-other");
+        f.reserve_card(second, f.wt.to_str().unwrap(), "spec/20261119-demo-work");
+        let ledger = crate::ledger::open::open_read_only_within(
+            &f.home,
+            "demo",
+            std::time::Duration::from_millis(50),
+        )
+        .unwrap();
+        let asked = std::cell::Cell::new(0);
+        let after_one_row = || {
+            asked.set(asked.get() + 1);
+            asked.get() > 1
+        };
+        assert_eq!(
+            holding_card(ledger.conn(), &f.wt, &f.wt, &after_one_row),
+            None
+        );
+        assert_eq!(asked.get(), 2, "asked again before the second row");
+        let never = || false;
+        assert_eq!(
+            holding_card(ledger.conn(), &f.wt, &f.wt, &never).map(|(c, _)| c),
+            Some(second)
+        );
+    }
+
+    /// The folder the session works in: `workspace.current_dir`, else `cwd`, else none.
+    #[test]
+    fn the_session_folder_is_current_dir_then_cwd() {
+        let parse = |json: &str| serde_json::from_str::<Input>(json).unwrap();
+        let dir = |json: &str| session_dir(&parse(json));
+        assert_eq!(
+            dir(r#"{"cwd":"/c","workspace":{"current_dir":"/w"}}"#),
+            Some(PathBuf::from("/w"))
+        );
+        assert_eq!(
+            dir(r#"{"cwd":"/c","workspace":{"current_dir":""}}"#),
+            Some(PathBuf::from("/c"))
+        );
+        assert_eq!(
+            dir(r#"{"cwd":"/c","workspace":{}}"#),
+            Some(PathBuf::from("/c"))
+        );
+        assert_eq!(dir(r#"{"cwd":"/c"}"#), Some(PathBuf::from("/c")));
+        assert_eq!(
+            dir(r#"{"workspace":{"current_dir":"/w"}}"#),
+            Some(PathBuf::from("/w"))
+        );
+        assert_eq!(dir(r#"{"cwd":"","workspace":{"current_dir":""}}"#), None);
+        assert_eq!(dir("{}"), None);
+    }
+
+    /// A name nothing visible is left of gives way to the folder name, and invisible format
+    /// characters (zero-width, bidirectional marks) are dropped like control characters.
+    #[test]
+    fn a_name_with_nothing_visible_left_falls_to_the_folder_name() {
+        let b = |slug: &str| Some(format!("spec/20261119-{slug}"));
+        assert_eq!(
+            label_name(b("\u{1b}\u{7}").as_deref(), "demo-1-hooks", "demo", 1),
+            "hooks"
+        );
+        assert_eq!(
+            label_name(b("\u{202e}\u{200b}").as_deref(), "demo-1-hooks", "demo", 1),
+            "hooks"
+        );
+        assert_eq!(
+            label_name(
+                b("a\u{202e}b\u{200f}c\u{feff}").as_deref(),
+                "demo-1",
+                "demo",
+                1
+            ),
+            "abc"
+        );
+        // Nothing visible in either source: no name, the card alone.
+        assert_eq!(
+            label_name(b("\u{7}").as_deref(), "demo-1-\u{202e}", "demo", 1),
+            ""
+        );
     }
 
     #[test]

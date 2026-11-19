@@ -123,7 +123,9 @@ impl Renderer {
     /// `Render`: the layout, or `MoAI` when every line is empty, then the base color.
     /// #2756 (user instruction 2026-11-13): line 1 is the running environment, line 2 the
     /// repository, line 3 the usage bars; #2928 (user instruction 6878415244, 2026-11-14): the
-    /// `leader`/`agent` tag opens line 1.
+    /// `leader`/`agent` tag opens line 1; user instruction 2026-11-19: the worktree opens the
+    /// bars line. A line with nothing in it is left out, so the numbers above shift up by one
+    /// for each empty line before it.
     pub fn render(&self, status: &Status) -> String {
         let lines: Vec<String> = [
             self.info_line(status),
