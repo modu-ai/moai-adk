@@ -108,9 +108,33 @@ fn local_check(head: &str) -> Value {
 
 /// The reads `collect` makes, with a green tip push CI on `tip`; the comments end with the
 /// local check pass line for `head` (#2906 S5b).
-fn exchanges(head: &str, tip: &str, mut comments: Vec<Value>, body: &str) -> RecordedTransport {
+fn exchanges(head: &str, tip: &str, comments: Vec<Value>, body: &str) -> RecordedTransport {
+    exchanges_with(
+        head,
+        tip,
+        comments,
+        body,
+        json!([
+            {"name": "ci", "conclusion": "success"},
+            {"name": "ci / linux-x86_64", "conclusion": "success"},
+            {"name": "windows-build", "conclusion": "skipped"}
+        ]),
+        vec![],
+    )
+}
+
+/// [`exchanges`] with these check runs for the head, and these reads right after them (the
+/// workflow-run reads of C-99 slice 3C).
+fn exchanges_with(
+    head: &str,
+    tip: &str,
+    mut comments: Vec<Value>,
+    body: &str,
+    check_runs: Value,
+    after_checks: Vec<Exchange>,
+) -> RecordedTransport {
     comments.push(local_check(head));
-    RecordedTransport::new(vec![
+    let mut all = vec![
         Exchange {
             request: HttpRequest::new("GET", format!("{API}/pulls/9")),
             response: ok(json!({"head": {"sha": head}, "body": body})),
@@ -124,16 +148,16 @@ fn exchanges(head: &str, tip: &str, mut comments: Vec<Value>, body: &str) -> Rec
                 "GET",
                 format!("{API}/commits/{head}/check-runs?per_page=100"),
             ),
-            response: ok(json!({"check_runs": [
-                {"name": "ci", "conclusion": "success"},
-                {"name": "ci / linux-x86_64", "conclusion": "success"},
-                {"name": "windows-build", "conclusion": "skipped"}
-            ]})),
+            response: ok(json!({ "check_runs": check_runs })),
         },
+    ];
+    all.extend(after_checks);
+    all.extend([
         claim_comment(555, "moai-claim: session=agent-26 epoch=1"),
         open_prs(),
         tip_runs(tip, json!([{"name": "ci", "conclusion": "success"}])),
-    ])
+    ]);
+    RecordedTransport::new(all)
 }
 
 fn verdict(head: &str, base: &str) -> Value {
@@ -2070,4 +2094,91 @@ fn a_rename_lists_the_old_path_so_the_tier2_rule_still_sees_it() {
         "{:?}",
         s.tip_files_since_verdict_base
     );
+}
+
+/// C-99 slice 3C: the `ci` aggregate that succeeded carries the attempt of its workflow run, read
+/// from `GET /actions/runs/<id>` (`run_attempt`; the id is the one in the run's `details_url`).
+/// Only the aggregate is asked; the other runs keep no attempt.
+#[test]
+fn a_ci_success_gets_its_attempt_from_the_workflow_run() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let t = exchanges_with(
+        &r.b,
+        &r.c,
+        vec![claim(&r.b), verdict(&r.b, &r.a)],
+        PASS_BODY,
+        json!([
+            {"name": "ci", "conclusion": "success",
+             "details_url": "https://github.com/o/r/actions/runs/77/job/1"},
+            {"name": "ci / linux-x86_64", "conclusion": "success",
+             "details_url": "https://github.com/o/r/actions/runs/77/job/2"},
+            {"name": "windows-build", "conclusion": "skipped"}
+        ]),
+        vec![Exchange {
+            request: HttpRequest::new("GET", format!("{API}/actions/runs/77")),
+            response: ok(json!({"id": 77, "run_attempt": 2})),
+        }],
+    );
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    let attempts: Vec<(String, Option<u32>)> = s
+        .checks
+        .iter()
+        .map(|c| (c.name.clone(), c.attempt))
+        .collect();
+    assert_eq!(
+        attempts,
+        vec![
+            ("ci".to_string(), Some(2)),
+            ("ci / linux-x86_64".to_string(), None),
+            ("windows-build".to_string(), None),
+        ]
+    );
+    assert_eq!(gate::ci_info(&s), "ci=success attempt=2");
+    assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s));
+}
+
+/// A run without a `details_url` has no workflow run to ask: no extra read, no attempt, and the
+/// info line is the one it always was.
+#[test]
+fn a_run_without_a_details_url_has_no_attempt_and_no_extra_read() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let t = exchanges(
+        &r.b,
+        &r.c,
+        vec![claim(&r.b), verdict(&r.b, &r.a)],
+        PASS_BODY,
+    );
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    assert!(s.checks.iter().all(|c| c.attempt.is_none()), "{:?}", s.checks);
+    assert_eq!(gate::ci_info(&s), "ci=success");
+}
+
+/// The attempt is information: a workflow-run read that fails leaves it empty and the gate
+/// decides exactly as before.
+#[test]
+fn a_failed_workflow_run_read_leaves_the_attempt_empty_and_the_gate_unchanged() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let t = exchanges_with(
+        &r.b,
+        &r.c,
+        vec![claim(&r.b), verdict(&r.b, &r.a)],
+        PASS_BODY,
+        json!([
+            {"name": "ci", "conclusion": "success",
+             "details_url": "https://github.com/o/r/actions/runs/77/job/1"},
+            {"name": "ci / linux-x86_64", "conclusion": "success"},
+            {"name": "windows-build", "conclusion": "skipped"}
+        ]),
+        vec![Exchange {
+            request: HttpRequest::new("GET", format!("{API}/actions/runs/77")),
+            response: HttpResponse::new(404),
+        }],
+    );
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    assert!(s.checks.iter().all(|c| c.attempt.is_none()), "{:?}", s.checks);
+    assert_eq!(gate::ci_info(&s), "ci=success");
+    assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s));
 }
