@@ -15,15 +15,16 @@ The files that ship to users (`skills/`, `agents/`, `templates/`, `install/`) qu
 ## Requirements
 
 - REQ-1: The text of every shipped file except those on the pending list shall carry no card number, no Issue or pull-request number, no citation of a user or leader decision, and no name of a moai-adk development script.
-- REQ-2: The pending list shall only shrink: a file on it shall still carry such text, so a file that was cleaned leaves the list in the same change.
-- REQ-3: A cleaned file shall keep every rule it states: only the citation, the sentence that tells where a rule came from, or the development script name goes, and the developer document `docs/skill-text-rationale.md` keeps each removed reason under the file's path.
-- REQ-4: A change to a shipped file shall carry the new hash of the file in the package manifest and the new wording of every test that pinned the old text, in the same commit.
+- REQ-2: The pending list shall name only files that still carry such text, so a file that was cleaned leaves the list in the same change.
+- REQ-3: A cleaned file shall keep every rule it states, losing only a citation, a sentence that tells where a rule came from, or a development script name.
+- REQ-4: The developer document `docs/skill-text-rationale.md` shall keep each removed reason under the path of the file it came from.
+- REQ-5: A change to a shipped file shall carry the new hash of the file in the package manifest and the new wording of every test that pinned the old text, in the same commit.
 
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2): the scan passes, flags a card number, an Issue number, a decision citation and a development script name in sample text, ignores the machine markers `LANE-READY-INTEGRATION` and `LANE-BLOCKED`, and fails for a shipped file outside the pending list and for a pending file that has gone clean · verify: `cargo test --locked --offline --test skill_text_citations scan`
-- AC-2 (REQ-3): `docs/skill-text-rationale.md` has one section per cleaned file, titled with its path, and each cleaned file has no citation left · verify: `cargo test --locked --offline --test skill_text_citations rationale`
-- AC-3 (REQ-4): the manifest and the tests that read the shipped text still pass · verify: `python3 -m unittest tests.source_manifest_test tests.skill_references_test`; `cargo test --locked --offline --test product_cli --test agent_defs_package --test mode_workflow_steps --test mode_cards_53`
+- AC-2 (REQ-3, REQ-4): `docs/skill-text-rationale.md` has one section per cleaned file, titled with its path, and each cleaned file has no citation left · verify: `cargo test --locked --offline --test skill_text_citations rationale`
+- AC-3 (REQ-5): the manifest and the tests that read the shipped text still pass · verify: `python3 -m unittest tests.source_manifest_test tests.skill_references_test`; `cargo test --locked --offline --test product_cli --test agent_defs_package --test mode_workflow_steps --test mode_cards_53`
 
 ## Scope
 
