@@ -201,6 +201,17 @@ fn instruction_language<'a>(p: &'a Profile, r: &'a AgentsRequest) -> &'a str {
         .unwrap_or(r.language.as_str())
 }
 
+/// The first heading of a REVIEW.md this tool creates (card C-60): written once, outside the
+/// managed markers, in the instruction language like the managed block. A file that exists keeps
+/// its own heading.
+fn review_heading(language: &str) -> &'static str {
+    if language == "ko" {
+        "# 검토 지침\n\n"
+    } else {
+        "# Review instructions\n\n"
+    }
+}
+
 fn render_review(p: &Profile, r: &AgentsRequest) -> Option<String> {
     let answers = review_answers(p);
     if answers.is_empty() {
@@ -1598,13 +1609,8 @@ pub(crate) fn agents_apply_amended_for(
                 let (b, e) = markers(REVIEW_SECTION, "html");
                 let rendered =
                     render_review(&profile, &p.request).ok_or("review section has no answers")?;
-                let out = splice(
-                    before.as_deref(),
-                    &b,
-                    &e,
-                    &rendered,
-                    "# Review instructions\n\n",
-                )?;
+                let heading = review_heading(instruction_language(&profile, &p.request));
+                let out = splice(before.as_deref(), &b, &e, &rendered, heading)?;
                 assert_single_block(&out, &b, &e, &rendered)?;
                 (out, Some(REVIEW_SECTION))
             }
