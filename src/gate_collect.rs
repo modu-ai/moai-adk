@@ -779,6 +779,21 @@ fn unexcused_cancels(runs: &[serde_json::Value], newer_ok: &[String]) -> Vec<Str
     out
 }
 
+/// C-99 slice 3C: the attempt of the workflow run behind a `ci` (or `rc-ci`) aggregate that
+/// succeeded — `run_attempt` of `GET /actions/runs/<id>`, the id being the one in the check run's
+/// `details_url` (GitHub's check run object carries no attempt number). One read per such run;
+/// none for any other run or for a run without a `details_url`. A read that fails or an answer
+/// without a number is no attempt: it is information for [`gate::ci_info`], never a reason to stop.
+fn run_attempt<T: Transport>(t: &T, base_url: &str, run: &serde_json::Value) -> Option<u32> {
+    let name = run["name"].as_str()?;
+    if !(name == "ci" || name == "rc-ci") || run["conclusion"].as_str() != Some("success") {
+        return None;
+    }
+    let id = crate::flow::run_id(run)?;
+    let (body, _) = get_json(t, &format!("{base_url}/actions/runs/{id}")).ok()?;
+    u32::try_from(body["run_attempt"].as_u64()?).ok()
+}
+
 /// Every attempt's check runs on `sha` (`filter=all`, so a failure a re-run turned green stays
 /// visible), at most ten pages.
 pub(crate) fn tip_runs<T: Transport>(
@@ -941,6 +956,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
             // C-84: the commit GitHub ran it on; the endpoint is the head's own, so a run
             // without the field is the head's (G5 reads only exact-head runs).
             head_sha: Some(r["head_sha"].as_str().unwrap_or(&head).to_string()),
+            attempt: run_attempt(t, &base_url, r),
         })
         .collect();
 

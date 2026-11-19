@@ -5,8 +5,10 @@
 //! generation (`card.generation + 1`), records the holder, the lease and the write scope, and
 //! moves the card `ready -> active`, all in one `BEGIN IMMEDIATE` transaction. The unique index
 //! `reservation_one_active` makes a second holder of the same card impossible, and the scope
-//! check ([`crate::scope::overlap`], the one predicate for "could both write this path") runs in
-//! the same transaction against every other card's active reservation.
+//! check runs in the same transaction against every other card's active reservation. It asks
+//! [`crate::scope::card_overlap`]: [`crate::scope::overlap`] ("could both write this path",
+//! case folded) minus a pair in which one side is exactly a generated shared path (case kept),
+//! which two cards may both list.
 //!
 //! The generation is the fence: [`renew`], [`release`], [`handoff`] and [`fence`] accept only
 //! the current generation, held by the offered holder, with a lease that has not ended (a

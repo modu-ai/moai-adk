@@ -36,14 +36,17 @@ pub const SHARED_INTERFACE_PATHS: &[&str] = &[
 /// which one side is exactly such a path, so a regenerated line never locks the second card out.
 pub const GENERATED_SHARED_PATHS: &[&str] = &["skills/moai/references/source-manifest.json"];
 
-/// True when `path` is exactly one of [`GENERATED_SHARED_PATHS`] (same folding as [`overlap`]).
+/// True when `path` is exactly one of [`GENERATED_SHARED_PATHS`], with the case kept: `.` and `..`
+/// are resolved as in [`overlap`], but a spelling that differs only in case is another file on a
+/// case-sensitive file system, and calling it generated would hide a real conflict (C-127, N3 of
+/// the C-118 audit). [`overlap`] still folds case; that only adds conflicts.
 fn is_generated(path: &str) -> bool {
-    let Some(p) = segments(path) else {
+    let Some(p) = walk(path, false) else {
         return false;
     };
     GENERATED_SHARED_PATHS
         .iter()
-        .any(|g| segments(g).as_deref() == Some(p.as_slice()))
+        .any(|g| walk(g, false).as_deref() == Some(p.as_slice()))
 }
 
 /// [`overlap`] for two card write-scope entries: the pair is no overlap when one side is exactly a
@@ -61,6 +64,13 @@ pub fn card_overlap(a: &str, b: &str) -> bool {
 /// file system two spellings are two files, but treating them as one only adds conflicts,
 /// never hides one (#2392, design boundary table row 6).
 fn segments(path: &str) -> Option<Vec<String>> {
+    walk(path, true)
+}
+
+/// [`segments`] with the choice of folding: `fold` lowercases each segment, otherwise the case is
+/// kept. Both resolve `.` and `..` the same way, so the two never disagree on which file a path
+/// names, only on whether two spellings of it are one file.
+fn walk(path: &str, fold: bool) -> Option<Vec<String>> {
     let mut out: Vec<String> = Vec::new();
     for s in path.trim().split('/') {
         match s {
@@ -68,7 +78,8 @@ fn segments(path: &str) -> Option<Vec<String>> {
             ".." => {
                 out.pop()?;
             }
-            _ => out.push(s.to_lowercase()),
+            _ if fold => out.push(s.to_lowercase()),
+            _ => out.push(s.to_string()),
         }
     }
     Some(out)
@@ -751,7 +762,7 @@ mod tests {
         // The generated file against itself, a spelling of it and a folder pattern: no overlap.
         assert!(!card_overlap(m, m));
         assert!(!card_overlap(
-            "./SKILLS/moai/references/../references/source-manifest.json",
+            "./skills/moai/references/../references/source-manifest.json",
             m
         ));
         assert!(!card_overlap(m, "skills/moai/**"));
@@ -778,5 +789,46 @@ mod tests {
         // The claim-side predicate still sees the generated file as written by both.
         assert!(overlap(m, m));
         assert!(overlap(m, "skills/moai/**"));
+    }
+
+    /// Audit N3 of the first slice: `overlap` folds case, which only adds conflicts, but the
+    /// generated-path rule removes one, so a spelling that differs only in case is no
+    /// generated path: on a case-sensitive file system it is another file.
+    #[test]
+    fn a_spelling_that_differs_in_case_is_no_generated_path() {
+        let m = GENERATED_SHARED_PATHS[0];
+        let upper = "Skills/Moai/References/Source-Manifest.json";
+        let all_caps = "SKILLS/MOAI/REFERENCES/SOURCE-MANIFEST.JSON";
+        // Against a folder pattern that reaches it, the variant is a file under that folder.
+        for broad in ["skills/moai/**", "skills/moai/references/*", "skills/"] {
+            assert!(card_overlap(upper, broad), "{upper} vs {broad}");
+            assert!(card_overlap(broad, all_caps), "{broad} vs {all_caps}");
+            // The exact spelling stays ignored against the same patterns.
+            assert!(!card_overlap(m, broad), "{m} vs {broad}");
+        }
+        // Two variants are two non-generated paths that fold to one file.
+        assert!(card_overlap(upper, all_caps));
+        // The exact spelling written through `.` and `..` is still the generated path.
+        for spelled in [
+            "skills/moai/references/../references/source-manifest.json",
+            "./skills/./moai/references/source-manifest.json",
+            "skills//moai/references/source-manifest.json",
+            " skills/moai/references/source-manifest.json ",
+        ] {
+            assert!(!card_overlap(spelled, "skills/moai/**"), "{spelled}");
+        }
+    }
+
+    /// `overlap` itself keeps folding case: two spellings of one path overlap, in both orders,
+    /// for a file, a folder pattern and a prefix.
+    #[test]
+    fn overlap_still_folds_case() {
+        assert!(overlap("Src/Lib.rs", "src/lib.rs"));
+        assert!(overlap("src/lib.rs", "SRC/LIB.RS"));
+        assert!(overlap("SRC/**", "src/lib.rs"));
+        assert!(overlap("src/lib.rs", "Src"));
+        assert!(!overlap("src/lib.rs", "src/main.rs"));
+        // And through the card rule, for a pair that is not a generated path.
+        assert!(card_overlap("Src/Lib.rs", "src/lib.rs"));
     }
 }
