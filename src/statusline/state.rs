@@ -180,8 +180,8 @@ pub struct GitHubCounts {
 }
 
 /// Card C-65 (user instructions 2026-11-16 and 2026-11-17): the cards of the project's local
-/// ledger, as the repository line shows them (`🗂️ remaining / ▶️ in_progress / 🔃 waiting /
-/// ✅ done`; without `waiting` the three-number form `🗂️ / ▶️ / ✅`).
+/// ledger, as the repository line shows them (`🗂️ remaining ▶️ in_progress 🔃 waiting ✅ done`;
+/// without `waiting` the three-number form `🗂️ ▶️ ✅`).
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct CardCounts {
     /// The cards being worked on: `active` ones whose newest marker note is not a waiting one.

@@ -1,4 +1,4 @@
-//! Issue #2588: the statusline `⬇️ issues / 🔀 PRs` counts are refreshed by a detached
+//! Issue #2588: the statusline `⬇️ issues  🔀 PRs` counts are refreshed by a detached
 //! child the render starts, and the render never waits for it.
 //!
 //! Every case runs the real binary with a cleared environment, a temporary HOME and a
@@ -160,7 +160,7 @@ fn a_stale_cache_is_refreshed_in_the_background_and_the_go_file_is_left_alone() 
         (Some(12), Some(5))
     );
     let (second, _) = render(&f);
-    assert!(second.contains("⬇️ 12 / 🔀 5"), "{second}");
+    assert!(second.contains("⬇️ 12  🔀 5"), "{second}");
     assert_eq!(std::fs::read_to_string(f.repo.join(GO_CACHE)).unwrap(), go);
     assert_eq!(
         gh_calls(&f),
