@@ -1110,7 +1110,7 @@ const SPEC_FIRST: &str = "MoAI tool-preflight: on a SPEC work branch (spec/<slug
 /// Refusal for a branch name that reads as two SPEC ids with no SPEC folder of exactly one of
 /// them (SPEC-20261119-spec-branch-name-first REQ-5). A fixed string: the branch name is input
 /// and is not echoed.
-const SPEC_TWO_IDS: &str = "MoAI tool-preflight: this SPEC work branch name reads as two SPEC ids (spec/<slug>-<yyyymmdd> and spec/<yyyymmdd>-<slug> give different ids), so files outside .moai/specs/ are refused; create the branch with `moai spec take` (it names it spec/<slug>-<yyyymmdd> and refuses a name that reads two ways), or make the SPEC folder of only the intended id under .moai/specs/.";
+const SPEC_TWO_IDS: &str = "MoAI tool-preflight: this SPEC work branch name reads as two SPEC ids (read name first as spec/<slug>-<yyyymmdd> or date first as spec/<yyyymmdd>-<slug>, and with or without a trailing repair suffix -r<N>, it gives different ids), so files outside .moai/specs/ are refused; create the branch with `moai spec take` (it names it spec/<slug>-<yyyymmdd> and refuses a name that reads two ways), or make the SPEC folder of only the intended id under .moai/specs/.";
 
 /// The branch HEAD names in the work tree at `top`, read from the file system: `.git` is the
 /// git folder, or a file `gitdir: <folder>` for a linked worktree. `None` when detached or

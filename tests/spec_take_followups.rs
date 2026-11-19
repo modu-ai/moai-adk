@@ -114,6 +114,18 @@ impl World {
         id
     }
 
+    /// `branch` exists as a remote-tracking branch only, as after a fresh clone: a remote `origin`
+    /// is configured (its address is never used: nothing here fetches) so that `git switch
+    /// <branch>` can make the local branch from it.
+    fn remote_only(&self, branch: &str) {
+        self.git(&["remote", "add", "origin", "/nonexistent/never-fetched"]);
+        self.git(&[
+            "update-ref",
+            &format!("refs/remotes/origin/{branch}"),
+            "HEAD",
+        ]);
+    }
+
     fn branches(&self) -> String {
         self.git(&["branch", "--list", "--format=%(refname:short)"])
     }
@@ -182,7 +194,7 @@ fn the_remote_only_hint_ends_in_one_form() {
     let w = World::new();
     let id = w.draft_spec("login-fix");
     w.git(&["branch", NEW]);
-    w.git(&["update-ref", &format!("refs/remotes/origin/{OLD}"), "HEAD"]);
+    w.remote_only(OLD);
     let before = w.state();
     let message = refused(&w.take(&id));
     assert!(message.contains("remote"), "{message}");
@@ -208,7 +220,7 @@ fn the_remote_only_hint_ends_in_one_form() {
     // No local name-first branch: the one `git switch` of the hint is enough.
     let w = World::new();
     let id = w.draft_spec("login-fix");
-    w.git(&["update-ref", &format!("refs/remotes/origin/{OLD}"), "HEAD"]);
+    w.remote_only(OLD);
     let message = refused(&w.take(&id));
     assert!(message.contains("git switch"), "{message}");
     w.git(&["switch", OLD]);
