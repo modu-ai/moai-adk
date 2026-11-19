@@ -332,17 +332,24 @@ fn the_workflow_step_posts_the_status_the_gate_decides() {
         // Listed with `ls -A`, as the stub gh lists RUNNER_TEMP: this test walks only its own
         // two temporary folders, and the repository-scan table is for tests that walk the tree.
         for dir in [&runner_temp, &tmpdir] {
-            let left = std::process::Command::new("ls")
+            let listing = std::process::Command::new("ls")
                 .arg("-A")
                 .arg(dir)
                 .output()
-                .expect("list the temporary folder")
-                .stdout;
+                .expect("list the temporary folder");
+            // A listing that failed (no such folder, not runnable) has an empty stdout too and
+            // must not read as "nothing left".
             assert!(
-                left.is_empty(),
+                listing.status.success(),
+                "{name}: ls {} failed: {}",
+                dir.display(),
+                String::from_utf8_lossy(&listing.stderr)
+            );
+            assert!(
+                listing.stdout.is_empty(),
                 "{name}: left in {}: {}",
                 dir.display(),
-                String::from_utf8_lossy(&left)
+                String::from_utf8_lossy(&listing.stdout)
             );
         }
         let recorded = fs::read_to_string(bin.join("gh-args.txt")).unwrap_or_default();
