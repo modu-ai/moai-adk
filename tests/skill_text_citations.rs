@@ -90,14 +90,20 @@ fn kinds(line: &str) -> Vec<&'static str> {
     for (k, &(at, c)) in chars.iter().enumerate() {
         let before = if k == 0 { ' ' } else { chars[k - 1].1 };
         if c == 'C' && line[at..].starts_with("C-") && !is_word(before) && before != '-' {
-            let digits = line[at + 2..].chars().take_while(char::is_ascii_digit).count();
+            let digits = line[at + 2..]
+                .chars()
+                .take_while(char::is_ascii_digit)
+                .count();
             let next = line[at + 2 + digits..].chars().next().unwrap_or(' ');
             if (1..=3).contains(&digits) && !next.is_ascii_digit() {
                 out.push("card");
             }
         }
         if c == '#' && !is_word(before) && before != '&' {
-            let digits = line[at + 1..].chars().take_while(char::is_ascii_digit).count();
+            let digits = line[at + 1..]
+                .chars()
+                .take_while(char::is_ascii_digit)
+                .count();
             let next = line[at + 1 + digits..].chars().next().unwrap_or(' ');
             if (3..=5).contains(&digits) && !next.is_ascii_digit() {
                 out.push("number");
@@ -198,7 +204,10 @@ fn scan_flags_each_kind_and_leaves_markers_alone() {
         ("run `tools/self_check.sh` first", "tool"),
         ("the M-Flow bundle", "tool"),
     ] {
-        assert!(kinds(line).contains(&kind), "`{line}` should carry a {kind}");
+        assert!(
+            kinds(line).contains(&kind),
+            "`{line}` should carry a {kind}"
+        );
     }
     for line in [
         "A line starting with `LANE-BLOCKED kind` is a machine marker; `LANE-READY-INTEGRATION` too.",
@@ -230,7 +239,11 @@ fn scan_shipped_files_outside_the_pending_list_are_clean() {
             bad.push(format!("{path}: {} ({})", found.len(), first.join(", ")));
         }
     }
-    assert!(bad.is_empty(), "shipped files with citations:\n{}", bad.join("\n"));
+    assert!(
+        bad.is_empty(),
+        "shipped files with citations:\n{}",
+        bad.join("\n")
+    );
 }
 
 /// AC-1: the pending list is sorted, names shipped files, and only files that still carry
@@ -240,7 +253,11 @@ fn scan_pending_list_only_shrinks() {
     let mut sorted = PENDING.to_vec();
     sorted.sort_unstable();
     sorted.dedup();
-    assert_eq!(sorted, PENDING.to_vec(), "PENDING is sorted and has no duplicates");
+    assert_eq!(
+        sorted,
+        PENDING.to_vec(),
+        "PENDING is sorted and has no duplicates"
+    );
     let files = shipped();
     for path in PENDING {
         let text = files
@@ -278,6 +295,10 @@ fn rationale_cleaned_files_carry_no_citation() {
             .iter()
             .find(|(p, _)| p == path)
             .unwrap_or_else(|| panic!("`{path}` is not a shipped file"));
-        assert_eq!(citations(text), Vec::new(), "`{path}` still carries citations");
+        assert_eq!(
+            citations(text),
+            Vec::new(),
+            "`{path}` still carries citations"
+        );
     }
 }
