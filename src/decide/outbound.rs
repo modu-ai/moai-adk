@@ -2078,13 +2078,20 @@ mod tests {
         }
     }
 
-    /// V2 audit N2: every key shape is read in time linear in the text. A 64 KiB field of each
-    /// shape, which took up to 45 s (debug build) when a run was read again at each prefix, is
-    /// screened inside 2 s. Measured in a debug build on 2026-11-17: 11 to 212 ms per shape,
-    /// and twice the text took twice the time; so 2 s leaves ten times room for a loaded
-    /// machine and still fails a scan that reads the text once per occurrence.
+    /// V2 audit N2, reworked for card C-111: every key shape is read in time linear in the
+    /// text, and the test pins that by a ratio against a baseline measured in the same
+    /// process, never by wall-clock time — at load average 37 the C-93 audit saw this test
+    /// take 6.3 s and fail the old 2 s bound while the scan itself stayed linear, and under
+    /// load the rework reproduced it 6 of 6 times (2026-11-19). The baseline is one linear
+    /// pass over the text's bytes in this crate, measured just before each `screen` call, so
+    /// machine load scales both sides of the ratio. Measured in a debug build on 2026-11-19:
+    /// a 64 KiB field screens in 6 to 1,100 baseline passes across the 14 shapes below, while
+    /// a quadratic re-scan — reading the text again at each occurrence, the 2026-11-17 defect
+    /// — costs at least about 160,000 of them at this text length; `COST_RATIO_LIMIT`
+    /// separates the two with room on both sides (the mutant run is in the SPEC Result).
     #[test]
     fn a_64_kib_field_of_a_repeated_key_prefix_is_screened_quickly() {
+        const COST_RATIO_LIMIT: f64 = 20_000.0;
         let fill = |unit: &str| unit.repeat(FIELD_MAX / unit.len());
         for text in [
             fill("AKIA"),
@@ -2104,12 +2111,23 @@ mod tests {
             fill("bearer "),
             fill("://a"),
         ] {
+            // One in-crate linear pass over the same bytes is the reference the ratio
+            // divides by; `black_box` keeps a release build from folding the pass away.
+            let text: &str = std::hint::black_box(text.as_str());
             let started = std::time::Instant::now();
-            let _ = screen(&text);
-            let took = started.elapsed();
+            let mut probe: usize = 0;
+            for byte in text.bytes() {
+                probe = probe.wrapping_add(byte as usize);
+            }
+            std::hint::black_box(probe);
+            let baseline = started.elapsed();
+            let started = std::time::Instant::now();
+            let _ = screen(text);
+            let screened = started.elapsed();
+            let ratio = screened.as_secs_f64() / baseline.as_secs_f64().max(1e-9);
             assert!(
-                took < std::time::Duration::from_secs(2),
-                "{}: {took:?}",
+                ratio < COST_RATIO_LIMIT,
+                "{}: screened {screened:?} over {baseline:?} of baseline passes, ratio {ratio:.0} at limit {COST_RATIO_LIMIT}",
                 &text[..8]
             );
         }
