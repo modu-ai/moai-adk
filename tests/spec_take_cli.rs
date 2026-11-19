@@ -127,6 +127,28 @@ impl World {
         self.git(&["rev-parse", "--abbrev-ref", "HEAD"])
     }
 
+    /// A committed project profile whose `work_flow.integration_branch` names `branch`
+    /// (C-105 slice 1). A full valid profile — `read_profile` parses it whole, so the
+    /// required keys (purpose, tools, methods, hosts, a decision) are all there.
+    fn profile_flow(&self, integration_branch: &str) {
+        let body = format!(
+            "{{\"schema_version\":2,\"project_id\":\"demo\",\
+             \"purpose\":\"Fixture\",\
+             \"tools\":[\"Rust\"],\
+             \"development_methods\":[\"TDD\"],\
+             \"hosts\":[\"claude\"],\
+             \"decisions\":[{{\"id\":\"d1\",\"topic\":\"tools\",\"value\":\"Rust\",\
+             \"source\":\"user\",\"scope\":\"project\"}}],\
+             \"work_flow\":{{\"flow\":\"m-flow\",\"integration_branch\":\
+             \"{integration_branch}\"}}}}"
+        );
+        let path = self.project.join(".moai-cli").join("project.yaml");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, body).unwrap();
+        self.git(&["add", "-A"]);
+        self.commit("profile");
+    }
+
     /// Branches, HEAD and the status: what a refusal must leave as it was.
     fn state(&self) -> (String, String, String) {
         (
@@ -158,6 +180,96 @@ fn filled(text: &str) -> String {
 }
 
 #[test]
+fn take_without_base_reads_the_profile_integration_branch() {
+    let w = World::new();
+    // The branch the profile names, one commit ahead of main.
+    w.git(&["switch", "-q", "-c", "m-flow/integration"]);
+    fs::write(w.project.join("b.txt"), "b\n").unwrap();
+    w.git(&["add", "-A"]);
+    w.commit("integration");
+    let integration = w.git(&["rev-parse", "HEAD"]);
+    w.git(&["switch", "-q", "main"]);
+    w.profile_flow("m-flow/integration");
+    let id = w.draft_spec("login-fix");
+    let r = ok(&w.take(&id, &[], &[]));
+    assert_eq!(r["base"], "m-flow/integration", "{r}");
+    assert_eq!(r["base_source"], "profile", "{r}");
+    assert_eq!(w.branch(), BRANCH);
+    assert_eq!(w.git(&["rev-parse", "HEAD"]), integration);
+    assert_eq!(
+        w.git(&["config", &format!("branch.{BRANCH}.moai-base")]),
+        "m-flow/integration"
+    );
+}
+
+#[test]
+fn take_reports_given_and_recorded_bases() {
+    let w = World::new();
+    let id = w.draft_spec("login-fix");
+    // The SPEC is committed on main, so every later take from main finds it.
+    w.git(&["add", "-A"]);
+    w.commit("spec");
+    let r = ok(&w.take(&id, &["--base", "main"], &[]));
+    assert_eq!(r["base"], "main");
+    assert_eq!(r["base_source"], "given", "{r}");
+    // A re-take reads the base recorded on the branch.
+    w.git(&["switch", "-q", "main"]);
+    let r = ok(&w.take(&id, &[], &[]));
+    assert_eq!(r["base_source"], "recorded", "{r}");
+    assert_eq!(r["created"], false);
+    assert_eq!(r["switched"], true);
+    // The recorded base of a re-take wins over a later profile value (D-1).
+    // The named branch exists and the profile is committed on main, so a
+    // flipped precedence would start the re-take from it, visibly.
+    w.git(&["switch", "-q", "-c", "m-flow/integration"]);
+    fs::write(w.project.join("b.txt"), "b\n").unwrap();
+    w.git(&["add", "-A"]);
+    w.commit("integration");
+    w.git(&["switch", "-q", "main"]);
+    w.profile_flow("m-flow/integration");
+    let r = ok(&w.take(&id, &[], &[]));
+    assert_eq!(r["base"], "main");
+    assert_eq!(r["base_source"], "recorded", "{r}");
+}
+
+#[test]
+fn a_profile_base_that_is_not_a_commit_is_refused_and_changes_nothing() {
+    let w = World::new();
+    w.profile_flow("not-a-commit");
+    let id = w.draft_spec("login-fix");
+    let before = w.state();
+    let why = refused(&w.take(&id, &[], &[]));
+    assert!(why.contains("is not a commit"), "{why}");
+    assert_eq!(w.state(), before);
+}
+
+#[test]
+fn an_empty_profile_integration_branch_falls_back_to_the_current_branch() {
+    // REQ-2: an empty value reads as unset — the profile is invalid for
+    // work_flow, so take falls back to the current branch, not to "".
+    let w = World::new();
+    w.profile_flow("");
+    let id = w.draft_spec("login-fix");
+    let r = ok(&w.take(&id, &[], &[]));
+    assert_eq!(r["base"], "main");
+    assert_eq!(r["base_source"], "current-branch", "{r}");
+}
+
+#[test]
+fn a_detached_head_without_any_base_still_refuses() {
+    // No profile in this world, no `--base`, nothing recorded: the old refusal.
+    let w = World::new();
+    let id = w.draft_spec("login-fix");
+    w.git(&["add", "-A"]);
+    w.commit("spec");
+    w.git(&["switch", "-q", "--detach", "HEAD"]);
+    let before = w.state();
+    let why = refused(&w.take(&id, &[], &[]));
+    assert!(why.contains("no base"), "{why}");
+    assert_eq!(w.state(), before);
+}
+
+#[test]
 fn take_creates_the_branch_and_prints_the_next_commands() {
     let w = World::new();
     let id = w.draft_spec("login-fix");
@@ -167,6 +279,9 @@ fn take_creates_the_branch_and_prints_the_next_commands() {
     assert_eq!(r["spec"], id.as_str());
     assert_eq!(r["branch"], BRANCH);
     assert_eq!(r["base"], "main");
+    // C-105 slice 1: no profile in this world, so the base is the current branch
+    // and the result says so.
+    assert_eq!(r["base_source"], "current-branch");
     assert_eq!(r["created"], true, "{r}");
     assert_eq!(r["switched"], true, "{r}");
     assert_eq!(r["pushed"], false);
