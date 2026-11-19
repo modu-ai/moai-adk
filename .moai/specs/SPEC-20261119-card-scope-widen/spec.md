@@ -1,7 +1,7 @@
 ---
 id: SPEC-20261119-card-scope-widen
 title: "card scope widens a held card's write scope under the same generation"
-status: approved
+status: draft
 revision: 1
 created: 2026-11-19
 ---
