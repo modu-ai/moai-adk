@@ -1539,6 +1539,9 @@ pub struct UserLayerPlan {
     /// #2871 I2 U2b: the Go generation's `~/.moai` items a `--confirm-home <token>` run retires.
     /// Not part of `plan_digest`: only its own token applies it.
     pub home: crate::update_home::Layer,
+    /// C-33 S3: the name-switch script `path/moai` (v1 -> v2) that only `--confirm-switch
+    /// <token>` replaces. Not part of `plan_digest`, like `home`.
+    pub switch: switch::Layer,
     /// Agent, routing and style hosts left out because their skill copy is blocked.
     pub skipped: Vec<serde_json::Value>,
     /// One digest over the seven plan digests; the only value `--confirm` accepts.
@@ -1617,6 +1620,7 @@ fn user_layer_plan_in(
     let hooks = crate::update_hooks::plan(home, &cwd)?;
     let keys = crate::update_keys::plan(home)?;
     let home_layer = crate::update_home::plan(home)?;
+    let switch_layer = switch::plan(home)?;
     // One snapshot: what the agents and the section were rendered from is the staged package.
     if agents.package_digest != staged.digest
         || routing.package_digest != staged.digest
@@ -1649,6 +1653,7 @@ fn user_layer_plan_in(
         hooks,
         keys,
         home: home_layer,
+        switch: switch_layer,
         skipped,
         plan_digest,
         cleanup,
@@ -1706,13 +1711,14 @@ fn run_cleanup(
 
 /// The keys of a result's `revert` object, in the one order the commands are safe to run: last
 /// applied first (#2936 E1). The apply order is agents, routing, style, command names, hooks,
-/// keys, then the confirmed cleanup, then the confirmed home part. A file two layers changed, such
+/// keys, then the confirmed cleanup, then the confirmed home part, then the confirmed switch
+/// script (C-33 S3: `path/moai`, which no other part touches). A file two layers changed, such
 /// as Codex's `~/.codex/AGENTS.md` (routing and style), is only given back in this order:
 /// reverting routing first is skipped as `user_changed_since_apply` and style then leaves the
 /// routing block behind for good. Only the commands that exist are listed. The terminal screen and
 /// the JSON result both take the order from here.
-pub const REVERT_ORDER: [&str; 7] = [
-    "home", "cleanup", "keys", "hooks", "style", "routing", "agents",
+pub const REVERT_ORDER: [&str; 8] = [
+    "switch", "home", "cleanup", "keys", "hooks", "style", "routing", "agents",
 ];
 
 pub fn revert_order(revert: &serde_json::Value) -> Vec<&'static str> {
@@ -1851,6 +1857,7 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
     out.push_str(&p.hooks.summary());
     out.push_str(&p.keys.summary());
     out.push_str(&p.home.summary());
+    out.push_str(&p.switch.summary());
     for s in &p.skipped {
         out.push_str(&format!(
             "  skipped {} {}: {}\n",
@@ -1903,6 +1910,7 @@ fn update_command_core(
     confirm: Option<&str>,
     confirm_cleanup: Option<&str>,
     confirm_home: Option<&str>,
+    confirm_switch: Option<&str>,
     allow_older: bool,
     ask: impl FnOnce(&str, &serde_json::Value) -> Result<bool>,
 ) -> Result<serde_json::Value> {
@@ -1926,6 +1934,9 @@ fn update_command_core(
         || layer.keys.writes();
     let cleanup = cleanup_token(&layer, confirm_cleanup)?;
     let home_token = crate::update_home::check_token(&layer.home, confirm_home)?;
+    // C-33 S3: its own token, like the home part; the file it writes (`path/moai`) is no item of
+    // `~/.moai`, so it combines with the cleanup and the home token.
+    let switch_token = switch::check_token(&layer.switch, confirm_switch)?;
     if home_token.is_some() && cleanup.is_some() {
         return Err(
             "the home token and the cleanup token both move items of ~/.moai and would make each other's preview stale; confirm one at a time, nothing applied".into(),
@@ -1964,13 +1975,19 @@ fn update_command_core(
         if let Some(h) = layer.home.to_json() {
             out["home"] = h.clone();
         }
+        // C-33 S3: only a HOME whose `path/moai` is a script shows a `switch` part.
+        if let Some(s) = layer.switch.to_json() {
+            out["switch"] = s.clone();
+        }
         out
     };
     let digest = match confirm {
         Some(d) => d.to_string(),
         // A cleanup or home run without `--confirm` leaves the layer a preview: a yes at the
         // question never applies a part with its own token.
-        None if asks(cleanup, home_token, writes) && ask(&layer_summary(&layer), &preview())? => {
+        None if asks(cleanup, home_token.or(switch_token), writes)
+            && ask(&layer_summary(&layer), &preview())? =>
+        {
             layer.plan_digest.clone()
         }
         None => {
@@ -1986,6 +2003,12 @@ fn update_command_core(
                 out["revert"] = json!({"home": r["revert"]});
                 out["revert_order"] = json!(revert_order(&out["revert"]));
                 out["home_result"] = r;
+            }
+            if let Some(t) = switch_token {
+                let r = switch::apply(home, t, &crate::audit::utc_now())?;
+                out["revert"]["switch"] = r["revert"].clone();
+                out["revert_order"] = json!(revert_order(&out["revert"]));
+                out["switch_result"] = r;
             }
             return Ok(out);
         }
@@ -2091,6 +2114,8 @@ fn update_command_core(
     let cleanup = cleanup.map(|t| part(run_cleanup(home, &staged, t, PERMISSION)));
     // #2871 I2 U2b: the confirmed home part, after the layer; an error is reported beside it.
     let home_part = home_token.map(|t| part(crate::update_home::apply(home, t, PERMISSION)));
+    // C-33 S3: the confirmed switch part, last; an error is reported beside the rest.
+    let switch_part = switch_token.map(|t| part(switch::apply(home, t, &crate::audit::utc_now())));
     let revert = |op: &str, r: &serde_json::Value| {
         r["receipt"]
             .as_str()
@@ -2130,6 +2155,10 @@ fn update_command_core(
         out["revert"]["home"] = h["revert"].clone();
         out["home_result"] = h;
     }
+    if let Some(s) = switch_part {
+        out["revert"]["switch"] = s["revert"].clone();
+        out["switch_result"] = s;
+    }
     out["revert_order"] = json!(revert_order(&out["revert"]));
     Ok(out)
 }
@@ -2149,12 +2178,57 @@ pub fn update_command(
     allow_older: bool,
     ask: impl FnOnce(&str, &serde_json::Value) -> Result<bool>,
 ) -> Result<serde_json::Value> {
-    let scripted = confirm.is_some() || confirm_cleanup.is_some() || confirm_home.is_some();
+    update_command_switch(
+        home,
+        confirm,
+        confirm_cleanup,
+        confirm_home,
+        None,
+        None,
+        allow_older,
+        ask,
+    )
+}
+
+/// [`update_command`] with the switch part of card C-33 S3 (SPEC-20261119-update-switch-layer):
+/// `confirm_switch` (`--confirm-switch`, the preview's `switch.confirm_token`) replaces the
+/// name-switch script `path/moai` after the layer or alone, and `revert_switch`
+/// (`--revert-switch <stamp>`) puts the saved copy back without staging the package; it is
+/// refused beside any confirming flag, before anything is read or written.
+#[allow(clippy::too_many_arguments)]
+pub fn update_command_switch(
+    home: &Path,
+    confirm: Option<&str>,
+    confirm_cleanup: Option<&str>,
+    confirm_home: Option<&str>,
+    confirm_switch: Option<&str>,
+    revert_switch: Option<&str>,
+    allow_older: bool,
+    ask: impl FnOnce(&str, &serde_json::Value) -> Result<bool>,
+) -> Result<serde_json::Value> {
+    if let Some(stamp) = revert_switch {
+        if confirm.is_some()
+            || confirm_cleanup.is_some()
+            || confirm_home.is_some()
+            || confirm_switch.is_some()
+        {
+            return Err(
+                "--revert-switch cannot be combined with a confirming flag; nothing changed".into(),
+            );
+        }
+        let r = switch::revert(home, stamp)?;
+        return Ok(json!({"mode": "revert_switch", "applied": true, "switch_result": r}));
+    }
+    let scripted = confirm.is_some()
+        || confirm_cleanup.is_some()
+        || confirm_home.is_some()
+        || confirm_switch.is_some();
     let mut out = update_command_core(
         home,
         confirm,
         confirm_cleanup,
         confirm_home,
+        confirm_switch,
         allow_older,
         ask,
     )?;
