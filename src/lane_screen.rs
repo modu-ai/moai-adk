@@ -549,7 +549,12 @@ pub fn parse_reset(row: &str, now: i64) -> Reset {
         {
             return None;
         }
-        Some(days_from_civil(y, m, d) * 86_400 + tod - offset)
+        // The range holds for the time in UTC too (card C-128 R-N4): `9999-12-31 23:59 -0800` is
+        // the year 10000 in UTC, and `1970-01-01 07:59 +0800` is 1969.
+        let t = days_from_civil(y, m, d) * 86_400 + tod - offset;
+        (1970..=9999)
+            .contains(&year_of_days(t.div_euclid(86_400)))
+            .then_some(t)
     };
     let local_now = now + offset;
     let found = match date {
@@ -1303,6 +1308,22 @@ mod tests {
             utc("resets November 20, 2026 at 7pm (UTC)", NOW),
             Some(NOW + 86_400 + 19 * 3600)
         );
+    }
+
+    #[test]
+    fn a_time_whose_utc_year_leaves_1970_to_9999_is_unknown() {
+        // 9999-12-31 23:59:00 UTC is the last readable minute; one minute later is year 10000.
+        assert_eq!(
+            utc("resets 9999-12-31 15:59 -0800", NOW),
+            Some(253_402_300_740)
+        );
+        assert_eq!(utc("resets 9999-12-31 16:00 -0800", NOW), None);
+        assert_eq!(utc("resets 9999-12-31 23:59 -0800", NOW), None);
+        // 1970-01-01 00:00:00 UTC is the first readable second; a minute earlier is 1969.
+        assert_eq!(utc("resets 1970-01-01 08:00 +0800", NOW), Some(0));
+        assert_eq!(utc("resets 1970-01-01 07:59 +0800", NOW), None);
+        // A month-name date with a year takes the same door.
+        assert_eq!(utc("resets Dec 31, 9999 at 11:59pm (UTC-8)", NOW), None);
     }
 
     #[test]

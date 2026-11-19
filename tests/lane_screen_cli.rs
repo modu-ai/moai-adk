@@ -291,6 +291,38 @@ fn lane_screen_state_numbered_rows_that_are_not_yes_and_no_do_not_make_a_prompt(
     assert_eq!(state_of(screen), "working");
 }
 
+/// Card C-128 R-N2 (SPEC AC-1, decision D-1): a list in ordinary prose whose first two lines are
+/// `1. Yes, …` and `2. No, …` looks exactly like a confirmation, so it reads as
+/// `permission_prompt`: the safe side, and a lane that writes such a list is refused a send while
+/// the list is on its screen. The screen is a string here because the card's write scope has no
+/// fixture folder.
+#[test]
+fn lane_screen_state_a_prose_list_of_numbered_yes_and_no_lines_reads_as_permission_prompt() {
+    let prose = |footer: &str| {
+        format!(
+            "● I looked at both ways to name the module:\n\
+             \x20 1. Yes, keep the current layout and only rename the module\n\
+             \x20 2. No, restructure the whole module first\n\
+             \x20 I would pick the first one.\n\
+             \n\
+             {footer}\n"
+        )
+    };
+    let idle = prose(
+        "────────────────────────────────────────\n❯\n────────────────────────────────────────\n  ⏵⏵ bypass permissions on (shift+tab to cycle)",
+    );
+    let working = prose("✳ Frosting… (1m 17s · ↓ 6.9k tokens · esc to interrupt)\n\nrow 7\nrow 8");
+    for (name, screen) in [("idle footer", idle), ("working footer", working)] {
+        let r = run(&screen, &[]);
+        assert_eq!(r.result()["state"], json!("permission_prompt"), "{name}");
+        let evidence = r.result()["evidence"].as_str().unwrap();
+        assert!(evidence.contains("Yes, keep"), "{name}: {evidence}");
+    }
+    // The same two lines without the number are plain prose: the lane stays `idle`.
+    let plain = "● I looked at both ways to name the module:\n  Yes, keep the current layout\n  No, restructure the module\n  I would pick the first one.\n\n────────────────────────────────────────\n❯\n────────────────────────────────────────\n  ⏵⏵ bypass permissions on (shift+tab to cycle)\n";
+    assert_eq!(state_of(plain), "idle");
+}
+
 #[test]
 fn lane_screen_state_another_choice_dialog_is_input_pending() {
     let r = run(&fixture("synthetic-choice-dialog.txt"), &[]);
@@ -439,6 +471,48 @@ fn lane_screen_reset_an_unknown_zone_or_an_impossible_time_is_unknown_with_its_t
             reset["raw"].as_str().unwrap().contains("limit"),
             "{message}"
         );
+    }
+}
+
+/// Card C-128 R-N4 (SPEC AC-2): the year range 1970..=9999 holds for the time in UTC, not only for
+/// the date as written. `9999-12-31 23:59 -0800` is the year 10000 in UTC and printed a
+/// five-digit year before the repair. Boundary N / N+1 on both ends.
+#[test]
+fn lane_screen_reset_a_time_outside_the_years_1970_to_9999_in_utc_is_unknown() {
+    for message in [
+        "Your limit will reset at 9999-12-31 23:59 -0800",
+        // One minute after the last readable UTC minute.
+        "Your limit will reset at 9999-12-31 16:00 -0800",
+        "Your limit will reset at 9999-12-31 23:59:59 UTC-00:01",
+        // One minute before the first readable UTC minute (1970-01-01 00:00:00).
+        "Your limit will reset at 1970-01-01 07:59 +0800",
+        "Your limit will reset at 1970-01-01 00:00 +0100",
+    ] {
+        let reset = reset_utc(message, NOW_TEXT);
+        assert_eq!(reset["utc"], json!(null), "{message}: {reset}");
+        assert_eq!(reset["unknown"], json!(true), "{message}: {reset}");
+        assert_eq!(reset["why"], json!("the date is impossible"), "{message}");
+        assert!(
+            reset["raw"].as_str().unwrap().contains("limit"),
+            "{message}"
+        );
+    }
+    for (message, utc) in [
+        (
+            "Your limit will reset at 9999-12-31 15:59 -0800",
+            "9999-12-31T23:59:00Z",
+        ),
+        (
+            "Your limit will reset at 9999-12-31 23:59 UTC",
+            "9999-12-31T23:59:00Z",
+        ),
+        (
+            "Your limit will reset at 1970-01-01 08:00 +0800",
+            "1970-01-01T00:00:00Z",
+        ),
+    ] {
+        let reset = reset_utc(message, NOW_TEXT);
+        assert_eq!(reset["utc"], json!(utc), "{message}: {reset}");
     }
 }
 
