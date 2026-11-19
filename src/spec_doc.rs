@@ -21,6 +21,13 @@
 //!   `forbidden:` relative paths; an untagged path is `write`) and `## Plan` always;
 //!   `## Non-goals` and `## Risks` make a full SPEC, which then needs both; `## Decisions` and
 //!   `## Result` are optional. Headings inside fenced code are text.
+//! - interview: `## Interview` holds one list line per entry, `- Q<n>: <question> → A: <answer>`
+//!   (the arrow may be `->`) or `- none: <reason of at least 10 characters>` standing alone;
+//!   other lines are prose. A SPEC with a new-form id, a status of approved, completed or
+//!   superseded and a `created` date of 2026-11-19 or later without the section is
+//!   `interview_missing` (an error); a line of neither form is `interview_entry` (an error for
+//!   those statuses, a warning otherwise). The section is outside the digest, and the check
+//!   reads the shape only (SPEC-20261119-enforce-interview-record).
 //! - digest: [`crate::spec::content_digest`] over the requirements, acceptance and scope; an
 //!   approved SPEC records it as `approval.digest`, and a body that no longer matches it is an
 //!   error (a change needs the next revision and a new approval). No `cards:` key: personal card

@@ -1107,3 +1107,115 @@ fn interview_section() {
     let plain = doc(&approved_on("2026-11-17", "approved", ""));
     assert!(plain.findings.is_empty(), "{:?}", plain.findings);
 }
+
+// ---- SPEC-20261119-interview-guidance -------------------------------------------------------
+
+fn interview_findings(d: &SpecDoc) -> Vec<&'static str> {
+    d.findings
+        .iter()
+        .filter(|f| f.code.starts_with("interview"))
+        .map(|f| f.code)
+        .collect()
+}
+
+/// REQ-1, REQ-2: both templates start with an Interview section whose example entry reads as
+/// a well-formed entry, and an approved SPEC that keeps the example is refused at its line.
+#[test]
+fn interview_template() {
+    for minimal in [true, false] {
+        let text = render(&NewSpec {
+            id: NEW_ID,
+            title: "Fix login",
+            created: "2026-11-19",
+            parent: None,
+            minimal,
+        })
+        .unwrap();
+        assert!(text.contains("\n## Interview\n"), "{minimal}: no section");
+        let opts = Options {
+            folder: Some(NEW_ID.into()),
+            closure: false,
+        };
+        let d = parse(&text, &opts);
+        assert!(
+            d.sections.iter().any(|s| s == "Interview"),
+            "{minimal}: {:?}",
+            d.sections
+        );
+        assert!(
+            interview_findings(&d).is_empty(),
+            "{minimal}: {:?}",
+            d.findings
+        );
+        // The example entry holds placeholders: once approved, they are an error at its line.
+        let line = text
+            .lines()
+            .position(|l| l.trim_start().starts_with("- Q1:"))
+            .expect("an example entry")
+            + 1;
+        let approved = parse(&text.replace("status: draft", "status: approved"), &opts);
+        assert!(
+            approved.findings.iter().any(|f| f.code == "placeholder"
+                && f.severity == Severity::Error
+                && f.line == Some(line)),
+            "{minimal} line {line}: {:?}",
+            approved.findings
+        );
+        assert!(
+            interview_findings(&approved).is_empty(),
+            "{minimal}: {:?}",
+            approved.findings
+        );
+    }
+}
+
+/// REQ-3 (audit N1, N2): only approved, completed and superseded SPECs are asked, and a
+/// broken entry is an error in each of them.
+#[test]
+fn interview_statuses() {
+    for status in ["rejected", "archived", "draft"] {
+        let d = doc(&approved_on("2026-11-19", status, ""));
+        assert!(
+            interview_findings(&d).is_empty(),
+            "{status}: {:?}",
+            d.findings
+        );
+    }
+    for status in ["approved", "completed", "superseded"] {
+        let d = doc(&approved_on("2026-11-19", status, ""));
+        assert_eq!(
+            interview_findings(&d),
+            vec!["interview_missing"],
+            "{status}"
+        );
+        assert!(errors(&d).contains(&"interview_missing"), "{status}");
+        let broken = doc(&approved_on(
+            "2026-11-19",
+            status,
+            "## Interview\n\n- just some text\n\n",
+        ));
+        assert_eq!(
+            interview_findings(&broken),
+            vec!["interview_entry"],
+            "{status}"
+        );
+        assert!(errors(&broken).contains(&"interview_entry"), "{status}");
+        assert!(!warnings(&broken).contains(&"interview_entry"), "{status}");
+    }
+}
+
+/// REQ-5 (audit N3, N4): the edges this check does not close, named in the SPEC's Risks. When
+/// one of them is closed, the test and the Risks change together.
+#[test]
+fn interview_edges() {
+    let hidden = "<!--\n## Interview\n\n- Q1: x → A: y\n-->\n\n";
+    let d = doc(&approved_on("2026-11-19", "approved", hidden));
+    assert!(interview_findings(&d).is_empty(), "{:?}", d.findings);
+    let fenced = "## Interview\n\n```\n- Q1: x → A: y\n```\n\n";
+    let d = doc(&approved_on("2026-11-19", "approved", fenced));
+    assert!(interview_findings(&d).is_empty(), "{:?}", d.findings);
+    // A hand-written Go-form id is read, never asked.
+    let go = approved_on("2026-11-19", "approved", "").replace(NEW_ID, "SPEC-AUTH-001");
+    let d = doc(&go);
+    assert!(interview_findings(&d).is_empty(), "{:?}", d.findings);
+}

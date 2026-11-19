@@ -12,6 +12,12 @@ created: {{created}}
 
 Why this change is needed, in one or two sentences.
 
+## Interview
+
+Ask the user before you write the requirements: one line per question and answer. If nothing needed asking, replace the entry with a `none` line that says why (ten characters or more).
+
+- Q1: <question you asked the user> → A: <their answer>
+
 ## Requirements
 
 - REQ-1: When <trigger>, the <subject> shall <behavior>.

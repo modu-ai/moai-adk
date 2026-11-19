@@ -12,6 +12,12 @@ created: {{created}}
 
 Why this change is needed and who it serves, in a few sentences.
 
+## Interview
+
+Ask the user before you write the requirements: one line per question and answer. If nothing needed asking, replace the entry with a `none` line that says why (ten characters or more).
+
+- Q1: <question you asked the user> → A: <their answer>
+
 ## Non-goals
 
 - What this SPEC leaves out on purpose.

@@ -339,7 +339,8 @@ fn check_reports_codes_and_exits_one_on_an_error() {
         "{m}"
     );
     assert!(
-        m.contains(&format!(".moai/specs/{ID}/spec.md:23 ac_no_verify")),
+        // The minimal template's Interview section (6 lines) puts the AC on line 29.
+        m.contains(&format!(".moai/specs/{ID}/spec.md:29 ac_no_verify")),
         "{m}"
     );
     // show still answers, with the findings.
