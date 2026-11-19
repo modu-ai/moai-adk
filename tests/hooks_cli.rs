@@ -2706,9 +2706,12 @@ fn no_rule_release_line_is_written_when_no_rule_would_block() {
 }
 
 /// REQ-8 (audit N6): the engine log has a size limit. Up to the limit the rule reads the log and
-/// asks; one byte past it the rule reads no line and lets the turn end, with nothing written.
-/// At exactly the limit it reads, asks, and cannot write the block down, so it lets the turn
-/// end too (an unrecorded block could not be bounded).
+/// asks; at exactly the limit it reads, asks, and cannot write the block down, so it lets the
+/// turn end (an unrecorded block could not be bounded). Past the limit it reads no line and lets
+/// the turn end too. The last two cases look the same from outside, so this test pins the
+/// write limit and the limit-1 read; the read limit itself is pinned only on the oversized-side
+/// lib test (`an_oversized_log_on_one_side_does_not_hide_the_other_side`), and a read limit of
+/// `<` instead of `<=` survives (audit note on C-130, finding 1).
 #[test]
 fn the_ac_verify_rule_lets_the_turn_end_when_the_log_is_full() {
     let limit = moai_cli::hooks::RECEIPT_LOG_LIMIT;

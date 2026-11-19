@@ -25,7 +25,7 @@ C-86 S3(SPEC-20261119-enforce-ac-verify-recorded)의 규칙 `ac_verify_recorded`
 ## Requirements
 
 - REQ-1: When the Stop rule runs, the capabilities listing shall state, as limits of `ac_verify_recorded`, that Stop reads the process folder while the observation reads the input's cwd, that a verify command over 4096 bytes can never be recorded, that a detached HEAD, a sha256 object format, a reftable and a symbolic ref switch the rule off silently, and that a run from a subfolder of the work tree counts.
-- REQ-2 (REQ-1): IF a session has already been blocked `MOAI_STOP_BLOCK_CAP` times in a row and a rule would have blocked again, THEN turn-validation shall let the turn end and write one `rule_release` line that names the rule and the session.
+- REQ-2 (REQ-1): IF a session has already been blocked `MOAI_STOP_BLOCK_CAP` times in a row and a rule would have blocked again, THEN turn-validation shall let the turn end and write a `rule_release` line that names the rule and the session.
 - REQ-3: The command comparison shall keep the white space inside quotes, a newline and a no-break space as they are and fold only a run of spaces and tabs outside quotes into one space.
 - REQ-4 (REQ-3): IF a verify command holds a `<name>` written as an unquoted placeholder, THEN the verify list shall leave it out.
 - REQ-5: The rule shall read HEAD, the branch's ref file and the packed-refs file as regular files only and no more than a fixed number of bytes each.
@@ -68,7 +68,7 @@ C-86 S3(SPEC-20261119-enforce-ac-verify-recorded)의 규칙 `ac_verify_recorded`
 - 공백 접기를 줄이면(REQ-3) 전에 기록되던 명령이 안 맞을 수 있어요. 안 맞는 쪽은 "기록 안 됨"이라 `enforce` 에서 다시 돌리게 할 뿐 규칙을 풀지는 않아요. 시험으로 양쪽(SPEC 에 쓴 명령과 호출한 명령)이 같은 접기를 쓰는지 고정해요.
 - 호스트가 보내는 모양을 문서에서만 읽어요(REQ-7). 문서에 없는 모양은 "끝나지 않은 것으로 본다"가 안전하지만 실제 호스트가 평범한 성공에 truthy 낱말을 보낼 수 있으면 과잉 차단이 생겨요: 조사에서 "문서에 없음"으로 나온 낱말은 넣지 않고 한계로 적어요.
 - `src/hook_guards.rs` 의 예약이 늦어지면 AC-3·AC-4·AC-5 가 열린 채 이 SPEC 이 일부만 닫혀요: 카드 C-130 의 기준을 하나씩 표시하고, 남은 조각은 노트로 적어요.
-- Stop 의 풀어 줌 줄이 한 세션의 `rule_release` 개수 세기(`rule_blocks_in` 은 `rule_block` 만 세요)와 섞이지 않는지: 시험이 한 세션의 두 줄 종류를 따로 세게 고정해요.
+- Stop 의 풀어 줌 줄이 한 세션의 `rule_release` 개수 세기(`rule_blocks_in` 은 `rule_block` 만 세요)와 섞이지 않는지: 동작은 안전해요(`rule_blocks_in` 은 `rule_block` 만, `consecutive_blocks_in` 은 `stop_block` 만 세요). 시험은 `stop_block` 이 둘로 남는 것까지만 보고, `consecutive_blocks` 가 `rule_release` 를 세게 바꾸는 변이는 이 시험으로 보이지 않아요(감사 비차단 6).
 
 ## Decisions
 
@@ -85,3 +85,4 @@ C-86 S3(SPEC-20261119-enforce-ac-verify-recorded)의 규칙 `ac_verify_recorded`
 - 변이(`target/mut130.sh`, 다섯 개, 파일은 해시로 복원 확인): M1 `run_in_background` 를 `== true` 로 되돌림, M2 `timedOutAfterMs` 무시, M3 Stop 풀어 줌 끄기, M4 응답 모양 검사 끄기, M5 한도 비교를 `>` 로 → 모두 KILLED. 문서 변이(AC-9, 다섯 개)도 모두 KILLED.
 - 결정: D-2 는 시험으로 확인했어요: 하위 폴더 실행은 프로세스 폴더의 로그에 기록돼요(`a_run_from_a_subfolder_of_the_work_tree_is_recorded`). N10 은 리더가 (b)+좁힘으로 정했고(노트 3387) REQ-10·AC-10 으로 구현했어요(시험 한 개에 여섯 꼴: 성공한 프로젝트 쓰기·결과 모름·경로 없음은 세고, 실패한 Edit·프로젝트 밖 절대 경로·`..` 로 나가는 경로는 안 세요).
 - 알려진 한계: OMP 확장은 `isError` 만 보내서 OMP 의 백그라운드·시간 초과 호출은 완료로 읽혀요(`capabilities` 한계와 문서에 적었고 코드 변경은 `src/hooks.rs` 의 생성 모듈이라 이 조각 밖이에요).
+- 감사 반영(audit-c130b, head e07d419aa0, 권고 PASS, 차단 0, 비차단 7): 문구만 고쳤고 동작은 그대로예요. "세 번의 거절" → 두 번 막고 세 번째 턴 끝에서 풀어 줘요(비차단 3), `rule_release` 는 풀어 주는 턴 끝마다 한 줄씩 써요(한도 안에서만, 비차단 2), 행 46 의 표지 목록을 코드와 맞췄어요(`backgroundTaskId` 류는 `false` 도 끝나지 않음으로 읽고 `runInBackground` 는 문서에 없는 철자예요, 비차단 4), 이 SPEC 의 위험 줄 과장을 줄였어요(비차단 6). 알려진 생존 변이: 읽기 한도 `<=` 를 `<` 로 바꾼 변이(M4a)는 어느 시험도 못 잡아요 — 한도 정확히 N 바이트와 N+1 바이트가 밖에서 같게 보여요(비차단 1, 시험 주석에 적음). 고치지 않은 것: 동반 표지 `backgroundCwdHint`·`backgroundEndsWithFinalResponse` 가 따로 오면 기록돼요(문서상 `backgroundTaskId` 와 함께만 오므로 위험이 낮아요, 비차단 5), OMP 가 백그라운드·시간 초과에 `isError` 를 어떻게 주는지는 확인하지 못했어요(비차단 7).

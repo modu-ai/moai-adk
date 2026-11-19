@@ -1166,7 +1166,7 @@ const AC_VERIFY_LIMITS: [&str; 12] = [
     "the log has a size limit: past it nothing more is recorded and the rule reads no lines, so it lets the turn end",
     "an AC with manual:, with unknown: or with a <...> placeholder in its verify value is not asked",
     "Stop reads the process folder while the observation reads the cwd the call names: a session whose calls run in another work tree than its process folder is asked about the process folder's SPEC",
-    "a verify command over 4096 bytes is never recorded, but Stop still asks for it until the three refusals are used up",
+    "a verify command over 4096 bytes is never recorded, but Stop still asks for it until the third turn end goes through (two blocks, then a rule_release line)",
     "a detached HEAD, sha256 objects, a reftable and a symbolic ref read as no commit, so the rule switches itself off without saying so",
     "a run from a subfolder of the work tree counts, because the SPEC is found from the top of the work tree the call's cwd is in",
     "on OMP the extension sends only isError, so a call OMP ran in the background (async, notify) or that timed out counts as a finished run",
@@ -1273,8 +1273,10 @@ fn consecutive_blocks_in(home: Option<&Path>, cwd: &Path, session: &str) -> usiz
 ///   `Stop`", learn.chatgpt.com/docs/hooks read 2026-11-11). The Go `/goal` Stop link is not
 ///   carried over (B5 rejected);
 /// - MoAI has blocked [`MOAI_STOP_BLOCK_CAP`] times in a row → allow (backstop for a host that
-///   does not report a continuation); a rule that would have blocked again writes one
-///   `rule_release` line (rule, reason, session) so that the let-go leaves a trace;
+///   does not report a continuation); a rule that would have blocked again writes a
+///   `rule_release` line (rule, reason, session) so that the let-go leaves a trace — one per
+///   turn end that goes through, so a session that keeps ending turns adds a line each time,
+///   inside the log's size limit;
 /// - a block that cannot be recorded (no `.moai-cli/`, refused log) → allow, because an
 ///   unrecorded block could not be bounded.
 ///
