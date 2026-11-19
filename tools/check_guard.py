@@ -123,6 +123,9 @@ def attempt_label(runner, opts):
 
 
 def write_summary(path, verdict, reasons, protected_paths, declared, label_state, label_detail):
+    """The Markdown summary, skipped when `--summary` is absent (it is optional)."""
+    if not path:
+        return
     lines = ["## check-guard", ""]
     lines.append(f"verdict: **{verdict}**")
     for reason in reasons:

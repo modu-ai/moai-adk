@@ -52,11 +52,11 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           gh api "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" --paginate \
-            --jq '.[].filename, (.previous_filename // empty)' \
+            --jq '.[] | (.filename, (.previous_filename // empty))' \
             | sort -u > "$RUNNER_TEMP/check-guard-files.txt"
           # The files API serves at most 3000 files (30 pages); a bigger PR would be
           # judged on a truncated list, so fail safe instead (SPEC Risks).
-          total="$(gh pr view "$PR_NUMBER" --repo "$REPO" --json changed_files --jq .changed_files)"
+          total="$(gh pr view "$PR_NUMBER" --repo "$REPO" --json changedFiles --jq .changedFiles)"
           listed="$(grep -c . "$RUNNER_TEMP/check-guard-files.txt" || true)"
           if [ "${listed:-0}" -lt "${total:-0}" ]; then
             echo "check-guard: the files API served $listed of $total changed files; refusing to judge a truncated list" >&2

@@ -9,6 +9,10 @@ import importlib.util
 import json
 import pathlib
 import re
+import shutil
+import subprocess
+import sys
+import tempfile
 import unittest
 
 import yaml
@@ -767,12 +771,66 @@ class CheckGuardTest(unittest.TestCase):
             {"contents": "read", "issues": "write", "pull-requests": "read"},
         )
 
+    # gh refuses unknown `--json` field names before anything is judged (audit B1b:
+    # `changed_files` is not a gh field, `changedFiles` is), and the files step's `--jq`
+    # expression must yield the old name for each entry, not per page (audit B1a). These
+    # two pin the producer side; the offline run below pins the contract with
+    # tools/check_guard.py, whose unit tests inject the file list directly.
+    PR_VIEW_FIELDS = {"body", "changedFiles"}
+
+    def files_step_jq(self, text):
+        match = re.search(r"--jq '([^']+)'", text)
+        self.assertIsNotNone(match, "the files step reads the API through one single-quoted --jq")
+        return match.group(1)
+
+    def test_files_step_json_fields_are_valid_gh_names(self):
+        text = CHECK_GUARD_WORKFLOW.read_text(encoding="utf-8")
+        pairs = re.findall(r"--json ([\w,]+)\s+--jq '?(\.[\w.]+)", text)
+        self.assertTrue(pairs, "the workflow reads gh data through --json/--jq pairs")
+        for field, target in pairs:
+            self.assertIn(field, self.PR_VIEW_FIELDS, f"--json {field} is not a gh field name")
+            self.assertEqual(target.lstrip("."), field, "the --jq target reads back the field")
+
+    def test_files_step_jq_yields_old_and_new_names_and_the_guard_judges_them(self):
+        text = CHECK_GUARD_WORKFLOW.read_text(encoding="utf-8")
+        expression = self.files_step_jq(text)
+        if shutil.which("jq") is None:
+            self.skipTest("jq is not installed; gh runs this expression with its own jq")
+        page = json.dumps([
+            {"filename": "docs/guide.md"},
+            {"filename": "docs/renamed.md", "previous_filename": "docs/old.md"},
+            {"filename": ".github/workflows/check-guard.yml"},
+        ])
+        jq = subprocess.run(["jq", "-r", expression], input=page, capture_output=True, text=True)
+        self.assertEqual(jq.returncode, 0, jq.stderr)
+        for expected in ("docs/guide.md", "docs/renamed.md", "docs/old.md",
+                         ".github/workflows/check-guard.yml"):
+            self.assertIn(expected, jq.stdout.splitlines(),
+                          f"the files step must yield {expected} from its jq expression")
+        # The consumer side, offline (no --label, so check_guard.py calls no gh): what
+        # the jq step prints is exactly what tools/check_guard.py reads, one path per
+        # line, and a protected path in the page is judged (fails without a tier-2 body).
+        with tempfile.TemporaryDirectory() as tmp:
+            files = pathlib.Path(tmp) / "files.txt"
+            files.write_text(jq.stdout, encoding="utf-8")
+            body = pathlib.Path(tmp) / "body.md"
+            body.write_text("docs only\n", encoding="utf-8")
+            guard = subprocess.run(
+                [sys.executable, str(ROOT / "tools" / "check_guard.py"),
+                 "--list", str(ROOT / "tools" / "protected_checks.json"),
+                 "--files", str(files), "--body", str(body)],
+                capture_output=True, text=True)
+        self.assertEqual(guard.returncode, 1, guard.stdout + guard.stderr)
+        verdict = json.loads(guard.stdout)
+        self.assertEqual(verdict["verdict"], "fail")
+        self.assertEqual(verdict["protected_paths"], [".github/workflows/check-guard.yml"])
+
     def test_check_guard_reads_files_and_body_from_the_api(self):
         text = CHECK_GUARD_WORKFLOW.read_text(encoding="utf-8")
         self.assertIn("--paginate", text)
         self.assertIn("previous_filename", text, "rename old names are judged too")
         self.assertIn("gh pr view", text)
-        self.assertIn("changed_files", text, "a truncated files list fails safe")
+        self.assertIn("changedFiles", text, "a truncated files list fails safe")
 
     def test_audit_instructions_read_the_review_rules_from_the_base_ref(self):
         audit = (ROOT / "agents" / "audit.md").read_text(encoding="utf-8")
