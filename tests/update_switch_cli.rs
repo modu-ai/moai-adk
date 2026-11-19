@@ -161,6 +161,14 @@ fn confirm_and_confirm_switch_together_apply_the_layer_then_the_script() {
     assert_eq!(r["switch_result"]["state"], json!("applied"), "{r}");
     assert!(home.join(".claude/skills/moai/SKILL.md").is_file());
     assert_eq!(fs::read(moai_file(&home)).unwrap(), V2);
+    // The undo line is reported and comes first in the revert order.
+    let stamp = r["switch_result"]["stamp"].as_str().unwrap();
+    assert_eq!(
+        r["revert"]["switch"],
+        json!(format!("moai-cli update --revert-switch {stamp}")),
+        "{r}"
+    );
+    assert_eq!(r["revert_order"][0], json!("switch"), "{r}");
 }
 
 #[test]
