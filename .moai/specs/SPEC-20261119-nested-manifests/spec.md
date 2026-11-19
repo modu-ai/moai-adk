@@ -21,12 +21,13 @@ created: 2026-11-19
 
 ## Requirements
 
-- REQ-1: When `project-detect` reads a project folder, it shall find every manifest file named in `MANIFESTS` that sits at folder depth at most `MAX_DEPTH` below the root, and shall list each one in `detected.manifests` by its path relative to the project root (a manifest at the root by its file name alone).
-- REQ-2 (REQ-1): IF a manifest sits in a folder deeper than `MAX_DEPTH`, or in a folder named in `SKIP_DIRS`, or in a folder that the project's own ignore lines exclude (the `.gitignore` of the root and of each folder the walk enters, and `.git/info/exclude` when `.git` is a real folder — each read as a regular non-linked file of at most `MAX_FILE` bytes, evaluated as git does: the deepest list with a matching line decides, and a folder a non-negated line excludes is not entered), or in a folder reached only through a symbolic link, THEN the command shall not list it.
-- REQ-3: The manifest walk shall read file and folder names only; it shall not read the bytes of a file below the root, and an ignore list it cannot read (a link, over the size limit, not UTF-8) shall count as no lines.
-- REQ-4: When a folder holds nothing but nested manifests (no root manifest, no code file), `detected.project_kind` shall be `existing`.
-- REQ-5: When `project-detect` reports the facts, it shall report beside `detected` (never inside it) a `tools` object with one entry per tool that the name of a detected manifest implies (`package.json` → `node`,`npm`; `tsconfig.json` → `typescript`; `Cargo.toml` → `cargo`; `pyproject.toml`,`setup.py`,`requirements.txt` → `python`; `go.mod` → `go`; `pom.xml` → `maven`; `build.gradle`,`build.gradle.kts` → `gradle`; `Gemfile` → `ruby`; `composer.json` → `php`), keyed by tool name in sorted order with each value the sorted manifest paths that imply it, at most `MAX_ITEMS` entries; no bytes of a nested manifest shall appear anywhere in the output.
-- REQ-6: `validate` shall accept a `manifests` entry that is a relative path whose `/`-separated components are each recordable (the whole path at most 160 bytes, no `..`, no absolute path, no backslash, no empty component, no trailing separator) and shall refuse every other value there, with every other list checked exactly as before.
+- REQ-1: When `project-detect` reads a project folder, the command shall list in `detected.manifests` every manifest file named in `MANIFESTS` that sits at folder depth at most `MAX_DEPTH` below the root, each by its path relative to the project root (a manifest at the root by its file name alone).
+- REQ-2 (REQ-1): IF a manifest sits in a folder deeper than `MAX_DEPTH`, or in a folder named in `SKIP_DIRS`, or in a folder that the project's own ignore lines exclude (the `.gitignore` of the root and of each folder the walk enters, plus `.git/info/exclude` for a real `.git` folder — each a regular non-linked file of at most `MAX_FILE` bytes, evaluated as git does: the deepest list with a matching line decides, and a folder a non-negated line excludes is not entered), or in a folder reached only through a symbolic link, THEN the command shall leave it out of `detected.manifests`.
+- REQ-3: The manifest walk shall read file and folder names only — the bytes of a file below the root are never read, and an ignore list the walk cannot read (a link, over the size limit, not UTF-8) counts as no lines.
+- REQ-4: When a folder holds nothing but nested manifests (no root manifest, no code file), `detected.project_kind` shall be `existing`. · failure: none
+- REQ-5: When `project-detect` reports the facts, the command shall report beside `detected` (never inside it) a `tools` object: one entry per tool that the name of a detected manifest implies (`package.json` → `node`,`npm`; `tsconfig.json` → `typescript`; `Cargo.toml` → `cargo`; `pyproject.toml`,`setup.py`,`requirements.txt` → `python`; `go.mod` → `go`; `pom.xml` → `maven`; `build.gradle`,`build.gradle.kts` → `gradle`; `Gemfile` → `ruby`; `composer.json` → `php`), keyed by tool name in sorted order with each value the sorted manifest paths that imply it, at most `MAX_ITEMS` entries.
+- REQ-6 (REQ-5): IF the `tools` object names a tool that no detected manifest implies, lists a path that is not a detected manifest, or shows any byte of a nested manifest's content, THEN `project-detect` shall have failed its pinning test.
+- REQ-7: `validate` shall accept a `manifests` entry that is a relative path whose `/`-separated components are each recordable (the whole path at most 160 bytes, no `..`, no absolute path, no backslash, no empty component, no trailing separator) and refuse every other value there, with every other list checked exactly as before.
 
 ## Acceptance
 
@@ -36,10 +37,10 @@ created: 2026-11-19
   verify: `cargo test --locked --offline --test project_detect_cli folders_the_ignore_lists_or_the_walk_skip_are_not_read`
   verify: `cargo test --locked --offline --test project_detect_cli a_linked_nested_folder_is_not_followed`
   verify: `cargo test --locked --offline --test project_detect_cli nested_manifests_are_capped_like_every_list`
-- AC-2 (REQ-5): `tools` 객체가 `detected` 옆에, 중첩 manifest 경로와 함께(정렬·`MAX_ITEMS` 상한) 나오고 manifest 내용(토큰)은 출력 어디에도 안 나타나며 `detected` 안에는 들어가지 않아요. `databases` 는 루트 한정을 유지(#2535 시험 갱신).
+- AC-2 (REQ-5, REQ-6): `tools` 객체가 `detected` 옆에, 중첩 manifest 경로와 함께(정렬·`MAX_ITEMS` 상한) 나오고 manifest 내용(토큰)은 출력 어디에도 안 나타나며 `detected` 안에는 들어가지 않아요. `databases` 는 루트 한정을 유지(#2535 시험 갱신).
   verify: `cargo test --locked --offline --test project_detect_cli nested_manifests_feed_the_tools_fact`
   verify: `cargo test --locked --offline --test project_detect_cli nested_manifests_are_listed_but_databases_stay_at_the_root`
-- AC-3 (REQ-6): `validate` 는 경로 모양의 `manifests` 값만 받고(구성 요소별 검사) 나머지 값은 전과 같이 거부해요.
+- AC-3 (REQ-7): `validate` 는 경로 모양의 `manifests` 값만 받고(구성 요소별 검사) 나머지 값은 전과 같이 거부해요.
   verify: `cargo test --locked --offline --lib project_detect`
 - AC-4: 이웃 검사(대상 한정; 전량은 PR 의 CI run 이 인용).
   verify: `cargo test --locked --offline --test project_detect_cli`
@@ -77,7 +78,18 @@ created: 2026-11-19
 
 ## Result
 
-- AC-1: — (진행 중)
-- AC-2: — (진행 중)
-- AC-3: — (진행 중)
-- AC-4: — (진행 중)
+- AC-1: met — RED 6 시험 실패(tip 192f6fa7e2, exit 101) → GREEN 24 통과. 경로 나열·existing
+  (`nested_manifests_are_listed_with_their_paths`), 깊이 경계 3/4(`the_manifest_depth_limit_is_three_folder_levels`),
+  무시 목록·스킵(`folders_the_ignore_lists_or_the_walk_skip_are_not_read`), 링크 폴더(`a_linked_nested_folder_is_not_followed`),
+  상한 64/65(`nested_manifests_are_capped_like_every_list`). 변이 5/5 KILLED: 깊이 `<`→`<=`(깊이 4 유입),
+  폴더 배제 제거(무시 폴더 5개 유입), 루트 무시 목록 미읽기(4개 유입), 파일 배제 제거(짚은 go.mod 유입),
+  상한 제거(65 vs 64).
+- AC-2: met — `tools` 팩트가 중첩 경로와 함께 정렬·상한으로 나오고 `detected` 밖, TOKEN 무누출·트리 무변경
+  (`nested_manifests_feed_the_tools_fact`); databases 루트 한정 유지(`nested_manifests_are_listed_but_databases_stay_at_the_root`,
+  #2535 시험 갱신). 질문 은행 문구 연결은 C-47(범위 밖, note 2315).
+- AC-3: met — `--lib project_detect` 7 통과: `recordable_relpaths_accept_only_relative_component_paths`,
+  `validate_refuses_unsorted_unknown_or_path_like_values`(경로 케이스 추가), `ignore_lines_follow_gitignore_reading`,
+  `tools_fact_maps_and_sorts_manifest_paths`.
+- AC-4: met — `--test project_detect_cli` 24 통과, clippy `--all-targets -D warnings` 0(55.8s), `cargo fmt --check` 0.
+  전량 검사는 PR 의 CI run 이 인용(로컬 전량 금지 규칙). `skills/moai/workflows/project.md` 의 "root only" 문구는
+  낡은 채로 C-47 이 갱신(이 PR 의 알린 빈틈).
