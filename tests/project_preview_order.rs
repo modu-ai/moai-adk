@@ -96,7 +96,8 @@ fn step_5_asks_about_generation_only_when_it_reads_ready() {
 #[test]
 fn completion_check_offers_steps_in_the_printed_phase_order() {
     let check = completion_check();
-    let order = "phase `backup`, then `install`, then `merge`, each phase in the order of its steps";
+    let order =
+        "phase `backup`, then `install`, then `merge`, each phase in the order of its steps";
     assert!(check.contains(order), "the Completion Check lacks: {order}");
     for phrase in [
         "a waiting step is reported with that reason and asked about only after the earlier step is applied and the plan is run again",
@@ -129,7 +130,10 @@ fn quoted_waiting_reasons_are_the_ones_the_code_prints() {
             );
         }
     }
-    assert!(quoted >= 4, "the text should quote the waiting reasons it relies on");
+    assert!(
+        quoted >= 4,
+        "the text should quote the waiting reasons it relies on"
+    );
     // The pairs the text names are the pairs the code builds.
     let source = read("src/project_update.rs");
     for (step, name) in [
@@ -140,7 +144,10 @@ fn quoted_waiting_reasons_are_the_ones_the_code_prints() {
         let sentence = format!("`{step}` reads `{}`", constant(name));
         let in_text = text.contains(&sentence)
             || (step == "generation"
-                && text.contains(&format!("`generation` reads `blocked` with `{}`", constant(name))));
+                && text.contains(&format!(
+                    "`generation` reads `blocked` with `{}`",
+                    constant(name)
+                )));
         assert!(in_text, "project.md does not say: {sentence}");
         assert!(
             source.contains(&format!("Step::waiting(\"{step}\", \"blocked\", {name})")),
