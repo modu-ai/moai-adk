@@ -2190,3 +2190,31 @@ fn a_failed_workflow_run_read_leaves_the_attempt_empty_and_the_gate_unchanged() 
     assert_eq!(gate::ci_info(&s), "ci=success");
     assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s));
 }
+
+/// A `ci` that did not succeed is not asked for its attempt even with a `details_url`: the recorded
+/// transport hands each read the next planned exchange, so an extra read would eat the claim read
+/// after it and `collect` would fail.
+#[test]
+fn a_failed_ci_is_not_asked_for_its_attempt() {
+    let r = repo(&[("src/a.rs", "a2\n")], &[("src/b.rs", "b2\n")]);
+    let t = exchanges_with(
+        &r.b,
+        &r.c,
+        vec![claim(&r.b), verdict(&r.b, &r.a)],
+        PASS_BODY,
+        json!([
+            {"name": "ci", "conclusion": "failure",
+             "details_url": "https://github.com/o/r/actions/runs/77/job/1"},
+            {"name": "windows-build", "conclusion": "skipped"}
+        ]),
+        vec![],
+    );
+    let s = collect(&target(&r), &t).unwrap();
+    assert_eq!(t.remaining(), 0);
+    assert!(
+        s.checks.iter().all(|c| c.attempt.is_none()),
+        "{:?}",
+        s.checks
+    );
+    assert_eq!(gate::ci_info(&s), "ci=failure");
+}

@@ -771,6 +771,15 @@ fn ci_info_names_the_attempt_of_a_re_run_that_succeeded_and_the_verdict_does_not
         want["result"]["ci_info"] = Value::Null;
         assert_eq!(got, want, "{name} {attempt}");
     }
+    // A `ci` that succeeded on its attempt two while another job failed: the state is failure, and
+    // the line shows no attempt.
+    let mut s = base.clone();
+    s["checks"] = json!([
+        {"name": "ci", "conclusion": "success", "head_sha": H, "attempt": 2},
+        run("ci / linux-x86_64", Some("failure"), H)
+    ]);
+    let v = gate(&s);
+    assert_eq!(v["result"]["ci_info"], json!("ci=failure"), "{v}");
     // A run that did not succeed never shows an attempt; G5 stops as it always did.
     for (conclusion, info) in [
         (json!("failure"), "ci=failure"),
