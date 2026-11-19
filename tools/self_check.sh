@@ -37,7 +37,8 @@
 #
 # The base of diff-check and python is SELF_CHECK_BASE (default origin/v2026.11.0); the change
 # is everything from its merge base with HEAD to the working folder, untracked files included.
-# A base that does not resolve makes both items not_run.
+# A base that does not resolve makes diff-check and python not_run (with --pre-ready:
+# diff-check and spec-check).
 #
 # It is not the merge evidence: tools/local_check.sh checks the committed head merged with the
 # base tip and prints the line the merge gate reads. This one runs in place, before or after a
@@ -97,7 +98,14 @@ slot_name="${MOAI_HEAVY_SLOT_NAME:-self-check-${folder}-$$}"
 # Whole Python runs (a discover over every test file, 38 minutes under load) wait in a slot
 # folder of their own, so one of them never holds one of the cargo slots (SPEC-20261119-python-slot-pre-ready).
 py_slot_max="${MOAI_PYTHON_SLOT_MAX:-2}"
-py_slot_dir="${MOAI_PYTHON_SLOT_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/moai-cli/python-slots}"
+py_slot_dir="${MOAI_PYTHON_SLOT_DIR:-}"
+if [ -z "$py_slot_dir" ]; then
+  if [ -n "${XDG_CACHE_HOME:-}" ]; then
+    py_slot_dir="$XDG_CACHE_HOME/moai-cli/python-slots"
+  elif [ -n "${HOME:-}" ]; then
+    py_slot_dir="$HOME/.cache/moai-cli/python-slots"
+  fi
+fi
 base_ref="${SELF_CHECK_BASE:-origin/v2026.11.0}"
 head="$(git rev-parse --verify -q 'HEAD^{commit}' 2>/dev/null || echo unknown)"
 failed=""
@@ -146,7 +154,12 @@ item() {
     return 0
   fi
   log="$log_dir/$label.log"
-  if [ "$use_slot" = 1 ] && { [ "$weight" = heavy ] || [ "$weight" = python ]; }; then
+  if [ "$weight" = python ] && [ "$use_slot" = 1 ] && [ -z "$py_slot_dir" ]; then
+    # No folder can be named (no MOAI_PYTHON_SLOT_DIR, XDG_CACHE_HOME or HOME): never fall back
+    # to the cargo slot folder; say so and run directly.
+    echo "tools/self_check.sh: no python slot folder (MOAI_PYTHON_SLOT_DIR, XDG_CACHE_HOME and HOME are all empty); $label runs without a slot" >&2
+    "$@" >"$log" 2>&1 || code=$?
+  elif [ "$use_slot" = 1 ] && { [ "$weight" = heavy ] || [ "$weight" = python ]; }; then
     if [ "$weight" = python ]; then
       moai heavy-slot-acquire --dir "$py_slot_dir" --max "$py_slot_max" \
         --min-free-gb "$slot_min_free" --name "${slot_name}-py" -- "$@" >"$log" 2>&1 || code=$?

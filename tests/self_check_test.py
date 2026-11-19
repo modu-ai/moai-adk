@@ -114,7 +114,8 @@ class FakeRepo:
                "GIT_AUTHOR_EMAIL": "t@example.invalid", "GIT_COMMITTER_NAME": "t",
                "GIT_COMMITTER_EMAIL": "t@example.invalid"}
         env.update(extra)
-        return env
+        # A value of None removes the variable (an unset HOME is not an empty one).
+        return {k: v for k, v in env.items() if v is not None}
 
     def git(self, *args):
         return subprocess.run(["git", *args], cwd=self.repo, env=self.env(), check=True,
@@ -523,6 +524,28 @@ class PythonSlotTest(unittest.TestCase):
         self.repo.run("--full-python", MOAI_PYTHON_SLOT_DIR="", MOAI_PYTHON_SLOT_MAX="")
         self.assertIn(f" --dir {self.default_dir} --max 2 ", self.python_lines()[0])
 
+    def test_an_unset_or_empty_home_never_stops_the_script_and_the_item_runs_directly(self):
+        # Audit B1: the folder default read $HOME at start-up and died with `unbound variable`.
+        for label, extra in (("unset", {"HOME": None}), ("empty", {"HOME": ""})):
+            with self.subTest(home=label):
+                self.repo.calls.unlink(missing_ok=True)
+                self.repo.slot_calls.unlink(missing_ok=True)
+                proc = self.repo.run("--full-python", **extra)
+                self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+                self.assertNotIn("unbound variable", proc.stderr)
+                self.assertIn("no python slot folder", proc.stderr)
+                self.assertEqual(self.python_lines(), [])
+                self.assertIn("python3 -m unittest discover -s tests -p *_test.py",
+                              self.repo.recorded())
+
+    def test_an_empty_xdg_cache_home_falls_back_to_home(self):
+        self.repo.run("--full-python", XDG_CACHE_HOME="")
+        self.assertIn(f" --dir {self.default_dir} --max 2 ", self.python_lines()[0])
+
+    def test_the_folder_setting_alone_works_without_home(self):
+        self.repo.run("--full-python", HOME=None, MOAI_PYTHON_SLOT_DIR="/x/y")
+        self.assertIn(" --dir /x/y --max 2 ", self.python_lines()[0])
+
     def test_the_python_slot_never_uses_the_cargo_slot_folder(self):
         self.repo.run("--full-python")
         for line in self.repo.slot_recorded():
@@ -586,6 +609,9 @@ def prepare_pre_ready(repo, spec=True, binary=True):
         built.write_text(
             "#!/bin/sh\n"
             f"echo \"moai-cli $*\" >> '{repo.calls}'\n"
+            "if [ -n \"${STUB_SPEC_ONLY:-}\" ]; then\n"
+            "  case \"$*\" in *\"$STUB_SPEC_ONLY\"*) ;; *) exit 0 ;; esac\n"
+            "fi\n"
             "printf '%s\\n' \"${STUB_SPEC_OUT:-}\"\n"
             "exit \"${STUB_SPEC_EXIT:-0}\"\n")
         built.chmod(0o755)
@@ -730,6 +756,54 @@ class PreReadyTest(unittest.TestCase):
         self.assertEqual([label for label, _ in found], PRE_READY_LABELS)
         self.assertEqual(self.repo.recorded(), [])
         self.assertEqual(LAST.match(last)["dry"], "dry-run=1 ")
+
+    def test_every_source_file_named_in_the_stale_rule_makes_the_binary_stale(self):
+        # N/N+1 of the rule: a file newer than the binary is stale, one older is not.
+        for name in ("Cargo.toml", "Cargo.lock", "build.rs", "src/ops/b.rs"):
+            with self.subTest(file=name):
+                repo = FakeRepo()
+                self.addCleanup(repo.close)
+                prepare_pre_ready(repo)
+                path = repo.repo / name
+                path.write_text(path.read_text() if path.exists() else "x\n")
+                future = time.time() + 100
+                os.utime(path, (future, future))
+                rest, m = self.lines(repo.run("--pre-ready"))
+                self.assertEqual(
+                    rest["py-repo-scans"],
+                    f"not_run (stale moai-cli: target/debug/moai-cli is older than {name})")
+        for name in ("Cargo.lock", "build.rs"):
+            with self.subTest(older=name):
+                repo = FakeRepo()
+                self.addCleanup(repo.close)
+                prepare_pre_ready(repo)
+                path = repo.repo / name
+                path.write_text("x\n")
+                past = time.time() - 100
+                os.utime(path, (past, past))
+                rest, m = self.lines(repo.run("--pre-ready"))
+                self.assertTrue(rest["py-repo-scans"].startswith("exit=0 "), rest)
+
+    def test_a_new_uncommitted_spec_is_checked_too(self):
+        spec = self.repo.repo / ".moai" / "specs" / "SPEC-20261119-fresh" / "spec.md"
+        spec.parent.mkdir(parents=True)
+        spec.write_text("# fresh\n")
+        proc = self.repo.run("--pre-ready")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertIn("(SPEC-20261119-demo SPEC-20261119-fresh)", proc.stdout)
+        self.assertIn("moai-cli spec check SPEC-20261119-fresh --closure --project .",
+                      self.repo.recorded())
+
+    def test_one_failing_spec_among_two_fails_the_item_and_both_are_checked(self):
+        second = self.repo.repo / ".moai" / "specs" / "SPEC-20261119-second" / "spec.md"
+        second.parent.mkdir(parents=True)
+        second.write_text("# second\n")
+        proc = self.repo.run("--pre-ready", STUB_SPEC_ONLY="SPEC-20261119-second",
+                             STUB_SPEC_EXIT="1", STUB_SPEC_OUT=f"{SPEC_PATH} closure_result")
+        rest, m = self.lines(proc)
+        self.assertEqual(m["failed"], "spec-check")
+        calls = [c for c in self.repo.recorded() if c.startswith("moai-cli spec check")]
+        self.assertEqual(len(calls), 2, calls)
 
     def test_it_cannot_be_combined_with_full_python(self):
         for args in (["--pre-ready", "--full-python"], ["--full-python", "--pre-ready"]):
