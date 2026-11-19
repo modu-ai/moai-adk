@@ -59,3 +59,9 @@ created: 2026-11-19
 | --- | --- | --- | --- |
 | D-1 | 슬라이스 2의 핀을 원 SPEC 에서 새 SPEC 으로 분리 | 리더 결정(a): 원 SPEC 을 되도록 건드리지 않음; 가지-slug 대응 훅이 같은 id 폴더를 요구 | 두 SPEC 을 다시 합치는 커밋 |
 | D-2 | 컴파일타임 const 단언은 지우고 헬퍼 N/N+1 로 대체 | 감사 N11: const 단언은 경계를 읽히지 않음; clippy assertions_on_constants 와도 부딪혔던 자리 | const 가드 복원 |
+
+## Result
+
+- AC-1: met — head 9c2ffeea9b 에서 `cargo test --offline --locked --test workflow_size_budget` 전체 5 passed / 0 failed(위치 핀 `the_flaky_rule_sits_inside_the_merge_train_step` 포함). 변이: 규칙 블록을 절차 뒤로 옮기면 이 핀 하나만 FAILED(이동 후 규칙 시작 44627 > 단계 9 창 끝 25955; 현재는 21481 ∈ 19521..26456) — worktree 실행과 tier 0 감사 에이전트의 독립 바이트 재계산 양쪽으로 확인.
+- AC-2: met — 같은 실행에서 `budget_ok(RULE_BUDGET)` true·`budget_ok(RULE_BUDGET + 1)` false 가 헬퍼 호출로 고정되고, 컴파일타임 const 단언은 head 파일에서 제거됨(감사가 diff 로 확인). 규칙과 `mode-leader.md` 의 경계 단언도 같은 실행에서 통과.
+- 이웃: `cargo fmt --check` exit 0(이 head). not_run: 없음 — 이 SPEC 의 AC 두 개는 위 실행으로 전부 판정했어요(모델 실행·네트워크는 이 SPEC 의 검사 대상이 아니라 Non-goals).
