@@ -238,11 +238,15 @@ fn word_is_refused(written: &str, blanked: &str) -> bool {
     if value_shaped > 0 || crate::redact::redact_outgoing(&plain_options_blanked).1 > 0 {
         return true;
     }
-    // The shared screen sees a prefix shape only at the start of a word: look at what follows
-    // each separator as a word of its own.
-    blanked
-        .match_indices(['=', ':', ','])
-        .any(|(at, sep)| crate::redact::redact_outgoing(&blanked[at + sep.len()..]).1 > 0)
+    // The shared screen sees a prefix shape only at the start of a word: make each piece between
+    // two separators a word of its own by turning the separators into spaces, and screen the
+    // text once (audit B2: screening everything behind every separator took time in the square
+    // of the word's length). A shape holds none of the separators, so it lies inside one piece.
+    let pieces: String = blanked
+        .chars()
+        .map(|c| if matches!(c, '=' | ':' | ',') { ' ' } else { c })
+        .collect();
+    crate::redact::redact_outgoing(&pieces).1 > 0
 }
 
 fn name_is_secret(name: &str) -> bool {
@@ -1038,6 +1042,46 @@ mod tests {
         }
         // One word counts once even when two separators lead to shapes.
         assert_eq!(secret_words(&format!("a:{key},{key}")), 1);
+    }
+
+    /// Audit B2: one long word without a space is screened in time that grows with its length,
+    /// not with its square. Sizes: 200 KB, one byte under the note limit and the limit itself; the
+    /// bound is far above the linear time and far below the square-time one (40 KB took 30 s).
+    #[test]
+    fn secret_screen_time_on_one_long_word_has_a_bound() {
+        use std::time::{Duration, Instant};
+        // The screen runs on its own thread, so a square-time regression fails after the bound
+        // instead of holding the test for minutes (the stuck thread dies with the test process).
+        fn timed(text: String) -> Result<(usize, Duration), String> {
+            let (tx, rx) = std::sync::mpsc::channel();
+            let started = Instant::now();
+            std::thread::spawn(move || {
+                let _ = tx.send(secret_words(&text));
+            });
+            rx.recv_timeout(Duration::from_secs(15))
+                .map(|words| (words, started.elapsed()))
+                .map_err(|_| "no answer within 15 s".to_string())
+        }
+        let limit = crate::ledger::workflow::MAX_NOTE_BYTES;
+        let key = j(&["AK", "IA", "ABCDEFGHIJKLMNOP"]);
+        let units = ["a,", "a:", "a=", "{\"a\":1,\"b\":[2,3]},"];
+        for size in [200_000, limit - 1, limit] {
+            for unit in units {
+                let plain = unit.repeat(size / unit.len() + 1)[..size].to_string();
+                match timed(plain.clone()) {
+                    Ok((words, _)) => assert_eq!(words, 0, "{unit} x {size}"),
+                    Err(e) => panic!("{unit} x {size} bytes: {e}"),
+                }
+                // The shape at the very end of a long word is still found (two sizes are enough).
+                if size != limit - 1 {
+                    let tail = format!("{},{key}", &plain[..size - key.len() - 1]);
+                    match timed(tail) {
+                        Ok((words, _)) => assert_eq!(words, 1, "{unit} x {size} with a shape"),
+                        Err(e) => panic!("{unit} x {size} bytes with a shape: {e}"),
+                    }
+                }
+            }
+        }
     }
 
     /// REQ-6: the refusal names the field and does not repeat the text.
