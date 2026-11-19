@@ -682,13 +682,15 @@ fn the_number_is_the_lowest_unused_and_existing_names_are_never_touched() {
     assert!(refs_after
         .iter()
         .any(|l| l.ends_with(&format!("refs/heads/{}", name(5)))));
-    assert!(w.worktree_of(3).is_dir() && fs::read_dir(w.worktree_of(3)).unwrap().next().is_none());
+    assert!(w.worktree_of(3).is_dir(), "the folder of -3 is still there");
     assert!(w
         .git(&["worktree", "list", "--porcelain"])
         .starts_with(&worktrees_before.split("\n\n").next().unwrap().to_string()));
     // A second build goes on to the next number.
     let (v2, _) = w.build(&[&c]);
     assert_eq!(v2["result"]["number"], 6, "{v2}");
+    // The folder of -3 was never written into: `remove_dir` succeeds only on an empty folder.
+    fs::remove_dir(w.worktree_of(3)).expect("the folder of -3 is still empty");
 }
 
 #[test]
