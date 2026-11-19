@@ -352,6 +352,11 @@ mod tests {
         Close,
         /// Waits, then replies.
         Delay(Duration, Vec<u8>),
+        /// Waits until the test sends the release, then replies. A test that sends it only
+        /// after the transport call has returned proves the order of events without a clock.
+        /// The 10 s bound only keeps a transport that waits for the server from hanging the
+        /// test: it then gets a response and the test fails.
+        Held(std::sync::mpsc::Receiver<()>, Vec<u8>),
     }
 
     struct Fake {
@@ -427,6 +432,10 @@ mod tests {
                 }
                 Script::Delay(wait, bytes) => {
                     std::thread::sleep(wait);
+                    let _ = stream.write_all(&bytes);
+                }
+                Script::Held(release, bytes) => {
+                    let _ = release.recv_timeout(Duration::from_secs(10));
                     let _ = stream.write_all(&bytes);
                 }
             }
@@ -738,30 +747,36 @@ mod tests {
             refused(Script::Reply(endless.into_bytes()), &quick()).code,
             "transport_response"
         );
-        // Slow: the server answers after the total bound.
-        let slow = Limits {
-            connect: Duration::from_secs(2),
-            total: Duration::from_millis(150),
-            response_max: 4096,
-        };
-        let started = Instant::now();
-        let r = refused(
-            Script::Delay(
-                Duration::from_millis(600),
-                reply("200 OK", "", TYPESAFE_ANSWER),
-            ),
-            &slow,
-        );
-        assert_eq!(r.code, "transport_timeout");
-        assert!(
-            started.elapsed() < Duration::from_millis(590) + Duration::from_millis(300),
-            "the refusal waited for the server"
-        );
+        // Slow: `a_slow_server_is_refused_at_the_total_bound_before_it_answers` holds the
+        // server by order of events. The name stays because SPEC-20261118-decide-round-trip
+        // names this test in its `verify:` line.
         // Nobody listens: a refused connection is a connect refusal.
         let closed = TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = closed.local_addr().unwrap();
         drop(closed);
         let r = post_loopback(addr, &prepared(Provider::Typesafe), &key(), &quick()).unwrap_err();
         assert_eq!(r.code, "transport_connect");
+    }
+
+    #[test]
+    fn a_slow_server_is_refused_at_the_total_bound_before_it_answers() {
+        let slow = Limits {
+            connect: Duration::from_secs(2),
+            total: Duration::from_millis(150),
+            response_max: 4096,
+        };
+        let (release, held) = std::sync::mpsc::channel();
+        let fake = serve(Script::Held(held, reply("200 OK", "", TYPESAFE_ANSWER)));
+        let result = round_trip_loopback(fake.addr, &prepared(Provider::Typesafe), &key(), &slow);
+        // The transport call has returned and nobody has released the server: the server
+        // thread can only still be waiting if the refusal did not wait for it.
+        let still_held = !fake.handle.is_finished();
+        release.send(()).unwrap();
+        let _ = fake.finish();
+        assert_eq!(result.unwrap_err().code, "transport_timeout");
+        assert!(
+            still_held,
+            "the refusal came only after the server had ended"
+        );
     }
 }

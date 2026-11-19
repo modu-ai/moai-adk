@@ -39,10 +39,14 @@ EXEMPT = {
                                "tools/heavy_check_slot.py",
     "tests/install_script_test.py": "os.walk of the test's temporary HOME and link folders; runs "
                                     "the named install/install.sh and install.ps1",
+    "tests/launcher_settings_receipt.rs": "read_dir of the temp home's receipts folder; reads the "
+                                          "named operations document models_revert.md",
     "tests/local_check_test.py": "os.walk of the test's own temporary clone (a before/after "
                                  "snapshot of its working folder); reads the named "
                                  "tools/local_check.sh and .github/workflows/ci.yml",
     "tests/mutate_test.py": "ls-files and scandir on temporary clones",
+    "tests/project_flow_closing.rs": "reads only the named skills/moai/workflows/project.md; "
+                                    "`git ls-files --error-unmatch` runs in TempDir repos",
     "tests/status_line_cli.rs": "read_dir of a TempDir settings-backups folder",
     "tests/update_route.rs": "walks its TempDir project; reads the named update.md and routes.json",
     "tests/worktree_report.rs": "read_dir of temporary worktrees",
