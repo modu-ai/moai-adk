@@ -18,7 +18,7 @@ measured field, not a claim. A line is `pins:` the test files that hold a string
 least 20 characters lying inside that line (`tests/*.rs`, `tests/*.py`, found by a script that
 only reads), and `text only` when none does. `text only` says no test literal lies in the line;
 a command may still read the rule (the `audit.md` line on the audit reservation is read by
-`moai audit-claim`, which `tests/audit_claim_cli.rs` runs), and only the sentence reading of
+`moai audit-claim`, whose code `tests/audit_claim_cli.rs` tests), and only the sentence reading of
 `mode-leader.md` below went on to look for readers in the code. A row that pins a test of this repository's own CI
 script carries `(moai-adk repository)` after its first words: a shipped skill file must say that
 script belongs to this repository, not to a user project (#2708). The unit of an inventory row is the line; the unit
