@@ -173,6 +173,7 @@ Lane and leader
   audit-gate              Decide whether a PR head has the audit its tier needs
   trailers                Print the identity trailers for a commit
   trailer-check           Report commits with missing or malformed trailers
+  bundle                  Assemble the M-Flow bundle from READY heads
   audit-clone-plan        Preview an independent audit clone
   labels-check            Report Issues whose labels break the rule
   decision-due            Sort the unanswered decisions of a bundle

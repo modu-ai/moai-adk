@@ -1125,22 +1125,155 @@ fn spec_branch_id(branch: &str) -> Option<String> {
 /// git folder, or a file `gitdir: <folder>` for a linked worktree. `None` when detached or
 /// unreadable.
 fn work_tree_branch(top: &Path) -> Option<String> {
-    let git = top.join(".git");
-    let dir = if git.is_dir() {
-        git
-    } else {
-        let pointer = std::fs::read_to_string(&git).ok()?;
-        let target = PathBuf::from(pointer.trim().strip_prefix("gitdir:")?.trim());
-        if target.is_absolute() {
-            target
-        } else {
-            top.join(target)
-        }
-    };
+    let dir = git_folder(top)?;
     let head = std::fs::read_to_string(dir.join("HEAD")).ok()?;
     head.trim()
         .strip_prefix("ref: refs/heads/")
         .map(str::to_string)
+}
+
+/// The git folder of the work tree at `top`: `.git` itself, or the folder a linked worktree's
+/// `.git` file (`gitdir: <folder>`) names. File system only.
+fn git_folder(top: &Path) -> Option<PathBuf> {
+    let git = top.join(".git");
+    if git.is_dir() {
+        return Some(git);
+    }
+    let pointer = std::fs::read_to_string(&git).ok()?;
+    let target = PathBuf::from(pointer.trim().strip_prefix("gitdir:")?.trim());
+    Some(if target.is_absolute() {
+        target
+    } else {
+        top.join(target)
+    })
+}
+
+/// The commit the branch HEAD names points at, in the work tree at `top`, read from the file
+/// system only (no git process; SPEC-20261119-enforce-ac-verify-recorded D-2): `HEAD`, then the
+/// branch's ref file, then `packed-refs`. A linked worktree keeps its branches in the common
+/// folder its git folder names (`commondir`). `None` when HEAD is detached or any step is
+/// unreadable, or the answer is not 40 hex digits.
+fn head_sha(top: &Path) -> Option<String> {
+    let dir = git_folder(top)?;
+    let branch = work_tree_branch(top)?;
+    let name = format!("refs/heads/{branch}");
+    let common = match std::fs::read_to_string(dir.join("commondir")) {
+        Ok(text) => {
+            let path = PathBuf::from(text.trim());
+            if path.is_absolute() {
+                path
+            } else {
+                dir.join(path)
+            }
+        }
+        Err(_) => dir.clone(),
+    };
+    let as_sha = |text: &str| {
+        let sha = text.trim();
+        (sha.len() == 40 && sha.bytes().all(|b| b.is_ascii_hexdigit())).then(|| sha.to_string())
+    };
+    for folder in [&dir, &common] {
+        if let Ok(text) = std::fs::read_to_string(folder.join(&name)) {
+            return as_sha(&text);
+        }
+    }
+    let packed = std::fs::read_to_string(common.join("packed-refs")).ok()?;
+    packed.lines().find_map(|line| {
+        let (sha, reference) = line.split_once(' ')?;
+        (reference.trim() == name).then(|| as_sha(sha)).flatten()
+    })
+}
+
+/// One runnable `verify:` command of a SPEC criterion: the AC id, the command's position in the
+/// criterion's `verify:` value and the command with its white space collapsed.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct VerifyCommand {
+    pub ac: String,
+    pub position: usize,
+    pub command: String,
+}
+
+/// The SPEC of the SPEC work branch checked out in a work tree, and its commit
+/// (SPEC-20261119-enforce-ac-verify-recorded).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AcWork {
+    pub spec: String,
+    pub head: String,
+    pub commands: Vec<VerifyCommand>,
+}
+
+/// `text` with every run of white space turned into one space and the ends trimmed.
+pub fn collapse_whitespace(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// A SPEC file is read up to this size; a larger one is not read.
+const AC_SPEC_LIMIT: u64 = 1 << 20;
+
+/// The commands of one `verify:` value: each `` `…` `` span when it holds backticks (the form
+/// `` `a`; `b` ``), else the value. A command with an unfilled `<…>` placeholder is left out, as
+/// is an empty one.
+fn verify_commands(value: &str) -> Vec<String> {
+    let parts: Vec<&str> = if value.contains('`') {
+        value.split('`').skip(1).step_by(2).collect()
+    } else {
+        vec![value]
+    };
+    parts
+        .into_iter()
+        .map(collapse_whitespace)
+        .filter(|c| !c.is_empty())
+        .filter(|c| match c.find('<') {
+            Some(open) => !c[open..].contains('>'),
+            None => true,
+        })
+        .collect()
+}
+
+/// The branch SPEC of the work tree holding `dir`: the branch must be `spec/<yyyymmdd>-<slug>`,
+/// the SPEC `.moai/specs/SPEC-<yyyymmdd>-<slug>/spec.md` must read (at most 1 MiB), and HEAD's
+/// commit must read. Every `verify:` command of its criteria is listed by criterion and position;
+/// criteria with `manual:` or `unknown:` and commands with a placeholder are not. `None` when any
+/// step cannot be read. File system only, so Stop may call it.
+pub fn ac_work(dir: &Path) -> Option<AcWork> {
+    let top = work_tree_top(dir)?;
+    let branch = work_tree_branch(&top)?;
+    let spec = spec_branch_id(&branch)?;
+    let head = head_sha(&top)?;
+    let path = top.join(".moai/specs").join(&spec).join("spec.md");
+    let meta = std::fs::symlink_metadata(&path).ok()?;
+    if !meta.is_file() || meta.len() > AC_SPEC_LIMIT {
+        return None;
+    }
+    let text = std::fs::read_to_string(&path).ok()?;
+    let doc = crate::spec_doc::parse(
+        &text,
+        &crate::spec_doc::Options {
+            folder: Some(spec.clone()),
+            closure: false,
+        },
+    );
+    let commands = doc
+        .acceptance
+        .iter()
+        .filter_map(|c| c.verify.as_deref().map(|v| (c, v)))
+        .flat_map(|(c, v)| {
+            verify_commands(v)
+                .into_iter()
+                .enumerate()
+                .map(|(position, command)| VerifyCommand {
+                    ac: c.id.clone(),
+                    position,
+                    command,
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    Some(AcWork {
+        spec,
+        head,
+        commands,
+    })
 }
 
 /// Whether `spec` is a file whose frontmatter (between the first two `---` lines) has the line
@@ -2475,5 +2608,82 @@ mod tests {
             write_guard("apply_patch", &json!({"command": "garbage"}), cwd),
             None
         );
+    }
+
+    /// SPEC-20261119-enforce-ac-verify-recorded D-2: HEAD's commit is read from files only: the
+    /// branch's ref file, else `packed-refs`; a detached HEAD or a value that is not 40 hex
+    /// digits gives `None`.
+    #[test]
+    fn head_sha_reads_ref_files_and_packed_refs() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let top = std::fs::canonicalize(tmp.path()).unwrap();
+        let git = top.join(".git");
+        std::fs::create_dir_all(git.join("refs/heads/spec")).unwrap();
+        std::fs::write(git.join("HEAD"), "ref: refs/heads/spec/20261119-x\n").unwrap();
+        let (a, b) = ("a".repeat(40), "b".repeat(40));
+        assert_eq!(head_sha(&top), None, "no ref yet");
+        std::fs::write(
+            git.join("packed-refs"),
+            format!("# pack-refs with: peeled\n{b} refs/heads/other\n{a} refs/heads/spec/20261119-x\n^{b}\n"),
+        )
+        .unwrap();
+        assert_eq!(head_sha(&top), Some(a.clone()), "packed-refs");
+        std::fs::write(git.join("refs/heads/spec/20261119-x"), format!("{b}\n")).unwrap();
+        assert_eq!(head_sha(&top), Some(b.clone()), "a ref file wins");
+        for bad in ["", "abc", &"g".repeat(40), &"a".repeat(41)] {
+            std::fs::write(git.join("refs/heads/spec/20261119-x"), format!("{bad}\n")).unwrap();
+            assert_eq!(head_sha(&top), None, "{bad:?}");
+        }
+        std::fs::write(git.join("HEAD"), format!("{a}\n")).unwrap();
+        assert_eq!(head_sha(&top), None, "detached HEAD");
+    }
+
+    /// A linked worktree keeps HEAD in its own git folder and the branch in the common one
+    /// (`commondir`), with the pointer absolute or relative.
+    #[test]
+    fn head_sha_follows_a_linked_worktree_to_the_common_folder() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let top = std::fs::canonicalize(tmp.path()).unwrap();
+        let main = top.join("main/.git");
+        std::fs::create_dir_all(main.join("refs/heads/spec")).unwrap();
+        let a = "a".repeat(40);
+        std::fs::write(main.join("refs/heads/spec/20261119-x"), format!("{a}\n")).unwrap();
+        let linked = main.join("worktrees/wt");
+        std::fs::create_dir_all(&linked).unwrap();
+        std::fs::write(linked.join("HEAD"), "ref: refs/heads/spec/20261119-x\n").unwrap();
+        std::fs::write(linked.join("commondir"), "../..\n").unwrap();
+        let wt = top.join("wt");
+        std::fs::create_dir_all(&wt).unwrap();
+        for pointer in [
+            format!("gitdir: {}\n", linked.display()),
+            "gitdir: ../main/.git/worktrees/wt\n".to_string(),
+        ] {
+            std::fs::write(wt.join(".git"), &pointer).unwrap();
+            assert_eq!(head_sha(&wt), Some(a.clone()), "{pointer}");
+        }
+        std::fs::remove_file(linked.join("commondir")).unwrap();
+        assert_eq!(
+            head_sha(&wt),
+            None,
+            "without commondir the branch is not here"
+        );
+    }
+
+    /// A `verify:` value gives one command per backtick span (else the whole value), with its
+    /// white space collapsed; an empty one and one with an unfilled `<...>` are left out, while a
+    /// lone `<` or `>` (a redirection) is not a placeholder.
+    #[test]
+    fn verify_commands_split_spans_and_leave_out_placeholders() {
+        assert_eq!(verify_commands("cargo test"), vec!["cargo test"]);
+        assert_eq!(verify_commands("`a  b`; `c`"), vec!["a b", "c"]);
+        assert_eq!(
+            verify_commands("`<command that checks it>`"),
+            Vec::<String>::new()
+        );
+        assert_eq!(verify_commands("`a`; `<x>`; `c`"), vec!["a", "c"]);
+        assert_eq!(verify_commands("   "), Vec::<String>::new());
+        assert_eq!(verify_commands("a < b"), vec!["a < b"]);
+        assert_eq!(verify_commands("cargo test 2>&1"), vec!["cargo test 2>&1"]);
+        assert_eq!(collapse_whitespace(" a \t b\n"), "a b");
     }
 }

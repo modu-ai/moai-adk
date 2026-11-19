@@ -156,7 +156,7 @@
       }
     },
     "references/internal/core-rules.md": {
-      "sha256": "8f1e834c9592f143a8add2d08424e904b98fc34619a6735d8f2708750e676170",
+      "sha256": "710efbeff96bf282997c6f92ea1e10ac7344a1ff79a26698f4d1114d4a4cc93f",
       "origin": {
         "kind": "go-generation",
         "template_id": "internal-core-rules",
@@ -261,7 +261,7 @@
       }
     },
     "references/internal/self-check.md": {
-      "sha256": "cfa07303ae26ec0eb30dbeeccd069bd6d80b978e185a02b8df11591d403d7272",
+      "sha256": "4c10aafe27bfaaea113fa9289167263b93e6f59a0749add582e4841c01a5b32f",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-self-check",
@@ -398,8 +398,17 @@
         "reason": "Written from the design-22 template in f6808390b; English rendering of the Korean template, with RC1 status notes where a step is not implemented yet. MODE-LEADER and MODE-AGENT routes added by rc.2 A1 #2160. PROJECT route added by rc.2 #2496 (user decisions 16 = B, 17 = all three, #1975 comment 6815357071). #2637: top-level `chains` names references/chains/index.md, the agent order per route. OPTIMIZE route (`/moai optimize`) added by #2724 (leader decision A, 2026-11-13)."
       }
     },
+    "references/rule-history.md": {
+      "sha256": "0b360ebc30de79423501869101775c9d28fd47c8e7bb6701f24edd76cbef51fd",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "rule-prune-history",
+        "adoption": "new",
+        "reason": "Written for card C-103 (SPEC-20261119-rule-prune, leader decision note 2527): the rule inventory of the verification-rule prune — every rule sentence of the four rule files with its source (git blame → PR) and its enforcer, the rules with one source and no diff trigger moved out of core-rules.md into the history section (their live lines stay as numbered pointers, a form pinned by tests/core_rules_2876.rs)."
+      }
+    },
     "workflows/audit.md": {
-      "sha256": "e60ffcea458af6830ed16e69a75a9f98ca3880dbc52a32740cf4914e7cd30169",
+      "sha256": "847167e93e86757f4440e92cb26144ee932bb2bf51df999bceb18cc5c59abf93",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-audit",
@@ -408,7 +417,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "3d2fc01955fc1a65e99b1e71fbce337ed06fa9142515bd77f87681d4fb59546b",
+      "sha256": "99b59208f89285a6dd63302e59e1259f9b908db81fc5fcf12820faf0d0947a81",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
@@ -417,7 +426,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "02c83e527d6732de93a400e91164ceb8477b60fd0490a10ce435a37c92a736ae",
+      "sha256": "7e336803446b0ade1a045668a3423be3a8064b4816f664094acb9a07753e48e3",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -444,7 +453,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "113a7efa67c929224c8a1227ac3aab5410bc678feffb15ac1cf5c92f5e190808",
+      "sha256": "7f847186fface18e4fa7fa9fadf678e2be932d4de754bb90b9cf6865ad6aabd6",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
@@ -498,7 +507,7 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "f07bab90af71454c2d639b0ae5c210c475ff0b233aa36d7334db9828fbc93d94",
+      "sha256": "cbbedbd7245577e832d3f0f91efd27f2fb945fbc99f9245eb8d5735ff8b989c1",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",
