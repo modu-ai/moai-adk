@@ -114,12 +114,14 @@ created: 2026-11-19
 - 리더의 여섯 검사: (1) `git diff --check` 0 · (2) `cargo fmt --check` 0 · (3) `rustfmt --check --edition 2021 src/ops/*.rs` 0 · (4) `cargo clippy --locked --offline --all-targets -- -D warnings` 0 · (5) cargo test 5개 대상과 `python3 -m unittest tests.repo_scans_test tests.source_manifest_test tests.local_check_test` 0 · (6) `moai-cli trailer-check` — 내 커밋 범위(`v2026.11.0..HEAD`, 8개) 0. 원격 tip 기준 범위(109개)는 로컬 가지에 있는 남의 커밋 `d2966629e5`(trailer 없음) 때문에 1 이에요.
 - 돌리지 않은 것: 저장소 전체 `cargo test`(PR CI 가 인용), macOS 이외, 실제 HOME 적용(S4, guarded — 사용자가 고르는 일).
 
-### 감사 수리 (자체 감사 head `d99930df2a` 가 FAIL — B1 1건, N5건; 같은 감사 에이전트가 재감사)
+### 감사 수리 (자체 감사 head `d99930df2a` 가 FAIL — B1 1건; 수리 head `07233585c5` 를 같은 감사 에이전트가 재감사해 PASS)
 
 - B1(막음): 터미널에서 `moai update --revert-switch` 가 되돌리기에 성공해도 화면이 "did not finish: reverted" 와 "up to date" 를 그렸어요. `src/update_tux.rs` 에 `revert_switch` 전용 한 줄 화면(`reverted_switch`, 영어·한국어)을 더했어요. 시험 `the_revert_switch_result_is_drawn_as_a_success_line`(`cargo test --locked --offline --test update_switch_cli` 8/8)이 한 줄·성공 문구·실패 문구 없음을 둘 다 언어로 확인해요. 변이: 분기 삭제(R1)와 상태 비교 깨기(R2)를 그 시험이 잡았어요.
-- N2: 터미널 yes 가 스위치를 확인하지 않는다는 말이 시험이 아니라 코드 읽기였어요. 연결 식 `asks(cleanup, home_token.or(switch_token), writes)` 를 함수 `layer_asks` 로 뽑고 단위 시험(`update::user_layer_tests::the_summary_shows_cleanup_only_when_something_is_archived`)이 switch·home·cleanup 토큰 각각을 확인해요. 변이: `home.or(switch)` 를 `home` 으로 바꾸기(R3)를 그 시험이 잡았어요. pty 시험은 저장소에 없어요(시험 도우미가 없어서 만들지 않았어요).
+- N2: 터미널 yes 가 스위치를 확인하지 않는다는 말이 시험이 아니라 코드 읽기였어요. 연결 식 `asks(cleanup, home_token.or(switch_token), writes)` 를 함수 `layer_asks` 로 뽑고 단위 시험(`update::user_layer_tests::the_summary_shows_cleanup_only_when_something_is_archived`)이 switch·home·cleanup 토큰 각각을 확인해요. 변이: `home.or(switch)` 를 `home` 으로 바꾸기(R3)를 그 시험이 잡았어요. 스위치용 pty 시험은 저장소에 없어요(pty 도우미 `tests/update_tux_tty_test.py::run_pty` 는 있지만 이 조각에서는 쓰지 않았어요 — 아래 N6).
 - N3(비차단, 고치지 않음): 저장본 `create_new` 가 쓰기 중간에 실패하면 짧은 `moai.before-<stamp>` 가 남을 수 있어요(디스크가 가득 찰 때). `moai` 는 그대로이고 되돌리기는 v1 과 바이트가 다른 저장본을 거부해서 해가 없어요. 재현할 방법이 없어 시험 없는 코드는 넣지 않았어요.
 - N5(범위 밖): `skills/moai/workflows/update.md` 5행이 새 플래그 두 개를 적지 않아요. 이 SPEC 의 쓰기 범위에 `skills/` 가 없고 다른 카드가 쥘 수 있는 파일이라 리더에게 알려요(별도 조각).
+- N6(비차단, 재감사): 단위 시험은 함수 `layer_asks` 만 고정하고, 호출부가 `layer_asks(cleanup, home_token, switch_token, writes)` 를 부르는 연결은 pty 시험이 없어 고정되지 않아요(감사가 호출부를 `asks(cleanup, home_token, writes)` 로 되돌린 변이가 살아남는 것을 확인했어요). 현재 코드는 맞고(`src/update.rs:1999`, 감사의 pty 시험에서 `y` 만으로 스크립트는 바뀌지 않았어요), 후속으로 `run_pty` 시험을 더할 수 있어요.
+- N8(비차단): 바이너리의 `ui_lang` 이 영어만 돌려줘서(`src/ui.rs`) 터미널에서는 한국어 한 줄이 안 나와요. 한국어 줄은 `Lang::Ko` View 로 시험이 확인해요.
 - N4(문구): 적용 뒤 화면 문구는 감사가 "정상" 으로 봤어요. N1(기준 가지가 감사 도중 움직임): `d2966629e5` 는 리더 공지대로 알려진 예외예요.
 
 ### 이 컴퓨터에서 읽은 사실 (읽기 전용, 2026-11-19, 쓰기 0)
