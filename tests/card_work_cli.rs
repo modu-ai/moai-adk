@@ -1442,6 +1442,10 @@ fn a_note_with_the_shape_of_a_secret_or_a_terminal_escape_is_refused() {
         let (kind, message) = refusal(&w.card_stdin(None, &args, text));
         assert_eq!(kind, "invalid_input", "{message}");
         assert!(message.contains("control"), "{message}");
+        // C-68 AC-3: a lone carriage return is named, not folded into a nameless refusal.
+        if text.starts_with(b"carriage") {
+            assert!(message.contains("carriage"), "{message}");
+        }
     }
     assert_eq!(w.count("SELECT count(*) FROM card_note"), 0);
     // Ordinary words that only contain a short shape are notes like any other.
@@ -1451,4 +1455,119 @@ fn a_note_with_the_shape_of_a_secret_or_a_terminal_escape_is_refused() {
         b"risk-based task-1: ask-first\n\tindented token count",
     ));
     assert_eq!(plain["note_id"], json!(1));
+}
+
+/// C-68 AC-3 (card criterion 3): the note screen passes the two false positives the audit
+/// named (a hyphenated lower-case name after the sk prefix, a prose option assignment), still
+/// refuses a real key run and a secret-shaped option value, refuses directional characters
+/// naming them, screens the one-line fields the same way as the body, and normalises Windows
+/// line endings while refusing a lone carriage return by name.
+#[test]
+fn directional_characters_are_named_prose_passes_and_fields_are_screened() {
+    let w = world(true);
+    let card = w.ready_card("src/a/", 0, "p2");
+    let args = ["note", card.as_str(), "--kind", "report"];
+    let key = format!("{}{}", ["s", "k-"].concat(), "a1B2".repeat(6));
+
+    // The two listed false positives pass (C-53 S1 re-audit N-c).
+    let plain = result(&w.card_stdin(
+        None,
+        &args,
+        b"migration: sk-learn-pipeline tuned; run with --token=VALUE in dry mode\n",
+    ));
+    assert_eq!(plain["action"], json!("note"), "{}", plain);
+    // A real key run still goes, alone or behind an option name.
+    for text in [format!("key {key}\n"), format!("run --flag={key}\n")] {
+        let (kind, message) = refusal(&w.card_stdin(None, &args, text.as_bytes()));
+        assert_eq!(kind, "invalid_input", "{message}");
+        assert!(message.contains("secret"), "{message}");
+    }
+
+    // Directional characters are refused and the refusal names them (not a bare "control").
+    for text in [
+        format!("bidi {}\u{202E}reversed", "x"),
+        format!("isolate {}\u{2066}start", "x"),
+        format!("sep {}\u{2028}line", "x"),
+    ] {
+        let (kind, message) = refusal(&w.card_stdin(None, &args, text.as_bytes()));
+        assert_eq!(kind, "invalid_input", "{message}");
+        assert!(message.contains("direction"), "{message}");
+    }
+
+    // Windows line endings are normalised into the stored note; a lone CR is refused by name.
+    let crlf = result(&w.card_stdin(None, &args, b"windows line one\r\nwindows line two\r\n"));
+    assert_eq!(crlf["action"], json!("note"), "{}", crlf);
+    // The pipe's end-of-text trim takes the trailing CRLF; the inner pair became one line
+    // feed: 16 + 1 + 16 bytes.
+    assert_eq!(crlf["bytes"], json!(33), "{}", crlf);
+    let (kind, message) = refusal(&w.card_stdin(None, &args, b"mid\rdle\n"));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("carriage"), "{message}");
+
+    // The one-line fields pass the same screen: a secret shape and a directional in a ref or
+    // an evidence value are refused; plain values are taken.
+    let (kind, message) = refusal(&w.card_stdin(
+        None,
+        &[
+            "note",
+            card.as_str(),
+            "--kind",
+            "report",
+            "--ref",
+            key.as_str(),
+        ],
+        b"plain body\n",
+    ));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("secret"), "{message}");
+    let (kind, message) = refusal(&w.card_stdin(
+        None,
+        &[
+            "note",
+            card.as_str(),
+            "--kind",
+            "report",
+            "--ref",
+            "note:1:\u{202E}x",
+        ],
+        b"plain body\n",
+    ));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("direction"), "{message}");
+    let plain_ref = result(&w.card_stdin(
+        None,
+        &["note", card.as_str(), "--kind", "report", "--ref", "plan-1"],
+        b"plain body\n",
+    ));
+    assert_eq!(plain_ref["action"], json!("note"), "{}", plain_ref);
+    let (kind, message) = refusal(&w.card(
+        Some(S_A),
+        &[
+            "criterion",
+            card.as_str(),
+            "1",
+            "--generation",
+            "1",
+            "--met",
+            "--evidence",
+            &format!("cargo test {key}"),
+        ],
+    ));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("secret"), "{message}");
+    let (kind, message) = refusal(&w.card(
+        Some(S_A),
+        &[
+            "criterion",
+            card.as_str(),
+            "1",
+            "--generation",
+            "1",
+            "--met",
+            "--evidence",
+            "cargo test \u{202E}hidden",
+        ],
+    ));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("direction"), "{message}");
 }
