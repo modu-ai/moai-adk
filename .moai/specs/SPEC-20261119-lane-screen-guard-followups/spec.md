@@ -30,7 +30,7 @@ parent: SPEC-20261119-lane-screen-guard
 ## Requirements
 
 - REQ-1: IF the screen holds a numbered line that starts with `Yes` and a numbered line that starts with `No` inside ordinary prose (a list the lane wrote to the conversation, not a dialog), THEN `moai lane-screen` shall report `permission_prompt`, the same as for a dialog.
-- REQ-2: IF the reset time written in a limit message, once turned into UTC, falls before the year 1970 or after the year 9999, THEN `moai lane-screen` shall report the reset time as unknown together with the printed text, never a time whose year has other than four digits.
+- REQ-2: IF the reset time written in a limit message with a date, once turned into UTC, falls before the year 1970 or after the year 9999, THEN `moai lane-screen` shall report the reset time as unknown together with the printed text, never a time whose year has other than four digits.
 
 ## Acceptance
 
@@ -53,7 +53,7 @@ parent: SPEC-20261119-lane-screen-guard
 ## Risks
 
 - `lane-send` 를 막는 대가(D-1)는 줄지 않아요. 레인이 그런 목록을 자주 쓰면 리더가 거절 글을 자주 봐요. 그때는 질문 요구가 아니라 화면 위쪽 줄(대화 기록)과 선택 창을 가르는 새 표지를 녹화 화면으로 찾아야 해요.
-- UTC 연도 검사는 `Reset::Utc(t)` 가 4자리 해로만 찍히도록 막는 마지막 문이에요. 다른 경로로 `format_utc` 에 큰 초가 들어가는 일은 이 SPEC 이 막지 않아요(`--home` 쪽 `resets_at` 은 `parse_utc` 를 거쳐요).
+- UTC 연도 검사는 날짜가 적힌 시각(`at_zone` 을 지나는 세 꼴)에 한해 `Reset::Utc(t)` 가 4자리 해로만 찍히도록 막는 마지막 문이에요. 시각만 적힌 꼴(`resets 10:00 UTC`)은 `at_zone` 을 지나지 않고 `--now` 에서 하루 안의 값을 만들어서, `--now` 가 9999 년 끝이면 10000 년이 찍힐 수 있고 `--now` 가 1970 년 앞이면 그 앞의 해가 그대로 나와요(독립 감사 C-128 이 확인; 실제 시계는 1970 년 앞을 거절하고 9999 년 끝일 수 없어서 실사용에서는 닿지 않아요; 이 SPEC 은 그 가지를 바꾸지 않아요). 다른 경로로 `format_utc` 에 큰 초가 들어가는 일은 이 SPEC 이 막지 않아요(`--home` 쪽 `resets_at` 은 `parse_utc` 를 거쳐요).
 
 ## Decisions
 
