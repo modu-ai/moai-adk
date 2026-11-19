@@ -39,7 +39,7 @@ Measured facts this slice rests on are those of `SPEC-20261119-bundle-tool` (Int
 - REQ-4 (REQ-3): IF a head fails a check, THEN `moai bundle check` shall report it under one stable code: `no_ready_line`, `head_missing`, `not_on_origin`, `already_merged`, `audit_missing`, `trailers`, `spec`, `result_missing` or `conflict`, and for a conflict the files and the other head, if any.
 - REQ-5 (REQ-4): IF the audit floor of a head (`gate::tier_of(Some(0), <paths of tip...head>)`) is 1 or more and no note of the head's card is a verdict (first line `AUDIT `, read by `gate::parse_verdict` unchanged) with the word `PASS` naming exactly that head, THEN `moai bundle check` shall report `audit_missing` with the floor and the nearest `PASS` on an ancestor of the head.
 - REQ-6 (REQ-3): IF a head is not present in the local repository, THEN `moai bundle check` shall report `head_missing` ("fetch first"), skip that head's other checks and judge the remaining heads.
-- REQ-7 (REQ-3): IF `moai bundle check` finds anything, THEN `moai bundle check` shall print the whole result with `ok` false and exit 1.
+- REQ-7 (REQ-3): IF `moai bundle check` finds anything, THEN `moai bundle check` shall print the whole result with `ok` false.
 - REQ-8: When `moai bundle body` is given heads, a bundle branch and a run record file, `moai bundle body` shall write a pull request body with the `audit-tier:` line from `gate::tier_of(Some(0), <paths of tip...branch>)`, one `Moai-Spec:` line per SPEC, a table of the heads, an `Integration:` line with the SHA that `git rev-parse` gives for the branch, `## Self-Audit` from the record and `## Result` from the record and from each SPEC's own `## Result`.
 - REQ-9 (REQ-8): IF a fact the body needs has no record, THEN `moai bundle body` shall refuse, name every such fact in one answer and write no body: a head not contained in the branch, a head with the `audit_missing` finding, a check of the list in the Plan that neither ran nor is named in `not_run` with a reason, a command whose exit is not 0, a Self-Audit line, a SPEC with no `## Result` line for one of its ACs.
 - REQ-10 (REQ-8): IF the text fails `self_audit::check`, THEN `moai bundle body` shall refuse with the names it prints and write no body.
@@ -50,10 +50,10 @@ Measured facts this slice rests on are those of `SPEC-20261119-bundle-tool` (Int
 
 - AC-1 (REQ-1, REQ-2): in a temporary ledger with a card whose notes are an old line, a newer repair line and a note that starts with the marker but does not read, `moai bundle ready` lists the newest readable head per card, the SPEC ids from the trailers, `on_origin`, and the unreadable note with its card and note number; a card whose newest marker note is unreadable lists no head.
   verify: `cargo test --locked --offline --test bundle_ready_cli ready_lists_the_newest_readable_line_per_card_and_names_the_unreadable_ones`
-- AC-2 (REQ-3, REQ-4, REQ-7): `check` on a clean head answers `ok` true with no finding and exit 0; on two heads that each fail something it answers every finding of both heads, with the codes `not_on_origin`, `already_merged`, `trailers`, `spec` and `result_missing` each produced once, and exits 1.
+- AC-2 (REQ-3, REQ-4, REQ-7): `check` on a clean head answers `ok` true with no finding and exit 0; on two heads that each fail something it answers every finding of both heads, with the codes `not_on_origin`, `already_merged`, `trailers`, `spec`, `result_missing` and `audit_missing` each produced once, and `ok` false.
   verify: `cargo test --locked --offline --test bundle_check_cli a_clean_head_has_no_finding`; `cargo test --locked --offline --test bundle_check_cli findings_of_all_heads_come_together_with_stable_codes`
-- AC-3 (REQ-5): a head that changes only `docs/` and `tests/` needs no verdict; a head that changes `src/` needs a `PASS` naming exactly its SHA; a `PASS` for an ancestor is reported as `ancestor_pass` and still `audit_missing`; a note starting `AUDIT ` that does not read is listed as `unreadable_verdict` and does not fail the check.
-  verify: `cargo test --locked --offline --test bundle_check_cli the_audit_floor_decides_which_heads_need_a_pass`
+- AC-3 (REQ-5): a head whose tip has moved on since its merge base is judged by what the head adds (three dots), not by the tip's own changes; a head that changes only `docs/` and `tests/` needs no verdict; a head that changes `src/` needs a `PASS` naming exactly its SHA; a `PASS` for an ancestor is reported as `ancestor_pass` and still `audit_missing`; a note starting `AUDIT ` that does not read is listed as `unreadable_verdict` and does not fail the check.
+  verify: `cargo test --locked --offline --test bundle_check_cli the_audit_floor_decides_which_heads_need_a_pass`; `cargo test --locked --offline --test bundle_check_cli a_head_behind_the_tip_does_not_count_the_tips_own_changes`
 - AC-4 (REQ-4): two heads that change the same lines conflict with each other and with the tip when one of them is merged first; the files are named; a repository whose config registers a merge driver for `skills/moai/references/source-manifest.json` that always succeeds still reports the conflict, because the check runs the text merge GitHub runs.
   verify: `cargo test --locked --offline --test bundle_check_cli a_conflict_is_found_without_the_merge_driver`
 - AC-5 (REQ-6): a head SHA that does not exist locally gives `head_missing` for that head, the other head is judged, and the exit is 1.
@@ -73,7 +73,7 @@ Measured facts this slice rests on are those of `SPEC-20261119-bundle-tool` (Int
 
 ## Scope
 
-- write: `src/bundle.rs`, `src/ops/bundle.rs`, `tests/bundle_ready_cli.rs`, `tests/bundle_check_cli.rs`, `tests/bundle_body_cli.rs`, `docs/design-review/appendix/operations/bundle.md`, `.moai/specs/SPEC-20261119-bundle-ready-check/**`, `.moai/specs/SPEC-20261119-bundle-tool/**`, and one line in `src/lib.rs` (`pub mod bundle;`, reserved by card C-75; the leader's decision is on the card as note 2966).
+- write: `src/bundle.rs`, `src/ops/bundle.rs`, `tests/bundle_ready_cli.rs`, `tests/bundle_check_cli.rs`, `tests/bundle_body_cli.rs`, `docs/design-review/appendix/operations/bundle.md`, `.moai/specs/SPEC-20261119-bundle-ready-check/**`, `.moai/specs/SPEC-20261119-bundle-tool/**`, and one line in `src/lib.rs` (`pub mod bundle;`; reserved by card C-75; leader decision B, card note 2970: taken after pull request #3229 is merged and C-75's holder has released, and left uncommitted until then).
 - read-only: `src/gate.rs`, `src/trailers.rs`, `src/spec_doc.rs`, `src/self_audit.rs`, `src/identity.rs`, `src/card/command.rs`, `src/ledger/command.rs`, `src/ops/card.rs`, `src/ops/trailer_check.rs`.
 - forbidden: any other change under `src/`, the real HOME and ledger as a write target, `skills/`, `.github/`, any push of a ref other than this branch, any pull request.
 
@@ -104,7 +104,7 @@ The check keys are data in the code, pinned by a test (D-4 of the parent): `buil
 - `check` trusts the card notes it reads (see the parent's Risks): a `PASS` note is a note, not proof of an independent audit. The result carries `audit_note` saying so.
 - The pairwise conflict check can miss a three-way conflict; `build` (slice 3) is the exact check. The result names the limit.
 - Every ledger read goes through `card show` JSON; a change of its keys breaks the reader, which is why the tests build a real temporary ledger through the product commands.
-- `src/lib.rs` is reserved by C-75; without the one-line decision the module cannot be registered and the slice cannot be compiled or tested.
+- `src/lib.rs` is reserved by C-75 (leader decision B): the module compiles and its tests run in this worktree with the one line present, but the line cannot be committed until C-75's change is merged and released, so the head cannot be pushed before then.
 
 ## Decisions
 
@@ -112,10 +112,11 @@ The check keys are data in the code, pinned by a test (D-4 of the parent): `buil
 | --- | --- | --- | --- |
 | D-1 | `body` is in this slice and reads a run record file | the leader's direction on card C-119; until `verify` exists a file written by hand carries what ran | move `body` back to a later slice |
 | D-2 | Heads are `C-<n>` or `C-<n>=<sha>`, never a bare SHA | the audit check needs the card; a bare SHA could be on two cards | accept a bare SHA when exactly one READY line names it |
-| D-3 | `check` exits 1 when anything is found, as `trailer-check` does | a script can stop on it; the result is still printed in full | exit 0 with `ok:false` |
+| D-3 | `check` answers `ok:false` with every finding and exits 0 | the exit rule of operations (`ok:false` → exit 1) is written by operation name in `src/main.rs`, which card C-75 reserves; one line there gives `bundle` the exit 1 of `trailers.check` | add that line to `src/main.rs` |
 | D-4 | The conflict check is pairwise (each head with the tip, each with every earlier head) | one `merge-tree` per pair needs no worktree; the exact three-way merge is `build` | a temporary index per bundle |
 | D-5 | `body` refuses on every missing fact in one answer | the card's rule: no placeholder; one round, not one refusal per fact | stop at the first |
 | D-6 | The check keys are ten fixed words | the union of the two merged bodies' lists (parent D-4) | a configuration file |
+| D-7 | Proposal, not built: a verdict line may carry the tier it was audited at in the text before ` head `, as `AUDIT C-<n> (<SPEC>, tier <N>, …) head <sha> base <sha> — verdict: PASS`; `parse_verdict` reads from the last ` head ` on, so the line still reads as today | the tool cannot tell at which tier a `PASS` was given (audit N-d of slice 1); a floor-2 head is satisfied by a tier-1 `PASS` today | the leader decides whether lanes and auditors write it; then `check` reads `tier <N>` and reports a `PASS` below the floor |
 
 ## Result
 
