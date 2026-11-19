@@ -1,9 +1,10 @@
 //! Reservation state-machine property tests (C-100, SPEC-20261119-property-tests): under
 //! random interleavings of the state machine in a temporary ledger, no card left in `review`
 //! is without a held reservation, and no two live reservations cover one path (C-68 N-A/N-B).
-//! The cases share one temporary HOME — each case works only on its own three cards and ages
-//! every lease out at its end, so earlier cases can never stay `live` — and nothing touches
-//! the real HOME.
+//! The cases share one temporary HOME — each case works only on its own three cards and, at
+//! its end, walks them back through the system's own transitions (`reopen` then `release`,
+//! an ended lease through `reclaim`), so earlier cases never block a later take — and nothing
+//! touches the real HOME.
 
 #[path = "common/prop.rs"]
 mod prop;
@@ -53,19 +54,6 @@ fn setup_world() -> World {
 
 fn db_now(w: &mut WriteLedger) -> i64 {
     w.with_write_tx(|_, now| Ok(now)).unwrap()
-}
-
-/// The current generation, read through the world's one reader connection.
-fn generation(world: &World, card: i64) -> i64 {
-    world
-        .reader
-        .conn()
-        .query_row(
-            "SELECT generation FROM card WHERE card_id = ?1",
-            [card],
-            |r| r.get(0),
-        )
-        .unwrap()
 }
 
 /// Three fresh `ready` cards for one case, in one write transaction.
@@ -154,22 +142,11 @@ struct Coverage {
     live_pairs: u32,
 }
 
-/// The card's current holder, read through the world's reader.
-fn holder(world: &World, card: i64) -> String {
-    world
-        .reader
-        .conn()
-        .query_row("SELECT holder FROM card WHERE card_id = ?1", [card], |r| {
-            r.get(0)
-        })
-        .unwrap_or_default()
-}
-
 /// REQ-7: random interleavings; errors are legal refusals and are simply dropped. The world
 /// is one temporary ledger for the whole property; each case takes three fresh cards and, at
-/// its end, walks them back through the system's own transitions (`reopen` then `release` for
-/// its holder and generation), so the next case starts overlap-free without the harness
-/// manufacturing a state the state machine itself cannot reach.
+/// its end, walks them back through the system's own transitions (`reopen` then `release`,
+/// an ended lease through `reclaim`), so the next case starts overlap-free without the
+/// harness manufacturing a state the state machine itself cannot reach.
 #[test]
 fn random_interleavings_keep_the_two_invariants() {
     let mut world = setup_world();
@@ -274,10 +251,11 @@ fn random_interleavings_keep_the_two_invariants() {
                 if reservation::release(&mut world.w, *card, &r.holder, r.generation).is_ok() {
                     break;
                 }
+                let reclaimer = *rng.pick(SESSIONS);
                 if reservation::reclaim(
                     &mut world.w,
                     *card,
-                    *rng.pick(SESSIONS),
+                    reclaimer,
                     r.generation,
                     "prop",
                     "case cleanup",
@@ -291,15 +269,18 @@ fn random_interleavings_keep_the_two_invariants() {
         }
     });
     // The driver must actually exercise the state machine (audit B1): the floors sit far
-    // below the observed counts of a healthy run.
-    assert!(coverage.reserve >= 500, "{coverage:?}");
-    assert!(coverage.renew >= 50, "{coverage:?}");
-    assert!(coverage.release >= 50, "{coverage:?}");
-    assert!(coverage.review >= 50, "{coverage:?}");
-    assert!(coverage.reopen >= 5, "{coverage:?}");
-    assert!(coverage.handoff >= 20, "{coverage:?}");
-    assert!(coverage.reclaim >= 5, "{coverage:?}");
-    assert!(coverage.aged >= 500, "{coverage:?}");
-    assert!(coverage.review_checks >= 50, "{coverage:?}");
-    assert!(coverage.live_pairs >= 100, "{coverage:?}");
+    // below the observed counts of a healthy run. A `PROP_ONLY` replay runs one case on
+    // purpose, so the floors stand down for it (re-audit N7).
+    if std::env::var("PROP_ONLY").is_err() {
+        assert!(coverage.reserve >= 500, "{coverage:?}");
+        assert!(coverage.renew >= 50, "{coverage:?}");
+        assert!(coverage.release >= 50, "{coverage:?}");
+        assert!(coverage.review >= 50, "{coverage:?}");
+        assert!(coverage.reopen >= 5, "{coverage:?}");
+        assert!(coverage.handoff >= 20, "{coverage:?}");
+        assert!(coverage.reclaim >= 5, "{coverage:?}");
+        assert!(coverage.aged >= 500, "{coverage:?}");
+        assert!(coverage.review_checks >= 50, "{coverage:?}");
+        assert!(coverage.live_pairs >= 100, "{coverage:?}");
+    }
 }
