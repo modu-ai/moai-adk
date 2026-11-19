@@ -40,8 +40,9 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     }
     let input = String::from_utf8_lossy(&bytes);
     let now = match args.now.as_deref() {
-        Some(s) => moai_cli::forge::policy::parse_utc(s)
-            .ok_or("--now must be YYYY-MM-DDTHH:MM:SSZ")?,
+        Some(s) => {
+            moai_cli::forge::policy::parse_utc(s).ok_or("--now must be YYYY-MM-DDTHH:MM:SSZ")?
+        }
         None => std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map_err(|_| "the clock is before 1970")?
