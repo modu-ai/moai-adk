@@ -7,6 +7,9 @@
 //! called. Nothing here touches the real HOME and no real Go or Rust build is started.
 #![cfg(unix)]
 
+mod common;
+use common::CleanEnv;
+
 use std::collections::BTreeSet;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
@@ -99,7 +102,7 @@ fn run_with(
     let mut cmd = Command::new("sh");
     cmd.arg(script_path)
         .args(args)
-        .env_clear()
+        .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("HOME", fakes.dir.path())
         .env("MOAI_RUST_BIN", fakes.rust())
@@ -440,7 +443,7 @@ impl Home {
         let mut cmd = Command::new("sh");
         cmd.arg("-c")
             .arg(line)
-            .env_clear()
+            .clean_env()
             .env("PATH", "/usr/bin:/bin")
             .env("HOME", self.dir.path())
             .env("PREVIEW", PREVIEW);
