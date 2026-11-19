@@ -767,6 +767,9 @@ const DIRECT_MERGES: &[&str] = &[
     "until false; do gh pr merge 5; done",
     "! gh pr merge 5",
     "{ gh pr merge 5; }",
+    // Two keywords in a row: both are peeled.
+    "if true; then ! gh pr merge 5; fi",
+    "while true; do { gh pr merge 5; }; done",
 ];
 
 /// A temporary work tree (a hand-made `.git` folder) with or without a `.moai` folder.
