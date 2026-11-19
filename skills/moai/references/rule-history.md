@@ -34,7 +34,7 @@ numbering of core-rules.md is fixed by `tests/core_rules_2876.rs` (rules 19–21
 | 15 | tree compared before "no changes" | #2876 | text only (the pattern the `*_changes_nothing` CLI tests follow) |
 | 16 | pointer | #2876 | text only → history |
 | 17 | rule change = decision record naming what it replaces | #2876 | `mode_workflow_steps.rs`, `mode_cards_53.rs` (phrase) |
-| 18 | final report: conclusion first, two lists | #2876 | `core_rules_2876.rs` (report-first phrase pinned) |
+| 18 | final report: conclusion first, two lists; test data marked | #2876 | `core_rules_2876.rs` (report-first phrase) and `mode_workflow_steps.rs` (`Mark test data as test data`) — both phrases stay in the live rule |
 | 19 | two public implementations first | #2876 | `core_rules_2876.rs` (verbatim) |
 | 20 | no design for unasked rare cases | #2876 | `core_rules_2876.rs` (verbatim) |
 | 21 | code and output win over instruction text | #2876 | `core_rules_2876.rs` (verbatim) |
@@ -62,7 +62,6 @@ Each entry keeps the moved rule's full text and the reason it left the live file
 12. Cite a tool's result only from a build of the tree being measured, or name the build's commit next to the tree's.
 14. Report a verification as claim, evidence (command and its verbatim output), baseline, gaps and remaining risk.
 16. When a delegated task does not come back, record what was delegated, that it did not return and why, before delegating it again.
-18 (tail). Mark test data as test data wherever it can be mistaken for real data.
 7 (tail). Code comments and commit messages follow the project's language setting.
 
 Reason for moving, one line each: one source (the #2876 extraction), no diff trigger, no
