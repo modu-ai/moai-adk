@@ -10,6 +10,11 @@
     "protocol_version": {"const": 1},
     "language": {"enum": ["en", "ko"]},
     "workflow_reference": {"type": "string"},
-    "local_file": {"enum": ["none", "ignored", "tracked"]}
+    "local_file": {"enum": ["none", "ignored", "tracked"]},
+    "picks": {
+      "description": "The choices the user picked for an AGENTS.md conflict (SPEC-20261119-agents-conflict-choices). Absent when empty; an id outside this list is refused as invalid input.",
+      "type": "array",
+      "items": {"enum": ["append-managed", "skip-conflicts", "claude-import"]}
+    }
   }
 }
