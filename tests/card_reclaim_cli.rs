@@ -922,7 +922,11 @@ fn reclaim_gates_refuse_a_worktree_with_uncommitted_or_unpushed_work() {
     let before = w.dump();
     let (kind, message) = refusal(&w.reclaim(Some(S_B), &name, "1"));
     assert_eq!(kind, "conflict", "{message}");
-    assert!(message.contains("uncommitted"), "{message}");
+    // The message names both counts (REQ-1), not only the two words.
+    assert!(
+        message.contains("holds 1 uncommitted change(s) and 0 unpushed commit(s)"),
+        "{message}"
+    );
     assert!(message.contains(&wt), "{message}");
     assert_eq!(w.dump(), before, "the refusal leaves every row as it was");
 
@@ -932,7 +936,10 @@ fn reclaim_gates_refuse_a_worktree_with_uncommitted_or_unpushed_work() {
     let before2 = w.dump();
     let (kind2, message2) = refusal(&w.reclaim(Some(S_B), &name2, "1"));
     assert_eq!(kind2, "conflict", "{message2}");
-    assert!(message2.contains("unpushed"), "{message2}");
+    assert!(
+        message2.contains("holds 0 uncommitted change(s) and 1 unpushed commit(s)"),
+        "{message2}"
+    );
     assert_eq!(w.dump(), before2, "the refusal leaves every row as it was");
 }
 
@@ -965,6 +972,54 @@ fn reclaim_gates_refuse_when_git_cannot_be_read() {
 }
 
 #[test]
+fn reclaim_gates_refuse_a_recorded_path_that_is_not_absolute() {
+    // A relative path names another folder under another working directory: "not found here"
+    // proves nothing, so the gate refuses instead of reading it as "gone" (audit-c43 B1).
+    let w = world();
+    let name = w.ended_card_at("wt-rel");
+    let before = w.dump();
+    let (kind, message) = refusal(&w.reclaim(Some(S_B), &name, "1"));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("not an absolute path"), "{message}");
+    assert_eq!(w.dump(), before, "the refusal leaves every row as it was");
+}
+
+/// Gives a folder's permissions back when the test ends, passed or not.
+#[cfg(unix)]
+struct Unlock(PathBuf);
+
+#[cfg(unix)]
+impl Drop for Unlock {
+    fn drop(&mut self) {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(&self.0, fs::Permissions::from_mode(0o755));
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn reclaim_gates_refuse_a_path_that_cannot_be_stat_ed() {
+    // `Path::exists` reads a permission error as "gone"; the gate must tell them apart.
+    use std::os::unix::fs::PermissionsExt;
+    let w = world();
+    let parent = w.dir.join("locked");
+    let inside = parent.join("wt-locked");
+    fs::create_dir_all(&inside).unwrap();
+    let name = w.ended_card_at(inside.to_str().unwrap());
+    let _unlock = Unlock(parent.clone());
+    fs::set_permissions(&parent, fs::Permissions::from_mode(0o000)).unwrap();
+    if fs::metadata(&inside).is_ok() {
+        eprintln!("skipped: this user can stat a mode-000 folder (root)");
+        return;
+    }
+    let before = w.dump();
+    let (kind, message) = refusal(&w.reclaim(Some(S_B), &name, "1"));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("could not be read"), "{message}");
+    assert_eq!(w.dump(), before, "the refusal leaves every row as it was");
+}
+
+#[test]
 fn reclaim_gates_self_reclaim_skips_the_worktree_gate() {
     let w = world();
     let wt = w.git_worktree(true, true);
@@ -989,4 +1044,9 @@ fn reclaim_limit_refuses_the_fourth_reclaim_on_the_command_line() {
     assert_eq!(kind, "conflict", "{message}");
     assert!(message.contains("reclaim limit"), "{message}");
     assert_eq!(w.dump(), before, "the refusal leaves every row as it was");
+
+    // The limit is per card: another card's first reclaim still goes through (audit-c43 NB-1).
+    let other = w.ended_card_at("/work/other");
+    let done = result(&w.reclaim(Some(S_B), &other, "1"));
+    assert_eq!(done["reservation"]["status"], json!("held"), "{done}");
 }

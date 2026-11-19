@@ -488,18 +488,29 @@ fn takeover_gates(project: &Path, home: &Path, card_id: i64, to_holder: &str) ->
 }
 
 /// REQ-1..3: refuse a worktree that exists and holds uncommitted or unpushed work, go on
-/// when the path is gone (nothing there can be orphaned), refuse as unverifiable when git
-/// cannot be read.
+/// only when the path is known to be gone (nothing there can be orphaned), refuse as
+/// unverifiable when the path cannot be told apart from "gone" or git cannot be read.
 fn worktree_gate(worktree: Option<&str>) -> Result<()> {
     let Some(wt) = worktree.filter(|w| !w.is_empty()) else {
         return Ok(());
     };
-    let path = Path::new(wt);
-    if !path.exists() {
-        return Ok(());
-    }
     let unreadable =
         || format!("card conflict in worktree unknown: the worktree {wt} could not be read");
+    let path = Path::new(wt);
+    // A relative path means a different folder under another working directory, so "it does
+    // not exist here" proves nothing (audit-c43 B1).
+    if !path.is_absolute() {
+        return Err(format!(
+            "card conflict in worktree unknown: the recorded worktree {wt} is not an absolute \
+             path, so it cannot be checked from here"
+        ));
+    }
+    // `Path::exists` turns a permission error into "gone"; only a clean "not found" is gone.
+    match path.try_exists() {
+        Ok(false) => return Ok(()),
+        Ok(true) => {}
+        Err(_) => return Err(unreadable()),
+    }
     // One changed or untracked path per line.
     let uncommitted = git_output(
         path,
