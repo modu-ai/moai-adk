@@ -69,4 +69,12 @@ created: 2026-11-19
 
 ## Result
 
-(조각 1 은 계획과 SPEC 만이에요. 조각 2~3 뒤에 채워요.)
+조각 2~3 — 2026-11-19, 가지 `spec/20261119-language-reach-applied-table`, 로컬 `v2026.11.0` `126cd72784` 를 병합한 head 에서 확인했어요(코드는 `skills/moai/workflows/project.md` 한 파일의 두 곳과 manifest 줄 하나, 시험 파일 하나예요).
+
+- AC-1·AC-2: `cargo test --locked --offline --test project_applied_table` 2/2 통과. 수리 전(RED)에는 두 시험 모두 실패였어요("project.md has no paragraph starting \"Final report (card C-87): \"" 와 Completion Check 에 표 이름 없음).
+- AC-3: `python3 -I tools/source_manifest.py check` 가 병합 뒤에도 ok(`changed: []`), 바뀐 manifest 줄은 `workflows/project.md` 하나뿐이고 `source_manifest.py write` 가 쓴 값이에요. `cargo test --test workflow_size_budget` 6/6, 등재 검사 중 `product_cli skill_package::` 와 `tests.source_manifest_test` 통과.
+- 변이 3개(커밋된 `project.md` 에서 하나씩): 상태 낱말 `HOLD` 삭제(M1)와 "never left out" 삭제(M2)는 `the_final_report_has_an_applied_settings_table` 이, Completion Check 구절 삭제(M3)는 `the_completion_check_names_the_table` 이 잡았어요. 끝에 `git status` 0줄.
+- AC-4 / 리더의 검사 묶음(head `fc8803fbde`, 병합 전): (1) `git diff --check` 0 · (2) `cargo fmt --check` 0 · (3) `rustfmt --check --edition 2021 src/ops/*.rs` 0 · (4) `cargo clippy --locked --offline --all-targets -- -D warnings` 0 · (5a) cargo test 5개 대상 0 · (5b) `python3 -m unittest tests.repo_scans_test tests.source_manifest_test tests.local_check_test tests.skill_references_test` 0 · (5c) `cargo test --bins` 0 · (6) `moai-cli trailer-check v2026.11.0..HEAD` 0 · `tools/repo_scans.json` 등재 검사 39개 전부 0.
+- manifest 예약은 한 커밋에 쓰고 약 25초 만에 풀었어요(리더 결정 3338 의 대기열).
+- 돌리지 않은 것: 저장소 전체 `cargo test`(PR CI 가 인용), macOS 이외, 실제 `/moai project` 세션에서 표가 그려지는지(문구는 사람이 읽는 안내라 시험은 문구만 고정해요 — Completion Check 가 요구해요).
+- 카드 기준 1 은 이 SPEC 의 일이 아니에요: `SPEC-20261117-language-reach` AC-1 이 met 이고 증거가 거기 있어요(카드 표시는 리더 확인 대기).
