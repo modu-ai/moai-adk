@@ -76,6 +76,36 @@ fn flaky_rule_names_the_card_and_what_it_records() {
     }
 }
 
+/// SPEC-20261119-flaky-rule-ac (card C-108 criterion 3): the `card add` example of the rule carries
+/// a criterion, so the flaky card it makes can be closed (`card done` refuses a card without a met
+/// criterion), and the criterion says what closes the card.
+#[test]
+fn flaky_rule_card_add_example_carries_a_criterion() {
+    let text = workflow();
+    let rule = rule(&text);
+    let head = "moai card add --kind task --title \"flaky: <test>\"";
+    let at = rule
+        .find(head)
+        .unwrap_or_else(|| panic!("the flaky rule lost its `card add` example: {rule}"));
+    let example = &rule[at..];
+    let example = &example[..example.find("`)").expect("the example ends with a backtick")];
+    let criterion = example
+        .strip_prefix(head)
+        .and_then(|rest| rest.strip_prefix(" --ac \""))
+        .and_then(|rest| rest.strip_suffix('"'))
+        .unwrap_or_else(|| panic!("the example has no ` --ac \"…\"` criterion: {example}"));
+    assert!(
+        !criterion.contains('"') && criterion.len() > 10,
+        "the criterion is one quoted phrase: {criterion}"
+    );
+    for word in ["fixed", "retired", "reason"] {
+        assert!(
+            criterion.contains(word),
+            "the criterion does not say what closes the card (`{word}`): {criterion}"
+        );
+    }
+}
+
 #[test]
 fn the_not_a_stop_sentence_points_to_the_flaky_rule() {
     let text = workflow();
