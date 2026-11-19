@@ -19,6 +19,7 @@ use serde_json::{json, Map, Value};
 use std::{
     fs,
     path::{Path, PathBuf},
+    process::{Command, Stdio},
 };
 
 type Result<T> = std::result::Result<T, String>;
@@ -263,6 +264,12 @@ pub struct Plan {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub drift: Vec<String>,
     pub plan_digest: String,
+    /// C-105 slice 2 (SPEC-20261119-plan-remote-branch): the remote state of the profile's
+    /// `work_flow.integration_branch` — `on_remote`, `warnings` — or absent when there is
+    /// nothing to check (no work_flow value, no git repository, no remote). Never serialized
+    /// when absent, so plans for profiles without the key keep their previous output.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub work_flow_remote: Option<Value>,
 }
 
 /// What `project-apply` last wrote, read back as the reconfigure baseline. Anything
@@ -543,6 +550,8 @@ fn plan_digest(p: &Plan) -> String {
     )
 }
 pub fn plan(root: &Path, mut profile: Profile) -> Result<Plan> {
+    // The remote check reads work_flow before `profile` moves into the delta table.
+    let work_flow = profile.work_flow.clone();
     if profile.project_id.is_empty() {
         profile.project_id = match existing_project_id(root)? {
             Some(id) => id,
@@ -593,10 +602,105 @@ pub fn plan(root: &Path, mut profile: Profile) -> Result<Plan> {
         action: action.into(),
         delta,
         drift,
+        work_flow_remote: work_flow_remote(root, work_flow.as_ref()),
         plan_digest: String::new(),
     };
     p.plan_digest = plan_digest(&p);
     Ok(p)
+}
+
+/// C-105 slice 2 (SPEC-20261119-plan-remote-branch): whether the profile's integration
+/// branch exists on the project's remote, and how far it sits behind the remote's default
+/// branch. A name that must never reach git as an argument (leading `-`, whitespace, `..`,
+/// over 100 bytes, `HEAD`) is refused without running any git command; a repository or a
+/// remote that is missing answers `None` (the plan output stays as it was); a git failure
+/// becomes an `unavailable` warning and the plan still succeeds. Only fixed words and
+/// verified 40-hex SHAs travel as git arguments — the branch name never does.
+fn work_flow_remote(root: &Path, work_flow: Option<&WorkFlowSettings>) -> Option<Value> {
+    let branch = work_flow?.integration_branch.as_deref()?;
+    if !branch_name(branch) {
+        return Some(json!({
+            "on_remote": false,
+            "warnings": [format!(
+                "refused: the integration branch is not a safe branch name; no git command ran for it"
+            )],
+        }));
+    }
+    let git = |args: &[&str]| -> std::result::Result<String, String> {
+        let mut cmd = Command::new("git");
+        crate::identity::scrub_git_env(&mut cmd);
+        let out = cmd
+            .arg("-C")
+            .arg(root)
+            .args(args)
+            .stdin(Stdio::null())
+            .output()
+            .map_err(|e| format!("cannot run git: {e}"))?;
+        if out.status.success() {
+            Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+        } else {
+            Err(String::from_utf8_lossy(&out.stderr).trim().to_string())
+        }
+    };
+    // REQ-5: nothing to check without a repository and a remote.
+    let has_remote = git(&["remote"])
+        .map(|s| !s.trim().is_empty())
+        .unwrap_or(false);
+    if !has_remote {
+        return None;
+    }
+    let ls = match git(&["ls-remote", "--symref", "origin"]) {
+        Ok(s) => s,
+        Err(e) => {
+            return Some(json!({
+                "on_remote": false,
+                "warnings": [format!("unavailable: git ls-remote failed: {e}")],
+            }))
+        }
+    };
+    let is_sha = |s: &str| s.len() == 40 && s.bytes().all(|b| b.is_ascii_hexdigit());
+    let mut on_remote = false;
+    let mut default_target: Option<String> = None;
+    let mut default_sha: Option<&str> = None;
+    let mut branch_sha: Option<&str> = None;
+    for line in ls.lines() {
+        // `--symref` prints the symref first, as `ref: <target>\tHEAD`; the ref lines follow
+        // as `<sha>\t<ref>`.
+        let Some((value, r)) = line.split_once('\t') else {
+            continue;
+        };
+        if r == "HEAD" {
+            // The symref line (`ref: <target>\tHEAD`) names the default branch; the plain
+            // `HEAD` sha line after it carries no target and must not reset ours.
+            if let Some(target) = value.strip_prefix("ref: ") {
+                default_target = Some(target.to_string());
+            }
+        } else if r == format!("refs/heads/{branch}") && is_sha(value) {
+            on_remote = true;
+            branch_sha = Some(value);
+        } else if default_target.as_deref() == Some(r) && is_sha(value) {
+            default_sha = Some(value);
+        }
+    }
+    let mut warnings: Vec<String> = Vec::new();
+    if on_remote {
+        if let (Some(b), Some(d)) = (branch_sha, default_sha) {
+            if let Ok(count) = git(&["rev-list", "--count", &format!("{b}..{d}")]) {
+                if let Ok(n) = count.trim().parse::<u64>() {
+                    if n > 0 {
+                        warnings.push(format!(
+                            "behind: {branch} is {n} commits behind the remote default branch"
+                        ));
+                    }
+                }
+            }
+        }
+    } else {
+        warnings.push(format!(
+            "missing: {branch} does not exist on the remote the branches go to"
+        ));
+    }
+    Some(json!({"on_remote": on_remote, "warnings": warnings}))
 }
 
 /// Rebuilds the profile object for an `update`: applied keys take the desired value,
