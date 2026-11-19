@@ -82,4 +82,43 @@ v2 가 v1 과 다른 점은 세 가지뿐이에요:
 
 ## Result
 
-(filled when the work is done)
+미리보기만 만들었어요. 실제 HOME 의 어떤 파일도 쓰지 않았고(읽기: 설치된 스크립트를 `preview/moai.v1` 로 한 번 복사, `cmp` 같음), 프로브는 임시 HOME 에서만 돌렸어요. 파일: `preview/moai.v1`(1747 B, 설치본 그대로), `preview/moai.v2`, `preview/v1-to-v2.diff`(`diff -u moai.v1 moai.v2`, 37줄, `sh -n moai.v2` 통과).
+
+### 무엇이 바뀌나 (v1 → v2)
+
+| 낱말 | v1 | v2 | 영향 받는 곳 (S1 note 2777, 2026-11-19 측정) |
+|---|---|---|---|
+| `statusline` | Go | Rust | Orca 프로필 3곳(05fa6229, b784936c, e1232167)의 `moai_status_line.sh`·`statusline.sh` 가 `moai statusline` 을 불러요 → Go 렌더 대신 Rust 3줄 렌더가 나와요(의도한 변화). 이 저장소·mo.ai.kr 의 statusLine 은 `path/moai-cli statusline` 직통이라 영향 없어요 |
+| `session` | Go | Rust | 명령어·스킬·에이전트 파일에서 `moai session` 을 CLI 로 부르는 곳 0(15곳 글자는 `list active moai sessions` 설명문 하나). 다만 Go `session` 은 다중 세션 등록부(`.moai/state/active-sessions.json`) 도구이고 Rust `session` 은 옛 Claude 시작 명령이라 뜻이 달라요 — 호출자가 0 이라 깨지는 곳은 없지만 리더가 확인할 결정이에요 |
+| `spec` (Rust 동작) | Go | Rust | `new` `check` `list` `show` `take` `close` `help` `-h` `--help` 와 `moai spec` 단독. 스킬 10줄·도구 2줄·레인 지시문의 `moai spec …` 가 이제 Rust `spec` 을 불러요(F1 해소) |
+| `spec` (Go 에만 있는 동작) | Go | Go | `status` `drift` `view` `lint` `audit` `archive` `ceiling`. 제 컴퓨터 Go 세대 프로젝트 16곳이 `moai spec lint`(85곳)·`moai spec audit`(5곳)을 지금도 불러요(`grep -rhoE` 로 `.claude/{commands,skills,agents}`·`.codex` 를 셈) — Rust `spec` 에는 `lint`·`audit` 가 없으니(종료 2) Go 로 남겨요 |
+| 나머지 60개 | Go | Go | 그대로. 호출자가 있는 것은 `hook`(다른 프로젝트 5곳의 `.codex/hooks.json`)뿐이고 나머지 59개는 설정·저장소 비-시험 기준 호출자 0 — 표시: **호출자 없음** (`init` 포함) |
+
+### 임시 HOME 프로브 (`MOAI_GO_BIN`=실제 `moai.old`, `MOAI_RUST_BIN`=설치된 4.2647.8, `sh preview/moai.vN <낱말> --help`, 첫 줄)
+
+| 호출 | v1 | v2 |
+|---|---|---|
+| `statusline --help` | Go "Generate a compact statusline string…" | Rust "Render the Claude Code status line" |
+| `session --help` | Go "Manage the multi-session coordination registry…" | Rust "Start a Claude Code session (legacy form)" |
+| `spec check --help` | Go "Manage SPEC documents in .moai/specs/ directory." | Rust "Reads only. Check SPEC files and report problems by code" |
+| `spec lint --help` | Go "Accepted arguments (SPEC-SPEC-LINT-ID-ARG-001)…" | Go (같음) |
+| `spec audit --help` | Go "Scan .moai/specs/SPEC-*/ directories…" | Go (같음) |
+| `hook --help` | Go "Execute Claude Code hook event handlers…" | Go (같음) |
+| `card --help`, `--version` | Rust | Rust (같음; `--version` 첫 줄 `moai-cli 4.2647.8 (rust)`) |
+
+종료 코드는 모두 0. 이 프로브는 도움말만 불러요: 실제 `hook` 이벤트·`statusline` 렌더·`spec check` 실행은 돌리지 않았어요.
+
+### 적용과 되돌리기 (S4 만 — 리더가 미리보기와 함께 보여 드리고 사용자가 이 세션에서 고른 뒤에만 해요; 이 SPEC 은 실행하지 않아요)
+
+`STAMP=$(date -u +%Y%m%dT%H%M%SZ)` 와 `PREVIEW=<이 저장소>/.moai/specs/SPEC-20261119-switch-script-v2/preview` 를 먼저 정해요. 적용은 두 곳(`~/.moai-cli/path/moai`, `~/go/bin/moai`)의 옛 스크립트를 `moai.before-$STAMP` 로 남기고 새 것을 같은 폴더에 `moai.new` 로 쓴 뒤 `mv` 로 바꿔요(삭제 없음, `moai.old`·Go 바이너리·다른 `moai.before-*` 는 그대로).
+
+- apply lines (S4 only, after the user picks): `for d in "$HOME/.moai-cli/path" "$HOME/go/bin"; do cp -p "$d/moai" "$d/moai.before-$STAMP" && cp "$PREVIEW/moai.v2" "$d/moai.new" && chmod 755 "$d/moai.new" && mv "$d/moai.new" "$d/moai" || break; done`
+- undo line: `for d in "$HOME/.moai-cli/path" "$HOME/go/bin"; do mv "$d/moai.before-$STAMP" "$d/moai" || break; done`
+
+두 줄 모두 `tests/switch_script_v2.rs::the_undo_line_restores_v1_byte_for_byte` 가 임시 HOME 에서 실제로 돌려요(적용 뒤 v2 와 같고, 되돌리면 v1 과 바이트까지 같고, 저장본이 사라져요).
+
+### 리더 결정이 필요한 것 (되돌릴 수 있음, 범주 none)
+
+1. `spec close`는 두 빌드에 다 있어요. v2 는 Rust 로 보내요(이 저장소 호출이 Rust 용). Go 세대 프로젝트의 명령·스킬·에이전트 파일은 `spec close` 를 안 불러요(`lint`·`audit` 만). 기본값: 그대로 Rust.
+2. `session` 은 호출자가 0 이지만 뜻이 다른 두 도구예요. 기본값: 리더 지시대로 Rust(v2 에 반영). Go 로 두려면 `session` 을 Go 목록에 되돌리면 돼요.
+3. 적용 전에 확인할 것: Orca 프로필 상태줄 스크립트 3개를 누가 실행하는지 못 찾았어요(S1 한계). 안 쓰는 스크립트라면 `statusline` 변화의 영향은 0 이에요.
