@@ -24,13 +24,15 @@ harness는 임시 HOME에서만 돌고 실제 HOME을 읽지 않아요. 영역�
 
 ## Requirements
 
-- REQ-1: The `check` job of `ci.yml` shall run `tools/smoke/run.sh` for the areas `install` and `update` in a step placed after the `Check set` step.
+- REQ-1: The `check` job of `ci.yml` shall run `tools/smoke/run.sh` for the areas `install` and `update` in a step placed after the check set, which is the last step that is named `Check set…` or runs `tools/local_check.sh`.
 - REQ-2: The smoke step shall run only when `CI_SCOPE` is `full`.
 - REQ-3: The smoke step shall run the debug binary of this job (`${CARGO_TARGET_DIR:-target}/debug/moai-cli`, named with `--bin`) after `cargo build --offline --locked --bin moai-cli` has made sure it exists.
 - REQ-4: The smoke step shall append one line per area to the job summary that carries the exit code and the last line of the harness output.
 - REQ-5 (REQ-1): IF an area ends with a non-zero exit, THEN the smoke step shall still run the other area and then fail the job.
-- REQ-6: The `ci.yml` test shall read the workflow text and fail with the name of each part that is missing: the step, its place after `Check set`, the `full` condition, the build command, `--bin`, an area, the summary line, or the failing exit.
+- REQ-6: The `ci.yml` test shall read the workflow text and fail with the name of each part that is missing: the step, its place after the check set, the `full` condition, the build command, `--bin`, an area, the summary line, the failing exit, or a `continue-on-error` on the step.
 - REQ-7 (REQ-6): IF the workflow text lacks the step, THEN the `ci.yml` test shall fail with `smoke step missing` and no other claim.
+- REQ-8 (REQ-5): The `ci.yml` test shall run the `run` body of the smoke step under `bash --noprofile --norc -eo pipefail` with a fake `cargo` and a fake `tools/smoke/run.sh` and shall check that both areas ran on the job's debug binary, that the exit is 1 when any area failed and 0 otherwise, and that the job summary got one line per area.
+- REQ-9 (REQ-8): IF the step stops after the first failing area, THEN the run test shall fail, because the second area was not called.
 
 ## Acceptance
 
@@ -40,6 +42,8 @@ harness는 임시 HOME에서만 돌고 실제 HOME을 읽지 않아요. 영역�
   verify: `python3 -m unittest tests.ci_smoke_step_test.RealWorkflowTest`
 - AC-3: 이웃 검사.
   verify: `python3 -m unittest tests.github_assets_test`; `python3 -m unittest tests.ci_scope_test`; `python3 -m unittest tests.local_check_test`
+- AC-4 (REQ-5, REQ-8, REQ-9): 시험이 단계의 `run` 본문을 가짜 `cargo` 와 가짜 `tools/smoke/run.sh` 로 실제로 실행해서, 둘 다 통과하면 종료 0, install 만·update 만·둘 다 실패하면 종료 1이고 두 영역이 항상 불리며 요약이 영역마다 한 줄이에요. 첫 실패에서 `break` 하도록 바꾼 글은 이 시험이 잡아요.
+  verify: `python3 -m unittest tests.ci_smoke_step_test.BehaviorTest`
 
 ## Scope
 
@@ -48,6 +52,7 @@ harness는 임시 HOME에서만 돌고 실제 HOME을 읽지 않아요. 영역�
 
 ## Plan
 
+0. 수리(tier 2 FAIL B1·N4, 카드 노트 2878): 글을 읽는 시험은 `|| failed=1` 를 `|| { failed=1; break; }` 로 바꿔도 통과했어요. 그래서 단계 본문을 실제로 실행하는 시험(`BehaviorTest`)을 더하고, "Check set 뒤" 를 이름 글자 대신 순서로 읽어요.
 1. SPEC을 쓰고 시험을 먼저 더해요(RED): 단계가 아직 없어서 `smoke step missing`으로 실패해야 해요.
 2. harness가 Linux에서 되는지 VM에서 읽어요(`install`·`update`).
 3. `ci.yml`에 단계를 더해요(GREEN).
@@ -59,6 +64,7 @@ harness는 임시 HOME에서만 돌고 실제 HOME을 읽지 않아요. 영역�
 - `cargo nextest run`이 `moai-cli` 바이너리를 `target/debug`에 만들지 않으면 harness가 종료 2로 끝나요 → 단계가 `cargo build --offline --locked --bin moai-cli`를 먼저 돌려 바이너리를 보장해요(이미 있으면 몇 초).
 - harness가 CI의 Linux나 macOS에서 다르게 동작해요 → 로컬 Linux VM에서 두 영역을 읽어요(AC-2); macOS는 로컬 맥에서 같은 harness를 돌린 결과(SPEC-20261119-smoke-harness)가 있어요.
 - 단계가 `check` 잡을 느리게 해요 → 영역당 몇 초(`all`이 약 10초)라 허용해요.
+- `Check set` 단계가 실패하면 `check` 잡은 거기서 멈춰 스모크 단계가 돌지 않아요(GitHub Actions 의 기본 `if: success()`). 이 단계는 점검 묶음이 통과한 뒤에만 의미가 있고 잡은 어차피 실패이므로 그대로 둬요(감사 N1).
 - `ci.yml`의 다른 시험(`tests/github_assets_test.py`)이 단계 목록을 이름으로 찾아요 → 새 단계는 이름으로 추가하고 기존 이름·순서를 바꾸지 않아요.
 
 ## Decisions
