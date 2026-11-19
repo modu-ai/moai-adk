@@ -74,4 +74,13 @@ The settings write and the revert themselves do not change. The skill text `skil
 
 ## Result
 
-- AC-1: pending
+- AC-1: met — `models_revert_puts_the_earlier_file_back` passes (operation `models.revert`, state `reverted`, byte for byte, marker written, no settings text printed)
+- AC-2: met — `models_revert_refuses_what_it_cannot_prove_is_its_own` passes (empty and placeholder reference, id of another shape, unknown receipt; each with its pinned reason, file unchanged)
+- AC-3: met — `models_revert_skips_a_file_changed_after_the_save` passes (`skipped`, `changed_since_apply`, no marker)
+- AC-4: met — `help_layout` 10 passed after the four golden files gained only the `models-revert` line (`MOAI_HELP_GOLDEN_WRITE`, diff read: 5 added lines); `models_revert_is_in_the_help` passes; `--bin moai` 28 passed (example commands exist in the command tree)
+- AC-5: met — `--lib update_models::` passes with `{"before_sha256": null}` added to the damaged receipts
+- AC-6: met — `launcher_settings_receipt` 11, `hot_file_ops_merge` 3, `update_keys_cli` 9, `update_model_pick` 10, `update_tux_golden` 14 passed, `cargo fmt --check` 0, `cargo clippy --lib --tests -- -D warnings` 0
+
+RED before the command existed: `models_revert_cli` failed 4 of 4 (`unrecognized subcommand 'models-revert'`; the refusal test failed on the pinned reasons).
+Mutation 6 mutants, 5 killed, 1 survived: N1 operation name, N2 reference dropped, N3 receipt swapped, N5 listing removed, N6 hash-only half-null accepted all KILLED; N4 (the `EXAMPLES` row removed) survives because no per-command help or golden prints that row, so nothing can observe it.
+Not run: the full local `cargo test`, Python tty tests (terminal screens unchanged), Linux, Windows.
