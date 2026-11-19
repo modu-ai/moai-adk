@@ -57,11 +57,12 @@ This slice changes two things in `card criterion-add`: the event and the answer 
 
 ## Plan
 
-1. After PR 3230 merges: take the tip, add `src/ops/card.rs` and the tests to the reservation once C-116 releases them.
-2. Tests first (RED): the four named tests, which fail before the code (no `session` key, `criteria` counted from the highest number).
-3. `workflow::add_criteria` takes `session: Option<&str>` (one line, the author limit, as a note's session is checked), writes it into the payload and counts rows in the same transaction.
-4. `card criterion-add` reads the session with `session_holder("criterion-add", env).ok()`, passes it and prints it.
-5. Mutants, neighbours, SPEC Result with one line per AC.
+Two slices, because `src/ops/card.rs` is reserved by another card (C-96 now) and the writer can change without it:
+
+- Slice A (`src/ledger/workflow.rs`, `tests/ledger_workflow.rs`): REQ-1, REQ-2, REQ-3 and REQ-5, REQ-6 at the writer. `workflow::add_criteria_as(w, card, by, session, texts)` takes `session: Option<&str>` (one line, the author limit, as a note's session is checked), writes it into the payload (`null` without one) and returns the row count read in the same transaction; `add_criteria` stays as the call without a session and forwards `None`, so `src/ops/card.rs` compiles unchanged.
+- Slice B (after `src/ops/card.rs` is free): `card criterion-add` reads the session with `session_holder("criterion-add", env).ok()`, calls `add_criteria_as`, prints `session`, the help says it (REQ-4, REQ-7, AC-1, AC-2, AC-4 and the `card_criterion_add_cli` half of AC-3); `add_criteria` is dropped if nothing calls it any more.
+
+Order inside a slice: tests first (RED), then the code, then mutants, neighbours and the SPEC Result with one line per AC.
 
 ## Risks
 
@@ -75,6 +76,7 @@ This slice changes two things in `card criterion-add`: the event and the answer 
 - D-1: the session goes in the event payload under the key `session`, the name the note event uses, so one query reads both kinds. Option not taken: a second actor column (a table change, forbidden).
 - D-2: a missing session is `null`, not an absent key, so a reader tells "this session had no id" from "the row is older than this change" by `session` being present.
 - D-3: the count is `SELECT COUNT(*)` after the inserts, in the same transaction. Option not taken: counting in memory from the highest number, which is the defect.
+- D-5: the writer gets a new function with the session instead of one more parameter on `add_criteria`, so slice A compiles while `src/ops/card.rs` is held by another card; the earlier writer test changes its expected payload to carry `"session": null`, because every write now goes through the same function and REQ-2 says a missing id is `null`. Option not taken: leave `add_criteria` writing no key, which keeps two shapes of event for one kind.
 - D-4: this slice waits for card C-116 to release `src/ops/card.rs` and the operations document; the document row for `card criterion-add` is updated in the implementation if C-116 has released it by then, otherwise it stays a note on the card and the help is the contract.
 
 ## Result
