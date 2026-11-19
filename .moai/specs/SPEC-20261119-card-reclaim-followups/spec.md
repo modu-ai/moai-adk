@@ -73,4 +73,8 @@ parent: SPEC-20261119-card-reclaim
 
 ## Result
 
-(RUN 과 VERIFY 뒤에 AC 마다 한 줄 씁니다.)
+- AC-1: met — `card_reclaim_cli` `reclaim_help_names_reopen_and_the_refusal_kinds` (RED 먼저: 도움말에 `card reopen` 이 없어 실패); 도움말이 `review` 카드는 `card reopen` 먼저, 그 뒤 `card release` 라고 하고 `conflict`·`not_found`·`invalid_input` 을 각각 무엇인지와 함께 말함; 운영 문서 `card reclaim` 줄과 `reclaim` 항목도 같은 말로 고침(manual: 문서를 읽어 확인). 변이 F8(도움말에서 reopen 안내 지움) 잡힘
+- AC-2: met — `lease_ended_includes_the_lease_end_second`(N-1·N·N+1 초: 거짓·참·참, RED 먼저: `lease_ended` 없음 → E0425 3개), 울타리·`release`·`reclaim` 이 모두 `lease_ended` 를 씀; 통합 시험 `reclaim_lease_end_second_is_the_edge` 는 시계에 정확한 초를 기대지 않는 주석으로 바꿈. 변이 F1(`<`), F2(울타리가 만료 안 시킴), F3(release 의 lease_live 뒤집기), F4(reclaim 의 검사 뒤집기) 모두 잡힘
+- AC-3: met — `reclaim_refuses_a_secret_shaped_reason` (RED 먼저: 회수가 성공해 종료 코드 0): `sk-` 키 모양과 `password=` 모양 이유가 `invalid_input`("card reclaim refused: … secret"), 거절 글에 그 낱말이 없고 7개 표의 모든 행이 그대로이며 평범한 이유로는 회수됨. 변이 F5(검사 끔), F6(거절 글이 이유를 되풀이), F7(한 낱말은 통과) 모두 잡힘
+- AC-4: met — `the_old_generation_cannot_move_or_close_the_card` (회수 뒤 옛 세대의 `pr`·`done`·`reopen`·`review` 4개가 `conflict` "is stale", 카드·예약·링크 표 그대로, `fence_reject` 사건이 정확히 4개 늘고, 새 보유자는 기준 3 충족 뒤 `done` 으로 닫음). 변이 F9(낮은 세대를 stale 로 안 부름) 잡힘
+- AC-5: met — card_reclaim_cli 8, ledger_reservation 27, card_dispatch_cli 25, card_work_cli 24, card_cli 14, card_spec_cli 11, card_import_cli 9, card_export_cli 17, card_summary_cli 16, card_times_cli 7, help_layout 10, product_cli 79, home_isolation_scan 18, git_env_scrub 3, ac_command_lint 5, hot_file_ops_merge 3, mode_cards_53 9, `--lib` 1441, `--bin moai` 28 통과; `cargo fmt --check` 와 `cargo clippy --all-targets -- -D warnings` 종료 코드 0; 변이 9개 중 9개 잡힘(작업 트리는 변이 뒤 원상태)
