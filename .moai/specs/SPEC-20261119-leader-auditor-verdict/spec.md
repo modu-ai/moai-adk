@@ -10,7 +10,7 @@ created: 2026-11-19
 
 ## Intent
 
-감사 중앙화(사용자 결정 2026-11-16, 리더가 `moai-audit` 에이전트를 배정) 뒤에도 `src/gate.rs` 의 `auditor` 파서는 `agent-<n>`·`pr-<n>` 레인 이름만 읽어요. 리더가 배정한 감사 에이전트의 판정 줄은 감사자 이름을 레인 이름으로 쓰지 않으니 tier 1/2 의 "비작성자 PASS" 로 인식되지 않고, 병합 관문이 영원히 기다려요. 이 SPEC 은 판정 본문의 고정 줄 `auditor: leader-audit <token>` 을 감사 관문이 감사자로 읽게 하고, 판정이 관문을 통과하면 CI 작업이 `moai/audit` 커밋 상태를 직접 게시해 사람이 손으로 상태를 게시할 때까지 PR 이 BLOCKED 로 대기하지 않게 해요(카드 C-95, 워크플로우 W2).
+감사 중앙화(사용자 결정 2026-11-16, 리더가 `moai-audit` 에이전트를 배정) 뒤에도 `src/gate.rs` 의 `auditor` 파서는 `agent-<n>`·`pr-<n>` 레인 이름만 읽어요. 리더가 배정한 감사 에이전트의 판정 줄은 감사자 이름을 레인 이름으로 쓰지 않으니 tier 1/2 의 "비작성자 PASS" 로 인식되지 않고, 병합 관문이 영원히 기다려요. 이 SPEC 은 판정 본문의 고정 줄 `auditor: leader-audit <token>` 을 감사 관문이 감사자로 읽게 하고, 판정이 관문을 통과하면 CI 작업이 `moai/audit` 커밋 상태를 직접 게시해 사람이 손으로 상태를 게시할 때까지 PR 이 BLOCKED 로 대기하지 않게 해요(워크플로우 W2).
 
 ## Non-goals
 
@@ -69,3 +69,4 @@ created: 2026-11-19
 - AC-2: met — `cargo test --locked --offline --test audit_gate_cli` 4 passed 0 failed(`the_result_names_the_comment_and_the_workflow_posts_the_status`: pass=댓글 5·open-fail=댓글 6·tier 0 pass=null, YAML 고정 `statuses: write`·`statuses/$PR_HEAD`·`moai/audit`·`-f state=`); `.github/workflows/audit-gate.yml` 이 상태를 성공·실패 모두 게시하고 실패 시 비영 종료.
 - AC-3: met — 같은 lib 시험: 비회원 위조 누락(NONE), `id:key` 토큰은 문자집합(`:` 불가)으로 거부, 베어 세션 id 토큰은 `leader_token` 작성자 검사로 거부. 변이 2 KILLED — M1(`leader_token` 작성자 검사 제거)은 첫 실행에서 생존(`id:key` 토큰이 문자집합에서 먼저 걸려 검사 미도달 — 시험 공백), 베어 id 사례 추가 후 exit 101; M2(문자집합 무효화) exit 101. 복원 후 `diff -q` 클린.
 - 이웃: `cargo test --locked --offline --bin moai` 28 passed·`--bin moai-cli` 28 passed(무필터), `cargo fmt --check` 0, `rustfmt --check --edition 2021 src/ops/*.rs` 0, `cargo clippy --offline --locked --all-targets -- -D warnings` 0. RED 먼저: lib 신규 2 실패(101) + cli 1 실패(101).
+- tier 2 라운드(리더 감사, 2026-11-19): FAIL — B1(python 시험 파일 2건, 파일은 예약 중이라 이 SPEC 밖), B2(상태 게시 단계가 부분 문자열만 고정 — 워크플로 변이 W1-W4 생존), N1(오류 경로 무게시), N5(오래된 읽기전용 주석), N6(죽은 빈 검사·토큰 길이 무한), N2·N3·N7 비차단, 소유자 결정 5건은 사용자 선택. 수리(같은 날): B2 는 `run:` 블록을 stub gh·stub 게이트로 실제 실행해 게시 상태·종료 코드를 단언하는 시험(`the_workflow_step_posts_the_status_the_gate_decides` — pass/fail/missing/error 네 시나리오, N1 포함)으로, N1 은 오류 경로가 failure 를 게시하도록, N5 는 주석을 현재 토큰 권한으로, N6 은 죽은 검사를 64자 상한 교체로. B1 은 예약 파일이라 이 SPEC 이 고치지 않아요(리더가 예약 레인과 조율). 병합은 사용자의 보호 관련 선택 3건 전까지 보류(리더 결정).

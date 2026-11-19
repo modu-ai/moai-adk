@@ -5,6 +5,7 @@
 mod common;
 
 use serde_json::{json, Value};
+use std::fs;
 use std::process::{Command, Output, Stdio};
 
 const H: &str = "1111111111111111111111111111111111111111";
@@ -187,5 +188,130 @@ fn the_result_names_the_comment_and_the_workflow_posts_the_status() {
         "-f state=",
     ] {
         assert!(yaml.contains(pin), "audit-gate.yml lacks {pin:?}");
+    }
+}
+
+/// Card C-95 audit B2 (tier 2): the status-posting step is executed, not grepped. The literal
+/// `run:` block of the Audit gate step runs under bash with a stub `gh` that records what it
+/// posts and a stub gate binary that answers per scenario (the real python3 parses the
+/// envelope). pass posts `success` and exits 0; fail and missing post `failure` and exit 1; a
+/// gate error posts `failure` too and exits 1 (audit N1 — an earlier success must not survive a
+/// broken gate run).
+#[test]
+fn the_workflow_step_posts_the_status_the_gate_decides() {
+    let yaml = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(".github/workflows/audit-gate.yml"),
+    )
+    .unwrap();
+    let step_at = yaml
+        .find("- name: Audit gate")
+        .expect("the Audit gate step");
+    let run_at = yaml[step_at..].find("run: |").expect("the run block") + step_at;
+    let block: Vec<&str> = yaml[run_at + "run: |".len()..]
+        .lines()
+        .skip(1)
+        .take_while(|l| l.starts_with("          ") || l.trim().is_empty())
+        .map(|l| l.strip_prefix("          ").unwrap_or(l))
+        .collect();
+    let block = block.join("\n");
+    assert!(
+        block.contains("statuses/$PR_HEAD"),
+        "the wrong block: {block}"
+    );
+
+    let scenarios: &[(&str, &str, &str, Option<i32>)] = &[
+        (
+            "pass",
+            r#"{"ok":true,"result":{"state":"pass","comment":5}}"#,
+            "success",
+            Some(0),
+        ),
+        (
+            "fail",
+            r#"{"ok":true,"result":{"state":"fail","comment":6}}"#,
+            "failure",
+            Some(1),
+        ),
+        (
+            "missing",
+            r#"{"ok":true,"result":{"state":"missing","comment":null}}"#,
+            "failure",
+            Some(1),
+        ),
+        (
+            "error",
+            r#"{"ok":false,"error":{"message":"boom"}}"#,
+            "failure",
+            Some(1),
+        ),
+    ];
+    for (name, envelope, want_state, want_code) in scenarios {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let bin = tmp.path().join("bin");
+        fs::create_dir_all(&bin).unwrap();
+        fs::write(
+            bin.join("gh"),
+            format!(
+                "#!/bin/sh\nfor a in \"$@\"; do printf '%s\\n' \"$a\"; done >> {}\n",
+                bin.join("gh-args.txt").display()
+            ),
+        )
+        .unwrap();
+        let target = tmp.path().join("target/debug");
+        fs::create_dir_all(&target).unwrap();
+        let envelope_file = tmp.path().join("envelope.json");
+        fs::write(&envelope_file, envelope).unwrap();
+        fs::write(
+            target.join("moai"),
+            format!("#!/bin/sh\ncat \"{}\"\nexit 1\n", envelope_file.display()),
+        )
+        .unwrap();
+        for exe in [bin.join("gh"), target.join("moai")] {
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let mut perm = fs::metadata(&exe).unwrap().permissions();
+                perm.set_mode(0o755);
+                fs::set_permissions(&exe, perm).unwrap();
+            }
+        }
+        let script = tmp.path().join("step.sh");
+        fs::write(&script, format!("#!/bin/bash\nset -o pipefail\n{block}\n")).unwrap();
+        let out = std::process::Command::new("bash")
+            .arg(&script)
+            .env(
+                "PATH",
+                format!(
+                    "{}:{}",
+                    bin.display(),
+                    std::env::var("PATH").unwrap_or_default()
+                ),
+            )
+            .env("GH_TOKEN", "fixture-token")
+            .env("PR_NUMBER", "9")
+            .env("PR_HEAD", H)
+            .env("REPO", "o/r")
+            .current_dir(tmp.path())
+            .output()
+            .expect("run the step block");
+        let recorded = fs::read_to_string(bin.join("gh-args.txt")).unwrap_or_default();
+        assert!(
+            recorded.contains(&format!("state={want_state}")),
+            "{name}: posted {recorded:?}"
+        );
+        assert!(
+            recorded.contains("context=moai/audit"),
+            "{name}: {recorded:?}"
+        );
+        assert!(
+            recorded.contains(&format!("repos/o/r/statuses/{H}")),
+            "{recorded:?}"
+        );
+        assert_eq!(
+            out.status.code(),
+            *want_code,
+            "{name}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
     }
 }

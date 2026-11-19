@@ -11,8 +11,9 @@
 # status creator to the GitHub Actions app stays the user's click (SPEC-20261119-leader-auditor-verdict, Risks).
 #
 # The gate is built from the base commit, not the PR head, so a PR cannot change the rule that
-# judges it. `pull_request` only (no `pull_request_target`): the token is read-only and a fork
-# PR gets no secrets. A verdict posted after the run does not start a new one (an
+# judges it. `pull_request` only (no `pull_request_target`): a fork PR gets no secrets, and the
+# token's one write is the `moai/audit` status itself (statuses: write, card C-95). A verdict
+# posted after the run does not start a new one (an
 # `issue_comment` workflow runs from the default branch, which is not v2026.11.0): re-run this
 # job after posting a verdict (`gh run rerun <run-id>`); the job reads the comments when it runs.
 name: audit-gate
@@ -71,7 +72,8 @@ jobs:
             | tee /tmp/audit-gate-result.json > /dev/null
           state=$(python3 -c 'import json; d=json.load(open("/tmp/audit-gate-result.json")); print(d["result"]["state"] if d.get("ok") else "")')
           if [ -z "$state" ]; then
-            echo "audit-gate run failed; no status posted" >&2
+            gh api -X POST "repos/$REPO/statuses/$PR_HEAD" -f state=failure -f context=moai/audit -f "target_url=https://github.com/$REPO/pull/$PR_NUMBER" -f description="audit gate error"
+            echo "audit-gate run failed; moai/audit failure posted" >&2
             exit 1
           fi
           comment=$(python3 -c 'import json; d=json.load(open("/tmp/audit-gate-result.json")); c=d["result"].get("comment"); print(f"#issuecomment-{c}" if c else "")')

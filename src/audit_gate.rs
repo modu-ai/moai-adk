@@ -92,7 +92,9 @@ fn verdict_auditor(body: &str) -> Option<String> {
         .filter_map(|l| l.trim().strip_prefix("auditor: leader-audit "))
         .map(str::trim)
         .find(|t| {
-            !t.is_empty()
+            // The strip needs the trailing space, so a hit is never empty (audit N6: the check
+            // was dead); the cap keeps a whole paragraph from riding in as one token.
+            t.len() <= 64
                 && t.bytes()
                     .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-'))
         })
@@ -619,8 +621,20 @@ mod tests {
             ("pass".into(), "non-author-pass".into()),
             "the fixed line names the auditor"
         );
-        // An empty token or one with a character outside the set reads no auditor.
-        for bad in ["", "au@dit", "two tokens"] {
+        // The cap's near edge: 64 characters are a token.
+        assert_eq!(
+            state(&input(
+                "1",
+                &src,
+                &["agent-1"],
+                vec![pass(&"a".repeat(64), "MEMBER")]
+            )),
+            ("pass".into(), "non-author-pass".into()),
+            "64 characters are a token"
+        );
+        // An empty token or one with a character outside the set reads no auditor; a token is
+        // capped at 64 characters (audit N6: the dead emptiness check became a length cap).
+        for bad in ["", "au@dit", "two tokens", &"a".repeat(65)] {
             assert_eq!(
                 state(&input("1", &src, &["agent-1"], vec![pass(bad, "MEMBER")])).0,
                 "missing",
