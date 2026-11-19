@@ -92,7 +92,7 @@ pub const CONFIRM_COMMANDS: &str =
     "git reset --hard, a forced git clean (not a dry run), a force push to a branch other than main or master, and in a MoAI project a direct pull request merge (gh pr merge, gh api PUT .../merge, the GraphQL merge mutations) outside `moai gate-merge`";
 
 /// How `[hooks.modes]` changes the direct-merge confirmation (card C-86, decision note 2346).
-pub const CONFIRM_MODES: &str = "[hooks.modes] merge_confirm = off | observe | enforce in the HOME hook-config.toml; absent or any other word is observe: the call goes through and one would_block line says it would have been confirmed; off does nothing; enforce confirms (Claude asks, Codex and OMP refuse). Where enforce refuses, the third refusal of the rule in one session goes through and one rule_release line records why; a refusal that cannot be written to the engine log goes through";
+pub const CONFIRM_MODES: &str = "[hooks.modes] merge_confirm = off | observe | enforce in the HOME hook-config.toml; absent or any other word is observe: the call goes through and one would_block line says it would have been confirmed; off does nothing; enforce confirms (Claude asks, Codex and OMP refuse). Where enforce refuses, the third refusal of the rule in one session goes through and one rule_release line records why, except that a call naming no session (OMP sends none, Codex may send an empty one) is refused every time; a refusal that cannot be written to the engine log goes through (hook cwd in a subfolder, the log at its size limit, a project without a .moai-cli folder)";
 
 /// Appended to a confirmation on Codex, which cannot ask.
 pub const CODEX_ASK_SUFFIX: &str =
@@ -684,7 +684,8 @@ pub const RULE_BLOCK_CAP: usize = 2;
 ///   where the host renders it as a refusal (Codex, OMP) one `rule_block` line is written
 ///   first — a refusal that cannot be written down goes through, because it could not be
 ///   counted — and once the session already has [`RULE_BLOCK_CAP`] such lines for the rule the
-///   call goes through with one `rule_release` line that carries the reason.
+///   call goes through with one `rule_release` line that carries the reason. A call that names
+///   no session ([`UNKNOWN_SESSION`]) is refused every time: there is no session to count in.
 fn apply_rule_mode(
     rule: &'static str,
     reason: &'static str,
@@ -716,8 +717,12 @@ fn apply_rule_mode(
         RuleMode::Enforce if host == Host::Claude => Verdict::Ask(reason.to_string()),
         RuleMode::Enforce => {
             let home = crate::hooks::env_home();
-            let strikes = rule_blocks_in(home.as_deref(), cwd, &session_key(input), rule);
-            if strikes >= RULE_BLOCK_CAP {
+            let session = session_key(input);
+            // A host that names no session (OMP sends none, Codex may send an empty one) has
+            // nothing to count refusals in: every such call would share one count across all
+            // sessions of the project, so the refusal is never released there.
+            let strikes = rule_blocks_in(home.as_deref(), cwd, &session, rule);
+            if session != UNKNOWN_SESSION && strikes >= RULE_BLOCK_CAP {
                 let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line("rule_release"));
                 return Verdict::Allow;
             }
@@ -846,9 +851,12 @@ fn session_key(input: &Value) -> String {
             let d = crate::digest(id.as_bytes());
             d.trim_start_matches("sha256:")[..16].to_string()
         }
-        _ => "unknown".into(),
+        _ => UNKNOWN_SESSION.into(),
     }
 }
+
+/// What [`session_key`] answers for a call that names no session.
+const UNKNOWN_SESSION: &str = "unknown";
 
 /// A host field value fit for a log line: bounded, no control characters, no secret shape.
 fn loggable(s: &str, limit: usize) -> bool {

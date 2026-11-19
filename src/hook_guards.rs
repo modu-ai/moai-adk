@@ -324,10 +324,13 @@ pub fn merge_confirm(command: &str, cwd: &Path) -> Option<&'static str> {
 /// endpoint, or with a GraphQL merge mutation.
 fn gh_merges(args: &[String]) -> bool {
     let words: Vec<&String> = args.iter().filter(|a| !a.starts_with('-')).collect();
-    if words.windows(2).any(|w| w[0] == "pr" && w[1] == "merge") {
+    // The subcommand is the first word, or the second after an option's value (`-R owner/repo`,
+    // `--hostname host`): words further on (`gh pr comment 5 --body pr merge`) are text.
+    let at = |word: &str, i: usize| words.get(i).map(|w| w.as_str()) == Some(word);
+    if (at("pr", 0) && at("merge", 1)) || (at("pr", 1) && at("merge", 2)) {
         return true;
     }
-    if words.first().map(|w| w.as_str()) != Some("api") {
+    if !(at("api", 0) || at("api", 1)) {
         return false;
     }
     if args
@@ -350,9 +353,11 @@ fn gh_merges(args: &[String]) -> bool {
             put = true;
         }
     }
-    put && words
-        .iter()
-        .any(|w| w.contains("/pulls/") && w.trim_end_matches('/').ends_with("/merge"))
+    // The endpoint without its query string (`…/merge?x=1`).
+    put && words.iter().any(|w| {
+        let path = w.split('?').next().unwrap_or(w);
+        path.contains("/pulls/") && path.trim_end_matches('/').ends_with("/merge")
+    })
 }
 
 /// The option letters of every short-option cluster (`-vf` → v, f) up to `--`. A letter in

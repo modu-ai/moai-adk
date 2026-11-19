@@ -1076,6 +1076,142 @@ fn merge_confirm_counts_only_its_own_blocks() {
     assert_eq!((code, decision.as_str()), (0, ""), "third is released");
 }
 
+/// One Bash call to the preflight guard as `host` sends it; `session` is the `session_id` field,
+/// or none (OMP sends none). Returns the exit code and the raw answer.
+fn merge_raw(host: &str, root: &Path, command: &str, session: Option<&str>) -> (i32, String) {
+    let mut input = json!({"hook_event_name": "PreToolUse",
+        "tool_name": "Bash", "tool_use_id": "t1",
+        "tool_input": {"command": command}, "cwd": root});
+    if let Some(s) = session {
+        input["session_id"] = json!(s);
+    }
+    let mut child = Command::new(common::MOAI_BIN)
+        .args(["hook-dispatch", "--host", host, "--event", "tool-preflight"])
+        .current_dir(root)
+        .env("HOME", root.join("home"))
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    common::feed_stdin(&mut child, input.to_string().as_bytes());
+    let out = child.wait_with_output().unwrap();
+    (
+        out.status.code().unwrap(),
+        String::from_utf8_lossy(&out.stdout).into_owned(),
+    )
+}
+
+/// True when a raw answer refuses the call: Codex's `deny`, OMP's `block`.
+fn merge_refused(answer: &str) -> bool {
+    answer.contains("\"permissionDecision\":\"deny\"") || answer.contains("\"block\":true")
+}
+
+/// #3216-style audit of S4, B1: a host that sends no session id (OMP) or an empty one (Codex)
+/// has no session to count refusals in, so the refusal is never released: every refusal stays
+/// a refusal, in every later call, and each is still written down.
+#[test]
+fn merge_confirm_without_a_session_id_is_never_released() {
+    for host in ["omp", "codex"] {
+        for session in [None, Some("")] {
+            let (_tmp, root) = merge_repo(true);
+            merge_enforce(&root);
+            for n in 1..=5 {
+                let (code, answer) = merge_raw(host, &root, "gh pr merge 123", session);
+                assert_eq!(code, 0, "{host} {session:?} call {n}");
+                assert!(
+                    merge_refused(&answer),
+                    "{host} {session:?} call {n} was released: {answer}"
+                );
+            }
+            let lines = merge_log(&root);
+            let kinds = |kind: &str| lines.iter().filter(|l| l["kind"] == json!(kind)).count();
+            assert_eq!(
+                (kinds("rule_block"), kinds("rule_release")),
+                (5, 0),
+                "{host} {session:?}: {lines:?}"
+            );
+        }
+    }
+}
+
+/// B2, mutant M4: `would_block` lines (observe) are not refusals and are not counted: after
+/// three observed calls the first enforced call is refused, the second too, the third released.
+#[test]
+fn merge_confirm_observed_calls_are_not_strikes() {
+    let (_tmp, root) = merge_repo(true);
+    let merge = "gh pr merge 123";
+    for _ in 0..3 {
+        let (code, answer) = merge_raw("codex", &root, merge, Some("one"));
+        assert_eq!((code, answer.as_str()), (0, ""), "observed");
+    }
+    merge_enforce(&root);
+    for n in 1..=2 {
+        let (_, answer) = merge_raw("codex", &root, merge, Some("one"));
+        assert!(merge_refused(&answer), "enforced refusal {n}: {answer}");
+    }
+    let (_, answer) = merge_raw("codex", &root, merge, Some("one"));
+    assert_eq!(answer, "", "the third enforced refusal is released");
+}
+
+/// B2, mutant M12: OMP cannot ask, so its refusals are counted like Codex's: with a session id
+/// the third is released, and another session starts again.
+#[test]
+fn merge_confirm_counts_omp_refusals_per_session() {
+    let (_tmp, root) = merge_repo(true);
+    merge_enforce(&root);
+    let merge = "gh pr merge 123";
+    for n in 1..=2 {
+        let (_, answer) = merge_raw("omp", &root, merge, Some("o1"));
+        assert!(merge_refused(&answer), "omp refusal {n}: {answer}");
+    }
+    let (_, answer) = merge_raw("omp", &root, merge, Some("o1"));
+    assert_eq!(answer, "", "released on the third");
+    let (_, answer) = merge_raw("omp", &root, merge, Some("o2"));
+    assert!(merge_refused(&answer), "another session: {answer}");
+    let lines = merge_log(&root);
+    let release = lines
+        .iter()
+        .filter(|l| l["kind"] == json!("rule_release"))
+        .count();
+    assert_eq!(release, 1, "{lines:?}");
+}
+
+/// N2 of the audit: a comment that only says `pr merge`, an option before the subcommand, and a
+/// query string after the endpoint.
+#[test]
+fn merge_confirm_reads_the_subcommand_not_the_words_after_it() {
+    let (_tmp, root) = merge_repo(true);
+    merge_enforce(&root);
+    for (n, command) in [
+        "gh -R owner/repo pr merge 5",
+        "gh --repo owner/repo pr merge 5 --squash",
+        "gh api -X put 'repos/o/r/pulls/5/merge?x=1'",
+        "gh --hostname github.com api -X PUT repos/o/r/pulls/5/merge",
+    ]
+    .iter()
+    .enumerate()
+    {
+        let session = format!("s{n}");
+        let (_, decision, reason) = merge_preflight_as("claude", &root, command, &session);
+        assert_eq!(decision, "ask", "{command}: {reason}");
+    }
+    for command in [
+        "gh pr comment 5 --body pr merge",
+        "gh issue comment 5 --body 'pr merge soon'",
+        "gh pr edit 5 --title 'pr merge'",
+    ] {
+        let (code, decision, reason) = merge_preflight_as("claude", &root, command, "q");
+        assert_eq!(
+            (code, decision.as_str(), reason.as_str()),
+            (0, "", ""),
+            "{command}"
+        );
+    }
+}
+
 /// REQ-5: every host's confirmation list names the direct merge.
 #[test]
 fn merge_confirm_capabilities_name_the_direct_merge() {
@@ -1099,6 +1235,16 @@ fn merge_confirm_capabilities_name_the_direct_merge() {
             .all(|w| modes.contains(w)),
             "{host}: {modes}"
         );
+        // The limits of the release and of the log, named (audit of S4, B1 and N1).
+        for limit in [
+            "naming no session",
+            "refused every time",
+            "hook cwd in a subfolder",
+            "size limit",
+            ".moai-cli",
+        ] {
+            assert!(modes.contains(limit), "{host} {limit}: {modes}");
+        }
     }
 }
 
