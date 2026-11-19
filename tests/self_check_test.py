@@ -535,6 +535,8 @@ class PythonSlotTest(unittest.TestCase):
                 self.assertNotIn("unbound variable", proc.stderr)
                 self.assertIn("no python slot folder", proc.stderr)
                 self.assertEqual(self.python_lines(), [])
+                # Never the cargo slot folder either (REQ-12): no slot line carries the python run.
+                self.assertEqual([l for l in self.repo.slot_recorded() if "unittest" in l], [])
                 self.assertIn("python3 -m unittest discover -s tests -p *_test.py",
                               self.repo.recorded())
 
