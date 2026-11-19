@@ -78,14 +78,17 @@ revision 2: 분류기(조각 A, `src/lane_screen.rs`)가 이 가지의 바탕 �
 | D-2 | 거절은 종료 코드 0 이 아님 | 호출자가 성공으로 읽지 않아요 | 0 + 메시지 |
 | D-3 | Enter 는 `--enter` 를 줄 때만 | 사고가 글과 Enter 를 함께 보낸 것이었어요 | 항상 Enter |
 | D-4 | 글은 `-` 로 시작하지 않고 2000자까지 | `orca` 옵션으로 읽히는 것을 막아요; 길이는 입력 안전 규칙의 취지예요 | 따옴표 처리 |
-| D-5 | `orca` 는 `MOAI_ORCA_BIN`(없으면 PATH 의 `orca`)로 부르고 호출마다 15초 제한 | 시험이 가짜로 바꾸고, 멈춘 `orca` 가 보내기를 붙잡지 않아요 | 제한 없음 |
+| D-5 | `orca` 는 `MOAI_ORCA_BIN`(없으면 PATH 의 `orca`)로 부르고 호출마다 15초 제한(`MOAI_ORCA_TIMEOUT_SECS` 로 1에서 300초) | 시험이 가짜로 바꾸고, 멈춘 `orca` 가 보내기를 붙잡지 않아요 | 제한 없음 |
 | D-6 | 글은 `--text` 인자로 받음 | 한 줄 글이고 표준 입력 예시 규칙을 피해요 | 표준 입력 |
 
 ## Result
 
-이 조각은 SPEC 뿐이에요: 코드·시험을 만들지 않았어요.
+구현 조각 B(`moai lane-send`, 코드 커밋 `ff78e0d60a`, 2026-11-19T12:33:53Z 에 `date -u` 로 읽은 때)예요. 시험은 RED 먼저: 명령 뼈대만 있는 스텁에서 `lane_send_cli` 14개가 모두 실패했고 구현 뒤 14개 모두 통과해요. 실제 `orca` 는 부르지 않았고 가짜 `orca`(셸 스크립트)와 합성 화면만 썼어요.
 
-- AC-1: 아직 안 했어요(구현 조각 B).
-- AC-2: 아직 안 했어요(구현 조각 B).
-- AC-3: 아직 안 했어요(구현 조각 B).
-- AC-4: 아직 안 했어요(구현 조각 B).
+- AC-1: 충족 — `cargo test --locked --offline --test lane_send_cli lane_send_refuses` 가 통과해요(확인 창 둘·선택 창·한도 둘·셸·좁은 tail 은 `sent.txt` 없음과 종료 코드 1, 첫 읽기 대기·둘째 읽기 확인 창은 거절하고 읽기 2번, 작업 중→대기도 거절, 한도 거절에 `2026-11-20T10:00:00Z`, 시간대 없는 한도는 "unknown"; 그려진 화면이 아닌 읽기와 글자만 온 답은 거절).
+- AC-2: 충족 — `... --test lane_send_cli lane_send_sends` 가 통과해요(대기 중·작업 중에는 읽기 2번 뒤 보내기 한 번, `--enter` 는 줄 때만 가고 한글 글도 그대로, 보내기 실패는 "send failed" 이고 "sent" 라 하지 않으며 한 번만 시도).
+- AC-3: 충족 — `... --test lane_send_cli lane_send_unsafe` 가 통과해요(빈 글·`-` 시작·줄바꿈·탭·ESC·양방향 문자·줄 구분자·2001자는 `orca` 를 한 번도 부르지 않고 거절하고 글을 되풀이하지 않으며 2000자는 통과, 위험한 터미널 핸들, 없는 `orca`·읽기 실패·종료된 터미널은 unreachable, 멈춘 `orca` 는 2초 제한에 끊겨 5초 안에 거절, `--now` 형식 오류).
+- AC-4: 충족 — `--test lane_duty_line` 8 passed, `--test lane_screen_cli` 22 passed, `--lib lane_send` 10 passed(`--lib lane_` 197), `--bin moai` 28 passed(`every_example_parses`·`operations_doc_matches_code` 포함; 처음에는 예시의 따옴표 때문에 `every_example_parses` 가 실패해 예시를 `<one-line-text>` 로 고쳤어요), `--test help_layout` 10(골든 넷에 `lane-send` 한 줄), `hot_file_ops_merge` 3, `spec_cli` 18, `cargo_env_developer_dir` 4, `home_isolation_scan` 18, `git_env_scrub` 3, `doc_references` 7, `ac_command_lint` 5 모두 통과. `cargo fmt --check` 0, `rustfmt --check --edition 2021 src/ops/*.rs` 0, `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `python3 -m unittest tests.repo_scans_test tests.source_manifest_test tests.local_check_test` 104 OK(이 가지로 빌드한 `moai-cli` 로). 변이 다섯(둘째 읽기 비교 끄기, 핸들 `-` 시작 허용, 글 `-` 시작 허용, Enter 뒤집기, unknown 에도 보내기)이 모두 KILLED, 변이 뒤 작업 트리 깨끗. 돌리지 않은 것: 전체 cargo 시험, 파이썬 discover, 실제 `orca` 터미널에 붙인 실행, `git diff --check` 와 `moai-cli trailer-check` 의 READY 전 확인(READY 때 돌려요).
+- 구현에서 SPEC 보다 구체화한 것: `MOAI_ORCA_TIMEOUT_SECS`(1에서 300, 기본 15)로 호출 제한을 시험이 줄일 수 있게 했어요(D-5); 읽은 답이 Orca 의 JSON 이 아니면 `unreachable` 이에요; 첫 읽기와 둘째 읽기가 다르면 새 화면이 막는 이유도 같은 오류 글에 적어요.
+
+읽은 것(조각 1 계획 때): `orca terminal read --help`·`orca terminal send --help`(보호 없음, "다른 에이전트에는 `orca orchestration send`")는 위 Risks 에 있어요.
