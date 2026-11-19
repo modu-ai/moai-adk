@@ -932,7 +932,7 @@ fn merge_confirm_mode_defaults_to_observe_and_off_is_silent() {
         if let Some(text) = config {
             merge_config(&root, text);
         }
-        let (code, decision, reason) = merge_preflight("claude", &root, "gh pr merge 123");
+        let (code, decision, reason) = merge_preflight("claude", &root, "gh pr merge 987654");
         assert_eq!(
             (code, decision.as_str(), reason.as_str()),
             (0, "", ""),
@@ -949,8 +949,14 @@ fn merge_confirm_mode_defaults_to_observe_and_off_is_silent() {
             .as_str()
             .unwrap()
             .contains("moai gate-merge"));
-        let text = serde_json::to_string(&lines).unwrap();
-        for leak in ["gh pr merge", "123", root.to_str().unwrap()] {
+        // The string fields only: a time or a count may hold any digits by chance.
+        let text: String = lines
+            .iter()
+            .flat_map(|l| l.as_object().unwrap().values())
+            .filter_map(|v| v.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        for leak in ["gh pr merge", "987654", root.to_str().unwrap()] {
             assert!(!text.contains(leak), "{leak} leaked into {text}");
         }
         assert!(
@@ -961,7 +967,7 @@ fn merge_confirm_mode_defaults_to_observe_and_off_is_silent() {
     let (_tmp, root) = merge_repo(true);
     merge_config(&root, "[hooks.modes]\nmerge_confirm = \"off\"\n");
     for host in ["claude", "codex"] {
-        let (code, decision, reason) = merge_preflight(host, &root, "gh pr merge 123");
+        let (code, decision, reason) = merge_preflight(host, &root, "gh pr merge 987654");
         assert_eq!(
             (code, decision.as_str(), reason.as_str()),
             (0, "", ""),

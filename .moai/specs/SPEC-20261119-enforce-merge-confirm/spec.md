@@ -92,4 +92,15 @@ created: 2026-11-19
 
 ## Result
 
-(채워지지 않았어요: 구현 뒤에 AC 마다 한 줄을 적어요.)
+구현 에이전트가 채웠어요. 감사가 다시 확인해요. macOS arm64, 이 worktree(`spec/20261119-enforce-merge-confirm`), 빌드 폴더 `~/.moai/build/moai-adk-86-s4`, `CARGO_INCREMENTAL=0`, cargo cache `/tmp/moai-rc-cargo-agent-3`. 시각은 재지 않았어요.
+
+RED 먼저: 첫 구현(커밋 3f1e28a116)은 새 시험 4개가 모두 실패한 뒤 통과했고, 모드 층(커밋 8a8d77917a)은 시험을 먼저 고쳐 쓴 뒤 구현했어요(RED 실행은 기록하지 않았어요).
+
+- AC-1: met — `cargo test --locked --offline --test hooks_cli merge_confirm_asks` 통과(`gh pr merge` 여러 모양·`gh api -X PUT …/merge`·GraphQL 변이를 Claude 는 `ask`, Codex 는 `deny` + "Codex cannot ask"; 명령마다 세션을 따로 줘서 세 번째 풀림과 섞이지 않게 했어요).
+- AC-2: met — `merge_confirm_leaves` 와 `merge_confirm_is_off` 통과(`moai gate-merge`·`gate-loop`·`gh pr view/list/comment/checks`·`gh api` GET·병합이 아닌 PUT·`git merge`·`echo gh pr merge`·grep 은 enforce 에서도 통과, `.moai` 폴더가 없는 저장소는 통과하고 로그에 아무것도 안 써요).
+- AC-3: met — `merge_confirm_capabilities` 통과(claude·codex·omp 세 host 가 `gh pr merge`·`moai gate-merge`·`[hooks.modes]`·off/observe/enforce·`merge_confirm` 을 말해요).
+- AC-4: met — `merge_confirm_mode` 통과(설정 없음·빈 파일·잘못된 단어·문자열 아닌 값·다른 규칙·깨진 TOML 은 observe: 통과 + `would_block` 한 줄, `deny` 줄 없음, 줄에 명령·PR 번호·경로 없음; off 는 통과하고 로그가 안 생겨요) + `--lib hook_config` 11 통과(`rule_modes_default_to_observe`).
+- AC-5: met — `merge_confirm_strikes` 와 `merge_confirm_counts_only_its_own_blocks` 통과(Codex 에서 같은 세션의 세 번째 거절이 통과 + `rule_release`(이유 포함), 다른 세션은 따로 세고, Claude 의 ask 는 세지 않고, 로그를 못 쓰는 저장소는 통과; 다른 규칙의 `rule_block` 과 이 규칙의 `rule_release` 를 심어도 횟수가 안 변해요).
+- AC-6: met — `--test hooks_cli` 29, `spec_before_code_hook` 9, `green_test_lock` 10, `hook_dispatch_cli` 44, `hook_status_cli` 14, `ac_command_lint` 5, `git_env_scrub` 3, `--lib hook_` 56 모두 통과, `cargo fmt --check` 0, `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `python3 -m unittest tests.ci_scope_test` OK, `moai spec check SPEC-20261119-enforce-merge-confirm` 오류 0·경고 0. 이웃 실행 중 observe 시험이 한 번 실패했는데 시험의 결함이었어요(로그의 시간값 `…1831235` 에 우연히 `123` 이 들어 있었어요): PR 번호를 `987654` 로 바꾸고 문자열 값만 검사하게 고쳐 `merge_confirm` 3회 반복과 전체 29개가 통과했어요. 돌리지 않은 것: 전체 `cargo test`(CI 가 돌려요).
+- mutation: 첫 구현의 12개(가지 제거·일치 조건 완화 등)는 모두 KILLED(`target/c86s4/mutants.txt`, 모드 층 전의 코드). 모드 층은 12개(규칙 없음을 enforce 로, off 가 ask, observe 가 줄 안 씀, Claude ask 를 셈, 상한 하나 차이, 세션 공유, 규칙 공유, 쓸 수 없어도 거절, release 가 줄 안 씀, release 줄을 셈, 명령을 call 칸에 넣기, 모르는 단어를 enforce 로)를 돌려 10개가 처음부터 KILLED 였고, 규칙 공유와 release 계수 둘은 SURVIVED(규칙이 하나뿐이라 시험이 구별 못 했어요) → 시험 `merge_confirm_counts_only_its_own_blocks` 를 더한 뒤 둘 다 KILLED(`target/c86s4/mutants3.txt`, `mutants3b.txt`, `mutants3c.txt`), `git status` 깨끗이 복구.
+- 이 조각 밖: `gate-merge` 가 띄우는 `gh api` 자식 프로세스는 hook 이 보지 못해요(hook 은 `moai gate-merge` 한 줄만 봐요; 게이트가 병합을 거절하는 일은 `moai gate-merge` 자신의 몫이에요). 다른 규칙(`green_lock_bash` 등)의 모드는 #3216 이 병합된 뒤 이어가요. G9 의 `Moai-Session` 거절과 감사 brief 기록은 제안만이에요(리더 결정 D-D).
