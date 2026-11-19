@@ -580,7 +580,10 @@ fn name_leader_and_roleless_take_no_number() {
     assert_eq!(name(&run(&f, &["codex", "-l"])), "leader");
     assert_eq!(name(&run(&f, &["-l"])), "leader");
     assert_eq!(name(&run(&f, &["glm"])), "");
-    assert!(!sessions(&f).exists());
+    // Named launches take no number but do hold their `<name>.live` lock (the liveness
+    // proof, SPEC-20261120-launcher-liveness REQ-4), so the sessions folder exists with the
+    // freed locks of the launches above; the numberless `glm` adds none of its own.
+    assert_eq!(lives(&f), vec!["leader.live", "x.live"]);
     assert_eq!(name(&run(&f, &["cc", "-a"])), "agent-1");
 }
 
@@ -855,5 +858,11 @@ fn name_and_leader_launch_the_decided_full_access_argv_and_take_no_number() {
             .collect();
         assert_eq!(argv, want, "{args:?}");
     }
-    assert!(!sessions(&f).exists(), "--name and -l take no number");
+    // No number is taken; the named launches hold their `<name>.live` locks instead
+    // (SPEC-20261120-launcher-liveness REQ-4), which is all the folder holds afterwards.
+    assert_eq!(
+        lives(&f),
+        vec!["leader.live", "x.live"],
+        "--name and -l take no number"
+    );
 }

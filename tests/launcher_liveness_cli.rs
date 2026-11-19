@@ -249,3 +249,79 @@ fn the_named_live_lock_is_exclusive_and_refuses_bad_paths() {
     std::os::unix::fs::symlink(&real, f.sessions().join("lane-c.live")).unwrap();
     assert!(moai_cli::session::lock_named_live(&f.sessions(), "lane-c").is_err());
 }
+
+/// AC-4, the wiring: a named launch holds `<name>.live` while its host runs — the lookup
+/// answers alive — releases it when the host exits, and a second launch of the same name is
+/// refused while the first lives (the stub host waits for a release file).
+#[test]
+fn a_named_launch_holds_its_live_lock_while_its_host_runs() {
+    use moai_cli::lane_registry::{liveness_of_session, Liveness};
+    let f = Fixture::new();
+
+    // The registry entry the holder session registered (the launcher itself does not
+    // register; the lane's first turn does — the test writes the same shape).
+    fs::create_dir_all(f.sessions()).unwrap();
+    fs::write(
+        f.sessions().join("lane-a.json"),
+        format!(
+            "{{\"schema_version\":1,\"name\":\"lane-a\",\"instance\":\"{}\",\"lease_until\":{},\"registered_at\":{},\"session\":\"{S_A}\"}}\n",
+            "c".repeat(32),
+            4102444800i64,
+            1790000000i64
+        ),
+    )
+    .unwrap();
+
+    // A `claude` host stub that marks it started and waits for the release file.
+    let stub = f.home.join("stub-hosts");
+    fs::create_dir_all(&stub).unwrap();
+    let marker = f.home.join("host-started");
+    let release = f.home.join("release");
+    let script = format!(
+        "#!/bin/sh\nprintf '%s' $$ > '{}'\nwhile [ ! -f '{}' ]; do sleep 0.05; done\n",
+        marker.display(),
+        release.display()
+    );
+    fs::write(stub.join("claude"), script).unwrap();
+    use std::os::unix::fs::PermissionsExt;
+    fs::set_permissions(stub.join("claude"), fs::Permissions::from_mode(0o755)).unwrap();
+
+    let mut cmd = Command::new(BIN);
+    cmd.args(["cc", "--name", "lane-a"])
+        .current_dir(&f.repo)
+        .env("HOME", &f.home)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .env("CLAUDE_CODE_SESSION_ID", S_A)
+        .env("PATH", {
+            let mut p = stub.into_os_string();
+            p.push(":");
+            p.push(std::env::var_os("PATH").unwrap_or_default());
+            p
+        });
+    let mut child = cmd.spawn().unwrap();
+    for _ in 0..200 {
+        if marker.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    assert!(marker.exists(), "the stub host started");
+
+    let (state, evidence) = liveness_of_session(&f.repo, S_A);
+    assert_eq!(state, Liveness::Alive, "{evidence}");
+
+    // A second launch of the same name is refused while the first holds the lock.
+    let second = cmd.output().unwrap();
+    assert!(
+        !second.status.success(),
+        "the same name does not launch twice"
+    );
+
+    fs::write(&release, "").unwrap();
+    let out = child.wait().unwrap();
+    assert!(out.success(), "the first launch ended cleanly");
+
+    let (state, _) = liveness_of_session(&f.repo, S_A);
+    assert_eq!(state, Liveness::LauncherExited);
+}

@@ -599,6 +599,9 @@ pub fn lock_named_live(dir: &Path, name: &str) -> Result<fs::File, String> {
             "session live lock name is invalid: use 1 to 64 of A-Z a-z 0-9 . _ -".to_string(),
         );
     }
+    // The first named launch in a clone makes the sessions folder, as the numbered path does.
+    fs::create_dir_all(dir)
+        .map_err(|e| format!("session live lock {} write failed: {e}", dir.display()))?;
     let path = dir.join(format!("{name}.live"));
     refuse_unless_regular(&path)?;
     let unavailable = || format!("session live lock {} unavailable", path.display());
