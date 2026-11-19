@@ -76,7 +76,13 @@ created: 2026-11-19
 | D-3 | `install`은 릴리스를 받지 않고 설치된 모양을 꾸려 확인해요 | 내려받기는 네트워크예요; `update`가 바이너리 옆 `skills/moai`·`agents`를 요구해요(`src/update.rs`) | 설치 스크립트 영역은 후속 SPEC |
 | D-4 | 런처의 호스트는 가짜 실행 파일이에요 | 실제 호스트는 키와 네트워크가 필요해요 | 없음 |
 | D-5 | 파이썬(표준 라이브러리만)과 얇은 셸 래퍼 | 새 의존성을 두지 않고 `tools/`의 다른 도구와 같아요 | 없음 |
+| D-6 | 시험의 미끼 폴더 훑기는 `os.scandir` 재귀예요 | `tests/repo_scans_test.py`가 `REPO_ROOT`와 `.rglob(`가 함께 있는 시험 파일을 "저장소를 훑는 시험"으로 표시해요; 이 시험은 임시 미끼 폴더만 훑지만 예외 목록은 이 SPEC의 쓰기 범위 밖이에요 | 예외 목록에 올리면 `rglob`으로 되돌려도 돼요 |
 
 ## Result
 
-(구현 뒤에 AC마다 한 줄씩 적어요.)
+- AC-1: met — `python3 -m unittest tests.smoke_harness_test.AreasTest` 5개 ok(install·update·project·launcher·all), tip 빌드(`moai-cli 4.2647.0 (rust)`, head `e005f8b17b` 위의 이 가지)로 돌렸어요. 추적 줄이 단계마다 하나고 마지막 줄이 `smoke: <영역> pass steps=<n>`이에요(`all`은 13단계). 한 번의 `tools/smoke/run.sh all` 실측은 22.5초(install ≈3초, update ≈16초, project <1초, launcher ≈2초)이고 미끼 HOME은 비어 있었어요. 시험 먼저: 구현 전 RED에서 13개 모두 실패(`run.sh`가 없어서 exit 127).
+- AC-2: met — `…FailureTest` 7개 ok: 항상 실패하는 바이너리(첫 단계 `version`에서 멈추고 `exit: 3`·출력·`failed=version`), JSON이 아닌 답(`failed=install-inspect`), Go 세대 바이너리(`version`), HOME에 쓰는 설치 점검(`home-untouched`)과 업데이트 미리보기(`preview`), 터미널이 없는 호스트와 다른 HOME을 보는 호스트(`host-in-pty`).
+- AC-3: met — `…IsolationTest` 3개 ok: 호출자 환경(`PROBE_CALLER_VALUE`, `CLAUDE_CODE_SESSION_ID`)과 미끼 HOME 경로가 가짜 바이너리가 남긴 기록에 없고, 단계가 본 HOME 이름은 `home`이고 미끼는 한 바이트도 안 바뀌었어요; 임시 기반이 미끼 안이거나 미끼 그 자체이면 아무것도 만들지 않고 exit 2(`real home` 메시지); `--home` 같은 옵션은 없어요(exit 2).
+- AC-4: met — `…UsageTest` 3개 ok: 모르는 영역·없는 바이너리·실행권 없는 바이너리는 exit 2이고, 끝나면 임시 폴더가 없어지고 `--keep`이면 남아요.
+- AC-5: met — `python3 -m unittest tests.smoke_harness_test` 18 ok; `cargo test --locked --offline --test ac_command_lint` 5, `--test home_isolation_scan` 18, `--test spec_cli` 17, `--test git_env_scrub` 3 passed; `python3 -m unittest repo_scans_test`·`ci_scope_test`·`local_check_test`·`source_manifest_test` OK(처음에 `repo_scans_test`가 새 시험 파일을 걸어서 D-6으로 풀었어요); `spec check` errors 0·warnings 0; `trailer-check` 커밋 6개 문제 없음. 변이는 harness에 12개(환경 상속, 기반 검사 끄기, 호출자 HOME 쓰기, 정리 없음, `--keep` 뒤집기, 실패 종료 0, 실패해도 계속, 버전 검사 느슨, HOME 비었는지 검사 끄기, 미리보기 쓰기 검사 끄기, 기반=HOME 허용, 터미널 검사 끄기): 처음 10개 KILLED, 2개(HOME 비었는지·터미널)가 SURVIVED여서 가짜 바이너리 시험을 더했고 다시 돌려 12/12 KILLED예요.
+- 남은 것: (1) VERIFY 워크플로 글(`skills/moai/workflows/verify.md`)에 이 harness를 첫 점검으로 적는 일과 `source-manifest.json` 줄은 다른 카드의 예약과 겹쳐 이 SPEC의 쓰기 범위 밖이에요(카드의 두 번째 기준의 그 문장은 열려 있어요). (2) CI가 install·update 영역을 PR에서 돌리게 하는 일(카드의 세 번째 기준)은 `.github/workflows/**`가 범위 밖이라 열려 있어요; 5분 이내는 실측 22.5초로 충족해요. (3) 설치 스크립트의 내려받기는 하지 않았어요(D-3). SPEC은 draft예요: 승인은 사용자의 선택이라 이 레인이 하지 않았어요.
