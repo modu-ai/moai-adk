@@ -124,6 +124,80 @@ fn the_plain_working_screen_still_reads_working() {
     assert_eq!(state, "working", "the regression guard of this slice");
 }
 
+/// A screen with a known question (the C-120 question set) above `rows`, over a working marker.
+fn question_with(rows: &[&str]) -> String {
+    let mut screen: Vec<&str> = vec![
+        "repo main clean",
+        "agent working",
+        "cargo build running",
+        "waiting",
+        "esc to interrupt",
+        "Do you want to continue?",
+    ];
+    screen.extend_from_slice(rows);
+    orca(&screen, "screen")
+}
+
+// ---- criterion 4 (leader scope addition: the re-audit's N1 and N2, one table test) ----
+
+/// The re-audit's N2: under a known question these shapes are sent today (working); under the
+/// shape criterion they must refuse.
+#[test]
+fn n2_shapes_under_a_known_question_are_never_working() {
+    for rows in [
+        &["Approve / Reject"][..],
+        &["Accept / Decline"][..],
+        &["OK / Cancel"][..],
+        &["Continue / Abort"][..],
+        &["[ Proceed ] [ Cancel ]"][..],
+        &["[1] Approve / [2] Reject"][..],
+        &["1. Proceed"][..],
+    ] {
+        let state = state_of(&question_with(rows));
+        assert!(
+            state == "permission_prompt" || state == "unknown",
+            "N2 shape {rows:?}: expected permission_prompt or unknown, got {state}"
+        );
+    }
+}
+
+/// The re-audit's N1: the twelve refusals stay refused under the shape criterion (the guard of
+/// the rewrite), while question-adjacent prose that is not choice-shaped is freed.
+#[test]
+fn n1_table_keeps_the_twelve_refusals_and_frees_plain_prose() {
+    for rows in [
+        &["proceed? (yes/no)"][..],
+        &["continue connecting (yes/no/[fingerprint])?"][..],
+        &["Save changes? (Yes/No)"][..],
+        &["choose: yes or no"][..],
+        &["Overwrite? (y/N/a)"][..],
+        &["[Y]es [N]o"][..],
+        &["Allow", "Deny"][..],
+        &["1. Allow once", "2. Allow always", "3. Deny"][..],
+        &["1. Y", "2. N"][..],
+        &["1. Proceed", "2. Cancel"][..],
+        &["[1] Allow", "[2] Deny"][..],
+        &["1. run the tests", "2. open the pull request"][..],
+    ] {
+        let state = state_of(&question_with(rows));
+        assert!(
+            state == "permission_prompt" || state == "unknown",
+            "the twelve refusals must stay refused, {rows:?} got {state}"
+        );
+    }
+    for prose in [
+        "no changes yet",
+        "allowed 3 lanes so far",
+        "yesterday's build is green",
+    ] {
+        let state = state_of(&question_with(&[prose]));
+        assert!(
+            state == "working" || state == "idle",
+            "plain prose under a question is not a choice: {prose} got {state}"
+        );
+    }
+}
+
 // ---- the fake Orca program (pattern of tests/lane_screen_cli.rs, slice C) ----
 
 /// Records every call in `calls.txt`; `list.json` is what `terminal list` prints, `read-<handle>`
