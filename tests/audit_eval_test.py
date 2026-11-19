@@ -125,7 +125,7 @@ class RunTest(unittest.TestCase):
         proc = self.cli("run", "--set", "tuning", "--eval-dir", self.eval_dir, "--out", self.out)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         summary = json.loads(proc.stdout)
-        self.assertEqual(summary["missing_ref"], ["case-missing"])
+        self.assertEqual(summary["missing_ref"], ["case-missing:head"])
         self.assertEqual(summary["written"], 1)
 
     def test_a_shared_id_between_the_files_is_refused(self):
@@ -258,6 +258,109 @@ class ReadmeTest(unittest.TestCase):
         for heading in ("## Adding a case", "## Running and scoring", "## When to stop tuning"):
             self.assertIn(heading, text)
         self.assertIn("held-out", text.split("## When to stop tuning", 1)[1])
+
+
+class FollowupsTest(unittest.TestCase):
+    """Card C-107 slice 1 (SPEC-20261119-audit-eval-followups): the secret-shape ignore rules
+    cover .moai/evals/, the ref check pins GIT_NO_LAZY_FETCH in the child environment and the
+    missing_ref entries name which ref of which case is missing, and a case id with a path
+    separator is refused before anything is written."""
+
+    def test_the_ignore_rules_cover_the_evals_folder(self):
+        for name in ("x.key", "id_rsa_fixture", "nested/secrets.json"):
+            path = f".moai/evals/{name}"
+            r = subprocess.run(
+                ["git", "check-ignore", "-v", path], capture_output=True, text=True, cwd=REPO_ROOT
+            )
+            self.assertEqual(r.returncode, 0, f"{path} is not ignored: {r.stdout}{r.stderr}")
+            self.assertIn(path, r.stdout, path)
+
+    def test_the_ref_check_sets_git_no_lazy_fetch(self):
+        import textwrap
+
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        bin_dir = os.path.join(tmp.name, "bin")
+        os.makedirs(bin_dir)
+        env_file = os.path.join(tmp.name, "env.txt")
+        stub = os.path.join(bin_dir, "git")
+        with open(stub, "w") as fh:
+            fh.write(
+                textwrap.dedent(
+                    f"""\
+                    #!/bin/sh
+                    env | sort > "{env_file}"
+                    exit 1
+                    """
+                )
+            )
+        os.chmod(stub, 0o755)
+        # ref_missing builds the child environment from os.environ, so the stub reaches it
+        # through PATH, not through a local dict.
+        old_path = os.environ.get("PATH", "")
+        os.environ["PATH"] = bin_dir + os.pathsep + old_path
+        self.addCleanup(os.environ.__setitem__, "PATH", old_path)
+        module = load_module()
+        self.assertTrue(module.ref_missing(tmp.name, "0" * 40), "the stub fails the check")
+        self.assertIn("GIT_NO_LAZY_FETCH=1", open(env_file).read())
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.eval_dir = os.path.join(self.tmp.name, "evals")
+        os.makedirs(self.eval_dir)
+        self.out = os.path.join(self.tmp.name, "prompts")
+        head = subprocess.run(
+            ["git", "-C", REPO_ROOT, "rev-parse", "HEAD"], capture_output=True, text=True
+        ).stdout.strip()
+        parent = subprocess.run(
+            ["git", "-C", REPO_ROOT, "rev-parse", "HEAD~1"], capture_output=True, text=True
+        ).stdout.strip()
+        self.case = {
+            "id": "case-ok",
+            "pr": 1,
+            "audit_comment": 1,
+            "head": head,
+            "base": parent,
+            "answer_key": "The guard that refuses a broken marker is never exercised.",
+        }
+        json.dump([self.case], open(os.path.join(self.eval_dir, "cases-tuning.json"), "w"))
+        json.dump([], open(os.path.join(self.eval_dir, "cases-heldout.json"), "w"))
+        json.dump([], open(os.path.join(self.eval_dir, "controls.json"), "w"))
+        self.head, self.parent = head, parent
+
+    def cli(self, *args):
+        return subprocess.run(
+            [sys.executable, TOOL, *args], capture_output=True, text=True, cwd=REPO_ROOT
+        )
+
+    def test_a_missing_ref_names_which_ref(self):
+        missing_head = dict(self.case, id="case-head", head="0" * 40)
+        missing_base = dict(self.case, id="case-base", base="1" * 40)
+        json.dump(
+            [missing_head, missing_base],
+            open(os.path.join(self.eval_dir, "cases-tuning.json"), "w"),
+        )
+        proc = self.cli("run", "--set", "tuning", "--eval-dir", self.eval_dir, "--out", self.out)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        summary = json.loads(proc.stdout)
+        self.assertEqual(summary["missing_ref"], ["case-base:base", "case-head:head"], summary)
+        self.assertEqual(summary["written"], 0)
+
+    def test_a_path_separator_in_a_case_id_is_refused(self):
+        for evil in ("../escape", "a/b", "a\\b", ".."):
+            json.dump(
+                [dict(self.case, id=evil)],
+                open(os.path.join(self.eval_dir, "cases-tuning.json"), "w"),
+            )
+            proc = self.cli(
+                "run", "--set", "tuning", "--eval-dir", self.eval_dir, "--out", self.out
+            )
+            self.assertNotEqual(proc.returncode, 0, evil)
+            self.assertIn("path separator", proc.stderr, evil)
+            self.assertFalse(
+                os.path.isdir(self.out) and os.listdir(self.out), f"{evil}: wrote something"
+            )
 
 
 if __name__ == "__main__":
