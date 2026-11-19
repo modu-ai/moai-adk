@@ -221,6 +221,9 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
                 "`checked`",
                 // B1: OMP submits the form's values on a timeout, so case (2) presets none.
                 "for a case-(2) question (rule 3) nothing is preselected: no `checked`, no `selected` and no `value`",
+                // N8: the form is submitted on a timeout, so an empty submission is no pick.
+                "the recommendation is named in the label text only",
+                "a submission without a choice is not a pick",
                 "`ask.timeout`",
                 "print mode or a subagent",
                 "in the final answer",
@@ -275,6 +278,8 @@ fn the_ledger_is_local_cards_and_previews_run_without_asking() {
         "ask once, after the preview is shown",
         "the development method is TDD or preserve-then-change only",
         "the work ledger is the local card ledger (`moai card`): it is not asked, it is never recorded under `development_methods`, and GitHub Issues are not offered as a ledger or a method",
+        // N8: creating the ledger is a write under the real HOME and waits for its own pick.
+        "Which ledger is used is what is not asked; creating it writes under the real HOME and waits for its own pick after the read-only `moai ledger-register-plan <project>` preview",
         "relay the `--questions` set through the host's question tool",
         "its `suggested` value first",
         // Audit of 32c514a8ee N3: the route's end.
