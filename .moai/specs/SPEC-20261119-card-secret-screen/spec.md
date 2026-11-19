@@ -2,7 +2,7 @@
 id: SPEC-20261119-card-secret-screen
 title: "Card text screen refuses secret-named assignments on note, title, body and criterion text"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-19
 ---
 
@@ -27,6 +27,7 @@ created: 2026-11-19
 - REQ-4: The card text screen shall let a run of lower-case words joined by hyphens after the `sk` prefix through, as the note screen does today.
 - REQ-9: The card text screen shall read the name of an assignment as the word was written, so an `sk` run that holds a secret piece and stands before an equals sign is refused.
 - REQ-10: The card text screen shall look at the text after each equals sign, colon and comma inside a word as a value of its own, so a credential shape is refused after a plain name too.
+- REQ-11: The card text screen shall screen a word in time that grows in step with its length, so one word of a million bytes without a space is answered in seconds.
 - REQ-5: Each text field that the commands `card add` or `card note` or `card criterion` store shall pass through the one function `secret_words` in `src/card/input.rs`, the fields being the title and the body and each `--ac` and the note text and `--ref` and `--evidence` and `--reason`.
 - REQ-6: A refused text shall give the refusal kind `invalid_input`, name the field, count each refused word once and never repeat the text.
 - REQ-7: The command `card add` shall run the screen before it writes, so a refused add leaves the ledger as it was.
@@ -54,6 +55,8 @@ created: 2026-11-19
   verify: `cargo test --locked --offline --test card_cli secret_screen_refuses_credential_shapes_after_any_separator`; `cargo test --locked --offline --lib secret_screen_sees_values_after_a_separator`
 - AC-11 (REQ-5, REQ-9, REQ-10): 노트 참조와 기준의 증거·사유도 같은 화면을 지나 비밀 이름 대입과 구분자 뒤 값 모양을 거절하고 필드 이름을 한 번 말해요.
   verify: `cargo test --locked --offline --test card_work_cli the_reference_evidence_and_reason_pass_the_secret_screen`
+- AC-12 (REQ-11): 구분자(쉼표·콜론·등호)나 공백 없는 JSON 꼴이 되풀이되는 한 낱말을 200 KB, 노트 한도보다 1바이트 작게, 한도 정확히 세 크기로 넣으면 15초 안에 답하고, 낱말 끝의 자격 증명 모양은 그 긴 낱말에서도 거절돼요.
+  verify: `cargo test --locked --offline --lib secret_screen_time_on_one_long_word_has_a_bound`
 - AC-7 (REQ-1, REQ-2): 기존 카드 125장의 글에서 새 규칙이 걸릴 개수를 읽기 전용으로 센 값이 Result 에 있어요.
   manual: 카드 노트 3152 의 수치(기준 글 0/268, 제목 1/125, 본문 3/113, 노트 5/3147)를 Result 에 옮겨 적고, 구현 뒤 같은 스크립트로 구현된 규칙을 다시 센 값을 한 줄 더해요.
 
@@ -111,4 +114,9 @@ created: 2026-11-19
   - N2 변이 3개(노트 참조·증거·사유 검사를 하나씩 끔): 모두 `--test card_work_cli the_reference_evidence_and_reason_pass_the_secret_screen` 실패로 사살, 복원 뒤 `git status` 깨끗. 시험 입력에 예전 화면이 통과시키던 꼴(비밀 낱말 플래그에 수 값, 토큰 조각이 든 한도 플래그에 수 값)을 넣었어요.
   - N4: 비밀 이름 꼴 글자가 `tests/card_work_cli.rs` 의 시험 한 줄과 `src/card/input.rs` 의 문서 주석에 있던 것을 조각 이어 붙이기·풀어 쓰기로 바꿨어요(`git diff v2026.11.0 HEAD` 의 더한 줄에서 비밀 이름 등호 꼴 검색 0건).
   - 기존 카드 글 재측정(수리한 head 의 `moai-cli`, 임시 HOME·임시 장부, `count_after.py`, 2026-11-19): 기준 글 0/287, 제목 1/130, 본문 3/118, 노트 7/3301 — 수리 전(0/268, 1/125, 3/113, 7/3205)과 같은 카드의 같은 글만 걸려요(걸리는 카드: 3, 22, 32, 68, 122).
+- 수리 2(재감사 FAIL, 노트 3357, B2 제곱 시간):
+  - 원인과 고침: 낱말 안 구분자마다 뒤 전체를 공유 화면에 다시 넘겼어요. 구분자를 공백으로 바꿔 한 번만 넘기도록 고쳤어요(`src/card/input.rs` `word_is_refused`). 구분자를 품은 접두 모양이 없어서(`TOKEN_PREFIXES`·`redact_outgoing` 읽음) 결과는 같고, 이름 검사·값 검사 다른 갈래는 그대로예요.
+  - 측정(수리 전 → 후, debug 빌드, 20 KB 한 낱말, 같은 시험 탐침): 쉼표 5.33초 → 0.026초, 콜론 5.72초 → 0.016초, 등호 4.61초 → 0.022초, JSON 꼴 3.23초 → 0.011초, 하이픈·`sk-` 는 수 ms 로 처음부터 빨랐어요.
+  - AC-12: met — `--lib secret_screen_time_on_one_long_word_has_a_bound` 통과(네 꼴 곱하기 200 KB·한도−1·한도, 15초 상한, 끝 모양 확인). 시험은 스레드에서 화면을 돌려 제곱 시간이 되돌아오면 15초 뒤 바로 실패해요.
+  - 변이 2개(모두 사살, 복원 뒤 `git status` 깨끗): (1) 구분자마다 뒤 전체를 넘기는 옛 꼴로 되돌림 → 시간 상한 시험이 15.01초에 실패, (2) 변환에서 쉼표를 뺌 → `secret_screen_sees_values_after_a_separator` 실패.
 - 돌리지 않은 것: 전체 `cargo test`, CI, 실제 HOME, 점·카멜 이름.
