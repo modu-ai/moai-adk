@@ -32,10 +32,10 @@ parent: SPEC-20261119-card-reclaim-guard
 
 ## Requirements
 
-- REQ-1: `card show` of an existing card, run by a session that does not hold it, shall answer the card with its notes and leave every entry under the temporary HOME unchanged, folder modification times included.
-- REQ-2: `card list` on a registered project shall answer the card it holds and leave every entry under the temporary HOME unchanged.
-- REQ-3: `card next` for a session with nothing offered shall answer a null next and leave every entry under the temporary HOME unchanged.
-- REQ-4: the compared world shall contain a real git repository with a worktree recorded on the reservation, the older system's records (journal.log, a session entry, a proposal) beside the registered ledger's project, and one taken card with a note, so the proof names every object criterion 6 lists.
+- REQ-1: When a session that does not hold the card runs `card show` on an existing card, the command shall answer the card with its notes and leave every entry under the temporary HOME unchanged, folder modification times included · failure: none — a HOME that differs after the command fails the snapshot comparison naming the entry.
+- REQ-2: When `card list` runs on a registered project, the command shall answer the card it holds and leave every entry under the temporary HOME unchanged · failure: none — a HOME that differs after the command fails the snapshot comparison naming the entry.
+- REQ-3: When a session with nothing offered runs `card next`, the command shall answer a null next and leave every entry under the temporary HOME unchanged · failure: none — a HOME that differs after the command fails the snapshot comparison naming the entry.
+- REQ-4: Where the proof compares a before/after snapshot of the HOME, the compared world shall contain a real git repository with a worktree recorded on the reservation, the older system's records (journal.log, a session entry, a proposal) beside the registered ledger's project, and one taken card with a note, so it names every object criterion 6 lists.
 
 ## Acceptance
 

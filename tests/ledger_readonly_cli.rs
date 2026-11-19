@@ -49,7 +49,15 @@ fn ok(home: &TempHome, session: &str, args: &[&str]) -> Value {
 /// `card note`, whose text arrives on stdin.
 fn note(home: &TempHome, session: &str, card: &str, project: &str, text: &str) -> Output {
     let mut child = home
-        .command(&["card", "note", card, "--kind", "comment", "--project", project])
+        .command(&[
+            "card",
+            "note",
+            card,
+            "--kind",
+            "comment",
+            "--project",
+            project,
+        ])
         .env(SESSION_VAR, session)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -148,7 +156,13 @@ fn world() -> (TempHome, String, String) {
         ],
     );
     assert_eq!(taken["state"], json!("active"), "{taken}");
-    let noted = note(&home, HOLDER, &name, &p, "a note the queries must not disturb\n");
+    let noted = note(
+        &home,
+        HOLDER,
+        &name,
+        &p,
+        "a note the queries must not disturb\n",
+    );
     assert_eq!(
         noted.status.code(),
         Some(0),
