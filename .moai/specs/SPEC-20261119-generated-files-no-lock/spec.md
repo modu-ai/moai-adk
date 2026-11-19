@@ -84,7 +84,7 @@ created: 2026-11-19
 
 - AC-1: `card_generated_scope` 5/5 통과(`cargo test --locked --offline --test card_generated_scope`). 연결 줄을 되돌린 변이 R1 은 `two_cards_may_both_list_the_generated_manifest`, `the_ready_listing_agrees_with_take`, `a_real_overlap_is_still_refused_and_names_its_own_pair` 세 시험이 잡았어요(2 통과 · 3 실패).
 - AC-2: `the_list_equals_the_gitattributes_merge_lines` 통과(위 5/5 에 포함).
-- AC-3: `card_check_still_requires_the_path_in_scope` 통과, `--lib` 전체 1458 통과(클레임 쪽 `scope` 시험은 수정 없음).
+- AC-3: `card_check_still_requires_the_path_in_scope` 통과, `cargo test --locked --offline --lib` 전체 1493 통과(조각 2 의 마지막 head `f310062af3` 를 따로 연 worktree 에서 다시 잰 값, exit 0; 처음 여기 적은 1458 과 READY 노트의 1491 은 이 head 의 값이 아니었어요 — 감사 N4, 카드 C-127). 클레임 쪽 `scope` 시험은 수정 없음.
 - AC-4: `python3 -m unittest tests.source_manifest_test` 45 개 OK, `tests.repo_scans_test` 25 개 OK.
 - AC-5: `cargo fmt --check` exit 0, `cargo clippy --locked --offline --all-targets -- -D warnings` exit 0.
 - 이웃: `ledger_reservation` 28, `card_reclaim_cli` 16, `card_dispatch_cli` 25, `card_cli` 14, `home_isolation_scan` 18 모두 통과.
