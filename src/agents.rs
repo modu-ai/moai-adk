@@ -989,7 +989,7 @@ const BLOCK_ABSENT: &str =
     "managed block absent; user deletion preserved (re-adopt requires an explicit request)";
 
 /// The conflict detail of a baseline that has no block in the file any more.
-const BLOCK_MISSING: &str = "managed block missing or removed; baseline mismatch";
+pub(crate) const BLOCK_MISSING: &str = "managed block missing or removed; baseline mismatch";
 const APPEND_PICKED: &str =
     "append-managed picked: the managed section is added at the end; every other byte is kept";
 const SKIP_PICKED: &str = "skip-conflicts picked: the file is kept as it is";
