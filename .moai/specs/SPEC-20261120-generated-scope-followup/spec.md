@@ -1,8 +1,8 @@
 ---
 id: SPEC-20261120-generated-scope-followup
 title: "Generated shared paths: the docs, the CLI tests, the case rule and the count of the first slice"
-status: draft
-revision: 1
+status: approved
+revision: 2
 created: 2026-11-20
 ---
 
@@ -34,7 +34,7 @@ SPEC-20261119-generated-files-no-lock 의 조각 2 는 한쪽이 정확히 생�
 
 ## Acceptance
 
-- AC-1 (REQ-1): the header of `src/ledger/reservation.rs` and `ledger_reservation.md` each carry `card_overlap`, and neither says overlap is the one or only judgement; the test reads both files at build time, so a later edit that drops the rule fails it.
+- AC-1 (REQ-1): the header of `src/ledger/reservation.rs` and `ledger_reservation.md` each carry `card_overlap`, and neither says overlap is the one or only judgement; the test reads both files at build time, so a later edit that drops the rule fails it. Half open (leader decision, card note 3361): the page half is done here; the header of `src/ledger/reservation.rs` waits for the card that holds that file, as a one-line piece after it lands, and the test reads the header then.
   verify: `cargo test --locked --offline --test card_generated_scope the_reservation_docs_name_the_generated_path_rule`
 - AC-2 (REQ-2, REQ-3): the real binary takes a manifest-only card beside a `skills/moai/**` card, then widens a held card with the manifest (allowed), with a skill file the other card's folder reaches (refused, the message names the skill file and not the manifest) and with a file nobody else reaches (allowed); the ledger scope after each call is the one the call reported.
   verify: `cargo test --locked --offline --test card_generated_scope`
@@ -45,7 +45,7 @@ SPEC-20261119-generated-files-no-lock 의 조각 2 는 한쪽이 정확히 생�
 
 ## Scope
 
-- write: `src/scope.rs`, `src/ledger/reservation.rs`, `docs/design-review/appendix/ledger_reservation.md`, `tests/card_generated_scope.rs`, `.moai/specs/SPEC-20261119-generated-files-no-lock/spec.md` (one Result line), `.moai/specs/SPEC-20261120-generated-scope-followup/**`
+- write: `src/scope.rs`, `src/ledger/reservation.rs`, `docs/design-review/appendix/ledger_reservation.md`, `tests/card_generated_scope.rs`, `.moai/specs/SPEC-20261119-generated-files-no-lock/spec.md` (one Result line), `tools/ci_scope.py` (one `EXACT_DENY` line for the page the docs test reads), `.moai/specs/SPEC-20261120-generated-scope-followup/**`; `src/ledger/reservation.rs` was written only by the later one-line piece, not here
 - read-only: `.gitattributes`, `src/card/**`, `src/ops/card.rs`, `tests/card_scope_widen_cli.rs`
 - forbidden: the real HOME and ledger, the network, a change of what `GENERATED_SHARED_PATHS` lists
 
