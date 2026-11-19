@@ -93,4 +93,22 @@ parent: SPEC-20261119-rule-prune
 
 ## Result
 
-(written after the checks)
+Read on 2026-11-19 (UTC), branch `spec/20261119-rule-prune-leader`, the local `v2026.11.0` at `e84d7c46ce` merged as `01d95ad386` and at `4a45b73eea` as `44bc1f8260`.
+
+What changed:
+
+- `workflows/mode-leader.md`: three sentences moved to the history section of `rule-history.md`, 316 bytes of text; the file went from 45,194 to 44,875 bytes (`git show e84d7c46ce:… | wc -c`, `wc -c`). Each moved sentence is a copy of one that stays (the ownership sentence of the same file and `src/leader.rs:234`, the `mode-channel` step, `SKILL.md`).
+- `references/rule-history.md`: the three mechanical inventories are written from a measured field per row, 134 rows, headings `@ e84d7c46ce`: `audit.md` 33 rows (12 `pins:`, 21 `text only`), `mode-agent.md` 60 (57 and 3), `mode-leader.md` 41 (36 and 5). The sentence reading lists the 30 sentences no test literal covers: 3 moved, 12 read by code, 15 the only copy of a contract (one flagged stale). The file grew from 17,376 to 27,592 bytes, under the 65,536 bound; the slice removed three duplicates, it did not shrink the package.
+- `tests/rule_history_guard.rs`: six tests (three on the live files, three synthetic).
+
+Checks on head `d2b590f2a5` (the leader's seven, plus the two added at 14:00Z):
+
+- diff check against `origin/v2026.11.0`, `cargo fmt --check`, `rustfmt --check --edition 2021 src/ops/*.rs`, clippy with `-D warnings`, the five-test cargo set and the three python modules, `trailer-check v2026.11.0..HEAD` and `cargo test --bins`: exit 0 each.
+- Every command of `tools/repo_scans.json` (39 distinct): 38 exit 0; one failed, `self_audit_cli every_ci_scope_mention_in_the_skill_names_this_repository` (the merge-train row of the mode-leader inventory named `ci_scope_test.py` without "moai-adk repository" in the 300 bytes before it). Fixed in `8f9180705d`: such a row carries "(moai-adk repository)" after its first words, the generator does the same; the manifest was rewritten in that commit. After the fix `self_audit_cli`, `rule_history_guard`, `orca_optional_3005`, `workflow_size_budget`, `core_rules_2876` and `mode_workflow_steps` exit 0 (tests passed per target: `core_rules_2876` 6, `mode_workflow_steps` 43, `orca_optional_3005` 5, `rule_history_guard` 6, `self_audit_cli` 5, `workflow_size_budget` 6). `python3 -I tools/source_manifest.py check` answers ok.
+- Mutant, run after the commit: the third moved sentence put back into `mode-leader.md` made `no_history_entry_is_still_live` fail (exit 101, "holds history entries word for word"); the file was restored and equals `HEAD`.
+
+Open for the leader:
+
+- AC-4 holds on this branch (no `card precheck` here). The local `v2026.11.0` at `8f51970f11` now has `src/card/precheck.rs` (C-96): the one-line naming of D-4 is possible after that tip is merged, in a later slice.
+- Sentence 2 of `mode-leader.md` (the line saying nothing reclaims a card) is stale since `moai card reclaim` exists; a rewrite belongs to C-53 S6 or the leader, not to a prune.
+- `workflows/audit.md` has 21 of 33 rule lines no test reads; `workflows/mode-agent.md` has 30 unpinned sentences (4,432 bytes): a pool for a later prune.
