@@ -31,7 +31,7 @@ created: 2026-11-19
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-3): 이긴 쪽이 1차 읽기와 계획 재계산 사이에 끝나는 순서를 시험이 정확히 만들어서(코드 사이에 끼는 시험용 자리), 진 쪽이 `unchanged`를 받아요.
+- AC-1 (REQ-1, REQ-3): REQ-3의 세 자리 중 첫 읽기와 거절 뒤 두 자리만 이 AC가 못 박아요(락 아래 자리는 Result의 "알려진 빈틈"). 이긴 쪽이 1차 읽기와 계획 재계산 사이에 끝나는 순서를 시험이 정확히 만들어서(코드 사이에 끼는 시험용 자리), 진 쪽이 `unchanged`를 받아요.
   verify: `cargo test --locked --offline --test ledger_recover a_recovery_finished_between_the_first_read_and_the_plan_is_unchanged`
 - AC-2 (REQ-2): 멀쩡하지만 이 계획의 결과가 아닌 원장은 그대로 `target_healthy`로 거절돼요.
   verify: `cargo test --locked --offline --test ledger_recover a_usable_ledger_that_is_not_this_plans_result_is_still_refused`
@@ -70,6 +70,8 @@ created: 2026-11-19
 원인(SPEC Intent에 적은 것): CI 두 건(run 44438864038 round 11, run 44452712179 round 6)과 로컬 재현 4건이 같은 값 `target_healthy`예요. 락 없는 1차 읽기(손상) → 이긴 쪽이 설치를 끝냄 → `check_plan`이 계획의 대상을 멀쩡하다고 읽고 거절 → 락 아래의 `unchanged` 확인에 닿지 못함.
 
 변이(`--test ledger_recover`의 세 시험): M1 거절 뒤 둘째 확인 삭제 → KILLED(`a_recovery_finished_between_…`); M2 둘째 확인이 digest를 무시 → KILLED(`a_usable_ledger_that_is_not_…`); M3 거절을 항상 `unchanged`로 → KILLED(같은 시험). 변이마다 `git checkout --` 뒤 작업 트리 clean.
+
+알려진 빈틈(감사 note 4를 실행으로 확인): REQ-3의 세 자리 중 락 아래의 둘째 확인(`lock_recovery` 바로 뒤의 `already_finished`)은 이 SPEC의 시험이 못 박지 않아요. 변이 M5(그 줄만 지움)를 `--test ledger_recover` 전체(51개)에 돌렸더니 51 passed로 살아남았어요. 그 줄은 이 변경 전부터 있던 코드이고, 이 SPEC이 새로 못 박은 자리는 첫 읽기와 계획 재계산 사이의 틈(REQ-1, AC-1)과 다른 계획의 결과를 가리는 일(REQ-2, AC-2)이에요. `check_plan`과 `lock_recovery` 사이에 끼는 시험용 자리가 없어서 그 순서를 시험이 만들 수 없어요. 필요하면 후속 카드로 그 자리를 더해 못 박아요.
 
 검사: `cargo test --locked --offline --lib` 1451 passed; `--test ledger_recover` 51 passed; `--test ledger_open` 26; `--test spec_cli` 17; `cargo fmt --check` 0; `cargo clippy --locked --offline --all-targets -- -D warnings` 0; `spec check` errors 0 warnings 0.
 
