@@ -39,6 +39,8 @@ EXEMPT = {
                                "tools/heavy_check_slot.py",
     "tests/install_script_test.py": "os.walk of the test's temporary HOME and link folders; runs "
                                     "the named install/install.sh and install.ps1",
+    "tests/launcher_settings_receipt.rs": "read_dir of the temp home's receipts folder; reads the "
+                                          "named operations document models_revert.md",
     "tests/local_check_test.py": "os.walk of the test's own temporary clone (a before/after "
                                  "snapshot of its working folder); reads the named "
                                  "tools/local_check.sh and .github/workflows/ci.yml",
