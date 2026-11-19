@@ -87,10 +87,16 @@ def validate(eval_dir, kinds):
                     f"a {kind} record is missing {', '.join(missing)}: "
                     f"{json.dumps(row, ensure_ascii=False)[:200]}"
                 )
-            if "/" in row["id"] or "\\" in row["id"] or row["id"] in (".", ".."):
+            if (
+                "/" in row["id"]
+                or "\\" in row["id"]
+                or ":" in row["id"]
+                or row["id"] in (".", "..")
+            ):
                 refuse(
-                    f"the case id holds a path separator: {row['id']!r}; a case id names a "
-                    "prompt file, so `/` and `\\` (and `.`/`..`) are refused"
+                    f"the case id holds a path separator or `:`: {row['id']!r}; a case id names "
+                    "a prompt file and joins the `id:which` missing-ref entries, so `/`, `\\`, "
+                    "`:` and `.`/`..` are refused"
                 )
             rows.append(row)
     return rows
@@ -180,10 +186,11 @@ def cmd_score(args):
         if not isinstance(row, dict) or row.get("case_id") not in known:
             refuse(f"the findings file names a case the set does not hold: {json.dumps(row)[:200]}")
     rows_missing = missing_refs(args.repo, incidents + controls)
+    missing_ids = {m.split(":", 1)[0] for m in rows_missing}
     by_id = {c["id"]: c for c in incidents + controls}
-    rows = {r["case_id"]: r for r in findings if r["case_id"] not in rows_missing}
-    cases = [c for c in incidents if c["id"] not in rows_missing]
-    ctrls = [c for c in controls if c["id"] not in rows_missing]
+    rows = {r["case_id"]: r for r in findings if r["case_id"] not in missing_ids}
+    cases = [c for c in incidents if c["id"] not in missing_ids]
+    ctrls = [c for c in controls if c["id"] not in missing_ids]
     described = 0
     verdict_hits = 0
     for case in cases:

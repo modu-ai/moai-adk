@@ -348,7 +348,7 @@ class FollowupsTest(unittest.TestCase):
         self.assertEqual(summary["written"], 0)
 
     def test_a_path_separator_in_a_case_id_is_refused(self):
-        for evil in ("../escape", "a/b", "a\\b", ".."):
+        for evil in ("../escape", "a/b", "a\\b", "a:b", ".."):
             json.dump(
                 [dict(self.case, id=evil)],
                 open(os.path.join(self.eval_dir, "cases-tuning.json"), "w"),
@@ -361,6 +361,29 @@ class FollowupsTest(unittest.TestCase):
             self.assertFalse(
                 os.path.isdir(self.out) and os.listdir(self.out), f"{evil}: wrote something"
             )
+
+    def test_a_missing_ref_case_is_skipped_from_the_score(self):
+        # The audit gap this pins: the id:which format must keep the missing case out of the
+        # score's cases and findings, never silently inside the denominators (B-1 of the audit).
+        broken = dict(self.case, id="case-broken", head="0" * 40)
+        json.dump(
+            [self.case, broken], open(os.path.join(self.eval_dir, "cases-tuning.json"), "w")
+        )
+        findings = os.path.join(self.tmp.name, "findings.json")
+        json.dump(
+            [
+                {"case_id": "case-ok", "findings": ["Unrelated"], "verdict": "FAIL"},
+                {"case_id": "case-broken", "findings": ["Anything"], "verdict": "FAIL"},
+            ],
+            open(findings, "w"),
+        )
+        proc = self.cli(
+            "score", "--set", "tuning", "--eval-dir", self.eval_dir, "--findings", findings
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        report = json.loads(proc.stdout)
+        self.assertEqual(report["cases"], 1, report)
+        self.assertEqual(report["missing_ref"], ["case-broken:head"], report)
 
 
 if __name__ == "__main__":
