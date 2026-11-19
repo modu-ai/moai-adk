@@ -1039,6 +1039,37 @@ fn merge_confirm_strikes_release_the_third_refusal() {
     );
 }
 
+/// REQ-9: only this rule's `rule_block` lines of this session count: another rule's block and
+/// this rule's own release line are not strikes.
+#[test]
+fn merge_confirm_counts_only_its_own_blocks() {
+    use std::io::Write;
+    let (_tmp, root) = merge_repo(true);
+    merge_enforce(&root);
+    let merge = "gh pr merge 123";
+    let (_, decision, _) = merge_preflight_as("codex", &root, merge, "one");
+    assert_eq!(decision, "deny", "first refusal");
+    let first = merge_log(&root).remove(0);
+    let session = first["session"].clone();
+    let mut log = fs::OpenOptions::new()
+        .append(true)
+        .open(root.join(".moai-cli/receipts/hook-engine.jsonl"))
+        .unwrap();
+    for (kind, rule) in [
+        ("rule_block", "other_rule"),
+        ("rule_release", "merge_confirm"),
+    ] {
+        let line = json!({"schema_version": 1, "kind": kind, "rule": rule, "reason": "x",
+            "host": "codex", "session": session, "call": null, "unix_ms": 1});
+        writeln!(log, "{line}").unwrap();
+    }
+    // One strike of this rule so far: the next refusal still refuses, the one after is released.
+    let (_, decision, _) = merge_preflight_as("codex", &root, merge, "one");
+    assert_eq!(decision, "deny", "second refusal");
+    let (code, decision, _) = merge_preflight_as("codex", &root, merge, "one");
+    assert_eq!((code, decision.as_str()), (0, ""), "third is released");
+}
+
 /// REQ-5: every host's confirmation list names the direct merge.
 #[test]
 fn merge_confirm_capabilities_name_the_direct_merge() {
