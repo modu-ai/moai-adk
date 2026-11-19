@@ -1,0 +1,11 @@
+ ▐▛███▜▌   Claude Code
+▝▜█████▛▘  /Users/example/project
+  ▘▘ ▝▝    glm
+
+● Working on the card…
+  ⎿  Your limit will reset at 2026-11-19 17:30:55
+
+────────────────────────────────────────
+❯
+────────────────────────────────────────
+  ⏵⏵ bypass permissions on (shift+tab to cycle)

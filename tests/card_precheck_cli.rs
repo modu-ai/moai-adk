@@ -1,0 +1,601 @@
+//! SPEC-20261119-card-precheck (card C-96, workflow W3): `moai card precheck` is the read-only
+//! check the leader runs before readying or dispatching a card. It lists the merged commits and
+//! pull requests whose message names the card (`C-<n>`, `card/<n>`, `card <n>`, or a `Moai-Spec`
+//! trailer naming the card's linked SPEC), the SPEC linked to the card and the SPEC folders that
+//! name it, and every decision note that shares a path with the card's write scope or a phrase
+//! from its criteria — so a card already done on the tip (C-88 #3151, C-92 #3187) or a criterion
+//! that contradicts a recorded decision (C-63 N1, C-87 AC 2) is seen before a lane starts.
+//! Nothing is written: the ledger's bytes and mtimes and the repository's HEAD are unchanged.
+//! Every case runs the real binary against a temporary HOME ledger and a temporary repository.
+
+mod common;
+
+use common::home::TempHome;
+use moai_cli::ledger;
+use serde_json::{json, Value};
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Output, Stdio};
+
+// ---- fixture git: scrubbed, and checked to be in its own repository ----
+//
+// A test that runs under a git hook or another git command inherits `GIT_DIR`,
+// `GIT_INDEX_FILE` and `GIT_WORK_TREE` pointing at the real repository, and those variables
+// win over `git -C <dir>`: a fixture `git commit` would then land in the real repository.
+// So every call here removes them (the list `identity::scrub_git_env` removes, which is
+// `pub(crate)` and out of reach of an integration test), and a call that writes first checks
+// that git's top level is the temporary repository itself (card C-96, leader incident
+// 2026-11-19).
+
+/// The variables that can point a git child at another repository, object store or config.
+const GIT_ENV_REMOVED: &[&str] = &[
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_COMMON_DIR",
+    "GIT_INDEX_FILE",
+    "GIT_NAMESPACE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_PREFIX",
+    "GIT_CONFIG_PARAMETERS",
+    "GIT_CONFIG_COUNT",
+    "GIT_CEILING_DIRECTORIES",
+    "GIT_DISCOVERY_ACROSS_FILESYSTEM",
+];
+
+/// A fixture git command in `dir`: the shared guarded command of `tests/common/git.rs` (no
+/// user or system config, `LC_ALL=C`, no background maintenance) plus what that helper does
+/// not do — remove the variables above — a fixed identity, `-C dir` and the same current
+/// directory.
+fn scrubbed_git(dir: &Path) -> Command {
+    let mut cmd = common::git::command();
+    for key in GIT_ENV_REMOVED {
+        cmd.env_remove(key);
+    }
+    for (key, _) in std::env::vars_os() {
+        let k = key.to_string_lossy();
+        if k.starts_with("GIT_CONFIG_KEY_") || k.starts_with("GIT_CONFIG_VALUE_") {
+            cmd.env_remove(&key);
+        }
+    }
+    cmd.args(["-c", "user.name=fixture"])
+        .args(["-c", "user.email=fixture@example.invalid"])
+        .args(["-c", "commit.gpgsign=false", "-c", "core.autocrlf=false"])
+        .args(["-c", "core.excludesFile=/dev/null"])
+        .arg("-C")
+        .arg(dir)
+        .current_dir(dir)
+        .stdin(Stdio::null());
+    cmd
+}
+
+/// Panics unless git's top level, seen from `dir`, is `dir` itself: a write must never reach
+/// a repository that merely contains the folder (or the real one).
+fn assert_own_repo(dir: &Path) {
+    let out = scrubbed_git(dir)
+        .args(["rev-parse", "--show-toplevel"])
+        .output()
+        .expect("run git");
+    let top = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    let own = fs::canonicalize(dir).unwrap();
+    assert!(
+        out.status.success() && fs::canonicalize(&top).ok().as_deref() == Some(own.as_path()),
+        "refusing to write: git's top level from {} is {top:?}, not the temporary repository",
+        dir.display()
+    );
+}
+
+/// Runs one fixture git command; every command but `init` first checks it is in its own repo.
+fn git_in(dir: &Path, args: &[&str]) {
+    if args.first() != Some(&"init") {
+        assert_own_repo(dir);
+    }
+    let out = scrubbed_git(dir).args(args).output().expect("run git");
+    assert!(out.status.success(), "git {args:?}: {:?}", out.stderr);
+}
+
+/// The trimmed standard output of one read-only fixture git command.
+fn git(dir: &Path, args: &[&str]) -> String {
+    let out = scrubbed_git(dir).args(args).output().expect("run git");
+    assert!(out.status.success(), "git {args:?}: {:?}", out.stderr);
+    String::from_utf8_lossy(&out.stdout).trim().to_string()
+}
+
+fn envelope(out: &Output) -> Value {
+    serde_json::from_slice(&out.stdout).unwrap_or_else(|e| {
+        panic!(
+            "stdout is not JSON ({e}): {} {}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        )
+    })
+}
+
+fn ok(out: &Output) -> Value {
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{} {}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let v = envelope(out);
+    assert_eq!(v["ok"], json!(true), "{v}");
+    v["result"].clone()
+}
+
+/// The refusal: exit 1, its `kind` and its message.
+fn refusal(out: &Output) -> (String, String) {
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "{} {}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let v = envelope(out);
+    assert_eq!(v["ok"], json!(false), "{v}");
+    (
+        v["error"]["kind"].as_str().unwrap().to_string(),
+        v["error"]["message"].as_str().unwrap().to_string(),
+    )
+}
+
+/// A temporary HOME with a registered ledger and a git repository on `main` whose first commit
+/// is `fixture`.
+struct World {
+    home: TempHome,
+    project: PathBuf,
+}
+
+impl World {
+    fn new() -> Self {
+        let home = TempHome::new();
+        let project = home.project("demo");
+        ledger::register(home.path(), "demo").unwrap();
+        git_in(&project, &["init", "-q", "-b", "main"]);
+        git_in(
+            &project,
+            &["commit", "--allow-empty", "-q", "-m", "fixture"],
+        );
+        World { home, project }
+    }
+
+    fn p(&self) -> &str {
+        self.project.to_str().unwrap()
+    }
+
+    fn run(&self, args: &[&str]) -> Output {
+        self.home.command(args).output().expect("run moai")
+    }
+
+    /// `moai card <args> --project P`.
+    fn card(&self, args: &[&str]) -> Output {
+        let mut all = vec!["card"];
+        all.extend_from_slice(args);
+        all.extend_from_slice(&["--project", self.p()]);
+        self.run(&all)
+    }
+
+    /// `moai card precheck <card> --integration-ref main`.
+    fn precheck(&self, card: &str) -> Output {
+        self.card(&["precheck", card, "--integration-ref", "main"])
+    }
+
+    fn head(&self) -> String {
+        git(&self.project, &["rev-parse", "HEAD"])
+    }
+
+    /// One empty commit whose message is `subject` and then each paragraph, in order.
+    fn commit(&self, subject: &str, paragraphs: &[&str]) {
+        let mut args = vec!["commit", "--allow-empty", "-q", "-m", subject];
+        for p in paragraphs {
+            args.extend_from_slice(&["-m", p]);
+        }
+        git_in(&self.project, &args);
+    }
+
+    /// A real merge commit — a side branch with one commit of its own, merged with `--no-ff` —
+    /// whose message is `subject` and then each paragraph.
+    fn merge(&self, subject: &str, paragraphs: &[&str]) {
+        git_in(&self.project, &["checkout", "-q", "-b", "side"]);
+        git_in(
+            &self.project,
+            &["commit", "--allow-empty", "-q", "-m", "side work"],
+        );
+        git_in(&self.project, &["checkout", "-q", "main"]);
+        let mut args = vec!["merge", "--no-ff", "-q", "--no-edit", "-m", subject];
+        for p in paragraphs {
+            args.extend_from_slice(&["-m", p]);
+        }
+        args.push("side");
+        git_in(&self.project, &args);
+    }
+
+    /// Adds a `feature` card with `scope` and `criteria`; returns its name (`C-1`).
+    fn card_with(&self, scope: &[&str], criteria: &[&str]) -> String {
+        let mut args = vec!["add", "--title", "precheck demo", "--kind", "feature"];
+        for s in scope {
+            args.extend_from_slice(&["--scope", s]);
+        }
+        for c in criteria {
+            args.extend_from_slice(&["--ac", c]);
+        }
+        let added = ok(&self.card(&args));
+        added["name"].as_str().unwrap().to_string()
+    }
+
+    /// A note on `card_id` of `kind` with `body` and, when `ref` is given, that ref; returns the
+    /// note id. Written straight into the ledger, the way note fixtures are built elsewhere.
+    fn note(&self, card_id: i64, kind: &str, body: &str, ref_: Option<&str>) -> i64 {
+        {
+            let mut l = ledger::open_write(self.home.path(), "demo").unwrap();
+            l.with_write_tx(|tx, now| {
+                tx.execute(
+                    "INSERT INTO card_note (card_id, kind, author, origin, body, ref, created_at) \
+                     VALUES (?1, ?2, 'leader', 'local', ?3, ?4, ?5)",
+                    rusqlite::params![card_id, kind, body, ref_, now],
+                )?;
+                Ok(())
+            })
+            .unwrap();
+        }
+        let l = ledger::open_read_only(self.home.path(), "demo").unwrap();
+        l.conn()
+            .query_row("SELECT max(note_id) FROM card_note", [], |r| r.get(0))
+            .unwrap()
+    }
+
+    /// A minimal SPEC that passes `moai spec check`, through the real commands.
+    fn draft_spec(&self, slug: &str) -> String {
+        let r = ok(&self.run(&[
+            "spec",
+            "new",
+            slug,
+            "--title",
+            "t",
+            "--minimal",
+            "--date",
+            "2026-11-19",
+            "--project",
+            self.p(),
+        ]));
+        let id = r["id"].as_str().unwrap().to_string();
+        let path = self.project.join(".moai/specs").join(&id).join("spec.md");
+        let text = fs::read_to_string(&path).unwrap();
+        fs::write(&path, filled(&text)).unwrap();
+        id
+    }
+}
+
+/// A template's text with every `<…>` placeholder filled with the word `filled`.
+fn filled(text: &str) -> String {
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(open) = rest.find('<') {
+        let Some(close) = rest[open..].find('>') else {
+            break;
+        };
+        out.push_str(&rest[..open]);
+        out.push_str("filled");
+        rest = &rest[open + close + 1..];
+    }
+    out.push_str(rest);
+    out
+}
+
+/// REQ-1: the commits, PRs, linked SPEC and SPEC folders that name the card — and the noise
+/// (`C-10`, `C-19`, `card/10`, `AC-100`) that must stay out. REQ-5: nothing is written.
+#[test]
+fn lists_merged_prs_commits_and_spec_folders_naming_the_card() {
+    let w = World::new();
+    let linked = w.draft_spec("demo-linked");
+    let card = w.card_with(
+        &["src/alpha.rs", "tests/beta/**"],
+        &[
+            "N1: the hooks offer reads ready when #2936 names it",
+            "N2: user_chat lines follow Lang::En",
+        ],
+    );
+    assert_eq!(card, "C-1");
+    ok(&w.card(&["spec", &card, &linked, "--by", "leader"]));
+
+    // A SPEC folder whose text names the card (the folder scan reads the text only).
+    let two = w.project.join(".moai/specs/SPEC-20261119-demo-two/spec.md");
+    fs::create_dir_all(two.parent().unwrap()).unwrap();
+    fs::write(&two, "# two\n\nThe card C-1 names this SPEC.\n").unwrap();
+
+    // Five commits name the card, three are noise; the merge brings one side commit of its own.
+    w.commit("fix(demo): noise for another card (C-10)", &[]);
+    w.commit(
+        "chore(demo): unrelated subject",
+        &["Notes: C-1 covered here."],
+    );
+    w.merge(
+        "Merge pull request #31 from modu-ai/card/1-demo",
+        &["feat(demo): the PR title (card 1)"],
+    );
+    w.commit(
+        "chore(demo): trailer one",
+        &["Moai-Spec: SPEC-20261119-demo-linked"],
+    );
+    w.commit("fix(demo): lowercase (c-1) too", &[]);
+    w.commit("fix(demo): the thing lands (C-1)", &[]);
+    w.commit("chore: AC-100 cleanup", &["see C-19 and card/10"]);
+
+    let before = w.home.snapshot();
+    let head_before = w.head();
+    let v = ok(&w.precheck(&card));
+    assert_eq!(v["action"], json!("precheck"));
+    assert_eq!(v["card"], json!("C-1"));
+    assert_eq!(v["ledger"], json!("ready"));
+    assert_eq!(v["git"]["ref"], json!("main"));
+    assert_eq!(v["git"]["head"], json!(head_before));
+    assert_eq!(v["git"]["scanned"], json!(9));
+    assert_eq!(v["git"]["truncated"], json!(false));
+
+    let m = v["merged_mentions"].as_array().unwrap();
+    let rows: Vec<String> = m
+        .iter()
+        .map(|e| {
+            // A JSON string prints with its quotes; read the text so a row is `kind|pr|where|key`.
+            format!(
+                "{}|{}|{}|{}",
+                e["kind"].as_str().unwrap(),
+                e["pr"],
+                e["where"].as_str().unwrap(),
+                e["matched"].as_str().unwrap()
+            )
+        })
+        .collect();
+    assert_eq!(
+        rows,
+        vec![
+            "commit|null|subject|C-1".to_string(),
+            "commit|null|subject|C-1".to_string(),
+            "commit|null|trailer|spec:SPEC-20261119-demo-linked".to_string(),
+            "pr_merge|31|subject|card/1".to_string(),
+            "commit|null|body|C-1".to_string(),
+        ],
+        "{m:?}"
+    );
+
+    assert_eq!(v["spec"]["linked"], json!("SPEC-20261119-demo-linked"));
+    assert_eq!(
+        v["spec"]["folders_naming_the_card"],
+        json!(["SPEC-20261119-demo-two"])
+    );
+    assert_eq!(v["decision_notes"], json!([]));
+
+    // REQ-5: the HOME tree and the repository's HEAD are exactly as they were.
+    assert_eq!(w.home.snapshot(), before);
+    assert_eq!(w.head(), head_before);
+}
+
+/// REQ-3: decision notes that share a scope path or a criteria phrase are listed with their
+/// card, note ref, author and every key that matched; a note of another kind and an unrelated
+/// decision stay out.
+#[test]
+fn lists_decision_notes_sharing_a_path_or_a_criteria_phrase() {
+    let w = World::new();
+    let card = w.card_with(
+        &["src/alpha.rs", "tests/beta/**"],
+        &[
+            "N1: the hooks offer reads ready when #2936 names it",
+            "N2: user_chat lines follow Lang::En",
+        ],
+    );
+    let other = w.card_with(&["src/elsewhere.rs"], &["N9: elsewhere only"]);
+    assert_eq!((card.as_str(), other.as_str()), ("C-1", "C-2"));
+
+    let n1 = w.note(
+        1,
+        "decision",
+        "DECISION leader — src/alpha.rs 줄은 C-77 이 관리해요",
+        None,
+    );
+    let n2 = w.note(
+        2,
+        "decision",
+        "DECISION user — #2936 S-CYCLE AC 13: hooks 제안이 없어요",
+        Some("note:2:deadbeef"),
+    );
+    let _n3 = w.note(
+        2,
+        "decision",
+        "DECISION leader — 배포 스크립트는 deploy/ 안에만 써요",
+        None,
+    );
+    let _n4 = w.note(
+        2,
+        "comment",
+        "LANE-DONE — 같은 경로 src/alpha.rs 를 언급하지만 다른 종류",
+        None,
+    );
+
+    let v = ok(&w.precheck(&card));
+    let notes = v["decision_notes"].as_array().unwrap();
+    assert_eq!(notes.len(), 2, "{notes:?}");
+    // Sorted by card, then note id: the card's own note first.
+    assert_eq!(notes[0]["card"], json!("C-1"));
+    assert_eq!(notes[0]["note_id"], json!(n1));
+    assert_eq!(notes[0]["ref"], Value::Null);
+    assert_eq!(notes[0]["author"], json!("leader"));
+    assert_eq!(notes[0]["matched_by"], json!(["path:src/alpha.rs"]));
+    assert_eq!(notes[1]["card"], json!("C-2"));
+    assert_eq!(notes[1]["note_id"], json!(n2));
+    assert_eq!(notes[1]["ref"], json!("note:2:deadbeef"));
+    assert_eq!(
+        notes[1]["matched_by"],
+        json!(["phrase:hooks", "phrase:#2936"])
+    );
+}
+
+/// REQ-2, REQ-4, REQ-6: a bad ref and an absent ledger are advisories inside an `ok` report
+/// (the git half still runs; the decision half stays empty), a malformed name and a missing
+/// card are refusals like the other read-only actions, and `--max-commits` bounds the scan.
+#[test]
+fn advisory_on_failures_refuses_bad_names_and_bounds_the_scan() {
+    let w = World::new();
+    let card = w.card_with(&["src/alpha.rs"], &["N1: the hooks offer reads ready"]);
+    w.commit("fix(demo): the thing lands (C-1)", &[]);
+    w.commit("chore: noise one", &[]);
+    w.commit("chore: noise two", &[]);
+    w.commit("chore: noise three", &[]);
+
+    // A malformed name and a missing card refuse like `card show` does.
+    let (kind, message) = refusal(&w.card(&["precheck", "hello", "--integration-ref", "main"]));
+    assert_eq!(kind, "invalid_input");
+    assert!(message.contains("not a card"), "{message}");
+    let (kind, message) = refusal(&w.card(&["precheck", "C-99", "--integration-ref", "main"]));
+    assert_eq!(kind, "not_found");
+    assert!(message.contains("C-99"), "{message}");
+
+    // A ref that is not there: an advisory inside an ok report, no mentions.
+    let v = ok(&w.card(&["precheck", &card, "--integration-ref", "no-such-ref"]));
+    assert_eq!(v["ledger"], json!("ready"));
+    assert!(!v["git"]["error"].as_str().unwrap().is_empty());
+    assert_eq!(v["merged_mentions"], json!([]));
+
+    // A project with a repository but no ledger: the git half still answers.
+    let bare = TempHome::new();
+    let project = bare.project("demo");
+    git_in(&project, &["init", "-q", "-b", "main"]);
+    git_in(
+        &project,
+        &["commit", "--allow-empty", "-q", "-m", "feat: (C-1) lands"],
+    );
+    let out = bare
+        .command(&[
+            "card",
+            "precheck",
+            "C-1",
+            "--integration-ref",
+            "main",
+            "--project",
+            project.to_str().unwrap(),
+        ])
+        .output()
+        .expect("run moai");
+    let v = ok(&out);
+    assert_eq!(v["ledger"], json!("absent"));
+    assert_eq!(v["spec"]["linked"], Value::Null);
+    assert_eq!(v["decision_notes"], json!([]));
+    assert_eq!(v["merged_mentions"].as_array().unwrap().len(), 1);
+
+    // The scan bound: the newest three commits only, and the bound is named.
+    let v = ok(&w.card(&[
+        "precheck",
+        &card,
+        "--integration-ref",
+        "main",
+        "--max-commits",
+        "3",
+    ]));
+    assert_eq!(v["git"]["scanned"], json!(3));
+    assert_eq!(v["git"]["truncated"], json!(true));
+    assert_eq!(v["merged_mentions"].as_array().unwrap().len(), 0);
+}
+
+/// Audit B1 (REQ-5): an `--integration-ref` that looks like a git option is a ref, never an
+/// option — `--output=<file>` once made `git log` overwrite or create that file. The answer is
+/// still `ok`, with the bad ref named as the git failure, and no file is touched.
+#[test]
+fn an_integration_ref_that_looks_like_a_git_option_is_a_ref_not_an_option() {
+    let w = World::new();
+    let card = w.card_with(&["src/a.rs"], &["a criterion"]);
+    let sentinel = w.home.path().join("sentinel.txt");
+    fs::write(&sentinel, "keep").unwrap();
+    let created = w.home.path().join("injected.txt");
+    for value in [
+        format!("--output={}", sentinel.display()),
+        format!("--output={}", created.display()),
+        "-p".to_string(),
+        "--all".to_string(),
+    ] {
+        let arg = format!("--integration-ref={value}");
+        let v = ok(&w.card(&["precheck", &card, &arg]));
+        assert!(v["git"]["error"].is_string(), "{value}: {v}");
+        assert_eq!(v["git"]["scanned"], json!(0), "{value}: {v}");
+    }
+    assert_eq!(fs::read_to_string(&sentinel).unwrap(), "keep");
+    assert!(!created.exists(), "an option-shaped ref created a file");
+}
+
+/// Audit B2: a criteria token that starts with Hangul used to panic the word scan (a byte step
+/// inside a three-byte character). A note that holds the token inside a longer word is not a
+/// match; a note that holds it as a word is.
+#[test]
+fn a_criteria_token_that_starts_with_hangul_does_not_panic_the_word_scan() {
+    let w = World::new();
+    let card = w.card_with(&["src/a.rs"], &["원장에서는 카드를 읽어요"]);
+    w.note(1, "decision", "DECISION: 그원장에서는 다르게 해요", None);
+    let word = w.note(1, "decision", "DECISION: 원장에서는 같은 말이에요", None);
+    let v = ok(&w.card(&["precheck", &card, "--integration-ref", "main"]));
+    let notes = v["decision_notes"].as_array().unwrap();
+    assert_eq!(notes.len(), 1, "{v}");
+    assert_eq!(notes[0]["note_id"], json!(word), "{v}");
+}
+
+/// Audit B3 (REQ-2): a ledger that cannot be read does not refuse a `C-<n>` run: the answer is
+/// `ok`, the ledger failure is named, the decision list is empty and the git half still fills.
+/// A `#<n>` name cannot be resolved without the ledger, so that form still refuses, once
+/// prefixed.
+#[test]
+fn an_unreadable_ledger_still_answers_ok_with_the_git_half() {
+    let w = World::new();
+    let card = w.card_with(&["src/a.rs"], &["a criterion"]);
+    w.commit("fix: lands (C-1)", &[]);
+    let file = ledger::ledger_path(w.home.path(), "demo").unwrap();
+    fs::write(&file, vec![0x5au8; 4096]).unwrap();
+    let v = ok(&w.precheck(&card));
+    assert_eq!(v["ledger"], json!("unreadable"), "{v}");
+    assert!(
+        v["ledger_error"].as_str().unwrap().contains("ledger"),
+        "{v}"
+    );
+    assert_eq!(v["decision_notes"], json!([]));
+    assert_eq!(v["merged_mentions"].as_array().unwrap().len(), 1, "{v}");
+    let (kind, message) = refusal(&w.precheck("#1"));
+    assert_eq!(kind, "blocked", "{message}");
+    assert!(
+        !message.contains("ledger blocked: ledger blocked"),
+        "{message}"
+    );
+}
+
+/// Audit N3: record separators inside a commit message cannot forge a commit record.
+#[test]
+fn separator_bytes_in_a_commit_message_cannot_forge_a_record() {
+    let w = World::new();
+    let card = w.card_with(&["src/a.rs"], &["a criterion"]);
+    let forged = format!(
+        "body\u{1e}{}\u{1f}forged C-1\u{1f}fake body",
+        "0".repeat(40)
+    );
+    w.commit("fix: real (C-1)", &[forged.as_str()]);
+    let v = ok(&w.precheck(&card));
+    assert_eq!(v["git"]["scanned"], json!(2), "{v}");
+    let mentions = v["merged_mentions"].as_array().unwrap();
+    assert_eq!(mentions.len(), 1, "{v}");
+    assert_ne!(mentions[0]["sha"], json!("0".repeat(40)), "{v}");
+}
+
+/// Audit N2: the largest `--max-commits` does not overflow; it scans everything there is.
+#[test]
+fn the_largest_scan_bound_scans_everything_without_overflow() {
+    let w = World::new();
+    let card = w.card_with(&["src/a.rs"], &["a criterion"]);
+    w.commit("fix: lands (C-1)", &[]);
+    let v = ok(&w.card(&[
+        "precheck",
+        &card,
+        "--integration-ref",
+        "main",
+        "--max-commits",
+        "18446744073709551615",
+    ]));
+    assert!(v["git"]["error"].is_null(), "{v}");
+    assert_eq!(v["git"]["scanned"], json!(2), "{v}");
+    assert_eq!(v["git"]["truncated"], json!(false), "{v}");
+}
