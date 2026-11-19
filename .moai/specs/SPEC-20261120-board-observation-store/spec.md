@@ -78,4 +78,10 @@ journal_mode 무변경), 읽기 명령은 아무것도 쓰지 않고 수집을 �
 
 ## Result
 
-(채우는 중 — 이 조각은 SPEC·PLAN 까지: 커밋·push 기록을 여기에 적어요.)
+조각 1(SPEC·PLAN): 커밋 `1dfc1e7c14`(SPEC — push 뒤 git ls-remote 재독 동일, spec check 0 errors 0 warnings), PLAN 노트 plan-board02-20261119T213427Z. 조각 2(저장): 커밋 `c0d7d0bb25`(모듈+시험), base `035f62dd1d`.
+
+- RED: 모듈이 없어 컴파일 실패 — `couldn't read tests/../src/board/observation.rs`, 종료 101(기록).
+- GREEN: `cargo test --locked --offline --test board_observation_store_cli` 9 passed 0 failed(위험 경계 시험 포함: 링크 거절·실패 묶음의 커서 무변·30일 prune 의 원장 무변·읽기 무변).
+- 변이 2/2 KILLED: M1 종류 검증 끄기 → `the_six_kinds_are_fixed_and_an_unknown_kind_is_refused`·`a_failed_batch_leaves_the_cursor_where_it_was` 실패; M2 멱등 검사 우회 → `feeding_the_same_observation_file_twice_adds_no_rows`·`the_same_id_with_different_content_is_kept_apart_as_a_conflict`·`deleting_the_cursor_and_committing_again_gives_the_same_result` 3개 실패. 각각 git checkout 으로 복원해 작업 폴더 깨끗.
+- 검사: cargo fmt --check 0, clippy --offline --locked --all-targets -- -D warnings 0(미사용 필드·상수 format! 3건 수리 뒤), home_isolation_scan 18 통과, spec check 0/0, spec_cli 18 통과, python 네 모듈(repo_scans·source_manifest·local_check·skill_references) 0, git diff --check base...HEAD 0.
+- lib 선언 한 줄(pub mod board;)은 src/lib.rs 의 예약이 풀리면 다음 조각에서 — 이 조각의 시험은 경로 포함으로 모듈을 직접 돌렸다(결정 노트 decision-lib-decl-deferred). wake@1 은 이 카드에서 행 저장만.
