@@ -46,7 +46,7 @@ C-20 조각 2 실측(카드 노트 2833, 최근 10개 push run): ci 잡 시간�
   verify: `python3 -m unittest tests.github_assets_test`
 - AC-3 (REQ-7, REQ-8): tests/ci_superseded_test.py — 다리 접미사 이름 파싱, `ci-push-<target>-<leg>` 주석 판정, 전 다리 통과 + macOS 대체 조합은 superseded, 한 다리라도 다른 결과면 fail.
   verify: `python3 -m unittest tests.ci_superseded_test`
-- AC-4 (REQ-9): gate 읽기 — `ci / linux-x86_64 / nextest` 같은 이름의 check run 은 tip 잡으로 분류되고 필수 check 로 읽히지 않으며, 필수 `ci` 는 집계만이에요(기존 gate 행 유지 + 다리 이름 fixture 한 행).
+- AC-4 (REQ-9): gate 읽기 — `ci / linux-x86_64 / nextest` 같은 이름의 check run 은 tip 잡으로 분류되고 필수 check 로 읽히지 않으며, 필수 `ci` 는 집계만이에요(기존 gate 행 유지; 다리 이름 fixture 한 행은 연기 — Result 의 자체 확인 B1 기록: `tests/gate_collect.rs` 를 C-99 가 예약 중이라 이 가지에서 못 쓰고, `src/gate.rs` 분류가 `ci / ` 접두사라 다리 이름은 기존 행과 같이 읽혀요).
   verify: `cargo test --locked --offline --test gate_check_cli`; `cargo test --locked --offline --test gate_collect`
 - AC-5 (REQ-1…REQ-9): 이웃 검사 — 저장소 전수와 SPEC 형식.
   verify: `python3 -m unittest tests.repo_scans_test tests.ci_scope_test`; `moai spec check SPEC-20261119-ci-check-set-legs`
@@ -55,7 +55,7 @@ C-20 조각 2 실측(카드 노트 2833, 최근 10개 push run): ci 잡 시간�
 
 ## Scope
 
-- write: `.github/workflows/ci.yml`, `tools/local_check.sh`, `tools/ci_superseded.py`, `tests/local_check_test.py`, `tests/github_assets_test.py`, `tests/ci_superseded_test.py`, (gate fixture 가 필요하면 `tests/gate_collect.rs` 의 fixture 한 행), `.moai/specs/SPEC-20261119-ci-check-set-legs/spec.md`
+- write: `.github/workflows/ci.yml`, `tools/local_check.sh`, `tools/ci_superseded.py`, `tests/local_check_test.py`, `tests/github_assets_test.py`, `tests/ci_superseded_test.py`, `tests/ci_scope_test.py`(decide 스크립트 리터럴 고정 행 — AC-5 검증이 강제), (gate fixture 한 행은 연기: C-99 예약, AC-4 참조), `.moai/specs/SPEC-20261119-ci-check-set-legs/spec.md`
 - read-only: `src/gate.rs`(접두사 분류), `tools/ci_scope.py`, `src/audit_gate.rs`
 - forbidden: ruleset · 보호 설정 변경, 다른 workflow 파일, agent-2 의 ci.yml head 가 통합에 오르기 전 워크플로 파일 편집(리더 노트 2837), 실제 HOME · 키 · 원장
 
@@ -72,7 +72,7 @@ C-20 조각 2 실측(카드 노트 2833, 최근 10개 push run): ci 잡 시간�
 
 - 다리가 2배라 macOS 대기-대체(D8a)의 대기열이 다리별로 나뉘어요 — 각 다리가 짧아져 벽시계는 줄지만, 병합이 몰릴 때 다리별 대기가 늘어날 수 있어요. AC-6 관측에서 확인해요.
 - ci.yml 과 ci_superseded.py 는 한 커밋에 함께 가야 해요 — 어긋나면 대체-취소 run 이 중립 대신 fail 로 읽혀 tip 이 붉게 보여요(REQ-8 + AC-3 이 못박음).
-- 동적 targets 출력 × 정적 leg 차원의 GitHub 매트릭스 곱은 문서화된 동작이지만, 첫 run 에서 AC-6 으로 실제 다리 넷이 도는지 확인해요.
+- 매트릭스 곱은 targets 잡의 decide 스크립트가 리터럴로 미리 계산해 내보내요(구현 모양; 정적 leg 차원을 check 잡에 두는 방식은 쓰지 않아요). `matrix.include` 가 fromJSON 출력을 그대로 읽는 문서화된 동작이지만, 첫 run 에서 AC-6 으로 실제 다리 넷이 도는지 확인해요.
 - macOS 유일 시험 요약 표(e2e 등)가 두 잡의 요약으로 나뉘어 읽혀요 — 각 다리의 요약이 자기 결과만 보여 주는 것을 AC-2 로 못박아요.
 
 ## Decisions
@@ -96,3 +96,5 @@ C-20 조각 2 실측(카드 노트 2833, 최근 10개 push run): ci 잡 시간�
 3. **smoke 단계는 두 다리 모두**: SPEC 작성 뒤 tip 에 올라온 98351d78f9(check 잡의 install·update smoke)은 `if:` 문구가 tests/ci_smoke_step_test.py(이 카드 범위 밖)에 고정돼 있어 다리 조건을 붙일 수 없어요. 영역당 수 초라 중복 비용은 미미하고, 집계 `ci` 요구는 그대로예요.
 
 그 외는 설계 그대로: local_check.sh 는 `LOCAL_CHECK_LEG`(기본 전체·nextest·rest·모르는 값 exit 2)와 `on_leg` 목록으로 단계를 가려요(REQ-1…4); ci_superseded.py 는 첫 ` / ` 조각을 target 으로, 주석은 `ci-push-<target>-<leg>` 로 읽어요(REQ-8); D8a 그룹은 (target, leg) 단위, 집계 잡 이름·needs·조건 무변경(REQ-7·9). AC-6(첫 push run 관측)은 통합 뒤 리더 몫으로 남아요.
+
+**자체 확인 기록(agent-20, 감사 에이전트 audit-c20-legs, 2026-11-19T20:5xZ)** — 지정 검증 전부 exit 0. 발견 세 건과 처리: B1(AC-4 의 다리 이름 fixture 한 행이 gate 시험에 없고 Result 에도 미기록) → fixture 파일이 C-99 예약이라 이 가지에서는 쓸 수 없어 연기로 못 박고 이 문서에 기록(리더·C-99 몫; 접두사 분류라 행동은 같음); N1(tests/ci_scope_test.py 변경이 Scope 밖이고 미기록) → Scope 쓰기 목록에 추가; N2(Risks 의 동적×정적 곱 문장이 구현과 불일치) → 구현 모양(리터럴 곱)으로 문장 교체. REQ-1…9 와 Result 세 다듬기는 코드·시험과 일치 확인.
