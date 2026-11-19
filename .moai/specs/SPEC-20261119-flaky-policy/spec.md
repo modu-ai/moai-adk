@@ -2,7 +2,7 @@
 id: SPEC-20261119-flaky-policy
 title: "A flaky check never passes by re-running: the merge train records it on a card"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-19
 ---
 
@@ -25,7 +25,7 @@ This slice (the part of C-99 whose files are free; see Non-goals) makes the merg
 - REQ-1: When the merge train meets a check that a re-run on the same SHA turned green, the leader shall let the merge through and record the test, the failed run id, the passing run id and the SHA on one flaky card.
 - REQ-4 (REQ-1): IF the flaky card cannot be written, THEN the leader shall put the same four facts in the merge comment and say that the card is missing, and the merge still goes through.
 - REQ-2: The `mode-leader.md` sentence that calls such a result not a stop shall point to the flaky card rule.
-- REQ-3: The flaky card rule in `mode-leader.md` shall take at most 700 bytes while the file stays within the package file bound of 65536 bytes.
+- REQ-3: The flaky card rule in `mode-leader.md` shall take at most 700 bytes while the file stays within the package file bound of 65536 bytes. Its placement inside the merge-train step and the 700/701 edge are pinned in SPEC-20261119-flaky-budget-pins (slice 2, audit #3225 N1, N10, N11).
 
 ## Acceptance
 
@@ -48,7 +48,8 @@ This slice (the part of C-99 whose files are free; see Non-goals) makes the merg
 
 1. Tests first: the three checks in `tests/workflow_size_budget.rs` read `mode-leader.md`; they fail before the text is written.
 2. Edit `mode-leader.md` step 9: point from the "not a stop" sentence to the rule and add the rule right after it.
-3. Run the neighbour tests; record which test would fail because the manifest is stale (the manifest follows in the second SPEC).
+3. Run the neighbour tests; the manifest hash of `mode-leader.md` is rewritten in this SPEC with the tool (Scope, D-2) — the AC-4 neighbour `skill_package` test failed before that rewrite and passes after it.
+4. Slice 2: the placement and edge pins moved to SPEC-20261119-flaky-budget-pins (leader decision (a), card note 2685); the wording fixes for N2 and N3 need `mode-leader.md` and `verify.md`, which other cards hold.
 
 ## Risks
 

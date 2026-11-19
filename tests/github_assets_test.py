@@ -262,9 +262,11 @@ class WorkflowTest(unittest.TestCase):
         # #2554 PR-A adds the candidate verification path: candidate.yml (the three supported
         # targets and the verdict) and candidate-target.yml (one target, called three times).
         # SPEC-20261117-audit-gate adds audit-gate.yml (the audit check from verdict comments).
+        # SPEC-20261119-headver-release-workflow adds release.yml (number, tag name and build
+        # check only; a person publishes).
         self.assertEqual([p.name for p in paths],
                          ["audit-gate.yml", "candidate-target.yml", "candidate.yml", "ci.yml",
-                          "moai-label-sync.yml"])
+                          "moai-label-sync.yml", "release.yml"])
         return [(p, yaml.safe_load(p.read_text(encoding="utf-8"))) for p in paths]
 
     def test_permissions_are_least_privilege(self):
