@@ -768,16 +768,48 @@ fn merge_repo(moai: bool) -> (tempfile::TempDir, std::path::PathBuf) {
     fs::create_dir_all(root.join(".git")).unwrap();
     fs::write(root.join(".git/HEAD"), "ref: refs/heads/main\n").unwrap();
     fs::create_dir_all(root.join("home")).unwrap();
+    // The folder the engine log is written under.
+    fs::create_dir_all(root.join(".moai-cli")).unwrap();
     if moai {
         fs::create_dir_all(root.join(".moai")).unwrap();
     }
     (tmp, root)
 }
 
+/// The HOME hook config of the temporary project, with `text` as its content.
+fn merge_config(root: &Path, text: &str) {
+    let path = moai_cli::home_root::path(&root.join("home")).join("hook-config.toml");
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(path, text).unwrap();
+}
+
+/// The rule's mode set to `enforce` in the HOME hook config.
+fn merge_enforce(root: &Path) {
+    merge_config(root, "[hooks.modes]\nmerge_confirm = \"enforce\"\n");
+}
+
+/// The lines of the engine log of the temporary project.
+fn merge_log(root: &Path) -> Vec<Value> {
+    fs::read_to_string(root.join(".moai-cli/receipts/hook-engine.jsonl"))
+        .unwrap_or_default()
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect()
+}
+
 /// The answer to one Bash call, as a host would get it: (exit code, decision, reason); the
 /// decision is empty for an allowed call.
 fn merge_preflight(host: &str, root: &Path, command: &str) -> (i32, String, String) {
-    let input = json!({"session_id": "s", "hook_event_name": "PreToolUse",
+    merge_preflight_as(host, root, command, "s")
+}
+
+fn merge_preflight_as(
+    host: &str,
+    root: &Path,
+    command: &str,
+    session: &str,
+) -> (i32, String, String) {
+    let input = json!({"session_id": session, "hook_event_name": "PreToolUse",
         "tool_name": "Bash", "tool_use_id": "t1",
         "tool_input": {"command": command}, "cwd": root});
     let mut child = Command::new(common::MOAI_BIN)
@@ -811,11 +843,14 @@ fn merge_preflight(host: &str, root: &Path, command: &str) -> (i32, String, Stri
 #[test]
 fn merge_confirm_asks_for_a_direct_merge_in_a_moai_project() {
     let (_tmp, root) = merge_repo(true);
-    for command in DIRECT_MERGES {
-        let (code, decision, reason) = merge_preflight("claude", &root, command);
+    merge_enforce(&root);
+    for (n, command) in DIRECT_MERGES.iter().enumerate() {
+        // One session per command: the third refusal in one session is released.
+        let session = format!("s{n}");
+        let (code, decision, reason) = merge_preflight_as("claude", &root, command, &session);
         assert_eq!((code, decision.as_str()), (0, "ask"), "{command}: {reason}");
         assert!(reason.contains("moai gate-merge"), "{command}: {reason}");
-        let (code, decision, reason) = merge_preflight("codex", &root, command);
+        let (code, decision, reason) = merge_preflight_as("codex", &root, command, &session);
         assert_eq!(
             (code, decision.as_str()),
             (0, "deny"),
@@ -829,6 +864,7 @@ fn merge_confirm_asks_for_a_direct_merge_in_a_moai_project() {
 #[test]
 fn merge_confirm_leaves_the_gate_and_reads_alone() {
     let (_tmp, root) = merge_repo(true);
+    merge_enforce(&root);
     for command in [
         "moai gate-merge --pr 5 --permission-reference x",
         "moai gate-loop --fetch",
@@ -862,6 +898,7 @@ fn merge_confirm_leaves_the_gate_and_reads_alone() {
 #[test]
 fn merge_confirm_is_off_outside_a_moai_project() {
     let (_tmp, root) = merge_repo(false);
+    merge_enforce(&root);
     for command in DIRECT_MERGES {
         for host in ["claude", "codex"] {
             let (code, decision, reason) = merge_preflight(host, &root, command);
@@ -872,6 +909,134 @@ fn merge_confirm_is_off_outside_a_moai_project() {
             );
         }
     }
+    // Nothing was written either: the rule did not apply.
+    assert_eq!(merge_log(&root), Vec::<Value>::new());
+}
+
+/// REQ-6, REQ-7, REQ-8: no setting, or a setting that is not one of the three words, is
+/// observe: the command goes through and one `would_block` line (not a `deny`) says why. Off
+/// goes through and writes nothing.
+#[test]
+fn merge_confirm_mode_defaults_to_observe_and_off_is_silent() {
+    for config in [
+        None,
+        Some(""),
+        Some("[hooks.modes]\n"),
+        Some("[hooks.modes]\nmerge_confirm = \"yes\"\n"),
+        Some("[hooks.modes]\nmerge_confirm = 3\n"),
+        Some("[hooks.modes]\nother_rule = \"enforce\"\n"),
+        Some("this is = not [valid toml"),
+        Some("[hooks.modes]\nmerge_confirm = \"observe\"\n"),
+    ] {
+        let (_tmp, root) = merge_repo(true);
+        if let Some(text) = config {
+            merge_config(&root, text);
+        }
+        let (code, decision, reason) = merge_preflight("claude", &root, "gh pr merge 123");
+        assert_eq!(
+            (code, decision.as_str(), reason.as_str()),
+            (0, "", ""),
+            "{config:?}"
+        );
+        let lines = merge_log(&root);
+        let blocks: Vec<&Value> = lines
+            .iter()
+            .filter(|l| l["kind"] == json!("would_block"))
+            .collect();
+        assert_eq!(blocks.len(), 1, "{config:?}: {lines:?}");
+        assert_eq!(blocks[0]["rule"], json!("merge_confirm"));
+        assert!(blocks[0]["reason"]
+            .as_str()
+            .unwrap()
+            .contains("moai gate-merge"));
+        let text = serde_json::to_string(&lines).unwrap();
+        for leak in ["gh pr merge", "123", root.to_str().unwrap()] {
+            assert!(!text.contains(leak), "{leak} leaked into {text}");
+        }
+        assert!(
+            lines.iter().all(|l| l["kind"] != json!("deny")),
+            "an observed call is not a deny: {lines:?}"
+        );
+    }
+    let (_tmp, root) = merge_repo(true);
+    merge_config(&root, "[hooks.modes]\nmerge_confirm = \"off\"\n");
+    for host in ["claude", "codex"] {
+        let (code, decision, reason) = merge_preflight(host, &root, "gh pr merge 123");
+        assert_eq!(
+            (code, decision.as_str(), reason.as_str()),
+            (0, "", ""),
+            "{host}"
+        );
+    }
+    assert_eq!(merge_log(&root), Vec::<Value>::new());
+}
+
+/// REQ-9, REQ-10, REQ-11: where enforce refuses (Codex cannot ask), the third refusal of the
+/// same rule in the same session goes through and says so; another session starts again; the
+/// ask on Claude is never counted; and a refusal that cannot be written down goes through.
+#[test]
+fn merge_confirm_strikes_release_the_third_refusal() {
+    let (_tmp, root) = merge_repo(true);
+    merge_enforce(&root);
+    let merge = "gh pr merge 123";
+    for n in 1..=2 {
+        let (code, decision, _) = merge_preflight_as("codex", &root, merge, "one");
+        assert_eq!((code, decision.as_str()), (0, "deny"), "refusal {n}");
+    }
+    let lines = merge_log(&root);
+    let kinds = |kind: &str| lines.iter().filter(|l| l["kind"] == json!(kind)).count();
+    assert_eq!(
+        (kinds("rule_block"), kinds("rule_release")),
+        (2, 0),
+        "{lines:?}"
+    );
+    assert!(lines
+        .iter()
+        .filter(|l| l["kind"] == json!("rule_block"))
+        .all(|l| l["rule"] == json!("merge_confirm")));
+    // The third and the fourth go through, each leaving a release line with the reason.
+    for _ in 0..2 {
+        let (code, decision, reason) = merge_preflight_as("codex", &root, merge, "one");
+        assert_eq!(
+            (code, decision.as_str(), reason.as_str()),
+            (0, "", ""),
+            "released"
+        );
+    }
+    let lines = merge_log(&root);
+    let releases: Vec<&Value> = lines
+        .iter()
+        .filter(|l| l["kind"] == json!("rule_release"))
+        .collect();
+    assert_eq!(releases.len(), 2, "{lines:?}");
+    assert_eq!(releases[0]["rule"], json!("merge_confirm"));
+    assert!(releases[0]["reason"]
+        .as_str()
+        .unwrap()
+        .contains("moai gate-merge"));
+    // Another session is counted on its own.
+    let (code, decision, _) = merge_preflight_as("codex", &root, merge, "two");
+    assert_eq!((code, decision.as_str()), (0, "deny"));
+    // The ask on Claude (a person answers it) is not a refusal and is never counted.
+    for _ in 0..4 {
+        let (code, decision, _) = merge_preflight_as("claude", &root, merge, "three");
+        assert_eq!((code, decision.as_str()), (0, "ask"));
+    }
+    let lines = merge_log(&root);
+    let claude_blocks = lines
+        .iter()
+        .filter(|l| l["kind"] == json!("rule_block") && l["host"] == json!("claude"))
+        .count();
+    assert_eq!(claude_blocks, 0, "{lines:?}");
+
+    // No folder to write the line into: the refusal could not be counted, so it goes through.
+    fs::remove_dir_all(root.join(".moai-cli")).unwrap();
+    let (code, decision, reason) = merge_preflight_as("codex", &root, merge, "four");
+    assert_eq!(
+        (code, decision.as_str(), reason.as_str()),
+        (0, "", ""),
+        "unwritable"
+    );
 }
 
 /// REQ-5: every host's confirmation list names the direct merge.
@@ -883,6 +1048,19 @@ fn merge_confirm_capabilities_name_the_direct_merge() {
         assert!(
             commands.contains("gh pr merge") && commands.contains("moai gate-merge"),
             "{host}: {commands}"
+        );
+        let modes = caps["tool-preflight"]["confirm"]["modes"].to_string();
+        assert!(
+            [
+                "off",
+                "observe",
+                "enforce",
+                "[hooks.modes]",
+                "merge_confirm"
+            ]
+            .iter()
+            .all(|w| modes.contains(w)),
+            "{host}: {modes}"
         );
     }
 }

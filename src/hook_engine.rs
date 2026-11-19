@@ -91,6 +91,9 @@ pub const EDIT_OPT_IN: &str = "[hooks.edit_diagnostics] enabled + checkers (exte
 pub const CONFIRM_COMMANDS: &str =
     "git reset --hard, a forced git clean (not a dry run), a force push to a branch other than main or master, and in a MoAI project a direct pull request merge (gh pr merge, gh api PUT .../merge, the GraphQL merge mutations) outside `moai gate-merge`";
 
+/// How `[hooks.modes]` changes the direct-merge confirmation (card C-86, decision note 2346).
+pub const CONFIRM_MODES: &str = "[hooks.modes] merge_confirm = off | observe | enforce in the HOME hook-config.toml; absent or any other word is observe: the call goes through and one would_block line says it would have been confirmed; off does nothing; enforce confirms (Claude asks, Codex and OMP refuse). Where enforce refuses, the third refusal of the rule in one session goes through and one rule_release line records why; a refusal that cannot be written to the engine log goes through";
+
 /// Appended to a confirmation on Codex, which cannot ask.
 pub const CODEX_ASK_SUFFIX: &str =
     "Codex cannot ask for confirmation in a hook, so it is refused here; run it yourself outside the agent if you mean it.";
@@ -188,7 +191,7 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
             if let Some(problem) = loaded.problem {
                 record_config_error(&input, cwd, now_unix_ms, host, problem);
             }
-            tool_preflight(&input, cwd, &loaded.config)
+            tool_preflight(&input, cwd, &loaded.config, host, now_unix_ms)
         }
         Event::ToolObserve => tool_observe(&input, cwd, now_unix_ms, host),
         Event::TurnValidation => turn_validation_with(STOP_RULES, &input, cwd, now_unix_ms),
@@ -412,7 +415,7 @@ pub fn capabilities(host: &str) -> Value {
                                "opt_in": OPT_IN_RULES,
                                "not_guarded": ["writes outside the project unless [hooks.outside_project_writes] is enabled", "shell redirections into protected paths", "MCP tools"],
                                "answer": "hookSpecificOutput.permissionDecision=deny",
-                               "confirm": {"answer": "hookSpecificOutput.permissionDecision=ask", "commands": CONFIRM_COMMANDS,
+                               "confirm": {"answer": "hookSpecificOutput.permissionDecision=ask", "commands": CONFIRM_COMMANDS, "modes": CONFIRM_MODES,
                                            "note": "a deny anywhere on the line wins; ask in a bypass-permissions or -p session is not documented"},
                                "never_uses": ["allow", "defer", "decision/reason (deprecated)"]},
             "tool-observe": {"events": ["PostToolUse", "PostToolUseFailure"], "records": "observe line", "blocks": false},
@@ -436,7 +439,7 @@ pub fn capabilities(host: &str) -> Value {
                                "opt_in": OPT_IN_RULES,
                                "not_guarded": ["writes outside the project unless [hooks.outside_project_writes] is enabled", "shell redirections into protected paths", "MCP tools"],
                                "answer": "hookSpecificOutput.permissionDecision=deny",
-                               "confirm": {"answer": "hookSpecificOutput.permissionDecision=deny (Codex has no ask)", "commands": CONFIRM_COMMANDS},
+                               "confirm": {"answer": "hookSpecificOutput.permissionDecision=deny (Codex has no ask)", "commands": CONFIRM_COMMANDS, "modes": CONFIRM_MODES},
                                "never_uses": ["ask", "approve", "continue=false", "stopReason", "allow+updatedInput"]},
             "tool-observe": {"events": ["PostToolUse"], "records": "observe line", "blocks": false,
                              "note": "Codex has no PostToolUseFailure; apply_patch has no file_path, so its path is not recorded",
@@ -458,7 +461,7 @@ pub fn capabilities(host: &str) -> Value {
                                "opt_in": OPT_IN_RULES,
                                "not_guarded": ["edit/write paths and content: OMP's edit input is not the Claude file_path/content shape, so it is not translated", "writes outside the project unless [hooks.outside_project_writes] is enabled", "MCP and extension tools"],
                                "answer": "{block: true, reason} (reason reaches the model as the tool error)",
-                               "confirm": {"answer": "block (OMP has no ask)", "commands": CONFIRM_COMMANDS},
+                               "confirm": {"answer": "block (OMP has no ask)", "commands": CONFIRM_COMMANDS, "modes": CONFIRM_MODES},
                                "on_module_error": "the module lets the call through when moai is missing, times out or exits 1, matching the non-blocking engine error of the other hosts; OMP itself treats a throwing handler as a block"},
             "tool-observe": {"events": ["tool_result"], "records": "observe line", "blocks": false,
                              "outcome": "tool_result.isError"},
@@ -630,8 +633,15 @@ fn session_check(host: Host, input: &Value, cwd: &Path) -> Verdict {
 /// here; a forge check of the claim stays with `claim-verify --hook`.
 /// tool-preflight with the confirmation class (B2): any deny — a guard or the claim token, in
 /// any segment of the line — wins; only a call that would be allowed is turned into `Ask`
-/// (Claude's own order is deny > defer > ask > allow).
-fn tool_preflight(input: &Value, cwd: &Path, config: &crate::hook_config::HookConfig) -> Verdict {
+/// (Claude's own order is deny > defer > ask > allow). The direct-merge confirmation is a rule
+/// with a mode (`[hooks.modes]`, [`apply_rule_mode`]); the older confirmations are not.
+fn tool_preflight(
+    input: &Value,
+    cwd: &Path,
+    config: &crate::hook_config::HookConfig,
+    host: Host,
+    now_unix_ms: u128,
+) -> Verdict {
     let verdict = tool_preflight_deny(input, cwd, config);
     if verdict != Verdict::Allow || input["tool_name"] != json!("Bash") {
         return verdict;
@@ -641,12 +651,95 @@ fn tool_preflight(input: &Value, cwd: &Path, config: &crate::hook_config::HookCo
         .as_str()
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|| cwd.to_path_buf());
-    match crate::hook_guards::bash_confirm(command)
-        .or_else(|| crate::hook_guards::merge_confirm(command, &dir))
-    {
-        Some(reason) => Verdict::Ask(reason.to_string()),
+    if let Some(reason) = crate::hook_guards::bash_confirm(command) {
+        return Verdict::Ask(reason.to_string());
+    }
+    match crate::hook_guards::merge_confirm(command, &dir) {
+        Some(reason) => apply_rule_mode(
+            MERGE_CONFIRM_RULE,
+            reason,
+            input,
+            cwd,
+            config,
+            host,
+            now_unix_ms,
+        ),
         None => Verdict::Allow,
     }
+}
+
+/// The rule id of the direct-merge confirmation in `[hooks.modes]` and in the engine log.
+pub const MERGE_CONFIRM_RULE: &str = "merge_confirm";
+
+/// How many times one session may be refused by one rule before the next call goes through
+/// (leader decision, C-86 note 2346): the third refusal is released.
+pub const RULE_BLOCK_CAP: usize = 2;
+
+/// Applies the mode `[hooks.modes]` gives `rule` to a refusal whose fixed sentence is
+/// `reason` (SPEC-20261119-enforce-merge-confirm REQ-6…REQ-11):
+/// - `off` → allow, nothing written;
+/// - `observe` (the default) → allow, one `would_block` line (rule, fixed reason, host,
+///   session, call, time) and no command, path or content;
+/// - `enforce` → on Claude the confirmation, as before, never counted (a person answers it);
+///   where the host renders it as a refusal (Codex, OMP) one `rule_block` line is written
+///   first — a refusal that cannot be written down goes through, because it could not be
+///   counted — and once the session already has [`RULE_BLOCK_CAP`] such lines for the rule the
+///   call goes through with one `rule_release` line that carries the reason.
+fn apply_rule_mode(
+    rule: &'static str,
+    reason: &'static str,
+    input: &Value,
+    cwd: &Path,
+    config: &crate::hook_config::HookConfig,
+    host: Host,
+    now_unix_ms: u128,
+) -> Verdict {
+    use crate::hook_config::RuleMode;
+    let line = |kind: &str| {
+        json!({
+            "schema_version": 1,
+            "kind": kind,
+            "rule": rule,
+            "reason": reason,
+            "host": host.name(),
+            "session": session_key(input),
+            "call": call_key(input),
+            "unix_ms": now_unix_ms as u64,
+        })
+    };
+    match config.mode_of(rule) {
+        RuleMode::Off => Verdict::Allow,
+        RuleMode::Observe => {
+            let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line("would_block"));
+            Verdict::Allow
+        }
+        RuleMode::Enforce if host == Host::Claude => Verdict::Ask(reason.to_string()),
+        RuleMode::Enforce => {
+            let home = crate::hooks::env_home();
+            let strikes = rule_blocks_in(home.as_deref(), cwd, &session_key(input), rule);
+            if strikes >= RULE_BLOCK_CAP {
+                let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line("rule_release"));
+                return Verdict::Allow;
+            }
+            match crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line("rule_block")) {
+                Ok(()) => Verdict::Ask(reason.to_string()),
+                Err(_) => Verdict::Allow,
+            }
+        }
+    }
+}
+
+/// How many `rule_block` lines of `rule` the engine log holds for `session`. Reads the bounded
+/// logs only (project side, then the HOME side); a missing or unreadable log counts as zero.
+fn rule_blocks_in(home: Option<&Path>, cwd: &Path, session: &str, rule: &str) -> usize {
+    crate::hooks::receipt_lines_in(home, cwd, ENGINE_LOG)
+        .iter()
+        .filter(|v| {
+            v["kind"] == json!("rule_block")
+                && v["rule"] == json!(rule)
+                && v["session"] == json!(session)
+        })
+        .count()
 }
 
 fn tool_preflight_deny(
