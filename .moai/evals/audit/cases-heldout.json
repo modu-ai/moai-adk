@@ -1,0 +1,56 @@
+[
+ {
+  "id": "pr3199-b1",
+  "pr": 3199,
+  "bug": "B1",
+  "audit_comment": 6969116113,
+  "head": "d629188cb272f697027b7c8547e36b5f4cf28297",
+  "base": "1d49d55062463b4006e7cbf7617832c0cf32b0ab",
+  "answer_key": "CI is red: the new test file home_install_go_retire.rs walks src and skills but is not registered in tools/repo_scans.json, so repo_scans_test fails on the unlisted walking test."
+ },
+ {
+  "id": "pr3198-b1",
+  "pr": 3198,
+  "bug": "B1",
+  "audit_comment": 6968286752,
+  "head": "c567f9ca0d0be4e0682759eade80a1278e27eb39",
+  "base": "1d49d55062463b4006e7cbf7617832c0cf32b0ab",
+  "answer_key": "The SPEC's AC-3 verify command names moai spec lint, a command that does not exist (the command is moai spec check), so the verification line cannot be run."
+ },
+ {
+  "id": "pr3197-b1",
+  "pr": 3197,
+  "bug": "B1",
+  "audit_comment": 6967832563,
+  "head": "1cf7cea544281961d5e976898c7dd2ae0117c511",
+  "base": "1d49d55062463b4006e7cbf7617832c0cf32b0ab",
+  "answer_key": "The pull request body's Self-Audit plan line carries a card number, and card numbers never go into a pull request body."
+ },
+ {
+  "id": "pr3102-b1",
+  "pr": 3102,
+  "bug": "B1",
+  "audit_comment": 6904985820,
+  "head": "2f2bb9f38b1e2b30d5800399af2ef10f6f5d2304",
+  "base": "c0fb3ea86a202791e2dd91fcec7a8e5e47747b0d",
+  "answer_key": "Two stated ledger safety properties survive mutation: the HOME-state guard's interrupted, mixed and refuse states are pinned by no test, and nothing checks the new ledger file's 0600 mode."
+ },
+ {
+  "id": "pr3093-b1",
+  "pr": 3093,
+  "bug": "B1",
+  "audit_comment": 6904254380,
+  "head": "3f35dcf183001f42f98c4b46841037be66cac89a",
+  "base": "6f40ba6d62a488bfd7e500c653c5b23887841414",
+  "answer_key": "The unavailable-is-not-nobody guarantee is untested: when neither /proc nor lsof can be read, the holders-null branch of held_entry never runs, so a mutant returning an empty list survives."
+ },
+ {
+  "id": "pr3084-b1",
+  "pr": 3084,
+  "bug": "B1",
+  "audit_comment": 6901463047,
+  "head": "d5069600f4999a4d1edfbb00d2a2e238a6815aa4",
+  "base": "f045120c52bdaf2bb320e402a1049e3bd7cf852a",
+  "answer_key": "check_marker's three validations - the trailing arrow bracket, the 200-character limit and the control-character refusal - are pinned by no test, so removing any of them leaves every host_connector test green."
+ }
+]
