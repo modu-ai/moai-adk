@@ -892,37 +892,82 @@ is left out together with its separator.
    output style are not shown; their `session_time` and `output_style` options are still
    accepted.
 2. Repository: `📡` owner/repo, available `⬇️` Issue / `🔀` PR counts, the card counts
-   `🔥 N / 📥 M / ✅ D` of the project's local ledger (card C-65, user instructions
-   2026-11-16 and 2026-11-17, card 85: `🔥` cards in progress = `active` + `review`, `📥` cards
-   created and remaining = `draft` + `ready` + `hold`, `✅` cards `done`, counted in neither
-   of the other two; `📡 owner/repo | ⬇️ 46 / 🔀 0 | 🔥 5 / 📥 50 / ✅ 12 | 🅱️ main`), `🅱️` branch with
-   its behind and dirty counts, `🌳` the worktree name (`worktree.name`, else
-   `workspace.git_worktree`; absent in the main checkout, AC-9), `🔗 #N state` this
+   `🗂️ <remaining> / ▶️ <working> / 🔃 <waiting> / ✅ <done>` of the project's local ledger
+   (card C-65, user instructions 2026-11-16 and 2026-11-17, card 85; icons, order and the
+   `🔃` number by the user's decision 2026-11-19, card C-121: `🗂️` cards created
+   and remaining = `draft` + `ready` + `hold`, `▶️` cards being worked on, `🔃` cards pushed and
+   waiting for an audit or for integration, `✅` cards `done`, counted in none of the others;
+   `📡 owner/repo | ⬇️ 46 / 🔀 0 | 🗂️ 50 / ▶️ 2 / 🔃 3 / ✅ 12 | 🅱️ main | 🔗 #1234 pending`),
+   `🅱️` branch with its behind and dirty counts, `🔗 #N state` this
    branch's pull request (AC-7; an OSC 8 hyperlink to `pr.url` only when color is on and
-   the URL is plain `http(s)`). The branch's `+N` is the only change count: there is no
+   the URL is plain `http(s)`). The worktree name is no longer on this line: it opens line 3
+   (item 3). The branch's `+N` is the only change count: there is no
    `💾` file-change segment (leader decision 6862179411 on #2756; the `git_status`
    option is still accepted). Ahead arrows are hidden. Missing forge counts are omitted.
-   The `worktree` and `pr` options turn their segments off.
+   The `pr` option turns its segment off.
+   `▶️` and `🔃` split the cards in `active` or `review`: a card in `review` is waiting, and
+   an `active` card is waiting only when the newest of its notes whose first line carries a
+   marker is a waiting marker; every other `active` card is working. The waiting markers are
+   a first line starting `LANE-READY-INTEGRATION` or `감사 요청`, or starting `LANE-DONE` and
+   carrying `audit requested` or `감사 요청`, or starting `AUDIT` and carrying
+   `verdict: PASS`; the working markers are a first line starting `ACK ` or `PLAN `, or
+   starting `AUDIT` and carrying `verdict: FAIL`. Any other first line is no marker and
+   changes nothing, and a note is read only as far as its first 1000 characters.
    The card counts are read from the ledger `moai card list` reads
    (`$HOME/.moai/projects/<project_id>/`, the project being the one the input names, else
    the project above the working directory), read-only: no folder, file or journal is
    made, no process is started and no network is used, and the ledger file is byte for
-   byte the same afterwards. A registered ledger without cards shows `🔥 0 / 📥 0 / ✅ 0`.
+   byte the same afterwards. A registered ledger without cards shows
+   `🗂️ 0 / ▶️ 0 / 🔃 0 / ✅ 0`. When the notes cannot be read within the render budget the
+   segment keeps its place with three numbers, `🗂️ <remaining> / ▶️ <active + review> / ✅ <done>`,
+   and no `🔃`, never a guess.
    With no registered ledger, no HOME, no project profile, a file that is not this
    project's ledger (corrupt, cut short, another project's, a link) or a ledger another
    process holds locked for more than 50 ms (`CARDS_BUSY_TIMEOUT`, or what is left of the
-   render budget when that is less), the three numbers are absent, the rest of the line is
+   render budget when that is less), all the numbers are absent, the rest of the line is
    unchanged and the exit code stays 0. Without forge counts the card counts keep the same
    place; without a repository name or a branch (or with `git_branch` off) they open the
    line. The one option `cards` in `statusline.yaml` (`statusline.segments.cards: false`)
-   turns all three numbers off. `statusline.yaml` switches segments on and off only; it has
+   turns all the numbers off. `statusline.yaml` switches segments on and off only; it has
    no setting for their order. Each number carries its icon, so color is never the only
-   signal. Tests: `tests/statusline_cards.rs`, the golden case `b13-card-counts` (its
-   ledger is the checked-in `tests/fixtures/statusline-claude/ledger/cards-5-50-12.sqlite`,
-   written by the ignored test `write_the_golden_ledger_fixture`).
-3. Usage: the `CTX` and available `Week` bars only (`🔋 CTX: … | 🪫 Week: …`; since #2928
-   user instruction 6878415244 the tag is on line 1, not here). With both bars off the
-   line is empty and omitted like any empty line. The bar icons (`🔋`/`🪫`) and the
+   signal. Tests: `tests/statusline_cards.rs`, the golden cases `b13-card-counts` and
+   `b14-card-counts-waiting` (their ledgers are the checked-in
+   `tests/fixtures/statusline-claude/ledger/cards-5-50-12.sqlite` for `b13` and
+   `cards-5-50-12-waiting.sqlite` for `b14`, which adds the notes that make one card wait;
+   the ignored test `write_the_golden_ledger_fixture` writes both).
+3. Usage and worktree: the worktree segment when there is one, then the `CTX` and
+   available `Week` bars (`🌳 WT-c124-statusline-worktree-label | 🔋 CTX: … | 🪫 Week: …`;
+   since #2928 user instruction 6878415244 the tag is on line 1, not here; the worktree
+   segment moved here from the end of line 2 by the user's instruction 2026-11-19, card
+   C-124). The segment stands at the front of the last line: line 3 while lines 1 and 2
+   are shown, and one line up when an empty line is left out. In a linked worktree it has
+   three shapes. `🌳 WT-c<card>-<name>` when a live reservation of the project (status
+   `held`, `held_for_review` or `expired_candidate`, with an absolute worktree path)
+   names the session's folder (`<card>` is the number of the card that holds it, the
+   lowest number when several do; `<name>` is the part of the reservation's branch after
+   the eight-digit date and a dash in its last path segment, else the folder name without
+   its `<project_id>-` prefix (the project profile's `project_id`) and without the card
+   number). `🌳 WT-c<card>` when no name is left. `🌳 <worktree name>`
+   alone, with no `WT-` and no card number (the name the host gave: `worktree.name`, else
+   `workspace.git_worktree`), when no live reservation names the folder or the ledger
+   cannot be read within the render budget. A reservation whose recorded worktree path is
+   not absolute names no folder. `<name>` shows at most 32 characters, cut with `…` after
+   the 31st, and drops control characters and the invisible format characters that
+   reorder or hide text. There is no segment in the main checkout, and the `worktree`
+   option turns it off. The ledger is opened read-only under the budget of the card
+   counts, and nothing is created. Example (lines 2 and 3 of the golden
+   `b14-card-counts-waiting`):
+
+       📡 anthropics/claude-code | ⬇️ 46 / 🔀 0 | 🗂️ 50 / ▶️ 2 / 🔃 3 / ✅ 12 | 🅱️ main | 🔗 #1234 pending
+       🌳 feature-xyz | 🔋 CTX: ░░░░░░░░░░ 9% | 🔋 Week: ████░░░░░░ 41%
+
+   Tests: `tests/statusline_worktree_label.rs` (the three shapes, a released reservation
+   is no holder, the lowest card number, the main checkout, the `worktree` option, the
+   line), the unit tests in `src/statusline/state.rs`
+   (`the_name_is_cut_at_thirty_two_characters_and_drops_control_characters`,
+   `a_relative_recorded_path_never_matches`) and the golden cases `a02-doc-full` and
+   `b14-card-counts-waiting`. With both bars off and no worktree segment the line is
+   empty and omitted like any empty line. The bar icons (`🔋`/`🪫`) and the
    `(⚠️ /clear)` handoff mark keep their rules. The five-hour bar is not shown — the user did not choose it (#2756,
    6858992949) — and the `usage_5h` option is still accepted. A missing weekly window is
    hidden; reset times are not printed.
