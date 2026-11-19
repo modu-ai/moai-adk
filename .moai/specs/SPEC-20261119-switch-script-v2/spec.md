@@ -2,7 +2,7 @@
 id: SPEC-20261119-switch-script-v2
 title: "Name-switch script v2 preview: spec, statusline and session go to Rust (C-33 S2a)"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-19
 ---
 
@@ -59,6 +59,9 @@ v2 가 v1 과 다른 점은 세 가지뿐이에요:
   verify: `cargo test --locked --offline --test switch_script_v2 the_undo_line_restores_v1_byte_for_byte`
   verify: `cargo test --locked --offline --test switch_script_v2 a_second_apply_with_the_same_stamp_refuses_and_keeps_the_saved_v1`
   verify: `cargo test --locked --offline --test switch_script_v2 apply_and_undo_report_failure_through_the_exit_status`
+  verify: `cargo test --locked --offline --test switch_script_v2 apply_refuses_a_folder_that_already_holds_v2`
+  verify: `cargo test --locked --offline --test switch_script_v2 apply_never_overwrites_an_existing_saved_copy`
+  verify: `cargo test --locked --offline --test switch_script_v2 undo_tries_the_second_folder_even_when_the_first_fails`
 - AC-5 (REQ-11): the diff of this branch against its base touches only this SPEC folder and `tests/switch_script_v2.rs`.
   verify: `git diff --name-only origin/v2026.11.0...HEAD`
 - AC-6: neighbours (targeted; the full run is cited from the PR's CI run).
@@ -85,11 +88,12 @@ v2 가 v1 과 다른 점은 세 가지뿐이에요:
 - A listed Rust action that Go also has with different flags is routed by the first two words only; the script does not read flags. A flag before the action (`moai spec --project . lint`), a different case (`spec Lint`), an empty action and `spec help lint` read as "not a Go-only action" and go to Rust; the test `v2_routes_by_the_first_two_words_only` pins this.
 - The Go template's status-line wrapper `.moai/status_line.sh` runs `exec moai statusline` and the project's `settings.json` calls it every 60 seconds (audit M2). Every Go-initialized project that keeps that wrapper therefore changes from the Go render to the Rust three-line render once v2 is applied. That is the leader's intended change (note 2781) but it reaches far more than the three Orca profile scripts — see the counts in the Result.
 - The apply line copies `preview/moai.v2` verbatim. Its header names the SPEC and its undo hint tells the reader to put back `moai.before-<stamp>`; the stamp is not recorded anywhere else, so the S4 step must print it and keep it with the undo line.
+- `session help` and `session` alone now reach the Rust build (it answers with exit 2 and asks for `--name`) where the Go build would print help. Same first-two-words rule as the `spec` cases above.
 - If both installed scripts are symlinks to one file, apply replaces the links with regular files and undo restores regular-file copies (bytes equal). The two real scripts are regular files.
 
 ## Result
 
-미리보기만 만들었어요. 실제 HOME 의 어떤 파일도 쓰지 않았고(읽기: 설치된 스크립트를 `preview/moai.v1` 로 한 번 복사, `cmp` 같음), 프로브는 임시 HOME 에서만 돌렸어요. 파일: `preview/moai.v1`(1747 B, 설치본 그대로), `preview/moai.v2`, `preview/v1-to-v2.diff`(`diff -u moai.v1 moai.v2`, 37줄, `sh -n moai.v2` 통과).
+미리보기만 만들었어요. 실제 HOME 의 어떤 파일도 쓰지 않았고(읽기: 설치된 스크립트를 `preview/moai.v1` 로 한 번 복사, `cmp` 같음), 프로브는 임시 HOME 에서만 돌렸어요. 파일: `preview/moai.v1`(1747 B, 설치본 그대로), `preview/moai.v2`, `preview/v1-to-v2.diff`(`diff -u moai.v1 moai.v2`, `wc -l` 39줄, `sh -n moai.v2` 통과).
 
 ### 무엇이 바뀌나 (v1 → v2)
 
@@ -121,16 +125,16 @@ v2 가 v1 과 다른 점은 세 가지뿐이에요:
 
 `STAMP=$(date -u +%Y%m%dT%H%M%SZ)` 와 `PREVIEW=<이 저장소>/.moai/specs/SPEC-20261119-switch-script-v2/preview` 를 먼저 정해요. 적용은 두 곳(`~/.moai-cli/path/moai`, `~/go/bin/moai`)의 옛 스크립트를 `moai.before-$STAMP` 로 남기고 새 것을 같은 폴더에 `moai.new` 로 쓴 뒤 `mv` 로 바꿔요(삭제 없음, `moai.old`·Go 바이너리·다른 `moai.before-*` 는 그대로).
 
-- apply lines (S4 only, after the user picks): `rc=0; [ -n "$STAMP" ] || rc=1; if [ $rc = 0 ]; then for d in "$HOME/.moai-cli/path" "$HOME/go/bin"; do [ ! -e "$d/moai.before-$STAMP" ] && cp -p "$d/moai" "$d/moai.before-$STAMP" && cp "$PREVIEW/moai.v2" "$d/moai.new" && chmod 755 "$d/moai.new" && mv "$d/moai.new" "$d/moai" || { echo "apply stopped in $d" >&2; rc=1; break; }; done; fi; [ $rc = 0 ] && echo "saved the old script as moai.before-$STAMP in both folders"`
-- undo line: `rc=0; [ -n "$STAMP" ] || rc=1; if [ $rc = 0 ]; then for d in "$HOME/.moai-cli/path" "$HOME/go/bin"; do mv "$d/moai.before-$STAMP" "$d/moai" || { echo "undo stopped in $d" >&2; rc=1; }; done; fi; [ $rc = 0 ]`
+- apply lines (S4 only, after the user picks): `rc=0; [ -n "$STAMP" ] || { echo "apply refused: STAMP is empty" >&2; rc=1; }; if [ $rc = 0 ]; then for d in "$HOME/.moai-cli/path" "$HOME/go/bin"; do if [ -e "$d/moai.before-$STAMP" ]; then echo "apply stopped in $d: moai.before-$STAMP already exists" >&2; rc=1; break; fi; if cmp -s "$PREVIEW/moai.v2" "$d/moai"; then echo "apply stopped in $d: it already holds v2, run the undo with the earlier STAMP first" >&2; rc=1; break; fi; cp -p "$d/moai" "$d/moai.before-$STAMP" && cp "$PREVIEW/moai.v2" "$d/moai.new" && chmod 755 "$d/moai.new" && mv "$d/moai.new" "$d/moai" || { echo "apply stopped in $d: a copy step failed, the undo with this STAMP puts back what was saved" >&2; rc=1; break; }; done; fi; [ $rc = 0 ] && echo "saved the old script as moai.before-$STAMP in both folders"`
+- undo line: `rc=0; [ -n "$STAMP" ] || { echo "undo refused: STAMP is empty" >&2; rc=1; }; if [ $rc = 0 ]; then for d in "$HOME/.moai-cli/path" "$HOME/go/bin"; do mv "$d/moai.before-$STAMP" "$d/moai" || { echo "undo stopped in $d" >&2; rc=1; }; done; fi; [ $rc = 0 ]`
 
-앞의 줄은 STAMP 가 비었거나 저장본(`moai.before-$STAMP`)이 이미 있으면 아무것도 바꾸지 않고 실패해요(감사 M3). 둘 중 한 폴더에서 멈추면 메시지를 내고 실패 종료 코드로 끝내요(감사 M4); 그때 이미 바뀐 폴더는 되돌리기 줄이 되돌려요(되돌리기는 두 폴더를 다 시도하고, 저장본이 없는 폴더는 `undo stopped` 로 알려요). STAMP 는 적용 때 화면에 찍힌 값을 그대로 써야 하고 어디에도 따로 기록되지 않아요(Risks). 모두 `tests/switch_script_v2.rs` 의 `the_undo_line_restores_v1_byte_for_byte`·`a_second_apply_with_the_same_stamp_refuses_and_keeps_the_saved_v1`·`apply_and_undo_report_failure_through_the_exit_status` 가 임시 HOME 에서 실제로 돌려요.
+앞의 줄은 STAMP 가 비었거나, 저장본(`moai.before-$STAMP`)이 이미 있거나, 폴더의 스크립트가 이미 v2 와 같으면(감사 M3·M6) 그 폴더에서 이유를 밝히고 멈춰요. 멈추면 실패 종료 코드로 끝내요(감사 M4); 이미 바뀐 폴더는 되돌리기 줄이 같은 STAMP 로 되돌려요(되돌리기는 두 폴더를 다 시도하고, 저장본이 없는 폴더는 `undo stopped` 로 알려요). 적용이 중간에 멈추면 새 STAMP 로 다시 적용하기 전에 먼저 되돌리기를 해요 — 이미 v2 인 폴더는 거절해서 v2 가 "옛 스크립트"로 저장되는 일을 막아요. STAMP 는 적용 때 화면에 찍힌 값을 그대로 써야 하고 어디에도 따로 기록되지 않아요(Risks). 모두 `tests/switch_script_v2.rs` 의 `the_undo_line_restores_v1_byte_for_byte`·`a_second_apply_with_the_same_stamp_refuses_and_keeps_the_saved_v1`·`apply_and_undo_report_failure_through_the_exit_status` 가 임시 HOME 에서 실제로 돌려요.
 
 ### 호출자 수를 낸 명령 (읽기 전용, `~/MoAI/*` 의 프로젝트 폴더에서, 2026-11-19)
 
 - `moai spec lint` 85곳·`moai spec audit` 5곳: `cd ~/MoAI && grep -rhoE "(^|[^A-Za-z0-9_./-])moai[ ]+spec([ ]+-{0,2}[a-z][a-z0-9-]*)?" */.claude/commands */.claude/skills */.claude/agents */.codex | sed -E 's/^[^m]*//' | sort | uniq -c | sort -rn`; 그 낱말을 가진 프로젝트 16곳은 같은 식에 `-rlE` 를 쓴 결과.
-- `.claude/rules` 가 `moai session list|current|…` 를 말하는 프로젝트 17곳: `cd ~/MoAI && grep -rlE 'moai[ ]+session[ ]+(list|current|register|heartbeat|purge|doctor)' */.claude/rules | awk -F/ '{print $1}' | sort -u`.
-- `.moai/status_line.sh` 가 있는 프로젝트 30곳: `cd ~/MoAI && ls -d */.moai/status_line.sh | wc -l`; 그 파일을 statusLine 으로 가리키는 `.claude/settings.json` 28곳: `cd ~/MoAI && grep -l 'status_line.sh' */.claude/settings.json | awk -F/ '{print $1}'`.
+- `.claude/rules` 가 `moai session list|current|…` 를 말하는 프로젝트 17곳: `cd ~/MoAI && grep -rlE 'moai[ ]+session[ ]+(list|current|register|heartbeat|purge|doctor)' */.claude/rules | awk -F/ '{print $1}' | sort -u | wc -l` (끝의 `wc -l` 을 빼면 프로젝트 이름 목록).
+- `.moai/status_line.sh` 가 있는 프로젝트 30곳: `cd ~/MoAI && ls -d */.moai/status_line.sh | wc -l`; 그 파일을 statusLine 으로 가리키는 `.claude/settings.json` 28곳: `cd ~/MoAI && grep -l 'status_line.sh' */.claude/settings.json | awk -F/ '{print $1}' | wc -l` (`wc -l` 을 빼면 이름 목록). 85·5 는 줄 수가 아니라 `grep -o` 가 낸 **낱말 출현 수**이고, "16곳"은 `-rlE` 로 낸 프로젝트 수예요.
 - Go 에만 있는 동작: `moai.old spec --help`·`moai.old session --help`(임시 HOME) 와 Go 소스의 `Use:` 줄(`internal/cli/spec.go`, `internal/cli/session.go`).
 
 ### 검사 (이 레인, 2026-11-19, 전용 빌드 폴더·무거운 작업 칸)

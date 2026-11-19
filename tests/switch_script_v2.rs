@@ -508,13 +508,15 @@ fn apply_and_undo_report_failure_through_the_exit_status() {
     let h = Home::new();
     // An empty or missing STAMP changes nothing and fails.
     for stamp in [None, Some("")] {
-        let (ok, _) = h.sh(&h.apply, stamp);
+        let (ok, err) = h.sh(&h.apply, stamp);
         assert!(!ok, "apply with STAMP {stamp:?} fails");
+        assert!(err.contains("STAMP is empty"), "it says why: {err}");
         for i in 0..2 {
             assert_eq!(h.moai(i), h.v1, "nothing changed in folder {i}");
         }
-        let (ok, _) = h.sh(&h.undo, stamp);
+        let (ok, err) = h.sh(&h.undo, stamp);
         assert!(!ok, "undo with STAMP {stamp:?} fails");
+        assert!(err.contains("STAMP is empty"), "it says why: {err}");
     }
     // The second folder has no script: apply stops there with a failing status; the first folder
     // is already v2 and the undo puts it back, then reports the folder that had nothing saved.
@@ -529,4 +531,85 @@ fn apply_and_undo_report_failure_through_the_exit_status() {
     assert_eq!(h.moai(0), h.v1, "the first folder was still restored");
     // A repeated undo has nothing left to move and fails.
     assert!(!h.sh(&h.undo, Some(STAMP)).0, "a second undo fails");
+}
+
+#[test]
+fn apply_refuses_a_folder_that_already_holds_v2() {
+    // Audit M6: after a partial apply, a retry with a NEW stamp that skips the undo must not save
+    // the installed v2 as "the old script".
+    let h = Home::new();
+    let second = h.dirs()[1].join("moai");
+    fs::remove_file(&second).unwrap();
+    assert!(
+        !h.sh(&h.apply, Some(STAMP)).0,
+        "the first apply stops at the second folder"
+    );
+    assert_eq!(h.moai(0), h.v2, "the first folder is v2 now");
+    fs::write(&second, &h.v1).unwrap();
+    fs::set_permissions(&second, fs::Permissions::from_mode(0o755)).unwrap();
+    let (ok, err) = h.sh(&h.apply, Some("20261119T010000Z"));
+    assert!(!ok, "the retry with a new stamp must fail");
+    assert!(err.contains("already holds v2"), "it says why: {err}");
+    assert!(
+        !h.saved(0, "20261119T010000Z").exists(),
+        "v2 was not saved as the old script"
+    );
+    assert!(
+        !h.saved(1, "20261119T010000Z").exists(),
+        "nothing happened in the second folder"
+    );
+    assert_eq!(h.moai(1), h.v1, "the second folder is untouched");
+    // The documented order works: undo with the first stamp, then apply again.
+    fs::write(h.saved(1, STAMP), &h.v1).unwrap();
+    assert!(
+        h.sh(&h.undo, Some(STAMP)).0,
+        "the undo with the first stamp"
+    );
+    assert!(
+        h.sh(&h.apply, Some("20261119T020000Z")).0,
+        "a fresh apply after the undo"
+    );
+    for i in 0..2 {
+        assert_eq!(h.moai(i), h.v2, "folder {i} is v2");
+        assert_eq!(
+            fs::read(h.saved(i, "20261119T020000Z")).unwrap(),
+            h.v1,
+            "the saved copy is v1"
+        );
+    }
+}
+
+#[test]
+fn apply_never_overwrites_an_existing_saved_copy() {
+    // The saved copy may hold something the apply did not write (a leftover, a hand-made copy).
+    let h = Home::new();
+    fs::write(h.saved(0, STAMP), b"sentinel").unwrap();
+    let (ok, err) = h.sh(&h.apply, Some(STAMP));
+    assert!(!ok, "apply must fail");
+    assert!(err.contains("already exists"), "it says why: {err}");
+    assert_eq!(
+        fs::read(h.saved(0, STAMP)).unwrap(),
+        b"sentinel",
+        "kept as it was"
+    );
+    for i in 0..2 {
+        assert_eq!(h.moai(i), h.v1, "nothing was installed in folder {i}");
+    }
+}
+
+#[test]
+fn undo_tries_the_second_folder_even_when_the_first_fails() {
+    // Audit N5: an undo that stopped at the first failure would leave the second folder on v2.
+    let h = Home::new();
+    assert!(h.sh(&h.apply, Some(STAMP)).0);
+    fs::remove_file(h.saved(0, STAMP)).unwrap();
+    let (ok, err) = h.sh(&h.undo, Some(STAMP));
+    assert!(!ok, "the undo reports the folder with nothing saved");
+    assert!(err.contains("undo stopped"), "it says so: {err}");
+    assert_eq!(
+        h.moai(0),
+        h.v2,
+        "the first folder had no saved copy and stays v2"
+    );
+    assert_eq!(h.moai(1), h.v1, "the second folder was still restored");
 }
