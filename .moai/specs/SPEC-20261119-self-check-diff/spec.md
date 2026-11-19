@@ -31,7 +31,7 @@ PR 역사 분석(752 PR·감사 FAIL 193건)에서 가장 큰 실패 클래스(�
 
 - AC-1 (REQ-1, REQ-5): self-check.md 가 19개 항목을 명령과 함께 나열하고, agents/impl.md·references/chains/index.md·mode-agent.md 세 곳이 internal/self-check 를 이름 올려요(mode-agent.md 는 수리 라운드에 추가 — 리더 수정 2057 의 "C-53 S5 뒤 따름" 조건이 팁에서 성립).
   verify: `rg -c "^[0-9]+\\." skills/moai/references/internal/self-check.md`
-  verify: `rg -n "internal/self-check" agents/impl.md skills/moai/references/chains/index.md`
+  verify: `rg -n "internal/self-check" agents/impl.md skills/moai/references/chains/index.md skills/moai/workflows/mode-agent.md`
 - AC-2 (REQ-2, REQ-3): 한 명령이 기계 항목을 순서대로 돌리고 항목별 줄과 요약 줄을 내며, 슬롯 거부(exit 75)는 not run 으로 읽혀요.
   verify: `SELF_CHECK_DRY_RUN=1 tools/self_check.sh`
 - AC-3 (REQ-4, REQ-6): 시험이 항목 목록·규칙들을 고정하고 전부 통과해요.
@@ -39,8 +39,8 @@ PR 역사 분석(752 PR·감사 FAIL 193건)에서 가장 큰 실패 클래스(�
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261119-self-check-diff/spec.md`
-- read-only: `skills/moai/references/internal/self-check.md`, `tools/self_check.sh`, `tests/self_check_test.py`, `agents/impl.md`, `skills/moai/references/chains/index.md`, `tools/local_check.sh`(항목 대조), `skills/moai/references/source-manifest.json`
+- write: `.moai/specs/SPEC-20261119-self-check-diff/spec.md`, `skills/moai/workflows/mode-agent.md`(수리 라운드: heavy-checks 이름 한 줄), `skills/moai/references/source-manifest.json`(이름 줄의 매니페스트 동기)
+- read-only: `skills/moai/references/internal/self-check.md`, `tools/self_check.sh`, `tests/self_check_test.py`, `agents/impl.md`, `skills/moai/references/chains/index.md`, `tools/local_check.sh`(항목 대조)
 - forbidden: 실제 HOME 과 원장, 네트워크, 실제 원격 저장소, 키
 
 ## Plan
