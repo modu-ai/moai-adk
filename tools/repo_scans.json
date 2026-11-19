@@ -328,10 +328,11 @@
         "tests/agents_project_cli.rs (package copy)",
         "tests/project_update_plan_cli.rs (package copy)",
         "tests/update_headver.rs (package copy)",
+        "tests/update_switch_cli.rs (package copy)",
         "tests/host_home_cli.rs (plans hash skills/moai and agents/)"
       ],
       "checks": [
-        "cargo test --offline --locked --test agent_defs_package --test agents_home_cli --test update_user_layer_cli --test update_hooks_cli --test update_keys_cli --test update_home_layer_cli --test omp_agents --test agents_project_cli --test project_update_plan_cli --test update_headver --test host_home_cli"
+        "cargo test --offline --locked --test agent_defs_package --test agents_home_cli --test update_user_layer_cli --test update_hooks_cli --test update_keys_cli --test update_home_layer_cli --test omp_agents --test agents_project_cli --test project_update_plan_cli --test update_headver --test update_switch_cli --test host_home_cli"
       ],
       "rules": [
         "tests/agent_defs_package.rs",
@@ -347,6 +348,7 @@
         "tests/agents_project_cli.rs",
         "tests/project_update_plan_cli.rs",
         "tests/update_headver.rs",
+        "tests/update_switch_cli.rs",
         "tests/host_home_cli.rs"
       ],
       "scope": [
