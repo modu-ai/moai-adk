@@ -66,4 +66,12 @@ C-112 의 재감사(카드 노트 3418, PASS)가 비차단 후속 넷을 남겼�
 
 ## Result
 
-(구현 뒤에 채워요.)
+- RED 먼저(커밋 7851bd3d6c): `cargo test --locked --offline --test spec_take_followups` 에서 AC-1 은 이미 통과(고정 시험을 더한 것이라 변이로 의미를 확인), AC-2(`the_remote_only_hint_ends_in_one_form`)와 AC-3(`the_hook_reason_names_the_repair_suffix`)은 실패했어요(`merge`·`delete` 안내 없음, 이유에 `repair suffix` 없음).
+- GREEN(커밋 aa2ad043b1): `src/spec_take.rs` 의 원격 전용 거절이 새 꼴 로컬 가지가 있으면 `git switch` → 합치기 → `git branch -d` → 다시 take 를 말하고(D-1), 없으면 지금 그대로예요(D-2). `src/hook_guards.rs` 의 `SPEC_TWO_IDS` 가 이름 먼저·날짜 먼저 읽기와 수리 접미사 `-r<N>` 의 유무를 원인으로 말해요. 시험 3개 통과(3.28초). 시험 중 `git switch <옛 가지>` 를 실제로 따라 하려면 원격 설정이 있어야 해서 시험 도우미가 `origin` 을 설정해요(주소는 쓰이지 않고 fetch 는 없어요).
+- AC-1: met — 변이 R4(`remote_branch_exists` 의 `==` → `starts_with`)가 `a_remote_branch_that_only_starts_with_the_old_name_does_not_block_take` 를 실패시켰어요(`tests/spec_take_followups.rs:31`).
+- AC-2: met — 새 꼴 가지 안내를 끈 변이(`if has_new` → `if false`)가 `the_remote_only_hint_ends_in_one_form` 을 실패시켰어요(`:201`, merge·delete 안내 단언). 안내의 단계를 시험이 실제로 따라 한 뒤 `spec take` 가 `both forms` 없이 성공해요.
+- AC-3: met — 이유 문구에서 수리 접미사 말을 뺀 변이가 `the_hook_reason_names_the_repair_suffix` 를 실패시켰어요(`:297`). 변이 셋 모두 `git restore` 뒤 `git status` 깨끗.
+- N7: 값을 바꾸지 않았어요(D-3): `approved` 는 승인 기록이 필요해서 리더 결정으로 올렸어요.
+- 이웃 시험 통과(가지 시작 시 head `aa2ad043b1`): `--lib` 1568, `spec_take_cli` 15, `spec_branch_name_first` 13, `spec_before_code_hook` 9, `spec_close_cli` 10, `green_test_lock` 14, `trailer_check_cli` 3, `commit_guard_users` 7, `sdd_guidance` 6, `agent_defs_package` 19.
+- 판정(거절 조건·허용 조건)은 바꾸지 않았어요: 바뀐 것은 거절 문구 두 곳과 hook 이유 한 문자열이에요.
+- 돌리지 않은 것: CI, 실제 HOME, 실제 원격(fetch).
