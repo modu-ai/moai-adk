@@ -9,13 +9,15 @@ use std::collections::BTreeMap;
 
 const BAR_WIDTH: i64 = 10;
 const SEPARATOR: &str = " | ";
-/// Card C-137 (user instruction 2026-11-19), line 2: the two git counts are two spaces apart,
-/// the items of the card counts one space, and the repository and the branch icons are followed
-/// by two spaces (decision D-1 of SPEC-20261120-statusline-line2-order; the user's example).
-const GIT_COUNTS_GAP: &str = "  ";
+/// Card C-137 (user instruction 2026-11-19), line 2: the two git counts, the items of the card
+/// counts and the text after the repository and the branch icons are one space apart (leader
+/// decision, card note 3570, decision D-1 of SPEC-20261120-statusline-line2-order: the two
+/// spaces of the user's example are the terminal's drawing of the variation-selector icons).
+/// One place for each gap, so a different answer changes these four lines and the goldens.
+const GIT_COUNTS_GAP: &str = " ";
 const CARD_ITEMS_GAP: &str = " ";
-const REPO_ICON_GAP: &str = "  ";
-const BRANCH_ICON_GAP: &str = "  ";
+const REPO_ICON_GAP: &str = " ";
+const BRANCH_ICON_GAP: &str = " ";
 const SGR_NORMAL_INTENSITY: &str = "\x1b[22m";
 const SGR_RESET: &str = "\x1b[0m";
 
@@ -538,7 +540,7 @@ mod tests {
         assert_eq!(
             plain(&full_status(), &[]),
             "🏷️ agent | 🧠 Opus | 🤔 high·t | ♻️ 75% | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0\n\
-             ⬇️ 7  🔀 3 | 📡  owner/repo | 🅱️  main ↓2 +3\n\
+             ⬇️ 7 🔀 3 | 📡 owner/repo | 🅱️ main ↓2 +3\n\
              🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
         );
     }
@@ -596,7 +598,7 @@ mod tests {
         let out = Renderer::new(&config, None).render(&status);
         assert!(!out.contains("5H"), "{out}");
         assert!(!out.contains('💾'), "{out}");
-        assert!(out.contains("🅱️  main ↓2 +3"), "{out}");
+        assert!(out.contains("🅱️ main ↓2 +3"), "{out}");
     }
 
     #[test]
@@ -822,7 +824,7 @@ mod tests {
         let want_plain = tail(&base_plain);
         assert_eq!(
             want_plain,
-            "⬇️ 7  🔀 3 | 📡  owner/repo | 🅱️  main ↓2 +3\n\
+            "⬇️ 7 🔀 3 | 📡 owner/repo | 🅱️ main ↓2 +3\n\
              🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
         );
         let base_colored = colored("mocha", Profile::TrueColor, &base);
@@ -866,13 +868,13 @@ mod tests {
             ..Default::default()
         };
         let with_zero = plain(&status, &[]);
-        assert!(with_zero.contains("⬇️ 0  🔀 0 | 📡  owner/repo | 🅱️  main ↓2 +3"));
+        assert!(with_zero.contains("⬇️ 0 🔀 0 | 📡 owner/repo | 🅱️ main ↓2 +3"));
         // #2559: icons, not the old letter labels.
         assert!(!with_zero.contains("I: ") && !with_zero.contains("PR: "));
         status.github.available = false;
         let absent = plain(&status, &[]);
         assert!(
-            absent.contains("📡  owner/repo | 🅱️  main ↓2 +3\n"),
+            absent.contains("📡 owner/repo | 🅱️ main ↓2 +3\n"),
             "{absent}"
         );
         assert!(!absent.contains("-/-"));
@@ -884,7 +886,7 @@ mod tests {
         assert!(!plain(&status, &["git_branch"]).contains("📡"));
         assert!(!plain(&status, &["git_status"]).contains("💾"));
         status.repo = None;
-        assert!(plain(&status, &[]).contains("\n🅱️  main ↓2 +3\n"));
+        assert!(plain(&status, &[]).contains("\n🅱️ main ↓2 +3\n"));
     }
 
     /// Card C-65 (user instructions 2026-11-16 and 2026-11-17, card 85):
@@ -897,7 +899,7 @@ mod tests {
         let without = plain(&status, &[]);
         assert_eq!(
             line(&status, &[]),
-            "⬇️ 7  🔀 3 | 📡  owner/repo | 🅱️  main ↓2 +3",
+            "⬇️ 7 🔀 3 | 📡 owner/repo | 🅱️ main ↓2 +3",
             "no counts: no segment"
         );
         status.cards = Some(CardCounts {
@@ -908,7 +910,7 @@ mod tests {
         });
         assert_eq!(
             line(&status, &[]),
-            "⬇️ 7  🔀 3 | 🗂️ 50 ▶️ 5 ✅ 12 | 📡  owner/repo | 🅱️  main ↓2 +3"
+            "⬇️ 7 🔀 3 | 🗂️ 50 ▶️ 5 ✅ 12 | 📡 owner/repo | 🅱️ main ↓2 +3"
         );
         // Lines 1 and 3 do not change.
         let with = plain(&status, &[]);
@@ -918,7 +920,7 @@ mod tests {
         // The `cards` option hides both parts and nothing else.
         assert_eq!(plain(&status, &["cards"]), without);
         // Without forge counts (absent, suppressed or switched off) the cards keep the place.
-        let alone = "🗂️ 50 ▶️ 5 ✅ 12 | 📡  owner/repo | 🅱️  main ↓2 +3";
+        let alone = "🗂️ 50 ▶️ 5 ✅ 12 | 📡 owner/repo | 🅱️ main ↓2 +3";
         assert_eq!(line(&status, &["github"]), alone);
         status.github.suppressed = true;
         assert_eq!(line(&status, &[]), alone);
@@ -928,7 +930,7 @@ mod tests {
         status.cards = Some(CardCounts::default());
         assert_eq!(
             line(&status, &[]),
-            "🗂️ 0 ▶️ 0 ✅ 0 | 📡  owner/repo | 🅱️  main ↓2 +3"
+            "🗂️ 0 ▶️ 0 ✅ 0 | 📡 owner/repo | 🅱️ main ↓2 +3"
         );
     }
 
@@ -954,7 +956,7 @@ mod tests {
         let full = line(&status, &[]);
         assert_eq!(
             full,
-            "⬇️ 7  🔀 3 | 🗂️ 50 ▶️ 5 🔃 15 ✅ 65 | 📡  owner/repo | 🅱️  main ↓2 +3 | 🔗 #42 pending"
+            "⬇️ 7 🔀 3 | 🗂️ 50 ▶️ 5 🔃 15 ✅ 65 | 📡 owner/repo | 🅱️ main ↓2 +3 | 🔗 #42 pending"
         );
         assert!(
             !full.replace("owner/repo", "").contains('/'),
@@ -968,21 +970,21 @@ mod tests {
         status.cards.as_mut().unwrap().waiting = None;
         assert_eq!(
             line(&status, &[]),
-            "⬇️ 7  🔀 3 | 🗂️ 50 ▶️ 5 ✅ 65 | 📡  owner/repo | 🅱️  main ↓2 +3 | 🔗 #42 pending"
+            "⬇️ 7 🔀 3 | 🗂️ 50 ▶️ 5 ✅ 65 | 📡 owner/repo | 🅱️ main ↓2 +3 | 🔗 #42 pending"
         );
         // Each group on its own switch leaves the other three in order.
         status.cards.as_mut().unwrap().waiting = Some(15);
         assert_eq!(
             line(&status, &["github"]),
-            "🗂️ 50 ▶️ 5 🔃 15 ✅ 65 | 📡  owner/repo | 🅱️  main ↓2 +3 | 🔗 #42 pending"
+            "🗂️ 50 ▶️ 5 🔃 15 ✅ 65 | 📡 owner/repo | 🅱️ main ↓2 +3 | 🔗 #42 pending"
         );
         assert_eq!(
             line(&status, &["cards"]),
-            "⬇️ 7  🔀 3 | 📡  owner/repo | 🅱️  main ↓2 +3 | 🔗 #42 pending"
+            "⬇️ 7 🔀 3 | 📡 owner/repo | 🅱️ main ↓2 +3 | 🔗 #42 pending"
         );
         assert_eq!(
             line(&status, &["pr"]),
-            "⬇️ 7  🔀 3 | 🗂️ 50 ▶️ 5 🔃 15 ✅ 65 | 📡  owner/repo | 🅱️  main ↓2 +3"
+            "⬇️ 7 🔀 3 | 🗂️ 50 ▶️ 5 🔃 15 ✅ 65 | 📡 owner/repo | 🅱️ main ↓2 +3"
         );
     }
 
@@ -1028,7 +1030,7 @@ mod tests {
         status.worktree = "wt".into();
         assert_eq!(line(&status, &["git_branch"]), "🗂️ 2 ▶️ 1 ✅ 3");
         status.repo = None;
-        assert_eq!(line(&status, &[]), "🗂️ 2 ▶️ 1 ✅ 3 | 🅱️  main ↓2 +3");
+        assert_eq!(line(&status, &[]), "🗂️ 2 ▶️ 1 ✅ 3 | 🅱️ main ↓2 +3");
         status.git = None;
         assert_eq!(line(&status, &[]), "🗂️ 2 ▶️ 1 ✅ 3");
         status.worktree.clear();
@@ -1163,7 +1165,7 @@ mod tests {
         );
         assert_eq!(
             lines[1],
-            "⬇️ 7  🔀 3 | 📡  owner/repo | 🅱️  main ↓2 +3 | 🔗 #42 pending"
+            "⬇️ 7 🔀 3 | 📡 owner/repo | 🅱️ main ↓2 +3 | 🔗 #42 pending"
         );
         // The worktree opens line 3 (user instruction 2026-11-19), before the bars.
         assert!(lines[2].starts_with("🌳 wt | 🔋 CTX:"), "{}", lines[2]);
@@ -1191,7 +1193,7 @@ mod tests {
         status.worktree.clear();
         assert_eq!(
             plain(&status, &[]).lines().nth(1),
-            Some("⬇️ 7  🔀 3 | 📡  owner/repo | 🅱️  main ↓2 +3"),
+            Some("⬇️ 7 🔀 3 | 📡 owner/repo | 🅱️ main ↓2 +3"),
             "no empty `| |`"
         );
     }
@@ -1339,10 +1341,10 @@ mod tests {
                     (t.cache, "♻️ 75%"),
                     (t.version, "🤖 v2.1.293"),
                     (t.version, "🗿 v2.0 -> 🗿 v3.0"),
-                    (t.repo, "📡  owner/repo"),
+                    (t.repo, "📡 owner/repo"),
                     (t.issues, "⬇️ 7"),
                     (t.prs, "🔀 3"),
-                    (t.branch, "🅱️  main ↓2 +3"),
+                    (t.branch, "🅱️ main ↓2 +3"),
                 ] {
                     assert!(
                         out.contains(&profile.paint(hex, text)),

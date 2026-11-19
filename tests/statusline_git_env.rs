@@ -91,12 +91,12 @@ fn an_inherited_git_dir_cannot_change_the_rendered_branch_or_counts() {
     fs::write(other.join("u2.txt"), "u\n").unwrap();
 
     let clean = render(&home, &project, &[], WITHIN);
-    assert!(clean.contains("🅱️  main"), "{clean}");
+    assert!(clean.contains("🅱️ main"), "{clean}");
     // #2756: the repository line is the second of the three lines, not the last. A clean
     // branch has no `+N` (the other repository's three changes would show as `+3`); there is
     // no `💾` segment (leader decision 6862179411).
     let repository_line = clean.lines().find(|l| l.starts_with("🅱️")).unwrap();
-    assert_eq!(repository_line, "🅱️  main", "{clean}");
+    assert_eq!(repository_line, "🅱️ main", "{clean}");
     assert!(!clean.contains("📁"), "{clean}");
 
     let git_dir = other.join(".git");
@@ -133,7 +133,7 @@ fn an_expired_render_budget_drops_the_git_segment() {
 
     let within = render(&home, &project, &[], WITHIN);
     // #2756: the repository line sits between the environment and usage lines.
-    assert_eq!(within.lines().nth(1), Some("🅱️  main"), "{within}");
+    assert_eq!(within.lines().nth(1), Some("🅱️ main"), "{within}");
     for _ in 0..5 {
         let over = render(&home, &project, &[], 0);
         assert!(!over.contains("🅱️") && !over.contains("📁"), "{over}");

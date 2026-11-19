@@ -1,6 +1,6 @@
 //! Card C-65 (user instructions 2026-11-16 and 2026-11-17): the repository line of the status
 //! line shows the cards of the project's local ledger right after the forge counts,
-//! `⬇️ 46  🔀 0 | 🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡  owner/repo | …`: `🗂️` cards created and
+//! `⬇️ 46 🔀 0 | 🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 owner/repo | …`: `🗂️` cards created and
 //! remaining (`draft` + `ready` + `hold`), `▶️` cards being worked on (`active` without a waiting
 //! marker note), `🔃` cards pushed and waiting for integration (every `review` card and each
 //! `active` card whose newest marker note is a waiting one), `✅` cards `done` (user decision
@@ -172,7 +172,7 @@ impl Fixture {
 }
 
 /// `+1`: the project's untracked state folder.
-const WITHOUT_CARDS: &str = "⬇️ 46  🔀 0 | 📡  modu-ai/moai-adk | 🅱️  main +1";
+const WITHOUT_CARDS: &str = "⬇️ 46 🔀 0 | 📡 modu-ai/moai-adk | 🅱️ main +1";
 
 #[test]
 fn the_repository_line_shows_the_card_counts_after_the_forge_counts() {
@@ -184,7 +184,7 @@ fn the_repository_line_shows_the_card_counts_after_the_forge_counts() {
     let with = f.plain();
     assert_eq!(
         with.lines().nth(1),
-        Some("⬇️ 46  🔀 0 | 🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡  modu-ai/moai-adk | 🅱️  main +1")
+        Some("⬇️ 46 🔀 0 | 🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 modu-ai/moai-adk | 🅱️ main +1")
     );
     // Only the repository line differs from the render without a ledger.
     assert_eq!(with.lines().next(), baseline.lines().next());
@@ -199,7 +199,7 @@ fn the_card_counts_keep_their_place_without_forge_counts() {
     std::fs::remove_file(f.project.join(FORGE_CACHE)).unwrap();
     assert_eq!(
         f.line2(),
-        "🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡  modu-ai/moai-adk | 🅱️  main +1"
+        "🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 modu-ai/moai-adk | 🅱️ main +1"
     );
 }
 
@@ -209,7 +209,7 @@ fn a_registered_ledger_without_cards_shows_zeros() {
     f.register();
     assert_eq!(
         f.line2(),
-        "⬇️ 46  🔀 0 | 🗂️ 0 ▶️ 0 🔃 0 ✅ 0 | 📡  modu-ai/moai-adk | 🅱️  main +1"
+        "⬇️ 46 🔀 0 | 🗂️ 0 ▶️ 0 🔃 0 ✅ 0 | 📡 modu-ai/moai-adk | 🅱️ main +1"
     );
 }
 
