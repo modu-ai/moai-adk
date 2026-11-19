@@ -117,4 +117,6 @@ created: 2026-11-19
 
 이웃으로 더 돌린 것(이 AC 의 명령은 아니에요): `--test trailer_check_cli` 3, `commit_guard_users` 7, `sdd_guidance` 6, `agent_defs_package` 19, `spec_close_cli` 8, `hooks_cli` 48, `hook_dispatch_cli` 56, `workflow_e2e` 1, `worktree_cli` 23, `audit_admission` 7, `run_verify` 13, `boundary_repro` 16 모두 exit 0. `cargo fmt --all -- --check` exit 0, `cargo clippy --locked --offline --all-targets -- -D warnings` exit 0, `python3 tests/ci_scope_test.py` 40 OK.
 
-돌리지 않은 것: AC-6(스킬, 위 이유), 실제 windows 빌드 잡(병합 뒤 CI), 변이 시험(다음 단계), 호스트의 실제 세션에서 새 이름 가지로 hook 이 도는지(실제 세션은 아니에요: 시험은 모두 임시 저장소의 실제 바이너리예요).
+변이 시험(5개, 커밋 `2d4df10602` 뒤 작업 폴더에서 하나씩 적용하고 `git checkout` 으로 복원, 마지막에 깨끗함을 확인): 폴더 증거 무시(`--lib spec_branch` 2 실패), 수리 접미사 안 떼기(같은 시험 3 실패), 두 꼴 가지 거절 빼기(`name_first_ambiguous_take` 1 실패), 두 SPEC 으로 읽힘 거절 빼기(같은 시험 1 실패), SPEC 폴더 쓰기 허용 빼기(`name_first_ambiguous_hook` 1 실패) 모두 KILLED.
+
+돌리지 않은 것: AC-6(스킬, 위 이유), 실제 windows 빌드 잡(병합 뒤 CI), 호스트의 실제 세션에서 새 이름 가지로 hook 이 도는지(실제 세션은 아니에요: 시험은 모두 임시 저장소의 실제 바이너리예요).
