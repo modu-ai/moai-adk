@@ -21,17 +21,18 @@ created: 2026-11-19
 
 ## Requirements
 
-- REQ-1: The VERIFY workflow shall name `tools/smoke/run.sh <area>` as the check to run first, before the first commit of a change that touches install, update, `/moai project` or the launcher.
+- REQ-1: The VERIFY workflow shall name `tools/smoke/run.sh <area>` as the check to run first in the moai-adk repository, before the first commit of a change that touches install, update, `/moai project` or the launcher.
 - REQ-2: The VERIFY workflow shall name the areas the harness accepts: `install`, `update`, `project`, `launcher` and `all`.
 - REQ-3: The VERIFY workflow shall take the last line of the harness output, `smoke: <area> pass|fail steps=<n>`, as the evidence of the check.
 - REQ-4 (REQ-3): IF a smoke run was not made, THEN the VERIFY workflow shall mark the check `not_run` and never `passed`.
 - REQ-5: The source manifest shall match the edited workflow file.
-- REQ-6: The smoke-harness test shall require each sentence of REQ-1 to REQ-4 in the VERIFY workflow file.
-- REQ-7 (REQ-6): IF a sentence of REQ-1 to REQ-4 is missing from the VERIFY workflow file, THEN the smoke-harness test shall fail and name the missing sentence.
+- REQ-6: The smoke-harness test shall require each sentence of REQ-1 to REQ-4 and REQ-8 in the VERIFY workflow file.
+- REQ-8: The VERIFY workflow shall say that the harness runs on the debug binary just built, that `--bin PATH` names another one, and that a missing binary is a usage error (exit 2) and not a pass.
+- REQ-7 (REQ-6): IF a sentence of REQ-1 to REQ-4 or REQ-8 is missing from the VERIFY workflow file, THEN the smoke-harness test shall fail and name the missing sentence.
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-6, REQ-7): `verify.md`에 문단이 있고, 문장을 하나 지우면 시험이 빠진 문장을 이름으로 대며 실패해요. 영역 이름은 harness가 받는 이름(`tools/smoke/smoke.py`의 `AREAS`와 `all`)과 같아요.
+- AC-1 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-6, REQ-7, REQ-8): `verify.md`에 문단이 있고, 문장을 하나 지우면 시험이 빠진 문장을 이름으로 대며 실패해요. 영역 이름은 harness가 받는 이름(`tools/smoke/smoke.py`의 `AREAS`와 `all`)과 같아요.
   verify: `python3 -m unittest tests.smoke_harness_test.VerifyStepTest`
 - AC-2 (REQ-5): `source-manifest.json`이 `verify.md`의 현재 글과 맞아요.
   verify: `cargo test --locked --offline --test product_cli skill_package`
@@ -65,12 +66,8 @@ created: 2026-11-19
 
 ## Result
 
-- AC-1: met — `python3 -m unittest tests.smoke_harness_test.VerifyStepTest`: 시험 먼저(RED) 문단이 없을 때 2개 모두 실패(`FAILED (failures=2)`, `verify.md lacks the smoke paragraph`) → 문단을 더한 뒤(GREEN) `Ran 2 tests … OK`. 문단은 `skills/moai/workflows/verify.md`의 Procedure 6번 뒤에 있고, 네 문장(REQ-1~4)과 영역 이름 다섯(`install`·`update`·`project`·`launcher`·`all`)을 시험이 읽어요. 영역 이름은 `tools/smoke/smoke.py`의 `AREAS`에서 읽어 글과 맞춰요.
+- AC-1: met — `python3 -m unittest tests.smoke_harness_test.VerifyStepTest`: 시험 먼저(RED) 문단이 없을 때 `FAILED (failures=2)`: `test_every_sentence_is_in_verify_md`는 `verify.md lacks '<문장>'`으로, `test_the_areas_named_are_the_areas_the_harness_accepts`는 `verify.md lacks the smoke paragraph`로 실패했어요. 문단을 더한 뒤(GREEN) `Ran 2 tests … OK`. 문단은 `skills/moai/workflows/verify.md`의 Procedure 6번 뒤에 있고, 문장 다섯(REQ-1~4, REQ-8의 둘)과 영역 이름 다섯(`install`·`update`·`project`·`launcher`·`all`)을 시험이 읽어요. 영역 이름은 `tools/smoke/smoke.py`의 `AREAS`에서 읽고, 문단은 `never `passed`.`까지로 잘라서 봐요. 감사(tier 1, PASS)의 비차단 3·4·6·7을 후속 커밋에서 고쳤어요: 문단이 "In the moai-adk repository"로 범위를 적고(이 글은 사용자 프로젝트에도 설치돼요), `--bin PATH`와 "바이너리가 없으면 사용 오류(종료 2)이고 통과가 아니다"를 말하고, 시험 창을 문단 끝까지로 조였어요.
 - AC-2: met — `python3 tools/source_manifest.py write` → `changed: workflows/verify.md`, 이어서 `check` → `{"conflicted": false, "changed": [], "dropped": [], "ok": true}`; `cargo test --locked --offline --test product_cli` 79 passed(`skill_package` 포함).
-- AC-3: met — `python3 -m unittest tests.smoke_harness_test tests.source_manifest_test tests.check_pr_self_audit_test tests.ci_scope_test` 152 OK(harness 시험은 실제로 빌드한 `moai-cli`를 써요); `cargo test --locked --offline`로 `ac_command_lint` 5, `workflow_size_budget` 4, `home_isolation_scan` 18, `spec_cli` 17, `sdd_guidance` 6, `test_isolation_rules` 3, `lane_rules_2879` 5, `lane_rules_2836` 2, `agent_defs_package` 19 passed; `cargo fmt --check` 0.
+- AC-3: met — 아래 "검사" 줄.
 
-변이(문단의 문장을 하나씩 바꾸고 `VerifyStepTest`): M1 "run the smoke harness first" → 다른 말 → KILLED(두 시험 다 `AssertionError: 'Before the first commit…' not found`); M2 "never reads the real HOME" 삭제 → KILLED; M3 "Take its last line … as the evidence" 삭제 → KILLED; M4 "`not_run`, never `passed`" → "skipped" → KILLED; M5 영역 이름 `launcher` 빠짐 → KILLED(`'`launcher`' not found`). 5/5 KILLED, 변이마다 `git checkout --` 뒤 작업 트리 clean.
-
-그 밖의 검사: `cargo test --locked --offline --lib` 1453 passed; `cargo clippy --locked --offline --all-targets -- -D warnings` 0; `spec check` errors 0 warnings 0(Rust 코드는 안 바뀌었지만 레인 규칙에 따라 돌렸어요).
-
-검사하지 않은 것: 문단의 지시가 실제 레인과 감사자의 행동을 바꾸는지는 이 SPEC의 시험이 말하지 못해요(글 규칙만 고정). C-101의 세 번째 기준(CI)은 별도 SPEC이에요.
+변이(문단을 하나씩 바꾸고 `VerifyStepTest`, 후속 커밋 뒤 문단 기준): M1 "In the moai-adk repository, " 삭제 → KILLED(두 시험 다 실패: 앞 시험은 `verify.md lacks 'In the moai-adk repository, before the first commit…'`, 뒤 시험은 `verify.md lacks the smoke paragraph`); M2 "Take its last line … as the evidence of the check" → "Read its last line" → KILLED(`verify.md lacks 'Take its last line, …'`); M3 "`not_run`, never `passed`" → "skipped" → KILLED(`verify.md lacks 'a smoke run that was not made is …'`; 문단 끝 표지도 사라져 뒤 시험도 실패); M4 영역 이름 `launcher` 빠짐 → KILLED(`'`launcher`' not found`); M5 "a missing binary is a usage error (exit 2) and not a pass" 삭제 → KILLED(`verify.md lacks 'a missing binary is a usage error…'`). 5/5 KILLED, 변이마다 `git checkout --` 뒤 작업 트리 clean. 첫 커밋(6e5c8d5613) 뒤에는 다른 5개(첫 점검 문장, "never reads the real HOME", 마지막 줄, `not_run`, `launcher`)도 모두 KILLED였어요; 이번에는 문단이 바뀌어 위 다섯으로 다시 돌렸어요.
