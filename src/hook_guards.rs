@@ -1782,6 +1782,76 @@ mod tests {
         format!("--no-{}", "verify")
     }
 
+    /// A work tree on `branch` (a `.git` folder with HEAD and the branch ref, no git process)
+    /// holding one SPEC folder per id in `specs`, each with one criterion and one command.
+    fn ac_tree(branch: &str, specs: &[&str]) -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        std::fs::create_dir_all(root.join(".git")).unwrap();
+        std::fs::write(
+            root.join(".git/HEAD"),
+            format!("ref: refs/heads/{branch}\n"),
+        )
+        .unwrap();
+        let reference = root.join(".git/refs/heads").join(branch);
+        std::fs::create_dir_all(reference.parent().unwrap()).unwrap();
+        std::fs::write(reference, "0123456789abcdef0123456789abcdef01234567\n").unwrap();
+        for id in specs {
+            let folder = root.join(".moai/specs").join(id);
+            std::fs::create_dir_all(&folder).unwrap();
+            std::fs::write(
+                folder.join("spec.md"),
+                format!(
+                    "---\nid: {id}\ntitle: \"demo\"\nstatus: draft\nrevision: 1\ncreated: 2026-11-17\n---\n\n## Acceptance\n\n- AC-1 (REQ-1): it works\n  verify: `cargo test demo`\n"
+                ),
+            )
+            .unwrap();
+        }
+        dir
+    }
+
+    /// Audit of C-112 (note 3228): `ac_work` (C-86 S3) read only the date-first branch form; it
+    /// reads both forms and a repair suffix through the shared resolver.
+    #[test]
+    fn ac_work_reads_both_branch_forms_and_a_repair_suffix() {
+        for branch in [
+            "spec/demo-20261117",
+            "spec/20261117-demo",
+            "spec/demo-20261117-r2",
+            "spec/20261117-demo-r2",
+        ] {
+            let dir = ac_tree(branch, &["SPEC-20261117-demo"]);
+            let work = ac_work(dir.path()).unwrap_or_else(|| panic!("{branch}: no work read"));
+            assert_eq!(work.spec, "SPEC-20261117-demo", "{branch}");
+            assert_eq!(work.head, "0123456789abcdef0123456789abcdef01234567");
+            assert_eq!(work.commands.len(), 1, "{branch}");
+            assert_eq!(work.commands[0].command, "cargo test demo", "{branch}");
+        }
+    }
+
+    #[test]
+    fn ac_work_reads_no_work_for_a_branch_that_names_no_single_spec() {
+        // Not a SPEC branch.
+        assert!(ac_work(ac_tree("main", &["SPEC-20261117-demo"]).path()).is_none());
+        // Reads as two SPEC ids and no folder settles it.
+        let two_ways = "spec/20261117-demo-20261118";
+        assert!(ac_work(ac_tree(two_ways, &["SPEC-20261117-demo"]).path()).is_none());
+        assert!(ac_work(
+            ac_tree(
+                two_ways,
+                &["SPEC-20261117-demo-20261118", "SPEC-20261118-20261117-demo"]
+            )
+            .path()
+        )
+        .is_none());
+        // Exactly one of the two folders exists: that SPEC is the one.
+        let one = ac_tree(two_ways, &["SPEC-20261117-demo-20261118"]);
+        assert_eq!(
+            ac_work(one.path()).map(|w| w.spec),
+            Some("SPEC-20261117-demo-20261118".to_string())
+        );
+    }
+
     #[test]
     fn rm_refuses_only_irreversible_targets() {
         for cmd in [
