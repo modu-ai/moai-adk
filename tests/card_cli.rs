@@ -944,3 +944,102 @@ fn secret_screen_covers_criterion_add() {
     ));
     assert_eq!(ok["added"], json!([1]), "{ok}");
 }
+
+/// Audit B1 (leader note 3297): a name that starts with the `sk` prefix and holds hyphenated
+/// lower-case words is a name only while no `=` follows it. When the run is the name of an
+/// assignment and one of its pieces is a secret word (first, second or third piece, with or
+/// without leading dashes) the word is refused on all four surfaces; a bare run and an
+/// assignment whose pieces are all plain still go through.
+#[test]
+fn secret_screen_refuses_secret_names_behind_an_sk_prefix() {
+    let (home, project) = with_seed_card();
+    let sk = words(&["s", "k-"]);
+    let refused = [
+        format!("run {sk}learn-{}{EQ}1", words(&["pass", "word"])),
+        format!("run --{sk}foo-{}{EQ}1", words(&["to", "ken"])),
+        format!("run {sk}a-{}-b{EQ}x", words(&["sec", "ret"])),
+        format!("run {sk}a-b-{}{EQ}", words(&["to", "ken"])),
+        format!("run {sk}{}{EQ}1", words(&["api", "-", "key"])),
+        format!("run {sk}{}{EQ}1", words(&["pass", "word", "-", "x"])),
+    ];
+    for text in &refused {
+        for (surface, out) in on_every_surface(&home, &project, text) {
+            let (kind, message) = refusal(&out);
+            assert_eq!(kind, "invalid_input", "{surface}: {text}: {message}");
+            assert!(message.contains("1 word"), "{surface}: {text}: {message}");
+        }
+    }
+    let passes = [
+        format!("see {sk}learn-pipeline tuned"),
+        format!("see {sk}learn-{} tuned", words(&["pass", "word"])),
+        format!("run {sk}learn-pipeline{EQ}on"),
+        format!("run --{sk}learn-pipeline{EQ}on"),
+    ];
+    for text in &passes {
+        for (surface, out) in on_every_surface(&home, &project, text) {
+            let r = result(&out);
+            assert!(
+                r["action"] == json!("note") || r["action"] == json!("add"),
+                "{surface}: {text}: {r}"
+            );
+        }
+    }
+}
+
+/// Audit N1 (REQ-3): a value with the shape of a credential is refused after any separator inside
+/// a word (an equals sign, a colon, a comma), after a plain name, not only after `--flag=`. Plain
+/// sentences with colons and commas still go through.
+#[test]
+fn secret_screen_refuses_credential_shapes_after_any_separator() {
+    let (home, project) = with_seed_card();
+    let aws = words(&["AK", "IA", "ABCDEFGHIJKLMNOP"]);
+    let sk = words(&["s", "k-", "Ab3", "cdefghijklmnop"]);
+    let jwt = words(&[
+        "ey",
+        "J",
+        "hbGciOiJIUzI1NiJ9abcdefg.payload123.signature123",
+    ]);
+    let refused = [
+        format!("config{EQ}{aws}"),
+        format!("key:{aws}"),
+        format!("ids a,{aws} done"),
+        format!("x{EQ}y,{aws}"),
+        format!("run --opt{EQ}a,{aws}"),
+        format!("note:{sk}"),
+        format!("cfg{EQ}{sk}"),
+        format!("ref:{jwt}"),
+        format!("a,{jwt}"),
+        format!("(see:{aws})"),
+    ];
+    for text in &refused {
+        for (surface, out) in on_every_surface(&home, &project, text) {
+            let (kind, message) = refusal(&out);
+            assert_eq!(kind, "invalid_input", "{surface}: {text}: {message}");
+            assert!(message.contains("1 word"), "{surface}: {text}: {message}");
+        }
+    }
+    // Twelve plain texts, with colons, commas and equals signs, keep going through.
+    let plain = [
+        "see: the list, then run it",
+        "ratio 3:1, ok",
+        "steps: build, test, ship",
+        "url https://example.com/a:b,c",
+        "mode=fast, retries=3",
+        "time 12:30, room b",
+        "key: value pairs, one per line",
+        "a,b,c and d:e:f",
+        "see section 4.2: naming, scope",
+        "env=dev:eu,us",
+        "the a1:b2 pair, sorted",
+        "skills: plan, impl",
+    ];
+    for text in plain {
+        for (surface, out) in on_every_surface(&home, &project, text) {
+            let r = result(&out);
+            assert!(
+                r["action"] == json!("note") || r["action"] == json!("add"),
+                "{surface}: {text}: {r}"
+            );
+        }
+    }
+}

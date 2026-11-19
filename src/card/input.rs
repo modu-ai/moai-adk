@@ -213,21 +213,36 @@ pub fn secret_refusal(words: usize) -> String {
 ///   side by side), whatever the value is, an empty one included;
 /// - or its value has a credential shape (`redact::redact_outgoing`), after the name of a
 ///   `--option=value` whose value is plain was blanked (a plain option value is prose);
+/// - or a value with a credential shape follows a separator (`=`, `:` or `,`) anywhere inside the
+///   word, after a plain name or none (audit N1);
 /// - a run of lower-case hyphenated words after `sk-` is a name, not a key, and goes through
-///   (the rule `decide`'s own `without_sk_names` states).
+///   (the rule `decide`'s own `without_sk_names` states) — but only as a name: when `=` follows
+///   it, the run is the name of an assignment and its pieces are checked like any other name
+///   (audit B1), so the names are read from the word as written, before the run is blanked.
 pub fn secret_words(text: &str) -> usize {
-    without_sk_names(text)
-        .split_whitespace()
-        .filter(|word| word_is_refused(word))
+    let blanked = without_sk_names(text);
+    // Blanking changes only letters, digits, `-` and `_`, so both texts hold the same words.
+    text.split_whitespace()
+        .zip(blanked.split_whitespace())
+        .filter(|(written, blanked)| word_is_refused(written, blanked))
         .count()
 }
 
-fn word_is_refused(word: &str) -> bool {
-    if secret_named_assignment(word) {
+/// `written` is the word as the user typed it, `blanked` the same word with the plain `sk` names
+/// blanked.
+fn word_is_refused(written: &str, blanked: &str) -> bool {
+    if secret_named_assignment(written) {
         return true;
     }
-    let (blanked, value_shaped) = blank_option_names(word);
-    value_shaped > 0 || crate::redact::redact_outgoing(&blanked).1 > 0
+    let (plain_options_blanked, value_shaped) = blank_option_names(blanked);
+    if value_shaped > 0 || crate::redact::redact_outgoing(&plain_options_blanked).1 > 0 {
+        return true;
+    }
+    // The shared screen sees a prefix shape only at the start of a word: look at what follows
+    // each separator as a word of its own.
+    blanked
+        .match_indices(['=', ':', ','])
+        .any(|(at, sep)| crate::redact::redact_outgoing(&blanked[at + sep.len()..]).1 > 0)
 }
 
 fn name_is_secret(name: &str) -> bool {
@@ -976,6 +991,52 @@ mod tests {
         assert_eq!(secret_words(&format!("--{tk}={key} and --{tk}={key}")), 2);
         assert_eq!(secret_words(&j(&["s", "k-", "Ab3", "cdefghijklmnop"])), 1);
         assert_eq!(secret_words(""), 0);
+    }
+
+    /// Audit B1: the names of an assignment are read as written, so an `sk` run with a secret
+    /// piece in front of `=` is refused, while the bare run and a plain-named assignment pass.
+    #[test]
+    fn secret_screen_reads_sk_names_before_they_are_blanked() {
+        let (sk, tk, pw) = (j(&["s", "k-"]), j(&["to", "ken"]), j(&["pass", "word"]));
+        for text in [
+            format!("{sk}learn-{pw}=1"),
+            format!("--{sk}a-b-{tk}=1"),
+            format!("{sk}a-{tk}-b="),
+            format!("{sk}{}=1", j(&["api", "-", "key"])),
+        ] {
+            assert_eq!(secret_words(&text), 1, "{text}");
+        }
+        for text in [
+            format!("{sk}learn-pipeline"),
+            format!("{sk}learn-{pw}"),
+            format!("{sk}learn-pipeline=on"),
+        ] {
+            assert_eq!(secret_words(&text), 0, "{text}");
+        }
+    }
+
+    /// Audit N1: a credential-shaped value is seen after a separator inside the word.
+    #[test]
+    fn secret_screen_sees_values_after_a_separator() {
+        let key = j(&["AK", "IA", "ABCDEFGHIJKLMNOP"]);
+        for text in [
+            format!("config={key}"),
+            format!("key:{key}"),
+            format!("a,{key}"),
+            format!("x=y,{key}"),
+            format!("(see:{key})"),
+        ] {
+            assert_eq!(secret_words(&text), 1, "{text}");
+        }
+        for text in [
+            "see: the list, then run it",
+            "mode=fast, retries=3",
+            "time 12:30,x",
+        ] {
+            assert_eq!(secret_words(text), 0, "{text}");
+        }
+        // One word counts once even when two separators lead to shapes.
+        assert_eq!(secret_words(&format!("a:{key},{key}")), 1);
     }
 
     /// REQ-6: the refusal names the field and does not repeat the text.
