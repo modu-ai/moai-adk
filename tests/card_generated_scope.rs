@@ -101,9 +101,10 @@ fn two_cards_may_both_list_the_generated_manifest() {
     let b = ready_card(&home, &project, &[B_MD, MANIFEST]);
     result(&take(&home, &project, &a, S_A));
     let taken = result(&take(&home, &project, &b, S_B));
+    // The ledger keeps a scope sorted, so the manifest (`references/`) comes before `workflows/`.
     assert_eq!(
         taken["reservation"]["write_scope"],
-        json!([B_MD, MANIFEST]),
+        json!([MANIFEST, B_MD]),
         "{taken}"
     );
     // The manifest alone is no reason either.
@@ -141,15 +142,38 @@ fn the_ready_listing_agrees_with_take() {
     // `next` takes the project folder as its last word.
     let listing = result(&as_session(&home, S_B, &["card", "next", &project]));
     assert_eq!(listing["next"], json!(b), "{listing}");
-    assert_eq!(listing["skipped"], json!([]), "{listing}");
+    // The held card is listed as `held`; nothing is skipped for the shared manifest.
+    assert_eq!(skipped(&listing), vec![(a.clone(), "held".to_string())]);
 
     // A card whose scope really overlaps is still skipped, with the overlap as the reason.
     let c = ready_card(&home, &project, &[A_MD]);
     result(&take(&home, &project, &b, S_B));
     let listing = result(&as_session(&home, S_C, &["card", "next", &project]));
     assert_eq!(listing["next"], Value::Null, "{listing}");
-    assert_eq!(listing["skipped"][0]["reason"], json!("scope_overlap"));
-    assert_eq!(listing["skipped"][0]["name"], json!(c), "{listing}");
+    let got = skipped(&listing);
+    assert!(
+        got.contains(&(c.clone(), "scope_overlap".to_string())),
+        "{got:?}"
+    );
+    assert!(
+        !got.iter().any(|(n, r)| n == &b && r == "scope_overlap"),
+        "{got:?}"
+    );
+}
+
+/// `(name, reason)` of every card the `next` listing skipped.
+fn skipped(listing: &Value) -> Vec<(String, String)> {
+    listing["skipped"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| {
+            (
+                s["name"].as_str().unwrap().to_string(),
+                s["reason"].as_str().unwrap().to_string(),
+            )
+        })
+        .collect()
 }
 
 #[test]
