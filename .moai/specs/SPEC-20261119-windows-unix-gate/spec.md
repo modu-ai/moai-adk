@@ -33,14 +33,15 @@ created: 2026-11-19
 - REQ-7 (REQ-1): IF the scan finds 100 `.rs` files or fewer under `tests/` (the folder moved or the walk failed), THEN the scan test shall fail with the file count it saw instead of passing on a short list.
 - REQ-8: The scan test shall end a gate at the end of the item it stands on: a `;` outside brackets or the close of the next block.
 - REQ-9: The scan test shall name each place it reports as `path:line`.
-- REQ-10: The scan test shall read a `cfg` name it cannot decide (`test`, a feature, `target_vendor`) as no gate, also inside `not(...)`, and shall let one false part settle an `all(...)` and one true part settle an `any(...)`.
+- REQ-10: The scan test shall read a `cfg` name it cannot decide (`test`, a feature, `target_vendor`) as no gate, also inside `not(...)`.
 - REQ-11: The scan test shall read every top-level name of a `use std::os::{...}` group and report the group when one of the names is `unix`.
+- REQ-12: The scan test shall let one false part settle an `all(...)` and one true part settle an `any(...)`, whatever the other parts are.
 
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-9): 이 가지에서 스캔 시험이 `tests/hooks_cli.rs:1391`을 `path:line`으로 대며 실패하고(RED), 그 줄이 `#[cfg(unix)]` 아래로 가면 통과해요.
   verify: `cargo test --locked --offline --test windows_unix_gate_scan no_file_under_tests`
-- AC-5 (REQ-7, REQ-10, REQ-11): 파일 수 하한은 100/101 경계 시험이 있고, 모르는 `cfg` 이름과 `not(모름)`은 게이트가 아니고, brace 묶음은 이름마다 읽혀요.
+- AC-5 (REQ-7, REQ-10, REQ-11, REQ-12): 파일 수 하한은 100/101 경계 시험이 있고, 모르는 `cfg` 이름과 `not(모름)`은 게이트가 아니고(거짓 하나가 `all`을, 참 하나가 `any`를 정해요), brace 묶음은 이름마다 읽혀요.
   verify: `cargo test --locked --offline --test windows_unix_gate_scan the_file_count_floor`; `cargo test --locked --offline --test windows_unix_gate_scan a_name_the_scan_cannot_decide`; `cargo test --locked --offline --test windows_unix_gate_scan the_names_of_a_brace_group`
 - AC-2 (REQ-2, REQ-3, REQ-4, REQ-5, REQ-8): 상자(fixture) 시험이 게이트가 되는 꼴과 안 되는 꼴, 안쪽 `#![cfg]`, 주석·문자열·수명 표기, 게이트가 끝나는 자리를 하나씩 못 박아요.
   verify: `cargo test --locked --offline --test windows_unix_gate_scan -- --skip no_file_under_tests`
