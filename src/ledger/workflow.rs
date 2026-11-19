@@ -583,13 +583,34 @@ pub struct CriteriaAdded {
 /// with who added them, the first number and the count. Nobody has to hold the card: the
 /// criteria change nothing a lane may write, so there is no fence. A `done` card is refused.
 /// The texts are one line each, checked by the caller (`card::input`); an empty list is refused.
+/// The call without a session (card C-125): [`add_criteria_as`] with `None`.
 pub fn add_criteria(
     w: &mut WriteLedger,
     card_id: i64,
     by: &str,
     texts: &[String],
 ) -> Result<CriteriaAdded, WorkflowError> {
+    add_criteria_as(w, card_id, by, None, texts)
+}
+
+/// [`add_criteria`] that also records the session that adds the criteria (card C-125, C-108 audit
+/// N1): the event payload carries `session` next to `first` and `count`, `null` when the caller
+/// has no session id, as `card.note` records its session. `by` stays the author the event is signed
+/// with (free text); `session` is the id the host gave, one line within the author limit, checked
+/// before anything is written. `total` is the number of criterion rows the card has after the add
+/// (card C-125, audit N3), not its highest number.
+pub fn add_criteria_as(
+    w: &mut WriteLedger,
+    card_id: i64,
+    by: &str,
+    session: Option<&str>,
+    texts: &[String],
+) -> Result<CriteriaAdded, WorkflowError> {
     one_line("the author", by, MAX_AUTHOR_CHARS).map_err(WorkflowError::InvalidInput)?;
+    if let Some(session) = session {
+        one_line("the session id", session, MAX_AUTHOR_CHARS)
+            .map_err(WorkflowError::InvalidInput)?;
+    }
     if texts.is_empty() {
         return Err(WorkflowError::InvalidInput(
             "there is no criterion to add".into(),
@@ -624,11 +645,18 @@ pub fn add_criteria(
             by,
             card_id,
             "card.criterion_add",
-            &json!({"first": added[0], "count": added.len()}),
+            &json!({"first": added[0], "count": added.len(), "session": session}),
+        )?;
+        // The rows the card has now, read after the inserts in this transaction: the highest
+        // number says how many rows there are only while the numbers have no gap.
+        let total: i64 = tx.query_row(
+            "SELECT COUNT(*) FROM card_ac WHERE card_id = ?1",
+            [card_id],
+            |r| r.get(0),
         )?;
         Ok(Ok(CriteriaAdded {
             card_id,
-            total: highest + added.len() as i64,
+            total,
             added,
             rev: card_rev(tx, card_id)?,
         }))
