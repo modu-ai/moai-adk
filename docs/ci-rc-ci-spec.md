@@ -28,9 +28,30 @@
 - 이 줄에는 두 가지 꼴이 있다(#3066 P1·P2). 짧은 꼴은 위의 줄이고 in-place 모드가 찍는다. 긴 꼴은 candidate 모드(기본)가 찍으며 `base`는 고정한 base tip, `tree`는 그 병합의 트리, `script`는 이 스크립트의 `git hash-object`, `rustc`는 후보 안의 `rustc --version`의 버전 낱말(읽지 못하면 `unknown`과 fail), `run`은 `head base tree at pid`의 sha1 앞 12자리다. 모양은 `local-check: head=<40hex> result=<pass|fail> base=<40hex|none> tree=<40hex|none> script=<40hex> rustc=<토큰> run=<12hex> cmd=tools/local_check.sh at=<UTC>`이며(필드 순서·한 칸 띄움·0열·뒤에 글자 없음, hex는 모두 소문자, `rustc`는 `[A-Za-z0-9._+-]` 1~32자), `pass` 줄에는 실제 base와 tree가 있고 `base=none`·`tree=none`은 `result=fail`일 때뿐이며 `base=none`이면 `tree=none`이다. 게이트(`gate::parse_local_check`)는 두 꼴을 모두 읽는다. 어느 꼴이든 `dirty=1` 필드가 있으면 게이트는 줄이 없는 것으로 본다.
 - `LOCAL_CHECK_DRY_RUN=1`은 돌릴 단계와 마지막 줄만 출력하고 아무것도 돌리지 않는다(candidate 모드에서는 fetch도 하지 않아 diff-check가 `<base>...<head>`로 찍힌다). 확인한 것이 없으므로 늘 `result=fail`(긴 꼴은 `base=none tree=none`)이다.
 - `moai heavy-slot-acquire`가 있으면 test·doctest·clippy를 각각 기계 공용 슬롯 안에서 돌린다(`MOAI_HEAVY_SLOT_MAX` 기본 3, `MOAI_HEAVY_SLOT_MIN_FREE_GB` 기본 50). 없으면(CI 포함) 바로 돌린다.
+- 파이썬 전체 실행(unittest 단계)은 cargo 슬롯과 다른 폴더의 파이썬 슬롯 안에서 돌린다: `moai heavy-slot-acquire --dir <슬롯 폴더> --max <한도> --min-free-gb <GB> --name <이름>-py -- …`. 폴더는 `MOAI_PYTHON_SLOT_DIR`(기본 `${XDG_CACHE_HOME:-$HOME/.cache}/moai-cli/python-slots`), 동시에 도는 수는 `MOAI_PYTHON_SLOT_MAX`(기본 2)다. 비어 있는 값은 기본값으로 읽는다. 한도는 `heavy-slot-acquire` 의 규칙대로 기계의 `limits.json`(기본 3) 아래로만 낮출 수 있어서 `MOAI_PYTHON_SLOT_MAX=5` 는 3이 된다. 폴더는 절대 경로로 준다(상대 경로는 실행한 폴더 기준이라 후보 모드에서는 슬롯이 공유되지 않는다). `MOAI_PYTHON_SLOT_DIR`, `XDG_CACHE_HOME`, `HOME` 이 모두 비어 있으면 폴더를 정할 수 없으므로 cargo 슬롯 폴더로 되돌아가지 않고, 표준 오류에 한 줄을 알린 뒤 슬롯 없이 바로 돌린다. 38분 걸리던 전체 discover 가 cargo 슬롯 3칸 중 하나를 쥐지 않고, 파이썬끼리는 2개까지만 겹친다. 슬롯 명령이 없으면 바로 돌린다. `tools/self_check.sh --full-python` 도 같은 파이썬 슬롯을 쓰고, 슬롯이 거절하면(exit 75) 그 항목은 `slot-refused (not run)` 으로 not_run 이다.
 - in-place 모드의 diff-check 범위는 `LOCAL_CHECK_BASE`(기본 `origin/v2026.11.0`, 없으면 `HEAD~1`)`...LOCAL_CHECK_DIFF_HEAD`(기본 `HEAD`)다. CI는 PR base·head SHA를 넘긴다. candidate 모드의 범위는 고정한 `<base>...<head>`다.
 
 병합 조건은 이 단계에서 바뀌지 않는다. 지금 게이트(head의 GitHub CI 성공 + 감사 PASS)가 그대로이고, `local-check:` 줄을 병합 조건으로 읽는 일은 S5b의 범위다.
+
+## READY 전에 돌리는 전체 트리 점검 `tools/self_check.sh --pre-ready`
+
+레인은 READY 를 알리기 전에 이 목록을 위에서 아래로 돌린다(빠른 순서). 한 줄에 한 항목, `self-check: <항목> exit=<코드> …` 로 찍히고 마지막 줄이 요약이다. 이 목록은 한 묶음이 몇 시간 READY 에 못 올라가게 한 실패 6가지(fmt, SPEC Result 없음, source-manifest 항목 없음, repo_scans 표 항목 없음, 워크플로 파일 속 금지 문자열, windows 게이트)를 PR 전에 잡으려는 것이고, 병합 증거가 아니다. 병합 조건은 위와 같다.
+
+| 항목 | 명령 | 슬롯 |
+| --- | --- | --- |
+| `diff-check` | `git diff --check <merge base>` | 없음 |
+| `fmt` | `cargo fmt --check` | 없음 |
+| `fmt-ops` | `rustfmt --check --edition 2021 src/ops/*.rs` | 없음 |
+| `manifest` | `python3 -I tools/source_manifest.py check` | 없음 |
+| `spec-check` | 바뀐 SPEC 마다 빌드한 `moai-cli spec check <SPEC-ID> --closure --project .` (초안 SPEC 은 승인이 사용자 몫이라 항상 나오는 `closure_status` 하나만 통과로 읽고, `## Result` 없음(`closure_result`)이나 읽히지 않는 요구사항은 실패) | 없음 |
+| `py-source-manifest` | `python3 -m unittest tests.source_manifest_test` | 파이썬 슬롯 |
+| `py-repo-scans` | `python3 -m unittest tests.repo_scans_test` | 파이썬 슬롯 |
+| `skill-package` | `cargo test --offline --locked --test product_cli skill_package` | heavy 슬롯 |
+
+- `spec-check` 와 `py-repo-scans` 는 빌드한 `moai-cli` 를 읽는다(`MOAI_CLI_BIN`, 없으면 `${CARGO_TARGET_DIR:-target}/debug/moai-cli`). 없거나 `src/`·`build.rs`·`Cargo.toml`·`Cargo.lock` 의 어느 파일보다 오래됐으면 `not_run (no built moai-cli: …)` 또는 `not_run (stale moai-cli: …)` 이고 통과로 세지 않는다. 먼저 `cargo build --offline --locked --bin moai-cli` 를 돌린다(heavy 슬롯 안에서). 빌드가 없으면 `tests.repo_scans_test` 는 25개 중 19개가 `moai-cli not built` 로 실패한다(2026-11-19 직접 실행).
+- 바뀐 SPEC 이 없으면 `spec-check` 는 `skip (no changed SPEC)` 이다. merge base 가 없으면 `diff-check` 와 `spec-check` 는 `not_run (no base: …)` 이다(`SELF_CHECK_BASE`).
+- windows 게이트는 항목이 아니다. 플랫폼 코드(unix 전용 호출, `std::os::unix`)를 건드린 변경만 직접 `cargo check --offline --locked --tests --target x86_64-pc-windows-msvc` 로 형을 확인하고(맥에서는 `libsqlite3-sys` 빌드가 C 컴파일러를 요구해 흉내 낸 `CC_`/`AR_` 환경이 있어야 하고, 링크와 실행은 하지 않는다), 확정은 병합 뒤 `windows-build` run 이다.
+- `--pre-ready` 는 `--full-python` 과 함께 줄 수 없다(exit 2). 일반 실행(`tools/self_check.sh`)의 항목과 순서는 바뀌지 않는다.
 
 ## SYNC가 CI 결과를 읽는 방법
 

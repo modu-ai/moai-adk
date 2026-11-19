@@ -943,6 +943,27 @@
         }
       ],
       "rejects": "a SPEC under .moai/specs/ that `moai spec check --all` refuses (SDD audit B2, SPEC-20261117-spec-tooling)"
+    },
+    {
+      "id": "windows-unix-gate",
+      "tests": [
+        "tests/windows_unix_gate_scan.rs::no_file_under_tests_names_std_os_unix_outside_cfg_unix"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test windows_unix_gate_scan"
+      ],
+      "rules": [
+        "tests/windows_unix_gate_scan.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "tests/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "a file under tests/ that names std::os::unix outside a cfg(unix) item, so the windows-build job stops compiling the tests (C-110, SPEC-20261119-windows-unix-gate)"
     }
   ]
 }
