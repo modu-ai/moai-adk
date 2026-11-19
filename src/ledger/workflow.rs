@@ -356,14 +356,31 @@ pub fn add_note(
     if body.contains('\0') {
         return Err(invalid("the note text contains a NUL character".into()));
     }
+    // C-68 AC-3: Windows line endings become line feeds, so a note written on one system is
+    // stored one way; a carriage return that is not part of a line ending is judged below.
+    let body = &body.replace("\r\n", "\n");
     // A note is shown on terminals and written out by `card export`: an escape sequence or a
     // carriage return could repaint what a reader sees. Tabs and line breaks are text.
+    if body.contains('\r') {
+        return Err(invalid(
+            "the note text contains a control character: a carriage return outside a line \
+             ending; normalise Windows line endings"
+                .into(),
+        ));
+    }
     if body
         .chars()
         .any(|c| c.is_control() && c != '\t' && c != '\n')
     {
         return Err(invalid(
             "the note text contains a control character; only tabs and line breaks are kept".into(),
+        ));
+    }
+    if body.chars().any(is_directional) {
+        return Err(invalid(
+            "the note text contains a directional or formatting character \
+             (U+2028–U+202E, U+2066–U+2069); take it out"
+                .into(),
         ));
     }
     if body.len() > MAX_NOTE_BYTES {
@@ -974,9 +991,19 @@ fn one_line(what: &str, value: &str, max: usize) -> Result<(), String> {
         Err(format!("{what} is longer than {max} characters ({n})"))
     } else if value.chars().any(char::is_control) {
         Err(format!("{what} is not one line"))
+    } else if value.chars().any(is_directional) {
+        Err(format!(
+            "{what} holds a directional or formatting character (U+2028–U+202E, U+2066–U+2069)"
+        ))
     } else {
         Ok(())
     }
+}
+
+/// A bidi or directional character (C-68 AC-3): one of these changes how the text around it
+/// is drawn, whatever it claims to be, the same set `decide`'s normaliser refuses.
+fn is_directional(c: char) -> bool {
+    matches!(c, '\u{2028}'..='\u{202e}' | '\u{2066}'..='\u{2069}')
 }
 
 fn card_exists(conn: &Connection, card_id: i64) -> Result<bool, LedgerError> {

@@ -2435,6 +2435,92 @@ fn two_processes_recovering_at_once_leave_one_winner_and_a_sound_ledger() {
     );
 }
 
+/// SPEC-20261119-ledger-recover-race AC-1 (C-109): the race test above fails on macOS CI now and
+/// then with `["applied", "target_healthy"]`. The loser read the ledger as damaged, the winner
+/// finished before the loser recomputed its plan, and the plan then read a usable target. This
+/// test runs the winner inside exactly that gap, so the order is made every time and not by luck.
+#[test]
+fn a_recovery_finished_between_the_first_read_and_the_plan_is_unchanged() {
+    let w = World::new();
+    let bak = break_ledger(&w);
+    let obs = confirm_all(&w, &bak);
+    let plan = plan_of(&w, &bak, &obs);
+    let winner_ran = std::cell::Cell::new(false);
+    let loser = recover::apply_with_suffix_hooked(
+        w.home.path(),
+        PROJECT,
+        &bak,
+        &obs,
+        &plan.plan_digest,
+        "20261116T000002Z",
+        &|| {
+            let won = recover::apply_with_suffix(
+                w.home.path(),
+                PROJECT,
+                &bak,
+                &obs,
+                &plan.plan_digest,
+                SUFFIX,
+            )
+            .unwrap();
+            assert_eq!(won.state, ApplyState::Applied);
+            winner_ran.set(true);
+        },
+    )
+    .unwrap();
+    assert!(winner_ran.get(), "the winner finished inside the gap");
+    assert_eq!(loser.state, ApplyState::Unchanged);
+    assert!(loser.built.is_none() && loser.set_aside.is_none());
+    let r = w.reader();
+    assert_eq!(recover_events(r.conn()).len(), 1, "one recover event");
+    assert_eq!(kept_files(&w.home).len(), 1, "one kept file");
+}
+
+/// SPEC-20261119-ledger-recover-race AC-2 (C-109): the second look only turns a refusal into
+/// `unchanged` when the usable ledger holds the recover event of the digest the caller named. A
+/// usable ledger that another plan produced is still refused.
+#[test]
+fn a_usable_ledger_that_is_not_this_plans_result_is_still_refused() {
+    let w = World::new();
+    let bak = break_ledger(&w);
+    let obs = confirm_all(&w, &bak);
+    let plan = plan_of(&w, &bak, &obs);
+    let other_obs = Observations::default();
+    let other = plan_of(&w, &bak, &other_obs);
+    assert_ne!(other.plan_digest, plan.plan_digest, "two different plans");
+    let err = recover::apply_with_suffix_hooked(
+        w.home.path(),
+        PROJECT,
+        &bak,
+        &obs,
+        &plan.plan_digest,
+        "20261116T000002Z",
+        &|| {
+            let won = recover::apply_with_suffix(
+                w.home.path(),
+                PROJECT,
+                &bak,
+                &other_obs,
+                &other.plan_digest,
+                SUFFIX,
+            )
+            .unwrap();
+            assert_eq!(won.state, ApplyState::Applied);
+        },
+    )
+    .unwrap_err();
+    assert!(
+        matches!(&err, LedgerError::Constraint(m) if m.starts_with("target_healthy")),
+        "{err:?}"
+    );
+    let r = w.reader();
+    assert_eq!(
+        recover_events(r.conn()).len(),
+        1,
+        "the other plan's event only"
+    );
+}
+
 /// M10: the recovered ledger is private to its owner, like a registered one.
 #[test]
 #[cfg(unix)]
