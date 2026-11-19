@@ -158,8 +158,11 @@ enum Action {
     /// not overlap another card's reservation (a `conflict` naming that card). `--reason` is
     /// required for a held card; the `card.scope` event records `--by`, the reason, the
     /// generation and the holder; the card's own scope is not changed, so a later `card take`
-    /// without `--scope` still reads the old one. Each entry is checked as `add --scope` checks
-    /// it. Any other state is refused (`conflict`) with its state and holder, and nothing is
+    /// without `--scope` still reads the old one. `--generation` is the generation the caller
+    /// read (`card show`): given, the card's live reservation must be at that generation, else
+    /// `conflict` naming the generation it has (or that the card is not held) and nothing is
+    /// written; left out, nothing is checked. Each entry is checked as `add --scope` checks it.
+    /// Any other state is refused (`conflict`) with its state and holder, and nothing is
     /// written.
     Scope {
         /// `C-12`.
@@ -174,6 +177,10 @@ enum Action {
         /// Why, one line of 1 to 500 characters; required to widen a held card.
         #[arg(long)]
         reason: Option<String>,
+        /// The generation the card has now (`card show` prints it); a card at another
+        /// generation, or one nobody holds, is a `conflict`. Left out, nothing is checked.
+        #[arg(long, value_parser = clap::value_parser!(i64).range(1..))]
+        generation: Option<i64>,
         /// The project folder (its profile holds the project id).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -694,6 +701,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             scope,
             by,
             reason,
+            generation,
             project,
             home,
         } => d::scope(
@@ -703,6 +711,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             &scope,
             &by,
             reason.as_deref(),
+            generation,
         ),
         Action::Take {
             card,
