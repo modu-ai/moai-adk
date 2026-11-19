@@ -74,7 +74,8 @@ fn worktree_move_is_previewed_then_asked_once_then_applied_only_after_the_pick()
     for phrase in [
         "show its `items`",
         "its `totals`",
-        "only after the user picked the move",
+        // Tied to the worktree-move-apply line: `go-state-apply` says the same words nearby.
+        "as the preview only after the user picked the move",
         "Without a pick nothing moves",
         "without `--force`",
         "a changed project refuses the digest",
