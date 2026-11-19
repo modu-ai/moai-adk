@@ -207,3 +207,40 @@ fn models_revert_is_in_the_help() {
         "{text}"
     );
 }
+
+/// SPEC-20261119-models-revert-skill-text AC-1: the line of `update.md` that tells a session about
+/// the saved models choice names the undo command with its arguments, the rule that the person
+/// asks and gives the permission reference, the two answers and the refusal shape, and no longer
+/// says the undo "is not a command yet". Only names and short tails are read (SPEC decision D-2).
+#[test]
+fn update_md_names_the_models_revert_command() {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/moai/workflows/update.md");
+    let text = fs::read_to_string(&path).unwrap();
+    let lines: Vec<&str> = text
+        .lines()
+        .filter(|l| l.starts_with("The applied result of `moai update` also carries `models`"))
+        .collect();
+    assert_eq!(
+        lines.len(),
+        1,
+        "update.md keeps the models rule on one line"
+    );
+    let line = lines[0];
+    for name in [
+        "moai models-revert",
+        "--receipt",
+        "--permission-reference",
+        "only when the person asks for the undo",
+        "a permission reference the person gave",
+        "`reverted`",
+        "`skipped`",
+        "`changed_since_apply`",
+        "exits 1 with an error envelope",
+    ] {
+        assert!(line.contains(name), "update.md lacks {name}");
+    }
+    assert!(
+        !line.contains("not a command yet"),
+        "update.md still says the undo is not a command yet"
+    );
+}
