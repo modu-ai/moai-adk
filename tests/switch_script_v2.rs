@@ -29,7 +29,9 @@ const RUST_SPEC_ACTIONS: [&str; 6] = ["new", "check", "list", "show", "take", "c
 const GO_ONLY_SPEC_ACTIONS: [&str; 7] = [
     "status", "drift", "view", "lint", "audit", "archive", "ceiling",
 ];
-const LAUNCHER_WORDS: [&str; 8] = ["cc", "glm", "codex", "omp", "-l", "-a", "--leader", "--agent"];
+const LAUNCHER_WORDS: [&str; 8] = [
+    "cc", "glm", "codex", "omp", "-l", "-a", "--leader", "--agent",
+];
 /// The three words v2 moves from the Go build to the Rust build (`spec` by action).
 const MOVED: [&str; 3] = ["spec", "statusline", "session"];
 
@@ -75,7 +77,13 @@ struct Out {
     stderr: String,
 }
 
-fn run_with(script_path: &Path, fakes: &Fakes, go: &Path, args: &[&str], env: &[(&str, &str)]) -> Out {
+fn run_with(
+    script_path: &Path,
+    fakes: &Fakes,
+    go: &Path,
+    args: &[&str],
+    env: &[(&str, &str)],
+) -> Out {
     let mut cmd = Command::new("sh");
     cmd.arg(script_path)
         .args(args)
@@ -107,7 +115,10 @@ fn go_words(script_text: &str) -> BTreeSet<String> {
         .map(str::trim)
         .find(|l| l.contains("|mcp-server|") && l.ends_with(')'))
         .unwrap_or_else(|| panic!("no Go word line found"));
-    line.trim_end_matches(')').split('|').map(str::to_string).collect()
+    line.trim_end_matches(')')
+        .split('|')
+        .map(str::to_string)
+        .collect()
 }
 
 fn called(who: &str, oneshot: &str, args: &[&str]) -> String {
@@ -143,7 +154,12 @@ fn v2_splits_spec_by_action() {
         .iter()
         .map(|a| vec!["spec", *a, "SPEC-20261119-x", "--project", "."])
         .collect();
-    rust_calls.extend([vec!["spec"], vec!["spec", "help"], vec!["spec", "-h"], vec!["spec", "--help"]]);
+    rust_calls.extend([
+        vec!["spec"],
+        vec!["spec", "help"],
+        vec!["spec", "-h"],
+        vec!["spec", "--help"],
+    ]);
     for args in rust_calls {
         let o = run(&v2, &f, &args);
         assert_eq!(o.stdout, called("RUST", "unset", &args), "{args:?}");
@@ -179,8 +195,14 @@ fn v2_changes_exactly_three_words_of_v1() {
     let removed: BTreeSet<String> = v1.difference(&v2).cloned().collect();
     let added: BTreeSet<String> = v2.difference(&v1).cloned().collect();
     let expected: BTreeSet<String> = MOVED.iter().map(|s| s.to_string()).collect();
-    assert_eq!(removed, expected, "v2 drops exactly spec, statusline, session from the list");
-    assert!(added.is_empty(), "v2 adds no word to the Go list: {added:?}");
+    assert_eq!(
+        removed, expected,
+        "v2 drops exactly spec, statusline, session from the list"
+    );
+    assert!(
+        added.is_empty(),
+        "v2 adds no word to the Go list: {added:?}"
+    );
 }
 
 #[test]
@@ -199,7 +221,11 @@ fn v2_keeps_launcher_and_unknown_words_on_rust() {
     for args in cases {
         let (a, b) = (run(&v1, &f, &args), run(&v2, &f, &args));
         assert_eq!(b.stdout, called("RUST", "unset", &args), "{args:?}");
-        assert_eq!((a.code, a.stdout), (b.code, b.stdout), "v1 and v2 agree on {args:?}");
+        assert_eq!(
+            (a.code, a.stdout),
+            (b.code, b.stdout),
+            "v1 and v2 agree on {args:?}"
+        );
     }
 }
 
@@ -214,7 +240,11 @@ fn v2_exports_the_mcp_oneshot_flag_for_mcp_server_only() {
             continue;
         }
         let o = run(&v2, &f, &[word.as_str(), "x"]);
-        assert_eq!(o.stdout, called("GO", "unset", &[word.as_str(), "x"]), "{word}");
+        assert_eq!(
+            o.stdout,
+            called("GO", "unset", &[word.as_str(), "x"]),
+            "{word}"
+        );
     }
     let o = run(&v2, &f, &["spec", "lint"]);
     assert_eq!(o.stdout, called("GO", "unset", &["spec", "lint"]));
@@ -225,12 +255,24 @@ fn v2_without_a_go_build_fails_only_for_go_words() {
     let f = Fakes::new();
     let v2 = script("moai.v2");
     let missing = f.dir.path().join("no-go-here");
-    for args in [vec!["hook", "pre-tool"], vec!["spec", "lint"], vec!["status"]] {
+    for args in [
+        vec!["hook", "pre-tool"],
+        vec!["spec", "lint"],
+        vec!["status"],
+    ] {
         let o = run_with(&v2, &f, &missing, &args, &[]);
         assert_eq!(o.code, 1, "{args:?}");
         assert!(o.stdout.is_empty(), "{args:?}: {}", o.stdout);
-        assert!(o.stderr.contains(&format!("'{}'", args[0])), "names the word: {}", o.stderr);
-        assert!(o.stderr.contains(missing.to_str().unwrap()), "names the path: {}", o.stderr);
+        assert!(
+            o.stderr.contains(&format!("'{}'", args[0])),
+            "names the word: {}",
+            o.stderr
+        );
+        assert!(
+            o.stderr.contains(missing.to_str().unwrap()),
+            "names the path: {}",
+            o.stderr
+        );
     }
     for args in [
         vec!["statusline"],
@@ -256,7 +298,11 @@ fn v2_hands_over_arguments_and_exit_status() {
     ] {
         let o = run_with(&v2, &f, &f.go(), args, &[("FAKE_EXIT", "7")]);
         assert_eq!(o.code, 7, "{who} exit status passes through");
-        assert_eq!(o.stdout, called(who, "unset", args), "{who} arguments unchanged");
+        assert_eq!(
+            o.stdout,
+            called(who, "unset", args),
+            "{who} arguments unchanged"
+        );
     }
 }
 
@@ -277,16 +323,25 @@ fn the_spec_names_every_word_it_changes_and_the_undo_line() {
     let spec = text(Path::new(SPEC));
     let result = spec.split("\n## Result").nth(1).expect("a Result section");
     for word in MOVED.iter().chain(GO_ONLY_SPEC_ACTIONS.iter()) {
-        assert!(result.contains(&format!("`{word}`")), "the Result names `{word}`");
+        assert!(
+            result.contains(&format!("`{word}`")),
+            "the Result names `{word}`"
+        );
     }
     assert!(
         result.contains("moai.before-"),
         "the Result names the saved copy the undo line restores"
     );
     let undo = result_line(&spec, "- undo line: ");
-    assert!(undo.contains("$STAMP") && undo.contains("mv "), "undo line: {undo}");
+    assert!(
+        undo.contains("$STAMP") && undo.contains("mv "),
+        "undo line: {undo}"
+    );
     let apply = result_line(&spec, "- apply lines (S4 only, after the user picks): ");
-    assert!(apply.contains("$PREVIEW") && apply.contains("$STAMP"), "apply lines: {apply}");
+    assert!(
+        apply.contains("$PREVIEW") && apply.contains("$STAMP"),
+        "apply lines: {apply}"
+    );
 }
 
 #[test]
@@ -295,8 +350,14 @@ fn the_undo_line_restores_v1_byte_for_byte() {
     let undo = result_line(&spec, "- undo line: ");
     let apply = result_line(&spec, "- apply lines (S4 only, after the user picks): ");
     let home = TempDir::new().unwrap();
-    let (v1, v2) = (fs::read(script("moai.v1")).unwrap(), fs::read(script("moai.v2")).unwrap());
-    let dirs = [home.path().join(".moai-cli/path"), home.path().join("go/bin")];
+    let (v1, v2) = (
+        fs::read(script("moai.v1")).unwrap(),
+        fs::read(script("moai.v2")).unwrap(),
+    );
+    let dirs = [
+        home.path().join(".moai-cli/path"),
+        home.path().join("go/bin"),
+    ];
     for d in &dirs {
         fs::create_dir_all(d).unwrap();
         fs::write(d.join("moai"), &v1).unwrap();
@@ -313,11 +374,20 @@ fn the_undo_line_restores_v1_byte_for_byte() {
             .env("STAMP", "20261119T000000Z")
             .output()
             .unwrap();
-        assert!(out.status.success(), "{line}: {}", String::from_utf8_lossy(&out.stderr));
+        assert!(
+            out.status.success(),
+            "{line}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
     };
     sh(&apply);
     for d in &dirs {
-        assert_eq!(fs::read(d.join("moai")).unwrap(), v2, "apply put v2 in {}", d.display());
+        assert_eq!(
+            fs::read(d.join("moai")).unwrap(),
+            v2,
+            "apply put v2 in {}",
+            d.display()
+        );
         assert_eq!(
             fs::metadata(d.join("moai")).unwrap().permissions().mode() & 0o111,
             0o111,
@@ -331,7 +401,15 @@ fn the_undo_line_restores_v1_byte_for_byte() {
     }
     sh(&undo);
     for d in &dirs {
-        assert_eq!(fs::read(d.join("moai")).unwrap(), v1, "undo restored v1 in {}", d.display());
-        assert!(!d.join("moai.before-20261119T000000Z").exists(), "the saved copy was moved back");
+        assert_eq!(
+            fs::read(d.join("moai")).unwrap(),
+            v1,
+            "undo restored v1 in {}",
+            d.display()
+        );
+        assert!(
+            !d.join("moai.before-20261119T000000Z").exists(),
+            "the saved copy was moved back"
+        );
     }
 }

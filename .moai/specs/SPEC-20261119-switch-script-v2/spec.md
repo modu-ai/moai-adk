@@ -117,6 +117,14 @@ v2 가 v1 과 다른 점은 세 가지뿐이에요:
 
 두 줄 모두 `tests/switch_script_v2.rs::the_undo_line_restores_v1_byte_for_byte` 가 임시 HOME 에서 실제로 돌려요(적용 뒤 v2 와 같고, 되돌리면 v1 과 바이트까지 같고, 저장본이 사라져요).
 
+### 검사 (이 레인, 2026-11-19, 전용 빌드 폴더·무거운 작업 칸)
+
+- RED: 새 시험 파일을 v2 가 v1 과 같은 채로 돌리면 10개 중 7개 실패(3개 통과: v1 기준선·바뀌지 않는 동작).
+- GREEN: `cargo test --locked --offline --test switch_script_v2` 10/10 통과(`rustfmt` 정리 뒤 다시: 10/10).
+- 변이 5개(스크립트 `preview/moai.v2` 에 하나씩, 커밋된 파일에서): M1 `lint` 를 Rust 쪽으로, M2 `spec` 기본값을 Go 로, M3 `statusline` 을 Go 목록에 되돌림, M4 one-shot 표시를 모든 낱말에, M5 `spec` 의 Go 없음 종료를 0 으로 — 5/5 처음에 시험이 잡았어요.
+- `cargo fmt --check` 0(처음에 시험 파일 줄바꿈 4곳 지적 → 정리), `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `cargo test --locked --offline --test home_isolation_scan` 통과, `cargo test --locked --offline --lib` 1453 통과 0 실패.
+- 돌리지 않은 것: 실제 HOME 에 적용(S4), 실제 훅 이벤트·`statusline` 렌더 실행, Linux/macOS 이외, 프로젝트 전체 `cargo test`(통합 시험 전량은 묶음 PR 의 CI 가 맡아요).
+
 ### 리더 결정이 필요한 것 (되돌릴 수 있음, 범주 none)
 
 1. `spec close`는 두 빌드에 다 있어요. v2 는 Rust 로 보내요(이 저장소 호출이 Rust 용). Go 세대 프로젝트의 명령·스킬·에이전트 파일은 `spec close` 를 안 불러요(`lint`·`audit` 만). 기본값: 그대로 Rust.
