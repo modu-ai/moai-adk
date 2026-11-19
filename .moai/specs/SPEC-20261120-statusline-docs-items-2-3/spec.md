@@ -77,4 +77,13 @@ created: 2026-11-20
 
 ## Result
 
-(draft: filled in with evidence at RUN.)
+2026-11-20, branch `spec/20261120-statusline-docs-items-2-3`, text commit `d749943c1f` on the local integration branch `05cbe0ac67`, then the tip `330c84bbdc` merged (mechanical-merge tree equal; the tip changed nothing in the document).
+
+- AC-1 (REQ-7): the Python verify command printed `ok`: lines 2 and 3 of `tests/fixtures/statusline-claude/golden/b14-card-counts-waiting.plain.txt` are in `docs/rust-product-path.md` verbatim (the example block of item 3).
+- AC-2 (REQ-1, REQ-2, REQ-3): `ok`. The statusline section carries neither `🔥 N` nor `📥 M`, and `grep -n "🔥\|📥" docs/rust-product-path.md` prints nothing; it names `🔃`, `LANE-READY-INTEGRATION`, `review` and the three-number fallback. The marker list was written from `marker_of` in `src/statusline/state.rs` (waiting: `LANE-READY-INTEGRATION`, `감사 요청`, `LANE-DONE` with `audit requested` or `감사 요청`, `AUDIT` with `verdict: PASS`; working: `ACK `, `PLAN `, `AUDIT` with `verdict: FAIL`; note head 1000 characters).
+- AC-3 (REQ-4, REQ-5, REQ-6): `ok`. Item 2 no longer lists `🌳`; item 3 opens with the worktree segment and names `WT-c`, `32`, `…`, `absolute`, `main checkout` and `worktree`. The three shapes and the rules were written from `worktree_text` (`src/statusline/render.rs`) and the REQs of SPEC-20261119-statusline-worktree-label.
+- AC-4 (REQ-8): `grep -c "statusline_worktree_label.rs" docs/rust-product-path.md` printed `1`; `tests/statusline_cards.rs` and both golden cases are named too.
+- AC-5: `cargo test --locked --offline --test spec_cli` 12 passed with `the_repository_specs_pass_check`; `tests.ci_scope_test` OK (scan 21).
+- Pre-READY checks (exit codes read from each command, code head `d749943c1f`): `git diff --check` (origin and local tip ranges) 0, `cargo fmt --check` 0, `rustfmt --check --edition 2021 src/ops/*.rs` 0, `cargo clippy --locked --offline --all-targets -- -D warnings` 0, the five named test files 0 and `python3 -m unittest tests.repo_scans_test tests.source_manifest_test tests.local_check_test` 0 (116 OK), head-built `moai trailer-check v2026.11.0..HEAD --dir .` 0, `cargo test --bins` 0 (28+28), the 39 checks of `tools/repo_scans.json` 0, `tests.skill_references_test` 0, neighbours `spec_cli` 12, `doc_references` 18, `statusline_golden` 1, `statusline_cards` 8 (+1 ignored), `cargo test --lib statusline::` 138.
+
+Not run: the whole `cargo test` (the release PR's CI cites it), Linux-only checks. The document claims were checked by the verify commands and against the code by reading; an independent audit reads them against `render.rs`, `state.rs` and the goldens.
