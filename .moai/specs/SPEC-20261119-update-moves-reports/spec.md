@@ -27,7 +27,7 @@ parent: SPEC-20261119-reports-outside-repo
 - REQ-2: The command `reports-move-plan` shall count the files that git tracks and name them as tracked and left alone.
 - REQ-3: The command `reports-move-apply` shall move each planned file to the same relative path under the HOME reports folder and keep the folder structure.
 - REQ-4: The command `reports-move-apply` shall skip a file whose destination name already exists and count it as skipped without overwriting it.
-- REQ-5: The command `reports-move-apply` shall give the same result when it runs a second time by moving nothing and counting the files already in place.
+- REQ-5: The command `reports-move-apply` shall refuse a plan made before the files moved and leave every file as it is.
 - REQ-6: The command `reports-move-apply` shall make the folders it creates readable by the owner only and clear the group and other permission bits of the files it moves.
 - REQ-7: The command `reports-move-apply` shall refuse a stale plan digest or a missing permission reference and write nothing.
 - REQ-8: The command `project-update-plan` shall show one step `reports` whose preview carries the counts to move and to skip and the tracked count and the destination.
@@ -42,7 +42,7 @@ parent: SPEC-20261119-reports-outside-repo
   verify: `cargo test --locked --offline --test reports_move_cli apply_moves_untracked_and_keeps_tracked`
 - AC-3 (REQ-4): 목적지에 같은 이름이 있으면 덮어쓰지 않고 건너뛰며 그 수를 알려요(목적지 바이트가 그대로예요).
   verify: `cargo test --locked --offline --test reports_move_cli apply_skips_a_name_that_exists`
-- AC-4 (REQ-5): 두 번째 적용은 옮김 0·이미 있음을 세고 어떤 파일도 바꾸지 않아요.
+- AC-4 (REQ-5): 옮긴 뒤 새 미리보기는 `unchanged`·옮길 것 0 이고, 옛 계획을 다시 적용하면 낡은 계획으로 거절되어 어떤 파일도 바꾸지 않아요.
   verify: `cargo test --locked --offline --test reports_move_cli apply_twice_gives_the_same_result`
 - AC-5 (REQ-6): 새로 만든 폴더는 0700 이고 옮긴 파일에서 그룹·다른 사람 권한 비트가 지워져요(Unix).
   verify: `cargo test --locked --offline --test reports_move_cli apply_makes_the_destination_owner_only`
@@ -79,7 +79,7 @@ parent: SPEC-20261119-reports-outside-repo
 | --- | --- | --- | --- |
 | D-1 | 옮김 대상은 프로젝트의 `.moai-cli/reports` 와 `.moai/reports` 안의 추적되지 않는 파일(무시 규칙이 걸린 파일 포함)이에요. `plan-audit/.gitkeep` 처럼 추적되는 파일은 자동으로 제자리에 남아요 | 사용자 지시와 `.gitignore` 의 `.moai/reports/` 블록 | 대상 폴더 줄이기 |
 | D-2 | git 저장소가 아니거나 추적 여부를 알 수 없으면 `blocked` 로 두고 아무것도 옮기지 않는다 | 추적 파일은 그대로라는 지시를 어길 위험이 있는 쪽은 옮기지 않는 쪽이 안전해요 | 저장소 아님을 "모두 추적 안 됨"으로 |
-| D-3 | `reports` 단계는 install 단계(phase)에 두고 다른 단계를 기다리게 하지도 기다리지도 않는다 | 옮김은 HOME 에만 쓰고 프로젝트 파일을 바꾸지 않아서 다른 단계의 미리보기를 낡게 하지 않아요 | 다른 단계 뒤로 순서 바꾸기 |
+| D-3 | `reports` 단계는 backup 단계(phase)의 마지막에 두고, 옮길 파일이 있으면 같은 단계의 `go-state` 명령이 `re-run after the reports apply` 로 기다리게 한다. install·merge 단계는 기다리게 하지 않는다 | 옮김은 `.moai/reports` 를 비워서 `go-state` 미리보기가 읽는 보고서 목록이 달라지므로(그 digest 가 낡아져요) `go-state` 는 새 미리보기를 기다려야 하고, install·merge 가 읽는 파일은 바뀌지 않아요 | install 단계로 옮기기 |
 | D-4 | 같은 파일 시스템이면 이름 바꾸기(rename)로 옮기고, 아니면 복사한 뒤 바이트가 같을 때만 원본을 지운다 | 같은 볼륨이면 원자적이고, 아니면 원본을 확인 뒤에만 지워요 | 항상 복사 |
 | D-5 | 심볼릭 링크와 폴더가 아닌 것은 옮기지 않고 수만 알린다 | 링크를 따라가면 저장소 밖 파일을 옮길 수 있어요 | 링크 처리 규칙 더하기 |
 

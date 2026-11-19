@@ -17,8 +17,8 @@ use crate::claude_settings_merge;
 use crate::generation::{self, GenerationRequest};
 use crate::github_templates::{self, GithubRequest};
 use crate::{
-    go_settings_clean, go_state, profile, project_detect, project_hosts, state_root, status_line,
-    Profile,
+    go_settings_clean, go_state, home_workdir, profile, project_detect, project_hosts,
+    reports_move, state_root, status_line, Profile,
 };
 use serde_json::{json, Map, Value};
 use std::{fs, path::Path};
@@ -41,6 +41,10 @@ pub const AFTER_SETTINGS: &str = "re-run after the claude-settings apply";
 /// write changes what the go-state plan reads from `.claude/settings.json`, so a digest made
 /// before it would be stale.
 pub const AFTER_GO_SETTINGS: &str = "re-run after the go-settings apply";
+/// Why the go-state step waits while the reports step has files to move (C-126): that move
+/// changes what the go-state plan lists under the report folders, so a digest made before it
+/// would be stale.
+pub const AFTER_REPORTS: &str = "re-run after the reports apply";
 
 const BACKUP_REASON: &str = "the Go-generation .moai/ and the earlier .moai-cli/ state, the \
      Go tool files under .claude/ and .agents/, settings and instruction files \
@@ -216,6 +220,49 @@ fn go_settings_step(
             "blocks": plan["blocks"],
         }),
         plan_digest: digest,
+        apply,
+    })
+}
+
+/// C-126: the `reports` step, the backup phase's last. The report files an earlier generation
+/// left under `.moai-cli/reports` and `.moai/reports` that git does not track move to the
+/// user-level reports folder; `reports-move-apply` takes the plan back on stdin and makes it
+/// again, so a file added, moved or tracked since the preview makes it stale.
+///
+/// - `ready`: files to move; the printed command is `reports-move-apply`.
+/// - `unchanged`: nothing untracked is left in the earlier folders.
+/// - `blocked`: the project is not a git repository or git cannot tell what it tracks.
+fn reports_step(root: &Path, shown: &str) -> Result<Step> {
+    let home = home_workdir::home()?;
+    let plan = reports_move::plan(root, &home)?;
+    let state = match plan.state.as_str() {
+        "ready" => "ready",
+        "unchanged" => "unchanged",
+        _ => "blocked",
+    };
+    let reason = match state {
+        "ready" => format!(
+            "{} untracked report file(s) under the earlier report folders move to {} \
+             (tracked files stay; a name already there is kept)",
+            plan.moves.len(),
+            plan.destination
+        ),
+        "unchanged" => "no untracked report file is left in the earlier report folders".to_string(),
+        _ => plan.reason.clone(),
+    };
+    let apply = match state {
+        "ready" => Some((
+            argv("reports-move-apply", shown, &plan.plan_digest),
+            encode(&plan)?,
+        )),
+        _ => None,
+    };
+    Ok(Step {
+        name: "reports",
+        state,
+        reason,
+        preview: plan.preview(),
+        plan_digest: Some(plan.plan_digest.clone()),
         apply,
     })
 }
@@ -1621,7 +1668,13 @@ pub fn plan(project: &Path) -> Result<Value> {
     if settings.apply.is_some() && state.apply.is_some() {
         state = Step::waiting("go-state", "blocked", AFTER_GO_SETTINGS);
     }
-    let backup = vec![settings, state];
+    // C-126: `reports` last. Moving the untracked report files out changes the go-state plan's
+    // report listing, so a go-state command waits until a new preview is made after it.
+    let reports = or_blocked("reports", reports_step(&root, &shown));
+    if reports.apply.is_some() && state.apply.is_some() {
+        state = Step::waiting("go-state", "blocked", AFTER_REPORTS);
+    }
+    let backup = vec![settings, state, reports];
     // A move still to make: every install preview would be stale after it.
     let install = if backup_pending(&backup) {
         INSTALL

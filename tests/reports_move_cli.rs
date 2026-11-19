@@ -255,3 +255,112 @@ fn no_earlier_folder_is_unchanged_and_preview_counts_are_reported() {
     assert_eq!(v["skipped_existing"], 0);
     assert_eq!(v["examples"][0], ".moai-cli/reports/a.md");
 }
+
+/// `moai ARGS` in the temporary HOME with `stdin` on its input; the parsed success envelope.
+fn run_op(h: &TempHome, args: &[&str], stdin: &[u8]) -> (bool, serde_json::Value) {
+    use std::process::Stdio;
+    let mut child = h
+        .command(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    common::feed_stdin(&mut child, stdin);
+    let out = child.wait_with_output().unwrap();
+    let v: serde_json::Value = serde_json::from_slice(&out.stdout)
+        .unwrap_or_else(|e| panic!("{e}: {}", String::from_utf8_lossy(&out.stderr)));
+    (out.status.success(), v)
+}
+
+#[test]
+fn update_plan_shows_the_reports_step() {
+    let h = TempHome::new();
+    let tmp = tempfile::tempdir().unwrap();
+    let root = repo(tmp.path());
+    let project = root.to_str().unwrap();
+    // No earlier folder: the step is there and has nothing to do.
+    let (ok, v) = run_op(&h, &["project-update-plan", project], b"");
+    assert!(ok, "{v}");
+    let steps = v["result"]["phases"][0]["steps"].as_array().unwrap();
+    let names: Vec<&str> = steps.iter().map(|s| s["step"].as_str().unwrap()).collect();
+    assert_eq!(names, ["go-settings", "go-state", "reports"], "{v}");
+    assert_eq!(steps[2]["state"], "unchanged", "{}", steps[2]);
+    assert!(steps[2]["apply"].is_null(), "{}", steps[2]);
+
+    write(&root, ".moai-cli/reports/a.md", "a");
+    write(&root, ".moai/reports/b.md", "bb");
+    let (ok, v) = run_op(&h, &["project-update-plan", project], b"");
+    assert!(ok, "{v}");
+    let step = &v["result"]["phases"][0]["steps"][2];
+    assert_eq!(step["step"], "reports", "{step}");
+    assert_eq!(step["state"], "ready", "{step}");
+    assert_eq!(step["preview"]["to_move"], 2, "{step}");
+    assert_eq!(step["preview"]["tracked_left_alone"], 0, "{step}");
+    let digest = step["plan_digest"].as_str().unwrap();
+    let argv: Vec<&str> = step["apply"]["argv"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|a| a.as_str().unwrap())
+        .collect();
+    assert_eq!(argv[1], "reports-move-apply", "{step}");
+    assert_eq!(argv[3], "--plan-digest", "{step}");
+    assert_eq!(argv[4], digest, "{step}");
+    assert_eq!(step["apply"]["stdin"]["plan_digest"], digest, "{step}");
+    // The preview wrote nothing: the files are where they were and the HOME has no reports.
+    assert!(root.join(".moai-cli/reports/a.md").exists());
+    assert!(!h.path().join(".moai").join("reports").exists());
+}
+
+#[test]
+fn the_two_operations_move_through_the_cli_and_refuse_a_wrong_digest() {
+    let h = TempHome::new();
+    let tmp = tempfile::tempdir().unwrap();
+    let root = repo(tmp.path());
+    let project = root.to_str().unwrap();
+    write(&root, ".moai-cli/reports/sub/a.md", "a");
+    let (ok, planned) = run_op(&h, &["reports-move-plan", project], b"");
+    assert!(ok, "{planned}");
+    let p = planned["result"].clone();
+    assert_eq!(p["state"], "ready", "{p}");
+    let digest = p["plan_digest"].as_str().unwrap().to_string();
+    let stdin = p.to_string();
+
+    let (ok, refused) = run_op(
+        &h,
+        &[
+            "reports-move-apply",
+            project,
+            "--plan-digest",
+            "0000",
+            "--permission-reference",
+            PERMISSION,
+        ],
+        stdin.as_bytes(),
+    );
+    assert!(!ok, "{refused}");
+    assert!(root.join(".moai-cli/reports/sub/a.md").exists());
+
+    let (ok, applied) = run_op(
+        &h,
+        &[
+            "reports-move-apply",
+            project,
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            PERMISSION,
+        ],
+        stdin.as_bytes(),
+    );
+    assert!(ok, "{applied}");
+    assert_eq!(applied["result"]["moved"], 1, "{applied}");
+    assert!(!root.join(".moai-cli/reports/sub/a.md").exists());
+    let dest = PathBuf::from(p["destination"].as_str().unwrap());
+    assert_eq!(fs::read_to_string(dest.join("sub/a.md")).unwrap(), "a");
+
+    let (ok, again) = run_op(&h, &["reports-move-plan", project], b"");
+    assert!(ok, "{again}");
+    assert_eq!(again["result"]["state"], "unchanged", "{again}");
+}
