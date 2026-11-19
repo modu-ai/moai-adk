@@ -28,7 +28,7 @@ This slice adds one action, `card criterion-add C-n --ac TEXT [--ac TEXT …] [-
 
 - REQ-1: When `card criterion-add` is given a card and one or more `--ac` texts, `card criterion-add` shall append each text as an `open` criterion numbered after the card's highest criterion number, in the order given, in one transaction with one `card.criterion_add` event.
 - REQ-2 (REQ-1): IF the card is `done`, THEN `card criterion-add` shall refuse the request as `conflict`, name the state, and write nothing.
-- REQ-3 (REQ-1): IF a text is empty or has a control character, or `--by` is not one line of 1 to 128 characters, THEN `card criterion-add` shall refuse the request as `invalid_input`, name the text by its place in the list, and write nothing.
+- REQ-3 (REQ-1): IF a text is empty or has a control character, or `--by` is not one line of 1 to 80 characters, THEN `card criterion-add` shall refuse the request as `invalid_input`, name the text by its place in the list, and write nothing.
 - REQ-4 (REQ-1): IF the request has no `--ac`, THEN `card criterion-add` shall refuse it as `usage` (exit 2) before it reads the ledger.
 - REQ-5 (REQ-1): IF the card is not named by a C-number, or does not exist, THEN `card criterion-add` shall refuse the request as `invalid_input` or `not_found` and write nothing.
 - REQ-6: The `card.criterion_add` event shall record who added the criteria (`--by`), the number of the first one and how many were added.
@@ -44,7 +44,7 @@ This slice adds one action, `card criterion-add C-n --ac TEXT [--ac TEXT …] [-
   verify: `cargo test --locked --offline --test card_criterion_add_cli a_card_made_without_a_criterion_can_be_closed_once_one_is_added_and_met`
 - AC-3 (REQ-2, REQ-5): a `done` card is refused as `conflict` naming `done`; a card that does not exist is `not_found`, a name that is not a C-number `invalid_input`; every table is as before.
   verify: `cargo test --locked --offline --test card_criterion_add_cli a_done_card_and_a_missing_card_are_refused_and_nothing_is_written`
-- AC-4 (REQ-3, REQ-4): no `--ac` is `usage` (exit 2); an empty text, a text with a line break, a blank `--by`, a 129-character `--by`, and the second of three texts being the bad one: `invalid_input` naming the place, nothing written, the first good text not stored.
+- AC-4 (REQ-3, REQ-4): no `--ac` is `usage` (exit 2); an empty text, a text with a line break, a blank `--by`, an 81-character `--by`, and the second of three texts being the bad one: `invalid_input` naming the place, nothing written, the first good text not stored.
   verify: `cargo test --locked --offline --test card_criterion_add_cli a_text_that_cannot_be_stored_refuses_the_whole_request`
 - AC-5 (REQ-7): on a card held by a session in `active` and one in `review`, the criterion is added; the reservation row (generation, holder, lease, status) and its scope rows are as before; `card check` for the holder still answers as before.
   verify: `cargo test --locked --offline --test card_criterion_add_cli adding_to_a_held_card_leaves_its_reservation_alone`

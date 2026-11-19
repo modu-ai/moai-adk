@@ -378,6 +378,29 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Add acceptance criteria to a card
+    ///
+    /// Writes the ledger. Appends each `--ac` text to the card as an open criterion, numbered
+    /// after the card's highest (a withdrawn one keeps its number), with one
+    /// `card.criterion_add` event: criteria are only added, never changed or removed. It needs
+    /// no generation and no holder, so a card nobody holds, such as a migrated Issue card, can be
+    /// given one; the reservation of a held card is left as it is; a `done` card is refused.
+    CriterionAdd {
+        /// `C-12`.
+        card: String,
+        /// An acceptance criterion, one line (repeat for more; numbered after the card's last).
+        #[arg(long = "ac", required = true)]
+        criteria: Vec<String>,
+        /// Who adds it (default `user`).
+        #[arg(long)]
+        by: Option<String>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Writes the ledger. Link a pull request and record its state
     ///
     /// Writes the ledger. Reads the pull request's state from the code host (one GET, nothing is
@@ -511,6 +534,43 @@ pub const OPERATION: &str = "card";
 /// One environment variable, for the session id (a value that is not UTF-8 reads as absent).
 fn env(name: &str) -> Option<String> {
     std::env::var(name).ok()
+}
+
+/// `card criterion-add C-n --ac TEXT… [--by W]`: what is wrong with the request is found before
+/// the ledger is opened (the card's name, each text, `--by`), then the ledger appends the
+/// criteria in one transaction (`workflow::add_criteria`, card C-108).
+fn criterion_add(
+    project: &std::path::Path,
+    home: &std::path::Path,
+    reference: &str,
+    entries: &[String],
+    by: Option<&str>,
+) -> Result<serde_json::Value, String> {
+    use moai_cli::card::command as c;
+    use moai_cli::card::input::{self, CardRef};
+    use moai_cli::ledger::workflow::{self, WorkflowError};
+    let refused = |why: String| format!("card criterion-add refused: {why}");
+    let card_id = match input::parse_ref(reference).map_err(|e| refused(e.to_string()))? {
+        CardRef::Id(n) => n,
+        CardRef::SourceNumber(_) => {
+            return Err(refused(
+                "name the card by its C-number (`card show #N` finds it)".to_string(),
+            ))
+        }
+    };
+    let texts = input::criterion_texts(entries).map_err(|e| refused(e.to_string()))?;
+    let by = c::actor(by, "criterion-add")?;
+    let (project_id, mut ledger) = c::open_for_write(project, home)?;
+    let added = workflow::add_criteria(&mut ledger, card_id, &by, &texts).map_err(|e| match e {
+        WorkflowError::InvalidInput(why) => refused(why),
+        other => other.to_string(),
+    })?;
+    Ok(serde_json::json!({
+        "action": "criterion-add", "project_id": project_id,
+        "name": input::card_name(card_id), "card_id": card_id,
+        "by": by, "added": added.added, "criteria": added.total, "rev": added.rev,
+        "events": 1, "writes": true,
+    }))
 }
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
@@ -716,6 +776,19 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 change,
             )
         }
+        Action::CriterionAdd {
+            card,
+            criteria,
+            by,
+            project,
+            home,
+        } => criterion_add(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &criteria,
+            by.as_deref(),
+        ),
         Action::Pr {
             card,
             number,

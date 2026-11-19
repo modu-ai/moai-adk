@@ -89,7 +89,12 @@ impl World {
 
     /// A `ready` card with the given criteria; its name.
     fn ready(&self, criteria: &[&str]) -> String {
-        let mut args = vec!["add", "--title", "work", "--scope", "apps/bo/"];
+        self.ready_in(criteria, "apps/bo/")
+    }
+
+    /// The same, with its own write scope (two cards taken at once must not overlap).
+    fn ready_in(&self, criteria: &[&str], scope: &str) -> String {
+        let mut args = vec!["add", "--title", "work", "--scope", scope];
         for ac in criteria {
             args.extend_from_slice(&["--ac", ac]);
         }
@@ -273,7 +278,7 @@ fn criteria_are_appended_after_the_highest_number_with_one_event() {
             "criterion-add",
             &card,
             "--ac",
-            "a",
+            "  a  ",
             "--ac",
             "b",
             "--by",
@@ -337,34 +342,49 @@ fn a_card_made_without_a_criterion_can_be_closed_once_one_is_added_and_met() {
 
     // Zero criteria: closing is refused, as before.
     let (kind, message) = refusal(&w.card(Some(S_A), &["done", &card, "--generation", "1"]));
-    assert_eq!(kind, "conflict", "{message}");
+    assert_eq!(kind, "invalid_input", "{message}");
     assert!(
         message.ends_with("the card has no acceptance criterion that is met"),
         "{message}"
     );
 
-    // A criterion is added; it is open, so closing is still refused, now for that.
-    result(&w.card(None, &["criterion-add", &card, "--ac", "the fix is on the tip"]));
+    // A criterion is added; it is open, so nothing is met yet and closing is still refused.
+    result(&w.card(
+        None,
+        &["criterion-add", &card, "--ac", "the fix is on the tip"],
+    ));
+    let (_, message) = refusal(&w.card(Some(S_A), &["done", &card, "--generation", "1"]));
+    assert!(
+        message.ends_with("the card has no acceptance criterion that is met"),
+        "{message}"
+    );
+
+    // Met, it would close the card; a second criterion added now is open, and that refuses it.
+    let met = |n: &str| {
+        result(&w.card(
+            Some(S_A),
+            &[
+                "criterion",
+                &card,
+                n,
+                "--generation",
+                "1",
+                "--met",
+                "--evidence",
+                "cargo test x: ok",
+            ],
+        ))
+    };
+    met("1");
+    result(&w.card(None, &["criterion-add", &card, "--ac", "the doc says it"]));
     let (_, message) = refusal(&w.card(Some(S_A), &["done", &card, "--generation", "1"]));
     assert!(
         message.ends_with("an acceptance criterion is still open"),
         "{message}"
     );
 
-    // Met, the card closes.
-    result(&w.card(
-        Some(S_A),
-        &[
-            "criterion",
-            &card,
-            "1",
-            "--generation",
-            "1",
-            "--met",
-            "--evidence",
-            "cargo test x: ok",
-        ],
-    ));
+    // Both met, the card closes.
+    met("2");
     let done = result(&w.card(Some(S_A), &["done", &card, "--generation", "1"]));
     assert_eq!(done["state"], json!("done"), "{done}");
 }
@@ -388,9 +408,13 @@ fn a_done_card_and_a_missing_card_are_refused_and_nothing_is_written() {
     assert_eq!(kind, "not_found", "{message}");
     assert!(message.contains("C-99"), "{message}");
 
-    // A name that is not a card reference is refused before the ledger is opened.
+    // A name that is not a card reference, and a host number (`#12`, which needs a lookup),
+    // are refused before the ledger is opened.
     let (kind, _) = refusal(&w.card(None, &["criterion-add", "card-1", "--ac", "x"]));
     assert_eq!(kind, "invalid_input");
+    let (kind, message) = refusal(&w.card(None, &["criterion-add", "#12", "--ac", "x"]));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("C-number"), "{message}");
 
     assert_eq!(w.dump(), before);
     // The card that is not closed still takes one.
@@ -419,7 +443,7 @@ fn a_text_that_cannot_be_stored_refuses_the_whole_request() {
         assert_eq!(kind, "invalid_input", "{args:?}: {message}");
         assert!(message.contains(says), "{args:?}: {message}");
     }
-    let long_by = "b".repeat(129);
+    let long_by = "b".repeat(81);
     let (kind, message) = refusal(&w.card(
         None,
         &["criterion-add", &card, "--ac", "good", "--by", &long_by],
@@ -427,8 +451,8 @@ fn a_text_that_cannot_be_stored_refuses_the_whole_request() {
     assert_eq!(kind, "invalid_input", "{message}");
     assert_eq!(w.dump(), before, "nothing was written, the good text too");
 
-    // 128 characters are accepted.
-    let ok_by = "b".repeat(128);
+    // 80 characters are accepted.
+    let ok_by = "b".repeat(80);
     result(&w.card(
         None,
         &["criterion-add", &card, "--ac", "good", "--by", &ok_by],
@@ -445,7 +469,7 @@ fn adding_to_a_held_card_leaves_its_reservation_alone() {
     let w = world();
     let active = w.ready(&["one"]);
     w.take(S_A, &active);
-    let review = w.ready(&["one"]);
+    let review = w.ready_in(&["one"], "apps/web/");
     w.take(S_A, &review);
     result(&w.card(
         Some(S_A),
@@ -463,7 +487,15 @@ fn adding_to_a_held_card_leaves_its_reservation_alone() {
     w.host_pr(7);
     result(&w.card(
         Some(S_A),
-        &["pr", &review, "7", "--generation", "1", "--repo", "octo/demo"],
+        &[
+            "pr",
+            &review,
+            "7",
+            "--generation",
+            "1",
+            "--repo",
+            "octo/demo",
+        ],
     ));
     result(&w.card(Some(S_A), &["review", &review, "--generation", "1"]));
 
@@ -490,7 +522,10 @@ fn adding_to_a_held_card_leaves_its_reservation_alone() {
     }
     assert_eq!(reservation(), reservations);
     assert_eq!(scope(), scopes);
-    assert_eq!((check(&active), check(&review)), (check_active, check_review));
+    assert_eq!(
+        (check(&active), check(&review)),
+        (check_active, check_review)
+    );
     assert_eq!(w.show(&active)["state"], json!("active"));
     assert_eq!(w.show(&review)["state"], json!("review"));
     // The review card now has an open criterion: it cannot close until that one is met.
@@ -571,7 +606,12 @@ fn the_help_and_the_ops_doc_name_the_rule() {
         .lines()
         .find(|line| line.starts_with("| `card criterion-add"))
         .expect("the card criterion-add row");
-    for phrase in ["원장을 쓴다", "더하기만", "세대가 필요 없", "`done` 카드는 거절"] {
+    for phrase in [
+        "`workflow::add_criteria`",
+        "더하기만",
+        "세대가 필요 없",
+        "`done` 카드는 거절",
+    ] {
         assert!(row.contains(phrase), "{phrase} missing in the row: {row}");
     }
 }
