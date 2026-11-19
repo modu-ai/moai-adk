@@ -1,0 +1,14 @@
+ ▐▛███▜▌   Claude Code
+▝▜█████▛▘  /Users/example/project
+  ▘▘ ▝▝    Opus
+
+● Bash(git reset --hard HEAD~1)
+
+ Do you want to proceed?
+ [1] Yes
+ [2] No
+
+────────────────────────────────────────
+❯
+────────────────────────────────────────
+  ⏵⏵ bypass permissions on (shift+tab to cycle)
