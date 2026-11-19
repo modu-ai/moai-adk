@@ -3,8 +3,10 @@
 # the four Unix targets of decision 01:1x(11-09)): Linux x86_64 and macOS arm64 run the check
 # set below, Windows x86_64 is windows-build. User decision U10
 # (#2554, #1975 comment 6827126248) moves the timing, not the content: a PR to v2026.11.0
-# runs linux-x86_64 only; the push that merges into v2026.11.0 (and workflow_dispatch)
-# runs linux-x86_64 and macos-arm64 plus windows-build with the same check set. The `ci` job
+# runs linux-x86_64 only — until C-76 (SPEC-20261119-macos-on-pr): a PR whose merged diff
+# touches a platform-sensitive path also runs macos-arm64 before merge; the push that merges
+# into v2026.11.0 (and workflow_dispatch) always runs linux-x86_64 and macos-arm64 plus
+# windows-build with the same check set. The `ci` job
 # aggregates the targets of its run so one `ci` check reports the result: the integration
 # ruleset 26791615 requires both `moai/audit` and `ci`, the latter from the GitHub Actions app
 # (`gh api repos/modu-ai/moai-adk/rules/branches/v2026.11.0`, read 2026-11-17 10:11Z).
@@ -33,8 +35,58 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # C-76 (SPEC-20261119-macos-on-pr): decide the `check` matrix before it runs.
+  # #2554 (U10) made a PR run linux-x86_64 only, so a change that breaks only on
+  # macOS reached the tip: 47 of the 68 post-merge push failures were macOS-only
+  # (.moai/cards-pending/pr-history-analysis-20261117.md). tools/ci_scope.py now
+  # answers macos_needed for the PR's merged diff, so a platform-sensitive PR
+  # runs macos-arm64 before merge and the aggregate `ci` requires it (it is a
+  # `check` matrix entry, like on a push). push and workflow_dispatch keep the
+  # full matrix whatever the paths say. Fail-safe: a diff, classifier or parse
+  # failure keeps the full matrix; if this job itself fails, `check` is skipped
+  # and `ci` goes red — never silently linux-only.
+  targets:
+    name: targets
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.decide.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # the decision diffs the PR against its base commit
+      - name: Decide check matrix
+        id: decide
+        shell: bash
+        run: |
+          set -u
+          full='[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30},{"target":"macos-arm64","runner":"macos-15","timeout":45}]'
+          linux='[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30}]'
+          matrix="$full"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+            ok=0
+            paths="$(git diff --name-only --no-renames "${base}...${GITHUB_SHA}" 2>/dev/null)" || true
+            if [ -n "$paths" ] \
+               && result="$(printf '%s\n' "$paths" | python3 tools/ci_scope.py)" \
+               && macos="$(printf '%s' "$result" | python3 -c 'import json,sys; print(json.load(sys.stdin)["macos_needed"])')"; then
+              ok=1
+              printf '%s\n' "$result" | python3 -c 'import json,sys; [print("target-reason:", r) for r in json.load(sys.stdin)["macos_reasons"]]'
+            fi
+            if [ "$ok" = 1 ] && [ "$macos" = "False" ]; then
+              matrix="$linux"
+            fi
+            # ok=0 (diff, classifier or parse failure) or macos=True: full matrix.
+          fi
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "matrix: $matrix"
+
   check:
     name: ci / ${{ matrix.target }}
+    needs: [targets]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: ${{ matrix.timeout }}
     permissions:
@@ -61,13 +113,12 @@ jobs:
     strategy:
       # Every target is a measurement: one failure must not cancel the others.
       fail-fast: false
-      # #2554 (U10): `pull_request` gets the first list (linux-x86_64), every other event
-      # the second (linux-x86_64 and macos-arm64, SPEC-20261117-supported-platforms).
+      # C-76: the `targets` job above decides the list — linux-x86_64 only for a
+      # PR with no platform-sensitive path (#2554 U10), linux-x86_64 and
+      # macos-arm64 for a platform-sensitive PR and for every push and
+      # workflow_dispatch (SPEC-20261117-supported-platforms).
       matrix:
-        include: >-
-          ${{ fromJSON(github.event_name == 'pull_request'
-          && '[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30}]'
-          || '[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30},{"target":"macos-arm64","runner":"macos-15","timeout":45}]') }}
+        include: ${{ fromJSON(needs.targets.outputs.matrix) }}
     env:
       CARGO_TERM_COLOR: never
       PYTHONDONTWRITEBYTECODE: "1"
@@ -255,6 +306,30 @@ jobs:
               echo "| \`${t}\` | \`skipUnless(sys.platform == \"darwin\" …)\` | ok ${r} · skipped ${n} |"
             done
           } >> "$summary"
+          exit "$failed"
+      # C-101 (SPEC-20261119-ci-smoke-step): the smoke harness the lanes and auditors share
+      # (tools/smoke/run.sh, SPEC-20261119-smoke-harness) boots the debug binary this job
+      # built in an empty temporary HOME and a temporary git project, so a lane's "I ran the
+      # smoke" is checked here too. The install and update areas run on every full-scope run
+      # (a few seconds each); a docs-only run skips it with the heavy steps above. The step
+      # builds the binary first (a no-op when the check set left it) instead of relying on
+      # where nextest leaves it, runs both areas even when the first fails, and fails the job
+      # after the second. Each area's last line goes to the job summary.
+      - name: Smoke harness (install, update)
+        if: ${{ env.CI_SCOPE == 'full' }}
+        shell: bash
+        run: |
+          set -u
+          cargo build --offline --locked --bin moai-cli
+          bin="${CARGO_TARGET_DIR:-target}/debug/moai-cli"
+          failed=0
+          for area in install update; do
+            code=0
+            tools/smoke/run.sh "$area" --bin "$bin" > "ci-smoke-$area.log" 2>&1 || code=$?
+            cat "ci-smoke-$area.log"
+            echo "- smoke $area: exit $code · \`$(tail -n 1 "ci-smoke-$area.log")\`" >> "$GITHUB_STEP_SUMMARY"
+            [ "$code" -eq 0 ] || failed=1
+          done
           exit "$failed"
 
   # C-83 (SPEC-20261117-ci-superseded-neutral, design D6 "superseded cancels are neutral"): on a

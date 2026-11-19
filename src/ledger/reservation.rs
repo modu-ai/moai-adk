@@ -639,6 +639,14 @@ fn reserve_in_tx(
     })?
 }
 
+/// Whether a lease has ended at ledger-clock second `now`: the lease-end second itself no longer
+/// holds (`lease_until <= now`). The fence, `release` and `reclaim` all decide with this one
+/// function, so a lease the fence calls expired is one `reclaim` may take and `release` may
+/// report as not live.
+pub fn lease_ended(lease_until: i64, now: i64) -> bool {
+    lease_until <= now
+}
+
 /// The shared check of renew, release, handoff and fence: the offered `(holder, generation)`
 /// must be the current reservation, `held`, and (when `need_live`) with a lease that has not
 /// ended. Returns the reservation, or the refusal; a SQL failure is the outer `Err`.
@@ -673,7 +681,7 @@ fn evaluate(
             held_by: row.holder,
         }));
     }
-    if need_live && row.lease_until <= now {
+    if need_live && lease_ended(row.lease_until, now) {
         return Ok(Err(FenceError::LeaseExpired {
             lease_until: row.lease_until,
             now,
@@ -773,6 +781,144 @@ pub fn renew(
     )
 }
 
+/// What [`widen_in_tx`] did: the reservation as it is now, what it had, what it gained.
+pub struct Widened {
+    pub reservation: Reservation,
+    pub from: Vec<String>,
+    pub added: Vec<String>,
+}
+
+/// Why [`widen_in_tx`] refused. Every variant means nothing was written; the text of each is
+/// classed by `contract.rs` through its words (`conflict in `, `refused`, `invalid`).
+#[derive(Debug)]
+pub enum WidenError {
+    /// The card has no active reservation (the caller read one a moment ago, so this is a race).
+    NotHeld(i64),
+    /// Patterns the reservation has are missing from the new list: a held card only grows.
+    Narrowing { left_out: Vec<String> },
+    /// Every entry of the new list is already in the reservation.
+    NothingNew,
+    /// An added pattern could be written under a pattern of another card's active reservation.
+    ScopeOverlap {
+        other_card: i64,
+        mine: String,
+        theirs: String,
+    },
+    /// A pattern is malformed or the list is over its limits.
+    InvalidInput(String),
+}
+
+impl std::fmt::Display for WidenError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WidenError::NotHeld(id) => write!(
+                f,
+                "card conflict in state: C-{id} has no active reservation any more; it was \
+                 released or reclaimed a moment ago"
+            ),
+            WidenError::Narrowing { left_out } => write!(
+                f,
+                "card conflict in scope: a held card's scope only grows; the new list leaves \
+                 out {}; name them again, or release the card and take it with a smaller scope",
+                left_out
+                    .iter()
+                    .map(|p| format!("{p:?}"))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            WidenError::NothingNew => f.write_str(
+                "card scope refused: every entry is already in the reservation's scope; there \
+                 is nothing to add",
+            ),
+            WidenError::ScopeOverlap {
+                other_card,
+                mine,
+                theirs,
+            } => write!(
+                f,
+                "reservation conflict in write scope: {mine:?} could be written under \
+                 {theirs:?} reserved for card C-{other_card}"
+            ),
+            WidenError::InvalidInput(why) => write!(f, "invalid reservation input: {why}"),
+        }
+    }
+}
+
+impl std::error::Error for WidenError {}
+
+/// Widens the active reservation of `card_id` inside the caller's write transaction: the new
+/// list (the whole scope the caller wants, so it must keep every pattern the reservation has)
+/// gives the added patterns, which are checked against every other card's active reservation
+/// with [`find_overlap`] and inserted as new `reservation_scope` rows of the same reservation.
+/// Generation, holder, lease, worktree, branch and status stay; rows are never deleted, so a
+/// scope only grows. One `card.scope` event records `by`, `reason`, the generation, the holder
+/// and both scopes. A refusal returns before the first write.
+pub fn widen_in_tx(
+    tx: &Connection,
+    now: i64,
+    card_id: i64,
+    new_scope: &[String],
+    by: &str,
+    reason: &str,
+) -> Result<Result<Widened, WidenError>, LedgerError> {
+    let new = match check_scope(new_scope) {
+        Ok(scope) => scope,
+        Err(ReserveError::InvalidInput(why)) => return Ok(Err(WidenError::InvalidInput(why))),
+        Err(other) => return Ok(Err(WidenError::InvalidInput(other.to_string()))),
+    };
+    let Some(active) = current(tx, card_id)? else {
+        return Ok(Err(WidenError::NotHeld(card_id)));
+    };
+    let from = active.write_scope.clone();
+    let left_out: Vec<String> = from.iter().filter(|p| !new.contains(p)).cloned().collect();
+    if !left_out.is_empty() {
+        return Ok(Err(WidenError::Narrowing { left_out }));
+    }
+    let added: Vec<String> = new.iter().filter(|p| !from.contains(p)).cloned().collect();
+    if added.is_empty() {
+        return Ok(Err(WidenError::NothingNew));
+    }
+    if let Some((other_card, mine, theirs)) = find_overlap(tx, card_id, &added)? {
+        return Ok(Err(WidenError::ScopeOverlap {
+            other_card,
+            mine,
+            theirs,
+        }));
+    }
+    for pattern in &added {
+        tx.execute(
+            "INSERT INTO reservation_scope (reservation_id, pattern) VALUES (?1, ?2)",
+            params![active.reservation_id, pattern],
+        )?;
+    }
+    tx.execute(
+        "UPDATE reservation SET updated_at = ?1 WHERE reservation_id = ?2",
+        params![now, active.reservation_id],
+    )?;
+    add_event(
+        tx,
+        now,
+        by,
+        card_id,
+        "card.scope",
+        &json!({
+            "from": from,
+            "to": new,
+            "held": true,
+            "generation": active.generation,
+            "holder": active.holder,
+            "reason": reason,
+        }),
+    )?;
+    let reservation = load_reservation(tx, card_id, active.generation)?
+        .ok_or_else(|| LedgerError::Sql("the widened reservation cannot be read".into()))?;
+    Ok(Ok(Widened {
+        reservation,
+        from,
+        added,
+    }))
+}
+
 /// Ends the current reservation of `holder` at `generation` (`released`). A live lease is not
 /// needed: a holder whose lease ran out can still give the card back while nobody reclaimed
 /// it. The card goes `active -> ready`; a card that has meanwhile moved on (`hold`, `done` ...)
@@ -806,7 +952,7 @@ pub fn release(
                     card_id,
                     generation,
                     // The same test as the fence's `LeaseExpired`.
-                    lease_live: row.lease_until > now,
+                    lease_live: !lease_ended(row.lease_until, now),
                 }));
             }
             tx.execute(
@@ -959,6 +1105,12 @@ pub enum ReclaimError {
         lease_until: i64,
         now: i64,
     },
+    /// The card already carries three `card.reclaim` events; a fourth would exceed the
+    /// lifetime allowance (SPEC-20261119-card-reclaim-guard REQ-5).
+    ReclaimLimit {
+        card_id: i64,
+        reclaims: i64,
+    },
     /// The ledger itself failed (busy, unavailable, constraint ...).
     Ledger(LedgerError),
 }
@@ -974,6 +1126,7 @@ impl ReclaimError {
             ReclaimError::UnknownGeneration { .. } => "unknown_generation",
             ReclaimError::NotHeld { .. } => "not_held",
             ReclaimError::LeaseLive { .. } => "lease_live",
+            ReclaimError::ReclaimLimit { .. } => "reclaim_limit",
             ReclaimError::Ledger(e) => e.code(),
         }
     }
@@ -1008,6 +1161,11 @@ impl std::fmt::Display for ReclaimError {
                 f,
                 "reservation conflict in card: the lease runs until {lease_until} (now {now}); \
                  only an ended lease is reclaimed"
+            ),
+            ReclaimError::ReclaimLimit { card_id, reclaims } => write!(
+                f,
+                "card conflict in reclaim limit: C-{card_id} was already reclaimed {reclaims} time(s); \
+                 a card is reclaimed three times at most (SPEC-20261119-card-reclaim-guard)"
             ),
             ReclaimError::Ledger(e) => e.fmt(f),
         }
@@ -1087,11 +1245,24 @@ pub fn reclaim(
         if old.status != "held" {
             return Ok(Err(ReclaimError::NotHeld { status: old.status }));
         }
-        if old.lease_until > now {
+        if !lease_ended(old.lease_until, now) {
             return Ok(Err(ReclaimError::LeaseLive {
                 lease_until: old.lease_until,
                 now,
             }));
+        }
+        // REQ-5 (SPEC-20261119-card-reclaim-guard): three reclaims are a card's lifetime
+        // allowance, counted from its own events so the cap survives any caller; the fourth
+        // is refused in this transaction and nothing is written.
+        let reclaims: i64 = tx
+            .query_row(
+                "SELECT COUNT(*) FROM event WHERE card_id = ?1 AND kind = 'card.reclaim'",
+                [card_id],
+                |r| r.get(0),
+            )
+            .map_err(LedgerError::from)?;
+        if reclaims >= 3 {
+            return Ok(Err(ReclaimError::ReclaimLimit { card_id, reclaims }));
         }
         tx.execute(
             "UPDATE reservation SET status = 'reclaimed', updated_at = ?1 WHERE reservation_id = ?2",
@@ -1207,6 +1378,15 @@ mod tests {
 
     fn scope(n: usize) -> Vec<String> {
         (0..n).map(|i| format!("src/p{i}/")).collect()
+    }
+
+    /// SPEC-20261119-card-reclaim-followups AC-2: the one test every lease-end decision uses,
+    /// pinned at N-1, N and N+1 seconds so no test needs the clock to stand still.
+    #[test]
+    fn lease_ended_includes_the_lease_end_second() {
+        assert!(!lease_ended(100, 99), "one second left: live");
+        assert!(lease_ended(100, 100), "the lease-end second: ended");
+        assert!(lease_ended(100, 101), "one second past: ended");
     }
 
     #[test]

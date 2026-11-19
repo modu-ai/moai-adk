@@ -253,7 +253,11 @@ PR_TEMPLATE = ROOT / ".github/pull_request_template.md"
 LOCAL_CHECK = ROOT / "tools/local_check.sh"
 PINNED_USES = re.compile(r"^[\w.-]+/[\w./-]+@[0-9a-f]{40}$")
 # The only write scope a workflow may hold: moai-label-sync's manual apply job creates labels.
-ALLOWED_WRITES = {("moai-label-sync.yml", "apply"): {"issues"}}
+ALLOWED_WRITES = {
+    ("moai-label-sync.yml", "apply"): {"issues"},
+    # C-95: the audit-gate job posts the moai/audit commit status itself.
+    ("audit-gate.yml", "audit-gate"): {"statuses"},
+}
 
 
 class WorkflowTest(unittest.TestCase):
@@ -262,9 +266,11 @@ class WorkflowTest(unittest.TestCase):
         # #2554 PR-A adds the candidate verification path: candidate.yml (the three supported
         # targets and the verdict) and candidate-target.yml (one target, called three times).
         # SPEC-20261117-audit-gate adds audit-gate.yml (the audit check from verdict comments).
+        # SPEC-20261119-headver-release-workflow adds release.yml (number, tag name and build
+        # check only; a person publishes).
         self.assertEqual([p.name for p in paths],
                          ["audit-gate.yml", "candidate-target.yml", "candidate.yml", "ci.yml",
-                          "moai-label-sync.yml"])
+                          "moai-label-sync.yml", "release.yml"])
         return [(p, yaml.safe_load(p.read_text(encoding="utf-8"))) for p in paths]
 
     def test_permissions_are_least_privilege(self):
@@ -300,7 +306,8 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(flow["permissions"], {"contents": "read"})
         (job,) = flow["jobs"].values()
         self.assertEqual(job["permissions"],
-                         {"contents": "read", "pull-requests": "read", "issues": "read"})
+                         {"contents": "read", "pull-requests": "read", "issues": "read",
+                          "statuses": "write"})
         ci_uses = {s["uses"] for j in flows["ci.yml"]["jobs"].values()
                    for s in j.get("steps", []) if "uses" in s}
         uses = [s["uses"] for s in job["steps"] if "uses" in s]
@@ -314,7 +321,13 @@ class WorkflowTest(unittest.TestCase):
                     self.assertNotIn("${{", step["run"])
         gate = [s for s in job["steps"] if "audit-gate" in s.get("run", "")]
         self.assertEqual(len(gate), 1)
-        self.assertIn("--require-pass", gate[0]["run"])
+        # C-95: the step reads the gate's envelope and posts the moai/audit commit status
+        # itself — success on pass, failure otherwise (the Rust side executes the block; see
+        # tests/audit_gate_cli.rs the_workflow_step_posts_the_status_the_gate_decides).
+        self.assertNotIn("--require-pass", gate[0]["run"])
+        self.assertIn("statuses/$PR_HEAD", gate[0]["run"])
+        self.assertIn("-f state=", gate[0]["run"])
+        self.assertIn("moai/audit", gate[0]["run"])
         self.assertEqual(gate[0]["env"]["GH_TOKEN"], "${{ github.token }}")
 
     def test_every_action_is_pinned_to_a_commit_sha(self):
@@ -326,16 +339,27 @@ class WorkflowTest(unittest.TestCase):
                             self.assertRegex(step["uses"], PINNED_USES)
 
     @staticmethod
-    def rc_ci_matrix(check):
-        """The two `include` lists of the ci matrix expression (#2554): the one a
-        `pull_request` run gets, and the one every other event gets."""
-        expr = check["strategy"]["matrix"]["include"]
-        m = re.fullmatch(
-            r"\$\{\{ fromJSON\(github\.event_name == 'pull_request'\s+&& '(\[.*?\])'\s+\|\| '(\[.*?\])'\) \}\}",
-            expr.strip(), re.S)
-        if m is None:
-            raise AssertionError(f"unexpected ci matrix expression: {expr!r}")
-        return json.loads(m.group(1)), json.loads(m.group(2))
+    def rc_ci_matrix(flow):
+        """The two include lists of the ci matrix (C-76, SPEC-20261119-macos-on-pr):
+        the linux-only list a `pull_request` with no platform-sensitive path gets
+        (`linux=` in the targets job's decide step), and the full list every other
+        event gets (`full=`). Before C-76 both sat inline in the check job's
+        matrix expression (#2554)."""
+        steps = flow["jobs"]["targets"]["steps"]
+        run = next(s for s in steps if s.get("id") == "decide")["run"]
+        # The event branch is load-bearing (audit B-2): only a pull_request run
+        # enters the classifier; `if true` or a negated comparison would let a
+        # push path-classify (or a PR skip it) with the same matrix literals, so
+        # the exact guard is pinned here, where the lists are read. Explicit
+        # raises, not bare asserts — `python -O` strips those (re-audit N-9).
+        if 'if [ "${{ github.event_name }}" = "pull_request" ]; then' not in run:
+            raise AssertionError(f"the decide script lost its pull_request guard: {run!r}")
+        if '${{ github.event.pull_request.base.sha }}' not in run:
+            raise AssertionError(f"the decide script lost its PR base SHA: {run!r}")
+        lists = dict(re.findall(r"^(full|linux)='(\[.*?\])'$", run, re.M))
+        if set(lists) != {"full", "linux"}:
+            raise AssertionError(f"unexpected decide script: {run!r}")
+        return json.loads(lists["linux"]), json.loads(lists["full"])
 
     def test_rc_ci_moves_the_full_matrix_after_merge_without_cancelling_it(self):
         """#2554 (user decision U10): PRs run linux-x86_64; the merging push and
@@ -370,7 +394,7 @@ class WorkflowTest(unittest.TestCase):
                          "|| format('ci-run-{0}-{1}-{2}', github.run_id, github.run_attempt, "
                          "matrix.target) }}")
         self.assertIn("github.run_attempt == '1'", group.split("||")[0])
-        _on_pr, after_merge = self.rc_ci_matrix(flow["jobs"]["check"])
+        _on_pr, after_merge = self.rc_ci_matrix(flow)
         shared = sorted(e["target"] for e in after_merge if e["target"].startswith("macos-"))
         self.assertEqual(shared, ["macos-arm64"])
         # The aggregate and windows-build keep the run-level group only.
@@ -423,7 +447,7 @@ class WorkflowTest(unittest.TestCase):
         install = steps[names.index("cargo-nextest (pinned, sha256-checked)")]["run"]
         self.assertIn("version=0.9.151", install)
         self.assertIn("releases/download/cargo-nextest-${version}/", install)
-        _on_pr, after_merge = self.rc_ci_matrix(flow["jobs"]["check"])
+        _on_pr, after_merge = self.rc_ci_matrix(flow)
         for target in {e["target"] for e in after_merge}:
             self.assertRegex(install, rf"{target}[|)].*sum=[0-9a-f]{{64}}")
         self.assertIn('if [ "$actual" != "$sum" ]; then', install)
@@ -461,7 +485,9 @@ class WorkflowTest(unittest.TestCase):
         flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
         check = flow["jobs"]["check"]
         self.assertIs(check["strategy"]["fail-fast"], False)
-        on_pr, after_merge = self.rc_ci_matrix(check)
+        # C-76: the targets job decides the list; check consumes it.
+        self.assertEqual(check["needs"], ["targets"])
+        on_pr, after_merge = self.rc_ci_matrix(flow)
         # #2554 (user decision U10): the timing moves, the content does not — the targets
         # a PR leaves out all run after merge, with the same runner labels.
         self.assertEqual({e["target"]: e["runner"] for e in after_merge}, {
@@ -587,7 +613,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(jobs["windows-x86_64"]["with"]["nextest_asset"], "x86_64-pc-windows-msvc")
         # The Unix targets are the same runners and the same nextest pins as ci.yml.
         ci = dict(self.workflows())[WORKFLOWS / "ci.yml"]
-        _, after_merge = self.rc_ci_matrix(ci["jobs"]["check"])
+        _, after_merge = self.rc_ci_matrix(ci)
         self.assertEqual({e["target"]: e["runner"] for e in after_merge},
                          {k: v for k, v in self.CANDIDATE_TARGETS.items() if not k.startswith("windows")})
         ci_text = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")

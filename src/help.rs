@@ -138,6 +138,7 @@ pub const GROUPS: &[Group] = &[
             ("key-import-plan", true),
             ("key-import-apply", true),
             ("keys-revert", false),
+            ("models-revert", false),
         ],
     },
     Group {
@@ -411,6 +412,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("key-import-plan", &["key-import-plan glm", "key-import-apply --plan-digest <digest> --permission-reference <ref> glm"]),
     ("key-import-apply", &["key-import-apply --plan-digest <digest> --permission-reference <ref> glm"]),
     ("keys-revert", &["keys-revert --receipt <keys-id> --permission-reference <ref> ~"]),
+    ("models-revert", &["models-revert --receipt <models-id> --permission-reference <ref> ~"]),
     ("claude-doctor", &["claude-doctor ."]),
     ("codex-doctor", &["codex-doctor ."]),
     ("install-inspect", &["install-inspect"]),

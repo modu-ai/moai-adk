@@ -359,6 +359,14 @@ dist-ssr/
 # folder's contents are excluded instead of the folder itself, and `specs/` is re-included.
 /.moai/*
 !/.moai/specs/
+# The audit eval set is shared project files too (card C-102, leader decision note 2415):
+# replayed incidents and controls, graded by tools/audit_eval.py.
+!/.moai/evals/
+# The same secret shapes as the specs folder above, for the eval records (card C-107:
+# replayed incidents may embed private fixtures by accident).
+/.moai/evals/**/*.key
+/.moai/evals/**/id_rsa*
+/.moai/evals/**/secrets.*
 # Secret-shaped files never ride along with a SPEC (credentials.yaml and *.credentials are
 # ignored at any depth of .moai/ above; .env and .env.* everywhere).
 /.moai/specs/**/.env*

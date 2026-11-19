@@ -86,14 +86,51 @@ fn the_install_phase_lists_hooks_after_the_claude_settings() {
     assert_eq!(names[..INSTALL_ORDER.len()], INSTALL_ORDER, "{plan}");
 }
 
+/// SPEC-20261119-hooks-followups AC-1 (N1, leader decision B): a profile that lists `claude` and
+/// a project with no hooks at all (no settings file, no record, no move) keeps the step
+/// `unchanged` with no command (the rule of the settings-move receipt stays), but its reason
+/// names the gap and the command to run by hand, and `preview.configured` reads as `hooks-status`
+/// does. Before, the step said only "no Go-generation hooks are left".
 #[test]
-fn nothing_of_the_go_generation_reads_unchanged_without_a_command() {
+fn a_project_with_nothing_yet_names_the_gap_and_prints_no_command() {
     let fx = GoFx::new();
     fx.with_profile();
-    let plan = fx.update_plan();
+    let plan = after_settings(&fx);
+    let own = hooks_plan(&fx);
+    // The settings step wrote the file first, so the plan reads `update` (it reads `create` only
+    // where no file exists, a state the step sequence never leaves behind).
+    assert_eq!(own["action"], "update", "{own}");
     let step = hooks(&plan);
     assert_eq!(step["state"], "unchanged", "{step}");
     assert_eq!(step["apply"], Value::Null, "{step}");
+    let reason = step["reason"].as_str().unwrap();
+    assert!(reason.contains("no MoAI hook set is installed"), "{step}");
+    assert!(reason.contains("hooks-plan reads update"), "{step}");
+    assert!(reason.contains("moai hooks-apply"), "{step}");
+    assert!(reason.contains("--host claude"), "{step}");
+    assert_eq!(
+        step["preview"]["configured"], own["hook_status"]["configured"],
+        "{step}"
+    );
+    // The command it names does install the set, and the step then reads current.
+    let applied = fx.run_stdin(
+        &[
+            "hooks-apply",
+            fx.p(),
+            "--host",
+            "claude",
+            "--plan-digest",
+            own["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            go_project_real_run::REF,
+        ],
+        b"",
+    );
+    assert_eq!(applied["ok"], json!(true), "{applied}");
+    assert_eq!(settings_now(&fx)["hooks"], generated());
+    let after = fx.update_plan();
+    assert_eq!(hooks(&after)["state"], "unchanged");
+    assert_eq!(hooks(&after)["reason"], "the MoAI hook set is current");
 }
 
 #[test]
@@ -476,4 +513,338 @@ fn recorded_hooks_that_were_edited_are_kept_and_get_no_command() {
         fs::read(fx.root.join(".claude/settings.json")).unwrap(),
         edited
     );
+}
+
+// ---- SPEC-20261119-hooks-followups: what the step says when the file and the record disagree
+
+/// The command `hooks` prints for the Claude host, for the plan digest of `own` (`hooks-plan`).
+fn hooks_apply_argv(fx: &GoFx, own: &Value) -> Value {
+    json!([
+        "moai",
+        "hooks-apply",
+        fx.p(),
+        "--host",
+        "claude",
+        "--plan-digest",
+        own["plan_digest"],
+        "--permission-reference",
+        PLACEHOLDER
+    ])
+}
+
+fn write_settings(fx: &GoFx, value: &Value) {
+    fx.write(
+        ".claude/settings.json",
+        &serde_json::to_string_pretty(value).unwrap(),
+    );
+}
+
+/// Applies the hooks step once, so the record names the MoAI hook set; returns the record's path.
+fn with_the_hook_set_installed(fx: &GoFx) -> std::path::PathBuf {
+    let plan = after_settings(fx);
+    let out = fx.apply_step(hooks(&plan));
+    assert_eq!(out["ok"], json!(true), "{out}");
+    record_path(fx)
+}
+
+fn record_path(fx: &GoFx) -> std::path::PathBuf {
+    [".moai-cli", ".moai"]
+        .iter()
+        .map(|state| fx.root.join(state).join("manifests/claude-settings.json"))
+        .find(|p| p.is_file())
+        .expect("the ownership record")
+}
+
+/// A profile with the given hosts, written the way PROJECT writes it.
+fn profile_with_hosts(fx: &GoFx, hosts: &[&str]) {
+    let detect = fx.call(&["project-detect", fx.p()], b"");
+    let profile = json!({
+        "schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
+        "tools": ["Rust"], "development_methods": ["TDD"], "hosts": hosts,
+        "detected": detect["detected"],
+    });
+    let plan = fx.call(
+        &["project-plan", fx.p()],
+        &serde_json::to_vec(&profile).unwrap(),
+    );
+    let digest = plan["plan_digest"].as_str().unwrap().to_string();
+    fx.call(
+        &[
+            "project-apply",
+            fx.p(),
+            "--plan-digest",
+            &digest,
+            "--permission-reference",
+            go_project_real_run::REF,
+        ],
+        &serde_json::to_vec(&plan).unwrap(),
+    );
+}
+
+/// N1: a settings file that exists but holds no `hooks` key, and no record: the step agrees with
+/// `hooks-status` (`drifted`) and `hooks-plan` (`update`) in its words, and prints no command.
+#[test]
+fn a_file_without_hooks_and_without_a_record_says_drifted_like_the_status() {
+    let fx = GoFx::new();
+    fx.with_profile();
+    write_settings(&fx, &json!({"permissions": {"deny": DENY}}));
+    let plan = after_settings(&fx);
+    let own = hooks_plan(&fx);
+    assert_eq!(own["hook_status"]["configured"], "drifted", "{own}");
+    assert_eq!(own["action"], "update", "{own}");
+    let step = hooks(&plan);
+    assert_eq!(step["state"], "unchanged", "{step}");
+    assert_eq!(step["apply"], Value::Null, "{step}");
+    assert_eq!(step["preview"]["configured"], "drifted", "{step}");
+    let reason = step["reason"].as_str().unwrap();
+    assert!(reason.contains("hooks-plan reads update"), "{step}");
+    assert!(reason.contains("moai hooks-plan"), "{step}");
+    assert!(reason.contains("moai hooks-apply"), "{step}");
+    assert!(!reason.contains("is current"), "{step}");
+}
+
+/// N1: the hooks plan is consulted only where the profile lists `claude`.
+#[test]
+fn a_profile_without_claude_leaves_the_hooks_step_unchanged_without_a_command() {
+    let fx = GoFx::new();
+    profile_with_hosts(&fx, &["codex"]);
+    let plan = fx.update_plan();
+    let step = hooks(&plan);
+    assert_eq!(step["state"], "unchanged", "{step}");
+    assert_eq!(step["apply"], Value::Null, "{step}");
+}
+
+/// N3: a user's own `hooks` key with no record is the three-way conflict of `hooks-plan`, never
+/// "current"; without a move or a record the step stays `unchanged` and prints no command, and
+/// says so.
+#[test]
+fn a_hooks_key_of_the_users_own_with_no_record_says_conflict_and_prints_no_command() {
+    let fx = GoFx::new();
+    fx.with_profile();
+    write_settings(
+        &fx,
+        &json!({"hooks": {"Stop": [{"hooks": [{"type": "command", "command": "echo mine"}]}]}}),
+    );
+    let plan = after_settings(&fx);
+    let own = hooks_plan(&fx);
+    assert_eq!(own["action"], "conflict", "{own}");
+    let step = hooks(&plan);
+    assert_eq!(step["state"], "unchanged", "{step}");
+    assert_eq!(step["apply"], Value::Null, "{step}");
+    let reason = step["reason"].as_str().unwrap();
+    assert!(reason.contains("hooks-plan reads conflict"), "{step}");
+    assert!(!reason.contains("is current"), "{step}");
+}
+
+/// N3: an edit of the recorded set stays (state `unchanged`, no command) but the step does not
+/// call it current: the status reads `drifted` and so does the step.
+#[test]
+fn a_hooks_key_that_is_not_the_moai_set_is_not_called_current() {
+    let fx = project_with_go_hooks();
+    with_the_hook_set_installed(&fx);
+    let mut s = settings_now(&fx);
+    s["hooks"]["PostToolUse"] = json!([]);
+    write_settings(&fx, &s);
+    assert_eq!(hooks_plan(&fx)["hook_status"]["configured"], "drifted");
+    let update = fx.update_plan();
+    let step = hooks(&update);
+    assert_eq!(step["state"], "unchanged", "{step}");
+    assert_eq!(step["apply"], Value::Null, "{step}");
+    let reason = step["reason"].as_str().unwrap();
+    assert!(!reason.contains("is current"), "{step}");
+    assert!(reason.contains("not the MoAI hook set"), "{step}");
+    assert_eq!(step["preview"]["configured"], "drifted", "{step}");
+}
+
+/// N3: `{}` and `null` leave no hook in effect, and nothing prints a command to change that: the
+/// step waits for a decision and names the way out (the file is the user's).
+#[test]
+fn an_empty_or_null_hooks_key_reads_needs_decision_and_names_the_way_out() {
+    for empty in [json!({}), Value::Null] {
+        let fx = project_with_go_hooks();
+        with_the_hook_set_installed(&fx);
+        let mut s = settings_now(&fx);
+        s["hooks"] = empty.clone();
+        write_settings(&fx, &s);
+        let update = fx.update_plan();
+        let step = hooks(&update);
+        assert_eq!(step["state"], "needs_decision", "{empty}: {step}");
+        assert_eq!(step["apply"], Value::Null, "{empty}: {step}");
+        let reason = step["reason"].as_str().unwrap();
+        assert!(reason.contains("no hook is in effect"), "{empty}: {step}");
+        assert!(reason.contains("remove the `hooks` key"), "{empty}: {step}");
+        assert_eq!(step["preview"]["hooks_in_effect"], json!(false), "{step}");
+    }
+}
+
+/// N4: the status line MoAI wrote is gone from the file while the record still owns it. The
+/// plan keeps it removed (the user's edit), and the step says so instead of "current".
+#[test]
+fn a_status_line_removed_by_hand_is_named_not_called_current() {
+    let fx = project_with_go_hooks();
+    let plan = fx.update_plan();
+    let first = settings(&plan);
+    assert_eq!(first["state"], "ready", "the precondition: {first}");
+    let out = fx.apply_step(first);
+    assert_eq!(out["ok"], json!(true), "{out}");
+    let mut s = settings_now(&fx);
+    assert!(s["statusLine"].is_object(), "the precondition: {s}");
+    // While the file still holds the status line, the step does not say it was removed.
+    let settled = fx.update_plan();
+    let held = settings(&settled);
+    assert_eq!(held["state"], "unchanged", "{held}");
+    assert!(
+        !held["reason"].as_str().unwrap().contains("removed"),
+        "{held}"
+    );
+    assert_eq!(
+        held["preview"]["status_line_removed"],
+        Value::Null,
+        "{held}"
+    );
+    s.as_object_mut().unwrap().remove("statusLine");
+    write_settings(&fx, &s);
+    let update = fx.update_plan();
+    let step = settings(&update);
+    assert_eq!(step["state"], "unchanged", "{step}");
+    let reason = step["reason"].as_str().unwrap();
+    assert!(reason.contains("status line"), "{step}");
+    assert!(reason.contains("removed"), "{step}");
+    assert!(reason.contains("not put back"), "{step}");
+    assert_ne!(reason, "the MoAI-owned keys are current", "{step}");
+    assert_eq!(
+        step["preview"]["status_line_removed"],
+        json!(true),
+        "{step}"
+    );
+}
+
+/// N5: an unreadable record blocks the step; the reason names the file and the next step.
+#[test]
+fn an_unreadable_record_names_its_file_and_the_next_step() {
+    let fx = project_with_go_hooks();
+    let record = with_the_hook_set_installed(&fx);
+    fs::write(&record, "not json").unwrap();
+    let update = fx.update_plan();
+    let step = hooks(&update);
+    assert_eq!(step["state"], "blocked", "{step}");
+    assert_eq!(step["apply"], Value::Null, "{step}");
+    let reason = step["reason"].as_str().unwrap();
+    assert!(reason.contains("manifests/claude-settings.json"), "{step}");
+    assert!(reason.contains("no moai command repairs it"), "{step}");
+    assert!(reason.contains("plan again"), "{step}");
+}
+
+/// The record and the file of a project that took an earlier release's hook set: the same
+/// older set in both, written the way that release did (the `moai-cli` command names).
+fn hold_an_older_set(fx: &GoFx) {
+    let record = with_the_hook_set_installed(fx);
+    let older = Value::Object(moai_cli::hooks::legacy_hooks("claude", None).unwrap());
+    let mut s = settings_now(fx);
+    s["hooks"] = older.clone();
+    write_settings(fx, &s);
+    let mut r: Value = serde_json::from_slice(&fs::read(&record).unwrap()).unwrap();
+    r["owned"]["hooks"] = older;
+    r["settings_sha256"] = json!(go_project_real_run::sha(
+        &fs::read(fx.root.join(".claude/settings.json")).unwrap()
+    ));
+    fs::write(&record, serde_json::to_vec_pretty(&r).unwrap()).unwrap();
+}
+
+/// N6: an upgrade where the file and the record hold the same older set is `ready`.
+#[test]
+fn an_older_hook_set_held_by_the_file_and_the_record_reads_ready() {
+    let fx = project_with_go_hooks();
+    hold_an_older_set(&fx);
+    let own = hooks_plan(&fx);
+    assert_eq!(own["action"], "update", "{own}");
+    let update = fx.update_plan();
+    let step = hooks(&update);
+    assert_eq!(step["state"], "ready", "{step}");
+    assert_eq!(step["apply"]["argv"], hooks_apply_argv(&fx, &own), "{step}");
+    // Rewriting the `moai-cli` command names through the command needs the Rust `moai` first on
+    // PATH (the gate of `hook_legacy`, which this test environment does not have), so the
+    // writer the command calls runs in this process, with the digest the step printed.
+    let out = moai_cli::hooks::apply(
+        &fx.root,
+        "claude",
+        Some(fx.home.as_path()),
+        step["plan_digest"].as_str().unwrap(),
+        go_project_real_run::REF,
+    )
+    .expect("the printed digest applies");
+    assert_eq!(out["state"], "applied", "{out}");
+    assert_eq!(settings_now(&fx)["hooks"], generated());
+    assert_eq!(hooks(&fx.update_plan())["state"], "unchanged");
+}
+
+/// N6: the older set with a user's edit on top is a conflict, and nothing is printed.
+#[test]
+fn an_older_hook_set_with_a_users_edit_reads_conflict() {
+    let fx = project_with_go_hooks();
+    hold_an_older_set(&fx);
+    let mut s = settings_now(&fx);
+    s["hooks"]["PostToolUse"] = json!([]);
+    write_settings(&fx, &s);
+    let update = fx.update_plan();
+    let step = hooks(&update);
+    assert_eq!(step["state"], "conflict", "{step}");
+    assert_eq!(step["apply"], Value::Null, "{step}");
+}
+
+/// N6: `hooks-apply --host claude` over an existing file prints its own `hooks-revert`; the
+/// printed undo order no longer says such a project has no command.
+#[test]
+fn the_undo_order_names_hooks_revert_for_a_hooks_apply_update() {
+    let fx = project_with_go_hooks();
+    let plan = fx.update_plan();
+    let hooks_note = plan["undo_order"]["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["step"] == "hooks")
+        .unwrap()["note"]
+        .as_str()
+        .unwrap();
+    assert!(hooks_note.contains("hooks-revert"), "{hooks_note}");
+    assert!(!hooks_note.contains("has no command here"), "{hooks_note}");
+    assert!(
+        hooks_note.contains("a first install has nothing to revert"),
+        "{hooks_note}"
+    );
+}
+
+/// Card C-107 slice 2: the profile mutant the merged hooks SPEC recorded as surviving
+/// (`let claude = true;` at the profile check) is now pinned. A project whose profile does not
+/// list claude and whose settings carry no hooks key has its hooks step decided by the Go plan
+/// alone: `unchanged` with the Go reason — not the claude-plan words the mutant's `true` would
+/// print ("no MoAI hook set is installed … hooks-plan reads …").
+#[test]
+fn a_profile_without_claude_keeps_the_go_reason_on_the_hooks_step() {
+    let fx = GoFx::new();
+    profile_with_hosts(&fx, &["codex"]);
+    write_settings(&fx, &json!({"model": "opus"}));
+    let plan = after_settings(&fx);
+    let step = hooks(&plan);
+    assert_eq!(step["state"], "unchanged", "{step}");
+    let reason = step["reason"].as_str().unwrap();
+    assert_eq!(reason, "no Go-generation hooks are left", "{step}");
+    assert!(!reason.contains("hooks-plan"), "{step}");
+}
+
+/// Card C-107 slice 2 (audit follow-up): a symlinked ownership record is refused and the
+/// refusal names the record file, like an unreadable one does — the settings-state refusals
+/// ("symlink target refused") reach the step undecorated today.
+#[test]
+fn a_symlinked_record_refusal_names_the_file() {
+    let fx = project_with_go_hooks();
+    let record = with_the_hook_set_installed(&fx);
+    fs::remove_file(&record).unwrap();
+    std::os::unix::fs::symlink("/nonexistent/claude-settings.json", &record).unwrap();
+    let update = fx.update_plan();
+    let step = hooks(&update);
+    assert_eq!(step["state"], "blocked", "{step}");
+    let reason = step["reason"].as_str().unwrap();
+    assert!(reason.contains("manifests/claude-settings.json"), "{step}");
+    assert!(reason.contains("symlink"), "{step}");
 }

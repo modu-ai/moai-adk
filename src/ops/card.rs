@@ -121,23 +121,34 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
-    /// Writes the ledger. Set the write scope of a card nobody holds
+    /// Writes the ledger. Set the write scope of a card, or widen a held card's
     ///
     /// Writes the ledger. Replaces the write scope of a `draft` or `ready` card that nobody holds,
     /// with one `card.scope` event that keeps the old scope, the new one and `--by`. `card next`
     /// skips a card without a write scope (`empty_scope`); this is how such a card gets one.
-    /// Each entry is checked as `add --scope` checks it. A card in another state, or one with a
-    /// live reservation, is refused (`conflict`) with its state and holder, and nothing is
+    /// A card that has an active reservation (`active` or `review`) is widened instead, under
+    /// the same generation: no release and no retake, and the holder, lease, worktree and branch
+    /// stay. A held card's scope only grows: the list must keep every pattern the reservation
+    /// has (a list that leaves one out is a `conflict` naming it), and the added patterns must
+    /// not overlap another card's reservation (a `conflict` naming that card). `--reason` is
+    /// required for a held card; the `card.scope` event records `--by`, the reason, the
+    /// generation and the holder; the card's own scope is not changed, so a later `card take`
+    /// without `--scope` still reads the old one. Each entry is checked as `add --scope` checks
+    /// it. Any other state is refused (`conflict`) with its state and holder, and nothing is
     /// written.
     Scope {
         /// `C-12`.
         card: String,
-        /// A path the card may change, relative with `/` (repeat for more; replaces them all).
+        /// A path the card may change, relative with `/` (repeat for more; replaces them all, and
+        /// for a held card the list must contain the current patterns plus the new ones).
         #[arg(long = "scope", required = true)]
         scope: Vec<String>,
         /// Who sets it, one line (for example `leader`).
         #[arg(long)]
         by: String,
+        /// Why, one line of 1 to 500 characters; required to widen a held card.
+        #[arg(long)]
+        reason: Option<String>,
         /// The project folder (its profile holds the project id).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -250,15 +261,22 @@ enum Action {
     /// Writes the ledger. Take over a card whose reservation has ended
     ///
     /// Writes the ledger. For a card whose holder is gone: the reservation at `--generation` must be
-    /// `held` with a lease that has ended (a live lease, another generation, a `done` card or a card
-    /// nobody holds is refused as `conflict`, and nothing is written). It becomes `reclaimed`, and this
-    /// session gets the next generation with the same scope, worktree and branch and a new lease; the
-    /// card keeps its state, notes, criteria and links, so this session can then close it with `card
-    /// criterion`, `card pr` and `card done`, or give it back with `card release`. One `card.reclaim`
-    /// event names the old holder, generation and lease end, the new holder, `--by` and `--reason`.
-    /// Nothing checks that the old holder is really gone: say in `--reason` what was found (process
-    /// ended, pull request merged, uncommitted work). The old generation is stale from then on. The new
-    /// holder is this session's own id, never typed.
+    /// `held` with a lease that has ended. Refusals write nothing and come in four kinds:
+    /// `conflict` (a live lease, another generation, a `done` card, a reservation that is not
+    /// `held`, or a card nobody holds), `not_found` (no such card), `usage` (exit 2: an option
+    /// that is missing or cannot be read, such as no `--generation` or `--generation x`) and
+    /// `invalid_input` (exit 1: a value out of range, a blank or longer `--reason`, a `--by` over
+    /// 80 characters, a `--lease-secs` outside 60 to 86400, or a `--reason` with a word shaped
+    /// like a secret). The reservation
+    /// becomes `reclaimed`, and this session gets the next generation with the same scope, worktree
+    /// and branch and a new lease; the card keeps its state, notes, criteria and links, so this
+    /// session can then close it with `card criterion`, `card pr` and `card done`. To give a card
+    /// back instead: a card in `review` is reopened with `card reopen` first, then given back with
+    /// `card release` (`release` refuses a card in `review`). One `card.reclaim` event names the old
+    /// holder, generation and lease end, the new holder, `--by` and `--reason`. Nothing checks that
+    /// the old holder is really gone: say in `--reason` what was found (process ended, pull request
+    /// merged, uncommitted work). The old generation is stale from then on. The new holder is this
+    /// session's own id, never typed.
     Reclaim {
         /// `C-12`.
         card: String,
@@ -296,6 +314,27 @@ enum Action {
         /// The project folder (its profile holds the project id).
         #[arg(default_value = ".")]
         project: PathBuf,
+        /// The HOME to read (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Reads the ledger only. List the lane notes that still wait for the leader
+    ///
+    /// Reads the ledger only. A request is a note whose first line starts with `감사 요청` (or is
+    /// a `LANE-DONE` line that says `audit requested`: `audit_request`), `LANE-BLOCKED`
+    /// (`blocked`), `LANE-READY-INTEGRATION` (`ready_for_integration`) or `DECISION-QUESTION`
+    /// (`decision_question`). On each card that is not `done`, the newest request of each
+    /// family is listed unless the card holds a later note (a larger note id) written by the
+    /// leader. Notes imported from a code host are left out. The items come oldest first with
+    /// their age in seconds; `LANE-NOTE` progress lines are not requests. A project without a
+    /// ledger has nothing waiting (`ledger: "absent"`, exit 0) and nothing is created.
+    Inbox {
+        /// The project folder (its profile holds the project id).
+        #[arg(default_value = ".")]
+        project: PathBuf,
+        /// The author name of the leader's notes (default `leader`).
+        #[arg(long)]
+        leader: Option<String>,
         /// The HOME to read (default `$HOME`). Tests pass a temporary folder.
         #[arg(long)]
         home: Option<PathBuf>,
@@ -353,6 +392,29 @@ enum Action {
         /// Why it is withdrawn (one line).
         #[arg(long, requires = "withdraw")]
         reason: Option<String>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Add acceptance criteria to a card
+    ///
+    /// Writes the ledger. Appends each `--ac` text to the card as an open criterion, numbered
+    /// after the card's highest (a withdrawn one keeps its number), with one
+    /// `card.criterion_add` event: criteria are only added, never changed or removed. It needs
+    /// no generation and no holder, so a card nobody holds, such as a migrated Issue card, can be
+    /// given one; the reservation of a held card is left as it is; a `done` card is refused.
+    CriterionAdd {
+        /// `C-12`.
+        card: String,
+        /// An acceptance criterion, one line (repeat for more; numbered after the card's last).
+        #[arg(long = "ac", required = true)]
+        criteria: Vec<String>,
+        /// Who adds it (default `user`).
+        #[arg(long)]
+        by: Option<String>,
         /// The project folder (its profile holds the project id).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -495,6 +557,43 @@ fn env(name: &str) -> Option<String> {
     std::env::var(name).ok()
 }
 
+/// `card criterion-add C-n --ac TEXT… [--by W]`: what is wrong with the request is found before
+/// the ledger is opened (the card's name, each text, `--by`), then the ledger appends the
+/// criteria in one transaction (`workflow::add_criteria`, card C-108).
+fn criterion_add(
+    project: &std::path::Path,
+    home: &std::path::Path,
+    reference: &str,
+    entries: &[String],
+    by: Option<&str>,
+) -> Result<serde_json::Value, String> {
+    use moai_cli::card::command as c;
+    use moai_cli::card::input::{self, CardRef};
+    use moai_cli::ledger::workflow::{self, WorkflowError};
+    let refused = |why: String| format!("card criterion-add refused: {why}");
+    let card_id = match input::parse_ref(reference).map_err(|e| refused(e.to_string()))? {
+        CardRef::Id(n) => n,
+        CardRef::SourceNumber(_) => {
+            return Err(refused(
+                "name the card by its C-number (`card show #N` finds it)".to_string(),
+            ))
+        }
+    };
+    let texts = input::criterion_texts(entries).map_err(|e| refused(e.to_string()))?;
+    let by = c::actor(by, "criterion-add")?;
+    let (project_id, mut ledger) = c::open_for_write(project, home)?;
+    let added = workflow::add_criteria(&mut ledger, card_id, &by, &texts).map_err(|e| match e {
+        WorkflowError::InvalidInput(why) => refused(why),
+        other => other.to_string(),
+    })?;
+    Ok(serde_json::json!({
+        "action": "criterion-add", "project_id": project_id,
+        "name": input::card_name(card_id), "card_id": card_id,
+        "by": by, "added": added.added, "criteria": added.total, "rev": added.rev,
+        "events": 1, "writes": true,
+    }))
+}
+
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
     use moai_cli::card::command as c;
     use moai_cli::card::dispatch as d;
@@ -546,9 +645,17 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             card,
             scope,
             by,
+            reason,
             project,
             home,
-        } => d::scope(&project, &resolve_home(home)?, &card, &scope, &by),
+        } => d::scope(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &scope,
+            &by,
+            reason.as_deref(),
+        ),
         Action::Take {
             card,
             lease_secs,
@@ -636,6 +743,11 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             &resolve_home(home)?,
             d::session_holder("next", env).ok().as_deref(),
         ),
+        Action::Inbox {
+            project,
+            leader,
+            home,
+        } => moai_cli::card::inbox::inbox(&project, &resolve_home(home)?, leader.as_deref()),
         Action::Note {
             card,
             kind,
@@ -690,6 +802,19 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 change,
             )
         }
+        Action::CriterionAdd {
+            card,
+            criteria,
+            by,
+            project,
+            home,
+        } => criterion_add(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &criteria,
+            by.as_deref(),
+        ),
         Action::Pr {
             card,
             number,

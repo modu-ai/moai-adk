@@ -509,8 +509,15 @@ pub fn after_text(path: &Path, plan: &Plan) -> Result<String, String> {
     render_root(&next)
 }
 
-/// Removes the settings file when it is a regular file (never a link, folder or special file).
+/// Removes the settings file when it is a regular file (never a link, folder or special file) and
+/// its folder is not a link: a link there would carry the removal to a file outside the home
+/// (C-47 slice 5 audit B1, the same check as [`write_text`]).
 pub fn remove_settings(path: &Path) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        if fs::symlink_metadata(parent).is_ok_and(|m| m.file_type().is_symlink()) {
+            return Err("the folder of the launcher settings must not be a link".into());
+        }
+    }
     match fs::symlink_metadata(path) {
         Ok(meta) if meta.file_type().is_file() => {
             fs::remove_file(path).map_err(|_| "launcher settings cannot be removed".to_string())

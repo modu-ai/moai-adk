@@ -1773,8 +1773,9 @@ fn reclaim_lease_end_second_is_the_edge() {
         reclaim(&mut w, card, "a", 1).unwrap_err(),
         reservation::ReclaimError::LeaseLive { .. }
     ));
-    // The lease-end second itself no longer holds (the same test as the fence's), and the
-    // holder may reclaim its own ended lease.
+    // A lease that ends at the second the ledger reads, or any later second, is ended whichever
+    // second the clock shows by the time `reclaim` runs; the exact edge (N-1, N, N+1) is pinned
+    // on `lease_ended` itself, in the library's tests. The holder may reclaim its own ended lease.
     sql(
         &mut w,
         "UPDATE reservation SET lease_until = unixepoch() WHERE card_id = 1",
@@ -1793,5 +1794,39 @@ fn reclaim_lease_end_second_is_the_edge() {
             (1, "a".to_string(), "reclaimed".to_string()),
             (2, "a".to_string(), "held".to_string())
         ]
+    );
+}
+
+#[test]
+fn reclaim_limit_refuses_the_fourth_reclaim_and_writes_nothing() {
+    // SPEC-20261119-card-reclaim-guard REQ-5: three `card.reclaim` events are the card's
+    // lifetime allowance; the fourth is refused in its own transaction, rows unchanged.
+    let (home, mut w) = setup();
+    let card = ready_card(&mut w);
+    reservation::reserve(
+        &mut w,
+        card,
+        "first",
+        &s(&["src/b.rs"]),
+        3600,
+        Some("/work/tree"),
+        Some("card/1-x"),
+    )
+    .unwrap();
+    for generation in 1..=3i64 {
+        end_lease(&mut w, card);
+        reclaim(&mut w, card, "heir", generation).unwrap();
+    }
+    end_lease(&mut w, card);
+    let before = dump(reader(&home).conn());
+    let refused = reclaim(&mut w, card, "heir", 4);
+    assert!(
+        matches!(refused, Err(reservation::ReclaimError::ReclaimLimit { .. })),
+        "{refused:?}"
+    );
+    assert_eq!(
+        dump(reader(&home).conn()),
+        before,
+        "the refusal leaves every row as it was"
     );
 }

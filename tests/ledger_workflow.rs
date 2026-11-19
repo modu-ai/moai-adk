@@ -1393,3 +1393,82 @@ fn next_lists_a_review_card_nobody_holds_under_its_own_reason() {
         assert_eq!(n.skipped[0].reason.code(), "review_no_holder");
     }
 }
+
+#[test]
+fn criteria_are_added_to_any_card_but_a_closed_one_and_each_gets_its_own_number() {
+    let (_home, mut w) = setup();
+    // A card nobody holds, with one criterion (number 1) and one withdrawn (number 2).
+    let card = add_card(&mut w, "ready", "p2", "[]", 2);
+    sql(
+        &mut w,
+        &format!(
+            "UPDATE card_ac SET status = 'withdrawn', withdrawn_reason = 'x' \
+             WHERE card_id = {card} AND seq = 2"
+        ),
+    );
+    let texts = vec!["a".to_string(), "b".to_string()];
+    let added = workflow::add_criteria(&mut w, card, "leader", &texts).unwrap();
+    assert_eq!(added.added, vec![3, 4]);
+    assert_eq!(added.total, 4);
+    let conn = w.conn();
+    let rows: Vec<(i64, String, String)> = conn
+        .prepare("SELECT seq, text, status FROM card_ac WHERE card_id = ?1 ORDER BY seq")
+        .unwrap()
+        .query_map([card], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+        .unwrap()
+        .map(Result::unwrap)
+        .collect();
+    assert_eq!(
+        rows[2..],
+        [
+            (3, "a".to_string(), "open".to_string()),
+            (4, "b".to_string(), "open".to_string())
+        ]
+    );
+    let event: (String, String) = conn
+        .query_row(
+            "SELECT actor, payload FROM event WHERE kind = 'card.criterion_add'",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(event.0, "leader");
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&event.1).unwrap(),
+        serde_json::json!({"first": 3, "count": 2})
+    );
+
+    // Nothing to add, a missing card and a closed card are refused and write nothing.
+    let events: i64 = one(w.conn(), "SELECT count(*) FROM event");
+    assert_eq!(
+        workflow::add_criteria(&mut w, card, "leader", &[]).unwrap_err(),
+        WorkflowError::InvalidInput("there is no criterion to add".into())
+    );
+    assert_eq!(
+        workflow::add_criteria(&mut w, 999, "leader", &texts).unwrap_err(),
+        WorkflowError::CardNotFound(999)
+    );
+    sql(
+        &mut w,
+        "INSERT INTO card (title, state, created_by, created_at, updated_at, closed_at) \
+         VALUES ('closed', 'done', 'test', 1, 1, 1)",
+    );
+    let closed: i64 = one(w.conn(), "SELECT card_id FROM card WHERE state = 'done'");
+    assert_eq!(
+        workflow::add_criteria(&mut w, closed, "leader", &texts).unwrap_err(),
+        WorkflowError::Closed { card_id: closed }
+    );
+    assert_eq!(one::<i64>(w.conn(), "SELECT count(*) FROM event"), events);
+    assert_eq!(
+        one::<i64>(
+            w.conn(),
+            &format!("SELECT count(*) FROM card_ac WHERE card_id = {closed}")
+        ),
+        0
+    );
+    // The author is one line, within the limit.
+    assert!(matches!(
+        workflow::add_criteria(&mut w, card, " ", &texts),
+        Err(WorkflowError::InvalidInput(_))
+    ));
+}

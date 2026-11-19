@@ -109,6 +109,7 @@ Keys
   key-import-plan         Preview importing an old key file
   key-import-apply        Import a previewed old key file
   keys-revert             Undo the keys one update imported
+  models-revert           Undo the model settings one update saved
 Diagnose
   claude-doctor           Check that Claude Code reads AGENTS.md
   codex-doctor            Check the Codex instructions and skills

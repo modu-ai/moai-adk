@@ -1,0 +1,462 @@
+//! SPEC-20261119-diff-go (card C-104): differential tests against the Go build `moai.old`, the
+//! oracle for behaviour the Rust build keeps. Each case runs both binaries on the same input in
+//! its own temporary HOME and folder, never the real ones and never the network. The Go build
+//! is looked up in `MOAI_GO_BIN`, else `$HOME/go/bin/moai.old` (a path read, nothing written);
+//! when it is absent the tests print why and pass without comparing (CI has no Go build).
+//! What differs on purpose is listed in `tests/fixtures/diff_go/approved-differences.json`.
+//! This is not a port of Go behaviour: only a behaviour the Rust build chose to keep is
+//! compared, and a difference the Rust build chose is written down there with its reason.
+
+#![cfg(unix)]
+
+mod common;
+use common::CleanEnv;
+
+use serde_json::Value;
+use std::fs;
+use std::io::Write;
+use std::path::PathBuf;
+use std::process::{Command, Stdio};
+use tempfile::TempDir;
+
+const RUST: &str = crate::common::MOAI_BIN;
+const APPROVED: &str = include_str!("fixtures/diff_go/approved-differences.json");
+
+/// The Go build for these two lookup values, or the reason there is none: `MOAI_GO_BIN` first,
+/// else `go/bin/moai.old` below `home`.
+fn locate(var: Option<PathBuf>, home: Option<PathBuf>) -> Result<PathBuf, String> {
+    let path = var
+        .or_else(|| home.map(|h| h.join("go/bin/moai.old")))
+        .ok_or("no MOAI_GO_BIN and no HOME to look in")?;
+    if path.is_file() {
+        Ok(path)
+    } else {
+        Err(format!(
+            "the Go build {} is absent (set MOAI_GO_BIN)",
+            path.display()
+        ))
+    }
+}
+
+/// The Go build, or `None` with the reason printed.
+fn go_binary() -> Option<PathBuf> {
+    match locate(
+        std::env::var_os("MOAI_GO_BIN").map(PathBuf::from),
+        std::env::var_os("HOME").map(PathBuf::from),
+    ) {
+        Ok(path) => Some(path),
+        Err(reason) => {
+            eprintln!("diff_go: skipped, {reason}");
+            None
+        }
+    }
+}
+
+struct Run {
+    code: Option<i32>,
+    stdout: String,
+    stderr: String,
+}
+
+/// Runs `exe args` with `stdin` in a fresh temporary HOME and folder.
+fn run(exe: &std::path::Path, args: &[&str], stdin: &str) -> Run {
+    run_with(exe, args, stdin, &[])
+}
+
+/// [`run`] with `files` (path below the folder, text) written into the temporary folder first.
+fn run_with(exe: &std::path::Path, args: &[&str], stdin: &str, files: &[(&str, &str)]) -> Run {
+    let tmp = TempDir::new().unwrap();
+    let root = fs::canonicalize(tmp.path()).unwrap();
+    let home = root.join("home");
+    let work = root.join("work");
+    fs::create_dir_all(&home).unwrap();
+    fs::create_dir_all(&work).unwrap();
+    for (rel, text) in files {
+        let path = work.join(rel);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, text).unwrap();
+    }
+    let mut child = Command::new(exe)
+        .args(args)
+        .clean_env()
+        .env("PATH", "/usr/bin:/bin")
+        .env("HOME", &home)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .env("GIT_CEILING_DIRECTORIES", &root)
+        .env("LC_ALL", "C")
+        .current_dir(&work)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap_or_else(|e| panic!("cannot start {}: {e}", exe.display()));
+    // A binary that exits without reading its input closes the pipe; its answer is still read.
+    let _ = child.stdin.take().unwrap().write_all(stdin.as_bytes());
+    let out = child.wait_with_output().unwrap();
+    Run {
+        code: out.status.code(),
+        stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
+        stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
+    }
+}
+
+/// The text without terminal colour codes.
+fn plain(text: &str) -> String {
+    let mut out = String::new();
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\u{1b}' && chars.peek() == Some(&'[') {
+            for n in chars.by_ref() {
+                if n.is_ascii_alphabetic() {
+                    break;
+                }
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
+fn approved(case: &str) -> bool {
+    let list: Value = serde_json::from_str(APPROVED).unwrap();
+    list["differences"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|d| d["case"] == case && d["reason"].as_str().is_some_and(|r| !r.is_empty()))
+}
+
+/// Which of `names` the status line shows.
+fn shown(r: &Run, names: &[&str]) -> Vec<String> {
+    let text = plain(&r.stdout);
+    names
+        .iter()
+        .filter(|n| text.contains(**n))
+        .map(|n| n.to_string())
+        .collect()
+}
+
+/// The status line reads the model name from the payload the same way in both builds: a later
+/// duplicate key wins, a string is a name, key case is ignored, and a payload that is not valid
+/// or has a wrong type shows no model (measured against moai.old v3.2.1-rc.6, the rules of
+/// `src/statusline/godecode.rs`).
+#[test]
+fn the_status_line_reads_the_model_of_a_payload_like_the_go_build() {
+    let Some(go) = go_binary() else { return };
+    let rust = PathBuf::from(RUST);
+    // (case, payload, names the payload could show, names it must show)
+    let cases: Vec<(&str, &str, Vec<&str>, Vec<&str>)> = vec![
+        (
+            "display_name_of_an_object",
+            r#"{"model":{"id":"x","display_name":"Alpha Name"}}"#,
+            vec!["Alpha Name"],
+            vec!["Alpha Name"],
+        ),
+        (
+            "a_later_duplicate_key_wins",
+            r#"{"model":{"display_name":"First Name"},"model":{"display_name":"Second Name"}}"#,
+            vec!["First Name", "Second Name"],
+            vec!["Second Name"],
+        ),
+        (
+            "a_string_is_the_name",
+            r#"{"model":"string-model-name"}"#,
+            vec!["string-model-name"],
+            vec!["string-model-name"],
+        ),
+        (
+            "key_case_is_ignored",
+            r#"{"Model":{"display_name":"Folded Name"}}"#,
+            vec!["Folded Name"],
+            vec!["Folded Name"],
+        ),
+        (
+            "a_wrong_type_shows_no_model",
+            r#"{"model":5,"session_id":"Never Shown"}"#,
+            vec!["Never Shown"],
+            vec![],
+        ),
+        (
+            "invalid_json_shows_no_model",
+            r#"{"model":"#,
+            vec!["Never Shown"],
+            vec![],
+        ),
+        (
+            "an_empty_object_shows_no_model",
+            "{}",
+            vec!["Never Shown"],
+            vec![],
+        ),
+    ];
+    for (case, payload, names, expected) in cases {
+        let g = run(&go, &["statusline"], payload);
+        let r = run(&rust, &["statusline"], payload);
+        let (gs, rs) = (shown(&g, &names), shown(&r, &names));
+        assert_eq!(
+            gs, expected,
+            "{case}: the Go build shows {gs:?} (oracle sanity)"
+        );
+        assert_eq!(
+            rs,
+            gs,
+            "{case}: Rust {rs:?} against Go {gs:?}\nrust: {}",
+            plain(&r.stdout)
+        );
+    }
+}
+
+/// The layout of the status line is the Rust build's own: the two texts differ, and that is on
+/// the approved list with its reason.
+#[test]
+fn the_layout_of_the_status_line_differs_on_purpose() {
+    let Some(go) = go_binary() else { return };
+    assert!(
+        approved("layout_of_the_status_line"),
+        "not on the approved list"
+    );
+    let payload = r#"{"model":{"display_name":"Layout Probe"}}"#;
+    let g = run(&go, &["statusline"], payload);
+    let r = run(&PathBuf::from(RUST), &["statusline"], payload);
+    for (who, out) in [("Go", &g), ("Rust", &r)] {
+        assert_eq!(out.code, Some(0), "the {who} build exits 0: {}", out.stderr);
+        assert!(
+            plain(&out.stdout).contains("Layout Probe"),
+            "the {who} build shows the model, so the comparison is not of two empty texts: {}",
+            out.stdout
+        );
+    }
+    assert_ne!(
+        plain(&g.stdout),
+        plain(&r.stdout),
+        "the texts are equal now: remove the entry from the approved list"
+    );
+}
+
+/// A Go-generation hook call: Go answers an allow decision, the Rust build ignores it and prints
+/// nothing on stdout. Both exit 0 and neither blocks.
+#[test]
+fn a_go_hook_call_is_ignored_by_the_rust_build_on_purpose() {
+    let Some(go) = go_binary() else { return };
+    assert!(approved("hook_call_pre_tool"), "not on the approved list");
+    let payload = r#"{"session_id":"s1","hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"ls"}}"#;
+    let g = run(&go, &["hook", "pre-tool"], payload);
+    let r = run(&PathBuf::from(RUST), &["hook", "pre-tool"], payload);
+    assert_eq!(g.code, Some(0), "the Go build exits 0: {}", g.stderr);
+    assert_eq!(r.code, Some(0), "the Rust build exits 0: {}", r.stderr);
+    let answer: Value = serde_json::from_str(g.stdout.trim()).expect("the Go build answers JSON");
+    assert_eq!(
+        answer["hookSpecificOutput"]["permissionDecision"], "allow",
+        "{}",
+        g.stdout
+    );
+    assert_eq!(
+        r.stdout.trim(),
+        "",
+        "the Rust build prints nothing on stdout"
+    );
+    assert!(
+        r.stderr.contains("ignored a Go-generation hook call"),
+        "{}",
+        r.stderr
+    );
+}
+
+/// A dangerous command is denied with the same decision in both builds: the answer is a
+/// `hookSpecificOutput` object with `hookEventName` `PreToolUse` and `permissionDecision` `deny`
+/// and a reason. The reason text is each build's own (approved difference
+/// `hook_deny_reason_text`). Go answers on `hook pre-tool`, the Rust build on
+/// `hook-dispatch --host claude --event tool-preflight` (the kept protection, `src/hook_engine.rs`).
+#[test]
+fn a_dangerous_command_is_denied_with_the_same_decision_as_the_go_build() {
+    let Some(go) = go_binary() else { return };
+    assert!(
+        approved("hook_deny_reason_text"),
+        "not on the approved list"
+    );
+    let payload = r#"{"session_id":"s1","hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"rm -rf /"}}"#;
+    let g = run(&go, &["hook", "pre-tool"], payload);
+    let r = run(
+        &PathBuf::from(RUST),
+        &[
+            "hook-dispatch",
+            "--host",
+            "claude",
+            "--event",
+            "tool-preflight",
+        ],
+        payload,
+    );
+    let answer = |who: &str, out: &Run| -> Value {
+        serde_json::from_str(out.stdout.trim())
+            .unwrap_or_else(|e| panic!("the {who} build answers JSON ({e}): {}", out.stdout))
+    };
+    let (ga, ra) = (answer("Go", &g), answer("Rust", &r));
+    // Oracle sanity: the Go build denies this command with the written shape.
+    assert_eq!(
+        ga["hookSpecificOutput"]["hookEventName"], "PreToolUse",
+        "{ga}"
+    );
+    assert_eq!(
+        ga["hookSpecificOutput"]["permissionDecision"], "deny",
+        "{ga}"
+    );
+    for key in ["hookEventName", "permissionDecision"] {
+        assert_eq!(
+            ra["hookSpecificOutput"][key], ga["hookSpecificOutput"][key],
+            "{key}: Rust {ra} against Go {ga}"
+        );
+    }
+    let reason = |a: &Value| {
+        a["hookSpecificOutput"]["permissionDecisionReason"]
+            .as_str()
+            .unwrap_or("")
+            .to_string()
+    };
+    let (gr, rr) = (reason(&ga), reason(&ra));
+    assert!(
+        !gr.is_empty() && !rr.is_empty(),
+        "both say why: {gr:?} {rr:?}"
+    );
+    assert_ne!(
+        gr, rr,
+        "the reasons are equal now: remove the entry from the approved list"
+    );
+}
+
+/// A harmless command: Go answers an explicit allow decision, the Rust build stays silent (both
+/// let it run). On the approved list as `hook_allow_is_silent`.
+#[test]
+fn a_harmless_command_is_allowed_silently_by_the_rust_build_on_purpose() {
+    let Some(go) = go_binary() else { return };
+    assert!(approved("hook_allow_is_silent"), "not on the approved list");
+    let payload = r#"{"session_id":"s1","hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"ls"}}"#;
+    let g = run(&go, &["hook", "pre-tool"], payload);
+    let r = run(
+        &PathBuf::from(RUST),
+        &[
+            "hook-dispatch",
+            "--host",
+            "claude",
+            "--event",
+            "tool-preflight",
+        ],
+        payload,
+    );
+    assert_eq!(g.code, Some(0), "{}", g.stderr);
+    assert_eq!(r.code, Some(0), "{}", r.stderr);
+    let answer: Value = serde_json::from_str(g.stdout.trim()).expect("the Go build answers JSON");
+    assert_eq!(
+        answer["hookSpecificOutput"]["permissionDecision"], "allow",
+        "{answer}"
+    );
+    assert_eq!(
+        r.stdout.trim(),
+        "",
+        "the Rust build prints nothing for an allow"
+    );
+}
+
+/// Both builds read `.moai/config/sections/statusline.yaml` of the folder and obey the model
+/// switch `statusline.segments.model` (the Rust build reads the Go file on purpose,
+/// `src/statusline/state.rs`): `false` hides the model name, `true` shows it. A folder without
+/// the file shows it too.
+#[test]
+fn the_status_line_obeys_the_model_switch_of_statusline_yaml_like_the_go_build() {
+    let Some(go) = go_binary() else { return };
+    let rust = PathBuf::from(RUST);
+    let payload = r#"{"model":{"display_name":"Cfg Probe"}}"#;
+    let file = ".moai/config/sections/statusline.yaml";
+    // (case, file text, shown)
+    let cases: [(&str, Option<&str>, bool); 3] = [
+        (
+            "model_false_hides_the_name",
+            Some("statusline:\n  segments:\n    model: false\n"),
+            false,
+        ),
+        (
+            "model_true_shows_the_name",
+            Some("statusline:\n  segments:\n    model: true\n"),
+            true,
+        ),
+        ("no_file_shows_the_name", None, true),
+    ];
+    for (case, text, visible) in cases {
+        let files: Vec<(&str, &str)> = text.map(|t| (file, t)).into_iter().collect();
+        let g = run_with(&go, &["statusline"], payload, &files);
+        let r = run_with(&rust, &["statusline"], payload, &files);
+        let (gs, rs) = (shown(&g, &["Cfg Probe"]), shown(&r, &["Cfg Probe"]));
+        assert_eq!(
+            !gs.is_empty(),
+            visible,
+            "{case}: the Go build shows {gs:?} (oracle sanity)"
+        );
+        assert_eq!(
+            rs,
+            gs,
+            "{case}: Rust {rs:?} against Go {gs:?}\nrust: {}",
+            plain(&r.stdout)
+        );
+    }
+}
+
+/// Without the Go build the tests print the reason and pass: the lookup answers the reason for
+/// a path that is no file, for no value at all, and finds a file given by the variable or by
+/// the home folder.
+#[test]
+fn an_absent_go_build_skips_with_a_reason() {
+    let tmp = TempDir::new().unwrap();
+    let home = tmp.path().join("home");
+    let missing = tmp.path().join("no-such-binary");
+    let reason = locate(Some(missing.clone()), Some(home.clone())).unwrap_err();
+    assert!(
+        reason.contains("absent") && reason.contains("MOAI_GO_BIN"),
+        "{reason}"
+    );
+    assert!(locate(None, Some(home.clone()))
+        .unwrap_err()
+        .contains("absent"));
+    assert!(locate(None, None).unwrap_err().contains("no MOAI_GO_BIN"));
+    let bin = home.join("go/bin/moai.old");
+    fs::create_dir_all(bin.parent().unwrap()).unwrap();
+    fs::write(&bin, "").unwrap();
+    assert_eq!(locate(None, Some(home.clone())).unwrap(), bin);
+    let given = tmp.path().join("given");
+    fs::write(&given, "").unwrap();
+    assert_eq!(locate(Some(given.clone()), Some(home)).unwrap(), given);
+}
+
+/// Every case name the tests above consult through `approved` — the approved list may hold no
+/// other entry, so a fake or stale entry fails instead of passing silently (leader note 2687
+/// N7, the audit of PR #3226).
+const CONSULTED_CASES: [&str; 4] = [
+    "layout_of_the_status_line",
+    "hook_call_pre_tool",
+    "hook_deny_reason_text",
+    "hook_allow_is_silent",
+];
+
+/// The approved list holds nothing that no test consults, and every entry keeps its reason —
+/// a made-up entry, or one whose test was deleted, makes this test fail.
+#[test]
+fn every_approved_difference_entry_is_consulted_by_a_test() {
+    let list: Value = serde_json::from_str(APPROVED).unwrap();
+    let entries = list["differences"].as_array().expect("differences array");
+    assert!(!entries.is_empty(), "the approved list is empty");
+    for entry in entries {
+        let case = entry["case"]
+            .as_str()
+            .unwrap_or_else(|| panic!("an approved entry without a case name: {entry}"));
+        assert!(
+            CONSULTED_CASES.contains(&case),
+            "approved-differences.json holds {case:?}, which no test consults — remove the \
+             entry or write the test that checks the difference still exists"
+        );
+        assert!(
+            entry["reason"].as_str().is_some_and(|r| !r.is_empty()),
+            "the approved entry {case:?} has no reason"
+        );
+    }
+}

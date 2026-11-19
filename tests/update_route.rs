@@ -177,6 +177,8 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
         "the recommended option is still listed first and marked in its label text",
         "A cancelled, empty, timed-out or unanswered result is not a pick: nothing runs, the step stays open and is reported as open",
         "never go on by best judgment",
+        // N9: a selection that mixes a case-(2) option with ordinary ones.
+        "A question that holds any case-(2) option is a case-(2) question as a whole, even when its other options are ordinary steps",
         "\"I closed the other sessions\"",
         // N6: a secret never passes through the session.
         "A secret value never goes through a question tool, a command argument or this session's output",
@@ -204,6 +206,12 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
                 // B1: Codex's own Default-mode instruction must not decide a case-(2) question.
                 "continue with best judgment",
                 "for a case-(2) question never do that: no answer is not a pick (rule 3)",
+                // N10: Default mode's own ban on permission requests through the tool, quoted
+                // from the installed Codex 0.170.0, and how the pick is asked instead.
+                "In Default mode a case-(2) pick is not asked through `request_user_input` at all",
+                "Never use the `request_user_input` tool for permission requests or permission-related escalations",
+                "ask it as plain text with numbered choices, the recommended one first, say that it is the fallback, and wait for the reply",
+                "Ordinary picks and Plan mode keep the tool",
                 // N2: Plan mode previews and picks; the applies run after it.
                 "In Plan mode only previews and picks happen",
                 "the applies run after the user leaves Plan mode; say so once",
@@ -221,6 +229,9 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
                 "`checked`",
                 // B1: OMP submits the form's values on a timeout, so case (2) presets none.
                 "for a case-(2) question (rule 3) nothing is preselected: no `checked`, no `selected` and no `value`",
+                // N8: the form is submitted on a timeout, so an empty submission is no pick.
+                "the recommendation is named in the label text only",
+                "a submission without a choice is not a pick",
                 "`ask.timeout`",
                 "print mode or a subagent",
                 "in the final answer",
@@ -230,7 +241,7 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
         let r = row(host);
         assert_eq!(r.matches(" | ").count(), 3, "{host}: four cells");
         for t in texts {
-            assert!(r.contains(t), "{host} row lacks {t:?}: {r}");
+            assert!(r.contains(t), "questions.md {host} row lacks {t:?}: {r}");
         }
     }
     // The routes that ask, and the question bank, name the reference.
@@ -275,6 +286,8 @@ fn the_ledger_is_local_cards_and_previews_run_without_asking() {
         "ask once, after the preview is shown",
         "the development method is TDD or preserve-then-change only",
         "the work ledger is the local card ledger (`moai card`): it is not asked, it is never recorded under `development_methods`, and GitHub Issues are not offered as a ledger or a method",
+        // N8: creating the ledger is a write under the real HOME and waits for its own pick.
+        "Which ledger is used is what is not asked; creating it writes under the real HOME and waits for its own pick after the read-only `moai ledger-register-plan <project>` preview",
         "relay the `--questions` set through the host's question tool",
         "its `suggested` value first",
         // Audit of 32c514a8ee N3: the route's end.
@@ -325,6 +338,34 @@ fn the_ledger_is_local_cards_and_previews_run_without_asking() {
         "the description still names Issues"
     );
     assert!(skill_md.contains("syncs docs and work cards through one shared workflow"));
+}
+
+/// N9 of the C-51 re-audit: the offer at the end of PROJECT and UPDATE holds only what can run.
+/// A `blocked` step, a `skip` step, a `needs_decision` step with no printed command and a step
+/// under a recorded HOLD are reported, not offered, and an offer that holds a case-(2) step is a
+/// case-(2) question as a whole. Both routes say it in the same words, so a fix of one is a fix
+/// of both.
+#[test]
+fn the_route_end_offer_leaves_out_what_cannot_run() {
+    for (file, tail) in [
+        // The offer sits in the Completion Check of PROJECT and in step 5 of UPDATE.
+        ("workflows/project.md", "## Completion Check"),
+        ("workflows/update.md", "5. **Re-run and report.**"),
+    ] {
+        let text = skill(file);
+        let at = text
+            .find(tail)
+            .unwrap_or_else(|| panic!("{file} lacks {tail:?}"));
+        let offer = squeezed(&text[at..]).to_lowercase();
+        for clause in [
+            "a `blocked` step is not offered",
+            "a `skip` step and a `needs_decision` step that prints no command are reported with their `reason`, not offered",
+            "a step whose target is under a recorded hold is left out of the offer and reported as held",
+            "an offer that holds any case-(2) step is a case-(2) question as a whole",
+        ] {
+            assert!(offer.contains(clause), "{file} lacks {clause:?}");
+        }
+    }
 }
 
 /// #2936 S0 (F6, F16, F24): PROJECT step 2 says the same three things as UPDATE step 2.
