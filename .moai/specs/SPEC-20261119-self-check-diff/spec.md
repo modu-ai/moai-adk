@@ -10,12 +10,12 @@ created: 2026-11-19
 
 ## Intent
 
-PR 역사 분석(752 PR·감사 FAIL 193건)에서 가장 큰 실패 클래스(경계 시험·변이 부재 63, CI 빨강 47, 심볼릭링크/FIFO 37, HOME 격리 24, 크기 한도 21, 도움말 규칙 10 등)를 implementer 가 PR 을 열기 전에 스스로 잡게 해요(사용자 선택 2026-11-17; 리더 ORIGIN note 2344 — Addy Osmani 검증 표). `skills/moai/references/internal/self-check.md` 가 검사마다 명령과 함께 한 줄씩 목록을 주고, `tools/self_check.sh` 가 기계로 확인 가능한 항목을 한 명령으로 돌려 한 줄씩 결과를 내어요. 이 SPEC 은 PR #3203·#3211 시대에 병합된 같은 일의 SDD 뒤붙이기예요(전환기 예외라 SPEC 이 없었음).
+PR 역사 분석(752 PR·감사 FAIL 193건)에서 가장 큰 실패 클래스(경계 시험·변이 부재 63, CI 빨강 47, 심볼릭링크/FIFO 37, HOME 격리 24, 크기 한도 21, 도움말 규칙 10 등)를 implementer 가 PR 을 열기 전에 스스로 잡게 해요(사용자 선택 2026-11-17; 리더 ORIGIN note 2344 — Addy Osmani 검증 표). `skills/moai/references/internal/self-check.md` 가 검사마다 명령과 함께 한 줄씩 목록을 주고, `tools/self_check.sh` 가 기계로 확인 가능한 항목을 한 명령으로 돌려 한 줄씩 결과를 내어요. 이 SPEC 은 PR #3150(병합 68944fc322, 2026-11-17)로 병합된 같은 일의 SDD 뒤붙이기예요(전환기 예외라 SPEC 이 없었음).
 
 ## Non-goals
 
 - 감사 관문·CI 대체 — 이 목록은 스스로 돌리는 사전 점검이지 통과 증명이 아니에요.
-- `mode-agent.md` 에 이름 올리기 — 파일이 65,509/65,536 바이트로 자리가 없어 리더 수정(2057)으로 `references/chains/index.md` 가 대신하고, mode-agent.md 는 자리가 나면 따라와요.
+- `mode-agent.md` 의 다른 내용 고치기 — 리더 수정(2057) 당시(421b11a2c9)에는 65,509/65,536 바이트로 자리가 없어 `references/chains/index.md` 가 대신했고, C-53 S5 로 줄어든 팁(47,928 바이트)에서 이 라운드가 heavy-checks 단계에 이름 한 줄을 더했어요; 그 외 각색은 이 카드 밖이에요.
 - 새 검사 항목 발명 — 인도된 19개 항목(시험 10·패키지·문서 4·PR 5)이 기준이에요.
 
 ## Requirements
@@ -29,7 +29,7 @@ PR 역사 분석(752 PR·감사 FAIL 193건)에서 가장 큰 실패 클래스(�
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-5): self-check.md 가 19개 항목을 명령과 함께 나열하고, agents/impl.md 와 references/chains/index.md 가 internal/self-check 를 이름 올려요(mode-agent.md 는 리더 수정 2057 대로 이후).
+- AC-1 (REQ-1, REQ-5): self-check.md 가 19개 항목을 명령과 함께 나열하고, agents/impl.md·references/chains/index.md·mode-agent.md 세 곳이 internal/self-check 를 이름 올려요(mode-agent.md 는 수리 라운드에 추가 — 리더 수정 2057 의 "C-53 S5 뒤 따름" 조건이 팁에서 성립).
   verify: `rg -c "^[0-9]+\\." skills/moai/references/internal/self-check.md`
   verify: `rg -n "internal/self-check" agents/impl.md skills/moai/references/chains/index.md`
 - AC-2 (REQ-2, REQ-3): 한 명령이 기계 항목을 순서대로 돌리고 항목별 줄과 요약 줄을 내며, 슬롯 거부(exit 75)는 not run 으로 읽혀요.
@@ -49,6 +49,7 @@ PR 역사 분석(752 PR·감사 FAIL 193건)에서 가장 큰 실패 클래스(�
 
 1. 팁에서 인도물 확인: self-check.md 항목 수·명령, self_check.sh 항목 순서·dry-run, 언급 두 곳, 시험 32개.
 2. 이 SPEC 작성·연결·PR(tier 0 — 문서만).
+3. 수리 라운드(감사 B1·비차단 인용 오류): mode-agent.md 의 heavy-checks 단계에 internal/self-check 이름 한 줄 추가(리더 수정 2057 의 "S5 뒤 따름" 조건이 팁에서 성립) + 소스 매니페스트 갱신; 인용(#3150)과 AC-2 요약 인용(logs= 필드) 수정.
 
 ## Risks
 
@@ -59,11 +60,11 @@ PR 역사 분석(752 PR·감사 FAIL 193건)에서 가장 큰 실패 클래스(�
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
-| D-1 | mode-agent.md 대신 agents/impl.md·chains/index.md 가 이름 올림 | 리더 수정 2057(감사 B1): mode-agent.md 65,509/65,536 바이트로 자리 없음 | 자리가 나면 mode-agent.md 추가 |
+| D-1 | agents/impl.md·chains/index.md 가 이름 올리고, mode-agent.md 는 heavy-checks 단계에 한 줄(수리 라운드 추가) | 리더 수정 2057(감사 B1) 당시 mode-agent.md 65,509/65,536 바이트로 자리 없음; C-53 S5 후 팁 47,928 바이트로 조건 성립 | mode-agent.md 줄 제거 |
 | D-2 | SPEC 은 인도된 상태를 기록(새 항목 발명 없음) | SDD 뒤붙이기 라운드 — 코드 변화 없음 | 후속 카드로 항목 확장 |
 
 ## Result
 
-- AC-1: met — 2026-11-19 이 worktree(팁 39fa580c)에서 `rg -c "^[0-9]+\\." skills/moai/references/internal/self-check.md` = 19; `rg -n "internal/self-check"` → agents/impl.md:7·52, references/chains/index.md:23.
-- AC-2: met — `SELF_CHECK_DRY_RUN=1 tools/self_check.sh` 가 항목별 dry-run 줄(bin-moai…manifest·diff-check·python)과 요약 줄(`self-check: head=39fa580c… result=fail dirty=1 dry-run=1 failed=none not_run=none`)을 출력(untracked SPEC 으로 dirty=1 은 dry-run 기대 동작).
+- AC-1: met — 2026-11-19 이 worktree(팁 39fa580c)에서 `rg -c "^[0-9]+\\." skills/moai/references/internal/self-check.md` = 19; `rg -n "internal/self-check"` → agents/impl.md:7·52, references/chains/index.md:23, mode-agent.md:63(수리 라운드 추가; 크기 47,928 바이트+한 줄, 한도 65,536 이내).
+- AC-2: met — `SELF_CHECK_DRY_RUN=1 tools/self_check.sh` 가 항목별 dry-run 줄(bin-moai…manifest·diff-check·python)과 요약 줄(`self-check: head=39fa580c… result=fail dirty=1 dry-run=1 failed=none not_run=none logs=target/self-check`)을 출력(untracked SPEC 으로 dirty=1 은 dry-run 기대 동작).
 - AC-3: met — `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'self_check_test.py'` → Ran 32 tests, OK(같은 worktree).
