@@ -288,11 +288,21 @@ pub fn link(rows: Option<&[StoredRow]>, lane: &LaneInput) -> LinkView {
 }
 
 fn bundle(run: Run, prs: &[Pr], lane: &LaneInput) -> Bundle {
-    // The pull request of a bundle is the one that ever showed the bundle's source SHA as its head.
-    let number = prs
+    // The pull request of a bundle is one that showed the bundle's source SHA as its head. When
+    // several did, the one that still shows it now comes first; none does, the latest to have
+    // shown it (the run is then no longer in effect).
+    let now = |n: u64| {
+        prs.iter()
+            .filter(|p| p.number == n)
+            .max_by_key(|p| p.seq)
+            .map(|p| p.head.as_str())
+    };
+    let shown: Vec<&Pr> = prs.iter().filter(|p| p.head == run.source_sha).collect();
+    let number = shown
         .iter()
-        .filter(|p| p.head == run.source_sha)
+        .filter(|p| now(p.number) == Some(run.source_sha.as_str()))
         .max_by_key(|p| p.seq)
+        .or_else(|| shown.iter().max_by_key(|p| p.seq))
         .map(|p| p.number);
     let pr = number.and_then(|n| {
         let of_n: Vec<&Pr> = prs.iter().filter(|p| p.number == n).collect();

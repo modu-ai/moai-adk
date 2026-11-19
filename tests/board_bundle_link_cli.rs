@@ -218,16 +218,40 @@ fn the_link_view_writes_nothing() {
         .filter(|l| !l.trim_start().starts_with("//"))
         .collect::<Vec<_>>()
         .join("\n");
+    // The module may import only serde, serde_json and one std collection, and may name `std::`
+    // nowhere else: no file, io, thread, clock, process, network or database path can slip in.
+    let uses: Vec<&str> = code
+        .lines()
+        .map(str::trim)
+        .filter(|l| l.starts_with("use "))
+        .collect();
+    assert_eq!(
+        uses,
+        [
+            "use serde::Serialize;",
+            "use serde_json::Value;",
+            "use std::collections::BTreeMap;"
+        ],
+        "the pure module imports only what it needs"
+    );
+    assert_eq!(
+        code.matches("std::").count(),
+        1,
+        "`std::` only in the import"
+    );
     for banned in [
-        "std::fs",
-        "std::process",
-        "std::net",
-        "std::env",
-        "File::",
-        "OpenOptions",
+        "crate::",
+        "println!",
+        "eprintln!",
+        "dbg!",
+        "include_str!",
+        "include_bytes!",
+        "unsafe",
+        "extern ",
         "rusqlite",
-        "Command::",
-        "TcpStream",
+        "reqwest",
+        "ureq",
+        "hyper",
     ] {
         assert!(!code.contains(banned), "the pure module names `{banned}`");
     }
@@ -436,6 +460,35 @@ fn the_newest_pull_request_row_wins() {
     ];
     let view = link(Some(&rows), &no_lane());
     assert_eq!(one_bundle(&view).pr.as_ref().unwrap().state, "merged");
+}
+
+/// Two pull requests showed the run's source SHA: the one that still shows it now is the bundle's,
+/// even when the other showed it later (it has moved on).
+#[test]
+fn a_pull_request_that_still_shows_the_head_is_preferred() {
+    let (a, b) = (sha('a'), sha('b'));
+    let rows = vec![
+        run_with(1, "m-flow/bundle-1", &a, 0, &[SPEC]),
+        pr_with(2, 7, &a, "open", serde_json::Value::Null),
+        pr_with(3, 9, &a, "open", serde_json::Value::Null),
+        pr_with(4, 9, &b, "open", serde_json::Value::Null),
+    ];
+    let view = link(Some(&rows), &no_lane());
+    let bundle = one_bundle(&view);
+    assert_eq!(bundle.pr.as_ref().unwrap().number, 7, "{view:?}");
+    assert_eq!(bundle.run_effect, Effect::Standing);
+    // When none shows it any more, the latest to have shown it is named and the run lapsed.
+    let rows = vec![
+        run_with(1, "m-flow/bundle-1", &a, 0, &[SPEC]),
+        pr_with(2, 7, &a, "open", serde_json::Value::Null),
+        pr_with(3, 7, &b, "open", serde_json::Value::Null),
+        pr_with(4, 9, &a, "open", serde_json::Value::Null),
+        pr_with(5, 9, &b, "open", serde_json::Value::Null),
+    ];
+    let view = link(Some(&rows), &no_lane());
+    let bundle = one_bundle(&view);
+    assert_eq!(bundle.pr.as_ref().unwrap().number, 9, "{view:?}");
+    assert_eq!(bundle.run_effect, Effect::Lapsed);
 }
 
 /// A later run record of the same bundle replaces the earlier one; a new source SHA is a new bundle.
