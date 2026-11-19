@@ -67,4 +67,6 @@ parent: SPEC-20261118-sdd-foundation
 
 ## Result
 
-(작성 예정 — GREEN 뒤 AC마다 한 줄)
+- AC-1: met — 네 파일의 규칙 문장이 references/rule-history.md 에 수록돼요: core-rules 21행 수기 판정표 + audit 33·mode-agent 60·mode-leader 41행 기계 목록(추출기·blame·핀 대응 방법 명시). 바이트(wc -c): core-rules.md 3,961→3,747 · audit.md 20,334→19,884 · mode-agent.md 47,928→변경 없음(REQ-7: 문장마다 인라인 근거+86개 핀 문구라 이동 대상 없음 — 목록만) · mode-leader.md 마지막 조각 대기(리더 결정).
+- AC-2: met — core-rules 에서 근거 1·계기 없음 11개+꼬리 2개가 history 절로 이동(번호는 핀 때문에 포인터 유지); 생존 규칙마다 강제 시험 이름 또는 'text only' 표기. Web 절 병합은 제외됨(리더 ①; #2517 세-복사 동일 핀).
+- AC-3: 부분 — repo_scans 25·skill_references 5·skill_web_pages 4·agent_defs internal_references 1/1·core_rules_2876 6/6 OK; tip(bdb4d3db8c) 빌드 trailer-check findings 0. cargo test --lib 전체·home_isolation_scan·clippy --all-targets·fmt·workflow_size_budget 은 push 전 최종 배터리로 돌려 결과와 함께 LANE-READY 에 적어요; source-manifest 갱신은 마지막 조각(리더 결정)으로 이 시점 알려진 빨강이에요.
