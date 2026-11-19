@@ -81,4 +81,12 @@ Order inside a slice: tests first (RED), then the code, then mutants, neighbours
 
 ## Result
 
-Plan only. The implementation starts after PR 3230 merges and C-116 releases `src/ops/card.rs`; this section then gets one `- AC-n: met — evidence` line per criterion.
+Slice A (the writer) is done in this branch; slice B (`src/ops/card.rs`: the session read, the answer, the help) waits for the card that holds that file (C-96 at the time of writing). Base: local `v2026.11.0` 114b443139 (it holds PR 3230, merge 52d9b5dbcf, and C-116). RED first: commit 0fee1189ee (two tests failing for the right reasons: total 7 where 4 was expected, the payload without `session`, and `add_criteria_as` missing so the file did not compile). GREEN: commit 286ae16efb. Gates ran through the heavy-slot wrapper in this worktree's own build folder.
+
+- AC-1: not yet — slice B. The writer half is pinned: `ledger_workflow::criteria_event_records_the_adding_session` stores the session next to `first` and `count`, the actor stays `--by` (`leader` and `someone-else` in the test), and the CLI half (`CLAUDE_CODE_SESSION_ID` to answer and event) needs `src/ops/card.rs`.
+- AC-2: not yet — slice B for the CLI. At the writer: the same test adds with `None` and reads the payload `{"first":2,"count":1,"session":null}`; a session with a line break or 201 characters is refused as `InvalidInput` with the event and row counts unchanged, and a 200-character session is accepted (N and N+1 on `MAX_AUTHOR_CHARS`).
+- AC-3: met at the writer, CLI half in slice B — `criteria_total_is_the_row_count`: rows 1 and 5, two adds answer `added [6, 7]`, `total 4`, the table holds 4 rows, one more add answers `[8]` and 5. The earlier writer test now expects `{"first":3,"count":2,"session":null}` (D-5). Mutants A1 (session left out of the payload), A2 (total back to `highest + n`), A3 (session check dropped) and A4 (`by` written as the session) were all killed (`test result: FAILED`), the file was restored and `git status` was clean afterwards.
+- AC-4: not yet — slice B (the help).
+- AC-5: partly — on this head `ledger_workflow` 26 passed; `card_criterion_add_cli` 7, `card_dispatch_cli` 25, `card_work_cli` 25, `help_layout` 10, `home_isolation_scan` 18, `ledger_recover` 51, `ledger_reservation` 28 (each file's `test result` line read from the run's log), `--lib` 1485 passed; `cargo fmt --check` exit 0. The clippy run and the six pre-READY checks of the final head are in the READY note.
+
+Not done in this slice: REQ-4 and REQ-7 and the CLI half of REQ-1 to REQ-3 (slice B), the operations document row (D-4).
