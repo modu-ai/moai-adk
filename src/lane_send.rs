@@ -74,6 +74,15 @@ pub trait Orca {
     /// `orca terminal send --terminal <handle> --text <text> [--enter] --json`: its standard
     /// output.
     fn send(&self, terminal: &str, text: &str, enter: bool) -> Result<String, String>;
+    /// `orca terminal list --json`: its standard output (`lane-screen --scan`, slice C).
+    fn list(&self) -> Result<String, String>;
+}
+
+/// Reads the screen of `terminal` for a scan: the handle is checked first, so a handle Orca
+/// could read as an option never reaches the program. The detail has no `lane send` wording.
+pub fn read_checked(orca: &dyn Orca, terminal: &str) -> Result<String, String> {
+    check_handle(terminal).map_err(|d| d.trim_start_matches("lane send refused: ").to_string())?;
+    orca.read(terminal)
 }
 
 fn allowed(state: State) -> bool {
@@ -252,7 +261,35 @@ fn first_line(text: &str) -> String {
     }
 }
 
+impl ProcessOrca {
+    /// The `orca` program of this machine: `MOAI_ORCA_BIN` overrides the program name and
+    /// `MOAI_ORCA_TIMEOUT_SECS` (1 to 300) the [`DEFAULT_TIMEOUT_SECS`] limit per call.
+    pub fn from_env() -> ProcessOrca {
+        let secs = std::env::var("MOAI_ORCA_TIMEOUT_SECS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .filter(|s| (1..=300).contains(s))
+            .unwrap_or(DEFAULT_TIMEOUT_SECS);
+        ProcessOrca {
+            program: std::env::var_os("MOAI_ORCA_BIN").unwrap_or_else(|| "orca".into()),
+            timeout: Duration::from_secs(secs),
+        }
+    }
+}
+
 impl Orca for ProcessOrca {
+    fn list(&self) -> Result<String, String> {
+        let called = self.call(&["terminal", "list", "--json"])?;
+        match called.code {
+            Some(0) => Ok(called.stdout),
+            code => Err(format!(
+                "`orca terminal list` exited with {}{}",
+                code.map_or("a signal".to_string(), |c| format!("code {c}")),
+                first_line(&called.stderr)
+            )),
+        }
+    }
+
     fn read(&self, terminal: &str) -> Result<String, String> {
         let called = self.call(&[
             "terminal",
@@ -321,6 +358,9 @@ mod tests {
     }
 
     impl Orca for Fake {
+        fn list(&self) -> Result<String, String> {
+            Err("the fake lists nothing".into())
+        }
         fn read(&self, _: &str) -> Result<String, String> {
             let n = *self.read_calls.borrow();
             *self.read_calls.borrow_mut() += 1;
@@ -333,6 +373,19 @@ mod tests {
                 None => Ok("{\"ok\":true}".into()),
             }
         }
+    }
+
+    #[test]
+    fn read_checked_never_hands_a_bad_handle_to_orca() {
+        let orca = fake(&[idle()]);
+        for bad in ["-x", "", "a b", "é", &"a".repeat(MAX_HANDLE_CHARS + 1)] {
+            let err = read_checked(&orca, bad).unwrap_err();
+            assert!(err.contains("handle"), "{bad}: {err}");
+            assert!(!err.contains("lane send"), "{bad}: {err}");
+        }
+        assert_eq!(*orca.read_calls.borrow(), 0);
+        assert!(read_checked(&orca, &"a".repeat(MAX_HANDLE_CHARS)).is_ok());
+        assert_eq!(*orca.read_calls.borrow(), 1);
     }
 
     fn screen(rows: &[&str]) -> String {

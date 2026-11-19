@@ -759,7 +759,10 @@ esac
         assert_eq!(rows[0]["title"], json!("work lane"));
         assert_eq!(rows[1]["branch"], json!("spec/b"));
         assert!(
-            rows[1]["evidence"].as_str().unwrap().contains("Yes"),
+            rows[1]["evidence"]
+                .as_str()
+                .unwrap()
+                .contains("Do you want to proceed?"),
             "{}",
             rows[1]
         );
@@ -780,10 +783,11 @@ esac
         );
         let table = lines(res);
         assert_eq!(table.len(), 4, "{table:?}");
-        for (line, (handle, state)) in table[1..]
-            .iter()
-            .zip([("t_work", "working"), ("t_ask", "permission_prompt"), ("t_gone", "unreachable")])
-        {
+        for (line, (handle, state)) in table[1..].iter().zip([
+            ("t_work", "working"),
+            ("t_ask", "permission_prompt"),
+            ("t_gone", "unreachable"),
+        ]) {
             assert!(
                 line.contains(handle) && line.contains(state),
                 "{line} / {handle} {state}"
@@ -828,12 +832,12 @@ esac
         let res = r.result();
         let rows = res["terminals"].as_array().unwrap();
         let states: Vec<_> = rows.iter().map(|t| t["state"].as_str().unwrap()).collect();
-        assert_eq!(states, ["unreachable", "unreachable", "unreachable", "idle"]);
+        assert_eq!(
+            states,
+            ["unreachable", "unreachable", "unreachable", "idle"]
+        );
         for row in &rows[..3] {
-            assert!(
-                row["reason"].as_str().unwrap().contains("handle"),
-                "{row}"
-            );
+            assert!(row["reason"].as_str().unwrap().contains("handle"), "{row}");
         }
         assert_eq!(rows[1]["handle"], Value::Null);
         // Only the good handle reached Orca.
@@ -856,7 +860,10 @@ esac
         let row = &r.result()["terminals"][0];
         assert_eq!(row["state"], json!("unreachable"), "{row}");
         assert!(
-            row["reason"].as_str().unwrap().contains("not an Orca answer"),
+            row["reason"]
+                .as_str()
+                .unwrap()
+                .contains("not an Orca answer"),
             "{row}"
         );
     }
@@ -921,6 +928,44 @@ esac
         assert_eq!(rows[2]["reset"], Value::Null);
     }
 
+    /// Re-audit R-N3 (note 3256): a Yes/No menu wins over a usage limit in the classifier, so the
+    /// lane reads `permission_prompt` with no reset time and drops out of a list of limits. The
+    /// scan keeps the reset time of a limit message that is on a `permission_prompt` screen too.
+    #[test]
+    fn lane_screen_scan_reset_is_kept_when_a_yes_no_menu_hides_the_usage_limit() {
+        let fake = Fake::new(&list(
+            &[term("t_both", "both", "b"), term("t_menu", "menu", "b")],
+            2,
+            false,
+        ));
+        let both = format!(
+            "  5-hour limit reached ∙ resets Nov 20 at 7pm (Asia/Seoul)\n{}",
+            fixture("synthetic-permission-prompt.txt")
+        );
+        fake.screen("t_both", &both);
+        fake.screen("t_menu", &fixture("synthetic-permission-prompt.txt"));
+        let dir = tempfile::tempdir().unwrap();
+        let r = fake.run(dir.path(), dir.path(), &[]);
+        let res = r.result();
+        let rows = res["terminals"].as_array().unwrap();
+        assert_eq!(rows[0]["state"], json!("permission_prompt"), "{}", rows[0]);
+        assert_eq!(rows[0]["reset"]["utc"], json!("2026-11-20T10:00:00Z"));
+        assert!(
+            rows[0]["reason"].as_str().unwrap().contains("usage-limit"),
+            "{}",
+            rows[0]
+        );
+        assert!(
+            lines(res)[1].contains("2026-11-20T10:00:00Z"),
+            "{:?}",
+            lines(res)
+        );
+        // A menu with no limit message has no reset time.
+        assert_eq!(rows[1]["state"], json!("permission_prompt"));
+        assert_eq!(rows[1]["reset"], Value::Null);
+        assert!(!rows[1]["reason"].as_str().unwrap().contains("usage-limit"));
+    }
+
     #[test]
     fn lane_screen_scan_truncated_list_says_how_many_of_how_many() {
         let fake = Fake::new(&list(
@@ -948,7 +993,11 @@ esac
     fn lane_screen_scan_fails_when_the_list_cannot_be_read_and_sends_and_writes_nothing() {
         type Setup = fn(&Fake);
         let cases: [(&str, Setup, &str); 4] = [
-            ("list exits non-zero", |f| f.flag("list-fail"), "exited with code 5"),
+            (
+                "list exits non-zero",
+                |f| f.flag("list-fail"),
+                "exited with code 5",
+            ),
             (
                 "list is not JSON",
                 |f| fs::write(f.dir.path().join("list.json"), "orca says hello").unwrap(),
@@ -967,7 +1016,9 @@ esac
             ),
             (
                 "list has no terminals array",
-                |f| fs::write(f.dir.path().join("list.json"), r#"{"ok":true,"result":{}}"#).unwrap(),
+                |f| {
+                    fs::write(f.dir.path().join("list.json"), r#"{"ok":true,"result":{}}"#).unwrap()
+                },
                 "list could not be read",
             ),
         ];
@@ -978,7 +1029,10 @@ esac
             let home = tempfile::tempdir().unwrap();
             let r = fake.run(cwd.path(), home.path(), &[]);
             let message = failure(&r);
-            assert!(message.contains("list could not be read"), "{name}: {message}");
+            assert!(
+                message.contains("list could not be read"),
+                "{name}: {message}"
+            );
             assert!(message.contains(detail), "{name}: {message}");
             // Only the list was asked for: no read, no send, no file.
             assert_eq!(fake.calls(), ["terminal list --json"], "{name}");
@@ -998,13 +1052,45 @@ esac
         assert!(!fake.sent());
     }
 
+    /// Boundary N / N+1: at most 200 terminals are read; one more is "cut short" and says so.
+    #[test]
+    fn lane_screen_scan_reads_at_most_200_terminals() {
+        for (n, cut) in [(200usize, false), (201, true)] {
+            let terminals: Vec<Value> = (0..n)
+                .map(|i| term(&format!("t{i}"), "lane", "spec/x"))
+                .collect();
+            let fake = Fake::new(&list(&terminals, n, false));
+            let dir = tempfile::tempdir().unwrap();
+            let r = fake.run(dir.path(), dir.path(), &[]);
+            let res = r.result();
+            assert_eq!(res["count"], json!(n.min(200)), "n={n}");
+            assert_eq!(res["total"], json!(n), "n={n}");
+            assert_eq!(res["truncated"], json!(cut), "n={n}");
+            assert_eq!(fake.calls().len(), 1 + n.min(200), "n={n}");
+            let table = lines(res);
+            let last = table.last().unwrap();
+            assert_eq!(last.contains("cut short"), cut, "n={n}: {last}");
+            if cut {
+                assert!(last.contains("200 of 201"), "{last}");
+            }
+        }
+    }
+
     #[test]
     fn lane_screen_scan_cannot_be_combined_with_home() {
         let fake = Fake::new(&list(&[term("t_a", "a", "b")], 1, false));
         let dir = tempfile::tempdir().unwrap();
-        let r = fake.run(dir.path(), dir.path(), &["--home", dir.path().to_str().unwrap()]);
+        let r = fake.run(
+            dir.path(),
+            dir.path(),
+            &["--home", dir.path().to_str().unwrap()],
+        );
         assert_ne!(r.code, 0, "{}", r.envelope);
         assert!(r.stderr.contains("--home"), "{}", r.stderr);
-        assert!(fake.calls().is_empty(), "Orca must not run: {:?}", fake.calls());
+        assert!(
+            fake.calls().is_empty(),
+            "Orca must not run: {:?}",
+            fake.calls()
+        );
     }
 }

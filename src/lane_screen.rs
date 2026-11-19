@@ -101,10 +101,15 @@ fn clean(row: &str) -> String {
 
 /// `row` cut to [`EVIDENCE_CHARS`] characters.
 fn cut(row: &str) -> String {
-    if row.chars().count() <= EVIDENCE_CHARS {
+    cut_to(row, EVIDENCE_CHARS)
+}
+
+/// `row` cut to `max` characters; a longer row ends with `…`.
+fn cut_to(row: &str, max: usize) -> String {
+    if row.chars().count() <= max {
         return row.to_string();
     }
-    let mut s: String = row.chars().take(EVIDENCE_CHARS).collect();
+    let mut s: String = row.chars().take(max).collect();
     s.push('…');
     s
 }
@@ -671,6 +676,17 @@ pub fn observe(input: &str) -> (Screen, Seen) {
     (screen, seen)
 }
 
+/// The `reset` object of an answer for a reset time read from the screen text.
+fn reset_json(found: &Reset) -> serde_json::Value {
+    use crate::forge::policy::format_utc;
+    match found {
+        Reset::Utc(t) => serde_json::json!({"utc": format_utc(*t), "source": "screen"}),
+        Reset::Unknown { raw, why } => {
+            serde_json::json!({"utc": null, "unknown": true, "why": why, "raw": cut(raw)})
+        }
+    }
+}
+
 /// The answer of `moai lane-screen`: the state, its evidence row and reason, the reset time of a
 /// usage limit (from the lane's `home` when given), the `pane` object `lane-status` takes, and
 /// the count of non-blank rows. `now` is Unix seconds.
@@ -694,16 +710,11 @@ pub fn report(input: &str, home: Option<&std::path::Path>, now: i64) -> serde_js
             until = Some(utc.clone());
             reset = json!({"utc": utc, "source": "home"});
         } else {
-            match reset_of(&screen.rows, now) {
-                Some(Reset::Utc(t)) => {
-                    let utc = format_utc(t);
-                    until = Some(utc.clone());
-                    reset = json!({"utc": utc, "source": "screen"});
+            if let Some(found) = reset_of(&screen.rows, now) {
+                if let Reset::Utc(t) = &found {
+                    until = Some(format_utc(*t));
                 }
-                Some(Reset::Unknown { raw, why }) => {
-                    reset = json!({"utc": null, "unknown": true, "why": why, "raw": cut(&raw)});
-                }
-                None => {}
+                reset = reset_json(&found);
             }
         }
     }
@@ -724,6 +735,166 @@ pub fn report(input: &str, home: Option<&std::path::Path>, now: i64) -> serde_js
         "reset": reset,
         "pane": pane,
     })
+}
+
+/// Most terminals one scan reads; a longer list is read up to here and reported as cut short.
+pub const MAX_SCAN: usize = 200;
+/// Longest title, branch or handle shown, in characters.
+const SHOWN_CHARS: usize = 80;
+
+/// The error text for a terminal list that cannot be read (the program is absent, it failed, or
+/// its answer is not a list).
+pub fn list_error(detail: &str) -> String {
+    format!(
+        "the terminal list could not be read: {}",
+        cut(&clean(detail))
+    )
+}
+
+/// A text somebody else chose (a terminal title or branch), for display: no escape or control
+/// characters, no line-separator or bidirectional character, cut to [`SHOWN_CHARS`].
+fn shown(text: &str) -> String {
+    let safe: String = clean(text)
+        .chars()
+        .filter(|c| !crate::lane_duty::unsafe_char(*c))
+        .collect();
+    cut_to(&safe, SHOWN_CHARS)
+}
+
+/// The scan of `orca terminal list --json` (`list_json`): one row per listed terminal with the
+/// state of its screen, read one terminal at a time through `read` (the handle in, the answer of
+/// `orca terminal read --screen --json` out). A terminal that cannot be read, has no handle or is
+/// not answered with an Orca answer is `unreachable`; the scan goes on. A usage limit carries its
+/// reset time in UTC from the screen text (no `usage-limits.json`: a terminal does not say whose
+/// HOME it is). `now` is Unix seconds. `Err` only when the list itself cannot be read.
+pub fn scan(
+    list_json: &str,
+    read: &mut dyn FnMut(&str) -> Result<String, String>,
+    now: i64,
+) -> Result<serde_json::Value, String> {
+    use serde_json::{json, Map, Value};
+
+    let Ok(Value::Object(answer)) = serde_json::from_str::<Value>(list_json) else {
+        return Err(list_error(
+            "the answer of `orca terminal list` is not an Orca answer",
+        ));
+    };
+    if answer.get("ok") == Some(&Value::Bool(false)) {
+        return Err(list_error("Orca answered with an error"));
+    }
+    let Some(listed) = answer
+        .get("result")
+        .and_then(|r| r.get("terminals"))
+        .and_then(Value::as_array)
+    else {
+        return Err(list_error("the answer holds no `terminals` list"));
+    };
+    let reported = answer
+        .get("result")
+        .and_then(|r| r.get("totalCount"))
+        .and_then(Value::as_u64)
+        .map_or(0, |n| usize::try_from(n).unwrap_or(usize::MAX));
+    let total = reported.max(listed.len());
+    let cut_short = total > listed.len()
+        || listed.len() > MAX_SCAN
+        || answer
+            .get("result")
+            .and_then(|r| r.get("truncated"))
+            .and_then(Value::as_bool)
+            == Some(true);
+
+    let mut terminals = Vec::new();
+    let mut by_state: Map<String, Value> = Map::new();
+    let mut table = vec![format!(
+        "{:<16} {:<18} {:<20} {}",
+        "handle", "state", "reset (UTC)", "branch  title"
+    )];
+    for term in listed.iter().take(MAX_SCAN) {
+        let text = |key: &str| term.get(key).and_then(Value::as_str).map(shown);
+        let handle = text("handle");
+        let (title, branch) = (
+            text("title").unwrap_or_default(),
+            text("branch").unwrap_or_default(),
+        );
+        // (state, reason, evidence, reset) of this terminal.
+        let (state, reason, evidence, reset) = match term.get("handle").and_then(Value::as_str) {
+            None => unreachable_row("the list gives this terminal no handle"),
+            Some(raw) => match read(raw) {
+                Err(d) => unreachable_row(&format!(
+                    "the terminal could not be read: {}",
+                    cut(&clean(&d))
+                )),
+                Ok(out) => {
+                    let input = read_input(&out);
+                    if input.source != "orca:screen" {
+                        unreachable_row("the answer of `orca terminal read` is not an Orca answer")
+                    } else {
+                        let seen = report(&out, None, now);
+                        let state = seen["state"].as_str().unwrap_or("unknown").to_string();
+                        let mut reason = seen["reason"].as_str().unwrap_or("").to_string();
+                        let mut reset = seen["reset"].clone();
+                        // A Yes/No menu wins over a usage limit (R-N3): the lane is still
+                        // stopped by the limit, so its reset time stays in the list.
+                        if state == State::PermissionPrompt.as_str() && reset.is_null() {
+                            if let Some(found) = reset_of(&input.rows, now) {
+                                reset = reset_json(&found);
+                                reason.push_str("; a usage-limit message is also on the screen");
+                            }
+                        }
+                        (state, reason, seen["evidence"].clone(), reset)
+                    }
+                }
+            },
+        };
+        let reset_text = match reset["utc"].as_str() {
+            Some(utc) => utc,
+            None if reset["unknown"] == Value::Bool(true) => "unknown",
+            None => "-",
+        };
+        table.push(format!(
+            "{:<16} {:<18} {:<20} {}  {}",
+            handle.as_deref().unwrap_or("-"),
+            state,
+            reset_text,
+            branch,
+            title
+        ));
+        let n = by_state.get(&state).and_then(Value::as_u64).unwrap_or(0);
+        by_state.insert(state.clone(), json!(n + 1));
+        terminals.push(json!({
+            "handle": handle,
+            "title": title,
+            "branch": branch,
+            "state": state,
+            "reason": reason,
+            "evidence": evidence,
+            "reset": reset,
+        }));
+    }
+    let count = terminals.len();
+    if cut_short {
+        table.push(format!(
+            "{count} of {total} terminals shown: the list was cut short"
+        ));
+    }
+    Ok(json!({
+        "terminals": terminals,
+        "count": count,
+        "total": total,
+        "truncated": cut_short,
+        "by_state": by_state,
+        "table": table,
+    }))
+}
+
+/// The row of a terminal that could not be looked at.
+fn unreachable_row(reason: &str) -> (String, String, serde_json::Value, serde_json::Value) {
+    (
+        State::Unreachable.as_str().to_string(),
+        reason.to_string(),
+        serde_json::Value::Null,
+        serde_json::Value::Null,
+    )
 }
 
 #[cfg(test)]

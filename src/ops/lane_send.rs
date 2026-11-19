@@ -31,7 +31,7 @@ pub struct Args {
 pub const OPERATION: &str = "lane.send";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
-    use moai_cli::lane_status::lane_send::{self, ProcessOrca, DEFAULT_TIMEOUT_SECS};
+    use moai_cli::lane_status::lane_send::{self, ProcessOrca};
 
     let now = match args.now.as_deref() {
         Some(s) => {
@@ -42,14 +42,6 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             .map_err(|_| "the clock is before 1970")?
             .as_secs() as i64,
     };
-    let secs = std::env::var("MOAI_ORCA_TIMEOUT_SECS")
-        .ok()
-        .and_then(|v| v.parse::<u64>().ok())
-        .filter(|s| (1..=300).contains(s))
-        .unwrap_or(DEFAULT_TIMEOUT_SECS);
-    let orca = ProcessOrca {
-        program: std::env::var_os("MOAI_ORCA_BIN").unwrap_or_else(|| "orca".into()),
-        timeout: std::time::Duration::from_secs(secs),
-    };
+    let orca = ProcessOrca::from_env();
     lane_send::send(&orca, &args.terminal, &args.text, args.enter, now)
 }
