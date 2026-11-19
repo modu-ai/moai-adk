@@ -14,6 +14,8 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 
+mod common;
+
 const REF: &str = "user-pick:update-models";
 /// A text that must never appear in a result or a printed line.
 const MARKER: &str = "BEFORE-MARKER-TEXT";
@@ -386,7 +388,11 @@ fn a_receipt_that_lacks_a_before_field_is_damaged_and_deletes_nothing() {
         let name = format!("models-{}-1", 100 + i);
         plant(&h.path, &name, receipt);
         let refused = revert(&h.path, &name, REF).unwrap_err();
-        assert_eq!(refused, "models receipt is damaged", "{why}");
+        assert_eq!(
+            refused,
+            "invalid models receipt: the fields the revert needs are missing or do not hash",
+            "{why}"
+        );
         assert_eq!(
             fs::read_to_string(&path).unwrap(),
             saved,
@@ -446,9 +452,151 @@ fn a_receipt_id_outside_the_shape_is_refused_as_unknown() {
     ];
     for given in bad {
         let refused = revert(&h.path, &given, REF).unwrap_err();
-        assert_eq!(refused, "unknown models receipt id", "{given:?}");
+        assert_eq!(refused, "invalid models receipt id", "{given:?}");
     }
     assert_eq!(fs::read_to_string(&path).unwrap(), saved, "unchanged");
+}
+
+/// SPEC-20261119-models-revert-reporting AC-1: a marker write that cannot happen refuses
+/// before the settings file is touched, says nothing was changed, and a retry completes.
+#[test]
+fn a_failed_marker_write_changes_nothing_and_says_so() {
+    let h = home();
+    let before = r#"{"launcher":{}}"#;
+    let path = write_settings(&h.path, before, 0o600);
+    let (result, _) = save(&h.path);
+    let id = result["receipt"].as_str().unwrap().to_string();
+    let saved = fs::read_to_string(&path).unwrap();
+    // The marker path is taken by a directory, so its write cannot succeed.
+    fs::create_dir(receipts(&h.path).join(format!("{id}.reverted.json"))).unwrap();
+
+    let refused = revert(&h.path, &id, REF).unwrap_err();
+    assert!(
+        refused.contains("nothing was changed"),
+        "the refusal must say nothing was changed: {refused}"
+    );
+    assert_eq!(
+        fs::read_to_string(&path).unwrap(),
+        saved,
+        "the settings file is untouched"
+    );
+
+    // The obstacle gone, the same command completes.
+    fs::remove_dir(receipts(&h.path).join(format!("{id}.reverted.json"))).unwrap();
+    let reverted = revert(&h.path, &id, REF).unwrap();
+    assert_eq!(reverted["state"], json!("reverted"), "{reverted}");
+    assert_eq!(fs::read_to_string(&path).unwrap(), before);
+}
+
+/// AC-2: a marker without the reverted file is a dead run's window — the revert finishes
+/// instead of refusing; a marker with the file already back stays a refusal.
+#[test]
+fn a_marker_from_a_dead_run_resumes_the_revert() {
+    let h = home();
+    let before = r#"{"launcher":{}}"#;
+    let path = write_settings(&h.path, before, 0o600);
+    let (result, _) = save(&h.path);
+    let id = result["receipt"].as_str().unwrap().to_string();
+
+    // The window: the marker is written, the revert never happened.
+    plant(
+        &h.path,
+        &format!("{id}.reverted"),
+        &json!({"schema_version": 1, "operation": "update.models_revert", "receipt": id}),
+    );
+    let reverted = revert(&h.path, &id, REF).unwrap();
+    assert_eq!(reverted["state"], json!("reverted"), "{reverted}");
+    assert_eq!(fs::read_to_string(&path).unwrap(), before);
+
+    // A file that no longer matches the receipt stays refused.
+    let (result2, _) = save(&h.path);
+    let id2 = result2["receipt"].as_str().unwrap().to_string();
+    plant(
+        &h.path,
+        &format!("{id2}.reverted"),
+        &json!({"schema_version": 1, "operation": "update.models_revert", "receipt": id2}),
+    );
+    fs::write(&path, "{ \"edited\": true }").unwrap();
+    let refused = revert(&h.path, &id2, REF).unwrap_err();
+    assert!(refused.contains("already reverted"), "{refused}");
+    assert_eq!(fs::read_to_string(&path).unwrap(), "{ \"edited\": true }");
+}
+
+/// AC-3: the refusals reach the CLI envelope with their own kinds, not `internal`.
+#[test]
+fn the_refusal_kinds_reach_the_envelope() {
+    let h = home();
+    write_settings(&h.path, r#"{"launcher":{}}"#, 0o600);
+    let (result, _) = save(&h.path);
+    let id = result["receipt"].as_str().unwrap().to_string();
+    let home_arg = h.path.to_string_lossy().into_owned();
+    let run = |receipt: &str, permission: &str| {
+        common::cli::cli(
+            &[
+                "models-revert",
+                home_arg.as_str(),
+                "--receipt",
+                receipt,
+                "--permission-reference",
+                permission,
+            ],
+            &json!({}),
+        )
+    };
+    let kind_of = |receipt: &str, permission: &str| {
+        let out = run(receipt, permission);
+        let v: Value = serde_json::from_slice(&out.stdout).unwrap_or_else(|e| {
+            panic!(
+                "stdout is not JSON ({e}): {} {}",
+                String::from_utf8_lossy(&out.stdout),
+                String::from_utf8_lossy(&out.stderr)
+            )
+        });
+        assert_eq!(v["ok"], json!(false), "{v}");
+        v["error"]["kind"].as_str().unwrap().to_string()
+    };
+
+    // A damaged receipt (this test's own fixture) reads invalid_input, not internal.
+    let damaged: Value = {
+        let mut v: Value =
+            serde_json::from_str(&fs::read_to_string(receipt_file(&h.path, &id)).unwrap()).unwrap();
+        v["after_sha256"] = Value::Null;
+        v
+    };
+    plant(&h.path, &id, &damaged);
+    assert_eq!(kind_of(&id, REF), "invalid_input");
+    assert_eq!(kind_of("models-x", REF), "invalid_input");
+    assert_eq!(kind_of("models-9-9", REF), "not_found");
+    assert_eq!(kind_of(&id, ""), "permission_reference_missing");
+}
+
+/// AC-4: the operations document lists every refusal with its kind and exit code, and states
+/// the marker-before-revert order and the resume rule.
+#[test]
+fn the_operations_document_lists_the_refusals_and_the_resume_rule() {
+    let doc = fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("docs/design-review/appendix/operations/models_revert.md"),
+    )
+    .unwrap();
+    for needle in [
+        "permission reference required",
+        "invalid models receipt id",
+        "models receipt not found",
+        "already reverted",
+        "invalid models receipt",
+        "conflict in models revert",
+        "models revert marker write failed",
+        "nothing was changed",
+        "resume",
+        "| kind |",
+        "exit code",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "operations/models_revert.md lacks `{needle}`"
+        );
+    }
 }
 
 /// Moves the settings folder of `home` to `outside` and puts a link to it in its place, so the
