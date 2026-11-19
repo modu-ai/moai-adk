@@ -747,25 +747,9 @@ mod tests {
             refused(Script::Reply(endless.into_bytes()), &quick()).code,
             "transport_response"
         );
-        // Slow: the server answers after the total bound.
-        let slow = Limits {
-            connect: Duration::from_secs(2),
-            total: Duration::from_millis(150),
-            response_max: 4096,
-        };
-        let started = Instant::now();
-        let r = refused(
-            Script::Delay(
-                Duration::from_millis(600),
-                reply("200 OK", "", TYPESAFE_ANSWER),
-            ),
-            &slow,
-        );
-        assert_eq!(r.code, "transport_timeout");
-        assert!(
-            started.elapsed() < Duration::from_millis(590) + Duration::from_millis(300),
-            "the refusal waited for the server"
-        );
+        // Slow: `a_slow_server_is_refused_at_the_total_bound_before_it_answers` holds the
+        // server by order of events. The name stays because SPEC-20261118-decide-round-trip
+        // names this test in its `verify:` line.
         // Nobody listens: a refused connection is a connect refusal.
         let closed = TcpListener::bind("127.0.0.1:0").unwrap();
         let addr = closed.local_addr().unwrap();

@@ -37,8 +37,8 @@ created: 2026-11-19
 
 - AC-1 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5): 새 시험이 전송 호출 뒤에 풀어 주는 가짜 서버로 `transport_timeout` 을 읽고, 그때 서버 스레드가 아직 안 끝났음을 확인해요. 전송이 서버를 기다리도록 바꾼 변이는 이 시험이 잡아요.
   verify: `cargo test --locked --offline --lib decide::transport::tests::a_slow_server_is_refused_at_the_total_bound_before_it_answers`
-- AC-2 (REQ-7): 나머지 단언은 한 시험에 남아 있고 통과해요.
-  verify: `cargo test --locked --offline --lib decide::transport::tests::a_response_that_is_too_big_short_or_early_closed_is_refused`
+- AC-2 (REQ-7): 나머지 단언은 옛 이름 그대로인 한 시험에 남아 있고 통과해요(이름의 `slow` 는 새 시험이 이어받아요).
+  verify: `cargo test --locked --offline --lib decide::transport::tests::a_response_that_is_too_big_short_early_closed_or_slow_is_refused`
 - AC-3 (REQ-6): 변경분에 `sleep`·`#[ignore]`·재시도가 새로 없어요(Result 에 명령).
   verify: `cargo test --locked --offline --lib decide::transport`
 - AC-4: 이웃 검사(`decide` 아래 전체).
@@ -61,6 +61,7 @@ created: 2026-11-19
 | --- | --- | --- | --- |
 | D-1 | 시간 상한을 늘리지 않고 순서로 증명한다 | C-99 규칙 2는 시험을 통과시키려는 sleep·재시도·건너뛰기를 막아요. 상한을 890 ms 에서 키우면 같은 모양의 약한 단언이 남아요 | 시험을 되돌리면 돼요 |
 | D-2 | 느린 서버 부분을 별도 시험으로 뺀다 | 한 시험이 여덟 가지를 보면 하나가 깨질 때 이름이 이유를 말해 주지 못해요 | 시험을 합치면 돼요 |
+| D-3 | 옛 시험의 이름을 바꾸지 않는다 | `SPEC-20261118-decide-round-trip` 의 `verify:` 줄(AC-4)이 그 이름을 불러요. 이름을 바꾸면 그 줄이 시험 0개를 돌리고 조용히 통과해요 | 그 SPEC 의 줄을 고치고 이름을 바꾸면 돼요 |
 
 ## Plan
 
@@ -69,3 +70,10 @@ created: 2026-11-19
 3. 변이: 전송이 읽기 시한을 무시하게 하면(`set_read_timeout` 을 30 초로) 새 시험이 실패하는지, 원래대로 돌리면 통과하는지 봐요.
 4. 부하 아래 20번 연속 통과를 재요(카드 기준 1).
 5. `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `decide::` 이웃을 돌려요.
+
+## Result
+
+- AC-1: met — 뿌리 원인 측정(임시 조사 시험, 커밋 안 함, `cargo test --lib decide::transport::tests::probe -- --nocapture`): 서버 잠 600 ms 에서 `transport_returned_after=156ms whole_refused_after=611ms`, 1000 ms 에서 `152ms / 1011ms`, 코드는 둘 다 `transport_timeout`. 전송은 시한(150 ms)에 돌아왔고, 옛 단언이 잰 값은 서버 잠 + 11 ms 였어요. 그래서 서버 잠이 890 ms 를 넘으면 전송이 맞아도 옛 단언은 반드시 실패해요. 같은 SHA 부하 재현은 못 했어요(16코어에 busy 루프 48개, 시험 단독 20번 `pass=20 fail=0`): 실패는 라이브러리 전체를 병렬로 돌릴 때의 스레드 경합에서 나와서 단독 반복으로는 안 나와요. 새 시험 `a_slow_server_is_refused_at_the_total_bound_before_it_answers` 는 통과(`1 passed`). 변이(새 시험을 커밋한 뒤, 한 번에 하나, 원복 뒤 `git status --short` 가 비어요): M1 읽기 시한 무시(`set_read_timeout` 30 초) KILLED(`panicked at transport.rs:790`: 응답이 와서 `unwrap_err` 실패), M3 읽기 시간 초과를 EOF(`Ok(0)`)로 읽기 KILLED(`assertion left == right`), M2 `left()` 가 0 이어도 Ok 는 SURVIVED.
+- AC-2: met — 옛 시험은 이름 그대로 남고 `decide::` 전체가 `114 passed; 0 failed`(`cargo test --locked --offline --lib decide::`). 이름의 `slow` 는 새 시험이 이어받아요(D-3).
+- AC-3: met — 변경분에 `sleep`·`#[ignore]`·재시도·반복이 새로 없어요: `git diff origin/v2026.11.0 -- src/decide/transport.rs | grep -nE '^\+.*(sleep|#\[ignore\]|retry|\bloop\b|for _ in)'` 가 아무것도 안 찍어요(종료 1). 새 `recv_timeout(10 s)` 는 전송이 서버를 기다리는 변이에서 시험이 멈추지 않게 하는 안전 시한이에요(통과시키려는 대기가 아니에요). 부하 20번: busy 루프 48개(load average 26→47) 아래 `decide::transport` 모듈 `pass=20 fail=0`. `cargo fmt --check` 종료 0, `cargo clippy --locked --offline --all-targets -- -D warnings` 종료 0.
+- AC-4: met — `decide::` 114 통과, `tests/ac_command_lint` 5 + `tests/spec_cli` 18 통과(`--no-fail-fast`). M2 는 이 카드 전부터 `decide::` 어느 시험도 못 잡는 구멍이에요(한계가 이미 지난 뒤 읽기 경로는 시계를 흉내 낼 방법 없이 결정적으로 만들 수 없어서, 시험을 더하지 않고 여기에 적어요).
