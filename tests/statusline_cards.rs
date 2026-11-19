@@ -1,9 +1,10 @@
 //! Card C-65 (user instructions 2026-11-16 and 2026-11-17): the repository line of the status
 //! line shows the cards of the project's local ledger right after the forge counts,
-//! `📡 owner/repo | ⬇️ 46 / 🔀 0 | 🔥 2 / 📮 3 / 📥 50 / ✅ 12 | …`: `🔥` cards being worked on
-//! (`active` without a waiting marker note), `📮` cards pushed and waiting for integration (every
-//! `review` card and each `active` card whose newest marker note is a waiting one), `📥` cards
-//! created and remaining (`draft` + `ready` + `hold`), `✅` cards `done`.
+//! `📡 owner/repo | ⬇️ 46 / 🔀 0 | 🗂️ 50 / ▶️ 2 / 🔃 3 / ✅ 12 | …`: `🗂️` cards created and
+//! remaining (`draft` + `ready` + `hold`), `▶️` cards being worked on (`active` without a waiting
+//! marker note), `🔃` cards pushed and waiting for integration (every `review` card and each
+//! `active` card whose newest marker note is a waiting one), `✅` cards `done` (user decision
+//! 2026-11-19: this order and these icons).
 //!
 //! Every case runs the real binary through `TempHome` (a temporary HOME, nothing of the real
 //! environment but a PATH for git) against a ledger built in that HOME. The read is local and
@@ -178,7 +179,7 @@ fn the_repository_line_shows_the_card_counts_after_the_forge_counts() {
     let with = f.plain();
     assert_eq!(
         with.lines().nth(1),
-        Some("📡 modu-ai/moai-adk | ⬇️ 46 / 🔀 0 | 🔥 2 / 📮 3 / 📥 50 / ✅ 12 | 🅱️ main +1")
+        Some("📡 modu-ai/moai-adk | ⬇️ 46 / 🔀 0 | 🗂️ 50 / ▶️ 2 / 🔃 3 / ✅ 12 | 🅱️ main +1")
     );
     // Only the repository line differs from the render without a ledger.
     assert_eq!(with.lines().next(), baseline.lines().next());
@@ -193,7 +194,7 @@ fn the_card_counts_keep_their_place_without_forge_counts() {
     std::fs::remove_file(f.project.join(FORGE_CACHE)).unwrap();
     assert_eq!(
         f.line2(),
-        "📡 modu-ai/moai-adk | 🔥 2 / 📮 3 / 📥 50 / ✅ 12 | 🅱️ main +1"
+        "📡 modu-ai/moai-adk | 🗂️ 50 / ▶️ 2 / 🔃 3 / ✅ 12 | 🅱️ main +1"
     );
 }
 
@@ -203,7 +204,7 @@ fn a_registered_ledger_without_cards_shows_zeros() {
     f.register();
     assert_eq!(
         f.line2(),
-        "📡 modu-ai/moai-adk | ⬇️ 46 / 🔀 0 | 🔥 0 / 📮 0 / 📥 0 / ✅ 0 | 🅱️ main +1"
+        "📡 modu-ai/moai-adk | ⬇️ 46 / 🔀 0 | 🗂️ 0 / ▶️ 0 / 🔃 0 / ✅ 0 | 🅱️ main +1"
     );
 }
 
@@ -215,14 +216,14 @@ fn done_cards_are_counted_only_in_the_done_segment() {
     f.register();
     f.add("done", 4);
     assert!(
-        f.line2().contains("| 🔥 0 / 📮 0 / 📥 0 / ✅ 4 |"),
+        f.line2().contains("| 🗂️ 0 / ▶️ 0 / 🔃 0 / ✅ 4 |"),
         "{}",
         f.line2()
     );
     f.add("active", 1);
     f.add("hold", 2);
     assert!(
-        f.line2().contains("| 🔥 1 / 📮 0 / 📥 2 / ✅ 4 |"),
+        f.line2().contains("| 🗂️ 2 / ▶️ 1 / 🔃 0 / ✅ 4 |"),
         "{}",
         f.line2()
     );
@@ -289,7 +290,7 @@ fn the_cards_option_hides_the_segment() {
     assert_eq!(f.plain(), baseline);
     std::fs::write(&config, "statusline:\n  segments:\n    cards: true\n").unwrap();
     assert!(
-        f.line2().contains("🔥 2 / 📮 3 / 📥 50 / ✅ 12"),
+        f.line2().contains("🗂️ 50 / ▶️ 2 / 🔃 3 / ✅ 12"),
         "{}",
         f.line2()
     );
@@ -298,7 +299,7 @@ fn the_cards_option_hides_the_segment() {
         "statusline:\n  segments:\n    github: false\n    git_branch: false\n",
     )
     .unwrap();
-    assert_eq!(f.line2(), "🔥 2 / 📮 3 / 📥 50 / ✅ 12");
+    assert_eq!(f.line2(), "🗂️ 50 / ▶️ 2 / 🔃 3 / ✅ 12");
 }
 
 /// The project is the one the input names, not the working directory: from a folder outside
@@ -311,7 +312,7 @@ fn the_counts_follow_the_project_of_the_input_not_the_working_directory() {
     let out = f.render_from(elsewhere.path(), &[("NO_COLOR", "1")]);
     assert_eq!(
         out.lines().nth(1),
-        Some("🔥 2 / 📮 3 / 📥 50 / ✅ 12"),
+        Some("🗂️ 50 / ▶️ 2 / 🔃 3 / ✅ 12"),
         "{out}"
     );
 }

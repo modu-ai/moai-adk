@@ -1035,7 +1035,7 @@
       "class": "b",
       "stdin": "../statusline/stdin/a02-doc-full.json",
       "covers": [
-        "card C-65: card counts \ud83d\udd25 being worked on / \ud83d\udcee waiting for integration / \ud83d\udce5 remaining / \u2705 done after the forge counts (card 85: one segment)",
+        "card C-65: card counts \ud83d\uddc2\ufe0f remaining / \u25b6\ufe0f being worked on / \ud83d\udd03 waiting for integration / \u2705 done after the forge counts (card 85: one segment)",
         "counts read from the project's local ledger in the temporary HOME (3 active without notes, 2 review, 20 draft, 25 ready, 5 hold, 12 done): no note marks an active card as waiting, so only the review cards wait"
       ],
       "setup": [
@@ -1073,17 +1073,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "19c62e672cab9c6f8a5114d97824e041e1691a87304fbd5346044a01c82655fa",
+            "sha256": "40036898df5185d6f44bc35a388e7a849461a77ea33e00d77d8e29510b8ce621",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "19c62e672cab9c6f8a5114d97824e041e1691a87304fbd5346044a01c82655fa",
+            "sha256": "40036898df5185d6f44bc35a388e7a849461a77ea33e00d77d8e29510b8ce621",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "19c62e672cab9c6f8a5114d97824e041e1691a87304fbd5346044a01c82655fa",
+            "sha256": "40036898df5185d6f44bc35a388e7a849461a77ea33e00d77d8e29510b8ce621",
             "stdout": "PTY"
           }
         }
@@ -1094,7 +1094,7 @@
       "class": "b",
       "stdin": "../statusline/stdin/a02-doc-full.json",
       "covers": [
-        "card counts split into \ud83d\udd25 being worked on / \ud83d\udcee pushed and waiting for integration / \ud83d\udce5 remaining / \u2705 done (one segment after the forge counts)",
+        "card counts split into \ud83d\uddc2\ufe0f remaining / \u25b6\ufe0f being worked on / \ud83d\udd03 pushed and waiting for integration / \u2705 done (one segment after the forge counts)",
         "a card in review waits, and an active card waits when its newest marker note is LANE-READY-INTEGRATION (3 active of which 1 waits, 2 review, 20 draft, 25 ready, 5 hold, 12 done)"
       ],
       "setup": [
@@ -1132,17 +1132,17 @@
         "variants": {
           "plain": {
             "version": "4.2647.0",
-            "sha256": "19c62e672cab9c6f8a5114d97824e041e1691a87304fbd5346044a01c82655fa",
+            "sha256": "40036898df5185d6f44bc35a388e7a849461a77ea33e00d77d8e29510b8ce621",
             "stdout": "pipe"
           },
           "ansi": {
             "version": "4.2647.0",
-            "sha256": "19c62e672cab9c6f8a5114d97824e041e1691a87304fbd5346044a01c82655fa",
+            "sha256": "40036898df5185d6f44bc35a388e7a849461a77ea33e00d77d8e29510b8ce621",
             "stdout": "PTY"
           },
           "ansi256": {
             "version": "4.2647.0",
-            "sha256": "19c62e672cab9c6f8a5114d97824e041e1691a87304fbd5346044a01c82655fa",
+            "sha256": "40036898df5185d6f44bc35a388e7a849461a77ea33e00d77d8e29510b8ce621",
             "stdout": "PTY"
           }
         }
