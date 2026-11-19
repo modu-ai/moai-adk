@@ -1469,13 +1469,23 @@ fn directional_characters_are_named_prose_passes_and_fields_are_screened() {
     let args = ["note", card.as_str(), "--kind", "report"];
     let key = format!("{}{}", ["s", "k-"].concat(), "a1B2".repeat(6));
 
-    // The two listed false positives pass (C-53 S1 re-audit N-c).
+    // The two listed false positives pass (C-53 S1 re-audit N-c): a lower-case hyphenated name
+    // after `sk` and an option assignment whose name is not a secret word. Since C-122
+    // (SPEC-20261119-card-secret-screen, user decision 2026-11-19) a secret-named option
+    // assignment is refused whatever its value is, so the passing prose uses `--mode=VALUE`.
     let plain = result(&w.card_stdin(
         None,
         &args,
-        b"migration: sk-learn-pipeline tuned; run with --token=VALUE in dry mode\n",
+        b"migration: sk-learn-pipeline tuned; run with --mode=VALUE in dry mode\n",
     ));
     assert_eq!(plain["action"], json!("note"), "{}", plain);
+    let (kind, message) = refusal(&w.card_stdin(
+        None,
+        &args,
+        b"migration: run with --token=VALUE in dry mode\n",
+    ));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("secret"), "{message}");
     // A real key run still goes, alone or behind an option name.
     for text in [format!("key {key}\n"), format!("run --flag={key}\n")] {
         let (kind, message) = refusal(&w.card_stdin(None, &args, text.as_bytes()));
