@@ -4,7 +4,8 @@
 이전 container 수명 해석을 대체한다. agent-17의
 [빈 container 5개 반례](https://github.com/modu-ai/moai-adk/pull/2461#issuecomment-6800067035)를
 또 다른 Markdown 상태 조건으로 수리하지 않는다. 새 Markdown 의존성도 추가하지 않는다.
-G-002만 생산하고 G-006 concept identity/alias H1은 HOLD로 유지한다.
+G-002 는 plain 문서 줄에서 생산하고, G-006 은 명시 alias 계약(SPEC-20261119-graph-concept-alias,
+사용자 결정 A 2026-11-15T10:16:15Z)으로 생산한다.
 frozen fixture·ground truth·baseline·0.9212 기준·#2440 answer 선택기는 변경하지 않는다.
 
 ## 현재 계약
@@ -26,6 +27,26 @@ frozen fixture·ground truth·baseline·0.9212 기준·#2440 answer 선택기는
 - 위 제외 구문이 없는 블록에서만 backtick qualified 경로를 후보로 만든다.
   대상은 유일한 모듈 수준 선언이어야 하며 양쪽 줄/digest evidence를 보존한다.
   alias/re-export·associated item·compiler/rustdoc binding은 지원하지 않는다.
+
+## 개념 alias 계약 (C-17 G-006, 사용자 결정 A 2026-11-15T10:16:15Z)
+
+문서 참조 채널(위 절)과 별도로, **코드 문자열 리터럴**(plain·byte·raw)의 내용이
+계약 토큰으로 **시작**하면 개념 참조를 하나 기록한다 — `const HANDOFF_PREFIX: &str
+= "moai-claim-handoff:"` 처럼 기계 토큰을 실제로 선언·사용하는 코드가 언급이다.
+매크로 불투명 token tree 안의 문자열은 세지 않고, 문서 블록·주석·backtick span 은
+이 채널에서 아무것도 만들지 않는다(plain-doc 제외 계약은 그대로). 계약 표는
+`src/code_refs.rs` 의 `CONCEPT_ALIASES` 한 행이다: 개념 이름 `handoff protocol` ↔
+기계 토큰 `moai-claim-handoff:`, 정의 파일 `src/handoff.rs`, 확인 기호
+`claim_handoff`, 출처는 결정 기록(digest 포함)이다.
+
+계약 행 하나만으로 edge 는 생기지 않는다: 정의 파일이 파일 집합에 있고 그 파일의
+스캔 선언 중 확인 기호와 **정확히 일치하는** 이름이 하나여야 한다(부재·복수는
+`doc_reference_missing` 으로 이유를 남긴다). 언급 파일이 정의 파일 자신이면
+G-002 규칙과 같이 edge·진단 없이 건너뛴다. 생산되는 edge 는 기존 `documents`
+kind(양쪽 줄/digest evidence, `inferred`)이고 새 concept 노드 kind·공개 identity
+는 없다(ontology HOLD 유지). 그래프 어댑터는 파일이 아닌 대상을 이 계약으로
+typed target 으로 풀고, edge 의 evidence digest 가 snapshot 의 실제 파일 digest 와
+일치하는지 독립 대조한다.
 
 `DocState`·`DocFrame`·`DocContainer`·`DocFence` 및 pop/lazy continuation/상대 indent
 수명 추적은 제거했다. 남는 것은 블록 경계와 정적인 제외 predicate뿐이다.
@@ -92,7 +113,8 @@ fixture·기대 기준 하향, 제외 블록의 뒤 prose만 다시 살리는 �
 ## 남은 gap / not_run
 
 제외 블록의 모든 참조는 이유 있는 coverage gap이다. 완전한 CommonMark/HTML/tab 적합성,
-macro expansion, compiler/rustdoc binding, associated item, G-006 H1은 완료로 세지 않는다.
+macro expansion, compiler/rustdoc binding, associated item은 완료로 세지 않는다.
+G-006 은 명시 alias 계약(위 절)으로 생산하며, 계약 밖 개념 이름은 이유 있는 gap 으로 남는다.
 fresh clone·live AI host·실제 키·토큰 비용·전체 의미적 정확도는 not_run이다.
 Linux CI의 apt DNS 설치 실패를 제품 시험 실패나 성공으로 바꾸어 기록하지 않는다.
 
