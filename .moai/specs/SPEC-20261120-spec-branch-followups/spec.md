@@ -33,7 +33,7 @@ C-112 의 재감사(카드 노트 3418, PASS)가 비차단 후속 넷을 남겼�
 
 - AC-1 (REQ-1): 원격 추적 가지 `origin/spec/20261117-login-fix-r2` 와 `origin/spec/20261117-login-fix-extra` 가 있어도 `spec take SPEC-20261117-login-fix` 가 성공하고 name-first 가지를 만들어요. 변이 R4(`==` → `starts_with`)가 이 시험을 실패시켜요.
   verify: `cargo test --locked --offline --test spec_take_followups a_remote_branch_that_only_starts_with_the_old_name_does_not_block_take`
-- AC-2 (REQ-2): 거절 문구가 합치고 지우는 단계를 말하고, 그 단계를 그대로 따른 뒤의 `spec take` 가 `both forms` 로 거절되지 않아요(성공해요). 새 꼴 가지가 없는 경우의 `git switch` 안내도 따르면 성공해요.
+- AC-2 (REQ-2): 거절 문구가 합치고 지우는 단계와 기준 가지로 돌아가는 단계를 말하고, 그 단계를 그대로 따른 뒤의 `spec take` 가 `both forms` 로 거절되지 않아요(성공해요). 새 꼴 가지가 없는 경우의 `git switch` 안내도 기준 가지로 돌아가는 단계를 말하고 따르면 성공해요. 옛 가지 위에서 곧바로 take 하면 `no base` 로 거절돼요.
   verify: `cargo test --locked --offline --test spec_take_followups the_remote_only_hint_ends_in_one_form`
 - AC-3 (REQ-3): `spec/20261117-demo-r2` 에 SPEC 폴더가 없을 때 hook 의 거절 이유가 `reads as two SPEC ids` 와 `repair suffix` 를 둘 다 말하고, 입력의 가지 이름은 이유에 나오지 않아요(고정 문구).
   verify: `cargo test --locked --offline --test spec_take_followups the_hook_reason_names_the_repair_suffix`
@@ -60,8 +60,8 @@ C-112 의 재감사(카드 노트 3418, PASS)가 비차단 후속 넷을 남겼�
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
-| D-1 | 새 꼴 로컬 가지가 있고 옛 꼴이 원격에만 있을 때의 안내는 `git switch <옛 가지>`, 새 꼴 가지를 그 안에 합치기, 새 꼴 가지 지우기, 다시 take 의 네 단계예요 | 그 단계 뒤에는 로컬에 옛 꼴 하나만 남아서 `both forms` 에 걸리지 않아요 | 한 줄 안내로 되돌리기 |
-| D-2 | 새 꼴 로컬 가지가 없을 때의 안내는 지금 그대로(`git switch <옛 가지>` 한 번)예요 | 그 단계 뒤에 로컬은 옛 꼴 하나뿐이에요 | 없음 |
+| D-1 | 새 꼴 로컬 가지가 있고 옛 꼴이 원격에만 있을 때의 안내는 `git switch <옛 가지>`, 새 꼴 가지를 그 안에 합치기, 새 꼴 가지 지우기, 기준 가지(예: main)로 돌아가기, 다시 take 의 다섯 단계예요 | 그 단계 뒤에는 로컬에 옛 꼴 하나만 남아서 `both forms` 에 걸리지 않아요; 옛 가지 위에서 곧바로 take 하면 기록된 base 가 없어 `no base` 로 거절돼서(감사 보고의 발견) 돌아가기 단계가 필요해요 | 한 줄 안내로 되돌리기 |
+| D-2 | 새 꼴 로컬 가지가 없을 때의 안내는 `git switch <옛 가지>` 한 번 뒤에 기준 가지로 돌아가 take 하라는 말을 더해요 | 그 단계 뒤에 로컬은 옛 꼴 하나뿐이고, 같은 이유로 SPEC 가지 위에서는 take 가 `no base` 로 거절돼요(이 변경 전의 한 줄 안내도 이 단계가 빠져 있었어요) | 없음 |
 | D-3 | N7(C-112 SPEC `status: draft`)은 값을 바꾸지 않고 리더에게 결정을 물어요 | `approved` 는 `approval`(by·at·basis·digest)이 있어야 하고 승인은 사용자·리더의 기록이라 레인이 만들어 넣지 않아요; 이 저장소 SPEC 대부분(138개)이 `draft` 예요 | 승인 기록과 함께 값 바꾸기 |
 
 ## Result
@@ -71,6 +71,7 @@ C-112 의 재감사(카드 노트 3418, PASS)가 비차단 후속 넷을 남겼�
 - AC-1: met — 변이 R4(`remote_branch_exists` 의 `==` → `starts_with`)가 `a_remote_branch_that_only_starts_with_the_old_name_does_not_block_take` 를 실패시켰어요(`tests/spec_take_followups.rs:31`).
 - AC-2: met — 새 꼴 가지 안내를 끈 변이(`if has_new` → `if false`)가 `the_remote_only_hint_ends_in_one_form` 을 실패시켰어요(`:201`, merge·delete 안내 단언). 안내의 단계를 시험이 실제로 따라 한 뒤 `spec take` 가 `both forms` 없이 성공해요.
 - AC-3: met — 이유 문구에서 수리 접미사 말을 뺀 변이가 `the_hook_reason_names_the_repair_suffix` 를 실패시켰어요(`:297`). 변이 셋 모두 `git restore` 뒤 `git status` 깨끗.
+- 감사 보고(audit-c133, head d52415831f, 차단 0)의 비차단 발견 반영(수리 1): 안내를 글자 그대로 따라 옛 가지 위에서 take 하면 `both forms` 는 안 나오지만 `no base` 로 거절돼요(옛 가지가 원격에서 와서 기록된 base 가 없고 `git branch -d` 가 새 꼴 가지의 기록도 지워요). 시험이 중간에 `git switch main` 을 몰래 더해서 가렸어요. 안내 두 갈래에 "기준 가지로 돌아가 take"를 더하고(D-1·D-2), 시험이 그 말을 단언하고, 옛 가지 위의 take 가 `no base` 로 거절되는 것과 기준 가지에서 성공하는 것을 모두 고정해요. 시험 3개 통과.
 - N7: 값을 바꾸지 않았어요(D-3): `approved` 는 승인 기록이 필요해서 리더 결정으로 올렸어요.
 - 이웃 시험 통과(가지 시작 시 head `aa2ad043b1`): `--lib` 1568, `spec_take_cli` 15, `spec_branch_name_first` 13, `spec_before_code_hook` 9, `spec_close_cli` 10, `green_test_lock` 14, `trailer_check_cli` 3, `commit_guard_users` 7, `sdd_guidance` 6, `agent_defs_package` 19.
 - 판정(거절 조건·허용 조건)은 바꾸지 않았어요: 바뀐 것은 거절 문구 두 곳과 hook 이유 한 문자열이에요.

@@ -202,11 +202,18 @@ fn the_remote_only_hint_ends_in_one_form() {
         message.contains("merge") && message.contains("delete"),
         "the hint names the merge and the delete: {message}"
     );
+    assert!(
+        message.contains("base branch"),
+        "the hint ends on the base branch: {message}"
+    );
     assert_eq!(w.state(), before, "a refusal changes nothing");
-    // Follow the hint: switch to the older branch, merge the name-first one, delete it.
+    // Follow the hint, every step: switch to the older branch, merge the name-first one, delete
+    // it, switch back to the base branch (a take from the SPEC branch itself has no base).
     w.git(&["switch", OLD]);
     w.git(&["merge", "--no-edit", NEW]);
     w.git(&["branch", "-d", NEW]);
+    let stuck = refused(&w.take(&id));
+    assert!(stuck.contains("no base"), "{stuck}");
     w.git(&["switch", "main"]);
     let message = w.take(&id);
     let v = envelope(&message);
@@ -223,6 +230,7 @@ fn the_remote_only_hint_ends_in_one_form() {
     w.remote_only(OLD);
     let message = refused(&w.take(&id));
     assert!(message.contains("git switch"), "{message}");
+    assert!(message.contains("base branch"), "{message}");
     w.git(&["switch", OLD]);
     w.git(&["switch", "main"]);
     let result = ok(&w.take(&id));

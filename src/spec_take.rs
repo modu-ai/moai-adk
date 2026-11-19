@@ -325,12 +325,12 @@ pub fn take(r: &Request<'_>) -> Result<Value> {
         // leave both forms and the next take would refuse again, so the hint ends in one form.
         return Err(refuse(if has_new {
             format!(
-                "{} has the name-first branch {name_first} here and the older branch {date_first} on a remote only; keep one form: run `git switch {date_first}` (it makes the local branch from the remote one), merge {name_first} into it, delete {name_first} (`git branch -d {name_first}`), then take again; nothing was changed",
+                "{} has the name-first branch {name_first} here and the older branch {date_first} on a remote only; keep one form: run `git switch {date_first}` (it makes the local branch from the remote one), merge {name_first} into it, delete {name_first} (`git branch -d {name_first}`), switch back to your base branch (for example `git switch main`; a take from the SPEC branch itself has no recorded base) and take again; nothing was changed",
                 r.id
             )
         } else {
             format!(
-                "{} has the older branch {date_first} on a remote only; run `git switch {date_first}` first (it makes the local branch from the remote one), then take again; nothing was changed",
+                "{} has the older branch {date_first} on a remote only; run `git switch {date_first}` first (it makes the local branch from the remote one), switch back to your base branch (for example `git switch main`; a take from the SPEC branch itself has no recorded base) and take again; nothing was changed",
                 r.id
             )
         }));
