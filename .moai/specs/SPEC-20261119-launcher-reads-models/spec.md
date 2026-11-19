@@ -13,7 +13,7 @@ parent: SPEC-20261118-install-model-per-tool
 
 카드 C-47 의 기준 5 와 7 이 열려 있어요. `moai update` 의 모델 단계가 `~/.moai-cli/config/launcher.yaml` 의 `launcher.models.<도구>.<역할>` 에 모델과 노력(effort) 값을 저장하지만(조각 3, PR 3212), 런처(`moai cc|codex|omp -l|-a`)는 그 값을 읽지 않고 고정 값(Claude 는 `--model opus --effort medium`)이나 아무 값도 안 넘기는 규칙(Codex 와 OMP)을 써요. 그래서 사람이 질문에 답해 저장한 선택이 세션에 닿지 않아요.
 
-이 조각은 `src/session.rs` 의 `compose` 가 역할이 있는 세션(`-l` 리더, `-a` 에이전트)에서 저장된 선택을 읽어, 사람이 따로 `--model` 이나 `--effort` 를 주지 않은 칸에 채우게 해요. 파일은 실행할 때마다 읽으니(`user_launcher()` 가 이미 그렇게 해요) 파일을 고치고 다시 띄우면 재설치 없이 새 값이 쓰여요(기준 7).
+이 조각은 `src/session.rs` 의 `compose` 가 역할이 있는 세션(`-l` 리더, `-a` 에이전트)에서 저장된 선택을 읽어, 사람이 따로 `--model` 이나 `--effort` 를 주지 않은 칸에 채우게 해요. 값을 채우는 일은 `apply_saved_choice` 한 함수이고, 실제로 호스트를 띄우는 `launch()` 도 같은 채워진 요청을 써야 OMP 의 저장된 z.ai 모델이 키를 받으므로 `compose` 를 `compose_resolved` 로 나누고 `launch()` 도 그 함수를 불러요(감사 N2). 파일은 실행할 때마다 읽으니(`user_launcher()` 가 이미 그렇게 해요) 파일을 고치고 다시 띄우면 재설치 없이 새 값이 쓰여요(기준 7).
 
 저장된 값은 사람이 직접 고른 선택이에요. Codex 와 OMP 는 지금도 "사람이 요청하지 않으면 런처가 모델 기본값을 고르지 않는다"(리더 결정 6905681774, #3096 S7b)인데, 저장된 선택은 그 요청에 해당하므로 그 규칙을 깨지 않아요. 저장된 값이 없으면 오늘과 똑같이 움직여요.
 
@@ -69,13 +69,16 @@ parent: SPEC-20261118-install-model-per-tool
 
 1. SPEC 을 쓰고 `spec check` 오류 0 을 확인한다.
 2. RED: `tests/launcher_reads_models.rs` 를 쓰고 저장값 시험이 지금 코드로 실패하는 것을 본다(없는 줄은 argv 에 없어요).
-3. `src/session.rs` 의 `compose` 맨 앞에서, 역할이 있고 호스트가 claude, codex, omp 이며 파일의 `launcher.models` 에 항목이 있으면 `saved_choice` 로 `r.model`, `r.effort` 가 비어 있는 칸만 채운 사본 요청으로 각 호스트의 `*_argv` 를 부른다. 지원표 밖 항목은 고정 문구로 거절한다(`unsupported_entries`).
+3. `src/session.rs` 에 `apply_saved_choice` 를 더하고 `compose` 와 `launch()` 가 둘 다 그 결과(`compose_resolved`)를 쓰게 한다. 그 함수는 역할이 있고 호스트가 claude, codex, omp 이며 파일의 `launcher.models` 에 항목이 있으면 `saved_choice` 로 `r.model`, `r.effort` 가 비어 있는 칸만 채운 사본 요청으로 각 호스트의 `*_argv` 를 부른다. 지원표 밖 항목은 고정 문구로 거절한다(`unsupported_entries`).
 4. 변이: 값을 채우는 줄, 역할 조건, 호스트 조건, 칸별 우선순위를 하나씩 뒤집어 시험이 빨개지는지 본다.
 5. 이웃 시험, fmt, clippy, `trailer-check`, 팁과 `git merge-tree`, tier 1 독립 감사.
 
 ## Risks
 
-- `src/session.rs` 는 여러 카드가 고치는 파일이에요(OMP 호스트 C-62 등): 이 조각은 `compose` 맨 앞에 한 블록만 더하고 `*_argv` 함수들은 건드리지 않아 병합 충돌 면을 줄여요. `card take` 가 겹치는 예약을 거절하면 그 사실을 보고해요.
+- `src/session.rs` 는 여러 카드가 고치는 파일이에요(OMP 호스트 C-62 등): 이 조각은 함수 둘(`apply_saved_choice`, `saved_note`)을 더하고 `compose`, `launch()` 의 첫 줄만 바꾸며 `*_argv` 함수들은 건드리지 않아 병합 충돌 면을 줄여요. `card take` 가 겹치는 예약을 거절하면 그 사실을 보고해요.
+- 손으로 고친 항목 하나가 지원표 밖이면 claude, codex, omp 의 역할 세션이 전부 거절돼요(다른 도구의 항목이어도): `unsupported_entries` 주석이 이미 정한 방식이지만, 사람은 거절 문구의 키 경로를 보고 그 항목을 고치거나 `moai update` 로 바꿔야 해요. 구조가 깨진 파일은 `moai update` 도 거절하므로 손으로 고쳐야 해요(감사 3번).
+- 저장 모델이 `claude-fable-5-2` 이고 `launcher.advisor` 가 `opus` 나 `sonnet` 이면 `--advisor` 랭킹 검사가 새로 거절해요(`--model` 을 직접 줘도 같은 규칙이에요). 거절 문구가 저장값 때문이라고 말하지 않고 이 조각에는 그 시험이 없어요: 다음 조각 후보예요(감사 N3).
+- 저장값 노트는 `--dry-run` 과 `--json` 출력에만 나오고 터미널 시작 화면의 경고 줄(`launcher_terminal.rs` 의 `WARNINGS`)에는 안 나와요: 사람이 직접 저장한 값이라 비용이 몰래 바뀌는 건 아니지만 시작 화면에 한 줄 보이게 하는 일은 다음 조각 후보예요(감사 N4).
 - Claude 호스트의 저장 모델 id 는 별칭(`opus`) 대신 전체 id(`claude-opus-5-5`)로 나가요: 지원표(`model_effort_settings`)가 그 id 를 공식 문서 근거로 갖고 있어요(카드 기준 2 가 met). 호스트가 id 를 거절하면 그 줄은 고쳐야 하는 사실이 돼요 — 실제 호스트는 실행하지 않았고 argv 만 확인해요.
 - 파일이 깨졌을 때 역할 있는 세션이 막히는 점: `launcher.role_access` 가 이미 같은 방식(고정 문구 거절)이라 그 방식에 맞췄어요(결정 D-6).
 
