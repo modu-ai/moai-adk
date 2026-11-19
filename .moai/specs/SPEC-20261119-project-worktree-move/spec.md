@@ -66,4 +66,9 @@ created: 2026-11-19
 
 ## Result
 
-(채워요: RED, GREEN, 변이, 이웃, Not run)
+- AC-1: met — `cargo test --locked --offline --test project_worktree_move_choice go_state_worktree_reason_is_reported_with_the_worktree_move_choice` passes (RED 먼저: 3 중 3 failed, exit 101, 글에 문장이 없어서). 단계 2 가 `go-state-plan` 의 "git worktree(s) are registered under .moai/" 이유를 그 말 그대로 보고하고 worktree 이동을 폴더가 옮겨지게 하는 길로 이름 붙여요.
+- AC-2: met — 같은 시험 파일 `worktree_move_is_previewed_then_asked_once_then_applied_only_after_the_pick` passes. 읽기 전용 `worktree-move-plan` 미리보기 → 선택 하나(이동 먼저) → 고른 뒤에만 `worktree-move-apply` 순서, `hold_check_not_run` 이면 이동을 쓸 수 없다고 보고하고 관측하지 않은 빈 holds 를 쓰지 않는다는 것을 말해요.
+- AC-3: met — 같은 시험 파일 `quoted_names_are_the_ones_the_code_prints` passes. 인용한 이유·`folder_stays`·`hold_check_not_run`·`totals`·`plan_digest`·`items`·`reasons`·`destination`·`root` 와 apply 인자 네 개가 `src/go_state.rs`, `src/worktree_move.rs`, `src/ops/worktree_move_apply.rs` 에 글자 그대로 있고 git 에 `--force` 를 넘기지 않아요.
+- Mutation (committed 먼저, 커밋 275f724a11): 변이 5 개를 `project.md` 에 하나씩 넣고(old 문구가 정확히 1번인지 확인) 컴파일된 시험 바이너리를 돌린 뒤 `git restore` 했어요: M1 선택 순서 뒤집기, M2 apply 가 선택을 기다리지 않음, M3 관측하지 않은 빈 holds 허용, M4 인용한 이유를 코드와 다르게, M5 "Without a pick nothing moves" 삭제. 첫 실행에서 M2 가 살아남았어요(같은 문구가 `go-state-apply` 단락에도 있어서): 시험 문구를 `worktree-move-apply` 줄에 묶고 다시 돌려 5 개 모두 exit 101 로 죽었어요. 복원 뒤 파일이 커밋본과 같아요.
+- 이웃·READY 전 검사: 아래 줄에 적어요(푸시 전에 돌려요).
+- Not run here: 전체 `cargo test`; 실제 worktree 가 `.moai/` 아래 있는 프로젝트에서 `/moai project` 세션이 이 글을 읽는 것(시험은 문구와 코드의 인용이 맞는지만 고정해요).
