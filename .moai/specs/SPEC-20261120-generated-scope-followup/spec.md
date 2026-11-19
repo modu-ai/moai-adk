@@ -1,7 +1,7 @@
 ---
 id: SPEC-20261120-generated-scope-followup
 title: "Generated shared paths: the docs, the CLI tests, the case rule and the count of the first slice"
-status: approved
+status: draft
 revision: 2
 created: 2026-11-20
 ---
