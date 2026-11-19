@@ -85,4 +85,16 @@ created: 2026-11-20
 
 ## Result
 
-(not yet)
+2026-11-20, branch `spec/20261120-statusline-line2-order`, merged with the local integration branch `70707144ba` (clean, no conflict, the delta of that tip touches no statusline file); the evidence below is from code head `eda669d036`.
+
+- AC-1 (REQ-1, REQ-2, REQ-4…REQ-7): `cargo test --locked --offline --lib statusline::render` passes (27 tests; `--lib statusline::` 139). The new test `line_two_reads_git_counts_then_cards_then_repository_then_branch` pins `⬇️ 7 🔀 3 | 🗂️ 50 ▶️ 5 🔃 15 ✅ 65 | 📡 owner/repo | 🅱️ main ↓2 +3 | 🔗 #42 pending`, the order of every icon position, the three-item form, and each group left out on its own. RED before the change: 10 of the 27 failed (the new test among them) with the old line in `left`.
+- AC-2 (REQ-1, REQ-2, REQ-4…REQ-7, REQ-11): `tests/fixtures/statusline-claude/golden/b14-card-counts-waiting.plain.txt` line 2 is `⬇️ 46 🔀 0 | 🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 anthropics/claude-code | 🅱️ main | 🔗 #1234 pending`. Against the local tip 12 golden files differ (4 cases × plain, ansi, ansi256: `b08`, `b09`, `b13`, `b14`), each in line 2 only (checked by a script that reads both versions line by line, 0 unexpected); the harness writes this binary's own version into line 1, which was put back from the tip, and `cases.json` is unchanged. `cargo test --test statusline_golden` passes (1 passed).
+- AC-3 (REQ-3, REQ-9, REQ-10): `statusline_cards` 8 passed (1 ignored, the fixture writer); the cases without a repository, without a branch, with `git_branch` off, with `cards` off and without forge counts keep what they dropped; the empty ledger shows `🗂️ 0 ▶️ 0 🔃 0 ✅ 0`.
+- AC-4 (REQ-8): `statusline_tag_order` passes: line 2 under `COLUMNS` 80 and 40 is byte-equal.
+- AC-5 (REQ-11, REQ-12): all eight `tests/statusline*.rs` targets pass (cards 8, counts_refresh 5, git_env 2, golden 1, guard_false_positive 3, and tag_order, worktree_label, home_state), `python3 -m unittest tests.statusline_fixtures_test` 11 OK.
+- Mutants (5, each applied with an edit, `git diff --stat` read, then restored with `git checkout`; tests = lib `statusline::render` + `statusline_cards`): m1 repository before the card counts, killed by 3+4; m2 the slash back between the git counts, 7+3; m3 two spaces between the git counts, 7+3; m4 the git counts after the card counts, 3+4; m5 two spaces after `📡`, 8+4. (m3 and m5 were first run against the earlier two-space default and run again against the final one-space constants.)
+- Pre-READY checks (exit codes read from each command at `eda669d036`, 53 steps, all 0): `git diff --check` (origin and local tip ranges), `cargo fmt --check`, `rustfmt --check --edition 2021 src/ops/*.rs`, `cargo clippy --locked --offline --all-targets -- -D warnings`, the five named test files and `tests.repo_scans_test tests.source_manifest_test tests.local_check_test`, head-built `moai trailer-check v2026.11.0..HEAD --dir .`, `cargo test --bins` (28+28), neighbours `spec_cli` 18 and `doc_references` 12 and the eight statusline targets, `--lib statusline::` 139, the 39 checks of `tools/repo_scans.json`, `tests.skill_references_test`, `tests.statusline_fixtures_test`.
+
+Open: `docs/rust-product-path.md` statusline item 2 still shows the old slash shape and its example lines (the other SPEC's check compares them with `b14`); a later piece writes it once the file is free (D-4).
+
+Not run: the whole `cargo test`, Linux-only checks.
