@@ -26,7 +26,7 @@ created: 2026-11-20
 
 - REQ-1: When `card timeline C-n` is run for a card that exists, the command shall print that card's events oldest first, each with its time, kind, session, lane name and the scalar fields of its payload, in one `result` of the existing envelope.
 - REQ-2: The command shall read the ledger over a connection that waits at most 250 milliseconds, inside one read transaction, with at most the requested number of events, and close both before it renders anything.
-- REQ-3: The command shall read the card's events with one query and the lane names with one query, with no query run once per event row.
+- REQ-3: The command shall read the card's events, its lane names and its newest event number with one query each, with no query run once per event row.
 - REQ-4: The command shall write nothing, so that the ledger file and its folder are the same before and after and no folder or file is created.
 - REQ-5: When `--after CURSOR` is given, the command shall return only the events after that cursor, without waiting for new ones.
 - REQ-6: The result shall carry an opaque `next` cursor and an opaque `end` cursor, so that giving `next` back returns the following events with no gap and no overlap, and `end` names the newest event now.
@@ -43,7 +43,7 @@ created: 2026-11-20
   verify: `cargo test --locked --offline --test card_timeline_cli the_timeline_lists_the_cards_events_oldest_first_with_the_contract_fields`
 - AC-2 (REQ-4): 명령 전후로 원장 파일의 바이트와 폴더 목록·크기·수정 시각이 같고, 원장이 없는 프로젝트는 `ledger not found` 로 거절되며 아무것도 만들지 않아요.
   verify: `cargo test --locked --offline --test card_timeline_cli the_timeline_reads_and_writes_nothing`
-- AC-3 (REQ-2, REQ-3): 노트 900개인 카드에서 이벤트 질의의 질의 계획에 상관 하위 질의(`CORRELATED`)가 없고 `event` 를 훑는 줄이 하나뿐이며, 레인 이름 질의도 `event` 를 한 번만 훑고, 명령이 쓰는 질의는 그 둘과 노트 조인뿐이에요.
+- AC-3 (REQ-2, REQ-3): 노트 900개인 카드에서 이벤트·레인 이름·가장 새 이벤트 번호를 읽는 세 문장의 질의 계획에 상관 하위 질의(`CORRELATED`)가 없고, 각 문장이 `event` 를 한 번만 훑으며(노트는 기본 키로 조인), 명령이 쓰는 문장은 그 셋과 카드 한 줄·현재 예약뿐이에요.
   verify: `cargo test --locked --offline --test card_timeline_cli one_timeline_call_never_rescans_event_per_row`
 - AC-4 (REQ-5, REQ-6, REQ-12): `--limit 3` 으로 이벤트 열 개를 이어 읽으면(`next` 를 `--after` 로 되돌려서) 열 개가 빠짐도 겹침도 없이 순서대로 나오고, 마지막 쪽 뒤에 새 이벤트가 생기면 `--after` 로 그것만 나오고, 읽는 동안 `end` 는 가장 새 이벤트를 가리켜요. 다른 카드의 커서나 모양이 틀린 커서는 거절돼요.
   verify: `cargo test --locked --offline --test card_timeline_cli the_cursor_continues_with_no_gap_and_no_overlap`

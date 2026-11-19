@@ -47,6 +47,37 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Reads the ledger only. Show the events of one card, oldest first
+    ///
+    /// Reads the ledger only. The ledger is opened read-only with a wait of at most 250
+    /// milliseconds, the events are read in one read transaction (at most `--limit`, 1 to 500,
+    /// default 50) and the connection is closed before anything is printed, so a reader never
+    /// holds a writer's commit. Each event has its time, kind, session, lane name (the author of
+    /// the newest note that session wrote on this card, else null) and the plain fields of its
+    /// payload; a note event also shows the note's author and first line. The answer names the
+    /// current owner, and `next` and `end` are opaque cursors: hand `next` back as `--after` to
+    /// read what follows, with no gap and no overlap; `--after` never waits for new events. The
+    /// `renew` bookkeeping events are left out unless `--all`; a rejected call (`fence_reject`)
+    /// always shows. The card is named `C-12`.
+    Timeline {
+        /// `C-12`.
+        card: String,
+        /// The `next` or `end` of an earlier answer for this card: only the events after it.
+        #[arg(long)]
+        after: Option<String>,
+        /// The most events to read, 1 to 500 (default 50).
+        #[arg(long, allow_negative_numbers = true)]
+        limit: Option<i64>,
+        /// Also show the bookkeeping events (`renew`).
+        #[arg(long)]
+        all: bool,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME to read (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Reads the ledger only. Show what a dispatch should know before it starts: commits and
     /// PRs already naming the card, its SPEC folders, and decision notes colliding with the
     /// card's scope or criteria
@@ -652,6 +683,22 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             project,
             home,
         } => c::show(&project, &resolve_home(home)?, &card),
+        Action::Timeline {
+            card,
+            after,
+            limit,
+            all,
+            project,
+            home,
+        } => moai_cli::card::timeline::timeline(
+            &project,
+            &resolve_home(home)?,
+            d::session_holder("timeline", env).ok().as_deref(),
+            &card,
+            after.as_deref(),
+            limit,
+            all,
+        ),
         Action::Precheck {
             card,
             integration_ref,
