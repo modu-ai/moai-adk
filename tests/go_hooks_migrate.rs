@@ -250,6 +250,114 @@ fn a_failed_install_puts_everything_back() {
     assert!(root.join(".claude/hooks/moai/handle-stop.sh").exists());
 }
 
+// ---- SPEC-20261119-hooks-followups: the read-back and the put-back, with installers of our own
+
+const CLAIM_RECORD: &str = ".moai-cli/manifests/claude-settings.json";
+
+/// The status of the one `go-hooks-` receipt the apply left behind.
+fn the_receipt_status(root: &Path) -> String {
+    let mut found = Vec::new();
+    for e in fs::read_dir(root.join(".moai-cli/receipts"))
+        .unwrap()
+        .flatten()
+    {
+        if e.file_name().to_string_lossy().starts_with("go-hooks-") {
+            let r = read_json(&e.path().join("receipt.json"));
+            found.push(r["status"].as_str().unwrap().to_string());
+        }
+    }
+    assert_eq!(found.len(), 1, "one receipt: {found:?}");
+    found.remove(0)
+}
+
+struct Before {
+    settings: Vec<u8>,
+    scripts: Vec<(String, Vec<u8>)>,
+}
+
+impl Before {
+    fn of(root: &Path) -> Before {
+        Before {
+            settings: fs::read(root.join(".claude/settings.json")).unwrap(),
+            scripts: scripts_of(&root.join(".claude/hooks/moai")),
+        }
+    }
+
+    /// Everything a failed apply must have put back, record included (it did not exist).
+    fn assert_put_back(&self, root: &Path) {
+        assert_eq!(
+            fs::read(root.join(".claude/settings.json")).unwrap(),
+            self.settings,
+            "the settings file"
+        );
+        assert_eq!(
+            scripts_of(&root.join(".claude/hooks/moai")),
+            self.scripts,
+            "the scripts"
+        );
+        assert!(!root.join(CLAIM_RECORD).exists(), "the ownership record");
+        assert_eq!(the_receipt_status(root), "rolled_back");
+    }
+}
+
+/// Runs the apply with `install` as its install step; the plan is the one of the project now.
+fn apply_with(root: &Path, install: go_hooks::Installer<'_>) -> Result<Value, String> {
+    let plan = go_hooks::plan(root, None).unwrap();
+    go_hooks::apply_with_installer(
+        root,
+        None,
+        plan["plan_digest"].as_str().unwrap(),
+        PERMISSION,
+        NO_MOAI_PATH,
+        install,
+    )
+}
+
+#[test]
+fn an_install_that_reports_success_without_writing_the_hooks_is_put_back() {
+    // N2: the read-back is the only thing between "the install said Ok" and a project whose Go
+    // guards are gone with nothing in their place.
+    let (_d, root) = go_project();
+    let before = Before::of(&root);
+    let e = apply_with(&root, &|_, _, _| Ok(())).unwrap_err();
+    assert!(e.contains("does not hold the previewed hooks"), "{e}");
+    assert!(e.contains("everything was put back"), "{e}");
+    before.assert_put_back(&root);
+}
+
+#[test]
+fn an_installer_that_writes_something_else_is_undone_with_its_record() {
+    let (_d, root) = go_project();
+    let before = Before::of(&root);
+    let e = apply_with(&root, &|root, _, _| {
+        fs::write(root.join(".claude/settings.json"), b"{\"hooks\": {}}\n").unwrap();
+        fs::create_dir_all(root.join(".moai-cli/manifests")).unwrap();
+        fs::write(root.join(CLAIM_RECORD), b"{\"owned\": {}}\n").unwrap();
+        Ok(())
+    })
+    .unwrap_err();
+    assert!(e.contains("does not hold the previewed hooks"), "{e}");
+    before.assert_put_back(&root);
+}
+
+#[test]
+fn an_installer_that_fails_is_put_back_the_same_way() {
+    let (_d, root) = go_project();
+    let before = Before::of(&root);
+    let e = apply_with(&root, &|_, _, _| Err("the installer broke".into())).unwrap_err();
+    assert!(e.contains("the installer broke"), "{e}");
+    assert!(e.contains("everything was put back"), "{e}");
+    before.assert_put_back(&root);
+}
+
+#[test]
+fn the_read_back_failure_is_a_conflict_not_an_internal_error() {
+    // N7: the file and the preview disagree, which is a refusal on the project's state.
+    let (_d, root) = go_project();
+    let e = apply_with(&root, &|_, _, _| Ok(())).unwrap_err();
+    assert_eq!(moai_cli::contract::classify(&e).as_str(), "conflict", "{e}");
+}
+
 #[test]
 fn the_commands_are_wired() {
     let (_d, root) = go_project();

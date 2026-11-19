@@ -247,6 +247,47 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Take over a card whose reservation has ended
+    ///
+    /// Writes the ledger. For a card whose holder is gone: the reservation at `--generation` must be
+    /// `held` with a lease that has ended. Refusals write nothing and come in four kinds:
+    /// `conflict` (a live lease, another generation, a `done` card, a reservation that is not
+    /// `held`, or a card nobody holds), `not_found` (no such card), `usage` (exit 2: an option
+    /// that is missing or cannot be read, such as no `--generation` or `--generation x`) and
+    /// `invalid_input` (exit 1: a value out of range, a blank or longer `--reason`, a `--by` over
+    /// 80 characters, a `--lease-secs` outside 60 to 86400, or a `--reason` with a word shaped
+    /// like a secret). The reservation
+    /// becomes `reclaimed`, and this session gets the next generation with the same scope, worktree
+    /// and branch and a new lease; the card keeps its state, notes, criteria and links, so this
+    /// session can then close it with `card criterion`, `card pr` and `card done`. To give a card
+    /// back instead: a card in `review` is reopened with `card reopen` first, then given back with
+    /// `card release` (`release` refuses a card in `review`). One `card.reclaim` event names the old
+    /// holder, generation and lease end, the new holder, `--by` and `--reason`. Nothing checks that
+    /// the old holder is really gone: say in `--reason` what was found (process ended, pull request
+    /// merged, uncommitted work). The old generation is stale from then on. The new holder is this
+    /// session's own id, never typed.
+    Reclaim {
+        /// `C-12`.
+        card: String,
+        /// The generation the card has now (`card show` prints it).
+        #[arg(long)]
+        generation: i64,
+        /// Who reclaims it, one line of 1 to 80 characters: the actor of the event.
+        #[arg(long)]
+        by: String,
+        /// What was found out about the old holder, one line of 1 to 500 characters.
+        #[arg(long)]
+        reason: String,
+        /// Lease length of the new reservation in seconds, 60 to 86400 (default 14400).
+        #[arg(long)]
+        lease_secs: Option<i64>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Reads the ledger only. Show the card to work on next
     ///
     /// Reads the ledger only. Prints the cards this session holds (`mine`: generation, lease
@@ -576,6 +617,26 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             &d::session_holder("handoff", env)?,
             generation,
             &to,
+        ),
+        Action::Reclaim {
+            card,
+            generation,
+            by,
+            reason,
+            lease_secs,
+            project,
+            home,
+        } => d::reclaim(
+            &project,
+            &resolve_home(home)?,
+            &card,
+            &d::ReclaimRequest {
+                to_holder: &d::session_holder("reclaim", env)?,
+                generation,
+                by: &by,
+                reason: &reason,
+                lease_secs,
+            },
         ),
         Action::Next { project, home } => w::next(
             &project,

@@ -37,6 +37,11 @@ pub const MAX_HOLDER_LEN: usize = 200;
 /// Longest worktree path or branch name, in characters.
 pub const MAX_FIELD_LEN: usize = 512;
 
+/// Longest `by` of a [`reclaim`], in characters (the same limit as every `--by`).
+pub const MAX_BY_LEN: usize = 80;
+/// Longest `reason` of a [`reclaim`], in characters.
+pub const MAX_REASON_LEN: usize = 500;
+
 /// The `event.kind` of a rejected fence-checked call.
 pub const EVENT_FENCE_REJECT: &str = "fence_reject";
 
@@ -265,13 +270,14 @@ impl std::fmt::Display for FenceError {
             ),
             FenceError::CardInReview {
                 card_id,
+                generation,
                 lease_live: false,
-                ..
             } => write!(
                 f,
                 "card conflict in state: C-{card_id} is `review` and its lease has ended, so it \
-                 can neither be reopened nor given back; ask the leader (reclaim comes with card \
-                 C-53 S6), or `card done` after the merge"
+                 can neither be reopened nor given back; reclaim it with `card reclaim C-{card_id} \
+                 --generation {generation} --by <who> --reason <text>` and then close it, or \
+                 `card done` after the merge"
             ),
             FenceError::Ledger(e) => e.fmt(f),
         }
@@ -633,6 +639,14 @@ fn reserve_in_tx(
     })?
 }
 
+/// Whether a lease has ended at ledger-clock second `now`: the lease-end second itself no longer
+/// holds (`lease_until <= now`). The fence, `release` and `reclaim` all decide with this one
+/// function, so a lease the fence calls expired is one `reclaim` may take and `release` may
+/// report as not live.
+pub fn lease_ended(lease_until: i64, now: i64) -> bool {
+    lease_until <= now
+}
+
 /// The shared check of renew, release, handoff and fence: the offered `(holder, generation)`
 /// must be the current reservation, `held`, and (when `need_live`) with a lease that has not
 /// ended. Returns the reservation, or the refusal; a SQL failure is the outer `Err`.
@@ -667,7 +681,7 @@ fn evaluate(
             held_by: row.holder,
         }));
     }
-    if need_live && row.lease_until <= now {
+    if need_live && lease_ended(row.lease_until, now) {
         return Ok(Err(FenceError::LeaseExpired {
             lease_until: row.lease_until,
             now,
@@ -773,8 +787,8 @@ pub fn renew(
 /// keeps its state.
 ///
 /// A `review` card is refused ([`FenceError::CardInReview`]) and nothing is written: given
-/// back, it would have nobody who can close or reopen it, and nothing reclaims a card yet
-/// (C-53 S6). The state is read inside the transaction that would release, after the fence, so
+/// back, it would have nobody who can close or reopen it; a holder whose lease ended is
+/// replaced by [`reclaim`] instead. The state is read inside the transaction that would release, after the fence, so
 /// a `review` that commits at the same moment cannot slip between the check and the write
 /// (card C-68 N-a), and a caller who is not the holder gets the fence refusal first.
 pub fn release(
@@ -800,7 +814,7 @@ pub fn release(
                     card_id,
                     generation,
                     // The same test as the fence's `LeaseExpired`.
-                    lease_live: row.lease_until > now,
+                    lease_live: !lease_ended(row.lease_until, now),
                 }));
             }
             tx.execute(
@@ -910,6 +924,244 @@ pub fn handoff(
     )
 }
 
+// ---- reclaim -----------------------------------------------------------------------------------
+
+/// What [`reclaim`] did.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Reclaimed {
+    /// The reservation that ended, as it is now (`status: reclaimed`).
+    pub previous: Reservation,
+    /// The new `held` reservation of the reclaimer, one generation up.
+    pub reservation: Reservation,
+    /// The card's state, which a reclaim does not change.
+    pub card_state: String,
+}
+
+/// Why [`reclaim`] refused. Every refusal leaves the ledger as it was: no `fence_reject`
+/// event is written, because the caller is not the holder the fence checks.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ReclaimError {
+    /// A value is out of its limits or malformed. Nothing was read or written.
+    InvalidInput(String),
+    CardNotFound(i64),
+    /// The card is `done`: nothing is left to reclaim.
+    CardDone(i64),
+    /// The card has never had a reservation.
+    NoReservation,
+    /// The offered generation is lower than the current one.
+    StaleGeneration {
+        offered: i64,
+        current: i64,
+    },
+    /// The offered generation was never issued.
+    UnknownGeneration {
+        offered: i64,
+        current: i64,
+    },
+    /// The current reservation is not `held` (released, reclaimed, held for review ...).
+    NotHeld {
+        status: String,
+    },
+    /// The lease has not ended: its end is later than the ledger clock.
+    LeaseLive {
+        lease_until: i64,
+        now: i64,
+    },
+    /// The ledger itself failed (busy, unavailable, constraint ...).
+    Ledger(LedgerError),
+}
+
+impl ReclaimError {
+    pub fn code(&self) -> &'static str {
+        match self {
+            ReclaimError::InvalidInput(_) => "invalid_input",
+            ReclaimError::CardNotFound(_) => "card_not_found",
+            ReclaimError::CardDone(_) => "card_done",
+            ReclaimError::NoReservation => "no_reservation",
+            ReclaimError::StaleGeneration { .. } => "stale_generation",
+            ReclaimError::UnknownGeneration { .. } => "unknown_generation",
+            ReclaimError::NotHeld { .. } => "not_held",
+            ReclaimError::LeaseLive { .. } => "lease_live",
+            ReclaimError::Ledger(e) => e.code(),
+        }
+    }
+}
+
+impl std::fmt::Display for ReclaimError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ReclaimError::InvalidInput(why) => write!(f, "invalid reservation input: {why}"),
+            ReclaimError::CardNotFound(id) => write!(f, "card not found: C-{id}"),
+            ReclaimError::CardDone(id) => write!(
+                f,
+                "card conflict in state: C-{id} is `done`; a finished card has nothing to reclaim"
+            ),
+            ReclaimError::NoReservation => {
+                f.write_str("reservation conflict in card: the card has no reservation")
+            }
+            ReclaimError::StaleGeneration { offered, current } => write!(
+                f,
+                "reservation conflict in card: generation {offered} is stale, the current generation is {current}"
+            ),
+            ReclaimError::UnknownGeneration { offered, current } => write!(
+                f,
+                "reservation conflict in card: generation {offered} was never issued, the current generation is {current}"
+            ),
+            ReclaimError::NotHeld { status } => write!(
+                f,
+                "reservation conflict in card: the current reservation is `{status}`, not `held`; \
+                 only a `held` reservation whose lease ended is reclaimed"
+            ),
+            ReclaimError::LeaseLive { lease_until, now } => write!(
+                f,
+                "reservation conflict in card: the lease runs until {lease_until} (now {now}); \
+                 only an ended lease is reclaimed"
+            ),
+            ReclaimError::Ledger(e) => e.fmt(f),
+        }
+    }
+}
+
+impl std::error::Error for ReclaimError {}
+
+impl From<LedgerError> for ReclaimError {
+    fn from(e: LedgerError) -> Self {
+        ReclaimError::Ledger(e)
+    }
+}
+
+/// A `by` or `reason`: one line of 1 to `max` characters with something visible in it.
+fn check_label(what: &str, value: &str, max: usize) -> Result<(), ReclaimError> {
+    check_text(what, value, max).map_err(ReclaimError::InvalidInput)?;
+    if value.trim().is_empty() {
+        return Err(ReclaimError::InvalidInput(format!("{what} is blank")));
+    }
+    Ok(())
+}
+
+/// Takes over a card whose reservation has ended: the reservation at `generation` becomes
+/// `reclaimed` and `to_holder` gets a new `held` one at generation + 1 with the same write
+/// scope, worktree and branch and a lease of `lease_secs` from the DB clock. The card keeps its
+/// state, notes, criteria and links; one `card.reclaim` event, signed by `by`, names the
+/// previous holder, generation and lease end, the new holder and generation, and `reason`.
+/// From then on the old generation is stale for every call.
+///
+/// Only the current reservation can be reclaimed, only while it is `held`, and only once its
+/// lease has ended (`lease_until <= now`, the fence's own test, so the lease-end second counts
+/// as ended). Rejected, with nothing written: bad input, an unknown or `done` card, a card
+/// with no reservation, a generation that is not the current one, a reservation that is not
+/// `held` (released, reclaimed, `held_for_review` ...) and a lease that has not ended. The
+/// holder may reclaim its own ended lease. Nothing checks that the old holder is really gone;
+/// the caller says what it found in `reason` (SPEC-20261119-card-reclaim, Risks).
+pub fn reclaim(
+    w: &mut WriteLedger,
+    card_id: i64,
+    to_holder: &str,
+    generation: i64,
+    by: &str,
+    reason: &str,
+    lease_secs: i64,
+) -> Result<Reclaimed, ReclaimError> {
+    check_holder(to_holder)
+        .map_err(|why| ReclaimError::InvalidInput(format!("to_holder: {why}")))?;
+    check_label("by", by, MAX_BY_LEN)?;
+    check_label("reason", reason, MAX_REASON_LEN)?;
+    check_lease(lease_secs).map_err(ReclaimError::InvalidInput)?;
+    w.with_write_tx(|tx, now| {
+        let Some((state, current)) = card_row(tx, card_id)? else {
+            return Ok(Err(ReclaimError::CardNotFound(card_id)));
+        };
+        if state == "done" {
+            return Ok(Err(ReclaimError::CardDone(card_id)));
+        }
+        if current == 0 {
+            return Ok(Err(ReclaimError::NoReservation));
+        }
+        if generation < current {
+            return Ok(Err(ReclaimError::StaleGeneration {
+                offered: generation,
+                current,
+            }));
+        }
+        if generation > current {
+            return Ok(Err(ReclaimError::UnknownGeneration {
+                offered: generation,
+                current,
+            }));
+        }
+        let Some(old) = load_reservation(tx, card_id, current)? else {
+            return Ok(Err(ReclaimError::NoReservation));
+        };
+        if old.status != "held" {
+            return Ok(Err(ReclaimError::NotHeld { status: old.status }));
+        }
+        if !lease_ended(old.lease_until, now) {
+            return Ok(Err(ReclaimError::LeaseLive {
+                lease_until: old.lease_until,
+                now,
+            }));
+        }
+        tx.execute(
+            "UPDATE reservation SET status = 'reclaimed', updated_at = ?1 WHERE reservation_id = ?2",
+            params![now, old.reservation_id],
+        )?;
+        let next = current + 1;
+        tx.execute(
+            "UPDATE card SET generation = ?1 WHERE card_id = ?2",
+            params![next, card_id],
+        )?;
+        tx.execute(
+            "INSERT INTO reservation (card_id, generation, holder, status, acquired_at, \
+             lease_until, updated_at, worktree, branch) \
+             VALUES (?1, ?2, ?3, 'held', ?4, ?5, ?4, ?6, ?7)",
+            params![
+                card_id,
+                next,
+                to_holder,
+                now,
+                now + lease_secs,
+                old.worktree,
+                old.branch
+            ],
+        )?;
+        let new_id = tx.last_insert_rowid();
+        tx.execute(
+            "INSERT INTO reservation_scope (reservation_id, pattern) \
+             SELECT ?1, pattern FROM reservation_scope WHERE reservation_id = ?2",
+            params![new_id, old.reservation_id],
+        )?;
+        add_event(
+            tx,
+            now,
+            by,
+            card_id,
+            "card.reclaim",
+            &json!({
+                "from_holder": old.holder,
+                "from_generation": current,
+                "from_lease_until": old.lease_until,
+                "holder": to_holder,
+                "generation": next,
+                "lease_until": now + lease_secs,
+                "by": by,
+                "reason": reason,
+                "card_state": state,
+                "worktree": old.worktree,
+                "branch": old.branch,
+            }),
+        )?;
+        let previous = load_reservation(tx, card_id, current)?
+            .ok_or_else(|| LedgerError::Sql("the reclaimed reservation cannot be read".into()))?;
+        let reservation = load_reservation(tx, card_id, next)?
+            .ok_or_else(|| LedgerError::Sql("the new reservation cannot be read".into()))?;
+        Ok(Ok(Reclaimed {
+            previous,
+            reservation,
+            card_state: state,
+        }))
+    })?
+}
+
 /// The check before a push or a write: `Ok` only when `(holder, generation)` is the current
 /// `held` reservation of the card and its lease has not ended (DB clock). Any other answer is a
 /// [`FenceError`], and a reservation problem is recorded as a `fence_reject` event that stays
@@ -963,6 +1215,15 @@ mod tests {
 
     fn scope(n: usize) -> Vec<String> {
         (0..n).map(|i| format!("src/p{i}/")).collect()
+    }
+
+    /// SPEC-20261119-card-reclaim-followups AC-2: the one test every lease-end decision uses,
+    /// pinned at N-1, N and N+1 seconds so no test needs the clock to stand still.
+    #[test]
+    fn lease_ended_includes_the_lease_end_second() {
+        assert!(!lease_ended(100, 99), "one second left: live");
+        assert!(lease_ended(100, 100), "the lease-end second: ended");
+        assert!(lease_ended(100, 101), "one second past: ended");
     }
 
     #[test]

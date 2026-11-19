@@ -708,6 +708,10 @@ fn settings_step_with(
 ) -> Result<Step> {
     let mut owned = settings_stdin(claude::owned_settings(root)?);
     let file = claude::current_settings(root)?;
+    // SPEC-20261119-hooks-followups (N4): MoAI's record still owns a status line the file no
+    // longer has. The plan keeps it removed (the user's edit); the step must not call that
+    // "current" without saying so.
+    let status_line_removed = owned.contains_key("statusLine") && !file.contains_key("statusLine");
     // #2936 R8 (Q-H1, decision 6880072221): a project that has no status line of its own gets
     // MoAI's. One it has stays as it is, and so does one MoAI wrote before.
     let intent = status_line::intent(owned.get("statusLine"), file.get("statusLine"));
@@ -731,6 +735,12 @@ fn settings_step_with(
             step.state = "needs_decision";
             step.reason = held.message.clone();
         }
+    }
+    if status_line_removed && step.state == "unchanged" {
+        step.reason = "the status line MoAI wrote was removed from .claude/settings.json by hand \
+                       and is not put back; the other MoAI-owned keys are current"
+            .into();
+        step.preview["status_line_removed"] = json!(true);
     }
     // #2936 L1: "current" must not hide keys that still name the earlier generation's `.moai/`
     // folder: they keep the go-state step waiting, and nothing here changes them yet.
@@ -814,7 +824,11 @@ fn settings_from_plan(shown: &str, plan: &Value, owned: Map<String, Value>) -> S
 /// the MoAI hook set with `go-hooks-apply`. `replace` prints that command (`permissions` is
 /// not touched), `blocked` (entries of other tools share `hooks`) waits for the user without a
 /// command, `none` is `unchanged`. HOME is not read (O-3).
-fn hooks_step(root: &Path, shown: &str) -> Result<Step> {
+///
+/// SPEC-20261119-hooks-followups: where the profile lists `claude` (`claude`), the hooks plan of
+/// the Claude host is consulted whenever no Go entry is left, so a project with no hooks and no
+/// record reads what `hooks-plan` reads (`ready`), not `unchanged` with no command.
+fn hooks_step(root: &Path, shown: &str, claude: bool) -> Result<Step> {
     let plan = crate::go_hooks::plan(root, None)?;
     let digest = plan["plan_digest"].as_str().map(String::from);
     let names = |key: &str| -> Vec<Value> {
@@ -837,7 +851,7 @@ fn hooks_step(root: &Path, shown: &str) -> Result<Step> {
     // the MoAI hook set is then written by the ordinary `hooks-apply` for Claude. C-55: the
     // same holds where MoAI's record says the hook set is installed — the file may not hold it.
     if plan["action"].as_str() == Some("none") {
-        if let Some(step) = hooks_after_settings_move(root, shown, &preview)? {
+        if let Some(step) = hooks_after_settings_move(root, shown, &preview, claude)? {
             return Ok(step);
         }
     }
@@ -880,9 +894,22 @@ fn hooks_step(root: &Path, shown: &str) -> Result<Step> {
 /// C-55: a project whose ownership record names the MoAI hook set is planned the same way, so
 /// a settings file that lost its `hooks` key (the record is not tracked by git, the file is)
 /// reads `ready` here and never `unchanged`.
-fn hooks_after_settings_move(root: &Path, shown: &str, base: &Value) -> Result<Option<Step>> {
+///
+/// SPEC-20261119-hooks-followups: with `claude` in the profile's hosts the plan is made in every
+/// case (no record, no move either), and the words of the step say what the file holds: a
+/// `hooks` key that is not the MoAI set is never "current" (N3), and an unreadable record names
+/// its file and the next step (N5). Without a move and without a record the step still offers
+/// nothing (the rule above, leader decision B on N1): it stays `unchanged` and its reason names
+/// the gap and the command to run by hand, `preview.configured` reading as `hooks-status` does.
+fn hooks_after_settings_move(
+    root: &Path,
+    shown: &str,
+    base: &Value,
+    claude: bool,
+) -> Result<Option<Step>> {
     let moved = go_state::backed_up_settings(root)?.is_some();
-    if !moved && !crate::hooks::installed(root, "claude")? {
+    let recorded = crate::hooks::installed(root, "claude").map_err(|e| record_error(root, &e))?;
+    if !claude && !moved && !recorded {
         return Ok(None);
     }
     let plan = crate::hooks::plan(root, "claude", None)?;
@@ -891,21 +918,47 @@ fn hooks_after_settings_move(root: &Path, shown: &str, base: &Value) -> Result<O
     preview["action"] = plan["action"].clone();
     preview["host"] = json!("claude");
     preview["hooks"] = plan["hooks"].clone();
-    let (state, reason) = match plan["action"].as_str() {
+    let offer = moved || recorded;
+    let (state, reason): (&'static str, String) = match plan["action"].as_str() {
         Some("create" | "update") if moved => (
             "ready",
             "the Go settings moved into the backup and took their hook entries with them; the \
-             MoAI hook set is not in the new settings yet",
+             MoAI hook set is not in the new settings yet"
+                .into(),
         ),
-        Some("create" | "update") => (
+        Some("create" | "update") if recorded => (
             "ready",
-            "MoAI's record names the MoAI hook set, but .claude/settings.json does not hold it",
+            "MoAI's record names the MoAI hook set, but .claude/settings.json does not hold it"
+                .into(),
         ),
-        Some("unchanged") => ("unchanged", "the MoAI hook set is current"),
+        Some("create" | "update") => {
+            preview["configured"] = json!(hook_status_configured(root));
+            (
+                "unchanged",
+                format!(
+                    "no MoAI hook set is installed in .claude/settings.json (hooks-plan reads \
+                     {}); this step prints no command here, to install it run `moai hooks-plan \
+                     {shown} --host claude`, then `moai hooks-apply {shown} --host claude` with \
+                     its plan_digest",
+                    plan["action"].as_str().unwrap_or("update")
+                ),
+            )
+        }
+        Some("unchanged") => {
+            let (state, reason) = unchanged_hooks(root, &mut preview)?;
+            (state, reason.into())
+        }
+        _ if !offer => (
+            "unchanged",
+            "the MoAI hook set conflicts with a key the user set in .claude/settings.json (hooks-plan \
+             reads conflict); this step prints no command and nothing is written"
+                .into(),
+        ),
         _ => (
             "conflict",
             "the MoAI hook set conflicts with a key the user set in .claude/settings.json; \
-             nothing is written",
+             nothing is written"
+                .into(),
         ),
     };
     let apply = match (&digest, state) {
@@ -930,11 +983,65 @@ fn hooks_after_settings_move(root: &Path, shown: &str, base: &Value) -> Result<O
     Ok(Some(Step {
         name: "hooks",
         state,
-        reason: reason.into(),
+        reason,
         preview,
         plan_digest: digest,
         apply,
     }))
+}
+
+/// What `hooks-status` reads for the Claude host's `configured` (`yes`, `no`, `drifted`,
+/// `legacy_binary`); `drifted` when the status cannot be read.
+fn hook_status_configured(root: &Path) -> String {
+    crate::hooks::status(root, "claude", None, "")
+        .ok()
+        .and_then(|s| s["configured"].as_str().map(String::from))
+        .unwrap_or_else(|| "drifted".into())
+}
+
+/// What a hooks plan that reads `unchanged` means for the `hooks` key the file holds now: the
+/// MoAI set is "current" only where the key is that set. An edit of it is kept and said to be
+/// one (the status reads `drifted`); an empty key leaves no hook in effect, no command changes
+/// a key the user edited, so the step waits for the user and names the way out.
+fn unchanged_hooks(root: &Path, preview: &mut Value) -> Result<(&'static str, &'static str)> {
+    let held = crate::claude::read_existing(&root.join(".claude/settings.json"))?
+        .and_then(|b| serde_json::from_slice::<Value>(&b).ok())
+        .and_then(|v| v.get("hooks").cloned())
+        .unwrap_or(Value::Null);
+    if held == Value::Object(crate::hooks::hooks_object("claude")?) {
+        return Ok(("unchanged", "the MoAI hook set is current"));
+    }
+    let empty = held.is_null() || held.as_object().is_some_and(|m| m.is_empty());
+    preview["configured"] = json!("drifted");
+    preview["hooks_in_effect"] = json!(!empty);
+    Ok(if empty {
+        (
+            "needs_decision",
+            "`hooks` in .claude/settings.json is empty, so no hook is in effect, and no moai \
+             command changes a key you edited; to get the MoAI hooks back, remove the `hooks` \
+             key from the file by hand and plan again",
+        )
+    } else {
+        (
+            "unchanged",
+            "`hooks` in .claude/settings.json is not the MoAI hook set (your edit is kept and \
+             hooks-status reads drifted); no moai command changes it",
+        )
+    })
+}
+
+/// The message of an unreadable ownership record, with its file and the next step (N5): the
+/// record is MoAI's own file under the state folder and no command repairs it. A message that is
+/// not about the record (the settings file itself) stays as it is.
+fn record_error(root: &Path, e: &str) -> String {
+    if !e.contains("receipt") {
+        return e.to_string();
+    }
+    format!(
+        "the ownership record {} cannot be read ({e}); no moai command repairs it: read it, \
+         move it aside by hand if it is damaged, and plan again",
+        state_root::rel(root, "manifests/claude-settings.json")
+    )
 }
 
 fn github_step(root: &Path, shown: &str) -> Result<Step> {
@@ -1031,7 +1138,7 @@ fn install_steps(
             let mut steps = vec![Step::waiting("profile", "blocked", &e)];
             steps.push(Step::waiting("generation", "blocked", &e));
             steps.push(or_blocked("claude-settings", settings_step(root, shown)));
-            steps.push(or_blocked("hooks", hooks_step(root, shown)));
+            steps.push(or_blocked("hooks", hooks_step(root, shown, false)));
             steps.push(or_blocked("github", github_step(root, shown)));
             steps.extend(host_steps(root, shown, None));
             hooks_after_settings(&mut steps);
@@ -1044,11 +1151,12 @@ fn install_steps(
     } else {
         or_blocked("generation", generation_step(root, shown, &profile))
     };
+    let claude = profile.hosts.iter().any(|h| h == "claude");
     let mut steps = vec![
         profile_step,
         generation,
         or_blocked("claude-settings", settings_step(root, shown)),
-        or_blocked("hooks", hooks_step(root, shown)),
+        or_blocked("hooks", hooks_step(root, shown, claude)),
         or_blocked("github", github_step(root, shown)),
     ];
     steps.extend(host_steps(root, shown, Some(&profile.hosts)));
@@ -1372,7 +1480,7 @@ fn undo_order() -> Value {
             {"step": "codex-hooks", "commands": [], "note": none},
             {"step": "hooks", "commands": [
                 "moai go-hooks-revert --receipt <receipt of the hooks step> --permission-reference <reference> <PROJECT>",
-            ], "note": "for a hooks step that ran go-hooks-apply (the Go hook set); a project that took hooks-apply --host claude has no command here"},
+            ], "note": "for a hooks step that ran go-hooks-apply (the Go hook set); a hooks step that ran hooks-apply --host claude over an existing settings file printed its own `revert` (moai hooks-revert <PROJECT> --receipt <id> --permission-reference <reference>), and a first install has nothing to revert"},
             {"step": "generation", "commands": [
                 "moai apply-recover --receipt <agents_receipt of the generation step> --permission-reference <reference> <PROJECT>",
                 "moai apply-recover --receipt <receipt of the generation step> --permission-reference <reference> <PROJECT>",

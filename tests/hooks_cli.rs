@@ -827,3 +827,727 @@ fn claude_runs_the_preflight_guard_and_codex_does_not() {
         "an ordinary call goes through"
     );
 }
+
+// ---- SPEC-20261119-enforce-spec-hooks S1: the GREEN lock against Bash, the deny audit line ----
+
+const RED_COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
+
+/// A temporary work tree in the GREEN phase of a TDD cycle: a `.git` folder (written by hand,
+/// no `git` is started), the phase record that locks `tests/locked_test.rs`, an unlocked test
+/// file, a source file and a `.moai-cli` folder for the engine's audit log.
+struct GreenRepo {
+    _tmp: tempfile::TempDir,
+    root: std::path::PathBuf,
+}
+
+impl GreenRepo {
+    fn new(phase: &str) -> Self {
+        Self::build(phase, false)
+    }
+
+    /// The work tree three folders below the temporary folder, so that its parent is deep
+    /// enough not to be a top-level directory on any platform (`/tmp` is one on Linux).
+    fn nested(phase: &str) -> Self {
+        Self::build(phase, true)
+    }
+
+    fn build(phase: &str, nested: bool) -> Self {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let mut root = fs::canonicalize(tmp.path()).unwrap();
+        if nested {
+            root = root.join("outer/inner/repo");
+        }
+        fs::create_dir_all(root.join(".git")).unwrap();
+        fs::write(root.join(".git/HEAD"), "ref: refs/heads/main\n").unwrap();
+        for dir in ["home", "src", "tests", ".moai-cli"] {
+            fs::create_dir_all(root.join(dir)).unwrap();
+        }
+        for file in [
+            "src/a.rs",
+            "tests/locked_test.rs",
+            "tests/other_test.rs",
+            "Cargo.toml",
+        ] {
+            fs::write(root.join(file), "x\n").unwrap();
+        }
+        let repo = GreenRepo { _tmp: tmp, root };
+        repo.write_record(phase);
+        repo
+    }
+
+    fn write_record(&self, phase: &str) {
+        fs::create_dir_all(self.root.join(".git/moai")).unwrap();
+        fs::write(
+            self.root.join(".git/moai/tdd.json"),
+            json!({"schema_version": 1, "spec": "SPEC-20261119-fixture", "phase": phase,
+                   "red_commit": RED_COMMIT, "locked": ["tests/locked_test.rs"],
+                   "checks": ["cargo test"], "at_unix": 1})
+            .to_string(),
+        )
+        .unwrap();
+    }
+
+    /// Creates `files` (relative paths) and makes them the whole locked list of the record.
+    fn lock_only(&self, files: &[&str]) {
+        for file in files {
+            let path = self.root.join(file);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, "x\n").unwrap();
+        }
+        fs::write(
+            self.root.join(".git/moai/tdd.json"),
+            json!({"schema_version": 1, "spec": "SPEC-20261119-fixture", "phase": "green",
+                   "red_commit": RED_COMMIT, "locked": files,
+                   "checks": ["cargo test"], "at_unix": 1})
+            .to_string(),
+        )
+        .unwrap();
+    }
+
+    /// The Bash call as Claude Code sends it, run from the work tree; `cwd` is the folder the
+    /// hook input names.
+    fn bash(&self, command: &str, cwd: &Path) -> (i32, String) {
+        let input = json!({"session_id": "s", "hook_event_name": "PreToolUse",
+            "tool_name": "Bash", "tool_use_id": "t1",
+            "tool_input": {"command": command}, "cwd": cwd});
+        let mut child = Command::new(common::MOAI_BIN)
+            .args([
+                "hook-dispatch",
+                "--host",
+                "claude",
+                "--event",
+                "tool-preflight",
+            ])
+            .current_dir(&self.root)
+            .env("HOME", self.root.join("home"))
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        common::feed_stdin(&mut child, input.to_string().as_bytes());
+        let out = child.wait_with_output().unwrap();
+        (
+            out.status.code().unwrap(),
+            String::from_utf8_lossy(&out.stdout).into_owned(),
+        )
+    }
+
+    fn run(&self, command: &str) -> (i32, String) {
+        self.bash(command, &self.root)
+    }
+
+    fn deny_reason(&self, command: &str) -> String {
+        let (code, stdout) = self.run(command);
+        let v: Value = serde_json::from_str(&stdout).unwrap_or(Value::Null);
+        assert_eq!(code, 0, "{command}: {stdout}");
+        assert_eq!(
+            v["hookSpecificOutput"]["permissionDecision"],
+            json!("deny"),
+            "{command} -> {stdout}"
+        );
+        v["hookSpecificOutput"]["permissionDecisionReason"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    }
+
+    fn assert_allowed(&self, command: &str) {
+        let (code, stdout) = self.run(command);
+        assert_eq!((code, stdout.as_str()), (0, ""), "{command}");
+    }
+
+    fn audit_lines(&self) -> Vec<Value> {
+        fs::read_to_string(self.root.join(".moai-cli/receipts/hook-engine.jsonl"))
+            .unwrap_or_default()
+            .lines()
+            .map(|l| serde_json::from_str(l).unwrap())
+            .collect()
+    }
+}
+
+/// REQ-1, REQ-4: while the cycle is GREEN or REFACTOR, removing or moving a locked test with
+/// Bash is refused with the lock's own reason, however the path is spelled.
+#[test]
+fn green_lock_bash_refuses_removing_or_moving_a_locked_test() {
+    for phase in ["green", "refactor"] {
+        let repo = GreenRepo::new(phase);
+        let absolute = repo.root.join("tests/locked_test.rs");
+        let absolute = absolute.to_str().unwrap();
+        for command in [
+            "rm tests/locked_test.rs".to_string(),
+            "rm -f tests/locked_test.rs".to_string(),
+            "rm -- tests/locked_test.rs".to_string(),
+            "unlink tests/locked_test.rs".to_string(),
+            "git rm tests/locked_test.rs".to_string(),
+            "git rm -f -- tests/locked_test.rs".to_string(),
+            "git mv tests/locked_test.rs old.rs".to_string(),
+            "mv tests/locked_test.rs src/moved.rs".to_string(),
+            // A locked path as the destination, and a new test file as the destination.
+            "mv src/a.rs tests/locked_test.rs".to_string(),
+            "mv src/a.rs tests/brand_new_test.rs".to_string(),
+            "rm tests/other_test.rs tests/locked_test.rs".to_string(),
+            "rm tests/../tests/locked_test.rs".to_string(),
+            "rm ./tests/locked_test.rs".to_string(),
+            format!("rm {absolute}"),
+            "echo hi && rm tests/locked_test.rs".to_string(),
+            "sh -c 'rm tests/locked_test.rs'".to_string(),
+            "FOO=1 rm tests/locked_test.rs".to_string(),
+        ] {
+            let reason = repo.deny_reason(&command);
+            assert!(
+                reason.contains("GREEN or REFACTOR"),
+                "{phase} {command}: {reason}"
+            );
+        }
+    }
+}
+
+/// REQ-2, REQ-3: everything else goes through unchanged: an unlocked file, a read of a locked
+/// one, a removal of nothing, and a cycle that is not in GREEN.
+#[test]
+fn green_lock_bash_allows_everything_else() {
+    let repo = GreenRepo::new("green");
+    for command in [
+        "rm src/a.rs",
+        "rm tests/other_test.rs",
+        "mv src/a.rs src/b.rs",
+        "git rm src/a.rs",
+        "git mv src/a.rs src/c.rs",
+        "unlink src/a.rs",
+        // Nothing to remove: the lock's rule against new test files is not meant for it.
+        "rm -f tests/gone_test.rs",
+        "unlink tests/gone_test.rs",
+        "git rm --cached tests/gone_test.rs",
+        "cat tests/locked_test.rs",
+        "ls tests/locked_test.rs",
+        "cp tests/locked_test.rs /tmp/copy",
+        "git status",
+        "rm",
+        "echo rm tests/locked_test.rs",
+        "grep -n rm tests/locked_test.rs",
+    ] {
+        repo.assert_allowed(command);
+    }
+}
+
+/// REQ-3, REQ-4: no record, an ended cycle, a repository without a work tree, and a relative
+/// path read against the hook input's `cwd`.
+#[test]
+fn green_lock_bash_follows_the_record_and_the_input_cwd() {
+    let repo = GreenRepo::new("green");
+    let sub = repo.root.join("src");
+    // The path is relative to the folder the hook input names, not the process folder.
+    let (code, stdout) = repo.bash("rm ../tests/locked_test.rs", &sub);
+    assert_eq!(code, 0);
+    assert!(
+        stdout.contains("\"permissionDecision\":\"deny\""),
+        "{stdout}"
+    );
+    let (code, stdout) = repo.bash("rm tests/locked_test.rs", &sub);
+    assert_eq!(
+        (code, stdout.as_str()),
+        (0, ""),
+        "src/tests/ does not exist"
+    );
+
+    // The cycle is over (no record), or the record is not one this build reads.
+    fs::remove_file(repo.root.join(".git/moai/tdd.json")).unwrap();
+    repo.assert_allowed("rm tests/locked_test.rs");
+    repo.write_record("red");
+    repo.assert_allowed("rm tests/locked_test.rs");
+    repo.write_record("green");
+    repo.deny_reason("rm tests/locked_test.rs");
+
+    // Not a work tree at all: nothing to read, nothing refused.
+    fs::remove_dir_all(repo.root.join(".git")).unwrap();
+    repo.assert_allowed("rm tests/locked_test.rs");
+}
+
+/// REQ-8: removing or moving the folder that holds a locked test, and a glob or a brace group
+/// that names one, are refused like the file itself; a folder or a pattern that holds or
+/// names no locked test is not.
+#[test]
+fn green_lock_bash_covers_folders_globs_and_braces() {
+    let repo = GreenRepo::new("green");
+    let absolute = repo.root.join("tests");
+    let absolute = absolute.to_str().unwrap();
+    for command in [
+        "rm -rf tests".to_string(),
+        "rm -r tests/".to_string(),
+        "rm -r ./tests".to_string(),
+        "rm -rf src tests".to_string(),
+        "git rm -r tests".to_string(),
+        "git rm -rf --cached tests".to_string(),
+        "mv tests tests_old".to_string(),
+        "git mv tests tests_old".to_string(),
+        format!("rm -rf {absolute}"),
+        "rm tests/locked_*.rs".to_string(),
+        "rm tests/locked_test.r?".to_string(),
+        "rm tests/locked_tes[t].rs".to_string(),
+        "rm tests/[a-m]ocked_test.rs".to_string(),
+        "rm tests/[!x]ocked_test.rs".to_string(),
+        "rm tests/[^x]ocked_test.rs".to_string(),
+        "rm tests/*".to_string(),
+        "rm te*/locked_test.rs".to_string(),
+        // A glob that stops at the folder names the folder.
+        "rm -rf t*".to_string(),
+        "rm -r te?ts".to_string(),
+        "rm -rf [t]ests".to_string(),
+        "mv te* /tmp/".to_string(),
+        "git rm -r tes*".to_string(),
+        "mv tests/locked_* src/".to_string(),
+        "rm tests/{locked_test.rs,other_test.rs}".to_string(),
+        "rm tests/{other,locked}_test.rs".to_string(),
+        "rm tests/{x,{locked_test.rs,y}}".to_string(),
+        "FOO=1 rm -rf tests".to_string(),
+        "echo hi && rm -rf tests".to_string(),
+    ] {
+        let reason = repo.deny_reason(&command);
+        assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+    }
+    for command in [
+        "rm -rf src",
+        "rm -r target",
+        "mv src src2",
+        "git mv src src2",
+        "rm tests/other_*.rs",
+        "rm tests/zz*.rs",
+        "rm tests/[a-m]ther_test.rs",
+        "rm tests/[!l]ocked_test.rs",
+        "rm tests/{other,zz}_test.rs",
+        "rm src/*.rs",
+        "rm -r s*",
+        "rm zz*",
+        "rm -r [a-s]rc",
+        "ls tests",
+        "cat tests/*",
+        "cp -r tests /tmp/tests_copy",
+        "echo ${HOME}/x",
+    ] {
+        repo.assert_allowed(command);
+    }
+}
+
+/// N1 (audit of #3216, mutant H7): after `--` a word that starts with a dash is a path; before
+/// it, it is an option.
+#[test]
+fn green_lock_bash_reads_dash_names_after_double_dash() {
+    let repo = GreenRepo::new("green");
+    fs::write(repo.root.join("tests/-odd_test.rs"), "x\n").unwrap();
+    fs::write(
+        repo.root.join(".git/moai/tdd.json"),
+        json!({"schema_version": 1, "spec": "SPEC-20261119-fixture", "phase": "green",
+               "red_commit": RED_COMMIT, "locked": ["tests/-odd_test.rs"],
+               "checks": ["cargo test"], "at_unix": 1})
+        .to_string(),
+    )
+    .unwrap();
+    let tests = repo.root.join("tests");
+    let (code, stdout) = repo.bash("rm -- -odd_test.rs", &tests);
+    assert!(
+        code == 0 && stdout.contains("\"permissionDecision\":\"deny\""),
+        "{code} {stdout}"
+    );
+    let (code, stdout) = repo.bash("rm -f -- -odd_test.rs", &tests);
+    assert!(
+        stdout.contains("\"permissionDecision\":\"deny\""),
+        "{code} {stdout}"
+    );
+    // Without `--` the same word is an option, and nothing is named.
+    let (code, stdout) = repo.bash("rm -odd_test.rs", &tests);
+    assert_eq!((code, stdout.as_str()), (0, ""));
+}
+
+/// #3216 re-audit B1: a locked test whose real name holds `[..]`, `*`, `?` or a brace group is
+/// still protected when the word is written as it is: the word is read literally as well as
+/// matched as a pattern.
+#[test]
+fn green_lock_bash_reads_locked_names_with_pattern_characters() {
+    let repo = GreenRepo::new("green");
+    repo.lock_only(&[
+        "app/[id]/page.test.tsx",
+        "tests/[x]_test.rs",
+        "tests/a{b,c}_test.rs",
+        "tests/star*_test.rs",
+        "tests/what?_test.rs",
+    ]);
+    for command in [
+        "rm 'app/[id]/page.test.tsx'",
+        "rm app/[id]/page.test.tsx",
+        "rm app/\\[id\\]/page.test.tsx",
+        "rm \"app/[id]/page.test.tsx\"",
+        "git rm 'app/[id]/page.test.tsx'",
+        "mv 'app/[id]/page.test.tsx' /tmp/x",
+        "unlink 'app/[id]/page.test.tsx'",
+        "rm 'tests/[x]_test.rs'",
+        "rm 'tests/a{b,c}_test.rs'",
+        "rm 'tests/star*_test.rs'",
+        "rm 'tests/what?_test.rs'",
+        "mv src/a.rs 'tests/new_[1]_test.rs'",
+        "mv src/a.rs 'tests/new_{1,2}_test.rs'",
+    ] {
+        let reason = repo.deny_reason(command);
+        assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+    }
+    // A name that matches no locked test and is not itself one stays open.
+    for command in [
+        "rm 'app/[id]/other.tsx'",
+        "rm 'tests/[y]_test.rs'",
+        "git rm 'app/[ab]/page.test.tsx'",
+    ] {
+        repo.assert_allowed(command);
+    }
+}
+
+/// #3216 re-audit N1: the shapes the first repair let through without naming them. `!`, a `{ …; }`
+/// group, `if`/`while`/`for` bodies, backticks, `busybox`, `git -C dir` and a folder above the
+/// work tree are read; `case`, variables, `~`, extended globs and the brace limits are named in
+/// `capabilities` and stay open (`green_lock_bash_named_limits_are_not_guarded`).
+#[test]
+fn green_lock_bash_reads_wrapped_grouped_and_rebased_commands() {
+    let repo = GreenRepo::new("green");
+    for command in [
+        "! rm tests/locked_test.rs".to_string(),
+        "{ rm tests/locked_test.rs; }".to_string(),
+        "{ true; rm tests/locked_test.rs; }".to_string(),
+        "( rm tests/locked_test.rs )".to_string(),
+        "if true; then rm tests/locked_test.rs; fi".to_string(),
+        "if rm tests/locked_test.rs; then echo x; fi".to_string(),
+        "while true; do mv tests/locked_test.rs /tmp/x; done".to_string(),
+        "for f in a b; do git rm tests/locked_test.rs; done".to_string(),
+        "f() { rm tests/locked_test.rs; }; f".to_string(),
+        "echo `rm tests/locked_test.rs`".to_string(),
+        "`rm tests/locked_test.rs`".to_string(),
+        "busybox rm tests/locked_test.rs".to_string(),
+        "busybox mv tests/locked_test.rs /tmp/x".to_string(),
+        "git -C tests rm locked_test.rs".to_string(),
+        "git -C tests mv locked_test.rs /tmp/x".to_string(),
+        "git -C . rm tests/locked_test.rs".to_string(),
+        "git -C tests -C .. rm tests/locked_test.rs".to_string(),
+        "git -C tests rm -r .".to_string(),
+    ] {
+        let reason = repo.deny_reason(&command);
+        assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+    }
+    // A folder above the work tree holds the whole tree. The tree sits three folders down, so
+    // the parent is no top-level directory and the static `rm` guard does not answer first.
+    let deep = GreenRepo::nested("green");
+    let parent = deep.root.parent().unwrap().to_str().unwrap().to_string();
+    for command in [
+        format!("rm -rf {parent}"),
+        format!("rm -rf {parent}/"),
+        format!("mv {parent} /tmp/moved"),
+    ] {
+        let reason = deep.deny_reason(&command);
+        assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+    }
+    // The static rm guard already refuses these, with its own sentence.
+    for command in [
+        "rm -rf ..",
+        "rm -rf ../",
+        "rm -rf /",
+        "rm -rf .",
+        "rm -rf ./",
+    ] {
+        let reason = repo.deny_reason(command);
+        assert!(reason.contains("rm aimed at"), "{command}: {reason}");
+    }
+    for command in [
+        "echo '{ rm tests/locked_test.rs; }'",
+        "echo \"then rm tests/locked_test.rs\"",
+        "echo `date`",
+        "busybox ls tests",
+        "busybox cat tests/locked_test.rs",
+        "git -C tests status",
+        "git -C src log --oneline",
+        "git -C tests rm other_test.rs",
+        "git -C src rm a.rs",
+        "! ls tests",
+        "if true; then ls tests; fi",
+        "{ ls tests; }",
+        "rm -rf src/../src",
+    ] {
+        repo.assert_allowed(command);
+    }
+}
+
+/// #3216 re-audit round 3, B1: a structure word is a word wherever a space, `;`, `&`, `|`, `(`,
+/// `)`, a quote or a backtick ends it, not only with spaces on both sides.
+#[test]
+fn green_lock_bash_reads_structure_words_at_every_boundary() {
+    let repo = GreenRepo::new("green");
+    for command in [
+        "if true;then rm tests/locked_test.rs;fi",
+        "for f in a b;do rm tests/locked_test.rs;done",
+        "while true;do mv tests/locked_test.rs /tmp/x;done",
+        "until false;do git rm tests/locked_test.rs;done",
+        "if false;then :;else rm tests/locked_test.rs;fi",
+        "if false;then :;elif true;then rm tests/locked_test.rs;fi",
+        "if false;then :;elif rm tests/locked_test.rs;then :;fi",
+        "(if true;then rm tests/locked_test.rs;fi)",
+        "(! rm tests/locked_test.rs)",
+        "true&&{ rm tests/locked_test.rs;}",
+        "true||{ rm tests/locked_test.rs; }",
+        "sh -c '! rm tests/locked_test.rs'",
+        "sh -c '{ rm tests/locked_test.rs; }'",
+        "bash -c \"if true;then rm tests/locked_test.rs;fi\"",
+        "eval '{ rm tests/locked_test.rs; }'",
+        "eval 'if true;then mv tests/locked_test.rs /tmp/x;fi'",
+        "`if true;then rm tests/locked_test.rs;fi`",
+        // Named false denials: a structure word is read as one wherever it stands as a whole
+        // word, so a command line that only mentions one still refuses (#3216 N2).
+        "echo do rm tests/locked_test.rs",
+        "echo then mv tests/locked_test.rs x",
+        "grep -c if rm tests/locked_test.rs",
+    ] {
+        let reason = repo.deny_reason(command);
+        assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+    }
+    for command in [
+        "echo 'if true;then rm tests/locked_test.rs;fi'",
+        "echo \"for f in a;do rm tests/locked_test.rs;done\"",
+        "if true;then ls tests;fi",
+        "for f in a b;do ls tests;done",
+        "sh -c '! ls tests'",
+        "sh -c '{ ls tests; }'",
+        "true&&{ ls tests;}",
+        "echo ifthen;do",
+        // A backslash-escaped boundary is part of its word: this only echoes.
+        "echo a\\;do rm tests/locked_test.rs",
+    ] {
+        repo.assert_allowed(command);
+    }
+}
+
+/// #3216 re-audit round 3, B2: ANSI-C (`$'…'`) and locale (`$"…"`) quoting is read as plain
+/// quoting; the escape sequences inside `$'…'` are not decoded and stay named in `capabilities`.
+#[test]
+fn green_lock_bash_reads_ansi_c_and_locale_quotes() {
+    let repo = GreenRepo::new("green");
+    for command in [
+        "rm $'tests/locked_test.rs'",
+        "mv $'tests/locked_test.rs' /tmp/x",
+        "git rm $'tests/locked_test.rs'",
+        "rm $\"tests/locked_test.rs\"",
+        "rm tests/$'locked_test.rs'",
+        "rm -- $'tests/locked_test.rs'",
+        "busybox rm $'tests/locked_test.rs'",
+    ] {
+        let reason = repo.deny_reason(command);
+        assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+    }
+    for command in [
+        "rm $'tests/other_test.rs'",
+        "echo $'tests/locked_test.rs'",
+        "echo '$tests/locked_test.rs'",
+        // The escape sequences are not decoded (named in `capabilities`).
+        "rm $'\\x74ests/locked_test.rs'",
+        "rm $'tests/locked_test\\x2ers'",
+    ] {
+        repo.assert_allowed(command);
+    }
+}
+
+/// #3216 re-audit N3: edges the first repair left untested.
+#[test]
+fn green_lock_bash_edges_of_folders_globs_and_moves() {
+    let repo = GreenRepo::new("green");
+    // The work-tree root as a folder word, with and without a slash.
+    for command in ["git rm -r .", "git rm -rf ./", "git mv . ../moved"] {
+        let reason = repo.deny_reason(command);
+        assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+    }
+    // A class range includes both ends; `*` may match nothing; `?` needs one character.
+    for command in [
+        "rm tests/[a-l]ocked_test.rs",
+        "rm tests/[l-z]ocked_test.rs",
+        "rm tests/locked_test*.rs",
+        "rm tests/locked_test.r?",
+        "rm tests/*locked_test.rs",
+    ] {
+        let reason = repo.deny_reason(command);
+        assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+    }
+    for command in [
+        "rm tests/[a-k]ocked_test.rs",
+        "rm tests/[m-z]ocked_test.rs",
+        "rm tests/locked_test?.rs",
+    ] {
+        repo.assert_allowed(command);
+    }
+    // A moved file lands on a new test path: the lock refuses a new test file too.
+    for command in [
+        "git mv src/a.rs tests/brand_new_test.rs",
+        "mv src/a.rs tests/brand_new_test.rs",
+        "git mv tests/other_test.rs tests/brand_new_test.rs",
+    ] {
+        let reason = repo.deny_reason(command);
+        assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+    }
+    // A symlink as the glob's folder part: the real folder is the one that is read.
+    std::os::unix::fs::symlink(repo.root.join("tests"), repo.root.join("link")).unwrap();
+    for command in [
+        "rm link/*",
+        "rm link/locked_*.rs",
+        "rm -rf link",
+        "rm -rf link/",
+    ] {
+        let reason = repo.deny_reason(command);
+        assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+    }
+}
+
+/// The brace limits named in `capabilities`: 256 alternatives, 4 levels of nesting.
+#[test]
+fn green_lock_bash_brace_limits_are_the_named_ones() {
+    let repo = GreenRepo::new("green");
+    let list = |n: usize| {
+        (0..n)
+            .map(|i| format!("z{i}"))
+            .chain(["locked_test".to_string()])
+            .collect::<Vec<_>>()
+            .join(",")
+    };
+    let reason = repo.deny_reason(&format!("rm tests/{{{}}}.rs", list(100)));
+    assert!(reason.contains("GREEN or REFACTOR"), "{reason}");
+    repo.assert_allowed(&format!("rm tests/{{{}}}.rs", list(300)));
+    // The edge itself (#3216 N3): `list(n)` holds n + 1 alternatives, 256 read and 257 not.
+    let reason = repo.deny_reason(&format!("rm tests/{{{}}}.rs", list(255)));
+    assert!(reason.contains("GREEN or REFACTOR"), "{reason}");
+    repo.assert_allowed(&format!("rm tests/{{{}}}.rs", list(256)));
+    let reason = repo.deny_reason("rm tests/{{{{locked_test,b},c},d},e}.rs");
+    assert!(reason.contains("GREEN or REFACTOR"), "{reason}");
+    repo.assert_allowed("rm tests/{{{{{locked_test,b},c},d},e},f}.rs");
+}
+
+/// The forms `capabilities` names as not guarded stay allowed, so that its words and the
+/// guard cannot drift apart: when one of these is closed, the test and the named limit change
+/// together.
+#[test]
+fn green_lock_bash_named_limits_are_not_guarded() {
+    let repo = GreenRepo::new("green");
+    for command in [
+        "F=tests/locked_test.rs; rm $F",
+        "rm \"$LOCKED\"",
+        "echo tests/locked_test.rs | xargs rm",
+        "xargs rm < list.txt",
+        "find tests -name locked_test.rs -exec rm {} +",
+        "find tests -name locked_test.rs -delete",
+        "for f in tests/locked_test.rs; do rm $f; done",
+        "rm tests/@(locked_test).rs",
+        "rm tests/+(locked_test).rs",
+        "cd tests && rm locked_test.rs",
+        "echo x > tests/locked_test.rs",
+        "sed -i s/a/b/ tests/locked_test.rs",
+        "tee tests/locked_test.rs < /dev/null",
+        "bash cleanup.sh",
+        "python3 -c \"import os; os.remove('tests/locked_test.rs')\"",
+        "rm ~/../tests/locked_test.rs",
+        // #3216 re-audit round 3 N1, N6: named, not guarded.
+        "coproc rm tests/locked_test.rs",
+        "cp /dev/null tests/locked_test.rs",
+        "truncate -s 0 tests/locked_test.rs",
+        "dd if=/dev/null of=tests/locked_test.rs",
+        "install /dev/null tests/locked_test.rs",
+        "ln -f other.rs tests/locked_test.rs",
+        "rsync -a --delete empty/ tests/",
+        "git checkout -- tests/locked_test.rs",
+        "git restore tests/locked_test.rs",
+        "git stash",
+        "git apply fix.patch",
+    ] {
+        repo.assert_allowed(command);
+    }
+}
+
+/// REQ-5: a denied call leaves one line with the reason text, and no command, path or content.
+#[test]
+fn deny_audit_line_carries_the_reason_and_no_command_or_path() {
+    let repo = GreenRepo::new("green");
+    let locked = repo.deny_reason("rm tests/locked_test.rs");
+    let danger = repo.deny_reason("rm -rf /");
+    assert_ne!(locked, danger);
+    repo.assert_allowed("ls");
+
+    let lines = repo.audit_lines();
+    let denies: Vec<&Value> = lines
+        .iter()
+        .filter(|l| l["kind"] == json!("deny"))
+        .collect();
+    assert_eq!(denies.len(), 2, "{lines:?}");
+    assert_eq!(denies[0]["reason"], json!(locked));
+    assert_eq!(denies[1]["reason"], json!(danger));
+    let text = serde_json::to_string(&lines).unwrap();
+    for leak in ["locked_test", "rm -rf", repo.root.to_str().unwrap()] {
+        assert!(!text.contains(leak), "{leak} leaked into {text}");
+    }
+}
+
+/// REQ-7: a refusal whose sentence is built at run time leaves `reason: null` in the line.
+#[test]
+fn deny_audit_line_is_null_when_the_sentence_is_built_at_run_time() {
+    let repo = GreenRepo::new("green");
+    let reason = repo.deny_reason("git -C src commit -m a && git -C tests commit -m b");
+    assert!(reason.contains("more than one folder"), "{reason}");
+    let lines = repo.audit_lines();
+    let denies: Vec<&Value> = lines
+        .iter()
+        .filter(|l| l["kind"] == json!("deny"))
+        .collect();
+    assert_eq!(denies.len(), 1, "{lines:?}");
+    assert_eq!(denies[0]["reason"], Value::Null, "{lines:?}");
+}
+
+/// REQ-6: every host's answer says what the Bash lock covers and what it does not.
+#[test]
+fn capabilities_name_the_bash_lock_limits() {
+    for host in ["claude", "codex", "omp"] {
+        let caps = moai_cli::hook_engine::capabilities(host);
+        let pre = &caps["tool-preflight"];
+        let guards = pre["guards"].to_string();
+        for covered in [
+            "rm, unlink, git rm, mv or git mv of a test path the GREEN record locks",
+            "of a folder holding one or above the work tree",
+            "glob (*, ?, [..])",
+            "brace ({a,b}) pattern",
+            "read literally",
+            "behind the structure words ! { } if then elif else fi while until do done",
+            "a space, ; & | ( ), a quote or a backtick",
+            "backticks, busybox and git -C",
+            "ANSI-C ($'...') and locale ($ before a double quote) quoting read as plain quotes",
+            "a structure word as an argument refuses too (echo do rm tests/x)",
+        ] {
+            assert!(guards.contains(covered), "{host} {covered}: {guards}");
+        }
+        let open = pre["not_guarded"].to_string();
+        // Each form that the guard lets through (`green_lock_bash_named_limits_are_not_guarded`,
+        // `green_lock_bash_brace_limits_are_the_named_ones`) is named, not only the redirections.
+        for limit in [
+            "redirections",
+            "tee",
+            "sed -i",
+            "scripts",
+            "variables (rm $F)",
+            "xargs",
+            "find -exec",
+            "find -delete",
+            "extended globs (@(..), +(..))",
+            "~ expansion",
+            "more than 256 brace alternatives",
+            "braces nested deeper than 4",
+            "any command run after a cd",
+            "escape sequences inside $'...'",
+            "coproc",
+            "cp, truncate, dd of=, install, ln -f, rsync --delete",
+            "git checkout --, git restore, git stash and git apply",
+        ] {
+            assert!(
+                open.contains("Bash edits of a locked test") && open.contains(limit),
+                "{host} {limit}: {open}"
+            );
+        }
+    }
+}

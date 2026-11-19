@@ -373,6 +373,81 @@ pub fn handoff(
     }))
 }
 
+/// `--reason` of `reclaim`: one line of 1 to [`reservation::MAX_REASON_LEN`] characters with
+/// something visible in it and no word shaped like a secret (the filter `card note` uses). It is
+/// what the reclaimer found out about the old holder.
+fn reclaim_reason(reason: &str) -> Result<String> {
+    if reason.trim().is_empty()
+        || reason.chars().count() > reservation::MAX_REASON_LEN
+        || reason.chars().any(char::is_control)
+    {
+        return Err(format!(
+            "card reclaim refused: --reason must be one line of 1 to {} characters",
+            reservation::MAX_REASON_LEN
+        ));
+    }
+    // The check `card note` uses (`redact::redact_outgoing`): the reason is kept for good and
+    // `card export` writes it out. The text is not repeated.
+    let (_, shaped) = crate::redact::redact_outgoing(reason);
+    if shaped > 0 {
+        return Err(format!(
+            "card reclaim refused: --reason has {shaped} word(s) with the shape of a secret \
+             (a token, a key, `password=`); a reason is kept for good and written out by \
+             `card export`, so take them out"
+        ));
+    }
+    Ok(reason.to_string())
+}
+
+/// What `card reclaim` was given.
+pub struct ReclaimRequest<'a> {
+    /// The new holder: this session.
+    pub to_holder: &'a str,
+    /// The generation the caller saw as the card's current one.
+    pub generation: i64,
+    /// Who reclaims (the audit name; the actor of the event).
+    pub by: &'a str,
+    /// What the caller found out about the old holder.
+    pub reason: &'a str,
+    /// Lease of the new reservation in seconds (default [`DEFAULT_LEASE_SECS`]).
+    pub lease_secs: Option<i64>,
+}
+
+/// `card reclaim C-n`: the reservation at `generation` must be `held` with a lease that has
+/// ended; it becomes `reclaimed` and this session gets the next generation with the same scope,
+/// worktree and branch (`reservation::reclaim`). The card keeps its state, notes, criteria and
+/// links; one `card.reclaim` event names the old holder, the new one, `--by` and `--reason`. A
+/// live lease, another generation, a `done` card or a card that is not held is refused and
+/// nothing is written.
+pub fn reclaim(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    req: &ReclaimRequest<'_>,
+) -> Result<Value> {
+    let card_id = card_id("reclaim", reference)?;
+    let by = actor(Some(req.by), "reclaim")?;
+    let reason = reclaim_reason(req.reason)?;
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let out = reservation::reclaim(
+        &mut ledger,
+        card_id,
+        req.to_holder,
+        req.generation,
+        &by,
+        &reason,
+        req.lease_secs.unwrap_or(DEFAULT_LEASE_SECS),
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(json!({
+        "action": "reclaim", "project_id": id,
+        "reservation": reservation_json(&out.reservation),
+        "previous": reservation_json(&out.previous),
+        "by": by, "reason": reason, "state": out.card_state,
+        "events": 1, "writes": true,
+    }))
+}
+
 /// The card's state now, `None` when there is no such card.
 fn card_state(ledger: &ledger::WriteLedger, card_id: i64) -> Result<Option<String>> {
     ledger

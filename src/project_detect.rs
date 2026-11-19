@@ -11,12 +11,17 @@
 //! read for server names only and is never created or changed (decision 21 keeps MCP itself
 //! on HOLD). The result carries a complete profile for `project-plan`; `index-build` is only
 //! suggested, never run.
+//!
+//! Manifests below the root (card C-61, `plugins/<name>/package.json` and its like) are found
+//! by name to a bounded folder depth; a nested manifest's bytes are never read, so the
+//! dependencies that name `databases` stay a root-only fact (#2535). The tools those names
+//! imply are reported beside `detected` for the tools question.
 
 use crate::PROJECT_STATE_DIR;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeMap, BTreeSet},
     fs,
     path::{Path, PathBuf},
 };
@@ -30,7 +35,8 @@ type Result<T> = std::result::Result<T, String>;
 pub struct Detected {
     /// `new` (no manifest, no code file) or `existing`.
     pub project_kind: String,
-    /// Manifest file names found at the project root.
+    /// Manifest paths found for the project: a root manifest by its file name, one below the
+    /// root by its path relative to the root (C-61, to [`MAX_DEPTH`] folder levels).
     pub manifests: Vec<String>,
     pub languages: Vec<String>,
     /// Language servers the languages call for; not a statement that one is installed.
@@ -55,6 +61,23 @@ const MANIFESTS: &[(&str, &str)] = &[
     ("build.gradle.kts", "kotlin"),
     ("Gemfile", "ruby"),
     ("composer.json", "php"),
+];
+
+/// Manifest file name → the tools its presence implies (C-61 AC-2): names only, so a nested
+/// manifest's bytes are never read for this; the interview confirms the pick.
+const MANIFEST_TOOLS: &[(&str, &[&str])] = &[
+    ("Cargo.toml", &["cargo"]),
+    ("package.json", &["node", "npm"]),
+    ("tsconfig.json", &["typescript"]),
+    ("pyproject.toml", &["python"]),
+    ("setup.py", &["python"]),
+    ("requirements.txt", &["python"]),
+    ("go.mod", &["go"]),
+    ("pom.xml", &["maven"]),
+    ("build.gradle", &["gradle"]),
+    ("build.gradle.kts", &["gradle"]),
+    ("Gemfile", &["ruby"]),
+    ("composer.json", &["php"]),
 ];
 
 /// Code file extension → language.
@@ -189,6 +212,21 @@ fn recordable(name: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b'@'))
 }
 
+/// A path `detected.manifests` may hold (C-61): relative, `/`-separated, every component
+/// [`recordable`], no `..` or `.` step, no backslash, no empty or trailing separator, at most
+/// 160 bytes. A root manifest is the bare file name — one component — so old values stay valid.
+fn recordable_relpath(path: &str) -> bool {
+    !path.is_empty()
+        && path.len() <= 160
+        && !path.starts_with('/')
+        && !path.ends_with('/')
+        && !path.contains('\\')
+        && !path.contains("//")
+        && path
+            .split('/')
+            .all(|c| c != ".." && c != "." && recordable(c))
+}
+
 /// Languages of the code files below `root`; empty when the walk found no code file.
 fn code_languages(root: &Path) -> BTreeSet<String> {
     let mut found = BTreeSet::new();
@@ -224,6 +262,243 @@ fn code_languages(root: &Path) -> BTreeSet<String> {
         }
     }
     found
+}
+
+/// One line of an ignore list in `.gitignore` syntax, as `worktree_include` reads it. Its
+/// matcher is module-private and outside this card's write scope, so the semantics are restated
+/// here on purpose (SPEC-20261119-nested-manifests D-1); unifying them is the leader's call.
+struct IgnoreLine {
+    negate: bool,
+    dir_only: bool,
+    anchored: bool,
+    glob: String,
+}
+
+/// The lines of an ignore-list file: blanks and comments skipped, `!` a negation, a trailing
+/// `/` a folder-only pattern, `\#` and `\!` literal first characters.
+fn ignore_lines(text: &str) -> Vec<IgnoreLine> {
+    let mut lines = Vec::new();
+    for raw in text.lines() {
+        let trimmed = raw.trim_end_matches('\r').trim_end();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        let (negate, body) = match trimmed.strip_prefix('!') {
+            Some(rest) => (true, rest),
+            None => (false, trimmed),
+        };
+        let body = body
+            .strip_prefix('\\')
+            .filter(|b| b.starts_with('#') || b.starts_with('!'))
+            .unwrap_or(body);
+        let dir_only = body.ends_with('/');
+        let body = body.trim_end_matches('/');
+        if body.is_empty() {
+            continue;
+        }
+        lines.push(IgnoreLine {
+            negate,
+            dir_only,
+            anchored: body.contains('/'),
+            glob: body.trim_start_matches('/').to_string(),
+        });
+    }
+    lines
+}
+
+/// `.gitignore` glob over a `/`-separated path: `**` crosses folders, `*` and `?` stay inside
+/// one name, `[...]` is a character class.
+fn glob_match(pattern: &[u8], text: &[u8]) -> bool {
+    match pattern.first() {
+        None => text.is_empty(),
+        Some(b'*') if pattern.get(1) == Some(&b'*') => {
+            let rest = &pattern[2..];
+            let rest = rest.strip_prefix(b"/").unwrap_or(rest);
+            (0..=text.len()).any(|i| {
+                (i == 0 || text[i - 1] == b'/') && glob_match(rest, &text[i..]) || rest.is_empty()
+            })
+        }
+        Some(b'*') => (0..=text.len())
+            .take_while(|&i| i == 0 || text[i - 1] != b'/')
+            .any(|i| glob_match(&pattern[1..], &text[i..])),
+        Some(b'?') => !text.is_empty() && text[0] != b'/' && glob_match(&pattern[1..], &text[1..]),
+        Some(b'[') => {
+            let Some(end) = pattern.iter().skip(1).position(|&c| c == b']') else {
+                return text.first() == Some(&b'[') && glob_match(&pattern[1..], &text[1..]);
+            };
+            let class = &pattern[1..1 + end];
+            let (negated, class) = match class.first() {
+                Some(b'!') | Some(b'^') => (true, &class[1..]),
+                _ => (false, class),
+            };
+            let Some(&c) = text.first() else {
+                return false;
+            };
+            let mut hit = false;
+            let mut j = 0;
+            while j < class.len() {
+                if j + 2 < class.len() && class[j + 1] == b'-' {
+                    hit |= class[j] <= c && c <= class[j + 2];
+                    j += 3;
+                } else {
+                    hit |= class[j] == c;
+                    j += 1;
+                }
+            }
+            hit != negated && c != b'/' && glob_match(&pattern[2 + end..], &text[1..])
+        }
+        Some(&p) => text.first() == Some(&p) && glob_match(&pattern[1..], &text[1..]),
+    }
+}
+
+/// Whether `line`'s pattern matches `path` itself (`is_file` false for a folder), judged
+/// without case, as git's default on macOS is (`core.ignorecase`), like `worktree_include`.
+fn ignore_matches_at(line: &IgnoreLine, path: &str, is_file: bool) -> bool {
+    if line.dir_only && is_file {
+        return false;
+    }
+    let glob = line.glob.to_ascii_lowercase();
+    let path = path.to_ascii_lowercase();
+    if line.anchored {
+        glob_match(glob.as_bytes(), path.as_bytes())
+    } else {
+        let name = path.rsplit('/').next().unwrap_or(&path);
+        glob_match(glob.as_bytes(), name.as_bytes())
+    }
+}
+
+/// The last line of `lines` matching `path` itself (`is_file` false for a folder). The walk
+/// never enters a folder its list excludes, so "a parent directory is excluded" needs no
+/// shortcut here — the file under an excluded folder is simply never reached, and a deeper
+/// `.gitignore` may re-include a folder a shallower line excluded.
+fn last_matching<'a>(lines: &'a [IgnoreLine], path: &str, is_file: bool) -> Option<&'a IgnoreLine> {
+    lines
+        .iter()
+        .rev()
+        .find(|l| ignore_matches_at(l, path, is_file))
+}
+
+/// The ignore lists the manifest walk has collected: one entry per folder entered, judging
+/// paths from its own folder down (`base` is that folder's depth in components). The deepest
+/// list with a matching line wins, as git reads nested `.gitignore` files.
+struct IgnoreStack(Vec<(usize, Vec<IgnoreLine>)>);
+
+impl IgnoreStack {
+    /// Whether the folder or file at `parts` (components from the project root) is excluded.
+    fn excludes(&self, parts: &[&str], is_file: bool) -> bool {
+        for (base, lines) in self.0.iter().rev() {
+            if *base >= parts.len() {
+                continue;
+            }
+            let rel = parts[*base..].join("/");
+            if let Some(l) = last_matching(lines, &rel, is_file) {
+                return !l.negate;
+            }
+        }
+        false
+    }
+}
+
+/// The ignore lines that apply at the project root: `.git/info/exclude` first (the lower
+/// precedence), then the root `.gitignore`; `.git` is read only when it is a real folder.
+fn root_ignore_lines(root: &Path) -> Vec<IgnoreLine> {
+    let mut lines = Vec::new();
+    if fs::symlink_metadata(root.join(".git")).is_ok_and(|m| m.file_type().is_dir()) {
+        lines.extend(
+            read_in(root, &[".git", "info", "exclude"])
+                .map(|t| ignore_lines(&t))
+                .unwrap_or_default(),
+        );
+    }
+    lines.extend(
+        read_in(root, &[".gitignore"])
+            .map(|t| ignore_lines(&t))
+            .unwrap_or_default(),
+    );
+    lines
+}
+
+/// Manifest files below the root (C-61 AC-1): folder depth at most [`MAX_DEPTH`], names only —
+/// a nested manifest's bytes are never read — no symbolic link followed (the walk looks at
+/// `DirEntry::file_type`, which does not follow one), folders [`SKIP_DIRS`] names and folders
+/// the ignore lists exclude never entered. An ignore list that cannot be read (a link, over
+/// [`MAX_FILE`], not UTF-8) counts as no lines, so that failure can only read more, never
+/// less. The `seen` budget mirrors the code walk's [`MAX_ENTRIES`].
+fn nested_manifests(root: &Path) -> BTreeSet<String> {
+    let mut found = BTreeSet::new();
+    let mut seen = 0usize;
+    let mut stack = IgnoreStack(vec![(0, root_ignore_lines(root))]);
+    walk_manifests(root, &[], &mut stack, &mut found, &mut seen);
+    found
+}
+
+fn walk_manifests(
+    dir: &Path,
+    rel: &[String],
+    stack: &mut IgnoreStack,
+    found: &mut BTreeSet<String>,
+    seen: &mut usize,
+) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    let mut entries: Vec<_> = entries.flatten().collect();
+    entries.sort_by_key(|e| e.file_name());
+    for entry in entries {
+        *seen += 1;
+        if *seen > MAX_ENTRIES {
+            return;
+        }
+        let Ok(kind) = entry.file_type() else {
+            continue;
+        };
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        let mut parts = rel.to_vec();
+        parts.push(name.to_string());
+        let parts_ref: Vec<&str> = parts.iter().map(String::as_str).collect();
+        if kind.is_dir() {
+            if SKIP_DIRS.contains(&name.as_ref()) || stack.excludes(&parts_ref, false) {
+                continue;
+            }
+            if rel.len() < MAX_DEPTH {
+                stack.0.push((
+                    parts.len(),
+                    read_in(dir, &[&name, ".gitignore"])
+                        .map(|t| ignore_lines(&t))
+                        .unwrap_or_default(),
+                ));
+                walk_manifests(&entry.path(), &parts, stack, found, seen);
+                stack.0.pop();
+            }
+        } else if kind.is_file()
+            && MANIFESTS.iter().any(|(file, _)| *file == name)
+            && !stack.excludes(&parts_ref, true)
+        {
+            found.insert(parts.join("/"));
+        }
+    }
+}
+
+/// The tools the detected manifest names imply (C-61 AC-2), beside `detected` and never inside
+/// it: tool name → the sorted manifest paths that imply it, at most [`MAX_ITEMS`] tools. The
+/// paths come from `detected.manifests`, so they are already capped and validated.
+fn tools_fact(manifests: &[String]) -> BTreeMap<String, Vec<String>> {
+    let mut map: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    for path in manifests {
+        let name = path.rsplit('/').next().unwrap_or(path);
+        if let Some((_, tools)) = MANIFEST_TOOLS.iter().find(|(file, _)| *file == name) {
+            for tool in *tools {
+                map.entry((*tool).to_string())
+                    .or_default()
+                    .insert(path.clone());
+            }
+        }
+    }
+    map.into_iter()
+        .take(MAX_ITEMS)
+        .map(|(tool, paths)| (tool, paths.into_iter().collect()))
+        .collect()
 }
 
 fn toml_doc(text: &str) -> Option<toml_edit::DocumentMut> {
@@ -341,6 +616,14 @@ fn capped(set: BTreeSet<String>) -> Vec<String> {
         .collect()
 }
 
+/// [`capped`] for `detected.manifests`, whose entries are relative paths, not bare names.
+fn capped_paths(set: BTreeSet<String>) -> Vec<String> {
+    set.into_iter()
+        .filter(|p| recordable_relpath(p))
+        .take(MAX_ITEMS)
+        .collect()
+}
+
 /// Detects the facts of the project at `root`. Reads only; follows no symbolic link.
 /// The languages of the manifest files at `root` alone, sorted: the cheap part of [`detect`]
 /// (no walk of the code files), for readers that must stay fast, such as the tool-preflight
@@ -367,8 +650,10 @@ pub fn detect(root: &Path) -> Result<Detected> {
             languages.insert((*lang).to_string());
         }
     }
+    let nested = nested_manifests(root);
     let code = code_languages(root);
-    let existing = !manifests.is_empty() || !code.is_empty();
+    let existing = !manifests.is_empty() || !nested.is_empty() || !code.is_empty();
+    manifests.extend(nested);
     languages.extend(code);
     let lsp: BTreeSet<String> = languages
         .iter()
@@ -387,7 +672,7 @@ pub fn detect(root: &Path) -> Result<Detected> {
     databases.extend(prisma_database(root));
     Ok(Detected {
         project_kind: if existing { "existing" } else { "new" }.into(),
-        manifests: capped(manifests),
+        manifests: capped_paths(manifests),
         languages: capped(languages),
         lsp: capped(lsp),
         mcp_servers: capped(mcp_servers(root)),
@@ -397,17 +682,14 @@ pub fn detect(root: &Path) -> Result<Detected> {
 
 /// Accepts a `detected` value as `detect` produces it.
 pub fn validate(d: &Detected) -> Result<()> {
-    let lists = [
-        &d.manifests,
-        &d.languages,
-        &d.lsp,
-        &d.mcp_servers,
-        &d.databases,
-    ];
+    let manifests_ok = d.manifests.len() <= MAX_ITEMS
+        && d.manifests.iter().all(|p| recordable_relpath(p))
+        && d.manifests.windows(2).all(|w| w[0] < w[1]);
+    let lists = [&d.languages, &d.lsp, &d.mcp_servers, &d.databases];
     let lists_ok = lists.iter().all(|l| {
         l.len() <= MAX_ITEMS && l.iter().all(|n| recordable(n)) && l.windows(2).all(|w| w[0] < w[1])
     });
-    if !["new", "existing"].contains(&d.project_kind.as_str()) || !lists_ok {
+    if !["new", "existing"].contains(&d.project_kind.as_str()) || !manifests_ok || !lists_ok {
         return Err("invalid detected project facts; no values were logged".into());
     }
     Ok(())
@@ -576,6 +858,8 @@ fn go_state_fact(root: &Path) -> Value {
 /// `detected` set, ready for `project-plan`. Writes nothing.
 pub fn detect_cli(root: &Path) -> Result<Value> {
     let detected = detect(root)?;
+    // C-61 AC-2: the tools the manifest names imply, beside `detected` for the tools question.
+    let tools = tools_fact(&detected.manifests);
     let shown = root.display();
     let index = format!(
         "suggest only, run after the user agrees: moai index-build {shown} with stdin {{\"protocol_version\":1}}"
@@ -626,6 +910,7 @@ pub fn detect_cli(root: &Path) -> Result<Value> {
     next_actions.extend(go_step);
     Ok(json!({
         "detected": detected,
+        "tools": tools,
         "profile": profile,
         "profile_written": false,
         "go_state": go_state,
@@ -656,6 +941,102 @@ mod tests {
         }
     }
 
+    /// C-61: every tools row names a real manifest file, and its values are recordable names.
+    #[test]
+    fn manifest_tools_rows_name_real_manifests_and_recordable_tools() {
+        for (file, tools) in MANIFEST_TOOLS {
+            assert!(MANIFESTS.iter().any(|(f, _)| f == file), "{file}");
+            assert!(!tools.is_empty(), "{file}");
+            for tool in *tools {
+                assert!(recordable(tool), "{tool}");
+            }
+        }
+    }
+
+    /// C-61: a manifest path is a relative path of recordable components; nothing else passes.
+    #[test]
+    fn recordable_relpaths_accept_only_relative_component_paths() {
+        for ok in [
+            "package.json",
+            "plugins/moai-atp/package.json",
+            "a/b/c/package.json",
+        ] {
+            assert!(recordable_relpath(ok), "{ok}");
+        }
+        for bad in [
+            "",
+            "/package.json",
+            "a//b/package.json",
+            "a/../package.json",
+            "./package.json",
+            "a/b/",
+            "a\\b",
+            "a b/package.json",
+            &format!("{}.json", "x".repeat(160)),
+        ] {
+            assert!(!recordable_relpath(bad), "{bad}");
+        }
+    }
+
+    /// C-61: the tools fact maps each tool to the manifests that imply it, sorted and capped.
+    #[test]
+    fn tools_fact_maps_and_sorts_manifest_paths() {
+        let manifests = vec![
+            "Cargo.toml".to_string(),
+            "plugins/x/package.json".to_string(),
+            "plugins/x/server/package.json".to_string(),
+        ];
+        let fact = tools_fact(&manifests);
+        let keys: Vec<&String> = fact.keys().collect();
+        assert_eq!(keys, ["cargo", "node", "npm"]);
+        assert_eq!(
+            fact["node"],
+            vec!["plugins/x/package.json", "plugins/x/server/package.json"]
+        );
+        // A name with no tools row is simply absent.
+        let gemfile = tools_fact(&["Gemfile".to_string()]);
+        assert_eq!(gemfile.keys().collect::<Vec<_>>(), ["ruby"]);
+    }
+
+    /// C-61: ignore lines follow the `.gitignore` reading the walk depends on — folder-only
+    /// patterns, unanchored names, negation order, character classes, anchored patterns — and
+    /// the stack lets a deeper list override a shallower one.
+    #[test]
+    fn ignore_lines_follow_gitignore_reading() {
+        let lines = ignore_lines("gen/\n*.cache\n!x.cache\n");
+        // "gen/" excludes a folder named gen at any depth, never a file named gen.
+        let gen = &lines[0];
+        assert!(ignore_matches_at(gen, "a/gen", false));
+        assert!(!ignore_matches_at(gen, "a/gen", true));
+        // Within one list the last matching line decides: "!x.cache" re-includes x.cache.
+        assert!(!last_matching(&lines, "a/b/y.cache", true).unwrap().negate);
+        assert!(last_matching(&lines, "a/b/x.cache", true).unwrap().negate);
+        // A file pattern never excludes the folder holding the file.
+        assert!(last_matching(&lines, "a/b", false).is_none());
+        // A character class and an anchored pattern.
+        let lines = ignore_lines("build[0-9]/\n/docs\n");
+        assert!(ignore_matches_at(&lines[0], "build7", false));
+        assert!(ignore_matches_at(&lines[0], "a/build7", false));
+        assert!(!ignore_matches_at(&lines[0], "build7", true));
+        assert!(ignore_matches_at(&lines[1], "docs", false));
+        assert!(!ignore_matches_at(&lines[1], "a/docs", false));
+        // The stack: the deepest list with a matching line decides — a deeper "!old" overrides
+        // a shallower "old/" for the folder, and the walk reads the file under it.
+        let stack = IgnoreStack(vec![
+            (0, ignore_lines("old/\n")),
+            (1, ignore_lines("!old\n")),
+        ]);
+        assert!(!stack.excludes(&["pkg", "old"], false));
+        assert!(!stack.excludes(&["pkg", "old", "package.json"], true));
+        // A folder the root list excludes is never entered, whatever a deeper list says about
+        // the files inside it.
+        let stack = IgnoreStack(vec![
+            (0, ignore_lines("old/\n")),
+            (1, ignore_lines("!old/**\n")),
+        ]);
+        assert!(stack.excludes(&["pkg", "old"], false));
+    }
+
     #[test]
     fn requirement_names_drop_versions_and_extras() {
         assert_eq!(requirement_name("psycopg[binary]>=3.1"), "psycopg");
@@ -671,6 +1052,19 @@ mod tests {
             ..Default::default()
         };
         assert!(validate(&ok).is_ok());
+        // C-61: a manifest may be a relative path; a step out or an absolute path is refused.
+        let nested = Detected {
+            manifests: vec!["Cargo.toml".into(), "plugins/moai-atp/package.json".into()],
+            ..ok.clone()
+        };
+        assert!(validate(&nested).is_ok());
+        for bad in ["../x", "/package.json", "a//b"] {
+            let escape = Detected {
+                manifests: vec![bad.into()],
+                ..ok.clone()
+            };
+            assert!(validate(&escape).is_err(), "{bad}");
+        }
         let bad_kind = Detected {
             project_kind: "maybe".into(),
             ..ok.clone()

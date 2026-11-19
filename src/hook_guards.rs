@@ -698,6 +698,350 @@ pub fn write_guard(tool: &str, tool_input: &Value, cwd: &Path) -> Option<&'stati
     spec_before_code(&paths, cwd).or_else(|| crate::tdd::lock_refusal(&paths, cwd))
 }
 
+/// The words of `args` that name paths: everything that does not start with `-`, and every
+/// word after a `--`. An option's value (`mv -t DIR`) is kept as a path too; asking the lock
+/// about one more path never allows a call.
+fn path_words(args: &[String]) -> Vec<&String> {
+    let mut after_dashes = false;
+    let mut out = Vec::new();
+    for word in args {
+        if after_dashes || !word.starts_with('-') {
+            out.push(word);
+        } else if word == "--" {
+            after_dashes = true;
+        }
+    }
+    out
+}
+
+/// `word` with each `{a,b}` group spelled out, as a shell does before it looks for files
+/// (`tests/{a,b}.rs` → `tests/a.rs`, `tests/b.rs`). A group without a comma (`${HOME}`) stays
+/// as it is. At most 256 words come back; a word past that limit is left out of the list, so
+/// a line with that many alternatives is not read in full (named in `capabilities`).
+fn expand_braces(word: &str) -> Vec<String> {
+    fn go(word: &str, depth: u8, out: &mut Vec<String>) {
+        if out.len() >= 256 {
+            return;
+        }
+        let Some(open) = word.find('{') else {
+            out.push(word.to_string());
+            return;
+        };
+        let mut level = 0usize;
+        let mut commas = Vec::new();
+        let mut close = None;
+        for (i, c) in word[open..].char_indices() {
+            match c {
+                '{' => level += 1,
+                '}' => {
+                    level -= 1;
+                    if level == 0 {
+                        close = Some(open + i);
+                        break;
+                    }
+                }
+                ',' if level == 1 => commas.push(open + i),
+                _ => {}
+            }
+        }
+        let Some(close) = close.filter(|_| !commas.is_empty() && depth < 4) else {
+            out.push(word.to_string());
+            return;
+        };
+        let (head, tail) = (&word[..open], &word[close + 1..]);
+        let mut start = open + 1;
+        for end in commas.into_iter().chain([close]) {
+            go(
+                &format!("{head}{}{tail}", &word[start..end]),
+                depth + 1,
+                out,
+            );
+            start = end + 1;
+        }
+    }
+    let mut out = Vec::new();
+    go(word, 0, &mut out);
+    out
+}
+
+/// True when `text` matches the shell pattern `pat` (`*`, `?`, `[set]`, `[!set]`, ranges)
+/// within one path segment: no `/` is crossed by a wildcard because the caller matches
+/// segment by segment.
+fn glob_match(pat: &[char], text: &[char]) -> bool {
+    match pat.first() {
+        None => text.is_empty(),
+        Some('*') => (0..=text.len()).any(|i| glob_match(&pat[1..], &text[i..])),
+        Some('?') => !text.is_empty() && glob_match(&pat[1..], &text[1..]),
+        Some('[') => {
+            // `[` closes at the first `]` after at least one member; without one it is plain.
+            let close = pat
+                .iter()
+                .skip(2)
+                .position(|c| *c == ']')
+                .map(|i| i + 2)
+                .filter(|_| !text.is_empty());
+            let Some(close) = close else {
+                return text.first() == Some(&'[') && glob_match(&pat[1..], &text[1..]);
+            };
+            let set = &pat[1..close];
+            let (negated, set) = match set.first() {
+                Some('!') | Some('^') => (true, &set[1..]),
+                _ => (false, set),
+            };
+            let c = text[0];
+            let mut hit = false;
+            let mut i = 0;
+            while i < set.len() {
+                if i + 2 < set.len() && set[i + 1] == '-' {
+                    hit |= set[i] <= c && c <= set[i + 2];
+                    i += 3;
+                } else {
+                    hit |= set[i] == c;
+                    i += 1;
+                }
+            }
+            hit != negated && glob_match(&pat[close + 1..], &text[1..])
+        }
+        Some(c) => text.first() == Some(c) && glob_match(&pat[1..], &text[1..]),
+    }
+}
+
+/// The work tree (its resolved top) and TDD record holding `resolved`, when the record is in
+/// GREEN or REFACTOR.
+fn green_record(resolved: &Path) -> Option<(PathBuf, crate::tdd::Record)> {
+    let top = crate::tdd::work_tree_top(resolved)?;
+    let record = crate::tdd::git_dir(&top).and_then(|g| crate::tdd::read_record(&g))?;
+    Some((top, record))
+}
+
+/// The locked test files (absolute) inside `word` when it names a folder that exists: removing
+/// or moving the folder removes or moves them.
+fn locked_inside(word: &str, cwd: &Path) -> Vec<String> {
+    let resolved = crate::hook_config::canonical(&cwd.join(word));
+    if !resolved.is_dir() {
+        return Vec::new();
+    }
+    let Some((top, record)) = green_record(&resolved) else {
+        // A folder above the work tree holds the whole tree: the record is the cwd's.
+        return match green_record(&crate::hook_config::canonical(cwd)) {
+            Some((top, record)) if top.starts_with(&resolved) => record
+                .locked
+                .iter()
+                .map(|l| top.join(l).to_string_lossy().into_owned())
+                .collect(),
+            _ => Vec::new(),
+        };
+    };
+    let Ok(rel) = resolved.strip_prefix(&top) else {
+        return Vec::new();
+    };
+    let rel = rel.to_string_lossy().replace('\\', "/");
+    record
+        .locked
+        .iter()
+        .filter(|l| rel.is_empty() || l.starts_with(&format!("{rel}/")))
+        .map(|l| top.join(l).to_string_lossy().into_owned())
+        .collect()
+}
+
+/// The locked test files (absolute) the glob `word` names or holds, matched segment by segment
+/// against the start of each path in the record's list; the folder part before the first
+/// wildcard is resolved like any path.
+fn locked_matching(word: &str, cwd: &Path) -> Vec<String> {
+    let lexical = crate::hook_config::normalize(&cwd.join(word));
+    let mut fixed = PathBuf::new();
+    let mut rest: Vec<String> = Vec::new();
+    for component in lexical.components() {
+        let text = component.as_os_str().to_string_lossy().into_owned();
+        if rest.is_empty() && !text.contains(['*', '?', '[']) {
+            fixed.push(component.as_os_str());
+        } else {
+            rest.push(text);
+        }
+    }
+    let resolved = crate::hook_config::canonical(&fixed);
+    let Some((top, record)) = green_record(&resolved) else {
+        return Vec::new();
+    };
+    let Ok(rel) = resolved.strip_prefix(&top) else {
+        return Vec::new();
+    };
+    let mut segments: Vec<String> = rel
+        .components()
+        .map(|c| c.as_os_str().to_string_lossy().into_owned())
+        .collect();
+    segments.extend(rest);
+    record
+        .locked
+        .iter()
+        .filter(|locked| {
+            // The pattern may stop at a folder (`t*` names `tests`): it then names every locked
+            // file inside that folder, like a folder word does ([`locked_inside`]).
+            let parts: Vec<&str> = locked.split('/').collect();
+            segments.len() <= parts.len()
+                && segments.iter().zip(&parts).all(|(p, t)| {
+                    let (p, t): (Vec<char>, Vec<char>) = (p.chars().collect(), t.chars().collect());
+                    glob_match(&p, &t)
+                })
+        })
+        .map(|l| top.join(l).to_string_lossy().into_owned())
+        .collect()
+}
+
+/// Shell words that open or close a compound statement; read as a command separator.
+const STRUCTURE_WORDS: [&str; 12] = [
+    "!", "{", "}", "if", "then", "elif", "else", "fi", "while", "until", "do", "done",
+];
+
+/// The closed rule for what the Bash lock reads of the shell's own syntax (SPEC REQ-10, REQ-11):
+///
+/// 1. A backtick pair becomes `$( … )`.
+/// 2. A word is a run of characters between boundaries; the boundaries are white space, `;`,
+///    `&`, `|`, `(`, `)`, `'` and `"`. A word that equals one of [`STRUCTURE_WORDS`] becomes
+///    `;`, so a command behind it is read as a command of its own, also inside a `sh -c` or
+///    `eval` script, which the command reading opens one level deep.
+/// 3. A `$` written right before an opening `'` or `"` is dropped: ANSI-C (`$'…'`) and locale
+///    (`$"…"`) quoting read as plain quoting. Escape sequences inside `$'…'` are not decoded.
+///
+/// A structure word is changed wherever it stands as a whole word, inside quotes too, which
+/// there stays inside its quotes and so makes no command; as an unquoted argument it refuses
+/// (`echo do rm …`), a named false refusal. Everything else about the shell stays unread and is
+/// named in `capabilities`.
+fn open_shell_structure(command: &str) -> String {
+    let ticks = command.matches('`').count();
+    let mut text = String::with_capacity(command.len() + 8);
+    let mut inside = false;
+    for c in command.chars() {
+        if c == '`' && ticks.is_multiple_of(2) {
+            text.push_str(if inside { ")" } else { "$(" });
+            inside = !inside;
+        } else {
+            text.push(c);
+        }
+    }
+    let mut out = String::with_capacity(text.len());
+    let mut word = String::new();
+    let flush = |word: &mut String, out: &mut String| {
+        out.push_str(if STRUCTURE_WORDS.contains(&word.as_str()) {
+            ";"
+        } else {
+            word.as_str()
+        });
+        word.clear();
+    };
+    let mut quote: Option<char> = None;
+    let mut chars = text.chars();
+    while let Some(c) = chars.next() {
+        if c == '\\' && quote != Some('\'') {
+            // The escaped character is part of the word, never a boundary.
+            word.push(c);
+            if let Some(next) = chars.next() {
+                word.push(next);
+            }
+            continue;
+        }
+        let is_quote = c == '\'' || c == '"';
+        if !(c.is_whitespace() || matches!(c, ';' | '&' | '|' | '(' | ')') || is_quote) {
+            word.push(c);
+            continue;
+        }
+        if is_quote && quote.is_none() && word.ends_with('$') {
+            word.pop();
+        }
+        flush(&mut word, &mut out);
+        out.push(c);
+        if is_quote {
+            quote = match quote {
+                None => Some(c),
+                Some(open) if open == c => None,
+                other => other,
+            };
+        }
+    }
+    flush(&mut word, &mut out);
+    out
+}
+
+/// A6 for Bash (SPEC-20261119-enforce-spec-hooks REQ-1…REQ-4, REQ-8, REQ-9): why a command
+/// line is refused while this worktree's TDD cycle locks a test, or `None`. Only `rm`,
+/// `unlink`, `git rm`, `mv` and `git mv` are read (also as `busybox rm`, under `git -C dir`,
+/// and behind the shell structure [`open_shell_structure`] opens up). Each word is read as it
+/// is written, and again spelled the way the shell does first: `{a,b}` groups
+/// opened, and `*`, `?` and `[..]` matched against the record's locked files. A folder that
+/// exists and holds a locked file, or holds the whole work tree, counts as that file. A
+/// removal's target that does not exist is left out: removing nothing changes no test, and
+/// the lock's rule against a new test file must not refuse it. Every path of a move counts,
+/// the destination too.
+///
+/// Not read (the engine's `capabilities` names each): redirections, `tee`, `sed -i`, scripts,
+/// variables (`rm $F`), `xargs`, `find -exec` and `find -delete`, extended globs (`@(..)`),
+/// `~`, braces past 256 alternatives or 4 levels, escape sequences inside `$'..'`, `coproc`,
+/// the other writers (`cp`, `truncate`, `dd of=`, `install`, `ln -f`, `rsync --delete`,
+/// `git checkout --`, `git restore`, `git stash`, `git apply`), and a command run after a
+/// `cd`. The shell syntax that is read is the closed rule of [`open_shell_structure`].
+pub fn bash_lock_guard(command: &str, cwd: &Path) -> Option<&'static str> {
+    let mut paths: Vec<String> = Vec::new();
+    let mut collect = |words: Vec<String>, removal: bool| {
+        for word in words {
+            // The word as written (the tokenizer has already removed quotes and backslashes),
+            // then each spelling its braces open to.
+            let mut spellings = vec![word.clone()];
+            for spelled in expand_braces(&word) {
+                if !spellings.contains(&spelled) {
+                    spellings.push(spelled);
+                }
+            }
+            for spelled in spellings {
+                if spelled.contains(['*', '?', '[']) {
+                    paths.extend(locked_matching(&spelled, cwd));
+                }
+                if removal && std::fs::symlink_metadata(cwd.join(&spelled)).is_err() {
+                    continue;
+                }
+                paths.extend(locked_inside(&spelled, cwd));
+                paths.push(spelled);
+            }
+        }
+    };
+    let words_of = |args: &[String]| path_words(args).into_iter().cloned().collect::<Vec<_>>();
+    let opened = open_shell_structure(command);
+    for (name, args) in crate::claim_verify::shell_commands(&opened) {
+        let (name, args) = match name.as_str() {
+            "busybox" | "toybox" if !args.is_empty() => (args[0].clone(), args[1..].to_vec()),
+            _ => (name, args),
+        };
+        match name.as_str() {
+            "rm" | "unlink" => collect(words_of(&args), true),
+            "mv" => collect(words_of(&args), false),
+            "git" => {
+                for sub in crate::claim_verify::git_subcommands(&args) {
+                    let removal = match sub.verb.as_str() {
+                        "rm" => true,
+                        "mv" => false,
+                        _ => continue,
+                    };
+                    let dir = git_dir_of(&sub.global, cwd);
+                    let words = words_of(&sub.rest);
+                    if dir == cwd {
+                        collect(words, removal);
+                    } else {
+                        let rebased = words
+                            .iter()
+                            .map(|w| dir.join(w).to_string_lossy().into_owned())
+                            .collect();
+                        collect(rebased, removal);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    if paths.is_empty() {
+        return None;
+    }
+    crate::tdd::lock_refusal(&paths, cwd)
+}
+
 const SPEC_FIRST: &str = "MoAI tool-preflight: on a SPEC work branch (spec/<yyyymmdd>-<slug>), files outside .moai/specs/ are written only after the branch's SPEC exists; write .moai/specs/SPEC-<yyyymmdd>-<slug>/spec.md first (`moai spec new`; when the branch date is not today, `moai spec new --date YYYY-MM-DD`).";
 
 /// The SPEC id a work branch is for: `spec/<yyyymmdd>-<slug>` with eight digits and a slug of
