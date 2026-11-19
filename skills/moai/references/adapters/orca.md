@@ -7,7 +7,7 @@ Orca is a desktop app with a CLI that manages git worktrees, terminals, agent se
 - Use Orca only when the user chose it for this project and `orca` answers on this machine; installed is not chosen.
 - Lane worktrees, reading and sending to lane terminals, searching lane sessions (`orca search`), linking Issues and pull requests to a workspace (`orca reference`), and checking a page in Orca's embedded browser.
 - Plain shell, git and HTTP work does not need Orca.
-- MoAI uses Orca through its CLI only (user decision, Issue #2634 comment 6845653775).
+- MoAI uses Orca through its CLI only.
 
 ## Open the version-matched guide first
 
@@ -27,13 +27,13 @@ Never invent a flag from memory. Resolve the executable the way Orca's skill stu
 - `accepted: true` proves only that the input was accepted; read the target again, and never resend on silence.
 - Publishing skill links or artifacts stays off unless a human turned it on in Orca's settings; never ask an agent to turn it on.
 
-The full session-control rules for lanes and the leader are in the MODE-AGENT and MODE-LEADER workflows. Orca present is what puts the leader in the command mode, whatever host it runs on; the leader clears a lane only under the clear contract of MODE-LEADER's `supervise` step (Issue #2899 G2, G4).
+The full session-control rules for lanes and the leader are in the MODE-AGENT and MODE-LEADER workflows. Orca present is what puts the leader in the command mode, whatever host it runs on; the leader clears a lane only under the clear contract of MODE-LEADER's `supervise` step.
 
 ## When Orca is missing
 
 Use `git worktree` and the host's own terminal instead, and record the Orca step as `not_run` with the reason (`orca` not on PATH, or the runtime not reachable).
 
-Orca is optional for every workflow (Issue #3005 AC-7, AC-8). Nothing in the `moai` tool runs `orca`, and the two modes name Orca only in steps that carry their own "without Orca" rule. This table says what each workflow does on each side; `works` runs as written, `replaced` runs through another channel, `unsupported` has no way yet and is listed in Issue #3005, or in the Issue its cell names, for the leader.
+Orca is optional for every workflow. Nothing in the `moai` tool runs `orca`, and the two modes name Orca only in steps that carry their own "without Orca" rule. This table says what each workflow does on each side; `works` runs as written, `replaced` runs through another channel, `unsupported` has no way yet and is listed for the leader.
 
 | Workflow | With Orca | Without Orca | Host differences |
 |---|---|---|---|
@@ -50,7 +50,7 @@ Orca is optional for every workflow (Issue #3005 AC-7, AC-8). Nothing in the `mo
 | MODE-AGENT | works: a leader reads and sends lane screens through Orca | replaced: `lane-next` self-pick and Issue and pull request comments; the wake is Claude Code `/loop`, Codex `loop_line` and the Stop hook, and on OMP goal mode (`--goal`, interactive only; no interval timer, so the idle limit is the tool's) | none |
 | MODE-LEADER | works: the leader reads and sends lane screens through Orca | replaced: with a timer (Claude Code `/loop 5m`) it leads through Issue and pull request comments alone, with no `clear_redispatch` and no `restart`; with neither Orca nor a timer it refuses to enter; unsupported on Codex and OMP, which have no in-session timer | none |
 
-Unsupported today, tracked in Issue #3005: a Codex or OMP leader's periodic run without Orca. Settled in Issue #3005 P10 and P11 (OMP 18.18.7, read in its installed documents and source on 2026-11-15; no live OMP session was run): the entry is `/skill:moai <text>` and the text after the name reaches the skill as plain text; OMP reads skills from `~/.agents/skills` and from `.claude/skills`, `.agents/skills` and `.omp/skills` of the project, and from `~/.claude/skills` only when `enabledProviders` names `claude`, `skills.enableClaudeUser` is on or `CLAUDE_CONFIG_DIR` is set; an OMP lane keeps going with goal mode and ends it with the `goal` tool's `drop`, since OMP has no interval timer and no empty-read count. Tracked in Issue #2936: the settings folder of an Orca profile (`CLAUDE_CONFIG_DIR`), which `moai update` does not see, so SETUP and UPDATE are unsupported with Orca until that repair lands. The table is pinned by `tests/orca_optional_3005.rs`: a workflow without a row, or a row without one of the three words, fails the test.
+Unsupported today: a Codex or OMP leader's periodic run without Orca. Settled for OMP 18.18.7 (read in its installed documents and source on 2026-11-15; no live OMP session was run): the entry is `/skill:moai <text>` and the text after the name reaches the skill as plain text; OMP reads skills from `~/.agents/skills` and from `.claude/skills`, `.agents/skills` and `.omp/skills` of the project, and from `~/.claude/skills` only when `enabledProviders` names `claude`, `skills.enableClaudeUser` is on or `CLAUDE_CONFIG_DIR` is set; an OMP lane keeps going with goal mode and ends it with the `goal` tool's `drop`, since OMP has no interval timer and no empty-read count. Tracked in Issue #2936: the settings folder of an Orca profile (`CLAUDE_CONFIG_DIR`), which `moai update` does not see, so SETUP and UPDATE are unsupported with Orca until that repair lands. The table is pinned by `tests/orca_optional_3005.rs`: a workflow without a row, or a row without one of the three words, fails the test.
 
 ## Sources
 

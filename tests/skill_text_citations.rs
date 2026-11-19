@@ -15,14 +15,17 @@ use std::{
 const SHIPPED: [&str; 4] = ["skills", "agents", "templates", "install"];
 
 /// Shipped files that still carry citations, sorted. Remove an entry when its file is cleaned.
-const PENDING: [&str; 18] = [
+const PENDING: [&str; 22] = [
     "agents/audit.md",
     "install/README.md",
     "install/install.ps1",
     "install/install.sh",
     "install/moai-switch.sh",
+    "skills/moai/SKILL.md",
+    "skills/moai/references/adapters/orca.md",
     "skills/moai/references/internal/interview.md",
     "skills/moai/references/internal/questions.md",
+    "skills/moai/references/internal/self-check.md",
     "skills/moai/references/internal/versioning.md",
     "skills/moai/references/rule-history.md",
     "skills/moai/references/source-manifest.json",
@@ -30,6 +33,7 @@ const PENDING: [&str; 18] = [
     "skills/moai/workflows/mode-agent.md",
     "skills/moai/workflows/mode-leader.md",
     "skills/moai/workflows/project.md",
+    "skills/moai/workflows/run.md",
     "skills/moai/workflows/update.md",
     "skills/moai/workflows/verify.md",
     "templates/github/ko/ISSUE_TEMPLATE/moai-investigation.yml",
@@ -37,18 +41,14 @@ const PENDING: [&str; 18] = [
 ];
 
 /// The files this change cleaned; each has a section in the rationale document.
-const CLEANED: [&str; 13] = [
-    "skills/moai/SKILL.md",
+const CLEANED: [&str; 9] = [
     "skills/moai/references/adapters/aside.md",
-    "skills/moai/references/adapters/orca.md",
     "skills/moai/references/internal/build-folder.md",
     "skills/moai/references/internal/commit-trailers.md",
     "skills/moai/references/internal/git-safety.md",
     "skills/moai/references/internal/review.md",
-    "skills/moai/references/internal/self-check.md",
     "skills/moai/workflows/optimize.md",
     "skills/moai/workflows/read.md",
-    "skills/moai/workflows/run.md",
     "skills/moai/workflows/setup.md",
     "skills/moai/workflows/sync.md",
 ];
@@ -59,7 +59,7 @@ const RATIONALE: &str = "docs/skill-text-rationale.md";
 /// Names of moai-adk's own development scripts and repository, which a user does not have.
 const DEV_WORDS: [&str; 9] = [
     "moai-adk repository",
-    "local_check",
+    "local_check.sh",
     "check-guard",
     "M-Flow",
     "tools/self_check.sh",

@@ -10,7 +10,7 @@ created: 2026-11-20
 
 ## Intent
 
-The files that ship to users (`skills/`, `agents/`, `templates/`, `install/`) quote moai-adk's own history: card numbers, Issue numbers, "user decision <date>" and the names of its development scripts. A user of MoAI cannot follow those and should not need to. This first change adds a scan that keeps such text out, with a list of the files that still carry it that can only shrink, cleans the shipped files that no other work holds, and moves the reasons to a developer document.
+The files that ship to users (`skills/`, `agents/`, `templates/`, `install/`) quote moai-adk's own history: card numbers, Issue numbers, "user decision <date>" and the names of its development scripts. A user of MoAI cannot follow those and should not need to. This first change adds a scan that keeps such text out, with a list of the files that still carry it that can only shrink, cleans the shipped citations that no test held by another card pins, and moves the reasons to a developer document.
 
 ## Requirements
 
@@ -42,13 +42,13 @@ The files that ship to users (`skills/`, `agents/`, `templates/`, `install/`) qu
 - write: `skills/moai/references/adapters/aside.md`
 - write: `skills/moai/references/internal/build-folder.md`
 - write: `skills/moai/references/internal/git-safety.md`
-- write: `skills/moai/references/internal/self-check.md`
 - write: `skills/moai/references/internal/review.md`
+- write: `tests/product_cli.rs`
 - write: `skills/moai/references/internal/commit-trailers.md`
 
 ## Plan
 
-1. Tests first (RED): `tests/skill_text_citations.rs` reads the shipped files of this checkout (no HOME, nothing is run). It holds the scan, a pending list of the files that still carry citations after this change, and the check of the rationale document; run it and see the thirteen files fail.
-2. Clean the thirteen files one by one, keeping each rule and writing the removed reasons into `docs/skill-text-rationale.md` as they go; fix the tests that pinned the old wording in the same commit; update the manifest hashes.
-3. The pending list holds what other work still owns or a later change cleans: the project and update workflows and the question files (held by another card), `verify.md`, `audit.md` and the two mode workflows (their markers are read by checkers and tests), `rule-history.md` (moves to developer documents), the manifest's own reason texts, `install/` and `templates/`.
+1. Tests first (RED): `tests/skill_text_citations.rs` reads the shipped files of this checkout (no HOME, nothing is run). It holds the scan, a pending list of the files that still carry citations after this change, and the check of the rationale document; run it and see the cleaned files fail.
+2. Clean the shipped files one by one, keeping each rule and writing the removed reasons into `docs/skill-text-rationale.md` as they go; fix the tests that pinned the old wording in the same commit; update the manifest hashes.
+3. A citation that a test held by another card pins (`tests/update_route.rs`, `tests/orca_optional_3005.rs`, `tests/agent_defs_package.rs`) stays for now, so `SKILL.md`, `orca.md`, `run.md` and `self-check.md` stay on the pending list until those tests change. The pending list also holds what other work still owns or a later change cleans: the project and update workflows and the question files (held by another card), `verify.md`, `audit.md` and the two mode workflows (their markers are read by checkers and tests), `rule-history.md` (moves to developer documents), the manifest's own reason texts, `install/` and `templates/`.
 4. Run the new file, the tests that read shipped text, the scan checks of `tools/repo_scans.json` and the same-prefix rule, then audit and write the Result.

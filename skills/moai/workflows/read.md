@@ -36,7 +36,7 @@ READ fans out: split the question into independent parts, give each part a short
 - Claude Code: several agent calls in one message run at once; a background agent reports when it finishes.
 - Codex CLI: spawn one agent per part and wait for all of them.
 - OMP: one task call with one entry per part in its task list.
-- Kiro and Cursor CLI: the documents read for #2592 do not settle starting several at once and collecting them. Fallback: start them one after another.
+- Kiro and Cursor CLI: the documents read for this route do not settle starting several at once and collecting them. Fallback: start them one after another.
 
 ## Exceptions and Permissions
 
