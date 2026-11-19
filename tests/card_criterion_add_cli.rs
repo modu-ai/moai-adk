@@ -575,6 +575,153 @@ fn two_adds_at_once_number_every_criterion_once() {
     assert_eq!(texts, ["added 0", "added 1", "added 2", "added 3"]);
 }
 
+const S_B: &str = "bbbbbbbb-0000-4000-8000-00000000000b";
+
+/// The `card.criterion_add` events of the ledger, oldest first: (actor, payload).
+fn criterion_add_events(w: &World) -> Vec<(String, Value)> {
+    w.rows("SELECT actor, payload FROM event WHERE kind = 'card.criterion_add' ORDER BY event_id")
+        .iter()
+        .map(|row| {
+            (
+                row[0].as_str().unwrap().to_string(),
+                serde_json::from_str(row[1].as_str().unwrap()).unwrap(),
+            )
+        })
+        .collect()
+}
+
+/// SPEC-20261119-criterion-add-session AC-1 (REQ-1, REQ-3, REQ-4; card C-125, C-108 audit N1):
+/// the event and the answer carry the session that added the criteria, whatever `--by` says.
+#[test]
+fn the_event_and_the_answer_record_the_adding_session() {
+    let w = world();
+    let card = w.ready(&["first"]);
+
+    let answer = result(&w.card(
+        Some(S_A),
+        &["criterion-add", &card, "--ac", "a", "--by", "leader"],
+    ));
+    assert_eq!(answer["session"], json!(S_A), "{answer}");
+    assert_eq!(answer["by"], json!("leader"), "{answer}");
+
+    // Another name on the same session, then another session under the first name.
+    result(&w.card(
+        Some(S_A),
+        &["criterion-add", &card, "--ac", "b", "--by", "someone-else"],
+    ));
+    result(&w.card(
+        Some(S_B),
+        &["criterion-add", &card, "--ac", "c", "--by", "leader"],
+    ));
+
+    let events = criterion_add_events(&w);
+    assert_eq!(events.len(), 3, "{events:?}");
+    let seen: Vec<(&str, &Value)> = events
+        .iter()
+        .map(|(actor, payload)| (actor.as_str(), &payload["session"]))
+        .collect();
+    assert_eq!(
+        seen,
+        vec![
+            ("leader", &json!(S_A)),
+            ("someone-else", &json!(S_A)),
+            ("leader", &json!(S_B)),
+        ],
+        "the actor is --by, the session is the caller's own: {events:?}"
+    );
+    assert_eq!(events[0].1["first"], json!(2), "{events:?}");
+    assert_eq!(events[0].1["count"], json!(1), "{events:?}");
+}
+
+/// AC-2 (REQ-2): no session id is `null` in the event and in the answer, the criteria are added as
+/// usual, and a variable that is not a session id reads as no id (`session_current::well_formed`).
+#[test]
+fn without_a_session_id_the_session_is_null_and_the_criteria_are_added() {
+    let w = world();
+    let card = w.ready(&["first"]);
+
+    let none = result(&w.card(None, &["criterion-add", &card, "--ac", "a"]));
+    assert!(
+        none.as_object().unwrap().contains_key("session"),
+        "the key is there, not absent: {none}"
+    );
+    assert_eq!(none["session"], Value::Null, "{none}");
+    assert_eq!(none["added"], json!([2]), "{none}");
+
+    let malformed = result(&w.card(
+        Some("not a session id"),
+        &["criterion-add", &card, "--ac", "b"],
+    ));
+    assert_eq!(malformed["session"], Value::Null, "{malformed}");
+    assert_eq!(malformed["added"], json!([3]), "{malformed}");
+
+    let events = criterion_add_events(&w);
+    assert_eq!(events.len(), 2, "{events:?}");
+    for (_, payload) in &events {
+        assert!(
+            payload.as_object().unwrap().contains_key("session"),
+            "a missing id is null, not an absent key: {payload}"
+        );
+        assert_eq!(payload["session"], Value::Null, "{payload}");
+    }
+    assert_eq!(
+        criteria_of(&w.show(&card)).len(),
+        3,
+        "both adds went through"
+    );
+}
+
+/// AC-3, the CLI half (REQ-5, REQ-6; card C-125, C-108 audit N3): `criteria` in the answer is the
+/// number of rows the card has, not its highest number. Rows 1 and 5 make a gap (the table takes
+/// any `seq`); two adds are numbered 6 and 7 and the card holds four rows.
+#[test]
+fn the_criteria_count_is_the_row_count_when_numbers_have_a_gap() {
+    let w = world();
+    let card = w.ready(&["one"]);
+    let id = card.trim_start_matches("C-");
+    w.sql(&format!(
+        "INSERT INTO card_ac (card_id, seq, text, updated_at) VALUES ({id}, 5, 'five', 1)"
+    ));
+
+    let answer = result(&w.card(
+        Some(S_A),
+        &["criterion-add", &card, "--ac", "a", "--ac", "b"],
+    ));
+    assert_eq!(answer["added"], json!([6, 7]), "{answer}");
+    assert_eq!(answer["criteria"], json!(4), "the row count: {answer}");
+    assert_eq!(
+        w.rows(&format!(
+            "SELECT count(*) FROM card_ac WHERE card_id = {id}"
+        ))[0][0],
+        json!(4)
+    );
+
+    let again = result(&w.card(Some(S_A), &["criterion-add", &card, "--ac", "c"]));
+    assert_eq!(again["added"], json!([8]), "{again}");
+    assert_eq!(again["criteria"], json!(5), "{again}");
+}
+
+/// AC-4 (REQ-7): the help says the event records the adding session and that `criteria` counts
+/// the card's rows.
+#[test]
+fn the_help_names_the_session_and_the_row_count() {
+    let w = world();
+    let out = w
+        .home
+        .command(&["card", "criterion-add", "--help"])
+        .output()
+        .expect("run moai");
+    let help = String::from_utf8_lossy(&out.stdout);
+    // The help is wrapped at the terminal width: compare words, not line breaks.
+    let help = help.split_whitespace().collect::<Vec<_>>().join(" ");
+    for phrase in [
+        "records the session that added them",
+        "`criteria` is the number of the card's criteria",
+    ] {
+        assert!(help.contains(phrase), "{phrase} missing: {help}");
+    }
+}
+
 #[test]
 fn the_help_and_the_ops_doc_name_the_rule() {
     let w = world();
