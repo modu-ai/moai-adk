@@ -305,6 +305,24 @@ fn widening_a_held_card_follows_the_same_generated_path_rule() {
     let scope_of = |card: &str| shown(&home, &project, card)["reservation"]["write_scope"].clone();
     assert_eq!(scope_of(&wide), json!(["docs/a.md"]));
 
+    // Audit N3 through the CLI: the cased spelling is another file, so the holder's folder
+    // pattern reaches it and it is refused, naming it. This runs before the manifest is added:
+    // once the reservation has the exact spelling, the ledger refuses a case variant of it as
+    // invalid input before any overlap is asked.
+    let (kind, msg) = refusal(&widen(
+        &home,
+        &project,
+        &wide,
+        &["docs/a.md", MANIFEST_CASED],
+    ));
+    assert_eq!(kind, "conflict", "{msg}");
+    assert!(msg.to_lowercase().contains("source-manifest.json"), "{msg}");
+    assert_eq!(
+        scope_of(&wide),
+        json!(["docs/a.md"]),
+        "a refusal writes nothing"
+    );
+
     // The generated manifest: allowed, although the holder's folder pattern reaches it.
     let done = result(&widen(&home, &project, &wide, &["docs/a.md", MANIFEST]));
     assert_eq!(
@@ -327,17 +345,6 @@ fn widening_a_held_card_follows_the_same_generated_path_rule() {
     assert_eq!(kind, "conflict", "{msg}");
     assert!(msg.contains(ROUTES_JSON), "{msg}");
     assert!(!msg.contains("source-manifest"), "{msg}");
-    assert_eq!(scope_of(&wide), kept, "a refusal writes nothing");
-
-    // Audit N3 through the CLI: the cased spelling is another file, so it is refused too.
-    let (kind, msg) = refusal(&widen(
-        &home,
-        &project,
-        &wide,
-        &["docs/a.md", MANIFEST, MANIFEST_CASED],
-    ));
-    assert_eq!(kind, "conflict", "{msg}");
-    assert!(msg.to_lowercase().contains("source-manifest.json"), "{msg}");
     assert_eq!(scope_of(&wide), kept, "a refusal writes nothing");
 
     // A file nobody else reaches: allowed.
@@ -370,5 +377,22 @@ fn the_reservation_docs_name_the_generated_path_rule() {
     }
     for forbidden in ["하나뿐", "유일한 판정", "the only", "the one predicate"] {
         assert!(!page.contains(forbidden), "{forbidden}");
+    }
+
+    // The module header of the ledger code says the same (the other half of audit N1).
+    let code = include_str!("../src/ledger/reservation.rs");
+    let header: String = code
+        .lines()
+        .take_while(|l| l.starts_with("//!"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    for needed in ["crate::scope::card_overlap", "crate::scope::overlap"] {
+        assert!(header.contains(needed), "{needed} in the module header");
+    }
+    for forbidden in ["the one predicate", "the only predicate"] {
+        assert!(
+            !header.contains(forbidden),
+            "{forbidden} in the module header"
+        );
     }
 }
