@@ -177,7 +177,10 @@ fn each_note_shows_the_session_that_wrote_it() {
     let four = w.note(&name, Some(S_A), "fourth, from session A again");
     let notes = w.notes(&name);
     assert_eq!(
-        notes.iter().map(|n| n["note_id"].clone()).collect::<Vec<_>>(),
+        notes
+            .iter()
+            .map(|n| n["note_id"].clone())
+            .collect::<Vec<_>>(),
         vec![json!(one), json!(two), json!(three), json!(four)],
         "notes come in note order: {notes:?}"
     );
@@ -187,7 +190,11 @@ fn each_note_shows_the_session_that_wrote_it() {
         "{notes:?}"
     );
     for n in &notes {
-        assert_eq!(n["author"], json!("agent-9"), "author is what the note is signed with: {n}");
+        assert_eq!(
+            n["author"],
+            json!("agent-9"),
+            "author is what the note is signed with: {n}"
+        );
     }
 }
 
@@ -245,11 +252,7 @@ fn the_first_event_of_this_card_decides_and_another_card_is_not_read() {
     w.event_row(id, imported, json!(S_B), "late-event-one");
     w.event_row(id, imported, json!(S_A), "late-event-two");
     let notes = w.notes(&name);
-    assert_eq!(
-        sessions(&notes),
-        vec![json!(S_A), json!(S_B)],
-        "{notes:?}"
-    );
+    assert_eq!(sessions(&notes), vec![json!(S_A), json!(S_B)], "{notes:?}");
 }
 
 /// A card with many notes shows every one, in order, each with its own session; the read
