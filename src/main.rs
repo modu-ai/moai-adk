@@ -1197,6 +1197,12 @@ fn launch(
     // The number's `.live` lock (#2971): held until the host has exited, so a launch started in
     // the meantime sees this number alive. It is dropped after `session_launch` returns.
     let mut live_number = None;
+    // The named live lock (BOARD 03 (가), SPEC-20261120-launcher-liveness REQ-4): a session
+    // with a name holds `<name>.live` for as long as its host runs — the numbered sessions
+    // already hold theirs through `take_agent_number` — so the read-only liveness lookup can
+    // tell a live launcher from an exited one. Outside a git repository there is no sessions
+    // folder: the launch goes on without a lock and the lookup answers unknown.
+    let mut live_named = None;
     if numbered {
         let here = std::env::current_dir()
             .map_err(|_| "agent numbering: the current directory is unreadable; pass --name")?;
@@ -1221,6 +1227,18 @@ fn launch(
             n
         };
         request.name = Some(format!("agent-{n}"));
+    } else if !o.dry_run {
+        if let Some(name) = request.name.clone() {
+            let here = std::env::current_dir()
+                .map_err(|_| "session live lock: the current directory is unreadable")?;
+            // No sessions folder (not a git repository): no lock, the lookup stays unknown.
+            if let Ok(dir) = moai_cli::session::agent_seq_dir(&here) {
+                live_named = Some(
+                    moai_cli::session::lock_named_live(&dir, &name)
+                        .map_err(|e| format!("cannot start {name}: {e}"))?,
+                );
+            }
+        }
     }
     // #3004 P9: on a terminal the notes are not printed after the host ends, so what the user
     // must know is said once here, before it starts.
@@ -1234,6 +1252,7 @@ fn launch(
     let launched = session_launch(&request, o.dry_run);
     // The host has exited (or never started): the number is free again.
     drop(live_number);
+    drop(live_named);
     let mut v = launched?;
     if let Some(notes) = v["notes"].as_array_mut() {
         // SPEC-20261118-launcher-agent-entry: how the role is entered inside the session.
