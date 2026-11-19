@@ -108,5 +108,7 @@ created: 2026-11-19
   - AC-10: met — `--test card_cli secret_screen_refuses_credential_shapes_after_any_separator` 와 `--lib secret_screen_sees_values_after_a_separator` 통과; 평범한 문장 12개(콜론·쉼표·등호 포함)가 네 표면에서 계속 통과해요.
   - AC-11: met — `--test card_work_cli the_reference_evidence_and_reason_pass_the_secret_screen` 통과(노트 참조·증거·사유 각 6개 입력, 필드 이름 한 번).
   - 수리 변이 4개(모두 사살, 복원 뒤 `git status` 깨끗): (1) 이름 검사를 지운 낱말에 되돌림 → `secret_screen_reads_sk_names_before_they_are_blanked` 실패, (2) 구분자 뒤 검사를 끔 → `secret_screen_sees_values_after_a_separator` 실패, (3) 쉼표를 구분자에서 뺌 → 같은 시험 실패, (4) 콜론을 뺌 → 같은 시험 실패.
+  - N2 변이 3개(노트 참조·증거·사유 검사를 하나씩 끔): 모두 `--test card_work_cli the_reference_evidence_and_reason_pass_the_secret_screen` 실패로 사살, 복원 뒤 `git status` 깨끗. 시험 입력에 예전 화면이 통과시키던 꼴(비밀 낱말 플래그에 수 값, 토큰 조각이 든 한도 플래그에 수 값)을 넣었어요.
+  - N4: 비밀 이름 꼴 글자가 `tests/card_work_cli.rs` 의 시험 한 줄과 `src/card/input.rs` 의 문서 주석에 있던 것을 조각 이어 붙이기·풀어 쓰기로 바꿨어요(`git diff v2026.11.0 HEAD` 의 더한 줄에서 비밀 이름 등호 꼴 검색 0건).
   - 기존 카드 글 재측정(수리한 head 의 `moai-cli`, 임시 HOME·임시 장부, `count_after.py`, 2026-11-19): 기준 글 0/287, 제목 1/130, 본문 3/118, 노트 7/3301 — 수리 전(0/268, 1/125, 3/113, 7/3205)과 같은 카드의 같은 글만 걸려요(걸리는 카드: 3, 22, 32, 68, 122).
 - 돌리지 않은 것: 전체 `cargo test`, CI, 실제 HOME, 점·카멜 이름.
