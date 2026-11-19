@@ -399,7 +399,7 @@
       }
     },
     "references/rule-history.md": {
-      "sha256": "63d822c802afff5b4c2f7fc3dd1a439621910df498a5e1a5432c8738d2625b60",
+      "sha256": "c03de1abc0cd6b62425aef6c9676311e6e1b4c69e7f04ff8358f7514f3cdc73e",
       "origin": {
         "kind": "design-spec",
         "template_id": "rule-prune-history",

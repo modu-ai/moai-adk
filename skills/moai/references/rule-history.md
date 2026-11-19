@@ -16,7 +16,9 @@ numbering of core-rules.md is fixed by `tests/core_rules_2876.rs` (rules 19–21
 Last slice (SPEC-20261119-rule-prune-leader): the enforcer of a mechanical-inventory row is a
 measured field, not a claim. A line is `pins:` the test files that hold a string literal of at
 least 20 characters lying inside that line (`tests/*.rs`, `tests/*.py`, found by a script that
-only reads), and `text only` when none does. The unit of an inventory row is the line; the unit
+only reads), and `text only` when none does. A row that pins a test of this repository's own CI
+script carries `(moai-adk repository)` after its first words: a shipped skill file must say that
+script belongs to this repository, not to a user project (#2708). The unit of an inventory row is the line; the unit
 of the sentence reading below is the sentence, split after `. ` before a capital letter, a
 backtick, a bracket or `*`. A hit is a candidate only: a sentence with no test literal still
 stays live when code, a hook or a gate reads it, or when it is the single copy of a contract.
@@ -243,7 +245,7 @@ a contract (S2 among them, flagged). 3 + 12 + 15 = 30.
 - L29 - — 6. **goal-line** — First action after answering: feed the state you ju · pins: product_cli.rs
 - L30 #1975,2515,2612,2879,2899,2902,2933,3005 — 7. **supervise** — Then supervise: SPEC §2 for the division of work, § · pins: mode_workflow_steps.rs, bin_names_cli.rs, host_connector.rs, lane_next_cli.rs (+4 more)
 - L31 #1975,2515,2612 — 8. **pr-gate** — Keep the open-PR limit N, read from one place: decisi · pins: mode_workflow_steps.rs
-- L32 #1975,2385,2388,2401,2515,2664,2665,2680,2681,2693,2708,2777,2906 — 9. **merge-train** — Run the merge train (Issue #2388) under the integ · pins: mode_workflow_steps.rs, check_pr_self_audit_test.py, ci_scope_test.py, hooks_cli.rs (+4 more)
+- L32 #1975,2385,2388,2401,2515,2664,2665,2680,2681,2693,2708,2777,2906 — 9. **merge-train** — Run the merge train (Issue #2388) under the integ (moai-adk repository) · pins: mode_workflow_steps.rs, check_pr_self_audit_test.py, ci_scope_test.py, hooks_cli.rs (+4 more)
 - L33 #2668 — 10. **handoff-line** — A card changes hands only through its holder's · pins: mode_workflow_steps.rs
 - L34 #2619,3005 — 11. **lane-done** — On a `LANE-DONE` line, read the evidence it names · pins: mode_workflow_steps.rs, close_step_2903.rs, product_cli.rs
 - L38 - — Keep-set decisions go to the user at every autonomy level (SPEC §6). P · pins: agent_defs_package.rs, product_cli.rs
