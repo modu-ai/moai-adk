@@ -26,10 +26,10 @@ The receipt keeps the text of the file before the write, so the folder is owner-
 - REQ-1: When the model stage saves after a yes, the stage shall write a receipt before the file is written, named by the word models, the unix milliseconds and the process id joined by dashes, in the receipts folder of the state folder, holding the operation `update.models`, the settings path, the text of the file before the write or null when the file was absent, the sha256 of the file before and of the file the write will produce, and the permission reference, so that the result of the stage can name the receipt id. · failure: none — REQ-2 and REQ-3 cover a receipt that cannot be kept.
 - REQ-2 (REQ-1): IF the receipt would be larger than 60000 bytes because the file before the write is large, THEN the stage shall write nothing, keep no receipt and report the state `error` naming the limit.
 - REQ-3 (REQ-1): IF the receipt cannot be written, THEN the stage shall write no settings and report the state `error`.
-- REQ-4 (REQ-1): IF the file read back after the write does not equal the text the receipt promised, THEN the stage shall report the state `error` with the receipt id and say that the file must be checked.
+- REQ-4 (REQ-1): IF the file read back after the write does not equal the text the receipt promised, THEN the stage shall report the state `error` with the receipt id and say that the file must be checked, and the same applies when the apply itself fails after the receipt was kept: the error result names the receipt id.
 - REQ-5: When the revert is called with a permission reference and a receipt id and the settings file equals the file the receipt names as written, the revert shall put the text before the write back byte for byte, with the file mode kept, or remove the file when it was absent, read the file back, write the marker named by the receipt id and the suffix .reverted and report the state `reverted`. · failure: none — REQ-6 and REQ-7.
 - REQ-6 (REQ-5): IF the settings file is not the file the receipt names as written, THEN the revert shall change nothing, write no marker and report the state `skipped` with the reason `changed_since_apply`.
-- REQ-7 (REQ-5): IF the permission reference is empty or a placeholder, the id is not a models receipt id, the receipt is missing or is not an `update.models` receipt, it names another settings file than the current one, or it was already reverted, THEN the revert shall change nothing and refuse with an error.
+- REQ-7 (REQ-5): IF the permission reference is empty or a placeholder, the id is not a models receipt id, the receipt is missing or is not an `update.models` receipt, it names another settings file than the current one, it was already reverted, or it lacks either before field, holds them unpaired or mistyped, or its text does not hash to its before hash, THEN the revert shall change nothing and refuse with an error.
 - REQ-8: When the stage or the revert reports, the result shall hold ids, paths, states and reasons only and never the text of the file or of the receipt. · failure: none — a pinned output test finds a leak.
 
 ## Acceptance
@@ -54,7 +54,11 @@ The receipt keeps the text of the file before the write, so the folder is owner-
   verify: `cargo test --locked --offline --test update_model_pick`; `cargo test --locked --offline --test model_effort_questions`; `python3 -m unittest tests.update_tux_tty_test`
 - AC-10 (REQ-1): the update workflow text names the receipt, and the source manifest carries its new hash.
   verify: `cargo test --locked --offline --test product_cli source_manifest_covers_every_package_file`
-- AC-11 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7, REQ-8): the code style checks.
+- AC-11 (REQ-7): a receipt that lacks `before_text`, lacks `before_sha256`, lacks both, pairs a null with a value, holds a number, or holds a hash that is not its text's is refused as damaged and the settings file stays; an id outside the receipt shape is refused as an unknown id.
+  verify: `cargo test --locked --offline --test launcher_settings_receipt a_receipt_that_lacks_a_before_field_is_damaged_and_deletes_nothing`; `cargo test --locked --offline --test launcher_settings_receipt a_receipt_id_outside_the_shape_is_refused_as_unknown`; `cargo test --locked --offline --lib update_models::`
+- AC-12 (REQ-4): an apply that fails after the receipt was kept returns the state `error` with the receipt id and no file text.
+  verify: `cargo test --locked --offline --test launcher_settings_receipt a_failed_apply_still_names_its_receipt`
+- AC-13 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7, REQ-8): the code style checks.
   verify: `cargo fmt --check`
 
 ## Scope
@@ -76,7 +80,8 @@ The receipt keeps the text of the file before the write, so the folder is owner-
 - The receipt is written before the settings, so a failed write leaves a receipt that was never applied → the revert finds the file equal to the file before the write and reports `skipped` with `changed_since_apply`, never a false revert; the unused receipt is harmless.
 - Without a command line the revert cannot be run from a shell yet → the receipt id is in the result and the function is tested; the command follows when the main file is free, and this slice does not claim a working undo for a person.
 - A write by another program between the receipt and the settings → the digest-bound apply refuses a changed launcher object, and REQ-4 catches any other difference after the write.
-- Two read-back guards are not reached by any test because they need a file that changes between the write and the read in the same call: the check after the revert write and the hash comparison after the save (mutants R9 and R12 survived) → the apply already reads the whole file back before the stage compares hashes, and the person sees the receipt id with the error; a test would need a fault injection point in the writer, which this slice does not add.
+- The two read-back checks are tested as functions (`file_is`, `file_has_hash`) but the calls that use them need a file that changes between the write and the read in the same call (mutants R9, R12, M10 and M11 survive: the call sites skipped) → the apply already reads the whole file back before the stage compares hashes, and the person sees the receipt id with the error; a test would need a fault injection point in the writer, which this slice does not add.
+- The receipts folder is not checked for a link or a foreign owner before the backup is stored (Codex P2 and audit N2 on PR 3215): the helper `key_vault::write_home_receipt` is shared by every home write and key_vault.rs is held by another card → left for the follow-up that moves a folder check into that helper; this slice does not claim a hardened receipts folder.
 - The limits of the settings write recorded by the audits of PRs 3207, 3209 and 3212 stay as listed in their SPEC files.
 
 ## Decisions
@@ -101,4 +106,8 @@ The receipt keeps the text of the file before the write, so the folder is owner-
 - AC-8: met — `a_failed_restore_changes_nothing_and_stays_revertable` passes (returns early when run as the superuser, where a read-only folder still writes)
 - AC-9: met — `update_model_pick` 10, `model_effort_questions` 15, `model_effort_settings` 8, `update_command_cli` 19 passed and `python3 -m unittest tests.update_tux_tty_test` 10 OK
 - AC-10: met — `product_cli` 79 passed (includes the source manifest case)
-- AC-11: met — `cargo fmt --check` and `cargo clippy --lib` with the stage and question test files and `launcher_settings_receipt` with `-D warnings` exit 0
+- AC-11: met — `a_receipt_that_lacks_a_before_field_is_damaged_and_deletes_nothing` (eight damaged receipts), `a_receipt_id_outside_the_shape_is_refused_as_unknown` and `--lib update_models::` 3 passed; RED before the repair: the first test failed because the revert had succeeded and removed the file (audit B1, probe reproduced)
+- AC-12: met — `a_failed_apply_still_names_its_receipt` passes (RED before the repair: the error carried no receipt id)
+- AC-13: met — `cargo fmt --check` and `cargo clippy --lib --tests -- -D warnings` exit 0 (after the repair too)
+
+Repair round (audit FAIL B1 on head e9fa01903e): mutation 11 mutants, 8 killed, 3 survived: M1 hash match dropped, M2 null text with any hash, M4 missing hash, M5 id shape widened, M6 id length limit off, M7 `file_is` always true, M8 `file_has_hash` always true, M9 apply error drops the receipt id all KILLED by the tests named above; M3 (missing `before_text` read as null) survives because it behaves the same as the original (the hash key is still required, so the pair is refused); M10 and M11 (the calls of the two read-back checks skipped) survive and are listed in Risks. Not repaired here: audit N2 (receipts folder check, follow-up) and N1 (command line, waits for C-62).
