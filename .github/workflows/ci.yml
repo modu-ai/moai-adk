@@ -223,6 +223,10 @@ jobs:
         if: ${{ env.CI_SCOPE == 'full' }}
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
+          # Leader repair N2 (2026-11-19): one entry per leg. The legs are separate jobs
+          # with one target folder each, so a shared key would have the two leg jobs of a
+          # push overwrite each other's saved entry; the prefix keeps the entries apart.
+          key: leg-${{ matrix.leg }}
           save-if: ${{ github.event_name == 'push' }}
       # #2554 2-1 (leader 6827616388): `cargo test` runs the ~120 test binaries one after
       # another (11-25 min of run time per target); cargo-nextest runs them in parallel with

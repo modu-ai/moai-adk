@@ -291,6 +291,21 @@ class LocalCheckLegTest(unittest.TestCase):
                 self.assertNotIn("step ", proc.stdout)
                 self.assertNotIn("local-check:", proc.stdout)
 
+    def test_a_leg_is_refused_in_candidate_mode(self):
+        """Leader repair N1 (2026-11-19): candidate mode prints the evidence line a gate
+        reads as a full-set pass, so a one-leg run must never get there. Any set leg value
+        refuses before any stage, with no result line — while in-place mode (CI) keeps it."""
+        for leg in ("nextest", "rest"):
+            with self.subTest(leg=leg):
+                repo = FakeRepo()
+                self.addCleanup(repo.close)
+                proc = repo.run(LOCAL_CHECK_MODE="candidate", LOCAL_CHECK_LEG=leg)
+                self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+                self.assertIn("LOCAL_CHECK_LEG", proc.stderr)
+                self.assertIn("full set", proc.stderr)
+                self.assertNotIn("step ", proc.stdout)
+                self.assertNotIn("local-check:", proc.stdout)
+
     def test_a_leg_ignores_the_other_legs_failure(self):
         """The nextest leg's `test` step failing must not touch the rest leg (they are
         separate CI jobs), and vice versa."""

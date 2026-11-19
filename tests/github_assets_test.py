@@ -443,6 +443,9 @@ class WorkflowTest(unittest.TestCase):
         cache = steps[names.index("Dependency cache")]
         self.assertRegex(cache["uses"], r"^Swatinem/rust-cache@[0-9a-f]{40}$")
         self.assertEqual(cache["with"]["save-if"], "${{ github.event_name == 'push' }}")
+        # C-20 repair N2: one cache entry per leg — the two leg jobs of one push build in
+        # one target folder each and must not overwrite each other's saved entry.
+        self.assertEqual(cache["with"]["key"], "leg-${{ matrix.leg }}")
         self.assertLess(names.index("Dependency cache"), names.index("Check set"))
         script = steps[names.index("Check set")]["run"]
         self.assertIn("cargo fetch --locked", script)

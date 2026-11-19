@@ -68,7 +68,9 @@
 #   LOCAL_CHECK_LEG         the CI check-matrix leg (SPEC-20261119-ci-check-set-legs): unset or
 #                           empty keeps today's single full set; `nextest` runs exactly fetch,
 #                           test, doctest; `rest` exactly fetch, clippy, fmt, fmt-ops, unittest,
-#                           diff-check; any other value exits 2 before any step runs
+#                           diff-check; any other value exits 2 before any step runs, and so
+#                           does any set value in candidate mode (the full set is the only
+#                           local evidence; legs are CI's in-place parallelism)
 #   GITHUB_STEP_SUMMARY     when set, one `| step | command | exit |` row per step is appended
 #   MOAI_HEAVY_SLOT_MAX (default 3), MOAI_HEAVY_SLOT_MIN_FREE_GB (default 50),
 #   MOAI_HEAVY_SLOT_NAME (default local-check): when `moai heavy-slot-acquire` exists, the
@@ -111,6 +113,15 @@ case "$leg" in
     exit 2
     ;;
 esac
+
+# Leader repair N1 (2026-11-19): a leg narrows the set, so it may never produce the
+# candidate-mode evidence line a gate reads as a full-set pass — a one-leg run must not be
+# readable as a pass for everything. Legs are CI's parallelism device (in-place mode);
+# locally the full set is the only evidence. Refused before the traps: no result line.
+if [ "$mode" = candidate ] && [ -n "$leg" ]; then
+  echo "tools/local_check.sh: LOCAL_CHECK_LEG is a CI leg for in-place mode; candidate mode always checks the full set, unset LOCAL_CHECK_LEG" >&2
+  exit 2
+fi
 
 dry_run="${LOCAL_CHECK_DRY_RUN:-0}"
 keep_going="${LOCAL_CHECK_KEEP_GOING:-0}"
