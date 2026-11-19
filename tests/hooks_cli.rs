@@ -2278,6 +2278,75 @@ fn ac_verify_run_ignores_what_is_not_the_verify_command() {
     assert!(!root.join(".moai-cli").exists(), "nothing is created");
 }
 
+/// REQ-1 (tier 2 audit B1): a Bash call that did not run to its end is not a successful run of
+/// the verify command: one started in the background (`run_in_background`, or a
+/// `backgroundTaskId` in its response), one the host reports as interrupted, and an input that
+/// does not say which event it is leave no `ac_run` line. The same call as a finished
+/// `PostToolUse` is recorded, and every one of these calls still leaves its observe line.
+#[test]
+fn ac_verify_run_ignores_calls_that_did_not_finish() {
+    let (_tmp, root) = ac_repo(AC_BRANCH, Some(AC_HEAD), Some(AC_BODY));
+    let command = "cargo test --test one";
+    let call = |event: Option<&str>, tool_input: Value, tool_response: Value| {
+        let mut input = json!({"session_id": "s1", "tool_name": "Bash", "tool_use_id": "t",
+            "tool_input": tool_input, "tool_response": tool_response, "cwd": root});
+        if let Some(event) = event {
+            input["hook_event_name"] = json!(event);
+        }
+        ac_dispatch("tool-observe", "claude", &root, &input)
+    };
+    let not_finished = [
+        (
+            "run_in_background",
+            Some("PostToolUse"),
+            json!({"command": command, "run_in_background": true}),
+            json!({"backgroundTaskId": "b1"}),
+        ),
+        (
+            "run_in_background without a task id",
+            Some("PostToolUse"),
+            json!({"command": command, "run_in_background": true}),
+            json!({}),
+        ),
+        (
+            "a backgroundTaskId alone",
+            Some("PostToolUse"),
+            json!({"command": command}),
+            json!({"backgroundTaskId": "b1"}),
+        ),
+        (
+            "interrupted",
+            Some("PostToolUse"),
+            json!({"command": command}),
+            json!({"interrupted": true}),
+        ),
+        (
+            "no event name",
+            None,
+            json!({"command": command}),
+            json!({}),
+        ),
+    ];
+    for (what, event, tool_input, tool_response) in not_finished {
+        let (code, out) = call(event, tool_input, tool_response);
+        assert_eq!((code, out.as_str()), (0, ""), "{what}");
+        assert_eq!(ac_runs(&root), Vec::<Value>::new(), "{what}");
+    }
+    let observes = merge_log(&root)
+        .iter()
+        .filter(|l| l["kind"] == json!("observe"))
+        .count();
+    assert_eq!(observes, 5, "every call is still observed");
+    // The same call, finished: one line. `false` flags do not hide it.
+    let (code, out) = call(
+        Some("PostToolUse"),
+        json!({"command": command, "run_in_background": false}),
+        json!({"interrupted": false, "stdout": "ok"}),
+    );
+    assert_eq!((code, out.as_str()), (0, ""));
+    assert_eq!(ac_runs(&root).len(), 1, "{:?}", ac_runs(&root));
+}
+
 /// REQ-3, REQ-6: after the session wrote a file, the Stop answer names the verify commands
 /// (by AC) that have no `ac_run` line at the current commit, written at or after that write;
 /// criteria with `manual:`, `unknown:` or a placeholder are not named; a new write or a new

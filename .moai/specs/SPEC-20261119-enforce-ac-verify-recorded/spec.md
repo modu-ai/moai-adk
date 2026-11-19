@@ -2,7 +2,7 @@
 id: SPEC-20261119-enforce-ac-verify-recorded
 title: "A turn on a SPEC branch ends only after each AC's verify command has a recorded run at the current commit"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-19
 parent: SPEC-20261119-enforce-spec-hooks
 ---
@@ -40,10 +40,11 @@ parent: SPEC-20261119-enforce-spec-hooks
 - REQ-5: The rule `ac_verify_recorded` shall act by its mode in `[hooks.modes]`: `off` does nothing, `observe` (the default) writes one `would_block` line and lets the turn end, and `enforce` keeps the session working with the Stop answer, within the existing MoAI stop-block cap.
 - REQ-6: The rule `ac_verify_recorded` shall leave out an AC whose `verify:` value holds an unfilled `<…>` placeholder and an AC that has a `manual:` or `unknown:` reason.
 - REQ-7: The capabilities report of the Claude and Codex hosts shall name the rule `ac_verify_recorded`, its default mode and its named limits.
+- REQ-8 (REQ-1): IF the Bash call was started in the background or its response carries a background task id, or the host reports it interrupted, or the Claude input does not name the event `PostToolUse`, THEN the tool-observe duty shall write no `ac_run` line and let the call through.
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2): 성공한 Bash 호출이 AC 의 verify 명령과 공백만 달리 같으면 `ac_run` 줄이 하나 남고(SPEC id·AC id·전체 커밋·세션·시간), 다른 명령·실패한 호출·SPEC 작업 가지가 아닌 곳·읽을 수 없는 SPEC 이나 커밋에서는 아무것도 남지 않고 호출은 그대로 통과해요.
+- AC-1 (REQ-1, REQ-2, REQ-8): 성공한 Bash 호출이 AC 의 verify 명령과 공백만 달리 같으면 `ac_run` 줄이 하나 남고(SPEC id·AC id·전체 커밋·세션·시간), 다른 명령·실패한 호출·끝까지 돌지 않은 호출(백그라운드로 시작했거나 백그라운드 작업 id 가 있거나 중단됐거나 Claude 입력에 이벤트 이름 `PostToolUse` 가 없는 것)·SPEC 작업 가지가 아닌 곳·읽을 수 없는 SPEC 이나 커밋에서는 아무것도 남지 않고 호출은 그대로 통과해요.
   verify: `cargo test --locked --offline --test hooks_cli ac_verify_run`
 - AC-2 (REQ-3, REQ-4, REQ-6): 이 세션이 파일을 쓴 뒤 현재 커밋에 `ac_run` 이 없는 verify 명령(AC 하나에 명령이 여럿이면 명령마다)이 있으면 Stop 이 이유(AC id 들과 SPEC id)와 함께 거절하고, 쓴 적이 없거나 기록이 모두 있거나 읽을 수 없거나 자리표시자·`manual:`·`unknown:` 뿐이면 그냥 끝나요.
   verify: `cargo test --locked --offline --test hooks_cli ac_verify_rule_stop`
@@ -70,6 +71,7 @@ parent: SPEC-20261119-enforce-spec-hooks
 ## Risks
 
 - 연결 없음: 생성되는 Claude·Codex 설정에는 `tool-observe` 도 `turn-validation` 도 호출이 없어서(`src/hooks.rs` 의 `HOOK_SET` 은 `PostToolUse Bash → hook-receipt`), 이 조각만으로는 실제 세션에서 규칙이 돌지 않아요. 연결은 별도 조각(S3b)이고, 그때까지 시험은 `hook-dispatch` 를 직접 불러 증명해요(`hooks-status` 의 "no host run is proven" 와 같은 한계).
+- 호스트의 실패 신호는 아직 실제 세션에서 확인하지 못했어요: Claude 에서 0 아닌 종료가 `PostToolUseFailure` 로 오는지, 백그라운드 호출이 `run_in_background`·`backgroundTaskId` 를 그 이름으로 싣는지는 문서와 감사 재현에 기대요. 모르는 모양은 성공으로 치지 않고(이벤트 이름이 없으면 기록 안 함) 실제 확인은 S3b 에서 해요.
 - 커밋하면 `HEAD` 가 바뀌어 기록이 옛 커밋 것이 돼요: verify 를 돌린 뒤 커밋하면 규칙이 새 커밋에서 다시 돌리라고 해요(리더 결정이 "현재 head 의 기록"이에요). 같은 트리를 다시 증명하는 비용이에요.
 - 더러운 작업 트리와 셸로 쓴 파일: "이 세션이 쓴 뒤"는 Write·Edit 류 도구 호출만 세요. `sed -i` 같은 셸 쓰기는 쓰기로 안 읽혀서 그 뒤 기록이 있어도 최신이 아닐 수 있어요.
 - 명령이 같아야 인정: `cargo test … | tail` 처럼 뒤를 붙이거나 환경 변수를 앞에 붙인 호출은 verify 명령과 달라서 기록이 안 남아요(공백만 정리해 비교해요). SPEC 에 `verify:` 를 적을 때 그대로 돌릴 수 있는 한 줄로 적어야 해요.

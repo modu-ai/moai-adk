@@ -146,8 +146,9 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
         );
     };
     // OMP's turn-end event is `session_stop` (OMP 18.18.7, extensions.md), but the generated
-    // extension module does not subscribe to it: the turn-validation rules are empty
-    // (`STOP_RULES`). A call is a configuration error, never a guess.
+    // extension module does not subscribe to it, so no Stop rule of `STOP_RULES` can run for
+    // OMP (the rules run for Claude and Codex only). A call is a configuration error, never a
+    // guess.
     if host == Host::Omp && event == Event::TurnValidation {
         return engine_error(
             "turn-validation is not wired for OMP (session_stop exists; no rule uses it yet)",
@@ -1029,10 +1030,27 @@ fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) -> Ver
     });
     // Best effort: a project without `.moai-cli/`, or a refused log, is simply not recorded.
     let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line);
-    if class == "bash" && outcome == "success" {
+    if class == "bash" && outcome == "success" && ran_to_its_end(input, host) {
         record_ac_run(input, cwd, now_unix_ms);
     }
     Verdict::Allow
+}
+
+/// Whether a Bash call that [`observe_outcome`] calls a success also ran to its end, which is
+/// what a recorded run of a verify command needs (SPEC-20261119-enforce-ac-verify-recorded REQ-1,
+/// tier 2 audit B1). Claude's "success" is only an event name that is not `PostToolUseFailure`,
+/// so for Claude the input must say it is a finished `PostToolUse`: a missing or other event name
+/// is an unknown state, which is not a success. For every host a call started in the background
+/// (`tool_input.run_in_background`, or a `tool_response.backgroundTaskId`, which says the command
+/// is still running) and a call the host reports as `tool_response.interrupted` did not run to
+/// its end. A flag that is absent or `false` hides nothing.
+fn ran_to_its_end(input: &Value, host: Host) -> bool {
+    if host == Host::Claude && input["hook_event_name"] != json!("PostToolUse") {
+        return false;
+    }
+    let started_in_background = input["tool_input"]["run_in_background"] == json!(true)
+        || input["tool_response"]["backgroundTaskId"].is_string();
+    !started_in_background && input["tool_response"]["interrupted"] != json!(true)
 }
 
 /// The longest Bash command line [`record_ac_run`] compares with a SPEC's `verify:` commands.
