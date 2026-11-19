@@ -1034,8 +1034,20 @@ fn unchanged_hooks(root: &Path, preview: &mut Value) -> Result<(&'static str, &'
 /// record is MoAI's own file under the state folder and no command repairs it. A message that is
 /// not about the record (the settings file itself) stays as it is.
 fn record_error(root: &Path, e: &str) -> String {
+    // The claude record is read through the settings state, whose refusals name the cause
+    // ("symlink target refused", "target is not a bounded regular file", "target read failed")
+    // but not the file, and none of them carries "receipt" — name the record here, like the
+    // receipt errors below do (card C-107 slice 2: a refusal names its file).
+    let e = if e.starts_with("symlink target refused")
+        || e.starts_with("target is not a bounded regular file")
+        || e.starts_with("target read failed")
+    {
+        format!("{e}: the ownership receipt is unreadable")
+    } else {
+        e.to_string()
+    };
     if !e.contains("receipt") {
-        return e.to_string();
+        return e;
     }
     format!(
         "the ownership record {} cannot be read ({e}); no moai command repairs it: read it, \
