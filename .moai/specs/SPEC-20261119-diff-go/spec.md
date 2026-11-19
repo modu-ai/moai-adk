@@ -2,7 +2,7 @@
 id: SPEC-20261119-diff-go
 title: "differential tests against the Go build for behaviour the Rust build keeps (C-104)"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-19
 ---
 
@@ -29,6 +29,7 @@ Measured on this machine against `moai.old` v3.2.1-rc.6 before any test was writ
 - REQ-6: When the folder holds `.moai/config/sections/statusline.yaml` with `statusline.segments.model` set to `false` or `true`, or no such file, the status line tests shall compare both builds and expect the model name hidden for `false` and shown otherwise. · failure: none — a difference fails the test with both outputs.
 - REQ-7: When a dangerous command reaches the Go hook call and the Rust tool-preflight hook, the hook test shall compare the `hookEventName` and `permissionDecision` of both answers and list the different reason text and the different silent allow on the approved list. · failure: none — a vanished difference fails the test.
 - REQ-5: When the Go build answers a case, the test shall check that answer against the expectation written in the test, so two builds that both show nothing do not pass. · failure: none — a changed oracle fails the sanity assertion.
+- REQ-8: When the approved-differences list is read, every entry shall name a case that a test of `tests/diff_go.rs` consults through the approved check with a non-empty reason, so a made-up or stale entry fails the suite (leader note 2687 N7). · failure: none — the fixture test fails naming the unconsulted entry.
 
 ## Acceptance
 
@@ -44,7 +45,9 @@ Measured on this machine against `moai.old` v3.2.1-rc.6 before any test was writ
   verify: `MOAI_GO_BIN=$HOME/go/bin/moai.old cargo test --locked --offline --test diff_go the_status_line_obeys_the_model_switch_of_statusline_yaml_like_the_go_build`
 - AC-7 (REQ-7): `rm -rf /` is denied by both with the same event name and decision and different reason text, and `ls` is answered by Go with an allow decision while the Rust build prints nothing; both differences are on the approved list.
   verify: `MOAI_GO_BIN=$HOME/go/bin/moai.old cargo test --locked --offline --test diff_go a_dangerous_command_is_denied_with_the_same_decision_as_the_go_build`; `MOAI_GO_BIN=$HOME/go/bin/moai.old cargo test --locked --offline --test diff_go a_harmless_command_is_allowed_silently_by_the_rust_build_on_purpose`
-- AC-5 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7): the style and lint checks pass.
+- AC-8 (REQ-8): every approved-differences entry names a consulted case with a reason; a fake entry added to the fixture fails the fixture test naming it.
+  verify: `cargo test --locked --offline --test diff_go every_approved_difference_entry_is_consulted_by_a_test`
+- AC-5 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7, REQ-8): the style and lint checks pass.
   verify: `cargo fmt --check`
 
 ## Scope
@@ -84,6 +87,9 @@ Measured on this machine against `moai.old` v3.2.1-rc.6 before any test was writ
 - AC-6: met — `the_status_line_obeys_the_model_switch_of_statusline_yaml_like_the_go_build` passes (three cases: `model: false` hides the name, `model: true` and no file show it; Rust equals Go and Go equals the written expectation)
 - AC-7: met — `a_dangerous_command_is_denied_with_the_same_decision_as_the_go_build` and `a_harmless_command_is_allowed_silently_by_the_rust_build_on_purpose` pass (same `hookEventName` and `permissionDecision` deny; different reason text; Go allow answer against Rust silence; both on the approved list)
 - AC-5: met — `cargo fmt --check` 0
+- AC-8 (r2 후속, 리더 노트 2687 N7): met — RED: fixture 에 가짜 항목(`fake_entry_probe`)을 넣자 `every_approved_difference_entry_is_consulted_by_a_test` 가
+  "holds \"fake_entry_probe\", which no test consults" 로 실패(관찰 2026-11-19T05:4xZ) → probe 제거 후 GREEN: `--test diff_go` 8 통과(2.90초, Go 빌드 없이
+  스킵 사유 출력 포함), fmt 0, `cargo clippy --test diff_go -- -D warnings` 0. CONSULTED_CASES 4종이 fixture 의 4 항목과 정확히 대응해요.
 
 RED: before `tests/diff_go.rs` existed there was no comparison at all; the first run of the hook case failed on a wrong expectation of mine (`{}` against the measured allow decision, which depends on the folder having no MoAI settings), and the test was corrected to the measured answer. Repair after the tier 1 audit: the two new hook tests were run before their approved-list entries existed and FAILED with `not on the approved list` (2 failed, 5 passed); the `statusline.yaml` test passed at once because it describes a behaviour both builds already share, so it is checked by the mutants below.
 Mutation of the first head: test side 6 mutants, 5 killed and 1 survived (the audit counted the same: D2 wrong expectation, D3 duplicate-key payload changed, D4 layout case compared Go with Go, D5 hook decision, D6 lookup ignores the variable killed; D1, Rust compared with itself, survives because a mutant that empties the Rust check cannot be seen by the test that holds it). Source side, in a scratch worktree removed afterwards: a string model emptied in `src/statusline/godecode.rs` made `the_status_line_reads_the_model_of_a_payload_like_the_go_build` FAIL; clearing only the display name, and display name plus name, survived because the status line falls back to the id, which Go also does. The audit added two source mutants that were killed (fold-name fallback removed, duplicate-key order reversed).
