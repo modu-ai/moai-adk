@@ -615,7 +615,6 @@ fn interview_question_bank_covers_the_project_axes() {
     assert_eq!(
         ids,
         [
-            "purpose",
             "protected",
             "done",
             "review_blocks",
@@ -625,14 +624,13 @@ fn interview_question_bank_covers_the_project_axes() {
             "stack",
             "method",
             "hosts",
-            // C-69: the versioning scheme, then the one detail the pick may need.
+            "language_conversation",
+            "language_commits",
+            "language_documents",
+            "work_flow",
             "versioning",
             "versioning_format",
             "versioning_head",
-            // C-70: the git work flow, m-flow recommended.
-            "work_flow",
-            // C-54: the autonomous decision model, not used first.
-            "decision_model"
         ]
     );
     for r in &rows {
@@ -672,9 +670,10 @@ fn interview_question_bank_covers_the_project_axes() {
     assert!(bank.contains("\"source\": \"user\""));
 }
 
-/// Card C-70 AC-1/AC-4: the `work_flow` row comes after the versioning rows, offers m-flow
-/// first and recommended with three alternatives, and the bank states each flow in a few lines;
-/// the PROJECT workflow previews the worktree base write and applies it only after the pick.
+/// AC-1/AC-4 of the work-flow rows: the `work_flow` row comes before the versioning row,
+/// offers m-flow first and recommended with three alternatives, and the bank states each
+/// flow in a few lines; the PROJECT workflow previews the worktree base write and applies
+/// it only after the pick.
 #[test]
 fn work_flow_row_offers_m_flow_first_and_the_bank_states_each_flow() {
     let read = |rel: &str| std::fs::read_to_string(package().join(rel)).unwrap();
@@ -685,7 +684,7 @@ fn work_flow_row_offers_m_flow_first_and_the_bank_states_each_flow() {
             .position(|l| l.starts_with(&format!("| `{id}` |")))
             .unwrap_or_else(|| panic!("no `{id}` row"))
     };
-    assert!(at("work_flow") > at("versioning_head"));
+    assert!(at("work_flow") < at("versioning"));
     let cells: Vec<String> = rows[at("work_flow")]
         .trim_matches('|')
         .split(" | ")
@@ -828,8 +827,8 @@ fn versioning_rows_and_reference_cover_the_three_schemes() {
         "at most 9999",
         "version order, not date",
         "no program is started",
-        // Card C-90: the credential-shape rule the profile applies to custom text.
-        "a key prefix at the start of a word or a token or password assignment is refused, while a prefix inside a word, as in `task-based` or `risk-free`, is ordinary text, card C-90",
+        // The credential-shape rule the profile applies to custom text.
+        "a key prefix at the start of a word or a token or password assignment is refused, while a prefix inside a word, as in `task-based` or `risk-free`, is ordinary text",
     ] {
         assert!(reference.contains(text), "versioning.md lacks {text:?}");
     }
@@ -899,9 +898,7 @@ fn versioning_reference_states_headver_numbers_and_the_release_checklist() {
     let release = section("## At every release");
     for text in [
         "Run this list yourself, without being asked, whenever you prepare, tag or publish a release or a release candidate.",
-        // Card C-81 (was: "follows the existing release rule: `SKILL.md` cases (2) and (3) and
-        // the autonomy levels", where `semi` sent releases to case (4)).
-        "The list itself runs autonomously; pushing a tag or publishing a release is `SKILL.md` case (2) at every autonomy level, `full` included: the user picks it and it waits, with no deadline default (card C-81).",
+        "The list itself runs autonomously; pushing a tag or publishing a release cannot be undone, so it is a question that waits for the user's pick at every autonomy level, `full` included, with no deadline default.",
         "Without the profile key, run the `versioning` interview row (detect first so the keep option is offered) and record the pick; never compute from the detection alone.",
         "never raise it silently, unless the project's rule says every release raises it.",
         "GitHub Actions keeps `run_number` on a re-run and raises only `run_attempt`, so there use `run_number` only when `run_attempt` is 1, or a dedicated counter.",
