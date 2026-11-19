@@ -326,7 +326,7 @@ pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<Value, 
         }
         Ok(())
     })();
-    restored.map_err(|e| {
+    restored.inspect_err(|_| {
         // The settings are not back, so the marker must not say they were: best effort
         // removal. A marker that survives this cleanup is a dead run's window, and the
         // marker+hash check above resumes it on the next attempt.
@@ -335,7 +335,6 @@ pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<Value, 
                 .join("receipts")
                 .join(format!("{marker}.json")),
         );
-        e
     })?;
     Ok(json!({
         "state": "reverted",
