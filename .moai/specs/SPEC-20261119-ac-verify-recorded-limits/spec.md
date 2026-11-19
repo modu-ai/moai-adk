@@ -33,6 +33,7 @@ C-86 S3(SPEC-20261119-enforce-ac-verify-recorded)의 규칙 `ac_verify_recorded`
 - REQ-6 (REQ-5): IF the file at one of those paths is a FIFO or larger than the bound, THEN the rule shall treat the commit as unreadable without waiting for the file.
 - REQ-7: The rule shall ignore a Bash call that carries a started-in-background or interrupted mark in any of the spellings the hosts document or the code cannot tell apart from them (the string "true", the number 1, snake_case and camelCase keys).
 - REQ-8 (REQ-7): IF the engine log has reached its size limit, THEN the rule shall read no lines, so that the turn ends.
+- REQ-9: The `hook.dispatch` row of `docs/rust-product-path.md` shall say that the Stop rule writes the `rule_release` line, that the Stop rule asks about the process folder's SPEC, and that any mark other than the plain `false` or `null` reads as unfinished.
 
 ## Acceptance
 
@@ -43,7 +44,8 @@ C-86 S3(SPEC-20261119-enforce-ac-verify-recorded)의 규칙 `ac_verify_recorded`
 - AC-5 (REQ-5, REQ-6): HEAD·ref 파일·`packed-refs` 가 FIFO 이거나 한도보다 크면 커밋을 읽을 수 없는 것으로 보고 기다리지 않아요(FIFO 시험은 제한 시간 안에 끝나요). · verify: `cargo test --locked --offline --lib head_sha_reads_regular_files_up_to_a_bound_and_never_waits_on_a_fifo`
 - AC-6 (REQ-7): 문자열 `"true"`·숫자 1·snake_case·camelCase 로 온 백그라운드·중단 표시는 기록하지 않아요. · verify: `cargo test --locked --offline --test hooks_cli ac_verify_run_ignores_a_call_marked_unfinished_in_every_documented_spelling`
 - AC-7 (REQ-8): 엔진 로그가 한도에 닿으면 규칙은 줄을 읽지 않고 턴이 끝나게 두고, 그 시험이 있어요. · verify: `cargo test --locked --offline --test hooks_cli the_ac_verify_rule_lets_the_turn_end_when_the_log_is_full`
-- AC-8 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7, REQ-8): 이웃 검사: 훅 시험과 문서·SPEC 검사가 그대로 통과해요. · verify: `cargo test --locked --offline --test hooks_cli`; `cargo test --locked --offline --test hook_dispatch_cli`; `cargo test --locked --offline --test doc_references`; `cargo test --locked --offline --test spec_cli the_repository_specs_pass_check`
+- AC-8 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7, REQ-8, REQ-9): 이웃 검사: 훅 시험과 문서·SPEC 검사가 그대로 통과해요. · verify: `cargo test --locked --offline --test hooks_cli`; `cargo test --locked --offline --test hook_dispatch_cli`; `cargo test --locked --offline --test doc_references`; `cargo test --locked --offline --test spec_cli the_repository_specs_pass_check`
+- AC-9 (REQ-9): 문서의 `hook.dispatch` 행이 Stop 규칙의 `rule_release` 줄, 프로세스 폴더 한계, "unfinished" 읽기, OMP 한계를 말해요(그 행 안에서만 읽어요). · verify: `sh -c 'row=$(grep -E "^\| .hook\.dispatch. \(rc\.2" docs/rust-product-path.md | head -1); for w in "the Stop rule" "writes the same line" "process folder" "reads as unfinished" "sends only"; do printf %s "$row" | grep -qF -- "$w" || { echo "row lacks: $w"; exit 1; }; done'`
 
 ## Scope
 
