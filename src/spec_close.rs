@@ -137,6 +137,14 @@ pub fn close<G: Fn(&str) -> Option<String>>(r: &Request<'_, G>) -> Result<Value>
             shown(r.id)
         )));
     };
+    // Audit note 3228, N2: a SPEC with a branch in both forms is refused here as in `spec take`;
+    // the one branch read below would hide the other one's unmerged work.
+    if let Some((name_first, date_first)) = crate::spec_take::both_forms(r.project, r.id) {
+        return Err(refuse(format!(
+            "{} has a branch in both forms, {name_first} and {date_first}; keep one (merge or delete the other); nothing was changed",
+            r.id
+        )));
+    }
     if r.base.is_some_and(|b| b.is_empty() || b.starts_with('-')) {
         return Err(refuse(
             "--base must not be empty or start with `-`; nothing was changed",

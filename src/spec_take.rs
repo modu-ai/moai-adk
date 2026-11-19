@@ -137,28 +137,59 @@ pub fn branch_of(id: &str) -> Option<String> {
     spec_branch::names_of(id).map(|(name_first, _)| name_first)
 }
 
+/// Whether the local branch `name` exists in `dir`.
+fn branch_exists(dir: &Path, name: &str) -> bool {
+    git(
+        dir,
+        &[
+            "rev-parse",
+            "--verify",
+            "--quiet",
+            &format!("refs/heads/{name}"),
+        ],
+    )
+    .is_ok()
+}
+
+/// Whether a remote-tracking branch `<remote>/<name>` exists in `dir` for any remote (a remote
+/// name has no `/`). Reads the local copy of the remote's refs only: no network.
+fn remote_branch_exists(dir: &Path, name: &str) -> bool {
+    git(
+        dir,
+        &["for-each-ref", "--format=%(refname)", "refs/remotes"],
+    )
+    .map(|refs| {
+        refs.lines().any(|line| {
+            line.strip_prefix("refs/remotes/")
+                .and_then(|r| r.split_once('/'))
+                .is_some_and(|(_, branch)| branch == name)
+        })
+    })
+    .unwrap_or(false)
+}
+
+/// The two local branches of a new-form SPEC id when both exist in `dir`: `(name_first,
+/// date_first)`. A SPEC with a branch in both forms is refused by `spec take` and `spec close`
+/// (audit note 3228, N2): the one `close` read would hide the other's unmerged work.
+pub fn both_forms(dir: &Path, id: &str) -> Option<(String, String)> {
+    let (name_first, date_first) = spec_branch::names_of(id)?;
+    (branch_exists(dir, &name_first) && branch_exists(dir, &date_first))
+        .then_some((name_first, date_first))
+}
+
 /// The local branch of a new-form SPEC id in `dir`: the date-first one when only that exists,
 /// otherwise the name-first one (existing or not). `None` for an id that has no branch name.
-/// A SPEC with a branch in both forms is refused by `spec take`, so it is not met here.
+/// A SPEC with a branch in both forms is refused by `spec take` and `spec close` ([`both_forms`]),
+/// so it is not met here.
 pub fn existing_branch_of(dir: &Path, id: &str) -> Option<String> {
     let (name_first, date_first) = spec_branch::names_of(id)?;
-    let has = |name: &str| {
-        git(
-            dir,
-            &[
-                "rev-parse",
-                "--verify",
-                "--quiet",
-                &format!("refs/heads/{name}"),
-            ],
-        )
-        .is_ok()
-    };
-    Some(if !has(&name_first) && has(&date_first) {
-        date_first
-    } else {
-        name_first
-    })
+    Some(
+        if !branch_exists(dir, &name_first) && branch_exists(dir, &date_first) {
+            date_first
+        } else {
+            name_first
+        },
+    )
 }
 
 /// A value shown in a printed command: single-quoted when it holds anything but a plain word.
@@ -284,6 +315,14 @@ pub fn take(r: &Request<'_>) -> Result<Value> {
     if has_new && has_old {
         return Err(refuse(format!(
             "{} has a branch in both forms, {name_first} and {date_first}; keep one (merge or delete the other); nothing was changed",
+            r.id
+        )));
+    }
+    // Audit note 3228, N3: the older branch only as a remote-tracking branch (a fresh clone) is
+    // still the SPEC's branch; a second, name-first branch beside it would split the work.
+    if !has_old && remote_branch_exists(dir, &date_first) {
+        return Err(refuse(format!(
+            "{} has the older branch {date_first} on a remote only; run `git switch {date_first}` first (it makes the local branch from the remote one), then take again; nothing was changed",
             r.id
         )));
     }

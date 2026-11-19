@@ -26,7 +26,7 @@ fn the_reference_states_the_rules_the_user_decided() {
     assert!(text.starts_with("# Internal: sdd\n\nWhen to read: "));
     for phrase in [
         "Every change that modifies the repository has a SPEC",
-        "One SPEC = one branch `spec/<yyyymmdd>-<slug>` = one pull request",
+        "One SPEC = one branch `spec/<slug>-<yyyymmdd>` = one pull request",
         "--minimal",
         "exactly one `shall`",
         "IF <condition>, THEN",

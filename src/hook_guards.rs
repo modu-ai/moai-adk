@@ -1221,7 +1221,8 @@ fn verify_commands(value: &str) -> Vec<String> {
         .collect()
 }
 
-/// The branch SPEC of the work tree holding `dir`: the branch must be `spec/<yyyymmdd>-<slug>`,
+/// The branch SPEC of the work tree holding `dir`: the branch must be a SPEC branch in either
+/// form (`spec/<slug>-<yyyymmdd>` or the old `spec/<yyyymmdd>-<slug>`, with an optional `-rN`),
 /// the SPEC `.moai/specs/SPEC-<yyyymmdd>-<slug>/spec.md` must read (at most 1 MiB), and HEAD's
 /// commit must read. Every `verify:` command of its criteria is listed by criterion and position;
 /// criteria with `manual:` or `unknown:` and commands with a placeholder are not. `None` when any
@@ -1229,7 +1230,12 @@ fn verify_commands(value: &str) -> Vec<String> {
 pub fn ac_work(dir: &Path) -> Option<AcWork> {
     let top = work_tree_top(dir)?;
     let branch = work_tree_branch(&top)?;
-    let spec = spec_branch_id(&branch)?;
+    // Both branch forms, with or without a repair suffix; a name that reads as two SPECs is
+    // settled by the SPEC folder of exactly one reading, else it names no SPEC here.
+    let spec = match spec_branch::resolve(&branch, Some(&top.join(".moai").join("specs"))) {
+        Resolved::One(id) => id,
+        Resolved::NotSpec | Resolved::Ambiguous(_) => return None,
+    };
     let head = head_sha(&top)?;
     let path = top.join(".moai/specs").join(&spec).join("spec.md");
     let meta = std::fs::symlink_metadata(&path).ok()?;

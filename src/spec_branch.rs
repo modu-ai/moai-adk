@@ -71,16 +71,17 @@ fn push_readings(name: &str, out: &mut Vec<String>) {
     }
 }
 
-/// A slug of lower-case letters and digits in words joined by single hyphens: the rule of
-/// `spec_doc::valid_slug` without its length cap. The SPEC-first hook never had a cap, and a
-/// branch with a longer slug must not slip past it.
+/// A slug of lower-case letters, digits and hyphens with no hyphen at either end: the rule the
+/// SPEC-first hook always read a branch by. It is looser than `spec_doc::valid_slug` (which
+/// refuses a hyphen pair and caps the length at 48): the hook never had a cap, and it read
+/// `spec/20261117-a--b` as a SPEC branch, so a branch with a longer slug or a hyphen pair must
+/// not slip past it now (audit note 3228, N1; D-11: the hook is not made weaker).
 fn slug_ok(s: &str) -> bool {
     !s.is_empty()
-        && s.split('-').all(|w| {
-            !w.is_empty()
-                && w.bytes()
-                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit())
-        })
+        && !s.starts_with('-')
+        && !s.ends_with('-')
+        && s.bytes()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'-')
 }
 
 /// The SPEC of `branch`: the single candidate, or among several the one whose folder exists in
@@ -179,6 +180,17 @@ mod tests {
         let id = format!("SPEC-20261117-{slug}");
         assert_eq!(ids(&format!("spec/{slug}-20261117")), vec![id.clone()]);
         assert_eq!(ids(&format!("spec/20261117-{slug}")), vec![id]);
+    }
+
+    /// Audit of C-112 (note 3228, N1): the SPEC-first hook read a slug with a hyphen pair inside
+    /// (`spec/20261117-a--b`) before the resolver; the resolver keeps that, in both forms.
+    #[test]
+    fn a_hyphen_pair_inside_a_slug_still_reads_as_a_spec_branch() {
+        let id = vec!["SPEC-20261117-a--b".to_string()];
+        assert_eq!(ids("spec/20261117-a--b"), id);
+        assert_eq!(ids("spec/a--b-20261117"), id);
+        assert!(ids("spec/20261117--b").is_empty());
+        assert!(ids("spec/20261117-b-").is_empty());
     }
 
     #[test]

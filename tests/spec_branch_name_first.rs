@@ -175,6 +175,28 @@ fn name_first_hook_leaves_other_names_alone() {
     }
 }
 
+/// Audit of C-112 (note 3228, N1): the SPEC-first rule read `spec/<yyyymmdd>-a--b` (a hyphen
+/// pair inside the slug) as a SPEC branch before this change; the resolver must not let such a
+/// branch go back to being free of the rule (D-11: the hook is not made weaker).
+#[test]
+fn name_first_hook_keeps_reading_a_slug_with_a_hyphen_pair() {
+    for branch in ["spec/20261117-a--b", "spec/a--b-20261117"] {
+        let (_d, root) = repo(branch);
+        let reason = deny_reason(&preflight(&root, &write("src/main.rs", &root)))
+            .unwrap_or_else(|| panic!("{branch}: a code write must wait for its SPEC"));
+        assert!(
+            reason.starts_with("MoAI tool-preflight:"),
+            "{branch}: {reason}"
+        );
+        write_spec(&root, "SPEC-20261117-a--b");
+        assert_eq!(
+            deny_reason(&preflight(&root, &write("src/main.rs", &root))),
+            None,
+            "{branch}: the SPEC exists now"
+        );
+    }
+}
+
 /// AC-5 (REQ-5): a name that reads as two SPEC ids is refused with the reason; a SPEC folder of
 /// exactly one of them is evidence that settles it; folders of both do not.
 #[test]
@@ -527,6 +549,48 @@ fn name_first_ambiguous_take_refuses_two_branches_of_one_spec() {
         "{message}"
     );
     assert_eq!(w.state(), before, "a refusal changes nothing");
+}
+
+/// Audit of C-112 (note 3228, N3): a SPEC whose old-form branch exists only as a remote-tracking
+/// branch (a fresh clone) is not given a second, name-first branch beside it: `spec take` refuses
+/// and says to switch to the old one first. Nothing changes.
+#[test]
+fn name_first_take_refuses_an_old_form_branch_that_exists_only_on_a_remote() {
+    let w = World::new();
+    let id = w.draft_spec("login-fix");
+    w.git(&[
+        "update-ref",
+        "refs/remotes/origin/spec/20261117-login-fix",
+        "HEAD",
+    ]);
+    let before = w.state();
+    let message = refused(&w.take(&id));
+    assert!(
+        message.contains("spec/20261117-login-fix") && message.contains("remote"),
+        "{message}"
+    );
+    assert!(message.contains("git switch"), "{message}");
+    assert_eq!(w.state(), before, "a refusal changes nothing");
+    assert!(
+        w.git(&["branch", "--list", "spec/login-fix-20261117"])
+            .is_empty(),
+        "no name-first branch is made"
+    );
+    // The same when the name-first branch is local: the SPEC would have a branch in both forms.
+    w.git(&["branch", "spec/login-fix-20261117"]);
+    let before = w.state();
+    let message = refused(&w.take(&id));
+    assert!(message.contains("remote"), "{message}");
+    assert_eq!(w.state(), before, "a refusal changes nothing");
+    // A remote branch of another SPEC does not matter.
+    let w = World::new();
+    let id = w.draft_spec("other-fix");
+    w.git(&[
+        "update-ref",
+        "refs/remotes/origin/spec/20261117-login-fix",
+        "HEAD",
+    ]);
+    ok(&w.take(&id));
 }
 
 /// AC-5 (REQ-6): a SPEC whose new branch would read as two SPEC ids (the slug starts with a

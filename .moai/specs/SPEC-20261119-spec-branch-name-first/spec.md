@@ -2,7 +2,7 @@
 id: SPEC-20261119-spec-branch-name-first
 title: "A SPEC work branch is named spec/<slug>-<yyyymmdd>, and every reader still resolves the old date-first form"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-19
 ---
 
@@ -14,7 +14,7 @@ created: 2026-11-19
 
 지금 가지 이름을 읽는 곳은 세 군데(tip `d25ecb1ba1`, `git grep` 으로 읽음)예요: `src/spec_take.rs:130` 이 id 에서 가지를 만들고, `src/tdd.rs:376` 이 가지를 날짜와 이름으로 쪼개 SPEC 을 찾고, `src/hook_guards.rs:1051` 이 SPEC 작업 가지를 알아봐요. 원격에 SPEC 가지가 이미 120개 있고(`git branch -r --list 'origin/spec/*'`), 그중 9개는 수리 가지 `-r2`·`-r3` 예요. 그래서 옛 이름도 계속 읽어야 해요. 이 조각은 가지 이름을 읽는 하나의 해석기를 만들어 세 군데가 같은 규칙을 쓰게 하고, `spec take` 가 새 이름으로 만들게 하고, 스킬·문서가 새 이름을 보이게 해요. 해석이 두 SPEC 으로 읽히는 이름은 추측하지 않고 이유와 함께 거절해요.
 
-이 SPEC 은 계획과 RED 시험까지예요(리더 배차 note 2851). 구현은 `src/hook_guards.rs` 를 C-86 S4(묶음 5)·S3 가 바꾸므로 묶음 5 가 병합된 새 tip 에서 시작해요.
+이 SPEC 은 처음엔 계획과 RED 시험까지였고(리더 배차 note 2851), 구현은 묶음 5 가 병합된 새 tip 위에서 했어요. 개정 3 은 리더 감사 note 3228(FAIL)의 수리를 담아요: 스킬 글(AC-6)과, 감사가 찾은 빈틈 셋 — `spec close` 가 두 꼴 가지를 함께 보지 못함(REQ-9), 옛 꼴 가지가 원격에만 있을 때 `spec take` 가 새 가지를 따로 만듦(REQ-6), 슬러그 안의 겹 하이픈 가지를 hook 이 더는 SPEC 가지로 읽지 않음(D-11).
 
 ## Interview
 
@@ -40,9 +40,10 @@ created: 2026-11-19
 - REQ-3: The shared branch reader of the SPEC-first hook and `moai tdd` and `moai spec take` shall read `spec/<slug>-<yyyymmdd>` and `spec/<yyyymmdd>-<slug>` and either of them followed by a repair suffix `-r<N>` as one SPEC id `SPEC-<yyyymmdd>-<slug>`.
 - REQ-4 (REQ-3): IF a branch name has no SPEC id in either form (a character outside `a-z`, `0-9` and `-`, a date of other than eight digits, nothing before or after the date, or a further `/`), THEN the readers shall treat the branch as not a SPEC work branch.
 - REQ-5 (REQ-3): IF a branch name reads as two SPEC ids, THEN the SPEC-first hook and `moai tdd` shall refuse with a reason that says the name reads as two SPEC ids, unless exactly one of the two SPEC folders exists under `.moai/specs/`, in which case that SPEC is the one.
-- REQ-6 (REQ-1): IF the branch `moai spec take` would create reads as two SPEC ids, or the SPEC has a branch in both forms, THEN the command shall refuse before it changes anything and name both ids or both branches.
+- REQ-6 (REQ-1): IF the branch `moai spec take` would create reads as two SPEC ids, or the SPEC has a branch in both forms, or its date-first branch exists only as a remote-tracking branch, THEN the command shall refuse before it changes anything and name the ids or the branches.
 - REQ-7: The skills and the operation pages shall show the work branch as `spec/<slug>-<yyyymmdd>` and say that the date-first form is still read.
 - REQ-8: The shipped SPEC-first hook reason shall name the new form `spec/<slug>-<yyyymmdd>` without echoing any part of the branch name.
+- REQ-9 (REQ-1): IF the SPEC has a branch in both forms, THEN `moai spec close` shall refuse before it changes anything and name both branches.
 
 ## Acceptance
 
@@ -54,19 +55,21 @@ created: 2026-11-19
   verify: `cargo test --locked --offline --test spec_branch_name_first name_first_tdd`
 - AC-4 (REQ-3): `moai trailer-check` 가 두 꼴과 수리 접미사 이름을 SPEC 가지로 읽고(트레일러가 없으면 실패), 다른 가지는 그렇게 읽지 않아요(지금도 참이라 고정만 해요).
   verify: `cargo test --locked --offline --test spec_branch_name_first name_first_trailer`
-- AC-5 (REQ-5, REQ-6): 두 SPEC 으로 읽히는 이름은 hook·tdd 가 이유와 함께 거절하고(폴더 하나는 증거, 둘은 거절), `spec take` 는 두 꼴 가지가 함께 있거나 만들 이름이 두 SPEC 으로 읽히면 아무것도 바꾸지 않고 거절해요.
-  verify: `cargo test --locked --offline --test spec_branch_name_first name_first_ambiguous`
+- AC-5 (REQ-5, REQ-6): 두 SPEC 으로 읽히는 이름은 hook·tdd 가 이유와 함께 거절하고(폴더 하나는 증거, 둘은 거절), `spec take` 는 두 꼴 가지가 함께 있거나 만들 이름이 두 SPEC 으로 읽히면 아무것도 바꾸지 않고 거절해요. 옛 꼴 가지가 원격 추적 가지로만 있을 때도 거절하고 먼저 `git switch` 를 하라고 말해요.
+  verify: `cargo test --locked --offline --test spec_branch_name_first name_first_ambiguous` `cargo test --locked --offline --test spec_branch_name_first name_first_take_refuses`
 - AC-6 (REQ-7): `skills/moai/references/internal/sdd.md` 와 `interview.md` 가 새 이름을 보여요.
   verify: `cargo test --locked --offline --test spec_branch_name_first name_first_skills`
 - AC-7 (REQ-1…REQ-8): 이웃 시험은 새 이름 기준으로 고쳐져 통과하고 해석기의 단위 시험이 통과해요.
   verify: `cargo test --locked --offline --test spec_take_cli` `cargo test --locked --offline --test spec_before_code_hook` `cargo test --locked --offline --test green_test_lock` `cargo test --locked --offline --lib spec_branch`
+- AC-9 (REQ-9): `spec close` 가 새 꼴 가지를 읽고(합쳐졌으면 닫고, 안 합쳐진 일이 있으면 거절), 두 꼴 가지가 다 있으면 한쪽만 합쳐졌어도 아무것도 바꾸지 않고 거절해요.
+  verify: `cargo test --locked --offline --test spec_close_cli close_reads_a_name_first_branch` `cargo test --locked --offline --test spec_close_cli close_refuses_a_spec_with_a_branch_in_both_forms`
 - AC-8 (REQ-7): `docs/design-review/appendix/operations/spec.md`·`tdd.md` 가 새 이름을 보여요.
   verify: manual: 문서 두 쪽이라 시험으로 고정하지 않아요(시험이 `docs/` 경로를 읽으면 `tools/ci_scope.py` 의 거부 목록에 더해야 해요). 감사가 `git grep -n 'spec/<' -- docs/design-review/appendix/operations` 로 읽어요.
 
 ## Scope
 
 - write(이 조각, 계획과 RED): `.moai/specs/SPEC-20261119-spec-branch-name-first/**`, `tests/spec_branch_name_first.rs`
-- write(구현 조각, 묶음 5 병합 뒤 범위를 새로 받아요): `src/spec_branch.rs`(새 해석기; `src/lib.rs` 를 다른 카드 C-119 가 잡고 있어서 `src/spec_take.rs` 안에서 `#[path]` 로 등록해요, D-8), `src/hook_guards.rs`, `src/tdd.rs`, `src/spec_take.rs`, `src/spec_close.rs`(합칠 가지를 두 꼴에서 찾아요, D-9), `src/ops/spec.rs`, `src/ops/tdd.rs`, `tests/spec_take_cli.rs`, `tests/spec_before_code_hook.rs`, `tests/green_test_lock.rs`, `tests/trailer_check_cli.rs`, `tests/spec_close_cli.rs`, `tests/commit_guard_users.rs`, `tests/sdd_guidance.rs`, `tests/agent_defs_package.rs`, `skills/moai/references/internal/sdd.md`, `skills/moai/references/internal/interview.md`(+ 원본 목록 `skills/moai/references/source-manifest.json` 을 C-59 가 놓은 뒤), `docs/design-review/appendix/operations/spec.md`, `docs/design-review/appendix/operations/tdd.md`
+- write(구현 조각, 묶음 5 병합 뒤 범위를 새로 받아요): `src/spec_branch.rs`(새 해석기; `src/lib.rs` 를 다른 카드 C-119 가 잡고 있어서 `src/spec_take.rs` 안에서 `#[path]` 로 등록해요, D-8), `src/hook_guards.rs`, `src/tdd.rs`, `src/spec_take.rs`, `src/spec_close.rs`(합칠 가지를 두 꼴에서 찾아요, D-9), `src/ops/spec.rs`, `src/ops/tdd.rs`, `tests/spec_take_cli.rs`, `tests/spec_before_code_hook.rs`, `tests/green_test_lock.rs`, `tests/trailer_check_cli.rs`, `tests/spec_close_cli.rs`, `tests/commit_guard_users.rs`, `tests/sdd_guidance.rs`, `tests/agent_defs_package.rs`, `skills/moai/references/internal/sdd.md`, `skills/moai/references/internal/interview.md`(+ 원본 목록 `skills/moai/references/source-manifest.json` 의 두 항목: C-59 는 풀렸지만 C-108 예약이 쥐고 있어 리더 결정 note 3239 를 기다려요), `docs/design-review/appendix/operations/spec.md`, `docs/design-review/appendix/operations/tdd.md`
 - read-only: `src/trailers.rs`(`spec/` 접두사만 봐요), `src/spec_doc.rs`(`valid_slug`), `src/card/spec_link.rs`, `docs/decisions-2026-11-08.md`(옛 결정 기록이라 고치지 않아요)
 
 ## Plan
@@ -76,12 +79,13 @@ created: 2026-11-19
 3. `src/spec_branch.rs`: 해석기 `resolve(branch, specs_dir) -> NotSpec | One(id) | Two(a, b)` 와 만들 이름을 주는 `names_of(id) -> (name_first, date_first)` 와 단위 시험. 접미사는 끝의 `-r<숫자>` 하나만 떼고, 후보는 (이름 그대로, 접미사 뗀 것) × (이름 앞, 날짜 앞) 중 SPEC 이름 모양에 맞는 것이에요.
 4. `hook_guards::spec_branch_id`·`tdd::spec_of_branch`·`spec_take::branch_of` 를 해석기로 바꾸고, `spec take` 가 두 꼴을 찾는 순서(둘 다 있으면 거절, 하나면 그리로, 없으면 새 이름 생성)를 구현해요.
 5. 이웃 시험의 옛 이름 고정을 새 이름 기준으로 고치고 옛 이름 시험은 "여전히 읽는다"는 시험으로 남겨요.
-6. 스킬(`sdd.md`·`interview.md`)과 문서 두 쪽을 고쳐요. `skills/moai/**` 는 C-59 의 원본 목록 예약이 풀린 뒤 해요.
+6. 스킬(`sdd.md`·`interview.md`)과 문서 두 쪽을 고쳐요(감사 note 3228 뒤: C-59 가 풀려 로컬 `v2026.11.0` 에 들어왔고, 가지에 그것을 병합한 뒤 옛 문구를 고정하던 `tests/sdd_guidance.rs`·`tests/agent_defs_package.rs` 와 함께 고쳤어요).
+7. (감사 note 3228 수리) `spec close` 의 두 꼴 거절, 원격에만 있는 옛 가지 거절, 해석기 슬러그 규칙을 hook 이 원래 읽던 규칙으로 되돌리기, `ac_work`(C-86 S3)를 해석기로 바꾸기.
 
 ## Risks
 
 - `src/hook_guards.rs` 를 C-86 S4(묶음 5)·S3(감사 중)가 바꿔요: 구현은 묶음 5 병합 뒤 새 tip 에서 시작하고, S3 의 `ac_work` 가 `spec_branch_id` 를 거치면 새 해석기를 그대로 써요(구현 때 읽어 확인해요).
-- `skills/moai/**` 와 `source-manifest.json` 은 C-59 가 쥐고 있어요: 스킬 수정은 그 예약이 풀린 뒤 범위를 새로 받아 해요.
+- `skills/moai/**` 와 `source-manifest.json` 은 처음엔 C-59 가, 지금은 manifest 만 C-108 이 쥐고 있어요: 스킬 두 파일은 범위를 받아 고쳤고 manifest 두 줄은 리더 결정(note 3239)을 기다려요.
 - 폴더 증거는 작업 폴더에 있는 SPEC 폴더만 봐요: 다른 가지의 SPEC 은 병합 전엔 안 보여요. 그래서 두 후보 중 하나만 보이면 그것으로 정해요. 나중에 다른 폴더가 합쳐져 둘 다 보이면 그 가지는 거절돼요(가지 이름을 바꾸세요: `git branch -m`).
 - `-r<숫자>` 로 끝나는 SPEC 슬러그는 접미사로도 읽혀 두 후보가 돼요: 지금 SPEC 폴더 86개에 그런 것은 없어요(`ls .moai/specs | grep -E -e '-r[0-9]+$'` 가 비었어요).
 - 시험이 `docs/` 경로를 따옴표로 읽으면 `tools/ci_scope.py` 거부 목록에 더해야 해요: 이 조각의 시험은 `skills/` 만 읽고 `docs/` 는 읽지 않아요.
@@ -98,9 +102,10 @@ created: 2026-11-19
 - D-6: hook 의 이유 문구는 고정 문자열이고 가지 이름을 되풀이하지 않아요(지금 시험이 고정한 성질). 명령줄 읽는 쪽(`tdd`·`spec take`)은 후보 id 를 이유에 적어요(`a-z0-9-` 로만 이뤄진 것을 확인한 id 만이에요).
 - D-7: 이 조각의 가지 이름은 아직 옛 꼴이에요(`spec/20261119-spec-branch-name-first`): 코드가 새 꼴을 알기 전엔 SPEC-first hook 이 새 꼴 가지를 SPEC 가지로 읽지 못해요.
 - D-8: 해석기는 `src/spec_branch.rs` 에 있고 `src/spec_take.rs` 안에서 `#[path = "spec_branch.rs"] pub mod spec_branch;` 로 등록해요(호출은 `crate::spec_take::spec_branch::…`). 이유: `src/lib.rs` 를 C-119(bundle-tool)가 예약하고 있어 C-112 가 take 할 수 없었어요. C-119 가 풀리면 `src/lib.rs` 에 `pub mod spec_branch;` 한 줄을 두고 `#[path]` 줄을 지우면 되고 동작은 같아요. 되돌릴 수 있고 범주는 none 이에요(리더에게 note 로 알렸어요).
-- D-9: `spec close` 도 합칠 가지를 찾아야 해서 `src/spec_close.rs` 가 범위에 들어왔어요: 옛 꼴 가지만 있으면 그것을, 아니면 새 꼴을 가리켜요(`spec_take::existing_branch_of`). 둘 다 있는 SPEC 은 `spec take` 가 거절하므로 close 는 만나지 않아요.
+- D-9: `spec close` 도 합칠 가지를 찾아야 해서 `src/spec_close.rs` 가 범위에 들어왔어요: 옛 꼴 가지만 있으면 그것을, 아니면 새 꼴을 가리켜요(`spec_take::existing_branch_of`). 둘 다 있는 SPEC 은 `spec take` 가 거절하고, close 도 거절해요(`spec_take::both_forms`; 감사 note 3228 N2: 처음 글은 "close 는 만나지 않아요"였는데 take 를 거치지 않고 만든 두 가지를 close 가 만날 수 있어서, 한쪽만 읽으면 다른 쪽의 안 합쳐진 작업을 놓쳐요).
 - D-10: 해석기의 반환은 SPEC 본문의 `Two(a, b)` 대신 `Ambiguous(Vec<String>)` 예요: 수리 접미사가 붙으면 후보가 둘보다 많아질 수 있어서요(이름 그대로·접미사 뗀 것 × 이름 앞·날짜 앞). 판정은 같아요: 후보가 하나면 `One`, 둘 이상이면 SPEC 폴더가 정확히 하나일 때만 그것, 아니면 `Ambiguous`.
-- D-11: 슬러그의 길이 상한(`spec_doc::valid_slug` 의 48자)은 해석기가 적용하지 않아요. 지금 hook 은 상한 없이 읽으므로, 상한을 두면 긴 이름의 가지에서 hook 이 조용히 꺼져요(강제력이 약해져요). `moai spec new` 의 상한은 그대로예요.
+- D-11: 슬러그의 길이 상한(`spec_doc::valid_slug` 의 48자)은 해석기가 적용하지 않아요. 지금 hook 은 상한 없이 읽으므로, 상한을 두면 긴 이름의 가지에서 hook 이 조용히 꺼져요(강제력이 약해져요). `moai spec new` 의 상한은 그대로예요. 같은 이유로 슬러그 규칙은 hook 이 원래 읽던 규칙(소문자·숫자·하이픈, 양끝 하이픈 없음)이고, 슬러그 안의 겹 하이픈(`spec/20261117-a--b`)도 SPEC 가지로 읽어요(개정 3, 감사 note 3228 N1: 처음 해석기는 겹 하이픈을 거절해 그런 가지가 hook 에서 풀려났어요).
+- D-12: `spec take` 는 옛 꼴 가지가 원격 추적 가지(`refs/remotes/<원격>/<가지>`, 원격 이름에 `/` 없음)로만 있으면 거절하고 `git switch <옛 가지>` 를 먼저 하라고 말해요(개정 3, 감사 note 3228 N3). 네트워크는 쓰지 않고 이미 받아 둔 원격 추적 가지만 읽어요. 새 꼴 가지만 원격에 있는 경우는 이번에 바꾸지 않았어요. 되돌릴 수 있고 범주는 none 이에요.
 
 ## Result
 
