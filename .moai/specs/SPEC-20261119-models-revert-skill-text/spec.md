@@ -2,7 +2,7 @@
 id: SPEC-20261119-models-revert-skill-text
 title: "update.md names the models-revert command and its permission rule (C-47 slice 7)"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-19
 parent: SPEC-20261119-launcher-settings-receipt
 ---
@@ -28,14 +28,14 @@ C-47 조각 5(SPEC-20261119-models-revert-command)가 되돌리기 명령 `model
 
 - REQ-1: Where `skills/moai/workflows/update.md` describes the receipt of a saved models choice, it shall name the command `moai models-revert` with its `--receipt` and `--permission-reference` arguments as the way to put the earlier file back.
 - REQ-2: Where `skills/moai/workflows/update.md` describes the receipt of a saved models choice, it shall not say that the undo is not a command yet.
-- REQ-3: Where `skills/moai/workflows/update.md` names that command, it shall say that the session runs it only when the person asks for the undo and only with a permission reference the person gave, and that the `receipt` id printed by the save is the `--receipt` argument.
-- REQ-4: Where `skills/moai/workflows/update.md` names that command, it shall name its two answers, `reverted` and `skipped` with the reason `changed_since_apply`, and say that a refusal exits 1 with an error envelope and changes nothing.
+- REQ-3: Where `skills/moai/workflows/update.md` names that command, it shall say that the session runs it only when the person asks for the undo, with a one-line permission reference the session composes from that request as the apply step does and never asks the person to type, and that the `receipt` id printed by the save is the `--receipt` argument. (audit B2 of the first head: the apply step of the same file forbids asking the person for a reference)
+- REQ-4: Where `skills/moai/workflows/update.md` names that command, it shall name its two answers, `reverted` (the earlier file back, or the file removed when there was none) and `skipped` with the reason `changed_since_apply`, and say that a refusal exits 1 with an error envelope whose message the session reads out, and that the refusal `read back differently` may leave the file already touched so the person is told to check it. (audit B1 and N1 of the first head: the code writes the file before it reads it back)
 - REQ-5: When a file under `skills/moai/` changes, `skills/moai/references/source-manifest.json` shall hold the sha256 that `tools/source_manifest.py write` writes for that file. · failure: none — `tools/source_manifest.py check` is the check that fails when a hash is stale.
 - REQ-6: When `tests/models_revert_cli.rs` runs, it shall read the real `skills/moai/workflows/update.md` and pin that it names what REQ-1 to REQ-4 require, so a later edit that drops a name turns a test red. · failure: none — a test that does not find the name fails, there is no softer outcome.
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2, REQ-3, REQ-4): `update.md` names `moai models-revert`, both arguments, the person-asks-and-gives-the-reference rule and the two answers, and the words "not a command yet" are gone.
+- AC-1 (REQ-1, REQ-2, REQ-3, REQ-4): `update.md` names `moai models-revert`, both arguments, the rule that the person asks and the session composes the reference, the two answers, the refusal that may leave the file touched, and the words "not a command yet" and "changes nothing" are gone.
   verify: `rg -n -e "moai models-revert" -e "changed_since_apply" -e "not a command yet" skills/moai/workflows/update.md`
   verify: `cargo test --locked --offline --test models_revert_cli update_md_names_the_models_revert_command`
 - AC-2 (REQ-5): the manifest is current and the package fits.
