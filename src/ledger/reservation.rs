@@ -466,7 +466,8 @@ pub(super) fn add_event(
 }
 
 /// The first pair of a pattern in `mine` and a pattern of another card's active reservation
-/// that [`crate::scope::overlap`] says could be written under both, in card and pattern order.
+/// that [`crate::scope::card_overlap`] says could be written under both, in card and pattern
+/// order: [`crate::scope::overlap`] without the pairs that name a generated shared file (C-118).
 pub(super) fn find_overlap(
     conn: &Connection,
     card_id: i64,
@@ -483,7 +484,7 @@ pub(super) fn find_overlap(
         .collect::<Result<_, _>>()?;
     for (other, pattern) in theirs {
         for m in mine {
-            if crate::scope::overlap(m, &pattern) {
+            if crate::scope::card_overlap(m, &pattern) {
                 return Ok(Some((other, m.clone(), pattern)));
             }
         }
@@ -877,6 +878,21 @@ pub fn widen_in_tx(
     let added: Vec<String> = new.iter().filter(|p| !from.contains(p)).cloned().collect();
     if added.is_empty() {
         return Ok(Err(WidenError::NothingNew));
+    }
+    // `src/scope.rs` folds case when it judges what a pattern covers (`to_lowercase`), so a
+    // spelling that differs from one already held, or from one added earlier in this call, only
+    // by letter case is the same pattern, not a new one (SPEC-20261119-card-scope-widen-followup
+    // REQ-3).
+    let mut seen: Vec<(String, &String)> = from.iter().map(|p| (p.to_lowercase(), p)).collect();
+    for pattern in &added {
+        let key = pattern.to_lowercase();
+        if let Some((_, held)) = seen.iter().find(|(k, _)| *k == key) {
+            return Ok(Err(WidenError::InvalidInput(format!(
+                "`{pattern}` differs from `{held}` only by letter case, so it is not a new \
+                 pattern; leave one spelling out"
+            ))));
+        }
+        seen.push((key, pattern));
     }
     if let Some((other_card, mine, theirs)) = find_overlap(tx, card_id, &added)? {
         return Ok(Err(WidenError::ScopeOverlap {

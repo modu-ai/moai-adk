@@ -651,6 +651,43 @@ class MergeDriverTest(unittest.TestCase):
         self.assertEqual(merge.returncode, 0, merge.stdout + merge.stderr)
         self.assertEqual(r.assert_tool("check", 1)["changed"], ["workflows/a.md"])
 
+    def test_two_heads_regenerating_their_own_line_merge_to_what_write_produces(self):
+        # C-118 (REQ-8): two cards each change a different skill file and each regenerates the
+        # manifest; both lines survive the merge and the result is what `write` makes of it.
+        r = self.repo
+        r.install_driver()
+        base = r.manifest()["files"]
+        merge = r.branches(edit_line("workflows/a.md", 1, "card one"),
+                           edit_line("workflows/b.md", 1, "card two"))
+        self.assert_clean_and_correct(merge)
+        merged = r.manifest()["files"]
+        changed = sorted(k for k in merged if merged[k]["sha256"] != base[k]["sha256"])
+        self.assertEqual(changed, ["workflows/a.md", "workflows/b.md"])
+
+    def test_a_stale_line_after_the_merge_fails_check(self):
+        # C-118 (REQ-9): a head whose own line was typed by hand is not repaired by the merge;
+        # `check` fails and names that file, so the bundle is not pushed with it.
+        r = self.repo
+        r.install_driver()
+
+        def theirs(repo):
+            edit_line("workflows/b.md", 1, "card two")(repo)
+            repo.assert_tool("write", 0)
+            data = repo.manifest()
+            data["files"]["workflows/b.md"]["sha256"] = "f" * 64
+            repo.manifest(data)
+
+        r.git("checkout", "-q", "-b", "side")
+        theirs(r)
+        r.commit("theirs, line typed by hand")
+        r.git("checkout", "-q", "main")
+        edit_line("workflows/a.md", 1, "card one")(r)
+        r.assert_tool("write", 0)
+        r.commit("ours")
+        merge = r.git("merge", "-q", "--no-edit", "side", check=False)
+        self.assertEqual(merge.returncode, 0, merge.stdout + merge.stderr)
+        self.assertEqual(r.assert_tool("check", 1)["changed"], ["workflows/b.md"])
+
     def test_the_file_merge_uses_histogram_like_git(self):
         # N4: on this triple histogram and myers both merge cleanly but give different text;
         # git's own merge gives the histogram text, so a myers hash would fail `check`.

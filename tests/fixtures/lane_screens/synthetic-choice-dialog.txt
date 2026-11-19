@@ -1,0 +1,9 @@
+ Select model
+
+ Switch between models.
+
+ ❯ 1. Default (recommended)
+   2. Sonnet
+   3. Haiku
+
+ Enter to confirm · Esc to exit
