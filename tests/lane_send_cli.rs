@@ -19,7 +19,9 @@ const NOW_TEXT: &str = "2026-11-19T00:00:00Z";
 const TERMINAL: &str = "term_lane7";
 
 /// The fake `orca`. `read-N.json` is the N-th read (the last one repeats), `read-fail` makes a
-/// read exit 3, `send-fail` makes a send exit 4, `read-hang` makes a read sleep.
+/// read exit 3, `send-fail` makes a send exit 4, `read-hang` makes a read sleep; `send-ok-false`,
+/// `send-garbage`, `send-no-ok` and `send-empty` make a send exit 0 with an answer that is not
+/// `ok: true` (an `ok: false` answer, plain text, JSON without `ok`, nothing).
 const FAKE_ORCA: &str = r#"#!/bin/sh
 d="$FAKE_ORCA_DIR"
 case "$2" in
@@ -36,6 +38,10 @@ read)
 send)
   printf '%s\n' "$*" >> "$d/sent.txt"
   if [ -f "$d/send-fail" ]; then echo "send refused" >&2; exit 4; fi
+  if [ -f "$d/send-ok-false" ]; then echo '{"id":"x","ok":false,"error":{"message":"no such terminal"}}'; exit 0; fi
+  if [ -f "$d/send-garbage" ]; then echo 'sent it, thanks'; exit 0; fi
+  if [ -f "$d/send-no-ok" ]; then echo '{"id":"x","result":{}}'; exit 0; fi
+  if [ -f "$d/send-empty" ]; then exit 0; fi
   echo '{"id":"x","ok":true,"result":{"send":{"handle":"term_lane7","accepted":true}}}'
   ;;
 *)
@@ -204,20 +210,69 @@ fn lane_send_refuses_a_numbered_yes_no_dialog_in_any_dress_and_sends_nothing() {
     }
 }
 
-/// R-N1 (leader, note 3256): a `Do you want …` question near the bottom whose choices cannot be
-/// read is `unknown`, so a `working` or `idle` footer never lets a text reach the dialog.
+/// R-N1 (leader, note 3256) as narrowed by S-N2 (note 3362): a `Do you want …` question near the
+/// bottom with `Yes` and `No` rows under it that cannot be read as choices is `unknown`, so a
+/// `working` or `idle` footer never lets a text reach the dialog.
 #[test]
 fn lane_send_refuses_a_question_whose_choices_cannot_be_read_and_sends_nothing() {
+    let fake = Fake::screen("synthetic-unreadable-choice-idle.txt");
+    let r = run(&fake, "do the next card", &["--enter"]);
+    let message = r.error();
+    assert!(message.contains("unknown"), "{message}");
+    assert!(message.contains("refused"), "{message}");
+    assert_eq!(fake.sent(), None);
+}
+
+/// Audit of slice B (note 3362, B1): a numbered `Yes` row with a numbered `No` row is a
+/// confirmation whatever stands before the numbers. Before the repair each of these sent.
+#[test]
+fn lane_send_refuses_numbered_yes_no_rows_after_any_prefix_and_sends_nothing() {
     for name in [
+        "synthetic-foreign-cursor-no-question-working.txt",
+        "synthetic-foreign-cursor-far-question-working.txt",
         "synthetic-unreadable-choice-working.txt",
-        "synthetic-unreadable-choice-idle.txt",
     ] {
         let fake = Fake::screen(name);
         let r = run(&fake, "do the next card", &["--enter"]);
         let message = r.error();
-        assert!(message.contains("unknown"), "{name}: {message}");
+        assert!(message.contains("permission_prompt"), "{name}: {message}");
         assert!(message.contains("refused"), "{name}: {message}");
         assert_eq!(fake.sent(), None, "{name}");
+    }
+}
+
+/// S-N2 (note 3362): a lane that ended its turn with a question and waits at its input line is
+/// `idle`, and the text goes in.
+#[test]
+fn lane_send_sends_to_a_lane_that_ended_its_turn_with_a_question() {
+    let fake = Fake::screen("synthetic-question-then-input-idle.txt");
+    let r = run(&fake, "yes, run the lint step", &["--enter"]);
+    let result = r.ok();
+    assert_eq!(result["sent"], json!(true));
+    assert_eq!(result["state"], json!("idle"));
+    assert_eq!(fake.sent().map(|s| s.len()), Some(1));
+}
+
+/// Audit of slice B (note 3362, B2): a send is reported as sent only when Orca's answer says
+/// `ok: true`. An answer with `ok: false` (exit 0), an answer that is not JSON and an answer
+/// without `ok` are failures, and the output never says `sent`.
+#[test]
+fn lane_send_does_not_report_a_send_whose_answer_is_not_ok_true() {
+    for (flag, expect) in [
+        ("send-ok-false", "ok:false"),
+        ("send-garbage", "not an Orca answer"),
+        ("send-no-ok", "not an Orca answer"),
+        ("send-empty", "not an Orca answer"),
+    ] {
+        let fake = Fake::screen("synthetic-idle.txt");
+        fake.flag(flag);
+        let r = run(&fake, "hello", &[]);
+        let message = r.error();
+        assert!(message.contains("lane send failed"), "{flag}: {message}");
+        assert!(message.contains(expect), "{flag}: {message}");
+        assert!(!r.envelope.to_string().contains("\"sent\":true"), "{flag}");
+        // The call itself happened, once: the text may have reached the lane.
+        assert_eq!(fake.sent().map(|s| s.len()), Some(1), "{flag}");
     }
 }
 
