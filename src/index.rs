@@ -1352,6 +1352,30 @@ mod tests {
 
     /// SPEC-20261119-index-scope AC-5: what a scope entry may be, and how it matches.
     #[test]
+    fn a_published_snapshot_is_reused_only_for_the_same_scope() {
+        let manifest = |scope: &[&str]| IndexManifest {
+            schema_version: 1,
+            generation_id: "gen-x".into(),
+            base_commit: "aaaa".into(),
+            files: Vec::new(),
+            built_at: "2026-11-10T00:00:00Z".into(),
+            records: None,
+            scope: scope.iter().map(|entry| entry.to_string()).collect(),
+        };
+        assert!(same_snapshot(
+            &manifest(&["apps/bo"]),
+            &manifest(&["apps/bo"])
+        ));
+        assert!(same_snapshot(&manifest(&[]), &manifest(&[])));
+        assert!(!same_snapshot(&manifest(&["apps/bo"]), &manifest(&[])));
+        assert!(!same_snapshot(&manifest(&[]), &manifest(&["apps/bo"])));
+        assert!(!same_snapshot(
+            &manifest(&["apps/bo"]),
+            &manifest(&["apps/web"])
+        ));
+    }
+
+    #[test]
     fn scope_normalization() {
         let ok = |items: &[&str]| normalize_scope(&paths(items)).unwrap();
         assert!(ok(&[]).is_empty());
