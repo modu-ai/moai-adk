@@ -592,7 +592,7 @@ class VerifyStepTest(unittest.TestCase):
     """SPEC-20261119-smoke-verify-step: the VERIFY workflow names this harness as the first
     check before a commit, so a lane or an auditor does not pass it by."""
 
-    # The sentences REQ-1 to REQ-4 require, each as the exact words of verify.md.
+    # The sentences REQ-1 to REQ-4 and REQ-8 require, each as the exact words of verify.md.
     SENTENCES = (
         "In the moai-adk repository, before the first commit of a change that touches install, "
         "update, `/moai project` or the launcher, run the smoke harness first: "
