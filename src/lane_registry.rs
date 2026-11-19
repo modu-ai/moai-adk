@@ -205,13 +205,94 @@ fn read_entry(file: &Path, name: &str) -> Result<Option<Entry>, String> {
         instance,
         lease,
     ) {
-        (Some(1), Some(n), Some(i), Some(l)) if n == name => Ok(Some((
+        (Some(1 | 2), Some(n), Some(i), Some(l)) if n == name => Ok(Some((
             i.to_string(),
             l,
             v["mode"].as_str().map(str::to_string),
         ))),
         _ => Err(broken()),
     }
+}
+
+/// The liveness anchor of a registry entry (C-135, SPEC-20261120-reclaim-liveness REQ-3): the
+/// process that wrote the first registration, for the reclaim gate to probe. A `None` pid
+/// means the entry names a session but records no process, which the gate reads as
+/// undeterminable.
+#[derive(Debug, PartialEq, Eq)]
+pub struct LivenessAnchor {
+    pub pid: Option<u32>,
+    pub process_start: Option<String>,
+}
+
+/// This session's own host id, as `session-current` resolves it (the environment only); `None`
+/// when the host gives none.
+fn own_session_id() -> Option<String> {
+    crate::session_current::resolve(|name| std::env::var(name).ok())["source_session_id"]
+        .as_str()
+        .map(str::to_string)
+}
+
+/// The registering process's own start time (`ps`'s `lstart`), read through the one shared
+/// probe: `probe_liveness` reports it as `observed_start` when no expected start was given.
+fn own_process_start() -> Option<String> {
+    let (_, evidence) = crate::handoff::probe_liveness(Some(std::process::id()), None);
+    evidence["observed_start"].as_str().map(str::to_string)
+}
+
+/// The anchor fields (`session`, `pid`, `process_start`) of the entry at `file`, read
+/// leniently: `None` when the file cannot be read as JSON at all; a field is absent when the
+/// entry (schema 1, or a host without a session id) does not carry it.
+fn anchor_fields(file: &Path) -> Option<(Option<String>, Option<u32>, Option<String>)> {
+    let v: Value = serde_json::from_str(&fs::read_to_string(file).ok()?).ok()?;
+    Some((
+        v["session"].as_str().map(str::to_string),
+        v["pid"].as_u64().map(|p| p as u32),
+        v["process_start"].as_str().map(str::to_string),
+    ))
+}
+
+/// REQ-3: the liveness anchor of the registry entry that names `session`, or `None` when no
+/// entry names it. Reads the whole folder without a lock and without creating it; an entry
+/// that cannot be read is skipped, never an error — the gate decides on what it can read.
+/// When several entries name the session (one session under several names), the entry with
+/// the longest lease wins.
+pub fn anchor_of_session(project: &Path, session: &str) -> Option<LivenessAnchor> {
+    if !crate::session_current::well_formed(session) {
+        return None;
+    }
+    let dir = registry_dir(project).ok()?;
+    let entries = fs::read_dir(&dir).ok()?;
+    let mut best: Option<(i64, LivenessAnchor)> = None;
+    for e in entries.flatten() {
+        let path = e.path();
+        if path.extension().and_then(|x| x.to_str()) != Some("json") {
+            continue;
+        }
+        if fs::symlink_metadata(&path)
+            .map(|m| m.file_type().is_symlink())
+            .unwrap_or(true)
+        {
+            continue;
+        }
+        let Ok(text) = fs::read_to_string(&path) else {
+            continue;
+        };
+        let Ok(v) = serde_json::from_str::<Value>(&text) else {
+            continue;
+        };
+        if v["session"].as_str() != Some(session) {
+            continue;
+        }
+        let anchor = LivenessAnchor {
+            pid: v["pid"].as_u64().map(|p| p as u32),
+            process_start: v["process_start"].as_str().map(str::to_string),
+        };
+        let lease = v["lease_until"].as_i64().unwrap_or(0);
+        if best.as_ref().is_none_or(|(l, _)| lease >= *l) {
+            best = Some((lease, anchor));
+        }
+    }
+    best.map(|(_, anchor)| anchor)
 }
 
 /// The session modes an entry may carry (#2928, decision D1 = (A)).
@@ -498,8 +579,21 @@ pub fn register(
     }
     let instance = instance.map_or_else(new_instance, str::to_string);
     let lease_until = now + lease_secs as i64;
+    // C-135 (SPEC-20261120-reclaim-liveness REQ-1, REQ-2): the entry also carries the liveness
+    // anchor of the registration — the host session id (when the host gives one) and the
+    // registering process's id and start time — and a renewal by the same instance keeps the
+    // first anchor, because the renewing process is not the session's process.
+    let (session, pid, start) = if previous == "same_instance" {
+        anchor_fields(&file).unwrap_or((None, None, None))
+    } else {
+        (
+            own_session_id(),
+            Some(std::process::id()),
+            own_process_start(),
+        )
+    };
     let mut entry = json!({
-        "schema_version": 1,
+        "schema_version": 2,
         "name": name,
         "instance": instance,
         "lease_until": lease_until,
@@ -507,6 +601,15 @@ pub fn register(
     });
     if let Some(m) = mode {
         entry["mode"] = json!(m);
+    }
+    if let Some(s) = session {
+        entry["session"] = json!(s);
+    }
+    if let Some(p) = pid {
+        entry["pid"] = json!(p);
+    }
+    if let Some(s) = start {
+        entry["process_start"] = json!(s);
     }
     let tmp = dir.join(format!("{name}.json.tmp-{}", std::process::id()));
     let written = OpenOptions::new()
