@@ -82,13 +82,13 @@ What this slice builds, in `bundle` only:
 
 ## Result
 
-Run on the code commit `2565f863b3` plus the commit that carries this Result (documents only), branch `spec/20261119-bundle-build`, tip `747738af63` an ancestor of the head.
+Run on the code commit `08dda3810d` plus the commit that carries this Result (documents only), branch `spec/20261119-bundle-build`, tip `747738af63` an ancestor of the head.
 
 - AC-1: met - `cargo test --lib bundle::tests::the_stated_tier_is_read_from_before_the_last_head` passes (`(SPEC, tier 1)` 1, `tier 2` 2, `(tier 1, tier 1)` 1, no word none, `tier 1, tier 2` none, `tier 3` none, `tier x`, `tier 12` and `multitier 1` none, a `tier 1` after the head's SHA and a line with no head none, a title holding ` head ` cut at the last one); killed M1 (a digit above 2 read).
 - AC-2: met - `bundle_check_cli a_pass_that_states_a_lower_tier_than_the_floor_is_a_finding`: a `.claude/` head (floor 2) with `tier 1` gives `audit_tier_low` {floor 2, pass_tier 1, note_id}; a `src/` head (floor 1) with `tier 1` or `tier 2` gives none, with `tier 0` gives the finding; `heads[].pass_tier` is 1, 1, 0, 2 (killed M2, floor equal to the stated tier is a finding; two tests fail).
 - AC-3: met - `a_pass_with_no_stated_tier_still_counts`: a PASS with no tier, a `tier 1` PASS next to one without, a `tier 1` PASS next to a `tier 2` PASS, `tier 1, tier 2` in one line and `tier 3` all give no finding; `pass_tier` is null, 1, 2, null, null.
 - AC-4: met - `the_gate_reads_a_verdict_line_with_a_tier_like_one_without` (`gate::parse_verdict` gives the same triple for both lines); `git diff --stat origin/v2026.11.0 -- src/gate.rs src/audit_gate.rs` prints nothing (0 lines).
-- AC-5: met - `bundle_body_cli the_body_shows_the_stated_tier_and_refuses_a_low_one`: the heads table shows `(tier 1):` in the audit cell; with a third head under `.claude/` whose only PASS states `tier 1` the body is refused naming `<card> audit_tier_low` and no file is written.
+- AC-5: met - `bundle_body_cli the_body_shows_the_stated_tier_and_refuses_a_low_one`: the heads table shows `(tier 1):` in the audit cell, and a newer PASS note with no tier shows that note with no tier (the tier of the quoted line, killed M5 `j.pass_tier` instead of `stated_tier(line)`); with a third head under `.claude/` whose only PASS states `tier 1` the body is refused naming `<card> audit_tier_low` and no file is written.
 
 Also run: the same verification as `SPEC-20261119-bundle-build` (fmt 0, clippy 0, `--lib` 1464, `bundle_check_cli` 11, `bundle_body_cli` 7, python 65 OK, mutants 5 of 5 killed, trailer-check failing 0).
 
