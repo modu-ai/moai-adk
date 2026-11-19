@@ -19,6 +19,7 @@ use std::process::{Output, Stdio};
 const SESSION_VAR: &str = "CLAUDE_CODE_SESSION_ID";
 const S_A: &str = "aaaaaaaa-0000-4000-8000-00000000000a";
 const S_B: &str = "bbbbbbbb-0000-4000-8000-00000000000b";
+const S_C: &str = "cccccccc-0000-4000-8000-00000000000c";
 const WHY: &str = "the shared type lives under apps/web and the task changes it";
 
 struct World {
@@ -156,6 +157,19 @@ impl World {
         .collect()
     }
 
+    /// The patterns of the card's current (highest-generation) reservation, sorted.
+    fn current_patterns(&self, card_id: i64) -> Vec<String> {
+        self.rows(&format!(
+            "SELECT s.pattern FROM reservation_scope s JOIN reservation r \
+             ON r.reservation_id = s.reservation_id WHERE r.card_id = {card_id} \
+             AND r.generation = (SELECT MAX(generation) FROM reservation WHERE card_id = {card_id}) \
+             ORDER BY s.pattern"
+        ))
+        .into_iter()
+        .map(|row| row[0].as_str().unwrap().to_string())
+        .collect()
+    }
+
     /// The `card.scope` events as `(actor, payload)`.
     fn scope_events(&self) -> Vec<(String, Value)> {
         self.rows("SELECT actor, payload FROM event WHERE kind = 'card.scope' ORDER BY event_id")
@@ -167,6 +181,17 @@ impl World {
                 )
             })
             .collect()
+    }
+
+    /// Runs one SQL batch against a write connection — test-side injection only (the lease
+    /// aging of the follow-up tests, and a trigger that fails the event write).
+    fn exec(&self, sql: &str) {
+        let mut w = ledger::open_write(self.home.path(), "demo").unwrap();
+        w.with_write_tx(|tx, _| {
+            tx.execute_batch(sql)?;
+            Ok(())
+        })
+        .unwrap();
     }
 }
 
@@ -550,4 +575,222 @@ fn the_help_and_the_ops_doc_name_the_rule() {
     for phrase in ["넓히기만", "`--reason`", "같은 세대", "카드 자체의 범위"] {
         assert!(row.contains(phrase), "{phrase} missing in the row: {row}");
     }
+}
+
+// ---- C-94 follow-up (leader note 2860, audit N4·N5): the guarantees the first slice's tests
+// ---- did not pin. Each test below is shown to fail under its own mutation (SPEC Result).
+
+/// The reason limit counts characters, not bytes: 500 ASCII and 500 Korean characters (1500
+/// bytes) are taken, 501 of either is refused naming the limit.
+#[test]
+fn a_reason_of_500_characters_is_taken_and_501_refused_in_ascii_and_korean() {
+    let w = world();
+    let card = w.held(S_A, "reason", &["apps/bo/"]);
+    let ascii_ok = "x".repeat(500);
+    let ascii_over = "x".repeat(501);
+    let ko_ok = "가".repeat(500);
+    let ko_over = "가".repeat(501);
+    let done = result(&w.widen(&card, &["apps/bo/", "d1/"], Some(&ascii_ok)));
+    assert_eq!(done["reason"], json!(ascii_ok), "{done}");
+    // The next widening keeps the patterns the card already grew to.
+    let done = result(&w.widen(&card, &["apps/bo/", "d1/", "d2/"], Some(&ko_ok)));
+    assert_eq!(done["reason"], json!(ko_ok), "{done}");
+    let before = w.dump();
+    let keep = &["apps/bo/", "d1/", "d2/"][..];
+    for (what, r) in [("ascii", &ascii_over), ("korean", &ko_over)] {
+        let mut wanted = keep.to_vec();
+        wanted.push("d3/");
+        let (kind, message) = refusal(&w.widen(&card, &wanted, Some(r)));
+        assert_eq!(kind, "invalid_input", "{what}: {message}");
+        assert!(message.contains("500"), "{what}: {message}");
+    }
+    assert_eq!(w.dump(), before, "the refused widenings wrote nothing");
+    assert_eq!(w.current_patterns(1), vec!["apps/bo/", "d1/", "d2/"]);
+}
+
+/// SPEC D-2: widening needs no holder check — whoever signs `--by` may widen, and the event
+/// names that actor.
+#[test]
+fn someone_who_is_not_the_holder_can_widen_as_the_spec_decides() {
+    let w = world();
+    let card = w.held(S_A, "deputy", &["apps/bo/"]);
+    let mut args = vec![
+        "scope",
+        &card[..],
+        "--scope",
+        "apps/bo/",
+        "--scope",
+        "docs/",
+    ];
+    args.extend_from_slice(&["--by", "another-leader", "--reason", WHY]);
+    let done = result(&w.card(None, &args));
+    assert_eq!(done["held"], json!(true), "{done}");
+    assert_eq!(done["holder"], json!(S_A), "{done}");
+    assert_eq!(done["by"], json!("another-leader"), "{done}");
+    assert_eq!(w.patterns(1), vec!["apps/bo/", "docs/"]);
+    let events = w.scope_events();
+    assert_eq!(events.len(), 1, "{events:?}");
+    assert_eq!(events[0].0, "another-leader");
+}
+
+/// The widening does not look at the lease: an aged-out lease still grows the same
+/// reservation at the same generation.
+#[test]
+fn a_widen_on_an_ended_lease_still_grows_the_scope() {
+    let w = world();
+    let card = w.held(S_A, "aged", &["apps/bo/"]);
+    w.exec("UPDATE reservation SET lease_until = 1");
+    let shown = w.reservation(&card);
+    assert!(
+        shown["lease_until"].as_i64().unwrap() <= 1,
+        "aged out: {shown}"
+    );
+    let done = result(&w.widen(&card, &["apps/bo/", "docs/"], Some(WHY)));
+    assert_eq!(done["held"], json!(true), "{done}");
+    assert_eq!(done["generation"], json!(1), "{done}");
+    assert_eq!(w.patterns(1), vec!["apps/bo/", "docs/"]);
+}
+
+/// The widened row flows through handoff, reclaim and release: every step processes it and
+/// the scope stays the widened one.
+#[test]
+fn the_widened_row_survives_handoff_reclaim_and_release() {
+    let w = world();
+    let card = w.held(S_A, "flow", &["apps/bo/"]);
+    let widened = json!(["apps/bo/", "apps/web/"]);
+    result(&w.widen(&card, &["apps/bo/", "apps/web/"], Some(WHY)));
+    result(&w.card(
+        Some(S_A),
+        &["handoff", &card, "--generation", "1", "--to", S_B],
+    ));
+    let shown = w.reservation(&card);
+    assert_eq!(shown["generation"], json!(2), "{shown}");
+    assert_eq!(shown["holder"], json!(S_B), "{shown}");
+    assert_eq!(shown["write_scope"], widened, "{shown}");
+    assert_eq!(w.current_patterns(1), vec!["apps/bo/", "apps/web/"]);
+    // The lease ends; a third session reclaims: generation 3, scope kept.
+    w.exec("UPDATE reservation SET lease_until = 1");
+    result(&w.card(
+        Some(S_C),
+        &[
+            "reclaim",
+            &card,
+            "--generation",
+            "2",
+            "--by",
+            "leader",
+            "--reason",
+            "the lease ended and the follow-up needs the wider scope",
+        ],
+    ));
+    let shown = w.reservation(&card);
+    assert_eq!(shown["generation"], json!(3), "{shown}");
+    assert_eq!(shown["holder"], json!(S_C), "{shown}");
+    assert_eq!(shown["write_scope"], widened, "{shown}");
+    result(&w.card(Some(S_C), &["release", &card, "--generation", "3"]));
+    let statuses: Vec<Vec<Value>> =
+        w.rows("SELECT status FROM reservation WHERE card_id = 1 ORDER BY generation");
+    assert_eq!(
+        statuses,
+        vec![
+            vec![json!("released")],
+            vec![json!("reclaimed")],
+            vec![json!("released")],
+        ],
+        "each generation ended the way its step ends it"
+    );
+    assert_eq!(w.current_patterns(1), vec!["apps/bo/", "apps/web/"]);
+}
+
+/// The overlap refusal compares without letter case. The two spellings of one pattern can
+/// never coexist — reserve itself refuses a second card over a case-variant of a held
+/// pattern — so the pins are: a widen into the upper-case spelling of another card's
+/// lower-case pattern, and a take of the upper-case spelling while the lower-case one is
+/// held (both refused, each naming the card that holds the case-variant).
+#[test]
+fn an_overlap_refusal_ignores_letter_case() {
+    let w = world();
+    let up = w.held(S_A, "up", &["APPS/WEB/"]);
+    // Widen direction: a card holding a disjoint scope adds the lower-case spelling.
+    let added = result(&w.card(
+        None,
+        &["add", "--title", "low", "--scope", "docs/", "--ac", "one"],
+    ));
+    let low = added["name"].as_str().unwrap().to_string();
+    result(&w.card(None, &["ready", &low]));
+    result(&w.card(
+        Some(S_B),
+        &[
+            "take",
+            &low,
+            "--worktree",
+            "/work/tree",
+            "--branch",
+            "card/low",
+        ],
+    ));
+    let before = w.dump();
+    let (kind, message) = refusal(&w.widen(&low, &["docs/", "apps/web/"], Some(WHY)));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("C-1"), "{message}");
+    assert!(message.contains("apps/web/"), "{message}");
+    assert_eq!(w.dump(), before, "nothing was written");
+    // Reserve direction: taking another card over the lower-case spelling of a held pattern.
+    let other = result(&w.card(
+        None,
+        &[
+            "add",
+            "--title",
+            "other",
+            "--scope",
+            "apps/web/",
+            "--ac",
+            "one",
+        ],
+    ));
+    let other = other["name"].as_str().unwrap().to_string();
+    result(&w.card(None, &["ready", &other]));
+    let (kind, message) = refusal(&w.card(
+        Some(S_B),
+        &[
+            "take",
+            &other,
+            "--worktree",
+            "/work/tree",
+            "--branch",
+            "card/other",
+        ],
+    ));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(
+        message.contains("C-1"),
+        "names the card holding the case-variant: {message}"
+    );
+    let _ = up;
+}
+
+/// The widen is one transaction: when the card.scope event cannot be written, the whole
+/// widening is refused and every row is as it was. The failure is injected test-side (a
+/// trigger that aborts the event insert), so no src change is needed.
+#[test]
+fn a_widen_whose_event_cannot_be_written_leaves_the_row_as_it_was() {
+    let w = world();
+    let card = w.held(S_A, "atomic", &["apps/bo/"]);
+    w.exec(
+        "CREATE TRIGGER block_scope_event BEFORE INSERT ON event \
+         WHEN new.kind = 'card.scope' BEGIN SELECT RAISE(ABORT, 'injected by the test'); END;",
+    );
+    let before = w.dump();
+    let (_, message) = refusal(&w.widen(&card, &["apps/bo/", "docs/"], Some(WHY)));
+    assert_eq!(w.dump(), before, "the failed widen wrote nothing");
+    assert_eq!(w.patterns(1), vec!["apps/bo/"]);
+    assert!(
+        !message.contains(WHY),
+        "the reason is not echoed: {message}"
+    );
+    // Without the injection the same widening goes through, so the refusal was the trigger.
+    w.exec("DROP TRIGGER block_scope_event;");
+    let done = result(&w.widen(&card, &["apps/bo/", "docs/"], Some(WHY)));
+    assert_eq!(done["held"], json!(true), "{done}");
+    assert_eq!(w.patterns(1), vec!["apps/bo/", "docs/"]);
 }
