@@ -17,7 +17,10 @@ fn research() -> String {
 fn the_plan_holds_ten_pairs_whose_after_never_worsens_the_before() {
     let text = research();
     let mut pairs = 0;
-    for line in text.lines().filter(|l| l.starts_with("| ") && !l.contains("---")) {
+    for line in text
+        .lines()
+        .filter(|l| l.starts_with("| ") && !l.contains("---"))
+    {
         let cells: Vec<&str> = line.split('|').skip(1).map(str::trim).collect();
         // A pair row: merge(12 hex) | file | before | after(sorted) | after(rows removed)|?
         if cells.len() >= 4 && cells[0].len() == 12 {
@@ -61,7 +64,10 @@ fn every_pair_names_a_merge_commit_and_a_shared_file() {
     let text = research();
     let shared = ["src/main.rs", "src/lib.rs", "docs/rust-product-path.md"];
     let mut counted = 0;
-    for line in text.lines().filter(|l| l.starts_with("| ") && !l.contains("---")) {
+    for line in text
+        .lines()
+        .filter(|l| l.starts_with("| ") && !l.contains("---"))
+    {
         let cells: Vec<&str> = line.split('|').skip(1).map(str::trim).collect();
         if cells.len() >= 4 && cells[0].len() == 12 {
             assert!(
