@@ -16,7 +16,7 @@ This slice (the part of C-99 whose files are free; see Non-goals) makes the merg
 
 ## Non-goals
 
-- The `mode-agent.md` text that forbids sleeps, retries and skips as a repair and requires a recorded deletion (C-99 AC 2), and the `source-manifest.json` hash of the edited workflow files: both paths are reserved by card C-77, so they follow in a second SPEC when C-77 releases them (LANE-BLOCKED note on C-99).
+- The `mode-agent.md` text that forbids sleeps, retries and skips as a repair and requires a recorded deletion (C-99 AC 2): `mode-agent.md` was reserved by card C-77 (now done), so it follows in a second SPEC.
 - A `moai card list` filter for flaky cards (C-99 AC 3, first half): it needs `src/ops/card.rs` and `src/card/*`, held by C-43 and outside this card's scope. Until then a flaky card is found by its title prefix `flaky:`.
 - Changing `flake-record` from Issues to cards (code, outside this card's scope).
 
@@ -40,9 +40,9 @@ This slice (the part of C-99 whose files are free; see Non-goals) makes the merg
 
 ## Scope
 
-- write: `skills/moai/workflows/mode-leader.md`, `tests/workflow_size_budget.rs`, `.moai/specs/SPEC-20261119-flaky-policy/spec.md`
+- write: `skills/moai/workflows/mode-leader.md`, `skills/moai/references/source-manifest.json` (the hash and origin of `mode-leader.md` only, written by `tools/source_manifest.py write`), `tests/workflow_size_budget.rs`, `.moai/specs/SPEC-20261119-flaky-policy/spec.md`
 - read-only: `skills/moai/workflows/verify.md`, `skills/moai/workflows/mode-agent.md`, `docs/design-review/appendix/operations/flake_record.md`, `src/flake.rs`
-- forbidden: `skills/moai/workflows/mode-agent.md` and `skills/moai/references/source-manifest.json` (card C-77), `src/**` (card C-43 holds `src/ops/card.rs`)
+- forbidden: `skills/moai/workflows/mode-agent.md` (second SPEC), `src/**` (card C-43 holds `src/ops/card.rs`)
 
 ## Plan
 
@@ -52,7 +52,7 @@ This slice (the part of C-99 whose files are free; see Non-goals) makes the merg
 
 ## Risks
 
-- `skills/moai/**` is hashed in `source-manifest.json`; edited without it, the package tests that compare the manifest fail until the second SPEC lands. This PR waits for C-77 to release the manifest, or the leader moves that edit.
+- `skills/moai/**` is hashed in `source-manifest.json`: the hash of `mode-leader.md` is rewritten here with the tool; another branch that edits the manifest merges through the manifest merge driver or `source_manifest.py write`.
 - The existing Issue-based wording of `verify.md` (`[flake]` Issues, `flake-record`) still says Issues; the rule here says "card" for the merge train only. Aligning `verify.md` and `flake-record` is a follow-up (the Issue to card change is the leader's decision).
 
 ## Decisions
@@ -60,7 +60,7 @@ This slice (the part of C-99 whose files are free; see Non-goals) makes the merg
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | The flaky record is a card titled `flaky: <test>` (kind `task`), one per test, with a `report` note per new failure | `card add --kind` exists, no code needed; "all cards" decision of 2026-11-19 | Back to a `[flake]` Issue |
-| D-2 | This slice ships only `mode-leader.md` and its test; the `mode-agent.md` text and the manifest follow when C-77 releases them | `card take` refused those paths (reserved by C-77) | Take the paths now if the leader moves C-77's claim |
+| D-2 | This slice ships `mode-leader.md`, its manifest hash and its test; the `mode-agent.md` text follows in a second SPEC | `card take` refused `mode-agent.md` and the manifest while C-77 held them; C-77 is done | Add the `mode-agent.md` text here if the leader prefers one PR |
 | D-3 | The byte budget of the rule is 700 bytes, the file bound stays 65536 | the file is about 44.6 KB; a rule over 700 bytes is a page of text in a step line | Raise the number in a later SPEC |
 
 ## Result
@@ -68,4 +68,4 @@ This slice (the part of C-99 whose files are free; see Non-goals) makes the merg
 - AC-1: met — `workflow_size_budget` `flaky_rule_names_the_card_and_what_it_records` (RED first: `mode-leader.md has no Flaky rule…`); mutants G2 (merge stops), G3 (missing-card path gone), G4 (passing run id not recorded), G5 (re-run pass allowed), G6 (one card per test dropped) killed
 - AC-2: met — `the_not_a_stop_sentence_points_to_the_flaky_rule` (RED first); mutant G1 (pointer removed) killed
 - AC-3: met — `flaky_rule_stays_within_its_byte_budget`: the rule is 501 bytes (budget 700), `mode-leader.md` 45,128 bytes (bound 65,536); mutant G7 (rule grows past the budget) killed
-- AC-4: not met yet — `mode_cards_53` 9, `mode_workflow_steps` 43, `agent_defs_package` 19, `ac_command_lint` 5, `help_layout` 10, `home_isolation_scan` 18 and `cargo fmt --check` pass; `product_cli` `skill_package::source_manifest_covers_every_package_file` fails with `workflows/mode-leader.md: manifest sha256 is stale` because `skills/moai/references/source-manifest.json` is reserved by card C-77 and not in this card's scope. The hash is updated when C-77 releases the path; this line is then rewritten.
+- AC-4: met — `mode_cards_53` 9, `mode_workflow_steps` 43, `agent_defs_package` 19, `product_cli` 79 (including `skill_package::source_manifest_covers_every_package_file`, which failed before the manifest hash was rewritten with `python3 -I tools/source_manifest.py write`; `check` exits 0), `ac_command_lint` 5, `help_layout` 10, `home_isolation_scan` 18 and `cargo fmt --check` pass
