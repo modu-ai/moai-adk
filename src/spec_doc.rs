@@ -66,8 +66,9 @@ const KNOWN_KEYS: [&str; 7] = [
     "id", "title", "status", "revision", "created", "parent", "approval",
 ];
 const APPROVAL_KEYS: [&str; 4] = ["by", "at", "basis", "digest"];
-const SECTIONS: [&str; 9] = [
+const SECTIONS: [&str; 10] = [
     "Intent",
+    "Interview",
     "Non-goals",
     "Requirements",
     "Acceptance",
@@ -77,6 +78,11 @@ const SECTIONS: [&str; 9] = [
     "Decisions",
     "Result",
 ];
+/// A new-form SPEC created on or after this date needs an `## Interview` section once it is
+/// approved (SPEC-20261119-enforce-interview-record REQ-1); an older one is not asked.
+const INTERVIEW_FROM: &str = "2026-11-19";
+/// The shortest reason of a `- none: <reason>` interview entry, in characters.
+const INTERVIEW_REASON_CHARS: usize = 10;
 const REQUIRED: [&str; 5] = ["Intent", "Requirements", "Acceptance", "Scope", "Plan"];
 const FULL_ONLY: [&str; 2] = ["Non-goals", "Risks"];
 /// The codes that stay errors in a Go-generation SPEC; every other one is a warning there.
@@ -1292,7 +1298,111 @@ fn body(lines: &[&str], start: usize, doc: &mut SpecDoc) {
             "Acceptance" => acceptance(doc, *at, content),
             "Scope" => scope(doc, *at, content),
             "Result" => result(doc, content),
+            "Interview" => interview(doc, *at, content),
             _ => {}
+        }
+    }
+    if !has("Interview") && interview_due(doc) {
+        doc.error(
+            "interview_missing",
+            None,
+            format!(
+                "an approved SPEC created on or after {INTERVIEW_FROM} needs an `## Interview` \
+                 section: `- Q<n>: <question> → A: <answer>` lines, or `- none: <reason>`"
+            ),
+        );
+    }
+}
+
+/// Whether a SPEC of this document is asked for an interview record: a new-form id, a status
+/// that needs approval, and a `created` date on or after [`INTERVIEW_FROM`] (`created` is only
+/// kept when it is a real calendar date, so the string order is the date order).
+fn interview_due(doc: &SpecDoc) -> bool {
+    doc.id_form == Some(IdForm::New)
+        && doc
+            .status_as
+            .as_deref()
+            .is_some_and(|s| NEEDS_APPROVAL.contains(&s))
+        && doc.created.as_deref().is_some_and(|c| c >= INTERVIEW_FROM)
+}
+
+/// One `- Q<n>: <question> → A: <answer>` interview line (the arrow may be `->`): the question
+/// and the answer, or `None` when the line has another shape. The arrow that counts is the
+/// first one followed by `A:`, so a question may hold an arrow of its own.
+fn interview_qa(text: &str) -> Option<(&str, &str)> {
+    let rest = text.strip_prefix('Q')?;
+    let end = rest.find(|c: char| !c.is_ascii_digit())?;
+    if end == 0 {
+        return None;
+    }
+    let rest = rest[end..].strip_prefix(':')?;
+    let mut from = 0;
+    while let Some(off) = rest[from..].find(['→', '-']) {
+        let at = from + off;
+        let (arrow, len) = if rest[at..].starts_with('→') {
+            (true, '→'.len_utf8())
+        } else {
+            (rest[at..].starts_with("->"), 2)
+        };
+        if arrow {
+            if let Some(answer) = rest[at + len..].trim_start().strip_prefix("A:") {
+                return Some((rest[..at].trim(), answer.trim()));
+            }
+        }
+        from = at + rest[at..].chars().next().map_or(1, char::len_utf8);
+    }
+    None
+}
+
+/// The `## Interview` section (REQ-2, REQ-3): every list line is an entry of the form
+/// `- Q<n>: <question> → A: <answer>` or `- none: <reason>` (at least
+/// [`INTERVIEW_REASON_CHARS`] characters, and alone); lines that are not list items are prose.
+/// A broken line is an error in a SPEC that needs approval and a warning in any other.
+fn interview(doc: &mut SpecDoc, at: usize, content: &[(usize, &str)]) {
+    let strict = doc
+        .status_as
+        .as_deref()
+        .is_some_and(|s| NEEDS_APPROVAL.contains(&s));
+    let mut problems: Vec<(usize, &str)> = Vec::new();
+    let mut entries = 0;
+    let mut none_at: Option<usize> = None;
+    for (n, line) in content {
+        let (listed, text) = unlisted(line);
+        if !listed {
+            continue;
+        }
+        entries += 1;
+        if let Some(reason) = text.strip_prefix("none:") {
+            none_at.get_or_insert(*n);
+            if reason.trim().chars().count() < INTERVIEW_REASON_CHARS {
+                problems.push((
+                    *n,
+                    "a `none` entry needs a reason of at least 10 characters",
+                ));
+            }
+        } else if let Some((q, a)) = interview_qa(text) {
+            if q.is_empty() {
+                problems.push((*n, "an interview entry has an empty question"));
+            } else if a.is_empty() {
+                problems.push((*n, "an interview entry has an empty answer"));
+            }
+        } else {
+            problems.push((
+                *n,
+                "not an interview entry: write `- Q<n>: <question> → A: <answer>` or `- none: <reason>`",
+            ));
+        }
+    }
+    if entries == 0 {
+        problems.push((at, "the `## Interview` section has no entry"));
+    } else if let Some(n) = none_at.filter(|_| entries > 1) {
+        problems.push((n, "a `none` entry stands alone: it says nothing was asked"));
+    }
+    for (n, message) in problems {
+        if strict {
+            doc.error("interview_entry", Some(n), message);
+        } else {
+            doc.warn("interview_entry", Some(n), message);
         }
     }
 }

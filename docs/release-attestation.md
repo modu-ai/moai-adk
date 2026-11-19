@@ -175,3 +175,30 @@ shasum -a 256 -c sha256.sum
 5. 위가 끝난 뒤 4.1 절차를 이 저장소의 실제 산출물로 다시 실측하고, release-checklist (e)의 not_run 항목을 갱신한다.
 
 6. **첫 정식판의 latest 격리 경로를 결정한다.** cargo-dist 0.34.0 기본 릴리스 명령에는 `--latest=false`가 없어 첫 `moai-cli-v2026.11.0`이 Go 안정 업데이터의 `/releases/latest`에 노출될 수 있다. 후보는 릴리스 뒤 `gh release edit <정식 tag> -R modu-ai/moai-adk --latest=false`를 수행하는 별도 job, 또는 정식판을 dist 게시 workflow 밖에서 release-checklist 3단계의 명시적 `--latest=false` 경로로 게시하는 방식이다. **사후 edit 방식에는 생성부터 edit까지 latest 노출 구간이 남는다.** Go updater 무노출을 보장해야 한다면 게시 시점부터 latest가 되지 않는 경로를 선택·검증해야 한다. 경로 결정과 검증 전까지 정식판 게시는 HOLD이고, 게시 뒤 `/releases/latest`가 Go stable을 가리키는지 다시 읽어야 한다. 이 항목은 해결안의 승인 요청이며 job 추가·설정 적용·릴리스 실행은 하지 않았다.
+
+## 7. HeadVer 릴리스 workflow (C-93, SPEC-20261119-headver-release-workflow)
+
+사용자 결정 2026-11-18T22:03:35Z(카드 C-67 note 2245): 릴리스 `{build}` 는 릴리스를 만드는 workflow 하나의 첫 시도 run number(D5), tag 는 `moai-adk-v{head}.{yearweek}.{build}` 이고 접미사 없이 RC 는 GitHub pre-release 표시(D6), 로컬 빌드는 작은 계수기를 유지하고 둘째 `--version` 줄로 구분(D4). 이 절은 그 결정을 담은 `.github/workflows/release.yml` 의 사용 순서와 한계를 적는다. 위 1~6절의 cargo-dist 제안과 `moai-cli-v` 이름은 설계 기록이라 그대로 두고, 아래 tag 이름이 그 이름을 대체한다(`tag-namespace` 와 `--source-ref` 의 이름은 적용 전에 승인 항목 1 과 함께 바뀌어야 한다).
+
+### 7.1 workflow가 하는 일과 하지 않는 일
+
+- 시작: 사람이 `git push origin <40자 sha>:refs/heads/release/<40자 sha>`(후보는 `release/rc/<40자 sha>`)를 push 할 때만. `workflow_dispatch` 는 기본 브랜치에 파일이 있어야 해서 쓰지 않는다(`candidate.yml` 과 같은 이유).
+- `plan` job: 브랜치 이름이 push 한 commit 을 가리키는지, 첫 시도인지(재실행은 run number 를 그대로 가져 번호가 겹치므로 거절), `HEADVER` 와 UTC 시계 한 번으로 `{head}.{yearweek}.{build}` 를 만들고, 같은 tag 가 있거나 기존 `moai-adk-v*` tag 의 build 가 이번 번호보다 크거나 같으면 거절한다.
+- `build` job: 그 번호(`MOAI_BUILD_NUMBER`)로 빌드해 `moai-cli`·`moai` 의 `--version` 이 `moai-cli <버전> (rust)` 와 `CI build <번호> (MOAI_BUILD_NUMBER), built …` 이고 tag 가 `moai-adk-v<버전>` 인지 확인한 뒤 릴리스 노트를 job 요약에 쓴다.
+- 하지 않는 일: tag 만들기·push, 릴리스 만들기·게시, 산출물 업로드, API 호출, secret 읽기. token 은 읽기 전용이다.
+
+### 7.2 사람이 하는 순서 (매번 사용자 확인)
+
+1. 올릴 commit 이 통합 브랜치에서 `ci` 성공인지 읽는다.
+2. 위 브랜치를 push 한다. 실행이 실패하면 재실행하지 말고 새 commit 이름으로 새 브랜치를 push 한다.
+3. `release` 실행의 요약에서 tag·버전·commit·pre-release 표시를 읽는다.
+4. 올리기 직전에 원격 tag 를 다시 읽는다: `git ls-remote --tags origin 'moai-adk-v*'`. plan 은 checkout 이 가져온 tag 만 본다.
+5. 사용자가 확인하면 tag 를 만들고 push 하고(`--verify-tag` 로) 릴리스를 게시한다. RC 는 `--prerelease`. 정식판의 latest 격리(위 6번)는 여전히 HOLD 다.
+6. `release/…` 브랜치를 지운다.
+
+### 7.3 한계
+
+- 같은 주에는 숫자만 순서를 정한다. 릴리스 계수기는 1 부터 시작하고 로컬 계수기는 이미 더 크므로, 릴리스 `4.2648.1` 이 설치된 호스트의 같은 주 로컬 빌드 `4.2648.7` 은 더 새 빌드로 읽혀 `--allow-older` 없이 업데이트된다. 설치 기록에는 버전 글자만 있어 종류를 구별하지 못한다. 반대로 로컬 빌드가 릴리스보다 낮으면 `--allow-older` 가 필요하다. 둘 다 `tests/update_headver.rs` 의 시험이 고정한다(리더 결정, 카드 C-93 note 2260). 종류 표시로 순서를 바꾸는 방안은 새 카드에서 사용자에게 묻는다.
+- `install/install.sh` 와 `install/install.ps1` 은 릴리스를 찾을 때와 내려받을 때(`--version` 으로 고정해도) `moai-cli-v` 접두사만 쓴다(`TAG_PREFIX`, `$TagPrefix`). 그래서 `moai-adk-v*` tag 로 게시한 릴리스는 설치 스크립트가 찾지도 내려받지도 못한다. `install/**` 는 이 SPEC 이 쓰지 않아서 고치지 않았다. 접두사를 맞추는 일(설치 스크립트가 `moai-adk-v` 를 읽게 하거나, tag 를 `moai-cli-v` 로 돌리기)은 사용자가 고른 뒤 새 카드에서 한다.
+- `moai-adk-v*` tag ruleset 이 아직 없어서 tag 를 지우거나 옮길 수 있고, 그러면 plan 의 "build 는 올라가기만 한다" 검사가 약해진다. ruleset 변경은 별도 사용자 선택이다.
+- 한 번의 Linux 빌드로 버전만 확인한다. 세 플랫폼 산출물, attestation, 게시 job 은 이 절의 범위 밖이다(위 6절의 승인 항목).

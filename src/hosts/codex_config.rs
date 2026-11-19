@@ -370,11 +370,34 @@ struct ConfigState {
     owned: Map<String, Value>,
     current: Map<String, Value>,
     conflicts: Vec<String>,
+    /// The conflicting keys with the value the file holds and the value MoAI would write.
+    diff: Vec<Value>,
+    /// The keys a replace plan overwrites (replace mode only; `conflicts` is empty then).
+    replaced: Vec<String>,
+    /// The file as it is now, kept before a replacement: its project-relative name, its place
+    /// and its bytes. `None` unless keys are replaced in a file that exists.
+    backup: Option<Backup>,
     after: Option<Vec<u8>>,
     digest: String,
 }
 
-fn config_state(project: &Path, home: &Path, desired: &Map<String, Value>) -> Result<ConfigState> {
+/// The copy of the config a replacement keeps (SPEC-20261119-codex-conflict-choices).
+struct Backup {
+    rel: String,
+    path: PathBuf,
+    bytes: Vec<u8>,
+}
+
+/// The folder of the copies, under the project state folder, which the managed `.gitignore`
+/// block already ignores; a copy is named by the digest of the bytes it holds.
+const BACKUP_DIR: &str = "backups";
+
+fn config_state(
+    project: &Path,
+    home: &Path,
+    desired: &Map<String, Value>,
+    replace: bool,
+) -> Result<ConfigState> {
     for (k, v) in desired {
         validate(k, v)?;
     }
@@ -418,7 +441,31 @@ fn config_state(project: &Path, home: &Path, desired: &Map<String, Value>) -> Re
     keys.sort();
     keys.dedup();
     let current = read_keys(&doc, &keys)?;
-    let (changes, conflicts) = three_way(&owned, &current, desired);
+    let (mut changes, found) = three_way(&owned, &current, desired);
+    let diff: Vec<Value> = found
+        .iter()
+        .map(|key| {
+            json!({
+                "key": key,
+                "current": current.get(key).cloned().unwrap_or(Value::Null),
+                "desired": desired.get(key).cloned().unwrap_or(Value::Null),
+            })
+        })
+        .collect();
+    // A replacement treats a conflicting key as a change to the desired value; without the mode
+    // the conflict stays a conflict and nothing is written.
+    let (conflicts, replaced) = if replace {
+        for key in &found {
+            changes.push((key.clone(), desired.get(key).cloned()));
+        }
+        (Vec::new(), found)
+    } else {
+        (found, Vec::new())
+    };
+    // Only a replacement keeps a copy, so only it needs the copies' folder to be a real folder.
+    if !replaced.is_empty() {
+        refuse_symlink_dir(&state_dir.join(BACKUP_DIR))?;
+    }
     let after = if conflicts.is_empty() && !changes.is_empty() {
         for (key, value) in &changes {
             match value {
@@ -439,17 +486,50 @@ fn config_state(project: &Path, home: &Path, desired: &Map<String, Value>) -> Re
     }
     use crate::spec::Canonical;
     let canonical = crate::spec::SortedKeys.bytes(&Value::Object(desired.clone()));
-    let digest = crate::digest(
-        &serde_json::to_vec(&(
-            1,
-            crate::digest(&canonical),
-            before.as_deref().map(crate::digest),
-            receipt_before.as_deref().map(crate::digest),
-            after.as_deref().map(crate::digest),
-            &conflicts,
-        ))
-        .expect("plan tuple"),
-    );
+    let digest = if replaced.is_empty() {
+        crate::digest(
+            &serde_json::to_vec(&(
+                1,
+                crate::digest(&canonical),
+                before.as_deref().map(crate::digest),
+                receipt_before.as_deref().map(crate::digest),
+                after.as_deref().map(crate::digest),
+                &conflicts,
+            ))
+            .expect("plan tuple"),
+        )
+    } else {
+        // A replace plan digests the mode and the replaced keys too, so the digest of a plain
+        // plan of the same files can never apply a replacement.
+        crate::digest(
+            &serde_json::to_vec(&(
+                1,
+                crate::digest(&canonical),
+                before.as_deref().map(crate::digest),
+                receipt_before.as_deref().map(crate::digest),
+                after.as_deref().map(crate::digest),
+                &conflicts,
+                "replace-with-backup",
+                &replaced,
+            ))
+            .expect("plan tuple"),
+        )
+    };
+    let backup = match (&before, replaced.is_empty()) {
+        (Some(bytes), false) => {
+            let sha = crate::digest(bytes);
+            let name = format!(
+                "{BACKUP_DIR}/codex-config-{}.toml",
+                sha.trim_start_matches("sha256:").get(..16).unwrap_or("0")
+            );
+            Some(Backup {
+                rel: crate::state_root::rel(&root, &name),
+                path: state_dir.join(&name),
+                bytes: bytes.clone(),
+            })
+        }
+        _ => None,
+    };
     Ok(ConfigState {
         config,
         receipt,
@@ -458,6 +538,9 @@ fn config_state(project: &Path, home: &Path, desired: &Map<String, Value>) -> Re
         owned,
         current,
         conflicts,
+        diff,
+        replaced,
+        backup,
         after,
         digest,
     })
@@ -543,16 +626,30 @@ pub fn config_home(project: &Path) -> Result<PathBuf> {
 /// Never writes. `home` is the user home; a project equal to it is refused.
 /// `"tui.status_line": "moai"` names [`MOAI_STATUS_LINE_PRESET`].
 pub fn config_plan(project: &Path, home: &Path, desired: &Map<String, Value>) -> Result<Value> {
+    config_plan_with(project, home, desired, false)
+}
+
+/// [`config_plan`] with the replace mode (SPEC-20261119-codex-conflict-choices): with `replace`,
+/// a key the user set differently is planned as a replacement (`action` `replace`, the keys, the
+/// backup of the file as it is now, a digest of its own). Without a conflict it is the plain plan.
+/// A conflict lists, in `diff`, the value the file holds and the value MoAI would write.
+pub fn config_plan_with(
+    project: &Path,
+    home: &Path,
+    desired: &Map<String, Value>,
+    replace: bool,
+) -> Result<Value> {
     let (desired, preset) = resolve_preset(desired)?;
     let desired = &desired;
-    let s = config_state(project, home, desired)?;
+    let s = config_state(project, home, desired, replace)?;
     let action = match (s.conflicts.is_empty(), &s.after, &s.before) {
         (false, _, _) => "conflict",
         (true, None, _) => "unchanged",
+        (true, Some(_), _) if !s.replaced.is_empty() => "replace",
         (true, Some(_), None) => "create",
         (true, Some(_), Some(_)) => "update",
     };
-    Ok(json!({
+    let mut plan = json!({
         "action": action,
         "config_path": CONFIG_FILE,
         "conflicts": s.conflicts,
@@ -563,7 +660,37 @@ pub fn config_plan(project: &Path, home: &Path, desired: &Map<String, Value>) ->
         "status_line": status_line_plan(&s, desired, preset),
         "status_line_unverified": unverified(desired),
         "writes": false,
-    }))
+    });
+    // Present only when there is a conflict to show, so a plan without one keeps its shape.
+    if !s.diff.is_empty() {
+        plan["diff"] = json!(s.diff);
+    }
+    if !s.replaced.is_empty() {
+        plan["replaced"] = json!(s.replaced);
+    }
+    if let Some(b) = &s.backup {
+        plan["backup"] = json!({
+            "path": b.rel,
+            "sha256": crate::digest(&b.bytes),
+            "bytes": b.bytes.len(),
+        });
+    }
+    Ok(plan)
+}
+
+/// Keeps the copy of the config before a replacement. A copy of the same bytes left by an
+/// interrupted run is reused; a file of that name with other bytes is never overwritten.
+fn write_backup(b: &Backup) -> Result<()> {
+    match read_existing(&b.path)? {
+        Some(held) if held == b.bytes => Ok(()),
+        Some(_) => Err(format!(
+            "backup {} holds other bytes; exclusive create refused",
+            b.rel
+        )),
+        // Private: the config can hold secrets (an MCP server's `env`), and the copy must not
+        // be more readable than the file it keeps, whatever the original's mode was.
+        None => crate::apply::publish_exclusive_mode(&b.path, &b.bytes, Some(0o600)),
+    }
 }
 
 fn receipt_bytes(
@@ -623,12 +750,26 @@ pub fn config_apply(
     plan_digest: &str,
     permission: &str,
 ) -> Result<Value> {
+    config_apply_with(project, home, desired, plan_digest, permission, false)
+}
+
+/// [`config_apply`] with the replace mode: the digest must be the one a `replace` plan of the
+/// same files printed. The copy of the file as it was is written first, then the config, then
+/// the ownership receipt; the copy's place is in the answer's `backup`.
+pub fn config_apply_with(
+    project: &Path,
+    home: &Path,
+    desired: &Map<String, Value>,
+    plan_digest: &str,
+    permission: &str,
+    replace: bool,
+) -> Result<Value> {
     if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
     let (desired, _) = resolve_preset(desired)?;
     let desired = &desired;
-    let s = config_state(project, home, desired)?;
+    let s = config_state(project, home, desired, replace)?;
     if !s.conflicts.is_empty() {
         return Err(format!(
             "conflict in {CONFIG_FILE}: {} changed outside MoAI; nothing applied",
@@ -649,6 +790,9 @@ pub fn config_apply(
     let rel = crate::state_root::rel(project, CONFIG_RECEIPT);
     let mut files = Vec::new();
     let mut receipt_now = s.receipt_before.clone();
+    if let (Some(_), Some(backup)) = (&s.after, &s.backup) {
+        write_backup(backup)?;
+    }
     if let Some(after) = &s.after {
         let after_sha = crate::digest(after);
         let pending = receipt_bytes(&s.owned, before_sha.as_deref(), Some((&owned, &after_sha)));
@@ -666,7 +810,7 @@ pub fn config_apply(
             });
         }
     }
-    Ok(json!({
+    let mut result = json!({
         "state": if files.is_empty() { "unchanged" } else { "applied" },
         "files_changed": files,
         "files_created": if s.before.is_none() { files.clone() } else { vec![] },
@@ -676,7 +820,15 @@ pub fn config_apply(
         "trust": {"status": "not_evaluated", "declaration": TRUST_DECLARATION, "writes": false},
         "host_loaded": "not_run",
         "execution_verified": "not_run",
-    }))
+    });
+    if let (Some(backup), false) = (&s.backup, files.is_empty()) {
+        result["backup"] = json!({
+            "path": backup.rel,
+            "sha256": crate::digest(&backup.bytes),
+            "replaced": s.replaced,
+        });
+    }
+    Ok(result)
 }
 
 #[cfg(test)]
