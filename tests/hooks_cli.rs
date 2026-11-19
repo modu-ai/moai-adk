@@ -1058,6 +1058,8 @@ fn green_lock_bash_covers_folders_globs_and_braces() {
         "rm tests/locked_test.r?".to_string(),
         "rm tests/locked_tes[t].rs".to_string(),
         "rm tests/[a-m]ocked_test.rs".to_string(),
+        "rm tests/[!x]ocked_test.rs".to_string(),
+        "rm tests/[^x]ocked_test.rs".to_string(),
         "rm tests/*".to_string(),
         "rm te*/locked_test.rs".to_string(),
         // A glob that stops at the folder names the folder.
@@ -1084,6 +1086,7 @@ fn green_lock_bash_covers_folders_globs_and_braces() {
         "rm tests/other_*.rs",
         "rm tests/zz*.rs",
         "rm tests/[a-m]ther_test.rs",
+        "rm tests/[!l]ocked_test.rs",
         "rm tests/{other,zz}_test.rs",
         "rm src/*.rs",
         "rm -r s*",
