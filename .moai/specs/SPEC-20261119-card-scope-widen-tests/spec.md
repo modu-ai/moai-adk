@@ -69,9 +69,11 @@ C-94 감사(노트 2859, PASS)의 비차단 N4·N5가 가리킨 "시험 없는 �
 
 ## Result
 
-- AC-1: — (진행 중)
-- AC-2: — (진행 중)
-- AC-3: — (진행 중)
-- AC-4: — (진행 중)
-- AC-5: — (진행 중)
-- AC-6: — (진행 중)
+- AC-1: met — `a_reason_of_500_characters_is_taken_and_501_refused_in_ascii_and_korean`: 500 ASCII·한글(1500바이트) 수락, 501 거절("500" 포함), 거절분 무기록. 변이 M1(`>` → `>=`, dispatch.rs:437) KILLED — 500자가 거절됨을 관찰(FAILED 1.01초).
+- AC-2: met — `someone_who_is_not_the_holder_can_widen_as_the_spec_decides`: --by another-leader 로 성공, holder 는 S_A 유지, 사건 actor 기록. 변이 M2(보유자-only 검사 추가) KILLED — 비보유자가 거절됨을 관찰(FAILED 1.25초).
+- AC-3: met — `a_widen_on_an_ended_lease_still_grows_the_scope`: lease_until=1 로 나이킨 뒤 같은 세대 성공. 변이 M3(만료 lease 거절 추가) KILLED — 관찰(FAILED 1.03초).
+- AC-4: met — `the_widened_row_survives_handoff_reclaim_and_release`: 넓힌 스코프가 handoff(gen2, S_B)→reclaim(gen3, S_C)→release 로 세대별 상태 released·reclaimed·released 와 스코프 보존. 변이 M4(handoff 의 스코프 복사 `AND 0` 제거) KILLED — 관찰(FAILED 1.05초).
+- AC-5: met — `an_overlap_refusal_ignores_letter_case`: widen 방향(docs/ 보유 카드가 apps/web/ 소문자 추가 → C-1 의 APPS/WEB/ 와 충돌)과 reserve 방향(소문자 표기 카드의 take 거절) 모두 거절·무기록. 두 표기는 공존 불가라(reserve 가 두 번째를 막음) 한 쌍의 양문이 전부예요 — 시험 주석에 명시. 변이 M5(overlap 소문자화 제거) KILLED — 관찰(FAILED 1.18초).
+- AC-6: met — `a_widen_whose_event_cannot_be_written_leaves_the_row_as_it_was`: 트리거 주입(RAISE ABORT)으로 사건 쓰기 실패 → 거절(kind invalid_input, 메시지 "ledger write refused: injected by the test" 관찰)·덤프 무변경·사유 미반복, 트리거 제거 뒤 같은 요청 성공. 변이 M6(`add_event … ?` → `let _ =` 무시) **SURVIVED — 등가 변이**: 오류를 무시해도 커밋 단계가 같은 실패("ledger write refused: injected by the test", kind invalid_input, 행 무변경 — 관찰 2026-11-19T07:5xZ)로 거절해요. 보장(거절·무기록)은 트랜잭션 계층이 지키고, 내부 경로(사건 시점 vs 커밋 시점)는 CLI 에서 관찰 불가 — C-104 Result T3 선례와 같은 등가 판정.
+- 이웃(리더 지시 검사): `cargo fmt --check` 0, `cargo clippy --locked --offline --all-targets -- -D warnings` 0(51.1초), `python3 -m unittest discover -s tests -p 'repo_scans_test.py'`(MOAI_CLI_BIN=<c94w 빌드>) 25 OK(10.6초) — 관찰 2026-11-19T08:0xZ. 전량은 묶음 검증·CI 인용.
+  사고 기록: 없음 — 변이는 커밋 뒤 적용, 매번 restore 후 `git status` 로 트리 무변경 확인(C-68 의 교훈 적용).
