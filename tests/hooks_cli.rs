@@ -1287,6 +1287,7 @@ fn green_lock_bash_reads_structure_words_at_every_boundary() {
         "if false;then :;else rm tests/locked_test.rs;fi",
         "if false;then :;elif true;then rm tests/locked_test.rs;fi",
         "(if true;then rm tests/locked_test.rs;fi)",
+        "(! rm tests/locked_test.rs)",
         "true&&{ rm tests/locked_test.rs;}",
         "true||{ rm tests/locked_test.rs; }",
         "sh -c '! rm tests/locked_test.rs'",
@@ -1313,6 +1314,8 @@ fn green_lock_bash_reads_structure_words_at_every_boundary() {
         "sh -c '{ ls tests; }'",
         "true&&{ ls tests;}",
         "echo ifthen;do",
+        // A backslash-escaped boundary is part of its word: this only echoes.
+        "echo a\\;do rm tests/locked_test.rs",
     ] {
         repo.assert_allowed(command);
     }
