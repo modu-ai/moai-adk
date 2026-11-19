@@ -173,6 +173,12 @@ fn closing_commit_step_lists_by_apply_stages_only_those_paths_and_never_pushes()
         "`.moai-cli/backups/`",
         "`.moai-cli/receipts/`",
         "even when its digest did not change",
+        "`moai.json`",
+        "`manifests/profile-baseline.json`",
+        "`git diff --cached --name-only -z`",
+        "already staged",
+        "`git commit -- <path>`",
+        "includes changes from before this route",
         "`.before/`",
         "`*.pem`",
         "`*secret*`",
@@ -245,6 +251,11 @@ fn procedure_snapshots_the_status_around_every_apply() {
         "name none",
         "is never given to an apply",
         "the user can leave it uncommitted",
+        "`link:` and the link text",
+        "`dir` for a folder",
+        "`unreadable`",
+        "counts as changed",
+        "as one argument",
     ] {
         assert!(para.contains(text), "{text:?} is missing from: {para}");
     }
@@ -411,19 +422,37 @@ fn snapshot_differences_give_each_new_path_to_the_step_that_wrote_it() {
     }
 }
 
+/// The digest the Procedure paragraph defines for one listed path: `deleted` for a path that no
+/// longer exists, `link:` and the link text for a symlink (`git hash-object` would follow it,
+/// or fail on a dangling one or one to a folder), `dir` for a folder (a nested repository is
+/// listed as `nested/`), `unreadable` when `git hash-object` fails, else its `git hash-object`.
+fn digest_of(dir: &Path, path: &str) -> String {
+    let full = dir.join(path.trim_end_matches('/'));
+    match fs::symlink_metadata(&full) {
+        Err(_) => "deleted".to_string(),
+        Ok(m) if m.file_type().is_symlink() => {
+            format!("link:{}", fs::read_link(&full).unwrap().display())
+        }
+        Ok(m) if m.is_dir() => "dir".to_string(),
+        Ok(_) => {
+            let out = git_raw(dir, &["hash-object", "--", path]);
+            if out.success {
+                out.stdout.trim().to_string()
+            } else {
+                "unreadable".to_string()
+            }
+        }
+    }
+}
+
 /// One snapshot as the Procedure paragraph defines it: for every path of the `-z` status list
-/// (`--untracked-files=all`), its status code and its content digest (`git hash-object`, or
-/// `deleted` for a path that no longer exists).
+/// (`--untracked-files=all`), its status code and its content digest.
 fn snapshot(dir: &Path) -> std::collections::BTreeMap<String, (String, String)> {
     status_entries(dir, true)
         .into_iter()
         .map(|e| {
             let (status, path) = (e[..2].to_string(), e[3..].to_string());
-            let digest = if dir.join(&path).exists() {
-                git(dir, &["hash-object", "--", &path]).trim().to_string()
-            } else {
-                "deleted".to_string()
-            };
+            let digest = digest_of(dir, &path);
             (path, (status, digest))
         })
         .collect()
@@ -500,6 +529,128 @@ fn a_path_already_dirty_before_the_route_is_given_to_the_step_by_its_digest() {
         "tracked file deleted"
     );
     assert_eq!(s4["README.md"].1, "deleted");
+}
+
+/// REQ-12 (second re-audit N16): a symlink retargeted to a file of identical content, a dangling
+/// link, a link to a folder and a nested repository all get a digest and a change is seen; a
+/// path with a space or a newline in its name works when passed as one argument.
+#[cfg(unix)]
+#[test]
+fn snapshot_digests_cover_links_folders_nested_repos_and_odd_names() {
+    use std::os::unix::fs::symlink;
+    let fx = fresh_repo_with_one_commit();
+    let dir = fx.path();
+    write_file(dir, "a.txt", "same\n");
+    write_file(dir, "b.txt", "same\n");
+    write_file(dir, "adir/f", "x\n");
+    write_file(dir, "with space.txt", "s\n");
+    write_file(dir, "new\nline.txt", "n\n");
+    symlink("a.txt", dir.join("link")).unwrap();
+    symlink("missing", dir.join("dangling")).unwrap();
+    symlink("adir", dir.join("link-dir")).unwrap();
+    let nested = dir.join("nested");
+    fs::create_dir_all(&nested).unwrap();
+    git_ok(&nested, &["init", "-q"]);
+    write_file(&nested, "inner.txt", "i\n");
+    commit_all(&nested);
+
+    let s0 = snapshot(dir);
+    assert_eq!(
+        s0["link"].1, "link:a.txt",
+        "a link is its text, not its target's content"
+    );
+    assert_eq!(s0["dangling"].1, "link:missing");
+    assert_eq!(s0["link-dir"].1, "link:adir");
+    assert_eq!(s0["nested/"].1, "dir");
+    assert_ne!(s0["with space.txt"].1, "unreadable");
+    assert_ne!(s0["new\nline.txt"].1, "unreadable");
+    assert!(
+        !git_raw(dir, &["hash-object", "--", "dangling"]).success,
+        "git hash-object alone fails on a dangling link"
+    );
+
+    // Retargeted to a file with identical content: the digest `git hash-object` would give is
+    // the same, the link text is not.
+    fs::remove_file(dir.join("link")).unwrap();
+    symlink("b.txt", dir.join("link")).unwrap();
+    let s1 = snapshot(dir);
+    assert_eq!(given_to_step(&s0, &s1), ["link"]);
+    assert_eq!(s1["link"].1, "link:b.txt");
+}
+
+/// REQ-7 (second re-audit B4): `git commit` takes the whole index, so a file the user staged
+/// before the route would ride along; `git commit -- <path>` commits only the listed paths
+/// (including a deletion) and leaves the user's staged file staged.
+#[test]
+fn commit_with_paths_leaves_a_prestaged_user_file_out() {
+    let build = |fx: &TempDir| {
+        let dir = fx.path();
+        write_file(dir, ".moai/old.json", "{}\n");
+        commit_all(dir);
+        write_file(dir, "user-staged.txt", "mine\n");
+        git_ok(dir, &["add", "user-staged.txt"]);
+        fs::remove_file(dir.join(".moai/old.json")).unwrap();
+        write_file(dir, PROFILE, "schema_version: 2\n");
+        // The list of the route: the new profile and the deleted file.
+        for path in [PROFILE, ".moai/old.json"] {
+            git_ok(dir, &["add", "--", path]);
+        }
+    };
+    let ident = [
+        "-c",
+        "user.name=fixture",
+        "-c",
+        "user.email=fixture@example.invalid",
+    ];
+
+    // The index holds a path outside the list: `git diff --cached --name-only -z` shows it.
+    let fx = fresh_repo_with_one_commit();
+    build(&fx);
+    let dir = fx.path();
+    let cached = git(dir, &["diff", "--cached", "--name-only", "-z"]);
+    let mut names: Vec<&str> = cached.split('\0').filter(|n| !n.is_empty()).collect();
+    names.sort_unstable();
+    assert_eq!(
+        names,
+        [".moai/old.json", ".moai/project.yaml", "user-staged.txt"]
+    );
+
+    // A plain `git commit` takes the user's file too (the defect).
+    let mut plain: Vec<&str> = vec![];
+    plain.extend(ident);
+    plain.extend(["commit", "-q", "-m", "route"]);
+    git_ok(dir, &plain);
+    let shown = git(dir, &["show", "--name-only", "--format=", "HEAD"]);
+    assert!(
+        shown.contains("user-staged.txt"),
+        "plain commit rides along: {shown}"
+    );
+
+    // `git commit -- <paths>` commits exactly the list; the user's file stays staged.
+    let fx = fresh_repo_with_one_commit();
+    build(&fx);
+    let dir = fx.path();
+    let mut args: Vec<&str> = vec![];
+    args.extend(ident);
+    args.extend([
+        "commit",
+        "-q",
+        "-m",
+        "route",
+        "--",
+        PROFILE,
+        ".moai/old.json",
+    ]);
+    git_ok(dir, &args);
+    let shown = git(dir, &["show", "--name-status", "--format=", "HEAD"]);
+    let mut lines: Vec<&str> = shown.lines().collect();
+    lines.sort_unstable();
+    assert_eq!(lines, ["A\t.moai/project.yaml", "D\t.moai/old.json"]);
+    let status = git(dir, &["status", "--porcelain=v1"]);
+    assert!(
+        status.lines().any(|l| l == "A  user-staged.txt"),
+        "the user's staged file is still staged, not committed:\n{status}"
+    );
 }
 
 /// AC-2 (REQ-1, REQ-3, REQ-10): the exit codes and outputs the text relies on, in real git.
