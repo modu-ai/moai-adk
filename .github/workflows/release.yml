@@ -1,0 +1,213 @@
+# HeadVer release plan and build check (card C-93, SPEC-20261119-headver-release-workflow;
+# user decisions D4-D6 of 2026-11-18, card C-67 note 2245).
+#
+# A person starts it by pushing one branch whose name carries all 40 characters of the commit:
+#
+#   git push origin <sha>:refs/heads/release/<sha>         a release
+#   git push origin <sha>:refs/heads/release/rc/<sha>      a release candidate (pre-release)
+#
+# `workflow_dispatch` is not used: it needs the file on the default branch, which has no
+# workflows (the same reason as candidate.yml). A push runs this file from the pushed commit.
+# The branch is deleted after use.
+#
+# What it does: (1) `plan` numbers the release - HeadVer `{head}.{yearweek}.{build}` with head
+# from the tracked HEADVER file, yearweek from one UTC clock reading, and build from this
+# workflow's own run number on the first attempt (D5) - and names the tag
+# `moai-adk-v{head}.{yearweek}.{build}` (D6, no suffix); (2) `build` builds the commit with that
+# number (`MOAI_BUILD_NUMBER`, never `MOAI_LOCAL_BUILD`, so `--version` says `CI build`, D4),
+# fails unless both binaries and the tag agree on the version, and writes the release note to
+# the job summary.
+#
+# What it never does: create a tag, create or publish a release, upload anything, call the
+# GitHub API or read a secret; its token is read-only. Pushing the tag and publishing the
+# release are the person's steps (guarded, confirmed each time). Rules this file keeps
+# (tests/release_workflow_test.py pins them):
+#   - no `${{ }}` inside a `run:` script: every value reaches the shell through `env:`;
+#   - no `concurrency`: a newer run never cancels an older one;
+#   - every `uses` is pinned to a full commit SHA, the one ci.yml uses.
+name: release
+
+on:
+  push:
+    branches: ['release/**']
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    name: release / plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    outputs:
+      sha: ${{ steps.plan.outputs.sha }}
+      head: ${{ steps.plan.outputs.head }}
+      yearweek: ${{ steps.plan.outputs.yearweek }}
+      build: ${{ steps.plan.outputs.build }}
+      version: ${{ steps.plan.outputs.version }}
+      tag: ${{ steps.plan.outputs.tag }}
+      prerelease: ${{ steps.plan.outputs.prerelease }}
+      epoch: ${{ steps.plan.outputs.epoch }}
+    steps:
+      # The tags come with the checkout, so the plan reads them from the clone.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-tags: true
+      - name: Number the release
+        id: plan
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          PUSHED: ${{ github.sha }}
+          RUN_NUMBER: ${{ github.run_number }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          fail() { echo "$1" >&2; exit 1; }
+
+          # The branch name says release or release candidate and names the pushed commit.
+          if [[ "$REF_NAME" =~ ^release/rc/([0-9a-f]{40})$ ]]; then
+            prerelease=true
+          elif [[ "$REF_NAME" =~ ^release/([0-9a-f]{40})$ ]]; then
+            prerelease=false
+          else
+            fail "the branch must be release/<40 lowercase hex characters> or release/rc/<40 lowercase hex characters>"
+          fi
+          named="${BASH_REMATCH[1]}"
+          if [[ ! "$PUSHED" =~ ^[0-9a-f]{40}$ ]] || [ "$named" != "$PUSHED" ]; then
+            fail "the branch name names one commit, the push is another"
+          fi
+
+          # A re-run keeps run_number, so only the first attempt may number a release.
+          if [ "$RUN_ATTEMPT" != "1" ]; then
+            fail "this run is not the first attempt (RUN_ATTEMPT=${RUN_ATTEMPT}): a re-run keeps the run number and would repeat a build number; push a new release branch"
+          fi
+          # The values MOAI_BUILD_NUMBER takes: 1 to 4294967295, no sign, no leading zero.
+          if [[ ! "$RUN_NUMBER" =~ ^[1-9][0-9]{0,9}$ ]] || [ "$RUN_NUMBER" -gt 4294967295 ]; then
+            fail "RUN_NUMBER=${RUN_NUMBER} refused: use a build number from 1 to 4294967295 in decimal digits, without a sign or leading zero"
+          fi
+
+          # head: the one line of HEADVER, 0 to 9999, no sign, no leading zero (headver::parse_head).
+          [ -f HEADVER ] || fail "HEADVER refused: the file is missing"
+          text="$(cat HEADVER; printf x)"
+          text="${text%x}"
+          if [[ "$text" == *$'\r\n' ]]; then line="${text%$'\r\n'}"; elif [[ "$text" == *$'\n' ]]; then line="${text%$'\n'}"; else line="$text"; fi
+          if [[ ! "$line" =~ ^(0|[1-9][0-9]{0,3})$ ]]; then
+            fail "HEADVER refused: it must hold one line with the HeadVer head, a decimal number from 0 to 9999 without a sign or leading zero"
+          fi
+          head="$line"
+
+          # One clock reading: the plan's yearweek and the build's date are the same instant.
+          epoch="${SOURCE_DATE_EPOCH:-$(date -u +%s)}"
+          [[ "$epoch" =~ ^[0-9]+$ ]] || fail "SOURCE_DATE_EPOCH refused: whole seconds since 1970-01-01 UTC"
+          yearweek="$(python3 -c 'import datetime, sys; d = datetime.datetime.fromtimestamp(int(sys.argv[1]), datetime.timezone.utc).isocalendar(); print("%02d%02d" % (d[0] % 100, d[1]))' "$epoch")"
+          version="${head}.${yearweek}.${RUN_NUMBER}"
+          tag="moai-adk-v${version}"
+
+          # Two releases never share a version and the build number only goes up, in any week
+          # or head: it also catches a counter that restarted when this workflow was recreated.
+          highest=0
+          while IFS= read -r existing; do
+            [ -n "$existing" ] || continue
+            [ "$existing" != "$tag" ] || fail "the tag ${tag} already exists"
+            if [[ "$existing" =~ ^moai-adk-v[0-9]+\.[0-9]{4}\.([1-9][0-9]*)$ ]] && [ "${BASH_REMATCH[1]}" -gt "$highest" ]; then
+              highest="${BASH_REMATCH[1]}"
+              highest_tag="$existing"
+            fi
+          done < <(git for-each-ref --format='%(refname:strip=2)' 'refs/tags/moai-adk-v*')
+          if [ "$RUN_NUMBER" -le "$highest" ]; then
+            fail "the build number ${RUN_NUMBER} is not above ${highest} of the tag ${highest_tag}: the number only goes up; push a new release branch from a run with a higher number"
+          fi
+
+          {
+            echo "sha=${PUSHED}"
+            echo "head=${head}"
+            echo "yearweek=${yearweek}"
+            echo "build=${RUN_NUMBER}"
+            echo "version=${version}"
+            echo "tag=${tag}"
+            echo "prerelease=${prerelease}"
+            echo "epoch=${epoch}"
+          } >> "$GITHUB_OUTPUT"
+          echo "planned ${tag} (pre-release: ${prerelease}) for ${PUSHED}"
+
+  build:
+    name: release / build
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_TERM_COLOR: never
+      # A release build is a CI build: the plan's number and the plan's clock reading.
+      MOAI_BUILD_NUMBER: ${{ needs.plan.outputs.build }}
+      SOURCE_DATE_EPOCH: ${{ needs.plan.outputs.epoch }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          persist-credentials: false
+      # The same toolchain step as ci.yml (rust-toolchain.toml, at most 3 attempts).
+      - name: Toolchain (rust-toolchain.toml)
+        run: |
+          channel="$(sed -n 's/^channel = "\([^"]*\)"$/\1/p' rust-toolchain.toml)"
+          test -n "$channel"
+          for attempt in 1 2 3; do
+            echo "toolchain install attempt ${attempt}/3 (${channel})"
+            rustup toolchain uninstall "$channel" || true
+            if rustup toolchain install; then break; fi
+            if [ "$attempt" = 3 ]; then
+              echo "toolchain install failed after 3 attempts (${channel})" >&2
+              exit 1
+            fi
+            sleep $((attempt * 10))
+          done
+          rustc -V
+      - name: Build
+        run: cargo build --release --locked
+      - name: Binaries, tag and release note agree
+        id: verify
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+          BUILD: ${{ needs.plan.outputs.build }}
+          TAG: ${{ needs.plan.outputs.tag }}
+          SHA: ${{ needs.plan.outputs.sha }}
+          PRERELEASE: ${{ needs.plan.outputs.prerelease }}
+        run: |
+          fail() { echo "$1" >&2; exit 1; }
+
+          [ "$TAG" = "moai-adk-v${VERSION}" ] || fail "the tag ${TAG} does not spell the version: expected moai-adk-v${VERSION}"
+          for name in moai-cli moai; do
+            path="target/release/${name}"
+            [ -x "$path" ] || fail "${path} is missing"
+            out="$("$path" --version)" || fail "${path} --version failed"
+            first="$(printf '%s\n' "$out" | sed -n 1p)"
+            second="$(printf '%s\n' "$out" | sed -n 2p)"
+            [ "$first" = "moai-cli ${VERSION} (rust)" ] || fail "${path} reports '${first}', expected 'moai-cli ${VERSION} (rust)'"
+            case "$second" in
+              "CI build ${BUILD} (MOAI_BUILD_NUMBER), built "*) ;;
+              *) fail "${path} second line is '${second}', expected it to begin 'CI build ${BUILD} (MOAI_BUILD_NUMBER), built'" ;;
+            esac
+          done
+
+          if [ "$PRERELEASE" = "true" ]; then mark="yes"; else mark="no"; fi
+          {
+            echo "## Release note: ${TAG}"
+            echo
+            echo "- version: ${VERSION}"
+            echo "- tag: ${TAG}"
+            echo "- commit: ${SHA}"
+            echo "- build number: ${BUILD} (this workflow's own first-attempt run number)"
+            echo "- --version: moai-cli ${VERSION} (rust); CI build ${BUILD} (MOAI_BUILD_NUMBER)"
+            echo "- pre-release: ${mark}"
+            echo
+            echo "This run made no tag and no release and uploaded nothing. Pushing the tag and publishing the release are the person's steps."
+          } >> "$GITHUB_STEP_SUMMARY"
