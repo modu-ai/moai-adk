@@ -197,7 +197,7 @@ fn release_tags_wait_for_the_user_at_every_level() {
         ),
         (
             "references/internal/versioning.md",
-            "pushing a tag or publishing a release is `SKILL.md` case (2) at every autonomy level, `full` included: the user picks it and it waits, with no deadline default",
+            "pushing a tag or publishing a release cannot be undone, so it is a question that waits for the user's pick at every autonomy level, `full` included, with no deadline default",
         ),
     ] {
         assert!(package(file).contains(phrase), "{file} must say `{phrase}`");

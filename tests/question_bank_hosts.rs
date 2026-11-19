@@ -70,7 +70,10 @@ fn hosts_question_offers_exactly_the_hosts_the_profile_accepts() {
             !offered.contains(name),
             "{name} offered but refused by the profile"
         );
-        assert!(row.contains(name), "{name} is named as not recorded yet");
+        assert!(
+            !row.contains(name),
+            "{name} must not be named: the row offers only hosts the profile records"
+        );
         assert_eq!(plan(&[value])["ok"], json!(false), "{value}");
     }
 }

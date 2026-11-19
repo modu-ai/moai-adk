@@ -159,7 +159,6 @@ fn the_update_route_runs_the_commands_itself_after_the_pick() {
 fn every_question_is_a_selection_through_the_hosts_question_tool() {
     let q = skill("references/internal/questions.md");
     for text in [
-        "(user decision 2026-11-16, cards C-51 and C-52)",
         "Never tell the user to run a command in a terminal when this session can run it",
         "Every question is a selection",
         "put the recommended one first and mark it",
