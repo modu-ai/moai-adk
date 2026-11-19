@@ -97,4 +97,39 @@ created: 2026-11-20
 
 ## Result
 
-(구현 뒤에 적어요.)
+기준 머리: 병합 `f36c917780` (tip `f9523ae236` 를 병합한 뒤). 모든 숫자는 이 머리에서 만든 `target/debug/moai-cli` 로, 임시 HOME 에서 잰 값이에요.
+
+**RED → GREEN.** `tests/card_timeline_cli.rs` 7개를 명령이 없는 상태에서 먼저 돌려 7개 모두 실패했어요(`usage` 오류 종료 2). 구현 뒤 통합 7개와 `--lib card::timeline` 5개가 통과해요.
+
+**변이 5개** (`src/card/timeline.rs` 를 백업에서 고치고 시험을 돌린 뒤 shasum 일치로 복원):
+
+| 변이 | 잡은 시험 |
+|---|---|
+| M1 커서 `>` → `>=` | `the_cursor_continues_with_no_gap_and_no_overlap` |
+| M2 `renew` 숨김 지우기 | `bookkeeping_events_are_hidden_unless_all_and_a_fence_reject_always_shows`, `the_timeline_lists_the_cards_events_oldest_first_with_the_contract_fields`, 단위 `the_events_statement_leaves_out_exactly_the_bookkeeping_list` |
+| M3 `fence_reject` 를 숨김 목록에 | 같은 `bookkeeping_…` 시험과 단위 시험 |
+| M4 `more` 의 `>` → `>=` | **처음엔 살아남았어요.** 이벤트 수가 `--limit` 와 같을 때의 경계 시험이 없었어요 → 커서 시험에 `--limit 11`(more=false)과 `--limit 10`(more=true)을 더했고, 같은 변이가 이제 `the_cursor_continues_with_no_gap_and_no_overlap` 에 잡혀요(깨끗한 코드 7/7 통과) |
+| M5 기다림 250 ms → 5 s | `a_busy_ledger_a_missing_card_and_bad_input_use_the_existing_envelope` (3초 안에 포기해야 해요) |
+
+**AC-8 측정.** `measure_ledger2.py` 를 복사해 읽는 쪽을 `card timeline C-1 --limit 500` 으로 바꾸고, 노트 900개를 미리 채운 원장(실행 뒤 1502개)에서 새 빈 폴더 5곳에 5회 돌렸어요. 읽는 쪽은 두 개의 반복 프로세스이고, 대조군은 "다른 원장을 같은 수만큼 읽는 반복"이에요.
+
+| 회차 | 쓰기 실패 | 읽는 쪽 있을 때 쓰기 p95 (ms) | 대조군 p95 | 비율 | 읽기 없음 p95 |
+|---|---|---|---|---|---|
+| 1 | 0 | 228.2 | 125.3 | 1.82 | 202.5 |
+| 2 | 0 | 109.5 | 163.0 | 0.67 | 91.9 |
+| 3 | 0 | 144.6 | 869.0 | 0.17 | 33.0 |
+| 4 | 0 | 171.7 | 246.1 | 0.70 | 43.3 |
+| 5 | 0 | 220.1 | 249.0 | 0.88 | 247.0 |
+
+- 쓰기 실패: 5회 × 모든 구간 합계 **0건**(읽기 구간 쓰기 600건 포함). `journal_mode` 는 매번 `delete`, `PRAGMA integrity_check` 는 매번 `ok`.
+- 정의된 대조군 기준 p95 비율은 최대 1.82 로 **2배 이내**예요. 1회차가 경계에 가까웠고, 같은 방식으로 4번 더 돌려 확인했어요.
+- 읽기 없음 구간(`A`) 대비 비율은 0.89–4.38 로 흔들려요(회차 3 4.38, 회차 4 3.97). 측정 중 기계 부하(load average 30–100)가 회차마다 달라서 읽기 없음 구간이 조용한 순간에 걸리면 비율이 커져요. 그래서 정한 기준은 같은 부하를 받는 대조군이고, `A` 대비 비율은 참고예요.
+- 쓰는 쪽 둘이 동시에 쓰는 구간(`D`, 이 SPEC 의 기준 밖): 실패 0건, 대조군 대비 p95 비율 1.43 / 3.25 / 1.42 / 1.40 / 1.31. 회차 2 의 3.25 는 대조군 p95(108 ms)가 낮았던 순간이에요.
+- 읽는 호출 하나의 시간(같은 원장, 중앙값/최대, 9회): `card show C-1` 3290 ms / 8608 ms(출력 497 KB), `card timeline C-1` 53 ms / 62 ms(한도 50, 22 KB), `card timeline C-1 --limit 500` 117 ms / 134 ms(221 KB). 이벤트 질의가 `event` 를 훑는 시간은 이 세 문장이 합쳐 이 안에 들어 있어요(원장 이벤트 행 수는 세지 않았어요).
+- 측정 스크립트: `~/.moai/reports/moai-adk/collab-board-evidence-2026-11-20/measure_ledger2.py` 에서 복사해 두 줄만 바꿨어요(읽기 명령, 미리 채우는 노트 수 300 → 900). 사본은 이 세션 scratchpad 의 `measure_timeline.py` 에 있어요.
+
+**질의 계획(AC-3).** 노트 900개 카드에서 `EXPLAIN QUERY PLAN` 으로 세 문장을 확인해요: 상관 하위 질의(`CORRELATED`) 없음, 각 문장이 `event` 를 한 번만 훑음(`tests/card_timeline_cli.rs` `one_timeline_call_never_rescans_event_per_row`).
+
+**검사(머리 `f36c917780`, 모두 종료 0).** `git diff --check`, `cargo fmt --check`, `rustfmt --check --edition 2021 src/ops/*.rs`, `cargo clippy --locked --offline --all-targets -- -D warnings`, `cargo test --bins`, `tools/repo_scans.json` 의 검사 39/39, 파이썬 `repo_scans_test source_manifest_test local_check_test skill_references_test`, `trailer-check`, `spec check`(이 SPEC errors 0/warnings 0), `tests/card*.rs` 18개 대상과 `--lib card::`(100개 통과).
+
+**남은 것.** 감사. `event` 에 `card_id` 색인이 없어 질의가 표를 한 번 훑어요(Risks); 색인은 스키마 v2 결정으로 남겨 둬요.
