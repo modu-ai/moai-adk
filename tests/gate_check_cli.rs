@@ -738,6 +738,64 @@ fn g5_check_runs_decide_and_every_answer_carries_ci_info() {
     }
 }
 
+/// C-99 slice 3C (REQ-6, REQ-7, REQ-8): a `ci` aggregate that succeeded as its attempt `n` of two
+/// or more adds ` attempt=<n>` to `ci_info`; attempt one, no number, a running or a failed run
+/// add nothing; and the verdict is the one the same snapshot gives without the number.
+#[test]
+fn ci_info_names_the_attempt_of_a_re_run_that_succeeded_and_the_verdict_does_not_move() {
+    let base = with_local_checks(&[local_check(300, H, "pass")]);
+    let plain = gate(&base);
+    assert_eq!(stopped(&plain), (true, String::new()), "{plain}");
+    assert_eq!(plain["result"]["ci_info"], json!("ci=success"), "{plain}");
+    let with_attempt = |name: &str, attempt: Value| {
+        let mut s = base.clone();
+        s["checks"] = json!([
+            {"name": name, "conclusion": "success", "head_sha": H, "attempt": attempt},
+            run("ci / linux-x86_64", Some("success"), H),
+            run("windows-build", Some("skipped"), H)
+        ]);
+        gate(&s)
+    };
+    for (name, attempt, info) in [
+        ("ci", json!(2), "ci=success attempt=2"),
+        ("ci", json!(3), "ci=success attempt=3"),
+        ("rc-ci", json!(2), "ci=success attempt=2"),
+        ("ci", json!(1), "ci=success"),
+        ("ci", Value::Null, "ci=success"),
+    ] {
+        let v = with_attempt(name, attempt.clone());
+        assert_eq!(v["result"]["ci_info"], json!(info), "{name} {attempt}: {v}");
+        // Everything but the info line is what the plain snapshot answered.
+        let (mut got, mut want) = (v.clone(), plain.clone());
+        got["result"]["ci_info"] = Value::Null;
+        want["result"]["ci_info"] = Value::Null;
+        assert_eq!(got, want, "{name} {attempt}");
+    }
+    // A `ci` that succeeded on its attempt two while another job failed: the state is failure, and
+    // the line shows no attempt.
+    let mut s = base.clone();
+    s["checks"] = json!([
+        {"name": "ci", "conclusion": "success", "head_sha": H, "attempt": 2},
+        run("ci / linux-x86_64", Some("failure"), H)
+    ]);
+    let v = gate(&s);
+    assert_eq!(v["result"]["ci_info"], json!("ci=failure"), "{v}");
+    // A run that did not succeed never shows an attempt; G5 stops as it always did.
+    for (conclusion, info) in [
+        (json!("failure"), "ci=failure"),
+        (Value::Null, "ci=pending"),
+    ] {
+        let mut s = base.clone();
+        s["checks"] = json!([
+            {"name": "ci", "conclusion": conclusion, "head_sha": H, "attempt": 2},
+            run("ci / linux-x86_64", Some("success"), H)
+        ]);
+        let v = gate(&s);
+        assert_eq!(stopped(&v), (false, "G5".into()), "{v}");
+        assert_eq!(v["result"]["ci_info"], json!(info), "{v}");
+    }
+}
+
 #[test]
 fn g6_overlap_is_allowed_only_for_kept_docs_and_a_matching_manifest() {
     let manifest = "skills/moai/references/source-manifest.json";
