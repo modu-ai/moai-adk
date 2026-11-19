@@ -70,7 +70,7 @@ REPORTS_PREFIX = ".moai-cli/reports/"
 # (.moai/cards-pending/pr-history-analysis-20261117.md, read 2026-11-17); the
 # rules were verified against the merged file lists of all 69 failed ci push
 # runs on v2026.11.0 (read 2026-11-19) — tests/ci_scope_test.py embeds those
-# lists and names the 41 runs that stay linux-only.
+# lists and names the 40 runs that stay linux-only.
 PLATFORM_EXACT = {
     "src/launcher_terminal.rs": "pty/terminal",
     "tests/help_layout.rs": "pty/terminal",

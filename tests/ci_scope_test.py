@@ -548,7 +548,7 @@ class CiWorkflowMatrixContractTest(unittest.TestCase):
         )
 
     def test_decide_script_pins_its_fail_safe_branches(self):
-        # The two branches a text mutation could silently invert: linux-only is
+        # The branches a text mutation could silently invert: linux-only is
         # chosen only when the classifier answered (ok=1) with macos False, and a
         # failed diff never fails the job (matrix stays the full one).
         self.assertIn(
@@ -556,6 +556,20 @@ class CiWorkflowMatrixContractTest(unittest.TestCase):
         )
         self.assertIn('2>/dev/null)" || true', self.yaml_text)
         self.assertIn('matrix="$full"', self.yaml_text)
+
+    def test_decide_script_classifies_only_pull_requests(self):
+        # Audit B-2: only a pull_request run enters the classifier, and the diff
+        # base is the PR's base commit. `if true` or a negated comparison keeps
+        # both matrix literals and every other test green, so the exact guard is
+        # pinned here too (rc_ci_matrix in tests/github_assets_test.py pins the
+        # same line where it reads the lists).
+        self.assertIn(
+            'if [ "${{ github.event_name }}" = "pull_request" ]; then',
+            self.yaml_text,
+        )
+        self.assertIn('${{ github.event.pull_request.base.sha }}', self.yaml_text)
+        self.assertNotIn('github.event_name }}" != ', self.yaml_text)
+        self.assertNotIn('if true; then', self.yaml_text)
 
 
 if __name__ == "__main__":

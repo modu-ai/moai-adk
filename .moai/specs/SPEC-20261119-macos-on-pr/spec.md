@@ -54,7 +54,7 @@ merge 전에 `check` 매트릭스에 macos-arm64를 넣고, aggregate `ci`가 �
 
 ## Scope
 
-- write: `.github/workflows/ci.yml`, `tools/ci_scope.py`, `tests/ci_scope_test.py`, `.moai/specs/SPEC-20261119-macos-on-pr/spec.md`
+- write: `.github/workflows/ci.yml`, `tools/ci_scope.py`, `tests/ci_scope_test.py`, `tests/github_assets_test.py`, `.moai/specs/SPEC-20261119-macos-on-pr/spec.md`
 - read-only: `tools/local_check.sh`, `tools/ci_superseded.py`, `docs/pr-contract.md`
 - forbidden: ruleset 26791615, 필수 검사 이름/구성, 실제 HOME·원장·키, 네트워크 쓰기
 
@@ -87,5 +87,5 @@ merge 전에 `check` 매트릭스에 macos-arm64를 넣고, aggregate `ci`가 �
 - AC-1: met — `tests.ci_scope_test` 34 시험 통과; 여섯 범주 대표 경로 22개가 `macos_needed: true` + 범주 이유를 돌려줘요(RED 먼저: 구현 전 오류 8·실패 3).
 - AC-2: met — 비민감 목록(docs·skills·원장 로직) `false`; 접두사 누출 경계(`src/statusline_notes.rs`, `adapters/claude/statusline.py`)도 `false`.
 - AC-3: met — 빈 입력·제어문자 경로·내부 오류가 모두 `true`; 돌연변이 M1·M2·M3로 안전실패 분기가 시험에 묶여 있음을 확인(6/6 KILLED, `target/c76/mut.log`).
-- AC-4: met — 역대 실패 69 run의 파일 목록 전수 판정: 29 true / 40 false, false는 run id로 시험에 명명(`HISTORICAL_FALSE_RUN_IDS`). 간극: 47건 macOS-only의 run별 분리는 run마다 jobs API 1호출이 필요해 하지 않았고(D-4), 40 false 중 일부가 macOS-only였을 수 있어요.
+- AC-4: met — 역대 실패 69 run의 파일 목록 전수 판정: 29 true / 40 false, false는 run id로 시험에 명명(`HISTORICAL_FALSE_RUN_IDS`). 간극(감사 N-1 실측, 2026-11-19): 이 69 run 중 macos-arm64-only는 28 run이고, 이 표가 그중 macOS를 미리 돌려 줬을 run은 9뿐이에요(원인 아닌 run 단위 집계). 표 넓히기는 후속 카드.
 - AC-5: met — YAML 계약 시험·YAML 파싱(PyYAML, job 그래프 확인) 통과; `tests/github_assets_test.py`의 `rc_ci_matrix` 4시험은 새 구조(`targets` job의 `full=`/`linux=` 목록)로 고쳐 39 시험 전부 통과(리더 인계 뒤, 카드 note 2383·2386; `python3 -m unittest tests.github_assets_test tests.ci_scope_test` → Ran 73 tests, OK).

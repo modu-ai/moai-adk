@@ -334,6 +334,12 @@ class WorkflowTest(unittest.TestCase):
         matrix expression (#2554)."""
         steps = flow["jobs"]["targets"]["steps"]
         run = next(s for s in steps if s.get("id") == "decide")["run"]
+        # The event branch is load-bearing (audit B-2): only a pull_request run
+        # enters the classifier; `if true` or a negated comparison would let a
+        # push path-classify (or a PR skip it) with the same matrix literals, so
+        # the exact guard is pinned here, where the lists are read.
+        assert 'if [ "${{ github.event_name }}" = "pull_request" ]; then' in run, run
+        assert '${{ github.event.pull_request.base.sha }}' in run, run
         lists = dict(re.findall(r"^(full|linux)='(\[.*?\])'$", run, re.M))
         if set(lists) != {"full", "linux"}:
             raise AssertionError(f"unexpected decide script: {run!r}")
