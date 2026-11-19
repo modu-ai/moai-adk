@@ -466,7 +466,8 @@ pub(super) fn add_event(
 }
 
 /// The first pair of a pattern in `mine` and a pattern of another card's active reservation
-/// that [`crate::scope::overlap`] says could be written under both, in card and pattern order.
+/// that [`crate::scope::card_overlap`] says could be written under both, in card and pattern
+/// order: [`crate::scope::overlap`] without the pairs that name a generated shared file (C-118).
 pub(super) fn find_overlap(
     conn: &Connection,
     card_id: i64,
@@ -483,7 +484,7 @@ pub(super) fn find_overlap(
         .collect::<Result<_, _>>()?;
     for (other, pattern) in theirs {
         for m in mine {
-            if crate::scope::overlap(m, &pattern) {
+            if crate::scope::card_overlap(m, &pattern) {
                 return Ok(Some((other, m.clone(), pattern)));
             }
         }

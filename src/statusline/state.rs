@@ -132,6 +132,18 @@ pub struct Status {
     pub cache_timer: Option<CacheTimer>,
     /// #2756 AC-9: the worktree name; empty in the main checkout.
     pub worktree: String,
+    /// User instruction 2026-11-19: the card and the name of the held reservation that names
+    /// the session's worktree folder, for `🌳 WT-c<card>-<name>`; `None` shows `worktree` as
+    /// the host gave it.
+    pub worktree_label: Option<WorktreeLabel>,
+}
+
+/// The parts of `🌳 WT-c<card>-<name>`: the number of the card holding the worktree and the
+/// name that says what the work is (empty when nothing says it).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WorktreeLabel {
+    pub card: i64,
+    pub name: String,
 }
 
 /// The `pr` fields the status line shows.
@@ -282,7 +294,29 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
     } else {
         worktree.to_string()
     };
+    if !status.worktree.is_empty() {
+        status.worktree_label = anchor
+            .as_deref()
+            .or(project_root.as_deref())
+            .zip(session_dir(input))
+            .and_then(|(project, dir)| worktree_label(project, &dir, ctx));
+    }
     status
+}
+
+/// The folder the session works in: `workspace.current_dir`, else `cwd`; `None` when neither
+/// is given.
+fn session_dir(input: &Input) -> Option<PathBuf> {
+    let dir = input
+        .workspace
+        .as_ref()
+        .map_or("", |w| input::text(&w.current_dir));
+    let dir = if dir.is_empty() {
+        input::text(&input.cwd)
+    } else {
+        dir
+    };
+    (!dir.is_empty()).then(|| PathBuf::from(dir))
 }
 
 /// #2756 AC-8: `warm: false` is cold; `warm: true` with `expires_at` gives the whole minutes
@@ -894,13 +928,7 @@ const _: () = assert!(CARDS_BUSY_TIMEOUT.as_millis() <= 100);
 /// HOME, no project profile, no registered ledger, a file that is not this project's ledger
 /// (corrupt, another project's, a link), a lock held past the wait, or a spent budget.
 fn card_counts(project: &Path, ctx: &Context) -> Option<CardCounts> {
-    let home = ctx.home()?;
-    let busy = match ctx.deadline {
-        Some(deadline) => CARDS_BUSY_TIMEOUT.min(deadline.checked_duration_since(Instant::now())?),
-        None => CARDS_BUSY_TIMEOUT,
-    };
-    let id = crate::project_id::read(&std::fs::canonicalize(project).ok()?).ok()??;
-    let ledger = crate::ledger::open::open_read_only_within(&home, &id, busy).ok()?;
+    let (ledger, _) = open_project_ledger(project, ctx)?;
     let mut counts = CardCounts::default();
     for (state, n) in crate::ledger::command::state_counts(&ledger).ok()? {
         match state.as_str() {
@@ -918,6 +946,172 @@ fn card_counts(project: &Path, ctx: &Context) -> Option<CardCounts> {
     }
     Some(counts)
 }
+
+/// The project's ledger opened read-only the way [`card_counts`] reads it, with the project id.
+/// `None` for every case [`card_counts`] documents (no HOME, no profile, no registered ledger,
+/// a file that is not this project's ledger, a lock held past the wait, a spent budget).
+fn open_project_ledger(
+    project: &Path,
+    ctx: &Context,
+) -> Option<(crate::ledger::open::ReadLedger, String)> {
+    let home = ctx.home()?;
+    let busy = match ctx.deadline {
+        Some(deadline) => CARDS_BUSY_TIMEOUT.min(deadline.checked_duration_since(Instant::now())?),
+        None => CARDS_BUSY_TIMEOUT,
+    };
+    let id = crate::project_id::read(&std::fs::canonicalize(project).ok()?).ok()??;
+    let ledger = crate::ledger::open::open_read_only_within(&home, &id, busy).ok()?;
+    Some((ledger, id))
+}
+
+/// User instruction 2026-11-19: which card holds the worktree the session is in, and what the
+/// work is called. `dir` is a folder inside the worktree (`workspace.current_dir`, else `cwd`).
+/// The held reservation naming the worktree folder gives the card (the lowest number when more
+/// than one names it) and its branch the name ([`label_name`]). `None` when no reservation names
+/// the folder or the ledger cannot be read in the budget: the line then shows the host's name.
+fn worktree_label(project: &Path, dir: &Path, ctx: &Context) -> Option<WorktreeLabel> {
+    // The folder holding the nearest `.git` entry above `dir`, in the two spellings a holder
+    // may have recorded: as found and canonical.
+    let (found, _) = find_dot_git(dir)?;
+    let canonical = std::fs::canonicalize(&found).unwrap_or_else(|_| found.clone());
+    let (ledger, project_id) = open_project_ledger(project, ctx)?;
+    let expired = || {
+        ctx.deadline
+            .is_some_and(|deadline| Instant::now() >= deadline)
+    };
+    let (card, branch) = holding_card(ledger.conn(), &found, &canonical, &expired)?;
+    let folder = canonical
+        .file_name()
+        .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
+    Some(WorktreeLabel {
+        card,
+        name: label_name(branch.as_deref(), &folder, &project_id, card),
+    })
+}
+
+/// The lowest card whose holding reservation names the folder `found` (as found) or `canonical`,
+/// with that reservation's branch. The holder typed the path (`card take --worktree`), so it may
+/// be a link spelling: each holding reservation is compared as written and as a canonical path.
+/// A path that is not absolute names no folder from here (it would be read against this
+/// process's working directory), so it never matches; a row that cannot be read is skipped.
+/// `expired` is asked before every row, and `None` comes back as soon as it is true.
+fn holding_card(
+    conn: &rusqlite::Connection,
+    found: &Path,
+    canonical: &Path,
+    expired: &dyn Fn() -> bool,
+) -> Option<(i64, Option<String>)> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT card_id, branch, worktree FROM reservation \
+             WHERE status IN ('held', 'held_for_review', 'expired_candidate') \
+             AND worktree IS NOT NULL ORDER BY card_id",
+        )
+        .ok()?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, Option<String>>(1)?,
+                r.get::<_, String>(2)?,
+            ))
+        })
+        .ok()?;
+    for row in rows {
+        if expired() {
+            return None;
+        }
+        let Ok((card, branch, held)) = row else {
+            continue;
+        };
+        let named = Path::new(&held);
+        if !named.is_absolute() {
+            continue;
+        }
+        if named == found
+            || named == canonical
+            || std::fs::canonicalize(named).is_ok_and(|c| c == canonical)
+        {
+            return Some((card, branch));
+        }
+    }
+    None
+}
+
+/// The name part of `WT-c<card>-<name>`, from the reservation's `branch`: the part after the
+/// eight-digit date and a dash in its last path segment, else the worktree folder name without
+/// its `<project>-` prefix and its card number, else nothing; control and invisible format
+/// characters dropped ([`is_unseen`]) before the length is counted, a source nothing is left of
+/// giving way to the next, and at most [`LABEL_NAME_CHARS`] characters.
+fn label_name(branch: Option<&str>, folder: &str, project_id: &str, card: i64) -> String {
+    // Each source is cleaned first; a slug that nothing is left of gives way to the folder name.
+    let clean = |raw: String| -> String { raw.chars().filter(|c| !is_unseen(*c)).collect() };
+    let raw = branch
+        .and_then(branch_slug)
+        .map(clean)
+        .filter(|s| !s.is_empty())
+        .or_else(|| folder_rest(folder, project_id, card).map(clean))
+        .unwrap_or_default();
+    let mut chars = raw.chars();
+    let mut name: String = chars.by_ref().take(LABEL_NAME_CHARS).collect();
+    if chars.next().is_some() {
+        // One character too many: keep 31 and mark the cut.
+        name = name.chars().take(LABEL_NAME_CHARS - 1).collect();
+        name.push('…');
+    }
+    name
+}
+
+/// A character the terminal would not show as itself: a control character, or one of the
+/// invisible format characters that reorder or hide text (zero-width and bidirectional marks,
+/// the byte order mark). The name is free text from a branch or a folder.
+fn is_unseen(c: char) -> bool {
+    c.is_control()
+        || matches!(
+            c,
+            '\u{200b}'..='\u{200f}'
+                | '\u{202a}'..='\u{202e}'
+                | '\u{2060}'..='\u{2064}'
+                | '\u{2066}'..='\u{206f}'
+                | '\u{feff}'
+        )
+}
+
+/// `spec/20261119-statusline-waiting-cards` gives `statusline-waiting-cards`: the last path
+/// segment is eight digits, a dash and something.
+fn branch_slug(branch: &str) -> Option<String> {
+    let last = branch.rsplit('/').next()?;
+    let (date, rest) = last.split_at_checked(8)?;
+    if !date.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    let rest = rest.strip_prefix('-')?;
+    (!rest.is_empty()).then(|| rest.to_string())
+}
+
+/// The worktree folder name without its `<project>-` prefix and without the card number
+/// (`demo-1-hooks` gives `hooks`, `demo-c1-hooks` too); `None` when nothing is left.
+fn folder_rest(folder: &str, project_id: &str, card: i64) -> Option<String> {
+    let rest = match folder.strip_prefix(project_id) {
+        Some("") => "",
+        Some(after) => after.strip_prefix('-').unwrap_or(folder),
+        None => folder,
+    };
+    let mut rest = rest;
+    for token in [format!("c{card}"), card.to_string()] {
+        match rest.strip_prefix(token.as_str()) {
+            Some("") => rest = "",
+            Some(after) if after.starts_with('-') => rest = &after[1..],
+            _ => continue,
+        }
+        break;
+    }
+    let rest = rest.trim_matches('-');
+    (!rest.is_empty()).then(|| rest.to_string())
+}
+
+/// The longest `<name>` of the worktree label, in characters; one more is cut with `…`.
+const LABEL_NAME_CHARS: usize = 32;
 
 /// The working number once the waiting cards are taken out of the `active` + `review` total.
 /// The state count and the note read are two reads of a ledger that may change between them, so
@@ -2404,5 +2598,468 @@ mod project_root_tests {
             root_from(&w.join("home"), &w.join("repo/wt/sub")),
             Some(w.join("repo/wt"))
         );
+    }
+}
+
+/// User instruction 2026-11-19: `🌳 WT-c<card>-<name>`. The name is a pure function of the
+/// reservation's branch, the worktree folder name, the project id and the card number; the card
+/// comes from the held reservation that names the worktree folder, read from the local ledger.
+#[cfg(test)]
+mod worktree_label_tests {
+    use super::*;
+
+    fn name(branch: Option<&str>, folder: &str, card: i64) -> String {
+        label_name(branch, folder, "demo", card)
+    }
+
+    #[test]
+    fn a_spec_branch_gives_its_slug() {
+        assert_eq!(
+            name(
+                Some("spec/20261119-statusline-waiting-cards"),
+                "demo-1-x",
+                1
+            ),
+            "statusline-waiting-cards"
+        );
+        // Any kind before the slash, and no slash at all.
+        assert_eq!(name(Some("fix/20261119-a"), "demo-1", 1), "a");
+        assert_eq!(name(Some("20261119-a-b"), "demo-1", 1), "a-b");
+        // The date must be eight digits followed by a dash and something.
+        assert_eq!(name(Some("spec/2026111-a"), "demo-1-rest", 1), "rest");
+        assert_eq!(name(Some("spec/20261119-"), "demo-1-rest", 1), "rest");
+        assert_eq!(name(Some("spec/20261119"), "demo-1-rest", 1), "rest");
+    }
+
+    #[test]
+    fn another_branch_takes_the_rest_of_the_folder_name() {
+        let b = Some("m-flow/bundle-20261119-6");
+        assert_eq!(name(b, "demo-1-hooks", 1), "hooks");
+        assert_eq!(name(None, "demo-1-hooks", 1), "hooks");
+        // The card number may carry its `c`.
+        assert_eq!(name(b, "demo-c1-hooks", 1), "hooks");
+        // The folder with nothing left gives nothing.
+        assert_eq!(name(b, "demo-1", 1), "");
+        assert_eq!(name(b, "demo", 1), "");
+        // A number that is not this card's number stays; so does a folder of another project.
+        assert_eq!(name(b, "demo-12-hooks", 1), "12-hooks");
+        assert_eq!(name(b, "demo-audit-3230", 1), "audit-3230");
+        assert_eq!(name(b, "other-hooks", 1), "other-hooks");
+        // The prefix is the project id plus a dash, not any text that starts the same.
+        assert_eq!(name(b, "demonstration-1-x", 1), "demonstration-1-x");
+    }
+
+    #[test]
+    fn the_name_is_cut_at_thirty_two_characters_and_drops_control_characters() {
+        let exact = "a".repeat(32);
+        let long = "a".repeat(33);
+        let branch = |s: &str| format!("spec/20261119-{s}");
+        assert_eq!(name(Some(&branch(&exact)), "demo-1", 1), exact);
+        assert_eq!(
+            name(Some(&branch(&long)), "demo-1", 1),
+            format!("{}…", "a".repeat(31))
+        );
+        // Characters, not bytes.
+        let korean = "가".repeat(40);
+        assert_eq!(
+            name(Some(&branch(&korean)), "demo-1", 1),
+            format!("{}…", "가".repeat(31))
+        );
+        assert_eq!(
+            name(Some(&branch(&"가".repeat(32))), "demo-1", 1),
+            "가".repeat(32)
+        );
+        assert_eq!(name(Some("spec/20261119-a\u{1b}b\nc"), "demo-1", 1), "abc");
+        // Control characters are dropped before the length is counted.
+        let padded = format!("{}\u{7}{}", "a".repeat(32), "");
+        assert_eq!(name(Some(&branch(&padded)), "demo-1", 1), exact);
+    }
+
+    struct Fixture {
+        _tmp: tempfile::TempDir,
+        home: PathBuf,
+        project: PathBuf,
+        /// A worktree folder (a `.git` entry and a `src` folder), canonical.
+        wt: PathBuf,
+    }
+
+    fn fixture() -> Fixture {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = std::fs::canonicalize(tmp.path()).unwrap();
+        let home = root.join("home");
+        let project = root.join("work/demo");
+        let state = project.join(crate::PROJECT_STATE_DIR);
+        let wt = root.join("wt/demo-1-work");
+        std::fs::create_dir_all(&home).unwrap();
+        std::fs::create_dir_all(&state).unwrap();
+        std::fs::create_dir_all(wt.join("src")).unwrap();
+        std::fs::write(wt.join(".git"), "gitdir: nowhere\n").unwrap();
+        std::fs::write(
+            state.join("project.yaml"),
+            "{\"schema_version\":2,\"project_id\":\"demo\"}\n",
+        )
+        .unwrap();
+        crate::ledger::register(&home, "demo").unwrap();
+        Fixture {
+            _tmp: tmp,
+            home,
+            project,
+            wt,
+        }
+    }
+
+    impl Fixture {
+        fn ctx(&self) -> Context {
+            Context::for_test(&[("HOME", self.home.to_str().unwrap())], None)
+        }
+
+        fn label(&self, dir: &Path) -> Option<WorktreeLabel> {
+            worktree_label(&self.project, dir, &self.ctx())
+        }
+
+        /// One card with no reservation; returns its number. Cards are numbered in the order
+        /// they are made, so a later `reserve_card` can give the lower card its reservation
+        /// after a higher one has had its own.
+        fn add_card(&self) -> i64 {
+            let mut ledger = crate::ledger::open_write(&self.home, "demo").unwrap();
+            let mut card = 0;
+            ledger
+                .with_write_tx(|tx, now| {
+                    tx.execute(
+                        "INSERT INTO card (title, state, created_by, created_at, updated_at) \
+                         VALUES ('t', 'active', 'test', ?1, ?1)",
+                        rusqlite::params![now],
+                    )?;
+                    card = tx.last_insert_rowid();
+                    Ok(())
+                })
+                .unwrap();
+            card
+        }
+
+        /// A `held` reservation of the existing `card` naming `worktree` (any spelling).
+        fn reserve_card(&self, card: i64, worktree: &str, branch: &str) {
+            let mut ledger = crate::ledger::open_write(&self.home, "demo").unwrap();
+            ledger
+                .with_write_tx(|tx, now| {
+                    tx.execute(
+                        "INSERT INTO reservation (card_id, generation, holder, status, \
+                         acquired_at, lease_until, updated_at, worktree, branch) \
+                         VALUES (?1, 1, 'test', 'held', ?2, ?3, ?2, ?4, ?5)",
+                        rusqlite::params![card, now, now + 14400, worktree, branch],
+                    )?;
+                    Ok(())
+                })
+                .unwrap();
+        }
+
+        /// One card in `card_state` and a reservation of it in `status` naming `worktree`.
+        /// An `INSERT` has no transition check. Returns the card number.
+        fn reserve(
+            &self,
+            card_state: &str,
+            status: &str,
+            worktree: &Path,
+            branch: Option<&str>,
+        ) -> i64 {
+            let mut ledger = crate::ledger::open_write(&self.home, "demo").unwrap();
+            let mut card = 0;
+            ledger
+                .with_write_tx(|tx, now| {
+                    tx.execute(
+                        "INSERT INTO card (title, state, created_by, created_at, updated_at) \
+                         VALUES ('t', ?1, 'test', ?2, ?2)",
+                        rusqlite::params![card_state, now],
+                    )?;
+                    card = tx.last_insert_rowid();
+                    tx.execute(
+                        "INSERT INTO reservation (card_id, generation, holder, status, \
+                         acquired_at, lease_until, updated_at, worktree, branch) \
+                         VALUES (?1, 1, 'test', ?2, ?3, ?4, ?3, ?5, ?6)",
+                        rusqlite::params![
+                            card,
+                            status,
+                            now,
+                            now + 14400,
+                            worktree.to_string_lossy(),
+                            branch
+                        ],
+                    )?;
+                    Ok(())
+                })
+                .unwrap();
+            card
+        }
+    }
+
+    fn label(card: i64, name: &str) -> Option<WorktreeLabel> {
+        Some(WorktreeLabel {
+            card,
+            name: name.to_string(),
+        })
+    }
+
+    #[test]
+    fn a_held_reservation_gives_the_card_and_the_name_from_inside_the_folder() {
+        let f = fixture();
+        let card = f.reserve("active", "held", &f.wt, Some("spec/20261119-demo-work"));
+        assert_eq!(f.label(&f.wt), label(card, "demo-work"));
+        // From a folder inside the worktree, the way `workspace.current_dir` often is.
+        assert_eq!(f.label(&f.wt.join("src")), label(card, "demo-work"));
+    }
+
+    #[test]
+    fn only_a_reservation_that_still_holds_the_folder_counts() {
+        for (status, counts) in [
+            ("held", true),
+            ("held_for_review", true),
+            ("expired_candidate", true),
+            ("released", false),
+            ("reclaimed", false),
+        ] {
+            let f = fixture();
+            let card = f.reserve("active", status, &f.wt, Some("spec/20261119-demo-work"));
+            let want = counts.then(|| WorktreeLabel {
+                card,
+                name: "demo-work".into(),
+            });
+            assert_eq!(f.label(&f.wt), want, "status {status}");
+        }
+    }
+
+    #[test]
+    fn two_cards_holding_one_folder_give_the_lowest_number() {
+        let f = fixture();
+        let first = f.reserve("active", "held", &f.wt, Some("spec/20261119-first"));
+        let _second = f.reserve("active", "held", &f.wt, Some("spec/20261119-second"));
+        assert_eq!(f.label(&f.wt), label(first, "first"));
+        // The lowest number among the ones that hold, not among all.
+        let g = fixture();
+        let _gone = g.reserve("ready", "released", &g.wt, Some("spec/20261119-gone"));
+        let kept = g.reserve("active", "held", &g.wt, Some("spec/20261119-kept"));
+        assert_eq!(g.label(&g.wt), label(kept, "kept"));
+    }
+
+    /// REQ-3 against the order the rows were written in: the lower card is reserved AFTER the
+    /// higher one, so only the ordering of the read puts it first.
+    #[test]
+    fn the_lowest_card_wins_even_when_it_was_reserved_last() {
+        let f = fixture();
+        let low = f.add_card();
+        let high = f.add_card();
+        assert!(low < high);
+        f.reserve_card(high, f.wt.to_str().unwrap(), "spec/20261119-high");
+        f.reserve_card(low, f.wt.to_str().unwrap(), "spec/20261119-low");
+        assert_eq!(f.label(&f.wt), label(low, "low"));
+    }
+
+    /// A recorded path that is not absolute names no folder from here: read against this
+    /// process's working directory it could name the session's folder by accident. The path
+    /// below is relative and, from this process, does resolve to the worktree.
+    #[test]
+    fn a_relative_recorded_path_never_matches() {
+        let f = fixture();
+        let here = std::env::current_dir().unwrap();
+        let mut relative = PathBuf::new();
+        for _ in here.components().skip(1) {
+            relative.push("..");
+        }
+        relative.push(f.wt.strip_prefix("/").unwrap());
+        assert!(relative.is_relative());
+        assert_eq!(
+            std::fs::canonicalize(&relative).unwrap(),
+            f.wt,
+            "the probe path resolves to the folder from this process"
+        );
+        let (by_walk, by_dot) = (f.add_card(), f.add_card());
+        f.reserve_card(
+            by_walk,
+            relative.to_str().unwrap(),
+            "spec/20261119-elsewhere",
+        );
+        f.reserve_card(by_dot, ".", "spec/20261119-dot");
+        assert_eq!(f.label(&f.wt), None);
+        // An absolute entry of a higher card is still found past the relative ones.
+        let other = f.add_card();
+        f.reserve_card(other, f.wt.to_str().unwrap(), "spec/20261119-real");
+        assert_eq!(f.label(&f.wt), label(other, "real"));
+    }
+
+    /// The read stops at once when the budget runs out, even between two rows: the first row
+    /// names another folder, the second would match.
+    #[test]
+    fn the_budget_is_asked_before_every_row() {
+        let f = fixture();
+        let elsewhere = f.wt.parent().unwrap().join("demo-2-other");
+        std::fs::create_dir_all(&elsewhere).unwrap();
+        let first = f.add_card();
+        let second = f.add_card();
+        f.reserve_card(first, elsewhere.to_str().unwrap(), "spec/20261119-other");
+        f.reserve_card(second, f.wt.to_str().unwrap(), "spec/20261119-demo-work");
+        let ledger = crate::ledger::open::open_read_only_within(
+            &f.home,
+            "demo",
+            std::time::Duration::from_millis(50),
+        )
+        .unwrap();
+        let asked = std::cell::Cell::new(0);
+        let after_one_row = || {
+            asked.set(asked.get() + 1);
+            asked.get() > 1
+        };
+        assert_eq!(
+            holding_card(ledger.conn(), &f.wt, &f.wt, &after_one_row),
+            None
+        );
+        assert_eq!(asked.get(), 2, "asked again before the second row");
+        let never = || false;
+        assert_eq!(
+            holding_card(ledger.conn(), &f.wt, &f.wt, &never).map(|(c, _)| c),
+            Some(second)
+        );
+    }
+
+    /// The folder the session works in: `workspace.current_dir`, else `cwd`, else none.
+    #[test]
+    fn the_session_folder_is_current_dir_then_cwd() {
+        let parse = |json: &str| serde_json::from_str::<Input>(json).unwrap();
+        let dir = |json: &str| session_dir(&parse(json));
+        assert_eq!(
+            dir(r#"{"cwd":"/c","workspace":{"current_dir":"/w"}}"#),
+            Some(PathBuf::from("/w"))
+        );
+        assert_eq!(
+            dir(r#"{"cwd":"/c","workspace":{"current_dir":""}}"#),
+            Some(PathBuf::from("/c"))
+        );
+        assert_eq!(
+            dir(r#"{"cwd":"/c","workspace":{}}"#),
+            Some(PathBuf::from("/c"))
+        );
+        assert_eq!(dir(r#"{"cwd":"/c"}"#), Some(PathBuf::from("/c")));
+        assert_eq!(
+            dir(r#"{"workspace":{"current_dir":"/w"}}"#),
+            Some(PathBuf::from("/w"))
+        );
+        assert_eq!(dir(r#"{"cwd":"","workspace":{"current_dir":""}}"#), None);
+        assert_eq!(dir("{}"), None);
+    }
+
+    /// A name nothing visible is left of gives way to the folder name, and invisible format
+    /// characters (zero-width, bidirectional marks) are dropped like control characters.
+    #[test]
+    fn a_name_with_nothing_visible_left_falls_to_the_folder_name() {
+        let b = |slug: &str| Some(format!("spec/20261119-{slug}"));
+        assert_eq!(
+            label_name(b("\u{1b}\u{7}").as_deref(), "demo-1-hooks", "demo", 1),
+            "hooks"
+        );
+        assert_eq!(
+            label_name(b("\u{202e}\u{200b}").as_deref(), "demo-1-hooks", "demo", 1),
+            "hooks"
+        );
+        assert_eq!(
+            label_name(
+                b("a\u{202e}b\u{200f}c\u{feff}").as_deref(),
+                "demo-1",
+                "demo",
+                1
+            ),
+            "abc"
+        );
+        // Nothing visible in either source: no name, the card alone.
+        assert_eq!(
+            label_name(b("\u{7}").as_deref(), "demo-1-\u{202e}", "demo", 1),
+            ""
+        );
+    }
+
+    #[test]
+    fn a_reservation_without_a_branch_takes_the_name_from_the_folder() {
+        let f = fixture();
+        let card = f.reserve("active", "held", &f.wt, None);
+        // The folder is `demo-1-work` and the card number is 1: `work` is left.
+        assert_eq!(f.label(&f.wt), label(card, "work"));
+    }
+
+    #[test]
+    fn no_reservation_for_the_folder_gives_no_label() {
+        let f = fixture();
+        assert_eq!(f.label(&f.wt), None, "an empty ledger");
+        let other = f.wt.parent().unwrap().join("demo-2-other");
+        std::fs::create_dir_all(&other).unwrap();
+        std::fs::write(other.join(".git"), "gitdir: nowhere\n").unwrap();
+        f.reserve("active", "held", &other, Some("spec/20261119-other"));
+        assert_eq!(f.label(&f.wt), None, "a reservation of another folder");
+        // A folder with no `.git` entry anywhere above it is not a worktree.
+        let bare = f._tmp.path().join("bare");
+        std::fs::create_dir_all(&bare).unwrap();
+        assert_eq!(f.label(&bare), None);
+    }
+
+    #[test]
+    fn a_ledger_that_cannot_be_read_gives_no_label() {
+        let f = fixture();
+        f.reserve("active", "held", &f.wt, Some("spec/20261119-demo-work"));
+        // No HOME, no ledger to read.
+        let no_home = Context::for_test(&[], None);
+        assert_eq!(worktree_label(&f.project, &f.wt, &no_home), None);
+        // A project with no profile.
+        assert_eq!(
+            worktree_label(&f.project.join("absent"), &f.wt, &f.ctx()),
+            None
+        );
+        // A budget that is spent.
+        let mut spent = f.ctx();
+        spent.deadline = Some(Instant::now() - Duration::from_millis(1));
+        assert_eq!(worktree_label(&f.project, &f.wt, &spent), None);
+        // With time left the same ledger reads.
+        let mut left = f.ctx();
+        left.deadline = Some(Instant::now() + Duration::from_secs(60));
+        assert!(worktree_label(&f.project, &f.wt, &left).is_some());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_folder_spelled_through_a_link_matches_in_either_spelling() {
+        let f = fixture();
+        let link = f.wt.parent().unwrap().join("link-to-work");
+        std::os::unix::fs::symlink(&f.wt, &link).unwrap();
+        // The session is in the folder through the link, the reservation holds the real path.
+        let card = f.reserve("active", "held", &f.wt, Some("spec/20261119-demo-work"));
+        assert_eq!(f.label(&link.join("src")), label(card, "demo-work"));
+        // The reservation holds the link spelling, the session is in the real folder.
+        let g = fixture();
+        let glink = g.wt.parent().unwrap().join("link-to-work");
+        std::os::unix::fs::symlink(&g.wt, &glink).unwrap();
+        let gcard = g.reserve("active", "held", &glink, Some("spec/20261119-demo-work"));
+        assert_eq!(g.label(&g.wt.join("src")), label(gcard, "demo-work"));
+    }
+
+    #[test]
+    fn reading_the_label_leaves_the_ledger_and_the_home_as_they_were() {
+        let f = fixture();
+        f.reserve("active", "held", &f.wt, Some("spec/20261119-demo-work"));
+        let ledger_file = crate::ledger::ledger_path(&f.home, "demo").unwrap();
+        let before = std::fs::read(&ledger_file).unwrap();
+        let listing = |dir: &Path| {
+            let mut all = Vec::new();
+            let mut stack = vec![dir.to_path_buf()];
+            while let Some(d) = stack.pop() {
+                for e in std::fs::read_dir(&d).unwrap() {
+                    let p = e.unwrap().path();
+                    all.push(p.clone());
+                    if p.is_dir() {
+                        stack.push(p);
+                    }
+                }
+            }
+            all.sort();
+            all
+        };
+        let tree = listing(&f.home);
+        assert!(f.label(&f.wt).is_some());
+        assert_eq!(std::fs::read(&ledger_file).unwrap(), before);
+        assert_eq!(listing(&f.home), tree, "no file or folder made in the HOME");
     }
 }
