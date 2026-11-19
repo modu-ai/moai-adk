@@ -31,6 +31,7 @@ created: 2026-11-20
 - REQ-6: The `work_flow` row shall come before the `versioning` rows in the bank. · failure: none — the row order is checked by a test.
 - REQ-7: The text of the three internal reference files shall name no development tool of this repository, no card number, no Issue number, no dated user-decision citation, and no option for a decision provider, Kiro or Cursor. · failure: none — a scan test lists the forbidden shapes and reads the three files.
 - REQ-8: The `autonomy` row shall state what is asked first in its own words, without pointing at a case number of another file. · failure: none — the row text is checked by a test.
+- REQ-9: The question bank shall not ask the project's purpose; the profile's purpose is drafted from the files and shown in the plan. · failure: none — the row ids and the sentence are checked by a test.
 
 ## Acceptance
 
@@ -42,7 +43,9 @@ created: 2026-11-20
   verify: `cargo test --locked --offline --test question_bank_generic versioning_options_follow_the_decided_order_and_come_after_the_work_flow`
 - AC-4 (REQ-7, REQ-8): 세 파일에 금지 모양이 하나도 없고 `autonomy` 행이 다른 파일의 case 번호를 가리키지 않아요.
   verify: `cargo test --locked --offline --test question_bank_generic the_bank_files_name_no_card_issue_or_repository_tool`
-- AC-5 (REQ-1…REQ-8): 이웃 검사.
+- AC-5 (REQ-9): 은행에 `purpose` 행이 없고, 프로필의 `purpose` 는 묻지 않으며 README·매니페스트·코드 배치에서 초안을 써서 계획에 보인다는 문장이 있어요.
+  verify: `cargo test --locked --offline --test question_bank_generic the_bank_does_not_ask_the_purpose`
+- AC-6 (REQ-1…REQ-9): 이웃 검사.
   verify: `cargo test --locked --offline --test agent_defs_package`; `cargo test --locked --offline --test update_route`; `cargo test --locked --offline --test question_bank_hosts`; `cargo test --locked --offline --test codex_question_tool`; `cargo test --locked --offline --test core_rules_2876`; `cargo test --locked --offline --test spec_branch_name_first`; `cargo test --locked --offline --test ac_command_lint`; `cargo test --locked --offline --test doc_references`; `python3 -m unittest tests.source_manifest_test tests.skill_references_test`
 
 ## Scope
@@ -70,7 +73,9 @@ created: 2026-11-20
 | --- | --- | --- | --- |
 | D-1 | 질문 은행의 언어는 세 행이 묻고, 나머지 다섯 항목은 영어로 정하고 묻지 않아요 | 사용자 결정 (1): 대화·커밋·문서만 묻고 나머지는 영어; AGENTS.md 는 대화 언어를 따라요 | 행 셋을 지워요 |
 | D-2 | HeadVer 는 두 번째 선택지로 두고 m-flow 일 때만 "suggested with m-flow" 로 표기해요; SemVer 가 첫째이고 권장이에요 | 사용자 결정 (7) | 표기 문장을 지워요 |
-| D-3 | OMP 줄은 이 SPEC 에서 지우지 않아요 | `tests/question_bank_hosts.rs`·`tests/codex_question_tool.rs` 가 OMP 줄을 고정하고, OMP 를 지우는 카드가 그 시험을 같이 바꿔요 | 그 카드가 지워요 |
+| D-3 | `purpose` 질문은 뺏지만 프로필의 `purpose` 는 필수 필드(`src/profile.rs`)라서 파일에서 초안을 써 넣고 단계 4 의 계획에서 사용자가 보고 고치게 해요 | 사용자 결정 (10); 프로필 `purpose: String` 은 필수 | 행과 문장을 되돌려요 |
+| D-4 | work_flow 선택지의 trunk-based → gitlab-flow 는 이 SPEC 에서 하지 않아요 | 사용자 결정 (9); 프로필(`WORK_FLOWS`)이 gitlab-flow 를 거절해서 글만 바꾸면 거절될 값을 권해요; 코드와 `agent_defs_package` 의 핀이 같이 바뀌어야 해요(결정 모델 삭제 카드가 그 시험 파일을 쥐고 있어요) | 별도 조각이 코드·글·핀을 함께 바꿔요 |
+| D-5 | OMP 줄은 이 SPEC 에서 지우지 않아요 | `tests/question_bank_hosts.rs`·`tests/codex_question_tool.rs` 가 OMP 줄을 고정하고, OMP 를 지우는 카드가 그 시험을 같이 바꿔요 | 그 카드가 지워요 |
 
 ## Result
 

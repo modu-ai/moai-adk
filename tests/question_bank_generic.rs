@@ -72,6 +72,21 @@ fn the_bank_has_no_decision_model() {
 }
 
 #[test]
+fn the_bank_does_not_ask_the_purpose() {
+    assert!(
+        !ids().iter().any(|i| i == "purpose"),
+        "the bank still has a purpose row"
+    );
+    let text = interview();
+    let sentence = "The profile's `purpose` is not asked: write the one-line draft from the README, the manifests and the code layout";
+    assert!(text.contains(sentence), "interview.md lacks: {sentence}");
+    assert!(
+        text.contains("the user sees it in the plan and can change it there"),
+        "interview.md must say the user can change the draft in the plan"
+    );
+}
+
+#[test]
 fn the_bank_asks_three_language_rows_and_fixes_the_rest_to_english() {
     for id in [
         "language_conversation",
