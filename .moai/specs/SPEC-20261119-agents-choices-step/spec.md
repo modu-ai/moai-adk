@@ -35,12 +35,13 @@ parent: SPEC-20261119-agents-conflict-choices
 - REQ-9: The step shall carry no `choices` when `AGENTS.md` has no missing-block conflict and the plan has no `claude_shadow`.
 - REQ-10: The step shall keep its `state` and its own `apply` as they were without the choices.
 - REQ-11: The agents request and plan schemas shall describe `picks`, `claude_shadow` and the `skip` action.
+- REQ-12 (REQ-7): IF the plan made with a choice's picks still has a conflict row, THEN the step shall leave that choice out of `preview.choices`.
 
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5): `generation-plan` 에 picks 를 주면 AGENTS.md 행이 `append`/`skip` 으로 계획되고, 계획의 digest 가 선택 없는 계획과 다르며, `generation-apply` 가 그 계획의 picks 로 적용해요. 알 수 없는 id 는 `invalid_input` 이고 아무것도 쓰지 않아요. 선택 없는 요청의 JSON 에 `picks` 가 없어요.
   verify: `cargo test --locked --offline --test agents_choices_step_cli generation_`
-- AC-2 (REQ-6, REQ-7, REQ-10): 표식 없는 AGENTS.md 의 `project-update-plan` 이 `generation` 을 `conflict`·`apply` 없음으로 두고 선택지 둘을 주며, 각 선택지의 명령을 실제로 실행하면 AGENTS.md 의 앞 바이트를 지키고 표식 한 쌍을 더하거나(append) 그대로 두고(skip) 다음 계획이 `unchanged` 예요.
+- AC-2 (REQ-6, REQ-7, REQ-10, REQ-12): 표식 없는 AGENTS.md 의 `project-update-plan` 이 `generation` 을 `conflict`·`apply` 없음으로 두고 선택지 둘을 주며, 각 선택지의 명령을 실제로 실행하면 AGENTS.md 의 앞 바이트를 지키고 표식 한 쌍을 더하거나(append) 그대로 두고(skip) 다음 계획이 `unchanged` 예요. 다른 파일의 충돌이 남아 적용할 수 없는 선택지는 목록에서 빠져요.
   verify: `cargo test --locked --offline --test agents_choices_step_cli choices_`
 - AC-3 (REQ-8, REQ-9): CLAUDE.md 가 있고 AGENTS.md 를 안 부르면 import 선택지가 있고, 실행하면 한 줄만 더해요. 충돌도 그림자도 없으면 `choices` 가 없어요.
   verify: `cargo test --locked --offline --test agents_choices_step_cli claude_`

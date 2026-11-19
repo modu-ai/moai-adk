@@ -407,6 +407,68 @@ fn choices_the_skip_command_keeps_agents_md_and_applies_the_rest() {
     assert_eq!(choice_ids(again), ["append-managed", "skip-conflicts"]);
 }
 
+// REQ-6: only a missing block is offered the append and the skip; an edited block is not.
+#[test]
+fn choices_an_edited_block_conflict_offers_no_append_or_skip() {
+    let fx = Fx::new();
+    fx.with_language(&["claude", "codex"], Some("en"));
+    let plan = fx.update_plan();
+    assert_eq!(fx.apply(step(&plan, "generation"))["ok"], json!(true));
+    // A line typed inside the managed block, then a profile that renders it differently.
+    let text = fx.read("AGENTS.md");
+    let end = "<!-- moai:managed:end";
+    assert_eq!(text.matches(end).count(), 1, "{text}");
+    fx.write(
+        "AGENTS.md",
+        &text.replacen(end, &format!("hand edit\n{end}"), 1),
+    );
+    fx.with_language(&["claude", "codex"], Some("ko"));
+    let plan = fx.update_plan();
+    let generation = step(&plan, "generation");
+    assert_eq!(generation["state"], "conflict", "{generation}");
+    let detail = generation["preview"]["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|f| f["path"] == "AGENTS.md")
+        .unwrap()["detail"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    assert!(!detail.contains("missing"), "{detail}");
+    assert!(
+        generation["preview"].get("choices").is_none(),
+        "{generation}"
+    );
+}
+
+// REQ-12: a choice that could not be applied is not offered.
+#[test]
+fn choices_a_choice_whose_own_plan_still_conflicts_is_left_out() {
+    let (fx, _) = Fx::conflict(&["claude", "codex"]);
+    // A hand edit of a generated workflow file: its own conflict stays whatever is picked for
+    // AGENTS.md, so no command printed here could be applied.
+    let workflow = ".moai/workflows/project/SKILL.md";
+    let edited = format!("{}\nhand edit\n", fx.read(workflow));
+    fx.write(workflow, &edited);
+    let plan = fx.update_plan();
+    let generation = step(&plan, "generation");
+    assert_eq!(generation["state"], "conflict", "{generation}");
+    let conflicts: Vec<&str> = generation["preview"]["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|f| f["action"] == "conflict")
+        .map(|f| f["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(conflicts, ["AGENTS.md", workflow], "{generation}");
+    assert!(
+        generation["preview"].get("choices").is_none(),
+        "{generation}"
+    );
+    assert_eq!(fx.read(workflow), edited, "a preview writes nothing");
+}
+
 // REQ-9: nothing to choose, no key.
 #[test]
 fn choices_are_absent_without_a_conflict_and_without_a_shadow() {
