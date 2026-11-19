@@ -77,4 +77,12 @@ This SPEC is built in two slices. Slice A (N2, N3, N6) touches `src/card/dispatc
 
 ## Result
 
-(filled when the slices are built)
+Slice A (N2, N3, N6), built from the local integration tip e84d7c46ce. RED first: commit e93897b421 (4 tests, all failing for the intended reason: a separator was accepted, a variant was added, the reason kept its blanks, reclaim reached the lease check). Green: commit b1bd9ea3d4. Slice B (`--generation`, N1) is not built: `src/ops/card.rs` is reserved by C-125; revision 2 will add its requirement, acceptance line and test.
+
+- AC-1: met - `line_separators_are_refused_in_a_reason_and_a_scope_entry` (U+2028 and U+2029, inner, leading and trailing, in a reason and in an added pattern of a held card: `invalid_input`; `card add --scope` and `card take --scope` too; the reservation rows are as before and no `card.scope` event exists) and `a_reclaim_reason_with_a_line_separator_is_invalid_input`. Mutants M1 (scope check off) and M2 (reason check off) killed.
+- AC-2: met - `a_reason_is_kept_without_its_surrounding_blanks` (spaces, U+3000 and NBSP around the reason: the answer and the event hold the bare text). Mutant M3 (stored untrimmed) killed.
+- AC-3: met - `a_case_variant_is_not_a_new_pattern` (`Apps/Web/` next to `apps/web/`, `libs/Util/` with `libs/util/` in one call, and `Other/Apps/Web/` after `other/apps/web/` was added: `invalid_input` naming both spellings, every row unchanged; `other/apps/web/` is added). Mutants M4 (no folding) and M5 (no check among added patterns) killed.
+- AC-4: met - `spec_cli the_repository_specs_pass_check` (see the checks below); `.moai/specs/SPEC-20261119-card-scope-widen/spec.md` says `status: approved` and its Scope already names `tests/card_dispatch_cli.rs` (added by the audit repair b205de81ea).
+- AC-5: met - `card_scope_widen_followup_cli` 4, `card_scope_widen_cli` 9, `card_dispatch_cli` 25, `card_reclaim_cli` 16, `card_work_cli` 25, `ledger_reservation` 28 and the library tests of `reservation` 14 all passed.
+
+Not changed: `src/card/input.rs` (reserved by C-122; the separator check sits in `dispatch.rs`, D-2 and D-3), `src/ops/card.rs`, `src/card/command.rs`. The help text of `card scope` does not name the three rules (it lives in `src/ops/card.rs`); the operations document does.
