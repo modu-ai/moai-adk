@@ -5,8 +5,10 @@ use std::path::PathBuf;
 /// Detect the project's facts
 ///
 /// Detect the project's facts for the `/moai project` route (#2496): new or existing,
-/// manifests, languages, language servers, configured MCP server names, databases. Reads
-/// only and writes nothing; returns the profile with `detected` set for `project-plan`.
+/// manifests (the root's by name and, to a bounded depth, ones below the root by path, C-61),
+/// the tools those names imply, languages, language servers, configured MCP server names,
+/// databases. Reads only and writes nothing; returns the profile with `detected` set for
+/// `project-plan`.
 #[derive(clap::Args)]
 pub struct Args {
     project: PathBuf,
