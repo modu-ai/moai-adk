@@ -84,9 +84,12 @@ const SRC_ORCA_FILES: [&str; 10] = [
 
 /// The only places in the skill package and the agent files that name Orca. The research
 /// agent lists the adapter among the documents it reads (checked below to be that line only).
-const PACKAGE_ORCA_FILES: [&str; 4] = [
+/// `rule-history.md` (C-103) is the record of the rule sentences the two modes carried: it quotes
+/// them word for word, so it names Orca; it holds no `orca` command line and no step of its own.
+const PACKAGE_ORCA_FILES: [&str; 5] = [
     "agents/research.md",
     "skills/moai/references/adapters/orca.md",
+    "skills/moai/references/rule-history.md",
     "skills/moai/workflows/mode-agent.md",
     "skills/moai/workflows/mode-leader.md",
 ];
