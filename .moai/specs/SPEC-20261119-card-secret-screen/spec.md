@@ -2,7 +2,7 @@
 id: SPEC-20261119-card-secret-screen
 title: "Card text screen refuses secret-named assignments on note, title, body and criterion text"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-19
 ---
 
@@ -25,6 +25,8 @@ created: 2026-11-19
 - REQ-2: The card text screen shall let an assignment through, with or without leading dashes, when no piece of its name is one of those words and its value has no credential shape.
 - REQ-3: The card text screen shall refuse a word whose value has a credential shape that `redact::redact_outgoing` names, whatever the assignment name is.
 - REQ-4: The card text screen shall let a run of lower-case words joined by hyphens after the `sk` prefix through, as the note screen does today.
+- REQ-9: The card text screen shall read the name of an assignment as the word was written, so an `sk` run that holds a secret piece and stands before an equals sign is refused.
+- REQ-10: The card text screen shall look at the text after each equals sign, colon and comma inside a word as a value of its own, so a credential shape is refused after a plain name too.
 - REQ-5: Each text field that the commands `card add` or `card note` or `card criterion` store shall pass through the one function `secret_words` in `src/card/input.rs`, the fields being the title and the body and each `--ac` and the note text and `--ref` and `--evidence` and `--reason`.
 - REQ-6: A refused text shall give the refusal kind `invalid_input`, name the field, count each refused word once and never repeat the text.
 - REQ-7: The command `card add` shall run the screen before it writes, so a refused add leaves the ledger as it was.
@@ -46,6 +48,12 @@ created: 2026-11-19
   verify: `cargo test --locked --offline --test card_cli secret_screen_leaves_stored_rows_alone`
 - AC-8 (REQ-5): `card criterion-add --ac` 도 같은 함수(`input::criterion_texts`)를 거쳐 비밀 이름 낱말을 거절하고 기준 글을 하나도 더하지 않아요.
   verify: `cargo test --locked --offline --test card_cli secret_screen_covers_criterion_add`
+- AC-9 (REQ-9): 에스케이 접두에 하이픈 소문자 낱말을 이은 이름의 조각 가운데 비밀 낱말이 있고 바로 뒤가 등호이면(대시 있음·없음, 비밀 낱말이 첫째·둘째·셋째 조각, 빈 값) 네 표면 모두 거절되고, 등호 없는 덩어리와 비밀 조각 없는 이름의 대입은 통과해요.
+  verify: `cargo test --locked --offline --test card_cli secret_screen_refuses_secret_names_behind_an_sk_prefix`; `cargo test --locked --offline --lib secret_screen_reads_sk_names_before_they_are_blanked`
+- AC-10 (REQ-10): 클라우드 키 식별자 모양, 숫자·대문자가 섞인 에스케이 값, 점 셋 토큰 모양이 평범한 이름 뒤 등호·콜론·쉼표 뒤(괄호 안 포함)에 와도 네 표면에서 거절되고, 콜론·쉼표·등호가 든 평범한 문장 12개는 통과해요.
+  verify: `cargo test --locked --offline --test card_cli secret_screen_refuses_credential_shapes_after_any_separator`; `cargo test --locked --offline --lib secret_screen_sees_values_after_a_separator`
+- AC-11 (REQ-5, REQ-9, REQ-10): 노트 참조와 기준의 증거·사유도 같은 화면을 지나 비밀 이름 대입과 구분자 뒤 값 모양을 거절하고 필드 이름을 한 번 말해요.
+  verify: `cargo test --locked --offline --test card_work_cli the_reference_evidence_and_reason_pass_the_secret_screen`
 - AC-7 (REQ-1, REQ-2): 기존 카드 125장의 글에서 새 규칙이 걸릴 개수를 읽기 전용으로 센 값이 Result 에 있어요.
   manual: 카드 노트 3152 의 수치(기준 글 0/268, 제목 1/125, 본문 3/113, 노트 5/3147)를 Result 에 옮겨 적고, 구현 뒤 같은 스크립트로 구현된 규칙을 다시 센 값을 한 줄 더해요.
 
@@ -80,6 +88,8 @@ created: 2026-11-19
 | D-4 | 검사 함수는 `src/card/input.rs` 에 두고 `work.rs` 가 부른다 | 입력 규칙은 `input.rs` 에 모여 있어요; `work.rs` 는 이미 `input` 을 써요; 쓰기 범위 안 | 함수를 `work.rs` 로 옮기기 |
 | D-5 | 거절은 낱말 단위로 센다 | 거절문의 "값 하나가 2" 표시 오류 수리(note 3106 5절) | 글 단위로 세기 |
 | D-6 | 이미 있는 행은 다시 검사하지 않는다 | 결정 3143("기존 행은 고치지 않음") | 별도 마이그레이션 카드 |
+| D-7 | 이름 검사는 에스케이 이름을 지우기 전의 원문 낱말에 하고, 값 모양 검사만 지운 낱말에 한다 | 감사 B1(노트 3297): 지우기가 이름 조각을 없애 결정 3143 의 규칙이 구멍났어요; 등호 없는 덩어리는 여전히 이름이라 통과해요 | 이름 검사를 지운 낱말에 |
+| D-8 | 값 모양은 낱말 안의 등호·콜론·쉼표 뒤마다 따로 본다(공백은 낱말 나눔이 이미 해요) | 감사 N1(노트 3297): 공유 화면은 접두 모양을 낱말 맨 앞에서만 봐요; REQ-3 은 이름과 상관없이라고 했어요 | 구분자 목록 줄이기 |
 
 ## Result
 
@@ -93,4 +103,10 @@ created: 2026-11-19
 - 변이: 5개를 하나씩 적용해 새 시험이 잡는지 봤어요(모두 사살, 복원 뒤 `git status` 깨끗): (1) `secret` 조각을 목록에서 뺌 → `secret_screen_name_pieces_decide` 실패, (2) `api`+`key` 쌍 규칙을 무력화 → 같은 시험 실패, (3) 빈 값 허용 → `secret_screen_refuses_secret_named_assignments_on_every_surface` 실패, (4) 낱말 수를 최대 1로 → 단위 2개와 `secret_screen_counts_each_word_once` 실패, (5) 소문자 하이픈 sk 이름 예외 끄기 → `secret_screen_passes_plain_assignments_and_names` 와 `secret_screen_lets_plain_text_and_hyphenated_sk_names_through` 실패.
 - AC-8: met — 로컬 v2026.11.0(C-108 포함)을 이 가지에 병합한 뒤 `cargo test --locked --offline --test card_cli secret_screen_covers_criterion_add` 통과: 둘째 기준 글에 token 이름의 등호 값 꼴이 든 `card criterion-add` 가 "criterion 2 has 1 word" 로 거절되고 기준 글 행은 0개, 평범한 글은 `added: [1]`. 병합 충돌은 `src/card/input.rs` 한 곳(공용 `criterion_texts` 안에 검사를 둠). 병합 뒤 `--lib` 1495·`card_cli` 20·`card_work_cli` 25·`card_criterion_add_cli` 7·`card_reclaim_cli` 16·`card_dispatch_cli` 25 통과.
 - 따로 남긴 것(범위 밖): `card reclaim --reason`(`src/card/dispatch.rs:389-391`)은 아직 예전 공유 화면을 직접 불러요 — 이 조각의 화면과 다른 규칙이에요(후속 후보).
+- 수리(감사 FAIL, 노트 3297, 수리 head 는 노트 참조):
+  - AC-9: met — 수리 전 RED(두 시험이 거절을 기대하는 곳에서 실패)를 보고 `input.rs` 를 고친 뒤 `--test card_cli secret_screen_refuses_secret_names_behind_an_sk_prefix` 와 `--lib secret_screen_reads_sk_names_before_they_are_blanked` 통과.
+  - AC-10: met — `--test card_cli secret_screen_refuses_credential_shapes_after_any_separator` 와 `--lib secret_screen_sees_values_after_a_separator` 통과; 평범한 문장 12개(콜론·쉼표·등호 포함)가 네 표면에서 계속 통과해요.
+  - AC-11: met — `--test card_work_cli the_reference_evidence_and_reason_pass_the_secret_screen` 통과(노트 참조·증거·사유 각 6개 입력, 필드 이름 한 번).
+  - 수리 변이 4개(모두 사살, 복원 뒤 `git status` 깨끗): (1) 이름 검사를 지운 낱말에 되돌림 → `secret_screen_reads_sk_names_before_they_are_blanked` 실패, (2) 구분자 뒤 검사를 끔 → `secret_screen_sees_values_after_a_separator` 실패, (3) 쉼표를 구분자에서 뺌 → 같은 시험 실패, (4) 콜론을 뺌 → 같은 시험 실패.
+  - 기존 카드 글 재측정(수리한 head 의 `moai-cli`, 임시 HOME·임시 장부, `count_after.py`, 2026-11-19): 기준 글 0/287, 제목 1/130, 본문 3/118, 노트 7/3301 — 수리 전(0/268, 1/125, 3/113, 7/3205)과 같은 카드의 같은 글만 걸려요(걸리는 카드: 3, 22, 32, 68, 122).
 - 돌리지 않은 것: 전체 `cargo test`, CI, 실제 HOME, 점·카멜 이름.
