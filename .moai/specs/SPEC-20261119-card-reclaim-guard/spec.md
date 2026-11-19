@@ -90,3 +90,13 @@ registered_at·mode 뿐, 2026-11-19 측정) 카드 보유자(세션 UUID)를 생
   (status·rev-list), 쓰지 않으니 심링크 따라가기의 쓰기 위험이 없어요.
 - worktree 게이트는 예약 기록과 실제 폴더 사이의 누수만 막아요: 보유자가 게이트 뒤에서 계속 일하면
   원장은 못 막아요(생존 게이트의 후속 근거).
+
+## Result
+
+구현 커밋 `0f83ce0acf5000d0a3de9ffb591666c6b3aeb9a2`(SPEC 커밋 `950dda3ab5`·`976f7f4922` 위). 시험·변이·검사는 heavy-slot 안에서 이 worktree 의 `target/` 로 돌렸어요(2026-11-19). RED 는 agent-10 이 남긴 `target/red-guard.log` 에서 읽었어요: `ReclaimLimit` 가 없어 E0599, 세 번 거절 시험이 없어 실패 — 내가 다시 돌린 것이 아니에요. 그 RED 시험을 GREEN 으로 가져오다 구현 결함 하나와 시험 준비 결함 둘이 드러나 고쳤어요: (1) 게이트가 `git status --porcelain` 의 출력(변경 줄 목록)을 숫자 하나로 읽어 항상 "읽을 수 없음"으로 거절했어요 — 이제 `git_output` 이 출력을 문자열로 받아 줄 수로 세요; (2) 시험의 `ended_card_at` 이 범위 `apps/bo/` 와 `end_lease(1)` 로 고정돼 한 시험에서 카드를 둘 만들면 범위가 겹치거나 둘째 임대가 안 끝났어요; (3) `git_worktree` 가 같은 폴더 `wt` 를 재사용해 둘째 호출이 첫째의 상태를 물려받았어요.
+
+- AC-1: met — `cargo test --locked --offline --test card_reclaim_cli`(필터 없이 전체) 14 통과 중 `reclaim_gates_refuse_a_worktree_with_uncommitted_or_unpushed_work`(미커밋 한 파일과 미push 한 커밋, 개수와 경로가 메시지에 있고 모든 행이 그대로), `reclaim_gates_proceed_with_an_absent_or_clean_worktree`, `reclaim_gates_refuse_when_git_cannot_be_read`. 변이 G1(미커밋 개수를 항상 0 으로) 이 `reclaim_gates_refuse_a_worktree_with_uncommitted_or_unpushed_work` 로 KILLED(13 통과 1 실패).
+- AC-2: met — `reclaim_gates_self_reclaim_skips_the_worktree_gate`. 변이 G2(자기 재예약 건너뛰기 삭제) 가 이 시험으로 KILLED(13 통과 1 실패).
+- AC-3: met — `reclaim_limit_refuses_the_fourth_reclaim_on_the_command_line`(명령 줄, `conflict`, 행 그대로)과 `ledger_reservation` 의 `reclaim_limit_refuses_the_fourth_reclaim_and_writes_nothing`(같은 트랜잭션에서 거절, 쓴 것 없음), 28 통과. 변이 G3(한도 `>= 3` 을 `>= 4` 로) 가 명령 줄 시험으로 KILLED; 같은 변이를 `ledger_reservation` 이 잡는지는 이 실행에서 확인하지 못했어요(cargo 가 첫 실패에서 멈췄어요, not_run).
+- AC-4: met — `--no-fail-fast` 한 번에 9개 대상 종료 0: `card_reclaim_cli` 14, `card_work_cli` 24, `card_dispatch_cli` 25, `ledger_reservation` 28, `help_layout` 10, `product_cli` 79, `home_isolation_scan` 18, `git_env_scrub` 3, `ac_command_lint` 5 통과. `cargo fmt --check` 종료 0, `cargo clippy --offline --locked --all-targets -- -D warnings` 종료 0(`green-guard.sh`).
+- 돌리지 않은 것: 전체 `cargo test`(PR 이 없어 리더의 묶음 `ci` 가 인용), 보유자 생존 게이트(후속, 결정 노트 2836).
