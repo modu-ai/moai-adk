@@ -395,12 +395,15 @@ pub fn apply_direct(
     plan_digest: &str,
     permission: &str,
     lane: crate::hooks::LaneLoop,
+    replace: bool,
     path_env: &str,
 ) -> Result<Value> {
     if !crate::contract::permission_reference_ok(permission) {
         return Err("permission reference required".into());
     }
-    let plan = crate::hooks::plan_with(project, host, home, lane.clone())?;
+    // A replacement (`--replace-with-backup`) is gated like any write: the `replace` action is
+    // refused where `create` and `update` are, and keeps its copy of the file under no receipt.
+    let plan = crate::hooks::plan_with_replace(project, host, home, lane.clone(), replace)?;
     crate::hook_legacy::gate_plan(&plan, project, home, path_env)?;
     let host: &'static str = crate::hooks::HOSTS
         .iter()
@@ -408,7 +411,15 @@ pub fn apply_direct(
         .ok_or("unknown hook host; must be claude, codex or omp")?;
     // A plan that is stale, or writes no existing file, is left to the writer: no receipt.
     if plan["action"] != json!("update") || plan["plan_digest"] != json!(plan_digest) {
-        return crate::hooks::apply_with(project, host, home, plan_digest, permission, lane);
+        return crate::hooks::apply_with_replace(
+            project,
+            host,
+            home,
+            plan_digest,
+            permission,
+            lane,
+            replace,
+        );
     }
     let root = crate::hooks::project_root(project, home)?;
     let (id, dir) = new_receipt_dir(&root)?;

@@ -213,9 +213,19 @@ impl Fx {
         out
     }
 
+    /// The project state folder: `.moai` once a project profile was applied (the marker moves the
+    /// state there), `.moai-cli` before.
+    fn state(&self) -> &'static str {
+        if self.exists(".moai") {
+            ".moai"
+        } else {
+            ".moai-cli"
+        }
+    }
+
     /// The backups in the state folder: file names with their bytes, in name order.
     fn backups(&self) -> Vec<(String, Vec<u8>)> {
-        let dir = self.root.join(BACKUPS);
+        let dir = self.root.join(self.state()).join("backups");
         let Ok(rd) = fs::read_dir(&dir) else {
             return Vec::new();
         };
@@ -516,9 +526,12 @@ fn plan_replace_diff_stops_at_forty_lines() {
     let diff = &plan["diff"];
     assert_eq!(diff["removed"].as_array().unwrap().len(), 40, "{plan}");
     assert!(diff["added"].as_array().unwrap().len() <= 40, "{plan}");
-    assert_eq!(diff["truncated"], json!(true), "{plan}");
+    assert_eq!(diff["truncated"]["removed"], json!(true), "{plan}");
     let small = Fx::with_user_file(OMP);
-    assert_eq!(small.plan(OMP, true)["diff"]["truncated"], json!(false));
+    assert_eq!(
+        small.plan(OMP, true)["diff"]["truncated"]["removed"],
+        json!(false)
+    );
 }
 
 // ---- apply ------------------------------------------------------------------------------
@@ -638,7 +651,11 @@ fn apply_replace_without_a_conflict_writes_no_backup() {
         let plan = fx.plan(h, true);
         let (code, v) = fx.apply(h, &digest(&plan), true);
         assert_eq!(code, 0, "{}: {v}", h.name);
-        assert!(!fx.exists(BACKUPS), "{}: a backup folder was made", h.name);
+        assert!(
+            !fx.exists(&format!("{}/backups", fx.state())),
+            "{}: a backup folder was made",
+            h.name
+        );
         assert_eq!(fx.plan(h, false)["action"], json!("unchanged"));
     }
 }
@@ -873,8 +890,8 @@ fn step_without_a_replace_plan_stays_a_bare_conflict() {
     fx.write(CODEX.file, CODEX.user);
     let elsewhere = fx.base.join("elsewhere");
     fs::create_dir_all(&elsewhere).unwrap();
-    fs::create_dir_all(fx.root.join(".moai-cli")).unwrap();
-    std::os::unix::fs::symlink(&elsewhere, fx.root.join(BACKUPS)).unwrap();
+    let state = fx.state();
+    std::os::unix::fs::symlink(&elsewhere, fx.root.join(state).join("backups")).unwrap();
     let plan = fx.update_plan();
     let s = step(&plan, CODEX.step);
     assert_eq!(s["state"], json!("conflict"), "{s}");

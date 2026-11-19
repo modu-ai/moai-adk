@@ -141,10 +141,69 @@ fn hooks_step(
 ) -> HostStep {
     match hooks::plan(root, host, home) {
         Ok(plan) => from_plan(name, host, shown, &plan),
-        // A host file the user edited is kept as it is (the writer never replaces it).
-        Err(e) if e.contains("preservation review") => HostStep::bare(name, "conflict", &e),
+        // A host file the user edited is kept as it is (the writer never replaces it) unless the
+        // user picks the replacement, which keeps a copy first (SPEC-20261120-hooks-conflict-
+        // choices). The replace plan is read-only; without one the step stays a bare conflict.
+        Err(e) if e.contains("preservation review") => {
+            let mut step = HostStep::bare(name, "conflict", &e);
+            let replace =
+                hooks::plan_with_replace(root, host, home, hooks::LaneLoop::Keep, true).ok();
+            if let Some(choices) = hooks_conflict_choices(shown, host, replace.as_ref()) {
+                let replace = replace.unwrap_or_default();
+                step.preview = json!({
+                    "host": host,
+                    "action": "conflict",
+                    "path": replace["path"],
+                    // The two sides are in the step itself: reading the `diff` needs no command.
+                    "diff": replace["diff"],
+                    "choices": choices,
+                });
+            }
+            step
+        }
         Err(e) => HostStep::bare(name, "blocked", &e),
     }
+}
+
+/// What the user can pick when a hook file MoAI does not own is in the way, recommended first.
+/// `keep` has no command; `diff` is the read-only replace plan; `replace` is the apply of that
+/// plan, which keeps a copy of the file first. Without a replace plan (`None`, or one whose
+/// action is not `replace`) there are no choices: the plain plan already refuses, so a `diff`
+/// command would fail for the same reason.
+fn hooks_conflict_choices(shown: &str, host: &str, replace: Option<&Value>) -> Option<Value> {
+    let (replace, digest) = replace
+        .filter(|r| r["action"] == "replace")
+        .and_then(|r| Some((r, r["plan_digest"].as_str()?)))?;
+    let words = |list: &[&str]| list.iter().map(|w| w.to_string()).collect::<Vec<_>>();
+    Some(json!([
+        {
+            "id": "keep", "recommended": true, "writes": false,
+            "label": "keep your hook file as it is; nothing is written",
+            "command": Value::Null,
+        },
+        {
+            "id": "diff", "recommended": false, "writes": false,
+            "label": "show the lines your file has and the ones MoAI would write; nothing is written",
+            "command": {
+                "argv": words(&[
+                    "moai", "hooks-plan", shown, "--host", host, "--replace-with-backup",
+                ]),
+                "stdin": Value::Null,
+            },
+        },
+        {
+            "id": "replace", "recommended": false, "writes": true,
+            "label": "keep a copy of your hook file, then write the MoAI hook set",
+            "backup": replace["backup"]["path"],
+            "command": {
+                "argv": words(&[
+                    "moai", "hooks-apply", shown, "--host", host, "--replace-with-backup",
+                    "--plan-digest", digest, "--permission-reference", PLACEHOLDER,
+                ]),
+                "stdin": Value::Null,
+            },
+        },
+    ]))
 }
 
 fn from_plan(name: &'static str, host: &str, shown: &str, plan: &Value) -> HostStep {
