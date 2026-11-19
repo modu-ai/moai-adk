@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-/// Print the identity trailers for a commit, or list a range by verification kind
+/// Print the identity trailers for a commit
 ///
 /// Print the trailer lines every agent commit carries (user decision U-B 2026-11-17):
 /// `Moai-Spec: <SPEC-id>` and, when the host gives this session's id (`CLAUDE_CODE_SESSION_ID`,
@@ -22,8 +22,8 @@ use std::path::PathBuf;
 /// commits can be counted together. Reads only.
 #[derive(clap::Args)]
 pub struct Args {
-    /// The SPEC the commit belongs to, `SPEC-<yyyymmdd>-<slug>`.
-    #[arg(long, required_unless_present = "list")]
+    /// The SPEC the commit belongs to, `SPEC-<yyyymmdd>-<slug>`
+    #[arg(long)]
     spec: Option<String>,
     /// How the commit was verified: tests, mutants, e2e, smoke or none; repeat or comma-separate.
     #[arg(long, value_delimiter = ',', num_args = 1.., requires = "spec")]
@@ -45,12 +45,17 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     if args.list {
         return moai_cli::trailers::list(&args.dir, &args.range);
     }
-    let spec = args.spec.as_deref().unwrap_or_default();
+    let Some(spec) = args.spec.clone() else {
+        return Err(
+            "trailers needs --spec <SPEC-<yyyymmdd>-<slug>> (or --list for the by-kind listing)"
+                .into(),
+        );
+    };
     let key = std::env::current_dir()
         .ok()
         .and_then(|dir| moai_cli::trailers::worktree_key(&dir));
     moai_cli::trailers::format_verified(
-        spec,
+        &spec,
         &args.verified,
         |name| std::env::var(name).ok(),
         key.as_deref(),
