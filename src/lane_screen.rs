@@ -590,13 +590,9 @@ pub fn read_input(input: &str) -> Screen {
     }
 }
 
-/// The answer of `moai lane-screen`: the state, its evidence row and reason, the reset time of a
-/// usage limit (from the lane's `home` when given), the `pane` object `lane-status` takes, and
-/// the count of non-blank rows. `now` is Unix seconds.
-pub fn report(input: &str, home: Option<&std::path::Path>, now: i64) -> serde_json::Value {
-    use crate::forge::policy::{format_utc, parse_utc};
-    use serde_json::{json, Value};
-
+/// Reads `input` and classifies it: the verdict the input itself settles, else the state of its
+/// rows. Shared by `lane-screen` and `lane-send` so both read a screen the same way.
+pub fn observe(input: &str) -> (Screen, Seen) {
     let screen = read_input(input);
     let non_blank = screen.rows.iter().filter(|r| !clean(r).is_empty()).count();
     let seen = match screen.verdict {
@@ -608,6 +604,17 @@ pub fn report(input: &str, home: Option<&std::path::Path>, now: i64) -> serde_js
         },
         None => classify(&screen.rows),
     };
+    (screen, seen)
+}
+
+/// The answer of `moai lane-screen`: the state, its evidence row and reason, the reset time of a
+/// usage limit (from the lane's `home` when given), the `pane` object `lane-status` takes, and
+/// the count of non-blank rows. `now` is Unix seconds.
+pub fn report(input: &str, home: Option<&std::path::Path>, now: i64) -> serde_json::Value {
+    use crate::forge::policy::{format_utc, parse_utc};
+    use serde_json::{json, Value};
+
+    let (screen, seen) = observe(input);
 
     // The reset time of a usage limit: the lane's own record when a window is at its limit,
     // else the screen's text.

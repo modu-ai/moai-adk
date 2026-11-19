@@ -180,6 +180,7 @@ pub const GROUPS: &[Group] = &[
             ("lane-duty-line", false),
             ("lane-status", false),
             ("lane-screen", false),
+            ("lane-send", false),
             ("lane-handoff-check", false),
             ("lane-safe-to-reset", false),
             ("close-check", false),
@@ -483,6 +484,13 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
         &[
             "lane-screen < screen.txt",
             "lane-screen --home <dir> < screen.json",
+        ],
+    ),
+    (
+        "lane-send",
+        &[
+            "lane-send --terminal term_123 --text <one-line-text>",
+            "lane-send --terminal term_123 --text <one-line-text> --enter",
         ],
     ),
     ("lane-handoff-check", &["lane-handoff-check . < request.json"]),
