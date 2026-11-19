@@ -253,7 +253,11 @@ PR_TEMPLATE = ROOT / ".github/pull_request_template.md"
 LOCAL_CHECK = ROOT / "tools/local_check.sh"
 PINNED_USES = re.compile(r"^[\w.-]+/[\w./-]+@[0-9a-f]{40}$")
 # The only write scope a workflow may hold: moai-label-sync's manual apply job creates labels.
-ALLOWED_WRITES = {("moai-label-sync.yml", "apply"): {"issues"}}
+ALLOWED_WRITES = {
+    ("moai-label-sync.yml", "apply"): {"issues"},
+    # C-95: the audit-gate job posts the moai/audit commit status itself.
+    ("audit-gate.yml", "audit-gate"): {"statuses"},
+}
 
 
 class WorkflowTest(unittest.TestCase):
@@ -302,7 +306,8 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(flow["permissions"], {"contents": "read"})
         (job,) = flow["jobs"].values()
         self.assertEqual(job["permissions"],
-                         {"contents": "read", "pull-requests": "read", "issues": "read"})
+                         {"contents": "read", "pull-requests": "read", "issues": "read",
+                          "statuses": "write"})
         ci_uses = {s["uses"] for j in flows["ci.yml"]["jobs"].values()
                    for s in j.get("steps", []) if "uses" in s}
         uses = [s["uses"] for s in job["steps"] if "uses" in s]
@@ -316,7 +321,13 @@ class WorkflowTest(unittest.TestCase):
                     self.assertNotIn("${{", step["run"])
         gate = [s for s in job["steps"] if "audit-gate" in s.get("run", "")]
         self.assertEqual(len(gate), 1)
-        self.assertIn("--require-pass", gate[0]["run"])
+        # C-95: the step reads the gate's envelope and posts the moai/audit commit status
+        # itself — success on pass, failure otherwise (the Rust side executes the block; see
+        # tests/audit_gate_cli.rs the_workflow_step_posts_the_status_the_gate_decides).
+        self.assertNotIn("--require-pass", gate[0]["run"])
+        self.assertIn("statuses/$PR_HEAD", gate[0]["run"])
+        self.assertIn("-f state=", gate[0]["run"])
+        self.assertIn("moai/audit", gate[0]["run"])
         self.assertEqual(gate[0]["env"]["GH_TOKEN"], "${{ github.token }}")
 
     def test_every_action_is_pinned_to_a_commit_sha(self):

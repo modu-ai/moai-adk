@@ -1,0 +1,39 @@
+--- moai.v1	2026-11-15 18:33:10
++++ moai.v2	2026-11-19 15:46:04
+@@ -7,7 +7,11 @@
+ # running Claude Code sessions call. Without this routing the Rust binary would answer
+ # `moai hook ...` with exit 2, which Claude Code treats as "block this tool call".
+ #
+-# Undo: mv "$HOME/go/bin/moai.old" "$HOME/go/bin/moai"  (and remove ~/.moai-cli/path/moai)
++# v2 (SPEC-20261119-switch-script-v2, C-33 S2a). Differs from v1 in three words: `statusline` goes
++# to Rust, and `spec` and `session` go to Rust except for the actions only the Go build has.
++#
++# Undo: put back the copy the apply step saved beside this file:
++#   mv "<this folder>/moai.before-<stamp>" "<this folder>/moai"
+ RUST="${MOAI_RUST_BIN:-$HOME/.moai-cli/path/moai-cli}"
+ GO="${MOAI_GO_BIN:-$HOME/go/bin/moai.old}"
+ 
+@@ -15,8 +19,22 @@
+   # Launcher words always go to Rust.
+   cc|glm|codex|omp|-l|-a|--leader|--agent)
+     exec "$RUST" "$@" ;;
++  # v2: `statusline` is no longer listed below, so it reaches Rust. `spec` and `session` are split
++  # by action: the actions only the Go build has stay with Go (Go-generation projects still call
++  # `moai spec lint`, `moai spec audit` and `moai session list`), every other call is Rust's.
++  spec|session)
++    case "$1:${2:-}" in
++      spec:status|spec:drift|spec:view|spec:lint|spec:audit|spec:archive|spec:ceiling) ;;
++      session:register|session:heartbeat|session:deregister|session:list|session:purge|session:current|session:doctor) ;;
++      *) exec "$RUST" "$@" ;;
++    esac
++    if [ -x "$GO" ]; then
++      exec "$GO" "$@"
++    fi
++    echo "moai: '$1' belongs to the Go build, which was not found at $GO" >&2
++    exit 1 ;;
+   # Subcommands only the Go build has.
+-  af|agent|ast-edit|ast-grep|bundle|chain|ci-verdict|clean|completion|config|constitution|contract|decision|doctor|epic|factory|feedback|fetch|gate|github|goal|graph|gtd|handoff|harness|hook|inbox|init|integration|inventory|jev|jevmeasure|loop|lsp|mcp|mcp-server|memory|migrate|migration|moai|mx|paths|plan|pr|preference|profile|research|session|slot|spec|state|status|statusline|telemetry|that|todo|tokens|tool-policy|verify|version|web|workflow|worktree)
++  af|agent|ast-edit|ast-grep|bundle|chain|ci-verdict|clean|completion|config|constitution|contract|decision|doctor|epic|factory|feedback|fetch|gate|github|goal|graph|gtd|handoff|harness|hook|inbox|init|integration|inventory|jev|jevmeasure|loop|lsp|mcp|mcp-server|memory|migrate|migration|moai|mx|paths|plan|pr|preference|profile|research|slot|state|status|telemetry|that|todo|tokens|tool-policy|verify|version|web|workflow|worktree)
+     # #3021: a long-lived MCP server must keep its own audit jobs; with the shim on PATH it always
+     # reads as stale and would hand writes to a one-shot process that loses them.
+     case "$1" in mcp-server) export MOAI_MCP_ONESHOT=1 ;; esac

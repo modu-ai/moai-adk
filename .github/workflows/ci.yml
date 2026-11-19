@@ -307,6 +307,30 @@ jobs:
             done
           } >> "$summary"
           exit "$failed"
+      # C-101 (SPEC-20261119-ci-smoke-step): the smoke harness the lanes and auditors share
+      # (tools/smoke/run.sh, SPEC-20261119-smoke-harness) boots the debug binary this job
+      # built in an empty temporary HOME and a temporary git project, so a lane's "I ran the
+      # smoke" is checked here too. The install and update areas run on every full-scope run
+      # (a few seconds each); a docs-only run skips it with the heavy steps above. The step
+      # builds the binary first (a no-op when the check set left it) instead of relying on
+      # where nextest leaves it, runs both areas even when the first fails, and fails the job
+      # after the second. Each area's last line goes to the job summary.
+      - name: Smoke harness (install, update)
+        if: ${{ env.CI_SCOPE == 'full' }}
+        shell: bash
+        run: |
+          set -u
+          cargo build --offline --locked --bin moai-cli
+          bin="${CARGO_TARGET_DIR:-target}/debug/moai-cli"
+          failed=0
+          for area in install update; do
+            code=0
+            tools/smoke/run.sh "$area" --bin "$bin" > "ci-smoke-$area.log" 2>&1 || code=$?
+            cat "ci-smoke-$area.log"
+            echo "- smoke $area: exit $code · \`$(tail -n 1 "ci-smoke-$area.log")\`" >> "$GITHUB_STEP_SUMMARY"
+            [ "$code" -eq 0 ] || failed=1
+          done
+          exit "$failed"
 
   # C-83 (SPEC-20261117-ci-superseded-neutral, design D6 "superseded cancels are neutral"): on a
   # push, a macOS target replaced while waiting by a newer merge (D8 (a) above) leaves the matrix
