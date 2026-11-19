@@ -388,13 +388,6 @@ impl Renderer {
     }
 }
 
-/// The text of the `🏷️` tag (#2871, leader decision 6907570513, replacing #2928's "no name
-/// text"). The stdin `session_name` is free text (escape and control bytes, #2818 B1), so it is
-/// never copied: only two exact shapes are read and written again by this code.
-/// - A live registry `leader` entry (`s.leader`) or the name exactly `leader` → `Leader`. The
-///   name is only a display hint and is never an authority decision.
-/// - `agent-<decimal u32 without a leading zero>` (`session::agent_number_of`) → `Agent-<n>`.
-/// - Any other name, or none → `agent`.
 /// User instruction 2026-11-19: `🌳 WT-c<card>-<name>` when a held reservation names the
 /// worktree, `🌳 WT-c<card>` when nothing says what the work is, else the worktree name the host
 /// gave, alone.
@@ -406,6 +399,13 @@ fn worktree_text(s: &Status) -> String {
     }
 }
 
+/// The text of the `🏷️` tag (#2871, leader decision 6907570513, replacing #2928's "no name
+/// text"). The stdin `session_name` is free text (escape and control bytes, #2818 B1), so it is
+/// never copied: only two exact shapes are read and written again by this code.
+/// - A live registry `leader` entry (`s.leader`) or the name exactly `leader` → `Leader`. The
+///   name is only a display hint and is never an authority decision.
+/// - `agent-<decimal u32 without a leading zero>` (`session::agent_number_of`) → `Agent-<n>`.
+/// - Any other name, or none → `agent`.
 fn tag_text(s: &Status) -> String {
     if s.leader || s.session_name == "leader" {
         return "Leader".to_string();
