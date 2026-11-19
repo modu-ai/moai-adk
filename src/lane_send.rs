@@ -159,14 +159,42 @@ pub fn send(
     let answer = orca
         .send(terminal, text, enter)
         .map_err(|d| format!("lane send failed: {d}"))?;
+    let orca_answer = read_send_answer(&answer)?;
     Ok(json!({
         "sent": true,
         "terminal": terminal,
         "state": seen.state.as_str(),
         "evidence": seen.evidence,
         "enter": enter,
-        "orca": serde_json::from_str::<Value>(&answer).unwrap_or(Value::Null),
+        "orca": orca_answer,
     }))
+}
+
+/// The answer of `orca terminal send --json`, read like the answer of a read: a JSON object
+/// whose `ok` is `true` is a send. `ok: false` is Orca saying it did not send; anything that
+/// is not such an object (plain text, nothing, JSON without a boolean `ok`) is not an Orca answer,
+/// so the text may or may not have reached the lane. Neither is reported as sent (audit note
+/// 3362, B2: a program that exited 0 with `ok: false` was reported as `sent: true`).
+fn read_send_answer(answer: &str) -> Result<Value, String> {
+    let value: Value = serde_json::from_str(answer).unwrap_or(Value::Null);
+    match value.get("ok") {
+        Some(Value::Bool(true)) => Ok(value),
+        Some(Value::Bool(false)) => {
+            let message = value
+                .pointer("/error/message")
+                .or_else(|| value.get("error"))
+                .and_then(Value::as_str)
+                .map(first_line)
+                .unwrap_or_default();
+            Err(format!(
+                "lane send failed: `orca terminal send` answered ok:false{message}; look at the lane before sending again"
+            ))
+        }
+        _ => Err(
+            "lane send failed: the answer of `orca terminal send` is not an Orca answer (no `ok: true`); the text may have reached the lane"
+                .into(),
+        ),
+    }
 }
 
 /// Runs the `orca` program, each call under a time limit.
@@ -309,6 +337,8 @@ mod tests {
         read_calls: RefCell<usize>,
         sent: RefCell<Vec<(String, bool)>>,
         send_error: Option<String>,
+        /// The text a send answers with; `{"ok":true}` when `None`.
+        send_answer: Option<String>,
     }
 
     fn fake(reads: &[String]) -> Fake {
@@ -317,6 +347,7 @@ mod tests {
             read_calls: RefCell::new(0),
             sent: RefCell::new(Vec::new()),
             send_error: None,
+            send_answer: None,
         }
     }
 
@@ -330,7 +361,10 @@ mod tests {
             self.sent.borrow_mut().push((text.to_string(), enter));
             match &self.send_error {
                 Some(e) => Err(e.clone()),
-                None => Ok("{\"ok\":true}".into()),
+                None => Ok(self
+                    .send_answer
+                    .clone()
+                    .unwrap_or_else(|| "{\"ok\":true}".into())),
             }
         }
     }
@@ -407,6 +441,47 @@ mod tests {
         let e = send(&f, "term_1", "hello", false, NOW).unwrap_err();
         assert!(e.starts_with("lane send failed"), "{e}");
         assert_eq!(f.sent.borrow().len(), 1);
+    }
+
+    #[test]
+    fn a_send_is_sent_only_when_the_answer_says_ok_true() {
+        let sent_with = |answer: &str| {
+            let mut f = fake(&[idle()]);
+            f.send_answer = Some(answer.to_string());
+            let r = send(&f, "term_1", "hello", false, NOW);
+            assert_eq!(f.sent.borrow().len(), 1, "{answer}: the call was made");
+            r
+        };
+        let ok = sent_with("{\"id\":\"x\",\"ok\":true,\"result\":{}}").unwrap();
+        assert_eq!(ok["sent"], json!(true));
+        assert_eq!(ok["orca"]["ok"], json!(true));
+        // `ok: false`, with and without a message; the message is shown cut and clean.
+        let e = sent_with("{\"ok\":false,\"error\":{\"message\":\"no such\\u0007terminal\"}}")
+            .unwrap_err();
+        assert!(e.starts_with("lane send failed"), "{e}");
+        assert!(
+            e.contains("ok:false") && e.contains("no suchterminal"),
+            "{e}"
+        );
+        let e = sent_with("{\"ok\":false}").unwrap_err();
+        assert!(e.contains("ok:false"), "{e}");
+        // Not an answer at all: plain text, nothing, JSON without `ok`, `ok` that is no boolean
+        // true, a JSON value that is no object.
+        for answer in [
+            "sent it",
+            "",
+            "{\"id\":\"x\"}",
+            "{\"ok\":\"true\"}",
+            "{\"ok\":1}",
+            "{\"ok\":null}",
+            "[true]",
+            "true",
+        ] {
+            let e = sent_with(answer).unwrap_err();
+            assert!(e.starts_with("lane send failed"), "{answer}: {e}");
+            assert!(e.contains("not an Orca answer"), "{answer}: {e}");
+            assert!(e.contains("may have reached"), "{answer}: {e}");
+        }
     }
 
     #[test]

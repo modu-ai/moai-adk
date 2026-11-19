@@ -172,49 +172,113 @@ fn lane_screen_state_a_numbered_yes_no_choice_is_never_working_or_idle() {
     }
 }
 
-/// Leader decision after the re-audit of slice A (note 3256, R-N1): a question such as
-/// `Do you want …` near the bottom of the screen whose choices cannot be read (here `»` and
-/// `[1]` in front of the numbers) is not `working` or `idle`: when it is not known, it is unknown.
+/// Leader decision after the audit of slice B (note 3362, B1): a numbered `Yes` row together with
+/// a numbered `No` row is a confirmation whatever stands before the numbers (a cursor glyph the
+/// reader never listed, `»`) and with or without a question the reader knows: Enter would pick
+/// Yes. Each of these screens read as `working` before the repair.
 #[test]
-fn lane_screen_state_a_question_near_the_bottom_with_unreadable_choices_is_unknown() {
+fn lane_screen_state_numbered_yes_no_after_any_prefix_is_a_permission_prompt() {
     for name in [
+        // A working footer, `◆` before the number, no question row at all.
+        "synthetic-foreign-cursor-no-question-working.txt",
+        // A working footer, a question sentence that is none of the known question words.
+        "synthetic-foreign-cursor-far-question-working.txt",
+        // Slice A's R-N1 screen: `»` before the number, under a working footer.
         "synthetic-unreadable-choice-working.txt",
-        "synthetic-unreadable-choice-idle.txt",
     ] {
         let r = run(&fixture(name), &[]);
-        assert_eq!(r.result()["state"], json!("unknown"), "{name}");
+        assert_eq!(r.result()["state"], json!("permission_prompt"), "{name}");
         let evidence = r.result()["evidence"].as_str().unwrap();
-        assert!(evidence.contains("Do you want"), "{name}: {evidence}");
-        assert!(
-            r.result()["reason"].as_str().unwrap().contains("question"),
-            "{name}: {}",
-            r.result()["reason"]
-        );
-        assert_eq!(r.result()["pane"], json!(null), "{name}");
+        assert!(!evidence.is_empty(), "{name}");
+        assert_eq!(r.result()["pane"]["state"], json!("permission_prompt"));
     }
-    // The same words above the bottom window (the last 8 non-blank rows) are the transcript, not
-    // a dialog: the lane still reads as `working` or `idle`. The idle fixture has exactly 8
-    // non-blank rows, so a question put on top of it is the 9th row from the bottom.
-    for (name, state) in [
-        ("synthetic-working.txt", "working"),
-        ("synthetic-idle.txt", "idle"),
+    // Any prefix of marks is skipped: the nine of the audit and a few more. A prefix with a
+    // letter or a digit is no mark, so `ok 1. Yes` is a sentence and not a choice.
+    for prefix in [
+        "◆ ", "» ", "• ", "- ", "* ", "→→ ", ">>> ", "✓ ", "· ", "│ ◆ ", "[•] ", "☞ ", "◆",
     ] {
-        let screen = format!("Do you want me to look at this?\n{}", fixture(name));
-        assert_eq!(
-            state_of(&screen),
-            state,
-            "{name}: the question is above the window"
-        );
+        let screen =
+            format!("row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\n{prefix}1. Yes\n   2. No\n");
+        assert_eq!(state_of(&screen), "permission_prompt", "prefix {prefix:?}");
     }
-    // Boundary N / N-1: the same question as the 8th row from the bottom is inside the window.
-    let idle = fixture("synthetic-idle.txt");
-    let (first, rest) = idle.split_once('\n').unwrap();
-    let inside = format!("{first}\nDo you want me to look at this?\n{rest}");
-    assert_eq!(
-        state_of(&inside),
-        "unknown",
-        "the question is the 8th row from the bottom"
+    let screen = "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nok 1. Yes\nok 2. No\n";
+    assert_eq!(state_of(screen), "working");
+}
+
+/// Leader decision of note 3256 (R-N1) narrowed by note 3362 (S-N2): a confirmation question in
+/// the last 8 non-blank rows with a `yes` or `no` word on a row below it, and no choice rows the
+/// reader can use (here `[1] Yes` and `[2] No`), is `unknown`. A question that ends the lane's
+/// turn, with only the input line below it, is not (see the next test).
+#[test]
+fn lane_screen_state_a_question_above_unreadable_yes_and_no_rows_is_unknown() {
+    let r = run(&fixture("synthetic-unreadable-choice-idle.txt"), &[]);
+    assert_eq!(r.result()["state"], json!("unknown"));
+    let evidence = r.result()["evidence"].as_str().unwrap();
+    assert!(evidence.contains("Do you want"), "{evidence}");
+    assert!(
+        r.result()["reason"].as_str().unwrap().contains("question"),
+        "{}",
+        r.result()["reason"]
     );
+    assert_eq!(r.result()["pane"], json!(null));
+    // A bracket question marks itself: `[y/n]` is the choice, so it is unknown with no row below.
+    let screen = "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nOverwrite the file [y/n]\n";
+    assert_eq!(state_of(screen), "unknown");
+    // The window is the last 8 non-blank rows. The question with `[1] Yes`, `[2] No` and five
+    // more rows under it is the 8th row from the bottom (inside), with six more it is the 9th.
+    let window = |below: usize| {
+        let mut rows = vec![
+            "row 1".to_string(),
+            "row 2".to_string(),
+            "row 3".to_string(),
+            "row 4".to_string(),
+            "esc to interrupt".to_string(),
+            "Do you want me to look at this?".to_string(),
+            "[1] Yes".to_string(),
+            "[2] No".to_string(),
+        ];
+        rows.extend((0..below).map(|i| format!("more {i}")));
+        state_of(&rows.join("\n"))
+    };
+    assert_eq!(
+        window(5),
+        "unknown",
+        "the question is the 8th from the bottom"
+    );
+    assert_eq!(
+        window(6),
+        "working",
+        "the question is the 9th from the bottom"
+    );
+}
+
+/// Leader decision S-N2 (note 3362): a lane that ended its turn with a question (`Would you like
+/// me to …?`) and waits at its input line is the screen a send is meant for. Only a `yes` or a
+/// `no` as a whole word on a row below the question makes it `unknown`.
+#[test]
+fn lane_screen_state_a_lane_that_ended_on_a_question_is_idle() {
+    let idle = fixture("synthetic-question-then-input-idle.txt");
+    assert_eq!(state_of(&idle), "idle");
+    // The same under a working footer.
+    let working = "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\n";
+    assert_eq!(state_of(working), "working");
+    // Words that only contain yes or no are no answer row: `Yesterday`, `Nobody`, `Not now`.
+    for below in ["Yesterday it ran", "Nobody", "Not now"] {
+        let screen = format!(
+            "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\n{below}\n"
+        );
+        assert_eq!(state_of(&screen), "working", "{below}");
+    }
+    // A whole word below the question is unknown, in any case and with any mark next to it.
+    for below in ["yes, go ahead", "No - wait", "(Yes)", "answer: NO."] {
+        let screen = format!(
+            "row 1\nrow 2\nrow 3\nrow 4\nesc to interrupt\nWould you like me to push?\n{below}\n"
+        );
+        assert_eq!(state_of(&screen), "unknown", "{below}");
+    }
+    // A yes above the question does not count: the rule looks below it.
+    let screen = "row 1\nrow 2\nrow 3\nyes it did\nesc to interrupt\nWould you like me to push?\n";
+    assert_eq!(state_of(screen), "working");
 }
 
 #[test]
