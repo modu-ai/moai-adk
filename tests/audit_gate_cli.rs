@@ -153,3 +153,39 @@ fn require_pass_fails_the_run_unless_it_passes() {
     let r = decide(&json!({"schema_version": 2, "pr": 9, "head": H, "body": "", "comments": []}));
     assert_eq!(r["state"], "fail", "{r}");
 }
+
+/// Card C-95 (SPEC-20261119-leader-auditor-verdict) AC-2: the pass and fail decisions name the
+/// comment that decided them, and the CI workflow posts the `moai/audit` commit status itself —
+/// `statuses: write`, success on pass, failure otherwise, on the head the job judged.
+#[test]
+fn the_result_names_the_comment_and_the_workflow_posts_the_status() {
+    let src = vec!["src/a.rs".to_string()];
+    let r = decide(&input(
+        1,
+        &src,
+        &["agent-1"],
+        vec![verdict(5, H, "PASS", "agent-7")],
+    ));
+    assert_eq!(r["comment"], json!(5), "{r}");
+    let r = decide(&input(
+        0,
+        &[doc()],
+        &[],
+        vec![verdict(6, OLD, "FAIL", "agent-7")],
+    ));
+    assert_eq!(r["comment"], json!(6), "{r}");
+    let r = decide(&input(0, &[doc()], &[], vec![]));
+    assert!(r["comment"].is_null(), "{r}");
+    let yaml = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(".github/workflows/audit-gate.yml"),
+    )
+    .unwrap();
+    for pin in [
+        "statuses: write",
+        "statuses/$PR_HEAD",
+        "moai/audit",
+        "-f state=",
+    ] {
+        assert!(yaml.contains(pin), "audit-gate.yml lacks {pin:?}");
+    }
+}

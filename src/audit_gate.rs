@@ -17,6 +17,9 @@
 //!    with a `Moai-Session:` line below its first line (SDD-6, `internal/commit-trailers`); the
 //!    auditor is an author when that session or its lane name is one of the authors, and two
 //!    verdicts come from the same auditor when their sessions match (else their lane names).
+//!    A leader-assigned audit agent (audit centralization, 2026-11-16) names itself with the
+//!    fixed line `auditor: leader-audit <token>` below the first line; the token counts as an
+//!    author too when it equals one of the `Moai-Session:` values (card C-95).
 //!
 //! Not checked in this slice: that the PASS cites the run (AGENTS.md workflow 7) — a later slice
 //! adds it; the verdict base's ancestry and the mechanical delta (both need git).
@@ -60,6 +63,9 @@ struct Verdict {
     /// The auditor's session id from a `Moai-Session:` line below the first (SDD-6), the same
     /// key and shape a commit's trailer has.
     session: Option<String>,
+    /// The token of a leader-assigned auditor (`auditor: leader-audit <token>`, card C-95),
+    /// when the auditor came from that line — compared against the PR's authors too.
+    leader_token: Option<String>,
 }
 
 impl Verdict {
@@ -70,6 +76,27 @@ impl Verdict {
             _ => self.auditor.is_some() && self.auditor == other.auditor,
         }
     }
+}
+
+/// The auditor a verdict body names: a lane (`gate::auditor`), or — for a leader-assigned audit
+/// agent (card C-95, SPEC-20261119-leader-auditor-verdict) — the fixed line
+/// `auditor: leader-audit <token>` below the first line. The token is one or more characters of
+/// `A-Z a-z 0-9 . _ -` with no spaces; an empty or invalid token reads no auditor. `gate.rs` is
+/// shared with the merge gate and stays unchanged; the recognition is local to this gate (D-1).
+fn verdict_auditor(body: &str) -> Option<String> {
+    if let Some(lane) = gate::auditor(body) {
+        return Some(lane);
+    }
+    body.lines()
+        .skip(1)
+        .filter_map(|l| l.trim().strip_prefix("auditor: leader-audit "))
+        .map(str::trim)
+        .find(|t| {
+            !t.is_empty()
+                && t.bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-'))
+        })
+        .map(|t| format!("leader-audit {t}"))
 }
 
 /// The `Moai-Session:` value of a verdict body below its first line, when it has the id shape.
@@ -87,8 +114,12 @@ fn verdicts(comments: &[Comment]) -> Vec<Verdict> {
         .iter()
         .filter_map(|c| {
             let line = gate::verdict_line(&c.body)?;
-            let auditor = gate::auditor(&c.body);
+            let auditor = verdict_auditor(&c.body);
             let session = verdict_session(&c.body);
+            let leader_token = auditor
+                .as_deref()
+                .filter(|a| a.starts_with("leader-audit "))
+                .map(|a| a["leader-audit ".len()..].to_string());
             let (head, word, full_base) = match gate::parse_verdict(line) {
                 Some((h, _, v)) => (Some(h), v, true),
                 None => match gate::parse_verdict_short_base(line) {
@@ -103,6 +134,7 @@ fn verdicts(comments: &[Comment]) -> Vec<Verdict> {
                 full_base,
                 auditor,
                 session,
+                leader_token,
             })
         })
         .collect();
@@ -131,7 +163,8 @@ pub fn sessions_of(message: &str) -> Vec<String> {
 pub fn decide(input: &Input) -> Value {
     let out = |state: &str, tier: Option<u8>, rule: &str, reason: String| {
         json!({"state": state, "pr": input.pr, "head": input.head, "tier": tier,
-               "rule": rule, "reason": reason, "cites_run_checked": false})
+               "rule": rule, "reason": reason, "comment": Value::Null,
+               "cites_run_checked": false})
     };
     if input.schema_version != 1 || !gate::is_full_sha(&input.head) {
         return out(
@@ -161,7 +194,7 @@ pub fn decide(input: &Input) -> Value {
         .collect();
     if let Some(f) = open.first() {
         let who = f.auditor.as_deref().unwrap_or("no auditor lane");
-        return out(
+        let mut r = out(
             "fail",
             Some(tier),
             "open-fail",
@@ -172,6 +205,8 @@ pub fn decide(input: &Input) -> Value {
                 f.word
             ),
         );
+        r["comment"] = json!(f.id);
+        return r;
     }
     if tier == 0 {
         return out(
@@ -224,21 +259,26 @@ pub fn decide(input: &Input) -> Value {
             (v.auditor.is_some() || v.session.is_some())
                 && !v.auditor.as_deref().is_some_and(is_author)
                 && !v.session.as_deref().is_some_and(is_author)
+                && !v.leader_token.as_deref().is_some_and(is_author)
         })
     {
-        Some(v) => out(
-            "pass",
-            Some(tier),
-            "non-author-pass",
-            format!(
-                "audit tier {tier}: PASS on this head by {} (comment {}), not an author",
-                v.auditor
-                    .as_deref()
-                    .or(v.session.as_deref())
-                    .unwrap_or_default(),
-                v.id
-            ),
-        ),
+        Some(v) => {
+            let mut r = out(
+                "pass",
+                Some(tier),
+                "non-author-pass",
+                format!(
+                    "audit tier {tier}: PASS on this head by {} (comment {}), not an author",
+                    v.auditor
+                        .as_deref()
+                        .or(v.session.as_deref())
+                        .unwrap_or_default(),
+                    v.id
+                ),
+            );
+            r["comment"] = json!(v.id);
+            r
+        }
         None => out(
             "missing",
             Some(tier),
@@ -553,6 +593,104 @@ mod tests {
         let mut unread = input("0", &[], &[], vec![]);
         unread.files = None;
         assert_eq!(decide(&unread)["tier"], 2);
+    }
+
+    /// Card C-95 (SPEC-20261119-leader-auditor-verdict): a leader-assigned audit agent names
+    /// itself with the fixed line `auditor: leader-audit <token>`; the gate reads it as the
+    /// auditor, a non-member's line is dropped with the whole comment, and a token that equals a
+    /// `Moai-Session:` author reads as an author's PASS.
+    #[test]
+    fn the_leader_assigned_auditor_line_is_a_verdict() {
+        let src = ["src/a.rs"];
+        let pass = |token: &str, association: &str| Comment {
+            id: 5,
+            body: format!(
+                "AUDIT #9 (x) head {H} base {B} — verdict: PASS\nauditor: leader-audit {token}"
+            ),
+            author_association: association.into(),
+        };
+        assert_eq!(
+            state(&input(
+                "1",
+                &src,
+                &["agent-1"],
+                vec![pass("audit-3218-1", "MEMBER")]
+            )),
+            ("pass".into(), "non-author-pass".into()),
+            "the fixed line names the auditor"
+        );
+        // An empty token or one with a character outside the set reads no auditor.
+        for bad in ["", "au@dit", "two tokens"] {
+            assert_eq!(
+                state(&input("1", &src, &["agent-1"], vec![pass(bad, "MEMBER")])).0,
+                "missing",
+                "token {bad:?}"
+            );
+        }
+        // A forged line by a non-member is dropped with the comment (REQ-5).
+        assert_eq!(
+            state(&input(
+                "1",
+                &src,
+                &["agent-1"],
+                vec![pass("audit-3218-1", "NONE")]
+            ))
+            .0,
+            "missing"
+        );
+        // A token equal to a Moai-Session author reads as an author's PASS (REQ-6). The token
+        // charset has no `:`, so the bare session id is the shape that reaches the author check:
+        // a legacy bare author id covers its whole session (same_identity).
+        const AUTHOR: &str = "428e289a-1c67-492e-a23b-a5aca15b4d1f";
+        let own = format!("{AUTHOR}:aaaaaaaaaaaa");
+        // The token holds the worktree key too (`id:key`): the `:` leaves the charset, so this
+        // shape is refused by the charset alone — the author check behind it is never reached.
+        assert_eq!(
+            state(&input(
+                "1",
+                &src,
+                &[own.as_str()],
+                vec![pass(own.as_str(), "MEMBER")]
+            ))
+            .0,
+            "missing"
+        );
+        // A bare session id is a charset-valid token that names the author's whole session
+        // (legacy shape): the leader_token author check is what refuses it (mutant M1's gap).
+        assert_eq!(
+            state(&input(
+                "1",
+                &src,
+                &[own.as_str()],
+                vec![pass(AUTHOR, "MEMBER")]
+            ))
+            .0,
+            "missing"
+        );
+    }
+
+    /// Card C-95 REQ-3: the pass and fail decisions name the comment that decided them.
+    #[test]
+    fn the_decision_names_the_comment_that_decided_it() {
+        let src = ["src/a.rs"];
+        let v = decide(&input(
+            "1",
+            &src,
+            &["agent-1"],
+            vec![verdict(5, H, "PASS", "agent-7")],
+        ));
+        assert_eq!(v["comment"], 5, "{v}");
+        // Tier 0 passes with no comment at all: the field is null.
+        let v = decide(&input("0", &["docs/a.md"], &[], vec![]));
+        assert!(v["comment"].is_null(), "{v}");
+        // An open FAIL names the failing comment.
+        let v = decide(&input(
+            "0",
+            &["docs/a.md"],
+            &[],
+            vec![verdict(6, OLD, "FAIL", "agent-7")],
+        ));
+        assert_eq!(v["comment"], 6, "{v}");
     }
 
     #[test]
