@@ -2,8 +2,9 @@
 //! record the other rule files point to, so three things in it must not drift quietly:
 //! every row of a mechanical inventory names the test files that read its line (or says
 //! `text only`) and its section heading names the tip it was written from; every test file the
-//! record names exists; and no entry of a history section is still word for word in a live rule
-//! file (a moved rule that came back would be counted twice).
+//! record names exists; and no entry of a history section is still word for word in the live rule
+//! file it was moved from (a moved rule that came back would be counted twice). A sentence that
+//! was merged into another file's copy may stay there: only its source file is checked.
 //!
 //! The row text of a mechanical inventory is not compared with the live files: other cards edit
 //! the workflows all the time, and a text match would block their merges (SPEC decision D-3).
@@ -40,7 +41,17 @@ fn sections(text: &str) -> Vec<(String, Vec<String>)> {
     out
 }
 
+/// `name.rs` or `name.py`, with at most one folder in front (`common/git.rs`).
 fn is_test_file_name(name: &str) -> bool {
+    let name = match name.split_once('/') {
+        Some((dir, file))
+            if !dir.is_empty() && dir.chars().all(|c| c.is_ascii_lowercase() || c == '_') =>
+        {
+            file
+        }
+        Some(_) => return false,
+        None => name,
+    };
     let Some((stem, ext)) = name.rsplit_once('.') else {
         return false;
     };
@@ -64,6 +75,22 @@ fn row_field(row: &str) -> Option<&str> {
     row.rsplit_once(" · ").map(|(_, field)| field.trim())
 }
 
+/// The names of a `pins: a.rs, b.rs (+3 more)` field; `None` when it is not one.
+fn pin_names(field: &str) -> Option<Vec<&str>> {
+    let names = field.strip_prefix("pins: ")?;
+    let names = match names.rsplit_once(" (+") {
+        Some((head, tail))
+            if tail
+                .strip_suffix(" more)")
+                .is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit())) =>
+        {
+            head
+        }
+        _ => names,
+    };
+    Some(names.split(", ").collect())
+}
+
 fn inventory_problems(text: &str) -> Vec<String> {
     let mut problems = Vec::new();
     for (heading, body) in sections(text) {
@@ -78,9 +105,8 @@ fn inventory_problems(text: &str) -> Vec<String> {
         for row in body.iter().filter(|l| l.starts_with("- ")) {
             let ok = match row_field(row) {
                 Some("text only") => true,
-                Some(field) => field.strip_prefix("pins: ").is_some_and(|names| {
-                    !names.is_empty() && names.split(", ").all(is_test_file_name)
-                }),
+                Some(field) => pin_names(field)
+                    .is_some_and(|names| names.iter().all(|name| is_test_file_name(name))),
                 None => false,
             };
             if !ok {
@@ -101,8 +127,8 @@ fn named_files(text: &str) -> Vec<String> {
     for (heading, body) in sections(text) {
         if heading.starts_with("Mechanical inventory — ") {
             for row in body.iter().filter(|l| l.starts_with("- ")) {
-                if let Some(names_field) = row_field(row).and_then(|f| f.strip_prefix("pins: ")) {
-                    names.extend(names_field.split(", ").map(str::to_string));
+                if let Some(pins) = row_field(row).and_then(pin_names) {
+                    names.extend(pins.into_iter().map(str::to_string));
                 }
             }
         } else if heading.starts_with("Live inventory — ") {
@@ -169,6 +195,12 @@ fn history_entries(text: &str) -> Vec<(String, String)> {
     out
 }
 
+/// The live rule file a history heading says its entries were moved from.
+fn source_file(heading: &str) -> Option<&'static str> {
+    let from = heading.strip_prefix("History — moved from ")?;
+    LIVE_FILES.into_iter().find(|f| f.ends_with(from))
+}
+
 fn live_entries<'a>(entries: &'a [(String, String)], live: &str) -> Vec<&'a str> {
     let live = squash(live);
     entries
@@ -194,12 +226,9 @@ fn every_test_file_named_in_the_history_exists() {
         !named_files(&text).is_empty(),
         "the record names no test file at all"
     );
+    // a pin names a file under `tests/`; the live table may also name a path from the root
     let missing = missing_files(&text, |name| {
-        if name.contains('/') {
-            root().join(name).exists()
-        } else {
-            root().join("tests").join(name).exists()
-        }
+        root().join("tests").join(name).exists() || root().join(name).exists()
     });
     assert!(
         missing.is_empty(),
@@ -217,10 +246,22 @@ fn no_history_entry_is_still_live() {
         entries.len()
     );
     for rel in LIVE_FILES {
-        let back = live_entries(&entries, &read(rel));
+        let mine: Vec<(String, String)> = entries
+            .iter()
+            .filter(|(heading, _)| source_file(heading) == Some(rel))
+            .cloned()
+            .collect();
+        // a file nothing was moved from has no entry to compare
+        let back = live_entries(&mine, &read(rel));
         assert!(
             back.is_empty(),
             "{rel} holds history entries word for word: {back:#?}"
+        );
+    }
+    for (heading, _) in &entries {
+        assert!(
+            source_file(heading).is_some(),
+            "history heading `{heading}` names no live rule file"
         );
     }
 }
@@ -231,12 +272,18 @@ fn the_guard_flags_a_row_without_enforcers_and_a_heading_without_a_tip() {
                 - L1 #1 — A rule · pins: a_test.rs, b_test.py\n\
                 - L2 #1 — Another rule · text only\n\
                 - L3 #1 — A third rule without a field\n\
-                - L4 #1 — A fourth · pins: not a file name\n";
+                - L4 #1 — A fourth · pins: not a file name\n\
+                - L5 #1 — A fifth · pins: common/git.rs, a_test.rs (+12 more)\n\
+                - L6 #1 — A sixth · pins: a_test.rs (+more)\n";
     let problems = inventory_problems(text);
-    assert_eq!(problems.len(), 3, "{problems:#?}");
+    assert_eq!(problems.len(), 4, "{problems:#?}");
     assert!(problems[0].contains("heading"), "{problems:#?}");
     let fixed = text.replace("x.md", "x.md @ 190de2d8d7");
-    assert_eq!(inventory_problems(&fixed).len(), 2);
+    assert_eq!(inventory_problems(&fixed).len(), 3);
+    assert_eq!(
+        pin_names("pins: a_test.rs, common/git.rs (+3 more)"),
+        Some(vec!["a_test.rs", "common/git.rs"])
+    );
 }
 
 #[test]
