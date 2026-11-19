@@ -142,7 +142,7 @@ fn models_revert_refuses_what_it_cannot_prove_is_its_own() {
         (
             "keys-1-1".to_string(),
             REF,
-            "unknown models receipt id",
+            "invalid models receipt id",
             "an id of another shape",
         ),
         (

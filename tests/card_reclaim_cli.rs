@@ -16,7 +16,7 @@ use moai_cli::ledger;
 use rusqlite::Connection;
 use serde_json::{json, Value};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Output, Stdio};
 
 const SESSION_VAR: &str = "CLAUDE_CODE_SESSION_ID";
@@ -32,6 +32,9 @@ struct World {
     dir: PathBuf,
     project: String,
     gh: PathBuf,
+    /// The absolute git path the reclaim gate hands its child: the runner's clean
+    /// environment carries no `PATH`, so the child cannot find `git` itself.
+    git: Option<PathBuf>,
 }
 
 fn world() -> World {
@@ -59,7 +62,16 @@ fn world() -> World {
         dir,
         project: project.to_str().unwrap().to_string(),
         gh,
+        git: git_executable(),
     }
+}
+
+/// An absolute `git` on this runner's `PATH`, for the child that has none.
+fn git_executable() -> Option<PathBuf> {
+    let path = std::env::var_os("PATH")?;
+    std::env::split_paths(&path)
+        .map(|dir| dir.join("git"))
+        .find(|p| p.is_file())
 }
 
 impl World {
@@ -70,6 +82,9 @@ impl World {
         all.extend_from_slice(&["--project", &self.project]);
         let mut cmd = self.home.command(&all);
         cmd.env("MOAI_FORGE_GH_BIN", &self.gh);
+        if let Some(git) = &self.git {
+            cmd.env("MOAI_GIT_BIN", git);
+        }
         if let Some(id) = session {
             cmd.env(SESSION_VAR, id);
         }
@@ -832,4 +847,206 @@ fn the_old_generation_cannot_move_or_close_the_card() {
     ));
     let done = result(&w.card(Some(S_B), &["done", &card, "--generation", "2"]));
     assert_eq!(done["state"], json!("done"), "{done}");
+}
+
+// ---- takeover gates (SPEC-20261119-card-reclaim-guard) ----
+
+impl World {
+    /// A git repo with one commit; `pushed` adds a bare remote and pushes; `dirty`
+    /// leaves an untracked file behind. Identity and guards come from `common::git_in`.
+    fn git_worktree(&self, pushed: bool, dirty: bool) -> String {
+        // A folder of its own on every call: a second repo must not inherit the first one's
+        // state (an untracked file, a remote).
+        let k = (0..)
+            .find(|i| !self.dir.join(format!("wt{i}")).exists())
+            .unwrap();
+        let wt = self.dir.join(format!("wt{k}"));
+        fs::create_dir_all(&wt).unwrap();
+        common::git::git_in(&wt, &["init"]);
+        fs::write(wt.join("f.txt"), "one\n").unwrap();
+        common::git::git_in(&wt, &["add", "."]);
+        common::git::git_in(&wt, &["commit", "-m", "one"]);
+        if pushed {
+            let bare = self.dir.join(format!("bare{k}.git"));
+            fs::create_dir_all(&bare).unwrap();
+            common::git::git_in(&bare, &["init", "--bare"]);
+            common::git::git_in(&wt, &["remote", "add", "origin", bare.to_str().unwrap()]);
+            common::git::git_in(&wt, &["push", "origin", "HEAD"]);
+        }
+        if dirty {
+            fs::write(wt.join("g.txt"), "two\n").unwrap();
+        }
+        wt.to_str().unwrap().to_string()
+    }
+
+    /// A card taken by S_A whose reservation names `worktree`; the lease then ended.
+    fn ended_card_at(&self, worktree: &str) -> String {
+        // A write scope of its own (named after the worktree folder), so two cards of one test
+        // never meet the scope-overlap refusal.
+        let scope = format!(
+            "apps/{}/",
+            Path::new(worktree)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("wt")
+        );
+        let added = result(&self.card(
+            None,
+            &["add", "--title", "gate", "--scope", &scope, "--ac", "one"],
+        ));
+        let name = added["name"].as_str().unwrap().to_string();
+        let n: i64 = name.trim_start_matches("C-").parse().unwrap();
+        result(&self.card(None, &["ready", &name]));
+        result(&self.card(
+            Some(S_A),
+            &[
+                "take",
+                &name,
+                "--worktree",
+                worktree,
+                "--branch",
+                &format!("card/{n}-gate"),
+            ],
+        ));
+        self.end_lease(n);
+        name
+    }
+}
+
+#[test]
+fn reclaim_gates_refuse_a_worktree_with_uncommitted_or_unpushed_work() {
+    let w = world();
+    // Pushed but dirty: one untracked file.
+    let wt = w.git_worktree(true, true);
+    let name = w.ended_card_at(&wt);
+    let before = w.dump();
+    let (kind, message) = refusal(&w.reclaim(Some(S_B), &name, "1"));
+    assert_eq!(kind, "conflict", "{message}");
+    // The message names both counts (REQ-1), not only the two words.
+    assert!(
+        message.contains("holds 1 uncommitted change(s) and 0 unpushed commit(s)"),
+        "{message}"
+    );
+    assert!(message.contains(&wt), "{message}");
+    assert_eq!(w.dump(), before, "the refusal leaves every row as it was");
+
+    // Clean but unpushed: one commit with no remote-tracking ref.
+    let wt2 = w.git_worktree(false, false);
+    let name2 = w.ended_card_at(&wt2);
+    let before2 = w.dump();
+    let (kind2, message2) = refusal(&w.reclaim(Some(S_B), &name2, "1"));
+    assert_eq!(kind2, "conflict", "{message2}");
+    assert!(
+        message2.contains("holds 0 uncommitted change(s) and 1 unpushed commit(s)"),
+        "{message2}"
+    );
+    assert_eq!(w.dump(), before2, "the refusal leaves every row as it was");
+}
+
+#[test]
+fn reclaim_gates_proceed_with_an_absent_or_clean_worktree() {
+    let w = world();
+    let name = w.ended_card_at("/work/absent");
+    let done = result(&w.reclaim(Some(S_B), &name, "1"));
+    assert_eq!(done["reservation"]["status"], json!("held"), "{done}");
+    // Give the scope back, or the next card's take hits the overlap refusal.
+    result(&w.card(Some(S_B), &["release", &name, "--generation", "2"]));
+
+    let wt = w.git_worktree(true, false);
+    let name2 = w.ended_card_at(&wt);
+    let done2 = result(&w.reclaim(Some(S_B), &name2, "1"));
+    assert_eq!(done2["reservation"]["status"], json!("held"), "{done2}");
+}
+
+#[test]
+fn reclaim_gates_refuse_when_git_cannot_be_read() {
+    let w = world();
+    let not_repo = w.dir.join("not-repo");
+    fs::create_dir_all(&not_repo).unwrap();
+    let name = w.ended_card_at(not_repo.to_str().unwrap());
+    let before = w.dump();
+    let (kind, message) = refusal(&w.reclaim(Some(S_B), &name, "1"));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("could not be read"), "{message}");
+    assert_eq!(w.dump(), before, "the refusal leaves every row as it was");
+}
+
+#[test]
+fn reclaim_gates_refuse_a_recorded_path_that_is_not_absolute() {
+    // A relative path names another folder under another working directory: "not found here"
+    // proves nothing, so the gate refuses instead of reading it as "gone" (audit-c43 B1).
+    let w = world();
+    let name = w.ended_card_at("wt-rel");
+    let before = w.dump();
+    let (kind, message) = refusal(&w.reclaim(Some(S_B), &name, "1"));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("not an absolute path"), "{message}");
+    assert_eq!(w.dump(), before, "the refusal leaves every row as it was");
+}
+
+/// Gives a folder's permissions back when the test ends, passed or not.
+#[cfg(unix)]
+struct Unlock(PathBuf);
+
+#[cfg(unix)]
+impl Drop for Unlock {
+    fn drop(&mut self) {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(&self.0, fs::Permissions::from_mode(0o755));
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn reclaim_gates_refuse_a_path_that_cannot_be_stat_ed() {
+    // `Path::exists` reads a permission error as "gone"; the gate must tell them apart.
+    use std::os::unix::fs::PermissionsExt;
+    let w = world();
+    let parent = w.dir.join("locked");
+    let inside = parent.join("wt-locked");
+    fs::create_dir_all(&inside).unwrap();
+    let name = w.ended_card_at(inside.to_str().unwrap());
+    let _unlock = Unlock(parent.clone());
+    fs::set_permissions(&parent, fs::Permissions::from_mode(0o000)).unwrap();
+    if fs::metadata(&inside).is_ok() {
+        eprintln!("skipped: this user can stat a mode-000 folder (root)");
+        return;
+    }
+    let before = w.dump();
+    let (kind, message) = refusal(&w.reclaim(Some(S_B), &name, "1"));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("could not be read"), "{message}");
+    assert_eq!(w.dump(), before, "the refusal leaves every row as it was");
+}
+
+#[test]
+fn reclaim_gates_self_reclaim_skips_the_worktree_gate() {
+    let w = world();
+    let wt = w.git_worktree(true, true);
+    let name = w.ended_card_at(&wt);
+    let done = result(&w.reclaim(Some(S_A), &name, "1"));
+    assert_eq!(done["reservation"]["holder"], json!(S_A), "{done}");
+    assert_eq!(done["previous"]["status"], json!("reclaimed"), "{done}");
+}
+
+#[test]
+fn reclaim_limit_refuses_the_fourth_reclaim_on_the_command_line() {
+    let w = world();
+    let name = w.ended_card_at("/work/absent");
+    result(&w.reclaim(Some(S_B), &name, "1"));
+    w.end_lease(1);
+    result(&w.reclaim(Some(S_A), &name, "2"));
+    w.end_lease(1);
+    result(&w.reclaim(Some(S_B), &name, "3"));
+    w.end_lease(1);
+    let before = w.dump();
+    let (kind, message) = refusal(&w.reclaim(Some(S_A), &name, "4"));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("reclaim limit"), "{message}");
+    assert_eq!(w.dump(), before, "the refusal leaves every row as it was");
+
+    // The limit is per card: another card's first reclaim still goes through (audit-c43 NB-1).
+    let other = w.ended_card_at("/work/other");
+    let done = result(&w.reclaim(Some(S_B), &other, "1"));
+    assert_eq!(done["reservation"]["status"], json!("held"), "{done}");
 }

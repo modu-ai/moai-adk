@@ -113,7 +113,7 @@ Codex 공식 문서는 Desktop 앱, CLI, IDE 확장을 함께 설명한다. 세 
 
 ## MoAI 기능별 host 지원 (C-62)
 
-코드에서 host로 갈라지는 자리마다 한 줄이다(사용자 지시 2026-11-17, 카드 C-62: OMP를 전체 host로 지원). `yes`는 그 자리가 host를 다룬다는 뜻이고, `gap`은 아직 다루지 않는다는 뜻이며 어느 조각이나 카드가 닫는지 `gap` 열에 적는다, `n/a`는 그 host에서 하지 않기로 했거나 그 자리에 해당하는 단계가 없다는 뜻이다. 근거(`evidence`)는 `파일::기호`이고, ` (list)`가 붙은 줄은 그 기호가 가리키는 host 목록이 이 줄의 `yes`와 같아야 한다. `tests/omp_host_survey_test.py`가 근거 파일·기호의 존재와 목록 일치, OMP `gap`의 닫는 곳을 확인한다. 2026-11-18, tip eea59f4ff1에서 코드를 읽어 적었고(조각 A), 같은 날 조각 B(`SPEC-20261118-omp-launcher`)가 론처·도움말·프로젝트 설정·세션 host 목록·glm 키 길·레인 의무 줄의 OMP 칸을 `yes`로 바꿨다. host를 띄워 확인한 것은 아니다(`not_run`): OMP 18.18.7에서 skill과 agent가 실제로 로드되는지는 아직 보지 못했다.
+코드에서 host로 갈라지는 자리마다 한 줄이다(사용자 지시 2026-11-17, 카드 C-62: OMP를 전체 host로 지원). `yes`는 그 자리가 host를 다룬다는 뜻이고, `gap`은 아직 다루지 않는다는 뜻이며 어느 조각이나 카드가 닫는지 `gap` 열에 적는다, `n/a`는 그 host에서 하지 않기로 했거나 그 자리에 해당하는 단계가 없다는 뜻이다. 근거(`evidence`)는 `파일::기호`이고, ` (list)`가 붙은 줄은 그 기호가 가리키는 host 목록이 이 줄의 `yes`와 같아야 한다. `tests/omp_host_survey_test.py`가 근거 파일·기호의 존재와 목록 일치, OMP `gap`의 닫는 곳을 확인한다. 2026-11-18, tip eea59f4ff1에서 코드를 읽어 적었고(조각 A), 같은 날 조각 B(`SPEC-20261118-omp-launcher`)가 론처·도움말·프로젝트 설정·세션 host 목록·glm 키 길·레인 의무 줄의 OMP 칸을 `yes`로 바꿨다. 세션 안에서 skill과 agent가 실제로 로드되는 관찰은 아직이다(`not_run`, 사람 관찰 — 카드 C-62 기준 5; 절차는 `.moai/specs/SPEC-20261119-omp-host/spec.md`). 다만 2026-11-19 무비용 점검(모델 호출 없음)으로 두 가지는 보았다: OMP 18.18.7의 `omp skills list`(스킬 22개)가 moai 스킬을 `source claude:user`, 파일 `<홈>/skills/moai/SKILL.md`로 발견하는 것과, `~/.omp/agent/agents/`에 `moai-{audit,docs,impl,plan,research}.md` 다섯 파일이 있는 것.
 
 | feature | claude | codex | omp | evidence | gap |
 | --- | --- | --- | --- | --- | --- |
@@ -130,7 +130,7 @@ Codex 공식 문서는 Desktop 앱, CLI, IDE 확장을 함께 설명한다. 세 
 | 프로젝트 host 단계(codex·omp) | n/a | yes | yes | `src/project_hosts.rs::omp-agents` | - |
 | 사용자 범위 AGENTS 라우팅 | yes | yes | n/a | `src/home_routing.rs::shadows every other user context file` | - |
 | 상태줄 설정 | yes | yes | n/a | `src/project_hosts.rs::OMP_CONFIG_REASON` | - |
-| skill 설치(`moai update`)의 host 목록 | yes | yes | gap | `src/update.rs::HOSTS` (list) | leader card: OMP는 `.agents/skills`(codex 단계가 쓰는 폴더)와 `~/.omp/agent/skills`를 읽으므로(`src/skills_legacy.rs`) 일부는 이미 닿는다; 빠진 것은 이 목록과 `~/.omp/agent/skills`로의 설치이고, `src/update.rs`는 카드 C-47 범위 |
-| 프로젝트 skill 설치 | yes | yes | gap | `src/project_skills.rs::host_folder` | leader card: 같은 폴더 규칙(OMP는 `.agents/skills`를 읽으므로 codex용 설치가 OMP에도 보이는지 먼저 확인) |
+| skill 설치(`moai update`)의 host 목록 | yes | yes | gap | `src/update.rs::HOSTS` (list) | leader card: OMP는 `.agents/skills`(codex 단계가 쓰는 폴더)와 `~/.omp/agent/skills`를 읽으므로(`src/skills_legacy.rs`) 일부는 이미 닿는다; 2026-11-19 `omp skills list` 관찰(무비용)은 Claude 사용자 skill 폴더도 읽어 moai 스킬을 `source claude:user`로 발견함을 보여 주므로 읽는 폴더는 이 가정보다 넓다; 빠진 것은 이 목록과 `~/.omp/agent/skills`로의 설치이고, `src/update.rs`는 카드 C-47 범위 |
+| 프로젝트 skill 설치 | yes | yes | gap | `src/project_skills.rs::host_folder` | leader card: 같은 폴더 규칙(OMP는 `.agents/skills`를 읽으므로 codex용 설치가 OMP에도 보이는지 먼저 확인; 2026-11-19 `omp skills list` 관찰은 OMP가 가정 밖의 Claude 사용자 skill 폴더도 `source claude:user`로 읽음을 보여 주므로, 확인할 폴더에 그 폴더와 `~/.omp/agent/skills`도 더한다) |
 | 출력 스타일 설치 | yes | yes | gap | `src/home_style.rs::HOSTS` (list) | leader card: OMP에 출력 스타일이 있는지 먼저 조사한다 |
 | 감사 독립성 표 | yes | yes | gap | `src/audit.rs::INDEPENDENCE` (list) | leader card: OMP 하위 에이전트가 이전 대화를 이어받는지 문서로 확인한 뒤 줄을 더한다 |

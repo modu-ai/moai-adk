@@ -436,7 +436,9 @@ pub fn validate_scope(entries: &[String]) -> Result<Vec<String>, InputError> {
     Ok(seen)
 }
 
-fn criteria(entries: &[String]) -> Result<Vec<NewAc>, InputError> {
+/// The criterion texts of `card add --ac` and `card criterion-add --ac`: trimmed, not empty and
+/// one line each. A refusal names the entry by its place in the list, counted from 1.
+pub fn criterion_texts(entries: &[String]) -> Result<Vec<String>, InputError> {
     let mut out = Vec::with_capacity(entries.len());
     for (i, raw) in entries.iter().enumerate() {
         let entry = i + 1;
@@ -451,12 +453,20 @@ fn criteria(entries: &[String]) -> Result<Vec<NewAc>, InputError> {
         if words > 0 {
             return Err(InputError::CriterionSecretShaped { entry, words });
         }
-        out.push(NewAc {
-            seq: entry as i64,
-            text: text.to_string(),
-        });
+        out.push(text.to_string());
     }
     Ok(out)
+}
+
+fn criteria(entries: &[String]) -> Result<Vec<NewAc>, InputError> {
+    Ok(criterion_texts(entries)?
+        .into_iter()
+        .enumerate()
+        .map(|(i, text)| NewAc {
+            seq: i as i64 + 1,
+            text,
+        })
+        .collect())
 }
 
 /// Checks everything `card add` was given and returns the card to store. The first problem
