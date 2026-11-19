@@ -42,7 +42,7 @@ C-20 조각 2 실측(카드 노트 2833, 최근 10개 push run): ci 잡 시간�
 
 - AC-1 (REQ-1…REQ-4): tests/local_check_test.py — 기본은 8단계 전부를 지금 순서로(기존 행 유지), `LOCAL_CHECK_LEG=nextest` 는 정확히 fetch·test·doctest, `=rest` 는 정확히 fetch·clippy·fmt·fmt-ops·unittest·diff-check, 모르는 값은 2 로 거절하고 pass 줄이 없음, keep-going · 첫 실패 규칙은 다리 안에서도 그대로.
   verify: `python3 -m unittest tests.local_check_test`
-- AC-2 (REQ-5, REQ-6, REQ-9): tests/github_assets_test.py — 스크립트 호출이 정확히 두 곳(각 다리, `LOCAL_CHECK_LEG` 은 env 로), 매트릭스가 targets × [nextest, rest], 잡 이름 `ci / <target> / <leg>`, 집계 잡 이름은 `ci`, nextest 설치 step 은 nextest 다리만, 캐시 save-if 는 두 다리 모두 push 만, MOAI_BUILD_NUMBER 는 첫 시도만(기존 행), pinned actions · 권한 · scope step 행은 무변경.
+- AC-2 (REQ-5, REQ-6, REQ-9): tests/github_assets_test.py — 스크립트 호출은 매트릭스 다리가 함께 쓰는 정확히 한 곳(`LOCAL_CHECK_LEG` 는 step env 로 `matrix.leg` 를 받고 run 안에는 다리 표현식 없음; 구현 검토 결과 한 단계 정의가 두 다리 잡을 그대로 나눠 실행하므로 "각 다리 한 곳"의 못 박기가 이 모양으로 옮겨졌어요 — Result 참조), 매트릭스가 targets × [nextest, rest], 잡 이름 `ci / <target> / <leg>`, 집계 잡 이름은 `ci`, nextest 설치 step 은 nextest 다리만, 캐시 save-if 는 두 다리 모두 push 만, MOAI_BUILD_NUMBER 는 첫 시도만(기존 행), pinned actions · 권한 · scope step 행은 무변경.
   verify: `python3 -m unittest tests.github_assets_test`
 - AC-3 (REQ-7, REQ-8): tests/ci_superseded_test.py — 다리 접미사 이름 파싱, `ci-push-<target>-<leg>` 주석 판정, 전 다리 통과 + macOS 대체 조합은 superseded, 한 다리라도 다른 결과면 fail.
   verify: `python3 -m unittest tests.ci_superseded_test`
@@ -85,7 +85,14 @@ C-20 조각 2 실측(카드 노트 2833, 최근 10개 push run): ci 잡 시간�
 | D4 | D8a 그룹을 (target, leg) 단위로 | 같은 target 그룹을 두 다리가 나눠 쓰면 병렬이 사라짐(#2554 대기-교체) | target 단위 그룹으로 |
 | D5 | 집계 잡 이름 `ci` 유지 — ruleset 무변경 | 리더 노트 2837; ruleset · audit-gate 는 집계 이름만 읽음 | 이름을 바꾸면 ruleset 은 사용자 결정 |
 | D6 | ci.yml 과 ci_superseded.py 를 같은 커밋에 | 어긋나면 중립-취소가 fail 로 읽힘(Risks) | 따로 가면 감사에서 FAIL |
+| D7 | 구현 다듬기 셋: 호출 한 곳 + 매트릭스 다리 · rest 다리 전용 빌드 단계 · smoke 는 두 다리 모두 | Result 1–3(설계 뒤 사실: REQ-5 매트릭스가 다리를 이미 실음, 파이썬 시험의 실바이너리 요구, 98351d78f9 의 시험 고정) | 각각 단계 복제·빌드 제거(완전 캐시 가정)·smoke 다리 조건으로 |
 
 ## Result
 
-구현 에이전트가 채워요. 이 문서는 설계 단계(리더 노트 2837의 조각 3)까지이고, 구현은 agent-2 의 ci.yml head 위에서 tier 2 감사와 함께 가요.
+구현 완료(2026-11-19, agent-20, 카드 C-20 세대 2) — 커밋과 시험 증거는 카드 노트가 저번 행이에요. 구현이 설계에서 자세를 다듬은 세 곳:
+
+1. **스크립트 호출 한 곳 + 매트릭스 다리**(AC-2 표현 갱신): REQ-5 가 매트릭스에 다리를 실으므로, Check set 단계는 한 정의로 두 다리 잡이 함께 쓰고 `LOCAL_CHECK_LEG` 는 step env 가 `matrix.leg` 로 받아요(run 안에는 다리 표현식 없음 — REQ-6 의 문자 그대로). 두 곳에 단계를 복제하는 모양보다 요약 분기가 단계 안 `if [ "$LOCAL_CHECK_LEG" ]` 하나로 들어가요.
+2. **rest 다리의 바이너리 입력**(설계 때 없던 사실): 파이썬 시험 다수가 `target/debug/moai-cli` 를 실제로 실행해요(tests/self_audit_run.py 머리 주석 참조). 한 몸이던 Check set 에서는 nextest 가 같은 잡에서 먼저 링크해 줬지만, rest 다리는 clippy(check 전용)라 아무것도 링크하지 않아요. 그래서 rest 다리에만 Check set 앞 `Build moai-cli (unittest input)` 단계(`cargo build --locked --bin moai-cli`, 풀 범위만)를 뒀어요 — `--offline` 를 붙이지 않은 이유: 의존성 캐시가 차가운 PR(Cargo.lock 이 base 캐시키를 지난 경우)에서는 아직 아무것도 내려받지 않은 상태라, 필요한 것을 네트워크에서 가져와야 해요.
+3. **smoke 단계는 두 다리 모두**: SPEC 작성 뒤 tip 에 올라온 98351d78f9(check 잡의 install·update smoke)은 `if:` 문구가 tests/ci_smoke_step_test.py(이 카드 범위 밖)에 고정돼 있어 다리 조건을 붙일 수 없어요. 영역당 수 초라 중복 비용은 미미하고, 집계 `ci` 요구는 그대로예요.
+
+그 외는 설계 그대로: local_check.sh 는 `LOCAL_CHECK_LEG`(기본 전체·nextest·rest·모르는 값 exit 2)와 `on_leg` 목록으로 단계를 가려요(REQ-1…4); ci_superseded.py 는 첫 ` / ` 조각을 target 으로, 주석은 `ci-push-<target>-<leg>` 로 읽어요(REQ-8); D8a 그룹은 (target, leg) 단위, 집계 잡 이름·needs·조건 무변경(REQ-7·9). AC-6(첫 push run 관측)은 통합 뒤 리더 몫으로 남아요.

@@ -65,6 +65,10 @@
 #   LOCAL_CHECK_DIFF_HEAD   in-place only: diff-check range end (default HEAD)
 #   LOCAL_CHECK_KEEP_GOING=1  run every step and fail at the end (CI uses it, so each step's
 #                           exit is recorded as before); the default stops at the first failure
+#   LOCAL_CHECK_LEG         the CI check-matrix leg (SPEC-20261119-ci-check-set-legs): unset or
+#                           empty keeps today's single full set; `nextest` runs exactly fetch,
+#                           test, doctest; `rest` exactly fetch, clippy, fmt, fmt-ops, unittest,
+#                           diff-check; any other value exits 2 before any step runs
 #   GITHUB_STEP_SUMMARY     when set, one `| step | command | exit |` row per step is appended
 #   MOAI_HEAVY_SLOT_MAX (default 3), MOAI_HEAVY_SLOT_MIN_FREE_GB (default 50),
 #   MOAI_HEAVY_SLOT_NAME (default local-check): when `moai heavy-slot-acquire` exists, the
@@ -91,6 +95,19 @@ case "$mode" in
   candidate | in-place) ;;
   *)
     echo "tools/local_check.sh: LOCAL_CHECK_MODE must be candidate or in-place, not '$mode'" >&2
+    exit 2
+    ;;
+esac
+
+# SPEC-20261119-ci-check-set-legs (C-20): the CI check matrix runs the set as two parallel
+# legs of the same target. Unset or empty is the local default, today's full set; any value
+# but the two leg names refuses before a single stage runs (a CI typo must be loud, never a
+# silent second full set). The refusal is before the traps, so no result line is printed.
+leg="${LOCAL_CHECK_LEG:-}"
+case "$leg" in
+  "" | nextest | rest) ;;
+  *)
+    echo "tools/local_check.sh: LOCAL_CHECK_LEG must be unset, 'nextest' or 'rest', not '$leg'" >&2
     exit 2
     ;;
 esac
@@ -383,22 +400,50 @@ step() {
   return 0
 }
 
-# Fetch once against Cargo.lock, then run the set offline.
-step light fetch cargo fetch --locked
+# SPEC-20261119-ci-check-set-legs: which steps this run owns. `on_leg <list>` answers
+# whether the selected leg is in the list; the unset leg (the local default full set)
+# matches every list, so today's order and stage set are exactly today's for it.
+on_leg() {
+  [ -z "$leg" ] && return 0
+  case " $1 " in
+    *" $leg "*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# Fetch once against Cargo.lock, then run the set offline. Both legs fetch: each CI leg is
+# its own job with its own target folder, and a local run always wants the fetch first.
+if on_leg "nextest rest"; then
+  step light fetch cargo fetch --locked
+fi
 # #2452: test threads get 8 MiB (debug `Cli::command()` needs about 2000 KiB of the 2 MiB
 # default). #2554 2-1: the test binaries run in parallel under cargo-nextest; nextest does
 # not run doc-tests, so `cargo test --doc` runs them right after. The logs (ignored by
 # .gitignore `*.log`) feed the workflow's macOS-only case table.
-step heavy test bash -c 'RUST_MIN_STACK=8388608 cargo nextest run --offline --locked --no-fail-fast 2>&1 | tee ci-test.log; exit "${PIPESTATUS[0]}"'
-step heavy doctest bash -c 'RUST_MIN_STACK=8388608 cargo test --offline --locked --doc 2>&1 | tee ci-doctest.log; exit "${PIPESTATUS[0]}"'
-step heavy clippy cargo clippy --offline --locked --all-targets -- -D warnings
-step light fmt cargo fmt --check
+if on_leg "nextest"; then
+  step heavy test bash -c 'RUST_MIN_STACK=8388608 cargo nextest run --offline --locked --no-fail-fast 2>&1 | tee ci-test.log; exit "${PIPESTATUS[0]}"'
+fi
+if on_leg "nextest"; then
+  step heavy doctest bash -c 'RUST_MIN_STACK=8388608 cargo test --offline --locked --doc 2>&1 | tee ci-doctest.log; exit "${PIPESTATUS[0]}"'
+fi
+if on_leg "rest"; then
+  step heavy clippy cargo clippy --offline --locked --all-targets -- -D warnings
+fi
+if on_leg "rest"; then
+  step light fmt cargo fmt --check
+fi
 # C-75 S0: build.rs includes src/ops/*.rs through `#[path]` in a file it writes into
 # OUT_DIR, so `cargo fmt` never reaches them; rustfmt checks them here with the crate's
 # edition (Cargo.toml). With no file the pattern reaches rustfmt as is, and that fails.
-step light fmt-ops bash -c 'rustfmt --check --edition 2021 src/ops/*.rs'
-step python unittest bash -c "python3 -m unittest discover -v -s tests -p '*_test.py' 2>&1 | tee ci-unittest.log; exit \"\${PIPESTATUS[0]}\""
-step light diff-check git diff --check "${diff_range}"
+if on_leg "rest"; then
+  step light fmt-ops bash -c 'rustfmt --check --edition 2021 src/ops/*.rs'
+fi
+if on_leg "rest"; then
+  step python unittest bash -c "python3 -m unittest discover -v -s tests -p '*_test.py' 2>&1 | tee ci-unittest.log; exit \"\${PIPESTATUS[0]}\""
+fi
+if on_leg "rest"; then
+  step light diff-check git diff --check "${diff_range}"
+fi
 
 trap - EXIT
 finish
