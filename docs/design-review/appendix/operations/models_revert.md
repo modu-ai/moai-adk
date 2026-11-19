@@ -1,4 +1,4 @@
-# models-revert
+# `models-revert`
 
 `moai models-revert <HOME> --receipt models-… --permission-reference <ref>` puts the launcher
 settings file back as the receipt of one `moai update` model save kept it: the text before the
