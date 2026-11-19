@@ -275,13 +275,53 @@ class PlanTest(unittest.TestCase):
                 self.git("tag", "-d", tag)
 
     def test_lower_build_numbers_and_other_tag_families_do_not_block(self):
+        """Other tag families never block the rise check; the moai-adk-v* malformed shapes
+        moved to test_a_malformed_moai_adk_tag_is_refused (card C-93 follow-up N1)."""
         for tag in ["moai-adk-v4.2640.6", "moai-adk-v4.2647.1", "v3.1.3", "go-v1.2.3",
-                    "moai-cli-v2026.11.0-rc.1", "moai-adk-v4.2640.99-dev", "moai-adk-vx.y.z",
-                    "xmoai-adk-v4.2640.50"]:
+                    "moai-cli-v2026.11.0-rc.1", "xmoai-adk-v4.2640.50"]:
             self.git("tag", tag)
         done, out = self.plan()
         self.assertEqual(done.returncode, 0, done.stderr)
         self.assertEqual(out["tag"], "moai-adk-v4.2648.7")
+
+    def test_a_malformed_moai_adk_tag_is_refused(self):
+        """Card C-93 follow-up N1: a moai-adk-v* tag that does not match
+        moai-adk-v{head}.{yearweek}.{build} exactly — a head over 10 digits or with a leading
+        zero, a week that is not 4 digits, a build with a leading zero or a suffix — is
+        refused with the reason instead of being silently skipped by the rise check (a build
+        over 2^63 used to wrap bash arithmetic and slip past)."""
+        for bad in [
+            "moai-adk-v0000000004.2648.7",
+            "moai-adk-v00000000000000000004.2648.7",
+            "moai-adk-v4.26487.7",
+            "moai-adk-v4.2648.07",
+            "moai-adk-v4.2648",
+            "moai-adk-v4.2648.7-rc1",
+            "moai-adk-vx.y.z",
+            "moai-adk-v4.2640.99-dev",
+            # A fourth dotted part: the three-part shape is exact (audit B1, mutant M2 allowed it).
+            "moai-adk-v4.2648.7.1",
+            # An 11-digit head with no leading zero: the 10-digit cap is what refuses it, not the
+            # leading-zero rule the two long heads above trip first (audit B1, mutant M10).
+            "moai-adk-v12345678901.2648.7",
+        ]:
+            with self.subTest(bad=bad):
+                self.git("tag", bad)
+                done, out = self.plan()
+                self.refused(done, out, ["does not match moai-adk-v", bad])
+                self.git("tag", "-d", bad)
+
+    def test_a_build_number_over_the_32_bit_cap_is_refused(self):
+        """N1: a build over 4294967295 would wrap bash's signed arithmetic; the tag is refused
+        for the cap, and the cap's near edge is refused for going down — which names it."""
+        self.git("tag", "moai-adk-v4.2648.4294967296")
+        done, out = self.plan()
+        self.refused(done, out, ["over 4294967295", "moai-adk-v4.2648.4294967296"])
+        self.git("tag", "-d", "moai-adk-v4.2648.4294967296")
+        self.git("tag", "moai-adk-v4.2648.4294967295")
+        done, out = self.plan()
+        self.refused(done, out, ["not above", "4294967295"])
+        self.git("tag", "-d", "moai-adk-v4.2648.4294967295")
 
 
 class VerifyTest(unittest.TestCase):
