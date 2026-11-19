@@ -148,6 +148,40 @@ fn lane_screen_state_a_yes_no_dialog_is_a_permission_prompt() {
     assert_eq!(r.result()["state"], json!("permission_prompt"));
 }
 
+/// Audit of slice A (note 3212, B1): a numbered Yes/No choice never reads as `working` or `idle`,
+/// whatever draws its cursor or its frame; a Yes sent with Enter would run the command.
+#[test]
+fn lane_screen_state_a_numbered_yes_no_choice_is_never_working_or_idle() {
+    for name in [
+        // `>` as the cursor instead of `❯`.
+        "synthetic-ascii-cursor-dialog.txt",
+        // The dialog inside a vertical frame.
+        "synthetic-bordered-dialog.txt",
+        // No cursor mark and no `Do you want` question, above an idle input line.
+        "synthetic-no-cursor-dialog.txt",
+    ] {
+        let r = run(&fixture(name), &[]);
+        assert_eq!(r.result()["state"], json!("permission_prompt"), "{name}");
+        let evidence = r.result()["evidence"].as_str().unwrap();
+        assert!(!evidence.is_empty(), "{name}");
+        assert_eq!(
+            r.result()["pane"]["state"],
+            json!("permission_prompt"),
+            "{name}"
+        );
+    }
+}
+
+#[test]
+fn lane_screen_state_numbered_rows_that_are_not_yes_and_no_do_not_make_a_prompt() {
+    // `Yesterday` and `Not now` only start with the letters of Yes and No.
+    let screen = "row 1\nrow 2\nrow 3\n  1. Yesterday\n  2. Not now\nrow 6\nesc to interrupt\n";
+    assert_eq!(state_of(screen), "working");
+    // A quoted line with `>` but no number is no choice either.
+    let screen = "row 1\nrow 2\nrow 3\n> Yes, that is what I said\n> No\nrow 6\nesc to interrupt\n";
+    assert_eq!(state_of(screen), "working");
+}
+
 #[test]
 fn lane_screen_state_another_choice_dialog_is_input_pending() {
     let r = run(&fixture("synthetic-choice-dialog.txt"), &[]);
@@ -483,4 +517,34 @@ fn lane_screen_unknown_a_bad_now_or_an_oversize_input_is_refused() {
     let at_limit = "x".repeat(65_536);
     let r = run_in(dir.path(), dir.path(), &at_limit, &["--now", NOW_TEXT]);
     assert_eq!(r.code, 0, "{}", r.envelope);
+    // One byte over the limit is refused (audit note 3212, N2).
+    let over = "x".repeat(65_537);
+    let r = run_in(dir.path(), dir.path(), &over, &["--now", NOW_TEXT]);
+    assert_eq!(r.code, 1, "{}", r.envelope);
+    assert_eq!(r.envelope["ok"], json!(false));
+}
+
+/// Audit of slice A (note 3212, N1): a year far outside the calendar made the date arithmetic
+/// overflow and a debug build panic (exit 101, no envelope).
+#[test]
+fn lane_screen_reset_a_year_outside_the_calendar_is_unknown_and_never_a_panic() {
+    for message in [
+        "limit reached ∙ resets 9999999999999-01-01T00:00:00Z",
+        "limit reached ∙ resets 99999999999999999999-01-01T00:00:00Z",
+        "limit reached ∙ resets 10000-01-01T00:00:00Z",
+        "limit reached ∙ resets 1969-12-31T23:59:59Z",
+    ] {
+        let reset = reset_utc(message, NOW_TEXT);
+        assert_eq!(reset["utc"], json!(null), "{message}");
+        assert_eq!(reset["unknown"], json!(true), "{message}");
+    }
+    // The edges that are inside the calendar still read.
+    assert_eq!(
+        reset_utc("limit reached ∙ resets 9999-12-31T23:59:59Z", NOW_TEXT)["utc"],
+        json!("9999-12-31T23:59:59Z")
+    );
+    assert_eq!(
+        reset_utc("limit reached ∙ resets 1970-01-01T00:00:00Z", NOW_TEXT)["utc"],
+        json!("1970-01-01T00:00:00Z")
+    );
 }
