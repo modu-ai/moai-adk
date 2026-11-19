@@ -9,6 +9,10 @@ import importlib.util
 import json
 import pathlib
 import re
+import shutil
+import subprocess
+import sys
+import tempfile
 import unittest
 
 import yaml
@@ -257,6 +261,8 @@ ALLOWED_WRITES = {
     ("moai-label-sync.yml", "apply"): {"issues"},
     # C-95: the audit-gate job posts the moai/audit commit status itself.
     ("audit-gate.yml", "audit-gate"): {"statuses"},
+    # C-97 (SPEC-20261119-check-guard): the label is the job's only write.
+    ("check-guard.yml", "check-guard"): {"issues"},
 }
 
 
@@ -266,11 +272,12 @@ class WorkflowTest(unittest.TestCase):
         # #2554 PR-A adds the candidate verification path: candidate.yml (the three supported
         # targets and the verdict) and candidate-target.yml (one target, called three times).
         # SPEC-20261117-audit-gate adds audit-gate.yml (the audit check from verdict comments).
+        # SPEC-20261119-check-guard (C-97) adds check-guard.yml (the base-branch judge);
         # SPEC-20261119-headver-release-workflow adds release.yml (number, tag name and build
         # check only; a person publishes).
         self.assertEqual([p.name for p in paths],
-                         ["audit-gate.yml", "candidate-target.yml", "candidate.yml", "ci.yml",
-                          "moai-label-sync.yml", "release.yml"])
+                         ["audit-gate.yml", "candidate-target.yml", "candidate.yml",
+                          "check-guard.yml", "ci.yml", "moai-label-sync.yml", "release.yml"])
         return [(p, yaml.safe_load(p.read_text(encoding="utf-8"))) for p in paths]
 
     def test_permissions_are_least_privilege(self):
@@ -732,6 +739,115 @@ class PreviousGenerationTest(unittest.TestCase):
         block = re.search(r"Removed paths:\n\n```text\n(.*?)\n```", readme, re.S)
         self.assertIsNotNone(block)
         self.assertEqual(sorted(block.group(1).splitlines()), sorted(self.removed()))
+
+
+CHECK_GUARD_WORKFLOW = ROOT / ".github/workflows/check-guard.yml"
+CHECKOUT_PIN = re.compile(r"uses: actions/checkout@[0-9a-f]{40}\b")
+
+
+class CheckGuardTest(unittest.TestCase):
+    """C-97 (SPEC-20261119-check-guard) REQ-11: the workflow judges from the base
+    checkout only, and the audit instructions read REVIEW.md/agents/audit.md from the
+    base ref. Structural, offline — the behaviour lives in tests/check_guard_test.py."""
+
+    def workflow(self):
+        text = CHECK_GUARD_WORKFLOW.read_text(encoding="utf-8")
+        data = yaml.safe_load(text)
+        # PyYAML reads the bare key `on:` as the boolean True (YAML 1.1).
+        trigger = data.get("on", data.get(True))
+        return text, data, trigger
+
+    def test_check_guard_workflow_judges_from_the_base_checkout(self):
+        text, data, trigger = self.workflow()
+        self.assertNotIn("pull_request_target:", text, "`pull_request` only (SPEC header)")
+        self.assertIn("pull_request", trigger)
+        self.assertEqual(trigger["pull_request"]["branches"], ["v2026.11.0"])
+        self.assertTrue(CHECKOUT_PIN.search(text), "the checkout action is pinned to a SHA")
+        steps = data["jobs"]["check-guard"]["steps"]
+        checkout = [s for s in steps if "uses" in s and s["uses"].startswith("actions/checkout@")]
+        self.assertEqual(len(checkout), 1)
+        self.assertEqual(
+            checkout[0]["with"]["ref"], "${{ github.event.pull_request.base.sha }}"
+        )
+        self.assertFalse(checkout[0]["with"]["persist-credentials"])
+        guard_runs = [s for s in steps if "python3 tools/check_guard.py" in s.get("run", "")]
+        self.assertEqual(len(guard_runs), 1, "the guard runs once, from the base checkout")
+        run = guard_runs[0]["run"]
+        self.assertIn("--list tools/protected_checks.json", run)
+        self.assertIn("GH_TOKEN: ${{ github.token }}", text)
+        self.assertNotIn("${{ secrets.", text, "the read-only token, never a secret")
+        job = data["jobs"]["check-guard"]
+        self.assertEqual(
+            job["permissions"],
+            {"contents": "read", "issues": "write", "pull-requests": "read"},
+        )
+
+    # gh refuses unknown `--json` field names before anything is judged (audit B1b:
+    # `changed_files` is not a gh field, `changedFiles` is), and the files step's `--jq`
+    # expression must yield the old name for each entry, not per page (audit B1a). These
+    # two pin the producer side; the offline run below pins the contract with
+    # tools/check_guard.py, whose unit tests inject the file list directly.
+    PR_VIEW_FIELDS = {"body", "changedFiles"}
+
+    def files_step_jq(self, text):
+        match = re.search(r"--jq '([^']+)'", text)
+        self.assertIsNotNone(match, "the files step reads the API through one single-quoted --jq")
+        return match.group(1)
+
+    def test_files_step_json_fields_are_valid_gh_names(self):
+        text = CHECK_GUARD_WORKFLOW.read_text(encoding="utf-8")
+        pairs = re.findall(r"--json ([\w,]+)\s+--jq '?(\.[\w.]+)", text)
+        self.assertTrue(pairs, "the workflow reads gh data through --json/--jq pairs")
+        for field, target in pairs:
+            self.assertIn(field, self.PR_VIEW_FIELDS, f"--json {field} is not a gh field name")
+            self.assertEqual(target.lstrip("."), field, "the --jq target reads back the field")
+
+    def test_files_step_jq_yields_old_and_new_names_and_the_guard_judges_them(self):
+        text = CHECK_GUARD_WORKFLOW.read_text(encoding="utf-8")
+        expression = self.files_step_jq(text)
+        if shutil.which("jq") is None:
+            self.skipTest("jq is not installed; gh runs this expression with its own jq")
+        page = json.dumps([
+            {"filename": "notes/guide.md"},
+            {"filename": "notes/renamed.md", "previous_filename": "notes/old.md"},
+            {"filename": ".github/workflows/check-guard.yml"},
+        ])
+        jq = subprocess.run(["jq", "-r", expression], input=page, capture_output=True, text=True)
+        self.assertEqual(jq.returncode, 0, jq.stderr)
+        for expected in ("notes/guide.md", "notes/renamed.md", "notes/old.md",
+                         ".github/workflows/check-guard.yml"):
+            self.assertIn(expected, jq.stdout.splitlines(),
+                          f"the files step must yield {expected} from its jq expression")
+        # The consumer side, offline (no --label, so check_guard.py calls no gh): what
+        # the jq step prints is exactly what tools/check_guard.py reads, one path per
+        # line, and a protected path in the page is judged (fails without a tier-2 body).
+        with tempfile.TemporaryDirectory() as tmp:
+            files = pathlib.Path(tmp) / "files.txt"
+            files.write_text(jq.stdout, encoding="utf-8")
+            body = pathlib.Path(tmp) / "body.md"
+            body.write_text("docs only\n", encoding="utf-8")
+            guard = subprocess.run(
+                [sys.executable, str(ROOT / "tools" / "check_guard.py"),
+                 "--list", str(ROOT / "tools" / "protected_checks.json"),
+                 "--files", str(files), "--body", str(body)],
+                capture_output=True, text=True)
+        self.assertEqual(guard.returncode, 1, guard.stdout + guard.stderr)
+        verdict = json.loads(guard.stdout)
+        self.assertEqual(verdict["verdict"], "fail")
+        self.assertEqual(verdict["protected_paths"], [".github/workflows/check-guard.yml"])
+
+    def test_check_guard_reads_files_and_body_from_the_api(self):
+        text = CHECK_GUARD_WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("--paginate", text)
+        self.assertIn("previous_filename", text, "rename old names are judged too")
+        self.assertIn("gh pr view", text)
+        self.assertIn("changedFiles", text, "a truncated files list fails safe")
+
+    def test_audit_instructions_read_the_review_rules_from_the_base_ref(self):
+        audit = (ROOT / "agents" / "audit.md").read_text(encoding="utf-8")
+        self.assertIn("git show <base-sha>:REVIEW.md", audit)
+        self.assertIn("git show <base-sha>:agents/audit.md", audit)
+        self.assertIn("judged by the base text", audit)
 
 
 if __name__ == "__main__":

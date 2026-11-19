@@ -22,6 +22,8 @@ const EXE: &str = crate::common::MOAI_BIN;
 const REF: &str = "test:c57-2b";
 const PLACEHOLDER: &str = "<permission-reference>";
 const HUMAN: &str = "# mine\n\nHand-written rules.\nNo final newline";
+/// The `review_blocks` answer of the REVIEW.md cases: it must reach REVIEW.md word for word.
+const REVIEW_RULE: &str = "a change without a test";
 
 struct Fx {
     _tmp: TempDir,
@@ -101,12 +103,24 @@ impl Fx {
     /// [`Fx::with_profile`] with the language of the instruction files set, so a later profile
     /// in another language renders AGENTS.md differently from what the first apply recorded.
     fn with_language(&self, hosts: &[&str], instruction_files: Option<&str>) {
+        self.with_answers(hosts, instruction_files, false);
+    }
+
+    /// [`Fx::with_language`], and with `review` the interview also recorded a `review_blocks`
+    /// answer, so the plan carries a REVIEW.md section (`REVIEW_ANSWERS` in `src/agents.rs`).
+    fn with_answers(&self, hosts: &[&str], instruction_files: Option<&str>, review: bool) {
         let detect = self.call(&["project-detect", self.p()], b"");
         let mut profile = json!({
             "schema_version": 2, "project_id": "demo", "purpose": "Build a small editor",
             "tools": ["Rust"], "development_methods": ["TDD"], "hosts": hosts,
             "detected": detect["detected"],
         });
+        if review {
+            profile["decisions"] = json!([{
+                "id": "review_blocks", "topic": "review_blocks",
+                "value": REVIEW_RULE, "source": "user", "scope": "project"
+            }]);
+        }
         if let Some(code) = instruction_files {
             profile["language"] = json!({
                 "agent_messages": "en", "code_comments": "en", "commit_messages": "en",
@@ -153,6 +167,21 @@ impl Fx {
         fx.write("AGENTS.md", HUMAN);
         fx.with_language(hosts, Some("ko"));
         (fx, request)
+    }
+
+    /// [`Fx::conflict`] where REVIEW.md is new at the conflict: the first apply had no review
+    /// answer (so no REVIEW.md), the hand-written AGENTS.md came after it, and the profile that
+    /// makes the plan conflict also records `review_blocks`. The plan then holds the AGENTS.md
+    /// conflict and a REVIEW.md row that has nothing to do with it.
+    fn conflict_with_review(hosts: &[&str]) -> Fx {
+        let fx = Fx::new();
+        fx.with_language(hosts, Some("en"));
+        let plan = fx.update_plan();
+        assert_eq!(fx.apply(step(&plan, "generation"))["ok"], json!(true));
+        assert!(!fx.root.join("REVIEW.md").exists(), "no review answer yet");
+        fx.write("AGENTS.md", HUMAN);
+        fx.with_answers(hosts, Some("ko"), true);
+        fx
     }
 
     /// A project whose generation was applied through the step's own command.
@@ -405,6 +434,51 @@ fn choices_the_skip_command_keeps_agents_md_and_applies_the_rest() {
     let again = step(&again, "generation");
     assert_eq!(again["state"], "conflict", "{again}");
     assert_eq!(choice_ids(again), ["append-managed", "skip-conflicts"]);
+}
+
+// Card C-57 criterion 2: REVIEW.md is applied whichever way the AGENTS.md conflict is settled; the
+// conflict holds back AGENTS.md only, and a preview writes nothing of REVIEW.md.
+#[test]
+fn choices_review_md_is_written_whichever_pick_settles_the_agents_md_conflict() {
+    for pick in ["skip-conflicts", "append-managed"] {
+        let fx = Fx::conflict_with_review(&["claude", "codex"]);
+        let plan = fx.update_plan();
+        let generation = step(&plan, "generation");
+        assert_eq!(generation["state"], "conflict", "{pick}: {generation}");
+        assert_eq!(
+            action(&generation["preview"], "REVIEW.md"),
+            "create",
+            "{pick}: {generation}"
+        );
+        assert!(
+            !fx.root.join("REVIEW.md").exists(),
+            "a preview writes nothing"
+        );
+        let out = fx.apply(choice(generation, pick));
+        assert_eq!(out["ok"], json!(true), "{pick}: {out}");
+        let review = fx.read("REVIEW.md");
+        assert!(review.contains(REVIEW_RULE), "{pick}: {review}");
+        let agents = fx.read("AGENTS.md");
+        if pick == "skip-conflicts" {
+            assert_eq!(agents, HUMAN, "the skip keeps the hand-written file");
+        } else {
+            assert!(agents.starts_with(HUMAN), "{pick}: {agents:?}");
+            assert_eq!(
+                agents.matches("moai:managed:begin").count(),
+                1,
+                "{agents:?}"
+            );
+        }
+        // Settled once, the next plan has nothing left of REVIEW.md to do.
+        let again = fx.update_plan();
+        let again = step(&again, "generation");
+        let work = again["preview"]["files"].as_array().and_then(|files| {
+            files
+                .iter()
+                .find(|f| f["path"] == "REVIEW.md" && f["action"] != "unchanged")
+        });
+        assert!(work.is_none(), "{pick}: REVIEW.md still has work: {again}");
+    }
 }
 
 // REQ-6: only a missing block is offered the append and the skip; an edited block is not.

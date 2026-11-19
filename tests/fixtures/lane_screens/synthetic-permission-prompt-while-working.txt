@@ -1,0 +1,13 @@
+✳ Frosting… (12s · esc to interrupt)
+
+● Bash(git reset --hard HEAD~1)
+
+ Bash command
+
+   git reset --hard HEAD~1
+   Drop the last commit and its changes
+
+ Do you want to proceed?
+ ❯ 1. Yes
+   2. Yes, and don't ask again for git reset commands in /Users/example/project
+   3. No, and tell Claude what to do differently (esc)
