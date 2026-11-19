@@ -77,6 +77,7 @@ created: 2026-11-20
 - 내용 모양을 확정했어요(BOARD 02 수집기와 맞추려고 그쪽 카드에 노트 3638 로 알렸어요). `pr-state@1` = `{number, state, head, review: null | {verdict: PASS|FAIL, head}}` (`review.head` 는 그 판정이 말하는 정확한 head), `bundle-run@1` = `{branch, source_sha, target_sha, commands[{check, exit}], not_run[], run_digest, specs[]}`. 둘 다 참조와 종료 코드뿐이고 명령 줄·로그 원문·세션 id·카드 번호가 없어요.
 - `src/board/link.rs`: `link(rows, lane) -> LinkView` 순수 함수(표준 라이브러리·serde 만 쓰고 `crate::` 를 쓰지 않아서 `src/lib.rs` 선언 없이 시험돼요). 연결 열쇠는 SHA 하나: 묶음 실행의 소스 SHA 와 같은 head 를 보인 적 있는 PR 이 그 묶음의 PR 이고, 같은 번호의 가장 새 행이 지금 head 예요. 효력은 저장하지 않고 읽을 때 계산해요(통과가 말하는 head 가 그 층의 지금 head 와 같을 때만).
 - RED 먼저: `todo!()` 껍데기로 시험 5개가 모두 실패(`0 passed; 5 failed`), 구현 뒤 5개 통과.
+- 독립 감사(head 53335a3dba, 차단 0)가 구현을 일부러 망가뜨린 변이 8개가 모두 살아남는다고 알렸어요(seq 정렬 삭제, FAIL 을 PASS 로 읽기, 레인 층의 SPEC 구분 삭제, 읽지 못한 head 의 효력 판정, 같은 head 의 FAIL·PASS 합치기, 소속 PR 을 가장 오래된 행으로, 같은 묶음의 뒤 실행 기록 무시, PR 상태를 첫 행에서). 시험 여섯을 더해 11개가 됐고 그 8개 변이를 모두 시험이 잡아요(변이마다 복원 뒤 `git status` 깨끗).
 - AC-1·2·3·5·6 met — 변이 5개를 시험이 잡았어요(`!=` 로 뒤집은 PR head 비교 → AC-1·2, `==` 를 `!=` 로 뒤집은 효력 판정 → AC-2·3, 한 층의 통과를 항상 무효로 → AC-3, 읽지 못한 행 이름 빼기 → AC-6, 같은 판정 중복 제거 빼기 → AC-2). 변이마다 `git status` 깨끗하게 복원했어요.
 - AC-4(밖으로 나가는 글, REQ-4·5)는 조각 3 이에요: 아직 하지 않았어요.
 - 돌리지 않은 것: 실제 관측 저장과의 연결(저장 모듈은 아직 가지에 없어요; `Row` 변환 한 줄은 마감 조각), `src/lib.rs` 의 모듈 선언(`pub mod board;` 는 BOARD 02 와 순서 맞추기), CI.
