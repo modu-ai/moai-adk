@@ -87,18 +87,45 @@ def validate(eval_dir, kinds):
                     f"a {kind} record is missing {', '.join(missing)}: "
                     f"{json.dumps(row, ensure_ascii=False)[:200]}"
                 )
+            if (
+                "/" in row["id"]
+                or "\\" in row["id"]
+                or ":" in row["id"]
+                or row["id"] in (".", "..")
+            ):
+                refuse(
+                    f"the case id holds a path separator or `:`: {row['id']!r}; a case id names "
+                    "a prompt file and joins the `id:which` missing-ref entries, so `/`, `\\`, "
+                    "`:` and `.`/`..` are refused"
+                )
             rows.append(row)
     return rows
 
 
 def ref_missing(repo, sha):
+    env = dict(os.environ)
+    # A partial clone would lazy-fetch the ref to answer; the audit evaluates only what the
+    # repository already has (card C-107).
+    env["GIT_NO_LAZY_FETCH"] = "1"
     return (
         subprocess.run(
             ["git", "-C", repo, "cat-file", "-e", sha + "^{commit}"],
             capture_output=True,
+            env=env,
         ).returncode
         != 0
     )
+
+
+def missing_refs(repo, rows):
+    """`id:head` / `id:base` for each ref of a case the repository does not have (card C-107):
+    the case alone left which of the two refs to fix unclear."""
+    out = []
+    for row in rows:
+        for which in ("head", "base"):
+            if ref_missing(repo, row[which]):
+                out.append(f"{row['id']}:{which}")
+    return out
 
 
 def prompt_for(case, repo):
@@ -119,14 +146,15 @@ Score nothing yourself: another tool scores your findings against this case's an
 def cmd_run(args):
     kinds = ["tuning", "heldout", "controls"] if args.set == "all" else [args.set]
     rows = validate(args.eval_dir, kinds)
-    missing = [r["id"] for r in rows if ref_missing(args.repo, r["head"]) or ref_missing(args.repo, r["base"])]
+    missing = missing_refs(args.repo, rows)
+    missing_ids = {m.split(":", 1)[0] for m in missing}
     try:
         os.makedirs(args.out, exist_ok=True)
     except OSError as e:
         refuse(f"the output folder cannot be written: {args.out}: {e}")
     written = 0
     for row in rows:
-        if row["id"] in missing:
+        if row["id"] in missing_ids:
             continue
         with open(os.path.join(args.out, row["id"] + ".md"), "w") as fh:
             fh.write(prompt_for(row, args.repo))
@@ -157,15 +185,12 @@ def cmd_score(args):
     for row in findings:
         if not isinstance(row, dict) or row.get("case_id") not in known:
             refuse(f"the findings file names a case the set does not hold: {json.dumps(row)[:200]}")
-    rows_missing = [
-        c["id"]
-        for c in incidents + controls
-        if ref_missing(args.repo, c["head"]) or ref_missing(args.repo, c["base"])
-    ]
+    rows_missing = missing_refs(args.repo, incidents + controls)
+    missing_ids = {m.split(":", 1)[0] for m in rows_missing}
     by_id = {c["id"]: c for c in incidents + controls}
-    rows = {r["case_id"]: r for r in findings if r["case_id"] not in rows_missing}
-    cases = [c for c in incidents if c["id"] not in rows_missing]
-    ctrls = [c for c in controls if c["id"] not in rows_missing]
+    rows = {r["case_id"]: r for r in findings if r["case_id"] not in missing_ids}
+    cases = [c for c in incidents if c["id"] not in missing_ids]
+    ctrls = [c for c in controls if c["id"] not in missing_ids]
     described = 0
     verdict_hits = 0
     for case in cases:
