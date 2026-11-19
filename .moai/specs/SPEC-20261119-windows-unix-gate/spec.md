@@ -72,4 +72,13 @@ created: 2026-11-19
 
 ## Result
 
-(구현 뒤에 AC마다 한 줄씩 적어요.)
+- AC-1: open — RED 만 증거가 있어요. `cargo test --locked --offline --test windows_unix_gate_scan no_file_under_tests`(tip 7d744a28f3 위) → `FAILED`, 메시지 끝에 `tests/hooks_cli.rs:1391` 한 줄만 나와요(다른 파일은 안 걸려요: `tests/common/go_project_real_run.rs:72,366` 은 포함하는 파일이 모두 `#![cfg(unix)]` 라 안전으로 읽혀요). GREEN 은 C-86 쪽(agent-3)의 `cfg(unix)` 커밋을 이 가지에 합친 뒤 채워요(결정 (a), 카드 노트 2753). 파일 수 하한(100)의 실패 경로는 시험 코드에 있고 따로 돌리지 않았어요.
+- AC-2: met — `cargo test --locked --offline --test windows_unix_gate_scan -- --skip no_file_under_tests` → `test result: ok. 7 passed`: 게이트 8꼴(`unix`·`not(windows)`·`target_os` macos/linux·`target_family = "unix"`·`all(unix, …)` 둘·공백 낀 `cfg( unix )`)과 비게이트 8꼴(`any(unix, windows)`·`not(unix)`·`windows`·`test`·`target_os`/`target_family = "windows"`·`any(unix, test)`·`#[test]`), 안쪽 `#![cfg]`, 주석·문자열·원시 문자열·수명 표기, 게이트가 끝나는 자리(블록 안 게이트, 문장 `;`, 괄호 속 `;`, 다음 모듈, 겹친 블록)를 못 박아요. 처음 돌렸을 때 `cfg(target_os = "windows")` 상자가 실패해서 스캔의 진짜 버그를 잡았어요: 문자열을 지우는 단계가 속성 값까지 지웠어요 → 속성은 원문에서 읽도록 고쳤어요.
+- AC-3: met — 같은 시험 `a_helper_under_common_is_read_through_its_includers` 가 통과하고, 변이 M4(`all` → `any`)를 잡아요.
+- AC-4: met — `cargo test --locked --offline --test home_isolation_scan` 18 passed; `python3 -m unittest tests.ci_scope_test` `Ran 40 tests … OK`.
+
+변이(스캔 코드를 한 곳씩 틀고 `--skip no_file_under_tests` 로 상자 시험만 돌림, 변이마다 `git checkout --` 뒤 작업 트리 clean): M1 `"unix" => false` → `true` KILLED(5개 실패); M2 `;` 가 괄호 안에서도 게이트를 끝냄 KILLED(`a_gate_covers_exactly_the_item_it_stands_on`); M3 `not(...)` 뒤집지 않음 KILLED(2개); M4 includers `all` → `any` KILLED(`a_helper_under_common_…`); M5 중첩 블록이 바깥 게이트를 잃음 → 처음에는 SURVIVED(시험이 중첩 블록을 안 봤어요) → 중첩 블록 상자를 더한 뒤 KILLED. 5/5 KILLED. 변이 스크립트의 판정 글자는 래퍼(`run.sh`)가 마지막에 `echo exit=$?` 를 해서 늘 0 이라 믿지 않고, 실패한 시험 이름과 `test result` 줄로 판정했어요.
+
+검사: `cargo fmt --check` 출력 없음; `cargo clippy --locked --offline --all-targets -- -D warnings` `exit=0`(처음에는 `slice::from_ref` 지적 하나 → 고침); `cargo test --locked --offline --lib` 1452 passed, 1 failed(`decide::outbound::tests::a_64_kib_field_of_a_repeated_key_prefix_is_screened_quickly`, 2초 벽시계 시험, 그때 기계 부하 77): 같은 시험을 따로 다시 돌리면 `1 passed … 2.87s` 였어요(`src/` 는 건드리지 않았어요; 시간 제한은 올리지 않았어요). 로컬 Windows 확인 `cargo check --tests --target x86_64-pc-windows-msvc` 는 `libsqlite3-sys` 의 C 컴파일(CLT 헤더에 `stdlib.h` 없음)에서 멈춰 시험 코드까지 못 갔어요 → `not_run`, 푸시 run 의 `windows-build` 가 확인해요.
+
+S4 가지: `origin/spec/20261119-enforce-merge-confirm-r2` 의 `tests/hooks_cli.rs:1917` 에 같은 꼴(cfg 없는 `std::os::unix::fs::symlink`)이 있어요. 이 SPEC 에서 고치지 않고 카드 노트로 보고했어요(note 2761).

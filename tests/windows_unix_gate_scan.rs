@@ -439,7 +439,10 @@ fn a_helper_under_common_is_read_through_its_includers() {
         "#[path = \"common/helper.rs\"]\nmod helper;\n",
     );
     // Nobody includes it: the helper is judged alone.
-    assert_eq!(ungated(&[helper.clone()]), ["tests/common/helper.rs:2"]);
+    assert_eq!(
+        ungated(std::slice::from_ref(&helper)),
+        ["tests/common/helper.rs:2"]
+    );
     // Every includer is removed on Windows: fine.
     assert!(ungated(&[helper.clone(), gated.clone()]).is_empty());
     // One includer keeps Windows in: the helper's line is reported.
