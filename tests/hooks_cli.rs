@@ -874,6 +874,23 @@ impl GreenRepo {
         .unwrap();
     }
 
+    /// Creates `files` (relative paths) and makes them the whole locked list of the record.
+    fn lock_only(&self, files: &[&str]) {
+        for file in files {
+            let path = self.root.join(file);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, "x\n").unwrap();
+        }
+        fs::write(
+            self.root.join(".git/moai/tdd.json"),
+            json!({"schema_version": 1, "spec": "SPEC-20261119-fixture", "phase": "green",
+                   "red_commit": RED_COMMIT, "locked": files,
+                   "checks": ["cargo test"], "at_unix": 1})
+            .to_string(),
+        )
+        .unwrap();
+    }
+
     /// The Bash call as Claude Code sends it, run from the work tree; `cwd` is the folder the
     /// hook input names.
     fn bash(&self, command: &str, cwd: &Path) -> (i32, String) {
@@ -1131,6 +1148,178 @@ fn green_lock_bash_reads_dash_names_after_double_dash() {
     assert_eq!((code, stdout.as_str()), (0, ""));
 }
 
+/// #3216 re-audit B1: a locked test whose real name holds `[..]`, `*`, `?` or a brace group is
+/// still protected when the word is written as it is: the word is read literally as well as
+/// matched as a pattern.
+#[test]
+fn green_lock_bash_reads_locked_names_with_pattern_characters() {
+    let repo = GreenRepo::new("green");
+    repo.lock_only(&[
+        "app/[id]/page.test.tsx",
+        "tests/[x]_test.rs",
+        "tests/a{b,c}_test.rs",
+        "tests/star*_test.rs",
+        "tests/what?_test.rs",
+    ]);
+    for command in [
+        "rm 'app/[id]/page.test.tsx'",
+        "rm app/[id]/page.test.tsx",
+        "rm app/\\[id\\]/page.test.tsx",
+        "rm \"app/[id]/page.test.tsx\"",
+        "git rm 'app/[id]/page.test.tsx'",
+        "mv 'app/[id]/page.test.tsx' /tmp/x",
+        "unlink 'app/[id]/page.test.tsx'",
+        "rm 'tests/[x]_test.rs'",
+        "rm 'tests/a{b,c}_test.rs'",
+        "rm 'tests/star*_test.rs'",
+        "rm 'tests/what?_test.rs'",
+        "mv src/a.rs 'tests/new_[1]_test.rs'",
+        "mv src/a.rs 'tests/new_{1,2}_test.rs'",
+    ] {
+        let reason = repo.deny_reason(command);
+        assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+    }
+    // A name that matches no locked test and is not itself one stays open.
+    for command in [
+        "rm 'app/[id]/other.tsx'",
+        "rm 'tests/[y]_test.rs'",
+        "git rm 'app/[ab]/page.test.tsx'",
+    ] {
+        repo.assert_allowed(command);
+    }
+}
+
+/// #3216 re-audit N1: the shapes the first repair let through without naming them. `!`, a `{ …; }`
+/// group, `if`/`while`/`for` bodies, backticks, `busybox`, `git -C dir` and a folder above the
+/// work tree are read; `case`, variables, `~`, extended globs and the brace limits are named in
+/// `capabilities` and stay open (`green_lock_bash_named_limits_are_not_guarded`).
+#[test]
+fn green_lock_bash_reads_wrapped_grouped_and_rebased_commands() {
+    let repo = GreenRepo::new("green");
+    let parent = repo.root.parent().unwrap().to_str().unwrap().to_string();
+    for command in [
+        "! rm tests/locked_test.rs".to_string(),
+        "{ rm tests/locked_test.rs; }".to_string(),
+        "{ true; rm tests/locked_test.rs; }".to_string(),
+        "( rm tests/locked_test.rs )".to_string(),
+        "if true; then rm tests/locked_test.rs; fi".to_string(),
+        "if rm tests/locked_test.rs; then echo x; fi".to_string(),
+        "while true; do mv tests/locked_test.rs /tmp/x; done".to_string(),
+        "for f in a b; do git rm tests/locked_test.rs; done".to_string(),
+        "f() { rm tests/locked_test.rs; }; f".to_string(),
+        "echo `rm tests/locked_test.rs`".to_string(),
+        "`rm tests/locked_test.rs`".to_string(),
+        "busybox rm tests/locked_test.rs".to_string(),
+        "busybox mv tests/locked_test.rs /tmp/x".to_string(),
+        "git -C tests rm locked_test.rs".to_string(),
+        "git -C tests mv locked_test.rs /tmp/x".to_string(),
+        "git -C . rm tests/locked_test.rs".to_string(),
+        "git -C tests -C .. rm tests/locked_test.rs".to_string(),
+        "git -C tests rm -r .".to_string(),
+        format!("rm -rf {parent}"),
+        format!("mv {parent} /tmp/moved"),
+    ] {
+        let reason = repo.deny_reason(&command);
+        assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+    }
+    // The static rm guard already refuses these, with its own sentence.
+    for command in [
+        "rm -rf ..",
+        "rm -rf ../",
+        "rm -rf /",
+        "rm -rf .",
+        "rm -rf ./",
+    ] {
+        let reason = repo.deny_reason(command);
+        assert!(reason.contains("rm aimed at"), "{command}: {reason}");
+    }
+    for command in [
+        "echo '{ rm tests/locked_test.rs; }'",
+        "echo \"then rm tests/locked_test.rs\"",
+        "echo `date`",
+        "busybox ls tests",
+        "busybox cat tests/locked_test.rs",
+        "git -C tests status",
+        "git -C src log --oneline",
+        "git -C tests rm other_test.rs",
+        "git -C src rm a.rs",
+        "! ls tests",
+        "if true; then ls tests; fi",
+        "{ ls tests; }",
+        "rm -rf src/../src",
+    ] {
+        repo.assert_allowed(command);
+    }
+}
+
+/// #3216 re-audit N3: edges the first repair left untested.
+#[test]
+fn green_lock_bash_edges_of_folders_globs_and_moves() {
+    let repo = GreenRepo::new("green");
+    // The work-tree root as a folder word, with and without a slash.
+    for command in ["git rm -r .", "git rm -rf ./", "git mv . ../moved"] {
+        let reason = repo.deny_reason(command);
+        assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+    }
+    // A class range includes both ends; `*` may match nothing; `?` needs one character.
+    for command in [
+        "rm tests/[a-l]ocked_test.rs",
+        "rm tests/[l-z]ocked_test.rs",
+        "rm tests/locked_test*.rs",
+        "rm tests/locked_test.r?",
+        "rm tests/*locked_test.rs",
+    ] {
+        let reason = repo.deny_reason(command);
+        assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+    }
+    for command in [
+        "rm tests/[a-k]ocked_test.rs",
+        "rm tests/[m-z]ocked_test.rs",
+        "rm tests/locked_test?.rs",
+    ] {
+        repo.assert_allowed(command);
+    }
+    // A moved file lands on a new test path: the lock refuses a new test file too.
+    for command in [
+        "git mv src/a.rs tests/brand_new_test.rs",
+        "mv src/a.rs tests/brand_new_test.rs",
+        "git mv tests/other_test.rs tests/brand_new_test.rs",
+    ] {
+        let reason = repo.deny_reason(command);
+        assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+    }
+    // A symlink as the glob's folder part: the real folder is the one that is read.
+    std::os::unix::fs::symlink(repo.root.join("tests"), repo.root.join("link")).unwrap();
+    for command in [
+        "rm link/*",
+        "rm link/locked_*.rs",
+        "rm -rf link",
+        "rm -rf link/",
+    ] {
+        let reason = repo.deny_reason(command);
+        assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+    }
+}
+
+/// The brace limits named in `capabilities`: 256 alternatives, 4 levels of nesting.
+#[test]
+fn green_lock_bash_brace_limits_are_the_named_ones() {
+    let repo = GreenRepo::new("green");
+    let list = |n: usize| {
+        (0..n)
+            .map(|i| format!("z{i}"))
+            .chain(["locked_test".to_string()])
+            .collect::<Vec<_>>()
+            .join(",")
+    };
+    let reason = repo.deny_reason(&format!("rm tests/{{{}}}.rs", list(100)));
+    assert!(reason.contains("GREEN or REFACTOR"), "{reason}");
+    repo.assert_allowed(&format!("rm tests/{{{}}}.rs", list(300)));
+    let reason = repo.deny_reason("rm tests/{{{{locked_test,b},c},d},e}.rs");
+    assert!(reason.contains("GREEN or REFACTOR"), "{reason}");
+    repo.assert_allowed("rm tests/{{{{{locked_test,b},c},d},e},f}.rs");
+}
+
 /// The forms `capabilities` names as not guarded stay allowed, so that its words and the
 /// guard cannot drift apart: when one of these is closed, the test and the named limit change
 /// together.
@@ -1144,11 +1333,13 @@ fn green_lock_bash_named_limits_are_not_guarded() {
         "xargs rm < list.txt",
         "find tests -name locked_test.rs -exec rm {} +",
         "find tests -name locked_test.rs -delete",
-        "if true; then rm tests/locked_test.rs; fi",
         "for f in tests/locked_test.rs; do rm $f; done",
+        "rm tests/@(locked_test).rs",
+        "rm tests/+(locked_test).rs",
         "cd tests && rm locked_test.rs",
         "echo x > tests/locked_test.rs",
         "sed -i s/a/b/ tests/locked_test.rs",
+        "tee tests/locked_test.rs < /dev/null",
     ] {
         repo.assert_allowed(command);
     }
@@ -1201,15 +1392,17 @@ fn capabilities_name_the_bash_lock_limits() {
         let guards = pre["guards"].to_string();
         for covered in [
             "rm, unlink, git rm, mv or git mv of a test path the GREEN record locks",
-            "of a folder holding one",
+            "of a folder holding one or above the work tree",
             "glob (*, ?, [..])",
             "brace ({a,b}) pattern",
+            "read literally",
+            "behind !, { }, then/do/else bodies, backticks, busybox and git -C",
         ] {
             assert!(guards.contains(covered), "{host} {covered}: {guards}");
         }
         let open = pre["not_guarded"].to_string();
-        // Each form that the guard lets through (`green_lock_bash_named_limits_are_not_guarded`)
-        // is named, not only the redirections.
+        // Each form that the guard lets through (`green_lock_bash_named_limits_are_not_guarded`,
+        // `green_lock_bash_brace_limits_are_the_named_ones`) is named, not only the redirections.
         for limit in [
             "redirections",
             "tee",
@@ -1219,7 +1412,10 @@ fn capabilities_name_the_bash_lock_limits() {
             "xargs",
             "find -exec",
             "find -delete",
-            "compound statements (if, for, while, case, functions)",
+            "extended globs (@(..), +(..))",
+            "~ expansion",
+            "more than 256 brace alternatives",
+            "braces nested deeper than 4",
             "any command run after a cd",
         ] {
             assert!(

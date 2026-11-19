@@ -822,7 +822,15 @@ fn locked_inside(word: &str, cwd: &Path) -> Vec<String> {
         return Vec::new();
     }
     let Some((top, record)) = green_record(&resolved) else {
-        return Vec::new();
+        // A folder above the work tree holds the whole tree: the record is the cwd's.
+        return match green_record(&crate::hook_config::canonical(cwd)) {
+            Some((top, record)) if top.starts_with(&resolved) => record
+                .locked
+                .iter()
+                .map(|l| top.join(l).to_string_lossy().into_owned())
+                .collect(),
+            _ => Vec::new(),
+        };
     };
     let Ok(rel) = resolved.strip_prefix(&top) else {
         return Vec::new();
@@ -880,44 +888,112 @@ fn locked_matching(word: &str, cwd: &Path) -> Vec<String> {
         .collect()
 }
 
-/// A6 for Bash (SPEC-20261119-enforce-spec-hooks REQ-1…REQ-4, REQ-8): why a command line is
-/// refused while this worktree's TDD cycle locks a test, or `None`. Only `rm`, `unlink`,
-/// `git rm`, `mv` and `git mv` are read, with their words spelled the way the shell does
-/// first: `{a,b}` groups, and `*`, `?` and `[..]` against the record's locked files. A folder
-/// that exists and holds a locked file counts as that file. A removal's target that does not
-/// exist is left out: removing nothing changes no test, and the lock's rule against a new
-/// test file must not refuse it. Every path of a move counts, the destination too.
+/// The command line with the shell structure that hides a command opened up: a backtick pair
+/// becomes `$( … )`, and the words `!`, `{`, `}`, `if`, `then`, `elif`, `else`, `fi`, `while`,
+/// `until`, `do` and `done` become `;`, so a command behind them is read as a command of its
+/// own. A quoted word that equals one of these is changed too, which stays inside its quotes
+/// and so never makes a command.
+fn open_shell_structure(command: &str) -> String {
+    let ticks = command.matches('`').count();
+    let mut text = String::with_capacity(command.len() + 8);
+    let mut inside = false;
+    for c in command.chars() {
+        if c == '`' && ticks.is_multiple_of(2) {
+            text.push_str(if inside { ")" } else { "$(" });
+            inside = !inside;
+        } else {
+            text.push(c);
+        }
+    }
+    let mut out = String::with_capacity(text.len());
+    let mut word = String::new();
+    let flush = |word: &mut String, out: &mut String| {
+        let structure = [
+            "!", "{", "}", "if", "then", "elif", "else", "fi", "while", "until", "do", "done",
+        ];
+        out.push_str(if structure.contains(&word.as_str()) {
+            ";"
+        } else {
+            word.as_str()
+        });
+        word.clear();
+    };
+    for c in text.chars() {
+        if c.is_whitespace() {
+            flush(&mut word, &mut out);
+            out.push(c);
+        } else {
+            word.push(c);
+        }
+    }
+    flush(&mut word, &mut out);
+    out
+}
+
+/// A6 for Bash (SPEC-20261119-enforce-spec-hooks REQ-1…REQ-4, REQ-8, REQ-9): why a command
+/// line is refused while this worktree's TDD cycle locks a test, or `None`. Only `rm`,
+/// `unlink`, `git rm`, `mv` and `git mv` are read (also as `busybox rm`, under `git -C dir`,
+/// and behind the shell structure [`open_shell_structure`] opens up). Each word is read as it
+/// is written, and again spelled the way the shell does first: `\` removed, `{a,b}` groups
+/// opened, and `*`, `?` and `[..]` matched against the record's locked files. A folder that
+/// exists and holds a locked file, or holds the whole work tree, counts as that file. A
+/// removal's target that does not exist is left out: removing nothing changes no test, and
+/// the lock's rule against a new test file must not refuse it. Every path of a move counts,
+/// the destination too.
 ///
 /// Not read (the engine's `capabilities` names each): redirections, `tee`, `sed -i`, scripts,
-/// variables (`rm $F`), `xargs`, `find -exec` and `find -delete`, the bodies of compound
-/// statements (`if`, `for`, `while`, `case`, functions), and a command run after a `cd`.
+/// variables (`rm $F`), `xargs`, `find -exec` and `find -delete`, extended globs (`@(..)`), `~`, braces past 256 alternatives or 4 levels, and a command run after a
+/// `cd`.
 pub fn bash_lock_guard(command: &str, cwd: &Path) -> Option<&'static str> {
     let mut paths: Vec<String> = Vec::new();
-    let mut collect = |words: Vec<&String>, removal: bool| {
+    let mut collect = |words: Vec<String>, removal: bool| {
         for word in words {
-            for word in expand_braces(word) {
-                if word.contains(['*', '?', '[']) {
-                    paths.extend(locked_matching(&word, cwd));
+            let mut spellings = vec![word.clone()];
+            let plain = word.replace('\\', "");
+            for spelled in std::iter::once(plain).chain(expand_braces(&word)) {
+                if !spellings.contains(&spelled) {
+                    spellings.push(spelled);
+                }
+            }
+            for spelled in spellings {
+                if spelled.contains(['*', '?', '[']) {
+                    paths.extend(locked_matching(&spelled, cwd));
+                }
+                if removal && std::fs::symlink_metadata(cwd.join(&spelled)).is_err() {
                     continue;
                 }
-                if removal && std::fs::symlink_metadata(cwd.join(&word)).is_err() {
-                    continue;
-                }
-                paths.extend(locked_inside(&word, cwd));
-                paths.push(word);
+                paths.extend(locked_inside(&spelled, cwd));
+                paths.push(spelled);
             }
         }
     };
-    for (name, args) in crate::claim_verify::shell_commands(command) {
+    let words_of = |args: &[String]| path_words(args).into_iter().cloned().collect::<Vec<_>>();
+    let opened = open_shell_structure(command);
+    for (name, args) in crate::claim_verify::shell_commands(&opened) {
+        let (name, args) = match name.as_str() {
+            "busybox" | "toybox" if !args.is_empty() => (args[0].clone(), args[1..].to_vec()),
+            _ => (name, args),
+        };
         match name.as_str() {
-            "rm" | "unlink" => collect(path_words(&args), true),
-            "mv" => collect(path_words(&args), false),
+            "rm" | "unlink" => collect(words_of(&args), true),
+            "mv" => collect(words_of(&args), false),
             "git" => {
                 for sub in crate::claim_verify::git_subcommands(&args) {
-                    match sub.verb.as_str() {
-                        "rm" => collect(path_words(&sub.rest), true),
-                        "mv" => collect(path_words(&sub.rest), false),
-                        _ => {}
+                    let removal = match sub.verb.as_str() {
+                        "rm" => true,
+                        "mv" => false,
+                        _ => continue,
+                    };
+                    let dir = git_dir_of(&sub.global, cwd);
+                    let words = words_of(&sub.rest);
+                    if dir == cwd {
+                        collect(words, removal);
+                    } else {
+                        let rebased = words
+                            .iter()
+                            .map(|w| dir.join(w).to_string_lossy().into_owned())
+                            .collect();
+                        collect(rebased, removal);
                     }
                 }
             }
