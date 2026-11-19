@@ -148,7 +148,13 @@ v2 가 v1 과 다른 점은 세 가지뿐이에요:
 - GREEN: `cargo test --locked --offline --test switch_script_v2` 14/14 통과.
 - 변이 5개(커밋된 파일에서 하나씩): S1 스크립트에서 `session:list|` 삭제, S2 마지막 `exec "$RUST" "$@"` 를 따옴표 없이, S3 `statusline` 을 Go 목록에 되돌림, A1 적용 줄에서 저장본 덮어쓰기 가드 삭제, A2 되돌리기 줄이 항상 성공 — 5/5 처음에 시험이 잡았어요(S2 는 감사 M5 에서 살아남던 변이).
 - `cargo fmt --check` 0, `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `cargo test --locked --offline --test home_isolation_scan` 통과. `cargo test --lib` 는 수리판에서 다시 돌리지 않았어요(수리가 src 를 안 건드렸고 `git diff --name-only 0ea3db730d..HEAD` 에 src 가 없어요).
-- 돌리지 않은 것: 실제 HOME 에 적용(S4), 실제 훅 이벤트·`statusline` 렌더 실행, Linux/macOS 이외, 프로젝트 전체 `cargo test`(통합 시험 전량은 묶음 PR 의 CI 가 맡아요). 감사 에이전트는 허용된 명령 모양을 벗어나 설치본을 `cmp` 로 읽고 `moai-cli` 를 실제 HOME 으로 5번(사용법 오류 3, `--help` 2) 불렀어요 — 쓰기는 없을 것으로 보지만 `~/.moai` 항목 수는 전후로 재지 않았어요.
+- 재감사(같은 에이전트, head 58dac97ed1): 차단 0, 앞선 MAJOR 5건 모두 해결 확인, 새 MAJOR 1(M6: 적용이 중간에 멈춘 뒤 새 STAMP 로 다시 적용하면 이미 v2 인 폴더에서 v2 를 "옛 스크립트"로 저장하고 성공이라고 알림), NOTE 7(N1 거절 이유가 없음, N2 실패한 적용의 `moai.before-` 잔재, N3 세는 명령 끝에 `wc -l` 없음, N4 diff 줄 수 틀림, N5 되돌리기가 두 폴더를 다 시도하는지 시험이 못 가림, N6 `session help` 단독 호출, N7 `revision`).
+
+재감사 수리판(M6·N1~N7):
+- 적용 줄이 폴더의 스크립트가 이미 v2 와 같으면, 저장본이 이미 있으면, STAMP 가 비었으면 이유를 밝히고 멈춰요. 새 시험 3개(`apply_refuses_a_folder_that_already_holds_v2`, `apply_never_overwrites_an_existing_saved_copy`, `undo_tries_the_second_folder_even_when_the_first_fails`)와 기존 시험의 "이유를 밝힌다" 단언. `cargo test --locked --offline --test switch_script_v2` 17/17 통과.
+- 변이 5개(커밋된 SPEC 줄에서 하나씩): B1 이미-v2 가드 삭제, B2 되돌리기가 첫 실패에서 멈춤, B3 빈 STAMP 가드 삭제, B4 저장본 덮어쓰기 가드 삭제, B5 적용이 항상 성공 — 5/5 처음에 잡혔어요. (처음 계획의 B4 는 이미-v2 가드 때문에 단독으로는 살아남을 수 있어서 `apply_never_overwrites_an_existing_saved_copy` 를 먼저 더했어요.) 이 수리의 RED 는 이전 SPEC 줄로 따로 만들지 않았고 변이로 확인했어요.
+- `cargo fmt --check` 0, `cargo clippy --locked --offline --all-targets -- -D warnings` 0, `cargo test --locked --offline --test home_isolation_scan` 통과. `cargo test --lib` 는 다시 돌리지 않았어요(1453 통과는 head 0ea3db730d 의 값이고 이후 변경에 `src/` 가 없어요).
+- 돌리지 않은 것: 실제 HOME 에 적용(S4), 실제 훅 이벤트·`statusline` 렌더 실행, Linux/macOS 이외, 프로젝트 전체 `cargo test`(통합 시험 전량은 묶음 PR 의 CI 가 맡아요), 통합 tip `d25ecb1ba1` 에서의 전체 시험(`git merge-tree` 만 확인). 감사 에이전트는 허용된 명령 모양을 벗어나 설치본을 `cmp` 로 읽고 `moai-cli` 를 실제 HOME 으로 5번(사용법 오류 3, `--help` 2) 불렀어요 — 쓰기는 없을 것으로 보지만 `~/.moai` 항목 수는 전후로 재지 않았어요.
 
 ### 리더 결정이 필요한 것 (되돌릴 수 있음, 범주 none)
 
