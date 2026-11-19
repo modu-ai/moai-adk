@@ -3,6 +3,15 @@
 //! They replace the planned `Moai-Claim: C-<n>#<gen>`: a card number is personal and never goes
 //! into a shared place.
 //!
+//! Beside them a commit says how it was verified (SPEC-20261119-verified-trailer, card C-98):
+//! `Moai-Verified: <tests|mutants|e2e|smoke|none>[, …]`, `none` an honest value. `trailers
+//! --verified` prints the line; `trailer-check` fails an unknown kind anywhere and a missing
+//! line only after the rule's start commit — the first commit of the checked range that carries
+//! the line, or `--verified-since <rev>` (that commit itself stays exempt: what is "after the
+//! start" needs the line). Before the start a missing line reads as `none`. `trailers --list`
+//! groups a range's commits by kind and marks the ones a later standard revert message names, so
+//! `none` and reverted commits can be counted together.
+//!
 //! The session id is the one `session-current` reads (`crate::session_current`): the id the host
 //! puts in the session's environment (`CLAUDE_CODE_SESSION_ID`, then `CODEX_THREAD_ID`), not a
 //! secret and not a card number, accepted only in its id shape (8 to 64 hex digits and `-`). It
@@ -22,6 +31,29 @@ type Result<T> = std::result::Result<T, String>;
 
 pub const SPEC_KEY: &str = "Moai-Spec";
 pub const SESSION_KEY: &str = "Moai-Session";
+pub const VERIFIED_KEY: &str = "Moai-Verified";
+
+/// The accepted `Moai-Verified` kinds (SPEC-20261119-verified-trailer): how a commit was
+/// verified, `none` included.
+pub const VERIFIED_KINDS: [&str; 5] = ["tests", "mutants", "e2e", "smoke", "none"];
+
+/// The kinds of one commit's `Moai-Verified` values (one line or several, comma-separated), in
+/// order, without empties; an unknown kind stays as written for the finding that names it.
+pub fn verified_kinds(values: &[String]) -> Vec<String> {
+    values
+        .iter()
+        .flat_map(|v| v.split(','))
+        .map(str::trim)
+        .filter(|k| !k.is_empty())
+        .map(String::from)
+        .collect()
+}
+
+/// Whether the kinds are one or more of [`VERIFIED_KINDS`]; none at all is not a reading of
+/// how a commit was verified.
+pub fn kinds_accepted(kinds: &[String]) -> bool {
+    !kinds.is_empty() && kinds.iter().all(|k| VERIFIED_KINDS.contains(&k.as_str()))
+}
 
 /// Hex digits of the worktree key.
 const KEY_LEN: usize = 12;
@@ -90,11 +122,22 @@ pub fn worktree_key(dir: &Path) -> Option<String> {
     Some(worktree_key_of(&git_dir))
 }
 
-/// The trailer lines for a commit of `spec`, with `Moai-Session: <session id>:<worktree key>`
-/// when `get` (an environment reader) gives this session's id and `key` names the worktree
-/// ([`worktree_key`]). Only a new-form SPEC id is written.
+/// [`format_verified`] with no `Moai-Verified` line: the identity trailers only.
 pub fn format(
     spec: &str,
+    get: impl Fn(&str) -> Option<String>,
+    key: Option<&str>,
+) -> Result<Value> {
+    format_verified(spec, &[], get, key)
+}
+
+/// The trailer lines for a commit of `spec`, with `Moai-Session: <session id>:<worktree key>`
+/// when `get` (an environment reader) gives this session's id and `key` names the worktree
+/// ([`worktree_key`]), and one `Moai-Verified` line when `verified` names kinds (each must be
+/// one of [`VERIFIED_KINDS`]). Only a new-form SPEC id is written.
+pub fn format_verified(
+    spec: &str,
+    verified: &[String],
     get: impl Fn(&str) -> Option<String>,
     key: Option<&str>,
 ) -> Result<Value> {
@@ -102,6 +145,13 @@ pub fn format(
         return Err(
             "the SPEC id must be SPEC-<yyyymmdd>-<slug>; a card number is never a trailer".into(),
         );
+    }
+    let kinds = verified_kinds(verified);
+    if !verified.is_empty() && !kinds_accepted(&kinds) {
+        return Err(format!(
+            "the verified kinds must be one or more of {} (comma-separated)",
+            VERIFIED_KINDS.join(", ")
+        ));
     }
     let found = session_current::resolve(get);
     let mut text = format!("{SPEC_KEY}: {spec}\n");
@@ -128,6 +178,10 @@ pub fn format(
             ));
         }
     }
+    if !kinds.is_empty() {
+        text.push_str(&format!("{VERIFIED_KEY}: {}\n", kinds.join(", ")));
+        out["verified"] = json!(kinds);
+    }
     out["text"] = json!(text);
     Ok(out)
 }
@@ -138,14 +192,18 @@ pub struct CommitTrailers {
     pub sha: String,
     pub specs: Vec<String>,
     pub sessions: Vec<String>,
+    /// The `Moai-Verified` values of the commit, as written (one per line).
+    pub verified: Vec<String>,
     /// The log line had more fields than it should: a trailer value held the log's own field
     /// separator (audit N3), so its values cannot be read apart.
     pub garbled: bool,
 }
 
 /// One finding of [`check`]: `missing_spec`, `malformed_spec`, `missing_session`,
-/// `malformed_session`, or `malformed_trailers` for a value holding the log's separator.
-fn findings(c: &CommitTrailers, spec_branch: bool) -> Vec<Value> {
+/// `malformed_session`, `missing_verified`, `malformed_verified`, or `malformed_trailers` for a
+/// value holding the log's separator. `under_rule` says the commit sits after the `Moai-Verified`
+/// rule's start, where a missing line is no longer read as `none`.
+fn findings(c: &CommitTrailers, spec_branch: bool, under_rule: bool) -> Vec<Value> {
     let mut out = Vec::new();
     let mut add = |kind: &str, fails: bool, detail: String| {
         out.push(json!({"sha": c.sha, "kind": kind, "fails": fails, "detail": detail}));
@@ -200,10 +258,32 @@ fn findings(c: &CommitTrailers, spec_branch: bool) -> Vec<Value> {
             format!("{SESSION_KEY} must appear once"),
         ),
     }
+    let kinds = verified_kinds(&c.verified);
+    if kinds.is_empty() {
+        if under_rule {
+            add(
+                "missing_verified",
+                true,
+                format!(
+                    "no {VERIFIED_KEY} trailer after the rule's start commit; `none` is allowed — say it"
+                ),
+            );
+        }
+    } else if !kinds_accepted(&kinds) {
+        add(
+            "malformed_verified",
+            true,
+            format!(
+                "{VERIFIED_KEY} kinds must be one or more of {}",
+                VERIFIED_KINDS.join(", ")
+            ),
+        );
+    }
     out
 }
 
-/// Parses `git log --format=%H%x1f<specs>%x1f<sessions>` lines (values separated by `\x1e`).
+/// Parses `git log --format=%H%x1f<specs>%x1f<sessions>%x1f<verified>` lines (values separated
+/// by `\x1e`).
 pub fn parse_log(text: &str) -> Vec<CommitTrailers> {
     let split = |s: &str| -> Vec<String> {
         s.split('\x1e')
@@ -220,28 +300,70 @@ pub fn parse_log(text: &str) -> Vec<CommitTrailers> {
                 sha,
                 specs: split(parts.get(1).copied().unwrap_or("")),
                 sessions: split(parts.get(2).copied().unwrap_or("")),
-                garbled: parts.len() > 3,
+                verified: split(parts.get(3).copied().unwrap_or("")),
+                garbled: parts.len() > 4,
             })
         })
         .collect()
 }
 
 /// The decision over parsed commits, oldest first: every finding, how many fail, and `ok`.
-/// A missing SPEC fails only on a `spec/` branch; a missing session never fails.
-pub fn judge(commits: &[CommitTrailers], branch: &str) -> Value {
+/// A missing SPEC fails only on a `spec/` branch; a missing session never fails; a missing
+/// `Moai-Verified` fails only from `verified_from` on (index into `commits`, the first commit
+/// the rule covers; `None` covers none of them, the default when the range names no start).
+pub fn judge_from(commits: &[CommitTrailers], branch: &str, verified_from: Option<usize>) -> Value {
     let spec_branch = branch.starts_with("spec/");
+    let from = verified_from.unwrap_or(usize::MAX);
     let all: Vec<Value> = commits
         .iter()
-        .flat_map(|c| findings(c, spec_branch))
+        .enumerate()
+        .flat_map(|(i, c)| findings(c, spec_branch, i >= from))
         .collect();
     let failing = all.iter().filter(|f| f["fails"] == json!(true)).count();
     json!({"branch": branch, "spec_branch": spec_branch, "commits": commits.len(),
-           "findings": all, "failing": failing, "ok": failing == 0})
+           "verified_from": verified_from, "findings": all, "failing": failing,
+           "ok": failing == 0})
+}
+
+/// [`judge_from`] with no `Moai-Verified` rule: only a present, malformed line fails.
+pub fn judge(commits: &[CommitTrailers], branch: &str) -> Value {
+    judge_from(commits, branch, None)
+}
+
+/// The log fields of a range's commits, oldest first, merges skipped.
+fn log_trailers(git: &impl Fn(&[&str]) -> Result<String>, range: &str) -> Result<String> {
+    git(&[
+        "log",
+        "--no-merges",
+        "--reverse",
+        "--format=%H%x1f%(trailers:key=Moai-Spec,valueonly,separator=%x1e)%x1f%(trailers:key=Moai-Session,valueonly,separator=%x1e)%x1f%(trailers:key=Moai-Verified,valueonly,separator=%x1e)",
+        range,
+        "--",
+    ])
+}
+
+/// Where the `Moai-Verified` rule starts among `commits`: the index of the first commit the rule
+/// covers. `--verified-since` resolves to a commit — itself exempt, everything after it covered,
+/// and a start outside the range covers the whole range; without it the range's first commit
+/// carrying the line is the start (that commit carries, so covering it changes nothing).
+fn verified_from(commits: &[CommitTrailers], since: Option<&str>, sha: &str) -> Option<usize> {
+    if since.is_some() {
+        return Some(match commits.iter().position(|c| c.sha == sha) {
+            Some(at) => at + 1,
+            None => 0,
+        });
+    }
+    commits.iter().position(|c| !c.verified.is_empty())
 }
 
 /// Reads the commits of `range` in the repository at `dir` (merges skipped, oldest first) and
 /// judges their identity trailers. Reads only.
-pub fn check(dir: &Path, range: &str, branch: Option<&str>) -> Result<Value> {
+pub fn check(
+    dir: &Path,
+    range: &str,
+    branch: Option<&str>,
+    verified_since: Option<&str>,
+) -> Result<Value> {
     if range.is_empty() || range.starts_with('-') {
         return Err(
             "the range must be a revision range such as <base>..HEAD, not an option".into(),
@@ -261,14 +383,18 @@ pub fn check(dir: &Path, range: &str, branch: Option<&str>) -> Result<Value> {
         }
         Ok(String::from_utf8_lossy(&out.stdout).into_owned())
     };
-    let log = git(&[
-        "log",
-        "--no-merges",
-        "--reverse",
-        "--format=%H%x1f%(trailers:key=Moai-Spec,valueonly,separator=%x1e)%x1f%(trailers:key=Moai-Session,valueonly,separator=%x1e)",
-        range,
-        "--",
-    ])?;
+    let log = log_trailers(&git, range)?;
+    let since_sha = match verified_since {
+        None => None,
+        Some(s) if s.is_empty() || s.starts_with('-') => {
+            return Err("the verified start must be a revision, not an option".into())
+        }
+        Some(s) => Some(
+            git(&["rev-parse", "--verify", &format!("{s}^{{commit}}")])?
+                .trim()
+                .to_string(),
+        ),
+    };
     // Re-audit N4: a detached checkout (CI) names the branch it judges.
     let branch = match branch {
         Some(b) => b.to_string(),
@@ -276,7 +402,108 @@ pub fn check(dir: &Path, range: &str, branch: Option<&str>) -> Result<Value> {
             .trim()
             .to_string(),
     };
-    Ok(judge(&parse_log(&log), &branch))
+    let commits = parse_log(&log);
+    let from = verified_from(&commits, verified_since, since_sha.as_deref().unwrap_or(""));
+    Ok(judge_from(&commits, &branch, from))
+}
+
+/// The commits a standard revert message (`This reverts commit <sha>`, the text `git revert`
+/// writes) names among `commits`; a short sha counts when it is a prefix of a listed one.
+fn reverted_of(commits: &[CommitTrailers], bodies: &str) -> Vec<String> {
+    let mut reverted = Vec::new();
+    for record in bodies.split('\x1e') {
+        for (at, _) in record.match_indices("This reverts commit ") {
+            let token: String = record[at + "This reverts commit ".len()..]
+                .chars()
+                .take_while(|c| c.is_ascii_hexdigit())
+                .collect();
+            if (7..=40).contains(&token.len())
+                && commits
+                    .iter()
+                    .any(|c| c.sha == token || c.sha.starts_with(&token))
+                && !reverted.iter().any(|r| r == &token)
+            {
+                reverted.push(token);
+            }
+        }
+    }
+    reverted
+}
+
+/// Lists the commits of `range` (merges skipped, oldest first) by verification kind: each commit
+/// with its kinds (`none` for a missing line), the commits grouped per kind (a commit with
+/// several kinds appears in each), the reverted ones and per-kind counts. Reads only.
+pub fn list(dir: &Path, range: &str) -> Result<Value> {
+    if range.is_empty() || range.starts_with('-') {
+        return Err(
+            "the range must be a revision range such as <base>..HEAD, not an option".into(),
+        );
+    }
+    let git = |args: &[&str]| -> Result<String> {
+        let out = crate::audit_delta::command(dir)
+            .args(args)
+            .output()
+            .map_err(|e| format!("cannot execute git: {e}"))?;
+        if !out.status.success() {
+            return Err(format!(
+                "git {} failed: {}",
+                args.first().unwrap_or(&""),
+                String::from_utf8_lossy(&out.stderr).trim()
+            ));
+        }
+        Ok(String::from_utf8_lossy(&out.stdout).into_owned())
+    };
+    let commits = parse_log(&log_trailers(&git, range)?);
+    let bodies = git(&[
+        "log",
+        "--no-merges",
+        "--reverse",
+        "--format=%H%x1e%B%x1e",
+        "-F",
+        "--grep=This reverts commit",
+        range,
+        "--",
+    ])?;
+    let reverted = reverted_of(&commits, &bodies);
+    let is_reverted = |sha: &str| {
+        reverted.iter().any(|r| {
+            sha == r || sha.starts_with(r) || r.starts_with(&sha[..r.len().min(sha.len())])
+        })
+    };
+    let mut by_kind = serde_json::Map::new();
+    let mut counts = serde_json::Map::new();
+    for k in VERIFIED_KINDS {
+        by_kind.insert(k.into(), json!([]));
+        counts.insert(k.into(), json!(0));
+    }
+    let mut listed = Vec::new();
+    for c in &commits {
+        let kinds = verified_kinds(&c.verified);
+        let kinds: Vec<String> = if kinds.is_empty() {
+            vec!["none".into()]
+        } else {
+            kinds
+        };
+        let rev = is_reverted(&c.sha);
+        for k in &kinds {
+            if let Some(a) = by_kind.get_mut(k).and_then(|v| v.as_array_mut()) {
+                a.push(json!(c.sha));
+            }
+            if let Some(n) = counts.get_mut(k).and_then(|v| v.as_i64()) {
+                counts.insert(k.clone(), json!(n + 1));
+            }
+        }
+        listed.push(json!({"sha": c.sha, "kinds": kinds, "reverted": rev}));
+    }
+    Ok(json!({
+        "dir": dir.display().to_string(),
+        "range": range,
+        "commits": listed,
+        "by_kind": Value::Object(by_kind),
+        "counts": Value::Object(counts),
+        "reverted": reverted,
+        "writes": false,
+    }))
 }
 
 #[cfg(test)]
@@ -351,11 +578,97 @@ mod tests {
         assert!(format("SPEC-AUTH-001", env(&[]), Some(K)).is_err());
     }
 
+    /// SPEC-20261119-verified-trailer: the kinds line is printed after the session, several
+    /// kinds keep their order, `none` is accepted and an unknown kind is refused with no text.
+    #[test]
+    fn format_appends_the_verified_line_or_refuses_the_unknown_kind() {
+        const K: &str = "0123456789ab";
+        let kinds = ["tests".to_string(), "mutants".to_string()];
+        let v = format_verified(
+            "SPEC-20261119-x",
+            &kinds,
+            env(&[("CODEX_THREAD_ID", S)]),
+            Some(K),
+        )
+        .unwrap();
+        assert_eq!(
+            v["text"],
+            format!("Moai-Spec: SPEC-20261119-x\nMoai-Session: {S}:{K}\nMoai-Verified: tests, mutants\n")
+        );
+        assert_eq!(v["verified"], json!(["tests", "mutants"]));
+        let v =
+            format_verified("SPEC-20261119-x", &["none".to_string()], env(&[]), Some(K)).unwrap();
+        assert!(v["text"]
+            .as_str()
+            .unwrap()
+            .ends_with("Moai-Verified: none\n"));
+        let e = format_verified(
+            "SPEC-20261119-x",
+            &["tests".to_string(), "tset".to_string()],
+            env(&[]),
+            Some(K),
+        )
+        .unwrap_err();
+        assert!(e.contains("tests, mutants, e2e, smoke, none"), "{e}");
+    }
+
+    /// SPEC-20261119-verified-trailer: kinds parse from one line or several, commas and spaces,
+    /// and only the five accepted values validate (`none` included).
+    #[test]
+    fn verified_kinds_parse_and_validate() {
+        let one = ["tests, mutants".to_string()];
+        assert_eq!(verified_kinds(&one), ["tests", "mutants"]);
+        assert_eq!(
+            verified_kinds(&["e2e".into(), " smoke ".into(), "".into()]),
+            ["e2e", "smoke"]
+        );
+        assert!(kinds_accepted(&verified_kinds(&one)));
+        assert!(kinds_accepted(&["none".into()]));
+        assert!(!kinds_accepted(&["tset".into()]));
+        assert!(!kinds_accepted(&[]));
+        assert!(!kinds_accepted(&["tests".into(), "mutant".into()]));
+    }
+
+    /// The rule starts at the range's first carrying commit (or `verified_from`): before it a
+    /// missing line reads as `none`, from it on the line is required, and a malformed value
+    /// fails anywhere.
+    #[test]
+    fn judge_cuts_at_the_first_commit_carrying_the_line() {
+        let log = "a\x1f\x1f\x1f\nb\x1f\x1f\x1ftests\nc\x1f\x1f\x1f\nd\x1f\x1f\x1ftset\n";
+        let c = parse_log(log);
+        assert_eq!(c.len(), 4);
+        assert_eq!(c[1].verified, ["tests"]);
+        // No start named: only the malformed value of d fails.
+        let v = judge(&c, "main");
+        assert_eq!(v["failing"], 1, "{v}");
+        let failing: Vec<&str> = v["findings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|f| f["fails"] == json!(true))
+            .map(|f| f["kind"].as_str().unwrap())
+            .collect();
+        assert_eq!(failing, ["malformed_verified"], "{v}");
+        // The range's first carrying commit (b) starts the rule: c now misses the line.
+        let v = judge_from(&c, "main", Some(2));
+        assert_eq!(v["failing"], 2, "{v}");
+        let kinds: Vec<&str> = v["findings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|f| f["kind"].as_str().unwrap())
+            .collect();
+        assert!(kinds.contains(&"missing_verified"), "{v}");
+        // With the rule from the very first commit, a and c miss the line.
+        let v = judge_from(&c, "main", Some(0));
+        assert_eq!(v["failing"], 3, "{v}");
+    }
+
     /// Audit N3: a value that holds the log's own separators (or any control character)
     /// cannot be told apart from two values; the commit is malformed and fails, never misread.
     #[test]
     fn a_value_with_a_separator_or_control_character_is_malformed() {
-        let garbled = format!("a\x1fSPEC-20261117-x\x1fextra\x1f{S}\n");
+        let garbled = format!("a\x1fSPEC-20261117-x\x1fextra\x1f{S}\x1f{S}\n");
         let c = parse_log(&garbled);
         assert_eq!(c.len(), 1);
         let v = judge(&c, "main");
