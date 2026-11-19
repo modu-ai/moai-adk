@@ -64,4 +64,10 @@ parent: SPEC-20261119-lane-screen-guard
 
 ## Result
 
-(구현 뒤에 적어요.)
+카드 C-128 의 구현(코드·시험 커밋 `b0de5eda3b`, 2026-11-19 에 `date -u` 로 읽은 시계)이에요. 시험은 RED 먼저: R-N4 의 새 시험 둘(단위 `a_time_whose_utc_year_leaves_1970_to_9999_is_unknown`, CLI `lane_screen_reset_a_time_outside_the_years_1970_to_9999_in_utc_is_unknown`)이 수리 전 코드에서 실패했고 R-N2 의 시험은 코드가 이미 그렇게 읽어서 처음부터 통과해요(못박기 시험). 실제 `orca` 는 부르지 않았어요.
+
+- AC-1: 충족 — `cargo test --locked --offline --test lane_screen_cli lane_screen_state_a_prose_list_of_numbered_yes_and_no_lines_reads_as_permission_prompt` 가 통과해요(대기 표지·작업 중 표지 둘 다 `permission_prompt`, 근거 줄이 `1. Yes, keep …` 줄, 번호 없는 같은 두 줄은 `idle`). 결정 D-1 이 코드를 바꾸지 않는 이유와 대가를 적어요.
+- AC-2: 충족 — `... --test lane_screen_cli lane_screen_reset_a_time_outside_the_years_1970_to_9999_in_utc_is_unknown` 이 통과해요(`9999-12-31 23:59 -0800`·`16:00 -0800`·`23:59:59 UTC-00:01`·`1970-01-01 07:59 +0800`·`00:00 +0100` 은 `utc: null`, `why: the date is impossible`, 원문; 경계 `9999-12-31 15:59 -0800` 과 `23:59 UTC` 는 `9999-12-31T23:59:00Z`, `1970-01-01 08:00 +0800` 은 `1970-01-01T00:00:00Z`), 단위 시험은 초 값(`253402300740`·`0`)과 월 이름 꼴(`Dec 31, 9999 at 11:59pm (UTC-8)`)까지 닫아요. 수정은 `src/lane_screen.rs` 의 `at_zone` 한 곳이에요.
+- AC-3: 충족 — `--test lane_screen_cli` 40 passed, `--test lane_send_cli` 19, `--test lane_status_cli` 25, `--test lane_duty_line` 8, `--lib lane_` 207 passed. 변이 4개(UTC 연도 검사 빼기, 위쪽 연도 10000 으로, 아래쪽 1969 로, 질문 없는 번호 Yes·No 쌍을 프롬프트로 안 읽기)가 모두 KILLED(마지막 변이는 R-N2 시험을 포함한 6개 시험을 실패시켰어요), 변이마다 `git checkout` 으로 복원하고 끝나고 깨끗해요. 여섯 검사와 같은 접두 시험 대상의 종료 코드는 감사 요청 노트에 있어요.
+- 돌리지 않은 것: 전체 cargo 시험, 파이썬 discover(CI), nextest, 실제 `orca` 터미널 실행. 이 가지는 조각 C 의 head `66dda56b16` 위에 있어서 그 감사(노트 3395)가 PASS 해야 병합 순서가 맞아요.
+- 쓰기 범위 메모: 카드 C-128 은 `src/lane_screen.rs`·`tests/lane_screen_cli.rs`·조각 A SPEC 폴더만 받았는데 훅이 가지 이름과 짝인 SPEC 을 요구해서 이 SPEC 폴더를 더했어요(예약 generation 2, 카드 노트 3399). 조각 A SPEC 폴더는 이 가지에서 쓰지 않았어요.
