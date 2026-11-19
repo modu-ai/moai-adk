@@ -67,16 +67,21 @@ jobs:
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
           REPO: ${{ github.repository }}
         run: |
-          set -o pipefail
+          # The gate's exit code must not kill this script (the runner's shell runs -e): a
+          # crashed or failing gate lands in the error path below and posts the failure
+          # (tier-2 audit B1). The envelope rides a mktemp file, not a fixed /tmp path (B2).
+          result_file="$(mktemp)"
           ./target/debug/moai audit-gate --pr "$PR_NUMBER" --head "$PR_HEAD" --repo "$REPO" \
-            | tee /tmp/audit-gate-result.json > /dev/null
-          state=$(python3 -c 'import json; d=json.load(open("/tmp/audit-gate-result.json")); print(d["result"]["state"] if d.get("ok") else "")')
+            | tee "$result_file" > /dev/null || true
+          # The parses are guarded too: a crashed gate leaves garbage in the file, and under
+          # -e a failing parse would stop the step before the failure is posted (B1).
+          state=$(RESULT_FILE="$result_file" python3 -c 'import json, os; d=json.load(open(os.environ["RESULT_FILE"])); print(d["result"]["state"] if d.get("ok") else "")') || true
+          comment=$(RESULT_FILE="$result_file" python3 -c 'import json, os; d=json.load(open(os.environ["RESULT_FILE"])); c=d["result"].get("comment"); print(f"#issuecomment-{c}" if c else "")') || true
           if [ -z "$state" ]; then
             gh api -X POST "repos/$REPO/statuses/$PR_HEAD" -f state=failure -f context=moai/audit -f "target_url=https://github.com/$REPO/pull/$PR_NUMBER" -f description="audit gate error"
             echo "audit-gate run failed; moai/audit failure posted" >&2
             exit 1
           fi
-          comment=$(python3 -c 'import json; d=json.load(open("/tmp/audit-gate-result.json")); c=d["result"].get("comment"); print(f"#issuecomment-{c}" if c else "")')
           if [ "$state" = pass ]; then
             gh api -X POST "repos/$REPO/statuses/$PR_HEAD" -f state=success -f context=moai/audit -f "target_url=https://github.com/$REPO/pull/$PR_NUMBER$comment" -f description="audit gate pass"
             echo "audit gate pass; moai/audit status posted"

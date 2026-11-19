@@ -39,7 +39,7 @@ created: 2026-11-19
 
 ## Scope
 
-- write: `src/audit_gate.rs`, `tests/audit_gate_cli.rs`, `.github/workflows/audit-gate.yml`, `.moai/specs/SPEC-20261119-leader-auditor-verdict/spec.md`
+- write: `src/audit_gate.rs`, `tests/audit_gate_cli.rs`, `.github/workflows/audit-gate.yml`, `.moai/specs/SPEC-20261119-leader-auditor-verdict/spec.md`, `tests/github_assets_test.py`(tier 2 수리 라운드: 작업 권한·게시 단계 핀 갱신)
 - read-only: `src/gate.rs`(공유 파서 — 불변), `src/comment_authority.rs`, `.github/workflows/ci.yml`(검사 집합 대조)
 - forbidden: 실제 HOME 과 원장, 네트워크(기록 전송 제외 — 시험은 RecordedTransport), 실제 원격 저장소, 키
 
@@ -70,3 +70,4 @@ created: 2026-11-19
 - AC-3: met — 같은 lib 시험: 비회원 위조 누락(NONE), `id:key` 토큰은 문자집합(`:` 불가)으로 거부, 베어 세션 id 토큰은 `leader_token` 작성자 검사로 거부. 변이 2 KILLED — M1(`leader_token` 작성자 검사 제거)은 첫 실행에서 생존(`id:key` 토큰이 문자집합에서 먼저 걸려 검사 미도달 — 시험 공백), 베어 id 사례 추가 후 exit 101; M2(문자집합 무효화) exit 101. 복원 후 `diff -q` 클린.
 - 이웃: `cargo test --locked --offline --bin moai` 28 passed·`--bin moai-cli` 28 passed(무필터), `cargo fmt --check` 0, `rustfmt --check --edition 2021 src/ops/*.rs` 0, `cargo clippy --offline --locked --all-targets -- -D warnings` 0. RED 먼저: lib 신규 2 실패(101) + cli 1 실패(101).
 - tier 2 라운드(리더 감사, 2026-11-19): FAIL — B1(python 시험 파일 2건, 파일은 예약 중이라 이 SPEC 밖), B2(상태 게시 단계가 부분 문자열만 고정 — 워크플로 변이 W1-W4 생존), N1(오류 경로 무게시), N5(오래된 읽기전용 주석), N6(죽은 빈 검사·토큰 길이 무한), N2·N3·N7 비차단, 소유자 결정 5건은 사용자 선택. 수리(같은 날): B2 는 `run:` 블록을 stub gh·stub 게이트로 실제 실행해 게시 상태·종료 코드를 단언하는 시험(`the_workflow_step_posts_the_status_the_gate_decides` — pass/fail/missing/error 네 시나리오, N1 포함)으로, N1 은 오류 경로가 failure 를 게시하도록, N5 는 주석을 현재 토큰 권한으로, N6 은 죽은 검사를 64자 상한 교체로. B1 은 예약 파일이라 이 SPEC 이 고치지 않아요(리더가 예약 레인과 조율). 병합은 사용자의 보호 관련 선택 3건 전까지 보류(리더 결정).
+- tier 2 재감사 라운드(리더 감사, 2026-11-19, head 3f95ccc16b): FAIL — B1(Actions 셸 `-eo pipefail` 에서 관문 실패가 단계를 끊어 failure 게시에 못 닿음; 시험은 -e 없이 돌려 못 잡음), B2(고정 `/tmp/audit-gate-result.json` — 임시 폴더 밖), N1(SPEC Scope 에 tests/github_assets_test.py 빠짐·Result 숫자 낡음), N6(문구 4곳). 수리: 블록이 관문 종료를 `|| true` 로 삼키고 envelope 은 `mktemp` 파일로, 시험은 러너 플래그(`--noprofile --norc -eo pipefail`)로 블록을 실행하고 크래시 시나리오(쓰레기 출력 exit 101 → failure 게시·exit 1)를 더해요; 파이썬 핀은 B1 수리 커밋(3f95ccc16b)에서 이미 새 계약으로 갱신됐어요. RED 소급: 새 시험을 구 블록 + `-eo pipefail` 로 돌리면 크래시·오류 시나리오가 실패해요. N6 의 네 곳은 리더 포인터 대기(이 SPEC 안의 주석·문구는 이 수리로 정렬). 통합 보류(사용자 결정) 유지.

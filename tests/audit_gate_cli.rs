@@ -219,33 +219,46 @@ fn the_workflow_step_posts_the_status_the_gate_decides() {
         "the wrong block: {block}"
     );
 
-    let scenarios: &[(&str, &str, &str, Option<i32>)] = &[
+    let scenarios: &[(&str, &str, i32, &str, Option<i32>)] = &[
         (
             "pass",
             r#"{"ok":true,"result":{"state":"pass","comment":5}}"#,
+            0,
             "success",
             Some(0),
         ),
         (
             "fail",
             r#"{"ok":true,"result":{"state":"fail","comment":6}}"#,
+            1,
             "failure",
             Some(1),
         ),
         (
             "missing",
             r#"{"ok":true,"result":{"state":"missing","comment":null}}"#,
+            1,
             "failure",
             Some(1),
         ),
         (
-            "error",
+            "error envelope",
             r#"{"ok":false,"error":{"message":"boom"}}"#,
+            1,
+            "failure",
+            Some(1),
+        ),
+        (
+            // Tier-2 audit B1: a crashed gate under the runner's `-e` used to stop the step
+            // before any status was posted, leaving an older success standing.
+            "crash",
+            "not json at all",
+            101,
             "failure",
             Some(1),
         ),
     ];
-    for (name, envelope, want_state, want_code) in scenarios {
+    for (name, envelope, moai_exit, want_state, want_code) in scenarios {
         let tmp = tempfile::TempDir::new().unwrap();
         let bin = tmp.path().join("bin");
         fs::create_dir_all(&bin).unwrap();
@@ -263,7 +276,10 @@ fn the_workflow_step_posts_the_status_the_gate_decides() {
         fs::write(&envelope_file, envelope).unwrap();
         fs::write(
             target.join("moai"),
-            format!("#!/bin/sh\ncat \"{}\"\nexit 1\n", envelope_file.display()),
+            format!(
+                "#!/bin/sh\ncat \"{}\"\nexit {moai_exit}\n",
+                envelope_file.display()
+            ),
         )
         .unwrap();
         for exe in [bin.join("gh"), target.join("moai")] {
@@ -275,9 +291,12 @@ fn the_workflow_step_posts_the_status_the_gate_decides() {
                 fs::set_permissions(&exe, perm).unwrap();
             }
         }
+        // The runner's `shell: bash` is `bash --noprofile --norc -eo pipefail`: the block must
+        // survive the gate's non-zero exit under those flags (tier-2 audit B1).
         let script = tmp.path().join("step.sh");
-        fs::write(&script, format!("#!/bin/bash\nset -o pipefail\n{block}\n")).unwrap();
+        fs::write(&script, format!("#!/bin/bash\n{block}\n")).unwrap();
         let out = std::process::Command::new("bash")
+            .args(["--noprofile", "--norc", "-eo", "pipefail"])
             .arg(&script)
             .env(
                 "PATH",
