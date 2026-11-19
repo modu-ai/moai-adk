@@ -67,4 +67,10 @@ parent: SPEC-20261120-board-observation-store
 
 ## Result
 
-(채우는 중 — 이 조각은 SPEC·PLAN 까지: 커밋·push 기록을 여기에 적어요.)
+조각 1(SPEC·PLAN): 커밋 `0e0fc9cb11`(SPEC — push 뒤 ls-remote 재독 동일, spec check 0/0), PLAN 노트 plan-board05-20261119T220931Z. 조각 2(RED 여섯 시험): 병합 커밋 `1aa170d462`(관측 저장 가지 — 시험이 저장 모듈을 경로 포함으로 쓰므로; C-120 조각 C 가 조각 B 를 병합한 같은 모양) 위에 시험 파일 커밋.
+
+- RED(2026-11-19T22:1xZ, heavy-slot agent-21-c142): `cargo test --locked --offline --test board_observation_ops_cli` — **0 passed; 6 failed**(a 강제 중단 재시작 · b 저장 삭제 재수집 · c 보관·원장 무변 · d 저장 결손 타임라인 · e 깨우기 두 번 답 하나 · f 전달 실패 기록·표시). 사유 예(측정): `unrecognized subcommand 'timeline'`, board-collect 같은 unknown command — 기다리는 표면이 없어서(리더 결정: 표면이 들어오기 전엔 RED 유지).
+- 전달 확인 계약(시험 e·f 에 고정): 받은 레인이 깨우기 키(원인 원장 이벤트 id)를 ref 로 단 답 노트가 원장에 생긴 것만 확인 — Orca 의 '받았다'는 확인 아님, 창 안에 없으면 wake@1 실패.
+- 관측 내용 모양은 필드 이름 노트(관측 저장 카드 3638) 그대로: pr-state@1(number·state·head·review{verdict,head}, scope pr:<number>) · bundle-run@1(branch·source_sha·target_sha·commands·not_run·run_digest·specs, scope bundle:<branch>, source_event_id source_sha).
+- 검사: cargo fmt --check 0, clippy --offline --locked --all-targets -- -D warnings 0(경로 포함 모듈의 부분 사용은 allow(dead_code) 한 줄로 명시 — 모듈 전체는 자체 시험 파일이 덮음), spec check 0/0, spec_cli 18 통과, home_isolation_scan 18 통과.
+- GREEN 조건(리더 결정 순서): 관측 저장 감사 → 수집기 → 이 시험들 GREEN → 조각 3(기록·표시 정리).
