@@ -241,7 +241,7 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
         let r = row(host);
         assert_eq!(r.matches(" | ").count(), 3, "{host}: four cells");
         for t in texts {
-            assert!(r.contains(t), "{host} row lacks {t:?}: {r}");
+            assert!(r.contains(t), "questions.md {host} row lacks {t:?}: {r}");
         }
     }
     // The routes that ask, and the question bank, name the reference.
@@ -340,7 +340,6 @@ fn the_ledger_is_local_cards_and_previews_run_without_asking() {
     assert!(skill_md.contains("syncs docs and work cards through one shared workflow"));
 }
 
-/// #2936 S0 (F6, F16, F24): PROJECT step 2 says the same three things as UPDATE step 2.
 /// N9 of the C-51 re-audit: the offer at the end of PROJECT and UPDATE holds only what can run.
 /// A `blocked` step, a `skip` step, a `needs_decision` step with no printed command and a step
 /// under a recorded HOLD are reported, not offered, and an offer that holds a case-(2) step is a
@@ -369,6 +368,7 @@ fn the_route_end_offer_leaves_out_what_cannot_run() {
     }
 }
 
+/// #2936 S0 (F6, F16, F24): PROJECT step 2 says the same three things as UPDATE step 2.
 #[test]
 fn project_step_two_names_the_layout_and_the_backup_destination() {
     let project = skill("workflows/project.md");

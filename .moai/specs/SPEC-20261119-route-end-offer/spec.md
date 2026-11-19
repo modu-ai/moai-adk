@@ -44,7 +44,7 @@ C-51 재감사(PR #3136, head `3dff58442d`, PASS)의 N9·N10이에요. 둘 다 �
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-6, REQ-7, REQ-8, REQ-9): `questions.md`의 규칙 3과 Codex 행에 문장이 있고, 지우면 시험이 `questions.md lacks …`로 실패해요.
+- AC-1 (REQ-1, REQ-6, REQ-7, REQ-8, REQ-9): `questions.md`의 규칙 3과 Codex 행에 문장이 있고, 지우면 시험이 규칙 3 문장은 `questions.md lacks …`로, Codex 행 문장은 `questions.md Codex CLI row lacks …`로 실패해요.
   verify: `cargo test --locked --offline --test update_route every_question_is_a_selection_through_the_hosts_question_tool`
 - AC-2 (REQ-2, REQ-3, REQ-4, REQ-5, REQ-8, REQ-9): `project.md`의 Completion Check와 `update.md` 5단계에 세 제외 문장이 있고, 지우면 시험이 파일 이름을 대며 실패해요.
   verify: `cargo test --locked --offline --test update_route the_route_end_offer_leaves_out_what_cannot_run`
@@ -89,6 +89,6 @@ C-51 재감사(PR #3136, head `3dff58442d`, PASS)의 N9·N10이에요. 둘 다 �
 - AC-3: met — `python3 tools/source_manifest.py check` → `{"conflicted": false, "changed": [], "dropped": [], "ok": true}`; `cargo test --locked --offline --test product_cli` 79 passed(`skill_package` 포함).
 - AC-4: met — 이 AC의 verify 명령과 이웃 시험이 통과했어요(`update_route` 9, `ac_command_lint`, `home_isolation_scan`, `spec_cli` 17, `workflow_size_budget` 4, `sdd_guidance` 6, `core_rules_2876` 6, `codex_question_tool` 4, `question_bank_hosts` 1). `cargo fmt --check` 0, `cargo clippy --locked --offline --all-targets -- -D warnings` 0.
 
-변이 시험(문장을 하나씩 지우고 `--test update_route`): M1 규칙 3 전체-질문 문장 → KILLED(`every_question_is_a_selection_through_the_hosts_question_tool`, `questions.md lacks`); M2 Codex "not asked through `request_user_input`" → KILLED(같은 시험); M3 "Ordinary picks and Plan mode keep the tool" → KILLED(같은 시험); M4 `project.md` HOLD 조항 → KILLED(`the_route_end_offer_leaves_out_what_cannot_run`, `workflows/project.md lacks`); M5 `update.md` skip·needs_decision 조항 → KILLED(같은 시험, `workflows/update.md lacks`). 5/5 KILLED, 변이마다 `git checkout --` 뒤 작업 트리 clean.
+변이 시험(문장을 하나씩 지우고 `--test update_route`): M1 규칙 3 전체-질문 문장 → KILLED(`every_question_is_a_selection_through_the_hosts_question_tool`, `questions.md lacks`); M2 Codex "not asked through `request_user_input`" → KILLED(같은 시험, `questions.md Codex CLI row lacks`); M3 "Ordinary picks and Plan mode keep the tool" → KILLED(같은 시험, `questions.md Codex CLI row lacks`; 시험 메시지에 파일 이름을 넣은 뒤 M2·M3 를 다시 돌려 이 문구를 읽었어요); M4 `project.md` HOLD 조항 → KILLED(`the_route_end_offer_leaves_out_what_cannot_run`, `workflows/project.md lacks`); M5 `update.md` skip·needs_decision 조항 → KILLED(같은 시험, `workflows/update.md lacks`). 5/5 KILLED, 변이마다 `git checkout --` 뒤 작업 트리 clean.
 
 검사하지 않은 것: 파이썬 시험 `tests/repo_scans_test.py`는 이 작업 폴더에 `target/debug/moai-cli`가 없어 19개가 "moai-cli not built"로 실패해요(환경 문제, 내 변경과 무관). 결과를 증거로 쓰지 않고 CI 실행을 인용해요. 실제 Codex Default 모드에서의 동작은 돌려 보지 않았어요(글 규칙만 고정).
