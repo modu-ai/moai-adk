@@ -125,8 +125,9 @@ fn profile_tracking_step_states_the_checks_the_selection_and_the_undo() {
         "Track it (recommended)",
         "Keep it local",
         "`!<profile path>`",
-        "root `.gitignore`",
+        "at the end of the root `.gitignore`",
         "after the rule",
+        "outside any block MoAI manages",
         "removes exactly that line",
         "a fresh clone will not have the profile",
         "cancelled, empty or unanswered",
@@ -155,7 +156,8 @@ fn profile_tracking_step_states_the_checks_the_selection_and_the_undo() {
 fn closing_commit_step_lists_by_apply_stages_only_those_paths_and_never_pushes() {
     let step = closing_commit_step();
     for text in [
-        "`git status --porcelain=v1 -z`",
+        "`git status --porcelain=v1 -z --untracked-files=all`",
+        "one entry",
         "`go-settings-apply`",
         "`go-state-apply`",
         "`project-apply`",
@@ -163,6 +165,17 @@ fn closing_commit_step_lists_by_apply_stages_only_those_paths_and_never_pushes()
         "`claude-settings-apply`",
         "`worktree-move-apply`",
         "not from this route",
+        "kept local",
+        "`.moai-backup/`",
+        "`.moai/backups/`",
+        "`.moai/receipts/`",
+        "`.before/`",
+        "`*.pem`",
+        "`*secret*`",
+        "anywhere in it",
+        "project's language setting",
+        "after the offer of the Completion Check",
+        "fails (not a repository, or git cannot answer)",
         "Commit these changes (recommended)",
         "Leave them uncommitted",
         "`git add -- <path>`",
@@ -193,6 +206,194 @@ fn closing_commit_step_lists_by_apply_stages_only_those_paths_and_never_pushes()
             < position(&text, "8. **Offer the closing commit"),
         "step 8 follows step 7"
     );
+}
+
+/// The paragraph that starts with `Closing-commit snapshots` (under `## Procedure`, before
+/// step 1): where the status lists are read and how each path is given to a step.
+fn snapshot_paragraph() -> String {
+    let text = skill_text("workflows/project.md");
+    let start = position(&text, "Closing-commit snapshots (card C-59)");
+    let tail = &text[start..];
+    let end = tail.find("\n\n").unwrap_or(tail.len());
+    assert!(
+        position(&text, "## Procedure") < start && start < position(&text, "1. **Detect.**"),
+        "the snapshot paragraph sits between `## Procedure` and step 1"
+    );
+    tail[..end].to_string()
+}
+
+/// REQ-13 (audit B2): the apply results name no paths (`project-apply` names none), so the
+/// text gives each path to the step whose snapshot first showed it.
+#[test]
+fn procedure_snapshots_the_status_around_every_apply() {
+    let para = snapshot_paragraph();
+    for text in [
+        "`git status --porcelain=v1 -z --untracked-files=all`",
+        "before the first apply",
+        "After each apply",
+        "the \"Track it\" edit",
+        "new or whose status changed",
+        "name none",
+        "already changed before the route began",
+        "never given to an apply",
+    ] {
+        assert!(para.contains(text), "{text:?} is missing from: {para}");
+    }
+}
+
+/// The name rule the text states for step 8: a secret-looking name anywhere in the path.
+fn looks_secret(path: &str) -> bool {
+    path.split('/').any(|part| {
+        part.starts_with(".env")
+            || part.ends_with(".key")
+            || part.ends_with(".pem")
+            || part.contains("credentials")
+            || part.contains("secret")
+    })
+}
+
+/// The backup and receipt paths the text keeps local.
+fn kept_local(path: &str) -> bool {
+    [".moai-backup/", ".moai/backups/", ".moai/receipts/"]
+        .iter()
+        .any(|p| path.starts_with(p))
+        || path.split('/').any(|part| part == ".before")
+}
+
+/// The sorted `-z` entries (`XY path`) of one status read.
+fn status_entries(dir: &Path, untracked_all: bool) -> Vec<String> {
+    let mut args = vec!["status", "--porcelain=v1", "-z"];
+    if untracked_all {
+        args.push("--untracked-files=all");
+    }
+    let out = git_raw(dir, &args);
+    assert!(out.success, "{}", out.stderr);
+    let mut entries: Vec<String> = out
+        .stdout
+        .split('\0')
+        .filter(|e| !e.is_empty())
+        .map(str::to_string)
+        .collect();
+    entries.sort_unstable();
+    entries
+}
+
+fn fresh_repo_with_one_commit() -> TempDir {
+    let tmp = TempDir::new().unwrap();
+    git_ok(tmp.path(), &["init", "-q"]);
+    fs::write(tmp.path().join("README.md"), "project\n").unwrap();
+    commit_all(tmp.path());
+    tmp
+}
+
+fn write_file(dir: &Path, rel: &str, body: &str) {
+    let path = dir.join(rel);
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(path, body).unwrap();
+}
+
+/// REQ-5, REQ-8, REQ-14 (audit B1): on a fresh project git shows an untracked folder as one
+/// entry, so a name rule cannot see a `credentials` file inside it; with
+/// `--untracked-files=all` every file is listed, the name rules apply to each, and staging only
+/// the paths that pass leaves the secret, the backup and the receipt out.
+#[test]
+fn untracked_folders_collapse_unless_every_file_is_asked_for() {
+    let fx = fresh_repo_with_one_commit();
+    let dir = fx.path();
+    write_file(dir, ".moai/project.yaml", "schema_version: 2\n");
+    write_file(dir, ".moai/receipts/r.json", "{}\n");
+    write_file(dir, ".moai-backup/config/credentials.yaml", "token: x\n");
+    write_file(dir, ".moai-backup/config/a.yaml", "a: 1\n");
+
+    assert_eq!(
+        status_entries(dir, false),
+        ["?? .moai-backup/", "?? .moai/"],
+        "without the flag the folders are one entry each"
+    );
+    let all = status_entries(dir, true);
+    assert_eq!(
+        all,
+        [
+            "?? .moai-backup/config/a.yaml",
+            "?? .moai-backup/config/credentials.yaml",
+            "?? .moai/project.yaml",
+            "?? .moai/receipts/r.json"
+        ],
+        "with the flag every file is listed"
+    );
+
+    let paths: Vec<&str> = all.iter().map(|e| &e[3..]).collect();
+    let secret: Vec<&&str> = paths.iter().filter(|p| looks_secret(p)).collect();
+    assert_eq!(secret, [&".moai-backup/config/credentials.yaml"]);
+    let stageable: Vec<&&str> = paths
+        .iter()
+        .filter(|p| !looks_secret(p) && !kept_local(p))
+        .collect();
+    assert_eq!(stageable, [&".moai/project.yaml"]);
+
+    for path in stageable {
+        git_ok(dir, &["add", "--", path]);
+    }
+    assert_eq!(
+        git(dir, &["diff", "--cached", "--name-only"]).trim_end(),
+        ".moai/project.yaml",
+        "only the profile is staged"
+    );
+}
+
+/// REQ-13 (audit B2, N2): the paths each step wrote are the entries that are new in the status
+/// list read after it, so a result that names no path still gives its files to the right step,
+/// the user's earlier changes stay out, and the "Track it" edit of `.gitignore` is a step too.
+#[test]
+fn snapshot_differences_give_each_new_path_to_the_step_that_wrote_it() {
+    let fx = fresh_repo_with_one_commit();
+    let dir = fx.path();
+    // The user's own changes before the route began.
+    write_file(dir, "notes.txt", "mine\n");
+    write_file(dir, "README.md", "project, edited\n");
+    let s0 = status_entries(dir, true);
+
+    let new_since = |before: &[String], after: &[String]| -> Vec<String> {
+        after
+            .iter()
+            .filter(|e| !before.contains(e))
+            .cloned()
+            .collect()
+    };
+
+    // `project-apply` writes the profile and its sidecars and names none of them.
+    write_file(dir, ".moai/project.yaml", "schema_version: 2\n");
+    write_file(dir, ".moai/manifests/profile-baseline.json", "{}\n");
+    let s1 = status_entries(dir, true);
+    assert_eq!(
+        new_since(&s0, &s1),
+        [
+            "?? .moai/manifests/profile-baseline.json",
+            "?? .moai/project.yaml"
+        ]
+    );
+
+    // The `generation` apply writes AGENTS.md; the user's `notes.txt` is not given to it.
+    write_file(dir, "AGENTS.md", "managed\n");
+    let s2 = status_entries(dir, true);
+    assert_eq!(new_since(&s1, &s2), ["?? AGENTS.md"]);
+
+    // The "Track it" edit appends one line to the root `.gitignore`.
+    write_file(dir, ".gitignore", "*.yaml\n!.moai/project.yaml\n");
+    let s3 = status_entries(dir, true);
+    assert_eq!(new_since(&s2, &s3), ["?? .gitignore"]);
+
+    // What was already changed before the route is in the first list, never given to a step.
+    assert!(
+        s0.iter().any(|e| e == " M README.md") && s0.iter().any(|e| e == "?? notes.txt"),
+        "{s0:?}"
+    );
+    for (name, list) in [("s1", &s1), ("s2", &s2), ("s3", &s3)] {
+        assert!(
+            s0.iter().all(|e| list.contains(e)),
+            "{name} still holds the earlier changes"
+        );
+    }
 }
 
 /// AC-2 (REQ-1, REQ-3, REQ-10): the exit codes and outputs the text relies on, in real git.
