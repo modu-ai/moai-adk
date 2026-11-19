@@ -58,7 +58,7 @@ created: 2026-11-19
   verify: `cargo test --locked --offline --test update_switch_layer revert_puts_v1_back_and_refuses_anything_else`
 - AC-5 (REQ-11): the built-in v2 and the known v1 have the pinned digests.
   verify: `cargo test --locked --offline --test update_switch_layer the_pinned_digests_are_the_s2a_scripts`
-- AC-6 (REQ-10): the flags combine as written, in a temporary HOME with the installed layout: preview, `--confirm-switch`, `--confirm` plus `--confirm-switch`, a terminal yes, `--revert-switch`, and the refusals. (S3b: needs the flags in `src/main.rs`, which card C-75 holds until its merge.)
+- AC-6 (REQ-10): the flags combine as written, in a temporary HOME with the installed layout: preview, `--confirm-switch`, `--confirm` plus `--confirm-switch`, a terminal yes, `--revert-switch`, and the refusals.
   verify: `cargo test --locked --offline --test update_switch_layer revert_switch_runs_alone_and_is_refused_beside_a_confirming_flag`
   verify: `cargo test --locked --offline --test update_switch_cli`
 - AC-7 (REQ-4, REQ-7): the apply and revert tests write no file outside their temporary folders (the HOME is a temporary folder); the scope's `forbidden` line is checked by the repository's home isolation scan.
@@ -95,15 +95,24 @@ created: 2026-11-19
 
 ## Result
 
-### S3a (이 가지의 지금 상태) — S3b(CLI 플래그)는 C-75 병합 뒤
+### S3a·S3b (이 가지의 지금 상태)
 
 | 부분 | 어디 | 상태 |
 | --- | --- | --- |
 | 계획·적용·되돌리기 | `src/update/switch.rs`(update.rs 의 자식 모듈 — `src/lib.rs` 를 안 건드려요) | 구현·시험 완료 |
 | 내장 v2 스크립트 | `install/moai-switch.sh`(S2a `preview/moai.v2` 와 `cmp` 같음, sha256 36dd242b…) | 완료 |
 | 미리보기·적용·화면 연결 | `src/update.rs`(`update_command_switch`; `update_command` 는 시그니처 그대로) · `src/update_tux.rs`(행·다음 단계·결과 줄) | 완료 |
-| `--confirm-switch`·`--revert-switch` 플래그 | `src/main.rs`·`src/help.rs`·`docs/rust-product-path.md`(C-75 가 쥐고 있어요) | **S3b** — 이 가지는 READY 가 아니에요 |
-| CLI 시험(`update_switch_cli`) | 새 파일 | **S3b** |
+| `--confirm-switch`·`--revert-switch` 플래그 | `src/main.rs`·`src/help.rs`·`docs/rust-product-path.md` | S3b 구현·시험 완료 |
+| CLI 시험(`update_switch_cli`) | `tests/update_switch_cli.rs`(7개) · 스캔 등재 `tools/repo_scans.json`(skill-package-agents) | S3b 완료 |
+
+### S3b 검사 (head `69a30927b7`, 전용 빌드 폴더 `moai-adk-33c`·무거운 작업 칸, 2026-11-19)
+
+- AC-6: `cargo test --locked --offline --test update_switch_cli` 7/7, `update_switch_layer` 11/11(미리보기 → `--confirm-switch` → `--confirm` 와 함께 → 터미널 yes 는 스위치를 확인하지 않음 → `--revert-switch` → 거절들).
+- AC-7: `home_isolation_scan` 통과(리더의 여섯 검사 5a 안), 시험은 임시 HOME 에서만 돌아요(실제 HOME 쓰기 0).
+- 스캔 등재(RED→GREEN): 등재 전 `python3 -m unittest tests.repo_scans_test` 가 `['tests/update_switch_cli.rs'] != []` 로 실패, 등재 뒤 25개 OK.
+- 이웃(AC-8): `update_home_layer_cli` 11 · `update_tux_golden` 14 · `update_route` · `update_cli` · `update_command_cli` · `help_layout` 통과, `--lib` 전체 1490 통과.
+- 리더의 여섯 검사: (1) `git diff --check` 0 · (2) `cargo fmt --check` 0 · (3) `rustfmt --check --edition 2021 src/ops/*.rs` 0 · (4) `cargo clippy --locked --offline --all-targets -- -D warnings` 0 · (5) cargo test 5개 대상과 `python3 -m unittest tests.repo_scans_test tests.source_manifest_test tests.local_check_test` 0 · (6) `moai-cli trailer-check` — 내 커밋 범위(`v2026.11.0..HEAD`, 8개) 0. 원격 tip 기준 범위(109개)는 로컬 가지에 있는 남의 커밋 `d2966629e5`(trailer 없음) 때문에 1 이에요.
+- 돌리지 않은 것: 저장소 전체 `cargo test`(PR CI 가 인용), macOS 이외, 실제 HOME 적용(S4, guarded — 사용자가 고르는 일).
 
 ### 이 컴퓨터에서 읽은 사실 (읽기 전용, 2026-11-19, 쓰기 0)
 
@@ -116,7 +125,7 @@ created: 2026-11-19
 - RED(뼈대가 아무것도 제안하지 않을 때): `cargo test --locked --offline --test update_switch_layer` 10개 중 8개 실패, 2개 통과(`target/lane/s3red1.log`). GREEN: 10/10(`s3green1.log`), 되돌리기 시험을 더한 뒤 11/11(`s3t2.log`).
 - 연결 뒤(`target/lane/v1-*.log`): `cargo fmt --check` 0 · `update_switch_layer` 10/10 · `update_home_layer_cli` 11/11 · `update_tux_golden` 14/14 · `cargo clippy --locked --offline --all-targets -- -D warnings` 0.
 - 변이 5개(커밋된 `src/update/switch.rs` 에서 하나씩, `target/lane/c33-mutants.log`): S1 저장본 이름 검사 삭제 → `apply_checks_everything_before_the_first_write`, S2 되돌리기의 v1 검사 삭제 → `revert_puts_v1_back_and_refuses_anything_else`, S3 토큰 무시 → `apply_refuses_a_wrong_or_stale_token`, S4 저장본 모드 600 → `apply_saves_v1_and_installs_v2`, S5 rename 실패 뒤 임시 파일 남김 → `a_failed_step_leaves_a_whole_file` — 5/5 처음에 잡혔고 매번 `git restore` 로 되돌렸어요(끝에 `git status` 0줄).
-- 돌리지 않은 것: `--confirm-switch`·`--revert-switch` 를 실제 명령줄로(S3b), `cargo test --lib` 전체와 `home_isolation_scan`(S3b 와 함께), 자체 감사(S3b 뒤), 실제 HOME 적용(S4, guarded), macOS 이외(`#[cfg(unix)]`; Windows 에서는 부분이 없어요).
+- S3a 때 돌리지 않았던 것(S3b 에서 아래 "S3b 검사" 로 돌렸어요): `--confirm-switch`·`--revert-switch` 를 실제 명령줄로, `cargo test --lib` 전체와 `home_isolation_scan`(S3b 와 함께), 자체 감사(S3b 뒤), 실제 HOME 적용(S4, guarded), macOS 이외(`#[cfg(unix)]`; Windows 에서는 부분이 없어요).
 
 ### 안내 문구 (미리보기 `switch.notes`·`switch.go_bin.note`, 시험이 `moai hook`·`moai statusline` 낱말을 고정)
 
@@ -128,5 +137,5 @@ created: 2026-11-19
 ### 리더 결정이 필요한 것 (되돌릴 수 있어요, 범주 none)
 
 1. 이 가지는 S2a(`spec/20261119-switch-script-v2`) 위에 쌓였어요. 병합 순서: S2a → 이 가지. 내장 v2 는 S2a 미리보기의 복사본이고 sha256 으로 고정했어요.
-2. READY 는 S3b(플래그) 뒤에 한 번만 올려요: C-75 가 `src/main.rs`·`src/help.rs`·`docs/rust-product-path.md` 를 쥐고 있어요. 대안: 플래그 없이 라이브러리 수준으로만 먼저 병합하면 미리보기가 "없는 플래그"를 안내하니 비추천.
+2. READY 는 S3b(플래그) 뒤에 한 번만 올려요: 플래그가 이 가지에 들어 있어서 미리보기가 안내하는 플래그가 모두 있어요.
 3. `--revert-switch` 의 이름·인자(`<stamp>`)와 되돌리기 명령을 `moai-cli` 로 쓴 것(스크립트가 깨졌을 때도 도는 이름): 다른 이름을 원하면 `switch.rs` 두 곳과 시험 한 곳.
