@@ -2889,9 +2889,17 @@ fn ac_verify_run_ignores_a_call_marked_unfinished_in_every_documented_spelling()
 /// conservatively. After a write that does not count the Stop rule has no write to ask about.
 #[test]
 fn ac_verify_rule_counts_only_writes_that_did_not_fail_and_are_inside_the_project() {
-    // (what, host, event, tool, tool_input builder, counts)
     let project_file = |root: &Path| json!({"file_path": root.join("src/x.rs"), "content": "x"});
-    let cases: Vec<(&str, &str, &str, &str, Box<dyn Fn(&Path) -> Value>, bool)> = vec![
+    // (what, host, event, tool, tool_input builder, counts)
+    type WriteCase<'a> = (
+        &'a str,
+        &'a str,
+        &'a str,
+        &'a str,
+        Box<dyn Fn(&Path) -> Value>,
+        bool,
+    );
+    let cases: Vec<WriteCase> = vec![
         (
             "a project write that succeeded",
             "claude",
