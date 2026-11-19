@@ -80,8 +80,8 @@ impl Verdict {
 
 /// The auditor a verdict body names: a lane (`gate::auditor`), or — for a leader-assigned audit
 /// agent (card C-95, SPEC-20261119-leader-auditor-verdict) — the fixed line
-/// `auditor: leader-audit <token>` below the first line. The token is one or more characters of
-/// `A-Z a-z 0-9 . _ -` with no spaces; an empty or invalid token reads no auditor. `gate.rs` is
+/// `auditor: leader-audit <token>` below the first line. The token is 1 to 64 characters of
+/// `A-Z a-z 0-9 . _ -` with no spaces; an empty, longer or invalid token reads no auditor. `gate.rs` is
 /// shared with the merge gate and stays unchanged; the recognition is local to this gate (D-1).
 fn verdict_auditor(body: &str) -> Option<String> {
     if let Some(lane) = gate::auditor(body) {

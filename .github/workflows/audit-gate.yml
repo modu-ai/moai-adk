@@ -7,8 +7,9 @@
 #
 # The check is named `audit-gate`. This job posts the `moai/audit` commit status itself from the
 # gate's decision — success on pass, failure otherwise (card C-95) — so a PR does not wait for a
-# hand-posted status; the leader's manual post stays valid and the ruleset change that pins the
-# status creator to the GitHub Actions app stays the user's click (SPEC-20261119-leader-auditor-verdict, Risks).
+# hand-posted status; a status posted by hand is overwritten by the next run of this job, and the
+# ruleset change that pins the status creator to the GitHub Actions app stays the user's click
+# (SPEC-20261119-leader-auditor-verdict, Risks).
 #
 # The gate is built from the base commit, not the PR head, so a PR cannot change the rule that
 # judges it. `pull_request` only (no `pull_request_target`): a fork PR gets no secrets, and the
@@ -69,8 +70,10 @@ jobs:
         run: |
           # The gate's exit code must not kill this script (the runner's shell runs -e): a
           # crashed or failing gate lands in the error path below and posts the failure
-          # (tier-2 audit B1). The envelope rides a mktemp file, not a fixed /tmp path (B2).
-          result_file="$(mktemp)"
+          # (tier-2 audit B1). The envelope rides a mktemp file in the runner's temp folder, not
+          # a fixed /tmp path (B2), and is removed when the step ends (re-audit B1).
+          result_file="$(mktemp "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/audit-gate.XXXXXX")"
+          trap 'rm -f "$result_file"' EXIT
           ./target/debug/moai audit-gate --pr "$PR_NUMBER" --head "$PR_HEAD" --repo "$REPO" \
             | tee "$result_file" > /dev/null || true
           # The parses are guarded too: a crashed gate leaves garbage in the file, and under

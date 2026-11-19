@@ -262,11 +262,20 @@ fn the_workflow_step_posts_the_status_the_gate_decides() {
         let tmp = tempfile::TempDir::new().unwrap();
         let bin = tmp.path().join("bin");
         fs::create_dir_all(&bin).unwrap();
+        // Re-audit B1: the envelope file lives in the runner's temp folder and is removed at the
+        // end. The test owns both temp folders the block may use, and the stub gh lists the
+        // runner's one at the moment it posts, so a file made anywhere else (a fixed `/tmp`
+        // path, the user's own temp folder) or left behind fails the asserts below.
+        let runner_temp = tmp.path().join("runner-temp");
+        let tmpdir = tmp.path().join("tmpdir");
+        fs::create_dir_all(&runner_temp).unwrap();
+        fs::create_dir_all(&tmpdir).unwrap();
         fs::write(
             bin.join("gh"),
             format!(
-                "#!/bin/sh\nfor a in \"$@\"; do printf '%s\\n' \"$a\"; done >> {}\n",
-                bin.join("gh-args.txt").display()
+                "#!/bin/sh\nfor a in \"$@\"; do printf '%s\\n' \"$a\"; done >> {}\nls \"$RUNNER_TEMP\" >> {}\n",
+                bin.join("gh-args.txt").display(),
+                bin.join("runner-temp-at-post.txt").display()
             ),
         )
         .unwrap();
@@ -310,9 +319,27 @@ fn the_workflow_step_posts_the_status_the_gate_decides() {
             .env("PR_NUMBER", "9")
             .env("PR_HEAD", H)
             .env("REPO", "o/r")
+            .env("RUNNER_TEMP", &runner_temp)
+            .env("TMPDIR", &tmpdir)
             .current_dir(tmp.path())
             .output()
             .expect("run the step block");
+        let at_post = fs::read_to_string(bin.join("runner-temp-at-post.txt")).unwrap_or_default();
+        assert!(
+            at_post.lines().any(|l| l.starts_with("audit-gate.")),
+            "{name}: the envelope was not made in RUNNER_TEMP: {at_post:?}"
+        );
+        for dir in [&runner_temp, &tmpdir] {
+            let left: Vec<_> = fs::read_dir(dir)
+                .unwrap()
+                .map(|e| e.unwrap().file_name())
+                .collect();
+            assert!(
+                left.is_empty(),
+                "{name}: left in {}: {left:?}",
+                dir.display()
+            );
+        }
         let recorded = fs::read_to_string(bin.join("gh-args.txt")).unwrap_or_default();
         assert!(
             recorded.contains(&format!("state={want_state}")),
