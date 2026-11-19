@@ -326,6 +326,18 @@ fn the_cursor_continues_with_no_gap_and_no_overlap() {
     assert_eq!(want.len(), 11, "the add event and ten rows");
     assert_eq!(all["more"], json!(false));
 
+    // The edge: exactly as many events as the limit is the last page; one fewer is not.
+    let exact = result(&w.timeline(None, &["--limit", "11"]));
+    assert_eq!(
+        (exact["count"].clone(), exact["more"].clone()),
+        (json!(11), json!(false))
+    );
+    let short = result(&w.timeline(None, &["--limit", "10"]));
+    assert_eq!(
+        (short["count"].clone(), short["more"].clone()),
+        (json!(10), json!(true))
+    );
+
     // Three at a time, handing `next` back.
     let mut got: Vec<Value> = Vec::new();
     let mut cursor: Option<String> = None;
