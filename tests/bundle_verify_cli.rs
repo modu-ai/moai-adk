@@ -1257,3 +1257,41 @@ fn a_missing_branch_and_a_busy_slot_are_refused_with_nothing_left() {
     assert!(!out.exists(), "the folder of a refused run is gone");
     assert!(w.log().is_empty(), "no command ran: {:?}", w.log());
 }
+
+#[test]
+fn a_command_that_never_finished_is_not_run_not_a_failure() {
+    let w = World::new();
+    let b = w.built(
+        &Head {
+            files: vec![("notes/a.md", "a\n")],
+            spec: Some((SPEC, vec![])),
+        },
+        &Head {
+            files: vec![("notes/b.md", "b\n")],
+            spec: Some((SPEC, vec![])),
+        },
+    );
+    // The last command kills the script that runs it: no exit status is ever written for it.
+    let kill = w.stub_dir().join("python3");
+    fs::write(&kill, "#!/bin/sh\nkill -9 $PPID\nsleep 5\n").unwrap();
+    fs::set_permissions(&kill, fs::Permissions::from_mode(0o755)).unwrap();
+    let out = w.out();
+    let (v, code) = w.verify(&[
+        &b.cards[0],
+        &b.cards[1],
+        "--branch",
+        &b.branch,
+        "--out",
+        out.to_str().unwrap(),
+    ]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(
+        v["result"]["ok"], true,
+        "no exit status is not a failure: {v}"
+    );
+    assert_eq!(commands_of(&v).len(), 9);
+    let not_run = not_run_of(&v);
+    assert_eq!(not_run.len(), 1, "{not_run:?}");
+    assert_eq!(not_run[0].0, "unittest");
+    assert!(not_run[0].1.contains("did not run"), "{not_run:?}");
+}
