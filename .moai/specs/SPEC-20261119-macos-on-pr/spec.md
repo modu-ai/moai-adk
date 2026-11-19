@@ -84,8 +84,8 @@ merge 전에 `check` 매트릭스에 macos-arm64를 넣고, aggregate `ci`가 �
 
 ## Result
 
-- AC-1: met — `tests.ci_scope_test` 34 시험 통과; 여섯 범주 대표 경로 22개가 `macos_needed: true` + 범주 이유를 돌려줘요(RED 먼저: 구현 전 오류 8·실패 3).
+- AC-1: met — `tests.ci_scope_test` 40 시험 통과; 여섯 범주 대표 경로 22개가 `macos_needed: true` + 범주 이유를 돌려줘요(RED 먼저: 구현 전 오류 8·실패 3).
 - AC-2: met — 비민감 목록(docs·skills·원장 로직) `false`; 접두사 누출 경계(`src/statusline_notes.rs`, `adapters/claude/statusline.py`)도 `false`.
 - AC-3: met — 빈 입력·제어문자 경로·내부 오류가 모두 `true`; 돌연변이 M1·M2·M3로 안전실패 분기가 시험에 묶여 있음을 확인(6/6 KILLED, `target/c76/mut.log`).
 - AC-4: met — 역대 실패 69 run의 파일 목록 전수 판정: 29 true / 40 false, false는 run id로 시험에 명명(`HISTORICAL_FALSE_RUN_IDS`). 간극(감사 N-1 실측, 2026-11-19): 이 69 run 중 macos-arm64-only는 28 run이고, 이 표가 그중 macOS를 미리 돌려 줬을 run은 9뿐이에요(원인 아닌 run 단위 집계). 표 넓히기는 후속 카드.
-- AC-5: met — YAML 계약 시험·YAML 파싱(PyYAML, job 그래프 확인) 통과; `tests/github_assets_test.py`의 `rc_ci_matrix` 4시험은 새 구조(`targets` job의 `full=`/`linux=` 목록)로 고쳐 39 시험 전부 통과(리더 인계 뒤, 카드 note 2383·2386; `python3 -m unittest tests.github_assets_test tests.ci_scope_test` → Ran 73 tests, OK).
+- AC-5: met — YAML 계약 시험·YAML 파싱(PyYAML, job 그래프 확인) 통과; `tests/github_assets_test.py`의 `rc_ci_matrix` 4시험은 새 구조(`targets` job의 `full=`/`linux=` 목록)로 고쳐 통과하고, decide 스크립트의 pull_request 가드·PR base SHA를 같은 자리에서 못박아요(재감사 B-2·N-9, 명시적 raise). 재감사 B-3·N-5·N-7은 `CiDecideScriptTest`가 decide 스크립트를 임시 git 저장소에서 실제로 실행해 막아요(push·dispatch·민감 PR→full, 비민감 PR→linux, 분류기 실패·모르는 base→full; 변이 `$matrix`→`$linux` 5실패, `ok=0`→`ok=1` 2실패로 사살 확인). 세 수트 `python3 -m unittest tests.skill_references_test tests.ci_scope_test tests.github_assets_test` → Ran 84 tests, OK(2026-11-19, 재수리 head).

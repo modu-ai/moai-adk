@@ -337,9 +337,12 @@ class WorkflowTest(unittest.TestCase):
         # The event branch is load-bearing (audit B-2): only a pull_request run
         # enters the classifier; `if true` or a negated comparison would let a
         # push path-classify (or a PR skip it) with the same matrix literals, so
-        # the exact guard is pinned here, where the lists are read.
-        assert 'if [ "${{ github.event_name }}" = "pull_request" ]; then' in run, run
-        assert '${{ github.event.pull_request.base.sha }}' in run, run
+        # the exact guard is pinned here, where the lists are read. Explicit
+        # raises, not bare asserts — `python -O` strips those (re-audit N-9).
+        if 'if [ "${{ github.event_name }}" = "pull_request" ]; then' not in run:
+            raise AssertionError(f"the decide script lost its pull_request guard: {run!r}")
+        if '${{ github.event.pull_request.base.sha }}' not in run:
+            raise AssertionError(f"the decide script lost its PR base SHA: {run!r}")
         lists = dict(re.findall(r"^(full|linux)='(\[.*?\])'$", run, re.M))
         if set(lists) != {"full", "linux"}:
             raise AssertionError(f"unexpected decide script: {run!r}")

@@ -3,8 +3,10 @@
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import unittest
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -489,6 +491,136 @@ class CiScopePlatformTest(unittest.TestCase):
             capture_output=True,
             text=True,
         )
+
+
+class CiDecideScriptTest(unittest.TestCase):
+    """C-76 re-audit B-3 (and N-5, N-7): run the targets job's decide step itself.
+
+    Text pins cannot bind the decided matrix to the job output — `$matrix`
+    flipped to `$linux` passed every earlier test. Here the decide step's
+    script is extracted from ci.yml, its `${{ … }}` expressions are filled
+    with the case's values, and it runs with `bash` in a temporary git
+    repository, exactly as the runner would. The `matrix=` line it appends to
+    $GITHUB_OUTPUT is the assertion.
+    """
+
+    FULL = (
+        '[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30},'
+        '{"target":"macos-arm64","runner":"macos-15","timeout":45}]'
+    )
+    LINUX = '[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30}]'
+
+    @classmethod
+    def setUpClass(cls):
+        import yaml
+
+        with open(
+            os.path.join(REPO_ROOT, ".github", "workflows", "ci.yml"),
+            encoding="utf-8",
+        ) as fh:
+            flow = yaml.safe_load(fh)
+        cls.script = next(
+            s for s in flow["jobs"]["targets"]["steps"] if s.get("id") == "decide"
+        )["run"]
+
+    @staticmethod
+    def git(repo, *args):
+        subprocess.run(
+            ["git", *args], cwd=repo, check=True, capture_output=True
+        )
+
+    def repo(self, changes, classifier=None):
+        """A git repository with a base commit and a head commit changing
+        `changes` (a path-to-body map); `classifier` overrides tools/ci_scope.py.
+        Returns (tmpdir, base_sha, head_sha)."""
+        tmp = tempfile.mkdtemp(prefix="c76-decide-")
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        tools = os.path.join(tmp, "tools")
+        os.makedirs(tools)
+        with open(os.path.join(tools, "ci_scope.py"), "w", encoding="utf-8") as fh:
+            if classifier is not None:
+                fh.write(classifier)
+            else:
+                shutil.copyfile(
+                    os.path.join(REPO_ROOT, "tools", "ci_scope.py"), fh.name
+                )
+        self.git(tmp, "init", "-q", "-b", "main")
+        self.git(tmp, "config", "user.name", "fixture")
+        self.git(tmp, "config", "user.email", "fixture@example.invalid")
+        with open(os.path.join(tmp, "seed.txt"), "w", encoding="utf-8") as fh:
+            fh.write("base\n")
+        self.git(tmp, "add", "-A")
+        self.git(tmp, "commit", "-q", "-m", "base")
+        for rel, body in changes.items():
+            path = os.path.join(tmp, rel)
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(body)
+        self.git(tmp, "add", "-A")
+        self.git(tmp, "commit", "-q", "--allow-empty", "-m", "head")
+        base = subprocess.run(
+            ["git", "rev-parse", "HEAD~1"], cwd=tmp, capture_output=True, text=True
+        ).stdout.strip()
+        head = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=tmp, capture_output=True, text=True
+        ).stdout.strip()
+        return tmp, base, head
+
+    def decide(self, repo, event, base, head):
+        """Run the decide step as the runner would; return (proc, matrix)."""
+        script = self.script.replace("${{ github.event_name }}", event)
+        script = script.replace("${{ github.event.pull_request.base.sha }}", base)
+        out = os.path.join(repo, "github-output")
+        if os.path.exists(out):
+            os.remove(out)
+        env = dict(os.environ, GITHUB_OUTPUT=out, GITHUB_SHA=head)
+        proc = subprocess.run(
+            ["bash", "-c", script], cwd=repo, env=env, capture_output=True, text=True
+        )
+        matrix = None
+        if os.path.exists(out):
+            with open(out, encoding="utf-8") as fh:
+                for line in fh:
+                    if line.startswith("matrix="):
+                        matrix = line.rstrip("\n")[len("matrix="):]
+        return proc, matrix
+
+    def test_push_and_dispatch_get_the_full_matrix(self):
+        for event in ("push", "workflow_dispatch"):
+            with self.subTest(event=event):
+                repo, base, head = self.repo({"docs/a.md": "x\n"})
+                proc, matrix = self.decide(repo, event, base, head)
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                self.assertEqual(matrix, self.FULL)
+
+    def test_a_platform_sensitive_pr_gets_macos(self):
+        repo, base, head = self.repo({"src/statusline/render.rs": "x\n"})
+        proc, matrix = self.decide(repo, "pull_request", base, head)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(matrix, self.FULL)
+        self.assertIn("target-reason:", proc.stdout)
+
+    def test_a_plain_pr_stays_linux_only(self):
+        repo, base, head = self.repo({"docs/a.md": "x\n", "README.md": "x\n"})
+        proc, matrix = self.decide(repo, "pull_request", base, head)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(matrix, self.LINUX)
+
+    def test_a_broken_classifier_falls_back_to_the_full_matrix(self):
+        # The classifier exits 1: the decide step must still succeed with the
+        # full matrix (fail safe), not fail or narrow to linux-only.
+        repo, base, head = self.repo(
+            {"docs/a.md": "x\n"}, classifier="import sys\nsys.exit(1)\n"
+        )
+        proc, matrix = self.decide(repo, "pull_request", base, head)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(matrix, self.FULL)
+
+    def test_an_unknown_base_falls_back_to_the_full_matrix(self):
+        repo, _base, head = self.repo({"src/statusline/render.rs": "x\n"})
+        proc, matrix = self.decide(repo, "pull_request", "0" * 40, head)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(matrix, self.FULL)
 
 
 class CiWorkflowMatrixContractTest(unittest.TestCase):
