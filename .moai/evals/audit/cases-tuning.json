@@ -1,0 +1,56 @@
+[
+ {
+  "id": "pr3216-b1",
+  "pr": 3216,
+  "bug": "B1",
+  "audit_comment": 6995243261,
+  "head": "f75f7713a2c1386fa19708fd28a493cd81c625b2",
+  "base": "192f6fa7e2b89541d10e711ba6dac64b84e28d13",
+  "answer_key": "The GREEN lock guard claims to block rm and mv of locked test paths, but rm -rf of the folder, globs, shell variables, xargs and find -exec still delete or move them."
+ },
+ {
+  "id": "pr3215-b1",
+  "pr": 3215,
+  "bug": "B1",
+  "audit_comment": 6994546335,
+  "head": "e9fa01903e9978471a6d90cac003388314c66c90",
+  "base": "b04e815c396ed8c4e4b4ea84623b176bee06a9b0",
+  "answer_key": "A damaged receipt whose before_text or before_sha256 key is missing passes the damage check, so revert can delete or overwrite the launcher settings file with no record of what was there."
+ },
+ {
+  "id": "pr3212-b1",
+  "pr": 3212,
+  "bug": "B1",
+  "audit_comment": 6980651766,
+  "head": "435bff83c4ffaef55665b5d307ee18415112af33",
+  "base": "dcf3d64520436a1ac5d69f1992c623ee508f5165",
+  "answer_key": "The existing terminal update flow never finishes at this head: update_command writes the file and then waits for more terminal input, so the update_tux_tty test times out and CI is red."
+ },
+ {
+  "id": "pr3211-b1",
+  "pr": 3211,
+  "bug": "B1",
+  "audit_comment": 6979571177,
+  "head": "a01ac8c24462c35aa49e1d7d748460831969ca7d",
+  "base": "dcf3d64520436a1ac5d69f1992c623ee508f5165",
+  "answer_key": "Five SPEC verify commands pass two test-name filters to one cargo test call, which cargo rejects as an unexpected argument, so the acceptance commands cannot be run as written."
+ },
+ {
+  "id": "pr3204-b1",
+  "pr": 3204,
+  "bug": "B1",
+  "audit_comment": 6970859749,
+  "head": "b6fcd6eab990c1c970cd218005b6b0cc32bfcaf3",
+  "base": "eea59f4ff1f9753928651ff85bb0f067a8c721dc",
+  "answer_key": "The research tables break AC-8: most source lines carry no read time and no per-row source, so a row cannot say when its source was read."
+ },
+ {
+  "id": "pr3203-b1",
+  "pr": 3203,
+  "bug": "B1",
+  "audit_comment": 6970934123,
+  "head": "cca27a912a240596b94b79fd6fbb98e4d2cbd0b1",
+  "base": "eea59f4ff1f9753928651ff85bb0f067a8c721dc",
+  "answer_key": "The host support matrix marks the omp lane-duty row yes, but the mode-agent workflow says OMP enters agent mode only through its own skill spelling, and the list-agreement test cannot catch a listed-but-wrong row."
+ }
+]
