@@ -241,6 +241,27 @@ fn lane_send_refuses_numbered_yes_no_rows_after_any_prefix_and_sends_nothing() {
     }
 }
 
+/// Re-audit of slice B (note 3433, R-B1 and R-N1): a known question with its choices on its own
+/// row, or with two numbered rows or a choice word (`yes no allow deny y n`) below it, is
+/// `unknown`, so nothing is sent. Before the repair each of these five screens sent.
+#[test]
+fn lane_send_refuses_a_question_with_its_choices_on_the_row_or_below_and_sends_nothing() {
+    for name in [
+        "synthetic-question-same-line-working.txt",
+        "synthetic-fingerprint-question-working.txt",
+        "synthetic-question-allow-deny-working.txt",
+        "synthetic-question-allow-once-always-deny-working.txt",
+        "synthetic-question-numbered-y-n-working.txt",
+    ] {
+        let fake = Fake::screen(name);
+        let r = run(&fake, "do the next card", &["--enter"]);
+        let message = r.error();
+        assert!(message.contains("unknown"), "{name}: {message}");
+        assert!(message.contains("refused"), "{name}: {message}");
+        assert_eq!(fake.sent(), None, "{name}");
+    }
+}
+
 /// S-N2 (note 3362): a lane that ended its turn with a question and waits at its input line is
 /// `idle`, and the text goes in.
 #[test]
