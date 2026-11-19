@@ -10,7 +10,7 @@ created: 2026-11-19
 
 ## Intent
 
-Card C-125, the follow-up of the C-108 tier 2 audit (card note on C-108, head 472b6bf2da, in PR 3230; findings N1 and N3). `card criterion-add` is the action C-108 adds (`SPEC-20261119-card-criterion-add`); its code is not on the tip before PR 3230 merges, so this SPEC is read against that head and the implementation starts on the tip after the merge.
+Card C-125, the follow-up of the C-108 tier 2 audit (card note on C-108, head 472b6bf2da, in PR 3230; findings N1 and N3). `card criterion-add` is the action C-108 added (`SPEC-20261119-card-criterion-add`); its code has been on the tip since PR 3230 merged, and this SPEC changes it from there.
 
 N1. `workflow::add_criteria` (`src/ledger/workflow.rs`) writes the `card.criterion_add` event with the actor `--by` only, and `--by` is free text. `card.note` also records the session that wrote it (`session_holder("note", env).ok()` in `src/ops/card.rs`, stored in the note event as `session`). A criterion added by another session can keep `card done` refused (an open criterion blocks it, `card_done_guard`); the holder can withdraw it, but the ledger cannot say which session added it.
 
@@ -24,7 +24,7 @@ This slice changes two things in `card criterion-add`: the event and the answer 
 - Writing the session into rows that exist already: older `card.criterion_add` events keep the payload they have (no `session` key); a reader treats a missing key as unknown.
 - Showing the event in `card show`: the event table is where an auditor looks; a display is a later card.
 - Changing the numbering, the text rules or the refusals of `card criterion-add` (SPEC-20261119-card-criterion-add keeps them).
-- `docs/design-review/appendix/operations/card.md` and `src/ops/card.rs` are reserved for card C-116 (leader inbox) while this SPEC is written; the implementation takes them after that release or merge (Decisions D-4).
+- `docs/design-review/appendix/operations/card.md` and `src/ops/card.rs` were reserved by other cards while this SPEC was written (C-116, then C-96 for `src/ops/card.rs`); slice B took `src/ops/card.rs` after C-96 released it, and the operations document row stays with the card that holds that file (Decisions D-4).
 
 ## Requirements
 
@@ -67,7 +67,7 @@ Order inside a slice: tests first (RED), then the code, then mutants, neighbours
 ## Risks
 
 - The id is read from the environment, so a caller who sets the variable by hand can claim another session; the field says which session wrote the row, not who the person was. It is the same trust as a note's session.
-- `add_criteria` gets one more parameter: every caller changes (`src/ops/card.rs`, `tests/ledger_workflow.rs`); a missed caller fails to compile, which is the check.
+- The writer gets a new function, `add_criteria_as`, with the session; `add_criteria` keeps its shape and forwards `None` (D-5), so no caller broke when slice A landed. Slice B moves `src/ops/card.rs` to the new function; `add_criteria` stays for the callers that have no session (its tests).
 - The row count needs one more read in the write transaction; it runs in the same transaction as the inserts, so two adds at once cannot report a stale count.
 - Before this change the two numbers are equal on every card made through `card add` and the import, so the answer changes only for a card with a gap in its numbers.
 
@@ -77,7 +77,7 @@ Order inside a slice: tests first (RED), then the code, then mutants, neighbours
 - D-2: a missing session is `null`, not an absent key, so a reader tells "this session had no id" from "the row is older than this change" by `session` being present.
 - D-3: the count is `SELECT COUNT(*)` after the inserts, in the same transaction. Option not taken: counting in memory from the highest number, which is the defect.
 - D-5: the writer gets a new function with the session instead of one more parameter on `add_criteria`, so slice A compiles while `src/ops/card.rs` is held by another card; the earlier writer test changes its expected payload to carry `"session": null`, because every write now goes through the same function and REQ-2 says a missing id is `null`. Option not taken: leave `add_criteria` writing no key, which keeps two shapes of event for one kind.
-- D-4: this slice waits for card C-116 to release `src/ops/card.rs` and the operations document; the document row for `card criterion-add` is updated in the implementation if C-116 has released it by then, otherwise it stays a note on the card and the help is the contract.
+- D-4: slice B waits for the card that holds `src/ops/card.rs` (C-116, then C-96) to release it; the document row for `card criterion-add` in `docs/design-review/appendix/operations/card.md` is updated in the implementation only if that file is free by then. It was held by card C-129 when slice B was written, so the row still says `first` and `count` for the payload and the help is the contract; the row is a note on the card.
 
 ## Result
 

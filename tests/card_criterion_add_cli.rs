@@ -673,14 +673,16 @@ fn without_a_session_id_the_session_is_null_and_the_criteria_are_added() {
 
 /// AC-3, the CLI half (REQ-5, REQ-6; card C-125, C-108 audit N3): `criteria` in the answer is the
 /// number of rows the card has, not its highest number. Rows 1 and 5 make a gap (the table takes
-/// any `seq`); two adds are numbered 6 and 7 and the card holds four rows.
+/// any `seq`) and row 5 is withdrawn, so the count includes a withdrawn row and the new numbers go
+/// after it; two adds are numbered 6 and 7 and the card holds four rows.
 #[test]
 fn the_criteria_count_is_the_row_count_when_numbers_have_a_gap() {
     let w = world();
     let card = w.ready(&["one"]);
     let id = card.trim_start_matches("C-");
     w.sql(&format!(
-        "INSERT INTO card_ac (card_id, seq, text, updated_at) VALUES ({id}, 5, 'five', 1)"
+        "INSERT INTO card_ac (card_id, seq, text, status, withdrawn_reason, updated_at) \
+         VALUES ({id}, 5, 'five', 'withdrawn', 'gone', 1)"
     ));
 
     let answer = result(&w.card(
