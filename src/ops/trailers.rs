@@ -49,5 +49,10 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
     let key = std::env::current_dir()
         .ok()
         .and_then(|dir| moai_cli::trailers::worktree_key(&dir));
-    moai_cli::trailers::format_verified(spec, &args.verified, |name| std::env::var(name).ok(), key.as_deref())
+    moai_cli::trailers::format_verified(
+        spec,
+        &args.verified,
+        |name| std::env::var(name).ok(),
+        key.as_deref(),
+    )
 }

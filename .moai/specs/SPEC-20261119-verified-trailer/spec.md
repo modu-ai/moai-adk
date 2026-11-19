@@ -39,8 +39,9 @@ created: 2026-11-19
   verify: `cargo test --locked --offline --test trailer_verified_cli trailer_check_cuts_at_the_rule_start`
 - AC-3 (REQ-9): `--list` 가 커밋을 종류별로 묶어 나열하고 `This reverts commit <sha>` 메시지가 되돌린 커밋을 표시해요.
   verify: `cargo test --locked --offline --test trailer_verified_cli trailers_list_groups_and_marks_reverts`
-- AC-4 (REQ-1…REQ-10): 이웃 검사 — 단위 시험(`--lib trailers::`), `cargo fmt --check`, `cargo clippy --offline --locked --all-targets -- -D warnings`, 기존 trailer 시험 회귀(`--test spec_close_cli` 는 trailer 커밋을 만드는 대표 이웃).
+- AC-4 (REQ-1…REQ-10): 이웃 검사 — 단위 시험(`--lib trailers::`), `cargo fmt --check`, fmt-ops(`rustfmt --check --edition 2021 src/ops/*.rs`: build.rs 가 src/ops 모듈 목록을 만들어 cargo fmt 는 그곳에 닿지 않음), `cargo clippy --offline --locked --all-targets -- -D warnings`, 기존 trailer 시험 회귀(`--test spec_close_cli` 는 trailer 커밋을 만드는 대표 이웃).
   verify: `cargo test --locked --offline --lib trailers::`
+  verify: `rustfmt --check --edition 2021 src/ops/*.rs`
 
 ## Scope
 
@@ -74,4 +75,4 @@ created: 2026-11-19
 - AC-1: met — 2026-11-19 이 worktree에서 `cargo test --locked --offline --test trailer_verified_cli` 3 passed 0 failed(`trailers_prints_the_verified_line` 포함: 인쇄·`none`·미지정 시 부재·오타 거부), `--lib trailers::` 8 passed 0 failed(`format_appends_the_verified_line_or_refuses_the_unknown_kind` 포함).
 - AC-2: met — 같은 실행의 `trailer_check_cuts_at_the_rule_start` 통과: 시작 경계(범위 첫 실은 커밋 c2 전 c1 면제·c2 이후 c3 실패, `c2..` 범위의 자체 시작 c4, `--verified-since` 의 시작 자신 면제·범위 밖 시작 0), 오타 `tset` 실패, 인정 값·쉼표 나열 통과.
 - AC-3: met — `trailers_list_groups_and_marks_reverts` 통과: 종류별 묶음(다중 종류 각 묶음 등장), 빠진 줄 `none` 묶임, `This reverts commit` 표시·개수.
-- AC-4: met — `cargo fmt --check` exit 0, `cargo clippy --offline --locked --all-targets -- -D warnings` exit 0, 이웃 `--test spec_close_cli` 8 passed(format 호출부 무변경 — `format` 은 3인자 그대로, 새 `format_verified` 위임); 변이 2 KILLED(시작 면제 제거 at+1→at → 컷오프 시험 exit 101; 쉼표 분할 제거 → 2 실패 exit 101), 복원 후 재검증 모두 exit 0.
+- AC-4: met — `cargo fmt --check` exit 0, `rustfmt --check --edition 2021 src/ops/*.rs` exit 0(수리 감사 B1: 110컬럼 호출을 인자마다 줄로 감쌈), `cargo clippy --offline --locked --all-targets -- -D warnings` exit 0, 이웃 `--test spec_close_cli` 8 passed(format 호출부 무변경 — `format` 은 3인자 그대로, 새 `format_verified` 위임); 변이 2 KILLED(시작 면제 제거 at+1→at → 컷오프 시험 exit 101; 쉼표 분할 제거 → 2 실패 exit 101), 복원 후 재검증 모두 exit 0.
