@@ -2,7 +2,7 @@
 
 When to read: once per session, before the first step of any route or agent task. These rules hold for every route and every host.
 
-Rules with their full text, source and enforcer live in `internal/rule-history.md`; a line here that names a history entry is a pointer, not a restatement. Numbering is fixed: rules 3, 7 and 19–21 are pinned by `tests/core_rules_2876.rs`, so a moved rule keeps its number as a pointer.
+Rules with their full text, source and enforcer live in `references/rule-history.md`; a line here that names a history entry is a pointer, not a restatement. Numbering is fixed: rules 3, 7 and 19–21 are pinned by `tests/core_rules_2876.rs`, so a moved rule keeps its number as a pointer.
 
 ## Working
 

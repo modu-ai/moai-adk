@@ -11,7 +11,7 @@ parent: SPEC-20261118-sdd-foundation
 
 ## Intent
 
-검증 규칙은 놔두면 자라기만 해요("they only grow if you let them" — Addy Osmani, 'How the Claude Code team thinks about verification', claude.dev 2026-11-16, 리더 보고 표 2; 사용자 지시 '모두 카드 발행해서 진행'). 이 SPEC은 카드 C-103의 문서 조각: mode-agent.md·internal/core-rules.md·workflows/audit.md(+ 대상에서 빠진 mode-leader.md 도 목록은 작성)의 규칙 문장마다 근거 Issue/PR 을 밝혀, 근거가 하나뿐이고 diff 계기가 없는 규칙은 internal/rule-history.md(신규)로 옮기고, 중복은 합쳐요. 살아남은 규칙은 각자 강제하는 시험·훅·게이트를 이름 붙이거나 'text only' 로 표시해요. 리더 결정(note 2527·2530 수렴, 기본값 ①로 진행): mode-leader.md 편집과 source-manifest.json 해시 갱신은 C-99 해제 뒤 마지막 단계로 미뤄요.
+검증 규칙은 놔두면 자라기만 해요("they only grow if you let them" — Addy Osmani, 'How the Claude Code team thinks about verification', claude.dev 2026-11-16, 리더 보고 표 2; 사용자 지시 '모두 카드 발행해서 진행'). 이 SPEC은 카드 C-103의 문서 조각: mode-agent.md·internal/core-rules.md·workflows/audit.md(+ 대상에서 빠진 mode-leader.md 도 목록은 작성)의 규칙 문장마다 근거 Issue/PR 을 밝혀, 근거가 하나뿐이고 diff 계기가 없는 규칙은 references/rule-history.md(신규, 리더 결정 ①: internal 밖)로 옮기고, 중복은 합쳐요. 살아남은 규칙은 각자 강제하는 시험·훅·게이트를 이름 붙이거나 'text only' 로 표시해요. 리더 결정(note 2527·2530 수렴, 기본값 ①로 진행): mode-leader.md 편집과 source-manifest.json 해시 갱신은 묶음 2(#3225) 병합 뒤 마지막 단계로 미뤄요.
 
 ## Non-goals
 
@@ -21,7 +21,7 @@ parent: SPEC-20261118-sdd-foundation
 
 ## Requirements
 
-- REQ-1: When the rule inventory is written, every rule sentence of mode-agent.md, internal/core-rules.md, workflows/audit.md and mode-leader.md shall be listed in internal/rule-history.md with its source issue or PR.
+- REQ-1: When the rule inventory is written, every rule sentence of mode-agent.md, internal/core-rules.md, workflows/audit.md and mode-leader.md shall be listed in references/rule-history.md with its source issue or PR.
 - REQ-2 (REQ-1): IF a rule has exactly one source and no diff trigger (no test, hook or gate reads it), THEN it shall move to the history section of rule-history.md and leave the live file.
 - REQ-3: When two live rules state one pattern, the pruned files shall keep one merged sentence and name the merged-away duplicate in the inventory.
 - REQ-4 (REQ-3): IF a kept rule is enforced by a test, hook or gate, THEN the inventory shall name that enforcer, and otherwise say `text only`.
@@ -40,7 +40,7 @@ parent: SPEC-20261118-sdd-foundation
 
 ## Scope
 
-- write: `skills/moai/workflows/mode-agent.md`, `skills/moai/references/internal/core-rules.md`, `skills/moai/workflows/audit.md`, `skills/moai/references/internal/rule-history.md`(신규), `.moai/specs/SPEC-20261119-rule-prune/spec.md`
+- write: `skills/moai/workflows/mode-agent.md`, `skills/moai/references/internal/core-rules.md`, `skills/moai/workflows/audit.md`, `skills/moai/references/rule-history.md`(신규, internal 밖 — 리더 결정 ①), `.moai/specs/SPEC-20261119-rule-prune/spec.md`
 - deferred (리더 2527·기본값 ①): `skills/moai/workflows/mode-leader.md`, `skills/moai/references/source-manifest.json`
 - forbidden: 규칙 의미 변경, 실제 HOME·원장·키, 네트워크 쓰기
 
@@ -62,7 +62,7 @@ parent: SPEC-20261118-sdd-foundation
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | mode-leader.md 편집·manifest 갱신은 마지막 단계로 연기 | 리더 2527(C-99 경로 충돌), 2530 의 기본값 ① | 조각 전체 통째 대기 |
-| D-2 | history 는 internal/rule-history.md 한 파일(live 표+history 절) | 카드 스코프가 그 경로를 이름 | 파일별 history |
+| D-2 | history 는 references/rule-history.md 한 파일(live 표+history 절; internal 밖 — 리더 결정 ①, 내부 목록 시험·agent reads 요건 회피) | 카드 스코프가 그 경로를 이름 | 파일별 history |
 | D-3 | 목록은 기계 추출+검수, 판정 기준(근거 수·계기·tip 대상)을 목록 머리에 명시 | 재검 가능성 | 손목록 |
 
 ## Result
