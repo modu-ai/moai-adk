@@ -513,6 +513,65 @@ fn plan_replace_withholds_a_secret_shaped_line() {
     assert!(all.contains("export default function"), "{all}");
 }
 
+/// AC-1 (REQ-2): the audit of the first head found that a header, a cloud key, a JSON key and a
+/// bare `secret=` came out in the diff as they were; a line that names or looks like a credential
+/// is withheld, and an ordinary line is still listed.
+#[test]
+fn plan_replace_withholds_credential_names_and_key_shapes() {
+    let fx = Fx::new();
+    // Built at run time so this file holds no secret-shaped text of its own.
+    let lines = [
+        (
+            format!(
+                "// {}: {} zq1value",
+                "Authori".to_string() + "zation",
+                "Bea".to_string() + "rer"
+            ),
+            "zq1value",
+        ),
+        (
+            format!(
+                "// {}_{}=zq2value",
+                "AWS_SEC".to_string() + "RET",
+                "ACCESS_KEY"
+            ),
+            "zq2value",
+        ),
+        (
+            format!("// {}{}", "AK".to_string() + "IA", "ZQ3VALUEABCDEFGH"),
+            "ZQ3VALUEABCDEFGH",
+        ),
+        (
+            format!("// {{\"{}\": \"zq4value\"}}", "api".to_string() + "Key"),
+            "zq4value",
+        ),
+        (
+            format!("// {}=zq5value", "sec".to_string() + "ret"),
+            "zq5value",
+        ),
+    ];
+    let mut body = String::from("// mine\n");
+    for (line, _) in &lines {
+        body.push_str(line);
+        body.push('\n');
+    }
+    body.push_str("export default function () {}\n");
+    fx.write(OMP.file, &body);
+    let plan = fx.plan(OMP, true);
+    let all = plan.to_string();
+    for (_, value) in &lines {
+        assert!(!all.contains(value), "the diff printed {value}: {all}");
+    }
+    let removed = plan["diff"]["removed"].as_array().unwrap();
+    let withheld = removed
+        .iter()
+        .filter(|l| l.as_str().unwrap().contains("withheld"))
+        .count();
+    assert_eq!(withheld, lines.len(), "{plan}");
+    assert!(all.contains("export default function"), "{all}");
+    assert!(all.contains("// mine"), "{all}");
+}
+
 /// AC-1 (REQ-2): at most 40 lines a side are listed, and the diff says it stopped.
 #[test]
 fn plan_replace_diff_stops_at_forty_lines() {

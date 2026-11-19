@@ -631,7 +631,7 @@ enum Command {
         #[arg(long)]
         permission_reference: String,
         /// The same `--replace-with-backup` the plan used: keep a copy of the existing hook
-        /// file under `.moai-cli/backups`, then replace it.
+        /// file in the `backups` folder of the project state folder, then replace it.
         #[arg(long)]
         replace_with_backup: bool,
         #[command(flatten)]

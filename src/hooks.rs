@@ -784,6 +784,31 @@ fn check_replace(host: &str, replace: bool) -> Result<()> {
 const DIFF_LINES: usize = 40;
 const DIFF_LINE_CHARS: usize = 200;
 
+/// Words that name a credential. A line holding one is withheld from the diff whatever follows it:
+/// the diff shows a person's own file, where hiding a line costs a marker and the file is still
+/// theirs to read, and a leaked key costs far more.
+const CREDENTIAL_WORDS: &[&str] = &[
+    "authorization",
+    "bearer ",
+    "secret",
+    "apikey",
+    "api-key",
+    "passwd",
+    "credential",
+    "private_key",
+    "access_key",
+];
+
+/// True for a line the diff must not print: the shapes [`crate::secret_shaped`] knows, the key
+/// prefixes [`crate::redact::redact_outgoing`] knows (cloud, chat and gh tokens, `eyJ` tokens) and
+/// the credential words above.
+fn diff_line_withheld(line: &str) -> bool {
+    let lower = line.to_ascii_lowercase();
+    crate::secret_shaped(line)
+        || crate::redact::redact_outgoing(line).1 > 0
+        || CREDENTIAL_WORDS.iter().any(|w| lower.contains(w))
+}
+
 /// The two sides of a replacement as lines: the lines only the file has and the lines only the
 /// planned file has, in file order, at most [`DIFF_LINES`] each; a line shaped like a secret is
 /// withheld, because a hook command may carry one.
@@ -802,7 +827,7 @@ fn hook_diff(file: &str, current: &[u8], desired: &[u8]) -> Value {
             if lines.len() == DIFF_LINES {
                 return (lines, true);
             }
-            lines.push(if crate::secret_shaped(line) {
+            lines.push(if diff_line_withheld(line) {
                 "[withheld: secret-shaped line]".to_string()
             } else {
                 line.chars().take(DIFF_LINE_CHARS).collect()
