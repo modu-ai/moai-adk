@@ -150,6 +150,18 @@ impl World {
         .collect()
     }
 
+    /// The patterns of the reservation of `card_id` at `generation`, sorted.
+    fn patterns_at(&self, card_id: i64, generation: i64) -> Vec<String> {
+        self.rows(&format!(
+            "SELECT s.pattern FROM reservation_scope s JOIN reservation r \
+             ON r.reservation_id = s.reservation_id WHERE r.card_id = {card_id} \
+             AND r.generation = {generation} ORDER BY s.pattern"
+        ))
+        .into_iter()
+        .map(|row| row[0].as_str().unwrap().to_string())
+        .collect()
+    }
+
     /// The `card.scope` events as payloads.
     fn scope_events(&self) -> Vec<Value> {
         self.rows("SELECT payload FROM event WHERE kind = 'card.scope' ORDER BY event_id")
@@ -435,7 +447,12 @@ fn a_stale_generation_is_refused() {
     let answer = result(&w.widen_at(&held, Some("2"), &["apps/bo/", "apps/web/"], Some(WHY)));
     assert_eq!(answer["generation"], json!(2), "{answer}");
     assert_eq!(answer["added"], json!(["apps/web/"]), "{answer}");
-    assert_eq!(w.patterns(1), vec!["apps/bo/", "apps/web/"]);
+    assert_eq!(w.patterns_at(1, 2), vec!["apps/bo/", "apps/web/"]);
+    assert_eq!(
+        w.patterns_at(1, 1),
+        vec!["apps/bo/"],
+        "the released one is as it was"
+    );
 
     // Without `--generation` nothing is asked: the command is as before.
     let answer = result(&w.widen(&held, &["apps/bo/", "apps/web/", "docs/"], Some(WHY)));
@@ -465,9 +482,11 @@ fn a_generation_that_is_not_a_positive_number_is_a_usage_error() {
     let before = w.dump();
     for bad in ["0", "-1", "x", ""] {
         let out = w.widen_at(&held, Some(bad), &["apps/bo/", "apps/web/"], Some(WHY));
-        assert_eq!(out.status.code(), Some(1), "`{bad}`");
+        // clap refuses the value before the command runs: exit 2, a `usage` envelope.
+        assert_eq!(out.status.code(), Some(2), "`{bad}`");
         let v = envelope(&out);
         assert_eq!(v["ok"], json!(false), "`{bad}`: {v}");
+        assert_eq!(v["error"]["kind"], json!("usage"), "`{bad}`: {v}");
     }
     assert_eq!(w.dump(), before);
 }
