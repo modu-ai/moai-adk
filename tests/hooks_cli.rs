@@ -1274,6 +1274,79 @@ fn green_lock_bash_reads_wrapped_grouped_and_rebased_commands() {
     }
 }
 
+/// #3216 re-audit round 3, B1: a structure word is a word wherever a space, `;`, `&`, `|`, `(`,
+/// `)`, a quote or a backtick ends it, not only with spaces on both sides.
+#[test]
+fn green_lock_bash_reads_structure_words_at_every_boundary() {
+    let repo = GreenRepo::new("green");
+    for command in [
+        "if true;then rm tests/locked_test.rs;fi",
+        "for f in a b;do rm tests/locked_test.rs;done",
+        "while true;do mv tests/locked_test.rs /tmp/x;done",
+        "until false;do git rm tests/locked_test.rs;done",
+        "if false;then :;else rm tests/locked_test.rs;fi",
+        "if false;then :;elif true;then rm tests/locked_test.rs;fi",
+        "(if true;then rm tests/locked_test.rs;fi)",
+        "true&&{ rm tests/locked_test.rs;}",
+        "true||{ rm tests/locked_test.rs; }",
+        "sh -c '! rm tests/locked_test.rs'",
+        "sh -c '{ rm tests/locked_test.rs; }'",
+        "bash -c \"if true;then rm tests/locked_test.rs;fi\"",
+        "eval '{ rm tests/locked_test.rs; }'",
+        "eval 'if true;then mv tests/locked_test.rs /tmp/x;fi'",
+        "`if true;then rm tests/locked_test.rs;fi`",
+        // Named false denials: a structure word is read as one wherever it stands as a whole
+        // word, so a command line that only mentions one still refuses (#3216 N2).
+        "echo do rm tests/locked_test.rs",
+        "echo then mv tests/locked_test.rs x",
+        "grep -c if rm tests/locked_test.rs",
+    ] {
+        let reason = repo.deny_reason(command);
+        assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+    }
+    for command in [
+        "echo 'if true;then rm tests/locked_test.rs;fi'",
+        "echo \"for f in a;do rm tests/locked_test.rs;done\"",
+        "if true;then ls tests;fi",
+        "for f in a b;do ls tests;done",
+        "sh -c '! ls tests'",
+        "sh -c '{ ls tests; }'",
+        "true&&{ ls tests;}",
+        "echo ifthen;do",
+    ] {
+        repo.assert_allowed(command);
+    }
+}
+
+/// #3216 re-audit round 3, B2: ANSI-C (`$'…'`) and locale (`$"…"`) quoting is read as plain
+/// quoting; the escape sequences inside `$'…'` are not decoded and stay named in `capabilities`.
+#[test]
+fn green_lock_bash_reads_ansi_c_and_locale_quotes() {
+    let repo = GreenRepo::new("green");
+    for command in [
+        "rm $'tests/locked_test.rs'",
+        "mv $'tests/locked_test.rs' /tmp/x",
+        "git rm $'tests/locked_test.rs'",
+        "rm $\"tests/locked_test.rs\"",
+        "rm tests/$'locked_test.rs'",
+        "rm -- $'tests/locked_test.rs'",
+        "busybox rm $'tests/locked_test.rs'",
+    ] {
+        let reason = repo.deny_reason(command);
+        assert!(reason.contains("GREEN or REFACTOR"), "{command}: {reason}");
+    }
+    for command in [
+        "rm $'tests/other_test.rs'",
+        "echo $'tests/locked_test.rs'",
+        "echo '$tests/locked_test.rs'",
+        // The escape sequences are not decoded (named in `capabilities`).
+        "rm $'\\x74ests/locked_test.rs'",
+        "rm $'tests/locked_test\\x2ers'",
+    ] {
+        repo.assert_allowed(command);
+    }
+}
+
 /// #3216 re-audit N3: edges the first repair left untested.
 #[test]
 fn green_lock_bash_edges_of_folders_globs_and_moves() {
@@ -1337,6 +1410,10 @@ fn green_lock_bash_brace_limits_are_the_named_ones() {
     let reason = repo.deny_reason(&format!("rm tests/{{{}}}.rs", list(100)));
     assert!(reason.contains("GREEN or REFACTOR"), "{reason}");
     repo.assert_allowed(&format!("rm tests/{{{}}}.rs", list(300)));
+    // The edge itself (#3216 N3): `list(n)` holds n + 1 alternatives, 256 read and 257 not.
+    let reason = repo.deny_reason(&format!("rm tests/{{{}}}.rs", list(255)));
+    assert!(reason.contains("GREEN or REFACTOR"), "{reason}");
+    repo.assert_allowed(&format!("rm tests/{{{}}}.rs", list(256)));
     let reason = repo.deny_reason("rm tests/{{{{locked_test,b},c},d},e}.rs");
     assert!(reason.contains("GREEN or REFACTOR"), "{reason}");
     repo.assert_allowed("rm tests/{{{{{locked_test,b},c},d},e},f}.rs");
@@ -1365,6 +1442,18 @@ fn green_lock_bash_named_limits_are_not_guarded() {
         "bash cleanup.sh",
         "python3 -c \"import os; os.remove('tests/locked_test.rs')\"",
         "rm ~/../tests/locked_test.rs",
+        // #3216 re-audit round 3 N1, N6: named, not guarded.
+        "coproc rm tests/locked_test.rs",
+        "cp /dev/null tests/locked_test.rs",
+        "truncate -s 0 tests/locked_test.rs",
+        "dd if=/dev/null of=tests/locked_test.rs",
+        "install /dev/null tests/locked_test.rs",
+        "ln -f other.rs tests/locked_test.rs",
+        "rsync -a --delete empty/ tests/",
+        "git checkout -- tests/locked_test.rs",
+        "git restore tests/locked_test.rs",
+        "git stash",
+        "git apply fix.patch",
     ] {
         repo.assert_allowed(command);
     }
@@ -1421,7 +1510,11 @@ fn capabilities_name_the_bash_lock_limits() {
             "glob (*, ?, [..])",
             "brace ({a,b}) pattern",
             "read literally",
-            "behind !, { }, then/do/else bodies, backticks, busybox and git -C",
+            "behind the structure words ! { } if then elif else fi while until do done",
+            "a space, ; & | ( ), a quote or a backtick",
+            "backticks, busybox and git -C",
+            "ANSI-C ($'...') and locale ($ before a double quote) quoting read as plain quotes",
+            "a structure word as an argument refuses too (echo do rm tests/x)",
         ] {
             assert!(guards.contains(covered), "{host} {covered}: {guards}");
         }
@@ -1442,6 +1535,10 @@ fn capabilities_name_the_bash_lock_limits() {
             "more than 256 brace alternatives",
             "braces nested deeper than 4",
             "any command run after a cd",
+            "escape sequences inside $'...'",
+            "coproc",
+            "cp, truncate, dd of=, install, ln -f, rsync --delete",
+            "git checkout --, git restore, git stash and git apply",
         ] {
             assert!(
                 open.contains("Bash edits of a locked test") && open.contains(limit),

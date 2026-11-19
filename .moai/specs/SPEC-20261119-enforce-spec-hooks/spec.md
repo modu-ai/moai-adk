@@ -2,7 +2,7 @@
 id: SPEC-20261119-enforce-spec-hooks
 title: "The GREEN test lock also holds against Bash deletions and moves, and a denied call leaves its reason in the audit line"
 status: draft
-revision: 3
+revision: 4
 created: 2026-11-19
 ---
 
@@ -19,7 +19,8 @@ created: 2026-11-19
 
 - 카드의 AC-1(인터뷰 기록), AC-3(Stop hook), AC-4(병합 관문): 각각 별도 SPEC·PR 이에요. AC-1·AC-3 은 이 카드의 쓰기 범위 밖 파일이 필요해 범위 요청을 했어요(card note 2278 D-B).
 - "SPEC 이 approved 여야 쓰기 허용"으로 조이기(AC-2 의 첫 절반): 지금 hook 은 SPEC 파일이 있으면 통과해요. 승인은 사용자의 대화 중 선택만 줄 수 있어서 조이면 모든 레인이 멈춰요. 정책 결정이라 리더에게 물었고(note 2278 D-A) 기본값은 그대로 두기예요.
-- 셸이 파일을 바꾸는 나머지 길은 이 조각도 막지 못해요. 이름으로: 리다이렉트(`>`), `tee`, `sed -i`, 스크립트(`bash cleanup.sh`, `python3 -c …`), 변수로 만든 경로(`F=…; rm $F`), `xargs`, `find -exec`·`find -delete`, 확장 글롭(`@(..)`, `+(..)`), `~` 확장, 중괄호 256개 초과·4단계 초과, `cd` 로 폴더를 바꾼 뒤의 상대 경로. REQ-6 이 `capabilities` 에 같은 이름들을 적고, 시험 `green_lock_bash_named_limits_are_not_guarded` 와 `green_lock_bash_brace_limits_are_the_named_ones` 가 이 형태들이 지금 통과한다는 사실을 고정해요(하나를 막게 되면 시험과 문구를 같이 바꿔요). `!`, `{ …; }`, `if`·`while`·`for` 몸통, 백틱, `busybox`, `git -C dir`, 작업 트리 위 폴더는 이제 읽어요(REQ-10).
+- 셸이 파일을 바꾸는 나머지 길은 이 조각도 막지 못해요. 이름으로: 리다이렉트(`>`), `tee`, `sed -i`, 스크립트(`bash cleanup.sh`, `python3 -c …`), 변수로 만든 경로(`F=…; rm $F`), `xargs`, `find -exec`·`find -delete`, 확장 글롭(`@(..)`, `+(..)`), `~` 확장, 중괄호 256개 초과·4단계 초과, `$'…'` 안의 이스케이프(`\x74`), `coproc`, `cp`·`truncate`·`dd of=`·`install`·`ln -f`·`rsync --delete`, `git checkout --`·`git restore`·`git stash`·`git apply`, `cd` 로 폴더를 바꾼 뒤의 상대 경로. REQ-6 이 `capabilities` 에 같은 이름들을 적고, 시험 `green_lock_bash_named_limits_are_not_guarded` 와 `green_lock_bash_brace_limits_are_the_named_ones` 가 이 형태들이 지금 통과한다는 사실을 고정해요(하나를 막게 되면 시험과 문구를 같이 바꿔요). 읽는 것은 REQ-8…REQ-11 이 닫힌 규칙으로 말하는 것뿐이고, 그 밖의 셸 문법은 전부 이 목록에 이름이 있거나 "읽지 않는다"예요.
+- 거짓 거절 하나는 이름으로 남겨요: 구조 단어(`do`·`then`·`if` 등)가 따옴표 없는 인자로 서도 구조 단어로 읽혀서 `echo do rm tests/locked_test.rs` 가 거절돼요(막힌 쪽으로 틀려요). `green_lock_bash_reads_structure_words_at_every_boundary` 가 이 거절을 고정해요. 따옴표 안의 같은 글은 한 인자로 남아 통과해요.
 - 실제 `~/.claude` 설정과 hook 의 변경, OMP(편집 경로를 번역하지 않아요).
 - `src/tdd.rs` 의 잠금 규칙 바꾸기: 이 조각은 `lock_refusal` 을 그대로 불러요.
 
@@ -30,10 +31,11 @@ created: 2026-11-19
 - REQ-3: Where the worktree has no TDD record, the record is in RED, no named path is locked, or the repository holds no MoAI state, the guard shall allow the command as before.
 - REQ-4: The guard shall read relative paths against the hook input's `cwd` and judge a path where it lands (`..` and symlinks resolved), as the file-write lock does.
 - REQ-5: When the engine denies a tool call, the line it appends to `hook-engine.jsonl` shall carry the reason sentence of the guard that refused it and no command text, path or file content.
-- REQ-6: The `capabilities` answer of the hook engine shall say that the Bash lock covers `rm`, `unlink`, `git rm`, `mv` and `git mv` on literal, glob and brace words, on folders and behind the shell structures it reads, and name each form it does not guard: redirections, `tee`, `sed -i`, scripts, variables, `xargs`, `find -exec`, `find -delete`, extended globs, `~` expansion, more than 256 brace alternatives, braces nested deeper than 4 and a command run after a `cd`.
+- REQ-6: The `capabilities` answer of the hook engine shall say that the Bash lock covers `rm`, `unlink`, `git rm`, `mv` and `git mv` on literal, glob and brace words, on folders and behind the shell structures it reads, and name each form it does not guard: redirections, `tee`, `sed -i`, scripts, variables, `xargs`, `find -exec`, `find -delete`, extended globs, `~` expansion, more than 256 brace alternatives, braces nested deeper than 4, escape sequences inside `$'…'`, `coproc`, `cp`, `truncate`, `dd of=`, `install`, `ln -f`, `rsync --delete`, `git checkout --`, `git restore`, `git stash`, `git apply` and a command run after a `cd`.
 - REQ-8: The guard shall read a folder that exists and holds a locked test as that test, and a glob (`*`, `?`, `[..]`) or brace (`{a,b}`) word as the locked tests it names or holds.
 - REQ-9: The guard shall read each word of those commands as written as well as matched or opened, so that a locked test whose real name holds `[..]`, `{a,b}`, `*` or `?` stays protected.
 - REQ-10: The guard shall read those commands also behind `!`, a `{ …; }` group, the `then`, `do` and `else` bodies of `if`, `while` and `for`, backticks, `busybox` or `toybox`, and `git -C <dir>`, and as holding the locked tests when the folder is above the work tree.
+- REQ-11: The guard shall read the shell syntax of a command line by one closed rule: a word is the characters between white space, `;`, `&`, `|`, `(`, `)` and the quote characters `'` and `"`; a word equal to `!`, `{`, `}`, `if`, `then`, `elif`, `else`, `fi`, `while`, `until`, `do` or `done` is a command separator, also inside a `sh -c` or `eval` script; a `$` right before an opening quote is dropped, so `$'…'` and `$"…"` read as plain quotes; and no other shell syntax is read.
 - REQ-7 (REQ-5): IF a refusal's sentence is built at run time (the commit-identity rule names an email, the claim rule an Issue number, and a command line that commits in more than one folder names the verbs), THEN the line that REQ-5 describes shall carry `reason: null`.
 
 ## Acceptance
@@ -47,8 +49,10 @@ created: 2026-11-19
 - AC-5 (REQ-8, REQ-9): 폴더째(`rm -rf tests`, `git rm -r tests`, `mv tests …`), glob(`tests/locked_*.rs`, `t*`, 클래스의 양 끝, `*` 가 빈 글자, 심볼릭 링크 폴더), 중괄호(`tests/{a,b}`)는 deny, 잠긴 시험이 없는 폴더·패턴은 allow. 이름에 `[id]`·`{b,c}`·`*`·`?` 가 든 잠긴 시험은 쓴 그대로도 deny(재감사 B1). `--` 뒤의 `-` 로 시작하는 이름도 경로예요(감사 N1).
   verify: `cargo test --locked --offline --test hooks_cli green_lock_bash_covers`; `cargo test --locked --offline --test hooks_cli green_lock_bash_reads_locked_names`; `cargo test --locked --offline --test hooks_cli green_lock_bash_edges`; `cargo test --locked --offline --test hooks_cli green_lock_bash_reads_dash`
 - AC-6 (REQ-10): `! rm`, `{ rm …; }`, `if`·`while`·`for` 몸통, 백틱, `busybox rm`, `git -C tests rm`, 작업 트리 위 폴더(`rm -rf <부모>`)는 deny, 같은 모양의 안 막혀야 할 줄(`echo '{ rm …; }'`, `git -C tests status`)은 allow.
-  verify: `cargo test --locked --offline --test hooks_cli green_lock_bash_reads_wrapped
-- AC-4 (REQ-1…REQ-6): 이웃 시험.
+  verify: `cargo test --locked --offline --test hooks_cli green_lock_bash_reads_wrapped`
+- AC-7 (REQ-11): 구조 단어를 공백이 둘러싸지 않아도 읽어요(`if true;then rm …;fi`, `for f in a b;do …;done`, `sh -c '! rm …'`, `sh -c '{ rm …; }'`, `eval '{ rm …; }'`, 괄호 안, `&&{ … ;}`), `$'tests/…'`·`$"tests/…"`·`tests/$'…'` 은 읽고, `$'\x74ests/…'`(이스케이프)는 통과하며, 따옴표 안의 구조 단어는 한 인자라 통과해요. 구조 단어가 인자로 서면 거절하는 거짓 거절은 시험이 고정해요.
+  verify: `cargo test --locked --offline --test hooks_cli green_lock_bash_reads_structure_words`; `cargo test --locked --offline --test hooks_cli green_lock_bash_reads_ansi_c`
+- AC-4 (REQ-1…REQ-11): 이웃 시험.
   verify: `cargo test --locked --offline --test hooks_cli`; `cargo test --locked --offline --test spec_before_code_hook`; `cargo test --locked --offline --test green_test_lock`; `cargo test --locked --offline --lib hook_guards::`; `cargo test --locked --offline --lib hook_engine::`; `cargo fmt --check`; `cargo clippy --locked --offline --all-targets -- -D warnings`
 
 ## Scope

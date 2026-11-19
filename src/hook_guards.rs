@@ -888,11 +888,25 @@ fn locked_matching(word: &str, cwd: &Path) -> Vec<String> {
         .collect()
 }
 
-/// The command line with the shell structure that hides a command opened up: a backtick pair
-/// becomes `$( … )`, and the words `!`, `{`, `}`, `if`, `then`, `elif`, `else`, `fi`, `while`,
-/// `until`, `do` and `done` become `;`, so a command behind them is read as a command of its
-/// own. A quoted word that equals one of these is changed too, which stays inside its quotes
-/// and so never makes a command.
+/// Shell words that open or close a compound statement; read as a command separator.
+const STRUCTURE_WORDS: [&str; 12] = [
+    "!", "{", "}", "if", "then", "elif", "else", "fi", "while", "until", "do", "done",
+];
+
+/// The closed rule for what the Bash lock reads of the shell's own syntax (SPEC REQ-10, REQ-11):
+///
+/// 1. A backtick pair becomes `$( … )`.
+/// 2. A word is a run of characters between boundaries; the boundaries are white space, `;`,
+///    `&`, `|`, `(`, `)`, `'` and `"`. A word that equals one of [`STRUCTURE_WORDS`] becomes
+///    `;`, so a command behind it is read as a command of its own, also inside a `sh -c` or
+///    `eval` script, which the command reading opens one level deep.
+/// 3. A `$` written right before an opening `'` or `"` is dropped: ANSI-C (`$'…'`) and locale
+///    (`$"…"`) quoting read as plain quoting. Escape sequences inside `$'…'` are not decoded.
+///
+/// A structure word is changed wherever it stands as a whole word, inside quotes too, which
+/// there stays inside its quotes and so makes no command; as an unquoted argument it refuses
+/// (`echo do rm …`), a named false refusal. Everything else about the shell stays unread and is
+/// named in `capabilities`.
 fn open_shell_structure(command: &str) -> String {
     let ticks = command.matches('`').count();
     let mut text = String::with_capacity(command.len() + 8);
@@ -908,22 +922,40 @@ fn open_shell_structure(command: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut word = String::new();
     let flush = |word: &mut String, out: &mut String| {
-        let structure = [
-            "!", "{", "}", "if", "then", "elif", "else", "fi", "while", "until", "do", "done",
-        ];
-        out.push_str(if structure.contains(&word.as_str()) {
+        out.push_str(if STRUCTURE_WORDS.contains(&word.as_str()) {
             ";"
         } else {
             word.as_str()
         });
         word.clear();
     };
-    for c in text.chars() {
-        if c.is_whitespace() {
-            flush(&mut word, &mut out);
-            out.push(c);
-        } else {
+    let mut quote: Option<char> = None;
+    let mut chars = text.chars();
+    while let Some(c) = chars.next() {
+        if c == '\\' && quote != Some('\'') {
+            // The escaped character is part of the word, never a boundary.
             word.push(c);
+            if let Some(next) = chars.next() {
+                word.push(next);
+            }
+            continue;
+        }
+        let is_quote = c == '\'' || c == '"';
+        if !(c.is_whitespace() || matches!(c, ';' | '&' | '|' | '(' | ')') || is_quote) {
+            word.push(c);
+            continue;
+        }
+        if is_quote && quote.is_none() && word.ends_with('$') {
+            word.pop();
+        }
+        flush(&mut word, &mut out);
+        out.push(c);
+        if is_quote {
+            quote = match quote {
+                None => Some(c),
+                Some(open) if open == c => None,
+                other => other,
+            };
         }
     }
     flush(&mut word, &mut out);
@@ -942,8 +974,11 @@ fn open_shell_structure(command: &str) -> String {
 /// the destination too.
 ///
 /// Not read (the engine's `capabilities` names each): redirections, `tee`, `sed -i`, scripts,
-/// variables (`rm $F`), `xargs`, `find -exec` and `find -delete`, extended globs (`@(..)`), `~`, braces past 256 alternatives or 4 levels, and a command run after a
-/// `cd`.
+/// variables (`rm $F`), `xargs`, `find -exec` and `find -delete`, extended globs (`@(..)`),
+/// `~`, braces past 256 alternatives or 4 levels, escape sequences inside `$'..'`, `coproc`,
+/// the other writers (`cp`, `truncate`, `dd of=`, `install`, `ln -f`, `rsync --delete`,
+/// `git checkout --`, `git restore`, `git stash`, `git apply`), and a command run after a
+/// `cd`. The shell syntax that is read is the closed rule of [`open_shell_structure`].
 pub fn bash_lock_guard(command: &str, cwd: &Path) -> Option<&'static str> {
     let mut paths: Vec<String> = Vec::new();
     let mut collect = |words: Vec<String>, removal: bool| {
