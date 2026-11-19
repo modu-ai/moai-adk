@@ -772,7 +772,10 @@ fn ci_info_names_the_attempt_of_a_re_run_that_succeeded_and_the_verdict_does_not
         assert_eq!(got, want, "{name} {attempt}");
     }
     // A run that did not succeed never shows an attempt; G5 stops as it always did.
-    for (conclusion, info) in [(json!("failure"), "ci=failure"), (Value::Null, "ci=pending")] {
+    for (conclusion, info) in [
+        (json!("failure"), "ci=failure"),
+        (Value::Null, "ci=pending"),
+    ] {
         let mut s = base.clone();
         s["checks"] = json!([
             {"name": "ci", "conclusion": conclusion, "head_sha": H, "attempt": 2},

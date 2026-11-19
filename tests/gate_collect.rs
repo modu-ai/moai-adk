@@ -2151,7 +2151,11 @@ fn a_run_without_a_details_url_has_no_attempt_and_no_extra_read() {
     );
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(t.remaining(), 0);
-    assert!(s.checks.iter().all(|c| c.attempt.is_none()), "{:?}", s.checks);
+    assert!(
+        s.checks.iter().all(|c| c.attempt.is_none()),
+        "{:?}",
+        s.checks
+    );
     assert_eq!(gate::ci_info(&s), "ci=success");
 }
 
@@ -2178,7 +2182,11 @@ fn a_failed_workflow_run_read_leaves_the_attempt_empty_and_the_gate_unchanged() 
     );
     let s = collect(&target(&r), &t).unwrap();
     assert_eq!(t.remaining(), 0);
-    assert!(s.checks.iter().all(|c| c.attempt.is_none()), "{:?}", s.checks);
+    assert!(
+        s.checks.iter().all(|c| c.attempt.is_none()),
+        "{:?}",
+        s.checks
+    );
     assert_eq!(gate::ci_info(&s), "ci=success");
     assert!(gate::check(&s).is_ok(), "{:?}", gate::check(&s));
 }
