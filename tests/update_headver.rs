@@ -426,3 +426,71 @@ fn going_back_to_an_older_build_needs_allow_older() {
         }
     }
 }
+
+/// This build's `(head, yearweek, build)` from `BUILD_VERSION`.
+fn build_parts() -> (u32, u32, u32) {
+    let mut parts = moai_cli::BUILD_VERSION
+        .split('.')
+        .map(|p| p.parse::<u32>().unwrap());
+    (
+        parts.next().unwrap(),
+        parts.next().unwrap(),
+        parts.next().unwrap(),
+    )
+}
+
+/// SPEC-20261119-headver-release-workflow D-6 (leader decision, card C-93 note 2260): only the
+/// numbers `(head, yearweek, build)` order a local build and a release. A release counter
+/// starts at 1 and a local one is already higher, so a release of this build's own week with a
+/// lower number reads as older: this build updates over it without `--allow-older`. The
+/// install record holds the version text only, so `update` cannot tell the two kinds apart.
+#[test]
+fn a_build_of_the_same_week_with_a_higher_number_reads_newer_than_the_installed_release() {
+    let (head, week, build) = build_parts();
+    if build < 2 {
+        // An unnumbered build (a CI re-run) has no lower number in its own week to install.
+        eprintln!("skipped: build number {build} has no lower release in its week");
+        return;
+    }
+    let f = fixture();
+    let me = version_exe(&f.home, moai_cli::BUILD_VERSION);
+    let p = plan(&me, &f.home, &f.v1);
+    apply(&me, &f.home, &f.v1, &p);
+    let release = format!("{head}.{week:04}.{}", build - 1);
+    set_receipt_versions(&f.home, &release);
+
+    let p = plan(&me, &f.home, &f.v2);
+    assert_eq!(p["source_version"], json!(release), "{p}");
+    assert_eq!(p["target_version"], json!(moai_cli::BUILD_VERSION), "{p}");
+    for h in HOSTS {
+        let hp = host(&p, h);
+        assert_eq!(hp["preflight"], json!("ok"), "{h}: {p}");
+        assert!(hp["blocked_reason"].is_null(), "{h}: {p}");
+        assert!(hp["going_back"].is_null(), "{h}: {p}");
+    }
+}
+
+/// The other side of the same order: an installed release of this build's own week with a
+/// higher number is newer, so this build updates back over it only with `--allow-older`.
+#[test]
+fn a_build_below_the_installed_release_of_the_same_week_needs_allow_older() {
+    let (head, week, build) = build_parts();
+    let f = fixture();
+    let me = version_exe(&f.home, moai_cli::BUILD_VERSION);
+    let p = plan(&me, &f.home, &f.v1);
+    apply(&me, &f.home, &f.v1, &p);
+    let release = format!("{head}.{week:04}.{}", build + 1);
+    set_receipt_versions(&f.home, &release);
+
+    let p = plan(&me, &f.home, &f.v2);
+    assert_eq!(p["source_version"], json!(release), "{p}");
+    for h in HOSTS {
+        let hp = host(&p, h);
+        assert_eq!(hp["preflight"], json!("blocked"), "{h}: {p}");
+        let reason = hp["blocked_reason"].as_str().unwrap();
+        assert!(
+            reason.contains(&release) && reason.contains("moai update --allow-older"),
+            "{h}: {reason}"
+        );
+    }
+}

@@ -2,7 +2,7 @@
 id: SPEC-20261119-hooks-followups
 title: "The hooks step tells what the file and the record hold, and the go-hooks apply proves its put-back"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-19
 ---
 
@@ -92,4 +92,5 @@ created: 2026-11-19
 - AC-6: met — `an_older_hook_set_held_by_the_file_and_the_record_reads_ready`(같은 쓰기 함수를 이 프로세스에서 불러 적용: `hook_legacy` 관문이 PATH 첫 `moai`를 요구해요, D-5)와 `an_older_hook_set_with_a_users_edit_reads_conflict` ok; 변이 P9가 후자를 KILLED로 잡았어요.
 - AC-7: met — `the_undo_order_names_hooks_revert_for_a_hooks_apply_update` ok(`hooks-revert`와 "a first install has nothing to revert"를 확인). 이 글에는 변이를 만들지 않았어요(글 한 줄).
 - AC-8: met — 가지의 현재 코드 head `690d3efdcb`(그 위 `38a24991b0`은 문서만 바꿔요)에서 `cargo test --locked --offline --test`로 ac_command_lint 5·go_hooks_migrate 17·home_isolation_scan 18·project_update_hooks_cli 21·project_update_plan_cli 59·spec_cli 17이 모두 통과(실패 0)했고, `cargo clippy --offline --locked --all-targets -- -D warnings`와 `cargo fmt --check`가 exit 0(경고 없음)이에요. 감사(카드 노트 2504)가 같은 head에서 project_update_hooks_cli 21·go_hooks_migrate 17·project_update_plan_cli 59·home_isolation_scan 18 통과와 clippy·fmt 0을 따로 적었어요. 필터 없는 전체 시험(`--lib`와 나머지 통합 시험)은 가지에 없는 이전 커밋으로 한 번 돌렸을 뿐이라 이 head의 증거로 쓰지 않아요: 이 head에서는 돌리지 않았고 PR이 없어 CI도 없어요(묶음 PR의 CI가 돌려요). 변이는 제 12개 중 11 KILLED, 1 SURVIVED(P7, 위; P6은 처음에 SURVIVED였고 AC-4의 시험을 더한 뒤 KILLED)예요. 감사가 만든 변이 2개는 SURVIVED예요: AC-1의 `let claude = true;`(위)와 `src/go_hooks.rs:458`에서 `install_moai_hooks`의 계획 충돌 검사를 지운 변이(AC-2의 쓰기 길; 그 검사를 지워도 통과해요).
-- 남은 것: Codex·OMP 파일이 다른 내용일 때의 `requires preservation review`에 길을 내는 일(N4 뒷부분)은 쓰기 범위 밖(`src/hooks.rs`·`src/project_hosts.rs`)이라 리더에게 넘겨요. 감사(카드 노트 2504)의 비차단 지적 중 N1(기록 없는 `{}`·`null`이 `needs_decision`이 아니라 `unchanged`로 읽혀요, `src/project_update.rs:951`)·N2(심볼릭 링크 기록이 경로 없이 거절돼요)·N4(`:828-830` 주석이 결정 B와 어긋나요)·N6(훅 단계가 `hooks::status`로 $HOME을 읽는데 문서는 읽지 않는다고 해요)·N7(위)은 후속으로 넘겨요. SPEC은 draft예요: 승인은 사용자의 선택이라 이 레인이 하지 않았어요.
+- 후속 닫힘(C-107 조각 2, agent-8, 2026-11-19): AC-1의 생존 변이 `let claude = true;`를 새 시험 `a_profile_without_claude_keeps_the_go_reason_on_the_hooks_step`(프로필은 codex뿐·설정에 hooks 키 없음 — 실제 코드는 이유가 "no Go-generation hooks are left", 변이는 "no MoAI hook set is installed … hooks-plan reads …"로 갈라져요)이 KILLED로 잡고, N2는 `record_error`가 설정 상태의 거부 글("symlink target refused" 등)에 소유 기록 이름을 붙여(`a_symlinked_record_refusal_names_the_file`: blocked + manifests/claude-settings.json + symlink) 닫았어요. N4(`:828-830` 주석)는 이 조각이 고쳤어요 — 주석이 기각된 옵션 A("`ready`, `unchanged` 아님")를 서술해 결정 B와 모순했는데(2차 감사 F1: log -S 로 도입 커밋부터 byte 동일 입증), 이제 결정 B(`unchanged`·수동 명령 안내)와 아래 함수 문서와 일치해요. 변이 2: M1(프로필 판단 줄을 true로)·M2(장식 제거) 모두 KILLED예요. 이 파일 외 이 워크트리에서 `project_update_hooks_cli` 23 passed(원래 21+새 2).
+- 남은 것: Codex·OMP 파일이 다른 내용일 때의 `requires preservation review`에 길을 내는 일(N4 뒷부분)은 쓰기 범위 밖(`src/hooks.rs`·`src/project_hosts.rs`)이라 리더에게 넘겨요. 감사(카드 노트 2504)의 비차단 지적 중 N1(기록 없는 `{}`·`null`이 `needs_decision`이 아니라 `unchanged`로 읽혀요, `src/project_update.rs:951`)·N6(훅 단계가 `hooks::status`로 $HOME을 읽는데 문서는 읽지 않는다고 해요)·N7(위)은 후속으로 넘겨요(N2와 AC-1의 생존 변이는 위의 후속 닫힘으로 닫혔고, N4의 앞부분은 이 조각의 주석 수정으로 닫혔어요). SPEC은 draft예요: 승인은 사용자의 선택이라 이 레인이 하지 않았어요.
