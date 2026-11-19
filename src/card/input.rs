@@ -207,14 +207,19 @@ pub fn secret_refusal(words: usize) -> String {
     )
 }
 
-/// The one text screen of the card commands (SPEC-20261119-card-secret-screen REQ-1..4): how many
-/// words of `text` it refuses. A word is refused once, whatever is wrong with it:
+/// The one text screen of the card commands (SPEC-20261119-card-secret-screen REQ-1..4,
+/// SPEC-20261120-card-secret-followups REQ-1..7): how many words of `text` it refuses. A word is
+/// refused once, whatever is wrong with it:
 /// - it holds a `name=value` whose name has a secret piece ([`SECRET_PIECES`], or `api` and `key`
 ///   side by side), whatever the value is, an empty one included;
+/// - or the equals sign starts its own word and the word before it is such a name, spaces and
+///   tabs between the two notwithstanding (follow-ups REQ-1);
+/// - or its name sits in quotes right before the equals sign, which are read stripped
+///   (follow-ups REQ-2), or holds a secret word behind a camel hump (follow-ups REQ-3);
 /// - or its value has a credential shape (`redact::redact_outgoing`), after the name of a
 ///   `--option=value` whose value is plain was blanked (a plain option value is prose);
-/// - or a value with a credential shape follows a separator (`=`, `:` or `,`) anywhere inside the
-///   word, after a plain name or none (audit N1);
+/// - or a value with a credential shape follows a separator (`= : , ; / | @ ? & . + # \ (`)
+///   anywhere inside the word, after a plain name or none (audit N1, follow-ups REQ-6);
 /// - a run of lower-case hyphenated words after `sk-` is a name, not a key, and goes through
 ///   (the rule `decide`'s own `without_sk_names` states) — but only as a name: when `=` follows
 ///   it, the run is the name of an assignment and its pieces are checked like any other name
@@ -222,10 +227,27 @@ pub fn secret_refusal(words: usize) -> String {
 pub fn secret_words(text: &str) -> usize {
     let blanked = without_sk_names(text);
     // Blanking changes only letters, digits, `-` and `_`, so both texts hold the same words.
-    text.split_whitespace()
-        .zip(blanked.split_whitespace())
-        .filter(|(written, blanked)| word_is_refused(written, blanked))
-        .count()
+    let written: Vec<&str> = text.split_whitespace().collect();
+    let mut count = 0;
+    for (i, (word, blanked_word)) in written.iter().zip(blanked.split_whitespace()).enumerate() {
+        if word_is_refused(word, blanked_word) {
+            count += 1;
+            continue;
+        }
+        // Follow-ups REQ-1: `name = value`, the equals sign starting its own word — the word
+        // before it is the name (read as written, quotes stripped like any assignment name).
+        if written.get(i + 1).is_some_and(|next| next.starts_with('='))
+            && name_is_secret(strip_quotes(word))
+        {
+            count += 1;
+        }
+    }
+    count
+}
+
+/// The quote characters a person may wrap an assignment name in (follow-ups REQ-2).
+fn strip_quotes(word: &str) -> &str {
+    word.trim_matches(|c| matches!(c, '"' | '\'' | '`'))
 }
 
 /// `written` is the word as the user typed it, `blanked` the same word with the plain `sk` names
@@ -241,12 +263,28 @@ fn word_is_refused(written: &str, blanked: &str) -> bool {
     // The shared screen sees a prefix shape only at the start of a word: make each piece between
     // two separators a word of its own by turning the separators into spaces, and screen the
     // text once (audit B2: screening everything behind every separator took time in the square
-    // of the word's length). A shape holds none of the separators, so it lies inside one piece.
-    let pieces: String = blanked
-        .chars()
-        .map(|c| if matches!(c, '=' | ':' | ',') { ' ' } else { c })
-        .collect();
-    crate::redact::redact_outgoing(&pieces).1 > 0
+    // of the word's length). A shape holds none of the separators, so it lies inside one piece —
+    // except the three-part dotted token (`eyJ…`), whose dots are separators too: it is seen in
+    // a second pass that keeps dot-joined pieces whole (follow-ups REQ-6). The separator set is
+    // `= : ,` (audit N1) plus the eleven follow-ups REQ-6 characters.
+    let split = |also_dots: bool| -> String {
+        blanked
+            .chars()
+            .map(|c| {
+                if matches!(
+                    c,
+                    '=' | ':' | ',' | ';' | '/' | '|' | '@' | '?' | '&' | '+' | '#' | '\\' | '('
+                ) || (also_dots && c == '.')
+                {
+                    ' '
+                } else {
+                    c
+                }
+            })
+            .collect()
+    };
+    crate::redact::redact_outgoing(&split(true)).1 > 0
+        || crate::redact::redact_outgoing(&split(false)).1 > 0
 }
 
 fn name_is_secret(name: &str) -> bool {
@@ -254,13 +292,36 @@ fn name_is_secret(name: &str) -> bool {
     let pieces: Vec<&str> = lower.split(['-', '_']).filter(|p| !p.is_empty()).collect();
     pieces.iter().any(|p| SECRET_PIECES.contains(p))
         || pieces.windows(2).any(|w| w[0] == "api" && w[1] == "key")
+        || camel_hump_secret(name)
+}
+
+/// Follow-ups REQ-3: the name holds a secret word, or a joined `api…key`, right behind a camel
+/// hump — an upper-case letter that follows a lower-case one — as `myTokenCount` or `myApiKey`
+/// do. An all-lower-case joined or plural name (`tokens`, `mytoken`) keeps passing: the pieces
+/// rule of SPEC-20261119-card-secret-screen REQ-2 stands.
+fn camel_hump_secret(name: &str) -> bool {
+    let chars: Vec<char> = name.chars().collect();
+    let lower: Vec<char> = name.to_ascii_lowercase().chars().collect();
+    (1..chars.len()).any(|i| {
+        if !(chars[i - 1].is_ascii_lowercase() && chars[i].is_uppercase()) {
+            return false;
+        }
+        let tail: String = lower[i..].iter().collect();
+        let before: String = lower[..i].iter().collect();
+        SECRET_PIECES.iter().any(|w| tail.starts_with(w))
+            || tail.starts_with("apikey")
+            // `apiKey`: the hump starts the `key` half of a joined `api…key`.
+            || (tail.starts_with("key") && before.ends_with("api"))
+    })
 }
 
 /// Whether any `=` of the word follows a secret name: the name is the run of letters, digits,
 /// `-` and `_` right before the `=`, so a limit flag with a token piece and a number is named,
 /// and so is a name with a password piece behind other dashes; a plain flag whose value is an
-/// assignment with a secret name is named by its second assignment.
+/// assignment with a secret name is named by its second assignment. Quotes around the name are
+/// read stripped (follow-ups REQ-2).
 fn secret_named_assignment(word: &str) -> bool {
+    let word = word.replace(['"', '\'', '`'], "");
     let bytes = word.as_bytes();
     let name_byte = |b: &u8| b.is_ascii_alphanumeric() || *b == b'_' || *b == b'-';
     (0..bytes.len()).filter(|&at| bytes[at] == b'=').any(|eq| {
