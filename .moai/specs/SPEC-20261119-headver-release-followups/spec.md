@@ -27,7 +27,7 @@ C-93 의 tier 2 감사(카드 노트 2759, PASS)의 비차단 후속 세 가지:
 
 ## Acceptance
 
-- AC-1 (REQ-1): 잘못된 `moai-adk-v*` 태그 여덟 모양(head 앞자리 0·head 10자리 초과·주차 5자리·build 앞자리 0·build 없음·접미사 등)이 각각 "does not match moai-adk-v" 로 거부되고, 다른 계열은 여전히 막지 않아요.
+- AC-1 (REQ-1): 잘못된 `moai-adk-v*` 태그 열 모양(head 앞자리 0·head 10자리 초과·head 11자리인데 앞자리 0 없음·주차 5자리·build 앞자리 0·build 없음·접미사·네 번째 점 부분 등)이 각각 "does not match moai-adk-v" 로 거부되고, 다른 계열은 여전히 막지 않아요.
   verify: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.release_workflow_test -k tag`
 - AC-2 (REQ-2): build 4294967296 은 상한 거절("over 4294967295"), 4294967295 는 "not above" 거절로 이름이 불려요.
   verify: `PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests.release_workflow_test -k cap`
@@ -69,3 +69,4 @@ C-93 의 tier 2 감사(카드 노트 2759, PASS)의 비차단 후속 세 가지:
 - AC-3: met — `cargo test --locked --offline --test update_headver` 5 passed(로컬 build 0 → 번호 없는 갈래가 preflight blocked·`moai update --allow-older` 이유를 단언 — 조용한 통과 제거).
 - AC-4: met — `moai spec check` 두 SPEC 모두 errors 0, warnings 0(REQ-2 문구는 실제 강제 범위: plan 이 번호를 매기는 유일 잡, build-only 재실행은 같은 커밋·번호).
 - 이웃과 변이: github_assets_test 39 OK, lib 전체 1451 passed, `cargo fmt --check` 0, `cargo clippy --offline --locked --all-targets -- -D warnings` 0; 변이 M1(엄격 모양을 구 정규식으로 되돌림) → 잘못된 태그 시험 FAILED exit 1(KILLED), 복원 `diff -q` 클린.
+- tier 2 감사 수리(AUDIT C-93 head b168766f10, FAIL B1, 카드 노트 3230): 변이 M2(태그 정규식이 네 번째 부분을 허용)와 M10(head 자릿수 제한 제거)이 29 tests OK 로 살아남았어요. `test_a_malformed_moai_adk_tag_is_refused` 에 입력 둘을 더했어요 — 네 부분 태그 `moai-adk-v4.2648.7.1`, 앞자리 0 이 없는 11자리 head `moai-adk-v12345678901.2648.7`(기존 긴 head 둘은 앞자리 0 이라 길이 제한이 고정되지 않았어요). 증거(임시 복사본에서, 저장소 파일은 불변): 새 시험은 GREEN 29 OK; M2 를 넣으면 새 시험 FAILED(`bad='moai-adk-v4.2648.7.1'`)인데 옛 시험은 29 OK; M10(`{0,9}` → `*`)을 넣으면 새 시험 FAILED(`bad='moai-adk-v12345678901.2648.7'`)인데 옛 시험은 29 OK. 두 변이 KILLED. 워크플로 동작은 바뀌지 않았어요(시험 입력만 추가).

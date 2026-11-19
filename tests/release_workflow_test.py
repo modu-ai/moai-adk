@@ -299,6 +299,11 @@ class PlanTest(unittest.TestCase):
             "moai-adk-v4.2648.7-rc1",
             "moai-adk-vx.y.z",
             "moai-adk-v4.2640.99-dev",
+            # A fourth dotted part: the three-part shape is exact (audit B1, mutant M2 allowed it).
+            "moai-adk-v4.2648.7.1",
+            # An 11-digit head with no leading zero: the 10-digit cap is what refuses it, not the
+            # leading-zero rule the two long heads above trip first (audit B1, mutant M10).
+            "moai-adk-v12345678901.2648.7",
         ]:
             with self.subTest(bad=bad):
                 self.git("tag", bad)
