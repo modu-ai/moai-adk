@@ -107,12 +107,20 @@ created: 2026-11-19
 
 ### S3b 검사 (head `69a30927b7`, 전용 빌드 폴더 `moai-adk-33c`·무거운 작업 칸, 2026-11-19)
 
-- AC-6: `cargo test --locked --offline --test update_switch_cli` 7/7, `update_switch_layer` 11/11(미리보기 → `--confirm-switch` → `--confirm` 와 함께 → 터미널 yes 는 스위치를 확인하지 않음 → `--revert-switch` → 거절들).
+- AC-6: `cargo test --locked --offline --test update_switch_cli` 7/7, `update_switch_layer` 11/11(미리보기 → `--confirm-switch` → `--confirm` 와 함께 → 터미널 yes 는 스위치를 확인하지 않음 — 이 줄은 pty 시험이 아니라 아래 "감사 수리" 의 `layer_asks` 단위 시험이 고정해요 → `--revert-switch` → 거절들).
 - AC-7: `home_isolation_scan` 통과(리더의 여섯 검사 5a 안), 시험은 임시 HOME 에서만 돌아요(실제 HOME 쓰기 0).
 - 스캔 등재(RED→GREEN): 등재 전 `python3 -m unittest tests.repo_scans_test` 가 `['tests/update_switch_cli.rs'] != []` 로 실패, 등재 뒤 25개 OK.
 - 이웃(AC-8): `update_home_layer_cli` 11 · `update_tux_golden` 14 · `update_route` · `update_cli` · `update_command_cli` · `help_layout` 통과, `--lib` 전체 1490 통과.
 - 리더의 여섯 검사: (1) `git diff --check` 0 · (2) `cargo fmt --check` 0 · (3) `rustfmt --check --edition 2021 src/ops/*.rs` 0 · (4) `cargo clippy --locked --offline --all-targets -- -D warnings` 0 · (5) cargo test 5개 대상과 `python3 -m unittest tests.repo_scans_test tests.source_manifest_test tests.local_check_test` 0 · (6) `moai-cli trailer-check` — 내 커밋 범위(`v2026.11.0..HEAD`, 8개) 0. 원격 tip 기준 범위(109개)는 로컬 가지에 있는 남의 커밋 `d2966629e5`(trailer 없음) 때문에 1 이에요.
 - 돌리지 않은 것: 저장소 전체 `cargo test`(PR CI 가 인용), macOS 이외, 실제 HOME 적용(S4, guarded — 사용자가 고르는 일).
+
+### 감사 수리 (자체 감사 head `d99930df2a` 가 FAIL — B1 1건, N5건; 같은 감사 에이전트가 재감사)
+
+- B1(막음): 터미널에서 `moai update --revert-switch` 가 되돌리기에 성공해도 화면이 "did not finish: reverted" 와 "up to date" 를 그렸어요. `src/update_tux.rs` 에 `revert_switch` 전용 한 줄 화면(`reverted_switch`, 영어·한국어)을 더했어요. 시험 `the_revert_switch_result_is_drawn_as_a_success_line`(`cargo test --locked --offline --test update_switch_cli` 8/8)이 한 줄·성공 문구·실패 문구 없음을 둘 다 언어로 확인해요. 변이: 분기 삭제(R1)와 상태 비교 깨기(R2)를 그 시험이 잡았어요.
+- N2: 터미널 yes 가 스위치를 확인하지 않는다는 말이 시험이 아니라 코드 읽기였어요. 연결 식 `asks(cleanup, home_token.or(switch_token), writes)` 를 함수 `layer_asks` 로 뽑고 단위 시험(`update::user_layer_tests::the_summary_shows_cleanup_only_when_something_is_archived`)이 switch·home·cleanup 토큰 각각을 확인해요. 변이: `home.or(switch)` 를 `home` 으로 바꾸기(R3)를 그 시험이 잡았어요. pty 시험은 저장소에 없어요(시험 도우미가 없어서 만들지 않았어요).
+- N3(비차단, 고치지 않음): 저장본 `create_new` 가 쓰기 중간에 실패하면 짧은 `moai.before-<stamp>` 가 남을 수 있어요(디스크가 가득 찰 때). `moai` 는 그대로이고 되돌리기는 v1 과 바이트가 다른 저장본을 거부해서 해가 없어요. 재현할 방법이 없어 시험 없는 코드는 넣지 않았어요.
+- N5(범위 밖): `skills/moai/workflows/update.md` 5행이 새 플래그 두 개를 적지 않아요. 이 SPEC 의 쓰기 범위에 `skills/` 가 없고 다른 카드가 쥘 수 있는 파일이라 리더에게 알려요(별도 조각).
+- N4(문구): 적용 뒤 화면 문구는 감사가 "정상" 으로 봤어요. N1(기준 가지가 감사 도중 움직임): `d2966629e5` 는 리더 공지대로 알려진 예외예요.
 
 ### 이 컴퓨터에서 읽은 사실 (읽기 전용, 2026-11-19, 쓰기 0)
 
