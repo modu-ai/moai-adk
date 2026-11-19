@@ -37,12 +37,71 @@ pub const CHECKS: [&str; 10] = [
 /// The self-audit lines a run record carries (what `self_audit::check` asks for).
 pub const SELF_AUDIT_KEYS: [&str; 6] = ["plan", "red", "mutation", "clone", "host", "receipt"];
 
-/// The text merge GitHub runs: a merge driver registered in the clone must not decide.
-const TEXT_DRIVER: &str =
-    "merge.moai-manifest.driver=git merge-file -L ours -L base -L theirs %A %O %B";
+/// The text merge GitHub runs: a merge driver named in the configuration must not decide.
+const TEXT_MERGE: &str = "git merge-file -L ours -L base -L theirs %A %O %B";
 
-const AUDIT_NOTE: &str =
-    "a `PASS` note naming the head counts; the tool cannot tell who wrote it or at which tier";
+/// `-c merge.<name>.driver=<text merge>` for the manifest driver and for every driver the
+/// configuration names (`configured`, from [`driver_names`]): a driver registered in the clone,
+/// the manifest's or another one chosen by a `.gitattributes` line, must not decide (D-12 of
+/// SPEC-20261119-bundle-build, D-8 of SPEC-20261119-bundle-ready-check).
+fn text_merge_args(configured: &[String]) -> Vec<String> {
+    let mut names: Vec<&str> = vec!["moai-manifest"];
+    for n in configured {
+        if !names.contains(&n.as_str()) {
+            names.push(n);
+        }
+    }
+    names
+        .iter()
+        .flat_map(|n| ["-c".to_string(), format!("merge.{n}.driver={TEXT_MERGE}")])
+        .collect()
+}
+
+/// The driver names in the output of `git config --get-regexp '^merge\..*\.driver$'` (one
+/// `<key> <value>` per line); a name git's `-c` cannot carry (a space or `=`) is left out.
+fn driver_names(config_output: &str) -> Vec<String> {
+    config_output
+        .lines()
+        .filter_map(|l| l.split_whitespace().next())
+        .filter_map(|k| k.strip_prefix("merge.")?.strip_suffix(".driver"))
+        .filter(|n| !n.is_empty() && !n.contains(['=', ' ']))
+        .map(String::from)
+        .collect()
+}
+
+const AUDIT_NOTE: &str = "a `PASS` note naming the head counts; a stated `tier <N>` before ` head ` is read (a head whose floor is above it has `audit_tier_low`); the tool cannot tell who wrote it";
+
+/// The tier a verdict line states before its last ` head ` (the verdict's own, as
+/// `gate::parse_verdict` takes it): the word `tier`, a space and one digit from 0 to 2, the word
+/// starting the text or following a space, `(` or `,` and the digit followed by the end of the
+/// text, a space, `,`, `)` or `;`. One distinct value is the tier; none, two different values or
+/// a digit above 2 give `None` (SPEC-20261119-bundle-audit-tier, D-4).
+pub fn stated_tier(line: &str) -> Option<u8> {
+    let prefix = &line[..line.rfind(" head ")?];
+    let mut found: Option<u8> = None;
+    for (i, _) in prefix.match_indices("tier ") {
+        if i > 0 && !matches!(prefix.as_bytes()[i - 1], b' ' | b'(' | b',') {
+            continue;
+        }
+        let mut rest = prefix[i + 5..].chars();
+        let Some(d) = rest.next().filter(char::is_ascii_digit) else {
+            continue;
+        };
+        if !matches!(rest.next(), None | Some(' ' | ',' | ')' | ';')) {
+            continue;
+        }
+        let v = d as u8 - b'0';
+        if v > 2 {
+            return None;
+        }
+        match found {
+            None => found = Some(v),
+            Some(f) if f == v => {}
+            Some(_) => return None,
+        }
+    }
+    found
+}
 
 // ---------------------------------------------------------------------------------------------
 // git (read-only)
@@ -160,19 +219,28 @@ impl Git<'_> {
         self.lines(&["diff", "--name-only", &format!("{a}...{b}")])
     }
 
+    /// The merge drivers the clone's configuration names (this wrapper runs with the global
+    /// configuration off, so the clone's own file is what applies).
+    fn configured_drivers(&self) -> Vec<String> {
+        self.ok(&["config", "--get-regexp", r"^merge\..*\.driver$"])
+            .map(|s| driver_names(&s))
+            .unwrap_or_default()
+    }
+
     /// `Ok(None)` for a clean merge, `Ok(Some(files))` for a conflict, run as GitHub would (the
-    /// text driver, not a driver registered in the clone). The exit status is the process's.
+    /// text merge, whatever driver the configuration names). The exit status is the process's.
     fn conflict(&self, a: &str, b: &str) -> Result<Option<Vec<String>>> {
-        let o = self.raw(&[
-            "-c",
-            TEXT_DRIVER,
+        let drivers = text_merge_args(&self.configured_drivers());
+        let mut all: Vec<&str> = drivers.iter().map(String::as_str).collect();
+        all.extend([
             "merge-tree",
             "--write-tree",
             "--name-only",
             "--no-messages",
             a,
             b,
-        ])?;
+        ]);
+        let o = self.raw(&all)?;
         match o.code {
             Some(0) => Ok(None),
             Some(1) => {
@@ -433,6 +501,8 @@ struct Judged {
     floor: u8,
     pass_note: Option<i64>,
     pass_line: Option<String>,
+    /// The highest tier a `PASS` naming the head states (`stated_tier`), if any states one.
+    pass_tier: Option<u8>,
     specs: Vec<String>,
     /// The `## Result` outcomes of each named SPEC at the head: `(id, ac count, outcomes)`.
     spec_results: Vec<(String, usize, Vec<String>)>,
@@ -455,6 +525,7 @@ fn judge(
         floor: 0,
         pass_note: None,
         pass_line: None,
+        pass_tier: None,
         specs: vec![],
         spec_results: vec![],
         unreadable_verdicts: vec![],
@@ -550,9 +621,29 @@ fn judge(
                 .push(json!({"card": arg.card, "note_id": n.id})),
         }
     }
-    if let Some((id, _, line)) = passes.iter().filter(|p| p.1 == head).max_by_key(|p| p.0) {
+    let named: Vec<&(i64, String, String)> = passes.iter().filter(|p| p.1 == head).collect();
+    if let Some((id, _, line)) = named.iter().max_by_key(|p| p.0) {
         j.pass_note = Some(*id);
         j.pass_line = Some(line.clone());
+    }
+    // D-7: the tier a `PASS` states. One `PASS` without a stated tier ends the question (it
+    // counts as before); a floor above the highest stated tier is a finding.
+    let tiers: Vec<(i64, Option<u8>)> = named.iter().map(|p| (p.0, stated_tier(&p.2))).collect();
+    j.pass_tier = tiers.iter().filter_map(|t| t.1).max();
+    if let Some(best) = j.pass_tier {
+        if j.floor > best && tiers.iter().all(|t| t.1.is_some()) {
+            let note_id = tiers
+                .iter()
+                .filter(|t| t.1 == Some(best))
+                .map(|t| t.0)
+                .max();
+            j.findings.push(finding(
+                "audit_tier_low",
+                &arg.card,
+                &head,
+                json!({"floor": j.floor, "pass_tier": best, "note_id": note_id}),
+            ));
+        }
     }
     if j.floor >= 1 && j.pass_note.is_none() {
         let nearest = passes
@@ -748,7 +839,7 @@ pub fn check(
         .iter()
         .map(|j| {
             json!({"card": j.card, "head": j.head, "audit_floor": j.floor,
-                   "pass_note": j.pass_note, "specs": j.specs,
+                   "pass_note": j.pass_note, "pass_tier": j.pass_tier, "specs": j.specs,
                    "findings": j.findings.len()})
         })
         .collect();
@@ -962,7 +1053,13 @@ pub fn body(
             .map(|n| format!(" (branch `{n}`)"))
             .unwrap_or_default();
         let audit = match (&j.pass_note, &j.pass_line) {
-            (Some(id), Some(line)) => format!("`PASS` card note {id}: {}", line.replace('|', "/")),
+            (Some(id), Some(line)) => {
+                let tier = j
+                    .pass_tier
+                    .map(|t| format!(" (tier {t})"))
+                    .unwrap_or_default();
+                format!("`PASS` card note {id}{tier}: {}", line.replace('|', "/"))
+            }
             _ => format!("audit floor {}: no verdict needed", j.floor),
         };
         b.push_str(&format!(
@@ -1069,6 +1166,53 @@ mod tests {
     use super::*;
 
     const H: &str = "0123456789abcdef0123456789abcdef01234567";
+
+    #[test]
+    fn the_stated_tier_is_read_from_before_the_last_head() {
+        let line = |prefix: &str| format!("AUDIT C-1 {prefix}head {H} base {H} — verdict: PASS");
+        assert_eq!(stated_tier(&line("(SPEC-20261119-x, tier 1) ")), Some(1));
+        assert_eq!(stated_tier(&line("tier 2 ")), Some(2));
+        assert_eq!(stated_tier(&line("(tier 0, own agent) ")), Some(0));
+        assert_eq!(stated_tier(&line("(a, tier 1; b) ")), Some(1));
+        // The same tier twice is one tier.
+        assert_eq!(stated_tier(&line("(tier 1, tier 1) ")), Some(1));
+        // None, two different tiers, a digit above 2, no digit, a longer number: no tier.
+        assert_eq!(stated_tier(&line("(SPEC-20261119-x) ")), None);
+        assert_eq!(stated_tier(&line("(tier 1, tier 2) ")), None);
+        assert_eq!(stated_tier(&line("(tier 3) ")), None);
+        assert_eq!(stated_tier(&line("(tier x) ")), None);
+        assert_eq!(stated_tier(&line("(tier 12) ")), None);
+        // The word must start a word: `multitier 1` is not it.
+        assert_eq!(stated_tier(&line("(multitier 1) ")), None);
+        // A `tier 1` after the verdict's own head is not read; neither is a line with no head.
+        assert_eq!(
+            stated_tier(&format!(
+                "AUDIT C-1 head {H} base {H} — verdict: PASS tier 1"
+            )),
+            None
+        );
+        assert_eq!(stated_tier("AUDIT C-1 tier 1 without a head"), None);
+        // A title that holds the word ` head ` is cut at the last one, as `parse_verdict` does.
+        let titled =
+            format!("AUDIT C-1 (the head of tier 2, tier 2) head {H} base {H} — verdict: PASS");
+        assert_eq!(stated_tier(&titled), Some(2));
+    }
+
+    #[test]
+    fn merge_driver_names_come_from_the_configuration_lines() {
+        let out = "merge.moai-manifest.driver true\nmerge.ours.driver true\nmerge.a b.driver x\nmerge.default x\nmerge..driver y\n";
+        assert_eq!(driver_names(out), vec!["moai-manifest", "ours"]);
+        let args = text_merge_args(&driver_names(out));
+        let want: Vec<String> = vec![
+            "-c".into(),
+            format!("merge.moai-manifest.driver={TEXT_MERGE}"),
+            "-c".into(),
+            format!("merge.ours.driver={TEXT_MERGE}"),
+        ];
+        assert_eq!(args, want);
+        // The manifest driver is always overridden, configured or not.
+        assert_eq!(text_merge_args(&[]).len(), 2);
+    }
 
     #[test]
     fn the_ready_grammar_reads_head_with_optional_spec_and_text() {

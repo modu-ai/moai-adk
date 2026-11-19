@@ -720,6 +720,229 @@ fn creation_refuses_a_taken_branch_or_folder() {
     let e = moai_cli::bundle::build::create(&w.work, "m-flow/x-2", &folder, &tip).unwrap_err();
     assert!(e.contains("already exists"), "{e}");
     assert_eq!(w.refs(), refs);
+    // A taken branch that is checked out nowhere and points elsewhere: `-b` refuses it, where
+    // `-B` would move it to the tip (audit N3 of slice 3).
+    let a = w.head(
+        "spec/a",
+        TIP,
+        &[("notes/a.md", "a\n")],
+        SPEC,
+        &[1, 2],
+        false,
+    );
+    w.git(&["branch", "m-flow/x-3", &a]);
+    let third = w
+        .home
+        .path()
+        .join(".moai")
+        .join("worktrees")
+        .join("work-bundle-11");
+    let refs = w.refs();
+    let e = moai_cli::bundle::build::create(&w.work, "m-flow/x-3", &third, &tip).unwrap_err();
+    assert!(e.contains("nothing was changed"), "{e}");
+    assert!(!third.exists());
+    assert_eq!(w.refs(), refs);
+    assert_eq!(
+        w.git(&["rev-parse", "m-flow/x-3"]),
+        a,
+        "the branch did not move"
+    );
+}
+
+#[test]
+fn a_second_registered_merge_driver_does_not_decide() {
+    let w = World::new();
+    w.identity();
+    // A driver named `ours` (it always succeeds and keeps our side) chosen by a .gitattributes
+    // line of the tip: a plain merge hides the conflict (audit N1 of slice 3).
+    w.git(&["config", "merge.ours.driver", "true"]);
+    w.put(
+        ".gitattributes",
+        &format!("{MANIFEST} merge=moai-manifest\nq.txt merge=ours\n"),
+    );
+    w.put("q.txt", "base\n");
+    w.git(&["add", "-A"]);
+    w.git(&["commit", "-q", "-m", "chore: q.txt with its own driver"]);
+    w.git(&["push", "-q", "origin", "trunk"]);
+    w.git(&["fetch", "-q", "origin"]);
+    let p = w.head("spec/p", TIP, &[("q.txt", "P\n")], SPEC, &[1, 2], true);
+    let q = w.head("spec/q", TIP, &[("q.txt", "Q\n")], SPEC, &[1, 2], true);
+    let hidden = w.git_raw(&w.work, &["merge-tree", "--write-tree", &p, &q]);
+    assert_eq!(hidden.status.code(), Some(0), "the driver `ours` hides it");
+    let (cp, cq) = (w.ready_card(&p), w.ready_card(&q));
+
+    let (v, code) = w.build(&[&cp, &cq]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(v["result"]["ok"], false, "{v}");
+    assert_eq!(names(&v, "merged"), vec![cp.clone()]);
+    assert_eq!(
+        v["result"]["dropped"],
+        serde_json::json!([{"card": cq, "head": q, "files": ["q.txt"]}])
+    );
+    // `bundle check` overrides the clone's drivers too.
+    let (v, _) = w.bundle(&["check", &cp, &cq]);
+    let conflicts: Vec<&Value> = v["result"]["findings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|f| f["code"] == "conflict")
+        .collect();
+    assert_eq!(conflicts.len(), 1, "{v}");
+    assert_eq!(
+        conflicts[0]["detail"]["files"],
+        serde_json::json!(["q.txt"])
+    );
+}
+
+#[test]
+fn a_date_that_is_not_a_date_is_refused_and_a_tag_head_is_the_commit() {
+    let w = World::new();
+    w.identity();
+    let a = w.head("spec/a", TIP, &[("notes/a.md", "a\n")], SPEC, &[1, 2], true);
+    let c = w.ready_card(&a);
+    let before = w.repo_state();
+    for d in [
+        "20261340",
+        "20260132",
+        "00000000",
+        "20260000",
+        "2026111a",
+        "2026111",
+        "202611190",
+        "",
+    ] {
+        let (v, code) = w.bundle(&["build", &c, "--date", d]);
+        assert_eq!(code, 1, "{d}: {v}");
+        let m = v["error"]["message"].as_str().unwrap_or("");
+        assert!(m.contains("--date"), "{d}: {v}");
+    }
+    assert_eq!(w.repo_state(), before, "nothing was created");
+    assert!(!w.home.path().join(".moai").join("worktrees").exists());
+    // A tag object's SHA as a head: the commit the tag points to is merged and reported.
+    w.git(&["tag", "-a", "-m", "a tag", "v-a", &a]);
+    let tag = w.git(&["rev-parse", "v-a"]);
+    assert_ne!(tag, a);
+    let c2 = w.new_card();
+    let (v, code) = w.build(&[&format!("{c2}={tag}")]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(v["result"]["merged"][0]["head"], a.as_str(), "{v}");
+    let pinned = v["result"]["pinned"].as_str().unwrap();
+    assert_eq!(w.git(&["rev-parse", &format!("{pinned}^2")]), a);
+}
+
+#[test]
+fn a_registered_worktree_whose_folder_is_gone_still_takes_its_number() {
+    let w = World::new();
+    w.identity();
+    let a = w.head("spec/a", TIP, &[("notes/a.md", "a\n")], SPEC, &[1, 2], true);
+    let c = w.ready_card(&a);
+    let gone = w.worktree_of(1);
+    fs::create_dir_all(gone.parent().unwrap()).unwrap();
+    w.git(&[
+        "worktree",
+        "add",
+        "-q",
+        "-b",
+        "other",
+        gone.to_str().unwrap(),
+        TIP,
+    ]);
+    fs::remove_dir_all(&gone).unwrap();
+    assert!(w
+        .git(&["worktree", "list", "--porcelain"])
+        .contains("prunable"));
+    // The branch `-1` does not exist and the folder is gone; only the registration holds the
+    // number, and `git worktree add` would refuse it.
+    let (v, code) = w.build(&[&c]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(v["result"]["number"], 2, "{v}");
+}
+
+#[test]
+fn all_999_numbers_used_is_refused_before_anything_is_created() {
+    let w = World::new();
+    w.identity();
+    let tip = w.tip_sha();
+    let a = w.head("spec/a", TIP, &[("notes/a.md", "a\n")], SPEC, &[1, 2], true);
+    let c = w.ready_card(&a);
+    // 999 loose branch refs written as files: much cheaper than 999 `git branch` runs.
+    let dir = w.work.join(".git/refs/heads/m-flow");
+    fs::create_dir_all(&dir).unwrap();
+    for n in 1..=999 {
+        fs::write(dir.join(format!("bundle-{DATE}-{n}")), format!("{tip}\n")).unwrap();
+    }
+    let before = w.refs();
+    let (v, code) = w.build(&[&c]);
+    assert_eq!(code, 1, "{v}");
+    assert!(
+        v["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("the numbers 1 to 999 of this date are all used"),
+        "{v}"
+    );
+    assert_eq!(w.refs(), before);
+    assert!(!w.home.path().join(".moai").join("worktrees").exists());
+}
+
+#[test]
+fn the_rebuild_line_is_quoted_and_empty_when_no_head_is_left() {
+    let w = World::new();
+    w.identity();
+    // A tip with a shell character in its name, and a manifest change of its own.
+    w.git(&["checkout", "-q", "-B", "odd;tip", TIP]);
+    w.put(MANIFEST, "{\n  \"line\": \"tip-side\"\n}\n");
+    w.git(&["add", "-A"]);
+    w.git(&[
+        "commit",
+        "-q",
+        "-m",
+        "chore: the odd tip changes the manifest",
+    ]);
+    let b = w.head(
+        "spec/b",
+        TIP,
+        &[(MANIFEST, "{\n  \"line\": \"b-side\"\n}\n")],
+        SPEC,
+        &[1, 2],
+        true,
+    );
+    let e = w.head("spec/e", TIP, &[("notes/e.md", "e\n")], SPEC, &[1, 2], true);
+    let (cb, ce) = (w.ready_card(&b), w.ready_card(&e));
+    let build = |heads: &[&str]| -> Value {
+        let mut all = vec!["bundle", "build"];
+        all.extend_from_slice(heads);
+        all.extend_from_slice(&[
+            "--date",
+            DATE,
+            "--project",
+            &w.project,
+            "--dir",
+            w.work.to_str().unwrap(),
+            "--tip",
+            "odd;tip",
+        ]);
+        let out = w.home.command(&all).stdin(Stdio::null()).output().unwrap();
+        let line = String::from_utf8_lossy(&out.stdout)
+            .lines()
+            .next()
+            .unwrap_or("")
+            .to_string();
+        serde_json::from_str(&line).unwrap_or_else(|e| panic!("{e}: {line}"))
+    };
+    // b conflicts with the tip, e does not: `rebuild` is e alone, the tip word quoted.
+    let v = build(&[&cb, &ce]);
+    assert_eq!(v["result"]["ok"], false, "{v}");
+    assert_eq!(
+        v["result"]["rebuild"],
+        format!("moai bundle build {ce}={e} --tip 'odd;tip'").as_str(),
+        "{v}"
+    );
+    // Only the conflicting head: nothing would be left, so `rebuild` is empty.
+    let v = build(&[&cb]);
+    assert_eq!(v["result"]["ok"], false, "{v}");
+    assert_eq!(v["result"]["merged"], serde_json::json!([]));
+    assert_eq!(v["result"]["rebuild"], "", "{v}");
 }
 
 #[test]

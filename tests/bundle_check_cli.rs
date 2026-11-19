@@ -665,3 +665,167 @@ fn a_head_behind_the_tip_does_not_count_the_tips_own_changes() {
     assert_eq!(v["result"]["ok"], true, "{v}");
     assert_eq!(v["result"]["findings"], serde_json::json!([]));
 }
+
+/// A verdict line as the lanes write it, with the text `prefix` (the SPEC and, perhaps, a tier)
+/// between the card and ` head `.
+fn verdict(card: &str, prefix: &str, head: &str, base: &str, word: &str) -> String {
+    format!("AUDIT {card} ({prefix}) head {head} base {base} — verdict: {word}\nbody")
+}
+
+#[test]
+fn a_pass_that_states_a_lower_tier_than_the_floor_is_a_finding() {
+    let w = World::new();
+    let tip = w.tip_sha();
+    // Floor 2: a change under `.claude/` (one of the gate's tier 2 prefixes).
+    let two = w.head(
+        "spec/two",
+        TIP,
+        &[(".claude/x.md", "x\n")],
+        SPEC,
+        &[1, 2],
+        true,
+    );
+    // Floor 1: a change under `src/`.
+    let one = w.head(
+        "spec/one",
+        TIP,
+        &[("src/o.rs", "fn o() {}\n")],
+        SPEC,
+        &[1, 2],
+        true,
+    );
+    let (c2, c1a, c1b, c1c) = (w.new_card(), w.new_card(), w.new_card(), w.new_card());
+    w.ready_note(&c2, &two);
+    w.ready_note(&c1a, &one);
+    w.ready_note(&c1b, &one);
+    w.ready_note(&c1c, &one);
+    let low = w.note(
+        &c2,
+        &verdict(&c2, &format!("{SPEC}, tier 1"), &two, &tip, "PASS"),
+    );
+    w.note(
+        &c1a,
+        &verdict(&c1a, &format!("{SPEC}, tier 1"), &one, &tip, "PASS"),
+    );
+    let zero = w.note(
+        &c1b,
+        &verdict(&c1b, &format!("{SPEC}, tier 0"), &one, &tip, "PASS"),
+    );
+    w.note(
+        &c1c,
+        &verdict(&c1c, &format!("{SPEC}, tier 2"), &one, &tip, "PASS"),
+    );
+
+    let (v, _) = w.bundle(&["check", &c2, &c1a, &c1b, &c1c]);
+    let r = &v["result"];
+    assert_eq!(
+        findings(&v),
+        vec![
+            (c2.clone(), "audit_tier_low".to_string()),
+            (c1b.clone(), "audit_tier_low".to_string())
+        ],
+        "{v}"
+    );
+    let fs_ = r["findings"].as_array().unwrap();
+    assert_eq!(fs_[0]["detail"]["floor"], 2);
+    assert_eq!(fs_[0]["detail"]["pass_tier"], 1);
+    assert_eq!(fs_[0]["detail"]["note_id"], low);
+    assert_eq!(fs_[1]["detail"]["floor"], 1);
+    assert_eq!(fs_[1]["detail"]["pass_tier"], 0);
+    assert_eq!(fs_[1]["detail"]["note_id"], zero);
+    let tiers: Vec<Value> = r["heads"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|h| h["pass_tier"].clone())
+        .collect();
+    assert_eq!(
+        tiers,
+        vec![
+            serde_json::json!(1),
+            serde_json::json!(1),
+            serde_json::json!(0),
+            serde_json::json!(2)
+        ],
+        "pass_tier is shown for every head"
+    );
+}
+
+#[test]
+fn a_pass_with_no_stated_tier_still_counts() {
+    let w = World::new();
+    let tip = w.tip_sha();
+    let two = w.head(
+        "spec/two",
+        TIP,
+        &[(".claude/x.md", "x\n")],
+        SPEC,
+        &[1, 2],
+        true,
+    );
+    let (plain, mixed, high) = (w.new_card(), w.new_card(), w.new_card());
+    for c in [&plain, &mixed, &high] {
+        w.ready_note(c, &two);
+    }
+    // A PASS with no tier satisfies the floor, as every verdict of the ledger does today.
+    w.pass_note(&plain, &two);
+    // A tier 1 PASS next to a PASS with no tier: the one without ends the question.
+    w.note(
+        &mixed,
+        &verdict(&mixed, &format!("{SPEC}, tier 1"), &two, &tip, "PASS"),
+    );
+    w.pass_note(&mixed, &two);
+    // A tier 1 PASS next to a tier 2 PASS: the highest counts, not the newest.
+    w.note(
+        &high,
+        &verdict(&high, &format!("{SPEC}, tier 2"), &two, &tip, "PASS"),
+    );
+    w.note(
+        &high,
+        &verdict(&high, &format!("{SPEC}, tier 1"), &two, &tip, "PASS"),
+    );
+    // Two different tiers in one line and a digit above 2 are not read.
+    let (clash, big) = (w.new_card(), w.new_card());
+    w.ready_note(&clash, &two);
+    w.ready_note(&big, &two);
+    w.note(
+        &clash,
+        &verdict(
+            &clash,
+            &format!("{SPEC}, tier 1, tier 2"),
+            &two,
+            &tip,
+            "PASS",
+        ),
+    );
+    w.note(
+        &big,
+        &verdict(&big, &format!("{SPEC}, tier 3"), &two, &tip, "PASS"),
+    );
+
+    let (v, _) = w.bundle(&["check", &plain, &mixed, &high, &clash, &big]);
+    assert_eq!(findings(&v), Vec::<(String, String)>::new(), "{v}");
+    let tiers: Vec<Value> = v["result"]["heads"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|h| h["pass_tier"].clone())
+        .collect();
+    assert_eq!(
+        tiers,
+        vec![Value::Null, 1.into(), 2.into(), Value::Null, Value::Null],
+        "{v}"
+    );
+}
+
+#[test]
+fn the_gate_reads_a_verdict_line_with_a_tier_like_one_without() {
+    let h = "0123456789abcdef0123456789abcdef01234567";
+    let b = "89abcdef0123456789abcdef0123456789abcdef";
+    let plain = format!("AUDIT C-1 (SPEC-20261119-demo) head {h} base {b} — verdict: PASS");
+    let tiered =
+        format!("AUDIT C-1 (SPEC-20261119-demo, tier 1) head {h} base {b} — verdict: PASS");
+    let want = Some((h.to_string(), b.to_string(), "PASS".to_string()));
+    assert_eq!(moai_cli::gate::parse_verdict(&plain), want);
+    assert_eq!(moai_cli::gate::parse_verdict(&tiered), want);
+}
