@@ -140,7 +140,7 @@ fn the_record_home_is_in_the_verify_workflow() {
     let s = sentence_from(para, "Record home (card C-99): ");
     // Whole phrases: the card is the home where a ledger exists, the Issue only where none does.
     for word in [
-        "the record is the flaky card of the merge-train step (`flaky: <test>`)",
+        "where the project has a card ledger, the record is the flaky card of the merge-train step (`flaky: <test>`)",
         "the `[flake]` Issue and the two commands below are for a project without a card ledger",
     ] {
         assert!(
