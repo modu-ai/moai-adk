@@ -2,7 +2,7 @@
 id: SPEC-20261119-bundle-build
 title: "moai bundle build: one new branch and worktree, one merge commit per head, a conflicting head dropped and named"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-19
 parent: SPEC-20261119-bundle-tool
 ---
@@ -32,30 +32,31 @@ The tool writes a branch, a worktree and merge commits and nothing else: no push
 ## Requirements
 
 - REQ-1: When `moai bundle build` is given heads in an order, `moai bundle build` shall create a new branch `m-flow/bundle-<yyyymmdd>-<n>` and a new worktree `<HOME>/.moai/worktrees/<project>-bundle-<n>` at the tip's commit, merge each head into the branch with one merge commit in the given order, and print the pinned SHA that `git rev-parse` gives for the branch.
-- REQ-2 (REQ-1): IF a head cannot be used (a card with no readable `LANE-READY-INTEGRATION` line, a head that is not a commit here, a card named twice, or no head left to merge after the heads already in the tip), THEN `moai bundle build` shall refuse before it creates anything and name every such head in one answer.
+- REQ-2 (REQ-1): IF a head cannot be used (a card with no readable `LANE-READY-INTEGRATION` line, a head that is not a commit here, a card named twice, a `--date` that is not a date, or no head left to merge after the heads already in the tip), THEN `moai bundle build` shall refuse before it creates anything and name every such head in one answer.
 - REQ-3 (REQ-1): IF a head's merge conflicts under the text merge GitHub runs, THEN `moai bundle build` shall abort that merge, leave the branch without that head, name the head and its conflicting files, and go on with the next head.
 - REQ-4 (REQ-1): IF a head is already in the tip or already in the branch when its turn comes, THEN `moai bundle build` shall merge nothing for it and name it as skipped with the reason.
-- REQ-5: `moai bundle build` shall take `<n>` as the lowest positive integer for which no local branch and no `origin` branch `m-flow/bundle-<yyyymmdd>-<n>`, no registered worktree and no folder `<project>-bundle-<n>` under `<HOME>/.moai/worktrees/` exists.
+- REQ-5: `moai bundle build` shall take `<n>` as the lowest integer from 1 to 999 for which no local branch and no `origin` branch `m-flow/bundle-<yyyymmdd>-<n>`, no registered worktree (also one whose folder is gone) and no folder `<project>-bundle-<n>` under `<HOME>/.moai/worktrees/` exists.
 - REQ-6: `moai bundle build` shall never move, reset, force or delete an existing branch, ref, worktree or folder.
 - REQ-7 (REQ-6): IF the branch or the folder is taken when `moai bundle build` creates it, THEN `moai bundle build` shall stop and change nothing.
 - REQ-8 (REQ-1): IF git fails after the branch exists (no author identity, a hook refuses a merge commit, an abort does not restore the branch), THEN `moai bundle build` shall stop, name the branch and the worktree it leaves behind, and delete nothing.
-- REQ-9: `moai bundle build` shall merge with the text merge GitHub runs, so that a merge driver registered in the clone does not decide.
+- REQ-9: `moai bundle build` shall merge with the text merge GitHub runs, so that no merge driver named in the git configuration of the clone or of the user decides.
 - REQ-10: `moai bundle build` shall write only the new branch, its worktree and the merge commits, and no push, fetch, pull request, card note, ledger row or setting.
-- REQ-11: `moai bundle build` shall print `action`, `branch`, `worktree`, `tip`, `pinned`, `merged`, `dropped`, `skipped`, `rebuild` and `ok`, with `ok` false exactly when a head was dropped and `rebuild` the command line of the same build without the dropped heads.
+- REQ-11: `moai bundle build` shall print `action`, `branch`, `worktree`, `tip`, `pinned`, `merged`, `dropped`, `skipped`, `rebuild` and `ok`, with `ok` false exactly when a head was dropped and `rebuild` the command line of the same build without the dropped heads, its words quoted for a shell, or an empty string when nothing was dropped or no head would be left.
+- REQ-12 (REQ-5): IF all the numbers from 1 to 999 are used for the date, THEN `moai bundle build` shall refuse before it creates anything.
 
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-5, REQ-11): two heads give one new branch and one new worktree at `<HOME>/.moai/worktrees/<project>-bundle-1`, two merge commits in the given order, `pinned` equal to `git rev-parse` of the branch, `ok` true and `rebuild` empty.
   verify: `cargo test --locked --offline --test bundle_build_cli two_heads_make_one_branch_and_worktree_with_a_merge_commit_each`
-- AC-2 (REQ-2): a card with no READY line, a head SHA that is not here, a card named twice, and heads that are all already in the tip are each refused with every such head named, and no branch, worktree or folder exists afterwards.
-  verify: `cargo test --locked --offline --test bundle_build_cli heads_that_cannot_be_used_are_refused_before_anything_is_created`
+- AC-2 (REQ-2): a card with no READY line, a head SHA that is not here, a card named twice, and heads that are all already in the tip are each refused with every such head named, and no branch, worktree or folder exists afterwards; a `--date` that is not a date (`20261340`, `20260132`, `2026111a`) is refused the same way; a head that names a tag is merged as the commit it points to.
+  verify: `cargo test --locked --offline --test bundle_build_cli heads_that_cannot_be_used_are_refused_before_anything_is_created`; `cargo test --locked --offline --test bundle_build_cli a_date_that_is_not_a_date_is_refused_and_a_tag_head_is_the_commit`
 - AC-3 (REQ-3, REQ-9, REQ-11): of three heads where the second conflicts with the first in a file a merge driver registered in the clone would hide, the branch holds the first and third merge commits, the answer names the second head and the file, `ok` is false and `rebuild` is the build command of the first and third head, and the working tree of the worktree is clean.
-  verify: `cargo test --locked --offline --test bundle_build_cli a_conflicting_head_is_dropped_and_named_and_the_rest_merge`
+  verify: `cargo test --locked --offline --test bundle_build_cli a_conflicting_head_is_dropped_and_named_and_the_rest_merge`; `cargo test --locked --offline --test bundle_build_cli a_second_registered_merge_driver_does_not_decide`
 - AC-4 (REQ-4): a head already in the tip and a head already contained in an earlier head's merge are skipped with their reasons and make no merge commit.
   verify: `cargo test --locked --offline --test bundle_build_cli a_head_in_the_tip_or_in_the_branch_is_skipped`
-- AC-5 (REQ-5, REQ-6): with a local branch for `-1`, an `origin` branch for `-2`, a worktree folder for `-3` and a registered worktree for `-4`, the build uses `-5`; every pre-existing ref, folder and worktree is byte-equal afterwards; a second build is `-6`.
-  verify: `cargo test --locked --offline --test bundle_build_cli the_number_is_the_lowest_unused_and_existing_names_are_never_touched`
-- AC-6 (REQ-7): the creation step on a branch name or folder that already exists returns an error and changes no ref and no folder.
+- AC-5 (REQ-5, REQ-6, REQ-12): with a local branch for `-1`, an `origin` branch for `-2`, a worktree folder for `-3` and a registered worktree for `-4`, the build uses `-5`; every pre-existing ref, folder and worktree is byte-equal afterwards; a second build is `-6`; a registered worktree whose folder is gone still takes its number; with the numbers 1 to 999 all used for the date the build is refused and nothing is created.
+  verify: `cargo test --locked --offline --test bundle_build_cli the_number_is_the_lowest_unused_and_existing_names_are_never_touched`; `cargo test --locked --offline --test bundle_build_cli a_registered_worktree_whose_folder_is_gone_still_takes_its_number`; `cargo test --locked --offline --test bundle_build_cli all_999_numbers_used_is_refused_before_anything_is_created`
+- AC-6 (REQ-7): the creation step on a branch name or folder that already exists returns an error and changes no ref and no folder, also for an existing branch that is checked out nowhere (so `-b`, not `-B`, is what refuses).
   verify: `cargo test --locked --offline --test bundle_build_cli creation_refuses_a_taken_branch_or_folder`
 - AC-7 (REQ-8): in a clone whose git has no author identity (`user.useConfigOnly`), the build stops at the first merge, the error names the branch and the worktree, both still exist and the branch is at the tip's commit.
   verify: `cargo test --locked --offline --test bundle_build_cli a_git_failure_after_creation_names_what_is_left_behind`
@@ -64,9 +65,12 @@ The tool writes a branch, a worktree and merge commits and nothing else: no push
 - AC-9 (REQ-10, REQ-11): `bundle build --help` starts with `Writes a new branch and worktree.`, the operations page has the `build` action with its answer keys, and the neighbours stay green.
   verify: `cargo test --locked --offline --test bundle_build_cli the_help_and_the_ops_doc_say_what_build_writes`; `cargo test --locked --offline --test git_env_scrub`; `cargo test --locked --offline --test home_isolation_scan`; `cargo test --locked --offline --test help_layout`; `cargo test --locked --offline --test product_cli`
 
+- AC-10 (REQ-11): the `rebuild` line quotes a tip name that has shell characters (`odd;tip` is written `'odd;tip'`) and is an empty string when the only head conflicts and none would be left.
+  verify: `cargo test --locked --offline --test bundle_build_cli the_rebuild_line_is_quoted_and_empty_when_no_head_is_left`
+
 ## Scope
 
-- write: `src/bundle.rs` (the line `pub mod build;` and what `build` takes from the module), `src/bundle/build.rs`, `src/ops/bundle.rs`, `tests/bundle_build_cli.rs`, `docs/design-review/appendix/operations/bundle.md`, `.moai/specs/SPEC-20261119-bundle-build/**`, `.moai/specs/SPEC-20261119-bundle-tool/**`.
+- write: `src/bundle.rs` (the line `pub mod build;`, the merge-driver list, and what `build` takes from the module), `src/bundle/build.rs`, `src/ops/bundle.rs`, `tests/bundle_build_cli.rs`, `docs/design-review/appendix/operations/bundle.md`, `.moai/specs/SPEC-20261119-bundle-build/**`, `.moai/specs/SPEC-20261119-bundle-tool/**`.
 - read-only: `src/home_workdir.rs`, `src/worktree.rs`, `src/identity.rs`, `src/audit_delta.rs`, `src/hygiene.rs`, `src/gate.rs`, `src/card/command.rs`, `src/ledger/command.rs`.
 - forbidden: `src/lib.rs` and `src/main.rs` (no new module line is needed, D-1), any other change under `src/`, the real HOME and ledger as a write target, `skills/`, `.github/`, any push of a ref other than this branch, any pull request.
 
@@ -76,10 +80,10 @@ The tool writes a branch, a worktree and merge commits and nothing else: no push
 
 **Steps of `build`.**
 1. Resolve the tip to a commit (`tip_of`, never fetched) and every head: `C-<n>` through the newest readable READY line, `C-<n>=<sha>` as given. Collect every problem (REQ-2); refuse if any, before a branch or folder exists. Heads already contained in the tip are set aside as skipped; if none is left, refuse.
-2. Number (REQ-5): `n` is 1, 2, … until none of these exists: the local branch `refs/heads/m-flow/bundle-<date>-<n>`, the remote branch `refs/remotes/origin/m-flow/bundle-<date>-<n>`, a path of `git worktree list --porcelain` that equals the folder, the folder `<HOME>/.moai/worktrees/<project>-bundle-<n>` (`home_workdir::worktree_dir`, which makes the name safe and refuses a reserved one). `<date>` is today (UTC, `hygiene::utc_date`) unless `--date YYYYMMDD` is given (tests).
+2. Number (REQ-5): `n` is 1, 2, … until none of these exists: the local branch `refs/heads/m-flow/bundle-<date>-<n>`, the remote branch `refs/remotes/origin/m-flow/bundle-<date>-<n>`, a path of `git worktree list --porcelain` that equals the folder, the folder `<HOME>/.moai/worktrees/<project>-bundle-<n>` (`home_workdir::worktree_dir`, which makes the name safe and refuses a reserved one). `<date>` is today (UTC, `hygiene::utc_date`) unless `--date YYYYMMDD` is given (tests; D-13). `n` runs from 1 to 999; a registered worktree whose folder is gone still takes its number (`git worktree add` would refuse it).
 3. Create: `git worktree add -b <branch> <folder> <tip sha>`. `-b`, never `-B`, so an existing branch is an error (REQ-7); the parent folder `<HOME>/.moai/worktrees/` is created if missing; a folder that already exists is refused by the tool before git runs.
-4. For each head in order: skip it if it is an ancestor of the worktree's HEAD (REQ-4, reason `in_tip` or `in_branch`); otherwise `git -c merge.moai-manifest.driver=<the text merge of slice 2> merge --no-ff -m "Merge <card> head <short sha> into <branch>" <head sha>` in the worktree. Exit 0: record the merge commit. Exit 1 with unmerged paths: record the files (`git diff --name-only --diff-filter=U`), `git merge --abort`, check that HEAD is the commit before the merge (REQ-3, REQ-8). Any other exit: stop (REQ-8).
-5. Answer: `{action:"build", branch, worktree, tip:{name,sha,committed,note}, pinned, merged:[{card,head,merge}], dropped:[{card,head,files}], skipped:[{card,head,reason}], rebuild, ok, writes:true}`. `pinned` is `git rev-parse <branch>` read after the last merge. `rebuild` is `moai bundle build <card>=<head> …` of the heads that were not dropped, in the given order, or an empty string when nothing was dropped.
+4. For each head in order: skip it if it is an ancestor of the worktree's HEAD (REQ-4, reason `in_tip` or `in_branch`); otherwise `git -c merge.<name>.driver=<the text merge of slice 2> … merge --no-ff -m "Merge <card> head <short sha> into <branch>" <head sha>` in the worktree, with one `-c` for the manifest driver and one for every merge driver the configuration names (D-12). Exit 0: record the merge commit. Exit 1 with unmerged paths: record the files (`git diff --name-only --diff-filter=U`), `git merge --abort`, check that HEAD is the commit before the merge (REQ-3, REQ-8). Any other exit: stop (REQ-8).
+5. Answer: `{action:"build", branch, worktree, tip:{name,sha,committed,note}, pinned, merged:[{card,head,merge}], dropped:[{card,head,files}], skipped:[{card,head,reason}], rebuild, ok, writes:true}`. `pinned` is `git rev-parse <branch>` read after the last merge. `rebuild` is `moai bundle build <card>=<head> … --tip <tip>` of the heads that were not dropped, in the given order, every word quoted when it holds a shell character (D-11), or an empty string when nothing was dropped or no head is left.
 
 **Git.** Reads go through `crate::audit_delta::command` (a scrubbed environment, global and system configuration off). The writes of steps 3 and 4 need the user's own author identity and hook settings, so they run through `std::process::Command` with `identity::scrub_git_env` (the pattern of `worktree.rs`), in the lib crate (D-4). No `--no-verify`: a hook that refuses a merge commit is REQ-8.
 
@@ -106,6 +110,9 @@ The tool writes a branch, a worktree and merge commits and nothing else: no push
 | D-8 | No `--no-verify`; a hook that refuses is a REQ-8 stop | hooks are the repository's own rules; the ruleset and CI are not bypassed (card C-119) | a flag |
 | D-9 | `pinned` is read back with `git rev-parse` after the last merge, never computed | the report states what the read shows | n/a |
 | D-10 | `rebuild` names heads as `C-<n>=<sha>` | a pinned head cannot change between the build and the rebuild | `C-<n>` |
+| D-11 | `rebuild` quotes a word with a shell character in single quotes (`'` becomes `'\''`) and is empty when no head would be left | audit N2 and N5 of slice 3: a ref name may hold `;` or `$(…)`, and a line with no heads cannot run | no quoting |
+| D-12 | The merge drivers named in the git configuration (`git config --get-regexp '^merge\..*\.driver$'`, the clone's and the user's) are all overridden with the text merge of slice 2, next to the manifest driver | audit N1 of slice 3: a second registered driver (`merge=ours`) silently decided a conflict; `bundle check` keeps the clone's own configuration only, because it runs with the user's global configuration off | override the manifest driver only |
+| D-13 | A `--date` is eight digits with a month 01 to 12 and a day 01 to 31; a head that names a tag is used as the commit the tag points to (the peeled commit is what is merged and reported) | audit N6 of slice 3 | digits only |
 
 ## Result
 
