@@ -17,6 +17,8 @@ A receipt (returned on stdout by the internal `run-verify` operation; not stored
 5. State skips, coverage gaps, and artifact expiry explicitly.
 6. Run every `verify:` command of the SPEC's acceptance criteria on the exact tree and record each exit code; SYNC writes them into the SPEC's `## Result` before the audit, in the order PLAN → RUN → VERIFY → SYNC → AUDIT → merge (`internal/sdd`).
 
+In the moai-adk repository, before the first commit of a change that touches install, update, `/moai project` or the launcher, run the smoke harness first: `tools/smoke/run.sh <area>`, with `<area>` one of `install`, `update`, `project`, `launcher` or `all`, on the debug binary just built (`--bin PATH` names another one). It boots the built binary in an empty temporary HOME and a temporary git project and never reads the real HOME. Take its last line, `smoke: <area> pass|fail steps=<n>`, as the evidence of the check; a `fail` is a failed check, a missing binary is a usage error (exit 2) and not a pass, and a smoke run that was not made is `not_run`, never `passed`.
+
 In a project described by `/moai project`, the check commands of step 1 and the AC-to-test tracing come from `internal/quality` and the language guide it names; a tool the project does not configure is `not_run`, never guessed.
 
 ## Check-run rules

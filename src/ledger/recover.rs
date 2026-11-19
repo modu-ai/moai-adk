@@ -1490,6 +1490,39 @@ pub fn apply_with_suffix(
     plan_digest: &str,
     suffix: &str,
 ) -> Result<RecoveryResult, LedgerError> {
+    apply_with_suffix_hooked(
+        home,
+        project_id,
+        source,
+        observations,
+        plan_digest,
+        suffix,
+        &|| {},
+    )
+}
+
+/// The recovery this plan digest names already finished: the real ledger is usable and holds the
+/// recover event of that digest. Read-only.
+fn already_finished(home: &Path, project_id: &str, ledger: &Path, plan_digest: &str) -> bool {
+    target_state(home, project_id, ledger).0 == TargetState::Healthy
+        && already_applied(home, project_id, plan_digest)
+}
+
+/// [`apply_with_suffix`] with a seam for tests: `after_first_read` runs once, right after the
+/// first read found the ledger not yet recovered and before the plan is recomputed. That gap is
+/// where a second process can finish the same recovery (SPEC-20261119-ledger-recover-race), and
+/// only a test that runs the winner inside it can open it every time. Every other caller passes
+/// an empty function through [`apply_with_suffix`].
+#[doc(hidden)]
+pub fn apply_with_suffix_hooked(
+    home: &Path,
+    project_id: &str,
+    source: &Path,
+    observations: &Observations,
+    plan_digest: &str,
+    suffix: &str,
+    after_first_read: &dyn Fn(),
+) -> Result<RecoveryResult, LedgerError> {
     if !valid_suffix(suffix) {
         return Err(constraint(
             "invalid_suffix",
@@ -1497,36 +1530,35 @@ pub fn apply_with_suffix(
         ));
     }
     let ledger = location::ledger_path(home, project_id)?;
+    let finished = |ledger: PathBuf| RecoveryResult {
+        state: ApplyState::Unchanged,
+        plan_digest: plan_digest.to_string(),
+        ledger,
+        built: None,
+        set_aside: None,
+    };
     // First pass, read-only and without the lock: a finished recovery, a stale plan or a target
     // that must not be replaced is answered here, so a refusal leaves the folder exactly as it
     // was (no lock file is made). The pass under the lock below is the authoritative one.
-    if target_state(home, project_id, &ledger).0 == TargetState::Healthy
-        && already_applied(home, project_id, plan_digest)
-    {
-        return Ok(RecoveryResult {
-            state: ApplyState::Unchanged,
-            plan_digest: plan_digest.to_string(),
-            ledger,
-            built: None,
-            set_aside: None,
-        });
+    if already_finished(home, project_id, &ledger, plan_digest) {
+        return Ok(finished(ledger));
     }
-    check_plan(
-        &prepare(home, project_id, source, observations)?.plan,
-        plan_digest,
-    )?;
+    after_first_read();
+    if let Err(refused) = prepare(home, project_id, source, observations)
+        .and_then(|p| check_plan(&p.plan, plan_digest))
+    {
+        // Another process may have finished this same recovery after the first read: then the
+        // plan reads a usable target (`target_healthy`), and the answer is the one the first
+        // read gives to a recovery that finished earlier.
+        if already_finished(home, project_id, &ledger, plan_digest) {
+            return Ok(finished(ledger));
+        }
+        return Err(refused);
+    }
     // One recovery at a time per project, across processes. The loser changes nothing.
     let lock = lock_recovery(home, project_id)?;
-    if target_state(home, project_id, &ledger).0 == TargetState::Healthy
-        && already_applied(home, project_id, plan_digest)
-    {
-        return Ok(RecoveryResult {
-            state: ApplyState::Unchanged,
-            plan_digest: plan_digest.to_string(),
-            ledger,
-            built: None,
-            set_aside: None,
-        });
+    if already_finished(home, project_id, &ledger, plan_digest) {
+        return Ok(finished(ledger));
     }
     let built = build_recovering(home, project_id, source, observations, plan_digest, &lock)?;
     // The state of the real file can have changed during the build (a writer may have revived
