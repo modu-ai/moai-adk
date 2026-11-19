@@ -21,21 +21,23 @@ created: 2026-11-19
 
 ## Requirements
 
-- REQ-1: When `moai go-state-plan` reads the Go `.moai` folder as `leave` because git worktrees are registered under it, the PROJECT workflow shall report that reason to the user in the plan's own words and name the worktree move as the way to let the folder move.
+- REQ-1: When `moai go-state-plan` reads the Go `.moai` folder as `leave` because git worktrees are registered under it, the PROJECT workflow shall report that reason to the user in the plan's own words and name the worktree move as the way to let the folder move. · failure: none — the text is checked for the quoted reason and for the named way, and a missing sentence fails that test.
 - REQ-2: The PROJECT workflow shall run the read-only `moai worktree-move-plan <project>` and show its items, `totals` and each item's reasons before it asks anything about moving a worktree.
-- REQ-3: The PROJECT workflow shall ask one selection for the worktree move, with the move first and `leave them where they are` second, and shall run `moai worktree-move-apply` only after the user picked the move. · failure: none — the text is checked for the order of the two options and for the apply coming after the pick, and a missing sentence fails that test.
-- REQ-4 (REQ-2): IF the plan reads every worktree as `blocked` with `hold_check_not_run` because no holds observation was given, THEN the PROJECT workflow shall report the move as unavailable with that reason and shall not write an empty holds list it did not observe.
-- REQ-5: The PROJECT workflow shall name the plan's reason, the blocked reason, the plan fields and the apply arguments exactly as the code prints and accepts them. · failure: none — the names are checked against the source files by a test.
+- REQ-3: The PROJECT workflow shall ask one selection for the worktree move, with the move first and `leave them where they are` second. · failure: none — the text is checked for the order of the two options, and a swapped order fails that test.
+- REQ-4: The PROJECT workflow shall run `moai worktree-move-apply` only after the user picked the move. · failure: none — the text is checked for the apply coming after the pick, and a missing sentence fails that test.
+- REQ-5 (REQ-2): IF the plan reads every worktree as `blocked` with `hold_check_not_run` because no holds observation was given, THEN the PROJECT workflow shall report the move as unavailable with that reason.
+- REQ-6 (REQ-5): IF the PROJECT workflow has read no branch holds in the run, THEN it shall not write an empty holds list.
+- REQ-7: The PROJECT workflow shall name the plan's reason, the blocked reason, the plan fields and the apply arguments exactly as the code prints and accepts them. · failure: none — the names are checked against the source files by a test.
 
 ## Acceptance
 
 - AC-1 (REQ-1): `project.md` 단계 2 가 `go-state-plan` 의 "git worktree(s) are registered under .moai/" 이유를 그 말 그대로 보고하고 worktree 이동을 폴더가 옮겨지게 하는 길로 이름 붙인다는 것을 말해요.
   verify: `cargo test --locked --offline --test project_worktree_move_choice go_state_worktree_reason_is_reported_with_the_worktree_move_choice`
-- AC-2 (REQ-2, REQ-3, REQ-4): `project.md` 가 읽기 전용 `worktree-move-plan` 을 먼저 돌려 항목·`totals`·이유를 보이고, 이동을 먼저 두는 선택 하나를 묻고, 고른 뒤에만 `worktree-move-apply` 를 돌리며, `hold_check_not_run` 이면 이동을 쓸 수 없다고 보고하고 관측하지 않은 빈 holds 를 쓰지 않는다는 것을 말해요.
+- AC-2 (REQ-2, REQ-3, REQ-4, REQ-5, REQ-6): `project.md` 가 읽기 전용 `worktree-move-plan` 을 먼저 돌려 항목·`totals`·이유를 보이고, 이동을 먼저 두는 선택 하나를 묻고, 고른 뒤에만 `worktree-move-apply` 를 돌리며, `hold_check_not_run` 이면 이동을 쓸 수 없다고 보고하고 관측하지 않은 빈 holds 를 쓰지 않는다는 것을 말해요.
   verify: `cargo test --locked --offline --test project_worktree_move_choice worktree_move_is_previewed_then_asked_once_then_applied_only_after_the_pick`
-- AC-3 (REQ-5): 글이 인용하는 이유·필드·인자 이름이 `src/go_state.rs`, `src/worktree_move.rs`, `src/ops/worktree_move_apply.rs` 에 글자 그대로 있어요.
+- AC-3 (REQ-7): 글이 인용하는 이유·필드·인자 이름이 `src/go_state.rs`, `src/worktree_move.rs`, `src/ops/worktree_move_apply.rs` 에 글자 그대로 있어요.
   verify: `cargo test --locked --offline --test project_worktree_move_choice quoted_names_are_the_ones_the_code_prints`
-- AC-4 (REQ-1…REQ-5): 이웃 검사.
+- AC-4 (REQ-1…REQ-7): 이웃 검사.
   verify: `cargo test --locked --offline --test project_flow_closing`; `cargo test --locked --offline --test project_preview_order`; `cargo test --locked --offline --test worktree_move`; `cargo test --locked --offline --test go_state_cli`; `cargo test --locked --offline --test home_isolation_scan`; `cargo test --locked --offline --test ac_command_lint`; `cargo test --locked --offline --test doc_references`; `python3 -m unittest tests.source_manifest_test tests.skill_references_test`
 
 ## Scope
