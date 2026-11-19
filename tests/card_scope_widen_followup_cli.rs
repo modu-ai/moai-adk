@@ -1,7 +1,7 @@
 //! `moai card scope` on a held card, the follow-ups of the C-94 audit
-//! (SPEC-20261119-card-scope-widen-followup, card C-129, slice A): line separators in a reason or
-//! a scope entry, the reason kept without its surrounding blanks, and a case variant of a
-//! pattern the reservation already has.
+//! (SPEC-20261119-card-scope-widen-followup, card C-129): line separators in a reason or a scope
+//! entry, the reason kept without its surrounding blanks, a case variant of a pattern the
+//! reservation already has (slice A), and the generation a widening is made at (slice B).
 //!
 //! Every command runs against a temporary HOME; the real `~/.moai` is not read or written. The
 //! holder is the session id in the environment (`CLAUDE_CODE_SESSION_ID`).
@@ -75,7 +75,21 @@ impl World {
 
     /// `card scope <card> --scope… --by leader [--reason …]`.
     fn widen(&self, card: &str, scope: &[&str], reason: Option<&str>) -> Output {
+        self.widen_at(card, None, scope, reason)
+    }
+
+    /// `card scope <card> [--generation <n>] --scope… --by leader [--reason …]`.
+    fn widen_at(
+        &self,
+        card: &str,
+        generation: Option<&str>,
+        scope: &[&str],
+        reason: Option<&str>,
+    ) -> Output {
         let mut args = vec!["scope", card];
+        if let Some(g) = generation {
+            args.extend_from_slice(&["--generation", g]);
+        }
         for entry in scope {
             args.push("--scope");
             args.push(entry);
@@ -130,6 +144,18 @@ impl World {
             "SELECT s.pattern FROM reservation_scope s JOIN reservation r \
              ON r.reservation_id = s.reservation_id WHERE r.card_id = {card_id} \
              ORDER BY s.pattern"
+        ))
+        .into_iter()
+        .map(|row| row[0].as_str().unwrap().to_string())
+        .collect()
+    }
+
+    /// The patterns of the reservation of `card_id` at `generation`, sorted.
+    fn patterns_at(&self, card_id: i64, generation: i64) -> Vec<String> {
+        self.rows(&format!(
+            "SELECT s.pattern FROM reservation_scope s JOIN reservation r \
+             ON r.reservation_id = s.reservation_id WHERE r.card_id = {card_id} \
+             AND r.generation = {generation} ORDER BY s.pattern"
         ))
         .into_iter()
         .map(|row| row[0].as_str().unwrap().to_string())
@@ -379,4 +405,130 @@ fn a_case_variant_is_not_a_new_pattern() {
         w.patterns(1),
         vec!["apps/bo/", "apps/web/", "other/apps/web/"]
     );
+}
+
+/// AC-5 (REQ-4, REQ-5): `--generation <n>` widens only a reservation that is at generation `n`.
+/// A lane that read generation 1 and a leader that acts after the card was released and taken
+/// again (generation 2) do not act on different screens: the stale number is a `conflict` that
+/// names the generation the card has, and nothing is written. A card nobody holds has no
+/// generation to match. Without `--generation` the command is as it was.
+#[test]
+fn a_stale_generation_is_refused() {
+    let w = world();
+    let held = w.held(S_A, "held", &["apps/bo/"]);
+    // Released and taken again: the reservation is now at generation 2.
+    result(&w.card(Some(S_A), &["release", &held, "--generation", "1"]));
+    result(&w.card(
+        Some(S_A),
+        &[
+            "take",
+            &held,
+            "--worktree",
+            "/work/tree",
+            "--branch",
+            "card/x",
+        ],
+    ));
+    let before = w.dump();
+
+    for stale in ["1", "3"] {
+        let (kind, message) =
+            refusal(&w.widen_at(&held, Some(stale), &["apps/bo/", "apps/web/"], Some(WHY)));
+        assert_eq!(kind, "conflict", "{message}");
+        assert!(
+            message.contains("generation 2") && message.contains(stale),
+            "names the generation the card has and the one given: {message}"
+        );
+    }
+    assert_eq!(w.dump(), before, "a refusal writes nothing");
+    assert!(w.scope_events().is_empty());
+
+    // The right generation widens, and the answer and the event keep it.
+    let answer = result(&w.widen_at(&held, Some("2"), &["apps/bo/", "apps/web/"], Some(WHY)));
+    assert_eq!(answer["generation"], json!(2), "{answer}");
+    assert_eq!(answer["added"], json!(["apps/web/"]), "{answer}");
+    assert_eq!(w.patterns_at(1, 2), vec!["apps/bo/", "apps/web/"]);
+    assert_eq!(
+        w.patterns_at(1, 1),
+        vec!["apps/bo/"],
+        "the released one is as it was"
+    );
+
+    // Without `--generation` nothing is asked: the command is as before.
+    let answer = result(&w.widen(&held, &["apps/bo/", "apps/web/", "docs/"], Some(WHY)));
+    assert_eq!(answer["added"], json!(["docs/"]), "{answer}");
+
+    // A card nobody holds has no generation to match: `conflict`, nothing written.
+    let ready = result(&w.card(
+        None,
+        &["add", "--title", "ready", "--ac", "one", "--scope", "libs/"],
+    ))["name"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    result(&w.card(None, &["ready", &ready]));
+    let before = w.dump();
+    let (kind, message) = refusal(&w.widen_at(&ready, Some("1"), &["libs/", "libs/x/"], None));
+    assert_eq!(kind, "conflict", "{message}");
+    assert!(message.contains("not held"), "{message}");
+    assert_eq!(w.dump(), before);
+}
+
+/// A non-numeric or non-positive `--generation` is not a generation.
+#[test]
+fn a_generation_that_is_not_a_positive_number_is_a_usage_error() {
+    let w = world();
+    let held = w.held(S_A, "held", &["apps/bo/"]);
+    let before = w.dump();
+    for bad in ["0", "-1", "x", ""] {
+        let out = w.widen_at(&held, Some(bad), &["apps/bo/", "apps/web/"], Some(WHY));
+        // clap refuses the value before the command runs: exit 2, a `usage` envelope.
+        assert_eq!(out.status.code(), Some(2), "`{bad}`");
+        let v = envelope(&out);
+        assert_eq!(v["ok"], json!(false), "`{bad}`: {v}");
+        assert_eq!(v["error"]["kind"], json!("usage"), "`{bad}`: {v}");
+    }
+    assert_eq!(w.dump(), before);
+}
+
+/// Audit note N-1 of slice A: the fold is `to_lowercase`, so a non-ASCII variant is a variant too.
+#[test]
+fn a_non_ascii_case_variant_is_not_a_new_pattern() {
+    let w = world();
+    let held = w.held(S_A, "held", &["caf\u{e9}/"]);
+    let before = w.dump();
+    let (kind, message) = refusal(&w.widen(&held, &["caf\u{e9}/", "CAF\u{c9}/"], Some(WHY)));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(
+        message.contains("CAF\u{c9}/") && message.contains("caf\u{e9}/"),
+        "{message}"
+    );
+    assert_eq!(w.dump(), before);
+}
+
+/// Audit note N-2 of slice A: the reason is trimmed before it is counted, so 500 characters with
+/// blanks around are kept as 500, and 501 characters with blanks around are refused.
+#[test]
+fn a_reason_of_500_characters_with_blanks_is_kept_and_501_is_refused() {
+    let w = world();
+    let held = w.held(S_A, "held", &["apps/bo/"]);
+    let five_hundred = "x".repeat(500);
+    let answer = result(&w.widen(
+        &held,
+        &["apps/bo/", "apps/web/"],
+        Some(&format!("  {five_hundred}  ")),
+    ));
+    assert_eq!(answer["reason"], json!(five_hundred), "{answer}");
+    let events = w.scope_events();
+    assert_eq!(events[0]["reason"], json!(five_hundred));
+
+    let before = w.dump();
+    let (kind, message) = refusal(&w.widen(
+        &held,
+        &["apps/bo/", "apps/web/", "docs/"],
+        Some(&format!("  {}  ", "x".repeat(501))),
+    ));
+    assert_eq!(kind, "invalid_input", "{message}");
+    assert!(message.contains("--reason"), "{message}");
+    assert_eq!(w.dump(), before, "a refusal writes nothing");
 }

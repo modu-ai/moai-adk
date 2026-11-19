@@ -195,7 +195,7 @@
       }
     },
     "references/internal/interview.md": {
-      "sha256": "730a2823c8597f081a91b15f69020d10783a2f5a93b19d9ad72e7d37d6a0f493",
+      "sha256": "a7b25e19cd1ad71c268619aa5cdd1eafc3a88f64675959e6d74972640c55970b",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-interview",
@@ -240,7 +240,7 @@
       }
     },
     "references/internal/sdd.md": {
-      "sha256": "096c75cc817ee8f728a6cb981a1bd69a6e376b0f558768c10ae552d053a2afe9",
+      "sha256": "db49cfb7811324f9663a1b0fbf9ebaa049715bbe535f1b368b2ea2eeed3c2833",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-sdd",
@@ -399,7 +399,7 @@
       }
     },
     "references/rule-history.md": {
-      "sha256": "0b360ebc30de79423501869101775c9d28fd47c8e7bb6701f24edd76cbef51fd",
+      "sha256": "6ae5ad009ca55baa62223c852289d5b927937c1b1ef297447c697f0fb1f4dbc4",
       "origin": {
         "kind": "design-spec",
         "template_id": "rule-prune-history",
@@ -417,7 +417,7 @@
       }
     },
     "workflows/mode-agent.md": {
-      "sha256": "99b59208f89285a6dd63302e59e1259f9b908db81fc5fcf12820faf0d0947a81",
+      "sha256": "7e4d35aa49b458f9bbfbb6562a2d1ebf80eb750f04eae960919b4661ff6861b2",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-agent",
@@ -426,7 +426,7 @@
       }
     },
     "workflows/mode-leader.md": {
-      "sha256": "7e336803446b0ade1a045668a3423be3a8064b4816f664094acb9a07753e48e3",
+      "sha256": "3674e7e80b0c5f1e62e3c84851012cc1b713919ed2caa2c75f9e51e70339236f",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-mode-leader",
@@ -453,7 +453,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "35568cbba88fc35643a51173ba91977ae64153f3f24d3a6e7e97fc8b06bb4506",
+      "sha256": "9c0790660cf159bd891bd9f4a1f2b05447787b5a25ba087df21e6e82672a77ef",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
@@ -507,7 +507,7 @@
       }
     },
     "workflows/verify.md": {
-      "sha256": "cbbedbd7245577e832d3f0f91efd27f2fb945fbc99f9245eb8d5735ff8b989c1",
+      "sha256": "c0f67307d53a3e0523af37101049ec0d53e1d43602b2515fe3d9802b6320e94a",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-verify",

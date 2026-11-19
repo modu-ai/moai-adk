@@ -1,7 +1,9 @@
 //! SPEC-20261119-launcher-reads-models (card C-47 slice 8, criteria 5 and 7): the launchers read the
 //! model and effort that `moai update` saved under `launcher.models.<tool>.<role>` in the user
-//! launcher settings file. Every case uses `--dry-run` with a synthetic HOME and a temporary git
-//! project; no host is started and no real settings file is read.
+//! launcher settings file. The `glm` host follows in SPEC-20261119-glm-launcher-settings-receipt
+//! (criterion 5, glm part): its saved id carries the `zai/` provider prefix of the shared table, and
+//! the host takes the bare z.ai model name. Every case uses `--dry-run` with a synthetic HOME and a
+//! temporary git project; no host is started and no real settings file is read.
 
 #![cfg(unix)]
 
@@ -165,6 +167,20 @@ fn cases() -> Vec<(
             "zai/glm-5.3",
             ["--thinking".into(), "low".into()],
         ),
+        (
+            "glm",
+            "-l",
+            "--model",
+            "glm-5.3-flash",
+            ["--effort".into(), "max".into()],
+        ),
+        (
+            "glm",
+            "-a",
+            "--model",
+            "glm-5.3",
+            ["--effort".into(), "low".into()],
+        ),
     ]
 }
 
@@ -201,6 +217,17 @@ fn explicit_flags_win_per_field() {
     let a = argv(&f.dry(&["codex", "-a", "--model", "gpt-6.1-sol"]));
     assert!(has_pair(&a, "-m", "gpt-6.1-sol"), "{a:?}");
     assert!(has_pair(&a, "-c", &effort_arg("low")), "{a:?}");
+    // glm leader: saved zai/glm-5.3-flash / max; an explicit alias stays as written (the zai/
+    // prefix strip applies to the saved value only, and the alias still reaches the z.ai model
+    // through the environment mapping).
+    let a = argv(&f.dry(&["glm", "-l", "--model", "opus"]));
+    assert!(has_pair(&a, "--model", "opus"), "{a:?}");
+    assert!(has_pair(&a, "--effort", "max"), "{a:?}");
+    // A prefixed explicit model also stays as written: the strip is a translation of the saved
+    // table's OMP form, not input handling (audit N2 — a pin with a prefix on the flag).
+    let a = argv(&f.dry(&["glm", "-l", "--model", "zai/glm-5.3"]));
+    assert!(has_pair(&a, "--model", "zai/glm-5.3"), "{a:?}");
+    assert!(has_pair(&a, "--effort", "max"), "{a:?}");
     // both given: nothing of the file is used and no saved-value note is added.
     let v = f.dry(&[
         "cc",
@@ -231,32 +258,32 @@ fn without_a_saved_choice_nothing_changes() {
         !a.iter().any(|x| x == "--model" || x == "--thinking"),
         "{a:?}"
     );
-    // A file that saves only codex: the claude and omp launches stay as they are.
-    let bare = (argv(&f.dry(&["cc", "-a"])), argv(&f.dry(&["omp", "-l"])));
+    // A file that saves only codex: the claude, omp and glm launches stay as they are (a glm role
+    // session without a saved glm entry keeps the alias default of `claude_argv`, D-4).
+    let bare = (
+        argv(&f.dry(&["cc", "-a"])),
+        argv(&f.dry(&["omp", "-l"])),
+        argv(&f.dry(&["glm", "-l"])),
+    );
     f.config(
         r#"{"launcher":{"models":{"codex":{"leader":{"model":"gpt-6.1-sol","effort":"high"}}}}}"#,
     );
     assert_eq!(argv(&f.dry(&["cc", "-a"])), bare.0);
     assert_eq!(argv(&f.dry(&["omp", "-l"])), bare.1);
+    assert_eq!(argv(&f.dry(&["glm", "-l"])), bare.2);
     // The codex agent has no saved entry either: nothing is passed for it.
     let a = argv(&f.dry(&["codex", "-a"]));
     assert!(!a.iter().any(|x| x == "-m" || x == "-c"), "{a:?}");
 }
 
-/// AC-3 (REQ-5, REQ-6): a roleless session and a `glm` session ignore the saved choices.
+/// AC-3 (REQ-4 of the glm SPEC): a roleless session — `glm` included — ignores the saved choices;
+/// the glm role session reads them now (SPEC-20261119-glm-launcher-settings-receipt).
 #[test]
-fn a_roleless_session_and_glm_ignore_saved_choices() {
+fn a_roleless_session_ignores_saved_choices() {
     let with = Fixture::new();
     with.config(SAVED);
     let without = Fixture::new();
-    let launches: [&[&str]; 6] = [
-        &["cc"],
-        &["codex"],
-        &["omp"],
-        &["glm"],
-        &["glm", "-l"],
-        &["glm", "-a"],
-    ];
+    let launches: [&[&str]; 4] = [&["cc"], &["codex"], &["omp"], &["glm"]];
     for args in launches {
         // Both homes launch in the same project: a note names the project folder.
         let launch = |home: &Path| {
@@ -298,9 +325,9 @@ fn a_rewritten_file_is_used_by_the_next_launch() {
     assert!(has_pair(&third, "--effort", "medium"), "{third:?}");
 }
 
-/// AC-5: a saved entry outside the support table refuses a role launch on claude, codex and omp
-/// (the entry of another tool counts: the whole file is checked), names key paths only, and does
-/// not refuse a roleless or a `glm` launch.
+/// AC-5: a saved entry outside the support table refuses a role launch on claude, codex, omp and
+/// glm (the entry of another tool counts: the whole file is checked), names key paths only, and
+/// does not refuse a roleless launch.
 #[test]
 fn an_unsupported_saved_entry_refuses_a_role_launch() {
     // The file and the key path the refusal has to name (audit N5 of the first head).
@@ -324,7 +351,7 @@ fn an_unsupported_saved_entry_refuses_a_role_launch() {
     for (bad, key_path) in bad_files {
         let f = Fixture::new();
         f.config(bad);
-        for args in [["cc", "-l"], ["codex", "-a"], ["omp", "-l"]] {
+        for args in [["cc", "-l"], ["codex", "-a"], ["omp", "-l"], ["glm", "-l"]] {
             let out = f.run(&args);
             assert_eq!(out.status.code(), Some(1), "{args:?} {bad}");
             assert!(out.stdout.is_empty(), "{args:?} {bad}");
@@ -332,7 +359,7 @@ fn an_unsupported_saved_entry_refuses_a_role_launch() {
             assert!(!err.contains("SECRET"), "{args:?} {bad}: {err}");
             assert!(err.contains(key_path), "{args:?} {bad}: {err}");
         }
-        for args in [vec!["cc"], vec!["glm", "-l"]] {
+        for args in [vec!["cc"], vec!["glm"]] {
             let out = f.run(&args);
             assert!(
                 out.status.success(),
@@ -407,6 +434,62 @@ fn a_saved_zai_model_reaches_an_omp_host_that_is_started() {
     );
     assert!(
         args.windows(2).any(|w| w == ["--thinking", "max"]),
+        "{args:?}"
+    );
+}
+
+/// AC-6 (REQ-7, the start path): a saved glm choice reaches the started host with the saved model
+/// and effort in its argv and the z.ai environment unchanged by the choice (endpoint, alias
+/// mapping, the glm token). A stub `claude` records the arguments and the environment it was
+/// started with.
+#[test]
+fn a_saved_glm_model_reaches_the_started_host() {
+    let f = Fixture::new();
+    f.config(SAVED);
+    let stub = f.bin.path().join("claude");
+    fs::write(
+        &stub,
+        "#!/bin/sh\nprintf '%s' \"${ANTHROPIC_AUTH_TOKEN-<unset>}\" > \"$MOAI_TEST_MARK/token\"\nprintf '%s' \"${ANTHROPIC_DEFAULT_OPUS_MODEL-<unset>}\" > \"$MOAI_TEST_MARK/opus\"\nprintf '%s' \"${ANTHROPIC_BASE_URL-<unset>}\" > \"$MOAI_TEST_MARK/base\"\nprintf '%s\\n' \"$@\" > \"$MOAI_TEST_MARK/args\"\nexit 0\n",
+    )
+    .unwrap();
+    fs::set_permissions(&stub, fs::Permissions::from_mode(0o755)).unwrap();
+    let out = Command::new(crate::common::MOAI_BIN)
+        .args(["glm", "-l"])
+        .current_dir(f.project.path())
+        .env("PATH", format!("{}:/usr/bin:/bin", f.bin.path().display()))
+        .env("HOME", f.home.path())
+        .env("USERPROFILE", f.home.path())
+        .env("MOAI_TEST_MARK", f.bin.path())
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .env_remove("ZAI_API_KEY")
+        .env("ANTHROPIC_AUTH_TOKEN", "moai-test-token-not-real")
+        .stdin(std::process::Stdio::null())
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    // The environment is the z.ai mapping of an unchanged launch: the alias still resolves to
+    // glm-5.3 even though the saved choice names the flash model, and the token is carried under
+    // its two names.
+    let seen_token = fs::read_to_string(f.bin.path().join("token")).unwrap();
+    assert_eq!(seen_token, "moai-test-token-not-real");
+    let seen_opus = fs::read_to_string(f.bin.path().join("opus")).unwrap();
+    assert_eq!(seen_opus, "glm-5.3");
+    let seen_base = fs::read_to_string(f.bin.path().join("base")).unwrap();
+    assert_eq!(seen_base, "https://api.z.ai/api/anthropic");
+    // The saved leader choice (zai/glm-5.3-flash / max) reaches the argv as the bare z.ai id.
+    let args = fs::read_to_string(f.bin.path().join("args")).unwrap();
+    let args: Vec<&str> = args.lines().collect();
+    assert!(
+        args.windows(2).any(|w| w == ["--model", "glm-5.3-flash"]),
+        "{args:?}"
+    );
+    assert!(
+        args.windows(2).any(|w| w == ["--effort", "max"]),
         "{args:?}"
     );
 }
