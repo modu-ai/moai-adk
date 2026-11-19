@@ -76,4 +76,5 @@ Measured at tip 061177768c: the only first-creation strings outside markers are 
 
 RED before the fix: `a_new_review_file_has_a_heading_in_the_instruction_language` failed with `# Review instructions` for `instruction_files` `ko` and `every_first_creation_text_follows_its_language` failed with `REVIEW.md in ko holds Review instructions outside its markers` (2 failed, 2 passed).
 Mutation 6 mutants, 6 killed: K1 heading always English, K2 always Korean, K3 request language only, K4 argument ignored at the call, K5 Korean wording changed, K6 code `ja` not falling back.
+Repair 2026-11-19 (bundle 3 verification): `tests/skeleton_language.rs` ran the binary with no HOME, so `home_isolation_scan` `no_new_test_runs_the_binary_without_a_home` failed; `cli()` now runs through `TempHome::command` (clean environment, temporary HOME). After it: `skeleton_language` 4 passed, `home_isolation_scan` 18 passed, `cargo fmt --check` 0, `cargo clippy --locked --offline --all-targets -- -D warnings` 0.
 Not run: the full local `cargo test`, `project-update-plan` itself (the plan rows of `agents-plan` are checked instead), Linux, Windows.

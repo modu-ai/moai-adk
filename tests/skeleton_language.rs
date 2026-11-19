@@ -3,16 +3,20 @@
 //! exists is never rewritten outside its block. Temporary projects only.
 
 mod common;
+use common::home::TempHome;
 use serde_json::{json, Value};
 use std::fs;
 use std::io::Write;
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use tempfile::TempDir;
 
+/// Runs the binary with a clean environment and a temporary HOME (`TempHome`), so no case reads
+/// the real HOME (`home_isolation_scan`).
 fn cli(args: &[&str], input: &Value) -> std::process::Output {
-    let mut child = Command::new(crate::common::MOAI_BIN)
-        .args(args)
+    let home = TempHome::new();
+    let mut child = home
+        .command(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
