@@ -9,6 +9,10 @@ import importlib.util
 import json
 import pathlib
 import re
+import shutil
+import subprocess
+import sys
+import tempfile
 import unittest
 
 import yaml
@@ -257,6 +261,8 @@ ALLOWED_WRITES = {
     ("moai-label-sync.yml", "apply"): {"issues"},
     # C-95: the audit-gate job posts the moai/audit commit status itself.
     ("audit-gate.yml", "audit-gate"): {"statuses"},
+    # C-97 (SPEC-20261119-check-guard): the label is the job's only write.
+    ("check-guard.yml", "check-guard"): {"issues"},
 }
 
 
@@ -266,11 +272,12 @@ class WorkflowTest(unittest.TestCase):
         # #2554 PR-A adds the candidate verification path: candidate.yml (the three supported
         # targets and the verdict) and candidate-target.yml (one target, called three times).
         # SPEC-20261117-audit-gate adds audit-gate.yml (the audit check from verdict comments).
+        # SPEC-20261119-check-guard (C-97) adds check-guard.yml (the base-branch judge);
         # SPEC-20261119-headver-release-workflow adds release.yml (number, tag name and build
         # check only; a person publishes).
         self.assertEqual([p.name for p in paths],
-                         ["audit-gate.yml", "candidate-target.yml", "candidate.yml", "ci.yml",
-                          "moai-label-sync.yml", "release.yml"])
+                         ["audit-gate.yml", "candidate-target.yml", "candidate.yml",
+                          "check-guard.yml", "ci.yml", "moai-label-sync.yml", "release.yml"])
         return [(p, yaml.safe_load(p.read_text(encoding="utf-8"))) for p in paths]
 
     def test_permissions_are_least_privilege(self):
@@ -382,7 +389,10 @@ class WorkflowTest(unittest.TestCase):
         newer merge replaces a macOS job that is still waiting; a running job is never
         cancelled, and every other target and event keeps a group of its own. Only a run's
         first attempt shares the group: a re-run of an older SHA must not replace the
-        current tip's waiting job, which the tip watch would read as red (#2739 audit F1)."""
+        current tip's waiting job, which the tip watch would read as red (#2739 audit F1).
+        C-20 (SPEC-20261119-ci-check-set-legs REQ-7): the group is per (macOS target, leg)
+        — the two legs of one target must never share a group, or one waits for the other
+        and the split stops being parallel."""
         flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
         conc = flow["jobs"]["check"]["concurrency"]
         self.assertIs(conc["cancel-in-progress"], False)
@@ -390,13 +400,14 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(group,
                          "${{ github.event_name == 'push' && github.run_attempt == '1' "
                          "&& startsWith(matrix.target, 'macos-') "
-                         "&& format('ci-push-{0}', matrix.target) "
-                         "|| format('ci-run-{0}-{1}-{2}', github.run_id, github.run_attempt, "
-                         "matrix.target) }}")
+                         "&& format('ci-push-{0}-{1}', matrix.target, matrix.leg) "
+                         "|| format('ci-run-{0}-{1}-{2}-{3}', github.run_id, github.run_attempt, "
+                         "matrix.target, matrix.leg) }}")
         self.assertIn("github.run_attempt == '1'", group.split("||")[0])
         _on_pr, after_merge = self.rc_ci_matrix(flow)
-        shared = sorted(e["target"] for e in after_merge if e["target"].startswith("macos-"))
-        self.assertEqual(shared, ["macos-arm64"])
+        shared = sorted((e["target"], e["leg"]) for e in after_merge
+                        if e["target"].startswith("macos-"))
+        self.assertEqual(shared, [("macos-arm64", "nextest"), ("macos-arm64", "rest")])
         # The aggregate and windows-build keep the run-level group only.
         for job in ("ci", "windows-build"):
             self.assertNotIn("concurrency", flow["jobs"][job])
@@ -432,6 +443,9 @@ class WorkflowTest(unittest.TestCase):
         cache = steps[names.index("Dependency cache")]
         self.assertRegex(cache["uses"], r"^Swatinem/rust-cache@[0-9a-f]{40}$")
         self.assertEqual(cache["with"]["save-if"], "${{ github.event_name == 'push' }}")
+        # C-20 repair N2: one cache entry per leg — the two leg jobs of one push build in
+        # one target folder each and must not overwrite each other's saved entry.
+        self.assertEqual(cache["with"]["key"], "leg-${{ matrix.leg }}")
         self.assertLess(names.index("Dependency cache"), names.index("Check set"))
         script = steps[names.index("Check set")]["run"]
         self.assertIn("cargo fetch --locked", script)
@@ -462,6 +476,64 @@ class WorkflowTest(unittest.TestCase):
         self.assertRegex(script, r"(?m)^\s*step heavy doctest bash -c 'RUST_MIN_STACK=8388608 "
                                  r"cargo test --offline --locked --doc ")
         self.assertNotRegex(script, r"cargo test --offline --locked 2>&1")
+
+    def test_rc_ci_runs_every_target_as_a_nextest_and_a_rest_leg(self):
+        """C-20 (SPEC-20261119-ci-check-set-legs, leader decision 2837): the Check set runs
+        as two parallel jobs per target — the nextest leg (fetch, test, doctest) and the
+        rest leg — because nextest and the python unittest were 94–97% of its wall time
+        (card note 2833; the split turns linux ≈15m→9m, macOS ≈36m→20m). The required check
+        names stay untouched (REQ-9): the aggregate keeps the name `ci`; the matrix jobs are
+        `ci / <target> / <leg>`, which the tip gate still reads by its `ci / ` prefix."""
+        flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
+        check = flow["jobs"]["check"]
+        self.assertEqual(check["name"], "ci / ${{ matrix.target }} / ${{ matrix.leg }}")
+        self.assertEqual(check["strategy"]["matrix"]["include"],
+                         "${{ fromJSON(needs.targets.outputs.matrix) }}")
+        on_pr, after_merge = self.rc_ci_matrix(flow)
+        # The matrix is the targets output times exactly the two legs (REQ-5); every entry
+        # still carries its target's runner and timeout.
+        self.assertEqual({(e["target"], e["leg"]) for e in on_pr},
+                         {("linux-x86_64", "nextest"), ("linux-x86_64", "rest")})
+        self.assertEqual({(e["target"], e["leg"]) for e in after_merge},
+                         {("linux-x86_64", "nextest"), ("linux-x86_64", "rest"),
+                          ("macos-arm64", "nextest"), ("macos-arm64", "rest")})
+        for entry in after_merge:
+            with self.subTest(entry=entry):
+                self.assertEqual(entry["runner"],
+                                 "macos-15" if entry["target"] == "macos-arm64" else "ubuntu-24.04")
+                self.assertEqual(entry["timeout"],
+                                 45 if entry["target"] == "macos-arm64" else 30)
+        steps = check["steps"]
+        names = [s.get("name") for s in steps]
+        # REQ-6: cargo-nextest is installed on the nextest leg only …
+        install = steps[names.index("cargo-nextest (pinned, sha256-checked)")]
+        self.assertEqual(install["if"],
+                         "${{ env.CI_SCOPE == 'full' && matrix.leg == 'nextest' }}")
+        # … and the leg reaches the script through env:, never an expression in run:.
+        check_set = steps[names.index("Check set")]
+        self.assertEqual(check_set["env"]["LOCAL_CHECK_LEG"], "${{ matrix.leg }}")
+        self.assertNotIn("matrix.leg", check_set["run"])
+        self.assertIn("bash tools/local_check.sh", check_set["run"])
+        # REQ-5: MOAI_BUILD_NUMBER stays a job-level env, so both legs carry it as before.
+        self.assertIn("MOAI_BUILD_NUMBER", check["env"])
+        # The rest leg's python unittest runs tests that execute target/debug/moai-cli; the
+        # single check set relied on nextest having linked it in the same job, so the rest
+        # leg builds it before the check set (clippy only checks, it links nothing).
+        build = steps[names.index("Build moai-cli (unittest input)")]
+        self.assertEqual(build["if"], "${{ env.CI_SCOPE == 'full' && matrix.leg == 'rest' }}")
+        self.assertEqual(build["run"], "cargo build --locked --bin moai-cli")
+        self.assertLess(names.index("Build moai-cli (unittest input)"), names.index("Check set"))
+        # Each leg's job summary keeps its own macOS-only rows (SPEC Risks): the Rust rows
+        # read ci-test.log on the nextest leg, the python rows read ci-unittest.log on the
+        # rest leg, and neither leg reports the other leg's cases.
+        run = check_set["run"]
+        first = run.index('[ "${LOCAL_CHECK_LEG:-}" != rest ]')
+        second = run.index('[ "${LOCAL_CHECK_LEG:-}" != nextest ]')
+        rust_rows = run.index("for t in e2e_never_writes_outside_temp_home")
+        python_rows = run.index("for t in e2e_host_claude_verdict_test")
+        self.assertLess(first, rust_rows)
+        self.assertLess(rust_rows, second)
+        self.assertLess(second, python_rows)
 
     def test_rc_ci_reports_the_rc_ci_check_on_prs_to_the_integration_branch(self):
         flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
@@ -732,6 +804,115 @@ class PreviousGenerationTest(unittest.TestCase):
         block = re.search(r"Removed paths:\n\n```text\n(.*?)\n```", readme, re.S)
         self.assertIsNotNone(block)
         self.assertEqual(sorted(block.group(1).splitlines()), sorted(self.removed()))
+
+
+CHECK_GUARD_WORKFLOW = ROOT / ".github/workflows/check-guard.yml"
+CHECKOUT_PIN = re.compile(r"uses: actions/checkout@[0-9a-f]{40}\b")
+
+
+class CheckGuardTest(unittest.TestCase):
+    """C-97 (SPEC-20261119-check-guard) REQ-11: the workflow judges from the base
+    checkout only, and the audit instructions read REVIEW.md/agents/audit.md from the
+    base ref. Structural, offline — the behaviour lives in tests/check_guard_test.py."""
+
+    def workflow(self):
+        text = CHECK_GUARD_WORKFLOW.read_text(encoding="utf-8")
+        data = yaml.safe_load(text)
+        # PyYAML reads the bare key `on:` as the boolean True (YAML 1.1).
+        trigger = data.get("on", data.get(True))
+        return text, data, trigger
+
+    def test_check_guard_workflow_judges_from_the_base_checkout(self):
+        text, data, trigger = self.workflow()
+        self.assertNotIn("pull_request_target:", text, "`pull_request` only (SPEC header)")
+        self.assertIn("pull_request", trigger)
+        self.assertEqual(trigger["pull_request"]["branches"], ["v2026.11.0"])
+        self.assertTrue(CHECKOUT_PIN.search(text), "the checkout action is pinned to a SHA")
+        steps = data["jobs"]["check-guard"]["steps"]
+        checkout = [s for s in steps if "uses" in s and s["uses"].startswith("actions/checkout@")]
+        self.assertEqual(len(checkout), 1)
+        self.assertEqual(
+            checkout[0]["with"]["ref"], "${{ github.event.pull_request.base.sha }}"
+        )
+        self.assertFalse(checkout[0]["with"]["persist-credentials"])
+        guard_runs = [s for s in steps if "python3 tools/check_guard.py" in s.get("run", "")]
+        self.assertEqual(len(guard_runs), 1, "the guard runs once, from the base checkout")
+        run = guard_runs[0]["run"]
+        self.assertIn("--list tools/protected_checks.json", run)
+        self.assertIn("GH_TOKEN: ${{ github.token }}", text)
+        self.assertNotIn("${{ secrets.", text, "the read-only token, never a secret")
+        job = data["jobs"]["check-guard"]
+        self.assertEqual(
+            job["permissions"],
+            {"contents": "read", "issues": "write", "pull-requests": "read"},
+        )
+
+    # gh refuses unknown `--json` field names before anything is judged (audit B1b:
+    # `changed_files` is not a gh field, `changedFiles` is), and the files step's `--jq`
+    # expression must yield the old name for each entry, not per page (audit B1a). These
+    # two pin the producer side; the offline run below pins the contract with
+    # tools/check_guard.py, whose unit tests inject the file list directly.
+    PR_VIEW_FIELDS = {"body", "changedFiles"}
+
+    def files_step_jq(self, text):
+        match = re.search(r"--jq '([^']+)'", text)
+        self.assertIsNotNone(match, "the files step reads the API through one single-quoted --jq")
+        return match.group(1)
+
+    def test_files_step_json_fields_are_valid_gh_names(self):
+        text = CHECK_GUARD_WORKFLOW.read_text(encoding="utf-8")
+        pairs = re.findall(r"--json ([\w,]+)\s+--jq '?(\.[\w.]+)", text)
+        self.assertTrue(pairs, "the workflow reads gh data through --json/--jq pairs")
+        for field, target in pairs:
+            self.assertIn(field, self.PR_VIEW_FIELDS, f"--json {field} is not a gh field name")
+            self.assertEqual(target.lstrip("."), field, "the --jq target reads back the field")
+
+    def test_files_step_jq_yields_old_and_new_names_and_the_guard_judges_them(self):
+        text = CHECK_GUARD_WORKFLOW.read_text(encoding="utf-8")
+        expression = self.files_step_jq(text)
+        if shutil.which("jq") is None:
+            self.skipTest("jq is not installed; gh runs this expression with its own jq")
+        page = json.dumps([
+            {"filename": "notes/guide.md"},
+            {"filename": "notes/renamed.md", "previous_filename": "notes/old.md"},
+            {"filename": ".github/workflows/check-guard.yml"},
+        ])
+        jq = subprocess.run(["jq", "-r", expression], input=page, capture_output=True, text=True)
+        self.assertEqual(jq.returncode, 0, jq.stderr)
+        for expected in ("notes/guide.md", "notes/renamed.md", "notes/old.md",
+                         ".github/workflows/check-guard.yml"):
+            self.assertIn(expected, jq.stdout.splitlines(),
+                          f"the files step must yield {expected} from its jq expression")
+        # The consumer side, offline (no --label, so check_guard.py calls no gh): what
+        # the jq step prints is exactly what tools/check_guard.py reads, one path per
+        # line, and a protected path in the page is judged (fails without a tier-2 body).
+        with tempfile.TemporaryDirectory() as tmp:
+            files = pathlib.Path(tmp) / "files.txt"
+            files.write_text(jq.stdout, encoding="utf-8")
+            body = pathlib.Path(tmp) / "body.md"
+            body.write_text("docs only\n", encoding="utf-8")
+            guard = subprocess.run(
+                [sys.executable, str(ROOT / "tools" / "check_guard.py"),
+                 "--list", str(ROOT / "tools" / "protected_checks.json"),
+                 "--files", str(files), "--body", str(body)],
+                capture_output=True, text=True)
+        self.assertEqual(guard.returncode, 1, guard.stdout + guard.stderr)
+        verdict = json.loads(guard.stdout)
+        self.assertEqual(verdict["verdict"], "fail")
+        self.assertEqual(verdict["protected_paths"], [".github/workflows/check-guard.yml"])
+
+    def test_check_guard_reads_files_and_body_from_the_api(self):
+        text = CHECK_GUARD_WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("--paginate", text)
+        self.assertIn("previous_filename", text, "rename old names are judged too")
+        self.assertIn("gh pr view", text)
+        self.assertIn("changedFiles", text, "a truncated files list fails safe")
+
+    def test_audit_instructions_read_the_review_rules_from_the_base_ref(self):
+        audit = (ROOT / "agents" / "audit.md").read_text(encoding="utf-8")
+        self.assertIn("git show <base-sha>:REVIEW.md", audit)
+        self.assertIn("git show <base-sha>:agents/audit.md", audit)
+        self.assertIn("judged by the base text", audit)
 
 
 if __name__ == "__main__":

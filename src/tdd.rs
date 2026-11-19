@@ -19,6 +19,7 @@
 //!   nothing.
 
 use crate::run::{red_confirmed, ResolvedMethod};
+use crate::spec_take::spec_branch::{self, Resolved};
 use crate::verify::{self, CheckResult, CheckRun};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -357,7 +358,8 @@ fn git(top: &Path, args: &[&str]) -> Result<String> {
     Ok(String::from_utf8_lossy(&out.stdout).into_owned())
 }
 
-/// The work tree, its git folder and the SPEC id of its branch `spec/<yyyymmdd>-<slug>`.
+/// The work tree, its git folder and the SPEC id of its branch `spec/<slug>-<yyyymmdd>` (or the
+/// older `spec/<yyyymmdd>-<slug>`, with or without a repair suffix; SPEC-20261119-spec-branch-name-first).
 fn locate(project: &Path) -> Result<(PathBuf, PathBuf, String)> {
     let top = work_tree_top(project).ok_or("not inside a git work tree")?;
     let gd = git_dir(&top).ok_or("the work tree's git folder cannot be read")?;
@@ -366,18 +368,25 @@ fn locate(project: &Path) -> Result<(PathBuf, PathBuf, String)> {
         .trim()
         .strip_prefix("ref: refs/heads/")
         .ok_or("HEAD is detached; a TDD cycle runs on a SPEC work branch")?;
-    let spec = spec_of_branch(branch)
-        .ok_or("the branch is not a SPEC work branch spec/<yyyymmdd>-<slug>")?;
+    let specs = top.join(".moai").join("specs");
+    let spec = match spec_branch::resolve(branch, Some(&specs)) {
+        Resolved::One(id) => id,
+        Resolved::NotSpec => {
+            return Err(
+                "the branch is not a SPEC work branch spec/<slug>-<yyyymmdd> (or spec/<yyyymmdd>-<slug>)"
+                    .into(),
+            )
+        }
+        // The ids are built from `a-z`, `0-9` and `-` only, so they are safe to show.
+        Resolved::Ambiguous(ids) => {
+            return Err(format!(
+                "the branch name reads as two SPEC ids ({}); keep the SPEC folder of only the \
+                 intended one under .moai/specs/, or work on a branch name that reads one way",
+                ids.join(", ")
+            ))
+        }
+    };
     Ok((top, gd, spec))
-}
-
-/// `spec/<yyyymmdd>-<slug>` → `SPEC-<yyyymmdd>-<slug>`.
-fn spec_of_branch(branch: &str) -> Option<String> {
-    let (date, slug) = branch.strip_prefix("spec/")?.split_once('-')?;
-    let ok = date.len() == 8
-        && date.bytes().all(|b| b.is_ascii_digit())
-        && crate::spec_doc::valid_slug(slug);
-    ok.then(|| format!("SPEC-{date}-{slug}"))
 }
 
 /// Whether the last paragraph of a commit message holds the line `Moai-Phase: red`.

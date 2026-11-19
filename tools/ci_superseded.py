@@ -8,13 +8,19 @@ concurrency group across runs, so a newer merge replaces a macOS job that is sti
 `cancelled`, and the `ci` aggregate used to fail although no test failed: 40 of 80 push runs
 (full survey 2026-11-17, I6). The newer run carries that merge's macOS result.
 
+C-20 (SPEC-20261119-ci-check-set-legs REQ-8): the check jobs are `ci / <target> / <leg>`, and a
+waiting macOS job's group is per (target, leg), so the target is the first ` / `-separated
+segment after `ci / ` and the wait-replacement is the concurrency message of the job's own
+`ci-push-<target>-<leg>` group. This script ships in the same commit as the workflow that
+names the legs (SPEC decision D6), so a job of this run never has the pre-split shape.
+
 The `ci-verdict` job runs this script only when the matrix result is `cancelled` on a push. It
 prints a Markdown summary on stdout and appends one line to $GITHUB_OUTPUT:
 
-  state=superseded  every `ci / <target>` job passed, except at least one macOS job that was
-                    cancelled before it started (no runner, no step) with exactly GitHub's
-                    concurrency message for its own group, `ci-push-<target>`;
-  state=fail        anything else, including a failed target, a timeout, a manual cancel, a
+  state=superseded  every `ci / <target> / <leg>` job passed, except at least one macOS leg job
+                    that was cancelled before it started (no runner, no step) with exactly
+                    GitHub's concurrency message for its own group, `ci-push-<target>-<leg>`;
+  state=fail        anything else, including a failed leg, a timeout, a manual cancel, a
                     cancelled job that started, another event, or input it cannot read.
 
 The `ci` job is skipped on `superseded` (a neutral check) and runs, and fails, otherwise.
@@ -32,19 +38,27 @@ import subprocess
 import sys
 
 TARGET_PREFIX = "ci / "
-SUPERSEDED = "Canceling since a higher priority waiting request for ci-push-{target} exists"
+SUPERSEDED = "Canceling since a higher priority waiting request for ci-push-{target}-{leg} exists"
 
 
-def superseded(job, target):
-    """A macOS job replaced while waiting: cancelled, never started, and cancelled with the
-    concurrency message of its own push group."""
+def parse_target_leg(name):
+    """`ci / <target> / <leg>`: the target is the first ` / `-separated segment after the
+    prefix (the tip gate reads `ci / …` names by the same prefix, src/gate.rs); the leg is
+    the second, empty for a name without one (the pre-split shape, never this run's)."""
+    target, _, leg = name[len(TARGET_PREFIX):].partition(" / ")
+    return target, leg
+
+
+def superseded(job, target, leg):
+    """A macOS leg job replaced while waiting: cancelled, never started, and cancelled with
+    the concurrency message of its own push group."""
     return (
         target.startswith("macos-")
         and job.get("conclusion") == "cancelled"
         and job.get("steps") == []
         and job.get("runner_name") in ("", None)
         and isinstance(job.get("annotations"), list)
-        and SUPERSEDED.format(target=target) in job["annotations"]
+        and SUPERSEDED.format(target=target, leg=leg) in job["annotations"]
     )
 
 
@@ -64,10 +78,10 @@ def decide(event, check_result, jobs):
                 return "fail", ["a job of the run could not be read"]
             continue
         targets += 1
-        target = name[len(TARGET_PREFIX):]
+        target, leg = parse_target_leg(name)
         if job.get("conclusion") == "success":
             reasons.append(f"`{name}`: success")
-        elif superseded(job, target):
+        elif superseded(job, target, leg):
             replaced += 1
             reasons.append(f"`{name}`: replaced while waiting by a newer merge (its result comes from that run)")
         else:

@@ -231,7 +231,10 @@ pub fn annotate(plan: &mut Value, binary_state: &str) {
 ///   hit inside the project) it is written and reported, as `hooks-apply` always did.
 /// - A plan that writes nothing (`unchanged`, `conflict`) is never gated.
 pub fn check(plan: &Value, binary_state: &str) -> Result<(), String> {
-    if !matches!(plan["action"].as_str(), Some("create" | "update")) {
+    if !matches!(
+        plan["action"].as_str(),
+        Some("create" | "update" | "replace")
+    ) {
         return Ok(());
     }
     if plan["binary_migration"]["state"] == json!("rewrite") {
@@ -293,7 +296,10 @@ pub fn gate_plan(
     home: Option<&Path>,
     path_env: &str,
 ) -> crate::Result<()> {
-    if !matches!(plan["action"].as_str(), Some("create" | "update")) {
+    if !matches!(
+        plan["action"].as_str(),
+        Some("create" | "update" | "replace")
+    ) {
         return Ok(());
     }
     let state = hooks::moai_state(project, path_env, home);

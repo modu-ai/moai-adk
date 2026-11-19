@@ -1,5 +1,5 @@
 //! SDD-7 (SPEC-20261118-spec-take): `moai spec take <SPEC-ID>` starts work on a SPEC — checks
-//! it, creates or switches to its branch `spec/<yyyymmdd>-<slug>`, links a card on request and
+//! it, creates or switches to its branch `spec/<slug>-<yyyymmdd>`, links a card on request and
 //! prints the next commands. Push and draft PR run only when asked. Everything happens in a
 //! temporary HOME, a temporary repository, a local bare repository as the remote and a fake
 //! `gh`: never the network, the real HOME or the real ledger.
@@ -13,7 +13,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Output;
 
-const BRANCH: &str = "spec/20261117-login-fix";
+const BRANCH: &str = "spec/login-fix-20261117";
 
 fn envelope(out: &Output) -> Value {
     serde_json::from_slice(&out.stdout).unwrap_or_else(|_| {
@@ -492,7 +492,7 @@ fn an_option_shaped_base_or_remote_is_refused_and_writes_nothing() {
         assert!(!planted.exists(), "{args:?}");
     }
     // A recorded base that no longer names a commit is refused as well.
-    w.git(&["config", "branch.spec/20261117-login-fix.moai-base", "gone"]);
+    w.git(&["config", "branch.spec/login-fix-20261117.moai-base", "gone"]);
     let before = everything(&w);
     let m = refused(&w.take(&id, &[], &[]));
     assert!(m.contains("gone"), "{m}");
@@ -518,7 +518,7 @@ fn a_new_base_is_recorded_and_counts_as_a_write() {
     assert_eq!(moved["base_recorded"], true, "{moved}");
     assert_eq!(moved["writes"], true, "{moved}");
     assert_eq!(
-        w.git(&["config", "branch.spec/20261117-login-fix.moai-base"]),
+        w.git(&["config", "branch.spec/login-fix-20261117.moai-base"]),
         "dev"
     );
     // Later takes use the recorded base for the pull request.

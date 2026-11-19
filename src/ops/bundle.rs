@@ -16,6 +16,9 @@ use std::path::PathBuf;
 /// `m-flow/bundle-<date>-<n>` and a worktree under `<HOME>/.moai/worktrees/`, merges the heads one
 /// merge commit each, drops a head that conflicts and names it; it never moves or deletes an
 /// existing branch or worktree.
+/// `verify` is the one action that runs commands: `Runs commands.` It runs the check list in the
+/// worktree of a bundle branch under one heavy slot and writes one new folder under the
+/// worktree's `target/` (or `--out`) with `run.json`, the run record `body` reads.
 /// `check` and `body` run `git merge-tree --write-tree` (git 2.38 or newer), which leaves
 /// unreferenced tree and blob objects in the object store that `git gc` removes; no ref moves.
 #[derive(clap::Args)]
@@ -142,6 +145,65 @@ enum Action {
         #[arg(long, default_value = "origin/v2026.11.0")]
         tip: String,
     },
+    /// Runs commands. Run the check list on a bundle branch
+    ///
+    /// Runs commands. Writes one new folder under the worktree's `target/` (or `--out`). Runs
+    /// every command of the check list (build, the whole `--lib`, the home-isolation and
+    /// product CLI tests, the tests the branch adds or changes and the `--test` targets of the
+    /// SPECs it changes, fmt, clippy, `trailer-check`, `spec check --all`, `spec check <SPEC>
+    /// --closure` per SPEC, and the Python unittest discovery) in the worktree that has BRANCH
+    /// checked out, under one heavy slot (`heavy-slot-acquire`), and goes on after a failed
+    /// command. Writes `run.json` (`commands`, `not_run`, `self_audit`: the record `bundle body
+    /// --run` reads) and one log per command in the folder; a command that cannot run is in
+    /// `not_run` with its reason, a failure names the heads whose diff touches a file its output
+    /// names, or `unattributed`. HEADS are `C-<n>` or `C-<n>=<40 hex>` as for `build`. It
+    /// refuses, running and writing nothing, when the branch has no worktree, the worktree has
+    /// uncommitted changes to tracked files, a head is in neither the tip nor the branch, the
+    /// folder exists, or `--self-audit` is not a JSON object. Never fetches, pushes or opens a
+    /// pull request.
+    Verify {
+        /// `C-<n>` or `C-<n>=<40 hex>`: the heads the branch was built from.
+        #[arg(required = true)]
+        heads: Vec<String>,
+        /// The bundle branch `build` made.
+        #[arg(long)]
+        branch: String,
+        /// A new folder for `run.json` and the logs (default `<worktree>/target/bundle-verify/<sha>`).
+        #[arg(long)]
+        out: Option<PathBuf>,
+        /// A JSON object with the six Self-Audit lines (`plan`, `red`, `mutation`, `clone`,
+        /// `host`, `receipt`), copied into `run.json`.
+        #[arg(long)]
+        self_audit: Option<PathBuf>,
+        /// The built `moai-cli` for the trailer, spec and closure checks (default
+        /// `<CARGO_TARGET_DIR or the worktree's target>/debug/moai-cli`).
+        #[arg(long)]
+        moai_cli: Option<PathBuf>,
+        /// The Python for the unittest discovery.
+        #[arg(long, default_value = "python3")]
+        python: String,
+        /// The heavy-slot folder (default the machine's own).
+        #[arg(long)]
+        slot_dir: Option<PathBuf>,
+        /// Heavy slots: only a value below the machine's limit takes effect.
+        #[arg(long)]
+        max: Option<u32>,
+        /// Free disk in GB the slot needs: only a value above the machine's limit takes effect.
+        #[arg(long)]
+        min_free_gb: Option<u32>,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+        /// The repository to read.
+        #[arg(long, default_value = ".")]
+        dir: PathBuf,
+        /// The branch bundles are merged into.
+        #[arg(long, default_value = "origin/v2026.11.0")]
+        tip: String,
+    },
 }
 
 pub const OPERATION: &str = "bundle";
@@ -196,6 +258,37 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             &tip,
             &heads,
             date.as_deref(),
+        ),
+        Action::Verify {
+            heads,
+            branch,
+            out,
+            self_audit,
+            moai_cli,
+            python,
+            slot_dir,
+            max,
+            min_free_gb,
+            project,
+            home,
+            dir,
+            tip,
+        } => b::verify::verify(
+            &project,
+            &resolve_home(home)?,
+            &dir,
+            &tip,
+            &heads,
+            &b::verify::Options {
+                branch: &branch,
+                out: out.as_deref(),
+                self_audit: self_audit.as_deref(),
+                moai_cli: moai_cli.as_deref(),
+                python: &python,
+                slot_dir: slot_dir.as_deref(),
+                max,
+                min_free_gb,
+            },
         ),
     }
 }

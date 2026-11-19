@@ -1,7 +1,10 @@
 # RC repository check set (00-E #2020; OS matrix rc.2 E2 #2194). The targets are the three
 # supported platforms (user decision 2026-11-17, SPEC-20261117-supported-platforms, replacing
 # the four Unix targets of decision 01:1x(11-09)): Linux x86_64 and macOS arm64 run the check
-# set below, Windows x86_64 is windows-build. User decision U10
+# set below, Windows x86_64 is windows-build. C-20 (SPEC-20261119-ci-check-set-legs) splits
+# that set into two parallel legs per target (`ci / <target> / nextest` and `… / rest`,
+# LOCAL_CHECK_LEG in tools/local_check.sh), because nextest and the python unittest were
+# 94–97% of its wall time; the required check names are untouched. User decision U10
 # (#2554, #1975 comment 6827126248) moves the timing, not the content: a PR to v2026.11.0
 # runs linux-x86_64 only — until C-76 (SPEC-20261119-macos-on-pr): a PR whose merged diff
 # touches a platform-sensitive path also runs macos-arm64 before merge; the push that merges
@@ -63,8 +66,16 @@ jobs:
         shell: bash
         run: |
           set -u
-          full='[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30},{"target":"macos-arm64","runner":"macos-15","timeout":45}]'
-          linux='[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30}]'
+          # C-20 (SPEC-20261119-ci-check-set-legs): every target entry is multiplied by the
+          # two legs of the check set, so the check job runs the set as two parallel jobs
+          # per target — `ci / <target> / nextest` (fetch, test, doctest) and
+          # `ci / <target> / rest` (fetch, clippy, fmt, fmt-ops, unittest, diff-check).
+          # nextest and the python unittest were 94–97% of the check set's wall time (card
+          # note 2833); the split turns linux ≈15m→9m, macOS ≈36m→20m. Runner and timeout
+          # stay per target: the nextest leg is each target's longest pole, and a slow day
+          # must not turn into a timeout failure.
+          full='[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"nextest"},{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"rest"},{"target":"macos-arm64","runner":"macos-15","timeout":45,"leg":"nextest"},{"target":"macos-arm64","runner":"macos-15","timeout":45,"leg":"rest"}]'
+          linux='[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"nextest"},{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"rest"}]'
           matrix="$full"
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             base="${{ github.event.pull_request.base.sha }}"
@@ -85,7 +96,7 @@ jobs:
           echo "matrix: $matrix"
 
   check:
-    name: ci / ${{ matrix.target }}
+    name: ci / ${{ matrix.target }} / ${{ matrix.leg }}
     needs: [targets]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: ${{ matrix.timeout }}
@@ -101,14 +112,16 @@ jobs:
     # Only a run's first attempt shares the group: a re-run of an older SHA (the same-SHA
     # re-run that tells a flaky failure apart) would otherwise queue in it and replace the
     # current tip's waiting job, and the tip watch counts that cancel as red (#2739 audit
-    # F1, src/flow.rs `tip_ci_judgment`). Every other job gets a group of its own (run id +
-    # target), so nothing else changes.
+    # F1, src/flow.rs `tip_ci_judgment`). C-20 (SPEC-20261119-ci-check-set-legs REQ-7):
+    # the group is per (macOS target, leg) — the two legs of one target sharing a group
+    # would serialize the split inside its own run. Every other job gets a group of its
+    # own (run id + attempt + target + leg), so nothing else changes.
     concurrency:
       group: >-
         ${{ github.event_name == 'push' && github.run_attempt == '1'
         && startsWith(matrix.target, 'macos-')
-        && format('ci-push-{0}', matrix.target)
-        || format('ci-run-{0}-{1}-{2}', github.run_id, github.run_attempt, matrix.target) }}
+        && format('ci-push-{0}-{1}', matrix.target, matrix.leg)
+        || format('ci-run-{0}-{1}-{2}-{3}', github.run_id, github.run_attempt, matrix.target, matrix.leg) }}
       cancel-in-progress: false
     strategy:
       # Every target is a measurement: one failure must not cancel the others.
@@ -116,7 +129,8 @@ jobs:
       # C-76: the `targets` job above decides the list — linux-x86_64 only for a
       # PR with no platform-sensitive path (#2554 U10), linux-x86_64 and
       # macos-arm64 for a platform-sensitive PR and for every push and
-      # workflow_dispatch (SPEC-20261117-supported-platforms).
+      # workflow_dispatch (SPEC-20261117-supported-platforms). C-20: each entry also
+      # names its leg of the split check set (SPEC-20261119-ci-check-set-legs).
       matrix:
         include: ${{ fromJSON(needs.targets.outputs.matrix) }}
     env:
@@ -209,14 +223,20 @@ jobs:
         if: ${{ env.CI_SCOPE == 'full' }}
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
+          # Leader repair N2 (2026-11-19): one entry per leg. The legs are separate jobs
+          # with one target folder each, so a shared key would have the two leg jobs of a
+          # push overwrite each other's saved entry; the prefix keeps the entries apart.
+          key: leg-${{ matrix.leg }}
           save-if: ${{ github.event_name == 'push' }}
       # #2554 2-1 (leader 6827616388): `cargo test` runs the ~120 test binaries one after
       # another (11-25 min of run time per target); cargo-nextest runs them in parallel with
       # the same tests. Pinned release assets of nextest-rs/nextest `cargo-nextest-0.9.151`,
       # checked against the sha256 recorded here (equal to the release's .sha256 files, read
       # 2026-11-12). A download or checksum failure fails the job; there is no fallback.
+      # C-20 (SPEC-20261119-ci-check-set-legs REQ-6): the nextest leg only — the rest leg
+      # runs no nextest step, so it downloads nothing.
       - name: cargo-nextest (pinned, sha256-checked)
-        if: ${{ env.CI_SCOPE == 'full' }}
+        if: ${{ env.CI_SCOPE == 'full' && matrix.leg == 'nextest' }}
         shell: bash
         run: |
           version=0.9.151
@@ -236,8 +256,24 @@ jobs:
           mkdir -p "$HOME/.cargo/bin"
           tar xzf "$file" -C "$HOME/.cargo/bin" cargo-nextest
           cargo nextest --version
+      # C-20 (SPEC-20261119-ci-check-set-legs): the rest leg's python unittest runs tests
+      # that execute ${CARGO_TARGET_DIR:-target}/debug/moai-cli (tests/self_audit_run.py,
+      # tests/heavy_check_slot_test.py and friends). The single check set relied on nextest
+      # having linked that binary earlier in the same job; the rest leg never links one
+      # (clippy checks, it does not codegen), so build it here — without `--offline`,
+      # because on a cold dependency cache (a PR whose Cargo.lock moved past the base's
+      # cache entry) the runner has fetched nothing yet. The nextest leg needs no build:
+      # its own steps link every test binary.
+      - name: Build moai-cli (unittest input)
+        if: ${{ env.CI_SCOPE == 'full' && matrix.leg == 'rest' }}
+        shell: bash
+        run: cargo build --locked --bin moai-cli
       - name: Check set
         shell: bash
+        env:
+          # C-20 (SPEC-20261119-ci-check-set-legs REQ-6): the leg reaches the script
+          # through env:, never an expression inside run:.
+          LOCAL_CHECK_LEG: ${{ matrix.leg }}
         run: |
           set -u
           # Docs-only light CI (#2527, design comment 6822993459): heavy steps are skipped
@@ -246,7 +282,7 @@ jobs:
           # docs-only takes the full path below, unchanged.
           if [ "$CI_SCOPE" = "docs-only" ]; then
             {
-              echo "## ci / ${{ matrix.target }}"
+              echo "## ci / ${{ matrix.target }} / ${LOCAL_CHECK_LEG}"
               echo
               echo "- runner: \`${{ matrix.runner }}\` · \`$(uname -sm)\` · scope: \`docs-only\`"
               echo
@@ -258,7 +294,7 @@ jobs:
           summary="$GITHUB_STEP_SUMMARY"
           failed=0
           {
-            echo "## ci / ${{ matrix.target }}"
+            echo "## ci / ${{ matrix.target }} / ${LOCAL_CHECK_LEG}"
             echo
             echo "- runner: \`${{ matrix.runner }}\` · \`$(uname -sm)\` · rust host \`$(rustc -vV | sed -n 's/^host: //p')\`"
             echo "- tree: \`${{ github.event.pull_request.head.sha || github.sha }}\` (head) · merge ref \`$GITHUB_SHA\`"
@@ -286,6 +322,9 @@ jobs:
           # macOS-only cases (#2194): cfg(target_os = "macos") Rust tests are compiled out on
           # Linux and darwin-gated Python tests are skipped; report per target which of them
           # ran, so a Linux pass is never read as a macOS-only measurement (AC-08C-7).
+          # C-20 (SPEC-20261119-ci-check-set-legs): each leg reports only its own cases —
+          # the Rust rows read the nextest leg's ci-test.log, the python rows the rest leg's
+          # ci-unittest.log; a leg without that log never reports the other leg's cases.
           # The step shell is `bash -eo pipefail`: a grep with no match exits 1, so every
           # grep below ends in `|| true` (without it the Linux targets failed after a green
           # check set, CI run 42618040618).
@@ -293,18 +332,22 @@ jobs:
             echo
             echo "### macOS-only cases"
             echo
-            echo "| case | gate | outcome on this target |"
+            echo "| case | gate | outcome on this leg |"
             echo "| --- | --- | --- |"
-            for t in e2e_never_writes_outside_temp_home privacy_06_operations_need_no_network; do
-              # nextest line: `PASS [   0.282s] ( 1/25) moai-cli::<binary> <test>`; report its status word.
-              line=$({ grep -E "^ *[A-Z-]+ +\[[^]]*\] +(\([^)]*\) +)?[^ ]+ ${t}\$" ci-test.log || true; } | head -n 1 | awk '{print $1}')
-              echo "| \`${t}\` | \`#[cfg(target_os = \"macos\")]\` | ${line:-not compiled on this target} |"
-            done
-            for t in e2e_host_claude_verdict_test e2e_receipt_not_run_test; do
-              n=$(grep -cE "\(${t}\.[A-Za-z]+\.[a-z_0-9]+\) \.\.\. skipped" ci-unittest.log || true)
-              r=$(grep -cE "\(${t}\.[A-Za-z]+\.[a-z_0-9]+\) \.\.\. ok" ci-unittest.log || true)
-              echo "| \`${t}\` | \`skipUnless(sys.platform == \"darwin\" …)\` | ok ${r} · skipped ${n} |"
-            done
+            if [ "${LOCAL_CHECK_LEG:-}" != rest ]; then
+              for t in e2e_never_writes_outside_temp_home privacy_06_operations_need_no_network; do
+                # nextest line: `PASS [   0.282s] ( 1/25) moai-cli::<binary> <test>`; report its status word.
+                line=$({ grep -E "^ *[A-Z-]+ +\[[^]]*\] +(\([^)]*\) +)?[^ ]+ ${t}\$" ci-test.log || true; } | head -n 1 | awk '{print $1}')
+                echo "| \`${t}\` | \`#[cfg(target_os = \"macos\")]\` | ${line:-not compiled on this target} |"
+              done
+            fi
+            if [ "${LOCAL_CHECK_LEG:-}" != nextest ]; then
+              for t in e2e_host_claude_verdict_test e2e_receipt_not_run_test; do
+                n=$(grep -cE "\(${t}\.[A-Za-z]+\.[a-z_0-9]+\) \.\.\. skipped" ci-unittest.log || true)
+                r=$(grep -cE "\(${t}\.[A-Za-z]+\.[a-z_0-9]+\) \.\.\. ok" ci-unittest.log || true)
+                echo "| \`${t}\` | \`skipUnless(sys.platform == \"darwin\" …)\` | ok ${r} · skipped ${n} |"
+              done
+            fi
           } >> "$summary"
           exit "$failed"
       # C-101 (SPEC-20261119-ci-smoke-step): the smoke harness the lanes and auditors share

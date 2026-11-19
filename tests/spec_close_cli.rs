@@ -201,12 +201,26 @@ impl World {
 
     /// The SPEC written and committed on its branch with its trailer, then merged into `main`.
     fn merged(&self, approved: bool, result: &str) {
-        self.git(&["switch", "-q", "-c", BRANCH]);
+        self.merged_on(BRANCH, approved, result);
+    }
+
+    /// As [`World::merged`], on the branch named `branch` (either form of the SPEC's branch).
+    fn merged_on(&self, branch: &str, approved: bool, result: &str) {
+        self.git(&["switch", "-q", "-c", branch]);
         self.write_spec("login-fix", approved, result);
         self.git(&["add", "-A"]);
         self.commit(&format!("docs(spec): login fix\n\nMoai-Spec: {ID}"));
         self.git(&["switch", "-q", "main"]);
-        self.git_as(&["merge", "-q", "--no-ff", "-m", "Merge login fix", BRANCH]);
+        self.git_as(&["merge", "-q", "--no-ff", "-m", "Merge login fix", branch]);
+    }
+
+    /// More work on `branch`, not merged into `main`.
+    fn unmerged_work_on(&self, branch: &str) {
+        self.git(&["switch", "-q", branch]);
+        fs::write(self.project.join("b.txt"), "b\n").unwrap();
+        self.git(&["add", "-A"]);
+        self.commit(&format!("more work\n\nMoai-Spec: {ID}"));
+        self.git(&["switch", "-q", "main"]);
     }
 
     /// What the host says about pull request `number` from now on.
@@ -300,6 +314,46 @@ fn close_completes_a_merged_spec_and_prints_the_commit() {
     let before = w.everything();
     let m = refused(&w.close(ID, &[]));
     assert!(m.contains("completed"), "{m}");
+    assert_eq!(w.everything(), before);
+}
+
+const NAME_FIRST: &str = "spec/login-fix-20261117";
+
+/// Audit of C-112 (note 3228, N4): `spec close` reads the SPEC's name-first branch like the old
+/// one. A merged name-first branch closes the SPEC and is named as the merged branch; one with
+/// work that is not merged refuses.
+#[test]
+fn close_reads_a_name_first_branch() {
+    let w = World::new();
+    w.merged_on(NAME_FIRST, true, MET);
+    let r = ok(&w.close(ID, &[]));
+    assert_eq!(r["merged"]["branch"], json!(NAME_FIRST), "{r}");
+    assert_eq!(r["status"], "completed");
+
+    let w = World::new();
+    w.merged_on(NAME_FIRST, true, MET);
+    w.unmerged_work_on(NAME_FIRST);
+    let before = w.everything();
+    let m = refused(&w.close(ID, &[]));
+    assert!(m.contains("not merged") && m.contains(NAME_FIRST), "{m}");
+    assert_eq!(w.everything(), before);
+}
+
+/// Audit of C-112 (note 3228, N2): a SPEC with a branch in both forms is refused by `spec close`
+/// as by `spec take`, even when the name-first branch is merged: the old-form branch may hold
+/// work that never merged, and `close` would not look at it.
+#[test]
+fn close_refuses_a_spec_with_a_branch_in_both_forms() {
+    let w = World::new();
+    w.merged_on(NAME_FIRST, true, MET);
+    w.git(&["branch", BRANCH]);
+    w.unmerged_work_on(BRANCH);
+    let before = w.everything();
+    let m = refused(&w.close(ID, &[]));
+    assert!(
+        m.contains("both forms") && m.contains(NAME_FIRST) && m.contains(BRANCH),
+        "{m}"
+    );
     assert_eq!(w.everything(), before);
 }
 

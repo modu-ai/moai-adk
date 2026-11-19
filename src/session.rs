@@ -826,10 +826,79 @@ fn omp_key(r: &SessionRequest) -> Result<Option<(String, KeySource)>, String> {
     glm_token().map_err(|b| blocked_line(&b))
 }
 
+/// The note that says a value came from the choice `moai update` saved for the host and role
+/// (SPEC-20261119-launcher-reads-models REQ-9): the key path and nothing else of the file.
+fn saved_note(host: &str, role: &str) -> &'static str {
+    match (host, role) {
+        ("claude", "leader") => "model and effort not given on the command line come from launcher.models.claude.leader (saved by moai update)",
+        ("claude", _) => "model and effort not given on the command line come from launcher.models.claude.agent (saved by moai update)",
+        ("codex", "leader") => "model and effort not given on the command line come from launcher.models.codex.leader (saved by moai update)",
+        ("codex", _) => "model and effort not given on the command line come from launcher.models.codex.agent (saved by moai update)",
+        ("glm", "leader") => "model and effort not given on the command line come from launcher.models.glm.leader (saved by moai update)",
+        ("glm", _) => "model and effort not given on the command line come from launcher.models.glm.agent (saved by moai update)",
+        (_, "leader") => "model and effort not given on the command line come from launcher.models.omp.leader (saved by moai update)",
+        _ => "model and effort not given on the command line come from launcher.models.omp.agent (saved by moai update)",
+    }
+}
+
+/// Fills the model and effort a person did not give from the choice `moai update` saved under
+/// `launcher.models.<host>.<role>` of the user launcher settings file (card C-47 criteria 5 and 7,
+/// SPEC-20261119-launcher-reads-models; the glm host in SPEC-20261119-glm-launcher-settings-receipt).
+/// It applies to a session with a role on `claude`, `codex`, `omp` and `glm`; a roleless session
+/// keeps its own rules. The file is read at every call, so a rewritten file is used by the next
+/// launch. A saved entry outside the support table, anywhere under `launcher.models`, refuses the
+/// launch with key paths only (`unsupported_entries`). The glm host is Claude Code on z.ai: its
+/// saved id comes from the table shared with OMP and carries the `zai/` provider prefix, which the
+/// z.ai endpoint does not take, so the prefix is removed here (research note C-47 note 3452: Claude
+/// Code sends a full unknown id as written; the alias mapping of the environment is unchanged).
+/// The second value is the note to add when a saved value was used.
+fn apply_saved_choice(
+    r: &SessionRequest,
+) -> Result<(SessionRequest, Option<&'static str>), String> {
+    let (Some(role), "claude" | "codex" | "omp" | "glm") = (r.role.as_deref(), r.host.as_str())
+    else {
+        return Ok((r.clone(), None));
+    };
+    let Some(launcher) = user_launcher()? else {
+        return Ok((r.clone(), None));
+    };
+    let unsupported = crate::model_effort_settings::unsupported_entries(&launcher)?;
+    if !unsupported.is_empty() {
+        return Err(format!(
+            "saved model settings are not supported ({}): replace them with moai update",
+            unsupported.join(", ")
+        ));
+    }
+    let Some(choice) = crate::model_effort_settings::saved_choice(&launcher, &r.host, role) else {
+        return Ok((r.clone(), None));
+    };
+    let saved_model = if r.host == "glm" {
+        choice.model.strip_prefix("zai/").unwrap_or(&choice.model)
+    } else {
+        choice.model.as_str()
+    };
+    let mut filled = r.clone();
+    let mut used = false;
+    if filled.model.is_none() {
+        filled.model = Some(saved_model.to_string());
+        used = true;
+    }
+    if filled.effort.is_none() {
+        filled.effort = Some(choice.effort);
+        used = true;
+    }
+    Ok((filled, used.then(|| saved_note(&r.host, role))))
+}
+
 /// Composes the host command without running it. Returns
 /// `{host, role, name, argv, env_keys, notes, executed:false, host_loaded:false}`.
 /// `env_keys` lists variable names only, never values.
 pub fn compose(r: &SessionRequest) -> Result<Value, String> {
+    let (resolved, saved) = apply_saved_choice(r)?;
+    compose_resolved(&resolved, saved)
+}
+
+fn compose_resolved(r: &SessionRequest, saved: Option<&'static str>) -> Result<Value, String> {
     if let Some(role) = &r.role {
         if !ROLES.contains(&role.as_str()) {
             return Err("role must be leader or agent".into());
@@ -842,6 +911,7 @@ pub fn compose(r: &SessionRequest) -> Result<Value, String> {
         clean("name", n)?;
     }
     let mut notes = Vec::new();
+    notes.extend(saved);
     if r.role.is_none() {
         notes.push("no role: a plain host session; no role or session name is added (#2053)");
         if !matches!(r.host.as_str(), "codex" | "omp") {
@@ -910,7 +980,10 @@ pub fn compose(r: &SessionRequest) -> Result<Value, String> {
 
 /// Composes and, unless `dry_run`, starts the host and waits for it to exit.
 pub fn launch(r: &SessionRequest, dry_run: bool) -> Result<Value, String> {
-    let mut v = compose(r)?;
+    // The same request as `compose` uses, so a saved z.ai model for OMP gets its key below too.
+    let (resolved, saved) = apply_saved_choice(r)?;
+    let r = &resolved;
+    let mut v = compose_resolved(r, saved)?;
     if dry_run {
         return Ok(v);
     }

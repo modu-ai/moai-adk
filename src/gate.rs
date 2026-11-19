@@ -39,6 +39,11 @@ pub struct CheckRun {
     pub conclusion: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub head_sha: Option<String>,
+    /// C-99 slice 3C: the attempt of the workflow run behind a `ci` aggregate that succeeded
+    /// (`run_attempt` of GitHub's workflow run; one for the first run, more for each re-run).
+    /// Information only: no rule reads it, [`ci_info`] shows it from two on. Absent means one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attempt: Option<u32>,
 }
 
 /// Everything the gate decides from. File lists are repository paths.
@@ -1101,7 +1106,19 @@ pub fn ci_info(s: &Snapshot) -> String {
     } else {
         "success"
     };
-    format!("ci={state}")
+    // C-99 slice 3C: a `ci` that went green only on a re-run says so, so a person reading the line
+    // does not take the pass for a first-run pass. G5 does not read this.
+    let rerun = runs
+        .iter()
+        .filter(|c| {
+            (c.name == "ci" || c.name == "rc-ci") && c.conclusion.as_deref() == Some("success")
+        })
+        .filter_map(|c| c.attempt)
+        .find(|n| *n >= 2);
+    match (state, rerun) {
+        ("success", Some(n)) => format!("ci={state} attempt={n}"),
+        _ => format!("ci={state}"),
+    }
 }
 
 /// G6: a clean merge with the tip; files both the PR and the tip (since the verdict's base)

@@ -110,12 +110,21 @@ jobs:
 
           # Two releases never share a version and the build number only goes up, in any week
           # or head: it also catches a counter that restarted when this workflow was recreated.
+          # Card C-93 follow-up N1: a moai-adk-v* tag that does not match the shape exactly —
+          # a head over 10 digits or with a leading zero, a week that is not 4 digits, a build
+          # with a leading zero or over 4294967295 (bash arithmetic would wrap) — is refused,
+          # not silently skipped by the rise check.
           highest=0
           while IFS= read -r existing; do
             [ -n "$existing" ] || continue
             [ "$existing" != "$tag" ] || fail "the tag ${tag} already exists"
-            if [[ "$existing" =~ ^moai-adk-v[0-9]+\.[0-9]{4}\.([1-9][0-9]*)$ ]] && [ "${BASH_REMATCH[1]}" -gt "$highest" ]; then
-              highest="${BASH_REMATCH[1]}"
+            if [[ "$existing" =~ ^moai-adk-v ]]; then
+              [[ "$existing" =~ ^moai-adk-v(0|[1-9][0-9]{0,9})\.[0-9]{4}\.([1-9][0-9]{0,9})$ ]] \
+                || fail "the tag ${existing} does not match moai-adk-v{head}.{yearweek}.{build}: the head is 0 or up to 10 digits without a leading zero, the yearweek exactly 4 digits, the build from 1 without a leading zero"
+              [ "${BASH_REMATCH[2]}" -le 4294967295 ] \
+                || fail "the tag ${existing} carries the build ${BASH_REMATCH[2]} over 4294967295: the build number stays inside 32 bits"
+              [ "${BASH_REMATCH[2]}" -gt "$highest" ] || continue
+              highest="${BASH_REMATCH[2]}"
               highest_tag="$existing"
             fi
           done < <(git for-each-ref --format='%(refname:strip=2)' 'refs/tags/moai-adk-v*')
