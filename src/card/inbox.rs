@@ -259,6 +259,28 @@ mod tests {
     }
 
     #[test]
+    fn the_newest_leader_note_of_a_card_decides_whatever_order_the_rows_come_in() {
+        let blocked = "LANE-BLOCKED a";
+        // leader 10 → request 11 → leader 12: the later leader note answers the request, so
+        // choosing the smallest leader id (10 < 11) would keep it open by mistake.
+        let rows = [
+            row(1, 10, "leader", "x"),
+            row(1, 11, "agent-1", blocked),
+            row(1, 12, "leader", "y"),
+        ];
+        assert_eq!(ids(&rows, "leader"), vec![]);
+        let reversed = [rows[2].clone(), rows[1].clone(), rows[0].clone()];
+        assert_eq!(ids(&reversed, "leader"), vec![]);
+        // A request written after the last leader note stays open.
+        let open = [
+            row(1, 10, "leader", "x"),
+            row(1, 12, "leader", "y"),
+            row(1, 13, "agent-1", blocked),
+        ];
+        assert_eq!(ids(&open, "leader"), vec![(13, Family::Blocked)]);
+    }
+
+    #[test]
     fn only_the_newest_request_of_a_family_is_listed_and_rows_come_in_any_order() {
         let rows = [
             row(1, 12, "agent-1", "LANE-BLOCKED new"),
