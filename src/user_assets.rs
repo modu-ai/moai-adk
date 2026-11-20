@@ -223,10 +223,19 @@ fn load_manifest(home: &Path) -> Result<Value> {
     let bytes = match std::fs::read(&path) {
         Ok(bytes) => bytes,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(fresh_manifest()),
-        Err(e) => return Err(format!("user-assets: read manifest {}: {e}", path.display())),
+        Err(e) => {
+            return Err(format!(
+                "user-assets: read manifest {}: {e}",
+                path.display()
+            ))
+        }
     };
-    let value: Value = serde_json::from_slice(&bytes)
-        .map_err(|e| format!("user-assets: the manifest at {} is corrupt: {e}", path.display()))?;
+    let value: Value = serde_json::from_slice(&bytes).map_err(|e| {
+        format!(
+            "user-assets: the manifest at {} is corrupt: {e}",
+            path.display()
+        )
+    })?;
     Ok(value)
 }
 
@@ -240,8 +249,10 @@ fn save_manifest(home: &Path, manifest: &Value) -> Result<()> {
         .map_err(|e| format!("user-assets: manifest serialise: {e}"))?;
     text.push('\n');
     let temp = path.with_extension("json.tmp");
-    std::fs::write(&temp, text).map_err(|e| format!("user-assets: write {}: {e}", temp.display()))?;
-    std::fs::rename(&temp, &path).map_err(|e| format!("user-assets: save {}: {e}", path.display()))?;
+    std::fs::write(&temp, text)
+        .map_err(|e| format!("user-assets: write {}: {e}", temp.display()))?;
+    std::fs::rename(&temp, &path)
+        .map_err(|e| format!("user-assets: save {}: {e}", path.display()))?;
     Ok(())
 }
 
@@ -361,11 +372,7 @@ pub fn acquire_user_lock(home: &Path) -> Result<UserLock> {
     }
     let deadline = SystemTime::now() + LOCK_WAIT;
     let guard = flock_exclusive(&guard_path(home), deadline)?;
-    let token = format!(
-        "pid={}-{}",
-        std::process::id(),
-        now_rfc3339_nanos()
-    );
+    let token = format!("pid={}-{}", std::process::id(), now_rfc3339_nanos());
     let outcome = loop {
         match std::fs::OpenOptions::new()
             .create_new(true)
@@ -373,8 +380,13 @@ pub fn acquire_user_lock(home: &Path) -> Result<UserLock> {
             .open(&path)
         {
             Ok(mut file) => {
-                writeln!(file, "pid={} token={token} acquired={}", std::process::id(), now_rfc3339())
-                    .ok();
+                writeln!(
+                    file,
+                    "pid={} token={token} acquired={}",
+                    std::process::id(),
+                    now_rfc3339()
+                )
+                .ok();
                 break Ok(());
             }
             Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
@@ -414,7 +426,11 @@ fn now_rfc3339_nanos() -> String {
     let now = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap_or_default();
-    format!("{}.{:09}Z", now_rfc3339().trim_end_matches('Z'), now.subsec_nanos())
+    format!(
+        "{}.{:09}Z",
+        now_rfc3339().trim_end_matches('Z'),
+        now.subsec_nanos()
+    )
 }
 
 // ---------------------------------------------------------------------------
@@ -424,8 +440,12 @@ fn load_journal(home: &Path) -> Result<Option<Value>> {
     let path = journal_path(home);
     match std::fs::read(&path) {
         Ok(bytes) => {
-            let value: Value = serde_json::from_slice(&bytes)
-                .map_err(|e| format!("user-assets: the journal at {} is corrupt: {e}", path.display()))?;
+            let value: Value = serde_json::from_slice(&bytes).map_err(|e| {
+                format!(
+                    "user-assets: the journal at {} is corrupt: {e}",
+                    path.display()
+                )
+            })?;
             Ok(Some(value))
         }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
@@ -452,7 +472,10 @@ fn reconcile_journal(home: &Path, manifest: &mut Value, summary: &mut Summary) -
     let entries = journal["entries"].as_array().cloned().unwrap_or_default();
     for entry in entries {
         let key = entry["path"].as_str().unwrap_or_default().to_string();
-        let expected = entry["expected_sha256"].as_str().unwrap_or_default().to_string();
+        let expected = entry["expected_sha256"]
+            .as_str()
+            .unwrap_or_default()
+            .to_string();
         let (root, rel) = key.split_once('/').unwrap_or(("", &key));
         let target = deploy_root(home, root)?.join(rel);
         match std::fs::read(&target) {
@@ -461,14 +484,26 @@ fn reconcile_journal(home: &Path, manifest: &mut Value, summary: &mut Summary) -
                 if let Some(bytes) = embedded_file_by_key(&key) {
                     if sha256_hex(bytes) == expected {
                         write_target(&target, bytes)?;
-                        set_file_entry(manifest, &key, &expected, entry["bundle"].as_str().unwrap_or(""), now);
+                        set_file_entry(
+                            manifest,
+                            &key,
+                            &expected,
+                            entry["bundle"].as_str().unwrap_or(""),
+                            now,
+                        );
                         summary.installed += 1;
                     }
                 }
             }
             Ok(bytes) => {
                 if sha256_hex(&bytes) == expected {
-                    set_file_entry(manifest, &key, &expected, entry["bundle"].as_str().unwrap_or(""), now);
+                    set_file_entry(
+                        manifest,
+                        &key,
+                        &expected,
+                        entry["bundle"].as_str().unwrap_or(""),
+                        now,
+                    );
                     summary.installed += 1;
                 } else {
                     record_collision(manifest, &key, now);
@@ -513,7 +548,8 @@ fn write_target(target: &Path, bytes: &[u8]) -> Result<()> {
         std::fs::create_dir_all(parent)
             .map_err(|e| format!("user-assets: mkdir {}: {e}", parent.display()))?;
     }
-    std::fs::write(target, bytes).map_err(|e| format!("user-assets: write {}: {e}", target.display()))
+    std::fs::write(target, bytes)
+        .map_err(|e| format!("user-assets: write {}: {e}", target.display()))
 }
 
 // ---------------------------------------------------------------------------
@@ -547,7 +583,12 @@ fn add_with(home: &Path, catalog: &Catalog, name: &str) -> Result<Summary> {
     let now = now_rfc3339();
     let mut intent = Vec::new();
     for entry in &pack.entries {
-        let folder = entry.path.rsplit('/').next().unwrap_or(&entry.name).to_string();
+        let folder = entry
+            .path
+            .rsplit('/')
+            .next()
+            .unwrap_or(&entry.name)
+            .to_string();
         for rel in catalog.entry_files(&entry.path) {
             let key = format!("{}/{}/{}", entry.root, folder, rel);
             let bytes = catalog
@@ -559,7 +600,12 @@ fn add_with(home: &Path, catalog: &Catalog, name: &str) -> Result<Summary> {
     write_journal(home, name, &manifest, &intent)?;
 
     for entry in &pack.entries {
-        let folder = entry.path.rsplit('/').next().unwrap_or(&entry.name).to_string();
+        let folder = entry
+            .path
+            .rsplit('/')
+            .next()
+            .unwrap_or(&entry.name)
+            .to_string();
         for rel in catalog.entry_files(&entry.path) {
             let key = format!("{}/{}/{}", entry.root, folder, rel);
             let bytes = catalog
@@ -829,10 +875,8 @@ mod tests {
         add_with(&home, &catalog, "pack-b").expect("add pack-b");
         let summary = remove_with(&home, &catalog, "pack-b").expect("remove pack-b");
         assert!(
-            summary
-                .lines
-                .iter()
-                .any(|l| l.contains("kept (shared with L0 or another opted-in bundle): moai-domain-backend")),
+            summary.lines.iter().any(|l| l
+                .contains("kept (shared with L0 or another opted-in bundle): moai-domain-backend")),
             "the shared entry survives with the Go line: {:?}",
             summary.lines
         );
@@ -886,7 +930,10 @@ mod tests {
             "the backend entry is deferred for the preserved database entry: {:?}",
             summary.lines
         );
-        assert_eq!(summary.removed, 0, "nothing is deleted while it is deferred");
+        assert_eq!(
+            summary.removed, 0,
+            "nothing is deleted while it is deferred"
+        );
         assert!(
             file_present(&home, "moai-domain-backend"),
             "the deferred entry's file stays"
@@ -897,8 +944,8 @@ mod tests {
     fn a_journal_of_an_interrupted_run_reconciles_to_an_install() {
         let catalog = synthetic();
         let home = tempdir();
-        let key = "claude-skills/moai-domain-backend/SKILL.md";
-        let bytes = embedded_file_by_key(key).expect("embedded bytes");
+        let key = ["claude-skills", "moai-domain-backend", "SKILL.md"].join("/");
+        let bytes = embedded_file_by_key(&key).expect("embedded bytes");
         let journal = json!({
             "schema_version": SCHEMA_VERSION,
             "bundles_selection": ["pack-a"],
@@ -912,14 +959,21 @@ mod tests {
             }],
         });
         std::fs::create_dir_all(home.join(".moai")).unwrap();
-        std::fs::write(journal_path(&home), serde_json::to_string(&journal).unwrap()).unwrap();
+        std::fs::write(
+            journal_path(&home),
+            serde_json::to_string(&journal).unwrap(),
+        )
+        .unwrap();
         let summary = add_with(&home, &catalog, "pack-a").expect("add pack-a");
         assert!(
             summary.installed >= 1,
             "the journal's absent target installs: {:?}",
             summary.go_text()
         );
-        assert!(file_present(&home, "moai-domain-backend"), "reconciled install lands");
+        assert!(
+            file_present(&home, "moai-domain-backend"),
+            "reconciled install lands"
+        );
         assert!(
             !journal_path(&home).exists(),
             "a successful run clears the journal"

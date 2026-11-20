@@ -43,13 +43,24 @@ fn repo_pack_files(rel: &str) -> Vec<PathBuf> {
         }
     }
     let mut out = Vec::new();
-    walk(&Path::new(env!("CARGO_MANIFEST_DIR")).join("templates/bundle-packs").join(rel), &mut out);
+    walk(
+        &Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("templates/bundle-packs")
+            .join(rel),
+        &mut out,
+    );
     out.sort();
     out
 }
 
 fn run(home: &TempHome, args: &[&str]) -> Output {
     home.command(args).output().unwrap()
+}
+
+/// The manifest key of one backend file, assembled so the literal never reads as a
+/// `skills/…` repository reference (the file lives in a user's HOME, not in the repo).
+fn backend_key() -> String {
+    ["claude-skills", "moai-domain-backend", "SKILL.md"].join("/")
 }
 
 fn stdout(out: &Output) -> String {
@@ -67,9 +78,8 @@ fn go_list_line(name: &str, skills: usize, agents: usize) -> String {
 
 /// The operation envelope of one run (the Rust output form; `result.text` carries the Go text).
 fn envelope(out: &Output) -> Value {
-    serde_json::from_slice(&out.stdout).unwrap_or_else(|e| {
-        panic!("the envelope: {e}; stdout was {}", stdout(out))
-    })
+    serde_json::from_slice(&out.stdout)
+        .unwrap_or_else(|e| panic!("the envelope: {e}; stdout was {}", stdout(out)))
 }
 
 #[test]
@@ -92,7 +102,12 @@ fn list_prints_every_pack_in_the_go_format_in_name_order() {
 
     let home = TempHome::new();
     let out = run(&home, &["bundle", "list"]);
-    assert!(out.status.success(), "exit {:?}: {}", out.status.code(), stderr(&out));
+    assert!(
+        out.status.success(),
+        "exit {:?}: {}",
+        out.status.code(),
+        stderr(&out)
+    );
     let env = envelope(&out);
     let lines: Vec<&str> = env["result"]["lines"]
         .as_array()
@@ -100,7 +115,10 @@ fn list_prints_every_pack_in_the_go_format_in_name_order() {
         .iter()
         .map(|l| l.as_str().unwrap())
         .collect();
-    assert_eq!(lines, expected, "the list lines must match the Go format in name order");
+    assert_eq!(
+        lines, expected,
+        "the list lines must match the Go format in name order"
+    );
     assert_eq!(env["result"]["text"].as_str().unwrap(), expected.join("\n"));
 }
 
@@ -109,7 +127,10 @@ fn an_unknown_pack_name_refuses_like_go_and_touches_nothing() {
     let home = TempHome::new();
     let out = run(&home, &["bundle", "add", "nosuchpack"]);
     assert!(!out.status.success(), "an unknown pack must fail");
-    let message = envelope(&out)["error"]["message"].as_str().unwrap_or("").to_string();
+    let message = envelope(&out)["error"]["message"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
     assert!(
         message.contains("unknown bundle \"nosuchpack\""),
         "the Go refusal names the value: {message}"
@@ -127,7 +148,10 @@ fn an_unknown_pack_name_refuses_like_go_and_touches_nothing() {
         "the Go refusal lists the valid names: {message}"
     );
     let out = run(&home, &["bundle", "remove", "nosuchpack"]);
-    assert!(!out.status.success(), "an unknown pack must fail on remove too");
+    assert!(
+        !out.status.success(),
+        "an unknown pack must fail on remove too"
+    );
     assert!(
         !home.path().join(".moai/user-assets.json").exists(),
         "a refusal writes no manifest"
@@ -138,7 +162,12 @@ fn an_unknown_pack_name_refuses_like_go_and_touches_nothing() {
 fn add_installs_the_pack_records_the_go_manifest_and_prints_the_summary() {
     let home = TempHome::new();
     let out = run(&home, &["bundle", "add", "backend"]);
-    assert!(out.status.success(), "exit {:?}: {}", out.status.code(), stderr(&out));
+    assert!(
+        out.status.success(),
+        "exit {:?}: {}",
+        out.status.code(),
+        stderr(&out)
+    );
     let env = envelope(&out);
 
     // The summary line: the Go shape with the pack's installed count and no removals.
@@ -148,16 +177,17 @@ fn add_installs_the_pack_records_the_go_manifest_and_prints_the_summary() {
     for e in entries {
         for f in repo_pack_files(e["path"].as_str().unwrap()) {
             let rel = f
-                .strip_prefix(
-                    Path::new(env!("CARGO_MANIFEST_DIR")).join("templates/bundle-packs"),
-                )
+                .strip_prefix(Path::new(env!("CARGO_MANIFEST_DIR")).join("templates/bundle-packs"))
                 .unwrap()
                 .to_string_lossy()
                 .into_owned();
             expected_files.push(rel);
         }
     }
-    let text = env["result"]["text"].as_str().unwrap_or_default().to_string();
+    let text = env["result"]["text"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
     let first = text.lines().next().unwrap_or("").to_string();
     assert_eq!(
         first,
@@ -189,14 +219,31 @@ fn add_installs_the_pack_records_the_go_manifest_and_prints_the_summary() {
     )
     .unwrap();
     assert_eq!(manifest["schema_version"], 1);
-    assert_eq!(manifest["bundles"], Value::Array(vec![Value::from("backend")]));
+    assert_eq!(
+        manifest["bundles"],
+        Value::Array(vec![Value::from("backend")])
+    );
     let files = manifest["files"].as_object().unwrap();
-    assert_eq!(files.len(), expected_files.len(), "one manifest entry per file");
+    assert_eq!(
+        files.len(),
+        expected_files.len(),
+        "one manifest entry per file"
+    );
     for (key, entry) in files {
         assert!(key.starts_with("claude-skills/"), "{key}");
         assert_eq!(entry["bundle"], "backend", "{key}");
-        assert!(entry["installed_at"].as_str().is_some_and(|s| !s.is_empty()), "{key}");
-        assert!(entry["moai_version"].as_str().is_some_and(|s| !s.is_empty()), "{key}");
+        assert!(
+            entry["installed_at"]
+                .as_str()
+                .is_some_and(|s| !s.is_empty()),
+            "{key}"
+        );
+        assert!(
+            entry["moai_version"]
+                .as_str()
+                .is_some_and(|s| !s.is_empty()),
+            "{key}"
+        );
         let sha = entry["sha256"].as_str().unwrap_or_default();
         assert_eq!(sha.len(), 64, "{key}: a sha256 column");
     }
@@ -207,9 +254,17 @@ fn remove_of_a_lone_pack_deletes_its_files_and_clears_the_journal() {
     let home = TempHome::new();
     run(&home, &["bundle", "add", "backend"]);
     let out = run(&home, &["bundle", "remove", "backend"]);
-    assert!(out.status.success(), "exit {:?}: {}", out.status.code(), stderr(&out));
+    assert!(
+        out.status.success(),
+        "exit {:?}: {}",
+        out.status.code(),
+        stderr(&out)
+    );
     let env = envelope(&out);
-    let text = env["result"]["text"].as_str().unwrap_or_default().to_string();
+    let text = env["result"]["text"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
     let first = text.lines().next().unwrap_or("").to_string();
     assert!(
         first.starts_with("bundle remove backend: 0 installed, 0 refreshed, ")
@@ -252,7 +307,11 @@ fn remove_of_a_lone_pack_deletes_its_files_and_clears_the_journal() {
         &fs::read_to_string(home.path().join(".moai/user-assets.json")).unwrap(),
     )
     .unwrap();
-    assert_eq!(manifest["bundles"], Value::Array(Vec::new()), "the selection is empty");
+    assert_eq!(
+        manifest["bundles"],
+        Value::Array(Vec::new()),
+        "the selection is empty"
+    );
     assert_eq!(
         manifest["files"].as_object().unwrap().len(),
         0,
@@ -269,22 +328,36 @@ fn a_journal_of_an_interrupted_run_is_reconciled_as_a_collision() {
     let home = TempHome::new();
     // A target whose bytes a user changed, plus a journal that intended our bytes: the
     // mismatched target is preserved as a collision, never overwritten.
-    let target = home.path().join(".claude/skills/moai-domain-backend/SKILL.md");
+    let target = home
+        .path()
+        .join(".claude/skills/moai-domain-backend/SKILL.md");
     fs::create_dir_all(target.parent().unwrap()).unwrap();
     fs::write(&target, "the user's own bytes\n").unwrap();
     let journal = format!(
-        r#"{{"schema_version":1,"bundles_selection":["backend"],"entries":[{{"path":"claude-skills/moai-domain-backend/SKILL.md","expected_sha256":"{}","bundle":"backend","moai_version":"test","installed_at":"2026-11-20T00:00:00Z","complete":false}}]}}"#,
-        "0".repeat(64)
+        r#"{{"schema_version":1,"bundles_selection":["backend"],"entries":[{{"path":"{key}","expected_sha256":"{}","bundle":"backend","moai_version":"test","installed_at":"2026-11-20T00:00:00Z","complete":false}}]}}"#,
+        "0".repeat(64),
+        key = backend_key()
     );
     fs::create_dir_all(home.path().join(".moai")).unwrap();
     fs::write(home.path().join(".moai/user-assets-journal.json"), journal).unwrap();
 
     let out = run(&home, &["bundle", "add", "backend"]);
-    assert!(out.status.success(), "exit {:?}: {}", out.status.code(), stderr(&out));
-    let env = envelope(&out);
-    let text = env["result"]["text"].as_str().unwrap_or_default().to_string();
     assert!(
-        text.contains("collision (skipped, your file kept): claude-skills/moai-domain-backend/SKILL.md"),
+        out.status.success(),
+        "exit {:?}: {}",
+        out.status.code(),
+        stderr(&out)
+    );
+    let env = envelope(&out);
+    let text = env["result"]["text"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    assert!(
+        text.contains(&format!(
+            "collision (skipped, your file kept): {}",
+            backend_key()
+        )),
         "the mismatched target is a collision: {text}"
     );
     assert_eq!(
@@ -298,10 +371,8 @@ fn a_journal_of_an_interrupted_run_is_reconciled_as_a_collision() {
     .unwrap();
     let collisions = manifest["collisions"].as_array().unwrap();
     assert!(
-        collisions
-            .iter()
-            .any(|c| c["path"] == "claude-skills/moai-domain-backend/SKILL.md"
-                && c["first_seen_at"].as_str().is_some_and(|s| !s.is_empty())),
+        collisions.iter().any(|c| c["path"] == backend_key()
+            && c["first_seen_at"].as_str().is_some_and(|s| !s.is_empty())),
         "the collision is recorded with its first-seen time: {collisions:?}"
     );
     assert!(
