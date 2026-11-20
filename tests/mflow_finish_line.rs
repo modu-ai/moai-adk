@@ -6,6 +6,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const MARKER: &str = "M-Flow (user decisions 2026-11-20; one canonical text, put once per file)";
+/// `AGENTS.local.md` has no room for the full text and points to `AGENTS.md` step 6.
+const LOCAL_MARKER: &str =
+    "M-Flow finish line (user decisions 2026-11-20; the full six-item text is step 6 of `AGENTS.md`)";
 // The leader's final wording (user instruction 2026-11-20 ~10:45Z), item by item. AGENTS.md puts
 // the items that run past 400 characters on continuation lines, so each piece is one line.
 const PIECES: [(&str, &str); 9] = [
@@ -118,8 +121,18 @@ fn agents_md_stays_inside_its_budget() {
 #[test]
 fn every_named_file_states_the_finish_line_once() {
     for rel in NAMED_FILES {
-        let count = read(rel).matches(MARKER).count();
+        let text = read(rel);
+        if rel == "AGENTS.local.md" {
+            // This file is at its own 32 KiB limit, so it points to the full text in AGENTS.md.
+            let count = text.matches(LOCAL_MARKER).count();
+            assert_eq!(count, 1, "{rel} points to the finish line {count} times");
+            continue;
+        }
+        let count = text.matches(MARKER).count();
         assert_eq!(count, 1, "{rel} states the finish line {count} times");
+        for (name, sentence) in PIECES {
+            assert!(text.contains(sentence), "{rel} lacks the {name} sentence");
+        }
     }
 }
 

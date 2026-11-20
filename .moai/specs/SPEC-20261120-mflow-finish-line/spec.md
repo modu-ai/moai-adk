@@ -29,7 +29,7 @@ created: 2026-11-20
 - REQ-5: The `AGENTS.md` workflow shall give a lane no step that opens a pull request per Issue or per card. · failure: none — a test reads the file for the old step sentence.
 - REQ-6: While `AGENTS.md` carries the finish line, it shall stay under the 32 KiB budget that Codex applies by default and keep every sentence the repository tests pin. · failure: none — `repo_agents_md` and a size test read the file.
 - REQ-11: The size test of the repository's `AGENTS.md` test shall use the same 32 KiB limit, with the Codex source in a comment and the Claude Code advice of fewer than 200 lines per file as a note. · failure: none — `repo_agents_md` runs with the new limit.
-- REQ-7: The guidance files that tell a lane or the leader how a change ends shall each state the finish line once, namely `AGENTS.md`, `AGENTS.local.md` and the mode-agent, mode-leader, sync and verify workflows. · failure: none — a test counts the marker in each file.
+- REQ-7: The guidance files that tell a lane or the leader how a change ends shall each state the finish line once, namely `AGENTS.md` and the mode-agent, mode-leader, sync and verify workflows with the full text and `AGENTS.local.md` with a pointer to step 6 of `AGENTS.md`, because that file is at its own 32 KiB limit. · failure: none — a test counts the marker in each file and reads the full text in the five.
 - REQ-8: The shipped guidance shall hold no instruction to open a pull request per card, per bundle or per integration under M-Flow, in `AGENTS.md`, `AGENTS.local.md`, `agents/` or `skills/`. · failure: none — a test scans those files for the old phrases.
 
 ## Acceptance
