@@ -46,6 +46,7 @@ pub struct Terminal {
     answer: Option<Vec<u8>>,
     before_answer: Option<Box<dyn Fn()>>,
     stdin_is_terminal: bool,
+    stdin_text: Option<Vec<u8>>,
     stdout_is_terminal: bool,
     stderr_is_terminal: bool,
     limit: Duration,
@@ -61,6 +62,7 @@ impl Terminal {
             answer: None,
             before_answer: None,
             stdin_is_terminal: true,
+            stdin_text: None,
             stdout_is_terminal: true,
             stderr_is_terminal: true,
             limit: LIMIT,
@@ -113,6 +115,13 @@ impl Terminal {
         self
     }
 
+    /// stdin is a pipe that carries `text` and then ends; stdout and stderr stay on the terminal
+    /// unless a case moves them. The text is written once the command runs.
+    pub fn stdin_text(mut self, text: impl AsRef<[u8]>) -> Terminal {
+        self.stdin_text = Some(text.as_ref().to_vec());
+        self
+    }
+
     /// stdout is a pipe the helper reads (`Screen::stdout`); stderr stays on the terminal.
     pub fn stdout_not_a_terminal(mut self) -> Terminal {
         self.stdout_is_terminal = false;
@@ -142,7 +151,9 @@ impl Terminal {
         if let Some(dir) = &self.cwd {
             cmd.current_dir(dir);
         }
-        let stdin = if self.stdin_is_terminal {
+        let stdin = if self.stdin_text.is_some() {
+            Stdio::piped()
+        } else if self.stdin_is_terminal {
             Stdio::from(slave.try_clone().unwrap())
         } else {
             Stdio::null()
@@ -159,6 +170,10 @@ impl Terminal {
         };
         cmd.stdin(stdin).stdout(stdout).stderr(stderr);
         let mut child = cmd.spawn().unwrap();
+        if let (Some(text), Some(mut pipe)) = (&self.stdin_text, child.stdin.take()) {
+            // A broken pipe means the command stopped reading; its exit says why.
+            let _ = pipe.write_all(text);
+        }
         // A pipe is read on its own thread so a full pipe never stops the command.
         let pipe_reader = |pipe: Option<Box<dyn Read + Send>>| {
             pipe.map(|mut p| {
@@ -242,12 +257,111 @@ impl Terminal {
     }
 }
 
+/// What a command carried on stdout and stderr, whether each stream was a pipe or the terminal.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Seen {
+    pub code: Option<i32>,
+    pub stdout: String,
+    pub stderr: String,
+}
+
+/// An environment as name and value pairs.
+pub type Env = Vec<(String, String)>;
+
+/// `base` with each of `extra` set on top; an `extra` name replaces a `base` one.
+pub fn env_with(base: &[(&str, &str)], extra: &[(&str, &str)]) -> Env {
+    let mut env: Env = base
+        .iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+    for (k, v) in extra {
+        env.retain(|(name, _)| name != k);
+        env.push((k.to_string(), v.to_string()));
+    }
+    env
+}
+
+/// Runs `exe` with stdin `/dev/null` and both streams as pipes, on a clean environment.
+pub fn piped(exe: impl AsRef<Path>, cwd: &Path, env: &Env, args: &[&str]) -> Seen {
+    piped_with(exe, cwd, env, args, None)
+}
+
+/// Like `piped`, with `input` on stdin when given (stdin ends after it).
+pub fn piped_with(
+    exe: impl AsRef<Path>,
+    cwd: &Path,
+    env: &Env,
+    args: &[&str],
+    input: Option<&str>,
+) -> Seen {
+    let mut cmd = Command::new(exe.as_ref());
+    cmd.args(args)
+        .clean_env()
+        .current_dir(cwd)
+        .stdin(if input.is_some() {
+            Stdio::piped()
+        } else {
+            Stdio::null()
+        })
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    for (k, v) in env {
+        cmd.env(k, v);
+    }
+    let mut child = cmd.spawn().unwrap();
+    if let (Some(text), Some(mut pipe)) = (input, child.stdin.take()) {
+        // A broken pipe means the command stopped reading; its exit says why.
+        let _ = pipe.write_all(text.as_bytes());
+    }
+    let out = child.wait_with_output().unwrap();
+    Seen {
+        code: out.status.code(),
+        stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
+        stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
+    }
+}
+
+fn terminal_of(exe: impl AsRef<Path>, cwd: &Path, env: &Env, args: &[&str]) -> Terminal {
+    let mut term = Terminal::new(exe)
+        .args(args)
+        .cwd(cwd)
+        .stdin_not_a_terminal();
+    for (k, v) in env {
+        term = term.env(k, v);
+    }
+    term
+}
+
+/// stderr on a terminal, stdin `/dev/null`, stdout a pipe; `Seen::stderr` is the screen.
+pub fn stderr_on_terminal(exe: impl AsRef<Path>, cwd: &Path, env: &Env, args: &[&str]) -> Seen {
+    let s = terminal_of(exe, cwd, env, args)
+        .stdout_not_a_terminal()
+        .run();
+    Seen {
+        code: s.code,
+        stdout: s.stdout,
+        stderr: s.text,
+    }
+}
+
+/// stdout on a terminal, stdin `/dev/null`, stderr a pipe; `Seen::stdout` is the screen.
+pub fn stdout_on_terminal(exe: impl AsRef<Path>, cwd: &Path, env: &Env, args: &[&str]) -> Seen {
+    let s = terminal_of(exe, cwd, env, args)
+        .stderr_not_a_terminal()
+        .run();
+    Seen {
+        code: s.code,
+        stdout: s.text,
+        stderr: s.stderr,
+    }
+}
+
 fn text_of(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes).replace("\r\n", "\n")
 }
 
 /// The two ends of a new pseudo terminal, owned.
-fn open_pty() -> (OwnedFd, OwnedFd) {
+pub fn open_pty() -> (OwnedFd, OwnedFd) {
     let mut master: libc::c_int = -1;
     let mut slave: libc::c_int = -1;
     let rc = unsafe {

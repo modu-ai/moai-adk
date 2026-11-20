@@ -122,6 +122,37 @@ fn a_big_piped_output_does_not_stop_the_command() {
 }
 
 #[test]
+fn stdin_text_is_read_by_the_command_and_then_ends() {
+    let s = sh("read a; read b; echo \"[$a][$b]\"; if read c; then echo more; else echo ended; fi; test -t 0 || echo stdin-pipe; test -t 2 && echo stderr-terminal")
+        .stdin_text("one\ntwo\n")
+        .run();
+    assert!(s.text.contains("[one][two]"), "{:?}", s.text);
+    assert!(
+        s.text.contains("ended") && !s.text.contains("more"),
+        "{:?}",
+        s.text
+    );
+    assert!(s.text.contains("stdin-pipe"), "{:?}", s.text);
+    assert!(s.text.contains("stderr-terminal"), "{:?}", s.text);
+}
+
+#[test]
+fn a_piped_command_reads_its_input_and_returns_both_streams() {
+    let env = common::pty::env_with(&[("PATH", "/usr/bin:/bin")], &[]);
+    let dir = std::env::temp_dir();
+    let seen = common::pty::piped_with(
+        "/bin/sh",
+        &dir,
+        &env,
+        &["-c", "read a; echo \"got-$a\"; echo oops >&2; exit 4"],
+        Some("hello\n"),
+    );
+    assert_eq!(seen.code, Some(4));
+    assert_eq!(seen.stdout, "got-hello\n");
+    assert_eq!(seen.stderr, "oops\n");
+}
+
+#[test]
 #[should_panic(expected = "still running after")]
 fn a_command_that_does_not_end_is_killed_with_the_screen_so_far() {
     let _ = sh("echo started; sleep 30")
