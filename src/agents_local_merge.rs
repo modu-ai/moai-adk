@@ -1045,12 +1045,47 @@ mod tests {
             let start = std::time::Instant::now();
             let _ = secret_suspects(&line);
             assert!(
-                start.elapsed().as_secs() < 3,
+                start.elapsed().as_secs() < 30,
                 "{:?} for a line starting {:?}",
                 start.elapsed(),
                 &line[..12]
             );
         }
+    }
+
+    /// The repeated-prefix scan stays linear in the line's length (the re-audit N6' clamp):
+    /// doubling the length at most triples the measured cost, a quadratic slip multiplies it
+    /// by four or more. The ratio holds on a loaded machine too — both measurements slow
+    /// down together — and the wall-clock ceiling below is only the generous backstop.
+    #[test]
+    fn the_repeated_prefix_scan_stays_linear_in_its_length() {
+        let make = |pieces: usize| "xsk-".repeat(pieces);
+        let measure = |line: &str| {
+            let start = std::time::Instant::now();
+            let _ = secret_suspects(line);
+            start.elapsed()
+        };
+        let base = (0..3)
+            .map(|_| measure(&make(32_768)))
+            .min()
+            .expect("one measurement ran");
+        let doubled = (0..3)
+            .map(|_| measure(&make(65_536)))
+            .min()
+            .expect("one measurement ran");
+        assert!(
+            base < std::time::Duration::from_secs(30),
+            "the base run hit the generous ceiling: {base:?}"
+        );
+        assert!(
+            doubled < std::time::Duration::from_secs(30),
+            "the doubled run hit the generous ceiling: {doubled:?}"
+        );
+        let multiple = doubled.as_secs_f64() / base.as_secs_f64().max(1e-9);
+        assert!(
+            multiple < 3.2,
+            "doubling the length multiplied the cost by {multiple:.2} — quadratic"
+        );
     }
 
     /// Look-alikes before a real credential on the same line must not hide it (re-audit N6'').

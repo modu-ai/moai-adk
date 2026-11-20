@@ -37,7 +37,7 @@
 //! Unix only; elsewhere both operations refuse.
 //!
 //! #2930 R-2: the machine's limits live in one file beside the slots, `<folder>/limits.json`
-//! (`max`, `min_free_gb`, `max_swap_pct`, `min_mem_free_pct`; defaults 3, 50, 80, 10). A
+//! (`max`, `min_free_gb`, `max_swap_pct`, `min_mem_free_pct`; defaults 4, 50, 80, 10). A
 //! caller's flag wins only when it is stricter. A limits file that is not a plain file of at most 4096 bytes holding only
 //! those keys, or that sets `max` 0, is refused: acquire exits 125 without running COMMAND.
 
@@ -81,8 +81,10 @@ pub const DEFAULT_LIMITS: Limits = Limits {
 /// `DISPATCH_MEMORYPRESSURE_*` levels). A run is refused from this level on (card C-88).
 pub const CRITICAL_PRESSURE_LEVEL: u64 = 4;
 
-/// The slot count when neither the limits file nor the caller names one (#2930 R-2).
-pub const DEFAULT_MAX: usize = 3;
+/// The slot count when neither the limits file nor the caller names one (#2930 R-2; the
+/// 2026-11-20 cap of four heavy builds on one machine, so the announced cap holds without
+/// a limits file too).
+pub const DEFAULT_MAX: usize = 4;
 
 /// The machine's limits, beside the slots: `<slot folder>/limits.json` (#2930 R-2, D-a).
 pub const LIMITS_FILE: &str = "limits.json";
@@ -1463,7 +1465,7 @@ mod limits_tests {
         let (max, l, notes) = effective(None, None, None, None, None);
         assert_eq!((max, l.min_free_gb, l.max_swap_pct), (DEFAULT_MAX, 50, 80));
         assert_eq!(l.min_mem_free_pct, 10);
-        assert_eq!(DEFAULT_MAX, 3);
+        assert_eq!(DEFAULT_MAX, 4);
         assert!(notes.is_empty());
     }
 
@@ -1471,7 +1473,7 @@ mod limits_tests {
     fn flags_only_tighten() {
         // Looser flags lose to the defaults, each with a note.
         let (max, l, notes) = effective(None, Some(9), Some(0), Some(100), None);
-        assert_eq!((max, l.min_free_gb, l.max_swap_pct), (3, 50, 80));
+        assert_eq!((max, l.min_free_gb, l.max_swap_pct), (DEFAULT_MAX, 50, 80));
         assert_eq!(notes.len(), 3, "{notes:?}");
         assert!(notes[1].contains("--min-free-gb 0 is looser than the default (50)"));
         // Stricter flags win, silently; equal flags too.
@@ -1530,7 +1532,10 @@ mod limits_tests {
             Some(u64::MAX),
             Some(u64::MAX),
         );
-        assert_eq!((max, l.min_free_gb, l.max_swap_pct), (3, u64::MAX, 80));
+        assert_eq!(
+            (max, l.min_free_gb, l.max_swap_pct),
+            (DEFAULT_MAX, u64::MAX, 80)
+        );
         assert_eq!(l.min_mem_free_pct, u64::MAX);
         let f = file(Some(usize::MAX), Some(u64::MAX), Some(u64::MAX));
         let (max, l, _) = effective(Some(&f), Some(2), Some(0), Some(100), None);
