@@ -198,7 +198,11 @@ pub fn give_back_in_tx(
         return Ok(Err(ScopeReturnError::NotHeld(card_id)));
     };
     let from = active.write_scope.clone();
-    let missing: Vec<String> = paths.iter().filter(|p| !from.contains(p)).cloned().collect();
+    let missing: Vec<String> = paths
+        .iter()
+        .filter(|p| !from.contains(p))
+        .cloned()
+        .collect();
     if !missing.is_empty() {
         return Ok(Err(ScopeReturnError::NotInReservation { paths: missing }));
     }
@@ -212,7 +216,11 @@ pub fn give_back_in_tx(
         "UPDATE reservation SET updated_at = ?1 WHERE reservation_id = ?2",
         params![now, active.reservation_id],
     )?;
-    let to: Vec<String> = from.iter().filter(|p| !paths.contains(p)).cloned().collect();
+    let to: Vec<String> = from
+        .iter()
+        .filter(|p| !paths.contains(p))
+        .cloned()
+        .collect();
     add_event(
         tx,
         now,

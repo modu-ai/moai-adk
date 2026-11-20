@@ -163,14 +163,7 @@ impl World {
         wait: Option<&str>,
         command: &[&str],
     ) -> std::process::Command {
-        let mut args = vec![
-            "line-lease",
-            card,
-            "--generation",
-            "1",
-            "--path",
-            path,
-        ];
+        let mut args = vec!["line-lease", card, "--generation", "1", "--path", path];
         if let Some(wait) = wait {
             args.extend_from_slice(&["--wait-secs", wait]);
         }
@@ -426,7 +419,12 @@ fn give_back_refuses_an_unknown_path_and_a_stale_generation_and_writes_nothing()
     assert_eq!(kind, "conflict");
     // An unknown path writes nothing; a stale generation or another session leaves only the
     // `fence_reject` event the ledger records for every rejected fenced call.
-    assert_only_fence_events_added(&before, &w.dump(), "refusals change no reservation or card", 2);
+    assert_only_fence_events_added(
+        &before,
+        &w.dump(),
+        "refusals change no reservation or card",
+        2,
+    );
 }
 
 // ---- line-lease --------------------------------------------------------------------------------
@@ -465,7 +463,11 @@ fn line_lease_adds_runs_and_gives_the_path_back_in_one_call() {
         strings(&widened["to"]).contains(&"src/lib.rs".to_string()),
         "{widened}"
     );
-    assert_eq!(strings(&narrowed["given_back"]), ["src/lib.rs"], "{narrowed}");
+    assert_eq!(
+        strings(&narrowed["given_back"]),
+        ["src/lib.rs"],
+        "{narrowed}"
+    );
 }
 
 #[test]
@@ -548,7 +550,11 @@ fn line_lease_gives_the_path_back_when_the_command_fails_or_cannot_start() {
         message.contains("could not start"),
         "a start failure is named: {message}"
     );
-    assert_eq!(w.scope_of(&a), ["src/a.rs"], "given back after a start failure");
+    assert_eq!(
+        w.scope_of(&a),
+        ["src/a.rs"],
+        "given back after a start failure"
+    );
     // The ledger is usable afterwards: the same path can be leased again.
     let file = Path::new(&w.project).join("lib.rs");
     let cmd = append_command(&file, "pub mod a;");
@@ -583,11 +589,17 @@ fn help_names_the_rules_of_the_three_commands() {
     let w = world();
     let review = help(&w, "review");
     for phrase in ["--keep", "given back", "free for any card", "card scope"] {
-        assert!(review.contains(phrase), "review help lacks `{phrase}`: {review}");
+        assert!(
+            review.contains(phrase),
+            "review help lacks `{phrase}`: {review}"
+        );
     }
     let give = help(&w, "give-back");
     for phrase in ["--path", "given back", "free for any card"] {
-        assert!(give.contains(phrase), "give-back help lacks `{phrase}`: {give}");
+        assert!(
+            give.contains(phrase),
+            "give-back help lacks `{phrase}`: {give}"
+        );
     }
     let lease = help(&w, "line-lease");
     for phrase in [
@@ -596,13 +608,20 @@ fn help_names_the_rules_of_the_three_commands() {
         "standard error",
         "status",
     ] {
-        assert!(lease.contains(phrase), "line-lease help lacks `{phrase}`: {lease}");
+        assert!(
+            lease.contains(phrase),
+            "line-lease help lacks `{phrase}`: {lease}"
+        );
     }
     let doc = fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("docs/design-review/appendix/operations/card.md"),
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("docs/design-review/appendix/operations/card.md"),
     )
     .unwrap();
     for phrase in ["line-lease", "give-back", "--keep"] {
-        assert!(doc.contains(phrase), "the card operations document lacks `{phrase}`");
+        assert!(
+            doc.contains(phrase),
+            "the card operations document lacks `{phrase}`"
+        );
     }
 }

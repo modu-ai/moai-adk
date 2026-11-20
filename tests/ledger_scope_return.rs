@@ -73,14 +73,18 @@ fn events(w: &WriteLedger, kind: &str) -> Vec<serde_json::Value> {
 fn give_back_removes_the_paths_and_a_second_card_takes_them_at_once() {
     let (_home, mut w) = setup();
     let (a, g) = taken(&mut w, A, &["src/a.rs", "tests/a.rs"]);
-    let done = scope_return::give_back(&mut w, a, A, g, &paths(&["src/a.rs"]), "give-back").unwrap();
+    let done =
+        scope_return::give_back(&mut w, a, A, g, &paths(&["src/a.rs"]), "give-back").unwrap();
     assert_eq!(done.given_back, ["src/a.rs"]);
     assert_eq!(done.from, ["src/a.rs", "tests/a.rs"]);
     assert_eq!(scope_of(&w, a), ["tests/a.rs"]);
     let (b, _) = taken(&mut w, B, &["src/a.rs"]);
     assert_eq!(scope_of(&w, b), ["src/a.rs"]);
     let ev = events(&w, "card.scope");
-    assert_eq!(ev.last().unwrap()["given_back"], serde_json::json!(["src/a.rs"]));
+    assert_eq!(
+        ev.last().unwrap()["given_back"],
+        serde_json::json!(["src/a.rs"])
+    );
 }
 
 #[test]
@@ -121,7 +125,10 @@ fn review_keeping_gives_back_all_but_the_kept_paths_in_one_event() {
     assert_eq!(moved.reservation.status, "held");
     let ev = events(&w, "card.review");
     assert_eq!(ev.len(), 1);
-    assert_eq!(ev[0]["given_back"], serde_json::json!(["src/a.rs", "tests/a.rs"]));
+    assert_eq!(
+        ev[0]["given_back"],
+        serde_json::json!(["src/a.rs", "tests/a.rs"])
+    );
     assert_eq!(ev[0]["kept"], serde_json::json!(["spec/x.md"]));
 }
 
@@ -137,7 +144,9 @@ fn review_keeping_refuses_a_keep_path_not_held_and_a_card_not_active() {
     }
     let state: String = w
         .conn()
-        .query_row("SELECT state FROM card WHERE card_id = ?1", [a], |r| r.get(0))
+        .query_row("SELECT state FROM card WHERE card_id = ?1", [a], |r| {
+            r.get(0)
+        })
         .unwrap();
     assert_eq!(state, "active", "a refused review writes nothing");
     assert_eq!(scope_of(&w, a), ["src/a.rs"]);
@@ -180,7 +189,11 @@ fn a_line_lease_on_a_path_another_card_holds_is_an_overlap_that_names_that_card(
         }
         other => panic!("{other:?}"),
     }
-    assert_eq!(scope_of(&w, a), ["src/a.rs"], "a refused lease writes nothing");
+    assert_eq!(
+        scope_of(&w, a),
+        ["src/a.rs"],
+        "a refused lease writes nothing"
+    );
     // Once the owner gives it back, the lease goes through.
     let og = reservation::current(w.conn(), owner)
         .unwrap()

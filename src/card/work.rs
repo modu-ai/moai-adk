@@ -486,9 +486,15 @@ pub fn give_back(
         return Err("card give-back refused: give at least one --path".to_string());
     }
     let (id, mut ledger) = open_for_write(project, home)?;
-    let given =
-        scope_return::give_back(&mut ledger, card_id, holder, generation, &paths, "give-back")
-            .map_err(|e| e.to_string())?;
+    let given = scope_return::give_back(
+        &mut ledger,
+        card_id,
+        holder,
+        generation,
+        &paths,
+        "give-back",
+    )
+    .map_err(|e| e.to_string())?;
     Ok(json!({
         "action": "give-back", "project_id": id,
         "name": input::card_name(card_id), "card_id": card_id,
@@ -546,9 +552,7 @@ pub fn line_lease(
             Ok(leased) => break leased,
             Err(scope_return::LeaseError::Overlap(text)) => {
                 if started.elapsed() >= Duration::from_secs(wait) {
-                    return Err(format!(
-                        "{text}; waited {wait} s for it and wrote nothing"
-                    ));
+                    return Err(format!("{text}; waited {wait} s for it and wrote nothing"));
                 }
                 std::thread::sleep(Duration::from_millis(250));
             }
@@ -574,13 +578,14 @@ pub fn line_lease(
         Err(e) => Err(e.to_string()),
     };
     let mut ledger = open_for_write(project, home)?.1;
-    let released = scope_return::lease_release(&mut ledger, card_id, holder, generation, &leased.added)
-        .map_err(|e| {
-            format!(
+    let released =
+        scope_return::lease_release(&mut ledger, card_id, holder, generation, &leased.added)
+            .map_err(|e| {
+                format!(
                 "{e}; the lease of {} may still be in the reservation: `card give-back` frees it",
                 leased.added.join(", ")
             )
-        })?;
+            })?;
     match status {
         Err(why) => Err(format!(
             "card line-lease refused: could not start `{program}`: {why}; the paths were given back"
