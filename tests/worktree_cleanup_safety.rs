@@ -405,11 +405,13 @@ fn an_unreadable_ledger_leaves_no_candidate() {
     let later = real_now() + 30 * DAY;
     let w = add(&fx, ".moai-cli/worktrees/done", "b-done", true);
     seed_card(&fx, &w, "b-done", "done", "released", 1);
+    // a merged worktree is a candidate whatever the ledger says; it is the one that shows a
+    // ledger read as "none" instead of "unreadable"
+    let merged = add(&fx, ".moai-cli/worktrees/merged", "b-merged", false);
     let before = plan_at(&fx, later);
-    assert!(
-        row(&before["candidates"], "worktrees/done").is_some(),
-        "{before}"
-    );
+    for tail in ["worktrees/done", "worktrees/merged"] {
+        assert!(row(&before["candidates"], tail).is_some(), "{before}");
+    }
     let ledger = fx.home.join(".moai/projects/demo/ledger.db");
     assert!(ledger.is_file(), "{}", ledger.display());
     fs::write(&ledger, b"this is not a database\n").unwrap();
@@ -421,9 +423,16 @@ fn an_unreadable_ledger_leaves_no_candidate() {
             "{cleanup}"
         );
     }
-    let res = apply_at(&fx, later, &[pick(&before, "worktrees/done")]);
+    let res = apply_at(
+        &fx,
+        later,
+        &[
+            pick(&before, "worktrees/done"),
+            pick(&before, "worktrees/merged"),
+        ],
+    );
     assert_eq!(removed(&res), Vec::<String>::new(), "{res}");
-    assert!(w.is_dir(), "the worktree must stay");
+    assert!(w.is_dir() && merged.is_dir(), "both worktrees must stay");
 }
 
 /// A real `node_modules` folder keeps the worktree, whatever else is true of it.
