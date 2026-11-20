@@ -108,3 +108,28 @@ fn shortened_agents_md_keeps_its_gate_and_hold_sentences() {
     }
     assert!(local.contains("`EnterWorktree(~/.moai/worktrees/<project>-<id>)`"));
 }
+
+/// Verify wave 2: the release checklist carries a rule-pruning step — the machine list of
+/// rule-history.md is scanned for text-only single-evidence rules, and the candidates go to
+/// the leader, whose recorded decision deletes or keeps.
+#[test]
+fn release_checklist_has_a_rule_pruning_step() {
+    let text =
+        fs::read_to_string(root().join("docs/release-checklist.md")).expect("release checklist");
+    for phrase in [
+        "규칙 목록 가지치기",
+        "skills/moai/references/rule-history.md",
+        "text only",
+        "리더 결정",
+    ] {
+        assert!(text.contains(phrase), "release checklist lacks {phrase:?}");
+    }
+}
+
+/// Verify wave 2: AGENTS.local.md is size-bounded just above its size at the change, so
+/// silent growth is noticed the way the other guidance files already are.
+#[test]
+fn agents_local_md_is_size_bounded() {
+    let local = fs::read_to_string(root().join("AGENTS.local.md")).expect("AGENTS.local.md");
+    assert!(local.len() < 32 * 1024, "{} bytes", local.len());
+}

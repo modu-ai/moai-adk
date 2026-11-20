@@ -126,6 +126,10 @@ git status --short
 
 - [ ] `docs/release-review.md` — 독립 reviewer가 reviewer identity·공유 context 범위·대조 digest·gap 표와 함께 기록한다. 필수 gap이 있으면 verdict는 `release blocked`(현재 예상 verdict: **release blocked** — (d) artifact 목록·(e) attestation·(g) 게시 실측이 not_run).
 
+## (l) 규칙 목록 가지치기 후보 (삭제는 리더 결정)
+
+- [ ] `skills/moai/references/rule-history.md` 의 기계 목록을 훑어 `text only`(시험·훅·게이트가 읽지 않음)이고 근거가 하나뿐인 규칙을 뽑아 후보 목록으로 만든다. 후보는 리더에게 올리고, 실제 삭제·유지는 리더가 결정 기록으로 남긴다 — 릴리스 절차는 후보 나열까지만 한다. 검증 2차 W2-7(사용자 결정 2026-11-20): 규칙은 들어올 때 근거가 필요하고(AGENTS.md 진화 절·rule-history.md 머리의 입장 기준), 목록은 그냥 두면 자라기만 한다.
+
 ## 릴리스 게시 절차 (별도 권한 단계 — 이 체크리스트가 수행하지 않는다)
 
 1. 운영자가 위 HOLD/not_run을 해소·승인한다. 2. `git tag moai-cli-v2026.11.0-rc.1 <candidate>` + `--verify-tag`. 3. `gh release create --prerelease --latest=false --verify-tag` + 자산 + `sha256.sum` + `moai-cli.cdx.xml`(그 tag에서 재생성한 SBOM, (i) 절차). 4. attestation 생성 후 `gh attestation verify`. 5. `/releases/latest`가 RC tag을 반환하지 않음을 재확인. 6. 이 체크리스트의 not_run 항목을 실측값으로 갱신한다. 같은 version 재배포 금지 — 교정은 `rc.2`.
