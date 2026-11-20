@@ -715,9 +715,16 @@ fn contract_malformed_input_is_a_quiet_skip_and_the_wrong_duty_an_error() {
 fn contract_existing_duties_and_generated_files_are_unchanged() {
     let f = fx();
     f.mode("enforce");
-    let input = f.write("src/a.py", "eval(x)\nos.system(c)\n");
-    for event in ["tool-preflight", "tool-observe"] {
-        let (code, out, err) = f.dispatch("claude", event, &input);
+    let tool_input = json!({"file_path": f.abs("src/a.py"), "content": "eval(x)\nos.system(c)\n"});
+    for (event, host_event) in [
+        ("tool-preflight", "PreToolUse"),
+        ("tool-observe", "PostToolUse"),
+    ] {
+        let input = json!({"session_id": "s1", "hook_event_name": host_event,
+            "tool_name": "Write", "tool_use_id": "t1", "tool_input": tool_input,
+            "tool_response": {"success": true}, "cwd": f.proj})
+        .to_string();
+        let (code, out, err) = f.dispatch("claude", event, input.as_bytes());
         assert_eq!((code, out.as_str(), err.as_str()), (0, "", ""), "{event}");
     }
     for host in ["claude", "codex"] {
