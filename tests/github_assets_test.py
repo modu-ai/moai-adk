@@ -301,6 +301,32 @@ class WorkflowTest(unittest.TestCase):
                                  "${{ github.run_attempt == '1' && github.run_number || '' }}")
                 self.assertNotIn("MOAI_LOCAL_BUILD", env)
 
+    def test_ci_targets_decide_scope_from_the_base_commit(self):
+        """The scope decision is the base commit's judge: the targets job checks out the PR's
+        base commit and runs THAT copy of tools/ci_scope.py, the changed paths come from the
+        files API (filename and previous_filename) with the truncation fail-safe, and push and
+        dispatch keep the full matrix. The aggregate `ci` name and the two legs stay as they
+        are."""
+        flows = dict((p.name, f) for p, f in self.workflows())
+        targets = flows["ci.yml"]["jobs"]["targets"]
+        steps = {s.get("name"): s for s in targets["steps"]}
+        checkout = steps.get(None, targets["steps"][0])
+        self.assertEqual(
+            checkout.get("with", {}).get("ref"),
+            "${{ github.event.pull_request.base.sha }}",
+            "the targets job must check out the base commit",
+        )
+        script = steps["Decide check matrix"]["run"]
+        self.assertIn("gh api \"repos/$REPO/pulls/$PR_NUMBER/files", script)
+        self.assertIn("previous_filename", script)
+        self.assertIn("changedFiles", script, "the truncation guard reads the true total")
+        self.assertIn("tools/ci_scope.py", script)
+        self.assertNotIn("git diff --name-only", script, "paths come from the files API")
+        self.assertIn('matrix="$full"', script)
+        self.assertIn('github.event_name', script)
+        check = flows["ci.yml"]["jobs"]["check"]
+        self.assertEqual(check["name"], "ci / ${{ matrix.target }} / ${{ matrix.leg }}")
+
     def test_audit_gate_reads_verdicts_with_a_read_only_token(self):
         """SPEC-20261117-audit-gate: `pull_request` only (never `pull_request_target`), read-only
         job permissions, the same pinned actions ci.yml uses, the gate built from the base
@@ -361,8 +387,11 @@ class WorkflowTest(unittest.TestCase):
         # raises, not bare asserts — `python -O` strips those (re-audit N-9).
         if 'if [ "${{ github.event_name }}" = "pull_request" ]; then' not in run:
             raise AssertionError(f"the decide script lost its pull_request guard: {run!r}")
-        if '${{ github.event.pull_request.base.sha }}' not in run:
-            raise AssertionError(f"the decide script lost its PR base SHA: {run!r}")
+        # The base commit moved to the job's checkout step: the scope tool runs from
+        # the base copy, so the SHA the runner hands the checkout is the judge.
+        checkout = steps[0]
+        if checkout.get("with", {}).get("ref") != "${{ github.event.pull_request.base.sha }}":
+            raise AssertionError(f"the targets job lost its base checkout: {steps!r}")
         lists = dict(re.findall(r"^(full|linux)='(\[.*?\])'$", run, re.M))
         if set(lists) != {"full", "linux"}:
             raise AssertionError(f"unexpected decide script: {run!r}")

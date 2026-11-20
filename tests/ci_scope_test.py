@@ -122,17 +122,19 @@ class CiScopeTest(unittest.TestCase):
 class WorkflowContractTest(unittest.TestCase):
     def test_scope_steps_pass_rename_sources(self):
         # #2538 B1: plain `git diff --name-only` emits only the rename destination,
-        # so renaming/deleting a test-consumed doc could pass as docs-only. Every
-        # diff that feeds a classifier (two Scope steps, one targets step) must use
-        # --no-renames so old paths reach the classifier.
+        # so renaming/deleting a test-consumed doc could pass as docs-only. The two
+        # docs Scope steps keep their --no-renames diffs; the targets step reads its
+        # changed paths from the files API, whose filename AND previous_filename
+        # carry the rename sources to the base copy of the classifier.
         with open(
             os.path.join(REPO_ROOT, ".github", "workflows", "ci.yml"),
             "r",
             encoding="utf-8",
         ) as fh:
             yaml_text = fh.read()
-        self.assertEqual(yaml_text.count("git diff --name-only --no-renames"), 3)
+        self.assertEqual(yaml_text.count("git diff --name-only --no-renames"), 2)
         self.assertNotIn('git diff --name-only "${base}', yaml_text)
+        self.assertIn("previous_filename", yaml_text)
 
 
 class MainExceptionPathTest(unittest.TestCase):
@@ -569,16 +571,57 @@ class CiDecideScriptTest(unittest.TestCase):
         head = subprocess.run(
             ["git", "rev-parse", "HEAD"], cwd=tmp, capture_output=True, text=True
         ).stdout.strip()
-        return tmp, base, head
+        names = sorted(changes)
+        return tmp, base, head, names
 
-    def decide(self, repo, event, base, head):
-        """Run the decide step as the runner would; return (proc, matrix)."""
+    def decide(self, repo, event, base, head, gh_files=None, gh_total=None,
+               gh_broken=False):
+        """Run the decide step as the runner would; return (proc, matrix). On a
+        pull_request a fake `gh` answers the files API from `gh_files`
+        (`gh_total` overrides the true total; `gh_broken` makes gh fail), the
+        way the runner's token would reach the real API."""
         script = self.script.replace("${{ github.event_name }}", event)
         script = script.replace("${{ github.event.pull_request.base.sha }}", base)
+        script = script.replace("${{ github.event.pull_request.number }}", "7")
+        script = script.replace("${{ github.repository }}", "owner/repo")
+        script = script.replace("${{ github.token }}", "fake-token")
         out = os.path.join(repo, "github-output")
         if os.path.exists(out):
             os.remove(out)
-        env = dict(os.environ, GITHUB_OUTPUT=out, GITHUB_SHA=head)
+        runner_temp = os.path.join(repo, "runner-temp")
+        os.makedirs(runner_temp, exist_ok=True)
+        env = dict(
+            os.environ,
+            GITHUB_OUTPUT=out,
+            GITHUB_SHA=head,
+            RUNNER_TEMP=runner_temp,
+            PR_NUMBER="7",
+            REPO="owner/repo",
+            GH_TOKEN="fake-token",
+        )
+        if gh_files is not None or gh_broken:
+            bindir = os.path.join(repo, "fakebin")
+            os.makedirs(bindir, exist_ok=True)
+            gh = os.path.join(bindir, "gh")
+            with open(gh, "w", encoding="utf-8") as fh:
+                fh.write(
+                    "#!/bin/sh\n"
+                    'if [ "$1" = "api" ]; then\n'
+                    '  [ "$GH_FAKE_BROKEN" = 1 ] && exit 1\n'
+                    "  printf '%s\\n' \"$GH_FAKE_FILES\"\n"
+                    "  exit 0\n"
+                    "fi\n"
+                    'if [ "$1" = "pr" ]; then\n'
+                    "  printf '%s\\n' \"$GH_FAKE_TOTAL\"\n"
+                    "  exit 0\n"
+                    "fi\n"
+                    "exit 1\n"
+                )
+            os.chmod(gh, 0o755)
+            env["PATH"] = bindir + os.pathsep + env["PATH"]
+            env["GH_FAKE_FILES"] = "\n".join(gh_files or [])
+            env["GH_FAKE_TOTAL"] = str(len(gh_files or []) if gh_total is None else gh_total)
+            env["GH_FAKE_BROKEN"] = "1" if gh_broken else "0"
         proc = subprocess.run(
             ["bash", "-c", script], cwd=repo, env=env, capture_output=True, text=True
         )
@@ -593,37 +636,60 @@ class CiDecideScriptTest(unittest.TestCase):
     def test_push_and_dispatch_get_the_full_matrix(self):
         for event in ("push", "workflow_dispatch"):
             with self.subTest(event=event):
-                repo, base, head = self.repo({"docs/a.md": "x\n"})
+                repo, base, head, _names = self.repo({"docs/a.md": "x\n"})
                 proc, matrix = self.decide(repo, event, base, head)
                 self.assertEqual(proc.returncode, 0, proc.stderr)
                 self.assertEqual(matrix, self.FULL)
 
     def test_a_platform_sensitive_pr_gets_macos(self):
-        repo, base, head = self.repo({"src/statusline/render.rs": "x\n"})
-        proc, matrix = self.decide(repo, "pull_request", base, head)
+        repo, base, head, names = self.repo({"src/statusline/render.rs": "x\n"})
+        proc, matrix = self.decide(
+            repo, "pull_request", base, head, gh_files=names
+        )
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertEqual(matrix, self.FULL)
         self.assertIn("target-reason:", proc.stdout)
 
     def test_a_plain_pr_stays_linux_only(self):
-        repo, base, head = self.repo({"docs/a.md": "x\n", "README.md": "x\n"})
-        proc, matrix = self.decide(repo, "pull_request", base, head)
+        repo, base, head, names = self.repo({"docs/a.md": "x\n", "README.md": "x\n"})
+        proc, matrix = self.decide(repo, "pull_request", base, head, gh_files=names)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertEqual(matrix, self.LINUX)
 
     def test_a_broken_classifier_falls_back_to_the_full_matrix(self):
         # The classifier exits 1: the decide step must still succeed with the
         # full matrix (fail safe), not fail or narrow to linux-only.
-        repo, base, head = self.repo(
+        repo, base, head, names = self.repo(
             {"docs/a.md": "x\n"}, classifier="import sys\nsys.exit(1)\n"
         )
-        proc, matrix = self.decide(repo, "pull_request", base, head)
+        proc, matrix = self.decide(repo, "pull_request", base, head, gh_files=names)
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertEqual(matrix, self.FULL)
 
-    def test_an_unknown_base_falls_back_to_the_full_matrix(self):
-        repo, _base, head = self.repo({"src/statusline/render.rs": "x\n"})
-        proc, matrix = self.decide(repo, "pull_request", "0" * 40, head)
+    def test_a_truncated_files_api_answer_falls_back_to_the_full_matrix(self):
+        # The files API serves at most 3000 files; a truncated listing must not
+        # judge a partial list — the fail-safe full matrix runs instead.
+        repo, base, head, names = self.repo({"src/statusline/render.rs": "x\n"})
+        proc, matrix = self.decide(
+            repo, "pull_request", base, head, gh_files=names, gh_total=len(names) + 1
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(matrix, self.FULL)
+        self.assertIn("fail-safe", proc.stderr)
+
+    def test_an_empty_files_api_answer_falls_back_to_the_full_matrix(self):
+        repo, base, head, _names = self.repo({"docs/a.md": "x\n"})
+        proc, matrix = self.decide(
+            repo, "pull_request", base, head, gh_files=[], gh_total=0
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(matrix, self.FULL)
+
+    def test_a_broken_files_api_falls_back_to_the_full_matrix(self):
+        repo, base, head, _names = self.repo({"src/statusline/render.rs": "x\n"})
+        proc, matrix = self.decide(
+            repo, "pull_request", base, head, gh_broken=True
+        )
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertEqual(matrix, self.FULL)
 
@@ -680,10 +746,17 @@ class CiWorkflowMatrixContractTest(unittest.TestCase):
             "if: ${{ github.event_name != 'pull_request' }}", self.yaml_text
         )
 
-    def test_targets_diff_uses_no_renames(self):
-        # The third classifier-feeding diff (targets) passes rename sources too.
+    def test_targets_paths_come_from_the_files_api(self):
+        # The targets changed paths pass rename sources too — through the files
+        # API (filename AND previous_filename), the base copy of the scope tool
+        # judging them. The two docs Scope steps keep their rename-safe git diffs.
         self.assertEqual(
-            self.yaml_text.count("git diff --name-only --no-renames"), 3
+            self.yaml_text.count("git diff --name-only --no-renames"), 2
+        )
+        self.assertIn("previous_filename", self.yaml_text)
+        self.assertIn(
+            'gh api "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" --paginate',
+            self.yaml_text,
         )
 
     def test_decide_script_pins_its_fail_safe_branches(self):
@@ -693,7 +766,7 @@ class CiWorkflowMatrixContractTest(unittest.TestCase):
         self.assertIn(
             'if [ "$ok" = 1 ] && [ "$macos" = "False" ]; then', self.yaml_text
         )
-        self.assertIn('2>/dev/null)" || true', self.yaml_text)
+        self.assertIn("full matrix (fail-safe)", self.yaml_text)
         self.assertIn('matrix="$full"', self.yaml_text)
 
     def test_decide_script_classifies_only_pull_requests(self):
