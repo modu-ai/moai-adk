@@ -35,6 +35,7 @@ The text the commands print (help text, previews, hints, error and note strings)
 - write: `tools/repo_scans.json`
 - write: `src/help.rs`
 - write: `tests/claim_cli.rs`
+- write: `tests/install_candidates.rs`
 - write: `src/claim.rs`
 - write: `src/claim_verify.rs`
 - write: `src/gate_schedule.rs`

@@ -80,10 +80,32 @@ fn after(line: &str, at: usize) -> &str {
     line[at..].trim_start()
 }
 
+/// Where the inline test module starts: the first `#[cfg(test)]` at column 0 whose item (after any
+/// further attributes) is a `mod`. A `#[cfg(test)]` on a function or a constant ends nothing: the
+/// code after it is still code.
+fn test_module_start(text: &str) -> usize {
+    let mut from = 0;
+    while let Some(i) = text[from..].find("\n#[cfg(test)]\n") {
+        let at = from + i + 1;
+        let item = text[at..]
+            .lines()
+            .skip(1)
+            .find(|l| !l.trim_start().starts_with("#["));
+        if item.is_some_and(|l| {
+            let l = l.trim_start();
+            l.starts_with("mod ") || l.starts_with("pub mod ") || l.starts_with("pub(crate) mod ")
+        }) {
+            return at;
+        }
+        from = at + 1;
+    }
+    text.len()
+}
+
 /// The source of a file without comments and without the inline test module: comments become
 /// blanks (line breaks stay, so line numbers hold), strings and the rest stay as they are.
 fn code_of(text: &str) -> String {
-    let end = text.find("\n#[cfg(test)]\n").map_or(text.len(), |i| i + 1);
+    let end = test_module_start(text);
     let chars: Vec<char> = text[..end].chars().collect();
     let mut out = String::with_capacity(end);
     let mut i = 0;
@@ -350,6 +372,8 @@ fn scan_flags_each_kind_and_leaves_comments_alone() {
         "\"ABC-12 and CI-3\" \"a leader decision is recorded with its answer\"\n",
         "\"resume #{number} with the leader decision in comment {}\"\n",
         "fn code() {}\n#[cfg(test)]\nmod tests { fn t() { let _ = \"#3333 C-82\"; } }\n",
+        "fn code() {}\n#[cfg(test)]\n#[allow(dead_code)]\nmod tests { fn t() { let _ = \"#3333\"; } }\n",
+        "fn a() {}\n#[cfg(test)]\nmod tests;\n",
     ] {
         assert_eq!(citations(text), Vec::new(), "`{text}` should be clean");
     }
@@ -358,12 +382,21 @@ fn scan_flags_each_kind_and_leaves_comments_alone() {
         "let url = \"http://x (#2561)\";\n",
         "let raw = r#\"has \"quotes\" and (#2561)\"#;\n",
         "let q = '\"'; let s = \"(#2561)\";\n",
+        // Found by the audit: a `#[cfg(test)]` on a single item ends nothing; only a test module
+        // (`mod`) ends the code, so the code after the item is still read.
+        "#[cfg(test)]\nconst X: &str = \"x\";\nfn real() { let _ = \"(#2561)\"; }\n",
     ] {
         assert!(
             citations(text).iter().any(|(_, k)| *k == "number"),
             "`{text}` should carry a number"
         );
     }
+    let attrs =
+        "#[cfg(test)]\n#[allow(dead_code)]\nfn helper() {}\nfn real() { let _ = \"C-82\"; }\n";
+    assert!(
+        citations(attrs).iter().any(|(_, k)| *k == "card"),
+        "code after a cfg(test) function with two attributes is still read"
+    );
 }
 
 /// AC-1: no source file outside the pending list carries a citation.
