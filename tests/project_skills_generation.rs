@@ -96,8 +96,8 @@ fn action(p: &Value, path: &str) -> Option<String> {
         .map(|f| f["action"].as_str().unwrap().to_string())
 }
 
-const CLAUDE: &str = ".claude/skills/prj-checks/SKILL.md";
-const CODEX: &str = ".agents/skills/prj-checks/SKILL.md";
+const CLAUDE: &str = ".claude/skills/moai-prj-checks/SKILL.md";
+const CODEX: &str = ".agents/skills/moai-prj-checks/SKILL.md";
 
 fn checks() -> Value {
     json!([{"id": "prj-checks", "purpose": "How this project is checked"}])
@@ -116,7 +116,7 @@ fn a_project_skill_is_written_for_both_hosts_from_the_answers() {
         let text = fs::read_to_string(r.join(path)).unwrap();
         assert!(
             text.starts_with(
-                "---\nname: prj-checks\ndescription: \"How this project is checked\"\n---\n"
+                "---\nname: moai-prj-checks\ndescription: \"How this project is checked\"\n---\n"
             ),
             "{text}"
         );
@@ -149,7 +149,7 @@ fn a_rerun_keeps_hand_edits_and_conflicts_when_both_sides_move() {
     let again = result(&plan(r, &request(checks())));
     assert_eq!(action(&again, CLAUDE).as_deref(), Some("unchanged"));
 
-    let edited = "---\nname: prj-checks\ndescription: mine\n---\n\nmine\n";
+    let edited = "---\nname: moai-prj-checks\ndescription: mine\n---\n\nmine\n";
     fs::write(r.join(CLAUDE), edited).unwrap();
     let kept = result(&plan(r, &request(checks())));
     assert_eq!(action(&kept, CLAUDE).as_deref(), Some("unchanged"));
@@ -174,7 +174,7 @@ fn a_rerun_keeps_hand_edits_and_conflicts_when_both_sides_move() {
 fn a_folder_it_did_not_write_is_never_claimed() {
     let root = project();
     let r = root.path();
-    fs::create_dir_all(r.join(".claude/skills/prj-checks")).unwrap();
+    fs::create_dir_all(r.join(".claude/skills/moai-prj-checks")).unwrap();
     fs::write(r.join(CLAUDE), "someone else's skill\n").unwrap();
     let p = result(&plan(r, &request(checks())));
     assert_eq!(action(&p, CLAUDE).as_deref(), Some("conflict"));
@@ -187,8 +187,8 @@ fn a_folder_it_did_not_write_is_never_claimed() {
     // A folder holding other files but no SKILL.md is someone else's too (mutation K4).
     let root = project();
     let r = root.path();
-    fs::create_dir_all(r.join(".claude/skills/prj-checks")).unwrap();
-    fs::write(r.join(".claude/skills/prj-checks/notes.md"), "notes\n").unwrap();
+    fs::create_dir_all(r.join(".claude/skills/moai-prj-checks")).unwrap();
+    fs::write(r.join(".claude/skills/moai-prj-checks/notes.md"), "notes\n").unwrap();
     let p = result(&plan(r, &request(checks())));
     assert_eq!(action(&p, CLAUDE).as_deref(), Some("conflict"));
     assert!(!r.join(CLAUDE).exists());
@@ -228,10 +228,13 @@ fn names_hosts_and_hosts_list_are_checked() {
         &request(json!([{"id": "prj-x", "purpose": "p", "hosts": ["codex"]}])),
     ));
     assert_eq!(
-        action(&only_codex, ".agents/skills/prj-x/SKILL.md").as_deref(),
+        action(&only_codex, ".agents/skills/moai-prj-x/SKILL.md").as_deref(),
         Some("create")
     );
-    assert_eq!(action(&only_codex, ".claude/skills/prj-x/SKILL.md"), None);
+    assert_eq!(
+        action(&only_codex, ".claude/skills/moai-prj-x/SKILL.md"),
+        None
+    );
 }
 
 #[test]
@@ -258,8 +261,8 @@ fn recover(root: &Path, receipt: &str) -> std::process::Output {
     )
 }
 
-const EXTRA_CLAUDE: &str = ".claude/skills/prj-extra/SKILL.md";
-const EXTRA_CODEX: &str = ".agents/skills/prj-extra/SKILL.md";
+const EXTRA_CLAUDE: &str = ".claude/skills/moai-prj-extra/SKILL.md";
+const EXTRA_CODEX: &str = ".agents/skills/moai-prj-extra/SKILL.md";
 
 fn two() -> Value {
     json!([{"id": "prj-checks", "purpose": "How this project is checked"},
@@ -283,7 +286,7 @@ fn a_skill_no_longer_requested_is_removed_and_can_be_recovered() {
     let applied = result(&apply(r, &p));
     assert!(!r.join(EXTRA_CLAUDE).exists() && !r.join(EXTRA_CODEX).exists());
     assert!(
-        !r.join(".claude/skills/prj-extra").exists(),
+        !r.join(".claude/skills/moai-prj-extra").exists(),
         "the emptied folder goes too"
     );
     assert!(r.join(CLAUDE).exists());
@@ -336,7 +339,7 @@ fn a_linked_host_folder_is_a_conflict_and_nothing_is_written_outside() {
     for (link, path) in [
         (".agents", CODEX),
         (".claude/skills", CLAUDE),
-        (".claude/skills/prj-checks", CLAUDE),
+        (".claude/skills/moai-prj-checks", CLAUDE),
     ] {
         let root = project();
         let r = root.path();
@@ -438,7 +441,7 @@ fn a_remove_never_follows_a_link_or_a_recorded_path_of_another_kind() {
     // reference to tests/skill_references_test.py.
     assert!(moved
         .join("skills")
-        .join("prj-extra")
+        .join("moai-prj-extra")
         .join("SKILL.md")
         .exists());
 

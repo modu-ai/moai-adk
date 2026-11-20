@@ -276,6 +276,33 @@ fn validate(r: &GenerationRequest) -> Result<()> {
         }
         render_safe(&ps.purpose)?;
     }
+    // The folder of a skill is `moai-<id>` (the namespace), so an id that fits the name rule can
+    // still make a folder name over the limit; the refusal names the field and the limit.
+    for (field, ids) in [
+        (
+            "skill_projections",
+            r.skill_projections
+                .iter()
+                .map(|p| p.id.as_str())
+                .collect::<Vec<_>>(),
+        ),
+        (
+            "project_skills",
+            r.project_skills
+                .iter()
+                .map(|p| p.id.as_str())
+                .collect::<Vec<_>>(),
+        ),
+    ] {
+        if let Some(i) = ids
+            .iter()
+            .position(|id| skill_folder(id).len() > MAX_SKILL_FOLDER)
+        {
+            return Err(format!(
+                "invalid generation request: {field}[{i}].id makes a folder name longer than {MAX_SKILL_FOLDER} characters; no values were logged"
+            ));
+        }
+    }
     for role in &r.native_roles {
         render_safe(&role.purpose)?;
         render_safe(&role.role_id)?;
@@ -453,13 +480,169 @@ fn link_on_path(root: &Path, rel: &str) -> Option<String> {
     None
 }
 
-/// Where a project skill of `host` lives; `None` for a host this tool does not write.
-fn project_skill_path(host: &str, id: &str) -> Option<String> {
-    match host {
-        "codex" => Some(format!(".agents/skills/{id}/SKILL.md")),
-        "claude" => Some(format!(".claude/skills/{id}/SKILL.md")),
+/// The folder of a skill this tool writes: `moai-<id>`, so it sits apart from the skills the user
+/// made (SPEC-20261120-project-harness-namespace). It is also the skill's front matter `name`.
+fn skill_folder(id: &str) -> String {
+    format!("moai-{id}")
+}
+
+/// The longest skill folder name a host accepts (the Codex CLI source and the Anthropic skills
+/// page both give 64 characters).
+const MAX_SKILL_FOLDER: usize = 64;
+
+/// Where a file of `family` (`native-role`, `project-skill` or `skill-projection`) for `host` and
+/// `id` lives in the namespace; `None` for a host or family this tool does not write. Agents go
+/// in a `moai` folder of the host's agents folder, skills in a `moai-<id>` folder.
+fn namespaced_path(family: &str, host: &str, id: &str) -> Option<String> {
+    match (family, host) {
+        ("native-role", "claude") => Some(format!(".claude/agents/moai/{id}.md")),
+        ("native-role", "codex") => Some(format!(".codex/agents/moai/{id}.toml")),
+        ("project-skill" | "skill-projection", "claude") => {
+            Some(format!(".claude/skills/{}/SKILL.md", skill_folder(id)))
+        }
+        ("project-skill" | "skill-projection", "codex") => {
+            Some(format!(".agents/skills/{}/SKILL.md", skill_folder(id)))
+        }
         _ => None,
     }
+}
+
+/// Where the same file lay before the namespace, as an earlier run wrote it.
+fn former_path(family: &str, host: &str, id: &str) -> Option<String> {
+    match (family, host) {
+        ("native-role", "claude") => Some(format!(".claude/agents/{id}.md")),
+        ("native-role", "codex") => Some(format!(".codex/agents/{id}.toml")),
+        ("project-skill" | "skill-projection", "claude") => {
+            Some(format!(".claude/skills/{id}/SKILL.md"))
+        }
+        ("project-skill" | "skill-projection", "codex") => {
+            Some(format!(".agents/skills/{id}/SKILL.md"))
+        }
+        _ => None,
+    }
+}
+
+/// The move of an earlier run's files into the namespace (SPEC-20261120-project-harness-namespace).
+/// The generation record is the proof that a file is ours: only a recorded file at its former
+/// path is planned, and a file without a record entry is never in the plan.
+/// - requested and unedited: the former path is `remove` (apply keeps its bytes in the receipt)
+///   and the new path, planned by the request, is created: the plan shows a move;
+/// - requested and edited (or a link on the way): the former path stays and both paths are
+///   `conflict`, so no second file with the same name appears beside the one the user edited;
+/// - not requested: an agent or projection stays where it is with a warning (a project skill is
+///   handled by the rule for skills no longer requested);
+/// - a file the record does not own at the former path of a requested agent turns the new path
+///   into `conflict`: Claude Code loads only one of two agents that share a name.
+fn plan_former_paths(
+    root: &Path,
+    manifest: &Value,
+    files: &mut Vec<GenerationFilePlan>,
+    warnings: &mut Vec<String>,
+) {
+    let owned: Vec<(String, String, String, String, String)> = manifest
+        .get("owned_files")
+        .and_then(Value::as_array)
+        .map(|list| {
+            list.iter()
+                .filter_map(|f| {
+                    let kind = f.get("section_id")?.as_str()?;
+                    let rest = kind.strip_prefix("generation:")?;
+                    let mut parts = rest.splitn(3, ':');
+                    let (family, host, id) = (parts.next()?, parts.next()?, parts.next()?);
+                    Some((
+                        kind.to_string(),
+                        f.get("path")?.as_str()?.to_string(),
+                        f.get("baseline_sha256")?.as_str()?.to_string(),
+                        format!("{family}:{host}"),
+                        id.to_string(),
+                    ))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    for (kind, path, baseline, family_host, id) in owned {
+        let (family, host) = family_host.split_once(':').unwrap_or(("", ""));
+        if former_path(family, host, &id).as_deref() != Some(path.as_str()) {
+            continue;
+        }
+        let Some(new) = namespaced_path(family, host, &id) else {
+            continue;
+        };
+        let target = files.iter().position(|f| f.path == new);
+        let Some(target) = target else {
+            if family != "project-skill" {
+                warnings.push(format!(
+                    "{path} was generated earlier and the request does not name it; it stays where it is (name it again to move it to {new})"
+                ));
+            }
+            continue;
+        };
+        let link = link_on_path(root, &path);
+        let current = if link.is_some() {
+            None
+        } else {
+            fs::read(root.join(&path)).ok()
+        };
+        let edited = current.as_deref().is_some_and(|c| digest(c) != baseline);
+        let detail = match (&link, edited) {
+            (Some(l), _) => Some(format!("{l} is a symbolic link; nothing moved through it")),
+            (None, true) => Some(format!(
+                "edited after it was generated; it stays at {path} and is not moved"
+            )),
+            (None, false) => None,
+        };
+        if let Some(why) = &detail {
+            files[target].action = "conflict".into();
+            files[target].detail = Some(format!(
+                "{path} stays where it is ({why}); settle it before the file moves here"
+            ));
+        }
+        files.push(GenerationFilePlan {
+            path,
+            action: if detail.is_some() {
+                "conflict"
+            } else {
+                "remove"
+            }
+            .into(),
+            tracked_by_default: false,
+            expected_sha256: current.as_deref().map(digest),
+            baseline_sha256: Some(baseline),
+            rendered_sha256: None,
+            source_refs: Vec::new(),
+            kind: Some(kind),
+            detail,
+        });
+    }
+    // A file the record does not own at the former path of a requested agent.
+    let manifest_owns = |path: &str| generation_baseline(manifest, path).is_some();
+    for f in files.iter_mut() {
+        let Some(rest) = f
+            .kind
+            .as_deref()
+            .and_then(|k| k.strip_prefix("generation:native-role:"))
+        else {
+            continue;
+        };
+        let Some((host, id)) = rest.split_once(':') else {
+            continue;
+        };
+        let Some(former) = former_path("native-role", host, id) else {
+            continue;
+        };
+        if manifest_owns(&former) || fs::symlink_metadata(root.join(&former)).is_err() {
+            continue;
+        }
+        f.action = "conflict".into();
+        f.detail = Some(format!(
+            "a file you made is at {former} (not recorded as generated); Claude Code and Codex load only one of two agents with the same name, so rename or remove it, then plan again"
+        ));
+    }
+}
+
+/// Where a project skill of `host` lives; `None` for a host this tool does not write.
+fn project_skill_path(host: &str, id: &str) -> Option<String> {
+    namespaced_path("project-skill", host, id)
 }
 
 /// The project skill body (#2706 P2): the profile's interview answers, one line each; an answer
@@ -512,7 +695,7 @@ fn render_project_skill(
     body.push('\n');
     Ok(format!(
         "---\nname: {id}\ndescription: {desc}\n---\n\n{body}",
-        id = skill.id,
+        id = skill_folder(&skill.id),
         desc = yaml_quoted(&skill.purpose),
     ))
 }
@@ -536,7 +719,7 @@ fn render_projection_skill(
     };
     Ok(format!(
         "---\nname: {id}\ndescription: {desc}\n---\n\n{body}",
-        id = projection.id,
+        id = skill_folder(&projection.id),
         desc = if language == "ko" {
             "외부 skill 참조 기록"
         } else {
@@ -683,11 +866,13 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
     for role in &request.native_roles {
         let (rel, rendered) = match role.host.as_str() {
             "claude" => (
-                format!(".claude/agents/{}.md", role.role_id),
+                namespaced_path("native-role", "claude", &role.role_id)
+                    .ok_or("unknown agent host")?,
                 render_claude_role(role),
             ),
             _ => (
-                format!(".codex/agents/{}.toml", role.role_id),
+                namespaced_path("native-role", "codex", &role.role_id)
+                    .ok_or("unknown agent host")?,
                 render_codex_role(role),
             ),
         };
@@ -743,9 +928,10 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
         let rendered_digest = digest(rendered.as_bytes());
         for host in &hosts {
             let rel = match host.as_str() {
-                "codex" => format!(".agents/skills/{}/SKILL.md", p.id),
-                _ => format!(".claude/skills/{}/SKILL.md", p.id),
-            };
+                "codex" => namespaced_path("skill-projection", "codex", &p.id),
+                _ => namespaced_path("skill-projection", "claude", &p.id),
+            }
+            .ok_or("unknown skill host")?;
             let dest_dir = root
                 .join(&rel)
                 .parent()
@@ -847,6 +1033,9 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
         }
     }
 
+    // Files of an earlier run at their former paths move into the namespace through this plan.
+    plan_former_paths(&root, &manifest, &mut files, &mut warnings);
+
     // Project skills no longer requested (#2706 P2b): a file this tool wrote and nobody edited
     // is planned `remove` (apply keeps its bytes in the receipt first); an edited one is a
     // conflict and stays. A recorded file that is already gone only leaves the list.
@@ -884,12 +1073,21 @@ pub fn generation_plan(root: &Path, request: GenerationRequest) -> Result<Genera
         }
         // Pre-audit 6854760758 B1: the recorded path is trusted only when it is the path the
         // kind names, and nothing on the way is a symbolic link; otherwise it is a conflict.
-        let named = kind
+        let named: Vec<String> = kind
             .strip_prefix("generation:project-skill:")
             .and_then(|rest| rest.split_once(':'))
-            .and_then(|(host, id)| project_skill_path(host, id));
+            .map(|(host, id)| {
+                [
+                    namespaced_path("project-skill", host, id),
+                    former_path("project-skill", host, id),
+                ]
+                .into_iter()
+                .flatten()
+                .collect()
+            })
+            .unwrap_or_default();
         let link = link_on_path(&root, &rel);
-        let refused = if named.as_deref() != Some(rel.as_str()) {
+        let refused = if !named.contains(&rel) {
             Some("the recorded path is not the path of its skill; nothing removed".to_string())
         } else {
             link.map(|l| format!("{l} is a symbolic link; nothing removed through it"))

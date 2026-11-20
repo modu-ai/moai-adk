@@ -3802,13 +3802,14 @@ fn generation_native_roles_render_official_shapes() {
         .contains("cannot create a sandbox"));
     ok_result(&generation_apply_cli(&root, &plan));
     let claude_role = String::from_utf8_lossy(
-        &fs::read(root.path().join(".claude/agents/prj-fixer.md")).unwrap(),
+        &fs::read(root.path().join(".claude/agents/moai/prj-fixer.md")).unwrap(),
     )
     .into_owned();
     assert!(claude_role.contains("name: prj-fixer"));
     assert!(claude_role.contains("description: Fix lint and test failures"));
     assert!(claude_role.contains("tools: Bash, Edit"));
-    let codex_role_bytes = fs::read(root.path().join(".codex/agents/prj-watcher.toml")).unwrap();
+    let codex_role_bytes =
+        fs::read(root.path().join(".codex/agents/moai/prj-watcher.toml")).unwrap();
     let codex_role = String::from_utf8_lossy(&codex_role_bytes).into_owned();
     assert!(codex_role.contains("name = \"prj-watcher\""));
     assert!(codex_role.contains("developer_instructions = \"Review diffs only\""));
@@ -3831,8 +3832,8 @@ fn generation_project_agent_keeps_hand_edits_and_never_takes_a_base_name() {
     ]);
     let plan = ok_result(&generation_plan_cli(&root, &request));
     ok_result(&generation_apply_cli(&root, &plan));
-    let claude = root.path().join(".claude/agents/prj-demo-tester.md");
-    let codex = root.path().join(".codex/agents/prj-demo-tester.toml");
+    let claude = root.path().join(".claude/agents/moai/prj-demo-tester.md");
+    let codex = root.path().join(".codex/agents/moai/prj-demo-tester.toml");
     assert!(fs::read_to_string(&claude).unwrap().contains(purpose));
     assert!(fs::read_to_string(&codex)
         .unwrap()
@@ -3851,7 +3852,7 @@ fn generation_project_agent_keeps_hand_edits_and_never_takes_a_base_name() {
     let kept = ok_result(&generation_plan_cli(&root, &request));
     assert!(actions_of(&kept)
         .iter()
-        .any(|(p, a)| p == ".claude/agents/prj-demo-tester.md" && a == "unchanged"));
+        .any(|(p, a)| p == ".claude/agents/moai/prj-demo-tester.md" && a == "unchanged"));
     ok_result(&generation_apply_cli(&root, &kept));
     assert_eq!(fs::read_to_string(&claude).unwrap(), edited);
     // The answers changed too: both sides moved, so it is a conflict and nothing is written.
@@ -3859,7 +3860,7 @@ fn generation_project_agent_keeps_hand_edits_and_never_takes_a_base_name() {
     let after_edit = ok_result(&generation_plan_cli(&root, &request));
     assert!(actions_of(&after_edit)
         .iter()
-        .any(|(p, a)| p == ".claude/agents/prj-demo-tester.md" && a == "conflict"));
+        .any(|(p, a)| p == ".claude/agents/moai/prj-demo-tester.md" && a == "conflict"));
     let out = generation_apply_cli(&root, &after_edit);
     assert!(!out.status.success());
     let failure: Value = serde_json::from_slice(&out.stdout).unwrap();
@@ -3928,11 +3929,12 @@ fn generation_license_gate_and_attribution() {
     assert!(planned.iter().any(|p| p.contains("ref-b")));
     assert!(plan.to_string().as_str().contains("not license-reviewed"));
     ok_result(&generation_apply_cli(&root, &plan));
-    let projection_bytes = fs::read(root.path().join(".claude/skills/ref-b/SKILL.md")).unwrap();
+    let projection_bytes =
+        fs::read(root.path().join(".claude/skills/moai-ref-b/SKILL.md")).unwrap();
     let projection = String::from_utf8_lossy(&projection_bytes).into_owned();
     assert!(projection.contains("source: fixtures/skill-b"));
     assert!(projection.contains("license: MIT"));
-    assert!(projection.contains("name: ref-b"));
+    assert!(projection.contains("name: moai-ref-b"));
 }
 
 #[test]
@@ -4037,9 +4039,10 @@ fn generation_skill_projection_name_matches_directory() {
     ]);
     let plan = ok_result(&generation_plan_cli(&root, &request));
     ok_result(&generation_apply_cli(&root, &plan));
-    let projection_bytes = fs::read(root.path().join(".claude/skills/ref-b/SKILL.md")).unwrap();
+    let projection_bytes =
+        fs::read(root.path().join(".claude/skills/moai-ref-b/SKILL.md")).unwrap();
     let projection = String::from_utf8_lossy(&projection_bytes).into_owned();
-    assert!(projection.contains("name: ref-b"));
+    assert!(projection.contains("name: moai-ref-b"));
     // The same directory, never projected before, is a conflict for a fresh manifest.
     let root2 = generation_project();
     fs::create_dir_all(root2.path().join(".moai-cli/manifests")).unwrap();
@@ -4048,9 +4051,9 @@ fn generation_skill_projection_name_matches_directory() {
         serde_json::to_vec_pretty(&sources).unwrap(),
     )
     .unwrap();
-    fs::create_dir_all(root2.path().join(".claude/skills/ref-b")).unwrap();
+    fs::create_dir_all(root2.path().join(".claude/skills/moai-ref-b")).unwrap();
     fs::write(
-        root2.path().join(".claude/skills/ref-b/SKILL.md"),
+        root2.path().join(".claude/skills/moai-ref-b/SKILL.md"),
         b"user's own",
     )
     .unwrap();
@@ -4059,7 +4062,7 @@ fn generation_skill_projection_name_matches_directory() {
         .iter()
         .any(|(p, a)| p.contains("ref-b") && a == "conflict"));
     assert_eq!(
-        fs::read(root2.path().join(".claude/skills/ref-b/SKILL.md")).unwrap(),
+        fs::read(root2.path().join(".claude/skills/moai-ref-b/SKILL.md")).unwrap(),
         b"user's own"
     );
 }
@@ -4095,7 +4098,7 @@ fn generation_manifest_entries_carry_kind() {
     assert_eq!(by_kind("native-role").len(), 1);
     assert_eq!(
         by_kind("native-role")[0]["path"],
-        json!(".claude/agents/prj-fixer.md")
+        json!(".claude/agents/moai/prj-fixer.md")
     );
     // The agents-owned entries stay kind-less: their section_id already carries the
     // managed section they belong to.

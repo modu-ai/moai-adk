@@ -100,7 +100,7 @@ fn skills(ids: &[&str]) -> Value {
     )
 }
 
-const CODEX_LAST: &str = ".agents/skills/prj-checks/SKILL.md";
+const CODEX_LAST: &str = ".agents/skills/moai-prj-checks/SKILL.md";
 
 // ---- AC-9: generation-apply removing the last project skill ----
 
@@ -115,7 +115,7 @@ fn removing_the_last_project_skill_leaves_no_empty_skills_folder() {
     apply(r, &p);
     assert!(!r.join(CODEX_LAST).exists());
     for gone in [
-        ".agents/skills/prj-checks",
+        ".agents/skills/moai-prj-checks",
         ".agents/skills",
         ".agents",
         ".claude/skills",
@@ -135,14 +135,14 @@ fn a_folder_that_still_holds_something_stays() {
     apply(r, &plan(r, &request(skills(&["prj-checks", "prj-extra"]))));
     let p = plan(r, &request(skills(&["prj-checks"])));
     apply(r, &p);
-    assert!(!r.join(".agents/skills/prj-extra").exists());
-    assert!(r.join(".agents/skills/prj-checks/SKILL.md").exists());
+    assert!(!r.join(".agents/skills/moai-prj-extra").exists());
+    assert!(r.join(".agents/skills/moai-prj-checks/SKILL.md").exists());
 
     // Now the last one goes, but the user has a skill of their own beside it.
     fs::create_dir_all(r.join(".agents/skills/mine")).unwrap();
     fs::write(r.join(".agents/skills/mine/SKILL.md"), "mine\n").unwrap();
     apply(r, &plan(r, &request(Value::Null)));
-    assert!(!r.join(".agents/skills/prj-checks").exists());
+    assert!(!r.join(".agents/skills/moai-prj-checks").exists());
     assert!(r.join(".agents/skills/mine/SKILL.md").exists(), "{r:?}");
     assert!(r.join(".agents").exists());
 }
