@@ -22,7 +22,9 @@
 //! - A4 file writes, wherever they land: inside a `.git` directory, into credential directories
 //!   (`.ssh`, `.aws`, `.azure`, `.kube`, `.gnupg`, gcloud's configuration), onto a private-key
 //!   file named `id_rsa`/`id_ed25519`/`id_ecdsa`/`id_dsa`, or content that carries a private-key
-//!   block or a GitHub token. A file extension alone (`.pem`, `.key`) decides nothing: public
+//!   block or an access token (the shapes of `TOKEN_SHAPES`: GitHub, GitLab, Slack, AWS, Google
+//!   and OpenAI-style, each with a prefix and a minimum length, SPEC-20261120-secret-token-shapes).
+//!   A file extension alone (`.pem`, `.key`) decides nothing: public
 //!   certificates and test fixtures use them too. Writes outside the project are not refused
 //!   here (decision pending: the hook cannot see a session's extra directories).
 //! - A5 SPEC before code (card C-86, user decision 2026-11-17 "권고 말고 강제",
@@ -72,7 +74,7 @@ const HOOK_BYPASS: &str =
 const PROTECTED_PATH: &str =
     "MoAI tool-preflight: writing inside a .git directory, a credential directory or a private-key file is refused.";
 const SECRET_CONTENT: &str =
-    "MoAI tool-preflight: writing a private key or a GitHub token into a file is refused.";
+    "MoAI tool-preflight: writing a private key or an access token into a file is refused.";
 
 const PROTECTED_BRANCHES: &[&str] = &["main", "master"];
 const DB_CLIENTS: &[&str] = &["psql", "mysql", "mariadb", "sqlite3", "cockroach"];
@@ -1898,6 +1900,129 @@ fn is_protected_lexical(path: &Path) -> bool {
         .is_some_and(|name| KEY_FILES.contains(&name.as_str()))
 }
 
+/// One access-token shape (SPEC-20261120-secret-token-shapes): a prefix, how many characters
+/// must follow it, which characters count, and whether the prefix counts only at a word start.
+/// Compared case-sensitively. A candidate shorter than `min` is not a token, so plain prose that
+/// only names a prefix is allowed.
+struct TokenShape {
+    prefix: &'static str,
+    min: usize,
+    accepts: fn(char) -> bool,
+    /// The prefix counts only at the start of the content or after a character that is not an
+    /// ASCII letter or digit (the rule of `crate::secret_shaped`), so `task-based` is not a key.
+    word_start: bool,
+}
+
+fn alnum(c: char) -> bool {
+    c.is_ascii_alphanumeric()
+}
+
+fn alnum_underscore(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == '_'
+}
+
+fn alnum_hyphen(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == '-'
+}
+
+fn alnum_hyphen_underscore(c: char) -> bool {
+    c.is_ascii_alphanumeric() || c == '-' || c == '_'
+}
+
+fn upper_digit(c: char) -> bool {
+    c.is_ascii_uppercase() || c.is_ascii_digit()
+}
+
+/// The shapes a written file may not carry. The two GitHub shapes are the ones this guard always
+/// had; the others follow the Go PreToolUse table (`pre_tool.go`) with the length and word-start
+/// limits the SPEC explains. Certificates and public keys are deliberately not here.
+const TOKEN_SHAPES: &[TokenShape] = &[
+    // GitHub personal and fine-grained tokens (the original two).
+    TokenShape {
+        prefix: "ghp_",
+        min: 36,
+        accepts: alnum,
+        word_start: false,
+    },
+    TokenShape {
+        prefix: "github_pat_",
+        min: 22,
+        accepts: alnum_underscore,
+        word_start: false,
+    },
+    // GitHub OAuth, GitLab personal access token.
+    TokenShape {
+        prefix: "gho_",
+        min: 36,
+        accepts: alnum,
+        word_start: false,
+    },
+    TokenShape {
+        prefix: "glpat-",
+        min: 20,
+        accepts: alnum_hyphen_underscore,
+        word_start: false,
+    },
+    // OpenAI-style key.
+    TokenShape {
+        prefix: "sk-",
+        min: 32,
+        accepts: alnum,
+        word_start: true,
+    },
+    // Slack: the letter after the three-letter prefix is one of b, a, p, r, s.
+    TokenShape {
+        prefix: "xoxb-",
+        min: 10,
+        accepts: alnum_hyphen,
+        word_start: true,
+    },
+    TokenShape {
+        prefix: "xoxa-",
+        min: 10,
+        accepts: alnum_hyphen,
+        word_start: true,
+    },
+    TokenShape {
+        prefix: "xoxp-",
+        min: 10,
+        accepts: alnum_hyphen,
+        word_start: true,
+    },
+    TokenShape {
+        prefix: "xoxr-",
+        min: 10,
+        accepts: alnum_hyphen,
+        word_start: true,
+    },
+    TokenShape {
+        prefix: "xoxs-",
+        min: 10,
+        accepts: alnum_hyphen,
+        word_start: true,
+    },
+    // AWS access key id, long-term and temporary.
+    TokenShape {
+        prefix: "AKIA",
+        min: 16,
+        accepts: upper_digit,
+        word_start: true,
+    },
+    TokenShape {
+        prefix: "ASIA",
+        min: 16,
+        accepts: upper_digit,
+        word_start: true,
+    },
+    // Google OAuth access token.
+    TokenShape {
+        prefix: "ya29.",
+        min: 20,
+        accepts: alnum_hyphen_underscore,
+        word_start: true,
+    },
+];
+
 fn carries_secret(content: &str) -> bool {
     // Assembled so this file itself never holds the whole marker.
     let begin = concat!("-----", "BEGIN");
@@ -1905,17 +2030,27 @@ fn carries_secret(content: &str) -> bool {
     if content.contains(begin) && content.contains(private) {
         return true;
     }
-    has_token(content, "ghp_", 36, false) || has_token(content, "github_pat_", 22, true)
+    TOKEN_SHAPES.iter().any(|shape| has_token(content, shape))
 }
 
-/// True when `prefix` is followed by at least `min` token characters.
-fn has_token(content: &str, prefix: &str, min: usize, underscore: bool) -> bool {
-    content.match_indices(prefix).any(|(at, _)| {
-        content[at + prefix.len()..]
-            .chars()
-            .take_while(|c| c.is_ascii_alphanumeric() || (underscore && *c == '_'))
-            .count()
-            >= min
+/// True when `shape`'s prefix, at a word start where the shape needs one, is followed by at
+/// least `shape.min` accepted characters. A run is counted only up to `min` (REQ-11): a
+/// candidate that fails is shorter than `min`, and one that succeeds ends the search, so the
+/// scan grows with the content length and never with the length of one run.
+fn has_token(content: &str, shape: &TokenShape) -> bool {
+    content.match_indices(shape.prefix).any(|(at, _)| {
+        let at_word_start = !shape.word_start
+            || content[..at]
+                .chars()
+                .next_back()
+                .is_none_or(|c| !c.is_ascii_alphanumeric());
+        at_word_start
+            && content[at + shape.prefix.len()..]
+                .chars()
+                .take(shape.min)
+                .take_while(|c| (shape.accepts)(*c))
+                .count()
+                == shape.min
     })
 }
 
@@ -2779,6 +2914,128 @@ mod tests {
                 None,
                 "{content}"
             );
+        }
+    }
+
+    /// A character the shape accepts, for building a value of a given length.
+    fn fill_for(shape: &TokenShape) -> char {
+        if (shape.accepts)('a') {
+            'a'
+        } else {
+            'A'
+        }
+    }
+
+    /// SPEC-20261120-secret-token-shapes AC-6 (REQ-1..REQ-6): each shape at its minimum is a
+    /// secret and one character short is not. Values are assembled at run time.
+    #[test]
+    fn access_token_shapes_end_exactly_at_their_minimum() {
+        // The expected table is written out here, not read from TOKEN_SHAPES, so a wrong
+        // minimum or word-start flag in the table fails this test instead of agreeing with
+        // itself. Columns: prefix, minimum length, needs a word start.
+        let expected: [(&str, usize, bool); 13] = [
+            ("ghp_", 36, false),
+            ("github_pat_", 22, false),
+            ("gho_", 36, false),
+            ("glpat-", 20, false),
+            ("sk-", 32, true),
+            ("xoxb-", 10, true),
+            ("xoxa-", 10, true),
+            ("xoxp-", 10, true),
+            ("xoxr-", 10, true),
+            ("xoxs-", 10, true),
+            ("AKIA", 16, true),
+            ("ASIA", 16, true),
+            ("ya29.", 20, true),
+        ];
+        assert_eq!(TOKEN_SHAPES.len(), expected.len());
+        for (prefix, min, word_start) in expected {
+            let shape = TOKEN_SHAPES
+                .iter()
+                .find(|s| s.prefix == prefix)
+                .unwrap_or_else(|| panic!("{prefix} is missing from TOKEN_SHAPES"));
+            assert_eq!(shape.min, min, "{prefix} minimum");
+            assert_eq!(shape.word_start, word_start, "{prefix} word-start flag");
+        }
+        for shape in TOKEN_SHAPES {
+            let fill = fill_for(shape);
+            let make = |n: usize| format!("k = \"{}{}\"", shape.prefix, fill.to_string().repeat(n));
+            assert!(
+                carries_secret(&make(shape.min)),
+                "{} at its minimum",
+                shape.prefix
+            );
+            assert!(
+                !carries_secret(&make(shape.min - 1)),
+                "{} one short",
+                shape.prefix
+            );
+        }
+    }
+
+    /// AC-6 (REQ-7): a word-start shape counts at the start of the content and after punctuation,
+    /// not inside a longer word; the other shapes count inside a word too.
+    #[test]
+    fn access_token_prefixes_follow_their_word_start_rule() {
+        for shape in TOKEN_SHAPES {
+            let body = fill_for(shape).to_string().repeat(shape.min);
+            let value = format!("{}{body}", shape.prefix);
+            assert!(carries_secret(&value), "{} at the start", shape.prefix);
+            assert!(
+                carries_secret(&format!("-{value}")),
+                "{} after punctuation",
+                shape.prefix
+            );
+            assert_eq!(
+                carries_secret(&format!("q{value}")),
+                !shape.word_start,
+                "{} inside a word",
+                shape.prefix
+            );
+            // The word-start rule looks at ASCII letters and digits only (the rule of
+            // `secret_shaped`): a non-ASCII letter before the prefix is not a word, so the
+            // value still counts. This pins that direction.
+            for lead in ["é", "한", "😀"] {
+                assert!(
+                    carries_secret(&format!("{lead}{value}")),
+                    "{} after {lead}",
+                    shape.prefix
+                );
+            }
+        }
+        for prose in [
+            "a task-based plan with a risk-free rollout",
+            "the desk-top flow and mask-wearing rules",
+        ] {
+            assert!(!carries_secret(prose), "{prose}");
+        }
+    }
+
+    /// AC-6 (REQ-7, REQ-8): the shapes are case-sensitive, a prefix only named in prose is not a
+    /// token, and certificates and public keys stay allowed.
+    #[test]
+    fn access_token_shapes_are_case_sensitive_and_certificates_stay_allowed() {
+        for shape in TOKEN_SHAPES {
+            let body = fill_for(shape).to_string().repeat(shape.min);
+            let swapped = if shape.prefix.chars().any(|c| c.is_ascii_lowercase()) {
+                shape.prefix.to_ascii_uppercase()
+            } else {
+                shape.prefix.to_ascii_lowercase()
+            };
+            assert!(
+                !carries_secret(&format!("{swapped}{body}")),
+                "{} other case",
+                shape.prefix
+            );
+            assert!(
+                !carries_secret(&format!("the prefix {} is documented", shape.prefix)),
+                "{} in prose",
+                shape.prefix
+            );
+        }
+        for kind in ["CERTIFICATE", "PUBLIC KEY"] {
+            let block = format!("{}{} {kind}{}", "-----", "BEGIN", "-----");
+            assert!(!carries_secret(&block), "{kind}");
         }
     }
 

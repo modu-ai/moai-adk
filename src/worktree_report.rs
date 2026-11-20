@@ -467,7 +467,7 @@ pub fn report(project: &Path, tmp_root: &Path, budget: Duration) -> Result<Value
         "worktrees": worktrees,
         "candidates": {
             "status": "not_evaluated",
-            "reason": "removal candidates need the in-use checks of worktree.gc.plan (WT-4) and the user decision Q4",
+            "reason": "removal candidates need the in-use checks of worktree.gc.plan and a decision by the user",
         },
         "network": "disabled",
         "writes": false,

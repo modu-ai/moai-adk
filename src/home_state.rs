@@ -269,7 +269,7 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
                        "note": "holds secrets; move it by hand if you need it"})
             } else if is_work_folder(n) {
                 json!({"name": n, "kind": "work_folder", "selected": false,
-                       "note": "user work (worktrees, projects); never moved or copied (#2811)"})
+                       "note": "user work (worktrees, projects); never moved or copied"})
             } else if is_reserved(n) {
                 // The tool writes these names into the Rust folder (#2783 audit B1).
                 json!({"name": n, "kind": "reserved", "selected": false,
@@ -321,7 +321,7 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
         "copy": {"default": "none", "candidates": candidates, "total": total},
         "warnings": warnings,
         "plan_digest": plan_digest,
-        "apply": "not yet: the apply is the next step of #2723; on a real HOME it runs only after the user confirms",
+        "apply": "not yet: the apply is a later step; on a real HOME it runs only after the user confirms",
         "writes": false,
     }))
 }
@@ -662,7 +662,7 @@ pub fn plan_selective(home: &Path, moai_home: Option<&str>, now: &str) -> Result
         "total": total,
         "warnings": warnings,
         "plan_digest": plan_digest,
-        "apply": "not yet: the selective apply is the next card after #2815; on a real HOME it runs only after the user confirms",
+        "apply": "not yet: the selective apply is a later step; on a real HOME it runs only after the user confirms",
         "writes": false,
     }))
 }
@@ -786,7 +786,7 @@ pub fn apply(
             }
             Some("work_folder") => {
                 return Err(format!(
-                    "`{name}` is user work (#2811) and is never moved or copied; nothing was written"
+                    "`{name}` is user work and is never moved or copied; nothing was written"
                 ))
             }
             Some("reserved") => {

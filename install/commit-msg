@@ -1,0 +1,8 @@
+#!/bin/sh
+# MoAI commit-msg hook: refuse card numbers in the commit message — the same scan
+# `moai trailer-check --card-numbers-since` runs on a range, judging the draft
+# message git hands this hook (SPEC-20261120-commit-message-card-numbers).
+# Install: copy or link this file into .git/hooks/ (or your core.hooksPath folder)
+# as commit-msg and make it executable. Bypass of the host's own tool hooks is a
+# separate matter; git runs this hook on every commit once installed.
+exec "${MOAI_BIN:-$HOME/.moai-cli/path/moai-cli}" trailer-check --message-file "$1"

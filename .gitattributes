@@ -2,3 +2,11 @@
 # clone registers it (`python3 -I tools/merge_driver_manifest.py --install`); unregistered,
 # git merges the file as text.
 skills/moai/references/source-manifest.json merge=moai-manifest
+
+# The optional-pack assets are a byte snapshot of the Go build's template tree
+# (SPEC-20261120-user-asset-bundles): the installed bytes and their recorded sha256 must
+# stay exactly what Go shipped, so the whitespace checker must not ask these files to be
+# tidied — changing a line there would flip an existing Go install to a Rust-side collision
+# instead of a refresh. The attribute tunes `git diff --check` for this folder only; the
+# same rules apply wherever the tree is checked (local and CI read the same attributes).
+templates/bundle-packs/** whitespace=-blank-at-eol,-blank-at-eof

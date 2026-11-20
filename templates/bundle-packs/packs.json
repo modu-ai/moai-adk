@@ -1,0 +1,498 @@
+{
+ "schema_version": 1,
+ "base_names": [
+  "manager-develop",
+  "manager-docs",
+  "manager-lead",
+  "manager-spec",
+  "moai",
+  "moai-factory-foreman",
+  "moai-foundation-core",
+  "moai-foundation-quality",
+  "moai-foundation-thinking",
+  "moai-lane-watchdog",
+  "moai-plan",
+  "moai-ref-cross-model-audit",
+  "moai-ref-owasp-checklist",
+  "moai-ref-secops",
+  "moai-ref-testing-pyramid",
+  "moai-run",
+  "moai-sync",
+  "moai-workflow-ddd",
+  "moai-workflow-project",
+  "moai-workflow-spec",
+  "moai-workflow-tdd",
+  "moai-workflow-testing",
+  "moai-workflow-worktree",
+  "plan-auditor",
+  "sync-auditor"
+ ],
+ "packs": {
+  "backend": {
+   "description": "Backend API development, database integration, and server-side patterns",
+   "depends_on": [],
+   "entries": [
+    {
+     "name": "moai-domain-backend",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-domain-backend",
+     "sha256": "563a35038e06cf3478ab907892597a75d42d5882290dc1807c5a8d2dd6481000",
+     "depends_skills": []
+    },
+    {
+     "name": "moai-domain-database",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-domain-database",
+     "sha256": "fb7cbf5ea66ae69fa2cae07f75a48369a24c9b55b2b9f9c1e7120b33ec409f71",
+     "depends_skills": []
+    },
+    {
+     "name": "moai-ref-api-patterns",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-ref-api-patterns",
+     "sha256": "8c84e6cda6f315b4068cbfc29771d575d21d339a0697cf8d6c95cd494d75ff3c",
+     "depends_skills": []
+    }
+   ]
+  },
+  "commands": {
+   "description": "The /moai subcommand surface (the published command skills outside the L0 plan/run/sync trio)",
+   "depends_on": [],
+   "entries": [
+    {
+     "name": "moai-clean",
+     "kind": "skill",
+     "root": "agents-skills",
+     "path": ".agents/skills/moai-clean",
+     "sha256": "73b5afcb5ff9198d70eb5af9955cff517a17f2295850673b3e154eae147f8f32",
+     "depends_skills": []
+    },
+    {
+     "name": "moai-fetch-web",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-fetch-web",
+     "sha256": "45baada9685949ccadac4f413054233833b5e67f140449b01be1903bf45abac2",
+     "depends_skills": [
+      "moai",
+      "moai-workflow-ddd"
+     ]
+    },
+    {
+     "name": "moai-codemaps",
+     "kind": "skill",
+     "root": "agents-skills",
+     "path": ".agents/skills/moai-codemaps",
+     "sha256": "8ab5e7351c68052b36516d058565ba577d5b5139025acabe028c57a33e74d225",
+     "depends_skills": [
+      "moai"
+     ]
+    },
+    {
+     "name": "moai-e2e",
+     "kind": "skill",
+     "root": "agents-skills",
+     "path": ".agents/skills/moai-e2e",
+     "sha256": "d6a80302481e3c0dcd4e786448df35efffcd8c4052665e672a346db8c34d07f3",
+     "depends_skills": [
+      "moai",
+      "moai-foundation-quality",
+      "moai-ref-testing-pyramid"
+     ]
+    },
+    {
+     "name": "moai-feedback",
+     "kind": "skill",
+     "root": "agents-skills",
+     "path": ".agents/skills/moai-feedback",
+     "sha256": "2a35ab80ba9c4e6b54adaa81264e89e9f56947f1a865a8c1effb5d9251ebfb63",
+     "depends_skills": [
+      "moai"
+     ]
+    },
+    {
+     "name": "moai-fix",
+     "kind": "skill",
+     "root": "agents-skills",
+     "path": ".agents/skills/moai-fix",
+     "sha256": "6faafb575ce2d69888fb8563adf4802e9a91333651ea7a1b8fe8394faacbb07a",
+     "depends_skills": [
+      "moai",
+      "moai-workflow-ddd"
+     ]
+    },
+    {
+     "name": "moai-gate",
+     "kind": "skill",
+     "root": "agents-skills",
+     "path": ".agents/skills/moai-gate",
+     "sha256": "548e9ed0f35a533aa8302ceddae7f8b690e7d35bf8d135d1e9a55d942a0cb7c1",
+     "depends_skills": [
+      "moai"
+     ]
+    },
+    {
+     "name": "moai-goal",
+     "kind": "skill",
+     "root": "agents-skills",
+     "path": ".agents/skills/moai-goal",
+     "sha256": "371c292fdfaf895936696b35b6fa395b701c98675a6b8dee3a3212900b52ebb7",
+     "depends_skills": [
+      "moai"
+     ]
+    },
+    {
+     "name": "moai-gtd",
+     "kind": "skill",
+     "root": "agents-skills",
+     "path": ".agents/skills/moai-gtd",
+     "sha256": "888fe21dcf7c70aeebaad5d751c05dba82b8f7788870c4c7716bfcfcc5f95357",
+     "depends_skills": [
+      "moai"
+     ]
+    },
+    {
+     "name": "moai-harness",
+     "kind": "skill",
+     "root": "agents-skills",
+     "path": ".agents/skills/moai-harness",
+     "sha256": "09c89f3970afac8813a378ccd557c9fc4e583b0c443228453ae32d52cda51757",
+     "depends_skills": [
+      "moai",
+      "moai-harness-learner"
+     ]
+    },
+    {
+     "name": "moai-loop",
+     "kind": "skill",
+     "root": "agents-skills",
+     "path": ".agents/skills/moai-loop",
+     "sha256": "0b83c4b7be7040b5c5eba8c1f70df1d2e8301cefa29a1ec52c4f93618111e305",
+     "depends_skills": [
+      "moai",
+      "moai-workflow-loop"
+     ]
+    },
+    {
+     "name": "moai-mx",
+     "kind": "skill",
+     "root": "agents-skills",
+     "path": ".agents/skills/moai-mx",
+     "sha256": "fa11d2b6c9a5065447046d9e63ceb0e83e1caa05257459356aefe1c890970c0f",
+     "depends_skills": [
+      "moai"
+     ]
+    },
+    {
+     "name": "moai-project",
+     "kind": "skill",
+     "root": "agents-skills",
+     "path": ".agents/skills/moai-project",
+     "sha256": "095fd1b8d5c9f565e94b1bf1e00dc77b256ee8cf148ec256db865b1a22d55e4b",
+     "depends_skills": [
+      "moai"
+     ]
+    },
+    {
+     "name": "moai-review",
+     "kind": "skill",
+     "root": "agents-skills",
+     "path": ".agents/skills/moai-review",
+     "sha256": "f098d342be7fd499e3f0a5a980b51a74ea7b175a13a70a1f43b2509f277aa6a7",
+     "depends_skills": [
+      "moai",
+      "moai-foundation-quality",
+      "moai-ref-owasp-checklist"
+     ]
+    },
+    {
+     "name": "moai-todo",
+     "kind": "skill",
+     "root": "agents-skills",
+     "path": ".agents/skills/moai-todo",
+     "sha256": "058049e8a835f341894f63905b6109b04638747813fad5d7e7da1e31d774724d",
+     "depends_skills": [
+      "moai"
+     ]
+    }
+   ]
+  },
+  "consult": {
+   "description": "Consultation, design, queue-management, and E2E specialist roles outside the L0 five",
+   "depends_on": [],
+   "entries": [
+    {
+     "name": "e2e-tester",
+     "kind": "agent",
+     "root": "claude-agents",
+     "path": ".claude/agents/moai/e2e-tester.md",
+     "sha256": "3606c7fdc85b2390a329f036daa6e98787e565a3ff5fa4973894f5f51c6ccd20",
+     "depends_skills": []
+    },
+    {
+     "name": "manager-design",
+     "kind": "agent",
+     "root": "claude-agents",
+     "path": ".claude/agents/moai/manager-design.md",
+     "sha256": "84e533d3b2ac6878e59237a0c6a43bf1b56f585172005d9c17bdcb2206b9dab6",
+     "depends_skills": []
+    },
+    {
+     "name": "manager-todo",
+     "kind": "agent",
+     "root": "claude-agents",
+     "path": ".claude/agents/moai/manager-todo.md",
+     "sha256": "7b1b374a398a8cde072d643f4afc178e0c35807cdd0378062eeabab2b204e9f6",
+     "depends_skills": []
+    },
+    {
+     "name": "super-advisor",
+     "kind": "agent",
+     "root": "claude-agents",
+     "path": ".claude/agents/moai/super-advisor.md",
+     "sha256": "d504ae7c5d064214636a8bfe3799cefd54c630b6ce2ad9df92af621fe6c254b2",
+     "depends_skills": []
+    }
+   ]
+  },
+  "creative": {
+   "description": "Domain authoring skills for rendered and visual artifacts",
+   "depends_on": [],
+   "entries": [
+    {
+     "name": "moai-domain-design-dna",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-domain-design-dna",
+     "sha256": "cf40ecbaacbd0279f372eed515ef7143710ae86a40a033c884a6ec7897dd82f9",
+     "depends_skills": []
+    },
+    {
+     "name": "moai-domain-html-report",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-domain-html-report",
+     "sha256": "7ea8d361d84632ce15d66c5f6eef8d3d757bf8f66884348f286b4d1399a76403",
+     "depends_skills": []
+    },
+    {
+     "name": "moai-domain-svg-infographic",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-domain-svg-infographic",
+     "sha256": "99d8b3819a86e5a259049eb69fa0523641d169fe1d0f9429f0dc5aba1b17470d",
+     "depends_skills": []
+    }
+   ]
+  },
+  "delivery": {
+   "description": "Git, branch, and PR delivery (the manager-git role body and its git-workflow reference)",
+   "depends_on": [],
+   "entries": [
+    {
+     "name": "moai-ref-git-workflow",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-ref-git-workflow",
+     "sha256": "09ada681e96d679ea9bcc5ff6a88c16b91b60702d9e3c61c1aabbe2c69474439",
+     "depends_skills": []
+    },
+    {
+     "name": "manager-git",
+     "kind": "agent",
+     "root": "claude-agents",
+     "path": ".claude/agents/moai/manager-git.md",
+     "sha256": "492d7cb9764f14fcd880842278d1dc5087b06ba5aa0dc9211207113d08a1b101",
+     "depends_skills": []
+    }
+   ]
+  },
+  "deployment": {
+   "description": "Deployment and hosting with Vercel, Railway, Convex, and serverless infrastructure",
+   "depends_on": [
+    "backend"
+   ],
+   "entries": []
+  },
+  "design": {
+   "description": "AI text humanization and post-editing (윤문) support",
+   "depends_on": [
+    "frontend"
+   ],
+   "entries": [
+    {
+     "name": "moai-domain-humanize",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-domain-humanize",
+     "sha256": "2b4c74c1bebba3f0cf3842191e894fee08803c4417f8cfaa2c7a1740a3f92ab5",
+     "depends_skills": []
+    }
+   ]
+  },
+  "devops": {
+   "description": "Security review, OWASP compliance, performance optimization, and infrastructure",
+   "depends_on": [
+    "backend"
+   ],
+   "entries": [
+    {
+     "name": "moai-ref-owasp-checklist",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-ref-owasp-checklist",
+     "sha256": "813cf69d9a6c25bd99fceb1fd35482fca1cba80b78a81bdc183f29abef60336f",
+     "depends_skills": []
+    },
+    {
+     "name": "moai-ref-llm-security",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-ref-llm-security",
+     "sha256": "4c847baf1c957a4a3e0e56c90c043bed13ef8b48ff5074e397e05ee736e7cec7",
+     "depends_skills": []
+    },
+    {
+     "name": "moai-ref-cross-model-audit",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-ref-cross-model-audit",
+     "sha256": "00d8e9dcd8366cd7649c3f0ef00eac098452af564c706202552b5d76d12f8c50",
+     "depends_skills": []
+    },
+    {
+     "name": "moai-ref-supply-chain",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-ref-supply-chain",
+     "sha256": "8d8ddb8032d8aebe24787fe285ac3891803bff42265aa917aaa6ffa5f43b480e",
+     "depends_skills": []
+    },
+    {
+     "name": "moai-ref-secops",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-ref-secops",
+     "sha256": "c0f1bc085835379932dfe175e9281e6b8af2d0501bcbbb0282549a017bf951d6",
+     "depends_skills": []
+    }
+   ]
+  },
+  "frontend": {
+   "description": "Frontend development with React, Next.js, Vue, and modern UI patterns",
+   "depends_on": [],
+   "entries": [
+    {
+     "name": "moai-domain-frontend",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-domain-frontend",
+     "sha256": "909ada3e5d0ac21169b1b94f3e53976f5e3fa2d1c955da3c7e78214ef1eaee5b",
+     "depends_skills": []
+    },
+    {
+     "name": "moai-ref-react-patterns",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-ref-react-patterns",
+     "sha256": "1bf865afaa742266a1449546a58cca9fd405bd515fa3f490cbd9855d04437b4c",
+     "depends_skills": []
+    },
+    {
+     "name": "moai-ref-ui-polish",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-ref-ui-polish",
+     "sha256": "bf7ea9eac5ad067c57a5b3b49a7674ef67f419b30608d7cd6c040510ef61fb52",
+     "depends_skills": []
+    },
+    {
+     "name": "moai-ref-seo",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-ref-seo",
+     "sha256": "64b86faef2f6600f12ebc683759e1229f636229fdcaa7127bcf3404e5972f9c8",
+     "depends_skills": []
+    }
+   ]
+  },
+  "ops-tools": {
+   "description": "Operations and tooling skills outside the L0 surface (harness builders, Jev, loop, docs-claim-check)",
+   "depends_on": [],
+   "entries": [
+    {
+     "name": "moai-foundation-cc",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-foundation-cc",
+     "sha256": "bb29b631ef1c66f3f75792386101bf6423fb506498a9f979155d27604b5f9388",
+     "depends_skills": []
+    },
+    {
+     "name": "moai-harness-learner",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-harness-learner",
+     "sha256": "05f85006101b5e2054510f9418af9b64812b73ee0b6aab10506faebbe84b53c2",
+     "depends_skills": []
+    },
+    {
+     "name": "moai-jev-skill-suggestion",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-jev-skill-suggestion",
+     "sha256": "65bc06796226a5aabba9f0780286f1b99696c43f6ebaaab1a2f8c49f99646ca2",
+     "depends_skills": []
+    },
+    {
+     "name": "moai-meta-harness",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-meta-harness",
+     "sha256": "4f8afd3860591b6159d76d94e4bb0614554d637331bf0a89945cf44c2f0ee22e",
+     "depends_skills": []
+    },
+    {
+     "name": "moai-ref-aside-browser",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-ref-aside-browser",
+     "sha256": "653940540ae35059faa4dcdd7d4f2bf4d7b4960de023f6da405e9632c0030b5f",
+     "depends_skills": []
+    },
+    {
+     "name": "moai-ref-jev-question-design",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-ref-jev-question-design",
+     "sha256": "8921b54c4752ddcd83b995c69d0c6261ac610266e8d4d717700ee973272c2490",
+     "depends_skills": []
+    },
+    {
+     "name": "moai-workflow-docs-claim-check",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-workflow-docs-claim-check",
+     "sha256": "daef35e4f6e1856625a591e30a7b262fd109d135b1e7f6b6fb7e0ab354bb3521",
+     "depends_skills": []
+    },
+    {
+     "name": "moai-workflow-loop",
+     "kind": "skill",
+     "root": "claude-skills",
+     "path": ".claude/skills/moai-workflow-loop",
+     "sha256": "eadc2cf7d5029c7d9acd89f627d51ee4a722e54645eb61be8679144b430bf81f",
+     "depends_skills": []
+    }
+   ]
+  },
+  "testing": {
+   "description": "Comprehensive test automation, E2E testing, and quality assurance workflows",
+   "depends_on": [],
+   "entries": []
+  }
+ }
+}

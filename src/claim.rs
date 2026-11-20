@@ -1067,7 +1067,7 @@ pub fn acquire<T: Transport, C: Clock>(
                              session> by=leader`, or, once your request for it has had no answer \
                              for 30 minutes, `moai claim-timeout-check --issue {issue} --claim \
                              {held_comment} --request <your request comment id> --lane <your \
-                             session>` answering `met` and the line it prints (decision D2); \
+                             session>` answering `met` and the line it prints; \
                              operator approval (06-B)",
                             session = existing.owner.id,
                             epoch = existing.epoch,
@@ -1294,7 +1294,7 @@ pub fn acquire<T: Transport, C: Clock>(
         notes.push(format!(
             "this session's earlier claim (comment {held_comment}, epoch {held_epoch}) had \
              expired; it is renewed with epoch {epoch} and a new claim line, without a handoff \
-             line (decision D1, Issue #1975 comment 6840449133)"
+             line"
         ));
     }
     Ok(AcquireOutcome {

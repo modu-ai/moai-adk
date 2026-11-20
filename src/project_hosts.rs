@@ -30,7 +30,7 @@ fn codex_config_request() -> Value {
 }
 
 const OMP_CONFIG_REASON: &str = "MoAI writes no .omp/config.yml: no status line key is set \
-     (#2936 S2, default A) and an existing file is never read or changed";
+     and an existing file is never read or changed";
 
 /// One host step; `apply` is the printed command as a word list and the JSON it takes on stdin
 /// (`Null` when it takes none).

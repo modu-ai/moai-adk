@@ -204,6 +204,22 @@ enum Action {
         #[arg(long, default_value = "origin/v2026.11.0")]
         tip: String,
     },
+    /// Writes the user HOME. Install an opt-in pack's entries into the user folders and record
+    /// the selection in the user-assets manifest (the Go output contract rides in `result.text`)
+    Add {
+        /// The pack name (the valid names: `bundle list`).
+        name: String,
+    },
+    /// Writes the user HOME. Remove a pack's entries; entries shared with the base set or
+    /// another selection survive, and a declared dependency of a preserved asset is deferred
+    /// (the Go output contract rides in `result.text`)
+    Remove {
+        /// The pack name (the valid names: `bundle list`).
+        name: String,
+    },
+    /// Reads only. List the opt-in packs with their skill and agent counts (the Go output
+    /// contract rides in `result.text`)
+    List,
 }
 
 pub const OPERATION: &str = "bundle";
@@ -290,5 +306,8 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
                 min_free_gb,
             },
         ),
+        Action::Add { name } => moai_cli::user_assets::add(&resolve_home(None)?, &name),
+        Action::Remove { name } => moai_cli::user_assets::remove(&resolve_home(None)?, &name),
+        Action::List => moai_cli::user_assets::list(),
     }
 }
