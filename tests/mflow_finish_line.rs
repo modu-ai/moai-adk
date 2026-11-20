@@ -5,15 +5,20 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const MARKER: &str = "M-Flow (user decision 2026-11-20, replaces the earlier wording)";
-// The leader's wording (user decision 2026-11-20 ~09:05Z) in five parts; a part never ends a
-// line in the middle of a word, so a line of at most 400 characters can carry each one.
-const MERGE_ORDER: &str = "a lane commits on its own card branch and pushes it; after its audit passes, the lane itself merges its head into the LOCAL integration branch (the primary branch saved at first setup; v2026.11.0 here)";
-const ONE_AT_A_TIME: &str = "one lane at a time, under a lock (`mkdir ~/.moai/locks/<project>-<integration>.lock`), the lane runs `git update-ref refs/moai/lane-merge <sha>` for a merge it made and tested in its own worktree, then `git -C <primary> merge --ff-only refs/moai/lane-merge`, then releases the lock.";
-const SETUP_ALLOWS: &str = "M-Flow's first setup writes that fixed command to `hook-config.toml` `[hooks.primary_checkout] allow_commands` (exact match, so a fixed ref, never a sha); every other primary-checkout command stays blocked.";
-const WORK_ENDS: &str = "The verified local integration branch is where normal work ends: nobody opens a pull request per card, per bundle or per integration.";
-const RELEASE_ONLY: &str = "Only for a real deployment does the leader create a release branch (release/v{head}.{yearweek}.{build}) from the local integration branch and open one pull request to the remote integration branch (full CI on Linux, macOS and Windows, independent audit by a lane with no commits in the range).";
-const TIP_CHECK: &str = "The leader runs a full check of the local tip from time to time and repairs a broken tip with a revert commit.";
+const MARKER: &str = "M-Flow (user decisions 2026-11-20; one canonical text, put once per file)";
+// The leader's final wording (user instruction 2026-11-20 ~10:45Z), item by item. AGENTS.md puts
+// the items that run past 400 characters on continuation lines, so each piece is one line.
+const PIECES: [(&str, &str); 9] = [
+    ("1 lane commits, pushes, audit", "Lane: commits on its own card branch and pushes it; gets the independent audit (tier 2: the leader starts it)."),
+    ("2 lane merges, checks, MERGE-READY", "Lane: after PASS, makes the merge of its head onto the current LOCAL integration branch tip (the primary branch saved at first setup; v2026.11.0 here) in its own worktree, runs `moai check affected <tip>..<merge>` with the binary built in that worktree, and posts `MERGE-READY <card> merge=<40-hex> base=<40-hex> checks=<one line>` on the card."),
+    ("3 fast-forward under a lock", "Fast-forward: one at a time under a lock (`~/.moai/locks/<project>-<branch>.lock`), the primary checkout of the integration branch is fast-forwarded with `git merge --ff-only` to that merge."),
+    ("3 isolation and the allowed command", "Where the host isolates a lane session to its worktree (Claude Code), the leader's supervision round does this step and writes `MERGED-LOCAL`; where a moai primary-checkout guard is on, the single fixed command `git -C <primary> merge --ff-only refs/moai/lane-merge` is the one allowed (hook-config allow_commands)."),
+    ("3 base moved", "If the base moved, the lane redoes step 2 on the new tip (evidence reuse rules: the merge-queue card)."),
+    ("4 local test and install", "Local test and install: builds for local testing and installation are made from the verified LOCAL integration branch tip (not from the remote branch); the leader checks the local tip as a whole from time to time and repairs a broken tip with a revert commit."),
+    ("4 statusline", "The statusline shows the branch with commits ahead (↑) and behind (↓) its upstream so local merges are visible."),
+    ("5 release only", "Release: only for a real deployment the leader creates `release/v{head}.{yearweek}.{build}` from the local integration branch and opens one pull request to the remote integration branch (full CI on Linux, macOS and Windows, independent audit by a lane with no commits in the range). No pull request per card, per bundle or per integration."),
+    ("6 card done", "A card that landed locally is closed with `card done` on the local landing evidence (the card-done-under-M-Flow card), not a pull request."),
+];
 
 /// The files that tell a lane or the leader how a change ends.
 const NAMED_FILES: [&str; 6] = [
@@ -26,7 +31,10 @@ const NAMED_FILES: [&str; 6] = [
 ];
 
 /// Phrases that tell someone to open a pull request per card, per bundle or per integration.
-const OLD_PHRASES: [&str; 14] = [
+const OLD_PHRASES: [&str; 16] = [
+    // The second wording (the lane merges with a fixed ref), replaced by the final one.
+    "M-Flow (user decision 2026-11-20, replaces the earlier wording)",
+    "under a lock (`mkdir ~/.moai/locks/<project>-<integration>.lock`)",
     "the ref moved with a compare-and-swap update-ref",
     "the lane fast-forwards the primary checkout of the integration branch",
     // The first wording of 2026-11-20 (the leader alone merges), replaced the same morning.
@@ -56,14 +64,7 @@ fn read(rel: &str) -> String {
 fn agents_md_states_the_finish_line_once() {
     let text = read("AGENTS.md");
     assert_eq!(text.matches(MARKER).count(), 1, "the marker is stated once");
-    for (name, sentence) in [
-        ("merge order", MERGE_ORDER),
-        ("one lane at a time", ONE_AT_A_TIME),
-        ("setup allows the fixed command", SETUP_ALLOWS),
-        ("where work ends", WORK_ENDS),
-        ("release only", RELEASE_ONLY),
-        ("tip check", TIP_CHECK),
-    ] {
+    for (name, sentence) in PIECES {
         assert!(
             text.contains(sentence),
             "AGENTS.md lacks the {name} sentence"
@@ -74,8 +75,8 @@ fn agents_md_states_the_finish_line_once() {
         .find(|l| l.contains(MARKER))
         .expect("a line holds the marker");
     assert!(
-        line.contains(&format!("{MARKER}: {MERGE_ORDER}")),
-        "the marker opens the merge-order sentence: {line}"
+        line.starts_with(&format!("6. {MARKER}:")),
+        "the marker opens step 6: {line}"
     );
 }
 
@@ -100,7 +101,7 @@ fn agents_md_has_no_pull_request_per_issue_step() {
 #[test]
 fn agents_md_stays_inside_its_budget() {
     let text = read("AGENTS.md");
-    assert!(text.len() < 9 * 1024, "{} bytes", text.len());
+    assert!(text.len() < 10 * 1024, "{} bytes", text.len());
     let longest = text.lines().map(|l| l.chars().count()).max().unwrap();
     assert!(longest <= 400, "a line is {longest} characters");
 }
