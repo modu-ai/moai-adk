@@ -586,6 +586,24 @@ class SeedRollbackTest(unittest.TestCase):
         self.assertNotIn("could not take back", got["detail"])
         self.assertEqual(sorted(p.name for p in self.own.iterdir()), [".moai-build.json"])
 
+    def test_an_entry_that_cannot_be_taken_back_is_named_in_the_answer(self):
+        made = []
+
+        def clone(src, dst):
+            made.append(Path(dst).name)
+            Path(dst).mkdir()
+            raise OSError(errno.EIO, "injected: failed")
+
+        def stuck(*_args, **_kwargs):
+            raise PermissionError(errno.EACCES, "injected: cannot remove")
+
+        with mock.patch.object(self.tool.shutil, "rmtree", stuck):
+            rc, got = self.seed_with(clone)
+        self.assertEqual((rc, got["seeded"], got["reason"]), (0, False, "clone_failed"), got)
+        self.assertIn("injected: failed", got["detail"])
+        self.assertEqual(len(made), 1)
+        self.assertIn(f"could not take back: {made[0]}", got["detail"])
+
     def test_the_linux_copy_messages_map_to_the_reasons(self):
         def failing(stderr):
             run = mock.Mock(return_value=mock.Mock(returncode=1, stderr=stderr))
