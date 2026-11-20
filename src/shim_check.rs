@@ -18,7 +18,7 @@ pub const BASIS: &str = "script text, not run";
 /// The note a person sees for `mcp_route_without_oneshot`.
 pub const NOTE: &str = "this shim hands mcp-server to the Go build without MOAI_MCP_ONESHOT=1; \
      a Go audit job started through it can vanish (unknown job). If a job answers unknown job, \
-     reconnect the MCP server. Nothing was changed (#3021)";
+     reconnect the MCP server. Nothing was changed.";
 
 const SHELLS: [&str; 6] = ["sh", "bash", "zsh", "dash", "ash", "ksh"];
 const ROUTE_WORD: &str = "mcp-server";

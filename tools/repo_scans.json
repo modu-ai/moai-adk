@@ -87,6 +87,28 @@
       "rejects": "a \".moai-cli\" path spelled as a string literal outside src/lib.rs instead of project_state!/fixed_state! (#2725 S1)"
     },
     {
+      "id": "cli-text-citations",
+      "tests": [
+        "tests/cli_text_citations.rs::scan_source_files_outside_the_pending_list_are_clean"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test cli_text_citations"
+      ],
+      "rules": [
+        "tests/cli_text_citations.rs",
+        "docs/cli-text-rationale.md"
+      ],
+      "scope": [
+        {
+          "prefix": "src/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "a source file outside the pending list whose code (comments and the test module left out) carries a card number, an Issue or pull-request number, a decision citation or a moai-adk development script name (SPEC-20261120-cli-text-citations)"
+    },
+    {
       "id": "permission-reference-one-copy",
       "tests": [
         "src/contract.rs::permission_reference_rule_has_one_copy"

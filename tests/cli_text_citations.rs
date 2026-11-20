@@ -206,7 +206,11 @@ fn kinds(line: &str) -> Vec<&'static str> {
     let low = line.to_ascii_lowercase();
     for word in ["issue", "issues", "pr", "prs"] {
         for (at, _) in low.match_indices(word) {
-            let word_before = low[..at].chars().next_back().is_some_and(is_word);
+            // `--issue 2904` is a sample option, not a citation: a `-` before the word excuses it.
+            let word_before = low[..at]
+                .chars()
+                .next_back()
+                .is_some_and(|c| is_word(c) || c == '-');
             let rest = &low[at + word.len()..];
             // `Issue #2619` is the `#` rule's; `Issue 2619` and `Issue#2619` are this one's.
             let digits_at = match rest.chars().next() {
@@ -337,6 +341,7 @@ fn scan_flags_each_kind_and_leaves_comments_alone() {
     }
     for text in [
         "let a = 1; // (#2561) a trailing comment\n",
+        "\"lane-resume-note --lane agent-1 --issue 2904 --claim 6874514212\"\n",
         "// (#2561) a comment line\nlet b = 2;\n",
         "/* (#2561 and C-82) a block comment */ let c = 3;\n",
         "/// (user decision 2026-11-10) a doc comment\nfn f() {}\n",
