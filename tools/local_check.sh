@@ -73,7 +73,7 @@
 #                           GITHUB_ACTIONS=true (the full set is the only local evidence; legs
 #                           are CI's in-place parallelism)
 #   GITHUB_STEP_SUMMARY     when set, one `| step | command | exit |` row per step is appended
-#   MOAI_HEAVY_SLOT_MAX (default 3), MOAI_HEAVY_SLOT_MIN_FREE_GB (default 50),
+#   MOAI_HEAVY_SLOT_MAX (default 5),MOAI_HEAVY_SLOT_MIN_FREE_GB (default 50),
 #   MOAI_HEAVY_SLOT_NAME (default local-check): when `moai heavy-slot-acquire` exists, the
 #                           heavy cargo steps (test, doctest, clippy) each run in one of the
 #                           machine's heavy slots (leader decision 2026-11-14 12:37Z; #2930
@@ -156,7 +156,7 @@ else
   fi
   diff_range="<base>...<head>"
 fi
-slot_max="${MOAI_HEAVY_SLOT_MAX:-3}"
+slot_max="${MOAI_HEAVY_SLOT_MAX:-5}"
 slot_min_free="${MOAI_HEAVY_SLOT_MIN_FREE_GB:-50}"
 slot_name="${MOAI_HEAVY_SLOT_NAME:-local-check}"
 # The whole Python discover (38 minutes under load) waits in a slot folder of its own, so it

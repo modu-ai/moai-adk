@@ -377,7 +377,7 @@ class LocalCheckPythonSlotTest(unittest.TestCase):
         self.assertTrue(python[0].startswith(
             f"heavy-slot-acquire --dir {self.default_dir} --max 2 --min-free-gb 50 "
             "--name local-check-py -- bash -c python3 tools/unittest_parallel.py"), python[0])
-        self.assertTrue(all(l.startswith("heavy-slot-acquire --max 3 ") for l in cargo), cargo)
+        self.assertTrue(all(l.startswith("heavy-slot-acquire --max 5 ") for l in cargo), cargo)
         # The command still ran inside the slot.
         self.assertIn("python3 tools/unittest_parallel.py -v -s tests -p *_test.py",
                       self.repo.recorded())
