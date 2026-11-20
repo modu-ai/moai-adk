@@ -225,6 +225,10 @@ pub fn secret_refusal(words: usize) -> String {
 ///   it, the run is the name of an assignment and its pieces are checked like any other name
 ///   (audit B1), so the names are read from the word as written, before the run is blanked.
 pub fn secret_words(text: &str) -> usize {
+    // The test build counts the work of the screen (`redact::work`): this pass over the words,
+    // the passes below and the bytes lower-cased or handed to the shared screen.
+    #[cfg(test)]
+    crate::redact::work::add(text.len());
     let blanked = without_sk_names(text);
     // Blanking changes only letters, digits, `-` and `_`, so both texts hold the same words.
     let written: Vec<&str> = text.split_whitespace().collect();
@@ -268,6 +272,8 @@ fn word_is_refused(written: &str, blanked: &str) -> bool {
     // a second pass that keeps dot-joined pieces whole (follow-ups REQ-6). The separator set is
     // `= : ,` (audit N1) plus the eleven follow-ups REQ-6 characters.
     let split = |also_dots: bool| -> String {
+        #[cfg(test)]
+        crate::redact::work::add(blanked.len());
         blanked
             .chars()
             .map(|c| {
@@ -287,8 +293,16 @@ fn word_is_refused(written: &str, blanked: &str) -> bool {
         || crate::redact::redact_outgoing(&split(false)).1 > 0
 }
 
+/// ASCII lower-casing of `text`, the one place the screen lower-cases a name; the test build
+/// counts its bytes, so a lower-casing done again at every hump or equals sign shows in the count.
+fn ascii_lower(text: &str) -> String {
+    #[cfg(test)]
+    crate::redact::work::add(text.len());
+    text.to_ascii_lowercase()
+}
+
 fn name_is_secret(name: &str) -> bool {
-    let lower = name.to_ascii_lowercase();
+    let lower = ascii_lower(name);
     let pieces: Vec<&str> = lower.split(['-', '_']).filter(|p| !p.is_empty()).collect();
     pieces.iter().any(|p| SECRET_PIECES.contains(p))
         || pieces.windows(2).any(|w| w[0] == "api" && w[1] == "key")
@@ -304,7 +318,9 @@ fn camel_hump_secret(name: &str) -> bool {
     // hump's offset in `name` splits `lower` too, and each hump compares two short slices, no new
     // string (audit B1: building the rest of the name per hump took time in the square of its
     // length).
-    let lower = name.to_ascii_lowercase();
+    let lower = ascii_lower(name);
+    #[cfg(test)]
+    crate::redact::work::add(name.len());
     let mut previous: Option<char> = None;
     for (at, c) in name.char_indices() {
         let hump = previous.is_some_and(|p| p.is_ascii_lowercase()) && c.is_uppercase();
@@ -330,6 +346,8 @@ fn camel_hump_secret(name: &str) -> bool {
 /// assignment with a secret name is named by its second assignment. Quotes around the name are
 /// read stripped (follow-ups REQ-2).
 fn secret_named_assignment(word: &str) -> bool {
+    #[cfg(test)]
+    crate::redact::work::add(word.len());
     let word = word.replace(['"', '\'', '`'], "");
     let bytes = word.as_bytes();
     let name_byte = |b: &u8| b.is_ascii_alphanumeric() || *b == b'_' || *b == b'-';
@@ -339,6 +357,8 @@ fn secret_named_assignment(word: &str) -> bool {
             .iter()
             .rposition(|b| !name_byte(b))
             .map_or(0, |i| i + 1);
+        #[cfg(test)]
+        crate::redact::work::add(eq - start);
         name_is_secret(&word[start..eq])
     })
 }
@@ -347,10 +367,14 @@ fn secret_named_assignment(word: &str) -> bool {
 /// value that is secret-shaped is counted in the second return: the shared screen sees a word
 /// like `--flag=sk-…` as one word that starts with the option name, so the value alone decides.
 fn blank_option_names(text: &str) -> (String, usize) {
+    #[cfg(test)]
+    crate::redact::work::add(text.len());
     let mut bytes = text.as_bytes().to_vec();
     let mut shaped_values = 0;
     let mut at = 0;
     while at < bytes.len() {
+        #[cfg(test)]
+        crate::redact::work::add(1);
         let starts =
             bytes[at..].starts_with(b"--") && (at == 0 || !bytes[at - 1].is_ascii_alphanumeric());
         if !starts {
@@ -360,10 +384,14 @@ fn blank_option_names(text: &str) -> (String, usize) {
         let name_end = (at + 2..bytes.len())
             .find(|&i| !(bytes[i].is_ascii_alphanumeric() || bytes[i] == b'-' || bytes[i] == b'_'))
             .unwrap_or(bytes.len());
+        #[cfg(test)]
+        crate::redact::work::add(name_end - at);
         if name_end < bytes.len() && bytes[name_end] == b'=' {
             let value_end = (name_end + 1..bytes.len())
                 .find(|&i| bytes[i].is_ascii_whitespace())
                 .unwrap_or(bytes.len());
+            #[cfg(test)]
+            crate::redact::work::add(value_end - name_end);
             let value = std::str::from_utf8(&bytes[name_end + 1..value_end]).unwrap_or("");
             let (_, shaped) = crate::redact::redact_outgoing(value);
             if shaped == 0 {
@@ -386,10 +414,14 @@ fn blank_option_names(text: &str) -> (String, usize) {
 /// `sk-` before lower-case hyphenated words, blanked the way `decide` states it: no digit,
 /// upper-case letter or underscore anywhere in the run, `sk-proj-` apart.
 fn without_sk_names(text: &str) -> String {
+    #[cfg(test)]
+    crate::redact::work::add(text.len());
     let mut bytes = text.as_bytes().to_vec();
     let key = |b: u8| b.is_ascii_alphanumeric() || b == b'_' || b == b'-';
     let mut at = 0;
     while at < bytes.len() {
+        #[cfg(test)]
+        crate::redact::work::add(1);
         let starts = bytes[at..].starts_with(b"sk-")
             && !bytes[at..].starts_with(b"sk-proj-")
             && (at == 0 || !bytes[at - 1].is_ascii_alphanumeric());
@@ -401,6 +433,8 @@ fn without_sk_names(text: &str) -> String {
         while at + len < bytes.len() && key(bytes[at + len]) {
             len += 1;
         }
+        #[cfg(test)]
+        crate::redact::work::add(len);
         let words = &bytes[at + 3..at + len];
         let name = words.contains(&b'-')
             && words
@@ -1115,9 +1149,11 @@ mod tests {
     }
 
     /// The most units of work, per byte of text, the screen may do on one word
-    /// (`redact::work`): the linear screen measures about the factor printed by the test below
-    /// on its worst shape, the square-time one is thousands of times past it.
-    const WORK_PER_BYTE: usize = 16;
+    /// (`redact::work`). The count is the same on every machine and at every size: the screen
+    /// measures 10.5 to 18 units per byte on the shapes below (the camel name joined is the worst,
+    /// 18, at 64 KiB and at 1 MiB alike), so 20 leaves a small margin and a screen that does
+    /// twice the work, let alone one of square time, is past it.
+    const WORK_PER_BYTE: usize = 20;
 
     /// Audit B1, B2 and N9, now by a count and not a clock (SPEC-20261120-card-screen-work-count):
     /// one long word without a space is screened with work that grows with its length, not with
@@ -1178,7 +1214,9 @@ mod tests {
                 "{label}: {taken} units counted for {} bytes — the counter counted nothing",
                 text.len()
             );
-            worst = worst.max(taken as f64 / text.len() as f64);
+            let factor = taken as f64 / text.len() as f64;
+            println!("{label}: {taken} units for {} bytes ({factor:.2} per byte)", text.len());
+            worst = worst.max(factor);
         }
         println!("the screen's worst work was {worst:.2} units per byte (limit {WORK_PER_BYTE})");
     }

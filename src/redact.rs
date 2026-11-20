@@ -74,6 +74,10 @@ pub fn redact_secret_shapes(s: &str) -> String {
 ///
 /// It is a conservative shape filter, not a secret detector.
 pub fn redact_outgoing(s: &str) -> (String, usize) {
+    // The bytes handed to the shared screen: a caller that hands it the rest of a word at every
+    // separator makes this count grow with the square of the word.
+    #[cfg(test)]
+    work::add(s.len());
     let mut count = 0;
     let out: String = s
         .split_inclusive(char::is_whitespace)
@@ -90,6 +94,8 @@ pub fn redact_outgoing(s: &str) -> (String, usize) {
 }
 
 fn word_has_secret_shape(word: &str) -> bool {
+    #[cfg(test)]
+    work::add(word.len());
     let lower = word.to_ascii_lowercase();
     let anywhere =
         TOKEN_PREFIXES
@@ -151,6 +157,21 @@ pub(crate) mod work {
     pub(crate) fn start(limit: usize) {
         TAKEN.with(|taken| taken.set(0));
         LIMIT.with(|at_most| at_most.set(limit));
+    }
+
+    /// Counts `units` of work on this thread; a screen that passes the limit of `start` stops
+    /// here with a panic that names the count and the limit.
+    pub(crate) fn add(units: usize) {
+        let taken = TAKEN.with(|taken| {
+            let now = taken.get().saturating_add(units);
+            taken.set(now);
+            now
+        });
+        let limit = LIMIT.with(Cell::get);
+        assert!(
+            taken <= limit,
+            "the screen's work passed its limit: {taken} units, at most {limit}"
+        );
     }
 
     /// The units counted on this thread since `start`.
