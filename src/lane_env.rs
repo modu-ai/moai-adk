@@ -349,6 +349,14 @@ pub fn read_record(folder: &Path) -> Result<Option<Value>, String> {
     Ok(v.is_object().then_some(v))
 }
 
+/// REQ-4 of SPEC-20261120-test-parallelism-cap: a `.metadata_never_index` marker inside the
+/// build folder, best-effort — macOS Spotlight skips a folder that holds one, and build
+/// output is the last thing a machine needs indexed. A failure to create the marker never
+/// fails the folder.
+fn never_index(folder: &Path) {
+    let _ = std::fs::write(folder.join(".metadata_never_index"), b"");
+}
+
 /// `tools/build_folder.py env`: makes the build folder of `owner` under `home` and writes its
 /// owner record unless an equal one is there; refuses a record of another worktree.
 pub fn prepare(home: &Path, owner: &Owner) -> Result<PathBuf, String> {
@@ -357,6 +365,7 @@ pub fn prepare(home: &Path, owner: &Owner) -> Result<PathBuf, String> {
         path.push(part);
         real_dir(&path)?;
     }
+    never_index(&path);
     let record = serde_json::json!({
         "schema_version": 1,
         "git_common_dir": owner.common.to_string_lossy(),
@@ -442,6 +451,24 @@ mod tests {
         ] {
             assert!(check_lane(bad).is_err(), "{bad:?}");
         }
+    }
+
+    #[test]
+    fn prepare_marks_the_build_folder_never_index() {
+        let (_d, home) = base();
+        let owner = Owner {
+            common: home.join("common"),
+            worktree: home.join("worktree"),
+            name: "proj-agent-7".to_string(),
+        };
+        let folder = prepare(&home, &owner).unwrap();
+        assert!(
+            fs::symlink_metadata(folder.join(".metadata_never_index"))
+                .map(|m| m.is_file())
+                .unwrap_or(false),
+            "{} has no marker",
+            folder.display()
+        );
     }
 
     #[test]
@@ -623,13 +650,15 @@ mod tests {
         assert_eq!(rec["schema_version"], 1);
         assert_eq!(rec["worktree"], b.join("one").to_str().unwrap());
         assert_eq!(rec["git_common_dir"], b.join("repo/.git").to_str().unwrap());
-        // Again: the same record, no temporary file left.
+        // Again: the same record, no temporary file left. The folder carries its owner record
+        // and the Spotlight marker (REQ-4), nothing else.
         assert_eq!(prepare(&home, &one).unwrap(), dir);
-        let names: Vec<_> = fs::read_dir(&dir)
+        let mut names: Vec<String> = fs::read_dir(&dir)
             .unwrap()
-            .map(|e| e.unwrap().file_name())
+            .map(|e| e.unwrap().file_name().into_string().unwrap())
             .collect();
-        assert_eq!(names, [RECORD]);
+        names.sort();
+        assert_eq!(names, [".metadata_never_index", RECORD]);
         // The same folder name from another worktree: refused, the record kept.
         let two = Owner {
             name: "repo-one".into(),

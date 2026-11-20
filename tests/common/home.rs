@@ -32,12 +32,15 @@ pub struct Entry {
 impl TempHome {
     /// An empty HOME.
     pub fn new() -> Self {
-        Self {
-            dir: tempfile::Builder::new()
-                .prefix("moai-test-home-")
-                .tempdir()
-                .expect("create a temporary HOME"),
-        }
+        let dir = tempfile::Builder::new()
+            .prefix("moai-test-home-")
+            .tempdir()
+            .expect("create a temporary HOME");
+        // REQ-4 of SPEC-20261120-test-parallelism-cap: mark the folder for macOS Spotlight
+        // so a whole test run stops being indexed. Best-effort: the HOME is correct for its
+        // purpose without the marker, so a failure to write it never fails the test.
+        let _ = std::fs::write(dir.path().join(".metadata_never_index"), b"");
+        Self { dir }
     }
 
     pub fn path(&self) -> &Path {
