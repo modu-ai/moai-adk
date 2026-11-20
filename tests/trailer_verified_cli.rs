@@ -393,8 +393,44 @@ fn trailer_check_descendants_still_fail() {
     r.git(&["checkout", "-q", "main"]);
     r.merge_at("forked-after", "2026-11-20T10:00:05");
     r.merge_at("old", "2026-11-20T10:00:06");
+    // A commit after both merges descends from the carrying commit only through merge commits.
+    let tail = r.commit_at("after the merges", None, "2026-11-20T10:00:07", "t1.txt");
     let v = checked(&r.run(&["trailer-check", &format!("{base}..HEAD"), "--dir", r.p()]));
-    let mut want = vec![late, after];
+    let mut want = vec![late, after, tail];
+    want.sort();
+    assert_eq!(missing_shas(&v), want, "{v}");
+    assert_eq!(v["failing"], 3, "{v}");
+}
+
+/// AC-3: `--verified-since` inside the range covers the descendants of the named commit — a
+/// chain of them, even when a child's commit date is older than its parent's — and neither the
+/// named commit nor an old side branch beside it, when nothing in the range carries the line.
+#[test]
+fn trailer_check_since_inside_the_range() {
+    let r = Repo::new();
+    let base = r.git(&["rev-parse", "HEAD"]).trim().to_string();
+    let a1 = r.commit_at("named start", None, "2026-11-20T10:00:01", "a1.txt");
+    let a2 = r.commit_at("child", None, "2026-11-20T10:00:05", "a2.txt");
+    // The grandchild's date is older than its parent's (a skewed clock): a date-ordered walk
+    // would meet it before a2.
+    let a3 = r.commit_at("grandchild", None, "2026-11-20T10:00:02", "a3.txt");
+    r.git(&["checkout", "-q", "-b", "old", &base]);
+    r.commit_at("old side", None, "2026-11-20T10:00:06", "o1.txt");
+    r.git(&["checkout", "-q", "main"]);
+    r.merge_at("old", "2026-11-20T10:00:07");
+    let range = format!("{base}..HEAD");
+    // Nothing carries the line and no start is named: every commit reads as `none`.
+    let v = ok(&r.run(&["trailer-check", &range, "--dir", r.p()]));
+    assert_eq!(v["failing"], 0, "{v}");
+    let v = checked(&r.run(&[
+        "trailer-check",
+        &range,
+        "--dir",
+        r.p(),
+        "--verified-since",
+        &a1,
+    ]));
+    let mut want = vec![a2, a3];
     want.sort();
     assert_eq!(missing_shas(&v), want, "{v}");
     assert_eq!(v["failing"], 2, "{v}");
