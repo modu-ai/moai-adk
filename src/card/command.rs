@@ -145,7 +145,7 @@ pub fn list_filtered(
                     source_host, source_project, source_number, {} \
                FROM card WHERE (?1 IS NULL OR state = ?1) \
                            AND (?2 IS NULL OR substr(title, 1, length(?2)) = ?2) \
-                           AND (?3 OR NOT EXISTS (SELECT 1 FROM event \
+                           AND (?3 OR ?1 IS NOT NULL OR NOT EXISTS (SELECT 1 FROM event \
                              WHERE event.card_id = card.card_id \
                                AND event.kind = 'card.withdraw')) \
               ORDER BY card_id",
@@ -223,8 +223,6 @@ fn note_sessions(
     Ok(sessions)
 }
 
-/// `card show C-n | #number`: the card with its criteria, notes, links and the reservation that
-/// holds it now.
 /// Writes the ledger. Withdraw a draft or ready card: the card moves to `hold` and one
 /// `card.withdraw` event records the reason and the by, with the session that wrote it. The
 /// ledger schema is unchanged (the six state values are pinned; the marker is the free event
@@ -278,6 +276,8 @@ pub fn withdraw(
     }))
 }
 
+/// `card show C-n | #number`: the card with its criteria, notes, links and the reservation that
+/// holds it now.
 pub fn show(project: &Path, home: &Path, reference: &str) -> Result<Value> {
     let which = input::parse_ref(reference).map_err(|e| format!("card show refused: {e}"))?;
     let id = project_id(project)?;

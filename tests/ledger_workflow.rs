@@ -1594,17 +1594,18 @@ fn withdraw_moves_a_draft_or_ready_card_to_hold_and_records_the_reason() {
     )
     .unwrap();
     assert_eq!(state_of(&w, draft), "hold");
-    let (reason, by): (String, String) = w
+    let (reason, by, actor): (String, String, String) = w
         .conn()
         .query_row(
-            "SELECT json_extract(payload, '$.reason'), json_extract(payload, '$.by') \
+            "SELECT json_extract(payload, '$.reason'), json_extract(payload, '$.by'), actor \
              FROM event WHERE card_id = ?1 AND kind = 'card.withdraw'",
             [draft],
-            |r| Ok((r.get(0)?, r.get(1)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
         )
         .unwrap();
     assert_eq!(reason, "superseded by another card");
     assert_eq!(by, "leader");
+    assert_eq!(actor, A);
 
     let ready = add_card(&mut w, "ready", "p1", r#"["other/"]"#, 0);
     workflow::withdraw(&mut w, ready, "no longer needed", "leader", Some(B)).unwrap();

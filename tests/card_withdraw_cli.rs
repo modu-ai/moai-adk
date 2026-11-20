@@ -1,8 +1,9 @@
 //! `card withdraw` (no schema change): a withdrawn card is refused by `card take` with its
-//! withdrawal reason, and the default `card list` omits it. The withdrawn mark is the free
-//! event kind `card.withdraw` beside the existing `hold` state, written through the ledger
-//! function the CLI action calls (its wiring lands with this slice). Every case runs in a
-//! temporary HOME; the real `~/.moai` is not read or written.
+//! withdrawal reason, and the default `card list` omits it while an explicit state filter
+//! still answers as before. The withdrawn mark is the free event kind `card.withdraw` beside
+//! the existing `hold` state, written through the wired `card withdraw` CLI action or the
+//! ledger function it calls. Every case runs in a temporary HOME; the real `~/.moai` is not
+//! read or written.
 
 mod common;
 
@@ -43,9 +44,8 @@ fn refusal(out: &Output) -> Value {
     v
 }
 
-/// A registered project with two ready cards: C-1 withdrawn through the ledger function the
-/// CLI action calls, C-2 still plain.
-fn world() -> (TempHome, String) {
+/// A registered project with two ready cards: C-1 and C-2, both plain.
+fn two_ready_cards() -> (TempHome, String) {
     let home = TempHome::new();
     let project = home.project("demo");
     ledger::register(home.path(), "demo").unwrap();
@@ -67,6 +67,12 @@ fn world() -> (TempHome, String) {
         let name = added["name"].as_str().unwrap().to_string();
         result(&run(&home, &["card", "ready", &name, "--project", &p]));
     }
+    (home, p)
+}
+
+/// [`two_ready_cards`] with C-1 withdrawn through the ledger function the CLI action calls.
+fn world() -> (TempHome, String) {
+    let (home, p) = two_ready_cards();
     let mut w: WriteLedger = ledger::open_write(home.path(), "demo").unwrap();
     moai_cli::ledger::workflow::withdraw(
         &mut w,
@@ -124,4 +130,42 @@ fn a_hold_card_without_a_withdraw_keeps_the_plain_refusal() {
         !message.contains("withdrawn"),
         "a plain hold card keeps the plain wording: {message}"
     );
+}
+
+/// The wired `card withdraw` action end to end: the card moves to hold, take refuses naming
+/// the reason, the default list hides it, and an explicit state filter still answers as
+/// before (pins audit findings B-1 and B-2).
+#[test]
+fn the_wired_withdraw_action_refuses_take_and_hides_from_the_default_list() {
+    let (home, p) = two_ready_cards();
+    // `project` is the positional argument of `card withdraw` (default ".").
+    let v = result(&run(
+        &home,
+        &[
+            "card",
+            "withdraw",
+            "C-1",
+            "--reason",
+            "superseded by a newer card",
+            "--by",
+            "leader",
+            &p,
+        ],
+    ));
+    assert_eq!(v["state"], json!("hold"), "{v}");
+    let r = refusal(&run(&home, &["card", "take", "C-1", "--project", &p]));
+    assert_eq!(r["error"]["kind"], json!("conflict"), "{r}");
+    assert!(
+        r["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("superseded by a newer card"),
+        "{r}"
+    );
+    let listed = result(&run(&home, &["card", "list", &p]));
+    assert_eq!(listed["count"], json!(1), "{listed}");
+    // An explicit state filter behaves as before: the withdrawn card is shown when asked.
+    let holds = result(&run(&home, &["card", "list", "--state", "hold", &p]));
+    assert_eq!(holds["count"], json!(1), "{holds}");
+    assert_eq!(holds["cards"][0]["name"], json!("C-1"), "{holds}");
 }

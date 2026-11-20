@@ -11,16 +11,17 @@ created: 2026-11-20
 ## Intent
 
 오늘 레인이 철회된 카드를 세 번 집으려 했어요. `card withdraw` 가 카드에 철회 표시를 남기면 take 가
-이유를 적어 거절하고 `card list` 기본 목록이 숨겨요. 이 조각은 **원장과 읽기 층**을 담아요. 명령
-배선(`src/ops/card.rs` 의 액션 자리와 `--all` 플래그, `src/card/dispatch.rs`)은 그 두 파일의 예약이
-풀리는 다음 조각이에요 — 그때까지 철회 표시는 원장 함수(시험과 레인 도구에서 호출 가능)로 남겨요.
+이유를 적어 거절하고 `card list` 기본 목록이 숨겨요. 이 조각은 원장(workflow·reservation)과 읽기
+층(command), 그리고 명령 배선(`src/ops/card.rs` 의 withdraw 액션·`--all` 플래그 — 그 파일의 예약이
+조각 중간에 풀려 함께 넣었어요)을 담아요. `src/card/dispatch.rs` 는 여전히 다른 카드의 예약 중이라
+다음 조각이에요.
 
 ## Non-goals
 
 - 스키마 변경 — 아래 REQ-4 의 이유로 불가(사용자 결정 사항).
 - `card unwithdraw` 같은 되돌림 명령 — 후속.
 - `card next` 의 표시 변경 — hold 카드는 이미 제안에서 빠져요.
-- `src/ops/card.rs`·`src/card/dispatch.rs` 편집 — 다른 카드의 예약 중(이 SPEC Scope 의 blocked).
+- `src/card/dispatch.rs` 편집 — 다른 카드의 예약 중(이 SPEC Scope 의 blocked).
 
 ## Requirements
 
@@ -42,9 +43,9 @@ created: 2026-11-20
 
 ## Scope
 
-- write: `src/ledger/workflow.rs`, `src/ledger/reservation.rs`, `src/card/command.rs`, `tests/ledger_workflow.rs`, `tests/card_withdraw_cli.rs`, `.moai/specs/SPEC-20261120-card-withdraw/spec.md`
+- write: `src/ledger/workflow.rs`, `src/ledger/reservation.rs`, `src/card/command.rs`, `src/ops/card.rs`(withdraw 액션·list `--all`), `tests/ledger_workflow.rs`, `tests/card_withdraw_cli.rs`, `.moai/specs/SPEC-20261120-card-withdraw/spec.md`
 - read-only: `src/ledger/schema.rs`, `tests/common/**`
-- blocked(다음 조각): `src/ops/card.rs`(관측 타임라인 카드의 예약 중 — withdraw 액션·`--all` 플래그), `src/card/dispatch.rs`(비밀 화면 후속 카드의 예약 중)
+- blocked(다음 조각): `src/card/dispatch.rs`(비밀 화면 후속 카드의 예약 중 — 조각 중간까지 예약이던 `src/ops/card.rs` 는 풀려 write 로 옮겨졌어요)
 - forbidden: 스키마·표·CHECK 변경, 실제 원장·실제 HOME, 네트워크, 카드 번호를 SPEC id·가지·커밋에 사용
 
 ## Plan
@@ -77,3 +78,5 @@ base `aa06a0f6ef`(로컬 v2026.11.0), worktree `~/.moai/worktrees/moai-adk/c188`
 - 이웃·폭 검사(운용 규칙 2호, 종료 코드): diff --check 0 · fmt 0(첫 검사 1 → 적용 뒤 0) · ops rustfmt 0 · bash -n 0 · clippy --all-targets -D warnings 0 · cargo build 0 · --bins 0 · **--lib 전체 0** · 영역+macos+고정 51 대상 0(Running 51줄) · python repo_scans·source_manifest·local_check·skill_references 0 · card/ledger 영역 파이썬 모듈 0개(없음) · trailer-check 0 · spec check --all 0.
 - 도움말 골든: 새 하위명령·--all 이 도움말을 바꾸지만 `tests/fixtures/help/**` 는 다른 카드 예약 중 — help_layout·product_cli 가 같은 배치에서 0 으로 통과해 최상위 골든은 불변임을 실행으로 확인.
 - blocked(다음 조각): `src/card/dispatch.rs`(비밀 화면 후속의 예약, tier 2 감사 진행 중).
+- 감사(2026-11-20, tier 1, audit-card-withdraw) 첫 판정 **FAIL** — B-1 SPEC-코드 범위 자기모순(ops/card.rs 배선이 본문·Non-goals·blocked 와 어긋남 + 배선 액션 시험 없음), B-2 명시적 state 필터 동작 변경 무검증(--state hold 에서도 철회 카드 숨김). 기준 (1)(2) 자체는 증거로 충족 판정.
+- 수리(같은 가지): B-2 — 목록 제외 subquery 를 state 필터가 없을 때만 적용(`?1 IS NULL AND NOT EXISTS …`), 명시적 필터는 이전대로 답함 + `--state hold` 로 철회 카드가 보이는 고정 시험; B-1 — SPEC 본문·Non-goals·Scope 를 실제 조각에 맞게 갱신 + 배선된 `card withdraw` 액션을 몰아보는 시험(the_wired_withdraw_action_refuses_take_and_hides_from_the_default_list) 추가 + 시험 파일 머리글 정정; NB-1 show 주석 원위 · NB-2 event actor 단언 추가.
