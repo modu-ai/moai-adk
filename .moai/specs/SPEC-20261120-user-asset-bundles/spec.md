@@ -16,7 +16,8 @@ same selection semantics users depend on, so the shim can stop routing the word 
 
 Survey (read-only): Go `internal/cli/bundle.go` (231 lines) drives the `userassets` engine
 (install, manifest, lock, journal, paths); the assets live in the embedded template tree and
-the optional packs are nine packs of 45 entries. The Rust side already owns the word
+the optional packs are eleven pack sections totalling 45 entries (two of them empty). The
+Rust side already owns the word
 `bundle` for the M-Flow bundle (`ready | check | body | build | verify` in `src/ops/bundle.rs`),
 so the three commands join that command as additional actions and the existing five stay
 unchanged.
@@ -43,7 +44,7 @@ unchanged.
 
 ## Acceptance
 
-- AC-1 (REQ-1): list prints the nine packs, sorted, in the exact Go line format.
+- AC-1 (REQ-1): list prints every pack section of the catalog, sorted, in the exact Go line format.
   verify: `cargo test --locked --offline --test bundle_user_assets_cli`
 - AC-2 (REQ-2): an unknown name on add and on remove refuses with the exact message and leaves the manifest untouched.
   verify: `cargo test --locked --offline --test bundle_user_assets_cli`
