@@ -1,6 +1,6 @@
 //! Card C-65 (user instructions 2026-11-16 and 2026-11-17): the repository line of the status
 //! line shows the cards of the project's local ledger right after the forge counts,
-//! `📡 owner/repo | ⬇️ 46 / 🔀 0 | 🗂️ 50 / ▶️ 2 / 🔃 3 / ✅ 12 | …`: `🗂️` cards created and
+//! `⬇️ 46 🔀 0 | 🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 owner/repo | …`: `🗂️` cards created and
 //! remaining (`draft` + `ready` + `hold`), `▶️` cards being worked on (`active` without a waiting
 //! marker note), `🔃` cards pushed and waiting for integration (every `review` card and each
 //! `active` card whose newest marker note is a waiting one), `✅` cards `done` (user decision
@@ -172,7 +172,7 @@ impl Fixture {
 }
 
 /// `+1`: the project's untracked state folder.
-const WITHOUT_CARDS: &str = "📡 modu-ai/moai-adk | ⬇️ 46 / 🔀 0 | 🅱️ main +1";
+const WITHOUT_CARDS: &str = "⬇️ 46 🔀 0 | 📡 modu-ai/moai-adk | 🅱️ main +1";
 
 #[test]
 fn the_repository_line_shows_the_card_counts_after_the_forge_counts() {
@@ -184,7 +184,7 @@ fn the_repository_line_shows_the_card_counts_after_the_forge_counts() {
     let with = f.plain();
     assert_eq!(
         with.lines().nth(1),
-        Some("📡 modu-ai/moai-adk | ⬇️ 46 / 🔀 0 | 🗂️ 50 / ▶️ 2 / 🔃 3 / ✅ 12 | 🅱️ main +1")
+        Some("⬇️ 46 🔀 0 | 🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 modu-ai/moai-adk | 🅱️ main +1")
     );
     // Only the repository line differs from the render without a ledger.
     assert_eq!(with.lines().next(), baseline.lines().next());
@@ -199,8 +199,37 @@ fn the_card_counts_keep_their_place_without_forge_counts() {
     std::fs::remove_file(f.project.join(FORGE_CACHE)).unwrap();
     assert_eq!(
         f.line2(),
-        "📡 modu-ai/moai-adk | 🗂️ 50 / ▶️ 2 / 🔃 3 / ✅ 12 | 🅱️ main +1"
+        "🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 modu-ai/moai-adk | 🅱️ main +1"
     );
+}
+
+/// SPEC-20261120-statusline-line2-order REQ-8: the renderer shortens nothing and reads no
+/// `COLUMNS`, so the whole output, line 2 with all its groups included, has the same bytes under
+/// 80 and 40 columns, with and without color.
+#[test]
+fn line_two_has_the_same_bytes_under_80_and_40_columns() {
+    let f = fixture();
+    f.with_mix();
+    let render = |columns: &str, plain: bool| {
+        let env: Vec<(&str, &str)> = if plain {
+            vec![("COLUMNS", columns), ("NO_COLOR", "1")]
+        } else {
+            vec![("COLUMNS", columns), ("COLORTERM", "truecolor")]
+        };
+        f.render_from(&f.project, &env)
+    };
+    for plain in [true, false] {
+        let wide = render("80", plain);
+        let narrow = render("40", plain);
+        assert_eq!(wide, narrow, "plain={plain}");
+        // The colored line carries the plain text (the colored-line test pins that), so the
+        // shape is read from the plain render.
+        assert_eq!(
+            f.plain().lines().nth(1),
+            Some("⬇️ 46 🔀 0 | 🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 modu-ai/moai-adk | 🅱️ main +1"),
+            "plain={plain}"
+        );
+    }
 }
 
 #[test]
@@ -209,7 +238,7 @@ fn a_registered_ledger_without_cards_shows_zeros() {
     f.register();
     assert_eq!(
         f.line2(),
-        "📡 modu-ai/moai-adk | ⬇️ 46 / 🔀 0 | 🗂️ 0 / ▶️ 0 / 🔃 0 / ✅ 0 | 🅱️ main +1"
+        "⬇️ 46 🔀 0 | 🗂️ 0 ▶️ 0 🔃 0 ✅ 0 | 📡 modu-ai/moai-adk | 🅱️ main +1"
     );
 }
 
@@ -221,14 +250,14 @@ fn done_cards_are_counted_only_in_the_done_segment() {
     f.register();
     f.add("done", 4);
     assert!(
-        f.line2().contains("| 🗂️ 0 / ▶️ 0 / 🔃 0 / ✅ 4 |"),
+        f.line2().contains("| 🗂️ 0 ▶️ 0 🔃 0 ✅ 4 |"),
         "{}",
         f.line2()
     );
     f.add("active", 1);
     f.add("hold", 2);
     assert!(
-        f.line2().contains("| 🗂️ 2 / ▶️ 1 / 🔃 0 / ✅ 4 |"),
+        f.line2().contains("| 🗂️ 2 ▶️ 1 🔃 0 ✅ 4 |"),
         "{}",
         f.line2()
     );
@@ -294,17 +323,13 @@ fn the_cards_option_hides_the_segment() {
     std::fs::write(&config, "statusline:\n  segments:\n    cards: false\n").unwrap();
     assert_eq!(f.plain(), baseline);
     std::fs::write(&config, "statusline:\n  segments:\n    cards: true\n").unwrap();
-    assert!(
-        f.line2().contains("🗂️ 50 / ▶️ 2 / 🔃 3 / ✅ 12"),
-        "{}",
-        f.line2()
-    );
+    assert!(f.line2().contains("🗂️ 50 ▶️ 2 🔃 3 ✅ 12"), "{}", f.line2());
     std::fs::write(
         &config,
         "statusline:\n  segments:\n    github: false\n    git_branch: false\n",
     )
     .unwrap();
-    assert_eq!(f.line2(), "🗂️ 50 / ▶️ 2 / 🔃 3 / ✅ 12");
+    assert_eq!(f.line2(), "🗂️ 50 ▶️ 2 🔃 3 ✅ 12");
 }
 
 /// The project is the one the input names, not the working directory: from a folder outside
@@ -315,11 +340,7 @@ fn the_counts_follow_the_project_of_the_input_not_the_working_directory() {
     f.with_mix();
     let elsewhere = tempfile::tempdir().unwrap();
     let out = f.render_from(elsewhere.path(), &[("NO_COLOR", "1")]);
-    assert_eq!(
-        out.lines().nth(1),
-        Some("🗂️ 50 / ▶️ 2 / 🔃 3 / ✅ 12"),
-        "{out}"
-    );
+    assert_eq!(out.lines().nth(1), Some("🗂️ 50 ▶️ 2 🔃 3 ✅ 12"), "{out}");
 }
 
 /// With color the text is the same once the escapes are removed: each number keeps its icon.
