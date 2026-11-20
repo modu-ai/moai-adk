@@ -1117,7 +1117,7 @@ const SPEC_TWO_IDS: &str = "MoAI tool-preflight: this SPEC work branch name read
 /// unreadable.
 fn work_tree_branch(top: &Path) -> Option<String> {
     let dir = git_folder(top)?;
-    let head = std::fs::read_to_string(dir.join("HEAD")).ok()?;
+    let head = read_regular(&dir.join("HEAD"), GIT_SMALL_FILE_LIMIT)?;
     head.trim()
         .strip_prefix("ref: refs/heads/")
         .map(str::to_string)
@@ -1130,7 +1130,7 @@ fn git_folder(top: &Path) -> Option<PathBuf> {
     if git.is_dir() {
         return Some(git);
     }
-    let pointer = std::fs::read_to_string(&git).ok()?;
+    let pointer = read_regular(&git, GIT_SMALL_FILE_LIMIT)?;
     let target = PathBuf::from(pointer.trim().strip_prefix("gitdir:")?.trim());
     Some(if target.is_absolute() {
         target
@@ -1148,8 +1148,12 @@ fn head_sha(top: &Path) -> Option<String> {
     let dir = git_folder(top)?;
     let branch = work_tree_branch(top)?;
     let name = format!("refs/heads/{branch}");
-    let common = match std::fs::read_to_string(dir.join("commondir")) {
-        Ok(text) => {
+    // A file that is there but cannot be read within its bound (too large, not a regular file)
+    // ends the lookup: it is not read as if it were absent.
+    let present = |path: &Path| std::fs::symlink_metadata(path).is_ok();
+    let commondir = dir.join("commondir");
+    let common = match read_regular(&commondir, GIT_SMALL_FILE_LIMIT) {
+        Some(text) => {
             let path = PathBuf::from(text.trim());
             if path.is_absolute() {
                 path
@@ -1157,22 +1161,61 @@ fn head_sha(top: &Path) -> Option<String> {
                 dir.join(path)
             }
         }
-        Err(_) => dir.clone(),
+        None if present(&commondir) => return None,
+        None => dir.clone(),
     };
     let as_sha = |text: &str| {
         let sha = text.trim();
         (sha.len() == 40 && sha.bytes().all(|b| b.is_ascii_hexdigit())).then(|| sha.to_string())
     };
     for folder in [&dir, &common] {
-        if let Ok(text) = std::fs::read_to_string(folder.join(&name)) {
-            return as_sha(&text);
+        let file = folder.join(&name);
+        match read_regular(&file, GIT_SMALL_FILE_LIMIT) {
+            Some(text) => return as_sha(&text),
+            None if present(&file) => return None,
+            None => {}
         }
     }
-    let packed = std::fs::read_to_string(common.join("packed-refs")).ok()?;
+    let packed = read_regular(&common.join("packed-refs"), PACKED_REFS_LIMIT)?;
     packed.lines().find_map(|line| {
         let (sha, reference) = line.split_once(' ')?;
         (reference.trim() == name).then(|| as_sha(sha)).flatten()
     })
+}
+
+/// The small git files (`HEAD`, a ref file, `commondir`, a `.git` pointer) are read up to this
+/// size, and `packed-refs` up to [`PACKED_REFS_LIMIT`]; a larger file is not read
+/// (SPEC-20261119-ac-verify-recorded-limits REQ-6).
+const GIT_SMALL_FILE_LIMIT: u64 = 4096;
+const PACKED_REFS_LIMIT: u64 = 8 * 1024 * 1024;
+
+/// Opens `path` for reading without waiting: on unix a FIFO opens at once (`O_NONBLOCK`).
+fn open_for_reading(path: &Path) -> std::io::Result<std::fs::File> {
+    let mut options = std::fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NONBLOCK);
+    }
+    options.open(path)
+}
+
+/// The text of the regular file at `path` when it is at most `limit` bytes (`limit` reads, one
+/// more does not); `None` for a missing file, a directory, a FIFO, a larger file and a file that
+/// is not UTF-8. The kind and the size come from the opened handle and the read stops at
+/// `limit + 1` bytes, so a file swapped or grown after the open cannot make the read wait or
+/// long. Stop and the hooks call this, and they must never wait on a path the work tree names.
+fn read_regular(path: &Path, limit: u64) -> Option<String> {
+    use std::io::Read;
+    let file = open_for_reading(path).ok()?;
+    let meta = file.metadata().ok()?;
+    if !meta.is_file() || meta.len() > limit {
+        return None;
+    }
+    let mut text = String::new();
+    file.take(limit + 1).read_to_string(&mut text).ok()?;
+    (text.len() as u64 <= limit).then_some(text)
 }
 
 /// One runnable `verify:` command of a SPEC criterion: the AC id, the command's position in the
@@ -1193,17 +1236,125 @@ pub struct AcWork {
     pub commands: Vec<VerifyCommand>,
 }
 
-/// `text` with every run of white space turned into one space and the ends trimmed.
+/// The characters of a command line with whether each is shell syntax: not inside quotes (the
+/// quote characters themselves and an escaped character count as text). The second value says a
+/// quote is still open at the end. A backslash escapes the next character outside quotes and in
+/// double quotes; single quotes have no escape.
+fn shell_chars(text: &str) -> (Vec<(char, bool)>, bool) {
+    let mut out = Vec::with_capacity(text.len());
+    let mut quote: Option<char> = None;
+    let mut chars = text.chars();
+    while let Some(c) = chars.next() {
+        match quote {
+            Some('\'') => {
+                out.push((c, false));
+                if c == '\'' {
+                    quote = None;
+                }
+            }
+            Some(_) => {
+                out.push((c, false));
+                if c == '\\' {
+                    if let Some(next) = chars.next() {
+                        out.push((next, false));
+                    }
+                } else if c == '"' {
+                    quote = None;
+                }
+            }
+            None => match c {
+                '\'' | '"' => {
+                    out.push((c, false));
+                    quote = Some(c);
+                }
+                '\\' => {
+                    out.push((c, false));
+                    if let Some(next) = chars.next() {
+                        out.push((next, false));
+                    }
+                }
+                _ => out.push((c, true)),
+            },
+        }
+    }
+    (out, quote.is_some())
+}
+
+/// `text` folded the way a shell reads it (SPEC-20261119-ac-verify-recorded-limits REQ-3): a run
+/// of spaces and tabs outside quotes becomes one space; a newline (it ends a command), a no-break
+/// space (it is a letter of a word) and everything inside quotes stay as they are; the ends lose
+/// spaces, tabs and newlines (a trailing newline only ends the command), except that an
+/// unterminated quote keeps what follows it. The recorder and the SPEC's `verify:` commands are
+/// folded by this one function, so they meet on the same text.
 pub fn collapse_whitespace(text: &str) -> String {
-    text.split_whitespace().collect::<Vec<_>>().join(" ")
+    let (chars, open) = shell_chars(text);
+    let blank = |&(c, syntax): &(char, bool)| syntax && matches!(c, ' ' | '\t');
+    let mut folded: Vec<(char, bool)> = Vec::with_capacity(chars.len());
+    for item in chars {
+        if blank(&item) {
+            if folded.last().is_some_and(&blank) {
+                continue;
+            }
+            folded.push((' ', true));
+        } else {
+            folded.push(item);
+        }
+    }
+    let trimmable = |&(c, syntax): &(char, bool)| syntax && matches!(c, ' ' | '\t' | '\n');
+    let start = folded
+        .iter()
+        .position(|i| !trimmable(i))
+        .unwrap_or(folded.len());
+    let end = if open {
+        folded.len()
+    } else {
+        folded
+            .iter()
+            .rposition(|i| !trimmable(i))
+            .map_or(start, |p| p + 1)
+    };
+    folded[start..end.max(start)]
+        .iter()
+        .map(|&(c, _)| c)
+        .collect()
+}
+
+/// Whether `command` has an unfilled placeholder: an unquoted `<`, a letter or `_` right after
+/// it and a `>` further on with no other shell operator between (the template's
+/// `<command that checks it>` and `--spec <id>` are placeholders). A `<` followed by white
+/// space, `<` or a digit, a heredoc `<<`, a quoted or escaped `<` and a `<` with no `>` after it
+/// are shell syntax. `cmd <in >out` also reads as a placeholder; a SPEC writes redirections with
+/// spaces.
+fn has_placeholder(command: &str) -> bool {
+    let (chars, _) = shell_chars(command);
+    for (i, &(c, syntax)) in chars.iter().enumerate() {
+        if !(syntax && c == '<') {
+            continue;
+        }
+        if !chars
+            .get(i + 1)
+            .is_some_and(|&(n, s)| s && (n.is_ascii_alphabetic() || n == '_'))
+        {
+            continue;
+        }
+        for &(n, s) in &chars[i + 1..] {
+            if s && n == '>' {
+                return true;
+            }
+            if s && matches!(n, '<' | '|' | ';' | '&' | '(' | ')' | '\n' | '$' | '`') {
+                break;
+            }
+        }
+    }
+    false
 }
 
 /// A SPEC file is read up to this size; a larger one is not read.
 const AC_SPEC_LIMIT: u64 = 1 << 20;
 
 /// The commands of one `verify:` value: each `` `…` `` span when it holds backticks (the form
-/// `` `a`; `b` ``), else the value. A command with an unfilled `<…>` placeholder is left out, as
-/// is an empty one.
+/// `` `a`; `b` ``), else the value. A command with an unfilled `<…>` placeholder (see
+/// [`has_placeholder`]) is left out, as is an empty one.
 fn verify_commands(value: &str) -> Vec<String> {
     let parts: Vec<&str> = if value.contains('`') {
         value.split('`').skip(1).step_by(2).collect()
@@ -1214,10 +1365,7 @@ fn verify_commands(value: &str) -> Vec<String> {
         .into_iter()
         .map(collapse_whitespace)
         .filter(|c| !c.is_empty())
-        .filter(|c| match c.find('<') {
-            Some(open) => !c[open..].contains('>'),
-            None => true,
-        })
+        .filter(|c| !has_placeholder(c))
         .collect()
 }
 
@@ -1242,7 +1390,7 @@ pub fn ac_work(dir: &Path) -> Option<AcWork> {
     if !meta.is_file() || meta.len() > AC_SPEC_LIMIT {
         return None;
     }
-    let text = std::fs::read_to_string(&path).ok()?;
+    let text = read_regular(&path, AC_SPEC_LIMIT)?;
     let doc = crate::spec_doc::parse(
         &text,
         &crate::spec_doc::Options {
@@ -1276,7 +1424,7 @@ pub fn ac_work(dir: &Path) -> Option<AcWork> {
 /// Whether `spec` is a file whose frontmatter (between the first two `---` lines) has the line
 /// `id: <id>`.
 fn spec_names(spec: &Path, id: &str) -> bool {
-    let Ok(text) = std::fs::read_to_string(spec) else {
+    let Some(text) = read_regular(spec, AC_SPEC_LIMIT) else {
         return false;
     };
     let mut lines = text.lines();
@@ -1487,7 +1635,7 @@ fn changes_branches(args: &[String]) -> bool {
 /// The branch a primary checkout's HEAD names (`ref: refs/heads/<b>` in `.git/HEAD`), read
 /// from the file system; `None` when detached, missing or unreadable.
 fn head_branch(top: &Path) -> Option<String> {
-    let head = std::fs::read_to_string(top.join(".git").join("HEAD")).ok()?;
+    let head = read_regular(&top.join(".git").join("HEAD"), GIT_SMALL_FILE_LIMIT)?;
     head.trim()
         .strip_prefix("ref: refs/heads/")
         .map(str::to_string)
@@ -2756,5 +2904,211 @@ mod tests {
         assert_eq!(verify_commands("a < b"), vec!["a < b"]);
         assert_eq!(verify_commands("cargo test 2>&1"), vec!["cargo test 2>&1"]);
         assert_eq!(collapse_whitespace(" a \t b\n"), "a b");
+    }
+
+    /// SPEC-20261119-ac-verify-recorded-limits REQ-3 (audit N3): the fold follows the shell where
+    /// the shell folds. Runs of spaces and tabs outside quotes become one space; a newline (it
+    /// ends a command), a no-break space (it is a letter of a word) and everything inside quotes
+    /// stay as they are; only the ends lose white space, and an unterminated quote keeps the rest.
+    #[test]
+    fn collapse_whitespace_keeps_quotes_newlines_and_no_break_spaces() {
+        let same = |text: &str| assert_eq!(collapse_whitespace(text), text, "{text:?}");
+        let to = |text: &str, want: &str| assert_eq!(collapse_whitespace(text), want, "{text:?}");
+        // What folds.
+        to("cargo  test\t--test   one", "cargo test --test one");
+        to(" \t cargo test \t", "cargo test");
+        to("a \t \t b", "a b");
+        // The ends take a newline too: it only ends the command.
+        to("cargo test --test one\n", "cargo test --test one");
+        to("\n\ncargo test --test one \n", "cargo test --test one");
+        // What does not fold: a newline in the middle (two commands), a no-break space.
+        same("cargo test\n--test one");
+        to("cargo test\n  --test one", "cargo test\n --test one");
+        same("cargo test\u{a0}--test one");
+        same("cargo test\u{a0} --test one");
+        same("cargo test --test\u{a0}");
+        same("a\r\nb");
+        // Quotes keep every run: single, double, an escaped quote inside double quotes.
+        same("echo 'a   b'");
+        same("echo \"a   b\"");
+        same("echo \"a \\\"  b\"");
+        to("echo   'a   b'   \"c   d\"  e", "echo 'a   b' \"c   d\" e");
+        same("echo 'it'\"'\"'s   here'");
+        // A backslash outside quotes keeps the next character (an escaped space is a letter).
+        same("a\\ \\ b");
+        same("a\\\nb");
+        // An unterminated quote keeps the rest, ends included.
+        same("echo \"a   b");
+        same("echo 'a  ");
+        to("  echo \"a  ", "echo \"a  ");
+        // Nothing to fold.
+        to("", "");
+        to(" \t\n ", "");
+        same("a");
+    }
+
+    /// REQ-4 (audit N4): a command is a placeholder when an UNQUOTED `<words>` stands in it (the
+    /// template's `<command that checks it>` and `--spec <id>` are placeholders). A lone `<` or `>`
+    /// (a redirection), a heredoc `<<`, a quoted or backslash-escaped `<x>` and a `<` with no `>`
+    /// after it are shell syntax and keep the command.
+    #[test]
+    fn verify_commands_read_shell_syntax_when_they_judge_a_placeholder() {
+        let kept = |value: &str, want: &[&str]| {
+            assert_eq!(verify_commands(value), want.to_vec(), "{value:?}")
+        };
+        let left_out =
+            |value: &str| assert_eq!(verify_commands(value), Vec::<String>::new(), "{value:?}");
+        // Placeholders.
+        left_out("`cargo test --test <name>`");
+        left_out("`<command that checks it>`");
+        left_out("`moai spec check --spec <id> --project .`");
+        left_out("`cargo test 2>&1 | tee <log>`");
+        left_out("`cargo test --test <name_1.v2>`");
+        kept("`a`; `<x>`; `c`", &["a", "c"]);
+        // Shell syntax, not placeholders.
+        kept("`cat < in.txt > out.txt`", &["cat < in.txt > out.txt"]);
+        kept("`cat <in.txt`", &["cat <in.txt"]);
+        kept(
+            "`cargo test > out.txt 2>&1`",
+            &["cargo test > out.txt 2>&1"],
+        );
+        kept("`cat <<EOF`", &["cat <<EOF"]);
+        kept("`echo a<b`; `c`", &["echo a<b", "c"]);
+        // Quoted or escaped.
+        kept("`grep -c \"<x>\" file`", &["grep -c \"<x>\" file"]);
+        kept("`grep -c '<x>' file`", &["grep -c '<x>' file"]);
+        kept("`echo \"<a b>\"`", &["echo \"<a b>\""]);
+        kept("`echo \\<x\\>`", &["echo \\<x\\>"]);
+        // A quoted placeholder next to a real one: the real one still leaves the command out.
+        left_out("`grep \"<x>\" <file>`");
+        // The value without backticks is judged the same way.
+        left_out("cargo test --test <name>");
+        kept("grep -c '<x>' file", &["grep -c '<x>' file"]);
+    }
+
+    /// REQ-6 (audit N6): HEAD, the branch's ref file, `commondir`, a `.git` pointer file and
+    /// `packed-refs` are read only when they are regular files within a bound (4 KiB for the
+    /// small ones, 8 MiB for `packed-refs`; N reads, N + 1 does not) and a FIFO in any of those
+    /// places never makes the read wait.
+    #[cfg(unix)]
+    #[test]
+    fn head_sha_reads_regular_files_up_to_a_bound_and_never_waits_on_a_fifo() {
+        const SMALL: usize = 4096;
+        const PACKED: usize = 8 * 1024 * 1024;
+        let sha = "a".repeat(40);
+        let name = "spec/20261119-x";
+        let padded = |text: &str, total: usize| {
+            let mut out = text.to_string();
+            out.push_str(&"\n".repeat(total - out.len()));
+            out
+        };
+        // A fresh work tree whose branch is only in `packed-refs` unless a case adds the ref file.
+        let tree = || {
+            let tmp = tempfile::TempDir::new().unwrap();
+            let top = std::fs::canonicalize(tmp.path()).unwrap();
+            let git = top.join(".git");
+            std::fs::create_dir_all(git.join("refs/heads/spec")).unwrap();
+            std::fs::write(git.join("HEAD"), format!("ref: refs/heads/{name}\n")).unwrap();
+            (tmp, top, git)
+        };
+        let sha_line = format!("{sha}\n");
+        // HEAD: exactly 4096 bytes reads, 4097 does not.
+        let (_t, top, git) = tree();
+        std::fs::write(git.join("refs/heads").join(name), &sha_line).unwrap();
+        let head = format!("ref: refs/heads/{name}");
+        std::fs::write(git.join("HEAD"), padded(&head, SMALL)).unwrap();
+        assert_eq!(head_sha(&top), Some(sha.clone()), "HEAD of 4096 bytes");
+        std::fs::write(git.join("HEAD"), padded(&head, SMALL + 1)).unwrap();
+        assert_eq!(head_sha(&top), None, "HEAD of 4097 bytes");
+        // The branch's ref file: 4096 reads; 4097 is not trusted and packed-refs is not asked.
+        let (_t, top, git) = tree();
+        std::fs::write(
+            git.join("packed-refs"),
+            format!("{} refs/heads/{name}\n", "b".repeat(40)),
+        )
+        .unwrap();
+        std::fs::write(git.join("refs/heads").join(name), padded(&sha, SMALL)).unwrap();
+        assert_eq!(head_sha(&top), Some(sha.clone()), "ref file of 4096 bytes");
+        std::fs::write(git.join("refs/heads").join(name), padded(&sha, SMALL + 1)).unwrap();
+        assert_eq!(head_sha(&top), None, "ref file of 4097 bytes");
+        // packed-refs: exactly 8 MiB reads, one byte more does not.
+        let (_t, top, git) = tree();
+        let entry = format!("{sha} refs/heads/{name}\n");
+        std::fs::write(git.join("packed-refs"), padded(&entry, PACKED)).unwrap();
+        assert_eq!(head_sha(&top), Some(sha.clone()), "packed-refs of 8 MiB");
+        std::fs::write(git.join("packed-refs"), padded(&entry, PACKED + 1)).unwrap();
+        assert_eq!(head_sha(&top), None, "packed-refs of 8 MiB + 1");
+        // A `.git` pointer file and a `commondir` of 4096 / 4097 bytes.
+        let tmp = tempfile::TempDir::new().unwrap();
+        let top = std::fs::canonicalize(tmp.path()).unwrap();
+        let main = top.join("main/.git");
+        std::fs::create_dir_all(main.join("refs/heads/spec")).unwrap();
+        std::fs::write(main.join("refs/heads").join(name), &sha_line).unwrap();
+        let linked = main.join("worktrees/wt");
+        std::fs::create_dir_all(&linked).unwrap();
+        std::fs::write(linked.join("HEAD"), format!("ref: refs/heads/{name}\n")).unwrap();
+        let wt = top.join("wt");
+        std::fs::create_dir_all(&wt).unwrap();
+        let pointer = format!("gitdir: {}", linked.display());
+        std::fs::write(linked.join("commondir"), padded("../..", SMALL)).unwrap();
+        std::fs::write(wt.join(".git"), padded(&pointer, SMALL)).unwrap();
+        assert_eq!(
+            head_sha(&wt),
+            Some(sha.clone()),
+            "pointer and commondir of 4096 bytes"
+        );
+        std::fs::write(wt.join(".git"), padded(&pointer, SMALL + 1)).unwrap();
+        assert_eq!(head_sha(&wt), None, "pointer of 4097 bytes");
+        std::fs::write(wt.join(".git"), padded(&pointer, SMALL)).unwrap();
+        std::fs::write(linked.join("commondir"), padded("../..", SMALL + 1)).unwrap();
+        assert_eq!(head_sha(&wt), None, "commondir of 4097 bytes");
+
+        // A FIFO where a file is read never makes the read wait: each read runs in a thread and
+        // must come back in seconds with no answer.
+        let mkfifo = |path: &Path| {
+            let c = std::ffi::CString::new(path.to_str().unwrap()).unwrap();
+            assert_eq!(unsafe { libc::mkfifo(c.as_ptr(), 0o600) }, 0, "{path:?}");
+        };
+        let answers_without_waiting = |top: &Path, what: &str| {
+            let (tx, rx) = std::sync::mpsc::channel();
+            let top = top.to_path_buf();
+            std::thread::spawn(move || {
+                let _ = tx.send(head_sha(&top));
+            });
+            let got = rx
+                .recv_timeout(std::time::Duration::from_secs(5))
+                .unwrap_or_else(|_| panic!("{what}: head_sha waited on a FIFO"));
+            assert_eq!(got, None, "{what}");
+        };
+        let (_t, top, git) = tree();
+        std::fs::remove_file(git.join("HEAD")).unwrap();
+        mkfifo(&git.join("HEAD"));
+        answers_without_waiting(&top, "HEAD is a FIFO");
+        let (_t, top, git) = tree();
+        mkfifo(&git.join("refs/heads").join(name));
+        answers_without_waiting(&top, "the ref file is a FIFO");
+        let (_t, top, git) = tree();
+        mkfifo(&git.join("packed-refs"));
+        answers_without_waiting(&top, "packed-refs is a FIFO");
+        let tmp = tempfile::TempDir::new().unwrap();
+        let top = std::fs::canonicalize(tmp.path()).unwrap();
+        mkfifo(&top.join(".git"));
+        answers_without_waiting(&top, ".git is a FIFO");
+        // With the ref file in place, a missing `commondir` would answer; a FIFO there must not.
+        let (_t, top, git) = tree();
+        std::fs::write(git.join("refs/heads").join(name), &sha_line).unwrap();
+        assert_eq!(
+            head_sha(&top),
+            Some(sha.clone()),
+            "no commondir: the ref file answers"
+        );
+        mkfifo(&git.join("commondir"));
+        answers_without_waiting(&top, "commondir is a FIFO");
+        // A symlink to a FIFO is a FIFO too.
+        let (_t, top, git) = tree();
+        std::fs::remove_file(git.join("HEAD")).unwrap();
+        mkfifo(&top.join("pipe"));
+        std::os::unix::fs::symlink(top.join("pipe"), git.join("HEAD")).unwrap();
+        answers_without_waiting(&top, "HEAD is a symlink to a FIFO");
     }
 }
