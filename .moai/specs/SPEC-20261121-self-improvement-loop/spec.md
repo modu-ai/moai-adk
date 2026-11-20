@@ -76,7 +76,7 @@ Acceptance lines exist for REQ-1…REQ-11, the requirements of this change (slic
 - AC-6 (REQ-10): a note and an improve note that carry a secret-shaped word print `[redacted]` in its place and the raw word appears nowhere in the output; a text over 120 characters is cut at 120.
   verify: `cargo test --offline --locked --test improve_signals_cli`
 - AC-7 (REQ-11): the collecting function with a limit of N notes reads N and says `truncated: false`, with N+1 notes it reads N and says `truncated: true`; a body over 8,192 bytes is cut at 8,192.
-  verify: `cargo test --offline --locked --lib improve_signals`
+  verify: `cargo test --offline --locked --bin moai-cli improve_signals`
 - AC-8 (REQ-1): the command is a file-op with its operations document, help row, example and goldens.
   verify: `cargo test --offline --locked --bin moai-cli operations_doc_matches`; `cargo test --offline --locked --bin moai-cli help_table_names_every_command_once`; `cargo test --offline --locked --bin moai-cli every_command_has_examples`; `cargo test --offline --locked --test help_layout`
 - AC-9 (REQ-1…REQ-11): at most five mutants of the new code, each turning a test red, are restored.
@@ -84,7 +84,7 @@ Acceptance lines exist for REQ-1…REQ-11, the requirements of this change (slic
 
 ## Scope
 
-- write (slice S1): `.moai/specs/SPEC-20261121-self-improvement-loop/**`, `src/improve_signals.rs`, `src/ops/improve_signals.rs`, `src/lib.rs` (one `pub mod` line), `src/help.rs` (one `GROUPS` row, one `EXAMPLES` row), `tests/fixtures/help/all.txt`, `tests/fixtures/help/all-60.txt`, `tests/fixtures/help/all-80.txt`, `tests/fixtures/help/all-dumb.txt`, `docs/design-review/appendix/operations/improve_signals.md`, `tests/improve_signals_cli.rs`
+- write (slice S1): `.moai/specs/SPEC-20261121-self-improvement-loop/**`, `src/ops/improve_signals.rs` (the logic stays in this file with its own unit tests, as `src/ops/claim_timeout_check.rs` does, so `src/lib.rs` is not touched), `src/help.rs` (one `GROUPS` row, one `EXAMPLES` row), `tests/fixtures/help/all.txt`, `tests/fixtures/help/all-60.txt`, `tests/fixtures/help/all-80.txt`, `tests/fixtures/help/all-dumb.txt`, `docs/design-review/appendix/operations/improve_signals.md`, `tests/improve_signals_cli.rs`
 - read-only: `src/ledger/open.rs` (`open_read_only`), `src/card/export_db.rs` (`read_snapshot`), `src/card/inbox.rs`, `src/lane_next.rs`, `src/redact.rs`, `src/state_root.rs`, `src/hooks.rs` (`log_lines`), `tests/common/home.rs`, `tests/card_inbox_cli.rs`, `skills/moai/workflows/mode-agent.md`, `skills/moai/workflows/verify.md`
 - forbidden: `skills/moai/**` (the `improve` route is slice S4), `agents/*.md`, `src/agents.rs` (D1 correction is slice S4), `src/generation.rs`, any write to a card, a ledger, the real HOME or the network
 - 읽은 사실(2026-11-20, 이 tip `0989b3fc58`): 명령은 `src/ops/<word>.rs` 한 파일이 `build.rs` 로 하위 명령이 돼요(`improve_signals.rs` → `improve-signals`, `src/ops/mod.rs:3-4`). 새 명령은 운영 문서 조각 `docs/design-review/appendix/operations/<word>.md`(첫 줄 정확히 ``# `improve-signals` ``, `src/main.rs:3226`), `src/help.rs` 의 `GROUPS`·`EXAMPLES` 행, 도움말 golden 네 개가 필요해요. 장부는 `ledger::open_read_only`(없으면 `Absent`, 아무것도 안 만듦), 모든 노트 본문은 `card::export_db::read_snapshot`. 감사 판정을 읽는 기존 파서는 PR 댓글용(`AUDIT #` 로 시작, `src/lane_next.rs:347`)이라 카드 노트용 파서는 새로 필요해요. `LANE-BLOCKED kind=` 를 읽는 파서는 없어요(`src/card/inbox.rs:56` 은 접두사만 봄). 플레이키 기록은 카드 제목 `flaky: <test>`(`skills/moai/workflows/verify.md:53`). 점검 실패의 종료 코드를 남기는 곳은 없어요(`src/verify.rs:1-5`, `src/check_affected.rs` 는 워크트리 `target/` 로그).
@@ -102,7 +102,7 @@ Acceptance lines exist for REQ-1…REQ-11, the requirements of this change (slic
 S1 단계:
 
 1. RED: `tests/improve_signals_cli.rs` 를 `TempHome` 으로 먼저 쓰고(부류별 픽스처, 경계, 주장 제외, 스냅샷, FIFO, 비밀 가림, 심볼릭 링크), 실패를 확인해요.
-2. GREEN: `src/improve_signals.rs` 에 순수 함수(분류 키 추출, 집계, 경계 상수)를 두고 `src/ops/improve_signals.rs` 가 읽기만 하는 어댑터가 돼요. 노트는 `ledger::open_read_only` + `read_snapshot`, 메모 파일은 `state_root::path` 로 위치를 구하고 심볼릭 링크 거절·크기 상한으로 읽어요.
+2. GREEN: `src/ops/improve_signals.rs` 안에 순수 함수(분류 키 추출, 집계, 경계 상수)와 그 단위 시험을 두고, 읽는 쪽(장부·메모 파일)은 같은 파일의 얇은 함수로 둬요. 노트는 `ledger::open_read_only` + `read_snapshot`, 메모 파일은 `state_root::path` 로 위치를 구하고 심볼릭 링크 거절·크기 상한으로 읽어요.
 3. 운영 문서 조각, 도움말 행·예시·golden 4개를 더해요(`MOAI_HELP_GOLDEN_WRITE=1 cargo test --test help_layout`).
 4. 변형 5개 이하, 이웃 검사(`home_isolation_scan`, `repo_scans` 목록 전부, clippy 전체, `--lib`·`--bins`), `spec check`·`trailer-check` 를 돌리고 Result 에 적어요.
 
