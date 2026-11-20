@@ -38,6 +38,26 @@ const GIT_ENV_REMOVED: &[&str] = &[
     "GIT_QUARANTINE_PATH",
 ];
 
+/// For a git process this crate starts itself (the pre-push check runs inside a git hook, where
+/// git has set its own location variables): the same scrub as `crate::identity::scrub_git_env`,
+/// written here because the test crates compile this module on its own, without `crate::`.
+pub(super) fn scrub_git_env(cmd: &mut std::process::Command) {
+    for key in GIT_ENV_REMOVED.iter().chain(&[
+        "GIT_CONFIG_PARAMETERS",
+        "GIT_CONFIG_COUNT",
+        "GIT_DISCOVERY_ACROSS_FILESYSTEM",
+    ]) {
+        cmd.env_remove(key);
+    }
+    for (key, _) in std::env::vars_os() {
+        let k = key.to_string_lossy();
+        if k.starts_with("GIT_CONFIG_KEY_") || k.starts_with("GIT_CONFIG_VALUE_") {
+            cmd.env_remove(&key);
+        }
+    }
+    cmd.env("LC_ALL", "C");
+}
+
 pub struct StepCtx {
     /// The whole run must end by then.
     pub deadline: Instant,

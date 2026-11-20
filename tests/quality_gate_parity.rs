@@ -12,10 +12,16 @@
 //! graph-freshness and ast-grep lines and its closing error box (axes and decoration this build
 //! does not print), blank lines, and the clock fields of an executed row.
 
+#![cfg(unix)] // the gate runs process groups and flock; a Windows port is not part of this SPEC
+
 #[path = "../src/quality_gate/mod.rs"]
 #[allow(dead_code)]
 mod quality_gate;
 
+mod common;
+
+use common::git::git_ok;
+use common::CleanEnv;
 use quality_gate::{run, Invocation};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
@@ -329,7 +335,7 @@ fn go_result(go_bin: &str, s: &Scenario) -> String {
     let out = Command::new(go_bin)
         .arg("gate")
         .current_dir(project.path().canonicalize().unwrap())
-        .env_clear()
+        .clean_env()
         .env("HOME", home.path())
         .env("PATH", path_for(bin.path()))
         .output()
@@ -480,27 +486,22 @@ fn build_prepush(s: &PrePushScenario) -> TempDir {
         fs::write(d.join(file), text).unwrap();
     }
     if !s.history.is_empty() {
-        let git = |args: &[&str]| {
-            let out = Command::new("git")
-                .args(args)
-                .current_dir(project.path())
-                .env("GIT_AUTHOR_NAME", "t")
-                .env("GIT_AUTHOR_EMAIL", "t@t")
-                .env("GIT_COMMITTER_NAME", "t")
-                .env("GIT_COMMITTER_EMAIL", "t@t")
-                .env("GIT_CONFIG_GLOBAL", "/dev/null")
-                .env("GIT_CONFIG_SYSTEM", "/dev/null")
-                .output()
-                .unwrap();
-            assert!(
-                out.status.success(),
-                "{}",
-                String::from_utf8_lossy(&out.stderr)
-            );
-        };
-        git(&["init", "-q", "."]);
+        git_ok(project.path(), &["init", "-q", "."]);
         for subject in s.history {
-            git(&["commit", "-q", "--allow-empty", "-m", subject]);
+            git_ok(
+                project.path(),
+                &[
+                    "-c",
+                    "user.name=t",
+                    "-c",
+                    "user.email=t@t",
+                    "commit",
+                    "-q",
+                    "--allow-empty",
+                    "-m",
+                    subject,
+                ],
+            );
         }
     }
     project
@@ -560,7 +561,7 @@ fn prepush_go(go_bin: &str, s: &PrePushScenario) -> String {
     let mut cmd = Command::new(go_bin);
     cmd.args(["hook", "pre-push"])
         .current_dir(project.path().canonicalize().unwrap())
-        .env_clear()
+        .clean_env()
         .env("HOME", home.path())
         .env("PATH", "/usr/bin:/bin")
         .stdin(std::process::Stdio::piped())

@@ -483,7 +483,9 @@ fn load_fallback(name: &str) -> Result<Convention, String> {
 }
 
 fn recent_subjects(repo: &Path, limit: i64) -> Option<Vec<String>> {
-    let out = Command::new("git")
+    let mut cmd = Command::new("git");
+    super::step::scrub_git_env(&mut cmd);
+    let out = cmd
         .arg("-C")
         .arg(repo)
         .args(["log", &format!("--max-count={limit}"), "--format=%s"])

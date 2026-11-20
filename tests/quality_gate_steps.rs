@@ -1,6 +1,8 @@
 //! SPEC-20261120-rust-quality-gate: language detection and step execution.
 //! Test names start with `detection_` or `steps_` so the SPEC's verify filters pick them.
 
+#![cfg(unix)] // the gate runs process groups and flock; a Windows port is not part of this SPEC
+
 #[path = "../src/quality_gate/mod.rs"]
 #[allow(dead_code)]
 mod quality_gate;

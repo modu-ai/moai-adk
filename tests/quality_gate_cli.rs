@@ -2,10 +2,15 @@
 //! enabled switch, the summary, the run lock. Names start with the SPEC's verify words
 //! (`summary_`, `lock_`) so the filters pick them.
 
+#![cfg(unix)] // the gate runs process groups and flock; a Windows port is not part of this SPEC
+
 #[path = "../src/quality_gate/mod.rs"]
 #[allow(dead_code)]
 mod quality_gate;
 
+mod common;
+
+use common::git::git_ok;
 use quality_gate::lock;
 use quality_gate::{run, Invocation};
 use std::ffi::OsString;
@@ -178,7 +183,16 @@ fn lock_is_taken_and_released_by_a_run() {
     assert_eq!(code, 0, "{err}");
     let lock_path = p.path().join(".moai/state/gate-run.lock");
     assert!(lock_path.exists());
-    assert!(lock::acquire(p.path()).is_ok(), "released after the run");
+    // flock belongs to the open file description, so a child that another test's thread forked
+    // in the instant before its exec can hold it for a moment: retry briefly, never assume.
+    let released = (0..40).any(|_| {
+        let ok = lock::acquire(p.path()).is_ok();
+        if !ok {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        ok
+    });
+    assert!(released, "released after the run");
 }
 
 /// AC-5 (REQ-9): a held lock makes the run wait its budget, say so, then run unserialized; the
@@ -557,27 +571,22 @@ fn prepush_multibyte_subject_suggestion_is_byte_exact() {
 
 fn git_repo(subjects: &[&str]) -> TempDir {
     let p = TempDir::new().unwrap();
-    let git = |args: &[&str]| {
-        let st = std::process::Command::new("git")
-            .args(args)
-            .current_dir(p.path())
-            .env("GIT_AUTHOR_NAME", "t")
-            .env("GIT_AUTHOR_EMAIL", "t@t")
-            .env("GIT_COMMITTER_NAME", "t")
-            .env("GIT_COMMITTER_EMAIL", "t@t")
-            .env("GIT_CONFIG_GLOBAL", "/dev/null")
-            .env("GIT_CONFIG_SYSTEM", "/dev/null")
-            .output()
-            .unwrap();
-        assert!(
-            st.status.success(),
-            "{:?}",
-            String::from_utf8_lossy(&st.stderr)
-        );
-    };
-    git(&["init", "-q", "."]);
+    git_ok(p.path(), &["init", "-q", "."]);
     for s in subjects {
-        git(&["commit", "-q", "--allow-empty", "-m", s]);
+        git_ok(
+            p.path(),
+            &[
+                "-c",
+                "user.name=t",
+                "-c",
+                "user.email=t@t",
+                "commit",
+                "-q",
+                "--allow-empty",
+                "-m",
+                s,
+            ],
+        );
     }
     p
 }
