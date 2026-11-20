@@ -378,6 +378,44 @@ fn process_in_the_worktree() {
     let _ = beside.wait();
 }
 
+/// AC-10 (REQ-12): a worktree whose only untracked file is a listed tool cache (the statusline's
+/// GitHub counts) counts as clean; any other untracked file, an unlisted name in the same
+/// folder and a changed tracked file each keep it dirty.
+#[test]
+fn a_listed_tool_cache_is_not_work() {
+    let w = world();
+    let card = w.taken(&sid(1), Some(&w.wt), "src/cache/");
+    w.register(NAME, Some(&sid(1)));
+    let before = w.dump();
+
+    let cache_dir = w.wt.join(".moai-cli/state/github");
+    fs::create_dir_all(&cache_dir).unwrap();
+    fs::write(cache_dir.join("counts.json"), "{\"open_issues\":1}\n").unwrap();
+
+    // The cache plus one real untracked file: the file is work, the count names only it.
+    fs::write(w.wt.join("new.txt"), "x\n").unwrap();
+    let m = w.refused_and_unchanged(w.reclaim(&sid(2), &card, "1"), "worktree dirty", &before);
+    assert!(m.contains("holds 1 uncommitted change(s)"), "{m}");
+    fs::remove_file(w.wt.join("new.txt")).unwrap();
+
+    // An unlisted name beside the cache is not a listed cache.
+    fs::write(cache_dir.join("other.json"), "{}\n").unwrap();
+    let m = w.refused_and_unchanged(w.reclaim(&sid(2), &card, "1"), "worktree dirty", &before);
+    assert!(m.contains("holds 1 uncommitted change(s)"), "{m}");
+    fs::remove_file(cache_dir.join("other.json")).unwrap();
+
+    // A tracked file that changed is work even when a listed cache sits beside it.
+    fs::write(w.wt.join("a.txt"), "changed\n").unwrap();
+    let m = w.refused_and_unchanged(w.reclaim(&sid(2), &card, "1"), "worktree dirty", &before);
+    assert!(m.contains("holds 1 uncommitted change(s)"), "{m}");
+    git_in(&w.wt, &["checkout", "--", "a.txt"]);
+
+    // Only the listed cache is left: the reclaim goes through and the cache file stays.
+    let got = result(&w.reclaim(&sid(2), &card, "1"));
+    assert_eq!(got["reservation"]["generation"], json!(2));
+    assert!(cache_dir.join("counts.json").exists(), "the proof deleted a file");
+}
+
 /// AC-5 (REQ-5, REQ-8): the event keeps its kind, carries the proof in its own field, and the
 /// ledger tables and the schema version are what they were; an ordinary reclaim of an ended
 /// lease carries no such field.
