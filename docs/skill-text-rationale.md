@@ -43,6 +43,7 @@ The shipped text no longer names these commands, because a user's repository doe
 - Removed item 7's repository command `tools/build_folder.py clean` (run with `python3 -I`; it keeps any other file); the commands are listed above.
 - Removed item 8's repository command `tools/build_folder.py remove` (it deletes the picked rows only when a fresh preview still marks each one `trim`, and refuses all of them otherwise); the commands are listed above.
 - Removed `as tools/build_folder.py env does` in item 9.
+- Added, after the audit: item 4 says a session outside a lane sets the two variables itself; item 8 says a picked folder that no longer shows `trim` is left alone (the repository command refused those rows); item 9 gives the form `e=$(moai lane-env --lane <lane>) && eval "$e"`, taken from the lane-env hint in `src/heavy_slot.rs`, which keeps the old condition of item 4 that its output is evaluated only when the command exits 0.
 
 ## `skills/moai/references/internal/commit-trailers.md`
 

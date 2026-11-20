@@ -95,7 +95,7 @@ fn kinds(line: &str) -> Vec<&'static str> {
                 .take_while(char::is_ascii_digit)
                 .count();
             let next = line[at + 2 + digits..].chars().next().unwrap_or(' ');
-            if (1..=3).contains(&digits) && !next.is_ascii_digit() {
+            if (1..=4).contains(&digits) && !next.is_ascii_digit() {
                 out.push("card");
             }
         }
@@ -110,8 +110,40 @@ fn kinds(line: &str) -> Vec<&'static str> {
             }
         }
     }
-    let low = line.to_lowercase();
-    for phrase in ["user decision", "leader decision", "user selection"] {
+    // ASCII lower case keeps every byte position, so an index into `low` is one into `line`.
+    let low = line.to_ascii_lowercase();
+    for word in ["issue", "issues", "pr", "prs"] {
+        for (at, _) in low.match_indices(word) {
+            let word_before = low[..at].chars().next_back().is_some_and(is_word);
+            let rest = &low[at + word.len()..];
+            // `Issue #2619` is the `#` rule's; `Issue 2619` and `Issue#2619` are this one's.
+            let digits_at = match rest.chars().next() {
+                Some('#') => Some(1),
+                Some(' ') => {
+                    let trimmed = rest.trim_start();
+                    (!trimmed.starts_with('#')).then_some(rest.len() - trimmed.len())
+                }
+                _ => None,
+            };
+            if let (false, Some(skip)) = (word_before, digits_at) {
+                let digits = rest[skip..]
+                    .chars()
+                    .take_while(char::is_ascii_digit)
+                    .count();
+                let next = rest[skip + digits..].chars().next().unwrap_or(' ');
+                if (3..=5).contains(&digits) && !next.is_ascii_digit() {
+                    out.push("number");
+                }
+            }
+        }
+    }
+    for phrase in [
+        "user decision",
+        "leader decision",
+        "user selection",
+        "user's decision",
+        "leader's decision",
+    ] {
         for (at, _) in low.match_indices(phrase) {
             let rest = after(line, at + phrase.len());
             let rest = rest.strip_prefix(',').map_or(rest, str::trim_start);
@@ -129,9 +161,9 @@ fn kinds(line: &str) -> Vec<&'static str> {
             out.push("decision");
         }
     }
-    for (at, _) in line.match_indices("decision ") {
-        let mut it = line[at + 9..].chars();
-        if matches!(it.next(), Some('D' | 'U')) && it.next().is_some_and(|c| c.is_ascii_digit()) {
+    for (at, _) in low.match_indices("decision ") {
+        let mut it = low[at + 9..].chars();
+        if matches!(it.next(), Some('d' | 'u')) && it.next().is_some_and(|c| c.is_ascii_digit()) {
             out.push("decision");
         }
     }

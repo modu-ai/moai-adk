@@ -117,7 +117,7 @@
       }
     },
     "references/internal/build-folder.md": {
-      "sha256": "dcd5d5e98386ee793dd5ea661e7e97d1662025a8d3b762c06f065545b6efa399",
+      "sha256": "8caea89349042fbdd6fc619206dad77fee77e74851b47c85efe4a1bad1af3a51",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-build-folder",
