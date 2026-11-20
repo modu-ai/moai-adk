@@ -164,6 +164,20 @@ impl Fx {
     }
 
     fn dispatch(&self, host: &str, event: &str, stdin: &[u8], fake: Option<&Path>) -> Ran {
+        self.dispatch_in(host, event, stdin, fake, &self.proj, Path::new("/dev/null"))
+    }
+
+    /// [`Fx::dispatch`] started in the folder `dir`, with the user-level git configuration file
+    /// `global` (the default runs without one).
+    fn dispatch_in(
+        &self,
+        host: &str,
+        event: &str,
+        stdin: &[u8],
+        fake: Option<&Path>,
+        dir: &Path,
+        global: &Path,
+    ) -> Ran {
         let mut path = std::env::var_os("PATH").unwrap_or_default();
         if let Some(bin) = fake {
             let mut dirs = vec![bin.to_path_buf()];
@@ -174,9 +188,9 @@ impl Fx {
             .clean_env()
             .env("PATH", path)
             .env("HOME", &self.home)
-            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_GLOBAL", global)
             .env("GIT_CONFIG_SYSTEM", "/dev/null")
-            .current_dir(&self.proj)
+            .current_dir(dir)
             .args(["hook-dispatch", "--host", host, "--event", event])
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -731,7 +745,7 @@ fn skips_hosts_other_than_claude_with_a_usage_error() {
     }
 }
 
-/// AC-5: the usage error for an unknown event lists the new word.
+/// AC-7: the usage error for an unknown event lists the new word.
 #[test]
 fn usage_error_lists_the_event_word() {
     let f = fx();
@@ -739,4 +753,288 @@ fn usage_error_lists_the_event_word() {
     assert_eq!(code, 1, "{err}");
     assert_eq!(out, "");
     assert!(err.contains("security-turn"), "{err}");
+}
+
+/// AC-3, REQ-7: a session that was told in observe is told again once the rule is enforce — a
+/// `would_notify` line is no notification — and then once.
+#[test]
+fn once_a_session_told_in_observe_is_told_again_in_enforce() {
+    let f = fx();
+    f.repo(&[("src/a.py", "x = 1\n")]);
+    f.put(
+        "src/new.py",
+        format!("{}\n", line_of("code-injection-eval")).as_bytes(),
+    );
+    assert_silent(&f.turn_end("s1"), "observe");
+    f.mode("enforce");
+    let (_, told, _) = f.turn_end("s1");
+    system_message(&told);
+    assert_silent(&f.turn_end("s1"), "enforce, again");
+    assert_eq!(f.of_kind("would_notify").len(), 1, "{:?}", f.lines());
+    assert_eq!(f.of_kind("notified").len(), 1, "{:?}", f.lines());
+}
+
+/// AC-4, REQ-11: two hundred tracked files are read, the two hundred and first is not.
+#[test]
+fn skips_tracked_files_past_two_hundred() {
+    for (count, findings) in [(200, 200), (201, 200)] {
+        let f = fx();
+        let names: Vec<String> = (0..count).map(|n| format!("many/t{n:03}.py")).collect();
+        let base: Vec<(&str, &str)> = names.iter().map(|n| (n.as_str(), "x = 1\n")).collect();
+        f.repo(&base);
+        for name in &names {
+            f.put(
+                name,
+                format!("x = 1\n{}\n", line_of("code-injection-eval")).as_bytes(),
+            );
+        }
+        assert_silent(&f.turn_end("s1"), "observe");
+        let seen = f.of_kind("would_notify");
+        assert_eq!(seen.len(), 1, "{count}: {:?}", f.lines());
+        assert_eq!(seen[0]["findings"], json!(findings), "{count} files");
+    }
+}
+
+/// AC-4, REQ-11: eight mebibytes of text in all are read, a ninth file of one mebibyte is not.
+#[test]
+fn skips_text_past_eight_mebibytes_in_all() {
+    for (count, findings) in [(8, 8), (9, 8)] {
+        let f = fx();
+        f.repo(&[("src/a.py", "x = 1\n")]);
+        for n in 0..count {
+            f.put(&format!("big/f{n}.py"), text_of(MIB).as_bytes());
+        }
+        assert_silent(&f.turn_end("s1"), "observe");
+        let seen = f.of_kind("would_notify");
+        assert_eq!(seen.len(), 1, "{count}: {:?}", f.lines());
+        assert_eq!(seen[0]["findings"], json!(findings), "{count} files");
+    }
+}
+
+/// AC-4, REQ-8: a git wrapper that ends at once but leaves a background process holding the
+/// output open gives no output and no line, and the duty does not wait for that process.
+#[test]
+fn skips_when_a_git_helper_keeps_the_output_open() {
+    let f = fx();
+    f.scenario();
+    f.mode("enforce");
+    let bin = f.fake_git("    diff) sleep 8 & exit 0;;");
+    let started = Instant::now();
+    let ran = f.dispatch(
+        "claude",
+        "security-turn",
+        &f.stop_input("s1", false),
+        Some(&bin),
+    );
+    assert!(
+        started.elapsed().as_secs_f64() < 5.0,
+        "no wait for the helper: {:?}",
+        started.elapsed()
+    );
+    assert_silent(&ran, "the output stays open");
+    assert!(f.lines().is_empty());
+}
+
+/// A user-level git configuration file with the text `text`.
+fn global_config(f: &Fx, text: &str) -> PathBuf {
+    let path = f.root.join("gitconfig-global");
+    fs::write(&path, text).unwrap();
+    path
+}
+
+/// AC-6, REQ-1: the tracked changes are read whatever diff settings the user's own git
+/// configuration holds — each of these changes the file-name prefixes of a patch.
+#[test]
+fn gitenv_diff_settings_of_the_user_do_not_switch_the_tracked_scan_off() {
+    for text in [
+        "[diff]\n\tmnemonicPrefix = true\n",
+        "[diff]\n\tnoprefix = true\n",
+        "[diff]\n\tsrcPrefix = x/\n\tdstPrefix = y/\n",
+    ] {
+        let f = fx();
+        f.repo(&[("src/a.py", "x = 1\n")]);
+        f.put(
+            "src/a.py",
+            format!("x = 1\n{}\n", line_of("code-injection-eval")).as_bytes(),
+        );
+        let global = global_config(&f, text);
+        let ran = f.dispatch_in(
+            "claude",
+            "security-turn",
+            &f.stop_input("s1", false),
+            None,
+            &f.proj,
+            &global,
+        );
+        assert_silent(&ran, text);
+        let seen = f.of_kind("would_notify");
+        assert_eq!(seen.len(), 1, "{text}: {:?}", f.lines());
+        assert_eq!(seen[0]["findings"], json!(1), "{text}");
+    }
+}
+
+/// AC-6, REQ-1: a Stop on a work tree whose file times differ from the index leaves the bytes of
+/// `.git/index` as they were (a plain `git diff` would refresh it).
+#[test]
+fn gitenv_the_index_is_not_rewritten() {
+    let f = fx();
+    f.repo(&[("src/a.py", "x = 1\n")]);
+    let file = fs::OpenOptions::new()
+        .write(true)
+        .open(f.proj.join("src/a.py"))
+        .unwrap();
+    file.set_modified(std::time::SystemTime::now() + std::time::Duration::from_secs(30))
+        .unwrap();
+    drop(file);
+    f.put(
+        "src/new.py",
+        format!("{}\n", line_of("code-injection-eval")).as_bytes(),
+    );
+    let before = fs::read(f.proj.join(".git/index")).unwrap();
+    assert_silent(&f.turn_end("s1"), "observe");
+    assert_eq!(f.of_kind("would_notify").len(), 1, "{:?}", f.lines());
+    assert!(
+        before == fs::read(f.proj.join(".git/index")).unwrap(),
+        "the index was rewritten"
+    );
+}
+
+/// AC-6, REQ-1: a helper the repository's own configuration names (`core.fsmonitor`) does not
+/// run in either git call.
+#[test]
+fn gitenv_a_helper_of_the_repository_does_not_run() {
+    let f = fx();
+    f.repo(&[("src/a.py", "x = 1\n")]);
+    let marker = f.root.join("helper-ran");
+    let helper = f.root.join("helper.sh");
+    common::write_executable(
+        &helper,
+        &format!("#!/bin/sh\necho ran >> \"{}\"\n", marker.display()),
+    );
+    f.git(&["config", "core.fsmonitor", &helper.display().to_string()]);
+    f.put(
+        "src/new.py",
+        format!("{}\n", line_of("code-injection-eval")).as_bytes(),
+    );
+    assert_silent(&f.turn_end("s1"), "observe");
+    assert!(!marker.exists(), "the repository's helper ran");
+    assert_eq!(f.of_kind("would_notify").len(), 1, "{:?}", f.lines());
+}
+
+/// AC-6, REQ-1 / REQ-2: a session that starts in a subfolder reads that subfolder only, and the
+/// paths it names are relative to it.
+#[test]
+fn layout_a_session_in_a_subfolder_reads_that_subfolder_only() {
+    let f = fx();
+    f.repo(&[("sub/a.py", "x = 1\n"), ("top.py", "x = 1\n")]);
+    fs::create_dir_all(f.proj.join("sub/.moai-cli")).unwrap();
+    let edited = format!("x = 1\n{}\n", line_of("code-injection-eval"));
+    f.put("sub/a.py", edited.as_bytes());
+    f.put("top.py", edited.as_bytes());
+    f.put(
+        "sub/new.py",
+        format!("{}\n", line_of("command-injection")).as_bytes(),
+    );
+    f.put(
+        "other.py",
+        format!("{}\n", line_of("sql-injection")).as_bytes(),
+    );
+    f.mode("enforce");
+    let sub = f.proj.join("sub");
+    let input = json!({"session_id": "s1", "hook_event_name": "Stop", "stop_hook_active": false,
+                       "cwd": sub})
+    .to_string()
+    .into_bytes();
+    let (code, out, err) = f.dispatch_in(
+        "claude",
+        "security-turn",
+        &input,
+        None,
+        &sub,
+        Path::new("/dev/null"),
+    );
+    assert_eq!((code, err.as_str()), (0, ""), "{out}");
+    assert_eq!(
+        entries(&system_message(&out)),
+        [
+            "- code-injection-eval (high) a.py:2",
+            "- command-injection (high) new.py:1",
+        ]
+    );
+}
+
+/// AC-6, REQ-1 / REQ-2: file names with non-ASCII letters and with spaces are read and named.
+#[test]
+fn layout_names_with_non_ascii_letters_and_spaces_are_read() {
+    let f = fx();
+    f.repo(&[("src/한글 파일.py", "x = 1\n")]);
+    f.put(
+        "src/한글 파일.py",
+        format!("x = 1\n{}\n", line_of("code-injection-eval")).as_bytes(),
+    );
+    f.put(
+        "src/übung.py",
+        format!("{}\n", line_of("sql-injection")).as_bytes(),
+    );
+    f.mode("enforce");
+    let (code, out, err) = f.turn_end("s1");
+    assert_eq!((code, err.as_str()), (0, ""), "{out}");
+    assert_eq!(
+        entries(&system_message(&out)),
+        [
+            "- code-injection-eval (high) src/한글 파일.py:2",
+            "- sql-injection (high) src/übung.py:1",
+        ]
+    );
+}
+
+/// AC-6, REQ-1: files under the project's state folder are not read, tracked or not.
+#[test]
+fn layout_files_under_the_state_folder_are_not_read() {
+    let f = fx();
+    f.repo(&[(".moai-cli/kept.py", "x = 1\n")]);
+    f.put(
+        ".moai-cli/kept.py",
+        format!("x = 1\n{}\n", line_of("code-injection-eval")).as_bytes(),
+    );
+    f.put(
+        ".moai-cli/extra.py",
+        format!("{}\n", line_of("command-injection")).as_bytes(),
+    );
+    assert_silent(&f.turn_end("s1"), "observe");
+    assert!(f.of_kind("would_notify").is_empty(), "{:?}", f.lines());
+}
+
+/// AC-6, REQ-1: only added lines count — a finding on the line just below an added line was
+/// there before the turn and is not reported.
+#[test]
+fn layout_a_finding_below_an_added_line_is_not_new() {
+    let f = fx();
+    f.repo(&[(
+        "src/a.py",
+        &format!("x = 1\n{}\n", line_of("code-injection-eval")),
+    )]);
+    f.put(
+        "src/a.py",
+        format!("x = 1\ny = 2\n{}\n", line_of("code-injection-eval")).as_bytes(),
+    );
+    assert_silent(&f.turn_end("s1"), "observe");
+    assert!(f.of_kind("would_notify").is_empty(), "{:?}", f.lines());
+}
+
+/// AC-6, REQ-9: the digest of the same findings differs between two sessions, so a reader of the
+/// log cannot check a guessed line against it without the session.
+#[test]
+fn layout_the_digest_differs_between_sessions() {
+    let f = fx();
+    f.repo(&[("src/a.py", "x = 1\n")]);
+    f.put(
+        "src/new.py",
+        format!("{}\n", line_of("code-injection-eval")).as_bytes(),
+    );
+    assert_silent(&f.turn_end("s1"), "observe");
+    assert_silent(&f.turn_end("s2"), "observe, other session");
+    let seen = f.of_kind("would_notify");
+    assert_eq!(seen.len(), 2, "{:?}", f.lines());
+    assert_ne!(seen[0]["digest"], seen[1]["digest"]);
 }
