@@ -264,7 +264,13 @@ fn a_routing_shim_is_read_for_its_mcp_route_and_left_unchanged() {
     assert_eq!(s["routes_mcp_server"], json!(true));
     assert_eq!(s["sets_mcp_oneshot"], json!(false));
     assert_eq!(s["basis"], json!("script text, not run"));
-    assert!(s["note"].as_str().unwrap().ends_with("(#3021)"), "{s}");
+    assert!(
+        s["note"]
+            .as_str()
+            .unwrap()
+            .ends_with("Nothing was changed."),
+        "{s}"
+    );
     // A script without the route, and repository content that is never read.
     let p = &find("plain/moai")["shim_mcp"];
     assert_eq!(p["status"], json!("no_mcp_route"), "{p}");

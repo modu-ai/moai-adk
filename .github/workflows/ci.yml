@@ -54,16 +54,21 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      pull-requests: read
     outputs:
       matrix: ${{ steps.decide.outputs.matrix }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
-          fetch-depth: 0 # the decision diffs the PR against its base commit
       - name: Decide check matrix
         id: decide
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
           set -u
           # C-20 (SPEC-20261119-ci-check-set-legs): every target entry is multiplied by the
@@ -78,11 +83,29 @@ jobs:
           linux='[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"nextest"},{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"rest"}]'
           matrix="$full"
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            base="${{ github.event.pull_request.base.sha }}"
             ok=0
-            paths="$(git diff --name-only --no-renames "${base}...${GITHUB_SHA}" 2>/dev/null)" || true
-            if [ -n "$paths" ] \
-               && result="$(printf '%s\n' "$paths" | python3 tools/ci_scope.py)" \
+            # The scope tool is the base checkout's copy (the job checks out the base
+            # commit), so a PR never executes its own copy of the rule — the check-guard
+            # precedent. Changed paths come from the files API — filename AND
+            # previous_filename, so renames and deletions are judged. The API serves at
+            # most 3000 files; the truncation guard compares API items (`--jq length`,
+            # summed over the pages) with the true total — never the path lines, which a
+            # rename serves two of for one item (audit B1). A truncated list keeps the
+            # fail-safe full matrix instead of judging a partial one, as does an empty
+            # one, a failed API call or a failed total — the runner shell runs this step
+            # with -e and pipefail, so every failing call is caught here, not fatal.
+            if ! gh api "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" --paginate \
+              --jq '.[] | (.filename, (.previous_filename // empty))' \
+              | sort -u > "$RUNNER_TEMP/ci-scope-files.txt"; then
+              echo "ci-scope: the files API failed; full matrix (fail-safe)" >&2
+            elif ! listed="$(gh api "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq 'length' | awk '{s += $1} END { print s + 0 }')"; then
+              echo "ci-scope: the files API item count failed; full matrix (fail-safe)" >&2
+            elif ! total="$(gh pr view "$PR_NUMBER" --repo "$REPO" --json changedFiles --jq .changedFiles)"; then
+              echo "ci-scope: the changed-file total failed; full matrix (fail-safe)" >&2
+            elif [ "${listed:-0}" -lt "${total:-0}" ]; then
+              echo "ci-scope: the files API served $listed of $total changed files; full matrix (fail-safe)" >&2
+            elif [ -s "$RUNNER_TEMP/ci-scope-files.txt" ] \
+               && result="$(python3 tools/ci_scope.py < "$RUNNER_TEMP/ci-scope-files.txt")" \
                && macos="$(printf '%s' "$result" | python3 -c 'import json,sys; print(json.load(sys.stdin)["macos_needed"])')"; then
               ok=1
               printf '%s\n' "$result" | python3 -c 'import json,sys; [print("target-reason:", r) for r in json.load(sys.stdin)["macos_reasons"]]'
@@ -90,7 +113,8 @@ jobs:
             if [ "$ok" = 1 ] && [ "$macos" = "False" ]; then
               matrix="$linux"
             fi
-            # ok=0 (diff, classifier or parse failure) or macos=True: full matrix.
+            # ok=0 (truncated or empty listing, API failure, classifier or parse failure)
+            # or macos=True: full matrix.
           fi
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
           echo "matrix: $matrix"
