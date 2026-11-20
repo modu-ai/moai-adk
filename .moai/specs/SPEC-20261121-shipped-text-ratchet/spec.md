@@ -2,7 +2,7 @@
 id: SPEC-20261121-shipped-text-ratchet
 title: "A repository scan fails when the shipped text gains one more maintainer-only token than its baseline"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-21
 ---
 
@@ -74,4 +74,22 @@ Tokens (first list, each a pattern and a reason): `card-number` `\bC-[0-9]+\b`; 
 
 ## Result
 
-(not yet written)
+Built tests first. The first RED run of `python3 -m unittest tests.shipped_text_ratchet_test` (tool absent) gave 35 assertion failures; one more test (an empty-matching pattern refused at load) was added after the tool, so the final state is `Ran 36 tests ... OK` on Python 3.14.2 and on the system `/usr/bin/python3` 3.9.6 (both re-run for this Result).
+
+- AC-1: met — `CountTest` passes: `baseline` prints the counts of the shipped paths only and `check` lists a non-UTF-8 file under `skipped` without counting it.
+- AC-2: met — `BoundaryTest` passes: the same tree exits 0; one more match in a listed file, in an unlisted file, or moved to another file with an equal total each exit 1 and name the file, token and both numbers; the total rule is shown by a baseline whose total is below its files' sum.
+- AC-3: met — `HeadroomTest` passes: one match fewer exits 0 and is listed under `headroom` with both numbers.
+- AC-4: met — `RefusalTest` passes: each refusal listed in AC-4 exits 2 with the `shipped_text_ratchet: ` prefix on stderr and empty stdout.
+- AC-5: met — `ReadOnlyTest` passes: a hash of the temporary tree and of the repository paths read is equal before and after `check` and `baseline`.
+- AC-6: met — `RepoTreeTest` passes: `python3 -I tools/shipped_text_ratchet.py check` on the repository exits 0 (`failures` 0, `headroom` 0, `skipped` 0), and also on an extracted copy of the current local integration tip, whose shipped text equals the base's (`git diff --stat` of `skills agents src/help.rs` between the base and the tip is empty). None of the four files is under the shipped paths or in the source manifest.
+- AC-7: met — the table entry `shipped-text-ratchet` is in `tools/repo_scans.json`; without the two new entries `tests.repo_scans_test` fails on `['tests/maintainer_cases_test.py', 'tests/shipped_text_ratchet_test.py']`, with them `Ran 25 tests ... OK` (the build path set in `CARGO_TARGET_DIR`, which the other scans need).
+
+Measured baseline (the output of `baseline`, summed per token over 24 files): `card-number` 78, `issue-number` 515, `local-rules-file` 6, `repo-link` 11. The largest files are `skills/moai/references/source-manifest.json`, `skills/moai/references/rule-history.md` and `skills/moai/workflows/mode-agent.md`.
+
+Mutants (8, one rule each, run on the committed tool, the tree restored after each): the per-file `>` as `>=`, the total `>` as `>=`, a file the baseline lacks counted as its own count, the load-time empty-match refusal removed, the UTF-8 skip turned into a crash, `**` kept inside one folder, the file headroom never listed, and a failing check exiting 0. All 8 were caught (failing tests per mutant: 10, 10, 1, 1, 1, 7, 2, 7); the unmutated run is green and the tree is clean after. The plan listed six mutants; two more were added (headroom, exit code).
+
+Other checks run: `python3 -m unittest tests.ci_scope_test tests.skill_references_test tests.shipped_text_ratchet_test` → 88 tests OK; `git diff --check` over the branch exits 0.
+
+Effect on other branches: any branch that adds a card number, an issue number, a repository link or the local-rules file name to `skills/moai/**`, `agents/*.md` or `src/help.rs` now fails this scan (the scan is in the repo-scans table). A branch written before this scan landed can fail at its merge and then removes the token or, with a reasoned note, raises the baseline file.
+
+Not run: the Rust test suites (no Rust file changed), Windows and Linux, a scan of files outside the three shipped paths, and the later engine wiring.
