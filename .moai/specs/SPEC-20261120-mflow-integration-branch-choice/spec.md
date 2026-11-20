@@ -27,6 +27,7 @@ M-Flow 첫 설정(/moai project 인터뷰의 `work_flow` 단계)에서 통합 �
 - REQ-4: The operation shall print a remote ref outside the standard branch namespaces — a pull-request candidate such as `refs/remotes/origin/pr/<n>` — as `canonical: false` with a `candidate` label, so it is visible but never recommended as the integration target. · failure: none — labeling only; a `canonical: false` ref is never recommended nor deleted.
 - REQ-5: The operation shall report a recorded integration target it cannot integrate into with the safe choices — a `missing-target` state with the safe-choice wording when the recorded branch is absent from the repository, an `occupied-worktree` state naming the path when a worktree other than the project folder has it checked out — creating no branch, no worktree, no file and no ref itself. · failure: none — reporting and an unchanged ref state are the whole behavior.
 - REQ-6: The operation's documentation fragment shall describe the read-only behavior and the states, its installed help beginning with `Reads only.`. · failure: none — wording only.
+- REQ-7: The bundle operations shall resolve an unset `--tip` as the project profile's m-flow integration branch joined to `origin/`, keeping today's `origin/v2026.11.0` default when the profile records no integration branch or cannot be read. · failure: none — an unreadable profile keeps the old default, and an explicit `--tip` always wins.
 
 ## Acceptance
 
@@ -41,6 +42,8 @@ M-Flow 첫 설정(/moai project 인터뷰의 `work_flow` 단계)에서 통합 �
 - AC-5: the wider READY set around the change passes.
   verify: `cargo test --locked --offline --bins`
   verify: `cargo test --locked --offline --lib`
+- AC-6 (REQ-7): with the profile recording an m-flow integration branch, `bundle ready` without `--tip` judges `origin/<branch>`; with no recorded branch it keeps `origin/v2026.11.0`.
+  verify: `cargo test --test bundle_ready_cli`
 
 ## Scope
 
@@ -63,7 +66,7 @@ M-Flow 첫 설정(/moai project 인터뷰의 `work_flow` 단계)에서 통합 �
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
-| D-1 | 이 조각은 src/profile.rs·src/ops/bundle.rs·src/bundle.rs 를 제외해요 — C-105·C-181·C-141 예약 충돌(노트 3990); remote_target 필드와 bundle --tip 프로필 기본은 그들이 착지한 뒤 같은 카드에서. | 예약 충돌 세 번 관찰 | 예약 풀림 |
+| D-1 | 조각 1 은 src/profile.rs·src/ops/bundle.rs·src/bundle.rs 를 제외했어요 — 예약 충돌(노트 3990). 조각 1b(리더 선택 (a), 노트 4048)는 bundle --tip 프로필 기본을 풀린 src/ops/bundle.rs 와 bundle_ready 시험에 착지해요; remote_target 필드는 profile.rs 의 카드, src/bundle.rs 는 자기 카드 대기. | 예약 충돌 세 번 관찰, 리더 결정 | 예약 풀림 |
 | D-2 | 추천 이유는 로컬 git 근거만(네트워크 없음); 풀 요청 대상 조사는 인터뷰 에이전트 몫. | 읽기 전용·오프라인 원칙 | 문구 갱신 |
 | D-3 | REQ-4·AC-4(interview.md 문구와 문서 pin 시험)는 뒤 조각으로 — 문구 편집이 원장이 잠근 sha256 을 바꾸고 원장은 지금 acc-auto-link 카드 예약 중. 문구 초안은 레인 보관(/tmp/c183-interview.patch). | repo_scans.json 이 `source_manifest_covers_every_package_file`(stale sha256 거절)을 돌림 | 원장 풀림 |
 
