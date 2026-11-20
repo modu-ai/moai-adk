@@ -3,6 +3,9 @@
 //! summary of a serial run. The tests build a folder of fixture modules in a temporary directory
 //! and run the tool on it; no real HOME and no repository module runs here.
 
+mod common;
+
+use common::CleanEnv as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -28,7 +31,7 @@ fn run(dir: &Path, home: &Path, args: &[&str], env: &[(&str, &str)]) -> Output {
         .args(["-p", "*_test.py"])
         .args(args)
         .current_dir(dir)
-        .env_clear()
+        .clean_env()
         .env("PATH", std::env::var_os("PATH").unwrap())
         .env("HOME", home)
         .env("PYTHONDONTWRITEBYTECODE", "1")
@@ -348,7 +351,7 @@ fn each_module_gets_its_own_home_and_tmpdir() {
         .arg(dir.path())
         .args(["-p", "*_test.py"])
         .current_dir(dir.path())
-        .env_clear()
+        .clean_env()
         .env("PATH", std::env::var_os("PATH").unwrap())
         .env("HOME", home.path())
         .env("PYTHONDONTWRITEBYTECODE", "1");
