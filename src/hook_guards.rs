@@ -2782,6 +2782,31 @@ mod tests {
     /// secret and one character short is not. Values are assembled at run time.
     #[test]
     fn access_token_shapes_end_exactly_at_their_minimum() {
+        // The expected table is written out here, not read from TOKEN_SHAPES, so a wrong
+        // minimum in the table fails this test instead of agreeing with itself.
+        let expected: [(&str, usize); 13] = [
+            ("ghp_", 36),
+            ("github_pat_", 22),
+            ("gho_", 36),
+            ("glpat-", 20),
+            ("sk-", 32),
+            ("xoxb-", 10),
+            ("xoxa-", 10),
+            ("xoxp-", 10),
+            ("xoxr-", 10),
+            ("xoxs-", 10),
+            ("AKIA", 16),
+            ("ASIA", 16),
+            ("ya29.", 20),
+        ];
+        assert_eq!(TOKEN_SHAPES.len(), expected.len());
+        for (prefix, min) in expected {
+            let shape = TOKEN_SHAPES
+                .iter()
+                .find(|s| s.prefix == prefix)
+                .unwrap_or_else(|| panic!("{prefix} is missing from TOKEN_SHAPES"));
+            assert_eq!(shape.min, min, "{prefix} minimum");
+        }
         for shape in TOKEN_SHAPES {
             let fill = fill_for(shape);
             let make = |n: usize| format!("k = \"{}{}\"", shape.prefix, fill.to_string().repeat(n));
