@@ -117,7 +117,7 @@
       }
     },
     "references/internal/build-folder.md": {
-      "sha256": "d501167bbf87e9c9974270530ebe91216057ae0ca99fc195a3c74e25025dbb82",
+      "sha256": "a513388cbfa642ed4c9a22d42b1989744bcb5ecde82f61f0c55ef9d4d50397ea",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-build-folder",
@@ -261,7 +261,7 @@
       }
     },
     "references/internal/self-check.md": {
-      "sha256": "4c10aafe27bfaaea113fa9289167263b93e6f59a0749add582e4841c01a5b32f",
+      "sha256": "a2517e3c0e0fdb9219dfe3e372430c284f642ac407bdc1521757dd8f47519039",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-self-check",
