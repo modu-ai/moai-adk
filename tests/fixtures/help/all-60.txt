@@ -375,6 +375,7 @@ Internal
                           merged worktrees
   worktree-gc-apply       Remove or trim the previewed
                           worktrees
+  optimize-apply          Remove picked cleanup candidates
   worktree-install-plan   Preview a scoped package install
   hygiene-plan            Preview what may move to the
                           holding folder
