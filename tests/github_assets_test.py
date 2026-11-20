@@ -41,6 +41,27 @@ FORBIDDEN_TOP_KEYS = {"assignees", "projects", "type"}
 SECRET_SHAPES = re.compile(r"(ghp_|github_pat_|sk-[A-Za-z0-9]|-----BEGIN|/Users/|C:\\\\)")
 
 
+def gh_branch_filter(pattern, branch):
+    """GitHub's branch filter for one pattern against one branch name: `**` spans
+    segments, `*` matches any run of characters inside a single segment, other parts
+    match literally, and the whole branch must be covered (no partial matches)."""
+    p_parts, b_parts = pattern.split("/"), branch.split("/")
+    for i, part in enumerate(p_parts):
+        if part == "**":
+            return True
+        if i >= len(b_parts):
+            return False
+        segment = b_parts[i]
+        if "*" in part:
+            regex = "".join("[^/]*" if c == "*" else re.escape(c) for c in part)
+            if not re.fullmatch(regex, segment):
+                return False
+            continue
+        if part != segment:
+            return False
+    return len(b_parts) == len(p_parts)
+
+
 class IssueFormTest(unittest.TestCase):
     def test_forms_parse_and_follow_the_form_schema(self):
         for path in FORMS:
@@ -534,16 +555,44 @@ class WorkflowTest(unittest.TestCase):
                 self.assertEqual(out.stdout.strip(), want, out.stderr)
 
     def test_release_naming_and_the_ci_guard_name_the_same_family(self):
-        """The release workflow names its releases by the HeadVer shape its rules spell
-        (`{head}.{yearweek}.{build}`) and the ci guard reads exactly that branch family
-        (`release/v…`) — the same family, pinned together so a rename on one side fails
-        here (the audit's release.yml rule)."""
+        """The release workflow's plan computes its version from the HeadVer shape
+        (`${head}.${yearweek}.…`, on the `version=` line of the script itself) and the
+        ci guard keeps the `release/v*` pattern — the letters the trigger test beside
+        this one checks by behaviour. That is all this test reads: a comment letter and
+        a pattern."""
         release_text = (WORKFLOWS / "release.yml").read_text(encoding="utf-8")
-        self.assertIn("{head}.{yearweek}", release_text)
+        self.assertIn('version="${head}.${yearweek}.', release_text)
         ci = dict(self.workflows())[WORKFLOWS / "ci.yml"]
         script = next(s for s in ci["jobs"]["targets"]["steps"]
                       if s.get("id") == "decide")["run"]
         self.assertIn("release/v*", script)
+
+    def test_release_push_trigger_ignores_the_release_v_family(self):
+        """The audit's last item (leader decision a): `release / plan` refuses a
+        `release/v…` branch name, so a release pull request pushed for CI would read red
+        — the trigger must not fire for it. `release.yml` carries
+        `branches-ignore: ['release/v*']` beside `branches: ['release/**']`, and this
+        test evaluates the two filters the way GitHub does (`**` spans segments, `*`
+        stays inside one) instead of reading comment letters: a real release branch and
+        a release candidate fire, the release pull request's own branch does not."""
+        flow = dict(self.workflows())[WORKFLOWS / "release.yml"]
+        trigger = flow.get("on", flow.get(True))["push"]
+        self.assertEqual(trigger.get("branches"), ["release/**"])
+        self.assertEqual(trigger.get("branches-ignore"), ["release/v*"])
+
+        def fires(branch):
+            listed = any(gh_branch_filter(p, branch) for p in trigger["branches"])
+            ignored = any(gh_branch_filter(p, branch)
+                          for p in trigger.get("branches-ignore", []))
+            return listed and not ignored
+
+        self.assertTrue(fires("release/" + "a" * 40),
+                        "a release branch still fires the workflow")
+        self.assertTrue(fires("release/rc/" + "a" * 40),
+                        "a release candidate branch still fires it")
+        self.assertFalse(fires("release/v4.2647.10"),
+                         "the release pull request's branch stays silent")
+        self.assertFalse(fires("release/v"), "any release/v… branch stays silent")
 
     def test_ordinary_prs_keep_todays_matrix(self):
         """SPEC-20261120-release-pr-three-os: a head branch name that is not a release

@@ -30,6 +30,11 @@ name: release
 on:
   push:
     branches: ['release/**']
+    # The release pull request's own branch is `release/v…` (the ci.yml guard reads the
+    # same family) — pushing it must not fire this workflow: its name carries a version,
+    # not a commit, so `release / plan` would refuse it and read red. The ignore keeps
+    # the release-PR branch silent here.
+    branches-ignore: ['release/v*']
 
 permissions:
   contents: read
