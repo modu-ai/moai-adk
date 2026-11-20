@@ -165,6 +165,10 @@ fn the_go_backup_values_are_offered_as_defaults_and_never_written() {
     let r = result(&stdout);
     assert_eq!(r["language"]["commit_messages"], json!("ja"), "{r}");
     assert_eq!(r["language"]["user_chat"], json!("ko"));
+    // The Go backup also names `code_comments` (zh) and others; they are offered nowhere and a
+    // new profile gets no key for an item the setup does not ask.
+    assert!(r["language"].get("code_comments").is_none(), "{r}");
+    assert_eq!(r["language"].as_object().unwrap().len(), 3, "{r}");
     assert_eq!(r["profile_written"], json!(false));
 
     // An answer still wins over the Go value; an explicit --conversation over the Go one.

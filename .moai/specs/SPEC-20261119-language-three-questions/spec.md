@@ -37,7 +37,8 @@ created: 2026-11-19
 - REQ-8 (REQ-7): IF the profile's `user_chat` is another code, THEN the plan shall write both sections in the request language and add a warning that names the code.
 - REQ-9: While the profile sets `instruction_files` to `en` or `ko`, the managed sections shall be written in that language. · failure: none
 - REQ-10: When a profile carries the old eight `language` items, the plan and the apply shall run without a conflict, leaving the profile's own values in the profile. · failure: none
-- REQ-11: When the profile sets no `issue_pr_records`, the GitHub forms shall be written in English; a profile that sets one decides the form language. · failure: none
+- REQ-11: When the profile sets `language` without `issue_pr_records`, the GitHub forms shall be written in English; a profile that sets one decides the form language, and a profile with no `language` keeps the Korean forms it always had. · failure: none
+- REQ-13 (REQ-9): IF the profile's `instruction_files` is a code other than `en` or `ko`, THEN the plan shall write the managed sections in the `user_chat` language when that is `en` or `ko` (else the request language) and add a warning that names `instruction_files` and its code.
 
 ## Acceptance
 
@@ -59,7 +60,9 @@ created: 2026-11-19
   verify: `cargo test --locked --offline --test language_three_questions another_conversation_language_falls_back_with_a_warning`
 - AC-8 (REQ-10): a profile with the old eight items plans and applies without a conflict and keeps its values.
   verify: `cargo test --locked --offline --test language_three_questions a_profile_with_the_old_eight_items_plans_and_applies_without_conflict`
-- AC-9 (REQ-11): form language is English without `issue_pr_records` and follows it when set.
+- AC-12 (REQ-13): an unsupported `instruction_files` code hands over to `user_chat` (else the request language) and warns.
+  verify: `cargo test --locked --offline --test language_three_questions an_unsupported_instruction_files_code_hands_over_to_the_conversation_language`
+- AC-9 (REQ-11): with `language` set, form language is English without `issue_pr_records` and follows it when set; with no `language` it stays Korean.
   verify: `cargo test --locked --offline --test language_three_questions the_form_language_is_english_unless_issue_pr_records_is_set`
 - AC-11: neighbours (targeted; the full run is cited from the PR's CI run).
   verify: `cargo test --locked --offline --test language_three_questions --test language_setting --test skeleton_language --test go_settings_defaults --test language_set_cli`
@@ -94,10 +97,11 @@ created: 2026-11-19
 
 `moai language-setup` 이 이제 세 가지(대화 `user_chat`, 커밋 메시지 `commit_messages`, 문서 `documents`)만 묻고, 나머지는 영어 한 문장으로 말해요. AGENTS.md·REVIEW.md 는 `instruction_files` 가 없으면 대화 언어(en·ko)로 써요. 아래 종료 코드는 모두 0 이에요(릴리즈 팁 `6a8fa9cacf` 를 병합한 가지).
 
-- 새 시험 11개(`--test language_three_questions`): 처음 12개였고, 프로젝트 워크플로 글 시험은 요구에서 빠져 지웠어요(Non-goals).
+- 새 시험 12개(`--test language_three_questions`): 처음 12개였고, 프로젝트 워크플로 글 시험은 요구에서 빠져 지웠어요(Non-goals). 독립 감사(FAIL, 차단 2건) 뒤 한 시험을 더했고(REQ-13, `instruction_files` 가 지원 밖 코드일 때), `language` 없는 프로필의 한국어 서식 입력을 AC-9 에 더했어요.
+- 감사 뒤 고친 것: B1 — Go 백업에만 있는 옛 항목(`code_comments`)이 새 프로필로 새지 않는다는 단언을 `go_settings_defaults` 에 더했어요(그 필터를 `true` 로 바꾼 변이를 이제 잡아요). B2 — REQ-11 을 `language` 가 있는 프로필로 좁히고, `language` 가 없으면 예전 한국어 서식이 그대로라는 것을 시험으로 고정했어요(기본값을 바꾸면 이미 쓰는 프로젝트의 서식이 바뀌어서 하지 않았어요). N1 — REQ-13 과 시험. N3~N6 은 문체·표현 판단이라 그대로 뒀어요.
 - 옛 시험 9개가 새 동작을 말하도록 고쳤어요: lib `language::tests` 4개, `language_setting` 3개, `go_settings_defaults` 2개. `--lib` 1604 통과, `--bins` 56 통과, `language_*`·`agents_*`·`go_settings_*`·`skeleton_language`·`project_*`·`cli_project` 시험 대상 전부 통과.
 - `tools/repo_scans.json` 의 검사 39개(cargo 31 + python 8) 전부 통과. 처음 한 번 실패한 것은 매니페스트의 `workflows/project.md` 해시(병합 팁의 값으로 되돌려 해결)와 SPEC 요구 줄 형식(REQ-12 를 Non-goals 로 옮겨 해결)이었어요. 다시 돌려 통과(`product_cli skill_package::` 18, `codex_adapter`·`home_routing_cli`·`exe_link_cli` 37, `source_manifest_test`, `spec_cli the_repository_specs_pass_check`).
 - 이 Mac 에서 도는 macOS 시험 파일 10개와 `clippy --all-targets -D warnings`, `cargo fmt --check`, `rustfmt --edition 2021 --check`, `git diff --check` 모두 통과. `moai spec check` 오류 0 경고 0.
 - 변이 시험 5개 모두 잡혔어요: `documents` 가 옛 `reports` 값을 잇지 않음, 터미널 단계가 모든 항목을 물음, 답 없는 질문 항목이 값을 못 받음, AGENTS.md 가 대화 언어를 무시함, `user_chat` 코드 경고가 사라짐.
 
-아직 안 한 것: `skills/moai/workflows/project.md` 의 언어 문장(다른 변경이 쓰고, 문장은 노트로 넘겼어요). `moai language-setup` 의 한 줄 도움말("Choose the writing language item by item")은 도움말 골든 6개와 `product_cli` 가 같이 걸려 있어 이 변경에서 못 고쳤어요(`src/help.rs`·골든 파일 후속). 긴 도움말 본문은 고쳤어요.
+아직 안 한 것: `skills/moai/workflows/project.md` 의 언어 문장(다른 변경이 쓰고, 문장은 노트로 넘겼어요). `moai language-setup` 의 한 줄 도움말("Choose the writing language item by item")은 도움말 골든 6개와 `product_cli` 가 같이 걸려 있어 이 변경에서 못 고쳤어요(`src/help.rs`·골든 파일 후속). 영어 긴 도움말 본문(`src/ops/language_setup.rs`)만 고쳤어요. 영어 한 줄 도움말과 한국어 도움말(`src/help.rs`)은 옛 설명 그대로예요.

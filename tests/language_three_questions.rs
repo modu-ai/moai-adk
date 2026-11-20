@@ -442,6 +442,26 @@ fn another_conversation_language_falls_back_with_a_warning() {
     );
 }
 
+/// AC-12 (REQ-13): an `instruction_files` code with no managed-section text hands the choice to
+/// the conversation language and warns, naming `instruction_files` and its code.
+#[test]
+fn an_unsupported_instruction_files_code_hands_over_to_the_conversation_language() {
+    let root = project(Some(json!({"user_chat": "ko", "instruction_files": "ja"})));
+    let plan = render(&root, "en");
+    assert!(read(&root, "AGENTS.md").contains(KO_AGENTS));
+    assert!(read(&root, "REVIEW.md").starts_with(KO_REVIEW));
+    let warnings = plan["warnings"].to_string();
+    assert!(
+        warnings.contains("rendered in `ko`")
+            && warnings.contains("language.instruction_files `ja`"),
+        "{plan}"
+    );
+    // Without a usable conversation language the request language is used.
+    let root = project(Some(json!({"user_chat": "zh", "instruction_files": "ja"})));
+    render(&root, "en");
+    assert!(read(&root, "AGENTS.md").contains(EN_AGENTS));
+}
+
 /// AC-8 (REQ-10): a profile with the old eight items plans and applies without a conflict and
 /// keeps its own values.
 #[test]
@@ -503,9 +523,23 @@ fn github_notes(root: &Path, request: Value) -> String {
     v["result"]["notes"].to_string()
 }
 
-/// AC-9 (REQ-11): the form language is English unless `issue_pr_records` is set.
+/// AC-9 (REQ-11): when the profile sets `language`, the form language is English unless
+/// `issue_pr_records` is set; a profile with no `language` keeps the Korean forms it always had.
 #[test]
 fn the_form_language_is_english_unless_issue_pr_records_is_set() {
+    let root = project(None);
+    let mut profile = profile_value(root.path());
+    profile["github_issues"] = json!(true);
+    fs::write(
+        root.path().join(PROFILE),
+        serde_json::to_vec_pretty(&profile).unwrap(),
+    )
+    .unwrap();
+    let notes = github_notes(root.path(), json!({"protocol_version": 1}));
+    assert!(
+        notes.contains("form language ko"),
+        "no language set: {notes}"
+    );
     for (language, expected) in [
         (json!({"user_chat": "ko"}), "en"),
         (json!({"user_chat": "ko", "documents": "ko"}), "en"),
