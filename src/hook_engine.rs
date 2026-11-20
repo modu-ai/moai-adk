@@ -457,13 +457,18 @@ fn security_turn(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) -> Ve
     if found.is_empty() {
         return Verdict::Allow;
     }
-    let digest = turn::digest_of(&found);
     let session = session_key(input);
+    let digest = turn::digest_of(&found, &session);
+    // Only a line of the same kind counts: a `would_notify` line is no notification, so a session
+    // that was only observed is told once the rule is enforce.
+    let enforce = mode == RuleMode::Enforce;
+    let kind = if enforce { "notified" } else { "would_notify" };
     let told =
         crate::hooks::receipt_lines_in(crate::hooks::env_home().as_deref(), cwd, SECURITY_SCAN_LOG)
             .iter()
             .any(|line| {
                 line["rule"] == json!(SECURITY_TURN_RULE)
+                    && line["kind"] == json!(kind)
                     && line["session"] == json!(session)
                     && line["digest"] == json!(digest)
             });
@@ -473,10 +478,9 @@ fn security_turn(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) -> Ve
     let classes: std::collections::BTreeSet<scan::Class> =
         found.iter().map(|item| item.finding.class).collect();
     let classes: Vec<&str> = classes.iter().map(|class| class.name()).collect();
-    let enforce = mode == RuleMode::Enforce;
     let line = json!({
         "schema_version": 1,
-        "kind": if enforce { "notified" } else { "would_notify" },
+        "kind": kind,
         "rule": SECURITY_TURN_RULE,
         "classes": classes,
         "findings": found.len(),

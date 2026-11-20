@@ -4,9 +4,13 @@
 //! of `security-scan`; for a tracked file the whole working-tree file is scanned (so a shape that
 //! needs its neighbours still sees them) and only the findings on added lines are kept.
 //!
-//! Git is asked twice (`git diff HEAD` and `git ls-files --others`), each call with a three
-//! second limit and a bound on what is read; any failure gives no answer at all, never a partial
-//! one. Nothing here writes: the project's index is not refreshed (`GIT_OPTIONAL_LOCKS=0`).
+//! Git is asked three times (`rev-parse`, `git diff HEAD` and `git ls-files --others`), each call
+//! with a three second limit and a bound on what is read; any failure gives no answer at all,
+//! never a partial one. The work is bounded too: at most 200 tracked and 200 untracked files and
+//! 8 MiB of text in all. Nothing here writes: `GIT_OPTIONAL_LOCKS=0` alone does not stop
+//! `git diff` from refreshing `.git/index`, so `diff.autoRefreshIndex=false` is set as well (the
+//! audit of the first head measured the rewrite), and the user's own diff settings and a
+//! `core.fsmonitor` helper are overridden for the same calls ([`GIT_SETTINGS`]).
 
 use super::scan::{self, Finding};
 use std::io::Read;
@@ -18,8 +22,31 @@ use std::time::{Duration, Instant};
 const DIFF_MAX_BYTES: usize = 4 * 1024 * 1024;
 /// The untracked files the duty reads.
 const UNTRACKED_MAX_FILES: usize = 200;
+/// The tracked files the duty reads.
+const TRACKED_MAX_FILES: usize = 200;
+/// The text the duty reads in all, over tracked and untracked files (the scan time follows it).
+const TEXT_BUDGET: u64 = 8 * 1024 * 1024;
 /// How long one git call may run.
 const GIT_TIMEOUT: Duration = Duration::from_secs(3);
+/// How long the output of a git call that has ended is waited for.
+const READER_GRACE: Duration = Duration::from_millis(500);
+/// Settings that change what a patch or a git call does, fixed for the calls below: the file-name
+/// prefixes of a patch, an index refresh that rewrites `.git/index`, and a helper the
+/// repository's own configuration would run.
+const GIT_SETTINGS: [&str; 12] = [
+    "-c",
+    "diff.noprefix=false",
+    "-c",
+    "diff.mnemonicPrefix=false",
+    "-c",
+    "diff.srcPrefix=a/",
+    "-c",
+    "diff.dstPrefix=b/",
+    "-c",
+    "diff.autoRefreshIndex=false",
+    "-c",
+    "core.fsmonitor=false",
+];
 /// Folders that hold the tool's own state, never the project's code.
 const GIT_FOLDER: &str = ".git/";
 
@@ -45,6 +72,7 @@ fn run_git(cwd: &Path, args: &[&str], cap: usize) -> Option<GitRun> {
     let mut child = cmd
         .arg("-C")
         .arg(cwd)
+        .args(GIT_SETTINGS)
         .args(args)
         .env("GIT_OPTIONAL_LOCKS", "0")
         .stdin(Stdio::null())
@@ -55,10 +83,11 @@ fn run_git(cwd: &Path, args: &[&str], cap: usize) -> Option<GitRun> {
     let stdout = child.stdout.take()?;
     // Reading stops one byte past the cap: the child then ends on a closed pipe, and the extra
     // byte tells a cut output from one that is exactly at the cap.
-    let reader = std::thread::spawn(move || {
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
         let mut data = Vec::new();
         let _ = stdout.take(cap as u64 + 1).read_to_end(&mut data);
-        data
+        let _ = sender.send(data);
     });
     let started = Instant::now();
     let status = loop {
@@ -77,8 +106,10 @@ fn run_git(cwd: &Path, args: &[&str], cap: usize) -> Option<GitRun> {
             }
         }
     };
-    let mut data = reader.join().ok()?;
     let status = status?;
+    // A process git left behind may hold the pipe open after git ended: the output is waited for
+    // a moment, never until that process ends (the reading thread is let go of).
+    let mut data = receiver.recv_timeout(READER_GRACE).ok()?;
     let cut = data.len() > cap;
     if cut {
         data.truncate(cap);
@@ -90,10 +121,11 @@ fn run_git(cwd: &Path, args: &[&str], cap: usize) -> Option<GitRun> {
 }
 
 /// The text of a regular file inside the project that the scanner may read: not a link, at most
-/// one mebibyte, no NUL character, valid UTF-8.
-fn read_text(path: &Path) -> Option<String> {
+/// one mebibyte, no NUL character, valid UTF-8, and no longer than what is left of `budget`
+/// (the bytes of text the call may still read; a file that is read takes its length from it).
+fn read_text(path: &Path, budget: &mut u64) -> Option<String> {
     let meta = std::fs::symlink_metadata(path).ok()?;
-    if !meta.is_file() || meta.len() > scan::MAX_TEXT_BYTES as u64 {
+    if !meta.is_file() || meta.len() > scan::MAX_TEXT_BYTES as u64 || meta.len() > *budget {
         return None;
     }
     let mut bytes = Vec::new();
@@ -102,7 +134,11 @@ fn read_text(path: &Path) -> Option<String> {
         .take(scan::MAX_TEXT_BYTES as u64 + 1)
         .read_to_end(&mut bytes)
         .ok()?;
-    if bytes.len() > scan::MAX_TEXT_BYTES || bytes.contains(&0) {
+    if bytes.len() > scan::MAX_TEXT_BYTES || bytes.len() as u64 > *budget {
+        return None;
+    }
+    *budget -= bytes.len() as u64;
+    if bytes.contains(&0) {
         return None;
     }
     String::from_utf8(bytes).ok()
@@ -220,16 +256,18 @@ pub(super) fn collect(cwd: &Path) -> Option<Vec<TurnFinding>> {
     )?;
     let state = format!("{}/", crate::state_root::dir(cwd));
     let mut out = Vec::new();
+    let mut budget = TEXT_BUDGET;
     // A diff longer than the bound is not read at all: a cut hunk is no hunk.
     if !diff.cut {
-        for (path, ranges) in added_ranges(&diff.data) {
-            if own_state(&path, &state) {
-                continue;
-            }
+        let tracked = added_ranges(&diff.data)
+            .into_iter()
+            .filter(|(path, _)| !own_state(path, &state))
+            .take(TRACKED_MAX_FILES);
+        for (path, ranges) in tracked {
             let Some(name) = scan::project_relative(&path, cwd) else {
                 continue;
             };
-            let Some(text) = read_text(&cwd.join(&path)) else {
+            let Some(text) = read_text(&cwd.join(&path), &mut budget) else {
                 continue;
             };
             findings_of(
@@ -263,7 +301,7 @@ pub(super) fn collect(cwd: &Path) -> Option<Vec<TurnFinding>> {
         let Some(name) = scan::project_relative(path, cwd) else {
             continue;
         };
-        let Some(text) = read_text(&cwd.join(path)) else {
+        let Some(text) = read_text(&cwd.join(path), &mut budget) else {
             continue;
         };
         findings_of(&name, &text, |_| true, &mut out);
@@ -271,10 +309,14 @@ pub(super) fn collect(cwd: &Path) -> Option<Vec<TurnFinding>> {
     Some(out)
 }
 
-/// A digest (16 hex digits) of a set of findings: path, class and the trimmed text of each line,
-/// so a line that only moves does not make the set a new one.
-pub(super) fn digest_of(found: &[TurnFinding]) -> String {
+/// A digest (16 hex digits) of a set of findings in one session: the session key, then path,
+/// class and the trimmed text of each line. A line that only moves does not make the set a new
+/// one; the same set in another session has another digest, so a reader of the log cannot check
+/// a guessed line against it.
+pub(super) fn digest_of(found: &[TurnFinding], session: &str) -> String {
     let mut bytes = Vec::new();
+    bytes.extend_from_slice(session.as_bytes());
+    bytes.push(0);
     for item in found {
         bytes.extend_from_slice(item.path.as_bytes());
         bytes.push(0);
@@ -329,10 +371,11 @@ mod tests {
             },
             text: text.to_string(),
         };
-        let base = digest_of(&[item("a.py", 2, "eval(x)")]);
-        assert_eq!(base, digest_of(&[item("a.py", 9, "eval(x)")]));
-        assert_ne!(base, digest_of(&[item("b.py", 2, "eval(x)")]));
-        assert_ne!(base, digest_of(&[item("a.py", 2, "eval(y)")]));
+        let base = digest_of(&[item("a.py", 2, "eval(x)")], "s1");
+        assert_eq!(base, digest_of(&[item("a.py", 9, "eval(x)")], "s1"));
+        assert_ne!(base, digest_of(&[item("b.py", 2, "eval(x)")], "s1"));
+        assert_ne!(base, digest_of(&[item("a.py", 2, "eval(y)")], "s1"));
+        assert_ne!(base, digest_of(&[item("a.py", 2, "eval(x)")], "s2"));
         assert_eq!(base.len(), 16);
     }
 }
