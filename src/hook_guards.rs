@@ -23,7 +23,9 @@
 //!   (`.ssh`, `.aws`, `.azure`, `.kube`, `.gnupg`, gcloud's configuration), onto a private-key
 //!   file named `id_rsa`/`id_ed25519`/`id_ecdsa`/`id_dsa`, or content that carries a private-key
 //!   block or an access token (the shapes of `TOKEN_SHAPES`: GitHub, GitLab, Slack, AWS, Google
-//!   and OpenAI-style, each with a prefix and a minimum length, SPEC-20261120-secret-token-shapes).
+//!   and OpenAI-style, each with a prefix and a minimum length, SPEC-20261120-secret-token-shapes;
+//!   the OpenAI project, service and admin keys and the Anthropic keys,
+//!   SPEC-20261120-secret-project-keys).
 //!   A file extension alone (`.pem`, `.key`) decides nothing: public
 //!   certificates and test fixtures use them too. Writes outside the project are not refused
 //!   here (decision pending: the hook cannot see a session's extra directories).
@@ -1970,6 +1972,34 @@ const TOKEN_SHAPES: &[TokenShape] = &[
         accepts: alnum,
         word_start: true,
     },
+    // Project, service-account and admin keys of OpenAI and the keys of Anthropic
+    // (SPEC-20261120-secret-project-keys): a name and hyphens follow the short prefix, so the
+    // alphanumeric run of the shape above ends after four or five characters. Neither vendor
+    // publishes a length or a character set; 40 after the prefix is a conservative floor.
+    TokenShape {
+        prefix: "sk-proj-",
+        min: 40,
+        accepts: alnum_hyphen_underscore,
+        word_start: true,
+    },
+    TokenShape {
+        prefix: "sk-svcacct-",
+        min: 40,
+        accepts: alnum_hyphen_underscore,
+        word_start: true,
+    },
+    TokenShape {
+        prefix: "sk-admin-",
+        min: 40,
+        accepts: alnum_hyphen_underscore,
+        word_start: true,
+    },
+    TokenShape {
+        prefix: "sk-ant-",
+        min: 40,
+        accepts: alnum_hyphen_underscore,
+        word_start: true,
+    },
     // Slack: the letter after the three-letter prefix is one of b, a, p, r, s.
     TokenShape {
         prefix: "xoxb-",
@@ -2933,12 +2963,17 @@ mod tests {
         // The expected table is written out here, not read from TOKEN_SHAPES, so a wrong
         // minimum or word-start flag in the table fails this test instead of agreeing with
         // itself. Columns: prefix, minimum length, needs a word start.
-        let expected: [(&str, usize, bool); 13] = [
+        let expected: [(&str, usize, bool); 17] = [
             ("ghp_", 36, false),
             ("github_pat_", 22, false),
             ("gho_", 36, false),
             ("glpat-", 20, false),
             ("sk-", 32, true),
+            // SPEC-20261120-secret-project-keys: the minimum counts after the longer prefix.
+            ("sk-proj-", 40, true),
+            ("sk-svcacct-", 40, true),
+            ("sk-admin-", 40, true),
+            ("sk-ant-", 40, true),
             ("xoxb-", 10, true),
             ("xoxa-", 10, true),
             ("xoxp-", 10, true),
