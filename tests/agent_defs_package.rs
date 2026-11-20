@@ -710,11 +710,13 @@ fn work_flow_row_offers_m_flow_first_and_the_bank_states_each_flow() {
         "- **trunk-based**",
         "- **git-flow**",
         "`worktree.baseRef: head`",
-        "push the branch and open a pull request (recommended)",
+        "an agent other than the author audits the exact head",
         "`{\"flow\": \"m-flow\" | \"github-flow\" | \"trunk-based\" | \"git-flow\"",
-        // Audit B1 (decision 2026-11-17): one SPEC = one branch = one pull request.
+        // Audit B1 (decision 2026-11-17): one SPEC = one branch. The pull request wording is
+        // left out of the pins: the flow text no longer promises one per SPEC (the work-flow
+        // change rewrites it), so this pin holds before and after that text lands.
         "branch `spec/<slug>-<yyyymmdd>`",
-        "one SPEC, one branch, one pull request",
+        "one SPEC, one branch",
     ] {
         assert!(section.contains(text), "the flow section lacks {text:?}");
     }
