@@ -1,2 +1,2 @@
-🏷️ agent | 🧠 Opus | ♻️ 90% ⏱️ 4m | 🗿 v4.2647.0
-🌳 my-feature | 🔋 CTX: █░░░░░░░░░ 14%
+🏷️ agent | 🧠 Opus | 🗿 v4.2647.0
+🔋 CTX: █░░░░░░░░░ 14% | 🌳 my-feature
