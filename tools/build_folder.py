@@ -10,6 +10,13 @@ cargo output when the task ends; skills/moai/references/internal/build-folder.md
                                            the folder's owner record (.moai-build.json)
   python3 -I tools/build_folder.py clean   delete this worktree's cargo output; files that are
                                            not cargo output (evidence) stay and are listed
+  python3 -I tools/build_folder.py seed --from <name>
+                                           start this worktree's folder as a copy-on-write clone
+                                           of the cargo output of `<HOME>/.moai/build/<name>` (an
+                                           audit starts warm); where a clone is not possible the
+                                           answer is `{"seeded": false, "reason": ...}` and no
+                                           byte is copied: build cold. BUILD_FOLDER_NO_COW=1
+                                           switches cloning off; the source is only read
   python3 -I tools/build_folder.py remove --preview <optimize-plan JSON> [--moai <bin>] <name>...
                                            delete the cargo output of folders the user picked
                                            from the preview; every name must be a `trim` row of
@@ -24,6 +31,7 @@ record of another worktree refuses: stdout stays empty and the exit code is 1 (2
 Use `e=$(python3 -I tools/build_folder.py env) && eval "$e"`: a bare eval of an empty output
 would go on.
 """
+import errno
 import json
 import os
 import re
@@ -139,7 +147,9 @@ def read_record(folder):
     return data if isinstance(data, dict) else None
 
 
-def cmd_env():
+def ensure_folder():
+    """This worktree's build folder, made 0700 with its owner record written; returns the
+    folder. A folder of another worktree refuses."""
     common, worktree, folder, _ = folder_path(create=True)
     record = {"schema_version": 1, "git_common_dir": str(common), "worktree": str(worktree)}
     old = read_record(folder)
@@ -153,6 +163,11 @@ def cmd_env():
         with os.fdopen(fd, "w") as f:
             json.dump(record, f)
         os.replace(tmp, folder / RECORD)
+    return folder
+
+
+def cmd_env():
+    folder = ensure_folder()
     print(f"export CARGO_TARGET_DIR={shlex.quote(str(folder))}")
     print("export CARGO_INCREMENTAL=0")
     return 0
@@ -168,6 +183,19 @@ def is_cargo_entry(path):
     return os.path.isfile(path) and path.name in CARGO_FILES
 
 
+RMTREE_HOOK = "onexc" if sys.version_info >= (3, 12) else "onerror"  # `onerror` is deprecated in 3.12
+
+
+def make_writable_and_retry(func, path, _exc):
+    """rmtree error hook: a clone keeps the read-only modes of its source, so a folder or file the
+    owner cannot write is made writable for the owner and the call is tried once more."""
+    parent = os.path.dirname(path)
+    os.chmod(parent, os.stat(parent).st_mode | 0o700)
+    if os.path.lexists(path) and not os.path.islink(path):
+        os.chmod(path, os.stat(path).st_mode | 0o700)
+    func(path)
+
+
 def empty_cargo(folder):
     """Delete the cargo output of `folder`; the folder and its record go only when nothing else
     is left. Returns (removed names, kept names)."""
@@ -177,7 +205,7 @@ def empty_cargo(folder):
             continue
         if is_cargo_entry(entry):
             if entry.is_dir():
-                shutil.rmtree(entry)
+                shutil.rmtree(entry, **{RMTREE_HOOK: make_writable_and_retry})
             else:
                 entry.unlink()
             removed.append(entry.name)
@@ -202,6 +230,139 @@ def cmd_clean():
     removed, kept = empty_cargo(folder)
     print(json.dumps({"folder": str(folder), "removed": removed, "kept": kept}))
     return 0
+
+
+COW_OFF = "BUILD_FOLDER_NO_COW"  # set to 1: never clone, build cold
+CLONE_NOFOLLOW = 0x0001  # <sys/clonefile.h>
+CARGO_HOME_NOTE = ("dependencies are reused only when CARGO_HOME is the same path as the lane's "
+                   "(the build info records registry paths); the workspace crate rebuilds when this "
+                   "worktree's path differs from the lane's")
+
+
+def cargo_entries(folder):
+    """The cargo output entries of `folder`, by name (never the record, never a link)."""
+    return [e for e in sorted(folder.iterdir()) if e.name != RECORD and is_cargo_entry(e)]
+
+
+def hold_source(folder):
+    """A shared hold on the cargo lock of every profile folder of the source, so a lane that starts
+    to build while the clone is made waits for it. Returns the open lock files, or None when a cargo
+    run already holds one (the source is being built). The caller closes the files. Nothing is
+    written to the source."""
+    import fcntl
+    held = []
+    for entry in cargo_entries(folder):
+        lock = entry / ".cargo-lock"
+        if not entry.is_dir() or not os.path.isfile(lock) or os.path.islink(lock):
+            continue
+        fd = os.open(lock, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        try:
+            fcntl.flock(fd, fcntl.LOCK_SH | fcntl.LOCK_NB)
+        except OSError:
+            os.close(fd)
+            for other in held:
+                os.close(other)
+            return None
+        held.append(fd)
+    return held
+
+
+def clone_entry(src, dst):
+    """Clone one entry copy-on-write. Returns the method name, or raises OSError. There is no
+    other way to copy here: where a clone fails the answer is `seeded: false`."""
+    if sys.platform == "darwin":
+        import ctypes
+        libc = ctypes.CDLL(None, use_errno=True)
+        libc.clonefile.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint32]
+        if libc.clonefile(os.fsencode(src), os.fsencode(dst), CLONE_NOFOLLOW) != 0:
+            err = ctypes.get_errno()
+            raise OSError(err, os.strerror(err))
+        return "clonefile"
+    if sys.platform.startswith("linux"):
+        out = subprocess.run(["cp", "--reflink=always", "-a", "--", str(src), str(dst)],
+                             capture_output=True, text=True)
+        if out.returncode != 0:
+            text = out.stderr.strip() or "cp --reflink=always failed"
+            # cp gives an exit code, not an errno: read its message for "cannot clone here".
+            low = text.lower()
+            number = errno.ENOTSUP if "not supported" in low or "cross-device" in low else errno.EIO
+            raise OSError(number, text)
+        return "reflink"
+    raise OSError(errno.ENOTSUP, "no copy-on-write clone on this platform")
+
+
+def cmd_seed(name):
+    """Seed this worktree's build folder from the lane folder `name` by copy-on-write clone."""
+    if safe(name) != name or "/" in name:
+        raise Refused(f"{name!r} is not one folder name")
+    root = home()
+    missing = False
+    for part in (".moai", "build"):
+        root = root / part
+        if not os.path.lexists(root):
+            missing = True  # no lane has built here yet: nothing to clone from, not an error
+        elif not real_dir(root, create=False):
+            raise Refused(f"{root} is a link or not a folder; nothing was seeded")
+    _, _, own_name = owner()
+    if name == own_name:
+        raise Refused(f"{name} is this worktree's own build folder")
+    source = root / name
+    if os.path.islink(source) or (os.path.lexists(source) and not os.path.isdir(source)):
+        raise Refused(f"{source} is a link or not a folder; it is not followed")
+    folder = ensure_folder()
+    # A name that differs only in letter case reaches the own folder on a case-insensitive disk.
+    if os.path.isdir(source) and os.path.samefile(source, folder):
+        raise Refused(f"{name} is this worktree's own build folder")
+
+    def answer(seeded, reason=None, **more):
+        doc = {"seeded": seeded, "folder": str(folder), "from": str(source), **more}
+        if reason:
+            doc["reason"] = reason
+        print(json.dumps(doc))
+        return 0
+
+    if os.environ.get(COW_OFF) == "1":
+        return answer(False, "disabled")
+    if missing or not os.path.isdir(source):
+        return answer(False, "source_missing")
+    if cargo_entries(folder):
+        return answer(False, "already_built")
+    held = []
+    made, method = [], None
+    try:
+        held = hold_source(source)
+        if held is None:
+            return answer(False, "source_building")
+        wanted = cargo_entries(source)
+        if not wanted:
+            return answer(False, "source_empty")
+        # Nothing of the own folder is overwritten or taken back: stop before the first clone when
+        # a path is already taken (evidence, a link, a half-built folder).
+        taken = [e.name for e in wanted if os.path.lexists(folder / e.name)]
+        if taken:
+            return answer(False, "target_in_the_way", detail=", ".join(taken))
+        for entry in wanted:
+            made.append(folder / entry.name)  # the path did not exist before this run
+            method = clone_entry(entry, folder / entry.name)
+    except OSError as e:
+        # Take back only what this run made: every path in `made` was free just before.
+        left = []
+        for path in made:
+            try:
+                if path.is_dir() and not path.is_symlink():
+                    # a clone keeps the read-only modes of its source: same hook as `clean`
+                    shutil.rmtree(path, **{RMTREE_HOOK: make_writable_and_retry})
+                elif os.path.lexists(path):
+                    path.unlink()
+            except OSError:
+                left.append(path.name)
+        reason = "unsupported" if e.errno in (errno.ENOTSUP, errno.EXDEV) else "clone_failed"
+        detail = str(e) + (f" (could not take back: {', '.join(left)})" if left else "")
+        return answer(False, reason, detail=detail)
+    finally:
+        for fd in held or []:
+            os.close(fd)
+    return answer(True, method=method, entries=[p.name for p in made], note=CARGO_HOME_NOTE)
 
 
 def trim_paths(doc):
@@ -272,14 +433,16 @@ def main(argv):
         action = cmd_env
     elif argv[:1] == ["clean"] and len(argv) == 1:
         action = cmd_clean
+    elif argv[:2] == ["seed", "--from"] and len(argv) == 3:
+        action = lambda: cmd_seed(argv[2])  # noqa: E731
     elif argv[:2] == ["remove", "--preview"] and len(argv) >= 4:
         rest, moai = argv[3:], "moai"
         if rest[:1] == ["--moai"] and len(rest) >= 3:
             rest, moai = rest[2:], rest[1]
         action = lambda: cmd_remove(argv[2], moai, rest)  # noqa: E731
     else:
-        print("usage: build_folder.py env | clean | remove --preview <file> [--moai <bin>] "
-              "<name>...", file=sys.stderr)
+        print("usage: build_folder.py env | clean | seed --from <lane folder name> | "
+              "remove --preview <file> [--moai <bin>] <name>...", file=sys.stderr)
         return 2
     try:
         return action()
