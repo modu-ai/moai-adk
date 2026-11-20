@@ -57,7 +57,14 @@ fn output_lists_the_write_set_shared_spots_reading_tests_and_holders_in_order() 
 fn holders_are_read_from_the_card_ledger_and_say_no_ledger_without_one() {
     let plan = read("agents/plan.md");
     let verification = flat(section(&plan, "Verification"));
-    for phrase in ["card ledger", "current holder of each file", "`no ledger`"] {
+    for phrase in [
+        "card ledger",
+        "current holder of each file",
+        "`moai card list`",
+        "`moai card show`",
+        "`free`",
+        "`no ledger`",
+    ] {
         assert!(
             verification.contains(phrase),
             "Verification must say {phrase:?}:\n{verification}"
@@ -103,8 +110,8 @@ fn chains_carry_the_flaky_test_and_repair_paths_and_the_first_auditor_rule() {
         .iter()
         .find(|r| r.contains("FAIL"))
         .expect("a repair-after-FAIL row");
-    for agent in ["moai-impl", "moai-audit"] {
-        assert!(repair.contains(agent), "{repair}");
+    for word in ["RUN", "VERIFY", "SYNC", "AUDIT", "moai-impl", "moai-audit"] {
+        assert!(repair.contains(word), "{repair}");
     }
     let flat_text = flat(&text);
     assert!(

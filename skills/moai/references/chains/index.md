@@ -15,7 +15,7 @@ A chain is the order in which the parent session uses agents for one kind of req
 | Update documents and Issues after a merge | SYNC | moai-docs | internal/decide |
 | Keep working toward a goal | MODE-AGENT | none | internal/git-safety |
 | A test fails once and passes on a rerun of the same head (flaky) | VERIFY | none | internal/test-design |
-| Repair after a FAIL verdict | RUN, AUDIT | moai-impl, moai-audit | internal/review |
+| Repair after a FAIL verdict | RUN, VERIFY, SYNC, AUDIT | moai-impl, moai-audit | internal/review |
 
 Rules for every chain:
 

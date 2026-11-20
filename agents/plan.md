@@ -45,7 +45,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 
 - Every step names the files it touches, and you have read each of them at `base` (or at the current head when no `base` is given).
 - Every acceptance criterion has a check that can be run, or is marked unknown with the reason.
-- When the project has a card ledger, read the current holder of each file you list (the scope of every held card) and write it next to the file, so the lane asks the holder early; when there is no ledger, write `no ledger`.
+- When the project has a card ledger, read the current holder of each file you list with `moai card list` and `moai card show` (both only read the ledger) and write it next to the file, so the lane asks the holder early; write `free` for a file no card holds. When there is no ledger (the ledger is absent), write `no ledger`.
 - Before you answer, confirm with `git status` that nothing changed.
 
 ## Output
@@ -57,10 +57,10 @@ The first line is fixed so any parent can read it:
 Then these sections:
 
 - `Steps`: in order, each with the files it touches.
-- `Write set`: every file the plan changes, by exact path. The lane reserves these and no others.
+- `Write set`: every file the plan changes, by exact path, shared spots and tests the plan edits included. The lane reserves these and no others.
 - `Shared spots`: every file that several changes each add one line to (a module list, a help table, an operation map, a golden file or a manifest) and that the plan also needs, with the line it needs. A lane takes such a file for the one edit and gives it back.
 - `Tests that read changed text`: the tests that read a sentence of a file in the write set, found by searching the tests for the path. Each one is a file the change may have to touch.
-- `Current holders`: for each file of the write set, the shared spots and those tests, the card that holds it now, or `no ledger`.
+- `Current holders`: for each file of the write set, the shared spots and those tests, the card that holds it now, `free` when none does, or `no ledger`.
 - `Acceptance criteria`: criterion, check, and what is still unknown.
 - `Open questions`: choices the task left open, each with its options and the default you would suggest.
 - `Files written`: `none`.
