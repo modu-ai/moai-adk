@@ -487,7 +487,7 @@ fn line_lease_lets_two_cards_each_add_a_line_to_the_same_file() {
             file.display()
         ),
     ];
-    let mut first = w
+    let first = w
         .lease_command(S_A, &a, "src/lib.rs", None, &as_refs(&slow))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

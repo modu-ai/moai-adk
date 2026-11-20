@@ -269,6 +269,10 @@ pub fn give_back(
     inner.map_err(GiveBackError::Scope)
 }
 
+/// What `review_keeping` decides in its transaction: the moved card, the paths given back and
+/// the paths kept, or why it refused.
+type ReviewKept = Result<(Moved, Vec<String>, Vec<String>), ReviewKeepError>;
+
 /// `card review`: `active -> review`, and every path that `keep` does not name is given back,
 /// in one transaction. A `keep` path the reservation does not hold refuses the whole call.
 /// The `card.review` event names `given_back` and `kept`. Returns the move and both lists.
@@ -289,7 +293,7 @@ pub fn review_keeping(
         holder,
         generation,
         true,
-        |tx, now, row| -> Result<Result<(Moved, Vec<String>, Vec<String>), ReviewKeepError>, LedgerError> {
+        |tx, now, row| -> Result<ReviewKept, LedgerError> {
             let from: String = tx.query_row(
                 "SELECT state FROM card WHERE card_id = ?1",
                 [card_id],
@@ -304,8 +308,7 @@ pub fn review_keeping(
                 })));
             }
             let held = row.write_scope.clone();
-            let missing: Vec<String> =
-                keep.iter().filter(|p| !held.contains(p)).cloned().collect();
+            let missing: Vec<String> = keep.iter().filter(|p| !held.contains(p)).cloned().collect();
             if !missing.is_empty() {
                 return Ok(Err(ReviewKeepError::Scope(
                     ScopeReturnError::NotInReservation { paths: missing },
