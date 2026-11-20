@@ -1,0 +1,4 @@
+.moai/specs/SPEC-20261120-load-tolerant-time-bounds/spec.md
+docs/ci-rc-ci-spec.md
+src/agents_local_merge.rs
+tools/self_check.sh

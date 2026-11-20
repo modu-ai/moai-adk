@@ -1,0 +1,5 @@
+[
+  "src/agents_local_merge.rs",
+  "tools/self_check.sh",
+  "docs/ci-rc-ci-spec.md"
+]

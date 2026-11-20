@@ -1,0 +1,731 @@
+diff --git a/tests/cli_name_moai.rs b/tests/cli_name_moai.rs
+index 805e4ecc8d..8836abec4d 100644
+--- a/tests/cli_name_moai.rs
++++ b/tests/cli_name_moai.rs
+@@ -313,7 +313,7 @@ fn a_go_moai_first_on_path_is_the_wrong_generation_and_no_hook_is_written() {
+         assert_eq!(code, Some(0), "{v}");
+         v["result"].clone()
+     };
+-    for host in ["claude", "codex", "omp"] {
++    for host in ["claude", "codex"] {
+         let plan = plan_with(&go_first, host);
+         assert_eq!(plan["hook_binary"]["name"], "moai", "{host}: {plan}");
+         assert_eq!(
+@@ -348,6 +348,11 @@ fn a_go_moai_first_on_path_is_the_wrong_generation_and_no_hook_is_written() {
+             "{refused}"
+         );
+     }
++    // The retired host answers a skip plan (SPEC-20261120-drop-omp): no hooks, no gate.
++    let plan = plan_with(&go_first, "omp");
++    assert_eq!(plan["action"], "skip", "{plan}");
++    assert_eq!(plan["hooks_active"], false, "{plan}");
++    assert_eq!(plan["gate"]["allowed"], true, "{plan}");
+     // Nothing was written for any host, and the Go `moai` heard `--version` only.
+     for path in [".claude", ".codex", ".omp"] {
+         assert!(!p.join(path).exists(), "{path} was written");
+diff --git a/tests/hook_legacy_cli.rs b/tests/hook_legacy_cli.rs
+index 3b8e8112c2..ac4bab58ca 100644
+--- a/tests/hook_legacy_cli.rs
++++ b/tests/hook_legacy_cli.rs
+@@ -71,16 +71,9 @@ const CODEX_LANE: Host = Host {
+     fresh_args: &LANE_ARGS,
+     entries: 4,
+ };
+-const OMP: Host = Host {
+-    name: "omp",
+-    file: ".omp/extensions/moai-hooks.ts",
+-    receipt: ".moai-cli/manifests/omp-hooks.json",
+-    fixture: "omp.moai-hooks.ts",
+-    fixture_receipt: "omp.receipt.json",
+-    fresh_args: &[],
+-    entries: 1,
+-};
+-const ALL: [Host; 4] = [CLAUDE, CODEX, CODEX_LANE, OMP];
++// OMP support was removed (SPEC-20261120-drop-omp): the legacy table runs the three live
++// hosts; the retired host keeps its own skip-contract tests in hooks_cli.
++const ALL: [Host; 3] = [CLAUDE, CODEX, CODEX_LANE];
+ 
+ /// One temporary world: `root/project`, `root/home` and the PATH folders `rust`, `go`.
+ struct World {
+@@ -448,7 +441,7 @@ fn mixed_and_receipt_less_installs_are_held() {
+     assert_eq!(w.read(CLAUDE.file), before);
+ 
+     // Codex and OMP: a whole-file receipt; an edited file or no receipt is a review.
+-    for h in [CODEX, CODEX_LANE, OMP] {
++    for h in [CODEX, CODEX_LANE] {
+         let w = world();
+         w.write(h.file, &fixture(h.fixture));
+         let before = w.read(h.file);
+@@ -586,11 +579,6 @@ fn the_status_names_an_old_install_legacy_binary() {
+         let p = plan(&w, h, &w.rust());
+         assert_eq!(p["hook_status"]["configured"], json!("yes"), "{p}");
+     }
+-    let w = world();
+-    w.install_legacy(OMP);
+-    w.write(OMP.file, b"// something else\n");
+-    let p = plan_envelope(&w, OMP, &w.rust());
+-    assert!(p.to_string().contains("preservation review"), "{p}");
+ }
+ 
+ /// A file the receipt owns whole but that is neither the old nor the current set (an earlier
+@@ -618,22 +606,4 @@ fn an_earlier_owned_set_is_replaced_whole_and_named() {
+     assert_eq!(m["entries"], json!([]), "{p}");
+     assert_eq!(m["replaced"][0]["reason"], json!("earlier_moai_set"), "{p}");
+     assert!(!p.to_string().contains("--earlier"), "{p}");
+-
+-    // OMP: the receipt's sha256 matches a module that is not the old one.
+-    let w = world();
+-    let module = b"// an earlier moai module\n";
+-    w.write(OMP.file, module);
+-    let mut receipt: Value = serde_json::from_slice(&fixture(OMP.fixture_receipt)).unwrap();
+-    receipt["sha256"] = json!(moai_cli::digest(module));
+-    w.write(OMP.receipt, &serde_json::to_vec_pretty(&receipt).unwrap());
+-    let p = plan(&w, OMP, &w.rust());
+-    assert_eq!(p["action"], json!("update"), "{p}");
+-    let m = &p["binary_migration"];
+-    assert_eq!(m["state"], json!("rewrite"), "{p}");
+-    assert_eq!(m["entries"], json!([]), "{p}");
+-    assert_eq!(
+-        m["replaced"][0]["reason"],
+-        json!("earlier_moai_module"),
+-        "{p}"
+-    );
+ }
+diff --git a/tests/hooks_cli.rs b/tests/hooks_cli.rs
+index e9ad675101..2f2529d456 100644
+--- a/tests/hooks_cli.rs
++++ b/tests/hooks_cli.rs
+@@ -628,120 +628,6 @@ fn cli_raw(args: &[&str], cwd: &Path, home: &Path, stdin: &[u8]) -> (i32, String
+     )
+ }
+ 
+-/// #2239 × #2238: the user-facing settings op never writes `hooks` itself, and changing
+-/// `outputStyle` after hooks-apply keeps the generated hook set instead of removing it.
+-#[test]
+-fn claude_settings_op_neither_writes_nor_drops_hooks() {
+-    let p = project();
+-    let raw = json!({"hooks": {}}).as_object().unwrap().clone();
+-    let err = moai_cli::claude::user_settings_desired(p.path(), &raw).unwrap_err();
+-    assert_eq!(classify(&err), Kind::InvalidInput, "{err}");
+-
+-    plan_apply(p.path(), "claude");
+-    let style = json!({"outputStyle": "MoAI"}).as_object().unwrap().clone();
+-    let desired = moai_cli::claude::user_settings_desired(p.path(), &style).unwrap();
+-    let plan = moai_cli::claude::settings_plan(p.path(), &desired).unwrap();
+-    moai_cli::claude::settings_apply(
+-        p.path(),
+-        &desired,
+-        plan["plan_digest"].as_str().unwrap(),
+-        PERMISSION,
+-    )
+-    .unwrap();
+-    let settings = read_json(&p.path().join(".claude/settings.json"));
+-    assert_eq!(settings["outputStyle"], json!("MoAI"));
+-    assert_eq!(
+-        settings["hooks"],
+-        Value::Object(hooks::hooks_object("claude").unwrap())
+-    );
+-    assert_eq!(
+-        hooks::plan(p.path(), "claude", None).unwrap()["action"],
+-        json!("unchanged")
+-    );
+-}
+-
+-// ---- #2633: OMP — the hooks file is an extension module MoAI owns ----
+-
+-#[test]
+-fn omp_plan_apply_writes_the_module_and_replan_is_noop() {
+-    let p = project();
+-    let plan = hooks::plan(p.path(), "omp", None).unwrap();
+-    assert_eq!(plan["action"], json!("create"));
+-    assert_eq!(plan["path"], json!(".omp/extensions/moai-hooks.ts"));
+-    assert!(!p.path().join(".omp").exists(), "plan must not write");
+-    let (_, applied) = plan_apply(p.path(), "omp");
+-    assert_eq!(applied["state"], json!("applied"));
+-    assert_eq!(
+-        applied["files_created"],
+-        json!([".omp/extensions/moai-hooks.ts"])
+-    );
+-    let module = fs::read_to_string(p.path().join(".omp/extensions/moai-hooks.ts")).unwrap();
+-    assert_eq!(module, hooks::omp_module("moai"));
+-    let receipt = read_json(&p.path().join(".moai-cli/manifests/omp-hooks.json"));
+-    assert_eq!(receipt["hooks"].as_array().unwrap().len(), 3);
+-    assert_eq!(receipt["sha256"], applied["hooks_sha256_after"]);
+-    assert!(applied["trust_required"].as_str().unwrap().contains("OMP"));
+-    let again = hooks::plan(p.path(), "omp", None).unwrap();
+-    assert_eq!(again["action"], json!("unchanged"));
+-    assert_eq!(again["engine_capabilities"]["host"], json!("omp"));
+-    let st = hooks::status(p.path(), "omp", None, "").unwrap();
+-    assert_eq!(st["configured"], json!("yes"), "{st}");
+-    // A user's edit is never overwritten and makes status drifted.
+-    fs::write(p.path().join(".omp/extensions/moai-hooks.ts"), "// mine\n").unwrap();
+-    let err = hooks::plan(p.path(), "omp", None).unwrap_err();
+-    assert!(
+-        err.contains(".omp/extensions/moai-hooks.ts requires preservation review"),
+-        "{err}"
+-    );
+-    assert_eq!(classify(&err), Kind::Conflict);
+-    let st = hooks::status(p.path(), "omp", None, "").unwrap();
+-    assert_eq!(st["configured"], json!("drifted"), "{st}");
+-}
+-
+-/// The module calls the engine with the bare binary, guards only `bash`, appends to the
+-/// system prompt instead of replacing it, and never blocks on its own failure.
+-#[test]
+-fn omp_module_wiring_is_pinned() {
+-    let module = hooks::omp_module("moai");
+-    let m = module.as_str();
+-    assert!(m.contains(r#"Bun.spawn(["moai", "hook-dispatch", "--host", "omp", "--event", event]"#));
+-    // Both the preflight and the observation handler stop at a non-bash tool (mutation H5).
+-    for handler in ["tool_call", "tool_result"] {
+-        let start = m.find(&format!(r#"pi.on("{handler}""#)).unwrap();
+-        let body = &m[start..];
+-        let first_line = body.lines().nth(1).unwrap().trim();
+-        assert_eq!(
+-            first_line, r#"if (event.toolName !== "bash") return;"#,
+-            "{handler}"
+-        );
+-    }
+-    assert!(m.contains("systemPrompt: [...event.systemPrompt, answer.context]"));
+-    assert!(m.contains("if (code !== 0 || out.trim() === \"\") return null;"));
+-    assert!(m.contains("catch {\n\t\treturn null;"));
+-    assert!(m.contains("const TIMEOUT_MS = 10000;"));
+-    assert!(
+-        !m.contains("turn-validation") && !m.contains("session_stop"),
+-        "the module does not subscribe to OMP's session_stop (the turn-validation rules are empty)"
+-    );
+-}
+-
+-#[cfg(unix)]
+-#[test]
+-fn omp_symlinked_folders_are_refused() {
+-    for linked in [".omp", ".omp/extensions"] {
+-        let p = project();
+-        let outside = project();
+-        let link = p.path().join(linked);
+-        fs::create_dir_all(link.parent().unwrap()).unwrap();
+-        std::os::unix::fs::symlink(outside.path(), &link).unwrap();
+-        assert!(hooks::plan(p.path(), "omp", None).is_err(), "{linked}");
+-        assert!(
+-            fs::read_dir(outside.path()).unwrap().next().is_none(),
+-            "{linked}: wrote through the link"
+-        );
+-    }
+-}
+-
+ // ---- SPEC-20261119-enforce-merge-confirm: a direct pull request merge asks first ----
+ 
+ /// Commands that merge a pull request outside the gate.
+diff --git a/tests/hooks_conflict_choices_cli.rs b/tests/hooks_conflict_choices_cli.rs
+index 4a4ce675c7..c288261a38 100644
+--- a/tests/hooks_conflict_choices_cli.rs
++++ b/tests/hooks_conflict_choices_cli.rs
+@@ -44,7 +44,9 @@ const OMP: H = H {
+     file: ".omp/extensions/moai-hooks.ts",
+     user: "// mine\nexport default function () {}\n",
+ };
+-const BOTH: [H; 2] = [CODEX, OMP];
++// OMP support was removed (SPEC-20261120-drop-omp): the replace-plan tests run codex only;
++// the retired host answers a skip plan (its skip-contract tests live in hooks_cli).
++const BOTH: [H; 1] = [CODEX];
+ const BACKUPS: &str = ".moai-cli/backups";
+ 
+ struct Fx {
+@@ -397,24 +399,6 @@ fn plan_replace_reports_the_replacement_and_writes_nothing() {
+     assert_eq!(before, fx.tree(), "the plan wrote something");
+ }
+ 
+-/// AC-1 (REQ-1): omp takes the same path and names a `.ts` backup.
+-#[test]
+-fn plan_replace_for_omp_names_the_ts_backup() {
+-    let fx = Fx::with_user_file(OMP);
+-    let plan = fx.plan(OMP, true);
+-    assert_eq!(plan["action"], json!("replace"), "{plan}");
+-    assert_eq!(plan["replaced"], json!([OMP.file]), "{plan}");
+-    let path = backup_rel(&plan);
+-    let hex = plan["expected_sha256"]
+-        .as_str()
+-        .unwrap()
+-        .trim_start_matches("sha256:");
+-    assert!(
+-        path.ends_with(&format!("omp-hooks-{}.ts", &hex[..16])),
+-        "{path}"
+-    );
+-}
+-
+ /// AC-1 (REQ-1): a file MoAI wrote and the user then edited is a replacement too.
+ #[test]
+ fn plan_replace_after_an_edit_of_an_owned_file() {
+@@ -494,8 +478,8 @@ fn plan_replace_withholds_a_secret_shaped_line() {
+     // Built at run time so this file holds no secret-shaped text of its own.
+     let secret = format!("{}{}", "pass", "word=hunter2hunter2");
+     let body = format!("// mine\n// {secret}\nexport default function () {{}}\n");
+-    fx.write(OMP.file, &body);
+-    let plan = fx.plan(OMP, true);
++    fx.write(CODEX.file, &body);
++    let plan = fx.plan(CODEX, true);
+     let all = plan.to_string();
+     assert!(
+         !all.contains("hunter2"),
+@@ -556,8 +540,8 @@ fn plan_replace_withholds_credential_names_and_key_shapes() {
+         body.push('\n');
+     }
+     body.push_str("export default function () {}\n");
+-    fx.write(OMP.file, &body);
+-    let plan = fx.plan(OMP, true);
++    fx.write(CODEX.file, &body);
++    let plan = fx.plan(CODEX, true);
+     let all = plan.to_string();
+     for (_, value) in &lines {
+         assert!(!all.contains(value), "the diff printed {value}: {all}");
+@@ -577,19 +561,33 @@ fn plan_replace_withholds_credential_names_and_key_shapes() {
+ fn plan_replace_diff_stops_at_forty_lines() {
+     let fx = Fx::new();
+     let body: String = (0..100).map(|i| format!("// line {i:03}\n")).collect();
+-    fx.write(OMP.file, &body);
+-    let plan = fx.plan(OMP, true);
++    fx.write(CODEX.file, &body);
++    let plan = fx.plan(CODEX, true);
+     let diff = &plan["diff"];
+     assert_eq!(diff["removed"].as_array().unwrap().len(), 40, "{plan}");
+     assert!(diff["added"].as_array().unwrap().len() <= 40, "{plan}");
+     assert_eq!(diff["truncated"]["removed"], json!(true), "{plan}");
+-    let small = Fx::with_user_file(OMP);
++    let small = Fx::with_user_file(CODEX);
+     assert_eq!(
+-        small.plan(OMP, true)["diff"]["truncated"]["removed"],
++        small.plan(CODEX, true)["diff"]["truncated"]["removed"],
+         json!(false)
+     );
+ }
+ 
++/// The retired host answers a skip plan with its notice, whatever the replace flag asks for
++/// (SPEC-20261120-drop-omp): the replace path never runs for it.
++#[test]
++fn the_retired_host_answers_a_skip_plan_even_for_replace() {
++    // No user file: the retired host reads no folder at all.
++    let fx = Fx::new();
++    let plan = fx.plan(OMP, true);
++    assert_eq!(plan["action"], json!("skip"), "{plan}");
++    assert_eq!(
++        plan["notice"],
++        json!("omp support was removed; the omp hook entry is ignored and nothing is written")
++    );
++}
++
+ // ---- apply ------------------------------------------------------------------------------
+ 
+ /// AC-2 (REQ-3, REQ-7): the replace apply backs the original up byte for byte (mode 0600), writes
+@@ -622,20 +620,6 @@ fn apply_replace_writes_backup_then_file_then_receipt_and_settles() {
+     assert_eq!(fx.backups().len(), 1);
+ }
+ 
+-/// AC-2 (REQ-3, REQ-7): the same for omp.
+-#[test]
+-fn apply_replace_for_omp_settles() {
+-    let fx = Fx::with_user_file(OMP);
+-    let plan = fx.plan(OMP, true);
+-    let path = backup_rel(&plan);
+-    let (code, out) = fx.apply(OMP, &digest(&plan), true);
+-    assert_eq!(code, 0, "{out}");
+-    assert_eq!(fx.read(&path), OMP.user.as_bytes());
+-    assert_eq!(mode(&fx.root.join(&path)), 0o600);
+-    assert_ne!(fx.read(OMP.file), OMP.user.as_bytes());
+-    assert_eq!(fx.plan(OMP, false)["action"], json!("unchanged"));
+-}
+-
+ /// AC-2 (REQ-8): an apply without the flag refuses the digest of a replace plan as a conflict and
+ /// writes nothing.
+ #[test]
+@@ -652,24 +636,6 @@ fn apply_without_the_flag_refuses_the_replace_digest() {
+     }
+ }
+ 
+-/// AC-2 (REQ-4): a digest of a file that changed since is refused before any backup exists.
+-#[test]
+-fn apply_refuses_a_stale_replace_digest_after_the_file_changed() {
+-    let fx = Fx::with_user_file(OMP);
+-    let plan = fx.plan(OMP, true);
+-    let changed = format!("{}// changed since the plan\n", OMP.user);
+-    fx.write(OMP.file, &changed);
+-    let before = fx.tree();
+-    let (code, v) = fx.apply(OMP, &digest(&plan), true);
+-    assert_ne!(code, 0, "{v}");
+-    assert!(v.to_string().contains("stale or altered plan"), "{v}");
+-    assert_eq!(before, fx.tree());
+-    assert!(
+-        fx.backups().is_empty(),
+-        "no backup before the digest is checked"
+-    );
+-}
+-
+ /// AC-2 (REQ-5): a backup of the planned name holding other bytes is refused, and the hook file
+ /// and the receipt are not touched.
+ #[test]
+@@ -928,7 +894,8 @@ fn step_commands_run_as_printed_and_settle() {
+         assert_eq!(code, 0, "{}: {v}", h.name);
+         assert_eq!(v["result"]["state"], json!("applied"), "{v}");
+     }
+-    assert_eq!(fx.backups().len(), 2);
++    // One replace host left (codex): the retired host's step writes no backup.
++    assert_eq!(fx.backups().len(), 1);
+     let after = fx.update_plan();
+     for h in BOTH {
+         let s = step(&after, h.step);
+@@ -960,8 +927,8 @@ fn step_without_a_replace_plan_stays_a_bare_conflict() {
+     );
+     assert!(s["preview"]["choices"].is_null(), "{s}");
+     assert!(s["plan_digest"].is_null() && s["apply"].is_null(), "{s}");
+-    // The omp step has no file of the user's: it is a plain create with its own command.
++    // The omp step is a skip with the removal notice (SPEC-20261120-drop-omp): no apply.
+     let omp = step(&plan, OMP.step);
+-    assert_eq!(omp["state"], json!("ready"), "{omp}");
+-    assert!(omp["apply"]["argv"].is_array(), "{omp}");
++    assert_eq!(omp["state"], json!("skip"), "{omp}");
++    assert!(omp["apply"].is_null(), "{omp}");
+ }
+diff --git a/tests/project_update_plan_cli.rs b/tests/project_update_plan_cli.rs
+index 4ffc886b96..4f92438757 100644
+--- a/tests/project_update_plan_cli.rs
++++ b/tests/project_update_plan_cli.rs
+@@ -1631,39 +1631,39 @@ fn the_host_hook_steps_print_their_apply_and_settle() {
+     let fx = Fx::new();
+     fx.with_profile(false);
+     let plan = fx.plan();
+-    for (name, host, file) in [
+-        ("codex-hooks", "codex", ".codex/hooks.json"),
+-        ("omp-hooks", "omp", ".omp/extensions/"),
+-    ] {
+-        let s = step(&plan, name);
+-        assert_eq!(s["state"], "ready", "{name}: {s}");
+-        let argv: Vec<&str> = s["apply"]["argv"]
+-            .as_array()
++    // The omp step skips with the removal notice (SPEC-20261120-drop-omp): only codex prints
++    // an apply.
++    let s = step(&plan, "codex-hooks");
++    assert_eq!(s["state"], "ready", "{s}");
++    let argv: Vec<&str> = s["apply"]["argv"]
++        .as_array()
++        .unwrap()
++        .iter()
++        .map(|w| w.as_str().unwrap())
++        .collect();
++    assert_eq!(&argv[..2], ["moai", "hooks-apply"], "{argv:?}");
++    assert_eq!(argv[2], fx.p(), "{argv:?}");
++    let at = argv.iter().position(|w| *w == "--host").unwrap();
++    assert_eq!(argv[at + 1], "codex", "{argv:?}");
++    assert!(
++        s["preview"]["path"]
++            .as_str()
+             .unwrap()
+-            .iter()
+-            .map(|w| w.as_str().unwrap())
+-            .collect();
+-        assert_eq!(&argv[..2], ["moai", "hooks-apply"], "{argv:?}");
+-        assert_eq!(argv[2], fx.p(), "{argv:?}");
+-        let at = argv.iter().position(|w| *w == "--host").unwrap();
+-        assert_eq!(argv[at + 1], host, "{argv:?}");
+-        assert!(
+-            s["preview"]["path"].as_str().unwrap().starts_with(file),
+-            "{name}: {s}"
+-        );
+-        assert!(s["plan_digest"].is_string(), "{name}: {s}");
+-    }
+-    for name in ["codex-hooks", "omp-hooks"] {
+-        let out = fx.apply_step(step(&plan, name));
+-        assert_eq!(out["ok"], json!(true), "{name}: {out}");
+-    }
++            .starts_with(".codex/hooks.json"),
++        "{s}"
++    );
++    assert!(s["plan_digest"].is_string(), "{s}");
++    let omp = step(&plan, "omp-hooks");
++    assert_eq!(omp["state"], "skip", "{omp}");
++    assert!(omp["apply"].is_null(), "{omp}");
++    let out = fx.apply_step(step(&plan, "codex-hooks"));
++    assert_eq!(out["ok"], json!(true), "{out}");
+     assert!(fx.root.join(".codex/hooks.json").is_file());
+     let again = fx.plan();
+-    for name in ["codex-hooks", "omp-hooks"] {
+-        let s = step(&again, name);
+-        assert_eq!(s["state"], "unchanged", "{name}: {s}");
+-        assert_eq!(s["apply"], Value::Null, "{name}: {s}");
+-    }
++    let s = step(&again, "codex-hooks");
++    assert_eq!(s["state"], "unchanged", "{s}");
++    assert_eq!(s["apply"], Value::Null, "{s}");
++    assert_eq!(step(&again, "omp-hooks")["state"], "skip", "{again}");
+ }
+ 
+ #[test]
+@@ -1738,6 +1738,13 @@ fn host_steps_follow_the_profile_hosts() {
+         }
+         for (name, picked) in [("codex-hooks", codex_picked), ("omp-hooks", omp_picked)] {
+             let s = step(&plan, name);
++            // The omp step is a skip with the removal notice (SPEC-20261120-drop-omp) no
++            // matter what the profile lists: it never has an apply.
++            if name == "omp-hooks" {
++                assert_eq!(s["state"], "skip", "{hosts}: {name}: {s}");
++                assert!(s["apply"].is_null(), "{hosts}: {name}: {s}");
++                continue;
++            }
+             assert_eq!(s["state"] == "ready", picked, "{hosts}: {name}: {s}");
+             assert_eq!(
+                 s["apply"]["argv"].is_array(),
+@@ -1818,11 +1825,13 @@ fn a_broken_profile_blocks_its_steps_and_not_the_host_hook_steps() {
+     let plan = fx.plan();
+     assert_eq!(step(&plan, "profile")["state"], "blocked", "{plan}");
+     assert_eq!(step(&plan, "generation")["state"], "blocked", "{plan}");
+-    for name in ["codex-hooks", "codex-config", "omp-hooks"] {
++    for name in ["codex-hooks", "codex-config"] {
+         let s = step(&plan, name);
+         assert_eq!(s["state"], "ready", "{name}: {s}");
+         assert!(s["apply"]["argv"].is_array(), "{name}: {s}");
+     }
++    // Both omp steps skip with the removal notice: the broken profile cannot unskip one.
++    assert_eq!(step(&plan, "omp-hooks")["state"], "skip", "{plan}");
+     assert_eq!(step(&plan, "omp-config")["state"], "skip", "{plan}");
+ }
+ 
+diff --git a/tests/update_end_to_end_cli.rs b/tests/update_end_to_end_cli.rs
+index 0f4e1a827e..2c673ffc9e 100644
+--- a/tests/update_end_to_end_cli.rs
++++ b/tests/update_end_to_end_cli.rs
+@@ -309,14 +309,13 @@ fn assert_walks_to_the_end(fx: &GoFx, expected: &[&str]) -> Walk {
+ 
+ /// The order every shape runs: the settings clean-up, the move of the Go folder, then the
+ /// install steps that have something to write (the MoAI files, the hook set, the host files).
+-const ORDER: [&str; 7] = [
++const ORDER: [&str; 6] = [
+     "go-settings",
+     "go-state",
+     "generation",
+     "hooks",
+     "codex-hooks",
+     "codex-config",
+-    "omp-hooks",
+ ];
+ 
+ #[test]
+@@ -572,7 +571,7 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
+             .map(|c| c.as_str().unwrap().to_string())
+             .collect()
+     };
+-    for step in ["omp-hooks", "codex-config", "codex-hooks"] {
++    for step in ["codex-config", "codex-hooks"] {
+         let note = steps.iter().find(|s| s["step"] == step).unwrap()["note"].as_str();
+         assert!(
+             note.is_some_and(|n| n.contains("no revert command")),
+diff --git a/tests/agents_home_cli.rs b/tests/agents_home_cli.rs
+index 0c15427fda..a9bf33da4e 100644
+--- a/tests/agents_home_cli.rs
++++ b/tests/agents_home_cli.rs
+@@ -328,3 +328,56 @@ fn revert_never_writes_through_a_folder_that_became_a_link() {
+     // The other host was not linked and is reverted as usual.
+     assert!(!fx.agent(".codex", "moai-impl.toml").exists());
+ }
++
++/// R2 of the removal audit: a receipt an older binary wrote names OMP, whose agent folder
++/// this binary no longer plans for — the revert still recognizes the retired host and
++/// removes the file the old binary created, exactly like a supported host. The entry is
++/// appended to a real receipt, so the shape is the one an apply writes.
++#[test]
++fn a_base_written_omp_entry_still_reverts() {
++    let fx = fx();
++    let v = fx.apply(&fx.plan());
++    let id = v["result"]["receipt"].as_str().unwrap().to_string();
++    let omp_file = Path::new(&fx.home).join(".omp/agent/agents/moai-docs.md");
++    fs::create_dir_all(omp_file.parent().unwrap()).unwrap();
++    let bytes = "the agent file the old binary wrote\n";
++    fs::write(&omp_file, bytes).unwrap();
++    let dir = moai_cli::home_root::path(Path::new(&fx.home))
++        .join("agents")
++        .join("receipts")
++        .join(&id);
++    let receipt_path = dir.join("receipt.json");
++    let mut receipt: Value = serde_json::from_slice(&fs::read(&receipt_path).unwrap()).unwrap();
++    receipt["entries"]
++        .as_array_mut()
++        .unwrap()
++        .push(serde_json::json!({
++            "host": "omp",
++            "file": "moai-docs.md",
++            "action": "create",
++            "before_sha256": Value::Null,
++            "after_sha256": moai_cli::digest(bytes.as_bytes()),
++        }));
++    fs::write(&receipt_path, serde_json::to_vec_pretty(&receipt).unwrap()).unwrap();
++
++    let r = call(&[
++        "agents-home-revert",
++        &fx.home,
++        "--receipt",
++        &id,
++        "--permission-reference",
++        PERMISSION,
++    ]);
++    assert_eq!(r["result"]["state"], "reverted", "{r}");
++    assert!(
++        r["result"]["reverted"]
++            .as_array()
++            .unwrap()
++            .iter()
++            .any(|entry| entry == "omp:moai-docs.md"),
++        "{r}"
++    );
++    assert!(!omp_file.exists(), "{r}");
++    let after: Value = serde_json::from_slice(&fs::read(&receipt_path).unwrap()).unwrap();
++    assert_eq!(after["status"], "reverted");
++}
+diff --git a/tests/hooks_cli.rs b/tests/hooks_cli.rs
+index 2f2529d456..47413800b4 100644
+--- a/tests/hooks_cli.rs
++++ b/tests/hooks_cli.rs
+@@ -274,6 +274,38 @@ fn claude_hooks_keep_other_owned_keys() {
+     assert_eq!(receipt["owned"]["outputStyle"], json!("MoAI"));
+ }
+ 
++/// #2239 × #2238: the user-facing settings op never writes `hooks` itself, and changing
++/// `outputStyle` after hooks-apply keeps the generated hook set instead of removing it.
++#[test]
++fn claude_settings_op_neither_writes_nor_drops_hooks() {
++    let p = project();
++    let raw = json!({"hooks": {}}).as_object().unwrap().clone();
++    let err = moai_cli::claude::user_settings_desired(p.path(), &raw).unwrap_err();
++    assert_eq!(classify(&err), Kind::InvalidInput, "{err}");
++
++    plan_apply(p.path(), "claude");
++    let style = json!({"outputStyle": "MoAI"}).as_object().unwrap().clone();
++    let desired = moai_cli::claude::user_settings_desired(p.path(), &style).unwrap();
++    let plan = moai_cli::claude::settings_plan(p.path(), &desired).unwrap();
++    moai_cli::claude::settings_apply(
++        p.path(),
++        &desired,
++        plan["plan_digest"].as_str().unwrap(),
++        PERMISSION,
++    )
++    .unwrap();
++    let settings = read_json(&p.path().join(".claude/settings.json"));
++    assert_eq!(settings["outputStyle"], json!("MoAI"));
++    assert_eq!(
++        settings["hooks"],
++        Value::Object(hooks::hooks_object("claude").unwrap())
++    );
++    assert_eq!(
++        hooks::plan(p.path(), "claude", None).unwrap()["action"],
++        json!("unchanged")
++    );
++}
++
+ /// A `.codex/hooks.json` MoAI never wrote, or one edited after apply, is not overwritten.
+ #[test]
+ fn codex_unowned_or_edited_file_requires_review() {
+diff --git a/tests/hooks_conflict_choices_cli.rs b/tests/hooks_conflict_choices_cli.rs
+index c288261a38..0b18a42afc 100644
+--- a/tests/hooks_conflict_choices_cli.rs
++++ b/tests/hooks_conflict_choices_cli.rs
+@@ -636,6 +636,24 @@ fn apply_without_the_flag_refuses_the_replace_digest() {
+     }
+ }
+ 
++/// AC-2 (REQ-4): a digest of a file that changed since is refused before any backup exists.
++#[test]
++fn apply_refuses_a_stale_replace_digest_after_the_file_changed() {
++    let fx = Fx::with_user_file(CODEX);
++    let plan = fx.plan(CODEX, true);
++    let changed = format!("{}// changed since the plan\n", CODEX.user);
++    fx.write(CODEX.file, &changed);
++    let before = fx.tree();
++    let (code, v) = fx.apply(CODEX, &digest(&plan), true);
++    assert_ne!(code, 0, "{v}");
++    assert!(v.to_string().contains("stale or altered plan"), "{v}");
++    assert_eq!(before, fx.tree());
++    assert!(
++        fx.backups().is_empty(),
++        "no backup before the digest is checked"
++    );
++}
++
+ /// AC-2 (REQ-5): a backup of the planned name holding other bytes is refused, and the hook file
+ /// and the receipt are not touched.
+ #[test]
+diff --git a/tests/update_hooks_cli.rs b/tests/update_hooks_cli.rs
+index 86ff2c58f5..a065060dd5 100644
+--- a/tests/update_hooks_cli.rs
++++ b/tests/update_hooks_cli.rs
+@@ -434,6 +434,75 @@ fn a_receipt_id_of_another_shape_is_refused() {
+     assert!(text.contains("hook receipt not found"), "{text}");
+ }
+ 
++/// R2 of the removal audit: a receipt an older binary wrote names OMP, which this binary no
++/// longer plans for — the revert still recognizes the retired host, gives back the file the
++/// old binary replaced, removes the file it created, and marks the receipt reverted. The
++/// receipt and its before bytes are laid out the way an apply lays them out (base format).
++#[test]
++fn a_base_written_omp_receipt_still_reverts() {
++    let f = setup();
++    let module = f.project.join(".omp/extensions/moai-hooks.ts");
++    fs::create_dir_all(module.parent().unwrap()).unwrap();
++    let before_module = "the user's module bytes before the old binary\n";
++    let applied_module = "module bytes the old binary wrote\n";
++    fs::write(&module, applied_module).unwrap();
++    let omp_receipt = f.project.join(".moai-cli/manifests/omp-hooks.json");
++    fs::create_dir_all(omp_receipt.parent().unwrap()).unwrap();
++    let receipt_bytes = "{\"sha256\": \"sha256:owned\"}\n";
++    fs::write(&omp_receipt, receipt_bytes).unwrap();
++    let id = "hooks-omprevert0";
++    let dir = f.project.join(".moai-cli/receipts").join(id);
++    fs::create_dir_all(dir.join("before/omp")).unwrap();
++    fs::write(dir.join("before/omp/0"), before_module).unwrap();
++    let receipt = json!({
++        "schema_version": 1,
++        "id": id,
++        "plan_digest": "sha256:fixture",
++        "permission_reference": "test-approval",
++        "status": "applied",
++        "hosts": [{
++            "host": "omp",
++            "files": [
++                {
++                    "path": ".omp/extensions/moai-hooks.ts",
++                    "before_sha256": moai_cli::digest(before_module.as_bytes()),
++                    "after_sha256": moai_cli::digest(applied_module.as_bytes()),
++                },
++                {
++                    "path": ".moai-cli/manifests/omp-hooks.json",
++                    "before_sha256": Value::Null,
++                    "after_sha256": moai_cli::digest(receipt_bytes.as_bytes()),
++                },
++            ],
++        }],
++    });
++    fs::write(dir.join("receipt.json"), format!("{receipt}\n")).unwrap();
++
++    let p = f.project.to_str().unwrap();
++    let r = result(&run(
++        &f,
++        &f.project,
++        &[
++            "hooks-revert",
++            p,
++            "--receipt",
++            id,
++            "--permission-reference",
++            "test-approval",
++        ],
++    ));
++    assert_eq!(r["reverted"], json!(["omp"]), "{r}");
++    assert_eq!(r["skipped"], json!([]), "{r}");
++    assert_eq!(fs::read(&module).unwrap(), before_module.as_bytes());
++    assert!(
++        !omp_receipt.exists(),
++        "the ownership receipt the old binary created is removed"
++    );
++    let after: Value =
++        serde_json::from_slice(&fs::read(dir.join("receipt.json")).unwrap()).unwrap();
++    assert_eq!(after["status"], json!("reverted"));
++}
++
+ /// Edits the `PostToolUse` handler's timeout in the settings file only, as a user would.
+ fn hand_edit_claude_hooks(f: &Fixture) {
+     let settings = f.project.join(".claude/settings.json");

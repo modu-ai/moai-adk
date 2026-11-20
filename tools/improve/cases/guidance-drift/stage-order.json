@@ -1,0 +1,10 @@
+{
+  "chain": {
+    "file": "skills/moai/references/chains/index.md",
+    "contains": "PLAN → RUN"
+  },
+  "round": {
+    "file": "skills/moai/workflows/mode-agent.md",
+    "contains": "One round runs"
+  }
+}

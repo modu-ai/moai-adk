@@ -1,0 +1,7 @@
+[
+  "apply_replace_for_omp_settles",
+  "omp_module_wiring_is_pinned",
+  "omp_plan_apply_writes_the_module_and_replan_is_noop",
+  "omp_symlinked_folders_are_refused",
+  "plan_replace_for_omp_names_the_ts_backup"
+]

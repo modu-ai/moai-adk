@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "false-repair-claim",
+      "lesson": "A commit message said the leftovers were fixed in two files that the commit did not change; a claim of a repair is compared with the changed-file list.",
+      "report": "self-improvement-research-2026-11-21 section 4.4, lesson 1 (skills-agents-gap M9)",
+      "check": "claims_in_diff",
+      "targets": {
+        "frozen_bad": {
+          "input": "tools/improve/cases/false-repair-claim/bad",
+          "expect": "flag"
+        },
+        "frozen_good": {
+          "input": "tools/improve/cases/false-repair-claim/good",
+          "expect": "clean"
+        }
+      }
+    },
+    {
+      "id": "wall-clock-test",
+      "lesson": "A test that bounded a long word's screening by a 15 second clock failed on a loaded machine; the bound counts work instead.",
+      "report": "self-improvement-research-2026-11-21 section 4.4, lesson 2",
+      "check": "no_clock_in_tests",
+      "targets": {
+        "frozen_bad": {
+          "input": "tools/improve/cases/wall-clock-test/pre-fix-test.rs",
+          "expect": "flag"
+        },
+        "tip": {
+          "input": "src/card/input.rs",
+          "expect": "clean"
+        }
+      }
+    },
+    {
+      "id": "guidance-drift",
+      "lesson": "The agent round line leaves out the SYNC stage that the documented chain order has; guidance that restates an order must keep every stage.",
+      "report": "self-improvement-research-2026-11-21 section 4.4, lesson 3 (five-stage-atomic F1)",
+      "check": "stage_order",
+      "targets": {
+        "tip": {
+          "input": "tools/improve/cases/guidance-drift/stage-order.json",
+          "expect": "open"
+        }
+      }
+    },
+    {
+      "id": "unscoped-test-deletion",
+      "lesson": "A change that dropped a retired host also deleted two tests that had nothing to do with it; a removed test must be named by the change's allowed list or put back.",
+      "report": "self-improvement-research-2026-11-21 section 4.4, lesson 4",
+      "check": "unscoped_test_deletion",
+      "targets": {
+        "frozen_bad": {
+          "input": "tools/improve/cases/unscoped-test-deletion/bad",
+          "expect": "flag"
+        },
+        "frozen_good": {
+          "input": "tools/improve/cases/unscoped-test-deletion/good",
+          "expect": "clean"
+        }
+      }
+    }
+  ]
+}

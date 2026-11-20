@@ -1,0 +1,33 @@
+test: the repeated-prefix check counts scanned characters instead of reading a clock, and the heavy-slot default-3 leftovers say five
+
+The slice's relative timing test failed five of thirteen runs on a loaded
+machine — the measurements it compared were 45-96 ms, far too short to be
+stable under load. The audit's suggestion stands: count operations instead
+of time. A test-only probe now counts the characters the run scan consumes
+(a cfg(test) counter — the product build carries none of it), and the test
+bounds the count at twenty times the line's length: the clamp ends every
+run at min+1 characters over len/4 positions, a small multiple; the
+clamp-removal mutation explodes the count and fails, on any machine. The
+generous thirty-second ceiling on the pre-existing huge-line test stays.
+
+The default-3 leftovers the audit found say five now: the two check
+scripts' MOAI_HEAVY_SLOT_MAX default and the ci-rc-ci-spec wording (its
+three-slot sentences and the MOAI_PYTHON_SLOT_MAX=5 example). The
+local_check.sh default and the rust-product-path.md line keep their own
+reservation cards — their one-line moves go to those cards — and the
+workflows/verify.md line says defaults-3-slots too but lives in the source
+manifest, which another card's reservation holds; its line moves when that
+releases.
+
+Mutation evidence: the clamp removal consumed 2,147,680,256 characters for
+a 131,080-character line (about 16,400x the bound) and failed the probe;
+the restored clamp passes it.
+
+GREEN on this Mac: agents_local_merge lib tests 15, heavy_slot lib tests
+21, spec check 0 errors 0 warnings, git diff --check clean.
+
+Moai-Spec: SPEC-20261120-load-tolerant-time-bounds
+Moai-Session: 9ebb4435-547b-459a-a771-14aba15db85b:5c385eafbc9e
+Moai-Verified: tests
+Co-Authored-By: Claude Code <noreply@anthropic.com>
+
