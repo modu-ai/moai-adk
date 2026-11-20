@@ -61,9 +61,9 @@ created: 2026-11-21
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261121-xtask-local-check/spec.md`, `Cargo.toml`(작업공간 표와 구성원 한 줄), `Cargo.lock`(`xtask` 항목 하나), `.cargo/config.toml`(별칭), `xtask/**`, `tests/xtask_workspace.rs`
+- write: `.moai/specs/SPEC-20261121-xtask-local-check/spec.md`, `Cargo.toml`(작업공간 표와 구성원 한 줄), `Cargo.lock`(`xtask` 항목 하나), `.cargo/config.toml`(별칭), `xtask/**`, `tests/xtask_workspace.rs`, `tools/repo_scans.json`(`tests/xtask_workspace.rs` 를 저장소를 걷는 시험으로 적는 항목 하나)
 - read-only: `tools/local_check.sh`, `tests/local_check_test.py`, `src/gate.rs`, `.github/workflows/*`, `tools/protected_checks.json`
-- forbidden: `tools/` 아래 파일 바꾸기·지우기, 워크플로, `src/gate.rs`, 보호 경로 목록, 배포되는 스킬·에이전트 글
+- forbidden: `tools/repo_scans.json` 의 그 항목 말고 `tools/` 아래 파일 바꾸기·지우기, 워크플로, `src/gate.rs`, 보호 경로 목록, 배포되는 스킬·에이전트 글
 
 ## Plan
 
@@ -104,4 +104,5 @@ created: 2026-11-21
 - AC-7: met — `cargo test --locked --offline -p xtask --test local_check_parity slot_runs_match_the_script` 통과(기본 슬롯 호출 넷, `XDG_CACHE_HOME`, 폴더·한도·이름 지정, 빈 설정, HOME 없음에서 슬롯 없이 실행, 거절 종료 코드 75). 변이 "파이썬 슬롯 이름 접미어 바꾸기"에 실패했어요.
 - AC-8: met — `cargo test --locked --offline -p xtask --test local_check_parity an_unknown_tool_lists_the_tools_and_exits_2` 통과(이름 없음과 모르는 이름이 종료 코드 2 와 stderr 의 목록). 이 시험에 대한 변이는 돌리지 않았어요.
 - AC-9: met — `cargo test --locked --offline -p xtask --test local_check_parity a_terminate_signal_ends_with_a_fail_line_and_cleans_up` 통과(제자리와 후보 방식 모두 TERM 뒤 실패 줄과 종료 코드 1, 이어지는 단계 없음, 후보 작업 트리와 임시 폴더가 지워지고 셸과 같은 출력). 변이 "임시 폴더 지우기 건너뛰기"와 "단계 뒤 신호 검사 빼기"에 실패했어요.
+- 병합 검사에서 `tests/repo_scans_test.py` 가 걷는 시험 파일 `tests/xtask_workspace.rs` 가 표에 없다고 실패해 표에 항목 하나를 더했어요(`python3 -m unittest tests.repo_scans_test` 통과). 같은 검사에서 작업 폴더 이름의 `task-` 가 설치 영수증의 `sk-` 모양 거절에 걸려 `update`·`e2e` 시험이 실패했던 것은 폴더 이름을 바꿔 풀었어요(코드 변경 없음, 재실행 통과).
 - 돌리지 않은 것: 실제 `cargo`·`python3` 로 도는 전체 검사(대조 시험은 가짜 실행 파일을 써요), 윈도(스크립트가 `bash` 를 써서 이미 대상이 아니에요), CI 에서 `-p xtask` 시험(다음 조각이 부르는 곳을 바꿀 때 넣어요). 전체 `moai check affected` 는 병합 준비 노트에 줄째로 적어요.

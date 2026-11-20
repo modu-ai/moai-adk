@@ -1004,6 +1004,27 @@
         }
       ],
       "rejects": "a file under tests/ that names std::os::unix outside a cfg(unix) item, so the windows-build job stops compiling the tests (C-110, SPEC-20261119-windows-unix-gate)"
+    },
+    {
+      "id": "shipped-files-do-not-name-xtask",
+      "tests": [
+        "tests/xtask_workspace.rs::no_shipped_skill_or_agent_names_xtask"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test xtask_workspace no_shipped_skill_or_agent_names_xtask"
+      ],
+      "rules": [
+        "tests/xtask_workspace.rs"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/"
+        },
+        {
+          "prefix": "agents/"
+        }
+      ],
+      "rejects": "a shipped skill or agent file that names xtask, the maintainer tool crate that is never shipped"
     }
   ]
 }
