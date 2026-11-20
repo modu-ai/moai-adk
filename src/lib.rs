@@ -164,6 +164,7 @@ pub mod update_keys;
 pub mod update_models;
 pub mod update_tux;
 pub mod usage_limit;
+pub mod user_assets;
 pub mod verify;
 pub mod versioning;
 pub mod worktree;
