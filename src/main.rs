@@ -277,10 +277,10 @@ enum Command {
     /// Wait for one of N machine-wide heavy-run slots, run COMMAND holding it, and exit with
     /// COMMAND's code (#2677). Same folder and lock as `tools/heavy_check_slot.py`; while
     /// waiting and on failure it prints the load averages and free disk space. The machine's
-    /// limits come from `limits.json` in the slot folder (defaults 3 slots, 50 GB, 80 % swap on
+    /// limits come from `limits.json` in the slot folder (defaults 5 slots, 50 GB, 80 % swap on
     /// Linux, 10 % memory free on macOS); a flag only tightens them (#2930). Unix only.
     HeavySlotAcquire {
-        /// Slot count; only a value below `limits.json`'s (default 3) takes effect.
+        /// Slot count; only a value below `limits.json`'s (default 5) takes effect.
         #[arg(long)]
         max: Option<usize>,
         /// The caller's name, shown by `heavy-slot-status`.
@@ -1355,6 +1355,26 @@ fn push_required(argv: &mut Vec<String>, command: &clap::Command) {
             argv.push(format!("--{long}"));
         }
         argv.push(value);
+    }
+    // A required group (`--tree|--file`): name its first member, so a command whose only required
+    // input is a group still parses.
+    for group in command.get_groups().filter(|g| g.is_required_set()) {
+        for arg_id in group.get_args() {
+            if let Some(arg) = command
+                .get_arguments()
+                .find(|a| a.get_id().as_str() == arg_id.as_str())
+            {
+                if let Some(long) = arg.get_long() {
+                    argv.push(format!("--{long}"));
+                }
+                argv.push(
+                    arg.get_possible_values()
+                        .first()
+                        .map_or_else(|| "1".to_string(), |v| v.get_name().to_string()),
+                );
+                break;
+            }
+        }
     }
 }
 
