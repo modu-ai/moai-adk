@@ -753,6 +753,12 @@ fn project_items(plan: &Result<Value, String>) -> Vec<Item> {
     out
 }
 
+/// A survey has nothing to apply when no item will change; items that only wait for a pick
+/// leave a second run with nothing to apply (REQ-9).
+fn nothing_to_apply(items: &[Item]) -> bool {
+    items.iter().all(|i| i.group != WILL_CHANGE)
+}
+
 fn position(id: &str) -> usize {
     ORDER.iter().position(|x| *x == id).unwrap_or(ORDER.len())
 }
@@ -817,7 +823,7 @@ pub fn build(layer: &UserLayerPlan, g: &Gathered) -> Value {
             KEPT: ids_of(KEPT),
             NEEDS_PICK: ids_of(NEEDS_PICK),
         },
-        "nothing_to_apply": ids_of(WILL_CHANGE).is_empty(),
+        "nothing_to_apply": nothing_to_apply(&items),
         "writes": false,
     })
 }
@@ -874,6 +880,66 @@ mod tests {
 
     /// AC-2 (REQ-2): a plan that could not be read is named unread with its reason, needs a
     /// pick and applies nothing; the layers beside it are still listed.
+    fn item_in(group: &'static str) -> Item {
+        Item {
+            id: "skills".into(),
+            title: "x",
+            layer: "home",
+            group,
+            state: "x".into(),
+            entries: 0,
+            guarded: false,
+            depends_on: vec![],
+            reason: None,
+            apply: None,
+            revert: Revert::None("x"),
+        }
+    }
+
+    #[test]
+    fn changes_win_over_picks_and_picks_win_over_nothing() {
+        assert_eq!(decide(2, 3, "blocked"), (WILL_CHANGE, "ready"));
+        assert_eq!(decide(0, 3, "blocked"), (NEEDS_PICK, "blocked"));
+        assert_eq!(decide(0, 1, "conflict"), (NEEDS_PICK, "conflict"));
+        assert_eq!(decide(0, 0, "blocked"), (KEPT, "unchanged"));
+        assert!(picks_note(1, 2).is_some());
+        assert!(picks_note(0, 2).is_none());
+        assert!(picks_note(2, 0).is_none());
+    }
+
+    #[test]
+    fn nothing_to_apply_only_when_no_item_will_change() {
+        assert!(nothing_to_apply(&[]));
+        assert!(nothing_to_apply(&[item_in(KEPT), item_in(NEEDS_PICK)]));
+        assert!(!nothing_to_apply(&[item_in(KEPT), item_in(WILL_CHANGE)]));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_home_that_cannot_be_read_is_not_an_absent_old_folder() {
+        use std::os::unix::fs::PermissionsExt;
+        let tmp = tempfile::tempdir().unwrap();
+        let home = tmp.path().join("h");
+        std::fs::create_dir(&home).unwrap();
+        std::fs::create_dir(home.join(crate::HOME_STATE_DIR)).unwrap();
+        std::fs::set_permissions(&home, std::fs::Permissions::from_mode(0o000)).unwrap();
+        let unreadable = !old_folder_absent(&home);
+        std::fs::set_permissions(&home, std::fs::Permissions::from_mode(0o755)).unwrap();
+        // Run as root the folder stays readable and the check proves nothing: skip then.
+        let readable = std::fs::symlink_metadata(home.join(crate::HOME_STATE_DIR)).is_ok();
+        assert!(readable, "the folder is back");
+        let as_root = std::fs::read_dir(&home).is_ok() && {
+            std::fs::set_permissions(&home, std::fs::Permissions::from_mode(0o000)).unwrap();
+            let r = std::fs::read_dir(&home).is_ok();
+            std::fs::set_permissions(&home, std::fs::Permissions::from_mode(0o755)).unwrap();
+            r
+        };
+        assert!(
+            unreadable || as_root,
+            "an unreadable HOME was taken for an absent old folder"
+        );
+    }
+
     #[test]
     fn the_move_plan_is_skipped_only_when_the_old_folder_is_not_found() {
         let tmp = tempfile::tempdir().unwrap();
