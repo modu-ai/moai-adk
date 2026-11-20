@@ -69,4 +69,11 @@ Go 빌드를 읽고 직접 돌려 본 결과(스크래치 저장소, 빈 HOME):
 
 ## Result
 
-(written after the checks)
+`moai hook pre-push` 의 검사를 `src/quality_gate/pre_push.rs` 로 옮겼어요. 종료 코드는 모두 0 이에요.
+
+- `cargo test --offline --locked --test quality_gate_cli prepush`: 11 통과. `--test quality_gate_parity prepush`: 기록표 32개 시나리오 통과.
+- Go 빌드와 직접 비교: 같은 32개 시나리오 `prepush_live_parity…` 통과, 만든 제목 400개 × 규약 3개(1200번) `prepush_differential_over_many_subjects` 일치(Go 가 매번 새로 뜨는 시험이라 오래 걸려요: `--ignored`).
+- 변이 시험 5/5 잡힘(종료 코드 2, 알 수 없는 훅 값, 길이 경계, `!`, 음수 길이). 처음엔 길이 경계 변이가 살아남았고 시험을 고쳐서 잡았어요.
+- 알아낸 Go 동작: 설정 값 하나가 거부되면 Go 는 설정 전체를 버리고 `enforce` 로 가요(REQ-7). 같게 만들었고 조용히 해요(Go 도 아무것도 안 찍어요).
+
+아직 안 한 것: 바이너리에 `hook pre-push` 를 잇는 일(`src/main.rs` 를 다른 카드가 쥐고 있어요). 지금 Rust 는 이 이벤트를 0 으로 삼켜요.

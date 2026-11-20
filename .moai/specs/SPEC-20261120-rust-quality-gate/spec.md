@@ -93,4 +93,13 @@ Go 의 gate 는 크기가 커서(핵심 약 4,000줄) 조각으로 나눠요.
 
 ## Result
 
-(written after the checks)
+조각 3a(이 SPEC 의 REQ-1..11 중 노드 축과 ast-grep·그래프 신선도를 뺀 나머지)를 Rust 로 옮겼어요. 근거는 아래 명령의 결과예요(종료 코드는 모두 0).
+
+- `cargo test --offline --locked --test quality_gate_config --test quality_gate_steps --test quality_gate_cli --test quality_gate_parity`: 11 + 19 + 23 + 7 통과(3개는 Go 빌드가 있어야 도는 ignored).
+- Go 빌드(`MOAI_GO_BIN`)와 같은 29개 프로젝트를 돌려 종료 코드와 요약 행이 같아요: `quality_gate_parity live`.
+- 변이 시험 5/5 잡힘(`pytest` 종료 5, 깊이 한계 4, 프로세스 그룹 종료, git 환경 제거, pre-commit 표지).
+- `--lib` 1595, `--bins` 56, `tools/repo_scans.json` 의 cargo 명령 31개, 이 Mac 에서 도는 macOS 전용 시험 파일 10개가 통과해요.
+
+아직 하지 않은 것(이름을 적고 건너뛰어요, 조용히 빼지 않아요): 노드 프로젝트의 eslint·biome·oxlint·typecheck·npm test(조각 3b), ast-grep·그래프 신선도(조각 3c), Windows 의 잠금·프로세스 그룹, 설정은 `gate.yaml` 만 읽어요(Go 는 모든 섹션을 읽어요), Go 가 실패 때 그리는 장식 상자.
+
+`src/main.rs`·`src/lib.rs`·`src/help.rs` 연결은 다른 카드가 쥐고 있어서 아직이에요: `moai gate` 와 `moai hook pre-push` 가 이 모듈을 부르려면 그 줄들이 필요해요.
