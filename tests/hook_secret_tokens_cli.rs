@@ -377,6 +377,41 @@ fn boundary_characters_a_shape_does_not_accept_end_the_run() {
         denied(&write_only(dir.path(), &in_line(&google))),
         "20 mixed Google characters"
     );
+    // Every one of the 13 prefixes, with a character its shape does not accept in place of the
+    // last required one, leaves the run one short: allowed. The same text with an accepted
+    // character there is refused, so the one changed character is what decides (first-slice audit:
+    // widening the accepted set of Slack or of the GitHub classic prefix must fail a test).
+    let cases: Vec<(String, usize, char, Vec<char>)> = [
+        (["gh", "p_"].concat(), 36, 'a', vec!['_', '-', '.']),
+        (["github", "_pat_"].concat(), 22, 'a', vec!['-', '.']),
+        (["gh", "o_"].concat(), 36, 'a', vec!['_', '-', '.']),
+        (["glp", "at-"].concat(), 20, 'a', vec!['.']),
+        (["s", "k-"].concat(), 32, 'a', vec!['_', '-', '.']),
+        (["AK", "IA"].concat(), 16, 'A', vec!['-', '_', 'a']),
+        (["AS", "IA"].concat(), 16, 'A', vec!['-', '_', 'a']),
+        (["ya", "29."].concat(), 20, 'a', vec!['.']),
+    ]
+    .into_iter()
+    .chain(
+        ["b", "a", "p", "r", "s"]
+            .map(|letter| (["xo", "x", letter, "-"].concat(), 10, 'a', vec!['_', '.'])),
+    )
+    .collect();
+    assert_eq!(cases.len(), 13, "one case per prefix of the table");
+    for (prefix, min, fill, refused) in cases {
+        let accepted = format!("{prefix}{}", fill.to_string().repeat(min));
+        assert!(
+            denied(&write_only(dir.path(), &in_line(&accepted))),
+            "{prefix}: {min} accepted characters"
+        );
+        for bad in refused {
+            let broken = format!("{prefix}{}{bad}", fill.to_string().repeat(min - 1));
+            assert!(
+                allowed(&write_only(dir.path(), &in_line(&broken))),
+                "{prefix}: {bad:?} ends the run one short"
+            );
+        }
+    }
 }
 
 // ---- AC-3 (REQ-8, REQ-10) ----
