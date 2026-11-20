@@ -3,7 +3,7 @@
 //! `<root>/<project>-<name>`, and a move that runs only on a fresh, identical preview.
 //!
 //! The root defaults to `<HOME>/.moai/worktrees` ([`default_root`]) and the destination name is
-//! the one `worktree-plan` gives a new worktree (`crate::home_workdir::worktree_name`), so a
+//! the one `worktree-plan` gives a new worktree (`crate::home_workdir::worktree_rel`), so a
 //! moved worktree and a new one sit side by side (#2835 D3, user instruction #1975 6866725877);
 //! `--root` names another absolute folder. Two projects with the same folder name map to the
 //! same destination name: the second is `destination_exists`, never merged into the first. The
@@ -263,8 +263,8 @@ pub fn plan(project: &Path, root: Option<&Path>, obs: &Observations) -> Result<V
             .map(|n| safe_name(&n.to_string_lossy()))
             .unwrap_or_else(|| "p".into());
         let destination = project_root.join(
-            crate::home_workdir::worktree_name(&primary, &base)
-                .unwrap_or_else(|_| format!("{}-{base}", safe_name(&name))),
+            crate::home_workdir::worktree_rel(&primary, &base)
+                .unwrap_or_else(|_| PathBuf::from(format!("{}-{base}", safe_name(&name)))),
         );
         let location = if i == 0 {
             "primary"
@@ -483,6 +483,12 @@ pub fn apply(
             }
             fs::create_dir_all(&project_root)
                 .map_err(|e| format!("could not create {}: {e}", project_root.display()))?;
+            // The two-component destination may name a project folder that does not exist
+            // yet; git worktree move creates no intermediate folder.
+            if let Some(parent) = dst.parent() {
+                fs::create_dir_all(parent)
+                    .map_err(|e| format!("could not create {}: {e}", parent.display()))?;
+            }
             let mut cmd = Command::new("git");
             scrub_git_env(&mut cmd);
             let o = cmd

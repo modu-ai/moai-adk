@@ -437,7 +437,7 @@ fn valid_prefix(p: &str) -> bool {
 // @MX:UPGRADE: when the user decides the prefix and its relation to the 06-A suffix
 /// The plan for a claim's worktree (REQ-06C-01): no git change, byte-identical for equal input.
 /// `home` is the user's home (`crate::home_workdir::home`); it is needed only when `path` is
-/// `None` and names the default `<HOME>/.moai/worktrees/<project>-<issue>-<logical_key>`.
+/// `None` and names the default `<HOME>/.moai/worktrees/<project>/<issue>-<logical_key>`.
 pub fn plan(
     project: &Path,
     rec: &ClaimRecord,

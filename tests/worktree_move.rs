@@ -239,10 +239,11 @@ fn every_blocking_reason_is_named_and_only_a_clean_worktree_moves() {
         key.starts_with("proj-") && key.len() == "proj-".len() + 12,
         "{key}"
     );
-    // #2835 D3: one level, `<root>/<project>-<name>` like the W2 worktree place.
+    // Two components under the root (SPEC-20261120-worktree-project-folder):
+    // `<root>/<project>/<name>`, the same shape `worktree-plan` names.
     assert_eq!(
         item(&p, &fx.wt("clean"))["destination"],
-        json!(fx.root.join("proj-clean").display().to_string())
+        json!(fx.root.join("proj").join("clean").display().to_string())
     );
     assert_eq!(p["writes"], json!(false));
     assert!(!fx.root.exists(), "the plan creates nothing");
@@ -410,7 +411,7 @@ fn the_root_is_checked_and_a_taken_destination_blocks() {
         .unwrap()
         .to_string();
     let _ = key;
-    fs::create_dir_all(fx.root.join("proj-clean")).unwrap();
+    fs::create_dir_all(fx.root.join("proj").join("clean")).unwrap();
     assert_eq!(
         reasons(&plan(&fx, Some(&obs)), &fx.wt("clean")),
         ["destination_exists"]
@@ -510,7 +511,7 @@ fn without_root_the_home_state_folder_holds_the_worktrees() {
         .unwrap();
     assert_eq!(
         c["destination"],
-        json!(root.join("proj-clean").to_str().unwrap())
+        json!(root.join("proj").join("clean").to_str().unwrap())
     );
     // Without HOME, or with a relative HOME, nothing is guessed.
     for home in [None, Some("relative/home")] {

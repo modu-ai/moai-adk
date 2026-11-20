@@ -252,13 +252,14 @@ fn worktree_plan_idempotent() {
     assert_eq!(r["branch"], "lane/7-06-C-e1");
     assert_eq!(r["writes"], false);
     assert_eq!(r["base_sha"], f.base);
-    // #2811 AC-2: the default is <HOME>/.moai/worktrees/<project>-<issue>-<logical_key>.
+    // #2811 AC-2, two-component form: the default is
+    // <HOME>/.moai/worktrees/<project>/<issue>-<logical_key>.
     assert_eq!(
         r["path"],
         f.repo
             .parent()
             .unwrap()
-            .join("home/.moai/worktrees/primary-7-06-C")
+            .join("home/.moai/worktrees/primary/7-06-C")
             .to_string_lossy()
             .as_ref()
     );
@@ -980,8 +981,9 @@ fn worktree_apply_conflict_names_claim_link() {
     assert!(env["result"].get("next").is_none(), "{env}");
 }
 
-/// AC-2: in a temporary HOME the created worktree is `<HOME>/.moai/worktrees/<project>-<id>`;
-/// planning created no folder (D5) and the add created the parents itself.
+/// AC-2: in a temporary HOME the created worktree is
+/// `<HOME>/.moai/worktrees/<project>/<id>`; planning created no folder (D5) and the add
+/// created the parents itself.
 #[test]
 fn a_new_worktree_goes_under_the_home_work_folder() {
     let f = fixture();
@@ -990,7 +992,7 @@ fn a_new_worktree_goes_under_the_home_work_folder() {
     assert!(!home.join(".moai").exists(), "planning creates nothing");
     let env = apply(&f, "lane", p["plan_digest"].as_str().unwrap());
     assert_eq!(env["result"]["decision"], "created", "{env}");
-    let wt = home.join(".moai/worktrees/primary-7-06-C");
+    let wt = home.join(".moai/worktrees/primary/7-06-C");
     assert!(wt.join("README.md").is_file(), "{env}");
     assert_eq!(
         fs::canonicalize(git(&wt, &["rev-parse", "--show-toplevel"]).trim()).unwrap(),
@@ -1010,7 +1012,7 @@ fn a_taken_worktree_name_is_refused() {
         .repo
         .parent()
         .unwrap()
-        .join("home/.moai/worktrees/primary-7-06-C");
+        .join("home/.moai/worktrees/primary/7-06-C");
     fs::create_dir_all(&wt).unwrap();
     fs::write(wt.join("keep.txt"), "user file\n").unwrap();
     let p = plan(&f, "lane");

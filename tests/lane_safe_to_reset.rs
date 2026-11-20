@@ -439,15 +439,15 @@ fn a_bare_repositorys_first_worktree_is_not_a_primary_checkout() {
     );
 }
 
-/// #2811 AC-3: a lane with one worktree in the old place (inside the primary checkout) and one
-/// in the new place `<HOME>/.moai/worktrees/<project>-<id>` (outside it) gets both mapped,
-/// left work in the new-place one is a finding, and a session folder inside the new-place
-/// worktree belongs to that worktree, not to the primary checkout.
+/// #2811 AC-3: a lane with one worktree in the old place (inside the primary checkout) and
+/// one in the new place `<HOME>/.moai/worktrees/<project>/<id>` (outside it) gets both
+/// mapped, left work in the new-place one is a finding, and a session folder inside the
+/// new-place worktree belongs to that worktree, not to the primary checkout.
 #[test]
 fn old_and_new_place_worktrees_of_a_lane_are_both_checked() {
     let f = fixture();
     let home = f.tmp.path().canonicalize().unwrap().join("home");
-    let new_wt = home.join(".moai/worktrees/primary-8-next");
+    let new_wt = home.join(".moai/worktrees/primary/8-next");
     g(
         &f.primary,
         &[

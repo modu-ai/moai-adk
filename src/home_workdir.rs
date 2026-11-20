@@ -2,7 +2,9 @@
 //! decisions D1–D8 in the Issue body and its latest leader comment).
 //!
 //! Everything lives under the HOME state folder `<HOME>/.moai` — no visible `~/moai` folder:
-//! - `<HOME>/.moai/worktrees/<project>-<id>/` — where a new worktree is created;
+//! - `<HOME>/.moai/worktrees/<project>/<name>/` — where a new worktree is created
+//!   (SPEC-20261120-worktree-project-folder); the flat `<HOME>/.moai/worktrees/<project>-<id>/`
+//!   form made before it is still recognised, never moved by this module;
 //! - `<HOME>/.moai/projects/` — a reserved name ([`projects_root`]); nothing creates projects
 //!   there since `moai init` was removed (#2935 L3);
 //! - `<HOME>/.moai/<service>/` — the default folder of a MoAI service such as `moai-stock`.
@@ -113,32 +115,40 @@ pub fn service_dir(home: &Path, service: &str) -> Result<PathBuf> {
     Ok(root(home).join(service))
 }
 
-/// The folder name of a new worktree (D2): `<project>-<id>`, where `<project>` is the safe
+/// The two path components of a new worktree relative to the worktrees root:
+/// `<project>/<id>` (SPEC-20261120-worktree-project-folder), where `<project>` is the safe
 /// form of the repository's top-level folder name and `<id>` the existing worktree naming
-/// (`<issue>-<logical_key>`), also made safe. Never a reserved name (D8b).
-pub fn worktree_name(project_root: &Path, id: &str) -> Result<String> {
+/// (`<issue>-<logical_key>`), also made safe. A reserved component (`worktrees`, `projects`,
+/// case-insensitive) is refused — under the worktrees root `projects` belongs to the Go
+/// generation (D8b) and the flat spelling that once escaped it no longer exists.
+pub fn worktree_rel(project_root: &Path, id: &str) -> Result<PathBuf> {
     let project = project_root
         .file_name()
         .and_then(|n| n.to_str())
         .and_then(safe_name)
         .ok_or("project folder name has no usable characters")?;
-    let id = safe_name(id).ok_or("worktree id has no usable characters")?;
-    let name = format!("{project}-{id}");
-    if reserved(&name) {
-        return Err(format!("worktree name {name} is reserved"));
+    if reserved(&project) {
+        return Err(format!(
+            "project folder name {project:?} is reserved under worktrees"
+        ));
     }
-    Ok(name)
+    let id = safe_name(id).ok_or("worktree id has no usable characters")?;
+    if reserved(&id) {
+        return Err(format!("worktree id {id:?} is reserved"));
+    }
+    Ok(Path::new(&project).join(id))
 }
 
-/// `<HOME>/.moai/worktrees/<project>-<id>` (AC-2).
+/// `<HOME>/.moai/worktrees/<project>/<id>` (AC-2).
 pub fn worktree_dir(home: &Path, project_root: &Path, id: &str) -> Result<PathBuf> {
-    Ok(worktrees_root(home).join(worktree_name(project_root, id)?))
+    Ok(worktrees_root(home).join(worktree_rel(project_root, id)?))
 }
 
-/// Where a worktree path sits (D3, D8): `home` (`<HOME>/.moai/worktrees/<name>`), `go`
-/// (`<HOME>/.moai/worktrees/projects/<project>/<name>`), `project` (`<primary>/.moai-cli/
-/// worktrees/<name>`), `claude` (`<primary>/.claude/worktrees/<name>`) or `other`. Compares
-/// path components as given; the caller passes canonical paths when links may be involved.
+/// Where a worktree path sits (D3, D8): `home` (`<HOME>/.moai/worktrees/<name>` flat or
+/// `<HOME>/.moai/worktrees/<project>/<name>`), `go` (`<HOME>/.moai/worktrees/projects/
+/// <project>/<name>`), `project` (`<primary>/.moai-cli/worktrees/<name>`), `claude`
+/// (`<primary>/.claude/worktrees/<name>`) or `other`. Compares path components as given; the
+/// caller passes canonical paths when links may be involved.
 pub fn location_of(path: &Path, home: &Path, primary: &Path) -> &'static str {
     location_in(
         path,
@@ -161,13 +171,24 @@ pub fn location_in(
         path.strip_prefix(base)
             .is_ok_and(|rest| rest.components().count() == depth)
     };
+    // The first component of a spelling under a worktrees root: a project folder name must
+    // not be reserved (`worktrees/projects` belongs to the Go form).
+    let first = |base: &Path| {
+        path.strip_prefix(base)
+            .ok()
+            .and_then(|rest| rest.components().next())
+            .is_some_and(|c| c.as_os_str().to_str().is_some_and(|n| !reserved(n)))
+    };
     if go_roots.iter().any(|r| under(r, 2)) {
         "go"
-    } else if worktrees_roots.iter().any(|r| under(r, 1))
-        && path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .is_some_and(|n| !reserved(n))
+    } else if worktrees_roots.iter().any(|r| under(r, 2) && first(r))
+        || worktrees_roots.iter().any(|r| {
+            under(r, 1)
+                && path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .is_some_and(|n| !reserved(n))
+        })
     {
         "home"
     } else if under(&primary.join(crate::WORKTREES_DIR), 1) {
@@ -234,28 +255,27 @@ mod tests {
     }
 
     #[test]
-    fn worktree_names_are_project_dash_id_and_safe() {
+    fn worktree_names_are_project_slash_id_and_safe() {
         let h = Path::new("/home/u");
         assert_eq!(
             worktree_dir(h, Path::new("/src/moai-adk"), "2811-home-workdir").unwrap(),
-            PathBuf::from("/home/u/.moai/worktrees/moai-adk-2811-home-workdir")
+            PathBuf::from("/home/u/.moai/worktrees/moai-adk/2811-home-workdir")
         );
         assert_eq!(
-            worktree_name(Path::new("/src/My Repo (copy)"), "12-a b").unwrap(),
-            "My-Repo-copy-12-a-b"
+            worktree_rel(Path::new("/src/My Repo (copy)"), "12-a b").unwrap(),
+            PathBuf::from("My-Repo-copy/12-a-b")
         );
         assert_eq!(
-            worktree_name(Path::new("/src/한글repo"), "1-k").unwrap(),
-            "repo-1-k"
+            worktree_rel(Path::new("/src/한글repo"), "1-k").unwrap(),
+            PathBuf::from("repo/1-k")
         );
-        assert!(worktree_name(Path::new("/src/한글"), "1-k").is_err());
-        assert!(worktree_name(Path::new("/src/repo"), "..").is_err());
-        assert!(worktree_name(Path::new("/"), "1-k").is_err());
-        // A repository called `projects` still yields `projects-<id>`, never `projects`.
-        assert_eq!(
-            worktree_name(Path::new("/src/projects"), "1-k").unwrap(),
-            "projects-1-k"
-        );
+        assert!(worktree_rel(Path::new("/src/한글"), "1-k").is_err());
+        assert!(worktree_rel(Path::new("/src/repo"), "..").is_err());
+        assert!(worktree_rel(Path::new("/"), "1-k").is_err());
+        // A repository called `projects` is refused: that name is the Go generation's
+        // reserved folder under worktrees (D8b), and the new two-component form would
+        // collide with it.
+        assert!(worktree_rel(Path::new("/src/projects"), "1-k").is_err());
     }
 
     #[test]
@@ -290,12 +310,20 @@ mod tests {
         let p = Path::new("/src/repo");
         let loc = |s: &str| location_of(Path::new(s), h, p);
         assert_eq!(loc("/home/u/.moai/worktrees/repo-1-k"), "home");
+        // The new two-component form (SPEC-20261120-worktree-project-folder).
+        assert_eq!(loc("/home/u/.moai/worktrees/repo/feat"), "home");
+        assert_eq!(loc("/home/u/.moai/worktrees/moai-adk/c184"), "home");
         assert_eq!(loc("/home/u/.moai/worktrees/projects/repo/feat"), "go");
         // The reserved Go folder itself, and anything deeper or shallower, is not a worktree.
         assert_eq!(loc("/home/u/.moai/worktrees/projects"), "other");
         assert_eq!(loc("/home/u/.moai/worktrees/projects/repo"), "other");
         assert_eq!(loc("/home/u/.moai/worktrees/projects/repo/feat/x"), "other");
-        assert_eq!(loc("/home/u/.moai/worktrees/repo-1-k/sub"), "other");
+        // A second component is the new shape's signature, and the shape is all the
+        // classifier reads: it is only ever handed registered worktree roots, so a flat
+        // worktree's inner folder (which spells the same two components) is not an input.
+        // Depth three is never a worktree, in any form.
+        assert_eq!(loc("/home/u/.moai/worktrees/repo-1-k/sub"), "home");
+        assert_eq!(loc("/home/u/.moai/worktrees/repo/feat/x"), "other");
         assert_eq!(loc("/home/u/.moai/worktrees"), "other");
         assert_eq!(
             loc(&format!("/src/repo/{}/2811-x", crate::WORKTREES_DIR)),
