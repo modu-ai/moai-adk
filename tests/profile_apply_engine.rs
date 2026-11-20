@@ -288,3 +288,45 @@ fn roundtrip_a_work_flow_plan_applies_unchanged() {
             .unwrap();
     assert_eq!(written["work_flow"]["flow"], json!("m-flow"));
 }
+
+/// Feeding the whole response instead of its `result` object is still refused with the
+/// documented message (the workflow doc names it), not a new one.
+#[test]
+fn the_envelope_is_still_refused_with_the_documented_message() {
+    let dir = tempfile::tempdir().unwrap();
+    let p = dir.path().to_str().unwrap();
+    let plan = cli(&["project-plan", p], &profile("envelope"));
+    let envelope = json!({
+        "protocol_version": 1,
+        "operation": "project.plan",
+        "ok": true,
+        "result": plan,
+    });
+    let mut child = Command::new(crate::common::MOAI_BIN)
+        .args([
+            "project-apply",
+            p,
+            "--plan-digest",
+            plan["plan_digest"].as_str().unwrap(),
+            "--permission-reference",
+            "fixture-approved",
+        ])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(envelope.to_string().as_bytes())
+        .ok();
+    let out = child.wait_with_output().unwrap();
+    assert_eq!(out.status.code(), Some(1), "the envelope is refused");
+    assert!(
+        String::from_utf8_lossy(&out.stdout).contains("invalid typed JSON input"),
+        "the refusal keeps its documented message: {}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+}

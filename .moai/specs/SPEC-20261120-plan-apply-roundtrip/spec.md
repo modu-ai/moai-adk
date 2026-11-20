@@ -74,3 +74,10 @@ created: 2026-11-20
 - 이웃 검사: profile_scopes_cli 0, home_isolation_scan 0, clippy --all-targets -D warnings 0,
   spec check 0 errors 0 warnings(REQ-2 의 shall 중복 한 번 수정), spec_cli 18 통과.
 - 돌리지 않은 것: 전체 cargo test(PR 없음 — 리더 묶음 ci), MOAI_GIT_BIN/타임아웃 경로의 추가 변이.
+- 감사 탐침 수리(audit-plan-roundtrip PROBE-F, 사용자 한도로 중단됐던 감사의 발견): 첫 수리는
+  걷어낸 값을 `serde_json::from_value` 로 직접 역직렬화해 거절 문구를 바꿨다 — 봉투 전체를 넘기면
+  `plan input refused: unknown field 'operation' …` 가 나와, 워크플로 문서가 이름대는
+  `invalid typed JSON input` 와 어긋났다. 이제 걷어낸 값을 다시 직렬화해 같은
+  `contract::typed_json` 계약으로 검사해 모든 거절 문구가 원래대로다. 시험을 하나 더해 못 박음:
+  `the_envelope_is_still_refused_with_the_documented_message`(봉투 → 종료 1 + 문서 문구).
+  재검증: profile_apply_engine 6 passed 0 failed, clippy 0, spec check 0/0.
