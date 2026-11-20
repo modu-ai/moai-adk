@@ -1,7 +1,7 @@
 ---
 id: SPEC-20261120-retire-decide
 title: "Retire the unused decision model library"
-status: approved
+status: completed
 revision: 3
 created: 2026-11-20
 approval: {by: user, at: 2026-11-21, basis: "AskUserQuestion selection on revision 3: 승인 (Recommended)", digest: "sha256:de6c7bcbea770ad851b929ea1c0a512ecc86adcd02939ec3b4abae8d2582fd6a"}
