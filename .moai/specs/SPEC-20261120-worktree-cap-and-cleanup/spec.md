@@ -55,7 +55,7 @@ created: 2026-11-20
 ## Plan
 
 1. 조각 1(이번): SPEC + PLAN 노트, 범위 확장 요청.
-2. 조각 2(미리보기): `src/worktree_cap.rs` 의 순수 판정(개수·상한, 후보 판정, 중첩, 이유 모으기)과 `optimize-plan` 출력의 `worktree_cap` 과 `cleanup` 키. 상한은 `--worktree-cap` 으로 받고, 프로필 키는 범위가 열린 뒤 이어요. 시험은 AC-1~5.
+2. 조각 2(미리보기): `src/worktree_cap.rs` 의 순수 판정(개수·상한, 후보 판정, 중첩, 이유 모으기)과 `optimize-plan` 출력의 `worktree_cap` 과 `cleanup` 키. 상한은 `--worktree-cap` 과 HOME 설정 파일 `[worktrees] cap` 으로 받고, 프로필 키는 범위가 열린 뒤 이어요. 시험은 AC-1~5.
 3. 조각 3(적용): `optimize-apply` 와 기록, AC-6·7.
 4. 조각 4(마감): 변이 시험, 이웃 검사, 운영 문서, 프로필 키(범위가 열리면).
 
@@ -73,7 +73,7 @@ created: 2026-11-20
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | 기존 `worktree-gc-plan` 행을 재사용하고 새 층에서 다시 판정해요(`src/worktree_gc.rs` 를 고치지 않아요) | 그 파일이 다른 카드에 잡혀 있어요. 새로 만들면 판정 규칙이 둘이 돼요 | `worktree_gc.rs` 에 옛 위치 허용 인자를 더하고 새 층을 걷어내기 |
-| D-2 | 상한 설정은 프로필 키 `worktree_cap`(양의 정수, 없으면 40)로 하고, 범위가 열리기 전에는 `--worktree-cap` 으로만 받아요 | 카드 기준 2("설정에서 읽고 기본 40"); 프로필의 `archive_grace_days` 와 같은 모양 | 키를 빼고 플래그만 두기 |
+| D-2 | 상한은 `--worktree-cap` 플래그, 그다음 HOME 의 `hook-config.toml` 의 `[worktrees] cap`(양의 정수), 없으면 40 상수 순서로 읽고 출처(`flag`·`config`·`default`)를 미리보기가 말해요. 프로필 키 `worktree_cap` 은 프로필 파일의 범위가 열린 뒤 이어요 | 카드 기준 2("설정에서 읽고 기본 40"); 프로필 파일은 다른 조각이 쥐고 있어서 리더가 HOME 설정 파일 키로 먼저 가라고 정했어요 | 키를 빼고 플래그만 두기 |
 | D-3 | 옛 위치(`.claude/worktrees`, `.moai-cli/worktrees`)의 보존을 풀어요. Codex 와 Go 세대 폴더는 풀지 않아요 | 카드 본문의 사용자 결정(옛 위치 포함); 리더가 같은 기준으로 손으로 정리한 기록(2026-11-20 리더 정리 보고) | 새 층에서 옛 위치 행을 다시 보존으로 되돌리기 |
 | D-4 | 적용의 "자기 토큰"은 미리보기가 후보마다 주는 `item_digest`(경로·가지·HEAD·이유·후보 종류에 묶여요) + 호출자가 준 허가 참조예요. 호출은 `--pick 경로@item_digest` 를 되풀이해요. 전체 계획 하나의 다이제스트로 묶지 않는 이유: 한 항목이 미리보기 뒤에 바뀌어도 나머지는 계속 처리해야 해서요 | 기존 `worktree-gc-apply` 는 계획 전체를 한 다이제스트로 묶어요; 이 명령은 사용자가 고른 항목마다 안전을 다시 보므로 항목 단위가 맞아요. 허가 참조는 허가 검증기가 아니고(`permission_reference_ok`) 승인은 호스트와 사용자의 몫이에요 | 없음 |
 | D-5 | 되돌림 기록은 `<git 공통 폴더>/.moai-cli/worktree-cleanup/<now_unix>-<digest12>.json` 에 써요(추적되지 않는 `.git` 아래; 시각은 읽은 시계의 Unix 초) | 세션 레지스트리가 쓰는 `<공통 폴더>/.moai-cli/` 와 같은 자리; 보고서 폴더 이동 카드와 겹치지 않아요 | 보고서 폴더(`~/.moai/reports/<project>/`)로 옮기기 |
@@ -82,4 +82,22 @@ created: 2026-11-20
 
 ## Result
 
-(아직 구현 전이에요.)
+AC-1~7 은 모두 충족이에요(근거는 아래 명령과 결과, 2026-11-20 가지 머리 `019243625a`).
+
+| AC | 시험 | 결과 |
+| --- | --- | --- |
+| 1 | `--test worktree_cap_cleanup the_preview_counts_worktrees_against_the_cap` | 통과 |
+| 2 | `--test worktree_cap_cleanup a_cap_that_is_not_a_positive_whole_number_is_refused` | 통과 |
+| 3 | `--test worktree_cap_cleanup finished_worktrees_are_candidates_with_reason_and_bytes` | 통과 |
+| 4 | `--test worktree_cap_cleanup an_unsafe_worktree_is_kept_with_every_reason` | 통과 |
+| 5 | `--test worktree_cap_cleanup old_locations_and_nested_worktrees_are_listed_and_preserved_ones_stay` | 통과 |
+| 6 | `--test optimize_apply_cli apply_removes_only_the_picked_clean_worktrees_inside_out` | 통과 |
+| 7 | `--test optimize_apply_cli apply_writes_a_record_that_restores_the_worktree` | 통과 |
+
+설정 파일 출처(`[worktrees] cap`)는 `worktree_cap::tests` 의 단위 시험이 덮어요(값 12 의 출처 `config`, 잘못된 값 거절).
+
+READY 검사 종료 코드(`CARGO_TARGET_DIR` 는 이 worktree 전용): diff-check 0, fmt 0, ops rustfmt 0, clippy `--all-targets -D warnings` 0, `--lib` 전체 0(1609 통과), `--bins` 0, 영역 시험 대상(`worktree_*`, `optimize_*`) 0, 저장소 전체 검사용 시험(`git_env_scrub`, `home_isolation_scan`, `windows_unix_gate_scan`, `product_cli`) 0, `tools/repo_scans.json` 검사 39개 중 실패 0, 파이썬 `repo_scans_test`·`source_manifest_test`·`local_check_test` 0, `trailer-check` 0. macOS 에서 도는 `cfg(macos)` 시험은 101: 실패는 `update_command_cli::in_a_terminal_an_applied_update_asks_the_model_stage_and_saves_after_a_yes` 하나이고, 이 가지의 기준 커밋에서도 같이 실패해요(이 변경과 무관). 그 한 줄을 고치는 커밋 `728fc79a16` 이 로컬 `v2026.11.0` 에 이미 있어요.
+
+뮤턴트(고의로 코드를 망가뜨려 시험이 잡는지 보기) 5개를 돌렸고 모두 의도한 시험 하나가 잡았어요: 안쪽부터 지우기 순서, 항목 다이제스트 비교, 지우기 직전 새 판정, 살아 있는 임대 유지, 보존 위치 범위.
+
+알려진 한계: 프로세스 검사는 작업 디렉터리만 봐요. 할당 바이트 합은 APFS 복제(clone)를 겹쳐 셀 수 있어서 실제로 비워진 공간은 `df` 변화로만 알 수 있어요. 미리보기가 `gc` 계획을 두 번 돌려요(`optimize::plan` 과 후보 판정). 후보 미리보기는 카드 원장이 있어야 하고 없으면 `ledger_observed` 가 거짓이에요. 프로필 키 `worktree_cap` 은 프로필 파일의 범위가 열린 뒤 이어요.
