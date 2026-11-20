@@ -1560,3 +1560,132 @@ fn criteria_are_added_to_any_card_but_a_closed_one_and_each_gets_its_own_number(
         Err(WorkflowError::InvalidInput(_))
     ));
 }
+
+// ---- card withdraw: a withdrawn card cannot be taken (no schema change) ----
+
+fn state_of(w: &WriteLedger, card: i64) -> String {
+    w.conn()
+        .query_row("SELECT state FROM card WHERE card_id = ?1", [card], |r| {
+            r.get(0)
+        })
+        .unwrap()
+}
+
+fn withdraw_events(w: &WriteLedger, card: i64) -> i64 {
+    w.conn()
+        .query_row(
+            "SELECT COUNT(*) FROM event WHERE card_id = ?1 AND kind = 'card.withdraw'",
+            [card],
+            |r| r.get(0),
+        )
+        .unwrap()
+}
+
+#[test]
+fn withdraw_moves_a_draft_or_ready_card_to_hold_and_records_the_reason() {
+    let (_home, mut w) = setup();
+    let draft = add_card(&mut w, "draft", "p2", r#"["demo/"]"#, 0);
+    workflow::withdraw(
+        &mut w,
+        draft,
+        "superseded by another card",
+        "leader",
+        Some(A),
+    )
+    .unwrap();
+    assert_eq!(state_of(&w, draft), "hold");
+    let (reason, by, actor): (String, String, String) = w
+        .conn()
+        .query_row(
+            "SELECT json_extract(payload, '$.reason'), json_extract(payload, '$.by'), actor \
+             FROM event WHERE card_id = ?1 AND kind = 'card.withdraw'",
+            [draft],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .unwrap();
+    assert_eq!(reason, "superseded by another card");
+    assert_eq!(by, "leader");
+    assert_eq!(actor, A);
+
+    let ready = add_card(&mut w, "ready", "p1", r#"["other/"]"#, 0);
+    workflow::withdraw(&mut w, ready, "no longer needed", "leader", Some(B)).unwrap();
+    assert_eq!(state_of(&w, ready), "hold");
+}
+
+#[test]
+fn withdraw_refuses_a_live_reservation_another_state_and_an_unknown_card() {
+    let (_home, mut w) = setup();
+    let (held, _g) = taken(&mut w, A, 1);
+    assert!(matches!(
+        workflow::withdraw(&mut w, held, "gone", "leader", Some(A)),
+        Err(workflow::WithdrawError::Held { .. })
+    ));
+    for state in ["hold", "review"] {
+        let card = add_card(&mut w, state, "p2", r#"["x/"]"#, 0);
+        assert!(matches!(
+            workflow::withdraw(&mut w, card, "gone", "leader", Some(A)),
+            Err(workflow::WithdrawError::WrongState { .. })
+        ));
+    }
+    // `done` cannot be withdrawn: close one through the real path.
+    let (done, g) = taken(&mut w, A, 1);
+    met(&mut w, done, A, g, 1);
+    workflow::link_pr(&mut w, done, A, g, &merged(1)).unwrap();
+    workflow::review(&mut w, done, A, g).unwrap();
+    workflow::done(&mut w, done, A, g).unwrap();
+    assert!(matches!(
+        workflow::withdraw(&mut w, done, "gone", "leader", Some(A)),
+        Err(workflow::WithdrawError::WrongState { .. })
+    ));
+    assert!(matches!(
+        workflow::withdraw(&mut w, 99_999, "gone", "leader", Some(A)),
+        Err(workflow::WithdrawError::CardNotFound(99_999))
+    ));
+    // Every refusal changed nothing: no withdraw event anywhere, the held card is still active.
+    assert_eq!(withdraw_events(&w, held), 0);
+    for state in ["hold", "review"] {
+        let card = add_card(&mut w, state, "p2", r#"["x/"]"#, 0);
+        assert_eq!(withdraw_events(&w, card), 0);
+    }
+    assert_eq!(
+        withdraw_events(&w, done),
+        0,
+        "the refused withdraw wrote nothing"
+    );
+    let still: String = w
+        .conn()
+        .query_row("SELECT state FROM card WHERE card_id = ?1", [held], |r| {
+            r.get(0)
+        })
+        .unwrap();
+    assert_eq!(still, "active");
+}
+
+#[test]
+fn withdraw_input_limits_accept_n_and_refuse_n_plus_one() {
+    let (_home, mut w) = setup();
+    let card = add_card(&mut w, "ready", "p2", r#"["demo/"]"#, 0);
+    let reason_500 = "r".repeat(MAX_LINE_CHARS);
+    let reason_501 = "r".repeat(MAX_LINE_CHARS + 1);
+    let by_200 = "b".repeat(200);
+    let by_201 = "b".repeat(201);
+    workflow::withdraw(&mut w, card, &reason_500, &by_200, Some(A)).unwrap();
+    // The card is hold now, but input bounds are checked first: each bad input is still an
+    // InvalidInput, not a WrongState.
+    assert!(matches!(
+        workflow::withdraw(&mut w, card, &reason_501, "leader", Some(A)),
+        Err(workflow::WithdrawError::InvalidInput(_))
+    ));
+    assert!(matches!(
+        workflow::withdraw(&mut w, card, "gone", &by_201, Some(A)),
+        Err(workflow::WithdrawError::InvalidInput(_))
+    ));
+    assert!(matches!(
+        workflow::withdraw(&mut w, card, "", "leader", Some(A)),
+        Err(workflow::WithdrawError::InvalidInput(_))
+    ));
+    assert!(matches!(
+        workflow::withdraw(&mut w, card, "gone\ta tab", "leader", Some(A)),
+        Err(workflow::WithdrawError::InvalidInput(_))
+    ));
+}
