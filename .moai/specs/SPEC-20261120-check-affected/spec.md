@@ -69,7 +69,8 @@ created: 2026-11-20
 - 파이썬 시험은 빌드된 `moai-cli` 가 있어야 하는 것이 많아요: 파이썬 단계 앞에 `cargo build --bin moai-cli` 단계를 두고 그 종료 코드도 요약에 넣어요(조각 3).
 - `cfg(unix)`·`cfg(windows)` 는 고르지 않아요(카드가 `target_os` 만 말해요). 이 호스트가 macOS 면 macOS 이름을 쓴 파일만 골라요: 리눅스 CI 는 그 시험을 돌리지 않으므로 이쪽이 유일한 확인이에요.
 - 여러 명령을 한 슬롯에 묶지 않고 무거운 cargo 단계(clippy·빌드·시험)마다 슬롯을 잡아요(D-4): 단계 사이에 다른 레인이 끼어들 수 있어요. `cargo fmt` 는 가벼워서 슬롯 없이 돌려요.
-- 알려진 빈틈(감사가 찾았고 이번에는 막지 않았어요): 시험 대상이 아닌 곳의 변경은 고르지 못해요 — `tests/fixtures/` 바로 밑 파일, `tests/e2e/*.sh`, `_test.py` 가 아닌 파이썬 도우미(`tests/self_audit_run.py` 처럼 여러 시험이 가져다 쓰는 것). 사람이 `--list` 로 보고 필요하면 대상을 더해요. `mod x { … }` 처럼 한 줄이 아닌 선언은 도우미로 읽지 않아요.
+- 알려진 빈틈(감사가 찾았고 이번에는 막지 않았어요): 시험 대상이 아닌 곳의 변경은 고르지 못해요 — `tests/fixtures/` 바로 밑 파일, `tests/e2e/*.sh`, `_test.py` 가 아닌 파이썬 도우미(`tests/self_audit_run.py` 처럼 여러 시험이 가져다 쓰는 것). 사람이 `--list` 로 보고 필요하면 대상을 더해요. `mod x { … }` 처럼 한 줄이 아닌 선언과 한 줄에 `mod a; mod b;` 를 같이 쓴 선언은 도우미로 읽지 않아요.
+- 단계 로그는 호출한 쪽의 빌드 폴더(`CARGO_TARGET_DIR`, 없으면 `<저장소>/target`)에 남아서 그 변수가 저장소 밖을 가리키면 증거 로그도 밖에 놓여요(`--out` 으로 바꿔요). 빌드 폴더로 `CARGO_BUILD_TARGET_DIR` 나 cargo 설정의 `build.target-dir` 은 읽지 않아요.
 - 시험 단계가 실패해도 명령 자체의 종료 코드는 0 이고 판정은 `result`·`summary` 에만 있어요(D-6): 호출하는 쪽은 `result=PASS` 를 읽어야 해요. 종료 코드로 나타내는 것은 사람이 정하면 따로 더해요.
 - `--dir` 은 저장소 안의 어느 폴더든 돼요(맨 위 폴더를 `git rev-parse --show-toplevel` 로 찾아요). 이름이 바뀐 파일은 옛 경로와 새 경로를 모두 바뀐 것으로 세요(`--no-renames`).
 - 이 변경 자체가 `src/lib.rs` 한 줄과 `src/help.rs` 줄을 건드려요: 잠깐만 예약하고 바로 반환해요.
@@ -92,8 +93,15 @@ created: 2026-11-20
 구현됨(2026-11-20, 가지 `spec/check-affected-20261120`).
 
 - `moai check affected <base>..<head>` 가 바뀐 경로(`<base>...<head>`, `--no-renames -z`)에서 시험 대상·파이썬 모듈·저장소 검사 목록·이 호스트의 `cfg(target_os)` 대상을 고르고(`--list` 는 읽기만), 고정 단계(`diff_check`·`fmt`·`ops_rustfmt`·`bash_n:<path>`·`clippy`·`test_lib`·`test_bins`·`test_targets`·`build_cli`·`python`)를 돌린 뒤 한 줄 요약을 알려요.
-- AC-1~AC-7 은 `src/check_affected.rs` 의 단위 시험 11개와 `tests/check_affected_cli.rs` 의 13개가 확인해요(감사 수리 뒤 이름 바뀐 파일·한글 경로·빌드 폴더·저장소 안 폴더 시험을 더했어요).
-- 구현 때 돌린 변이 중 세 점→두 점 바꾸기가 살아남아서 갈라진 기록 시험을 더했어요. 수리 뒤에는 변이 3개(`--no-renames` 빼기·`-z` 빼기·`CARGO_TARGET_DIR` 무시)를 커밋한 트리에서 돌렸고, 각각 의도한 시험 하나만 실패했어요.
+- AC-1: met — `the_misses_of_the_integration_day_are_selected`(`tests/check_affected_cli.rs`) 통과
+- AC-2: met — `areas_changed_tests_fixtures_and_the_helper_select_their_targets`와 단위 시험 통과(감사 수리로 `a_renamed_file_counts_its_old_path_too`·`a_non_ascii_path_is_read_whatever_the_quote_setting`·`a_folder_inside_the_repository_reads_the_repository_root` 를 더했어요)
+- AC-3: met — `the_fixed_steps_and_the_host_targets_are_always_listed` 통과
+- AC-4: met — `a_failed_step_does_not_stop_the_rest_and_the_summary_says_fail`와 `the_python_step_uses_the_target_folder_the_build_step_builds_into` 통과, 127 은 `a_program_that_cannot_start_is_127_and_a_refused_slot_keeps_its_code`
+- AC-5: met — `a_checkout_that_is_not_the_head_runs_nothing`와 위 127·125 시험 통과
+- AC-6: met — `list_reads_only_and_shows_the_selection` 통과
+- AC-7: met — `a_project_without_a_scan_list_says_scans_none` 통과
+- 시험 수: `src/check_affected.rs` 단위 11개, `tests/check_affected_cli.rs` 13개(둘 다 head `dc6b3bc5dd` 에서 통과, 감사자도 직접 돌려 같은 결과).
+- 변이: 구현 때 세 점→두 점 바꾸기가 살아남아서 갈라진 기록 시험을 더했어요. 수리 뒤 변이 3개를 커밋한 트리에서 돌렸고 모두 죽었어요: `--no-renames` 빼기는 시험 1개(`a_renamed_file_counts_its_old_path_too`)만, `CARGO_TARGET_DIR` 무시는 시험 1개(`the_python_step_uses_the_target_folder_the_build_step_builds_into`)만 실패했고, `-z` 빼기는 이름 목록이 한 덩어리가 되어 시험 5개가 함께 실패했어요(의도한 `a_non_ascii_path_is_read_whatever_the_quote_setting` 포함).
 - 이 명령으로 이 가지를 직접 돌린 요약(head `dc6b3bc5dd`, 빌드 새로 함): `check-affected base=6a8fa9cacf46 head=dc6b3bc5dd8b targets=42 py=13 scans=listed:39 diff_check=0 fmt=0 ops_rustfmt=0 clippy=0 test_lib=0 test_bins=0 test_targets=0 build_cli=0 python=0 result=PASS`.
 - 독립 감사: 첫 판정 FAIL(막는 결함 둘: 이름 바뀐 파일, 빌드 폴더), 수리 뒤 같은 감사자의 델타가 막는 결함 없음.
 - 알려진 것(Risks 에 적었어요): 명령의 종료 코드는 `result=FAIL` 이어도 0, 시험 대상이 아닌 곳의 변경(`tests/e2e/*.sh`·`tests/fixtures/` 바로 밑 파일·`_test.py` 가 아닌 파이썬 도우미)은 고르지 못함, 한 줄에 `mod a; mod b;` 를 쓰면 읽지 못함, 로그는 호출한 쪽의 `CARGO_TARGET_DIR` 를 따라가요.
