@@ -1168,7 +1168,8 @@ mod tests {
         use std::panic::{catch_unwind, AssertUnwindSafe};
         let limit = crate::ledger::workflow::MAX_NOTE_BYTES;
         let key = j(&["AK", "IA", "ABCDEFGHIJKLMNOP"]);
-        let to_size = |unit: &str, size: usize| unit.repeat(size / unit.len() + 1)[..size].to_string();
+        let to_size =
+            |unit: &str, size: usize| unit.repeat(size / unit.len() + 1)[..size].to_string();
         let mut jobs: Vec<(String, String, usize)> = Vec::new();
         for unit in ["a,", "a:", "a=", "{\"a\":1,\"b\":[2,3]},"] {
             jobs.push((format!("{unit} x {limit}"), to_size(unit, limit), 0));
@@ -1178,7 +1179,11 @@ mod tests {
         for size in [200_000usize, limit - 1] {
             for unit in ["a;", "a.", "a/"] {
                 let text = format!("{}{key}", unit.repeat(size / unit.len()));
-                jobs.push((format!("{unit} x {size} with the value at the end"), text, 1));
+                jobs.push((
+                    format!("{unit} x {size} with the value at the end"),
+                    text,
+                    1,
+                ));
             }
         }
         for size in [65_536usize, limit - 1] {
@@ -1215,7 +1220,10 @@ mod tests {
                 text.len()
             );
             let factor = taken as f64 / text.len() as f64;
-            println!("{label}: {taken} units for {} bytes ({factor:.2} per byte)", text.len());
+            println!(
+                "{label}: {taken} units for {} bytes ({factor:.2} per byte)",
+                text.len()
+            );
             worst = worst.max(factor);
         }
         println!("the screen's worst work was {worst:.2} units per byte (limit {WORK_PER_BYTE})");
