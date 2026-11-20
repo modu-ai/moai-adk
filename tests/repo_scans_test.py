@@ -50,6 +50,9 @@ EXEMPT = {
     "tests/status_line_cli.rs": "read_dir of a TempDir settings-backups folder",
     "tests/unittest_parallel_tool.rs": "read_dir of a TempDir marker folder; reads the named "
                                        "tools/unittest_parallel.py and tools/local_check.sh",
+    "tests/update_guided_migration_cli.rs": "read_dir of the temporary HOME and project it built; "
+                                            "the repository's skills and agents folders are only "
+                                            "copied into that temporary HOME",
     "tests/update_route.rs": "walks its TempDir project; reads the named update.md and routes.json",
     "tests/worktree_report.rs": "read_dir of temporary worktrees",
 }
