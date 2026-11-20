@@ -6,6 +6,7 @@ deletes that folder's cargo output when its task ends. `remove` deletes only the
 user picked from an `optimize-plan` preview. Every test uses a temporary HOME and a temporary
 git repository; the real HOME is never read or written.
 """
+import fcntl
 import json
 import os
 import shlex
@@ -49,12 +50,13 @@ class Fixture:
         self.wt = base / "wts" / "agent-7"
         git(self.repo, "worktree", "add", "-q", "-b", "card/1-x", str(self.wt))
 
-    def run(self, *args, cwd=None, home=None):
+    def run(self, *args, cwd=None, home=None, extra_env=None):
         env = {
             "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
             "HOME": str(home if home is not None else self.home),
             "GIT_CONFIG_GLOBAL": "/dev/null",
             "GIT_CONFIG_SYSTEM": "/dev/null",
+            **(extra_env or {}),
         }
         return subprocess.run(
             ["python3", "-I", str(TOOL), *args],
@@ -288,6 +290,138 @@ class RemoveTest(unittest.TestCase):
         self.assertIn("is a link", out.stderr)
         self.assertTrue((elsewhere / "build" / "repo-gone" / "debug").is_dir())
         self.assertTrue((elsewhere / "build" / "repo-gone" / "CACHEDIR.TAG").is_file())
+
+
+def tree(folder):
+    """Every entry under `folder` with its bytes (links by target), for before/after checks."""
+    out = {}
+    for path in sorted(Path(folder).rglob("*")):
+        rel = str(path.relative_to(folder))
+        if path.is_symlink():
+            out[rel] = ("link", os.readlink(path))
+        elif path.is_dir():
+            out[rel] = ("dir",)
+        else:
+            out[rel] = ("file", path.read_bytes())
+    return out
+
+
+class SeedTest(unittest.TestCase):
+    """`seed --from <name>`: the worktree's own folder starts as a copy-on-write clone of a lane's
+    built folder. Where the platform or filesystem cannot clone, the answer is `seeded: false`
+    with a reason and nothing is copied."""
+
+    def setUp(self):
+        self.fx = Fixture()
+        self.addCleanup(self.fx.close)
+        self.source = self.fx.folder("lane-src")
+        self.source.mkdir(parents=True)
+        cargo_output(self.source)
+        (self.source / "notes.md").write_text("lane evidence\n")
+        (self.source / ".moai-build.json").write_text(json.dumps(
+            {"schema_version": 1, "git_common_dir": "/lane/.git", "worktree": "/lane"}))
+        self.own = self.fx.folder("repo-agent-7")
+
+    def seed(self, name="lane-src", **kw):
+        return self.fx.run("seed", "--from", name, **kw)
+
+    def answer(self, out):
+        self.assertEqual(out.returncode, 0, out.stderr)
+        return json.loads(out.stdout)
+
+    def seeded(self):
+        """The answer of a seed that is expected to clone; skips where the filesystem cannot."""
+        got = self.answer(self.seed())
+        if not got["seeded"] and got["reason"] in ("unsupported", "clone_failed"):
+            self.skipTest(f"no copy-on-write clone here: {got}")
+        return got
+
+    def test_seed_clones_the_cargo_output_and_nothing_else(self):
+        got = self.seeded()
+        self.assertTrue(got["seeded"], got)
+        self.assertIn(got["method"], ("clonefile", "reflink"))
+        self.assertEqual(Path(got["folder"]), self.own)
+        self.assertEqual((self.own / "debug" / "deps" / "lib.rlib").read_bytes(), b"x" * 4096)
+        self.assertTrue((self.own / "CACHEDIR.TAG").is_file())
+        # Evidence stays with the lane, and the owner record is this worktree's, not the lane's.
+        self.assertFalse((self.own / "notes.md").exists())
+        record = json.loads((self.own / ".moai-build.json").read_text())
+        self.assertEqual(record["worktree"], os.path.realpath(self.fx.wt))
+        self.assertEqual(sorted(p.name for p in self.own.iterdir()),
+                         [".moai-build.json", "CACHEDIR.TAG", "debug", "tmp"])
+
+    def test_seed_leaves_the_source_unchanged(self):
+        before = tree(self.source)
+        self.seeded()
+        self.assertEqual(tree(self.source), before)
+
+    def test_seed_writes_nothing_of_its_own_into_the_clone(self):
+        self.seeded()
+        # A second seed finds the folder built and changes nothing.
+        before = tree(self.own)
+        got = self.answer(self.seed())
+        self.assertEqual((got["seeded"], got["reason"]), (False, "already_built"))
+        self.assertEqual(tree(self.own), before)
+
+    def test_seed_does_nothing_when_the_folder_is_already_built(self):
+        self.assertEqual(self.fx.run("env").returncode, 0)
+        cargo_output(self.own)
+        (self.own / "debug" / "deps" / "mine.rlib").write_bytes(b"mine")
+        before = tree(self.own)
+        got = self.answer(self.seed())
+        self.assertEqual((got["seeded"], got["reason"]), (False, "already_built"))
+        self.assertEqual(tree(self.own), before)
+
+    def test_seed_copies_nothing_when_cloning_is_switched_off(self):
+        got = self.answer(self.seed(extra_env={"BUILD_FOLDER_NO_COW": "1"}))
+        self.assertEqual((got["seeded"], got["reason"]), (False, "disabled"))
+        self.assertFalse((self.own / "debug").exists())
+        self.assertEqual(sorted(p.name for p in self.own.iterdir()), [".moai-build.json"])
+
+    def test_seed_does_not_clone_a_folder_that_is_being_built(self):
+        with open(self.source / "debug" / ".cargo-lock", "w") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            got = self.answer(self.seed())
+        self.assertEqual((got["seeded"], got["reason"]), (False, "source_building"))
+        self.assertFalse((self.own / "debug").exists())
+
+    def test_seed_without_a_source_folder_says_so(self):
+        got = self.answer(self.seed("no-such-folder"))
+        self.assertEqual((got["seeded"], got["reason"]), (False, "source_missing"))
+        self.assertFalse((self.own / "debug").exists())
+
+    def test_seed_refuses_a_linked_source_and_names_that_are_not_one_folder(self):
+        elsewhere = self.fx.home / "elsewhere"
+        elsewhere.mkdir()
+        cargo_output(elsewhere)
+        os.symlink(elsewhere, self.fx.folder("linked"))
+        for name in ("linked", "../x", "a/b", "", ".."):
+            out = self.seed(name)
+            self.assertEqual(out.returncode, 1, (name, out.stdout, out.stderr))
+            self.assertEqual(out.stdout, "")
+        self.assertFalse(self.own.exists())
+
+    def test_seed_refuses_the_worktrees_own_folder(self):
+        self.assertEqual(self.fx.run("env").returncode, 0)
+        out = self.seed("repo-agent-7")
+        self.assertEqual(out.returncode, 1, out.stderr)
+
+    def test_seed_refuses_a_linked_build_root(self):
+        real = self.fx.home / "elsewhere-build"
+        real.mkdir()
+        shutil_rmtree(self.fx.home / ".moai" / "build")
+        os.symlink(real, self.fx.home / ".moai" / "build")
+        out = self.seed()
+        self.assertEqual(out.returncode, 1, out.stderr)
+
+    def test_seed_needs_a_source_name(self):
+        self.assertEqual(self.fx.run("seed").returncode, 2)
+        self.assertEqual(self.fx.run("seed", "--from").returncode, 2)
+
+
+def shutil_rmtree(path):
+    import shutil
+    shutil.rmtree(path)
 
 
 class ScriptsTest(unittest.TestCase):
