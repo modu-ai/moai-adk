@@ -1394,6 +1394,94 @@ fn next_lists_a_review_card_nobody_holds_under_its_own_reason() {
     }
 }
 
+/// SPEC-20261119-criterion-add-session REQ-5, REQ-6 (card C-125, C-108 audit N3): the total is the
+/// number of rows the card has, not its highest number. Rows 1 and 5 make a gap (the table takes
+/// any `seq`) and row 5 is withdrawn, so the count includes a withdrawn row and the new numbers
+/// still go after it (REQ-5, REQ-6; C-108 audit N5); two adds are numbered after 5 and the total
+/// is 4.
+#[test]
+fn criteria_total_is_the_row_count() {
+    let (_home, mut w) = setup();
+    let card = add_card(&mut w, "ready", "p2", "[]", 1);
+    sql(
+        &mut w,
+        &format!(
+            "INSERT INTO card_ac (card_id, seq, text, status, withdrawn_reason, updated_at) \
+             VALUES ({card}, 5, 'five', 'withdrawn', 'gone', 1)"
+        ),
+    );
+    let texts = vec!["a".to_string(), "b".to_string()];
+    let added = workflow::add_criteria(&mut w, card, "leader", &texts).unwrap();
+    assert_eq!(added.added, vec![6, 7], "numbered after the highest");
+    assert_eq!(added.total, 4, "the row count, not the highest number");
+    assert_eq!(
+        one::<i64>(
+            w.conn(),
+            &format!("SELECT count(*) FROM card_ac WHERE card_id = {card}")
+        ),
+        4
+    );
+    // One more add on the same card: still the row count (rows 1, 5, 6, 7 and the new one).
+    let again = workflow::add_criteria(&mut w, card, "leader", &["c".to_string()]).unwrap();
+    assert_eq!((again.added, again.total), (vec![8], 5));
+}
+
+/// REQ-1, REQ-2, REQ-3 (card C-125, C-108 audit N1): the event records the adding session next to
+/// the author; `null` when the caller has no session id; the session is one line within the
+/// author limit and a refusal writes nothing.
+#[test]
+fn criteria_event_records_the_adding_session() {
+    let (_home, mut w) = setup();
+    let card = add_card(&mut w, "ready", "p2", "[]", 0);
+    let session = "8659f17c-8040-48ff-a194-69b556239ea0";
+    let one_text = vec!["a".to_string()];
+    workflow::add_criteria_as(&mut w, card, "leader", Some(session), &one_text).unwrap();
+    workflow::add_criteria_as(&mut w, card, "someone-else", None, &one_text).unwrap();
+    let rows: Vec<(String, String)> = w
+        .conn()
+        .prepare(
+            "SELECT actor, payload FROM event WHERE kind = 'card.criterion_add' ORDER BY event_id",
+        )
+        .unwrap()
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+        .unwrap()
+        .map(Result::unwrap)
+        .collect();
+    assert_eq!(rows.len(), 2, "{rows:?}");
+    let payload = |i: usize| serde_json::from_str::<serde_json::Value>(&rows[i].1).unwrap();
+    // The author is what `--by` said; the session is its own field.
+    assert_eq!(rows[0].0, "leader");
+    assert_eq!(
+        payload(0),
+        serde_json::json!({"first": 1, "count": 1, "session": session})
+    );
+    assert_eq!(rows[1].0, "someone-else");
+    assert_eq!(
+        payload(1),
+        serde_json::json!({"first": 2, "count": 1, "session": null})
+    );
+    // A session that is not one line, or longer than the author limit, is refused before any write.
+    let events: i64 = one(w.conn(), "SELECT count(*) FROM event");
+    let rows_before: i64 = one(w.conn(), "SELECT count(*) FROM card_ac");
+    for bad in [
+        "two\nlines".to_string(),
+        "x".repeat(workflow::MAX_AUTHOR_CHARS + 1),
+    ] {
+        assert!(matches!(
+            workflow::add_criteria_as(&mut w, card, "leader", Some(&bad), &one_text),
+            Err(WorkflowError::InvalidInput(_))
+        ));
+    }
+    assert_eq!(one::<i64>(w.conn(), "SELECT count(*) FROM event"), events);
+    assert_eq!(
+        one::<i64>(w.conn(), "SELECT count(*) FROM card_ac"),
+        rows_before
+    );
+    // The limit itself passes (N and N+1).
+    let at_limit = "y".repeat(workflow::MAX_AUTHOR_CHARS);
+    workflow::add_criteria_as(&mut w, card, "leader", Some(&at_limit), &one_text).unwrap();
+}
+
 #[test]
 fn criteria_are_added_to_any_card_but_a_closed_one_and_each_gets_its_own_number() {
     let (_home, mut w) = setup();
@@ -1435,7 +1523,7 @@ fn criteria_are_added_to_any_card_but_a_closed_one_and_each_gets_its_own_number(
     assert_eq!(event.0, "leader");
     assert_eq!(
         serde_json::from_str::<serde_json::Value>(&event.1).unwrap(),
-        serde_json::json!({"first": 3, "count": 2})
+        serde_json::json!({"first": 3, "count": 2, "session": null})
     );
 
     // Nothing to add, a missing card and a closed card are refused and write nothing.

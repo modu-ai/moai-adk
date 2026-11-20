@@ -99,9 +99,26 @@ fn clean(row: &str) -> String {
     out.trim().to_string()
 }
 
-/// `row` cut to [`EVIDENCE_CHARS`] characters.
+/// Text that came from a terminal this program does not own, for the answer: no character
+/// [`crate::lane_duty::unsafe_char`] names (a bidirectional or zero-width one included, removed
+/// first so it cannot split a secret shape), and every credential-shaped word replaced by
+/// `[redacted]` (re-audit C-B1 and C-N1, note 3497: an evidence row, a reset text, a title or an
+/// error message of another terminal may carry a key, and the answer goes into a session record).
+/// Two shape filters run, the word filter for shapes such as `AKIA…` and the substring filter for
+/// `sk-`, `ghp_`, `password=` and the like; a word such as `task-list` is shortened too, which a
+/// list of terminals can bear and a leaked key cannot.
+fn safe_text(text: &str) -> String {
+    let plain: String = text
+        .chars()
+        .filter(|c| !crate::lane_duty::unsafe_char(*c))
+        .collect();
+    let (words, _) = crate::redact::redact_outgoing(&plain);
+    crate::redact::redact_secret_shapes(&words)
+}
+
+/// `row` made safe and cut to [`EVIDENCE_CHARS`] characters.
 fn cut(row: &str) -> String {
-    cut_to(row, EVIDENCE_CHARS)
+    cut_to(&safe_text(row), EVIDENCE_CHARS)
 }
 
 /// `row` cut to `max` characters; a longer row ends with `…`.
@@ -127,14 +144,15 @@ const QUESTIONS: [&str; 6] = [
     "(y/n)",
 ];
 
-/// The questions of [`QUESTIONS`] that carry their own choice, lower case.
-const BRACKET_QUESTIONS: [&str; 2] = ["[y/n]", "(y/n)"];
+/// The words a confirmation's choices are written with, lower case. A real dialog does not always
+/// say yes and no: `Allow` and `Deny`, `1. Y` and `2. N` (leader note 3433, R-N1).
+const CHOICE_WORDS: [&str; 6] = ["yes", "no", "allow", "deny", "y", "n"];
 
-/// Whether a (lower case) row holds `yes` or `no` as a whole word: `Yes, go` and `(No)` do,
-/// `Yesterday`, `Nobody` and `Not now` do not.
-fn has_yes_or_no_word(row: &str) -> bool {
+/// Whether a (lower case) row holds a choice word as a whole word: `Yes, go`, `(No)`, `Allow /
+/// Deny`, `(y/N/a)` do, `Yesterday`, `Nobody`, `Allowance` and `Not now` do not.
+fn has_choice_word(row: &str) -> bool {
     row.split(|c: char| !c.is_alphanumeric())
-        .any(|w| w == "yes" || w == "no")
+        .any(|w| CHOICE_WORDS.contains(&w))
 }
 
 /// The cursor a menu draws before the highlighted choice: `❯` is Claude Code's own, `>` is its
@@ -258,12 +276,15 @@ pub fn classify(rows: &[String]) -> Seen {
             "fewer than six non-blank rows; working and idle need six",
         );
     }
-    // A confirmation question near the bottom with a `yes` or a `no` word on a row below it, and
-    // no numbered Yes and No rows the reader could use (the choices are drawn in a way it does not
-    // know): Enter may pick Yes, so the lane is not `working` or `idle` whatever its footer says
-    // (leader R-N1, note 3256). A question with only the input line under it is a lane that
-    // ended its turn and waits: that is the screen a send is for (leader S-N2, note 3362). A
-    // bracket question such as `[y/n]` is its own choice, so it counts with nothing below it.
+    // A confirmation question near the bottom with its choices on the question row itself or
+    // below it, and no numbered Yes and No rows the reader could use (the choices are drawn in a
+    // way it does not know, or in other words): Enter may pick the first choice, so the lane is
+    // not `working` or `idle` whatever its footer says (leader R-N1, note 3256). The choices
+    // are there when a choice word (`yes no allow deny y n`) is on the question row or a row
+    // below it (R-B1, note 3433: `proceed? (yes/no)` is one row), or when two or more numbered
+    // rows are below it whatever they say (R-N1, note 3433: `1. Allow once`, `3. Deny`). A
+    // question with only the input line under it is a lane that ended its turn and waits: that
+    // is the screen a send is for (leader S-N2, note 3362).
     let near_bottom = rows
         .iter()
         .enumerate()
@@ -275,13 +296,17 @@ pub fn classify(rows: &[String]) -> Seen {
             return false;
         };
         QUESTIONS.iter().any(|q| row.contains(q))
-            && (BRACKET_QUESTIONS.iter().any(|q| row.contains(q))
-                || lower[*i + 1..].iter().any(|r| has_yes_or_no_word(r)))
+            && (lower[*i..].iter().any(|r| has_choice_word(r))
+                || rows[*i + 1..]
+                    .iter()
+                    .filter(|r| numbered(r).is_some())
+                    .count()
+                    >= 2)
     }) {
         return seen(
             State::Unknown,
             rows.get(i),
-            "a question is near the bottom of the screen and a yes or no row below it could not be read as a choice",
+            "a question is near the bottom of the screen and its choices could not be read as Yes and No rows",
         );
     }
     if let Some(i) = find("esc to interrupt") {
@@ -768,13 +793,10 @@ pub fn list_error(detail: &str) -> String {
 }
 
 /// A text somebody else chose (a terminal title or branch), for display: no escape or control
-/// characters, no line-separator or bidirectional character, cut to [`SHOWN_CHARS`].
+/// characters, no line-separator or bidirectional character, no credential-shaped word (see
+/// [`safe_text`]), cut to [`SHOWN_CHARS`].
 fn shown(text: &str) -> String {
-    let safe: String = clean(text)
-        .chars()
-        .filter(|c| !crate::lane_duty::unsafe_char(*c))
-        .collect();
-    cut_to(&safe, SHOWN_CHARS)
+    cut_to(&safe_text(&clean(text)), SHOWN_CHARS)
 }
 
 /// The scan of `orca terminal list --json` (`list_json`): one row per listed terminal with the
@@ -1030,6 +1052,51 @@ mod tests {
     }
 
     #[test]
+    fn a_question_with_a_choice_word_on_its_row_or_below_or_two_numbered_rows_is_unknown() {
+        let screen = |rows: &[&str]| {
+            let mut v = filler(6, &["✳ Frosting… (esc to interrupt)"]);
+            v.extend(rows.iter().map(|s| s.to_string()));
+            classify(&v)
+        };
+        // The choice is on the question row (note 3433, R-B1).
+        for q in [
+            "Do you want to proceed? (yes/no)",
+            "Are you sure you want to continue connecting (yes/no/[fingerprint])?",
+            "Do you want to proceed? (y/N/a)",
+            "Do you want to proceed? Allow or deny",
+        ] {
+            let seen = screen(&[q]);
+            assert_eq!(seen.state, State::Unknown, "{q}");
+            assert_eq!(seen.evidence.as_deref(), Some(q), "{q}");
+        }
+        // The choices use other words (note 3433, R-N1): a choice word below, or two numbered rows.
+        let q = "Do you want to proceed?";
+        for below in [
+            &["Allow / Deny"][..],
+            &["allow"],
+            &["Deny"],
+            &["y"],
+            &["N"],
+            &["1. Allow once", "2. Allow always", "3. Deny"],
+            &["◆ 1. Y", "  2. N"],
+            &["  1. Proceed", "  2. Cancel"],
+        ] {
+            let mut rows = vec![q];
+            rows.extend_from_slice(below);
+            assert_eq!(screen(&rows).state, State::Unknown, "{below:?}");
+        }
+        // One numbered row, or words that only contain a choice word, are not enough.
+        assert_eq!(screen(&[q, "  1. maybe later"]).state, State::Working);
+        for word in ["Allowance", "denied", "yard", "Nine", "yesterday", "nobody"] {
+            assert_eq!(screen(&[q, word]).state, State::Working, "{word}");
+        }
+        // A choice word ABOVE the question does not count, and neither does one in an unrelated row.
+        assert_eq!(screen(&["yes", "All done.", q]).state, State::Working);
+        // Numbered rows ABOVE the question do not count.
+        assert_eq!(screen(&["1. a", "2. b", q]).state, State::Working);
+    }
+
+    #[test]
     fn a_numbered_yes_and_no_after_any_mark_is_a_prompt_whatever_the_footer() {
         let dialog = |prefix: &str| {
             let mut v = filler(6, &["✳ Frosting… (esc to interrupt)"]);
@@ -1234,6 +1301,46 @@ mod tests {
         let seen = classify(&rows(control));
         let evidence = seen.evidence.unwrap();
         assert!(!evidence.chars().any(|c| c.is_control()), "{evidence:?}");
+    }
+
+    #[test]
+    fn text_from_a_terminal_hides_secret_shapes_and_unsafe_characters() {
+        // The shapes are built from pieces so none stands in this file (re-audit C-B1, C-N1).
+        let gh = ["gh", "p_"].concat() + "A1b2C3d4E5f6G7h8I9j0";
+        let sk = ["s", "k-"].concat() + "abcdefghij0123456789";
+        let pw = ["pass", "word="].concat() + "hunter2hunter2";
+        for secret in [&gh, &sk, &pw] {
+            let shown_text = shown(&format!("deploy {secret} now"));
+            assert_eq!(shown_text, "deploy [redacted] now", "{secret}");
+            let seen = classify(&rows(&format!(
+                "Do you want to proceed? (yes/no) {secret}\nrow\nrow\nrow\nrow\nrow"
+            )));
+            let evidence = seen.evidence.unwrap();
+            assert!(evidence.ends_with("[redacted]"), "{evidence}");
+            assert!(!evidence.contains("A1b2") && !evidence.contains("hunter2"));
+            assert!(
+                list_error(&format!("no runtime {secret}")).ends_with("[redacted]"),
+                "{secret}"
+            );
+        }
+        // A zero-width or bidirectional character cannot split a shape and hide it.
+        let split = format!("{}\u{200b}{}", &gh[..4], &gh[4..]);
+        assert_eq!(shown(&split), "[redacted]");
+        assert_eq!(shown("a\u{202e}b\u{200b}c\u{2066}d\u{2028}e"), "abcde");
+        // An ordinary row is not changed.
+        assert_eq!(shown("work lane"), "work lane");
+        assert_eq!(cut("Do you want to proceed?"), "Do you want to proceed?");
+        // The reset text of an unknown zone is safe too.
+        let found = reset_of(
+            &rows(&format!(
+                "Your limit will reset at 2026-11-19 17:30:55 {sk}"
+            )),
+            NOW,
+        );
+        let found = found.expect("a limit row has a reset");
+        assert!(matches!(found, Reset::Unknown { .. }), "{found:?}");
+        let raw = reset_json(&found)["raw"].as_str().unwrap().to_string();
+        assert!(raw.ends_with("[redacted]"), "{raw}");
     }
 
     #[test]

@@ -29,6 +29,9 @@ pub const DEFAULT_TIMEOUT_SECS: u64 = 15;
 /// Most bytes read from one `orca` output stream.
 const OUTPUT_LIMIT: u64 = 1 << 20;
 
+/// The least time the output of a finished `orca` call is waited for after the time limit.
+const OUTPUT_GRACE: Duration = Duration::from_millis(250);
+
 /// The text to send is refused before Orca is called. The text itself is never echoed.
 pub fn check_text(text: &str) -> Result<(), String> {
     let refuse = |why: &str| Err(format!("lane send refused: the text {why}"));
@@ -229,14 +232,19 @@ impl ProcessOrca {
             .stderr(Stdio::piped())
             .spawn()
             .map_err(|e| format!("cannot run `{shown}`: {}", e.kind()))?;
+        // Each stream is read on a thread that sends its text over a channel, so the caller can
+        // stop waiting for it (re-audit C-N2, note 3497): a child of `orca` that outlives it keeps
+        // the pipe open, and a plain `join` waited for that child with no limit.
         let drain = |stream: Option<Box<dyn Read + Send>>| {
+            let (send, receive) = std::sync::mpsc::channel();
             std::thread::spawn(move || {
                 let mut bytes = Vec::new();
                 if let Some(s) = stream {
                     let _ = s.take(OUTPUT_LIMIT).read_to_end(&mut bytes);
                 }
-                String::from_utf8_lossy(&bytes).into_owned()
-            })
+                let _ = send.send(String::from_utf8_lossy(&bytes).into_owned());
+            });
+            receive
         };
         let out = drain(
             child
@@ -266,10 +274,22 @@ impl ProcessOrca {
                 Err(e) => return Err(format!("cannot wait for `{shown}`: {}", e.kind())),
             }
         };
+        // The program has exited; its output gets what is left of the same time limit, and at
+        // least a short grace so that a call that ended just in time is still read whole.
+        let until = (started + self.timeout).max(Instant::now() + OUTPUT_GRACE);
+        let wait = |receive: std::sync::mpsc::Receiver<String>| {
+            receive.recv_timeout(until.saturating_duration_since(Instant::now()))
+        };
+        let (Ok(stdout), Ok(stderr)) = (wait(out), wait(err)) else {
+            return Err(format!(
+                "`{shown}` did not finish its output within {} seconds",
+                self.timeout.as_secs()
+            ));
+        };
         Ok(Called {
             code: status.code(),
-            stdout: out.join().unwrap_or_default(),
-            stderr: err.join().unwrap_or_default(),
+            stdout,
+            stderr,
         })
     }
 }
@@ -344,7 +364,7 @@ impl Orca for ProcessOrca {
         }
         args.push("--json");
         let called = self.call(&args).map_err(|d| {
-            if d.contains("did not answer") {
+            if d.contains("did not answer") || d.contains("did not finish its output") {
                 format!("{d}; the text may have reached the lane")
             } else {
                 d

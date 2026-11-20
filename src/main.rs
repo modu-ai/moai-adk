@@ -612,6 +612,10 @@ enum Command {
         /// `claude` (.claude/settings.json `hooks`) or `codex` (.codex/hooks.json).
         #[arg(long)]
         host: String,
+        /// With `--host codex` or `omp`, plan the replacement of a hook file MoAI does not own:
+        /// the plan names the copy kept first and lists the differing lines; writes nothing.
+        #[arg(long)]
+        replace_with_backup: bool,
         #[command(flatten)]
         lane: LaneLoopArgs,
     },
@@ -626,6 +630,10 @@ enum Command {
         plan_digest: String,
         #[arg(long)]
         permission_reference: String,
+        /// The same `--replace-with-backup` the plan used: keep a copy of the existing hook
+        /// file in the `backups` folder of the project state folder, then replace it.
+        #[arg(long)]
+        replace_with_backup: bool,
         #[command(flatten)]
         lane: LaneLoopArgs,
     },
@@ -924,6 +932,15 @@ enum Command {
         /// not combinable with --confirm-cleanup.
         #[arg(long, value_name = "TOKEN")]
         confirm_home: Option<String>,
+        /// The preview's `switch.confirm_token` (C-33 S3): replace the name-switch script
+        /// `<state home>/path/moai` with the new one after saving the old one next to it as
+        /// `moai.before-<UTC>`. Without --confirm the rest stays a preview.
+        #[arg(long, value_name = "TOKEN")]
+        confirm_switch: Option<String>,
+        /// Put back the old name-switch script saved as `moai.before-<STAMP>` by an earlier
+        /// --confirm-switch; runs alone (not combinable with a --confirm flag), nothing else changes.
+        #[arg(long, value_name = "STAMP")]
+        revert_switch: Option<String>,
         /// Go back to this older build over a newer installed version (blocked otherwise); the
         /// preview warns per host, and the confirm needs this flag again.
         #[arg(long)]
@@ -1905,11 +1922,17 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
         Command::HooksPlan {
             project,
             host,
+            replace_with_backup,
             lane,
         } => {
             let home = std::env::var_os("HOME").map(PathBuf::from);
-            let mut out =
-                moai_cli::hooks::plan_with(&project, &host, home.as_deref(), lane.lane_loop())?;
+            let mut out = moai_cli::hooks::plan_with_replace(
+                &project,
+                &host,
+                home.as_deref(),
+                lane.lane_loop(),
+                replace_with_backup,
+            )?;
             merge_binary_state(&mut out, &project, home.as_deref());
             // Outside the plan digest: the #2391 hook state from local evidence, read only.
             let path_env = std::env::var("PATH").unwrap_or_default();
@@ -1941,6 +1964,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             host,
             plan_digest,
             permission_reference,
+            replace_with_backup,
             lane,
         } => {
             let home = std::env::var_os("HOME").map(PathBuf::from);
@@ -1952,6 +1976,7 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
                 &plan_digest,
                 &permission_reference,
                 lane.lane_loop(),
+                replace_with_backup,
                 &path_env,
             )?;
             merge_binary_state(&mut out, &project, home.as_deref());
@@ -2046,6 +2071,8 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             confirm,
             confirm_cleanup,
             confirm_home,
+            confirm_switch,
+            revert_switch,
             allow_older,
             json: _,
         } => {
@@ -2057,11 +2084,13 @@ fn run_internal_classified(command: Command) -> Result<serde_json::Value, String
             // The shared confirm prompt (#2806): same terminal rule and question as before. With
             // screens on (#2894) the question shows the check and change lists instead of the
             // summary text, and what was answered is kept for the end screen.
-            let result = moai_cli::update::update_command(
+            let result = moai_cli::update::update_command_switch(
                 &home,
                 confirm.as_deref(),
                 confirm_cleanup.as_deref(),
                 confirm_home.as_deref(),
+                confirm_switch.as_deref(),
+                revert_switch.as_deref(),
                 allow_older,
                 |summary, preview| {
                     use moai_cli::ui_text::Msg;

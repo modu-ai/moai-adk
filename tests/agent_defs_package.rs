@@ -707,7 +707,7 @@ fn work_flow_row_offers_m_flow_first_and_the_bank_states_each_flow() {
         "push the branch and open a pull request (recommended)",
         "`{\"flow\": \"m-flow\" | \"github-flow\" | \"trunk-based\" | \"git-flow\"",
         // Audit B1 (decision 2026-11-17): one SPEC = one branch = one pull request.
-        "branch `spec/<yyyymmdd>-<slug>`",
+        "branch `spec/<slug>-<yyyymmdd>`",
         "one SPEC, one branch, one pull request",
     ] {
         assert!(section.contains(text), "the flow section lacks {text:?}");

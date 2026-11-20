@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "comment": "Protected check paths (C-97, SPEC-20261119-check-guard). check-guard reads this file from the BASE branch only, so a pull request is always judged by the list it started from. Matching: an entry containing * is a whole-path glob, an entry ending with /** is a path prefix, every other entry is an exact path. A PR changing any entry must declare audit-tier: 2 in its body.",
+  "protected": [
+    ".github/workflows/**",
+    "tools/ci_scope.py",
+    "tools/check_guard.py",
+    "tools/protected_checks.json",
+    "src/gate*.rs",
+    "src/audit_gate.rs",
+    "REVIEW.md",
+    "agents/audit.md"
+  ]
+}

@@ -2,7 +2,7 @@
 id: SPEC-20261119-headver-release-workflow
 title: "A release workflow that numbers, names and checks a HeadVer release, and never publishes one"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-19
 parent: SPEC-20261117-headver-ci-number
 ---
@@ -26,7 +26,7 @@ parent: SPEC-20261117-headver-ci-number
 ## Requirements
 
 - REQ-1: The release workflow shall start only from a push to a branch named `release/<40 lowercase hex>` or `release/rc/<40 lowercase hex>` whose name is the pushed commit, and from no other event. · failure: a name of any other shape, or one that names another commit, stops the plan before any build.
-- REQ-2: The plan shall take `{build}` from the workflow's `run_number` and stop when the run is not the first attempt (`run_attempt` is not `1`) or when the run number is not a decimal number from 1 to 4294967295 without a sign or leading zero. · failure: a re-run keeps `run_number`, so it is refused and the person pushes a new release branch.
+- REQ-2: The plan — the only job that numbers a build — shall take `{build}` from the workflow's `run_number` and stop when the run is not the first attempt (`run_attempt` is not `1`) or when the run number is not a decimal number from 1 to 4294967295 without a sign or leading zero; a re-run of the build job alone carries the same commit and the same number and builds nothing new. · failure: a re-run keeps `run_number`, so the plan refuses it and the person pushes a new release branch.
 - REQ-3: The plan shall take `{head}` from the tracked `HEADVER` file of the pinned commit (0 to 9999, no sign, no leading zero) and `{yearweek}` from the ISO week of one UTC clock reading, and hand that reading on as the build's `SOURCE_DATE_EPOCH`.
 - REQ-4: IF a tag `moai-adk-v<version>` already exists, or an existing `moai-adk-v<head>.<yearweek>.<build>` tag has a build number that is not below this run's, THEN the plan shall stop. · failure: two releases never share a version, and the build number only goes up, also when the workflow's counter restarted.
 - REQ-5: The release tag shall be `moai-adk-v{head}.{yearweek}.{build}` with no suffix, a `release/rc/…` branch marking the release as a pre-release.

@@ -505,10 +505,15 @@ class CiDecideScriptTest(unittest.TestCase):
     """
 
     FULL = (
-        '[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30},'
-        '{"target":"macos-arm64","runner":"macos-15","timeout":45}]'
+        '[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"nextest"},'
+        '{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"rest"},'
+        '{"target":"macos-arm64","runner":"macos-15","timeout":45,"leg":"nextest"},'
+        '{"target":"macos-arm64","runner":"macos-15","timeout":45,"leg":"rest"}]'
     )
-    LINUX = '[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30}]'
+    LINUX = (
+        '[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"nextest"},'
+        '{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"rest"}]'
+    )
 
     @classmethod
     def setUpClass(cls):
@@ -654,8 +659,10 @@ class CiWorkflowMatrixContractTest(unittest.TestCase):
 
     def test_full_matrix_literal_lives_in_targets(self):
         full = (
-            '[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30},'
-            '{"target":"macos-arm64","runner":"macos-15","timeout":45}]'
+            '[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"nextest"},'
+            '{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"rest"},'
+            '{"target":"macos-arm64","runner":"macos-15","timeout":45,"leg":"nextest"},'
+            '{"target":"macos-arm64","runner":"macos-15","timeout":45,"leg":"rest"}]'
         )
         self.assertEqual(self.yaml_text.count(full), 1)
 

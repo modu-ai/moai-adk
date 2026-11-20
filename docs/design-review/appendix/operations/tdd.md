@@ -2,7 +2,7 @@
 
 operation `tdd` · 코드 `src/ops/tdd.rs`, `src/tdd.rs` · 카드 C-86 3조각, SPEC-20261117-green-test-lock
 
-`tdd` 는 이 worktree 의 TDD 한 바퀴를 기록하고, GREEN·REFACTOR 동안 tool-preflight hook(규칙 A6)이 시험 파일 쓰기를 막게 한다. 기록 `tdd.json` 과 로그 `tdd-log.jsonl` 은 worktree 자기 git 폴더의 `moai/` 아래에 있어 커밋되지 않는다. 가지는 SPEC 작업 가지 `spec/<yyyymmdd>-<slug>` 여야 한다.
+`tdd` 는 이 worktree 의 TDD 한 바퀴를 기록하고, GREEN·REFACTOR 동안 tool-preflight hook(규칙 A6)이 시험 파일 쓰기를 막게 한다. 기록 `tdd.json` 과 로그 `tdd-log.jsonl` 은 worktree 자기 git 폴더의 `moai/` 아래에 있어 커밋되지 않는다. 가지는 SPEC 작업 가지 `spec/<slug>-<yyyymmdd>` 여야 한다(옛 꼴 `spec/<yyyymmdd>-<slug>` 와 끝의 수리 접미사 `-r<N>` 도 읽는다). 이름이 두 SPEC id 로 읽히면(`spec/20261117-demo-20261118`) `.moai/specs/` 에 그중 하나의 폴더만 있을 때를 빼고 거절하고, 이유에 두 id 를 적는다.
 
 | 동작 | 쓰기 | 조건 | 결과 |
 | --- | --- | --- | --- |

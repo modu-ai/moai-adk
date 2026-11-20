@@ -141,10 +141,69 @@ fn hooks_step(
 ) -> HostStep {
     match hooks::plan(root, host, home) {
         Ok(plan) => from_plan(name, host, shown, &plan),
-        // A host file the user edited is kept as it is (the writer never replaces it).
-        Err(e) if e.contains("preservation review") => HostStep::bare(name, "conflict", &e),
+        // A host file the user edited is kept as it is (the writer never replaces it) unless the
+        // user picks the replacement, which keeps a copy first (SPEC-20261120-hooks-conflict-
+        // choices). The replace plan is read-only; without one the step stays a bare conflict.
+        Err(e) if e.contains("preservation review") => {
+            let mut step = HostStep::bare(name, "conflict", &e);
+            let replace =
+                hooks::plan_with_replace(root, host, home, hooks::LaneLoop::Keep, true).ok();
+            if let Some(choices) = hooks_conflict_choices(shown, host, replace.as_ref()) {
+                let replace = replace.unwrap_or_default();
+                step.preview = json!({
+                    "host": host,
+                    "action": "conflict",
+                    "path": replace["path"],
+                    // The two sides are in the step itself: reading the `diff` needs no command.
+                    "diff": replace["diff"],
+                    "choices": choices,
+                });
+            }
+            step
+        }
         Err(e) => HostStep::bare(name, "blocked", &e),
     }
+}
+
+/// What the user can pick when a hook file MoAI does not own is in the way, recommended first.
+/// `keep` has no command; `diff` is the read-only replace plan; `replace` is the apply of that
+/// plan, which keeps a copy of the file first. Without a replace plan (`None`, or one whose
+/// action is not `replace`) there are no choices: the plain plan already refuses, so a `diff`
+/// command would fail for the same reason.
+fn hooks_conflict_choices(shown: &str, host: &str, replace: Option<&Value>) -> Option<Value> {
+    let (replace, digest) = replace
+        .filter(|r| r["action"] == "replace")
+        .and_then(|r| Some((r, r["plan_digest"].as_str()?)))?;
+    let words = |list: &[&str]| list.iter().map(|w| w.to_string()).collect::<Vec<_>>();
+    Some(json!([
+        {
+            "id": "keep", "recommended": true, "writes": false,
+            "label": "keep your hook file as it is; nothing is written",
+            "command": Value::Null,
+        },
+        {
+            "id": "diff", "recommended": false, "writes": false,
+            "label": "show the lines your file has and the ones MoAI would write; nothing is written",
+            "command": {
+                "argv": words(&[
+                    "moai", "hooks-plan", shown, "--host", host, "--replace-with-backup",
+                ]),
+                "stdin": Value::Null,
+            },
+        },
+        {
+            "id": "replace", "recommended": false, "writes": true,
+            "label": "keep a copy of your hook file, then write the MoAI hook set",
+            "backup": replace["backup"]["path"],
+            "command": {
+                "argv": words(&[
+                    "moai", "hooks-apply", shown, "--host", host, "--replace-with-backup",
+                    "--plan-digest", digest, "--permission-reference", PLACEHOLDER,
+                ]),
+                "stdin": Value::Null,
+            },
+        },
+    ]))
 }
 
 fn from_plan(name: &'static str, host: &str, shown: &str, plan: &Value) -> HostStep {
@@ -876,5 +935,61 @@ mod tests {
         let argv = list[2]["command"]["argv"].as_array().unwrap();
         let at = argv.iter().position(|w| w == "--plan-digest").unwrap();
         assert_eq!(argv[at + 1], json!("sha256:d"));
+    }
+
+    /// SPEC-20261120-hooks-conflict-choices REQ-12: a hook conflict has choices only when there is
+    /// a replace plan (an action `replace` with a digest); every other plan gives none, and the
+    /// step stays a bare conflict.
+    #[test]
+    fn hooks_choices_drop_replace_without_a_replace_plan() {
+        const BACKUP: &str = crate::project_state!("backups/codex-hooks-x.json");
+        let replace = json!({"action": "replace", "plan_digest": "sha256:d",
+                             "backup": {"path": BACKUP}});
+        let all = hooks_conflict_choices("/p", "codex", Some(&replace)).unwrap();
+        assert_eq!(ids(&all), ["keep", "diff", "replace"]);
+        assert_eq!(all[2]["backup"], json!(BACKUP));
+        for none_or_other in [
+            None,
+            Some(json!({"action": "conflict", "plan_digest": "sha256:d"})),
+            Some(json!({"action": "replace"})),
+        ] {
+            assert!(
+                hooks_conflict_choices("/p", "codex", none_or_other.as_ref()).is_none(),
+                "{none_or_other:?}"
+            );
+        }
+    }
+
+    /// REQ-11: `keep` is first, recommended and has no command; only `replace` writes; both
+    /// commands name the host and the flag, and `replace` carries the digest of its plan.
+    #[test]
+    fn hooks_choices_put_keep_first_and_only_replace_writes() {
+        let replace = json!({"action": "replace", "plan_digest": "sha256:d", "backup": null});
+        for host in ["codex", "omp"] {
+            let all = hooks_conflict_choices("/p", host, Some(&replace)).unwrap();
+            let list = all.as_array().unwrap();
+            assert_eq!(list[0]["recommended"], json!(true));
+            assert_eq!(list[0]["command"], Value::Null);
+            let recommended = list.iter().filter(|c| c["recommended"] == json!(true));
+            assert_eq!(recommended.count(), 1);
+            let writes: Vec<&str> = list
+                .iter()
+                .filter(|c| c["writes"] == json!(true))
+                .map(|c| c["id"].as_str().unwrap())
+                .collect();
+            assert_eq!(writes, ["replace"]);
+            for (i, verb) in [(1, "hooks-plan"), (2, "hooks-apply")] {
+                let argv = list[i]["command"]["argv"].as_array().unwrap();
+                assert_eq!(&argv[..2], [json!("moai"), json!(verb)], "{host}");
+                assert!(argv.contains(&json!("--replace-with-backup")), "{argv:?}");
+                let at = argv.iter().position(|w| w == "--host").unwrap();
+                assert_eq!(argv[at + 1], json!(host));
+                assert_eq!(list[i]["command"]["stdin"], Value::Null);
+            }
+            let argv = list[2]["command"]["argv"].as_array().unwrap();
+            let at = argv.iter().position(|w| w == "--plan-digest").unwrap();
+            assert_eq!(argv[at + 1], json!("sha256:d"));
+            assert!(argv.contains(&json!(PLACEHOLDER)));
+        }
     }
 }

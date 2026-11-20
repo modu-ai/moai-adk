@@ -66,7 +66,8 @@ pub struct NewCard {
 }
 
 /// The first thing wrong with an input. The message names the field and, for a list, which
-/// entry (counted from 1, the way the user typed them).
+/// entry (counted from 1, the way the user typed them). The `*SecretShaped` variants carry the
+/// count of words the card text screen ([`secret_words`]) refuses.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InputError {
     TitleEmpty,
@@ -84,6 +85,9 @@ pub enum InputError {
     ScopeDuplicate { entry: usize, first: usize },
     CriterionEmpty { entry: usize },
     CriterionNotOneLine { entry: usize },
+    TitleSecretShaped { words: usize },
+    BodySecretShaped { words: usize },
+    CriterionSecretShaped { entry: usize, words: usize },
     BadReference { given: String },
 }
 
@@ -170,6 +174,11 @@ impl fmt::Display for InputError {
             }
             CriterionEmpty { entry } => write!(f, "criterion {entry} is empty"),
             CriterionNotOneLine { entry } => write!(f, "criterion {entry} must be one line"),
+            TitleSecretShaped { words } => write!(f, "the title has {}", secret_refusal(*words)),
+            BodySecretShaped { words } => write!(f, "the body has {}", secret_refusal(*words)),
+            CriterionSecretShaped { entry, words } => {
+                write!(f, "criterion {entry} has {}", secret_refusal(*words))
+            }
             BadReference { given } => write!(
                 f,
                 "`{}` is not a card; write C-<number> or #<source number>",
@@ -185,6 +194,156 @@ fn has_control(text: &str) -> bool {
     text.chars().any(char::is_control)
 }
 
+/// The name pieces (cut at `-` and `_`, any letter case) that make an assignment secret-named;
+/// `api` followed by `key` is the fourth (SPEC-20261119-card-secret-screen D-1, D-2).
+const SECRET_PIECES: [&str; 3] = ["password", "token", "secret"];
+
+/// What a refusal says after the field it names: the count and the reason, never the text.
+pub fn secret_refusal(words: usize) -> String {
+    format!(
+        "{words} word(s) with the shape of a secret (a token, a key, a secret-named \
+         `name=value`); a card text is kept for good and written out by `card export`, so take \
+         them out"
+    )
+}
+
+/// The one text screen of the card commands (SPEC-20261119-card-secret-screen REQ-1..4): how many
+/// words of `text` it refuses. A word is refused once, whatever is wrong with it:
+/// - it holds a `name=value` whose name has a secret piece ([`SECRET_PIECES`], or `api` and `key`
+///   side by side), whatever the value is, an empty one included;
+/// - or its value has a credential shape (`redact::redact_outgoing`), after the name of a
+///   `--option=value` whose value is plain was blanked (a plain option value is prose);
+/// - or a value with a credential shape follows a separator (`=`, `:` or `,`) anywhere inside the
+///   word, after a plain name or none (audit N1);
+/// - a run of lower-case hyphenated words after `sk-` is a name, not a key, and goes through
+///   (the rule `decide`'s own `without_sk_names` states) — but only as a name: when `=` follows
+///   it, the run is the name of an assignment and its pieces are checked like any other name
+///   (audit B1), so the names are read from the word as written, before the run is blanked.
+pub fn secret_words(text: &str) -> usize {
+    let blanked = without_sk_names(text);
+    // Blanking changes only letters, digits, `-` and `_`, so both texts hold the same words.
+    text.split_whitespace()
+        .zip(blanked.split_whitespace())
+        .filter(|(written, blanked)| word_is_refused(written, blanked))
+        .count()
+}
+
+/// `written` is the word as the user typed it, `blanked` the same word with the plain `sk` names
+/// blanked.
+fn word_is_refused(written: &str, blanked: &str) -> bool {
+    if secret_named_assignment(written) {
+        return true;
+    }
+    let (plain_options_blanked, value_shaped) = blank_option_names(blanked);
+    if value_shaped > 0 || crate::redact::redact_outgoing(&plain_options_blanked).1 > 0 {
+        return true;
+    }
+    // The shared screen sees a prefix shape only at the start of a word: make each piece between
+    // two separators a word of its own by turning the separators into spaces, and screen the
+    // text once (audit B2: screening everything behind every separator took time in the square
+    // of the word's length). A shape holds none of the separators, so it lies inside one piece.
+    let pieces: String = blanked
+        .chars()
+        .map(|c| if matches!(c, '=' | ':' | ',') { ' ' } else { c })
+        .collect();
+    crate::redact::redact_outgoing(&pieces).1 > 0
+}
+
+fn name_is_secret(name: &str) -> bool {
+    let lower = name.to_ascii_lowercase();
+    let pieces: Vec<&str> = lower.split(['-', '_']).filter(|p| !p.is_empty()).collect();
+    pieces.iter().any(|p| SECRET_PIECES.contains(p))
+        || pieces.windows(2).any(|w| w[0] == "api" && w[1] == "key")
+}
+
+/// Whether any `=` of the word follows a secret name: the name is the run of letters, digits,
+/// `-` and `_` right before the `=`, so a limit flag with a token piece and a number is named,
+/// and so is a name with a password piece behind other dashes; a plain flag whose value is an
+/// assignment with a secret name is named by its second assignment.
+fn secret_named_assignment(word: &str) -> bool {
+    let bytes = word.as_bytes();
+    let name_byte = |b: &u8| b.is_ascii_alphanumeric() || *b == b'_' || *b == b'-';
+    (0..bytes.len()).filter(|&at| bytes[at] == b'=').any(|eq| {
+        // Every byte of a multi-byte character fails `name_byte`, so `start` is a boundary.
+        let start = bytes[..eq]
+            .iter()
+            .rposition(|b| !name_byte(b))
+            .map_or(0, |i| i + 1);
+        name_is_secret(&word[start..eq])
+    })
+}
+
+/// The name of an option assignment whose value is not itself secret-shaped is blanked, and a
+/// value that is secret-shaped is counted in the second return: the shared screen sees a word
+/// like `--flag=sk-…` as one word that starts with the option name, so the value alone decides.
+fn blank_option_names(text: &str) -> (String, usize) {
+    let mut bytes = text.as_bytes().to_vec();
+    let mut shaped_values = 0;
+    let mut at = 0;
+    while at < bytes.len() {
+        let starts =
+            bytes[at..].starts_with(b"--") && (at == 0 || !bytes[at - 1].is_ascii_alphanumeric());
+        if !starts {
+            at += 1;
+            continue;
+        }
+        let name_end = (at + 2..bytes.len())
+            .find(|&i| !(bytes[i].is_ascii_alphanumeric() || bytes[i] == b'-' || bytes[i] == b'_'))
+            .unwrap_or(bytes.len());
+        if name_end < bytes.len() && bytes[name_end] == b'=' {
+            let value_end = (name_end + 1..bytes.len())
+                .find(|&i| bytes[i].is_ascii_whitespace())
+                .unwrap_or(bytes.len());
+            let value = std::str::from_utf8(&bytes[name_end + 1..value_end]).unwrap_or("");
+            let (_, shaped) = crate::redact::redact_outgoing(value);
+            if shaped == 0 {
+                bytes[at + 2..name_end].fill(b'x');
+            } else {
+                shaped_values += shaped;
+            }
+            at = value_end;
+        } else {
+            at = name_end;
+        }
+    }
+    // Only ASCII bytes were replaced, each by one ASCII byte.
+    (
+        String::from_utf8(bytes).unwrap_or_else(|_| text.to_string()),
+        shaped_values,
+    )
+}
+
+/// `sk-` before lower-case hyphenated words, blanked the way `decide` states it: no digit,
+/// upper-case letter or underscore anywhere in the run, `sk-proj-` apart.
+fn without_sk_names(text: &str) -> String {
+    let mut bytes = text.as_bytes().to_vec();
+    let key = |b: u8| b.is_ascii_alphanumeric() || b == b'_' || b == b'-';
+    let mut at = 0;
+    while at < bytes.len() {
+        let starts = bytes[at..].starts_with(b"sk-")
+            && !bytes[at..].starts_with(b"sk-proj-")
+            && (at == 0 || !bytes[at - 1].is_ascii_alphanumeric());
+        if !starts {
+            at += 1;
+            continue;
+        }
+        let mut len = 0;
+        while at + len < bytes.len() && key(bytes[at + len]) {
+            len += 1;
+        }
+        let words = &bytes[at + 3..at + len];
+        let name = words.contains(&b'-')
+            && words
+                .split(|b| *b == b'-')
+                .all(|word| !word.is_empty() && word.iter().all(u8::is_ascii_lowercase));
+        if name {
+            bytes[at..at + len].fill(b'x');
+        }
+        at += len;
+    }
+    String::from_utf8(bytes).unwrap_or_else(|_| text.to_string())
+}
+
 fn title(text: &str) -> Result<String, InputError> {
     let text = text.trim();
     if text.is_empty() {
@@ -197,6 +356,10 @@ fn title(text: &str) -> Result<String, InputError> {
     if chars > TITLE_MAX_CHARS {
         return Err(InputError::TitleTooLong { chars });
     }
+    let words = secret_words(text);
+    if words > 0 {
+        return Err(InputError::TitleSecretShaped { words });
+    }
     Ok(text.to_string())
 }
 
@@ -206,6 +369,10 @@ fn body(text: &str) -> Result<String, InputError> {
     }
     if text.len() > BODY_MAX_BYTES {
         return Err(InputError::BodyTooLong { bytes: text.len() });
+    }
+    let words = secret_words(text);
+    if words > 0 {
+        return Err(InputError::BodySecretShaped { words });
     }
     Ok(text.to_string())
 }
@@ -301,6 +468,10 @@ pub fn criterion_texts(entries: &[String]) -> Result<Vec<String>, InputError> {
         }
         if has_control(text) {
             return Err(InputError::CriterionNotOneLine { entry });
+        }
+        let words = secret_words(text);
+        if words > 0 {
+            return Err(InputError::CriterionSecretShaped { entry, words });
         }
         out.push(text.to_string());
     }
@@ -766,6 +937,185 @@ mod tests {
         assert!(
             msg.contains(&format!("{ok}…")) && !msg.contains(&"x".repeat(41)),
             "{msg}"
+        );
+    }
+
+    // SPEC-20261119-card-secret-screen. Every word is joined from pieces so this file holds no
+    // secret-shaped word.
+    fn j(parts: &[&str]) -> String {
+        parts.concat()
+    }
+
+    /// REQ-1: the name's `-`/`_` pieces decide, case does not, the value does not.
+    #[test]
+    fn secret_screen_name_pieces_decide() {
+        let pw = j(&["pass", "word"]);
+        let tk = j(&["to", "ken"]);
+        for (text, n) in [
+            (format!("--{pw}=x"), 1),
+            (format!("{pw}="), 1),
+            (format!("--{tk}=100"), 1),
+            (format!("--max-{tk}=100"), 1),
+            (format!("--skip_{}=true", pw.to_uppercase()), 1),
+            (format!("x--{pw}=1"), 1),
+            (j(&["--sec", "ret=1"]), 1),
+            (j(&["--api", "-key=1"]), 1),
+            (j(&["API", "_KEY=1"]), 1),
+            (format!("--config={pw}=1"), 1),
+            (format!("--{pw}=1 --{tk}=2"), 2),
+        ] {
+            assert_eq!(secret_words(&text), n, "{text}");
+        }
+    }
+
+    /// REQ-2, REQ-4: no secret piece, a plain value, a space-separated value, a lower-case
+    /// hyphenated `sk` name — all pass; a piece must equal the word, not contain it.
+    #[test]
+    fn secret_screen_passes_plain_assignments_and_names() {
+        let pw = j(&["pass", "word"]);
+        for text in [
+            "login works after a restart".to_string(),
+            "--foo=bar --config=prod.yaml --api-version=2".to_string(),
+            j(&["--to", "kens=3 --sec", "retive=1"]),
+            j(&["--pass", "wordless=1"]),
+            format!("--{pw} hunter2"),
+            j(&["s", "k-learn-pipeline tuned"]),
+            "key=value monkey=1 api=1".to_string(),
+        ] {
+            assert_eq!(secret_words(&text), 0, "{text}");
+        }
+    }
+
+    /// REQ-3: a credential-shaped value is refused whatever the name, and one word counts once.
+    #[test]
+    fn secret_screen_counts_a_word_once() {
+        let key = j(&["AK", "IA", "ABCDEFGHIJKLMNOP"]);
+        let tk = j(&["to", "ken"]);
+        assert_eq!(secret_words(&format!("--out={key}")), 1);
+        assert_eq!(secret_words(&format!("--{tk}={key}")), 1);
+        assert_eq!(secret_words(&format!("--{tk}={key} and --{tk}={key}")), 2);
+        assert_eq!(secret_words(&j(&["s", "k-", "Ab3", "cdefghijklmnop"])), 1);
+        assert_eq!(secret_words(""), 0);
+    }
+
+    /// Audit B1: the names of an assignment are read as written, so an `sk` run with a secret
+    /// piece in front of `=` is refused, while the bare run and a plain-named assignment pass.
+    #[test]
+    fn secret_screen_reads_sk_names_before_they_are_blanked() {
+        let (sk, tk, pw) = (j(&["s", "k-"]), j(&["to", "ken"]), j(&["pass", "word"]));
+        for text in [
+            format!("{sk}learn-{pw}=1"),
+            format!("--{sk}a-b-{tk}=1"),
+            format!("{sk}a-{tk}-b="),
+            format!("{sk}{}=1", j(&["api", "-", "key"])),
+        ] {
+            assert_eq!(secret_words(&text), 1, "{text}");
+        }
+        for text in [
+            format!("{sk}learn-pipeline"),
+            format!("{sk}learn-{pw}"),
+            format!("{sk}learn-pipeline=on"),
+        ] {
+            assert_eq!(secret_words(&text), 0, "{text}");
+        }
+    }
+
+    /// Audit N1: a credential-shaped value is seen after a separator inside the word.
+    #[test]
+    fn secret_screen_sees_values_after_a_separator() {
+        let key = j(&["AK", "IA", "ABCDEFGHIJKLMNOP"]);
+        for text in [
+            format!("config={key}"),
+            format!("key:{key}"),
+            format!("a,{key}"),
+            format!("x=y,{key}"),
+            format!("(see:{key})"),
+        ] {
+            assert_eq!(secret_words(&text), 1, "{text}");
+        }
+        for text in [
+            "see: the list, then run it",
+            "mode=fast, retries=3",
+            "time 12:30,x",
+        ] {
+            assert_eq!(secret_words(text), 0, "{text}");
+        }
+        // One word counts once even when two separators lead to shapes.
+        assert_eq!(secret_words(&format!("a:{key},{key}")), 1);
+    }
+
+    /// Audit B2 and N9: one long word without a space, of the note limit's size, is screened in
+    /// time that grows with its length, not with its square. Four shapes of word and one shape at
+    /// the end of a long word run at once on their own threads, so the test takes about the time of
+    /// the slowest one; a square-time regression (40 KB took 30 s) misses the 15 s bound and fails
+    /// there instead of holding the test for minutes (the stuck threads die with the test process).
+    #[test]
+    fn secret_screen_time_on_one_long_word_has_a_bound() {
+        use std::time::{Duration, Instant};
+        let size = crate::ledger::workflow::MAX_NOTE_BYTES;
+        let key = j(&["AK", "IA", "ABCDEFGHIJKLMNOP"]);
+        let units = ["a,", "a:", "a=", "{\"a\":1,\"b\":[2,3]},"];
+        let plain = |unit: &str| unit.repeat(size / unit.len() + 1)[..size].to_string();
+        let mut jobs: Vec<(String, String, usize)> = units
+            .iter()
+            .map(|unit| (format!("{unit} x {size}"), plain(unit), 0))
+            .collect();
+        let tail = format!("{},{key}", &plain("a,")[..size - key.len() - 1]);
+        jobs.push((format!("a, x {size} with a shape at the end"), tail, 1));
+        let (tx, rx) = std::sync::mpsc::channel();
+        for (at, (_, text, _)) in jobs.iter().enumerate() {
+            let (tx, text) = (tx.clone(), text.clone());
+            std::thread::spawn(move || {
+                let _ = tx.send((at, secret_words(&text)));
+            });
+        }
+        let deadline = Instant::now() + Duration::from_secs(15);
+        for _ in 0..jobs.len() {
+            let wait = deadline.saturating_duration_since(Instant::now());
+            let (at, words) = rx
+                .recv_timeout(wait)
+                .unwrap_or_else(|_| panic!("a screen of {size} bytes took more than 15 s"));
+            assert_eq!(words, jobs[at].2, "{}", jobs[at].0);
+        }
+    }
+
+    /// REQ-6: the refusal names the field and does not repeat the text.
+    #[test]
+    fn secret_screen_messages_name_the_field() {
+        let m = InputError::CriterionSecretShaped { entry: 2, words: 3 }.to_string();
+        assert!(m.starts_with("criterion 2 has 3 word(s)"), "{m}");
+        assert!(InputError::TitleSecretShaped { words: 1 }
+            .to_string()
+            .starts_with("the title has 1 word(s)"));
+        assert!(InputError::BodySecretShaped { words: 1 }
+            .to_string()
+            .starts_with("the body has 1 word(s)"));
+    }
+
+    /// REQ-5: the three add fields refuse before anything is stored.
+    #[test]
+    fn secret_screen_guards_title_body_and_criteria() {
+        let bad = j(&["run --pass", "word=x"]);
+        let criteria = [String::from("fine"), bad.clone()];
+        let input = AddInput {
+            criteria: &criteria,
+            ..add("t")
+        };
+        assert_eq!(
+            validate_add(&input),
+            Err(InputError::CriterionSecretShaped { entry: 2, words: 1 })
+        );
+        assert_eq!(
+            validate_add(&add(&bad)),
+            Err(InputError::TitleSecretShaped { words: 1 })
+        );
+        let input = AddInput {
+            body: &bad,
+            ..add("t")
+        };
+        assert_eq!(
+            validate_add(&input),
+            Err(InputError::BodySecretShaped { words: 1 })
         );
     }
 }

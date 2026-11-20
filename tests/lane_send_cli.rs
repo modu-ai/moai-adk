@@ -38,6 +38,7 @@ read)
 send)
   printf '%s\n' "$*" >> "$d/sent.txt"
   if [ -f "$d/send-fail" ]; then echo "send refused" >&2; exit 4; fi
+  if [ -f "$d/send-child-holds" ]; then sleep 6 & echo '{"id":"x","ok":true}'; exit 0; fi
   if [ -f "$d/send-ok-false" ]; then echo '{"id":"x","ok":false,"error":{"message":"no such terminal"}}'; exit 0; fi
   if [ -f "$d/send-garbage" ]; then echo 'sent it, thanks'; exit 0; fi
   if [ -f "$d/send-no-ok" ]; then echo '{"id":"x","result":{}}'; exit 0; fi
@@ -241,6 +242,27 @@ fn lane_send_refuses_numbered_yes_no_rows_after_any_prefix_and_sends_nothing() {
     }
 }
 
+/// Re-audit of slice B (note 3433, R-B1 and R-N1): a known question with its choices on its own
+/// row, or with two numbered rows or a choice word (`yes no allow deny y n`) below it, is
+/// `unknown`, so nothing is sent. Before the repair each of these five screens sent.
+#[test]
+fn lane_send_refuses_a_question_with_its_choices_on_the_row_or_below_and_sends_nothing() {
+    for name in [
+        "synthetic-question-same-line-working.txt",
+        "synthetic-fingerprint-question-working.txt",
+        "synthetic-question-allow-deny-working.txt",
+        "synthetic-question-allow-once-always-deny-working.txt",
+        "synthetic-question-numbered-y-n-working.txt",
+    ] {
+        let fake = Fake::screen(name);
+        let r = run(&fake, "do the next card", &["--enter"]);
+        let message = r.error();
+        assert!(message.contains("unknown"), "{name}: {message}");
+        assert!(message.contains("refused"), "{name}: {message}");
+        assert_eq!(fake.sent(), None, "{name}");
+    }
+}
+
 /// S-N2 (note 3362): a lane that ended its turn with a question and waits at its input line is
 /// `idle`, and the text goes in.
 #[test]
@@ -394,6 +416,32 @@ fn lane_send_sends_failure_is_never_reported_as_sent() {
     assert!(message.contains("send failed"), "{message}");
     assert!(!message.to_lowercase().contains("sent"), "{message}");
     // The send was attempted once and not repeated.
+    assert_eq!(fake.sent().map(|s| s.len()), Some(1));
+}
+
+/// Re-audit of the scan slice (delta note 3648, N1): a send that has happened, whose `orca` then
+/// leaves a child holding its output, fails as "did not finish its output" and must say the text
+/// may have reached the lane, as a send that did not answer does: otherwise the reader sends
+/// again and the text goes in twice.
+#[test]
+fn lane_send_a_send_whose_output_a_child_holds_says_the_text_may_have_reached_the_lane() {
+    let fake = Fake::screen("synthetic-idle.txt");
+    fake.flag("send-child-holds");
+    let started = Instant::now();
+    let r = run(&fake, "hello", &[]);
+    let message = r.error().to_string();
+    assert!(message.contains("did not finish its output"), "{message}");
+    assert!(
+        message.contains("the text may have reached the lane"),
+        "{message}"
+    );
+    assert!(!message.to_lowercase().contains("sent"), "{message}");
+    assert!(
+        started.elapsed() < Duration::from_secs(5),
+        "cut off after the 2 second limit, took {:?}",
+        started.elapsed()
+    );
+    // The send happened once and was not repeated.
     assert_eq!(fake.sent().map(|s| s.len()), Some(1));
 }
 
