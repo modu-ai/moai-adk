@@ -148,10 +148,13 @@ fn secret_suspects(text: &str) -> Vec<(usize, &'static str)> {
 
 /// The characters the run scan consumed, counted by the test probe below: the clamp keeps
 /// this linear in the line's length, so the probe checks it without a clock and the check
-/// holds on a loaded machine too (SPEC-20261120-load-tolerant-time-bounds). The product
-/// build carries none of it.
+/// holds on a loaded machine too (SPEC-20261120-load-tolerant-time-bounds). Per thread —
+/// the parallel test threads would race on one process-wide counter. The product build
+/// carries none of it.
 #[cfg(test)]
-static RUN_SCAN_CHARS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+thread_local! {
+    static RUN_SCAN_CHARS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
 
 /// A token of `prefix` followed by at least `min` token characters, the prefix not inside a word.
 fn has_token(line: &str, prefix: &str, min: usize, upper_digit_only: bool) -> bool {
@@ -164,7 +167,7 @@ fn has_token(line: &str, prefix: &str, min: usize, upper_digit_only: bool) -> bo
             .chars()
             .take_while(|c| {
                 #[cfg(test)]
-                RUN_SCAN_CHARS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                RUN_SCAN_CHARS.with(|n| n.set(n.get() + 1));
                 if upper_digit_only {
                     c.is_ascii_uppercase() || c.is_ascii_digit()
                 } else {
@@ -1070,15 +1073,17 @@ mod tests {
     #[test]
     fn the_repeated_prefix_scan_consumes_characters_linearly() {
         let line = format!("{}Abcdef12", "xsk-".repeat(32_768));
-        RUN_SCAN_CHARS.store(0, std::sync::atomic::Ordering::Relaxed);
+        RUN_SCAN_CHARS.with(|n| n.set(0));
         let _ = secret_suspects(&line);
-        let consumed = RUN_SCAN_CHARS.load(std::sync::atomic::Ordering::Relaxed);
+        let consumed = RUN_SCAN_CHARS.with(std::cell::Cell::get);
         // The clamp ends every run at `min` characters plus the one that ends it, so each
         // of the len/4 prefix positions costs a bounded constant and the whole scan stays
         // within a small multiple of the line's length; without the clamp the scan is
-        // quadratic — orders of magnitude past this bound, on any machine.
+        // quadratic — orders of magnitude past this bound, on any machine. Eight times
+        // keeps the clamp passing while catching the middle-ground slowdowns the audit
+        // named (M3).
         assert!(
-            consumed <= line.len() * 20,
+            consumed <= line.len() * 8,
             "the run scan consumed {consumed} characters for a {}-character line — quadratic",
             line.len()
         );

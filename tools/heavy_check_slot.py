@@ -512,7 +512,7 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="op", required=True)
     a = sub.add_parser("acquire", help="wait for a slot, run COMMAND, release")
     a.add_argument("--max", type=int, default=None,
-                   help="slot count; only a value below limits.json's (default 3) takes effect")
+                   help="slot count; only a value below limits.json's (default 5) takes effect")
     a.add_argument("--name", required=True)
     a.add_argument("--dir", default=None)
     a.add_argument("--min-free-gb", type=int, default=None,

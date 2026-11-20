@@ -58,7 +58,7 @@
 # does not fail the run. A dry run checked nothing and says result=fail. Exit 0 only for
 # result=pass, 1 otherwise, 2 for a usage error.
 #
-# MOAI_HEAVY_SLOT_MAX (default 3), MOAI_HEAVY_SLOT_MIN_FREE_GB (default 50) and
+# MOAI_HEAVY_SLOT_MAX (default 5), MOAI_HEAVY_SLOT_MIN_FREE_GB (default 50) and
 # MOAI_HEAVY_SLOT_NAME (default self-check-<worktree folder>-<pid>, one name per run so runs do
 # not share a queue name): when `moai heavy-slot-acquire` exists, the heavy cargo items run in
 # one of the machine's heavy slots, as in tools/local_check.sh.

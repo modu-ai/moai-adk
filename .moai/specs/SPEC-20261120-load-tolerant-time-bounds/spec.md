@@ -21,7 +21,7 @@ parent: null
 
 ## Requirements
 
-- REQ-1: The secret_suspects timing test shall judge the repeated-prefix scan by the characters the scan consumes instead of a clock, keeping the count within four times the line's length, and the generous clock ceiling of thirty seconds stays on the pre-existing huge-line test as the backstop. · failure: none — a count does not move with machine load, and the clock ceiling absorbs the rest.
+- REQ-1: The secret_suspects timing test shall judge the repeated-prefix scan by the characters the scan consumes instead of a clock, keeping the count within eight times the line's length, and the generous clock ceiling of thirty seconds stays on the pre-existing huge-line test as the backstop. · failure: none — a count does not move with machine load, and the clock ceiling absorbs the rest.
 - REQ-2: The heavy-slot built-in concurrency limit shall default to five, so the announced cap holds without a limits file, with a limits.json value still winning over the built-in default. · failure: none — the file path is unchanged; only the built-in default number moves.
 
 ## Acceptance
