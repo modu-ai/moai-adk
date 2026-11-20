@@ -2882,6 +2882,34 @@ fn ac_verify_run_ignores_a_call_marked_unfinished_in_every_documented_spelling()
     }
 }
 
+/// REQ-3 (audit N3): the verify command's white space is folded as the SPEC folds it only
+/// where the shell folds it. A call with a newline or a no-break space inside the command is a
+/// different command and is not recorded as the verify command; two spaces or a tab are the
+/// same command.
+#[test]
+fn a_call_with_a_newline_or_a_no_break_space_inside_is_not_recorded_as_the_verify_command() {
+    let (_tmp, root) = ac_repo(AC_BRANCH, Some(AC_HEAD), Some(AC_BODY));
+    for different in [
+        "cargo test\n--test one",
+        "cargo test\u{a0}--test one",
+        "cargo test --test\none",
+    ] {
+        let (code, out) = ac_bash(&root, "s1", different, false);
+        assert_eq!((code, out.as_str()), (0, ""), "{different:?}");
+        assert_eq!(ac_runs(&root), Vec::<Value>::new(), "{different:?}");
+    }
+    for same in [
+        "cargo  test --test one",
+        "cargo test\t--test one",
+        " cargo test --test one ",
+        "cargo test --test one\n",
+    ] {
+        let (code, out) = ac_bash(&root, "s1", same, false);
+        assert_eq!((code, out.as_str()), (0, ""), "{same:?}");
+    }
+    assert_eq!(ac_runs(&root).len(), 4, "{:?}", ac_runs(&root));
+}
+
 /// SPEC-20261119-ac-verify-recorded-limits REQ-10 (card C-130 criterion 5, leader decision of
 /// note 3387 on audit N10): the rule counts a write of the session only when its outcome is not a
 /// failure (a success and an unknown outcome both count: dropping the unknown would weaken the
@@ -2946,6 +2974,59 @@ fn ac_verify_rule_counts_only_writes_that_did_not_fail_and_are_inside_the_projec
             "PostToolUse",
             "Write",
             Box::new(|_| json!({"content": "x"})),
+            true,
+        ),
+        // Audit of 0ca2f8892b, findings 2 and 3: a path that only passes through `..` and stays
+        // inside is a project write; a path the log cannot keep (too long, a control character)
+        // is `unrecorded` and counts, as the rule counts what it cannot place.
+        (
+            "a relative path that goes through .. and stays inside",
+            "claude",
+            "PostToolUse",
+            "Write",
+            Box::new(|_| json!({"file_path": "src/../x.rs", "content": "x"})),
+            true,
+        ),
+        (
+            "an absolute path that goes through .. and stays inside",
+            "claude",
+            "PostToolUse",
+            "Write",
+            Box::new(|root| json!({"file_path": root.join("src/../x.rs"), "content": "x"})),
+            true,
+        ),
+        (
+            "an absolute path that climbs out of the folder from inside it",
+            "claude",
+            "PostToolUse",
+            "Write",
+            Box::new(|root| json!({"file_path": root.join("src/../../x.rs"), "content": "x"})),
+            false,
+        ),
+        (
+            "a path longer than the log keeps",
+            "claude",
+            "PostToolUse",
+            "Write",
+            Box::new(
+                |_| json!({"file_path": format!("src/{}.rs", "a".repeat(1100)), "content": "x"}),
+            ),
+            true,
+        ),
+        (
+            "a path with a control character",
+            "claude",
+            "PostToolUse",
+            "Write",
+            Box::new(|_| json!({"file_path": "src/x\u{7}.rs", "content": "x"})),
+            true,
+        ),
+        (
+            "an empty path",
+            "claude",
+            "PostToolUse",
+            "Write",
+            Box::new(|_| json!({"file_path": "", "content": "x"})),
             true,
         ),
     ];
