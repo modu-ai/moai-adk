@@ -166,6 +166,7 @@ pub mod usage_limit;
 pub mod verify;
 pub mod versioning;
 pub mod worktree;
+pub mod worktree_cap;
 pub mod worktree_gc;
 pub mod worktree_include;
 pub mod worktree_install_plan;
