@@ -154,7 +154,10 @@ fn at_most_five_folders_are_named() {
     }
     let (_, reason) = moai_item(&plan(&fx, Some(3)));
     for named in ["f1", "f2", "f3", "f4", "f5"] {
-        assert!(reason.contains(&format!("{named} (more than 3")), "{reason}");
+        assert!(
+            reason.contains(&format!("{named} (more than 3")),
+            "{reason}"
+        );
     }
     assert!(!reason.contains("f6 ("), "{reason}");
     assert!(!reason.contains("config ("), "{reason}");
@@ -172,10 +175,7 @@ fn a_folder_at_the_limit_is_counted_and_one_over_is_more_than() {
     let over = Fx::new();
     over.files("reports", 6);
     let (_, reason) = moai_item(&plan(&over, Some(5)));
-    assert!(
-        reason.contains("reports (more than 5 entries)"),
-        "{reason}"
-    );
+    assert!(reason.contains("reports (more than 5 entries)"), "{reason}");
 }
 
 /// AC-6 (REQ-6): the move command and the folder it moves to are given when `reports` is among

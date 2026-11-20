@@ -269,12 +269,7 @@ fn the_state_folder_is_matched_on_the_first_component_only() {
     assert_eq!(result["files"], json!(4), "{result}");
     assert_eq!(
         manifest_paths(&project),
-        vec![
-            ".moai-notes/a.txt",
-            "a.txt",
-            "docs/.moai/x",
-            "src/main.rs"
-        ]
+        vec![".moai-notes/a.txt", "a.txt", "docs/.moai/x", "src/main.rs"]
     );
 }
 
@@ -329,6 +324,40 @@ fn untracked_reports_in_a_state_folder_leave_a_query_fresh() {
         write(&project, &format!(".moai/reports/new-{n:05}.md"), "");
     }
     write(&project, ".moai/reports/tracked.md", "two");
+    let after = query(&project);
+    assert_eq!(after["state"], json!("fresh"), "{after}");
+}
+
+/// A report path of about 810 bytes: 5 500 of them are over git's 4 MiB output cap while far
+/// under the 16 384 file cap, so only git being told to leave the folder out can avoid it.
+fn long_report_path(n: usize) -> String {
+    let part = "d".repeat(200);
+    format!(
+        ".moai/reports/{part}1/{part}2/{part}3/{}-{n:05}",
+        "f".repeat(190)
+    )
+}
+
+/// AC-1 (REQ-1): the tracked list of a folder of long report paths never reaches git's output
+/// cap, because git is told to leave the state folders out.
+#[test]
+fn a_tracked_folder_of_long_report_paths_never_reaches_gits_output_cap() {
+    let (_tmp, project) = setup();
+    let mut paths = vec!["a.txt".to_string()];
+    paths.extend((0..5_500).map(long_report_path));
+    set_index(&project, &paths);
+    let result = built(&project, json!({"protocol_version": 1}));
+    assert_eq!(result["files"], json!(1), "{result}");
+}
+
+/// AC-4 (REQ-3): the untracked list of the same folder never reaches git's output cap either.
+#[test]
+fn an_untracked_folder_of_long_report_paths_never_reaches_gits_output_cap() {
+    let (_tmp, project) = setup();
+    built(&project, json!({"protocol_version": 1}));
+    for n in 0..5_500 {
+        write(&project, &long_report_path(n), "");
+    }
     let after = query(&project);
     assert_eq!(after["state"], json!("fresh"), "{after}");
 }
