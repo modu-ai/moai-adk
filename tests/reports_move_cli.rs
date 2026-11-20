@@ -673,3 +673,137 @@ fn a_linked_worktrees_home_inside_the_primary_checkout_blocks_the_move() {
     assert!(!home.exists());
     assert!(wt.join(".moai-cli/reports/a.md").exists());
 }
+
+/// `moai ARGS` in `h` with its HOME replaced by `home` and the working folder `cwd`; the parsed
+/// envelope (success or error) and the exit status.
+fn run_op_with(
+    h: &TempHome,
+    args: &[&str],
+    stdin: &[u8],
+    home: &std::ffi::OsStr,
+    cwd: &Path,
+) -> (bool, serde_json::Value) {
+    use std::process::Stdio;
+    let mut child = h
+        .command(args)
+        .env("HOME", home)
+        .env("USERPROFILE", home)
+        .current_dir(cwd)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    common::feed_stdin(&mut child, stdin);
+    let out = child.wait_with_output().unwrap();
+    let v: serde_json::Value = serde_json::from_slice(&out.stdout)
+        .unwrap_or_else(|e| panic!("{e}: {}", String::from_utf8_lossy(&out.stderr)));
+    (out.status.success(), v)
+}
+
+/// Audit follow-up: the same blocked apply reported `invalid_input` for a link but `internal`
+/// for a nested repository and for a HOME problem. Every cause is one kind, the message keeps
+/// the reason, and nothing moves. A relative HOME is tried with the working folder of the CLI
+/// set to a temporary folder, so a broken guard cannot write the reports into this repository.
+#[cfg(unix)]
+#[test]
+fn every_blocked_apply_reports_invalid_input_through_the_cli() {
+    for cause in ["link", "repository", "home-in-project", "relative-home"] {
+        let h = TempHome::new();
+        let tmp = tempfile::tempdir().unwrap();
+        let root = repo(tmp.path());
+        let project = root.to_str().unwrap();
+        let cwd = tmp.path().join("cwd");
+        fs::create_dir_all(&cwd).unwrap();
+        write(&root, ".moai-cli/reports/a.md", "a");
+        let mut home = h.path().as_os_str().to_os_string();
+        match cause {
+            "link" => {
+                let (other, _tracked) = other_repo_with_tracked_report(tmp.path());
+                fs::remove_dir_all(root.join(".moai-cli")).unwrap();
+                std::os::unix::fs::symlink(other.join(".moai-cli"), root.join(".moai-cli"))
+                    .unwrap();
+            }
+            "repository" => write(&root, ".moai-cli/reports/sub/.git/HEAD", "ref: x\n"),
+            "home-in-project" => home = root.join("in-repo-home").into_os_string(),
+            _ => home = std::ffi::OsString::from("relative-home"),
+        }
+        let before = h.snapshot();
+        let (ok, planned) = run_op_with(&h, &["reports-move-plan", project], b"", &home, &cwd);
+        assert!(ok, "{cause}: {planned}");
+        let p = planned["result"].clone();
+        assert_eq!(p["state"], "blocked", "{cause}: {p}");
+        let (ok, refused) = run_op_with(
+            &h,
+            &[
+                "reports-move-apply",
+                project,
+                "--plan-digest",
+                p["plan_digest"].as_str().unwrap(),
+                "--permission-reference",
+                PERMISSION,
+            ],
+            p.to_string().as_bytes(),
+            &home,
+            &cwd,
+        );
+        assert!(!ok, "{cause}: {refused}");
+        assert_eq!(
+            refused["error"]["kind"], "invalid_input",
+            "{cause}: {refused}"
+        );
+        assert!(
+            refused["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("blocked"),
+            "{cause}: {refused}"
+        );
+        assert!(root.join(".moai-cli").exists(), "{cause}");
+        assert!(!root.join("in-repo-home").exists(), "{cause}");
+        assert!(
+            !cwd.join("relative-home").exists(),
+            "{cause}: a relative HOME was created in the working folder"
+        );
+        assert_eq!(
+            h.snapshot(),
+            before,
+            "{cause}: the real HOME stays untouched"
+        );
+    }
+}
+
+/// Audit follow-up: on a case-insensitive file system (the default on macOS) a folder named
+/// `.GIT` is the same folder as `.git`, so a repository below the report folder is found under
+/// any letter case.
+#[test]
+fn a_git_folder_in_any_letter_case_below_the_report_folder_blocks_the_move() {
+    for name in [".GIT", ".Git"] {
+        let h = TempHome::new();
+        let tmp = tempfile::tempdir().unwrap();
+        let root = repo(tmp.path());
+        write(&root, ".moai-cli/reports/a.md", "a");
+        write(
+            &root,
+            &format!(".moai-cli/reports/sub/{name}/HEAD"),
+            "ref: x\n",
+        );
+        let before = h.snapshot();
+        let p = plan(&root, h.path()).unwrap();
+        assert_eq!(p.state, "blocked", "{name}: {}", p.reason);
+        assert!(p.moves.is_empty(), "{name}");
+        assert!(
+            p.reason.contains("repository of its own"),
+            "{name}: {}",
+            p.reason
+        );
+        let err = apply_plan(&root, h.path(), &p).unwrap_err();
+        assert!(err.contains("blocked"), "{name}: {err}");
+        assert!(
+            root.join(".moai-cli/reports/sub").join(name).exists(),
+            "{name}"
+        );
+        assert!(root.join(".moai-cli/reports/a.md").exists(), "{name}");
+        assert_eq!(h.snapshot(), before, "{name}: the HOME stays untouched");
+    }
+}
