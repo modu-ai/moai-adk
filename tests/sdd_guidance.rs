@@ -274,7 +274,13 @@ fn new_blocking_gates_start_in_observe() {
     let at = manifest
         .find("\"references/internal/sdd.md\"")
         .expect("the manifest lists the guidance file");
-    let entry = &manifest[at..at + 1200];
+    // The entry runs to the next top-level key, not to a fixed window: an entry before this
+    // one that grows long must not push the reason out of the searched span.
+    let entry_end = manifest[at + 1..]
+        .find("\n    \"")
+        .map(|at| at + 1)
+        .unwrap_or(manifest.len());
+    let entry = &manifest[at..at + entry_end];
     assert!(
         entry.contains("gates-start-in-observe"),
         "the manifest entry reason does not name the rule change"
