@@ -38,7 +38,7 @@ created: 2026-11-20
   verify: `python3 -m unittest tests.smoke_harness_test.PlatformTest`
 - AC-2 (REQ-3): every other test of the harness still passes unchanged.
   verify: `python3 -m unittest tests.smoke_harness_test tests.ci_smoke_step_test`
-- AC-3 (REQ-4, REQ-5, REQ-6): with a stand-in C compiler and archiver for the Windows target, `cargo clippy --target x86_64-pc-windows-msvc --all-targets -- -D warnings` exits 0 (a type check: nothing is linked or run).
+- AC-3 (REQ-4, REQ-5, REQ-6): with a stand-in C compiler and archiver for the Windows target, `cargo clippy --target x86_64-pc-windows-msvc --all-targets -- -D warnings` exits 0 (a type check: nothing is linked or run) on this branch merged with the branch that carries the one `cfg` line in `src/update.rs` (see Scope); on this branch alone it names that one error and no other.
   verify: `cargo clippy --offline --locked --target x86_64-pc-windows-msvc --all-targets -- -D warnings`
 - AC-4 (REQ-4): the Unix build keeps passing the same check.
   verify: `cargo clippy --offline --locked --all-targets -- -D warnings`
@@ -50,7 +50,7 @@ created: 2026-11-20
 - write: `.moai/specs/SPEC-20261120-windows-legs-green/**`, `tools/smoke/smoke.py`, `tests/smoke_harness_test.py`, and the source files the Windows clippy run names (the folder builders that are made `mut` only for unix, the unix-only test variables, the user-asset lock).
 - read-only: every other file, the real HOME.
 - tier 1: an independent audit of the exact head.
-- not here: `src/update.rs` (a test module imports `super::*` that no test uses off unix) is held by another card; the line goes to that card or to a later short take.
+- not here: `src/update.rs` (a test module imports `super::*` that no test uses off unix) is held by another change, which carries the line (`#[cfg(all(test, unix))]` on `mod version_folder_tests`); the two heads land in one merge chain, and AC-3 is read on that merge.
 
 ## Plan
 

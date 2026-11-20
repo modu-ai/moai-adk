@@ -632,9 +632,9 @@ class PlatformTest(unittest.TestCase):
     """SPEC-20261120-windows-legs-green: `pwd` and `pty` exist only on POSIX, and the CI smoke step
     runs on every leg. Without them the harness still loads and says why it does not run."""
 
-    def load_without_posix_modules(self):
+    def load_without_posix_modules(self, missing=("pwd", "pty")):
         # A `None` entry in `sys.modules` makes `import pwd` raise ImportError, as on Windows.
-        with mock.patch.dict(sys.modules, {"pwd": None, "pty": None}):
+        with mock.patch.dict(sys.modules, {name: None for name in missing}):
             return load_tool()
 
     def test_the_harness_loads_where_pwd_and_pty_do_not_exist(self):
@@ -651,6 +651,20 @@ class PlatformTest(unittest.TestCase):
         self.assertEqual(len(lines), 1, out.getvalue())
         self.assertTrue(lines[0].startswith("smoke: install skip"), lines[0])
         self.assertIn("reason=", lines[0])
+
+    def test_one_missing_module_is_enough_to_skip(self):
+        # REQ-2 says "without `pwd` or `pty`": either one alone must give the skip line, and the
+        # loaded module must not keep the other one half-set.
+        for missing in (("pwd",), ("pty",)):
+            with self.subTest(missing=missing):
+                tool = self.load_without_posix_modules(missing)
+                out = io.StringIO()
+                with contextlib.redirect_stdout(out):
+                    code = tool.main(["install"])
+                self.assertEqual(code, 0)
+                self.assertTrue(out.getvalue().startswith("smoke: install skip"), out.getvalue())
+                self.assertIsNone(tool.pwd)
+                self.assertIsNone(tool.pty)
 
     def test_where_they_exist_the_start_line_comes_first_as_before(self):
         # REQ-3: the skip check must not change a run on a platform that has both modules.
