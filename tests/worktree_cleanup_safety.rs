@@ -223,12 +223,7 @@ fn removed(v: &Value) -> Vec<String> {
 }
 
 fn commit_exists(dir: &Path, sha: &str) -> bool {
-    Command::new("git")
-        .args(["-C", dir.to_str().unwrap(), "cat-file", "-e"])
-        .arg(format!("{sha}^{{commit}}"))
-        .status()
-        .unwrap()
-        .success()
+    common::git::git_raw(dir, &["cat-file", "-e", &format!("{sha}^{{commit}}")]).success
 }
 
 /// A finished card makes a worktree a candidate even when its branch is not merged, because the
