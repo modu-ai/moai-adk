@@ -18,6 +18,7 @@ Why this change is needed and who it serves, in a few sentences.
 
 ## Requirements
 
+<!-- If this SPEC adds a check that blocks, it starts in observe: record the would-block count and the false positives in the Result, and leave the switch to enforce to a recorded decision. -->
 - REQ-1: When <trigger>, the <subject> shall <behavior>.
 - REQ-2 (REQ-1): IF <the step REQ-1 needs fails>, THEN the <subject> shall <safe behavior>.
 

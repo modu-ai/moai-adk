@@ -251,3 +251,32 @@ fn every_place_states_one_order() {
         );
     }
 }
+/// Verify wave 2: a new check that blocks starts in observe — the rule sentence in the SDD
+/// guidance, the one-line reminder in the full SPEC template, and the manifest entry reason
+/// naming this rule (the digest itself stays with the source-manifest check).
+#[test]
+fn new_blocking_gates_start_in_observe() {
+    let sdd = sdd();
+    for phrase in [
+        "starts in observe",
+        "would have blocked",
+        "false positives",
+        "the switch to enforce is a recorded decision",
+    ] {
+        assert!(sdd.contains(phrase), "sdd.md lacks {phrase:?}");
+    }
+    let template = read("templates/spec/full.md");
+    assert!(
+        template.contains("starts in observe"),
+        "templates/spec/full.md lacks the observe reminder"
+    );
+    let manifest = read("skills/moai/references/source-manifest.json");
+    let at = manifest
+        .find("\"references/internal/sdd.md\"")
+        .expect("the manifest lists the guidance file");
+    let entry = &manifest[at..at + 1200];
+    assert!(
+        entry.contains("gates-start-in-observe"),
+        "the manifest entry reason does not name the rule change"
+    );
+}
