@@ -18,7 +18,7 @@ Lanes were stopped again and again by files they had not known they needed: the 
 - REQ-2: The output of the moai-plan agent shall list under `Shared spots` every file that several changes add one line to (a module list, a help table, an operation map, a golden file, a manifest) and that the plan also needs, with the line it needs.
 - REQ-3: The output of the moai-plan agent shall list under `Tests that read changed text` the tests that read a sentence of a file in the write set, found by searching the tests for the path.
 - REQ-4: When the project has a card ledger, the moai-plan agent shall name under `Current holders` the card that holds each file of the write set and of the shared spots.
-- REQ-5: IF the project has no card ledger, THEN the moai-plan agent shall write `no ledger` under `Current holders`.
+- REQ-5 (REQ-4): IF the project has no card ledger, THEN the moai-plan agent shall write `no ledger` under `Current holders`.
 - REQ-6: The check-completeness reference shall say that a port or rewrite keeps the old tool's verdicts by running both over the same real inputs and reporting every input whose verdict differs.
 - REQ-7: The chains index shall carry a row for a test that fails on one run and passes on a rerun of the same head and a row for a repair after a FAIL verdict.
 - REQ-8: The chains index shall say that the re-audit after a FAIL goes to the first auditor, who judges the repair again and every changed criterion.
