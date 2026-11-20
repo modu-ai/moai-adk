@@ -2,10 +2,12 @@
 //! generated hook script goes into the repo's own `.git/hooks/reference-transaction` and real
 //! git commands run against it; the tool-guard rule is judged on command words.
 
+mod common;
+
+use common::git::{command, git_raw, GitOut};
 use moai_cli::mflow_guard::{guard_rule, hook_script, LOG_FILE, OVERRIDE_ENV};
 use std::fs;
 use std::path::PathBuf;
-use std::process::Command;
 
 struct Repo(PathBuf);
 
@@ -18,45 +20,47 @@ impl Repo {
         let dir = std::env::temp_dir().join(format!("mflow-guard-{}-{stamp}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         let repo = Repo(dir);
-        repo.git(&["init", "-b", "v2026.11.0"]);
-        repo.git(&["config", "user.email", "t@e.x"]);
-        repo.git(&["config", "user.name", "t"]);
+        repo.git_ok(&["init", "-b", "v2026.11.0"]);
+        repo.git_ok(&["config", "user.email", "t@example.invalid"]);
+        repo.git_ok(&["config", "user.name", "t"]);
         repo
     }
 
-    fn git(&self, args: &[&str]) -> std::process::Output {
-        Command::new("git")
-            .args(args)
-            .current_dir(&self.0)
-            .output()
-            .unwrap()
+    fn git(&self, args: &[&str]) -> GitOut {
+        git_raw(&self.0, args)
     }
 
-    fn git_env(&self, env: &str, value: &str, args: &[&str]) -> std::process::Output {
-        Command::new("git")
+    fn git_ok(&self, args: &[&str]) {
+        let out = self.git(args);
+        assert!(out.success, "git {args:?} failed: {}", out.stderr);
+    }
+
+    fn git_env(&self, env: &str, value: &str, args: &[&str]) -> GitOut {
+        let out = command()
             .args(args)
             .env(env, value)
             .current_dir(&self.0)
             .output()
-            .unwrap()
+            .expect("spawn git");
+        GitOut {
+            success: out.status.success(),
+            stdout: String::from_utf8_lossy(&out.stdout).to_string(),
+            stderr: String::from_utf8_lossy(&out.stderr).to_string(),
+        }
     }
 
     fn commit(&self, name: &str) -> String {
         fs::write(self.0.join(name), format!("{name}\n")).unwrap();
-        self.git(&["add", name]);
+        self.git_ok(&["add", name]);
         let out = self.git(&["commit", "-m", name]);
-        assert!(
-            out.status.success(),
-            "commit {name}: {}",
-            String::from_utf8_lossy(&out.stderr)
-        );
+        assert!(out.success, "commit {name}: {}", out.stderr);
         self.rev("HEAD")
     }
 
     fn rev(&self, rev: &str) -> String {
         let out = self.git(&["rev-parse", rev]);
-        assert!(out.status.success(), "rev-parse {rev}");
-        String::from_utf8_lossy(&out.stdout).trim().to_string()
+        assert!(out.success, "rev-parse {rev}");
+        out.stdout.trim().to_string()
     }
 
     fn install_hook(&self, branch: &str) {
@@ -79,15 +83,16 @@ fn a_backward_update_ref_is_refused_with_the_forward_reason() {
     repo.commit("b");
     repo.install_hook("v2026.11.0");
     let out = repo.git(&["update-ref", "refs/heads/v2026.11.0", &old]);
-    assert!(!out.status.success(), "the backward move ran");
-    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(!out.success, "the backward move ran: {}", out.stderr);
     assert!(
-        err.contains("forward"),
-        "the reason names the forward way: {err}"
+        out.stderr.contains("forward"),
+        "the reason names the forward way: {}",
+        out.stderr
     );
     assert!(
-        err.contains("revert commit"),
-        "the reason names the revert way: {err}"
+        out.stderr.contains("revert commit"),
+        "the reason names the revert way: {}",
+        out.stderr
     );
 }
 
@@ -97,20 +102,16 @@ fn deletion_is_refused_and_creation_is_allowed() {
     repo.commit("a");
     let tip = repo.commit("b");
     repo.install_hook("v2026.11.0");
-    repo.git(&["checkout", "-b", "side"]);
+    repo.git_ok(&["checkout", "-b", "side"]);
     let out = repo.git(&["update-ref", "-d", "refs/heads/v2026.11.0"]);
-    assert!(!out.status.success(), "the deletion ran: {}", String::from_utf8_lossy(&out.stderr));
-    let err = String::from_utf8_lossy(&out.stderr);
+    assert!(!out.success, "the deletion ran: {}", out.stderr);
     assert!(
-        err.contains("may not be deleted"),
-        "the hook names the deletion, not just a backward move: {err}"
+        out.stderr.contains("may not be deleted"),
+        "the hook names the deletion, not just a backward move: {}",
+        out.stderr
     );
     let out = repo.git(&["update-ref", "refs/heads/seedling", &tip]);
-    assert!(
-        out.status.success(),
-        "another branch is created: {}",
-        String::from_utf8_lossy(&out.stderr)
-    );
+    assert!(out.success, "another branch is created: {}", out.stderr);
 }
 
 #[test]
@@ -119,22 +120,14 @@ fn a_fast_forward_and_a_merge_commit_pass() {
     repo.commit("a");
     repo.commit("b");
     repo.install_hook("v2026.11.0");
-    repo.git(&["checkout", "-b", "side"]);
+    repo.git_ok(&["checkout", "-b", "side"]);
     let forward = repo.commit("c");
-    repo.git(&["checkout", "v2026.11.0"]);
+    repo.git_ok(&["checkout", "v2026.11.0"]);
     let out = repo.git(&["update-ref", "refs/heads/v2026.11.0", &forward]);
-    assert!(
-        out.status.success(),
-        "the fast-forward ran: {}",
-        String::from_utf8_lossy(&out.stderr)
-    );
-    repo.git(&["checkout", "v2026.11.0"]);
+    assert!(out.success, "the fast-forward ran: {}", out.stderr);
+    repo.git_ok(&["checkout", "v2026.11.0"]);
     let out = repo.git(&["merge", "--no-ff", "side", "-m", "merge-side"]);
-    assert!(
-        out.status.success(),
-        "the merge commit ran: {}",
-        String::from_utf8_lossy(&out.stderr)
-    );
+    assert!(out.success, "the merge commit ran: {}", out.stderr);
 }
 
 #[test]
@@ -143,28 +136,28 @@ fn another_branch_moves_freely() {
     let old = repo.commit("a");
     repo.commit("b");
     repo.install_hook("v2026.11.0");
-    repo.git(&["update-ref", "refs/heads/scratch", "HEAD"]);
+    repo.git_ok(&["update-ref", "refs/heads/scratch", "HEAD"]);
     let out = repo.git(&["update-ref", "refs/heads/scratch", &old]);
     assert!(
-        out.status.success(),
+        out.success,
         "another branch moved backwards: {}",
-        String::from_utf8_lossy(&out.stderr)
+        out.stderr
     );
 }
 
 #[test]
-fn the_hook_judges_only_the_prepared_phase() {
+fn the_hook_leaves_the_committed_and_aborted_phases_alone() {
     let repo = Repo::new();
     repo.commit("a");
     repo.install_hook("v2026.11.0");
     for phase in ["committed", "aborted"] {
-        let out = Command::new("sh")
+        let out = std::process::Command::new("sh")
             .arg(".git/hooks/reference-transaction")
             .arg(phase)
             .current_dir(&repo.0)
             .stdin(std::process::Stdio::piped())
-            .output();
-        let out = out.unwrap();
+            .output()
+            .unwrap();
         assert!(out.status.success(), "the {phase} phase is not judged");
     }
 }
@@ -180,11 +173,7 @@ fn the_override_lets_it_through_and_records_one_line() {
         "decision-note-1",
         &["update-ref", "refs/heads/v2026.11.0", &old],
     );
-    assert!(
-        out.status.success(),
-        "the override let it through: {}",
-        String::from_utf8_lossy(&out.stderr)
-    );
+    assert!(out.success, "the override let it through: {}", out.stderr);
     let log = fs::read_to_string(repo.0.join(LOG_FILE)).unwrap();
     let lines: Vec<&str> = log.lines().collect();
     assert_eq!(lines.len(), 1, "one record line: {log:?}");
@@ -206,7 +195,7 @@ fn without_the_override_the_refusal_stands() {
         "",
         &["update-ref", "refs/heads/v2026.11.0", &old],
     );
-    assert!(!out.status.success(), "an empty override is no exception");
+    assert!(!out.success, "an empty override is no exception");
     assert!(
         !repo.0.join(LOG_FILE).exists(),
         "nothing is logged for a refusal"
