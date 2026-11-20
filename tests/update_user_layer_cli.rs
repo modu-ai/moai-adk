@@ -555,7 +555,10 @@ fn without_go_leftovers_the_preview_has_no_cleanup_and_a_token_is_refused() {
     let (_t, home, exe, _) = setup();
     let before = state(&home);
     let p = result(&run(&exe, &home, &["update"]));
-    assert_eq!(keys(&p), PREVIEW_KEYS, "{p}");
+    // The survey of every layer rides last on every preview (read-only, outside the digest).
+    let mut plain: Vec<&str> = PREVIEW_KEYS.to_vec();
+    plain.push("survey");
+    assert_eq!(keys(&p), plain, "{p}");
     let e = refused(&run(
         &exe,
         &home,
@@ -583,6 +586,7 @@ fn go_leftovers_are_previewed_outside_the_digest_and_confirm_moves_none() {
     // beside the cleanup, outside the digest, and (this narrow PATH hides `lsof`) with nothing
     // offered.
     with.push("home");
+    with.push("survey");
     assert_eq!(keys(&p), with, "{p}");
     let token = p["cleanup"]["confirm_token"].as_str().unwrap();
     assert!(token.starts_with("cleanup:"), "{p}");
