@@ -62,6 +62,8 @@ fn the_tool_sums_the_modules_and_prints_ok() {
     module(dir.path(), "a_test", PASS);
     module(dir.path(), "b_test", SKIP);
     module(dir.path(), "notes", "raise SystemExit('never imported')\n");
+    // A module with no case is not a failure (`NO TESTS RAN` exits 5 on new Pythons).
+    module(dir.path(), "empty_test", "import unittest\n");
     let out = run(dir.path(), home.path(), &[], &[]);
     let all = text(&out);
     assert_eq!(out.status.code(), Some(0), "{all}");
