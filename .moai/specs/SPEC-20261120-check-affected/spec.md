@@ -34,8 +34,8 @@ created: 2026-11-20
 - REQ-7: When the selection is made, the runner shall also plan `git diff --check`, `cargo fmt --all -- --check`, `rustfmt --edition 2021 --check` of each changed `src/ops/*.rs`, `bash -n` of each changed shell file and `cargo clippy --all-targets -- -D warnings` · failure: none — these steps are fixed by the changed paths.
 - REQ-8: When the steps run, the runner shall run each cargo step through one `heavy-slot-acquire` hold and never stop at the first failure.
 - REQ-9 (REQ-8): IF a step's program cannot start, THEN the runner shall record that step with exit status 127 and the result FAIL.
-- REQ-10 (REQ-8): IF the checkout is not at the range's head, a tracked file is modified, the base cannot be read or no heavy slot is obtained, THEN the runner shall refuse and run no step.
-- REQ-11: When the run ends, the runner shall print one summary line of `key=value` words with the counts and the exit status of every step and `result=PASS` only when every exit status is 0 · failure: none — a step that did not run is counted and makes the result FAIL.
+- REQ-10 (REQ-8): IF the checkout is not at the range's head, a tracked file is modified or the base cannot be read, THEN the runner shall refuse and run no step.
+- REQ-11: When the run ends, the runner shall print one summary line of `key=value` words with the counts and the exit status of every step and `result=PASS` only when every exit status is 0 · failure: none — a step the heavy slot did not start keeps the slot's exit status (125 refused, 75 machine busy) and makes the result FAIL.
 - REQ-12: When `--list` is given, the command shall print the selection and the planned steps and run and write nothing · failure: none — the list is read from git and the files only.
 
 ## Acceptance
@@ -44,7 +44,7 @@ created: 2026-11-20
 - AC-2 (REQ-1, REQ-2): 영역은 `src/<x>.rs` 면 x, `src/<dir>/<y>.rs` 면 dir, `src/ops/<y>.rs` 면 y 예요; 바뀐 시험 파일은 자기 자신을, `tests/fixtures/<dir>/` 는 그 이름의 시험을, 공용 도우미는 그것을 쓰는 모든 대상을 골라요 · verify: `cargo test --locked --offline --test check_affected_cli areas_changed_tests_fixtures_and_the_helper_select_their_targets`
 - AC-3 (REQ-4, REQ-6, REQ-7): 어떤 변경이든 `--lib` 와 `--bins` 가 목록에 있고, 이 호스트의 `cfg(target_os)` 시험 대상이 들어가고, 바뀐 `src/ops/*.rs` 마다 `rustfmt --edition 2021 --check` 가 있어요 · verify: `cargo test --locked --offline --test check_affected_cli the_fixed_steps_and_the_host_targets_are_always_listed`
 - AC-4 (REQ-8, REQ-9, REQ-11): 가짜 도구(PATH 의 짧은 스크립트)로 돌리면 한 단계가 실패해도 나머지가 모두 돌고, 단계마다 종료 코드가 기록되고, 요약 한 줄이 정해진 키 순서로 나오고 `result=FAIL`; 모두 0 이면 `result=PASS`; 시작할 수 없는 프로그램은 127 이에요 · verify: `cargo test --locked --offline --test check_affected_cli a_failed_step_does_not_stop_the_rest_and_the_summary_says_fail`
-- AC-5 (REQ-10): 체크아웃이 head 가 아니거나 추적 파일이 고쳐졌거나 base 를 읽을 수 없으면 아무 단계도 돌지 않아요(가짜 도구가 호출 흔적을 남기지 않아요) · verify: `cargo test --locked --offline --test check_affected_cli a_checkout_that_is_not_the_head_runs_nothing`
+- AC-5 (REQ-10, REQ-11): 체크아웃이 head 가 아니거나 추적 파일이 고쳐졌거나 base 를 읽을 수 없으면 아무 단계도 돌지 않아요(가짜 도구가 호출 흔적을 남기지 않아요); 슬롯이 단계를 시작하지 않으면(종료 코드 125) 그 코드가 요약에 남고 결과는 FAIL 이에요 · verify: `cargo test --locked --offline --test check_affected_cli a_checkout_that_is_not_the_head_runs_nothing`
 - AC-6 (REQ-12): `--list` 는 저장소 상태(ref, 작업 트리, 파일)를 바꾸지 않고 선택과 단계를 보여 줘요 · verify: `cargo test --locked --offline --test check_affected_cli list_reads_only_and_shows_the_selection`
 - AC-7 (REQ-3): `tools/repo_scans.json` 이 없는 프로젝트에서는 `scans=none` 이고 저장소 검사 대상을 고르지 않아요 · verify: `cargo test --locked --offline --test check_affected_cli a_project_without_a_scan_list_says_scans_none`
 
