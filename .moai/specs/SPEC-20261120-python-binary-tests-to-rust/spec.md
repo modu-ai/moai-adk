@@ -82,4 +82,34 @@ created: 2026-11-20
 
 ## Result
 
-(조각 1 을 마치면 채워요.)
+### 조각 1 (update) — head c03e375005996701b2c4dd53db3315c2b586b2bb
+
+- 만든 것: `tests/common/pty.rs`(`libc::openpty` 한 쌍, 질문 `[y/N] ` 뒤에만 답 입력, 질문에 답이 없으면 end of input, 60초 한도에 죽이고 화면을 담아 실패), `tests/pty_helper.rs`(도구 시험 8개), `tests/update_command_cli.rs` 의 터미널 시험 6개를 `script` 와 macOS cfg 없이 도구로 옮김, 파이썬 사례에서 Rust 에 없던 8개 시험 추가, `tests/update_tux_tty_test.py` 삭제.
+- 대조표(파이썬 10개 사례 → Rust):
+  - 파이프 봉투와 `--json` 같은 바이트 → `a_pipe_keeps_the_envelope_and_json_is_the_same_bytes`
+  - 터미널 화면(MoAI update, Checking, 봉투 없음, N 은 쓰지 않음) → `in_a_terminal_update_asks_and_applies_only_on_yes` 에 단정 추가
+  - 터미널의 `--json` → `json_on_a_terminal_prints_the_envelope`
+  - y 로 적용, 끝 화면, 두 번째 실행 → `in_a_terminal_an_applied_update_asks_the_model_stage_and_saves_after_a_yes` 에 단정 추가
+  - 모델 단계의 end of input → `end_of_input_at_the_model_stage_keeps_the_applied_update`
+  - 질문의 end of input → `end_of_input_at_the_question_writes_nothing`
+  - 미리보기 뒤 패키지 변경 → `a_plan_that_changes_before_the_write_is_refused`
+  - stdin 이 터미널이 아님 → `stdin_that_is_not_a_terminal_is_never_asked`
+  - 터미널의 오류는 프레임 → `an_error_on_a_terminal_is_the_frame_not_json`
+  - 한국어 설정도 영어 화면 → `a_korean_setting_keeps_the_english_screens`
+- 소스에서 끌어온 값: 저장된 모델·effort 는 `model_effort_settings::default_choice("claude", "leader")`, 도구 질문 문장은 `model_effort_questions::tool_question(&[]).prompt`. 화면 글자는 비공개 함수의 값이라 글자로 단정해요(D3).
+- 이 head 에서 돌린 것(`python3 -I target/run-ready.py` → `target/ready.log`, heavy-slot): `cargo fmt --check` 0, `cargo clippy --all-targets -D warnings` 0, `update_*` 대상 전부와 `pty_helper` 213 passed(그중 `update_command_cli` 27, `pty_helper` 8), `--lib` 전체 1604 passed, `--bins` 56 passed, macOS cfg 대상 6개 112 passed, 파이썬 `tests/update_*_test.py` 는 이제 없음, `tools/repo_scans.json` 39개 검사 모두 exit 0, 마지막 줄 `DONE failed steps: []`.
+- 변형 5개(상한 5, 모두 잡힘, 변형 뒤 트리 변경 0): 확인 사이 계획이 바뀌어도 적용(`without_a_matching_confirmation_nothing_is_written`), stdin 이 터미널이 아니어도 질문(`stdin_that_is_not_a_terminal_is_never_asked`), `--json` 무시(`json_on_a_terminal_prints_the_envelope`), 빈 답·end of input 을 yes 로(`end_of_input_at_the_question_writes_nothing`), 낡은 계획 거절 문장 교체(`a_plan_that_changes_before_the_write_is_refused`). 첫째 변형은 옛 시험(`without_a_matching_confirmation_nothing_is_written`)만 잡았고, 새 `a_plan_that_changes_before_the_write_is_refused` 는 다섯째 변형(거절 문장)만 잡았어요. 첫째 변형이 고친 확인 줄(`src/update.rs` 의 `fresh.plan_digest != digest`)은 터미널 yes 흐름이 거치지 않는 줄이라, 터미널 흐름의 낡은 계획 거절을 코드로 깨뜨리는 변형은 이 조각에 없어요(한계로 남겨요).
+- 리눅스: 이 Mac 에서 돌릴 수 없어요(D4). 같은 `openpty` 호출이 `tests/help_layout.rs` 에서 이미 리눅스 CI 를 통과하고 있다는 점이 근거이고, 새 시험의 리눅스 결과는 CI 가 처음 보여 줘요. 그 전에는 "리눅스 통과"라고 쓰지 않아요.
+
+### 수용 기준 결과
+
+- AC-1: met — `cargo test --test pty_helper` 8 passed(질문 뒤 입력, 터미널 stdin 없음, 정리, 한도에 죽임, 깨끗한 환경 포함).
+- AC-2: met — `cargo test --test update_command_cli` 27 passed, 터미널 시험 6개에 `script` 와 `cfg(target_os = "macos")` 가 없어요.
+- AC-3: met — 대조표의 10개 사례가 모두 Rust 시험으로 있고 `git ls-files tests/update_tux_tty_test.py` 는 아무것도 내지 않아요.
+- AC-4: met — 저장된 모델과 effort 의 기대값이 `default_choice` 에서 와요.
+- AC-5: met — 변형 5개 모두 잡힘(위).
+
+### 남은 조각(카드는 열려 있어요)
+
+- 조각 2: 터미널 화면 파이썬 8개(`ui_tty_test`, `ui_korean_tty_test`, `ui_summary_tty_test`, `ui_progress_confirm_test`, `error_frame_tty_test`, `help_english_tty_test`, `install_inspect_tty_test`, `key_set_prompt_tty_test`) — 같은 도구로 옮기거나 Rust 와 겹치면 삭제.
+- 조각 3: 개발 도구 테스트가 바이너리를 곁다리로 부르는 9개 — 처분과 이유.
