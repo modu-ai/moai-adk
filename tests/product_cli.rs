@@ -3089,26 +3089,25 @@ mod skill_package {
             // #2639: read before asking, the five common axes, a file preview before approval,
             // and hand edits never overwritten on a re-run. C-51/C-52 (user decision
             // 2026-11-16): at most three per call (the Codex CLI limit), four calls.
-            "Read before you ask (Issue #2639)",
+            "Read before you ask: what `project-detect`",
             // #2706: the writing language is asked once, stored in project.yaml only, and read.
-            "ask it item by item with `moai language-setup <project>`",
+            "ask three questions with `moai language-setup <project>`",
             "so it is stored in the project profile through `project-plan`/`project-apply` and nowhere else",
             "A later run reads the stored value and does not ask again",
-            "written in the stored `instruction_files` language",
+            "written in the conversation language",
             "is confirmed with the user, not asked",
             "at most three questions per call and at most four calls, one axis per question",
             "what must never be touched, what counts as done (a check the user will run themselves), which mistakes a review should always stop, and what may run without asking against what must be asked",
-            "sorted the way SKILL.md sorts an open question",
             "each new file with its first lines and each changed file as its difference",
             "a managed part the user edited by hand is planned as `conflict` and never overwritten",
             // #2639 REVIEW.md draft from the interview answers.
             "The same plan carries a `REVIEW.md` section when the interview recorded `review_blocks` or `protected`",
             "an unanswered axis is never written as a rule",
             // #2639 project agents: from the answers, never a base name, host files only.
-            "**Offer project agents (Issue #2639).**",
+            "**Offer project agents and skills.**",
             "its `role_id` is `prj-<name>` for the project's own job",
             "a project agent never shadows a user-layer `moai-*` agent",
-            "Offer project skills the same way: each is one `project_skills` entry",
+            "Each project skill is one `project_skills` entry",
             "it writes the skill folder Claude Code reads and the one Codex CLI reads",
             "for any other host, say that none is written",
             "apply with `generation-apply` only after the user agrees",
