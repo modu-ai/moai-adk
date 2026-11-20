@@ -195,7 +195,7 @@
       }
     },
     "references/internal/interview.md": {
-      "sha256": "a7b25e19cd1ad71c268619aa5cdd1eafc3a88f64675959e6d74972640c55970b",
+      "sha256": "2a77ed0c2010aa833ded5f3a46a6c327ca6103125e49570ab105bda25c6a857f",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-interview",
@@ -453,7 +453,7 @@
       }
     },
     "workflows/project.md": {
-      "sha256": "baaa2e2e15a5a787db933bcd9bdc6ccfad2dbc0d87348c77df55044643010d3c",
+      "sha256": "997cdb87fa0234bffbcb87cf98d60b343b2b4631f17a7f630508b2fd2faeb3db",
       "origin": {
         "kind": "design-spec",
         "template_id": "workflow-project",
