@@ -324,6 +324,91 @@ fn remove_of_a_lone_pack_deletes_its_files_and_clears_the_journal() {
 }
 
 #[test]
+fn add_and_remove_of_an_agent_pack_handle_file_entries() {
+    let home = TempHome::new();
+    let out = run(&home, &["bundle", "add", "consult"]);
+    assert!(
+        out.status.success(),
+        "exit {:?}: {}",
+        out.status.code(),
+        stderr(&out)
+    );
+    let env = envelope(&out);
+    let text = env["result"]["text"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    assert_eq!(
+        text.lines().next().unwrap_or(""),
+        "bundle add consult: 4 installed, 0 refreshed, 0 removed, 0 collision-skipped, 0 divergence-preserved",
+        "the agent pack installs its four file entries: {text}"
+    );
+
+    let data = packs_data();
+    let entries = data["packs"]["consult"]["entries"].as_array().unwrap();
+    let manifest: Value = serde_json::from_str(
+        &fs::read_to_string(home.path().join(".moai/user-assets.json")).unwrap(),
+    )
+    .unwrap();
+    for e in entries {
+        let rel = e["path"].as_str().unwrap();
+        let under = rel.strip_prefix(".claude/agents/").unwrap();
+        let target = home.path().join(".claude").join("agents").join(under);
+        assert_eq!(
+            fs::read(&target).unwrap_or_else(|err| panic!("{}: {err}", target.display())),
+            repo_pack_file(rel),
+            "the agent file carries the shipped bytes"
+        );
+        let key = format!("claude-agents/{under}");
+        assert_eq!(
+            manifest["files"][&key]["bundle"].as_str(),
+            Some("consult"),
+            "{key}: the manifest records the file entry"
+        );
+    }
+
+    let out = run(&home, &["bundle", "remove", "consult"]);
+    assert!(
+        out.status.success(),
+        "exit {:?}: {}",
+        out.status.code(),
+        stderr(&out)
+    );
+    let env = envelope(&out);
+    let text = env["result"]["text"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    assert!(
+        text.starts_with("bundle remove consult: 0 installed, 0 refreshed, 4 removed,"),
+        "the agent pack removes its four file entries: {text}"
+    );
+    for e in entries {
+        let under = e["path"]
+            .as_str()
+            .unwrap()
+            .strip_prefix(".claude/agents/")
+            .unwrap();
+        assert!(
+            !home
+                .path()
+                .join(".claude")
+                .join("agents")
+                .join(under)
+                .exists(),
+            "{} is gone",
+            e["name"].as_str().unwrap()
+        );
+    }
+    let manifest: Value = serde_json::from_str(
+        &fs::read_to_string(home.path().join(".moai/user-assets.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(manifest["bundles"], Value::Array(Vec::new()));
+    assert_eq!(manifest["files"].as_object().unwrap().len(), 0);
+}
+
+#[test]
 fn a_journal_of_an_interrupted_run_is_reconciled_as_a_collision() {
     let home = TempHome::new();
     // A target whose bytes a user changed, plus a journal that intended our bytes: the

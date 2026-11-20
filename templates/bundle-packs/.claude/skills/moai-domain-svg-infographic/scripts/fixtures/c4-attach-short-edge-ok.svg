@@ -1,0 +1,17 @@
+<!-- expect: -->
+<!-- C4: the SAME 9-unit arrival separation as c4-attach-crowded, on a left edge of length 80 - under 120, so the 8-unit floor applies and 9 clears it. The contrast is what proves the 12-vs-8 branch is live. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200"
+     role="img" aria-labelledby="c4-attach-short-edge-ok-title c4-attach-short-edge-ok-desc">
+  <title id="c4-attach-short-edge-ok-title">Fan-in</title>
+  <desc id="c4-attach-short-edge-ok-desc">Several connectors arrive on one box edge.</desc>
+  <defs>
+    <marker id="c4-attach-short-edge-ok-arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="400" height="200" fill="#FAF9F5"/>
+  <path d="M 40 92 H 230" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#c4-attach-short-edge-ok-arrow)"/>
+  <path d="M 40 101 H 230" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#c4-attach-short-edge-ok-arrow)"/>
+  <rect x="240" y="60" width="120" height="80" fill="#FBE9DF" stroke="#D97757"/>
+  <text x="300" y="105" font-size="11" text-anchor="middle" fill="#141413">service</text>
+</svg>

@@ -109,6 +109,41 @@ impl Catalog {
             .filter_map(|(p, _)| p.strip_prefix(&prefix))
             .collect()
     }
+
+    /// True when the entry path is itself one embedded file (an agent), not a folder of
+    /// files; its install key and target are the whole path, with no extra segment.
+    pub fn entry_is_file(&self, entry_path: &str) -> bool {
+        embedded::PACK_FILES.iter().any(|(p, _)| *p == entry_path)
+    }
+
+    /// The bytes of one whole-path embedded file.
+    pub fn file_bytes_at(&self, entry_path: &str) -> Option<&'static [u8]> {
+        embedded::PACK_FILES
+            .iter()
+            .find(|(p, _)| *p == entry_path)
+            .map(|(_, bytes)| *bytes)
+    }
+
+    /// Every installable file of one entry as (path under the deploy root, bytes): one item
+    /// for a file entry (an agent), one per file for a folder entry (a skill).
+    pub fn entry_items(&self, entry_path: &str) -> Vec<(String, &'static [u8])> {
+        if self.entry_is_file(entry_path) {
+            let under = entry_under_root(entry_path);
+            return self
+                .file_bytes_at(entry_path)
+                .map(|bytes| vec![(under, bytes)])
+                .unwrap_or_default();
+        }
+        let prefix = format!("{entry_path}/");
+        let folder = entry_path.rsplit('/').next().unwrap_or_default();
+        embedded::PACK_FILES
+            .iter()
+            .filter_map(|(p, bytes)| {
+                p.strip_prefix(&prefix)
+                    .map(|rel| (format!("{folder}/{rel}"), *bytes))
+            })
+            .collect()
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -143,6 +178,16 @@ fn deploy_root(home: &Path, slug: &str) -> Result<PathBuf> {
         "codex-agents" => Ok(home.join(".codex").join("agents")),
         other => Err(format!("unknown deploy root {other}")),
     }
+}
+
+/// The path of an entry under its deploy root: the catalog path without the section's two
+/// segments (`.claude/agents/moai/x.md` deploys as `moai/x.md`).
+fn entry_under_root(entry_path: &str) -> String {
+    entry_path
+        .splitn(3, '/')
+        .nth(2)
+        .unwrap_or(entry_path)
+        .to_string()
 }
 
 // ---------------------------------------------------------------------------
@@ -583,35 +628,17 @@ fn add_with(home: &Path, catalog: &Catalog, name: &str) -> Result<Summary> {
     let now = now_rfc3339();
     let mut intent = Vec::new();
     for entry in &pack.entries {
-        let folder = entry
-            .path
-            .rsplit('/')
-            .next()
-            .unwrap_or(&entry.name)
-            .to_string();
-        for rel in catalog.entry_files(&entry.path) {
-            let key = format!("{}/{}/{}", entry.root, folder, rel);
-            let bytes = catalog
-                .file_bytes(&entry.path, rel)
-                .ok_or_else(|| format!("pack {name}: embedded bytes missing for {}", entry.path))?;
+        for (under_root, bytes) in catalog.entry_items(&entry.path) {
+            let key = format!("{}/{}", entry.root, under_root);
             intent.push((key, sha256_hex(bytes)));
         }
     }
     write_journal(home, name, &manifest, &intent)?;
 
     for entry in &pack.entries {
-        let folder = entry
-            .path
-            .rsplit('/')
-            .next()
-            .unwrap_or(&entry.name)
-            .to_string();
-        for rel in catalog.entry_files(&entry.path) {
-            let key = format!("{}/{}/{}", entry.root, folder, rel);
-            let bytes = catalog
-                .file_bytes(&entry.path, rel)
-                .expect("checked with the journal above");
-            let target = deploy_root(home, &entry.root)?.join(&folder).join(rel);
+        for (under_root, bytes) in catalog.entry_items(&entry.path) {
+            let key = format!("{}/{}", entry.root, under_root);
+            let target = deploy_root(home, &entry.root)?.join(&under_root);
             match std::fs::read(&target) {
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
                     write_target(&target, bytes)?;
@@ -750,20 +777,37 @@ fn remove_with(home: &Path, catalog: &Catalog, name: &str) -> Result<Summary> {
             continue;
         }
         let folder = entry.path.rsplit('/').next().unwrap_or(&entry.name);
-        let prefix = format!("{}/{}/", entry.root, folder);
+        let is_file = catalog.entry_is_file(&entry.path);
+        let (exact, prefix) = if is_file {
+            let under = entry_under_root(&entry.path);
+            (
+                Some(format!("{}/{}", entry.root, under)),
+                format!("{}/{}/", entry.root, under),
+            )
+        } else {
+            (None, format!("{}/{}/", entry.root, folder))
+        };
+        let root_prefix = format!("{}/", entry.root);
         let keys: Vec<String> = manifest["files"]
             .as_object()
             .map(|files| {
                 files
                     .keys()
-                    .filter(|key| key.starts_with(&prefix))
+                    .filter(|key| {
+                        exact.as_deref() == Some(key.as_str()) || key.starts_with(&prefix)
+                    })
                     .cloned()
                     .collect()
             })
             .unwrap_or_default();
         for key in keys {
-            let rel = key.trim_start_matches(&prefix);
-            let target = deploy_root(home, &entry.root)?.join(folder).join(rel);
+            // The path under the deploy root is everything after the root slug — for a file
+            // entry the whole rest, for a folder entry the folder with the file.
+            let under_root = key
+                .strip_prefix(&root_prefix)
+                .expect("a manifest key starts with its root slug")
+                .to_string();
+            let target = deploy_root(home, &entry.root)?.join(&under_root);
             match std::fs::remove_file(&target) {
                 Ok(()) => {}
                 Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
