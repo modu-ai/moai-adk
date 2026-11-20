@@ -1,14 +1,13 @@
 MoAI-ADK <version> — agentic development kit
 
 Usage: moai <command> [options]
-       moai cc|codex|glm|omp -l|-a    lead or agent session
+       moai cc|codex|glm -l|-a    lead or agent session
 
 Start
   cc                      Start a Claude Code session
   codex                   Start a Codex CLI session
   glm                     Start a Claude Code session on
                           z.ai GLM
-  omp                     Start an Oh My Pi (OMP) session
 Project
   project-detect          Detect the project's facts
   project-plan            Preview the project profile
@@ -389,11 +388,10 @@ Options:
           the role is entered inside it with `/moai
           --mode-leader`
   -a, --agent [<HOST>]
-          Start an agent session on HOST (cc|glm|codex|omp;
+          Start an agent session on HOST (cc|glm|codex;
           default cc); the role is entered inside it with
           `/moai --mode-agent` (codex: `$moai --mode-agent`,
-          sent as its first prompt; omp: `/skill:moai
-          --mode-agent`)
+          sent as its first prompt)
       --color <WHEN>
           Color on a terminal: auto, always (even with
           NO_COLOR or TERM=dumb) or never; put it before the

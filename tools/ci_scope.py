@@ -106,7 +106,6 @@ PLATFORM_PREFIX = (
     ("tests/fixtures/statusline", "statusline"),
     ("src/launcher_", "launcher"),
     ("tests/launcher_", "launcher"),
-    ("tests/omp_launcher", "launcher"),
     ("tests/worktree_gc", "fs links/permissions"),
     ("src/home_", "fs links/permissions"),
     ("tests/update_", "fs links/permissions"),

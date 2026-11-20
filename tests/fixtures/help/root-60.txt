@@ -1,21 +1,21 @@
 MoAI-ADK <version> — agentic development kit
 
 Usage: moai <command> [options]
-       moai cc|codex|glm|omp -l|-a    lead or agent session
+       moai cc|codex|glm -l|-a    lead or agent session
 
 Getting started
   1. moai install-inspect  Check the installed MoAI
   2. moai update           Install or update the MoAI skill
                            and agents
   3. moai cc               Start a session in this folder
-                           (or: codex, glm, omp)
+                           (or: codex, glm)
   4. /moai project         In the session: set up this
                            project ($moai in Codex)
 
 Commands
   Start
-    cc, codex, glm, omp    Start a Claude Code, Codex, GLM
-                           or OMP session
+    cc, codex, glm         Start a Claude Code, Codex or GLM
+                           session
   Project
     project-detect         Detect the project's facts
     project-plan           Preview the project profile
