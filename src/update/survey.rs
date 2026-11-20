@@ -759,6 +759,11 @@ fn nothing_to_apply(items: &[Item]) -> bool {
     items.iter().all(|i| i.group != WILL_CHANGE)
 }
 
+/// Puts the items in apply order; an id the table does not know goes last, in the order met.
+fn in_apply_order(items: &mut [Item]) {
+    items.sort_by_key(|i| position(&i.id));
+}
+
 fn position(id: &str) -> usize {
     ORDER.iter().position(|x| *x == id).unwrap_or(ORDER.len())
 }
@@ -795,7 +800,7 @@ pub fn build(layer: &UserLayerPlan, g: &Gathered) -> Value {
             }
         }
     }
-    items.sort_by_key(|i| position(&i.id));
+    in_apply_order(&mut items);
     let items_json: Vec<Value> = items
         .iter()
         .enumerate()
@@ -894,6 +899,38 @@ mod tests {
             apply: None,
             revert: Revert::None("x"),
         }
+    }
+
+    #[test]
+    fn items_are_put_in_apply_order_and_an_unknown_id_goes_last() {
+        let with = |id: &str| {
+            let mut i = item_in(KEPT);
+            i.id = id.to_string();
+            i
+        };
+        let mut items = vec![
+            with("project-hooks"),
+            with("skills"),
+            with("zzz-unknown-b"),
+            with("home-move"),
+            with("zzz-unknown-a"),
+            with("home-retire"),
+            with("project-go-settings"),
+        ];
+        in_apply_order(&mut items);
+        let ids: Vec<&str> = items.iter().map(|i| i.id.as_str()).collect();
+        assert_eq!(
+            ids,
+            [
+                "home-retire",
+                "home-move",
+                "skills",
+                "project-go-settings",
+                "project-hooks",
+                "zzz-unknown-b",
+                "zzz-unknown-a"
+            ]
+        );
     }
 
     #[test]
