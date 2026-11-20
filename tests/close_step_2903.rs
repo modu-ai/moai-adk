@@ -21,7 +21,7 @@ fn the_agent_workflow_closes_its_own_card_through_close_check() {
     // Issue's close table, `close-check` and `gh issue close`. A criterion the merge does not
     // meet is withdrawn naming the follow-up card (was: `keep_open` rows with follow-up cards).
     for phrase in [
-        "The lane closes its own card (Issue #2903",
+        "The lane closes its own card: once",
         "once the card's last pull request has merged",
         "`card criterion <card> <n> --generation <g> --met --evidence <ref>`",
         "run `card pr` again (it records the merge) and `card done <card> --generation <g>`",

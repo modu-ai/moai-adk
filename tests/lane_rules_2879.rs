@@ -25,7 +25,7 @@ fn a_lane_cleans_its_card_after_the_closing_table() {
         &agent,
         "mode-agent.md",
         &[
-            "clean up that card (Issue #2879, required)",
+            "clean up that card (required)",
             "`moai worktree-gc-plan --integration-ref origin/<base> --worktree <the card's worktree> .`",
             "then `moai worktree-gc-apply` with the same arguments, its `plan_digest`",
             "never forced",
@@ -54,7 +54,7 @@ fn the_never_delete_rule_names_the_card_cleanup_as_its_exception() {
         "mode-agent.md",
         // C-53 S5: the cleanup is self-pick item (3) since the pre-audit item left (was (4)).
         &[
-            "Never delete files, branches or worktrees — except the cleanup in `self-pick` (3): `moai worktree-gc-apply` on your own merged card's worktree, with that plan's `plan_digest` (Issue #2879), and a refused take's unused worktree and branch (`claim` step) — never touch the real HOME",
+            "Never delete files, branches or worktrees — except the cleanup in `self-pick` (3): `moai worktree-gc-apply` on your own merged card's worktree, with that plan's `plan_digest`, and a refused take's unused worktree and branch (`claim` step) — never touch the real HOME",
             "On `conflict` (held by another session, a scope overlap, not `ready`) remove the unused worktree and its branch (`git worktree remove <w>`, `git branch -D card/<n>-<slug>`, that branch only), then take the next candidate",
         ],
     );
@@ -67,7 +67,7 @@ fn verify_states_the_safe_ignored_rule_and_leaves_bulk_cleanup_to_the_leader() {
         &verify,
         "verify.md",
         &[
-            "removes its own merged card worktree with `moai worktree-gc-apply --worktree <path>` (Issue #2879",
+            "removes its own merged card worktree with `moai worktree-gc-apply --worktree <path>`: the plan removes",
             "byte-identical copies of the primary checkout's same path",
             "stays the leader's periodic step (`worktree-gc-plan --max-checked N --cursor <next_cursor>`",
         ],
@@ -85,7 +85,7 @@ fn the_leader_runs_the_same_plan_periodically_with_a_cursor() {
         &leader,
         "mode-leader.md",
         &[
-            "Disk hygiene is part of supervision (Issue #2879)",
+            "Disk hygiene is part of supervision: on a regular interval",
             "`moai worktree-gc-plan --integration-ref origin/<base> --max-checked <N> --cursor <the last plan's next_cursor> .`",
             "while free space is under the heavy-slot limit",
             "Record the merged-worktree count and free space before and after",

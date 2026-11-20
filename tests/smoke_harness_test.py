@@ -585,7 +585,9 @@ class UsageTest(unittest.TestCase):
         decoy.assert_untouched(self)
 
 
-VERIFY_FILE = REPO_ROOT / "skills" / "moai" / "workflows" / "verify.md"
+# The smoke paragraph is moai-adk-only, so it lives in the developer document, not in the shipped
+# verify.md (SPEC-20261120-skill-text-citations-verify-audit).
+VERIFY_FILE = REPO_ROOT / "docs" / "skill-text-rationale.md"
 
 
 class VerifyStepTest(unittest.TestCase):
@@ -610,15 +612,15 @@ class VerifyStepTest(unittest.TestCase):
         # Line breaks and runs of spaces do not change a sentence.
         return " ".join(VERIFY_FILE.read_text(encoding="utf-8").split())
 
-    def test_every_sentence_is_in_verify_md(self):
+    def test_every_sentence_is_in_the_rationale_document(self):
         text = self.verify_text()
         for sentence in self.SENTENCES:
-            self.assertIn(sentence, text, f"verify.md lacks {sentence!r}")
+            self.assertIn(sentence, text, f"the rationale document lacks {sentence!r}")
 
     def test_the_areas_named_are_the_areas_the_harness_accepts(self):
         text = self.verify_text()
         start = text.find(self.SENTENCES[0])
-        self.assertGreaterEqual(start, 0, "verify.md lacks the smoke paragraph")
+        self.assertGreaterEqual(start, 0, "the rationale document lacks the smoke paragraph")
         last = "never `passed`."
         end = text.find(last, start)
         self.assertGreater(end, start, "the smoke paragraph does not end where it should")

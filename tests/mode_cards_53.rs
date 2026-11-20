@@ -13,8 +13,7 @@ use common::home::TempHome;
 use std::{fs, path::Path};
 
 const TITLE: &str = "Cards are the work ledger";
-const WINS: &str = "GitHub Issues are no longer the work ledger; the project's local cards are \
-                    (user decision 2026-11-16, card C-53)";
+const WINS: &str = "GitHub Issues are no longer the work ledger; the project's local cards are";
 /// The actions a round uses. `export` is not one of them.
 const ACTIONS: [&str; 17] = [
     "list",
@@ -285,7 +284,7 @@ fn the_agent_section_maps_each_step_of_the_round_to_a_card_command() {
             "`card note <card> --kind report --ref plan-C-<n>-<UTC> < plan.md` whose first line \
              is `PLAN C-<n>`",
             "RUN starts with the test that fails first (RED)",
-            "The answer is a `--kind decision` note on the card naming your request (decision L3)",
+            "The answer is a `--kind decision` note on the card naming your request",
             "`card show` prints each note's author and session — read both before you follow it",
             // Pull request, criteria, review, close. A local card names its host project
             // (audit N2).
@@ -317,7 +316,7 @@ fn the_agent_section_maps_each_step_of_the_round_to_a_card_command() {
             // What a lane does not do.
             "`card add`, `card scope` and `card ready` are the leader's",
             // Until S3 the gate still asks for an Issue claim trailer: one sentence.
-            "Until C-53 S3 the merge gate still asks for an Issue claim trailer, so the leader \
+            "Until the gate reads card branches the merge gate still asks for an Issue claim trailer, so the leader \
              merges your card's pull request under the transition exception (MODE-LEADER)",
         ],
     );
@@ -326,7 +325,7 @@ fn the_agent_section_maps_each_step_of_the_round_to_a_card_command() {
     let guard = step("mode-agent.md", "claim-verify");
     assert!(
         guard.contains("the commit guard (`moai claim-verify --hook`) answers `allowed` on a card branch, checking nothing")
-            && guard.contains("C-53 S3"),
+            && guard.contains("Until the gate reads card branches"),
         "{guard}"
     );
     assert!(
@@ -373,7 +372,7 @@ fn the_leader_section_makes_cards_ready_assigns_audits_and_names_the_transition(
             // The transition exception ends with the gate change.
             "transition exception: C-<n>",
             "only as long as `moai gate-check` still asks for an Issue claim",
-            "C-53 S3",
+            "until the gate reads card branches",
             "`review_no_holder`",
         ],
     );
@@ -408,9 +407,8 @@ fn the_round_keeps_audits_with_the_leader_and_moves_on_from_a_card_in_review() {
     for p in [
         // (a)
         // Core rule 17: the decision names the record it replaces (11-16, #1975 6904941797).
-        "(2) Your own pull request's audit (user decision 2026-11-17, replacing #1975 \
-         6904941797): at audit-tier 0 or 1 start one fresh-context, read-only `moai-audit` \
-         subagent",
+        "(2) Your own pull request's audit: at audit-tier 0 or 1 start one fresh-context, \
+         read-only `moai-audit` subagent",
         "never your conclusions or self-assessment",
         "your own context never audits",
         // (b)
@@ -443,7 +441,7 @@ fn the_round_keeps_audits_with_the_leader_and_moves_on_from_a_card_in_review() {
     // N1 (re-audit N-r1: the line has the `owner=` and `next=` the report step asks for).
     assert!(step("mode-agent.md", "session-id").contains(
         "refuses a session without one: there (OMP) report `LANE-BLOCKED <lane> card-take no \
-         session id (OMP) · kind=host owner=user next=card C-62` once"
+         session id (OMP) · kind=host owner=user next=card C-<n>` once"
     ));
     // N2: the date gives the seven digits in a row `pr-self-audit-check` wants on `plan:`.
     assert!(step("mode-agent.md", "pr-gate").contains(
@@ -513,12 +511,11 @@ fn a_merge_needs_ci_success_and_a_pass_and_a_local_check_line_never_replaces_ci(
         // alternative ("… or a `ci` run", the auditor's M5) fails; a FAIL stops every tier.
         "at effective tier 0 (documents, wording and tests only, after the gate's path rule) the \
          `ci` success alone, when no FAIL is posted. A posted FAIL verdict stops the merge at \
-         every tier (leader decision 2026-11-17).",
-        "A `local-check:` line is optional and never replaces `ci` (user decision 2026-11-17 \"CI \
-         성공 + PASS\", which replaces user decisions 6877084436 and 6878414880)",
+         every tier.",
+        "A `local-check:` line is optional and never replaces `ci`.",
         // C-84 landed (was: "Until card C-84 changes rule G5, … still stops on a missing
         // local-check line").
-        "`moai gate-check` rule G5 reads that `ci` result on the exact head (card C-84).",
+        "`moai gate-check` rule G5 reads that `ci` result on the exact head.",
     ] {
         assert!(train.contains(p), "mode-leader merge-train must say `{p}`");
     }
@@ -530,14 +527,13 @@ fn a_merge_needs_ci_success_and_a_pass_and_a_local_check_line_never_replaces_ci(
     ));
     assert!(step("mode-agent.md", "merge-train").contains(
         "A merge needs the head's GitHub `ci` success and, at audit-tier 1 or 2, a non-author \
-         PASS that cites that run; a `local-check:` line never replaces `ci` (user decision \
-         2026-11-17)"
+         PASS that cites that run; a `local-check:` line never replaces `ci`."
     ));
     let gate = step("mode-agent.md", "pr-gate");
     // N-r2, C-84: the same rule as mode-leader — the line is optional, G5 reads the head's `ci`.
     assert!(gate.contains(
         "as a pull request comment: optional evidence; `moai gate-check` (G5) reads the head's \
-         `ci` (C-84)."
+         `ci`."
     ));
     for text in [workflow("mode-agent.md"), workflow("mode-leader.md")] {
         assert!(!text.contains("stops on a missing local-check line"));

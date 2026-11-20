@@ -15,7 +15,7 @@ use std::{
 const SHIPPED: [&str; 4] = ["skills", "agents", "templates", "install"];
 
 /// Shipped files that still carry citations, sorted. Remove an entry when its file is cleaned.
-const PENDING: [&str; 18] = [
+const PENDING: [&str; 17] = [
     "install/README.md",
     "install/install.ps1",
     "install/install.sh",
@@ -28,7 +28,6 @@ const PENDING: [&str; 18] = [
     "skills/moai/references/internal/versioning.md",
     "skills/moai/references/rule-history.md",
     "skills/moai/references/source-manifest.json",
-    "skills/moai/workflows/mode-agent.md",
     "skills/moai/workflows/project.md",
     "skills/moai/workflows/run.md",
     "skills/moai/workflows/update.md",
@@ -37,7 +36,7 @@ const PENDING: [&str; 18] = [
 ];
 
 /// The files this change cleaned; each has a section in the rationale document.
-const CLEANED: [&str; 13] = [
+const CLEANED: [&str; 14] = [
     "agents/audit.md",
     "skills/moai/references/adapters/aside.md",
     "skills/moai/references/internal/build-folder.md",
@@ -45,6 +44,7 @@ const CLEANED: [&str; 13] = [
     "skills/moai/references/internal/git-safety.md",
     "skills/moai/references/internal/review.md",
     "skills/moai/workflows/audit.md",
+    "skills/moai/workflows/mode-agent.md",
     "skills/moai/workflows/mode-leader.md",
     "skills/moai/workflows/optimize.md",
     "skills/moai/workflows/read.md",
@@ -343,4 +343,40 @@ fn rationale_cleaned_files_carry_no_citation() {
             "`{path}` still carries citations"
         );
     }
+}
+
+/// REQ-6: the two lane workflows state the local finish line once, and the verify workflow names
+/// the release pull request's CI; the rule carries no citation label.
+#[test]
+fn finish_line_rule_is_stated_once_in_each_lane_workflow() {
+    let files = shipped();
+    let text = |path: &str| {
+        files
+            .iter()
+            .find(|(p, _)| p == path)
+            .map(|(_, t)| t.as_str())
+            .unwrap_or_else(|| panic!("`{path}` is not a shipped file"))
+    };
+    for path in [
+        "skills/moai/workflows/mode-agent.md",
+        "skills/moai/workflows/mode-leader.md",
+    ] {
+        let t = text(path);
+        assert_eq!(t.matches("Local finish line:").count(), 1, "{path}");
+        for phrase in [
+            "posts `LANE-READY-INTEGRATION` with the exact 40-hex head",
+            "merges each READY head serially into the LOCAL integration branch",
+            "fast-forwards the local branch",
+            "nobody opens a pull request per card, per bundle or per integration round",
+            "`release/v{head}.{yearweek}.{build}`",
+            "only when the user calls a formal release or a production deploy",
+        ] {
+            assert!(t.contains(phrase), "{path} must say `{phrase}`");
+        }
+    }
+    assert!(
+        text("skills/moai/workflows/verify.md")
+            .contains("the release pull request from the local integration branch to the remote one runs the full CI on Linux, macOS and Windows"),
+        "verify.md names the release pull request's CI"
+    );
 }

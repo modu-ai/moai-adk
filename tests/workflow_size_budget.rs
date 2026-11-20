@@ -9,7 +9,7 @@ use std::{fs, path::Path};
 
 const FILE: &str = "mode-leader.md";
 /// Where the rule starts and the words it ends with; the tests cut the rule out between them.
-const RULE_START: &str = "Flaky rule (card C-99): ";
+const RULE_START: &str = "Flaky rule: ";
 const RULE_END: &str = "touches that test.";
 /// SPEC REQ-3: the rule is at most this many bytes.
 const RULE_BUDGET: usize = 700;
@@ -42,7 +42,7 @@ fn not_a_stop_sentence(text: &str) -> &str {
     let at = text
         .find("turned green is flaky, not a stop")
         .expect("the merge-train step still calls a same-SHA re-run pass flaky, not a stop");
-    let from = text[..at].rfind("(Issues #2665").unwrap_or(at);
+    let from = text[..at].rfind("(a failure that a re-run").unwrap_or(at);
     let to = text[at..].find(')').map_or(text.len(), |i| at + i + 1);
     &text[from..to]
 }
@@ -169,9 +169,10 @@ fn the_flaky_rule_sits_inside_the_merge_train_step() {
 fn rule_cutting_reads_the_text_between_its_markers() {
     let sample = format!("before {RULE_START}one {RULE_END} after {RULE_END}");
     assert_eq!(rule(&sample), format!("{RULE_START}one {RULE_END}"));
-    let sentence = "x (Issues #2665, #2777; a failure that a re-run on the same SHA turned green is flaky, not a stop) y";
+    let sentence =
+        "x (a failure that a re-run on the same SHA turned green is flaky, not a stop) y";
     assert_eq!(
         not_a_stop_sentence(sentence),
-        "(Issues #2665, #2777; a failure that a re-run on the same SHA turned green is flaky, not a stop)"
+        "(a failure that a re-run on the same SHA turned green is flaky, not a stop)"
     );
 }

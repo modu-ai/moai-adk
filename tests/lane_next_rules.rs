@@ -27,7 +27,7 @@ fn the_agent_loop_runs_lane_next_and_goes_on_with_reversible_defaults() {
         "only a `guarded` one waits for the answer",
         "or a background `moai wait`",
         "open it as a draft (`gh pr create --draft …`)",
-        "Issue #1975 comment 6870150891",
+        "the merge gate marks a draft ready once it has its PASS",
         "`DECISION-APPLIED <decision id>`",
         "A card of yours whose pull request has merged: `card pr`, `card done` and the cleanup",
         "While a pull request with a `moai-tip-repair:` line is open, a red tip is that pull request's author's to repair",

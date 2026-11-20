@@ -880,7 +880,9 @@ class SkillDocsNameThePythonSlotTest(unittest.TestCase):
 
     def test_mode_agent_heavy_checks_names_pre_ready_and_the_python_slot(self):
         line = paragraph(MODE_AGENT, "7. **heavy-checks**")
-        self.assertIn("`tools/self_check.sh --pre-ready`", line)
+        # The shipped text names no moai-adk script (SPEC-20261120-skill-text-citations-verify-audit):
+        # it keeps the whole-tree list and the python slot.
+        self.assertIn("the whole-tree list that a diff-based run does not carry", line)
         self.assertIn("python slot", line)
 
     def test_verify_serialised_paragraph_names_the_python_slot(self):

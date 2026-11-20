@@ -27,7 +27,7 @@ fn mode_agent_lists_every_host_guard_refusal_with_its_accepted_shape() {
         &agent,
         "mode-agent.md",
         &[
-            "Host worktree guard (Issue #2836",
+            "Host worktree guard. When",
             "not a MoAI hook, whose refusals start with `MoAI tool-preflight:`",
             // The four refusal kinds of the #2836 sample, as the host words them.
             "| `names git in a form too complex to verify`",

@@ -436,7 +436,7 @@ fn the_round_keeps_going_until_its_end_condition() {
         &[
             // #2900: the end condition is defined once, in SPEC §12 (user decision D-O1); C-53 S5
             // states it on cards (was: "no open pull request and no startable Issue").
-            "A turn ends only when (i) `moai card next` names no card for you, no pull request of yours is open and the `LANE-IDLE` line is printed (the end condition of SPEC §12 on cards, user decision D-O1: a card on `hold`, in `draft` or skipped with a reason is not startable",
+            "A turn ends only when (i) `moai card next` names no card for you, no pull request of yours is open and the `LANE-IDLE` line is printed (the end condition of SPEC §12 on cards: a card on `hold`, in `draft` or skipped with a reason is not startable",
             "(ii) the user says stop",
             "In every other case do not end the turn",
             "A card's completion report closes the card, never the round.",
@@ -548,7 +548,7 @@ fn bottleneck_rules_are_pinned_in_both_mode_workflows() {
         "wake",
         &[
             "After three no-op wakes in a row on the same state, stop polling at the short interval",
-            "arm one longer fallback wake at most 1,800 seconds away (decision D6",
+            "arm one longer fallback wake at most 1,800 seconds away;",
             "without a running background watch, the wake stays at most 300 seconds away",
             "Do not print a `LANE-BLOCKED` or `LANE-DONE` line whose content is unchanged",
         ],
@@ -574,7 +574,7 @@ fn bottleneck_rules_are_pinned_in_both_mode_workflows() {
         &[
             "An ended lease never transfers a card: never take a card over by time alone",
             "a card reaches you only through its holder's `card handoff --to <your session>`",
-            "reclaimed by the user at any time or by the leader after its lease ends (decision L7, C-53 S6)",
+            "reclaimed by the user at any time or by the leader after its lease ends. Until the gate reads card branches",
         ],
     );
     for (name, text) in [("mode-agent.md", &agent)] {
@@ -588,7 +588,7 @@ fn bottleneck_rules_are_pinned_in_both_mode_workflows() {
         &agent,
         "pr-gate",
         &[
-            "The open-PR limit N is read from one place: decision D7 (Issue #1975 comment 6840449133) sets it to eight",
+            "The open-PR limit N is read from one place: the recorded decision sets it to eight",
             "At N or more, do not wait for a slot: push the branch and open it as a draft",
         ],
     );
@@ -620,8 +620,7 @@ fn bottleneck_rules_are_pinned_in_both_mode_workflows() {
         &agent,
         "pr-gate",
         &[
-            "`python3 -m unittest tests.ci_scope_test`",
-            "`cargo test --offline --locked --test ac_command_lint`",
+            "run the project's checks that caught pull requests only in CI",
             "`git interpret-trailers --parse` on each new commit message",
         ],
     );
@@ -646,7 +645,7 @@ fn bottleneck_rules_are_pinned_in_both_mode_workflows() {
             "Before you open a question to the user, finish what is ready",
             // C-53 S5: on the card (was: on the Issue).
             "ask it in writing, on the card and on the affected lane's screen, and keep supervising",
-            "open the question window only for an urgent matter that touches money, law, an external contract, secrets or real data (decision D5",
+            "open the question window only for an urgent matter that touches money, law, an external contract, secrets or real data",
             "A decision you record goes both to the card as a `--kind decision` note and to the affected lane's screen",
         ],
     );
@@ -659,7 +658,7 @@ fn bottleneck_rules_are_pinned_in_both_mode_workflows() {
         &[
             "A card changes hands only through its holder's `card handoff --to <session>`",
             "the leader writes no handoff line and edits no reservation",
-            "an ended lease alone never transfers a card: reclaim is the user's at any time and the leader's after the lease ends (decision L7)",
+            "an ended lease alone never transfers a card: reclaim is the user's at any time and the leader's after the lease ends, and no command does it yet",
         ],
     );
     // 15. operating numbers change together; N from D7.
@@ -667,7 +666,7 @@ fn bottleneck_rules_are_pinned_in_both_mode_workflows() {
         &leader,
         "pr-gate",
         &[
-            "Keep the open-PR limit N, read from one place: decision D7 (Issue #1975 comment 6840449133) sets it to eight",
+            "Keep the open-PR limit N, read from one place: the recorded decision sets it to eight",
             "change the MODE-AGENT and MODE-LEADER text and your announcement in the same round",
         ],
     );
@@ -1016,7 +1015,7 @@ fn timeout_takeover_without_a_terminal_list_uses_claim_timeout_check() {
     assert_says(
         &leader,
         "handoff-line",
-        &["no command does it yet (C-53 S6), so report the card to the user"],
+        &["no command does it yet, so report the card to the user"],
     );
     assert_says(
         &leader,
@@ -1361,7 +1360,7 @@ fn the_modes_never_ask_through_a_non_blocking_question_tool() {
     let agent = section_of(&workflow("mode-agent.md"), "Exceptions and Permissions");
     assert!(
         // C-53 S5: in a note on the card (decision L3; was: on the coordination Issue).
-        agent.contains("Send that line as `LANE-BLOCKED kind=decision …` in a note on the card (decision L3) and on your screen, never through a non-blocking question tool"),
+        agent.contains("Send that line as `LANE-BLOCKED kind=decision …` in a note on the card and on your screen, never through a non-blocking question tool"),
         "the lane's permissions must forbid the async question tool"
     );
 }

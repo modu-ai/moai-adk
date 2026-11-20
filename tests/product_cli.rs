@@ -2698,8 +2698,8 @@ mod skill_package {
         let agent = mode_workflow("MODE-AGENT");
         for body in [&leader, &agent] {
             assert!(
-                body.contains("sort it in the order SKILL.md gives (Issue #2619)")
-                    || body.contains("sort the question in the order SKILL.md gives (Issue #2619)")
+                body.contains("sort it in the order SKILL.md gives")
+                    || body.contains("sort the question in the order SKILL.md gives")
             );
         }
         assert!(leader.contains("never decide a HOLD for the lane"));
@@ -2711,7 +2711,7 @@ mod skill_package {
         for line in [
             "within the autonomy level SPEC §6 gives — at `semi` the choices listed below for that level still go to the user",
             "record it with every field SKILL.md names",
-            "Pushing a tag or publishing a release goes to the user and waits at every autonomy level, `full` included, with no deadline default (`SKILL.md` case (2), card C-81).",
+            "Pushing a tag or publishing a release goes to the user and waits at every autonomy level, `full` included, with no deadline default (`SKILL.md` case (2)).",
             "At `semi`, new Issues, lifting a HOLD and merge-policy changes also go to the user.",
         ] {
             assert!(leader.contains(line), "mode-leader.md lacks: {line}");
@@ -2890,7 +2890,7 @@ mod skill_package {
         let first = procedure.lines().find(|l| l.starts_with("1. ")).unwrap();
         assert!(first.contains("**mode-channel**"), "{first}");
         assert!(
-            first.contains("D-O3") && first.contains("replaces D-3"),
+            first.contains("The mode follows the channel, not the host (SPEC §5)"),
             "{first}"
         );
         assert!(

@@ -113,7 +113,7 @@ fn the_scan_finds_both_forms_and_every_occurrence() {
 fn verify_workflow_states_the_flaky_rules() {
     let text = fs::read_to_string(Path::new(ROOT).join("skills/moai/workflows/verify.md")).unwrap();
     for rule in [
-        "passes when the same head is run again is flaky, not fixed (Issue #2666)",
+        "passes when the same head is run again is flaky, not fixed",
         "the same `head_sha`, the same job, one failure and one later success",
         "one open Issue per test whose title starts with `[flake]`",
         "as a comment on that Issue instead of opening another",

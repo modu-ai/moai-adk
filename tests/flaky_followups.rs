@@ -110,12 +110,12 @@ fn the_flaky_card_command_carries_an_ac_and_the_card_can_be_read_with_it() {
 /// SPEC-20261119-flaky-followups AC-2 (REQ-2).
 #[test]
 fn the_repair_rule_is_in_the_mode_agent_workflow() {
-    let step = line_with(MODE_AGENT, "Flaky repair (card C-99): ");
+    let step = line_with(MODE_AGENT, "Flaky repair: ");
     assert!(
         step.starts_with("7. **heavy-checks**"),
         "the sentence sits in the heavy-checks step"
     );
-    let s = sentence_from(step, "Flaky repair (card C-99): ");
+    let s = sentence_from(step, "Flaky repair: ");
     // Whole phrases, so a sentence that turns the rule round ("is never deleted") does not pass.
     for word in [
         "never adds a sleep, a retry or a skip",
@@ -132,12 +132,12 @@ fn the_repair_rule_is_in_the_mode_agent_workflow() {
 /// SPEC-20261119-flaky-followups AC-2 (REQ-3).
 #[test]
 fn the_record_home_is_in_the_verify_workflow() {
-    let para = line_with(VERIFY, "Record home (card C-99): ");
+    let para = line_with(VERIFY, "Record home: ");
     assert!(
         para.starts_with("A test that fails on one run and passes when the same head is run again"),
         "the sentence sits in the flaky paragraph"
     );
-    let s = sentence_from(para, "Record home (card C-99): ");
+    let s = sentence_from(para, "Record home: ");
     // Whole phrases: the card is the home where a ledger exists, the Issue only where none does.
     for word in [
         "where the project has a card ledger, the record is the flaky card of the merge-train step (`flaky: <test>`)",

@@ -1695,10 +1695,10 @@ fn the_audit_workflow_example_is_the_helpers_line() {
     let example = text
         .lines()
         .map(str::trim)
-        .find(|l| l.starts_with("AUDIT #2786 "))
+        .find(|l| l.starts_with("AUDIT #12 "))
         .expect("the example line");
     let (h, b, v) = gate::parse_verdict(example).expect("the gate reads the example");
-    let built = gate::format_verdict_line(2786, "#2708 4/4 repo-scans", &h, &b, &v).unwrap();
+    let built = gate::format_verdict_line(12, "repo-scans, part 4 of 4", &h, &b, &v).unwrap();
     assert_eq!(built, example);
     assert!(text.contains(
         "moai audit-verdict-line --pr <n> --head <audited 40-hex> --verdict PASS|FAIL --title <scope>"
