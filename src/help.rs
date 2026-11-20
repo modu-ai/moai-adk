@@ -35,6 +35,7 @@ pub const GROUPS: &[Group] = &[
             ("project-plan", true),
             ("project-apply", true),
             ("project-update-plan", false),
+            ("work-flow-plan", true),
             ("language-setup", true),
             ("language-set", false),
             ("index-build", true),
@@ -304,6 +305,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("project-plan", &["project-plan . < request.json", "project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("project-apply", &["project-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("project-update-plan", &["project-update-plan ."]),
+    ("work-flow-plan", &["work-flow-plan --project ."]),
     ("language-setup", &["language-setup . < request.json"]),
     ("language-set", &["language-set --home ko"]),
     ("index-build", &["index-build . < request.json"]),
@@ -913,6 +915,7 @@ pub const ABOUT_KO: &[(&str, &str)] = &[
     ("project-detect", "프로젝트의 사실 알아내기"),
     ("project-plan", "프로젝트 프로필 미리 보기"),
     ("project-apply", "미리 본 프로젝트 프로필 쓰기"),
+    ("work-flow-plan", "통합 가지 고르기의 근거 보기"),
     ("language-setup", "쓰는 언어를 항목마다 고르기"),
     ("index-build", "코드 지도 색인 만들기"),
     ("update", "설치된 패키지로 MoAI 업데이트"),
@@ -1390,6 +1393,17 @@ pub const KOREAN_GROUPS: &[&str] = &["Start", "Project", "Update and move", "Key
 /// The Korean long about of a moved command that has an English one (S6e-2). Wrapped by
 /// [`wrap`] at the help width before clap sees it: clap counts a Hangul letter as one cell.
 const LONG_ABOUT_KO: &[(&str, &str)] = &[
+    (
+        "work-flow-plan",
+        "`work_flow` 인터뷰 단계의 통합 가지 질문 근거를 읽기 전용으로 내보내요. 후보 가지마다 \
+         `canonical` 플래그를 붙이고, 원격의 풀 요청 후보 이름공간(예: `refs/remotes/origin/pr/<n>`)은 \
+         `canonical: false` 와 candidate 라벨이 붙어 보이기만 하고 통합 대상으로 추천되지 않아요. 추천은 \
+         값 하나: 프로필에 `work_flow.integration_branch` 가 기록돼 있으면 다시 실행에서도 그 값을 그대로 \
+         추천하고(이유 문구가 recorded 라고 말해요), 없으면 `origin/HEAD` 가 가리키는 원격 기본 가지, \
+         그것도 없으면 현재 가지를 추천해요. 기록된 대상이 저장소에 없으면 `missing-target`, 다른 \
+         워크트리가 이미 체크아웃 중이면 `occupied-worktree` 상태와 안전한 선택지를 내보내요. 가지·\
+         워크트리·파일·ref 를 하나도 만들거나 옮기거나 지우지 않고, 네트워크 명령도 돌리지 않아요.",
+    ),
     (
         "project-detect",
         "`/moai project` 경로가 쓰는 프로젝트의 사실을 알아내요: 새 프로젝트인지 기존 \

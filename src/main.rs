@@ -982,8 +982,10 @@ enum Command {
     /// Undo a Go-era folder move
     ///
     /// Undo one go-state apply (#2561, #2696): the new `.moai/` is set aside as
-    /// `.moai.rust-<UTC>` and the Go backup becomes `.moai` again. All or nothing: anything that
-    /// came back at an original path, or a changed backup, refuses the revert.
+    /// `.moai.rust-<UTC>` and the Go backup becomes `.moai` again. Nothing is written when
+    /// anything came back at an original path or a backup changed: that refuses the revert
+    /// before anything is written. If a write stops part-way, that is recorded; run the
+    /// revert again to continue.
     GoStateRevert {
         project: PathBuf,
         #[arg(long)]

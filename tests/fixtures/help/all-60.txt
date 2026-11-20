@@ -15,6 +15,9 @@ Project
   project-apply           Write a previewed project profile
   project-update-plan     Preview the whole project update
                           in one view
+  work-flow-plan          Reads only. Print the
+                          integration-branch question
+                          evidence
   language-setup          Choose the writing language item
                           by item
   language-set            Record the conversation language
