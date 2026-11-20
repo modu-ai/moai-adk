@@ -590,3 +590,20 @@ fn the_preview_names_at_most_ten_files() {
         moai_cli::reports_move::EXAMPLES
     );
 }
+
+/// Audit B1, a link that stays inside this repository: git run from the project would list the
+/// folder's files through the link as ordinary paths, so the link itself blocks the plan.
+#[cfg(unix)]
+#[test]
+fn a_linked_state_folder_inside_the_same_repository_blocks_the_move() {
+    let h = TempHome::new();
+    let tmp = tempfile::tempdir().unwrap();
+    let root = repo(tmp.path());
+    write(&root, "stash/reports/a.md", "a");
+    std::os::unix::fs::symlink(root.join("stash"), root.join(".moai-cli")).unwrap();
+    let p = plan(&root, h.path()).unwrap();
+    assert_eq!(p.state, "blocked", "{}", p.reason);
+    assert!(p.moves.is_empty());
+    assert!(p.reason.contains("is a link"), "{}", p.reason);
+    assert!(root.join("stash/reports/a.md").exists());
+}
