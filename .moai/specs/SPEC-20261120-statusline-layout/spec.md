@@ -99,4 +99,12 @@ created: 2026-11-20
 
 ## Result
 
-(작성 예정 — 구현과 검사 뒤)
+개정 2 구현 완료(커밋 9578c64f719da49a3d1a9974727ae44d43963dd7, 가지 spec/SPEC-20261120-statusline-layout, tier 1 감사 PASS 후 Result 작성). 기준 충족:
+
+- AC-1: met — `cargo test --locked --offline --lib statusline` 148 passed 0 failed: 사용자 예시 세 줄 전체 고정, 줄별 아이콘 순서(📡→⬇️→🔀→🅱️→🔗), 무캐시, forge 없는 저장소 단독 형태, 줄 3 마지막의 워크트리 라벨.
+- AC-2: met — `python3 -I tools/statusline_golden.py --check` 111 outputs ok. 51개 골든 파일을 17케이스 케이스별 `--write` 로 재기록했고 모든 diff 를 읽었어요: 줄 1 에 🤖 삽입, 줄 3 재배치(카드 접두·🌳 말미·🤖 제거), b02 에 ↑1 삽입, 그 외 기록 행(버전 토큰)만.
+- AC-3: met — 단위 고정(ahead 0은 ↑ 없음, ♻️ 는 어느 줄에도 없음, 카드 묶음이 막대 앞, 워크트리가 줄 3 을 닫음)과 `statusline_worktree_label` 9 passed 0 failed.
+- AC-4: met — `statusline_cards` 의 line_two_has_the_same_bytes_under_80_and_40_columns(plain·truecolor)과 `statusline_tag_order` 1 passed 0 failed(ko/en × 80/40 × plain/ansi).
+- AC-5: met — statusline_cards 10/0, statusline_tag_order 1/0, statusline_worktree_label 9/0, statusline_git_env 2/0, statusline_counts_refresh 5/0, statusline_home_state 6/0, statusline_guard_false_positive 3/0, 골든 --check 111 ok, `python3 -m unittest tests.statusline_fixtures_test` 11 tests OK.
+- AC-6: met — docs/rust-product-path.md 항목 1–3 을 새 배치로 다시 썼고(🤖 줄 1, 카드 줄 3 접두, 🌳 말미, cache_hit 무출력 명시), 인용한 b14 예시 줄을 재생성된 골든에서 그대로 복사했어요.
+- 이 파일의 REQ 문장 두 곳을 새 파서가 요구하는 GEARS 형태에 맞춰 고쳤어요(REQ-5 주어, REQ-6 의 shall 앞 쉼표 제거) — 뜻은 같아요.

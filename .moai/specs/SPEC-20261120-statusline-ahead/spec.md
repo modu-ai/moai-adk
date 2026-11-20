@@ -75,3 +75,12 @@ parent: SPEC-20261120-statusline-layout
 - R1: 파서의 괄호 헤더 변형(`[ahead N]`, `[behind N]`, `[ahead N, behind M]`, `[gone]`) 하나라도 어기면 behind 가 오늘과 달라져요 → 변형마다 단위 시험을 먼저 두고 걸치게 해요.
 - R2: 골든 재생성 때 ahead-0 케이스가 변하면 REQ-2 위반의 증거가 바로 보여요 → diff 전수 리뷰에서 막아요.
 - R3: 같은 파일의 병합 대기 변경과의 충돌 → base 를 그 체인 머지로 둬서 피해요.
+
+## Result
+
+구현 완료(커밋 9578c64f719da49a3d1a9974727ae44d43963dd7 의 일부로 레이아웃 변경과 함께 착지, 리더 지시; 가지 spec/SPEC-20261120-statusline-layout, tier 1 감사 PASS 후 Result 작성). 기준 충족:
+
+- AC-1: met — `cargo test --locked --offline --lib statusline` 148 passed 0 failed: full_main_layout 이 `🅱️ main ↑5 ↓2 +3` 순서를 고정하고 파서 시험 넷(`[ahead 1, behind 2]`, `[ahead 7]` 단독, `[behind 3]`, `[gone]`·헤더 없음)이 앞·뒤 수를 함께 고정해요. `statusline_cards` 10 passed 0 failed — 실제 리포 시험이 upstream 대비 ↑1 을 고정해요.
+- AC-2: met — `python3 -I tools/statusline_golden.py --check` 111 outputs ok. 재생성 diff 전수 리뷰: ahead>0 인 b02 만 `📡 modu-ai/moai-adk | 🅱️ main +2` → `🅱️ main ↑1 +2` 로 변하고 나머지 열여섯 케이스의 바이트는 그대로예요.
+- AC-3: met — segments.rs 의 파서 시험 넷이 기존 porcelain 헤더의 ahead 를 읽음을 고정하고, 수집기(git 호출)는 한 줄도 고치지 않았어요(호출 횟수 불변).
+- AC-4: met — render.rs 의 'Ahead is deliberately hidden' 주석을 새 동작 설명으로 바꿨고 docs/rust-product-path.md 항목 2가 `↑N` (ahead), `↓N` (behind), `+N` (dirty) 를 0 이 아닐 때만 순서대로 이름해요(grep ↑ 확인).
