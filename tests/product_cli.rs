@@ -2687,7 +2687,7 @@ mod skill_package {
             "Independent audit and the CI gate are never delegated.",
             "its options, the default, whether it is reversible, its category (`none`, `guarded` or one of the five), its deadline and who decided; a decision without a record does not count.",
             // #2678: a reported figure comes from a named command, and silence is not zero.
-            "Take every number and state in a report from a command run for that report, and name the command next to it (Issue #2678).",
+            "Take every number and state in a report from a command run for that report, and name the command next to it.",
             "An empty output is not zero: say whether the command prints nothing for \"none\" or also on a failure, and count a paged list only after reading every page.",
             "After a write, read the written thing back and report what the read shows, not what was sent.",
             "Write a time only from a clock read in the same step (`date -u`).",
