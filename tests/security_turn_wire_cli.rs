@@ -284,6 +284,9 @@ fn capabilities_list_the_event_for_claude_and_not_for_the_others() {
             "{name}: {generated}"
         );
     }
+    // What is not known stays stated: whether a host shows the systemMessage at turn end.
+    let unverified = turn["unverified"].as_str().unwrap_or("");
+    assert!(unverified.contains("systemMessage"), "{turn}");
     for host in ["codex", "omp"] {
         let answer = hook_engine::capabilities(host);
         assert_eq!(
@@ -301,8 +304,32 @@ fn capabilities_list_the_event_for_claude_and_not_for_the_others() {
     assert_eq!(plan["engine_capabilities"], claude);
 }
 
+/// Audit repair (REQ-3): the flat list `hooks-plan` prints keeps the Stop group after the
+/// security-scan group. The written settings order was already pinned; this is the other view.
+#[test]
+fn the_flat_plan_list_puts_the_stop_group_after_the_security_scan_group() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let plan = hooks::plan(dir.path(), "claude", None).unwrap();
+    let commands: Vec<&str> = plan["hooks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|h| h["command"].as_str().unwrap())
+        .collect();
+    let at = |needle: &str| {
+        commands
+            .iter()
+            .position(|c| c.contains(needle))
+            .unwrap_or_else(|| panic!("no `{needle}` in {commands:?}"))
+    };
+    assert!(
+        at("--event security-scan") < at("--event security-turn"),
+        "{commands:?}"
+    );
+}
+
 /// AC-6 (REQ-12): both documents name the security-scan group, the Stop group and the command of
-/// each.
+/// each; the group count the first one states is the generated one.
 #[test]
 fn docs_name_both_groups_of_the_claude_set() {
     for name in ["hooks-generation.md", "claude-adapter-contract.md"] {
@@ -310,6 +337,53 @@ fn docs_name_both_groups_of_the_claude_set() {
         for needle in ["--event security-scan", "--event security-turn", "Stop"] {
             assert!(text.contains(needle), "{name} lacks `{needle}`");
         }
+    }
+    let groups: usize = hooks::hooks_object("claude")
+        .unwrap()
+        .values()
+        .map(|groups| groups.as_array().unwrap().len())
+        .sum();
+    let stated = format!("Claude Code {groups}개");
+    assert!(
+        doc("hooks-generation.md").contains(&stated),
+        "docs/hooks-generation.md does not say `{stated}`"
+    );
+}
+
+/// Audit repair (AC-6): the docs test above reads both documents, so the CI scope table must
+/// never call a change to either of them docs-only (REVIEW.md: a test that reads a file under
+/// `docs/` needs that path denied in `tools/ci_scope.py`). The drift scan of `ci_scope_test.py`
+/// cannot see a path the Rust test builds with `.join("docs").join(name)`.
+#[test]
+fn ci_scope_never_calls_a_change_to_the_two_documents_docs_only() {
+    use std::io::Write;
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    for name in ["hooks-generation.md", "claude-adapter-contract.md"] {
+        let mut child = Command::new("python3")
+            .clean_env()
+            .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+            .arg("-I")
+            .arg(root.join("tools").join("ci_scope.py"))
+            .current_dir(root)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let path = format!("docs/{name}\n");
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(path.as_bytes())
+            .unwrap();
+        let out = child.wait_with_output().unwrap();
+        assert!(out.status.success(), "ci_scope.py: {out:?}");
+        let answer: Value = serde_json::from_slice(&out.stdout).unwrap();
+        assert_ne!(
+            answer["scope"], "docs-only",
+            "a change to docs/{name} is read by a test and must run it: {answer}"
+        );
     }
 }
 
