@@ -39,10 +39,10 @@ created: 2026-11-20
   verify: `cargo test --locked --offline --test recurring_problems_rule the_provenance_table_names_the_instruction_and_its_causes`
 - AC-3 (REQ-7, REQ-8): Response language 항목에 열한 개 개발자 용어와 세 직역 예가 있고, 출처 표에 그 규칙의 한 줄이 있어요.
   verify: `cargo test --locked --offline --test recurring_problems_rule the_korean_wording_rule_and_its_provenance_row_are_there`
-- AC-5 (REQ-9): 크기 여유를 만들려고 줄이던 중 지웠던 규칙 문장 셋이 파일에 있어요.
-  verify: `cargo test --locked --offline --test recurring_problems_rule the_rule_sentences_kept_while_making_room_are_still_there`
 - AC-4 (REQ-6): 파일이 32 KiB 보다 작아요.
   verify: `cargo test --locked --offline --test repo_agents_md`; `cargo test --locked --offline --test recurring_problems_rule the_file_stays_inside_its_budget`
+- AC-5 (REQ-9): 크기 여유를 만들려고 줄이던 중 지웠던 규칙 문장 셋이 파일에 있어요.
+  verify: `cargo test --locked --offline --test recurring_problems_rule the_rule_sentences_kept_while_making_room_are_still_there`
 
 ## Scope
 
@@ -72,9 +72,17 @@ created: 2026-11-20
 
 ## Result
 
+- AC-1: met — `recurring_problems_rule the_supervision_section_states_the_rule` 통과(5개 중 하나), 감사자가 head 545ba2c292 에서 다시 돌려 5 passed.
+- AC-2: met — `the_provenance_table_names_the_instruction_and_its_causes` 통과, 규칙·출처 줄의 카드 번호 모양 검사 포함.
+- AC-3: met — `the_korean_wording_rule_and_its_provenance_row_are_there` 통과, 한국어 문장 자체와 세 직역 경고, 출처 줄을 단언해요.
+- AC-4: met — `the_file_stays_inside_its_budget` 와 `repo_agents_md` 3개 통과, 파일 32,757바이트(한도 32,768).
+- AC-5: met — `the_rule_sentences_kept_while_making_room_are_still_there` 통과, 되살린 세 문장을 지우거나 약화하는 뮤턴트 4개가 모두 실패해요.
 - RED: `cargo test --locked --offline --test recurring_problems_rule` 에서 규칙·출처 테스트 2개가 실패했고(크기 테스트만 통과), 한국어 용어 테스트를 더한 뒤 그 하나가 따로 실패했어요.
-- GREEN: 같은 대상 4개와 `repo_agents_md` 3개가 통과해요. `AGENTS.local.md` 는 32,695바이트로 한도(32,768)보다 73바이트 작아요.
-- 뮤턴트: 글에 일부러 넣은 흠 11개(금지 문장 삭제, 되풀이 종류 삭제, 센 곳 삭제, 규칙에 카드 번호 넣기, 출처 원인 삭제, 보고서 경로 삭제, 두 번 조건 약화, 개발자 용어 삭제, 직역 경고 삭제, 한국어 출처 줄 삭제, 크기 초과)를 모두 테스트가 잡았어요.
+- 감사 수리: 첫 감사(head 3c04ce7485)가 막은 이유는 크기 여유를 만들며 규칙 문장 셋(감사 clone 빌드 폴더, 공유 폴더 재충전은 리더의 일, `hc send` 구절)까지 지운 것이었어요. 셋을 되살리고 지운 것은 근거 숫자와 괄호뿐으로 D-4 에 문장 단위로 적었어요. 테스트 하나(`the_rule_sentences_kept_while_making_room_are_still_there`)를 더하고 한국어 항목 단언을 문장 자체로 넓혔어요.
+- GREEN: `recurring_problems_rule` 5개와 `repo_agents_md` 3개가 통과해요. `AGENTS.local.md` 는 32,757바이트로 한도(32,768)보다 11바이트 작아요.
+- 뮤턴트: 글에 일부러 넣은 흠 18개(금지 문장 삭제, 되풀이 종류 삭제, 센 곳 삭제, 규칙에 카드 번호 넣기, 출처 원인 삭제, 보고서 경로 삭제, 두 번 조건 약화, 개발자 용어 삭제, 직역 경고 삭제, 한국어 출처 줄 삭제, 크기 초과, 되살린 세 문장 삭제·약화, 한국어 항목과 출처 줄에 카드 번호)를 모두 테스트가 잡았어요. 감사자는 따로 20개를 돌려 19개가 잡히고 하나는 다른 파이썬 테스트가 잡는 것을 확인했어요.
 - 이웃: `AGENTS.local.md` 를 읽는 테스트 13대상, `tools/repo_scans.json` 39개 명령(실패 0), `cargo test --lib`, `cargo test --bins`, 파이썬 `agents_local_build_folder_test`·`e2e_receipt_not_run_test`·`ci_scope_test`, READY 전 6종이 모두 exit 0 이에요.
-- 크기 여유를 만들려고 빌드 폴더 항목의 중복 괄호 설명 몇 곳을 줄였어요(테스트가 고정하지 않는 말, 폐기 규칙 문장과 출처 표 숫자는 그대로).
+- 크기 여유를 만들려고 근거 숫자와 괄호 설명만 줄였어요(D-4). 이 SPEC 의 한국어 항목은 끝의 "(user instruction 2026-11-20)" 괄호를 뺐는데, 같은 날짜가 출처 표 줄에 있어서예요.
+- 브랜치 이름: 처음 푸시한 브랜치 이름이 SPEC 이름과 달라서 `spec/recurring-problems-source-20261120` 으로 다시 올렸어요. 옛 원격 브랜치 `spec/recurring-problems-change-source-20261120` 는 지우지 않고 남겨 두었어요(지우는 일은 사용자 선택).
+- 열린 비차단 관찰(감사 N-3, N-4, N-6): 보고서 경로 디렉터리와 문구 뒤 단서 덧붙임은 테스트가 고정하지 않고, 지운 근거 구절 중 둘의 어구 바꿈은 뜻이 같아요. 모두 선택 사항이에요.
 - Not run: cfg(macos) 전용 테스트를 따로 가려 돌리지 않았어요(이 Mac 에서 도는 대상은 위 목록에 포함), 호스트에서 규칙이 실제로 지켜지는지는 확인하지 않았어요.
