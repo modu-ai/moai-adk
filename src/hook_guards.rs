@@ -23,7 +23,9 @@
 //!   (`.ssh`, `.aws`, `.azure`, `.kube`, `.gnupg`, gcloud's configuration), onto a private-key
 //!   file named `id_rsa`/`id_ed25519`/`id_ecdsa`/`id_dsa`, or content that carries a private-key
 //!   block or an access token (the shapes of `TOKEN_SHAPES`: GitHub, GitLab, Slack, AWS, Google
-//!   and OpenAI-style, each with a prefix and a minimum length, SPEC-20261120-secret-token-shapes).
+//!   and OpenAI-style, each with a prefix and a minimum length, SPEC-20261120-secret-token-shapes;
+//!   the OpenAI project, service and admin keys and the Anthropic keys,
+//!   SPEC-20261120-secret-project-keys).
 //!   A file extension alone (`.pem`, `.key`) decides nothing: public
 //!   certificates and test fixtures use them too. Writes outside the project are not refused
 //!   here (decision pending: the hook cannot see a session's extra directories).
@@ -1820,6 +1822,34 @@ const TOKEN_SHAPES: &[TokenShape] = &[
         prefix: "sk-",
         min: 32,
         accepts: alnum,
+        word_start: true,
+    },
+    // Project, service-account and admin keys of OpenAI and the keys of Anthropic
+    // (SPEC-20261120-secret-project-keys): a name and hyphens follow the short prefix, so the
+    // alphanumeric run of the shape above ends after four or five characters. Neither vendor
+    // publishes a length or a character set; 40 after the prefix is a conservative floor.
+    TokenShape {
+        prefix: "sk-proj-",
+        min: 40,
+        accepts: alnum_hyphen_underscore,
+        word_start: true,
+    },
+    TokenShape {
+        prefix: "sk-svcacct-",
+        min: 40,
+        accepts: alnum_hyphen_underscore,
+        word_start: true,
+    },
+    TokenShape {
+        prefix: "sk-admin-",
+        min: 40,
+        accepts: alnum_hyphen_underscore,
+        word_start: true,
+    },
+    TokenShape {
+        prefix: "sk-ant-",
+        min: 40,
+        accepts: alnum_hyphen_underscore,
         word_start: true,
     },
     // Slack: the letter after the three-letter prefix is one of b, a, p, r, s.
