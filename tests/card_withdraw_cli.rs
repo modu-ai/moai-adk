@@ -171,7 +171,8 @@ fn the_wired_withdraw_action_refuses_take_and_hides_from_the_default_list() {
 }
 
 /// A withdrawn card whose state leaves `hold` shows in the default list again — the hiding
-/// belongs to the withdrawn hold, not to the event forever.
+/// belongs to the withdrawn hold, not to the event forever — and its take refusal keeps the
+/// plain wording, without the stale withdrawal reason (audit N-2).
 #[test]
 fn a_withdrawn_card_that_leaves_hold_shows_in_the_default_list_again() {
     let (home, p) = world();
@@ -194,4 +195,46 @@ fn a_withdrawn_card_that_leaves_hold_shows_in_the_default_list_again() {
         .map(|c| c["name"].as_str().unwrap())
         .collect();
     assert!(names.contains(&"C-1"), "{listed}");
+    // Back to draft, the refusal is the plain one: no stale withdrawal reason.
+    {
+        let mut w: WriteLedger = ledger::open_write(home.path(), "demo").unwrap();
+        w.with_write_tx(|tx, now| {
+            Ok(tx.execute(
+                "UPDATE card SET state = 'draft', updated_at = ?2 WHERE card_id = 1",
+                rusqlite::params![1, now],
+            )?)
+        })
+        .unwrap();
+    }
+    let r = refusal(&run(&home, &["card", "take", "C-1", "--project", &p]));
+    let message = r["error"]["message"].as_str().unwrap();
+    assert!(
+        !message.contains("withdrawn:"),
+        "no stale withdrawal reason: {message}"
+    );
+    assert!(message.contains("`draft`"), "{message}");
+}
+
+/// The help of `take` and `withdraw` keeps each command's own first line — a variant
+/// inserted between another's doc lines regressed both (audit D-B3).
+#[test]
+fn the_take_and_withdraw_help_first_lines_stay_apart() {
+    let home = TempHome::new();
+    let take_out = run(&home, &["card", "take", "--help"]);
+    let take = String::from_utf8_lossy(&take_out.stdout);
+    assert!(take.contains("Take a ready card for a holder"), "{take}");
+    assert!(
+        !take.contains("Withdraw a draft or ready card"),
+        "take's help carries withdraw's first line: {take}"
+    );
+    let withdraw_out = run(&home, &["card", "withdraw", "--help"]);
+    let withdraw = String::from_utf8_lossy(&withdraw_out.stdout);
+    assert!(
+        withdraw.contains("Withdraw a draft or ready card"),
+        "{withdraw}"
+    );
+    assert!(
+        !withdraw.contains("Take a ready card for a holder"),
+        "withdraw's help carries take's first line: {withdraw}"
+    );
 }

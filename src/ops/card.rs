@@ -35,7 +35,7 @@ enum Action {
         #[arg(long)]
         title_prefix: Option<String>,
         /// Show withdrawn cards too: the default list omits every card a `card.withdraw` event
-        /// marks (card C-188).
+        /// marks.
         #[arg(long)]
         all: bool,
         /// The HOME to read (default `$HOME`). Tests pass a temporary folder.

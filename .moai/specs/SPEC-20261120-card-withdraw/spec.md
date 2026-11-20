@@ -1,8 +1,7 @@
 ---
 id: SPEC-20261120-card-withdraw
 title: "card withdraw — a withdrawn card cannot be taken and hides from the default list"
-status: completed
-approval: {by: user, at: 2026-11-20, basis: "in-session selection 2026-11-20: 세션 병목 리포트 개선 'all' 선택(카드 본문 기록)이 withdraw 기능을 고름 — 리더 배차로 SPEC 작성, tier 1 감사가 요구·수용 기준과 구현의 일치를 확인", digest: "sha256:66705f2ab97240b5e56d2c7609a1af6c7f82c6cd4fde372275ea48e74bd7d6a9"}
+status: draft
 revision: 1
 created: 2026-11-20
 ---
@@ -89,4 +88,4 @@ base `aa06a0f6ef`(로컬 v2026.11.0), worktree `~/.moai/worktrees/moai-adk/c188`
 - 도움말 골든: 새 하위명령·--all 이 도움말을 바꾸지만 `tests/fixtures/help/**` 는 다른 카드 예약 중 — help_layout·product_cli 가 같은 배치에서 0 으로 통과해 최상위 골든은 불변임을 실행으로 확인.
 - blocked(다음 조각): `src/card/dispatch.rs`(비밀 화면 후속의 예약, tier 2 감사 진행 중).
 - 감사(2026-11-20, tier 1, audit-card-withdraw) 첫 판정 **FAIL** — B-1 SPEC-코드 범위 자기모순(ops/card.rs 배선이 본문·Non-goals·blocked 와 어긋남 + 배선 액션 시험 없음), B-2 명시적 state 필터 동작 변경 무검증(--state hold 에서도 철회 카드 숨김). 기준 (1)(2) 자체는 증거로 충족 판정.
-- 수리(같은 가지): B-2 — 목록 제외 subquery 를 state 필터가 없을 때만 적용(`?1 IS NULL AND NOT EXISTS …`), 명시적 필터는 이전대로 답함 + `--state hold` 로 철회 카드가 보이는 고정 시험; B-1 — SPEC 본문·Non-goals·Scope 를 실제 조각에 맞게 갱신 + 배선된 `card withdraw` 액션을 몰아보는 시험(the_wired_withdraw_action_refuses_take_and_hides_from_the_default_list) 추가 + 시험 파일 머리글 정정; NB-1 show 주석 원위 · NB-2 event actor 단언 추가.
+- 첫 감사의 B-1·B-2 는 같은 가지에서 고쳐졌어요 — 목록 제외는 기본 목록에만 적용하고 명시적 state 필터는 이전대로 답하며(`--state hold` 고정 시험), SPEC 본문·Non-goals·Scope 가 실제 조각과 일치하고 배선된 `card withdraw` 액션을 몰아보는 시험이 더해졌어요. show 주석은 원위, event actor 단언이 추가됐어요.

@@ -92,7 +92,7 @@ pub enum ReserveError {
     CardNotReady {
         state: String,
         /// Why the card was withdrawn, from its latest `card.withdraw` event (`None` on a
-        /// plain hold card, card C-188).
+        /// plain hold card, or whenever the card's state is not `hold`).
         withdraw_reason: Option<String>,
     },
     /// The card already has an active reservation (another holder, or this one again).
@@ -595,15 +595,20 @@ fn reserve_in_tx(
             }));
         }
         if state != "ready" {
-            let withdraw_reason: Option<String> = tx
-                .query_row(
+            // The withdrawal reason names the current hold only: a card that left hold again
+            // (or sits in another state) keeps the plain refusal (audit N-2).
+            let withdraw_reason: Option<String> = if state == "hold" {
+                tx.query_row(
                     "SELECT json_extract(payload, '$.reason') FROM event \
                      WHERE card_id = ?1 AND kind = 'card.withdraw' \
                      ORDER BY event_id DESC LIMIT 1",
                     [card_id],
                     |r| r.get(0),
                 )
-                .optional()?;
+                .optional()?
+            } else {
+                None
+            };
             return Ok(Err(ReserveError::CardNotReady {
                 state,
                 withdraw_reason,
