@@ -206,7 +206,7 @@ exec "$RUST" "$@"
             json!(
                 "this shim hands mcp-server to the Go build without MOAI_MCP_ONESHOT=1; a Go \
                  audit job started through it can vanish (unknown job). If a job answers \
-                 unknown job, reconnect the MCP server. Nothing was changed (#3021)"
+                 unknown job, reconnect the MCP server. Nothing was changed."
             )
         );
     }

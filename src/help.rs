@@ -2620,7 +2620,7 @@ mod tests {
     #[test]
     fn a_moved_command_reads_its_korean_texts() {
         let ko = sub_help_of("project-detect", Lang::Ko, true);
-        assert!(ko.contains("`/moai project` 경로(#2496)"), "{ko}");
+        assert!(ko.contains("`/moai project` 경로가 쓰는"), "{ko}");
         assert!(!ko.contains("Detect the project's facts"), "{ko}");
         assert!(ko.contains("프로젝트 루트"), "{ko}");
         let short = sub_help_of("project-detect", Lang::Ko, false);

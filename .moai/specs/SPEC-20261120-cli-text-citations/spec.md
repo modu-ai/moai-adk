@@ -34,6 +34,7 @@ The text the commands print (help text, previews, hints, error and note strings)
 - write: `tools/ci_scope.py`
 - write: `tools/repo_scans.json`
 - write: `src/help.rs`
+- write: `tests/claim_cli.rs`
 - write: `src/claim.rs`
 - write: `src/claim_verify.rs`
 - write: `src/gate_schedule.rs`
