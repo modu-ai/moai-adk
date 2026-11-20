@@ -1,5 +1,6 @@
 //! #2670 AC-2 (Rust): nothing this product ships or embeds is a `.worktreeinclude`, and no
-//! source writes one. The Go generation shipped one listing `.env` and `.env.*`; the Rust
+//! source writes one except `src/agents.rs`, which writes one managed block of personal files
+//! from a packaged template that lists no secret (user decision 2026-11-20). The Go generation shipped one listing `.env` and `.env.*`; the Rust
 //! product only reports such a file (`go-state-plan`), so a template carrying it would
 //! reintroduce the copy of secrets into every worktree.
 
@@ -84,13 +85,44 @@ fn no_shipped_or_embedded_file_is_a_worktreeinclude() {
                 );
             }
         }
-        // Only the read-only checker may name the file.
-        if src.file_name().is_some_and(|n| n != "worktree_include.rs") {
+        // Only the read-only checker and, since the user's decision of 2026-11-20 (the
+        // `worktree-include` pick, SPEC-20261121-worktreeinclude-personal-rules), the generator
+        // of the one managed block may name the file. The block's lines come from the packaged
+        // template, which `the_packaged_template_lists_no_secret_file` below keeps free of
+        // secrets.
+        let allowed = ["worktree_include.rs", "agents.rs"];
+        if src
+            .file_name()
+            .is_some_and(|n| !allowed.contains(&n.to_string_lossy().as_ref()))
+        {
             assert!(
                 !text.contains(".worktreeinclude"),
-                "{} names .worktreeinclude; only src/worktree_include.rs reads it",
+                "{} names .worktreeinclude; only src/worktree_include.rs reads it and src/agents.rs writes its managed block",
                 src.display()
             );
         }
+    }
+}
+
+/// The one list of files a new worktree should receive names no secret: every line of the
+/// packaged template passes the same secret scan the read-only checker runs on a user's file,
+/// and the template is not itself named `.worktreeinclude` (the shipped-file test above).
+#[test]
+fn the_packaged_template_lists_no_secret_file() {
+    let text =
+        fs::read_to_string(Path::new(ROOT).join("templates/worktreeinclude/personal.txt")).unwrap();
+    let lines: Vec<&str> = text
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty() && !l.starts_with('#'))
+        .collect();
+    assert!(!lines.is_empty(), "the template lists nothing");
+    let found = moai_cli::worktree_include::secret_lines(&text);
+    assert!(found.is_empty(), "secret lines in the template: {found:?}");
+    for l in lines {
+        assert!(
+            !moai_cli::worktree_include::secret_name(l.rsplit('/').next().unwrap_or(l)),
+            "{l} looks like a secret file"
+        );
     }
 }

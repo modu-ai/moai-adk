@@ -629,7 +629,15 @@ fn schema_describes_picks_claude_shadow_and_the_skip_action() {
         .iter()
         .map(|v| v.as_str().unwrap())
         .collect();
-    assert_eq!(ids, ["append-managed", "skip-conflicts", "claude-import"]);
+    assert_eq!(
+        ids,
+        [
+            "append-managed",
+            "skip-conflicts",
+            "claude-import",
+            "worktree-include"
+        ]
+    );
     let plan = schema("agents-plan.schema.json");
     assert!(
         plan["properties"].get("claude_shadow").is_some(),

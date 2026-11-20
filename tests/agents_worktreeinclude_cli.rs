@@ -11,7 +11,7 @@ use common::cli::{create, ok_result, profile};
 use serde_json::{json, Value};
 use std::fs;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, Stdio};
 use tempfile::TempDir;
 
@@ -141,23 +141,6 @@ fn block_paths(text: &str) -> Vec<String> {
     file_lines(&out)
 }
 
-/// Every file named `.worktreeinclude` inside a `*.before` folder under `dir` (the receipt's
-/// backup of a file as it was before an apply).
-fn backups(dir: &Path, in_before: bool, out: &mut Vec<PathBuf>) {
-    let Ok(read) = fs::read_dir(dir) else {
-        return;
-    };
-    for e in read.flatten() {
-        let p = e.path();
-        let name = e.file_name().to_string_lossy().into_owned();
-        if p.is_dir() {
-            backups(&p, in_before || name.ends_with(".before"), out);
-        } else if in_before && name == FILE {
-            out.push(p);
-        }
-    }
-}
-
 /// AC-1: with the pick, the plan carries one managed block with the template's lines, shown in
 /// the row's preview; the plan writes nothing.
 #[test]
@@ -258,10 +241,21 @@ fn the_apply_receipt_keeps_the_file_as_it_was_and_names_it() {
     let plan = plan_ok(&root, &request("ignored", &["worktree-include"]));
     let applied = apply_ok(&root, &plan);
     assert!(applied.to_string().contains(FILE), "{applied}");
-    let mut found = Vec::new();
-    backups(root.path(), false, &mut found);
-    assert_eq!(found.len(), 1, "one backup of {FILE}: {found:?}");
-    assert_eq!(fs::read_to_string(&found[0]).unwrap(), user);
+    // The receipt names its request; the before bytes sit beside it, under the receipts folder.
+    let id = applied["receipt"]
+        .as_str()
+        .expect("the result names its receipt");
+    let kept = root
+        .path()
+        .join(moai_cli::apply::receipts_rel(root.path()))
+        .join(format!("{id}.before"))
+        .join(FILE);
+    assert_eq!(
+        fs::read_to_string(&kept).unwrap(),
+        user,
+        "{}",
+        kept.display()
+    );
 }
 
 /// AC-7: the new pick is a known id, an unknown one is refused, and the schema lists the same
