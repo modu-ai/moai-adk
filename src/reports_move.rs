@@ -19,7 +19,12 @@ type Result<T> = std::result::Result<T, String>;
 
 /// The earlier report folders of a project, relative to the project, in the order they are read.
 /// A name both hold goes to the first (the earlier state folder), the second is skipped.
-const SOURCES: [&str; 2] = [crate::project_state!("reports"), ".moai/reports"];
+fn sources() -> [String; 2] {
+    [
+        format!("{}/reports", crate::state_root::EARLIER_PROJECT_DIR),
+        format!("{}/reports", crate::state_root::MOAI_DIR),
+    ]
+}
 /// More files than this make the plan `blocked`: a folder that large is not a report folder.
 const MAX_FILES: usize = 20_000;
 /// How many moved files a printed preview names.
@@ -176,13 +181,10 @@ pub fn plan(root: &Path, home: &Path) -> Result<MovePlan> {
     let root =
         fs::canonicalize(root).map_err(|_| contract::PROJECT_PATH_UNAVAILABLE.to_string())?;
     let destination = home_workdir::reports_dir(home, &root)?;
-    let mut present: Vec<String> = SOURCES
-        .iter()
+    let present: Vec<String> = sources()
+        .into_iter()
         .filter(|s| fs::symlink_metadata(root.join(s)).is_ok_and(|m| m.is_dir()))
-        .map(|s| s.to_string())
         .collect();
-    // When the project state folder is also `.moai/`, both names are one folder.
-    present.dedup();
     let mut p = MovePlan {
         protocol_version: 1,
         project: root.display().to_string(),
