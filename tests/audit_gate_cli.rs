@@ -291,14 +291,12 @@ fn the_workflow_step_posts_the_status_the_gate_decides() {
             ),
         )
         .unwrap();
+        #[cfg(unix)]
         for exe in [bin.join("gh"), target.join("moai")] {
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::PermissionsExt;
-                let mut perm = fs::metadata(&exe).unwrap().permissions();
-                perm.set_mode(0o755);
-                fs::set_permissions(&exe, perm).unwrap();
-            }
+            use std::os::unix::fs::PermissionsExt;
+            let mut perm = fs::metadata(&exe).unwrap().permissions();
+            perm.set_mode(0o755);
+            fs::set_permissions(&exe, perm).unwrap();
         }
         // The runner's `shell: bash` is `bash --noprofile --norc -eo pipefail`: the block must
         // survive the gate's non-zero exit under those flags (tier-2 audit B1).

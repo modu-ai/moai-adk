@@ -496,15 +496,19 @@ fn old_and_new_place_worktrees_of_a_lane_are_both_checked() {
 
 // --- #3015 C1: the tool reads the lane's claims itself; the caller gives only the screen ----
 
+#[cfg(unix)]
 const CLAIM_70: &str = "moai-claim: session=agent-9 epoch=1 lease_until=2026-11-15T08:00:00Z";
+#[cfg(unix)]
 const NOTE_71: &str = "moai-resume: lane=agent-9 issue=7 claim=6000070 lease_until=2026-11-15T08:00:00Z branch=issue/7-card head=0123456789abcdef0123456789abcdef01234567 uncommitted=0\nnext: push";
 
+#[cfg(unix)]
 fn gh_comment(id: u64, login: &str, body: &str) -> Value {
     json!({"id": id, "user": {"login": login}, "author_association": "MEMBER", "body": body})
 }
 
 /// What a stub `gh` answers: the search result, Issue 7's comments (`None` answers 404) and the
 /// repository's open pull requests (`None` answers an empty list, JSON `null` answers 404).
+#[cfg(unix)]
 #[derive(Default)]
 struct Forge {
     search: Value,
@@ -512,6 +516,7 @@ struct Forge {
     pulls: Option<Value>,
 }
 
+#[cfg(unix)]
 fn forge_with(comments: Vec<Value>) -> Forge {
     Forge {
         search: json!({"total_count": 1, "incomplete_results": false, "items": [{"number": 7}]}),
@@ -522,6 +527,7 @@ fn forge_with(comments: Vec<Value>) -> Forge {
 
 /// Runs the binary with flags only (no observations file) over a stub `gh` that logs every
 /// request. Returns the answer and the logged request lines.
+#[cfg(unix)]
 fn run_flags(
     f: &Fixture,
     lane: &str,
@@ -579,6 +585,7 @@ fn run_flags(
     (v, requests)
 }
 
+#[cfg(unix)]
 fn clean_flags(f: &Fixture) -> Vec<String> {
     vec![
         "--repo".into(),
@@ -590,6 +597,7 @@ fn clean_flags(f: &Fixture) -> Vec<String> {
     ]
 }
 
+#[cfg(unix)]
 fn as_strs(v: &[String]) -> Vec<&str> {
     v.iter().map(String::as_str).collect()
 }
@@ -626,10 +634,12 @@ fn without_an_observations_file_a_lane_with_a_resume_note_and_a_quiet_screen_is_
 // --- #3015 C3b: the lane's state is told from its claims, pull requests and work, not from
 // a quiet screen ----
 
+#[cfg(unix)]
 fn lane_state(r: &Value) -> &Value {
     &result(r)["lane_state"]
 }
 
+#[cfg(unix)]
 fn open_pr_7() -> Value {
     json!([{"number": 41, "head": {"ref": "issue/7-card"}, "body": "audit-tier: 1"}])
 }
