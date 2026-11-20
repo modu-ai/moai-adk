@@ -257,13 +257,13 @@ pub fn liveness_of_session(project: &Path, session: &str) -> (Liveness, Value) {
     let Some(name) = registered_name_of(project, session) else {
         return (
             Liveness::Unknown,
-            json!({"reason": "no registry entry names this session id"}),
+            json!({"reason": "no registry entry names this session id (a symlinked or unreadable sessions folder reads as this too, R-N4)"}),
         );
     };
     let Ok(dir) = registry_dir(project) else {
         return (
             Liveness::Unknown,
-            json!({"name": name, "reason": "the sessions folder cannot be resolved"}),
+            json!({"name": name, "reason": "the sessions folder cannot be resolved (a symlinked folder reads as unknown, never alive)"}),
         );
     };
     let lock = dir.join(format!("{name}.live"));
@@ -319,6 +319,17 @@ fn registered_name_of(project: &Path, session: &str) -> Option<String> {
         let Some(name) = v["name"].as_str().map(str::to_string) else {
             continue;
         };
+        // R-N3 of the audit: the name in the entry is what the lock lookup will join with, so
+        // it must pass the registry's own name rules and match the file it was read from —
+        // an entry written under another name (or one that spells a path, `../../outside`)
+        // is skipped, never trusted.
+        if !valid_name(&name) {
+            continue;
+        }
+        let file_stem = path.file_stem().and_then(|s| s.to_str());
+        if file_stem != Some(name.as_str()) {
+            continue;
+        }
         let lease = v["lease_until"].as_i64().unwrap_or(0);
         if best.as_ref().is_none_or(|(l, _)| lease >= *l) {
             best = Some((lease, name));
