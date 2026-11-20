@@ -91,4 +91,27 @@ The decision above answers one candidate. The queue the card asks for (durable f
 
 ## Result
 
-(written after the checks)
+구현: `moai check reuse --base <b> --head <h> --tip <t>`(또는 `--merge <m>`)는 `src/check_affected/reuse.rs` 의 `judge`(순수)와 git 읽기로 `fast_forward`·`already_merged`·`reuse`·`rerun`·`rerun_all` 중 하나를 답해요. 아무 ref·색인·작업 파일도 움직이지 않아요(`git merge-tree --write-tree` 의 트리 객체만 남아요). 한 트리의 시험 파일은 `git cat-file --batch` 한 번으로 읽어요(D-4).
+
+- AC-1: met — `cargo test --locked --offline --test merge_reuse_cli decides_` 통과(끝이 base 그대로 → `fast_forward`, head 가 끝 안 → `already_merged`, 상관없는 파일만 움직임 → `reuse`, 끝이 후보가 돌린 대상을 지우기만 함 → `reuse` + `selection_is_covered`). 전체 15개 통과.
+- AC-2: met — `cargo test --locked --offline --test merge_reuse_cli reruns_` 통과(새 Rust 대상, 새 파이썬 모듈, 바뀐 시험, 바뀐 스캔 목록의 새 대상, 겹치는 파일은 `diff_check`·`fmt`·`clippy`·`test_lib`·`test_bins` 추가, 충돌과 base 가 끝의 조상이 아님은 `rerun_all`).
+- AC-3: met — `cargo test --locked --offline --test merge_reuse_cli answers_` 통과(ref·작업 트리·색인이 그대로, `--merge` 는 두 부모와 같은 답, 인자 누락·`-` 시작 거절, 같은 입력은 같은 순서).
+- AC-4: met — `cargo test --locked --offline --test check_affected_cli --test merge_reuse_cli`(13 / 15 통과), `cargo clippy` 와 `cargo fmt --check` 와 `rustfmt --edition 2021 --check src/ops/check.rs` 는 `moai check affected 341f6c7abb..5fb8dc84f9` 안에서 통과(`targets=44 py=12 scans=listed:41 … result=PASS`). 독립 감사는 아직이에요. 변이 5개(gained 대상 계산 뒤집기, 움직인 경로 대상 계산 바꾸기, 겹침 검사 끄기, 조상 검사 끄기, 이미 병합됨 검사 끄기)는 모두 시험이 잡았어요(각각 종료 코드 101, 작업 트리는 원상 복구).
+- AC-5: met — 통제된 재생(아래). 같은 입력에서 판정이 한 번에 40.9 초(CPU 16.8 초)이던 것이 0.9 초(CPU 0.65 초)로 줄었어요(시험 파일마다 git 을 따로 부르던 것을 `git cat-file --batch` 한 번으로).
+
+### 재생 측정
+
+방법: 로컬 `v2026.11.0`(`341f6c7abb`)의 첫 부모 사슬에서 마지막 병합 13개를 오래된 것부터 놓고(`replay-reuse.py 13 5`), 연속한 5개를 한 묶음으로 봐요. 한 묶음의 후보 5개는 모두 묶음 첫 병합의 첫 부모(OLD) 위에서 감사를 마쳤다고 가정하고, j 번째 후보는 앞의 j-1 개가 먼저 끝을 옮긴 상태의 실제 끝(`tip`)을 만나요. 후보의 head 는 각 병합의 둘째 부모예요. 묶음은 9개(13-5+1), 후보 판정은 45번이에요. 명령은 `moai check reuse --base <OLD> --head <head> --tip <끝> --dir <공유 clone>` 이고, 지금 절차가 다시 하는 횟수는 "끝이 한 번 움직일 때마다 한 번 다시 병합·검사"로 세요.
+
+| 판정 | 횟수 |
+| --- | --- |
+| `fast_forward`(묶음의 첫 후보) | 9 |
+| `reuse` | 7 |
+| `rerun`(새로 영향받은 검사만) | 29 |
+| `rerun_all` | 0 |
+
+- 다시 병합·검사하는 횟수: 지금 절차 90번(묶음마다 0+1+2+3+4=10, 9묶음), 이 명령으로는 29번(`rerun` 만 세요). 재검사 때 다시 돌리는 범위도 달라요: 지금은 매번 `check affected` 전체(이번 병합 열차에서 대상 41~55개), `rerun` 29번의 `rerun.rust` 대상 수는 0개 3번, 1~3개 17번, 8~14개 9번(가운데값 2개)이고, 겹치는 파일이 있어 `steps` 5개(`diff_check`·`fmt`·`clippy`·`test_lib`·`test_bins`)가 붙은 것은 9번이에요(출력: `replay-13-5.txt`).
+- 한 곳 직접 확인: 이 레인의 후보(C-176)를 `341f6c7abb` 에서 감사를 마친 뒤 끝이 `ca9723d773` 으로 움직였을 때 `reuse`(이유 4개 모두 기록), 리더가 "재사용은 아직 안 받는다"고 해서 전체 검사를 새로 돌리게 됐어요.
+- 못 잰 것: 병합 전 기다린 시간(벽시계). 이 기계의 부하와 슬롯 대기가 섞여서 전·후를 같은 조건으로 잴 자료가 없어요. 의미가 겹치는 깨짐(서로 다른 영역이 합쳐져서만 깨지는 검사, 예: 다른 카드의 help 골든 변경 때문에 한 후보가 실패한 일)은 이 판정이 잡지 못해요. 이 측정은 과거 이력을 끝만 바꿔 다시 놓은 것이고 실제 병합 열차를 돌린 게 아니에요.
+
+아직 안 한 것: 큐 소비와 `MERGED-LOCAL` 쓰기, 노트를 읽는 `check queue`(위 "Next slice"의 결정 대기), 독립 감사, `spec check --closure` 의 마지막 `closure_status`(승인 전 SPEC 이라 남아요).
