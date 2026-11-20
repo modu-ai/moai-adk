@@ -223,7 +223,7 @@ fn trigger() {
     let fx = fixture(
         &base,
         &[
-            ("tests/a.rs", "let p = \"docs/x.md\";\n"),
+            ("tests/a.rs", "let p = docs/x.md;\n"),
             ("tests/b.rs", "nothing\n"),
         ],
         &[],
@@ -706,8 +706,8 @@ const CASES: [Case; 14] = [
     ),
     (
         "test-reads-docs",
-        &[("tests/t.rs", "let t = read(\"docs/x.md\");\n")],
-        Some(&[("src/a.rs", "let t = read(\"docs/x.md\");\n")]),
+        &[("tests/t.rs", "let t = read(docs/x.md);\n")],
+        Some(&[("src/a.rs", "let t = read(docs/x.md);\n")]),
     ),
     (
         "skills-manifest-sha256",
