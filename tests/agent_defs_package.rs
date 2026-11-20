@@ -537,7 +537,7 @@ fn chains_name_real_routes_agents_and_references() {
         .filter(|l| l.starts_with("| ") && !l.starts_with("| Request") && !l.starts_with("| ---"))
         .map(|l| l.trim_matches('|').split('|').map(str::trim).collect())
         .collect();
-    assert_eq!(rows.len(), 8);
+    assert_eq!(rows.len(), 10);
     let mut covered: Vec<&str> = Vec::new();
     for row in &rows {
         assert_eq!(row.len(), 4, "{row:?}");
