@@ -874,7 +874,7 @@ pub const ARG_HELP_FOR: &[(&str, &str, &str)] = &[
     (
         "session",
         "host",
-        "Only `claude`; other hosts start with `cc|glm|codex|omp -l|-a`",
+        "Only `claude`; other hosts start with `cc|glm|codex -l|-a`",
     ),
     ("session", "model", "Claude model"),
     ("session", "effort", "Claude effort"),
@@ -934,7 +934,7 @@ pub const ABOUT_KO: &[(&str, &str)] = &[
 ];
 
 /// The launcher line's about on a Korean terminal.
-const LAUNCHER_LINE_KO: &str = "Claude Code·Codex·GLM·OMP 세션 시작";
+const LAUNCHER_LINE_KO: &str = "Claude Code·Codex·GLM 세션 시작";
 /// clap's `Usage:` heading on a Korean terminal.
 const USAGE_KO: &str = "사용법:";
 /// clap's `Options:` heading of `help --all` on a Korean terminal.
@@ -1700,13 +1700,13 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "cc|codex|glm",
         "leader",
         "리더 세션(이름 `leader` 와 권한만 정함, 역할은 세션 안의 `/moai --mode-leader`, Codex 는 \
-         `$moai --mode-leader`, OMP 는 `/skill:moai --mode-leader`)",
+         `$moai --mode-leader`)",
     ),
     (
         "cc|codex|glm",
         "agent",
         "에이전트 세션(이름과 권한만 정함, 역할은 세션 안의 `/moai --mode-agent`, Codex 는 첫 \
-         프롬프트의 `$moai --mode-agent`, OMP 는 `/skill:moai --mode-agent`)",
+         프롬프트의 `$moai --mode-agent`)",
     ),
     (
         "cc|codex|glm",
@@ -2471,7 +2471,7 @@ mod tests {
                 "{text}"
             );
             assert!(
-                text.contains("\n\nCommands\n  Start\n    cc, codex, glm, omp  "),
+                text.contains("\n\nCommands\n  Start\n    cc, codex, glm  "),
                 "{text}"
             );
             assert!(text.contains("\n\nExamples\n  moai cc -l  "), "{text}");

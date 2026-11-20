@@ -205,7 +205,7 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
         p["confirm_with"],
         json!(format!("moai update --confirm {top}"))
     );
-    assert_eq!(p["agents"]["hosts"].as_array().unwrap().len(), 3, "{p}");
+    assert_eq!(p["agents"]["hosts"].as_array().unwrap().len(), 2, "{p}");
     assert_eq!(p["routing"]["hosts"].as_array().unwrap().len(), 2, "{p}");
     // #2875: the style file, the default style and the Codex block.
     assert_eq!(p["style"]["targets"].as_array().unwrap().len(), 3, "{p}");
@@ -259,7 +259,7 @@ fn update_previews_and_installs_the_whole_user_layer_then_has_nothing_to_apply()
     assert!(codex.contains("id=moai-routing") && codex.contains("id=moai-output-style"));
     // Every `references/…` path an installed agent names exists in the skill copy it reads.
     let mut checked = 0;
-    for host in ["claude", "codex", "omp"] {
+    for host in ["claude", "codex"] {
         let dir = agents_dir(&home, host);
         let files: Vec<PathBuf> = fs::read_dir(&dir)
             .unwrap()
@@ -470,7 +470,7 @@ fn a_blocked_skill_copy_gets_no_agents_and_no_section() {
         .collect();
     assert_eq!(
         skipped,
-        ["agents:codex", "agents:omp", "routing:codex", "style:codex"],
+        ["agents:codex", "routing:codex", "style:codex"],
         "{p}"
     );
     let style_hosts: Vec<&str> = p["style"]["targets"]

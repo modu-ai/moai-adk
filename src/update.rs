@@ -3140,7 +3140,7 @@ mod user_layer_tests {
         // Both copies landed (applied or already unchanged): every host goes on.
         let ok = json!({"hosts": [{"host": "claude", "status": "applied"}, {"host": "codex", "status": "unchanged"}]});
         let g = gate_on_skills(&ok, &layer);
-        assert_eq!(hosts(&g.agents), "claude,codex,omp");
+        assert_eq!(hosts(&g.agents), "claude,codex");
         assert_eq!(hosts(&g.routing), "claude,codex");
         assert_eq!(hosts(&g.style), "claude,codex");
         assert!(g.skipped.is_empty());
@@ -3151,10 +3151,7 @@ mod user_layer_tests {
         assert_eq!(hosts(&g.routing), "claude");
         // #2875: the codex style block points at the same copy, so it stops too.
         assert_eq!(hosts(&g.style), "claude");
-        assert_eq!(
-            skipped(&g),
-            "agents:codex,agents:omp,routing:codex,style:codex"
-        );
+        assert_eq!(skipped(&g), "agents:codex,routing:codex,style:codex");
         assert!(g
             .skipped
             .iter()
@@ -3162,7 +3159,7 @@ mod user_layer_tests {
         // A host missing from the result counts as not landed.
         let missing = json!({"hosts": [{"host": "codex", "status": "applied"}]});
         let g = gate_on_skills(&missing, &layer);
-        assert_eq!(hosts(&g.agents), "codex,omp");
+        assert_eq!(hosts(&g.agents), "codex");
         assert_eq!(hosts(&g.routing), "codex");
         assert_eq!(hosts(&g.style), "codex");
     }

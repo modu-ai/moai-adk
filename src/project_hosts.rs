@@ -631,6 +631,12 @@ mod tests {
         .iter()
         .filter(|s| s.name.ends_with("-hooks"))
         {
+            // The omp-hooks step reads as blocked since OMP support was removed
+            // (SPEC-20261120-drop-omp): its host is no longer a hook host.
+            if s.name == "omp-hooks" {
+                assert_eq!(s.state, "blocked", "{}: {}", s.name, s.reason);
+                continue;
+            }
             assert_eq!(s.state, "ready", "{}: {}", s.name, s.reason);
         }
     }

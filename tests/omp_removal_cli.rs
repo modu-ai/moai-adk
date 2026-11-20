@@ -58,6 +58,7 @@ fn the_omp_launcher_answers_one_line_and_fails() {
         vec!["omp", "-a"],
         vec!["omp", "-a", "--name", "lane-x"],
         vec!["omp", "--json"],
+        vec!["omp", "--help"],
     ] {
         let out = f.moai(&args);
         assert_ne!(out.status.code(), Some(0), "{args:?} exits non-zero");

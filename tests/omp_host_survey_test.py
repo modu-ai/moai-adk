@@ -117,8 +117,9 @@ class OmpHostSurveyTest(unittest.TestCase):
         self.assertEqual(len(rows), 5, "the five rows slice B closes")
         for r in rows:
             with self.subTest(feature=r["feature"]):
-                self.assertEqual(r["omp"], "yes")
-                self.assertIn(r["gap"], ("", "-"))
+                # OMP support was removed (user decision 2026-11-20): the rows stay, the
+                # column records n/a, and the row says why instead of a closed gap.
+                self.assertEqual(r["omp"], "n/a", r["feature"])
 
     def test_a_row_without_a_gap_has_no_gap_text(self):
         for r in self.rows:

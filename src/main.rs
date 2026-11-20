@@ -184,6 +184,20 @@ struct HostLaunch {
     /// Extra first-prompt text (codex only).
     prompt: Option<String>,
 }
+
+/// Any arguments `moai omp` may carry: OMP support was removed, so the launcher answers its
+/// one removal line whatever follows — `--help` included (audit N6) — and reads none of it.
+#[derive(Args, Debug)]
+#[command(
+    disable_help_flag = true,
+    allow_hyphen_values = true,
+    disable_version_flag = true
+)]
+pub struct OmpRemoved {
+    /// Everything after `omp`, ignored.
+    #[arg(allow_hyphen_values = true)]
+    rest: Vec<String>,
+}
 #[derive(Subcommand)]
 enum Command {
     /// The one-file operations under `src/ops/` (#2617): add a file there, not a variant here.
@@ -1056,9 +1070,10 @@ enum Command {
     /// `$moai --mode-agent`, and `codex -a` starts its first prompt with `$moai --mode-agent`.
     Codex(HostLaunch),
     /// Removed: answers with one line and exits non-zero (OMP support was dropped)
-    Omp(HostLaunch),
+    Omp(OmpRemoved),
     // The OMP launcher is retired (SPEC-20261120-drop-omp): `moai omp` answers with one
-    // removal line and a non-zero exit instead of composing a session.
+    // removal line and a non-zero exit instead of composing a session — `--help` included
+    // (audit N6): the flag parses like any other argument and reaches the same removal line.
     /// Start a Claude Code session (legacy form)
     ///
     /// Legacy Claude-only launcher kept for compatibility; prefer `-l|-a` or `cc|glm|codex`.
@@ -1119,6 +1134,14 @@ fn plan_input<T: serde::de::DeserializeOwned>() -> Result<T, String> {
     moai_cli::contract::typed_json(&bytes)
 }
 /// Maps the launcher's host word to the session host.
+/// Launchers this version no longer offers (SPEC-20261120-drop-omp): the subcommand still
+/// parses so `moai omp` answers the removal line, but no help row, example, about or operation
+/// is expected for it.
+// Only the tests read this list, and the `moai` binary loads this file as `mod cli`, where
+// no test module does — so the constant is dead there by construction, not by mistake.
+#[allow(dead_code)]
+pub(crate) const RETIRED: [&str; 1] = ["omp"];
+
 fn host_of(word: &str) -> Result<&'static str, String> {
     match word {
         "cc" => Ok("claude"),
@@ -1365,9 +1388,9 @@ fn role_of(h: &HostLaunch) -> Option<bool> {
 fn launcher_is_human(cli: &Cli) -> bool {
     let json = match &cli.command {
         None => cli.launch.json,
-        Some(Command::Cc(h) | Command::Glm(h) | Command::Codex(h) | Command::Omp(h)) => {
-            h.launch.json
-        }
+        Some(Command::Cc(h) | Command::Glm(h) | Command::Codex(h)) => h.launch.json,
+        // The removed OMP launcher answers its removal line as plain text, never JSON.
+        Some(Command::Omp(_)) => return false,
         Some(_) => return false,
     };
     moai_cli::launcher_terminal::wants_human(json)
@@ -1394,7 +1417,7 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
         Command::Glm(h) => launch("glm", role_of(&h), h.launch, h.prompt),
         Command::Codex(h) => launch("codex", role_of(&h), h.launch, h.prompt),
         Command::Omp(_) => Err(
-            "omp support was removed: moai supports claude (cc), glm and codex; the profile entry and earlier OMP files are ignored"
+            "omp support was removed: moai supports claude (cc), glm and codex; a profile entry naming omp is ignored with a notice, and files an earlier version wrote stay untouched"
                 .into(),
         ),
         Command::Session {
@@ -2869,6 +2892,7 @@ pub(crate) fn main() -> ExitCode {
 
 #[cfg(test)]
 mod tests {
+    use super::RETIRED;
     use super::*;
 
     const LAUNCHERS: [&str; 4] = ["cc", "glm", "codex", "session"];
@@ -3046,7 +3070,7 @@ mod tests {
         let cli = Cli::command();
         for sub in cli.get_subcommands() {
             let word = sub.get_name();
-            if word == "help" {
+            if word == "help" || RETIRED.contains(&word) {
                 continue;
             }
             let op = operation_of(word);
@@ -3068,7 +3092,10 @@ mod tests {
             .get_subcommands()
             .filter(|s| s.get_name() != "help")
             .count();
-        assert_eq!(seen.len() + LAUNCHERS.len() + RAW_OUTPUT.len(), words);
+        assert_eq!(
+            seen.len() + LAUNCHERS.len() + RAW_OUTPUT.len() + RETIRED.len(),
+            words
+        );
         if std::env::var_os("MOAI_DUMP_OPERATIONS").is_some() {
             let mut pairs: Vec<_> = seen.iter().map(|(op, w)| format!("{w} {op}")).collect();
             pairs.sort();
@@ -3405,6 +3432,7 @@ mod help_rules {
     //! meeting it exactly, so every later S1 pull request moves names in and none can slip back;
     //! a rule every command meets is checked for all (the one-line about since S1b).
     use super::Cli;
+    use super::RETIRED;
     use clap::{CommandFactory, FromArgMatches};
     use std::collections::BTreeSet;
 
@@ -3412,7 +3440,7 @@ mod help_rules {
         Cli::command()
             .get_subcommands()
             .map(|s| s.get_name().to_string())
-            .filter(|w| w != "help")
+            .filter(|w| w != "help" && !RETIRED.contains(&w.as_str()))
             .collect()
     }
 
@@ -3621,12 +3649,7 @@ mod help_rules {
             let text = t.map(|h| h.to_string()).unwrap_or_default();
             text.split_whitespace().collect::<Vec<_>>().join(" ")
         };
-        for (host, prefix) in [
-            ("cc", "/moai"),
-            ("glm", "/moai"),
-            ("codex", "$moai"),
-            ("omp", "/skill:moai"),
-        ] {
+        for (host, prefix) in [("cc", "/moai"), ("glm", "/moai"), ("codex", "$moai")] {
             let cmd = korean.find_subcommand(host).unwrap();
             for (id, mode) in [("leader", "leader"), ("agent", "agent")] {
                 let arg = cmd.get_arguments().find(|a| a.get_id() == id).unwrap();
@@ -3652,7 +3675,9 @@ mod help_rules {
         let cmd = configured();
         let missing: Vec<_> = cmd
             .get_subcommands()
-            .filter(|s| s.get_name() != "help")
+            .filter(|s| {
+                s.get_name() != "help" && !RETIRED.contains(&s.get_name().to_string().as_str())
+            })
             .filter(|s| {
                 !s.get_after_long_help()
                     .is_some_and(|t| t.to_string().starts_with("Examples:\n  moai "))

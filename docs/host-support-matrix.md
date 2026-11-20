@@ -117,14 +117,14 @@ Codex 공식 문서는 Desktop 앱, CLI, IDE 확장을 함께 설명한다. 세 
 
 | feature | claude | codex | omp | evidence | gap |
 | --- | --- | --- | --- | --- | --- |
-| 론처 하위 명령 `moai <host> -l\|-a` | yes | yes | yes | `src/main.rs::Omp(HostLaunch)` | - |
-| 론처 도움말과 사용법 줄 | yes | yes | yes | `src/help.rs::LAUNCHERS` | - |
-| 론처 첫 실행의 프로젝트 설정 | yes | yes | yes | `src/launcher_init.rs::default_profile` | - |
-| 세션 등록의 host 목록 | yes | yes | yes | `src/session.rs::HOSTS` (list) | - |
-| glm 키가 세션에 닿는 길 | yes | n/a | yes | `src/session.rs::read_here` | - |
+| 론처 하위 명령 `moai <host> -l\|-a` | yes | yes | n/a | `src/main.rs::Omp(OmpRemoved)` | 2026-11-20 사용자 결정으로 OMP 지원 제거 — `moai omp` 는 한 줄 제거 알림 |
+| 론처 도움말과 사용법 줄 | yes | yes | n/a | `src/help.rs::LAUNCHERS` | 2026-11-20 사용자 결정으로 OMP 지원 제거 |
+| 론처 첫 실행의 프로젝트 설정 | yes | yes | n/a | `src/launcher_init.rs::default_profile` | 2026-11-20 사용자 결정으로 OMP 지원 제거 |
+| 세션 등록의 host 목록 | yes | yes | n/a | `src/session.rs::HOSTS` (list) | 2026-11-20 사용자 결정으로 OMP 지원 제거(공식 호스트는 Claude Code·GLM·Codex) |
+| glm 키가 세션에 닿는 길 | yes | n/a | n/a | `src/session.rs::read_here` | 2026-11-20 사용자 결정으로 OMP 지원 제거 |
 | 프로필이 적을 수 있는 host | yes | yes | yes | `src/profile.rs::KNOWN_HOSTS` (list) | - |
-| 에이전트 정의 렌더링 | yes | yes | yes | `src/agent_defs.rs::HOSTS` (list) | - |
-| hook 설치와 전달 | yes | yes | yes | `src/hooks.rs::HOSTS` (list) | - |
+| 에이전트 정의 렌더링 | yes | yes | n/a | `src/agent_defs.rs::HOSTS` (list) | 2026-11-20 사용자 결정으로 OMP 지원 제거(공식 호스트는 Claude Code·GLM·Codex) |
+| hook 설치와 전달 | yes | yes | n/a | `src/hooks.rs::HOSTS` (list) | 2026-11-20 사용자 결정으로 OMP 지원 제거(공식 호스트는 Claude Code·GLM·Codex) |
 | 레인 의무 줄(`lane-duty-line`) | yes | yes | yes | `src/lane_duty.rs::HOSTS` | - |
 | host 폴더 해석 | yes | yes | yes | `src/host_home.rs::Omp` | - |
 | 프로젝트 host 단계(codex·omp) | n/a | yes | yes | `src/project_hosts.rs::omp-agents` | - |

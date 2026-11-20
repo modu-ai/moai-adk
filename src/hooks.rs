@@ -85,7 +85,8 @@ pub const HOOK_SET: &[(&str, Option<&str>, Handler)] = &[
     ("PostToolUse", Some("Bash"), Handler::Receipt),
 ];
 
-pub const HOSTS: &[&str] = &["claude", "codex", "omp"];
+pub const HOSTS: &[&str] = &["claude", "codex"];
+// The OMP project-hooks entry below stays until its own slice removes it (SPEC-20261120-drop-omp N1).
 
 const CODEX_FILE: &str = ".codex/hooks.json";
 /// Codex ownership receipt under the project state root.
@@ -1598,7 +1599,7 @@ mod tests {
     #[test]
     fn a_lane_is_codex_only_and_well_formed() {
         let dir = tempfile::tempdir().unwrap();
-        for host in ["claude", "omp"] {
+        for host in ["claude"] {
             for lane in [set("agent-1", "o/r"), LaneLoop::Off] {
                 let e = plan_with(dir.path(), host, None, lane).unwrap_err();
                 assert!(e.contains("--host codex only"), "{e}");

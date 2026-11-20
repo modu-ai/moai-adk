@@ -495,7 +495,12 @@ pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<serde_j
     let mut reverted = Vec::new();
     let mut skipped = Vec::new();
     for e in receipt.entries.iter().rev() {
-        if !HOSTS.contains(&e.host.as_str()) || e.file.contains('/') || e.file.contains('\\') {
+        // B2 of the removal audit: an older binary may have managed hosts that this one no
+        // longer installs for (OMP). A receipt entry for such a host is still its own agent
+        // folder below that host's home, so it reverts as it always did; only the supported
+        // list (what this binary plans and writes) dropped the host.
+        let known = HOSTS.contains(&e.host.as_str()) || e.host == "omp";
+        if !known || e.file.contains('/') || e.file.contains('\\') {
             return Err("agent receipt names a path outside the agent folders".into());
         }
         // Audit FAIL 6842034981 B1: the folders may have turned into links since the apply;
