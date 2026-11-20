@@ -30,8 +30,8 @@ created: 2026-11-20
 - REQ-2: The agent definition `agents/impl.md` shall tell the agent to end each commit with the `Moai-Verified` line that `moai trailers --verified` prints and to name only checks it ran.
 - REQ-3: The local check set `tools/local_check.sh` shall run `trailer-check` over the commits of the head beyond the base as one light step, listed after `diff-check`, in both modes and in every leg that runs the rest of the set.
 - REQ-4 (REQ-3): IF `trailer-check` reports a failing commit, THEN the step shall fail with the exit code of the command, which makes the result line say fail.
-- REQ-5: When `moai bundle body` writes a body, it shall add one line that gives the commit count per `Moai-Verified` kind, the count of commits without the line (read as `none`) and the count of reverted commits, over the commits of the merge base of the tip and the branch up to the pinned head.
-- REQ-6 (REQ-5): IF the by-kind listing of that range cannot be read, THEN `moai bundle body` shall refuse with a missing fact that names the failure and write no body.
+- REQ-5: When `moai bundle body` writes a body, it shall add one line that gives the commit count per `Moai-Verified` kind (a commit without the line counts under `none`, as `moai trailers --list` reads it) and the count of reverted commits, over the commits of the merge base of the tip and the branch up to the pinned head.
+- REQ-6 (REQ-5): IF the by-kind listing of that range cannot be read or lacks a count, THEN `moai bundle body` shall refuse with a message that names the failure and write no body.
 - REQ-7 (REQ-5): The summary line shall hold only counts and the fixed words, never a card number, a session id or a commit message.
 
 ## Acceptance
@@ -39,8 +39,8 @@ created: 2026-11-20
 - AC-1 (REQ-1): the reference holds the trailer name, the five values, both commands and the sentence that `none` is a value · verify: `cargo test --locked --offline --test verified_trailer_in_use_cli commit_trailers_reference`
 - AC-2 (REQ-2): the agent definition holds the trailer name, the command and the "only checks it ran" sentence · verify: `cargo test --locked --offline --test verified_trailer_in_use_cli impl_agent`
 - AC-3 (REQ-3, REQ-4): a dry run of `tools/local_check.sh` lists the step `trailer-check` right after `diff-check` with the range of the head beyond the base, and a fake binary that exits 1 fails the step and the result line · verify: `cargo test --locked --offline --test verified_trailer_in_use_cli local_check`
-- AC-4 (REQ-5, REQ-7): the body of a bundle whose branch holds commits of three kinds, one without the line and one reverted has exactly one summary line with those counts, and the line holds no card number or session id · verify: `cargo test --locked --offline --test bundle_body_cli verified`
-- AC-5 (REQ-6): an unreadable range gives the refusal with the missing fact and writes no file · verify: `cargo test --locked --offline --test bundle_body_cli verified_summary_refuses`
+- AC-4 (REQ-5, REQ-7): the body of a bundle whose branch holds commits of the kinds `tests`, `mutants` with `e2e`, and none, with one commit reverted, has exactly one summary line with those counts, and the line holds no card number or session id · verify: `cargo test --locked --offline --test bundle_body_cli verified_summary_counts`
+- AC-5 (REQ-6): a listing that lacks a count, or an error from the listing, gives a refusal that names the failure, in the function that builds the line (the real command cannot make the range unreadable, so the check is a unit test) · verify: `cargo test --locked --offline --lib bundle::tests::verified_summary`
 - AC-6 (REQ-1…REQ-7): the lines of the body that exist today, the manifest digest of the skill package and the neighbour tests stay as they were · verify: `cargo test --locked --offline --test bundle_body_cli`
 
 ## Scope

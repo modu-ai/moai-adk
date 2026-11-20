@@ -1010,3 +1010,79 @@ fn a_lower_case_card_number_is_replaced_in_a_command_and_refused_anywhere_else()
     assert!(!m.contains("c-12"), "{m}");
     assert!(!out.exists(), "a refused body writes no file");
 }
+
+// ---- SPEC-20261120-verified-trailer-in-use: the Moai-Verified summary line of the body ----
+
+/// A commit on the checked-out branch with this `Moai-Verified` value (no line when `None`).
+fn verified_commit(w: &World, file: &str, verified: Option<&str>) -> String {
+    w.put(file, "x\n");
+    w.git(&["add", "-A"]);
+    let msg = match verified {
+        Some(v) => format!("feat: {file}\n\nMoai-Verified: {v}"),
+        None => format!("feat: {file}"),
+    };
+    w.git(&["commit", "-q", "-m", &msg]);
+    w.git(&["rev-parse", "HEAD"])
+}
+
+/// REQ-5, REQ-7 (AC-4): the body carries one line with the commit count per `Moai-Verified`
+/// kind (a commit without the line counts under `none`) and the count of reverted commits, for
+/// the commits from the merge base of the tip and the branch up to the pinned head.
+#[test]
+fn verified_summary_counts_the_kinds_and_the_reverted_commit() {
+    let b = bundle_world(true);
+    // The branch holds the two lane commits (no line) and then: tests, mutants + e2e, none given
+    // explicitly, and a standard revert of the first of them (which has no line either).
+    b.w.git(&["checkout", "-q", "bundle"]);
+    let first = verified_commit(&b.w, "notes/v1.md", Some("tests"));
+    verified_commit(&b.w, "notes/v2.md", Some("mutants, e2e"));
+    verified_commit(&b.w, "notes/v3.md", Some("none"));
+    b.w.git(&["revert", "--no-edit", &first]);
+    let pinned = b.w.git(&["rev-parse", "bundle"]);
+    let (v, code) = b.body(&[]);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(v["result"]["pinned"], pinned.as_str());
+    let body = v["result"]["body"].as_str().unwrap();
+    let lines: Vec<&str> = body
+        .lines()
+        .filter(|l| l.contains("Verification kinds"))
+        .collect();
+    assert_eq!(lines.len(), 1, "exactly one summary line: {body}");
+    // 6 commits (merges are skipped): 2 lane commits and the revert have no line, 1 explicit none;
+    // the commit with two kinds counts under each.
+    assert_eq!(
+        lines[0],
+        "Verification kinds (`Moai-Verified`, 6 commits): tests 1, mutants 1, e2e 1, smoke 0, \
+         none 4 (a commit without the line counts as none); reverted 1.",
+        "{body}"
+    );
+    // The line sits after the integration paragraph and before the Self-Audit section.
+    let at = |needle: &str| {
+        body.find(needle)
+            .unwrap_or_else(|| panic!("{needle}: {body}"))
+    };
+    assert!(at("Integration: `bundle`") < at("Verification kinds"));
+    assert!(at("Verification kinds") < at("\n## Self-Audit\n"));
+    // REQ-7: counts and fixed words only.
+    assert!(card_numbers(lines[0]).is_empty() && session_ids(lines[0]) == 0);
+    assert!(
+        !lines[0].starts_with("Moai-"),
+        "the line must not read as a trailer"
+    );
+}
+
+/// AC-6: a bundle whose commits carry no `Moai-Verified` line gets the same one line, all `none`.
+#[test]
+fn verified_summary_reads_a_missing_line_as_none() {
+    let b = bundle_world(true);
+    let (v, code) = b.body(&[]);
+    assert_eq!(code, 0, "{v}");
+    let body = v["result"]["body"].as_str().unwrap();
+    assert!(
+        body.contains(
+            "Verification kinds (`Moai-Verified`, 2 commits): tests 0, mutants 0, e2e 0, smoke 0, \
+             none 2 (a commit without the line counts as none); reverted 0.\n"
+        ),
+        "{body}"
+    );
+}
