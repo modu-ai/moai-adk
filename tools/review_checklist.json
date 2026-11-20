@@ -1,0 +1,253 @@
+{
+  "schema_version": 1,
+  "comment": "Review checklist items (SPEC-20261120-review-checklist-by-diff). `moai review-package` reads this file from the BASE commit only, so a pull request is always judged by the table it started from, and carries in its `checklist` key the items whose trigger the diff meets. An item fires when a changed path is in `trigger.paths` (prefix and optional suffixes, the same matching as tools/repo_scans.json scope) and, when `trigger.diff_pattern` is present, an added line of that path contains one of its strings literally. An empty prefix meets every path: those items are rules about how the audit is run. `source` names the Issue, PR or SPEC the rule came from; `added` is the date the rule was first written. This file is on the protected list.",
+  "items": [
+    {
+      "id": "base-drift",
+      "trigger": {
+        "paths": [
+          {
+            "prefix": ""
+          }
+        ]
+      },
+      "check": "Base drift (WF-OBS #9): a pull request's `baseRefOid` can lag behind the branch it targets. Before a verdict or a merge-tree check, read the branch head itself (`git ls-remote origin refs/heads/<base>`) and judge against it; when the two differ, say which one you used.",
+      "source": "Issue #2401",
+      "added": "2026-11-13"
+    },
+    {
+      "id": "platform-specific-code",
+      "trigger": {
+        "paths": [
+          {
+            "prefix": "src/",
+            "suffixes": [
+              ".rs"
+            ]
+          },
+          {
+            "prefix": "tests/",
+            "suffixes": [
+              ".rs"
+            ]
+          }
+        ],
+        "diff_pattern": [
+          "#[cfg(unix)]",
+          "#[cfg(windows)]",
+          "cfg!(unix)",
+          "cfg!(windows)",
+          "target_os",
+          "std::os::unix",
+          "std::os::windows",
+          "libc::"
+        ]
+      },
+      "check": "Platform-specific code (WF-OBS #25): a call that exists only on unix passes every macOS check. When a change touches platform-specific code and the Windows target is installed, also run `cargo check --offline --locked --target x86_64-pc-windows-msvc`; when it is not installed, record that check as `not_run` and name the `windows-build` run after merge as the one that will show it.",
+      "source": "Issue #2401",
+      "added": "2026-11-13"
+    },
+    {
+      "id": "checker-changes",
+      "trigger": {
+        "paths": [
+          {
+            "prefix": "tools/ci_scope.py"
+          },
+          {
+            "prefix": "tools/check_guard.py"
+          },
+          {
+            "prefix": "src/self_audit.rs"
+          },
+          {
+            "prefix": "src/gate_collect.rs"
+          },
+          {
+            "prefix": "src/gate.rs"
+          },
+          {
+            "prefix": "src/audit_gate.rs"
+          },
+          {
+            "prefix": "src/ops/flake_classify.rs"
+          }
+        ]
+      },
+      "check": "Checker changes (WF-OBS #26): when a change alters a checker or classifier (for example `moai pr-self-audit-check`, or in the moai-adk repository its CI script `tools/ci_scope.py`), run the old and the new version over recent real inputs (for example the last 25 pull request bodies) and report every verdict that changed.",
+      "source": "Issue #2401",
+      "added": "2026-11-13"
+    },
+    {
+      "id": "absence-in-tests",
+      "trigger": {
+        "paths": [
+          {
+            "prefix": "tests/",
+            "suffixes": [
+              ".rs",
+              ".py"
+            ]
+          }
+        ],
+        "diff_pattern": [
+          "env_remove(",
+          "env_clear(",
+          "\"PATH\"",
+          "not installed",
+          "is absent"
+        ]
+      },
+      "check": "Absence in tests (WF-OBS #29): a test that needs a program, file or variable to be missing creates that absence in its own fixture (a temporary folder, a scrubbed `PATH` or environment); it never relies on the host lacking it.",
+      "source": "Issue #2401",
+      "added": "2026-11-13"
+    },
+    {
+      "id": "manifest-after-conflict",
+      "trigger": {
+        "paths": [
+          {
+            "prefix": "",
+            "suffixes": [
+              "source-manifest.json"
+            ]
+          }
+        ]
+      },
+      "check": "Manifest after a conflict (WF-OBS #30): when a merge conflicts in a package's `source-manifest.json`, take neither side's sha256 — recompute it from the merged file, then check every entry of the manifest against its file. In the moai-adk repository, resolve the skill files first, then use the `write` command of its `tools/source_manifest.py` (Issue #2837): it joins both sides three-way against the common version, recomputes every sha256 and stops (exit 2, nothing written) when a person must choose. An entry's `origin.reason` says where the file came from; keep per-change notes in the commit message, because two branches appending to the same `reason` is the one conflict the tool leaves to a person.",
+      "source": "Issue #2401",
+      "added": "2026-11-13"
+    },
+    {
+      "id": "guard-refusal",
+      "trigger": {
+        "paths": [
+          {
+            "prefix": ""
+          }
+        ]
+      },
+      "check": "Guard refusal (WF-OBS #17): when a guard or hook refuses a command, report the refused command and the guard's name as given, and never reach the same effect by another path. Only when the refusal is confirmed to be about the combined form (the guard says the command is too complex to verify, not that its effect is forbidden) may it be retried split into plain single steps: the refused effect itself stays forbidden, and each step must pass the same guard on its own. Splitting is never a bypass.",
+      "source": "Issue #2493",
+      "added": "2026-11-12"
+    },
+    {
+      "id": "host-worktree-guard",
+      "trigger": {
+        "paths": [
+          {
+            "prefix": ""
+          }
+        ]
+      },
+      "check": "Host worktree guard (Issue #2836): a refusal that names the session as isolated in a worktree comes from Claude Code itself, not from a MoAI hook (whose refusals start with `MoAI tool-preflight:`); the shapes it accepts are listed in the MODE-AGENT workflow (\"Host worktree guard\"). They only change how a permitted effect is spelled, as the rule above says.",
+      "source": "Issue #2836",
+      "added": "2026-11-14"
+    },
+    {
+      "id": "helper-auth-failure",
+      "trigger": {
+        "paths": [
+          {
+            "prefix": ""
+          }
+        ]
+      },
+      "check": "Helper authentication failure (WF-OBS #19): when a sub-review helper cannot start because its provider answers 401, record that review as `not_run`; if your own review replaced it, say so. Never record a key or token value.",
+      "source": "Issue #2493",
+      "added": "2026-11-12"
+    },
+    {
+      "id": "zsh-word-splitting",
+      "trigger": {
+        "paths": [
+          {
+            "prefix": ""
+          }
+        ]
+      },
+      "check": "zsh word splitting (WF-OBS #16): zsh does not split an unquoted `$var` holding several words or lines, so iterate an array (`for x in ${=var}` or `for x in a b c`), and never name a shell function after an existing alias.",
+      "source": "Issue #2493",
+      "added": "2026-11-12"
+    },
+    {
+      "id": "test-git-and-binary-helpers",
+      "trigger": {
+        "paths": [
+          {
+            "prefix": "tests/",
+            "suffixes": [
+              ".rs"
+            ]
+          }
+        ],
+        "diff_pattern": [
+          "Command::new(\"git\")",
+          "fs::copy(EXE"
+        ]
+      },
+      "check": "Important (blocks the merge): Test git calls that bypass `tests/common/git.rs`, or copying the binary with `fs::copy(EXE…)` instead of `common::copy_executable`.",
+      "source": "Issue #2614",
+      "added": "2026-11-13"
+    },
+    {
+      "id": "test-reads-docs",
+      "trigger": {
+        "paths": [
+          {
+            "prefix": "tests/",
+            "suffixes": [
+              ".rs",
+              ".py"
+            ]
+          }
+        ],
+        "diff_pattern": [
+          "docs/"
+        ]
+      },
+      "check": "Important (blocks the merge): A test that reads a file under `docs/` without that path denied in `tools/ci_scope.py`.",
+      "source": "Issue #2614",
+      "added": "2026-11-13"
+    },
+    {
+      "id": "skills-manifest-sha256",
+      "trigger": {
+        "paths": [
+          {
+            "prefix": "skills/moai/"
+          }
+        ]
+      },
+      "check": "Important (blocks the merge): A change under `skills/moai/**` without the matching `sha256` in `skills/moai/references/source-manifest.json`.",
+      "source": "Issue #2614",
+      "added": "2026-11-13"
+    },
+    {
+      "id": "golden-files-rerecorded",
+      "trigger": {
+        "paths": [
+          {
+            "prefix": "tests/fixtures/"
+          }
+        ]
+      },
+      "check": "Do not review: Re-recorded golden files under `tests/fixtures/**/golden/`: check only that each differs from the base by the intended change.",
+      "source": "Issue #2614",
+      "added": "2026-11-13"
+    },
+    {
+      "id": "cargo-lock-follows-manifest",
+      "trigger": {
+        "paths": [
+          {
+            "prefix": "Cargo.lock"
+          }
+        ]
+      },
+      "check": "Do not review: `Cargo.lock` changes that only follow a `Cargo.toml` change in the same pull request.",
+      "source": "Issue #2614",
+      "added": "2026-11-13"
+    }
+  ]
+}

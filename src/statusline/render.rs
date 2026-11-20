@@ -9,6 +9,16 @@ use std::collections::BTreeMap;
 
 const BAR_WIDTH: i64 = 10;
 const SEPARATOR: &str = " | ";
+/// Card C-137 (user instruction 2026-11-19), line 2: the two git counts, the items of the card
+/// counts and the text after the repository and the branch icons are one space apart (leader
+/// decision, card note 3570, decision D-1 of SPEC-20261120-statusline-line2-order: the two
+/// spaces of the user's example are the terminal's drawing of the variation-selector icons).
+/// The gap between the two git counts, between the card items and after the repository and the
+/// branch icons is set here; the one space after each other icon sits in its own `format!`.
+const GIT_COUNTS_GAP: &str = " ";
+const CARD_ITEMS_GAP: &str = " ";
+const REPO_ICON_GAP: &str = " ";
+const BRANCH_ICON_GAP: &str = " ";
 const SGR_NORMAL_INTENSITY: &str = "\x1b[22m";
 const SGR_RESET: &str = "\x1b[0m";
 
@@ -301,15 +311,24 @@ impl Renderer {
 
     fn git_line(&self, s: &Status) -> String {
         let mut segs = Vec::new();
-        // Card C-65: the card counts sit between the forge counts and the branch. They come
-        // from the local ledger, not from the repository, so without a branch (or with
-        // `git_branch` off) they open the line on their own.
+        // Card C-137 (user instruction 2026-11-19): the git counts, the card counts, the
+        // repository, then the branch (was: repository, forge counts, cards, branch). The card
+        // counts come from the local ledger, not from the repository, so without a branch (or
+        // with `git_branch` off) they stand on the line on their own.
         let cards = self.cards(s);
-        let repo_branch = self
+        match self
             .enabled("git_branch")
-            .then(|| self.repo_branch(s, cards.as_deref()))
-            .flatten();
-        segs.extend(repo_branch.or(cards));
+            .then(|| self.repo_groups(s))
+            .flatten()
+        {
+            Some(g) => {
+                segs.extend(g.forge);
+                segs.extend(cards);
+                segs.extend(g.repo);
+                segs.push(g.branch);
+            }
+            None => segs.extend(cards),
+        }
         // #2756 AC-7 (user choice 2026-11-13): this branch's pull request, linked to its URL.
         if self.enabled("pr") {
             if let Some(pr) = &s.pr {
@@ -328,8 +347,9 @@ impl Renderer {
     }
 
     /// Card C-65 (user instructions 2026-11-16 and 2026-11-17, card 85; order and icons by the
-    /// user's decision 2026-11-19): `🗂️ <remaining> / ▶️ <working> / 🔃 <waiting for
-    /// integration> / ✅ <done>` from the project's local ledger, under the one `cards` option;
+    /// user's decision 2026-11-19; one space between the items and no slash, card C-137):
+    /// `🗂️ <remaining> ▶️ <working> 🔃 <waiting for integration> ✅ <done>` from the project's
+    /// local ledger, under the one `cards` option;
     /// `🔃` is left out when the notes could not be read. A ledger without cards shows zeros;
     /// `None` when there is no ledger to read. Each number has its icon, so color is never the
     /// only signal.
@@ -341,19 +361,23 @@ impl Renderer {
         // `🔃` only when the notes could be read; otherwise three numbers in the same order and
         // with the same icons, never a guess.
         Some(match c.waiting {
-            Some(w) => format!(
-                "{remaining} / {working} / {} / {done}",
-                self.paint(self.theme.cards_posted, &format!("🔃 {w}"))
-            ),
-            None => format!("{remaining} / {working} / {done}"),
+            Some(w) => [
+                remaining,
+                working,
+                self.paint(self.theme.cards_posted, &format!("🔃 {w}")),
+                done,
+            ]
+            .join(CARD_ITEMS_GAP),
+            None => [remaining, working, done].join(CARD_ITEMS_GAP),
         })
     }
 
-    /// Repository, optional forge counts, and branch retain the `git_branch` switch; `cards`
-    /// (see [`Renderer::cards`]) goes right before the branch.
-    fn repo_branch(&self, s: &Status, cards: Option<&str>) -> Option<String> {
+    /// The three groups that retain the `git_branch` switch: the forge counts and the repository
+    /// (both only with a repository name) and the branch; `None` without a git branch. Their
+    /// order on the line, and where the card counts go, is [`Renderer::git_line`]'s (card C-137).
+    fn repo_groups(&self, s: &Status) -> Option<RepoGroups> {
         let git = s.git.as_ref().filter(|g| !g.branch.is_empty())?;
-        let mut branch = format!("🅱️ {}", git.branch);
+        let mut branch = format!("🅱️{BRANCH_ICON_GAP}{}", git.branch);
         // Ahead is deliberately hidden; behind and dirty counts remain visible.
         if git.behind > 0 {
             branch.push_str(&format!(" ↓{}", git.behind));
@@ -363,31 +387,41 @@ impl Renderer {
             branch.push_str(&format!(" +{dirty}"));
         }
         let branch = self.paint(self.theme.branch, &branch);
-        let branch = match cards {
-            Some(cards) => format!("{cards}{SEPARATOR}{branch}"),
-            None => branch,
-        };
         let Some((owner, name)) = s
             .repo
             .as_ref()
             .filter(|(o, n)| !o.is_empty() && !n.is_empty())
         else {
-            return Some(branch);
+            return Some(RepoGroups {
+                forge: None,
+                repo: None,
+                branch,
+            });
         };
-        let forge = if self.enabled("github") && s.github.available && !s.github.suppressed {
-            // #2559 (user instructions 2026-11-12): icons instead of letter labels; the Issue
-            // icon is `⬇️` (U+2B07 U+FE0F) since 23:1xZ, the PR icon stays `🔀`.
-            format!(
-                " | {} / {}",
-                self.paint(self.theme.issues, &format!("⬇️ {}", s.github.open_issues)),
-                self.paint(self.theme.prs, &format!("🔀 {}", s.github.open_prs))
-            )
-        } else {
-            String::new()
-        };
-        let repo = self.paint(self.theme.repo, &format!("📡 {owner}/{name}"));
-        Some(format!("{repo}{forge} | {branch}"))
+        let forge =
+            (self.enabled("github") && s.github.available && !s.github.suppressed).then(|| {
+                // #2559 (user instructions 2026-11-12): icons instead of letter labels; the Issue
+                // icon is `⬇️` (U+2B07 U+FE0F) since 23:1xZ, the PR icon stays `🔀`.
+                format!(
+                    "{}{GIT_COUNTS_GAP}{}",
+                    self.paint(self.theme.issues, &format!("⬇️ {}", s.github.open_issues)),
+                    self.paint(self.theme.prs, &format!("🔀 {}", s.github.open_prs))
+                )
+            });
+        let repo = self.paint(self.theme.repo, &format!("📡{REPO_ICON_GAP}{owner}/{name}"));
+        Some(RepoGroups {
+            forge,
+            repo: Some(repo),
+            branch,
+        })
     }
+}
+
+/// The groups of line 2 that follow the `git_branch` switch, each already painted (card C-137).
+struct RepoGroups {
+    forge: Option<String>,
+    repo: Option<String>,
+    branch: String,
 }
 
 /// User instruction 2026-11-19: `🌳 WT-c<card>-<name>` when a held reservation names the
@@ -507,7 +541,7 @@ mod tests {
         assert_eq!(
             plain(&full_status(), &[]),
             "🏷️ agent | 🧠 Opus | 🤔 high·t | ♻️ 75% | 🤖 v2.1.293 | 🗿 v2.0 -> 🗿 v3.0\n\
-             📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3\n\
+             ⬇️ 7 🔀 3 | 📡 owner/repo | 🅱️ main ↓2 +3\n\
              🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
         );
     }
@@ -791,7 +825,7 @@ mod tests {
         let want_plain = tail(&base_plain);
         assert_eq!(
             want_plain,
-            "📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3\n\
+            "⬇️ 7 🔀 3 | 📡 owner/repo | 🅱️ main ↓2 +3\n\
              🔋 CTX: █████░░░░░ 50% | 🪫 Week: ███████░░░ 75%"
         );
         let base_colored = colored("mocha", Profile::TrueColor, &base);
@@ -835,7 +869,7 @@ mod tests {
             ..Default::default()
         };
         let with_zero = plain(&status, &[]);
-        assert!(with_zero.contains("📡 owner/repo | ⬇️ 0 / 🔀 0 | 🅱️ main ↓2 +3"));
+        assert!(with_zero.contains("⬇️ 0 🔀 0 | 📡 owner/repo | 🅱️ main ↓2 +3"));
         // #2559: icons, not the old letter labels.
         assert!(!with_zero.contains("I: ") && !with_zero.contains("PR: "));
         status.github.available = false;
@@ -857,8 +891,8 @@ mod tests {
     }
 
     /// Card C-65 (user instructions 2026-11-16 and 2026-11-17, card 85):
-    /// `🗂️ remaining / ▶️ in progress / ✅ done` as one segment right after the forge counts;
-    /// zero is shown, and absent counts leave the line as it was.
+    /// `🗂️ remaining ▶️ in progress ✅ done` as one group right after the forge counts; zero is
+    /// shown, and absent counts leave the line as it was.
     #[test]
     fn card_counts_follow_the_forge_counts_as_one_segment() {
         let line = |s: &Status, off: &[&str]| plain(s, off).lines().nth(1).unwrap().to_string();
@@ -866,7 +900,7 @@ mod tests {
         let without = plain(&status, &[]);
         assert_eq!(
             line(&status, &[]),
-            "📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3",
+            "⬇️ 7 🔀 3 | 📡 owner/repo | 🅱️ main ↓2 +3",
             "no counts: no segment"
         );
         status.cards = Some(CardCounts {
@@ -877,7 +911,7 @@ mod tests {
         });
         assert_eq!(
             line(&status, &[]),
-            "📡 owner/repo | ⬇️ 7 / 🔀 3 | 🗂️ 50 / ▶️ 5 / ✅ 12 | 🅱️ main ↓2 +3"
+            "⬇️ 7 🔀 3 | 🗂️ 50 ▶️ 5 ✅ 12 | 📡 owner/repo | 🅱️ main ↓2 +3"
         );
         // Lines 1 and 3 do not change.
         let with = plain(&status, &[]);
@@ -887,7 +921,7 @@ mod tests {
         // The `cards` option hides both parts and nothing else.
         assert_eq!(plain(&status, &["cards"]), without);
         // Without forge counts (absent, suppressed or switched off) the cards keep the place.
-        let alone = "📡 owner/repo | 🗂️ 50 / ▶️ 5 / ✅ 12 | 🅱️ main ↓2 +3";
+        let alone = "🗂️ 50 ▶️ 5 ✅ 12 | 📡 owner/repo | 🅱️ main ↓2 +3";
         assert_eq!(line(&status, &["github"]), alone);
         status.github.suppressed = true;
         assert_eq!(line(&status, &[]), alone);
@@ -897,7 +931,61 @@ mod tests {
         status.cards = Some(CardCounts::default());
         assert_eq!(
             line(&status, &[]),
-            "📡 owner/repo | 🗂️ 0 / ▶️ 0 / ✅ 0 | 🅱️ main ↓2 +3"
+            "🗂️ 0 ▶️ 0 ✅ 0 | 📡 owner/repo | 🅱️ main ↓2 +3"
+        );
+    }
+
+    /// SPEC-20261120-statusline-line2-order (user instruction 2026-11-19): line 2 reads git counts,
+    /// card counts, repository, branch, then the pull request, groups joined by ` | `, and no
+    /// group has a slash in it: the items of a group, the two git counts too, are one space
+    /// apart. Every pair of the groups keeps that order when the others are left out.
+    #[test]
+    fn line_two_reads_git_counts_then_cards_then_repository_then_branch() {
+        let line = |s: &Status, off: &[&str]| plain(s, off).lines().nth(1).unwrap().to_string();
+        let mut status = full_status();
+        status.cards = Some(CardCounts {
+            in_progress: 5,
+            waiting: Some(15),
+            remaining: 50,
+            done: 65,
+        });
+        status.pr = Some(state::PrInfo {
+            number: 42,
+            url: String::new(),
+            review_state: "pending".into(),
+        });
+        let full = line(&status, &[]);
+        assert_eq!(
+            full,
+            "⬇️ 7 🔀 3 | 🗂️ 50 ▶️ 5 🔃 15 ✅ 65 | 📡 owner/repo | 🅱️ main ↓2 +3 | 🔗 #42 pending"
+        );
+        assert!(
+            !full.replace("owner/repo", "").contains('/'),
+            "no slash inside a group: {full}"
+        );
+        let at = |icon: &str| full.find(icon).unwrap();
+        assert!(at("⬇️") < at("🔀") && at("🔀") < at("🗂️") && at("🗂️") < at("▶️"));
+        assert!(at("▶️") < at("🔃") && at("🔃") < at("✅") && at("✅") < at("📡"));
+        assert!(at("📡") < at("🅱️") && at("🅱️") < at("🔗"));
+        // Notes unreadable: the same place, three items.
+        status.cards.as_mut().unwrap().waiting = None;
+        assert_eq!(
+            line(&status, &[]),
+            "⬇️ 7 🔀 3 | 🗂️ 50 ▶️ 5 ✅ 65 | 📡 owner/repo | 🅱️ main ↓2 +3 | 🔗 #42 pending"
+        );
+        // Each group on its own switch leaves the other three in order.
+        status.cards.as_mut().unwrap().waiting = Some(15);
+        assert_eq!(
+            line(&status, &["github"]),
+            "🗂️ 50 ▶️ 5 🔃 15 ✅ 65 | 📡 owner/repo | 🅱️ main ↓2 +3 | 🔗 #42 pending"
+        );
+        assert_eq!(
+            line(&status, &["cards"]),
+            "⬇️ 7 🔀 3 | 📡 owner/repo | 🅱️ main ↓2 +3 | 🔗 #42 pending"
+        );
+        assert_eq!(
+            line(&status, &["pr"]),
+            "⬇️ 7 🔀 3 | 🗂️ 50 ▶️ 5 🔃 15 ✅ 65 | 📡 owner/repo | 🅱️ main ↓2 +3"
         );
     }
 
@@ -918,10 +1006,7 @@ mod tests {
             done: 12,
         });
         // The worktree opens line 3 (user instruction 2026-11-19), so line 2 is the cards alone.
-        assert_eq!(
-            line(&status, &["git_branch"]),
-            "🗂️ 50 / ▶️ 2 / 🔃 26 / ✅ 12"
-        );
+        assert_eq!(line(&status, &["git_branch"]), "🗂️ 50 ▶️ 2 🔃 26 ✅ 12");
         // With nothing else on line 2 the line is gone and the bars line is the second one.
         assert!(line(&status, &["git_branch", "cards"]).starts_with("🌳 wt | 🔋 CTX:"));
         status.cards = Some(CardCounts {
@@ -930,7 +1015,7 @@ mod tests {
             remaining: 50,
             done: 12,
         });
-        assert_eq!(line(&status, &["git_branch"]), "🗂️ 50 / ▶️ 28 / ✅ 12");
+        assert_eq!(line(&status, &["git_branch"]), "🗂️ 50 ▶️ 28 ✅ 12");
     }
 
     #[test]
@@ -944,13 +1029,13 @@ mod tests {
             done: 3,
         });
         status.worktree = "wt".into();
-        assert_eq!(line(&status, &["git_branch"]), "🗂️ 2 / ▶️ 1 / ✅ 3");
+        assert_eq!(line(&status, &["git_branch"]), "🗂️ 2 ▶️ 1 ✅ 3");
         status.repo = None;
-        assert_eq!(line(&status, &[]), "🗂️ 2 / ▶️ 1 / ✅ 3 | 🅱️ main ↓2 +3");
+        assert_eq!(line(&status, &[]), "🗂️ 2 ▶️ 1 ✅ 3 | 🅱️ main ↓2 +3");
         status.git = None;
-        assert_eq!(line(&status, &[]), "🗂️ 2 / ▶️ 1 / ✅ 3");
+        assert_eq!(line(&status, &[]), "🗂️ 2 ▶️ 1 ✅ 3");
         status.worktree.clear();
-        assert_eq!(line(&status, &[]), "🗂️ 2 / ▶️ 1 / ✅ 3");
+        assert_eq!(line(&status, &[]), "🗂️ 2 ▶️ 1 ✅ 3");
     }
 
     /// Card C-65: color is never the only signal. Each number keeps its icon, the three parts
@@ -1081,7 +1166,7 @@ mod tests {
         );
         assert_eq!(
             lines[1],
-            "📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3 | 🔗 #42 pending"
+            "⬇️ 7 🔀 3 | 📡 owner/repo | 🅱️ main ↓2 +3 | 🔗 #42 pending"
         );
         // The worktree opens line 3 (user instruction 2026-11-19), before the bars.
         assert!(lines[2].starts_with("🌳 wt | 🔋 CTX:"), "{}", lines[2]);
@@ -1109,7 +1194,7 @@ mod tests {
         status.worktree.clear();
         assert_eq!(
             plain(&status, &[]).lines().nth(1),
-            Some("📡 owner/repo | ⬇️ 7 / 🔀 3 | 🅱️ main ↓2 +3"),
+            Some("⬇️ 7 🔀 3 | 📡 owner/repo | 🅱️ main ↓2 +3"),
             "no empty `| |`"
         );
     }

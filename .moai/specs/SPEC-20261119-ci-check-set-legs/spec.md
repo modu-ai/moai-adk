@@ -38,10 +38,11 @@ C-20 조각 2 실측(카드 노트 2833, 최근 10개 push run): ci 잡 시간�
 - REQ-8: tools/ci_superseded.py shall parse the leg-suffixed names (target = the first ` / `-separated segment after `ci / `) and detect the macOS wait-replacement by the annotation string `ci-push-<target>-<leg>`; the state is `superseded` only when every leg of every target passed or was a macOS wait replacement, and anything else stays `fail`.
 - REQ-9: The aggregate job shall keep the name `ci`, its `needs` (`check`, `ci-verdict`) and its conditions unchanged, so the required check names (`ci`, `moai/audit`) and the integration ruleset are untouched.
 - REQ-10: While `LOCAL_CHECK_MODE` is candidate, a set `LOCAL_CHECK_LEG` shall make the script refuse with exit 2 and a stderr line before running any stage. · failure: none — pinned by AC-1.
+- REQ-11: While `LOCAL_CHECK_MODE` is in-place and `GITHUB_ACTIONS` is not `true`, a set `LOCAL_CHECK_LEG` shall make the script refuse with exit 2 and a stderr line before running any stage. · failure: none — pinned by AC-1.
 
 ## Acceptance
 
-- AC-1 (REQ-1…REQ-4, REQ-10): tests/local_check_test.py — 기본은 8단계 전부를 지금 순서로(기존 행 유지), `LOCAL_CHECK_LEG=nextest` 는 정확히 fetch·test·doctest, `=rest` 는 정확히 fetch·clippy·fmt·fmt-ops·unittest·diff-check, 모르는 값은 2 로 거절하고 pass 줄이 없음, 후보(candidate) 모드에서는 어떤 다리 값이든 2 로 거절(다리 하나만 돈 실행이 전체 통과 증거로 읽히지 않게 — 리더 수리 N1), keep-going · 첫 실패 규칙은 다리 안에서도 그대로.
+- AC-1 (REQ-1…REQ-4, REQ-10, REQ-11): tests/local_check_test.py — 기본은 8단계 전부를 지금 순서로(기존 행 유지), `LOCAL_CHECK_LEG=nextest` 는 정확히 fetch·test·doctest, `=rest` 는 정확히 fetch·clippy·fmt·fmt-ops·unittest·diff-check, 모르는 값은 2 로 거절하고 pass 줄이 없음, 후보(candidate) 모드와 로컬 in-place(GITHUB_ACTIONS 없음)에서는 어떤 다리 값이든 2 로 거절(다리 하나만 돈 실행이 전체 통과 증거로 읽히지 않게 — 리더 수리 N1, 조각 4), keep-going · 첫 실패 규칙은 다리 안에서도 그대로.
   verify: `python3 -m unittest tests.local_check_test`
 - AC-2 (REQ-5, REQ-6, REQ-9): tests/github_assets_test.py — 스크립트 호출은 매트릭스 다리가 함께 쓰는 정확히 한 곳(`LOCAL_CHECK_LEG` 는 step env 로 `matrix.leg` 를 받고 run 안에는 다리 표현식 없음; 구현 검토 결과 한 단계 정의가 두 다리 잡을 그대로 나눠 실행하므로 "각 다리 한 곳"의 못 박기가 이 모양으로 옮겨졌어요 — Result 참조), 매트릭스가 targets × [nextest, rest], 잡 이름 `ci / <target> / <leg>`, 집계 잡 이름은 `ci`, nextest 설치 step 은 nextest 다리만, 캐시 save-if 는 두 다리 모두 push 만, MOAI_BUILD_NUMBER 는 첫 시도만(기존 행), pinned actions · 권한 · scope step 행은 무변경.
   verify: `python3 -m unittest tests.github_assets_test`
@@ -88,6 +89,7 @@ C-20 조각 2 실측(카드 노트 2833, 최근 10개 push run): ci 잡 시간�
 | D6 | ci.yml 과 ci_superseded.py 를 같은 커밋에 | 어긋나면 중립-취소가 fail 로 읽힘(Risks) | 따로 가면 감사에서 FAIL |
 | D7 | 구현 다듬기 셋: 호출 한 곳 + 매트릭스 다리 · rest 다리 전용 빌드 단계 · smoke 는 두 다리 모두 | Result 1–3(설계 뒤 사실: REQ-5 매트릭스가 다리를 이미 실음, 파이썬 시험의 실바이너리 요구, 98351d78f9 의 시험 고정) | 각각 단계 복제·빌드 제거(완전 캐시 가정)·smoke 다리 조건으로 |
 | D8 | 리더 수리 둘: 후보 모드 다리 거절(REQ-10) · rust-cache key 다리 접두 | 리더 tier 2 감사 뒤 지시(증거 오독 방지·캐시 항목 충돌 방지) | 각각 거절 제거·key 접두 제거 |
+| D9 | 조각 4: 로컬 in-place 에서도 다리 거절(REQ-11, GITHUB_ACTIONS 판별) | 감사 기록 1번 — 짧은 pass 줄 오독 방지 | GITHUB_ACTIONS 판별 제거 |
 
 ## Result
 
@@ -102,3 +104,5 @@ C-20 조각 2 실측(카드 노트 2833, 최근 10개 push run): ci 잡 시간�
 **자체 확인 기록(agent-20, 감사 에이전트 audit-c20-legs, 2026-11-19T20:47Z)** — 지정 검증 전부 exit 0. 발견 세 건과 처리: B1(AC-4 의 다리 이름 fixture 한 행이 gate 시험에 없고 Result 에도 미기록) → fixture 파일이 C-99 예약이라 이 가지에서는 쓸 수 없어 연기로 못 박고 이 문서에 기록(리더·C-99 몫; 접두사 분류라 행동은 같음); N1(tests/ci_scope_test.py 변경이 Scope 밖이고 미기록) → Scope 쓰기 목록에 추가; N2(Risks 의 동적×정적 곱 문장이 구현과 불일치) → 구현 모양(리터럴 곱)으로 문장 교체. REQ-1…9 와 Result 세 다듬기는 코드·시험과 일치 확인.
 
 **리더 tier 2 감사와 수리(2026-11-19T20:53Z)** — tier 2 감사 PASS(head 7c1d7ca70b, 차단 0). READY 전 리더 수리 넷 중 이 문서가 이미 담은 것: N4(AC-4·Result 문구)·N5(Scope 의 ci_scope_test) — 위 자체 확인 수리와 같은 내용. 새로 더한 것: 리더 수리 N1 — 후보 모드에서 어떤 다리 값이든 exit 2 로 거절(REQ-10, 다리 하나만 돈 실행이 전체 통과 증거로 읽히지 않게; legs 는 CI in-place 병렬 장치); 리더 수리 N2 — rust-cache key 에 다리 접두(leg-nextest/leg-rest)를 넣어 한 push 의 두 다리 잡이 서로의 캐시 항목을 덮어쓰지 않게. N2 는 REQ-6 의 save-if 무변경과 별개의 key 값이에요.
+
+**조각 4(감사 기록 1번, 리더 배차, 2026-11-19T21:46Z)** — in-place 모드도 pass 줄을 내므로, GITHUB_ACTIONS 없는 로컬 실행에서 다리 값이면 exit 2 로 거절(REQ-11): 로컬에서 다리 하나만 돈 짧은 pass 줄이 증거로 읽히지 않게. 시험은 로컬 거절 행과 함께 기존 다리 행들에 GITHUB_ACTIONS=true 를 붙여 CI 조건을 그대로 못 박아요. SPEC 104행 시각 자리표시는 285cbaeb1e 에서 이미 실제 시각(20:53Z)으로 고쳤고, 이 문서에 자리표시는 더 없어요.

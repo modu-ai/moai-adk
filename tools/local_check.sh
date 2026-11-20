@@ -69,8 +69,9 @@
 #                           empty keeps today's single full set; `nextest` runs exactly fetch,
 #                           test, doctest; `rest` exactly fetch, clippy, fmt, fmt-ops, unittest,
 #                           diff-check; any other value exits 2 before any step runs, and so
-#                           does any set value in candidate mode (the full set is the only
-#                           local evidence; legs are CI's in-place parallelism)
+#                           does any set value outside CI — candidate mode, or in-place without
+#                           GITHUB_ACTIONS=true (the full set is the only local evidence; legs
+#                           are CI's in-place parallelism)
 #   GITHUB_STEP_SUMMARY     when set, one `| step | command | exit |` row per step is appended
 #   MOAI_HEAVY_SLOT_MAX (default 3), MOAI_HEAVY_SLOT_MIN_FREE_GB (default 50),
 #   MOAI_HEAVY_SLOT_NAME (default local-check): when `moai heavy-slot-acquire` exists, the
@@ -116,11 +117,18 @@ esac
 
 # Leader repair N1 (2026-11-19): a leg narrows the set, so it may never produce the
 # candidate-mode evidence line a gate reads as a full-set pass — a one-leg run must not be
-# readable as a pass for everything. Legs are CI's parallelism device (in-place mode);
-# locally the full set is the only evidence. Refused before the traps: no result line.
-if [ "$mode" = candidate ] && [ -n "$leg" ]; then
-  echo "tools/local_check.sh: LOCAL_CHECK_LEG is a CI leg for in-place mode; candidate mode always checks the full set, unset LOCAL_CHECK_LEG" >&2
-  exit 2
+# readable as a pass for everything. Slice 4 (audit record 1): in-place mode keeps legs on
+# CI only (GITHUB_ACTIONS=true) — a local in-place run also prints a pass line, so a
+# one-leg short pass must not appear there either. Refused before the traps: no result line.
+if [ -n "$leg" ]; then
+  if [ "$mode" = candidate ]; then
+    echo "tools/local_check.sh: LOCAL_CHECK_LEG is a CI leg for in-place mode; candidate mode always checks the full set, unset LOCAL_CHECK_LEG" >&2
+    exit 2
+  fi
+  if [ "${GITHUB_ACTIONS:-}" != true ]; then
+    echo "tools/local_check.sh: LOCAL_CHECK_LEG is for CI (in-place under GITHUB_ACTIONS); a local run always checks the full set, unset LOCAL_CHECK_LEG" >&2
+    exit 2
+  fi
 fi
 
 dry_run="${LOCAL_CHECK_DRY_RUN:-0}"

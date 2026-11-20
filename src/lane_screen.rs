@@ -99,12 +99,34 @@ fn clean(row: &str) -> String {
     out.trim().to_string()
 }
 
-/// `row` cut to [`EVIDENCE_CHARS`] characters.
+/// Text that came from a terminal this program does not own, for the answer: no character
+/// [`crate::lane_duty::unsafe_char`] names (a bidirectional or zero-width one included, removed
+/// first so it cannot split a secret shape), and every credential-shaped word replaced by
+/// `[redacted]` (re-audit C-B1 and C-N1, note 3497: an evidence row, a reset text, a title or an
+/// error message of another terminal may carry a key, and the answer goes into a session record).
+/// Two shape filters run, the word filter for shapes such as `AKIA…` and the substring filter for
+/// `sk-`, `ghp_`, `password=` and the like; a word such as `task-list` is shortened too, which a
+/// list of terminals can bear and a leaked key cannot.
+fn safe_text(text: &str) -> String {
+    let plain: String = text
+        .chars()
+        .filter(|c| !crate::lane_duty::unsafe_char(*c))
+        .collect();
+    let (words, _) = crate::redact::redact_outgoing(&plain);
+    crate::redact::redact_secret_shapes(&words)
+}
+
+/// `row` made safe and cut to [`EVIDENCE_CHARS`] characters.
 fn cut(row: &str) -> String {
-    if row.chars().count() <= EVIDENCE_CHARS {
+    cut_to(&safe_text(row), EVIDENCE_CHARS)
+}
+
+/// `row` cut to `max` characters; a longer row ends with `…`.
+fn cut_to(row: &str, max: usize) -> String {
+    if row.chars().count() <= max {
         return row.to_string();
     }
-    let mut s: String = row.chars().take(EVIDENCE_CHARS).collect();
+    let mut s: String = row.chars().take(max).collect();
     s.push('…');
     s
 }
@@ -552,7 +574,12 @@ pub fn parse_reset(row: &str, now: i64) -> Reset {
         {
             return None;
         }
-        Some(days_from_civil(y, m, d) * 86_400 + tod - offset)
+        // The range holds for the time in UTC too (card C-128 R-N4): `9999-12-31 23:59 -0800` is
+        // the year 10000 in UTC, and `1970-01-01 07:59 +0800` is 1969.
+        let t = days_from_civil(y, m, d) * 86_400 + tod - offset;
+        (1970..=9999)
+            .contains(&year_of_days(t.div_euclid(86_400)))
+            .then_some(t)
     };
     let local_now = now + offset;
     let found = match date {
@@ -690,6 +717,17 @@ pub fn observe(input: &str) -> (Screen, Seen) {
     (screen, seen)
 }
 
+/// The `reset` object of an answer for a reset time read from the screen text.
+fn reset_json(found: &Reset) -> serde_json::Value {
+    use crate::forge::policy::format_utc;
+    match found {
+        Reset::Utc(t) => serde_json::json!({"utc": format_utc(*t), "source": "screen"}),
+        Reset::Unknown { raw, why } => {
+            serde_json::json!({"utc": null, "unknown": true, "why": why, "raw": cut(raw)})
+        }
+    }
+}
+
 /// The answer of `moai lane-screen`: the state, its evidence row and reason, the reset time of a
 /// usage limit (from the lane's `home` when given), the `pane` object `lane-status` takes, and
 /// the count of non-blank rows. `now` is Unix seconds.
@@ -713,16 +751,11 @@ pub fn report(input: &str, home: Option<&std::path::Path>, now: i64) -> serde_js
             until = Some(utc.clone());
             reset = json!({"utc": utc, "source": "home"});
         } else {
-            match reset_of(&screen.rows, now) {
-                Some(Reset::Utc(t)) => {
-                    let utc = format_utc(t);
-                    until = Some(utc.clone());
-                    reset = json!({"utc": utc, "source": "screen"});
+            if let Some(found) = reset_of(&screen.rows, now) {
+                if let Reset::Utc(t) = &found {
+                    until = Some(format_utc(*t));
                 }
-                Some(Reset::Unknown { raw, why }) => {
-                    reset = json!({"utc": null, "unknown": true, "why": why, "raw": cut(&raw)});
-                }
-                None => {}
+                reset = reset_json(&found);
             }
         }
     }
@@ -743,6 +776,163 @@ pub fn report(input: &str, home: Option<&std::path::Path>, now: i64) -> serde_js
         "reset": reset,
         "pane": pane,
     })
+}
+
+/// Most terminals one scan reads; a longer list is read up to here and reported as cut short.
+pub const MAX_SCAN: usize = 200;
+/// Longest title, branch or handle shown, in characters.
+const SHOWN_CHARS: usize = 80;
+
+/// The error text for a terminal list that cannot be read (the program is absent, it failed, or
+/// its answer is not a list).
+pub fn list_error(detail: &str) -> String {
+    format!(
+        "the terminal list could not be read: {}",
+        cut(&clean(detail))
+    )
+}
+
+/// A text somebody else chose (a terminal title or branch), for display: no escape or control
+/// characters, no line-separator or bidirectional character, no credential-shaped word (see
+/// [`safe_text`]), cut to [`SHOWN_CHARS`].
+fn shown(text: &str) -> String {
+    cut_to(&safe_text(&clean(text)), SHOWN_CHARS)
+}
+
+/// The scan of `orca terminal list --json` (`list_json`): one row per listed terminal with the
+/// state of its screen, read one terminal at a time through `read` (the handle in, the answer of
+/// `orca terminal read --screen --json` out). A terminal that cannot be read, has no handle or is
+/// not answered with an Orca answer is `unreachable`; the scan goes on. A usage limit carries its
+/// reset time in UTC from the screen text (no `usage-limits.json`: a terminal does not say whose
+/// HOME it is). `now` is Unix seconds. `Err` only when the list itself cannot be read.
+pub fn scan(
+    list_json: &str,
+    read: &mut dyn FnMut(&str) -> Result<String, String>,
+    now: i64,
+) -> Result<serde_json::Value, String> {
+    use serde_json::{json, Map, Value};
+
+    let Ok(Value::Object(answer)) = serde_json::from_str::<Value>(list_json) else {
+        return Err(list_error(
+            "the answer of `orca terminal list` is not an Orca answer",
+        ));
+    };
+    if answer.get("ok") == Some(&Value::Bool(false)) {
+        return Err(list_error("Orca answered with an error"));
+    }
+    let Some(listed) = answer
+        .get("result")
+        .and_then(|r| r.get("terminals"))
+        .and_then(Value::as_array)
+    else {
+        return Err(list_error("the answer holds no `terminals` list"));
+    };
+    let reported = answer
+        .get("result")
+        .and_then(|r| r.get("totalCount"))
+        .and_then(Value::as_u64)
+        .map_or(0, |n| usize::try_from(n).unwrap_or(usize::MAX));
+    let total = reported.max(listed.len());
+    let cut_short = total > listed.len()
+        || listed.len() > MAX_SCAN
+        || answer
+            .get("result")
+            .and_then(|r| r.get("truncated"))
+            .and_then(Value::as_bool)
+            == Some(true);
+
+    let mut terminals = Vec::new();
+    let mut by_state: Map<String, Value> = Map::new();
+    let mut table = vec![format!(
+        "{:<16} {:<18} {:<20} {}",
+        "handle", "state", "reset (UTC)", "branch  title"
+    )];
+    for term in listed.iter().take(MAX_SCAN) {
+        let text = |key: &str| term.get(key).and_then(Value::as_str).map(shown);
+        let handle = text("handle");
+        let (title, branch) = (
+            text("title").unwrap_or_default(),
+            text("branch").unwrap_or_default(),
+        );
+        // (state, reason, evidence, reset) of this terminal.
+        let (state, reason, evidence, reset) = match term.get("handle").and_then(Value::as_str) {
+            None => unreachable_row("the list gives this terminal no handle"),
+            Some(raw) => match read(raw) {
+                Err(d) => unreachable_row(&format!(
+                    "the terminal could not be read: {}",
+                    cut(&clean(&d))
+                )),
+                Ok(out) => {
+                    let input = read_input(&out);
+                    if input.source != "orca:screen" {
+                        unreachable_row("the answer of `orca terminal read` is not an Orca answer")
+                    } else {
+                        let seen = report(&out, None, now);
+                        let state = seen["state"].as_str().unwrap_or("unknown").to_string();
+                        let mut reason = seen["reason"].as_str().unwrap_or("").to_string();
+                        let mut reset = seen["reset"].clone();
+                        // A Yes/No menu wins over a usage limit (R-N3): the lane is still
+                        // stopped by the limit, so its reset time stays in the list.
+                        if state == State::PermissionPrompt.as_str() && reset.is_null() {
+                            if let Some(found) = reset_of(&input.rows, now) {
+                                reset = reset_json(&found);
+                                reason.push_str("; a usage-limit message is also on the screen");
+                            }
+                        }
+                        (state, reason, seen["evidence"].clone(), reset)
+                    }
+                }
+            },
+        };
+        let reset_text = match reset["utc"].as_str() {
+            Some(utc) => utc,
+            None if reset["unknown"] == Value::Bool(true) => "unknown",
+            None => "-",
+        };
+        table.push(format!(
+            "{:<16} {:<18} {:<20} {}  {}",
+            handle.as_deref().unwrap_or("-"),
+            state,
+            reset_text,
+            branch,
+            title
+        ));
+        let n = by_state.get(&state).and_then(Value::as_u64).unwrap_or(0);
+        by_state.insert(state.clone(), json!(n + 1));
+        terminals.push(json!({
+            "handle": handle,
+            "title": title,
+            "branch": branch,
+            "state": state,
+            "reason": reason,
+            "evidence": evidence,
+            "reset": reset,
+        }));
+    }
+    let count = terminals.len();
+    if cut_short {
+        table.push(format!(
+            "{count} of {total} terminals shown: the list was cut short"
+        ));
+    }
+    Ok(json!({
+        "terminals": terminals,
+        "count": count,
+        "total": total,
+        "truncated": cut_short,
+        "by_state": by_state,
+        "table": table,
+    }))
+}
+
+/// The row of a terminal that could not be looked at.
+fn unreachable_row(reason: &str) -> (String, String, serde_json::Value, serde_json::Value) {
+    (
+        State::Unreachable.as_str().to_string(),
+        reason.to_string(),
+        serde_json::Value::Null,
+        serde_json::Value::Null,
+    )
 }
 
 #[cfg(test)]
@@ -1114,6 +1304,46 @@ mod tests {
     }
 
     #[test]
+    fn text_from_a_terminal_hides_secret_shapes_and_unsafe_characters() {
+        // The shapes are built from pieces so none stands in this file (re-audit C-B1, C-N1).
+        let gh = ["gh", "p_"].concat() + "A1b2C3d4E5f6G7h8I9j0";
+        let sk = ["s", "k-"].concat() + "abcdefghij0123456789";
+        let pw = ["pass", "word="].concat() + "hunter2hunter2";
+        for secret in [&gh, &sk, &pw] {
+            let shown_text = shown(&format!("deploy {secret} now"));
+            assert_eq!(shown_text, "deploy [redacted] now", "{secret}");
+            let seen = classify(&rows(&format!(
+                "Do you want to proceed? (yes/no) {secret}\nrow\nrow\nrow\nrow\nrow"
+            )));
+            let evidence = seen.evidence.unwrap();
+            assert!(evidence.ends_with("[redacted]"), "{evidence}");
+            assert!(!evidence.contains("A1b2") && !evidence.contains("hunter2"));
+            assert!(
+                list_error(&format!("no runtime {secret}")).ends_with("[redacted]"),
+                "{secret}"
+            );
+        }
+        // A zero-width or bidirectional character cannot split a shape and hide it.
+        let split = format!("{}\u{200b}{}", &gh[..4], &gh[4..]);
+        assert_eq!(shown(&split), "[redacted]");
+        assert_eq!(shown("a\u{202e}b\u{200b}c\u{2066}d\u{2028}e"), "abcde");
+        // An ordinary row is not changed.
+        assert_eq!(shown("work lane"), "work lane");
+        assert_eq!(cut("Do you want to proceed?"), "Do you want to proceed?");
+        // The reset text of an unknown zone is safe too.
+        let found = reset_of(
+            &rows(&format!(
+                "Your limit will reset at 2026-11-19 17:30:55 {sk}"
+            )),
+            NOW,
+        );
+        let found = found.expect("a limit row has a reset");
+        assert!(matches!(found, Reset::Unknown { .. }), "{found:?}");
+        let raw = reset_json(&found)["raw"].as_str().unwrap().to_string();
+        assert!(raw.ends_with("[redacted]"), "{raw}");
+    }
+
+    #[test]
     fn a_time_with_no_zone_is_unknown_with_its_text() {
         let row = "  ⎿  Your limit will reset at 2026-11-19 17:30:55";
         match parse_reset(row, NOW) {
@@ -1185,6 +1415,22 @@ mod tests {
             utc("resets November 20, 2026 at 7pm (UTC)", NOW),
             Some(NOW + 86_400 + 19 * 3600)
         );
+    }
+
+    #[test]
+    fn a_time_whose_utc_year_leaves_1970_to_9999_is_unknown() {
+        // 9999-12-31 23:59:00 UTC is the last readable minute; one minute later is year 10000.
+        assert_eq!(
+            utc("resets 9999-12-31 15:59 -0800", NOW),
+            Some(253_402_300_740)
+        );
+        assert_eq!(utc("resets 9999-12-31 16:00 -0800", NOW), None);
+        assert_eq!(utc("resets 9999-12-31 23:59 -0800", NOW), None);
+        // 1970-01-01 00:00:00 UTC is the first readable second; a minute earlier is 1969.
+        assert_eq!(utc("resets 1970-01-01 08:00 +0800", NOW), Some(0));
+        assert_eq!(utc("resets 1970-01-01 07:59 +0800", NOW), None);
+        // A month-name date with a year takes the same door.
+        assert_eq!(utc("resets Dec 31, 9999 at 11:59pm (UTC-8)", NOW), None);
     }
 
     #[test]

@@ -2595,3 +2595,462 @@ fn ac_verify_rule_capabilities_name_the_rule_and_its_limits() {
     assert!(reason.contains("not wired"), "{reason}");
     assert!(!reason.contains("STOP_RULES is empty"), "{reason}");
 }
+
+/// SPEC-20261119-ac-verify-recorded-limits REQ-1 (card C-130, audit N2 N5 N8 and the subfolder
+/// decision D-2): the named limits also say that Stop reads the process folder while the
+/// observation reads the input's cwd, that a verify command over 4096 bytes is never recorded,
+/// that a detached HEAD, sha256 objects, a reftable and a symbolic ref switch the rule off
+/// silently, and that a run from a subfolder counts.
+#[test]
+fn the_ac_verify_limits_name_the_process_folder_the_command_size_the_unreadable_heads_and_the_subfolder(
+) {
+    for host in ["claude", "codex"] {
+        let caps = moai_cli::hook_engine::capabilities(host);
+        let limits = caps["turn-validation"]["limits"].to_string();
+        for limit in [
+            "the process folder",
+            "over 4096 bytes",
+            "a detached HEAD",
+            "sha256",
+            "reftable",
+            "symbolic ref",
+            "from a subfolder",
+        ] {
+            assert!(limits.contains(limit), "{host} {limit}: {limits}");
+        }
+    }
+}
+
+/// Three blocks of one session in a row: the first two keep it working, the third lets the turn
+/// end and (REQ-2) writes one `rule_release` line that names the rule, its reason and the
+/// session. The release is not a block: the count of `stop_block` lines stays two.
+#[test]
+fn the_stop_release_after_the_cap_writes_one_rule_release_line() {
+    let (_tmp, root) = ac_repo(AC_BRANCH, Some(AC_HEAD), Some(AC_BODY));
+    ac_mode(&root, "enforce");
+    ac_write(&root, "s1");
+    ac_pause();
+    assert!(ac_reason(&ac_stop(&root, "s1", false)).is_some(), "first");
+    assert!(ac_reason(&ac_stop(&root, "s1", false)).is_some(), "second");
+    let released = |root: &Path| {
+        merge_log(root)
+            .into_iter()
+            .filter(|l| l["kind"] == json!("rule_release"))
+            .collect::<Vec<Value>>()
+    };
+    assert_eq!(
+        released(&root),
+        Vec::<Value>::new(),
+        "no release before the cap"
+    );
+    assert!(
+        ac_reason(&ac_stop(&root, "s1", false)).is_none(),
+        "third ends"
+    );
+    let lines = released(&root);
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    assert_eq!(lines[0]["rule"], json!("ac_verify_recorded"), "{lines:?}");
+    // The log keeps a key of the session id, the same one its `stop_block` lines carry.
+    let block_session = merge_log(&root)
+        .into_iter()
+        .find(|l| l["kind"] == json!("stop_block"))
+        .map(|l| l["session"].clone())
+        .unwrap();
+    assert_eq!(lines[0]["session"], block_session, "{lines:?}");
+    assert!(
+        lines[0]["reason"].as_str().unwrap().contains("AC-1"),
+        "{lines:?}"
+    );
+    assert!(lines[0]["unix_ms"].as_u64().is_some(), "{lines:?}");
+    let blocks = merge_log(&root)
+        .iter()
+        .filter(|l| l["kind"] == json!("stop_block"))
+        .count();
+    assert_eq!(blocks, 2, "the release is not a block");
+    // Another session is not released by this session's count.
+    ac_write(&root, "s2");
+    ac_pause();
+    assert!(
+        ac_reason(&ac_stop(&root, "s2", false)).is_some(),
+        "s2 first"
+    );
+    assert_eq!(released(&root).len(), 1, "s2 has no release");
+}
+
+/// REQ-2's other side: a session at the cap whose rule would not ask any more (the SPEC changed
+/// to criteria the rule leaves out, with no tool call in between) is let go without a
+/// `rule_release` line: there was nothing to release.
+#[test]
+fn no_rule_release_line_is_written_when_no_rule_would_block() {
+    let (_tmp, root) = ac_repo(AC_BRANCH, Some(AC_HEAD), Some(AC_BODY));
+    ac_mode(&root, "enforce");
+    ac_write(&root, "s1");
+    ac_pause();
+    assert!(ac_reason(&ac_stop(&root, "s1", false)).is_some(), "first");
+    assert!(ac_reason(&ac_stop(&root, "s1", false)).is_some(), "second");
+    fs::write(
+        root.join(".moai/specs").join(AC_SPEC).join("spec.md"),
+        format!("{AC_HEAD_PART}{AC_BODY_LEFT_OUT}"),
+    )
+    .unwrap();
+    assert!(
+        ac_reason(&ac_stop(&root, "s1", false)).is_none(),
+        "nothing to ask"
+    );
+    assert!(
+        merge_log(&root)
+            .iter()
+            .all(|l| l["kind"] != json!("rule_release")),
+        "no release without a refusal to release"
+    );
+}
+
+/// REQ-8 (audit N6): the engine log has a size limit. Up to the limit the rule reads the log and
+/// asks; at exactly the limit it reads, asks, and cannot write the block down, so it lets the
+/// turn end (an unrecorded block could not be bounded). Past the limit it reads no line and lets
+/// the turn end too. The last two cases look the same from outside, so this test pins the
+/// write limit and the limit-1 read; the read limit itself is pinned only on the oversized-side
+/// lib test (`an_oversized_log_on_one_side_does_not_hide_the_other_side`), and a read limit of
+/// `<` instead of `<=` survives (audit note on C-130, finding 1).
+#[test]
+fn the_ac_verify_rule_lets_the_turn_end_when_the_log_is_full() {
+    let limit = moai_cli::hooks::RECEIPT_LOG_LIMIT;
+    for (size, asks) in [(limit - 1, true), (limit, false), (limit + 1, false)] {
+        let (_tmp, root) = ac_repo(AC_BRANCH, Some(AC_HEAD), Some(AC_BODY));
+        ac_mode(&root, "enforce");
+        ac_write(&root, "s1");
+        ac_pause();
+        // Grow the log to `size` bytes with one long valid JSON line.
+        let log = root.join(".moai-cli/receipts/hook-engine.jsonl");
+        let now = fs::metadata(&log).unwrap().len();
+        let pad = (size - now) as usize;
+        let filler = "{\"kind\":\"pad\",\"x\":\"".len() + "\"}\n".len();
+        let line = format!(
+            "{{\"kind\":\"pad\",\"x\":\"{}\"}}\n",
+            "a".repeat(pad - filler)
+        );
+        let mut file = fs::OpenOptions::new().append(true).open(&log).unwrap();
+        std::io::Write::write_all(&mut file, line.as_bytes()).unwrap();
+        drop(file);
+        assert_eq!(fs::metadata(&log).unwrap().len(), size, "size {size}");
+        let before = fs::metadata(&log).unwrap().len();
+        let answer = ac_stop(&root, "s1", false);
+        assert_eq!(
+            ac_reason(&answer).is_some(),
+            asks,
+            "log of {size} bytes (limit {limit}): {answer:?}"
+        );
+        if !asks {
+            assert_eq!(
+                fs::metadata(&log).unwrap().len(),
+                before,
+                "a full log is never grown (size {size})"
+            );
+        }
+    }
+}
+
+/// Decision D-2 (audit N4), pinned: the hook process runs in the project's folder and the call
+/// names its own cwd. A verify command run from a subfolder of the work tree (the call's cwd is
+/// below the top) leaves its `ac_run` line in the project's log, because the SPEC is found from
+/// the top of the work tree the call's cwd is in. A call whose cwd is another work tree is read
+/// with that work tree's branch, not the project's.
+#[test]
+fn a_run_from_a_subfolder_of_the_work_tree_is_recorded() {
+    let (_tmp, root) = ac_repo(AC_BRANCH, Some(AC_HEAD), Some(AC_BODY));
+    let sub = root.join("src/deep");
+    fs::create_dir_all(&sub).unwrap();
+    let input = json!({"session_id": "s1", "hook_event_name": "PostToolUse",
+        "tool_name": "Bash", "tool_use_id": "t",
+        "tool_input": {"command": "cargo test --test one"}, "tool_response": {}, "cwd": sub});
+    let (code, out) = ac_dispatch("tool-observe", "claude", &root, &input);
+    assert_eq!((code, out.as_str()), (0, ""));
+    let runs = ac_runs(&root);
+    assert_eq!(runs.len(), 1, "{runs:?}");
+    assert_eq!(runs[0]["ac"], json!("AC-1"), "{runs:?}");
+    assert_eq!(runs[0]["head"], json!(AC_HEAD), "{runs:?}");
+    // A different work tree (a branch that is no SPEC branch) records nothing.
+    let (_other_tmp, other) = ac_repo("main", Some(AC_HEAD), Some(AC_BODY));
+    let input = json!({"session_id": "s1", "hook_event_name": "PostToolUse",
+        "tool_name": "Bash", "tool_use_id": "t",
+        "tool_input": {"command": "cargo test --test one"}, "tool_response": {}, "cwd": other});
+    let (code, _) = ac_dispatch("tool-observe", "claude", &root, &input);
+    assert_eq!(code, 0);
+    assert_eq!(ac_runs(&root).len(), 1, "the other work tree adds no run");
+}
+
+/// REQ-7 (audit N-r1; the host documents read 2026-11-19 by research-c130-host-shapes):
+/// Claude Code documents `run_in_background` as a boolean, `backgroundTaskId` as a string only
+/// for background commands, `interrupted` as a boolean, and sets `timedOutAfterMs` or
+/// `backgroundedByUser` when it moved the command to the background itself. A recorder that must
+/// not count an unfinished call reads every value that is not the documented plain "no" as
+/// unfinished: the string "true", the number 1, an empty task id, a task id in snake_case, a
+/// key that is present with another type. A `null` or an absent key, and the plain `false`, are
+/// a finished call and are recorded.
+#[test]
+fn ac_verify_run_ignores_a_call_marked_unfinished_in_every_documented_spelling() {
+    let (_tmp, root) = ac_repo(AC_BRANCH, Some(AC_HEAD), Some(AC_BODY));
+    let command = "cargo test --test one";
+    let call = |tool_input: Value, tool_response: Value| {
+        let mut input_tool = json!({"command": command});
+        for (k, v) in tool_input.as_object().unwrap() {
+            input_tool[k] = v.clone();
+        }
+        let input = json!({"session_id": "s1", "hook_event_name": "PostToolUse",
+            "tool_name": "Bash", "tool_use_id": "t",
+            "tool_input": input_tool, "tool_response": tool_response, "cwd": root});
+        let (code, out) = ac_dispatch("tool-observe", "claude", &root, &input);
+        assert_eq!((code, out.as_str()), (0, ""));
+    };
+    let unfinished: [(&str, Value, Value); 15] = [
+        (
+            "run_in_background string",
+            json!({"run_in_background": "true"}),
+            json!({}),
+        ),
+        (
+            "run_in_background one",
+            json!({"run_in_background": 1}),
+            json!({}),
+        ),
+        (
+            "run_in_background false string",
+            json!({"run_in_background": "false"}),
+            json!({}),
+        ),
+        (
+            "runInBackground",
+            json!({"runInBackground": true}),
+            json!({}),
+        ),
+        ("empty task id", json!({}), json!({"backgroundTaskId": ""})),
+        ("numeric task id", json!({}), json!({"backgroundTaskId": 7})),
+        (
+            "snake_case task id",
+            json!({}),
+            json!({"background_task_id": "b1"}),
+        ),
+        (
+            "interrupted string",
+            json!({}),
+            json!({"interrupted": "true"}),
+        ),
+        ("interrupted one", json!({}), json!({"interrupted": 1})),
+        (
+            "interrupted false string",
+            json!({}),
+            json!({"interrupted": "false"}),
+        ),
+        ("interrupted zero", json!({}), json!({"interrupted": 0})),
+        (
+            "timed out into the background",
+            json!({}),
+            json!({"timedOutAfterMs": 120000}),
+        ),
+        (
+            "moved by the user",
+            json!({}),
+            json!({"backgroundedByUser": true}),
+        ),
+        (
+            "moved by the user string",
+            json!({}),
+            json!({"backgroundedByUser": "true"}),
+        ),
+        ("response is a string", json!({}), json!("done")),
+    ];
+    for (what, tool_input, tool_response) in unfinished {
+        call(tool_input, tool_response);
+        assert_eq!(ac_runs(&root), Vec::<Value>::new(), "{what}");
+    }
+    // The finished shapes: the documented plain values, `null` and absent keys.
+    for (what, tool_input, tool_response) in [
+        (
+            "plain false flags",
+            json!({"run_in_background": false}),
+            json!({"interrupted": false, "backgroundedByUser": false, "stdout": "ok"}),
+        ),
+        (
+            "null markers",
+            json!({}),
+            json!({"backgroundTaskId": null, "timedOutAfterMs": null, "interrupted": false}),
+        ),
+    ] {
+        let before = ac_runs(&root).len();
+        call(tool_input, tool_response);
+        assert_eq!(ac_runs(&root).len(), before + 1, "{what}");
+    }
+}
+
+/// REQ-3 (audit N3): the verify command's white space is folded as the SPEC folds it only
+/// where the shell folds it. A call with a newline or a no-break space inside the command is a
+/// different command and is not recorded as the verify command; two spaces or a tab are the
+/// same command.
+#[test]
+fn a_call_with_a_newline_or_a_no_break_space_inside_is_not_recorded_as_the_verify_command() {
+    let (_tmp, root) = ac_repo(AC_BRANCH, Some(AC_HEAD), Some(AC_BODY));
+    for different in [
+        "cargo test\n--test one",
+        "cargo test\u{a0}--test one",
+        "cargo test --test\none",
+    ] {
+        let (code, out) = ac_bash(&root, "s1", different, false);
+        assert_eq!((code, out.as_str()), (0, ""), "{different:?}");
+        assert_eq!(ac_runs(&root), Vec::<Value>::new(), "{different:?}");
+    }
+    for same in [
+        "cargo  test --test one",
+        "cargo test\t--test one",
+        " cargo test --test one ",
+        "cargo test --test one\n",
+    ] {
+        let (code, out) = ac_bash(&root, "s1", same, false);
+        assert_eq!((code, out.as_str()), (0, ""), "{same:?}");
+    }
+    assert_eq!(ac_runs(&root).len(), 4, "{:?}", ac_runs(&root));
+}
+
+/// SPEC-20261119-ac-verify-recorded-limits REQ-10 (card C-130 criterion 5, leader decision of
+/// note 3387 on audit N10): the rule counts a write of the session only when its outcome is not a
+/// failure (a success and an unknown outcome both count: dropping the unknown would weaken the
+/// rule quietly) and its path is not outside the project folder; a line with no path counts,
+/// conservatively. After a write that does not count the Stop rule has no write to ask about.
+#[test]
+fn ac_verify_rule_counts_only_writes_that_did_not_fail_and_are_inside_the_project() {
+    let project_file = |root: &Path| json!({"file_path": root.join("src/x.rs"), "content": "x"});
+    // (what, host, event, tool, tool_input builder, counts)
+    type WriteCase<'a> = (
+        &'a str,
+        &'a str,
+        &'a str,
+        &'a str,
+        Box<dyn Fn(&Path) -> Value>,
+        bool,
+    );
+    let cases: Vec<WriteCase> = vec![
+        (
+            "a project write that succeeded",
+            "claude",
+            "PostToolUse",
+            "Write",
+            Box::new(project_file),
+            true,
+        ),
+        (
+            "a failed Edit",
+            "claude",
+            "PostToolUseFailure",
+            "Edit",
+            Box::new(project_file),
+            false,
+        ),
+        (
+            "a write outside the project folder",
+            "claude",
+            "PostToolUse",
+            "Write",
+            Box::new(|_| json!({"file_path": "/tmp/moai-c130-scratch.txt", "content": "x"})),
+            false,
+        ),
+        (
+            "a write that climbs out of the folder",
+            "claude",
+            "PostToolUse",
+            "Write",
+            Box::new(|_| json!({"file_path": "../elsewhere.txt", "content": "x"})),
+            false,
+        ),
+        (
+            "an unknown outcome (Codex apply_patch)",
+            "codex",
+            "PostToolUse",
+            "apply_patch",
+            Box::new(project_file),
+            true,
+        ),
+        (
+            "a write line with no path",
+            "claude",
+            "PostToolUse",
+            "Write",
+            Box::new(|_| json!({"content": "x"})),
+            true,
+        ),
+        // Audit of 0ca2f8892b, findings 2 and 3: a path that only passes through `..` and stays
+        // inside is a project write; a path the log cannot keep (too long, a control character)
+        // is `unrecorded` and counts, as the rule counts what it cannot place.
+        (
+            "a relative path that goes through .. and stays inside",
+            "claude",
+            "PostToolUse",
+            "Write",
+            Box::new(|_| json!({"file_path": "src/../x.rs", "content": "x"})),
+            true,
+        ),
+        (
+            "an absolute path that goes through .. and stays inside",
+            "claude",
+            "PostToolUse",
+            "Write",
+            Box::new(|root| json!({"file_path": root.join("src/../x.rs"), "content": "x"})),
+            true,
+        ),
+        (
+            "an absolute path that climbs out of the folder from inside it",
+            "claude",
+            "PostToolUse",
+            "Write",
+            Box::new(|root| json!({"file_path": root.join("src/../../x.rs"), "content": "x"})),
+            false,
+        ),
+        (
+            "a path longer than the log keeps",
+            "claude",
+            "PostToolUse",
+            "Write",
+            Box::new(
+                |_| json!({"file_path": format!("src/{}.rs", "a".repeat(1100)), "content": "x"}),
+            ),
+            true,
+        ),
+        (
+            "a path with a control character",
+            "claude",
+            "PostToolUse",
+            "Write",
+            Box::new(|_| json!({"file_path": "src/x\u{7}.rs", "content": "x"})),
+            true,
+        ),
+        (
+            "an empty path",
+            "claude",
+            "PostToolUse",
+            "Write",
+            Box::new(|_| json!({"file_path": "", "content": "x"})),
+            true,
+        ),
+    ];
+    for (what, host, event, tool, tool_input, counts) in cases {
+        let (_tmp, root) = ac_repo(AC_BRANCH, Some(AC_HEAD), Some(AC_BODY));
+        ac_mode(&root, "enforce");
+        let input = json!({"session_id": "s1", "hook_event_name": event,
+            "tool_name": tool, "tool_use_id": "t",
+            "tool_input": tool_input(&root), "tool_response": {}, "cwd": root});
+        let (code, _) = ac_dispatch("tool-observe", host, &root, &input);
+        assert_eq!(code, 0, "{what}");
+        // Every one of these calls is a write line of the session in the log.
+        let writes = merge_log(&root)
+            .iter()
+            .filter(|l| l["kind"] == json!("observe") && l["class"] == json!("write"))
+            .count();
+        assert_eq!(writes, 1, "{what}: the call is observed as a write");
+        ac_pause();
+        let answer = ac_stop(&root, "s1", false);
+        assert_eq!(
+            ac_reason(&answer).is_some(),
+            counts,
+            "{what}: {answer:?} {:?}",
+            merge_log(&root)
+        );
+    }
+}

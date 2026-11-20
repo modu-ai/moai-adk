@@ -28,9 +28,9 @@ fn choice(model: &str, effort: &str) -> Choice {
 #[test]
 fn no_saved_value_answers_the_default_for_every_tool_and_role() {
     let expected = [
-        ("claude", "leader", "claude-opus-5-5", "medium"),
+        ("claude", "leader", "claude-opus-5-5", "high"),
         ("claude", "agent", "claude-sonnet-5-5", "high"),
-        ("codex", "leader", "gpt-6.1-sol", "high"),
+        ("codex", "leader", "gpt-6.2-sol", "high"),
         ("codex", "agent", "gpt-6.1-terra", "xhigh"),
         ("omp", "leader", "zai/glm-5.3", "high"),
         ("omp", "agent", "zai/glm-5.3-flash", "max"),
@@ -67,7 +67,7 @@ fn a_saved_supported_value_wins_and_is_marked_saved() {
     // The role and the tool next to it keep their defaults.
     assert_eq!(
         resolve("codex", "leader", Some(&launcher)).unwrap(),
-        (choice("gpt-6.1-sol", "high"), Source::Default)
+        (choice("gpt-6.2-sol", "high"), Source::Default)
     );
     assert_eq!(
         resolve("claude", "agent", Some(&launcher)).unwrap(),

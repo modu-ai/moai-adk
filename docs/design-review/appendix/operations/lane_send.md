@@ -10,6 +10,6 @@ operation `lane.send`(SPEC-20261119-lane-send-guard, 카드 C-120 조각 B). 코
 - **글 검사**(`orca` 를 부르기 전에): 비어 있지 않고, `-` 로 시작하지 않고(`orca` 의 옵션으로 읽힐 수 있어요), 2000자 이하이고, `lane-duty` 의 입력 안전 규칙(제어 문자·줄 구분자·양방향 문자 거절)을 통과해야 해요. 거절한 글은 오류 글에 되풀이하지 않아요. 터미널 핸들은 영문자·숫자·`.`·`_`·`-` 128자 이하이고 영문자나 숫자로 시작해야 해요.
 - **Enter**: `--enter` 를 줄 때만 보내요. 기본은 글만 넣어요.
 - **보내기 실패**: `orca terminal send` 가 실패하면 종료 코드 1 과 "lane send failed" 오류를 줘요. 보냈다고 말하지 않고 다시 보내지도 않아요. 프로그램이 종료 코드 0 으로 끝나도 답을 읽어서, 답이 JSON 객체이고 `ok` 가 `true` 일 때만 보냈다고 해요(읽기 쪽과 같게). `ok: false` 면 "answered ok:false" 와 Orca 의 오류 글 한 줄(제어 문자 없이 160자까지)로, 답이 글자뿐이거나 비어 있거나 `ok` 가 없거나 불리언이 아니면 "not an Orca answer" 와 "글이 레인에 닿았을 수 있어요" 로 실패해요(B2).
-- **`orca` 호출**: 프로그램은 `MOAI_ORCA_BIN`(없으면 PATH 의 `orca`)이고, 호출 하나는 15초(`MOAI_ORCA_TIMEOUT_SECS` 로 1에서 300초) 안에 끝나야 해요. 없거나 늦으면 `unreachable` 로 거절해요.
+- **`orca` 호출**: 프로그램은 `MOAI_ORCA_BIN`(없으면 PATH 의 `orca`)이고, 호출 하나는 15초(`MOAI_ORCA_TIMEOUT_SECS` 로 1에서 300초) 안에 끝나야 해요. 없거나 늦으면 `unreachable` 로 거절해요. 프로그램이 끝난 뒤 그 출력을 읽는 데도 같은 제한이 걸려요: 자식 프로세스가 출력을 계속 쥐고 있으면 제한(적어도 0.25초의 말미)이 지난 뒤 읽기를 버리고 "did not finish its output" 으로 거절해요(`lane-screen --scan` 도 같은 호출을 써요).
 
 성공하면 결과에 `sent`(참), `terminal`, `state`(보낸 때의 상태), `evidence`(읽은 화면 줄), `enter`, `orca`(`orca terminal send` 의 JSON 답)가 있어요. 이 도구는 확인 창에 대신 답하지 않고, 기다렸다 다시 보내지도 않아요. `orca terminal send --help` 는 다른 에이전트에게는 `orca orchestration send` 를 쓰라고 해요: 이 도구는 그 길을 바꾸지 않고 `terminal send` 앞에서 화면만 지켜요.

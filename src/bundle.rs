@@ -74,6 +74,94 @@ fn driver_names(config_output: &str) -> Vec<String> {
 
 const AUDIT_NOTE: &str = "a `PASS` note naming the head counts; a stated `tier <N>` before ` head ` is read (a head whose floor is above it has `audit_tier_low`); the tool cannot tell who wrote it";
 
+/// Byte ranges of the card numbers in `text`: `C-` or `c-` and one or more digits, the letter not
+/// inside a longer word (`AC-1` and `SPEC-2026…` are not card numbers). The card reference reader
+/// takes both cases (`card::input::parse_ref`), so this reads both too.
+/// SPEC-20261120-board-bundle-link.
+fn card_number_spans(text: &str) -> Vec<(usize, usize)> {
+    let b = text.as_bytes();
+    let mut spans = Vec::new();
+    let mut i = 0;
+    while i + 2 < b.len() {
+        let word_start = i == 0 || !b[i - 1].is_ascii_alphanumeric();
+        if word_start
+            && matches!(b[i], b'C' | b'c')
+            && b[i + 1] == b'-'
+            && b[i + 2].is_ascii_digit()
+        {
+            let end = b[i + 2..]
+                .iter()
+                .position(|c| !c.is_ascii_digit())
+                .map_or(b.len(), |p| i + 2 + p);
+            spans.push((i, end));
+            i = end;
+        } else {
+            i += 1;
+        }
+    }
+    spans
+}
+
+/// `text` with every card number replaced by the placeholder `<lane>`.
+fn without_card_numbers(text: &str) -> String {
+    let mut out = String::new();
+    let mut at = 0;
+    for (start, end) in card_number_spans(text) {
+        out.push_str(&text[at..start]);
+        out.push_str("<lane>");
+        at = end;
+    }
+    out.push_str(&text[at..]);
+    out
+}
+
+/// What a text that leaves the repository must not carry and still does: a card number or a
+/// session id (SPEC-20261120-board-bundle-link REQ-5). The session id shape is the one the
+/// repository scans already use (`check_tree::uuid_hits`), not a second copy of it.
+pub fn outward_leak(text: &str) -> Option<&'static str> {
+    if !card_number_spans(text).is_empty() {
+        Some("a card number (`C-` or `c-` and digits)")
+    } else if crate::check_tree::uuid_hits(text.as_bytes()) > 0 {
+        Some("a session id (hex groups 8-4-4-4-12)")
+    } else {
+        None
+    }
+}
+
+/// Names the field of the body a leaking line belongs to, without printing the line's value: the
+/// reader of a refusal needs to know which value to reword (the value is the leak itself).
+fn leak_field(line: &str) -> String {
+    if let Some(rest) = line.strip_prefix("- ") {
+        if rest.starts_with('`') {
+            return "a command of the run record".to_string();
+        }
+        if let Some((key, _)) = rest.split_once(": ") {
+            return match key {
+                "Not done locally" => "the not-run reasons (`Not done locally`)".to_string(),
+                "not run" => "a not-run reason of the run record".to_string(),
+                k if !k.contains('`') && outward_leak(k).is_none() => {
+                    format!("the Self-Audit field `{k}`")
+                }
+                _ => "a Self-Audit field".to_string(),
+            };
+        }
+    }
+    let kind = if line.starts_with('|') {
+        "the table of heads (SPEC id, branch name or head)"
+    } else if line.starts_with("Moai-Spec:") {
+        "a `Moai-Spec` line"
+    } else if line.starts_with("audit-tier:") {
+        "the `audit-tier` line (a changed path)"
+    } else if line.starts_with("Integration:") {
+        "the integration line (the branch name)"
+    } else if line.starts_with("SPEC-") {
+        "a SPEC result line"
+    } else {
+        "the text"
+    };
+    kind.to_string()
+}
+
 /// The tier a verdict line states before its last ` head ` (the verdict's own, as
 /// `gate::parse_verdict` takes it): the word `tier`, a space and one digit from 0 to 2, the word
 /// starting the text or following a space, `(` or `,` and the digit followed by the end of the
@@ -1046,7 +1134,7 @@ pub fn body(
     b.push_str(
         "\nM-Flow bundle (lanes push only, the leader integrates audited heads locally, verifies the \
          pinned SHA locally, then opens one pull request; CI, independent audit and the ruleset are unchanged).\n\n\
-         | SPEC | Card | Branch head | Audit before integration |\n| --- | --- | --- | --- |\n",
+         | SPEC | Branch head | Audit before integration |\n| --- | --- | --- |\n",
     );
     for j in &judged {
         let head = j.head.as_deref().unwrap_or("");
@@ -1055,19 +1143,20 @@ pub fn body(
             .as_deref()
             .map(|n| format!(" (branch `{n}`)"))
             .unwrap_or_default();
+        // The text leaves the repository: it names the verdict and the exact head, never the card
+        // or the note that holds the verdict (SPEC-20261120-board-bundle-link REQ-4, D-6).
         let audit = match (&j.pass_note, &j.pass_line) {
-            (Some(id), Some(line)) => {
+            (Some(_), Some(line)) => {
                 let tier = stated_tier(line)
                     .map(|t| format!(" (tier {t})"))
                     .unwrap_or_default();
-                format!("`PASS` card note {id}{tier}: {}", line.replace('|', "/"))
+                format!("`PASS` on `{head}`{tier}")
             }
             _ => format!("audit floor {}: no verdict needed", j.floor),
         };
         b.push_str(&format!(
-            "| {} | {} | `{head}`{branch_name} | {audit} |\n",
-            j.specs.join(", "),
-            j.card
+            "| {} | `{head}`{branch_name} | {audit} |\n",
+            j.specs.join(", ")
         ));
     }
     let built = if base == tip.sha {
@@ -1101,6 +1190,9 @@ pub fn body(
         "\n## Result\n\nLocal verification on `{pinned}`:\n\n"
     ));
     for (cmd, exit, counts, _) in &rec.commands {
+        // A card number inside a command (`bundle check C-1 C-2`) is a machine-made argument:
+        // it becomes a placeholder instead of leaving the repository.
+        let cmd = &without_card_numbers(cmd);
         match counts {
             Some(c) => b.push_str(&format!("- `{cmd}` → exit {exit}, {c}.\n")),
             None => b.push_str(&format!("- `{cmd}` → exit {exit}.\n")),
@@ -1134,12 +1226,22 @@ pub fn body(
                 )
             };
             b.push_str(&format!(
-                "{id} ({}): {acs} AC, {met} met, {withdrawn} withdrawn{tail} — see the SPEC's Result.\n\n",
-                j.card
+                "{id}: {acs} AC, {met} met, {withdrawn} withdrawn{tail} — see the SPEC's Result.\n\n"
             ));
         }
     }
     b.push_str("🤖 Generated with [Claude Code](https://claude.com/claude-code)\n");
+    // The whole text is read once more, line by line: a card number or a session id that is still
+    // in it (a free-text value the leader wrote, a branch name) refuses the body and nothing is
+    // written. The refusal names the field, never the value.
+    for line in b.lines() {
+        if let Some(what) = outward_leak(line) {
+            return Err(format!(
+                "bundle body refused: {} carries {what}; reword that value (the text leaves the repository with SPEC ids and links only)",
+                leak_field(line)
+            ));
+        }
+    }
     if let Err(missing) = self_audit::check(&b, false) {
         return Err(format!(
             "bundle body refused: the text fails the Self-Audit checker: {}",
@@ -1168,6 +1270,98 @@ mod tests {
     use super::*;
 
     const H: &str = "0123456789abcdef0123456789abcdef01234567";
+
+    #[test]
+    fn card_numbers_are_found_at_word_starts_only() {
+        fn spans(t: &str) -> Vec<&str> {
+            card_number_spans(t)
+                .into_iter()
+                .map(|(a, b)| &t[a..b])
+                .collect()
+        }
+        assert_eq!(spans("C-1"), ["C-1"]);
+        assert_eq!(spans("see C-123, C-4)"), ["C-123", "C-4"]);
+        assert_eq!(spans("(C-9)"), ["C-9"]);
+        assert_eq!(spans("check C-1=0123 C-22"), ["C-1", "C-22"]);
+        // The letter may be lower case, as the card reference reader takes it.
+        assert_eq!(spans("c-1 and (c-22)"), ["c-1", "c-22"]);
+        // Not card numbers: inside a longer word or without digits.
+        assert!(spans("AC-1 SPEC-20261119-x xC-1 xc-1 C- C-x c-x AC-12").is_empty());
+        assert!(spans("").is_empty() && spans("C").is_empty() && spans("C-").is_empty());
+        assert_eq!(
+            without_card_numbers("moai-cli bundle check C-1=abc C-22"),
+            "moai-cli bundle check <lane>=abc <lane>"
+        );
+        assert_eq!(without_card_numbers("no card here"), "no card here");
+    }
+
+    #[test]
+    fn a_lower_case_card_number_is_a_card_number_too() {
+        // The card reference reader takes `c-12` as well as `C-12`.
+        assert!(outward_leak("lane c-12 only")
+            .unwrap()
+            .contains("card number"));
+        assert!(outward_leak("lane2/c-12").unwrap().contains("card number"));
+        assert_eq!(
+            without_card_numbers("bundle check c-12 C-13 c-4"),
+            "bundle check <lane> <lane> <lane>"
+        );
+        // Still not card numbers: inside a longer word, no digit, a longer name.
+        for text in [
+            "abc-12",
+            "spec-12",
+            "etc-1 x",
+            "c-x",
+            "c- 1",
+            "ac-9",
+            "fine text",
+        ] {
+            assert_eq!(outward_leak(text), None, "{text}");
+        }
+    }
+
+    #[test]
+    fn a_session_id_is_found_by_the_scan_shape_the_repository_uses() {
+        // `outward_leak` asks `check_tree::uuid_hits`: the shape itself is tested there.
+        for text in [
+            "x 00000000-0000-4000-8000-000000000000 y",
+            "ABCDEF01-2345-6789-abcd-ef0123456789",
+            "session-00000000-0000-4000-8000-000000000000",
+        ] {
+            assert!(outward_leak(text).unwrap().contains("session id"), "{text}");
+        }
+        for text in [
+            "0000000-0000-4000-8000-000000000000",
+            "a 40-hex sha 0123456789abcdef0123456789abcdef01234567",
+            "fine text",
+        ] {
+            assert_eq!(outward_leak(text), None, "{text}");
+        }
+    }
+
+    #[test]
+    fn a_leak_is_named_by_its_field_and_never_by_its_value() {
+        let field = |line: &str| leak_field(line);
+        assert_eq!(field("- host: lane c-9"), "the Self-Audit field `host`");
+        assert_eq!(
+            field("- Not done locally: unit (c-9)."),
+            "the not-run reasons (`Not done locally`)"
+        );
+        assert_eq!(
+            field("- not run: unit — c-9."),
+            "a not-run reason of the run record"
+        );
+        assert_eq!(
+            field("- `moai: c-9` → exit 0."),
+            "a command of the run record"
+        );
+        assert!(field("| SPEC-1 | `abc` | x |").starts_with("the table of heads"));
+        assert!(field("Integration: `lane2/c-9` built").contains("integration line"));
+        assert!(field("SPEC-1: 2 AC").contains("SPEC result line"));
+        // A key that itself carries a card number is not repeated.
+        assert_eq!(field("- c-9: x"), "a Self-Audit field");
+        assert_eq!(field("other"), "the text");
+    }
 
     #[test]
     fn the_stated_tier_is_read_from_before_the_last_head() {
