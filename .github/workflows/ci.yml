@@ -69,6 +69,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
+          # SPEC-20261120-release-pr-three-os: the head branch name decides the release
+          # matrix. It is PR-author-controlled input, so it reaches the script through
+          # env:, never an inline expression in run:.
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           set -u
           # C-20 (SPEC-20261119-ci-check-set-legs): every target entry is multiplied by the
@@ -81,8 +85,22 @@ jobs:
           # must not turn into a timeout failure.
           full='[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"nextest"},{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"rest"},{"target":"macos-arm64","runner":"macos-15","timeout":45,"leg":"nextest"},{"target":"macos-arm64","runner":"macos-15","timeout":45,"leg":"rest"}]'
           linux='[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"nextest"},{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"rest"}]'
+          # SPEC-20261120-release-pr-three-os: the release unit is the pull request from
+          # the local integration branch to the remote v2026.11.0 whose head branch is
+          # named release/v<yearweek>.<build> (user decision 2026-11-20). It carries a
+          # whole serial integration, so its CI runs the full test set on all three
+          # supported targets, Windows included: the two windows-x86_64 legs join today's
+          # full list. The ordinary-PR lists (`full`, `linux`) stay byte-identical.
+          windows='{"target":"windows-x86_64","runner":"windows-2025","timeout":45,"leg":"nextest"},{"target":"windows-x86_64","runner":"windows-2025","timeout":45,"leg":"rest"}'
+          release="${full%]},${windows}]"
           matrix="$full"
           if [ "${{ github.event_name }}" = "pull_request" ]; then
+            case "${HEAD_REF:-}" in
+              release/v*) matrix="$release" ;;
+            esac
+            # A release head branch name pins the three-OS test set above, so the scope
+            # classifier that may narrow an ordinary PR is skipped for it.
+            if [ "$matrix" != "$release" ]; then
             ok=0
             # The scope tool is the base checkout's copy (the job checks out the base
             # commit), so a PR never executes its own copy of the rule — the check-guard
@@ -113,6 +131,7 @@ jobs:
             if [ "$ok" = 1 ] && [ "$macos" = "False" ]; then
               matrix="$linux"
             fi
+            fi # the ordinary-PR classifier branch — skipped for a release head branch name
             # ok=0 (truncated or empty listing, API failure, classifier or parse failure)
             # or macos=True: full matrix.
           fi
@@ -206,6 +225,13 @@ jobs:
               macOS)
                 brew install ripgrep
                 ;;
+              Windows)
+                # The Windows 2025 image ships no ripgrep (its toolset json lists no
+                # ripgrep package; the add-ripgrep runner-image request closed as
+                # not_planned), and the check set's repo scans need it. The Chocolatey
+                # shim lands on PATH for the steps below.
+                choco install ripgrep
+                ;;
               *)
                 echo "ripgrep installation is not configured for $RUNNER_OS" >&2
                 exit 1
@@ -213,6 +239,18 @@ jobs:
             esac
           fi
           rg --version
+      - name: python3 name (Windows runners ship python without one)
+        if: ${{ env.CI_SCOPE == 'full' && runner.os == 'Windows' }}
+        shell: bash
+        run: |
+          # The check set's unittest step calls python3 by name; a Windows runner ships
+          # python and no python3 command (actions/setup-python #1079, maintainer-
+          # confirmed; the Windows 2025 image lists Python 3.12 with no python3.exe).
+          # The link is a CI-machine step: it keeps the one local check set (#2906 S5a)
+          # byte-identical on every runner, the unittest runner included.
+          mkdir -p "$RUNNER_TEMP/py3-bin"
+          ln -s "$(command -v python)" "$RUNNER_TEMP/py3-bin/python3"
+          echo "$RUNNER_TEMP/py3-bin" >> "$GITHUB_PATH"
       # rustup reads rust-toolchain.toml (#2029). A runner can start with a partially installed
       # copy of the pinned toolchain (rustup#4724); repairing it in place can fail with a
       # component file conflict (rustup#2417), so remove it first and install explicitly, with
@@ -267,6 +305,7 @@ jobs:
           case "${{ matrix.target }}" in
             linux-x86_64) asset=x86_64-unknown-linux-gnu; sum=1d4ce302b820c41f4b89c5fb9bce45f0f0c94882c1cf08fc360caf08be6e7df4 ;;
             macos-arm64) asset=universal-apple-darwin; sum=d1d7d025d4bfc9fb154cd76aea3949bd78534829a0589abefa6e5dd4edb135dd ;;
+            windows-x86_64) asset=x86_64-pc-windows-msvc; sum=e51bdb4b5883df48f335381b287378edb244318fac65ae0adaf6b9e69298246b ;;
             *) echo "no pinned cargo-nextest asset for ${{ matrix.target }}" >&2; exit 1 ;;
           esac
           file="$RUNNER_TEMP/cargo-nextest-${version}-${asset}.tar.gz"
@@ -459,11 +498,14 @@ jobs:
   # Compile all targets, including portable test targets, without running tests.
   # Unix-only test setup is cfg(unix)-gated; Windows runtime replacement and host loading
   # remain not_run.
-  # Standard GitHub-hosted runner, no secrets. Not part of the required `ci` check.
-  # #2554 (U10): runs after merge (push to v2026.11.0) and on workflow_dispatch, not on PRs.
+  # Standard GitHub-hosted runner, no secrets. Not part of the required `ci` check — the
+  # release pull request's required Windows legs are the `ci / windows-x86_64 / …` matrix
+  # entries (SPEC-20261120-release-pr-three-os). #2554 (U10): runs after merge (push to
+  # v2026.11.0) and on workflow_dispatch, not on PRs — plus release PRs (same SPEC), so the
+  # release path keeps its build and self-replace proof.
   windows-build:
     name: windows-build
-    if: ${{ github.event_name != 'pull_request' }}
+    if: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'release/v') }}
     runs-on: windows-2025
     timeout-minutes: 30
     permissions:

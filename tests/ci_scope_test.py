@@ -516,6 +516,15 @@ class CiDecideScriptTest(unittest.TestCase):
         '[{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"nextest"},'
         '{"target":"linux-x86_64","runner":"ubuntu-24.04","timeout":30,"leg":"rest"}]'
     )
+    # SPEC-20261120-release-pr-three-os: the release list is today's full list plus the
+    # two windows-x86_64 legs — written as the join the decide step performs
+    # (`release="${full%]},${windows}]"`), so the constant and the script cannot drift.
+    RELEASE = (
+        FULL[:-1]
+        + ','
+        + '{"target":"windows-x86_64","runner":"windows-2025","timeout":45,"leg":"nextest"},'
+        + '{"target":"windows-x86_64","runner":"windows-2025","timeout":45,"leg":"rest"}]'
+    )
 
     @classmethod
     def setUpClass(cls):
@@ -575,7 +584,7 @@ class CiDecideScriptTest(unittest.TestCase):
         return tmp, base, head, names
 
     def decide(self, repo, event, base, head, gh_files=None, gh_total=None,
-               gh_broken=False):
+               gh_broken=False, head_ref=None):
         """Run the decide step as the runner would; return (proc, matrix). On a
         pull_request a fake `gh` answers the files API from `gh_files`
         (`gh_total` overrides the true total; `gh_broken` makes gh fail), the
@@ -599,6 +608,10 @@ class CiDecideScriptTest(unittest.TestCase):
             REPO="owner/repo",
             GH_TOKEN="fake-token",
         )
+        if head_ref is not None:
+            # The decide step receives the head branch name through env: (SPEC-20261120-
+            # release-pr-three-os); the fake runner hands it over the same way.
+            env["HEAD_REF"] = head_ref
         if gh_files is not None or gh_broken:
             # A bare path list is a shorthand for plain items; renames pass items
             # with `previous_filename` directly.
@@ -804,6 +817,41 @@ class CiDecideScriptTest(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertEqual(matrix, self.FULL)
 
+    def test_a_release_head_branch_pins_the_three_os_set(self):
+        """SPEC-20261120-release-pr-three-os: a pull_request whose head branch name starts
+        with release/v decides the joined release list — the step itself runs here, so the
+        guard is bound to its output, not its text. The release PR skips the classifier
+        entirely: the same docs-only change that narrows an ordinary PR stays the six-leg
+        list."""
+        for head_ref in ("release/v4.2647.10", "release/v4.2647.11"):
+            with self.subTest(head_ref=head_ref):
+                repo, base, head, names = self.repo({"docs/a.md": "x\n"})
+                proc, matrix = self.decide(
+                    repo, "pull_request", base, head, gh_files=names,
+                    head_ref=head_ref,
+                )
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                self.assertEqual(matrix, self.RELEASE)
+                entries = json.loads(matrix)
+                self.assertEqual(
+                    sum(1 for e in entries if e["target"] == "windows-x86_64"), 2
+                )
+                self.assertEqual(
+                    {e["runner"] for e in entries if e["target"] == "windows-x86_64"},
+                    {"windows-2025"},
+                )
+
+    def test_a_non_release_head_branch_keeps_todays_narrowing(self):
+        # Any head branch name but release/v* keeps today's rule: the same
+        # docs-only change narrows to linux through the classifier.
+        repo, base, head, names = self.repo({"docs/a.md": "x\n"})
+        proc, matrix = self.decide(
+            repo, "pull_request", base, head, gh_files=names,
+            head_ref="feature/plain-work",
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(matrix, self.LINUX)
+
 
 class CiWorkflowMatrixContractTest(unittest.TestCase):
     """C-76: the ci.yml matrix contract — a `targets` job decides, `check`
@@ -853,8 +901,13 @@ class CiWorkflowMatrixContractTest(unittest.TestCase):
         self.assertIn("name: ci", self.yaml_text)
 
     def test_windows_build_still_push_only(self):
+        # SPEC-20261120-release-pr-three-os: the condition gains one release-PR branch —
+        # push and dispatch keep running it (their head_ref is empty, so the startswith
+        # test never fires there), and an ordinary PR still skips the job.
         self.assertIn(
-            "if: ${{ github.event_name != 'pull_request' }}", self.yaml_text
+            "if: ${{ github.event_name != 'pull_request' "
+            "|| startsWith(github.head_ref, 'release/v') }}",
+            self.yaml_text,
         )
 
     def test_targets_paths_come_from_the_files_api(self):

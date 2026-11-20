@@ -327,6 +327,123 @@ class WorkflowTest(unittest.TestCase):
         check = flows["ci.yml"]["jobs"]["check"]
         self.assertEqual(check["name"], "ci / ${{ matrix.target }} / ${{ matrix.leg }}")
 
+    def test_release_pr_head_ref_pins_the_three_os_test_set(self):
+        """SPEC-20261120-release-pr-three-os (user decision 2026-11-20): a pull request
+        whose head branch name starts with release/v runs the full test set on all three
+        supported targets — the two windows-x86_64 legs join today's full list, the
+        aggregate `ci` judges them like every other matrix entry, and the ordinary-PR
+        lists (`full`, `linux`) stay byte-identical."""
+        flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
+        decide = next(s for s in flow["jobs"]["targets"]["steps"] if s.get("id") == "decide")
+        script, env = decide["run"], decide["env"]
+        # The head branch name is PR-author-controlled input: it reaches the script
+        # through env only, never an inline expression in run:.
+        self.assertEqual(env["HEAD_REF"], "${{ github.head_ref }}")
+        self.assertNotIn("github.head_ref", script)
+        lists = dict(re.findall(r"^(full|linux|windows)='(.*?)'$", script, re.M))
+        self.assertEqual(set(lists), {"full", "linux", "windows"})
+        full = json.loads(lists["full"])
+        windows_entries = json.loads("[" + lists["windows"] + "]")
+        # The release list is today's full list plus the two windows entries — derived
+        # here by the same join the script does, so the lists cannot drift apart.
+        self.assertIn('release="${full%]},${windows}]"', script)
+        release = json.loads(lists["full"][:-1] + "," + lists["windows"] + "]")
+        self.assertEqual({(e["target"], e["leg"]) for e in full},
+                         {("linux-x86_64", "nextest"), ("linux-x86_64", "rest"),
+                          ("macos-arm64", "nextest"), ("macos-arm64", "rest")})
+        self.assertEqual({(e["target"], e["leg"]) for e in release},
+                         {("linux-x86_64", "nextest"), ("linux-x86_64", "rest"),
+                          ("macos-arm64", "nextest"), ("macos-arm64", "rest"),
+                          ("windows-x86_64", "nextest"), ("windows-x86_64", "rest")})
+        for entry in release:
+            with self.subTest(entry=entry):
+                self.assertEqual(entry["runner"],
+                                 {"linux-x86_64": "ubuntu-24.04",
+                                  "macos-arm64": "macos-15",
+                                  "windows-x86_64": "windows-2025"}[entry["target"]])
+                self.assertEqual(entry["timeout"],
+                                 {"linux-x86_64": 30,
+                                  "macos-arm64": 45,
+                                  "windows-x86_64": 45}[entry["target"]])
+        self.assertEqual({(e["target"], e["leg"]) for e in windows_entries},
+                         {("windows-x86_64", "nextest"), ("windows-x86_64", "rest")})
+        # The guard picks the release list from the head branch name and skips the
+        # classifier for it; the classifier branch (and its fail-safe chain) is untouched.
+        self.assertIn('case "${HEAD_REF:-}" in', script)
+        self.assertIn('release/v*) matrix="$release" ;;', script)
+        self.assertIn('if [ "$matrix" != "$release" ]; then', script)
+        # The aggregate keeps judging the whole matrix — the windows legs are matrix
+        # entries, so a Windows failure fails `ci` and blocks the release merge.
+        self.assertEqual(flow["jobs"]["check"]["strategy"]["matrix"]["include"],
+                         "${{ fromJSON(needs.targets.outputs.matrix) }}")
+
+    def test_windows_build_also_runs_on_a_release_pr(self):
+        """SPEC-20261120-release-pr-three-os: the build and self-replace proof also runs on
+        a release pull request; push and dispatch keep today's condition (their head_ref is
+        empty, so the added startswith test never fires there)."""
+        wb = dict(self.workflows())[WORKFLOWS / "ci.yml"]["jobs"]["windows-build"]
+        self.assertEqual(wb["if"],
+                         "${{ github.event_name != 'pull_request' "
+                         "|| startsWith(github.head_ref, 'release/v') }}")
+        self.assertEqual(wb["runs-on"], "windows-2025")
+
+    def test_windows_nextest_leg_pins_its_checksum(self):
+        """SPEC-20261120-release-pr-three-os: the windows-x86_64 leg downloads the same
+        pinned cargo-nextest through its own asset, verified against the release's .sha256
+        (read 2026-11-20) the way the linux and macos assets are; a mismatch still fails
+        the leg loudly, with no fallback."""
+        flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
+        install = next(s for s in flow["jobs"]["check"]["steps"]
+                       if s.get("name") == "cargo-nextest (pinned, sha256-checked)")
+        run = install["run"]
+        self.assertIn("windows-x86_64) asset=x86_64-pc-windows-msvc", run)
+        self.assertIn("e51bdb4b5883df48f335381b287378edb244318fac65ae0adaf6b9e69298246b", run)
+        self.assertIn("checksum mismatch", run)
+
+    def test_windows_runners_get_ripgrep_and_a_python3_name(self):
+        """SPEC-20261120-release-pr-three-os: the two machine-setup gaps the Windows legs
+        would hit are covered in the workflow — the image ships no ripgrep (its toolset
+        json lists no ripgrep package; the add-ripgrep request closed as not_planned), and
+        no python3 command name (actions/setup-python #1079, maintainer-confirmed): choco
+        installs ripgrep on Windows, and one Windows-only step links the runner's python
+        under python3 through GITHUB_PATH so the check set's unittest step stays the one
+        step it is on every runner (tools/local_check.sh untouched)."""
+        flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
+        steps = flow["jobs"]["check"]["steps"]
+        names = [s.get("name") for s in steps]
+        rg = steps[names.index("Install and verify ripgrep (C10a baseline)")]["run"]
+        self.assertIn("Windows)", rg)
+        self.assertIn("choco install ripgrep", rg)
+        shim = steps[names.index("python3 name (Windows runners ship python without one)")]
+        self.assertEqual(shim["if"],
+                         "${{ env.CI_SCOPE == 'full' && runner.os == 'Windows' }}")
+        self.assertIn('ln -s "$(command -v python)" "$RUNNER_TEMP/py3-bin/python3"',
+                      shim["run"])
+        self.assertIn("GITHUB_PATH", shim["run"])
+        self.assertLess(names.index("Install and verify ripgrep (C10a baseline)"),
+                        names.index("Check set"))
+
+    def test_ordinary_prs_keep_todays_matrix(self):
+        """SPEC-20261120-release-pr-three-os: a head branch name that is not a release
+        branch keeps today's rule exactly — the linux-only list when the platform
+        classifier answers not needed, the full list otherwise, and any listing, API,
+        classifier or parse failure keeps the full matrix (the fail-safe chain is
+        byte-identical)."""
+        flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
+        on_pr, after_merge = self.rc_ci_matrix(flow)
+        self.assertEqual({(e["target"], e["leg"]) for e in on_pr},
+                         {("linux-x86_64", "nextest"), ("linux-x86_64", "rest")})
+        self.assertEqual({(e["target"], e["leg"]) for e in after_merge},
+                         {("linux-x86_64", "nextest"), ("linux-x86_64", "rest"),
+                          ("macos-arm64", "nextest"), ("macos-arm64", "rest")})
+        script = next(s for s in flow["jobs"]["targets"]["steps"]
+                      if s.get("id") == "decide")["run"]
+        for marker in ("files API failed; full matrix",
+                       "the files API item count failed; full matrix",
+                       "the changed-file total failed; full matrix",
+                       "served $listed of $total changed files; full matrix"):
+            self.assertIn(marker, script, "the fail-safe chain stays byte-identical")
+
     def test_audit_gate_reads_verdicts_with_a_read_only_token(self):
         """SPEC-20261117-audit-gate: `pull_request` only (never `pull_request_target`), read-only
         job permissions, the same pinned actions ci.yml uses, the gate built from the base
@@ -409,8 +526,12 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(flow["concurrency"]["cancel-in-progress"],
                          "${{ github.event_name == 'pull_request' }}")
         self.assertIn("github.sha", flow["concurrency"]["group"])
+        # SPEC-20261120-release-pr-three-os: the push/dispatch condition grows one
+        # release-PR branch (the same test's own pin below); push and dispatch keep
+        # running it exactly as before — an empty head_ref never starts with release/v.
         self.assertEqual(flow["jobs"]["windows-build"]["if"],
-                         "${{ github.event_name != 'pull_request' }}")
+                         "${{ github.event_name != 'pull_request' "
+                         "|| startsWith(github.head_ref, 'release/v') }}")
         self.assertNotIn("if", flow["jobs"]["check"])
 
     def test_rc_ci_post_merge_macos_waits_are_replaced_by_a_newer_merge(self):
