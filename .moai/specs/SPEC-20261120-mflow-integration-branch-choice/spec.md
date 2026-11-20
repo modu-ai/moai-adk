@@ -28,6 +28,9 @@ M-Flow 첫 설정(/moai project 인터뷰의 `work_flow` 단계)에서 통합 �
 - REQ-5: The operation shall report a recorded integration target it cannot integrate into with the safe choices — a `missing-target` state with the safe-choice wording when the recorded branch is absent from the repository, an `occupied-worktree` state naming the path when a worktree other than the project folder has it checked out — creating no branch, no worktree, no file and no ref itself. · failure: none — reporting and an unchanged ref state are the whole behavior.
 - REQ-6: The operation's documentation fragment shall describe the read-only behavior and the states, its installed help beginning with `Reads only.`. · failure: none — wording only.
 - REQ-7: The bundle operations shall resolve an unset `--tip` as the project profile's m-flow integration branch joined to `origin/`, keeping today's `origin/v2026.11.0` default when the profile records no integration branch or cannot be read. · failure: none — an unreadable profile keeps the old default, and an explicit `--tip` always wins.
+- REQ-8: The discovery rules shall never name a release-prefixed branch as the recommended branch — a release pull request is for the formal release only — while such a branch stays visible as a candidate, and a recorded value stays the user's own answer. · failure: none — excluding is the whole behavior.
+- REQ-9: When `origin/HEAD` names a pull-request candidate namespace or a ref no fetch ever brought, the remote-default rule shall be skipped in favour of the next fallback. · failure: none — skipping is the whole behavior.
+- REQ-10: When the project profile exists but cannot be read, the answer shall carry a `profile-unreadable` state with the safe-choice wording, the discovery recommendation still present. · failure: none — the state reports and nothing else changes.
 
 ## Acceptance
 
@@ -44,6 +47,8 @@ M-Flow 첫 설정(/moai project 인터뷰의 `work_flow` 단계)에서 통합 �
   verify: `cargo test --locked --offline --lib`
 - AC-6 (REQ-7): with the profile recording an m-flow integration branch, `bundle ready` without `--tip` judges `origin/<branch>`; with no recorded branch it keeps `origin/v2026.11.0`.
   verify: `cargo test --test bundle_ready_cli`
+- AC-7 (REQ-8, REQ-9, REQ-10): a release/v* branch is never the discovery recommendation (the fallbacks answer instead); origin/HEAD naming the pr namespace or a broken ref is skipped for the current-branch fallback; an unreadable profile file reports `profile-unreadable` with the safe-choice wording and the recommendation kept.
+  verify: `cargo test --test work_flow_plan_cli`
 
 ## Scope
 

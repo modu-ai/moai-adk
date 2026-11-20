@@ -280,3 +280,68 @@ fn an_occupied_worktree_is_reported() {
     assert!(msg.contains("creates nothing"), "message: {msg}");
     assert_eq!(w.branches(), before);
 }
+
+/// AC: the discovery rules never name a release-prefixed branch — a release pull
+/// request is for the formal release, not for the first-setup integration branch
+/// (leader decision on the slice-1 audit).
+#[test]
+fn a_release_branch_is_never_the_discovery_recommendation() {
+    let w = World::new();
+    w.branch("release/v4.2647.10");
+    w.set_origin_head();
+    let v = w.plan();
+    let rec = v["recommendation"]["branch"].as_str().unwrap_or("");
+    assert_ne!(rec, "release/v4.2647.10", "release branch: {v}");
+    assert_eq!(rec, "main", "the fallbacks carry the question: {v}");
+}
+
+/// AC: origin/HEAD set by something else — a pull-request candidate namespace, or a
+/// ref no fetch ever brought — names no integration target: the discovery falls back
+/// to the current branch instead (leader decision on the slice-1 audit).
+#[test]
+fn a_broken_or_namespaced_origin_head_is_skipped() {
+    let w = World::new();
+    git(
+        &w.project,
+        &[
+            "symbolic-ref",
+            "refs/remotes/origin/HEAD",
+            "refs/remotes/origin/pr/7",
+        ],
+    );
+    let v = w.plan();
+    assert_eq!(v["recommendation"]["branch"], "main", "namespaced: {v}");
+    let reason = v["recommendation"]["reason"].as_str().unwrap();
+    assert!(reason.contains("current branch"), "reason: {reason}");
+
+    let w2 = World::new();
+    git(
+        &w2.project,
+        &[
+            "symbolic-ref",
+            "refs/remotes/origin/HEAD",
+            "refs/remotes/origin/ghost",
+        ],
+    );
+    let v2 = w2.plan();
+    assert_eq!(v2["recommendation"]["branch"], "main", "broken: {v2}");
+}
+
+/// AC: a profile that is present but cannot be read reports `profile-unreadable`
+/// with the safe-choice wording, and the discovery recommendation keeps working
+/// (leader decision on the slice-1 audit).
+#[test]
+fn an_unreadable_profile_reports_the_state() {
+    let w = World::new();
+    let path = w.project.join(".moai-cli").join("project.yaml");
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(path, "not a profile at all").unwrap();
+    let v = w.plan();
+    assert_eq!(v["state"]["kind"], "profile-unreadable");
+    let msg = v["state"]["message"].as_str().unwrap();
+    assert!(msg.contains("creates nothing"), "message: {msg}");
+    assert_eq!(
+        v["recommendation"]["branch"], "main",
+        "the discovery still answers: {v}"
+    );
+}
