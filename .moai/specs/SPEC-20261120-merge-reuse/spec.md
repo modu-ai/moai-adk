@@ -10,7 +10,7 @@ created: 2026-11-20
 
 ## Intent
 
-사용자 지시(2026-11-20, 리더 대화에서 확인): M-Flow 의 감사·병합 병목을 원인별로 고치고, 고치기 전과 뒤를 같은 부하에서 재서 증명해요. 오늘은 감사를 통과한 후보(C-186, C-203)가 다른 병합이 로컬 `v2026.11.0` 끝을 먼저 옮겼다는 이유만으로 다시 병합되고 다시 검사됐어요.
+사용자 지시(2026-11-20, 리더 대화에서 확인): M-Flow 의 감사·병합 병목을 원인별로 고치고, 고치기 전과 뒤를 같은 부하에서 재서 증명해요. 오늘은 감사를 통과한 후보 둘이 다른 병합이 로컬 `v2026.11.0` 끝을 먼저 옮겼다는 이유만으로 다시 병합되고 다시 검사됐어요.
 
 병합 절차(리더 공지)는 후보 하나를 "OLD 위 머지 커밋 + 검사 + MERGE-READY 노트"로 만들어 두고 리더가 `git merge --ff-only` 로 올려요. 끝이 그사이 움직이면 ff 가 안 돼서 레인이 "다시 OLD 부터" 하고 검사를 처음부터 다시 해요. 그런데 움직인 부분이 후보와 아무 상관이 없으면(다른 파일, 후보가 기대는 검사의 선택이 그대로) 그 검사 결과는 여전히 맞아요. 이 SPEC 은 그 판단을 사람이 아니라 한 명령이 하게 해요.
 
@@ -35,27 +35,29 @@ created: 2026-11-20
 
 - REQ-1: When `moai check reuse` runs with a tip equal to the base, the operation shall answer `fast_forward`. · failure: none
 - REQ-2: When the head is already an ancestor of the tip, the operation shall answer `already_merged`. · failure: none
-- REQ-3: When the base is an ancestor of the tip, the merge of the head into the tip is clean, the paths the base-to-tip change touches overlap none of the paths the head changes, and the selection of `check affected` for the head's changes is equal on the head's merge tree and on the tip's merge tree, the operation shall answer `reuse` and name those facts as reasons. · failure: none
+- REQ-3: When the base is an ancestor of the tip, the merge of the head into the tip is clean, the paths the base-to-tip change touches overlap none of the paths the head changes, no scan of `tools/repo_scans.json` has its rule files changed on one side and a path of its scope changed on the other, and the selection of `check affected` for the head's changes is equal on the head's merge tree and on the tip's merge tree, the operation shall answer `reuse` and name those facts as reasons. · failure: none
 - REQ-4 (REQ-3): IF the selection on the tip's merge tree names a test target or Python module the old selection lacks, or the base-to-tip change picks a target the new selection holds, THEN the operation shall answer `rerun` with exactly those targets in `rerun`.
 - REQ-5 (REQ-3): IF the base-to-tip change touches a path the head also changes, THEN the operation shall answer `rerun` and add the steps that check the whole change (`diff_check`, `fmt`, `clippy`, `test_lib`, `test_bins`, and the per-file steps of the overlapping files) to `rerun`.
 - REQ-6: IF the base is not an ancestor of the tip, the merge of the head into the tip conflicts, or a fact cannot be read, THEN the operation shall answer `rerun_all` with the reason. · failure: none
 - REQ-7: The operation shall move no ref and change no working file and no index. · failure: none
 - REQ-8: When `--merge <commit>` names a commit with exactly two parents, the operation shall take its first parent as the base and its second parent as the head. · failure: none
-- REQ-9: IF an argument is missing, is not a revision, or starts with a dash, THEN the operation shall refuse with a usage error and read nothing. · failure: none
+- REQ-9: IF an argument is missing, is not a revision, or starts with a dash, THEN the operation shall refuse with a usage error and give no decision. · failure: none
 - REQ-10: The answer shall list `rerun` and the reasons in a fixed order, so that equal inputs give equal answers. · failure: none
+- REQ-11 (REQ-3): IF a scan of `tools/repo_scans.json` has its rule files changed on one side and a path of its scope changed on the other, THEN the operation shall answer `rerun` with that scan's checks in `rerun.scan_checks` and the reason `scan_rules_cross_scope`; an unreadable table answers `rerun_all`.
+- REQ-12: When `--dir` is a folder inside the repository, the operation shall answer as it does for the repository's top folder. · failure: none
 
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2, REQ-3): a tip equal to the base is `fast_forward`; a head inside the tip is `already_merged`; a tip that moved by an unrelated change, or that only removed a target the candidate ran, is `reuse` with its reasons.
   verify: `cargo test --locked --offline --test merge_reuse_cli decides_`
-- AC-2 (REQ-4, REQ-5, REQ-6): a new test target, a new Python module of the area, a changed test of the candidate's area, a changed scan list, an overlapping edit, a conflict and a base that is not an ancestor each give `rerun` with exactly the newly affected checks, or `rerun_all`.
+- AC-2 (REQ-4, REQ-5, REQ-6): a new test target, a new Python module of the area, a changed test of the candidate's area, a changed scan list, a scan's rule file against a path of its scope, an overlapping edit (also a renamed file, a shared file no test names, and a file both sides deleted), a conflict and a base that is not an ancestor each give `rerun` with exactly the newly affected checks, or `rerun_all`.
   verify: `cargo test --locked --offline --test merge_reuse_cli reruns_`
-- AC-3 (REQ-7, REQ-8, REQ-9, REQ-10): read-only, `--merge`, refused arguments and a fixed order.
+- AC-3 (REQ-7, REQ-8, REQ-9, REQ-10, REQ-12): read-only, `--merge`, refused arguments, a fixed order and the same answer from a folder inside the repository.
   verify: `cargo test --locked --offline --test merge_reuse_cli answers_`
 - AC-4: neighbours.
   verify: `cargo test --locked --offline --test check_affected_cli --test merge_reuse_cli`
   verify: `cargo clippy --locked --offline --all-targets -- -D warnings`
-- AC-5 (REQ-3, REQ-4, REQ-5, REQ-6): in a controlled replay of real history, the commands re-run fewer candidates than the current procedure; the counts are in Result.
+- AC-5 (REQ-3, REQ-4, REQ-5, REQ-6): in a controlled replay of real history, the commands call for fewer checks than a full re-check of each moved candidate, and fewer candidates need no re-check at all; the counts are in Result.
   manual: replay the last merges of the local integration branch as candidates that were all audited on the same base, run `moai check reuse` for each against the tip it would meet, and write the counts of `fast_forward`, `reuse`, `rerun` and `rerun_all` in Result.
 
 ## Scope
@@ -73,6 +75,7 @@ created: 2026-11-20
 ## Risks
 
 - `reuse` rests on the selection rule of the leader's procedure: the selection is the same and no file overlaps. A change in an unrelated area that only breaks the candidate's checks in combination (for example an unused import after both land) is not seen by this rule; the leader's periodic verification of the tip is what catches it. The operation never says the merged tree was tested, only that the earlier evidence holds under the rule.
+- A change outside the name rules (`Cargo.toml`, `Cargo.lock`, `src/lib.rs`) on the tip reaches no candidate evidence unless a file is shared, and the `--lib`, `--bins`, `clippy` and `fmt` evidence is rerun only for a shared file. This is the same reach as `check affected`; the leader's periodic verification of the tip covers it.
 - `git merge-tree --write-tree` writes tree objects (unreachable until a commit uses them). No ref, index or working file moves.
 - The delta's areas pick targets by the same name rules as `check affected`; a target that reads files by a path the name rules do not link is not picked. The scan list (`tools/repo_scans.json`) is part of the selection, so a changed list reruns its new targets.
 
@@ -93,11 +96,11 @@ The decision above answers one candidate. The queue the card asks for (durable f
 
 구현: `moai check reuse --base <b> --head <h> --tip <t>`(또는 `--merge <m>`)는 `src/check_affected/reuse.rs` 의 `judge`(순수)와 git 읽기로 `fast_forward`·`already_merged`·`reuse`·`rerun`·`rerun_all` 중 하나를 답해요. 아무 ref·색인·작업 파일도 움직이지 않아요(`git merge-tree --write-tree` 의 트리 객체만 남아요). 한 트리의 시험 파일은 `git cat-file --batch` 한 번으로 읽어요(D-4).
 
-- AC-1: met — `cargo test --locked --offline --test merge_reuse_cli decides_` 통과(끝이 base 그대로 → `fast_forward`, head 가 끝 안 → `already_merged`, 상관없는 파일만 움직임 → `reuse`, 끝이 후보가 돌린 대상을 지우기만 함 → `reuse` + `selection_is_covered`). 전체 15개 통과.
-- AC-2: met — `cargo test --locked --offline --test merge_reuse_cli reruns_` 통과(새 Rust 대상, 새 파이썬 모듈, 바뀐 시험, 바뀐 스캔 목록의 새 대상, 겹치는 파일은 `diff_check`·`fmt`·`clippy`·`test_lib`·`test_bins` 추가, 충돌과 base 가 끝의 조상이 아님은 `rerun_all`).
-- AC-3: met — `cargo test --locked --offline --test merge_reuse_cli answers_` 통과(ref·작업 트리·색인이 그대로, `--merge` 는 두 부모와 같은 답, 인자 누락·`-` 시작 거절, 같은 입력은 같은 순서).
-- AC-4: met — `cargo test --locked --offline --test check_affected_cli --test merge_reuse_cli`(13 / 15 통과), `cargo clippy` 와 `cargo fmt --check` 와 `rustfmt --edition 2021 --check src/ops/check.rs` 는 `moai check affected 341f6c7abb..5fb8dc84f9` 안에서 통과(`targets=44 py=12 scans=listed:41 … result=PASS`). 독립 감사는 아직이에요. 변이 5개(gained 대상 계산 뒤집기, 움직인 경로 대상 계산 바꾸기, 겹침 검사 끄기, 조상 검사 끄기, 이미 병합됨 검사 끄기)는 모두 시험이 잡았어요(각각 종료 코드 101, 작업 트리는 원상 복구).
-- AC-5: met — 통제된 재생(아래). 같은 입력에서 판정이 한 번에 40.9 초(CPU 16.8 초)이던 것이 0.9 초(CPU 0.65 초)로 줄었어요(시험 파일마다 git 을 따로 부르던 것을 `git cat-file --batch` 한 번으로).
+- AC-1: met — `cargo test --locked --offline --test merge_reuse_cli decides_` 통과(끝이 base 그대로 → `fast_forward`, head 가 끝 안 → `already_merged`, 상관없는 파일만 움직임 → `reuse`, 끝이 후보가 돌린 대상을 지우기만 함 → `reuse` + `selection_is_covered`). 감사 뒤 전체 23개 통과(`cargo test --offline --locked --test merge_reuse_cli`, 종료 0).
+- AC-2: met — `cargo test --locked --offline --test merge_reuse_cli reruns_` 통과(새 Rust 대상, 새 파이썬 모듈, 바뀐 시험, 바뀐 스캔 목록의 새 대상, 규칙 파일×범위 교차(양방향, 범위 밖 경로는 교차 아님), 겹치는 파일은 `diff_check`·`fmt`·`clippy`·`test_lib`·`test_bins` 추가(이름 바꾼 파일 양쪽, 시험이 이름을 안 부르는 공유 파일, 양쪽이 지운 파일 포함), 충돌과 base 가 끝의 조상이 아님은 `rerun_all`).
+- AC-3: met — `cargo test --locked --offline --test merge_reuse_cli answers_` 통과(ref·작업 트리·색인이 그대로, `--merge` 는 두 부모와 같은 답, 인자 누락·`-` 시작 거절, 같은 입력은 같은 순서, 저장소 하위 폴더에서 최상위 폴더와 같은 답, `candidate_paths` 는 `base...head` 만 셈).
+- AC-4: met — `cargo test --offline --locked --test merge_reuse_cli`(23 통과), `--lib check_affected::reuse`(1 통과: 요청이 파이프보다 크고 답도 파이프보다 클 때 `blobs` 가 멈추지 않음), `cargo clippy --all-targets -D warnings`, `cargo fmt --check`, `rustfmt --edition 2021 --check src/ops/check.rs` 모두 종료 0. 변이는 처음 5개(gained 대상 계산 뒤집기, 움직인 경로 대상 계산 바꾸기, 겹침 검사 끄기, 조상 검사 끄기, 이미 병합됨 검사 끄기)가 모두 잡혔고, 독립 감사가 찾은 생존 변이(이름 바꾸기 감지 끄기 ×2, 단계 목록 조건 빼기, 겹침 존재 검사 빼기, 겹침 필터 빼기, 파이썬 `_test` 접미사, `base...head`→`base..head`)에 시험을 추가했어요.
+- AC-5: met — 통제된 재생(아래): 다시 돌릴 검사가 후보당 평균 61.6개에서 8.5개로 줄고, 처음 판정(`fast_forward`) 9번은 검사가 하나도 필요 없어요. 후보 전체를 다시 병합·검사하지 않아도 되는 경우(`reuse`)는 이 기록에서는 0번이에요(감사 뒤 규칙 파일×범위 교차를 넣은 결과). 같은 입력에서 판정이 한 번에 40.9 초(CPU 16.8 초)이던 것이 0.9 초(CPU 0.65 초)로 줄었어요(시험 파일마다 git 을 따로 부르던 것을 `git cat-file --batch` 한 번으로).
 
 ### 재생 측정
 
@@ -106,12 +109,14 @@ The decision above answers one candidate. The queue the card asks for (durable f
 | 판정 | 횟수 |
 | --- | --- |
 | `fast_forward`(묶음의 첫 후보) | 9 |
-| `reuse` | 7 |
-| `rerun`(새로 영향받은 검사만) | 29 |
+| `reuse` | 0 |
+| `rerun`(새로 영향받은 검사만) | 36 |
 | `rerun_all` | 0 |
 
-- 다시 병합·검사하는 횟수: 지금 절차 90번(묶음마다 0+1+2+3+4=10, 9묶음), 이 명령으로는 29번(`rerun` 만 세요). 재검사 때 다시 돌리는 범위도 달라요: 지금은 매번 `check affected` 전체(이번 병합 열차에서 대상 41~55개), `rerun` 29번의 `rerun.rust` 대상 수는 0개 3번, 1~3개 17번, 8~14개 9번(가운데값 2개)이고, 겹치는 파일이 있어 `steps` 5개(`diff_check`·`fmt`·`clippy`·`test_lib`·`test_bins`)가 붙은 것은 9번이에요(출력: `replay-13-5.txt`).
-- 한 곳 직접 확인: 이 레인의 후보(C-176)를 `341f6c7abb` 에서 감사를 마친 뒤 끝이 `ca9723d773` 으로 움직였을 때 `reuse`(이유 4개 모두 기록), 리더가 "재사용은 아직 안 받는다"고 해서 전체 검사를 새로 돌리게 됐어요.
+감사가 `tools/repo_scans.json` 의 규칙 파일×범위 교차(REQ-11)를 빠뜨렸다고 지적해서 고치기 전에는 `reuse` 7·`rerun` 29 였어요. 교차를 넣자 그 7번이 모두 `rerun` 이 됐어요(이 기록에서 한 후보가 다른 후보와 규칙 파일·범위로 엇갈리는 일이 흔하다는 뜻이고, 앞 판정은 그만큼 "재사용해도 된다"고 잘못 말한 거였어요).
+
+- 다시 병합·검사하는 횟수: 지금 절차 90번(묶음마다 0+1+2+3+4=10, 9묶음). 이 명령으로도 전체 후보 수만 보면 줄지 않아요(`rerun` 36번). 줄어드는 건 한 번에 다시 돌리는 검사의 양이에요: `rerun` 36번(서로 다른 판정 하나씩)에서 다시 돌릴 것은 평균 8.5개(최대 26개), 같은 후보를 전체 `check affected` 로 다시 하면 평균 61.6개(선택된 Rust 대상 + 파이썬 모듈 + 병합 전체 단계 5개)예요. `rerun` 36번 중 9번은 교차한 스캔의 검사만 다시 돌리면 되는 경우(대상·단계 0개)고, 9번은 겹치는 파일이 있어 `steps` 5개가 붙어요. 교차로 이름이 오른 스캔 검사는 8가지예요(`test_identity_list_2878`, `cli_text_citations`, `ci_scope_test`, `worktree_include_guard`, `repo_scans_test`, `project_state_dir_is_spelled_once`, `hot_file_ops_merge`, `operations_doc_matches_code`). 출력: `replay-13-5-v2.txt`.
+- 한 곳 직접 확인: 이 레인의 다른 후보 하나를 `341f6c7abb` 에서 감사를 마친 뒤 끝이 `ca9723d773` 으로 움직였을 때 교차 검사를 넣기 전에는 `reuse`(이유 4개 모두 기록)였고, 리더가 "재사용은 아직 안 받는다"고 해서 전체 검사를 새로 돌리게 됐어요. 교차 검사를 넣은 판정은 이 한 곳에 대해 다시 재지 않았어요.
 - 못 잰 것: 병합 전 기다린 시간(벽시계). 이 기계의 부하와 슬롯 대기가 섞여서 전·후를 같은 조건으로 잴 자료가 없어요. 의미가 겹치는 깨짐(서로 다른 영역이 합쳐져서만 깨지는 검사, 예: 다른 카드의 help 골든 변경 때문에 한 후보가 실패한 일)은 이 판정이 잡지 못해요. 이 측정은 과거 이력을 끝만 바꿔 다시 놓은 것이고 실제 병합 열차를 돌린 게 아니에요.
 
 아직 안 한 것: 큐 소비와 `MERGED-LOCAL` 쓰기, 노트를 읽는 `check queue`(위 "Next slice"의 결정 대기), 독립 감사, `spec check --closure` 의 마지막 `closure_status`(승인 전 SPEC 이라 남아요).

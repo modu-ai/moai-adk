@@ -11,11 +11,17 @@ use std::process::{Command, Stdio};
 const BIN: &str = crate::common::MOAI_BIN;
 
 const SCANS: &str = r#"{"about":"fixture","scans":[
-  {"id":"home","checks":["cargo test --offline --locked --test home_isolation_scan"]}]}"#;
+  {"id":"home","rules":[],"scope":[],"checks":["cargo test --offline --locked --test home_isolation_scan"]}]}"#;
 
 const SCANS_WITH_OTHER: &str = r#"{"about":"fixture","scans":[
-  {"id":"home","checks":["cargo test --offline --locked --test home_isolation_scan"]},
-  {"id":"other","checks":["cargo test --offline --locked --test other_cli"]}]}"#;
+  {"id":"home","rules":[],"scope":[],"checks":["cargo test --offline --locked --test home_isolation_scan"]},
+  {"id":"other","rules":[],"scope":[],"checks":["cargo test --offline --locked --test other_cli"]}]}"#;
+
+/// A scan with a rule file and a scope: the rule file on one side and a path of the scope on the
+/// other break once merged, whatever the two sides' files are.
+const SCANS_WITH_RULE: &str = r#"{"about":"fixture","scans":[
+  {"id":"home","rules":[],"scope":[],"checks":["cargo test --offline --locked --test home_isolation_scan"]},
+  {"id":"rule","rules":["src/rule_file.rs"],"scope":[{"prefix":"src/","suffixes":[".rs"]}],"checks":["cargo test --offline --locked --lib rule_holds"]}]}"#;
 
 /// Ten lines, so that two edits far apart merge without a conflict.
 const MODELS: &str = "// 1\n// 2\n// 3\n// 4\n// 5\n// 6\n// 7\n// 8\n// 9\n// 10\n";
@@ -38,7 +44,7 @@ impl Fixture {
         git_ok(p, &["init", "-q", "-b", "main"]);
         git_ok(p, &["config", "user.email", "t@example.invalid"]);
         git_ok(p, &["config", "user.name", "t"]);
-        put(p, "README.md", "x\n");
+        put(p, "README.md", MODELS);
         put(p, "src/update_models.rs", MODELS);
         put(p, "src/ops/alpha.rs", "// a\n");
         put(p, "src/other.rs", "// o\n");
@@ -84,6 +90,21 @@ impl Fixture {
         sha
     }
 
+    /// A commit on a new branch off `from` that moves files (`git mv`); the checkout goes back to
+    /// `main`.
+    fn branch_moved(&self, name: &str, from: &str, moves: &[(&str, &str)]) -> String {
+        let p = self.root();
+        git_ok(p, &["checkout", "-q", "-b", name, from]);
+        for (old, new) in moves {
+            fs::create_dir_all(p.join(new).parent().unwrap()).unwrap();
+            git_ok(p, &["mv", old, new]);
+        }
+        git_ok(p, &["commit", "-q", "-m", name]);
+        let sha = git(p, &["rev-parse", "HEAD"]);
+        git_ok(p, &["checkout", "-q", "main"]);
+        sha
+    }
+
     /// The candidate: edits line 1 of the models file.
     fn candidate(&self) -> String {
         let edited = MODELS.replacen("// 1\n", "// 1 edited\n", 1);
@@ -100,10 +121,15 @@ fn reuse_args(base: &str, head: &str, tip: &str) -> Vec<String> {
 }
 
 fn run(fx: &Fixture, args: &[String]) -> (bool, Value, String) {
+    run_in(fx.root(), args)
+}
+
+/// `--dir` is the repository, which may be given as a folder inside it.
+fn run_in(dir: &Path, args: &[String]) -> (bool, Value, String) {
     let out = Command::new(BIN)
         .args(args)
         .arg("--dir")
-        .arg(fx.root())
+        .arg(dir)
         .env_remove("MOAI_HOME")
         .stdin(Stdio::null())
         .output()
@@ -440,4 +466,160 @@ fn answers_in_a_fixed_order() {
         ["update_a_cli", "update_b_cli"]
     );
     assert_eq!(names(&first["rerun"]["python"]), ["update_tux2_test"]);
+}
+
+const WHOLE_CHANGE: [&str; 5] = ["diff_check", "fmt", "clippy", "test_lib", "test_bins"];
+
+/// Audit: the repository given as a folder inside it must answer like the root (git's tree
+/// listing is relative to the folder unless asked for the whole tree).
+#[test]
+fn answers_the_same_from_a_folder_inside_the_repository() {
+    let fx = Fixture::new();
+    let head = fx.candidate();
+    let tip = fx.branch(
+        "tip",
+        &fx.base,
+        &[("tests/update_extra_cli.rs", "fn main() {}\n")],
+    );
+    let (ok, from_root, text) = run_in(fx.root(), &reuse_args(&fx.base, &head, &tip));
+    assert!(ok, "{text}");
+    assert_eq!(names(&from_root["rerun"]["rust"]), ["update_extra_cli"]);
+    let (ok, from_folder, text) =
+        run_in(&fx.root().join("src"), &reuse_args(&fx.base, &head, &tip));
+    assert!(ok, "{text}");
+    assert_eq!(from_folder, from_root);
+}
+
+/// Audit: a scan's rule file changed on one side and a path of its scope changed on the other
+/// break once merged although the files differ; `moai repo-scans` flags it, so reuse must too.
+#[test]
+fn reruns_the_scan_checks_when_a_rule_file_and_a_scope_path_move_apart() {
+    let fx = Fixture::new();
+    let edited = MODELS.replacen("// 1\n", "// 1 edited\n", 1);
+    let base = fx.branch(
+        "base2",
+        &fx.base,
+        &[
+            ("tools/repo_scans.json", SCANS_WITH_RULE),
+            ("src/rule_file.rs", "// r\n"),
+        ],
+    );
+    let scope_side = fx.branch("scope", &base, &[("src/update_models.rs", &edited)]);
+    let rule_side = fx.branch("rule", &base, &[("src/rule_file.rs", "// r2\n")]);
+    // The rule file on the tip, the scope path on the candidate.
+    let a = decide(&fx, &base, &scope_side, &rule_side);
+    assert_eq!(a["decision"], "rerun", "{a}");
+    assert!(
+        names(&a["reasons"]).contains(&"scan_rules_cross_scope".to_string()),
+        "{a}"
+    );
+    assert_eq!(
+        names(&a["rerun"]["scan_checks"]),
+        ["cargo test --offline --locked --lib rule_holds"],
+        "{a}"
+    );
+    // The other way round.
+    let b = decide(&fx, &base, &rule_side, &scope_side);
+    assert_eq!(b["decision"], "rerun", "{b}");
+    assert_eq!(
+        names(&b["rerun"]["scan_checks"]),
+        ["cargo test --offline --locked --lib rule_holds"],
+        "{b}"
+    );
+    // A candidate path outside the scan's scope does not cross the rule file.
+    let outside = fx.branch("outside", &base, &[("README.md", &edited)]);
+    let c = decide(&fx, &base, &outside, &rule_side);
+    assert_eq!(c["decision"], "reuse", "{c}");
+    assert_eq!(
+        names(&c["rerun"]["scan_checks"]),
+        Vec::<String>::new(),
+        "{c}"
+    );
+}
+
+/// Audit: a renamed file counts under its old and its new name, on both sides.
+#[test]
+fn reruns_when_the_candidate_renames_a_file_the_tip_edits() {
+    let fx = Fixture::new();
+    let head = fx.branch_moved(
+        "cand",
+        &fx.base,
+        &[("src/other.rs", "src/other_renamed.rs")],
+    );
+    let tip = fx.branch("tip", &fx.base, &[("src/other.rs", "// o2\n")]);
+    let a = decide(&fx, &fx.base, &head, &tip);
+    assert_eq!(a["decision"], "rerun", "{a}");
+    assert!(
+        names(&a["overlap"]).contains(&"src/other.rs".to_string()),
+        "{a}"
+    );
+}
+
+#[test]
+fn reruns_when_the_tip_renames_a_file_the_candidate_edits() {
+    let fx = Fixture::new();
+    let head = fx.branch("cand", &fx.base, &[("src/other.rs", "// o edited\n")]);
+    let tip = fx.branch_moved("tip", &fx.base, &[("src/other.rs", "src/other_moved.rs")]);
+    let a = decide(&fx, &fx.base, &head, &tip);
+    assert_eq!(a["decision"], "rerun", "{a}");
+    assert!(
+        names(&a["overlap"]).contains(&"src/other.rs".to_string()),
+        "{a}"
+    );
+}
+
+/// Audit: a shared file that no test names still invalidates the whole-change steps, and only
+/// the shared files (not every file of the candidate) feed the per-file steps.
+#[test]
+fn reruns_the_whole_change_steps_for_a_shared_file_no_test_names() {
+    let fx = Fixture::new();
+    let edited = MODELS.replacen("// 1\n", "// 1 edited\n", 1);
+    let head = fx.branch(
+        "cand",
+        &fx.base,
+        &[("README.md", &edited), ("src/ops/beta.rs", "// b\n")],
+    );
+    let moved = MODELS.replacen("// 9\n", "// 9 moved\n", 1);
+    let tip = fx.branch("tip", &fx.base, &[("README.md", &moved)]);
+    let a = decide(&fx, &fx.base, &head, &tip);
+    assert_eq!(a["decision"], "rerun", "{a}");
+    assert_eq!(a["overlap"], serde_json::json!(["README.md"]));
+    assert_eq!(names(&a["rerun"]["steps"]), WHOLE_CHANGE, "{a}");
+}
+
+/// Audit: a file both sides deleted is shared but absent, so no per-file step names it.
+#[test]
+fn reruns_without_a_per_file_step_for_a_file_both_sides_deleted() {
+    let fx = Fixture::new();
+    let head = fx.branch_without("cand", &fx.base, &["src/ops/alpha.rs"]);
+    let tip = fx.branch_without("tip", &fx.base, &["src/ops/alpha.rs"]);
+    let a = decide(&fx, &fx.base, &head, &tip);
+    assert_eq!(a["decision"], "rerun", "{a}");
+    assert_eq!(a["overlap"], serde_json::json!(["src/ops/alpha.rs"]));
+    assert_eq!(names(&a["rerun"]["steps"]), WHOLE_CHANGE, "{a}");
+}
+
+/// Audit: a Python file whose name does not end in `_test` is not a test module.
+#[test]
+fn answers_reuse_when_the_tip_adds_a_python_file_that_is_not_a_test() {
+    let fx = Fixture::new();
+    let head = fx.candidate();
+    let tip = fx.branch("tip", &fx.base, &[("tests/update_helper.py", "#\n")]);
+    let a = decide(&fx, &fx.base, &head, &tip);
+    assert_eq!(a["decision"], "reuse", "{a}");
+    assert_eq!(names(&a["rerun"]["python"]), Vec::<String>::new(), "{a}");
+}
+
+/// Audit: the candidate's paths are what its own branch changed since it left the base's history
+/// (`base...head`), not the difference between the two trees.
+#[test]
+fn counts_only_the_paths_the_candidate_changed_since_it_left_the_base() {
+    let fx = Fixture::new();
+    let head = fx.candidate();
+    // The base moved on after the candidate branched off.
+    let base = fx.branch("base2", &fx.base, &[("src/other.rs", "// o2\n")]);
+    let moved = MODELS.replacen("// 9\n", "// 9 moved\n", 1);
+    let tip = fx.branch("tip", &base, &[("README.md", &moved)]);
+    let a = decide(&fx, &base, &head, &tip);
+    assert_eq!(a["candidate_paths"], 1, "{a}");
 }

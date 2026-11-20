@@ -27,18 +27,18 @@ operation `check.affected` · 코드 `src/ops/check.rs`, `src/check_affected.rs`
 
 ## `check reuse` (SPEC-20261120-merge-reuse) · 코드 `src/check_affected/reuse.rs`
 
-`moai check reuse --base <OLD> --head <후보 head> --tip <지금 끝>`(또는 `--merge <머지 커밋>`: 부모가 정확히 둘이고, 첫째가 base·둘째가 head)는 감사를 마친 병합 후보의 증거가 **로컬 통합 가지의 끝이 움직인 뒤에도 맞는지** git 만 읽고 판단해요. 끝이 OLD 에서 움직이면 ff 가 안 되고 레인이 처음부터 다시 병합·검사하는데, 움직인 부분이 후보와 상관없으면 그 검사는 다시 할 필요가 없어요. `--dir` 은 저장소(기본: 현재 폴더)예요.
+`moai check reuse --base <OLD> --head <후보 head> --tip <지금 끝>`(또는 `--merge <머지 커밋>`: 부모가 정확히 둘이고, 첫째가 base·둘째가 head)는 감사를 마친 병합 후보의 증거가 **로컬 통합 가지의 끝이 움직인 뒤에도 맞는지** git 만 읽고 판단해요. 끝이 OLD 에서 움직이면 ff 가 안 되고 레인이 처음부터 다시 병합·검사하는데, 움직인 부분이 후보와 상관없으면 그 검사는 다시 할 필요가 없어요. `--dir` 은 저장소(기본: 현재 폴더)예요. 저장소 안의 하위 폴더를 줘도 최상위 폴더를 줄 때와 같은 답을 내요.
 
 | `decision` | 뜻 | 해야 할 일 |
 | --- | --- | --- |
 | `fast_forward` | 끝이 OLD 그대로 | 증거 그대로, ff 로 올려요 |
 | `already_merged` | 후보 head 가 이미 끝 안에 있음 | 올릴 게 없어요 |
-| `reuse` | 끝만 앞으로 갔고, 병합이 깨끗하고, 움직인 경로가 후보의 경로와 겹치지 않고, 후보에 대한 `check affected` 선택이 옛 트리와 끝 위 병합 트리에서 같거나(`selection_is_equal`) 더 작음(`selection_is_covered`) | 증거를 다시 쓰고 `reasons` 를 기록해요 |
-| `rerun` | 새로 영향받은 검사가 있음 | `rerun` 의 것만 다시 돌려요: `rust`·`python`(선택에 새로 들어온 대상, 또는 움직인 경로의 영역이 고르는 대상 중 후보의 선택에 든 것), `steps`(움직인 경로가 후보의 경로와 겹칠 때만: `diff_check`·`fmt`·`clippy`·`test_lib`·`test_bins`, 겹친 파일의 `ops_rustfmt`·`bash_n:<경로>`) |
-| `rerun_all` | 판단할 수 없음: `merge_conflict`, `base_not_ancestor_of_tip`, 읽을 수 없는 사실(`unreadable: …`) | 모르면 전부 다시 돌려요 |
+| `reuse` | 끝만 앞으로 갔고, 병합이 깨끗하고, 움직인 경로가 후보의 경로와 겹치지 않고, `tools/repo_scans.json` 의 어느 항목도 한쪽은 규칙 파일을 바꾸고 다른 쪽은 그 범위 안 경로를 바꾸지 않았고, 후보에 대한 `check affected` 선택이 옛 트리와 끝 위 병합 트리에서 같거나(`selection_is_equal`) 더 작음(`selection_is_covered`) | 증거를 다시 쓰고 `reasons` 를 기록해요 |
+| `rerun` | 새로 영향받은 검사가 있음 | `rerun` 의 것만 다시 돌려요: `rust`·`python`(선택에 새로 들어온 대상, 또는 움직인 경로의 영역이 고르는 대상 중 후보의 선택에 든 것), `steps`(움직인 경로가 후보의 경로와 겹칠 때만: `diff_check`·`fmt`·`clippy`·`test_lib`·`test_bins`, 겹친 파일의 `ops_rustfmt`·`bash_n:<경로>`), `scan_checks`(한쪽이 어떤 항목의 규칙 파일을, 다른 쪽이 그 범위 안 경로를 바꿨을 때 그 항목의 검사 명령, 이유 `scan_rules_cross_scope`, `moai repo-scans --refs` 의 `remerge` 와 같은 규칙) |
+| `rerun_all` | 판단할 수 없음: `merge_conflict`, `base_not_ancestor_of_tip`, 읽을 수 없는 사실(`unreadable: …`), 읽을 수 없는 스캔 목록(`scan_table_unreadable: …`) | 모르면 전부 다시 돌려요 |
 
 답에는 `reasons`(고정 순서), `rerun`, `overlap`(겹친 경로), `base`·`head`·`tip`(전체 sha), `candidate_paths`·`delta_paths`(개수), `selection.old`·`selection.new`(`rust`·`python`·`scans`), `merge_tree`(끝 위 병합 트리의 id, 병합이 깨끗할 때)가 있고, 같은 입력은 같은 답을 내요.
 
-쓰기: 아무 ref·색인·작업 파일도 움직이지 않아요. `git merge-tree --write-tree` 가 만드는 트리 객체만 남아요(어느 커밋도 가리키지 않는 객체). 인자가 빠졌거나, 리비전이 아니거나, `-` 로 시작하거나, `--merge` 가 두 부모의 병합이 아니면 거절해요(아무것도 읽지 않음).
+쓰기: 아무 ref·색인·작업 파일도 움직이지 않아요. `git merge-tree --write-tree` 가 만드는 트리 객체만 남아요(어느 커밋도 가리키지 않는 객체). 인자가 빠졌거나, 리비전이 아니거나, `-` 로 시작하거나, `--merge` 가 두 부모의 병합이 아니면 거절해요(결정을 내놓지 않음).
 
-하지 않는 것: 병합 실행(잠금 아래 `git merge --ff-only`)과 노트 쓰기, 큐 읽기, 짝(`pair=`)·의존(`after=`) 묶기, 검사 실행. `reuse` 는 "선택이 같고 겹침이 없을 때"라는 규칙 아래에서 옛 증거가 유효하다는 뜻이지, 병합한 트리를 시험했다는 뜻이 아니에요: 서로 다른 영역이 합쳐져서만 깨지는 검사는 리더의 끝 점검이 잡아요.
+하지 않는 것: 병합 실행(잠금 아래 `git merge --ff-only`)과 노트 쓰기, 큐 읽기, 짝(`pair=`)·의존(`after=`) 묶기, 검사 실행. `reuse` 는 "선택이 같고 겹침이 없을 때"라는 규칙 아래에서 옛 증거가 유효하다는 뜻이지, 병합한 트리를 시험했다는 뜻이 아니에요: 서로 다른 영역이 합쳐져서만 깨지는 검사는 리더의 끝 점검이 잡아요. 이름 규칙 밖의 변경(`Cargo.toml`·`Cargo.lock`·`src/lib.rs`)은 `check affected` 와 같은 범위만 닿아요: 겹치는 파일이 없으면 `--lib`·`--bins`·`clippy`·`fmt` 증거는 다시 돌리지 않아요.

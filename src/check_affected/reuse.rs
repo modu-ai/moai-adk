@@ -7,6 +7,7 @@
 use super::{
     commit, declared_mods, git, host_os, os_names, select, stem, steps, Selection, TestFile,
 };
+use crate::repo_scans;
 use std::collections::BTreeSet;
 use std::path::Path;
 use std::process::Command;
@@ -55,6 +56,9 @@ pub struct Verdict {
     pub rerun_rust: BTreeSet<String>,
     pub rerun_python: BTreeSet<String>,
     pub rerun_steps: Vec<String>,
+    /// The checks of the scans whose rule files moved on one side while a path of their scope
+    /// moved on the other (the `repo-scans` judge).
+    pub rerun_scans: Vec<String>,
     pub overlap: Vec<String>,
     pub old: Option<Selection>,
     pub new: Option<Selection>,
@@ -68,11 +72,32 @@ fn verdict(decision: &'static str, reasons: &[&str]) -> Verdict {
         rerun_rust: BTreeSet::new(),
         rerun_python: BTreeSet::new(),
         rerun_steps: Vec::new(),
+        rerun_scans: Vec::new(),
         overlap: Vec::new(),
         old: None,
         new: None,
         merge_tree: None,
     }
+}
+
+/// The checks of every scan of `tools/repo_scans.json` whose rule files changed on one side while
+/// a path in its scope changed on the other: two changes that touch different files and still
+/// break once merged. The table is the union of the two trees' tables, as `moai repo-scans
+/// --refs` reads it. An unreadable table is an error (the caller reruns everything).
+fn scan_crossing(i: &Inputs) -> Result<(Vec<String>, Vec<String>)> {
+    let tables = [&i.old.scan_list, &i.new.scan_list]
+        .into_iter()
+        .map(|text| text.as_deref().map(repo_scans::parse_table).transpose())
+        .collect::<Result<Vec<_>>>()?;
+    let scans = repo_scans::union(&tables);
+    let mut ids: Vec<String> = repo_scans::judge(&i.candidate, &i.delta, &scans)
+        .iter()
+        .filter_map(|h| h["id"].as_str().map(String::from))
+        .collect();
+    ids.dedup();
+    let wanted: Vec<&str> = ids.iter().map(String::as_str).collect();
+    let checks = repo_scans::checks_for(&wanted, &scans);
+    Ok((ids, checks))
 }
 
 /// The steps that check the whole change rather than a target: what an overlapping base move
@@ -143,28 +168,44 @@ pub fn judge(i: &Inputs, host: &str) -> Verdict {
         reasons.push("shared_path".to_string());
         steps_to_run = whole_change_steps(&new, &i.overlap_present);
     }
+    let (scan_ids, scan_checks) = match scan_crossing(i) {
+        Ok(found) => found,
+        Err(e) => {
+            let mut v = verdict("rerun_all", &[]);
+            v.reasons.push(format!("scan_table_unreadable: {e}"));
+            return v;
+        }
+    };
+    if !scan_ids.is_empty() {
+        reasons.push("scan_rules_cross_scope".to_string());
+    }
     let covered = old.rust.is_superset(&new.rust) && old.python.is_superset(&new.python);
     let equal = old.rust == new.rust && old.python == new.python && old.scans == new.scans;
-    let decision =
-        if rerun_rust.is_empty() && rerun_python.is_empty() && steps_to_run.is_empty() && covered {
-            reasons.push(
-                if equal {
-                    "selection_is_equal"
-                } else {
-                    "selection_is_covered"
-                }
-                .to_string(),
-            );
-            "reuse"
-        } else {
-            "rerun"
-        };
+    let decision = if rerun_rust.is_empty()
+        && rerun_python.is_empty()
+        && steps_to_run.is_empty()
+        && scan_ids.is_empty()
+        && covered
+    {
+        reasons.push(
+            if equal {
+                "selection_is_equal"
+            } else {
+                "selection_is_covered"
+            }
+            .to_string(),
+        );
+        "reuse"
+    } else {
+        "rerun"
+    };
     Verdict {
         decision,
         reasons,
         rerun_rust,
         rerun_python,
         rerun_steps: steps_to_run,
+        rerun_scans: scan_checks,
         overlap,
         old: Some(old),
         new: Some(new),
@@ -227,7 +268,8 @@ fn paths(dir: &Path, args: &[&str]) -> Result<Vec<String>> {
 
 /// The test files and the scan list of `tree`, read from git, never from the checkout.
 pub fn tree_facts(dir: &Path, tree: &str) -> Result<TreeFacts> {
-    let listing = git(dir, &["ls-tree", "-z", tree, "--", "tests/"])?;
+    // `--full-tree`: the pathspecs are repository paths whatever folder `dir` is.
+    let listing = git(dir, &["ls-tree", "-z", "--full-tree", tree, "--", "tests/"])?;
     let mut tests = Vec::new();
     let mut rust: Vec<(String, String)> = Vec::new();
     for entry in listing.split('\0').filter(|l| !l.is_empty()) {
@@ -253,7 +295,17 @@ pub fn tree_facts(dir: &Path, tree: &str) -> Result<TreeFacts> {
             });
         }
     }
-    let scan = git(dir, &["ls-tree", "-z", tree, "--", "tools/repo_scans.json"])?;
+    let scan = git(
+        dir,
+        &[
+            "ls-tree",
+            "-z",
+            "--full-tree",
+            tree,
+            "--",
+            "tools/repo_scans.json",
+        ],
+    )?;
     let scan_sha = scan
         .split('\0')
         .find(|l| !l.is_empty())
@@ -295,26 +347,27 @@ fn blobs(dir: &Path, shas: &[&str]) -> Result<Vec<String>> {
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| format!("cannot run git: {e}"))?;
-    // The request is a few KiB, far under a pipe buffer, so it is written before any reading.
+    // The request is written from its own thread while this one reads: git stops reading its
+    // input once its answer fills the output pipe, so writing everything first can hang when the
+    // tree is large.
     let mut stdin = child.stdin.take().ok_or("git cat-file has no stdin")?;
     let mut request = String::new();
     for sha in shas {
         request.push_str(sha);
         request.push('\n');
     }
-    stdin
-        .write_all(request.as_bytes())
-        .map_err(|e| format!("cannot write to git: {e}"))?;
-    drop(stdin);
+    let writer = std::thread::spawn(move || stdin.write_all(request.as_bytes()));
     let out = child
         .wait_with_output()
         .map_err(|e| format!("cannot read git: {e}"))?;
+    let written = writer.join().map_err(|_| "the request writer panicked")?;
     if !out.status.success() {
         return Err(format!(
             "git cat-file failed: {}",
             String::from_utf8_lossy(&out.stderr).trim()
         ));
     }
+    written.map_err(|e| format!("cannot write to git: {e}"))?;
     let bytes = out.stdout;
     let mut texts = Vec::with_capacity(shas.len());
     let mut at = 0;
@@ -446,6 +499,7 @@ pub fn run(dir: &Path, base: &str, head: &str, tip: &str) -> Result<serde_json::
             "rust": names(&v.rerun_rust),
             "python": names(&v.rerun_python),
             "steps": v.rerun_steps,
+            "scan_checks": v.rerun_scans,
         },
         "overlap": v.overlap,
         "base": base,
@@ -469,4 +523,39 @@ pub fn run_merge(dir: &Path, merge: &str, tip: &str) -> Result<serde_json::Value
         ));
     }
     run(dir, words[1], words[2], tip)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    fn git_in(dir: &Path, args: &[&str]) -> String {
+        let mut cmd = Command::new("git");
+        crate::identity::scrub_git_env(&mut cmd);
+        let out = cmd.args(args).current_dir(dir).output().unwrap();
+        assert!(out.status.success(), "git {args:?}");
+        String::from_utf8_lossy(&out.stdout).trim().to_string()
+    }
+
+    /// The request is longer than a pipe holds and the answer is larger than a pipe holds: the
+    /// reader must not wait for the whole request to be written first.
+    #[test]
+    fn blobs_reads_a_large_answer_while_the_request_is_still_being_written() {
+        let dir = tempfile::tempdir().unwrap();
+        git_in(dir.path(), &["init", "-q"]);
+        std::fs::write(dir.path().join("big.txt"), "x".repeat(70_000)).unwrap();
+        let sha = git_in(dir.path(), &["hash-object", "-w", "big.txt"]);
+        let path = dir.path().to_path_buf();
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let shas = vec![sha.as_str(); 2000];
+            let _ = tx.send(blobs(&path, &shas).map(|t| (t.len(), t[0].len())));
+        });
+        let got = rx
+            .recv_timeout(Duration::from_secs(60))
+            .expect("blobs hung")
+            .unwrap();
+        assert_eq!(got, (2000, 70_000));
+    }
 }
