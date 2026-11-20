@@ -175,17 +175,14 @@ fn setup_answers_reach_the_profile_and_rerun_keeps_them() {
     let before = fs::read(root.path().join(PROFILE)).unwrap();
     let out = setup_answers(
         &root,
-        &json!({"code_comments": "ja", "user_chat": "ko"}),
+        &json!({"commit_messages": "ja", "user_chat": "ko"}),
         &["--conversation", "ko"],
     );
     // The step itself writes nothing.
     assert_eq!(fs::read(root.path().join(PROFILE)).unwrap(), before);
     assert_eq!(out["profile_written"], json!(false));
-    let expected = json!({
-        "agent_messages": "en", "code_comments": "ja", "commit_messages": "ko",
-        "instruction_files": "en", "issue_pr_records": "ko", "reports": "ko",
-        "skill_instructions": "en", "user_chat": "ko"
-    });
+    // The three asked items; `documents` was not answered, so it takes the conversation language.
+    let expected = json!({"commit_messages": "ja", "documents": "ko", "user_chat": "ko"});
     assert_eq!(out["language"], expected);
     let plan = apply_profile(&root, &out["profile"]);
     assert_eq!(plan["action"], json!("update"));
@@ -205,22 +202,22 @@ fn setup_answers_reach_the_profile_and_rerun_keeps_them() {
     apply_profile(&root, &again["profile"]);
     assert_eq!(fs::read(root.path().join(PROFILE)).unwrap(), applied);
 
-    // The question set shows the stored values as current and suggested.
+    // The question set lists the three items, with the stored values as current and suggested.
     let q = ok(&run(&["language-setup", path(&root), "--questions"], b""));
     let items = q["questions"]["items"].as_array().unwrap();
-    assert_eq!(items.len(), 8);
-    let comments = items.iter().find(|i| i["id"] == "code_comments").unwrap();
-    assert_eq!(comments["current"], json!("ja"));
-    assert_eq!(comments["suggested"], json!("ja"));
-    assert_eq!(comments["default"], json!("en"));
+    let ids: Vec<&str> = items.iter().map(|i| i["id"].as_str().unwrap()).collect();
+    assert_eq!(ids, ["user_chat", "commit_messages", "documents"]);
+    let commits = items.iter().find(|i| i["id"] == "commit_messages").unwrap();
+    assert_eq!(commits["current"], json!("ja"));
+    assert_eq!(commits["suggested"], json!("ja"));
 
     // One changed answer changes exactly that item.
-    let third = setup_answers(&root, &json!({"reports": "en"}), &[]);
-    assert_eq!(third["changed_items"], json!(["reports"]));
+    let third = setup_answers(&root, &json!({"documents": "en"}), &[]);
+    assert_eq!(third["changed_items"], json!(["documents"]));
     let plan = apply_profile(&root, &third["profile"]);
     assert_eq!(plan["delta"]["changed"], json!(["language"]));
     assert_eq!(
-        profile_value(root.path())["language"]["reports"],
+        profile_value(root.path())["language"]["documents"],
         json!("en")
     );
 }
@@ -230,14 +227,16 @@ fn setup_answers_reach_the_profile_and_rerun_keeps_them() {
 #[test]
 fn interactive_setup_reads_one_answer_per_item() {
     let root = project(Some(json!({"commit_messages": "zh"})));
+    // Three prompts, in order: user_chat, commit_messages, documents.
     let out = ok(&run(&["language-setup", path(&root)], b"ko\n\nfr\nja\n"));
     let l = &out["language"];
     assert_eq!(l["user_chat"], json!("ko"));
-    // The conversation language is fixed before asking (no flag, no stored user_chat: en).
-    assert_eq!(l["reports"], json!("en"));
-    assert_eq!(l["issue_pr_records"], json!("ja"));
+    // An empty line keeps the stored value.
     assert_eq!(l["commit_messages"], json!("zh"));
-    assert_eq!(l["code_comments"], json!("en"));
+    // A bad code is asked again; the next line answers the third item.
+    assert_eq!(l["documents"], json!("ja"));
+    // Nothing else is asked, and no key is added for an item the setup does not ask.
+    assert_eq!(l.as_object().unwrap().len(), 3, "{l}");
     let stderr = String::from_utf8(run(&["language-setup", path(&root)], b"fr\n").stderr).unwrap();
     assert!(stderr.contains("unsupported language code"), "{stderr}");
     let refused = run(&["language-setup", path(&root)], b"fr\nde\nes\n");
@@ -293,6 +292,7 @@ fn managed_section_states_each_projects_setting() {
 - 지침 파일(AGENTS.md, 규칙): 한국어 (`ko`)
 - skill 지침: 영어 (`en`)
 - 코드 주석: 영어 (`en`)
+그 밖의 글(지침 파일, 스킬·규칙, 에이전트 간 메시지, 코드 주석, Issue·PR 기록)은 위에 따로 적지 않으면 영어로 써요.
 
 승인한 SPEC과";
     assert!(text.contains(block), "{text}");
@@ -324,6 +324,7 @@ fn managed_section_states_each_projects_setting() {
 Writing language by item (`language` in `.moai-cli/project.yaml`):
 - Conversation with the user: Japanese (`ja`)
 - Code comments: Chinese (`zh`)
+All other writing (instruction files, skills and rules, messages between agents, code comments, issue and PR records) is in English unless a line above says otherwise.
 
 Confirm the approved";
     assert!(text.contains(block), "{text}");
