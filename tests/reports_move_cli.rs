@@ -469,14 +469,17 @@ fn a_linked_worktree_moves_to_the_primary_checkouts_folder() {
     assert!(!wt.join(".moai-cli/reports/a.md").exists());
 }
 
-/// Audit N1: a relative HOME or a reports folder inside the project would write the reports
-/// back into the repository; both block the plan and create nothing.
+/// Audit N1: a reports folder inside the project would write the reports back into the
+/// repository; it blocks the plan and creates nothing. The name still says "relative" because an
+/// earlier SPEC's verify line runs it by that name; the relative HOME case is tried in a
+/// temporary working folder by `every_blocked_apply_reports_invalid_input_through_the_cli`
+/// (resolved here it would be taken against this repository).
 #[test]
 fn a_home_that_is_relative_or_inside_the_project_blocks_the_move() {
     let tmp = tempfile::tempdir().unwrap();
     let root = repo(tmp.path());
     write(&root, ".moai-cli/reports/a.md", "a");
-    for home in [PathBuf::from("relative-home"), root.join("in-repo-home")] {
+    for home in [root.join("in-repo-home")] {
         let p = plan(&root, &home).unwrap();
         assert_eq!(p.state, "blocked", "{}: {}", home.display(), p.reason);
         assert!(p.moves.is_empty());
@@ -489,7 +492,6 @@ fn a_home_that_is_relative_or_inside_the_project_blocks_the_move() {
         assert!(err.contains("blocked"), "{err}");
         assert!(root.join(".moai-cli/reports/a.md").exists());
         assert!(!root.join("in-repo-home").exists());
-        assert!(!Path::new("relative-home").exists());
     }
 }
 
