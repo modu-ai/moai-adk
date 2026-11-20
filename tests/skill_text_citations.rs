@@ -364,17 +364,21 @@ fn finish_line_rule_is_stated_once_in_each_lane_workflow() {
         let t = text(path);
         assert_eq!(t.matches("Local finish line:").count(), 1, "{path}");
         for phrase in [
-            "the lane itself makes the merge of its head onto the current tip of the LOCAL integration branch",
-            "runs the checks for that merge there",
-            "`MERGE-READY <card> merge=<40-hex> base=<40-hex tip> checks=<result line>`",
-            "a lane's session may not run git there",
-            "fast-forward",
+            "makes the merge of its head onto the current tip of the LOCAL integration branch",
+            "check-affected command of the tool built in that worktree",
+            "`MERGE-READY <card> merge=<40-hex> base=<40-hex> checks=<one line>`",
+            "under a lock (`~/.moai/locks/<project>-<branch>.lock`)",
             "`git merge --ff-only`",
+            "`git -C <primary> merge --ff-only refs/moai/lane-merge`",
+            "where the host isolates a lane session to its worktree",
             "`MERGED-LOCAL`",
+            "from the verified tip of the local integration branch, not from the remote one",
+            "ahead (↑) and behind (↓) its upstream",
             "nobody opens a pull request per card, per bundle or per integration round",
             "`release/v{head}.{yearweek}.{build}`",
-            "Only for a real deployment",
+            "only for a real deployment",
             "a broken tip with a revert commit",
+            "is closed with `card done` on its local landing evidence, not on a pull request",
         ] {
             assert!(t.contains(phrase), "{path} must say `{phrase}`");
         }
@@ -382,7 +386,7 @@ fn finish_line_rule_is_stated_once_in_each_lane_workflow() {
     for phrase in [
         "`MERGED-LOCAL <card> <new tip> head=<head>`",
         "at audit tier 2 the card in `review` with its pushed head",
-        "a rule that closes such a card is not written yet",
+        "until `card done` accepts a card with no linked merged pull request",
     ] {
         assert!(
             text("skills/moai/workflows/mode-agent.md").contains(phrase),
