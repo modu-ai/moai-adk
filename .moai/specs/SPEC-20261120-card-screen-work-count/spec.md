@@ -2,7 +2,7 @@
 id: SPEC-20261120-card-screen-work-count
 title: "the card secret screen's time bound is a count of work, not a wall clock"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-20
 ---
 
@@ -16,9 +16,12 @@ created: 2026-11-20
 
 벽시계 15초를 쓰는 시험은 셋이에요: 위 단위 시험, 그리고 `tests/card_secret_followups.rs` 의 `separators_long_one_word_stays_within_the_time_bound` 와 `camel_long_name_stays_within_the_time_bound`. 통합 시험은 라이브러리의 시험 전용 카운터에 닿지 못하므로 같은 입력과 같은 답을 단위 시험으로 옮기고 통합 쪽의 시간 시험은 지워요(답을 확인하는 부분은 단위 시험이 그대로 해요). 낙타 혹 문자열을 계속 만들던 옛 제곱 시간 결함(감사 B1)은 이 시험에서 계속 실패해야 해요.
 
+같은 종류의 문제가 하나 더 있어요(리더 노트로 범위에 더해졌어요): `tests/home_retire_cli.rs` 의 시험 여럿이 "이 폴더가 사용 중"을 흉내 내려고 60초 뒤에 끝나는 `sleep` 을 띄워요. 부하로 시험이 60초를 넘기면(135초 걸린 적이 있어요) 흉내 프로세스가 먼저 끝나서 시험이 떨어져요. 흉내를 `cat` 으로 바꿔요: 아무도 쓰지 않는 파이프를 기다리는 `cat` 은 시험이 지우거나(`Kill`) 시험 프로세스가 끝날 때(파이프가 닫혀 파일 끝을 읽을 때)까지 살아 있어서, 얼마나 사는지를 시계가 정하지 않아요.
+
 ## Non-goals
 
 - 비밀 검사의 판정 규칙을 바꾸는 일: 어떤 낱말을 막는지는 그대로예요.
+- 시험 설계 가이드(`skills/moai/references/internal/test-design.md`)에 "시간 대신 작업량 카운터" 단락을 더하는 일: 그 파일과 매니페스트를 다른 카드가 쥐고 있어서, 파일이 풀린 뒤 따로 해요.
 - 저장소의 다른 벽시계 판정을 모두 고치는 일: 목록만 남기고, 떨어진 적이 있는 것만 고쳐요(이 SPEC 의 시험 셋).
 - 제품 코드에 카운터를 넣는 일: 센 값은 시험 빌드에만 있어요.
 
@@ -31,6 +34,7 @@ created: 2026-11-20
 - REQ-5: The unit test shall run the jobs of the three time tests with the answers they asserted: the four unit shapes and the shape at the end, the three separator shapes with the value after the last separator, and the camel names joined, spaced and with a secret word behind the last hump.
 - REQ-6: The product build shall carry the counter only as test-build statements and answer every text as it did.
 - REQ-7: The result of this work shall list every other wall-clock assertion of `src/` and `tests/` by file and line.
+- REQ-8: The in-use stand-ins of `tests/home_retire_cli.rs` shall be programs that live until the test drops them or the test process ends and not programs that end after a fixed time.
 
 ## Acceptance
 
@@ -39,10 +43,11 @@ created: 2026-11-20
 - AC-3 (REQ-2, REQ-3, REQ-4): a camel-hump rebuild at every hump, a shared-screen call on every separator's rest of the word, a name check on a growing prefix at every equals sign and a counter that counts nothing each make the test fail, the three quadratic ones fast · verify: a script that edits the sources, runs the test and restores them
 - AC-4 (REQ-6): the module's other tests and the card integration tests answer as before and the product binaries build · verify: `cargo test --locked --offline --lib card::`, `cargo test --locked --offline --test card_secret_followups`, `cargo build --locked --offline --bins`
 - AC-5 (REQ-7): the Result lists the remaining wall-clock assertions · verify: `grep` over `src/` and `tests/`
+- AC-6 (REQ-8): no `sleep` program is started in `tests/home_retire_cli.rs`, its tests pass, and a stand-in that ends early fails them (so they do depend on the stand-in living and the old stand-in's end was the cause) · verify: `grep` of `"sleep"` in the file, `cargo test --locked --offline --test home_retire_cli`, and a mutant that makes the stand-in end at once
 
 ## Scope
 
-- write: `src/card/input.rs`, `src/redact.rs`, `tests/card_secret_followups.rs`, `.moai/specs/SPEC-20261120-card-screen-work-count/**`
+- write: `src/card/input.rs`, `src/redact.rs`, `tests/card_secret_followups.rs`, `tests/home_retire_cli.rs`, `.moai/specs/SPEC-20261120-card-screen-work-count/**`
 - read-only: `tests/common/**`, `src/ledger/workflow.rs`
 - forbidden: `skills/**`, `docs/**`, `schemas/**`, the real HOME
 
@@ -54,7 +59,8 @@ Tests first, in the order below, one commit each.
 2. GREEN: the call sites in `src/card/input.rs` and `src/redact.rs`, the lower-casing routed through one counted helper, the bound measured and written down.
 3. REFACTOR: remove the three wall-clock tests and the `timed` helper.
 4. Mutants (at most 5): camel rebuild per hump, the shared screen on every separator's rest, a growing-prefix name check, a dead counter, a limit that never stops the screen.
-5. Neighbours: `--lib` of the card module, the card integration tests, fmt, clippy, `git diff --check`.
+5. Stand-ins: one helper in `tests/home_retire_cli.rs` starts the in-use program (`cat` on a pipe) and the five `sleep 60` spawns call it; a mutant that ends the stand-in at once shows the tests depend on it.
+6. Neighbours: `--lib` of the card module, the card integration tests, the home retire tests, fmt, clippy, `git diff --check`.
 
 ## Risks
 
