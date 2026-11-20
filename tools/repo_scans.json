@@ -285,8 +285,8 @@
         "cargo test --offline --locked --test ac_command_lint recorded_ac_commands_name_existing_targets_and_select_tests"
       ],
       "rules": [
-        "tests/ac_command_lint.rs",
-        "tools/check_ac_commands.py"
+        "src/ops/ac_commands_check.rs",
+        "tests/ac_command_lint.rs"
       ],
       "scope": [
         {
