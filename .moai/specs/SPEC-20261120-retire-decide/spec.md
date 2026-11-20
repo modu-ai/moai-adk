@@ -39,8 +39,8 @@ approval: {by: user, at: 2026-11-21, basis: "AskUserQuestion selection on revisi
 - Q1: 아무 데서도 쓰지 않는 `src/decide/`(결정 모델 코드)를 지울까요? → A: 지우기 (Recommended) (사용자, 2026-11-21)
 - Q2: `AGENTS.md`·`.gitignore` 관리 구역 충돌을 어떻게 정리할까요? → A: 지금 모양 유지로 확정 (Recommended) — 손으로 관리, 다음 생성은 skip-conflicts
 - Q3: 이전 SPEC 다섯 개를 superseded 로 표시하는 범위로 승인할까요? → A: 승인 (Recommended)
-- Q5: revision 3 — AC-2 의 grep 이 낱말 "decided" 두 줄에도 걸려서, 경로와 시험 이름만 찾는 명령으로 고칠까요? → A: 승인 (Recommended)
 - Q4: revision 2 — 범위에 `tools/repo_scans.json` 을 넣고, 2026-11-19 이후 SPEC 두 개에는 이번 문답을 Interview 로 적어 superseded 로 표시할까요? → A: 승인 (Recommended)
+- Q5: revision 3 — AC-2 의 grep 이 낱말 "decided" 두 줄에도 걸려서, 경로와 시험 이름만 찾는 명령으로 고칠까요? → A: 승인 (Recommended)
 
 ## Plan
 
@@ -51,8 +51,8 @@ approval: {by: user, at: 2026-11-21, basis: "AskUserQuestion selection on revisi
 
 ## Result
 
-- AC-1: met — head 0020410358 에서 `test ! -e src/decide` exit 0; `grep -c 'mod decide' src/lib.rs` 0 (exit 1); `cargo test --locked --offline --lib` exit 0 (1541 passed); 삭제 전 `git grep -n -E 'crate::decide|moai_cli::decide|decide::' -- src tests ':!src/decide'` 출력 없음 (exit 1)
+- AC-1: met — head 0020410358 에서 측정, 감사 head 1eb9dc3124 에서 재측정(그 사이 변경은 이 spec.md 뿐): `test ! -e src/decide` exit 0; `grep -c 'mod decide' src/lib.rs` 0 (exit 1); `cargo test --locked --offline --lib` exit 0 (1541 passed); 삭제 전 `git grep -n -E 'crate::decide|moai_cli::decide|decide::' -- src tests ':!src/decide'` 출력 없음 (exit 1)
 - AC-2: met — `cargo test --locked --offline --test home_isolation_scan` exit 0 (14 passed, decide 시험 4개 제거 전 18); `grep -c -i -E 'src/decide|decide_library' tools/repo_scans.json` 0 (base 3); 등록부를 읽는 python 시험 `repo_scans_test`·`ci_scope_test`·`self_check_test`·`smoke_harness_test` exit 0 (25·47·66·30 OK)
 - AC-3: met — 다섯 SPEC 이 `status: superseded`, 승인 기록과 대체 줄을 갖고, 2026-11-19 두 SPEC 은 Interview 기록을 가짐; `moai spec check --all` exit 0 (errors 0, warnings 9 — 모두 이번에 건드리지 않은 SPEC)
 - AC-4: met — `grep -c 'SPEC-20261120-retire-decide' docs/decisions-2026-11-08.md` 2; 결정 로그를 읽는 `decision_append_cli the_real_decisions_log_previews_cleanly`·`product_cli card_ledger_wording_decision_row` exit 0
-- AC-5: met — `git diff --check v2026.11.0 HEAD` exit 0; `cargo fmt --check` exit 0; `cargo clippy --locked --offline --all-targets -- -D warnings` exit 0; `cargo test --locked --offline --test windows_unix_gate_scan --test doc_references --test git_env_scrub` exit 0 (12·3·11 passed); 이웃 `key_vault_cli`·`launcher_key_vault` exit 0 (12·9 passed)
+- AC-5: met — `git diff --check v2026.11.0 HEAD` exit 0; `cargo fmt --check` exit 0; `cargo clippy --locked --offline --all-targets -- -D warnings` exit 0; `cargo test --locked --offline --test windows_unix_gate_scan --test doc_references --test git_env_scrub` exit 0 (windows_unix_gate_scan 11 · doc_references 12 · git_env_scrub 3 passed); 이웃 `key_vault_cli`·`launcher_key_vault` exit 0 (12·9 passed)
