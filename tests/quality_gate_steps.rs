@@ -7,6 +7,8 @@
 #[allow(dead_code)]
 mod quality_gate;
 
+mod common;
+
 use quality_gate::detect::{detect, Detected};
 use quality_gate::{run, Invocation};
 use std::fs;
@@ -390,14 +392,12 @@ fn steps_a_descendant_holding_the_output_stream_fails_the_step() {
 /// A git repository for the staged-file rules. The location variables another test sets in this
 /// process are removed, so the fixture never reads a repository they point at.
 fn git_in(dir: &Path, args: &[&str]) {
-    let out = std::process::Command::new("git")
+    let out = common::git::command()
         .args(args)
         .current_dir(dir)
         .env_remove("GIT_DIR")
         .env_remove("GIT_WORK_TREE")
         .env_remove("GIT_INDEX_FILE")
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_SYSTEM", "/dev/null")
         .output()
         .expect("spawn git");
     assert!(
