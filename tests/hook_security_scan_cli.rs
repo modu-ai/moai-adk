@@ -76,17 +76,33 @@ impl Fx {
         self.dispatch(host, "security-scan", stdin)
     }
 
-    /// The engine log lines of the project.
-    fn log(&self) -> Vec<Value> {
-        fs::read_to_string(self.proj.join(".moai-cli/receipts/hook-engine.jsonl"))
+    /// The JSON lines of one log of the project's receipts folder.
+    fn lines_of(&self, file: &str) -> Vec<Value> {
+        fs::read_to_string(self.proj.join(".moai-cli/receipts").join(file))
             .unwrap_or_default()
             .lines()
             .filter_map(|l| serde_json::from_str(l).ok())
             .collect()
     }
 
+    /// Every line either log of the project holds: the engine log and the log of this event.
+    fn log(&self) -> Vec<Value> {
+        let mut all = self.lines_of("hook-engine.jsonl");
+        all.extend(self.lines_of("security-scan.jsonl"));
+        all
+    }
+
+    /// The would_notify lines in the log of this event (SPEC-20261120-security-scan-wire REQ-9).
     fn would_notify(&self) -> Vec<Value> {
-        self.log()
+        self.lines_of("security-scan.jsonl")
+            .into_iter()
+            .filter(|l| l["kind"] == json!("would_notify"))
+            .collect()
+    }
+
+    /// The would_notify lines that landed in the engine log: there must be none.
+    fn engine_would_notify(&self) -> Vec<Value> {
+        self.lines_of("hook-engine.jsonl")
             .into_iter()
             .filter(|l| l["kind"] == json!("would_notify"))
             .collect()
@@ -542,6 +558,10 @@ fn mode_observe_writes_one_would_notify_line_and_prints_nothing() {
         assert!(
             f.log().iter().all(|x| x["kind"] != json!("would_block")),
             "a notify rule is not a block rule"
+        );
+        assert!(
+            f.engine_would_notify().is_empty(),
+            "{config:?}: the would_notify line belongs in security-scan.jsonl"
         );
     }
 }
