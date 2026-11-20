@@ -492,6 +492,11 @@ mod tests {
             ("unknown planned path", InvalidInput),
             ("manifest missing from plan", InvalidInput),
             ("target is not a bounded regular file", InvalidInput),
+            // a replace refused for the size of the file it would replace, and a receipt above
+            // its writer's limit: input refusals, never a stale plan (a size is not a changed
+            // target).
+            ("target larger than 262144 bytes; refused", InvalidInput),
+            ("receipt larger than 16 MiB; refused; nothing was written", InvalidInput),
             ("HEAD is not a 40 hex commit", InvalidInput),
             ("package path invalid", InvalidInput),
             // queue-free (#2675; the open-Issue read queue-next used, #2161)

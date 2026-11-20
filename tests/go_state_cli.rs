@@ -2673,3 +2673,127 @@ fn a_failed_ignore_file_of_an_earlier_root_move_names_the_state_and_the_revert()
     assert_eq!(project_tree(&fx), before);
     assert!(!fx.root.join(".moai").exists());
 }
+
+// A receipt above 256 KiB: one real project's receipt had 1,319 restored entries and 262,362
+// bytes, 218 over the limit `apply::read_opt` keeps for every other file. The revert saved its
+// receipt after each removal, the save re-read the old receipt with that limit and reported the
+// size as a stale plan, after the first restored copy was already gone.
+
+/// The receipt limit `apply::read_opt` keeps for every other file.
+const READ_OPT_LIMIT: u64 = 262_144;
+
+/// A project whose apply restores `n` Go SPEC copies: one entry each in the receipt. The long
+/// folder names keep `n` small (every step saves the whole receipt again): a thousand entries
+/// of about 285 bytes pass the limit.
+fn many_specs_fixture(n: usize) -> Fx {
+    let fx = movable_fixture();
+    let long = "a".repeat(110);
+    for i in 0..n {
+        fx.write(
+            &format!(".moai/specs/SPEC-20261120-large-receipt-{long}-{i:04}/spec.md"),
+            &format!("# spec {i}\n"),
+        );
+    }
+    fx
+}
+
+/// AC-1: the revert of a receipt above the limit goes to the end and brings the tree back.
+#[test]
+fn a_receipt_above_256_kib_reverts_completely() {
+    let fx = many_specs_fixture(1000);
+    let before = project_tree(&fx);
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    let (path, receipt) = receipt_of(&fx, &backup);
+    let size = fs::metadata(&path).unwrap().len();
+    assert!(
+        size > READ_OPT_LIMIT,
+        "the fixture must make a receipt above the limit, got {size} bytes"
+    );
+    assert!(receipt["restored"].as_array().unwrap().len() > 1000);
+
+    let rp = revert_plan(&fx, &backup);
+    assert_eq!(rp["ok"], json!(true), "{rp}");
+    let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(project_tree(&fx), before, "the Go tree is back");
+    let (_, receipt) = receipt_of(&fx, &backup);
+    assert_eq!(receipt["state"], json!("reverted"), "{receipt}");
+}
+
+/// AC-2: a copy an earlier stopped revert already removed is read as skip, not as a conflict,
+/// and the next run goes to the end (the state the failing user was left in).
+#[test]
+fn a_restored_copy_removed_by_a_stopped_revert_is_not_a_conflict() {
+    let fx = movable_fixture();
+    fx.write(".moai/specs/SPEC-3/spec.md", "# three\n");
+    let before = project_tree(&fx);
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    fs::remove_file(fx.root.join(".moai/specs/SPEC-1/spec.md")).unwrap();
+    let rp = revert_plan(&fx, &backup);
+    assert_eq!(rp["ok"], json!(true), "{rp}");
+    assert_eq!(
+        item_action(&rp, ".moai/specs/SPEC-1/spec.md"),
+        json!("skip")
+    );
+    assert_eq!(
+        item_action(&rp, ".moai/specs/SPEC-3/spec.md"),
+        json!("remove_restored")
+    );
+    let v = revert(&fx, &backup, rp["result"]["plan_digest"].as_str().unwrap());
+    assert_eq!(v["ok"], json!(true), "{v}");
+    assert_eq!(project_tree(&fx), before);
+}
+
+/// AC-3: a receipt that cannot be saved stops the revert before it removes or moves anything,
+/// and the refusal says what failed, not that the plan is stale.
+#[test]
+fn a_refused_receipt_save_leaves_every_file_and_is_not_a_stale_plan() {
+    use std::os::unix::fs::PermissionsExt;
+    let fx = movable_fixture();
+    let p = plan(&fx);
+    let v = apply(&fx, p["plan_digest"].as_str().unwrap());
+    let backup = v["result"]["backup"].as_str().unwrap().to_string();
+    let rp = revert_plan(&fx, &backup);
+    let digest = rp["result"]["plan_digest"].as_str().unwrap().to_string();
+    let (receipt_path, _) = receipt_of(&fx, &backup);
+    let folder = receipt_path.parent().unwrap().to_path_buf();
+    fs::set_permissions(&folder, fs::Permissions::from_mode(0o555)).unwrap();
+    let probe = folder.join(".probe");
+    if fs::File::create(&probe).is_ok() {
+        // Run as root the mode changes nothing and there is no failing save to look at.
+        fs::remove_file(&probe).unwrap();
+        fs::set_permissions(&folder, fs::Permissions::from_mode(0o755)).unwrap();
+        return;
+    }
+    let before = fx.tree();
+    let v = revert(&fx, &backup, &digest);
+    fs::set_permissions(&folder, fs::Permissions::from_mode(0o755)).unwrap();
+    assert_eq!(v["ok"], json!(false), "{v}");
+    assert_ne!(v["error"]["kind"], json!("stale_plan"), "{v}");
+    assert!(!v.to_string().contains("stale"), "{v}");
+    assert_eq!(
+        fx.tree(),
+        before,
+        "a revert that cannot save its receipt removes and moves nothing"
+    );
+}
+
+/// AC-7: the help says what a refusal and a stop part-way each leave.
+#[test]
+fn the_revert_help_says_what_a_stop_part_way_leaves() {
+    let out = run(&["go-state-revert", "--help"]);
+    let text = String::from_utf8_lossy(&out.stdout)
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        text.contains("refuses the revert before anything is written"),
+        "{text}"
+    );
+    assert!(text.contains("run the revert again to continue"), "{text}");
+}
