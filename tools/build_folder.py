@@ -10,6 +10,13 @@ cargo output when the task ends; skills/moai/references/internal/build-folder.md
                                            the folder's owner record (.moai-build.json)
   python3 -I tools/build_folder.py clean   delete this worktree's cargo output; files that are
                                            not cargo output (evidence) stay and are listed
+  python3 -I tools/build_folder.py seed --from <name>
+                                           start this worktree's folder as a copy-on-write clone
+                                           of the cargo output of `<HOME>/.moai/build/<name>` (an
+                                           audit starts warm); where a clone is not possible the
+                                           answer is `{"seeded": false, "reason": ...}` and no
+                                           byte is copied: build cold. BUILD_FOLDER_NO_COW=1
+                                           switches cloning off; the source is only read
   python3 -I tools/build_folder.py remove --preview <optimize-plan JSON> [--moai <bin>] <name>...
                                            delete the cargo output of folders the user picked
                                            from the preview; every name must be a `trim` row of
@@ -139,7 +146,9 @@ def read_record(folder):
     return data if isinstance(data, dict) else None
 
 
-def cmd_env():
+def ensure_folder():
+    """This worktree's build folder, made 0700 with its owner record written; returns the
+    folder. A folder of another worktree refuses."""
     common, worktree, folder, _ = folder_path(create=True)
     record = {"schema_version": 1, "git_common_dir": str(common), "worktree": str(worktree)}
     old = read_record(folder)
@@ -153,6 +162,11 @@ def cmd_env():
         with os.fdopen(fd, "w") as f:
             json.dump(record, f)
         os.replace(tmp, folder / RECORD)
+    return folder
+
+
+def cmd_env():
+    folder = ensure_folder()
     print(f"export CARGO_TARGET_DIR={shlex.quote(str(folder))}")
     print("export CARGO_INCREMENTAL=0")
     return 0
@@ -202,6 +216,105 @@ def cmd_clean():
     removed, kept = empty_cargo(folder)
     print(json.dumps({"folder": str(folder), "removed": removed, "kept": kept}))
     return 0
+
+
+COW_OFF = "BUILD_FOLDER_NO_COW"  # set to 1: never clone, build cold
+CLONE_NOFOLLOW = 0x0001  # <sys/clonefile.h>
+ENOTSUP, EXDEV = 45, 18  # macOS errno values clonefile(2) gives where it cannot clone
+
+
+def cargo_entries(folder):
+    """The cargo output entries of `folder`, by name (never the record, never a link)."""
+    return [e for e in sorted(folder.iterdir()) if e.name != RECORD and is_cargo_entry(e)]
+
+
+def source_is_building(folder):
+    """True when a cargo run holds the lock of one of the source's profile folders. The lock is
+    only tried for a shared hold and let go at once; nothing is written to the source."""
+    import fcntl
+    for entry in cargo_entries(folder):
+        lock = entry / ".cargo-lock"
+        if not entry.is_dir() or not os.path.isfile(lock) or os.path.islink(lock):
+            continue
+        fd = os.open(lock, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        try:
+            fcntl.flock(fd, fcntl.LOCK_SH | fcntl.LOCK_NB)
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        except OSError:
+            return True
+        finally:
+            os.close(fd)
+    return False
+
+
+def clone_entry(src, dst):
+    """Clone one entry copy-on-write. Returns the method name, or raises OSError. There is no
+    other way to copy here: where a clone fails the answer is `seeded: false`."""
+    if sys.platform == "darwin":
+        import ctypes
+        libc = ctypes.CDLL(None, use_errno=True)
+        libc.clonefile.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint32]
+        if libc.clonefile(os.fsencode(src), os.fsencode(dst), CLONE_NOFOLLOW) != 0:
+            err = ctypes.get_errno()
+            raise OSError(err, os.strerror(err))
+        return "clonefile"
+    if sys.platform.startswith("linux"):
+        out = subprocess.run(["cp", "--reflink=always", "-a", "--", str(src), str(dst)],
+                             capture_output=True, text=True)
+        if out.returncode != 0:
+            raise OSError(out.returncode, out.stderr.strip() or "cp --reflink=always failed")
+        return "reflink"
+    raise OSError(ENOTSUP, "no copy-on-write clone on this platform")
+
+
+def cmd_seed(name):
+    """Seed this worktree's build folder from the lane folder `name` by copy-on-write clone."""
+    if safe(name) != name or "/" in name:
+        raise Refused(f"{name!r} is not one folder name")
+    root = home()
+    for part in (".moai", "build"):
+        root = root / part
+        if not real_dir(root, create=False):
+            raise Refused(f"{root} is missing; nothing was seeded")
+    _, _, own_name = owner()
+    if name == own_name:
+        raise Refused(f"{name} is this worktree's own build folder")
+    source = root / name
+    if os.path.islink(source) or (os.path.lexists(source) and not os.path.isdir(source)):
+        raise Refused(f"{source} is a link or not a folder; it is not followed")
+    folder = ensure_folder()
+
+    def answer(seeded, reason=None, **more):
+        doc = {"seeded": seeded, "folder": str(folder), "from": str(source), **more}
+        if reason:
+            doc["reason"] = reason
+        print(json.dumps(doc))
+        return 0
+
+    if os.environ.get(COW_OFF) == "1":
+        return answer(False, "disabled")
+    if not os.path.isdir(source):
+        return answer(False, "source_missing")
+    if cargo_entries(folder):
+        return answer(False, "already_built")
+    if source_is_building(source):
+        return answer(False, "source_building")
+    made, method = [], None
+    try:
+        for entry in cargo_entries(source):
+            made.append(folder / entry.name)
+            method = clone_entry(entry, folder / entry.name)
+    except OSError as e:
+        # Take back what this run made, the failed entry included (a partial `cp` result);
+        # the folder had no cargo output before.
+        for path in made:
+            if path.is_dir() and not path.is_symlink():
+                shutil.rmtree(path, ignore_errors=True)
+            elif os.path.lexists(path):
+                path.unlink()
+        reason = "unsupported" if e.errno in (ENOTSUP, EXDEV) else "clone_failed"
+        return answer(False, reason, detail=str(e))
+    return answer(True, method=method, entries=[p.name for p in made])
 
 
 def trim_paths(doc):
@@ -272,14 +385,16 @@ def main(argv):
         action = cmd_env
     elif argv[:1] == ["clean"] and len(argv) == 1:
         action = cmd_clean
+    elif argv[:2] == ["seed", "--from"] and len(argv) == 3:
+        action = lambda: cmd_seed(argv[2])  # noqa: E731
     elif argv[:2] == ["remove", "--preview"] and len(argv) >= 4:
         rest, moai = argv[3:], "moai"
         if rest[:1] == ["--moai"] and len(rest) >= 3:
             rest, moai = rest[2:], rest[1]
         action = lambda: cmd_remove(argv[2], moai, rest)  # noqa: E731
     else:
-        print("usage: build_folder.py env | clean | remove --preview <file> [--moai <bin>] "
-              "<name>...", file=sys.stderr)
+        print("usage: build_folder.py env | clean | seed --from <lane folder name> | "
+              "remove --preview <file> [--moai <bin>] <name>...", file=sys.stderr)
         return 2
     try:
         return action()
