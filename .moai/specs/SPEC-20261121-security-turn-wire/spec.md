@@ -2,7 +2,7 @@
 id: SPEC-20261121-security-turn-wire
 title: "The generated Claude Code hooks run the security-turn event when a turn ends, and the docs and the capabilities answer say so"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-21
 ---
 
@@ -46,12 +46,12 @@ This changes the generated files of every project that runs the MoAI set, so wha
 - AC-3 (REQ-6, REQ-7, REQ-8): on a temporary project, a Claude settings file holding the previous release's untouched MoAI set with its ownership receipt gets the action `update` from `hooks-plan` with the Stop group listed and every other settings key kept, and after `hooks-apply` a second `hooks-plan` says unchanged; a settings file whose hooks were edited by hand stays a conflict with its bytes untouched · verify: `cargo test --locked --offline --test security_turn_wire_cli plan`
 - AC-4 (REQ-9): the legacy Claude set equals the pre-P4 fixture bytes and holds no Stop group, while the current set with the same binary name would · verify: `cargo test --locked --offline --test security_turn_wire_cli legacy` and `cargo test --locked --offline --test hooks_pre_p4_fixtures`
 - AC-5 (REQ-10, REQ-11): `hooks-plan --host claude` lists security-turn under the capabilities with the event Stop and the default mode observe, and the same for codex and omp lists it with `supported: false`; the security-scan entry no longer says it is not generated into settings · verify: `cargo test --locked --offline --test security_turn_wire_cli capabilities`
-- AC-6 (REQ-12): both documents name the two groups and the command of the Stop group · verify: `cargo test --locked --offline --test security_turn_wire_cli docs`
+- AC-6 (REQ-12): both documents name the two groups and the command of the Stop group, the group count the first one states is the generated one, and `tools/ci_scope.py` classifies a change to either document as not docs-only (revision 2, after the audit) · verify: `cargo test --locked --offline --test security_turn_wire_cli docs`
 - AC-7 (REQ-1…REQ-12): every test file that reads the hook set, `hooks-plan` or a count of hook groups passes after its expectation is updated for the new group and for no other reason, the hooks-pre-p4 fixtures stay unchanged, and an end-to-end run of the generated Stop command against a temporary repository answers as the previous slice's tests say · verify: the test files named in the Result, run unfiltered, and `cargo test --locked --offline --test security_turn_wire_cli end_to_end`
 
 ## Scope
 
-- write: `src/hooks.rs` (the handler, its command, `hook_set_with`, the legacy set that omits the group), `src/hook_engine.rs` (the capabilities entries and the two "not generated" texts), `docs/hooks-generation.md`, `docs/claude-adapter-contract.md`, `tests/security_turn_wire_cli.rs` (new), the neighbour tests whose expectation must follow the new group (named in the Result and added to the reservation one by one by `card scope`), `.moai/specs/SPEC-20261121-security-turn-wire/**`
+- write: `src/hooks.rs` (the handler, its command, `hook_set_with`, the legacy set that omits the group), `src/hook_engine.rs` (the capabilities entries and the two "not generated" texts), `docs/hooks-generation.md`, `docs/claude-adapter-contract.md`, `tools/ci_scope.py` (two entries of `EXACT_DENY`: the two documents the docs test reads; added in revision 2 after the audit), `tests/security_turn_wire_cli.rs` (new), the neighbour tests whose expectation must follow the new group (named in the Result and added to the reservation one by one by `card scope`), `.moai/specs/SPEC-20261121-security-turn-wire/**`
 - read-only: `src/hook_legacy.rs`, `src/claude.rs`, `src/go_hooks.rs`, `src/ops/go_hooks_plan.rs`, `src/project_update.rs`, `tests/fixtures/hooks-pre-p4/**`, `docs/rust-product-path.md`
 - forbidden: `skills/**`, `schemas/**`, other projects' hook files, the real HOME and ledger, the Go repository
 
@@ -68,7 +68,9 @@ Research notes (read 2026-11-21 on the turn-scan head `3ef9856743`): `src/hooks.
 
 ## Risks
 
-- Every turn now ends with one more hook process. The engine bounds its own work (three git calls of 3 s at most each, 200 tracked and 200 untracked files, 8 MiB of text; the previous slice's audit measured about 1 s at the text budget); the host's 10 s timeout is the generated one, so the worst case of the engine stays under it, and a host that cancels the hook loses one log line, nothing else.
+- Every turn now ends with one more hook process. The engine bounds its own work (three git calls of 3 s at most each, 200 tracked and 200 untracked files, 8 MiB of text; the previous slice's audit measured about 1 s at the text budget); the host's 10 s timeout is the generated one. It holds on the normal path (the audit measured p50 0.15 s, maximum 0.53 s over 20 runs) but the margin on the worst path is thin: a stand-in `git` that delays every call by 2.8 s made one run take 8.55 s, and the bound by construction (three git calls of 3 s, the reader grace of up to 1.5 s in `src/hook_engine/turn.rs`, and about 1.5 s of scanning) can pass 10 s. A host that cancels the hook loses one log line, nothing else; nothing is blocked in any mode. Raising the timeout of this one group is a later, separate decision.
+- A project that holds the untouched set of the release before this change reads as `drifted` in the `hook_status.configured` of `hooks-plan` until `hooks-apply` has added the group (with the ownership record the plan is an `update`, without it a `conflict`; both read `drifted`; the settings file is unchanged in both cases). The audit measured this; the status wording is not changed here.
+- Two things the repair round did not touch because another change holds the file: `docs/rust-product-path.md` still says the set has no `Stop` (the reservation of that file belongs to another card; the line is stale for Claude Code), and `tools/hook_latency.py` has no case for the turn-end event.
 - A project that already runs the MoAI set sees `hooks-plan` propose an update; nothing is written without the user's confirmation, and a hand-edited set stays a conflict. A project that holds the previous release's set without the ownership record gets `conflict` with no replacement choice offered, as the previous wiring slice documented; the follow-up that decides the wording and a way out covers this group too.
 - Whether the host shows a `systemMessage` at turn end is not verified in a real session (the Stop sections of the hooks page do not mention it). Observe, the default, does not depend on it; until a real session shows it, `enforce` may have no visible effect while the log line still records it. This slice does not claim otherwise in any document.
 - A Claude project that already has its own `Stop` hook (a user's) is a hand-edited `hooks` object: `hooks-plan` reports a conflict and offers no merge; the MoAI writer owns the whole `hooks` key. This is the same rule as for every other event.
