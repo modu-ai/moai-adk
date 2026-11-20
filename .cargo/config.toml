@@ -14,3 +14,7 @@
 [env]
 RUST_MIN_STACK = "8388608"
 DEVELOPER_DIR = "/Library/Developer/CommandLineTools"
+
+# SPEC-20261121-xtask-local-check: `cargo xtask <tool>` runs the maintainer tools of `xtask/`.
+[alias]
+xtask = "run --quiet --package xtask --"

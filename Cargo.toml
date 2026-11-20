@@ -15,6 +15,12 @@ homepage = "https://adk.mo.ai.kr"
 # design #2725 comment 6863726387). Both binaries run the one `main` of `src/main.rs`
 # (`src/bin/moai.rs` loads it as a module) and print the same output; the library crate
 # stays `moai_cli`.
+# The repository's own maintainer tools live in `xtask/`, run as `cargo xtask <tool>` through the
+# alias in `.cargo/config.toml` (SPEC-20261121-xtask-local-check). The root package stays the only
+# default member, so `cargo build`, `cargo test` and the release build never touch `xtask`.
+[workspace]
+members = ["xtask"]
+
 [[bin]]
 name = "moai-cli"
 path = "src/main.rs"

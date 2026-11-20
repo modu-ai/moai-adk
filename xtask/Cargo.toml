@@ -1,0 +1,13 @@
+[package]
+name = "xtask"
+version = "0.0.0"
+edition = "2021"
+publish = false
+description = "Maintainer tools of this repository, run as `cargo xtask <tool>`; never shipped"
+
+# cargo-dist: this package builds a binary, and it is not a product (SPEC-20261121-xtask-local-check).
+[package.metadata.dist]
+dist = false
+
+# No dependencies on purpose: the crate compiles in seconds, before the main build in CI.
+[dependencies]
