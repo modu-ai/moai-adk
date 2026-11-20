@@ -2783,29 +2783,31 @@ mod tests {
     #[test]
     fn access_token_shapes_end_exactly_at_their_minimum() {
         // The expected table is written out here, not read from TOKEN_SHAPES, so a wrong
-        // minimum in the table fails this test instead of agreeing with itself.
-        let expected: [(&str, usize); 13] = [
-            ("ghp_", 36),
-            ("github_pat_", 22),
-            ("gho_", 36),
-            ("glpat-", 20),
-            ("sk-", 32),
-            ("xoxb-", 10),
-            ("xoxa-", 10),
-            ("xoxp-", 10),
-            ("xoxr-", 10),
-            ("xoxs-", 10),
-            ("AKIA", 16),
-            ("ASIA", 16),
-            ("ya29.", 20),
+        // minimum or word-start flag in the table fails this test instead of agreeing with
+        // itself. Columns: prefix, minimum length, needs a word start.
+        let expected: [(&str, usize, bool); 13] = [
+            ("ghp_", 36, false),
+            ("github_pat_", 22, false),
+            ("gho_", 36, false),
+            ("glpat-", 20, false),
+            ("sk-", 32, true),
+            ("xoxb-", 10, true),
+            ("xoxa-", 10, true),
+            ("xoxp-", 10, true),
+            ("xoxr-", 10, true),
+            ("xoxs-", 10, true),
+            ("AKIA", 16, true),
+            ("ASIA", 16, true),
+            ("ya29.", 20, true),
         ];
         assert_eq!(TOKEN_SHAPES.len(), expected.len());
-        for (prefix, min) in expected {
+        for (prefix, min, word_start) in expected {
             let shape = TOKEN_SHAPES
                 .iter()
                 .find(|s| s.prefix == prefix)
                 .unwrap_or_else(|| panic!("{prefix} is missing from TOKEN_SHAPES"));
             assert_eq!(shape.min, min, "{prefix} minimum");
+            assert_eq!(shape.word_start, word_start, "{prefix} word-start flag");
         }
         for shape in TOKEN_SHAPES {
             let fill = fill_for(shape);
@@ -2842,6 +2844,16 @@ mod tests {
                 "{} inside a word",
                 shape.prefix
             );
+            // The word-start rule looks at ASCII letters and digits only (the rule of
+            // `secret_shaped`): a non-ASCII letter before the prefix is not a word, so the
+            // value still counts. This pins that direction.
+            for lead in ["é", "한", "😀"] {
+                assert!(
+                    carries_secret(&format!("{lead}{value}")),
+                    "{} after {lead}",
+                    shape.prefix
+                );
+            }
         }
         for prose in [
             "a task-based plan with a risk-free rollout",

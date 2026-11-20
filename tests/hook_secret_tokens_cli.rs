@@ -276,6 +276,24 @@ fn boundary_prefix_in_prose_and_ordinary_words_are_allowed() {
     }
 }
 
+/// AC-2 (REQ-7): the word-start rule looks at ASCII letters and digits only, so a value that
+/// follows a non-ASCII letter or an emoji is still refused, for every shape.
+#[test]
+fn boundary_non_ascii_character_before_the_prefix_is_a_word_start() {
+    let dir = tempfile::TempDir::new().unwrap();
+    for shape in SHAPES {
+        for lead in ["é", "한", "😀"] {
+            let run = write_only(dir.path(), &format!("{lead}{}", shape.at_min()));
+            assert!(
+                denied(&run),
+                "{} after {lead}: {:?}",
+                shape.name,
+                run.stdout
+            );
+        }
+    }
+}
+
 /// AC-2: a word-start shape does not count inside a longer word; the two shapes without that
 /// rule still do.
 #[test]
