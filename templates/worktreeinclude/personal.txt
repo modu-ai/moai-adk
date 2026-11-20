@@ -1,0 +1,4 @@
+# Personal files MoAI keeps out of git. A host copies only the ignored files this list names
+# into a new worktree, so a tracked file is never copied twice.
+.claude/settings.local.json
+AGENTS.local.md

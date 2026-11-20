@@ -765,7 +765,7 @@ const SETTINGS_FILE: &str = ".claude/settings.json";
 /// Ownership receipt under the project state root; 04-B UPDATE reads it as the baseline.
 const SETTINGS_RECEIPT: &str = "manifests/claude-settings.json";
 /// The local scope (#2581): Claude Code's personal project settings file and its own receipt.
-const SETTINGS_LOCAL_FILE: &str = ".claude/settings.local.json";
+pub(crate) const SETTINGS_LOCAL_FILE: &str = ".claude/settings.local.json";
 const SETTINGS_LOCAL_RECEIPT: &str = "manifests/claude-settings-local.json";
 
 /// Size bound for the settings file and its receipt, the same as `agents::write_replace`

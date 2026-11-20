@@ -16,6 +16,15 @@ type Result<T> = std::result::Result<T, String>;
 
 pub const AGENTS_SECTION: &str = "moai-workflow";
 pub const IGNORE_SECTION: &str = "moai-local";
+/// The `.worktreeinclude` section the `worktree-include` pick writes (SPEC-20261121).
+pub const WORKTREE_SECTION: &str = "moai-worktree";
+/// The personal rules file MoAI creates once and keeps out of git when the user chose `ignored`.
+const LOCAL_FILE: &str = "AGENTS.local.md";
+/// The personal paths MoAI's code names: the personal rules file and Claude Code's local
+/// settings. The packaged template `templates/worktreeinclude/personal.txt` lists the same
+/// paths, and `tests/agents_worktreeinclude_cli.rs` fails when the two differ. Never a secret
+/// file: the block this feeds is copied into every new worktree.
+pub const PERSONAL_PATHS: [&str; 2] = [crate::claude::SETTINGS_LOCAL_FILE, LOCAL_FILE];
 /// The REVIEW.md section the PROJECT interview fills (#2639).
 pub const REVIEW_SECTION: &str = "moai-review";
 /// Interview answers the REVIEW.md section carries, in the order it lists them.
@@ -49,8 +58,33 @@ pub struct AgentsRequest {
 
 /// The ids a request's `picks` may hold. `append-managed` appends the managed section to an
 /// AGENTS.md whose block was removed; `skip-conflicts` leaves each conflicting file as it is;
-/// `claude-import` adds the `@AGENTS.md` line to a CLAUDE.md that shadows AGENTS.md.
-pub const PICKS: [&str; 3] = ["append-managed", "skip-conflicts", "claude-import"];
+/// `claude-import` adds the `@AGENTS.md` line to a CLAUDE.md that shadows AGENTS.md;
+/// `worktree-include` adds the managed block of personal files to `.worktreeinclude`
+/// (SPEC-20261121-worktreeinclude-personal-rules).
+pub const PICKS: [&str; 4] = [
+    "append-managed",
+    "skip-conflicts",
+    "claude-import",
+    WORKTREE_PICK,
+];
+/// The file the `worktree-include` pick writes its block into, at the project root.
+const WORKTREE_FILE: &str = ".worktreeinclude";
+/// The pick id that plans the `.worktreeinclude` block.
+const WORKTREE_PICK: &str = "worktree-include";
+/// The packaged template: the personal files every new worktree should receive, one list for
+/// every project (the same file the SPEC's test compares with [`PERSONAL_PATHS`]).
+const WORKTREE_TEMPLATE: &str = include_str!("../templates/worktreeinclude/personal.txt");
+
+/// The managed `.worktreeinclude` block: the template between the hash markers, ending in a
+/// newline.
+fn render_worktree_include() -> String {
+    let (begin, end) = markers(WORKTREE_SECTION, "hash");
+    let mut body = WORKTREE_TEMPLATE.to_string();
+    if !body.ends_with('\n') {
+        body.push('\n');
+    }
+    format!("{begin}\n{body}{end}\n")
+}
 
 fn picked(r: &AgentsRequest, id: &str) -> bool {
     r.picks.iter().any(|p| p == id)
@@ -1155,7 +1189,7 @@ fn adopt_unchanged(
             }
         }
         Some(section) if f.baseline_sha256.as_deref() != Some(rendered) => {
-            let comment = if f.path == ".gitignore" {
+            let comment = if f.path == ".gitignore" || f.path == WORKTREE_FILE {
                 "hash"
             } else {
                 "html"
@@ -1458,6 +1492,36 @@ pub(crate) fn agents_plan_for(
                 Some(d) => format!("{note}\n{d}"),
                 None => note.into(),
             });
+        }
+        files.push(plan);
+    }
+
+    // `worktree-include` (SPEC-20261121-worktreeinclude-personal-rules): one managed block in
+    // `.worktreeinclude` with the packaged list of personal files, the same for every project.
+    // Planned only when picked; a user line outside the block is never touched.
+    if picked(&request, WORKTREE_PICK) {
+        let current = read_opt(&target(&root, WORKTREE_FILE)?)?;
+        if let Some(b) = &current {
+            std::str::from_utf8(b).map_err(|_| "target is not UTF-8")?;
+        }
+        let (begin, end) = markers(WORKTREE_SECTION, "hash");
+        let rendered = render_worktree_include();
+        let mut plan = section_plan(
+            WORKTREE_FILE,
+            true,
+            WORKTREE_SECTION,
+            "hash",
+            current.as_deref(),
+            baseline_for(m, WORKTREE_FILE),
+            &rendered,
+        )?;
+        if matches!(plan.action.as_str(), "create" | "append" | "merge") {
+            plan.detail = Some(block_line_preview(
+                current.as_deref(),
+                &begin,
+                &end,
+                &rendered,
+            ));
         }
         files.push(plan);
     }
@@ -1782,6 +1846,14 @@ pub(crate) fn agents_apply_amended_for(
                 (out, Some(IGNORE_SECTION))
             }
             "AGENTS.local.md" => (render_local(&p.request).into_bytes(), None),
+            // `worktree-include`: only the managed block; a plan without the pick cannot name it.
+            WORKTREE_FILE if picked(&p.request, WORKTREE_PICK) => {
+                let (b, e) = markers(WORKTREE_SECTION, "hash");
+                let rendered = render_worktree_include();
+                let out = splice(before.as_deref(), &b, &e, &rendered, "")?;
+                assert_single_block(&out, &b, &e, &rendered)?;
+                (out, Some(WORKTREE_SECTION))
+            }
             // `claude-import`: only the import line, after every earlier byte. The path is
             // checked against the shadow this tool finds now, so a plan cannot name another file.
             path if p.request.picks.iter().any(|x| x == "claude-import")
@@ -1887,6 +1959,12 @@ pub(crate) fn agents_apply_amended_for(
                     Some(ignore_kind(ignore_has_rule(block))),
                 );
             }
+            Some(WORKTREE_SECTION) => record_owned(
+                &mut owned,
+                &f.path,
+                WORKTREE_SECTION,
+                render_worktree_include().as_bytes(),
+            ),
             // The user's own CLAUDE.md gained a line: it is neither owned nor created once.
             Some(CLAUDE_IMPORT) => {}
             _ => {
