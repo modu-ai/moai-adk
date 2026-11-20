@@ -893,7 +893,7 @@ fn review_moves_an_active_card_and_keeps_the_reservation() {
 }
 
 fn refused_close(w: &mut WriteLedger, card: i64, g: i64) -> String {
-    match workflow::done(w, card, A, g) {
+    match workflow::done(w, card, A, g, None) {
         Err(WorkflowError::NotClosable(why)) => {
             assert_eq!(
                 one::<String>(
@@ -985,7 +985,7 @@ fn done_needs_a_met_criterion_no_open_one_and_a_merged_pull_request() {
         &mut w,
         "UPDATE card_link SET state = 'active' WHERE from_card = 2",
     );
-    let closed = workflow::done(&mut w, card, A, g).unwrap();
+    let closed = workflow::done(&mut w, card, A, g, None).unwrap();
     assert_eq!(
         (closed.from.as_str(), closed.state.as_str()),
         ("review", "done")
@@ -1016,7 +1016,7 @@ fn done_needs_a_met_criterion_no_open_one_and_a_merged_pull_request() {
     );
     // Closed is closed: the old holder's generation is over.
     assert!(matches!(
-        workflow::done(&mut w, card, A, g),
+        workflow::done(&mut w, card, A, g, None),
         Err(WorkflowError::Fence(FenceError::NotHeld { .. }))
     ));
     let n = workflow::next(w.conn(), Some(A)).unwrap();
@@ -1047,7 +1047,7 @@ fn a_withdrawn_criterion_does_not_block_done_but_cannot_stand_in_for_a_met_one()
         "every criterion withdrawn"
     );
     met(&mut w, card, A, g, 1);
-    workflow::done(&mut w, card, A, g).unwrap();
+    workflow::done(&mut w, card, A, g, None).unwrap();
 }
 
 #[test]
@@ -1057,7 +1057,7 @@ fn done_starts_from_review_only_and_only_for_the_holder_at_the_current_generatio
     met(&mut w, card, A, g1, 1);
     workflow::link_pr(&mut w, card, A, g1, &merged(7)).unwrap();
     assert_eq!(
-        workflow::done(&mut w, card, A, g1),
+        workflow::done(&mut w, card, A, g1, None),
         Err(WorkflowError::WrongState {
             card_id: card,
             state: "active".to_string(),
@@ -1068,14 +1068,14 @@ fn done_starts_from_review_only_and_only_for_the_holder_at_the_current_generatio
     );
     workflow::review(&mut w, card, A, g1).unwrap();
     assert!(matches!(
-        workflow::done(&mut w, card, B, g1),
+        workflow::done(&mut w, card, B, g1, None),
         Err(WorkflowError::Fence(FenceError::WrongHolder { .. }))
     ));
     let g2 = reservation::handoff(&mut w, card, A, g1, B)
         .unwrap()
         .generation;
     assert_eq!(
-        workflow::done(&mut w, card, A, g1),
+        workflow::done(&mut w, card, A, g1, None),
         Err(WorkflowError::Fence(FenceError::StaleGeneration {
             offered: g1,
             current: g2
@@ -1090,7 +1090,7 @@ fn done_starts_from_review_only_and_only_for_the_holder_at_the_current_generatio
         &mut w,
         "UPDATE reservation SET lease_until = unixepoch() - 5 WHERE status = 'held'",
     );
-    let closed = workflow::done(&mut w, card, B, g2).unwrap();
+    let closed = workflow::done(&mut w, card, B, g2, None).unwrap();
     assert_eq!(closed.state, "done");
     assert_eq!(closed.reservation.holder, B);
 }
@@ -1362,7 +1362,7 @@ fn reopen_takes_a_review_card_back_to_active_for_its_holder() {
     met(&mut w, card, A, g, 1);
     workflow::link_pr(&mut w, card, A, g, &merged(7)).unwrap();
     workflow::review(&mut w, card, A, g).unwrap();
-    workflow::done(&mut w, card, A, g).unwrap();
+    workflow::done(&mut w, card, A, g, None).unwrap();
 }
 
 #[test]
@@ -1632,7 +1632,7 @@ fn withdraw_refuses_a_live_reservation_another_state_and_an_unknown_card() {
     met(&mut w, done, A, g, 1);
     workflow::link_pr(&mut w, done, A, g, &merged(1)).unwrap();
     workflow::review(&mut w, done, A, g).unwrap();
-    workflow::done(&mut w, done, A, g).unwrap();
+    workflow::done(&mut w, done, A, g, None).unwrap();
     assert!(matches!(
         workflow::withdraw(&mut w, done, "gone", "leader", Some(A)),
         Err(workflow::WithdrawError::WrongState { .. })
