@@ -968,17 +968,29 @@ fn project_relative(raw: &str, host_cwd: Option<&str>, cwd: &Path) -> Option<std
     } else {
         path.to_path_buf()
     };
+    if below
+        .components()
+        .any(|c| matches!(c, Component::RootDir | Component::Prefix(_)))
+    {
+        return None;
+    }
+    // A path with no `..` keeps the form the host gave (`./src/x.rs` stays as it is).
+    if !below
+        .components()
+        .any(|c| matches!(c, Component::ParentDir))
+    {
+        return Some(below);
+    }
     let mut clean = PathBuf::new();
     for part in below.components() {
         match part {
             Component::Normal(name) => clean.push(name),
-            Component::CurDir => {}
             Component::ParentDir => {
                 if !clean.pop() {
                     return None;
                 }
             }
-            Component::RootDir | Component::Prefix(_) => return None,
+            _ => {}
         }
     }
     Some(clean)
@@ -1655,7 +1667,11 @@ mod tests {
         // Plain.
         assert_eq!(path(&abs(real.join("src/x.rs")), &real), json!("src/x.rs"));
         assert_eq!(path("src/x.rs", &real), json!("src/x.rs"));
-        assert_eq!(path("./src/x.rs", &real), json!("src/x.rs"));
+        assert_eq!(
+            path("./src/x.rs", &real),
+            json!("./src/x.rs"),
+            "the host's form is kept"
+        );
         // Through a link to the project: the host's cwd is the link, or only the path is.
         assert_eq!(path(&abs(link.join("src/x.rs")), &link), json!("src/x.rs"));
         assert_eq!(path(&abs(link.join("src/x.rs")), &real), json!("src/x.rs"));
