@@ -63,4 +63,18 @@ created: 2026-11-20
 
 ## Result
 
-(READY 전에 채워요.)
+RED: 테스트 커밋 `d939b150db` 에서 `cargo test --test trailer_verified_cli` 가 5개 중 `trailer_check_old_side_branch` 와 `trailer_check_descendants_still_fail` 둘이 실패(3 통과, 2 실패)했어요(로그 `c206-red.log`). 이어 수정 커밋 `3507b5302f`(`src/trailers.rs`: `verified_cover` 가 `git rev-list --parents --reverse --topo-order` 한 번으로 시작의 자손을 표시하고 병합 커밋을 지나 전파해요) 뒤에 같은 대상이 통과했고(로그 `c206-green.log`: 5 통과), `trailer_check_cli` 7개도 통과했어요.
+
+보강: 후속 테스트 둘(`b889ed2451`, `f02fb7403e`)이 병합을 지나는 자손, `--verified-since` 가 범위 안일 때의 사슬, 날짜가 어긋난 커밋을 더해요. 마지막은 시작 커밋의 자식에 더 새로운 두 번째 자식(가지)을 두어서, 날짜순으로 걸으면 부모가 자식 뒤에 나열되는 모양을 만들어요.
+
+뮤턴트(`src/trailers.rs` 에 하나씩, `--test trailer_verified_cli` 만, 한 번에 한 슬롯, 매번 `git restore` + `touch` 로 복구하고 같은 파일임을 읽었어요): 9개 모두 적용돼 9개 모두 killed. M1 `--verified-since` 를 줄을 가진 집합으로 읽음, M2 사슬로 전파하지 않음, M3 범위 밖 시작이 아무것도 덮지 않음, M4 모든 커밋이 시작, M5 병합 커밋이 표시를 넘기지 않음, M7 부모-먼저 걷기에서 `--reverse` 제거, M8 범위 밖 시작을 알아보지 않음, M9 부모 하나(any)가 아니라 전부(all)를 요구. M6(`--topo-order` 제거)은 처음 실행에서 SURVIVED 였어요(테스트 그래프가 날짜순 걷기에서도 부모를 먼저 놓아서요); `f02fb7403e` 의 두 번째 자식 테스트를 더한 뒤 같은 뮤턴트만 다시 돌려 `trailer_check_since_inside_the_range` 가 실패해 killed 가 됐어요(기준 단계는 통과, 복구 확인). 로그 `mut-c206.out`, `mut-c206-m6.out`.
+
+부수 효과: `--verified-since` 가 범위 안 커밋을 가리킬 때도 이제 그 자손에만 줄을 요구해요(REQ-3). 전에는 목록 순서로 그 뒤의 커밋 모두에 요구했어요. `verified_from` 의 값과 의미는 그대로예요(REQ-5).
+
+이웃과 READY 체인(종료 코드와 숫자는 체인이 끝난 뒤 이 줄 아래에 이어서 적어요): 영역 대상은 `trailer_*`, `bundle_*`, 그리고 `trailer-check`·`trailers::`·`Moai-Verified` 를 읽는 모든 테스트 파일이에요. 이어서 `--lib`, `--bins`, `tools/repo_scans.json` 전체, 여섯 가지 가벼운 검사, `tests.local_check_test`.
+
+Not run: 전체 `--test` 한 번에, 다른 카드가 쥔 파일을 읽는 테스트의 새 tip 위 재실행, CI macOS·Windows 시간. 이 변경은 새 프로세스 호출 방식을 더하지 않아요: `verified_cover` 는 `check_rules` 가 이미 쓰는 `git` 클로저(`crate::audit_delta::command`)를 받아 써요(`src/trailers.rs:402`, `src/trailers.rs:463`).
+
+- AC-1: met — `trailer_check_old_side_branch` 가 RED(`d939b150db`)에서 실패하고 GREEN(`3507b5302f` 뒤)에서 통과해요. M3, M4, M8 이 이 테스트나 같은 줄의 시작 판정 테스트에서 killed 예요.
+- AC-2: met — `trailer_check_descendants_still_fail` 이 RED 에서 실패하고 GREEN 에서 통과해요(본선과 갈라진 가지, 병합을 지난 자손). M2, M5, M9 가 이 테스트에서 killed 예요.
+- AC-3: met — `trailer_check_since_inside_the_range` 가 범위 안 시작에서 자손에게만 줄을 요구해요(M1, M4, M6, M7 killed). 범위 밖 시작이 범위 전체를 덮는 동작은 `trailer_check_cuts_at_the_rule_start` 가 계속 통과하고 M3, M8 에서 실패해요.
