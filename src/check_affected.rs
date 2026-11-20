@@ -7,6 +7,8 @@ use std::collections::BTreeSet;
 use std::path::Path;
 use std::process::Command;
 
+pub mod reuse;
+
 type Result<T> = std::result::Result<T, String>;
 
 /// One file of `tests/` as the caller read it: a Rust test target or a Python test module.

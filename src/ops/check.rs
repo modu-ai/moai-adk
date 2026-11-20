@@ -52,6 +52,45 @@ enum Action {
         #[arg(long)]
         out: Option<PathBuf>,
     },
+    /// Reads git only. Decide whether the evidence of an audited merge candidate still holds
+    ///
+    /// Reads git only (it writes the tree objects of `git merge-tree --write-tree` and moves no ref,
+    /// no index and no working file). The candidate is `--base <OLD> --head <head>`, or `--merge
+    /// <commit>` (a merge of exactly two parents: the first is the base, the second the head);
+    /// `--tip` is the integration branch's tip now. The answer's `decision` is `fast_forward` (the
+    /// tip is still the base), `already_merged` (the head is inside the tip), `reuse` (the tip
+    /// only moved ahead, the merge is clean, the moved paths share none with the candidate and the
+    /// selection of `check affected` for the candidate is the same on both trees), `rerun` (the
+    /// newly affected checks are in `rerun`: targets, Python modules and, when a path is shared,
+    /// the steps of the whole change) or `rerun_all` (a conflict, a base that is not an ancestor
+    /// of the tip, an unreadable fact: run everything). `reasons` and `rerun` are in a fixed order.
+    Reuse {
+        /// The commit the candidate was merged onto and checked on.
+        #[arg(
+            long,
+            required_unless_present = "merge",
+            requires = "head",
+            conflicts_with = "merge"
+        )]
+        base: Option<String>,
+        /// The candidate's head commit.
+        #[arg(
+            long,
+            required_unless_present = "merge",
+            requires = "base",
+            conflicts_with = "merge"
+        )]
+        head: Option<String>,
+        /// The candidate's merge commit: first parent = base, second parent = head.
+        #[arg(long)]
+        merge: Option<String>,
+        /// The integration branch's tip now.
+        #[arg(long)]
+        tip: String,
+        /// The repository (default: the current folder).
+        #[arg(long, default_value = ".")]
+        dir: PathBuf,
+    },
 }
 
 pub const OPERATION: &str = "check.affected";
@@ -78,5 +117,18 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             };
             moai_cli::check_affected::run(&dir, &range, &opts)
         }
+        Action::Reuse {
+            base,
+            head,
+            merge,
+            tip,
+            dir,
+        } => match (merge, base, head) {
+            (Some(merge), _, _) => moai_cli::check_affected::reuse::run_merge(&dir, &merge, &tip),
+            (None, Some(base), Some(head)) => {
+                moai_cli::check_affected::reuse::run(&dir, &base, &head, &tip)
+            }
+            _ => Err("check reuse refused: name --merge, or --base and --head".to_string()),
+        },
     }
 }
