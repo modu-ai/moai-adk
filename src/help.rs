@@ -39,6 +39,7 @@ pub const GROUPS: &[Group] = &[
             ("language-set", false),
             ("index-build", true),
             ("check-tree", false),
+            ("check", false),
             ("ledger-status", false),
             ("card", false),
             ("spec", false),
@@ -307,6 +308,13 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("language-set", &["language-set --home ko"]),
     ("index-build", &["index-build . < request.json"]),
     ("check-tree", &["check-tree ."]),
+    (
+        "check",
+        &[
+            "check affected <base>..<head> --list",
+            "check affected <base>..<head>",
+        ],
+    ),
     ("agents-plan", &["agents-plan . < request.json", "agents-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("agents-apply", &["agents-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("generation-plan", &["generation-plan . < request.json", "generation-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
