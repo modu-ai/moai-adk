@@ -97,4 +97,11 @@ created: 2026-11-20
 
 ## Result
 
-구현 중(2026-11-20, 가지 `spec/20261120-moai-layout`). 구현이 끝나면 AC 마다 `- AC-n: met — <근거>` 줄을 이 자리에 적어요.
+구현 끝(2026-11-20, 가지 `spec/20261120-moai-layout`, 조각 1). 쓰는 쪽 이동과 안내 문구는 뒤 SPEC 들이 맡아요(D-4). 변이 다섯(`target/c/mut174.py`, 결과 `target/c/layout2.sum`)은 모두 시험에 잡혔고 각 변이를 고친 뒤 파일은 그대로 되돌렸어요.
+
+- AC-1: met — `src/state_root.rs` 의 `KEPT`(열한 종류)·`LOCAL_KINDS`·`local_path`·`earlier_path` 를 `cargo test --locked --offline --lib state_root::tests::the_layout_names_kept_kinds_and_local_paths` 가 못 박아요(통과). 변이 `evals/` → `evals-x/`(추적 목록 이름 바꾸기)와 `is_kept` 의 `==` → `!=` 에 이 시험이 실패했어요.
+- AC-2: met — `cargo test --locked --offline --test gitignore_block_cli the_block_ignores_local_and_keeps_tools_and_evals` 통과(`git check-ignore` 가 `tools/`·`evals/` 파일은 무시하지 않고 `local/` 안은 무시한다고 답해요). 변이 "블록의 `local/` 줄 빼기"에 이 시험을 포함한 `gitignore_block_cli` 시험 넷이 실패했어요.
+- AC-3: met — `cargo test --locked --offline --test gitignore_block_cli an_earlier_block_is_shown_as_changed_and_left_until_applied` 통과(옛 블록은 새 줄 셋이 더해지는 `merge`, 적용 전 파일 그대로). 두 골든(`16-agents-plan-create`, `17-agents-apply-ok`)은 `MOAI_UPDATE_FIXTURES=1` 로 다시 만들었고 `git diff` 가 블록 줄과 해시뿐임을 확인했어요.
+- AC-4: met — `cargo test --locked --offline --lib state_root::tests::a_reader_falls_back_to_the_earlier_path_and_a_writer_uses_the_new_one` 통과(새 경로 우선·옛 경로·둘 다 없음=없음·쓰기는 새 경로로 옛 폴더 그대로). 변이 "`read_path` 의 순서 바꾸기"와 "`write_path` 가 옛 경로를 돌려주기"에 이 시험이 실패했어요.
+- AC-5: met — `cargo test --locked --offline --lib state_root::tests::host_owned_files_are_not_in_the_layout` 통과(호스트 소유 네 곳이 추적·기계 출력 어느 목록에도 없음). 변이 `is_kept` 의 `==` → `!=` 에 이 시험이 실패했어요. `HOST_OWNED` 항목을 목록에 넣는 변이는 따로 돌리지 않았어요.
+- 확인(2026-11-20): `moai check affected`(대상 179개) 는 fmt·clippy·ops rustfmt·`git diff --check`·파이썬·build_cli 가 0 이었고, `card::input::tests::secret_screen_time_on_one_long_word_has_a_bound` 와 `tests/home_retire_cli.rs` 의 `retire_keeps_the_go_markers_until_the_entries_in_use_are_free` 두 시험만 부하 때문에 시간 기준으로 실패했어요(단독 실행은 통과: 2.14 s, 61.5 s). 둘 다 시간 기준 시험을 작업량 기준으로 바꾸는 별도 변경의 범위예요.
