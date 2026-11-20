@@ -69,9 +69,16 @@ fn every_ci_scope_mention_in_the_skill_names_this_repository() {
             }
         }
     }
-    // The shipped text keeps losing mentions of the repository's own scripts; the scan only has
-    // to see the skill files, and every mention that remains must name the repository.
-    assert!(!files.is_empty(), "no skill file found; {seen} mentions");
+    // The shipped text keeps losing mentions of the repository's own scripts, so the count of
+    // mentions is no floor any more; the scan must still reach the files that carry the rules,
+    // and every mention that remains must name the repository.
+    for name in ["mode-agent.md", "mode-leader.md", "verify.md", "audit.md"] {
+        assert!(
+            files.iter().any(|p| p.ends_with(name)),
+            "the scan did not reach {name} ({seen} mentions in {} files)",
+            files.len()
+        );
+    }
     assert_eq!(bare, Vec::<String>::new());
 }
 
@@ -120,10 +127,13 @@ fn the_shipped_skill_runs_no_repository_python_tool() {
             }
         }
     }
-    assert!(
-        !files.is_empty(),
-        "no skill file found; {mentions} repository tool mentions"
-    );
+    for name in ["mode-agent.md", "mode-leader.md", "verify.md", "audit.md"] {
+        assert!(
+            files.iter().any(|p| p.ends_with(name)),
+            "the scan did not reach {name} ({mentions} repository tool mentions in {} files)",
+            files.len()
+        );
+    }
     assert_eq!(bad, Vec::<String>::new());
     let leader = fs::read_to_string(root.join("workflows/mode-leader.md")).unwrap();
     assert!(leader.contains("run `moai repo-scans --refs <tip> <head>` from any checkout"));

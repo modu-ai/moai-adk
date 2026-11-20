@@ -364,12 +364,17 @@ fn finish_line_rule_is_stated_once_in_each_lane_workflow() {
         let t = text(path);
         assert_eq!(t.matches("Local finish line:").count(), 1, "{path}");
         for phrase in [
-            "posts `LANE-READY-INTEGRATION` with the exact 40-hex head",
-            "merges each READY head serially into the LOCAL integration branch",
-            "fast-forwards the local branch",
+            "the lane itself makes the merge of its head onto the current tip of the LOCAL integration branch",
+            "runs the checks for that merge there",
+            "`MERGE-READY <card> merge=<40-hex> base=<40-hex tip> checks=<result line>`",
+            "a lane's session may not run git there",
+            "fast-forward",
+            "`git merge --ff-only`",
+            "`MERGED-LOCAL`",
             "nobody opens a pull request per card, per bundle or per integration round",
             "`release/v{head}.{yearweek}.{build}`",
-            "only when the user calls a formal release or a production deploy",
+            "Only for a real deployment",
+            "a broken tip with a revert commit",
         ] {
             assert!(t.contains(phrase), "{path} must say `{phrase}`");
         }
