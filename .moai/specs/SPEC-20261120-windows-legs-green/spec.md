@@ -27,9 +27,10 @@ created: 2026-11-20
 
 - REQ-1: The smoke harness shall import `pwd` and `pty` without failing on a platform that has neither.
 - REQ-2: When the smoke harness runs on a platform without `pwd` or `pty`, it shall print one line that starts `smoke: <area> skip` and gives the reason, run no step and exit with code 0. · failure: none — the line is printed before any step or file is touched, so there is nothing to fail.
-- REQ-3: On a platform that has `pwd` and `pty` the harness shall print the same lines and exit with the same codes as before this change.
+- REQ-3: When the smoke harness runs on a platform that has `pwd` and `pty`, it shall print the same lines and exit with the same codes as before this change. · failure: none — the change only adds a check that is false on such a platform, so no run on it can fail because of it.
 - REQ-4: The crate shall pass `cargo clippy --target x86_64-pc-windows-msvc --all-targets -- -D warnings` as a type check, with unix-only items behind `cfg` gates and no `allow` attribute added.
-- REQ-5: On a platform that is not unix the user-asset acquire guard shall take its exclusive lock through the standard library's `File::try_lock`, and the unix lock shall stay the one it was.
+- REQ-5: The user-asset acquire guard shall take its exclusive lock through the standard library's `File::try_lock` on a platform that is not unix.
+- REQ-6: The user-asset acquire guard shall keep the `flock` call it has on unix.
 
 ## Acceptance
 
@@ -37,11 +38,11 @@ created: 2026-11-20
   verify: `python3 -m unittest tests.smoke_harness_test.PlatformTest`
 - AC-2 (REQ-3): every other test of the harness still passes unchanged.
   verify: `python3 -m unittest tests.smoke_harness_test tests.ci_smoke_step_test`
-- AC-3 (REQ-4, REQ-5): with a stand-in C compiler and archiver for the Windows target, `cargo clippy --target x86_64-pc-windows-msvc --all-targets -- -D warnings` exits 0 (a type check: nothing is linked or run).
+- AC-3 (REQ-4, REQ-5, REQ-6): with a stand-in C compiler and archiver for the Windows target, `cargo clippy --target x86_64-pc-windows-msvc --all-targets -- -D warnings` exits 0 (a type check: nothing is linked or run).
   verify: `cargo clippy --offline --locked --target x86_64-pc-windows-msvc --all-targets -- -D warnings`
 - AC-4 (REQ-4): the Unix build keeps passing the same check.
   verify: `cargo clippy --offline --locked --all-targets -- -D warnings`
-- AC-5 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5): the SPEC passes the checker.
+- AC-5 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6): the SPEC passes the checker.
   verify: `moai spec check SPEC-20261120-windows-legs-green`
 
 ## Scope
