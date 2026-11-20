@@ -9,6 +9,23 @@ GitHub Issues are no longer the work ledger; the project's local cards are (user
 - **Transition exception**: until C-53 S3 lands, `moai gate-check` asks for an Issue claim (`Moai-Claim`) that a card branch does not carry. Use this exception only as long as `moai gate-check` still asks for an Issue claim: merge a card's pull request under the `merge-train` rule (the head's GitHub `ci` success and, at audit-tier 1 or 2, an independent PASS), comment `transition exception: C-<n>` with the run, the head and the verdict on the pull request, and post the `moai/audit` status on that head as SYNC step 8 does.
 - **Stranded cards**: `card next` shows a `review` card that nobody holds as `review_no_holder`, and a card whose holder's lease ended stays `held`. Nothing reclaims either yet (C-53 S6; decision L7: the user at any time, the leader after the lease ends); report it to the user with the card, and never edit the ledger file.
 
+## M-Flow finish line
+
+M-Flow (user decisions 2026-11-20; one canonical text, put once per file):
+
+1. Lane: commits on its own card branch and pushes it; gets the independent audit (tier 2: the leader starts it).
+2. Lane: after PASS, makes the merge of its head onto the current LOCAL integration branch tip (the primary branch saved at first setup; v2026.11.0 here) in its own worktree, runs `moai check affected <tip>..<merge>` with the binary built in that worktree, and posts `MERGE-READY <card> merge=<40-hex> base=<40-hex> checks=<one line>` on the card.
+   A `FAIL` in the checks line is not merged on a flaky claim alone: the lane reruns the full check on the same merge and posts the `PASS` line.
+3. Fast-forward: one at a time under a lock (`~/.moai/locks/<project>-<branch>.lock`), the primary checkout of the integration branch is fast-forwarded with `git merge --ff-only` to that merge.
+   Where the host isolates a lane session to its worktree (Claude Code), the leader's supervision round does this step and writes `MERGED-LOCAL`; where a moai primary-checkout guard is on, the single fixed command `git -C <primary> merge --ff-only refs/moai/lane-merge` is the one allowed (hook-config allow_commands).
+   If the base moved, the lane redoes step 2 on the new tip (evidence reuse rules: the merge-queue card).
+4. Local test and install: builds for local testing and installation are made from the verified LOCAL integration branch tip (not from the remote branch); the leader checks the local tip as a whole from time to time and repairs a broken tip with a revert commit.
+   The statusline shows the branch with commits ahead (↑) and behind (↓) its upstream so local merges are visible.
+5. Release: only for a real deployment the leader creates `release/v{head}.{yearweek}.{build}` from the local integration branch and opens one pull request to the remote integration branch (full CI on Linux, macOS and Windows, independent audit by a lane with no commits in the range). No pull request per card, per bundle or per integration.
+6. A card that landed locally is closed with `card done` on the local landing evidence (the card-done-under-M-Flow card), not a pull request.
+
+The `pr-gate` and `merge-train` steps below describe a pull request; under item 5 they apply only to the release pull request or one the user asks for, never to a card that lands locally.
+
 ## Input
 
 The `--autonomy` level (`full` or `semi`; `semi` when omitted), the project's cards (`moai card list`, `moai card next`) and their notes, the open pull requests, and the `LANE-DONE`/`LANE-BLOCKED`/`LANE-IDLE` lines of `--mode-agent` sessions, read from each lane's whole screen through Orca and from the card notes where every lane also records them (Issue #2899 G3).
