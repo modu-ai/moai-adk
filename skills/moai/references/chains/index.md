@@ -14,12 +14,16 @@ A chain is the order in which the parent session uses agents for one kind of req
 | Set up a project | PROJECT | none | internal/interview, internal/questions |
 | Update documents and Issues after a merge | SYNC | moai-docs | internal/decide |
 | Keep working toward a goal | MODE-AGENT | none | internal/git-safety |
+| A test fails once and passes on a rerun of the same head (flaky) | VERIFY | none | internal/test-design |
+| Repair after a FAIL verdict | RUN, AUDIT | moai-impl, moai-audit | internal/review |
 
 Rules for every chain:
 
 - Every change that modifies the repository has a SPEC, and its order is PLAN → RUN → VERIFY → SYNC → AUDIT → merge (`internal/sdd`): SYNC writes the SPEC Result, documents and `@cc:` comments on the same branch, and AUDIT only checks them.
 - The agent that implemented a change never audits it. `moai-audit` runs in a separate context on the exact head, and the parent session, not the agent, writes the verdict.
 - A bug fix starts with a test that fails for the reported reason (`moai-impl` reads `internal/test-design`).
+- A flaky test is classified from evidence only (the same head, the same job, the failing and the passing run) and recorded once per test until a change repairs it; a rerun that turns green is not a fix (`workflows/verify.md`).
+- The re-audit after a FAIL goes to the first auditor, who judges the repair again and every changed criterion.
 - Whoever wrote a change runs `internal/self-check` before asking for an audit or opening a pull request.
 - Every commit for a SPEC carries the identity trailers of `internal/commit-trailers`, and every audit verdict names its auditor's session the same way.
 - In a user project, RUN and VERIFY take the check commands, the AC-to-test tracing and the dependency existence check from `internal/quality`.
