@@ -125,6 +125,18 @@ created: 2026-11-20
 
 읽는 법: 항상 맞는 5개가 하한을 5 로 만들어요(카드가 바란 "조건이 맞는 3~10개"의 하한 3 은 못 맞춰요). 이 5개는 verify.md 의 작업 방식 규칙을 "빠짐없이 옮김"(D2)으로 옮긴 것이고, 줄이려면 그 규칙을 verify.md 에 남기는 결정이 필요해요(되돌릴 수 있음). 묶음·릴리스 병합은 diff 가 커서 12개까지 올라가요. `platform-specific-code`(13)는 `#[cfg(`·`libc::` 같은 글자가 문서·시험에도 흔해서 후보가 넓어요.
 
+### 수용 기준 결과 (head f576acb48ae72c22fbd448423962911ba7e98466, 확대 검사 로그 target/ready.log)
+
+- AC-1: met — `review_checklist_cli` 의 `base_only` 통과(같은 파일 10 passed).
+- AC-2: met — `trigger` 시험 통과.
+- AC-3: met — `invalid` 시험과 `--lib` 전체 1610 passed.
+- AC-4: met — `real_file` 시험 통과.
+- AC-5: met — `moved_rules` 시험 통과(글자 일치).
+- AC-6: met — `every_item_has_cases` 시험 통과, 변형 11개 모두 잡힘.
+- AC-7: open — `protected_list` 하나만 빨개요. 보호 목록 편집은 다른 작업의 head 867f897aedff5ac4008d3fb2f9bdd0443278f702 에 있고(`git show` 로 `tools/protected_checks.json` 16행과 `src/gate.rs` 275행에 이 파일이 있음을 읽었어요), 이 head 와의 병합은 `git merge-tree --write-tree` 가 충돌 없이(exit 0) 끝나요. 그 head 가 로컬 v2026.11.0 에 들어오면 통과해야 해서 READY 에 pair 로 적어요.
+- AC-8: met — `review_md_repo` 11 passed.
+- AC-9: met — 위 분포표와 명령.
+
 ### 남은 것
 
 - REQ-9: `tools/protected_checks.json` 과 `src/gate.rs` 의 `TIER2_PREFIXES` 에 이 파일을 넣는 편집은 보호 목록을 쓰는 다른 작업의 몫이에요(요청 노트 남김). 그 병합 뒤 `protected_list` 시험이 통과해요.
