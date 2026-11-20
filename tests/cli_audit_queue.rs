@@ -111,8 +111,18 @@ fn lists_a_request_with_its_head_tier_scope_and_age() {
 fn lists_nothing_for_a_head_that_has_a_verdict_and_nothing_for_an_absent_ledger() {
     let w = world();
     w.note(1, "lane-a", 300, &request("C-1", H1));
-    w.note(1, "leader", 200, &format!("AUDIT-CLAIM C-1 head={H1} by=audit-x"));
-    w.note(1, "leader", 100, &format!("AUDIT-VERDICT C-1 head={H1} verdict=PASS"));
+    w.note(
+        1,
+        "leader",
+        200,
+        &format!("AUDIT-CLAIM C-1 head={H1} by=audit-x"),
+    );
+    w.note(
+        1,
+        "leader",
+        100,
+        &format!("AUDIT-VERDICT C-1 head={H1} verdict=PASS"),
+    );
     let r = w.queue(&[]);
     assert_eq!(r["count"], 0, "{r}");
     let empty = TempHome::new();
@@ -137,14 +147,24 @@ fn state_tells_waiting_running_repair_and_stale_apart() {
     // C-1: request only -> waiting. C-2: request and claim -> running.
     w.note(1, "lane-a", 100, &request("C-1", H1));
     w.note(2, "lane-b", 400, &request("C-2", H2));
-    w.note(2, "leader", 300, &format!("AUDIT-CLAIM C-2 head={H2} by=audit-y"));
+    w.note(
+        2,
+        "leader",
+        300,
+        &format!("AUDIT-CLAIM C-2 head={H2} by=audit-y"),
+    );
     let r = w.queue(&[]);
     assert_eq!(item(&r, "C-1", H1)["state"], "waiting");
     assert_eq!(item(&r, "C-2", H2)["state"], "running");
     assert_eq!(item(&r, "C-2", H2)["auditor"], "audit-y");
     // A FAIL with no repair is `repair`; with a repair it is gone and the repair head is a
     // request of its own that goes to the first auditor.
-    w.note(2, "leader", 200, &format!("AUDIT-VERDICT C-2 head={H2} verdict=FAIL"));
+    w.note(
+        2,
+        "leader",
+        200,
+        &format!("AUDIT-VERDICT C-2 head={H2} verdict=FAIL"),
+    );
     let r = w.queue(&[]);
     assert_eq!(item(&r, "C-2", H2)["state"], "repair");
     w.note(2, "lane-b", 150, &format!("REPAIR C-2 head={H3} of={H2}"));
@@ -152,7 +172,10 @@ fn state_tells_waiting_running_repair_and_stale_apart() {
     let again = item(&r, "C-2", H3);
     assert_eq!(again["state"], "waiting");
     assert_eq!(again["of"], H2);
-    assert_eq!(again["auditor"], "audit-y", "the repair goes to the first auditor");
+    assert_eq!(
+        again["auditor"], "audit-y",
+        "the repair goes to the first auditor"
+    );
 }
 
 #[test]
@@ -175,10 +198,25 @@ fn state_stale_starts_after_the_limit_and_not_before() {
 fn times_are_computed_from_the_note_times_and_leave_out_a_span_without_an_end() {
     let w = world();
     w.note(1, "lane-a", 1000, &request("C-1", H1));
-    w.note(1, "leader", 940, &format!("AUDIT-CLAIM C-1 head={H1} by=audit-x"));
-    w.note(1, "leader", 700, &format!("AUDIT-VERDICT C-1 head={H1} verdict=FAIL"));
+    w.note(
+        1,
+        "leader",
+        940,
+        &format!("AUDIT-CLAIM C-1 head={H1} by=audit-x"),
+    );
+    w.note(
+        1,
+        "leader",
+        700,
+        &format!("AUDIT-VERDICT C-1 head={H1} verdict=FAIL"),
+    );
     w.note(1, "lane-a", 600, &format!("REPAIR C-1 head={H2} of={H1}"));
-    w.note(1, "leader", 500, &format!("AUDIT-CLAIM C-1 head={H2} by=audit-x"));
+    w.note(
+        1,
+        "leader",
+        500,
+        &format!("AUDIT-CLAIM C-1 head={H2} by=audit-x"),
+    );
     let r = w.queue(&["--all"]);
     let first = item(&r, "C-1", H1);
     assert_eq!(first["times"]["request_to_claim_secs"], 60);
@@ -197,8 +235,18 @@ fn times_are_computed_from_the_note_times_and_leave_out_a_span_without_an_end() 
 fn rules_a_second_request_for_a_passed_head_is_reuse() {
     let w = world();
     w.note(1, "lane-a", 500, &request("C-1", H1));
-    w.note(1, "leader", 400, &format!("AUDIT-CLAIM C-1 head={H1} by=audit-x"));
-    w.note(1, "leader", 300, &format!("AUDIT-VERDICT C-1 head={H1} verdict=PASS"));
+    w.note(
+        1,
+        "leader",
+        400,
+        &format!("AUDIT-CLAIM C-1 head={H1} by=audit-x"),
+    );
+    w.note(
+        1,
+        "leader",
+        300,
+        &format!("AUDIT-VERDICT C-1 head={H1} verdict=PASS"),
+    );
     w.note(1, "lane-a", 100, &request("C-1", H1));
     let r = w.queue(&[]);
     let it = item(&r, "C-1", H1);
@@ -209,15 +257,27 @@ fn rules_a_second_request_for_a_passed_head_is_reuse() {
 #[test]
 fn rules_a_broken_line_is_listed_as_malformed_and_not_counted() {
     let w = world();
-    w.note(1, "lane-a", 100, "AUDIT-REQUEST C-1 head=abc tier=1 scope=x");
-    w.note(1, "lane-a", 90, &format!("AUDIT-VERDICT C-1 head={H1} verdict=MAYBE"));
+    w.note(
+        1,
+        "lane-a",
+        100,
+        "AUDIT-REQUEST C-1 head=abc tier=1 scope=x",
+    );
+    w.note(
+        1,
+        "lane-a",
+        90,
+        &format!("AUDIT-VERDICT C-1 head={H1} verdict=MAYBE"),
+    );
     w.note(1, "lane-a", 80, "REPAIR C-1 head=zz");
     w.note(1, "lane-a", 70, "audit-request in lower case is just text");
     let r = w.queue(&[]);
     assert_eq!(r["count"], 0, "{r}");
     let bad = r["malformed"].as_array().unwrap();
     assert_eq!(bad.len(), 3, "{r}");
-    assert!(bad.iter().all(|b| b["card"] == "C-1" && b["note_id"].is_i64()));
+    assert!(bad
+        .iter()
+        .all(|b| b["card"] == "C-1" && b["note_id"].is_i64()));
 }
 
 #[test]
@@ -237,7 +297,11 @@ fn help_names_the_shapes_the_states_and_the_reuse_rule() {
         .command(&["audit-queue", "--help"])
         .output()
         .expect("run moai");
-    let help = String::from_utf8_lossy(&out.stdout).to_string();
+    // The help wraps lines, so a phrase may break across a newline: compare with one space.
+    let help = String::from_utf8_lossy(&out.stdout)
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
     for phrase in [
         "AUDIT-REQUEST",
         "AUDIT-CLAIM",
