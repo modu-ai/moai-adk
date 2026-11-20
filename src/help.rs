@@ -281,6 +281,7 @@ pub const GROUPS: &[Group] = &[
             ("archive-search", false),
             ("worktree-gc-plan", false),
             ("worktree-gc-apply", false),
+            ("optimize-apply", false),
             ("worktree-install-plan", false),
             ("hygiene-plan", false),
             ("hygiene-apply", false),
@@ -422,6 +423,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("identity", &["identity ."]),
     ("worktree-report", &["worktree-report ."]),
     ("optimize-plan", &["optimize-plan --integration-ref origin/main ."]),
+    ("optimize-apply", &["optimize-apply --integration-ref origin/main --pick <path>@<digest> --permission-reference <ref> ."]),
     ("baseline-inventory", &["baseline-inventory ."]),
     ("claim-acquire", &["claim-acquire . < request.json"]),
     ("claim-verify", &["claim-verify . < request.json"]),
@@ -931,6 +933,7 @@ pub const ABOUT_KO: &[(&str, &str)] = &[
     ("identity", "경로가 클론 안 어디에 있는지 보기"),
     ("worktree-report", "worktree 가 쓰는 공간 보고"),
     ("optimize-plan", "비울 수 있는 공간 미리 보기"),
+    ("optimize-apply", "고른 정리 후보 worktree 지우기"),
     ("baseline-inventory", "체크아웃의 기준 사실 목록"),
 ];
 
@@ -1651,7 +1654,18 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
          포함), 이름 댄 루트 아래의 cargo 빌드 폴더, 보고서 — 크기, 마지막 변경, 보관 기간, 남기는 \
          까닭, 되살리는 법. worktree 는 정확한 HEAD 에 대한 독립 감사 PASS 가 있을 때만 `remove` \
          후보이고, 살아 있는 claim·HOLD·관측 안 된 부분이 있으면 남겨요. 아무것도 지우지 않아요 — \
-         적용은 사용자 확인 뒤 `worktree-gc-apply`.",
+         적용은 사용자 확인 뒤 `worktree-gc-apply`. 프로젝트의 worktree 개수를 상한(기본 40, \
+         `--worktree-cap` 또는 HOME `hook-config.toml` 의 `[worktrees] cap`)과 견주어 보이고, \
+         끝난 worktree(카드 done 또는 가지 병합, 미커밋·잠금·쓰는 프로세스 없음)를 `cleanup` 후보로 \
+         이유와 할당 바이트와 함께 올려요 — 적용은 `optimize-apply`.",
+    ),
+    (
+        "optimize-apply",
+        "`optimize-plan` 의 `cleanup.candidates` 에서 사용자가 고른 worktree 만 지워요 \
+         (`--pick 경로@항목다이제스트`). 고른 항목마다 지우기 직전에 다시 판정하고 \
+         `git worktree remove`(`--force` 없음)로 깊은 것부터 지워요. 미커밋·잠금·살아 있는 claim 이 \
+         있거나 다이제스트가 다르면 그 항목만 거절하고 다음으로 가요. 가지는 남고, 복구 명령이 든 \
+         기록을 git 폴더 아래에 써요. 회수한 공간은 `df` 여유 바이트의 변화로 말해요.",
     ),
     (
         "baseline-inventory",
@@ -1807,6 +1821,38 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
         "프로필 `scopes` 에 선언된 scope 이름",
     ),
     ("optimize-plan", "project", "저장소의 아무 체크아웃"),
+    (
+        "optimize-plan",
+        "worktree_cap",
+        "프로젝트당 worktree 개수 상한(1 이상의 정수). 없으면 HOME `hook-config.toml` 의 \
+         `[worktrees] cap`, 그것도 없으면 40. 보이기만 하고 막거나 지우지 않음",
+    ),
+    ("optimize-apply", "project", "저장소의 아무 체크아웃"),
+    (
+        "optimize-apply",
+        "integration_ref",
+        "`optimize-plan` 에 준 것과 같은 통합 가지의 로컬 ref",
+    ),
+    (
+        "optimize-apply",
+        "recent_minutes",
+        "이 분보다 최근에 바뀌면 그 worktree 를 남김(최소 60)",
+    ),
+    (
+        "optimize-apply",
+        "budget_ms",
+        "항목마다 다시 판정하는 데 쓰는 시간 예산(밀리초)",
+    ),
+    (
+        "optimize-apply",
+        "picks",
+        "지울 worktree: 미리보기의 `path` 와 `item_digest` 를 `@` 로 이은 값(되풀이 가능)",
+    ),
+    (
+        "optimize-apply",
+        "permission_reference",
+        "사용자 승인에 대한 호출자의 참조. 허가 검증기가 아님",
+    ),
     (
         "optimize-plan",
         "integration_ref",
