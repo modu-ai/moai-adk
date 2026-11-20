@@ -255,7 +255,7 @@ struct Fx {
     value: String,
 }
 
-const ARGS: [&str; 4] = ["key-set", "typesafe", "--shared", "--prompt"];
+const ARGS: [&str; 4] = ["key-set", "demo", "--shared", "--prompt"];
 
 fn fx() -> Fx {
     let tmp = TempDir::new().unwrap();
@@ -293,7 +293,7 @@ impl Fx {
     }
 
     fn entry(&self) -> PathBuf {
-        self.vault().join("_shared").join("typesafe.key")
+        self.vault().join("_shared").join("demo.key")
     }
 
     fn piped(&self, args: &[&str], stdin: Option<&str>) -> common::pty::Seen {
@@ -301,7 +301,7 @@ impl Fx {
     }
 
     fn status(&self) -> String {
-        let s = self.piped(&["key-status", "typesafe", "--shared"], None);
+        let s = self.piped(&["key-status", "demo", "--shared"], None);
         assert_eq!(s.code, Some(0), "{}", s.stderr);
         json(&s.stdout)["result"]["entry"]
             .as_str()
@@ -501,7 +501,7 @@ fn the_typed_value_is_stored_and_never_shown() {
         "echo is off while the prompt waits"
     );
     assert_terminal_as_before(&r, "");
-    assert!(has(&r.term, b"typesafe"), "the prompt names the provider");
+    assert!(has(&r.term, b"demo"), "the prompt names the provider");
     let result = json(&r.out)["result"].clone();
     // The answer of a piped `key-set`, field for field: no value, length or fingerprint.
     let mut keys: Vec<&str> = result
@@ -534,7 +534,7 @@ fn the_typed_value_is_stored_and_never_shown() {
 fn the_prompt_answers_like_the_pipe() {
     let f = fx();
     let piped = f.piped(
-        &["key-set", "typesafe", "--shared"],
+        &["key-set", "demo", "--shared"],
         Some(&format!("{}\n", f.value)),
     );
     assert_eq!(piped.code, Some(0), "{}", piped.stderr);
