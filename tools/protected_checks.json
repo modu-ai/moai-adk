@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "comment": "Protected check paths (C-97, SPEC-20261119-check-guard). check-guard reads this file from the BASE branch only, so a pull request is always judged by the list it started from. Matching: an entry containing * is a whole-path glob, an entry ending with /** is a path prefix, every other entry is an exact path. A PR changing any entry must declare audit-tier: 2 in its body.",
+  "comment": "Protected check paths (C-97, SPEC-20261119-check-guard). check-guard reads this file from the BASE branch only, so a pull request is always judged by the list it started from. Matching: an entry containing * is a whole-path glob, an entry ending with /** is a path prefix, every other entry is an exact path. A PR changing any entry must declare audit-tier: 2 in its body. The merge gate must judge every entry tier 2 as well (gate::TIER2_PREFIXES in src/gate.rs); tests/protected_paths_one_list.rs fails when an entry is added here without it.",
   "protected": [
     ".github/workflows/**",
     "tools/ci_scope.py",
@@ -9,6 +9,10 @@
     "src/gate*.rs",
     "src/audit_gate.rs",
     "REVIEW.md",
-    "agents/audit.md"
+    "agents/audit.md",
+    "skills/moai/workflows/audit.md",
+    "tools/repo_scans.json",
+    "tools/self_check.sh",
+    "AGENTS.md"
   ]
 }
