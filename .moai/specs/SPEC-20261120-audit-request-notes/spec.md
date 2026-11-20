@@ -22,7 +22,7 @@ A lane could not reach the auditor a leader had started for its card, and long w
 - REQ-6 (REQ-5): The audit-queue command shall give a request with no claim the state waiting, a claim with no verdict the state running, a FAIL verdict with no later repair the state repair, and a waiting or running request older than `--stale-secs` the state stale.
 - REQ-7 (REQ-5): The audit-queue command shall name as the auditor of a card the `by` of that card's first claim, so that the request for a repair head goes to the same auditor.
 - REQ-8 (REQ-5): The audit-queue command shall compute for each head, from the times of its notes, the seconds from request to claim, claim to verdict, verdict to repair and repair to the next claim, leaving a span out when one end has no note.
-- REQ-9: IF a head already has a PASS verdict, THEN the audit-queue command shall list a later request for the same head as reuse and not as waiting.
+- REQ-9: IF a head already has a verdict, THEN the audit-queue command shall list a later request for the same head as reuse and not as waiting.
 - REQ-10 (REQ-1, REQ-2, REQ-3, REQ-4): IF a note's first line starts with one of the four words but does not have the shape of its words, THEN the audit-queue command shall list it as malformed with its card and note id, without counting it.
 - REQ-11: The audit-queue command shall not write to the ledger.
 - REQ-12: The help of the audit-queue command and its operations document shall state the four shapes, the four states and the reuse rule.
@@ -32,7 +32,7 @@ A lane could not reach the auditor a leader had started for its card, and long w
 - AC-1 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5): a request posted as a note is listed with its card, head, tier, scope and age, and a head that has a verdict is no longer listed · verify: `cargo test --locked --offline --test cli_audit_queue lists`
 - AC-2 (REQ-6, REQ-7): the four states are told apart at the edges (no claim, claim, FAIL, FAIL then repair, one second under and over `--stale-secs`) and the auditor of a card is its first claimer · verify: `cargo test --locked --offline --test cli_audit_queue state`
 - AC-3 (REQ-8): the stage times of a finished audit and of an audit with a repair are computed from the note times, and a missing end leaves the span out · verify: `cargo test --locked --offline --test cli_audit_queue times`
-- AC-4 (REQ-9, REQ-10, REQ-11): a second request for a passed head is reuse, a broken line is listed as malformed and not counted, and the ledger bytes are the same after the command · verify: `cargo test --locked --offline --test cli_audit_queue rules`
+- AC-4 (REQ-9, REQ-10, REQ-11): a second request for a head with a verdict (PASS or FAIL) is reuse, a broken line is listed as malformed and not counted, and the ledger bytes are the same after the command · verify: `cargo test --locked --offline --test cli_audit_queue rules`
 - AC-5 (REQ-12): the help and the operations document state the shapes, states and the reuse rule · verify: `cargo test --locked --offline --test cli_audit_queue help`
 
 ## Scope
@@ -41,6 +41,7 @@ A lane could not reach the auditor a leader had started for its card, and long w
 - write: `tests/cli_audit_queue.rs`
 - write: `src/ops/audit_queue.rs`
 - write: `docs/design-review/appendix/operations/audit_queue.md`
+- write: `src/help.rs` (the two rows) and `tests/fixtures/help/all.txt`, `all-dumb.txt`, `all-60.txt`, `all-80.txt` (their output)
 
 ## Decisions
 
@@ -48,6 +49,7 @@ A lane could not reach the auditor a leader had started for its card, and long w
 - D-2: Times come from the ledger's own note times (`card_note.created_at`), never from the text of a note, so a lane cannot move a stage time by writing it.
 - D-3: A state word is a fact of the notes, not a judgement: a claim with no verdict is running even when its auditor is gone, and the `stale` state is what shows that.
 - D-4: The rules about who audits are not enforced here: the command reads and lists; the workflow text says that an author never audits, that the exact head is audited, and that a repair goes to the same auditor.
+- D-5: The first verdict of a head is the one that counts, a request is stale by the age of its current state (a request claimed ten seconds ago is running whatever the age of the request), and a card that has no `AUDIT-REQUEST` for a head still has its first claimer as auditor; the command lists these facts and does not judge them.
 
 ## Plan
 
@@ -68,3 +70,5 @@ A lane could not reach the auditor a leader had started for its card, and long w
 - Whole area run: `cargo test --locked --offline --no-fail-fast --lib --bins` and the readers of the help table and the operations documents (`cli_audit_queue`, `help_layout`, `product_cli`, `hot_file_ops_merge`, `index_cli`, `cli_project`, `check_affected_cli`, `orca_optional_3005`, `baseline_git_env`): 12 `test result: ok` lines, 0 failed (`--lib` 1638 passed).
 - Python area modules, run with `python3 -m unittest` in an empty temporary HOME after the build: `repo_scans_test` (25), `self_check_test` (66), `local_check_test` (54), `ci_scope_test` (47), all OK.
 - Not yet: the workflow text that tells lanes to post the four notes and the leader to read `moai audit-queue` is in files held by the card that cleans the workflow text and follows after it; the audit; no test here is specific to macOS and none was run for it.
+- Repair after the first audit (no blocking item; N1 to N6, N12): the first claimer, a done card, an import note, the `--stale-secs` limit of 604800, an age of zero for a note from the future and a `FAIL` head asked again each have a test now (six new integration tests); a repair of a repair keeps the tier and scope of its parent whatever the order of the head strings, two repairs of one head measure the span to the claim of the first, and `REPAIR` with `head` equal to `of` is malformed (code change in `src/ops/audit_queue.rs`, one new unit test, two of the six new integration tests and the unit test were red before it; the other four describe behavior the code already had and are pinned by the mutants of the next line); REQ-9 now says a verdict, as the code and the help do (D-5 records the counting rules the audit found); the Scope lists `src/help.rs` and the four goldens.
+- Left as they are (non-blocking, read by the audit with probes): `xscope=` and a word between `tier` and `scope` are read as shapes (N8), a note body that is not UTF-8 ends the command with an error (N10), the trailer session id is shared by the lane and its auditor (N13).

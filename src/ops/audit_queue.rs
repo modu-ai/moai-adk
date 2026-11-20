@@ -146,7 +146,7 @@ pub fn parse(line: &str, card: &str) -> Parsed {
             _ => return Parsed::Malformed,
         },
         _ => match value(tokens.next(), "of") {
-            Some(of) if is_head(of) && tokens.next().is_none() => Event::Repair {
+            Some(of) if is_head(of) && of != head && tokens.next().is_none() => Event::Repair {
                 head,
                 of: of.to_string(),
             },
@@ -243,12 +243,14 @@ pub fn judge(rows: &[Row], now: i64, stale_secs: i64) -> Vec<Item> {
         }
     }
     // A repair head takes the tier and scope of the head it repairs.
-    let repair_heads: Vec<(i64, String)> = heads
+    // In note order, so a repair of a repair finds the tier and scope its parent just took.
+    let mut repair_heads: Vec<(i64, (i64, String))> = heads
         .iter()
         .filter(|(_, h)| h.tier.is_none() && h.of.is_some())
-        .map(|(key, _)| key.clone())
+        .map(|(key, h)| (h.request.as_ref().map_or(0, |q| q.0), key.clone()))
         .collect();
-    for key in repair_heads {
+    repair_heads.sort();
+    for (_, key) in repair_heads {
         let of = heads[&key].of.clone().unwrap_or_default();
         let (tier, scope) = heads
             .get(&(key.0, of))
@@ -297,10 +299,19 @@ pub fn judge(rows: &[Row], now: i64, stale_secs: i64) -> Vec<Item> {
         .iter()
         .filter_map(|(k, h)| Some((k.clone(), h.claim.as_ref()?.1)))
         .collect();
-    let repaired_by: BTreeMap<(i64, String), String> = heads
+    // The first repair named for a head is the one whose claim ends the span, whatever the
+    // order of the head strings.
+    let mut repair_notes: Vec<(i64, (i64, String), String)> = heads
         .iter()
-        .filter_map(|((card, head), h)| Some(((*card, h.of.clone()?), head.clone())))
+        .filter_map(|((card, head), h)| {
+            Some((h.request.as_ref()?.0, (*card, h.of.clone()?), head.clone()))
+        })
         .collect();
+    repair_notes.sort();
+    let mut repaired_by: BTreeMap<(i64, String), String> = BTreeMap::new();
+    for (_, key, head) in repair_notes {
+        repaired_by.entry(key).or_insert(head);
+    }
     let mut items: Vec<Item> = Vec::new();
     for ((card_id, head), h) in &heads {
         let Some((req_note, req_at, req_by)) = h.request.clone() else {
@@ -536,6 +547,14 @@ mod tests {
         assert_eq!(parse("REPAIR: later", "C-1"), Parsed::Other);
         assert_eq!(parse("audit-request C-1", "C-1"), Parsed::Other);
         assert_eq!(parse("REPAIRED it", "C-1"), Parsed::Other);
+    }
+
+    #[test]
+    fn a_repair_of_its_own_head_is_malformed() {
+        let line = format!("REPAIR C-1 head={H1} of={H1}");
+        assert_eq!(parse(&line, "C-1"), Parsed::Malformed);
+        let line = format!("REPAIR C-1 head={H1} of={H2}");
+        assert!(matches!(parse(&line, "C-1"), Parsed::Event(_)));
     }
 
     #[test]

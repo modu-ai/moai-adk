@@ -60,6 +60,36 @@ impl World {
         .unwrap();
     }
 
+    /// A note of `card` that came from an import, not written here.
+    fn note_import(&self, card: i64, ago: i64, text: &str) {
+        let mut w = ledger::open_write(self.home.path(), "demo").unwrap();
+        let at = self.now - ago;
+        w.with_write_tx(|tx, _| {
+            tx.execute(
+                "INSERT INTO card_note (card_id, kind, author, origin, body, created_at) \
+                 VALUES (?1, 'report', 'importer', 'import', ?2, ?3)",
+                rusqlite::params![card, text, at],
+            )?;
+            Ok(())
+        })
+        .unwrap();
+    }
+
+    /// A third card that is already done (the ledger refuses to close a card that has no met
+    /// criterion, so the row is inserted done); returns its id.
+    fn done_card(&self) -> i64 {
+        let mut w = ledger::open_write(self.home.path(), "demo").unwrap();
+        w.with_write_tx(|tx, now| {
+            tx.execute(
+                "INSERT INTO card (title, state, priority, write_scope, created_by, created_at, updated_at, closed_at) \
+                 VALUES ('third', 'done', 'p2', '[]', 'test', ?1, ?1, ?1)",
+                [now],
+            )?;
+            Ok(tx.last_insert_rowid())
+        })
+        .unwrap()
+    }
+
     fn queue_raw(&self, extra: &[&str]) -> Output {
         let mut args = vec!["audit-queue", "--project", &self.project];
         args.extend_from_slice(extra);
@@ -278,6 +308,171 @@ fn rules_a_broken_line_is_listed_as_malformed_and_not_counted() {
     assert!(bad
         .iter()
         .all(|b| b["card"] == "C-1" && b["note_id"].is_i64()));
+}
+
+/// A card whose first audit failed, repaired at `H3`, whose second audit failed too, repaired at
+/// `H2` (a head that sorts before `H3`): `FAIL` verdicts and `REPAIR` notes in note order.
+fn notes_of_a_repair_of_a_repair(w: &World) {
+    w.note(1, "lane-a", 1000, &request("C-1", H1));
+    w.note(
+        1,
+        "leader",
+        950,
+        &format!("AUDIT-CLAIM C-1 head={H1} by=audit-x"),
+    );
+    w.note(
+        1,
+        "leader",
+        900,
+        &format!("AUDIT-VERDICT C-1 head={H1} verdict=FAIL"),
+    );
+    w.note(1, "lane-a", 800, &format!("REPAIR C-1 head={H3} of={H1}"));
+    w.note(
+        1,
+        "leader",
+        750,
+        &format!("AUDIT-CLAIM C-1 head={H3} by=audit-x"),
+    );
+    w.note(
+        1,
+        "leader",
+        700,
+        &format!("AUDIT-VERDICT C-1 head={H3} verdict=FAIL"),
+    );
+    w.note(1, "lane-a", 600, &format!("REPAIR C-1 head={H2} of={H3}"));
+}
+
+#[test]
+fn state_a_repair_of_a_repair_keeps_the_tier_and_scope_whatever_the_head_order() {
+    let w = world();
+    notes_of_a_repair_of_a_repair(&w);
+    let r = w.queue(&["--all"]);
+    for head in [H1, H3, H2] {
+        let it = item(&r, "C-1", head);
+        assert_eq!(it["tier"], 1, "{head}: {it}");
+        assert_eq!(it["scope"], "src/a.rs and tests/a.rs", "{head}: {it}");
+    }
+    assert_eq!(item(&r, "C-1", H2)["of"], H3);
+}
+
+#[test]
+fn state_the_auditor_of_a_card_is_its_first_claimer_when_another_claims_later() {
+    let w = world();
+    w.note(1, "lane-a", 1000, &request("C-1", H1));
+    w.note(
+        1,
+        "leader",
+        950,
+        &format!("AUDIT-CLAIM C-1 head={H1} by=audit-x"),
+    );
+    w.note(
+        1,
+        "leader",
+        900,
+        &format!("AUDIT-VERDICT C-1 head={H1} verdict=FAIL"),
+    );
+    w.note(1, "lane-a", 800, &format!("REPAIR C-1 head={H2} of={H1}"));
+    w.note(
+        1,
+        "leader",
+        750,
+        &format!("AUDIT-CLAIM C-1 head={H2} by=audit-z"),
+    );
+    let r = w.queue(&["--all"]);
+    let again = item(&r, "C-1", H2);
+    assert_eq!(again["claim_by"], "audit-z");
+    assert_eq!(again["auditor"], "audit-x", "{again}");
+    assert_eq!(item(&r, "C-1", H1)["auditor"], "audit-x");
+}
+
+#[test]
+fn times_two_repairs_of_one_head_measure_the_span_to_the_claim_of_the_first() {
+    let w = world();
+    w.note(1, "lane-a", 1000, &request("C-1", H1));
+    w.note(
+        1,
+        "leader",
+        950,
+        &format!("AUDIT-CLAIM C-1 head={H1} by=audit-x"),
+    );
+    w.note(
+        1,
+        "leader",
+        900,
+        &format!("AUDIT-VERDICT C-1 head={H1} verdict=FAIL"),
+    );
+    w.note(1, "lane-a", 700, &format!("REPAIR C-1 head={H2} of={H1}"));
+    w.note(
+        1,
+        "leader",
+        640,
+        &format!("AUDIT-CLAIM C-1 head={H2} by=audit-x"),
+    );
+    w.note(1, "lane-a", 600, &format!("REPAIR C-1 head={H3} of={H1}"));
+    w.note(
+        1,
+        "leader",
+        590,
+        &format!("AUDIT-CLAIM C-1 head={H3} by=audit-x"),
+    );
+    let r = w.queue(&["--all"]);
+    let first = item(&r, "C-1", H1);
+    assert_eq!(first["times"]["verdict_to_repair_secs"], 200);
+    assert_eq!(first["times"]["repair_to_claim_secs"], 60, "{first}");
+}
+
+#[test]
+fn rules_a_done_card_and_an_import_note_are_not_listed() {
+    let w = world();
+    let done = w.done_card();
+    assert_eq!(done, 3);
+    w.note(1, "lane-a", 300, &request("C-1", H1));
+    w.note(done, "lane-b", 300, &request("C-3", H2));
+    w.note_import(1, 200, &request("C-1", H3));
+    let r = w.queue(&[]);
+    assert_eq!(r["count"], 1, "{r}");
+    assert_eq!(r["requests"][0]["card"], "C-1");
+    assert_eq!(r["requests"][0]["head"], H1);
+}
+
+#[test]
+fn rules_the_stale_limit_stops_at_604800_and_a_note_from_the_future_has_age_zero() {
+    let w = world();
+    w.note(1, "lane-a", -100, &request("C-1", H1));
+    let ok = w.queue(&["--stale-secs", "604800"]);
+    assert_eq!(item(&ok, "C-1", H1)["age_secs"], 0, "{ok}");
+    assert_eq!(item(&ok, "C-1", H1)["state_age_secs"], 0, "{ok}");
+    let bad = w.queue_raw(&["--stale-secs", "604801"]);
+    assert!(!bad.status.success(), "604801 is over the limit");
+}
+
+#[test]
+fn rules_a_request_for_a_head_with_a_fail_verdict_is_reuse_and_the_repair_state_stays() {
+    let w = world();
+    w.note(1, "lane-a", 500, &request("C-1", H1));
+    w.note(
+        1,
+        "leader",
+        450,
+        &format!("AUDIT-CLAIM C-1 head={H1} by=audit-x"),
+    );
+    w.note(
+        1,
+        "leader",
+        400,
+        &format!("AUDIT-VERDICT C-1 head={H1} verdict=FAIL"),
+    );
+    w.note(1, "lane-a", 100, &request("C-1", H1));
+    let r = w.queue(&[]);
+    let mut states: Vec<&str> = r["requests"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|i| i["head"] == H1)
+        .map(|i| i["state"].as_str().unwrap())
+        .collect();
+    states.sort_unstable();
+    assert_eq!(states, ["repair", "reuse"], "{r}");
 }
 
 #[test]
