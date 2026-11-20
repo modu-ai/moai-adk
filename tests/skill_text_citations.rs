@@ -57,11 +57,12 @@ const CLEANED: [&str; 14] = [
 const RATIONALE: &str = "docs/skill-text-rationale.md";
 
 /// Names of moai-adk's own development scripts and repository, which a user does not have.
-const DEV_WORDS: [&str; 9] = [
+/// `M-Flow` is not one of them: it is a product flow (the `work_flow.flow` value of a profile),
+/// so the shipped skills may name it.
+const DEV_WORDS: [&str; 8] = [
     "moai-adk repository",
     "local_check.sh",
     "check-guard",
-    "M-Flow",
     "tools/self_check.sh",
     "tools/source_manifest.py",
     "tools/build_folder.py",
@@ -234,7 +235,6 @@ fn scan_flags_each_kind_and_leaves_markers_alone() {
         ("사용자 결정 2026-11-17", "decision"),
         ("in the moai-adk repository run it", "tool"),
         ("run `tools/self_check.sh` first", "tool"),
-        ("the M-Flow bundle", "tool"),
         // Found by the audit: forms without a hash, with a capital, with a possessive, a four
         // digit card, and a character whose lower case is longer than itself.
         ("Issue 2619 says so", "number"),
@@ -258,6 +258,7 @@ fn scan_flags_each_kind_and_leaves_markers_alone() {
         "ask the user for a decision before the pick",
         "a card id looks like `C-<number>` in the text",
         "issue 12 of the series, and PR 12 of the other",
+        "the M-Flow bundle and the m-flow finish line are a product flow",
     ] {
         assert!(kinds(line).is_empty(), "`{line}` should be clean: {:?}", kinds(line));
     }
