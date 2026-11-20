@@ -186,7 +186,7 @@ fn names_source(s: &str) -> bool {
         return true;
     }
     s.match_indices("SPEC-").any(|(i, _)| {
-        let b = s[i + 5..].as_bytes();
+        let b = &s.as_bytes()[i + 5..];
         b.len() > 9
             && b[..8].iter().all(u8::is_ascii_digit)
             && b[8] == b'-'
@@ -229,7 +229,9 @@ fn parse_item(n: usize, v: &Value) -> std::result::Result<Item, String> {
     let check = text_of(&obj["check"], "`check`").map_err(&at)?;
     let source = text_of(&obj["source"], "`source`").map_err(&at)?;
     if !names_source(source) {
-        return Err(at("`source` names no Issue #<n>, PR #<n> or SPEC-<id>".into()));
+        return Err(at(
+            "`source` names no Issue #<n>, PR #<n> or SPEC-<id>".into()
+        ));
     }
     let added = text_of(&obj["added"], "`added`").map_err(&at)?;
     if !valid_date(added) {
@@ -433,10 +435,7 @@ fn read_checklist(
     if sections.is_none() && items.iter().any(|i| !i.patterns.is_empty()) {
         skips.push(skip("diff-sections-mismatch"));
     }
-    Ok((
-        judge_checklist(&items, changed, sections.as_deref()),
-        skips,
-    ))
+    Ok((judge_checklist(&items, changed, sections.as_deref()), skips))
 }
 
 fn git(repo: &Path, args: &[&str]) -> Result<Vec<u8>> {
@@ -1282,7 +1281,10 @@ mod tests {
         let ok = r#"{"schema_version":1,"items":[{"id":"a","trigger":{"paths":[{"prefix":""}]},"check":"c","source":"PR #3","added":"2026-11-20"}]}"#;
         assert_eq!(parse_checklist(ok).unwrap().len(), 1);
         let bad = ok.replace("\"source\":\"PR #3\",", "");
-        assert_eq!(parse_checklist(&bad).unwrap_err(), "item 0: missing `source`");
+        assert_eq!(
+            parse_checklist(&bad).unwrap_err(),
+            "item 0: missing `source`"
+        );
         assert!(parse_checklist("[]").is_err());
         assert!(parse_checklist(r#"{"schema_version":1}"#).is_err());
     }

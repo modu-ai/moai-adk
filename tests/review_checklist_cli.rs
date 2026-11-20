@@ -8,6 +8,7 @@
 mod common;
 
 use common::git::{command, git, git_ok};
+use common::home::TempHome;
 use serde_json::{json, Value};
 use std::{
     collections::BTreeSet,
@@ -17,7 +18,6 @@ use std::{
 };
 use tempfile::TempDir;
 
-const EXE: &str = crate::common::MOAI_BIN;
 const TABLE: &str = "tools/review_checklist.json";
 const BYTE_LIMIT: usize = 150_000;
 
@@ -82,13 +82,19 @@ fn fixture(base: &[(&str, &str)], head: &[(&str, &str)], removed: &[&str]) -> Fx
     }
 }
 
+/// The binary runs through a temporary HOME with a clean environment, never the real one.
 fn run(fx: &Fx) -> Output {
-    std::process::Command::new(EXE)
-        .arg("review-package")
-        .arg(&fx.repo)
-        .args(["--base", &fx.base, "--head", &fx.head])
-        .output()
-        .unwrap()
+    let home = TempHome::new();
+    home.command(&[
+        "review-package",
+        fx.repo.to_str().unwrap(),
+        "--base",
+        &fx.base,
+        "--head",
+        &fx.head,
+    ])
+    .output()
+    .unwrap()
 }
 
 fn package(fx: &Fx) -> Value {
@@ -238,11 +244,7 @@ fn trigger() {
     assert_eq!(ids(&package(&fx)), ["rs-in-src", "anything"]);
 
     // A line that was removed or only context is not an added line.
-    let fx = fixture(
-        &base,
-        &[("tests/old.rs", "new line\n")],
-        &[],
-    );
+    let fx = fixture(&base, &[("tests/old.rs", "new line\n")], &[]);
     assert_eq!(ids(&package(&fx)), ["anything"]);
     let fx = fixture(
         &[
@@ -258,7 +260,10 @@ fn trigger() {
     let fx = fixture(&base, &[], &["tests/old.rs"]);
     let r = package(&fx);
     assert_eq!(ids(&r), ["anything"], "{r}");
-    assert_eq!(r["checklist"][0]["matched"]["paths"], json!(["tests/old.rs"]));
+    assert_eq!(
+        r["checklist"][0]["matched"]["paths"],
+        json!(["tests/old.rs"])
+    );
 
     // No changed path, nothing fires (even the item that meets every path).
     let fx = fixture(&base, &[], &[]);
@@ -330,10 +335,7 @@ fn invalid() {
                 v["trigger"]["diff_patern"] = json!(["x"]);
             })]),
         ),
-        (
-            "duplicate id",
-            table(&[valid_item(), valid_item()]),
-        ),
+        ("duplicate id", table(&[valid_item(), valid_item()])),
         (
             "bad id",
             table(&[with(valid_item(), |v| v["id"] = json!("Not Ok"))]),
@@ -372,7 +374,9 @@ fn invalid() {
         ),
         (
             "empty diff_pattern list",
-            table(&[with(valid_item(), |v| v["trigger"]["diff_pattern"] = json!([]))]),
+            table(&[with(valid_item(), |v| {
+                v["trigger"]["diff_pattern"] = json!([])
+            })]),
         ),
         (
             "empty diff_pattern string",
@@ -492,11 +496,7 @@ fn invalid_diff_sections() {
         head,
     };
     let r = package(&fx);
-    assert_eq!(
-        r["changed"],
-        json!([{ "path": "a", "status": "T" }]),
-        "{r}"
-    );
+    assert_eq!(r["changed"], json!([{ "path": "a", "status": "T" }]), "{r}");
     assert_eq!(ids(&r), ["by-path"], "{r}");
     assert_eq!(table_skips(&r), ["diff-sections-mismatch"]);
 }
@@ -552,7 +552,10 @@ fn real_file() {
 /// item whose `check` is the bullet's text word for word.
 const VERIFY_RULES: [(&str, &str); 9] = [
     ("base-drift", "Base drift (WF-OBS #9):"),
-    ("platform-specific-code", "Platform-specific code (WF-OBS #25):"),
+    (
+        "platform-specific-code",
+        "Platform-specific code (WF-OBS #25):",
+    ),
     ("checker-changes", "Checker changes (WF-OBS #26):"),
     ("absence-in-tests", "Absence in tests (WF-OBS #29):"),
     (
@@ -631,7 +634,9 @@ fn moved_rules() {
     // still there is one of the nine.
     let bullets = verify_bullets();
     for bullet in &bullets {
-        let known = VERIFY_RULES.iter().find(|(_, lead)| bullet.starts_with(lead));
+        let known = VERIFY_RULES
+            .iter()
+            .find(|(_, lead)| bullet.starts_with(lead));
         let (id, _) = known.unwrap_or_else(|| panic!("a verify.md rule has no item: {bullet}"));
         assert_eq!(&check_of(id), bullet, "item `{id}` differs from verify.md");
     }
