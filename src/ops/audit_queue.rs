@@ -11,7 +11,7 @@ use serde_json::{json, Value};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-/// List the open audit requests of the ledger, with age, state and stage times
+/// List open audit requests with age, state and stage times
 ///
 /// Reads the local notes of every card that is not done and lists the audit requests that wait.
 /// A note counts by its first line, in one of four shapes: `AUDIT-REQUEST <card> head=<40-hex>
