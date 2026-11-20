@@ -1,0 +1,84 @@
+---
+id: SPEC-20261120-worktree-cap-and-cleanup
+title: "Worktree cap per project and cleanup of finished worktrees"
+status: draft
+revision: 1
+created: 2026-11-20
+---
+
+# Worktree cap per project and cleanup of finished worktrees
+
+## Intent
+
+사용자 결정(2026-11-20, 리더 대화의 선택)이에요. 에이전트가 카드마다 worktree 를 만들고 치우지 않아서 moai-adk 에는 674개(옛 위치 `.claude/worktrees` 154개, `.moai-cli/worktrees` 181개, 약 200G), mo.ai.kr 에는 456개가 쌓였어요. 이 SPEC 은 모든 MoAI 사용자에게 통하는 두 가지를 정해요: (1) 프로젝트당 worktree 개수의 상한(기본 40, 설정 가능)과 지금 개수를 미리보기에 보여 주기, (2) 끝난 worktree(카드가 done 이거나 가지가 통합 ref 에 병합)를 정리 후보로 미리보기에 올리고, 사용자가 고른 것만 항목마다 안전을 다시 확인한 뒤 지우기. 삭제가 들어가니 사용자 결정 그대로 "미리보기 → 항목별 선택 → 적용 → 되돌림 기록" 순서만 허용해요. 상한은 보여 주기만 하고 만들기를 막거나 지우기를 시키지 않아요. 새로 만들지 않고 있던 `optimize-plan`(`src/optimize.rs`)과 `worktree-gc-plan`(`src/worktree_gc.rs`)의 판정을 그대로 쓰고, 그것이 옛 위치를 "보존"으로 막는 한 가지만 이 SPEC 의 사용자 결정으로 푸는 새 층을 얹어요. 공간은 `du` 가 아니라 할당된 블록(`st_blocks`)과 파일 시스템 여유 바이트(`df`)로 재요(APFS 복제는 `du` 가 두 번 세요).
+
+## Non-goals
+
+- 상한을 어기면 worktree 만들기를 막거나 자동으로 지우는 일: 하지 않아요. 상한은 미리보기의 숫자와 경고예요.
+- Codex 가 만든 worktree 와 Go 세대의 `~/.moai/worktrees/projects/`: 계속 보존이에요. 이 SPEC 은 그 둘의 보존 규칙을 풀지 않아요.
+- 빌드 폴더(`~/.moai/build`)와 보고서 폴더 정리: 다른 카드의 몫이에요.
+- `worktree-gc-apply`(cargo 출력 줄이기와 병합된 worktree 지우기)의 동작 바꾸기: 그대로 두고 새 명령 `optimize-apply` 를 더해요.
+- 카드 원장 쓰기: 이 SPEC 의 읽기와 적용은 원장을 읽기만 해요.
+
+## Requirements
+
+- REQ-1: When `optimize-plan` runs, the preview shall report the project's worktree count, the cap and whether the count is over the cap, writing nothing.
+- REQ-2 (REQ-1): IF no cap is configured, THEN the preview shall use 40 and say the cap is the default.
+- REQ-3 (REQ-1): IF the configured cap is zero or not a whole number, THEN the preview shall refuse and name the setting.
+- REQ-4: When the card of a linked worktree is done or its HEAD is merged into the integration ref, the preview shall list the worktree as a cleanup candidate with the reason, its allocated bytes and its location.
+- REQ-5 (REQ-4): IF a worktree has a tracked change, an untracked file, an ignored file that is not regenerable, a git lock, a live card lease or a process working inside it, THEN the preview shall list it as kept with every reason.
+- REQ-6: The preview shall include worktrees under `.claude/worktrees` and `.moai-cli/worktrees` and worktrees that sit inside another worktree's `target/` folder.
+- REQ-10: The preview shall keep every worktree of the Go generation's folder and of Codex as kept.
+- REQ-7: When picked worktrees are applied with the matching digest and a permission reference, `optimize-apply` shall remove each picked worktree with `git worktree remove` without force, the deepest path first, after a fresh check of that item.
+- REQ-8 (REQ-7): IF a picked item fails its fresh check or its removal, THEN `optimize-apply` shall leave that worktree, report the reason and go on to the next pick.
+- REQ-9: When `optimize-apply` finishes, it shall write one record with the path, branch, HEAD and restore command of each removed worktree and report the reclaimed space as the change of the file system's free bytes.
+- REQ-11 (REQ-9): IF the record cannot be written, THEN `optimize-apply` shall report the failure together with the path of every worktree it removed.
+
+## Acceptance
+
+- AC-1 (REQ-1, REQ-2): 임시 저장소에 연결 worktree 셋을 만들고 상한을 2 로 주면 미리보기가 개수 4(주 체크아웃 포함), 상한 2, 출처 `flag`, 초과 `true` 를 말하고, 상한을 주지 않으면 40 과 출처 `default` 를 말해요 · verify: `cargo test --locked --offline --test worktree_cap_cleanup the_preview_counts_worktrees_against_the_cap`
+- AC-2 (REQ-3): 상한 0, 음수, 숫자가 아닌 값은 미리보기가 거절하고 설정 이름을 말해요 · verify: `cargo test --locked --offline --test worktree_cap_cleanup a_cap_that_is_not_a_positive_whole_number_is_refused`
+- AC-3 (REQ-4): 병합된 가지의 깨끗한 worktree 와 done 카드의 worktree 가 이유(`merged` 또는 `card_done`)와 할당 바이트와 위치와 함께 후보로 나오고, 병합되지 않았고 카드도 끝나지 않은 worktree 는 후보가 아니에요 · verify: `cargo test --locked --offline --test worktree_cap_cleanup finished_worktrees_are_candidates_with_reason_and_bytes`
+- AC-4 (REQ-5): 추적 변경, 추적 안 된 파일, 되살릴 수 없는 무시 파일, git 잠금, 살아 있는 카드 임대, 안에서 일하는 프로세스가 있는 worktree 는 각각 이유를 달고 유지로 나오고, 적용이 그 항목을 거절해요 · verify: `cargo test --locked --offline --test worktree_cap_cleanup an_unsafe_worktree_is_kept_with_every_reason`
+- AC-5 (REQ-6, REQ-10): `.claude/worktrees` 와 `.moai-cli/worktrees` 아래 worktree 가 후보로 나오고, 다른 worktree 의 `target/` 안에 중첩된 worktree 는 부모 이름(`nested_in`)과 함께 나오며, Go 세대 폴더와 Codex worktree 는 보존으로 남아요 · verify: `cargo test --locked --offline --test worktree_cap_cleanup old_locations_and_nested_worktrees_are_listed_and_preserved_ones_stay`
+- AC-6 (REQ-7, REQ-8): 고른 항목만 지워지고, 중첩된 worktree 는 부모보다 먼저 지워지고, 다이제스트나 허가 참조가 맞지 않으면 아무것도 지우지 않고, 미리보기 뒤에 더러워진 항목은 거절되며 다음 항목은 계속 처리돼요 · verify: `cargo test --locked --offline --test optimize_apply_cli apply_removes_only_the_picked_clean_worktrees_inside_out`
+- AC-7 (REQ-9, REQ-11): 적용이 끝나면 지운 항목마다 경로·가지·HEAD·복구 명령이 든 기록 파일이 `.git` 아래에 생기고, 그 복구 명령으로 worktree 가 되살아나며, 회수한 공간은 `df` 여유 바이트의 변화로 나오고, 기록을 쓸 수 없으면 지운 경로를 모두 대며 실패를 알려요 · verify: `cargo test --locked --offline --test optimize_apply_cli apply_writes_a_record_that_restores_the_worktree`
+
+## Scope
+
+- write: 이 SPEC, `src/worktree_cap.rs`(새), `src/ops/optimize_plan.rs`(출력에 개수·상한·후보를 더함), `src/ops/optimize_apply.rs`(새), `tests/worktree_cap_cleanup.rs`(새), `tests/optimize_apply_cli.rs`(새), `docs/design-review/appendix/operations/optimize_apply.md`(새)
+- 아직 쓸 수 없는 곳(다른 카드가 잡고 있어요, 범위 확장이 필요해요): 상한 설정 키를 읽는 `src/profile.rs`, 새 모듈 한 줄 `src/lib.rs`, `skills/moai/workflows/optimize.md` 의 안내 문단, `docs/design-review/appendix/operations/optimize_plan.md` 의 새 키 설명
+- read-only: `src/optimize.rs`, `src/worktree_gc.rs`, `src/worktree_report.rs`, `src/ledger/**`, `src/lane_registry.rs`
+- forbidden: `.claude/` 와 Go 세대의 `worktrees/projects/` 폴더 안에 쓰기, `git worktree remove --force`, `rm -rf`, 가지 삭제, 원장 쓰기, 카드 번호를 SPEC id·가지·커밋·PR 에 쓰는 것, 실제 HOME 과 실제 저장소의 worktree(시험은 임시 저장소만)
+
+## Plan
+
+1. 조각 1(이번): SPEC + PLAN 노트, 범위 확장 요청.
+2. 조각 2(미리보기): `src/worktree_cap.rs` 의 순수 판정(개수·상한, 후보 판정, 중첩, 이유 모으기)과 `optimize-plan` 출력의 `worktree_cap` 과 `cleanup` 키. 상한은 `--worktree-cap` 으로 받고, 프로필 키는 범위가 열린 뒤 이어요. 시험은 AC-1~5.
+3. 조각 3(적용): `optimize-apply` 와 기록, AC-6·7.
+4. 조각 4(마감): 변이 시험, 이웃 검사, 운영 문서, 프로필 키(범위가 열리면).
+
+## Risks
+
+- **삭제 기능이에요.** 항목마다 지우기 직전에 새로 확인하고(미리보기 이후에 바뀌었을 수 있어요), `--force` 를 쓰지 않아서 git 이 더러운 worktree 를 직접 거절해요. 지워지는 것은 worktree 폴더와 그 안의 되살릴 수 있는 무시 파일뿐이고 가지는 남아요. 복구 명령은 기록에 있어요(무시 파일 캐시는 되돌릴 수 없어요).
+- **옛 위치 보존 규칙을 푸는 것은 사용자 결정이에요.** `src/worktree_gc.rs` 는 `.claude/worktrees` 아래를 보존으로 막아요(`preserved_location`). 이 SPEC 은 카드의 사용자 결정(옛 위치 포함)대로 그 한 이유만 새 층에서 풀고, 나머지 이유는 그대로 둬요. Codex 와 Go 세대 폴더는 풀지 않아요. 그 파일을 다른 카드가 잡고 있어서, 새 층은 그 계획의 행(`reasons`, `untracked`, `ignored_outside_build`, `change_age_secs`)을 다시 읽어 판정해요. 그 행의 모양이 바뀌면 이 층이 깨지니 시험이 그 모양을 고정해요.
+- 카드 상태는 원장에서 읽어요. 원장이 없거나 읽을 수 없으면 카드 사실은 "관측 안 됨"이고 병합 경로만 써요. 원장이 있는데 읽을 수 없으면 후보를 만들지 않고 이유를 말해요(fail closed).
+- 프로세스 검사는 작업 디렉터리만 봐요(`worktree_gc::process_cwds`). 파일만 열어 둔 프로세스는 못 봐요. 적용 직전에 한 번 더 읽지만 같은 한계예요.
+- 공간 합계는 파일마다 `st_blocks` 를 더하므로 APFS 복제 파일은 여러 번 세어져 합이 실제 회수보다 커요. 그래서 회수 공간은 합이 아니라 `df` 여유 바이트의 변화로만 말해요.
+- 후보가 수백 개면 걷기가 길어요. 미리보기는 시간 예산(`--budget-ms`)을 넘으면 나머지를 "측정 안 됨"으로 표시해요.
+
+## Decisions
+
+| Id | Decision | Basis | Undo |
+| --- | --- | --- | --- |
+| D-1 | 기존 `worktree-gc-plan` 행을 재사용하고 새 층에서 다시 판정해요(`src/worktree_gc.rs` 를 고치지 않아요) | 그 파일이 다른 카드에 잡혀 있어요. 새로 만들면 판정 규칙이 둘이 돼요 | `worktree_gc.rs` 에 옛 위치 허용 인자를 더하고 새 층을 걷어내기 |
+| D-2 | 상한 설정은 프로필 키 `worktree_cap`(양의 정수, 없으면 40)로 하고, 범위가 열리기 전에는 `--worktree-cap` 으로만 받아요 | 카드 기준 2("설정에서 읽고 기본 40"); 프로필의 `archive_grace_days` 와 같은 모양 | 키를 빼고 플래그만 두기 |
+| D-3 | 옛 위치(`.claude/worktrees`, `.moai-cli/worktrees`)의 보존을 풀어요. Codex 와 Go 세대 폴더는 풀지 않아요 | 카드 본문의 사용자 결정(옛 위치 포함); 리더가 같은 기준으로 손으로 정리한 기록(카드 C-180 의 결과 노트) | 새 층에서 옛 위치 행을 다시 보존으로 되돌리기 |
+| D-4 | 적용의 "자기 토큰"은 미리보기의 `cleanup_digest` + 호출자가 준 허가 참조 + 고른 경로 목록이에요(`worktree-gc-apply` 의 `plan_digest` 와 허가 참조 방식을 따라요) | 기존 적용 명령의 계약; 허가 참조는 허가 검증기가 아니고 승인은 호스트와 사용자의 몫이에요 | 없음 |
+| D-5 | 되돌림 기록은 `<git 공통 폴더>/.moai-cli/worktree-cleanup/<UTC>-<digest12>.json` 에 써요(추적되지 않는 `.git` 아래) | 세션 레지스트리가 쓰는 `<공통 폴더>/.moai-cli/` 와 같은 자리; 보고서 폴더 이동 카드와 겹치지 않아요 | 보고서 폴더(`~/.moai/reports/<project>/`)로 옮기기 |
+| D-6 | `git worktree remove` 는 `--force` 없이 써요. 되살릴 수 있는 무시 파일만 남은 worktree 는 `worktree_gc` 의 `ignored_safe` 판정을 따라요 | AGENTS.local.md 의 "never force" 와 `worktree_gc` 의 데이터 손실 방지 규칙 | 없음 |
+| D-7 | 상한은 보여 주기만 해요(만들기를 막지 않고 자동 삭제도 없어요) | 카드 기준 2("미리보기가 초과를 말해요") | 후속 카드로 상한 강제 |
+
+## Result
+
+(아직 구현 전이에요.)
