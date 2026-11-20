@@ -217,7 +217,17 @@ fn an_installed_four_event_set_is_replanned() {
     let codex: Value =
         serde_json::from_slice(&fs::read(f.project.join(".codex/hooks.json")).unwrap()).unwrap();
     for (host, v) in [("claude", &claude), ("codex", &codex)] {
-        assert!(v["hooks"].get("Stop").is_none(), "{host}: {v}");
+        if host == "claude" {
+            // SPEC-20261121-security-turn-wire: the one Stop group is the turn-end scan.
+            let stop = v["hooks"]["Stop"].as_array().expect("claude Stop");
+            assert_eq!(stop.len(), 1, "{v}");
+            assert_eq!(
+                stop[0]["hooks"][0]["command"],
+                json!("moai hook-dispatch --host claude --event security-turn")
+            );
+        } else {
+            assert!(v["hooks"].get("Stop").is_none(), "{host}: {v}");
+        }
         assert_eq!(
             v["hooks"]["SessionStart"][0]["hooks"][0]["command"],
             json!(format!(

@@ -54,8 +54,9 @@ fn claude_plan_apply_replan_is_noop() {
     assert_eq!(applied["state"], json!("applied"));
     assert_eq!(applied["host_loaded"], json!("not_run"));
     // #2877 Q1: Claude Code also gets the hook engine's preflight guard (Codex stays at 3); the
-    // security-scan group after each write tool makes it five (SPEC-20261120-security-scan-wire).
-    assert_eq!(applied["hooks_generated"].as_array().unwrap().len(), 5);
+    // security-scan group after each write tool makes it five (SPEC-20261120-security-scan-wire)
+    // and the turn-end scan under `Stop` six (SPEC-20261121-security-turn-wire).
+    assert_eq!(applied["hooks_generated"].as_array().unwrap().len(), 6);
     let settings = read_json(&p.path().join(".claude/settings.json"));
     assert_eq!(
         settings["hooks"],
@@ -127,8 +128,16 @@ fn hook_set_has_explicit_timeouts_and_bare_commands() {
     for host in hooks::HOSTS {
         let obj = hooks::hooks_object(host).unwrap();
         let events: Vec<&String> = obj.keys().collect();
-        assert_eq!(events, ["SessionStart", "PreToolUse", "PostToolUse"]);
-        assert!(obj.get("Stop").is_none(), "{host}: Stop has no reader");
+        if *host == "claude" {
+            // SPEC-20261121-security-turn-wire: the Claude set ends with the turn-end scan.
+            assert_eq!(
+                events,
+                ["SessionStart", "PreToolUse", "PostToolUse", "Stop"]
+            );
+        } else {
+            assert_eq!(events, ["SessionStart", "PreToolUse", "PostToolUse"]);
+            assert!(obj.get("Stop").is_none(), "{host}: Stop has no reader");
+        }
         assert!(obj["SessionStart"][0].get("matcher").is_none());
         assert_eq!(obj["PreToolUse"][0]["matcher"], json!("Bash"));
         assert_eq!(obj["PostToolUse"][0]["matcher"], json!("Bash"));
@@ -142,6 +151,7 @@ fn hook_set_has_explicit_timeouts_and_bare_commands() {
                 "SessionStart" => {
                     format!("moai hook-dispatch --host {host} --event session-check")
                 }
+                "Stop" => format!("moai hook-dispatch --host {host} --event security-turn"),
                 _ => format!("moai hook-receipt --host {host}"),
             };
             assert_eq!(command, expected);

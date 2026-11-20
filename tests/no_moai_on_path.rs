@@ -208,8 +208,9 @@ fn generated_hooks_run_and_never_block_a_harmless_call_without_moai_on_path() {
     let plan: Value = serde_json::from_slice(&out.stdout).unwrap();
     let hooks = plan["result"]["hooks"].as_array().expect("hooks").clone();
     // #2936 R9 S1: SessionStart, two PreToolUse groups (claim guard, preflight), PostToolUse;
-    // plus the security-scan PostToolUse group (SPEC-20261120-security-scan-wire).
-    assert_eq!(hooks.len(), 5, "{plan}");
+    // plus the security-scan PostToolUse group (SPEC-20261120-security-scan-wire) and the turn-end
+    // Stop group (SPEC-20261121-security-turn-wire).
+    assert_eq!(hooks.len(), 6, "{plan}");
     let mut preflight = None;
     for h in &hooks {
         let command = h["command"].as_str().unwrap();

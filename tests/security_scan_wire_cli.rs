@@ -49,7 +49,11 @@ fn read_json(path: &Path) -> Value {
 fn claude_runs_security_scan_after_the_receipt_group() {
     let obj = hooks::hooks_object("claude").unwrap();
     let events: Vec<&String> = obj.keys().collect();
-    assert_eq!(events, ["SessionStart", "PreToolUse", "PostToolUse"]);
+    // The turn-end scan adds `Stop` last (SPEC-20261121-security-turn-wire).
+    assert_eq!(
+        events,
+        ["SessionStart", "PreToolUse", "PostToolUse", "Stop"]
+    );
     let post = obj["PostToolUse"].as_array().unwrap();
     assert_eq!(post.len(), 2, "{post:?}");
     assert_eq!(post[0]["matcher"], json!("Bash"));

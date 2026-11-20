@@ -19,7 +19,7 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
 1. **두 호스트 모두 project 훅을 신뢰 뒤에만 실행한다.**
    - Codex: "Project-local hooks load only when the project `.codex/` layer is trusted." "Non-managed hooks must be reviewed and trusted before they run." "Codex records trust against the hook's current hash, so new or changed hooks are marked for review and skipped until trusted." 즉 MoAI가 쓴 훅도 사용자가 `/hooks`에서 검토하기 전에는 돌지 않는다.
    - Claude Code: "Frontmatter hooks in a project skill follow the same workspace trust rule as hooks in settings files." "Project subagent hooks run only after you accept the workspace trust dialog." settings 파일 훅의 신뢰 규칙 본문은 permissions 문서에 있고, 이번에는 그 문서를 읽지 않았다(아래 §6 미확인).
-2. **허용 목록이 고정이다.** 생성기는 이 문서 §3의 훅만 쓴다(Codex 3개, Claude Code 4개 — 이벤트 그룹 수). 요청으로 훅을 더하거나 바꿀 수 없다.
+2. **허용 목록이 고정이다.** 생성기는 이 문서 §3의 훅만 쓴다(Codex 3개, Claude Code 6개 — 이벤트 그룹 수). 요청으로 훅을 더하거나 바꿀 수 없다.
 3. **기록 훅(`PostToolUse`)과 세션 점검 훅(`SessionStart`)은 막지 않고, 차단 훅은 하나뿐이다.** 기록 훅은 `moai hook-receipt`를 부르고 차단하지 않는다(항상 exit 0). 세션 점검 훅은 `moai hook-dispatch --event session-check`를 부르고, 이것도 막지 않는다(실패해도 비차단). 도구 입력·출력·prompt는 저장하지 않는다. 차단 훅은 `PreToolUse`(Bash)의 `moai claim-verify . --hook` 하나다(rc.2 A9 #2255 AC-2). Bash 구간의 첫 단어가 `git`이고 `commit`이나 `push`를 실행하는데, 그 레인 worktree의 claim이 확인되지 않을 때만 exit 2로 막는다. 나머지 호출은 모두 통과시킨다. 권한을 넓히지 않고 쓰기 경계를 좁히기만 한다.
 4. **사용자 설정을 덮어쓰지 않는다.** Claude는 기존 3-way 소유 규칙을 그대로 쓴다. 사용자가 이미 `hooks` 키를 두었으면 plan이 `conflict`가 되고 아무것도 쓰지 않는다. Codex는 MoAI 영수증과 sha256이 맞지 않는 `.codex/hooks.json`을 만나면 `requires preservation review`로 멈춘다.
 5. **홈은 쓰지 않는다.** project가 HOME 자체이거나 HOME의 `.claude`·`.codex`·`.agents`·`.moai-cli` 안이면 거부한다. 훅은 project 트리에만 생긴다.
@@ -32,8 +32,10 @@ skill frontmatter의 `hooks` 필드 거부(`src/claude.rs` `CLAUDE_FIELDS`)는 �
 | `PreToolUse` | `Bash` | `moai claim-verify . --hook`, timeout 10초(#2255 claim 쓰기 경계, 차단 exit 2) |
 | `PreToolUse`(Claude Code 만) | `Bash\|Write\|Edit\|MultiEdit\|NotebookEdit` | `moai hook-dispatch --host claude --event tool-preflight`, timeout 10초 — 훅 엔진의 위험 Bash·`.git`·자격 증명 폴더·개인 키·토큰 쓰기 가드, 문서화된 PreToolUse `deny` 로만 답함(#2877 리더 Q1: Go 세대 hook 을 바꾼 뒤에도 그 보호가 남게) |
 | `PostToolUse` | `Bash` | `moai hook-receipt --host <host>`, timeout 10초 |
+| `PostToolUse`(Claude Code 만) | `Write\|Edit\|MultiEdit\|NotebookEdit` | `moai hook-dispatch --host claude --event security-scan`, timeout 10초 — 방금 쓴 내용에서 치명·높음 모양(비밀 값, 코드 실행 등)을 찾는다. 기본 모드 `observe` 에서는 `security-scan.jsonl` 에 `would_notify` 한 줄만 남기고 아무것도 출력하지 않으며, 어떤 모드에서도 막지 않는다. Bash 기록 그룹 바로 뒤에 선다 |
+| `Stop`(Claude Code 만) | 없음 | `moai hook-dispatch --host claude --event security-turn`, timeout 10초 — 턴이 끝날 때 HEAD 대비 이번 턴의 변경(추적 파일의 추가된 줄과 무시되지 않는 추적 안 된 파일)을 훑는다. 기본 모드 `observe` 에서는 같은 로그에 `would_notify` 한 줄만 남기고 출력이 없으며, `enforce` 로 바꾸면 세션당 발견 집합마다 한 번 `systemMessage` 로 알린다. 어떤 모드에서도 막지 않는다. 호스트가 `systemMessage` 를 턴 끝에 보여 주는지는 실제 세션에서 확인하지 못했다. 이 그룹은 훅 집합의 마지막이고, Codex·OMP 에는 없다(Codex 의 레인 Stop 훅은 §4b 의 별개 그룹) |
 
-- 두 호스트가 모두 받는 교집합만 쓴다: 이벤트 3개(`SessionStart`·`PreToolUse`·`PostToolUse`)와 handler 필드 `type: "command"`·`command`·`timeout`. `PreToolUse`는 두 호스트 모두 matcher `Bash`, stdin `tool_name`·`tool_input.command`·`cwd`, exit 2 + stderr 사유로 차단한다(§5 출처). guard의 `.`은 project다. 두 호스트 모두 command 훅을 세션의 작업 디렉터리에서 실행한다.
+- 두 호스트가 모두 받는 교집합만 쓴다(Claude Code 만의 `PreToolUse` 가드·`PostToolUse` 보안 스캔·`Stop` 보안 스캔 그룹은 위 표의 "Claude Code 만" 줄이다): 이벤트 3개(`SessionStart`·`PreToolUse`·`PostToolUse`)와 handler 필드 `type: "command"`·`command`·`timeout`. `PreToolUse`는 두 호스트 모두 matcher `Bash`, stdin `tool_name`·`tool_input.command`·`cwd`, exit 2 + stderr 사유로 차단한다(§5 출처). guard의 `.`은 project다. 두 호스트 모두 command 훅을 세션의 작업 디렉터리에서 실행한다.
 - guard가 막지 못하는 경우: timeout(10초) 안에 GitHub 조회가 끝나지 않으면 호스트는 훅 실패로 보고 막지 않는다(Claude: timeout은 `onFailure: "block"`이 없으면 차단하지 않음). Codex 문서는 "Treat tool hooks as a useful guardrail, not a complete enforcement boundary"라고 적는다. 그래서 MODE-AGENT workflow 6단계의 commit 전 `claim-verify` 실행 규칙은 그대로 유지한다.
 - guard가 알아보는 commit·push 철자(#2306): 명령줄을 글자로 읽어 판정한다.
   - 알아보는 것:

@@ -577,8 +577,28 @@ fn render_codex(event: Event, verdict: Verdict) -> Answer {
     }
 }
 
-/// The `security-scan` entry of [`capabilities`] for a host that writes through `tools`.
-fn security_scan_capabilities(tools: &[&str]) -> Value {
+/// The `security-turn` entry of [`capabilities`] for Claude Code: the Stop duty that reads a
+/// turn's changes against HEAD (SPEC-20261121-security-scan-turn, wired by SPEC-20261121-security-
+/// turn-wire).
+fn security_turn_capabilities() -> Value {
+    let classes: Vec<&str> = scan::CLASSES.iter().map(|class| class.name()).collect();
+    json!({
+        "event": "Stop",
+        "reads": "added lines of the tracked changes against HEAD and the untracked files the project does not ignore (at most 200 tracked and 200 untracked files, 8 MiB of text in all)",
+        "classes": classes,
+        "mode_key": SECURITY_TURN_RULE,
+        "default_mode": "observe",
+        "modes": "off does nothing; observe (the default) writes one would_notify line and prints nothing; enforce answers once per session and finding set with a systemMessage (the HOME hook-config.toml [hooks.modes])",
+        "answer": "systemMessage",
+        "blocks": false,
+        "generated": "a Stop group of the generated Claude Code settings",
+        "unverified": "whether the host shows a systemMessage at turn end is not stated in the Stop sections of the hooks page and was not seen in a real session",
+    })
+}
+
+/// The `security-scan` entry of [`capabilities`] for a host that writes through `tools`;
+/// `generated` says whether and where the generated settings run it.
+fn security_scan_capabilities(tools: &[&str], generated: &str) -> Value {
     let classes: Vec<&str> = scan::CLASSES.iter().map(|class| class.name()).collect();
     json!({
         "event": "PostToolUse",
@@ -589,9 +609,13 @@ fn security_scan_capabilities(tools: &[&str]) -> Value {
         "modes": "off does nothing; observe (the default) writes one would_notify line and prints nothing; enforce answers with a notification (the HOME hook-config.toml [hooks.modes])",
         "answer": "hookSpecificOutput.additionalContext",
         "blocks": false,
-        "generated": "not wired into generated settings in this release",
+        "generated": generated,
     })
 }
+
+/// What the `security-scan` entry says about the generated settings of a host that does not run
+/// it yet.
+const SECURITY_SCAN_NOT_GENERATED: &str = "not wired into generated settings in this release";
 
 /// What each duty covers on `host`: the host event, the tools it acts on, how it answers and
 /// what it never uses. `hooks-plan` reports it next to the plan so the coverage difference
@@ -621,7 +645,11 @@ pub fn capabilities(host: &str) -> Value {
                                  "opt_in": EDIT_OPT_IN, "generated": "only while the setting is enabled",
                                  "answer": "hookSpecificOutput.additionalContext", "blocks": false,
                                  "not_covered": ["a blocking mode (slice S2)", "language servers (slice S3)", "files outside the project or behind a link", "edits made by Bash"]},
-            "security-scan": security_scan_capabilities(&["Write", "Edit", "MultiEdit", "NotebookEdit"]),
+            "security-scan": security_scan_capabilities(
+                &["Write", "Edit", "MultiEdit", "NotebookEdit"],
+                "a PostToolUse group of the generated Claude Code settings, after the Bash receipt group",
+            ),
+            "security-turn": security_turn_capabilities(),
             "on_engine_error": "exit 1: non-blocking by the host's rules",
         }),
         Some(Host::Codex) => json!({
@@ -647,7 +675,8 @@ pub fn capabilities(host: &str) -> Value {
                                 "host_cap": "not documented", "moai_cap": MOAI_STOP_BLOCK_CAP,
                                 "unverified": "empty stdout on exit 0 for Stop (stated generally, not for Stop)"},
             "edit-diagnostics": {"supported": false, "reason": "slice S1 is Claude Code only; Codex apply_patch is slice S2"},
-            "security-scan": security_scan_capabilities(&["apply_patch"]),
+            "security-scan": security_scan_capabilities(&["apply_patch"], SECURITY_SCAN_NOT_GENERATED),
+            "security-turn": {"supported": false, "reason": "security-turn is Claude Code only in this release"},
             "on_engine_error": "exit 1: not documented for command hooks (unverified)",
         }),
         Some(Host::Omp) => json!({
@@ -670,6 +699,7 @@ pub fn capabilities(host: &str) -> Value {
                                 "reason": "not wired: the extension module does not subscribe to session_stop, so no turn-validation rule runs on OMP"},
             "edit-diagnostics": {"supported": false, "reason": "slice S1 is Claude Code only; OMP tool_result is slice S2"},
             "security-scan": {"supported": false, "reason": "OMP has no PostToolUse wiring for it"},
+            "security-turn": {"supported": false, "reason": "security-turn is Claude Code only in this release"},
             "on_engine_error": "exit 1: the module does not block",
         }),
         None => json!({"error": "unknown hook host; must be claude, codex or omp"}),

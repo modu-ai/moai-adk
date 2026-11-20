@@ -57,6 +57,10 @@ pub enum Handler {
     /// just written and, in the default observe mode, only counts them in its own log. It never
     /// blocks.
     SecurityScan,
+    /// `hook-dispatch --event security-turn` when a turn ends (`Stop`; SPEC-20261121-security-turn-
+    /// wire): Claude Code only. It reads the turn's changes against HEAD and, in the default
+    /// observe mode, only counts new findings in the log of the security scan. It never blocks.
+    SecurityTurn,
 }
 
 /// The handler timeout of the edit-diagnostics hook when it is generated: the checker's own
@@ -84,10 +88,11 @@ pub const CLAUDE_SECURITY_SCAN_MATCHER: &str = "Write|Edit|MultiEdit|NotebookEdi
 
 /// The MoAI hook set: (event, matcher, handler). The session context at session start, one
 /// blocking guard before each Bash tool call (it refuses only an unverified claim's commit or
-/// push, #2255 AC-2) and a receipt after each Bash tool call. `Stop` is not in the set: its
+/// push, #2255 AC-2) and a receipt after each Bash tool call. `Stop` is not in this base set: its
 /// receipt had no reader but `hooks-status`, and the turn-validation rules are empty
 /// (`hook_engine::STOP_RULES`). The Codex lane Stop hook is added by [`codex_hooks`], not here
-/// (#2936 R9 S1, selection table of Issue #2936 comment 6881107273).
+/// (#2936 R9 S1, selection table of Issue #2936 comment 6881107273); the one Stop group of the
+/// Claude set, the turn-end security scan, is added by [`hook_set_with`].
 pub const HOOK_SET: &[(&str, Option<&str>, Handler)] = &[
     ("SessionStart", None, Handler::SessionCheck),
     ("PreToolUse", Some("Bash"), Handler::ClaimGuard),
@@ -255,6 +260,9 @@ pub fn command_with(binary: &str, host: &str, handler: Handler) -> String {
         Handler::SecurityScan => {
             format!("{binary} hook-dispatch --host {host} --event security-scan")
         }
+        Handler::SecurityTurn => {
+            format!("{binary} hook-dispatch --host {host} --event security-turn")
+        }
     }
 }
 
@@ -340,6 +348,8 @@ fn hook_set_with(
                     Handler::SecurityScan,
                 ),
             );
+            // The turn-end scan is the last group: `Stop` has no matcher and no other group.
+            set.push(("Stop", None, Handler::SecurityTurn));
         }
     }
     set
@@ -1561,8 +1571,14 @@ mod tests {
         // Every generated command, in every host and for the lane Stop hook, names `moai`, and
         // the legacy set names `moai-cli` in the same places.
         for host in HOSTS {
+            let legacy = legacy_hooks(host, Some(("agent-1", "o/r"))).unwrap();
             for (event, groups) in current_hooks(host, Some(("agent-1", "o/r"))).unwrap() {
-                let old = &legacy_hooks(host, Some(("agent-1", "o/r"))).unwrap()[&event];
+                let Some(old) = legacy.get(&event) else {
+                    // The one event the legacy set lacks: the Claude turn-end scan group
+                    // (SPEC-20261121-security-turn-wire), which the old releases never wrote.
+                    assert_eq!((*host, event.as_str()), ("claude", "Stop"));
+                    continue;
+                };
                 for (new_group, old_group) in groups
                     .as_array()
                     .unwrap()

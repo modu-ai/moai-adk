@@ -55,7 +55,8 @@ const CLAUDE: Host = Host {
     fixture_receipt: "claude.receipt.json",
     fresh_args: &[],
     entries: 4,
-    fresh_commands: 5,
+    // The turn-end scan group under `Stop` (SPEC-20261121-security-turn-wire) makes it six.
+    fresh_commands: 6,
 };
 const CODEX: Host = Host {
     name: "codex",
