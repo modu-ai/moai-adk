@@ -1224,14 +1224,21 @@ fn launch(
         request.name = Some(format!("agent-{n}"));
     } else if !o.dry_run {
         if let Some(name) = request.name.clone() {
-            let here = std::env::current_dir()
-                .map_err(|_| "session live lock: the current directory is unreadable")?;
-            // No sessions folder (not a git repository): no lock, the lookup stays unknown.
-            if let Ok(dir) = moai_cli::session::agent_seq_dir(&here) {
-                live_named = Some(
-                    moai_cli::session::lock_named_live(&dir, &name)
-                        .map_err(|e| format!("cannot start {name}: {e}"))?,
-                );
+            // A name the registry rules reject takes no lock: the launch runs exactly as it
+            // did before the lock existed, and the liveness lookup answers unknown for it —
+            // the same answer as a session started outside a git repository (B2 of the
+            // SPEC-20261120-launcher-liveness audit). The dry run of the same name stays
+            // what it always was, so preview and run agree.
+            if moai_cli::lane_registry::valid_name(&name) {
+                let here = std::env::current_dir()
+                    .map_err(|_| "session live lock: the current directory is unreadable")?;
+                // No sessions folder (not a git repository): no lock, the lookup stays unknown.
+                if let Ok(dir) = moai_cli::session::agent_seq_dir(&here) {
+                    live_named = Some(
+                        moai_cli::session::lock_named_live(&dir, &name)
+                            .map_err(|e| format!("cannot start {name}: {e}"))?,
+                    );
+                }
             }
         }
     }

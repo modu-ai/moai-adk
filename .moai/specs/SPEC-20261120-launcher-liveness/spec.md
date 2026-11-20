@@ -36,7 +36,7 @@ created: 2026-11-20
   verify: `cargo test --locked --offline --test launcher_liveness_cli three_answers`
 - AC-3 (REQ-3): 조회 앞뒤로 겹침 폴더의 파일 목록·내용·수정 시각이 같고, 없던 잠금 파일이 생기지 않아요.
   verify: `cargo test --locked --offline --test launcher_liveness_cli reads_nothing`
-- AC-4 (REQ-4): 이름 잠금 도우미가 배타 잠금을 잡고, 같은 파일의 둘째 잠금은 막히고, 심볼릭 링크는 거부돼요(런처 배선은 남은 조각).
+- AC-4 (REQ-4): 이름 잠금 도우미가 배타 잠금을 잡고, 같은 파일의 둘째 잠금은 즉시 '이미 실행 중' 으로 거부되고, 심볼릭 링크는 거부돼요; 등록부 규칙 밖의 이름은 잠금 없이 실행돼요(감사 B2 수리).
   verify: `cargo test --locked --offline --test launcher_liveness_cli named_lock`
 - AC-5 (REQ-5, REQ-6): 리더 워크플로의 회수 서술이 순서를 말하고 "명령이 없다" 문장이 사라져요(읽기 확인).
   manual: 문서 읽기
@@ -66,6 +66,6 @@ created: 2026-11-20
 ## Result
 
 - 조각 (가) 첫 판(2026-11-19T21:5xZ, agent-18, head e59556bb67): 등록 세션 id 기록(스키마 1·갱신 유지), `lock_named_live`(배타·심볼릭 거부), `liveness_of_session` 세 답(읽기 무쓰기 — 빠진 잠금 파일 생성 없음), `session-register --liveness-of`, mode-leader.md 회수 순서·낡은 문장 제거(핀 시험 갱신, 원천 명세 재생성).
-- 시험: launcher_liveness_cli 4 passed(RED 는 구현과 함께 돌아 따로 관측 못함 — 커밋 본문에 기록), lib lane_registry 11, lane_next 7, commit_guard 5, leader_round 7, mode_workflow_steps 43, 파이썬 repo_scans·local_check·skill_references 통과 + source_manifest 45 OK(명세 재생성 뒤).
-- 검사: fmt 0, ops rustfmt 0, clippy --all-targets -D warnings 0, trailer-check failing 0, diff --check 0, spec check 0/0.
-- 남은 것(다음 배선 조각): src/main.rs 런처가 이름 세션도 lock_named_live 를 잡게(C-57 예약), mode-agent.md 임대 네 시간 한 줄(C-99 예약), 7절의 런처 강제 종료 실측(배선 뒤).
+- 배선 판(head 9a14dfccbc): 런처가 이름 있는 모든 발사에서 잠금 보유, 둘째 발사 거부, 종단 시험.
+- 감사 수리 판(2026-11-20T01:4xZ, agent-18; 감사 FAIL 노트 3757): B1 — `--liveness-of` 는 `--name` 없이·PROJECT 기본 '.' 로 문서 형태 그대로 실행(시험 the_documented_liveness_form_runs_without_a_name). B2 — 등록부 규칙 밖 이름(한글·밑줄 시작·65자·경로)은 잠금 없이 실행·조회는 미확인·dry-run 과 같은 결과(시험 an_unsafe_name_runs_without_a_lock_and_answers_unknown). N1 — 갱신 시험을 다른 id 로 갱신해 첫 id 유지 고정. N2 — 같은 이름 둘째 실행은 즉시 'already running'. N4 — mode-leader.md 의 launcher-exited 뜻에 '런처 없이 띄운 세션도 이렇게' 보강. N5 — 조회 스캔이 링크 폴더·링크/비정규 항목·4 KiB 초과 항목을 건너뜀. N8 — 이 Result·AC-4 갱신(docs/rust-product-path.md 는 C-137 예약으로 다음 조각).
+- 남은 것(다음 배선 조각): mode-agent.md 임대 네 시간 한 줄, docs/rust-product-path.md 갱신(C-137 뒤), 7절의 런처 강제 종료 실측.

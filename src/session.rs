@@ -601,16 +601,17 @@ pub fn lock_named_live(dir: &Path, name: &str) -> Result<fs::File, String> {
         .truncate(false)
         .open(&path)
         .map_err(|_| unavailable())?;
-    for _ in 0..LIVE_LOCK_TRIES {
-        match file.try_lock() {
-            Ok(()) => return Ok(file),
-            Err(fs::TryLockError::WouldBlock) => {
-                std::thread::sleep(std::time::Duration::from_millis(25));
-            }
-            Err(fs::TryLockError::Error(_)) => break,
-        }
+    // N2 of the audit: a session of this name is already running — say so at once, with no
+    // wait. The numbered path keeps its retries because a shared dry-run probe may hold its
+    // file for an instant; a named lock's only other holder is a full session.
+    match file.try_lock() {
+        Ok(()) => Ok(file),
+        Err(fs::TryLockError::WouldBlock) => Err(format!(
+            "{name} is already running: the session live lock {} is held; stop that session first",
+            path.display()
+        )),
+        Err(fs::TryLockError::Error(_)) => Err(unavailable()),
     }
-    Err(unavailable())
 }
 
 // @MX:WARN: [AUTO] cross-process critical section; a second launch blocks on `.lock` until the
