@@ -52,6 +52,16 @@ skills/moai/references/internal/git-safety.md:7)도 이 카드 몫인데 그 파
 2. 슬라이스 2: 문장 4곳 + 핀 시험(tests/repo_agents_md.rs)+ source-manifest — 예약 풀리면(기준 3의 문장 절반). 프로젝트별 상한 카운트 지점은 이때 확인.
 3. 슬라이스 3: 마이그레이션 — optimize(또는 update)의 미리보기(대상 경로·사용 중 사실) + 선택 적용(`git worktree move` + 기록), 아무것도 지우지 않음(기준 2).
 
+## Result
+
+base `1c9f1a1f95`(로컬 v2026.11.0), worktree `~/.moai/worktrees/moai-adk/c184`(새 모양), heavy-slot `--max 4`. 커밋 세 개(같은 가지 spec/worktree-project-folder-20261120).
+
+- 슬라이스 1 `eabf2dcefe` — REQ-1·REQ-2: `worktree_rel`(두 컴포넌트, reserved 프로젝트 거절), `location_in` 깊이 2 = home(다섯 위치 단어 불변), plan 기본값·이동 목적지·bundle 호출 유지. RED: E0425 `worktree_rel` 부재 → GREEN: lib 1619 · lane_safe_to_reset 22 · worktree_cli 23 · worktree_gc 14 · worktree_move 12, 전부 0 failed. 제품 구멍 1건: `git worktree move` 는 중간 폴더를 만들지 않아 apply 가 목적지의 프로젝트 폴더를 생성(이동 시험이 잡음).
+- 슬라이스 3a `d0439c01bb` — REQ-3·기준 2 적용 절반: `worktree-move-plan/apply --relayout` — root 바로 아래 평평한 워크트리가 `<root>/<project>/<id>` 이동 후보(flat_to_rel: `<project>-` 접두 탈락, 나머지가 비면 전체 이름 유지), 작업 남은 것은 사유와 함께 blocked, 이미 두 컴포넌트인 것은 keep, 플래그 없는 기본 동작 불변. RED: `--relayout` 미지원 거절 → GREEN: lib 1619 · worktree_move 15(신규 3 포함) · worktree_cli 23 · worktree_gc 14 · lane_safe_to_reset 22.
+- 슬라이스 3b `a2cb1b3679` — REQ-3·기준 2 미리보기 절반: `optimize.plan` 의 `worktree_moves` — 평평한 워크트리의 대상 경로(이름 못 만들면 null+사유)·process_inside·busy, 미리보기는 아무것도 옮기지 않음. RED: 키 부재 → GREEN: lib 1619 · optimize_plan_cli 20(신규 1 포함) · worktree_move 15.
+- 리더 결정(노트 4057): (가) — optimize.plan 미리보기 + worktree-move-plan/apply --relayout 적용. 삭제 없음, 사용 중 제외.
+- 대기: 슬라이스 2(문장 4곳 — AGENTS.local.md C-193·git-safety.md C-200·tests/repo_agents_md.rs C-169 예약 중). READY 는 슬라이스 2 착지 뒤 폭 검사와 함께.
+
 ## Decisions
 
 | Id | Decision | Basis | Undo |

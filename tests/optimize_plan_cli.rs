@@ -213,6 +213,45 @@ fn optimize(fx: &Fixture, obs: Option<&Value>, now: u64, extra: &[&str]) -> Valu
     v["result"].clone()
 }
 
+/// The flat worktrees of the old spelling appear in `worktree_moves` with their
+/// two-component destination and the live-use facts; the preview moves nothing.
+#[test]
+fn flat_worktrees_preview_their_relayout_target_and_live_use() {
+    let fx = fixture();
+    let flat = fx.home.join(".moai/worktrees/repo-flat");
+    git(
+        &fx.root,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            "-b",
+            "issue/99-flat",
+            flat.to_str().unwrap(),
+            "integ",
+        ],
+    );
+    let r = optimize(&fx, Some(&observations(&fx)), now_plus_days(0), &[]);
+    let moves = r["worktree_moves"].as_array().unwrap();
+    let canonical = fs::canonicalize(&flat).unwrap();
+    let row = moves
+        .iter()
+        .find(|m| m["path"] == json!(canonical.display().to_string()))
+        .unwrap_or_else(|| panic!("no worktree_moves row for {flat:?}: {r}"));
+    assert_eq!(
+        row["destination"],
+        json!(fx
+            .home
+            .join(".moai/worktrees/repo/flat")
+            .display()
+            .to_string()),
+        "{row}"
+    );
+    assert_eq!(row["process_inside"], json!(false), "{row}");
+    assert_eq!(row["busy"], Value::Null, "{row}");
+    assert_eq!(r["writes"], json!(false));
+}
+
 fn row<'a>(r: &'a Value, kind: &str, path_end: &str) -> &'a Value {
     r["rows"]
         .as_array()

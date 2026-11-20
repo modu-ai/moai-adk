@@ -782,6 +782,40 @@ pub fn plan(req: &Request) -> Result<Value> {
         .map(|r| json!({"kind": r["kind"], "path": r["path"], "head": r["head"], "action": r["action"], "reasons": r["reasons"], "trim_paths": r["trim_paths"]}))
         .collect();
     let digest = crate::digest(serde_json::to_string(&bound).unwrap_or_default().as_bytes());
+    // Flat worktrees of the old one-component spelling (SPEC-20261120-worktree-project-folder):
+    // the destination a `worktree-move-plan --relayout` would name and whether anything lives
+    // inside. Read-only — nothing is moved here.
+    let empty_cwds: Vec<PathBuf> = Vec::new();
+    let cw = cwds.as_ref().unwrap_or(&empty_cwds);
+    let mut worktree_moves: Vec<Value> = Vec::new();
+    if let Ok(h) = crate::home_workdir::home() {
+        let wt_root = crate::home_workdir::worktrees_root(&h);
+        for e in listed.iter().skip(1) {
+            if e.bare {
+                continue;
+            }
+            let path = fs::canonicalize(&e.path).unwrap_or_else(|_| e.path.clone());
+            if path.parent() != Some(wt_root.as_path()) {
+                continue;
+            }
+            let raw = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or_default();
+            let (destination, unavailable) = match crate::home_workdir::flat_to_rel(&primary, raw) {
+                Ok(rel) => (json!(wt_root.join(rel).display().to_string()), Value::Null),
+                Err(reason) => (Value::Null, json!(reason)),
+            };
+            worktree_moves.push(json!({
+                "path": path.display().to_string(),
+                "destination": destination,
+                "destination_unavailable": unavailable,
+                "process_inside": cw.iter().any(|c| c.starts_with(&path)),
+                "busy": crate::worktree_gc::busy_now(&path, false, None),
+                "apply": "worktree-move-apply --relayout with the same --root, the observations file and the plan digest, after the user approves the moves",
+            }));
+        }
+    }
     let count = |a: &str| rows.iter().filter(|r| r["action"] == a).count();
     let sum = |f: &dyn Fn(&Value) -> u64| rows.iter().map(f).sum::<u64>();
     let freeable = sum(&|r: &Value| match r["action"].as_str() {
@@ -813,6 +847,7 @@ pub fn plan(req: &Request) -> Result<Value> {
             "freeable_bytes": freeable,
         },
         "worktrees": {"count": worktree_count, "warn_over": WORKTREE_WARN_OVER},
+        "worktree_moves": worktree_moves,
         "warnings": worktree_count_warning(worktree_count).into_iter().chain(agent_warnings).collect::<Vec<_>>(),
         "rows": rows,
         "preview_digest": digest,
