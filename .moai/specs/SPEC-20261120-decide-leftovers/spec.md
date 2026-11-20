@@ -43,3 +43,10 @@ SPEC-20261120-retire-decide 가 결정 모델 라이브러리(`src/decide/`)를 
 2. `tests/key_set_prompt_tty_test.py` 의 예시 공급자 `typesafe` 를 `demo` 로 바꾸고(인자, 파일 이름 `demo.key`, 프롬프트 문구 단언) 시험을 돌림.
 3. 파일 이름 규칙 시험을 소스 무변경 상태로 돌려 `.env.typesafe` 처리가 그대로임을 확인.
 4. `templates/bundle-packs/` 의 TypeSafe 언급 정리는 후속 과제로 남김.
+
+## Result
+
+- AC-1: met — head de542b7768 에서 `grep -c 'SPEC-20261120-retire-decide'` 가 세 SPEC 에서 각각 1; `moai spec check --all` exit 0 (189개, errors 0, warnings 9 — 기준선과 같은 9개, 이번에 건드린 SPEC 에는 없음). `secret-shape-words` 는 H1 제목이 없어서 안내 줄을 frontmatter 닫는 `---` 바로 아래, `## Intent` 위에 넣었어요.
+- AC-2: met — `python3 -m unittest tests.key_set_prompt_tty_test` exit 0 (15 tests OK, 저와 구현 에이전트 각각 실행); `grep -c typesafe tests/key_set_prompt_tty_test.py` 0
+- AC-3: met — `git diff --exit-code v2026.11.0 HEAD -- src` exit 0 (소스 무변경); `cargo test --locked --offline --lib home_` exit 0 (107 passed, `home_layout`·`home_retire` 포함); `cargo test --locked --offline --test home_retire_cli` exit 0 (24 passed)
+- AC-4: met — `git diff --check v2026.11.0 HEAD` exit 0; `cargo fmt --check` exit 0
