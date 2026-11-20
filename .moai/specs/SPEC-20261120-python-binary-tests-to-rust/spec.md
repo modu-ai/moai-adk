@@ -101,6 +101,25 @@ created: 2026-11-20
 - 변형 5개(상한 5, 모두 잡힘, 변형 뒤 트리 변경 0): 확인 사이 계획이 바뀌어도 적용(`without_a_matching_confirmation_nothing_is_written`), stdin 이 터미널이 아니어도 질문(`stdin_that_is_not_a_terminal_is_never_asked`), `--json` 무시(`json_on_a_terminal_prints_the_envelope`), 빈 답·end of input 을 yes 로(`end_of_input_at_the_question_writes_nothing`), 낡은 계획 거절 문장 교체(`a_plan_that_changes_before_the_write_is_refused`). 첫째 변형은 옛 시험(`without_a_matching_confirmation_nothing_is_written`)만 잡았고, 새 `a_plan_that_changes_before_the_write_is_refused` 는 다섯째 변형(거절 문장)만 잡았어요. 첫째 변형이 고친 확인 줄(`src/update.rs` 의 `fresh.plan_digest != digest`)은 터미널 yes 흐름이 거치지 않는 줄이라, 터미널 흐름의 낡은 계획 거절을 코드로 깨뜨리는 변형은 이 조각에 없어요(한계로 남겨요).
 - 리눅스: 이 Mac 에서 돌릴 수 없어요(D4). 같은 `openpty` 호출이 `tests/help_layout.rs` 에서 이미 리눅스 CI 를 통과하고 있다는 점이 근거이고, 새 시험의 리눅스 결과는 CI 가 처음 보여 줘요. 그 전에는 "리눅스 통과"라고 쓰지 않아요.
 
+### 조각 2 (터미널 화면) — 코드 head 8d61808e27e6502ee10e5e2302d1bfd535039341
+
+- 만든 것: 터미널 화면 파이썬 8개(67 사례)를 Rust 시험 8개 파일(67 시험)로 옮기고 파이썬 8개를 모두 지웠어요. 공용 도구(`tests/common/pty.rs`)는 stdout 이나 stderr 를 파이프로 받아 돌려주기(`stdout_not_a_terminal`, `stderr_not_a_terminal`), stdin 에 글 넣기(`stdin_text`), 한 줄로 쓰는 실행 함수(`piped`, `piped_with`, `stderr_on_terminal`, `stdout_on_terminal`, `env_with`)를 얻었고, 화면 읽기는 `tests/common/screens.rs`(색 시퀀스 제거, 표 행 찾기)에 둬요. `tests/pty_helper.rs` 는 8개에서 13개로 늘었어요.
+- 대조표(파이썬 모듈 사례 수 → Rust 파일 시험 수, 모두 같아요):
+  - `install_inspect_tty_test.py` 3 → `tests/install_inspect_terminal_cli.rs` 3
+  - `help_english_tty_test.py` 3 → `tests/help_english_terminal_cli.rs` 3
+  - `ui_tty_test.py` 9(배너 7, 봉투 2) → `tests/ui_terminal_cli.rs` 9
+  - `ui_summary_tty_test.py` 7 → `tests/ui_summary_terminal_cli.rs` 7
+  - `error_frame_tty_test.py` 10 → `tests/error_frame_terminal_cli.rs` 10
+  - `ui_progress_confirm_test.py` 8(key-remove 5, index-build 2, forge-read 1) → `tests/ui_progress_confirm_terminal_cli.rs` 8
+  - `ui_korean_tty_test.py` 12(화면 8, 오류 프레임 4) → `tests/ui_korean_terminal_cli.rs` 12
+  - `key_set_prompt_tty_test.py` 15 → `tests/key_set_prompt_terminal_cli.rs` 15(그리고 자기 재실행용 `prompt_shell` 1개, 아래)
+- 달라진 점: (1) 숨김 입력 시험은 파이썬 보조 셸 대신 시험 프로그램을 같은 이름으로 다시 실행해 세션 대장(`setsid`, `TIOCSCTTY`)으로 쓰고(`prompt_shell`, 환경 변수가 없으면 아무것도 안 해요), 명령의 stdout 은 그 보조 셸이 다섯 번째 파일 기술자로 받아요. 종료 신호는 `ExitStatus::signal()` 로 `-신호` 로 보고해 파이썬과 같은 값(`-SIGINT`, `128 + SIGQUIT` 등)을 단정해요. (2) 정규식 크레이트가 없어 digest 치환과 `ESC [ … m` 제거를 손으로 짰어요. (3) 파이썬 `capture_error` 의 `binary` 인자는 이 모듈의 사례가 쓰지 않아서 옮기지 않았어요. (4) 이 모듈이 부르던 `self_audit_run.rust_bin` 은 `common::MOAI_CLI_BIN` 이 대신해요.
+- 소스에서 끌어온 값: 화면 기대값은 `tests/fixtures/ui/en/*.golden`(`home-routing-plan`, `key-remove-refused`, `index-build-stages`, `error-*`)에서 읽고, 안내 문장(`install-inspect` 의 PATH 문장, 빈 stdin 오류 등)은 파이썬 시험이 쥐고 있던 글자를 그대로 가져왔어요. 이 글자들은 제품 소스의 비공개 값이라 끌어올 길이 없어요(D3 와 같은 이유).
+- CI 범위 규칙: `tools/ci_scope.py` 는 `_tty_test.py` 로 끝나는 파일을 바꾸는 PR 에만 macOS 검사를 붙였어요. 모듈을 Rust 로 옮기면 새 시험을 바꾸는 PR 이 macOS 를 건너뛰게 되므로 `_terminal_cli.rs` 이름과 `tests/common/pty.rs`, `tests/pty_helper.rs` 를 같은 `pty/terminal` 분류에 넣고 `tests/ci_scope_test.py` 에 세 사례를 더했어요. 옛 `_tty_test.py` 규칙은 남겨 두었어요(`ci_scope_test` 가 옛 PR 파일 목록으로 확인해요). 그 밖의 참조 둘(`tests/key_vault_cli.rs` 주석, `docs/design-review/appendix/operations/key_set.md`)은 Rust 시험을 가리키게 바꿨어요. `.moai/specs/SPEC-20261118-project-decide-model/spec.md` 의 "read-only" 줄은 다른 카드의 기록이라 건드리지 않았어요.
+- 이 head 에서 돌린 것(`cargo test --offline --locked`, heavy-slot): `error_frame_terminal_cli` 10, `key_set_prompt_terminal_cli` 16, `pty_helper` 13, `ui_korean_terminal_cli` 12, `ui_progress_confirm_terminal_cli` 8, `ui_summary_terminal_cli` 7, `ui_terminal_cli` 9, `home_isolation_scan` 18 모두 passed(exit 0); 앞서 `install_inspect_terminal_cli` 3, `help_english_terminal_cli` 3 passed. 이웃 검사 전체(`python3 -I target/run-ready.py` → `target/ready.log`: fmt, clippy 전 대상, 터미널·update 대상, `--lib`, `--bins`, macOS cfg 대상, `tests/ci_scope_test.py`, `repo_scans` 39개)는 이 항목을 쓰는 시점에 진행 중이에요. 결과는 끝나는 대로 이 항목에 적어요.
+- 변형 5개(상한 5, 모두 잡힘, 변형 뒤 트리 변경 0, 시험 대상은 새 Rust 파일만): ① `src/banner.rs` 의 `w <= LOGO_WIDTH` 를 `w < LOGO_WIDTH` → `ui_terminal_cli` 의 `a_narrow_terminal_gets_the_line_not_the_logo`; ② `src/ui.rs` 오류 색을 빨강에서 초록으로 → `an_operation_error_is_framed_on_a_terminal_and_unchanged_on_a_pipe`, `the_color_flag_comes_before_the_environment`; ③ `src/key_prompt.rs` 신호 처리기의 `TCSAFLUSH` 를 `TCSANOW` 로 → `a_signal_drops_what_was_typed_and_not_read_yet` 외 2개; ④ 같은 파일 종료 신호 목록에서 `SIGHUP` 을 `SIGINT` 로 바꿔 빼기 → `ending_signals_leave_the_terminal_as_it_was_and_store_nothing`; ⑤ `src/ui_text.rs` 의 둘째 단계 줄을 `(2/4)` 로 → `stages_show_on_a_terminal_and_never_on_a_pipe` 외 2개.
+- 리눅스: 이 Mac 에서 돌릴 수 없어요(D4). 새 시험의 리눅스 결과는 CI 가 처음 보여 줘요. 신호·`setsid`·`TIOCSCTTY` 를 쓰는 `key_set_prompt_terminal_cli` 가 가장 눈여겨볼 곳이에요. 그 전에는 "리눅스 통과"라고 쓰지 않아요.
+
 ### 수용 기준 결과
 
 - AC-1: met — `cargo test --test pty_helper` 8 passed(질문 뒤 입력, 터미널 stdin 없음, 정리, 한도에 죽임, 깨끗한 환경 포함).
@@ -111,5 +130,4 @@ created: 2026-11-20
 
 ### 남은 조각(카드는 열려 있어요)
 
-- 조각 2: 터미널 화면 파이썬 8개(`ui_tty_test`, `ui_korean_tty_test`, `ui_summary_tty_test`, `ui_progress_confirm_test`, `error_frame_tty_test`, `help_english_tty_test`, `install_inspect_tty_test`, `key_set_prompt_tty_test`) — 같은 도구로 옮기거나 Rust 와 겹치면 삭제.
 - 조각 3: 개발 도구 테스트가 바이너리를 곁다리로 부르는 9개 — 처분과 이유.
