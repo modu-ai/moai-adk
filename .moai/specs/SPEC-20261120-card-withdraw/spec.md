@@ -1,12 +1,17 @@
 ---
 id: SPEC-20261120-card-withdraw
 title: "card withdraw — a withdrawn card cannot be taken and hides from the default list"
-status: draft
+status: completed
+approval: {by: user, at: 2026-11-20, basis: "in-session selection 2026-11-20: 세션 병목 리포트 개선 'all' 선택(카드 본문 기록)이 withdraw 기능을 고름 — 리더 배차로 SPEC 작성, tier 1 감사가 요구·수용 기준과 구현의 일치를 확인", digest: "sha256:66705f2ab97240b5e56d2c7609a1af6c7f82c6cd4fde372275ea48e74bd7d6a9"}
 revision: 1
 created: 2026-11-20
 ---
 
 # 카드 철회 — withdrawn 카드는 take 가 거절되고 기본 목록에 숨는다
+
+## Interview
+
+- none: 리더 배차가 요구사항을 전달했어요 — 카드 본문의 사용자 'all' 선택(2026-11-20)이 요구를 정했고, 별도 사용자 인터뷰는 없었어요.
 
 ## Intent
 
@@ -69,6 +74,11 @@ created: 2026-11-20
 - 목록 제외 subquery 가 event 표를 카드마다 읽어요 — 목록은 카드 수 규모라 지금은 문제가 안 되고, event 에 card_id 색인 문제는 통합 가지 타임라인 지표(기준 문서 5.1절)가 지켜봐요.
 
 ## Result
+
+- AC-1 met — ledger_workflow withdraw 3종(성공 두 상태·거절 셋·입력 한계) 통과
+- AC-2 met — card_withdraw_cli take 사유·kind conflict·평범 hold 문구 유지
+- AC-3 met — 목록 숨김·--all·목록 전후 스냅샷 동일
+- AC-4 met — 이웃 검사(fmt·clippy·ledger_workflow·card_dispatch_cli·card_cli·spec_cli·home_isolation_scan)
 
 base `aa06a0f6ef`(로컬 v2026.11.0), worktree `~/.moai/worktrees/moai-adk/c188`(새 모양), heavy-slot `--max 4`.
 

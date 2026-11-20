@@ -230,30 +230,6 @@ enum Action {
     },
     /// Writes the ledger. Take a ready card for a holder
     ///
-    /// Writes the ledger. Withdraw a draft or ready card
-    ///
-    /// Writes the ledger. Marks the card withdrawn: it moves to `hold`, one `card.withdraw`
-    /// event records the reason and the by with the writing session, `card take` refuses it
-    /// naming the reason, and the default `card list` hides it (`--all` shows it). The ledger
-    /// schema is unchanged: the six state values are pinned by its CHECK, so the marker is the
-    /// free event kind, not a new value. The card must be `draft` or `ready` and held by
-    /// nobody.
-    Withdraw {
-        /// The card to withdraw (`C-12` or `#3066`).
-        card: String,
-        /// Why the card is withdrawn (one line, 1..=500 characters).
-        #[arg(long)]
-        reason: String,
-        /// Who withdraws it (one line, 1..=200 characters).
-        #[arg(long)]
-        by: String,
-        /// The project folder (its profile holds the project id).
-        #[arg(default_value = ".")]
-        project: PathBuf,
-        /// The HOME to use (default `$HOME`). Tests pass a temporary folder.
-        #[arg(long)]
-        home: Option<PathBuf>,
-    },
     /// Writes the ledger. Reserves the card for this session: the next generation, a lease from the database
     /// clock, its write scope (the card's own unless `--scope` is given) and `ready` → `active`.
     /// Refused when the card is not `ready`, is already held, or its scope overlaps another
@@ -285,6 +261,30 @@ enum Action {
         #[arg(long, default_value = ".")]
         project: PathBuf,
         /// The HOME holding the ledger (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Writes the ledger. Withdraw a draft or ready card
+    ///
+    /// Writes the ledger. Marks the card withdrawn: it moves to `hold`, one `card.withdraw`
+    /// event records the reason and the by with the writing session, `card take` refuses it
+    /// naming the reason, and the default `card list` hides it (`--all` shows it). The ledger
+    /// schema is unchanged: the six state values are pinned by its CHECK, so the marker is the
+    /// free event kind, not a new value. The card must be `draft` or `ready` and held by
+    /// nobody.
+    Withdraw {
+        /// The card to withdraw (`C-12` or `#3066`).
+        card: String,
+        /// Why the card is withdrawn (one line, 1..=500 characters).
+        #[arg(long)]
+        reason: String,
+        /// Who withdraws it (one line, 1..=200 characters).
+        #[arg(long)]
+        by: String,
+        /// The project folder (its profile holds the project id).
+        #[arg(default_value = ".")]
+        project: PathBuf,
+        /// The HOME to use (default `$HOME`). Tests pass a temporary folder.
         #[arg(long)]
         home: Option<PathBuf>,
     },

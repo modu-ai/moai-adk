@@ -169,3 +169,29 @@ fn the_wired_withdraw_action_refuses_take_and_hides_from_the_default_list() {
     assert_eq!(holds["count"], json!(1), "{holds}");
     assert_eq!(holds["cards"][0]["name"], json!("C-1"), "{holds}");
 }
+
+/// A withdrawn card whose state leaves `hold` shows in the default list again — the hiding
+/// belongs to the withdrawn hold, not to the event forever.
+#[test]
+fn a_withdrawn_card_that_leaves_hold_shows_in_the_default_list_again() {
+    let (home, p) = world();
+    {
+        let mut w: WriteLedger = ledger::open_write(home.path(), "demo").unwrap();
+        w.with_write_tx(|tx, now| {
+            Ok(tx.execute(
+                "UPDATE card SET state = 'ready', updated_at = ?2 WHERE card_id = 1",
+                rusqlite::params![1, now],
+            )?)
+        })
+        .unwrap();
+    }
+    let listed = result(&run(&home, &["card", "list", &p]));
+    assert_eq!(listed["count"], json!(2), "{listed}");
+    let names: Vec<&str> = listed["cards"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["name"].as_str().unwrap())
+        .collect();
+    assert!(names.contains(&"C-1"), "{listed}");
+}

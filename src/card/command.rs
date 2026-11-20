@@ -145,7 +145,8 @@ pub fn list_filtered(
                     source_host, source_project, source_number, {} \
                FROM card WHERE (?1 IS NULL OR state = ?1) \
                            AND (?2 IS NULL OR substr(title, 1, length(?2)) = ?2) \
-                           AND (?3 OR ?1 IS NOT NULL OR NOT EXISTS (SELECT 1 FROM event \
+                           AND (?3 OR ?1 IS NOT NULL OR card.state <> 'hold' \
+                               OR NOT EXISTS (SELECT 1 FROM event \
                              WHERE event.card_id = card.card_id \
                                AND event.kind = 'card.withdraw')) \
               ORDER BY card_id",
