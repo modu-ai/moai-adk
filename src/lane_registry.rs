@@ -282,18 +282,29 @@ pub fn liveness_of_session(project: &Path, session: &str) -> (Liveness, Value) {
 
 /// The name of the entry that carries `session`, longest lease first; `None` when no readable
 /// entry names it (the name's entry now names another session id, so the old id is gone).
+/// The scan is read-only and refuses every unsafe shape it meets: a symlinked folder (N5 of
+/// the audit — the link must not leave the clone), a symlinked or non-regular entry, an entry
+/// over the size bound, a path the clone does not own.
 fn registered_name_of(project: &Path, session: &str) -> Option<String> {
-    let dir = registry_dir(project).ok()?;
+    // N5: the unlinked check walks the path below the clone and refuses a link at any step,
+    // so a symlinked sessions folder can never send the scan outside the clone.
+    let dir = registry_dir_unlinked(project).ok()?;
+    if fs::symlink_metadata(&dir)
+        .map(|m| m.file_type().is_symlink())
+        .unwrap_or(true)
+    {
+        return None;
+    }
     let mut best: Option<(i64, String)> = None;
     for e in fs::read_dir(&dir).ok()?.flatten() {
         let path = e.path();
         if path.extension().and_then(|x| x.to_str()) != Some("json") {
             continue;
         }
-        if fs::symlink_metadata(&path)
-            .map(|m| m.file_type().is_symlink())
-            .unwrap_or(true)
-        {
+        let Ok(meta) = fs::symlink_metadata(&path) else {
+            continue;
+        };
+        if !meta.is_file() || meta.len() > MAX_ENTRY_BYTES {
             continue;
         }
         let Ok(text) = fs::read_to_string(&path) else {
