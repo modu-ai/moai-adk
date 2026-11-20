@@ -1,7 +1,7 @@
 ---
 id: SPEC-20261120-drop-decision-question
 title: "Drop the decision model question from the project interview"
-status: approved
+status: completed
 revision: 1
 created: 2026-11-20
 approval: {by: user, at: 2026-11-21, basis: "AskUserQuestion selection: 승인 (Recommended)", digest: "sha256:92ee5e290a412041c7b703e4291ff3cda8eea16dd8fddd21d665414f7ee96253"}
