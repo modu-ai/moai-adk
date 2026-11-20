@@ -432,7 +432,7 @@ pub fn capabilities(host: &str) -> Value {
             "tool-preflight": {"event": "PreToolUse", "guards": [
                                    "Bash: git commit on an issue/<n> branch without a claim token",
                                    "Bash: dangerous rm targets, force push/delete of main or master, mkfs, dd onto a device, fork bomb, DROP DATABASE/SCHEMA or TRUNCATE TABLE through a database client, commit hook bypass",
-                                   "Write/Edit/MultiEdit/NotebookEdit: .git internals, credential directories, private-key file names, private-key or GitHub-token content",
+                                   "Write/Edit/MultiEdit/NotebookEdit: .git internals, credential directories, private-key file names, private-key or access-token content",
                                    BASH_LOCK_GUARD],
                                "opt_in": OPT_IN_RULES,
                                "not_guarded": ["writes outside the project unless [hooks.outside_project_writes] is enabled", "shell redirections into protected paths", BASH_LOCK_OPEN, "MCP tools"],
@@ -458,7 +458,7 @@ pub fn capabilities(host: &str) -> Value {
             "tool-preflight": {"event": "PreToolUse", "guards": [
                                    "Bash: git commit on an issue/<n> branch without a claim token",
                                    "Bash: dangerous rm targets, force push/delete of main or master, mkfs, dd onto a device, fork bomb, DROP DATABASE/SCHEMA or TRUNCATE TABLE through a database client, commit hook bypass",
-                                   "apply_patch: .git internals, credential directories, private-key file names (paths from '*** Add/Update/Delete File:' and '*** Move to:' lines, a format the docs do not define; an unreadable patch is not path-checked), private-key or GitHub-token content in added lines",
+                                   "apply_patch: .git internals, credential directories, private-key file names (paths from '*** Add/Update/Delete File:' and '*** Move to:' lines, a format the docs do not define; an unreadable patch is not path-checked), private-key or access-token content in added lines",
                                    BASH_LOCK_GUARD],
                                "opt_in": OPT_IN_RULES,
                                "not_guarded": ["writes outside the project unless [hooks.outside_project_writes] is enabled", "shell redirections into protected paths", BASH_LOCK_OPEN, "MCP tools"],
