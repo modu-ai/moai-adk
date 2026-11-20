@@ -411,20 +411,27 @@ pub fn is_generated_local(bytes: &[u8]) -> bool {
 /// generation manifests and workflows this tool writes into it today, the two generation
 /// markers (a fresh checkout classifies the folder by them), the team's own `config/`,
 /// `decisions/` and `docs/`, and the SPECs in `specs/` for every project, with or without GitHub
-/// Issues (user decision 2026-11-17, SDD always; replaces decision 6892663669). `specs/` stays
-/// last so a block written before that decision for a project without Issues keeps its bytes.
-/// Everything else in the folder is machine output and is ignored.
-const STATE_KEPT: [&str; 9] = [
-    "project.yaml",
-    "moai-cli.json",
-    "moai.json",
-    "manifests/",
-    "workflows/",
-    "config/",
-    "decisions/",
-    "docs/",
-    "specs/",
+/// Issues (user decision 2026-11-17, SDD always; replaces decision 6892663669), and the
+/// project's own development scripts and evaluation sets in `tools/` and `evals/`
+/// (SPEC-20261120-moai-layout). The list is [`crate::state_root::KEPT`], one place; its order is
+/// the order of the block's `!` lines, so the earlier nine keep their places and a block written
+/// before a later line was added differs only by that line. Everything else in the folder is
+/// machine output under `local/` and is ignored.
+const STATE_KEPT: [&str; 11] = crate::state_root::KEPT;
+
+/// File names that never go to git anywhere under the state folder, `tools/` and `evals/`
+/// included (SPEC-20261120-moai-layout REQ-11): the credential files of an earlier generation's
+/// template and the `.env` family. The lines come after the allow-list, so an allow line cannot
+/// lift them.
+const STATE_SECRETS: [&str; 4] = [
+    "**/credentials.yaml",
+    "**/*.credentials",
+    "**/.env",
+    "**/.env.*",
 ];
+
+/// How many `now visible:` lines the plan shows before it counts the rest.
+const VISIBLE_NOTE_CAP: usize = 20;
 
 /// The `kind` an owned `.gitignore` block is recorded with: whether it lists `AGENTS.local.md`
 /// (#3009 S3b). A block recorded before this field existed listed it, so `None` reads as listed.
@@ -448,10 +455,16 @@ fn render_ignore(root: &Path, list_local: bool, allow: &[String]) -> String {
     // personal file; src/apply.rs::receipts_rel is the single source of the path.
     body.push_str(&format!("{}/\n", apply::receipts_rel(root)));
     body.push_str(&format!("{state}/*\n"));
+    // The machine's own output lives under `local/`; the line says so (the `*` line above
+    // already covers it, and a user rule cannot change that without a `!` line of its own).
+    body.push_str(&format!("{state}/{}/\n", state_root::LOCAL_DIR));
     for path in allow {
         // `ignore_block` refused a name that cannot be written, so the fallback is not reached.
         let line = escape_ignore_path(path).unwrap_or_else(|| path.clone());
         body.push_str(&format!("!{line}\n"));
+    }
+    for pattern in STATE_SECRETS {
+        body.push_str(&format!("{state}/{pattern}\n"));
     }
     format!("{begin}\n{body}{end}\n")
 }
@@ -565,10 +578,90 @@ fn ignore_block(root: &Path, list_local: bool, ignore_text: Option<&str>) -> Res
         ));
         allow.push(path);
     }
+    let rendered = render_ignore(root, list_local, &allow);
+    let mut visible_notes: Vec<String> = Vec::new();
+    shown.append(&mut newly_visible(
+        root,
+        state,
+        &user,
+        &rendered,
+        &mut visible_notes,
+    )?);
+    for note in visible_notes {
+        // A note the earlier questions already raised (git is missing) is said once.
+        if !shown.contains(&note) {
+            shown.push(note);
+        }
+    }
     Ok(IgnoreBlock {
-        rendered: render_ignore(root, list_local, &allow),
+        rendered,
         notes: shown,
     })
+}
+
+/// The plan's `now visible: <path>` lines (SPEC-20261120-moai-layout REQ-12): files that sit
+/// under `<state>/tools/` or `<state>/evals/` today, untracked and ignored, and that the new
+/// block lets git see. Git lists the ignored files; the same throw-away repository that reads
+/// the user's rules (`user_rule_hits`) is asked again with the new block after them, so a file
+/// the block's credential lines or a user rule still ignore is not named. At most
+/// [`VISIBLE_NOTE_CAP`] paths are named, then one line counts the rest. Empty when the project is
+/// not a git repository, git is not installed (noted), or nothing is ignored there.
+fn newly_visible(
+    root: &Path,
+    state: &str,
+    user: &str,
+    rendered: &str,
+    notes: &mut Vec<String>,
+) -> Result<Vec<String>> {
+    let tools = format!("{state}/tools");
+    let evals = format!("{state}/evals");
+    let Some(stdout) = ask_project(
+        root,
+        &[
+            "ls-files",
+            "-z",
+            "--others",
+            "--ignored",
+            "--exclude-standard",
+            "--",
+            tools.as_str(),
+            evals.as_str(),
+        ],
+        "which ignored files sit in the folders the block allows",
+        notes,
+    )?
+    else {
+        return Ok(Vec::new());
+    };
+    let mut candidates: Vec<String> = Vec::new();
+    for path in stdout.split(|b| *b == 0).filter(|p| !p.is_empty()) {
+        let path = std::str::from_utf8(path).map_err(|_| {
+            format!("git lists a name under {tools}/ or {evals}/ that is not UTF-8 text; rename it before the update")
+        })?;
+        candidates.push(path.to_string());
+    }
+    if candidates.is_empty() {
+        return Ok(Vec::new());
+    }
+    let with_block = format!("{user}\n{rendered}");
+    let mut scratch: Vec<String> = Vec::new();
+    let hits = user_rule_hits(root, &with_block, &candidates, &mut scratch)?;
+    let visible: Vec<&String> = candidates
+        .iter()
+        .filter(|c| !hits.iter().any(|h| h.path == **c))
+        .collect();
+    let mut lines: Vec<String> = visible
+        .iter()
+        .take(VISIBLE_NOTE_CAP)
+        .map(|c| format!("now visible: {c}"))
+        .collect();
+    if visible.len() > VISIBLE_NOTE_CAP {
+        lines.push(format!(
+            "now visible: and {} more files under {tools}/ and {evals}/",
+            visible.len() - VISIBLE_NOTE_CAP
+        ));
+    }
+    Ok(lines)
 }
 
 /// The part of a `.gitignore` the user wrote: its text outside this tool's managed block. A
