@@ -77,4 +77,42 @@ created: 2026-11-21
 
 ## Result
 
-(아직 구현 전이에요.)
+이 조각(조각 1: 계획·적용·영수증·스키마·템플릿)의 근거예요. 코드 head `a192464282`. 카드는 부분 READY 로 열어 두어요: 사용자에게 선택지를 내놓는 일(`/moai project`·`moai update` 의 선택지 목록과 두 워크플로 글)은 이 조각에 없고 후속(조각 2)이에요. 그 파일들(`src/project_update.rs`·`src/update.rs`·`src/ops/project_update_plan.rs`·`skills/moai/workflows/project.md`·`update.md`)을 다른 카드가 쥐고 있어요. 그래서 이 조각만으로는 요청에 `picks` 로 직접 넣을 때만 블록이 계획돼요. 소스 목록(`source-manifest.json`)에 새 자산 올리기도 병합 직전에 한 번에 해요.
+
+Codex CLI 로 만든 워크트리가 `.worktreeinclude` 를 지키는지는 공식 문서가 말하지 않아요(D-3). 이 조각은 그렇다고 주장하지 않아요.
+
+TDD: 시험을 먼저 써서 구현 전에 8개 중 7개가 실패하는 것을 확인했어요(`without_the_pick_nothing_is_planned` 만 통과: 구현 전에는 아무것도 계획하지 않으니까요). 구현 뒤 8개 모두 통과했어요.
+
+### 변형 시험(커밋한 뒤, 한 번에 하나씩 바꾸고 `git checkout` 으로 되돌림)
+
+| 변형 | 바꾼 것 | 잡은 시험 |
+| --- | --- | --- |
+| M1 | 선택이 없어도 항상 계획 | `without_the_pick_nothing_is_planned` |
+| M2 | 코드의 개인 경로 목록에서 한 경로를 다른 것으로 바꿈 | `the_template_lists_exactly_the_personal_paths_and_no_secret` |
+| M3 | 적용이 사용자 파일을 무시하고 블록만 씀 | `applying_keeps_every_user_line_and_a_second_plan_is_unchanged` |
+
+세 변형 모두 시험이 실패해서 잡혔어요(생존 0). 변형 뒤 `git status` 로 `src/agents.rs` 가 깨끗한 것을 확인했어요.
+
+### 기존 시험 세 곳을 고친 이유
+
+- `tests/agents_choices_step_cli.rs`: 선택지 id 목록을 고정한 시험에 `worktree-include` 한 줄을 더했어요(새 id 가 스키마에 있는지 고정하는 시험이에요).
+- `tests/worktree_include_guard.rs`: D-5 에 적었어요. `src/agents.rs` 한 파일만 허용하고 새 시험 `the_packaged_template_lists_no_secret_file` 을 더했어요.
+- `tests/agents_worktreeinclude_cli.rs`: 영수증 시험이 폴더를 걷지 않도록 영수증 경로를 계산해서 읽어요(`repo_scans` 표에 올리지 않으려고요).
+
+### Acceptance 결과
+
+- AC-1: met — `--test agents_worktreeinclude_cli the_pick_plans_one_managed_block_with_the_template_lines`(`create`, 미리보기에 템플릿 두 경로, 계획은 파일을 안 씀) 통과
+- AC-2: met — `--test agents_worktreeinclude_cli the_block_is_the_same_whatever_the_local_file_setting`(`ignored`·`tracked`·`none` 세 프로젝트의 블록이 같음) 통과
+- AC-3: met — `--test agents_worktreeinclude_cli the_template_lists_exactly_the_personal_paths_and_no_secret` 와 `--test worktree_include_guard the_packaged_template_lists_no_secret_file` 통과
+- AC-4: met — `--test agents_worktreeinclude_cli applying_keeps_every_user_line_and_a_second_plan_is_unchanged`(CRLF·마지막 줄바꿈 없음, 다시 계획하면 `unchanged`) 통과
+- AC-5: met — `--test agents_worktreeinclude_cli without_the_pick_nothing_is_planned` 통과
+- AC-6: met — `--test agents_worktreeinclude_cli the_apply_receipt_keeps_the_file_as_it_was_and_names_it`(영수증 쪽에 적용 전 파일) 통과
+- AC-7: met — `--test agents_worktreeinclude_cli the_pick_is_a_known_id_and_an_unknown_one_is_refused` 와 `--test agents_choices_step_cli schema_describes_picks_claude_shadow_and_the_skip_action` 통과
+- AC-8: met — `--test agents_conflict_choices_cli picks_absent_or_empty_plan_digest_and_apply_as_before` 통과(영역 시험 `agents_*` 전체 실행에 포함)
+- AC-9: met — `--test agents_worktreeinclude_cli the_applied_file_raises_no_secret_warning` 통과
+
+### 검사 결과(필터 없이, 마지막 줄만 다시 실행한 것 아님)
+
+`git diff --check`, `cargo fmt --check`, `rustfmt --edition 2021 --check src/ops/*.rs`, `cargo clippy --all-targets -- -D warnings`, `--lib`, `--bins`, 영역 시험(`agents_*`·`project_*`·`worktree_include_guard`·`bundle_user_assets_cli`, 246개 통과), 저장소 전체 훑기 시험(`git_env_scrub`·`home_isolation_scan`·`windows_unix_gate_scan`·`product_cli`), macOS 전용 시험, `tools/repo_scans.json` 의 검사 41개(실패 0), 파이썬 시험 148개, `trailer-check 33a5846038..HEAD` 모두 종료 코드 0 이에요. 앞서 한 번 돌린 검사에서는 4곳(위 세 곳과 `repo_scans` 표)이 실패했고, 고친 뒤 처음부터 다시 돌려 모두 통과했어요.
+
+돌리지 않은 것: 조각 2(선택지 목록·워크플로 글)가 없어서 `/moai project`·`moai update` 의 실제 화면 흐름은 확인하지 않았어요. 소스 목록에 자산을 올리는 일과 그 패키지 검사도 병합 직전으로 미뤘어요.
