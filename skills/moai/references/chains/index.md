@@ -12,7 +12,7 @@ A chain is the order in which the parent session uses agents for one kind of req
 | Research or compare | READ | moai-research | none |
 | Check a page or do a web task | VERIFY | none | none |
 | Set up a project | PROJECT | none | internal/interview, internal/questions |
-| Update documents and Issues after a merge | SYNC | moai-docs | internal/decide |
+| Update documents and the work card after a merge | SYNC | moai-docs | internal/decide |
 | Keep working toward a goal | MODE-AGENT | none | internal/git-safety |
 
 Rules for every chain:

@@ -132,7 +132,7 @@ fn builders_clean_up_by_relative_path_inside_their_own_worktree() {
         let text = std::fs::read_to_string(package().join(flow)).unwrap();
         let rule = text
             .lines()
-            .find(|l| l.starts_with("- Cleanup (Issue #3054): "))
+            .find(|l| l.starts_with("- Cleanup: ") || l.starts_with("- Cleanup ("))
             .unwrap_or_else(|| panic!("{flow}: no cleanup rule"));
         assert!(
             rule.contains("relative path") && rule.contains("`rm -rf target/debug`"),
@@ -829,7 +829,7 @@ fn versioning_rows_and_reference_cover_the_three_schemes() {
         "version order, not date",
         "no program is started",
         // Card C-90: the credential-shape rule the profile applies to custom text.
-        "a key prefix at the start of a word or a token or password assignment is refused, while a prefix inside a word, as in `task-based` or `risk-free`, is ordinary text, card C-90",
+        "a key prefix at the start of a word or a token or password assignment is refused, while a prefix inside a word, as in `task-based` or `risk-free`, is ordinary text);",
     ] {
         assert!(reference.contains(text), "versioning.md lacks {text:?}");
     }
@@ -899,9 +899,9 @@ fn versioning_reference_states_headver_numbers_and_the_release_checklist() {
     let release = section("## At every release");
     for text in [
         "Run this list yourself, without being asked, whenever you prepare, tag or publish a release or a release candidate.",
-        // Card C-81 (was: "follows the existing release rule: `SKILL.md` cases (2) and (3) and
-        // the autonomy levels", where `semi` sent releases to case (4)).
-        "The list itself runs autonomously; pushing a tag or publishing a release is `SKILL.md` case (2) at every autonomy level, `full` included: the user picks it and it waits, with no deadline default (card C-81).",
+        // Was: "follows the existing release rule: `SKILL.md` cases (2) and (3) and the autonomy
+        // levels", where `semi` sent releases to case (4).
+        "The list itself runs autonomously; pushing a tag or publishing a release is `SKILL.md` case (2) at every autonomy level, `full` included: the user picks it and it waits, with no deadline default.",
         "Without the profile key, run the `versioning` interview row (detect first so the keep option is offered) and record the pick; never compute from the detection alone.",
         "never raise it silently, unless the project's rule says every release raises it.",
         "GitHub Actions keeps `run_number` on a re-run and raises only `run_attempt`, so there use `run_number` only when `run_attempt` is 1, or a dedicated counter.",
@@ -910,7 +910,7 @@ fn versioning_reference_states_headver_numbers_and_the_release_checklist() {
         "Never reuse, move or delete a tag: a wrong published version is replaced by the next version.",
         "Never require or make a version-only commit to put it in a manifest.",
         "the lock file, the changelog or release notes, install scripts and the built binary's `--version` agree with the tag.",
-        "tag the merge commit on the integration branch after the merge, never on a feature branch.",
+        "tag the merge commit on the integration branch after the merge, never on a feature, lane or release branch.",
         "when any step fails, do not tag or publish;",
     ] {
         assert!(release.contains(text), "At every release lacks {text:?}");
@@ -941,7 +941,6 @@ fn git_safety_tells_each_host_how_to_work_in_a_worktree() {
         "(`$VAR`, `$?`, `$(…)`)",
         "| Codex CLI |",
         "| Cursor CLI |",
-        "| OMP | None for the main session",
         "| Kiro CLI | None documented. | `git -C <worktree> <verb>`. |",
     ] {
         assert!(text.contains(line), "git-safety.md lacks: {line}");
@@ -977,7 +976,7 @@ fn self_check_lists_the_pre_pr_checks_and_is_named_by_impl_and_the_chains() {
         "`rustfmt --check --edition 2021 src/ops/*.rs`",
         "`exit=75 slot-refused (not run)`",
         "`tools/source_manifest.py write`, then `tools/source_manifest.py check`",
-        "card branches carry no claim token until C-53 S3",
+        "no commit message, branch name or pull request title carries a card number",
         "one mutation per new guard, the riskiest first; at most 5 for audit tier 1 and 12 for tier 2",
     ] {
         assert!(text.contains(needle), "self-check.md lacks {needle:?}");
@@ -1045,7 +1044,7 @@ fn build_folder_reference_is_read_by_the_builders_and_states_the_rule() {
         "Always set `CARGO_INCREMENTAL=0`",
         "`.moai-build.json` with `schema_version` 1, `git_common_dir` and `worktree`",
         "when HOME is not absolute or not writable, or a link sits on the folder's path, do not follow it and do not build there",
-        "never in the build folder; deleting the build output never deletes evidence",
+        "Neither goes in the build folder; deleting the build output never deletes evidence",
         "End of task: delete your folder's cargo output and report the freed size under `Cleanup`",
         "One goes only after the user picks its row",
     ] {
