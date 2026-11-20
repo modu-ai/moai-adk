@@ -1340,6 +1340,7 @@ mod tests {
         put(&home, "123456", "v9.9.9");
         let deep = home.join("a/b/c");
         std::fs::create_dir_all(&deep).unwrap();
+        #[cfg(unix)]
         let link = root.join("home-link");
         #[cfg(unix)]
         std::os::unix::fs::symlink(&home, &link).unwrap();

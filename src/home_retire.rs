@@ -413,9 +413,13 @@ pub fn plan(home: &Path, moai_home: Option<&str>, now: &str) -> Result<Value, St
 }
 
 fn make_dir(p: &Path) -> Result<(), String> {
-    let mut b = fs::DirBuilder::new();
+    let b = fs::DirBuilder::new();
     #[cfg(unix)]
-    std::os::unix::fs::DirBuilderExt::mode(&mut b, 0o700);
+    let b = {
+        let mut b = b;
+        std::os::unix::fs::DirBuilderExt::mode(&mut b, 0o700);
+        b
+    };
     b.create(p).map_err(|e| format!("{}: {e}", p.display()))
 }
 

@@ -15,6 +15,7 @@ fn run(home: &Path) -> Value {
     env["result"].clone()
 }
 
+#[cfg(unix)]
 fn skill(dir: &Path, name: &str) {
     fs::create_dir_all(dir).unwrap();
     fs::write(
@@ -25,6 +26,7 @@ fn skill(dir: &Path, name: &str) {
 }
 
 /// A tree snapshot (path, bytes) to prove nothing was written.
+#[cfg(unix)]
 fn snapshot(root: &Path) -> Vec<(String, Vec<u8>)> {
     let mut out = Vec::new();
     let mut stack = vec![root.to_path_buf()];

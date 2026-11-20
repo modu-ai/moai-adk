@@ -58,13 +58,15 @@ pub fn run(input: &Value, cwd: &Path, rule: &EditRule) -> Option<String> {
     let argv = &rule.checkers.iter().find(|(e, _)| *e == ext)?.1;
     let name = checker_name(&argv[0]);
     let shown = rel.to_string_lossy().into_owned();
-    let _lock = match lock(&root) {
+    let _lock: Option<std::fs::File> = match lock(&root) {
+        #[cfg(unix)]
         Lock::Busy => {
             return Some(format!(
                 "MoAI edit-diagnostics ({name}, {shown}): another check is running in this \
                  project; this edit was not checked"
             ))
         }
+        #[cfg(unix)]
         Lock::Held(f) => Some(f),
         Lock::None => None,
     };
@@ -137,7 +139,9 @@ fn checker_name(program: &str) -> String {
 }
 
 enum Lock {
+    #[cfg(unix)]
     Held(std::fs::File),
+    #[cfg(unix)]
     Busy,
     /// No lock could be made (not unix, or the lock file could not be opened): run anyway.
     None,
@@ -147,6 +151,7 @@ enum Lock {
 /// audit N3: not the shared temporary folder), made with mode 0700 when the state folder is
 /// there. `None` when HOME is unset, the state folder is missing or not a real folder, or a link
 /// or a non-folder stands at either place: then the check runs without a lock.
+#[cfg(unix)]
 fn lock_dir() -> Option<PathBuf> {
     let home = PathBuf::from(std::env::var_os("HOME").filter(|h| !h.is_empty())?);
     let state = crate::home_root::path(&home);
@@ -158,9 +163,13 @@ fn lock_dir() -> Option<PathBuf> {
     }
     let dir = state.join("edit-diagnostics");
     if std::fs::symlink_metadata(&dir).is_err() {
-        let mut b = std::fs::DirBuilder::new();
+        let b = std::fs::DirBuilder::new();
         #[cfg(unix)]
-        std::os::unix::fs::DirBuilderExt::mode(&mut b, 0o700);
+        let b = {
+            let mut b = b;
+            std::os::unix::fs::DirBuilderExt::mode(&mut b, 0o700);
+            b
+        };
         let _ = b.create(&dir);
     }
     real_dir(&dir).then_some(dir)

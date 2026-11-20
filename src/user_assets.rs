@@ -381,6 +381,7 @@ impl Drop for UserLock {
 const LOCK_WAIT: Duration = Duration::from_secs(120);
 const LOCK_STALE: Duration = Duration::from_secs(30 * 60);
 
+#[cfg(unix)]
 fn flock_exclusive(path: &Path, deadline: SystemTime) -> Result<std::fs::File> {
     use std::os::unix::io::AsRawFd;
     let file = std::fs::OpenOptions::new()
@@ -395,6 +396,35 @@ fn flock_exclusive(path: &Path, deadline: SystemTime) -> Result<std::fs::File> {
         if code == 0 {
             // The guard holds for the File's lifetime; closing it releases the flock.
             return Ok(file);
+        }
+        if SystemTime::now() >= deadline {
+            return Err(format!(
+                "user-assets: the acquire guard at {} stayed held (2m)",
+                path.display()
+            ));
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    }
+}
+
+/// The same guard where there is no `flock`: the standard library's advisory file lock, retried
+/// until the deadline like the unix one.
+#[cfg(not(unix))]
+fn flock_exclusive(path: &Path, deadline: SystemTime) -> Result<std::fs::File> {
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .read(true)
+        .open(path)
+        .map_err(|e| format!("user-assets: open guard {}: {e}", path.display()))?;
+    loop {
+        match file.try_lock() {
+            Ok(()) => return Ok(file),
+            Err(std::fs::TryLockError::WouldBlock) => {}
+            Err(std::fs::TryLockError::Error(e)) => {
+                return Err(format!("user-assets: lock guard {}: {e}", path.display()));
+            }
         }
         if SystemTime::now() >= deadline {
             return Err(format!(

@@ -306,9 +306,13 @@ pub fn build_folder(home: &Path, name: &str) -> PathBuf {
 /// (C-82 audit B1: a link is never followed).
 fn real_dir(path: &Path) -> Result<(), String> {
     if std::fs::symlink_metadata(path).is_err() {
-        let mut b = std::fs::DirBuilder::new();
+        let b = std::fs::DirBuilder::new();
         #[cfg(unix)]
-        std::os::unix::fs::DirBuilderExt::mode(&mut b, 0o700);
+        let b = {
+            let mut b = b;
+            std::os::unix::fs::DirBuilderExt::mode(&mut b, 0o700);
+            b
+        };
         match b.create(path) {
             Ok(()) => {}
             Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
@@ -597,6 +601,7 @@ mod tests {
         assert_eq!(safe("..x").unwrap(), "..x");
     }
 
+    #[cfg(unix)]
     fn owner_of(root: &Path, worktree: &str) -> Owner {
         Owner {
             common: root.join("repo/.git"),

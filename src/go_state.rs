@@ -3463,6 +3463,7 @@ fn save_receipt(
 
 /// Owner-only bits for a backup folder, and for a receipt or a copy that may hold a token
 /// (#2966 audit B3).
+#[cfg(unix)]
 const PRIVATE_DIR: u32 = 0o700;
 const PRIVATE_FILE: u32 = 0o600;
 

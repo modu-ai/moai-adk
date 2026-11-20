@@ -263,6 +263,7 @@ fn plain_dirs(dirs: &[PathBuf]) -> Result<()> {
 
 /// Owner-only bits for a receipt folder and the bytes it keeps: a settings or hook file can hold a
 /// key the user protected with 0600 (audit FAIL 6882751326 B1; the rule `go_state` follows).
+#[cfg(unix)]
 const PRIVATE_DIR: u32 = 0o700;
 const PRIVATE_FILE: u32 = 0o600;
 

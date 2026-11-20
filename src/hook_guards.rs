@@ -2572,7 +2572,7 @@ mod tests {
         let allowed = root.join("allowed/x").to_string_lossy().into_owned();
         #[cfg(unix)]
         std::os::unix::fs::symlink(root.join("outside"), repo.join("link")).unwrap();
-        let mut cases = vec![
+        let cases = vec![
             ("src/a.rs".to_string(), None),
             (repo.join("src/b.rs").to_string_lossy().into_owned(), None),
             ("new/dir/file".to_string(), None),
@@ -2583,7 +2583,11 @@ mod tests {
             ("../repo-twin/x".to_string(), Some(OUTSIDE_PROJECT)),
         ];
         #[cfg(unix)]
-        cases.push(("link/x".to_string(), Some(OUTSIDE_PROJECT)));
+        let cases = {
+            let mut cases = cases;
+            cases.push(("link/x".to_string(), Some(OUTSIDE_PROJECT)));
+            cases
+        };
         for (path, want) in cases {
             assert_eq!(
                 outside_project_guard("Write", &write(&path), &repo, &rule),

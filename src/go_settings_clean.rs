@@ -53,6 +53,7 @@ const KEPT_COPY_NOTE: &str =
 
 /// Owner-only bits for the receipt folder and the kept copy of the settings file, which may hold
 /// a token in its `env` block (#3111 audit B1).
+#[cfg(unix)]
 const PRIVATE_DIR: u32 = 0o700;
 const PRIVATE_FILE: u32 = 0o600;
 

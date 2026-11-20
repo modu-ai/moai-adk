@@ -10,11 +10,13 @@
 //!   into a pass (fail-open).
 mod common;
 
+#[cfg(unix)]
 use serde_json::json;
+#[cfg(unix)]
+use std::process::{Command, Stdio};
 use std::{
     fs,
     path::{Path, PathBuf},
-    process::{Command, Stdio},
 };
 
 /// Every `.rs` file under `dir`, sorted.
@@ -108,6 +110,7 @@ fn the_scan_flags_an_unscrubbed_spawn_and_accepts_a_scrubbed_one() {
     assert_eq!(missing, vec!["src/bad.rs:2".to_string()]);
 }
 
+#[cfg(unix)]
 fn git(dir: &Path, args: &[&str]) {
     // Keep the env-isolation probe and identity while applying the shared fixture guards.
     let mut cmd = Command::new("git");
@@ -132,6 +135,7 @@ fn git(dir: &Path, args: &[&str]) {
 }
 
 /// A repository on `branch` with one commit and a GitHub `origin`.
+#[cfg(unix)]
 fn repo(branch: &str) -> (tempfile::TempDir, PathBuf) {
     let dir = tempfile::tempdir().unwrap();
     let root = fs::canonicalize(dir.path()).unwrap();

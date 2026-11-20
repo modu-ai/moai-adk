@@ -1,4 +1,5 @@
 mod common;
+#[cfg(unix)]
 use common::CleanEnv;
 use moai_cli::{
     digest,

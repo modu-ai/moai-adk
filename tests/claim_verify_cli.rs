@@ -17,6 +17,7 @@ use moai_cli::forge::transport::{Exchange, RecordedTransport};
 use serde_json::{json, Value};
 use std::fs;
 use std::path::Path;
+#[cfg(unix)]
 use std::process::{Command, Stdio};
 
 const NOW: &str = "2026-11-09T05:00:00Z";
@@ -1096,6 +1097,7 @@ fn hook_reports_unparseable_lane_branch_without_blocking() {
     assert!(t.sent.borrow().is_empty());
 }
 
+#[cfg(unix)]
 fn gh_stub(dir: &Path, json_body: &str) -> std::path::PathBuf {
     let path = dir.join("gh-stub");
     fs::write(

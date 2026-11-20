@@ -38,6 +38,7 @@ fn fixture(origin_url: &str, gh_delay: Option<u32>) -> Fixture {
     common::git::git_ok(&repo, &["remote", "add", "origin", origin_url]);
     let log = tmp.path().join("gh.log");
     // Only git is linked next to the fake gh, so a real gh elsewhere is never found.
+    #[cfg(unix)]
     let real_git = String::from_utf8(
         Command::new("sh")
             .args(["-c", "command -v git"])

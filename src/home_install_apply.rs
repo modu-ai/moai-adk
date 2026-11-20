@@ -230,9 +230,13 @@ fn not_found(e: &std::io::Error) -> bool {
 /// Create a folder with these permission bits exactly (the umask would narrow the mode of the
 /// create call alone).
 fn make_dir(p: &Path, mode: u32) -> Res<()> {
-    let mut b = fs::DirBuilder::new();
+    let b = fs::DirBuilder::new();
     #[cfg(unix)]
-    std::os::unix::fs::DirBuilderExt::mode(&mut b, mode);
+    let b = {
+        let mut b = b;
+        std::os::unix::fs::DirBuilderExt::mode(&mut b, mode);
+        b
+    };
     b.create(p).map_err(|e| io(p, e))?;
     #[cfg(unix)]
     {

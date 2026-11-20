@@ -276,7 +276,7 @@ pub struct BuildFailure {
     pub at: String,
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 fn git(dir: &Path) -> Command {
     git_with(dir, true)
 }
@@ -524,12 +524,12 @@ fn tracked_paths(project: &Path, state: &str, scope: &[String]) -> Result<Vec<St
 /// `.moai-cli/index/**` is excluded even when a repository tracks it, or every build
 /// would flip the pointer it just wrote into a "modification". Symlinks are digested by
 /// their target text (the same rule the 07-D snapshot uses).
-#[cfg(test)]
+#[cfg(all(test, unix))]
 fn scan(project: &Path, source: &IndexIo) -> Result<(String, Vec<IndexedFile>)> {
     scan_with_hook(project, source, |_, _| {})
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 fn scan_with_hook(
     project: &Path,
     source: &IndexIo,

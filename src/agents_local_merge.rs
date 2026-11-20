@@ -576,17 +576,20 @@ fn receipts_dir(root: &Path) -> std::path::PathBuf {
 
 /// Owner-only bits for a receipt folder and for what it holds: the receipt keeps a copy of a
 /// personal file, which may hold a token (#2982 audit B2; the same bits as `go_state`'s backup).
+#[cfg(unix)]
 const PRIVATE_DIR: u32 = 0o700;
 const PRIVATE_FILE: u32 = 0o600;
 
 /// Create one folder (not its parents) that only the owner can enter, from its creation.
 fn create_private_dir(path: &Path) -> std::io::Result<()> {
-    let mut builder = fs::DirBuilder::new();
+    let builder = fs::DirBuilder::new();
     #[cfg(unix)]
-    {
+    let builder = {
         use std::os::unix::fs::DirBuilderExt;
+        let mut builder = builder;
         builder.mode(PRIVATE_DIR);
-    }
+        builder
+    };
     builder.create(path)
 }
 

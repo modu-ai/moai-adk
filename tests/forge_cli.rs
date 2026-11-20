@@ -367,6 +367,7 @@ fn forge_read_cli_writes_only_its_poll_state_and_never_the_token() {
     assert_eq!(fs::read(&state).unwrap(), before);
 }
 
+#[cfg(unix)]
 fn walk(root: &std::path::Path) -> Vec<String> {
     let mut out = Vec::new();
     let mut stack = vec![root.to_path_buf()];

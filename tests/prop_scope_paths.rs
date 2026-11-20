@@ -140,6 +140,7 @@ fn the_scope_check_never_allows_an_escape_and_ignores_the_tree() {
 
         // The tree: the prefix as a real folder, or as a symlink out of the tree.
         let tree = TempDir::new().unwrap();
+        #[cfg(unix)]
         let outside = TempDir::new().unwrap();
         let root = tree.path();
         let first = root.join(prefix[0]);

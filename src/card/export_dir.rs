@@ -144,12 +144,14 @@ fn check_names(export: &Export) -> Result<(), DirError> {
 
 /// One new folder, 0700 on unix. Only the last step is made: the parent must exist.
 fn make_private_dir(dir: &Path) -> std::io::Result<()> {
-    let mut builder = fs::DirBuilder::new();
+    let builder = fs::DirBuilder::new();
     #[cfg(unix)]
-    {
+    let builder = {
         use std::os::unix::fs::DirBuilderExt;
+        let mut builder = builder;
         builder.mode(0o700);
-    }
+        builder
+    };
     builder.create(dir)
 }
 

@@ -1,5 +1,6 @@
 //! AC-1c: a real temporary repository, remote ledger/PR fixtures, GET-only transport.
 mod common;
+#[cfg(unix)]
 use common::CleanEnv;
 use moai_cli::forge::{
     policy::Clock,

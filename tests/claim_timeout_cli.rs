@@ -3,11 +3,13 @@
 //! stub `gh` in a temporary HOME. No live GitHub call is made.
 mod common;
 
+#[cfg(unix)]
 use common::CleanEnv;
 use moai_cli::claim_timeout::{check, Target};
 use moai_cli::forge::policy::{format_utc, parse_utc, Clock};
 use moai_cli::forge::transport::{Exchange, HttpResponse, RecordedTransport};
 use serde_json::{json, Value};
+#[cfg(unix)]
 use std::process::Command;
 
 /// A fixed past time: the binary refuses a `--now` more than 300 s after the system clock.

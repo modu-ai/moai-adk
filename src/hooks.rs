@@ -1402,12 +1402,14 @@ pub(crate) fn make_private_dirs(dir: &Path, base: &Path) -> std::result::Result<
             Ok(_) => return Err("receipts path is not a directory"),
             Err(_) => {}
         }
-        let mut builder = fs::DirBuilder::new();
+        let builder = fs::DirBuilder::new();
         #[cfg(unix)]
-        {
+        let builder = {
             use std::os::unix::fs::DirBuilderExt;
+            let mut builder = builder;
             builder.mode(0o700);
-        }
+            builder
+        };
         // Another hook may create the folder between the check above and this call; a real
         // folder that is there afterwards is what was wanted (a link or a file is not).
         if builder.create(&cur).is_err() && !fs::symlink_metadata(&cur).is_ok_and(|m| m.is_dir()) {
