@@ -303,13 +303,15 @@ pub fn moai_state(project: &Path, path_env: &str, home: Option<&Path>) -> Value 
 }
 
 /// The hook set of one host: [`HOOK_SET`], and for Claude Code the preflight guard after the
-/// claim guard (#2877 Q1) and the security scan after the Bash receipt group.
+/// claim guard (#2877 Q1), the security scan after the Bash receipt group and, last, the `Stop`
+/// group that runs the turn-end scan.
 pub fn hook_set(host: &str) -> Vec<(&'static str, Option<&'static str>, Handler)> {
     hook_set_with(host, true)
 }
 
 /// The hook set that `binary` generates: only the current binary ([`HOOK_BINARY`]) gets the
-/// security-scan group. The legacy set (the old binary name, [`LEGACY_BINARY`]) is the set as the
+/// security-scan group and the `Stop` group (the one `security_scan` flag of [`hook_set_with`]
+/// decides both). The legacy set (the old binary name, [`LEGACY_BINARY`]) is the set as the
 /// releases before #3004 P4-2 wrote it, so the rewrite still recognises those installs byte for
 /// byte; any other name fails closed to the same set, as `edit_diagnostics_timeout` does.
 fn hook_set_of(binary: &str, host: &str) -> Vec<(&'static str, Option<&'static str>, Handler)> {
