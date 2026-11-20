@@ -103,7 +103,9 @@ parent: SPEC-20261119-reports-outside-repo
 - AC-6: met — `a_plan_made_stale_by_a_new_file_or_a_wrong_digest_or_reference_is_refused` 통과
 - AC-7: met — `update_plan_shows_the_reports_step` 통과
 - AC-8: met — `a_folder_git_cannot_read_blocks_the_move_and_nothing_is_created` 통과
-- 위 시험은 head `0a6b335558` 의 영역 접두 대상 실행(`reports_*` 포함 63개, `cargo test` 종료 코드 0)에서 돌았어요.
+- AC-9: met — 여섯 시험 통과: `a_linked_state_folder_is_never_followed_into_another_repository`, `a_linked_state_folder_inside_the_same_repository_blocks_the_move`, `a_report_folder_inside_a_nested_repository_is_never_moved`, `a_home_that_is_relative_or_inside_the_project_blocks_the_move`, `a_destination_that_is_a_link_or_a_file_blocks_the_move`, 그리고 20,000개 계획·20,001개 막힘 경계 `the_file_limit_holds_at_n_and_blocks_at_n_plus_one`
+- AC-10: met — `a_linked_worktree_moves_to_the_primary_checkouts_folder` 통과
+- 위 AC-1..AC-8 시험은 head `0a6b335558` 의 영역 접두 대상 실행(`reports_*` 포함 63개, `cargo test` 종료 코드 0)에서 돌았어요. 감사가 찾은 결함을 고친 뒤(AC-9·AC-10 과 `project_update_plan_cli` 의 `a_ready_reports_step_holds_the_go_state_command_until_it_is_applied`)의 확인은 `moai check affected` 요약 줄이에요(노트에 있어요).
 
 - 두 연산 `reports-move-plan`(읽기 전용 미리보기)과 `reports-move-apply`(digest·permission reference 를 확인하고 옮김)는 `src/reports_move.rs` 의 한 곳을 써요. 옛 폴더 이름(`.moai-cli/reports`, `.moai/reports`)은 `state_root` 의 이름 상수로 적어요(`project_state_dir_is_spelled_once` 와 허용 목록 시험 둘 다 통과).
 - `project-update-plan` 에 `reports` 단계가 수와 목적지를 보여 주고 apply 줄은 같은 미리보기의 digest 를 써요. 도움말 표·예시와 골든 네 개에 두 연산 줄이 들어갔고(한 줄 설명은 56자), 연산 문서 조각 두 개를 더했어요.
