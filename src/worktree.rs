@@ -260,7 +260,7 @@ pub fn cargo_build_folder(path: &Path) -> Option<PathBuf> {
 pub fn refuse_in_build_folder(path: &Path, what: &str) -> Result<()> {
     match cargo_build_folder(path) {
         Some(dir) => Err(format!(
-            "{what} {} is inside the Cargo build folder {} (#2930 R-3); put worktrees outside \
+            "{what} {} is inside the Cargo build folder {}; put worktrees outside \
              build output, under the default <HOME>/.moai/worktrees",
             path.display(),
             dir.display()

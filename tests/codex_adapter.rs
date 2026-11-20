@@ -210,7 +210,10 @@ fn codex_doctor_never_claims_trust() {
     // Even a config that names the project trusted is not read as trust.
     assert_eq!(r["trust"]["status"], "not_evaluated");
     assert!(!r.to_string().contains("\"trusted\""));
-    assert!(r["trust"]["reason"].as_str().unwrap().contains("02-B"));
+    assert!(r["trust"]["reason"]
+        .as_str()
+        .unwrap()
+        .contains("this operation reads no TOML"));
     assert_eq!(r["codex_layer"]["config_toml"], true);
     assert_eq!(r["codex_layer"]["hooks_json"], true);
     assert_eq!(r["writes"], serde_json::json!([]));
