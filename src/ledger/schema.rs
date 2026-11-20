@@ -6,7 +6,7 @@
 //! - Rows of `card`, `card_ac`, `card_note`, `card_link`, `reservation` and `event` are never
 //!   deleted (`*_no_delete`); notes and events are never changed.
 //! - `card.state` moves only along `card_transition`; `done` needs criteria, no open one, and a
-//!   merged pull request link (`card_done_guard`).
+//!   merged pull request link — or, under M-Flow, a `card.landed` event (`card_done_guard`).
 //! - There is no state check on `INSERT`: a recovery inserts a card with an explicit id, `rev`
 //!   and state, then its criteria and links.
 //! - `card_touch` and the criterion triggers keep `rev` and `updated_at` current.
@@ -180,7 +180,9 @@ BEGIN
   SELECT RAISE(ABORT, 'cannot close: no merged pull request is linked')
    WHERE NOT EXISTS (SELECT 1 FROM card_link
                       WHERE from_card = NEW.card_id AND kind = 'pr'
-                        AND state = 'active' AND pr_state = 'merged');
+                        AND state = 'active' AND pr_state = 'merged')
+     AND NOT EXISTS (SELECT 1 FROM event
+                      WHERE card_id = NEW.card_id AND kind = 'card.landed');
 END;
 
 CREATE TRIGGER card_touch AFTER UPDATE ON card

@@ -288,6 +288,29 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
+    /// Writes the ledger. Record that this card's head landed on the local integration branch
+    ///
+    /// Writes the ledger. A `review` card gains one `card.landed` event naming the head and the
+    /// by, with the writing session as the actor (M-Flow, SPEC-20261120-card-done-mflow). The
+    /// head must be 40 lowercase hex. `card done` then closes the card without a pull request
+    /// when the profile's `work_flow` is `m-flow` and the head sits inside the profile's
+    /// integration branch.
+    Landed {
+        /// The card whose head landed (`C-12` or `#3066`).
+        card: String,
+        /// The head sha that landed (40 lowercase hex).
+        #[arg(long)]
+        head: String,
+        /// Who records the landing (one line, 1..=200 characters).
+        #[arg(long)]
+        by: String,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME to use (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
     /// Writes the ledger. Link a card to the SPEC it works on, or unlink it
     ///
     /// Writes the ledger. Names the SPEC (`SPEC-<yyyymmdd>-<slug>`) the card works on, with one
@@ -585,12 +608,14 @@ enum Action {
         #[arg(long)]
         home: Option<PathBuf>,
     },
-    /// Writes the ledger. Close a card whose pull request is merged
+    /// Writes the ledger. Close a card whose pull request is merged, or whose head landed on
+    /// the local integration branch
     ///
     /// Writes the ledger. A `review` card becomes `done` and its reservation ends, when at least
     /// one criterion is met, none is open and a merged pull request is linked (`card pr` after
-    /// the merge). Anything else is refused with the rule that is not met. As this session,
-    /// holding the card at `--generation`.
+    /// the merge) — or, when the profile's `work_flow` is `m-flow`, the card's `card landed`
+    /// head is contained in the profile's integration branch. Anything else is refused with the
+    /// rule that is not met. As this session, holding the card at `--generation`.
     Done {
         /// `C-12`.
         card: String,
@@ -808,6 +833,13 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             project,
             home,
         } => c::withdraw(&project, &resolve_home(home)?, &card, &reason, &by),
+        Action::Landed {
+            card,
+            head,
+            by,
+            project,
+            home,
+        } => w::landed(&project, &resolve_home(home)?, &card, &head, &by),
         Action::Take {
             card,
             lease_secs,

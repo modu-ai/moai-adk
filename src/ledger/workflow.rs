@@ -1041,14 +1041,62 @@ pub fn reopen(
     )?
 }
 
+/// The local landing evidence a M-Flow project closes on (SPEC-20261120-card-done-mflow):
+/// the landed head and the integration branch tip that contains it, checked at done time.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Landing {
+    pub head: String,
+    pub tip: String,
+}
+
+/// `card landed`: record that this card's head landed on the local integration branch
+/// (M-Flow). The card must be in `review`; one free-form `card.landed` event carries the head
+/// and the by, with the writing session as the actor.
+pub fn land(
+    w: &mut WriteLedger,
+    card_id: i64,
+    head: &str,
+    by: &str,
+    session: Option<&str>,
+) -> Result<(), WorkflowError> {
+    if !crate::gate::is_full_sha(head) {
+        return Err(WorkflowError::InvalidInput(
+            "the head must be 40 lowercase hex".to_string(),
+        ));
+    }
+    one_line("the by", by, MAX_AUTHOR_CHARS).map_err(WorkflowError::InvalidInput)?;
+    w.with_write_tx(|tx, now| {
+        let from = card_state(tx, card_id)?;
+        if from != "review" {
+            return Ok(Err(WorkflowError::WrongState {
+                card_id,
+                state: from,
+                needs: "review",
+                action: "landed",
+            }));
+        }
+        reservation::add_event(
+            tx,
+            now,
+            session.unwrap_or("user"),
+            card_id,
+            "card.landed",
+            &json!({"head": head, "by": by}),
+        )?;
+        Ok(Ok(()))
+    })?
+}
+
 /// `review -> done`, as the current holder at `generation` (a live lease is not needed). Needs
-/// what `card_done_guard` needs: a met criterion, no open criterion and an active `pr` link
-/// whose state is `merged`. The reservation ends (`released`) in the same transaction.
+/// what `card_done_guard` needs: a met criterion, no open criterion and — unless the caller
+/// passes local [`Landing`] evidence (M-Flow) — an active `pr` link whose state is `merged`.
+/// The reservation ends (`released`) in the same transaction.
 pub fn done(
     w: &mut WriteLedger,
     card_id: i64,
     holder: &str,
     generation: i64,
+    landing: Option<Landing>,
 ) -> Result<Moved, WorkflowError> {
     reservation::fenced(
         w,
@@ -1080,10 +1128,11 @@ pub fn done(
                 > 0
             {
                 Some("cannot close: an acceptance criterion is still open")
-            } else if count(
-                "SELECT count(*) FROM card_link WHERE from_card = ?1 AND kind = 'pr' \
-                 AND state = 'active' AND pr_state = 'merged'",
-            )? == 0
+            } else if landing.is_none()
+                && count(
+                    "SELECT count(*) FROM card_link WHERE from_card = ?1 AND kind = 'pr' \
+                     AND state = 'active' AND pr_state = 'merged'",
+                )? == 0
             {
                 Some("cannot close: no merged pull request is linked")
             } else {
@@ -1107,7 +1156,10 @@ pub fn done(
                 holder,
                 card_id,
                 "card.done",
-                &json!({"from": from, "generation": generation, "closed_at": now}),
+                &json!({
+                    "from": from, "generation": generation, "closed_at": now,
+                    "mflow": landing.as_ref().map(|l| json!({"head": l.head, "tip": l.tip})),
+                }),
             )?;
             let reservation =
                 reservation::load_reservation(tx, card_id, generation)?.ok_or_else(|| {
