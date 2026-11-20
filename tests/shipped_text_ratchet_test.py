@@ -308,6 +308,17 @@ class RefusalTest(TreeCase):
         self.tokens_with(lambda d: d["tokens"][1].update({"pattern": "x*"}))
         self.assertIn("link", self.refused("empty-matching pattern"))
 
+    def test_an_empty_matching_pattern_is_refused_before_any_file_is_read(self):
+        # Refused on load, not only when a file happens to produce an empty match.
+        self.tokens_with(lambda d: d["tokens"][1].update({"pattern": "x*"}))
+        empty = self.root.parent / "empty"
+        empty.mkdir()
+        code, out, err = run(
+            "check", "--root", empty, "--tokens", self.tokens, "--baseline", self.baseline
+        )
+        self.assertEqual((code, out), (2, ""))
+        self.assertTrue(err.startswith(REFUSAL_PREFIX) and "link" in err, err)
+
     def test_paths_that_are_not_a_list_of_strings(self):
         self.tokens_with(lambda d: d.update({"paths": "shipped/**"}))
         self.refused("paths shape")
