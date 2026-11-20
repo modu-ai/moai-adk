@@ -364,3 +364,229 @@ fn the_two_operations_move_through_the_cli_and_refuse_a_wrong_digest() {
     assert!(ok, "{again}");
     assert_eq!(again["result"]["state"], "unchanged", "{again}");
 }
+
+// ---- tier 2 audit repair: links in the path, linked worktrees, the HOME, the limits ----
+
+/// A second repository whose tracked report file a link must never reach.
+fn other_repo_with_tracked_report(parent: &Path) -> (PathBuf, PathBuf) {
+    let other = parent.join("other");
+    fs::create_dir_all(&other).unwrap();
+    git_ok(&other, &["init", "-q"]);
+    git_ok(&other, &["config", "user.email", "t@example.invalid"]);
+    git_ok(&other, &["config", "user.name", "t"]);
+    write(&other, ".moai-cli/reports/tracked.md", "tracked");
+    git_ok(&other, &["add", "-f", ".moai-cli/reports/tracked.md"]);
+    git_ok(&other, &["commit", "-q", "-m", "report"]);
+    write(&other, ".moai-cli/reports/untracked.md", "untracked");
+    let other = fs::canonicalize(&other).unwrap();
+    let tracked = other.join(".moai-cli/reports/tracked.md");
+    (other, tracked)
+}
+
+/// Audit B1: only the last name of the earlier folder was checked, so a linked `.moai-cli` was
+/// followed into another repository, git saw no tracked file there, and that repository's
+/// tracked reports were "moved" and deleted. Every component of the path is now a plain folder
+/// or the plan is blocked.
+#[cfg(unix)]
+#[test]
+fn a_linked_state_folder_is_never_followed_into_another_repository() {
+    for link_name in [".moai-cli", ".moai"] {
+        let h = TempHome::new();
+        let tmp = tempfile::tempdir().unwrap();
+        let root = repo(tmp.path());
+        let (other, tracked) = other_repo_with_tracked_report(tmp.path());
+        if link_name == ".moai" {
+            write(&other, ".moai/reports/tracked.md", "tracked");
+            git_ok(&other, &["add", "-f", ".moai/reports/tracked.md"]);
+            git_ok(&other, &["commit", "-q", "-m", "moai report"]);
+        }
+        std::os::unix::fs::symlink(other.join(link_name), root.join(link_name)).unwrap();
+        let before = h.snapshot();
+        let p = plan(&root, h.path()).unwrap();
+        assert_eq!(p.state, "blocked", "{link_name}: {}", p.reason);
+        assert!(p.moves.is_empty(), "{link_name}");
+        assert!(p.reason.contains(link_name), "{link_name}: {}", p.reason);
+        let err = apply_plan(&root, h.path(), &p).unwrap_err();
+        assert!(err.contains("blocked"), "{err}");
+        assert_eq!(fs::read_to_string(&tracked).unwrap(), "tracked");
+        assert!(other.join(".moai-cli/reports/untracked.md").exists());
+        assert_eq!(
+            h.snapshot(),
+            before,
+            "{link_name}: the HOME stays untouched"
+        );
+    }
+}
+
+/// Audit B1, the same hole with a real folder: a nested repository's own tracked files are not
+/// this repository's, so git run from the project lists none of them as tracked.
+#[test]
+fn a_report_folder_inside_a_nested_repository_is_never_moved() {
+    let h = TempHome::new();
+    let tmp = tempfile::tempdir().unwrap();
+    let root = repo(tmp.path());
+    let nested = root.join(".moai-cli");
+    fs::create_dir_all(&nested).unwrap();
+    git_ok(&nested, &["init", "-q"]);
+    git_ok(&nested, &["config", "user.email", "t@example.invalid"]);
+    git_ok(&nested, &["config", "user.name", "t"]);
+    write(&root, ".moai-cli/reports/tracked.md", "tracked");
+    git_ok(&nested, &["add", "-f", "reports/tracked.md"]);
+    git_ok(&nested, &["commit", "-q", "-m", "nested"]);
+    let p = plan(&root, h.path()).unwrap();
+    assert_eq!(p.state, "blocked", "{}", p.reason);
+    assert!(p.moves.is_empty());
+    assert!(root.join(".moai-cli/reports/tracked.md").exists());
+}
+
+/// Audit B5: in a linked worktree the destination names the primary checkout, as
+/// `optimize-plan` does, not the worktree's folder.
+#[test]
+fn a_linked_worktree_moves_to_the_primary_checkouts_folder() {
+    let h = TempHome::new();
+    let tmp = tempfile::tempdir().unwrap();
+    let primary = repo(tmp.path());
+    let wt = tmp.path().join("a-feature-worktree");
+    git_ok(
+        &primary,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            wt.to_str().unwrap(),
+            "-b",
+            "feature",
+        ],
+    );
+    let wt = fs::canonicalize(&wt).unwrap();
+    write(&wt, ".moai-cli/reports/a.md", "a");
+    let p = plan(&wt, h.path()).unwrap();
+    let want = moai_cli::home_workdir::reports_dir(h.path(), &primary).unwrap();
+    assert_eq!(p.state, "ready", "{}", p.reason);
+    assert_eq!(PathBuf::from(&p.destination), want, "{}", p.destination);
+    apply_plan(&wt, h.path(), &p).unwrap();
+    assert_eq!(fs::read_to_string(want.join("a.md")).unwrap(), "a");
+    assert!(!wt.join(".moai-cli/reports/a.md").exists());
+}
+
+/// Audit N1: a relative HOME or a reports folder inside the project would write the reports
+/// back into the repository; both block the plan and create nothing.
+#[test]
+fn a_home_that_is_relative_or_inside_the_project_blocks_the_move() {
+    let tmp = tempfile::tempdir().unwrap();
+    let root = repo(tmp.path());
+    write(&root, ".moai-cli/reports/a.md", "a");
+    for home in [PathBuf::from("relative-home"), root.join("in-repo-home")] {
+        let p = plan(&root, &home).unwrap();
+        assert_eq!(p.state, "blocked", "{}: {}", home.display(), p.reason);
+        assert!(p.moves.is_empty());
+        assert!(
+            p.reason.contains("HOME") || p.reason.contains("inside the project"),
+            "{}",
+            p.reason
+        );
+        let err = apply_plan(&root, &home, &p).unwrap_err();
+        assert!(err.contains("blocked"), "{err}");
+        assert!(root.join(".moai-cli/reports/a.md").exists());
+        assert!(!root.join("in-repo-home").exists());
+        assert!(!Path::new("relative-home").exists());
+    }
+}
+
+/// Audit B2: the file limit is exact — 20,000 files plan, 20,001 block (boundary N and N+1).
+#[test]
+fn the_file_limit_holds_at_n_and_blocks_at_n_plus_one() {
+    let h = TempHome::new();
+    let tmp = tempfile::tempdir().unwrap();
+    let root = repo(tmp.path());
+    let limit = moai_cli::reports_move::MAX_FILES;
+    assert_eq!(limit, 20_000);
+    for i in 0..limit {
+        let dir = root.join(format!(".moai-cli/reports/d{}", i % 100));
+        if i < 100 {
+            fs::create_dir_all(&dir).unwrap();
+        }
+        fs::write(dir.join(format!("{i}.md")), "x").unwrap();
+    }
+    let p = plan(&root, h.path()).unwrap();
+    assert_eq!(p.state, "ready", "{}", p.reason);
+    assert_eq!(p.moves.len(), limit);
+    write(&root, ".moai-cli/reports/d0/one-more.md", "x");
+    let p = plan(&root, h.path()).unwrap();
+    assert_eq!(p.state, "blocked", "{}", p.reason);
+    assert!(p.moves.is_empty());
+    assert!(p.reason.contains("20000"), "{}", p.reason);
+    assert!(root.join(".moai-cli/reports/d0/one-more.md").exists());
+}
+
+/// Audit B3: the destination chain — `<HOME>/.moai`, `<HOME>/.moai/reports` and the project's
+/// own folder — must be plain folders; a link or a file there blocks the plan and nothing is
+/// written through it.
+#[cfg(unix)]
+#[test]
+fn a_destination_that_is_a_link_or_a_file_blocks_the_move() {
+    for level in ["state", "reports", "project", "project-file"] {
+        let h = TempHome::new();
+        let tmp = tempfile::tempdir().unwrap();
+        let root = repo(tmp.path());
+        write(&root, ".moai-cli/reports/a.md", "a");
+        let aside = tmp.path().join("aside");
+        fs::create_dir_all(&aside).unwrap();
+        let state = moai_cli::home_workdir::root(h.path());
+        let reports = moai_cli::home_workdir::reports_root(h.path());
+        let dest = moai_cli::home_workdir::reports_dir(h.path(), &root).unwrap();
+        let bad = match level {
+            "state" => state.clone(),
+            "reports" => {
+                fs::create_dir_all(&state).unwrap();
+                reports.clone()
+            }
+            _ => {
+                fs::create_dir_all(&reports).unwrap();
+                dest.clone()
+            }
+        };
+        if level == "project-file" {
+            fs::write(&bad, "a file, not a folder").unwrap();
+        } else {
+            std::os::unix::fs::symlink(&aside, &bad).unwrap();
+        }
+        let p = plan(&root, h.path()).unwrap();
+        assert_eq!(p.state, "blocked", "{level}: {}", p.reason);
+        assert!(p.moves.is_empty(), "{level}");
+        assert!(
+            p.reason.contains("not a plain folder"),
+            "{level}: {}",
+            p.reason
+        );
+        let err = apply_plan(&root, h.path(), &p).unwrap_err();
+        assert!(err.contains("blocked"), "{level}: {err}");
+        assert!(root.join(".moai-cli/reports/a.md").exists(), "{level}");
+        assert_eq!(
+            fs::read_dir(&aside).unwrap().count(),
+            0,
+            "{level}: wrote through the link"
+        );
+    }
+}
+
+/// Audit N8: a printed preview names at most ten files (the boundary at ten and eleven).
+#[test]
+fn the_preview_names_at_most_ten_files() {
+    let h = TempHome::new();
+    let tmp = tempfile::tempdir().unwrap();
+    let root = repo(tmp.path());
+    for i in 0..10 {
+        write(&root, &format!(".moai-cli/reports/{i:02}.md"), "x");
+    }
+    let v = plan(&root, h.path()).unwrap().preview();
+    assert_eq!(v["to_move"], 10);
+    assert_eq!(v["examples"].as_array().unwrap().len(), 10);
+    write(&root, ".moai-cli/reports/10.md", "x");
+    let v = plan(&root, h.path()).unwrap().preview();
+    assert_eq!(v["to_move"], 11);
+    assert_eq!(
+        v["examples"].as_array().unwrap().len(),
+        moai_cli::reports_move::EXAMPLES
+    );
+}

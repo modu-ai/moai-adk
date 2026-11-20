@@ -33,29 +33,35 @@ parent: SPEC-20261119-reports-outside-repo
 - REQ-8: The command `project-update-plan` shall show one step `reports` whose preview carries the counts to move and to skip and the tracked count and the destination.
 - REQ-9: The step `reports` shall offer its apply command only with the plan digest of the same preview.
 - REQ-10: The command `reports-move-plan` shall report the state `blocked` and plan no move when the project is not a git repository or git cannot tell what is tracked.
+- REQ-11: The command `reports-move-plan` shall report the state `blocked` and plan no move when a folder on the way to an earlier report folder is a link, when that folder belongs to another repository, when HOME is not an absolute path, when the reports folder would lie inside the project, when more than 20,000 files lie under the earlier folders or when a folder of the destination is not a plain folder.
+- REQ-12: The command `reports-move-plan` shall name the destination folder after the primary checkout when the project is a linked worktree.
 
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-2): 임시 HOME·임시 프로젝트에서 `reports-move-plan` 이 추적되지 않은 파일 수와 목적지와 "추적 중, 건드리지 않음" 수를 보여 줘요.
-  verify: `cargo test --locked --offline --test reports_move_cli plan_counts_untracked_and_tracked_files`
+  verify: `cargo test --locked --offline --test reports_move_cli no_earlier_folder_is_unchanged_and_preview_counts_are_reported`
 - AC-2 (REQ-3): 적용하면 추적되지 않은 파일이 폴더 구조 그대로 새 자리로 옮겨지고 추적 파일은 제자리에 남아요.
-  verify: `cargo test --locked --offline --test reports_move_cli apply_moves_untracked_and_keeps_tracked`
+  verify: `cargo test --locked --offline --test reports_move_cli untracked_report_files_move_with_their_folders_and_tracked_ones_stay`
 - AC-3 (REQ-4): 목적지에 같은 이름이 있으면 덮어쓰지 않고 건너뛰며 그 수를 알려요(목적지 바이트가 그대로예요).
-  verify: `cargo test --locked --offline --test reports_move_cli apply_skips_a_name_that_exists`
+  verify: `cargo test --locked --offline --test reports_move_cli a_name_the_destination_holds_is_kept_and_counted_never_overwritten`
 - AC-4 (REQ-5): 옮긴 뒤 새 미리보기는 `unchanged`·옮길 것 0 이고, 옛 계획을 다시 적용하면 낡은 계획으로 거절되어 어떤 파일도 바꾸지 않아요.
-  verify: `cargo test --locked --offline --test reports_move_cli apply_twice_gives_the_same_result`
+  verify: `cargo test --locked --offline --test reports_move_cli a_second_run_moves_nothing_and_changes_nothing`
 - AC-5 (REQ-6): 새로 만든 폴더는 0700 이고 옮긴 파일에서 그룹·다른 사람 권한 비트가 지워져요(Unix).
-  verify: `cargo test --locked --offline --test reports_move_cli apply_makes_the_destination_owner_only`
+  verify: `cargo test --locked --offline --test reports_move_cli moved_files_and_folders_are_owner_only`
 - AC-6 (REQ-7): 어긋난 digest 와 빠진 permission reference 는 거절되고 아무 파일도 옮겨지지 않아요.
-  verify: `cargo test --locked --offline --test reports_move_cli apply_refuses_a_stale_digest_or_missing_permission`
+  verify: `cargo test --locked --offline --test reports_move_cli a_plan_made_stale_by_a_new_file_or_a_wrong_digest_or_reference_is_refused`
 - AC-7 (REQ-8, REQ-9): `project-update-plan` 의 `reports` 단계가 수와 목적지를 미리 보여 주고 apply 줄은 같은 미리보기의 digest 를 써요.
   verify: `cargo test --locked --offline --test reports_move_cli update_plan_shows_the_reports_step`
 - AC-8 (REQ-10): git 저장소가 아닌 프로젝트에서는 `blocked` 이고 아무것도 옮기지 않아요.
-  verify: `cargo test --locked --offline --test reports_move_cli plan_is_blocked_without_a_git_repository`
+  verify: `cargo test --locked --offline --test reports_move_cli a_folder_git_cannot_read_blocks_the_move_and_nothing_is_created`
+- AC-9 (REQ-11): `.moai-cli`(또는 `.moai`)가 다른 저장소로 가는 링크이거나 중첩 저장소이면, HOME 이 상대 경로이거나 프로젝트 안이면, 파일이 20,000개를 넘으면, 목적지 폴더가 링크·파일이면 `blocked` 이고 아무것도 옮겨지거나 지워지지 않아요(링크 너머 저장소의 추적 파일이 그대로예요); 20,000개는 계획되고 20,001개는 막혀요.
+  verify: `cargo test --locked --offline --test reports_move_cli a_linked_state_folder_is_never_followed_into_another_repository`; `cargo test --locked --offline --test reports_move_cli a_report_folder_inside_a_nested_repository_is_never_moved`; `cargo test --locked --offline --test reports_move_cli a_home_that_is_relative_or_inside_the_project_blocks_the_move`; `cargo test --locked --offline --test reports_move_cli the_file_limit_holds_at_n_and_blocks_at_n_plus_one`; `cargo test --locked --offline --test reports_move_cli a_destination_that_is_a_link_or_a_file_blocks_the_move`
+- AC-10 (REQ-12): 연결된 작업 트리에서 돌리면 목적지가 그 작업 트리 폴더 이름이 아니라 primary 체크아웃 이름의 폴더예요.
+  verify: `cargo test --locked --offline --test reports_move_cli a_linked_worktree_moves_to_the_primary_checkouts_folder`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261119-update-moves-reports/spec.md`, `src/reports_move.rs`(새), `src/lib.rs`(모듈 한 줄), `src/ops/reports_move_plan.rs`·`src/ops/reports_move_apply.rs`(새), `docs/design-review/appendix/operations/reports_move_plan.md`·`reports_move_apply.md`(새), `src/help.rs`, `tests/fixtures/help/*.txt`, `src/project_update.rs`, `skills/moai/workflows/update.md`, `skills/moai/references/source-manifest.json`, `tests/reports_move_cli.rs`(새)
+- write: `.moai/specs/SPEC-20261119-update-moves-reports/spec.md`, `src/reports_move.rs`(새), `src/lib.rs`(모듈 한 줄), `src/ops/reports_move_plan.rs`·`src/ops/reports_move_apply.rs`(새), `docs/design-review/appendix/operations/reports_move_plan.md`·`reports_move_apply.md`(새), `src/help.rs`, `tests/fixtures/help/*.txt`, `src/project_update.rs`, `skills/moai/workflows/update.md`, `skills/moai/references/source-manifest.json`, `tests/reports_move_cli.rs`(새), `tests/project_update_plan_cli.rs`(reports 단계가 go-state 명령을 붙잡는 시험 하나)
 - read-only: `src/home_workdir.rs`(부모 SPEC 이 더한 `reports_dir`), `src/state_root.rs`, `src/plan_input` 관련
 - forbidden: 실제 HOME 에 쓰는 시험, 네트워크, 추적 파일 이동·삭제
 
@@ -80,21 +86,23 @@ parent: SPEC-20261119-reports-outside-repo
 | D-1 | 옮김 대상은 프로젝트의 `.moai-cli/reports` 와 `.moai/reports` 안의 추적되지 않는 파일(무시 규칙이 걸린 파일 포함)이에요. `plan-audit/.gitkeep` 처럼 추적되는 파일은 자동으로 제자리에 남아요 | 사용자 지시와 `.gitignore` 의 `.moai/reports/` 블록 | 대상 폴더 줄이기 |
 | D-2 | git 저장소가 아니거나 추적 여부를 알 수 없으면 `blocked` 로 두고 아무것도 옮기지 않는다 | 추적 파일은 그대로라는 지시를 어길 위험이 있는 쪽은 옮기지 않는 쪽이 안전해요 | 저장소 아님을 "모두 추적 안 됨"으로 |
 | D-3 | `reports` 단계는 backup 단계(phase)의 마지막에 두고, 옮길 파일이 있으면 같은 단계의 `go-state` 명령이 `re-run after the reports apply` 로 기다리게 한다. install·merge 단계는 기다리게 하지 않는다 | 옮김은 `.moai/reports` 를 비워서 `go-state` 미리보기가 읽는 보고서 목록이 달라지므로(그 digest 가 낡아져요) `go-state` 는 새 미리보기를 기다려야 하고, install·merge 가 읽는 파일은 바뀌지 않아요 | install 단계로 옮기기 |
-| D-4 | 같은 파일 시스템이면 이름 바꾸기(rename)로 옮기고, 아니면 복사한 뒤 바이트가 같을 때만 원본을 지운다 | 같은 볼륨이면 원자적이고, 아니면 원본을 확인 뒤에만 지워요 | 항상 복사 |
+| D-4 | 같은 파일 시스템이면 하드 링크를 만든 뒤 원본 이름을 지워서 옮기고(목적지 이름이 이미 있으면 링크가 실패해서 덮어쓰지 않아요), 아니면 `create_new` 로 복사해 바이트가 같을 때만 원본을 지운다 | 하드 링크는 이름이 있으면 실패해서 덮어쓰기가 없고, 복사는 원본을 확인 뒤에만 지워요 | 항상 복사 |
+| D-6 | 링크는 따라가지 않아요: 이른 보고서 폴더로 가는 길의 어느 한 칸이 링크이고 그 너머에 보고서 폴더가 있으면 `blocked`, 중첩 저장소 안이면 `blocked`; 보고서 폴더가 없는 링크는 무시해요 | 링크 너머는 다른 저장소일 수 있고 이 저장소의 git 은 그곳의 추적 파일을 몰라서 지우게 돼요 | 링크 허용 규칙 더하기 |
+| D-7 | 연결된 작업 트리의 목적지는 `git worktree list` 의 첫 항목(primary)의 이름으로 정한다 | `optimize-plan` 이 같은 선택을 해서 두 연산이 같은 폴더를 가리켜요 | 작업 트리 이름 쓰기 |
 | D-5 | 심볼릭 링크와 폴더가 아닌 것은 옮기지 않고 수만 알린다 | 링크를 따라가면 저장소 밖 파일을 옮길 수 있어요 | 링크 처리 규칙 더하기 |
 
 ## Result
 
 구현됨(2026-11-20, 가지 `spec/20261119-reports-outside-repo`).
 
-- AC-1: met — `plan_counts_untracked_and_tracked_files`(`tests/reports_move_cli.rs`) 통과
-- AC-2: met — `apply_moves_untracked_and_keeps_tracked` 통과
-- AC-3: met — `apply_skips_a_name_that_exists` 통과
-- AC-4: met — `apply_twice_gives_the_same_result` 통과
-- AC-5: met — `apply_makes_the_destination_owner_only` 통과(Unix)
-- AC-6: met — `apply_refuses_a_stale_digest_or_missing_permission` 통과
+- AC-1: met — `no_earlier_folder_is_unchanged_and_preview_counts_are_reported`(`tests/reports_move_cli.rs`) 통과
+- AC-2: met — `untracked_report_files_move_with_their_folders_and_tracked_ones_stay` 통과
+- AC-3: met — `a_name_the_destination_holds_is_kept_and_counted_never_overwritten` 통과
+- AC-4: met — `a_second_run_moves_nothing_and_changes_nothing` 통과
+- AC-5: met — `moved_files_and_folders_are_owner_only` 통과(Unix)
+- AC-6: met — `a_plan_made_stale_by_a_new_file_or_a_wrong_digest_or_reference_is_refused` 통과
 - AC-7: met — `update_plan_shows_the_reports_step` 통과
-- AC-8: met — `plan_is_blocked_without_a_git_repository` 통과
+- AC-8: met — `a_folder_git_cannot_read_blocks_the_move_and_nothing_is_created` 통과
 - 위 시험은 head `0a6b335558` 의 영역 접두 대상 실행(`reports_*` 포함 63개, `cargo test` 종료 코드 0)에서 돌았어요.
 
 - 두 연산 `reports-move-plan`(읽기 전용 미리보기)과 `reports-move-apply`(digest·permission reference 를 확인하고 옮김)는 `src/reports_move.rs` 의 한 곳을 써요. 옛 폴더 이름(`.moai-cli/reports`, `.moai/reports`)은 `state_root` 의 이름 상수로 적어요(`project_state_dir_is_spelled_once` 와 허용 목록 시험 둘 다 통과).

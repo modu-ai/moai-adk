@@ -1,4 +1,4 @@
-//! `reports-move-plan` / `reports-move-apply` (C-126, SPEC-20261119-update-moves-reports): the
+//! `reports-move-plan` / `reports-move-apply` (SPEC-20261119-update-moves-reports): the
 //! project update moves the untracked report files an earlier generation left inside the
 //! repository (`.moai-cli/reports`, `.moai/reports`) to the user-level reports folder
 //! `<HOME>/.moai/reports/<project>` that [`crate::home_workdir::reports_dir`] names.
@@ -26,7 +26,7 @@ fn sources() -> [String; 2] {
     ]
 }
 /// More files than this make the plan `blocked`: a folder that large is not a report folder.
-const MAX_FILES: usize = 20_000;
+pub const MAX_FILES: usize = 20_000;
 /// How many moved files a printed preview names.
 pub const EXAMPLES: usize = 10;
 
@@ -176,15 +176,100 @@ fn exists(path: &Path) -> bool {
     fs::symlink_metadata(path).is_ok()
 }
 
+/// How the folders on the way to an earlier report folder look: `Ok(true)` when every component
+/// is a plain folder, `Ok(false)` when one is missing or is a file (nothing to move), and `Err`
+/// naming the component that is a link (a link is never followed: it may lead into another
+/// repository whose tracked files this repository's git cannot see).
+fn plain_chain(root: &Path, rel: &str) -> std::result::Result<bool, String> {
+    let parts: Vec<&str> = rel.split('/').collect();
+    let mut path = root.to_path_buf();
+    for (i, part) in parts.iter().enumerate() {
+        path.push(part);
+        match fs::symlink_metadata(&path) {
+            Err(_) => return Ok(false),
+            Ok(m) if m.file_type().is_symlink() => {
+                // A link that leads to no such report folder holds nothing to move or to fear.
+                let beyond = parts[i + 1..]
+                    .iter()
+                    .fold(path.clone(), |acc, c| acc.join(c));
+                return if fs::metadata(&beyond).is_ok_and(|m| m.is_dir()) {
+                    Err(parts[..=i].join("/"))
+                } else {
+                    Ok(false)
+                };
+            }
+            Ok(m) if !m.is_dir() => return Ok(false),
+            Ok(_) => {}
+        }
+    }
+    Ok(true)
+}
+
+/// Whether git, run inside `dir`, takes `dir` for part of the project `root` (a nested
+/// repository's tracked files do not show in the project's `git ls-files`).
+fn belongs_to(root: &Path, dir: &Path) -> bool {
+    git(dir, &["rev-parse", "--show-toplevel"])
+        .ok()
+        .and_then(|out| fs::canonicalize(String::from_utf8_lossy(&out).trim()).ok())
+        .is_some_and(|top| top == root)
+}
+
+/// The primary checkout of the repository `root` belongs to: the first entry of
+/// `git worktree list` (the same choice `optimize-plan` makes), else `root` itself. A linked
+/// worktree's reports go to the folder named for the primary checkout, not for its own folder.
+fn primary_root(root: &Path) -> PathBuf {
+    let Ok(out) = git(root, &["worktree", "list", "--porcelain"]) else {
+        return root.to_path_buf();
+    };
+    let text = String::from_utf8_lossy(&out);
+    let first: Vec<&str> = text.split("\n\n").next().unwrap_or("").lines().collect();
+    let bare = first.iter().any(|l| *l == "bare");
+    first
+        .iter()
+        .find_map(|l| l.strip_prefix("worktree "))
+        .filter(|_| !bare)
+        .and_then(|p| fs::canonicalize(p).ok())
+        .unwrap_or_else(|| root.to_path_buf())
+}
+
+/// `path` with its deepest existing ancestor resolved through links and the rest kept as written.
+fn resolved(path: &Path) -> PathBuf {
+    let mut rest = Vec::new();
+    let mut at = path;
+    loop {
+        if let Ok(real) = fs::canonicalize(at) {
+            return rest.iter().rev().fold(real, |acc, c| acc.join(c));
+        }
+        match (at.parent(), at.file_name()) {
+            (Some(parent), Some(name)) => {
+                rest.push(name.to_os_string());
+                at = parent;
+            }
+            _ => return path.to_path_buf(),
+        }
+    }
+}
+
 /// Preview the move. Reads only; creates nothing, in the project or under `home`.
 pub fn plan(root: &Path, home: &Path) -> Result<MovePlan> {
     let root =
         fs::canonicalize(root).map_err(|_| contract::PROJECT_PATH_UNAVAILABLE.to_string())?;
-    let destination = home_workdir::reports_dir(home, &root)?;
-    let present: Vec<String> = sources()
-        .into_iter()
-        .filter(|s| fs::symlink_metadata(root.join(s)).is_ok_and(|m| m.is_dir()))
-        .collect();
+    // A linked worktree saves under the primary checkout's name, as `optimize-plan` reads it.
+    let destination = home_workdir::reports_dir(home, &primary_root(&root))?;
+    let mut present: Vec<String> = Vec::new();
+    for s in sources() {
+        match plain_chain(&root, &s) {
+            Ok(true) => present.push(s),
+            Ok(false) => {}
+            Err(link) => {
+                return Ok(blocked(
+                    &root,
+                    &destination,
+                    format!("`{link}` is a link, not a plain folder; nothing moves"),
+                ));
+            }
+        }
+    }
     let mut p = MovePlan {
         protocol_version: 1,
         project: root.display().to_string(),
@@ -201,6 +286,28 @@ pub fn plan(root: &Path, home: &Path) -> Result<MovePlan> {
     if present.is_empty() {
         p.plan_digest = p.digest();
         return Ok(p);
+    }
+    // The reports go outside the project: a relative HOME, or a folder that lands inside the
+    // project, would write them back into the repository.
+    if !home.is_absolute() {
+        return Ok(blocked(
+            &root,
+            &destination,
+            format!(
+                "HOME ({}) is not an absolute path; nothing moves",
+                home.display()
+            ),
+        ));
+    }
+    if resolved(&destination).starts_with(&root) {
+        return Ok(blocked(
+            &root,
+            &destination,
+            format!(
+                "{} is inside the project; nothing moves",
+                destination.display()
+            ),
+        ));
     }
     // The destination chain must be real folders (or absent): never write through a link.
     for dir in [
@@ -227,6 +334,17 @@ pub fn plan(root: &Path, home: &Path) -> Result<MovePlan> {
             ));
         }
     };
+    // A folder inside a nested repository has tracked files of its own that this repository's
+    // `git ls-files` cannot list: leave it alone.
+    for s in &present {
+        if !belongs_to(&root, &root.join(s)) {
+            return Ok(blocked(
+                &root,
+                &destination,
+                format!("`{s}` belongs to another repository; nothing moves"),
+            ));
+        }
+    }
     let mut files = Vec::new();
     for s in &present {
         if let Err(e) = walk(&root, s, &mut files, &mut p.unmovable) {
