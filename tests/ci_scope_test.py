@@ -600,30 +600,64 @@ class CiDecideScriptTest(unittest.TestCase):
             GH_TOKEN="fake-token",
         )
         if gh_files is not None or gh_broken:
+            # A bare path list is a shorthand for plain items; renames pass items
+            # with `previous_filename` directly.
+            if gh_files and isinstance(gh_files[0], str):
+                gh_files = [{"filename": p} for p in gh_files]
             bindir = os.path.join(repo, "fakebin")
             os.makedirs(bindir, exist_ok=True)
             gh = os.path.join(bindir, "gh")
+            # The fake applies the decide step's `--jq` expressions the way gh
+            # would — file items yield their filename and previous_filename lines,
+            # `length` yields the item count — so the script's expressions are
+            # exercised, not ignored (audit B1: counting the served lines instead
+            # of the items hid the truncation). `gh_broken` names which call
+            # fails: "files", "count" (the item count), "view" (the total) or
+            # "all" (True keeps working as "all").
             with open(gh, "w", encoding="utf-8") as fh:
                 fh.write(
-                    "#!/bin/sh\n"
-                    'if [ "$1" = "api" ]; then\n'
-                    '  [ "$GH_FAKE_BROKEN" = 1 ] && exit 1\n'
-                    "  printf '%s\\n' \"$GH_FAKE_FILES\"\n"
-                    "  exit 0\n"
-                    "fi\n"
-                    'if [ "$1" = "pr" ]; then\n'
-                    "  printf '%s\\n' \"$GH_FAKE_TOTAL\"\n"
-                    "  exit 0\n"
-                    "fi\n"
-                    "exit 1\n"
+                    "#!/usr/bin/env python3\n"
+                    "import json, os, sys\n"
+                    "args = sys.argv[1:]\n"
+                    "jq = args[args.index('--jq') + 1] if '--jq' in args else ''\n"
+                    "is_view = 'view' in args\n"
+                    "is_api = 'api' in args\n"
+                    "broken = os.environ.get('GH_FAKE_BROKEN', '')\n"
+                    "if (broken == 'all' or (broken == 'api' and is_api)\n"
+                    "        or (broken == 'count' and is_api and 'length' in jq)\n"
+                    "        or (broken == 'files' and is_api and 'length' not in jq)\n"
+                    "        or (broken == 'view' and is_view)):\n"
+                    "    sys.exit(1)\n"
+                    "if is_view:\n"
+                    "    print(os.environ.get('GH_FAKE_TOTAL', '0'))\n"
+                    "elif is_api:\n"
+                    "    items = json.loads(os.environ.get('GH_FAKE_FILES', '[]'))\n"
+                    "    if 'length' in jq:\n"
+                    "        print(len(items))\n"
+                    "    else:\n"
+                    "        for it in items:\n"
+                    "            print(it['filename'])\n"
+                    "            if it.get('previous_filename'):\n"
+                    "                print(it['previous_filename'])\n"
+                    "else:\n"
+                    "    sys.exit(1)\n"
                 )
             os.chmod(gh, 0o755)
             env["PATH"] = bindir + os.pathsep + env["PATH"]
-            env["GH_FAKE_FILES"] = "\n".join(gh_files or [])
+            env["GH_FAKE_FILES"] = json.dumps(gh_files or [])
             env["GH_FAKE_TOTAL"] = str(len(gh_files or []) if gh_total is None else gh_total)
-            env["GH_FAKE_BROKEN"] = "1" if gh_broken else "0"
+            if gh_broken is True:
+                gh_broken = "all"
+            elif gh_broken is False:
+                gh_broken = ""
+            env["GH_FAKE_BROKEN"] = str(gh_broken)
+        # The runner executes the step with `bash --noprofile --norc -eo pipefail`,
+        # so the decide script runs under exactly that shell here too (audit: a
+        # plainer shell hid that a failing call kills the step instead of failing
+        # safe).
         proc = subprocess.run(
-            ["bash", "-c", script], cwd=repo, env=env, capture_output=True, text=True
+            ["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", script],
+            cwd=repo, env=env, capture_output=True, text=True,
         )
         matrix = None
         if os.path.exists(out):
@@ -689,6 +723,71 @@ class CiDecideScriptTest(unittest.TestCase):
         repo, base, head, _names = self.repo({"src/statusline/render.rs": "x\n"})
         proc, matrix = self.decide(
             repo, "pull_request", base, head, gh_broken=True
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(matrix, self.FULL)
+
+    def test_a_rename_serves_both_paths_from_the_jq(self):
+        # The fake gh applies the decide step's own `--jq`: a rename item yields
+        # its new and its old name, so both paths reach the judge.
+        repo, base, head, _names = self.repo({"docs/a.md": "x\n"})
+        proc, _matrix = self.decide(
+            repo, "pull_request", base, head,
+            gh_files=[
+                {"filename": "notes/new.md", "previous_filename": "notes/old.md"},
+                {"filename": "docs/a.md"},
+            ],
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        with open(
+            os.path.join(repo, "runner-temp", "ci-scope-files.txt"),
+            encoding="utf-8",
+        ) as fh:
+            paths = set(fh.read().splitlines())
+        self.assertIn("notes/new.md", paths)
+        self.assertIn("notes/old.md", paths)
+
+    def test_the_truncation_guard_counts_api_items_not_path_lines(self):
+        # audit B1: a rename serves two path lines for one API item. Three items
+        # (two renames) against a true total of four must read as truncated —
+        # counting lines would report 6 >= 4 and judge a partial list. A
+        # linux-only partial list judged complete would narrow the matrix.
+        repo, base, head, _names = self.repo({"docs/a.md": "x\n"})
+        proc, matrix = self.decide(
+            repo, "pull_request", base, head,
+            gh_files=[
+                {"filename": "a/new1", "previous_filename": "a/old1"},
+                {"filename": "a/new2", "previous_filename": "a/old2"},
+                {"filename": "docs/a.md"},
+            ],
+            gh_total=4,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(matrix, self.FULL)
+        self.assertIn("served 3 of 4", proc.stderr)
+
+    def test_a_failed_files_call_falls_back_in_the_runner_shell(self):
+        # The runner runs the step with -e and pipefail: a failing gh call must
+        # land in the fail-safe full matrix, not kill the step.
+        repo, base, head, names = self.repo({"src/statusline/render.rs": "x\n"})
+        proc, matrix = self.decide(
+            repo, "pull_request", base, head, gh_files=names, gh_broken="files"
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(matrix, self.FULL)
+
+    def test_a_failed_item_count_call_falls_back_in_the_runner_shell(self):
+        repo, base, head, names = self.repo({"src/statusline/render.rs": "x\n"})
+        proc, matrix = self.decide(
+            repo, "pull_request", base, head, gh_files=names, gh_broken="count"
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertEqual(matrix, self.FULL)
+
+    def test_a_failed_total_call_falls_back_in_the_runner_shell(self):
+        repo, base, head, names = self.repo({"src/statusline/render.rs": "x\n"})
+        proc, matrix = self.decide(
+            repo, "pull_request", base, head, gh_files=names, gh_broken="view"
         )
         self.assertEqual(proc.returncode, 0, proc.stderr)
         self.assertEqual(matrix, self.FULL)
