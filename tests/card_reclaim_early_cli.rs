@@ -111,7 +111,11 @@ impl World {
             cmd.env(SESSION_VAR, s);
         }
         let out = cmd.output().unwrap();
-        assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stdout));
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stdout)
+        );
     }
 
     /// A ready card taken by `holder` with the worktree `worktree` (none: no worktree).
@@ -280,7 +284,9 @@ fn early_reclaim_succeeds() {
     let reason = got["reason"].as_str().unwrap();
     assert!(reason.starts_with(REASON), "{reason}");
     assert!(
-        reason.contains("early reclaim: launcher exited (session agent-1); worktree clean; no process in it"),
+        reason.contains(
+            "early reclaim: launcher exited (session agent-1); worktree clean; no process in it"
+        ),
         "{reason}"
     );
 }
@@ -294,7 +300,10 @@ fn early_reclaim_with_a_gone_worktree() {
     w.register(NAME, Some(&sid(1)));
     let got = result(&w.reclaim(&sid(2), &card, "1"));
     let reason = got["reason"].as_str().unwrap();
-    assert!(reason.contains("worktree gone; no process in it"), "{reason}");
+    assert!(
+        reason.contains("worktree gone; no process in it"),
+        "{reason}"
+    );
 }
 
 /// AC-2 (REQ-2): an alive answer and an unknown answer each leave the live lease refused, with
@@ -324,7 +333,11 @@ fn refused_without_the_liveness_proof() {
     let bytes = w.registry_bytes();
     let m = w.refused_and_unchanged(w.reclaim(&sid(2), &card, "1"), "lease", &before);
     assert!(m.contains("launcher is still running"), "{m}");
-    assert_eq!(w.registry_bytes(), bytes, "the proof wrote into the registry");
+    assert_eq!(
+        w.registry_bytes(),
+        bytes,
+        "the proof wrote into the registry"
+    );
     drop(held);
 }
 
@@ -413,7 +426,10 @@ fn a_listed_tool_cache_is_not_work() {
     // Only the listed cache is left: the reclaim goes through and the cache file stays.
     let got = result(&w.reclaim(&sid(2), &card, "1"));
     assert_eq!(got["reservation"]["generation"], json!(2));
-    assert!(cache_dir.join("counts.json").exists(), "the proof deleted a file");
+    assert!(
+        cache_dir.join("counts.json").exists(),
+        "the proof deleted a file"
+    );
 }
 
 /// AC-5 (REQ-5, REQ-8): the event keeps its kind, carries the proof in its own field, and the
@@ -440,7 +456,10 @@ fn event_names_the_proof() {
     let payload: Value = serde_json::from_str(rows[0][1].as_str().unwrap()).unwrap();
     assert_eq!(payload["from_holder"], json!(sid(1)));
     assert!(
-        payload["reason"].as_str().unwrap().contains("early reclaim: launcher exited"),
+        payload["reason"]
+            .as_str()
+            .unwrap()
+            .contains("early reclaim: launcher exited"),
         "{payload}"
     );
     assert_eq!(
@@ -467,7 +486,9 @@ fn event_names_the_proof() {
     .unwrap();
     drop(l);
     result(&w.reclaim(&sid(6), &other, "1"));
-    let rows = w.rows("SELECT payload FROM event WHERE kind = 'card.reclaim' ORDER BY event_id DESC LIMIT 1");
+    let rows = w.rows(
+        "SELECT payload FROM event WHERE kind = 'card.reclaim' ORDER BY event_id DESC LIMIT 1",
+    );
     let payload: Value = serde_json::from_str(rows[0][0].as_str().unwrap()).unwrap();
     assert!(payload.get("early_proof").is_none(), "{payload}");
 }
@@ -486,9 +507,7 @@ fn early_reclaim_counts() {
         let got = result(&w.reclaim(&sid(n + 1), &card, &g));
         assert_eq!(got["reservation"]["generation"], json!(n + 1));
     }
-    let lease = w.rows(
-        "SELECT lease_until - acquired_at FROM reservation WHERE generation = 4",
-    );
+    let lease = w.rows("SELECT lease_until - acquired_at FROM reservation WHERE generation = 4");
     assert_eq!(lease[0][0], json!(14_400), "the lease default is unchanged");
     let before = w.dump();
     let (kind, message) = refusal(&w.reclaim(&sid(5), &card, "4"));
@@ -514,7 +533,8 @@ fn reason_too_long() {
     let w = world();
     let card = w.taken(&sid(1), Some(&w.wt), "src/long/");
     w.register(NAME, Some(&sid(1)));
-    let suffix = " [early reclaim: launcher exited (session agent-1); worktree clean; no process in it]";
+    let suffix =
+        " [early reclaim: launcher exited (session agent-1); worktree clean; no process in it]";
     let room = 500 - suffix.chars().count();
     let before = w.dump();
     let too_long = "a".repeat(room + 1);
@@ -546,14 +566,20 @@ fn reclaim_early_holder_must_match() {
             Ok(tx.last_insert_rowid())
         })
         .unwrap();
-    reservation::reserve(&mut w, card, "holder-a", &["zone/".to_string()], 3600, None, None)
-        .unwrap();
+    reservation::reserve(
+        &mut w,
+        card,
+        "holder-a",
+        &["zone/".to_string()],
+        3600,
+        None,
+        None,
+    )
+    .unwrap();
     let detail = json!({"liveness": "launcher-exited"});
     let count = |w: &mut ledger::WriteLedger| -> i64 {
-        w.with_write_tx(|tx, _| {
-            Ok(tx.query_row("SELECT COUNT(*) FROM event", [], |r| r.get(0))?)
-        })
-        .unwrap()
+        w.with_write_tx(|tx, _| Ok(tx.query_row("SELECT COUNT(*) FROM event", [], |r| r.get(0))?))
+            .unwrap()
     };
     let events = count(&mut w);
 
@@ -571,8 +597,8 @@ fn reclaim_early_holder_must_match() {
         holder: "holder-a",
         detail: &detail,
     };
-    let got = reservation::reclaim_early(&mut w, card, "heir", 1, "leader", "r", 3600, &right)
-        .unwrap();
+    let got =
+        reservation::reclaim_early(&mut w, card, "heir", 1, "leader", "r", 3600, &right).unwrap();
     assert_eq!(got.reservation.generation, 2);
     assert_eq!(got.reservation.holder, "heir");
     assert_eq!(count(&mut w), events + 1);

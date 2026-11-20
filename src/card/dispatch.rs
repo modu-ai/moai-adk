@@ -661,15 +661,14 @@ pub(super) fn worktree_gate(worktree: Option<&str>) -> Result<()> {
         Ok(true) => {}
         Err(_) => return Err(unreadable()),
     }
-    // One changed or untracked path per line.
-    let uncommitted = git_output(
-        path,
-        &["status", "--porcelain=v1", "--untracked-files=normal"],
-    )
-    .ok_or_else(unreadable)?
-    .lines()
-    .filter(|l| !l.trim().is_empty())
-    .count() as u64;
+    // One changed or untracked path per line, every untracked file on its own line (a folder
+    // git would show as one entry could hide real work beside a tool cache). A listed tool
+    // cache file is not work (SPEC-20261120-reclaim-dead-holder REQ-12).
+    let uncommitted = git_output(path, &["status", "--porcelain=v1", "--untracked-files=all"])
+        .ok_or_else(unreadable)?
+        .lines()
+        .filter(|l| !l.trim().is_empty() && !super::early_reclaim::is_tool_cache_entry(l))
+        .count() as u64;
     let unpushed = git_output(path, &["rev-list", "--count", "HEAD", "--not", "--remotes"])
         .and_then(|n| n.trim().parse::<u64>().ok())
         .ok_or_else(unreadable)?;
