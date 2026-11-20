@@ -513,3 +513,53 @@ fn a_double_dash_thread_flag_is_not_a_target() {
         "-threads was never named as a target:\n{stderr}"
     );
 }
+
+#[test]
+#[cfg(unix)]
+fn the_scan_continues_to_the_next_test_flag() {
+    // The audit's e1: the word after a `--test` can be no target name at all (`./x`) —
+    // the regex keeps scanning and the next `--test` names the target.
+    let f = ac_fixture(false);
+    record(
+        &f.dir,
+        "docs/a.md",
+        "run: `cargo test --offline --locked --test ./x --test nope30`\n",
+    );
+    let out = lint_with_stub(&f, &["--tree", f.dir.path().to_str().unwrap()]);
+    let stderr = String::from_utf8_lossy(&out.stderr).to_string();
+    assert!(
+        !out.status.success(),
+        "the next `--test` names the target:\n{stderr}"
+    );
+    assert!(
+        stderr.contains("target tests/nope30.rs does not exist"),
+        "the target is the second flag's word:\n{stderr}"
+    );
+    assert!(
+        !stderr.contains("tests/./x") && !stderr.contains("-threads"),
+        "the non-name word was never a target:\n{stderr}"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn a_vertical_tab_breaks_the_recorded_line() {
+    // The audit's c14: Python breaks a line on `\x0b`/`\x0c` too (str.splitlines), so a
+    // recorded span never crosses one and the pieces stay unjudged.
+    let f = ac_fixture(false);
+    record(
+        &f.dir,
+        "docs/a.md",
+        "note: `cargo test --offline --locked --test ghost_target one\x0bprose --test fixture_target two`\n",
+    );
+    let out = lint_with_stub(&f, &["--tree", f.dir.path().to_str().unwrap()]);
+    let stderr = String::from_utf8_lossy(&out.stderr).to_string();
+    assert!(
+        out.status.success(),
+        "the split halves hold no closed span — nothing to judge:\n{stderr}"
+    );
+    assert!(
+        !stderr.contains("does not exist"),
+        "the span never crossed the vertical tab:\n{stderr}"
+    );
+}

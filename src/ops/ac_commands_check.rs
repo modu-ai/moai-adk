@@ -133,13 +133,47 @@ fn collect_tree_files(root: &Path) -> Vec<PathBuf> {
     docs
 }
 
+/// Python's `str.splitlines()` — the boundaries Python breaks lines on are wider than
+/// Rust's `\n`: `\v`, `\f`, the file-separator group, NEL and the Unicode separators
+/// count too (the audit's c14 — a `\x0b` inside a recorded line is a line break to the
+/// tool, so a span never crosses it).
+fn py_lines(text: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    let mut start = 0usize;
+    let mut idx = 0usize;
+    let chars: Vec<(usize, char)> = text.char_indices().collect();
+    while idx < chars.len() {
+        let (pos, ch) = chars[idx];
+        let mut skip = 1usize;
+        let boundary = match ch {
+            '\n' => true,
+            '\r' => {
+                if chars.get(idx + 1).is_some_and(|(_, n)| *n == '\n') {
+                    skip = 2;
+                }
+                true
+            }
+            '\u{0B}' | '\u{0C}' | '\u{1C}' | '\u{1D}' | '\u{1E}' | '\u{85}' | '\u{2028}'
+            | '\u{2029}' => true,
+            _ => false,
+        };
+        if boundary {
+            out.push(&text[start..pos]);
+            start = pos + ch.len_utf8() + if skip == 2 { 1 } else { 0 };
+        }
+        idx += skip;
+    }
+    out.push(&text[start..]);
+    out
+}
+
 /// Candidate command strings: fenced-block lines and backtick code spans, as the tool had
 /// them (table rows that only mention commands are handled by this: only the quoted span is
 /// tokenized, trailing prose never becomes a filter).
 fn candidates(text: &str) -> Vec<&str> {
     let mut out = Vec::new();
     let mut in_fence = false;
-    for line in text.lines() {
+    for line in py_lines(text) {
         if line.trim_start().starts_with("```") {
             in_fence = !in_fence;
             continue;
@@ -263,7 +297,9 @@ fn contains_cargo_test(candidate: &str) -> bool {
 }
 
 /// The first `--test <name>` the tool's regex finds — the flag needs `--test\s+`, so
-/// `--test-threads` is never a `--test` and never names a target (the audit's B3).
+/// `--test-threads` is never a `--test` and never names a target (the audit's B3), and
+/// when the word after it is not a target name at all (`./x`) the regex keeps scanning
+/// and the next `--test` names the target (the audit's e1).
 fn test_target_name(tokens: &[String]) -> Option<String> {
     let joined = tokens.join(" ");
     let mut scan = 0usize;
@@ -281,7 +317,8 @@ fn test_target_name(tokens: &[String]) -> Option<String> {
             .unwrap_or(rest.len());
         let name = &rest[..end];
         if name.is_empty() {
-            return None;
+            scan = idx + "--test".len();
+            continue;
         }
         return Some(name.to_string());
     }
