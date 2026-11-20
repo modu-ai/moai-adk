@@ -228,3 +228,422 @@ fn lock_owner_record_is_json_with_pid_and_created_at() {
     drop(held);
     let _ = PathBuf::new();
 }
+
+// ---- moai hook pre-push (SPEC-20261120-rust-pre-push) -----------------------------------------
+
+mod prepush_support {
+    use super::quality_gate::pre_push::{run as pre_push, PrePushEnv, PrePushInvocation};
+    use std::fs;
+    use std::path::Path;
+
+    pub fn config(project: &Path, file: &str, text: &str) {
+        let d = project.join(".moai/config/sections");
+        fs::create_dir_all(&d).unwrap();
+        fs::write(d.join(file), text).unwrap();
+    }
+
+    pub fn env(enforce: Option<&str>, mode: Option<&str>, convention: Option<&str>) -> PrePushEnv {
+        PrePushEnv {
+            enforce_on_push: enforce.map(String::from),
+            pre_push_mode: mode.map(String::from),
+            convention: convention.map(String::from),
+        }
+    }
+
+    /// `(exit, stdout, stderr)`
+    pub fn check(project: &Path, env: PrePushEnv, stdin: &str) -> (i32, String, String) {
+        let inv = PrePushInvocation {
+            project_dir: project.to_path_buf(),
+            env,
+            stdin: stdin.as_bytes().to_vec(),
+        };
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        let code = pre_push(&inv, &mut out, &mut err);
+        (
+            code,
+            String::from_utf8_lossy(&out).into_owned(),
+            String::from_utf8_lossy(&err).into_owned(),
+        )
+    }
+}
+use prepush_support::{check, config as pp_config, env as pp_env};
+
+/// AC-2 (REQ-2): with no opt-in the check reads nothing and says nothing, whatever the input.
+#[test]
+fn prepush_is_off_by_default() {
+    let p = TempDir::new().unwrap();
+    let (code, out, err) = check(p.path(), pp_env(None, None, None), "bad message\n");
+    assert_eq!((code, out.as_str(), err.as_str()), (0, "", ""));
+    // An unrecognised value of the switch is off too.
+    let (code, out, err) = check(
+        p.path(),
+        pp_env(Some("yes"), Some("enforce"), None),
+        "bad message\n",
+    );
+    assert_eq!((code, out.as_str(), err.as_str()), (0, "", ""));
+}
+
+/// AC-2 (REQ-1): the default action is `warn` (team mode): the report is printed, the exit is 0.
+#[test]
+fn prepush_default_action_reports_but_exits_zero() {
+    let p = TempDir::new().unwrap();
+    let (code, out, err) = check(
+        p.path(),
+        pp_env(Some("1"), None, None),
+        "bad message\nfeat: ok\n",
+    );
+    assert_eq!(code, 0);
+    assert_eq!(out, "");
+    assert!(err.starts_with("1 of 2 commit(s) violate conventional-commits convention:\n\nCommit message violates conventional-commits convention:\n  Message: \"bad message\"\n\n  [PATTERN] Pattern mismatch (expected: ^("), "{err}");
+    assert!(err.contains("\n    Suggestion: chore: bad message\n\n  Examples of valid messages:\n    - feat(auth): add JWT token validation\n"), "{err}");
+}
+
+/// AC-2 (REQ-1): `enforce` ends with 2; `skip` ends silently with 0.
+#[test]
+fn prepush_enforce_exits_two_and_skip_is_silent() {
+    let p = TempDir::new().unwrap();
+    let (code, _, err) = check(
+        p.path(),
+        pp_env(Some("true"), Some("enforce"), None),
+        "bad message\n",
+    );
+    assert_eq!(code, 2);
+    assert!(err.contains("1 of 1 commit(s) violate"), "{err}");
+    let (code, out, err) = check(
+        p.path(),
+        pp_env(Some("true"), Some("skip"), None),
+        "bad message\n",
+    );
+    assert_eq!((code, out.as_str(), err.as_str()), (0, "", ""));
+}
+
+/// AC-2 (REQ-1, REQ-2): the files decide when the environment says nothing: the switch in
+/// `git-convention.yaml`, the action in the current mode of `git-strategy.yaml`; an unknown mode
+/// or an unparsable value enforces.
+#[test]
+fn prepush_config_files_decide_the_switch_and_the_action() {
+    let p = TempDir::new().unwrap();
+    pp_config(
+        p.path(),
+        "git-convention.yaml",
+        "git_convention:\n  validation:\n    enforce_on_push: true\n",
+    );
+    assert_eq!(
+        check(p.path(), pp_env(None, None, None), "bad message\n").0,
+        0,
+        "team mode warns"
+    );
+    pp_config(
+        p.path(),
+        "git-strategy.yaml",
+        "git_strategy:\n  mode: team\n  team:\n    hooks:\n      pre_push: enforce\n",
+    );
+    assert_eq!(
+        check(p.path(), pp_env(None, None, None), "bad message\n").0,
+        2
+    );
+    pp_config(
+        p.path(),
+        "git-strategy.yaml",
+        "git_strategy:\n  mode: personal\n  team:\n    hooks:\n      pre_push: enforce\n",
+    );
+    assert_eq!(
+        check(p.path(), pp_env(None, None, None), "bad message\n").0,
+        0,
+        "the personal profile keeps the warn default"
+    );
+    pp_config(
+        p.path(),
+        "git-strategy.yaml",
+        "git_strategy:\n  mode: custom\n",
+    );
+    assert_eq!(
+        check(p.path(), pp_env(None, None, None), "bad message\n").0,
+        2,
+        "unknown mode enforces"
+    );
+    pp_config(
+        p.path(),
+        "git-strategy.yaml",
+        "git_strategy:\n  mode: manual\n  manual:\n    hooks:\n      pre_push: sometimes\n",
+    );
+    assert_eq!(
+        check(p.path(), pp_env(None, None, None), "bad message\n").0,
+        2,
+        "unparsable value enforces"
+    );
+    pp_config(
+        p.path(),
+        "git-strategy.yaml",
+        "git_strategy:\n  mode: manual\n  manual:\n    hooks:\n      pre_push: skip\n",
+    );
+    assert_eq!(
+        check(p.path(), pp_env(None, None, None), "bad message\n"),
+        (0, String::new(), String::new())
+    );
+}
+
+/// AC-1 (REQ-3): an unknown convention name is a load error with exit 1.
+#[test]
+fn prepush_unknown_convention_is_a_load_error() {
+    let p = TempDir::new().unwrap();
+    let (code, out, err) = check(
+        p.path(),
+        pp_env(Some("1"), None, Some("bogus")),
+        "feat: x\n",
+    );
+    assert_eq!(code, 1);
+    assert_eq!(out, "");
+    assert_eq!(err, "pre-push: load convention: load convention \"bogus\": unknown built-in convention: \"bogus\"\n");
+}
+
+/// AC-1 (REQ-5, REQ-6): nothing to validate and all-valid messages.
+#[test]
+fn prepush_empty_input_and_all_valid() {
+    let p = TempDir::new().unwrap();
+    let (code, out, err) = check(p.path(), pp_env(Some("1"), None, None), "\n  \n");
+    assert_eq!(
+        (code, out.as_str(), err.as_str()),
+        (0, "No commit messages to validate.\n", "")
+    );
+    let (code, out, err) = check(
+        p.path(),
+        pp_env(Some("1"), None, None),
+        "feat: a\nfix(core): b\n  docs: c  \n",
+    );
+    assert_eq!(
+        (code, out.as_str(), err.as_str()),
+        (
+            0,
+            "All 3 commit(s) follow conventional-commits convention.\n",
+            ""
+        )
+    );
+}
+
+fn violates(convention: &str, subject: &str) -> bool {
+    let p = TempDir::new().unwrap();
+    let (_, out, err) = check(
+        p.path(),
+        pp_env(Some("1"), Some("warn"), Some(convention)),
+        &format!("{subject}\n"),
+    );
+    assert!(
+        out.is_empty() != err.is_empty(),
+        "exactly one of the two streams speaks: {out:?} {err:?}"
+    );
+    !err.is_empty()
+}
+
+/// AC-2 (REQ-1): the three built-in patterns, edge by edge.
+#[test]
+fn prepush_builtin_patterns() {
+    let cc = "conventional-commits";
+    for ok in [
+        "feat: x",
+        "fix(core): x",
+        "feat(a b): x",
+        "feat!: x",
+        "feat(a)!: x",
+        "revert: x",
+        "feat(a): (b): c",
+        "feat(a)(b): x",
+    ] {
+        assert!(!violates(cc, ok), "{ok}");
+    }
+    for bad in [
+        "feat:x",
+        "feat: ",
+        "Feat: x",
+        "feat(): x",
+        "feat (a): x",
+        "feature: x",
+        "feat(a) : x",
+        "feat(a): ",
+        "wip",
+        "feat!!: x",
+    ] {
+        assert!(violates(cc, bad), "{bad}");
+    }
+    let ang = "angular";
+    for ok in ["feat(my-scope): x", "fix: x", "build(a): y"] {
+        assert!(!violates(ang, ok), "{ok}");
+    }
+    for bad in [
+        "chore: x",
+        "feat(Router): x",
+        "feat(a_b): x",
+        "feat!: x",
+        "revert: x",
+    ] {
+        assert!(violates(ang, bad), "{bad}");
+    }
+    let karma = "karma";
+    for ok in ["chore: x", "style(a b): y", "test: z"] {
+        assert!(!violates(karma, ok), "{ok}");
+    }
+    for bad in ["revert: x", "build: x", "feat!: x"] {
+        assert!(violates(karma, bad), "{bad}");
+    }
+}
+
+/// AC-2 (REQ-1): the header length limit is bytes, 100 by default, and `max_length` overrides it;
+/// the report names both numbers.
+#[test]
+fn prepush_header_length_limit() {
+    let p = TempDir::new().unwrap();
+    let ok = format!("feat: {}", "a".repeat(94)); // 100 bytes
+    let long = format!("feat: {}", "a".repeat(95)); // 101 bytes
+    assert_eq!(
+        check(p.path(), pp_env(Some("1"), None, None), &format!("{ok}\n")).0,
+        0
+    );
+    let (_, out, err) = check(
+        p.path(),
+        pp_env(Some("1"), None, None),
+        &format!("{long}\n"),
+    );
+    assert_eq!(out, "");
+    assert!(
+        err.contains("  [LENGTH] Header too long (101 characters, max 100 characters)\n"),
+        "{err}"
+    );
+    pp_config(
+        p.path(),
+        "git-convention.yaml",
+        "git_convention:\n  validation:\n    max_length: 20\n",
+    );
+    let (_, _, err) = check(
+        p.path(),
+        pp_env(Some("1"), None, None),
+        "feat: a short subject here\n",
+    );
+    assert!(
+        err.contains("Header too long (26 characters, max 20 characters)"),
+        "{err}"
+    );
+}
+
+/// AC-2 (REQ-1): a subject that starts with a multi-byte character gets Go's garbled suggestion
+/// (the first byte is sliced off), kept byte for byte.
+#[test]
+fn prepush_multibyte_subject_suggestion_is_byte_exact() {
+    let p = TempDir::new().unwrap();
+    let inv = quality_gate::pre_push::PrePushInvocation {
+        project_dir: p.path().to_path_buf(),
+        env: pp_env(Some("1"), Some("warn"), Some("angular")),
+        stdin: "한글 제목\n".as_bytes().to_vec(),
+    };
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    quality_gate::pre_push::run(&inv, &mut out, &mut err);
+    let want: Vec<u8> = [
+        b"    Suggestion: chore: ".as_slice(),
+        "\u{FFFD}".as_bytes(),
+        &"한글".as_bytes()[1..],
+        " 제목\n\n".as_bytes(),
+    ]
+    .concat();
+    assert!(
+        err.windows(want.len()).any(|w| w == want.as_slice()),
+        "{:?}",
+        String::from_utf8_lossy(&err)
+    );
+}
+
+fn git_repo(subjects: &[&str]) -> TempDir {
+    let p = TempDir::new().unwrap();
+    let git = |args: &[&str]| {
+        let st = std::process::Command::new("git")
+            .args(args)
+            .current_dir(p.path())
+            .env("GIT_AUTHOR_NAME", "t")
+            .env("GIT_AUTHOR_EMAIL", "t@t")
+            .env("GIT_COMMITTER_NAME", "t")
+            .env("GIT_COMMITTER_EMAIL", "t@t")
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .output()
+            .unwrap();
+        assert!(
+            st.status.success(),
+            "{:?}",
+            String::from_utf8_lossy(&st.stderr)
+        );
+    };
+    git(&["init", "-q", "."]);
+    for s in subjects {
+        git(&["commit", "-q", "--allow-empty", "-m", s]);
+    }
+    p
+}
+
+/// AC-2 (REQ-4): `auto` follows the history when it scores at least the threshold, else the
+/// fallback; a disabled detection or an unreadable history goes to the fallback too.
+#[test]
+fn prepush_auto_detection() {
+    let name_of = |p: &Path, env: quality_gate::pre_push::PrePushEnv| {
+        let (_, _, err) = check(p, env, "bad message\n");
+        err.lines().next().unwrap_or("").to_string()
+    };
+    let history = git_repo(&["feat: a", "fix: b", "chore: c", "docs: d"]);
+    assert!(name_of(history.path(), pp_env(Some("1"), None, None))
+        .contains("violate conventional-commits convention"));
+    // Free-form history scores 0 for every convention: the configured fallback is used.
+    let free = git_repo(&["Update stuff", "More stuff", "Fixes", "wip"]);
+    pp_config(
+        free.path(),
+        "git-convention.yaml",
+        "git_convention:\n  auto_detection:\n    fallback: angular\n",
+    );
+    assert!(
+        name_of(free.path(), pp_env(Some("1"), None, None)).contains("violate angular convention")
+    );
+    // Detection off: the fallback even when the history is conventional.
+    pp_config(
+        history.path(),
+        "git-convention.yaml",
+        "git_convention:\n  auto_detection:\n    enabled: false\n    fallback: karma\n",
+    );
+    assert!(
+        name_of(history.path(), pp_env(Some("1"), None, None)).contains("violate karma convention")
+    );
+    // No repository at all: fallback.
+    let none = TempDir::new().unwrap();
+    assert!(name_of(none.path(), pp_env(Some("1"), None, None))
+        .contains("violate conventional-commits convention"));
+}
+
+/// AC-2 (REQ-1): a value the Go loader refuses voids the whole config: defaults apply, the
+/// switch can then come from the environment only, and with no profile the action is `enforce`.
+#[test]
+fn prepush_invalid_config_fails_closed() {
+    let p = TempDir::new().unwrap();
+    pp_config(
+        p.path(),
+        "git-convention.yaml",
+        "git_convention:\n  validation:\n    max_length: -1\n",
+    );
+    let (code, _, err) = check(p.path(), pp_env(Some("1"), None, None), "bad message\n");
+    assert_eq!(code, 2, "{err}");
+    assert!(
+        err.contains("violate conventional-commits convention"),
+        "{err}"
+    );
+    // The file's own switch is lost with it.
+    pp_config(
+        p.path(),
+        "git-convention.yaml",
+        "git_convention:\n  convention: bogus\n  validation:\n    enforce_on_push: true\n",
+    );
+    assert_eq!(
+        check(p.path(), pp_env(None, None, None), "bad message\n"),
+        (0, String::new(), String::new())
+    );
+    // An unknown fallback is refused the same way, so it never reaches the load error.
+    pp_config(
+        p.path(),
+        "git-convention.yaml",
+        "git_convention:\n  auto_detection:\n    enabled: false\n    fallback: nope\n",
+    );
+    assert_eq!(check(p.path(), pp_env(Some("1"), None, None), "x\n").0, 2);
+}

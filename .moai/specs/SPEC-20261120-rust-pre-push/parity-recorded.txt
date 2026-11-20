@@ -1,0 +1,708 @@
+=== pp_off_by_default
+exit: 0
+--stdout
+
+--stderr
+
+=== pp_switch_word_yes_is_off
+exit: 0
+--stdout
+
+--stderr
+
+=== pp_default_action_warns
+exit: 0
+--stdout
+
+--stderr
+1 of 2 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "bad message"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: chore: bad message
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+=== pp_enforce_env
+exit: 2
+--stdout
+
+--stderr
+1 of 1 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "bad message"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: chore: bad message
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+=== pp_skip_env
+exit: 0
+--stdout
+
+--stderr
+
+=== pp_bad_action_env_falls_back
+exit: 0
+--stdout
+
+--stderr
+1 of 1 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "bad message"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: chore: bad message
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+=== pp_config_switch_and_team_enforce
+exit: 2
+--stdout
+
+--stderr
+1 of 1 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "bad message"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: chore: bad message
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+=== pp_config_switch_only_warns
+exit: 0
+--stdout
+
+--stderr
+1 of 1 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "bad message"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: chore: bad message
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+=== pp_unknown_mode_enforces
+exit: 2
+--stdout
+
+--stderr
+1 of 1 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "bad message"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: chore: bad message
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+=== pp_unparsable_hook_value_enforces
+exit: 2
+--stdout
+
+--stderr
+1 of 1 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "bad message"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: chore: bad message
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+=== pp_unknown_convention
+exit: 1
+--stdout
+
+--stderr
+error: pre-push: load convention: load convention "bogus": unknown built-in convention: "bogus"
+
+=== pp_empty_input
+exit: 0
+--stdout
+No commit messages to validate.
+--stderr
+
+=== pp_all_valid
+exit: 0
+--stdout
+All 3 commit(s) follow conventional-commits convention.
+--stderr
+
+=== pp_conventional_patterns
+exit: 0
+--stdout
+
+--stderr
+9 of 17 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "feat:x"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: feat: feat:x
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+Commit message violates conventional-commits convention:
+  Message: "feat:"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: feat: feat:
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+Commit message violates conventional-commits convention:
+  Message: "Feat: x"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: feat: feat: x
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+Commit message violates conventional-commits convention:
+  Message: "feat(): x"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: feat: feat(): x
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+Commit message violates conventional-commits convention:
+  Message: "feat (a): x"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: feat: feat (a): x
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+Commit message violates conventional-commits convention:
+  Message: "feature: x"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: feat: feature: x
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+Commit message violates conventional-commits convention:
+  Message: "feat(a) : x"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: feat: feat(a) : x
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+Commit message violates conventional-commits convention:
+  Message: "wip"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: chore: wip
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+Commit message violates conventional-commits convention:
+  Message: "feat!!: x"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: feat: feat!!: x
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+=== pp_angular_patterns
+exit: 0
+--stdout
+
+--stderr
+5 of 8 commit(s) violate angular convention:
+
+Commit message violates angular convention:
+  Message: "chore: x"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|ci|docs|feat|fix|perf|refactor|test)(\([a-z-]+\))?: .+)
+    Suggestion: chore: chore: x
+
+  Examples of valid messages:
+    - feat(router): add lazy loading support
+    - fix(compiler): handle edge case in template parser
+
+Commit message violates angular convention:
+  Message: "feat(Router): x"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|ci|docs|feat|fix|perf|refactor|test)(\([a-z-]+\))?: .+)
+    Suggestion: feat: feat(Router): x
+
+  Examples of valid messages:
+    - feat(router): add lazy loading support
+    - fix(compiler): handle edge case in template parser
+
+Commit message violates angular convention:
+  Message: "feat(a_b): x"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|ci|docs|feat|fix|perf|refactor|test)(\([a-z-]+\))?: .+)
+    Suggestion: feat: feat(a_b): x
+
+  Examples of valid messages:
+    - feat(router): add lazy loading support
+    - fix(compiler): handle edge case in template parser
+
+Commit message violates angular convention:
+  Message: "feat!: x"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|ci|docs|feat|fix|perf|refactor|test)(\([a-z-]+\))?: .+)
+    Suggestion: feat: feat!: x
+
+  Examples of valid messages:
+    - feat(router): add lazy loading support
+    - fix(compiler): handle edge case in template parser
+
+Commit message violates angular convention:
+  Message: "revert: x"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|ci|docs|feat|fix|perf|refactor|test)(\([a-z-]+\))?: .+)
+    Suggestion: chore: revert: x
+
+  Examples of valid messages:
+    - feat(router): add lazy loading support
+    - fix(compiler): handle edge case in template parser
+
+=== pp_karma_patterns
+exit: 0
+--stdout
+
+--stderr
+3 of 6 commit(s) violate karma convention:
+
+Commit message violates karma convention:
+  Message: "revert: x"
+
+  [PATTERN] Pattern mismatch (expected: ^(feat|fix|docs|style|refactor|perf|test|chore)(\(.+\))?: .+)
+    Suggestion: chore: revert: x
+
+  Examples of valid messages:
+    - feat(service): add user notification endpoint
+    - test(api): add integration tests for auth module
+
+Commit message violates karma convention:
+  Message: "build: x"
+
+  [PATTERN] Pattern mismatch (expected: ^(feat|fix|docs|style|refactor|perf|test|chore)(\(.+\))?: .+)
+    Suggestion: chore: build: x
+
+  Examples of valid messages:
+    - feat(service): add user notification endpoint
+    - test(api): add integration tests for auth module
+
+Commit message violates karma convention:
+  Message: "feat!: x"
+
+  [PATTERN] Pattern mismatch (expected: ^(feat|fix|docs|style|refactor|perf|test|chore)(\(.+\))?: .+)
+    Suggestion: feat: feat!: x
+
+  Examples of valid messages:
+    - feat(service): add user notification endpoint
+    - test(api): add integration tests for auth module
+
+=== pp_header_length
+exit: 0
+--stdout
+
+--stderr
+2 of 2 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "feat: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+  [LENGTH] Header too long (142 characters, max 100 characters)
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+Commit message violates conventional-commits convention:
+  Message: "feat: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+  [LENGTH] Header too long (101 characters, max 100 characters)
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+=== pp_max_length_config
+exit: 0
+--stdout
+
+--stderr
+1 of 1 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "feat: a short subject here"
+
+  [LENGTH] Header too long (26 characters, max 20 characters)
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+=== pp_suggestions
+exit: 0
+--stdout
+
+--stderr
+7 of 7 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "Fix the bug"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: fix: fix the bug
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+Commit message violates conventional-commits convention:
+  Message: "Add a thing"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: feat: add a thing
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+Commit message violates conventional-commits convention:
+  Message: "Update the README"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: docs: update the README
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+Commit message violates conventional-commits convention:
+  Message: "Test more"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: test: test more
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+Commit message violates conventional-commits convention:
+  Message: "Clean up code"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: refactor: clean up code
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+Commit message violates conventional-commits convention:
+  Message: "Refactor it"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: refactor: refactor it
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+Commit message violates conventional-commits convention:
+  Message: "Something else"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: chore: something else
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+=== pp_multibyte_subject
+exit: 0
+--stdout
+
+--stderr
+1 of 1 commit(s) violate angular convention:
+
+Commit message violates angular convention:
+  Message: "한글 제목"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|ci|docs|feat|fix|perf|refactor|test)(\([a-z-]+\))?: .+)
+    Suggestion: chore: ���글 제목
+
+  Examples of valid messages:
+    - feat(router): add lazy loading support
+    - fix(compiler): handle edge case in template parser
+
+=== pp_quote_escapes
+exit: 0
+--stdout
+
+--stderr
+1 of 1 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "say \"hi\" \\ there"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: chore: say "hi" \ there
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+=== pp_auto_history_conventional
+exit: 0
+--stdout
+
+--stderr
+1 of 1 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "bad message"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: chore: bad message
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+=== pp_auto_history_free_form_uses_fallback
+exit: 0
+--stdout
+
+--stderr
+1 of 1 commit(s) violate angular convention:
+
+Commit message violates angular convention:
+  Message: "bad message"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|ci|docs|feat|fix|perf|refactor|test)(\([a-z-]+\))?: .+)
+    Suggestion: chore: bad message
+
+  Examples of valid messages:
+    - feat(router): add lazy loading support
+    - fix(compiler): handle edge case in template parser
+
+=== pp_auto_detection_off
+exit: 0
+--stdout
+
+--stderr
+1 of 1 commit(s) violate karma convention:
+
+Commit message violates karma convention:
+  Message: "bad message"
+
+  [PATTERN] Pattern mismatch (expected: ^(feat|fix|docs|style|refactor|perf|test|chore)(\(.+\))?: .+)
+    Suggestion: chore: bad message
+
+  Examples of valid messages:
+    - feat(service): add user notification endpoint
+    - test(api): add integration tests for auth module
+
+=== pp_auto_threshold_met
+exit: 0
+--stdout
+
+--stderr
+1 of 1 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "bad message"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: chore: bad message
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+=== pp_auto_threshold_missed
+exit: 0
+--stdout
+
+--stderr
+1 of 1 commit(s) violate karma convention:
+
+Commit message violates karma convention:
+  Message: "bad message"
+
+  [PATTERN] Pattern mismatch (expected: ^(feat|fix|docs|style|refactor|perf|test|chore)(\(.+\))?: .+)
+    Suggestion: chore: bad message
+
+  Examples of valid messages:
+    - feat(service): add user notification endpoint
+    - test(api): add integration tests for auth module
+
+=== pp_invalid_config_convention
+exit: 2
+--stdout
+
+--stderr
+1 of 1 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "bad message"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: chore: bad message
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+=== pp_invalid_config_max_length
+exit: 2
+--stdout
+
+--stderr
+1 of 1 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "bad message"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: chore: bad message
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+=== pp_invalid_config_threshold
+exit: 2
+--stdout
+
+--stderr
+1 of 1 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "bad message"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: chore: bad message
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+=== pp_invalid_config_sample_size
+exit: 2
+--stdout
+
+--stderr
+1 of 1 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "bad message"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: chore: bad message
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+=== pp_invalid_config_switch_is_lost
+exit: 0
+--stdout
+
+--stderr
+
+=== pp_unknown_fallback
+exit: 2
+--stdout
+
+--stderr
+1 of 1 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "x"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: chore: x
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide

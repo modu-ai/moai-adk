@@ -408,3 +408,274 @@ fn live_parity_when_the_go_build_is_available() {
         assert_eq!(rust_result(s), go_result(&go, s), "scenario {}", s.name);
     }
 }
+
+// ---- moai hook pre-push -----------------------------------------------------------------------
+
+struct PrePushScenario {
+    name: &'static str,
+    /// Config files under `.moai/config/sections/`.
+    config: &'static [(&'static str, &'static str)],
+    /// `(MOAI_ENFORCE_ON_PUSH, MOAI_PRE_PUSH, MOAI_GIT_CONVENTION)`
+    env: (
+        Option<&'static str>,
+        Option<&'static str>,
+        Option<&'static str>,
+    ),
+    stdin: &'static str,
+    /// Commit subjects to create in a fresh repository first.
+    history: &'static [&'static str],
+}
+
+const CC_SUBJECTS: &str = "feat: x\nfix(core): x\nfeat(a b): x\nfeat!: x\nfeat(a)!: x\nrevert: x\nfeat(a): (b): c\nfeat(a)(b): x\nfeat:x\nfeat: \nFeat: x\nfeat(): x\nfeat (a): x\nfeature: x\nfeat(a) : x\nwip\nfeat!!: x\n";
+const ANGULAR_SUBJECTS: &str = "feat(my-scope): x\nfix: x\nbuild(a): y\nchore: x\nfeat(Router): x\nfeat(a_b): x\nfeat!: x\nrevert: x\n";
+const KARMA_SUBJECTS: &str = "chore: x\nstyle(a b): y\ntest: z\nrevert: x\nbuild: x\nfeat!: x\n";
+const LONG: &str = "feat: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nfeat: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n";
+const ENFORCE_TEAM: (&str, &str) = (
+    "git-strategy.yaml",
+    "git_strategy:\n  mode: team\n  team:\n    hooks:\n      pre_push: enforce\n",
+);
+
+const PREPUSH_SCENARIOS: &[PrePushScenario] = &[
+    PrePushScenario { name: "pp_off_by_default", config: &[], env: (None, None, None), stdin: "bad message\n", history: &[] },
+    PrePushScenario { name: "pp_switch_word_yes_is_off", config: &[], env: (Some("yes"), Some("enforce"), None), stdin: "bad message\n", history: &[] },
+    PrePushScenario { name: "pp_default_action_warns", config: &[], env: (Some("1"), None, None), stdin: "bad message\nfeat: ok\n", history: &[] },
+    PrePushScenario { name: "pp_enforce_env", config: &[], env: (Some("true"), Some("enforce"), None), stdin: "bad message\n", history: &[] },
+    PrePushScenario { name: "pp_skip_env", config: &[], env: (Some("1"), Some("skip"), None), stdin: "bad message\n", history: &[] },
+    PrePushScenario { name: "pp_bad_action_env_falls_back", config: &[], env: (Some("1"), Some("loud"), None), stdin: "bad message\n", history: &[] },
+    PrePushScenario { name: "pp_config_switch_and_team_enforce", config: &[("git-convention.yaml", "git_convention:\n  validation:\n    enforce_on_push: true\n"), ENFORCE_TEAM], env: (None, None, None), stdin: "bad message\n", history: &[] },
+    PrePushScenario { name: "pp_config_switch_only_warns", config: &[("git-convention.yaml", "git_convention:\n  validation:\n    enforce_on_push: true\n")], env: (None, None, None), stdin: "bad message\n", history: &[] },
+    PrePushScenario { name: "pp_unknown_mode_enforces", config: &[("git-convention.yaml", "git_convention:\n  validation:\n    enforce_on_push: true\n"), ("git-strategy.yaml", "git_strategy:\n  mode: custom\n")], env: (None, None, None), stdin: "bad message\n", history: &[] },
+    PrePushScenario { name: "pp_unparsable_hook_value_enforces", config: &[("git-convention.yaml", "git_convention:\n  validation:\n    enforce_on_push: true\n"), ("git-strategy.yaml", "git_strategy:\n  mode: manual\n  manual:\n    hooks:\n      pre_push: sometimes\n")], env: (None, None, None), stdin: "bad message\n", history: &[] },
+    PrePushScenario { name: "pp_unknown_convention", config: &[], env: (Some("1"), None, Some("bogus")), stdin: "feat: x\n", history: &[] },
+    PrePushScenario { name: "pp_empty_input", config: &[], env: (Some("1"), None, None), stdin: "\n  \n", history: &[] },
+    PrePushScenario { name: "pp_all_valid", config: &[], env: (Some("1"), None, None), stdin: "feat: a\nfix(core): b\n  docs: c  \n", history: &[] },
+    PrePushScenario { name: "pp_conventional_patterns", config: &[], env: (Some("1"), Some("warn"), Some("conventional-commits")), stdin: CC_SUBJECTS, history: &[] },
+    PrePushScenario { name: "pp_angular_patterns", config: &[], env: (Some("1"), Some("warn"), Some("angular")), stdin: ANGULAR_SUBJECTS, history: &[] },
+    PrePushScenario { name: "pp_karma_patterns", config: &[], env: (Some("1"), Some("warn"), Some("karma")), stdin: KARMA_SUBJECTS, history: &[] },
+    PrePushScenario { name: "pp_header_length", config: &[], env: (Some("1"), Some("warn"), None), stdin: LONG, history: &[] },
+    PrePushScenario { name: "pp_max_length_config", config: &[("git-convention.yaml", "git_convention:\n  validation:\n    max_length: 20\n")], env: (Some("1"), Some("warn"), None), stdin: "feat: a short subject here\n", history: &[] },
+    PrePushScenario { name: "pp_suggestions", config: &[], env: (Some("1"), Some("warn"), None), stdin: "Fix the bug\nAdd a thing\nUpdate the README\nTest more\nClean up code\nRefactor it\nSomething else\n", history: &[] },
+    PrePushScenario { name: "pp_multibyte_subject", config: &[], env: (Some("1"), Some("warn"), Some("angular")), stdin: "한글 제목\n", history: &[] },
+    PrePushScenario { name: "pp_quote_escapes", config: &[], env: (Some("1"), Some("warn"), None), stdin: "say \"hi\" \\ there\n", history: &[] },
+    PrePushScenario { name: "pp_auto_history_conventional", config: &[], env: (Some("1"), Some("warn"), None), stdin: "bad message\n", history: &["feat: a", "fix: b", "chore: c", "docs: d"] },
+    PrePushScenario { name: "pp_auto_history_free_form_uses_fallback", config: &[("git-convention.yaml", "git_convention:\n  auto_detection:\n    fallback: angular\n")], env: (Some("1"), Some("warn"), None), stdin: "bad message\n", history: &["Update stuff", "More stuff", "Fixes", "wip"] },
+    PrePushScenario { name: "pp_auto_detection_off", config: &[("git-convention.yaml", "git_convention:\n  auto_detection:\n    enabled: false\n    fallback: karma\n")], env: (Some("1"), Some("warn"), None), stdin: "bad message\n", history: &["feat: a", "fix: b"] },
+    // Only conventional-commits accepts `revert`, so the winner is never a three-way tie (Go breaks a tie by map order, which is random).
+    PrePushScenario { name: "pp_auto_threshold_met", config: &[("git-convention.yaml", "git_convention:\n  auto_detection:\n    confidence_threshold: 0.5\n    fallback: karma\n")], env: (Some("1"), Some("warn"), None), stdin: "bad message\n", history: &["revert: a", "wip"] },
+    PrePushScenario { name: "pp_auto_threshold_missed", config: &[("git-convention.yaml", "git_convention:\n  auto_detection:\n    confidence_threshold: 0.5\n    fallback: karma\n")], env: (Some("1"), Some("warn"), None), stdin: "bad message\n", history: &["revert: a", "revert: b", "wip", "wip", "wip"] },
+    // A value the Go loader refuses makes it ignore the whole config: defaults, and no profile, which enforces.
+    PrePushScenario { name: "pp_invalid_config_convention", config: &[("git-convention.yaml", "git_convention:\n  convention: bogus\n")], env: (Some("1"), None, None), stdin: "bad message\n", history: &[] },
+    PrePushScenario { name: "pp_invalid_config_max_length", config: &[("git-convention.yaml", "git_convention:\n  validation:\n    max_length: -1\n")], env: (Some("1"), None, None), stdin: "bad message\n", history: &[] },
+    PrePushScenario { name: "pp_invalid_config_threshold", config: &[("git-convention.yaml", "git_convention:\n  auto_detection:\n    confidence_threshold: 2\n")], env: (Some("1"), None, None), stdin: "bad message\n", history: &[] },
+    PrePushScenario { name: "pp_invalid_config_sample_size", config: &[("git-convention.yaml", "git_convention:\n  auto_detection:\n    sample_size: -1\n")], env: (Some("1"), None, None), stdin: "bad message\n", history: &[] },
+    PrePushScenario { name: "pp_invalid_config_switch_is_lost", config: &[("git-convention.yaml", "git_convention:\n  convention: bogus\n  validation:\n    enforce_on_push: true\n")], env: (None, None, None), stdin: "bad message\n", history: &[] },
+    PrePushScenario { name: "pp_unknown_fallback", config: &[("git-convention.yaml", "git_convention:\n  auto_detection:\n    enabled: false\n    fallback: nope\n")], env: (Some("1"), None, None), stdin: "x\n", history: &[] },
+];
+
+fn build_prepush(s: &PrePushScenario) -> TempDir {
+    let project = TempDir::new().unwrap();
+    for (file, text) in s.config {
+        let d = project.path().join(".moai/config/sections");
+        fs::create_dir_all(&d).unwrap();
+        fs::write(d.join(file), text).unwrap();
+    }
+    if !s.history.is_empty() {
+        let git = |args: &[&str]| {
+            let out = Command::new("git")
+                .args(args)
+                .current_dir(project.path())
+                .env("GIT_AUTHOR_NAME", "t")
+                .env("GIT_AUTHOR_EMAIL", "t@t")
+                .env("GIT_COMMITTER_NAME", "t")
+                .env("GIT_COMMITTER_EMAIL", "t@t")
+                .env("GIT_CONFIG_GLOBAL", "/dev/null")
+                .env("GIT_CONFIG_SYSTEM", "/dev/null")
+                .output()
+                .unwrap();
+            assert!(
+                out.status.success(),
+                "{}",
+                String::from_utf8_lossy(&out.stderr)
+            );
+        };
+        git(&["init", "-q", "."]);
+        for subject in s.history {
+            git(&["commit", "-q", "--allow-empty", "-m", subject]);
+        }
+    }
+    project
+}
+
+/// Both streams, without the Go build's own log lines; its decorated error box becomes the one
+/// message line it carries (`Pre-Push: ... .` -> `pre-push: ...`).
+fn normalize_prepush(raw: &[u8]) -> String {
+    let text = String::from_utf8_lossy(raw);
+    let mut out = Vec::new();
+    for line in text.lines() {
+        let t = line.trim();
+        if line.starts_with("time=")
+            || t == "ERROR"
+            || (t.is_empty()
+                && out
+                    .last()
+                    .map_or(true, |l: &String| l.starts_with("error: ")))
+        {
+            continue;
+        }
+        if let Some(rest) = t
+            .strip_prefix("Pre-Push:")
+            .or_else(|| t.strip_prefix("pre-push:"))
+        {
+            out.push(format!("error: pre-push:{}", rest.trim_end_matches('.')));
+            continue;
+        }
+        out.push(line.to_string());
+    }
+    out.join("\n").trim_end().to_string()
+}
+
+fn prepush_rust(s: &PrePushScenario) -> String {
+    let project = build_prepush(s);
+    let inv = quality_gate::pre_push::PrePushInvocation {
+        project_dir: project.path().canonicalize().unwrap(),
+        env: quality_gate::pre_push::PrePushEnv {
+            enforce_on_push: s.env.0.map(String::from),
+            pre_push_mode: s.env.1.map(String::from),
+            convention: s.env.2.map(String::from),
+        },
+        stdin: s.stdin.as_bytes().to_vec(),
+    };
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    let code = quality_gate::pre_push::run(&inv, &mut out, &mut err);
+    format!(
+        "exit: {code}\n--stdout\n{}\n--stderr\n{}",
+        normalize_prepush(&out),
+        normalize_prepush(&err)
+    )
+    .trim_end()
+    .to_string()
+}
+
+fn prepush_go(go_bin: &str, s: &PrePushScenario) -> String {
+    use std::io::Write;
+    let project = build_prepush(s);
+    let home = TempDir::new().unwrap();
+    let mut cmd = Command::new(go_bin);
+    cmd.args(["hook", "pre-push"])
+        .current_dir(project.path().canonicalize().unwrap())
+        .env_clear()
+        .env("HOME", home.path())
+        .env("PATH", "/usr/bin:/bin")
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    for (key, value) in [
+        ("MOAI_ENFORCE_ON_PUSH", s.env.0),
+        ("MOAI_PRE_PUSH", s.env.1),
+        ("MOAI_GIT_CONVENTION", s.env.2),
+    ] {
+        if let Some(v) = value {
+            cmd.env(key, v);
+        }
+    }
+    let mut child = cmd.spawn().expect("run the Go build");
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(s.stdin.as_bytes())
+        .unwrap();
+    let out = child.wait_with_output().unwrap();
+    format!(
+        "exit: {}\n--stdout\n{}\n--stderr\n{}",
+        out.status.code().unwrap_or(-1),
+        normalize_prepush(&out.stdout),
+        normalize_prepush(&out.stderr)
+    )
+    .trim_end()
+    .to_string()
+}
+
+fn prepush_recorded_path() -> std::path::PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join(".moai/specs/SPEC-20261120-rust-pre-push/parity-recorded.txt")
+}
+
+/// AC-1: every pre-push scenario of the recorded table matches the Rust check.
+#[test]
+fn prepush_parity_with_the_recorded_go_table() {
+    let text = fs::read_to_string(prepush_recorded_path())
+        .expect("recorded table is committed with the SPEC");
+    let recorded = parse_recorded(&text);
+    assert_eq!(
+        recorded.len(),
+        PREPUSH_SCENARIOS.len(),
+        "recorded table and scenario list differ in size"
+    );
+    let mut mismatches = Vec::new();
+    for s in PREPUSH_SCENARIOS {
+        let want = recorded
+            .iter()
+            .find(|(n, _)| n == s.name)
+            .unwrap_or_else(|| panic!("scenario {} is not recorded", s.name));
+        let got = prepush_rust(s);
+        if got != want.1 {
+            mismatches.push(format!(
+                "--- {}\nGo (recorded):\n{}\nRust:\n{}",
+                s.name, want.1, got
+            ));
+        }
+    }
+    assert!(mismatches.is_empty(), "{}", mismatches.join("\n\n"));
+}
+
+/// Writes the recorded pre-push table from the Go build (`MOAI_GO_BIN`).
+#[test]
+#[ignore = "needs the Go build: set MOAI_GO_BIN"]
+fn prepush_record_from_go() {
+    let go = std::env::var("MOAI_GO_BIN").expect("MOAI_GO_BIN");
+    let mut text = String::new();
+    for s in PREPUSH_SCENARIOS {
+        text.push_str(&format!("=== {}\n{}\n\n", s.name, prepush_go(&go, s)));
+    }
+    fs::write(prepush_recorded_path(), format!("{}\n", text.trim_end())).unwrap();
+}
+
+/// With `MOAI_GO_BIN` set, compares the Rust check with the live Go build.
+#[test]
+fn prepush_live_parity_when_the_go_build_is_available() {
+    let Ok(go) = std::env::var("MOAI_GO_BIN") else {
+        return;
+    };
+    for s in PREPUSH_SCENARIOS {
+        assert_eq!(prepush_rust(s), prepush_go(&go, s), "scenario {}", s.name);
+    }
+}
+
+/// Differential check over many subjects (`MOAI_PP_SUBJECTS`: one per line, `MOAI_GO_BIN`): the
+/// hand-written matchers against the Go build's regular expressions, for every built-in name.
+#[test]
+#[ignore = "needs the Go build and a subject list: set MOAI_GO_BIN and MOAI_PP_SUBJECTS"]
+fn prepush_differential_over_many_subjects() {
+    let go = std::env::var("MOAI_GO_BIN").expect("MOAI_GO_BIN");
+    let list = std::env::var("MOAI_PP_SUBJECTS").expect("MOAI_PP_SUBJECTS");
+    let subjects = fs::read_to_string(list).unwrap();
+    for convention in ["conventional-commits", "angular", "karma"] {
+        // One subject per run, so a mismatch names the subject.
+        for line in subjects.lines().filter(|l| !l.trim().is_empty()) {
+            let stdin: &'static str = Box::leak(format!("{line}\n").into_boxed_str());
+            let scenario = PrePushScenario {
+                name: "diff",
+                config: &[],
+                env: (Some("1"), Some("warn"), Some(convention)),
+                stdin,
+                history: &[],
+            };
+            assert_eq!(
+                prepush_rust(&scenario),
+                prepush_go(&go, &scenario),
+                "{convention}: {line:?}"
+            );
+        }
+    }
+}

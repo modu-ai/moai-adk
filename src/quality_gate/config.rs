@@ -4,7 +4,7 @@
 //! tests can compile this module on its own; it is a pure `std` file.
 
 #[path = "../statusline/config.rs"]
-mod yaml;
+pub(super) mod yaml;
 
 use std::path::{Path, PathBuf};
 use std::time::Duration;

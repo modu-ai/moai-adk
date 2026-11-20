@@ -8,6 +8,7 @@ pub mod config;
 pub mod detect;
 mod fmtutil;
 pub mod lock;
+pub mod pre_push;
 mod step;
 mod summary;
 pub mod table;
