@@ -129,6 +129,7 @@ pub mod queue;
 pub mod queue_query;
 pub mod recovery;
 pub mod redact;
+pub mod reply_language;
 pub mod repo_scans;
 pub mod review;
 pub mod run;

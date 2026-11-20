@@ -10,11 +10,13 @@
 //! `plan` writes nothing. Every target is three-way: the style file and the block are ours only
 //! while they hold the bytes we last wrote (`~/.moai-cli/home-style/<host>.json`); anything else
 //! is a `conflict`, never overwritten. `outputStyle` is set only when the key is absent — another
-//! value is the user's choice and a `conflict`. A hand-written `<!-- moai:output-style` block in
+//! value is the user's choice and a `conflict`. The `language` key is set the same way, only when
+//! absent and only from the conversation language the installer saved (SPEC-20261120-reply-language-rule);
+//! a value the user wrote stays. A hand-written `<!-- moai:output-style` block in
 //! `AGENTS.md` is a `conflict` too. A symlinked folder or file blocks the host. `apply` re-plans,
 //! refuses any other digest and keeps the before bytes in a receipt; `revert` restores a file
-//! only while it still holds the bytes the apply wrote, and removes the `outputStyle` key only
-//! while it still names this style.
+//! only while it still holds the bytes the apply wrote, and removes each key it added only while
+//! that key still holds the value the apply wrote.
 
 use crate::agents::{assert_single_block, markers, section_plan, splice};
 use crate::apply::{publish_exclusive, publish_replace, read_opt};
@@ -63,6 +65,27 @@ pub struct TargetPlan {
     /// What this module owned before (style file or block sha256).
     pub baseline_sha256: Option<String>,
     pub detail: Option<String>,
+    /// The `settings.json` keys an apply writes (the `setting` target only), in file order.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub keys: Vec<SettingKey>,
+}
+
+/// One key the settings target would add, with the value it would hold.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct SettingKey {
+    pub key: String,
+    pub value: Value,
+}
+
+/// A key an apply added: its value and the exact text put into the file, so a revert can take
+/// back this key alone.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct InsertedKey {
+    pub key: String,
+    pub value: Value,
+    pub text: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -106,6 +129,11 @@ pub struct ReceiptEntry {
     /// changed since removes only this text, never re-encoding the user's values.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub inserted: Option<String>,
+    /// Each key the apply added with its own text, so a revert takes back the keys that still
+    /// hold what was written and leaves a key changed since. A receipt from before the
+    /// `language` key has none: it added `outputStyle` alone.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub inserted_keys: Vec<InsertedKey>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -267,6 +295,18 @@ pub fn render_style_file(source: &str) -> String {
     )
 }
 
+/// The text of Codex's block: the style source, led by one line that says to reply in the
+/// conversation language the installer saved when MoAI has a name for it. Without such a
+/// language the body is the source and the block is the same bytes as before the line existed.
+fn block_body(home: &Path, source: &str) -> String {
+    match crate::language::home_conversation(home)
+        .and_then(|c| crate::reply_language::codex_line(&c))
+    {
+        Some(line) => format!("{line}\n\n{source}"),
+        None => source.to_string(),
+    }
+}
+
 /// Codex's managed block, markers included.
 pub fn render_block(source: &str) -> String {
     let (begin, end) = markers(SECTION, "html");
@@ -290,6 +330,7 @@ fn target(home: &Path, host: &str, kind: &str) -> TargetPlan {
         expected_sha256: None,
         baseline_sha256: None,
         detail: None,
+        keys: Vec::new(),
     }
 }
 
@@ -335,6 +376,24 @@ fn settings_object(bytes: &[u8]) -> std::result::Result<Map<String, Value>, Stri
     }
 }
 
+/// The `language` key to plan: Claude Code passes the value to the model verbatim as the
+/// language to answer in, so it is the lower-case English name MoAI's own table gives the
+/// conversation language the installer saved. `Err` names why no key is planned.
+fn language_key(home: &Path) -> std::result::Result<SettingKey, String> {
+    let Some(code) = crate::language::home_conversation(home) else {
+        return Err("language: no conversation language saved; not set".into());
+    };
+    match crate::language::english_name(&code) {
+        Some(name) => Ok(SettingKey {
+            key: "language".into(),
+            value: json!(name.to_lowercase()),
+        }),
+        None => Err(format!(
+            "language: no name for the saved conversation language `{code}`; not set"
+        )),
+    }
+}
+
 fn setting_plan(home: &Path, style: &TargetPlan) -> TargetPlan {
     let mut t = target(home, "claude", "setting");
     let cur = match read_target(home, "claude", "setting") {
@@ -342,35 +401,71 @@ fn setting_plan(home: &Path, style: &TargetPlan) -> TargetPlan {
         Err(e) => return blocked(t, e),
     };
     t.expected_sha256 = cur.as_deref().map(sha);
-    if !["create", "merge", "unchanged"].contains(&style.action.as_str()) {
-        t.action = "skipped".into();
-        t.detail = Some(format!(
-            "the style file is {}; the default is not set to a file MoAI does not own",
-            style.action
-        ));
-        return t;
-    }
-    let Some(bytes) = cur else {
-        t.action = "set".into();
-        return t;
+    let style_ok = ["create", "merge", "unchanged"].contains(&style.action.as_str());
+    let style_skip = format!(
+        "the style file is {}; the default is not set to a file MoAI does not own",
+        style.action
+    );
+    let map = match &cur {
+        None => Ok(Map::new()),
+        Some(bytes) => settings_object(bytes),
     };
-    t.action = match settings_object(&bytes) {
-        Err(e) => {
+    let map = match map {
+        Ok(m) => m,
+        Err(e) if style_ok => {
+            t.action = "conflict".into();
             t.detail = Some(e);
-            "conflict"
+            return t;
         }
-        Ok(map) => match map.get("outputStyle") {
-            None => "set",
-            Some(Value::String(s)) if s == STYLE_NAME => "unchanged",
+        Err(_) => {
+            t.action = "skipped".into();
+            t.detail = Some(style_skip);
+            return t;
+        }
+    };
+    let mut keys = Vec::new();
+    let mut notes = Vec::new();
+    let mut style_conflict = false;
+    if !style_ok {
+        notes.push(style_skip);
+    } else {
+        match map.get("outputStyle") {
+            None => keys.push(SettingKey {
+                key: "outputStyle".into(),
+                value: json!(STYLE_NAME),
+            }),
+            Some(Value::String(s)) if s == STYLE_NAME => {}
             Some(other) => {
-                t.detail = Some(format!(
+                style_conflict = true;
+                notes.push(format!(
                     "outputStyle is {other}: the user's choice; not changed"
                 ));
-                "conflict"
             }
+        }
+    }
+    match language_key(home) {
+        Ok(k) => match map.get("language") {
+            None => {
+                notes.push(format!("language: set to {}", k.value));
+                keys.push(k);
+            }
+            Some(v) if *v == k.value => {}
+            Some(v) => notes.push(format!("language is {v}: the user's choice; kept")),
         },
+        Err(reason) => notes.push(reason),
+    }
+    t.action = if !keys.is_empty() {
+        "set"
+    } else if style_conflict {
+        "conflict"
+    } else if !style_ok {
+        "skipped"
+    } else {
+        "unchanged"
     }
     .into();
+    t.detail = (!notes.is_empty()).then(|| notes.join("; "));
+    t.keys = keys;
     t
 }
 
@@ -438,7 +533,7 @@ pub fn plan_for(home: &Path, package: &Path, only: &[&str]) -> Result<Plan> {
         targets.push(setting);
     }
     if only.contains(&"codex") {
-        targets.push(block_plan(&home, &render_block(&src)));
+        targets.push(block_plan(&home, &render_block(&block_body(&home, &src))));
     }
     let mut plan = Plan {
         schema_version: SCHEMA_VERSION,
@@ -510,13 +605,13 @@ fn new_receipt_dir(home: &Path) -> Result<(String, PathBuf)> {
 }
 
 /// The bytes a write leaves in the target file.
-fn new_bytes(t: &TargetPlan, before: Option<&[u8]>, src: &str) -> Result<Vec<u8>> {
+fn new_bytes(t: &TargetPlan, before: Option<&[u8]>, src: &str, body: &str) -> Result<Vec<u8>> {
     match t.kind.as_str() {
         "style_file" => Ok(render_style_file(src).into_bytes()),
-        "setting" => insert_style(before).map(|(out, _)| out),
+        "setting" => insert_settings(before, &t.keys).map(|(out, _)| out),
         _ => {
             let (begin, end) = markers(SECTION, "html");
-            let rendered = render_block(src);
+            let rendered = render_block(body);
             let out = splice(before, &begin, &end, &rendered, "")?;
             assert_single_block(&out, &begin, &end, &rendered)?;
             Ok(out)
@@ -524,15 +619,35 @@ fn new_bytes(t: &TargetPlan, before: Option<&[u8]>, src: &str) -> Result<Vec<u8>
     }
 }
 
-/// `settings.json` with `"outputStyle": "MoAI-Easy"` added as text before the object's closing
-/// brace, and the text added (#2875 audit B1): every other byte stays as the user wrote it — no
+/// `settings.json` with the planned keys added as text before the object's closing brace, and
+/// what was added per key (#2875 audit B1): every other byte stays as the user wrote it — no
 /// re-encoding of numbers, indentation or order. The result must parse to the same object plus
-/// the one key, or nothing is written.
-fn insert_style(before: Option<&[u8]>) -> Result<(Vec<u8>, String)> {
-    let pair = format!("\"outputStyle\": \"{STYLE_NAME}\"");
+/// exactly those keys, or nothing is written.
+fn insert_settings(
+    before: Option<&[u8]>,
+    keys: &[SettingKey],
+) -> Result<(Vec<u8>, Vec<InsertedKey>)> {
+    if keys.is_empty() {
+        return Err("no settings key to add".into());
+    }
+    let pair = |k: &SettingKey| format!("\"{}\": {}", k.key, k.value);
     let Some(bytes) = before else {
-        let text = format!("{{\n  {pair}\n}}\n");
-        return Ok((text.into_bytes(), pair));
+        let mut inserted = Vec::new();
+        let mut body = String::new();
+        for (i, k) in keys.iter().enumerate() {
+            let text = if i == 0 {
+                pair(k)
+            } else {
+                format!(",\n  {}", pair(k))
+            };
+            body.push_str(&text);
+            inserted.push(InsertedKey {
+                key: k.key.clone(),
+                value: k.value.clone(),
+                text,
+            });
+        }
+        return Ok((format!("{{\n  {body}\n}}\n").into_bytes(), inserted));
     };
     let old = settings_object(bytes)?;
     let text = std::str::from_utf8(bytes).map_err(|_| "settings.json is not UTF-8; not changed")?;
@@ -546,23 +661,37 @@ fn insert_style(before: Option<&[u8]>) -> Result<(Vec<u8>, String)> {
         .find('{')
         .ok_or("settings.json has no `{`; not changed")?;
     let inner = &text[open + 1..close];
-    let inserted = if inner.trim().is_empty() {
-        pair.clone()
-    } else if inner.contains('\n') {
+    let empty = inner.trim().is_empty();
+    let separator = if inner.contains('\n') {
         let indent: String = inner
             .lines()
             .find(|l| !l.trim().is_empty())
             .map(|l| l.chars().take_while(|c| c.is_whitespace()).collect())
             .unwrap_or_else(|| "  ".into());
-        format!(",\n{indent}{pair}")
+        format!(",\n{indent}")
     } else {
-        format!(", {pair}")
+        ", ".to_string()
     };
-    let out = format!("{}{inserted}{}", &text[..body_end], &text[body_end..]);
+    let mut inserted = Vec::new();
+    let mut add = String::new();
     let mut want = old;
-    want.insert("outputStyle".into(), json!(STYLE_NAME));
+    for (i, k) in keys.iter().enumerate() {
+        let piece = if empty && i == 0 {
+            pair(k)
+        } else {
+            format!("{separator}{}", pair(k))
+        };
+        add.push_str(&piece);
+        want.insert(k.key.clone(), k.value.clone());
+        inserted.push(InsertedKey {
+            key: k.key.clone(),
+            value: k.value.clone(),
+            text: piece,
+        });
+    }
+    let out = format!("{}{add}{}", &text[..body_end], &text[body_end..]);
     if settings_object(out.as_bytes()).ok() != Some(want) {
-        return Err("settings.json could not take the key as text; not changed".into());
+        return Err("settings.json could not take the keys as text; not changed".into());
     }
     Ok((out.into_bytes(), inserted))
 }
@@ -597,6 +726,7 @@ pub fn apply_for(
         return Ok(json!({"state": "unchanged", "plan_digest": fresh.plan_digest, "written": []}));
     }
     let src = source(package)?;
+    let body = block_body(&home, &src);
     let (id, receipt_dir) = new_receipt_dir(&home)?;
     let mut receipt = Receipt {
         schema_version: SCHEMA_VERSION,
@@ -624,12 +754,17 @@ pub fn apply_for(
                 path.display()
             ));
         }
-        let (out, inserted) = if t.kind == "setting" {
-            let (out, ins) = insert_style(before.as_deref())?;
-            (out, Some(ins))
+        let (out, inserted_keys) = if t.kind == "setting" {
+            insert_settings(before.as_deref(), &t.keys)?
         } else {
-            (new_bytes(t, before.as_deref(), &src)?, None)
+            (new_bytes(t, before.as_deref(), &src, &body)?, Vec::new())
         };
+        let inserted = (!inserted_keys.is_empty()).then(|| {
+            inserted_keys
+                .iter()
+                .map(|k| k.text.as_str())
+                .collect::<String>()
+        });
         if let Some(b) = &before {
             publish_exclusive(
                 &receipt_dir.join(format!("{}-{}.before", t.host, t.kind)),
@@ -646,6 +781,7 @@ pub fn apply_for(
             after_sha256: sha(&out),
             baseline_before: t.baseline_sha256.clone(),
             inserted,
+            inserted_keys,
         });
         write_json(&receipt_path, &receipt)?;
         match &before {
@@ -654,7 +790,7 @@ pub fn apply_for(
         }
         match t.kind.as_str() {
             "style_file" => write_state(&home, &t.host, Some(sha(&out)))?,
-            "block" => write_state(&home, &t.host, Some(sha(render_block(&src).as_bytes())))?,
+            "block" => write_state(&home, &t.host, Some(sha(render_block(&body).as_bytes())))?,
             _ => {}
         }
         written.push(format!("{}:{}", t.host, t.kind));
@@ -675,45 +811,96 @@ fn receipt_id_ok(id: &str) -> bool {
         && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
 }
 
-/// Undoes the `outputStyle` the apply added (#2875 audit B1). A file still holding the bytes
-/// the apply wrote gets its before bytes back byte for byte (a created file is removed). A file
-/// changed since loses only the exact text the apply inserted, while it is there once and the
-/// rest parses to an object without the key; otherwise it is skipped. The user's other values
-/// are never re-encoded.
-fn revert_setting(path: &Path, dir: &Path, e: &ReceiptEntry) -> std::result::Result<(), String> {
+/// The keys an entry added: the receipt's own list, or for a receipt from before the `language`
+/// key the one `outputStyle` text it recorded.
+fn entry_keys(e: &ReceiptEntry) -> Option<Vec<InsertedKey>> {
+    if !e.inserted_keys.is_empty() {
+        return Some(e.inserted_keys.clone());
+    }
+    e.inserted.as_ref().map(|text| {
+        vec![InsertedKey {
+            key: "outputStyle".into(),
+            value: json!(STYLE_NAME),
+            text: text.clone(),
+        }]
+    })
+}
+
+/// `text` without the comma a removed first pair left in front of the next one.
+fn drop_leading_comma(text: String) -> String {
+    let Some(open) = text.find('{') else {
+        return text;
+    };
+    let rest = &text[open + 1..];
+    let skipped = rest.len() - rest.trim_start().len();
+    if rest[skipped..].starts_with(',') {
+        let at = open + 1 + skipped;
+        return format!("{}{}", &text[..at], &text[at + 1..]);
+    }
+    text
+}
+
+/// Undoes the keys the apply added (#2875 audit B1). A file still holding the bytes the apply
+/// wrote gets its before bytes back byte for byte (a created file is removed). A file changed
+/// since loses, key by key, only the exact text the apply inserted for a key that still holds
+/// the value it wrote, while the text is there once and the rest parses to the same object
+/// without that key. The user's other values are never re-encoded. The keys left in place are
+/// returned; a file where no key could go is an error.
+fn revert_setting(
+    path: &Path,
+    dir: &Path,
+    e: &ReceiptEntry,
+) -> std::result::Result<Vec<String>, String> {
     let current = current_file(path)
         .map_err(|r| format!("file_not_plain: {r}"))?
         .ok_or("user_changed_since_apply")?;
     if sha(&current) == e.after_sha256 {
         return match &e.before_sha256 {
-            None => fs::remove_file(path).map_err(|_| format!("{} not removed", path.display())),
+            None => fs::remove_file(path)
+                .map(|()| Vec::new())
+                .map_err(|_| format!("{} not removed", path.display())),
             Some(before_sha) => {
                 let before = read_opt(&dir.join(format!("{}-{}.before", e.host, e.kind)))?
                     .ok_or("before bytes missing from the receipt")?;
                 if &sha(&before) != before_sha {
                     return Err("before bytes do not match the receipt".into());
                 }
-                publish_replace(path, Some(&current), &before)
+                publish_replace(path, Some(&current), &before).map(|()| Vec::new())
             }
         };
     }
-    let inserted = e.inserted.as_deref().ok_or("user_changed_since_apply")?;
-    let text = std::str::from_utf8(&current).map_err(|_| "user_changed_since_apply")?;
-    if text.matches(inserted).count() != 1 {
+    let keys = entry_keys(e).ok_or("user_changed_since_apply")?;
+    let mut text = std::str::from_utf8(&current)
+        .map_err(|_| "user_changed_since_apply")?
+        .to_string();
+    let mut object = settings_object(&current).map_err(|_| "user_changed_since_apply")?;
+    let mut kept = Vec::new();
+    let mut removed = 0;
+    for k in keys.iter().rev() {
+        let mut rest = object.clone();
+        let removable = rest.shift_remove(&k.key).as_ref() == Some(&k.value)
+            && text.matches(&k.text).count() == 1;
+        if removable {
+            let out = drop_leading_comma(text.replacen(&k.text, "", 1));
+            if settings_object(out.as_bytes()).ok().as_ref() == Some(&rest) {
+                text = out;
+                object = rest;
+                removed += 1;
+                continue;
+            }
+        }
+        kept.push(k.key.clone());
+    }
+    if removed == 0 {
         return Err("user_changed_since_apply".into());
     }
-    let out = text.replacen(inserted, "", 1);
-    let mut want = settings_object(&current).map_err(|_| "user_changed_since_apply")?;
-    if want.shift_remove("outputStyle") != Some(json!(STYLE_NAME))
-        || settings_object(out.as_bytes()).ok() != Some(want)
-    {
-        return Err("user_changed_since_apply".into());
-    }
-    publish_replace(path, Some(&current), out.as_bytes())
+    publish_replace(path, Some(&current), text.as_bytes())?;
+    kept.reverse();
+    Ok(kept)
 }
 
 /// Undoes one apply for the targets that still hold what it wrote: a created file is removed, a
-/// changed one gets its before bytes back, the `outputStyle` key is removed. A target changed
+/// changed one gets its before bytes back, the keys the apply added are removed. A target changed
 /// since is skipped.
 pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<Value> {
     validate_permission(permission)?;
@@ -752,7 +939,16 @@ pub fn revert(home: &Path, receipt_id: &str, permission: &str) -> Result<Value> 
         let target = root.join(rel);
         if e.kind == "setting" {
             match revert_setting(&target, &dir, e) {
-                Ok(()) => reverted.push(name),
+                Ok(kept) => {
+                    if !kept.is_empty() {
+                        skipped.push(json!({
+                            "target": name,
+                            "reason": "user_changed_since_apply",
+                            "keys": kept,
+                        }));
+                    }
+                    reverted.push(name);
+                }
                 Err(reason) => skipped.push(json!({"target": name, "reason": reason})),
             }
             continue;
@@ -838,6 +1034,7 @@ mod tests {
                     expected_sha256: None,
                     baseline_sha256: None,
                     detail: None,
+                    keys: Vec::new(),
                 })
                 .collect(),
             not_supported: Vec::new(),
