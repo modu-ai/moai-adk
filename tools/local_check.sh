@@ -458,7 +458,7 @@ if on_leg "rest"; then
   step light fmt-ops bash -c 'rustfmt --check --edition 2021 src/ops/*.rs'
 fi
 if on_leg "rest"; then
-  step python unittest bash -c "python3 -m unittest discover -v -s tests -p '*_test.py' 2>&1 | tee ci-unittest.log; exit \"\${PIPESTATUS[0]}\""
+  step python unittest bash -c "python3 tools/unittest_parallel.py -v -s tests -p '*_test.py' 2>&1 | tee ci-unittest.log; exit \"\${PIPESTATUS[0]}\""
 fi
 if on_leg "rest"; then
   step light diff-check git diff --check "${diff_range}"

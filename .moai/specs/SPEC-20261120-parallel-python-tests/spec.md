@@ -28,6 +28,7 @@ created: 2026-11-20
 - REQ-5: The tool shall run every module with its own temporary folder as `HOME` and as `TMPDIR` and keep the caller's `CARGO_HOME` and `RUSTUP_HOME`. · failure: none — a test reads the values each fixture module saw.
 - REQ-6: The tool shall take its job count from `-j`, else from `MOAI_UNITTEST_JOBS`, else the smaller of four and the machine's processor count. · failure: none — a test runs with `-j 1` and with `MOAI_UNITTEST_JOBS`.
 - REQ-7: When no module matches the pattern, the tool shall print that no module matched and exit 1. · failure: none — a test runs on an empty folder.
+- REQ-9: When a module file is bigger than 32 KiB and unittest lists at least two test classes for it, the tool shall run each class in its own process, so that every test runs once, and shall run the module whole when unittest cannot list its classes (an import error, or a `load_tests` hook that adds a test of another module). · failure: none — a test with a 33 KB fixture module reads the process count and the test total, and one with a hook.
 - REQ-8: The `tools/local_check.sh` step `unittest` shall run the tool with `-v -s tests -p '*_test.py'`, keep the log `ci-unittest.log` and the python slot, and exit with the tool's code. · failure: none — a test reads the step line and `tests/local_check_test.py` pins the recorded command.
 
 ## Acceptance
@@ -38,6 +39,8 @@ created: 2026-11-20
   verify: `cargo test --locked --offline --test unittest_parallel_tool`
 - AC-3 (REQ-4): `-v` 에서 테스트 한 줄의 모양이 직렬 `unittest discover -v` 와 같아서 CI 의 macOS 전용 표가 그 줄을 세요.
   verify: `cargo test --locked --offline --test unittest_parallel_tool verbose_keeps_the_per_test_line_shape`
+- AC-6 (REQ-9): 32 KiB 보다 큰 모듈이 클래스마다 한 프로세스로 돌고(상속한 테스트도 한 번씩), 합계가 같아요. `load_tests` 가 다른 모듈의 테스트를 더하는 모듈은 통째로 돌아요.
+  verify: `cargo test --locked --offline --test unittest_parallel_tool a_big_module_is_split_by_class`; `cargo test --locked --offline --test unittest_parallel_tool a_big_module_with_a_load_tests_hook_runs_whole`
 - AC-4 (REQ-5): 모듈마다 HOME 과 TMPDIR 이 서로 다르고 호출자의 것과도 달라요.
   verify: `cargo test --locked --offline --test unittest_parallel_tool each_module_gets_its_own_home_and_tmpdir`
 - AC-5 (REQ-8): `local_check.sh` 의 `unittest` 단계 줄과 `tests/local_check_test.py` 의 고정이 새 명령이에요.
@@ -45,7 +48,7 @@ created: 2026-11-20
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261120-parallel-python-tests/spec.md`, `tools/unittest_parallel.py`, `tools/local_check.sh`, `tests/unittest_parallel_tool.rs`, `tests/local_check_test.py`
+- write: `.moai/specs/SPEC-20261120-parallel-python-tests/spec.md`, `tools/unittest_parallel.py`, `tools/local_check.sh`, `tests/unittest_parallel_tool.rs`, `tests/local_check_test.py`, `tests/repo_scans_test.py` (the list of tests that walk the tree names the new Rust test), `tests/github_assets_test.py` (its CI test pins the command text; one line)
 - read-only: `.github/workflows/ci.yml`, `tools/repo_scans.json`
 - forbidden: 실제 HOME, 사용자의 전역 git 설정, push 이외의 원격 쓰기
 
@@ -68,7 +71,7 @@ created: 2026-11-20
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | 새 의존성 없이 표준 라이브러리의 스레드 풀이 모듈마다 프로세스를 띄워요 | 사용자 결정 2026-11-20: 파이썬은 옮기는 동안만; 도구를 더 들이지 않아요 | `local_check.sh` 줄을 이전 `unittest discover` 로 되돌려요 |
-| D-2 | 단위는 모듈 하나이고 모듈마다 `unittest discover -p <파일>` 로 돌려요 | 직렬 실행과 같은 시작 폴더·임포트 규칙이라 결과가 같아요 | 위와 같아요 |
+| D-2 | 단위는 모듈 하나이고 모듈마다 `unittest discover -p <파일>` 로 돌려요. 32 KiB 보다 큰 모듈만 클래스 단위로 쪼개요 | 직렬 실행과 같은 시작 폴더·임포트 규칙이라 결과가 같아요. 쪼개기는 측정에서 나왔어요: 모듈 단위 병렬은 가장 긴 모듈 하나(install_script_test.py, 945.8초)가 전체 시간(945.8초)을 정했어요. 목록은 unittest 가 직접 만들어서(AST 를 읽지 않아요) 상속한 테스트도 빠지거나 겹치지 않아요 | 임계값을 올리거나 쪼개기를 지워요 |
 | D-3 | CI 워크플로는 바꾸지 않아요 | CI 는 `tools/local_check.sh` 를 불러요; `ci.yml` 은 다른 작업도 만져서 줄을 아껴요 | 해당 없음 |
 | D-4 | 새 테스트는 Rust 로 써요 | 사용자 결정: 제품과 도구의 테스트는 Rust, 파이썬은 옮기는 동안만 | 테스트 파일을 지워요 |
 

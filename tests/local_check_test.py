@@ -53,13 +53,13 @@ CI_LINUX_STEPS = [
     # C-75 S0: build.rs includes src/ops/*.rs through `#[path]` in a generated OUT_DIR file,
     # so `cargo fmt` never reaches them; this step checks them with rustfmt directly.
     ("fmt-ops", "bash -c rustfmt --check --edition 2021 src/ops/*.rs"),
-    ("unittest","bash -c python3 -m unittest discover -v -s tests -p '*_test.py'"
+    ("unittest","bash -c python3 tools/unittest_parallel.py -v -s tests -p '*_test.py'"
                  " 2>&1 | tee ci-unittest.log; exit \"${PIPESTATUS[0]}\""),
     ("diff-check", "git diff --check BASE...HEAD"),
 ]
 STEP = re.compile(r"^step (\S+): (.*)$")
 INLINE_CHECK_COMMANDS = ("cargo fetch", "cargo nextest", "cargo test", "cargo clippy",
-                         "cargo fmt", "unittest discover")
+                         "cargo fmt", "unittest_parallel")
 
 
 def git(cwd, *args):
@@ -240,7 +240,7 @@ class LocalCheckStepsTest(unittest.TestCase):
             "cargo fmt --check",
             # No src/ops/ in the fake repository, so bash passes the pattern through as is.
             "rustfmt --check --edition 2021 src/ops/*.rs",
-            "python3 -m unittest discover -v -s tests -p *_test.py",
+            "python3 tools/unittest_parallel.py -v -s tests -p *_test.py",
         ])
 
 
@@ -351,7 +351,7 @@ class LocalCheckLegTest(unittest.TestCase):
             "cargo clippy --offline --locked --all-targets -- -D warnings",
             "cargo fmt --check",
             "rustfmt --check --edition 2021 src/ops/*.rs",
-            "python3 -m unittest discover -v -s tests -p *_test.py",
+            "python3 tools/unittest_parallel.py -v -s tests -p *_test.py",
         ])
 
 
@@ -376,10 +376,10 @@ class LocalCheckPythonSlotTest(unittest.TestCase):
         self.assertEqual(len(cargo), 3, cargo)  # test, doctest, clippy keep the heavy slot
         self.assertTrue(python[0].startswith(
             f"heavy-slot-acquire --dir {self.default_dir} --max 2 --min-free-gb 50 "
-            "--name local-check-py -- bash -c python3 -m unittest discover"), python[0])
+            "--name local-check-py -- bash -c python3 tools/unittest_parallel.py"), python[0])
         self.assertTrue(all(l.startswith("heavy-slot-acquire --max 3 ") for l in cargo), cargo)
         # The command still ran inside the slot.
-        self.assertIn("python3 -m unittest discover -v -s tests -p *_test.py",
+        self.assertIn("python3 tools/unittest_parallel.py -v -s tests -p *_test.py",
                       self.repo.recorded())
 
     def test_xdg_cache_home_names_the_default_folder(self):
@@ -413,7 +413,7 @@ class LocalCheckPythonSlotTest(unittest.TestCase):
                 self.assertEqual([l for l in repo.slot_recorded() if " --dir " in l], [])
                 # Never the cargo slot folder either (REQ-12): no slot line carries the python run.
                 self.assertEqual([l for l in repo.slot_recorded() if "unittest" in l], [])
-                self.assertIn("python3 -m unittest discover -v -s tests -p *_test.py",
+                self.assertIn("python3 tools/unittest_parallel.py -v -s tests -p *_test.py",
                               repo.recorded())
 
     def test_an_empty_xdg_cache_home_falls_back_to_home(self):
@@ -438,7 +438,7 @@ class LocalCheckPythonSlotTest(unittest.TestCase):
         self.assertEqual(proc.returncode, 1)
         self.assertIn("step unittest: exit 75", proc.stderr)
         self.assertIn(" result=fail ", last_line(proc.stdout))
-        self.assertNotIn("python3 -m unittest", " ".join(self.repo.recorded()))
+        self.assertNotIn("unittest_parallel", " ".join(self.repo.recorded()))
 
     def test_without_the_slot_command_the_step_runs_directly(self):
         repo = FakeRepo()
@@ -446,7 +446,7 @@ class LocalCheckPythonSlotTest(unittest.TestCase):
         proc = repo.run()
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertEqual(repo.slot_recorded(), [])
-        self.assertIn("python3 -m unittest discover -v -s tests -p *_test.py", repo.recorded())
+        self.assertIn("python3 tools/unittest_parallel.py -v -s tests -p *_test.py", repo.recorded())
 
 
 class LocalCheckLineTest(unittest.TestCase):
@@ -1061,7 +1061,7 @@ class LocalCheckCandidateTest(unittest.TestCase):
         self.assertEqual(steps, expected)
         self.assertEqual([c.split()[0] + " " + c.split()[1] for c in repo.recorded()],
                          ["cargo fetch", "cargo nextest", "cargo test", "cargo clippy",
-                          "cargo fmt", "rustfmt --check", "python3 -m"])
+                          "cargo fmt", "rustfmt --check", "python3 tools/unittest_parallel.py"])
 
     def test_step_failure_keeps_real_evidence_and_cleans_up(self):
         repo = self.repo(fail_label="clippy")

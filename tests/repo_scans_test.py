@@ -48,6 +48,8 @@ EXEMPT = {
     "tests/project_flow_closing.rs": "reads only the named skills/moai/workflows/project.md; "
                                     "`git ls-files --error-unmatch` runs in TempDir repos",
     "tests/status_line_cli.rs": "read_dir of a TempDir settings-backups folder",
+    "tests/unittest_parallel_tool.rs": "read_dir of a TempDir marker folder; reads the named "
+                                       "tools/unittest_parallel.py and tools/local_check.sh",
     "tests/update_route.rs": "walks its TempDir project; reads the named update.md and routes.json",
     "tests/worktree_report.rs": "read_dir of temporary worktrees",
 }

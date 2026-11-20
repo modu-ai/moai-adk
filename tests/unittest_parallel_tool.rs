@@ -221,6 +221,80 @@ fn the_job_count_bounds_the_overlap() {
     );
 }
 
+/// A module of more than 32 KiB with two test classes, `B` inheriting the test of `A`; `hold`
+/// records how many cases run at the same moment, as `overlap_module` does.
+fn big_module(dir: &Path, name: &str, extra: &str) {
+    let body = format!(
+        "import os, time, unittest\n\
+         # {pad}\n\
+         HERE = os.path.dirname(os.path.abspath(__file__))\n\
+         def hold(tag):\n\
+         \x20   run = os.path.join(HERE, 'running'); seen = os.path.join(HERE, 'seen')\n\
+         \x20   os.makedirs(run, exist_ok=True); os.makedirs(seen, exist_ok=True)\n\
+         \x20   mine = os.path.join(run, tag + str(os.getpid()))\n\
+         \x20   open(mine, 'w').close()\n\
+         \x20   time.sleep(1.5)\n\
+         \x20   n = len(os.listdir(run))\n\
+         \x20   with open(os.path.join(seen, tag + str(os.getpid())), 'w') as f:\n\
+         \x20       f.write(str(n))\n\
+         \x20   time.sleep(0.3)\n\
+         \x20   os.remove(mine)\n\
+         class A(unittest.TestCase):\n\
+         \x20   def test_a(self):\n\
+         \x20       hold('a')\n\
+         class B(A):\n\
+         \x20   def test_b(self):\n\
+         \x20       hold('b')\n\
+         {extra}",
+        pad = "#".repeat(33_000)
+    );
+    module(dir, name, &body);
+}
+
+#[test]
+fn a_big_module_is_split_by_class() {
+    let (dir, home) = fixture();
+    big_module(dir.path(), "big_test", "");
+    module(dir.path(), "small_test", PASS);
+    let out = run(dir.path(), home.path(), &["-v", "-j", "2"], &[]);
+    let all = text(&out);
+    assert_eq!(out.status.code(), Some(0), "{all}");
+    // A has one case, B its own and the one it inherits; the split loses and repeats none.
+    assert!(all.contains("Ran 5 tests in "), "{all}");
+    for line in [
+        "test_a (big_test.A.test_a) ... ok",
+        "test_a (big_test.B.test_a) ... ok",
+        "test_b (big_test.B.test_b) ... ok",
+    ] {
+        assert!(all.lines().any(|l| l == line), "no line {line:?} in\n{all}");
+    }
+    assert!(
+        all.contains("modules: 2, processes: 3,"),
+        "the big module runs as one process per class: {all}"
+    );
+    assert!(
+        most_seen(dir.path()) >= 2,
+        "the two classes did not overlap"
+    );
+}
+
+#[test]
+fn a_big_module_with_a_load_tests_hook_runs_whole() {
+    let (dir, home) = fixture();
+    big_module(
+        dir.path(),
+        "hook_test",
+        // The hook adds a case that belongs to no class of the module, so a split by class
+        // would not know where it runs.
+        "def load_tests(loader, tests, pattern):\n    tests.addTest(unittest.FunctionTestCase(lambda: None))\n    return tests\n",
+    );
+    let out = run(dir.path(), home.path(), &["-j", "2"], &[]);
+    let all = text(&out);
+    assert_eq!(out.status.code(), Some(0), "{all}");
+    assert!(all.contains("Ran 4 tests in "), "{all}");
+    assert!(all.contains("modules: 1, processes: 1,"), "{all}");
+}
+
 #[test]
 fn each_module_gets_its_own_home_and_tmpdir() {
     let (dir, home) = fixture();
