@@ -211,6 +211,12 @@ fn name_forms_blanks_quotes_and_camel_are_refused_on_every_surface() {
         words(&["run \"my-", &ak, "\"=x"]),
         words(&["run myApi", "Key=1"]),
         words(&["run my", "Token", "Count=1"]),
+        // Audit B2: the joined `apikey` behind a hump, the `key` hump behind a lower-case `api`
+        // (`myApiKey` is covered by both branches, so neither is proved by it), and a quoted
+        // name before a spaced equals sign.
+        words(&["run myA", "pikey=1"]),
+        words(&["run myapi", "Key=1"]),
+        words(&["run \"pass", "word\" = x"]),
     ];
     for text in &refused {
         for (surface, out) in on_every_surface(&home, &project, text) {
@@ -325,21 +331,23 @@ fn separators_values_are_refused_on_every_surface() {
     }
 }
 
+/// The screen's answer for `text`, or an error when it takes longer than 15 seconds.
+fn timed(text: String) -> Result<usize, String> {
+    let (tx, rx) = std::sync::mpsc::channel();
+    // The screen runs on its own thread, so a square-time regression fails after the bound
+    // instead of holding the test for minutes (the thread dies with the test process).
+    std::thread::spawn(move || {
+        let _ = tx.send(input::secret_words(&text));
+    });
+    rx.recv_timeout(std::time::Duration::from_secs(15))
+        .map_err(|_| "no answer within 15 s".to_string())
+}
+
 /// AC-3 (REQ-7): with the new separators in the word, one long word without a space is still
 /// answered in time that grows with its length (the bound is far above linear, far below
 /// square), and the value after the last separator is seen.
 #[test]
 fn separators_long_one_word_stays_within_the_time_bound() {
-    fn timed(text: String) -> Result<usize, String> {
-        let (tx, rx) = std::sync::mpsc::channel();
-        // The screen runs on its own thread, so a square-time regression fails after the bound
-        // instead of holding the test for minutes (the thread dies with the test process).
-        std::thread::spawn(move || {
-            let _ = tx.send(input::secret_words(&text));
-        });
-        rx.recv_timeout(std::time::Duration::from_secs(15))
-            .map_err(|_| "no answer within 15 s".to_string())
-    }
     let key = words(&["AK", "IA", "ABCDEFGHIJKLMNOP"]);
     for size in [200_000usize, 1_048_575] {
         for unit in ["a;", "a.", "a/"] {
@@ -351,5 +359,29 @@ fn separators_long_one_word_stays_within_the_time_bound() {
                 "size {size} unit {unit}: the value after the last separator is refused"
             );
         }
+    }
+}
+
+/// Audit B1 (REQ-7): a long name with many camel humps is screened in linear time: the humps
+/// do not each build new strings of the rest of the name. `aB` repeated holds a hump every two
+/// characters and no secret word; the spaced form takes the same name path. A secret word
+/// behind the last hump is still refused.
+#[test]
+fn camel_long_name_stays_within_the_time_bound() {
+    for size in [65_536usize, 1_048_575] {
+        let humps = "aB".repeat(size / 2);
+        for (shape, text) in [
+            ("joined", format!("{humps}=1")),
+            ("spaced", format!("{humps} = 1")),
+        ] {
+            let refused = timed(text).unwrap_or_else(|e| panic!("size {size} {shape}: {e}"));
+            assert_eq!(refused, 0, "size {size} {shape}: plain humps are no secret");
+        }
+        let secret = format!("{humps}{}=1", words(&["To", "ken"]));
+        let refused = timed(secret).unwrap_or_else(|e| panic!("size {size} secret: {e}"));
+        assert_eq!(
+            refused, 1,
+            "size {size}: the secret word behind the last hump is refused"
+        );
     }
 }

@@ -300,19 +300,28 @@ fn name_is_secret(name: &str) -> bool {
 /// do. An all-lower-case joined or plural name (`tokens`, `mytoken`) keeps passing: the pieces
 /// rule of SPEC-20261119-card-secret-screen REQ-2 stands.
 fn camel_hump_secret(name: &str) -> bool {
-    let chars: Vec<char> = name.chars().collect();
-    let lower: Vec<char> = name.to_ascii_lowercase().chars().collect();
-    (1..chars.len()).any(|i| {
-        if !(chars[i - 1].is_ascii_lowercase() && chars[i].is_uppercase()) {
-            return false;
+    // One lower-cased copy of the whole name: ASCII lower-casing keeps every byte offset, so a
+    // hump's offset in `name` splits `lower` too, and each hump compares two short slices, no new
+    // string (audit B1: building the rest of the name per hump took time in the square of its
+    // length).
+    let lower = name.to_ascii_lowercase();
+    let mut previous: Option<char> = None;
+    for (at, c) in name.char_indices() {
+        let hump = previous.is_some_and(|p| p.is_ascii_lowercase()) && c.is_uppercase();
+        previous = Some(c);
+        if !hump {
+            continue;
         }
-        let tail: String = lower[i..].iter().collect();
-        let before: String = lower[..i].iter().collect();
-        SECRET_PIECES.iter().any(|w| tail.starts_with(w))
+        let (before, tail) = lower.split_at(at);
+        if SECRET_PIECES.iter().any(|w| tail.starts_with(w))
             || tail.starts_with("apikey")
             // `apiKey`: the hump starts the `key` half of a joined `api…key`.
             || (tail.starts_with("key") && before.ends_with("api"))
-    })
+        {
+            return true;
+        }
+    }
+    false
 }
 
 /// Whether any `=` of the word follows a secret name: the name is the run of letters, digits,
