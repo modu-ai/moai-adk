@@ -494,9 +494,14 @@ fn prepush_header_length_limit() {
     let p = TempDir::new().unwrap();
     let ok = format!("feat: {}", "a".repeat(94)); // 100 bytes
     let long = format!("feat: {}", "a".repeat(95)); // 101 bytes
+                                                    // The default action warns, so the exit is 0 either way: the streams tell pass from report.
     assert_eq!(
-        check(p.path(), pp_env(Some("1"), None, None), &format!("{ok}\n")).0,
-        0
+        check(p.path(), pp_env(Some("1"), None, None), &format!("{ok}\n")),
+        (
+            0,
+            "All 1 commit(s) follow conventional-commits convention.\n".to_string(),
+            String::new()
+        )
     );
     let (_, out, err) = check(
         p.path(),
