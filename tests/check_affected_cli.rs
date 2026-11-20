@@ -273,6 +273,38 @@ fn the_fixed_steps_and_the_host_targets_are_always_listed() {
 }
 
 #[test]
+fn a_head_behind_its_base_tip_counts_only_its_own_changes() {
+    // The head's history left the base before the tip changed `src/card.rs`: the changed paths
+    // are those since the merge base (three dots), so the tip's own change selects nothing.
+    let fx = Fixture::new(false, &[("src/update_models.rs", "// b\n")]);
+    git_ok(fx.root(), &["checkout", "-q", "-b", "tip", &fx.base]);
+    put(fx.root(), "src/card.rs", "// the tip's own change\n");
+    git_ok(fx.root(), &["add", "-A"]);
+    git_ok(fx.root(), &["commit", "-q", "-m", "tip"]);
+    let tip = git(fx.root(), &["rev-parse", "HEAD"]).trim().to_string();
+    git_ok(fx.root(), &["checkout", "-q", "main"]);
+    let mut cmd = Command::new(BIN);
+    let out = cmd
+        .args([
+            "check",
+            "affected",
+            &format!("{tip}..{}", fx.head),
+            "--list",
+            "--dir",
+        ])
+        .arg(fx.root())
+        .env_remove("MOAI_HOME")
+        .output()
+        .unwrap();
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["ok"], true, "{v}");
+    let rust = names(&v["result"]["rust_targets"]);
+    assert!(rust.contains(&"update_command_cli".to_string()), "{rust:?}");
+    assert!(!rust.contains(&"card_cli".to_string()), "{rust:?}");
+    assert_eq!(v["result"]["changed"], 1, "{v}");
+}
+
+#[test]
 fn a_project_without_a_scan_list_says_scans_none() {
     let fx = Fixture::new(false, &[("src/update_models.rs", "// b\n")]);
     let (ok, r) = affected(&fx, &["--list"], None);
