@@ -118,8 +118,22 @@ pub(crate) fn prune_empty_dirs(dir: &Path, stop: &Path) {
 }
 
 pub fn read_opt(path: &Path) -> Result<Option<Vec<u8>>> {
+    read_within(path, RECEIPT_LIMIT, false)
+}
+
+/// The refusal of a replace whose existing file is above the limit of that replace. It names the
+/// limit and carries none of the phrases the contract reads as a stale plan: a size is not a
+/// changed target (`contract::classify` reads "changed during apply" as `stale_plan`).
+fn oversize(limit: u64) -> String {
+    format!("target larger than {limit} bytes; refused")
+}
+
+/// [`read_opt`] with its own limit. With `named_size` a file above the limit is refused with
+/// [`oversize`] (the replace re-reads its target this way); without it the old message stays.
+fn read_within(path: &Path, limit: u64, named_size: bool) -> Result<Option<Vec<u8>>> {
     match fs::metadata(path) {
-        Ok(m) if !m.is_file() || m.len() > RECEIPT_LIMIT => {
+        Ok(m) if m.is_file() && m.len() > limit && named_size => Err(oversize(limit)),
+        Ok(m) if !m.is_file() || m.len() > limit => {
             Err("target is not a bounded regular file".into())
         }
         Ok(_) => fs::read(path)
@@ -149,7 +163,13 @@ fn sync_parent(path: &Path) {
 /// failure path (REQ-01B-03). A new file takes `mode` (unix permission bits) when one is
 /// given, from its creation on, so bytes that may be a secret are never readable more widely
 /// than the caller allows; an existing target's permissions win.
-fn stage(path: &Path, before: Option<&[u8]>, after: &[u8], mode: Option<u32>) -> Result<PathBuf> {
+fn stage(
+    path: &Path,
+    before: Option<&[u8]>,
+    after: &[u8],
+    mode: Option<u32>,
+    limit: u64,
+) -> Result<PathBuf> {
     let parent = path.parent().ok_or("target parent unavailable")?;
     fs::create_dir_all(parent).map_err(|_| "target directory unavailable")?;
     let nanos = std::time::SystemTime::now()
@@ -185,11 +205,17 @@ fn stage(path: &Path, before: Option<&[u8]>, after: &[u8], mode: Option<u32>) ->
         .map_err(|_| "temporary write failed".to_string());
     // The re-check may itself fail (for example a permission change mid-apply); the
     // temporary file is removed on that path too, never left behind.
-    let verified = read_opt(path);
-    if verified.is_err() || written.is_err() || verified.unwrap().as_deref() != before {
+    let verified = read_within(path, limit, true);
+    let size_refused = matches!(&verified, Err(e) if *e == oversize(limit));
+    let changed = match &verified {
+        Ok(now) => now.as_deref() != before,
+        Err(_) => true,
+    };
+    if changed || written.is_err() {
         let _ = fs::remove_file(&temp);
         return Err(match written {
             Err(message) => message,
+            _ if size_refused => oversize(limit),
             _ => "target changed during apply; temporary file discarded".into(),
         });
     }
@@ -199,7 +225,19 @@ fn stage(path: &Path, before: Option<&[u8]>, after: &[u8], mode: Option<u32>) ->
 /// Atomic replace (REQ-01B-03): stage → rename → directory sync. A rename across
 /// filesystems is refused, never downgraded to copy+delete (REQ-01B-05).
 pub fn publish_replace(path: &Path, before: Option<&[u8]>, after: &[u8]) -> Result<()> {
-    let temp = stage(path, before, after, None)?;
+    publish_replace_limited(path, before, after, RECEIPT_LIMIT)
+}
+
+/// [`publish_replace`] for a file that may be larger than the 256 KiB every other target keeps:
+/// the caller names the limit its own readers use, and the re-read of the old file before the
+/// rename honours it. A file above it is refused with a message that names the limit.
+pub fn publish_replace_limited(
+    path: &Path,
+    before: Option<&[u8]>,
+    after: &[u8],
+    limit: u64,
+) -> Result<()> {
+    let temp = stage(path, before, after, None, limit)?;
     match fs::rename(&temp, path) {
         Ok(()) => {}
         Err(e) => {
@@ -230,7 +268,7 @@ pub fn publish_exclusive(path: &Path, after: &[u8]) -> Result<()> {
 /// [`publish_exclusive`] with the unix permission bits of the new file (`None`: the process
 /// default). The file has them from its creation, not after a later `chmod`.
 pub fn publish_exclusive_mode(path: &Path, after: &[u8], mode: Option<u32>) -> Result<()> {
-    let temp = stage(path, None, after, mode)?;
+    let temp = stage(path, None, after, mode, RECEIPT_LIMIT)?;
     let published = fs::hard_link(&temp, path)
         .map_err(|_| "exclusive create refused")
         .map(|_| ());
@@ -533,6 +571,69 @@ pub fn recover(root: &Path, receipt_id: &str, permission: &str) -> Result<Value>
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A file above the limit of a replace is refused with its own message. The message names
+    /// the limit, is not the stale-plan phrase (a size is not a changed target: the contract
+    /// classes "changed during apply" as `stale_plan`) and leaves no temporary file behind.
+    #[test]
+    fn a_replace_over_the_size_limit_names_the_limit() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("big.json");
+        fs::write(&path, vec![b'x'; RECEIPT_LIMIT as usize + 1]).unwrap();
+        let err = publish_replace(&path, Some(&b"x"[..]), b"small").unwrap_err();
+        assert!(err.contains("262144"), "{err}");
+        assert!(!err.contains("changed"), "{err}");
+        assert!(!err.contains("stale"), "{err}");
+        assert_eq!(
+            crate::contract::classify(&err),
+            crate::contract::Kind::InvalidInput,
+            "{err}"
+        );
+        let left: Vec<_> = fs::read_dir(dir.path())
+            .unwrap()
+            .map(|e| e.unwrap().file_name())
+            .collect();
+        assert_eq!(left, [std::ffi::OsString::from("big.json")], "{left:?}");
+    }
+
+    /// The limit-aware replace honours the limit its caller names: a file above the default of
+    /// 256 KiB is replaced under a larger limit, a file exactly at the limit is replaced, and one
+    /// byte over it is refused with the limit in the message and nothing left behind.
+    #[test]
+    fn a_replace_with_its_own_limit_stops_exactly_one_byte_over() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("receipt.json");
+        let above_default = vec![b'x'; RECEIPT_LIMIT as usize + 10];
+        fs::write(&path, &above_default).unwrap();
+        publish_replace_limited(&path, Some(&above_default), b"a", RECEIPT_LIMIT * 4).unwrap();
+        assert_eq!(fs::read(&path).unwrap(), b"a");
+
+        let at_limit = vec![b'y'; 16];
+        fs::write(&path, &at_limit).unwrap();
+        publish_replace_limited(&path, Some(&at_limit), b"b", 16).unwrap();
+        assert_eq!(fs::read(&path).unwrap(), b"b");
+
+        let over = vec![b'z'; 17];
+        fs::write(&path, &over).unwrap();
+        let err = publish_replace_limited(&path, Some(&over), b"c", 16).unwrap_err();
+        assert_eq!(err, "target larger than 16 bytes; refused");
+        assert_eq!(fs::read(&path).unwrap(), over, "the file is untouched");
+        let names: Vec<_> = fs::read_dir(dir.path())
+            .unwrap()
+            .map(|e| e.unwrap().file_name())
+            .collect();
+        assert_eq!(names, [std::ffi::OsString::from("receipt.json")]);
+    }
+
+    /// A changed target is still a changed target: the size message is only for a size.
+    #[test]
+    fn a_target_that_changed_is_still_reported_as_changed() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("t.json");
+        fs::write(&path, b"now").unwrap();
+        let err = publish_replace(&path, Some(&b"before"[..]), b"after").unwrap_err();
+        assert_eq!(err, "target changed during apply; temporary file discarded");
+    }
 
     /// #2936 R-fix (audit mutant M16): the walk stops at the project root. When the removal
     /// empties every folder up to it, the root stays, and so does what sits beside it. The
