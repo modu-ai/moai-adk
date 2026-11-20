@@ -42,11 +42,9 @@ The leader loop reads PRs and Issue comments, fans out review of errors, assigns
 
 ## Reporting
 
-Record task, source or decision, changed paths, exact verification command and outcome, remaining work and blockers in the Issue's owned comment and the relevant document.
+Record in the Issue's owned comment and the relevant document: task, source or decision, changed paths, exact verification command and outcome, completed and remaining work, blockers (exact action and target, reason, denial/pending/uncertain state, independent next work).
 
-A local report file is saved under `~/.moai/reports/<project>/` in the user-level MoAI home (`<project>` is the folder name `~/.moai/worktrees/` uses); a session never writes a report under the repository.
-
-On a blocker report the exact action and target, the reason, the denial/pending/uncertain state, completed work and independent next work.
+Reports go to `~/.moai/reports/<project>/`, never into the repo.
 
 A blocked lane reports the kind, the owner and the next check, and moves to independent work (MODE-AGENT `report` step). Never tick a checkbox from a document or agent claim alone. Where a lane cannot post its own comment, the leader relays it verbatim, marked as a relay with the lane named.
 
