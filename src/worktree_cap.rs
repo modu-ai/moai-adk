@@ -608,6 +608,7 @@ fn restore_command(path: &Path, branch: Option<&str>, head: Option<&str>) -> Str
 
 /// Removes the picked worktrees (`path@item_digest`). Nothing is removed unless the permission
 /// reference is usable; every pick is judged again just before its removal.
+#[allow(clippy::too_many_arguments)]
 pub fn apply(
     project: &Path,
     integration_ref: &str,
@@ -751,12 +752,13 @@ pub fn apply(
     }))
 }
 
-/// `<git folder>/.moai-cli/worktree-cleanup/<now>-<digest12>.json`, created new; a link in the
-/// way is refused.
+/// `<clone state folder>/worktree-cleanup/<now>-<digest12>.json` (the clone state folder is
+/// `clone_root::path` of the git common folder), created new; a link in the way is refused.
 fn write_record(common: &Path, now: u64, body: &Value) -> Result<String> {
     let text = serde_json::to_string_pretty(body).map_err(|e| e.to_string())?;
-    let dir = common.join(".moai-cli").join("worktree-cleanup");
-    for d in [common.join(".moai-cli"), dir.clone()] {
+    let state = crate::clone_root::path(common);
+    let dir = state.join("worktree-cleanup");
+    for d in [state, dir.clone()] {
         if fs::symlink_metadata(&d).is_ok_and(|m| m.file_type().is_symlink()) {
             return Err(format!("{} is a link", d.display()));
         }
