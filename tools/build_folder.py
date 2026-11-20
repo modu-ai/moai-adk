@@ -235,7 +235,8 @@ def cmd_clean():
 COW_OFF = "BUILD_FOLDER_NO_COW"  # set to 1: never clone, build cold
 CLONE_NOFOLLOW = 0x0001  # <sys/clonefile.h>
 CARGO_HOME_NOTE = ("dependencies are reused only when CARGO_HOME is the same path as the lane's "
-                   "(the build info records registry paths); the workspace crate always rebuilds")
+                   "(the build info records registry paths); the workspace crate rebuilds when this "
+                   "worktree's path differs from the lane's")
 
 
 def cargo_entries(folder):
@@ -345,13 +346,19 @@ def cmd_seed(name):
             method = clone_entry(entry, folder / entry.name)
     except OSError as e:
         # Take back only what this run made: every path in `made` was free just before.
+        left = []
         for path in made:
-            if path.is_dir() and not path.is_symlink():
-                shutil.rmtree(path, ignore_errors=True)
-            elif os.path.lexists(path):
-                path.unlink()
+            try:
+                if path.is_dir() and not path.is_symlink():
+                    # a clone keeps the read-only modes of its source: same hook as `clean`
+                    shutil.rmtree(path, **{RMTREE_HOOK: make_writable_and_retry})
+                elif os.path.lexists(path):
+                    path.unlink()
+            except OSError:
+                left.append(path.name)
         reason = "unsupported" if e.errno in (errno.ENOTSUP, errno.EXDEV) else "clone_failed"
-        return answer(False, reason, detail=str(e))
+        detail = str(e) + (f" (could not take back: {', '.join(left)})" if left else "")
+        return answer(False, reason, detail=detail)
     finally:
         for fd in held or []:
             os.close(fd)

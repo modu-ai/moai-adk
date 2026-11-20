@@ -557,6 +557,49 @@ class SeedRollbackTest(unittest.TestCase):
         self.assertEqual(sorted(p.name for p in self.own.iterdir()), [".moai-build.json"])
         self.assertEqual(tree(self.source), before)
 
+    def test_a_half_written_entry_of_the_failed_clone_is_taken_back(self):
+        # `cp --reflink=always` can leave a part of the destination behind when it fails.
+        before = tree(self.source)
+
+        def clone(src, dst):
+            Path(dst).mkdir()
+            (Path(dst) / "half.o").write_text("half written\n")
+            raise OSError(errno.EIO, "injected: failed after writing a part")
+
+        rc, got = self.seed_with(clone)
+        self.assertEqual((rc, got["seeded"], got["reason"]), (0, False, "clone_failed"), got)
+        self.assertEqual(sorted(p.name for p in self.own.iterdir()), [".moai-build.json"])
+        self.assertEqual(tree(self.source), before)
+
+    def test_a_read_only_entry_of_the_failed_clone_is_taken_back(self):
+        # a clone keeps the read-only modes of its source: the same hook as `clean` removes it
+        def clone(src, dst):
+            Path(dst).mkdir()
+            (Path(dst) / "ro.o").write_text("read only\n")
+            os.chmod(Path(dst) / "ro.o", 0o444)
+            os.chmod(dst, 0o555)
+            raise OSError(errno.EIO, "injected: failed with a read-only part")
+
+        self.addCleanup(lambda: [os.chmod(p, 0o755) for p in self.own.iterdir() if p.is_dir()])
+        rc, got = self.seed_with(clone)
+        self.assertEqual((rc, got["seeded"], got["reason"]), (0, False, "clone_failed"), got)
+        self.assertNotIn("could not take back", got["detail"])
+        self.assertEqual(sorted(p.name for p in self.own.iterdir()), [".moai-build.json"])
+
+    def test_the_linux_copy_messages_map_to_the_reasons(self):
+        def failing(stderr):
+            run = mock.Mock(return_value=mock.Mock(returncode=1, stderr=stderr))
+            with mock.patch.object(self.tool.sys, "platform", "linux"), \
+                    mock.patch.object(self.tool.subprocess, "run", run):
+                with self.assertRaises(OSError) as ctx:
+                    self.tool.clone_entry(self.source / "debug", self.own / "debug")
+            return ctx.exception.errno
+
+        self.assertEqual(failing("cp: failed to clone: Operation not supported"), errno.ENOTSUP)
+        self.assertEqual(failing("cp: failed to clone: Invalid cross-device link"), errno.ENOTSUP)
+        self.assertEqual(failing("cp: failed to clone: No space left on device"), errno.EIO)
+        self.assertEqual(failing(""), errno.EIO)
+
     def test_the_source_stays_locked_while_it_is_cloned_and_is_free_afterwards(self):
         self.can_clone()
         lock = self.source / "debug" / ".cargo-lock"
