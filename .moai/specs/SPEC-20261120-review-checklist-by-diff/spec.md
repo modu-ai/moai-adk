@@ -91,4 +91,42 @@ created: 2026-11-20
 
 ## Result
 
-(닫을 때 채워요.)
+### 만든 것 (head 3c7899babf0fff6638aa1845fa792c72a251cd01 이전 커밋 8984a372a2 포함)
+
+- `src/review.rs`: `Package.checklist`, 기준 커밋의 `tools/review_checklist.json` 읽기, 엄격한 표 검사(첫 문제를 `skipped` 이유로), `repo_scans::in_scope` 재사용, 추가된 줄에 대한 literal `diff_pattern`, 150,000 바이트 한도, `diff-sections-mismatch`.
+- `tools/review_checklist.json`: 14개 항목 — verify.md 9개(글자 그대로)와 REVIEW.md 경로 정해진 5개. 항목마다 `source`(Issue #2401·#2493·#2836·#2614, git 이력 `git log -S` 에서 읽음)와 `added`.
+- `REVIEW.md`: 옮긴 5개를 빼고 `checklist` 키 안내 한 문장.
+- 시험: `tests/review_checklist_cli.rs` 11개(TempHome 으로 실행), `review::tests` 11개.
+
+### 증거 (이 head 에서 돌린 것)
+
+- `cargo test --offline --locked --test review_checklist_cli`: 10 passed, 1 failed — 실패는 `protected_list`(REQ-9) 하나, 보호 목록 편집이 병합되기 전이라 예상된 상태예요.
+- `cargo test --offline --locked --test home_isolation_scan --test review_md_repo --test review_package_cli --test review_check_cli --test review_section_cli --test review_links_cli`: 18, 11, 1, 1, 12, 8 passed.
+- `cargo test --offline --locked --lib review::`: 11 passed. `cargo fmt --check` exit 0, `cargo clippy --offline --locked --all-targets -- -D warnings` exit 0, `git diff --check 98d9157f8e...HEAD` exit 0.
+- 변형 11개(상한 12): 기준 대신 head 읽기, 모든 경로 맞춤, 아무 hunk 줄이나 추가로 보기, 150,000 경계(`>` → `>=`), 모르는 키 허용, 중복 id 허용, 아무 source 허용, 아무 날짜 허용, 구간 수 미확인, 빈 매칭 발동, 불일치 skip 제거 — 전부 시험 `FAILED` 로 죽었고 컴파일 실패로 센 것은 없어요. 변형 뒤 트리는 변경 0 으로 복원했어요.
+- RED: 구현 전 11개 시험이 모두 실패(`checklist` 키 없음·파일 없음·REVIEW.md 미반영).
+
+### 분포 (AC-9, REQ-10)
+
+명령: `python3 -I measure.py <moai-cli> <worktree> 3c7899babf0fff6638aa1845fa792c72a251cd01 <scratch> prs.json` — `gh pr list --state merged --limit 30` 의 병합 커밋 `mc` 마다 기준 `mc^1`(그 위에 이 파일만 얹은 가짜 기준 커밋)과 head `mc` 로 실제 `moai review-package` 를 돌려 `checklist` 길이를 셌어요(2026-11-20 02:2xZ, PR #3205~#3234).
+
+| PR 하나가 받은 항목 수 | 전체 30개 | 묶음·릴리스 10개 뺀 20개 |
+| --- | --- | --- |
+| 5 | 11 | 10 |
+| 6 | 4 | 4 |
+| 7 | 5 | 3 |
+| 8 | 3 | 1 |
+| 9 | 2 | 2 |
+| 10 | 1 | 0 |
+| 11 | 2 | 0 |
+| 12 | 2 | 0 |
+
+항목별 발동 PR 수(전체 30): 항상 맞는 5개(base-drift, guard-refusal, host-worktree-guard, helper-auth-failure, zsh-word-splitting) 30, platform-specific-code 13, manifest-after-conflict 11, skills-manifest-sha256 11, absence-in-tests 9, test-reads-docs 9, golden-files-rerecorded 5, checker-changes 4. `skipped` 의 점검표 항목: 0.
+
+읽는 법: 항상 맞는 5개가 하한을 5 로 만들어요(카드가 바란 "조건이 맞는 3~10개"의 하한 3 은 못 맞춰요). 이 5개는 verify.md 의 작업 방식 규칙을 "빠짐없이 옮김"(D2)으로 옮긴 것이고, 줄이려면 그 규칙을 verify.md 에 남기는 결정이 필요해요(되돌릴 수 있음). 묶음·릴리스 병합은 diff 가 커서 12개까지 올라가요. `platform-specific-code`(13)는 `#[cfg(`·`libc::` 같은 글자가 문서·시험에도 흔해서 후보가 넓어요.
+
+### 남은 것
+
+- REQ-9: `tools/protected_checks.json` 과 `src/gate.rs` 의 `TIER2_PREFIXES` 에 이 파일을 넣는 편집은 보호 목록을 쓰는 다른 작업의 몫이에요(요청 노트 남김). 그 병합 뒤 `protected_list` 시험이 통과해요.
+- 후속(범위 밖 경로를 쥔 작업이 놓은 뒤): `skills/moai/workflows/verify.md` 에서 옮긴 9개 규칙 빼기, `skills/moai/workflows/audit.md` Review steps 1 에 `checklist` 한 줄, `skills/moai/references/source-manifest.json` sha256 갱신. 그때까지 규칙은 verify.md 와 점검표에 모두 있어요(REQ-7 시험이 글자 일치를 봐요).
+- 후속: `AGENTS.local.md` 의 원인이 적힌 규칙, `docs/design-review/appendix/operations/review_package.md` 의 출력 키 설명.
