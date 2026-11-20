@@ -3010,7 +3010,7 @@ fn host_outcome_fields(o: &HostOutcome) -> serde_json::Value {
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, unix))]
 mod version_folder_tests {
     use super::*;
 
