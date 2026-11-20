@@ -10,13 +10,11 @@
 #![cfg(unix)]
 
 mod common;
-use common::CleanEnv;
+use common::home::TempHome;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
-use std::{fs, path::PathBuf, process::Command};
+use std::{fs, path::PathBuf};
 use tempfile::TempDir;
-
-const EXE: &str = crate::common::MOAI_BIN;
 
 struct Fx {
     _tmp: TempDir,
@@ -79,11 +77,10 @@ impl Fx {
 /// The preview with the entry limit lowered to `limit` (or the default when `None`).
 fn plan(fx: &Fx, limit: Option<usize>) -> Value {
     let before = fx.tree();
-    let mut cmd = Command::new(EXE);
-    cmd.args(["go-state-plan", fx.root.to_str().unwrap()])
-        .clean_env()
-        .env("PATH", "/usr/bin:/bin")
-        .env("LC_ALL", "C");
+    // The binary runs through a temporary HOME with a clean environment, never the real one.
+    let home = TempHome::new();
+    let mut cmd = home.command(&["go-state-plan", fx.root.to_str().unwrap()]);
+    cmd.env("PATH", "/usr/bin:/bin").env("LC_ALL", "C");
     if let Some(n) = limit {
         cmd.env("MOAI_CLI_TEST_UNRECORDED_LIMIT", n.to_string());
     }
