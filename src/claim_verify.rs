@@ -1237,7 +1237,7 @@ pub fn hook_cli<T: Transport, C: Clock>(
                 "branch": "unparseable",
                 "reason": format!(
                     "no claim record and the lane branch {branch} has no leading Issue number \
-                     (issue/<n>-<key>); not guarded (fail-open, decision D5 HOLD)"
+                     (issue/<n>-<key>); not guarded (fail-open)"
                 ),
             }))
         }

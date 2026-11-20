@@ -13,11 +13,11 @@ parent: SPEC-20261119-enforce-ac-verify-recorded
 
 C-86 S3(SPEC-20261119-enforce-ac-verify-recorded)의 규칙 `ac_verify_recorded` 는 tier 2 감사에서 PASS 를 받았지만, 감사의 비차단 N1~N11 중 문서(N1)는 C-130 조각 1 이 닫았고, 나머지는 코드가 사용자에게 말하지 않는 한계이거나 입력이 이상할 때의 모습이에요: Stop 은 프로세스 폴더를 읽는데 관찰은 입력의 cwd 를 읽어요(N2), 공백 접기가 따옴표·줄바꿈·NBSP 안까지 접어요(N3), 하위 폴더에서 돌린 같은 명령도 기록돼요(N4), 4096바이트를 넘는 verify 명령은 채울 수 없는데 Stop 은 계속 요구해요(N5), 건너뜀 한도에 시험이 없어요(N6), HEAD·packed-refs 읽기에 한도가 없어서 큰 파일은 느리고 FIFO 면 멈춰요(N7), detached HEAD·sha256·reftable·symref 는 조용히 꺼져요(N8), 자리표시자 판정이 셸 문법을 놓쳐요(N9), 한도 뒤 풀어 줌이 로그 없이 조용해요(N11), 그리고 `run_in_background`·`interrupted` 의 다른 모양(문자열 "true", 1, snake_case)은 기록으로 들어가요(N-r1). 독자: `[hooks.modes]` 를 켜는 사용자, 이 규칙을 `enforce` 로 올릴지 정하는 리더, 훅 코드를 고치는 다음 레인.
 
-이 SPEC 은 카드 C-130 의 기준 2~5 를 한 곳에 정해요. 판단이 필요한 둘(N4 하위 폴더, N10 쓰기 판정)은 정한 것과 그 이유를 적어요. 기준 3·4 의 일부는 `src/hook_guards.rs` 를 써야 하고 그 파일은 지금 C-112 가 예약하고 있어서, 그 부분은 예약이 풀린 뒤에 같은 SPEC 안에서 해요(Plan 의 단계 순서).
+이 SPEC 은 카드 C-130 의 기준 2~5 를 한 곳에 정해요. 판단이 필요한 둘(N4 하위 폴더, N10 쓰기 판정)은 정한 것과 그 이유를 적어요. 기준 3·4 는 `src/hook_guards.rs` 를 써야 해서, 그 파일의 예약이 풀린 뒤에 같은 SPEC 안에서 조각 2 후반으로 했어요(Plan 의 단계 순서).
 
 ## Non-goals
 
-- `ac_verify_recorded` 를 `enforce` 로 올리는 일과 기본 모드 변경: 사용자 몫이에요(N10 은 제안 노트로만, D-3).
+- `ac_verify_recorded` 를 `enforce` 로 올리는 일과 기본 모드 변경: 사용자 몫이에요(N10 의 쓰기 판정은 D-3 이 정하고, `enforce` 승격은 이 SPEC 이 하지 않아요).
 - 실제 Claude·Codex·OMP 호스트를 띄워서 하는 확인: 호스트의 문서에서 읽은 모양을 시험으로 고정하고, 실제 호스트 실행은 이 SPEC 이 하지 않아요.
 - 로그 줄의 새 종류 추가: Stop 의 풀어 줌은 이미 있는 `rule_release` 줄을 써요(D-1).
 - 설정 파일 읽기(`src/hook_config.rs`)와 `tests/hook_dispatch_cli.rs` 의 변경: C-86 이 예약하고 있어요.
@@ -39,19 +39,19 @@ C-86 S3(SPEC-20261119-enforce-ac-verify-recorded)의 규칙 `ac_verify_recorded`
 
 - AC-1 (REQ-1): `hook-dispatch --event session-check` capabilities 의 `limits` 가 프로세스 폴더·4096바이트·detached HEAD 와 sha256·reftable·symref·하위 폴더 한계를 말해요. · verify: `cargo test --locked --offline --test hooks_cli the_ac_verify_limits_name_the_process_folder_the_command_size_the_unreadable_heads_and_the_subfolder`
 - AC-2 (REQ-2): 세션이 이미 두 번 막혔고 규칙이 또 막으려 하면 턴이 끝나게 두고 `rule_release` 한 줄(규칙 id·세션)을 남겨요; 규칙이 막지 않으려 하면 줄이 없어요. · verify: `cargo test --locked --offline --test hooks_cli the_stop_release_after_the_cap_writes_one_rule_release_line`; `cargo test --locked --offline --test hooks_cli no_rule_release_line_is_written_when_no_rule_would_block`
-- AC-3 (REQ-3): 따옴표 안의 공백 두 개와 줄바꿈과 NBSP 는 접히지 않고, 따옴표 밖의 공백·탭 연속은 한 칸이 돼요. · manual: `these tests are written after C-112 releases src/hook_guards.rs (card C-130 slice 2, part 2); until then the criterion is open`
-- AC-4 (REQ-4): 따옴표 없는 `<name>` 자리표시자가 든 명령은 목록에서 빠지고 `< in.txt > out.txt` 와 따옴표 안 `'<b>'` 는 남아요. · manual: `these tests are written after C-112 releases src/hook_guards.rs (card C-130 slice 2, part 2); until then the criterion is open`
-- AC-5 (REQ-5, REQ-6): HEAD·ref 파일·`packed-refs` 가 FIFO 이거나 한도보다 크면 커밋을 읽을 수 없는 것으로 보고 기다리지 않아요(FIFO 시험은 제한 시간 안에 끝나요). · manual: `these tests are written after C-112 releases src/hook_guards.rs (card C-130 slice 2, part 2); until then the criterion is open`
+- AC-3 (REQ-3): 따옴표 안의 공백 두 개와 줄바꿈과 NBSP 는 접히지 않고, 따옴표 밖의 공백·탭 연속은 한 칸이 돼요. · verify: `cargo test --locked --offline --lib collapse_whitespace_keeps_quotes_newlines_and_no_break_spaces`; `cargo test --locked --offline --test hooks_cli a_call_with_a_newline_or_a_no_break_space_inside_is_not_recorded_as_the_verify_command`
+- AC-4 (REQ-4): 따옴표 없는 `<name>` 자리표시자가 든 명령은 목록에서 빠지고 `< in.txt > out.txt` 와 따옴표 안 `'<b>'` 는 남아요. · verify: `cargo test --locked --offline --lib verify_commands_read_shell_syntax_when_they_judge_a_placeholder`
+- AC-5 (REQ-5, REQ-6): HEAD·ref 파일·`packed-refs` 가 FIFO 이거나 한도보다 크면 커밋을 읽을 수 없는 것으로 보고 기다리지 않아요(FIFO 시험은 제한 시간 안에 끝나요). · verify: `cargo test --locked --offline --lib head_sha_reads_regular_files_up_to_a_bound_and_never_waits_on_a_fifo`
 - AC-6 (REQ-7): 문자열 `"true"`·숫자 1·snake_case·camelCase 로 온 백그라운드·중단 표시는 기록하지 않아요. · verify: `cargo test --locked --offline --test hooks_cli ac_verify_run_ignores_a_call_marked_unfinished_in_every_documented_spelling`
 - AC-7 (REQ-8): 엔진 로그가 한도에 닿으면 규칙은 줄을 읽지 않고 턴이 끝나게 두고, 그 시험이 있어요. · verify: `cargo test --locked --offline --test hooks_cli the_ac_verify_rule_lets_the_turn_end_when_the_log_is_full`
 - AC-8 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7, REQ-8, REQ-9, REQ-10): 이웃 검사: 훅 시험과 문서·SPEC 검사가 그대로 통과해요. · verify: `cargo test --locked --offline --test hooks_cli`; `cargo test --locked --offline --test hook_dispatch_cli`; `cargo test --locked --offline --test doc_references`; `cargo test --locked --offline --test spec_cli the_repository_specs_pass_check`
 - AC-9 (REQ-9): 문서의 `hook.dispatch` 행이 Stop 규칙의 `rule_release` 줄, 프로세스 폴더 한계, "unfinished" 읽기, OMP 한계를 말해요(그 행 안에서만 읽어요). · verify: `sh -c 'row=$(grep -E "^\| .hook\.dispatch. \(rc\.2" docs/rust-product-path.md | head -1); for w in "the Stop rule" "writes the same line" "process folder" "read as unfinished" "sends only"; do printf %s "$row" | grep -qF -- "$w" || { echo "row lacks: $w"; exit 1; }; done'`
-- AC-10 (REQ-10): 실패한 Edit 와 프로젝트 밖 쓰기(절대 경로·`..` 로 나가는 경로)는 세지 않고, 프로젝트 쓰기·결과 모름(Codex `apply_patch`)·경로 없는 줄은 세요. · verify: `cargo test --locked --offline --test hooks_cli ac_verify_rule_counts_only_writes_that_did_not_fail_and_are_inside_the_project`
+- AC-10 (REQ-10): 실패한 Edit 와 프로젝트 밖 쓰기(절대 경로·`..` 로 나가는 경로)는 세지 않고, 프로젝트 쓰기·결과 모름(Codex `apply_patch`)·경로 없는 줄은 세요. · verify: `cargo test --locked --offline --test hooks_cli ac_verify_rule_counts_only_writes_that_did_not_fail_and_are_inside_the_project`; `cargo test --locked --offline --lib target_path_places_a_project_path_the_host_names_through_a_link_or_dots`
 
 ## Scope
 
 - write: `.moai/specs/SPEC-20261119-ac-verify-recorded-limits/spec.md`, `src/hook_engine.rs`, `tests/hooks_cli.rs`, `docs/rust-product-path.md`, `.moai/specs/SPEC-20261119-enforce-ac-verify-recorded/spec.md`
-- write (after C-112 releases it): `src/hook_guards.rs`
+- write: `src/hook_guards.rs`
 - read-only: `src/hook_config.rs`, `src/hooks.rs`, `tests/hook_dispatch_cli.rs`
 - forbidden: 실제 HOME·실제 프로젝트의 훅 설정, 네트워크, 새 의존성, `src/main.rs`
 
@@ -80,9 +80,15 @@ C-86 S3(SPEC-20261119-enforce-ac-verify-recorded)의 규칙 `ac_verify_recorded`
 
 ## Result
 
-- 부분 결과(조각 2 앞부분, 기준 2·5): REQ-1·REQ-2·REQ-7·REQ-8·REQ-9 와 AC-1·AC-2·AC-6·AC-7·AC-9 는 닫혔고, REQ-3~REQ-6 와 AC-3·AC-4·AC-5 는 `src/hook_guards.rs`(C-112 가 예약 중)가 필요해서 열려 있어요. 열린 AC 는 `manual:` 로 두어서 있지도 않은 시험을 증거로 말하지 않아요; 예약이 풀리면 시험을 먼저 쓰고(RED) AC 를 `verify:` 로 되돌려요.
-- RED→GREEN: 새 시험을 먼저 썼을 때 한계 문구·Stop 풀어 줌 줄·줄바꿈/NBSP 세 시험이 실패했고(왜 실패하는지 메시지로 확인: 한계 낱말 없음, `rule_release` 줄 0개, 줄바꿈 호출이 기록됨), 코드를 고친 뒤 `cargo test --test hooks_cli` 가 61개 통과했어요(줄바꿈 시험은 커밋에서 빼 두었고 `src/hook_guards.rs` 가 풀리면 되돌려요). 한도 가득 시험(`the_ac_verify_rule_lets_the_turn_end_when_the_log_is_full`), 하위 폴더 시험(`a_run_from_a_subfolder_of_the_work_tree_is_recorded`), "풀 줄이 없을 때 풀어 줌 줄 없음" 시험은 지금 동작을 고정하는 핀이라 처음부터 통과했어요(RED 가 아니에요).
+- 조각 2 앞부분(기준 2·5): REQ-1·REQ-2·REQ-7·REQ-8·REQ-9·REQ-10 과 AC-1·AC-2·AC-6·AC-7·AC-9·AC-10 이 닫혔어요(당시 head 0ca2f8892b, 델타 감사 PASS). 아래 "조각 2 후반" 문단이 REQ-3~REQ-6 과 AC-3·AC-4·AC-5 를 닫아요.
+- RED→GREEN: 새 시험을 먼저 썼을 때 한계 문구·Stop 풀어 줌 줄·줄바꿈/NBSP 세 시험이 실패했고(왜 실패하는지 메시지로 확인: 한계 낱말 없음, `rule_release` 줄 0개, 줄바꿈 호출이 기록됨), 코드를 고친 뒤 `cargo test --test hooks_cli` 가 61개 통과했어요(그때 줄바꿈 시험은 커밋에서 빼 두었다가 후반에 되돌렸어요). 한도 가득 시험(`the_ac_verify_rule_lets_the_turn_end_when_the_log_is_full`), 하위 폴더 시험(`a_run_from_a_subfolder_of_the_work_tree_is_recorded`), "풀 줄이 없을 때 풀어 줌 줄 없음" 시험은 지금 동작을 고정하는 핀이라 처음부터 통과했어요(RED 가 아니에요).
 - 변이(`target/mut130.sh`, 다섯 개, 파일은 해시로 복원 확인): M1 `run_in_background` 를 `== true` 로 되돌림, M2 `timedOutAfterMs` 무시, M3 Stop 풀어 줌 끄기, M4 응답 모양 검사 끄기, M5 한도 비교를 `>` 로 → 모두 KILLED. 문서 변이(AC-9, 다섯 개)도 모두 KILLED.
 - 결정: D-2 는 시험으로 확인했어요: 하위 폴더 실행은 프로세스 폴더의 로그에 기록돼요(`a_run_from_a_subfolder_of_the_work_tree_is_recorded`). N10 은 리더가 (b)+좁힘으로 정했고(노트 3387) REQ-10·AC-10 으로 구현했어요(시험 한 개에 여섯 꼴: 성공한 프로젝트 쓰기·결과 모름·경로 없음은 세고, 실패한 Edit·프로젝트 밖 절대 경로·`..` 로 나가는 경로는 안 세요).
 - 알려진 한계: OMP 확장은 `isError` 만 보내서 OMP 의 백그라운드·시간 초과 호출은 완료로 읽혀요(`capabilities` 한계와 문서에 적었고 코드 변경은 `src/hooks.rs` 의 생성 모듈이라 이 조각 밖이에요).
 - 감사 반영(audit-c130b, head e07d419aa0, 권고 PASS, 차단 0, 비차단 7): 문구만 고쳤고 동작은 그대로예요. "세 번의 거절" → 두 번 막고 세 번째 턴 끝에서 풀어 줘요(비차단 3), `rule_release` 는 풀어 주는 턴 끝마다 한 줄씩 써요(한도 안에서만, 비차단 2), 행 46 의 표지 목록을 코드와 맞췄어요(`backgroundTaskId` 류는 `false` 도 끝나지 않음으로 읽고 `runInBackground` 는 문서에 없는 철자예요, 비차단 4), 이 SPEC 의 위험 줄 과장을 줄였어요(비차단 6). 알려진 생존 변이: 읽기 한도 `<=` 를 `<` 로 바꾼 변이(M4a)는 어느 시험도 못 잡아요 — 한도 정확히 N 바이트와 N+1 바이트가 밖에서 같게 보여요(비차단 1, 시험 주석에 적음). 고치지 않은 것: 동반 표지 `backgroundCwdHint`·`backgroundEndsWithFinalResponse` 가 따로 오면 기록돼요(문서상 `backgroundTaskId` 와 함께만 오므로 위험이 낮아요, 비차단 5), OMP 가 백그라운드·시간 초과에 `isError` 를 어떻게 주는지는 확인하지 못했어요(비차단 7).
+- 조각 2 후반(기준 3·4, 커밋 af92f2ca6f): `src/hook_guards.rs` 의 예약이 풀려서 같은 SPEC 안에서 했어요. 시험을 먼저 썼고(RED: `--lib` 4개와 `hooks_cli` 2개가 실패 — 공백 접기 시험, 자리표시 판정 시험, 읽기 한도·FIFO 시험, 경로 판정 시험, 줄바꿈·NBSP 통합 시험, N10 경로 꼴 시험), 구현 뒤 `--lib` 7개(이름 필터)와 `cargo test --test hooks_cli` 63개가 통과했어요.
+  - 공백 접기(REQ-3, AC-3): `collapse_whitespace` 가 따옴표 밖의 공백·탭 연속만 한 칸으로 접고 줄바꿈·NBSP·따옴표 안은 그대로 둬요. 양 끝은 공백·탭·줄바꿈을 떼요(끝의 줄바꿈은 명령의 끝일 뿐이에요). 닫히지 않은 따옴표는 뒤를 그대로 둬요. SPEC 의 `verify:` 명령과 기록한 호출이 같은 함수로 접혀서 같은 글자에서 만나요.
+  - 자리표시자(REQ-4, AC-4): 따옴표 밖의 `<` 바로 뒤에 영문자·`_`, 그 뒤에 `>` 가 있고 사이에 `< | ; & ( ) $ ` 백틱·줄바꿈이 없으면 자리표시자예요(`<command that checks it>`·`--spec <id>`). `< in.txt > out.txt`·`cat <in.txt`·`<<EOF`·`'<b>'`·`\<x\>`·`a<b` 는 셸 문법이라 명령이 남아요. 알려진 한계: `cmd <in >out` 처럼 공백 없이 쓴 redirection 도 자리표시자로 읽어요(SPEC 은 공백을 쓰고 이 꼴은 시험이 한계로 고정하지 않아요).
+  - 읽기 한도(REQ-5·REQ-6, AC-5): `read_regular` 가 `O_NONBLOCK` 으로 열고 열린 핸들의 종류·크기를 보고 `limit + 1` 바이트에서 멈춰요. HEAD·ref 파일·`commondir`·`.git` 포인터 4096바이트(N 은 읽고 N+1 은 안 읽어요), `packed-refs` 8 MiB, SPEC 1 MiB. 있는데 읽을 수 없는 ref 파일·`commondir` 는 없는 것으로 보고 `packed-refs` 로 넘어가지 않고 `None` 이에요. FIFO 와 FIFO 로 가는 심볼릭 링크는 5초 안에 `None` 으로 돌아와요(스레드로 시험).
+  - 델타 감사 비차단 반영(N10, REQ-10): `target_path` 가 링크로 이름 붙은 프로젝트 경로(훅 입력의 `cwd` 가 같은 폴더의 링크이거나 경로만 링크)와 안에 머무는 `..`(`src/../x.rs` 는 `x.rs`)를 프로젝트 안으로 읽고(`..` 가 없는 상대 경로는 호스트가 준 모양 그대로 남겨요: `./src/ok.rs`), 위로 나가는 경로는 `outside`, 로그가 못 적는 경로(빈 값·제어 문자·1024바이트 초과)는 `unrecorded` 로 세요. 시험은 `target_path_places_a_project_path_the_host_names_through_a_link_or_dots` 와 `hooks_cli` 의 N10 시험에 더한 여섯 꼴이에요.
+  - 변이(`target/mut130p2.sh`, 다섯 개, 파일은 해시로 복원 확인, 끝에 `git diff` 비어 있음): M1 NBSP 도 접기, M2 자리표시 글자 검사 빼기, M3 읽기 한도 `>` 를 `>=` 로(정확히 N 바이트 시험), M4 `O_NONBLOCK` 빼기(FIFO 시험), M5 `..` 가 폴더 밖으로 나가는 검사 빼기 → 모두 KILLED.

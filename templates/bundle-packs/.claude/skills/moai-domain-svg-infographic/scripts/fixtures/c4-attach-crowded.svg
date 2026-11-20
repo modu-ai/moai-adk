@@ -1,0 +1,17 @@
+<!-- expect: SVG072 -->
+<!-- C4: two arrivals 9 units apart on a left edge of length 120 - the 12-unit floor applies and 9 is under it. Both connectors are elbows, so the code appears only if Q, H and V were parsed. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200"
+     role="img" aria-labelledby="c4-attach-crowded-title c4-attach-crowded-desc">
+  <title id="c4-attach-crowded-title">Fan-in</title>
+  <desc id="c4-attach-crowded-desc">Several connectors arrive on one box edge.</desc>
+  <defs>
+    <marker id="c4-attach-crowded-arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="400" height="200" fill="#FAF9F5"/>
+  <path d="M 40 60 H 132 Q 140 60 140 68 V 87 Q 140 95 148 95 H 230" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#c4-attach-crowded-arrow)"/>
+  <path d="M 40 140 H 132 Q 140 140 140 132 V 112 Q 140 104 148 104 H 230" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#c4-attach-crowded-arrow)"/>
+  <rect x="240" y="40" width="120" height="120" fill="#FBE9DF" stroke="#D97757"/>
+  <text x="300" y="105" font-size="11" text-anchor="middle" fill="#141413">service</text>
+</svg>

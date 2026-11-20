@@ -1,0 +1,16 @@
+<!-- expect: SVG072 -->
+<!-- C4 arrival semantics: a closed fill="none" path carrying BOTH markers. marker-start resolves at the first point and marker-end at the z-restored subpath start, so its two arrivals coincide at (230,100) on one edge. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200"
+     role="img" aria-labelledby="c4-closed-both-markers-title c4-closed-both-markers-desc">
+  <title id="c4-closed-both-markers-title">Self-loop</title>
+  <desc id="c4-closed-both-markers-desc">A closed connector returns to the edge it left.</desc>
+  <defs>
+    <marker id="c4-closed-both-markers-arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="400" height="200" fill="#FAF9F5"/>
+  <path d="M 230 100 H 200 V 130 H 230 z" stroke="#6B6359" stroke-width="1" fill="none" marker-start="url(#c4-closed-both-markers-arrow)" marker-end="url(#c4-closed-both-markers-arrow)"/>
+  <rect x="240" y="60" width="120" height="80" fill="#FBE9DF" stroke="#D97757"/>
+  <text x="300" y="105" font-size="11" text-anchor="middle" fill="#141413">service</text>
+</svg>

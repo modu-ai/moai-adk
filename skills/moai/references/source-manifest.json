@@ -240,12 +240,12 @@
       }
     },
     "references/internal/sdd.md": {
-      "sha256": "db49cfb7811324f9663a1b0fbf9ebaa049715bbe535f1b368b2ea2eeed3c2833",
+      "sha256": "3413173de7fb48f6da6efe34be8982f3a8a5800355b482d88b1c9966ae84ad91",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-sdd",
         "adoption": "new",
-        "reason": "Written for SPEC-20261117-sdd-guidance (SDD rollout slice SDD-5; user decisions 2026-11-17: every repository change has a SPEC, minimal form by default, GEARS + IF…THEN, approval = the user's in-session selection with digest, one SPEC = one PR, SYNC writes and AUDIT checks, @cc: Agent Context Comments, preserve-then-change instead of DDD). The agent-facing SDD rules in one place, naming only `moai spec` actions this build has (checked with --help) and the card link as planned until it lands. Read by moai-docs (`reads:`) and named by chains/index.md and the PLAN, RUN, VERIFY, SYNC and AUDIT workflows."
+        "reason": "Written for SPEC-20261117-sdd-guidance (SDD rollout slice SDD-5; user decisions 2026-11-17: every repository change has a SPEC, minimal form by default, GEARS + IF…THEN, approval = the user's in-session selection with digest, one SPEC = one PR, SYNC writes and AUDIT checks, @cc: Agent Context Comments, preserve-then-change instead of DDD). The agent-facing SDD rules in one place, naming only `moai spec` actions this build has (checked with --help) and the card link as planned until it lands. Read by moai-docs (`reads:`) and named by chains/index.md and the PLAN, RUN, VERIFY, SYNC and AUDIT workflows. Item 11 added for SPEC-20261120-gates-start-in-observe (verify wave 2, user decision 2026-11-20): a new check that blocks starts in observe, the Result records the would-block count and false positives, and the switch to enforce is a recorded decision."
       }
     },
     "references/internal/security-checklist.md": {

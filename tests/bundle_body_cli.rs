@@ -459,8 +459,8 @@ fn the_body_carries_the_facts_and_passes_the_self_audit_checker() {
         .expect("a table row for the first head");
     assert!(
         row1.contains("SPEC-20261119-demo1")
-            && row1.contains(&b.cards[0])
-            && row1.contains("`PASS` card note"),
+            && !row1.contains(&b.cards[0])
+            && row1.contains(&format!("`PASS` on `{}`", b.heads[0])),
         "{row1}"
     );
     let row2 = body
@@ -500,7 +500,7 @@ fn the_body_carries_the_facts_and_passes_the_self_audit_checker() {
         body.contains("- `cargo test --locked --offline --lib` → exit 0, 1453 passed, 0 failed.")
     );
     assert!(body.contains("- not run: product_cli — the integration changes no product path."));
-    assert!(body.contains("SPEC-20261119-demo1 (") && body.contains("2 AC, 2 met, 0 withdrawn"));
+    assert!(body.contains("SPEC-20261119-demo1: 2 AC") && body.contains("2 met, 0 withdrawn"));
     assert!(body
         .trim_end()
         .ends_with("[Claude Code](https://claude.com/claude-code)"));
@@ -744,19 +744,19 @@ fn the_body_shows_the_stated_tier_and_refuses_a_low_one() {
         .find(|l| l.contains(&b.heads[0]))
         .expect("a table row for the first head");
     assert!(
-        row1.contains("`PASS` card note") && row1.contains("(tier 1):"),
+        row1.contains("`PASS` on `") && row1.contains("(tier 1)"),
         "{row1}"
     );
 
-    // A newer PASS with no tier: the cell shows that note and no tier (the tier belongs to the
-    // line shown, not to an older note).
-    let newer = b.w.pass_note(&b.cards[0], &b.heads[0]);
+    // A newer PASS with no tier: the cell shows no tier (the tier belongs to the line shown,
+    // not to an older note).
+    b.w.pass_note(&b.cards[0], &b.heads[0]);
     let (v, code) = b.body(&[]);
     assert_eq!(code, 0, "{v}");
     let body = v["result"]["body"].as_str().unwrap();
     let row = body.lines().find(|l| l.contains(&b.heads[0])).unwrap();
     assert!(
-        row.contains(&format!("card note {newer}:")) && !row.contains("(tier "),
+        row.contains("`PASS` on `") && !row.contains("(tier "),
         "{row}"
     );
 
@@ -792,5 +792,221 @@ fn the_body_shows_the_stated_tier_and_refuses_a_low_one() {
     assert_eq!(v["ok"], false, "{v}");
     let m = v["error"]["message"].as_str().unwrap();
     assert!(m.contains(&format!("{c3} audit_tier_low")), "{m}");
+    assert!(!out.exists(), "a refused body writes no file");
+}
+
+/// The maximal runs of ASCII letters and digits in `text`, with the character after each run.
+fn words(text: &str) -> Vec<(String, Option<char>)> {
+    let mut out = Vec::new();
+    let mut run = String::new();
+    for ch in text.chars() {
+        if ch.is_ascii_alphanumeric() {
+            run.push(ch);
+        } else if !run.is_empty() {
+            out.push((std::mem::take(&mut run), Some(ch)));
+        }
+    }
+    if !run.is_empty() {
+        out.push((run, None));
+    }
+    out
+}
+
+/// Card numbers found in `text`, read by a different method from the implementation's byte scan:
+/// the text is cut into words; a word that is only the letter `c` (either case), followed by a
+/// `-`, and then a word that starts with a digit, is a card number.
+fn card_numbers(text: &str) -> Vec<String> {
+    let w = words(text);
+    w.windows(2)
+        .filter(|p| {
+            p[0].0.eq_ignore_ascii_case("c")
+                && p[0].1 == Some('-')
+                && p[1].0.starts_with(|c: char| c.is_ascii_digit())
+        })
+        .map(|p| format!("{}-{}", p[0].0, p[1].0))
+        .collect()
+}
+
+/// Session ids (hex groups of 8, 4, 4, 4 and 12 joined by `-`) found in `text`, read by cutting
+/// the text at every character that is neither a hex digit nor `-` and sliding over the groups.
+fn session_ids(text: &str) -> usize {
+    const SHAPE: [usize; 5] = [8, 4, 4, 4, 12];
+    text.split(|c: char| !(c.is_ascii_hexdigit() || c == '-'))
+        .map(|token| {
+            let parts: Vec<&str> = token.split('-').collect();
+            parts
+                .windows(5)
+                .filter(|w| w.iter().zip(SHAPE).all(|(p, n)| p.len() == n))
+                .count()
+        })
+        .sum()
+}
+
+/// The two judges are fixed against known strings, so that a judge that has gone blind (the
+/// failure the first audit found: both cases of the letter) cannot let a leak through quietly.
+#[test]
+fn the_judges_of_these_tests_see_both_cases_and_the_session_shape() {
+    assert_eq!(
+        card_numbers("a c-12 (C-3) AC-4 abc-5 SPEC-20261119-x lane2/c-7"),
+        ["c-12", "C-3", "c-7"]
+    );
+    assert!(card_numbers("AC-4 abc-5 C- c-x fine").is_empty());
+    assert_eq!(
+        session_ids(
+            "x 00000000-0000-4000-8000-000000000000 y ABCDEF01-2345-6789-abcd-ef0123456789"
+        ),
+        2
+    );
+    assert_eq!(
+        session_ids("0123456789abcdef0123456789abcdef01234567 0000000-0000-4000-8000-000000000000"),
+        0
+    );
+}
+
+/// SPEC-20261120-board-bundle-link AC-4 (REQ-4): the pull request body carries SPEC ids and heads,
+/// never a card number or a session id: no card column, the audit cell names the verdict and the
+/// head, the per-SPEC result line starts with the SPEC id, and a card number inside a command of
+/// the run record (`bundle check C-1 C-2`) becomes a placeholder.
+#[test]
+fn the_body_carries_no_card_number_and_no_session_id() {
+    let b = bundle_world(true);
+    let (v, code) = b.body(&[]);
+    assert_eq!(code, 0, "{v}");
+    let body = v["result"]["body"].as_str().unwrap();
+    assert_eq!(card_numbers(body), Vec::<String>::new(), "{body}");
+    assert_eq!(session_ids(body), 0, "{body}");
+    // A second, plainer judge: the fixture's own card names, in both cases, are nowhere in it.
+    let tokens: Vec<String> = body
+        .split(|c: char| !(c.is_ascii_alphanumeric() || c == '-'))
+        .map(str::to_lowercase)
+        .collect();
+    for card in &b.cards {
+        assert!(!tokens.contains(&card.to_lowercase()), "{card} in {body}");
+    }
+    // The table has no card column and the audit cell does not cite a card note.
+    assert!(!body.contains("| Card |"), "{body}");
+    assert!(!body.contains("card note"), "{body}");
+    let row1 = body
+        .lines()
+        .find(|l| l.contains(&b.heads[0]))
+        .expect("a table row for the first head");
+    assert!(row1.contains("SPEC-20261119-demo1"), "{row1}");
+    assert!(row1.contains("`PASS` on `"), "{row1}");
+    // The per-SPEC result line starts with the SPEC id.
+    assert!(
+        body.lines()
+            .any(|l| l.starts_with("SPEC-20261119-demo1: 2 AC, 2 met, 0 withdrawn")),
+        "{body}"
+    );
+    // The command of the run record keeps its words and loses its card numbers.
+    assert!(
+        body.contains("moai-cli bundle check <lane> <lane>"),
+        "{body}"
+    );
+}
+
+/// SPEC-20261120-board-bundle-link AC-7 (REQ-5): a card number or a session id in a free-text
+/// value of the run record refuses the whole body and writes nothing.
+#[test]
+fn a_card_number_or_a_session_id_in_a_free_text_value_refuses_the_body() {
+    // (field, value, what the refusal names, a piece of the value it must not repeat)
+    for (field, value, named, secret) in [
+        (
+            "host",
+            "macOS arm64; lane C-9 only",
+            "the Self-Audit field `host`",
+            "lane C-9",
+        ),
+        (
+            "host",
+            "macOS arm64; lane c-12 only",
+            "the Self-Audit field `host`",
+            "lane c-12",
+        ),
+        (
+            "receipt",
+            "session 00000000-0000-4000-8000-000000000000",
+            "the Self-Audit field `receipt`",
+            "00000000-0000",
+        ),
+    ] {
+        let b = bundle_world(true);
+        let mut record = record_json(false, false, false);
+        record["self_audit"][field] = value.into();
+        fs::write(&b.record, record.to_string()).unwrap();
+        let out = b.w.home.path().join("never-leak.md");
+        let (v, _) = b.body(&["--out", out.to_str().unwrap()]);
+        assert_eq!(v["ok"], false, "{field}: {v}");
+        let m = v["error"]["message"].as_str().unwrap();
+        assert!(m.contains("bundle body refused"), "{m}");
+        assert!(
+            m.contains("card number") || m.contains("session id"),
+            "the refusal names what it found: {m}"
+        );
+        assert!(m.contains(named), "the refusal names the field: {m}");
+        assert!(
+            !m.contains(secret),
+            "the refusal never repeats the value: {m}"
+        );
+        assert!(!out.exists(), "a refused body writes no file");
+    }
+}
+
+/// The first audit's blocking finding: the card reference reader takes `c-12` as well as `C-12`,
+/// so a lower-case card number in a command is replaced and one in any other value (a not-run
+/// reason, the branch name) refuses the body, naming the field.
+#[test]
+fn a_lower_case_card_number_is_replaced_in_a_command_and_refused_anywhere_else() {
+    // In a command of the run record: replaced, and the body passes.
+    let b = bundle_world(true);
+    let mut record = record_json(false, false, false);
+    for c in record["commands"].as_array_mut().unwrap() {
+        if c["check"] == "result_coverage" {
+            c["command"] = "moai-cli bundle check c-12 c-13".into();
+        }
+    }
+    fs::write(&b.record, record.to_string()).unwrap();
+    let (v, code) = b.body(&[]);
+    assert_eq!(code, 0, "{v}");
+    let body = v["result"]["body"].as_str().unwrap();
+    assert!(
+        body.contains("moai-cli bundle check <lane> <lane>"),
+        "{body}"
+    );
+    assert_eq!(card_numbers(body), Vec::<String>::new(), "{body}");
+    assert!(!body.to_lowercase().contains("c-12"), "{body}");
+
+    // In a not-run reason: refused, naming the field.
+    let b = bundle_world(true);
+    let mut record = record_json(false, false, false);
+    record["not_run"][0]["reason"] = "waits for c-5".into();
+    fs::write(&b.record, record.to_string()).unwrap();
+    let out = b.w.home.path().join("never-reason.md");
+    let (v, _) = b.body(&["--out", out.to_str().unwrap()]);
+    assert_eq!(v["ok"], false, "{v}");
+    let m = v["error"]["message"].as_str().unwrap();
+    assert!(m.contains("the not-run reasons"), "{m}");
+    assert!(!m.contains("c-5"), "{m}");
+    assert!(!out.exists(), "a refused body writes no file");
+
+    // In the branch name: refused, naming the integration line.
+    let b = bundle_world(true);
+    b.w.git(&["branch", "lane2/c-12", "bundle"]);
+    let out = b.w.home.path().join("never-branch.md");
+    let (v, _) = b.w.bundle(&[
+        "body",
+        &b.cards[0],
+        &b.cards[1],
+        "--branch",
+        "lane2/c-12",
+        "--run",
+        b.record.to_str().unwrap(),
+        "--out",
+        out.to_str().unwrap(),
+    ]);
+    assert_eq!(v["ok"], false, "{v}");
+    let m = v["error"]["message"].as_str().unwrap();
+    assert!(m.contains("the integration line (the branch name)"), "{m}");
+    assert!(!m.contains("c-12"), "{m}");
     assert!(!out.exists(), "a refused body writes no file");
 }

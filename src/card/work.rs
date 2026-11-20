@@ -206,9 +206,9 @@ pub fn note(project: &Path, home: &Path, reference: &str, req: &NoteRequest<'_>)
             "card note refused: a decision note needs --by NAME: say who decided".to_string(),
         );
     }
-    // The one card text screen (`input::secret_words`, SPEC-20261119-card-secret-screen): a note
-    // is kept for good and `card export` writes it out. The text is not repeated, and a word
-    // is counted once.
+    // The one card text screen (`input::secret_words`, SPEC-20261119-card-secret-screen and
+    // SPEC-20261120-card-secret-followups): a note is kept for good and `card export` writes it
+    // out. The text is not repeated, and a word is counted once.
     let words = input::secret_words(text);
     if words > 0 {
         return Err(format!(

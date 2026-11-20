@@ -1,0 +1,16 @@
+<!-- expect: -->
+<!-- A legend chip (rect + text, not a connector label) 20 units from the stroke: outside the 16-unit association window, so it associates to no connector and is silent. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200"
+     role="img" aria-labelledby="legend-chip-near-connector-title legend-chip-near-connector-desc">
+  <title id="legend-chip-near-connector-title">Pipeline legend</title>
+  <desc id="legend-chip-near-connector-desc">A connector runs below a legend chip that is not its label.</desc>
+  <defs>
+    <marker id="legend-chip-near-connector-arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="400" height="200" fill="#FAF9F5"/>
+  <path d="M 60 120 H 340" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#legend-chip-near-connector-arrow)"/>
+  <rect x="150" y="80" width="90" height="20" fill="#FFFFFF"/>
+  <text x="195" y="94" font-size="11" text-anchor="middle" fill="#141413">legend</text>
+</svg>

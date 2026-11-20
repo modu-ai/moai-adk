@@ -46,7 +46,7 @@ const TOKEN_SUFFIXES: [&str; 3] = ["_TOKEN", "_KEY", "_SECRET"];
 /// GitHub token value prefixes.
 const TOKEN_VALUES: [&str; 5] = ["ghp_", "gho_", "ghs_", "ghu_", "github_pat_"];
 const WINDOWS_REASON: &str = "windows_not_supported: Windows Task Scheduler entries are out of \
-                              scope (#2906 Q1); use --os macos or --os linux";
+                              scope; use --os macos or --os linux";
 
 /// What the entry is made from; every value is given, so the entry is deterministic.
 #[derive(Clone, Debug)]
