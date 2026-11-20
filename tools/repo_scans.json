@@ -966,6 +966,34 @@
         }
       ],
       "rejects": "a file under tests/ that names std::os::unix outside a cfg(unix) item, so the windows-build job stops compiling the tests (C-110, SPEC-20261119-windows-unix-gate)"
+    },
+    {
+      "id": "skill-text-citations",
+      "tests": [
+        "tests/skill_text_citations.rs::scan_shipped_files_outside_the_pending_list_are_clean"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test skill_text_citations"
+      ],
+      "rules": [
+        "tests/skill_text_citations.rs",
+        "docs/skill-text-rationale.md"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/"
+        },
+        {
+          "prefix": "agents/"
+        },
+        {
+          "prefix": "templates/"
+        },
+        {
+          "prefix": "install/"
+        }
+      ],
+      "rejects": "a shipped file outside the pending list that carries a card number, an Issue or pull-request number, a decision citation or a moai-adk development script name (SPEC-20261120-skill-text-citations)"
     }
   ]
 }
