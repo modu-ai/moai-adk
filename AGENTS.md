@@ -33,13 +33,16 @@ Documents describe requirements; they never grant permission to publish, spend, 
 4. Verify. Run the checks that target the change and its acceptance commands, then the unfiltered full check set before READY. Record each command, its exit code and the numbers. Unrun checks are not_run.
 5. Independent review. A session other than the author audits the head SHA against SPEC, diff and evidence and returns a verdict whose first line is `AUDIT #<n> (<key>) head <40hex> base <40hex> — verdict: PASS|FAIL` with no qualifiers; conditions make it FAIL.
    - Audit tier 0 or 1: the lane starts one fresh-context, read-only `moai-audit` agent for its own pull request, and the same agent re-audits after a FAIL. Tier 2: the leader assigns the audit. A lane runs its own self-audit and repairs, never audits another lane's pull request, and never declares PASS for its own change or reserves another lane's pull request.
-6. M-Flow (user decisions 2026-11-20; summary, the full text is in `skills/moai/workflows/mode-agent.md`):
-   1. A lane commits on its own card branch, pushes it and gets the independent audit.
-   2. After PASS the lane merges its head onto the LOCAL integration branch tip in its own worktree, runs `moai check affected`, and posts `MERGE-READY <card> merge=<40-hex> base=<40-hex> checks=<one line>`.
-   3. One at a time under a lock the primary checkout is fast-forwarded with `git merge --ff-only` (by the leader's supervision round where the host isolates a lane); a moved base means the lane redoes step 2.
-   4. Local test and install are built from the verified LOCAL tip, which the leader checks as a whole; the statusline shows commits ahead (↑) and behind (↓).
-   5. Only for a real deployment the leader opens one `release/v{head}.{yearweek}.{build}` pull request; none per card, per bundle or per integration.
-   6. A card that landed locally is closed with `card done` on the local landing evidence, not a pull request.
+6. M-Flow (user decisions 2026-11-20; one canonical text, put once per file):
+   1. Lane: commits on its own card branch and pushes it; gets the independent audit (tier 2: the leader starts it).
+   2. Lane: after PASS, makes the merge of its head onto the current LOCAL integration branch tip (the primary branch saved at first setup; v2026.11.0 here) in its own worktree, runs `moai check affected <tip>..<merge>` with the binary built in that worktree, and posts `MERGE-READY <card> merge=<40-hex> base=<40-hex> checks=<one line>` on the card.
+   3. Fast-forward: one at a time under a lock (`~/.moai/locks/<project>-<branch>.lock`), the primary checkout of the integration branch is fast-forwarded with `git merge --ff-only` to that merge.
+      Where the host isolates a lane session to its worktree (Claude Code), the leader's supervision round does this step and writes `MERGED-LOCAL`; where a moai primary-checkout guard is on, the single fixed command `git -C <primary> merge --ff-only refs/moai/lane-merge` is the one allowed (hook-config allow_commands).
+      If the base moved, the lane redoes step 2 on the new tip (evidence reuse rules: the merge-queue card).
+   4. Local test and install: builds for local testing and installation are made from the verified LOCAL integration branch tip (not from the remote branch); the leader checks the local tip as a whole from time to time and repairs a broken tip with a revert commit.
+      The statusline shows the branch with commits ahead (↑) and behind (↓) its upstream so local merges are visible.
+   5. Release: only for a real deployment the leader creates `release/v{head}.{yearweek}.{build}` from the local integration branch and opens one pull request to the remote integration branch (full CI on Linux, macOS and Windows, independent audit by a lane with no commits in the range). No pull request per card, per bundle or per integration.
+   6. A card that landed locally is closed with `card done` on the local landing evidence (the card-done-under-M-Flow card), not a pull request.
 7. A formal release is agentic: a release pull request merges when its current head has a successful `ci` run, with no conflict and no file both sides changed; the latest-tip requirement is off. The leader checks this and merges; lanes and bots never merge. A new push, including a tip merge for an overlapping file, needs its CI and a delta re-audit.
    - Tier 1 or 2 also needs a non-author PASS that cites that run; tier 0 needs `ci` alone. A posted FAIL stops the merge at every tier.
 8. Exit the worktree after confirming nothing uncommitted is lost, then take the next Issue.
