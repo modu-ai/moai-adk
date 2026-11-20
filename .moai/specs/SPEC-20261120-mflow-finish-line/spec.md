@@ -27,7 +27,8 @@ created: 2026-11-20
 - REQ-9: The M-Flow wording shall say that builds for local testing and installation are made from the verified local integration branch tip, that the leader checks that tip as a whole from time to time and repairs a broken tip with a revert commit, and that the statusline shows commits ahead and behind. · failure: none — a test reads the two sentences.
 - REQ-10: The M-Flow wording shall say that a card that landed locally is closed with `card done` on the local landing evidence and not a pull request. · failure: none — a test reads the sentence.
 - REQ-5: The `AGENTS.md` workflow shall give a lane no step that opens a pull request per Issue or per card. · failure: none — a test reads the file for the old step sentence.
-- REQ-6: While `AGENTS.md` carries the finish line, it shall stay under the 32 KiB budget that Codex applies by default and keep every sentence the repository tests pin, and the repository's own size test shall use the same limit. · failure: none — `repo_agents_md` and a size test read the file.
+- REQ-6: While `AGENTS.md` carries the finish line, it shall stay under the 32 KiB budget that Codex applies by default and keep every sentence the repository tests pin. · failure: none — `repo_agents_md` and a size test read the file.
+- REQ-11: The size test of the repository's `AGENTS.md` test shall use the same 32 KiB limit, with the Codex source in a comment and the Claude Code advice of fewer than 200 lines per file as a note. · failure: none — `repo_agents_md` runs with the new limit.
 - REQ-7: The guidance files that tell a lane or the leader how a change ends shall each state the finish line once, namely `AGENTS.md`, `AGENTS.local.md` and the mode-agent, mode-leader, sync and verify workflows. · failure: none — a test counts the marker in each file.
 - REQ-8: The shipped guidance shall hold no instruction to open a pull request per card, per bundle or per integration under M-Flow, in `AGENTS.md`, `AGENTS.local.md`, `agents/` or `skills/`. · failure: none — a test scans those files for the old phrases.
 
@@ -37,7 +38,7 @@ created: 2026-11-20
   verify: `cargo test --locked --offline --test mflow_finish_line agents_md_states_the_finish_line_once`
 - AC-2 (REQ-5): `AGENTS.md` 에 이슈마다 PR 을 연다는 옛 단계 문장이 없어요.
   verify: `cargo test --locked --offline --test mflow_finish_line agents_md_has_no_pull_request_per_issue_step`
-- AC-3 (REQ-6): `AGENTS.md` 가 32 KiB 보다 작고 기존 시험이 고정한 문장이 그대로 있어요.
+- AC-3 (REQ-6, REQ-11): `AGENTS.md` 가 32 KiB 보다 작고 기존 시험이 고정한 문장이 그대로 있어요.
   verify: `cargo test --locked --offline --test mflow_finish_line agents_md_stays_inside_its_budget`; `cargo test --locked --offline --test repo_agents_md`
 - AC-4 (REQ-7): 이름이 붙은 여섯 파일이 끝선 표지 문장을 한 번씩만 가져요(다른 카드가 쥔 파일은 그 카드가 들어온 뒤 통과해요).
   verify: `cargo test --locked --offline --test mflow_finish_line every_named_file_states_the_finish_line_once`
