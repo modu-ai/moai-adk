@@ -146,6 +146,13 @@ fn secret_suspects(text: &str) -> Vec<(usize, &'static str)> {
         .collect()
 }
 
+/// The characters the run scan consumed, counted by the test probe below: the clamp keeps
+/// this linear in the line's length, so the probe checks it without a clock and the check
+/// holds on a loaded machine too (SPEC-20261120-load-tolerant-time-bounds). The product
+/// build carries none of it.
+#[cfg(test)]
+static RUN_SCAN_CHARS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
 /// A token of `prefix` followed by at least `min` token characters, the prefix not inside a word.
 fn has_token(line: &str, prefix: &str, min: usize, upper_digit_only: bool) -> bool {
     line.match_indices(prefix).any(|(i, _)| {
@@ -156,6 +163,8 @@ fn has_token(line: &str, prefix: &str, min: usize, upper_digit_only: bool) -> bo
         let run = line[i + prefix.len()..]
             .chars()
             .take_while(|c| {
+                #[cfg(test)]
+                RUN_SCAN_CHARS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 if upper_digit_only {
                     c.is_ascii_uppercase() || c.is_ascii_digit()
                 } else {
@@ -1054,37 +1063,24 @@ mod tests {
     }
 
     /// The repeated-prefix scan stays linear in the line's length (the re-audit N6' clamp):
-    /// doubling the length at most triples the measured cost, a quadratic slip multiplies it
-    /// by four or more. The ratio holds on a loaded machine too — both measurements slow
-    /// down together — and the wall-clock ceiling below is only the generous backstop.
+    /// the probe counts the characters the run scan consumes instead of reading a clock —
+    /// a clock failed five of thirteen times under load while the measurements were 45-96
+    /// ms — so this passes on a loaded machine too, and the clamp-removal mutation still
+    /// fails it, on any machine (SPEC-20261120-load-tolerant-time-bounds).
     #[test]
-    fn the_repeated_prefix_scan_stays_linear_in_its_length() {
-        let make = |pieces: usize| "xsk-".repeat(pieces);
-        let measure = |line: &str| {
-            let start = std::time::Instant::now();
-            let _ = secret_suspects(line);
-            start.elapsed()
-        };
-        let base = (0..3)
-            .map(|_| measure(&make(32_768)))
-            .min()
-            .expect("one measurement ran");
-        let doubled = (0..3)
-            .map(|_| measure(&make(65_536)))
-            .min()
-            .expect("one measurement ran");
+    fn the_repeated_prefix_scan_consumes_characters_linearly() {
+        let line = format!("{}Abcdef12", "xsk-".repeat(32_768));
+        RUN_SCAN_CHARS.store(0, std::sync::atomic::Ordering::Relaxed);
+        let _ = secret_suspects(&line);
+        let consumed = RUN_SCAN_CHARS.load(std::sync::atomic::Ordering::Relaxed);
+        // The clamp ends every run at `min` characters plus the one that ends it, so each
+        // of the len/4 prefix positions costs a bounded constant and the whole scan stays
+        // within a small multiple of the line's length; without the clamp the scan is
+        // quadratic — orders of magnitude past this bound, on any machine.
         assert!(
-            base < std::time::Duration::from_secs(30),
-            "the base run hit the generous ceiling: {base:?}"
-        );
-        assert!(
-            doubled < std::time::Duration::from_secs(30),
-            "the doubled run hit the generous ceiling: {doubled:?}"
-        );
-        let multiple = doubled.as_secs_f64() / base.as_secs_f64().max(1e-9);
-        assert!(
-            multiple < 3.2,
-            "doubling the length multiplied the cost by {multiple:.2} — quadratic"
+            consumed <= line.len() * 20,
+            "the run scan consumed {consumed} characters for a {}-character line — quadratic",
+            line.len()
         );
     }
 

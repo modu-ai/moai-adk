@@ -21,12 +21,12 @@ parent: null
 
 ## Requirements
 
-- REQ-1: The secret_suspects timing test shall judge the repeated-prefix cost relatively — the doubling of the line's length multiplying the measured cost by less than 3.2, on top of an absolute ceiling of thirty seconds per measurement. · failure: none — a loaded machine slows both measurements together, so the multiple holds while the ceiling absorbs the rest.
+- REQ-1: The secret_suspects timing test shall judge the repeated-prefix scan by the characters the scan consumes instead of a clock, keeping the count within four times the line's length, and the generous clock ceiling of thirty seconds stays on the pre-existing huge-line test as the backstop. · failure: none — a count does not move with machine load, and the clock ceiling absorbs the rest.
 - REQ-2: The heavy-slot built-in concurrency limit shall default to five, so the announced cap holds without a limits file, with a limits.json value still winning over the built-in default. · failure: none — the file path is unchanged; only the built-in default number moves.
 
 ## Acceptance
 
-- AC-1 (REQ-1): the relative measurement holds in the green run, and a mutation that restores the quadratic cost in the repeated-prefix scan (dropping the `take(min)` clamp) pushes the multiple past 3.2 and fails the test.
+- AC-1 (REQ-1): the count-based probe passes in the green run, and the clamp-removal mutation (dropping the `take(min)` clamp) explodes the count orders of magnitude past the bound and fails the test.
   verify: `cargo test -p moai-cli --lib agents_local_merge` — the timing test name in the output
   verify: the mutation run recorded on the card's READY note
 - AC-2 (REQ-2): the heavy-slot unit tests pin the built-in default of five and pin a limits.json value winning over it.
@@ -49,8 +49,8 @@ parent: null
 
 ## Risks
 
-- 상대 배수 3.2 는 이론 경계(이차=4)와 측정 잡음 사이 값이에요: 각 측정의 최소값을 쓰고, 배수가 3.2 를 넘으면 진짜 이차라는 판단이 서게 충분히 여유를 둬요(4 는 넉넉히 넘는 값).
-- 측정 입력이 작으면 잡음이 커져요: 길이를 기계에서 안정적으로 측정 가능한 크기(십만 자대)로 잡고 반복 측정의 최소값을 써요.
+- 상대 배수 방식은 감사에서 부하 하 흔들림이 확인돼요(측정이 45-96 ms 로 짧아 13 번 중 5 번 실패): 이 조각은 연산 횟수 계측(cfg(test) 문자 소비 카운터 — 제품 빌드엔 없음)으로 바꿔요.
+- 계측 카운터는 테스트 빌드에만 있어요: 제품 동작은 변하지 않고, 검사 경계(4 × 줄 길이)는 클램프 있음 선형 대비 여유 값이에요(클램프 제거는 이차 — 자릿수 폭발).
 
 ## Decisions
 
