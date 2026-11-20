@@ -30,6 +30,7 @@ created: 2026-11-20
 - REQ-7: When `review-package` builds a package, the result shall carry a `test_weakening` array with the findings of the package's diff. · failure: none
 - REQ-8: When `gate-check` collects a snapshot, the gate's result shall list the findings of the diff from the merge base to the head. · failure: none
 - REQ-9 (REQ-8): IF the diff cannot be read, THEN the gate's result shall show the findings as `unknown`, never as an empty list.
+- REQ-14: The detector module `src/test_weakening.rs` shall be on both protected-path lists (`gate::TIER2_PREFIXES` and `tools/protected_checks.json`), so a change to it is judged tier 2. · failure: none
 - REQ-10: While the weakening gate is in observe, `effective_tier` shall ignore the findings. · failure: none
 - REQ-13: While the weakening gate is in observe, the gate's result shall name the tier it would give with the findings. · failure: none
 - REQ-12: While the weakening gate is enforcing, `effective_tier` shall be at least 1 when the findings are not empty or are unknown. · failure: none
@@ -37,16 +38,18 @@ created: 2026-11-20
 
 ## Acceptance
 
-- AC-1 (REQ-1): 시험 함수를 지우는 diff 는 `test_deleted` 를 `파일:줄` 과 함께 내고, 같은 이름을 다른 파일에 다시 더하는 diff(옮기기)는 내지 않아요(Rust `#[test]`, Python `def test_` 각각 한 쌍의 고정물) · verify: `cargo test --locked --offline --test test_weakening each_kind_fires_on_its_fixture_and_stays_quiet_on_its_pair`
-- AC-2 (REQ-2): 건너뛰기 다섯 표기를 더하는 diff 는 `skip_added` 를 내고, 건너뛰기를 지우거나 설명 글에만 쓰는 diff 는 내지 않아요 · verify: `cargo test --locked --offline --test test_weakening each_kind_fires_on_its_fixture_and_stays_quiet_on_its_pair`
-- AC-3 (REQ-3): 단언이 순감소한 시험 파일만 `assertions_reduced` 를 내고, 단언을 옮기거나 늘린 파일과 시험 파일이 아닌 파일은 내지 않아요 · verify: `cargo test --locked --offline --test test_weakening each_kind_fires_on_its_fixture_and_stays_quiet_on_its_pair`
-- AC-4 (REQ-4): 시험 파일에 sleep 을 더하면 `sleep_added`, 시험 파일이 아닌 곳에 더하면 내지 않아요 · verify: `cargo test --locked --offline --test test_weakening each_kind_fires_on_its_fixture_and_stays_quiet_on_its_pair`
-- AC-5 (REQ-5): 골든 파일만 바뀐 diff 는 `golden_only`, 같은 골든과 함께 소스 코드도 바뀐 diff 는 내지 않아요 · verify: `cargo test --locked --offline --test test_weakening each_kind_fires_on_its_fixture_and_stays_quiet_on_its_pair`
+- AC-1 (REQ-1): 시험 함수를 지우는 diff 는 `test_deleted` 를 `파일:줄` 과 함께 내고, 같은 이름을 다른 파일에 다시 더하는 diff(옮기기)는 내지 않아요(Rust `#[test]`, Python `def test_` 각각 한 쌍의 고정물). 속성만 떼고 같은 파일에 다른 새 시험을 더하는 diff 도 `test_deleted` 를 내요(같은 이름이거나 속성을 다른 속성으로 바꾼 경우만 상쇄) · verify: `cargo test --locked --offline --test test_weakening -- a_deleted_test_fires a_new_test_in_the_same_file`
+- AC-2 (REQ-2): 건너뛰기 다섯 표기를 더하는 diff 는 `skip_added` 를 내고, 건너뛰기를 지우거나 설명 글에만 쓰는 diff 는 내지 않아요 · verify: `cargo test --locked --offline --test test_weakening a_skip_added_fires_in_the_five_notations_and_stays_quiet_on_its_pairs`
+- AC-3 (REQ-3): 단언이 순감소한 시험 파일만 `assertions_reduced` 를 내고, 단언을 옮기거나 늘린 파일과 시험 파일이 아닌 파일은 내지 않아요 · verify: `cargo test --locked --offline --test test_weakening removed_assertions_fire_and_a_rewritten_or_grown_count_stays_quiet`
+- AC-4 (REQ-4): 시험 파일에 sleep 을 더하면 `sleep_added`, 시험 파일이 아닌 곳에 더하면 내지 않아요 · verify: `cargo test --locked --offline --test test_weakening a_sleep_added_to_a_test_fires_and_a_comment_or_source_file_stays_quiet`
+- AC-5 (REQ-5): 골든 파일만 바뀐 diff 는 `golden_only`, 같은 골든과 함께 소스 코드도 바뀐 diff 는 내지 않아요 · verify: `cargo test --locked --offline --test test_weakening a_golden_file_changed_alone_fires_and_one_that_follows_code_stays_quiet`
 - AC-6 (REQ-6): 시험 파일만 바꾸고 다섯 가지에 걸리지 않는 diff 는 빈 목록이고 `tier_of(Some(0), 그 파일들)` 는 여전히 0 이에요 · verify: `cargo test --locked --offline --test test_weakening a_test_only_change_that_weakens_nothing_stays_tier_zero`
 - AC-7 (REQ-7): `review-package` 결과의 `test_weakening` 이 약화 diff 에서는 목록, 아닌 diff 에서는 빈 배열이에요 · verify: `cargo test --locked --offline --test test_weakening review_package_carries_the_findings`
 - AC-8 (REQ-8, REQ-9): `gate-check` 의 결과가 걸린 목록을 보이고, diff 를 읽을 수 없으면 `unknown` 을 보여요 · verify: `cargo test --locked --offline --test gate_check_cli the_gate_lists_the_findings_and_says_unknown_when_unread`
 - AC-9 (REQ-10, REQ-12, REQ-13): 관찰 중에는 `effective_tier` 가 그대로이고 결과가 올렸을 때의 tier 를 말하며, 켜면 목록이 비어 있지 않거나 unknown 일 때 최소 1 이에요 · verify: `cargo test --locked --offline --test test_weakening observe_reports_and_enforce_raises_the_tier`
 - AC-10 (REQ-11): 두 문서에 연결 문장이 한 번씩 있어요 · verify: `cargo test --locked --offline --test test_weakening the_two_documents_carry_the_connecting_sentence`
+- AC-12 (REQ-9): 수집기는 8 MiB(8388608바이트) 이하의 diff 는 읽고 한 바이트 더 긴 diff 는 `unknown` 으로 두며, 이름 바꾸기 검출을 끄고 읽어서 시험 파일을 시험 폴더 밖으로 옮긴 diff 는 지운 단언으로 세요 · verify: `cargo test --locked --offline --lib gate_collect::tests`
+- AC-13 (REQ-14): `src/test_weakening.rs` 가 `TIER2_PREFIXES` 와 `tools/protected_checks.json` 에 모두 있고 `tier_of(Some(0), …)` 가 2 예요 · verify: `cargo test --locked --offline --test test_weakening the_detector_module_is_a_protected_path_on_both_lists`
 - AC-11: 최근 병합된 PR 50개(로컬 병합 커밋의 두 부모 사이)에 돌린 결과 — 걸린 수, 그중 실제 약화 수 — 가 이 SPEC 의 Result 에 있어요 · verify: manual: Result 표를 읽어요(명령과 출력이 Result 에 적혀 있어요)
 
 ## Scope
@@ -94,17 +97,31 @@ TDD 이탈: 검사기(`src/test_weakening.rs`)를 시험보다 먼저 썼어요.
 | 변형 | 바꾼 것 | 잡은 시험 |
 | --- | --- | --- |
 | M1 | Rust 건너뛰기 표기가 맞지 않음 | collector 시험(`the_collector_lists_weakened_tests_…`) |
-| M2 | 옮긴 시험도 삭제로 셈 | `each_kind_fires_on_its_fixture_and_stays_quiet_on_its_pair` |
-| M3 | 단언 수가 같아도 줄었다고 셈 | 같은 시험 |
-| M4 | 새 골든 파일도 다시 쓴 것으로 셈 | 같은 시험 |
+| M2 | 옮긴 시험도 삭제로 셈 | `a_deleted_test_fires_and_a_moved_or_swapped_one_stays_quiet` |
+| M3 | 단언 수가 같아도 줄었다고 셈 | `removed_assertions_fire_and_a_rewritten_or_grown_count_stays_quiet` |
+| M4 | 새 골든 파일도 다시 쓴 것으로 셈 | `a_golden_file_changed_alone_fires_and_one_that_follows_code_stays_quiet` |
 | M5 | 골든 옆의 코드 변경을 무시 | 같은 시험 |
-| M6 | 시험 파일이 아닌 곳의 단언·sleep 도 셈 | 같은 시험 |
+| M6 | 시험 파일이 아닌 곳의 단언·sleep 도 셈 | `removed_assertions_fire_…` 와 `a_sleep_added_to_a_test_fires_…` |
 | M7 | 관찰 중에도 tier 를 올림 | `observe_reports_and_enforce_raises_the_tier`, `the_gate_lists_the_findings_and_says_unknown_when_unread` |
 | M8 | diff 를 못 읽었을 때 tier 를 안 올림 | `observe_reports_and_enforce_raises_the_tier` |
 | M9 | git diff 실패를 빈 목록으로 읽음 | collector 시험 |
 | M10 | 결과가 못 읽은 diff 를 빈 목록으로 보임 | `observe_reports_and_enforce_raises_the_tier`, `the_gate_lists_the_findings_and_says_unknown_when_unread` |
 
-기준 실행은 세 대상 모두 0 이었고 변형 10개는 모두 시험이 실패해서 잡혔어요(생존 0).
+기준 실행은 세 대상 모두 0 이었고 변형 10개는 모두 시험이 실패해서 잡혔어요(생존 0). M2~M6 은 시험 하나를 종류별 다섯 개로 나누기 전에 돌렸고, 위 표의 시험 이름은 나눈 뒤의 이름이에요(변형은 아래 수리 변형으로 다시 확인했어요).
+
+### 감사 수리(같은 브랜치, 같은 감사자 델타)
+
+감사가 막은 셋과 보호 경로 지적을 이 순서로 고쳤어요. 시험은 고치기 전에 B3 만 RED 로 확인했어요(B1·B2 는 지킬 코드가 이미 있어서 변형으로 확인).
+
+| 감사 | 고친 곳 | 시험 |
+| --- | --- | --- |
+| B1 8 MiB 경계 | `src/gate_collect.rs` 의 한도 검사를 `weakened_in` 으로 분리 | `the_diff_limit_reads_exactly_eight_mebibytes_and_not_one_byte_more`(한도−1·한도는 읽고 한도+1 은 `None`, 상수 8 MiB) |
+| B2 `--no-renames` | 같은 파일 | `a_test_file_moved_out_of_the_test_folders_is_read_as_a_delete_and_an_add` |
+| B3 속성만 떼고 새 시험 더하기 | `src/test_weakening.rs` 의 상쇄 수: 이름 없는 표지만 | `a_new_test_in_the_same_file_does_not_offset_a_removed_test_attribute` |
+| N5 보호 경로 | `src/gate.rs` `TIER2_PREFIXES`, `tools/protected_checks.json` | `the_detector_module_is_a_protected_path_on_both_lists` |
+| N6 고정물 분리 | `tests/test_weakening.rs` 의 큰 시험을 종류별 다섯 개로 | 8개(+1) 모두 통과 |
+
+수리 변형(커밋한 뒤 하나씩, 되돌린 뒤 작업 트리 깨끗함 확인): MA1 한도 `>` 를 `>=` 로 → 잡힘, MA2 한도 검사 없음 → 잡힘, MF 이름 바꾸기 검출 켬(`--no-renames` 삭제) → 잡힘, MB3 새 시험이 하나라도 있으면 상쇄 → 잡힘, MP1 `TIER2_PREFIXES` 에서 모듈 빼기 → 잡힘, MP2 `protected_checks.json` 에서 빼기 → 잡힘. 생존 0.
 
 ### 최근 병합 50개에 돌린 결과(AC-11)
 
@@ -126,14 +143,22 @@ TDD 이탈: 검사기(`src/test_weakening.rs`)를 시험보다 먼저 썼어요.
 - 이름이 바뀐 시험은 삭제로 보여요(위 두 건). 한 파일에서 지운 시험을 다른 파일에 같은 이름으로 다시 더하면 옮긴 것으로 보지만, 지운 쪽 파일의 단언 순감소는 파일 단위로 그대로 세요(D-8).
 - 단언은 파일 단위로 세요. 시험 함수 안에서 단언을 다른 곳으로 옮기면 줄었다고 볼 수 있어요.
 - 8MiB 가 넘는 diff 는 읽지 않고 `unknown` 으로 두어요.
+- 강제(`TEST_WEAKENING_ENFORCED = true`)로 켜기 전에 풀어야 하는 조건(감사 N1~N4, 관찰 중인 지금은 막지 않아요. 풀기 전에 켜면 정당한 변경이 tier 1 이 돼요):
+  - N1: 정당한 파일 이동이 오탐이에요. `git mv` 로 시험 파일을 옮기거나 파이썬 시험을 Rust 로 이식하면 지운 쪽 단언이 줄어든 것으로 세어져요(이름 바꾸기 검출을 끄고 읽으므로, 위 B2 시험이 이 동작을 고정하고 있어요). 이름이 바뀐 대체 시험도 같은 원인이에요(예: 이미 병합된 작업량 카운터 변경이 벽시계 시험 둘을 카운터로 바꾼 의도된 교체가 걸려요).
+  - N2: 단언을 지우고 문서 블록(주석·문서 글)에 같은 줄을 쓰면 단언 수가 상쇄돼요.
+  - N3: Rust 시험 이름을 바꾸면(속성은 그대로, 함수 이름만 변경) 삭제와 추가로 보여서 이름 바꾸기를 구분하지 못해요.
+  - N4: 카드 범위 밖의 약화 형태(단언을 항상 참인 것으로 바꾸기, 시험 본문을 비우기, 기대값 완화 등)는 다섯 가지에 걸리지 않아요.
+  - 이 네 가지를 시험이 고정하는 형태로 줄이는 일은 다음 조각이에요. 켜는 일은 리더 결정이고, 그 조각이 끝나기 전에는 켜지 않기를 권해요.
 
 ### 수락 기준
 
-- AC-1: met — `--test test_weakening each_kind_fires_on_its_fixture_and_stays_quiet_on_its_pair`(Rust `#[test]`·Python `def test_` 각 한 쌍) 통과
-- AC-2: met — 같은 시험(건너뛰기 표기 다섯 개와 그 짝) 통과
-- AC-3: met — 같은 시험(단언 순감소만) 통과
-- AC-4: met — 같은 시험(시험 파일의 sleep 만) 통과
-- AC-5: met — 같은 시험(골든만 바뀐 diff 와 코드가 함께 바뀐 diff) 통과
+- AC-1: met — `--test test_weakening -- a_deleted_test_fires a_new_test_in_the_same_file`(Rust `#[test]`·Python `def test_` 각 한 쌍, 속성만 뗀 diff) 통과
+- AC-2: met — `--test test_weakening a_skip_added_fires_in_the_five_notations_and_stays_quiet_on_its_pairs`(건너뛰기 표기 다섯 개와 그 짝) 통과
+- AC-3: met — `--test test_weakening removed_assertions_fire_and_a_rewritten_or_grown_count_stays_quiet`(단언 순감소만) 통과
+- AC-4: met — `--test test_weakening a_sleep_added_to_a_test_fires_and_a_comment_or_source_file_stays_quiet`(시험 파일의 sleep 만) 통과
+- AC-5: met — `--test test_weakening a_golden_file_changed_alone_fires_and_one_that_follows_code_stays_quiet`(골든만 바뀐 diff 와 코드가 함께 바뀐 diff) 통과
+- AC-12: met — `--lib gate_collect::tests`(한도−1·한도는 읽고 한도+1 은 unknown, 이름 바꾸기 끄고 읽기) 통과
+- AC-13: met — `--test test_weakening the_detector_module_is_a_protected_path_on_both_lists` 통과
 - AC-6: met — `--test test_weakening a_test_only_change_that_weakens_nothing_stays_tier_zero` 통과
 - AC-8: met — `--test gate_check_cli the_gate_lists_the_findings_and_says_unknown_when_unread` 통과, 수집기 쪽은 `--lib gate_collect::tests::the_collector_lists_weakened_tests_and_says_unknown_when_the_diff_is_unreadable` 통과
 - AC-9: met — `--test test_weakening observe_reports_and_enforce_raises_the_tier` 통과
