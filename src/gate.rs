@@ -244,6 +244,7 @@ const MANIFEST: &str = "skills/moai/references/source-manifest.json";
 /// `tests/protected_paths_one_list.rs` fails when an entry of that list is not judged tier 2.
 pub const TIER2_PREFIXES: &[&str] = &[
     "src/gate",
+    "src/test_weakening",
     "src/ops/gate",
     "src/flow.rs",
     "src/hook",

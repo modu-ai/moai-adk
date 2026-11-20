@@ -67,9 +67,11 @@ fn of_kind<'a>(findings: &'a [Finding], kind: &str) -> Vec<&'a Finding> {
     findings.iter().filter(|f| f.kind == kind).collect()
 }
 
-/// AC-1 .. AC-5: for each kind a diff that fires, with its file and line, and a pair that does not.
+/// AC-1: a deleted test fires with its file and line; a moved test and a swapped attribute do not.
+/// Each kind has its own test below, so a fixture of one kind cannot hide a missed case of
+/// another.
 #[test]
-fn each_kind_fires_on_its_fixture_and_stays_quiet_on_its_pair() {
+fn a_deleted_test_fires_and_a_moved_or_swapped_one_stays_quiet() {
     // ---- test_deleted (AC-1)
     let rust_test = v(&["#[test]", "fn a_thing_works() {", "    run();", "}"]);
     let d = change("tests/thing.rs", 10, &rust_test, &[]);
@@ -102,7 +104,46 @@ fn each_kind_fires_on_its_fixture_and_stays_quiet_on_its_pair() {
     // A bare attribute removed (the function stays) disables the test.
     let bare = change("tests/thing.rs", 9, &v(&["#[test]"]), &[]);
     assert_eq!(of_kind(&detect(&bare), "test_deleted").len(), 1);
+}
 
+/// REQ-1 (audit B3): a test attribute taken off an existing function is a deletion even when the
+/// same file starts a different, new test; only the same name or a swapped attribute offsets it.
+#[test]
+fn a_new_test_in_the_same_file_does_not_offset_a_removed_test_attribute() {
+    let attr = "#[test]";
+    // The attribute goes off an old function while a new, named test is added in the file.
+    let offset_by_new = change(
+        "tests/thing.rs",
+        9,
+        &v(&[attr]),
+        &v(&[attr, "fn a_brand_new_test() {", "    run();", "}"]),
+    );
+    let f = detect(&offset_by_new);
+    let hit = of_kind(&f, "test_deleted");
+    assert_eq!(hit.len(), 1, "{f:?}");
+    assert_eq!((hit[0].path.as_str(), hit[0].line), ("tests/thing.rs", 9));
+    assert!(
+        hit[0].detail.contains("attribute is removed"),
+        "{:?}",
+        hit[0]
+    );
+    // The same in Python: a `def test_` marker removed, a different test added.
+    let py = change(
+        "tests/test_a.py",
+        3,
+        &v(&["def test_old():"]),
+        &v(&["def test_new():"]),
+    );
+    assert_eq!(of_kind(&detect(&py), "test_deleted").len(), 1);
+    // The pair: the removed attribute swapped for another one, with no new function beside it,
+    // leaves the test in place, so nothing is reported.
+    let swapped = change("tests/thing.rs", 9, &v(&[attr]), &v(&["#[tokio::test]"]));
+    assert!(of_kind(&detect(&swapped), "test_deleted").is_empty());
+}
+
+/// AC-2: a skip added fires in the five notations; a deleted, quoted or moved one does not.
+#[test]
+fn a_skip_added_fires_in_the_five_notations_and_stays_quiet_on_its_pairs() {
     // ---- skip_added (AC-2): the five notations
     let skips = [
         ("tests/a.rs", ignore_attr()),
@@ -147,7 +188,12 @@ fn each_kind_fires_on_its_fixture_and_stays_quiet_on_its_pair() {
     // A skip that only moves inside its file is not new.
     let moved_skip = change("tests/a.rs", 7, &[ignore_attr()], &[ignore_attr()]);
     assert!(of_kind(&detect(&moved_skip), "skip_added").is_empty());
+}
 
+/// AC-3: more assertions removed than added in a test file fires; a rewritten, grown or
+/// non-test one does not.
+#[test]
+fn removed_assertions_fire_and_a_rewritten_or_grown_count_stays_quiet() {
     // ---- assertions_reduced (AC-3)
     let two_gone = change(
         "tests/x.rs",
@@ -187,7 +233,11 @@ fn each_kind_fires_on_its_fixture_and_stays_quiet_on_its_pair() {
         &[],
     );
     assert_eq!(of_kind(&detect(&py), "assertions_reduced").len(), 1);
+}
 
+/// AC-4: a sleep added to a test fires in Rust and Python; production code and a comment do not.
+#[test]
+fn a_sleep_added_to_a_test_fires_and_a_comment_or_source_file_stays_quiet() {
     // ---- sleep_added (AC-4)
     let f = detect(&change("tests/x.rs", 12, &[], &[sleep_call("rust")]));
     assert_eq!(kinds(&f), ["sleep_added"], "{f:?}");
@@ -202,7 +252,12 @@ fn each_kind_fires_on_its_fixture_and_stays_quiet_on_its_pair() {
         &[format!("    // std::thread::{}(...) was removed", "sleep")],
     );
     assert!(detect(&commented).is_empty());
+}
 
+/// AC-5: a golden file changed with nothing else fires; one that follows a code change, or is
+/// new, does not. Also the path classes and the rendered form.
+#[test]
+fn a_golden_file_changed_alone_fires_and_one_that_follows_code_stays_quiet() {
     // ---- golden_only (AC-5)
     let golden = change("tests/golden/out.txt", 1, &v(&["old"]), &v(&["new"]));
     let f = detect(&golden);
@@ -296,6 +351,29 @@ fn snapshot(findings: Option<Vec<&str>>) -> Snapshot {
         v["test_weakening"] = json!(list);
     }
     serde_json::from_value(v).expect("a snapshot")
+}
+
+/// Audit N5: the detector is gate logic, so a change to it is judged tier 2 by the merge gate
+/// and is on the check-guard list; the two lists agree on it.
+#[test]
+fn the_detector_module_is_a_protected_path_on_both_lists() {
+    let files = vec!["src/test_weakening.rs".to_string()];
+    assert_eq!(tier_of(Some(0), &files), 2);
+    let list = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tools/protected_checks.json"),
+    )
+    .unwrap();
+    let list: serde_json::Value = serde_json::from_str(&list).unwrap();
+    let protected: Vec<&str> = list["protected"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|e| e.as_str())
+        .collect();
+    assert!(
+        protected.contains(&"src/test_weakening.rs"),
+        "{protected:?}"
+    );
 }
 
 /// AC-9: in observe the findings change no tier; enforced, a list that is not empty, and a diff

@@ -287,8 +287,13 @@ pub fn detect(diff: &str) -> Vec<Finding> {
 
     for f in &files {
         // 1. A test the diff deletes or disables by dropping its attribute.
-        let started_again = tests_in(&f.added).len();
-        let mut unnamed_left = started_again;
+        // A removed attribute with no name is offset only by an added marker that has no name
+        // either (one attribute swapped for another): a new, named test in the same file is a
+        // different test and does not bring the old one back.
+        let mut unnamed_left = tests_in(&f.added)
+            .iter()
+            .filter(|(_, name)| name.is_none())
+            .count();
         for (line, name) in tests_in(&f.removed) {
             match name {
                 Some(n) if readded.contains(&n) => {}
