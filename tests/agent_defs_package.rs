@@ -1108,6 +1108,8 @@ fn change_claims_rules_are_in_the_shipped_audit_agent_and_reference() {
         "`git diff --stat --diff-filter=DM <base>..<head>`",
         "and ask why each changed",
         "- `Claims`: one row per claim",
+        "find every test that reads that output",
+        "run all of them, not only the tests the change names",
     ] {
         assert!(audit.contains(needle), "moai-audit lacks {needle:?}");
     }
@@ -1125,6 +1127,8 @@ fn change_claims_rules_are_in_the_shipped_audit_agent_and_reference() {
         "`not-run`",
         "`handed-over`",
         "`git diff --stat --diff-filter=DM <base>..<head>",
+        "## When the change alters an output",
+        "Run all of them. The tests the change names are not the list.",
     ] {
         assert!(
             reference.contains(needle),

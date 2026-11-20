@@ -30,8 +30,7 @@ created: 2026-11-20
 - REQ-8: Both `moai-audit` and `moai-impl` shall list `internal/change-claims` and `internal/quality` in `reads:`. · failure: none
 - REQ-9: The reference `internal/change-claims` shall say how to list the claims of a change, the label each gets, and how to check the test files a change deleted or altered, without naming a tool that only this repository has. · failure: none
 - REQ-10: The package shall ship the reference, listed in the source manifest. · failure: none
-- REQ-11: When the range given to `moai check affected` changes a workflow file under `.github/workflows/`, `moai check affected` shall add an `actionlint` step for those files. · failure: none
-- REQ-12 (REQ-11): IF `actionlint` is not installed, THEN `moai check affected` shall report that step as `not_run`, never as a pass.
+- REQ-11: When a change alters what a command prints or how a file is laid out, `moai-audit` and `moai-impl` shall find every test that reads that output and run all of them, and report a test not run as `not_run`. · failure: none
 
 ## Acceptance
 
@@ -41,12 +40,13 @@ created: 2026-11-20
 - AC-4 (REQ-6): 구현 에이전트가 범위 밖 줄을 "고쳤다"가 아니라 "넘김"(handed to)으로 쓰라는 줄이 있어요 · verify: `cargo test --locked --offline --test agent_defs_package change_claims_rules_are_in_the_shipped_agents_and_reference`
 - AC-5 (REQ-8, REQ-9, REQ-10): 두 에이전트의 `reads:` 에 `internal/change-claims` 와 `internal/quality` 가 들어 있고 참조 문서가 패키지에 있으며 moai-adk 전용 도구 이름이 없고 소스 목록에 올라 있어요 · verify: `cargo test --locked --offline --test agent_defs_package reads_lists_match_the_design_and_render_on_every_host`
 - AC-6 (REQ-10): 소스 목록이 파일과 맞아요 · verify: `python3 -I tools/source_manifest.py check`
-- AC-7 (REQ-11, REQ-12): 범위가 워크플로 파일을 바꾸면 `check affected` 의 단계에 `actionlint` 가 들어가고, 바꾸지 않으면 들어가지 않으며, 도구가 없는 기계에서는 그 단계가 `not_run` 으로 나와 통과로 세지 않아요 · verify: `cargo test --locked --offline --test check_affected_cli actionlint`
+- AC-7 (REQ-11): 감사 에이전트 글과 참조 문서에 "출력을 바꾸면 그 출력을 읽는 시험을 모두 찾아 모두 돌린다, 변경이 이름 붙인 시험만이 아니다, 안 돌린 시험은 not_run" 줄이 있어요 · verify: `cargo test --locked --offline --test agent_defs_package change_claims_rules_are_in_the_shipped_audit_agent_and_reference`
 
 ## Scope
 
-- write: 이 SPEC, `skills/moai/references/internal/change-claims.md`(새), `tests/agent_defs_package.rs`, `agents/audit.md`, `agents/impl.md`, `skills/moai/references/source-manifest.json`, `src/check_affected.rs`(REQ-11, 쥔 카드가 풀 때), `tests/check_affected_cli.rs`(REQ-11)
-- 범위 추가(리더 노트, C-194 감사): `.github/workflows` 를 바꾼 변경은 READY 전에 `actionlint`(`-shellcheck=` 로 shellcheck 없이 가능)를 돌려야 해요. 오늘 `release.yml` 의 무효 트리거를 로컬에서 잡을 길이 없었어요(저장소 어디에도 actionlint 호출이 없어요). 넣는 자리는 `moai check affected` 의 단계예요(D-4)
+- write: 이 SPEC, `skills/moai/references/internal/change-claims.md`(새), `tests/agent_defs_package.rs`, `agents/audit.md`, `agents/impl.md`, `skills/moai/references/source-manifest.json`
+- 범위 보강(리더 노트 2026-11-20): "출력 모양을 바꾸면 그 출력을 읽는 시험을 모두 돌린다"를 구현자뿐 아니라 감사자 점검 목록에도 넣어요(REQ-11, 오늘 도움말 골든 실패를 감사가 놓친 일)
+- 코드 쪽 두 조각(워크플로 린트 단계, 도움말 변경이 도움말 시험을 고르는지)은 `src/check_affected.rs` 를 쥔 카드가 풀어야 해서 따로 묶었어요: `SPEC-20261120-affected-check-workflow-lint`(`parent` 로 이 SPEC 을 가리켜요). 요구사항이 12개를 넘지 않게 하려는 분리예요
 - 다른 카드가 쥔 파일(2026-11-20 예약 읽음): `agents/audit.md` 와 `skills/moai/references/source-manifest.json` 은 다른 카드가, `agents/impl.md` 는 또 다른 카드가 쥐고 있어요. 그 카드가 풀거나 리더가 순서를 정한 뒤에 써요. `internal/quality.md` 는 쥔 카드가 있어서 고치지 않고 읽기 목록에만 더해요
 - read-only: `skills/moai/references/internal/quality.md`, `skills/moai/references/internal/doc-claims.md`, `skills/moai/workflows/audit.md`
 - forbidden: 새 에이전트, moai-adk 전용 도구 이름(일반 사용자 프로젝트에도 통하는 말만), 카드 번호를 SPEC id·가지·커밋·PR 에 쓰는 것
@@ -70,7 +70,6 @@ created: 2026-11-20
 | D-1 | 규칙 본문은 새 참조 문서 `internal/change-claims.md` 에 두고 에이전트 글에는 단계 한 줄과 출력 섹션만 더해요 | 에이전트 글을 짧게 두는 기존 방식(자체 점검 목록도 참조 문서)과 패키지 파일 한도 | 줄을 에이전트 글로 옮기기 |
 | D-2 | 주장 라벨은 `matched`(맞는 변경 또는 출력 있음), `no-change`(없음), `not-run`(명령을 안 돌림), `handed-over`(범위 밖이라 넘김) 네 개예요 | 문서 주장 검사(`doc-claims`)의 라벨 방식을 따르되 변경 검사에 맞게 줄였어요 | 라벨 추가 |
 | D-3 | 시험 변경 확인은 diff 의 시험 폴더에서 지워지거나(D) 바뀐(M) 파일을 `git diff --stat --diff-filter=DM <base>..<head>` 로 모으는 한 줄이에요(폴더 이름은 프로젝트의 시험 폴더) | 일반 사용자 프로젝트에도 통하는 읽기 전용 git 명령 하나 | 폴더 목록을 설정으로 |
-| D-4 | actionlint 는 `tools/local_check.sh` 가 아니라 `moai check affected` 의 단계로 넣어요. 바뀐 파일에 `.github/workflows/*.yml`·`*.yaml` 이 있을 때만 `actionlint -shellcheck= <파일들>` 이고, 프로그램을 PATH 에서 못 찾으면 종료 코드 127 이 아니라 `not_run` 으로 보고해요 | `local_check.sh` 의 단계 목록은 CI 의 두 갈래(leg)와 시험이 그대로 고정하고 있어서 거기에 넣으면 CI 에도 도구 설치가 필요해요. 변경 범위만 보는 `check affected` 가 "워크플로를 바꾼 카드만" 이라는 요청에 맞아요 | `local_check.sh` 에 단계 추가 |
 
 ## Result
 

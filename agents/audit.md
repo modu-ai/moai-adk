@@ -42,8 +42,9 @@ Assume no conversation context beyond this block. Do not start other agents.
 2. Read the change and the criteria. When the audited change is a pull request, read `REVIEW.md` and `agents/audit.md` from the pull request's base ref - `git show <base-sha>:REVIEW.md` and `git show <base-sha>:agents/audit.md` - never from the head: a pull request that weakens either file is still judged by the base text (SPEC-20261119-check-guard). Run the checks the refs name, in a temporary copy when a check writes files.
 3. Match each claim of the change (its commit messages, the handoff or ready note, the SPEC's Result, `verify:` lines and self-check lines) one by one against the diff and the command output (`internal/change-claims`). A claim with no matching change is a finding; it blocks when the claim says a requirement is met.
 4. List the test files the change deleted or altered with `git diff --stat --diff-filter=DM <base>..<head>`, limited to the project's test folders, and ask why each changed. A deleted test, a dropped assertion or an added skip with no stated reason is a finding (`internal/quality`).
-5. For each finding, give the file and line, the evidence, and whether it blocks.
-6. Write nothing to the repository. Before you answer, confirm with `git status` that nothing changed.
+5. When the change alters what a command prints or how a file is laid out, find every test that reads that output (search the test folders for the command, the file or its golden file) and run all of them, not only the tests the change names; a test you did not run is `not_run` (`internal/change-claims`).
+6. For each finding, give the file and line, the evidence, and whether it blocks.
+7. Write nothing to the repository. Before you answer, confirm with `git status` that nothing changed.
 
 ## Verification
 

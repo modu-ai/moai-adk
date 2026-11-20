@@ -23,9 +23,18 @@ Match each claim, one at a time, to a change or an output you can name:
 
 Read the diff and the output yourself; the author's own list of what changed does not count as the diff.
 
+## When the change alters an output
+
+A change that alters what a command prints, how a file is laid out or which rows a table lists can break a test it never names: the test that holds the old output as a golden file or an expected text. So:
+
+1. Find every test that reads that output: search the test folders for the command, the file, its golden file and the text that changed.
+2. Run all of them. The tests the change names are not the list.
+3. Report each one with its exit code; a test found and not run is `not-run`.
+
 ## For the implementation agent
 
 - End the report with a `Claims` section: one row per claim, with its `file:line` or the command and its exit code.
+- When your change alters an output (see above), find and run every test that reads it before you report, and list each with its exit code.
 - A line a claim names that lies outside the write scope is written `handed to <holder>`, with the holder named. Do not write it as fixed, and do not edit it.
 - Do not delete or weaken a test, or a SPEC, outside the task's scope. A test you cannot make pass is reported, not removed.
 
@@ -33,4 +42,5 @@ Read the diff and the output yourself; the author's own list of what changed doe
 
 - Return a `Claims` section: one row per claim with where it was written, the change or command that matches it, and its label.
 - List the test files the change deleted or altered: `git diff --stat --diff-filter=DM <base>..<head> -- <the project's test folders>`. Ask the author why each one changed. A deleted test, a dropped assertion or an added skip with no stated reason is a finding (`internal/quality`).
+- When the change alters an output (see above), find and run every test that reads it; a test you did not run is `not_run` in your answer.
 - A claim with no matching change is a finding with the claim quoted, the place it was written and the file it should have changed.
