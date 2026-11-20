@@ -636,6 +636,24 @@ fn apply_without_the_flag_refuses_the_replace_digest() {
     }
 }
 
+/// AC-2 (REQ-4): a digest of a file that changed since is refused before any backup exists.
+#[test]
+fn apply_refuses_a_stale_replace_digest_after_the_file_changed() {
+    let fx = Fx::with_user_file(CODEX);
+    let plan = fx.plan(CODEX, true);
+    let changed = format!("{}// changed since the plan\n", CODEX.user);
+    fx.write(CODEX.file, &changed);
+    let before = fx.tree();
+    let (code, v) = fx.apply(CODEX, &digest(&plan), true);
+    assert_ne!(code, 0, "{v}");
+    assert!(v.to_string().contains("stale or altered plan"), "{v}");
+    assert_eq!(before, fx.tree());
+    assert!(
+        fx.backups().is_empty(),
+        "no backup before the digest is checked"
+    );
+}
+
 /// AC-2 (REQ-5): a backup of the planned name holding other bytes is refused, and the hook file
 /// and the receipt are not touched.
 #[test]

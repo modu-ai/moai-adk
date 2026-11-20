@@ -223,6 +223,23 @@ fn check_host(host: &str) -> Result<()> {
     }
 }
 
+/// A host this version no longer plans or writes for, whose receipts an older binary may
+/// have written. The revert paths still recognize it — the same decision the agents
+/// receipts made (leader decision on the removal audit) — while the plan-and-write paths
+/// keep refusing it (they answer a skip with a notice instead).
+const RETIRED: [&str; 1] = ["omp"];
+
+/// `check_host` for a path that only reads what an older binary wrote ([`written_files`],
+/// called from the revert): the retired hosts are recognized there, so their receipts
+/// revert exactly as they did before.
+fn check_host_written(host: &str) -> Result<()> {
+    if HOSTS.contains(&host) || RETIRED.contains(&host) {
+        Ok(())
+    } else {
+        Err("unknown hook host; must be claude, codex or omp".into())
+    }
+}
+
 /// The command a generated hook runs: the bare binary name, never an absolute path. The guard
 /// names the project as `.`: both hosts run a command hook in the session's working directory.
 pub fn hook_command(host: &str, handler: Handler) -> String {
@@ -1118,7 +1135,7 @@ pub fn installed(root: &Path, host: &str) -> Result<bool> {
 /// file and MoAI's ownership receipt for it (#2853 revert). Each folder between `root` and
 /// these files is listed in `dirs`, so a caller can refuse one that became a link.
 pub fn written_files(root: &Path, host: &str) -> Result<(Vec<String>, Vec<PathBuf>)> {
-    check_host(host)?;
+    check_host_written(host)?;
     let receipt = if host == "claude" {
         "manifests/claude-settings.json"
     } else {

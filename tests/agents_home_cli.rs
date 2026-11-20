@@ -328,3 +328,56 @@ fn revert_never_writes_through_a_folder_that_became_a_link() {
     // The other host was not linked and is reverted as usual.
     assert!(!fx.agent(".codex", "moai-impl.toml").exists());
 }
+
+/// R2 of the removal audit: a receipt an older binary wrote names OMP, whose agent folder
+/// this binary no longer plans for — the revert still recognizes the retired host and
+/// removes the file the old binary created, exactly like a supported host. The entry is
+/// appended to a real receipt, so the shape is the one an apply writes.
+#[test]
+fn a_base_written_omp_entry_still_reverts() {
+    let fx = fx();
+    let v = fx.apply(&fx.plan());
+    let id = v["result"]["receipt"].as_str().unwrap().to_string();
+    let omp_file = Path::new(&fx.home).join(".omp/agent/agents/moai-docs.md");
+    fs::create_dir_all(omp_file.parent().unwrap()).unwrap();
+    let bytes = "the agent file the old binary wrote\n";
+    fs::write(&omp_file, bytes).unwrap();
+    let dir = moai_cli::home_root::path(Path::new(&fx.home))
+        .join("agents")
+        .join("receipts")
+        .join(&id);
+    let receipt_path = dir.join("receipt.json");
+    let mut receipt: Value = serde_json::from_slice(&fs::read(&receipt_path).unwrap()).unwrap();
+    receipt["entries"]
+        .as_array_mut()
+        .unwrap()
+        .push(serde_json::json!({
+            "host": "omp",
+            "file": "moai-docs.md",
+            "action": "create",
+            "before_sha256": Value::Null,
+            "after_sha256": moai_cli::digest(bytes.as_bytes()),
+        }));
+    fs::write(&receipt_path, serde_json::to_vec_pretty(&receipt).unwrap()).unwrap();
+
+    let r = call(&[
+        "agents-home-revert",
+        &fx.home,
+        "--receipt",
+        &id,
+        "--permission-reference",
+        PERMISSION,
+    ]);
+    assert_eq!(r["result"]["state"], "reverted", "{r}");
+    assert!(
+        r["result"]["reverted"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|entry| entry == "omp:moai-docs.md"),
+        "{r}"
+    );
+    assert!(!omp_file.exists(), "{r}");
+    let after: Value = serde_json::from_slice(&fs::read(&receipt_path).unwrap()).unwrap();
+    assert_eq!(after["status"], "reverted");
+}

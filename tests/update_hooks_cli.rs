@@ -434,6 +434,75 @@ fn a_receipt_id_of_another_shape_is_refused() {
     assert!(text.contains("hook receipt not found"), "{text}");
 }
 
+/// R2 of the removal audit: a receipt an older binary wrote names OMP, which this binary no
+/// longer plans for — the revert still recognizes the retired host, gives back the file the
+/// old binary replaced, removes the file it created, and marks the receipt reverted. The
+/// receipt and its before bytes are laid out the way an apply lays them out (base format).
+#[test]
+fn a_base_written_omp_receipt_still_reverts() {
+    let f = setup();
+    let module = f.project.join(".omp/extensions/moai-hooks.ts");
+    fs::create_dir_all(module.parent().unwrap()).unwrap();
+    let before_module = "the user's module bytes before the old binary\n";
+    let applied_module = "module bytes the old binary wrote\n";
+    fs::write(&module, applied_module).unwrap();
+    let omp_receipt = f.project.join(".moai-cli/manifests/omp-hooks.json");
+    fs::create_dir_all(omp_receipt.parent().unwrap()).unwrap();
+    let receipt_bytes = "{\"sha256\": \"sha256:owned\"}\n";
+    fs::write(&omp_receipt, receipt_bytes).unwrap();
+    let id = "hooks-omprevert0";
+    let dir = f.project.join(".moai-cli/receipts").join(id);
+    fs::create_dir_all(dir.join("before/omp")).unwrap();
+    fs::write(dir.join("before/omp/0"), before_module).unwrap();
+    let receipt = json!({
+        "schema_version": 1,
+        "id": id,
+        "plan_digest": "sha256:fixture",
+        "permission_reference": "test-approval",
+        "status": "applied",
+        "hosts": [{
+            "host": "omp",
+            "files": [
+                {
+                    "path": ".omp/extensions/moai-hooks.ts",
+                    "before_sha256": moai_cli::digest(before_module.as_bytes()),
+                    "after_sha256": moai_cli::digest(applied_module.as_bytes()),
+                },
+                {
+                    "path": ".moai-cli/manifests/omp-hooks.json",
+                    "before_sha256": Value::Null,
+                    "after_sha256": moai_cli::digest(receipt_bytes.as_bytes()),
+                },
+            ],
+        }],
+    });
+    fs::write(dir.join("receipt.json"), format!("{receipt}\n")).unwrap();
+
+    let p = f.project.to_str().unwrap();
+    let r = result(&run(
+        &f,
+        &f.project,
+        &[
+            "hooks-revert",
+            p,
+            "--receipt",
+            id,
+            "--permission-reference",
+            "test-approval",
+        ],
+    ));
+    assert_eq!(r["reverted"], json!(["omp"]), "{r}");
+    assert_eq!(r["skipped"], json!([]), "{r}");
+    assert_eq!(fs::read(&module).unwrap(), before_module.as_bytes());
+    assert!(
+        !omp_receipt.exists(),
+        "the ownership receipt the old binary created is removed"
+    );
+    let after: Value =
+        serde_json::from_slice(&fs::read(dir.join("receipt.json")).unwrap()).unwrap();
+    assert_eq!(after["status"], json!("reverted"));
+}
+
 /// Edits the `PostToolUse` handler's timeout in the settings file only, as a user would.
 fn hand_edit_claude_hooks(f: &Fixture) {
     let settings = f.project.join(".claude/settings.json");

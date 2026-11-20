@@ -274,6 +274,38 @@ fn claude_hooks_keep_other_owned_keys() {
     assert_eq!(receipt["owned"]["outputStyle"], json!("MoAI"));
 }
 
+/// #2239 × #2238: the user-facing settings op never writes `hooks` itself, and changing
+/// `outputStyle` after hooks-apply keeps the generated hook set instead of removing it.
+#[test]
+fn claude_settings_op_neither_writes_nor_drops_hooks() {
+    let p = project();
+    let raw = json!({"hooks": {}}).as_object().unwrap().clone();
+    let err = moai_cli::claude::user_settings_desired(p.path(), &raw).unwrap_err();
+    assert_eq!(classify(&err), Kind::InvalidInput, "{err}");
+
+    plan_apply(p.path(), "claude");
+    let style = json!({"outputStyle": "MoAI"}).as_object().unwrap().clone();
+    let desired = moai_cli::claude::user_settings_desired(p.path(), &style).unwrap();
+    let plan = moai_cli::claude::settings_plan(p.path(), &desired).unwrap();
+    moai_cli::claude::settings_apply(
+        p.path(),
+        &desired,
+        plan["plan_digest"].as_str().unwrap(),
+        PERMISSION,
+    )
+    .unwrap();
+    let settings = read_json(&p.path().join(".claude/settings.json"));
+    assert_eq!(settings["outputStyle"], json!("MoAI"));
+    assert_eq!(
+        settings["hooks"],
+        Value::Object(hooks::hooks_object("claude").unwrap())
+    );
+    assert_eq!(
+        hooks::plan(p.path(), "claude", None).unwrap()["action"],
+        json!("unchanged")
+    );
+}
+
 /// A `.codex/hooks.json` MoAI never wrote, or one edited after apply, is not overwritten.
 #[test]
 fn codex_unowned_or_edited_file_requires_review() {
