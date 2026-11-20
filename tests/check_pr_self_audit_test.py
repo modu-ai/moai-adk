@@ -234,32 +234,32 @@ class CheckRunRulesSingleSourceTest(unittest.TestCase):
         self.assertEqual(text.count("\n## Shell and helper rules\n"), 1)
         # The split retry is bounded (pre-audit FAIL 6814410637 B1): only a refusal of the
         # combined form, the refused effect stays forbidden, every step passes the same guard.
-        for rule in ("Guard refusal (WF-OBS #17)",
+        for rule in ("Guard refusal: when a guard or hook refuses a command",
                      "Only when the refusal is confirmed to be about the combined form",
                      "not that its effect is forbidden", "the refused effect itself stays forbidden",
                      "each step must pass the same guard on its own", "Splitting is never a bypass",
-                     "Helper authentication failure (WF-OBS #19)", "record that review as `not_run`",
-                     "Never record a key or token value", "zsh word splitting (WF-OBS #16)",
+                     "Helper authentication failure:", "record that review as `not_run`",
+                     "Never record a key or token value", "zsh word splitting:",
                      "for x in ${=var}", "never name a shell function after an existing alias"):
             self.assertIn(rule, text)
         # WF-OBS ledger rows 9, 25, 26, 29 and 30 (Issue #2401 CLOSE-TABLE 6841136693).
         self.assertEqual(text.count("\n## Change-specific rules\n"), 1)
-        for rule in ("Base drift (WF-OBS #9)", "`git ls-remote origin refs/heads/<base>`",
+        for rule in ("Base drift:", "`git ls-remote origin refs/heads/<base>`",
                      "say which one you used",
-                     "Platform-specific code (WF-OBS #25)",
+                     "Platform-specific code:",
                      "`cargo check --offline --locked --target x86_64-pc-windows-msvc`",
                      "record that check as `not_run`",
-                     "Checker changes (WF-OBS #26)", "run the old and the new version over recent real inputs",
+                     "Checker changes:", "run the old and the new version over recent real inputs",
                      "report every verdict that changed",
-                     "Absence in tests (WF-OBS #29)", "creates that absence in its own fixture",
+                     "Absence in tests:", "creates that absence in its own fixture",
                      "it never relies on the host lacking it",
-                     "Manifest after a conflict (WF-OBS #30)", "take neither side's sha256",
+                     "Manifest after a conflict:", "take neither side's sha256",
                      "recompute it from the merged file", "check every entry of the manifest against its file"):
             self.assertIn(rule, text)
         self.assertNotIn("Reuse the existing target directory instead of creating a new one", text)
         # Cleaning removes cargo output only; `target/` and lane files stay (pre-audit B1).
-        # The leader's canonical wording, Issue #2385 comment 6777290466, points 1-4.
-        self.assertIn("Issue #2385 comment 6777290466", text)
+        # The cleaning rule's four points, stated without a citation of where they came from.
+        self.assertNotIn("Issue #2385 comment 6777290466", text)
         self.assertIn("removes only the cargo output it made itself", text)
         self.assertIn("the `debug`, `release` and `<target triple>` folders", text)
         self.assertIn("never removes `target/` itself or the notes, evidence and scripts under `target/<name>/`", text)
@@ -305,11 +305,11 @@ class NoAuthorCiLineTest(unittest.TestCase):
         self.assertIn("The auditor reads the run back itself and writes it in the verdict as one line", verify)
         self.assertIn("the author's `## Self-Audit` section needs no such line, and no verdict waits for one", verify)
         self.assertIn("passes a body with or without that line", verify)
-        self.assertIn("without waiting for an author's `ci:` line (decision D4",
+        self.assertIn("without waiting for an author's `ci:` line",
                       self.read("skills/moai/workflows/audit.md"))
-        self.assertIn("no author `ci:` line is waited for (decision D4",
+        self.assertIn("no author `ci:` line is waited for",
                       self.read("skills/moai/workflows/mode-leader.md"))
-        self.assertIn("it needs no `ci:` line in its body (decision D4",
+        self.assertIn("it needs no `ci:` line in its body",
                       self.read("skills/moai/workflows/mode-agent.md"))
         self.assertIn("저자는 `## Self-Audit` 절에 `ci:` 줄을 적지 않아도 된다",
                       self.read(".github/pull_request_template.md"))
