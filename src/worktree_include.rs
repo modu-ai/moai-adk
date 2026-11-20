@@ -355,7 +355,7 @@ pub fn warnings(project: &Path) -> Vec<String> {
         .map(|f| {
             format!(
                 "{FILE} line {} `{}` copies secret files ({}) into every new Claude Code worktree; \
-                 remove the line unless you mean it (not changed here, #2670)",
+                 remove the line unless you mean it (not changed here)",
                 f.line,
                 f.pattern,
                 f.probes.join(", ")

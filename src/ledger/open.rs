@@ -224,7 +224,7 @@ pub(crate) fn check_home_ready(home: &Path) -> Result<(), LedgerError> {
         "go" | "mixed" | "interrupted" | "refuse"
     ) {
         return Err(LedgerError::HomeNotReady(format!(
-            "~/.moai is `{}`; the ledger waits for the HOME move (Issue #3068 Q1)",
+            "~/.moai is `{}`; the ledger waits for the HOME move",
             verdict.generation
         )));
     }

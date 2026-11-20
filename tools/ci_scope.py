@@ -26,6 +26,7 @@ EXACT_DENY = frozenset(
         "docs/decisions-2026-11-08.md",
         "docs/host-support-matrix.md",
         "docs/zcode-support.md",
+        "docs/cli-text-rationale.md",
         "docs/codex-adapter-contract.md",
         "docs/design-review/appendix/interfaces.md",
         "docs/design-review/appendix/state-vocabulary-crosswalk.md",

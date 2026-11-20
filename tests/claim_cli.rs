@@ -725,9 +725,12 @@ fn a_session_renews_its_own_expired_claim_with_the_next_epoch_and_no_handoff_lin
     assert_eq!(rec.comment_id, Some(901));
     assert_eq!(rec.lease_until.as_deref(), Some(lease2.as_str()));
     assert!(
-        second.notes.iter().any(|n| n.contains("decision D1")
-            && n.contains("comment 900")
-            && n.contains("epoch 1")),
+        second
+            .notes
+            .iter()
+            .any(|n| n.contains("renewed with epoch 2")
+                && n.contains("comment 900")
+                && n.contains("epoch 1")),
         "{:?}",
         second.notes
     );

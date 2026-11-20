@@ -460,11 +460,10 @@ fn null_device() -> &'static str {
     }
 }
 
-/// `git --attr-source=<empty tree> -c … diff`: the configuration keys a repository could set
-/// and the command line has no option for.
-fn diff_prefix(attr_source: &str) -> Vec<&str> {
+/// `git -c … diff`: the configuration keys a repository could set and the command line has no
+/// option for. The attribute isolation of [`AttrIsolation`] goes in front of it.
+fn diff_prefix() -> Vec<&'static str> {
     vec![
-        attr_source,
         "-c",
         "core.quotePath=true",
         "-c",
@@ -477,6 +476,106 @@ fn diff_prefix(attr_source: &str) -> Vec<&str> {
         "diff.mnemonicPrefix=false",
         "diff",
     ]
+}
+
+/// How a diff is kept from reading attributes of the worktree or the index (B1): a worktree's
+/// `.gitattributes` may be uncommitted or belong to another branch.
+enum AttrIsolation {
+    /// `--attr-source=<empty tree>` (Git 2.40 and later).
+    Source(String),
+    /// A Git that does not know that option (the Apple Git of the macOS runners is older): the
+    /// diff runs inside an empty folder that is its work tree, with the repository's git
+    /// directory named and an index file that does not exist, so neither holds a
+    /// `.gitattributes` (run from inside the repository, Git also reads the `.gitattributes` of
+    /// the current folder, whatever `--work-tree` says). The folder goes away with this value.
+    Empty {
+        dir: std::path::PathBuf,
+        git_dir: String,
+    },
+}
+
+impl Drop for AttrIsolation {
+    fn drop(&mut self) {
+        if let AttrIsolation::Empty { dir, .. } = self {
+            let _ = std::fs::remove_dir_all(dir);
+        }
+    }
+}
+
+/// Whether Git's own refusal says it does not know an option (`unknown option: --attr-source=…`,
+/// printed with `LC_ALL=C`).
+fn is_unknown_option(stderr: &[u8]) -> bool {
+    String::from_utf8_lossy(stderr)
+        .lines()
+        .any(|l| l.starts_with("unknown option:"))
+}
+
+/// Picks the isolation: the option when this Git has it, the empty work tree when Git says it
+/// does not know it, and an error for any other refusal or when the folder cannot be made.
+/// `force_empty` takes the second way on any Git (the test of that branch).
+fn attr_isolation(repo: &Path, empty_tree: &str, force_empty: bool) -> Result<AttrIsolation> {
+    if !force_empty {
+        let option = format!("--attr-source={empty_tree}");
+        let out = crate::audit_delta::command(repo)
+            .arg(&option)
+            .args(["rev-parse", "--git-dir"])
+            .output()
+            .map_err(|e| format!("review package git failed: cannot execute Git: {e}"))?;
+        if out.status.success() {
+            return Ok(AttrIsolation::Source(option));
+        }
+        if !is_unknown_option(&out.stderr) {
+            return Err(format!(
+                "review package git failed: {}",
+                crate::identity::failure_summary(&out.stderr)
+            ));
+        }
+    }
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos());
+    let dir =
+        std::env::temp_dir().join(format!("moai-review-attrs-{}-{nanos}", std::process::id()));
+    std::fs::create_dir(&dir).map_err(|e| {
+        format!(
+            "review package git failed: this Git has no --attr-source and the empty work tree {} cannot be made: {e}",
+            dir.display()
+        )
+    })?;
+    let git_dir = String::from_utf8_lossy(&git(repo, &["rev-parse", "--absolute-git-dir"])?)
+        .trim()
+        .to_string();
+    Ok(AttrIsolation::Empty { dir, git_dir })
+}
+
+/// Runs `git <isolation> <args>` in `repo`, with the same failure text as [`git`].
+fn git_isolated(repo: &Path, iso: &AttrIsolation, args: &[&str]) -> Result<Vec<u8>> {
+    let mut cmd = crate::audit_delta::command(repo);
+    match iso {
+        AttrIsolation::Source(option) => {
+            cmd.arg(option);
+        }
+        AttrIsolation::Empty { dir, git_dir } => {
+            // `command` already moved into the repository with `-C`; a second `-C` moves on
+            // into the empty folder.
+            cmd.arg("-C")
+                .arg(dir)
+                .arg(format!("--git-dir={git_dir}"))
+                .arg(format!("--work-tree={}", dir.display()))
+                .env("GIT_INDEX_FILE", dir.join("index"));
+        }
+    }
+    let out = cmd
+        .args(args)
+        .output()
+        .map_err(|e| format!("review package git failed: cannot execute Git: {e}"))?;
+    if !out.status.success() {
+        return Err(format!(
+            "review package git failed: {}",
+            crate::identity::failure_summary(&out.stderr)
+        ));
+    }
+    Ok(out.stdout)
 }
 
 /// The repository's top level. Every path in the package is relative to it, and git runs
@@ -688,6 +787,17 @@ fn ancestor_dirs(changed: &[Changed]) -> Vec<String> {
 }
 
 pub fn package(repo: &Path, base: &str, head: &str) -> Result<Package> {
+    package_with(repo, base, head, false)
+}
+
+/// [`package`]; `force_empty_attributes` takes the attribute isolation of a Git without
+/// `--attr-source` whatever this Git is.
+fn package_with(
+    repo: &Path,
+    base: &str,
+    head: &str,
+    force_empty_attributes: bool,
+) -> Result<Package> {
     let top = toplevel(repo)?;
     let repo = top.as_path();
     let base = commit_of(repo, base)?;
@@ -720,7 +830,7 @@ pub fn package(repo: &Path, base: &str, head: &str) -> Result<Package> {
         String::from_utf8_lossy(&git(repo, &["hash-object", "-t", "tree", "--stdin"])?)
             .trim()
             .to_string();
-    let attr_source = format!("--attr-source={empty_tree}");
+    let isolation = attr_isolation(repo, &empty_tree, force_empty_attributes)?;
     // Every diff setting a repository's own `.git/config` could change is fixed here, on the
     // command line, which wins over that file (audit FAIL 6839909483 B1).
     let fixed = [
@@ -740,12 +850,12 @@ pub fn package(repo: &Path, base: &str, head: &str) -> Result<Package> {
         "-U3",
     ];
     let order_none = format!("-O{}", null_device());
-    let mut args = diff_prefix(&attr_source);
+    let mut args: Vec<&str> = diff_prefix();
     args.push(&order_none);
     args.extend(["--name-status", "-z"]);
     args.extend(fixed);
     args.extend([merge_base.as_str(), head.as_str()]);
-    let listing = git(repo, &args)?;
+    let listing = git_isolated(repo, &isolation, &args)?;
     let fields: Vec<String> = listing
         .split(|b| *b == 0)
         .filter(|f| !f.is_empty())
@@ -759,11 +869,11 @@ pub fn package(repo: &Path, base: &str, head: &str) -> Result<Package> {
             path: pair[1].clone(),
         })
         .collect();
-    let mut args = diff_prefix(&attr_source);
+    let mut args: Vec<&str> = diff_prefix();
     args.push(&order_none);
     args.extend(fixed);
     args.extend([merge_base.as_str(), head.as_str()]);
-    let diff = String::from_utf8_lossy(&git(repo, &args)?).to_string();
+    let diff = String::from_utf8_lossy(&git_isolated(repo, &isolation, &args)?).to_string();
 
     let mut review = Vec::new();
     let mut skipped = Vec::new();
@@ -1295,5 +1405,92 @@ mod tests {
         assert!(skipped_dir("contrib/x"));
         assert!(!skipped_dir("src/testing"));
         assert!(!skipped_dir("latest"));
+    }
+
+    /// A repository with two commits touching `a.txt` and, after them, an uncommitted
+    /// `.gitattributes` that would turn that file binary if the diff read it.
+    fn attribute_fixture() -> (tempfile::TempDir, String, String) {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let run = |args: &[&str]| {
+            let out = crate::audit_delta::command(root)
+                .args(["-c", "user.name=t", "-c", "user.email=t@example.invalid"])
+                .args(args)
+                .output()
+                .unwrap();
+            assert!(
+                out.status.success(),
+                "{args:?}: {}",
+                String::from_utf8_lossy(&out.stderr)
+            );
+            String::from_utf8_lossy(&out.stdout).trim().to_string()
+        };
+        run(&["init", "-q"]);
+        std::fs::write(root.join("a.txt"), "one\n").unwrap();
+        run(&["add", "a.txt"]);
+        run(&["commit", "-q", "-m", "first"]);
+        let first = run(&["rev-parse", "HEAD"]);
+        std::fs::write(root.join("a.txt"), "two\n").unwrap();
+        run(&["commit", "-q", "-am", "second"]);
+        let second = run(&["rev-parse", "HEAD"]);
+        std::fs::write(root.join(".gitattributes"), "*.txt binary\n").unwrap();
+        run(&["add", ".gitattributes"]);
+        (dir, first, second)
+    }
+
+    #[test]
+    fn a_git_without_attr_source_gets_the_same_package_from_an_empty_work_tree() {
+        let (dir, first, second) = attribute_fixture();
+        // The staged `.gitattributes` is in the index and the work tree: a diff that read either
+        // would call `a.txt` binary.
+        let normal = package_with(dir.path(), &first, &second, false).unwrap();
+        let fallback = package_with(dir.path(), &first, &second, true).unwrap();
+        assert!(normal.diff.contains("+two"), "{}", normal.diff);
+        assert!(!fallback.diff.contains("Binary files"), "{}", fallback.diff);
+        assert_eq!(
+            serde_json::to_value(&normal).unwrap(),
+            serde_json::to_value(&fallback).unwrap()
+        );
+    }
+
+    #[test]
+    fn the_empty_work_tree_is_removed_when_its_isolation_is_dropped() {
+        let (dir, first, second) = attribute_fixture();
+        let tree = String::from_utf8_lossy(
+            &git(dir.path(), &["hash-object", "-t", "tree", "--stdin"]).unwrap(),
+        )
+        .trim()
+        .to_string();
+        let isolation = attr_isolation(dir.path(), &tree, true).unwrap();
+        let AttrIsolation::Empty { dir: scratch, .. } = &isolation else {
+            panic!("a forced fallback is the empty work tree");
+        };
+        let scratch = scratch.clone();
+        assert!(scratch.is_dir());
+        drop(isolation);
+        assert!(!scratch.exists(), "{}", scratch.display());
+        // And a whole package leaves nothing behind either: it works after the folder is gone.
+        package_with(dir.path(), &first, &second, true).unwrap();
+    }
+
+    #[test]
+    fn only_gits_unknown_option_refusal_selects_the_fallback() {
+        let old = b"unknown option: --attr-source=4b825dc642cb6eb9a060e54bf8d69288fbee4904\nusage: git [-v | --version] [-h | --help]\n";
+        assert!(is_unknown_option(old));
+        assert!(!is_unknown_option(
+            b"fatal: not a git repository (or any of the parent directories): .git\n"
+        ));
+        assert!(!is_unknown_option(b""));
+        // Another refusal of this Git (here: not a repository) is no old Git: the error stays.
+        let elsewhere = tempfile::tempdir().unwrap();
+        let err = match attr_isolation(
+            elsewhere.path(),
+            "4b825dc642cb6eb9a060e54bf8d69288fbee4904",
+            false,
+        ) {
+            Ok(_) => panic!("a refusal other than an unknown option must not pick an isolation"),
+            Err(e) => e,
+        };
+        assert!(err.starts_with("review package git failed:"), "{err}");
     }
 }

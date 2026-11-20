@@ -87,6 +87,28 @@
       "rejects": "a \".moai-cli\" path spelled as a string literal outside src/lib.rs instead of project_state!/fixed_state! (#2725 S1)"
     },
     {
+      "id": "cli-text-citations",
+      "tests": [
+        "tests/cli_text_citations.rs::scan_source_files_outside_the_pending_list_are_clean"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test cli_text_citations"
+      ],
+      "rules": [
+        "tests/cli_text_citations.rs",
+        "docs/cli-text-rationale.md"
+      ],
+      "scope": [
+        {
+          "prefix": "src/",
+          "suffixes": [
+            ".rs"
+          ]
+        }
+      ],
+      "rejects": "a source file outside the pending list whose code (comments and the test module left out) carries a card number, an Issue or pull-request number, a decision citation or a moai-adk development script name (SPEC-20261120-cli-text-citations)"
+    },
+    {
       "id": "permission-reference-one-copy",
       "tests": [
         "src/contract.rs::permission_reference_rule_has_one_copy"
@@ -165,6 +187,29 @@
         }
       ],
       "rejects": "a ledger test that runs the binary without TempHome, a test that runs the binary without naming HOME and is not in the baseline list, a process, socket, program name or URL in src/ledger/ (#3068 P2), or one in src/decide/ other than the two provider endpoints (C-37 S2)"
+    },
+    {
+      "id": "user-asset-bundle-cli",
+      "tests": [
+        "tests/bundle_user_assets_cli.rs::list_prints_every_pack_in_the_go_format_in_name_order",
+        "tests/bundle_user_assets_cli.rs::an_unknown_pack_name_refuses_like_go_and_touches_nothing",
+        "tests/bundle_user_assets_cli.rs::add_installs_the_pack_records_the_go_manifest_and_prints_the_summary",
+        "tests/bundle_user_assets_cli.rs::remove_of_a_lone_pack_deletes_its_files_and_clears_the_journal",
+        "tests/bundle_user_assets_cli.rs::a_journal_of_an_interrupted_run_is_reconciled_as_a_collision"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test bundle_user_assets_cli"
+      ],
+      "rules": [
+        "tests/bundle_user_assets_cli.rs",
+        "templates/bundle-packs/packs.json"
+      ],
+      "scope": [
+        {
+          "prefix": "templates/bundle-packs/"
+        }
+      ],
+      "rejects": "a change to the pack assets or their catalog data that the CLI tests did not re-run: the tests read the repository's packs.json and entry files to compute the expected list lines, install counts and shipped bytes"
     },
     {
       "id": "git-spawns-scrubbed",

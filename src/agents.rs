@@ -248,15 +248,21 @@ fn review_answers(p: &Profile) -> Vec<(&str, &String)> {
 
 /// REVIEW.md managed section (#2639): `None` when the interview gave no review answer, so a
 /// profile without them plans no REVIEW.md at all.
-/// The language the generated instruction text is written in (#2706): the profile's
-/// `language.instruction_files` when it is one the templates exist for (`en`, `ko`), else the
-/// request language. A profile without the choice renders exactly as before.
+/// The language the generated AGENTS.md and REVIEW.md text is written in: the profile's
+/// `language.instruction_files` when it is set to one the templates exist for (`en`, `ko`; an
+/// older profile's explicit choice), else the conversation language `language.user_chat` when it
+/// is one of those, else the request language. A profile without `language` renders exactly as
+/// before.
 fn instruction_language<'a>(p: &'a Profile, r: &'a AgentsRequest) -> &'a str {
-    p.language
-        .as_ref()
-        .and_then(|l| l.get("instruction_files"))
-        .map(String::as_str)
-        .filter(|code| *code == "en" || *code == "ko")
+    let supported = |key: &str| {
+        p.language
+            .as_ref()
+            .and_then(|l| l.get(key))
+            .map(String::as_str)
+            .filter(|code| *code == "en" || *code == "ko")
+    };
+    supported("instruction_files")
+        .or_else(|| supported("user_chat"))
         .unwrap_or(r.language.as_str())
 }
 
@@ -1349,17 +1355,27 @@ pub(crate) fn agents_plan_for(
         if agents_file.detail.as_deref() == Some(BLOCK_ABSENT) {
             warnings.push(BLOCK_ABSENT.into());
         }
-        // #2706: the managed text follows the profile's `instruction_files` when templates
-        // exist for it (`en`, `ko`); another code is reported and the request language used.
-        if let Some(code) = profile
-            .language
-            .as_ref()
-            .and_then(|l| l.get("instruction_files"))
-            .filter(|code| code.as_str() != instruction_language(&profile, &request))
+        // The managed text follows `instruction_files` when the profile sets it and the
+        // conversation language `user_chat` otherwise, when templates exist for it (`en`, `ko`);
+        // another code is reported and the request language used.
+        let chosen = instruction_language(&profile, &request);
+        let language = profile.language.as_ref();
+        let named = |key: &str| {
+            language
+                .and_then(|l| l.get(key))
+                .filter(|c| c.as_str() != chosen)
+        };
+        if let Some((key, code)) = named("instruction_files")
+            .map(|c| ("instruction_files", c))
+            .or_else(|| {
+                language
+                    .filter(|l| !l.contains_key("instruction_files"))
+                    .and(named("user_chat"))
+                    .map(|c| ("user_chat", c))
+            })
         {
             warnings.push(format!(
-                "managed section rendered in `{}`: no managed-section text in profile language.instruction_files `{code}`",
-                instruction_language(&profile, &request)
+                "managed section rendered in `{chosen}`: no managed-section text in profile language.{key} `{code}`"
             ));
         }
         if agents_file.action != "conflict" && projected > 32 * 1024 {

@@ -80,6 +80,16 @@ created: 2026-11-20
 
 ## Result
 
+- AC-1: met — `the_link_view_shows_the_run_the_shas_and_the_pr_head_together`(`tests/board_bundle_link_cli.rs`) 통과(조각 2)
+- AC-2: met — `a_head_change_marks_the_earlier_pass_as_no_longer_in_effect` 통과, `==`→`!=` 변이를 잡아요(조각 2)
+- AC-3: met — `the_two_audit_layers_stay_apart` 통과(조각 2)
+- AC-4: met — `the_body_carries_no_card_number_and_no_session_id`(`tests/bundle_body_cli.rs`) 통과(조각 3)
+- AC-5: met — `the_link_view_writes_nothing` 통과(조각 2); 원장·관측 저장 파일의 바이트 비교는 저장 모듈이 착지한 뒤 마감 조각에서 해요
+- AC-6: met — `a_missing_store_or_an_unreadable_row_is_unknown` 통과(조각 2)
+- AC-7: met — `a_card_number_or_a_session_id_in_a_free_text_value_refuses_the_body` 통과(조각 3)
+- AC-8: met — `a_lower_case_card_number_is_replaced_in_a_command_and_refused_anywhere_else` 통과(조각 3 수리)
+- 마지막 확인(head `e67327d6ff`): `moai check affected origin/v2026.11.0..HEAD` 요약 `check-affected base=6a8fa9cacf46 head=e67327d6ffa8 targets=44 py=8 scans=listed:39 diff_check=0 fmt=0 clippy=0 test_lib=0 test_bins=0 test_targets=0 build_cli=0 python=0 result=PASS`. 조각 4(실제 관측 저장 연결, `pub mod board;`)는 아직 열려 있어요.
+
 조각 2 (연결 계산, 명령 없음; 리더 결정 노트 3636 의 D-4 (나)·필드 이름 확정):
 
 - 내용 모양을 확정했어요(BOARD 02 수집기와 맞추려고 그쪽 카드에 노트 3638 로 알렸어요). `pr-state@1` = `{number, state, head, review: null | {verdict: PASS|FAIL, head}}` (`review.head` 는 그 판정이 말하는 정확한 head), `bundle-run@1` = `{branch, source_sha, target_sha, commands[{check, exit}], not_run[], run_digest, specs[]}`. 둘 다 참조와 종료 코드뿐이고 명령 줄·로그 원문·세션 id·카드 번호가 없어요.

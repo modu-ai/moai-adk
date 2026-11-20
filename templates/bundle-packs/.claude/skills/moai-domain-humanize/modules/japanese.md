@@ -1,0 +1,194 @@
+# Humanize — Japanese (日本語)
+
+This module catalogues AI-generated-text tells specific to Japanese (日本語) and the rules for humanizing (윤문 / post-editing) such text into natural, native prose. It is tuned for output from ChatGPT, Gemini, and Claude.
+
+> Note on detectors: English-trained AI-detection tools are unreliable on Japanese and frequently produce false positives on ordinary 敬語 (polite forms). Prefer human-and-heuristic inspection over automated detector scores when setting confidence. The "read aloud" (声に出して読む) test is the single most reliable rhythm check for Japanese.
+
+## Detection Categories
+
+| Category | Tell | Why it reads as AI | Severity |
+|----------|------|--------------------|----------|
+| JA-01 冗長定型助動詞 (Redundant auxiliary constructions) | Padded polite endings: 「〜することができます」「〜を実現します」「〜の最適化」「〜することが望ましいでしょう」 | LLMs pick the longest "safe / 無難" form; a human writes 「利用できます」, not 「利用することができます」. The padding is statistically over-represented. | S2 |
+| JA-02 ヘッジ・断定回避 (Hedging / assertion-avoidance) | 「〜と考えられます」「〜と思われます」「〜の可能性があります」「〜と言われています」「一般的に〜とされています」 | The model never holds full confidence and lacks a source, so it hedges constantly. Humans either assert or cite; AI does neither. | S2 |
+| JA-03 構造宣言・定型接続 (Structural declarations & formulaic connectives) | Paragraph-initial 「まず」「次に」「さらに」「また」「したがって」; structure announcements 「以下で解説します」「結論から言うと」「大きく分けると」「論点は3つあります」; 「これにより」 | AI defaults to a textbook "declare structure → enumerate → caveat → encourage" scaffold; connectives cluster at sentence heads with mechanical regularity. 「これにより」 is a notorious giveaway. | S1 |
+| JA-04 文末単調 (Monotone sentence endings) | Long runs of identical 「〜です。〜ます。」 with no variation — no 体言止め, no 「〜でしょう」, no 「〜かもしれません」 | Human prose varies cadence; AI keeps a flat, uniform ending rhythm that reads as 稚拙 (childish) yet over-polished. | S2 |
+| JA-05 リズム均一・文長一定 (Uniform rhythm & sentence length) | All sentences roughly equal length; no 緩急 (short/long alternation); every paragraph closes "cleanly"; 「〜ではなく〜」 repeated | Statistical generation produces 平板 (flat), evenly-metered text. Humans write in bursts and pauses. | S3 |
+| JA-06 抽象・具体欠如 (Abstraction / lack of concrete detail) | Generic filler 「多くの企業で導入が推進されています」「継続することが成功の鍵です」; no place names, proper nouns, numbers, dates, or named cases | The model produces broadly-applicable, surface-level content with no lived specifics ("既製品感" / "マニュアル感"). | S2 |
+| JA-07 因果薄弱・同義反復 (Weak causality & tautological repetition) | Sentences end on 「〜が重要です」「〜が大切です」「〜がポイントです」 with no reason; restating one idea with slight rephrase (「柔軟な対応が必要です。適応力を高めることが重要です。」) | AI asserts importance without grounding and pads length by paraphrasing itself. | S1 (tautology) / S2 (bare 重要です) |
+| JA-08 記号・整形クセ (Symbol & formatting artifacts) | Emoji at list heads (✅ 💡 🚀 ✨); Markdown bold (**keyword**), 「#」見出し記号; em-dash 「—」 in place of Japanese 「…」; over-frequent 1. 2. 3. lists & 箇条書き／チェックリスト; parenthetical responsibility-dodging 「（〜の場合）」 | Direct chat-interface / Markdown leakage. A bulleted prose article reads as a 生成物 (machine product) at a glance — described in sources as 致命傷 (fatal) for readable content. | S1 (emoji / em-dash / Markdown in prose) / S2 (excess bullets) |
+| JA-09 カタカナ語多用・翻訳調 (Katakana overload & translationese) | Excess loanwords where 和語／漢語 fit; literal-translation phrasing (the "thought in English first, then translated" feel); mishandled idioms read literally; 「本質的な課題」「〜の最適化」 | Models are English-data-heavy and pivot internally through English, producing 直訳調 (literal-translation tone) and importing katakana a native writer would localize. | S3 (katakana) / S1 (broken idiom) |
+
+## Severity Rules
+
+Severity controls when a flagged span must be removed or rewritten.
+
+- **S1 — critical. Remove on a single occurrence.**
+  - JA-03: 「結論から言うと」「以下で解説します」「これにより」 → remove on any single occurrence; paragraph-head 「まず／次に／さらに」 chains → trigger when 3+ run consecutively.
+  - JA-07 (tautology): same-idea restatement → remove on single occurrence.
+  - JA-08: emoji, 「—」, **bold**, 「#」 appearing in body prose → remove on sight.
+  - JA-09 (broken idiom): an idiom read or rendered literally → fix on single occurrence.
+
+- **S2 — strong. Allow 1–2; remove starting at the 3rd occurrence.**
+  - JA-01: allow 1–2 padded constructions; remove at 3+.
+  - JA-02: allow 1–2 hedges; remove at 3+.
+  - JA-04: trigger when ≥3 identical endings run consecutively.
+  - JA-06: allow some generality; flag a passage that has zero concrete anchors.
+  - JA-07 (bare 重要です): unsupported 「重要です／ポイントです」 → remove at 3+.
+  - JA-08 (excess bullets): bullet overuse in what should be prose → reduce at 3+.
+
+- **S3 — weak. Only problematic when overlapping with another category.**
+  - JA-05: flag only when it overlaps JA-04 (monotone endings) or JA-06 (abstraction).
+  - JA-09 (katakana overload): flag only when it overlaps another category.
+
+## Rewrite Examples
+
+### JA-01 冗長定型助動詞
+- Before: このツールを利用することができます。
+  After: このツールが使えます。
+- Before: 業務効率の最適化を実現します。
+  After: 業務のムダを減らせます。
+
+### JA-02 ヘッジ・断定回避
+- Before: この方法が有効であると考えられます。
+  After: この方法は効きます。実際、導入後に問い合わせ対応が半分になりました。
+- Before: 一般的に重要だとされています。
+  After: 現場では、ここを外すと必ず後で揉めます。
+
+### JA-03 構造宣言・定型接続
+- Before: 結論から言うと、以下で3つのポイントを解説します。まず…次に…さらに…
+  After: ポイントは3つ。一番効くのは、最初の設定をサボらないことです。…あとは…そして最後に…
+- Before: これにより、生産性が向上します。
+  After: おかげで、残業がぐっと減りました。
+
+### JA-04 文末単調
+- Before: 観光地は混雑しています。ホテルは満室です。飲食店も混雑しています。
+  After: 観光地はどこも人だらけ。朝からホテルのロビーには長い列ができ、ランチを過ぎても飲食店は満席が続いていました。
+
+### JA-06 抽象・具体欠如
+- Before: 多くの企業で導入が推進されています。
+  After: 観光庁は2024年度、西みやこ市内のホテルを対象に、多言語AIチャット導入の補助金を5億円規模で交付しました。
+- Before: 継続することが成功の鍵です。
+  After: 半年やめずに続けた人だけが、3か月目で数字が動き始めました。
+
+### JA-07 因果薄弱・同義反復
+- Before: 観光地の安全対策が重要です。観光客が増えているので、事故予防が必要です。
+  After: 外国人観光客は前年比35%増。東山寺周辺では転倒事故が前年の1.5倍に増えています。
+- Before: 柔軟な対応が必要です。そのためには適応力を高めることが重要です。
+  After: ピーク期は臨時スタッフを入れ、夜間対応は例外的に省く——そう事前に決めておくだけで現場は回ります。
+
+### JA-08 記号・整形クセ
+- Before: ✅ **重要ポイント** — まず計画を立てましょう
+  After: 大事なのは、まず計画を立てること。
+- Before: ステップは以下の通りです：1. 準備 2. 実行 3. 確認
+  After: やることは、準備して、実行して、最後に見直す。それだけです。
+
+### JA-09 カタカナ語多用・翻訳調
+- Before: 本質的な課題に対するソリューションをコミットします。
+  After: 根っこの問題から片付けます。
+- Before: 財布が悲鳴をあげているという音が聞こえます。 *(idiom read literally)*
+  After: 今月は出費がかさんで、財布が悲鳴をあげています。
+
+## Quality Grading
+
+Apply after the rewrite. **Residual** = count of S1/S2 tells remaining in the output. **Improvement** = (original tell count − residual tell count) / original tell count.
+
+| Grade | Residual S1 | Residual S2 | Improvement | Action |
+|-------|-------------|-------------|-------------|--------|
+| **A** | 0 | ≤ 2 | ≥ 70% | Accept |
+| **B** | 0 | ≤ 4 | ≥ 50% | Accept |
+| **C** | 1–2 (or ≥2 over-edit signals) | — | < 50% | Round-2 rewrite |
+| **D** | ≥ 3 (or severe over-edit / meaning drift) | — | — | Human review required |
+
+Hard rules:
+- Any residual S1 caps the grade at **C** regardless of improvement %.
+- Any meaning-distortion flag forces **D**.
+
+## Over-Editing Guardrails
+
+Humanization is post-editing (윤문), not rewriting. The goal is to remove AI tells from the flagged spans while preserving meaning — not to produce a new draft.
+
+**Change-magnitude gates** (measured as character-level edit distance ÷ original length):
+- **> 30% changed → WARN.** Surface a diff and confirm the edit is humanization, not a rewrite. Padding-removal (JA-01) legitimately shrinks text, so a length drop alone is not a violation — flag when *meaning-bearing* spans are altered.
+- **> 50% changed → HALT.** Stop and require human review. At this point the output is a new draft, not a post-edit.
+
+**Meaning-preservation rules (non-negotiable):**
+1. **No fact invention.** Humanizing must not add place names, numbers, dates, or cases that were not in the source. JA-06 wants *real* specifics — if none exist, leave a placeholder or flag for the author; never fabricate. This guards against hallucination during the de-AI pass.
+2. **Preserve claims & polarity.** Do not flip assertions, negations, or hedged-vs-asserted stance beyond removing redundant hedges.
+3. **Preserve named entities, quotes, figures, and technical terms verbatim.**
+4. **Style conversion is allowed but must be consistent.** Keep です・ます調 ⇔ だ・である調 unified across the whole text; never mix mid-document.
+5. **Don't over-correct into a new AI tell.** Rewriting AI text *with* an AI re-injects AI-ness; favor surgical edits to the flagged spans over wholesale regeneration.
+
+**Processing modes:**
+- **Fast Mode** (default, short text ≤ ~5,000 chars): single pass — detect → rewrite → self-verify.
+- **Strict Mode** (long text ≥ ~8,000 chars or when explicitly requested): separate detection / rewrite / dual-validation passes. Recommend a literal read-aloud (声に出して読む) verification for rhythm (JA-04 / JA-05).
+
+---
+
+## Copy Layer (Japanese)
+
+Genre scope: マーケティングコピー — headlines, キャッチコピー, CTAs, landing pages (LP), brand/founder storytelling, and slide titles. The copy layer continues the `JA-` numeric scheme (JA-10…JA-14). In copy mode the over-editing guard changes: the change-rate limit is replaced by the **fact-anchor preservation guard** (see the shared SKILL.md guardrails) — numbers, dates, prices, and proper nouns stay intact and the core offer/benefit keeps its meaning, while expression and sentence structure may be rewritten freely.
+
+A critical calibration governs this layer: 体言止め (the noun-ending sentence close) is a legitimate, prestigious device of native Japanese copywriting. The Japanese copy tell is therefore about **frequency and default rhythm, never mere occurrence** — see the boundary analysis below.
+
+### Detection Categories (copy)
+
+| ID | Tell | Why it reads as AI | Severity |
+|----|------|--------------------|----------|
+| JA-10 | 体言止め過剰依存 — noun-ending over-reliance: most headlines or consecutive sentences close on 体言止め/言い切り as the default rhythm | Skilled writers deploy 体言止め deliberately at emphasis points amid varied endings; generated copy over-produces it until the rhythm turns choppy and monotone | S2 (frequency-gated: fires at ≥3 consecutive 体言止め lines, or when every headline in a set ends that way, or when it replaces ending variation throughout — never on mere presence) |
+| JA-11 | 英語式コロン見出し — English-style heading/sentence-final colon 「見出し：」, often with a half-width space after it | Japanese rarely uses a sentence-final or heading colon; the imported punctuation leaks directly from English source patterns | S1 (on sight) |
+| JA-12 | ダッシュ対比・記号代用 — em-dash 「—」 where Japanese convention uses 「……」, 中黒, or a full sentence | An imported punctuation artifact of the same family as Markdown residue; a human writer might choose the literary 「──」 deliberately, so body-copy judgment requires repetition | S1 (raw punctuation artifact); S2 (in body copy) |
+| JA-13 | 定型訴求フレーズ — formulaic value-prop/CTA endings 「〜を実現します」「〜を可能にします」 with an abstract, ownerless benefit and no number, name, or outcome | The safe-form promise frame recurs as the model's default benefit sentence; a single concrete, true 「〜を実現します」 can be legitimate | S2 (allow 1–2; flag at 3+) |
+| JA-14 | ブランド/創業ストーリーテンプレート — founder-myth arc, creator self-narration with no 一次情報 (first-hand detail) | Generated brand stories run cold and generic without lived specifics; a fabricated beat is worse than a missing one | S2 (escalates to S1 on fabricated beats — the fix is to DELETE the invented beat, never to invent a replacement) |
+
+Cross-cutting (no new IDs): copy amplifies JA-09 katakana overload; JA-04 and JA-08 already own monotone です・ます endings and em-dash/emoji/Markdown artifacts in prose.
+
+### Severity Rationale (copy)
+
+- JA-11 is S1 by parity with the prose punctuation-artifact family (JA-08): a near-deterministic English-import leak.
+- JA-12 is S1 as a raw punctuation artifact, S2 inside body copy — require repetition before convicting, since a human might choose the literary double-dash for 余韻.
+- JA-13 inherits the prose JA-01 threshold: the padded promise form convicts at density, not on sight.
+- JA-14 is S2, escalating to S1 when a beat is fabricated. Delete invented beats; never replace them with new inventions.
+- The frequency gate on the noun-ending category is deliberate and load-bearing — see the boundary analysis below for why a presence-based rule is prohibited.
+
+### 体言止め Boundary Analysis (critical)
+
+体言止め is an established, prestigious Japanese copywriting technique — a staple of キャッチコピー, ad copy, and titles, valued for emphasis and rhythm. A detector that flags noun-endings *by presence* fires constantly on skilled human copy and becomes a guaranteed false-positive machine. The severity of this category is therefore never presence-based; only the over-reliance pattern convicts:
+
+- **Skilled craft (do NOT flag)**: ONE strategic 体言止め at the single emphasis point, amid varied verb/question endings. Humans use it deliberately (狙って).
+- **Generated slop (flag)**: 体言止め/言い切り as the *default* ending — ≥3 consecutive lines closing on a noun, or every headline in a set, or noun-endings replacing ending variation throughout a piece. Over-use turns the text ぶつ切り (choppy) and flattens the flow.
+- **The read-aloud test (声に出して読む) is decisive**: a strategic noun-ending lands as emphasis; a default noun-ending rhythm sounds like a bullet list read out loud.
+- **No particle-ending analog**: the Korean copy catalogue carries a particle-ending fragment tell, but Japanese has no clean analog — the nearest device (助詞終わりの倒置・余韻) is itself legitimate craft, so no such category exists in this layer.
+
+### Before/After Rewrite Examples (copy)
+
+- Before: 業務効率を改善。コストを削減。導入も簡単。成果も明確。
+  After: 業務のムダを減らし、コストは月3割下がりました。導入は半日。成果は数字で見えます。
+  (JA-10: four consecutive noun-endings → varied endings, one emphasis point kept)
+- Before: 導入事例：大手製造業での活用
+  After: 導入事例 — 大手製造業でどう使われているか
+  (JA-11: drop the English-style heading colon; restructure natively)
+- Before: 高速—それがこのツールの本質です。
+  After: とにかく速い。それがこのツールの本質です。
+  (JA-12: replace the imported em-dash with a native short-sentence rhythm)
+- Before: 業務の最適化を実現します。生産性の向上を可能にします。
+  After: 請求書40件の処理が10分で終わります。
+  (JA-13: swap the formulaic promise pair for one concrete, ownerless-no-more outcome)
+- Before: 情熱と挑戦を胸に、幾多の困難を乗り越えて、私たちのブランドは生まれました。
+  After: 最初の試作品は3回連続で割れました。4回目の窯出しが、いまの定番です。
+  (JA-14: replace the founder-myth arc with first-hand, verifiable detail)
+
+### High-False-Positive Signals (copy — do NOT flag)
+
+- A single strategic 体言止め amid varied endings.
+- 体言止め in bullet lists, captions, spec sheets, and complete metadata titles (「2026年Q1 事業報告」).
+- Established katakana loanwords with no natural 和語/漢語 substitute (アプリ, サイト, メール).
+- Non-sentence colons: times (14:00), ratios (3:1), fixed labels.
+- The literary double-dash 「──」 used deliberately for 余韻.
+- 「〜を実現します」 when the claim is concrete and true in a genuine spec line.
+- Third-person informational copy (FAQ, specs, prices, dates, business-registration blocks) — legitimately impersonal.
+
+---
+
+## Attribution
+
+The category-catalogue structure of this module is inspired by the **im-not-ai (Humanize KR)** project (https://github.com/epoko77-ai/im-not-ai). The Japanese tell patterns here — prose and copy layers alike — were independently researched and authored.

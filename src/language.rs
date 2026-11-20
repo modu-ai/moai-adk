@@ -1,6 +1,13 @@
-//! Per-project writing language by item (Issue #2293): the `language` key of
-//! `.moai-cli/project.yaml`, the setup input step that asks for it item by item, and the
-//! sentences the AGENTS.md managed section renders from it.
+//! Per-project writing language (Issue #2293): the `language` key of `.moai-cli/project.yaml`,
+//! the setup input step, and the sentences the AGENTS.md managed section renders from it.
+//!
+//! The setup asks three questions: the conversation language (`user_chat`; the AGENTS.md and
+//! REVIEW.md managed sections are written in it), the commit-message language and the document
+//! language (`documents`: reports and SPEC documents). Everything else is English without asking:
+//! instruction files, skills and rules, messages between agents, code comments, issue and PR
+//! records. The older profile items (`reports`, `issue_pr_records`, `agent_messages`,
+//! `instruction_files`, `skill_instructions`, `code_comments`) are still accepted and, when a
+//! profile sets one, still mean what they meant; the setup neither asks for them nor adds them.
 //!
 //! The item list, the accepted language codes and each item's default live in the two
 //! tables below and nowhere else. The defaults are stated values chosen for the product,
@@ -27,64 +34,83 @@ pub enum DefaultSource {
     Conversation,
 }
 
-/// One writing item: its profile id, its label in English and Korean, and its default.
+/// One writing item: its profile id, its label in English and Korean, its default, and whether
+/// the setup asks for it.
 #[derive(Clone, Copy, Debug)]
 pub struct Item {
     pub id: &'static str,
     pub label_en: &'static str,
     pub label_ko: &'static str,
     pub default: DefaultSource,
+    /// The three items the setup asks; the others are older profile items, kept readable.
+    pub asked: bool,
 }
 
-/// Every item the `language` key may name, in question and rendering order.
+/// Every item the `language` key may name, in rendering order; the setup asks the ones marked
+/// `asked`, in the order they appear here.
 pub const ITEMS: &[Item] = &[
     Item {
         id: "user_chat",
         label_en: "Conversation with the user",
         label_ko: "사용자 대화",
         default: DefaultSource::Conversation,
+        asked: true,
     },
     Item {
         id: "reports",
         label_en: "Reports to the user",
         label_ko: "사용자 보고",
-        default: DefaultSource::Conversation,
+        default: DefaultSource::English,
+        asked: false,
     },
     Item {
         id: "issue_pr_records",
         label_en: "Issue and PR records",
         label_ko: "Issue·PR 기록",
-        default: DefaultSource::Conversation,
+        default: DefaultSource::English,
+        asked: false,
     },
     Item {
         id: "commit_messages",
         label_en: "Commit messages",
         label_ko: "커밋 메시지",
         default: DefaultSource::Conversation,
+        asked: true,
     },
     Item {
         id: "agent_messages",
         label_en: "Messages between agents",
         label_ko: "에이전트 간 메시지",
         default: DefaultSource::English,
+        asked: false,
     },
     Item {
         id: "instruction_files",
         label_en: "Instruction files (AGENTS.md, rules)",
         label_ko: "지침 파일(AGENTS.md, 규칙)",
         default: DefaultSource::English,
+        asked: false,
     },
     Item {
         id: "skill_instructions",
         label_en: "Skill instructions",
         label_ko: "skill 지침",
         default: DefaultSource::English,
+        asked: false,
     },
     Item {
         id: "code_comments",
         label_en: "Code comments",
         label_ko: "코드 주석",
         default: DefaultSource::English,
+        asked: false,
+    },
+    Item {
+        id: "documents",
+        label_en: "Documents (reports and SPEC documents)",
+        label_ko: "문서(보고서·SPEC)",
+        default: DefaultSource::Conversation,
+        asked: true,
     },
 ];
 
@@ -150,7 +176,8 @@ pub fn resolve(settings: &LanguageSettings, conversation: &str) -> Vec<(&'static
 }
 
 /// The managed-section lines for a set `language` key, written in `ui` (`en` or `ko`): one line
-/// per item the profile sets, in `ITEMS` order. An item the profile leaves out gets no line —
+/// per item the profile sets, in `ITEMS` order, then one sentence that everything not listed is
+/// English. An item the profile leaves out gets no line —
 /// its language is never guessed (card C-87 S1; before, it was rendered with its default and a
 /// conversation-default item took the request language, so `reports` read English beside a
 /// Japanese `user_chat`). `profile_rel` is where the project keeps `project.yaml`
@@ -172,6 +199,11 @@ pub fn render_lines(settings: &LanguageSettings, ui: &str, profile_rel: &str) ->
         };
         out.push_str(&format!("- {label}: {} (`{code}`)\n", code_name(code, ui)));
     }
+    out.push_str(if ui == "ko" {
+        "그 밖의 글(지침 파일, 스킬·규칙, 에이전트 간 메시지, 코드 주석, Issue·PR 기록)은 위에 따로 적지 않으면 영어로 써요.\n"
+    } else {
+        "All other writing (instruction files, skills and rules, messages between agents, code comments, issue and PR records) is in English unless a line above says otherwise.\n"
+    });
     out
 }
 
@@ -333,6 +365,13 @@ pub fn set_home(home: &std::path::Path, code: &str) -> Result<Value> {
 fn suggested(current: Option<&LanguageSettings>, item: &Item, conversation: &str) -> String {
     current
         .and_then(|c| c.get(item.id))
+        // `documents` is the successor of `reports`: a stored `reports` value is the suggestion
+        // for it, never a copy of it.
+        .or_else(|| {
+            (item.id == "documents")
+                .then(|| current.and_then(|c| c.get("reports")))
+                .flatten()
+        })
         .cloned()
         .unwrap_or_else(|| default_for(item, conversation))
 }
@@ -347,10 +386,10 @@ fn with_go(current: Option<&LanguageSettings>, go: &LanguageSettings) -> Languag
     base
 }
 
-/// The question set a host question tool asks: one question per item with the current
-/// value, the value an empty answer keeps (`suggested`) and the accepted codes.
+/// The question set a host question tool asks: one question per asked item (three) with the
+/// current value, the value an empty answer keeps (`suggested`) and the accepted codes.
 pub fn questions(current: Option<&LanguageSettings>, conversation: &str) -> Value {
-    questions_with(current, &LanguageSettings::new(), conversation)
+    questions_with(current, &LanguageSettings::new(), conversation, "default")
 }
 
 /// [`questions`] with the Go backup's item values as the next source of `suggested` (#2817).
@@ -358,6 +397,7 @@ fn questions_with(
     current: Option<&LanguageSettings>,
     go: &LanguageSettings,
     conversation: &str,
+    source: &str,
 ) -> Value {
     let base = with_go(current, go);
     let options: Vec<Value> = CODES
@@ -366,6 +406,7 @@ fn questions_with(
         .collect();
     let items: Vec<Value> = ITEMS
         .iter()
+        .filter(|i| i.asked)
         .map(|i| {
             json!({
                 "id": i.id,
@@ -377,11 +418,19 @@ fn questions_with(
             })
         })
         .collect();
-    json!({"conversation_language": conversation, "items": items, "options": options})
+    json!({
+        "conversation_language": conversation,
+        // Where the conversation language came from: `flag`, `profile`, `installer` (the value
+        // the installer saved: a confirmation, not a new question), `go_backup` or `default`.
+        "conversation_source": source,
+        "items": items,
+        "options": options,
+    })
 }
 
-/// Applies host-tool answers (`{item: code}`); an item left out keeps its suggested value.
-/// The result names every item explicitly, so a re-run with no answers is byte-stable.
+/// Applies host-tool answers (`{item: code}`); an asked item left out keeps its suggested value.
+/// The result names the three asked items explicitly, so a re-run with no answers is byte-stable,
+/// and carries an older item only when `current` has it or an answer names it.
 pub fn merge_answers(
     current: Option<&LanguageSettings>,
     answers: &Map<String, Value>,
@@ -395,9 +444,14 @@ pub fn merge_answers(
         }
     }
     for i in ITEMS {
-        let code = match answers.get(i.id).and_then(Value::as_str) {
-            Some(code) => code.to_owned(),
-            None => suggested(current, i, conversation),
+        let answer = answers.get(i.id).and_then(Value::as_str);
+        let code = match (answer, i.asked) {
+            (Some(code), _) => code.to_owned(),
+            (None, true) => suggested(current, i, conversation),
+            (None, false) => match current.and_then(|c| c.get(i.id)) {
+                Some(code) => code.clone(),
+                None => continue,
+            },
         };
         out.insert(i.id.into(), code);
     }
@@ -435,22 +489,37 @@ pub fn setup<R: BufRead, W: Write>(
     let go = crate::go_settings::read(root);
     let profile_chat = current.as_ref().and_then(|c| c.get("user_chat")).is_some();
     let home_chat = home.and_then(home_conversation_supported);
-    let conversation = match (conversation, profile_chat, &home_chat, &go.conversation) {
-        (None, false, None, Some(code)) => code.clone(),
-        _ => conversation_language_in(conversation, current.as_ref(), home_chat.as_deref())?,
+    let (conversation, source) = match (conversation, profile_chat, &home_chat, &go.conversation) {
+        (None, false, None, Some(code)) => (code.clone(), "go_backup"),
+        (explicit, _, _, _) => {
+            let code = conversation_language_in(explicit, current.as_ref(), home_chat.as_deref())?;
+            let source = match (explicit, profile_chat, &home_chat) {
+                (Some(_), _, _) => "flag",
+                (None, true, _) => "profile",
+                (None, false, Some(_)) => "installer",
+                (None, false, None) => "default",
+            };
+            (code, source)
+        }
     };
     let base = with_go(current.as_ref(), &go.items);
     let base_ref = (!base.is_empty()).then_some(&base);
-    let chosen = match mode {
+    // The profile's own older items stay as they are; a value that only the Go backup has for an
+    // item the setup does not ask is never copied in.
+    let own = current.clone().unwrap_or_default();
+    let mut answered: Vec<String> = Vec::new();
+    let mut chosen = match mode {
         SetupMode::Questions => {
-            let mut out =
-                json!({"questions": questions_with(current.as_ref(), &go.items, &conversation)});
+            let mut out = json!({"questions": questions_with(current.as_ref(), &go.items, &conversation, source)});
             if go.found {
                 out["go_backup"] = go.to_json();
             }
             return Ok(out);
         }
-        SetupMode::Answers(answers) => merge_answers(base_ref, &answers, &conversation)?,
+        SetupMode::Answers(answers) => {
+            answered = answers.keys().cloned().collect();
+            merge_answers(base_ref, &answers, &conversation)?
+        }
         SetupMode::Interactive => {
             if go.found {
                 let _ = writeln!(
@@ -462,6 +531,12 @@ pub fn setup<R: BufRead, W: Write>(
             interactive(base_ref, &conversation, input, prompt)?
         }
     };
+    chosen.retain(|k, _| {
+        item(k).is_some_and(|i| i.asked) || own.contains_key(k) || answered.contains(k)
+    });
+    for (k, v) in &own {
+        chosen.entry(k.clone()).or_insert_with(|| v.clone());
+    }
     let changed: Vec<&str> = ITEMS
         .iter()
         .filter(|i| current.as_ref().and_then(|c| c.get(i.id)) != chosen.get(i.id))
@@ -486,8 +561,8 @@ pub fn setup<R: BufRead, W: Write>(
 /// Upper bound on wrong answers to one question before the interactive step gives up.
 pub const MAX_ATTEMPTS: usize = 3;
 
-/// The interactive input step: one prompt per item on `prompt`, one answer line per item
-/// from `input`. An empty line or end of input keeps the suggested value; a code outside
+/// The interactive input step: one prompt per asked item (three) on `prompt`, one answer line per
+/// item from `input`. An empty line or end of input keeps the suggested value; a code outside
 /// `CODES` is asked again, up to `MAX_ATTEMPTS` times.
 pub fn interactive<R: BufRead, W: Write>(
     current: Option<&LanguageSettings>,
@@ -499,7 +574,7 @@ pub fn interactive<R: BufRead, W: Write>(
     let codes: Vec<&str> = CODES.iter().map(|(c, _, _)| *c).collect();
     let mut out = LanguageSettings::new();
     let mut ended = false;
-    for i in ITEMS {
+    for i in ITEMS.iter().filter(|i| i.asked) {
         let keep = suggested(current, i, conversation);
         let mut chosen = None;
         for _ in 0..MAX_ATTEMPTS {
@@ -577,15 +652,19 @@ mod tests {
     }
 
     #[test]
-    fn merge_answers_names_every_item_and_rejects_bad_answers() {
+    fn merge_answers_names_the_three_asked_items_and_keeps_older_ones() {
         let current = settings(&[("code_comments", "ja")]);
         let answers = json!({"user_chat": "zh"});
         let out = merge_answers(Some(&current), answers.as_object().unwrap(), "ko").unwrap();
-        assert_eq!(out.len(), ITEMS.len());
+        // The three asked items are named; an older item is carried only because the profile
+        // already had it; an older item the profile never set gets no key.
+        assert_eq!(out.len(), 4, "{out:?}");
         assert_eq!(out["user_chat"], "zh");
+        assert_eq!(out["commit_messages"], "ko");
+        assert_eq!(out["documents"], "ko");
         assert_eq!(out["code_comments"], "ja");
-        assert_eq!(out["reports"], "ko");
-        assert_eq!(out["agent_messages"], "en");
+        assert!(!out.contains_key("reports"));
+        assert!(!out.contains_key("agent_messages"));
         for bad in [
             json!({"nope": "en"}),
             json!({"reports": "xx"}),
@@ -597,18 +676,26 @@ mod tests {
 
     #[test]
     fn interactive_keeps_on_empty_and_eof_and_retries_bad_codes() {
+        // The three asked items, in table order: user_chat, commit_messages, documents.
         let mut prompt = Vec::new();
         let mut input = "ko\n\nxx\nja\n".as_bytes();
         let out = interactive(None, "en", &mut input, &mut prompt).unwrap();
+        assert_eq!(out.len(), 3, "{out:?}");
         assert_eq!(out["user_chat"], "ko");
-        assert_eq!(out["reports"], "en");
-        assert_eq!(out["issue_pr_records"], "ja");
-        // End of input keeps the suggested value for every remaining item.
+        // An empty line keeps the suggested value (the conversation language, `en` here).
         assert_eq!(out["commit_messages"], "en");
-        assert_eq!(out["code_comments"], "en");
+        // A bad code is asked again; the next line is the answer.
+        assert_eq!(out["documents"], "ja");
         assert!(String::from_utf8(prompt)
             .unwrap()
             .contains("unsupported language code"));
+        // End of input keeps the suggested value for every remaining item.
+        let mut input = "ko\n".as_bytes();
+        let out = interactive(None, "en", &mut input, &mut Vec::new()).unwrap();
+        assert_eq!(out["user_chat"], "ko");
+        assert_eq!(out["commit_messages"], "en");
+        assert_eq!(out["documents"], "en");
+        assert_eq!(out.len(), 3);
     }
 
     #[test]
@@ -846,26 +933,35 @@ mod tests {
             en,
             "Writing language by item (`language` in `.moai/project.yaml`):\n\
              - Conversation with the user: Japanese (`ja`)\n\
-             - Code comments: Korean (`ko`)\n"
+             - Code comments: Korean (`ko`)\n\
+             All other writing (instruction files, skills and rules, messages between agents, code comments, issue and PR records) is in English unless a line above says otherwise.\n"
         );
         let ko = render_lines(&s, "ko", ".moai/project.yaml");
         assert_eq!(
             ko,
             "항목별 작성 언어(`.moai/project.yaml`의 `language`):\n\
              - 사용자 대화: 일본어 (`ja`)\n\
-             - 코드 주석: 한국어 (`ko`)\n"
+             - 코드 주석: 한국어 (`ko`)\n\
+             그 밖의 글(지침 파일, 스킬·규칙, 에이전트 간 메시지, 코드 주석, Issue·PR 기록)은 위에 따로 적지 않으면 영어로 써요.\n"
         );
     }
 
-    /// Each item alone renders exactly its own line, in `ITEMS` order with the others absent.
+    /// Each item alone renders exactly its own line, in `ITEMS` order with the others absent, then
+    /// the one closing sentence.
     #[test]
     fn each_item_renders_its_own_line() {
         for item in ITEMS {
             let s = settings(&[(item.id, "ko")]);
             let en = render_lines(&s, "en", "p.yaml");
             let lines: Vec<&str> = en.lines().collect();
-            assert_eq!(lines.len(), 2, "{}: {en}", item.id);
+            // Heading, the item's own line, then the closing sentence about everything else.
+            assert_eq!(lines.len(), 3, "{}: {en}", item.id);
             assert_eq!(lines[1], format!("- {}: Korean (`ko`)", item.label_en));
+            assert!(
+                lines[2].starts_with("All other writing"),
+                "{}: {en}",
+                item.id
+            );
         }
     }
 }
