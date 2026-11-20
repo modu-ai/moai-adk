@@ -72,4 +72,10 @@ created: 2026-11-20
 
 ## Result
 
-(written after the checks)
+`moai optimize-plan` 이 이제 reports 폴더 행에 `findings` 를 달고(`forbidden_folder`: `node_modules`·`.venv`·`target`·`.next`·`.git` 이름의 폴더, 링크, worktree 의 `.git` 파일 / `over_cap`: 카드 폴더가 100 MiB 를 넘을 때 `bytes_at_least` 와 `cap_bytes`), 찾으면 이유 `evidence_guard` 를 더해요. 행의 동작은 `keep` 그대로이고 아무것도 지우거나 옮기지 않아요. `moai audit-clone-plan` 의 답에는 `rules` 네 줄과 `evidence_cap_bytes` 가 들어갔어요. 아래 종료 코드는 모두 0 이에요.
+
+- 새 시험 8개(`--test audit_copy_guard`)와 1개(`--test audit_clone_cli rules_`), 이웃 `optimize_plan_cli` 19개, `audit_clone_cli` 11개 통과. 경계 시험: 정확히 100 MiB 는 통과하고 1바이트 더는 걸려요.
+- 묶음 71개 명령 전부 종료 0: `clippy --all-targets -D warnings`, `--lib` 1619, `--bins` 56, `audit_*`·`optimize_*`·`worktree_*` 시험 대상 전부, `tools/repo_scans.json` 검사 39개, 이 Mac 에서 도는 macOS 시험 파일 10개, 파이썬 `audit_eval_test`. 가벼운 검사(`cargo fmt --check`, `rustfmt --edition 2021 --check`, `git diff --check`, `moai trailer-check`, `moai spec check` 0/0)도 모두 통과.
+- 변이 5개 모두 잡혔어요: `.venv` 를 표시에서 뺌, 상한을 이상(≥)으로 바꿈, `.git` 파일을 표시에서 뺌, 표시한 폴더 안으로 들어가 크기를 셈, 찾아도 이유를 더하지 않음. 변이 하나(`.git` 파일)와 하나(표시한 폴더의 크기를 세지 않음)는 처음 시험이 없어서 시험을 더했어요.
+
+아직 안 한 것: 지침 글(감사 에이전트 지침, 감사·검증 워크플로, OPTIMIZE 워크플로)에 같은 규칙 문장 넣기. 그 파일들을 다른 변경이 쥐고 있어서 그 변경이 끝난 뒤에 따로 넣어요. 프로젝트 밖 홈 보고서 폴더(`~/.moai/reports/<project>/`) 스캔과, 증거 폴더에 파일을 넣을 때 막는 훅도 후속이에요.
