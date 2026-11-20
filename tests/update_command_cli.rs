@@ -404,7 +404,7 @@ fn in_a_terminal_an_applied_update_asks_the_model_stage_and_saves_after_a_yes() 
     let saved: Value = serde_json::from_str(&saved).unwrap();
     assert_eq!(
         saved["launcher"]["models"]["claude"]["leader"],
-        json!({"model": "claude-opus-5-5", "effort": "medium"}),
+        json!({"model": "claude-opus-5-5", "effort": "high"}),
         "{text}"
     );
 }
