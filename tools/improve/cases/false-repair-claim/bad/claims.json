@@ -1,7 +1,0 @@
-[
-  "src/agents_local_merge.rs",
-  "tools/self_check.sh",
-  "docs/ci-rc-ci-spec.md",
-  "src/main.rs",
-  "tools/heavy_check_slot.py"
-]

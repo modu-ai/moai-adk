@@ -67,7 +67,7 @@ def string_list(value, what):
 
 def claims_in_diff(root, path):
     """A claimed path that the change did not touch is a repair that was only written down."""
-    claims = string_list(read_json(path / "claims.json"), "%s/claims.json" % path)
+    claims = [line.strip() for line in read_text(path / "claims.txt").splitlines() if line.strip()]
     changed = {
         line.strip()
         for line in read_text(path / "changed-files.txt").splitlines()
