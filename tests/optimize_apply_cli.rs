@@ -225,12 +225,22 @@ fn apply_removes_only_the_picked_clean_worktrees_inside_out() {
         at("target/inner").unwrap() < at("worktrees/parent").unwrap(),
         "{gone:?}"
     );
-    // the dirty one is refused with its reason and stays
+    // the dirty one is refused by our own fresh check (git would refuse it too, but later)
+    // and the reason says what changed
+    let dirty_row = refused
+        .iter()
+        .find(|r| {
+            r["path"]
+                .as_str()
+                .is_some_and(|p| p.ends_with("worktrees/dirty"))
+        })
+        .unwrap_or_else(|| panic!("dirty not refused: {v}"));
+    assert_eq!(dirty_row["reason"], "not_a_candidate", "{dirty_row}");
     assert!(
-        refused.iter().any(|r| r["path"]
-            .as_str()
-            .is_some_and(|p| p.ends_with("worktrees/dirty"))),
-        "{v}"
+        dirty_row["detail"]
+            .as_array()
+            .is_some_and(|d| d.iter().any(|x| x == "tracked_changes")),
+        "{dirty_row}"
     );
     assert!(dirty.is_dir());
     assert!(!parent.exists() && !inner.exists());
