@@ -75,7 +75,7 @@ fn claude_ends_the_hooks_object_with_one_stop_group() {
 }
 
 /// AC-1 (REQ-3), through the binary with `[hooks.edit_diagnostics]` enabled: the edit-diagnostics
-/// group joins PostToolUse and the Stop group is still the last one of the plan.
+/// group joins PostToolUse and the Stop event is still the last one of the written settings.
 #[test]
 fn claude_keeps_the_stop_group_last_while_edit_diagnostics_is_enabled() {
     let dir = tempfile::TempDir::new().unwrap();
@@ -88,37 +88,57 @@ fn claude_keeps_the_stop_group_last_while_edit_diagnostics_is_enabled() {
         "[hooks.edit_diagnostics]\nenabled = true\ncheckers = { rs = [\"x\"] }\n",
     )
     .unwrap();
-    let out = Command::new(common::MOAI_BIN)
-        .clean_env()
-        .env("PATH", std::env::var_os("PATH").unwrap_or_default())
-        .env("HOME", &home)
-        .current_dir(&proj)
-        .args(["hooks-plan", proj.to_str().unwrap(), "--host", "claude"])
-        .output()
-        .unwrap();
-    assert!(out.status.success(), "{out:?}");
-    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
-    let listed: Vec<(String, String)> = v["result"]["hooks"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|h| {
-            (
-                h["event"].as_str().unwrap_or("").to_string(),
-                h["command"].as_str().unwrap_or("").to_string(),
-            )
-        })
-        .collect();
-    assert!(
-        listed
-            .iter()
-            .any(|(_, c)| c.contains("--event edit-diagnostics")),
-        "{listed:?}"
+    // `hooks-apply` writes only where the first `moai` on PATH is the Rust build: this one.
+    let bin = root.join("bin");
+    fs::create_dir_all(&bin).unwrap();
+    std::os::unix::fs::symlink(common::MOAI_BIN, bin.join("moai")).unwrap();
+    let path = format!(
+        "{}:{}",
+        bin.display(),
+        std::env::var("PATH").unwrap_or_default()
     );
-    let stops: Vec<&(String, String)> = listed.iter().filter(|(e, _)| e == "Stop").collect();
-    assert_eq!(stops.len(), 1, "{listed:?}");
-    assert_eq!(listed.last().unwrap(), stops[0], "{listed:?}");
-    assert!(stops[0].1.contains("--event security-turn"), "{listed:?}");
+    let run = |args: &[&str]| -> Value {
+        let out = Command::new(common::MOAI_BIN)
+            .clean_env()
+            .env("PATH", &path)
+            .env("HOME", &home)
+            .current_dir(&proj)
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "{args:?}: {out:?}");
+        serde_json::from_slice(&out.stdout).unwrap()
+    };
+    let project = proj.to_str().unwrap();
+    let plan = run(&["hooks-plan", project, "--host", "claude"]);
+    let digest = plan["result"]["plan_digest"].as_str().unwrap().to_string();
+    let applied = run(&[
+        "hooks-apply",
+        project,
+        "--host",
+        "claude",
+        "--plan-digest",
+        &digest,
+        "--permission-reference",
+        PERMISSION,
+    ]);
+    assert_eq!(applied["result"]["state"], json!("applied"), "{applied}");
+    // The written file is the order a host reads: the edit-diagnostics group joins PostToolUse
+    // and the Stop event is still the last one.
+    let text = fs::read_to_string(proj.join(".claude/settings.json")).unwrap();
+    let settings: Value = serde_json::from_str(&text).unwrap();
+    let object = settings["hooks"].as_object().unwrap();
+    let events: Vec<&String> = object.keys().collect();
+    assert_eq!(
+        events,
+        ["SessionStart", "PreToolUse", "PostToolUse", "Stop"]
+    );
+    let post = commands(object, "PostToolUse");
+    assert_eq!(post.len(), 3, "{post:?}");
+    assert!(post[2].contains("--event edit-diagnostics"), "{post:?}");
+    let stop = object["Stop"].as_array().unwrap();
+    assert_eq!(stop.len(), 1, "{stop:?}");
+    assert_eq!(stop[0]["hooks"][0]["command"], json!(TURN_COMMAND));
 }
 
 /// AC-2 (REQ-4, REQ-5): codex and omp run no security-turn group and keep their other groups; the
