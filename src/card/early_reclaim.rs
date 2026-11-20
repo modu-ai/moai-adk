@@ -23,7 +23,7 @@ use std::path::Path;
 /// (SPEC-20261120-reclaim-dead-holder REQ-12): the statusline's GitHub counts, under either
 /// state folder name. A name is listed here or it is work; nothing is matched by pattern.
 const TOOL_CACHE_FILES: &[&str] = &[
-    ".moai-cli/state/github/counts.json",
+    crate::project_state!("state/github/counts.json"),
     ".moai/state/github/counts.json",
 ];
 
