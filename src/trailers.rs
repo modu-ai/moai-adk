@@ -194,6 +194,10 @@ pub struct CommitTrailers {
     pub sessions: Vec<String>,
     /// The `Moai-Verified` values of the commit, as written (one per line).
     pub verified: Vec<String>,
+    /// The commit's subject and body, read for the card-number scan (the trailers are not part
+    /// of either).
+    pub subject: String,
+    pub body: String,
     /// The log line had more fields than it should: a trailer value held the log's own field
     /// separator (audit N3), so its values cannot be read apart.
     pub garbled: bool,
@@ -282,26 +286,31 @@ fn findings(c: &CommitTrailers, spec_branch: bool, under_rule: bool) -> Vec<Valu
     out
 }
 
-/// Parses `git log --format=%H%x1f<specs>%x1f<sessions>%x1f<verified>` lines (values separated
-/// by `\x1e`).
+/// Parses `git log --format=%x1e%H%x1f<specs>%x1f<sessions>%x1f<verified>%x1f<subject>%x1f<body>`
+/// records (records separated by `\x1e`, trailer values by `\x03`).
 pub fn parse_log(text: &str) -> Vec<CommitTrailers> {
     let split = |s: &str| -> Vec<String> {
-        s.split('\x1e')
+        s.split('\x03')
             .map(str::trim)
             .filter(|v| !v.is_empty())
             .map(String::from)
             .collect()
     };
-    text.lines()
-        .filter_map(|l| {
-            let parts: Vec<&str> = l.split('\x1f').collect();
+    text.split('\x1e')
+        .filter_map(|record| {
+            // The body is multiline, so a whole commit is one `\x1e` record and the fields
+            // inside it split on `\x1f`; a trailer value holding the field separator still
+            // shows up as too many fields.
+            let parts: Vec<&str> = record.split('\x1f').collect();
             let sha = parts.first()?.trim().to_string();
             (!sha.is_empty()).then(|| CommitTrailers {
                 sha,
                 specs: split(parts.get(1).copied().unwrap_or("")),
                 sessions: split(parts.get(2).copied().unwrap_or("")),
                 verified: split(parts.get(3).copied().unwrap_or("")),
-                garbled: parts.len() > 4,
+                subject: parts.get(4).copied().unwrap_or("").trim().to_string(),
+                body: parts.get(5).copied().unwrap_or("").trim().to_string(),
+                garbled: parts.len() > 6,
             })
         })
         .collect()
@@ -336,7 +345,7 @@ fn log_trailers(git: &impl Fn(&[&str]) -> Result<String>, range: &str) -> Result
         "log",
         "--no-merges",
         "--reverse",
-        "--format=%H%x1f%(trailers:key=Moai-Spec,valueonly,separator=%x1e)%x1f%(trailers:key=Moai-Session,valueonly,separator=%x1e)%x1f%(trailers:key=Moai-Verified,valueonly,separator=%x1e)",
+        "--format=%x1e%H%x1f%(trailers:key=Moai-Spec,valueonly,separator=%x03)%x1f%(trailers:key=Moai-Session,valueonly,separator=%x03)%x1f%(trailers:key=Moai-Verified,valueonly,separator=%x03)%x1f%s%x1f%b",
         range,
         "--",
     ])
@@ -363,6 +372,19 @@ pub fn check(
     range: &str,
     branch: Option<&str>,
     verified_since: Option<&str>,
+) -> Result<Value> {
+    check_rules(dir, range, branch, verified_since, None)
+}
+
+/// [`check`] with the card-number rule: `card_numbers_since` records the rule's start (that
+/// commit itself exempt; a start outside the range covers the whole range), `None` keeps the
+/// rule off.
+pub fn check_rules(
+    dir: &Path,
+    range: &str,
+    branch: Option<&str>,
+    verified_since: Option<&str>,
+    card_numbers_since: Option<&str>,
 ) -> Result<Value> {
     if range.is_empty() || range.starts_with('-') {
         return Err(
@@ -395,6 +417,17 @@ pub fn check(
                 .to_string(),
         ),
     };
+    let cards_sha = match card_numbers_since {
+        None => None,
+        Some(s) if s.is_empty() || s.starts_with('-') => {
+            return Err("the card-number start must be a revision, not an option".into())
+        }
+        Some(s) => Some(
+            git(&["rev-parse", "--verify", &format!("{s}^{{commit}}")])?
+                .trim()
+                .to_string(),
+        ),
+    };
     // Re-audit N4: a detached checkout (CI) names the branch it judges.
     let branch = match branch {
         Some(b) => b.to_string(),
@@ -404,7 +437,125 @@ pub fn check(
     };
     let commits = parse_log(&log);
     let from = verified_from(&commits, verified_since, since_sha.as_deref().unwrap_or(""));
-    Ok(judge_from(&commits, &branch, from))
+    let cards_from = match cards_sha.as_deref() {
+        Some(sha) => card_numbers_from(&commits, sha),
+        None => None,
+    };
+    Ok(judge_rules(&commits, &branch, from, cards_from))
+}
+
+/// Judges the commits with both rules: the `Moai-Verified` start index and the card-number
+/// start index (`None` keeps that rule off).
+pub fn judge_rules(
+    commits: &[CommitTrailers],
+    branch: &str,
+    verified_from: Option<usize>,
+    card_numbers_from: Option<usize>,
+) -> Value {
+    let spec_branch = branch.starts_with("spec/");
+    let from = verified_from.unwrap_or(usize::MAX);
+    let card_at = card_numbers_from.unwrap_or(usize::MAX);
+    let mut all: Vec<Value> = Vec::new();
+    for (i, c) in commits.iter().enumerate() {
+        all.extend(findings(c, spec_branch, i >= from));
+        if i >= card_at {
+            all.extend(card_number_findings(c));
+        }
+    }
+    let failing = all.iter().filter(|f| f["fails"] == json!(true)).count();
+    json!({"branch": branch, "spec_branch": spec_branch, "commits": commits.len(),
+           "verified_from": verified_from, "card_numbers_from": card_numbers_from,
+           "findings": all, "failing": failing, "ok": failing == 0})
+}
+
+/// Where the card-number rule starts among `commits`: the index after the recorded start (itself
+/// exempt), the whole range when the start sits outside it, none without a recorded start.
+fn card_numbers_from(commits: &[CommitTrailers], sha: &str) -> Option<usize> {
+    commits
+        .iter()
+        .position(|c| c.sha == sha)
+        .map(|at| at + 1)
+        .or(Some(0))
+}
+
+/// The card-number shapes of one line: `C-<n>` or `c-<n>` with a boundary before (no leading
+/// alphanumeric or hyphen, so `AC-150` and `SPEC-C-9` never match) and after (no trailing
+/// alphanumeric, so `C-150b` never matches). A match with an odd number of double quotes before
+/// it on the line is quoted ledger output and exempt.
+fn card_numbers_in_line(line: &str) -> Vec<String> {
+    let chars: Vec<char> = line.chars().collect();
+    let mut out = Vec::new();
+    for (i, c) in chars.iter().enumerate() {
+        if *c != 'C' && *c != 'c' || chars.get(i + 1) != Some(&'-') {
+            continue;
+        }
+        let mut digits = 0;
+        while chars
+            .get(i + 2 + digits)
+            .is_some_and(|d| d.is_ascii_digit())
+        {
+            digits += 1;
+        }
+        if digits == 0
+            || chars
+                .get(i + 2 + digits)
+                .is_some_and(|d| d.is_ascii_alphanumeric())
+        {
+            continue;
+        }
+        if i > 0 && (chars[i - 1].is_ascii_alphanumeric() || chars[i - 1] == '-') {
+            continue;
+        }
+        if chars[..i].iter().filter(|q| **q == '"').count() % 2 == 1 {
+            continue;
+        }
+        out.push(chars[i..i + 2 + digits].iter().collect());
+    }
+    out
+}
+
+/// The `card_number` findings of one commit: every shape in its subject or body, with the
+/// message line it sits on. The number itself is named — it is not a secret.
+fn card_number_findings(c: &CommitTrailers) -> Vec<Value> {
+    let mut out = Vec::new();
+    let lines = std::iter::once((1usize, c.subject.as_str()))
+        .chain(c.body.lines().enumerate().map(|(n, l)| (n + 2, l)));
+    for (no, line) in lines {
+        for shape in card_numbers_in_line(line) {
+            out.push(json!({
+                "sha": c.sha, "kind": "card_number", "fails": true,
+                "detail": format!(
+                    "the commit message names card {shape} on line {no}; card numbers live in \
+                     the ledger and the decision record, not the message"
+                ),
+            }));
+        }
+    }
+    out
+}
+
+/// Judges one draft commit message (the commit-msg hook's input) with the card-number scan
+/// always on. Reads the file only.
+pub fn message_file_check(path: &Path) -> Result<Value> {
+    let bytes = std::fs::read(path)
+        .map_err(|e| format!("cannot read the message file {}: {e}", path.display()))?;
+    let text = String::from_utf8_lossy(&bytes);
+    let mut findings = Vec::new();
+    for (n, line) in text.lines().enumerate() {
+        for shape in card_numbers_in_line(line) {
+            findings.push(json!({
+                "kind": "card_number", "fails": true,
+                "detail": format!(
+                    "the commit message names card {shape} on line {}; card numbers live in \
+                     the ledger and the decision record, not the message",
+                    n + 1
+                ),
+            }));
+        }
+    }
+    let failing = findings.len();
+    Ok(json!({"message_file": path.display().to_string(),
+              "findings": findings, "failing": failing, "ok": failing == 0}))
 }
 
 /// The commits a standard revert message (`This reverts commit <sha>`, the text `git revert`
@@ -634,7 +785,7 @@ mod tests {
     /// fails anywhere.
     #[test]
     fn judge_cuts_at_the_first_commit_carrying_the_line() {
-        let log = "a\x1f\x1f\x1f\nb\x1f\x1f\x1ftests\nc\x1f\x1f\x1f\nd\x1f\x1f\x1ftset\n";
+        let log = "\x1ea\x1f\x1f\x1f\x1f\x1f\x1eb\x1f\x1f\x1ftests\x1f\x1f\x1ec\x1f\x1f\x1f\x1f\x1f\x1ed\x1f\x1f\x1ftset\x1f\x1f";
         let c = parse_log(log);
         assert_eq!(c.len(), 4);
         assert_eq!(c[1].verified, ["tests"]);
@@ -668,18 +819,18 @@ mod tests {
     /// cannot be told apart from two values; the commit is malformed and fails, never misread.
     #[test]
     fn a_value_with_a_separator_or_control_character_is_malformed() {
-        let garbled = format!("a\x1fSPEC-20261117-x\x1fextra\x1f{S}\x1f{S}\n");
+        let garbled = format!("a\x1fSPEC-20261117-x\x1fextra\x1f{S}\x1f{S}\x1f\x1f");
         let c = parse_log(&garbled);
         assert_eq!(c.len(), 1);
         let v = judge(&c, "main");
         assert_eq!(v["failing"], 1, "{v}");
         assert_eq!(v["findings"][0]["kind"], "malformed_trailers", "{v}");
-        let control = format!("b\x1fSPEC-20261117-x\x07\x1f{S}\n");
+        let control = format!("b\x1fSPEC-20261117-x\x07\x1f{S}\x1f\x1f\x1f");
         let v = judge(&parse_log(&control), "main");
         assert_eq!(v["findings"][0]["kind"], "malformed_spec", "{v}");
         assert_eq!(
             judge(
-                &parse_log(&format!("c\x1fSPEC-20261117-x\x1f{S}\n")),
+                &parse_log(&format!("c\x1fSPEC-20261117-x\x1f{S}\x1f\x1f\x1f")),
                 "main"
             )["ok"],
             true
@@ -688,7 +839,9 @@ mod tests {
 
     #[test]
     fn the_log_reads_several_values_and_empty_fields() {
-        let log = format!("a\x1fSPEC-20261117-x\x1f{S}\nb\x1f\x1f\nc\x1fX\x1eY\x1f{S}\x1e{S}\n");
+        let log = format!(
+            "\x1ea\x1fSPEC-20261117-x\x1f{S}\x1f\x1f\x1f\x1eb\x1f\x1f\x1f\x1f\x1f\x1ec\x1fX\x03Y\x1f{S}\x03{S}\x1f\x1f\x1f"
+        );
         let c = parse_log(&log);
         assert_eq!(c.len(), 3);
         assert_eq!(c[1].specs, Vec::<String>::new());
