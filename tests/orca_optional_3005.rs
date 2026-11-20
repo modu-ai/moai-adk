@@ -64,7 +64,7 @@ fn mentions_orca(text: &str) -> bool {
 /// (`leader_round.rs`, `ops/leader_round.rs`). None of those starts the program; the one file
 /// that does is `lane_send.rs` (`ProcessOrca`, see its entry below), which the rows for
 /// `lane-screen` and `lane-send` of C-120 add.
-const SRC_ORCA_FILES: [&str; 13] = [
+const SRC_ORCA_FILES: [&str; 14] = [
     "src/claude.rs",
     "src/go_hooks.rs",
     // The `session_cwd` example of `lane-safe-to-reset` names the source `orca` (#3015 C1); the
@@ -84,6 +84,10 @@ const SRC_ORCA_FILES: [&str; 13] = [
     "src/lane_send.rs",
     "src/lane_status.rs",
     "src/ops/lane_send.rs",
+    // `lane-resume` sends through the same public pieces of `lane_send` (`ProcessOrca`), so it
+    // starts the program only when a user runs `lane-resume`, with the program name from
+    // `MOAI_ORCA_BIN` as a variable.
+    "src/ops/lane_resume.rs",
     // `leader-pulse` (#3015 C5) builds the `orca terminal send` argument list and prints it; it
     // never starts the program (`leader_pulse_cli` puts a recording `orca` first on PATH).
     "src/leader_pulse.rs",
