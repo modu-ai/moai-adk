@@ -94,7 +94,10 @@ fn report_row(fx: &Fixture) -> Value {
 }
 
 fn findings(row: &Value) -> Vec<Value> {
-    row["findings"].as_array().unwrap_or_else(|| panic!("no findings list: {row}")).clone()
+    row["findings"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no findings list: {row}"))
+        .clone()
 }
 
 fn names(row: &Value, kind: &str) -> Vec<String> {
@@ -131,11 +134,21 @@ fn flags_a_repository_copy_and_its_dependency_folders() {
     // A finding is a note: the row stays `keep`, names the reason, and nothing was removed.
     assert_eq!(row["action"], "keep", "{row}");
     assert!(
-        row["reasons"].as_array().unwrap().contains(&json!("evidence_guard")),
+        row["reasons"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("evidence_guard")),
         "{row}"
     );
-    assert!(row["reasons"].as_array().unwrap().contains(&json!("reports_kept")));
-    assert!(fx.root.join(REPORTS).join("card-1/copy/.git/HEAD").is_file());
+    assert!(row["reasons"]
+        .as_array()
+        .unwrap()
+        .contains(&json!("reports_kept")));
+    assert!(fx
+        .root
+        .join(REPORTS)
+        .join("card-1/copy/.git/HEAD")
+        .is_file());
     assert!(fx
         .root
         .join(REPORTS)
@@ -186,7 +199,11 @@ fn passes_exactly_the_cap_and_flags_one_byte_more() {
     assert_eq!(findings(&report_row(&fx)), Vec::<Value>::new());
     sparse(&fx, "card-over/log.bin", CAP + 1);
     let row = report_row(&fx);
-    assert_eq!(names(&row, "over_cap"), [".moai-cli/reports/card-over"], "{row}");
+    assert_eq!(
+        names(&row, "over_cap"),
+        [".moai-cli/reports/card-over"],
+        "{row}"
+    );
 }
 
 #[test]

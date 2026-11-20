@@ -596,6 +596,141 @@ fn hook_log_row(side: &str, shown: &str, path: &Path, now: u64) -> Option<Value>
     }))
 }
 
+/// What one card's evidence folder may hold before the guard flags it: 100 MiB. A file over it
+/// is recorded by path in the report, not copied into the evidence folder.
+pub const EVIDENCE_CAP_BYTES: u64 = 100 * 1024 * 1024;
+
+/// Folder names that mark a copied repository or its dependencies. Exact names only: a folder
+/// called `target-notes` or `my.git` is not one of them.
+const COPY_MARKERS: &[&str] = &["node_modules", ".venv", "target", ".next", ".git"];
+
+/// The guard on a reports (evidence) folder: a folder named like a repository copy or a
+/// dependency folder anywhere below `reports`, and a folder directly below it (one card's
+/// evidence) that holds more than [`EVIDENCE_CAP_BYTES`]. `rel` is the folder's path in the
+/// project, the prefix of every finding's `path`. Read only: no link is followed, a flagged
+/// folder is not entered (so its size is never counted) and nothing is written. The second
+/// value is `true` when the deadline cut the walk short.
+fn evidence_findings(reports: &Path, rel: &str, deadline: Instant) -> (Vec<Value>, bool) {
+    let mut findings = Vec::new();
+    let mut partial = false;
+    for card in sorted_entries(reports) {
+        let card_rel = format!("{rel}/{}", card.name);
+        if card.is_marker() {
+            findings.push(marker_finding(&card_rel, &card.name));
+            continue;
+        }
+        let mut size = 0u64;
+        match card.kind {
+            Kind::Dir => guard_walk(
+                &card.path,
+                &card_rel,
+                &mut size,
+                &mut findings,
+                &mut partial,
+                deadline,
+            ),
+            Kind::File | Kind::Other => continue,
+        }
+        if size > EVIDENCE_CAP_BYTES {
+            findings.push(json!({
+                "kind": "over_cap",
+                "path": card_rel,
+                "bytes_at_least": size,
+                "cap_bytes": EVIDENCE_CAP_BYTES,
+            }));
+        }
+        if partial {
+            break;
+        }
+    }
+    (findings, partial)
+}
+
+enum Kind {
+    Dir,
+    File,
+    /// A link or another entry that is never entered.
+    Other,
+}
+
+struct Entry {
+    name: String,
+    path: PathBuf,
+    kind: Kind,
+}
+
+impl Entry {
+    /// Only folders and links count as a copy marker, except `.git`: in a worktree it is a
+    /// file, and it still marks a checkout.
+    fn is_marker(&self) -> bool {
+        COPY_MARKERS.contains(&self.name.as_str())
+            && (!matches!(self.kind, Kind::File) || self.name == ".git")
+    }
+}
+
+fn sorted_entries(dir: &Path) -> Vec<Entry> {
+    let Ok(read) = fs::read_dir(dir) else {
+        return Vec::new();
+    };
+    let mut out: Vec<Entry> = read
+        .flatten()
+        .filter_map(|e| {
+            let kind = match e.file_type().ok()? {
+                t if t.is_symlink() => Kind::Other,
+                t if t.is_dir() => Kind::Dir,
+                t if t.is_file() => Kind::File,
+                _ => Kind::Other,
+            };
+            Some(Entry {
+                name: e.file_name().to_string_lossy().into_owned(),
+                path: e.path(),
+                kind,
+            })
+        })
+        .collect();
+    out.sort_by(|a, b| a.name.cmp(&b.name));
+    out
+}
+
+fn marker_finding(path: &str, name: &str) -> Value {
+    json!({"kind": "forbidden_folder", "path": path, "name": name})
+}
+
+/// Walks `dir` (already known to be a real folder): adds the bytes of its files to `size` until
+/// the cap is passed (counting stops there) and records every marker folder it meets.
+fn guard_walk(
+    dir: &Path,
+    rel: &str,
+    size: &mut u64,
+    findings: &mut Vec<Value>,
+    partial: &mut bool,
+    deadline: Instant,
+) {
+    if Instant::now() > deadline {
+        *partial = true;
+        return;
+    }
+    for entry in sorted_entries(dir) {
+        let entry_rel = format!("{rel}/{}", entry.name);
+        if entry.is_marker() {
+            findings.push(marker_finding(&entry_rel, &entry.name));
+            continue;
+        }
+        match entry.kind {
+            Kind::Dir => guard_walk(&entry.path, &entry_rel, size, findings, partial, deadline),
+            Kind::File => {
+                if *size <= EVIDENCE_CAP_BYTES {
+                    *size += fs::symlink_metadata(&entry.path).map_or(0, |m| m.len());
+                }
+            }
+            Kind::Other => {}
+        }
+        if *partial {
+            return;
+        }
+    }
+}
+
 /// The hook log rows of the project at `primary`: the project's own log, then the one in the
 /// HOME ([`crate::hooks::home_area_dir`]: only when the project has a fixed id and the HOME
 /// state root is a real folder, the same place the hooks write and read).
@@ -759,11 +894,18 @@ pub fn plan(req: &Request) -> Result<Value> {
         }
         let (bytes, partial) = bytes_under(std::slice::from_ref(&reports), deadline);
         let modified = mtime(&reports);
+        let (findings, findings_partial) = evidence_findings(&reports, &rel, deadline);
+        let mut reasons = vec!["reports_kept"];
+        if !findings.is_empty() {
+            reasons.push("evidence_guard");
+        }
         rows.push(json!({
             "kind": "report",
             "path": rel,
             "action": "keep",
-            "reasons": ["reports_kept"],
+            "reasons": reasons,
+            "findings": findings,
+            "findings_partial": findings_partial,
             "trim_paths": [],
             "bytes": bytes,
             "bytes_partial": partial,
