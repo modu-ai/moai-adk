@@ -122,10 +122,11 @@ fn preview<W: Write>(out: &mut W, plan: &Plan) -> std::io::Result<()> {
     out.flush()
 }
 
-/// Asks the tool pick and the model questions on `input` and `out`, previews the change and
-/// asks once whether to save it. The state is `nothing_picked`, `cancelled`, `unchanged`,
-/// `declined`, `applied` (with `changes`) or `error` (with `message`). Nothing is written before
-/// a yes, and a refusal of the apply leaves the file as it was.
+/// Asks the tool pick and the model questions on `input` and `out`, asks the glm key for a glm
+/// pick right there (hidden on a terminal, stored in the key vault, skippable), previews the
+/// change and asks once whether to save it. The state is `nothing_picked`, `cancelled`,
+/// `unchanged`, `declined`, `applied` (with `changes`) or `error` (with `message`). Nothing is
+/// written before a yes, and a refusal of the apply leaves the file as it was.
 pub fn stage<R: BufRead, W: Write>(home: &Path, input: &mut R, out: &mut W) -> Value {
     let path = settings_path(home);
     // The saved choices are the defaults of the questions; an unusable file ends the stage here.
@@ -139,6 +140,9 @@ pub fn stage<R: BufRead, W: Write>(home: &Path, input: &mut R, out: &mut W) -> V
         Ok(Outcome::Cancelled) => return json!({"state": "cancelled"}),
         Err(_) => return error("the answers could not be read"),
     };
+    if let Err(message) = questions::glm_key_step(input, out, home, &picks) {
+        return error(&message.to_string());
+    }
     let plan = match questions::plan_file(&path, &picks) {
         Ok(plan) => plan,
         Err(message) => return error(&message),

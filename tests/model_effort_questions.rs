@@ -693,3 +693,153 @@ fn a_saved_value_is_the_default_of_its_questions_and_enter_keeps_it() {
         ("claude-sonnet-5-5", "high")
     );
 }
+
+/// A unique temporary folder for the key-vault scenes, never shared between tests: two
+/// starts inside the same clock tick would otherwise collide on one name.
+fn key_temp_home(tag: &str) -> std::path::PathBuf {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let seq = NEXT.fetch_add(1, Ordering::Relaxed);
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let dir = std::env::temp_dir().join(format!("glm-key-{tag}-{stamp}-{seq}"));
+    fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
+fn glm_scope() -> moai_cli::key_vault::Scope {
+    moai_cli::key_vault::scope_here(false).unwrap()
+}
+
+#[test]
+fn a_glm_pick_asks_for_the_key_once_and_stores_it_in_the_vault() {
+    let home = key_temp_home("store");
+    let scope = glm_scope();
+    let input = format!("{SECRET}\n");
+    let mut out = Vec::new();
+    model_effort_questions::glm_key_step(
+        &mut Cursor::new(input),
+        &mut out,
+        &home,
+        &[pick("glm", "leader", "glm-4", "high")],
+    )
+    .unwrap();
+    let text = String::from_utf8(out).unwrap();
+    assert!(
+        text.contains("hidden"),
+        "the question says the input is hidden: {text}"
+    );
+    assert!(
+        text.contains("skip"),
+        "the question says it is skippable: {text}"
+    );
+    assert!(
+        !text.contains(SECRET),
+        "the value appears in no output: {text}"
+    );
+    let stored = moai_cli::key_vault::read_entry(&home, &scope, "glm").unwrap();
+    assert_eq!(
+        stored.as_deref(),
+        Some(SECRET),
+        "the vault holds the typed value"
+    );
+}
+
+#[test]
+fn an_empty_answer_skips_the_key_and_keeps_the_pick_flow() {
+    let home = key_temp_home("skip");
+    let scope = glm_scope();
+    let mut out = Vec::new();
+    model_effort_questions::glm_key_step(
+        &mut Cursor::new("\n"),
+        &mut out,
+        &home,
+        &[pick("glm", "leader", "glm-4", "high")],
+    )
+    .unwrap();
+    let text = String::from_utf8(out).unwrap();
+    assert!(text.contains("hidden"), "the question still asks: {text}");
+    assert!(
+        moai_cli::key_vault::read_entry(&home, &scope, "glm")
+            .unwrap()
+            .is_none(),
+        "nothing was stored"
+    );
+}
+
+#[test]
+fn an_existing_key_is_kept_by_default_without_retyping() {
+    let home = key_temp_home("keep");
+    let scope = glm_scope();
+    moai_cli::key_vault::set(&home, &scope, "glm", "SECRET-existing").unwrap();
+    let mut out = Vec::new();
+    model_effort_questions::glm_key_step(
+        &mut Cursor::new("\n"),
+        &mut out,
+        &home,
+        &[pick("glm", "leader", "glm-4", "high")],
+    )
+    .unwrap();
+    let text = String::from_utf8(out).unwrap();
+    assert!(
+        text.contains("already in the key vault"),
+        "the existing key is named: {text}"
+    );
+    assert!(
+        !text.contains("SECRET-existing"),
+        "the stored value is not shown: {text}"
+    );
+    let stored = moai_cli::key_vault::read_entry(&home, &scope, "glm").unwrap();
+    assert_eq!(
+        stored.as_deref(),
+        Some("SECRET-existing"),
+        "the stored key is kept"
+    );
+}
+
+#[test]
+fn a_new_answer_replaces_an_existing_key() {
+    let home = key_temp_home("new");
+    let scope = glm_scope();
+    moai_cli::key_vault::set(&home, &scope, "glm", "SECRET-existing").unwrap();
+    let mut out = Vec::new();
+    model_effort_questions::glm_key_step(
+        &mut Cursor::new("n\nSECRET-replacement\n"),
+        &mut out,
+        &home,
+        &[pick("glm", "leader", "glm-4", "high")],
+    )
+    .unwrap();
+    assert!(
+        !String::from_utf8(out)
+            .unwrap()
+            .contains("SECRET-replacement"),
+        "no echo of the new value"
+    );
+    let stored = moai_cli::key_vault::read_entry(&home, &scope, "glm").unwrap();
+    assert_eq!(
+        stored.as_deref(),
+        Some("SECRET-replacement"),
+        "the new value is stored"
+    );
+}
+
+#[test]
+fn a_claude_pick_asks_nothing_about_a_key() {
+    let home = key_temp_home("claude");
+    let mut out = Vec::new();
+    model_effort_questions::glm_key_step(
+        &mut Cursor::new(""),
+        &mut out,
+        &home,
+        &[pick("claude", "leader", "claude-sonnet-5-5", "high")],
+    )
+    .unwrap();
+    assert!(
+        out.is_empty(),
+        "no key question for another provider: {}",
+        String::from_utf8_lossy(&out)
+    );
+}
