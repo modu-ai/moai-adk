@@ -107,7 +107,9 @@ fn snapshot(dir: &Path) -> Vec<(String, u128, Vec<u8>)> {
 }
 
 /// AC-1 (REQ-1): the entry carries the host session id under schema version 1, a renewal by
-/// the same instance keeps it, and a host without one writes no field.
+/// the same instance keeps the first registration's session id — pinned with a renewal that
+/// carries a different id in its environment, so a mutant that re-reads the environment
+/// instead of keeping the first value fails — and a host without one writes no field.
 #[test]
 fn session_field_is_recorded_under_schema_one() {
     let f = Fixture::new();
@@ -117,8 +119,14 @@ fn session_field_is_recorded_under_schema_one() {
     assert_eq!(entry["session"], json!(S_A), "{entry}");
 
     let instance = first["instance"].as_str().unwrap().to_string();
-    f.register("lane-a", Some(S_A), Some(&instance));
-    assert_eq!(f.entry("lane-a")["session"], json!(S_A));
+    // The renewal runs under another id (the renewing process is not the session's process);
+    // the first registration's id must survive it.
+    f.register("lane-a", Some(S_B), Some(&instance));
+    assert_eq!(
+        f.entry("lane-a")["session"],
+        json!(S_A),
+        "the renewal keeps the first session id"
+    );
 
     f.register("lane-b", None, None);
     let entry = f.entry("lane-b");
@@ -204,7 +212,7 @@ fn the_lookup_reads_nothing_and_creates_no_lock_file() {
 
     // The read-only CLI flag answers through the same lookup and writes nothing either.
     let out = Command::new(BIN)
-        .args(["session-register", &f.repo.to_string_lossy(), "--name", "x"])
+        .args(["session-register", &f.repo.to_string_lossy()])
         .arg("--liveness-of")
         .arg(S_A)
         .env("HOME", &f.home)
@@ -324,4 +332,68 @@ fn a_named_launch_holds_its_live_lock_while_its_host_runs() {
 
     let (state, _) = liveness_of_session(&f.repo, S_A);
     assert_eq!(state, Liveness::LauncherExited);
+}
+
+/// B1 of the audit: the lookup runs exactly as the workflow document spells it —
+/// `moai session-register --liveness-of <session-id>`, no `--name`, no PROJECT — from inside
+/// a clone, reading that clone's registry, writing nothing.
+#[test]
+fn the_documented_liveness_form_runs_without_a_name() {
+    let f = Fixture::new();
+    f.register("lane-a", Some(S_A), None);
+    let out = Command::new(BIN)
+        .args(["session-register", "--liveness-of", S_A])
+        .current_dir(&f.repo)
+        .env("HOME", &f.home)
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .env_remove("CLAUDE_CODE_SESSION_ID")
+        .env_remove("CODEX_THREAD_ID")
+        .output()
+        .unwrap();
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{} {}",
+        String::from_utf8_lossy(&out.stdout),
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["result"]["state"], json!("launcher-exited"), "{v}");
+    assert_eq!(v["result"]["writes"], json!(false), "{v}");
+}
+
+/// B2 of the audit (leader decision): a name the registry rules reject runs the host with no
+/// lock and no refusal — the same as it did before the lock — and the lookup answers unknown
+/// for it; the dry run of the same name keeps succeeding, so preview and run agree.
+#[test]
+fn an_unsafe_name_runs_without_a_lock_and_answers_unknown() {
+    use moai_cli::lane_registry::liveness_of_session;
+    let f = Fixture::new();
+    for name in ["영실이", "_x", &"x".repeat(65), "x/y"] {
+        let out = Command::new(BIN)
+            .args(["cc", "--name", name, "--dry-run", "--json"])
+            .current_dir(&f.repo)
+            .env("HOME", &f.home)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_SYSTEM", "/dev/null")
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(0), "{name}: {out:?}");
+    }
+    // The run itself takes no lock: no `.live` file for any unsafe name, and the stub host
+    // runs. The live lock of a safe name that is absent answers unknown for that id.
+    assert!(
+        !f.repo
+            .join(".git/.moai-cli/sessions")
+            .join("영실이.live")
+            .exists(),
+        "no lock for an unsafe name"
+    );
+    let (state, evidence) = liveness_of_session(&f.repo, S_A);
+    assert_eq!(
+        state,
+        moai_cli::lane_registry::Liveness::Unknown,
+        "{evidence}"
+    );
 }
