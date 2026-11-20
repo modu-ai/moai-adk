@@ -511,7 +511,7 @@ fn agent_build_rows(
             "age_secs": modified.map(|t| now.saturating_sub(t)),
             "retention_until_unix": Value::Null,
             "restore": "cargo rebuilds it on the next build with CARGO_TARGET_DIR set to this folder",
-            "apply": "only after the user picks this row: delete its cargo output (internal/build-folder; in the moai-adk repository `tools/build_folder.py remove`)",
+            "apply": "only after the user picks this row: delete its cargo output by relative path (internal/build-folder)",
         }));
     }
     (rows, warnings)

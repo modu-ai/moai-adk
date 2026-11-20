@@ -78,8 +78,10 @@ verify workflow's heavy-checks rules.
 ## Others
 
 - `tools/build_folder.py` — the build-folder helpers this repository predates the moai
-  commands with (`moai lane-env` covers `env`, `moai optimize-plan`/`worktree-gc-apply`
-  cover the cleanup and the removal; `internal/build-folder` in the skill names them).
+  commands with: `moai lane-env` covers `env`, `moai optimize-plan` (OPTIMIZE route) lists
+  the folders, and the removal stays this repository's own tool (`remove`) — no moai
+  command deletes a build folder; `internal/build-folder` in the skill keeps the generic
+  rule (a fresh preview still marking the row `trim`, relative paths only).
 - `tools/legacy_verdicts.py` — regenerates the verdict of every row of
   `.moai-cli/manifests/legacy-asset-map.json` (user decision 2026-11-17 D8).
 - `tools/heavy_check_slot.py` — the Python slot tool that `moai heavy-slot-acquire`

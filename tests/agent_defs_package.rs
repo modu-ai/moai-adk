@@ -970,13 +970,12 @@ fn self_check_lists_the_pre_pr_checks_and_is_named_by_impl_and_the_chains() {
         "`moai pr-self-audit-check --file BODY.md`",
         "`audit-tier: ",
         "skip it with the reason",
-        "`tools/self_check.sh`",
+        "this repository's own development tool",
         // Audit of 421b11a2c9, N1-N6.
         "`git diff --check <base>...HEAD`",
-        "`--full-python`",
         "`rustfmt --check --edition 2021 src/ops/*.rs`",
         "`exit=75 slot-refused (not run)`",
-        "`tools/source_manifest.py write`, then `tools/source_manifest.py check`",
+        "`write` recomputes every entry's sha256",
         "card branches carry no claim token until C-53 S3",
         "one mutation per new guard, the riskiest first; at most 5 for audit tier 1 and 12 for tier 2",
     ] {

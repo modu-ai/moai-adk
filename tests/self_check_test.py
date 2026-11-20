@@ -21,6 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "tools" / "self_check.sh"
 REFERENCE = ROOT / "skills" / "moai" / "references" / "internal" / "self-check.md"
+DOCS = ROOT / "docs" / "moai-adk-tools.md"
 PROFILE = ROOT / "src" / "profile.rs"
 HEAVY_SLOT = ROOT / "src" / "heavy_slot.rs"
 
@@ -824,12 +825,20 @@ class SelfCheckSourcesTest(unittest.TestCase):
         self.assertIn("pub const BUSY: u8 = 75;", HEAVY_SLOT.read_text())
         self.assertRegex(SCRIPT.read_text(), r"(?m)^slot_refused=75 ")
 
-    def test_the_reference_names_the_runner_and_every_item(self):
+    def test_the_reference_names_the_runner_as_a_repo_tool_and_keeps_the_rules(self):
         text = REFERENCE.read_text()
-        self.assertIn("`tools/self_check.sh`", text)
-        self.assertIn("`--full-python`", text)
+        # The shipped reference names the runner once as this repository's own development
+        # tool and keeps the general rules; it never names the runner's items or its
+        # repo-only commands (user principle 2026-11-20: the shipped text names existing
+        # moai commands and general rules only).
+        self.assertIn("this repository's own development tool", text)
+        self.assertIn("the repository's own agent instructions name it", text)
+        self.assertIn("`exit=75 slot-refused (not run)`", text)
+        self.assertIn("reported as not run, never as passed", text)
+        self.assertNotIn("`tools/self_check.sh`", text)
+        self.assertNotIn("`--full-python`", text)
         for label in LABELS:
-            self.assertIn(f"`{label}`", text, label)
+            self.assertNotIn(f"`{label}`", text, label)
 
 
 MODE_AGENT = ROOT / "skills" / "moai" / "workflows" / "mode-agent.md"
@@ -845,20 +854,22 @@ def paragraph(path, start):
 
 
 class SkillDocsNameThePythonSlotTest(unittest.TestCase):
-    """SPEC-20261119-skills-python-slot-lines: the three documents lanes and audits read name
-    what the scripts do (the python slot and `--pre-ready`), so a later edit that drops a name
-    turns a test red. Only names are read, never a whole sentence (SPEC decision D-3)."""
+    """SPEC-20261119-skills-python-slot-lines, moved by SPEC-20261120-shipped-workflows-commands
+    (user principle 2026-11-20: the shipped text names moai commands and general rules only):
+    the repository's own docs — not the shipped reference — name what the scripts do (the
+    python slot and `--pre-ready`), so a later edit that drops a name turns a test red. Only
+    names are read, never a whole sentence (SPEC decision D-3)."""
 
     @staticmethod
     def pre_ready_span():
-        """The words of self-check.md that describe `--pre-ready`: from its name to the end of its
-        item list. The list is read inside this span only, because `fmt`, `manifest`,
-        `diff-check` and others are named earlier in the file for the other runs."""
-        text = REFERENCE.read_text()
+        """The words of docs/moai-adk-tools.md that describe `--pre-ready`: from its name to the
+        end of its item list. The list is read inside this span only, because `fmt`,
+        `manifest`, `diff-check` and others are named earlier in the file for the other runs."""
+        text = DOCS.read_text()
         start = text.find("`--pre-ready` is the whole-tree list")
         end = text.find("fast ones first", start)
         if start == -1 or end == -1:
-            raise AssertionError("self-check.md has no `--pre-ready` sentence ending in 'fast ones first'")
+            raise AssertionError("docs/moai-adk-tools.md has no `--pre-ready` sentence ending in 'fast ones first'")
         return text[start:end]
 
     def test_self_check_lists_the_pre_ready_items_in_the_scripts_order(self):
@@ -869,7 +880,7 @@ class SkillDocsNameThePythonSlotTest(unittest.TestCase):
         self.assertIn("before the lane reports it ready", self.pre_ready_span())
 
     def test_self_check_names_the_python_slot_and_its_two_variables(self):
-        text = REFERENCE.read_text()
+        text = DOCS.read_text()
         for name in ("python slot", "MOAI_PYTHON_SLOT_DIR"):
             self.assertIn(name, text, name)
         self.assertIn("`MOAI_PYTHON_SLOT_MAX` runs at a time (default 2)", text)
