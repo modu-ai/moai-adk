@@ -868,7 +868,10 @@ with the Rust summary line (a routing script can answer `--version` as Rust and 
 blocks the hooks. See `docs/hooks-generation.md` §3. `tools/claude-statusline.sh` is unchanged (P6).
 
 The three lines follow the user instructions of 2026-11-13 (#2756) and, for the tag's
-place, #2928 (user instruction 6878415244, 2026-11-14). Segments on a line are joined by ` | `, and a segment with no value
+place, #2928 (user instruction 6878415244, 2026-11-14); the card counts' place on line 1,
+the repository-and-forge-counts segment that opens line 2, and the Claude Code version at
+the end of line 3 follow the user instruction of 2026-11-20
+(SPEC-20261120-statusline-layout). Segments on a line are joined by ` | `, and a segment with no value
 is left out together with its separator.
 
 1. Tag and running environment: `🏷️ <tag>` first (`🏷️ Leader | 🧠 … | 🗿 …`; #2928, user
@@ -885,22 +888,31 @@ is left out together with its separator.
    only and never an authority decision. The tag is shown whenever
    the `session` option is on, even without stdin (decision Q2); with every other line-1
    segment off it stands alone, and with `session` off line 1 starts at `🧠`. Then `🧠`
-   model, `🤔` effort/thinking, `♻️` cache hit with the prompt
+   model, `🤔` effort/thinking, the card counts `🗂️ <remaining> ▶️ <working> 🔃 <waiting>
+   ✅ <done>` (item 2; they read the project's ledger, so they stand here without any
+   git), and `🗿` MoAI version. The `♻️` cache segment is not in the layout (user
+   instruction 2026-11-20, SPEC-20261120-statusline-layout): the hit ratio and its prompt
    cache timer (`⏱️ Nm` whole minutes until `prompt_cache.expires_at`, `🧊` once
    `prompt_cache.warm` is false or the time has passed; user choice 2026-11-13, #2756
-   AC-8), `🤖` Claude Code version and `🗿` MoAI version. The session time (`⏳`) and the
-   output style are not shown; their `session_time` and `output_style` options are still
-   accepted.
-2. Repository: line 2 reads, in this order, the available `⬇️` Issue and `🔀` PR counts, the
-   card counts `🗂️ <remaining> ▶️ <working> 🔃 <waiting> ✅ <done>` of the project's local
+   AC-8) show nothing, and the `cache_hit` option name is still accepted. The session
+   time (`⏳`) and the output style are not shown for the same reason; their
+   `session_time` and `output_style` options are still accepted. The Claude Code version
+   `🤖` moved to the end of line 3 (item 3).
+2. Repository: line 2 opens with one segment, `📡 owner/repo` followed by a comma right
+   after the repository name and the available `⬇️` Issue and `🔀` PR counts when they
+   are shown, `📡 owner/repo, ⬇️ 0 🔀 0`; without forge counts the repository name
+   stands alone, with no comma (user instruction 2026-11-20,
+   SPEC-20261120-statusline-layout). The card counts
+   `🗂️ <remaining> ▶️ <working> 🔃 <waiting> ✅ <done>` of the project's local
    ledger (card C-65, user instructions 2026-11-16 and 2026-11-17, card 85; icons, order and
    the `🔃` number by the user's decision 2026-11-19, card C-121: `🗂️` cards created
    and remaining = `draft` + `ready` + `hold`, `▶️` cards being worked on, `🔃` cards pushed and
-   waiting for an audit or for integration, `✅` cards `done`, counted in none of the others),
-   `📡` owner/repo, `🅱️` branch with its behind and dirty counts, then `🔗 #N state` this
+   waiting for an audit or for integration, `✅` cards `done`, counted in none of the others)
+   stand on line 1, between the effort and the MoAI version, and need no git. Then `🅱️`
+   branch with its behind and dirty counts, then `🔗 #N state` this
    branch's pull request (AC-7; an OSC 8 hyperlink to `pr.url` only when color is on and
    the URL is plain `http(s)`):
-   `⬇️ 46 🔀 0 | 🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 owner/repo | 🅱️ main | 🔗 #1234 pending`. The
+   `📡 owner/repo, ⬇️ 46 🔀 0 | 🅱️ main | 🔗 #1234 pending`. The
    groups are joined by ` | `; inside a group the items are one space apart and have no
    slash, and every icon is followed by one space (user instruction 2026-11-19,
    SPEC-20261120-statusline-line2-order; the two spaces of the user's example are the
@@ -929,10 +941,11 @@ is left out together with its separator.
    With no registered ledger, no HOME, no project profile, a file that is not this
    project's ledger (corrupt, cut short, another project's, a link) or a ledger another
    process holds locked for more than 50 ms (`CARDS_BUSY_TIMEOUT`, or what is left of the
-   render budget when that is less), all the numbers are absent, the rest of the line is
+   render budget when that is less), all the numbers are absent, the rest of line 1 is
    unchanged and the exit code stays 0. The forge counts and the repository need a repository
-   name and a git branch; without forge counts the card counts open the line, and without a
-   git branch (or with `git_branch` off) they are the only group on it. The one option `cards` in `statusline.yaml` (`statusline.segments.cards: false`)
+   name and a git branch; the card counts stand on line 1 whatever git shows, and without a
+   git branch (or with `git_branch` off) line 2 carries only the pull request or is left
+   out. The one option `cards` in `statusline.yaml` (`statusline.segments.cards: false`)
    turns all the numbers off. `statusline.yaml` switches segments on and off only; it has
    no setting for their order. Each number carries its icon, so color is never the only
    signal. Tests: `tests/statusline_cards.rs`, the golden cases `b13-card-counts` and
@@ -941,10 +954,12 @@ is left out together with its separator.
    `cards-5-50-12-waiting.sqlite` for `b14`, which adds the notes that make one card wait;
    the ignored test `write_the_golden_ledger_fixture` writes both).
 3. Usage and worktree: the worktree segment when there is one, then the `CTX` and
-   available `Week` bars (`🌳 WT-c124-statusline-worktree-label | 🔋 CTX: … | 🪫 Week: …`;
+   available `Week` bars, then the `🤖` Claude Code version last (`🌳 WT-c124-statusline-worktree-label | 🔋 CTX: … | 🪫 Week: … | 🤖 v2.1.90`;
    since #2928 user instruction 6878415244 the tag is on line 1, not here; the worktree
    segment moved here from the end of line 2 by the user's instruction 2026-11-19, card
-   C-124). The segment stands at the front of the last line: line 3 while lines 1 and 2
+   C-124; the Claude Code version moved here from line 1 by the user's instruction
+   2026-11-20, SPEC-20261120-statusline-layout, and a line that would otherwise be empty
+   keeps the version alone). The segment stands at the front of the last line: line 3 while lines 1 and 2
    are shown, and one line up when an empty line is left out. In a linked worktree it has
    three shapes. `🌳 WT-c<card>-<name>` when a live reservation of the project (status
    `held`, `held_for_review` or `expired_candidate`, with an absolute worktree path)
@@ -963,16 +978,17 @@ is left out together with its separator.
    counts, and nothing is created. Example (lines 2 and 3 of the golden
    `b14-card-counts-waiting`):
 
-       ⬇️ 46 🔀 0 | 🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 anthropics/claude-code | 🅱️ main | 🔗 #1234 pending
-       🌳 feature-xyz | 🔋 CTX: ░░░░░░░░░░ 9% | 🔋 Week: ████░░░░░░ 41%
+       📡 anthropics/claude-code, ⬇️ 46 🔀 0 | 🅱️ main | 🔗 #1234 pending
+       🌳 feature-xyz | 🔋 CTX: ░░░░░░░░░░ 9% | 🔋 Week: ████░░░░░░ 41% | 🤖 v2.1.90
 
    Tests: `tests/statusline_worktree_label.rs` (the three shapes, a released reservation
    is no holder, the lowest card number, the main checkout, the `worktree` option, the
    line), the unit tests in `src/statusline/state.rs`
    (`the_name_is_cut_at_thirty_two_characters_and_drops_control_characters`,
    `a_relative_recorded_path_never_matches`) and the golden cases `a02-doc-full` and
-   `b14-card-counts-waiting`. With both bars off and no worktree segment the line is
-   empty and omitted like any empty line. The bar icons (`🔋`/`🪫`) and the
+   `b14-card-counts-waiting`. With both bars off and no worktree segment the line is the
+   Claude Code version alone when the `claude_version` option is on and its input is
+   there, and empty and omitted like any empty line otherwise. The bar icons (`🔋`/`🪫`) and the
    `(⚠️ /clear)` handoff mark keep their rules. The five-hour bar is not shown — the user did not choose it (#2756,
    6858992949) — and the `usage_5h` option is still accepted. A missing weekly window is
    hidden; reset times are not printed.

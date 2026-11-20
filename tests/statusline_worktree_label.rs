@@ -172,22 +172,29 @@ fn only_the_segment_moves_line_1_and_the_bars_stay() {
     let without = f.plain(Some(&wt));
     f.reserve("active", "held", &wt.dir, "spec/20260101-demo-work");
     let with = f.plain(Some(&wt));
-    assert_eq!(line(&with, 0), line(&without, 0));
     assert!(line(&with, 2).ends_with(&format!(" | {BARS}")), "{with}");
     assert!(
         line(&without, 2).ends_with(&format!(" | {BARS}")),
         "{without}"
     );
-    // Line 2 holds no worktree in either render, and apart from the card counts (a card now
-    // exists) it is the same.
+    // Line 1 gains the card counts (a card now exists, user instruction 2026-11-20: they
+    // stand on line 1); apart from that group it is the same.
     let after_cards = |out: &str| {
-        line(out, 1)
+        line(out, 0)
             .split(" | ")
-            .skip(1)
+            .filter(|segment| !segment.starts_with("🗂️"))
             .collect::<Vec<_>>()
             .join(" | ")
     };
     assert_eq!(after_cards(&with), after_cards(&without));
+    assert!(line(&with, 0).contains("🗂️ 0 ▶️ 1 🔃 0 ✅ 0"), "{with}");
+    // The ledger is registered and empty before the reservation: the zero group shows.
+    assert!(
+        line(&without, 0).contains("🗂️ 0 ▶️ 0 🔃 0 ✅ 0"),
+        "{without}"
+    );
+    // Line 2 holds no worktree in either render, and it keeps no card counts now.
+    assert_eq!(line(&with, 1), line(&without, 1));
     assert!(!line(&with, 1).contains('🌳'), "{with}");
     assert!(!line(&without, 1).contains('🌳'), "{without}");
 }

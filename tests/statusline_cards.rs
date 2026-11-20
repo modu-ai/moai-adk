@@ -1,6 +1,7 @@
-//! Card C-65 (user instructions 2026-11-16 and 2026-11-17): the repository line of the status
-//! line shows the cards of the project's local ledger right after the forge counts,
-//! `⬇️ 46 🔀 0 | 🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 owner/repo | …`: `🗂️` cards created and
+//! Card C-65 (user instructions 2026-11-16 and 2026-11-17): the statusline shows the cards of
+//! the project's local ledger on line 1, `🗂️ 50 ▶️ 2 🔃 3 ✅ 12` between the effort and the
+//! MoAI version (user instruction 2026-11-20), and line 2 opens with the repository and its
+//! forge counts, `📡 owner/repo, ⬇️ 46 🔀 0 | 🅱️ …`: `🗂️` cards created and
 //! remaining (`draft` + `ready` + `hold`), `▶️` cards being worked on (`active` without a waiting
 //! marker note), `🔃` cards pushed and waiting for integration (every `review` card and each
 //! `active` card whose newest marker note is a waiting one), `✅` cards `done` (user decision
@@ -169,25 +170,36 @@ impl Fixture {
     fn line2(&self) -> String {
         self.plain().lines().nth(1).unwrap_or_default().to_string()
     }
+
+    fn line1(&self) -> String {
+        self.plain().lines().next().unwrap_or_default().to_string()
+    }
 }
 
 /// `+1`: the project's untracked state folder.
-const WITHOUT_CARDS: &str = "⬇️ 46 🔀 0 | 📡 modu-ai/moai-adk | 🅱️ main +1";
+const WITHOUT_CARDS: &str = "📡 modu-ai/moai-adk, ⬇️ 46 🔀 0 | 🅱️ main +1";
 
 #[test]
-fn the_repository_line_shows_the_card_counts_after_the_forge_counts() {
+fn the_card_counts_stand_on_line_one_and_the_repository_opens_line_two() {
     let f = fixture();
     let baseline = f.plain();
     assert_eq!(baseline.lines().nth(1), Some(WITHOUT_CARDS), "no ledger");
     assert_eq!(baseline.lines().count(), 3, "{baseline}");
+    assert!(!f.line1().contains("🗂️"), "no ledger: no card icons");
     f.with_mix();
     let with = f.plain();
     assert_eq!(
         with.lines().nth(1),
-        Some("⬇️ 46 🔀 0 | 🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 modu-ai/moai-adk | 🅱️ main +1")
+        Some(WITHOUT_CARDS),
+        "line 2 keeps the repository, the forge counts, the branch"
     );
-    // Only the repository line differs from the render without a ledger.
-    assert_eq!(with.lines().next(), baseline.lines().next());
+    assert!(
+        f.line1().contains(" | 🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | "),
+        "the card counts stand on line 1: {}",
+        f.line1()
+    );
+    // Only line 1 differs from the render without a ledger.
+    assert_eq!(with.lines().next(), Some(f.line1().as_str()));
     assert_eq!(with.lines().nth(2), baseline.lines().nth(2));
     assert_eq!(with.lines().count(), 3);
 }
@@ -199,8 +211,10 @@ fn the_card_counts_keep_their_place_without_forge_counts() {
     std::fs::remove_file(f.project.join(FORGE_CACHE)).unwrap();
     assert_eq!(
         f.line2(),
-        "🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 modu-ai/moai-adk | 🅱️ main +1"
+        "📡 modu-ai/moai-adk | 🅱️ main +1",
+        "without forge counts the repository name stands alone, no comma"
     );
+    assert!(f.line1().contains("🗂️ 50 ▶️ 2 🔃 3 ✅ 12"), "{}", f.line1());
 }
 
 /// SPEC-20261120-statusline-line2-order REQ-8: the renderer shortens nothing and reads no
@@ -226,7 +240,7 @@ fn line_two_has_the_same_bytes_under_80_and_40_columns() {
         // shape is read from the plain render.
         assert_eq!(
             f.plain().lines().nth(1),
-            Some("⬇️ 46 🔀 0 | 🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 📡 modu-ai/moai-adk | 🅱️ main +1"),
+            Some(WITHOUT_CARDS),
             "plain={plain}"
         );
     }
@@ -236,10 +250,8 @@ fn line_two_has_the_same_bytes_under_80_and_40_columns() {
 fn a_registered_ledger_without_cards_shows_zeros() {
     let f = fixture();
     f.register();
-    assert_eq!(
-        f.line2(),
-        "⬇️ 46 🔀 0 | 🗂️ 0 ▶️ 0 🔃 0 ✅ 0 | 📡 modu-ai/moai-adk | 🅱️ main +1"
-    );
+    assert_eq!(f.line2(), WITHOUT_CARDS);
+    assert!(f.line1().contains("🗂️ 0 ▶️ 0 🔃 0 ✅ 0"), "{}", f.line1());
 }
 
 /// `done` cards are counted in `✅` only; a ledger of nothing but done cards has no card in
@@ -249,18 +261,10 @@ fn done_cards_are_counted_only_in_the_done_segment() {
     let f = fixture();
     f.register();
     f.add("done", 4);
-    assert!(
-        f.line2().contains("| 🗂️ 0 ▶️ 0 🔃 0 ✅ 4 |"),
-        "{}",
-        f.line2()
-    );
+    assert!(f.line1().contains("🗂️ 0 ▶️ 0 🔃 0 ✅ 4"), "{}", f.line1());
     f.add("active", 1);
     f.add("hold", 2);
-    assert!(
-        f.line2().contains("| 🗂️ 2 ▶️ 1 🔃 0 ✅ 4 |"),
-        "{}",
-        f.line2()
-    );
+    assert!(f.line1().contains("🗂️ 2 ▶️ 1 🔃 0 ✅ 4"), "{}", f.line1());
 }
 
 /// A ledger another process holds exclusively, a file that is not a database, a database cut
@@ -323,13 +327,16 @@ fn the_cards_option_hides_the_segment() {
     std::fs::write(&config, "statusline:\n  segments:\n    cards: false\n").unwrap();
     assert_eq!(f.plain(), baseline);
     std::fs::write(&config, "statusline:\n  segments:\n    cards: true\n").unwrap();
-    assert!(f.line2().contains("🗂️ 50 ▶️ 2 🔃 3 ✅ 12"), "{}", f.line2());
+    assert!(f.line1().contains("🗂️ 50 ▶️ 2 🔃 3 ✅ 12"), "{}", f.line1());
     std::fs::write(
         &config,
         "statusline:\n  segments:\n    github: false\n    git_branch: false\n",
     )
     .unwrap();
-    assert_eq!(f.line2(), "🗂️ 50 ▶️ 2 🔃 3 ✅ 12");
+    // Without a branch line 2 is gone; the card counts keep line 1.
+    assert_eq!(f.plain().lines().count(), 2, "{}", f.plain());
+    assert!(f.line1().contains("🗂️ 50 ▶️ 2 🔃 3 ✅ 12"), "{}", f.line1());
+    assert!(!f.line2().contains("🗂️"), "{}", f.line2());
 }
 
 /// The project is the one the input names, not the working directory: from a folder outside
@@ -340,7 +347,13 @@ fn the_counts_follow_the_project_of_the_input_not_the_working_directory() {
     f.with_mix();
     let elsewhere = tempfile::tempdir().unwrap();
     let out = f.render_from(elsewhere.path(), &[("NO_COLOR", "1")]);
-    assert_eq!(out.lines().nth(1), Some("🗂️ 50 ▶️ 2 🔃 3 ✅ 12"), "{out}");
+    assert!(
+        out.lines()
+            .next()
+            .unwrap()
+            .contains("🗂️ 50 ▶️ 2 🔃 3 ✅ 12"),
+        "{out}"
+    );
 }
 
 /// With color the text is the same once the escapes are removed: each number keeps its icon.
