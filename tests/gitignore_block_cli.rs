@@ -577,10 +577,114 @@ fn the_plan_counts_the_visible_files_past_twenty() {
     );
 }
 
+/// A `.gitignore` written into a folder of the earlier project before the plan is asked.
+fn write_nested(fx: &Fx, rel: &str, bytes: &[u8]) {
+    let path = fx.root.join(rel);
+    fs::create_dir_all(path.parent().unwrap()).unwrap();
+    fs::write(path, bytes).unwrap();
+}
+
+/// SPEC-20261121-gitignore-nested REQ-2: a `.gitignore` in a folder above a file keeps ignoring
+/// it, so the plan does not say the update makes it visible; the nested file itself, and a file
+/// its rule does not reach, are still named.
+#[test]
+fn a_file_a_nested_gitignore_still_ignores_is_not_named_as_visible() {
+    let fx = Fx::new(None);
+    with_earlier_block(&fx);
+    write_nested(&fx, ".moai-cli/tools/.gitignore", b"*.tmp\n");
+    write_nested(&fx, ".moai-cli/tools/sub/.gitignore", b"*.o\n");
+    let detail = detail_with_files(
+        &fx,
+        &[
+            ".moai-cli/tools/a.tmp",
+            ".moai-cli/tools/b.sh",
+            ".moai-cli/tools/sub/x.o",
+            ".moai-cli/tools/sub/y.rs",
+            ".moai-cli/tools/sub/deep/z.tmp",
+            ".moai-cli/tools/top.o",
+        ],
+    );
+    assert_eq!(
+        visible_lines(&detail),
+        [
+            "now visible: .moai-cli/tools/.gitignore",
+            "now visible: .moai-cli/tools/b.sh",
+            "now visible: .moai-cli/tools/sub/.gitignore",
+            "now visible: .moai-cli/tools/sub/y.rs",
+            "now visible: .moai-cli/tools/top.o",
+        ],
+        "{detail}"
+    );
+    // The preview wrote nothing: the nested rule file is still as the user left it.
+    assert_eq!(
+        fs::read(fx.root.join(".moai-cli/tools/.gitignore")).unwrap(),
+        b"*.tmp\n"
+    );
+}
+
+/// SPEC-20261121-gitignore-nested REQ-3: a nested `.gitignore` the plan cannot read as text (not
+/// UTF-8, or over 1 MiB) is named in one line and the files are listed as visible; one of exactly
+/// 1 MiB is read.
+#[test]
+fn an_unreadable_nested_gitignore_is_named_and_the_files_stay_listed() {
+    const LIMIT: usize = 1024 * 1024;
+    let note = "nested .gitignore cannot be read, its rules are not considered: .moai-cli/tools/.gitignore";
+
+    let fx = Fx::new(None);
+    with_earlier_block(&fx);
+    write_nested(&fx, ".moai-cli/tools/.gitignore", &[0xff, 0xfe, b'\n']);
+    let detail = detail_with_files(&fx, &[".moai-cli/tools/a.tmp"]);
+    assert_eq!(
+        visible_lines(&detail),
+        [
+            "now visible: .moai-cli/tools/.gitignore",
+            "now visible: .moai-cli/tools/a.tmp"
+        ],
+        "{detail}"
+    );
+    assert_eq!(detail.lines().filter(|l| *l == note).count(), 1, "{detail}");
+
+    let rules = |len: usize| {
+        let mut text = String::from("*.tmp\n");
+        text.push_str(&"#".repeat(len - text.len()));
+        text
+    };
+    let fx = Fx::new(None);
+    with_earlier_block(&fx);
+    write_nested(&fx, ".moai-cli/tools/.gitignore", rules(LIMIT).as_bytes());
+    let detail = detail_with_files(&fx, &[".moai-cli/tools/a.tmp"]);
+    assert_eq!(
+        visible_lines(&detail),
+        ["now visible: .moai-cli/tools/.gitignore"],
+        "1 MiB is read:\n{detail}"
+    );
+    assert!(!detail.contains(note), "{detail}");
+
+    let fx = Fx::new(None);
+    with_earlier_block(&fx);
+    write_nested(
+        &fx,
+        ".moai-cli/tools/.gitignore",
+        rules(LIMIT + 1).as_bytes(),
+    );
+    let detail = detail_with_files(&fx, &[".moai-cli/tools/a.tmp"]);
+    assert_eq!(
+        visible_lines(&detail),
+        [
+            "now visible: .moai-cli/tools/.gitignore",
+            "now visible: .moai-cli/tools/a.tmp"
+        ],
+        "over 1 MiB is not read:\n{detail}"
+    );
+    assert_eq!(detail.lines().filter(|l| *l == note).count(), 1, "{detail}");
+}
+
 /// SPEC-20261117-sdd-foundation REQ-7, REQ-8, REQ-9: this repository's own `.gitignore`, read
 /// by git in a temporary repository without global rules, keeps the SPECs in git, ignores the
 /// rest of the root `.moai/` and every `.moai/` below the root, and ignores credential and
-/// secret-shaped files even under `.moai/specs/`.
+/// secret-shaped files even under `.moai/specs/`. SPEC-20261121-gitignore-nested REQ-1: the
+/// project profile `.moai/project.yaml` is tracked too (the user chose it with `/moai project`,
+/// and the `.gitignore` says so with `!.moai/project.yaml`).
 #[test]
 fn the_repository_gitignore_tracks_specs_and_ignores_the_rest() {
     let tmp = TempDir::new().unwrap();
@@ -606,6 +710,7 @@ fn the_repository_gitignore_tracks_specs_and_ignores_the_rest() {
         ".moai/specs/SPEC-x/spec.md",
         ".moai/specs/SPEC-x/notes/design.md",
         ".moai/specs/README.md",
+        ".moai/project.yaml",
     ] {
         assert!(!ignored(rel), "{rel} is ignored");
     }
@@ -617,7 +722,6 @@ fn the_repository_gitignore_tracks_specs_and_ignores_the_rest() {
         ".moai/docs/a.md",
         ".moai/manifests/m.json",
         ".moai/reports/plan-audit/a.md",
-        ".moai/project.yaml",
         ".moai/state/s.json",
         ".moai/specs.md",
         "sub/.moai/x",
