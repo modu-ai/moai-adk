@@ -22,7 +22,7 @@ not give is not a reason to refuse. Nothing is ever
 deleted (cleanup is a person's job).
 
 The machine's limits live in one file beside the slots, `<folder>/limits.json` (Issue #2930
-R-2): `max`, `min_free_gb`, `max_swap_pct`, `min_mem_free_pct`, each optional (defaults 3, 50,
+R-2): `max`, `min_free_gb`, `max_swap_pct`, `min_mem_free_pct`, each optional (defaults 5, 50,
 80, 10). A caller's
 flag wins only when it is stricter, so no caller turns a limit off; only the file loosens
 one. A limits file that is not a plain file (a symlink, even to a valid file, or a folder),

@@ -146,11 +146,11 @@ fn secret_suspects(text: &str) -> Vec<(usize, &'static str)> {
         .collect()
 }
 
-/// The characters the run scan consumed, counted by the test probe below: the clamp keeps
-/// this linear in the line's length, so the probe checks it without a clock and the check
-/// holds on a loaded machine too (SPEC-20261120-load-tolerant-time-bounds). Per thread —
-/// the parallel test threads would race on one process-wide counter. The product build
-/// carries none of it.
+// The characters the run scan consumed, counted by the test probe below: the clamp keeps
+// this linear in the line's length, so the probe checks it without a clock and the check
+// holds on a loaded machine too (SPEC-20261120-load-tolerant-time-bounds). Per thread —
+// the parallel test threads would race on one process-wide counter. The product build
+// carries none of it.
 #[cfg(test)]
 thread_local! {
     static RUN_SCAN_CHARS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
