@@ -178,6 +178,8 @@ fn ops_named_by_the_mode_workflows_exist_with_their_flags() {
             // `queue-free`, `scope-check`): `card take`, `card check`, `card renew`, `card done`,
             // `card note` and `card next` replace them (tests/mode_cards_53.rs pins each).
             "card",
+            // The M-Flow finish line has the lane run `moai check affected <tip>..<merge>`.
+            "check",
             // Until C-53 S3 the commit guard answers `allowed` on a card branch (named, not run).
             "claim-verify --hook",
             "gate-check",
