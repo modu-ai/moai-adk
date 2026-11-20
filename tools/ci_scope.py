@@ -34,6 +34,7 @@ EXACT_DENY = frozenset(
         "docs/release-attestation.md",
         "docs/2383-statusline-switch-design.md",
         "docs/rust-product-path.md",
+        "docs/skill-text-rationale.md",
         "docs/llms.txt",
         "docs/user-entry-draft.md",
         "docs/product-naming-inventory.md",
