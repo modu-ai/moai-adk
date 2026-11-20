@@ -447,3 +447,50 @@ fn an_install_folder_keeps_the_worktree() {
         "{kept}"
     );
 }
+
+/// A reservation whose lease ended still keeps the worktree while its session is registered and
+/// alive; and when the session registry cannot be read the answer is "unobserved", never "no".
+#[test]
+fn a_live_or_unobserved_session_keeps_the_worktree() {
+    let fx = fx();
+    let later = real_now() + 30 * DAY;
+    let live = add(&fx, ".moai-cli/worktrees/live", "b-live", false);
+    seed_card(&fx, &live, "b-live", "active", "held", 1);
+    let unseen = add(&fx, ".moai-cli/worktrees/unseen", "b-unseen", false);
+    seed_card(&fx, &unseen, "b-unseen", "active", "held", 1);
+
+    // `fixture-session` holds both reservations; first it has no registry at all
+    let none = plan_at(&fx, later);
+    for tail in ["worktrees/live", "worktrees/unseen"] {
+        assert!(
+            row(&none["candidates"], tail).is_some(),
+            "no session ever registered: {tail} is free: {none}"
+        );
+    }
+
+    // a live registration keeps both
+    moai_cli::lane_registry::register(&fx.root, "fixture-session", None, 3_600, None, later as i64)
+        .expect("register the session");
+    let held = plan_at(&fx, later);
+    for tail in ["worktrees/live", "worktrees/unseen"] {
+        assert!(row(&held["candidates"], tail).is_none(), "{held}");
+        let kept = row(&held["kept"], tail).expect("kept");
+        assert!(
+            reasons(kept).contains(&"live_session".to_string()),
+            "{kept}"
+        );
+    }
+
+    // an unreadable entry: the session cannot be observed, which also keeps them
+    let dir = moai_cli::lane_registry::registry_dir(&fx.root).unwrap();
+    fs::write(dir.join("fixture-session.json"), b"not json\n").unwrap();
+    let blind = plan_at(&fx, later);
+    for tail in ["worktrees/live", "worktrees/unseen"] {
+        assert!(row(&blind["candidates"], tail).is_none(), "{blind}");
+        let kept = row(&blind["kept"], tail).expect("kept");
+        assert!(
+            reasons(kept).contains(&"session_unobserved".to_string()),
+            "{kept}"
+        );
+    }
+}
