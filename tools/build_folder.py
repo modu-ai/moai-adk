@@ -31,6 +31,7 @@ record of another worktree refuses: stdout stays empty and the exit code is 1 (2
 Use `e=$(python3 -I tools/build_folder.py env) && eval "$e"`: a bare eval of an empty output
 would go on.
 """
+import errno
 import json
 import os
 import re
@@ -182,6 +183,19 @@ def is_cargo_entry(path):
     return os.path.isfile(path) and path.name in CARGO_FILES
 
 
+RMTREE_HOOK = "onexc" if sys.version_info >= (3, 12) else "onerror"  # `onerror` is deprecated in 3.12
+
+
+def make_writable_and_retry(func, path, _exc):
+    """rmtree error hook: a clone keeps the read-only modes of its source, so a folder or file the
+    owner cannot write is made writable for the owner and the call is tried once more."""
+    parent = os.path.dirname(path)
+    os.chmod(parent, os.stat(parent).st_mode | 0o700)
+    if os.path.lexists(path) and not os.path.islink(path):
+        os.chmod(path, os.stat(path).st_mode | 0o700)
+    func(path)
+
+
 def empty_cargo(folder):
     """Delete the cargo output of `folder`; the folder and its record go only when nothing else
     is left. Returns (removed names, kept names)."""
@@ -191,7 +205,7 @@ def empty_cargo(folder):
             continue
         if is_cargo_entry(entry):
             if entry.is_dir():
-                shutil.rmtree(entry)
+                shutil.rmtree(entry, **{RMTREE_HOOK: make_writable_and_retry})
             else:
                 entry.unlink()
             removed.append(entry.name)
@@ -220,7 +234,8 @@ def cmd_clean():
 
 COW_OFF = "BUILD_FOLDER_NO_COW"  # set to 1: never clone, build cold
 CLONE_NOFOLLOW = 0x0001  # <sys/clonefile.h>
-ENOTSUP, EXDEV = 45, 18  # macOS errno values clonefile(2) gives where it cannot clone
+CARGO_HOME_NOTE = ("dependencies are reused only when CARGO_HOME is the same path as the lane's "
+                   "(the build info records registry paths); the workspace crate always rebuilds")
 
 
 def cargo_entries(folder):
@@ -228,10 +243,13 @@ def cargo_entries(folder):
     return [e for e in sorted(folder.iterdir()) if e.name != RECORD and is_cargo_entry(e)]
 
 
-def source_is_building(folder):
-    """True when a cargo run holds the lock of one of the source's profile folders. The lock is
-    only tried for a shared hold and let go at once; nothing is written to the source."""
+def hold_source(folder):
+    """A shared hold on the cargo lock of every profile folder of the source, so a lane that starts
+    to build while the clone is made waits for it. Returns the open lock files, or None when a cargo
+    run already holds one (the source is being built). The caller closes the files. Nothing is
+    written to the source."""
     import fcntl
+    held = []
     for entry in cargo_entries(folder):
         lock = entry / ".cargo-lock"
         if not entry.is_dir() or not os.path.isfile(lock) or os.path.islink(lock):
@@ -239,12 +257,13 @@ def source_is_building(folder):
         fd = os.open(lock, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
         try:
             fcntl.flock(fd, fcntl.LOCK_SH | fcntl.LOCK_NB)
-            fcntl.flock(fd, fcntl.LOCK_UN)
         except OSError:
-            return True
-        finally:
             os.close(fd)
-    return False
+            for other in held:
+                os.close(other)
+            return None
+        held.append(fd)
+    return held
 
 
 def clone_entry(src, dst):
@@ -262,9 +281,13 @@ def clone_entry(src, dst):
         out = subprocess.run(["cp", "--reflink=always", "-a", "--", str(src), str(dst)],
                              capture_output=True, text=True)
         if out.returncode != 0:
-            raise OSError(out.returncode, out.stderr.strip() or "cp --reflink=always failed")
+            text = out.stderr.strip() or "cp --reflink=always failed"
+            # cp gives an exit code, not an errno: read its message for "cannot clone here".
+            low = text.lower()
+            number = errno.ENOTSUP if "not supported" in low or "cross-device" in low else errno.EIO
+            raise OSError(number, text)
         return "reflink"
-    raise OSError(ENOTSUP, "no copy-on-write clone on this platform")
+    raise OSError(errno.ENOTSUP, "no copy-on-write clone on this platform")
 
 
 def cmd_seed(name):
@@ -272,10 +295,13 @@ def cmd_seed(name):
     if safe(name) != name or "/" in name:
         raise Refused(f"{name!r} is not one folder name")
     root = home()
+    missing = False
     for part in (".moai", "build"):
         root = root / part
-        if not real_dir(root, create=False):
-            raise Refused(f"{root} is missing; nothing was seeded")
+        if not os.path.lexists(root):
+            missing = True  # no lane has built here yet: nothing to clone from, not an error
+        elif not real_dir(root, create=False):
+            raise Refused(f"{root} is a link or not a folder; nothing was seeded")
     _, _, own_name = owner()
     if name == own_name:
         raise Refused(f"{name} is this worktree's own build folder")
@@ -283,6 +309,9 @@ def cmd_seed(name):
     if os.path.islink(source) or (os.path.lexists(source) and not os.path.isdir(source)):
         raise Refused(f"{source} is a link or not a folder; it is not followed")
     folder = ensure_folder()
+    # A name that differs only in letter case reaches the own folder on a case-insensitive disk.
+    if os.path.isdir(source) and os.path.samefile(source, folder):
+        raise Refused(f"{name} is this worktree's own build folder")
 
     def answer(seeded, reason=None, **more):
         doc = {"seeded": seeded, "folder": str(folder), "from": str(source), **more}
@@ -293,28 +322,40 @@ def cmd_seed(name):
 
     if os.environ.get(COW_OFF) == "1":
         return answer(False, "disabled")
-    if not os.path.isdir(source):
+    if missing or not os.path.isdir(source):
         return answer(False, "source_missing")
     if cargo_entries(folder):
         return answer(False, "already_built")
-    if source_is_building(source):
-        return answer(False, "source_building")
+    held = []
     made, method = [], None
     try:
-        for entry in cargo_entries(source):
-            made.append(folder / entry.name)
+        held = hold_source(source)
+        if held is None:
+            return answer(False, "source_building")
+        wanted = cargo_entries(source)
+        if not wanted:
+            return answer(False, "source_empty")
+        # Nothing of the own folder is overwritten or taken back: stop before the first clone when
+        # a path is already taken (evidence, a link, a half-built folder).
+        taken = [e.name for e in wanted if os.path.lexists(folder / e.name)]
+        if taken:
+            return answer(False, "target_in_the_way", detail=", ".join(taken))
+        for entry in wanted:
+            made.append(folder / entry.name)  # the path did not exist before this run
             method = clone_entry(entry, folder / entry.name)
     except OSError as e:
-        # Take back what this run made, the failed entry included (a partial `cp` result);
-        # the folder had no cargo output before.
+        # Take back only what this run made: every path in `made` was free just before.
         for path in made:
             if path.is_dir() and not path.is_symlink():
                 shutil.rmtree(path, ignore_errors=True)
             elif os.path.lexists(path):
                 path.unlink()
-        reason = "unsupported" if e.errno in (ENOTSUP, EXDEV) else "clone_failed"
+        reason = "unsupported" if e.errno in (errno.ENOTSUP, errno.EXDEV) else "clone_failed"
         return answer(False, reason, detail=str(e))
-    return answer(True, method=method, entries=[p.name for p in made])
+    finally:
+        for fd in held or []:
+            os.close(fd)
+    return answer(True, method=method, entries=[p.name for p in made], note=CARGO_HOME_NOTE)
 
 
 def trim_paths(doc):

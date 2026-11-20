@@ -12,7 +12,7 @@ created: 2026-11-20
 
 사용자 결정(2026-11-20): 독립 감사가 30~60분 걸리는 가장 큰 이유는 감사자마다 저장소를 받아 자기 `CARGO_TARGET_DIR` 에서 작업공간 전체를 처음부터 빌드하기 때문이에요. 감사자의 빌드 폴더를 레인의 빌드 폴더에서 **복사 없는 복제**(APFS `clonefile`, Linux btrfs·xfs 의 reflink)로 시작해요. 복제가 안 되는 곳에서는 바이트 복사를 하지 않고 차가운 빌드로 가요.
 
-이 컴퓨터에서 먼저 쟀어요(2026-11-20, APFS, 레인 폴더 4.4 GiB): 복제 8초에 디스크 증가 없음, 다른 worktree 경로에서 같은 커밋을 `cargo test --no-run` 하면 86개 crate 중 작업공간 crate 하나만 다시 컴파일하고 의존성 85개는 그대로 써요(경로가 바뀌면 작업공간 crate 의 id 가 바뀌어서 그 하나는 다시 빌드돼요). 시간 비교는 아래 Result 에 있어요.
+이 컴퓨터에서 먼저 쟀어요(2026-11-20, APFS, 레인 폴더 4.4 GiB): 복제 8초에 디스크 증가 없음, 다른 worktree 경로에서 같은 커밋을 `cargo test --no-run` 하면 86개 crate 중 작업공간 crate 하나만 다시 컴파일하고 의존성 85개는 그대로 써요(경로가 바뀌면 작업공간 crate 의 id 가 바뀌어서 그 하나는 다시 빌드돼요). 단 이 재사용은 원본과 `CARGO_HOME` 경로가 같을 때만 돼요(독립 감사가 다른 `CARGO_HOME` 에서 86개를 모두 다시 컴파일하는 것을 재현했어요). 시간 비교는 아래 Result 에 있어요.
 
 이 SPEC 은 도구 한 가지만 해요: `tools/build_folder.py seed --from <레인 폴더 이름>`. 감사 에이전트 지침·감사 워크플로·감사 clone 계획에 이 도구를 쓰라고 적는 일은 그 글을 쥔 다른 변경이 끝난 뒤에 넣어요(Non-goals).
 
@@ -30,8 +30,15 @@ created: 2026-11-20
 - REQ-3 (REQ-1): IF the platform or the filesystem cannot clone, or `BUILD_FOLDER_NO_COW=1` is set, THEN the tool shall print `seeded: false` with the reason, exit 0 and copy no bytes.
 - REQ-4 (REQ-1): IF the cargo lock of the source folder is held, THEN the tool shall print `seeded: false` with the reason `source_building` and clone nothing.
 - REQ-5 (REQ-1): IF the worktree's own build folder already holds cargo output, THEN the tool shall print `seeded: false` with the reason `already_built` and change nothing.
-- REQ-6: IF the source is not a real folder directly under `<HOME>/.moai/build/`, is a link, or is the worktree's own folder, THEN the tool shall refuse with exit 1 and write nothing. · failure: none
+- REQ-6: IF the source is not a real folder directly under `<HOME>/.moai/build/`, is a link, or is the worktree's own folder (in any letter case on a case-insensitive disk), THEN the tool shall refuse with exit 1 and write nothing. · failure: none
 - REQ-7: When the folder is seeded, the tool shall write the worktree's owner record as `env` does. · failure: none
+- REQ-8 (REQ-1): IF the worktree's folder already holds a path the clone would take, THEN the tool shall print `seeded: false` with the reason `target_in_the_way`, clone nothing and change nothing there.
+- REQ-9 (REQ-1): IF the source holds no cargo output, THEN the tool shall print `seeded: false` with the reason `source_empty`.
+- REQ-10 (REQ-1): IF a clone fails part-way, THEN the tool shall remove only the paths it made in this run and print `seeded: false` with the reason `unsupported` when the platform cannot clone and `clone_failed` otherwise.
+- REQ-11 (REQ-1): IF the folder `<HOME>/.moai/build` does not exist, THEN the tool shall print `seeded: false` with the reason `source_missing` and exit 0.
+- REQ-12 (REQ-1): While the tool clones, it shall hold a shared lock on the cargo locks of the source, so that a lane that starts to build waits.
+- REQ-13: When `clean` removes the cargo output of a clone that kept the read-only modes of its source, the tool shall make the folders writable for their owner and remove them. · failure: none
+- REQ-14: When the tool seeds a folder, it shall say in its answer that dependencies are reused only when CARGO_HOME is the same path as the lane's. · failure: none
 
 ## Acceptance
 
@@ -39,6 +46,10 @@ created: 2026-11-20
   verify: `python3 -m unittest tests.build_folder_test.SeedTest`
 - AC-2 (REQ-3, REQ-4, REQ-5, REQ-6): every non-seeding case prints `seeded: false` or refuses, and copies nothing.
   verify: `python3 -m unittest tests.build_folder_test`
+- AC-4 (REQ-6, REQ-8, REQ-9, REQ-11, REQ-13, REQ-14): a path in the way, an empty source, the own folder in another letter case, a missing build root, a read-only clone and the CARGO_HOME note behave as written.
+  verify: `python3 -m unittest tests.build_folder_test.SeedTest`
+- AC-5 (REQ-10, REQ-12): a failure part-way removes only what the run made and tells "cannot clone" from "failed"; the source is locked while it is cloned.
+  verify: `python3 -m unittest tests.build_folder_test.SeedRollbackTest`
 - AC-3 (REQ-1): a seeded worktree builds an unchanged crate without recompiling its dependencies; the before and after numbers are in Result.
   manual: seed a folder from a built lane folder, run `cargo test --no-run` in a worktree at another path and count the `Compiling` lines against a cold build; write both counts and the CPU times in Result.
 
@@ -56,9 +67,9 @@ created: 2026-11-20
 
 ## Risks
 
-- A clone taken while the lane builds could hold a half-written artifact: the tool takes a shared lock on the source's cargo lock and does not clone when the lane holds it.
-- After a clone, cargo rebuilds the workspace crate (its id depends on the path) and reuses the dependencies; a source folder built at a very different commit saves less. The tool does not judge that.
-- `clonefile` is not atomic across the whole set of entries: a failure part-way leaves the cloned entries, so the tool removes the entries it made before it reports `seeded: false`.
+- A clone taken while the lane builds could hold a half-written artifact: the tool does not clone when the lane holds the source's cargo lock, and it keeps a shared lock on it while it clones, so a lane that starts meanwhile waits.
+- After a clone, cargo rebuilds the workspace crate (its id depends on the path) and reuses the dependencies only when `CARGO_HOME` is the same path as the lane's: the build info records the registry source paths, and a different path made every dependency "dirty" in the audit of this change (86 crates compiled, as cold). A source folder built at a very different commit saves less. The tool does not judge either; its answer carries the CARGO_HOME note.
+- `clonefile` is not atomic across the whole set of entries: a failure part-way leaves the cloned entries, so the tool removes the entries it made in this run before it reports `seeded: false`. It checks first that no path of the clone is taken, so everything it removes is something it made.
 
 ## Decisions
 
@@ -76,7 +87,7 @@ created: 2026-11-20
 - 복제: `cp -c -R` 8초, 복제 전후 `df` 빈 공간이 줄지 않았어요(오히려 30116 KB 늘었고, 다른 프로세스의 영향이라 "디스크 증가 없음"까지만 말해요). 명령은 `warm-probe.sh` 의 `df`/`cp -c -R`.
 - 컴파일한 crate: 따뜻한 시작 1개(`moai-cli`) / 차가운 시작 86개. 두 라운드 모두 같았어요.
 - CPU 시간(user+sys, 기계 부하 55~70 이라 벽시계 시간은 믿지 않아요): 1라운드 따뜻 84.17+3.42=87.6초 / 차가움 114.58+8.83=123.4초, 2라운드 따뜻 85.17+3.52=88.7초 / 차가움 123.76+9.38=133.1초. 따뜻한 쪽이 CPU 를 약 29~33% 덜 써요. 벽시계: 56.2 / 60.0 초, 58.4 / 83.3 초.
-- 왜 1개가 남나: 소스 파일 날짜를 전부 2020 년으로 돌려도 `moai-cli` 1개는 다시 빌드돼요(소스를 읽는 `env!("CARGO_MANIFEST_DIR")` 가 빌드 기록에 레인의 경로로 남아서, 경로가 다른 worktree 에서는 값이 달라요). 의존성 85개는 경로와 상관없이 그대로 재사용돼요. 그래서 절약은 "의존성 crate 전부"이고 작업공간 crate 하나는 늘 다시 빌드돼요.
+- 왜 1개가 남나: 소스 파일 날짜를 전부 2020 년으로 돌려도 `moai-cli` 1개는 다시 빌드돼요(소스를 읽는 `env!("CARGO_MANIFEST_DIR")` 가 빌드 기록에 레인의 경로로 남아서, 경로가 다른 worktree 에서는 값이 달라요). 의존성 85개는 worktree 경로와 상관없이 그대로 재사용돼요 — 단 원본과 `CARGO_HOME` 경로가 같을 때만이에요: 첫 독립 감사가 새 `CARGO_HOME`(`/tmp/moai-audit-cargo-warm`)에서 같은 방식으로 `seed` 한 뒤 86개를 모두 다시 컴파일했고(`CARGO_LOG=cargo::core::compiler::fingerprint=info` 에서 모든 의존성이 `PathToSourceChanged`, 원본의 빌드 정보에 `/tmp/moai-rc-cargo-agent-1/registry/src/...` 가 박혀 있었어요), 같은 `CARGO_HOME` 에서는 0개였어요. 위 86 → 1 은 같은 `CARGO_HOME`(`/tmp/moai-rc-cargo-agent-1`)에서 쟀어요. 그래서 절약은 "같은 `CARGO_HOME` 일 때 의존성 crate 전부"이고 작업공간 crate 하나는 늘 다시 빌드돼요. 측정에 쓴 커밋은 `b578e11043`(다른 가지 `spec/20261120-audit-no-repo-copies`, `audit_copy_guard` 시험이 있는 head)이고, 이 SPEC 의 base 에는 그 시험 대상이 없어요.
 - `seed` 를 실제로 쓴 증거: 이 SPEC 의 READY 묶음이 `seed --from moai-adk-audit-copies` 로 폴더를 시작해(`seeded: true`, `method: clonefile`) clippy 부터 `--lib` 1636 개까지 돌렸어요.
 
 - AC-1: met — `python3 -m unittest tests.build_folder_test.SeedTest` 11개 통과(복제 내용 같음, 원본·기록 불변, 증거 파일 안 복제, 소유 기록은 이 worktree 것). 변이 S3·S4·S5·S6 이 이 시험에 걸려요.
