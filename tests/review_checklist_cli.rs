@@ -693,7 +693,7 @@ const CASES: [Case; 14] = [
     (
         "manifest-after-conflict",
         &[("skills/moai/references/source-manifest.json", "{}\n")],
-        Some(&[("docs/manifest.json", "{}\n")]),
+        Some(&[("notes/manifest.json", "{}\n")]),
     ),
     ("guard-refusal", &[("README.md", "x\n")], None),
     ("host-worktree-guard", &[("README.md", "x\n")], None),
@@ -711,8 +711,8 @@ const CASES: [Case; 14] = [
     ),
     (
         "skills-manifest-sha256",
-        &[("skills/moai/workflows/x.md", "x\n")],
-        Some(&[("docs/x.md", "x\n")]),
+        &[("skills/moai/workflows/verify.md", "x\n")],
+        Some(&[("notes/x.md", "x\n")]),
     ),
     (
         "golden-files-rerecorded",
