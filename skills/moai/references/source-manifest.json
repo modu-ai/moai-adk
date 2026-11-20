@@ -105,7 +105,7 @@
       }
     },
     "references/internal/boundary-checks.md": {
-      "sha256": "e34bbbca807f948594d0fdcbb524d400d5835ea11a70262a4e1da77bedf809f7",
+      "sha256": "efc14391cb9512ec703cd4b54017f774d76c5926e1525675631e71fc93fbb51f",
       "origin": {
         "kind": "go-generation",
         "template_id": "internal-boundary-checks",
@@ -171,6 +171,15 @@
         "template_id": "internal-decide",
         "adoption": "new",
         "reason": "Written for rc.2 #2637 from the leader's final design (#2634, sections 2-4, user instruction 2026-11-13T02:4xZ): an internal reference (decision A, never a separate skill) read by the agents whose `reads:` names it; it points to the rules already merged instead of restating them."
+      }
+    },
+    "references/internal/destructive-ops.md": {
+      "sha256": "b2f51f4c7abe005b03089343e36812d81a10e6c1b45f60fa9729559b48d6a72e",
+      "origin": {
+        "kind": "design-spec",
+        "template_id": "internal-destructive-ops",
+        "adoption": "new",
+        "reason": "Written for SPEC-20261120-destructive-ops-checklists (user instruction 2026-11-20, a survey of the skills and agents against that day's audit findings): the checks for code that removes, moves or overwrites data the user owns (a link in any path component, NUL-separated machine output, commits that stay reachable, the way back saved first, a just-created target left alone, a nested repository left alone, failing closed). Read by moai-audit and moai-impl (`reads:`)."
       }
     },
     "references/internal/doc-claims.md": {
