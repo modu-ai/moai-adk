@@ -223,7 +223,7 @@ fn primary_root(root: &Path) -> PathBuf {
     };
     let text = String::from_utf8_lossy(&out);
     let first: Vec<&str> = text.split("\n\n").next().unwrap_or("").lines().collect();
-    let bare = first.iter().any(|l| *l == "bare");
+    let bare = first.contains(&"bare");
     first
         .iter()
         .find_map(|l| l.strip_prefix("worktree "))
