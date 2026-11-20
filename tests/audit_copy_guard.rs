@@ -234,3 +234,36 @@ fn passes_names_that_only_contain_a_marker() {
     let row = report_row(&fx);
     assert_eq!(findings(&row), Vec::<Value>::new(), "{row}");
 }
+
+#[test]
+fn flags_the_git_file_of_a_checked_out_worktree() {
+    let fx = fixture();
+    // In a worktree `.git` is a file that points at the main repository; it still marks a copy.
+    put(
+        &fx,
+        "card-5/checkout/.git",
+        b"gitdir: /elsewhere/.git/worktrees/x\n",
+    );
+    let row = report_row(&fx);
+    assert_eq!(
+        names(&row, "forbidden_folder"),
+        [".moai-cli/reports/card-5/checkout/.git"],
+        "{row}"
+    );
+}
+
+#[test]
+fn flags_a_dependency_folder_but_does_not_count_its_size() {
+    let fx = fixture();
+    // The folder is named and left alone; the bytes in it are not part of the card's evidence
+    // size, so no second finding for the cap appears.
+    sparse(&fx, "card-6/copy/node_modules/big.bin", CAP + 1);
+    put(&fx, "card-6/copy/notes.md", b"small\n");
+    let row = report_row(&fx);
+    assert_eq!(
+        names(&row, "forbidden_folder"),
+        [".moai-cli/reports/card-6/copy/node_modules"],
+        "{row}"
+    );
+    assert_eq!(names(&row, "over_cap"), Vec::<String>::new(), "{row}");
+}
