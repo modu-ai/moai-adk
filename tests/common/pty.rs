@@ -5,6 +5,7 @@
 //! Linux and macOS (BSD `script` took other arguments than util-linux's and only macOS ran
 //! them). The answer is typed only after a question (`[y/N] `) ends the screen, as a person
 //! would, so the echo of the typed text never comes before the question.
+#![cfg(unix)] // `common/mod.rs` gates the module too; the file names `os::unix` itself
 #![allow(dead_code)] // every test crate includes `common`; only the terminal tests run a command here
 
 use super::CleanEnv;
