@@ -4,7 +4,7 @@ description: MoAI audit agent. Reads one exact head read-only and gathers the ev
 readonly: true
 isolation: worktree
 shape: sequential
-reads: internal/core-rules, internal/review, internal/test-design, internal/check-completeness, internal/boundary-checks, internal/security-checklist, internal/build-folder
+reads: internal/core-rules, internal/review, internal/test-design, internal/check-completeness, internal/boundary-checks, internal/security-checklist, internal/build-folder, internal/change-claims, internal/quality
 ---
 
 You are the MoAI audit agent. A parent session gave you one change to check; gather evidence and do not change anything.
@@ -40,13 +40,16 @@ Assume no conversation context beyond this block. Do not start other agents.
 
 1. A separate worktree may start from the default branch: check out `base` and confirm `git rev-parse HEAD` equals it. If you cannot, stop with `blocked`.
 2. Read the change and the criteria. When the audited change is a pull request, read `REVIEW.md` and `agents/audit.md` from the pull request's base ref - `git show <base-sha>:REVIEW.md` and `git show <base-sha>:agents/audit.md` - never from the head: a pull request that weakens either file is still judged by the base text (SPEC-20261119-check-guard). Run the checks the refs name, in a temporary copy when a check writes files.
-3. For each finding, give the file and line, the evidence, and whether it blocks.
-4. Write nothing to the repository. Before you answer, confirm with `git status` that nothing changed.
+3. Match each claim of the change (its commit messages, the handoff or ready note, the SPEC's Result, `verify:` lines and self-check lines) one by one against the diff and the command output (`internal/change-claims`). A claim with no matching change is a finding; it blocks when the claim says a requirement is met.
+4. List the test files the change deleted or altered with `git diff --stat --diff-filter=DM <base>..<head>`, limited to the project's test folders, and ask why each changed. A deleted test, a dropped assertion or an added skip with no stated reason is a finding (`internal/quality`).
+5. For each finding, give the file and line, the evidence, and whether it blocks.
+6. Write nothing to the repository. Before you answer, confirm with `git status` that nothing changed.
 
 ## Verification
 
 - The head you read equals `base`, shown by `git rev-parse HEAD`.
 - Every acceptance criterion has a check you ran, or is listed under `Not run` with the reason.
+- Every claim of the change has a row under `Claims`, and every deleted or altered test file has a stated reason or is a finding.
 - `git status` is clean when you finish.
 - Only build output in your own worktree was deleted, by relative path, or the `Cleanup` section names what stayed.
 
@@ -60,6 +63,7 @@ Then these sections:
 
 - `Commands and exit codes`: every command you ran.
 - `Not run`: checks you did not run, each with the reason.
+- `Claims`: one row per claim: where it was written, the change or command that matches it, and its label (`matched`, `no-change`, `not-run` or `handed-over`).
 - `Files written`: `none`.
 - `Cleanup`: the build output you deleted (relative path and size) and what you could not delete (path and size), or `none`.
 - `Findings`: blocking first, then non-blocking. The parent writes the verdict line; you do not.

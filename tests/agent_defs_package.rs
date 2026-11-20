@@ -388,7 +388,10 @@ fn reads_lists_match_the_design_and_render_on_every_host() {
             "internal/check-completeness",
             "internal/boundary-checks",
             "internal/security-checklist",
-            "internal/build-folder"
+            "internal/build-folder",
+            // SPEC-20261120-change-claims-and-test-guard: every claim to the diff, tests kept.
+            "internal/change-claims",
+            "internal/quality"
         ]
     );
     // SPEC-20261117-sdd-guidance: moai-docs is SYNC's writer and keeps the SPEC Result.
@@ -490,6 +493,9 @@ fn internal_references_say_when_to_read_them() {
         // SPEC-20261117-quality-guides: the project's own check commands, AC-to-test tracing
         // and the dependency existence check, read by RUN and VERIFY through the chain rules.
         "quality",
+        // SPEC-20261120-change-claims-and-test-guard: listing the claims of a change and
+        // matching each to the diff, read by the implementation and audit agents.
+        "change-claims",
     ];
     let mut found: Vec<String> = std::fs::read_dir(package().join("references/internal"))
         .unwrap()
@@ -1075,5 +1081,59 @@ fn build_folder_reference_is_read_by_the_builders_and_states_the_rule() {
         "workflows/optimize.md",
     ] {
         assert!(read(rel).contains("internal/build-folder"), "{rel}");
+    }
+}
+
+/// SPEC-20261120-change-claims-and-test-guard AC-1, AC-2, AC-3, AC-5 (audit half): the audit agent
+/// matches every claim of a change to the diff, lists the tests the change deleted or altered and
+/// returns a Claims section; the reference that holds the rule ships and names no tool that only
+/// this repository has. The implementation half and the source manifest follow when their files
+/// are free.
+#[test]
+fn change_claims_rules_are_in_the_shipped_audit_agent_and_reference() {
+    let defs = package_agents(&agents(), &package()).unwrap();
+    let audit = defs
+        .iter()
+        .find(|d| d.name == "moai-audit")
+        .unwrap()
+        .body
+        .clone();
+    for needle in [
+        "Match each claim of the change",
+        "one by one against the diff and the command output",
+        "A claim with no matching change is a finding",
+        "blocks when the claim says a requirement is met",
+        "`git diff --stat --diff-filter=DM <base>..<head>`",
+        "and ask why each changed",
+        "- `Claims`: one row per claim",
+    ] {
+        assert!(audit.contains(needle), "moai-audit lacks {needle:?}");
+    }
+
+    let reference =
+        std::fs::read_to_string(package().join("references/internal/change-claims.md")).unwrap();
+    for needle in [
+        "its commit messages",
+        "the handoff or ready note",
+        "the SPEC's Result",
+        "`verify:` lines",
+        "self-check lines",
+        "`matched`",
+        "`no-change`",
+        "`not-run`",
+        "`handed-over`",
+        "`git diff --stat --diff-filter=DM <base>..<head>",
+    ] {
+        assert!(
+            reference.contains(needle),
+            "change-claims.md lacks {needle:?}"
+        );
+    }
+    // The text is for every project: no tool, path or card name of this repository.
+    for banned in ["tools/", "moai-adk", "C-1", "C-2", "cargo "] {
+        assert!(
+            !reference.contains(banned),
+            "change-claims.md names {banned:?}"
+        );
     }
 }
