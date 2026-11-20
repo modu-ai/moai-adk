@@ -2,7 +2,7 @@
 id: SPEC-20261120-update-guided-migration
 title: "moai update shows one grouped preview, asks one proceed question, then migrates in a fixed order with plain progress"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-20
 ---
 
@@ -33,7 +33,7 @@ created: 2026-11-20
 
 ## Requirements
 
-- REQ-1: When the user starts `/moai update` or the shell `moai update`, the update survey shall read in one pass without writing anything every layer the update can change, namely the package skills and agents, the routing and style blocks, the command names and the moai name, the switch step, the Go-generation HOME items, the HOME folder move, the project state-folder move, the earlier-generation project state, the Go hooks and the Rust hooks, and the OMP-managed files, and give every detected item an id, a plain-language title, a layer, a count of files and folders, a guarded flag, the ids it depends on, and either its revert command or the statement that no revert command exists.
+- REQ-1: When the user starts `/moai update` or the shell `moai update`, the update survey shall read in one pass without writing anything every layer the update can change, namely the package skills and agents, the routing and style blocks, the command names and the moai name, the switch step, the Go-generation HOME items, the HOME folder move, the project state-folder move, the earlier-generation project state, the Go hooks and the Rust hooks, and the OMP-managed files, and give every detected item an id, a plain-language title, a layer, the count of the entries it covers, a guarded flag, the ids it depends on, and either its revert command or the statement that no revert command exists.
 - REQ-2 (REQ-1): IF a layer cannot be read, THEN the update survey shall name that layer as unread with its reason, still survey the other layers, and apply nothing that depends on the unread layer.
 - REQ-3: The update preview shall group the items into will change, kept as is and needs your pick, and show for each group the item count, the guarded items and the revert command of each item.
 - REQ-4: When the preview has been shown on a terminal, the update shall ask one question right after it with three answers, proceed with everything recommended, choose per group, and stop, and write nothing before the answer. · failure: none — a session without a terminal takes the non-interactive path of REQ-11 and never reaches the question
@@ -51,7 +51,7 @@ created: 2026-11-20
 - AC-1 (REQ-1, REQ-3): on a temporary HOME with a Go-generation `.moai` folder, an earlier `.moai-cli` folder and a project with `.moai-cli` and Go hooks, the survey names every item of the detection table in the three groups, each with a revert command or the no-revert statement, and writes nothing.
   verify: `cargo test --locked --offline --test update_guided_migration_cli survey_reads_every_layer`
 - AC-2 (REQ-2): a layer that cannot be read is named unread with its reason, the other layers are still surveyed and nothing that depends on it is applied.
-  verify: `cargo test --locked --offline --test update_guided_migration_cli unread_layer_is_named`
+  verify: `cargo test --locked --offline --lib update::survey::tests::unread_layer_is_named`
 - AC-3 (REQ-4): after the preview on a terminal exactly one question is asked, its answers are the three named ones, and answering stop writes nothing.
   verify: `cargo test --locked --offline --test update_guided_migration_cli one_question_stop_writes_nothing`
 - AC-4 (REQ-5): the default answer applies the unguarded items only, and a guarded item is applied only when it is picked by its name.
@@ -74,14 +74,14 @@ created: 2026-11-20
 ## Scope
 
 - slice 1 (this change), write: `.moai/specs/SPEC-20261120-update-guided-migration/**` and nothing else; read-only: every other file, the real HOME.
-- later slices (their own card scope, taken when they start): `src/update.rs`, `src/update_tux.rs`, `src/update_survey.rs` (new), `src/main.rs` (flag wiring only), `tests/update_guided_migration_cli.rs` (new), `tests/fixtures/ui/**` (goldens), and after the other card has merged `skills/moai/workflows/update.md` and `skills/moai/SKILL.md` with the source manifest.
+- later slices (their own card scope, taken when they start): `src/update.rs`, `src/update_tux.rs`, `src/update/survey.rs` (new, a child module of `update.rs`), `src/main.rs` (flag wiring only), `tests/update_guided_migration_cli.rs` (new), `tests/fixtures/ui/**` (goldens), and after the other card has merged `skills/moai/workflows/update.md` and `skills/moai/SKILL.md` with the source manifest.
 - tier 2 (HOME, update): every code slice needs an independent audit.
 - depends on, in this order: the HOME-merge SPEC (HOME move), the project state-folder move SPEC, the Rust-only switch SPEC, the OMP removal SPEC, the security guard slice that moves Go hooks to Rust hooks, and the card that rewrites `workflows/update.md`. This SPEC reads their code at the tip; a slice that lands later than them follows their final form.
 
 ## Plan
 
 1. Slice 1: this SPEC and `detection-table.md` (written by reading the tip's code; nothing run).
-2. Slice 2: RED end-to-end test on a temporary HOME (AC-1, AC-2), then `update_survey`: one read-only call that assembles the existing plans (user layer, Go HOME retire, HOME move, cleanup, switch, project update plan) into items, groups, order and one survey digest, and a `--json` envelope that carries it.
+2. Slice 2: RED end-to-end test on a temporary HOME (AC-1, AC-2), then `update::survey`: one read-only call that assembles the existing plans (user layer, Go HOME retire, HOME move, cleanup, switch, project update plan) into items, groups, order and one survey digest, and the `survey` key of the update preview JSON that carries it (the models question is no item: it is asked after an apply).
 3. Slice 3: the question, the fixed-order apply loop with progress lines and the first-failure stop (AC-3 through AC-7, AC-9, AC-10); the guarded rule (D-3).
 4. Slice 4: skill text and terminal screens tell the same flow (AC-8), after the update-workflow card has merged; the source manifest.
 5. Slice 5: items that wait for other cards: OMP-managed files listed as no longer managed (after the OMP removal), Go hook entries after the security guard slices; the gaps G4 and G6 of the table.
@@ -101,13 +101,13 @@ created: 2026-11-20
 
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
-| D-1 | proposed: the HOME move runs inside the new apply loop as its own step (H1 retire, then H2 move), through the existing `home-install-apply`; it is guarded | the card asks one flow to cover `~/.moai-cli → ~/.moai`; the move code exists and needs only the loop to call it | leave the move as its own command and list it as "needs your pick" with its command |
-| D-2 | proposed: the shell `moai update` covers the HOME layer and the working project's items it can read; project steps that print commands run in the loop one after another, each with a fresh preview | the card says the shell TUI and the skill tell the same story | the shell stops at the HOME layer and prints the project route as next command |
-| D-3 | proposed: Enter and the default answer apply the unguarded items; guarded items (HOME retire, HOME move, vault key import, project state-folder move, cleanup) are named in the question and apply only on an explicit pick, either all of them in one named answer or one by one in the per-group choice | the card: a guarded item is covered by one answer only when picked explicitly | make guarded items part of the default |
-| D-4 | proposed: the non-interactive path is a new flag that takes the survey digest (working name `--confirm-all`); the old flags stay as they are | REQ-11 keeps existing scripts working | pick another name before slice 3 |
-| D-5 | proposed: the progress is a plain list of lines after each step, not a spinner | the update has no progress indicator today (table G5) | add a spinner later |
+| D-1 | decided (leader, 2026-11-20): the HOME move runs inside the new apply loop as its own step (H1 retire, then H2 move), through the existing `home-install-apply`; it is guarded; when only the session that runs the update is registered in the clone, that session is left out and the move goes on, and when another live session is registered, the step stays under needs your pick with the advice to close that session and run the update again | the card asks one flow to cover `~/.moai-cli → ~/.moai`; the move code exists and needs only the loop to call it | leave the move as its own command and list it as "needs your pick" with its command |
+| D-2 | decided (leader, 2026-11-20): the shell `moai update` covers the HOME layer and the working project's items it can read; project steps that print commands run in the loop one after another, each with a fresh preview | the card says the shell TUI and the skill tell the same story | the shell stops at the HOME layer and prints the project route as next command |
+| D-3 | decided (leader, 2026-11-20): Enter and the default answer apply the unguarded items; guarded items (HOME retire, HOME move, vault key import, project state-folder move, cleanup) are named in the question and apply only on an explicit pick, either all of them in one named answer or one by one in the per-group choice | the card: a guarded item is covered by one answer only when picked explicitly | make guarded items part of the default |
+| D-4 | decided (leader, 2026-11-20): the non-interactive path is a new flag that takes the survey digest (working name `--confirm-all`); the old flags stay as they are | REQ-11 keeps existing scripts working | pick another name before slice 3 |
+| D-5 | decided (leader, 2026-11-20): the progress is a plain list of lines after each step, not a spinner | the update has no progress indicator today (table G5) | add a spinner later |
 
-All five need the leader's confirmation before slice 2 starts; none touches money, law, a contract, a secret or real data, so each is reversible (case 3: the leader decides).
+The leader confirmed all five as proposed, with the D-1 addition above (card note, kind decision, by the leader, 2026-11-20); none touches money, law, a contract, a secret or real data, so each is reversible.
 
 ## Result
 

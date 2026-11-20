@@ -37,6 +37,9 @@ use std::{
 /// The name-switch script part of `moai update` (card C-33 S3, SPEC-20261119-update-switch-layer).
 pub mod switch;
 
+/// The read-only survey of every layer the update can change (SPEC-20261120-update-guided-migration).
+pub mod survey;
+
 type Result<T> = std::result::Result<T, String>;
 
 const UPDATE_SCHEMA_VERSION: u32 = 1;
@@ -1955,6 +1958,9 @@ fn update_command_core(
     }
     // The preview value: what a pipe gets as the envelope result and what the terminal question
     // shows (#2894).
+    // The survey reads more plans than the layer holds, so it is made once however many times
+    // the preview value is built.
+    let survey_once = std::cell::OnceCell::<serde_json::Value>::new();
     let preview = || {
         let mut out = json!({
             "mode": "preview",
@@ -1990,6 +1996,11 @@ fn update_command_core(
         if let Some(s) = layer.switch.to_json() {
             out["switch"] = s.clone();
         }
+        // SPEC-20261120-update-guided-migration: one read-only survey of every layer, beside
+        // the parts above (they and their digests are as they were).
+        out["survey"] = survey_once
+            .get_or_init(|| survey::build(&layer, &survey::gather(home, &layer)))
+            .clone();
         out
     };
     let digest = match confirm {
