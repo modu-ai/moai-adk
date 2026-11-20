@@ -264,6 +264,32 @@ fn lock_owner_record_is_json_with_pid_and_created_at() {
     let _ = PathBuf::new();
 }
 
+/// Audit N4, REQ-9: a lock file that is a symbolic link is refused (not opened, not written
+/// through), and a run on that tree goes on unserialized and says why.
+#[test]
+fn lock_refuses_a_symbolic_link() {
+    let p = go_project();
+    let target = p.path().join("victim.txt");
+    fs::write(&target, "keep me").unwrap();
+    let state = p.path().join(".moai/state");
+    fs::create_dir_all(&state).unwrap();
+    std::os::unix::fs::symlink(&target, state.join("gate-run.lock")).unwrap();
+    match lock::acquire(p.path()) {
+        Err(lock::LockError::Other(e)) => assert!(e.contains("refusing a symbolic link"), "{e}"),
+        Err(lock::LockError::Held) => panic!("a link is not a held lock"),
+        Ok(_) => panic!("a link must be refused"),
+    }
+    assert_eq!(fs::read_to_string(&target).unwrap(), "keep me");
+    let bin = bin_dir(&[("go", "exit 0")]);
+    let (code, err) = gate(p.path(), &bin, false);
+    assert_eq!(code, 0, "{err}");
+    assert!(
+        err.contains("gate-run lock: unavailable (") && err.contains("running unserialized"),
+        "{err}"
+    );
+    assert_eq!(fs::read_to_string(&target).unwrap(), "keep me");
+}
+
 // ---- moai hook pre-push (SPEC-20261120-rust-pre-push) -----------------------------------------
 
 mod prepush_support {

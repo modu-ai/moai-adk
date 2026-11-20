@@ -39,9 +39,20 @@ pub fn acquire(project_dir: &Path) -> Result<GateRunLock, LockError> {
         .create(true)
         .truncate(false)
         .mode(0o644)
-        .custom_flags(libc::O_CLOEXEC)
+        // O_NOFOLLOW: a lock file that is a link is refused, so the lock never opens (and the
+        // owner record never overwrites) a file the link points at (the Go build's NoFollow).
+        .custom_flags(libc::O_CLOEXEC | libc::O_NOFOLLOW)
         .open(&path)
-        .map_err(|e| LockError::Other(format!("open gate-run lock {}: {e}", path.display())))?;
+        .map_err(|e| {
+            if e.raw_os_error() == Some(libc::ELOOP) {
+                LockError::Other(format!(
+                    "open gate-run lock {}: refusing a symbolic link",
+                    path.display()
+                ))
+            } else {
+                LockError::Other(format!("open gate-run lock {}: {e}", path.display()))
+            }
+        })?;
     if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
         return Err(LockError::Held);
     }

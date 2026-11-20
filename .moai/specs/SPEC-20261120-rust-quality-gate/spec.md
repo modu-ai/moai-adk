@@ -95,8 +95,9 @@ Go 의 gate 는 크기가 커서(핵심 약 4,000줄) 조각으로 나눠요.
 
 조각 3a(이 SPEC 의 REQ-1..11 중 노드 축과 ast-grep·그래프 신선도를 뺀 나머지)를 Rust 로 옮겼어요. 근거는 아래 명령의 결과예요(종료 코드는 모두 0).
 
-- `cargo test --offline --locked --test quality_gate_config --test quality_gate_steps --test quality_gate_cli --test quality_gate_parity`: 11 + 19 + 23 + 7 통과(3개는 Go 빌드가 있어야 도는 ignored).
-- Go 빌드(`MOAI_GO_BIN`)와 같은 29개 프로젝트를 돌려 종료 코드와 요약 행이 같아요: `quality_gate_parity live`.
+- `cargo test --offline --locked --test quality_gate_config --test quality_gate_steps --test quality_gate_cli --test quality_gate_parity`: 감사 수리 뒤 cli 29 · config 15 · parity 5 · steps 25 통과(Go 빌드가 있어야 도는 ignored 가 config 1, parity 5; 이유가 달려 있고, 이제 `MOAI_GO_BIN` 이 없으면 일찍 돌아와 통과하는 대신 건너뛰어요).
+- Go 빌드(`MOAI_GO_BIN`)와 같은 29개 프로젝트를 돌려 종료 코드와 요약 행이 같아요: `MOAI_GO_BIN=<Go 빌드> cargo test --test quality_gate_parity -- --ignored live`.
+- 감사 수리(같은 가지): `tests/quality_gate_config.rs` 에 `#![cfg(unix)]`(Windows 빌드), 실행 잠금 파일은 `O_NOFOLLOW` 로 열어 링크면 거절(`lock_refuses_a_symbolic_link`), 출력 통로를 쥔 자손(`steps_a_descendant_holding_the_output_stream_fails_the_step`), staged 규칙 3갈래(`steps_nothing_staged_…`·`steps_staged_files_without_the_extension_…`·`steps_staged_file_with_the_extension_…`) 시험 추가.
 - 변이 시험 5/5 잡힘(`pytest` 종료 5, 깊이 한계 4, 프로세스 그룹 종료, git 환경 제거, pre-commit 표지).
 - `--lib` 1595, `--bins` 56, `tools/repo_scans.json` 의 cargo 명령 31개, 이 Mac 에서 도는 macOS 전용 시험 파일 10개가 통과해요.
 

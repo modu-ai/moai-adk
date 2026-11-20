@@ -2,6 +2,8 @@
 //! directory the gate runs in. The module under test is compiled into this test crate by path
 //! (the `moai gate` word is wired into the binary in a later step).
 
+#![cfg(unix)] // the module holds the run lock and process groups; a Windows port is not part of this SPEC
+
 #[path = "../src/quality_gate/mod.rs"]
 #[allow(dead_code)]
 mod quality_gate;

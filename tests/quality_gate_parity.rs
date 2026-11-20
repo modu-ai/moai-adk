@@ -6,7 +6,7 @@
 //! gate with the recorded table and does not need the Go build.
 //!
 //! Re-record:  `MOAI_GO_BIN=<go build> cargo test --test quality_gate_parity -- --ignored record`
-//! Live check: `MOAI_GO_BIN=<go build> cargo test --test quality_gate_parity live`
+//! Live check: `MOAI_GO_BIN=<go build> cargo test --test quality_gate_parity -- --ignored live`
 //!
 //! What the comparison leaves out (it is named, not hidden): the Go build's own log lines, its
 //! graph-freshness and ast-grep lines and its closing error box (axes and decoration this build
@@ -405,13 +405,12 @@ fn record_from_go() {
     fs::write(recorded_path(), format!("{}\n", text.trim_end())).unwrap();
 }
 
-/// With `MOAI_GO_BIN` set, compares the Rust gate with the live Go build; without it, nothing
-/// to compare (the recorded table test above covers CI).
+/// Compares the Rust gate with the live Go build (`MOAI_GO_BIN`); the recorded table test above
+/// covers CI, so this one runs only on request and never passes by returning early.
 #[test]
-fn live_parity_when_the_go_build_is_available() {
-    let Ok(go) = std::env::var("MOAI_GO_BIN") else {
-        return;
-    };
+#[ignore = "needs the Go build: set MOAI_GO_BIN"]
+fn live_parity_with_the_go_build() {
+    let go = std::env::var("MOAI_GO_BIN").expect("MOAI_GO_BIN");
     for s in SCENARIOS {
         assert_eq!(rust_result(s), go_result(&go, s), "scenario {}", s.name);
     }
@@ -645,12 +644,11 @@ fn prepush_record_from_go() {
     fs::write(prepush_recorded_path(), format!("{}\n", text.trim_end())).unwrap();
 }
 
-/// With `MOAI_GO_BIN` set, compares the Rust check with the live Go build.
+/// Compares the Rust check with the live Go build (`MOAI_GO_BIN`); runs only on request.
 #[test]
-fn prepush_live_parity_when_the_go_build_is_available() {
-    let Ok(go) = std::env::var("MOAI_GO_BIN") else {
-        return;
-    };
+#[ignore = "needs the Go build: set MOAI_GO_BIN"]
+fn prepush_live_parity_with_the_go_build() {
+    let go = std::env::var("MOAI_GO_BIN").expect("MOAI_GO_BIN");
     for s in PREPUSH_SCENARIOS {
         assert_eq!(prepush_rust(s), prepush_go(&go, s), "scenario {}", s.name);
     }

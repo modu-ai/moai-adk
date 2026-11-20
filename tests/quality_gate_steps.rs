@@ -358,3 +358,98 @@ fn steps_no_toolchain_passes() {
     let (code, err) = gate(p.path(), &bin);
     assert_eq!(code, 0, "{err}");
 }
+
+/// Audit N1: a step that exits 0 but leaves a process holding its output stream past the grace
+/// fails the run with its own message, and the leftover is ended with the group.
+#[test]
+fn steps_a_descendant_holding_the_output_stream_fails_the_step() {
+    let p = TempDir::new().unwrap();
+    go_project(p.path());
+    let marker = p.path().join("holder-survived");
+    let body = format!(
+        "case \"$1\" in vet) (sleep 4; touch '{}') & exit 0;; esac; exit 0",
+        marker.display()
+    );
+    let bin = bin_dir(&[("go", &body)]);
+    let started = std::time::Instant::now();
+    let (code, err) = gate(p.path(), &bin);
+    assert_eq!(code, 1, "{err}");
+    assert!(
+        err.contains("quality gate could not read go vet to completion"),
+        "{err}"
+    );
+    assert!(err.contains("still held its output stream"), "{err}");
+    assert!(
+        started.elapsed().as_secs() < 20,
+        "the gate must not wait for the holder"
+    );
+    std::thread::sleep(std::time::Duration::from_secs(5));
+    assert!(!marker.exists(), "the holder was left running");
+}
+
+/// A git repository for the staged-file rules. The location variables another test sets in this
+/// process are removed, so the fixture never reads a repository they point at.
+fn git_in(dir: &Path, args: &[&str]) {
+    let out = std::process::Command::new("git")
+        .args(args)
+        .current_dir(dir)
+        .env_remove("GIT_DIR")
+        .env_remove("GIT_WORK_TREE")
+        .env_remove("GIT_INDEX_FILE")
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_CONFIG_SYSTEM", "/dev/null")
+        .output()
+        .expect("spawn git");
+    assert!(
+        out.status.success(),
+        "git {args:?}: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+/// Runs the gate on a Python project in a git repository with `staged` added to the index;
+/// returns whether the fake `ruff` ran and the gate's error text.
+fn ruff_with_staged(staged: &[&str]) -> (bool, String) {
+    let p = TempDir::new().unwrap();
+    touch(p.path(), "pyproject.toml");
+    touch(p.path(), "app.py");
+    touch(p.path(), "notes.txt");
+    git_in(p.path(), &["init", "-q"]);
+    for f in staged {
+        git_in(p.path(), &["add", f]);
+    }
+    let marker = p.path().join("ruff-ran");
+    let bin = bin_dir(&[(
+        "ruff",
+        &format!("echo ran >> '{}'; exit 0", marker.display()),
+    )]);
+    let (code, err) = gate(p.path(), &bin);
+    assert_eq!(code, 0, "{err}");
+    (marker.exists(), err)
+}
+
+/// Audit N2, REQ-5: a step tied to file extensions runs when nothing is staged (git gives an
+/// empty list, so the gate cannot tell and runs it).
+#[test]
+fn steps_nothing_staged_runs_the_changed_extension_step() {
+    let (ran, err) = ruff_with_staged(&[]);
+    assert!(ran, "ruff must run when nothing is staged: {err}");
+}
+
+/// Audit N2, REQ-5: staged files without the step's extension skip it and say why.
+#[test]
+fn steps_staged_files_without_the_extension_skip_the_step() {
+    let (ran, err) = ruff_with_staged(&["notes.txt"]);
+    assert!(!ran, "ruff must not run: {err}");
+    assert!(
+        err.contains("no staged file carries one of its extensions (.py)"),
+        "{err}"
+    );
+}
+
+/// Audit N2, REQ-5: a staged file with the step's extension runs it.
+#[test]
+fn steps_staged_file_with_the_extension_runs_the_step() {
+    let (ran, err) = ruff_with_staged(&["app.py"]);
+    assert!(ran, "ruff must run: {err}");
+}
