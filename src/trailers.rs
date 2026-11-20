@@ -216,7 +216,9 @@ fn findings(c: &CommitTrailers, spec_branch: bool, under_rule: bool) -> Vec<Valu
         add(
             "malformed_trailers",
             true,
-            "a trailer value holds a control character, so its values cannot be read apart".into(),
+            "the commit record cannot be read apart (a raw separator byte in a trailer or the \
+             body split it); its values are not trusted"
+                .into(),
         );
         return out;
     }
@@ -300,9 +302,12 @@ pub fn parse_log(text: &str) -> Vec<CommitTrailers> {
         .filter_map(|record| {
             // The body is multiline, so a whole commit is one `\x1e` record and the fields
             // inside it split on `\x1f`; a trailer value holding the field separator still
-            // shows up as too many fields.
+            // shows up as too many fields, and a raw `\x1e` inside a message splits the
+            // record, which shows up as a sha that is not a commit id — both garbled, both
+            // loud, never silently scanned past.
             let parts: Vec<&str> = record.split('\x1f').collect();
             let sha = parts.first()?.trim().to_string();
+            let real_sha = !sha.is_empty() && sha.bytes().all(|b| b.is_ascii_hexdigit());
             (!sha.is_empty()).then(|| CommitTrailers {
                 sha,
                 specs: split(parts.get(1).copied().unwrap_or("")),
@@ -310,7 +315,7 @@ pub fn parse_log(text: &str) -> Vec<CommitTrailers> {
                 verified: split(parts.get(3).copied().unwrap_or("")),
                 subject: parts.get(4).copied().unwrap_or("").trim().to_string(),
                 body: parts.get(5).copied().unwrap_or("").trim().to_string(),
-                garbled: parts.len() > 6,
+                garbled: parts.len() > 6 || !real_sha,
             })
         })
         .collect()
@@ -519,7 +524,7 @@ fn card_numbers_in_line(line: &str) -> Vec<String> {
 fn card_number_findings(c: &CommitTrailers) -> Vec<Value> {
     let mut out = Vec::new();
     let lines = std::iter::once((1usize, c.subject.as_str()))
-        .chain(c.body.lines().enumerate().map(|(n, l)| (n + 2, l)));
+        .chain(c.body.lines().enumerate().map(|(n, l)| (n + 3, l)));
     for (no, line) in lines {
         for shape in card_numbers_in_line(line) {
             out.push(json!({
@@ -835,6 +840,27 @@ mod tests {
             )["ok"],
             true
         );
+        // A raw record separator inside a message splits the record: the part before it stays
+        // readable, the tail reads as a pseudo-commit whose sha is not a commit id and goes
+        // garbled — the commit fails loudly, it is never scanned past silently.
+        let split = format!(
+            "\x1e{:040}\x1fSPEC-20261117-x\x1f{S}\x1ftests\x1fsubject\x1fbody\x1eraw byte",
+            "a"
+        );
+        let c = parse_log(&split);
+        assert_eq!(c.len(), 2);
+        assert!(!c[0].garbled, "{c:?}");
+        assert!(c[1].garbled, "{c:?}");
+        let v = judge(&c, "main");
+        assert_eq!(v["failing"], 1, "{v}");
+        let failing: Vec<&str> = v["findings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|f| f["fails"] == json!(true))
+            .map(|f| f["kind"].as_str().unwrap())
+            .collect();
+        assert_eq!(failing, ["malformed_trailers"], "{v}");
     }
 
     #[test]

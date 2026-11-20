@@ -46,8 +46,12 @@ pub const OPERATION: &str = "trailers.check";
 
 pub fn run(args: Args) -> Result<serde_json::Value, String> {
     if let Some(file) = args.message_file.as_deref() {
-        if args.range.is_some() {
-            return Err("give a range or --message-file, not both".into());
+        if args.range.is_some()
+            || args.branch.is_some()
+            || args.verified_since.is_some()
+            || args.card_numbers_since.is_some()
+        {
+            return Err("give --message-file alone: the draft scan needs no range or rules".into());
         }
         return moai_cli::trailers::message_file_check(file);
     }

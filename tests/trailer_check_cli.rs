@@ -313,7 +313,9 @@ fn card_numbers_fail_after_a_recorded_start() {
     common::git::git_ok(dir, &["init", "-q", "-b", "main"]);
     commit(dir, "base");
     let base = common::git::git(dir, &["rev-parse", "HEAD"]);
-    commit(dir, "wording after C-150");
+    // The card number sits in the BODY: the body arm of the scan is pinned here, the subject
+    // arm in the message-file test below.
+    commit(dir, "wording\n\nwording after C-150");
     commit(dir, "a clean follow-up");
     let range = format!("{base}..HEAD");
 
