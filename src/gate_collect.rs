@@ -58,6 +58,37 @@ fn git_ok(dir: &Path, args: &[&str]) -> Result<String> {
     }
 }
 
+/// The longest diff read for the weakened-test check; a longer one is not read.
+const MAX_WEAKENING_DIFF: usize = 8 * 1024 * 1024;
+
+/// The weakened-test findings of the diff from the merge base to the head, rendered one line
+/// each, or `None` when the diff cannot be read or is too long to read: unknown is never an
+/// empty list (SPEC-20261120-test-weakening-detection REQ-9).
+fn weakened_tests(dir: &Path, merge_base: &str, head: &str) -> Option<Vec<String>> {
+    let (ok, diff) = git(
+        dir,
+        &[
+            "diff",
+            "--no-ext-diff",
+            "--no-color",
+            "--no-renames",
+            "--unified=0",
+            merge_base,
+            head,
+        ],
+    )
+    .ok()?;
+    if !ok || diff.len() > MAX_WEAKENING_DIFF {
+        return None;
+    }
+    Some(
+        gate::test_weakening::detect(&diff)
+            .iter()
+            .map(|f| f.render())
+            .collect(),
+    )
+}
+
 /// Claims named by `Moai-Claim` trailers read at most per pull request.
 const MAX_CLAIMS: usize = 20;
 
@@ -991,6 +1022,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         dir,
         &["diff", "--no-renames", "--name-only", &merge_base, &head],
     )?);
+    let test_weakening = weakened_tests(dir, &merge_base, &head);
     let authors = pr_authors(t, &base_url, dir, &merge_base, &head)?;
     let unclaimed = commits_without_claim(dir, &merge_base, &head)?;
 
@@ -1128,6 +1160,7 @@ pub fn collect<T: Transport>(target: &Target<'_>, t: &T) -> Result<Snapshot> {
         stacked_below: Some(stacked),
         body_tier: gate::parse_body_tier(&body),
         merge_base: Some(merge_base),
+        test_weakening,
         ignored: stacked_ignored,
     };
     snapshot.keep_member_comments();

@@ -5,6 +5,11 @@
 
 use serde::{Deserialize, Serialize};
 
+/// The weakened-test detector (SPEC-20261120-test-weakening-detection). It lives beside the
+/// gate it feeds and is declared here, so the gate files are the only shared ones it touches.
+#[path = "test_weakening.rs"]
+pub mod test_weakening;
+
 /// One pull request comment: its id (ascending ids are posting order) and body.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -133,6 +138,11 @@ pub struct Snapshot {
     /// unknown, and a tier-0 PR stops.
     #[serde(default)]
     pub merge_base: Option<String>,
+    /// The weakened-test findings of the diff from the merge base to the head, one rendered
+    /// line each (`kind path:line detail`). Absent means the diff was not read: unknown, never
+    /// an empty list (SPEC-20261120-test-weakening-detection).
+    #[serde(default)]
+    pub test_weakening: Option<Vec<String>>,
 }
 
 impl Snapshot {
@@ -317,7 +327,46 @@ pub fn parse_body_tier(body: &str) -> Option<u8> {
 /// it declared none (unknown is audited); a [`TIER2_PREFIXES`] path raises it to 2, and any
 /// path that is not [`tier0_safe`] to at least 1. The path rule only raises.
 pub fn effective_tier(s: &Snapshot) -> u8 {
-    tier_of(s.body_tier, &s.pr_files)
+    tier_with_weakening(
+        tier_of(s.body_tier, &s.pr_files),
+        s.test_weakening.as_deref(),
+        TEST_WEAKENING_ENFORCED,
+    )
+}
+
+/// Whether weakened-test findings raise the audit tier (SPEC-20261120-test-weakening-detection
+/// D-6). A new gate starts in observe: the findings and the tier they would give are reported,
+/// and [`effective_tier`] ignores them. Turning this on is the leader's decision; the
+/// `audit-gate` CI job reads file names only, so it must be turned on together with it.
+pub const TEST_WEAKENING_ENFORCED: bool = false;
+
+/// `tier` with the weakened-test findings applied: while `enforced`, findings that are not an
+/// empty list (a list, or `None` for a diff that was not read) make it at least 1; while not,
+/// `tier` is returned as it is.
+pub fn tier_with_weakening(tier: u8, findings: Option<&[String]>, enforced: bool) -> u8 {
+    if enforced && !matches!(findings, Some([])) {
+        tier.max(1)
+    } else {
+        tier
+    }
+}
+
+/// The weakened-test part of a gate result: the findings (or `"unknown"` when the diff was not
+/// read), whether the gate enforces them and the tier they would give.
+pub fn weakening_report(s: &Snapshot) -> serde_json::Value {
+    let would = tier_with_weakening(
+        tier_of(s.body_tier, &s.pr_files),
+        s.test_weakening.as_deref(),
+        true,
+    );
+    serde_json::json!({
+        "findings": match &s.test_weakening {
+            Some(list) => serde_json::json!(list),
+            None => serde_json::json!("unknown"),
+        },
+        "enforced": TEST_WEAKENING_ENFORCED,
+        "tier_with_findings": would,
+    })
 }
 
 /// [`effective_tier`] from its two inputs: the tier the body declares and the PR's files (the

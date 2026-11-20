@@ -1790,3 +1790,40 @@ fn a_posted_fail_stops_a_tier_0_merge_until_the_same_auditor_passes() {
     ]);
     assert_eq!(stopped(&gate(&s)), (false, "G3".into()), "{}", gate(&s));
 }
+
+/// SPEC-20261120-test-weakening-detection AC-8, REQ-8, REQ-9: the gate result lists the
+/// weakened-test findings of the snapshot, says `unknown` when the diff was not read (the key is
+/// absent), and, while the check only observes, leaves the effective tier where the paths put
+/// it.
+#[test]
+fn the_gate_lists_the_findings_and_says_unknown_when_unread() {
+    let mut s = passing();
+    s["body_tier"] = json!(0);
+    s["pr_files"] = json!(["tests/a.rs"]);
+
+    // Not read: unknown, never an empty list.
+    let v = gate(&s)["result"].clone();
+    assert_eq!(v["test_weakening"]["findings"], json!("unknown"), "{v}");
+    assert_eq!(v["test_weakening"]["enforced"], json!(false), "{v}");
+
+    // Read, and nothing found.
+    s["test_weakening"] = json!([]);
+    let v = gate(&s)["result"].clone();
+    assert_eq!(v["test_weakening"]["findings"], json!([]), "{v}");
+    assert_eq!(v["effective_tier"], json!(0), "{v}");
+    assert_eq!(v["test_weakening"]["tier_with_findings"], json!(0), "{v}");
+
+    // Read, and found: listed, the tier it would give is named, the tier in force is not raised.
+    let line = "skip_added tests/a.rs:3 `skip` skips a test";
+    s["test_weakening"] = json!([line]);
+    let v = gate(&s)["result"].clone();
+    assert_eq!(v["test_weakening"]["findings"], json!([line]), "{v}");
+    assert_eq!(v["test_weakening"]["tier_with_findings"], json!(1), "{v}");
+    assert_eq!(v["effective_tier"], json!(0), "{v}");
+
+    // A stop carries the findings too.
+    s["body_check_ok"] = json!(false);
+    let v = gate(&s)["result"].clone();
+    assert_eq!(v["pass"], json!(false), "{v}");
+    assert_eq!(v["test_weakening"]["findings"], json!([line]), "{v}");
+}

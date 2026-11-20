@@ -44,14 +44,14 @@ created: 2026-11-20
 - AC-5 (REQ-5): 골든 파일만 바뀐 diff 는 `golden_only`, 같은 골든과 함께 소스 코드도 바뀐 diff 는 내지 않아요 · verify: `cargo test --locked --offline --test test_weakening each_kind_fires_on_its_fixture_and_stays_quiet_on_its_pair`
 - AC-6 (REQ-6): 시험 파일만 바꾸고 다섯 가지에 걸리지 않는 diff 는 빈 목록이고 `tier_of(Some(0), 그 파일들)` 는 여전히 0 이에요 · verify: `cargo test --locked --offline --test test_weakening a_test_only_change_that_weakens_nothing_stays_tier_zero`
 - AC-7 (REQ-7): `review-package` 결과의 `test_weakening` 이 약화 diff 에서는 목록, 아닌 diff 에서는 빈 배열이에요 · verify: `cargo test --locked --offline --test test_weakening review_package_carries_the_findings`
-- AC-8 (REQ-8, REQ-9): `gate-check` 의 결과가 걸린 목록을 보이고, diff 를 읽을 수 없으면 `unknown` 을 보여요 · verify: `cargo test --locked --offline --test test_weakening the_gate_lists_the_findings_and_says_unknown_when_unread`
+- AC-8 (REQ-8, REQ-9): `gate-check` 의 결과가 걸린 목록을 보이고, diff 를 읽을 수 없으면 `unknown` 을 보여요 · verify: `cargo test --locked --offline --test gate_check_cli the_gate_lists_the_findings_and_says_unknown_when_unread`
 - AC-9 (REQ-10, REQ-12, REQ-13): 관찰 중에는 `effective_tier` 가 그대로이고 결과가 올렸을 때의 tier 를 말하며, 켜면 목록이 비어 있지 않거나 unknown 일 때 최소 1 이에요 · verify: `cargo test --locked --offline --test test_weakening observe_reports_and_enforce_raises_the_tier`
 - AC-10 (REQ-11): 두 문서에 연결 문장이 한 번씩 있어요 · verify: `cargo test --locked --offline --test test_weakening the_two_documents_carry_the_connecting_sentence`
 - AC-11: 최근 병합된 PR 50개(로컬 병합 커밋의 두 부모 사이)에 돌린 결과 — 걸린 수, 그중 실제 약화 수 — 가 이 SPEC 의 Result 에 있어요 · verify: manual: Result 표를 읽어요(명령과 출력이 Result 에 적혀 있어요)
 
 ## Scope
 
-- write: 이 SPEC, `src/test_weakening.rs`(새), `src/ops/test_weakening_check.rs`(새), `src/review.rs`, `src/gate.rs`, `src/gate_collect.rs`, `src/help.rs`(도움말 행), `src/lib.rs`(모듈 한 줄), `tests/test_weakening.rs`(새), `skills/moai/references/internal/quality.md`, `skills/moai/workflows/mode-agent.md`, `docs/design-review/appendix/operations/test_weakening_check.md`(새)
+- write: 이 SPEC, `src/test_weakening.rs`(새), `src/gate.rs`, `src/gate_collect.rs`, `src/ops/gate_check.rs`, `src/review.rs`(조각 3b), `tests/test_weakening.rs`(새), `tests/gate_check_cli.rs`, `skills/moai/references/internal/quality.md`와 `skills/moai/workflows/mode-agent.md`(조각 4)
 - 다른 카드가 쥔 파일(2026-11-20 예약 읽음): `src/review.rs`(조각 3 의 `review-package` 키), `skills/moai/references/internal/quality.md`와 `skills/moai/workflows/mode-agent.md`(조각 4 의 연결 문장)는 쥔 카드가 풀거나 리더가 순서를 정한 뒤에 써요. 그 전까지 조각 2와 `gate-check` 쪽(`src/gate.rs`, `src/gate_collect.rs`)을 먼저 해요
 - read-only: `src/audit_gate.rs`, `tools/protected_checks.json`, `skills/moai/workflows/audit.md`
 - forbidden: 모델 호출, 네트워크, 약화가 걸린 PR 을 막는 규칙, 카드 번호를 SPEC id·가지·커밋·PR 에 쓰는 것
@@ -59,8 +59,8 @@ created: 2026-11-20
 ## Plan
 
 1. 조각 1(이번): SPEC, 조사 보고, PLAN 노트. 범위 확장 요청(`src/gate.rs`, `src/review.rs` 가 다른 카드에 잡혀 있으면 순서를 리더에게).
-2. 조각 2(검사기): `src/test_weakening.rs` 순수 함수(diff 글 → 목록)와 `test-weakening-check` 명령(범위 두 끝을 받아 git diff 를 읽음), 다섯 가지 고정물 쌍 시험(AC-1~6).
-3. 조각 3(소비): `review-package` 의 새 키(AC-7), `gate-check` 의 스냅샷 키와 관찰/켜짐 스위치(AC-8, AC-9).
+2. 조각 2(검사기): `src/test_weakening.rs` 순수 함수(diff 글 → 목록)와 다섯 가지 고정물 쌍 시험(AC-1~6). 별도 명령은 만들지 않아요(D-7).
+3. 조각 3a(소비, gate-check): 스냅샷 키 `test_weakening`, 수집기가 diff 를 읽음, 결과에 목록·`tier_with_findings`, 관찰/켜짐 스위치(AC-8, AC-9). 조각 3b: `review-package` 의 새 키(AC-7, `src/review.rs` 를 쥔 카드가 풀린 뒤).
 4. 조각 4(문서와 결과): 연결 문장 두 곳(AC-10), 최근 PR 50개 실행 결과를 Result 에(AC-11).
 
 ## Risks
@@ -80,6 +80,8 @@ created: 2026-11-20
 | D-4 | 단언 줄은 Rust `assert!(`·`assert_eq!(`·`assert_ne!(`, Python `assert `·`self.assert`·`assertEqual(` 등으로 세고, 바뀐 시험 파일마다 지운 수에서 더한 수를 뺀 값이 양수일 때만 걸어요 | 한 파일 안에서 단언을 옮기는 변경을 거르는 가장 단순한 규칙이에요 | 함수 단위 비교 |
 | D-5 | 골든 파일은 경로로 정해요: `/golden/` 이 든 경로, `.golden`·`.snap`·`.expected` 로 끝나는 파일, `tests/fixtures/` 아래. 골든이 바뀌고 시험·골든·문서 밖의 파일이 하나도 안 바뀌면 걸어요 | 코드 변경 없이 기대값만 다시 쓴 경우가 약화의 전형이에요 | 경로 목록 조정 |
 | D-6 | 관찰/켜짐 스위치는 `gate.rs` 의 상수 하나(`TEST_WEAKENING_ENFORCED`, 지금 false)예요 | 켜는 일은 리더 결정이라 코드 한 줄로 되돌릴 수 있게 해요 | 상수 값 |
+| D-7 | 검사기 모듈은 `src/lib.rs` 가 아니라 `src/gate.rs` 가 `#[path]` 로 선언하고(`gate::test_weakening`), 별도 명령 대신 `gate-check` 결과로만 보여요 | `src/lib.rs`·`src/help.rs` 같은 공용 한 줄 파일을 다른 카드가 오래 쥐고 있어서, 게이트 파일만 건드리게 해요 | `lib.rs` 로 옮기기, 명령 더하기 |
+| D-8 | 한 파일에서 지운 시험을 다른 파일에서 같은 이름으로 다시 시작하면 시험 삭제로 세지 않지만, 지운 쪽 파일의 단언 순감소는 파일 단위로 그대로 세요 | 옮긴 시험의 오탐은 감사 한 번이고, 단언을 파일 단위로 세는 가장 단순한 규칙이에요 | 시험 함수 단위로 단언을 세기 |
 
 ## Result
 
