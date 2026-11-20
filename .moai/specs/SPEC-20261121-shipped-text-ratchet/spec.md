@@ -68,7 +68,7 @@ Tokens (first list, each a pattern and a reason): `card-number` `\bC-[0-9]+\b`; 
 
 - Headroom regrows. A file that drops from five to three leaves room for two again, because the baseline is only lowered by hand. `check` lists the headroom so the next change can tighten it; a strict mode that fails on it would make every reduction conflict with every other branch's baseline edit, so it is not built here.
 - A branch can raise the baseline instead of fixing its text. The baseline is a checked-in file, so the raise is a diff the audit reads; the scan alone cannot tell a reasoned raise from a hidden one.
-- A match is a shape, not a meaning. `C-12` as an example in a user-facing help line counts the same as a card number; the baseline absorbs the existing ones and the scan will flag a new one, which the author then rewrites.
+- A match is a shape, not a meaning. a card-number shape used as an example in a user-facing help line counts the same as a real card number; the baseline absorbs the existing ones and the scan will flag a new one, which the author then rewrites.
 - A new line in the shipped text now fails this scan on every branch that touches it (the scan is in the repo-scans table). That is the aim, and it means a branch written before this scan landed can fail at its merge.
 - `tools/repo_scans.json` is held by another card at the time of writing; the entry (REQ-12) waits for it.
 
