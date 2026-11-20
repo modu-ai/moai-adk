@@ -1,6 +1,6 @@
 //! SPEC-20261120-destructive-ops-checklists: the shipped guidance for code that removes or moves
-//! data, for units and limits, and for external-tool versions is in the references, and the
-//! audit and implementation agents read it. The tests read the shipped files as they are.
+//! data, for units and limits, and for external-tool versions is in the references. The tests
+//! read the shipped files as they are.
 
 use std::fs;
 use std::path::PathBuf;
@@ -72,24 +72,6 @@ fn boundary_checks_state_units_limits_and_tool_versions() {
         assert!(
             text.lines().any(|l| l.starts_with(&format!("{n}. **"))),
             "item {n} is numbered in place:\n{text}"
-        );
-    }
-}
-
-#[test]
-fn both_agents_read_destructive_ops() {
-    for agent in ["agents/audit.md", "agents/impl.md"] {
-        let text = read(agent);
-        let reads = text
-            .lines()
-            .find(|l| l.starts_with("reads:"))
-            .unwrap_or_else(|| panic!("{agent} has no reads: line"));
-        assert!(
-            reads
-                .trim_start_matches("reads:")
-                .split(',')
-                .any(|r| r.trim() == "internal/destructive-ops"),
-            "{agent}: {reads}"
         );
     }
 }

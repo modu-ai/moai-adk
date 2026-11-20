@@ -2,7 +2,7 @@
 id: SPEC-20261120-destructive-ops-checklists
 title: "Checklists for code that deletes or moves data, for units and limits, and for external-tool versions"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-20
 ---
 
@@ -22,7 +22,7 @@ created: 2026-11-20
 
 - 점검표의 항목을 코드로 강제하는 도구는 만들지 않아요(지침과 그 지침을 못 박는 시험만).
 - 기존 코드의 지우기·옮기기 경로를 이 SPEC 에서 고치지 않아요.
-- 에이전트 정의의 다른 문장(구현·감사의 단계 문구)은 바꾸지 않아요: `reads:` 줄만 바뀌어요.
+- 에이전트 정의(`agents/audit.md`·`agents/impl.md`)는 바꾸지 않아요: 두 에이전트가 이 참조를 읽게 하는 `reads:` 줄은 그 파일을 쥔 변경이 돌려준 뒤 따로 SPEC 을 둬요(리더 결정 2026-11-20T12:01:30Z: 새 참조를 만드는 변경이 그 파일과 함께 `reads:` 줄을 넣고, 그 파일이 돌아온 뒤에 한다).
 - 새 기본 에이전트나 새 워크플로를 만들지 않아요.
 
 ## Requirements
@@ -31,8 +31,7 @@ created: 2026-11-20
 - REQ-2: The `destructive-ops` reference shall name the link check on every path component, the NUL-separated reading of machine output with exactly one matching record, keeping every commit reachable, saving the way back before the removal, leaving a just-created empty target alone, leaving a nested repository's contents alone and failing closed.
 - REQ-3: The `boundary-checks` reference shall state that both sides of a comparison count the same unit and that the writer's limit equals the reader's limit.
 - REQ-4: The `boundary-checks` reference shall state that a change using a new option of an external tool names the oldest supported version, checks support at run time and tests the fallback branch.
-- REQ-5: The `moai-audit` and `moai-impl` agent definitions shall list `internal/destructive-ops` among the references they read.
-- REQ-6: The guidance test shall fail when a reference lacks one of these items or an agent definition does not read the reference.
+- REQ-5: The guidance test shall fail when a reference lacks one of these items.
 
 ## Acceptance
 
@@ -40,27 +39,25 @@ created: 2026-11-20
   verify: `cargo test --locked --offline --test destructive_ops_guidance destructive_ops_names_every_check`
 - AC-2 (REQ-3, REQ-4): `boundary-checks.md` 의 8번 항목이 단위·한도를, 9번 항목이 외부 도구의 가장 오래된 버전·실행 중 확인·대체 분기 시험을 말해요.
   verify: `cargo test --locked --offline --test destructive_ops_guidance boundary_checks_state_units_limits_and_tool_versions`
-- AC-3 (REQ-5): `agents/audit.md` 와 `agents/impl.md` 의 `reads:` 에 `internal/destructive-ops` 가 있어요.
-  verify: `cargo test --locked --offline --test destructive_ops_guidance both_agents_read_destructive_ops`
-- AC-4 (REQ-6): 위 문장 하나를 지우면 해당 시험이 실패해요(변이 확인).
+- AC-3 (REQ-5): 위 문장 하나를 지우면 해당 시험이 실패해요(변이 확인).
   verify: `cargo test --locked --offline --test destructive_ops_guidance the_guidance_test_fails_when_an_item_is_missing`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261120-destructive-ops-checklists/spec.md`, `skills/moai/references/internal/destructive-ops.md`(새), `skills/moai/references/internal/boundary-checks.md`, `skills/moai/references/source-manifest.json`, `agents/audit.md`(`reads:` 줄), `agents/impl.md`(`reads:` 줄), `tests/agent_defs_package.rs`(읽기 목록·참조 이름 목록), `tests/destructive_ops_guidance.rs`(새)
+- write: `.moai/specs/SPEC-20261120-destructive-ops-checklists/spec.md`, `skills/moai/references/internal/destructive-ops.md`(새), `skills/moai/references/internal/boundary-checks.md`, `skills/moai/references/source-manifest.json`, `tests/agent_defs_package.rs`(참조 이름 목록 한 줄), `tests/destructive_ops_guidance.rs`(새)
 - read-only: 조사 보고서의 G3·G4·G5, `skills/moai/references/internal/security-checklist.md`, `skills/moai/references/internal/self-check.md`
-- forbidden: 에이전트 정의의 `reads:` 밖 문장, 새 기본 에이전트, 코드의 지우기 경로
+- forbidden: `agents/*.md` 와 `tests/agent_defs_package.rs` 의 에이전트별 읽기 목록(뒤 SPEC), 새 기본 에이전트, 코드의 지우기 경로
 
 ## Plan
 
 1. SPEC 을 먼저 커밋해요(이 문서).
 2. RED: `tests/destructive_ops_guidance.rs` 에 시험 넷을 먼저 써서 문장이 없을 때 실패하는 것을 봐요.
-3. GREEN: `destructive-ops.md` 를 쓰고 `boundary-checks.md` 에 8·9번 항목을 더하고 두 에이전트의 `reads:` 줄에 `internal/destructive-ops` 를 더해요. `tests/agent_defs_package.rs` 의 두 목록(에이전트별 읽기 목록, 참조 이름 목록)에도 이름을 더해요. 스킬 파일을 고쳤으니 `python3 -I tools/source_manifest.py write` 로 매니페스트를 갱신해요.
-4. 확인: `destructive_ops_guidance`·`agent_defs_package`·`product_cli skill_package`·`update_tux_golden`·`tests.source_manifest_test`·`tests.skill_references_test`·`tests.repo_scans_test`, fmt, clippy `--all-targets`, `moai check affected`, 변이(문장·읽기 항목 지우기).
+3. GREEN: `destructive-ops.md` 를 쓰고 `boundary-checks.md` 에 8·9번 항목을 더하고 `tests/agent_defs_package.rs` 의 참조 이름 목록에 `destructive-ops` 를 더해요(그 파일을 쥔 변경이 돌려준 뒤). 두 에이전트의 `reads:` 줄과 에이전트별 읽기 목록은 뒤 SPEC 이 맡아요. 스킬 파일을 고쳤으니 `python3 -I tools/source_manifest.py write` 로 매니페스트를 갱신해요.
+4. 확인: `destructive_ops_guidance`·`agent_defs_package`(이름 목록)·`product_cli skill_package`·`update_tux_golden`·`tests.source_manifest_test`·`tests.skill_references_test`·`tests.repo_scans_test`, fmt, clippy `--all-targets`, `moai check affected`, 변이(문장·읽기 항목 지우기).
 
 ## Risks
 
-- `agents/audit.md`·`agents/impl.md`·`tests/agent_defs_package.rs` 는 다른 변경이 쥐고 있어서 이 SPEC 의 AC-3 은 그 예약이 풀린 뒤에야 닫혀요: 풀리기 전에는 예약을 요청하는 노트를 남기고, 풀리지 않으면 AC-3 을 뒤 SPEC 으로 넘기고 이 SPEC 의 AC-3 을 철회(`withdrawn`)로 적어요.
+- `tests/agent_defs_package.rs` 는 다른 변경이 쥐고 있어서 참조 이름 목록 한 줄은 그 파일이 돌아온 뒤에 더해요: 그 전에는 병합하지 않아요(이름 목록 시험이 새 파일을 모르면 빨개져요). `agents/*.md` 의 `reads:` 줄은 이 SPEC 이 아니라 뒤 SPEC 이 맡아요.
 - 새 참조 파일이 늘면 업데이트 화면의 고정 파일 목록(`tests/fixtures/update_tux/*`)과 매니페스트가 어긋날 수 있어요: 매니페스트는 도구로 다시 쓰고, 고정 파일은 시험이 실제로 읽는지 확인해요.
 - 점검표가 길어지면 에이전트가 읽지 않아요: 일곱 항목과 한 줄 확인으로 짧게 두고, 상황 설명은 항목마다 한 문장으로 해요.
 - G4·G5 를 `boundary-checks` 에 더하면 경계 점검의 범위가 넓어져요: 항목은 번호를 이어 8·9 로 붙이고 앞의 일곱 항목은 그대로 둬요.
@@ -71,7 +68,7 @@ created: 2026-11-20
 | --- | --- | --- | --- |
 | D-1 | G3 는 새 참조 `internal/destructive-ops` 로 둔다(`security-checklist` 안의 한 절로 두지 않는다) | 보안 점검표는 인증·입력·비밀을 다뤄 읽는 때가 달라요: 지우기·옮기기를 쓰는 변경만 읽도록 따로 둬요 | 파일 지우고 한 절로 합치기 |
 | D-2 | G4·G5 는 `boundary-checks` 에 8·9번 항목으로 더한다 | 단위·한도·외부 도구는 둘이 만나는 경계의 결함이에요 | 두 항목 지우기 |
-| D-3 | 읽기 표시는 `moai-audit` 과 `moai-impl` 의 `reads:` 줄만 바꾼다 | 두 에이전트가 이 변경을 쓰고 검사해요 | 줄에서 이름 지우기 |
+| D-3 | 읽기 표시(`moai-audit`·`moai-impl` 의 `reads:` 줄)는 뒤 SPEC 으로 넘긴다 | 새 참조를 만드는 변경이 그 파일과 함께 줄을 넣어야 항상 초록이고(`src/agent_defs.rs` 가 `reads` 항목마다 참조 파일을 요구해요), 그 에이전트 파일은 다른 변경이 쥐고 있어요 | 줄 더하기 |
 | D-4 | 한 줄 확인 "가드를 일부러 깨 본다"를 점검표에 넣는다 | 오늘 감사의 변이가 가드의 시험 없음을 여러 번 드러냈어요 | 항목 지우기 |
 
 ## Result
