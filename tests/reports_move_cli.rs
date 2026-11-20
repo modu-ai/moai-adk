@@ -607,3 +607,69 @@ fn a_linked_state_folder_inside_the_same_repository_blocks_the_move() {
     assert!(p.reason.contains("is a link"), "{}", p.reason);
     assert!(root.join("stash/reports/a.md").exists());
 }
+
+/// Audit R1: a git repository of its own further down the report folder (its `.git` a folder, or
+/// a file as a worktree or a submodule has) is not this project's report: the plan is blocked
+/// and nothing of it moves, so the repository stays where it was.
+#[test]
+fn a_git_repository_below_the_report_folder_blocks_the_move() {
+    for kind in ["folder", "file"] {
+        let h = TempHome::new();
+        let tmp = tempfile::tempdir().unwrap();
+        let root = repo(tmp.path());
+        write(&root, ".moai-cli/reports/a.md", "a");
+        let sub = root.join(".moai-cli/reports/sub");
+        write(&root, ".moai-cli/reports/sub/tracked.md", "tracked");
+        if kind == "folder" {
+            git_ok(&sub, &["init", "-q"]);
+            git_ok(&sub, &["config", "user.email", "t@example.invalid"]);
+            git_ok(&sub, &["config", "user.name", "t"]);
+            git_ok(&sub, &["add", "-f", "tracked.md"]);
+            git_ok(&sub, &["commit", "-q", "-m", "inner"]);
+        } else {
+            fs::write(sub.join(".git"), "gitdir: ../../../../elsewhere\n").unwrap();
+        }
+        let before = h.snapshot();
+        let p = plan(&root, h.path()).unwrap();
+        assert_eq!(p.state, "blocked", "{kind}: {}", p.reason);
+        assert!(p.moves.is_empty(), "{kind}");
+        assert!(
+            p.reason.contains(".moai-cli/reports/sub") && p.reason.contains("repository"),
+            "{kind}: {}",
+            p.reason
+        );
+        let err = apply_plan(&root, h.path(), &p).unwrap_err();
+        assert!(err.contains("blocked"), "{kind}: {err}");
+        assert!(sub.join(".git").exists(), "{kind}: the repository moved");
+        assert!(root.join(".moai-cli/reports/a.md").exists(), "{kind}");
+        assert_eq!(h.snapshot(), before, "{kind}: the HOME stays untouched");
+    }
+}
+
+/// Audit non-blocking: in a linked worktree a HOME that lies inside the primary checkout would
+/// write the reports back into the repository, so it blocks too.
+#[test]
+fn a_linked_worktrees_home_inside_the_primary_checkout_blocks_the_move() {
+    let tmp = tempfile::tempdir().unwrap();
+    let primary = repo(tmp.path());
+    let wt = tmp.path().join("a-feature-worktree");
+    git_ok(
+        &primary,
+        &[
+            "worktree",
+            "add",
+            "-q",
+            wt.to_str().unwrap(),
+            "-b",
+            "feature",
+        ],
+    );
+    let wt = fs::canonicalize(&wt).unwrap();
+    write(&wt, ".moai-cli/reports/a.md", "a");
+    let home = primary.join("in-primary-home");
+    let p = plan(&wt, &home).unwrap();
+    assert_eq!(p.state, "blocked", "{}", p.reason);
+    assert!(p.reason.contains("inside the project"), "{}", p.reason);
+    assert!(!home.exists());
+    assert!(wt.join(".moai-cli/reports/a.md").exists());
+}

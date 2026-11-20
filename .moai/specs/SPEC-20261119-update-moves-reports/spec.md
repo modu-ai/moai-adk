@@ -33,7 +33,7 @@ parent: SPEC-20261119-reports-outside-repo
 - REQ-8: The command `project-update-plan` shall show one step `reports` whose preview carries the counts to move and to skip and the tracked count and the destination.
 - REQ-9: The step `reports` shall offer its apply command only with the plan digest of the same preview.
 - REQ-10: The command `reports-move-plan` shall report the state `blocked` and plan no move when the project is not a git repository or git cannot tell what is tracked.
-- REQ-11: The command `reports-move-plan` shall report the state `blocked` and plan no move when a folder on the way to an earlier report folder is a link, when that folder belongs to another repository, when HOME is not an absolute path, when the reports folder would lie inside the project, when more than 20,000 files lie under the earlier folders or when a folder of the destination is not a plain folder.
+- REQ-11: The command `reports-move-plan` shall report the state `blocked` and plan no move when a folder on the way to an earlier report folder is a link, when that folder or one below it belongs to a git repository of its own, when HOME is not an absolute path, when the reports folder would lie inside the project, when more than 20,000 files lie under the earlier folders or when a folder of the destination is not a plain folder.
 - REQ-12: The command `reports-move-plan` shall name the destination folder after the primary checkout when the project is a linked worktree.
 
 ## Acceptance
@@ -55,7 +55,7 @@ parent: SPEC-20261119-reports-outside-repo
 - AC-8 (REQ-10): git 저장소가 아닌 프로젝트에서는 `blocked` 이고 아무것도 옮기지 않아요.
   verify: `cargo test --locked --offline --test reports_move_cli a_folder_git_cannot_read_blocks_the_move_and_nothing_is_created`
 - AC-9 (REQ-11): `.moai-cli`(또는 `.moai`)가 다른 저장소로 가는 링크이거나 중첩 저장소이면, HOME 이 상대 경로이거나 프로젝트 안이면, 파일이 20,000개를 넘으면, 목적지 폴더가 링크·파일이면 `blocked` 이고 아무것도 옮겨지거나 지워지지 않아요(링크 너머 저장소의 추적 파일이 그대로예요); 20,000개는 계획되고 20,001개는 막혀요.
-  verify: `cargo test --locked --offline --test reports_move_cli a_linked_state_folder_is_never_followed_into_another_repository`; `cargo test --locked --offline --test reports_move_cli a_report_folder_inside_a_nested_repository_is_never_moved`; `cargo test --locked --offline --test reports_move_cli a_home_that_is_relative_or_inside_the_project_blocks_the_move`; `cargo test --locked --offline --test reports_move_cli the_file_limit_holds_at_n_and_blocks_at_n_plus_one`; `cargo test --locked --offline --test reports_move_cli a_destination_that_is_a_link_or_a_file_blocks_the_move`
+  verify: `cargo test --locked --offline --test reports_move_cli a_linked_state_folder_is_never_followed_into_another_repository`; `cargo test --locked --offline --test reports_move_cli a_linked_state_folder_inside_the_same_repository_blocks_the_move`; `cargo test --locked --offline --test reports_move_cli a_report_folder_inside_a_nested_repository_is_never_moved`; `cargo test --locked --offline --test reports_move_cli a_git_repository_below_the_report_folder_blocks_the_move`; `cargo test --locked --offline --test reports_move_cli a_linked_worktrees_home_inside_the_primary_checkout_blocks_the_move`; `cargo test --locked --offline --test reports_move_cli a_home_that_is_relative_or_inside_the_project_blocks_the_move`; `cargo test --locked --offline --test reports_move_cli the_file_limit_holds_at_n_and_blocks_at_n_plus_one`; `cargo test --locked --offline --test reports_move_cli a_destination_that_is_a_link_or_a_file_blocks_the_move`
 - AC-10 (REQ-12): 연결된 작업 트리에서 돌리면 목적지가 그 작업 트리 폴더 이름이 아니라 primary 체크아웃 이름의 폴더예요.
   verify: `cargo test --locked --offline --test reports_move_cli a_linked_worktree_moves_to_the_primary_checkouts_folder`
 
@@ -103,7 +103,7 @@ parent: SPEC-20261119-reports-outside-repo
 - AC-6: met — `a_plan_made_stale_by_a_new_file_or_a_wrong_digest_or_reference_is_refused` 통과
 - AC-7: met — `update_plan_shows_the_reports_step` 통과
 - AC-8: met — `a_folder_git_cannot_read_blocks_the_move_and_nothing_is_created` 통과
-- AC-9: met — 여섯 시험 통과: `a_linked_state_folder_is_never_followed_into_another_repository`, `a_linked_state_folder_inside_the_same_repository_blocks_the_move`, `a_report_folder_inside_a_nested_repository_is_never_moved`, `a_home_that_is_relative_or_inside_the_project_blocks_the_move`, `a_destination_that_is_a_link_or_a_file_blocks_the_move`, 그리고 20,000개 계획·20,001개 막힘 경계 `the_file_limit_holds_at_n_and_blocks_at_n_plus_one`
+- AC-9: met — 여덟 시험 통과(`a_git_repository_below_the_report_folder_blocks_the_move`·`a_linked_worktrees_home_inside_the_primary_checkout_blocks_the_move` 포함): `a_linked_state_folder_is_never_followed_into_another_repository`, `a_linked_state_folder_inside_the_same_repository_blocks_the_move`, `a_report_folder_inside_a_nested_repository_is_never_moved`, `a_home_that_is_relative_or_inside_the_project_blocks_the_move`, `a_destination_that_is_a_link_or_a_file_blocks_the_move`, 그리고 20,000개 계획·20,001개 막힘 경계 `the_file_limit_holds_at_n_and_blocks_at_n_plus_one`
 - AC-10: met — `a_linked_worktree_moves_to_the_primary_checkouts_folder` 통과
 - 위 AC-1..AC-8 시험은 head `0a6b335558` 의 영역 접두 대상 실행(`reports_*` 포함 63개, `cargo test` 종료 코드 0)에서 돌았어요. 감사가 찾은 결함을 고친 뒤(AC-9·AC-10 과 `project_update_plan_cli` 의 `a_ready_reports_step_holds_the_go_state_command_until_it_is_applied`)의 확인은 `moai check affected` 요약 줄이에요(노트에 있어요).
 

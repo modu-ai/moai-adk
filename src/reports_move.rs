@@ -131,6 +131,14 @@ fn walk(root: &Path, rel: &str, files: &mut Vec<(String, u64)>, unmovable: &mut 
                 continue;
             };
             let path = format!("{dir}/{name}");
+            // A repository of its own (its `.git` is a folder, or a file for a worktree or a
+            // submodule): its files are not this project's reports, and git run from the project
+            // cannot tell which of them that repository tracks.
+            if name == ".git" {
+                return Err(format!(
+                    "`{dir}` holds a git repository of its own; nothing moves"
+                ));
+            }
             let Ok(meta) = fs::symlink_metadata(e.path()) else {
                 *unmovable += 1;
                 continue;
@@ -255,7 +263,8 @@ pub fn plan(root: &Path, home: &Path) -> Result<MovePlan> {
     let root =
         fs::canonicalize(root).map_err(|_| contract::PROJECT_PATH_UNAVAILABLE.to_string())?;
     // A linked worktree saves under the primary checkout's name, as `optimize-plan` reads it.
-    let destination = home_workdir::reports_dir(home, &primary_root(&root))?;
+    let primary = primary_root(&root);
+    let destination = home_workdir::reports_dir(home, &primary)?;
     let mut present: Vec<String> = Vec::new();
     for s in sources() {
         match plain_chain(&root, &s) {
@@ -299,7 +308,8 @@ pub fn plan(root: &Path, home: &Path) -> Result<MovePlan> {
             ),
         ));
     }
-    if resolved(&destination).starts_with(&root) {
+    let place = resolved(&destination);
+    if place.starts_with(&root) || place.starts_with(&primary) {
         return Ok(blocked(
             &root,
             &destination,
