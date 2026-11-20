@@ -149,7 +149,7 @@ class UpdateScreens(unittest.TestCase):
         self.assertEqual(len(saved), 1, text)
         with open(os.path.join(self.home, saved[0])) as f:
             models = json.load(f)["launcher"]["models"]
-        self.assertEqual(models["claude"]["leader"], {"model": "claude-opus-5-5", "effort": "medium"})
+        self.assertEqual(models["claude"]["leader"], {"model": "claude-opus-5-5", "effort": "high"})
         flat = text.replace("\n  ", " ").replace(" ", " ")
         self.assertIn("Done", text)
         self.assertIn("run /moai update in a session there", flat)
