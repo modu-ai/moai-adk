@@ -1753,6 +1753,34 @@ mod tests {
         assert!(!earlier_path(root, "receipts").join("new.json").exists());
     }
 
+    /// A link counts as there, a broken one too: a reader never skips past a dangling
+    /// `local/<kind>` link to the earlier folder, and a dangling earlier link is still found
+    /// (`read_path` asks `symlink_metadata`, which does not follow the link).
+    #[cfg(unix)]
+    #[test]
+    fn a_broken_link_counts_as_the_path_being_there() {
+        use std::os::unix::fs::symlink;
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        write(root, &format!("{}/receipts/old.json", dir(root)), "old");
+        fs::create_dir_all(path(root, LOCAL_DIR)).unwrap();
+        symlink(root.join("nowhere"), local_path(root, "receipts")).unwrap();
+        assert!(!local_path(root, "receipts").exists(), "the link dangles");
+        assert_eq!(
+            read_path(root, "receipts"),
+            Some(local_path(root, "receipts")),
+            "the broken new link is not skipped for the earlier folder"
+        );
+
+        symlink(root.join("nowhere"), earlier_path(root, "state")).unwrap();
+        assert!(!earlier_path(root, "state").exists(), "the link dangles");
+        assert_eq!(
+            read_path(root, "state"),
+            Some(earlier_path(root, "state")),
+            "a broken earlier link is found, not reported as absent"
+        );
+    }
+
     /// The files a host reads in a fixed place are not part of the layout.
     #[test]
     fn host_owned_files_are_not_in_the_layout() {

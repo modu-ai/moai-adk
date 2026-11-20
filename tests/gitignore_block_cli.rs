@@ -367,17 +367,66 @@ fn the_block_ignores_local_and_keeps_tools_and_evals() {
     }
 }
 
-/// SPEC-20261120-moai-layout REQ-4, REQ-9: a block written before the layout rule gets its three
-/// new lines as a `merge` in the plan, and the file is not written until the plan is applied.
+/// SPEC-20261120-moai-layout REQ-11: credential and `.env` files stay out of git anywhere under
+/// the state folder, in the folders the block allows too, and the lines come after the allow-list.
 #[test]
-fn an_earlier_block_is_shown_as_changed_and_left_until_applied() {
+fn the_block_ignores_credential_and_env_files_even_in_tools_and_evals() {
     let fx = Fx::new(None);
+    fx.apply_ok("none");
+    let text = fx.ignore();
+    for rel in [
+        ".moai-cli/tools/.env",
+        ".moai-cli/tools/.env.local",
+        ".moai-cli/tools/deep/er/.env",
+        ".moai-cli/tools/credentials.yaml",
+        ".moai-cli/evals/api.credentials",
+        ".moai-cli/evals/sub/credentials.yaml",
+        ".moai-cli/specs/SPEC-x/.env",
+    ] {
+        assert!(fx.ignored(rel), "{rel} is not ignored:\n{text}");
+    }
+    for rel in [
+        ".moai-cli/tools/check.sh",
+        ".moai-cli/tools/env.sh",
+        ".moai-cli/evals/set.json",
+        ".moai-cli/specs/SPEC-x/spec.md",
+    ] {
+        assert!(!fx.ignored(rel), "{rel} is ignored:\n{text}");
+    }
+    let lines: Vec<&str> = text.lines().collect();
+    let last_allow = lines.iter().rposition(|l| l.starts_with('!')).unwrap();
+    for line in [
+        ".moai-cli/**/credentials.yaml",
+        ".moai-cli/**/*.credentials",
+        ".moai-cli/**/.env",
+        ".moai-cli/**/.env.*",
+    ] {
+        let at = lines.iter().position(|l| *l == line).unwrap_or_else(|| {
+            panic!("no `{line}` line:\n{text}");
+        });
+        assert!(
+            at > last_allow,
+            "`{line}` comes before an allow line:\n{text}"
+        );
+    }
+}
+
+/// The project as an earlier version left it: the block without the layout rule's lines (the
+/// `local/` line, the `tools/` and `evals/` allow lines and the credential lines), recorded as the
+/// block this tool wrote. Returns the earlier block text and the full block it grows into.
+fn with_earlier_block(fx: &Fx) -> (String, String) {
     fx.apply_ok("none");
     let full = fx.ignore();
     let old = full
-        .replace(".moai-cli/local/\n", "")
-        .replace("!.moai-cli/tools/\n", "")
-        .replace("!.moai-cli/evals/\n", "");
+        .lines()
+        .filter(|l| {
+            !(*l == ".moai-cli/local/"
+                || *l == "!.moai-cli/tools/"
+                || *l == "!.moai-cli/evals/"
+                || l.starts_with(".moai-cli/**/"))
+        })
+        .map(|l| format!("{l}\n"))
+        .collect::<String>();
     assert_ne!(old, full, "the block lists the new lines:\n{full}");
     fs::write(fx.root.join(".gitignore"), &old).unwrap();
     let path = fx.root.join(".moai-cli/manifests/generation.json");
@@ -388,16 +437,29 @@ fn an_earlier_block_is_shown_as_changed_and_left_until_applied() {
         }
     }
     fs::write(&path, serde_json::to_vec_pretty(&manifest).unwrap()).unwrap();
+    (old, full)
+}
+
+/// SPEC-20261120-moai-layout REQ-4, REQ-8: a block written before the layout rule gets its seven
+/// new lines as a `merge` in the plan, and the file is not written until the plan is applied.
+#[test]
+fn an_earlier_block_is_shown_as_changed_and_left_until_applied() {
+    let fx = Fx::new(None);
+    let (old, full) = with_earlier_block(&fx);
 
     let plan = fx.plan("none");
     let row = Fx::ignore_row(&plan);
     assert_eq!(row["action"], "merge", "{row}");
     let detail = row["detail"].as_str().unwrap();
     for line in [
-        "managed block lines: 3 added, 0 removed",
+        "managed block lines: 7 added, 0 removed",
         "+ .moai-cli/local/",
         "+ !.moai-cli/tools/",
         "+ !.moai-cli/evals/",
+        "+ .moai-cli/**/credentials.yaml",
+        "+ .moai-cli/**/*.credentials",
+        "+ .moai-cli/**/.env",
+        "+ .moai-cli/**/.env.*",
     ] {
         assert!(detail.lines().any(|l| l == line), "{line:?} in:\n{detail}");
     }
@@ -407,6 +469,112 @@ fn an_earlier_block_is_shown_as_changed_and_left_until_applied() {
     assert_eq!(fx.ignore(), full);
     let again = fx.plan("none");
     assert_eq!(Fx::ignore_row(&again)["action"], "unchanged", "{again}");
+}
+
+/// The plan's `detail` of the `.gitignore` row after `files` were written under the earlier
+/// project's `tools/` and `evals/`.
+fn detail_with_files(fx: &Fx, files: &[&str]) -> String {
+    for rel in files {
+        let path = fx.root.join(rel);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, "x").unwrap();
+    }
+    let plan = fx.plan("none");
+    Fx::ignore_row(&plan)["detail"]
+        .as_str()
+        .unwrap()
+        .to_string()
+}
+
+fn visible_lines(detail: &str) -> Vec<&str> {
+    detail
+        .lines()
+        .filter(|l| l.starts_with("now visible: "))
+        .collect()
+}
+
+/// SPEC-20261120-moai-layout REQ-12: an update that lifts the ignore from `tools/` and `evals/`
+/// names the files git will newly show, and leaves out the ones the new credential lines or the
+/// user's own rules still ignore.
+#[test]
+fn the_plan_names_the_files_the_update_makes_visible() {
+    let fx = Fx::new(None);
+    with_earlier_block(&fx);
+    let detail = detail_with_files(
+        &fx,
+        &[
+            ".moai-cli/tools/check.sh",
+            ".moai-cli/tools/.env",
+            ".moai-cli/tools/credentials.yaml",
+            ".moai-cli/evals/set.json",
+            ".moai-cli/evals/token.credentials",
+        ],
+    );
+    assert_eq!(
+        visible_lines(&detail),
+        [
+            "now visible: .moai-cli/evals/set.json",
+            "now visible: .moai-cli/tools/check.sh"
+        ],
+        "{detail}"
+    );
+    // The preview wrote nothing: the files are still ignored.
+    assert!(fx.ignored(".moai-cli/tools/check.sh"));
+    // A project that already shows them has nothing to name.
+    fx.apply_ok("none");
+    assert!(!fx.ignored(".moai-cli/tools/check.sh"));
+    let after = fx.plan("none");
+    assert!(
+        !Fx::ignore_row(&after)["detail"]
+            .as_str()
+            .unwrap_or("")
+            .contains("now visible"),
+        "{after}"
+    );
+}
+
+/// A rule of the user's own that ignores a file keeps it ignored, so the plan does not name it.
+#[test]
+fn a_file_the_users_own_rule_ignores_is_not_named_as_visible() {
+    let fx = Fx::new(None);
+    let (old, _) = with_earlier_block(&fx);
+    fs::write(fx.root.join(".gitignore"), format!("*.log\n{old}")).unwrap();
+    let detail = detail_with_files(&fx, &[".moai-cli/tools/run.log", ".moai-cli/tools/run.sh"]);
+    assert_eq!(
+        visible_lines(&detail),
+        ["now visible: .moai-cli/tools/run.sh"],
+        "{detail}"
+    );
+}
+
+/// The plan names at most twenty files and counts the rest: twenty are all named, twenty-one
+/// name twenty and count one.
+#[test]
+fn the_plan_counts_the_visible_files_past_twenty() {
+    let names = |n: usize| -> Vec<String> {
+        (0..n)
+            .map(|i| format!(".moai-cli/tools/f{i:02}.sh"))
+            .collect()
+    };
+    let run = |n: usize| -> String {
+        let fx = Fx::new(None);
+        with_earlier_block(&fx);
+        let files = names(n);
+        let refs: Vec<&str> = files.iter().map(String::as_str).collect();
+        detail_with_files(&fx, &refs)
+    };
+    let twenty = run(20);
+    assert_eq!(visible_lines(&twenty).len(), 20, "{twenty}");
+    assert!(!twenty.contains(" more files"), "{twenty}");
+
+    let more = run(21);
+    let lines = visible_lines(&more);
+    assert_eq!(lines.len(), 21, "{more}");
+    assert_eq!(lines[19], "now visible: .moai-cli/tools/f19.sh");
+    assert_eq!(
+        lines[20],
+        "now visible: and 1 more files under .moai-cli/tools/ and .moai-cli/evals/"
+    );
 }
 
 /// SPEC-20261117-sdd-foundation REQ-7, REQ-8, REQ-9: this repository's own `.gitignore`, read
@@ -477,7 +645,7 @@ fn the_plan_shows_the_new_block_line_by_line_and_writes_nothing() {
     assert_eq!(row["action"], "create", "{row}");
     let detail = row["detail"].as_str().unwrap();
     for line in [
-        "managed block lines: 15 added, 0 removed",
+        "managed block lines: 19 added, 0 removed",
         "+ AGENTS.local.md",
         "+ .moai-cli/receipts/",
         "+ .moai-cli/*",
@@ -860,7 +1028,7 @@ fn removing_a_user_rule_lets_the_next_plan_offer_the_allow_line() {
     )
     .unwrap();
     fx.apply_ok("none");
-    assert!(fx.ignored(".moai-cli/config/.env"), "{}", fx.ignore());
+    assert!(fx.ignored(".moai-cli/config/app.yaml"), "{}", fx.ignore());
     assert!(
         !fx.ignore().contains("!.moai-cli/config/"),
         "{}",
@@ -886,7 +1054,7 @@ fn removing_a_user_rule_lets_the_next_plan_offer_the_allow_line() {
 
     fx.apply_ok("none");
     assert!(fx.ignore().contains("!.moai-cli/config/\n"));
-    assert!(!fx.ignored(".moai-cli/config/.env"), "{}", fx.ignore());
+    assert!(!fx.ignored(".moai-cli/config/app.yaml"), "{}", fx.ignore());
 }
 
 /// B3: an update moves `.moai-cli/` to `.moai/`. What git tracks in the earlier folder keeps its
@@ -981,7 +1149,7 @@ fn the_plan_shows_the_lines_added_to_a_gitignore_without_a_block() {
     assert_eq!(row["action"], "append", "{row}");
     let detail = row["detail"].as_str().unwrap();
     for line in [
-        "managed block lines: 15 added, 0 removed",
+        "managed block lines: 19 added, 0 removed",
         "+ AGENTS.local.md",
         "+ .moai-cli/*",
         "+ .moai-cli/local/",
