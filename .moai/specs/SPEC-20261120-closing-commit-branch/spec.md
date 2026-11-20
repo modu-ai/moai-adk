@@ -2,7 +2,7 @@
 id: SPEC-20261120-closing-commit-branch
 title: "The closing commit of the PROJECT route never lands on the integration branch under m-flow"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-20
 ---
 
@@ -42,25 +42,25 @@ mo.ai.kr 에서 `/moai project` 를 돌린 사용자가 알려 준 일이에요(
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-5, REQ-6): 단계 8 이 m-flow·통합 가지 조건과 두 선택지, 그 밖의 경우의 지금 선택, 취소·빈 답·무응답 규칙을 말해요.
-  verify: `cargo test --locked --offline --test project_flow_closing closing_commit_on_the_integration_branch_offers_a_new_branch`
+  verify: `cargo test --locked --offline --test project_closing_branch closing_commit_on_the_integration_branch_offers_a_new_branch`
 - AC-2 (REQ-2, REQ-3, REQ-4): 단계 8 이 가지 이름 규칙(`spec/<slug>-<yyyymmdd>`, 카드 번호 없음)과 `git switch -c`, 실패 때의 동작을 말해요.
-  verify: `cargo test --locked --offline --test project_flow_closing the_new_branch_is_named_by_the_spec_rule_and_failure_commits_nothing`
+  verify: `cargo test --locked --offline --test project_closing_branch the_new_branch_is_named_by_the_spec_rule_and_failure_commits_nothing`
 - AC-3 (REQ-7): 임시 저장소에서 통합 가지 위에 변경을 두고 단계가 말한 `git switch -c` 와 `git commit -- <path>` 를 돌리면 통합 가지의 HEAD 는 그대로이고 새 가지에만 커밋이 생겨요.
-  verify: `cargo test --locked --offline --test project_flow_closing the_commands_leave_the_integration_branch_untouched`
+  verify: `cargo test --locked --offline --test project_closing_branch the_commands_leave_the_integration_branch_untouched`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261120-closing-commit-branch/spec.md`, `skills/moai/workflows/project.md`(단계 8), `tests/project_flow_closing.rs`(시험 셋), `skills/moai/references/source-manifest.json`
+- write: `.moai/specs/SPEC-20261120-closing-commit-branch/spec.md`, `skills/moai/workflows/project.md`(단계 8), `tests/project_closing_branch.rs`(새 파일, 시험 셋), `skills/moai/references/source-manifest.json`
 - read-only: `skills/moai/references/internal/interview.md`(`work_flow` 행), `skills/moai/references/internal/sdd.md`(가지 이름 규칙), `src/profile.rs`(`work_flow` 설정)
 - forbidden: 푸시·PR, 새 도구 코드, 다른 흐름의 마무리 커밋
 
 ## Plan
 
 1. SPEC 을 커밋해요(이 문서).
-2. `skills/moai/workflows/project.md`·`tests/project_flow_closing.rs` 는 다른 변경이 쥐고 있어요(프로젝트·업데이트 경계 재작성): 그 변경이 파일을 돌려준 뒤에 단계 8 에 이 SPEC 의 글을 더해요. 그 전에는 리더에게 요청하는 노트에 문장과 시험을 정확히 적어 두고, 다른 변경의 단계 8 문장이 바뀌면 그 위에서 더해요.
+2. `skills/moai/workflows/project.md` 는 다른 변경이 쥐고 있어요(프로젝트·업데이트 경계 재작성): 그 변경이 파일을 돌려준 뒤에 단계 8 에 이 SPEC 의 글을 더해요. 시험은 그 파일을 쓰지 않는 새 파일 `tests/project_closing_branch.rs` 에 두어 먼저 써요. 그 전에는 리더에게 요청하는 노트에 문장과 시험을 정확히 적어 두고, 다른 변경의 단계 8 문장이 바뀌면 그 위에서 더해요.
 3. RED: 시험 셋을 먼저 써서 글이 없을 때 실패하는 것을 봐요. `the_commands_leave_the_integration_branch_untouched` 는 임시 저장소(고정된 git 가드, 실제 HOME 아님)에서 `git switch -c` 와 경로 지정 `git commit` 을 돌려 통합 가지의 HEAD 가 그대로임을 확인해요.
 4. GREEN: 단계 8 에 규칙 한 문단을 더해요. 스킬 파일이라 `python3 -I tools/source_manifest.py write` 로 매니페스트를 갱신해요.
-5. 확인: `project_flow_closing` 전체, `product_cli skill_package`, 스킬 설명을 읽는 시험, `tests.source_manifest_test`·`tests.skill_references_test`·`tests.repo_scans_test`, fmt, clippy, `moai check affected`, 변이(m-flow 조건·"never commit" 문장 지우기).
+5. 확인: `project_closing_branch` 와 기존 `project_flow_closing` 전체, `product_cli skill_package`, 스킬 설명을 읽는 시험, `tests.source_manifest_test`·`tests.skill_references_test`·`tests.repo_scans_test`, fmt, clippy, `moai check affected`, 변이(m-flow 조건·"never commit" 문장 지우기).
 
 ## Risks
 
@@ -79,4 +79,4 @@ mo.ai.kr 에서 `/moai project` 를 돌린 사용자가 알려 준 일이에요(
 
 ## Result
 
-설계 단계(2026-11-20): 글과 시험은 `project.md`·`tests/project_flow_closing.rs` 를 쥔 다른 변경이 돌려준 뒤에 더해요. 구현이 끝나면 AC 마다 `- AC-n: met — <근거>` 줄을 이 자리에 적어요.
+설계 단계(2026-11-20): 글과 시험은 `project.md` 를 쥔 다른 변경이 돌려준 뒤에 더해요. 구현이 끝나면 AC 마다 `- AC-n: met — <근거>` 줄을 이 자리에 적어요.
