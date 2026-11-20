@@ -15,8 +15,7 @@ use std::{
 const SHIPPED: [&str; 4] = ["skills", "agents", "templates", "install"];
 
 /// Shipped files that still carry citations, sorted. Remove an entry when its file is cleaned.
-const PENDING: [&str; 22] = [
-    "agents/audit.md",
+const PENDING: [&str; 18] = [
     "install/README.md",
     "install/install.ps1",
     "install/install.sh",
@@ -29,28 +28,29 @@ const PENDING: [&str; 22] = [
     "skills/moai/references/internal/versioning.md",
     "skills/moai/references/rule-history.md",
     "skills/moai/references/source-manifest.json",
-    "skills/moai/workflows/audit.md",
     "skills/moai/workflows/mode-agent.md",
-    "skills/moai/workflows/mode-leader.md",
     "skills/moai/workflows/project.md",
     "skills/moai/workflows/run.md",
     "skills/moai/workflows/update.md",
-    "skills/moai/workflows/verify.md",
     "templates/github/ko/ISSUE_TEMPLATE/moai-investigation.yml",
     "templates/github/manifest.json",
 ];
 
 /// The files this change cleaned; each has a section in the rationale document.
-const CLEANED: [&str; 9] = [
+const CLEANED: [&str; 13] = [
+    "agents/audit.md",
     "skills/moai/references/adapters/aside.md",
     "skills/moai/references/internal/build-folder.md",
     "skills/moai/references/internal/commit-trailers.md",
     "skills/moai/references/internal/git-safety.md",
     "skills/moai/references/internal/review.md",
+    "skills/moai/workflows/audit.md",
+    "skills/moai/workflows/mode-leader.md",
     "skills/moai/workflows/optimize.md",
     "skills/moai/workflows/read.md",
     "skills/moai/workflows/setup.md",
     "skills/moai/workflows/sync.md",
+    "skills/moai/workflows/verify.md",
 ];
 
 /// The rationale document, relative to the checkout.
