@@ -23,6 +23,7 @@
 
 mod common;
 use common::pty::{env_with, open_pty, piped_with, Env};
+use common::CleanEnv;
 use std::{
     collections::VecDeque,
     fs,
@@ -76,7 +77,7 @@ fn prompt_shell() {
     }
     let mut cmd = Command::new(exe);
     cmd.args(argv.split('\u{1f}').filter(|a| !a.is_empty()))
-        .env_clear();
+        .clean_env();
     for (k, v) in std::env::vars() {
         if !k.starts_with("KEY_PROMPT_") {
             cmd.env(k, v);
@@ -212,6 +213,9 @@ impl Reported {
     }
 }
 
+/// What a case does once the prompt is on screen: given the terminal's master end and the command.
+type AtPrompt<'a> = &'a dyn Fn(libc::c_int, &mut Reported);
+
 /// What a run of the prompt left behind.
 struct Run {
     /// The command's stdout.
@@ -234,7 +238,7 @@ struct How<'a> {
     /// Pieces typed once the prompt shows: seconds to wait first, then the bytes.
     typed: Vec<(f64, Vec<u8>)>,
     /// Runs once the prompt shows, given the terminal's master end and the command.
-    at_prompt: Option<&'a dyn Fn(libc::c_int, &mut Reported)>,
+    at_prompt: Option<AtPrompt<'a>>,
     stderr_not_a_terminal: bool,
     ignored: Vec<libc::c_int>,
 }
@@ -343,7 +347,7 @@ fn run_prompt(f: &Fx, how: How) -> Run {
     let mut shell = Command::new(std::env::current_exe().unwrap());
     shell
         .args(["--exact", "prompt_shell", "--nocapture"])
-        .env_clear()
+        .clean_env()
         .current_dir(&f.work)
         .env("KEY_PROMPT_EXE", BIN)
         .env("KEY_PROMPT_ARGV", args.join("\u{1f}"))
@@ -422,10 +426,10 @@ fn run_prompt(f: &Fx, how: How) -> Run {
                 due = Some(Instant::now());
             }
         }
-        if pending.is_empty() && !chunks.is_empty() && due.is_some() {
+        if let Some(since) = due.filter(|_| pending.is_empty() && !chunks.is_empty()) {
             // The next piece goes in after its wait, whether or not the command is still there:
             // what a paste sends late still reaches the terminal.
-            if Instant::now() >= due.unwrap() + Duration::from_secs_f64(chunks[0].0) {
+            if Instant::now() >= since + Duration::from_secs_f64(chunks[0].0) {
                 pending = chunks.pop_front().unwrap().1;
             }
             continue;
