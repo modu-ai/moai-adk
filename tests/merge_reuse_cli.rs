@@ -638,3 +638,78 @@ fn counts_only_the_paths_the_candidate_changed_since_it_left_the_base() {
     let a = decide(&fx, &base, &head, &tip);
     assert_eq!(a["candidate_paths"], 1, "{a}");
 }
+
+const RULE_CHECK: &str = "cargo test --offline --locked --lib rule_holds";
+
+/// Audit: a scan entry that only the tip's table has still crosses the candidate's rule file
+/// (the table read is the union of the two trees' tables, as `moai repo-scans --refs` reads it).
+#[test]
+fn reruns_for_a_scan_entry_only_the_tip_has() {
+    let fx = Fixture::new();
+    let head = fx.branch("cand", &fx.base, &[("src/rule_file.rs", "// r\n")]);
+    let edited = MODELS.replacen("// 1\n", "// 1 edited\n", 1);
+    let tip = fx.branch(
+        "tip",
+        &fx.base,
+        &[
+            ("tools/repo_scans.json", SCANS_WITH_RULE),
+            ("src/update_models.rs", &edited),
+        ],
+    );
+    let a = decide(&fx, &fx.base, &head, &tip);
+    assert_eq!(a["decision"], "rerun", "{a}");
+    assert_eq!(names(&a["rerun"]["scan_checks"]), [RULE_CHECK], "{a}");
+}
+
+/// Audit: the same for an entry only the base's table has (the tip removed it).
+#[test]
+fn reruns_for_a_scan_entry_only_the_candidates_base_has() {
+    let fx = Fixture::new();
+    let base = fx.branch(
+        "base2",
+        &fx.base,
+        &[
+            ("tools/repo_scans.json", SCANS_WITH_RULE),
+            ("src/rule_file.rs", "// r\n"),
+        ],
+    );
+    let edited = MODELS.replacen("// 1\n", "// 1 edited\n", 1);
+    let head = fx.branch("cand", &base, &[("src/update_models.rs", &edited)]);
+    let tip = fx.branch(
+        "tip",
+        &base,
+        &[
+            ("tools/repo_scans.json", SCANS),
+            ("src/rule_file.rs", "// r2\n"),
+        ],
+    );
+    let a = decide(&fx, &base, &head, &tip);
+    assert_eq!(a["decision"], "rerun", "{a}");
+    assert_eq!(names(&a["rerun"]["scan_checks"]), [RULE_CHECK], "{a}");
+}
+
+/// Audit, REQ-11: a scan table that cannot be read as a table of scans means nothing is known:
+/// `rerun_all` with the reason, whatever else the change did.
+#[test]
+fn reruns_all_when_the_scan_table_cannot_be_read() {
+    let fx = Fixture::new();
+    let head = fx.candidate();
+    // Valid JSON of the old shape (no `rules` and `scope`), and text that is not JSON.
+    for (name, text) in [
+        (
+            "old",
+            r#"{"scans":[{"id":"home","checks":["cargo test --test home_isolation_scan"]}]}"#,
+        ),
+        ("broken", "not json at all\n"),
+    ] {
+        let tip = fx.branch(name, &fx.base, &[("tools/repo_scans.json", text)]);
+        let a = decide(&fx, &fx.base, &head, &tip);
+        assert_eq!(a["decision"], "rerun_all", "{name}: {a}");
+        assert!(
+            names(&a["reasons"])
+                .iter()
+                .any(|r| r.starts_with("scan_table_unreadable")),
+            "{name}: {a}"
+        );
+    }
+}
