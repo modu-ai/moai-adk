@@ -118,7 +118,7 @@ fn each_kind_fires_on_its_fixture_and_stays_quiet_on_its_pair() {
         ),
     ];
     for (path, line) in &skips {
-        let f = detect(&change(path, 7, &[], &[line.clone()]));
+        let f = detect(&change(path, 7, &[], std::slice::from_ref(line)));
         let hit = of_kind(&f, "skip_added");
         assert_eq!(hit.len(), 1, "{path}: {f:?}");
         assert_eq!((hit[0].path.as_str(), hit[0].line), (*path, 7));
@@ -299,7 +299,7 @@ fn snapshot(findings: Option<Vec<&str>>) -> Snapshot {
 #[test]
 fn observe_reports_and_enforce_raises_the_tier() {
     // Pinned: turning the gate on is a decision, so it takes a change to this test as well.
-    assert!(!TEST_WEAKENING_ENFORCED);
+    const { assert!(!TEST_WEAKENING_ENFORCED) };
     let hit = snapshot(Some(vec!["skip_added tests/a.rs:3 skips a test"]));
     let clean = snapshot(Some(vec![]));
     let unread = snapshot(None);
