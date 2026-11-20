@@ -325,12 +325,8 @@ fn end_to_end_the_generated_stop_command_runs_the_scan() {
     fs::create_dir_all(proj.join("src")).unwrap();
     fs::create_dir_all(home.join(".moai-cli")).unwrap();
     let git = |args: &[&str]| {
-        let out = Command::new("git")
-            .clean_env()
-            .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+        let out = common::git::command()
             .env("HOME", &home)
-            .env("GIT_CONFIG_GLOBAL", "/dev/null")
-            .env("GIT_CONFIG_SYSTEM", "/dev/null")
             .args(["-c", "user.name=t", "-c", "user.email=t@example.invalid"])
             .args([
                 "-c",
