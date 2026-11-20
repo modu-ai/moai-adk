@@ -1805,6 +1805,84 @@ pub(crate) fn nested_checkouts_under(project: &Path, rel: &str, limit: u64) -> O
     Some(nested)
 }
 
+/// Folders a stopped-walk reason names.
+const NAMED_FOLDERS: usize = 5;
+
+/// The first-level folders under `<project>/<rel>` with how many entries (files and folders at
+/// any depth, a nested checkout counted but not entered) each holds, counted up to `limit`: a
+/// folder over it shows `limit + 1`. Largest first, equal counts by name, at most
+/// [`NAMED_FOLDERS`]. Only the stopped-walk reason asks for it, so no preview pays for it.
+fn largest_entry_folders(project: &Path, rel: &str, limit: u64) -> Vec<(String, u64)> {
+    let Ok(entries) = fs::read_dir(project.join(rel)) else {
+        return Vec::new();
+    };
+    let mut folders: Vec<(String, u64)> = Vec::new();
+    for e in entries.flatten() {
+        let Ok(name) = e.file_name().into_string() else {
+            continue;
+        };
+        if !fs::symlink_metadata(e.path()).is_ok_and(|m| m.is_dir()) {
+            continue;
+        }
+        let mut count = 0u64;
+        let mut stack = vec![e.path()];
+        'walk: while let Some(dir) = stack.pop() {
+            let Ok(inner) = fs::read_dir(&dir) else {
+                continue;
+            };
+            for f in inner.flatten() {
+                count += 1;
+                if count > limit {
+                    break 'walk;
+                }
+                let p = f.path();
+                if fs::symlink_metadata(&p).is_ok_and(|m| m.is_dir())
+                    && fs::symlink_metadata(p.join(".git")).is_err()
+                {
+                    stack.push(p);
+                }
+            }
+        }
+        folders.push((name, count));
+    }
+    folders.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+    folders.truncate(NAMED_FOLDERS);
+    folders
+}
+
+/// Why `.moai/` stays when its nested-checkout check passed the entry limit: the largest
+/// folders by name, and, when `reports` is one of them, the command that moves reports out.
+fn stopped_walk_reason(project: &Path, limit: u64) -> String {
+    let mut reason = format!(
+        "the .moai/ folder holds more than {limit} entries, so it was not fully checked for \
+         nested checkouts; the folder stays"
+    );
+    let folders = largest_entry_folders(project, MOAI_DIR, limit);
+    if folders.is_empty() {
+        return reason;
+    }
+    let named: Vec<String> = folders
+        .iter()
+        .map(|(name, n)| match n {
+            n if *n > limit => format!("{name} (more than {limit} entries)"),
+            1 => format!("{name} (1 entry)"),
+            n => format!("{name} ({n} entries)"),
+        })
+        .collect();
+    reason.push_str(&format!(
+        ". Largest folders under .moai/: {}.",
+        named.join(", ")
+    ));
+    if folders.iter().any(|(name, _)| name == "reports") {
+        reason.push_str(
+            " To make room, move the report files out of the project: `moai reports-move-plan .` \
+             previews moving the ones git does not track to ~/.moai/reports/<project>/; apply \
+             it, then run this preview again.",
+        );
+    }
+    reason
+}
+
 /// How many git worktrees of the project's repository are registered at or under
 /// `<project>/<rel>`; `None` when the project is a git checkout whose worktree list cannot be
 /// read. A folder that is not a git checkout has no registered worktrees.
@@ -2613,11 +2691,7 @@ pub fn plan(project: &Path) -> Result<GoStatePlan> {
                          their repositories off from them, so the .moai/ folder stays where it \
                          is and is not moved into a backup until they are moved out"
                     ),
-                    (_, None) => format!(
-                        "the .moai/ folder holds more than {} entries, so it was not fully \
-                         checked for nested checkouts; the folder stays",
-                        unrecorded_limit()
-                    ),
+                    (_, None) => stopped_walk_reason(&project, unrecorded_limit()),
                 }
             },
             "go_folder",
