@@ -155,6 +155,19 @@ created: 2026-11-20
 - 변형 5개(상한 5, 모두 잡힘, 변형 뒤 트리 변경 0, 대상은 새 Rust 파일만, `target/mutants4.log`): ① `src/repo_scans.rs` 규칙 경로 정렬 빼기 → `hit_paths_are_sorted`; ② 범위 접두 일치를 `contains` 로 → `scope_boundaries`; ③ 같은 검사 명령 중복 허용 → `two_scans_sharing_a_command`; ④ `src/goal_block.rs` 보유 목록 정렬 빼기 → `snapshot_keep_set_included`, `input_permutations_produce_identical_output`; ⑤ 열린 Issue 정렬 빼기 → `snapshot_issues_only`, `input_permutations_produce_identical_output`.
 - 리눅스: 이 Mac 에서 돌릴 수 없어요. 새 두 파일은 신호나 터미널을 쓰지 않아 위험이 작지만, 리눅스 결과는 CI 가 처음 보여 줘요.
 
+### 감사 수리(조각 2 감사 FAIL 과 조각 1 후속 4개)
+
+- 조각 2 감사가 막은 셋: B1 `tests/key_set_prompt_terminal_cli.rs` 의 `.env_clear()` 직접 호출 2곳, B2 clippy 2건, B3 `tests/ui_korean_terminal_cli.rs` 가 `repo_scans_test.py` 의 걸러내기 목록(EXEMPT)에도 표에도 없던 것. 셋 다 `1482e10012` 와 `b6a73d4597` 에서 이미 고쳤고, 이번 수리 뒤 전체 이웃 검사를 다시 돌린 결과는 아래 "이웃 검사"에 있어요. `ui_korean_terminal_cli.rs` 는 시험이 만든 임시 프로젝트만 훑어서 표에 올리지 않고 EXEMPT 에 이유와 함께 올렸어요.
+- 조각 1 후속 4개(감사 노트: pty 한도 초과 때 프로세스 그룹 종료, 마스터 닫힘 뒤 wait 한도·패닉 때 자식 종료·읽기 스레드 join 한도·stdin 쓰기와 읽기 교착 방지, 한도 없는 `piped`/`on_a_pipe`/`run` 에 시간 한도, update 종료 코드 0·설정 파일 1개 단정 복원):
+  - 프로세스 그룹: `tests/common/pty.rs` 가 명령을 `process_group(0)` 으로 띄우고, 한도·단정 실패·패닉(`Running` 의 `Drop`)에서 `kill(-pid, SIGKILL)` 로 그룹 전체를 죽여요. 손자 `sleep` 이 남던 문제를 `pty_helper` 시험 3개(`the_limit_kills_the_command_and_the_children_it_started`, `a_panic_in_the_test_kills_the_command_and_its_children`, `a_piped_command_that_does_not_end_is_killed_with_its_children`)가 pid 를 읽어 사라졌는지 봐요.
+  - 한도: 시작과 답 입력 뒤에 각각 다시 재요(`the_limit_counts_again_from_the_answer`: 앞뒤 1.3초씩, 한도 2초). 터미널을 닫고도 도는 명령은 한도 안에서 기다리다 죽여요(`a_command_that_closed_the_terminal_and_runs_on_is_killed`). 읽기 스레드는 채널로 받아 `recv_timeout` 으로 기다려요(손자가 파이프를 잡고 있으면 그룹을 죽이고 실패).
+  - 교착: 입력은 출력 읽기 스레드를 먼저 띄운 뒤 별도 스레드로 써요(`a_big_input_and_a_big_output_do_not_wait_on_each_other`: `cat` 에 1 MiB, 터미널과 파이프 모두).
+  - 시간 한도: `pty::output_within`(`piped_with`, `update_command_cli` 의 `run` 과 "파이프로 받은 yes" 시험, `help_english`·`install_inspect`·`ui_summary`·`ui_terminal` 의 파이프 실행)이 파이썬의 `timeout=60` 과 같은 60초 한도와 그룹 종료를 가져요.
+  - update 단정: `run_in_terminal` 과 `run_in_terminal_unanswered` 가 종료 코드 0 을 단정해요(파이썬 `U-2`·`U-4` 단정을 되살림). 저장 시험은 홈 전체의 `launcher.yaml` 이 정확히 1개(예 뒤), 0개(입력 끝 뒤)임을 세요(`launcher_files`).
+- 비차단 둘: 터미널 도움말 시험의 `\r` 정리는 남겼어요. `Screen::text` 가 `\r\n` 을 `\n` 으로 읽어도, macOS 에서 출력 큐가 가득 차면 `\r` 이 두 번 나오는 일이 있어(`\r\r\n`) 한 줄 `cc --help` 에서 `\r` 이 남는 것을 시험으로 확인했어요. 이유를 주석으로 적었고 `'\r'` 삭제는 도움말에만 있어요. 58초 시험(`no_command_help_carries_korean_under_a_korean_setting`)은 pty 출력 확인 간격을 200ms 에서 20ms 로 줄여 `help_english_terminal_cli` 가 55초에서 23초가 됐어요(부하 평균 140~190 에서 잰 값).
+- 변형 3개(모두 잡힘, 변형 뒤 트리 변경 0, `target/mutants5.log`): ① 명령이 우리 프로세스 그룹을 같이 씀(`process_group(0)` 빼기) → 그룹 종료 시험 3개; ② 답 입력 뒤 한도를 다시 재지 않음 → `the_limit_counts_again_from_the_answer`; ③ `Drop` 에서 그룹을 죽이지 않음 → `a_panic_in_the_test_kills_the_command_and_its_children`.
+- 이 head 에서 돌린 것(`cargo test --offline --locked`, heavy-slot): `pty_helper` 19, `help_english_terminal_cli` 3, `update_command_cli` 27, `ui_terminal_cli` 9, `ui_summary_terminal_cli` 7, `install_inspect_terminal_cli` 3 모두 passed.
+
 ### 수용 기준 결과
 
 - AC-1: met — `cargo test --test pty_helper` 8 passed(질문 뒤 입력, 터미널 stdin 없음, 정리, 한도에 죽임, 깨끗한 환경 포함).
