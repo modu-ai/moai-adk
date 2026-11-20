@@ -44,3 +44,10 @@ approval: {by: user, at: 2026-11-21, basis: "AskUserQuestion selection: 승인 (
 2. `interview.md` 의 행과 설명 문단, `project.md` 3단계 항목과 최종 보고 표 문구를 지움.
 3. `source-manifest.json` 의 두 sha256 갱신, AC 검사 실행.
 4. `moai decide` 기능 코드(`src/decide/`) 제거는 후속 과제로 남김.
+
+## Result
+
+- AC-1: met — head 853778b69c 에서 `cargo test --locked --offline --test project_decide_model --test agent_defs_package` exit 0 (19 + 4 passed); 고치기 전 스킬 텍스트에서는 같은 명령이 exit 101 (새 테스트 2개와 `interview_question_bank_covers_the_project_axes` 실패); `grep -rn -i -e decision_model -e 'decision model' -e Jev skills/` 출력 없음 (exit 1)
+- AC-2: met — 같은 `project_decide_model` 실행에서 예전 프로필 호환 테스트(`off`·`typesafe`·`openai` 가 `project-plan` 에서 `ok: true`) 통과
+- AC-3: met — `cargo test --locked --offline --test product_cli skill_package` exit 0 (`source_manifest_covers_every_package_file` 포함); `python3 -I tools/source_manifest.py check` exit 0
+- AC-4: met — `git diff --check` exit 0; `cargo fmt --check` exit 0; `cargo clippy --locked --offline --all-targets -- -D warnings` exit 0
