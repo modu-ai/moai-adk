@@ -159,7 +159,7 @@ fn the_update_route_runs_the_commands_itself_after_the_pick() {
 fn every_question_is_a_selection_through_the_hosts_question_tool() {
     let q = skill("references/internal/questions.md");
     for text in [
-        "(user decision 2026-11-16, cards C-51 and C-52)",
+        "(user decision 2026-11-16)",
         "Never tell the user to run a command in a terminal when this session can run it",
         "Every question is a selection",
         "put the recommended one first and mark it",
@@ -202,7 +202,7 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
                 "At most 3 questions per call, 2 or 3 options each",
                 "`features.default_mode_request_user_input`",
                 // N1: true at this head — the launcher does not turn the feature on yet.
-                "(under development, off by default; the `moai codex` launcher is to turn it on — card C-52, not in this version): go by the tool list",
+                "(under development, off by default; the `moai codex` launcher is to turn it on, not in this version): go by the tool list",
                 // B1: Codex's own Default-mode instruction must not decide a case-(2) question.
                 "continue with best judgment",
                 "for a case-(2) question never do that: no answer is not a pick (rule 3)",
@@ -218,23 +218,6 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
                 "Never `request_user_input_async` for a question a step waits on",
                 "say once that `/plan` enables the dialog",
                 "one question per message with numbered choices",
-            ][..],
-        ),
-        (
-            "OMP",
-            &[
-                "`ask`",
-                "one HTML form",
-                "`<select>`",
-                "`checked`",
-                // B1: OMP submits the form's values on a timeout, so case (2) presets none.
-                "for a case-(2) question (rule 3) nothing is preselected: no `checked`, no `selected` and no `value`",
-                // N8: the form is submitted on a timeout, so an empty submission is no pick.
-                "the recommendation is named in the label text only",
-                "a submission without a choice is not a pick",
-                "`ask.timeout`",
-                "print mode or a subagent",
-                "in the final answer",
             ][..],
         ),
     ] {
@@ -259,7 +242,7 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
     // The case-(2) sentence of SKILL.md keeps the wait and says it is still a selection.
     let skill_md = skill("SKILL.md");
     assert!(skill_md.contains(
-        "goes to the user and waits — no deadline applies it by default; it is still asked as a selection with the recommended option first, and once the user has picked, the session runs it (user decision 2026-11-16, card C-51)"
+        "goes to the user and waits — no deadline applies it by default; it is still asked as a selection with the recommended option first, and once the user has picked, the session runs it (user decision 2026-11-16)"
     ));
     // No route asks three or four at a time any more (the Codex CLI limit is three).
     for file in [
