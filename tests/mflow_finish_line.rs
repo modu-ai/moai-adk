@@ -5,9 +5,21 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+/// The full text opens with this marker in the workflows and in AGENTS.local.md.
 const MARKER: &str = "M-Flow (user decisions 2026-11-20; one canonical text, put once per file)";
-// The leader's final wording (user instruction 2026-11-20 ~10:45Z), item by item. AGENTS.md puts
-// the items that run past 400 characters on continuation lines, so each piece is one line.
+/// AGENTS.md keeps its 9 KiB budget and carries a one-line summary per item under this marker
+/// (leader decision 2026-11-20 ~10:50Z).
+const SUMMARY_MARKER: &str = "M-Flow (user decisions 2026-11-20; summary, the full text is in `skills/moai/workflows/mode-agent.md`)";
+const SUMMARY: [(&str, &str); 6] = [
+    ("1 lane commits, pushes, audit", "A lane commits on its own card branch, pushes it and gets the independent audit."),
+    ("2 lane merges, checks, MERGE-READY", "After PASS the lane merges its head onto the LOCAL integration branch tip in its own worktree, runs `moai check affected`, and posts `MERGE-READY <card> merge=<40-hex> base=<40-hex> checks=<one line>`."),
+    ("3 fast-forward under a lock", "One at a time under a lock the primary checkout is fast-forwarded with `git merge --ff-only` (by the leader's supervision round where the host isolates a lane); a moved base means the lane redoes step 2."),
+    ("4 local test and install", "Local test and install are built from the verified LOCAL tip, which the leader checks as a whole; the statusline shows commits ahead (↑) and behind (↓)."),
+    ("5 release only", "Only for a real deployment the leader opens one `release/v{head}.{yearweek}.{build}` pull request; none per card, per bundle or per integration."),
+    ("6 card done", "A card that landed locally is closed with `card done` on the local landing evidence, not a pull request."),
+];
+// The leader's final wording (user instruction 2026-11-20 ~10:45Z), item by item, as the
+// workflows and AGENTS.local.md carry it.
 const PIECES: [(&str, &str); 9] = [
     ("1 lane commits, pushes, audit", "Lane: commits on its own card branch and pushes it; gets the independent audit (tier 2: the leader starts it)."),
     ("2 lane merges, checks, MERGE-READY", "Lane: after PASS, makes the merge of its head onto the current LOCAL integration branch tip (the primary branch saved at first setup; v2026.11.0 here) in its own worktree, runs `moai check affected <tip>..<merge>` with the binary built in that worktree, and posts `MERGE-READY <card> merge=<40-hex> base=<40-hex> checks=<one line>` on the card."),
@@ -63,8 +75,17 @@ fn read(rel: &str) -> String {
 #[test]
 fn agents_md_states_the_finish_line_once() {
     let text = read("AGENTS.md");
-    assert_eq!(text.matches(MARKER).count(), 1, "the marker is stated once");
-    for (name, sentence) in PIECES {
+    assert_eq!(
+        text.matches(SUMMARY_MARKER).count(),
+        1,
+        "the summary marker is stated once"
+    );
+    assert_eq!(
+        text.matches(MARKER).count(),
+        0,
+        "AGENTS.md carries a summary"
+    );
+    for (name, sentence) in SUMMARY {
         assert!(
             text.contains(sentence),
             "AGENTS.md lacks the {name} sentence"
@@ -72,10 +93,10 @@ fn agents_md_states_the_finish_line_once() {
     }
     let line = text
         .lines()
-        .find(|l| l.contains(MARKER))
+        .find(|l| l.contains(SUMMARY_MARKER))
         .expect("a line holds the marker");
     assert!(
-        line.starts_with(&format!("6. {MARKER}:")),
+        line.starts_with(&format!("6. {SUMMARY_MARKER}:")),
         "the marker opens step 6: {line}"
     );
 }
@@ -101,7 +122,7 @@ fn agents_md_has_no_pull_request_per_issue_step() {
 #[test]
 fn agents_md_stays_inside_its_budget() {
     let text = read("AGENTS.md");
-    assert!(text.len() < 10 * 1024, "{} bytes", text.len());
+    assert!(text.len() < 9 * 1024, "{} bytes", text.len());
     let longest = text.lines().map(|l| l.chars().count()).max().unwrap();
     assert!(longest <= 400, "a line is {longest} characters");
 }
@@ -109,8 +130,17 @@ fn agents_md_stays_inside_its_budget() {
 #[test]
 fn every_named_file_states_the_finish_line_once() {
     for rel in NAMED_FILES {
-        let count = read(rel).matches(MARKER).count();
+        let text = read(rel);
+        if rel == "AGENTS.md" {
+            let count = text.matches(SUMMARY_MARKER).count();
+            assert_eq!(count, 1, "{rel} states the summary {count} times");
+            continue;
+        }
+        let count = text.matches(MARKER).count();
         assert_eq!(count, 1, "{rel} states the finish line {count} times");
+        for (name, sentence) in PIECES {
+            assert!(text.contains(sentence), "{rel} lacks the {name} sentence");
+        }
     }
 }
 
