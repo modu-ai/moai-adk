@@ -609,11 +609,12 @@ const COPY_MARKERS: &[&str] = &["node_modules", ".venv", "target", ".next", ".gi
 /// evidence) that holds more than [`EVIDENCE_CAP_BYTES`]. `rel` is the folder's path in the
 /// project, the prefix of every finding's `path`. Read only: no link is followed, a flagged
 /// folder is not entered (so its size is never counted) and nothing is written. The second
-/// value is `true` when the deadline cut the walk short.
+/// value is `true` when the guard could not see everything: the deadline cut the walk short, or
+/// a folder or an entry could not be read (then the rest is still checked).
 fn evidence_findings(reports: &Path, rel: &str, deadline: Instant) -> (Vec<Value>, bool) {
     let mut findings = Vec::new();
     let mut partial = false;
-    for card in sorted_entries(reports) {
+    for card in sorted_entries(reports, &mut partial) {
         let card_rel = format!("{rel}/{}", card.name);
         if card.is_marker() {
             findings.push(marker_finding(&card_rel, &card.name));
@@ -639,7 +640,8 @@ fn evidence_findings(reports: &Path, rel: &str, deadline: Instant) -> (Vec<Value
                 "cap_bytes": EVIDENCE_CAP_BYTES,
             }));
         }
-        if partial {
+        if Instant::now() > deadline {
+            partial = true;
             break;
         }
     }
@@ -668,14 +670,22 @@ impl Entry {
     }
 }
 
-fn sorted_entries(dir: &Path) -> Vec<Entry> {
+/// The entries of `dir` by name. A folder that cannot be read, or an entry whose type cannot be
+/// read, sets `partial`: an empty answer must not look like a clean one.
+fn sorted_entries(dir: &Path, partial: &mut bool) -> Vec<Entry> {
     let Ok(read) = fs::read_dir(dir) else {
+        *partial = true;
         return Vec::new();
     };
+    let mut unreadable = false;
     let mut out: Vec<Entry> = read
         .flatten()
         .filter_map(|e| {
-            let kind = match e.file_type().ok()? {
+            let Ok(file_type) = e.file_type() else {
+                unreadable = true;
+                return None;
+            };
+            let kind = match file_type {
                 t if t.is_symlink() => Kind::Other,
                 t if t.is_dir() => Kind::Dir,
                 t if t.is_file() => Kind::File,
@@ -688,6 +698,7 @@ fn sorted_entries(dir: &Path) -> Vec<Entry> {
             })
         })
         .collect();
+    *partial |= unreadable;
     out.sort_by(|a, b| a.name.cmp(&b.name));
     out
 }
@@ -710,7 +721,7 @@ fn guard_walk(
         *partial = true;
         return;
     }
-    for entry in sorted_entries(dir) {
+    for entry in sorted_entries(dir, partial) {
         let entry_rel = format!("{rel}/{}", entry.name);
         if entry.is_marker() {
             findings.push(marker_finding(&entry_rel, &entry.name));
@@ -725,7 +736,8 @@ fn guard_walk(
             }
             Kind::Other => {}
         }
-        if *partial {
+        if Instant::now() > deadline {
+            *partial = true;
             return;
         }
     }

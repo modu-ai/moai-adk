@@ -267,3 +267,71 @@ fn flags_a_dependency_folder_but_does_not_count_its_size() {
     );
     assert_eq!(names(&row, "over_cap"), Vec::<String>::new(), "{row}");
 }
+
+#[test]
+fn adds_up_the_files_of_nested_folders_toward_the_cap() {
+    let fx = fixture();
+    // Three files of 40 MiB in three depths: each alone is far under the cap, the sum is over.
+    // A guard that counted only the last file (or only the top folder) would pass this card.
+    let part = 40 * 1024 * 1024;
+    sparse(&fx, "card-7/a.bin", part);
+    sparse(&fx, "card-7/x/b.bin", part);
+    sparse(&fx, "card-7/x/y/c.bin", part);
+    sparse(&fx, "card-8/x/y/only.bin", part);
+    let row = report_row(&fx);
+    assert_eq!(
+        names(&row, "over_cap"),
+        [".moai-cli/reports/card-7"],
+        "{row}"
+    );
+    let over = findings(&row)
+        .into_iter()
+        .find(|f| f["kind"] == "over_cap")
+        .unwrap();
+    assert_eq!(over["bytes_at_least"], 3 * part, "{row}");
+}
+
+#[test]
+fn flags_a_dependency_folder_and_a_git_file_directly_below_reports() {
+    let fx = fixture();
+    // A copy put straight into `reports`, not into a card folder: named, never entered, and the
+    // folder beside it is checked as usual.
+    sparse(&fx, "node_modules/big.bin", CAP + 1);
+    put(&fx, ".git", b"gitdir: /elsewhere/.git/worktrees/x\n");
+    put(&fx, "target/debug/x.o", b"x");
+    put(&fx, "card-9/notes.md", b"small\n");
+    let row = report_row(&fx);
+    assert_eq!(
+        names(&row, "forbidden_folder"),
+        [
+            ".moai-cli/reports/.git",
+            ".moai-cli/reports/node_modules",
+            ".moai-cli/reports/target"
+        ],
+        "{row}"
+    );
+    assert_eq!(names(&row, "over_cap"), Vec::<String>::new(), "{row}");
+    assert_eq!(row["findings_partial"], false, "{row}");
+}
+
+#[test]
+fn says_so_when_a_folder_cannot_be_read_and_still_checks_the_rest() {
+    use std::os::unix::fs::PermissionsExt;
+    let fx = fixture();
+    put(&fx, "card-a/locked/inside.md", b"hidden\n");
+    put(&fx, "card-b/copy/node_modules/x.js", b"x");
+    let locked = fx.root.join(REPORTS).join("card-a/locked");
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).unwrap();
+    // A user that can read a mode-000 folder (root) cannot make the case: nothing to check.
+    let readable = fs::read_dir(&locked).is_ok();
+    let row = (!readable).then(|| report_row(&fx));
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o755)).unwrap();
+    let Some(row) = row else { return };
+    assert_eq!(row["findings_partial"], true, "{row}");
+    // The unreadable folder does not stop the check of the card after it.
+    assert_eq!(
+        names(&row, "forbidden_folder"),
+        [".moai-cli/reports/card-b/copy/node_modules"],
+        "{row}"
+    );
+}

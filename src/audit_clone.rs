@@ -232,8 +232,8 @@ pub fn plan(project: &Path, req: &Request) -> Result<Value> {
         "evidence_reason": evidence_reason,
         "evidence_cap_bytes": crate::optimize::EVIDENCE_CAP_BYTES,
         "rules": [
-            "never copy the repository: no `cp -R` of the tree, into the evidence folder or anywhere else; the clone above is the auditor's own copy",
-            "to read or probe without a clone, use `git worktree add --detach <path> <head>` (it shares the objects) and run `git worktree remove <path>` when done",
+            "never copy the repository: no `cp -R` of the tree, into the evidence folder or anywhere else; the clone made by `commands` is the auditor's own copy",
+            "to probe a head without a second clone, use `git worktree add --detach <path> <head>` with <path> under `~/.moai/worktrees/<project>/<name>/` (it shares the author's objects, so it is for a quick read, not a replacement for the independent clone) and run `git worktree remove <path>` when done",
             "the evidence folder holds logs and verdicts, never a tree: no node_modules, .venv, target, .next or .git folder; a file over evidence_cap_bytes is recorded by its path, not copied",
             "remove the clone or the worktree when the verdict is posted, so nothing of the audit stays outside the evidence folder",
         ],

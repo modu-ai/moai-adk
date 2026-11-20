@@ -27,18 +27,22 @@ created: 2026-11-20
 ## Requirements
 
 - REQ-1: When `moai optimize-plan` lists a reports folder, the row shall carry a finding for each folder named `node_modules`, `.venv`, `target`, `.next` or `.git` found anywhere below it. · failure: none
-- REQ-2: When a folder directly below the reports folder holds more than 100 MiB, the row shall carry a finding that names that folder, its size and the cap. · failure: none
+- REQ-2: When a folder directly below the reports folder holds more than 100 MiB, counted as the sum of the logical sizes of all files in it and its nested folders, the row shall carry a finding that names that folder, its size and the cap. · failure: none
 - REQ-3: When a reports folder holds none of those folders and no folder over the cap, the row shall carry an empty `findings` list and the reasons it had before. · failure: none
 - REQ-4 (REQ-1): IF a finding is raised, THEN the row shall add the reason `evidence_guard` and keep the action `keep`.
 - REQ-5: While the guard scans, it shall follow no link and enter no folder it has flagged. · failure: none
 - REQ-6: When `moai audit-clone-plan` answers, it shall add the rules for audit copies and the evidence cap. · failure: none
+- REQ-7 (REQ-1): IF the guard cannot read a folder or an entry, or the deadline passes, THEN the row shall set `findings_partial` to true, so that an empty `findings` list is read as "nothing seen".
 
 ## Acceptance
 
 - AC-1 (REQ-1, REQ-4, REQ-5): a fixture reports folder with a repository copy (`.git`, `node_modules`) is flagged, the row keeps its action, and a linked `node_modules` is flagged but not entered.
   verify: `cargo test --locked --offline --test audit_copy_guard flags_`
-- AC-2 (REQ-2, REQ-3): a card folder over the cap is flagged with its size; a normal folder passes with an empty list.
+- AC-2 (REQ-2, REQ-3): a card folder over the cap is flagged with its size, also when no single file is over it; a normal folder passes with an empty list.
   verify: `cargo test --locked --offline --test audit_copy_guard passes_`
+  verify: `cargo test --locked --offline --test audit_copy_guard adds_up_`
+- AC-5 (REQ-7): a folder the guard cannot read sets `findings_partial` and the cards after it are still checked.
+  verify: `cargo test --locked --offline --test audit_copy_guard says_so_`
 - AC-3 (REQ-6): the plan carries the rules and the cap.
   verify: `cargo test --locked --offline --test audit_clone_cli rules_`
 - AC-4: neighbours.
