@@ -1,12 +1,15 @@
 ---
 id: SPEC-20261119-outbound-screen-flake
 title: "outbound: 64 KiB key-prefix screening test pins cost by a same-process ratio, not wall-clock (C-111)"
-status: draft
+status: superseded
 revision: 1
 created: 2026-11-19
+approval: {by: user, at: 2026-11-21, basis: "superseded by SPEC-20261120-retire-decide — AskUserQuestion selection: 승인 (Recommended)", digest: "sha256:8f69586ec932de5e631db6ed3921ab245c25f75b326c629c9467a67d612204a6"}
 ---
 
 # outbound: 64 KiB key-prefix screening test pins cost by a same-process ratio, not wall-clock (C-111)
+
+> Superseded by SPEC-20261120-retire-decide (2026-11-21): the decision model library was removed.
 
 ## Intent
 
@@ -43,6 +46,10 @@ created: 2026-11-19
 - write: `src/decide/outbound.rs`(tests 모듈만), `.moai/specs/SPEC-20261119-outbound-screen-flake/spec.md`
 - read-only: `src/decide/normalise.rs`(스캔 단계 참고), `src/redact.rs`(참고)
 - forbidden: 제품 코드·카운팅 훅 수정(변이는 임시 주입 뒤 원복), 실제 HOME·키·원장, 네트워크, force push·`reset --hard`·훅 해제
+
+## Interview
+
+- Q1: 결정 모델 라이브러리(`src/decide/`)를 지우고 이 SPEC 을 포함한 이전 SPEC 다섯 개를 superseded 로 표시할까요? → A: 승인 (Recommended) (사용자, 2026-11-21, SPEC-20261120-retire-decide revision 1·2 승인 선택)
 
 ## Plan
 
