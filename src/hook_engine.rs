@@ -1043,14 +1043,35 @@ fn tool_observe(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) -> Ver
 /// is an unknown state, which is not a success. For every host a call started in the background
 /// (`tool_input.run_in_background`, or a `tool_response.backgroundTaskId`, which says the command
 /// is still running) and a call the host reports as `tool_response.interrupted` did not run to
-/// its end. A flag that is absent or `false` hides nothing.
+/// its end. A flag that is absent, `null` or the plain `false` hides nothing.
+///
+/// SPEC-20261119-ac-verify-recorded-limits REQ-7 (card C-130, audit N-r1): the host documents
+/// `run_in_background`, `interrupted` and `backgroundedByUser` as booleans, `backgroundTaskId` as
+/// a string only for a background command and `timedOutAfterMs` as set when Claude Code moved a
+/// command to the background itself (code.claude.com/docs/en/hooks.md, agent-sdk/typescript.md,
+/// tools-reference.md, read 2026-11-19). A recorder must not count an unfinished call, so every
+/// other value a mark can hold (the string "true", the number 1, an empty task id, a task id in
+/// snake_case) reads as unfinished, and so does a `tool_response` that is present and not an
+/// object (a shape the Bash tool does not document).
 fn ran_to_its_end(input: &Value, host: Host) -> bool {
     if host == Host::Claude && input["hook_event_name"] != json!("PostToolUse") {
         return false;
     }
-    let started_in_background = input["tool_input"]["run_in_background"] == json!(true)
-        || input["tool_response"]["backgroundTaskId"].is_string();
-    !started_in_background && input["tool_response"]["interrupted"] != json!(true)
+    let response = &input["tool_response"];
+    if !response.is_null() && !response.is_object() {
+        return false;
+    }
+    // A flag: present and not `false`/`null` marks the call.
+    let flag = |value: &Value| !value.is_null() && value != &json!(false);
+    // An id or a time: present and not `null` marks the call.
+    let present = |value: &Value| !value.is_null();
+    let started_in_background = flag(&input["tool_input"]["run_in_background"])
+        || flag(&input["tool_input"]["runInBackground"])
+        || present(&response["backgroundTaskId"])
+        || present(&response["background_task_id"])
+        || present(&response["timedOutAfterMs"])
+        || flag(&response["backgroundedByUser"]);
+    !started_in_background && !flag(&response["interrupted"])
 }
 
 /// The longest Bash command line [`record_ac_run`] compares with a SPEC's `verify:` commands.
@@ -1136,18 +1157,24 @@ const STOP_MODES: &str = "per rule in [hooks.modes] of the HOME hook-config.toml
 
 /// What the rule `ac_verify_recorded` does not do, shown in `capabilities` (SPEC-20261119-
 /// enforce-ac-verify-recorded Risks).
-const AC_VERIFY_LIMITS: [&str; 7] = [
+const AC_VERIFY_LIMITS: [&str; 12] = [
     "the generated host settings do not call tool-observe or turn-validation yet, so the rule runs only where hook-dispatch is called directly (a later slice wires them)",
     "a commit changes HEAD, so runs recorded before it no longer count and the verify commands run again",
-    "shell writes (sed -i) are not writes, and a redirection is not one either: only the file-writing tools count as the session's last write",
+    "shell writes (sed -i) are not writes, and a redirection is not one either: only the file-writing tools count as the session's last write, and of those a failed one and one outside the project folder do not count while one with an unknown outcome or no path does",
     "a run counts only when the called command must equal the verify command, white space collapsed: a pipe, an env prefix or an added word does not match",
     "the engine log is a plain file: a line can be written by hand, so the rule stops forgetting, not cheating (the auditor checks the rest)",
     "the log has a size limit: past it nothing more is recorded and the rule reads no lines, so it lets the turn end",
     "an AC with manual:, with unknown: or with a <...> placeholder in its verify value is not asked",
+    "Stop reads the process folder while the observation reads the cwd the call names: a session whose calls run in another work tree than its process folder is asked about the process folder's SPEC",
+    "a verify command over 4096 bytes is never recorded, but Stop still asks for it until the third turn end goes through (two blocks, then a rule_release line)",
+    "a detached HEAD, sha256 objects, a reftable and a symbolic ref read as no commit, so the rule switches itself off without saying so",
+    "a run from a subfolder of the work tree counts, because the SPEC is found from the top of the work tree the call's cwd is in",
+    "on OMP the extension sends only isError, so a call OMP ran in the background (async, notify) or that timed out counts as a finished run",
 ];
 
 /// The rule `ac_verify_recorded` (SPEC-20261119-enforce-ac-verify-recorded REQ-3, REQ-4,
-/// REQ-6): on a SPEC work branch, after a file-writing tool call of this session, every runnable
+/// REQ-6): on a SPEC work branch, after a file-writing tool call of this session that did not fail
+/// and is not outside the project folder (limits SPEC REQ-10), every runnable
 /// `verify:` command of the branch's SPEC needs an `ac_run` line for the current HEAD commit
 /// written at or after that write; the reason names the acceptance criteria that lack one.
 /// Nothing readable, nothing written by the session or nothing to run gives `None`.
@@ -1164,6 +1191,12 @@ fn ac_verify_recorded(ctx: &StopContext) -> Option<String> {
             l["kind"] == json!("observe")
                 && l["class"] == json!("write")
                 && l["session"] == json!(ctx.session)
+                // SPEC-20261119-ac-verify-recorded-limits REQ-10 (leader decision, C-130 note
+                // 3387): a failed write and a write outside the project folder are no write to
+                // ask about; an unknown outcome and a line with no path count (dropping them
+                // would weaken the rule quietly).
+                && l["outcome"] != json!("failure")
+                && l["path"] != json!("outside")
         })
         .filter_map(|l| l["unix_ms"].as_u64())
         .max()?;
@@ -1240,7 +1273,10 @@ fn consecutive_blocks_in(home: Option<&Path>, cwd: &Path, session: &str) -> usiz
 ///   `Stop`", learn.chatgpt.com/docs/hooks read 2026-11-11). The Go `/goal` Stop link is not
 ///   carried over (B5 rejected);
 /// - MoAI has blocked [`MOAI_STOP_BLOCK_CAP`] times in a row → allow (backstop for a host that
-///   does not report a continuation);
+///   does not report a continuation); a rule that would have blocked again writes a
+///   `rule_release` line (rule, reason, session) so that the let-go leaves a trace — one per
+///   turn end that goes through, so a session that keeps ending turns adds a line each time,
+///   inside the log's size limit;
 /// - a block that cannot be recorded (no `.moai-cli/`, refused log) → allow, because an
 ///   unrecorded block could not be bounded.
 ///
@@ -1257,10 +1293,13 @@ pub fn turn_validation_with(
     }
     let active = input["stop_hook_active"] == json!(true);
     let session = session_key(input);
-    let blocks = consecutive_blocks(cwd, &session);
-    if active || blocks >= MOAI_STOP_BLOCK_CAP {
+    if active {
         return Verdict::Allow;
     }
+    // At the cap the rules still run: a rule that would have blocked again is released with one
+    // `rule_release` line (SPEC-20261119-ac-verify-recorded-limits REQ-2), so the silent let-go
+    // after MoAI's own bound leaves a trace; a session no rule asks any more leaves none.
+    let capped = consecutive_blocks(cwd, &session) >= MOAI_STOP_BLOCK_CAP;
     let ctx = StopContext {
         cwd,
         stop_hook_active: active,
@@ -1288,6 +1327,18 @@ pub fn turn_validation_with(
                     }
                     RuleMode::Enforce => {}
                 }
+            }
+            if capped {
+                let line = json!({
+                    "schema_version": 1,
+                    "kind": "rule_release",
+                    "rule": rule.id,
+                    "reason": reason,
+                    "session": session,
+                    "unix_ms": now_unix_ms as u64,
+                });
+                let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line);
+                return Verdict::Allow;
             }
             let line = json!({
                 "schema_version": 1,

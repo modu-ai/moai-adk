@@ -40,20 +40,19 @@ fn values(q: &model_effort_questions::Question) -> Vec<&str> {
 fn the_tool_question_lists_three_tools_and_defaults_to_the_installed_ones() {
     let q = tool_question(&["codex", "claude"]);
     assert_eq!(q.kind, Kind::Many);
-    assert_eq!(values(&q), ["claude", "codex", "omp"]);
+    assert_eq!(values(&q), ["claude", "codex", "glm"]);
     assert_eq!(q.defaults, [0, 1], "installed tools, in option order");
     assert!(tool_question(&[]).defaults.is_empty());
-    // A name that is not a pickable tool is not a default.
-    assert_eq!(
-        tool_question(&["glm", "nope"]).defaults,
-        Vec::<usize>::new()
-    );
+    // glm is pickable but never auto-defaulted (no folder probe finds it): it stays a
+    // default only when the caller names it, here at its option index.
+    assert_eq!(tool_question(&["glm", "nope"]).defaults, [2]);
+    assert_eq!(tool_question(&["nope"]).defaults, Vec::<usize>::new());
 }
 
 #[test]
 fn model_and_effort_questions_offer_only_table_values_with_the_default_first() {
     for (tool, role, default_model, default_effort) in [
-        ("claude", "leader", "claude-opus-5-5", "medium"),
+        ("claude", "leader", "claude-opus-5-5", "high"),
         ("codex", "agent", "gpt-6.1-terra", "xhigh"),
         ("omp", "agent", "zai/glm-5.3-flash", "max"),
     ] {
@@ -78,7 +77,7 @@ fn model_and_effort_questions_offer_only_table_values_with_the_default_first() {
     let e = effort_question("codex", "agent", "gpt-6-luna").unwrap();
     assert_eq!(e.options[e.defaults[0]].value, "xhigh");
     let e = effort_question("claude", "leader", "claude-haiku-5-5").unwrap();
-    assert_eq!(e.options[e.defaults[0]].value, "medium");
+    assert_eq!(e.options[e.defaults[0]].value, "high");
     // The GLM default effort for the leader is high, which flash also offers.
     let e = effort_question("glm", "leader", "zai/glm-5.3-flash").unwrap();
     assert_eq!(e.options[e.defaults[0]].value, "high");
@@ -100,11 +99,11 @@ fn an_answer_line_is_read_and_a_bad_one_is_never_echoed() {
     // Empty and blank lines are the default.
     assert_eq!(v(read_answer(&many, Some(""))), ["claude"]);
     assert_eq!(v(read_answer(&many, Some("  \n"))), ["claude"]);
-    assert_eq!(v(read_answer(&one, Some("\n"))), ["gpt-6.1-sol"]);
+    assert_eq!(v(read_answer(&one, Some("\n"))), ["gpt-6.2-sol"]);
     // Numbers: 1-based, in option order, duplicates collapsed, comma or space separated.
-    assert_eq!(v(read_answer(&many, Some("3,1"))), ["claude", "omp"]);
+    assert_eq!(v(read_answer(&many, Some("3,1"))), ["claude", "glm"]);
     assert_eq!(v(read_answer(&many, Some("2 2 2"))), ["codex"]);
-    assert_eq!(v(read_answer(&one, Some(" 2 "))), ["gpt-6.1-terra"]);
+    assert_eq!(v(read_answer(&one, Some(" 2 "))), ["gpt-6.1-sol"]);
     // A single choice takes exactly one number.
     assert_eq!(read_answer(&one, Some("1,2")), Answer::Invalid);
     // Anything else is invalid, and end of input is cancelled.
@@ -125,7 +124,11 @@ fn the_loop_asks_the_tool_pick_first_and_stops_on_an_empty_or_cancelled_pick() {
     let outcome = run(&mut Cursor::new("\n"), &mut out, &[]).unwrap();
     assert_eq!(outcome, Outcome::Picks(vec![]));
     let text = String::from_utf8(out).unwrap();
-    assert!(text.contains("Claude Code") && text.contains("Codex") && text.contains("OMP"));
+    assert!(
+        text.contains("Claude") && text.contains("GPT (Codex)") && text.contains("GLM"),
+        "{text}"
+    );
+    assert!(!text.contains("OMP"), "no OMP offer: {text}");
     assert!(
         !text.contains("model"),
         "no model question after an empty pick: {text}"
@@ -140,8 +143,8 @@ fn the_loop_asks_the_tool_pick_first_and_stops_on_an_empty_or_cancelled_pick() {
         "end of input at the first model question"
     );
     let text = String::from_utf8(out).unwrap();
-    let tools_at = text.find("OMP").unwrap();
-    let model_at = text.find("gpt-6.1-sol").unwrap();
+    let tools_at = text.find("GLM").unwrap();
+    let model_at = text.find("gpt-6.2-sol").unwrap();
     assert!(tools_at < model_at, "tools first: {text}");
     assert!(
         !text.contains("zai/glm"),
@@ -183,14 +186,15 @@ fn enter_everywhere_picks_the_defaults_of_the_installed_tools() {
     assert_eq!(
         outcome,
         Outcome::Picks(vec![
-            pick("claude", "leader", "claude-opus-5-5", "medium"),
+            pick("claude", "leader", "claude-opus-5-5", "high"),
             pick("claude", "agent", "claude-sonnet-5-5", "high"),
-            pick("codex", "leader", "gpt-6.1-sol", "high"),
+            pick("codex", "leader", "gpt-6.2-sol", "high"),
             pick("codex", "agent", "gpt-6.1-terra", "xhigh"),
         ])
     );
-    // A chosen model changes the effort question: codex leader picks the third model, then Enter.
-    let input = "2\n3\n\n".to_string() + &"\n".repeat(2);
+    // A chosen model changes the effort question: codex leader picks its new default
+    // model explicitly, then Enter takes the default effort.
+    let input = "2\n1\n\n".to_string() + &"\n".repeat(2);
     let outcome = run(&mut Cursor::new(input), &mut Vec::new(), &[]).unwrap();
     match outcome {
         Outcome::Picks(p) => {
@@ -274,28 +278,31 @@ fn the_plan_changes_only_the_picked_entries_and_lists_unsupported_ones() {
 }
 
 #[test]
-fn an_omp_pick_sets_omp_and_glm() {
-    let p = plan(&Map::new(), &[pick("omp", "leader", "zai/glm-5.3", "low")]).unwrap();
-    let mut tools: Vec<&str> = p.changes.iter().map(|c| c.tool.as_str()).collect();
-    tools.sort_unstable();
-    assert_eq!(tools, ["glm", "omp"]);
-    for tool in ["omp", "glm"] {
-        assert_eq!(
-            resolve(tool, "leader", Some(&p.after)).unwrap(),
-            (
-                Choice {
-                    model: "zai/glm-5.3".into(),
-                    effort: "low".into()
-                },
-                Source::Saved
-            )
-        );
-    }
-    // The agent role was not picked and keeps its default.
+fn a_pick_writes_only_its_own_tool() {
+    // A glm pick is its own pick now (the earlier OMP pick also set glm; OMP is no longer
+    // offered, and this plan API still accepts an omp pick — it writes omp alone).
+    let p = plan(&Map::new(), &[pick("glm", "leader", "zai/glm-5.3", "low")]).unwrap();
+    let tools: Vec<&str> = p.changes.iter().map(|c| c.tool.as_str()).collect();
+    assert_eq!(tools, ["glm"]);
+    assert_eq!(
+        resolve("glm", "leader", Some(&p.after)).unwrap(),
+        (
+            Choice {
+                model: "zai/glm-5.3".into(),
+                effort: "low".into()
+            },
+            Source::Saved
+        )
+    );
+    // The agent role was not picked and keeps its default, and omp stays untouched.
     assert_eq!(
         resolve("glm", "agent", Some(&p.after)).unwrap().1,
         Source::Default
     );
+    assert_eq!(p.after.get("models").and_then(|m| m.get("omp")), None);
+    let p = plan(&Map::new(), &[pick("omp", "leader", "zai/glm-5.3", "low")]).unwrap();
+    let tools: Vec<&str> = p.changes.iter().map(|c| c.tool.as_str()).collect();
+    assert_eq!(tools, ["omp"]);
 }
 
 #[test]
@@ -344,8 +351,8 @@ fn apply_writes_through_the_digest_and_reads_back() {
         0o644,
     );
     let picks = [
-        pick("codex", "leader", "gpt-6.1-sol", "high"),
-        pick("omp", "agent", "zai/glm-5.3-flash", "max"),
+        pick("codex", "leader", "gpt-6.2-sol", "high"),
+        pick("glm", "agent", "zai/glm-5.3-flash", "max"),
     ];
     let previewed = plan_file(&path, &picks).unwrap();
     let before = fs::read(&path).unwrap();
@@ -398,7 +405,7 @@ fn apply_writes_through_the_digest_and_reads_back() {
     );
     assert_eq!(
         created["launcher"]["models"]["codex"]["leader"]["model"],
-        json!("gpt-6.1-sol")
+        json!("gpt-6.2-sol")
     );
     assert_eq!(
         fs::metadata(&new_path).unwrap().permissions().mode() & 0o777,
@@ -660,7 +667,7 @@ fn a_saved_value_is_the_default_of_its_questions_and_enter_keeps_it() {
         effort_question_with("claude", "leader", "claude-sonnet-5-5", Some(&saved)).unwrap();
     assert_eq!(efforts.options[efforts.defaults[0]].value, "max");
     let other = effort_question_with("claude", "leader", "claude-opus-5-5", Some(&saved)).unwrap();
-    assert_eq!(other.options[other.defaults[0]].value, "medium");
+    assert_eq!(other.options[other.defaults[0]].value, "high");
 
     // Enter at every question keeps the saved leader and gives the table default to the rest.
     let launcher = object(json!({"models": {"claude": {"leader": {

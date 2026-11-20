@@ -23,4 +23,5 @@ pub mod inbox;
 pub mod input;
 pub mod precheck;
 pub mod spec_link;
+pub mod timeline;
 pub mod work;

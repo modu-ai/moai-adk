@@ -84,6 +84,7 @@ fn step_5_asks_about_generation_only_when_it_reads_ready() {
         "Ask nothing about a step that reads `blocked` or `re-run after …`",
         "apply the earlier step its reason names, run `moai project-update-plan <project>` again and ask from that new run",
         "because an earlier yes does not cover a step the user has not seen",
+        "an earlier step the user declined or left out stays unapplied, and the step behind it is reported with the reason the plan prints, not asked",
     ] {
         assert!(step.contains(phrase), "step 5 lacks: {phrase}");
     }
@@ -102,6 +103,7 @@ fn completion_check_offers_steps_in_the_printed_phase_order() {
     for phrase in [
         "a waiting step is reported with that reason and asked about only after the earlier step is applied and the plan is run again",
         "as UPDATE step 5 says",
+        "the merge steps read `re-run after the backup phase` while the backup phase still has a move to make and `re-run after the install phase` behind the install phase",
     ] {
         assert!(check.contains(phrase), "the Completion Check lacks: {phrase}");
     }

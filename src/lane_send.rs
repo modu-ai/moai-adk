@@ -29,6 +29,9 @@ pub const DEFAULT_TIMEOUT_SECS: u64 = 15;
 /// Most bytes read from one `orca` output stream.
 const OUTPUT_LIMIT: u64 = 1 << 20;
 
+/// The least time the output of a finished `orca` call is waited for after the time limit.
+const OUTPUT_GRACE: Duration = Duration::from_millis(250);
+
 /// The text to send is refused before Orca is called. The text itself is never echoed.
 pub fn check_text(text: &str) -> Result<(), String> {
     let refuse = |why: &str| Err(format!("lane send refused: the text {why}"));
@@ -74,6 +77,15 @@ pub trait Orca {
     /// `orca terminal send --terminal <handle> --text <text> [--enter] --json`: its standard
     /// output.
     fn send(&self, terminal: &str, text: &str, enter: bool) -> Result<String, String>;
+    /// `orca terminal list --json`: its standard output (`lane-screen --scan`, slice C).
+    fn list(&self) -> Result<String, String>;
+}
+
+/// Reads the screen of `terminal` for a scan: the handle is checked first, so a handle Orca
+/// could read as an option never reaches the program. The detail has no `lane send` wording.
+pub fn read_checked(orca: &dyn Orca, terminal: &str) -> Result<String, String> {
+    check_handle(terminal).map_err(|d| d.trim_start_matches("lane send refused: ").to_string())?;
+    orca.read(terminal)
 }
 
 fn allowed(state: State) -> bool {
@@ -220,14 +232,19 @@ impl ProcessOrca {
             .stderr(Stdio::piped())
             .spawn()
             .map_err(|e| format!("cannot run `{shown}`: {}", e.kind()))?;
+        // Each stream is read on a thread that sends its text over a channel, so the caller can
+        // stop waiting for it (re-audit C-N2, note 3497): a child of `orca` that outlives it keeps
+        // the pipe open, and a plain `join` waited for that child with no limit.
         let drain = |stream: Option<Box<dyn Read + Send>>| {
+            let (send, receive) = std::sync::mpsc::channel();
             std::thread::spawn(move || {
                 let mut bytes = Vec::new();
                 if let Some(s) = stream {
                     let _ = s.take(OUTPUT_LIMIT).read_to_end(&mut bytes);
                 }
-                String::from_utf8_lossy(&bytes).into_owned()
-            })
+                let _ = send.send(String::from_utf8_lossy(&bytes).into_owned());
+            });
+            receive
         };
         let out = drain(
             child
@@ -257,10 +274,22 @@ impl ProcessOrca {
                 Err(e) => return Err(format!("cannot wait for `{shown}`: {}", e.kind())),
             }
         };
+        // The program has exited; its output gets what is left of the same time limit, and at
+        // least a short grace so that a call that ended just in time is still read whole.
+        let until = (started + self.timeout).max(Instant::now() + OUTPUT_GRACE);
+        let wait = |receive: std::sync::mpsc::Receiver<String>| {
+            receive.recv_timeout(until.saturating_duration_since(Instant::now()))
+        };
+        let (Ok(stdout), Ok(stderr)) = (wait(out), wait(err)) else {
+            return Err(format!(
+                "`{shown}` did not finish its output within {} seconds",
+                self.timeout.as_secs()
+            ));
+        };
         Ok(Called {
             code: status.code(),
-            stdout: out.join().unwrap_or_default(),
-            stderr: err.join().unwrap_or_default(),
+            stdout,
+            stderr,
         })
     }
 }
@@ -280,7 +309,35 @@ fn first_line(text: &str) -> String {
     }
 }
 
+impl ProcessOrca {
+    /// The `orca` program of this machine: `MOAI_ORCA_BIN` overrides the program name and
+    /// `MOAI_ORCA_TIMEOUT_SECS` (1 to 300) the [`DEFAULT_TIMEOUT_SECS`] limit per call.
+    pub fn from_env() -> ProcessOrca {
+        let secs = std::env::var("MOAI_ORCA_TIMEOUT_SECS")
+            .ok()
+            .and_then(|v| v.parse::<u64>().ok())
+            .filter(|s| (1..=300).contains(s))
+            .unwrap_or(DEFAULT_TIMEOUT_SECS);
+        ProcessOrca {
+            program: std::env::var_os("MOAI_ORCA_BIN").unwrap_or_else(|| "orca".into()),
+            timeout: Duration::from_secs(secs),
+        }
+    }
+}
+
 impl Orca for ProcessOrca {
+    fn list(&self) -> Result<String, String> {
+        let called = self.call(&["terminal", "list", "--json"])?;
+        match called.code {
+            Some(0) => Ok(called.stdout),
+            code => Err(format!(
+                "`orca terminal list` exited with {}{}",
+                code.map_or("a signal".to_string(), |c| format!("code {c}")),
+                first_line(&called.stderr)
+            )),
+        }
+    }
+
     fn read(&self, terminal: &str) -> Result<String, String> {
         let called = self.call(&[
             "terminal",
@@ -307,7 +364,7 @@ impl Orca for ProcessOrca {
         }
         args.push("--json");
         let called = self.call(&args).map_err(|d| {
-            if d.contains("did not answer") {
+            if d.contains("did not answer") || d.contains("did not finish its output") {
                 format!("{d}; the text may have reached the lane")
             } else {
                 d
@@ -352,6 +409,9 @@ mod tests {
     }
 
     impl Orca for Fake {
+        fn list(&self) -> Result<String, String> {
+            Err("the fake lists nothing".into())
+        }
         fn read(&self, _: &str) -> Result<String, String> {
             let n = *self.read_calls.borrow();
             *self.read_calls.borrow_mut() += 1;
@@ -367,6 +427,19 @@ mod tests {
                     .unwrap_or_else(|| "{\"ok\":true}".into())),
             }
         }
+    }
+
+    #[test]
+    fn read_checked_never_hands_a_bad_handle_to_orca() {
+        let orca = fake(&[idle()]);
+        for bad in ["-x", "", "a b", "é", &"a".repeat(MAX_HANDLE_CHARS + 1)] {
+            let err = read_checked(&orca, bad).unwrap_err();
+            assert!(err.contains("handle"), "{bad}: {err}");
+            assert!(!err.contains("lane send"), "{bad}: {err}");
+        }
+        assert_eq!(*orca.read_calls.borrow(), 0);
+        assert!(read_checked(&orca, &"a".repeat(MAX_HANDLE_CHARS)).is_ok());
+        assert_eq!(*orca.read_calls.borrow(), 1);
     }
 
     fn screen(rows: &[&str]) -> String {
