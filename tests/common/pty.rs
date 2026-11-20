@@ -27,8 +27,12 @@ pub const END_OF_INPUT: u8 = 0x04;
 
 /// What the terminal showed and how the command ended.
 pub struct Screen {
-    /// Everything the command wrote, with `\r\n` read as `\n`.
+    /// Everything the command wrote to the terminal, with `\r\n` read as `\n`.
     pub text: String,
+    /// What it wrote to stdout when stdout was a pipe (`stdout_not_a_terminal`), else empty.
+    pub stdout: String,
+    /// What it wrote to stderr when stderr was a pipe (`stderr_not_a_terminal`), else empty.
+    pub stderr: String,
     /// The exit code, `None` when a signal ended the command.
     pub code: Option<i32>,
 }
@@ -42,6 +46,8 @@ pub struct Terminal {
     answer: Option<Vec<u8>>,
     before_answer: Option<Box<dyn Fn()>>,
     stdin_is_terminal: bool,
+    stdout_is_terminal: bool,
+    stderr_is_terminal: bool,
     limit: Duration,
 }
 
@@ -55,6 +61,8 @@ impl Terminal {
             answer: None,
             before_answer: None,
             stdin_is_terminal: true,
+            stdout_is_terminal: true,
+            stderr_is_terminal: true,
             limit: LIMIT,
         }
     }
@@ -99,9 +107,21 @@ impl Terminal {
         self
     }
 
-    /// stdout and stderr stay on the terminal, stdin is `/dev/null`.
+    /// stdin is `/dev/null`; stdout and stderr stay on the terminal.
     pub fn stdin_not_a_terminal(mut self) -> Terminal {
         self.stdin_is_terminal = false;
+        self
+    }
+
+    /// stdout is a pipe the helper reads (`Screen::stdout`); stderr stays on the terminal.
+    pub fn stdout_not_a_terminal(mut self) -> Terminal {
+        self.stdout_is_terminal = false;
+        self
+    }
+
+    /// stderr is a pipe the helper reads (`Screen::stderr`); stdout stays on the terminal.
+    pub fn stderr_not_a_terminal(mut self) -> Terminal {
+        self.stderr_is_terminal = false;
         self
     }
 
@@ -127,10 +147,40 @@ impl Terminal {
         } else {
             Stdio::null()
         };
-        cmd.stdin(stdin)
-            .stdout(Stdio::from(slave.try_clone().unwrap()))
-            .stderr(Stdio::from(slave));
+        let stdout = if self.stdout_is_terminal {
+            Stdio::from(slave.try_clone().unwrap())
+        } else {
+            Stdio::piped()
+        };
+        let stderr = if self.stderr_is_terminal {
+            Stdio::from(slave)
+        } else {
+            Stdio::piped()
+        };
+        cmd.stdin(stdin).stdout(stdout).stderr(stderr);
         let mut child = cmd.spawn().unwrap();
+        // A pipe is read on its own thread so a full pipe never stops the command.
+        let pipe_reader = |pipe: Option<Box<dyn Read + Send>>| {
+            pipe.map(|mut p| {
+                std::thread::spawn(move || {
+                    let mut bytes = Vec::new();
+                    let _ = p.read_to_end(&mut bytes);
+                    bytes
+                })
+            })
+        };
+        let out_thread = pipe_reader(
+            child
+                .stdout
+                .take()
+                .map(|p| Box::new(p) as Box<dyn Read + Send>),
+        );
+        let err_thread = pipe_reader(
+            child
+                .stderr
+                .take()
+                .map(|p| Box::new(p) as Box<dyn Read + Send>),
+        );
         // Our copies of the slave end go with `cmd`: the master reads to its end only when the
         // command and its children have closed theirs.
         drop(cmd);
@@ -179,8 +229,14 @@ impl Terminal {
             }
         }
         let status = child.wait().unwrap();
+        let joined = |t: Option<std::thread::JoinHandle<Vec<u8>>>| {
+            t.map(|t| String::from_utf8_lossy(&t.join().unwrap()).into_owned())
+                .unwrap_or_default()
+        };
         Screen {
             text: text_of(&seen),
+            stdout: joined(out_thread),
+            stderr: joined(err_thread),
             code: status.code(),
         }
     }

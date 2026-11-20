@@ -82,6 +82,46 @@ fn the_environment_is_clean_plus_what_the_case_sets() {
 }
 
 #[test]
+fn a_piped_stdout_is_captured_and_stderr_stays_on_the_terminal() {
+    let s = sh(
+        "echo out; echo err >&2; if test -t 1; then echo out-terminal; else echo out-pipe >&2; fi",
+    )
+    .stdout_not_a_terminal()
+    .run();
+    assert_eq!(s.stdout, "out\n");
+    assert!(
+        s.text.contains("err\n") && s.text.contains("out-pipe"),
+        "{:?}",
+        s.text
+    );
+    assert!(!s.text.contains("out\nout"), "{:?}", s.text);
+    assert_eq!(s.stderr, "");
+}
+
+#[test]
+fn a_piped_stderr_is_captured_and_stdout_stays_on_the_terminal() {
+    let s = sh("echo out; echo err >&2; test -t 2 || echo err-pipe")
+        .stderr_not_a_terminal()
+        .run();
+    assert_eq!(s.stderr, "err\n");
+    assert!(
+        s.text.contains("out\n") && s.text.contains("err-pipe"),
+        "{:?}",
+        s.text
+    );
+    assert_eq!(s.stdout, "");
+}
+
+#[test]
+fn a_big_piped_output_does_not_stop_the_command() {
+    let s = sh("head -c 300000 /dev/zero | tr '\\0' x")
+        .stdout_not_a_terminal()
+        .run();
+    assert_eq!(s.code, Some(0));
+    assert_eq!(s.stdout.len(), 300_000);
+}
+
+#[test]
 #[should_panic(expected = "still running after")]
 fn a_command_that_does_not_end_is_killed_with_the_screen_so_far() {
     let _ = sh("echo started; sleep 30")
