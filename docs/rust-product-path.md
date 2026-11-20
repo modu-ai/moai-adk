@@ -919,6 +919,27 @@ is left out together with its separator.
    (SPEC-20261120-statusline-ahead: under M-Flow the merges land on the local integration
    branch first, so the ahead count is the one that shows them landing; the count comes from
    the `git status` header the renderer already reads). Missing forge counts are omitted.
+   The worktree label closes line 2 (the user's instruction of 2026-11-20T21:5xZ,
+   SPEC-20261120-statusline-numbers-reset-worktree; it closed line 3 before). In a linked
+   worktree it has three shapes. `🌳 WT-c<card>-<name>` when a live reservation of the
+   project (status `held`, `held_for_review` or `expired_candidate`, with an absolute
+   worktree path) names the session's folder (`<card>` is the number of the card that holds
+   it, the lowest number when several do; `<name>` is the part of the reservation's branch
+   after the eight-digit date and a dash in its last path segment, else the folder name
+   without its `<project_id>-` prefix (the project profile's `project_id`) and without the
+   card number). `🌳 WT-c<card>` when no name is left. `🌳 <worktree name>` alone, with no
+   `WT-` and no card number (the name the host gave: `worktree.name`, else
+   `workspace.git_worktree`), when no live reservation names the folder or the ledger
+   cannot be read within the render budget. A reservation whose recorded worktree path is
+   not absolute names no folder. `<name>` shows at most 32 characters, cut with `…` after
+   the 31st, and drops control characters and the invisible format characters that reorder
+   or hide text. There is no segment in the main checkout, and the `worktree` option turns
+   it off. The ledger is opened read-only under the budget of the card counts, and nothing
+   is created. The shapes are pinned by `tests/statusline_worktree_label.rs` (a released
+   reservation is no holder, the lowest card number, the main checkout, the `worktree`
+   option) and the unit tests in `src/statusline/state.rs`
+   (`the_name_is_cut_at_thirty_two_characters_and_drops_control_characters`,
+   `a_relative_recorded_path_never_matches`).
    The `pr` option turns its segment off.
    `▶️` and `🔃` split the cards in `active` or `review`: a card in `review` is waiting, and
    an `active` card is waiting only when the newest of its notes whose first line carries a
@@ -942,8 +963,8 @@ is left out together with its separator.
    render budget when that is less), all the numbers are absent, the rest of line 1 is
    unchanged and the exit code stays 0. The forge counts and the repository need a repository
    name and a git branch; the card counts stand on line 1 whatever git shows, and without a
-   git branch (or with `git_branch` off) line 2 carries only the pull request or is left
-   out. The one option `cards` in `statusline.yaml` (`statusline.segments.cards: false`)
+   git branch (or with `git_branch` off) line 2 carries the pull request, or only the
+   worktree label, or is left out. The one option `cards` in `statusline.yaml` (`statusline.segments.cards: false`)
    turns all the numbers off. `statusline.yaml` switches segments on and off only; it has
    no setting for their order. Each number carries its icon, so color is never the only
    signal. Tests: `tests/statusline_cards.rs`, the golden cases `b13-card-counts` and
@@ -951,47 +972,41 @@ is left out together with its separator.
    `tests/fixtures/statusline-claude/ledger/cards-5-50-12.sqlite` for `b13` and
    `cards-5-50-12-waiting.sqlite` for `b14`, which adds the notes that make one card wait;
    the ignored test `write_the_golden_ledger_fixture` writes both).
-3. Usage and worktree: the card counts of the project's local ledger first (item 2's
+3. Usage: the card counts of the project's local ledger first (item 2's
    `🗂️ … ▶️ … 🔃 … ✅ …`, they read the ledger and need no git), then the `CTX` and
-   available `Week` bars, then the worktree segment last (`🗂️ … | 🔋 CTX: … | 🪫 Week: … | 🌳 WT-c124-statusline-worktree-label`;
-   since #2928 user instruction 6878415244 the tag is on line 1, not here; the card counts
-   moved here from line 2 and the worktree segment moved from the front of this line to its
-   end by the user's third instruction of 2026-11-20, SPEC-20261120-statusline-layout; the
-   Claude Code version moved back to line 1 by the same instruction). The card counts stand at the front of the last line: line 3 while lines 1 and 2
-   are shown, and one line up when an empty line is left out. In a linked worktree it has
-   three shapes. `🌳 WT-c<card>-<name>` when a live reservation of the project (status
-   `held`, `held_for_review` or `expired_candidate`, with an absolute worktree path)
-   names the session's folder (`<card>` is the number of the card that holds it, the
-   lowest number when several do; `<name>` is the part of the reservation's branch after
-   the eight-digit date and a dash in its last path segment, else the folder name without
-   its `<project_id>-` prefix (the project profile's `project_id`) and without the card
-   number). `🌳 WT-c<card>` when no name is left. `🌳 <worktree name>`
-   alone, with no `WT-` and no card number (the name the host gave: `worktree.name`, else
-   `workspace.git_worktree`), when no live reservation names the folder or the ledger
-   cannot be read within the render budget. A reservation whose recorded worktree path is
-   not absolute names no folder. `<name>` shows at most 32 characters, cut with `…` after
-   the 31st, and drops control characters and the invisible format characters that
-   reorder or hide text. There is no segment in the main checkout, and the `worktree`
-   option turns it off. The ledger is opened read-only under the budget of the card
-   counts, and nothing is created. Example (lines 2 and 3 of the golden
+   available `Week` usage numbers (`🗂️ … | 🔋 CTX … | 🪫 Week …`; the worktree label moved
+   to the end of line 2 by the user's instruction of 2026-11-20T21:5xZ,
+   SPEC-20261120-statusline-numbers-reset-worktree; since #2928 user instruction
+   6878415244 the tag is on line 1, not here; the card counts moved here from line 2 by
+   the user's third instruction of 2026-11-20, SPEC-20261120-statusline-layout). The
+   usage segments are numbers now, by the same 2026-11-20T21:5xZ instruction: no bar
+   graph, no colon, and no `/clear` mark in either handoff band — the battery icon still
+   turns `🔋`→`🪫` above 70, and the handoff stage itself is still judged
+   (`segments::handoff_stage`). The `Week` segment shows its weekly reset countdown
+   `(resets in Dd Hh)` at a day or more, `(resets in Hh Mm)` under a day and
+   `(resets in Mm)` under an hour, each floored, `(resets in 0m)` once the instant has
+   passed; the instant is `rate_limits.seven_day.resets_at` (src/statusline/input.rs)
+   against the render clock, which the hidden `--now-unix` seam fixes for the goldens
+   (#2756 AC-8). Without `resets_at` the number stands alone. The card counts stand at
+   the front of the last line: line 3 while lines 1 and 2 are shown, and one line up when
+   an empty line is left out. Example (lines 2 and 3 of the golden
    `b14-card-counts-waiting`):
 
-       📡 anthropics/claude-code, ⬇️ 46 🔀 0 | 🅱️ main | 🔗 #1234 pending
-       🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 🔋 CTX: ░░░░░░░░░░ 9% | 🔋 Week: ████░░░░░░ 41% | 🌳 feature-xyz
+       📡 anthropics/claude-code, ⬇️ 46 🔀 0 | 🅱️ main | 🔗 #1234 pending | 🌳 feature-xyz
+       🗂️ 50 ▶️ 2 🔃 3 ✅ 12 | 🔋 CTX 9% | 🔋 Week 41% (resets in 4d 23h)
 
-   Tests: `tests/statusline_worktree_label.rs` (the three shapes, a released reservation
-   is no holder, the lowest card number, the main checkout, the `worktree` option, the
-   line), the unit tests in `src/statusline/state.rs`
-   (`the_name_is_cut_at_thirty_two_characters_and_drops_control_characters`,
-   `a_relative_recorded_path_never_matches`) and the golden cases `a02-doc-full` and
-   `b14-card-counts-waiting`. With both bars off and no worktree segment the line is the
-   Claude Code version alone when the `claude_version` option is on and its input is
-   there, and empty and omitted like any empty line otherwise. The bar icons (`🔋`/`🪫`) and the
-   `(⚠️ /clear)` handoff mark keep their rules. The five-hour bar is not shown — the user did not choose it (#2756,
-   6858992949) — and the `usage_5h` option is still accepted. A missing weekly window is
-   hidden; reset times are not printed.
-   Context handoff warnings and the existing usage calculation are retained. The
-   renderer shortens nothing: Claude Code sets `COLUMNS` for the status line command,
+   Tests: the countdown forms and their boundaries in `src/statusline/segments.rs`
+   (`reset_countdown_forms_hold_at_their_boundaries`), the user's example two lines and
+   their no-worktree and no-resets_at variants in `src/statusline/render.rs`
+   (`the_user_example_gives_exactly_the_three_lines` and its two neighbours), and the
+   golden cases `a02-doc-full` and `b14-card-counts-waiting`. With both usage options off
+   and no worktree segment the line is the Claude Code version alone when the
+   `claude_version` option is on and its input is there, and empty and omitted like any
+   empty line otherwise. The five-hour usage is not shown — the user did not choose it
+   (#2756, 6858992949) — and the `usage_5h` option is still accepted. A missing weekly
+   window is hidden.
+   Context handoff stages are still judged and the existing usage calculation is retained.
+   The renderer shortens nothing: Claude Code sets `COLUMNS` for the status line command,
    but the renderer does not read it. When a line is wider than the status bar, the
    host documentation leaves open whether it is cut or wraps ("may get truncated or wrap
    awkwardly", https://code.claude.com/docs/en/statusline, read 2026-11-13).

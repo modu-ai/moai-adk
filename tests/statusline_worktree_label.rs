@@ -1,8 +1,10 @@
-//! User instruction 2026-11-19: the status line opens line 3 (the bars line) with the worktree,
-//! written `🌳 WT-c<card>-<name>`: `<card>` is the number of the card whose held reservation names
-//! the session's worktree folder, `<name>` comes from that reservation's branch
-//! (`spec/20260101-demo-work` gives `demo-work`). Without such a reservation the segment is the
-//! worktree name the host gave, alone, at the same place. The main checkout has no segment.
+//! User instruction 2026-11-19, moved by the user's instruction of 2026-11-20T21:5xZ
+//! (SPEC-20261120-statusline-numbers-reset-worktree): the status line closes line 2 (the git
+//! line) with the worktree, written `🌳 WT-c<card>-<name>`: `<card>` is the number of the card
+//! whose held reservation names the session's worktree folder, `<name>` comes from that
+//! reservation's branch (`spec/20260101-demo-work` gives `demo-work`). Without such a
+//! reservation the segment is the worktree name the host gave, alone, at the same place. The
+//! main checkout has no segment, and line 3 (the counts and the usage) carries no worktree.
 //!
 //! Every case runs the real binary through `TempHome` (a temporary HOME, nothing of the real
 //! environment but a PATH for git) against a ledger built in that HOME and a real linked
@@ -143,73 +145,87 @@ fn line(out: &str, n: usize) -> String {
     out.lines().nth(n).unwrap_or_default().to_string()
 }
 
-/// The rest of line 3 after the worktree segment: the bars, unchanged by the label.
-const BARS: &str = "CTX: ░░░░░░░░░░ n/a";
+/// Line 3 after the counts: the usage segment, unchanged by the worktree label on line 2.
+const USAGE: &str = "CTX n/a";
 
 #[test]
-fn a_held_card_opens_line_3_as_wt_c_card_name() {
+fn a_held_card_closes_line_2_as_wt_c_card_name() {
     let f = fixture();
     let wt = f.worktree("demo-1-work", "spec/20260101-demo-work");
     let card = f.reserve("active", "held", &wt.dir, "spec/20260101-demo-work");
     assert_eq!(card, 1);
     let out = f.plain(Some(&wt));
+    assert!(
+        line(&out, 1).ends_with(" | 🌳 WT-c1-demo-work"),
+        "{}",
+        line(&out, 1)
+    );
     assert_eq!(
         line(&out, 2),
-        format!("🗂️ 0 ▶️ 1 🔃 0 ✅ 0 | {BARS} | 🌳 WT-c1-demo-work"),
+        format!("🗂️ 0 ▶️ 1 🔃 0 ✅ 0 | {USAGE}"),
         "{out}"
     );
-    assert!(
-        !line(&out, 1).contains('🌳'),
-        "line 2 keeps no worktree: {out}"
-    );
+    assert!(!line(&out, 0).contains('🌳'), "{}", line(&out, 0));
     assert_eq!(out.lines().count(), 3, "{out}");
 }
 
 #[test]
-fn only_the_segment_moves_line_1_and_the_bars_stay() {
+fn only_the_label_moves_and_the_counts_stay_on_line_3() {
     let f = fixture();
     let wt = f.worktree("demo-1-work", "spec/20260101-demo-work");
     let without = f.plain(Some(&wt));
     f.reserve("active", "held", &wt.dir, "spec/20260101-demo-work");
     let with = f.plain(Some(&wt));
-    // The card counts open line 3 (a registered ledger shows the group even at zero), the
-    // bars follow, and the worktree label closes the line.
+    // The worktree label closes line 2 in both shapes: the held reservation's branch gives
+    // the name, the host's name stands alone without one.
+    assert!(
+        line(&with, 1).ends_with(" | 🌳 WT-c1-demo-work"),
+        "{}",
+        line(&with, 1)
+    );
+    assert!(
+        line(&without, 1).ends_with(" | 🌳 demo-1-work"),
+        "{}",
+        line(&without, 1)
+    );
+    // Line 3 keeps the counts first and the usage after, with no worktree on it.
     assert!(
         line(&with, 2).starts_with("🗂️ 0 ▶️ 1 🔃 0 ✅ 0 | "),
+        "{}",
+        line(&with, 2)
+    );
+    assert_eq!(
+        line(&with, 2),
+        format!("🗂️ 0 ▶️ 1 🔃 0 ✅ 0 | {USAGE}"),
         "{with}"
     );
-    assert!(
-        line(&without, 2).starts_with("🗂️ 0 ▶️ 0 🔃 0 ✅ 0 | "),
+    assert_eq!(
+        line(&without, 2),
+        format!("🗂️ 0 ▶️ 0 🔃 0 ✅ 0 | {USAGE}"),
         "{without}"
     );
-    assert!(
-        line(&with, 2).ends_with(&format!(" | {BARS} | 🌳 WT-c1-demo-work")),
-        "{with}"
-    );
-    // Without the reservation the label is the host's name alone; the bars stand between
-    // the group and the label in both renders.
-    assert!(
-        line(&without, 2).ends_with(&format!(" | {BARS} | 🌳 demo-1-work")),
-        "{without}"
-    );
-    assert!(line(&with, 2).contains(&format!(" | {BARS} | ")), "{with}");
     // Line 1 holds no worktree and no card counts in either render.
     assert_eq!(line(&with, 0), line(&without, 0));
-    assert!(!line(&with, 0).contains('🌳'), "{with}");
-    assert!(!line(&without, 0).contains('🌳'), "{without}");
+    assert!(!line(&with, 0).contains('🌳'), "{}", line(&with, 0));
+    assert!(!line(&without, 0).contains('🌳'), "{}", line(&without, 0));
 }
 
 #[test]
-fn no_reservation_shows_the_host_name_alone_on_line_3() {
+fn no_reservation_shows_the_host_name_alone_on_line_2() {
     let f = fixture();
     let wt = f.worktree("demo-1-work", "spec/20260101-demo-work");
     let out = f.plain(Some(&wt));
+    assert!(
+        line(&out, 1).ends_with(" | 🌳 demo-1-work"),
+        "{}",
+        line(&out, 1)
+    );
     assert_eq!(
         line(&out, 2),
-        format!("🗂️ 0 ▶️ 0 🔃 0 ✅ 0 | {BARS} | 🌳 demo-1-work"),
+        format!("🗂️ 0 ▶️ 0 🔃 0 ✅ 0 | {USAGE}"),
         "{out}"
     );
-    assert!(!line(&out, 1).contains('🌳'), "{out}");
+    assert!(!line(&out, 0).contains('🌳'), "{}", line(&out, 0));
 }
 
 #[test]
@@ -218,9 +234,14 @@ fn a_released_reservation_is_not_a_holder() {
     let wt = f.worktree("demo-1-work", "spec/20260101-demo-work");
     f.reserve("ready", "released", &wt.dir, "spec/20260101-demo-work");
     let out = f.plain(Some(&wt));
+    assert!(
+        line(&out, 1).ends_with(" | 🌳 demo-1-work"),
+        "{}",
+        line(&out, 1)
+    );
     assert_eq!(
         line(&out, 2),
-        format!("🗂️ 1 ▶️ 0 🔃 0 ✅ 0 | {BARS} | 🌳 demo-1-work"),
+        format!("🗂️ 1 ▶️ 0 🔃 0 ✅ 0 | {USAGE}"),
         "{out}"
     );
 }
@@ -233,9 +254,14 @@ fn two_cards_holding_one_folder_show_the_lowest_number() {
     let second = f.reserve("active", "held", &wt.dir, "spec/20260102-other-work");
     assert!(first < second);
     let out = f.plain(Some(&wt));
+    assert!(
+        line(&out, 1).ends_with(" | 🌳 WT-c1-demo-work"),
+        "{}",
+        line(&out, 1)
+    );
     assert_eq!(
         line(&out, 2),
-        format!("🗂️ 0 ▶️ 2 🔃 0 ✅ 0 | {BARS} | 🌳 WT-c1-demo-work"),
+        format!("🗂️ 0 ▶️ 2 🔃 0 ✅ 0 | {USAGE}"),
         "{out}"
     );
 }
@@ -246,9 +272,14 @@ fn a_branch_of_another_shape_takes_the_rest_of_the_folder_name() {
     let wt = f.worktree("demo-1-hooks", "m-flow/bundle-20260101-6");
     f.reserve("active", "held", &wt.dir, "m-flow/bundle-20260101-6");
     let out = f.plain(Some(&wt));
+    assert!(
+        line(&out, 1).ends_with(" | 🌳 WT-c1-hooks"),
+        "{}",
+        line(&out, 1)
+    );
     assert_eq!(
         line(&out, 2),
-        format!("🗂️ 0 ▶️ 1 🔃 0 ✅ 0 | {BARS} | 🌳 WT-c1-hooks"),
+        format!("🗂️ 0 ▶️ 1 🔃 0 ✅ 0 | {USAGE}"),
         "{out}"
     );
 }
@@ -259,9 +290,10 @@ fn a_folder_that_keeps_no_rest_gives_the_card_alone() {
     let wt = f.worktree("demo-1", "work-branch");
     f.reserve("active", "held", &wt.dir, "work-branch");
     let out = f.plain(Some(&wt));
+    assert!(line(&out, 1).ends_with(" | 🌳 WT-c1"), "{}", line(&out, 1));
     assert_eq!(
         line(&out, 2),
-        format!("🗂️ 0 ▶️ 1 🔃 0 ✅ 0 | {BARS} | 🌳 WT-c1"),
+        format!("🗂️ 0 ▶️ 1 🔃 0 ✅ 0 | {USAGE}"),
         "{out}"
     );
 }
@@ -272,7 +304,7 @@ fn the_main_checkout_has_no_worktree_segment() {
     let out = f.plain(None);
     assert_eq!(
         line(&out, 2),
-        format!("🗂️ 0 ▶️ 0 🔃 0 ✅ 0 | {BARS}"),
+        format!("🗂️ 0 ▶️ 0 🔃 0 ✅ 0 | {USAGE}"),
         "{out}"
     );
     assert!(!out.contains('🌳'), "{out}");
@@ -289,7 +321,7 @@ fn the_worktree_option_off_hides_the_segment_on_every_line() {
     let out = f.plain(Some(&wt));
     assert_eq!(
         line(&out, 2),
-        format!("🗂️ 0 ▶️ 1 🔃 0 ✅ 0 | {BARS}"),
+        format!("🗂️ 0 ▶️ 1 🔃 0 ✅ 0 | {USAGE}"),
         "{out}"
     );
     assert!(!out.contains('🌳'), "{out}");

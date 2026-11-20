@@ -1,2 +1,3 @@
 🏷️ agent | 🧠 Opus | 🗿 v4.2647.0
-🔋 CTX: █░░░░░░░░░ 14% | 🌳 my-feature
+🌳 my-feature
+🔋 CTX 14%

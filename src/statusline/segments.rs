@@ -131,6 +131,24 @@ pub fn usage_percent(used: i64, total: i64) -> i64 {
     (used * 100 / total).min(100)
 }
 
+/// The weekly reset countdown (SPEC-20261120-statusline-numbers-reset-worktree): whole days
+/// and hours at a day or more, hours and minutes under a day, minutes under an hour — each
+/// floored — and `(resets in 0m)` once the instant has passed.
+pub fn reset_countdown(resets_at: i64, now: i64) -> String {
+    let left = (resets_at - now).max(0);
+    if left >= 86_400 {
+        format!(
+            "(resets in {}d {}h)",
+            left / 86_400,
+            (left % 86_400) / 3_600
+        )
+    } else if left >= 3_600 {
+        format!("(resets in {}h {}m)", left / 3_600, (left % 3_600) / 60)
+    } else {
+        format!("(resets in {}m)", left / 60)
+    }
+}
+
 /// `cacheHitPercent`: read / (read + creation), omitted when creation ≤ 0.
 pub fn cache_hit_percent(read: i64, creation: i64) -> Option<i64> {
     if creation <= 0 {
@@ -385,6 +403,26 @@ mod tests {
         let m = collect_memory(Some(usage), 0, 85);
         assert_eq!(usage_percent(m.tokens_used, m.token_budget), 29);
         assert!(!collect_memory(None, 0, 85).available);
+    }
+
+    /// SPEC-20261120-statusline-numbers-reset-worktree: the countdown's three forms and
+    /// their boundaries (N/N+1 at each unit edge), floored, `0m` at and below zero.
+    #[test]
+    fn reset_countdown_forms_hold_at_their_boundaries() {
+        let now = 1_800_000_000;
+        let at = |left: i64| reset_countdown(now + left, now);
+        // A day or more: whole days, then the remaining whole hours.
+        assert_eq!(at(594_000), "(resets in 6d 21h)");
+        assert_eq!(at(86_400), "(resets in 1d 0h)");
+        assert_eq!(at(86_399), "(resets in 23h 59m)");
+        // Under a day: whole hours, then the remaining whole minutes.
+        assert_eq!(at(3_600), "(resets in 1h 0m)");
+        assert_eq!(at(3_599), "(resets in 59m)");
+        // Under an hour: whole minutes; at and below zero the reset is due now.
+        assert_eq!(at(60), "(resets in 1m)");
+        assert_eq!(at(59), "(resets in 0m)");
+        assert_eq!(at(0), "(resets in 0m)");
+        assert_eq!(at(-3_600), "(resets in 0m)");
     }
 
     #[test]

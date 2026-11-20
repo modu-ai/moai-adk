@@ -178,13 +178,16 @@ fn line1_tag_first_under_ko_en_and_80_40_columns() {
                         "{name} {variant} LANG={lang} COLUMNS={columns}: line 1 {line1:?}"
                     );
                     let line3 = text.lines().nth(2).unwrap_or_default();
-                    // The worktree label (C-124) may open the line; the CTX bar comes right after.
-                    let line3 = match line3.strip_prefix("🌳 ") {
+                    // The worktree label closes line 2 now (SPEC-20261120-statusline-numbers-
+                    // reset-worktree), so line 3 opens with the counts or the CTX number.
+                    let line3 = match line3.strip_prefix("🗂️ ") {
                         Some(rest) => rest.split_once(" | ").map_or(line3, |(_, after)| after),
                         None => line3,
                     };
                     assert!(
-                        line3.starts_with("🔋 CTX: ") || line3.starts_with("🪫 CTX: "),
+                        line3.starts_with("🔋 CTX ")
+                            || line3.starts_with("🪫 CTX ")
+                            || line3 == "CTX n/a",
                         "{name} {variant} LANG={lang} COLUMNS={columns}: line 3 {line3:?}"
                     );
                     assert!(

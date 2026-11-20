@@ -136,6 +136,10 @@ pub struct Status {
     /// the session's worktree folder, for `🌳 WT-c<card>-<name>`; `None` shows `worktree` as
     /// the host gave it.
     pub worktree_label: Option<WorktreeLabel>,
+    /// The render clock in Unix seconds (SPEC-20261120-statusline-numbers-reset-worktree):
+    /// [`Context::now`], so the hidden `--now-unix` seam fixes the weekly reset countdown
+    /// for the goldens.
+    pub now: i64,
 }
 
 /// The parts of `🌳 WT-c<card>-<name>`: the number of the card holding the worktree and the
@@ -215,6 +219,7 @@ pub fn collect(input: Option<&Input>, ctx: &Context) -> Status {
         model: collect_model(input, ctx),
         auto_compact,
         version: Some(collect_version(ctx, BINARY_VERSION)),
+        now: ctx.now,
         ..Default::default()
     };
     let git_dir = project_root.clone().or_else(|| ctx.cwd.clone());
