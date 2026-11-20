@@ -74,4 +74,12 @@ created: 2026-11-20
 
 ## Result
 
-(구현 뒤에 채워요.)
+구현됨(2026-11-20, 가지 `spec/acc-auto-link-20261120`, 커밋 `0c24068844`).
+
+- AC-1: met — `the_decisions_log_supersedes_the_acc_clause`(`tests/sdd_guidance.rs`) 통과. 결정 기록 행은 `decision-append`(미리보기 뒤 적용)로 +1/−0 줄 더했어요.
+- AC-2: met — `preserve_then_change_and_the_cc_rule_are_stated` 통과: `sdd.md` 규칙 9·`chains/index.md`·`quality.md`·`agents/docs.md` 의 새 문장과 이름·표식·종류·옛 태그 읽기 전용이 그대로임을 못 박아요. `sync.md` 문장은 그 파일을 쥔 다른 변경(`spec/20261120-guidance-sweep-core`, 로컬 head `a9b549c5ca`)이 넣고, 이 가지 하나만으로는 그 줄 때문에 이 시험이 실패해요(`sync.md lacks …`). 두 가지를 임시로 합친 트리(저장소에 올리지 않음)에서 통과를 확인했어요.
+- AC-3: met — `the_agents_may_add_cc_comments` 통과(`agents/impl.md` 가 세 종류와 "tools link it automatically" 를 말해요; `agents/docs.md` 는 AC-2 시험이 못 박아요).
+- AC-4: met — `the_old_cc_sentences_are_gone` 통과(합친 트리에서; 이 가지만으로는 `sync.md` 에 옛 문장이 남아 있어 실패해요). 처음 시험의 두 번째 옛 문장은 다른 규칙 줄("never add one")에 걸려서 `` `@cc:` comment lines, never add one `` 으로 좁혔어요.
+- 확인: 이 가지에서 `moai check affected origin/v2026.11.0..HEAD`(head `0c24068844`) 요약 `check-affected base=6a8fa9cacf46 head=0c24068844f6 targets=40 py=8 scans=listed:39 diff_check=0 fmt=0 clippy=0 test_lib=0 test_bins=0 test_targets=101 build_cli=0 python=0 result=FAIL` — 실패는 `sdd_guidance` 의 위 두 시험이 `sync.md` 때문에 실패한 것뿐이에요(로그에서 `FAILED` 는 그 둘). 합친 트리에서 `sdd_guidance` 9개·`agent_defs_package` 19개 통과(종료 코드 0).
+- 짝(pair): 이 가지는 `spec/20261120-guidance-sweep-core` 와 함께 병합해야 시험이 초록이에요. 병합 뒤 매니페스트 해시는 `python3 -I tools/source_manifest.py write` 로 한 번 더 맞춰요(두 가지가 같은 스킬 파일의 줄을 따로 고쳐서).
+- 돌리지 않은 것: CI, 병합된 트리에서의 골든 실행, 합친 트리의 전체 `check affected`(합친 트리에서는 위 두 대상만 돌렸어요).
