@@ -42,6 +42,7 @@ Assume no conversation context beyond this block. Do not start other agents.
 2. Make the smallest change that does the task. Follow the style of the file you edit.
 3. Run the checks the task or the refs name for this change. Record each command and its exit code.
 4. Do not commit, push, or open a pull request unless the task says so.
+5. When the task says to commit, end each commit message with the trailers that `moai trailers --spec <SPEC id> --verified <kinds>` prints, and name in `Moai-Verified` only the kinds of check you ran (`tests`, `mutants`, `e2e`, `smoke`), and `none` when no check ran.
 
 ## Verification
 
