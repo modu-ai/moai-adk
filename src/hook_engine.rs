@@ -39,6 +39,8 @@
 //! model (deny reasons, session context) is built from fixed strings, enumerated states and
 //! Issue numbers only; tool input, branch names and file content are never echoed.
 
+mod scan;
+
 use serde_json::{json, Value};
 use std::path::Path;
 
@@ -55,6 +57,10 @@ pub enum Event {
     /// SPEC-20261117-edit-diagnostics S1: the user's checker after a file edit (Claude Code,
     /// opt-in `[hooks.edit_diagnostics]`).
     EditDiagnostics,
+    /// SPEC-20261120-security-scan-notify: the text a write tool just wrote is scanned for
+    /// critical and high classes; the rule `security_scan` decides between nothing, a
+    /// `would_notify` line (the default) and a notification (Claude Code and Codex).
+    SecurityScan,
 }
 
 impl Event {
@@ -65,6 +71,7 @@ impl Event {
             "tool-observe" => Some(Event::ToolObserve),
             "turn-validation" => Some(Event::TurnValidation),
             "edit-diagnostics" => Some(Event::EditDiagnostics),
+            "security-scan" => Some(Event::SecurityScan),
             _ => None,
         }
     }
@@ -74,7 +81,7 @@ impl Event {
         match self {
             Event::SessionCheck => "SessionStart",
             Event::ToolPreflight => "PreToolUse",
-            Event::ToolObserve | Event::EditDiagnostics => "PostToolUse",
+            Event::ToolObserve | Event::EditDiagnostics | Event::SecurityScan => "PostToolUse",
             Event::TurnValidation => "Stop",
         }
     }
@@ -142,7 +149,7 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
     };
     let Some(event) = Event::parse(event) else {
         return engine_error(
-            "unknown hook event; must be session-check, tool-preflight, tool-observe, turn-validation or edit-diagnostics",
+            "unknown hook event; must be session-check, tool-preflight, tool-observe, turn-validation, edit-diagnostics or security-scan",
         );
     };
     // OMP's turn-end event is `session_stop` (OMP 18.18.7, extensions.md), but the generated
@@ -158,11 +165,19 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
     if event == Event::EditDiagnostics && host != Host::Claude {
         return engine_error("edit-diagnostics is Claude Code only in this release");
     }
+    // security-scan reads the write tools of Claude Code and Codex; OMP has no PostToolUse
+    // wiring for it.
+    if event == Event::SecurityScan && host == Host::Omp {
+        return engine_error("security-scan is not wired for OMP");
+    }
     let Ok(Value::Object(input)) = serde_json::from_slice::<Value>(stdin) else {
         // A PostToolUse input carries the whole tool result; one past the stdin bound is cut
         // off and no longer parses. Observation is best-effort and the tool already ran, so
         // that is a quiet skip, not an error the host would surface on every large result.
-        if matches!(event, Event::ToolObserve | Event::EditDiagnostics) {
+        if matches!(
+            event,
+            Event::ToolObserve | Event::EditDiagnostics | Event::SecurityScan
+        ) {
             return allow_quietly();
         }
         return engine_error("hook input is not a JSON object");
@@ -182,6 +197,14 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
     }
     if event == Event::EditDiagnostics {
         return edit_diagnostics(&input, cwd, now_unix_ms, host);
+    }
+    if event == Event::SecurityScan {
+        let verdict = security_scan(&input, cwd, now_unix_ms, host);
+        return match host {
+            Host::Claude => render_claude(event, verdict),
+            Host::Codex => render_codex(event, verdict),
+            Host::Omp => render_omp(event, verdict),
+        };
     }
     // The sentence of a guard whose text is fixed (set by tool-preflight); see `record_deny`.
     let mut fixed_reason: Option<&'static str> = None;
@@ -206,7 +229,7 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
         Event::ToolObserve => tool_observe(&input, cwd, now_unix_ms, host),
         Event::TurnValidation => turn_validation_with(STOP_RULES, &input, cwd, now_unix_ms),
         // Answered above, before any verdict.
-        Event::EditDiagnostics => Verdict::Allow,
+        Event::EditDiagnostics | Event::SecurityScan => Verdict::Allow,
     };
     if let (Event::ToolPreflight, Verdict::Deny(_)) = (event, &verdict) {
         record_deny(&input, cwd, now_unix_ms, host, fixed_reason);
@@ -350,6 +373,51 @@ fn edit_diagnostics(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) ->
     }
 }
 
+/// The rule id of the security-scan duty in `[hooks.modes]` (SPEC-20261120-security-scan-notify).
+pub const SECURITY_SCAN_RULE: &str = "security_scan";
+
+/// security-scan (PostToolUse, Claude Code and Codex): scans the text the write tool just wrote
+/// and only ever notifies — it never blocks. The mode of [`SECURITY_SCAN_RULE`] decides:
+/// `off` does nothing at all (the text is not even read); `observe` (the default) writes one
+/// `would_notify` line (rule, class names, count, host, session, call, time — no path, command
+/// or text) and prints nothing; `enforce` answers with the notification as `additionalContext`.
+/// A text with no finding writes and prints nothing in every mode.
+fn security_scan(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) -> Verdict {
+    use crate::hook_config::RuleMode;
+    let loaded = crate::hook_config::load();
+    if let Some(problem) = loaded.problem {
+        record_config_error(input, cwd, now_unix_ms, host, problem);
+    }
+    let mode = loaded.config.mode_of(SECURITY_SCAN_RULE);
+    if mode == RuleMode::Off {
+        return Verdict::Allow;
+    }
+    let tool = input["tool_name"].as_str().unwrap_or("");
+    let found = scan::scan_call(tool, &input["tool_input"], cwd);
+    if found.is_empty() {
+        return Verdict::Allow;
+    }
+    if mode == RuleMode::Enforce {
+        return Verdict::Context(scan::notification(&found));
+    }
+    let classes: std::collections::BTreeSet<scan::Class> =
+        found.iter().map(|(_, finding)| finding.class).collect();
+    let classes: Vec<&str> = classes.iter().map(|class| class.name()).collect();
+    let line = json!({
+        "schema_version": 1,
+        "kind": "would_notify",
+        "rule": SECURITY_SCAN_RULE,
+        "classes": classes,
+        "findings": found.len(),
+        "host": host.name(),
+        "session": session_key(input),
+        "call": call_key(input),
+        "unix_ms": now_unix_ms as u64,
+    });
+    let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line);
+    Verdict::Allow
+}
+
 /// An unusable `~/.moai-cli/hook-config.toml` leaves one `config_error` line (session, host, fixed
 /// reason, time) in the engine log when `.moai-cli/` exists (#2391 N1): no path and no config
 /// text. Best effort, never changes the answer.
@@ -408,6 +476,12 @@ fn render_codex(event: Event, verdict: Verdict) -> Answer {
             "hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": text}
         })
         .to_string(),
+        // PostToolUse `additionalContext` is documented for Codex as for Claude Code (plan
+        // section 3.5, official pages read 2026-11-20).
+        (Event::SecurityScan, Verdict::Context(text)) => json!({
+            "hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": text}
+        })
+        .to_string(),
         (Event::TurnValidation, Verdict::Deny(reason)) => {
             json!({"decision": "block", "reason": reason}).to_string()
         }
@@ -418,6 +492,22 @@ fn render_codex(event: Event, verdict: Verdict) -> Answer {
         stderr: String::new(),
         exit: 0,
     }
+}
+
+/// The `security-scan` entry of [`capabilities`] for a host that writes through `tools`.
+fn security_scan_capabilities(tools: &[&str]) -> Value {
+    let classes: Vec<&str> = scan::CLASSES.iter().map(|class| class.name()).collect();
+    json!({
+        "event": "PostToolUse",
+        "tools": tools,
+        "classes": classes,
+        "mode_key": SECURITY_SCAN_RULE,
+        "default_mode": "observe",
+        "modes": "off does nothing; observe (the default) writes one would_notify line and prints nothing; enforce answers with a notification (the HOME hook-config.toml [hooks.modes])",
+        "answer": "hookSpecificOutput.additionalContext",
+        "blocks": false,
+        "generated": "not wired into generated settings in this release",
+    })
 }
 
 /// What each duty covers on `host`: the host event, the tools it acts on, how it answers and
@@ -448,6 +538,7 @@ pub fn capabilities(host: &str) -> Value {
                                  "opt_in": EDIT_OPT_IN, "generated": "only while the setting is enabled",
                                  "answer": "hookSpecificOutput.additionalContext", "blocks": false,
                                  "not_covered": ["a blocking mode (slice S2)", "language servers (slice S3)", "files outside the project or behind a link", "edits made by Bash"]},
+            "security-scan": security_scan_capabilities(&["Write", "Edit", "MultiEdit", "NotebookEdit"]),
             "on_engine_error": "exit 1: non-blocking by the host's rules",
         }),
         Some(Host::Codex) => json!({
@@ -473,6 +564,7 @@ pub fn capabilities(host: &str) -> Value {
                                 "host_cap": "not documented", "moai_cap": MOAI_STOP_BLOCK_CAP,
                                 "unverified": "empty stdout on exit 0 for Stop (stated generally, not for Stop)"},
             "edit-diagnostics": {"supported": false, "reason": "slice S1 is Claude Code only; Codex apply_patch is slice S2"},
+            "security-scan": security_scan_capabilities(&["apply_patch"]),
             "on_engine_error": "exit 1: not documented for command hooks (unverified)",
         }),
         Some(Host::Omp) => json!({
@@ -494,6 +586,7 @@ pub fn capabilities(host: &str) -> Value {
             "turn-validation": {"supported": false, "event": "session_stop", "answer": "{decision: \"block\", reason} (OMP 18.18.7 extensions.md)",
                                 "reason": "not wired: the extension module does not subscribe to session_stop, so no turn-validation rule runs on OMP"},
             "edit-diagnostics": {"supported": false, "reason": "slice S1 is Claude Code only; OMP tool_result is slice S2"},
+            "security-scan": {"supported": false, "reason": "OMP has no PostToolUse wiring for it"},
             "on_engine_error": "exit 1: the module does not block",
         }),
         None => json!({"error": "unknown hook host; must be claude, codex or omp"}),
@@ -532,6 +625,10 @@ fn render_claude(event: Event, verdict: Verdict) -> Answer {
         .to_string(),
         (Event::SessionCheck, Verdict::Context(text)) => json!({
             "hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": text}
+        })
+        .to_string(),
+        (Event::SecurityScan, Verdict::Context(text)) => json!({
+            "hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": text}
         })
         .to_string(),
         // Stop decision control is top-level: `decision: "block"` keeps Claude working and

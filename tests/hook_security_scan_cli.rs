@@ -536,7 +536,7 @@ fn mode_observe_writes_one_would_notify_line_and_prints_nothing() {
         assert!(l["session"].is_string() && l["call"].is_string());
         assert!(l["unix_ms"].as_u64().unwrap() > 0);
         let raw = l.to_string();
-        for leak in ["a.py", "eval", "os.system", "user_text", "src/"] {
+        for leak in ["a.py", "result =", "os.system", "user_text", "src/"] {
             assert!(!raw.contains(leak), "{leak} leaked into {raw}");
         }
         assert!(
@@ -812,7 +812,8 @@ fn linear_scan_time_on_one_mib_of_near_misses() {
     ];
     let mib = 1024 * 1024;
     for (unit, expected) in families {
-        let body = unit.repeat(mib / unit.len());
+        // Just under the 1 MiB bound, so the closing `eval(z)` line is still scanned.
+        let body = unit.repeat((mib - 64) / unit.len());
         let text = format!("{body}\neval(z)\n");
         let start = Instant::now();
         let got = classes_of(&f, &text);
