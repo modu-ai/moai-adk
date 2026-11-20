@@ -42,7 +42,7 @@ created: 2026-11-20
   verify: `cargo test --locked --offline --test sdd_guidance preserve_then_change_and_the_cc_rule_are_stated`
 - AC-3 (REQ-3, REQ-4): `agents/docs.md` 는 `@cc:` 추가를 허용하고 `agents/impl.md` 는 달도록 말해요.
   verify: `cargo test --locked --offline --test sdd_guidance the_agents_may_add_cc_comments`
-- AC-4 (REQ-8): 옛 세 문장("Agents never add them on their own", "never add one", "it never adds new ones")이 패키지·에이전트·규칙 문서 어디에도 없어요.
+- AC-4 (REQ-8): 옛 세 문장("Agents never add them on their own", "`@cc:` comment lines, never add one", "it never adds new ones")이 패키지·에이전트·규칙 문서 어디에도 없어요.
   verify: `cargo test --locked --offline --test sdd_guidance the_old_cc_sentences_are_gone`
 
 ## Scope

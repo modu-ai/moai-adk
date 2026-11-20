@@ -78,7 +78,7 @@
       }
     },
     "references/chains/index.md": {
-      "sha256": "38de1e8c443ff9704643a27e0b47921344141208c0be8cca205855c0e0ebbc81",
+      "sha256": "1320ff801e4b1b04d2fbc7078227540ac06dba66a3e5f957b6ebaa5f3684602e",
       "origin": {
         "kind": "design-spec",
         "template_id": "chains-index",
@@ -213,7 +213,7 @@
       }
     },
     "references/internal/quality.md": {
-      "sha256": "61abd81006401f7ad06756eea2d6a2c82f870b73271c94b7f39a84923dcbd92b",
+      "sha256": "a8bc10b0804c9c5d795251b8ba2c5b783d96ac5b95ed31d0fa2c559e616e93de",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-quality",
@@ -240,7 +240,7 @@
       }
     },
     "references/internal/sdd.md": {
-      "sha256": "db49cfb7811324f9663a1b0fbf9ebaa049715bbe535f1b368b2ea2eeed3c2833",
+      "sha256": "bc572fe4169f71c348c1c658ebb05f1be1e3fb93e047353bffc0db92e28d01d8",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-sdd",
