@@ -54,7 +54,7 @@ struct Cli {
     /// Start a leader session on the default host (cc); the role is entered inside it with `/moai --mode-leader`.
     #[arg(short = 'l', long = "leader", conflicts_with = "agent")]
     leader: bool,
-    /// Start an agent session on HOST (cc|glm|codex|omp; default cc); the role is entered inside it with `/moai --mode-agent` (codex: `$moai --mode-agent`, sent as its first prompt; omp: `/skill:moai --mode-agent`).
+    /// Start an agent session on HOST (cc|glm|codex; default cc); the role is entered inside it with `/moai --mode-agent` (codex: `$moai --mode-agent`, sent as its first prompt).
     #[arg(short = 'a', long = "agent", value_name = "HOST", num_args = 0..=1, default_missing_value = "cc")]
     agent: Option<String>,
     /// Color on a terminal: auto, always (even with NO_COLOR or TERM=dumb) or never; put it before the command.
@@ -161,7 +161,7 @@ impl LaneLoopArgs {
     }
 }
 
-/// `moai-cli cc|glm|codex|omp [-l|-a] [options] [PROMPT]`. Without `-l|-a` it is a plain host
+/// `moai-cli cc|glm|codex [-l|-a] [options] [PROMPT]`. Without `-l|-a` it is a plain host
 /// session: no role is guessed (Issue #2053).
 #[derive(Args)]
 #[command(group(ArgGroup::new("role").args(["leader", "agent"])))]
@@ -1055,17 +1055,13 @@ enum Command {
     /// access; the role is entered inside the session with `$moai --mode-leader` or
     /// `$moai --mode-agent`, and `codex -a` starts its first prompt with `$moai --mode-agent`.
     Codex(HostLaunch),
-    /// Start an Oh My Pi (OMP) session
-    ///
-    /// OMP session launcher: `omp -l|-a`. `-l|-a` only name the session and set its access
-    /// (`--approval-mode yolo`, or `always-ask-cached` with `--permissions`); the role is entered
-    /// inside the session with `/skill:moai --mode-leader` or `/skill:moai --mode-agent`. `--model`
-    /// and `--effort` go to OMP's `--model` and `--thinking`; for a z.ai model the glm key reaches
-    /// OMP as `ZAI_API_KEY`, never in the command.
+    /// Removed: answers with one line and exits non-zero (OMP support was dropped)
     Omp(HostLaunch),
+    // The OMP launcher is retired (SPEC-20261120-drop-omp): `moai omp` answers with one
+    // removal line and a non-zero exit instead of composing a session.
     /// Start a Claude Code session (legacy form)
     ///
-    /// Legacy Claude-only launcher kept for compatibility; prefer `-l|-a` or `cc|glm|codex|omp`.
+    /// Legacy Claude-only launcher kept for compatibility; prefer `-l|-a` or `cc|glm|codex`.
     Session {
         /// leader | agent
         #[arg(long, default_value = "agent")]
@@ -1128,8 +1124,7 @@ fn host_of(word: &str) -> Result<&'static str, String> {
         "cc" => Ok("claude"),
         "glm" => Ok("glm"),
         "codex" => Ok("codex"),
-        "omp" => Ok("omp"),
-        other => Err(format!("unknown host {other} (cc|glm|codex|omp)")),
+        other => Err(format!("unknown host {other} (cc|glm|codex)")),
     }
 }
 
@@ -1378,7 +1373,7 @@ fn launcher_is_human(cli: &Cli) -> bool {
     moai_cli::launcher_terminal::wants_human(json)
 }
 
-/// Launcher paths (`-l`, `-a`, `cc|glm|codex|omp`, `session`): plain JSON or a plain error line.
+/// Launcher paths (`-l`, `-a`, `cc|glm|codex`, `session`): plain JSON or a plain error line.
 fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
     let Some(command) = cli.command else {
         return match (cli.leader, cli.agent) {
@@ -1389,7 +1384,7 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
                 // (Issue #2363); the usage error contract below is unchanged.
                 moai_cli::banner::maybe_print_banner();
                 Err(
-                    "usage: moai -l | -a [cc|glm|codex|omp] | moai cc|glm|codex|omp -l|-a | moai <command>; see --help".into(),
+                    "usage: moai -l | -a [cc|glm|codex] | moai cc|glm|codex -l|-a | moai <command>; see --help".into(),
                 )
             }
         };
@@ -1398,7 +1393,10 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
         Command::Cc(h) => launch("claude", role_of(&h), h.launch, h.prompt),
         Command::Glm(h) => launch("glm", role_of(&h), h.launch, h.prompt),
         Command::Codex(h) => launch("codex", role_of(&h), h.launch, h.prompt),
-        Command::Omp(h) => launch("omp", role_of(&h), h.launch, h.prompt),
+        Command::Omp(_) => Err(
+            "omp support was removed: moai supports claude (cc), glm and codex; the profile entry and earlier OMP files are ignored"
+                .into(),
+        ),
         Command::Session {
             role,
             host,
@@ -1412,7 +1410,7 @@ fn run_launcher(cli: Cli) -> Result<serde_json::Value, String> {
             // Legacy behaviour (REQ-00F-06): Claude only, no permission skip.
             if host != "claude" {
                 return Err(format!(
-                    "host {host} is not available on `session`; use `moai cc|glm|codex|omp -l|-a`"
+                    "host {host} is not available on `session`; use `moai cc|glm|codex -l|-a`"
                 ));
             }
             session_launch(
@@ -2873,7 +2871,7 @@ pub(crate) fn main() -> ExitCode {
 mod tests {
     use super::*;
 
-    const LAUNCHERS: [&str; 5] = ["cc", "glm", "codex", "omp", "session"];
+    const LAUNCHERS: [&str; 4] = ["cc", "glm", "codex", "session"];
 
     /// #2799 ③ C5: a leading valid `--color` is taken out before the word readers look at
     /// position 1; an invalid value, a later `--color` or a bare flag is left for clap.

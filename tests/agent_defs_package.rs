@@ -210,7 +210,7 @@ fn the_package_holds_the_five_roles_of_the_contract() {
 fn every_role_renders_for_every_host_deterministically() {
     // #2633: OMP is rendered and installed (2026-11-13 confirmation of five supported hosts;
     // Kiro and Cursor CLI follow).
-    assert_eq!(HOSTS, ["claude", "codex", "omp"]);
+    assert_eq!(HOSTS, ["claude", "codex"]);
     let defs = package_agents(&agents(), &package()).unwrap();
     for d in &defs {
         for host in HOSTS {

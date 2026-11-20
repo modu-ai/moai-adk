@@ -390,7 +390,6 @@ class CiScopePlatformTest(unittest.TestCase):
             "fs links/permissions (agents home)": ["src/ops/agents_home_apply.rs"],
             "launcher": ["src/launcher_init.rs"],
             "launcher (test)": ["tests/launcher_terminal_output.rs"],
-            "launcher (omp)": ["tests/omp_launcher.rs"],
             "statusline": ["src/statusline/render.rs"],
             "statusline (test)": ["tests/statusline_cards.rs"],
             "statusline (fixture)": ["tests/fixtures/statusline-claude/cases.json"],

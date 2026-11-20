@@ -28,7 +28,8 @@ type Result<T> = std::result::Result<T, String>;
 pub const SOURCE_DIR: &str = "agents";
 /// Hosts the home installer (#2592 S2) writes: Claude Code and Codex (S1), OMP (#2633). A host
 /// is listed here only together with its user folder in `agent_install::host_dir`.
-pub const HOSTS: [&str; 3] = ["claude", "codex", "omp"];
+pub const HOSTS: [&str; 2] = ["claude", "codex"];
+// `render_omp` stays until the OMP project-host slice removes its caller (SPEC-20261120-drop-omp).
 const DESCRIPTION_LIMIT: usize = 1024;
 const BODY_LIMIT: usize = 16 * 1024;
 

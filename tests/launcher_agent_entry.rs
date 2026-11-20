@@ -272,10 +272,7 @@ fn other_launches_keep_their_argv() {
 /// SPEC-20261118-omp-launcher).
 #[test]
 fn only_the_two_spellings_appear() {
-    let mut texts: Vec<String> = ["cc", "glm", "codex", "omp"]
-        .iter()
-        .map(|h| help(&[h]))
-        .collect();
+    let mut texts: Vec<String> = ["cc", "glm", "codex"].iter().map(|h| help(&[h])).collect();
     texts.push(help(&[]));
     for (args, token) in [
         (&["cc", "-l"][..], None),
@@ -283,8 +280,6 @@ fn only_the_two_spellings_appear() {
         (&["glm", "-a"][..], Some("t")),
         (&["codex", "-l"][..], None),
         (&["codex", "-a"][..], None),
-        (&["omp", "-l"][..], None),
-        (&["omp", "-a"][..], None),
     ] {
         let v = dry(args, token);
         texts.push(v["notes"].to_string());

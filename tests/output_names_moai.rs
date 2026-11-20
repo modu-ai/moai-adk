@@ -113,7 +113,7 @@ fn assert_no_command_moai_cli(what: &str, args: &[&str]) -> Vec<String> {
 fn the_session_launcher_error_says_moai() {
     let args = ["session", "--host", "codex", "--name", "guard", "--dry-run"];
     for text in assert_no_command_moai_cli("session --host codex", &args) {
-        assert!(text.contains("use `moai cc|glm|codex|omp -l|-a`"), "{text}");
+        assert!(text.contains("use `moai cc|glm|codex -l|-a`"), "{text}");
     }
 }
 
