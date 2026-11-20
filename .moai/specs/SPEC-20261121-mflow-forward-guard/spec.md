@@ -58,7 +58,7 @@ parent: null
 
 ## Risks
 
-- 훅은 prepared 단계에서만 거절해요: committed 와 aborted 단계는 그대로 통과시켜야 트랜잭션이 꼬이지 않아요 — 시험이 세 단계를 모두 잡아요.
+- 판정 위상은 preparing 과 prepared 뿐이에요(이 git 은 거절 가능 위상을 preparing 으로 부르고, 트랜잭션 줄의 old 는 update-ref 에서 zeros 로 와요): old 값은 `git rev-parse --verify` 로 현재 가지에서 읽고, committed 와 aborted 는 그대로 통과해요 — 시험이 위상과 뒤로 이동·삭제·생성·ff·병합을 모두 잡아요.
 - 생성 시점에 가지 이름을 베이크하므로 프로필의 통합 가지가 바뀌면 재설치가 필요해요: 스크립트 헤더가 생성 출처를 밝혀 다음 설치 계획이 편집·구버전을 알아차려요.
 - override 는 환경 변수라 세션 간 새는 것을 못 막아요: 기록 줄이 유일한 흔적이므로 READY 노트와 문서가 변수 이름과 기록 자리를 명시해요.
 
@@ -67,7 +67,8 @@ parent: null
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | 훅 본체를 자급 셸 스크립트로 생성한다 — 실행 때 도구가 PATH 에 없어도 가드가 동작하고, 설치 계획은 점거 중인 hooks.rs 를 만지지 않는다. | 카드 본문 (1), 노트 4610 파일 지도 | 카드 열림 |
-| D-2 | 조상 검사는 git merge-base --is-ancestor 로 한다 — 훅이 도는 cwd 는 작업 트리 루트라 같은 저장소 판정이에요. | git reference-transaction 훅 규약 | 카드 열림 |
+| D-2 | 조상 검사는 git merge-base --is-ancestor 로 한다 — 훅이 도는 cwd 는 작업 트리 루트라 같은 저장소 판정이에요. | git reference-transaction 훅 규약, 프루브 관측 | 카드 열림 |
+| D-3 | 트랜잭션 줄의 old 대신 git rev-parse --verify 로 현재 값을 읽는다 — 이 git(2.54.0)은 update-ref 의 줄에서 old 를 zeros 로 보내 생성으로 오판하고, preparing·prepared 위상에선 아직 이전 값이 살아 있어요. | 프루브 4 관측, 시험 10 통과 | 카드 열림 |
 
 ## Result
 
