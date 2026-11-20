@@ -77,7 +77,7 @@ class Temp(unittest.TestCase):
 
 class ClaimsTest(Temp):
     def claims(self, claimed, changed):
-        write(self.root, "in/claims.json", json.dumps(claimed))
+        write(self.root, "in/claims.txt", "\n".join(claimed) + "\n")
         write(self.root, "in/changed-files.txt", "\n".join(changed) + "\n")
         return self.target("claims_in_diff", "in")[1]
 
@@ -297,11 +297,11 @@ class ReplayTest(Temp):
         self.assertEqual(rows[("guidance-drift", "tip")], "flag")
 
     def seed(self):
-        write(self.root, "in/claims.json", json.dumps(["a.rs"]))
+        write(self.root, "in/claims.txt", "a.rs\n")
         write(self.root, "in/changed-files.txt", "a.rs\n")  # the claims check says: clean
 
     def test_a_clean_target_that_now_flags_is_regressed_and_exits_1(self):
-        write(self.root, "in/claims.json", json.dumps(["gone.rs"]))
+        write(self.root, "in/claims.txt", "gone.rs\n")
         write(self.root, "in/changed-files.txt", "a.rs\n")
         code, out, err = self.replay_with(case_file("claims_in_diff", "in", "clean"))
         self.assertEqual((code, err), (1, ""))
@@ -325,7 +325,7 @@ class ReplayTest(Temp):
         self.assertTrue(json.loads(out)["ok"])
 
     def test_an_open_target_that_still_flags_is_open_and_exits_0(self):
-        write(self.root, "in/claims.json", json.dumps(["gone.rs"]))
+        write(self.root, "in/claims.txt", "gone.rs\n")
         write(self.root, "in/changed-files.txt", "a.rs\n")
         code, out, err = self.replay_with(case_file("claims_in_diff", "in", "open"))
         self.assertEqual((code, err), (0, ""))
@@ -353,7 +353,7 @@ class RefusalTest(Temp):
         return err
 
     def inputs(self):
-        write(self.root, "in/claims.json", "[]")
+        write(self.root, "in/claims.txt", "")
         write(self.root, "in/changed-files.txt", "")
 
     def test_a_missing_case_file(self):
@@ -394,10 +394,22 @@ class RefusalTest(Temp):
         data["version"] = 2
         self.refused("version", data)
 
-    def test_a_claim_list_that_is_not_a_list_of_strings(self):
-        write(self.root, "in/claims.json", json.dumps({"a": 1}))
+    def test_a_missing_claims_file_is_refused_and_named(self):
         write(self.root, "in/changed-files.txt", "")
-        self.refused("claims shape", case_file("claims_in_diff", "in", "flag"))
+        err = self.refused("claims file", case_file("claims_in_diff", "in", "flag"))
+        self.assertIn("claims.txt", err)
+
+    def test_a_claims_file_that_is_not_text_is_refused(self):
+        (self.root / "in").mkdir(parents=True, exist_ok=True)
+        (self.root / "in" / "claims.txt").write_bytes(b"\xff\xfe\x00")
+        write(self.root, "in/changed-files.txt", "")
+        self.refused("claims bytes", case_file("claims_in_diff", "in", "flag"))
+
+    def test_the_frozen_claims_of_the_repository_hold_no_quoted_docs_path(self):
+        # the docs-drift scan reads a quoted docs path in tests/tools/src as a path a test reads
+        for claims in (IMPROVE / "cases" / "false-repair-claim").rglob("claims.*"):
+            self.assertEqual(claims.name, "claims.txt", claims)
+            self.assertNotIn('"', claims.read_text(encoding="utf-8"), claims)
 
     def test_a_case_file_with_no_cases(self):
         self.refused("no cases", {"version": 1, "cases": []})
