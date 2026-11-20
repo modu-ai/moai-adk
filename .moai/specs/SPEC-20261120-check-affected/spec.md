@@ -79,7 +79,7 @@ created: 2026-11-20
 | Id | Decision | Basis | Undo |
 | --- | --- | --- | --- |
 | D-1 | 고르는 일은 순수 함수(경로, 파일 목록, 스캔 목록 글, 호스트 이름 → 선택)이고 git·cargo 를 부르지 않아요. 부르는 쪽이 목록을 만들어 넘겨요 | 배차의 요구와 시험 쉬움: 고정물만으로 오늘 놓친 사례를 못 박을 수 있어요 | 함수에 입출력을 더하면 돼요 |
-| D-2 | 영역: `src/<x>.rs` 면 x, `src/<dir>/<y>.rs` 면 dir, 단 `src/ops/<y>.rs` 면 y. 첫 낱말 = 영역의 첫 `_` 앞. 시험 대상 이름이 영역으로 시작하거나 첫 낱말이 같으면 골라요 | 리더의 통합 확인 스크립트 규칙을 그대로 가져오되 `src/ops/` 만 고쳐요(거기서는 영역이 `ops` 하나로 뭉개져 모든 연산이 같은 시험을 골라요) | 규칙 한 곳을 고치면 돼요 |
+| D-2 | 영역: `src/<x>.rs` 면 x, `src/<dir>/<y>.rs` 면 dir, 단 `src/ops/<y>.rs` 면 y. 첫 낱말 = 영역의 첫 `_` 앞. 시험 대상 이름이 그 첫 낱말과 같거나 첫 낱말 + `_` 로 시작하면 골라요(낱말 전체가 같아야 해서 `update` 가 `update_models` 만 고르지 `updater` 는 고르지 않아요) | 리더의 통합 확인 스크립트 규칙을 그대로 가져오되 `src/ops/` 만 고쳐요(거기서는 영역이 `ops` 하나로 뭉개져 모든 연산이 같은 시험을 골라요) | 규칙 한 곳을 고치면 돼요 |
 | D-3 | 공용 시험 도우미(`tests/common*`)가 바뀌면 그것을 `mod common` 으로 쓰는 대상을 모두 골라요 | 고정 목록보다 정확해요; 비용은 출력의 개수로 보여요 | 도우미 이름 목록을 좁혀요 |
 | D-4 | 범위의 변경 파일은 `git diff --name-only <base>...<head>`(세 점, merge-base 기준)(`--no-renames -z`)이고 무거운 cargo 단계마다 `heavy-slot-acquire --max 4 --min-free-gb 50` 를 따로 잡아요 | 레인은 기준이 옛 tip 이어도 자기 변경만 골라야 하고, 병합 head 는 base 가 조상이라 같은 답이에요; 한 슬롯 안에 오래 묶지 않아요 | 한 슬롯 스크립트(`bundle verify` 방식)로 바꿔요 |
 | D-5 | 체크아웃이 head 가 아니거나 추적 파일이 고쳐졌으면 거절해요 | 결과는 그 head 를 말해야 해요: 고친 파일이 섞이면 READY 의 증거가 아니에요 | 거절을 경고로 낮춰요 |
@@ -89,4 +89,12 @@ created: 2026-11-20
 
 ## Result
 
-(구현 뒤에 채워요.)
+구현됨(2026-11-20, 가지 `spec/check-affected-20261120`).
+
+- `moai check affected <base>..<head>` 가 바뀐 경로(`<base>...<head>`, `--no-renames -z`)에서 시험 대상·파이썬 모듈·저장소 검사 목록·이 호스트의 `cfg(target_os)` 대상을 고르고(`--list` 는 읽기만), 고정 단계(`diff_check`·`fmt`·`ops_rustfmt`·`bash_n:<path>`·`clippy`·`test_lib`·`test_bins`·`test_targets`·`build_cli`·`python`)를 돌린 뒤 한 줄 요약을 알려요.
+- AC-1~AC-7 은 `src/check_affected.rs` 의 단위 시험 11개와 `tests/check_affected_cli.rs` 의 13개가 확인해요(감사 수리 뒤 이름 바뀐 파일·한글 경로·빌드 폴더·저장소 안 폴더 시험을 더했어요).
+- 구현 때 돌린 변이 중 세 점→두 점 바꾸기가 살아남아서 갈라진 기록 시험을 더했어요. 수리 뒤에는 변이 3개(`--no-renames` 빼기·`-z` 빼기·`CARGO_TARGET_DIR` 무시)를 커밋한 트리에서 돌렸고, 각각 의도한 시험 하나만 실패했어요.
+- 이 명령으로 이 가지를 직접 돌린 요약(head `dc6b3bc5dd`, 빌드 새로 함): `check-affected base=6a8fa9cacf46 head=dc6b3bc5dd8b targets=42 py=13 scans=listed:39 diff_check=0 fmt=0 ops_rustfmt=0 clippy=0 test_lib=0 test_bins=0 test_targets=0 build_cli=0 python=0 result=PASS`.
+- 독립 감사: 첫 판정 FAIL(막는 결함 둘: 이름 바뀐 파일, 빌드 폴더), 수리 뒤 같은 감사자의 델타가 막는 결함 없음.
+- 알려진 것(Risks 에 적었어요): 명령의 종료 코드는 `result=FAIL` 이어도 0, 시험 대상이 아닌 곳의 변경(`tests/e2e/*.sh`·`tests/fixtures/` 바로 밑 파일·`_test.py` 가 아닌 파이썬 도우미)은 고르지 못함, 한 줄에 `mod a; mod b;` 를 쓰면 읽지 못함, 로그는 호출한 쪽의 `CARGO_TARGET_DIR` 를 따라가요.
+- 돌리지 않은 것: CI, 병합된 트리에서의 골든 실행. 기준 2(요약 줄을 READY 노트에 쓰게 하는 안내)는 `mode-agent.md` 의 한 문장 고침이 필요하고 그 파일을 쥔 다른 카드가 넣어요.
