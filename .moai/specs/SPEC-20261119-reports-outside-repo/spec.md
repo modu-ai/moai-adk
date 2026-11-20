@@ -86,6 +86,13 @@ created: 2026-11-19
 
 구현됨(2026-11-20, 가지 `spec/20261119-reports-outside-repo`).
 
+- AC-1: met — `cargo test --lib reports_dir` 통과(전체 `--lib` 종료 코드 0, head `0a6b335558`)
+- AC-2: met — `--lib home_layout`·`--lib home_retire` 와 `tests/home_retire_cli.rs`(24개) 통과
+- AC-3: met — `tests/optimize_plan_cli.rs` 통과(영역 대상 실행 종료 코드 0)
+- AC-4: met — `product_cli skill_package` 와 `tests.source_manifest_test`·`tests.skill_references_test` 종료 코드 0
+- AC-5: met — `tests.repo_scans_test`·`tests.ci_scope_test`·`tests.local_check_test` 종료 코드 0
+- AC-6: met — 결정 노트 3280 이 137개를 묶음별로 나열했고 `git ls-files .moai-cli/reports | wc -l` 이 137, 지운 추적 파일 0개
+
 - 보고서 자리는 `home_workdir::reports_dir` 가 `<HOME>/.moai/reports/<프로젝트>` 로 풀어요(AC-1). HOME 이름표의 `reports` 행은 이 세대가 쓰는 사용자 데이터(보존)이고 옛 분류 시험 두 곳(`src/home_retire.rs` 의 단위 시험, `tests/home_retire_cli.rs`)이 새 값을 지켜요(AC-2). `optimize-plan` 은 그 폴더를 `report`·`keep` 행으로 보여 주고 `trim_paths` 는 비어 있어요(AC-3).
 - `AGENTS.md` 는 `## Reporting` 의 겹친 두 문단을 항목 하나도 빼지 않고 한 문단으로 합쳐 9201 bytes(한도 9216)로 맞추고 한 문장 `Reports go to ~/.moai/reports/<project>/, never into the repo.` 를 더했어요. moai 스킬에도 한 문장을 더했고 매니페스트 해시를 같은 커밋에서 갱신했어요(AC-4).
 - 스캔·CI 범위 규칙은 바꾸지 않았고 추적된 보고서 파일이 남아 있는 동안 계속 덮어요. `tests.repo_scans_test`·`tests.ci_scope_test`·`tests.local_check_test` 통과(AC-5).

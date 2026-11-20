@@ -87,6 +87,16 @@ parent: SPEC-20261119-reports-outside-repo
 
 구현됨(2026-11-20, 가지 `spec/20261119-reports-outside-repo`).
 
+- AC-1: met — `plan_counts_untracked_and_tracked_files`(`tests/reports_move_cli.rs`) 통과
+- AC-2: met — `apply_moves_untracked_and_keeps_tracked` 통과
+- AC-3: met — `apply_skips_a_name_that_exists` 통과
+- AC-4: met — `apply_twice_gives_the_same_result` 통과
+- AC-5: met — `apply_makes_the_destination_owner_only` 통과(Unix)
+- AC-6: met — `apply_refuses_a_stale_digest_or_missing_permission` 통과
+- AC-7: met — `update_plan_shows_the_reports_step` 통과
+- AC-8: met — `plan_is_blocked_without_a_git_repository` 통과
+- 위 시험은 head `0a6b335558` 의 영역 접두 대상 실행(`reports_*` 포함 63개, `cargo test` 종료 코드 0)에서 돌았어요.
+
 - 두 연산 `reports-move-plan`(읽기 전용 미리보기)과 `reports-move-apply`(digest·permission reference 를 확인하고 옮김)는 `src/reports_move.rs` 의 한 곳을 써요. 옛 폴더 이름(`.moai-cli/reports`, `.moai/reports`)은 `state_root` 의 이름 상수로 적어요(`project_state_dir_is_spelled_once` 와 허용 목록 시험 둘 다 통과).
 - `project-update-plan` 에 `reports` 단계가 수와 목적지를 보여 주고 apply 줄은 같은 미리보기의 digest 를 써요. 도움말 표·예시와 골든 네 개에 두 연산 줄이 들어갔고(한 줄 설명은 56자), 연산 문서 조각 두 개를 더했어요.
 - AC-1~AC-8 은 `tests/reports_move_cli.rs`·`tests/project_update_plan_cli.rs` 가 확인해요.
