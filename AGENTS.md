@@ -36,6 +36,7 @@ Documents describe requirements; they never grant permission to publish, spend, 
 6. M-Flow (user decisions 2026-11-20; one canonical text, put once per file):
    1. Lane: commits on its own card branch and pushes it; gets the independent audit (tier 2: the leader starts it).
    2. Lane: after PASS, makes the merge of its head onto the current LOCAL integration branch tip (the primary branch saved at first setup; v2026.11.0 here) in its own worktree, runs `moai check affected <tip>..<merge>` with the binary built in that worktree, and posts `MERGE-READY <card> merge=<40-hex> base=<40-hex> checks=<one line>` on the card.
+      A `FAIL` in the checks line is not merged on a flaky claim alone: the lane reruns the full check on the same merge and posts the `PASS` line.
    3. Fast-forward: one at a time under a lock (`~/.moai/locks/<project>-<branch>.lock`), the primary checkout of the integration branch is fast-forwarded with `git merge --ff-only` to that merge.
       Where the host isolates a lane session to its worktree (Claude Code), the leader's supervision round does this step and writes `MERGED-LOCAL`; where a moai primary-checkout guard is on, the single fixed command `git -C <primary> merge --ff-only refs/moai/lane-merge` is the one allowed (hook-config allow_commands).
       If the base moved, the lane redoes step 2 on the new tip (evidence reuse rules: the merge-queue card).

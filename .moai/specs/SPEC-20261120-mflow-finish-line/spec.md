@@ -26,6 +26,7 @@ created: 2026-11-20
 - REQ-4: The M-Flow wording shall say that only for a real deployment the leader creates a release branch `release/v{head}.{yearweek}.{build}` from the local integration branch and opens one pull request to the remote integration branch, with the full CI on Linux, macOS and Windows and an independent audit by a lane with no commits in the range, and that no pull request is opened per card, per bundle or per integration. · failure: none — a test reads the sentence.
 - REQ-9: The M-Flow wording shall say that builds for local testing and installation are made from the verified local integration branch tip, that the leader checks that tip as a whole from time to time and repairs a broken tip with a revert commit, and that the statusline shows commits ahead and behind. · failure: none — a test reads the two sentences.
 - REQ-10: The M-Flow wording shall say that a card that landed locally is closed with `card done` on the local landing evidence and not a pull request. · failure: none — a test reads the sentence.
+- REQ-12: The M-Flow wording shall say that a `FAIL` in the checks line of a `MERGE-READY` note is not merged on a flaky claim alone and that the lane reruns the full check on the same merge and posts the `PASS` line. · failure: none — a test reads the sentence in each file that carries the full text.
 - REQ-5: The `AGENTS.md` workflow shall give a lane no step that opens a pull request per Issue or per card. · failure: none — a test reads the file for the old step sentence.
 - REQ-6: While `AGENTS.md` carries the finish line, it shall stay under the 32 KiB budget that Codex applies by default and keep every sentence the repository tests pin. · failure: none — `repo_agents_md` and a size test read the file.
 - REQ-11: The size test of the repository's `AGENTS.md` test shall use the same 32 KiB limit, with the Codex source in a comment and the Claude Code advice of fewer than 200 lines per file as a note. · failure: none — `repo_agents_md` runs with the new limit.
@@ -34,7 +35,7 @@ created: 2026-11-20
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-9, REQ-10): `AGENTS.md` 6단계에 M-Flow 표지 문장이 한 번 있고, 여섯 항목(레인 커밋·푸시·감사, 레인 병합과 MERGE-READY, 잠금 아래 ff-only, 로컬 빌드·설치·tip 검증, 실제 배포 때만 릴리스 PR, 로컬 착지로 card done)의 문장이 모두 있어요.
+- AC-1 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-9, REQ-10, REQ-12): `AGENTS.md` 6단계에 M-Flow 표지 문장이 한 번 있고, 여섯 항목(레인 커밋·푸시·감사, 레인 병합과 MERGE-READY, 잠금 아래 ff-only, 로컬 빌드·설치·tip 검증, 실제 배포 때만 릴리스 PR, 로컬 착지로 card done)의 문장이 모두 있어요.
   verify: `cargo test --locked --offline --test mflow_finish_line agents_md_states_the_finish_line_once`
 - AC-2 (REQ-5): `AGENTS.md` 에 이슈마다 PR 을 연다는 옛 단계 문장이 없어요.
   verify: `cargo test --locked --offline --test mflow_finish_line agents_md_has_no_pull_request_per_issue_step`

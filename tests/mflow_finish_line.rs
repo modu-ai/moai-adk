@@ -11,7 +11,8 @@ const LOCAL_MARKER: &str =
     "M-Flow finish line (user decisions 2026-11-20; the full six-item text is step 6 of `AGENTS.md`)";
 // The leader's final wording (user instruction 2026-11-20 ~10:45Z), item by item. AGENTS.md puts
 // the items that run past 400 characters on continuation lines, so each piece is one line.
-const PIECES: [(&str, &str); 9] = [
+const PIECES: [(&str, &str); 10] = [
+    ("2 FAIL is rerun, not claimed flaky", "A `FAIL` in the checks line is not merged on a flaky claim alone: the lane reruns the full check on the same merge and posts the `PASS` line."),
     ("1 lane commits, pushes, audit", "Lane: commits on its own card branch and pushes it; gets the independent audit (tier 2: the leader starts it)."),
     ("2 lane merges, checks, MERGE-READY", "Lane: after PASS, makes the merge of its head onto the current LOCAL integration branch tip (the primary branch saved at first setup; v2026.11.0 here) in its own worktree, runs `moai check affected <tip>..<merge>` with the binary built in that worktree, and posts `MERGE-READY <card> merge=<40-hex> base=<40-hex> checks=<one line>` on the card."),
     ("3 fast-forward under a lock", "Fast-forward: one at a time under a lock (`~/.moai/locks/<project>-<branch>.lock`), the primary checkout of the integration branch is fast-forwarded with `git merge --ff-only` to that merge."),
