@@ -29,6 +29,7 @@ created: 2026-11-20
 
 - REQ-7: The `AGENTS.local.md` Response language item shall say that Korean text uses the developer terms it lists and never the literal coinages it names. · failure: none — a test reads the item for the eleven terms and the three coinages.
 - REQ-8: The `AGENTS.local.md` section `## Rule provenance` shall carry a row for the Korean wording rule that names the user instruction of 2026-11-20. · failure: none — a test reads the table row.
+- REQ-9: While the file makes room for the new text, `AGENTS.local.md` shall keep the rule sentences it already had, the audit-clone build folder sentence, the leader-only shared cache refill sentence and the `hc send` clause of Writing language. · failure: none — a test reads the file for the three sentences.
 
 ## Acceptance
 
@@ -38,6 +39,8 @@ created: 2026-11-20
   verify: `cargo test --locked --offline --test recurring_problems_rule the_provenance_table_names_the_instruction_and_its_causes`
 - AC-3 (REQ-7, REQ-8): Response language 항목에 열한 개 개발자 용어와 세 직역 예가 있고, 출처 표에 그 규칙의 한 줄이 있어요.
   verify: `cargo test --locked --offline --test recurring_problems_rule the_korean_wording_rule_and_its_provenance_row_are_there`
+- AC-5 (REQ-9): 크기 여유를 만들려고 줄이던 중 지웠던 규칙 문장 셋이 파일에 있어요.
+  verify: `cargo test --locked --offline --test recurring_problems_rule the_rule_sentences_kept_while_making_room_are_still_there`
 - AC-4 (REQ-6): 파일이 32 KiB 보다 작아요.
   verify: `cargo test --locked --offline --test repo_agents_md`; `cargo test --locked --offline --test recurring_problems_rule the_file_stays_inside_its_budget`
 
@@ -65,7 +68,7 @@ created: 2026-11-20
 | D-1 | 규칙은 `AGENTS.local.md` 의 `## Leader supervision` 한 항목으로 적어요 | 사용자 지시 2026-11-20; 리더가 라운드마다 하는 일이라서요 | 항목과 출처 줄을 지워요 |
 | D-2 | 출처 표에 규칙 한 줄을 더해요 | 이 파일의 다른 규칙이 모두 출처 줄을 가져요 | 줄을 지워요 |
 | D-3 | 시험은 새 파일 하나이고 `repo_agents_md` 는 그대로 둬요 | 새 규칙의 문장만 고정하고 기존 시험의 범위는 넓히지 않아요 | 시험 파일을 지워요 |
-| D-4 | 한국어 용어 규칙은 같은 파일의 Machine notes 에 한 문장으로 적고, 크기 여유는 시험이 고정하지 않는 중복 설명(빌드 폴더 항목의 괄호 설명 몇 곳)을 줄여서 만들어요 | 사용자 지시 2026-11-20; 규칙 문장과 출처는 줄이지 않아요 | 줄인 문장을 되돌리고 새 규칙을 다른 곳으로 옮겨요 |
+| D-4 | 한국어 용어 규칙은 같은 파일의 Machine notes 에 한 문장으로 적고, 크기 여유는 규칙이 아닌 근거 숫자와 중복 설명을 줄여서 만들어요. 줄인 곳은 문장 단위로 다음과 같아요: 빌드 폴더 항목에서 `(PR #2585 audit B1)`, 깨진 공유 캐시 문장의 측정값(`62 files … 104 in a lane cache`, `seen 2026-11-15`, 경로 이름 `/tmp/moai-rc-product-cargo` 반복), 캐시 이동 문장의 `and nothing is downloaded again`, `(observed 2026-11-08 and 2026-11-10, #2380 §3.3)`, `(57 folders, 65.9 GiB)`; 한국어 용어 문장 끝의 날짜 괄호(출처 표가 가져요). 이 근거는 Issue #3054 와 #2380 에 남아 있고 규칙 문장은 하나도 줄이지 않았어요. 첫 수리 전 head 3c04ce7485 는 감사 B-1 에서 규칙 문장 셋(감사 clone 의 build 폴더, 공유 캐시 재충전은 리더의 일, Writing language 의 `hc send` 구절)을 잘못 지웠고, 되살렸어요 | 사용자 지시 2026-11-20; 감사 B-1 | 줄인 근거 숫자를 되돌리고 새 규칙을 다른 곳으로 옮겨요 |
 
 ## Result
 

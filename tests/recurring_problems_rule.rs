@@ -137,10 +137,18 @@ fn the_korean_wording_rule_and_its_provenance_row_are_there() {
     ] {
         assert!(item.contains(term), "the item lacks the term {term}");
     }
+    // The sentence itself, not only its words: `uses` must not turn into `avoids`, and the
+    // list opens with the plain word 테스트, which `플레이키 테스트` alone would also contain.
+    assert!(
+        item.contains("Korean text uses the words developers actually say (테스트, 브랜치, 커밋,"),
+        "the item lacks the opening of the sentence: {item}"
+    );
     assert!(
         item.contains("never literal coinages such as 시험, 가지, 변이"),
         "the item names no literal coinage: {item}"
     );
+    let hits = card_numbers(&item);
+    assert!(hits.is_empty(), "the item names a card number: {hits:?}");
     let table = section(&text(), "Rule provenance");
     let row = table
         .lines()
@@ -148,6 +156,22 @@ fn the_korean_wording_rule_and_its_provenance_row_are_there() {
         .unwrap_or_else(|| panic!("Rule provenance has no row for the Korean wording rule"));
     assert!(row.contains("user instruction 2026-11-20"), "{row}");
     assert_eq!(row.matches(" | ").count(), 1, "{row}");
+    let hits = card_numbers(row);
+    assert!(hits.is_empty(), "the row names a card number: {hits:?}");
+}
+
+/// Sentences that an earlier trim for the size budget removed by mistake; they are rules, not
+/// evidence, so they stay.
+#[test]
+fn the_rule_sentences_kept_while_making_room_are_still_there() {
+    let text = text();
+    for phrase in [
+        "An audit clone builds in its own `target/` too.",
+        "Filling the shared folder again from crates.io needs the network and is the leader's act.",
+        "text typed into a session's chat input (including what the leader pastes into a Codex window with `hc send`)",
+    ] {
+        assert!(text.contains(phrase), "AGENTS.local.md lost: {phrase}");
+    }
 }
 
 #[test]
