@@ -639,13 +639,16 @@ fn the_state_root_generation_is_reported_and_nothing_is_written() {
     let actions = result["next_actions"].to_string();
     assert!(actions.contains("moai go-state-revert-plan"), "{actions}");
     assert!(!actions.contains("moai go-state-plan"), "{actions}");
-    // The PROJECT workflow moves nothing on the verdicts that leave the choice to the user.
+    // The PROJECT workflow only describes: it says the earlier generation's state is there and
+    // that `/moai update` moves it, and on the verdicts that leave the choice to the user it
+    // shows the reason and asks whether to go on with the interview.
     let workflow = include_str!("../skills/moai/workflows/project.md");
     assert!(workflow.contains(
-        "When `generation` is `mixed`, `unknown`, `empty` or `refuse`, move nothing in step 2: show its `reason` and ask as a selection whether to go on with the interview (recommended) or stop here. `interrupted` is handled in step 2."
+        "When the earlier generation's state is there, say so once and that `/moai update` moves it; do not preview or move it here. When `generation` is `mixed`, `unknown`, `empty` or `refuse`, show its `reason` and ask as a selection whether to go on with the interview (recommended) or stop here."
     ));
-    assert!(workflow
-        .contains("2. **Earlier-generation state (when `state_root.generation` is `go`, or `none` with `legacy_root`).**"));
+    assert!(workflow.contains(
+        "This route reads the earlier generation's state, says that it is there, and moves nothing."
+    ));
 }
 
 /// #2561: a linked `.moai` is reported as a link and never followed (its target's manifest is
