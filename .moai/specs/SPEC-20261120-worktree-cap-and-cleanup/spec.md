@@ -34,6 +34,10 @@ created: 2026-11-20
 - REQ-12: IF the permission reference is missing or unusable, THEN `optimize-apply` shall remove nothing.
 - REQ-9: When `optimize-apply` finishes, it shall write one record with the path, branch, HEAD and restore command of each removed worktree and report the reclaimed space as the change of the file system's free bytes.
 - REQ-11 (REQ-9): IF the record cannot be written, THEN `optimize-apply` shall report the failure together with the path of every worktree it removed.
+- REQ-13 (REQ-4): IF a worktree of a finished card has no branch and a commit that no ref reaches, THEN the preview shall keep it and name the commits no ref holds.
+- REQ-14 (REQ-4): IF the worktree list shows one path twice or holds a path the NUL-separated list does not know, THEN the preview shall keep that worktree.
+- REQ-16 (REQ-7): IF the worktree list shows a picked path not exactly once, THEN `optimize-apply` shall remove nothing at that path.
+- REQ-15 (REQ-4): IF a worktree holds no file of its own and changed less than a day ago, THEN the preview shall keep it as recently changed.
 
 ## Acceptance
 
@@ -44,6 +48,9 @@ created: 2026-11-20
 - AC-5 (REQ-6, REQ-10): `.claude/worktrees` 와 `.moai-cli/worktrees` 아래 worktree 가 후보로 나오고, 다른 worktree 의 `target/` 안에 중첩된 worktree 는 부모 이름(`nested_in`)과 함께 나오며, Go 세대 폴더와 Codex worktree 는 보존으로 남아요 · verify: `cargo test --locked --offline --test worktree_cap_cleanup old_locations_and_nested_worktrees_are_listed_and_preserved_ones_stay`
 - AC-6 (REQ-7, REQ-8, REQ-12): 고른 항목만 지워지고(`--pick 경로@항목다이제스트`), 중첩된 worktree 는 부모보다 먼저 지워지고, 허가 참조가 없으면 아무것도 지우지 않고, 항목 다이제스트가 다르면 그 항목만 `digest_mismatch` 로 거절되고, 미리보기 뒤에 더러워진 항목도 거절되며 다음 항목은 계속 처리되고, 가지는 모두 남아요 · verify: `cargo test --locked --offline --test optimize_apply_cli apply_removes_only_the_picked_clean_worktrees_inside_out`
 - AC-7 (REQ-9, REQ-11): 적용이 끝나면 지운 항목마다 경로·가지·HEAD·복구 명령이 든 기록 파일이 `.git` 아래에 생기고, 그 복구 명령으로 worktree 가 되살아나며, 회수한 공간은 `df` 여유 바이트의 변화로 나오고, 기록을 쓸 수 없으면 지운 경로를 모두 대며 실패를 알려요 · verify: `cargo test --locked --offline --test optimize_apply_cli apply_writes_a_record_that_restores_the_worktree`
+- AC-8 (REQ-13): done 카드의 detached worktree 가 어떤 ref 도 가리키지 않는 커밋을 갖고 있으면 후보가 아니라 유지(`unmerged_detached_commits`)로 나오고 적용이 지우지 않으며, 가지가 있는 worktree 는 그 가지가 커밋을 남기므로 지워져요 · verify: `cargo test --locked --offline --test worktree_cleanup_safety a_finished_cards_detached_worktree_with_unreachable_commits_is_kept`
+- AC-9 (REQ-14, REQ-16): 줄바꿈이 든 경로의 worktree 가 이웃 worktree 를 후보로 만들지 못하고 이웃은 유지로 나오며 적용도 둘 다 지우지 않아요 · verify: `cargo test --locked --offline --test worktree_cleanup_safety a_path_with_a_newline_cannot_make_a_neighbour_a_candidate`
+- AC-10 (REQ-15): 하루가 안 된 빈 worktree 는 유지(`empty_worktree`)로, 하루가 넘으면 후보로 나오고 `node_modules` 같은 설치 폴더, 살아 있거나 관찰 못 한 세션, 읽을 수 없는 원장은 각각 후보를 만들지 않아요 · verify: `cargo test --locked --offline --test worktree_cleanup_safety an_empty_worktree_under_a_day_old_is_kept`
 
 ## Scope
 
@@ -85,7 +92,7 @@ created: 2026-11-20
 
 ## Result
 
-AC-1~7 은 모두 충족이에요(근거는 아래 명령과 결과, 2026-11-20 가지 머리 `019243625a`).
+AC-1~10 은 모두 충족이에요(근거는 아래 명령과 결과). 첫 READY 머리는 `cd8262f1cd`, 감사 FAIL(데이터 손실 3건) 뒤 수리한 머리는 이 파일을 담은 커밋이에요.
 
 | AC | 시험 | 결과 |
 | --- | --- | --- |
@@ -96,11 +103,30 @@ AC-1~7 은 모두 충족이에요(근거는 아래 명령과 결과, 2026-11-20 
 | 5 | `--test worktree_cap_cleanup old_locations_and_nested_worktrees_are_listed_and_preserved_ones_stay` | 통과 |
 | 6 | `--test optimize_apply_cli apply_removes_only_the_picked_clean_worktrees_inside_out` | 통과 |
 | 7 | `--test optimize_apply_cli apply_writes_a_record_that_restores_the_worktree` | 통과 |
+| 8 | `--test worktree_cleanup_safety a_finished_cards_detached_worktree_with_unreachable_commits_is_kept` | 통과 |
+| 9 | `--test worktree_cleanup_safety a_path_with_a_newline_cannot_make_a_neighbour_a_candidate` | 통과 |
+| 10 | `--test worktree_cleanup_safety an_empty_worktree_under_a_day_old_is_kept` | 통과 |
 
-설정 파일 출처(`[worktrees] cap`)는 `worktree_cap::tests` 의 단위 시험이 덮어요(값 12 의 출처 `config`, 잘못된 값 거절).
+- AC-1: met — `--test worktree_cap_cleanup the_preview_counts_worktrees_against_the_cap` 통과(영역 시험 `worktree_cap_cleanup` 5개 exit 0).
+- AC-2: met — `--test worktree_cap_cleanup a_cap_that_is_not_a_positive_whole_number_is_refused` 통과.
+- AC-3: met — `--test worktree_cap_cleanup finished_worktrees_are_candidates_with_reason_and_bytes` 통과.
+- AC-4: met — `--test worktree_cap_cleanup an_unsafe_worktree_is_kept_with_every_reason` 통과.
+- AC-5: met — `--test worktree_cap_cleanup old_locations_and_nested_worktrees_are_listed_and_preserved_ones_stay` 통과.
+- AC-6: met — `--test optimize_apply_cli apply_removes_only_the_picked_clean_worktrees_inside_out` 통과(영역 시험 `optimize_apply_cli` exit 0).
+- AC-7: met — `--test optimize_apply_cli apply_writes_a_record_that_restores_the_worktree` 통과.
+- AC-8: met — `--test worktree_cleanup_safety` 8개 통과 중 `a_finished_cards_detached_worktree_with_unreachable_commits_is_kept`, 뮤턴트 M1 이 이 시험에 잡혀요.
+- AC-9: met — `a_path_with_a_newline_cannot_make_a_neighbour_a_candidate` 통과, 뮤턴트 M2·M3 이 이 시험에 잡혀요.
+- AC-10: met — `an_empty_worktree_under_a_day_old_is_kept` 통과, 뮤턴트 M4 가 이 시험에 잡히고 M5~M9 는 같은 파일의 다른 시험이 잡아요.
+감사 FAIL 의 탐침 재현(각각 임시 저장소와 HOME 에서 실제 `moai-cli optimize-plan`·`optimize-apply` 를 돌려요, `--test worktree_cleanup_safety` 8개 모두 통과):
 
-READY 검사 종료 코드(`CARGO_TARGET_DIR` 는 이 worktree 전용): diff-check 0, fmt 0, ops rustfmt 0, clippy `--all-targets -D warnings` 0, `--lib` 전체 0(1609 통과), `--bins` 0, 영역 시험 대상(`worktree_*`, `optimize_*`) 0, 저장소 전체 검사용 시험(`git_env_scrub`, `home_isolation_scan`, `windows_unix_gate_scan`, `product_cli`) 0, `tools/repo_scans.json` 검사 39개 중 실패 0, 파이썬 `repo_scans_test`·`source_manifest_test`·`local_check_test` 0, `trailer-check` 0. macOS 에서 도는 `cfg(macos)` 시험은 101: 실패는 `update_command_cli::in_a_terminal_an_applied_update_asks_the_model_stage_and_saves_after_a_yes` 하나이고, 이 가지의 기준 커밋에서도 같이 실패해요(이 변경과 무관). 그 한 줄을 고치는 커밋 `728fc79a16` 이 로컬 `v2026.11.0` 에 이미 있어요.
+| 탐침 | 이전 동작(감사) | 지금 |
+| --- | --- | --- |
+| done 카드의 detached worktree 에 병합 안 된 커밋 | 후보로 나와 적용하면 커밋이 사라짐 | 유지(`unmerged_detached_commits`), 적용도 지우지 않고 커밋이 남아요. 가지가 있는 worktree 는 지워지고 가지가 커밋을 남겨요 (`a_finished_cards_detached_…`, `a_finished_cards_branch_worktree_is_removed_…`) |
+| 줄바꿈이 든 경로의 worktree | gc 의 줄 단위 목록이 쪼개져 이웃 worktree 가 후보가 됨 | 목록을 `git worktree list --porcelain -z` 로 읽고, 한 경로에 행이 둘이거나 NUL 목록이 모르는 경로는 유지, 이웃은 후보가 아니고 적용은 두 경로 모두 지우지 않아요 (`a_path_with_a_newline_…`) |
+| 2시간 전에 만든 빈 worktree | 후보로 나옴(하루 보호 빠짐) | 유지(`empty_worktree`), 하루를 넘기면 후보 (`an_empty_worktree_under_a_day_old_is_kept`) |
 
-뮤턴트(고의로 코드를 망가뜨려 시험이 잡는지 보기) 5개를 돌렸고 모두 의도한 시험 하나가 잡았어요: 안쪽부터 지우기 순서, 항목 다이제스트 비교, 지우기 직전 새 판정, 살아 있는 임대 유지, 보존 위치 범위.
+감사가 지적한 안전 가드 뮤턴트(고의로 코드를 망가뜨려 시험이 잡는지 보기)는 9개를 돌렸고 모두 의도한 시험 하나가 잡았어요(M7 은 처음에 살아남아 `an_unreadable_ledger_leaves_no_candidate` 에 병합된 worktree 를 더한 뒤 잡혀요): M1 detached 커밋이 ref 를 필요로 하지 않음, M2 한 경로 두 행이 모호하지 않음, M3 NUL 목록이 모르는 경로를 판정함, M4 하루 보호 삭제, M5 최신 예약이 마지막이 아님, M6 `node_modules` 가 worktree 를 지키지 않음, M7 읽을 수 없는 원장을 원장 없음으로 읽음, M8 살아 있는 세션이 지키지 않음, M9 관찰 못 한 세션이 지키지 않음. 첫 READY 때 돌린 5개(안쪽부터 지우기, 항목 다이제스트 비교, 지우기 직전 새 판정, 살아 있는 임대 유지, 보존 위치 범위)도 통과해요.
 
-알려진 한계: 프로세스 검사는 작업 디렉터리만 봐요. 할당 바이트 합은 APFS 복제(clone)를 겹쳐 셀 수 있어서 실제로 비워진 공간은 `df` 변화로만 알 수 있어요. 미리보기가 `gc` 계획을 두 번 돌려요(`optimize::plan` 과 후보 판정). 후보 미리보기는 카드 원장이 있어야 하고 없으면 `ledger_observed` 가 거짓이에요. 프로필 키 `worktree_cap` 은 프로필 파일의 범위가 열린 뒤 이어요.
+READY 검사 종료 코드(`CARGO_TARGET_DIR` 는 이 worktree 전용, 기준 `d6c826b887`): diff-check 0, fmt 0, ops rustfmt 0, clippy `--all-targets -D warnings` 0, `--lib` 전체 0(1609 통과), `--bins` 0(28 통과 두 번), 영역 시험 대상(`worktree_*`, `optimize_*`) 0, 저장소 전체 검사용 시험(`git_env_scrub`, `home_isolation_scan`, `windows_unix_gate_scan`, `product_cli`) 0, `tools/repo_scans.json` 검사 39개 중 실패 1(`git-fixture-helper`: 새 안전 시험의 git 직접 호출, 수리 커밋 `39b6c83e88` 이 공용 도우미로 바꿈, 그 뒤 `--test ac_command_lint`(5개) 0), 수리 뒤 다시 돌린 clippy 0·`ac_command_lint`+`worktree_cap_cleanup`+`worktree_cleanup_safety` 0·diff-check 0, 파이썬 `repo_scans_test`·`source_manifest_test`·`local_check_test` 0, `trailer-check` 0. `cfg(macos)` 시험은 종료 코드 101: `update_command_cli::in_a_terminal_an_applied_update_asks_the_model_stage_and_saves_after_a_yes` 하나(이 변경과 무관한 기준 가지의 알려진 실패, 고침 `728fc79a16` 이 로컬 v2026.11.0 에 들어가 있고 이 가지의 기준 `d6c826b887` 에는 없어요. 병합 뒤 다시 확인해요).
+
+알려진 한계: 프로세스 검사는 작업 디렉터리만 봐요. 할당 바이트 합은 APFS 복제(clone)를 겹쳐 셀 수 있어서 실제로 비워진 공간은 `df` 변화로만 알 수 있어요. 미리보기가 `gc` 계획을 두 번 돌려요(`optimize::plan` 과 후보 판정). 후보 미리보기는 카드 원장이 있어야 하고 없으면 `ledger_observed` 가 거짓이에요. 판정과 지우기 사이에 다른 프로세스가 worktree 에 커밋하는 경쟁은 막지 않아요(지우기 직전 새 판정으로 줄였을 뿐). `src/worktree_report.rs` 의 줄 단위 `--porcelain` 읽기는 이 카드 범위 밖이라 그대로 두었고, 이 카드의 판정은 그 결과를 믿지 않고 `-z` 목록으로 대조해요(후속 조각). 사용자가 손으로 만든 worktree 도 같은 규칙으로 후보가 돼요(결정 D-10). 프로필 키 `worktree_cap` 은 프로필 파일의 범위가 열린 뒤 이어요.
