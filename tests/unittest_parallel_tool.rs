@@ -83,7 +83,8 @@ fn a_failing_module_fails_the_run_and_the_rest_still_run() {
     module(dir.path(), "a_test", PASS);
     module(dir.path(), "b_test", FAIL);
     module(dir.path(), "c_test", PASS);
-    let out = run(dir.path(), home.path(), &[], &[]);
+    // One job: the modules after the failing one have to start after it ended.
+    let out = run(dir.path(), home.path(), &["-j", "1"], &[]);
     let all = text(&out);
     assert_eq!(out.status.code(), Some(1), "{all}");
     assert!(

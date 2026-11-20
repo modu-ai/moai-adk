@@ -33,7 +33,7 @@ RESULT = re.compile(r"^(OK|FAILED)(?: \(([^)]*)\))?$", re.M)
 KEYS = ("failures", "errors", "skipped", "expected failures", "unexpected successes")
 # A module file bigger than this is split by test class.
 SPLIT_BYTES = 32 * 1024
-# Prints the test classes of a module, one per line, in the order its tests come; `NOSPLIT` when a
+# Prints the test classes of a module, one per line, in the order its tests come; exits 3 when a
 # test belongs to another module (a `load_tests` hook) or the module does not import.
 LIST_CLASSES = """
 import sys, unittest
@@ -48,8 +48,7 @@ def walk(suite):
 seen = []
 for t in walk(unittest.defaultTestLoader.loadTestsFromName(name)):
     if type(t).__module__ != name:
-        print("NOSPLIT")
-        raise SystemExit(0)
+        raise SystemExit(3)
     if type(t).__name__ not in seen:
         seen.append(type(t).__name__)
 print("\\n".join(seen))
@@ -132,10 +131,8 @@ def classes_of(start, name):
         )
     finally:
         shutil.rmtree(root, ignore_errors=True)
-    found = proc.stdout.split()
-    if proc.returncode != 0 or "NOSPLIT" in found or len(found) < 2:
-        return None
-    return found
+    found = proc.stdout.split() if proc.returncode == 0 else []
+    return found if len(found) >= 2 else None
 
 
 def run_unit(start, label, argv, verbose):
