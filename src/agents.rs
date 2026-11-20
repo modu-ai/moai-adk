@@ -644,8 +644,9 @@ fn newly_visible(
         return Ok(Vec::new());
     }
     let with_block = format!("{user}\n{rendered}");
+    let nested = nested_gitignores(root, &candidates, notes);
     let mut scratch: Vec<String> = Vec::new();
-    let hits = user_rule_hits(root, &with_block, &candidates, &mut scratch)?;
+    let hits = rule_hits_with_nested(root, &with_block, &nested, &candidates, &mut scratch)?;
     let visible: Vec<&String> = candidates
         .iter()
         .filter(|c| !hits.iter().any(|h| h.path == **c))
@@ -662,6 +663,62 @@ fn newly_visible(
         ));
     }
     Ok(lines)
+}
+
+/// The biggest nested `.gitignore` the plan reads (SPEC-20261121-gitignore-nested REQ-3).
+const NESTED_GITIGNORE_LIMIT: u64 = 1024 * 1024;
+
+/// The `.gitignore` files in the folders above `paths` below the project root, each once, as
+/// (folder, text) from the shallowest folder down. A file git would read but this cannot (not
+/// UTF-8 text, over [`NESTED_GITIGNORE_LIMIT`], a link or special file, a read error) adds one
+/// line to `notes` and its rules are not considered, so the files stay named (over-reporting is
+/// the safe side). A folder without a `.gitignore` adds nothing.
+fn nested_gitignores(
+    root: &Path,
+    paths: &[String],
+    notes: &mut Vec<String>,
+) -> Vec<(String, String)> {
+    use std::io::Read;
+    let mut folders: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    for path in paths {
+        let mut folder = String::new();
+        let parts: Vec<&str> = path.split('/').collect();
+        for part in &parts[..parts.len().saturating_sub(1)] {
+            if !folder.is_empty() {
+                folder.push('/');
+            }
+            folder.push_str(part);
+            folders.insert(folder.clone());
+        }
+    }
+    let mut ordered: Vec<String> = folders.into_iter().collect();
+    ordered.sort_by_key(|f| f.matches('/').count());
+    let mut found = Vec::new();
+    for folder in ordered {
+        let rel = format!("{folder}/.gitignore");
+        let file = root.join(&rel);
+        let Ok(meta) = std::fs::symlink_metadata(&file) else {
+            continue;
+        };
+        let text = if meta.is_file() && meta.len() <= NESTED_GITIGNORE_LIMIT {
+            std::fs::File::open(&file).ok().and_then(|f| {
+                let mut bytes = Vec::new();
+                f.take(NESTED_GITIGNORE_LIMIT + 1)
+                    .read_to_end(&mut bytes)
+                    .ok()?;
+                String::from_utf8(bytes).ok()
+            })
+        } else {
+            None
+        };
+        match text {
+            Some(text) => found.push((folder, text)),
+            None => notes.push(format!(
+                "nested .gitignore cannot be read, its rules are not considered: {rel}"
+            )),
+        }
+    }
+    found
 }
 
 /// The part of a `.gitignore` the user wrote: its text outside this tool's managed block. A
@@ -879,9 +936,26 @@ fn user_rule_hits(
     paths: &[String],
     notes: &mut Vec<String>,
 ) -> Result<Vec<RuleHit>> {
+    rule_hits_with_nested(root, user_rules, &[], paths, notes)
+}
+
+/// [`user_rule_hits`] with the `.gitignore` files of folders below the root (`nested`: folder,
+/// text) written at the same place in the throw-away repository, so git reads them in its own
+/// order and a file one of them still ignores is a hit.
+fn rule_hits_with_nested(
+    root: &Path,
+    user_rules: &str,
+    nested: &[(String, String)],
+    paths: &[String],
+    notes: &mut Vec<String>,
+) -> Result<Vec<RuleHit>> {
     let (global_path, global_text) = global_excludes(root, notes)?;
     let info_text = info_exclude(root, notes)?;
-    if paths.is_empty() || !(has_rule(user_rules) || has_rule(&info_text) || has_rule(&global_text))
+    if paths.is_empty()
+        || !(has_rule(user_rules)
+            || has_rule(&info_text)
+            || has_rule(&global_text)
+            || nested.iter().any(|(_, text)| has_rule(text)))
     {
         return Ok(Vec::new());
     }
@@ -894,6 +968,12 @@ fn user_rule_hits(
         .map_err(|_| "temporary folder unavailable".to_string())?;
     std::fs::write(dir.join(".gitignore"), user_rules)
         .map_err(|_| "temporary folder unavailable".to_string())?;
+    for (folder, text) in nested {
+        let at = dir.join(folder);
+        std::fs::create_dir_all(&at).map_err(|_| "temporary folder unavailable".to_string())?;
+        std::fs::write(at.join(".gitignore"), text)
+            .map_err(|_| "temporary folder unavailable".to_string())?;
+    }
     if !git_output(dir, &["init", "-q"], b"")?.status.success() {
         return Err(unavailable.into());
     }
@@ -939,8 +1019,8 @@ fn user_rule_hits(
         if pattern.starts_with('!') {
             continue;
         }
-        let origin = if source == ".gitignore" {
-            ".gitignore".to_string()
+        let origin = if source == ".gitignore" || source.ends_with("/.gitignore") {
+            source.to_string()
         } else if source.replace('\\', "/").ends_with("info/exclude") {
             ".git/info/exclude".to_string()
         } else {

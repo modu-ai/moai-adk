@@ -679,6 +679,38 @@ fn an_unreadable_nested_gitignore_is_named_and_the_files_stay_listed() {
     assert_eq!(detail.lines().filter(|l| *l == note).count(), 1, "{detail}");
 }
 
+/// SPEC-20261121-gitignore-nested REQ-3: a nested `.gitignore` that is a link is not followed
+/// (what it points at may be outside the project): it is named as unreadable and its rules are
+/// not considered.
+#[cfg(unix)]
+#[test]
+fn a_nested_gitignore_that_is_a_link_is_named_and_not_followed() {
+    let fx = Fx::new(None);
+    with_earlier_block(&fx);
+    let rules = fx.root.join("elsewhere-rules");
+    fs::write(&rules, "*.tmp\n").unwrap();
+    let folder = fx.root.join(".moai-cli/tools");
+    fs::create_dir_all(&folder).unwrap();
+    std::os::unix::fs::symlink(&rules, folder.join(".gitignore")).unwrap();
+    let detail = detail_with_files(&fx, &[".moai-cli/tools/a.tmp"]);
+    assert_eq!(
+        visible_lines(&detail),
+        [
+            "now visible: .moai-cli/tools/.gitignore",
+            "now visible: .moai-cli/tools/a.tmp"
+        ],
+        "{detail}"
+    );
+    assert_eq!(
+        detail
+            .lines()
+            .filter(|l| l.starts_with("nested .gitignore cannot be read"))
+            .count(),
+        1,
+        "{detail}"
+    );
+}
+
 /// SPEC-20261117-sdd-foundation REQ-7, REQ-8, REQ-9: this repository's own `.gitignore`, read
 /// by git in a temporary repository without global rules, keeps the SPECs in git, ignores the
 /// rest of the root `.moai/` and every `.moai/` below the root, and ignores credential and
