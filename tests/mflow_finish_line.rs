@@ -21,7 +21,7 @@ const NAMED_FILES: [&str; 6] = [
 ];
 
 /// Phrases that tell someone to open a pull request per card, per bundle or per integration.
-const OLD_PHRASES: [&str; 8] = [
+const OLD_PHRASES: [&str; 9] = [
     "bundle PR",
     "bundle pull request",
     "one release PR",
@@ -30,6 +30,7 @@ const OLD_PHRASES: [&str; 8] = [
     "Pull request to the integration branch with `Refs #<n>`",
     "Before opening a pull request, count the open pull requests",
     "a pull request merges when its current head has a successful `ci` run",
+    "when the work is done, push the branch and open a pull request (recommended)",
 ];
 
 fn root() -> PathBuf {
