@@ -132,7 +132,7 @@ fn builders_clean_up_by_relative_path_inside_their_own_worktree() {
         let text = std::fs::read_to_string(package().join(flow)).unwrap();
         let rule = text
             .lines()
-            .find(|l| l.starts_with("- Cleanup (Issue #3054): "))
+            .find(|l| l.starts_with("- Cleanup"))
             .unwrap_or_else(|| panic!("{flow}: no cleanup rule"));
         assert!(
             rule.contains("relative path") && rule.contains("`rm -rf target/debug`"),
