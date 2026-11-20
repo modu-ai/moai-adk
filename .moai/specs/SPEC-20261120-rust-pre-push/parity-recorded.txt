@@ -689,6 +689,71 @@ exit: 0
 
 --stderr
 
+=== pp_invisible_characters_quoted
+exit: 0
+--stdout
+
+--stderr
+2 of 2 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "a\u00a0b\u200bc\u3000d"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: chore: a b​c　d
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+Commit message violates conventional-commits convention:
+  Message: "x\x7fy\u0085z\ufeffw"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: chore: xyz﻿w
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+=== pp_dotted_capital_i_suggestion
+exit: 0
+--stdout
+
+--stderr
+1 of 1 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "FİX the thing"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: fix: fİX the thing
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
+=== pp_control_escapes_quoted
+exit: 0
+--stdout
+
+--stderr
+1 of 1 commit(s) violate conventional-commits convention:
+
+Commit message violates conventional-commits convention:
+  Message: "bell\aback\bform\fvtab\vend"
+
+  [PATTERN] Pattern mismatch (expected: ^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\(.+\))?!?: .+)
+    Suggestion: chore: bellbackformvtabend
+
+  Examples of valid messages:
+    - feat(auth): add JWT token validation
+    - fix: resolve null pointer in user service
+    - docs(readme): update installation guide
+
 === pp_unknown_fallback
 exit: 2
 --stdout

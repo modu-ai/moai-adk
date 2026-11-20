@@ -465,7 +465,7 @@ const PREPUSH_SCENARIOS: &[PrePushScenario] = &[
     PrePushScenario { name: "pp_suggestions", config: &[], env: (Some("1"), Some("warn"), None), stdin: "Fix the bug\nAdd a thing\nUpdate the README\nTest more\nClean up code\nRefactor it\nSomething else\n", history: &[] },
     PrePushScenario { name: "pp_multibyte_subject", config: &[], env: (Some("1"), Some("warn"), Some("angular")), stdin: "한글 제목\n", history: &[] },
     PrePushScenario { name: "pp_quote_escapes", config: &[], env: (Some("1"), Some("warn"), None), stdin: "say \"hi\" \\ there\n", history: &[] },
-    PrePushScenario { name: "pp_auto_history_conventional", config: &[], env: (Some("1"), Some("warn"), None), stdin: "bad message\n", history: &["feat: a", "fix: b", "chore: c", "docs: d"] },
+    PrePushScenario { name: "pp_auto_history_conventional", config: &[], env: (Some("1"), Some("warn"), None), stdin: "bad message\n", history: &["feat: a", "fix: b", "revert: c", "docs: d"] },
     PrePushScenario { name: "pp_auto_history_free_form_uses_fallback", config: &[("git-convention.yaml", "git_convention:\n  auto_detection:\n    fallback: angular\n")], env: (Some("1"), Some("warn"), None), stdin: "bad message\n", history: &["Update stuff", "More stuff", "Fixes", "wip"] },
     PrePushScenario { name: "pp_auto_detection_off", config: &[("git-convention.yaml", "git_convention:\n  auto_detection:\n    enabled: false\n    fallback: karma\n")], env: (Some("1"), Some("warn"), None), stdin: "bad message\n", history: &["feat: a", "fix: b"] },
     // Only conventional-commits accepts `revert`, so the winner is never a three-way tie (Go breaks a tie by map order, which is random).
@@ -477,6 +477,9 @@ const PREPUSH_SCENARIOS: &[PrePushScenario] = &[
     PrePushScenario { name: "pp_invalid_config_threshold", config: &[("git-convention.yaml", "git_convention:\n  auto_detection:\n    confidence_threshold: 2\n")], env: (Some("1"), None, None), stdin: "bad message\n", history: &[] },
     PrePushScenario { name: "pp_invalid_config_sample_size", config: &[("git-convention.yaml", "git_convention:\n  auto_detection:\n    sample_size: -1\n")], env: (Some("1"), None, None), stdin: "bad message\n", history: &[] },
     PrePushScenario { name: "pp_invalid_config_switch_is_lost", config: &[("git-convention.yaml", "git_convention:\n  convention: bogus\n  validation:\n    enforce_on_push: true\n")], env: (None, None, None), stdin: "bad message\n", history: &[] },
+    PrePushScenario { name: "pp_invisible_characters_quoted", config: &[], env: (Some("1"), Some("warn"), None), stdin: "a\u{a0}b\u{200b}c\u{3000}d\nx\u{7f}y\u{85}z\u{feff}w\n", history: &[] },
+    PrePushScenario { name: "pp_dotted_capital_i_suggestion", config: &[], env: (Some("1"), Some("warn"), None), stdin: "F\u{130}X the thing\n", history: &[] },
+    PrePushScenario { name: "pp_control_escapes_quoted", config: &[], env: (Some("1"), Some("warn"), None), stdin: "bell\u{7}back\u{8}form\u{c}vtab\u{b}end\n", history: &[] },
     PrePushScenario { name: "pp_unknown_fallback", config: &[("git-convention.yaml", "git_convention:\n  auto_detection:\n    enabled: false\n    fallback: nope\n")], env: (Some("1"), None, None), stdin: "x\n", history: &[] },
 ];
 
@@ -538,6 +541,7 @@ fn prepush_rust(s: &PrePushScenario) -> String {
     let project = build_prepush(s);
     let inv = quality_gate::pre_push::PrePushInvocation {
         project_dir: project.path().canonicalize().unwrap(),
+        repo_dir: None,
         env: quality_gate::pre_push::PrePushEnv {
             enforce_on_push: s.env.0.map(String::from),
             pre_push_mode: s.env.1.map(String::from),

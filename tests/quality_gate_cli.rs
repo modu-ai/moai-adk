@@ -289,6 +289,7 @@ mod prepush_support {
     pub fn check(project: &Path, env: PrePushEnv, stdin: &str) -> (i32, String, String) {
         let inv = PrePushInvocation {
             project_dir: project.to_path_buf(),
+            repo_dir: None,
             env,
             stdin: stdin.as_bytes().to_vec(),
         };
@@ -571,6 +572,7 @@ fn prepush_multibyte_subject_suggestion_is_byte_exact() {
     let p = TempDir::new().unwrap();
     let inv = quality_gate::pre_push::PrePushInvocation {
         project_dir: p.path().to_path_buf(),
+        repo_dir: None,
         env: pp_env(Some("1"), Some("warn"), Some("angular")),
         stdin: "한글 제목\n".as_bytes().to_vec(),
     };
@@ -710,4 +712,124 @@ fn prepush_reads_the_go_written_git_convention_file() {
         check(p.path(), pp_env(None, None, None), "bad message\n").0,
         2
     );
+}
+
+fn check_bytes(
+    project: &Path,
+    repo: Option<&Path>,
+    env: quality_gate::pre_push::PrePushEnv,
+    stdin: &[u8],
+) -> (i32, Vec<u8>, Vec<u8>) {
+    let inv = quality_gate::pre_push::PrePushInvocation {
+        project_dir: project.to_path_buf(),
+        repo_dir: repo.map(Path::to_path_buf),
+        env,
+        stdin: stdin.to_vec(),
+    };
+    let (mut out, mut err) = (Vec::new(), Vec::new());
+    let code = quality_gate::pre_push::run(&inv, &mut out, &mut err);
+    (code, out, err)
+}
+
+/// Audit N8: Go quotes a subject with `%q`: invisible characters become `\u` escapes, bytes that
+/// are not UTF-8 become `\x` escapes, and the length limit counts the bytes as they came.
+#[test]
+fn prepush_quotes_like_go_and_counts_raw_bytes() {
+    let p = TempDir::new().unwrap();
+    let env = || pp_env(Some("1"), Some("warn"), Some("conventional-commits"));
+    let (_, _, err) = check_bytes(
+        p.path(),
+        None,
+        env(),
+        "a\u{a0}b\u{200b}c\u{3000}d\n".as_bytes(),
+    );
+    let err = String::from_utf8_lossy(&err).into_owned();
+    assert!(
+        err.contains("Message: \"a\\u00a0b\\u200bc\\u3000d\""),
+        "{err}"
+    );
+    let (_, _, err) = check_bytes(p.path(), None, env(), b"bad \xff\xfe tail\n");
+    let err = String::from_utf8_lossy(&err).into_owned();
+    assert!(err.contains("Message: \"bad \\xff\\xfe tail\""), "{err}");
+    // 6 + 94 raw bytes is exactly the limit: no length violation although each lossy U+FFFD
+    // would be three bytes.
+    let mut at_limit = b"feat: ".to_vec();
+    at_limit.extend(std::iter::repeat(0xffu8).take(94));
+    at_limit.push(b'\n');
+    let (code, out, err) = check_bytes(p.path(), None, env(), &at_limit);
+    assert_eq!(code, 0);
+    assert!(err.is_empty(), "{}", String::from_utf8_lossy(&err));
+    assert!(String::from_utf8_lossy(&out).starts_with("All 1 commit(s)"));
+}
+
+/// Audit N8(c): Go lower-cases `İ` to a plain `i`, so the keyword `fix` is found in `FİX`.
+#[test]
+fn prepush_suggestion_keyword_uses_simple_lowercase() {
+    let p = TempDir::new().unwrap();
+    let (_, _, err) = check(
+        p.path(),
+        pp_env(Some("1"), Some("warn"), None),
+        "F\u{130}X the thing\n",
+    );
+    assert!(err.contains("Suggestion: fix: "), "{err}");
+}
+
+/// Audit N9: Go reads the configuration where it runs (the working directory) and the commit
+/// history where `CLAUDE_PROJECT_DIR` points.
+#[test]
+fn prepush_config_from_the_working_dir_history_from_the_repo_dir() {
+    let cwd = TempDir::new().unwrap();
+    pp_config(
+        cwd.path(),
+        "git-convention.yaml",
+        "git_convention:\n  auto_detection:\n    fallback: karma\n",
+    );
+    let repo = git_repo(&["revert: a", "revert: b"]);
+    let env = || pp_env(Some("1"), Some("warn"), None);
+    let (_, _, err) = check_bytes(cwd.path(), Some(repo.path()), env(), b"bad message\n");
+    let err = String::from_utf8_lossy(&err).into_owned();
+    assert!(
+        err.contains("violate conventional-commits convention"),
+        "history from the repo dir: {err}"
+    );
+    let (_, _, err) = check_bytes(cwd.path(), None, env(), b"bad message\n");
+    let err = String::from_utf8_lossy(&err).into_owned();
+    assert!(
+        err.contains("violate karma convention"),
+        "no repo dir: the fallback from the cwd config: {err}"
+    );
+    // The repository's own configuration is not read.
+    pp_config(
+        repo.path(),
+        "git-convention.yaml",
+        "git_convention:\n  validation:\n    enforce_on_push: true\n",
+    );
+    let off = TempDir::new().unwrap();
+    let (code, out, err) = check_bytes(
+        off.path(),
+        Some(repo.path()),
+        pp_env(None, None, None),
+        b"bad message\n",
+    );
+    assert_eq!((code, out.len(), err.len()), (0, 0, 0));
+}
+
+/// Audit N10: the caller asks first whether the check will read standard input at all, so a hook
+/// that is off never blocks on an open terminal.
+#[test]
+fn prepush_says_whether_it_reads_input() {
+    use quality_gate::pre_push::reads_input;
+    let p = TempDir::new().unwrap();
+    assert!(!reads_input(p.path(), &pp_env(None, None, None)));
+    assert!(reads_input(p.path(), &pp_env(Some("1"), None, None)));
+    assert!(!reads_input(
+        p.path(),
+        &pp_env(Some("1"), Some("skip"), None)
+    ));
+    pp_config(
+        p.path(),
+        "git-convention.yaml",
+        "git_convention:\n  validation:\n    enforce_on_push: true\n",
+    );
+    assert!(reads_input(p.path(), &pp_env(None, None, None)));
 }

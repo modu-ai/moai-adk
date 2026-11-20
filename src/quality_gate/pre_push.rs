@@ -22,8 +22,11 @@ pub struct PrePushEnv {
 }
 
 pub struct PrePushInvocation {
-    /// `CLAUDE_PROJECT_DIR` or the working directory.
+    /// The working directory: the configuration is read here, as the Go build does.
     pub project_dir: PathBuf,
+    /// `CLAUDE_PROJECT_DIR` when it is set: the repository whose history auto detection samples.
+    /// `None` means `project_dir`.
+    pub repo_dir: Option<PathBuf>,
     pub env: PrePushEnv,
     /// Everything read from standard input.
     pub stdin: Vec<u8>,
@@ -189,7 +192,12 @@ fn extract_type(header: &str) -> &str {
 /// Go's `suggestFix`, as bytes: the first byte is lower-cased and a first byte that starts a
 /// multi-byte character becomes U+FFFD while its continuation bytes stay (Go slices a byte).
 fn suggest_fix(header: &str) -> Vec<u8> {
-    let lower = header.to_lowercase();
+    // Go's `strings.ToLower` maps each rune to its simple lower case, so `İ` becomes `i`; Rust's
+    // full mapping would give `i` plus a combining dot.
+    let lower: String = header
+        .chars()
+        .map(|c| c.to_lowercase().next().unwrap_or(c))
+        .collect();
     let kind = if lower.contains("fix") || lower.contains("bug") {
         "fix"
     } else if lower.contains("add") || lower.contains("feat") || lower.contains("new") {
@@ -216,20 +224,42 @@ fn suggest_fix(header: &str) -> Vec<u8> {
     out
 }
 
-fn validate(message: &str, conv: &Convention) -> ValidationResult {
-    let header = message.split('\n').next().unwrap_or("").trim();
+/// Go's `strings.TrimSpace` on bytes: a valid UTF-8 line is trimmed by Unicode white space, any
+/// other line by ASCII white space only.
+fn trim_subject(line: &[u8]) -> &[u8] {
+    match std::str::from_utf8(line) {
+        Ok(s) => s.trim().as_bytes(),
+        Err(_) => {
+            let start = line
+                .iter()
+                .position(|b| !b.is_ascii_whitespace())
+                .unwrap_or(line.len());
+            let end = line
+                .iter()
+                .rposition(|b| !b.is_ascii_whitespace())
+                .map_or(start, |i| i + 1);
+            &line[start..end]
+        }
+    }
+}
+
+fn validate(message: &[u8], conv: &Convention) -> ValidationResult {
+    let first_line = message.split(|b| *b == b'\n').next().unwrap_or(&[]);
+    let raw_header = trim_subject(first_line);
+    let lossy = String::from_utf8_lossy(raw_header);
+    let header: &str = &lossy;
     let mut violations = Vec::new();
     if header.is_empty() {
         violations.push(Violation::Required);
         return ValidationResult {
-            message: message.as_bytes().to_vec(),
+            message: message.to_vec(),
             violations,
         };
     }
-    if conv.max_length > 0 && header.len() > conv.max_length {
+    if conv.max_length > 0 && raw_header.len() > conv.max_length {
         violations.push(Violation::MaxLength {
             expected: format!("max {} characters", conv.max_length),
-            actual: format!("{} characters", header.len()),
+            actual: format!("{} characters", raw_header.len()),
         });
     }
     if !pattern_matches(header, conv) {
@@ -247,7 +277,7 @@ fn validate(message: &str, conv: &Convention) -> ValidationResult {
         }
     }
     ValidationResult {
-        message: message.as_bytes().to_vec(),
+        message: message.to_vec(),
         violations,
     }
 }
@@ -256,22 +286,74 @@ fn is_valid(r: &ValidationResult) -> bool {
     r.violations.is_empty()
 }
 
-/// Go's `%q` on a string.
+/// Whether Go's `strconv.IsPrint` would print `c` as it is: white space other than the plain
+/// space, control characters, the format characters and the private-use area are not printable.
+/// (An approximation of the Unicode tables Go carries, covering the characters a commit
+/// subject can plausibly hold.)
+fn go_printable(c: char) -> bool {
+    let u = c as u32;
+    if c == ' ' {
+        return true;
+    }
+    if c.is_control() || c.is_whitespace() {
+        return false;
+    }
+    !matches!(
+        u,
+        0xad | 0x600..=0x605
+            | 0x61c
+            | 0x6dd
+            | 0x70f
+            | 0x180e
+            | 0x200b..=0x200f
+            | 0x202a..=0x202e
+            | 0x2060..=0x2064
+            | 0x2066..=0x206f
+            | 0xfeff
+            | 0xfff9..=0xfffb
+            | 0xe000..=0xf8ff
+            | 0xf0000..=0x10ffff
+    )
+}
+
+/// Go's `%q` (`strconv.Quote`) on a string that may not be valid UTF-8: a byte that is not part
+/// of a character becomes `\xNN`.
 fn quote(s: &[u8]) -> String {
-    let text = String::from_utf8_lossy(s);
     let mut out = String::from("\"");
-    for c in text.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\t' => out.push_str("\\t"),
-            '\r' => out.push_str("\\r"),
-            c if (c as u32) < 0x20 || c as u32 == 0x7f => {
-                out.push_str(&format!("\\x{:02x}", c as u32))
+    let mut rest = s;
+    while !rest.is_empty() {
+        let (valid, bad) = match std::str::from_utf8(rest) {
+            Ok(v) => (v, 0),
+            Err(e) => {
+                let upto = e.valid_up_to();
+                let bad = e.error_len().unwrap_or(rest.len() - upto);
+                (std::str::from_utf8(&rest[..upto]).unwrap_or(""), bad)
             }
-            c => out.push(c),
+        };
+        for c in valid.chars() {
+            match c {
+                '"' => out.push_str("\\\""),
+                '\\' => out.push_str("\\\\"),
+                '\x07' => out.push_str("\\a"),
+                '\x08' => out.push_str("\\b"),
+                '\x0c' => out.push_str("\\f"),
+                '\n' => out.push_str("\\n"),
+                '\r' => out.push_str("\\r"),
+                '\t' => out.push_str("\\t"),
+                '\x0b' => out.push_str("\\v"),
+                c if (c as u32) < 0x20 || c as u32 == 0x7f => {
+                    out.push_str(&format!("\\x{:02x}", c as u32))
+                }
+                c if go_printable(c) => out.push(c),
+                c if (c as u32) < 0x10000 => out.push_str(&format!("\\u{:04x}", c as u32)),
+                c => out.push_str(&format!("\\U{:08x}", c as u32)),
+            }
         }
+        let used = valid.len();
+        for b in &rest[used..used + bad] {
+            out.push_str(&format!("\\x{b:02x}"));
+        }
+        rest = &rest[used + bad..];
     }
     out.push('"');
     out
@@ -523,7 +605,7 @@ fn resolve_auto(repo: &Path, s: &Settings) -> Result<Convention, String> {
         let conv = builtin(name).expect("built-in");
         let matched = subjects
             .iter()
-            .filter(|m| is_valid(&validate(m, &conv)))
+            .filter(|m| is_valid(&validate(m.as_bytes(), &conv)))
             .count();
         let confidence = matched as f64 / subjects.len() as f64;
         if best.as_ref().is_none_or(|(_, c)| confidence > *c) {
@@ -534,6 +616,15 @@ fn resolve_auto(repo: &Path, s: &Settings) -> Result<Convention, String> {
         Some((conv, confidence)) if confidence >= s.threshold => Ok(conv),
         _ => load_fallback(&s.fallback),
     }
+}
+
+/// Whether `run` will read standard input for this directory and environment: enforcement on
+/// and an action other than `skip`. A caller that wires standard input asks first, so a hook
+/// that is off never blocks on an open terminal.
+pub fn reads_input(project_dir: &Path, env: &PrePushEnv) -> bool {
+    let mut warnings = Vec::new();
+    let s = settings(project_dir, &mut warnings);
+    enforcement_on(env, &s) && resolve_action(env, &s) != Action::Skip
 }
 
 /// Runs the check; the return value is the process exit code.
@@ -557,7 +648,7 @@ pub fn run(inv: &PrePushInvocation, out: &mut dyn Write, err: &mut dyn Write) ->
         .filter(|c| !c.is_empty())
         .unwrap_or_else(|| s.convention.clone());
     let loaded = if name == "auto" {
-        resolve_auto(&inv.project_dir, &s)
+        resolve_auto(inv.repo_dir.as_deref().unwrap_or(&inv.project_dir), &s)
     } else {
         builtin(&name).ok_or_else(|| {
             format!("load convention \"{name}\": unknown built-in convention: \"{name}\"")
@@ -573,10 +664,10 @@ pub fn run(inv: &PrePushInvocation, out: &mut dyn Write, err: &mut dyn Write) ->
     if s.max_length > 0 {
         conv.max_length = s.max_length as usize;
     }
-    let text = String::from_utf8_lossy(&inv.stdin).into_owned();
-    let subjects: Vec<&str> = text
-        .split('\n')
-        .map(str::trim)
+    let subjects: Vec<&[u8]> = inv
+        .stdin
+        .split(|b| *b == b'\n')
+        .map(trim_subject)
         .filter(|l| !l.is_empty())
         .collect();
     if subjects.is_empty() {
