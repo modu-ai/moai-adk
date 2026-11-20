@@ -47,8 +47,11 @@ impl World {
 
     fn command(&self, session: Option<&str>, args: &[&str]) -> std::process::Command {
         let mut all = vec!["card"];
-        all.extend_from_slice(args);
+        // The project goes before a `--`: what follows it is the command `line-lease` runs.
+        let cut = args.iter().position(|a| *a == "--").unwrap_or(args.len());
+        all.extend_from_slice(&args[..cut]);
         all.extend_from_slice(&["--project", &self.project]);
+        all.extend_from_slice(&args[cut..]);
         let mut cmd = self.home.command(&all);
         if let Some(id) = session {
             cmd.env(SESSION_VAR, id);
@@ -175,6 +178,32 @@ impl World {
         args.extend_from_slice(command);
         self.command(Some(session), &args)
     }
+}
+
+/// Fail with only the lines that differ, so a write that should not have happened is named.
+fn assert_unchanged(before: &[String], after: &[String], what: &str) {
+    let gone: Vec<&String> = before.iter().filter(|l| !after.contains(l)).collect();
+    let new: Vec<&String> = after.iter().filter(|l| !before.contains(l)).collect();
+    assert!(
+        gone.is_empty() && new.is_empty(),
+        "{what}: lines removed {gone:?}, lines added {new:?}"
+    );
+}
+
+/// Like [`assert_unchanged`], but `fence_reject` events (the ledger's record of a rejected fenced
+/// call: a stale generation or another session) may be added, at most `max` of them.
+fn assert_only_fence_events_added(before: &[String], after: &[String], what: &str, max: usize) {
+    let fence = format!("{:?}", "fence_reject".as_bytes());
+    let gone: Vec<&String> = before.iter().filter(|l| !after.contains(l)).collect();
+    let added: Vec<&String> = after.iter().filter(|l| !before.contains(l)).collect();
+    let (events, other): (Vec<&String>, Vec<&String>) = added
+        .into_iter()
+        .partition(|l| l.starts_with("event:") && l.contains(&fence));
+    assert!(
+        gone.is_empty() && other.is_empty() && events.len() <= max,
+        "{what}: lines removed {gone:?}, other lines added {other:?}, fence events {}",
+        events.len()
+    );
 }
 
 fn dump_tables(conn: &Connection, tables: &[&str]) -> Vec<String> {
@@ -320,7 +349,7 @@ fn review_refuses_a_keep_path_the_card_does_not_hold() {
     ));
     assert_eq!(kind, "conflict", "{message}");
     assert!(message.contains("src/other.rs"), "{message}");
-    assert_eq!(w.dump(), before, "a refused review writes nothing");
+    assert_unchanged(&before, &w.dump(), "a refused review writes nothing");
     assert_eq!(
         result(&w.card(None, &["show", &a]))["state"],
         json!("active")
@@ -395,7 +424,9 @@ fn give_back_refuses_an_unknown_path_and_a_stale_generation_and_writes_nothing()
         &["give-back", &a, "--generation", "1", "--path", "src/a.rs"],
     ));
     assert_eq!(kind, "conflict");
-    assert_eq!(w.dump(), before, "refusals write nothing");
+    // An unknown path writes nothing; a stale generation or another session leaves only the
+    // `fence_reject` event the ledger records for every rejected fenced call.
+    assert_only_fence_events_added(&before, &w.dump(), "refusals change no reservation or card", 2);
 }
 
 // ---- line-lease --------------------------------------------------------------------------------
@@ -499,7 +530,7 @@ fn line_lease_refuses_after_the_wait_limit_naming_the_other_card() {
         "it waited for the limit"
     );
     assert!(!file.exists(), "the command did not run");
-    assert_eq!(w.dump(), before, "a refused lease writes nothing");
+    assert_unchanged(&before, &w.dump(), "a refused lease writes nothing");
 }
 
 #[test]
@@ -540,7 +571,11 @@ fn line_lease_leaves_a_path_the_card_already_holds_in_its_scope() {
 
 fn help(w: &World, sub: &str) -> String {
     let out = w.card(None, &[sub, "--help"]);
-    String::from_utf8_lossy(&out.stdout).to_string()
+    // Clap wraps the help text; a phrase may break at a line end.
+    String::from_utf8_lossy(&out.stdout)
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 #[test]
