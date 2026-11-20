@@ -1,0 +1,260 @@
+=== go_pass
+exit: 0
+typecheck: skipped (no default for this language; set gate.typecheck.command to enable one)
+quality gate steps (4 configured):
+  - go vet: executed — go vet ./...
+  - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+  - golangci-lint: skipped — the optional tool "golangci-lint" was not found on PATH
+  - go test: executed — go test ./...
+
+=== go_vet_fail
+exit: 1
+quality gate failed: go vet
+vet-broke
+quality gate steps (4 configured):
+  - go vet: executed — go vet ./...
+  - typecheck: not reached
+  - golangci-lint: not reached
+  - go test: not reached
+
+=== go_vet_fail_no_output
+exit: 1
+quality gate failed: go vet
+exit status 7
+quality gate steps (4 configured):
+  - go vet: executed — go vet ./...
+  - typecheck: not reached
+  - golangci-lint: not reached
+  - go test: not reached
+
+=== go_test_fail
+exit: 1
+quality gate failed: go test
+FAIL
+quality gate steps (4 configured):
+  - go vet: executed — go vet ./...
+  - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+  - golangci-lint: skipped — the optional tool "golangci-lint" was not found on PATH
+  - go test: executed — go test ./...
+
+=== go_lint_runs_with_config
+exit: 1
+quality gate failed: golangci-lint
+lint-found
+quality gate steps (4 configured):
+  - go vet: executed — go vet ./...
+  - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+  - golangci-lint: executed — golangci-lint run
+  - go test: not reached
+
+=== go_lint_tool_missing
+exit: 0
+typecheck: skipped (no default for this language; set gate.typecheck.command to enable one)
+quality gate steps (4 configured):
+  - go vet: executed — go vet ./...
+  - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+  - golangci-lint: skipped — the optional tool "golangci-lint" was not found on PATH
+  - go test: executed — go test ./...
+
+=== go_no_sources
+exit: 0
+typecheck: skipped (no default for this language; set gate.typecheck.command to enable one)
+quality gate steps (4 configured):
+  - go vet: skipped — the project holds no source file with one of its extensions (.go)
+  - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+  - golangci-lint: skipped — the optional tool "golangci-lint" was not found on PATH
+  - go test: skipped — the project holds no source file with one of its extensions (.go)
+
+=== go_vet_disabled
+exit: 0
+typecheck: skipped (no default for this language; set gate.typecheck.command to enable one)
+quality gate steps (4 configured):
+  - go vet: disabled — turned off by the gate.disabled_steps setting
+  - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+  - golangci-lint: skipped — the optional tool "golangci-lint" was not found on PATH
+  - go test: executed — go test ./...
+
+=== go_skip_tests
+exit: 0
+typecheck: skipped (no default for this language; set gate.typecheck.command to enable one)
+quality gate steps (4 configured):
+  - go vet: executed — go vet ./...
+  - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+  - golangci-lint: skipped — the optional tool "golangci-lint" was not found on PATH
+  - go test: skipped — turned off by the gate.skip_tests setting
+
+=== go_build_tags
+exit: 0
+typecheck: skipped (no default for this language; set gate.typecheck.command to enable one)
+quality gate steps (4 configured):
+  - go vet: executed — go vet -tags=foo bar ./...
+  - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+  - golangci-lint: skipped — the optional tool "golangci-lint" was not found on PATH
+  - go test: executed — go test -tags=foo bar ./...
+
+=== go_typecheck_override_runs
+exit: 0
+quality gate steps (4 configured):
+  - go vet: executed — go vet ./...
+  - typecheck: executed — mytc --strict
+  - golangci-lint: skipped — the optional tool "golangci-lint" was not found on PATH
+  - go test: executed — go test ./...
+
+=== go_typecheck_override_fails
+exit: 1
+quality gate failed: typecheck
+type-error
+quality gate steps (4 configured):
+  - go vet: executed — go vet ./...
+  - typecheck: executed — mytc
+  - golangci-lint: not reached
+  - go test: not reached
+
+=== go_typecheck_override_tool_missing
+exit: 0
+quality gate steps (4 configured):
+  - go vet: executed — go vet ./...
+  - typecheck: skipped — the optional tool "mytc" was not found on PATH
+  - golangci-lint: skipped — the optional tool "golangci-lint" was not found on PATH
+  - go test: executed — go test ./...
+
+=== go_typecheck_off
+exit: 0
+quality gate steps (3 configured):
+  - go vet: executed — go vet ./...
+  - golangci-lint: skipped — the optional tool "golangci-lint" was not found on PATH
+  - go test: executed — go test ./...
+
+=== go_vet_timeout
+exit: 1
+quality gate timed out: go vet exceeded 1s; termination was signalled to the step's whole process group, so processes the step started were signalled too
+quality gate steps (4 configured):
+  - go vet: executed — go vet ./...
+  - typecheck: not reached
+  - golangci-lint: not reached
+  - go test: not reached
+
+=== python_without_sources
+exit: 0
+typecheck: skipped (no default for this language; set gate.typecheck.command to enable one)
+quality gate steps (4 configured):
+  - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+  - ruff: executed — ruff check .
+  - mypy: skipped — the project holds no source file with one of its extensions (.py, .pyi)
+  - pytest: executed — pytest
+
+=== python_pytest_exit_five_passes
+exit: 0
+typecheck: skipped (no default for this language; set gate.typecheck.command to enable one)
+quality gate steps (4 configured):
+  - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+  - ruff: skipped — the optional tool "ruff" was not found on PATH
+  - mypy: skipped — the optional tool "mypy" was not found on PATH
+  - pytest: executed — pytest
+
+=== python_pytest_fails
+exit: 1
+quality gate failed: pytest
+1 failed
+quality gate steps (4 configured):
+  - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+  - ruff: skipped — the optional tool "ruff" was not found on PATH
+  - mypy: skipped — the optional tool "mypy" was not found on PATH
+  - pytest: executed — pytest
+
+=== python_uv_runner
+exit: 0
+typecheck: skipped (no default for this language; set gate.typecheck.command to enable one)
+quality gate steps (4 configured):
+  - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+  - ruff: skipped — the optional tool "ruff" was not found on PATH
+  - mypy: skipped — the optional tool "mypy" was not found on PATH
+  - pytest: executed — uv run pytest
+
+=== rust_pass
+exit: 0
+typecheck: skipped (no default for this language; set gate.typecheck.command to enable one)
+quality gate steps (3 configured):
+  - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+  - cargo clippy: executed — cargo clippy -- -D warnings
+  - cargo test: executed — cargo test
+
+=== rust_clippy_fails
+exit: 1
+quality gate failed: cargo clippy
+warn
+quality gate steps (3 configured):
+  - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+  - cargo clippy: executed — cargo clippy -- -D warnings
+  - cargo test: not reached
+
+=== elixir_required_tool_missing
+exit: 1
+quality gate failed: mix test
+exec: "mix": executable file not found in $PATH
+quality gate steps (3 configured):
+  - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+  - credo: skipped — the optional tool "mix" was not found on PATH
+  - mix test: executed — mix test
+
+=== dotnet_restore_failure_passes
+exit: 0
+typecheck: skipped (no default for this language; set gate.typecheck.command to enable one)
+quality gate steps (3 configured):
+  - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+  - dotnet format: executed — dotnet format --verify-no-changes
+  - dotnet test: executed — dotnet test
+
+=== dotnet_other_failure
+exit: 1
+quality gate failed: dotnet format
+boom
+quality gate steps (3 configured):
+  - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+  - dotnet format: executed — dotnet format --verify-no-changes
+  - dotnet test: not reached
+
+=== flutter_project
+exit: 0
+typecheck: skipped (no default for this language; set gate.typecheck.command to enable one)
+quality gate steps (3 configured):
+  - flutter analyze: executed — flutter analyze
+  - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+  - flutter test: executed — flutter test
+
+=== dart_project
+exit: 0
+typecheck: skipped (no default for this language; set gate.typecheck.command to enable one)
+quality gate steps (3 configured):
+  - dart analyze: executed — dart analyze
+  - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+  - dart test: executed — dart test
+
+=== monorepo_go_and_rust
+exit: 0
+typecheck: skipped (no default for this language; set gate.typecheck.command to enable one)
+typecheck: skipped (no default for this language; set gate.typecheck.command to enable one)
+quality gate steps (6 configured):
+  - go vet: executed — go vet ./...
+  - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+  - golangci-lint: skipped — the optional tool "golangci-lint" was not found on PATH
+  - go test: executed — go test ./...
+  - cargo clippy: executed — cargo clippy -- -D warnings
+  - cargo test: executed — cargo test
+
+=== go_second_step_not_reached_after_lint_fail
+exit: 1
+quality gate failed: golangci-lint
+exit status 1
+quality gate steps (4 configured):
+  - go vet: executed — go vet ./...
+  - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+  - golangci-lint: executed — golangci-lint run
+  - go test: not reached
+
+=== no_language
+exit: 0
+
+
+=== gate_disabled
+exit: 0
