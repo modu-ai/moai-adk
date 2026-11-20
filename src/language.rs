@@ -652,15 +652,19 @@ mod tests {
     }
 
     #[test]
-    fn merge_answers_names_every_item_and_rejects_bad_answers() {
+    fn merge_answers_names_the_three_asked_items_and_keeps_older_ones() {
         let current = settings(&[("code_comments", "ja")]);
         let answers = json!({"user_chat": "zh"});
         let out = merge_answers(Some(&current), answers.as_object().unwrap(), "ko").unwrap();
-        assert_eq!(out.len(), ITEMS.len());
+        // The three asked items are named; an older item is carried only because the profile
+        // already had it; an older item the profile never set gets no key.
+        assert_eq!(out.len(), 4, "{out:?}");
         assert_eq!(out["user_chat"], "zh");
+        assert_eq!(out["commit_messages"], "ko");
+        assert_eq!(out["documents"], "ko");
         assert_eq!(out["code_comments"], "ja");
-        assert_eq!(out["reports"], "ko");
-        assert_eq!(out["agent_messages"], "en");
+        assert!(!out.contains_key("reports"));
+        assert!(!out.contains_key("agent_messages"));
         for bad in [
             json!({"nope": "en"}),
             json!({"reports": "xx"}),
@@ -672,18 +676,26 @@ mod tests {
 
     #[test]
     fn interactive_keeps_on_empty_and_eof_and_retries_bad_codes() {
+        // The three asked items, in table order: user_chat, commit_messages, documents.
         let mut prompt = Vec::new();
         let mut input = "ko\n\nxx\nja\n".as_bytes();
         let out = interactive(None, "en", &mut input, &mut prompt).unwrap();
+        assert_eq!(out.len(), 3, "{out:?}");
         assert_eq!(out["user_chat"], "ko");
-        assert_eq!(out["reports"], "en");
-        assert_eq!(out["issue_pr_records"], "ja");
-        // End of input keeps the suggested value for every remaining item.
+        // An empty line keeps the suggested value (the conversation language, `en` here).
         assert_eq!(out["commit_messages"], "en");
-        assert_eq!(out["code_comments"], "en");
+        // A bad code is asked again; the next line is the answer.
+        assert_eq!(out["documents"], "ja");
         assert!(String::from_utf8(prompt)
             .unwrap()
             .contains("unsupported language code"));
+        // End of input keeps the suggested value for every remaining item.
+        let mut input = "ko\n".as_bytes();
+        let out = interactive(None, "en", &mut input, &mut Vec::new()).unwrap();
+        assert_eq!(out["user_chat"], "ko");
+        assert_eq!(out["commit_messages"], "en");
+        assert_eq!(out["documents"], "en");
+        assert_eq!(out.len(), 3);
     }
 
     #[test]
@@ -921,26 +933,35 @@ mod tests {
             en,
             "Writing language by item (`language` in `.moai/project.yaml`):\n\
              - Conversation with the user: Japanese (`ja`)\n\
-             - Code comments: Korean (`ko`)\n"
+             - Code comments: Korean (`ko`)\n\
+             All other writing (instruction files, skills and rules, messages between agents, code comments, issue and PR records) is in English unless a line above says otherwise.\n"
         );
         let ko = render_lines(&s, "ko", ".moai/project.yaml");
         assert_eq!(
             ko,
             "항목별 작성 언어(`.moai/project.yaml`의 `language`):\n\
              - 사용자 대화: 일본어 (`ja`)\n\
-             - 코드 주석: 한국어 (`ko`)\n"
+             - 코드 주석: 한국어 (`ko`)\n\
+             그 밖의 글(지침 파일, 스킬·규칙, 에이전트 간 메시지, 코드 주석, Issue·PR 기록)은 위에 따로 적지 않으면 영어로 써요.\n"
         );
     }
 
-    /// Each item alone renders exactly its own line, in `ITEMS` order with the others absent.
+    /// Each item alone renders exactly its own line, in `ITEMS` order with the others absent, then
+    /// the one closing sentence.
     #[test]
     fn each_item_renders_its_own_line() {
         for item in ITEMS {
             let s = settings(&[(item.id, "ko")]);
             let en = render_lines(&s, "en", "p.yaml");
             let lines: Vec<&str> = en.lines().collect();
-            assert_eq!(lines.len(), 2, "{}: {en}", item.id);
+            // Heading, the item's own line, then the closing sentence about everything else.
+            assert_eq!(lines.len(), 3, "{}: {en}", item.id);
             assert_eq!(lines[1], format!("- {}: Korean (`ko`)", item.label_en));
+            assert!(
+                lines[2].starts_with("All other writing"),
+                "{}: {en}",
+                item.id
+            );
         }
     }
 }

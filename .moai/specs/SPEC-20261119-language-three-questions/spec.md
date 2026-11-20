@@ -37,7 +37,7 @@ created: 2026-11-19
 - REQ-9: While the profile sets `instruction_files` to `en` or `ko`, the managed sections shall be written in that language. · failure: none
 - REQ-10: When a profile carries the old eight `language` items, the plan and the apply shall run without a conflict, leaving the profile's own values in the profile. · failure: none
 - REQ-11: When the profile sets no `issue_pr_records`, the GitHub forms shall be written in English; a profile that sets one decides the form language. · failure: none
-- REQ-12: The project interview text of the skill shall describe the three language questions, the installer value as a confirmation and the English rest. · failure: none
+- REQ-12 (moved out): the project interview text of the skill (`skills/moai/workflows/project.md`) describing the three language questions is written by the change that rewrites that workflow, which received the wording of this change by a note; this SPEC no longer edits that file and no longer tests it.
 
 ## Acceptance
 
@@ -61,22 +61,20 @@ created: 2026-11-19
   verify: `cargo test --locked --offline --test language_three_questions a_profile_with_the_old_eight_items_plans_and_applies_without_conflict`
 - AC-9 (REQ-11): form language is English without `issue_pr_records` and follows it when set.
   verify: `cargo test --locked --offline --test language_three_questions the_form_language_is_english_unless_issue_pr_records_is_set`
-- AC-10 (REQ-12): `project.md` names the three questions and no longer says the eight items.
-  verify: `cargo test --locked --offline --test language_three_questions the_project_skill_names_three_language_questions`
 - AC-11: neighbours (targeted; the full run is cited from the PR's CI run).
   verify: `cargo test --locked --offline --test language_three_questions --test language_setting --test skeleton_language --test go_settings_defaults --test language_set_cli`
   verify: `cargo clippy --locked --offline --all-targets -- -D warnings`
 
 ## Scope
 
-- write: `.moai/specs/SPEC-20261119-language-three-questions/**`, `src/language.rs`, `src/agents.rs`, `src/ops/language_setup.rs`, `tests/language_three_questions.rs`, `tests/language_setting.rs`, `tests/skeleton_language.rs`, `tests/go_settings_defaults.rs`, `skills/moai/workflows/project.md`, `skills/moai/references/source-manifest.json`
+- write: `.moai/specs/SPEC-20261119-language-three-questions/**`, `src/language.rs`, `src/agents.rs`, `src/ops/language_setup.rs`, `tests/language_three_questions.rs`, `tests/language_setting.rs`, `tests/skeleton_language.rs`, `tests/go_settings_defaults.rs`, `skills/moai/references/source-manifest.json`
 - read-only: `src/github_templates.rs`, `src/go_settings.rs`, `src/profile.rs`, `src/hook_engine.rs`, the installer's `install/install.sh`
 - forbidden: any write in the real HOME, a change to the code values or to the installer's saved file format, a new card, Issue or pull request number in the text this change adds
 
 ## Plan
 
 1. SPEC, then RED tests (`tests/language_three_questions.rs`).
-2. `src/language.rs`: asked items and legacy items, sources, answers, terminal step, rendered lines; `src/agents.rs`: the managed-section language; `skills/moai/workflows/project.md`.
+2. `src/language.rs`: asked items and legacy items, sources, answers, terminal step, rendered lines; `src/agents.rs`: the managed-section language.
 3. Update the older tests that name the eight items; checks, mutants, a read-only audit by another agent.
 
 ## Risks

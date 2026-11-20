@@ -17,7 +17,6 @@ use tempfile::TempDir;
 
 const EXE: &str = crate::common::MOAI_BIN;
 const PROFILE: &str = ".moai-cli/project.yaml";
-const PROJECT_SKILL: &str = include_str!("../skills/moai/workflows/project.md");
 
 /// A project whose profile has review answers (so REVIEW.md is planned too) and, when given, a
 /// `language` value.
@@ -527,29 +526,4 @@ fn the_form_language_is_english_unless_issue_pr_records_is_set() {
             "{language}: {notes}"
         );
     }
-}
-
-/// AC-10 (REQ-12): the project interview text names the three questions.
-#[test]
-fn the_project_skill_names_three_language_questions() {
-    let line = PROJECT_SKILL
-        .lines()
-        .find(|l| l.contains("moai language-setup"))
-        .expect("project.md describes the language step");
-    for phrase in [
-        "three",
-        "conversation",
-        "commit messages",
-        "documents",
-        "English",
-    ] {
-        assert!(
-            line.contains(phrase),
-            "the language step must say {phrase:?}: {line}"
-        );
-    }
-    assert!(
-        !line.contains("item by item") && !line.contains("instruction_files"),
-        "the language step still describes the eight items: {line}"
-    );
 }

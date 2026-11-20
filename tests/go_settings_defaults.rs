@@ -143,14 +143,11 @@ fn the_go_backup_values_are_offered_as_defaults_and_never_written() {
     assert_eq!(
         suggested(&q),
         vec![
+            // The three asked items: the conversation language from the Go backup, its commit
+            // message language, and `documents` following the conversation language.
             ("user_chat".into(), "ko".into()),
-            ("reports".into(), "ko".into()),
-            ("issue_pr_records".into(), "ko".into()),
             ("commit_messages".into(), "ja".into()),
-            ("agent_messages".into(), "en".into()),
-            ("instruction_files".into(), "en".into()),
-            ("skill_instructions".into(), "en".into()),
-            ("code_comments".into(), "zh".into()),
+            ("documents".into(), "ko".into()),
         ]
     );
     assert_eq!(q["questions"]["conversation_language"], json!("ko"));
@@ -182,9 +179,11 @@ fn the_go_backup_values_are_offered_as_defaults_and_never_written() {
     assert_eq!(r["language"]["commit_messages"], json!("ja"));
 
     // The terminal step says where its defaults came from (stderr) and keeps them on Enter.
-    let (stdout, stderr) = setup(&root, &[], &"\n".repeat(8));
+    let (stdout, stderr) = setup(&root, &[], &"\n".repeat(3));
     assert!(stderr.contains(".moai-backup/config/sections"), "{stderr}");
-    assert_eq!(result(&stdout)["language"]["code_comments"], json!("zh"));
+    let kept = result(&stdout);
+    assert_eq!(kept["language"]["commit_messages"], json!("ja"), "{kept}");
+    assert_eq!(kept["language"]["user_chat"], json!("ko"));
 
     assert_eq!(tree(&backup), before, "the backup is only read");
 }
@@ -299,12 +298,12 @@ fn the_profile_value_wins_over_the_go_backup() {
     );
     let s: std::collections::BTreeMap<_, _> = suggested(&q).into_iter().collect();
     assert_eq!(s["user_chat"], "en");
-    assert_eq!(s["code_comments"], "en", "profile over Go");
     assert_eq!(s["commit_messages"], "ja", "empty in the profile: Go value");
     assert_eq!(
-        s["reports"], "en",
+        s["documents"], "en",
         "conversation default follows the profile"
     );
+    assert_eq!(s.len(), 3, "only the three asked items are offered");
 
     let r = result(&setup(&root, &["--answers"], "{}").0);
     assert_eq!(r["language"]["user_chat"], json!("en"), "{r}");
