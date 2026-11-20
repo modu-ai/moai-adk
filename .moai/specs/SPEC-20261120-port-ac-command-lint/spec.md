@@ -97,4 +97,19 @@ The HANGUL regex in the tool has no caller — dead, not ported.
 
 ## Result
 
-구현 에이전트가 채워요 — 이 커밋은 SPEC 과 계획까지예요.
+구현(agent-20, 커밋 계보: SPEC → 이식·전환·삭제 5ee086363963 → 수리) — `moai
+ac-commands-check`(src/ops/ac_commands_check.rs, ops 봉투)가 파이썬 도구의 스캔·판정·문구를
+이어받았고 tools/check_ac_commands.py 와 tests/ac_command_lint.rs 의 python3 래퍼는 같은
+커밋에서 지워졌어요. 계약 시험 15건(stub cargo — 스캔 집합 경계·env 접두·placeholder·위반
+문구 3종·대상별 목록 캐시·file 모드·감사 B3 의 백틱 짝과 --test 공백 3건). 삭제 전 동작
+대조: 전체 트리 334 파일·대상 7·위반 0(요약까지 동일), 인공 위반 트리는 요약·위반 줄이
+파이썬 표준출력과 정확히 동일(마지막 봉투의 Err 줄만 여분).
+
+tier 1 감사(리더 감사 audit-c197-s2, 노트 4199)의 세 막는 문제: B2 — `.moai-cli` 문자열을
+`moai_cli::PROJECT_STATE_DIR` 상수 참조로(스펠 시험 통과), B3 — 백틱 짝을 정규식과 같은
+한-글자 스캔으로(이중 짝은 안쪽 스팬·닫히지 않은 짝은 스팬 아님)와 `--test\s+` 공백 필수
+(`--test-threads` 는 대상이 아님), B1 — src/main.rs 의 도움말 표·예시·operation 매핑과
+src/help.rs 의 GROUPS·EXAMPLES 한 줄은 그 파일들의 예약 카드(C-140·C-183)가 짝으로 넣는
+몫(카드 노트로 정확한 줄 전달, 짝으로 함께 병합). 감사가 막지 않은 남은 가장자리(한글 경계,
+확장자 없는 파일, .md 디렉터, \x0b·\x0c, 출력 모양 차이)는 이 Result 에 기록된 대로
+그대로 — 파이썬 도구가 같은 입력에서 같은 답을 내던 경계들이다.

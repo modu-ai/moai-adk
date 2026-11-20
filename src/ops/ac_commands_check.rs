@@ -11,7 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// Scan the recorded `cargo test` commands of a tree, or judge one file
+/// Scan recorded cargo-test commands, or judge one file
 ///
 /// Flags every recorded `cargo test --test <name> [filters…]` command that names a target
 /// with no `tests/<name>.rs`, a target whose listing has no tests, or filters that select
@@ -95,7 +95,7 @@ fn collect_tree_files(root: &Path) -> Vec<PathBuf> {
         }
     }
     docs.sort();
-    let reports = root.join(".moai-cli").join("reports");
+    let reports = root.join(moai_cli::fixed_state!("reports"));
     let mut listed = Vec::new();
     if let Ok(entries) = std::fs::read_dir(&reports) {
         for entry in entries.flatten() {
@@ -148,15 +148,23 @@ fn candidates(text: &str) -> Vec<&str> {
             out.push(line);
             continue;
         }
-        // `` `([^`\n]+)` `` per line: only closed, non-empty spans.
-        let parts: Vec<&str> = line.split('`').collect();
-        for span in parts[1..]
-            .iter()
-            .take(parts.len().saturating_sub(1))
-            .step_by(2)
-        {
-            if !span.is_empty() {
-                out.push(span);
+        // `` `([^`\n]+)` `` per line, scanning the way the regex does: from each
+        // backtick, a non-empty run up to the next backtick is a span and the scan moves
+        // past the closer; an empty pair — or a backtick with no closer — moves the scan
+        // one character, so the second backtick of a doubled pair opens the span inside
+        // (``b`` yields `b`), and an unclosed one is no span at all (the audit's B3).
+        let mut scan = 0usize;
+        while let Some(open_rel) = line[scan..].find('`') {
+            let open = scan + open_rel;
+            let Some(close_rel) = line[open + 1..].find('`') else {
+                break;
+            };
+            let close = open + 1 + close_rel;
+            if close > open + 1 {
+                out.push(&line[open + 1..close]);
+                scan = close + 1;
+            } else {
+                scan = open + 1;
             }
         }
     }
@@ -254,23 +262,30 @@ fn contains_cargo_test(candidate: &str) -> bool {
     false
 }
 
-/// The first `--test <name>` token in the joined tokens; the tool's regex joins the tokens
-/// first, so a bare `--test` without a following word finds nothing here either.
+/// The first `--test <name>` the tool's regex finds — the flag needs `--test\s+`, so
+/// `--test-threads` is never a `--test` and never names a target (the audit's B3).
 fn test_target_name(tokens: &[String]) -> Option<String> {
     let joined = tokens.join(" ");
-    let idx = joined.find("--test")?;
-    let rest = joined[idx + "--test".len()..].trim_start();
-    if rest.is_empty() {
-        return None;
+    let mut scan = 0usize;
+    while scan <= joined.len() {
+        let rel = joined[scan..].find("--test")?;
+        let idx = scan + rel;
+        let after = &joined[idx + "--test".len()..];
+        if !after.starts_with(char::is_whitespace) {
+            scan = idx + "--test".len();
+            continue;
+        }
+        let rest = after.trim_start();
+        let end = rest
+            .find(|c: char| !(c.is_ascii_alphanumeric() || c == '_' || c == '-'))
+            .unwrap_or(rest.len());
+        let name = &rest[..end];
+        if name.is_empty() {
+            return None;
+        }
+        return Some(name.to_string());
     }
-    let end = rest
-        .find(|c: char| !(c.is_ascii_alphanumeric() || c == '_' || c == '-'))
-        .unwrap_or(rest.len());
-    let name = &rest[..end];
-    if name.is_empty() {
-        return None;
-    }
-    Some(name.to_string())
+    None
 }
 
 /// cargo's own filter rule: a test is selected when ANY positional filter is a substring of
