@@ -110,7 +110,7 @@ impl Fx {
             .env("HOME", &self.home)
             .env("GIT_CONFIG_GLOBAL", "/dev/null")
             .env("GIT_CONFIG_SYSTEM", "/dev/null")
-            .args(["-c", "user.name=t", "-c", "user.email=t@e.test"])
+            .args(["-c", "user.name=t", "-c", "user.email=t@example.invalid"])
             .args([
                 "-c",
                 "commit.gpgsign=false",

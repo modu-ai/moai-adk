@@ -21,7 +21,7 @@ const UNTRACKED_MAX_FILES: usize = 200;
 /// How long one git call may run.
 const GIT_TIMEOUT: Duration = Duration::from_secs(3);
 /// Folders that hold the tool's own state, never the project's code.
-const OWN_FOLDERS: [&str; 2] = [".moai-cli/", ".git/"];
+const GIT_FOLDER: &str = ".git/";
 
 /// One finding of the turn: the project-relative path, the class and line, and the trimmed text
 /// of the line (used for the digest only; it is never printed or logged).
@@ -169,8 +169,10 @@ fn added_ranges(diff: &[u8]) -> Vec<(String, Vec<(usize, usize)>)> {
     files
 }
 
-fn own_state(path: &str) -> bool {
-    OWN_FOLDERS.iter().any(|folder| path.starts_with(folder))
+/// Whether `path` lies in git's own folder or in the project's state folder (`state` is that
+/// folder's name with a closing slash, as the project's layout names it).
+fn own_state(path: &str, state: &str) -> bool {
+    path.starts_with(GIT_FOLDER) || path.starts_with(state)
 }
 
 /// The findings the scanner reports for `text`, as the turn's findings of the file `path`;
@@ -216,11 +218,12 @@ pub(super) fn collect(cwd: &Path) -> Option<Vec<TurnFinding>> {
         &["ls-files", "--others", "--exclude-standard", "-z"],
         DIFF_MAX_BYTES,
     )?;
+    let state = format!("{}/", crate::state_root::dir(cwd));
     let mut out = Vec::new();
     // A diff longer than the bound is not read at all: a cut hunk is no hunk.
     if !diff.cut {
         for (path, ranges) in added_ranges(&diff.data) {
-            if own_state(&path) {
+            if own_state(&path, &state) {
                 continue;
             }
             let Some(name) = scan::project_relative(&path, cwd) else {
@@ -254,7 +257,7 @@ pub(super) fn collect(cwd: &Path) -> Option<Vec<TurnFinding>> {
         .split(|b| *b == 0)
         .filter(|name| !name.is_empty())
         .filter_map(|name| std::str::from_utf8(name).ok())
-        .filter(|name| !own_state(name) && !name.ends_with('/'))
+        .filter(|name| !own_state(name, &state) && !name.ends_with('/'))
         .take(UNTRACKED_MAX_FILES);
     for path in names {
         let Some(name) = scan::project_relative(path, cwd) else {
