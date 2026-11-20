@@ -244,6 +244,117 @@ class LocalCheckStepsTest(unittest.TestCase):
         ])
 
 
+class LocalCheckLegTest(unittest.TestCase):
+    """SPEC-20261119-ci-check-set-legs (C-20, leader decision 2837): LOCAL_CHECK_LEG splits
+    the CI check set into two parallel jobs per target. Unset or empty keeps today's full set
+    in today's order; `nextest` runs exactly fetch, test, doctest; `rest` exactly fetch,
+    clippy, fmt, fmt-ops, unittest, diff-check; any other value refuses (exit 2) before any
+    step runs, printing no `local-check:` line. The stop-at-first-failure and keep-going
+    rules hold inside a leg exactly as in the full set."""
+
+    def dry_steps(self, repo, **extra):
+        # The legs are CI's (in-place under GITHUB_ACTIONS); these pins speak from the runner.
+        proc = repo.run(LOCAL_CHECK_DRY_RUN="1", LOCAL_CHECK_BASE="BASE",
+                        LOCAL_CHECK_DIFF_HEAD="HEAD", GITHUB_ACTIONS="true", **extra)
+        self.assertEqual(proc.returncode, 1, proc.stderr)
+        return [STEP.match(line).groups() for line in proc.stdout.splitlines()
+                if STEP.match(line)], proc
+
+    def test_an_unset_or_empty_leg_runs_todays_full_set_in_order(self):
+        for extra in ({}, {"LOCAL_CHECK_LEG": ""}):
+            with self.subTest(extra=extra):
+                repo = FakeRepo()
+                self.addCleanup(repo.close)
+                steps, _ = self.dry_steps(repo, **extra)
+                self.assertEqual(steps, CI_LINUX_STEPS)
+
+    def test_the_nextest_leg_runs_exactly_fetch_test_doctest(self):
+        repo = FakeRepo()
+        self.addCleanup(repo.close)
+        steps, _ = self.dry_steps(repo, LOCAL_CHECK_LEG="nextest")
+        self.assertEqual(steps, CI_LINUX_STEPS[:3])
+
+    def test_the_rest_leg_runs_exactly_the_other_six_steps(self):
+        repo = FakeRepo()
+        self.addCleanup(repo.close)
+        steps, _ = self.dry_steps(repo, LOCAL_CHECK_LEG="rest")
+        self.assertEqual(steps, [CI_LINUX_STEPS[0], *CI_LINUX_STEPS[3:]])
+
+    def test_an_unknown_leg_refuses_with_exit_2_before_any_step(self):
+        for value in ("both", "NEXTEST", "nextest rest", "0", "nextest,rest"):
+            with self.subTest(value=value):
+                repo = FakeRepo()
+                self.addCleanup(repo.close)
+                proc = repo.run(LOCAL_CHECK_LEG=value)
+                self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+                self.assertIn("LOCAL_CHECK_LEG", proc.stderr)
+                # Refused before any stage: no step line ran and no result line was printed.
+                self.assertNotIn("step ", proc.stdout)
+                self.assertNotIn("local-check:", proc.stdout)
+
+    def test_a_leg_is_refused_in_candidate_mode(self):
+        """Leader repair N1 (2026-11-19): candidate mode prints the evidence line a gate
+        reads as a full-set pass, so a one-leg run must never get there. Any set leg value
+        refuses before any stage, with no result line — while in-place mode (CI) keeps it."""
+        for leg in ("nextest", "rest"):
+            with self.subTest(leg=leg):
+                repo = FakeRepo()
+                self.addCleanup(repo.close)
+                proc = repo.run(LOCAL_CHECK_MODE="candidate", LOCAL_CHECK_LEG=leg)
+                self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+                self.assertIn("LOCAL_CHECK_LEG", proc.stderr)
+                self.assertIn("full set", proc.stderr)
+                self.assertNotIn("step ", proc.stdout)
+                self.assertNotIn("local-check:", proc.stdout)
+
+    def test_a_leg_is_refused_in_local_in_place_mode(self):
+        """Slice 4 (audit record 1): in-place mode prints a pass line too, so a local
+        one-leg run (no GITHUB_ACTIONS) must refuse before any stage — on CI
+        (GITHUB_ACTIONS=true) the legs keep running, which the tests below pin."""
+        for leg in ("nextest", "rest"):
+            with self.subTest(leg=leg):
+                repo = FakeRepo()
+                self.addCleanup(repo.close)
+                proc = repo.run(LOCAL_CHECK_LEG=leg)
+                self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+                self.assertIn("LOCAL_CHECK_LEG", proc.stderr)
+                self.assertIn("full set", proc.stderr)
+                self.assertNotIn("step ", proc.stdout)
+                self.assertNotIn("local-check:", proc.stdout)
+
+    def test_a_leg_ignores_the_other_legs_failure(self):
+        """The nextest leg's `test` step failing must not touch the rest leg (they are
+        separate CI jobs), and vice versa."""
+        for leg, fail_label in (("rest", "cargo nextest"), ("nextest", "cargo clippy")):
+            with self.subTest(leg=leg):
+                repo = FakeRepo(fail_label=fail_label)
+                self.addCleanup(repo.close)
+                proc = repo.run(LOCAL_CHECK_LEG=leg, GITHUB_ACTIONS="true")
+                self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+
+    def test_a_leg_stops_at_its_own_first_failure_and_keep_going_runs_all_of_it(self):
+        repo = FakeRepo(fail_label="cargo clippy")
+        self.addCleanup(repo.close)
+        proc = repo.run(LOCAL_CHECK_LEG="rest", GITHUB_ACTIONS="true")
+        self.assertEqual(proc.returncode, 1)
+        self.assertEqual(repo.recorded(), [
+            "cargo fetch --locked",
+            "cargo clippy --offline --locked --all-targets -- -D warnings",
+        ])
+        repo2 = FakeRepo(fail_label="cargo clippy")
+        self.addCleanup(repo2.close)
+        proc2 = repo2.run(LOCAL_CHECK_LEG="rest", GITHUB_ACTIONS="true", LOCAL_CHECK_KEEP_GOING="1")
+        self.assertEqual(proc2.returncode, 1)
+        # Every rest step ran (diff-check is `git`, so the stub log holds the other five).
+        self.assertEqual(repo2.recorded(), [
+            "cargo fetch --locked",
+            "cargo clippy --offline --locked --all-targets -- -D warnings",
+            "cargo fmt --check",
+            "rustfmt --check --edition 2021 src/ops/*.rs",
+            "python3 -m unittest discover -v -s tests -p *_test.py",
+        ])
+
+
 class LocalCheckPythonSlotTest(unittest.TestCase):
     """SPEC-20261119-python-slot-pre-ready: the whole unittest discover waits in a python slot,
     a slot folder apart from the cargo slots; without `moai heavy-slot-acquire` it runs directly."""

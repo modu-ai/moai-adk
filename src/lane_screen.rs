@@ -99,36 +99,77 @@ fn clean(row: &str) -> String {
     out.trim().to_string()
 }
 
-/// `row` cut to [`EVIDENCE_CHARS`] characters.
+/// Text that came from a terminal this program does not own, for the answer: no character
+/// [`crate::lane_duty::unsafe_char`] names (a bidirectional or zero-width one included, removed
+/// first so it cannot split a secret shape), and every credential-shaped word replaced by
+/// `[redacted]` (re-audit C-B1 and C-N1, note 3497: an evidence row, a reset text, a title or an
+/// error message of another terminal may carry a key, and the answer goes into a session record).
+/// Two shape filters run, the word filter for shapes such as `AKIA…` and the substring filter for
+/// `sk-`, `ghp_`, `password=` and the like; a word such as `task-list` is shortened too, which a
+/// list of terminals can bear and a leaked key cannot.
+fn safe_text(text: &str) -> String {
+    let plain: String = text
+        .chars()
+        .filter(|c| !crate::lane_duty::unsafe_char(*c))
+        .collect();
+    let (words, _) = crate::redact::redact_outgoing(&plain);
+    crate::redact::redact_secret_shapes(&words)
+}
+
+/// `row` made safe and cut to [`EVIDENCE_CHARS`] characters.
 fn cut(row: &str) -> String {
-    if row.chars().count() <= EVIDENCE_CHARS {
+    cut_to(&safe_text(row), EVIDENCE_CHARS)
+}
+
+/// `row` cut to `max` characters; a longer row ends with `…`.
+fn cut_to(row: &str, max: usize) -> String {
+    if row.chars().count() <= max {
         return row.to_string();
     }
-    let mut s: String = row.chars().take(EVIDENCE_CHARS).collect();
+    let mut s: String = row.chars().take(max).collect();
     s.push('…');
     s
 }
 
-/// Characters of a vertical frame a dialog may be drawn in.
-const FRAME: [char; 6] = ['│', '┃', '║', '|', '╎', '┆'];
-/// The cursor a menu draws before the highlighted choice: `❯` is Claude Code's own, `>` is its
-/// plain-text form, the others are the arrows other menus use.
-const CURSORS: [char; 8] = ['❯', '>', '›', '▶', '▸', '→', '➜', '➤'];
+/// How many of the last non-blank rows may hold a confirmation question (R-N1).
+const BOTTOM_ROWS: usize = 8;
 
-fn is_blank_or_frame(c: char) -> bool {
-    c.is_whitespace() || FRAME.contains(&c)
+/// Words of a confirmation question, lower case.
+const QUESTIONS: [&str; 6] = [
+    "do you want",
+    "would you like",
+    "are you sure",
+    "proceed?",
+    "[y/n]",
+    "(y/n)",
+];
+
+/// The words a confirmation's choices are written with, lower case. A real dialog does not always
+/// say yes and no: `Allow` and `Deny`, `1. Y` and `2. N` (leader note 3433, R-N1).
+const CHOICE_WORDS: [&str; 6] = ["yes", "no", "allow", "deny", "y", "n"];
+
+/// Whether a (lower case) row holds a choice word as a whole word: `Yes, go`, `(No)`, `Allow /
+/// Deny`, `(y/N/a)` do, `Yesterday`, `Nobody`, `Allowance` and `Not now` do not.
+fn has_choice_word(row: &str) -> bool {
+    row.split(|c: char| !c.is_alphanumeric())
+        .any(|w| CHOICE_WORDS.contains(&w))
 }
 
-/// A choice row `❯ 2. text`: whether the cursor is on it, its number and its text. A vertical
-/// frame before the row and any cursor glyph in [`CURSORS`] are read through (audit note 3212 B1:
-/// `> 1. Yes` and `│ ❯ 1. Yes │` are choice rows too).
+/// The cursor a menu draws before the highlighted choice: `❯` is Claude Code's own, `>` is its
+/// plain-text form, the others are the arrows other menus use. Only a dialog with two or more
+/// choice rows and one of these in front of a row is `input_pending`; every other mark in front
+/// of a number is skipped without being a cursor.
+const CURSORS: [char; 8] = ['❯', '>', '›', '▶', '▸', '→', '➜', '➤'];
+
+/// A choice row `❯ 2. text`: whether a cursor from [`CURSORS`] is on it, its number and its
+/// text. Everything before the first letter or digit is a mark and is skipped, whatever it is
+/// (a frame, a cursor, a bullet, a glyph nobody listed): audit note 3212 B1 (`> 1. Yes` and
+/// `│ ❯ 1. Yes │`) and audit note 3362 B1 (a cursor outside the list). A letter or a digit
+/// before the number makes the row a sentence, not a choice.
 fn numbered(row: &str) -> Option<(bool, u32, &str)> {
-    let mut rest = row.trim_start_matches(is_blank_or_frame);
-    let mut cursor = false;
-    if let Some(c) = rest.chars().next().filter(|c| CURSORS.contains(c)) {
-        cursor = true;
-        rest = rest[c.len_utf8()..].trim_start();
-    }
+    let start = row.find(char::is_alphanumeric)?;
+    let (marks, rest) = row.split_at(start);
+    let cursor = marks.chars().any(|c| CURSORS.contains(&c));
     let digits = rest.chars().take_while(char::is_ascii_digit).count();
     if digits == 0 || digits > 2 {
         return None;
@@ -233,6 +274,39 @@ pub fn classify(rows: &[String]) -> Seen {
             State::Unknown,
             None,
             "fewer than six non-blank rows; working and idle need six",
+        );
+    }
+    // A confirmation question near the bottom with its choices on the question row itself or
+    // below it, and no numbered Yes and No rows the reader could use (the choices are drawn in a
+    // way it does not know, or in other words): Enter may pick the first choice, so the lane is
+    // not `working` or `idle` whatever its footer says (leader R-N1, note 3256). The choices
+    // are there when a choice word (`yes no allow deny y n`) is on the question row or a row
+    // below it (R-B1, note 3433: `proceed? (yes/no)` is one row), or when two or more numbered
+    // rows are below it whatever they say (R-N1, note 3433: `1. Allow once`, `3. Deny`). A
+    // question with only the input line under it is a lane that ended its turn and waits: that
+    // is the screen a send is for (leader S-N2, note 3362).
+    let near_bottom = rows
+        .iter()
+        .enumerate()
+        .filter(|(_, r)| !r.is_empty())
+        .rev()
+        .take(BOTTOM_ROWS);
+    if let Some((i, _)) = near_bottom.into_iter().find(|(i, _)| {
+        let Some(row) = lower.get(*i) else {
+            return false;
+        };
+        QUESTIONS.iter().any(|q| row.contains(q))
+            && (lower[*i..].iter().any(|r| has_choice_word(r))
+                || rows[*i + 1..]
+                    .iter()
+                    .filter(|r| numbered(r).is_some())
+                    .count()
+                    >= 2)
+    }) {
+        return seen(
+            State::Unknown,
+            rows.get(i),
+            "a question is near the bottom of the screen and its choices could not be read as Yes and No rows",
         );
     }
     if let Some(i) = find("esc to interrupt") {
@@ -621,13 +695,9 @@ pub fn read_input(input: &str) -> Screen {
     }
 }
 
-/// The answer of `moai lane-screen`: the state, its evidence row and reason, the reset time of a
-/// usage limit (from the lane's `home` when given), the `pane` object `lane-status` takes, and
-/// the count of non-blank rows. `now` is Unix seconds.
-pub fn report(input: &str, home: Option<&std::path::Path>, now: i64) -> serde_json::Value {
-    use crate::forge::policy::{format_utc, parse_utc};
-    use serde_json::{json, Value};
-
+/// Reads `input` and classifies it: the verdict the input itself settles, else the state of its
+/// rows. Shared by `lane-screen` and `lane-send` so both read a screen the same way.
+pub fn observe(input: &str) -> (Screen, Seen) {
     let screen = read_input(input);
     let non_blank = screen.rows.iter().filter(|r| !clean(r).is_empty()).count();
     let seen = match screen.verdict {
@@ -639,6 +709,28 @@ pub fn report(input: &str, home: Option<&std::path::Path>, now: i64) -> serde_js
         },
         None => classify(&screen.rows),
     };
+    (screen, seen)
+}
+
+/// The `reset` object of an answer for a reset time read from the screen text.
+fn reset_json(found: &Reset) -> serde_json::Value {
+    use crate::forge::policy::format_utc;
+    match found {
+        Reset::Utc(t) => serde_json::json!({"utc": format_utc(*t), "source": "screen"}),
+        Reset::Unknown { raw, why } => {
+            serde_json::json!({"utc": null, "unknown": true, "why": why, "raw": cut(raw)})
+        }
+    }
+}
+
+/// The answer of `moai lane-screen`: the state, its evidence row and reason, the reset time of a
+/// usage limit (from the lane's `home` when given), the `pane` object `lane-status` takes, and
+/// the count of non-blank rows. `now` is Unix seconds.
+pub fn report(input: &str, home: Option<&std::path::Path>, now: i64) -> serde_json::Value {
+    use crate::forge::policy::{format_utc, parse_utc};
+    use serde_json::{json, Value};
+
+    let (screen, seen) = observe(input);
 
     // The reset time of a usage limit: the lane's own record when a window is at its limit,
     // else the screen's text.
@@ -654,16 +746,11 @@ pub fn report(input: &str, home: Option<&std::path::Path>, now: i64) -> serde_js
             until = Some(utc.clone());
             reset = json!({"utc": utc, "source": "home"});
         } else {
-            match reset_of(&screen.rows, now) {
-                Some(Reset::Utc(t)) => {
-                    let utc = format_utc(t);
-                    until = Some(utc.clone());
-                    reset = json!({"utc": utc, "source": "screen"});
+            if let Some(found) = reset_of(&screen.rows, now) {
+                if let Reset::Utc(t) = &found {
+                    until = Some(format_utc(*t));
                 }
-                Some(Reset::Unknown { raw, why }) => {
-                    reset = json!({"utc": null, "unknown": true, "why": why, "raw": cut(&raw)});
-                }
-                None => {}
+                reset = reset_json(&found);
             }
         }
     }
@@ -684,6 +771,163 @@ pub fn report(input: &str, home: Option<&std::path::Path>, now: i64) -> serde_js
         "reset": reset,
         "pane": pane,
     })
+}
+
+/// Most terminals one scan reads; a longer list is read up to here and reported as cut short.
+pub const MAX_SCAN: usize = 200;
+/// Longest title, branch or handle shown, in characters.
+const SHOWN_CHARS: usize = 80;
+
+/// The error text for a terminal list that cannot be read (the program is absent, it failed, or
+/// its answer is not a list).
+pub fn list_error(detail: &str) -> String {
+    format!(
+        "the terminal list could not be read: {}",
+        cut(&clean(detail))
+    )
+}
+
+/// A text somebody else chose (a terminal title or branch), for display: no escape or control
+/// characters, no line-separator or bidirectional character, no credential-shaped word (see
+/// [`safe_text`]), cut to [`SHOWN_CHARS`].
+fn shown(text: &str) -> String {
+    cut_to(&safe_text(&clean(text)), SHOWN_CHARS)
+}
+
+/// The scan of `orca terminal list --json` (`list_json`): one row per listed terminal with the
+/// state of its screen, read one terminal at a time through `read` (the handle in, the answer of
+/// `orca terminal read --screen --json` out). A terminal that cannot be read, has no handle or is
+/// not answered with an Orca answer is `unreachable`; the scan goes on. A usage limit carries its
+/// reset time in UTC from the screen text (no `usage-limits.json`: a terminal does not say whose
+/// HOME it is). `now` is Unix seconds. `Err` only when the list itself cannot be read.
+pub fn scan(
+    list_json: &str,
+    read: &mut dyn FnMut(&str) -> Result<String, String>,
+    now: i64,
+) -> Result<serde_json::Value, String> {
+    use serde_json::{json, Map, Value};
+
+    let Ok(Value::Object(answer)) = serde_json::from_str::<Value>(list_json) else {
+        return Err(list_error(
+            "the answer of `orca terminal list` is not an Orca answer",
+        ));
+    };
+    if answer.get("ok") == Some(&Value::Bool(false)) {
+        return Err(list_error("Orca answered with an error"));
+    }
+    let Some(listed) = answer
+        .get("result")
+        .and_then(|r| r.get("terminals"))
+        .and_then(Value::as_array)
+    else {
+        return Err(list_error("the answer holds no `terminals` list"));
+    };
+    let reported = answer
+        .get("result")
+        .and_then(|r| r.get("totalCount"))
+        .and_then(Value::as_u64)
+        .map_or(0, |n| usize::try_from(n).unwrap_or(usize::MAX));
+    let total = reported.max(listed.len());
+    let cut_short = total > listed.len()
+        || listed.len() > MAX_SCAN
+        || answer
+            .get("result")
+            .and_then(|r| r.get("truncated"))
+            .and_then(Value::as_bool)
+            == Some(true);
+
+    let mut terminals = Vec::new();
+    let mut by_state: Map<String, Value> = Map::new();
+    let mut table = vec![format!(
+        "{:<16} {:<18} {:<20} {}",
+        "handle", "state", "reset (UTC)", "branch  title"
+    )];
+    for term in listed.iter().take(MAX_SCAN) {
+        let text = |key: &str| term.get(key).and_then(Value::as_str).map(shown);
+        let handle = text("handle");
+        let (title, branch) = (
+            text("title").unwrap_or_default(),
+            text("branch").unwrap_or_default(),
+        );
+        // (state, reason, evidence, reset) of this terminal.
+        let (state, reason, evidence, reset) = match term.get("handle").and_then(Value::as_str) {
+            None => unreachable_row("the list gives this terminal no handle"),
+            Some(raw) => match read(raw) {
+                Err(d) => unreachable_row(&format!(
+                    "the terminal could not be read: {}",
+                    cut(&clean(&d))
+                )),
+                Ok(out) => {
+                    let input = read_input(&out);
+                    if input.source != "orca:screen" {
+                        unreachable_row("the answer of `orca terminal read` is not an Orca answer")
+                    } else {
+                        let seen = report(&out, None, now);
+                        let state = seen["state"].as_str().unwrap_or("unknown").to_string();
+                        let mut reason = seen["reason"].as_str().unwrap_or("").to_string();
+                        let mut reset = seen["reset"].clone();
+                        // A Yes/No menu wins over a usage limit (R-N3): the lane is still
+                        // stopped by the limit, so its reset time stays in the list.
+                        if state == State::PermissionPrompt.as_str() && reset.is_null() {
+                            if let Some(found) = reset_of(&input.rows, now) {
+                                reset = reset_json(&found);
+                                reason.push_str("; a usage-limit message is also on the screen");
+                            }
+                        }
+                        (state, reason, seen["evidence"].clone(), reset)
+                    }
+                }
+            },
+        };
+        let reset_text = match reset["utc"].as_str() {
+            Some(utc) => utc,
+            None if reset["unknown"] == Value::Bool(true) => "unknown",
+            None => "-",
+        };
+        table.push(format!(
+            "{:<16} {:<18} {:<20} {}  {}",
+            handle.as_deref().unwrap_or("-"),
+            state,
+            reset_text,
+            branch,
+            title
+        ));
+        let n = by_state.get(&state).and_then(Value::as_u64).unwrap_or(0);
+        by_state.insert(state.clone(), json!(n + 1));
+        terminals.push(json!({
+            "handle": handle,
+            "title": title,
+            "branch": branch,
+            "state": state,
+            "reason": reason,
+            "evidence": evidence,
+            "reset": reset,
+        }));
+    }
+    let count = terminals.len();
+    if cut_short {
+        table.push(format!(
+            "{count} of {total} terminals shown: the list was cut short"
+        ));
+    }
+    Ok(json!({
+        "terminals": terminals,
+        "count": count,
+        "total": total,
+        "truncated": cut_short,
+        "by_state": by_state,
+        "table": table,
+    }))
+}
+
+/// The row of a terminal that could not be looked at.
+fn unreachable_row(reason: &str) -> (String, String, serde_json::Value, serde_json::Value) {
+    (
+        State::Unreachable.as_str().to_string(),
+        reason.to_string(),
+        serde_json::Value::Null,
+        serde_json::Value::Null,
+    )
 }
 
 #[cfg(test)]
@@ -734,6 +978,162 @@ mod tests {
         assert!(!starts_with_word("Yesterday", "yes"));
         assert!(!starts_with_word("Not now", "no"));
         assert!(!starts_with_word("", "no"));
+    }
+
+    #[test]
+    fn a_question_above_yes_and_no_words_that_are_no_choice_rows_is_unknown() {
+        // The rows below the question: `[1] Yes` and `[2] No` are no choice rows (the number
+        // is closed by `]`), then filler rows with no yes or no word.
+        let with = |question: &str, below: usize| {
+            let mut v = filler(6, &["✳ Frosting… (esc to interrupt)", question]);
+            v.extend(["[1] Yes".to_string(), "[2] No".to_string()]);
+            v.extend((0..below).map(|i| format!("below {i}")));
+            classify(&v)
+        };
+        for q in [
+            "Do you want to proceed?",
+            "Would you like to continue?",
+            "Are you sure?",
+            "Proceed? [y/N]",
+            "Overwrite the file (y/n)",
+        ] {
+            let seen = with(q, 0);
+            assert_eq!(seen.state, State::Unknown, "{q}");
+            assert_eq!(seen.evidence.as_deref(), Some(q), "{q}");
+        }
+        // The window is the last 8 non-blank rows: the 8th still counts, the 9th is transcript.
+        assert_eq!(with("Do you want to proceed?", 5).state, State::Unknown);
+        assert_eq!(with("Do you want to proceed?", 6).state, State::Working);
+        // A blank row is not a row of the window.
+        let mut blanks = filler(
+            6,
+            &[
+                "✳ Frosting… (esc to interrupt)",
+                "Do you want to proceed?",
+                "[1] Yes",
+            ],
+        );
+        blanks.extend(std::iter::repeat_n(String::new(), 20));
+        assert_eq!(classify(&blanks).state, State::Unknown);
+        // No question: still working.
+        assert_eq!(with("All done.", 2).state, State::Working);
+    }
+
+    #[test]
+    fn a_question_that_ends_the_turn_is_not_unknown_without_a_yes_or_no_word_below() {
+        let ends = |question: &str, below: &[&str]| {
+            let mut v = filler(6, &["✳ Frosting… (esc to interrupt)", question]);
+            v.extend(below.iter().map(|s| s.to_string()));
+            classify(&v).state
+        };
+        let q = "Would you like me to run the lint step next?";
+        assert_eq!(ends(q, &[]), State::Working);
+        assert_eq!(
+            ends(q, &["❯ ", "⏵⏵ bypass (shift+tab to cycle)"]),
+            State::Working
+        );
+        for word in ["Yesterday", "Nobody", "Not now", "Yeses", "Noted"] {
+            assert_eq!(ends(q, &[word]), State::Working, "{word}");
+        }
+        for word in ["yes", "No.", "(Yes)", "[no]", "yes/no", "answer: NO"] {
+            assert_eq!(ends(q, &[word]), State::Unknown, "{word}");
+        }
+        // A yes or no ABOVE the question does not count.
+        let mut v = filler(6, &["yes it ran", "✳ Frosting… (esc to interrupt)", q]);
+        assert_eq!(classify(&v).state, State::Working);
+        // A bracket question is its own choice: unknown with nothing below it.
+        v.push("Overwrite the file? [y/n]".to_string());
+        assert_eq!(classify(&v).state, State::Unknown);
+    }
+
+    #[test]
+    fn a_question_with_a_choice_word_on_its_row_or_below_or_two_numbered_rows_is_unknown() {
+        let screen = |rows: &[&str]| {
+            let mut v = filler(6, &["✳ Frosting… (esc to interrupt)"]);
+            v.extend(rows.iter().map(|s| s.to_string()));
+            classify(&v)
+        };
+        // The choice is on the question row (note 3433, R-B1).
+        for q in [
+            "Do you want to proceed? (yes/no)",
+            "Are you sure you want to continue connecting (yes/no/[fingerprint])?",
+            "Do you want to proceed? (y/N/a)",
+            "Do you want to proceed? Allow or deny",
+        ] {
+            let seen = screen(&[q]);
+            assert_eq!(seen.state, State::Unknown, "{q}");
+            assert_eq!(seen.evidence.as_deref(), Some(q), "{q}");
+        }
+        // The choices use other words (note 3433, R-N1): a choice word below, or two numbered rows.
+        let q = "Do you want to proceed?";
+        for below in [
+            &["Allow / Deny"][..],
+            &["allow"],
+            &["Deny"],
+            &["y"],
+            &["N"],
+            &["1. Allow once", "2. Allow always", "3. Deny"],
+            &["◆ 1. Y", "  2. N"],
+            &["  1. Proceed", "  2. Cancel"],
+        ] {
+            let mut rows = vec![q];
+            rows.extend_from_slice(below);
+            assert_eq!(screen(&rows).state, State::Unknown, "{below:?}");
+        }
+        // One numbered row, or words that only contain a choice word, are not enough.
+        assert_eq!(screen(&[q, "  1. maybe later"]).state, State::Working);
+        for word in ["Allowance", "denied", "yard", "Nine", "yesterday", "nobody"] {
+            assert_eq!(screen(&[q, word]).state, State::Working, "{word}");
+        }
+        // A choice word ABOVE the question does not count, and neither does one in an unrelated row.
+        assert_eq!(screen(&["yes", "All done.", q]).state, State::Working);
+        // Numbered rows ABOVE the question do not count.
+        assert_eq!(screen(&["1. a", "2. b", q]).state, State::Working);
+    }
+
+    #[test]
+    fn a_numbered_yes_and_no_after_any_mark_is_a_prompt_whatever_the_footer() {
+        let dialog = |prefix: &str| {
+            let mut v = filler(6, &["✳ Frosting… (esc to interrupt)"]);
+            v.push(format!("{prefix}1. Yes"));
+            v.push("   2. No".to_string());
+            classify(&v)
+        };
+        for prefix in [
+            "◆ ", "» ", "• ", "- ", "* ", "→→ ", ">>> ", "✓ ", "· ", "│ ◆ ", "[•] ", "☞ ", "◆",
+            "  ", "",
+        ] {
+            let seen = dialog(prefix);
+            assert_eq!(seen.state, State::PermissionPrompt, "prefix {prefix:?}");
+            assert!(seen.evidence.is_some(), "prefix {prefix:?}");
+        }
+        // A letter or a digit before the number is a word of a sentence, not a mark.
+        assert_eq!(dialog("ok ").state, State::Working);
+        assert_eq!(dialog("2 ").state, State::Working);
+        // A question the reader does not know, far from the known words, changes nothing.
+        let mut v = filler(
+            6,
+            &[
+                "✳ Frosting… (esc to interrupt)",
+                "Continue with the reset of the branch?",
+            ],
+        );
+        v.push("◆ 1. Yes".to_string());
+        v.push("  2. No".to_string());
+        assert_eq!(classify(&v).state, State::PermissionPrompt);
+    }
+
+    #[test]
+    fn numbered_skips_any_mark_and_keeps_only_a_listed_cursor_as_a_cursor() {
+        assert_eq!(numbered("◆ 1. Yes"), Some((false, 1, "Yes")));
+        assert_eq!(numbered("» 2) No"), Some((false, 2, "No")));
+        assert_eq!(numbered("❯ 1. Yes"), Some((true, 1, "Yes")));
+        assert_eq!(numbered("│ ❯ 1. Yes │"), Some((true, 1, "Yes │")));
+        assert_eq!(numbered("◆1. Yes"), Some((false, 1, "Yes")));
+        assert_eq!(numbered("ok 1. Yes"), None);
+        assert_eq!(numbered("1.Yes"), None);
+        assert_eq!(numbered("[1] Yes"), None);
+        assert_eq!(numbered("123. Yes"), None);
     }
 
     #[test]
@@ -896,6 +1296,46 @@ mod tests {
         let seen = classify(&rows(control));
         let evidence = seen.evidence.unwrap();
         assert!(!evidence.chars().any(|c| c.is_control()), "{evidence:?}");
+    }
+
+    #[test]
+    fn text_from_a_terminal_hides_secret_shapes_and_unsafe_characters() {
+        // The shapes are built from pieces so none stands in this file (re-audit C-B1, C-N1).
+        let gh = ["gh", "p_"].concat() + "A1b2C3d4E5f6G7h8I9j0";
+        let sk = ["s", "k-"].concat() + "abcdefghij0123456789";
+        let pw = ["pass", "word="].concat() + "hunter2hunter2";
+        for secret in [&gh, &sk, &pw] {
+            let shown_text = shown(&format!("deploy {secret} now"));
+            assert_eq!(shown_text, "deploy [redacted] now", "{secret}");
+            let seen = classify(&rows(&format!(
+                "Do you want to proceed? (yes/no) {secret}\nrow\nrow\nrow\nrow\nrow"
+            )));
+            let evidence = seen.evidence.unwrap();
+            assert!(evidence.ends_with("[redacted]"), "{evidence}");
+            assert!(!evidence.contains("A1b2") && !evidence.contains("hunter2"));
+            assert!(
+                list_error(&format!("no runtime {secret}")).ends_with("[redacted]"),
+                "{secret}"
+            );
+        }
+        // A zero-width or bidirectional character cannot split a shape and hide it.
+        let split = format!("{}\u{200b}{}", &gh[..4], &gh[4..]);
+        assert_eq!(shown(&split), "[redacted]");
+        assert_eq!(shown("a\u{202e}b\u{200b}c\u{2066}d\u{2028}e"), "abcde");
+        // An ordinary row is not changed.
+        assert_eq!(shown("work lane"), "work lane");
+        assert_eq!(cut("Do you want to proceed?"), "Do you want to proceed?");
+        // The reset text of an unknown zone is safe too.
+        let found = reset_of(
+            &rows(&format!(
+                "Your limit will reset at 2026-11-19 17:30:55 {sk}"
+            )),
+            NOW,
+        );
+        let found = found.expect("a limit row has a reset");
+        assert!(matches!(found, Reset::Unknown { .. }), "{found:?}");
+        let raw = reset_json(&found)["raw"].as_str().unwrap().to_string();
+        assert!(raw.ends_with("[redacted]"), "{raw}");
     }
 
     #[test]

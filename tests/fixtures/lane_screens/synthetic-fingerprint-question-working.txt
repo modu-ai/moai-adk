@@ -1,0 +1,10 @@
+ ▐▛███▜▌   Claude Code
+▝▜█████▛▘  /Users/example/project
+  ▘▘ ▝▝    Opus
+
+● Bash(ssh build-host uptime)
+  ⎿  Running…
+
+✳ Frosting… (1m 17s · ↓ 6.9k tokens · esc to interrupt)
+
+ Are you sure you want to continue connecting (yes/no/[fingerprint])?

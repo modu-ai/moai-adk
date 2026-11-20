@@ -61,8 +61,10 @@ fn mentions_orca(text: &str) -> bool {
 /// The files of `src/` that may say "orca": Orca's own hook entries that a Go-state
 /// migration reads (`go_hooks.rs`), a status line command in a settings fixture
 /// (`claude.rs`), and the leader round's description of the screen it is given
-/// (`leader_round.rs`, `ops/leader_round.rs`). None of them starts the program.
-const SRC_ORCA_FILES: [&str; 10] = [
+/// (`leader_round.rs`, `ops/leader_round.rs`). None of those starts the program; the one file
+/// that does is `lane_send.rs` (`ProcessOrca`, see its entry below), which the rows for
+/// `lane-screen` and `lane-send` of C-120 add.
+const SRC_ORCA_FILES: [&str; 13] = [
     "src/claude.rs",
     "src/go_hooks.rs",
     // The `session_cwd` example of `lane-safe-to-reset` names the source `orca` (#3015 C1); the
@@ -73,6 +75,15 @@ const SRC_ORCA_FILES: [&str; 10] = [
     // starts a program.
     "src/lane_screen.rs",
     "src/ops/lane_screen.rs",
+    // `lane-send` (C-120 slice B) is the one command here that starts the program, and only when
+    // a user runs `lane-send` (or `lane-screen --scan`): `ProcessOrca` takes the program name from
+    // `MOAI_ORCA_BIN` (default `orca`) as a variable, so `nothing_in_src_runs_orca` still holds,
+    // and only those two commands call it (`lane-screen --scan` reaches it through
+    // `ops/lane_screen.rs`, which names no program). `lane_status.rs` only registers the module and names the
+    // `orca terminal send` it guards in a doc comment.
+    "src/lane_send.rs",
+    "src/lane_status.rs",
+    "src/ops/lane_send.rs",
     // `leader-pulse` (#3015 C5) builds the `orca terminal send` argument list and prints it; it
     // never starts the program (`leader_pulse_cli` puts a recording `orca` first on PATH).
     "src/leader_pulse.rs",

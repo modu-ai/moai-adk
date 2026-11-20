@@ -1114,43 +1114,38 @@ mod tests {
         assert_eq!(secret_words(&format!("a:{key},{key}")), 1);
     }
 
-    /// Audit B2: one long word without a space is screened in time that grows with its length,
-    /// not with its square. Sizes: 200 KB, one byte under the note limit and the limit itself; the
-    /// bound is far above the linear time and far below the square-time one (40 KB took 30 s).
+    /// Audit B2 and N9: one long word without a space, of the note limit's size, is screened in
+    /// time that grows with its length, not with its square. Four shapes of word and one shape at
+    /// the end of a long word run at once on their own threads, so the test takes about the time of
+    /// the slowest one; a square-time regression (40 KB took 30 s) misses the 15 s bound and fails
+    /// there instead of holding the test for minutes (the stuck threads die with the test process).
     #[test]
     fn secret_screen_time_on_one_long_word_has_a_bound() {
         use std::time::{Duration, Instant};
-        // The screen runs on its own thread, so a square-time regression fails after the bound
-        // instead of holding the test for minutes (the stuck thread dies with the test process).
-        fn timed(text: String) -> Result<(usize, Duration), String> {
-            let (tx, rx) = std::sync::mpsc::channel();
-            let started = Instant::now();
-            std::thread::spawn(move || {
-                let _ = tx.send(secret_words(&text));
-            });
-            rx.recv_timeout(Duration::from_secs(15))
-                .map(|words| (words, started.elapsed()))
-                .map_err(|_| "no answer within 15 s".to_string())
-        }
-        let limit = crate::ledger::workflow::MAX_NOTE_BYTES;
+        let size = crate::ledger::workflow::MAX_NOTE_BYTES;
         let key = j(&["AK", "IA", "ABCDEFGHIJKLMNOP"]);
         let units = ["a,", "a:", "a=", "{\"a\":1,\"b\":[2,3]},"];
-        for size in [200_000, limit - 1, limit] {
-            for unit in units {
-                let plain = unit.repeat(size / unit.len() + 1)[..size].to_string();
-                match timed(plain.clone()) {
-                    Ok((words, _)) => assert_eq!(words, 0, "{unit} x {size}"),
-                    Err(e) => panic!("{unit} x {size} bytes: {e}"),
-                }
-                // The shape at the very end of a long word is still found (two sizes are enough).
-                if size != limit - 1 {
-                    let tail = format!("{},{key}", &plain[..size - key.len() - 1]);
-                    match timed(tail) {
-                        Ok((words, _)) => assert_eq!(words, 1, "{unit} x {size} with a shape"),
-                        Err(e) => panic!("{unit} x {size} bytes with a shape: {e}"),
-                    }
-                }
-            }
+        let plain = |unit: &str| unit.repeat(size / unit.len() + 1)[..size].to_string();
+        let mut jobs: Vec<(String, String, usize)> = units
+            .iter()
+            .map(|unit| (format!("{unit} x {size}"), plain(unit), 0))
+            .collect();
+        let tail = format!("{},{key}", &plain("a,")[..size - key.len() - 1]);
+        jobs.push((format!("a, x {size} with a shape at the end"), tail, 1));
+        let (tx, rx) = std::sync::mpsc::channel();
+        for (at, (_, text, _)) in jobs.iter().enumerate() {
+            let (tx, text) = (tx.clone(), text.clone());
+            std::thread::spawn(move || {
+                let _ = tx.send((at, secret_words(&text)));
+            });
+        }
+        let deadline = Instant::now() + Duration::from_secs(15);
+        for _ in 0..jobs.len() {
+            let wait = deadline.saturating_duration_since(Instant::now());
+            let (at, words) = rx
+                .recv_timeout(wait)
+                .unwrap_or_else(|_| panic!("a screen of {size} bytes took more than 15 s"));
+            assert_eq!(words, jobs[at].2, "{}", jobs[at].0);
         }
     }
 

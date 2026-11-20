@@ -29,6 +29,11 @@ enum Action {
         /// Only cards in this state (`draft`, `ready`, `active`, `review`, `done`, `hold`).
         #[arg(long)]
         state: Option<String>,
+        /// Only cards whose title starts with this text (case-sensitive, taken as typed; not empty,
+        /// no control character). The flaky rule's cards are `flaky: <test>`: `--title-prefix
+        /// "flaky: "`.
+        #[arg(long)]
+        title_prefix: Option<String>,
         /// The HOME to read (default `$HOME`). Tests pass a temporary folder.
         #[arg(long)]
         home: Option<PathBuf>,
@@ -40,6 +45,37 @@ enum Action {
     Show {
         /// `C-12` or `#3066`.
         card: String,
+        /// The project folder (its profile holds the project id).
+        #[arg(long, default_value = ".")]
+        project: PathBuf,
+        /// The HOME to read (default `$HOME`). Tests pass a temporary folder.
+        #[arg(long)]
+        home: Option<PathBuf>,
+    },
+    /// Reads the ledger only. Show the events of one card, oldest first
+    ///
+    /// Reads the ledger only. The ledger is opened read-only with a wait of at most 250
+    /// milliseconds, the events are read in one read transaction (at most `--limit`, 1 to 500,
+    /// default 50) and the connection is closed before anything is printed, so a reader never
+    /// holds a writer's commit. Each event has its time, kind, session, lane name (the author of
+    /// the newest note that session wrote on this card, else null) and the plain fields of its
+    /// payload; a note event also shows the note's author and first line. The answer names the
+    /// current owner, and `next` and `end` are opaque cursors: hand `next` back as `--after` to
+    /// read what follows, with no gap and no overlap; `--after` never waits for new events. The
+    /// `renew` bookkeeping events are left out unless `--all`; a rejected call (`fence_reject`)
+    /// always shows. The card is named `C-12`.
+    Timeline {
+        /// `C-12`.
+        card: String,
+        /// The `next` or `end` of an earlier answer for this card: only the events after it.
+        #[arg(long)]
+        after: Option<String>,
+        /// The most events to read, 1 to 500 (default 50).
+        #[arg(long, allow_negative_numbers = true)]
+        limit: Option<i64>,
+        /// Also show the bookkeeping events (`renew`).
+        #[arg(long)]
+        all: bool,
         /// The project folder (its profile holds the project id).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -158,8 +194,11 @@ enum Action {
     /// not overlap another card's reservation (a `conflict` naming that card). `--reason` is
     /// required for a held card; the `card.scope` event records `--by`, the reason, the
     /// generation and the holder; the card's own scope is not changed, so a later `card take`
-    /// without `--scope` still reads the old one. Each entry is checked as `add --scope` checks
-    /// it. Any other state is refused (`conflict`) with its state and holder, and nothing is
+    /// without `--scope` still reads the old one. `--generation` is the generation the caller
+    /// read (`card show`): given, the card's live reservation must be at that generation, else
+    /// `conflict` naming the generation it has (or that the card is not held) and nothing is
+    /// written; left out, nothing is checked. Each entry is checked as `add --scope` checks it.
+    /// Any other state is refused (`conflict`) with its state and holder, and nothing is
     /// written.
     Scope {
         /// `C-12`.
@@ -174,6 +213,10 @@ enum Action {
         /// Why, one line of 1 to 500 characters; required to widen a held card.
         #[arg(long)]
         reason: Option<String>,
+        /// The generation the card has now (`card show` prints it); a card at another
+        /// generation, or one nobody holds, is a `conflict`. Left out, nothing is checked.
+        #[arg(long, value_parser = clap::value_parser!(i64).range(1..))]
+        generation: Option<i64>,
         /// The project folder (its profile holds the project id).
         #[arg(long, default_value = ".")]
         project: PathBuf,
@@ -638,13 +681,35 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
         Action::List {
             project,
             state,
+            title_prefix,
             home,
-        } => c::list(&project, &resolve_home(home)?, state.as_deref()),
+        } => c::list_filtered(
+            &project,
+            &resolve_home(home)?,
+            state.as_deref(),
+            title_prefix.as_deref(),
+        ),
         Action::Show {
             card,
             project,
             home,
         } => c::show(&project, &resolve_home(home)?, &card),
+        Action::Timeline {
+            card,
+            after,
+            limit,
+            all,
+            project,
+            home,
+        } => moai_cli::card::timeline::timeline(
+            &project,
+            &resolve_home(home)?,
+            d::session_holder("timeline", env).ok().as_deref(),
+            &card,
+            after.as_deref(),
+            limit,
+            all,
+        ),
         Action::Precheck {
             card,
             integration_ref,
@@ -694,6 +759,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             scope,
             by,
             reason,
+            generation,
             project,
             home,
         } => d::scope(
@@ -703,6 +769,7 @@ pub fn run(args: Args) -> Result<serde_json::Value, String> {
             &scope,
             &by,
             reason.as_deref(),
+            generation,
         ),
         Action::Take {
             card,

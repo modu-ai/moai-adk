@@ -25,6 +25,7 @@ use crate::ledger::{self, LedgerError};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use std::path::Path;
 
 type Result<T> = std::result::Result<T, String>;
@@ -94,8 +95,36 @@ fn card_json(conn: &Connection, card_id: i64) -> std::result::Result<Option<Valu
 
 /// `card list [--state S]`: every card, oldest first. An absent ledger is "no cards" (exit 0).
 pub fn list(project: &Path, home: &Path, state: Option<&str>) -> Result<Value> {
+    list_filtered(project, home, state, None)
+}
+
+/// A `--title-prefix` typed for `card list` (card C-99, SPEC-20261119-flaky-followups): not
+/// empty and without a control character. It is taken as typed, not trimmed: `flaky: ` ends in
+/// the space that tells the rule's title from `flakiness`.
+fn title_prefix(given: &str) -> std::result::Result<&str, &'static str> {
+    if given.is_empty() {
+        return Err("the title prefix is empty");
+    }
+    if given.chars().any(char::is_control) {
+        return Err("the title prefix has a control character");
+    }
+    Ok(given)
+}
+
+/// `card list [--state S] [--title-prefix P]`: the cards in that state whose title starts with
+/// `P` (case-sensitive), oldest first, each card in the shape `list` gives. Both options are
+/// checked before the ledger is read.
+pub fn list_filtered(
+    project: &Path,
+    home: &Path,
+    state: Option<&str>,
+    title_prefix_given: Option<&str>,
+) -> Result<Value> {
     let state = state
         .map(|s| input::state(s).map_err(|e| format!("card list refused: {e}")))
+        .transpose()?;
+    let prefix = title_prefix_given
+        .map(|p| title_prefix(p).map_err(|e| format!("card list refused: {e}")))
         .transpose()?;
     let id = project_id(project)?;
     let ledger = match ledger::open_read_only(home, &id) {
@@ -113,12 +142,14 @@ pub fn list(project: &Path, home: &Path, state: Option<&str>) -> Result<Value> {
         .prepare(&format!(
             "SELECT card_id, title, kind, state, priority, rev, updated_at, \
                     source_host, source_project, source_number, {} \
-               FROM card WHERE (?1 IS NULL OR state = ?1) ORDER BY card_id",
+               FROM card WHERE (?1 IS NULL OR state = ?1) \
+                           AND (?2 IS NULL OR substr(title, 1, length(?2)) = ?2) \
+              ORDER BY card_id",
             super::spec_link::LINKED_COLUMN
         ))
         .map_err(|e| LedgerError::from(e).to_string())?;
     let rows = stmt
-        .query_map([state], |r| {
+        .query_map(params![state, prefix], |r| {
             let host: Option<String> = r.get(7)?;
             let proj: Option<String> = r.get(8)?;
             let number: Option<i64> = r.get(9)?;
@@ -148,6 +179,44 @@ pub fn list(project: &Path, home: &Path, state: Option<&str>) -> Result<Value> {
         "action": "list", "project_id": id, "ledger": "ready",
         "count": cards.len(), "cards": cards, "writes": false,
     }))
+}
+
+/// The notes of a card in note order. It never names `event`: the session of a note comes from
+/// [`NOTE_EVENTS_SQL`], read once.
+const NOTES_SQL: &str = "SELECT note_id, kind, author, origin, body, ref, created_at \
+       FROM card_note WHERE card_id = ?1 ORDER BY note_id";
+
+/// The `card.note` events of one card in event order: the note each names and the session it
+/// records. One statement with no subquery, so `event` is read once whatever the number of notes.
+const NOTE_EVENTS_SQL: &str = "SELECT json_extract(payload, '$.note_id'), \
+            json_extract(payload, '$.session') \
+       FROM event WHERE card_id = ?1 AND kind = 'card.note' ORDER BY event_id";
+
+/// The session of each note of `card_id`, from its `card.note` events: the first event (lowest
+/// event id) that names a note decides, even when its session is `null`; a note no event names
+/// is not in the map. A note id that is not an integer, or a session that is neither text nor
+/// `null`, is skipped (the tool writes neither).
+fn note_sessions(
+    conn: &Connection,
+    card_id: i64,
+) -> std::result::Result<HashMap<i64, Option<String>>, rusqlite::Error> {
+    use rusqlite::types::Value;
+    let mut stmt = conn.prepare(NOTE_EVENTS_SQL)?;
+    let rows = stmt.query_map([card_id], |r| {
+        Ok((r.get::<_, Value>(0)?, r.get::<_, Value>(1)?))
+    })?;
+    let mut sessions = HashMap::new();
+    for row in rows {
+        if let (Value::Integer(note_id), session) = row? {
+            let session = match session {
+                Value::Text(text) => Some(text),
+                Value::Null => None,
+                _ => continue,
+            };
+            sessions.entry(note_id).or_insert(session);
+        }
+    }
+    Ok(sessions)
 }
 
 /// `card show C-n | #number`: the card with its criteria, notes, links and the reservation that
@@ -210,26 +279,21 @@ pub fn show(project: &Path, home: &Path, reference: &str) -> Result<Value> {
         .collect::<std::result::Result<Vec<_>, _>>()
         .map_err(sql_err)?;
 
-    let mut stmt = conn
-        .prepare(
-            // `session`: the session that wrote the note, from its `card.note` event (`null`
-            // for a note written without one, and for an imported note).
-            "SELECT note_id, kind, author, origin, body, ref, created_at, \
-                    (SELECT json_extract(e.payload, '$.session') FROM event e \
-                      WHERE e.card_id = card_note.card_id AND e.kind = 'card.note' \
-                        AND json_extract(e.payload, '$.note_id') = card_note.note_id \
-                      ORDER BY e.event_id LIMIT 1) \
-               FROM card_note WHERE card_id = ?1 ORDER BY note_id",
-        )
-        .map_err(sql_err)?;
+    let mut stmt = conn.prepare(NOTES_SQL).map_err(sql_err)?;
+    // `session`: the session that wrote the note, from its `card.note` event (`null` for a note
+    // written without one, and for an imported note). The events are read once for the card,
+    // not once per note: `event` has no index on `card_id`, so a per-note lookup scanned the
+    // whole table for every note and slowed other sessions' writes while a big card was read.
+    let sessions = note_sessions(conn, card_id).map_err(sql_err)?;
     let notes = stmt
         .query_map([card_id], |r| {
+            let note_id = r.get::<_, i64>(0)?;
             Ok(json!({
-                "note_id": r.get::<_, i64>(0)?, "kind": r.get::<_, String>(1)?,
+                "note_id": note_id, "kind": r.get::<_, String>(1)?,
                 "author": r.get::<_, String>(2)?, "origin": r.get::<_, String>(3)?,
                 "body": r.get::<_, String>(4)?, "ref": r.get::<_, Option<String>>(5)?,
                 "created_at": r.get::<_, i64>(6)?,
-                "session": r.get::<_, Option<String>>(7)?,
+                "session": sessions.get(&note_id).cloned().flatten(),
             }))
         })
         .map_err(sql_err)?
@@ -405,4 +469,94 @@ pub fn export(project: &Path, home: &Path, out: &Path) -> Result<Value> {
         "index_sha256": format!("{:x}", Sha256::digest(rendered.index.as_bytes())),
         "writes": false, "writes_files": true,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ledger::schema;
+
+    fn ledger_with_events(events: &[(&str, i64, &str)]) -> Connection {
+        let mut conn = Connection::open_in_memory().unwrap();
+        schema::create_v1(&mut conn, "unit", "test").unwrap();
+        conn.execute(
+            "INSERT INTO card (card_id, title, created_by, created_at, updated_at) \
+             VALUES (1, 't', 'x', 1, 1), (2, 'u', 'x', 1, 1)",
+            [],
+        )
+        .unwrap();
+        for (key, card, payload) in events {
+            conn.execute(
+                "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+                 VALUES (?1, 1, 'x', ?2, 'card.note', ?3)",
+                params![key, card, payload],
+            )
+            .unwrap();
+        }
+        conn
+    }
+
+    fn plan(conn: &Connection, sql: &str) -> Vec<String> {
+        let mut stmt = conn.prepare(&format!("EXPLAIN QUERY PLAN {sql}")).unwrap();
+        stmt.query_map([1], |r| r.get::<_, String>(3))
+            .unwrap()
+            .map(|row| row.unwrap())
+            .collect()
+    }
+
+    /// REQ-1, REQ-3: the first event of the card that names a note decides, even with a `null`
+    /// session; another card's event and a note no event names add nothing; and the plans show
+    /// `event` read once by the events query and not at all by the notes query, with no
+    /// subquery in either.
+    #[test]
+    fn the_note_events_are_read_once() {
+        let conn = ledger_with_events(&[
+            ("k1", 1, r#"{"note_id":1,"session":"s-one"}"#),
+            ("k2", 1, r#"{"note_id":1,"session":"s-later"}"#),
+            ("k3", 1, r#"{"note_id":2,"session":null}"#),
+            ("k4", 1, r#"{"note_id":2,"session":"s-after-null"}"#),
+            ("k5", 2, r#"{"note_id":3,"session":"other-card"}"#),
+            ("k6", 1, r#"{"note_id":"7","session":"text-id"}"#),
+            ("k7", 1, r#"{"note_id":4,"session":7}"#),
+        ]);
+        conn.execute(
+            "INSERT INTO event (event_key, at, actor, card_id, kind, payload) \
+             VALUES ('k8', 1, 'x', 1, 'card.scope', '{\"note_id\":5,\"session\":\"wrong-kind\"}')",
+            [],
+        )
+        .unwrap();
+        let sessions = note_sessions(&conn, 1).unwrap();
+        assert_eq!(sessions.get(&1), Some(&Some("s-one".to_string())));
+        assert_eq!(
+            sessions.get(&2),
+            Some(&None),
+            "a null first session stays null"
+        );
+        assert_eq!(sessions.get(&3), None, "another card's event is not read");
+        assert_eq!(
+            sessions.get(&5),
+            None,
+            "an event of another kind is not read"
+        );
+        assert_eq!(sessions.get(&4), None, "a numeric session is skipped");
+        assert_eq!(sessions.len(), 2, "{sessions:?}");
+
+        let events = plan(&conn, NOTE_EVENTS_SQL);
+        assert!(
+            events.iter().all(|l| !l.contains("SUBQUERY")),
+            "no subquery: {events:?}"
+        );
+        assert_eq!(
+            events.iter().filter(|l| l.contains("event")).count(),
+            1,
+            "event is read once: {events:?}"
+        );
+        let notes = plan(&conn, NOTES_SQL);
+        assert!(
+            notes
+                .iter()
+                .all(|l| !l.contains("SUBQUERY") && !l.contains("event")),
+            "the notes query leaves event alone: {notes:?}"
+        );
+    }
 }
