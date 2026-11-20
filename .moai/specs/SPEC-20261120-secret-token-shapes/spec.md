@@ -2,7 +2,7 @@
 id: SPEC-20261120-secret-token-shapes
 title: "tool-preflight refuses six more access-token shapes in written content"
 status: draft
-revision: 2
+revision: 3
 created: 2026-11-20
 ---
 
@@ -44,16 +44,16 @@ Go 세대의 PreToolUse 는 쓰기 내용에서 비밀 모양 9가지를 막았�
 
 낱말 시작은 위 정의를 써요. 모든 모양은 대소문자를 구분해요.
 
-- REQ-1: WHEN a Write, Edit, MultiEdit or NotebookEdit input, or a line added by a Codex apply_patch, carries an OpenAI-style key — the three-character prefix of the letters s and k and a hyphen, at a word start, followed by 32 or more ASCII letters or digits — tool-preflight shall refuse the call with the secret-content reason.
-- REQ-2: WHEN the written content carries a GitHub OAuth token — the prefix of the letters g, h and o and an underscore, anywhere, followed by 36 or more ASCII letters or digits — tool-preflight shall refuse the call with the secret-content reason.
-- REQ-3: WHEN the written content carries a GitLab personal access token — the prefix `glpat-` anywhere followed by 20 or more ASCII letters, digits, hyphens or underscores — tool-preflight shall refuse the call with the secret-content reason.
-- REQ-4: WHEN the written content carries a Slack token — at a word start the prefix `xox`, one of the letters b, a, p, r or s, a hyphen, then 10 or more ASCII letters, digits or hyphens — tool-preflight shall refuse the call with the secret-content reason.
-- REQ-5: WHEN the written content carries an AWS access key id — at a word start the prefix `AKIA` or `ASIA` followed by 16 or more upper-case ASCII letters or digits — tool-preflight shall refuse the call with the secret-content reason.
-- REQ-6: WHEN the written content carries a Google OAuth token — at a word start the prefix `ya29.` followed by 20 or more ASCII letters, digits, hyphens or underscores — tool-preflight shall refuse the call with the secret-content reason.
-- REQ-7 (REQ-1): IF a candidate value is one character shorter than the minimum of its shape, or its prefix stands inside a longer word for a shape that needs a word start, or its letters differ in case, or the prefix is only named in prose, THEN tool-preflight shall allow the call.
+- REQ-1: WHEN a Write, Edit, MultiEdit or NotebookEdit input, or a line added by a Codex apply_patch, carries an OpenAI-style key — the three-character prefix of the letters s and k and a hyphen, at a word start, followed by 32 or more ASCII letters or digits, tool-preflight shall refuse the call with the secret-content reason.
+- REQ-2: WHEN the written content carries a GitHub OAuth token — the prefix of the letters g, h and o and an underscore, anywhere, followed by 36 or more ASCII letters or digits, tool-preflight shall refuse the call with the secret-content reason.
+- REQ-3: WHEN the written content carries a GitLab personal access token — the prefix `glpat-` anywhere followed by 20 or more ASCII letters, digits, hyphens or underscores, tool-preflight shall refuse the call with the secret-content reason.
+- REQ-4: WHEN the written content carries a Slack token — at a word start the prefix `xox`, one of the letters b, a, p, r or s, a hyphen, then 10 or more ASCII letters, digits or hyphens, tool-preflight shall refuse the call with the secret-content reason.
+- REQ-5: WHEN the written content carries an AWS access key id — at a word start the prefix `AKIA` or `ASIA` followed by 16 or more upper-case ASCII letters or digits, tool-preflight shall refuse the call with the secret-content reason.
+- REQ-6: WHEN the written content carries a Google OAuth token — at a word start the prefix `ya29.` followed by 20 or more ASCII letters, digits, hyphens or underscores, tool-preflight shall refuse the call with the secret-content reason.
+- REQ-7 (REQ-1…REQ-6): IF a candidate value is one character shorter than the minimum of its shape, or its prefix stands inside a longer word for a shape that needs a word start, or its letters differ in case, or the prefix is only named in prose, THEN tool-preflight shall allow the call.
 - REQ-8: IF the written content is a certificate block or a public key block, THEN tool-preflight shall allow the call as it does today.
-- REQ-9 (REQ-1): The refusal reason shall name private keys and access tokens in fixed words and shall never echo the written content or the matched value.
-- REQ-10: The existing refusals (private-key block, the two GitHub token forms, protected paths, A5, A6) and their allowed look-alikes shall keep their answers, and a Codex apply_patch shall still be scanned on its added lines only.
+- REQ-9 (REQ-1…REQ-6): The refusal reason shall name private keys and access tokens in fixed words that never echo the written content or the matched value.
+- REQ-10: The existing refusals (private-key block; the two GitHub token forms; protected paths; A5; A6) and their allowed look-alikes shall keep their answers, a Codex apply_patch being still scanned on its added lines only.
 - REQ-11: WHILE tool-preflight scans written content of any size up to the stdin limit, the scan time shall grow in proportion to the content length: a candidate run is counted only up to its minimum, and every shape is found in one forward pass per prefix.
 
 ## Acceptance
