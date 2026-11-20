@@ -1011,6 +1011,65 @@
         }
       ],
       "rejects": "a file under tests/ that names std::os::unix outside a cfg(unix) item, so the windows-build job stops compiling the tests (C-110, SPEC-20261119-windows-unix-gate)"
+    },
+    {
+      "id": "shipped-text-ratchet",
+      "tests": [
+        "tests/shipped_text_ratchet_test.py::RepoTreeTest"
+      ],
+      "checks": [
+        "python3 -m unittest tests.shipped_text_ratchet_test"
+      ],
+      "rules": [
+        "tests/shipped_text_ratchet_test.py",
+        "tools/shipped_text_ratchet.py",
+        "tools/improve/shipped-text-tokens.json",
+        "tools/improve/shipped-text-baseline.json"
+      ],
+      "scope": [
+        {
+          "prefix": "skills/moai/"
+        },
+        {
+          "prefix": "agents/"
+        },
+        {
+          "prefix": "src/help.rs"
+        }
+      ],
+      "rejects": "a maintainer token (a card number, an issue number, a repository link or a local-rules file name) that the shipped skills, agents or help text gain over the checked-in baseline"
+    },
+    {
+      "id": "maintainer-eval-cases",
+      "tests": [
+        "tests/maintainer_cases_test.py::ReplayTest"
+      ],
+      "checks": [
+        "python3 -m unittest tests.maintainer_cases_test"
+      ],
+      "rules": [
+        "tests/maintainer_cases_test.py",
+        "tools/maintainer_cases.py",
+        "tools/improve/maintainer-cases.json"
+      ],
+      "scope": [
+        {
+          "prefix": "tools/improve/cases/"
+        },
+        {
+          "prefix": "src/card/input.rs"
+        },
+        {
+          "prefix": "skills/moai/workflows/mode-agent.md"
+        },
+        {
+          "prefix": "skills/moai/references/chains/index.md"
+        },
+        {
+          "prefix": "skills/moai/references/source-manifest.json"
+        }
+      ],
+      "rejects": "a maintainer evaluation case whose frozen evidence or whose current-tree target ends with another verdict than the case file expects (a clock in the card input tests, the chain order left out of the round line)"
     }
   ]
 }
