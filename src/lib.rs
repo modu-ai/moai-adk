@@ -167,6 +167,7 @@ pub mod usage_limit;
 pub mod user_assets;
 pub mod verify;
 pub mod versioning;
+pub mod work_flow;
 pub mod worktree;
 pub mod worktree_gc;
 pub mod worktree_include;
