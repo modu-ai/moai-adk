@@ -85,4 +85,62 @@ created: 2026-11-20
 
 ## Result
 
-(아직 구현 전이에요.)
+이 조각(2·3a: 검사기와 `gate-check` 연결)의 근거예요. 코드 head `46d1766cc4`. 카드는 부분 READY 로 열어 두어요: AC-7(`review-package` 키, `src/review.rs` 를 다른 카드가 쥠)과 AC-10(문서 연결 문장, `quality.md`·`mode-agent.md` 를 다른 카드가 쥠)은 이번 조각에 없고 후속이에요. 관찰/켜짐 스위치(`TEST_WEAKENING_ENFORCED`)는 `false` 로 두었어요: 이 조각이 머지돼도 `effective_tier` 는 달라지지 않고 결과가 목록과 올렸을 때의 tier 를 보이기만 해요. 켜는 일은 리더 결정이에요.
+
+TDD 이탈: 검사기(`src/test_weakening.rs`)를 시험보다 먼저 썼어요. 시험은 그 뒤에 다섯 가지 고정물 쌍으로 쓰고, 변형 10개로 시험이 검사기를 정말 지키는지 확인했어요.
+
+### 변형 시험(커밋한 뒤, 한 번에 하나씩 바꾸고 되돌림)
+
+| 변형 | 바꾼 것 | 잡은 시험 |
+| --- | --- | --- |
+| M1 | Rust 건너뛰기 표기가 맞지 않음 | collector 시험(`the_collector_lists_weakened_tests_…`) |
+| M2 | 옮긴 시험도 삭제로 셈 | `each_kind_fires_on_its_fixture_and_stays_quiet_on_its_pair` |
+| M3 | 단언 수가 같아도 줄었다고 셈 | 같은 시험 |
+| M4 | 새 골든 파일도 다시 쓴 것으로 셈 | 같은 시험 |
+| M5 | 골든 옆의 코드 변경을 무시 | 같은 시험 |
+| M6 | 시험 파일이 아닌 곳의 단언·sleep 도 셈 | 같은 시험 |
+| M7 | 관찰 중에도 tier 를 올림 | `observe_reports_and_enforce_raises_the_tier`, `the_gate_lists_the_findings_and_says_unknown_when_unread` |
+| M8 | diff 를 못 읽었을 때 tier 를 안 올림 | `observe_reports_and_enforce_raises_the_tier` |
+| M9 | git diff 실패를 빈 목록으로 읽음 | collector 시험 |
+| M10 | 결과가 못 읽은 diff 를 빈 목록으로 보임 | `observe_reports_and_enforce_raises_the_tier`, `the_gate_lists_the_findings_and_says_unknown_when_unread` |
+
+기준 실행은 세 대상 모두 0 이었고 변형 10개는 모두 시험이 실패해서 잡혔어요(생존 0).
+
+### 최근 병합 50개에 돌린 결과(AC-11)
+
+명령: `git log --first-parent --merges -50 v2026.11.0` 의 병합 50개마다 `git diff --no-ext-diff --no-color --no-renames --unified=0 <병합>^1 <병합>` 을 파일로 저장하고, 커밋한 `src/test_weakening.rs` 를 그대로 가져와 빌드한 임시 실행기로 `detect` 를 돌렸어요(PR API 는 쓰지 않았어요). 출력 맨 끝 줄: `TOTAL diffs=50 with_findings=6`.
+
+| 병합 | 걸린 것 | diff 로 읽은 판단 |
+| --- | --- | --- |
+| 언어 세 질문(`language-three-questions`) | `assertions_reduced` `tests/language_setting.rs:211` 8 줄 빠짐·6 줄 더함 | 묻는 항목을 8개에서 3개로 줄이는 동작 변경에 맞춘 기대값 축소. 이유가 있는 변경이지만 목록에 올라야 할 변경 |
+| CI 기준 범위(`ci-base-scope`) | `test_deleted` 2건(`test_an_unknown_base_falls_back_to_the_full_matrix`, `test_targets_diff_uses_no_renames`) | 같은 diff 에 다른 이름의 새 시험이 있어요(이름이 바뀐 대체). 검사기는 이름이 같을 때만 옮긴 것으로 봐서 삭제로 보여요 |
+| 릴리스 4(#3234) | `test_deleted` 2건(`ci_superseded_test.py`) | 같은 diff 에 이름이 바뀐 대체 시험이 있어요(위와 같은 한계) |
+| 릴리스 1(#3231) | `sleep_added` `tests/profile_plan_cli.rs:493` | 30 초 마감이 있는 `try_wait` 반복 안의 50ms 대기(기다림 루프). 고정 sleep 이 아니라서 사람이 보면 바로 넘어갈 오탐 |
+| 묶음 6(#3230) | `sleep_added` `tests/hooks_cli.rs:2202` | 로그 시각이 달라지게 하는 5ms 고정 대기(`ac_pause`). 진짜 sleep 이고 이유를 물을 만해요 |
+| 세 도구 launcher(#3211) | `assertions_reduced` 1건 + `test_deleted` 4건(`tests/launcher_three_hosts.rs`) | 제거한 호스트의 시험 파일 전체를 지움(단언 19). 기능 제거에 따른 의도된 삭제 |
+
+결과: 50개 중 6개(12%)가 걸리고 걸린 줄은 모두 12건이에요. 걸린 6개 모두 기능 변경·제거·이름 바꾸기·기다림이 이유로 보이는 변경이고, 이유 없이 시험을 약하게 만든 diff 는 diff 만 봐서는 하나도 확인하지 못했어요(작성자에게 이유를 묻지는 않았어요). 사람이 바로 넘길 오탐은 12건 중 1건(기다림 루프)이에요. 켜면 50개 중 6개가 tier 1 이 되므로 켜는 일은 리더가 이 표를 보고 정해요.
+
+### 알려진 한계
+
+- 이름이 바뀐 시험은 삭제로 보여요(위 두 건). 한 파일에서 지운 시험을 다른 파일에 같은 이름으로 다시 더하면 옮긴 것으로 보지만, 지운 쪽 파일의 단언 순감소는 파일 단위로 그대로 세요(D-8).
+- 단언은 파일 단위로 세요. 시험 함수 안에서 단언을 다른 곳으로 옮기면 줄었다고 볼 수 있어요.
+- 8MiB 가 넘는 diff 는 읽지 않고 `unknown` 으로 두어요.
+
+### 수락 기준
+
+- AC-1: met — `--test test_weakening each_kind_fires_on_its_fixture_and_stays_quiet_on_its_pair`(Rust `#[test]`·Python `def test_` 각 한 쌍) 통과
+- AC-2: met — 같은 시험(건너뛰기 표기 다섯 개와 그 짝) 통과
+- AC-3: met — 같은 시험(단언 순감소만) 통과
+- AC-4: met — 같은 시험(시험 파일의 sleep 만) 통과
+- AC-5: met — 같은 시험(골든만 바뀐 diff 와 코드가 함께 바뀐 diff) 통과
+- AC-6: met — `--test test_weakening a_test_only_change_that_weakens_nothing_stays_tier_zero` 통과
+- AC-8: met — `--test gate_check_cli the_gate_lists_the_findings_and_says_unknown_when_unread` 통과, 수집기 쪽은 `--lib gate_collect::tests::the_collector_lists_weakened_tests_and_says_unknown_when_the_diff_is_unreadable` 통과
+- AC-9: met — `--test test_weakening observe_reports_and_enforce_raises_the_tier` 통과
+- AC-11: met — 위 표와 명령(병합 50개, 걸린 6개)
+
+AC-7 과 AC-10 은 위에 쓴 대로 이번 조각에 없어요(후속 조각).
+
+READY 검사 종료 코드(코드 head `46d1766cc4`, 기준 `341f6c7abb`, 범위를 좁히지 않았고 `CARGO_TARGET_DIR` 는 이 worktree 전용): diff-check 0, fmt 0, ops rustfmt 0, clippy `--all-targets -D warnings` 0, `--lib` 전체 0(1639 통과), `--bins` 0, 영역 시험 대상(`gate_*`·`test_weakening`, 7개 대상, 155 통과) 0, 저장소 전체 검사용 시험(`git_env_scrub`, `home_isolation_scan`, `windows_unix_gate_scan`, `product_cli`) 0, `tools/repo_scans.json` 검사 41개 실패 0, 파이썬 `repo_scans_test`·`source_manifest_test`·`local_check_test` 0, `trailer-check` 0, 이 Mac 에서 도는 `cfg(macos)` 시험(7개 대상) 0. 처음 돈 READY 는 clippy 두 줄과 저장소 검사(`docs/` 글자) 한 건에서 걸렸고, 고친 뒤 처음부터 다시 돌려 위 값을 얻었어요.
+
+돌리지 않은 것: GitHub CI(PR 없음), Windows, `review-package` 와 문서 연결 문장(후속).
