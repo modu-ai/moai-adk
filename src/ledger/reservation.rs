@@ -91,6 +91,9 @@ pub enum ReserveError {
     /// The card is not `ready`.
     CardNotReady {
         state: String,
+        /// Why the card was withdrawn, from its latest `card.withdraw` event (`None` on a
+        /// plain hold card, card C-188).
+        withdraw_reason: Option<String>,
     },
     /// The card already has an active reservation (another holder, or this one again).
     AlreadyHeld {
@@ -130,7 +133,14 @@ impl std::fmt::Display for ReserveError {
                 "invalid reservation input: the write scope is empty; name at least one path",
             ),
             ReserveError::CardNotFound(id) => write!(f, "card not found: C-{id}"),
-            ReserveError::CardNotReady { state } => write!(
+            ReserveError::CardNotReady {
+                state,
+                withdraw_reason: Some(reason),
+            } => write!(
+                f,
+                "reservation conflict in card: the card is `{state}` and withdrawn: {reason}"
+            ),
+            ReserveError::CardNotReady { state, .. } => write!(
                 f,
                 "reservation conflict in card: the card is `{state}`, only a `ready` card can be reserved"
             ),
@@ -585,7 +595,19 @@ fn reserve_in_tx(
             }));
         }
         if state != "ready" {
-            return Ok(Err(ReserveError::CardNotReady { state }));
+            let withdraw_reason: Option<String> = tx
+                .query_row(
+                    "SELECT json_extract(payload, '$.reason') FROM event \
+                     WHERE card_id = ?1 AND kind = 'card.withdraw' \
+                     ORDER BY event_id DESC LIMIT 1",
+                    [card_id],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            return Ok(Err(ReserveError::CardNotReady {
+                state,
+                withdraw_reason,
+            }));
         }
         if let Some((other_card, mine, theirs)) = find_overlap(tx, card_id, &scope)? {
             return Ok(Err(ReserveError::ScopeOverlap {
@@ -1497,6 +1519,7 @@ mod tests {
             (
                 ReserveError::CardNotReady {
                     state: "draft".into(),
+                    withdraw_reason: None,
                 },
                 "card_not_ready",
                 Kind::Conflict,

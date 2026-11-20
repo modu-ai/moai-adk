@@ -95,7 +95,7 @@ fn card_json(conn: &Connection, card_id: i64) -> std::result::Result<Option<Valu
 
 /// `card list [--state S]`: every card, oldest first. An absent ledger is "no cards" (exit 0).
 pub fn list(project: &Path, home: &Path, state: Option<&str>) -> Result<Value> {
-    list_filtered(project, home, state, None)
+    list_filtered(project, home, state, None, false)
 }
 
 /// A `--title-prefix` typed for `card list` (card C-99, SPEC-20261119-flaky-followups): not
@@ -119,6 +119,7 @@ pub fn list_filtered(
     home: &Path,
     state: Option<&str>,
     title_prefix_given: Option<&str>,
+    all: bool,
 ) -> Result<Value> {
     let state = state
         .map(|s| input::state(s).map_err(|e| format!("card list refused: {e}")))
@@ -144,12 +145,15 @@ pub fn list_filtered(
                     source_host, source_project, source_number, {} \
                FROM card WHERE (?1 IS NULL OR state = ?1) \
                            AND (?2 IS NULL OR substr(title, 1, length(?2)) = ?2) \
+                           AND (?3 OR NOT EXISTS (SELECT 1 FROM event \
+                             WHERE event.card_id = card.card_id \
+                               AND event.kind = 'card.withdraw')) \
               ORDER BY card_id",
             super::spec_link::LINKED_COLUMN
         ))
         .map_err(|e| LedgerError::from(e).to_string())?;
     let rows = stmt
-        .query_map(params![state, prefix], |r| {
+        .query_map(params![state, prefix, all], |r| {
             let host: Option<String> = r.get(7)?;
             let proj: Option<String> = r.get(8)?;
             let number: Option<i64> = r.get(9)?;
@@ -221,6 +225,59 @@ fn note_sessions(
 
 /// `card show C-n | #number`: the card with its criteria, notes, links and the reservation that
 /// holds it now.
+/// Writes the ledger. Withdraw a draft or ready card: the card moves to `hold` and one
+/// `card.withdraw` event records the reason and the by, with the session that wrote it. The
+/// ledger schema is unchanged (the six state values are pinned; the marker is the free event
+/// kind). `card take` then refuses the card naming the reason, and the default `card list`
+/// hides it.
+pub fn withdraw(
+    project: &Path,
+    home: &Path,
+    reference: &str,
+    reason: &str,
+    by: &str,
+) -> Result<Value> {
+    let which = input::parse_ref(reference).map_err(|e| format!("card withdraw refused: {e}"))?;
+    let id = project_id(project)?;
+    let mut ledger = ledger::open_write(home, &id).map_err(|e| match e {
+        LedgerError::Absent => ABSENT_HINT.to_string(),
+        other => other.to_string(),
+    })?;
+    let card_id = match which {
+        CardRef::Id(n) => n,
+        CardRef::SourceNumber(n) => {
+            let mut stmt = ledger
+                .conn()
+                .prepare("SELECT card_id FROM card WHERE source_number = ?1 ORDER BY card_id")
+                .map_err(|e| LedgerError::from(e).to_string())?;
+            let ids: Vec<i64> = stmt
+                .query_map([n], |r| r.get(0))
+                .map_err(|e| LedgerError::from(e).to_string())?
+                .collect::<std::result::Result<Vec<_>, _>>()
+                .map_err(|e| LedgerError::from(e).to_string())?;
+            match ids.as_slice() {
+                [one] => *one,
+                _ => {
+                    return Err(format!(
+                        "card withdraw refused: #{n} names {} cards; name the card instead",
+                        ids.len()
+                    ))
+                }
+            }
+        }
+    };
+    let session = std::env::var("CLAUDE_CODE_SESSION_ID")
+        .or_else(|_| std::env::var("CODEX_THREAD_ID"))
+        .ok();
+    ledger::workflow::withdraw(&mut ledger, card_id, reason, by, session.as_deref())
+        .map_err(|e| format!("card withdraw refused: {e}"))?;
+    Ok(json!({
+        "action": "withdraw", "project_id": id,
+        "card": input::card_name(card_id), "state": "hold",
+        "writes": true,
+    }))
+}
+
 pub fn show(project: &Path, home: &Path, reference: &str) -> Result<Value> {
     let which = input::parse_ref(reference).map_err(|e| format!("card show refused: {e}"))?;
     let id = project_id(project)?;
