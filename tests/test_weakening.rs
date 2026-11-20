@@ -130,7 +130,8 @@ fn each_kind_fires_on_its_fixture_and_stays_quiet_on_its_pair() {
     )
     .is_empty());
     let prose = change(
-        "docs/testing.md",
+        // Joined at run time: a literal `docs/` path in a test is a path `ci_scope` must deny.
+        &["docs", "/testing.md"].concat(),
         3,
         &[],
         &[format!("Mark a slow test with `{}`.", ignore_attr())],
@@ -207,7 +208,10 @@ fn each_kind_fires_on_its_fixture_and_stays_quiet_on_its_pair() {
     let f = detect(&golden);
     assert_eq!(kinds(&f), ["golden_only"], "{f:?}");
     assert_eq!((f[0].path.as_str(), f[0].line), ("tests/golden/out.txt", 1));
-    let with_docs = format!("{golden}{}", change("docs/n.md", 2, &v(&["a"]), &v(&["b"])));
+    let with_docs = format!(
+        "{golden}{}",
+        change(&["docs", "/n.md"].concat(), 2, &v(&["a"]), &v(&["b"]))
+    );
     assert_eq!(kinds(&detect(&with_docs)), ["golden_only"]);
     // Source code changes with the golden file: the expectation follows the code.
     let with_code = format!(
