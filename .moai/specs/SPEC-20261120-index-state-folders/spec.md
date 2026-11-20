@@ -91,4 +91,16 @@ C-58 이 이미 "추적 파일만 센다(gitignore 로 빠진 untracked 파일�
 
 ## Result
 
-아직 만들지 않았어요(초안).
+RED 먼저: 커밋 c4cbe4ec5d(시험 11개 중 9개 실패, 사유는 카드의 증상 그대로: "40003 tracked files" 거절, `.moai/reports` untracked 17,000개로 `unavailable`, go-state 사유에 폴더 이름 없음). 기준 가지 997becf25f, 이 변경이 건드린 파일과 겹치는 다른 변경 없음(카드 예약으로 확인). 구현 커밋 347fcf2444. 이후 긴 경로 시험 둘을 더해 git 쪽 제외를 따로 묶었어요(한쪽만 지우는 변이가 살아남지 않게).
+
+- AC-1: met — `tracked_reports_in_a_state_folder_do_not_count`(두 상태 폴더의 `reports` 각 20,000개 추적 + 소스 셋: `files` 3, manifest 에 상태 폴더 경로 없음), `the_limit_counts_source_files_next_to_a_state_folder_full_of_reports`(소스 16384개는 빌드, 16385개는 거절되고 메시지가 `16385 tracked files` 이며 `.moai` 를 이름 짓지 않음), `a_tracked_folder_of_long_report_paths_never_reaches_gits_output_cap`(약 810바이트 경로 5,500개는 4 MiB 를 넘지만 빌드됨). 변이 M1(추적 목록의 git 제외 삭제)이 마지막 시험에 잡혔어요.
+- AC-2: met — `the_state_folder_is_matched_on_the_first_component_only`: `.moai/`·`.moai-cli/` 아래 specs, config, reports, project.yaml 은 빠지고 `.moai-notes/a.txt`, `a.txt`, `docs/.moai/x`, `src/main.rs` 만 색인돼요. 변이 M4(첫 성분 대신 접두 비교)가 잡혔어요.
+- AC-3: met — `a_scope_inside_a_state_folder_indexes_it`: 범위 `.moai/specs` 는 그 아래만, `src` 와 `.moai/specs` 는 둘, `.moai-cli` 는 `project.yaml` 만 색인하고, 범위 없는 빌드는 다시 상태 폴더를 빼요. 변이 M3(범위가 상태 폴더를 이름 지어도 무시)이 잡혔어요.
+- AC-4: met — `untracked_reports_in_a_state_folder_leave_a_query_fresh`(untracked 17,000개와 추적 파일 변경에도 `fresh`), `untracked_files_outside_a_state_folder_still_count`(`docs/.moai` 아래 16385개는 `unavailable`, 한도 대조), `an_untracked_folder_of_long_report_paths_never_reaches_gits_output_cap`. 변이 M2(untracked 의 git 제외 삭제)가 마지막 시험에 잡혔어요.
+- AC-5: met — `go_state_blocked_folders_cli`: `the_blocked_reason_names_the_largest_folders`(순서 reports, logs, cache, config, memory, `memory (1 entry)`), `at_most_five_folders_are_named`, `a_folder_at_the_limit_is_counted_and_one_over_is_more_than`(한도 5 에서 5개는 `5 entries`, 6개는 `more than 5 entries`), `the_blocked_folder_stays_and_the_preview_writes_nothing`(항목 `leave`, 미리보기 전후 트리 동일, 기본 한도에서는 `move`). 변이 M5(`>=`), M5b(세기 한 칸 어긋남), M7(같은 수 이름 내림차순), M8(여섯 폴더)이 잡혔어요.
+- AC-6: met — `the_reason_gives_the_report_move_only_when_reports_is_named`: `reports` 가 이름 지어지면 `moai reports-move-plan .` 과 `~/.moai/reports/<project>/` 가 사유에 있고, `logs` 만 크면 둘 다 없어요. 변이 M6(항상 적기)이 잡혔어요.
+- AC-7: met — 최종 코드에서 index_scope_cli 10, index_cli 23, index_records 11, freshness_fixture 10, atlas_query_cli 10, code_atlas_reference 4, doc_reference_boundaries 15, go_state_cli 61, go_state_preview_cli 44, go_state_classes_cli 71, go_state_digest_cli 22, go_state_codex_cli 37, spec_cli 18, ac_command_lint 5, `--lib` 1595 모두 통과, `cargo fmt --check` 와 `cargo clippy --offline --locked --all-targets -- -D warnings` 종료 0.
+
+변이 아홉 개가 모두 잡혔고(M1·M2·M3·M4·M5·M5b·M6·M7·M8) 소스는 복구 뒤 `git diff` 가 비었어요. 살아남을 수 있는 것으로 알고 시험하지 않은 것: `tracked_paths`·`untracked` 의 Rust 쪽 상태 폴더 걸러내기(git 쪽 제외와 겹치는 안전망이라 하나를 지워도 시험 결과가 같아요).
+
+바뀐 것 밖: `docs/index-generation.md` 의 개수 규칙 줄("상태 폴더 `<state>/index/` 제외")은 C-58 이 그 파일을 쥐고 있어 고치지 않았어요(후속). 이 변경은 SPEC-20261119-update-moves-reports 의 `reports-move-plan` 이 기준 가지에 들어오기 전에는 사유가 아직 없는 명령을 가리켜요(병합 순서: 그쪽이 먼저).
