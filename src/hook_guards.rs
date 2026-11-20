@@ -1292,7 +1292,7 @@ pub fn collapse_whitespace(text: &str) -> String {
     let mut folded: Vec<(char, bool)> = Vec::with_capacity(chars.len());
     for item in chars {
         if blank(&item) {
-            if folded.last().is_some_and(|prev| blank(prev)) {
+            if folded.last().is_some_and(&blank) {
                 continue;
             }
             folded.push((' ', true));
