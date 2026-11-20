@@ -19,6 +19,7 @@ created: 2026-11-19
 
 ## Non-goals
 
+- The project interview text of the skill (`skills/moai/workflows/project.md`) that describes the three language questions: the change that rewrites that workflow writes it, and received the wording of this change by a note. This SPEC does not edit or test that file.
 - 결정 모델 제거, 질문 은행 축소, `/moai project` 와 `/moai update` 의 경계, 설치기·셸 `moai update` 의 질문 변경 — 같은 재설계의 다른 조각이에요.
 - 영어·한국어 밖의 언어로 AGENTS.md 를 쓰는 일: 그 언어의 관리 구간 문장이 없어서 지금처럼 요청 언어로 쓰고 경고해요.
 - 스킬·규칙 파일의 내용 번역이나 한국어 고정 문구 정리 — 이 SPEC 은 그 파일들을 영어가 아니게 만들지 않아요.
@@ -37,7 +38,6 @@ created: 2026-11-19
 - REQ-9: While the profile sets `instruction_files` to `en` or `ko`, the managed sections shall be written in that language. · failure: none
 - REQ-10: When a profile carries the old eight `language` items, the plan and the apply shall run without a conflict, leaving the profile's own values in the profile. · failure: none
 - REQ-11: When the profile sets no `issue_pr_records`, the GitHub forms shall be written in English; a profile that sets one decides the form language. · failure: none
-- REQ-12 (moved out): the project interview text of the skill (`skills/moai/workflows/project.md`) describing the three language questions is written by the change that rewrites that workflow, which received the wording of this change by a note; this SPEC no longer edits that file and no longer tests it.
 
 ## Acceptance
 
