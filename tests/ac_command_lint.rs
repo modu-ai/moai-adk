@@ -438,3 +438,78 @@ fn file_mode_judges_the_one_file_against_the_callers_cwd() {
         "the violation names the given file:\n{stderr}"
     );
 }
+
+#[test]
+#[cfg(unix)]
+fn a_doubled_backtick_pair_opens_the_span_inside() {
+    // The Python regex scans one character at a time: in ``cmd`` the second backtick
+    // opens the span whose closer is the third — the audit found the Rust port missing
+    // these (17 findings against 1 on the rc1-issue-design record).
+    let f = ac_fixture(true);
+    record(
+        &f.dir,
+        "docs/a.md",
+        "x ``cargo test --offline --locked --test fixture_target no_such_filter`` y\n",
+    );
+    let out = lint_with_stub(&f, &["--tree", f.dir.path().to_str().unwrap()]);
+    let stderr = String::from_utf8_lossy(&out.stderr).to_string();
+    assert!(
+        !out.status.success(),
+        "the span inside a doubled pair is a span:\n{stderr}"
+    );
+    assert!(
+        stderr
+            .contains("filters ['no_such_filter'] select 0 tests in fixture_target (1 available)"),
+        "the doubled pair's span was judged:\n{stderr}"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn an_unclosed_backtick_is_not_a_span() {
+    // `` `([^`\n]+)` `` needs a closer: an unclosed backtick never becomes a span, so its
+    // line is not judged at all.
+    let f = ac_fixture(true);
+    record(
+        &f.dir,
+        "docs/a.md",
+        "x `cargo test --offline --locked --test ghost_target one\n",
+    );
+    let out = lint_with_stub(&f, &["--tree", f.dir.path().to_str().unwrap()]);
+    let stderr = String::from_utf8_lossy(&out.stderr).to_string();
+    assert!(
+        out.status.success(),
+        "an unclosed backtick is not a span — no violation:\n{stderr}"
+    );
+    assert!(
+        !stderr.contains("does not exist"),
+        "the unclosed line never reached the judge:\n{stderr}"
+    );
+}
+
+#[test]
+#[cfg(unix)]
+fn a_double_dash_thread_flag_is_not_a_target() {
+    // `--test\s+` requires the whitespace: `--test-threads` is not a `--test` — the
+    // audit found the Rust port naming `-threads` as the target here.
+    let f = ac_fixture(true);
+    record(
+        &f.dir,
+        "docs/a.md",
+        "run: `cargo test --offline --locked --test-threads 4 --test fixture_target one`\n",
+    );
+    let out = lint_with_stub(&f, &["--tree", f.dir.path().to_str().unwrap()]);
+    let stderr = String::from_utf8_lossy(&out.stderr).to_string();
+    assert!(
+        !out.status.success(),
+        "the real `--test fixture_target` is judged and `one` selects none:\n{stderr}"
+    );
+    assert!(
+        stderr.contains("filters ['one'] select 0 tests in fixture_target (1 available)"),
+        "the target is fixture_target, judged by the tool's filter rule:\n{stderr}"
+    );
+    assert!(
+        !stderr.contains("does not exist"),
+        "-threads was never named as a target:\n{stderr}"
+    );
+}
