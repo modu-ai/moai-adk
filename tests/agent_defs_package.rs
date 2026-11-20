@@ -630,9 +630,7 @@ fn interview_question_bank_covers_the_project_axes() {
             "versioning_format",
             "versioning_head",
             // C-70: the git work flow, m-flow recommended.
-            "work_flow",
-            // C-54: the autonomous decision model, not used first.
-            "decision_model"
+            "work_flow"
         ]
     );
     for r in &rows {

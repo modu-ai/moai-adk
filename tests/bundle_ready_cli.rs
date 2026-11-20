@@ -133,6 +133,25 @@ impl World {
         self.git(&["rev-parse", TIP])
     }
 
+    /// Overwrites the project profile with a valid one carrying the work flow the
+    /// scene wants; `home.project` writes a minimal file that `read_profile`
+    /// refuses, so every scene that needs a readable profile calls this.
+    fn write_profile(&self, work_flow: Option<Value>) {
+        let mut profile = serde_json::json!({
+            "schema_version": 2, "project_id": "demo", "purpose": "Fixture",
+            "tools": ["Rust"], "development_methods": ["TDD"], "hosts": ["claude"],
+            "decisions": [{"id": "d1", "topic": "tools", "value": "Rust",
+                "source": "user", "scope": "project"}],
+        });
+        if let Some(wf) = work_flow {
+            profile["work_flow"] = wf;
+        }
+        let path = Path::new(&self.project)
+            .join(".moai-cli")
+            .join("project.yaml");
+        fs::write(path, profile.to_string()).unwrap();
+    }
+
     /// A branch of one commit on `from`, with these files and this `Moai-Spec` trailer (none when
     /// `None`); pushed to `origin` when `push`. Returns the commit.
     fn head_raw(
@@ -260,6 +279,12 @@ impl World {
     /// `moai bundle <args> --project … --dir … --tip origin/trunk`: the first stdout line as JSON
     /// and the exit status.
     fn bundle(&self, args: &[&str]) -> (Value, i32) {
+        self.bundle_args(args, true)
+    }
+
+    /// `with_tip=false` leaves `--tip` out, so the action resolves the tip itself —
+    /// the profile-resolved default the slice pins.
+    fn bundle_args(&self, args: &[&str], with_tip: bool) -> (Value, i32) {
         let mut all = vec!["bundle"];
         all.extend_from_slice(args);
         all.extend_from_slice(&[
@@ -267,9 +292,10 @@ impl World {
             &self.project,
             "--dir",
             self.work.to_str().unwrap(),
-            "--tip",
-            TIP,
         ]);
+        if with_tip {
+            all.extend_from_slice(&["--tip", TIP]);
+        }
         let out = self
             .home
             .command(&all)
@@ -425,4 +451,57 @@ fn a_ledger_without_ready_lines_lists_nothing() {
     assert_eq!(v["result"]["heads"], serde_json::json!([]));
     assert_eq!(v["result"]["unreadable"], serde_json::json!([]));
     assert_eq!(v["result"]["count"], 0);
+}
+
+/// SPEC-20261120-mflow-integration-branch-choice: with no `--tip`, the action
+/// resolves the tip from the project profile's m-flow integration branch —
+/// the stored value drives the integration ref, so a repository that named
+/// its branch at first setup needs no flag at all.
+#[test]
+fn the_tip_comes_from_the_profile_integration_branch() {
+    let w = World::new();
+    w.write_profile(Some(serde_json::json!({
+        "flow": "m-flow",
+        "integration_branch": "trunk",
+    })));
+    let (v, code) = w.bundle_args(&["ready"], false);
+    assert_eq!(code, 0, "{v}");
+    assert_eq!(
+        v["result"]["tip"]["name"], "origin/trunk",
+        "the stored branch drives the tip: {v}"
+    );
+}
+
+/// With no recorded integration branch the old default stays — visible here as
+/// the refusal naming it, because the fixture repository has no such branch.
+#[test]
+fn without_a_recorded_branch_the_old_tip_default_stays() {
+    let w = World::new();
+    w.write_profile(None);
+    let (v, code) = w.bundle_args(&["ready"], false);
+    assert_eq!(code, 1, "no recorded branch keeps the old default: {v}");
+    let message = v["error"]["message"].as_str().unwrap();
+    assert!(
+        message.contains("origin/v2026.11.0"),
+        "the refusal names the old default: {v}"
+    );
+}
+
+/// The tip resolution is an m-flow rule: a github-flow profile does not point the
+/// tip at origin/<integration_branch> even when one is recorded — without --tip it
+/// keeps the old default (audit B1: the non-m-flow branch of the resolution had no
+/// scene of its own).
+#[test]
+fn a_github_flow_profile_keeps_the_old_tip_default() {
+    let w = World::new();
+    w.write_profile(Some(
+        serde_json::json!({"flow": "github-flow", "integration_branch": "trunk"}),
+    ));
+    let (v, code) = w.bundle_args(&["ready"], false);
+    assert_eq!(code, 1, "github-flow keeps the old default: {v}");
+    let message = v["error"]["message"].as_str().unwrap();
+    assert!(
+        message.contains("origin/v2026.11.0"),
+        "the refusal names the old default, not the recorded branch: {v}"
+    );
 }

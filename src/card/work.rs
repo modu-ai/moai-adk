@@ -25,6 +25,7 @@ use crate::ledger::workflow::{self, CriterionChange, PrTarget, SkipReason, Workf
 use crate::ledger::{self, LedgerError};
 use serde_json::{json, Value};
 use std::path::Path;
+use std::process::Command;
 
 type Result<T> = std::result::Result<T, String>;
 
@@ -477,9 +478,98 @@ pub fn done(
     {
         return Err(format!("card done refused: {why}; nothing was changed"));
     }
-    let moved =
-        workflow::done(&mut ledger, card_id, holder, generation).map_err(|e| refusal("done", e))?;
+    let landing = mflow_landing(&mut ledger, project, card_id)?;
+    let moved = workflow::done(&mut ledger, card_id, holder, generation, landing)
+        .map_err(|e| refusal("done", e))?;
     Ok(moved_json("done", &id, &moved))
+}
+
+/// The M-Flow landing evidence for `card done` (SPEC-20261120-card-done-mflow): when the
+/// project's profile names the m-flow work_flow with an integration branch, the newest
+/// `card.landed` event's head must be an ancestor of that branch's tip — checked here with
+/// git, because the ledger never spawns commands. `None` for any other flow, which keeps the
+/// merged-pull-request rule.
+fn mflow_landing(
+    ledger: &mut ledger::WriteLedger,
+    project: &Path,
+    card_id: i64,
+) -> Result<Option<workflow::Landing>> {
+    let profile = match crate::profile::read_profile(project) {
+        Ok((p, _)) => p,
+        Err(_) => return Ok(None),
+    };
+    let Some(wf) = profile.work_flow.filter(|w| w.flow == "m-flow") else {
+        return Ok(None);
+    };
+    let Some(branch) = wf.integration_branch else {
+        return Ok(None);
+    };
+    let head: Option<String> = ledger
+        .conn()
+        .query_row(
+            "SELECT json_extract(payload, '$.head') FROM event \
+             WHERE card_id = ?1 AND kind = 'card.landed' \
+             ORDER BY event_id DESC LIMIT 1",
+            [card_id],
+            |r| r.get(0),
+        )
+        .ok();
+    let Some(head) = head else {
+        return Err(
+            "card done refused: cannot close: no local landing is linked (`card landed` after \
+             the merge); nothing was changed"
+                .to_string(),
+        );
+    };
+    let git_out = |args: &[&str]| -> Result<String> {
+        let mut cmd = Command::new("git");
+        cmd.arg("-C").arg(project).args(args);
+        crate::identity::scrub_git_env(&mut cmd);
+        let o = cmd
+            .output()
+            .map_err(|e| format!("card done refused: git could not run: {e}"))?;
+        if !o.status.success() {
+            return Err(format!(
+                "card done refused: git {} failed: {}",
+                args.first().unwrap_or(&"git"),
+                String::from_utf8_lossy(&o.stderr).trim()
+            ));
+        }
+        Ok(String::from_utf8_lossy(&o.stdout).trim().to_string())
+    };
+    let tip = git_out(&["rev-parse", "--verify", &branch])?;
+    let mut cmd = Command::new("git");
+    cmd.arg("-C")
+        .arg(project)
+        .args(["merge-base", "--is-ancestor", &head, &tip]);
+    crate::identity::scrub_git_env(&mut cmd);
+    let o = cmd
+        .output()
+        .map_err(|e| format!("card done refused: git could not run: {e}"))?;
+    if !o.status.success() {
+        return Err(format!(
+            "card done refused: cannot close: the landed head is not contained in the \
+             integration branch {branch}; nothing was changed"
+        ));
+    }
+    Ok(Some(workflow::Landing { head, tip }))
+}
+
+/// `card landed C-n --head <sha>`: record that this card's head landed on the local
+/// integration branch (M-Flow, SPEC-20261120-card-done-mflow). The card must be in `review`;
+/// one `card.landed` event names the head and the by, with the writing session as the actor.
+pub fn landed(project: &Path, home: &Path, reference: &str, head: &str, by: &str) -> Result<Value> {
+    let card_id = card_id("landed", reference)?;
+    let (id, mut ledger) = open_for_write(project, home)?;
+    let session = std::env::var("CLAUDE_CODE_SESSION_ID")
+        .or_else(|_| std::env::var("CODEX_THREAD_ID"))
+        .ok();
+    workflow::land(&mut ledger, card_id, head, by, session.as_deref())
+        .map_err(|e| format!("card landed refused: {e}"))?;
+    Ok(json!({
+        "action": "landed", "project_id": id,
+        "card": input::card_name(card_id), "writes": true,
+    }))
 }
 
 /// `card renew C-n`: the lease ends `lease_secs` from now, never earlier than it already did.

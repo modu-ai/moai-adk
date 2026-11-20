@@ -1,0 +1,81 @@
+{
+  "schema_version": 2,
+  "project_id": "moai-adk",
+  "purpose": "MoAI ADK 2026.11.0-rc.1: Rust online-first development kit with one common MoAI skill for Claude Code and Codex",
+  "tools": [
+    "Rust",
+    "Python"
+  ],
+  "development_methods": [
+    "TDD",
+    "characterization"
+  ],
+  "hosts": [
+    "claude",
+    "codex"
+  ],
+  "detected": {
+    "project_kind": "existing",
+    "manifests": [
+      "Cargo.toml",
+      "experiments/rc-cli/Cargo.toml"
+    ],
+    "languages": [
+      "python",
+      "rust",
+      "typescript"
+    ],
+    "lsp": [
+      "pyright",
+      "rust-analyzer",
+      "typescript-language-server"
+    ],
+    "mcp_servers": [],
+    "databases": [
+      "sqlite"
+    ]
+  },
+  "work_flow": {
+    "flow": "m-flow",
+    "integration_branch": "v2026.11.0"
+  },
+  "decisions": [
+    {
+      "id": "protected",
+      "topic": "protected",
+      "value": "secret and key files; CI and release settings in the .github folder; migrations and data folders",
+      "source": "user",
+      "scope": "project"
+    },
+    {
+      "id": "done",
+      "topic": "done",
+      "value": "local_check.sh in the tools folder passes",
+      "source": "user",
+      "scope": "project"
+    },
+    {
+      "id": "review_blocks",
+      "topic": "review_blocks",
+      "value": "a secret in code or logs; a change without a test; a change outside the task's scope",
+      "source": "user",
+      "scope": "project"
+    },
+    {
+      "id": "autonomy",
+      "topic": "autonomy",
+      "value": "reads, tests and edits inside the task's scope run without asking; what SKILL.md sorts as case (2) is asked first",
+      "source": "user",
+      "scope": "project"
+    }
+  ],
+  "language": {
+    "commit_messages": "en",
+    "documents": "ko",
+    "user_chat": "ko"
+  },
+  "versioning": {
+    "scheme": "headver",
+    "head": 4
+  }
+}

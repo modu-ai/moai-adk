@@ -226,6 +226,8 @@
 | 10:15Z(11-10) | worktree 전략 재설계 | 여러 세션의 worktree 병행 작업으로 불필요한 파일·용량이 계속 쌓이는 문제를 풀도록 **MoAI ADK의 worktree 전략을 agentic coding용 방법론으로 다시 설계해 구축·적용**한다. 1단계는 조사 + 설계 문서(삭제·정리 실행 없음), 구현은 설계 승인 뒤 카드로 분할 | #2380 | 사용자 직접 지시(리더 세션 t5z) |
 | 10:07Z(11-10) | 런처 지원 host 범위 | **OMP는 제거하고 쓰지 않는다. 런처는 `moai cc`·`moai glm`·`moai codex` 세 가지만 지원**한다("일단"). 10일 앞선 지시의 `moai cc/glm/codex/omp` 가운데 omp를 뺀다. 병합된 OMP 어댑터(PR #2367: `src/hosts/omp.rs`·`tests/omp_adapter.rs`)와 런처의 omp 단어·도움말·문서는 후속 카드에서 걷어 낸다. PR 수리용 OMP 작업 세션(pr-1~pr-4)의 운용을 바꾸라는 지시로는 읽지 않았다(리더 해석 — 제품 지원 범위에 대한 문장) | #2362(종료 방향), #2359·PR #2360, 제거 카드 | 사용자 직접 지시(리더 세션 t5z) "일단 omp 는 제거하고 사용하지 않고 moai cc/glm/codex 이렇게 3가지만 지원한다" |
 | xx:xxZ(11-16) | 작업 원장 = 로컬 카드 | **GitHub Issues는 더 이상 작업 원장이 아니고, 프로젝트의 로컬 카드(`moai card`)가 작업 원장이다.** 11:52Z(11-10) '로컬 TODO·SQLite 제거 — 작업 원장은 GitHub/GitLab Issue만' 행(#2384)을 **대체**한다. PR·CI·감사·병합 관문은 GitHub에 그대로 둔다. GitHub는 선택적 가져오기·내보내기로만 남는다 | #2384(대체됨) | 사용자 직접 지시(2026-11-16), 리더 기록. 글 맞춤: SPEC-20261118-card-ledger-wording |
+| 20:49Z(11-20) | 결정 모델 폐기 | 결정 모델(Jev·OpenAI)은 더 이상 쓰지 않는다 — 인터뷰 질문 제거(SPEC-20261120-drop-decision-question), `src/decide/` 라이브러리 제거와 이전 SPEC 다섯 개 superseded(SPEC-20261120-retire-decide) | — | 사용자 직접 지시(2026-11-21 대화, 선택), 범주 none, 되돌리기 git revert |
+| 20:49Z(11-20) | 관리 구역 손 관리 | `AGENTS.md`·`.gitignore` 의 생성기 관리 구역은 지금 모양을 유지하고 손으로 관리한다 — `AGENTS.md` 9 KiB 시험 한도와 `!.moai/project.yaml` 추적 줄을 지키기 위해서이며, 다음 `generation` 적용은 `skip-conflicts` 를 쓴다 | — | 사용자 선택 2026-11-21, 범주 none, 되돌리기: 이 행을 대체하는 행. 기록: SPEC-20261120-retire-decide |
 
 
 부분 결정 분리: P08은 claim 방식(⑤+①)만 결정, lease·heartbeat 수치 HOLD → 00:5x(11-09) lease 4h·heartbeat 없음으로 결정 · P15는 ZCode 헤드리스 범위만 결정, 나머지 host 지원표 HOLD.
