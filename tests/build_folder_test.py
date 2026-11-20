@@ -295,14 +295,21 @@ class RemoveTest(unittest.TestCase):
 def tree(folder):
     """Every entry under `folder` with its bytes (links by target), for before/after checks."""
     out = {}
-    for path in sorted(Path(folder).rglob("*")):
-        rel = str(path.relative_to(folder))
-        if path.is_symlink():
-            out[rel] = ("link", os.readlink(path))
-        elif path.is_dir():
-            out[rel] = ("dir",)
-        else:
-            out[rel] = ("file", path.read_bytes())
+    base = Path(folder)
+
+    def visit(directory):
+        for entry in sorted(os.scandir(directory), key=lambda e: e.name):
+            path = Path(entry.path)
+            rel = str(path.relative_to(base))
+            if entry.is_symlink():
+                out[rel] = ("link", os.readlink(path))
+            elif entry.is_dir(follow_symlinks=False):
+                out[rel] = ("dir",)
+                visit(path)
+            else:
+                out[rel] = ("file", path.read_bytes())
+
+    visit(base)
     return out
 
 
