@@ -94,12 +94,14 @@ pub enum Source {
     Default,
 }
 
-/// The default of a tool and role (decision D-4 of SPEC-20261118-model-effort-settings).
+/// The default of a tool and role (decision D-4 of SPEC-20261118-model-effort-settings; the
+/// claude-leader effort and the gpt-leader model changed by the user decision of 2026-11-19,
+/// from the research note of SPEC-20261120-update-three-tool-models).
 pub fn default_choice(tool: &str, role: &str) -> Option<Choice> {
     let (model, effort) = match (tool, role) {
-        ("claude", "leader") => ("claude-opus-5-5", "medium"),
+        ("claude", "leader") => ("claude-opus-5-5", "high"),
         ("claude", "agent") => ("claude-sonnet-5-5", "high"),
-        ("codex", "leader") => ("gpt-6.1-sol", "high"),
+        ("codex", "leader") => ("gpt-6.2-sol", "high"),
         ("codex", "agent") => ("gpt-6.1-terra", "xhigh"),
         ("omp" | "glm", "leader") => ("zai/glm-5.3", "high"),
         ("omp" | "glm", "agent") => ("zai/glm-5.3-flash", "max"),
