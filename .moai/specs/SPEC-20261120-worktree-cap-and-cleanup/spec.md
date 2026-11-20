@@ -47,8 +47,8 @@ created: 2026-11-20
 
 ## Scope
 
-- write: 이 SPEC, `src/worktree_cap.rs`(새), `src/ops/optimize_plan.rs`(출력에 개수·상한·후보를 더함), `src/ops/optimize_apply.rs`(새), `tests/worktree_cap_cleanup.rs`(새), `tests/optimize_apply_cli.rs`(새), `docs/design-review/appendix/operations/optimize_apply.md`(새)
-- 아직 쓸 수 없는 곳(다른 카드가 잡고 있어요, 범위 확장이 필요해요): 상한 설정 키를 읽는 `src/profile.rs`, 새 모듈 한 줄 `src/lib.rs`, `skills/moai/workflows/optimize.md` 의 안내 문단, `docs/design-review/appendix/operations/optimize_plan.md` 의 새 키 설명
+- write: 이 SPEC, `src/worktree_cap.rs`(새), `src/ops/optimize_plan.rs`(출력에 개수·상한·후보를 더함), `src/ops/optimize_apply.rs`(새), `tests/worktree_cap_cleanup.rs`(새), `tests/optimize_apply_cli.rs`(새), `tests/worktree_cleanup_safety.rs`(새, 감사 뒤 안전 시험), `docs/design-review/appendix/operations/optimize_apply.md`(새), `src/lib.rs`(모듈 한 줄)와 `src/help.rs`(도움말 행 — 새 명령은 도움말 표에 행이 있어야 `help_rules` 시험이 통과해요)
+- 아직 쓸 수 없는 곳(다른 카드가 잡고 있어요, 범위 확장이 필요해요): 상한 설정 키를 읽는 `src/profile.rs`, `skills/moai/workflows/optimize.md` 의 안내 문단, `docs/design-review/appendix/operations/optimize_plan.md` 의 새 키 설명
 - read-only: `src/optimize.rs`, `src/worktree_gc.rs`, `src/worktree_report.rs`, `src/ledger/**`, `src/lane_registry.rs`
 - forbidden: `.claude/` 와 Go 세대의 `worktrees/projects/` 폴더 안에 쓰기, `git worktree remove --force`, `rm -rf`, 가지 삭제, 원장 쓰기, 카드 번호를 SPEC id·가지·커밋·PR 에 쓰는 것, 실제 HOME 과 실제 저장소의 worktree(시험은 임시 저장소만)
 
@@ -79,6 +79,9 @@ created: 2026-11-20
 | D-5 | 되돌림 기록은 `<git 공통 폴더>/.moai-cli/worktree-cleanup/<now_unix>-<digest12>.json` 에 써요(추적되지 않는 `.git` 아래; 시각은 읽은 시계의 Unix 초) | 세션 레지스트리가 쓰는 `<공통 폴더>/.moai-cli/` 와 같은 자리; 보고서 폴더 이동 카드와 겹치지 않아요 | 보고서 폴더(`~/.moai/reports/<project>/`)로 옮기기 |
 | D-6 | `git worktree remove` 는 `--force` 없이 써요. 되살릴 수 있는 무시 파일만 남은 worktree 는 `worktree_gc` 의 `ignored_safe` 판정을 따라요 | AGENTS.local.md 의 "never force" 와 `worktree_gc` 의 데이터 손실 방지 규칙 | 없음 |
 | D-7 | 상한은 보여 주기만 해요(만들기를 막지 않고 자동 삭제도 없어요) | 카드 기준 2("미리보기가 초과를 말해요") | 후속 카드로 상한 강제 |
+| D-8 | 새 층은 gc 행에서 버리는 이유(`preserved_location`(옛 위치만), 끝난 카드의 `not_merged`·`merged_unknown`, 센서스 이유)를 자기 규칙으로 다시 세워요: 끝난 카드여도 가지 없는(detached) worktree 는 어떤 ref 도 그 HEAD 를 가리킬 때만 후보이고(`unmerged_detached_commits`), 가지가 있는 worktree 는 지운 뒤에도 가지가 커밋을 지켜요; 하루가 안 된 빈 worktree 는 `empty_worktree` 로 유지해요 | 감사 B1·B3: 병합 안 된 detached 커밋과 막 만든 레인 worktree 를 지울 수 있었어요 | 규칙을 `worktree_gc.rs` 의 한 곳으로 옮기기(그 파일 카드가 풀린 뒤) |
+| D-9 | worktree 목록은 `git worktree list --porcelain -z` 로 읽고, 한 경로에 행이 둘이거나 NUL 목록이 모르는 경로(줄바꿈이 든 경로가 gc 의 줄 단위 목록을 쪼갠 흔적)나 제어 문자가 든 경로는 판정하지 않고 유지해요. 적용도 한 경로에 정확히 한 행일 때만 지워요 | 감사 B2: 줄바꿈 경로가 이웃 worktree 의 가짜 행을 만들어 지우게 할 수 있었어요. 공용 파서(`worktree_report.rs`)는 이 카드 범위 밖이라 그대로 두고 후속으로 알려요 | 공용 파서를 `-z` 로 고치고 이 방어 걷기 |
+| D-10 | 후보는 MoAI 의 위치로 제한하지 않아요: 이 저장소에 연결된 worktree 이면 어디에 있든, 병합됐거나 끝난 카드의 것이고 모든 안전 이유가 없을 때 후보예요. 지우는 것은 사용자가 고른 항목뿐이고(`--pick`), 가지는 남고, 복구 명령이 기록에 남아요 | 감사 N3: 사용자가 손으로 만든 worktree 도 같은 규칙(깨끗함·병합됨)이면 같은 대접이 일관돼요; 위치로 가르면 옛 위치 허용(D-3)과 갈라져요 | 후보를 `location` 이 project·claude 인 것으로 제한 |
 
 ## Result
 

@@ -15,7 +15,7 @@
 
 use crate::identity::scrub_git_env;
 use crate::worktree_gc::{self, Pace};
-use crate::worktree_report::{disk_bytes, parse_worktree_list};
+use crate::worktree_report::disk_bytes;
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
@@ -197,6 +197,8 @@ fn blocks(meta: &fs::Metadata) -> u64 {
 /// What the card ledger says about one worktree.
 #[derive(Debug, Clone)]
 struct Reservation {
+    /// The ledger's `reservation_id`: the largest is the newest.
+    id: i64,
     card_state: String,
     status: String,
     lease_until: i64,
@@ -231,7 +233,7 @@ fn read_cards(project: &Path, home: Option<&Path>) -> Result<Option<Cards>> {
     let mut stmt = ledger
         .conn()
         .prepare(
-            "SELECT c.state, r.status, r.lease_until, r.holder, r.worktree, r.branch \
+            "SELECT c.state, r.status, r.lease_until, r.holder, r.worktree, r.branch, r.reservation_id \
              FROM reservation r JOIN card c ON c.card_id = r.card_id \
              WHERE r.worktree IS NOT NULL OR r.branch IS NOT NULL ORDER BY r.reservation_id",
         )
@@ -240,6 +242,7 @@ fn read_cards(project: &Path, home: Option<&Path>) -> Result<Option<Cards>> {
         .query_map([], |r| {
             Ok((
                 Reservation {
+                    id: r.get(6)?,
                     card_state: r.get(0)?,
                     status: r.get(1)?,
                     lease_until: r.get(2)?,
@@ -274,6 +277,8 @@ impl Cards {
         if let Some(b) = branch {
             out.extend(self.by_branch.get(b).into_iter().flatten());
         }
+        // by path first, then by branch: the newest reservation must come last
+        out.sort_by_key(|r| r.id);
         out
     }
 }
@@ -309,6 +314,48 @@ fn str_list(v: &Value) -> Vec<String> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+/// Whether some ref (branch, tag, remote-tracking ref) reaches `head`, so removing a worktree
+/// that stands on it leaves the commit findable. An answer git cannot give counts as no.
+fn reachable_from_a_ref(project: &Path, head: &str) -> bool {
+    git(
+        project,
+        &[
+            "for-each-ref",
+            "--count=1",
+            "--contains",
+            head,
+            "--format=%(refname)",
+        ],
+    )
+    .is_ok_and(|out| !out.trim().is_empty())
+}
+
+/// One worktree of `git worktree list --porcelain -z`: the path as git spells it.
+struct Listed {
+    path: PathBuf,
+    bare: bool,
+}
+
+/// Reads the worktree list with NUL-separated fields, so a path holding a newline is one path and
+/// not a second record (the plain `--porcelain` text cannot tell them apart).
+fn list_worktrees(project: &Path) -> Result<Vec<Listed>> {
+    let text = git(project, &["worktree", "list", "--porcelain", "-z"])?;
+    let mut out: Vec<Listed> = Vec::new();
+    for field in text.split('\0') {
+        if let Some(path) = field.strip_prefix("worktree ") {
+            out.push(Listed {
+                path: PathBuf::from(path),
+                bare: false,
+            });
+        } else if field == "bare" {
+            if let Some(last) = out.last_mut() {
+                last.bare = true;
+            }
+        }
+    }
+    Ok(out)
 }
 
 fn judge_row(
@@ -381,6 +428,32 @@ fn judge_row(
             }
         }
     }
+    // The gc plan keeps a worktree that holds nothing but its checkout for a day, since a lane
+    // may have just made it and not started. That rule is one of the census reasons dropped
+    // above, so it is applied again from the row's own facts.
+    let holds_nothing = row["untracked"].as_u64() == Some(0)
+        && row["ignored_outside_build"].as_u64() == Some(0)
+        && row["trim_paths"].as_array().is_some_and(|a| a.is_empty());
+    if holds_nothing
+        && row["change_age_secs"]
+            .as_u64()
+            .is_some_and(|age| age < worktree_gc::EMPTY_KEEP_SECS)
+    {
+        reasons.push("empty_worktree".into());
+    }
+    // A finished card does not make unmerged commits safe to lose: a worktree on a branch keeps
+    // them on the branch after it is removed, a detached one only while some ref reaches them.
+    if !merged && card_done && branch.is_none() {
+        match row["head"].as_str() {
+            Some(h) if reachable_from_a_ref(project, h) => {}
+            Some(_) => reasons.push("unmerged_detached_commits".into()),
+            None => reasons.push("head_unknown".into()),
+        }
+    }
+    // A path with a control character cannot be told apart from a second line of git's listing.
+    if abs.to_string_lossy().chars().any(char::is_control) {
+        reasons.push("path_not_plain".into());
+    }
     reasons.sort();
     reasons.dedup();
     let because = if !reasons.is_empty() {
@@ -435,8 +508,7 @@ fn assess(
     only: &[PathBuf],
     all_children_go: bool,
 ) -> Result<Assessment> {
-    let listing = git(project, &["worktree", "list", "--porcelain"])?;
-    let entries = parse_worktree_list(&listing);
+    let entries = list_worktrees(project)?;
     let primary = entries
         .first()
         .map(|e| canon(&e.path))
@@ -461,25 +533,45 @@ fn assess(
         },
     )?;
     let now = gc["now_unix"].as_u64().unwrap_or_default() as i64;
+    let abs_of = |row: &Value| -> Option<PathBuf> {
+        let rel = row["path"].as_str().unwrap_or_default();
+        (rel != ".").then(|| {
+            if Path::new(rel).is_absolute() {
+                PathBuf::from(rel)
+            } else {
+                primary.join(rel)
+            }
+        })
+    };
+    // the gc plan reads git's plain listing: a path with a newline in it shows up there as a
+    // second row for a neighbour, so a path with two rows, or one the NUL-separated listing does
+    // not know, is never judged
+    let mut rows_of: BTreeMap<PathBuf, usize> = BTreeMap::new();
+    for row in gc["candidates"].as_array().into_iter().flatten() {
+        if let Some(abs) = abs_of(row) {
+            *rows_of.entry(abs).or_default() += 1;
+        }
+    }
     let mut judged: Vec<Judged> = Vec::new();
     for row in gc["candidates"].as_array().into_iter().flatten() {
-        let rel = row["path"].as_str().unwrap_or_default();
-        if rel == "." {
+        let Some(abs) = abs_of(row) else {
             continue;
-        }
-        let abs = if Path::new(rel).is_absolute() {
-            PathBuf::from(rel)
-        } else {
-            primary.join(rel)
         };
-        judged.push(judge_row(
-            row,
-            &abs,
-            &registered,
-            cards.as_ref(),
-            project,
-            now,
-        ));
+        let mut j = judge_row(row, &abs, &registered, cards.as_ref(), project, now);
+        let mismatch = if rows_of.get(&abs).copied().unwrap_or(0) > 1 {
+            Some("ambiguous_listing")
+        } else if !registered.contains(&canon(&abs)) {
+            Some("listing_mismatch")
+        } else {
+            None
+        };
+        if let Some(reason) = mismatch {
+            j.reasons.push(reason.into());
+            j.reasons.sort();
+            j.reasons.dedup();
+            j.because = None;
+        }
+        judged.push(j);
     }
     // inside out: a worktree with worktrees below it is a candidate only when each of them is
     judged.sort_by_key(|j| std::cmp::Reverse(j.path.components().count()));
@@ -630,8 +722,7 @@ pub fn apply(
             .ok_or_else(|| format!("invalid --pick {p:?}: expected PATH@item_digest"))?;
         parsed.push((path.to_string(), digest.to_string()));
     }
-    let listing = git(project, &["worktree", "list", "--porcelain"])?;
-    let primary = parse_worktree_list(&listing)
+    let primary = list_worktrees(project)?
         .first()
         .map(|e| canon(&e.path))
         .ok_or("git worktree list is empty")?;
@@ -677,10 +768,11 @@ pub fn apply(
                 continue;
             }
         };
-        let Some(j) = fresh.judged.iter().find(|j| &j.path == abs) else {
+        let mut rows = fresh.judged.iter().filter(|j| &j.path == abs);
+        let (Some(j), None) = (rows.next(), rows.next()) else {
             refused.push(refuse(
                 "not_a_candidate",
-                json!("not a linked worktree of this clone"),
+                json!("not exactly one linked worktree of this clone at that path"),
             ));
             continue;
         };
