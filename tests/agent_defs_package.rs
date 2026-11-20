@@ -661,7 +661,8 @@ fn interview_question_bank_covers_the_project_axes() {
                     "profile `development_methods`",
                     "profile `hosts`",
                     "profile `versioning`",
-                    "profile `work_flow`"
+                    "profile `work_flow`",
+                    "profile `language`"
                 ]
                 .contains(&to),
             "{id}: {to}"
