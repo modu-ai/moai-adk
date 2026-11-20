@@ -607,40 +607,52 @@ class CiDecideScriptTest(unittest.TestCase):
             bindir = os.path.join(repo, "fakebin")
             os.makedirs(bindir, exist_ok=True)
             gh = os.path.join(bindir, "gh")
-            # The fake applies the decide step's `--jq` expressions the way gh
-            # would — file items yield their filename and previous_filename lines,
-            # `length` yields the item count — so the script's expressions are
-            # exercised, not ignored (audit B1: counting the served lines instead
-            # of the items hid the truncation). `gh_broken` names which call
-            # fails: "files", "count" (the item count), "view" (the total) or
-            # "all" (True keeps working as "all").
+            # The fake runs each call's `--jq` expression through the real jq
+            # when one is on PATH — the expression itself is judged, so a mutant
+            # that drops `previous_filename` from the files expression fails the
+            # rename scene (the N2 follow-up). Without jq it falls back to an
+            # emulation that splits filename and previous_filename the same way,
+            # and the expression itself is then not judged. `gh_broken` names
+            # which call fails: "files", "count" (the item count), "view" (the
+            # total) or "all" (True keeps working as "all").
             with open(gh, "w", encoding="utf-8") as fh:
                 fh.write(
                     "#!/usr/bin/env python3\n"
-                    "import json, os, sys\n"
+                    "import json, os, shutil, subprocess, sys\n"
                     "args = sys.argv[1:]\n"
-                    "jq = args[args.index('--jq') + 1] if '--jq' in args else ''\n"
+                    "expr = args[args.index('--jq') + 1] if '--jq' in args else ''\n"
                     "is_view = 'view' in args\n"
                     "is_api = 'api' in args\n"
                     "broken = os.environ.get('GH_FAKE_BROKEN', '')\n"
                     "if (broken == 'all' or (broken == 'api' and is_api)\n"
-                    "        or (broken == 'count' and is_api and 'length' in jq)\n"
-                    "        or (broken == 'files' and is_api and 'length' not in jq)\n"
+                    "        or (broken == 'count' and is_api and 'length' in expr)\n"
+                    "        or (broken == 'files' and is_api and 'length' not in expr)\n"
                     "        or (broken == 'view' and is_view)):\n"
                     "    sys.exit(1)\n"
-                    "if is_view:\n"
-                    "    print(os.environ.get('GH_FAKE_TOTAL', '0'))\n"
-                    "elif is_api:\n"
-                    "    items = json.loads(os.environ.get('GH_FAKE_FILES', '[]'))\n"
-                    "    if 'length' in jq:\n"
-                    "        print(len(items))\n"
-                    "    else:\n"
-                    "        for it in items:\n"
+                    "items = os.environ.get('GH_FAKE_FILES', '[]')\n"
+                    "jq = shutil.which('jq')\n"
+                    "if jq is None:\n"
+                    "    if is_view:\n"
+                    "        print(os.environ.get('GH_FAKE_TOTAL', '0'))\n"
+                    "    elif is_api:\n"
+                    "        for it in json.loads(items):\n"
                     "            print(it['filename'])\n"
                     "            if it.get('previous_filename'):\n"
                     "                print(it['previous_filename'])\n"
+                    "    else:\n"
+                    "        sys.exit(1)\n"
+                    "    sys.exit(0)\n"
+                    "if is_view:\n"
+                    "    payload = json.dumps({'changedFiles': int(os.environ.get('GH_FAKE_TOTAL', '0'))})\n"
+                    "elif is_api:\n"
+                    "    payload = items\n"
                     "else:\n"
                     "    sys.exit(1)\n"
+                    "run = subprocess.run([jq, '-r', expr], input=payload,\n"
+                    "                     capture_output=True, text=True)\n"
+                    "sys.stdout.write(run.stdout)\n"
+                    "sys.stderr.write(run.stderr)\n"
+                    "sys.exit(run.returncode)\n"
                 )
             os.chmod(gh, 0o755)
             env["PATH"] = bindir + os.pathsep + env["PATH"]
