@@ -4,7 +4,7 @@
 
 use std::path::PathBuf;
 
-/// Preview moving the earlier report files out of the repository
+/// Preview moving the earlier reports out of the repository
 ///
 /// Preview moving the files git does not track under `.moai-cli/reports` and `.moai/reports`
 /// of the project to `<HOME>/.moai/reports/<project>` with the same relative paths. A file git

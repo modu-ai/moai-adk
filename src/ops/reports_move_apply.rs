@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-/// Move the earlier report files out of the repository
+/// Move the earlier reports out of the repository
 ///
 /// Move the files `reports-move-plan` listed to `<HOME>/.moai/reports/<project>`, keeping the
 /// relative paths, after the user confirmed that plan. The plan comes on stdin and is made again:

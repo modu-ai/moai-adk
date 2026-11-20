@@ -118,10 +118,10 @@ Update and move
                           copy
   update-apply            Apply a previewed update host by
                           host
-  reports-move-plan       Preview moving the earlier report
-                          files out of the repository
-  reports-move-apply      Move the earlier report files out
-                          of the repository
+  reports-move-plan       Preview moving the earlier reports
+                          out of the repository
+  reports-move-apply      Move the earlier reports out of
+                          the repository
   cleanup-plan            Preview archiving leftover MoAI
                           files in HOME
   cleanup-apply           Archive the previewed leftover
