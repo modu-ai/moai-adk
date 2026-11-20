@@ -1269,7 +1269,9 @@ pub fn reclaim(
     reason: &str,
     lease_secs: i64,
 ) -> Result<Reclaimed, ReclaimError> {
-    reclaim_with(w, card_id, to_holder, generation, by, reason, lease_secs, None)
+    reclaim_with(
+        w, card_id, to_holder, generation, by, reason, lease_secs, None,
+    )
 }
 
 /// What an early reclaim carries: the holder session the proof was made for and the proof as it

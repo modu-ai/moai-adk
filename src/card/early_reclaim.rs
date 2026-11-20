@@ -91,9 +91,11 @@ pub fn assess(project: &Path, home: &Path, card_id: i64, to_holder: &str) -> Ear
 /// The three proofs for one live reservation, in the order the refusal names them.
 fn prove(project: &Path, cur: &reservation::Reservation) -> Result<Proof, String> {
     let Some(worktree) = cur.worktree.as_deref().filter(|w| !w.is_empty()) else {
-        return Err("the reservation records no worktree, so nothing shows that no work is \
+        return Err(
+            "the reservation records no worktree, so nothing shows that no work is \
                     left there"
-            .to_string());
+                .to_string(),
+        );
     };
     let (live, why) = crate::lane_registry::liveness_of_session(project, &cur.holder);
     let name = why["name"].as_str().unwrap_or("").to_string();
@@ -125,7 +127,9 @@ fn prove(project: &Path, cur: &reservation::Reservation) -> Result<Proof, String
     }
     Ok(Proof {
         holder: cur.holder.clone(),
-        text: format!("early reclaim: launcher exited (session {name}); worktree {shape}; no process in it"),
+        text: format!(
+            "early reclaim: launcher exited (session {name}); worktree {shape}; no process in it"
+        ),
         detail: json!({
             "liveness": "launcher-exited",
             "session_name": name,
@@ -279,13 +283,21 @@ mod cache_tests {
         assert!(is_tool_cache_entry("?? .moai-cli/state/github/counts.json"));
         assert!(is_tool_cache_entry("?? .moai/state/github/counts.json"));
         // A changed tracked file of the same name is work.
-        assert!(!is_tool_cache_entry(" M .moai-cli/state/github/counts.json"));
-        assert!(!is_tool_cache_entry("A  .moai-cli/state/github/counts.json"));
+        assert!(!is_tool_cache_entry(
+            " M .moai-cli/state/github/counts.json"
+        ));
+        assert!(!is_tool_cache_entry(
+            "A  .moai-cli/state/github/counts.json"
+        ));
         // An unlisted name, a folder and a path that only ends alike are work.
         assert!(!is_tool_cache_entry("?? .moai-cli/state/github/other.json"));
         assert!(!is_tool_cache_entry("?? .moai-cli/state/"));
-        assert!(!is_tool_cache_entry("?? sub/.moai-cli/state/github/counts.json"));
-        assert!(!is_tool_cache_entry("?? .moai-cli/state/github/counts.json.bak"));
+        assert!(!is_tool_cache_entry(
+            "?? sub/.moai-cli/state/github/counts.json"
+        ));
+        assert!(!is_tool_cache_entry(
+            "?? .moai-cli/state/github/counts.json.bak"
+        ));
         assert!(!is_tool_cache_entry(""));
     }
 }
