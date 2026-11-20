@@ -1114,39 +1114,73 @@ mod tests {
         assert_eq!(secret_words(&format!("a:{key},{key}")), 1);
     }
 
-    /// Audit B2 and N9: one long word without a space, of the note limit's size, is screened in
-    /// time that grows with its length, not with its square. Four shapes of word and one shape at
-    /// the end of a long word run at once on their own threads, so the test takes about the time of
-    /// the slowest one; a square-time regression (40 KB took 30 s) misses the 15 s bound and fails
-    /// there instead of holding the test for minutes (the stuck threads die with the test process).
+    /// The most units of work, per byte of text, the screen may do on one word
+    /// (`redact::work`): the linear screen measures about the factor printed by the test below
+    /// on its worst shape, the square-time one is thousands of times past it.
+    const WORK_PER_BYTE: usize = 16;
+
+    /// Audit B1, B2 and N9, now by a count and not a clock (SPEC-20261120-card-screen-work-count):
+    /// one long word without a space is screened with work that grows with its length, not with
+    /// its square. The jobs are the ones the wall-clock tests held: four shapes of word and one
+    /// shape at the end of a long word, the three separator shapes with the value after the last
+    /// separator, and a camel name (a hump every two characters) joined, spaced and with a secret
+    /// word behind the last hump. Each runs on its own thread with its own counter, which stops
+    /// the screen at the limit; a counter that counted less than the text's length counted
+    /// nothing, and fails the test too.
     #[test]
-    fn secret_screen_time_on_one_long_word_has_a_bound() {
-        use std::time::{Duration, Instant};
-        let size = crate::ledger::workflow::MAX_NOTE_BYTES;
+    fn secret_screen_work_stays_linear_on_one_long_word() {
+        use std::panic::{catch_unwind, AssertUnwindSafe};
+        let limit = crate::ledger::workflow::MAX_NOTE_BYTES;
         let key = j(&["AK", "IA", "ABCDEFGHIJKLMNOP"]);
-        let units = ["a,", "a:", "a=", "{\"a\":1,\"b\":[2,3]},"];
-        let plain = |unit: &str| unit.repeat(size / unit.len() + 1)[..size].to_string();
-        let mut jobs: Vec<(String, String, usize)> = units
-            .iter()
-            .map(|unit| (format!("{unit} x {size}"), plain(unit), 0))
-            .collect();
-        let tail = format!("{},{key}", &plain("a,")[..size - key.len() - 1]);
-        jobs.push((format!("a, x {size} with a shape at the end"), tail, 1));
+        let to_size = |unit: &str, size: usize| unit.repeat(size / unit.len() + 1)[..size].to_string();
+        let mut jobs: Vec<(String, String, usize)> = Vec::new();
+        for unit in ["a,", "a:", "a=", "{\"a\":1,\"b\":[2,3]},"] {
+            jobs.push((format!("{unit} x {limit}"), to_size(unit, limit), 0));
+        }
+        let tail = format!("{},{key}", &to_size("a,", limit)[..limit - key.len() - 1]);
+        jobs.push((format!("a, x {limit} with a shape at the end"), tail, 1));
+        for size in [200_000usize, limit - 1] {
+            for unit in ["a;", "a.", "a/"] {
+                let text = format!("{}{key}", unit.repeat(size / unit.len()));
+                jobs.push((format!("{unit} x {size} with the value at the end"), text, 1));
+            }
+        }
+        for size in [65_536usize, limit - 1] {
+            let humps = "aB".repeat(size / 2);
+            jobs.push((format!("camel joined x {size}"), format!("{humps}=1"), 0));
+            jobs.push((format!("camel spaced x {size}"), format!("{humps} = 1"), 0));
+            let secret = format!("{humps}{}=1", j(&["To", "ken"]));
+            jobs.push((format!("camel with a secret word x {size}"), secret, 1));
+        }
         let (tx, rx) = std::sync::mpsc::channel();
         for (at, (_, text, _)) in jobs.iter().enumerate() {
             let (tx, text) = (tx.clone(), text.clone());
             std::thread::spawn(move || {
-                let _ = tx.send((at, secret_words(&text)));
+                crate::redact::work::start(text.len() * WORK_PER_BYTE);
+                let words = catch_unwind(AssertUnwindSafe(|| secret_words(&text)));
+                let _ = tx.send((at, words.map_err(|_| ()), crate::redact::work::taken()));
             });
         }
-        let deadline = Instant::now() + Duration::from_secs(15);
+        let mut worst = 0.0f64;
         for _ in 0..jobs.len() {
-            let wait = deadline.saturating_duration_since(Instant::now());
-            let (at, words) = rx
-                .recv_timeout(wait)
-                .unwrap_or_else(|_| panic!("a screen of {size} bytes took more than 15 s"));
-            assert_eq!(words, jobs[at].2, "{}", jobs[at].0);
+            // Every thread ends, by an answer or by the limit; this wait only keeps a hang in
+            // uncounted code from holding the test run for ever, it never decides the test.
+            let (at, words, taken) = rx
+                .recv_timeout(std::time::Duration::from_secs(900))
+                .expect("a screen thread ended");
+            let (label, text, expected) = &jobs[at];
+            let words = words.unwrap_or_else(|()| {
+                panic!("{label}: the screen's work passed {WORK_PER_BYTE} units per byte: {taken} units for {} bytes", text.len())
+            });
+            assert_eq!(words, *expected, "{label}");
+            assert!(
+                taken >= text.len(),
+                "{label}: {taken} units counted for {} bytes — the counter counted nothing",
+                text.len()
+            );
+            worst = worst.max(taken as f64 / text.len() as f64);
         }
+        println!("the screen's worst work was {worst:.2} units per byte (limit {WORK_PER_BYTE})");
     }
 
     /// REQ-6: the refusal names the field and does not repeat the text.

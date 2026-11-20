@@ -2,7 +2,8 @@
 //! audit N3·N5·N7 shapes the screen of SPEC-20261119-card-secret-screen still lets through —
 //! name forms (blanks around the equals sign, quoted names, camel/joined names), the `--reason`
 //! of `card reclaim`, values after the separators beyond `= : ,` — each on the four surfaces
-//! (note text, title, body, `--ac`), plus the one-long-word time bound with the new separators.
+//! (note text, title, body, `--ac`). The one-long-word time bound of these shapes is a count of
+//! work in the unit tests of `card::input` (SPEC-20261120-card-screen-work-count), not a clock.
 //!
 //! Every secret-shaped word is joined from pieces so this file holds none; every command runs
 //! against a temporary HOME; the real `~/.moai` is not read or written.
@@ -10,7 +11,6 @@
 mod common;
 
 use common::home::TempHome;
-use moai_cli::card::input;
 use moai_cli::ledger;
 use serde_json::{json, Value};
 use std::path::Path;
@@ -328,60 +328,5 @@ fn separators_values_are_refused_on_every_surface() {
                 "{surface}: {text}: {r}"
             );
         }
-    }
-}
-
-/// The screen's answer for `text`, or an error when it takes longer than 15 seconds.
-fn timed(text: String) -> Result<usize, String> {
-    let (tx, rx) = std::sync::mpsc::channel();
-    // The screen runs on its own thread, so a square-time regression fails after the bound
-    // instead of holding the test for minutes (the thread dies with the test process).
-    std::thread::spawn(move || {
-        let _ = tx.send(input::secret_words(&text));
-    });
-    rx.recv_timeout(std::time::Duration::from_secs(15))
-        .map_err(|_| "no answer within 15 s".to_string())
-}
-
-/// AC-3 (REQ-7): with the new separators in the word, one long word without a space is still
-/// answered in time that grows with its length (the bound is far above linear, far below
-/// square), and the value after the last separator is seen.
-#[test]
-fn separators_long_one_word_stays_within_the_time_bound() {
-    let key = words(&["AK", "IA", "ABCDEFGHIJKLMNOP"]);
-    for size in [200_000usize, 1_048_575] {
-        for unit in ["a;", "a.", "a/"] {
-            let mut text = unit.repeat(size / unit.len());
-            text.push_str(&key);
-            let refused = timed(text).unwrap_or_else(|e| panic!("size {size} unit {unit}: {e}"));
-            assert_eq!(
-                refused, 1,
-                "size {size} unit {unit}: the value after the last separator is refused"
-            );
-        }
-    }
-}
-
-/// Audit B1 (REQ-7): a long name with many camel humps is screened in linear time: the humps
-/// do not each build new strings of the rest of the name. `aB` repeated holds a hump every two
-/// characters and no secret word; the spaced form takes the same name path. A secret word
-/// behind the last hump is still refused.
-#[test]
-fn camel_long_name_stays_within_the_time_bound() {
-    for size in [65_536usize, 1_048_575] {
-        let humps = "aB".repeat(size / 2);
-        for (shape, text) in [
-            ("joined", format!("{humps}=1")),
-            ("spaced", format!("{humps} = 1")),
-        ] {
-            let refused = timed(text).unwrap_or_else(|e| panic!("size {size} {shape}: {e}"));
-            assert_eq!(refused, 0, "size {size} {shape}: plain humps are no secret");
-        }
-        let secret = format!("{humps}{}=1", words(&["To", "ken"]));
-        let refused = timed(secret).unwrap_or_else(|e| panic!("size {size} secret: {e}"));
-        assert_eq!(
-            refused, 1,
-            "size {size}: the secret word behind the last hump is refused"
-        );
     }
 }
