@@ -267,6 +267,48 @@ fn steps_timeout_kills_the_group() {
     assert!(!marker.exists(), "the grandchild was left running");
 }
 
+/// AC-4 (REQ-7), audit N4: a step that left the group it was started in (it joined the gate's own group) is
+/// ended with the direct child too, so the hook cannot hang on it.
+#[test]
+fn steps_timeout_ends_a_child_that_left_the_group() {
+    let p = TempDir::new().unwrap();
+    go_project(p.path());
+    config(p.path(), "gate:\n  timeouts:\n    vet: 1\n");
+    let body = "exec /usr/bin/python3 -c 'import os,time; os.setpgid(0,os.getpgid(os.getppid())); time.sleep(25)'";
+    let bin = bin_dir(&[("go", body)]);
+    let started = std::time::Instant::now();
+    let (code, err) = gate(p.path(), &bin);
+    assert_eq!(code, 1, "{err}");
+    assert!(err.contains("timed out: go vet exceeded 1s"), "{err}");
+    assert!(
+        started.elapsed().as_secs() < 15,
+        "the gate waited for a step that left its group"
+    );
+}
+
+/// Audit N5: a PATH entry that is not absolute (`.`, a relative folder, an empty entry) is never
+/// searched: a project cannot plant the tool the gate then runs. (`cargo test` runs this crate in
+/// the package root, where `tools/local_check.sh` is an executable file.)
+#[test]
+fn steps_ignore_relative_path_entries() {
+    use quality_gate::step::which;
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    assert_eq!(which("local_check.sh", std::ffi::OsStr::new("tools")), None);
+    assert_eq!(
+        which("local_check.sh", std::ffi::OsStr::new("./tools")),
+        None
+    );
+    assert_eq!(
+        which("local_check.sh", std::ffi::OsStr::new(":tools")),
+        None
+    );
+    let absolute = root.join("tools");
+    assert_eq!(
+        which("local_check.sh", absolute.as_os_str()),
+        Some(absolute.join("local_check.sh"))
+    );
+}
+
 /// AC-4 (REQ-11): steps run in the module's own directory, not in the project root.
 #[test]
 fn steps_run_in_the_module_root() {

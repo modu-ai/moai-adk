@@ -165,11 +165,32 @@ fn summary_names_the_axes_not_ported_yet() {
     assert!(err.contains("npm"), "the node steps are named: {err}");
 }
 
-/// AC-5 (REQ-8): a project with no recognised language prints nothing and passes.
+/// AC-5 (REQ-8): a project with no recognised language has no step rows and passes, but the
+/// axes this build does not run are still named (audit N3); with both disabled it is silent.
 #[test]
-fn summary_is_absent_when_no_language_is_detected() {
+fn summary_names_the_unported_axes_when_no_language_is_detected() {
     let p = TempDir::new().unwrap();
     let (code, err) = gate(p.path(), &bin_dir(&[]), false);
+    assert_eq!(code, 0, "{err}");
+    assert!(err.contains("quality gate steps (0 configured):"), "{err}");
+    assert!(
+        err.contains("  - graph-freshness: not run — not ported yet"),
+        "{err}"
+    );
+    assert!(
+        err.contains("  - ast-grep: not run — not ported yet"),
+        "{err}"
+    );
+    assert!(!err.contains("  - vet:"), "{err}");
+    let quiet = TempDir::new().unwrap();
+    let dir = quiet.path().join(".moai/config/sections");
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(
+        dir.join("gate.yaml"),
+        "gate:\n  ast_grep_gate:\n    enabled: false\n  graph_freshness:\n    enabled: false\n",
+    )
+    .unwrap();
+    let (code, err) = gate(quiet.path(), &bin_dir(&[]), false);
     assert_eq!(code, 0);
     assert!(!err.contains("quality gate steps"), "{err}");
 }
@@ -660,4 +681,33 @@ fn prepush_invalid_config_fails_closed() {
         "git_convention:\n  auto_detection:\n    enabled: false\n    fallback: nope\n",
     );
     assert_eq!(check(p.path(), pp_env(Some("1"), None, None), "x\n").0, 2);
+}
+
+/// Audit B2: the `custom:` block the Go build writes into `git-convention.yaml` (empty lists, a
+/// list of names) must not turn the check off.
+#[test]
+fn prepush_reads_the_go_written_git_convention_file() {
+    let p = TempDir::new().unwrap();
+    pp_config(
+        p.path(),
+        "git-convention.yaml",
+        "git_convention:\n  convention: auto\n  validation:\n    enforce_on_push: true\n  custom:\n    name: \"\"\n    types: []\n    scopes: []\n    examples: []\n",
+    );
+    pp_config(
+        p.path(),
+        "git-strategy.yaml",
+        "git_strategy:\n  mode: team\n  team:\n    hooks:\n      pre_push: enforce\n",
+    );
+    let (code, _, err) = check(p.path(), pp_env(None, None, None), "bad message\n");
+    assert_eq!(code, 2, "{err}");
+    assert!(!err.contains("YAML subset"), "{err}");
+    pp_config(
+        p.path(),
+        "git-convention.yaml",
+        "git_convention:\n  validation:\n    enforce_on_push: true\n  custom:\n    types:\n      - feat\n      - fix\n",
+    );
+    assert_eq!(
+        check(p.path(), pp_env(None, None, None), "bad message\n").0,
+        2
+    );
 }

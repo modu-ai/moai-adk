@@ -9,7 +9,7 @@ pub mod detect;
 mod fmtutil;
 pub mod lock;
 pub mod pre_push;
-mod step;
+pub mod step;
 mod summary;
 pub mod table;
 
@@ -91,8 +91,20 @@ fn gate(
     toolchains: &[(table::Toolchain, PathBuf)],
     budget: Duration,
 ) -> (bool, String) {
-    if !cfg.enabled || toolchains.is_empty() {
+    if !cfg.enabled {
         return (true, String::new());
+    }
+    if toolchains.is_empty() {
+        // No language, so no step; the axes this build does not run are still named, so a
+        // quiet pass is never mistaken for a full gate (audit N3).
+        let mut summary = summary::Summary::default();
+        if cfg.graph_freshness_enabled {
+            summary.axis_not_ported("graph-freshness");
+        }
+        if cfg.ast_grep_enabled {
+            summary.axis_not_ported("ast-grep");
+        }
+        return (true, summary.render());
     }
     let mut runner = Runner::new(
         cfg,

@@ -286,6 +286,8 @@ fn normalize(raw: &str, project: &Path) -> String {
             || t.starts_with("ast-grep scan skipped")
             || t.starts_with("  - graph-freshness: not run")
             || t.starts_with("  - ast-grep: not run")
+            // The header of a summary that holds only those two lines (no language detected).
+            || t == "quality gate steps (0 configured):"
         {
             continue;
         }

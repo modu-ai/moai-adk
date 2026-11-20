@@ -346,10 +346,14 @@ struct Settings {
 }
 
 fn read_node(path: &Path, warnings: &mut Vec<String>) -> Option<yaml::Node> {
-    let node = yaml::read(path);
-    if node.is_none() && path.exists() {
+    let bytes = std::fs::read(path).ok()?;
+    let node = String::from_utf8(bytes)
+        .ok()
+        .as_deref()
+        .and_then(super::config::parse_lenient);
+    if node.is_none() {
         warnings.push(format!(
-            "moai hook pre-push: {} is outside the YAML subset this build reads; using the built-in defaults",
+            "moai hook pre-push: {} is not UTF-8 or is outside the YAML subset this build reads; using the built-in defaults",
             path.display()
         ));
     }

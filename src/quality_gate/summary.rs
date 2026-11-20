@@ -109,7 +109,7 @@ impl Summary {
 
     /// The summary text, or `""` when there is nothing to say.
     pub fn render(&self) -> String {
-        if self.records.is_empty() {
+        if self.records.is_empty() && self.axes_not_ported.is_empty() {
             return String::new();
         }
         let mut out = format!("quality gate steps ({} configured):", self.records.len());

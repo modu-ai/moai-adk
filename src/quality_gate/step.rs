@@ -84,11 +84,11 @@ pub fn which(binary: &str, path: &OsStr) -> Option<PathBuf> {
         return is_executable(Path::new(binary)).then(|| PathBuf::from(binary));
     }
     for dir in std::env::split_paths(path) {
-        let dir = if dir.as_os_str().is_empty() {
-            PathBuf::from(".")
-        } else {
-            dir
-        };
+        // A relative entry (`.`, an empty entry, a folder name) would run what the project
+        // plants in the working directory; the Go build refuses the same.
+        if !dir.is_absolute() {
+            continue;
+        }
         let cand = dir.join(binary);
         if is_executable(&cand) {
             return Some(cand);
@@ -363,6 +363,8 @@ impl<'a> Runner<'a> {
                 Ok(Some(st)) => break st,
                 Ok(None) if Instant::now() >= deadline => {
                     kill_group(pid);
+                    // A step that left its group is not reached by the group signal.
+                    let _ = child.kill();
                     killed = true;
                     match child.wait() {
                         Ok(st) => break st,

@@ -154,3 +154,81 @@ fn the_project_dir_follows_claude_project_dir_then_cwd() {
     assert_eq!(resolve_project_dir(Some(""), cwd), cwd);
     assert_eq!(resolve_project_dir(None, cwd), cwd);
 }
+
+/// The template `gate.yaml` the Go build writes carries `disabled_steps: {}`; an empty flow
+/// collection or a block list in a key the gate never reads must not void the file (audit B1).
+#[test]
+fn config_reads_the_go_template_shapes() {
+    let root = project_with(Some(
+        "gate:\n  pre_commit:\n    enabled: true\n  disabled_steps: {}\n  extras: []\n  names:\n    - one\n    - two: x\n      nested: y\n  skip_tests: true\n",
+    ));
+    let (cfg, warnings) = load(root.path());
+    assert!(warnings.is_empty(), "{warnings:?}");
+    assert!(cfg.pre_commit_enabled, "the opted-in switch is kept");
+    assert!(cfg.skip_tests, "keys after a list are still read");
+    assert!(cfg.disabled_steps.is_empty());
+}
+
+/// A flow collection with content is still outside the subset: warned about, defaults stand.
+#[test]
+fn config_refuses_non_empty_flow_collections_with_a_warning() {
+    let root = project_with(Some(
+        "gate:\n  pre_commit:\n    enabled: true\n  disabled_steps: {vet: false}\n",
+    ));
+    let (cfg, warnings) = load(root.path());
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+    assert!(!cfg.pre_commit_enabled);
+}
+
+/// A `gate.yaml` that is not UTF-8 is reported, not silently treated as absent (audit N12).
+#[test]
+fn config_warns_about_a_file_that_is_not_utf8() {
+    let root = project_with(None);
+    let dir = root.path().join(".moai/config/sections");
+    fs::create_dir_all(&dir).unwrap();
+    fs::write(dir.join("gate.yaml"), [0xff, 0xfe, b'x']).unwrap();
+    let (_, warnings) = load(root.path());
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+}
+
+/// A timeout so large that adding it to the clock would overflow is clamped, not a panic
+/// (audit N6).
+#[test]
+fn config_clamps_absurd_timeouts() {
+    let root = project_with(Some(
+        "gate:\n  timeouts:\n    vet: 9223372036854775807\n    lock_wait: 9223372036854775807\n",
+    ));
+    let (cfg, _) = load(root.path());
+    assert!(cfg.vet_timeout <= Duration::from_secs(366 * 24 * 3600));
+    assert!(cfg.lock_wait <= Duration::from_secs(366 * 24 * 3600));
+    assert!(std::time::Instant::now()
+        .checked_add(cfg.vet_timeout)
+        .is_some());
+}
+
+/// Every real gate and git config file listed in `MOAI_REAL_CONFIGS` (one path per line) reads
+/// without a warning: the evidence that the supported subset covers what users have.
+#[test]
+#[ignore = "reads the machine's real config files: set MOAI_REAL_CONFIGS to a list file"]
+fn config_reads_every_real_file() {
+    let list = std::env::var("MOAI_REAL_CONFIGS").expect("MOAI_REAL_CONFIGS");
+    let mut refused = Vec::new();
+    for path in fs::read_to_string(list)
+        .unwrap()
+        .lines()
+        .filter(|l| !l.is_empty())
+    {
+        let Ok(text) = fs::read_to_string(path) else {
+            continue;
+        };
+        if quality_gate::config::parse_lenient(&text).is_none() {
+            refused.push(path.to_string());
+        }
+    }
+    assert!(
+        refused.is_empty(),
+        "{} files refused: {:?}",
+        refused.len(),
+        &refused[..refused.len().min(8)]
+    );
+}
