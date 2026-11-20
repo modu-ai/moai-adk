@@ -36,6 +36,8 @@ The text the commands print (help text, previews, hints, error and note strings)
 - write: `src/help.rs`
 - write: `tests/claim_cli.rs`
 - write: `tests/install_candidates.rs`
+- write: `tests/codex_adapter.rs`
+- write: `src/hosts/codex.rs`
 - write: `src/claim.rs`
 - write: `src/claim_verify.rs`
 - write: `src/gate_schedule.rs`
@@ -56,5 +58,5 @@ The text the commands print (help text, previews, hints, error and note strings)
 
 1. Tests first (RED): `tests/cli_text_citations.rs` reads the `src/` files of this checkout (no HOME, nothing is run). It holds the scan, a pending list of the files that still carry citations after this change, and the check of the rationale document; run it and see the files to clean fail.
 2. Clean the strings file by file, keeping what each tells the user and writing the removed citations into `docs/cli-text-rationale.md`; fix the tests that pinned the old wording in the same commit; register the walking test in `tools/repo_scans.json` and deny the document in `tools/ci_scope.py`.
-3. The pending list also holds what another card reserves (`bundle.rs`, `gate.rs`, `go_state.rs`, `home_layout.rs`, `optimize.rs`, `project_update.rs`, `session.rs`), what a fixture pins (`hosts/codex.rs`, `hooks.rs`), and the generated texts a later change handles together with the parsers that read them (`claude.rs`, `lane_env.rs`, `gate_merge.rs`, `claim_timeout.rs`, `flake_record.rs`, `code_refs.rs`).
+3. The pending list also holds what another card reserves (`bundle.rs`, `gate.rs`, `go_state.rs`, `home_layout.rs`, `optimize.rs`, `project_update.rs`, `session.rs`), what a fixture pins (`hooks.rs`), and the generated texts a later change handles together with the parsers that read them (`claude.rs`, `lane_env.rs`, `gate_merge.rs`, `claim_timeout.rs`, `flake_record.rs`, `code_refs.rs`).
 4. Run the new file, the library tests, the tests that read command output, the scan checks of `tools/repo_scans.json` and the same-prefix rule, then audit and write the Result.

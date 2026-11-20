@@ -1,11 +1,14 @@
 # Command text: citations that were removed
 
-SPEC-20261120-cli-text-citations. The text the commands print (help, previews, hints, error and note strings) no longer quotes moai-adk's own history. This document keeps what was removed, under the path of the file it came from, for the developer who wants the origin of a sentence. Nothing here changes what a command tells the user; the wording that stays is the whole message.
+SPEC-20261120-cli-text-citations. The strings that the commands of the files listed below print (previews, hints, error and note strings, and the Korean command descriptions of the help table) no longer quote moai-adk's own history. This document keeps what was removed, under the path of the file it came from, for the developer who wants the origin of a sentence. A section names every place where more than the citation changed; elsewhere the words around a removed citation are untouched.
+
+Not covered by this change, on purpose: the English `--help` text, which clap builds from the `///` doc comments of the command structs (`src/main.rs` and others) and which still carries citations in most commands; the files of the `PENDING` list of `tests/cli_text_citations.rs` (generated texts that parsers read, and files another card reserves); and `docs/rust-product-path.md`, which still names the old launcher permission reference.
 
 `tests/cli_text_citations.rs` checks that every file listed in its `CLEANED` list has a section here and carries no citation, and that the files of its `PENDING` list are the only ones that still do.
 
 ## `src/claim.rs`
 
+- `tests/claim_cli.rs` now looks for "renewed with epoch 2" in the renewal note instead of the label `decision D1`.
 - Removed `(decision D2)` after "answering `met` and the line it prints" (the handoff hint that names `moai claim-timeout-check`).
 - Removed `(decision D1, Issue #1975 comment 6840449133)` from the note about a renewed claim (a session's own expired claim is renewed with the next epoch and no handoff line).
 
@@ -47,6 +50,10 @@ Removed from the Korean command descriptions (each was a parenthesis or a clause
 - Removed `(#2811)` from the note on work folders and from the error "is user work and is never moved or copied".
 - "the apply is the next step of #2723" became "the apply is a later step"; "the selective apply is the next card after #2815" became "the selective apply is a later step".
 
+## `src/hosts/codex.rs`
+
+- Removed `(leader decision 2026-11-08, TOML surface 02-B #1992)` and `(#2240)` from the hold reason of the Codex projection ("not read: this operation reads no TOML; the project .codex/config.toml is written only by the codex_config plan/apply, and reading it here is a follow-up"); removed `(#2240)` from the status-line hold and `(#2238)` from the hooks reason. `tests/codex_adapter.rs` now looks for "this operation reads no TOML" instead of the label `02-B`.
+
 ## `src/launcher_init.rs`
 
 - The permission reference recorded in the apply receipts was `launcher-auto-init #2481 user decision 6810818827`; it is now `launcher-auto-init: the user chose first-launch setup`. The reference only has to name the reason for the writes; the Issue comment that recorded the user's choice is no longer in the text.
@@ -65,7 +72,7 @@ Removed from the Korean command descriptions (each was a parenthesis or a clause
 
 ## `src/shim_check.rs`
 
-- Removed `(#3021)` from the shim note ("Nothing was changed.").
+- Removed `(#3021)` from the shim note; the note now ends with a full stop ("Nothing was changed."). `tests/install_candidates.rs` and the inline test of the module look for that ending.
 
 ## `src/worktree.rs`
 
