@@ -933,7 +933,6 @@ pub const ABOUT_KO: &[(&str, &str)] = &[
     ("identity", "경로가 클론 안 어디에 있는지 보기"),
     ("worktree-report", "worktree 가 쓰는 공간 보고"),
     ("optimize-plan", "비울 수 있는 공간 미리 보기"),
-    ("optimize-apply", "고른 정리 후보 worktree 지우기"),
     ("baseline-inventory", "체크아웃의 기준 사실 목록"),
 ];
 
