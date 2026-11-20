@@ -93,4 +93,15 @@ created: 2026-11-21
 
 ## Result
 
-(구현 뒤에 채워요.)
+구현 끝(2026-11-21, 가지 `spec/20261121-xtask-local-check`, 조각 1). 먼저 시험을 쓰고(`tests/xtask_workspace.rs`, `xtask/tests/local_check_parity.rs`) 뼈대(실행하면 70 으로 끝남)에서 대조 시험 여섯이 모두 실패하는 것을 봤어요. 그다음 `local-check` 를 옮겼고, 변이 열둘(`target/c/mutx.py`, 결과 `target/c/mutx.sum`)을 모두 시험이 잡았어요. 각 변이 뒤 `git checkout -q -- xtask` 로 되돌렸어요. `tools/local_check.sh`·`tests/local_check_test.py`·워크플로·게이트 파서는 바꾸지 않았어요(Non-goals).
+
+- AC-1: met — `cargo test --locked --offline --test xtask_workspace the_workspace_has_the_xtask_member_and_the_alias` 통과(`cargo metadata` 의 작업공간 구성원이 둘, `xtask` 의 의존 0, 이진 대상 `xtask`, 별칭 `run --quiet --package xtask --`). `Cargo.lock` 은 `xtask` 항목 하나만 늘었어요.
+- AC-2: met — `cargo test --locked --offline --test xtask_workspace the_shipped_build_does_not_contain_xtask` 통과(기본 구성원은 `moai-cli` 하나, `xtask` 는 `publish` 없음·`dist = false`, `moai-cli` 의 의존에 `xtask` 없음, 배포 이진은 `moai`·`moai-cli`). 이 시험에 대한 변이는 돌리지 않았어요.
+- AC-3: met — `cargo test --locked --offline --test xtask_workspace no_shipped_skill_or_agent_names_xtask` 통과(`skills/`·`agents/` 아래 파일 중 `xtask` 를 말하는 것 0). 이 시험에 대한 변이는 돌리지 않았어요.
+- AC-4: met — `cargo test --locked --offline -p xtask --test local_check_parity in_place_runs_match_the_script` 통과(마른 실행·통과·첫 실패·계속 진행·더러운 트리 셋·diff 검사 실패·단계 요약 여덟 줄·기준 지정, 열한 장면에서 셸과 stdout·stderr·종료 코드·도구 호출·요약 파일이 같음). 변이 "`fmt` 단계 인자 바꾸기", "계속 진행 무시", "`dirty=1` 표시 빼기"에 실패했어요.
+- AC-5: met — `cargo test --locked --offline -p xtask --test local_check_parity modes_and_legs_match_the_script` 통과(모르는 방식, 다리 세 값, 모르는 다리, CI 밖과 후보 방식의 다리 거절, 다른 다리의 실패 무시, 다리의 첫 실패와 계속 진행). 변이 "계속 진행 무시"와 "후보 방식의 다리 거절 빼기"에 실패했어요.
+- AC-6: met — `cargo test --locked --offline -p xtask --test local_check_parity candidate_runs_match_the_script` 통과(깨끗한 합침, 충돌, 관계없는 역사, 받기 실패, 더러운 폴더, 마른 실행, 분기 이름 다섯, `rustc` 출력 여섯, 이전 후보 폴더, 단계 실패, diff 검사, 옛 덮어쓰기 값 무시, 기준이 더한 규칙). 변이 "분기 이름의 `..` 검사 빼기", "`rustc` 낱말 길이 33", "임시 폴더 지우기 건너뛰기", "diff 범위 뒤집기", "충돌 설명의 첫 줄 건너뛰기", "merge-tree 실패 검사 빼기"에 실패했어요.
+- AC-7: met — `cargo test --locked --offline -p xtask --test local_check_parity slot_runs_match_the_script` 통과(기본 슬롯 호출 넷, `XDG_CACHE_HOME`, 폴더·한도·이름 지정, 빈 설정, HOME 없음에서 슬롯 없이 실행, 거절 종료 코드 75). 변이 "파이썬 슬롯 이름 접미어 바꾸기"에 실패했어요.
+- AC-8: met — `cargo test --locked --offline -p xtask --test local_check_parity an_unknown_tool_lists_the_tools_and_exits_2` 통과(이름 없음과 모르는 이름이 종료 코드 2 와 stderr 의 목록). 이 시험에 대한 변이는 돌리지 않았어요.
+- AC-9: met — `cargo test --locked --offline -p xtask --test local_check_parity a_terminate_signal_ends_with_a_fail_line_and_cleans_up` 통과(제자리와 후보 방식 모두 TERM 뒤 실패 줄과 종료 코드 1, 이어지는 단계 없음, 후보 작업 트리와 임시 폴더가 지워지고 셸과 같은 출력). 변이 "임시 폴더 지우기 건너뛰기"와 "단계 뒤 신호 검사 빼기"에 실패했어요.
+- 돌리지 않은 것: 실제 `cargo`·`python3` 로 도는 전체 검사(대조 시험은 가짜 실행 파일을 써요), 윈도(스크립트가 `bash` 를 써서 이미 대상이 아니에요), CI 에서 `-p xtask` 시험(다음 조각이 부르는 곳을 바꿀 때 넣어요). 전체 `moai check affected` 는 병합 준비 노트에 줄째로 적어요.
