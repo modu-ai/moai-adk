@@ -752,8 +752,23 @@ pub fn plan(req: &Request) -> Result<Value> {
     {
         report_dirs.push(crate::fixed_state!("reports").to_string());
     }
-    for rel in report_dirs {
-        let reports = primary.join(&rel);
+    // C-126: reports are saved outside the repository, in `<HOME>/.moai/reports/<project>`
+    // (the resolver `home_workdir::reports_dir`). That folder holds space too, so it is listed
+    // beside the in-repository ones (an absolute path), kept the same way.
+    let mut report_dirs: Vec<(String, PathBuf)> = report_dirs
+        .into_iter()
+        .map(|rel| {
+            let abs = primary.join(&rel);
+            (rel, abs)
+        })
+        .collect();
+    if let Some(dir) = req
+        .home
+        .and_then(|h| crate::home_workdir::reports_dir(h, &primary).ok())
+    {
+        report_dirs.push((dir.display().to_string(), dir));
+    }
+    for (rel, reports) in report_dirs {
         if !fs::symlink_metadata(&reports).is_ok_and(|m| m.is_dir()) {
             continue;
         }

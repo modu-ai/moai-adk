@@ -720,7 +720,7 @@ mod tests {
         }
         assert_eq!(d("specs", "folder", "go"), ("keep", "user_data"));
         assert_eq!(d("projects", "folder", "go"), ("keep", "user_data"));
-        assert_eq!(d("reports", "folder", "go"), ("keep", "owner_unknown"));
+        assert_eq!(d("reports", "folder", "go"), ("keep", "user_data"));
         assert_eq!(
             d("claude-profiles", "folder", "go"),
             ("keep", "owner_unknown")

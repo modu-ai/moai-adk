@@ -28,8 +28,12 @@ pub const WORKTREES: &str = "worktrees";
 /// The default parent of new projects, under [`STATE_DIR`]; also the Go generation's folder
 /// under [`WORKTREES`] (D8).
 pub const PROJECTS: &str = "projects";
+/// Reports, under [`STATE_DIR`]: `<HOME>/.moai/reports/<project>/` (C-126, user instruction
+/// 2026-11-19). A report is a local record that may hold private text, so it is never saved inside
+/// the repository.
+pub const REPORTS: &str = "reports";
 /// Names that are never a worktree folder or a service folder: the work folders themselves.
-const RESERVED: &[&str] = &[WORKTREES, PROJECTS];
+const RESERVED: &[&str] = &[WORKTREES, PROJECTS, REPORTS];
 
 /// The user's home from the given environment values (D1): `HOME` on Unix, `USERPROFILE` on
 /// Windows. An empty value counts as unset.
@@ -78,6 +82,17 @@ pub fn go_worktrees_root(home: &Path) -> PathBuf {
     worktrees_root(home).join(PROJECTS)
 }
 
+/// `<HOME>/.moai/reports`.
+pub fn reports_root(home: &Path) -> PathBuf {
+    root(home).join(REPORTS)
+}
+
+/// `<HOME>/.moai/reports/<project>`: where a project's reports are saved (C-126). `<project>`
+/// is [`project_name`], the part `worktree_name` also uses. Creates nothing.
+pub fn reports_dir(home: &Path, project_root: &Path) -> Result<PathBuf> {
+    Ok(reports_root(home).join(project_name(project_root)?))
+}
+
 /// A name made safe for one path component (D2): every character other than ASCII letters,
 /// digits, `.`, `_` and `-` becomes `-`, runs of `-` collapse, and `-` and `.` are trimmed at
 /// both ends. `None` when nothing is left.
@@ -107,21 +122,28 @@ fn reserved(name: &str) -> bool {
 pub fn service_dir(home: &Path, service: &str) -> Result<PathBuf> {
     if safe_name(service).as_deref() != Some(service) || reserved(service) {
         return Err(format!(
-            "invalid service name {service:?}: [A-Za-z0-9._-], not worktrees or projects"
+            "invalid service name {service:?}: [A-Za-z0-9._-], not worktrees, projects or reports"
         ));
     }
     Ok(root(home).join(service))
+}
+
+/// The project's name as one path component: the safe form of the repository's top-level folder
+/// name (D2). The worktree folder name (`worktree_name`) and the reports folder (`reports_dir`)
+/// both start from it, so a project has one name under the MoAI home.
+pub fn project_name(project_root: &Path) -> Result<String> {
+    project_root
+        .file_name()
+        .and_then(|n| n.to_str())
+        .and_then(safe_name)
+        .ok_or_else(|| "project folder name has no usable characters".to_string())
 }
 
 /// The folder name of a new worktree (D2): `<project>-<id>`, where `<project>` is the safe
 /// form of the repository's top-level folder name and `<id>` the existing worktree naming
 /// (`<issue>-<logical_key>`), also made safe. Never a reserved name (D8b).
 pub fn worktree_name(project_root: &Path, id: &str) -> Result<String> {
-    let project = project_root
-        .file_name()
-        .and_then(|n| n.to_str())
-        .and_then(safe_name)
-        .ok_or("project folder name has no usable characters")?;
+    let project = project_name(project_root)?;
     let id = safe_name(id).ok_or("worktree id has no usable characters")?;
     let name = format!("{project}-{id}");
     if reserved(&name) {
@@ -256,6 +278,51 @@ mod tests {
             worktree_name(Path::new("/src/projects"), "1-k").unwrap(),
             "projects-1-k"
         );
+    }
+
+    #[test]
+    fn reports_dir_is_home_reports_project_and_safe() {
+        let h = Path::new("/home/u");
+        assert_eq!(reports_root(h), PathBuf::from("/home/u/.moai/reports"));
+        assert_eq!(
+            reports_dir(h, Path::new("/src/moai-adk")).unwrap(),
+            PathBuf::from("/home/u/.moai/reports/moai-adk")
+        );
+        assert_eq!(
+            reports_dir(h, Path::new("/src/My Repo (copy)")).unwrap(),
+            PathBuf::from("/home/u/.moai/reports/My-Repo-copy")
+        );
+        // The project part is the one `worktree_name` uses, so a project has one name.
+        for root in ["/src/moai-adk", "/src/My Repo (copy)", "/src/한글repo"] {
+            let root = Path::new(root);
+            let project = project_name(root).unwrap();
+            assert!(worktree_name(root, "1-k")
+                .unwrap()
+                .starts_with(&format!("{project}-")));
+            assert_eq!(
+                reports_dir(h, root).unwrap(),
+                reports_root(h).join(&project)
+            );
+        }
+        // No usable character in the folder name is refused with `worktree_name`'s message.
+        assert_eq!(
+            reports_dir(h, Path::new("/src/한글")).unwrap_err(),
+            worktree_name(Path::new("/src/한글"), "1-k").unwrap_err()
+        );
+        assert!(reports_dir(h, Path::new("/")).is_err());
+    }
+
+    #[test]
+    fn reports_dir_creates_nothing_and_a_service_cannot_take_the_name() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let before = std::fs::read_dir(tmp.path()).unwrap().count();
+        assert!(reports_dir(tmp.path(), Path::new("/src/한글")).is_err());
+        assert!(reports_dir(tmp.path(), Path::new("/src/repo")).is_ok());
+        assert_eq!(std::fs::read_dir(tmp.path()).unwrap().count(), before);
+        // The reports folder is a work folder name now: no service may be called `reports`.
+        assert!(service_dir(tmp.path(), "reports").is_err());
+        assert!(service_dir(tmp.path(), "Reports").is_err());
+        assert!(service_dir(tmp.path(), "moai-stock").is_ok());
     }
 
     #[test]
