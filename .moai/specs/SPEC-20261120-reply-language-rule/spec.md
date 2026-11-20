@@ -30,6 +30,7 @@ created: 2026-11-20
 - REQ-6: While `CLAUDE_CONFIG_DIR` names the Claude Code config folder, the plan, the apply and the revert shall use that folder's `settings.json`. · failure: none
 - REQ-7: When the generated AGENTS.md managed section lists the writing languages, it shall begin that part with one imperative sentence in the instruction language that names the conversation, commit and document languages and says every other text is English. · failure: none
 - REQ-8: When the saved conversation language is known, the Codex managed block in the user-level AGENTS.md shall carry one sentence that tells the model to reply in that language. · failure: none
+- REQ-10: When `moai update` asks the person to confirm the user layer, its question and its summary shall show each settings key the style step would write with its value. · failure: none
 
 ## Acceptance
 
@@ -40,12 +41,13 @@ created: 2026-11-20
 - AC-5 (REQ-6): `CLAUDE_CONFIG_DIR` 로 가리킨 임시 폴더의 `settings.json` 이 채워지고 임시 HOME 의 기본 Claude 폴더는 건드리지 않아요 · verify: `cargo test --locked --offline --test home_style_language a_config_dir_profile_gets_its_own_settings`
 - AC-6 (REQ-7): 지시 문장이 `en`·`ko` 두 지시 언어로 만들어지고, 대화·커밋·문서 언어 이름이 들어가며, "그 밖은 영어" 가 들어가요 · verify: `cargo test --locked --offline --lib reply_language::`
 - AC-7 (REQ-8): 한국어를 골랐으면 Codex 블록에 한국어로 답하라는 한 문장이 있고, 언어를 모르면 블록 본문은 이전과 바이트가 같아요 · verify: `cargo test --locked --offline --test home_style_language the_codex_block_carries_the_reply_sentence_when_the_language_is_known`
+- AC-8 (REQ-10): `moai update` 의 확인 질문과 요약이 `settings.json: language = korean` 처럼 설정 키와 값을 보여 주고, 저장된 언어가 없으면 `language` 를 보이지 않아요 · verify: `cargo test --locked --offline --test update_tux_golden the_update_question_names_the_settings_key_a_style_target_writes`
 
 ## Scope
 
-- write: 이 SPEC, `src/home_style.rs`, `src/reply_language.rs`(새), `tests/home_style_language.rs`(새), 필요하면 `tests/home_style_cli.rs`(기존 기대값 갱신)
+- write: 이 SPEC, `src/home_style.rs`, `src/reply_language.rs`(새), `tests/home_style_language.rs`(새), 필요하면 `tests/home_style_cli.rs`(기존 기대값 갱신), `src/update.rs`와 `src/update_tux.rs`(사람 화면과 요약에 설정 키를 보임, 감사 B1), `tests/update_tux_golden.rs`
 - 다른 카드가 끝나야 쓸 곳: `src/agents.rs` 의 호출 한 줄(세 질문 정리가 같은 함수를 고치고 있어요), 모듈 한 줄 `src/lib.rs`(공용이라 짧게 잡고 바로 반환)
-- read-only: `src/language.rs`, `src/host_home.rs`, `src/update.rs`, `src/home_routing.rs`
+- read-only: `src/language.rs`, `src/host_home.rs`, `src/home_routing.rs`
 - forbidden: 사용자 값 덮어쓰기, 실제 HOME 과 그 아래 두 도구의 사용자 폴더 읽고 쓰기(시험은 임시 HOME 만), 카드 번호를 SPEC id·가지·커밋에 쓰는 것
 
 ## Plan
@@ -85,8 +87,20 @@ created: 2026-11-20
 | 3 | 충족 | `--test home_style_language without_a_known_conversation_language_no_key_is_planned_and_the_reason_is_named` |
 | 4 | 충족 | `--test home_style_language one_apply_writes_both_keys_and_revert_removes_only_those`, 옛 영수증은 `a_receipt_from_before_the_language_key_still_reverts` |
 | 5 | 충족 | `--test home_style_language a_config_dir_profile_gets_its_own_settings` |
-| 6 | 일부: 문장을 만드는 모듈만 | `--lib reply_language::` 6개(en·ko 문장, 이름 없는 코드, 모든 코드의 양쪽 이름, Codex 한 줄). `render_agents` 가 이 문장을 부르는 줄은 아직 없어요 |
+| 6 | 충족: 문장을 만드는 모듈 | `--lib reply_language::` 6개(en·ko 문장, 이름 없는 코드, 모든 코드의 양쪽 이름, Codex 한 줄). `render_agents` 가 이 문장을 부르는 줄은 아직 없어요 |
 | 7 | 충족 | `--test home_style_language the_codex_block_carries_the_reply_sentence_when_the_language_is_known` |
+| 8 | 충족 | `--test update_tux_golden the_update_question_names_the_settings_key_a_style_target_writes`, 요약은 `--lib update::user_layer_tests::the_summary_names_the_language_key_a_saved_language_would_write` |
+
+수리(감사 FAIL 의 B1·N3·N8, 수리 커밋 `ff29c85a4e`): B1 `moai update` 의 확인 질문과 요약이 설정 키와 값을 보여 줘요(`settings.json: language = korean`; 질문은 스타일 행과 변경 목록 둘 다). 새 요구사항 REQ-10 과 AC-8 로 적고, 저장된 언어가 있는 HOME 과 없는 HOME 으로 요약을 만드는 시험 하나와 계획에 키가 든 질문을 영어·한국어로 그리는 시험 하나를 더했어요. 변형 5개(요약에서 키 빼기, 화면이 키를 못 찾기, 변경 목록에서 빼기, 스타일 행에서 빼기, 문자열 값을 따옴표로 보이기)를 돌려 모두 이 두 시험이 잡았어요(기준 통과). N3 한국어 문장은 명령형(`…쓰세요`)으로 바꿨어요. N8 이 Result 는 아래 `AC-n: met` 줄을 가져요.
+
+- AC-1: met — `--test home_style_language the_plan_sets_language_to_the_saved_conversation_language` 통과
+- AC-2: met — `--test home_style_language a_user_set_language_is_kept_and_said_so` 통과
+- AC-3: met — `--test home_style_language without_a_known_conversation_language_no_key_is_planned_and_the_reason_is_named` 통과
+- AC-4: met — `--test home_style_language one_apply_writes_both_keys_and_revert_removes_only_those`와 옛 영수증 시험 통과
+- AC-5: met — `--test home_style_language a_config_dir_profile_gets_its_own_settings` 통과
+- AC-6: met — `--lib reply_language::` 통과(en·ko 문장, 이름 없는 코드, Codex 한 줄). `render_agents` 가 이 문장을 부르는 줄은 후속 조각이에요(리더 결정 3954)
+- AC-7: met — `--test home_style_language the_codex_block_carries_the_reply_sentence_when_the_language_is_known` 통과
+- AC-8: met — `--test update_tux_golden the_update_question_names_the_settings_key_a_style_target_writes` 통과
 
 READY 검사 종료 코드(`CARGO_TARGET_DIR` 는 이 worktree 전용): diff-check 0, fmt 0, ops rustfmt 0, clippy `--all-targets -D warnings` 0, `--lib` 전체 0(1610 통과), `--bins` 0, 영역 시험 대상(`home_*`, 11개 파일) 0, 저장소 전체 검사용 시험(`git_env_scrub`, `home_isolation_scan`, `windows_unix_gate_scan`, `product_cli`) 0, `tools/repo_scans.json` 검사 39개 실패 0, 파이썬 `repo_scans_test`·`source_manifest_test`·`local_check_test` 0, `trailer-check` 0, 이 Mac 에서 도는 `cfg(macos)` 시험 0. 이 영역의 파이썬 시험 파일(`home_*_test.py`)은 없어요.
 
