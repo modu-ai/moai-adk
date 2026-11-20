@@ -92,4 +92,12 @@ created: 2026-11-19
 
 ## Result
 
-(written after the checks)
+`moai language-setup` 이 이제 세 가지(대화 `user_chat`, 커밋 메시지 `commit_messages`, 문서 `documents`)만 묻고, 나머지는 영어 한 문장으로 말해요. AGENTS.md·REVIEW.md 는 `instruction_files` 가 없으면 대화 언어(en·ko)로 써요. 아래 종료 코드는 모두 0 이에요(릴리즈 팁 `6a8fa9cacf` 를 병합한 가지).
+
+- 새 시험 11개(`--test language_three_questions`): 처음 12개였고, 프로젝트 워크플로 글 시험은 요구에서 빠져 지웠어요(Non-goals).
+- 옛 시험 9개가 새 동작을 말하도록 고쳤어요: lib `language::tests` 4개, `language_setting` 3개, `go_settings_defaults` 2개. `--lib` 1604 통과, `--bins` 56 통과, `language_*`·`agents_*`·`go_settings_*`·`skeleton_language`·`project_*`·`cli_project` 시험 대상 전부 통과.
+- `tools/repo_scans.json` 의 검사 39개(cargo 31 + python 8) 전부 통과. 처음 한 번 실패한 것은 매니페스트의 `workflows/project.md` 해시(병합 팁의 값으로 되돌려 해결)와 SPEC 요구 줄 형식(REQ-12 를 Non-goals 로 옮겨 해결)이었어요. 다시 돌려 통과(`product_cli skill_package::` 18, `codex_adapter`·`home_routing_cli`·`exe_link_cli` 37, `source_manifest_test`, `spec_cli the_repository_specs_pass_check`).
+- 이 Mac 에서 도는 macOS 시험 파일 10개와 `clippy --all-targets -D warnings`, `cargo fmt --check`, `rustfmt --edition 2021 --check`, `git diff --check` 모두 통과. `moai spec check` 오류 0 경고 0.
+- 변이 시험 5개 모두 잡혔어요: `documents` 가 옛 `reports` 값을 잇지 않음, 터미널 단계가 모든 항목을 물음, 답 없는 질문 항목이 값을 못 받음, AGENTS.md 가 대화 언어를 무시함, `user_chat` 코드 경고가 사라짐.
+
+아직 안 한 것: `skills/moai/workflows/project.md` 의 언어 문장(다른 변경이 쓰고, 문장은 노트로 넘겼어요). `moai language-setup` 의 한 줄 도움말("Choose the writing language item by item")은 도움말 골든 6개와 `product_cli` 가 같이 걸려 있어 이 변경에서 못 고쳤어요(`src/help.rs`·골든 파일 후속). 긴 도움말 본문은 고쳤어요.
