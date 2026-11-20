@@ -85,5 +85,13 @@ created: 2026-11-20
 - 독립 감사(head 53335a3dba, 차단 0)가 구현을 일부러 망가뜨린 변이 8개가 모두 살아남는다고 알렸어요(seq 정렬 삭제, FAIL 을 PASS 로 읽기, 레인 층의 SPEC 구분 삭제, 읽지 못한 head 의 효력 판정, 같은 head 의 FAIL·PASS 합치기, 소속 PR 을 가장 오래된 행으로, 같은 묶음의 뒤 실행 기록 무시, PR 상태를 첫 행에서). 시험 여섯을 더해 11개가 됐고 그 8개 변이를 모두 시험이 잡아요(변이마다 복원 뒤 `git status` 깨끗).
 - 같은 감사의 그 밖의 비차단 둘을 고쳤어요: (N-2) 같은 head 를 보인 PR 이 둘이면 지금도 그 head 인 PR 을 먼저 붙여요(시험 `a_pull_request_that_still_shows_the_head_is_preferred`, 그 선택을 끈 변이를 잡아요). (N-4) AC-5 의 순수성 검사를 금지어 목록에서 허용 목록으로 바꿨어요(`use` 줄이 정확히 serde·serde_json·BTreeMap 셋이고 `std::` 가 그 한 곳뿐이며 `crate::`·`println!` 등이 없어요; `std::fs` 가져오기·`std::io` 경로·`println!` 변이를 잡아요). 시험은 12개예요.
 - AC-1·2·3·5·6 met — 변이 5개를 시험이 잡았어요(`!=` 로 뒤집은 PR head 비교 → AC-1·2, `==` 를 `!=` 로 뒤집은 효력 판정 → AC-2·3, 한 층의 통과를 항상 무효로 → AC-3, 읽지 못한 행 이름 빼기 → AC-6, 같은 판정 중복 제거 빼기 → AC-2). 변이마다 `git status` 깨끗하게 복원했어요.
-- AC-4(밖으로 나가는 글, REQ-4·5)는 조각 3 이에요: 아직 하지 않았어요.
-- 돌리지 않은 것: 실제 관측 저장과의 연결(저장 모듈은 아직 가지에 없어요; `Row` 변환 한 줄은 마감 조각), `src/lib.rs` 의 모듈 선언(`pub mod board;` 는 BOARD 02 와 순서 맞추기), CI.
+- 돌리지 않은 것(조각 2): 실제 관측 저장과의 연결(저장 모듈은 아직 가지에 없어요; `Row` 변환 한 줄은 마감 조각), `src/lib.rs` 의 모듈 선언(`pub mod board;` 는 BOARD 02 와 순서 맞추기), CI.
+
+조각 3 (밖으로 나가는 글, tier 2, 리더 결정 노트 3636 의 D-4 (나), D-6):
+
+- RED 먼저: `bundle_body_cli` 에 새 시험 둘을 더하고 옛 코드로 돌리면 둘 다 실패(`7 passed; 2 failed`), 구현 뒤 9개 모두 통과(`FAILED` 0). 단위 시험 둘(`card_numbers_are_found_at_word_starts_only`, `a_session_id_is_exactly_five_hex_groups`)이 단어 시작·세션 id 모양 경계를 고정해요.
+- 고친 곳(`src/bundle.rs` `body`): 머리 표의 `Card` 열 삭제, 감사 칸은 `` `PASS` on `<head>` `` + `(tier N)`(노트 번호·판정 줄 인용 삭제), SPEC 별 결과 줄은 `<SPEC id>: …`, 실행 기록의 명령 글 속 `C-<숫자>` 는 `<lane>` 으로 치환, 만든 본문 전체를 한 번 더 훑어 카드 번호나 세션 id 꼴이 남으면 본문 전체를 거절(`bundle body refused: …`, `--out` 파일 없음). 옛 형식을 기대하던 시험 네 곳과 `docs/design-review/appendix/operations/bundle.md` 문단을 새 형식에 맞췄어요.
+- AC-4·AC-7 met — 변이 6개를 시험이 잡았어요(명령 치환 끄기 → 시험 6개 실패, 최종 훑기 끄기 → `a_card_number_or_a_session_id_in_a_free_text_value_refuses_the_body`, 단어 시작 검사 삭제 → 단위 시험, 세션 id 모양을 `8-4-4-4-11` 로 → 단위 시험, 세션 id 검사 끄기 → 시험 2개, 감사 칸을 옛 문구로 → 시험 3개). 변이마다 복원 뒤 `git status` 깨끗해요.
+- 첫 변이 시험은 단위 시험의 클로저 수명 오류로 원본이 컴파일되지 않아 6개 모두 무효였어요(`--lib` 를 커밋 전에 안 돌린 제 실수): 중첩 함수로 고치고(`ea5cb6c41b`) 변이를 처음부터 다시 돌렸어요.
+- 영향: 리더가 손으로 쓰는 `--self-audit` 값·`not_run` 사유·가지 이름에 카드 번호나 세션 id 꼴이 있으면 이제 `bundle body` 가 거절해요. 리더가 손으로 쓰는 릴리즈 PR 본문도 같은 규칙을 따라요.
+- 돌리지 않은 것: 실제 GitHub 에 올린 PR 본문 확인, CI(PR CI 는 리눅스 전용), macOS 전용 시험.
