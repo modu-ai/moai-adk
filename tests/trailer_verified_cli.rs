@@ -411,13 +411,17 @@ fn trailer_check_since_inside_the_range() {
     let base = r.git(&["rev-parse", "HEAD"]).trim().to_string();
     let a1 = r.commit_at("named start", None, "2026-11-20T10:00:01", "a1.txt");
     let a2 = r.commit_at("child", None, "2026-11-20T10:00:05", "a2.txt");
-    // The grandchild's date is older than its parent's (a skewed clock): a date-ordered walk
-    // would meet it before a2.
+    // The grandchild's date is older than its parent's (a skewed clock), and a2 has a second,
+    // newer child on a side branch: a date-ordered walk reaches a2 through that child first and
+    // lists a2 after the grandchild, so only a parents-first order marks the grandchild.
     let a3 = r.commit_at("grandchild", None, "2026-11-20T10:00:02", "a3.txt");
+    r.git(&["checkout", "-q", "-b", "mid", &a2]);
+    let a4 = r.commit_at("second child", None, "2026-11-20T10:00:06", "a4.txt");
     r.git(&["checkout", "-q", "-b", "old", &base]);
-    r.commit_at("old side", None, "2026-11-20T10:00:06", "o1.txt");
+    r.commit_at("old side", None, "2026-11-20T10:00:08", "o1.txt");
     r.git(&["checkout", "-q", "main"]);
-    r.merge_at("old", "2026-11-20T10:00:07");
+    r.merge_at("mid", "2026-11-20T10:00:07");
+    r.merge_at("old", "2026-11-20T10:00:09");
     let range = format!("{base}..HEAD");
     // Nothing carries the line and no start is named: every commit reads as `none`.
     let v = ok(&r.run(&["trailer-check", &range, "--dir", r.p()]));
@@ -430,10 +434,10 @@ fn trailer_check_since_inside_the_range() {
         "--verified-since",
         &a1,
     ]));
-    let mut want = vec![a2, a3];
+    let mut want = vec![a2, a3, a4];
     want.sort();
     assert_eq!(missing_shas(&v), want, "{v}");
-    assert_eq!(v["failing"], 2, "{v}");
+    assert_eq!(v["failing"], 3, "{v}");
 }
 
 /// AC-3: `--list` groups the commits of a range by verification kind — a commit with several
