@@ -14,7 +14,7 @@ The earlier change `SPEC-20261120-skill-text-citations` cleaned most shipped ski
 
 ## Requirements
 
-- REQ-1: The text of `verify.md`, `audit.md`, `agents/audit.md` and `mode-leader.md` shall carry no card number, no Issue or pull-request number, no citation of a user or leader decision, and no name of a moai-adk development script, apart from the machine markers and format samples named in REQ-3.
+- REQ-1: The text of the four files named in the Intent shall carry no card number, no Issue or pull-request number, no citation of a user or leader decision, and no name of a moai-adk development script.
 - REQ-2: The pending list of `tests/skill_text_citations.rs` shall no longer name these four files, so the scan keeps them clean.
 - REQ-3: A checker or a test that reads a phrase of these files shall keep finding it: the markers `AUDIT #<pr> … head <40-hex> base <40-hex> — verdict: PASS|FAIL`, `## 독립 review`, `수리 확인 범위`, `새 지적 분류`, `moai-audit-claim` and `moai-claim-handoff` stay as written.
 - REQ-4: The developer document `docs/skill-text-rationale.md` shall keep each removed reason, and the moai-adk-only commands the shipped text no longer names, under the path of the file they came from.
