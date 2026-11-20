@@ -11,13 +11,19 @@ use std::path::PathBuf;
 
 struct Repo(PathBuf);
 
+/// One more than the repos made so far, so parallel tests never share a temp dir: two
+/// starts inside the same clock tick would otherwise collide on the same name.
+static NEXT_REPO: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 impl Repo {
     fn new() -> Repo {
+        let seq = NEXT_REPO.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let stamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let dir = std::env::temp_dir().join(format!("mflow-guard-{}-{stamp}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("mflow-guard-{}-{stamp}-{seq}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         let repo = Repo(dir);
         repo.git_ok(&["init", "-b", "v2026.11.0"]);
