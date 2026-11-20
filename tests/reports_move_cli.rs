@@ -479,20 +479,19 @@ fn a_home_that_is_relative_or_inside_the_project_blocks_the_move() {
     let tmp = tempfile::tempdir().unwrap();
     let root = repo(tmp.path());
     write(&root, ".moai-cli/reports/a.md", "a");
-    for home in [root.join("in-repo-home")] {
-        let p = plan(&root, &home).unwrap();
-        assert_eq!(p.state, "blocked", "{}: {}", home.display(), p.reason);
-        assert!(p.moves.is_empty());
-        assert!(
-            p.reason.contains("HOME") || p.reason.contains("inside the project"),
-            "{}",
-            p.reason
-        );
-        let err = apply_plan(&root, &home, &p).unwrap_err();
-        assert!(err.contains("blocked"), "{err}");
-        assert!(root.join(".moai-cli/reports/a.md").exists());
-        assert!(!root.join("in-repo-home").exists());
-    }
+    let home = root.join("in-repo-home");
+    let p = plan(&root, &home).unwrap();
+    assert_eq!(p.state, "blocked", "{}: {}", home.display(), p.reason);
+    assert!(p.moves.is_empty());
+    assert!(
+        p.reason.contains("HOME") || p.reason.contains("inside the project"),
+        "{}",
+        p.reason
+    );
+    let err = apply_plan(&root, &home, &p).unwrap_err();
+    assert!(err.contains("blocked"), "{err}");
+    assert!(root.join(".moai-cli/reports/a.md").exists());
+    assert!(!root.join("in-repo-home").exists());
 }
 
 /// Audit B2: the file limit is exact — 20,000 files plan, 20,001 block (boundary N and N+1).
