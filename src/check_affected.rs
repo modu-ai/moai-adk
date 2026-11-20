@@ -201,14 +201,25 @@ pub fn select(
     }
 }
 
-/// The helper folders a Rust test file declares: `mod <x>;` and `pub mod <x>;` lines.
+/// The helper folders a Rust test file declares: `mod <x>;` lines, also with attributes before
+/// them, a `pub` or `pub(crate)` and a comment after them.
 pub fn declared_mods(text: &str) -> Vec<String> {
     text.lines()
         .filter_map(|l| {
-            let t = l.trim();
+            let mut t = l.trim();
+            while t.starts_with("#[") {
+                t = t[t.find(']')? + 1..].trim_start();
+            }
+            if t.starts_with("pub(") {
+                t = t[t.find(')')? + 1..].trim_start();
+            }
             let t = t.strip_prefix("pub ").unwrap_or(t);
-            let name = t.strip_prefix("mod ")?.strip_suffix(';')?;
-            Some(name.trim().to_string())
+            let rest = t.strip_prefix("mod ")?;
+            let (name, after) = rest.split_once(';')?;
+            let after = after.trim();
+            let name = name.trim();
+            let plain = !name.is_empty() && name.chars().all(|c| c.is_alphanumeric() || c == '_');
+            (plain && (after.is_empty() || after.starts_with("//"))).then(|| name.to_string())
         })
         .collect()
 }
@@ -283,7 +294,12 @@ pub fn steps(sel: &Selection, present: &[String], range: &str, target_dir: &str)
         out.push(s);
     }
     for p in present.iter().filter(|p| p.ends_with(".sh")) {
-        out.push(step(&format!("bash_n:{p}"), "bash", &["-n", p], false));
+        out.push(step(
+            &format!("bash_n:{p}"),
+            "bash",
+            &["-n", "--", p],
+            false,
+        ));
     }
     out.push(cargo_step(
         "clippy",
@@ -341,6 +357,8 @@ fn cargo_step(label: &str, sub: &[&str], rest: &[&str]) -> Step {
 
 /// What a range gives: the commits, the changed paths and the files of `tests/`.
 pub struct Facts {
+    /// The repository's top folder (`--dir` may be a folder inside it).
+    pub root: std::path::PathBuf,
     pub base: String,
     pub head: String,
     pub changed: Vec<String>,
@@ -399,12 +417,23 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
     let (b, h) = split_range(range)?;
     let base = commit(dir, b)?;
     let head = commit(dir, h)?;
-    let changed: Vec<String> = git(dir, &["diff", "--name-only", &format!("{base}...{head}")])?
-        .lines()
-        .map(str::trim)
-        .filter(|l| !l.is_empty())
-        .map(String::from)
-        .collect();
+    let root = std::path::PathBuf::from(git(dir, &["rev-parse", "--show-toplevel"])?.trim());
+    let dir = root.as_path();
+    // `-z` keeps a non-ASCII name unquoted, `--no-renames` lists the old path of a move too.
+    let changed: Vec<String> = git(
+        dir,
+        &[
+            "diff",
+            "--name-only",
+            "--no-renames",
+            "-z",
+            &format!("{base}...{head}"),
+        ],
+    )?
+    .split('\0')
+    .filter(|l| !l.is_empty())
+    .map(String::from)
+    .collect();
     let present = changed
         .iter()
         .filter(|p| dir.join(p).is_file())
@@ -441,6 +470,7 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
     tests.sort_by(|a, b| (a.python, &a.name).cmp(&(b.python, &b.name)));
     let scan_list = std::fs::read_to_string(dir.join("tools/repo_scans.json")).ok();
     Ok(Facts {
+        root,
         base,
         head,
         changed,
@@ -448,6 +478,16 @@ pub fn read_facts(dir: &Path, range: &str) -> Result<Facts> {
         tests,
         scan_list,
     })
+}
+
+/// The folder cargo builds into: the caller's `CARGO_TARGET_DIR` (a relative one counts from the
+/// repository), else `<root>/target`. The Python step and the step logs use the same folder as
+/// the build step, so the binary the tests look for is the one that was built.
+fn target_dir(root: &Path) -> std::path::PathBuf {
+    match std::env::var_os("CARGO_TARGET_DIR") {
+        Some(t) if !t.is_empty() => root.join(t),
+        _ => root.join("target"),
+    }
 }
 
 fn short(sha: &str) -> &str {
@@ -463,7 +503,7 @@ pub fn list(dir: &Path, range: &str) -> Result<serde_json::Value> {
         facts.scan_list.as_deref(),
         host_os(),
     );
-    let target = format!("{}/target", dir.display());
+    let target = target_dir(&facts.root).to_string_lossy().into_owned();
     let planned = steps(
         &sel,
         &facts.present,
@@ -541,6 +581,9 @@ fn run_step(dir: &Path, s: &Step, opts: &RunOptions, log: &Path) -> i32 {
         c
     } else {
         let mut c = Command::new(&s.program);
+        if s.program == "git" {
+            crate::identity::scrub_git_env(&mut c);
+        }
         c.args(&s.args);
         c
     };
@@ -577,6 +620,7 @@ fn summary_words(results: &[(String, i32)]) -> Vec<(String, i32)> {
 /// every step (never stopping at the first failure) and give one summary line (REQ-8 to REQ-11).
 pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Value> {
     let facts = read_facts(dir, range)?;
+    let dir = facts.root.as_path();
     let at = git(dir, &["rev-parse", "HEAD"])?.trim().to_string();
     if at != facts.head {
         return Err(format!(
@@ -598,9 +642,7 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         facts.scan_list.as_deref(),
         host_os(),
     );
-    let target = std::fs::canonicalize(dir)
-        .unwrap_or_else(|_| dir.to_path_buf())
-        .join("target");
+    let target = target_dir(&std::fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf()));
     let planned = steps(
         &sel,
         &facts.present,
@@ -810,6 +852,13 @@ mod tests {
             ["macos", "linux"]
         );
         assert!(os_names("let target_os = 1;").is_empty());
+        // A comment after the line, an attribute before it and a restricted `pub` still declare it.
+        assert_eq!(
+            declared_mods(
+                "mod a; // shared\n#[macro_use] mod b;\npub(crate) mod c;\n#[path = \"x.rs\"]\nmod d;\nmod e { }\nlet mod_x = 1;"
+            ),
+            ["a", "b", "c", "d"]
+        );
     }
 
     #[test]

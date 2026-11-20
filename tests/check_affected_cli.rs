@@ -83,7 +83,7 @@ impl Tools {
         let dir = tempfile::tempdir().unwrap();
         for n in names {
             let script = format!(
-                "#!/bin/sh\necho \"{n} $*\" >> \"$FAKE_CALLS\"\ncase \"$FAKE_FAIL\" in\n  '') ;;\n  *) case \" $* \" in *\" $FAKE_FAIL \"*) exit 3 ;; esac ;;\nesac\nexit 0\n"
+                "#!/bin/sh\necho \"{n} $*\" >> \"$FAKE_CALLS\"\necho \"{n} env CTD=$CARGO_TARGET_DIR MB=$MOAI_CLI_BIN\" >> \"$FAKE_CALLS\"\ncase \"$FAKE_FAIL\" in\n  '') ;;\n  *) case \" $* \" in *\" $FAKE_FAIL \"*) exit 3 ;; esac ;;\nesac\nexit 0\n"
             );
             let path = dir.path().join(n);
             fs::write(&path, script).unwrap();
@@ -304,6 +304,86 @@ fn a_head_behind_its_base_tip_counts_only_its_own_changes() {
     assert_eq!(v["result"]["changed"], 1, "{v}");
 }
 
+/// Commit `change` on top of the fixture and return the fixture with the new head.
+fn then(mut fx: Fixture, change: impl Fn(&Path)) -> Fixture {
+    change(fx.root());
+    git_ok(fx.root(), &["add", "-A"]);
+    git_ok(fx.root(), &["commit", "-q", "-m", "more"]);
+    fx.head = git(fx.root(), &["rev-parse", "HEAD"]).trim().to_string();
+    fx
+}
+
+fn list_rust(fx: &Fixture, dir: &Path) -> Vec<String> {
+    let out = Command::new(BIN)
+        .args(["check", "affected", &fx.range(), "--list", "--dir"])
+        .arg(dir)
+        .env_remove("MOAI_HOME")
+        .output()
+        .unwrap();
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["ok"], true, "{v}");
+    names(&v["result"]["rust_targets"])
+}
+
+#[test]
+fn a_renamed_file_counts_its_old_path_too() {
+    // Git's default rename detection would print only `src/zzz.rs`; the old area's tests must
+    // still be selected, whatever the user's `diff.renames` says.
+    let fx = then(Fixture::new(false, &[("README.md", "y\n")]), |p| {
+        git_ok(p, &["mv", "src/update_models.rs", "src/zzz.rs"]);
+    });
+    let rust = list_rust(&fx, fx.root());
+    assert!(rust.contains(&"update_command_cli".to_string()), "{rust:?}");
+}
+
+#[test]
+fn a_non_ascii_path_is_read_whatever_the_quote_setting() {
+    let fx = Fixture::new(false, &[("README.md", "y\n")]);
+    git_ok(fx.root(), &["config", "core.quotepath", "true"]);
+    let fx = then(fx, |p| put(p, "src/update_한글.rs", "// a\n"));
+    let rust = list_rust(&fx, fx.root());
+    assert!(rust.contains(&"update_command_cli".to_string()), "{rust:?}");
+}
+
+#[test]
+fn a_folder_inside_the_repository_reads_the_repository_root() {
+    let fx = Fixture::new(false, &[("src/update_models.rs", "// b\n")]);
+    let rust = list_rust(&fx, &fx.root().join("src"));
+    assert!(rust.contains(&"update_command_cli".to_string()), "{rust:?}");
+}
+
+#[test]
+fn the_python_step_uses_the_target_folder_the_build_step_builds_into() {
+    let fx = Fixture::new(false, &[("src/update_models.rs", "// b\n")]);
+    let tools = Tools::new(&["cargo", "python3", "rustfmt"]);
+    let slots = slot_dir();
+    let theirs = tempfile::tempdir().unwrap();
+    let out = Command::new(BIN)
+        .args(["check", "affected", &fx.range(), "--dir"])
+        .arg(fx.root())
+        .args(["--slot-dir"])
+        .arg(slots.path())
+        .env_remove("MOAI_HOME")
+        .env("CARGO_TARGET_DIR", theirs.path())
+        .env("PATH", tools.path())
+        .env("FAKE_CALLS", tools.calls())
+        .env("FAKE_FAIL", "")
+        .output()
+        .unwrap();
+    let v: Value = serde_json::from_slice(&out.stdout).unwrap();
+    assert_eq!(v["ok"], true, "{v}");
+    let calls = tools.calls_text();
+    let want = format!(
+        "python3 env CTD={0} MB={0}/debug/moai-cli",
+        theirs.path().display()
+    );
+    assert!(calls.contains(&want), "{want} in {calls}");
+    assert!(
+        !fx.root().join("target").exists(),
+        "logs and builds go to the caller's target folder"
+    );
+}
+
 #[test]
 fn a_project_without_a_scan_list_says_scans_none() {
     let fx = Fixture::new(false, &[("src/update_models.rs", "// b\n")]);
@@ -344,6 +424,32 @@ fn a_failed_step_does_not_stop_the_rest_and_the_summary_says_fail() {
     assert!(line.starts_with("check-affected base="), "{line}");
     assert!(line.contains(" fmt=3 "), "{line}");
     assert!(line.ends_with(" result=FAIL"), "{line}");
+    // The keys come in the order the steps run, then the result.
+    let keys: Vec<&str> = line
+        .split(' ')
+        .skip(1)
+        .filter_map(|w| w.split_once('=').map(|(k, _)| k))
+        .collect();
+    assert_eq!(
+        keys,
+        [
+            "base",
+            "head",
+            "targets",
+            "py",
+            "scans",
+            "diff_check",
+            "fmt",
+            "clippy",
+            "test_lib",
+            "test_bins",
+            "test_targets",
+            "build_cli",
+            "python",
+            "result"
+        ],
+        "{line}"
+    );
     assert_eq!(r["result"], "FAIL");
     // The steps after the failed one still ran.
     let calls = tools.calls_text();

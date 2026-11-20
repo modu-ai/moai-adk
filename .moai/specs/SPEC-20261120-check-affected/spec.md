@@ -25,14 +25,14 @@ created: 2026-11-20
 
 ## Requirements
 
-- REQ-1: When a range changes a path under `src/`, the selector shall select every Rust test target of `tests/` whose name starts with the path's area or shares the area's first word · failure: none — the selection is a pure function of the changed paths and the file lists.
+- REQ-1: When a range changes a path under `src/`, the selector shall select every Rust test target of `tests/` whose name is the area's first word or starts with that word and an underscore · failure: none — the selection is a pure function of the changed paths and the file lists.
 - REQ-2: When a range changes a file `tests/<name>.rs`, `tests/<name>_test.py`, a file under `tests/fixtures/<dir>/` or a shared test helper, the selector shall select that target, the targets named like `<dir>` or every target that declares the helper · failure: none — the selection is a pure function of the changed paths and the file lists.
 - REQ-3: When the project has `tools/repo_scans.json`, the selector shall select every Rust target and Python module that file names whatever the range changes · failure: none — an unreadable file makes the selector name it and select every `tests/` target, and a project without the file reports `scans=none`.
 - REQ-4: When the selection is made, the selector shall add the library tests and the binary tests of the crate · failure: none — these two steps are fixed.
 - REQ-5: When a range changes a path under `src/`, the selector shall select the Python modules `tests/<first word>_*_test.py` of its area · failure: none — the selection is a pure function of the changed paths and the file lists.
 - REQ-6: When a test file names `cfg(target_os = "<os>")` for the host's operating system, the selector shall select that Rust target · failure: none — the host name comes from the standard library.
 - REQ-7: When the selection is made, the runner shall also plan `git diff --check`, `cargo fmt --all -- --check`, `rustfmt --edition 2021 --check` of each changed `src/ops/*.rs`, `bash -n` of each changed shell file and `cargo clippy --all-targets -- -D warnings` · failure: none — these steps are fixed by the changed paths.
-- REQ-8: When the steps run, the runner shall run each cargo step through one `heavy-slot-acquire` hold and never stop at the first failure.
+- REQ-8: When the steps run, the runner shall run each heavy cargo step (clippy, build and test) through one `heavy-slot-acquire` hold and never stop at the first failure.
 - REQ-9 (REQ-8): IF a step's program cannot start, THEN the runner shall record that step with exit status 127 and the result FAIL.
 - REQ-10 (REQ-8): IF the checkout is not at the range's head, a tracked file is modified or the base cannot be read, THEN the runner shall refuse and run no step.
 - REQ-11: When the run ends, the runner shall print one summary line of `key=value` words with the counts and the exit status of every step and `result=PASS` only when every exit status is 0 · failure: none — a step the heavy slot did not start keeps the slot's exit status (125 refused, 75 machine busy) and makes the result FAIL.
@@ -68,7 +68,10 @@ created: 2026-11-20
 - `tools/repo_scans.json` 모양에 기대요: `checks` 의 `--test <이름>`, `python3 -m unittest tests.<이름>` 과 `tests` 의 `tests/<이름>.rs` 만 읽어요. 모양이 바뀌면 조용히 덜 고를 수 있어서, 읽지 못한 항목은 이름을 알리고 `tests/` 전체를 고르는 쪽으로 실패해요(REQ-3).
 - 파이썬 시험은 빌드된 `moai-cli` 가 있어야 하는 것이 많아요: 파이썬 단계 앞에 `cargo build --bin moai-cli` 단계를 두고 그 종료 코드도 요약에 넣어요(조각 3).
 - `cfg(unix)`·`cfg(windows)` 는 고르지 않아요(카드가 `target_os` 만 말해요). 이 호스트가 macOS 면 macOS 이름을 쓴 파일만 골라요: 리눅스 CI 는 그 시험을 돌리지 않으므로 이쪽이 유일한 확인이에요.
-- 여러 명령을 한 슬롯에 묶지 않고 cargo 단계마다 슬롯을 잡아요(D-4): 단계 사이에 다른 레인이 끼어들 수 있어요.
+- 여러 명령을 한 슬롯에 묶지 않고 무거운 cargo 단계(clippy·빌드·시험)마다 슬롯을 잡아요(D-4): 단계 사이에 다른 레인이 끼어들 수 있어요. `cargo fmt` 는 가벼워서 슬롯 없이 돌려요.
+- 알려진 빈틈(감사가 찾았고 이번에는 막지 않았어요): 시험 대상이 아닌 곳의 변경은 고르지 못해요 — `tests/fixtures/` 바로 밑 파일, `tests/e2e/*.sh`, `_test.py` 가 아닌 파이썬 도우미(`tests/self_audit_run.py` 처럼 여러 시험이 가져다 쓰는 것). 사람이 `--list` 로 보고 필요하면 대상을 더해요. `mod x { … }` 처럼 한 줄이 아닌 선언은 도우미로 읽지 않아요.
+- 시험 단계가 실패해도 명령 자체의 종료 코드는 0 이고 판정은 `result`·`summary` 에만 있어요(D-6): 호출하는 쪽은 `result=PASS` 를 읽어야 해요. 종료 코드로 나타내는 것은 사람이 정하면 따로 더해요.
+- `--dir` 은 저장소 안의 어느 폴더든 돼요(맨 위 폴더를 `git rev-parse --show-toplevel` 로 찾아요). 이름이 바뀐 파일은 옛 경로와 새 경로를 모두 바뀐 것으로 세요(`--no-renames`).
 - 이 변경 자체가 `src/lib.rs` 한 줄과 `src/help.rs` 줄을 건드려요: 잠깐만 예약하고 바로 반환해요.
 
 ## Decisions
@@ -78,10 +81,10 @@ created: 2026-11-20
 | D-1 | 고르는 일은 순수 함수(경로, 파일 목록, 스캔 목록 글, 호스트 이름 → 선택)이고 git·cargo 를 부르지 않아요. 부르는 쪽이 목록을 만들어 넘겨요 | 배차의 요구와 시험 쉬움: 고정물만으로 오늘 놓친 사례를 못 박을 수 있어요 | 함수에 입출력을 더하면 돼요 |
 | D-2 | 영역: `src/<x>.rs` 면 x, `src/<dir>/<y>.rs` 면 dir, 단 `src/ops/<y>.rs` 면 y. 첫 낱말 = 영역의 첫 `_` 앞. 시험 대상 이름이 영역으로 시작하거나 첫 낱말이 같으면 골라요 | 리더의 통합 확인 스크립트 규칙을 그대로 가져오되 `src/ops/` 만 고쳐요(거기서는 영역이 `ops` 하나로 뭉개져 모든 연산이 같은 시험을 골라요) | 규칙 한 곳을 고치면 돼요 |
 | D-3 | 공용 시험 도우미(`tests/common*`)가 바뀌면 그것을 `mod common` 으로 쓰는 대상을 모두 골라요 | 고정 목록보다 정확해요; 비용은 출력의 개수로 보여요 | 도우미 이름 목록을 좁혀요 |
-| D-4 | 범위의 변경 파일은 `git diff --name-only <base>...<head>`(세 점, merge-base 기준)이고 cargo 단계마다 `heavy-slot-acquire --max 4 --min-free-gb 50` 를 따로 잡아요 | 레인은 기준이 옛 tip 이어도 자기 변경만 골라야 하고, 병합 head 는 base 가 조상이라 같은 답이에요; 한 슬롯 안에 오래 묶지 않아요 | 한 슬롯 스크립트(`bundle verify` 방식)로 바꿔요 |
+| D-4 | 범위의 변경 파일은 `git diff --name-only <base>...<head>`(세 점, merge-base 기준)(`--no-renames -z`)이고 무거운 cargo 단계마다 `heavy-slot-acquire --max 4 --min-free-gb 50` 를 따로 잡아요 | 레인은 기준이 옛 tip 이어도 자기 변경만 골라야 하고, 병합 head 는 base 가 조상이라 같은 답이에요; 한 슬롯 안에 오래 묶지 않아요 | 한 슬롯 스크립트(`bundle verify` 방식)로 바꿔요 |
 | D-5 | 체크아웃이 head 가 아니거나 추적 파일이 고쳐졌으면 거절해요 | 결과는 그 head 를 말해야 해요: 고친 파일이 섞이면 READY 의 증거가 아니에요 | 거절을 경고로 낮춰요 |
 | D-6 | 기본은 돌리기, `--list` 는 읽기만 | 카드가 "골라서 돌리고 한 줄 요약"을 말해요; 읽기 전용 쓰임은 시험과 사람이 쓰는 미리 보기예요 | 기본을 `--list` 로 뒤집어요 |
-| D-7 | 요약 한 줄은 `check-affected base=<12> head=<12> targets=<n> py=<n> lib=<exit> bins=<exit> …  result=PASS|FAIL` 꼴의 `key=value` 낱말이고 키 순서가 고정이에요 | 레인은 READY 노트에, 리더는 병합 head 에서 같은 줄을 읽고 기계가 비교해요 | 키를 더해도 앞 키 순서는 지켜요 |
+| D-7 | 요약 한 줄은 `check-affected base=<12> head=<12> targets=<n> py=<n> scans=<…> diff_check=<exit> fmt=<exit> … test_lib=<exit> test_bins=<exit> …  result=PASS|FAIL` 꼴의 `key=value` 낱말이고 키 순서가 고정이에요 | 레인은 READY 노트에, 리더는 병합 head 에서 같은 줄을 읽고 기계가 비교해요 | 키를 더해도 앞 키 순서는 지켜요 |
 | D-8 | 통합 가지 이름·카드 번호를 코드에 두지 않아요; base 는 사람이 인자로 줘요 | 이 도구는 모든 MoAI 프로젝트의 것이고, 카드 번호는 밖으로 나가는 글에 안 써요 | — |
 
 ## Result
