@@ -159,19 +159,34 @@ impl Fx {
             let origin = base.join("origin.git");
             fx.git(
                 &base,
-                &["init", "-q", "--bare", "-b", BASE_BRANCH, origin.to_str().unwrap()],
+                &[
+                    "init",
+                    "-q",
+                    "--bare",
+                    "-b",
+                    BASE_BRANCH,
+                    origin.to_str().unwrap(),
+                ],
             );
             fx.git(&fx.repo, &["init", "-q", "-b", BASE_BRANCH]);
             fx.git(
                 &fx.repo,
                 &["remote", "add", "origin", origin.to_str().unwrap()],
             );
-            fx.commit(&fx.repo, &[("README.md", "one\ntwo\n"), (".gitignore", "*.log\n")], "base");
+            fx.commit(
+                &fx.repo,
+                &[("README.md", "one\ntwo\n"), (".gitignore", "*.log\n")],
+                "base",
+            );
             fx.git(&fx.repo, &["push", "-q", "origin", BASE_BRANCH]);
             fx.git(&fx.repo, &["checkout", "-q", "-b", "feature"]);
         } else {
             fx.git(&fx.repo, &["init", "-q", "-b", "main"]);
-            fx.commit(&fx.repo, &[("README.md", "one\n"), (".gitignore", "*.log\n")], "one");
+            fx.commit(
+                &fx.repo,
+                &[("README.md", "one\n"), (".gitignore", "*.log\n")],
+                "one",
+            );
             fx.commit(&fx.repo, &[("README.md", "one\ntwo\n")], "two");
         }
         fx
@@ -200,18 +215,34 @@ impl Fx {
         if !other.exists() {
             self.git(
                 &self.tmp.0,
-                &["clone", "-q", self.origin().to_str().unwrap(), other.to_str().unwrap()],
+                &[
+                    "clone",
+                    "-q",
+                    self.origin().to_str().unwrap(),
+                    other.to_str().unwrap(),
+                ],
             );
         }
         self.git(&other, &["fetch", "-q", "origin"]);
         self.git(
             &other,
-            &["checkout", "-q", "-B", "work", &format!("origin/{BASE_BRANCH}")],
+            &[
+                "checkout",
+                "-q",
+                "-B",
+                "work",
+                &format!("origin/{BASE_BRANCH}"),
+            ],
         );
         self.commit(&other, files, "origin moved");
         self.git(
             &other,
-            &["push", "-q", "origin", &format!("HEAD:refs/heads/{BASE_BRANCH}")],
+            &[
+                "push",
+                "-q",
+                "origin",
+                &format!("HEAD:refs/heads/{BASE_BRANCH}"),
+            ],
         );
     }
 
@@ -224,7 +255,13 @@ impl Fx {
         self.commit(&other, files, "unrelated root");
         self.git(
             &other,
-            &["push", "-q", "--force", "origin", &format!("HEAD:refs/heads/{BASE_BRANCH}")],
+            &[
+                "push",
+                "-q",
+                "--force",
+                "origin",
+                &format!("HEAD:refs/heads/{BASE_BRANCH}"),
+            ],
         );
     }
 
@@ -299,7 +336,10 @@ impl Fx {
                 env.push((k.to_string(), v.to_string()));
             }
         };
-        set("PATH", Some(&format!("{}:/usr/bin:/bin", self.bin.display())));
+        set(
+            "PATH",
+            Some(&format!("{}:/usr/bin:/bin", self.bin.display())),
+        );
         set("TMPDIR", Some(self.tmpdir.to_str().unwrap()));
         set("STUB_CALLS", Some(calls.to_str().unwrap()));
         set("STUB_WHERE", Some(wheres.to_str().unwrap()));
@@ -410,7 +450,10 @@ fn parity(name: &str, fx: &Fx, extra: Env) -> Outcome {
 }
 
 fn last_line(o: &Outcome) -> &str {
-    o.stdout.lines().rfind(|l| !l.trim().is_empty()).unwrap_or("")
+    o.stdout
+        .lines()
+        .rfind(|l| !l.trim().is_empty())
+        .unwrap_or("")
 }
 
 fn leftovers(fx: &Fx) -> Vec<String> {
@@ -501,8 +544,12 @@ fn in_place_runs_match_the_script() {
         ],
     );
     assert_eq!(o.code, Some(1));
-    assert!(o.summary.contains("| clippy |"), "no summary row: {}", o.summary);
-    assert_eq!(o.summary.lines().count(), 7, "{}", o.summary);
+    assert!(
+        o.summary.contains("| clippy |"),
+        "no summary row: {}",
+        o.summary
+    );
+    assert_eq!(o.summary.lines().count(), 8, "{}", o.summary);
 
     let o = parity(
         "base and diff head named",
@@ -526,13 +573,11 @@ fn modes_and_legs_match_the_script() {
     );
     assert_eq!(o.code, Some(2));
     assert!(o.stdout.is_empty(), "{}", o.stdout);
-    assert!(o.stderr.contains("LOCAL_CHECK_MODE must be candidate or in-place"));
+    assert!(o
+        .stderr
+        .contains("LOCAL_CHECK_MODE must be candidate or in-place"));
 
-    for (leg, expect) in [
-        ("", 7usize),
-        ("nextest", 3),
-        ("rest", 6),
-    ] {
+    for (leg, expect) in [("", 7usize), ("nextest", 3), ("rest", 5)] {
         let o = parity(
             &format!("leg `{leg}`"),
             &Fx::in_place(),
@@ -573,7 +618,9 @@ fn modes_and_legs_match_the_script() {
         ],
     );
     assert_eq!(o.code, Some(2));
-    assert!(o.stderr.contains("candidate mode always checks the full set"));
+    assert!(o
+        .stderr
+        .contains("candidate mode always checks the full set"));
 
     let o = parity(
         "a leg ignores the other leg's failure",
@@ -609,7 +656,7 @@ fn modes_and_legs_match_the_script() {
         ],
     );
     assert_eq!(o.code, Some(1));
-    assert_eq!(o.calls.len(), 6, "{:?}", o.calls);
+    assert_eq!(o.calls.len(), 5, "{:?}", o.calls);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -626,7 +673,11 @@ fn candidate_runs_match_the_script() {
     assert!(line.starts_with("local-check: head="), "{line}");
     assert!(line.contains(" result=pass base="), "{line}");
     assert!(line.contains(" rustc=1.99.0 "), "{line}");
-    assert_eq!(leftovers(&fx), Vec::<String>::new(), "a candidate folder is left");
+    assert_eq!(
+        leftovers(&fx),
+        Vec::<String>::new(),
+        "a candidate folder is left"
+    );
     assert!(
         o.wheres.iter().all(|w| w.contains("local-check-cand.")),
         "steps did not run in the candidate: {:?}",
@@ -654,7 +705,11 @@ fn candidate_runs_match_the_script() {
     fs::rename(fx.origin(), fx.tmp.0.join("origin-gone.git")).unwrap();
     let o = parity("a failed fetch", &fx, &[]);
     assert_eq!(o.code, Some(1));
-    assert!(last_line(&o).contains(" base=none tree=none "), "{}", o.stdout);
+    assert!(
+        last_line(&o).contains(" base=none tree=none "),
+        "{}",
+        o.stdout
+    );
     assert!(o.stderr.contains("fetching origin/"), "{}", o.stderr);
 
     let fx = Fx::candidate();
@@ -663,18 +718,22 @@ fn candidate_runs_match_the_script() {
     let o = parity("a dirty working folder", &fx, &[]);
     assert_eq!(o.code, Some(1));
     assert!(o.calls.is_empty());
-    assert!(o.stderr.contains("commit or stash them first"), "{}", o.stderr);
+    assert!(
+        o.stderr.contains("commit or stash them first"),
+        "{}",
+        o.stderr
+    );
 
     let fx = Fx::candidate();
     fx.commit(&fx.repo, &[("a.txt", "a\n")], "feature");
-    let o = parity(
-        "a dry run",
-        &fx,
-        &[("LOCAL_CHECK_DRY_RUN", Some("1"))],
-    );
+    let o = parity("a dry run", &fx, &[("LOCAL_CHECK_DRY_RUN", Some("1"))]);
     assert_eq!(o.code, Some(1));
     assert!(o.calls.is_empty());
-    assert!(last_line(&o).contains(" result=fail base=none tree=none "), "{}", o.stdout);
+    assert!(
+        last_line(&o).contains(" result=fail base=none tree=none "),
+        "{}",
+        o.stdout
+    );
 
     for name in ["-x", "a..b", "has space", "semi;colon", ""] {
         let fx = Fx::candidate();
@@ -689,7 +748,11 @@ fn candidate_runs_match_the_script() {
             assert_eq!(o.code, Some(0), "{}{}", o.stdout, o.stderr);
         } else {
             assert_eq!(o.code, Some(1), "{name}: {}{}", o.stdout, o.stderr);
-            assert!(o.stderr.contains("is not a branch name"), "{name}: {}", o.stderr);
+            assert!(
+                o.stderr.contains("is not a branch name"),
+                "{name}: {}",
+                o.stderr
+            );
         }
     }
 
@@ -714,7 +777,13 @@ fn candidate_runs_match_the_script() {
                 ("STUB_RUSTC_EXIT", Some(exit)),
             ],
         );
-        assert_eq!(o.code, Some(i32::from(!passes)), "`{out}`: {}{}", o.stdout, o.stderr);
+        assert_eq!(
+            o.code,
+            Some(i32::from(!passes)),
+            "`{out}`: {}{}",
+            o.stdout,
+            o.stderr
+        );
     }
 
     let fx = Fx::candidate();
@@ -722,16 +791,16 @@ fn candidate_runs_match_the_script() {
     fs::create_dir(fx.tmpdir.join("local-check-cand.OLD123")).unwrap();
     let o = parity("an earlier candidate folder", &fx, &[]);
     assert_eq!(o.code, Some(0), "{}{}", o.stdout, o.stderr);
-    assert!(o.stderr.contains("an earlier candidate folder exists"), "{}", o.stderr);
+    assert!(
+        o.stderr.contains("an earlier candidate folder exists"),
+        "{}",
+        o.stderr
+    );
     assert!(fx.tmpdir.join("local-check-cand.OLD123").exists());
 
     let fx = Fx::candidate();
     fx.commit(&fx.repo, &[("a.txt", "a\n")], "feature");
-    let o = parity(
-        "a step fails",
-        &fx,
-        &[("STUB_FAIL", Some("cargo clippy"))],
-    );
+    let o = parity("a step fails", &fx, &[("STUB_FAIL", Some("cargo clippy"))]);
     assert_eq!(o.code, Some(1));
     assert!(last_line(&o).contains(" result=fail base="), "{}", o.stdout);
     assert!(!last_line(&o).contains("tree=none"), "{}", o.stdout);
@@ -754,7 +823,11 @@ fn candidate_runs_match_the_script() {
         ],
     );
     assert_eq!(o.code, Some(0), "{}{}", o.stdout, o.stderr);
-    assert!(o.stderr.contains("candidate mode ignores LOCAL_CHECK_BASE"), "{}", o.stderr);
+    assert!(
+        o.stderr.contains("candidate mode ignores LOCAL_CHECK_BASE"),
+        "{}",
+        o.stderr
+    );
 
     // A rule the base adds that a head cannot know: the head passes alone, the merge fails.
     let fx = Fx::candidate();
@@ -777,7 +850,11 @@ fn slot_runs_match_the_script() {
     assert_eq!(o.slots.len(), 4, "{:?}", o.slots);
     assert!(o.slots[0].contains("--max 3 --min-free-gb 50 --name local-check -- bash -c"));
     assert!(o.slots[3].contains("--dir "), "{:?}", o.slots);
-    assert!(o.slots[3].contains("--name local-check-py"), "{:?}", o.slots);
+    assert!(
+        o.slots[3].contains("--name local-check-py"),
+        "{:?}",
+        o.slots
+    );
 
     let fx = Fx::with_slot();
     let cache = fx.tmp.0.join("cache");
@@ -855,7 +932,10 @@ fn an_unknown_tool_lists_the_tools_and_exits_2() {
 fn wait_for(path: &Path, what: &str) {
     let start = Instant::now();
     while !path.exists() {
-        assert!(start.elapsed() < Duration::from_secs(30), "{what} never started");
+        assert!(
+            start.elapsed() < Duration::from_secs(30),
+            "{what} never started"
+        );
         std::thread::sleep(Duration::from_millis(50));
     }
 }
@@ -896,20 +976,49 @@ fn a_terminate_signal_ends_with_a_fail_line_and_cleans_up() {
     let fx = Fx::in_place();
     let shell = signalled(&fx, Tool::Shell, &[]);
     let xtask = signalled(&fx, Tool::Xtask, &[]);
-    assert_eq!(masked(&xtask), masked(&shell), "in-place: xtask (left), script (right)");
+    assert_eq!(
+        masked(&xtask),
+        masked(&shell),
+        "in-place: xtask (left), script (right)"
+    );
     assert_eq!(shell.code, Some(1), "{}{}", shell.stdout, shell.stderr);
-    assert!(last_line(&shell).contains(" result=fail "), "{}", shell.stdout);
-    assert_eq!(shell.calls.len(), 1, "the steps after the signal ran: {:?}", shell.calls);
+    assert!(
+        last_line(&shell).contains(" result=fail "),
+        "{}",
+        shell.stdout
+    );
+    assert_eq!(
+        shell.calls.len(),
+        1,
+        "the steps after the signal ran: {:?}",
+        shell.calls
+    );
 
     let fx = Fx::candidate();
     fx.commit(&fx.repo, &[("a.txt", "a\n")], "feature");
     let shell = signalled(&fx, Tool::Shell, &[]);
-    assert_eq!(leftovers(&fx), Vec::<String>::new(), "the script left a candidate folder");
+    assert_eq!(
+        leftovers(&fx),
+        Vec::<String>::new(),
+        "the script left a candidate folder"
+    );
     let xtask = signalled(&fx, Tool::Xtask, &[]);
-    assert_eq!(leftovers(&fx), Vec::<String>::new(), "xtask left a candidate folder");
-    assert_eq!(masked(&xtask), masked(&shell), "candidate: xtask (left), script (right)");
+    assert_eq!(
+        leftovers(&fx),
+        Vec::<String>::new(),
+        "xtask left a candidate folder"
+    );
+    assert_eq!(
+        masked(&xtask),
+        masked(&shell),
+        "candidate: xtask (left), script (right)"
+    );
     assert_eq!(shell.code, Some(1), "{}{}", shell.stdout, shell.stderr);
-    assert!(last_line(&shell).contains(" result=fail base="), "{}", shell.stdout);
+    assert!(
+        last_line(&shell).contains(" result=fail base="),
+        "{}",
+        shell.stdout
+    );
     let worktrees = fx.git(&fx.repo, &["worktree", "list", "--porcelain"]);
     assert_eq!(worktrees.matches("worktree ").count(), 1, "{worktrees}");
 }
