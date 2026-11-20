@@ -142,4 +142,23 @@ S1 단계:
 
 ## Result
 
-(구현 뒤에 적어요.)
+조각 S1(`improve-signals`)의 결과예요. REQ-12~REQ-25 는 뒤 조각의 몫이라 수용 줄이 아직 없어요.
+
+- AC-1: met — head 70bb7e360c 에서 `cargo test --offline --locked --test improve_signals_cli` exit 0 (11 passed: 네 출처의 부류·횟수·시각·예시, 없는 장부·메모 파일은 `absent`, 심볼릭 링크·이름 붙은 파이프·깨진 장부는 거절). 고치기 전(명령 없음)에는 같은 명령이 exit 101 (11 failed, `unrecognized subcommand 'improve-signals'`).
+- AC-2: met — 같은 실행의 `one_signal_is_observed_once_and_two_are_candidates_for_every_source`, 단위 `improve_signals_status_flips_at_two` 통과
+- AC-3: met — 같은 실행의 `an_agents_own_claim_is_never_a_signal`(일곱 줄이 `skipped.no_rule` 7, `false_claim` 메모만 셈)와 `an_audit_note_cites_each_path_once_and_a_note_without_a_path_is_uncited` 통과
+- AC-4: met — 같은 실행의 `nothing_is_written_with_or_without_a_ledger_and_an_absent_source_is_reported`(TempHome 스냅샷 전후 같음, 장부·메모 파일이 없을 때 폴더·파일이 생기지 않음) 통과
+- AC-5: met — 같은 실행의 `host_memory_is_never_opened`(Claude 자동 메모리·Codex memories 자리에 이름 붙은 파이프를 두고 30 s 한도 안에 종료 0, `host_memory: "off"`) 통과
+- AC-6: met — 같은 실행의 `texts_are_masked_and_cut_to_120_characters` 와 단위 `improve_signals_masks_then_cuts_and_never_keys_a_secret` 통과
+- AC-7: met — `cargo test --offline --locked --bin moai-cli improve_signals` exit 0 (7 passed: N 개는 `truncated: false`, N+1 개는 N 개만 읽고 `true`; 본문 8,192 바이트는 그대로, 8,193 은 잘림)
+- AC-9: met — 변형 5개를 하나씩 적용해 `cargo test --offline --locked --no-fail-fast --test improve_signals_cli --bin moai-cli` 를 돌렸고 모두 빨갛게 바뀐 뒤 파일을 복원했어요(`git status` 깨끗).
+
+  | 변형 | 바꾼 곳 | 잡은 시험 |
+  | --- | --- | --- |
+  | threshold-3 | `THRESHOLD` 2 → 3 | `improve_signals_status_flips_at_two`, `every_source_becomes_a_class_with_count_times_and_examples` |
+  | examples-6 | `EXAMPLES` 5 → 6 | `a_class_shows_at_most_five_examples_and_the_newest_ones` |
+  | truncated-ge | `notes.len() > limit` → `>=` | `improve_signals_reads_the_newest_n_notes_and_says_when_it_cut` |
+  | audit-no-prefix | `AUDIT ` 접두사 조건 제거 | `improve_signals_reads_the_audit_and_blocked_lines_only`, `an_agents_own_claim_is_never_a_signal` |
+  | fifo-allowed | `!meta.is_file()` 거절 제거 | `a_broken_ledger_and_an_unsafe_notes_file_are_refused` |
+
+  처음 계획한 다섯째 변형(심볼릭 링크 검사 제거)은 다음 검사(`!is_file`)가 링크도 거절해서 겉으로 같은 동작이었어요(동등 변형). 그래서 위 표로 바꿨어요. 모든 변형 실행에서 도움말 시험 둘(`help_table_names_every_command_once`, `every_command_has_examples`)도 빨갰는데 이는 도움말 행이 아직 없어서 원래 실패하는 것이라 위 표의 근거로 세지 않았어요.
