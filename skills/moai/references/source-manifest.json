@@ -69,7 +69,7 @@
       }
     },
     "references/adapters/orca.md": {
-      "sha256": "6c70926478f31c80cf8994b1e141c23d31724c53484cd7e1f225d058bdbb8a70",
+      "sha256": "68e09f3dfa288b159e6c64a20ecb05bcb7d67b10f9b3cf7551f8372f3ff1a7d9",
       "origin": {
         "kind": "design-spec",
         "template_id": "adapter-orca",
