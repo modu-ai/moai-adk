@@ -1664,11 +1664,7 @@ fn omp_has_an_entry_spelling_and_a_wake_that_a_lane_can_end() {
         leader.contains("`/skill:moai --mode-leader …` in OMP; no other spelling enters this mode"),
         "mode-leader.md must name the OMP entry"
     );
-    for (file, key) in [
-        ("project.md", "`/skill:moai project` in OMP"),
-        ("update.md", "`/skill:moai update` in OMP"),
-        ("optimize.md", "`/skill:moai optimize` in OMP"),
-    ] {
+    for (file, key) in [("optimize.md", "`/skill:moai optimize` in OMP")] {
         assert!(workflow(file).contains(key), "{file} must say `{key}`");
     }
     let section = section_of(&agent, "Watching on your own");

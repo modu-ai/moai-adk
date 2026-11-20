@@ -1,4 +1,4 @@
-//! SPEC-20261119-project-worktree-move (card C-59, criterion 3): the PROJECT workflow reports a
+//! SPEC-20261119-project-worktree-move (card C-59, criterion 3): the UPDATE workflow reports a
 //! git worktree registered under the Go `.moai/` folder with the worktree-move choice. The
 //! tests read the workflow text and the sources that print the reason, the plan fields and the
 //! apply arguments, so the text only quotes what the code really says. No host, no HOME, no
@@ -11,15 +11,17 @@ fn read(rel: &str) -> String {
         .unwrap_or_else(|e| panic!("{rel}: {e}"))
 }
 
-/// Step 2 of `project.md` (the earlier-generation state) up to the next numbered step.
+/// The section "Earlier-generation state" of `update.md` (the move of the earlier generation's
+/// state) up to the next `## ` heading. The route that moves it owns the worktree move too.
 fn step_2() -> String {
-    let text = read("skills/moai/workflows/project.md");
+    let text = read("skills/moai/workflows/update.md");
     let mut out = String::new();
     let mut inside = false;
     for line in text.lines() {
-        if line.starts_with("2. **Earlier-generation state") {
+        if line.starts_with("## Earlier-generation state") {
             inside = true;
-        } else if inside && line.starts_with("3. ") {
+            continue;
+        } else if inside && line.starts_with("## ") {
             break;
         }
         if inside {
@@ -27,14 +29,17 @@ fn step_2() -> String {
             out.push('\n');
         }
     }
-    assert!(!out.is_empty(), "project.md has no step 2");
+    assert!(
+        !out.is_empty(),
+        "update.md has no section Earlier-generation state"
+    );
     out
 }
 
 /// Where `needle` first stands in `text`; a missing sentence fails with its own words.
 fn at(text: &str, needle: &str) -> usize {
     text.find(needle)
-        .unwrap_or_else(|| panic!("step 2 of project.md lacks: {needle}"))
+        .unwrap_or_else(|| panic!("the earlier-generation section of update.md lacks: {needle}"))
 }
 
 #[test]
@@ -50,7 +55,7 @@ fn go_state_worktree_reason_is_reported_with_the_worktree_move_choice() {
     ] {
         assert!(
             step.contains(phrase),
-            "step 2 of project.md lacks: {phrase}"
+            "the earlier-generation section of update.md lacks: {phrase}"
         );
     }
 }
@@ -86,7 +91,7 @@ fn worktree_move_is_previewed_then_asked_once_then_applied_only_after_the_pick()
         // The folder moves only on a new preview that reads it as `move`.
         "run `moai go-state-plan <project>` again",
     ] {
-        assert!(step.contains(phrase), "step 2 of project.md lacks: {phrase}");
+        assert!(step.contains(phrase), "the earlier-generation section of update.md lacks: {phrase}");
     }
 }
 
@@ -141,7 +146,7 @@ fn quoted_names_are_the_ones_the_code_prints() {
     ] {
         assert!(
             step.contains(argument),
-            "step 2 of project.md lacks {argument}"
+            "the earlier-generation section of update.md lacks {argument}"
         );
     }
 }

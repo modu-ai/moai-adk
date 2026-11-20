@@ -1592,11 +1592,11 @@ fn a_root_file_of_exactly_the_file_limit_moves_and_one_byte_more_stays() {
 
 // ---- B2: what the skill tells an agent to say ----
 
-/// The PROJECT workflow must not tell an agent that `CLAUDE.md` and `AGENTS.md` stay in the
+/// The UPDATE workflow (it owns the move) must not tell an agent that `CLAUDE.md` and `AGENTS.md` stay in the
 /// root: after the apply they are moved into the backup's `root-files/` (`action` `move`).
 #[test]
 fn the_project_workflow_says_the_root_instruction_files_are_moved() {
-    let workflow = include_str!("../skills/moai/workflows/project.md");
+    let workflow = include_str!("../skills/moai/workflows/update.md");
     for sentence in [
         "the root instruction files `CLAUDE.md`, `AGENTS.md` and `AGENTS.local.md` are moved to `.moai/backups/<UTC>/root-files/`",
         "A `root_files` row with `action` `move` is no longer in the project root after the apply",
@@ -1607,13 +1607,13 @@ fn the_project_workflow_says_the_root_instruction_files_are_moved() {
         "`counterparts` and `after_move`, and read them out before asking",
         "Apply only after the user picked the move in the selection that followed that preview",
     ] {
-        assert!(workflow.contains(sentence), "project.md lacks: {sentence}");
+        assert!(workflow.contains(sentence), "update.md lacks: {sentence}");
     }
     for stale in [
         "`CLAUDE.md` and `AGENTS.md` themselves stay as they are",
         "the copies of `CLAUDE.md` and `AGENTS.md` go to",
     ] {
-        assert!(!workflow.contains(stale), "project.md still says: {stale}");
+        assert!(!workflow.contains(stale), "update.md still says: {stale}");
     }
 }
 
@@ -1651,21 +1651,21 @@ fn the_product_path_rows_describe_the_move_of_the_root_files() {
     }
 }
 
-/// #2966 N2: the PROJECT workflow says what the restore check really reads. "secrets
+/// #2966 N2: the UPDATE workflow says what the restore check really reads. "secrets
 /// excluded" read wider than the check: a document is passed on its name and size only.
 #[test]
 fn the_project_workflow_names_what_the_restore_check_really_reads() {
-    let workflow = include_str!("../skills/moai/workflows/project.md");
+    let workflow = include_str!("../skills/moai/workflows/update.md");
     for sentence in [
         "a secret name is never opened",
         "a config-shaped file (`.json`, `.toml`, `.yaml`, `.yml`) and anything under `specs` is also read for content that looks like a credential",
         "any other document is checked by its name and size only, never by its content",
     ] {
-        assert!(workflow.contains(sentence), "project.md lacks: {sentence}");
+        assert!(workflow.contains(sentence), "update.md lacks: {sentence}");
     }
     assert!(
         !workflow.contains("secrets excluded"),
-        "project.md still claims the restore excludes secrets in general"
+        "update.md still claims the restore excludes secrets in general"
     );
 }
 

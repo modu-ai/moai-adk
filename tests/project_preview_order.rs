@@ -15,15 +15,19 @@ fn project_md() -> String {
     read("skills/moai/workflows/project.md")
 }
 
-/// The numbered step `5. **Refresh the managed section` up to the next numbered step.
-fn step_5() -> String {
+fn update_md() -> String {
+    read("skills/moai/workflows/update.md")
+}
+
+/// The numbered step `4. **Refresh the managed section` of PROJECT up to the next numbered step.
+fn step_4() -> String {
     let text = project_md();
     let mut out = String::new();
     let mut inside = false;
     for line in text.lines() {
-        if line.starts_with("5. **Refresh the managed section") {
+        if line.starts_with("4. **Refresh the managed section") {
             inside = true;
-        } else if inside && line.starts_with("6. ") {
+        } else if inside && line.starts_with("5. ") {
             break;
         }
         if inside {
@@ -31,20 +35,21 @@ fn step_5() -> String {
             out.push('\n');
         }
     }
-    assert!(!out.is_empty(), "project.md has no step 5");
+    assert!(!out.is_empty(), "project.md has no step 4");
     out
 }
 
-/// The `## Completion Check` section up to the next `## ` heading.
-fn completion_check() -> String {
-    let text = project_md();
+/// The numbered step `<n>. **` of UPDATE whose number is `n`, up to the next numbered step.
+fn update_step(n: u32) -> String {
+    let text = update_md();
+    let head = format!("{n}. **");
+    let next = format!("{}. **", n + 1);
     let mut out = String::new();
     let mut inside = false;
     for line in text.lines() {
-        if line.starts_with("## Completion Check") {
+        if line.starts_with(&head) {
             inside = true;
-            continue;
-        } else if inside && line.starts_with("## ") {
+        } else if inside && line.starts_with(&next) {
             break;
         }
         if inside {
@@ -52,7 +57,7 @@ fn completion_check() -> String {
             out.push('\n');
         }
     }
-    assert!(!out.is_empty(), "project.md has no Completion Check");
+    assert!(!out.is_empty(), "update.md has no step {n}");
     out
 }
 
@@ -77,36 +82,47 @@ const WAITING: [&str; 5] = [
 ];
 
 #[test]
-fn step_5_asks_about_generation_only_when_it_reads_ready() {
-    let step = step_5();
+fn step_4_asks_about_generation_only_when_it_reads_ready() {
+    let step = step_4();
     for phrase in [
         "Ask about the `generation` step only when it reads `ready` in that run.",
-        "Ask nothing about a step that reads `blocked` or `re-run after …`",
-        "apply the earlier step its reason names, run `moai project-update-plan <project>` again and ask from that new run",
+        "run `moai project-update-plan <project>` again and ask from that new run",
         "because an earlier yes does not cover a step the user has not seen",
-        "an earlier step the user declined or left out stays unapplied, and the step behind it is reported with the reason the plan prints, not asked",
+        "is not asked: report it with the reason the plan prints and leave it to `/moai update`",
     ] {
-        assert!(step.contains(phrase), "step 5 lacks: {phrase}");
+        assert!(step.contains(phrase), "step 4 lacks: {phrase}");
     }
     // The text speaks of the step in which `generation` is asked, before the apply it names.
     let ready = step.find("only when it reads `ready`").unwrap();
     let apply = step.find("run its printed `apply.argv`").unwrap();
     assert!(ready < apply, "the `ready` rule must come before the apply");
+    // UPDATE holds the same rule for every other step.
+    let ask = update_step(2);
+    for phrase in [
+        "never about a step that reads `blocked` or `re-run after …` behind an earlier one",
+        "so no earlier yes covers it",
+    ] {
+        assert!(ask.contains(phrase), "update.md step 2 lacks: {phrase}");
+    }
 }
 
 #[test]
-fn completion_check_offers_steps_in_the_printed_phase_order() {
-    let check = completion_check();
+fn update_asks_in_the_printed_phase_order() {
+    let ask = update_step(2);
     let order =
         "phase `backup`, then `install`, then `merge`, each phase in the order of its steps";
-    assert!(check.contains(order), "the Completion Check lacks: {order}");
-    for phrase in [
-        "a waiting step is reported with that reason and asked about only after the earlier step is applied and the plan is run again",
-        "as UPDATE step 5 says",
-        "the merge steps read `re-run after the backup phase` while the backup phase still has a move to make and `re-run after the install phase` behind the install phase",
-    ] {
-        assert!(check.contains(phrase), "the Completion Check lacks: {phrase}");
-    }
+    assert!(ask.contains(order), "update.md step 2 lacks: {order}");
+    let preview_again = update_step(4);
+    assert!(
+        preview_again
+            .contains("every install step reads `blocked` with `re-run after the backup phase`"),
+        "update.md step 4 lacks the install waiting reason"
+    );
+    let report = update_step(5);
+    assert!(
+        report.contains("A `blocked` step is not offered: report it with what unblocks it"),
+        "update.md step 5 lacks the blocked rule"
+    );
     // The code prints the phases in that order.
     let source = read("src/project_update.rs");
     let at = |name: &str| {
@@ -119,7 +135,7 @@ fn completion_check_offers_steps_in_the_printed_phase_order() {
 
 #[test]
 fn quoted_waiting_reasons_are_the_ones_the_code_prints() {
-    let text = project_md();
+    let text = format!("{}\n{}", project_md(), update_md());
     // Every waiting reason the text quotes in backticks is one the code prints.
     let known: Vec<String> = WAITING.iter().map(|n| constant(n)).collect();
     let mut quoted = 0;
@@ -128,7 +144,7 @@ fn quoted_waiting_reasons_are_the_ones_the_code_prints() {
             quoted += 1;
             assert!(
                 known.iter().any(|k| k == span),
-                "project.md quotes `{span}`, which src/project_update.rs does not print"
+                "a workflow quotes `{span}`, which src/project_update.rs does not print"
             );
         }
     }
@@ -150,7 +166,7 @@ fn quoted_waiting_reasons_are_the_ones_the_code_prints() {
                     "`generation` reads `blocked` with `{}`",
                     constant(name)
                 )));
-        assert!(in_text, "project.md does not say: {sentence}");
+        assert!(in_text, "the workflows do not say: {sentence}");
         assert!(
             source.contains(&format!("Step::waiting(\"{step}\", \"blocked\", {name})")),
             "the code does not hold `{step}` with {name}"

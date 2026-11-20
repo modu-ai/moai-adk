@@ -41,13 +41,13 @@ fn profile_tracking_step() -> String {
     out
 }
 
-/// The numbered step `8. **Offer the closing commit` up to the next `## ` heading.
+/// The numbered step `7. **Offer the closing commit` up to the next `## ` heading.
 fn closing_commit_step() -> String {
     let text = skill_text("workflows/project.md");
     let mut out = String::new();
     let mut inside = false;
     for line in text.lines() {
-        if line.starts_with("8. **Offer the closing commit") {
+        if line.starts_with("7. **Offer the closing commit") {
             inside = true;
         } else if inside && line.starts_with("## ") {
             break;
@@ -59,7 +59,7 @@ fn closing_commit_step() -> String {
     }
     assert!(
         !out.is_empty(),
-        "project.md has no `8. **Offer the closing commit` step"
+        "project.md has no `7. **Offer the closing commit` step"
     );
     out
 }
@@ -159,12 +159,9 @@ fn closing_commit_step_lists_by_apply_stages_only_those_paths_and_never_pushes()
     for text in [
         "`git status --porcelain=v1 -z --untracked-files=all`",
         "one entry",
-        "`go-settings-apply`",
-        "`go-state-apply`",
         "`project-apply`",
         "the `generation` apply",
-        "`claude-settings-apply`",
-        "`worktree-move-apply`",
+        "`generation-apply`",
         "not from this route",
         "kept local",
         "`.moai-backup/`",
@@ -184,7 +181,6 @@ fn closing_commit_step_lists_by_apply_stages_only_those_paths_and_never_pushes()
         "`*secret*`",
         "anywhere in it",
         "project's language setting",
-        "after the offer of the Completion Check",
         "fails (not a repository, or git cannot answer)",
         "Commit these changes (recommended)",
         "Leave them uncommitted",
@@ -209,12 +205,12 @@ fn closing_commit_step_lists_by_apply_stages_only_those_paths_and_never_pushes()
         !step.contains("`git push"),
         "the step never tells the session to push: {step}"
     );
-    // It runs after the offer of the code map (step 7) and before the headings that follow.
+    // It runs after the offer of the code map (step 6) and before the headings that follow.
     let text = skill_text("workflows/project.md");
     assert!(
-        position(&text, "7. **Offer the code map.**")
-            < position(&text, "8. **Offer the closing commit"),
-        "step 8 follows step 7"
+        position(&text, "6. **Offer the code map.**")
+            < position(&text, "7. **Offer the closing commit"),
+        "step 7 follows step 6"
     );
 }
 
@@ -222,7 +218,7 @@ fn closing_commit_step_lists_by_apply_stages_only_those_paths_and_never_pushes()
 /// step 1): where the status lists are read and how each path is given to a step.
 fn snapshot_paragraph() -> String {
     let text = skill_text("workflows/project.md");
-    let start = position(&text, "Closing-commit snapshots (card C-59)");
+    let start = position(&text, "Closing-commit snapshots.");
     let tail = &text[start..];
     let end = tail.find("\n\n").unwrap_or(tail.len());
     assert!(
@@ -240,7 +236,7 @@ fn procedure_snapshots_the_status_around_every_apply() {
     for text in [
         "`git status --porcelain=v1 -z --untracked-files=all`",
         "before the first apply of any kind",
-        "`go-settings-apply`",
+        "`project-apply`",
         "`git hash-object -- <path>`",
         "content digest",
         "After each apply",
@@ -261,7 +257,7 @@ fn procedure_snapshots_the_status_around_every_apply() {
     }
 }
 
-/// The name rule the text states for step 8: a secret-looking name anywhere in the path.
+/// The name rule the text states for step 7: a secret-looking name anywhere in the path.
 fn looks_secret(path: &str) -> bool {
     path.split('/').any(|part| {
         part.starts_with(".env")

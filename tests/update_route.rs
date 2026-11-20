@@ -38,7 +38,7 @@ fn the_update_route_is_the_project_layer() {
     );
     let update = skill("workflows/update.md");
     for text in [
-        "`/moai update` (`$moai update` in Codex CLI, `/skill:moai update` in OMP) updates the current project",
+        "`/moai update` (`$moai update` in Codex CLI) updates the current project",
         // #2936 S1: one read-only preview of every phase, then the printed commands.
         "Run `moai project-update-plan <project>`. It writes nothing",
         "Show the user every phase and every step in one view",
@@ -52,7 +52,7 @@ fn the_update_route_is_the_project_layer() {
         // The user layer is the shell command; since C-51 (user decision 2026-11-16) this
         // session runs it after the preview and the user's pick.
         "The user layer — the installed skill, the binary and the global instructions under HOME — is the shell command `moai update`",
-        "this session runs it for the user (user decision 2026-11-16, card C-51): never tell the user to run it in a terminal",
+        "this session runs it for the user: never tell the user to run it in a terminal",
         // #2702 audit B1: a Go-generation project usually has no profile yet; the move comes
         // first, and "nothing to update" holds only without Go state. C-51: the session goes
         // on to PROJECT itself.
@@ -121,7 +121,7 @@ fn the_update_route_runs_the_commands_itself_after_the_pick() {
         "after the pick make that one change yourself",
         "Never edit that file without the pick",
         // Addendum 1: the printed order, never a step blocked behind an earlier one.
-        "Ask about the steps in the printed order, and never about a step that reads `blocked` or `re-run after …` behind an earlier one",
+        "and never about a step that reads `blocked` or `re-run after …` behind an earlier one",
         "the backup phase lists `go-settings` before `go-state`",
         // Audit of 32c514a8ee N4: the four sentences that keep the session's hands off.
         "so you never open or edit it",
@@ -278,21 +278,23 @@ fn every_question_is_a_selection_through_the_hosts_question_tool() {
 /// never a development method; previews run without asking and the pick follows them.
 #[test]
 fn the_ledger_is_local_cards_and_previews_run_without_asking() {
-    let project = skill("workflows/project.md");
+    let update = skill("workflows/update.md");
     for text in [
-        "the previews are read-only and run without asking (user decision 2026-11-16, card C-51)",
+        "the previews are read-only and run without asking",
         "`go-settings` comes before `go-state`",
         "never ask about a step that reads `blocked` or `re-run after …` behind an earlier step",
         "ask once, after the preview is shown",
+    ] {
+        assert!(update.contains(text), "update.md lacks {text:?}");
+    }
+    let project = skill("workflows/project.md");
+    for text in [
         "the development method is TDD or preserve-then-change only",
         "the work ledger is the local card ledger (`moai card`): it is not asked, it is never recorded under `development_methods`, and GitHub Issues are not offered as a ledger or a method",
         // N8: creating the ledger is a write under the real HOME and waits for its own pick.
         "Which ledger is used is what is not asked; creating it writes under the real HOME and waits for its own pick after the read-only `moai ledger-register-plan <project>` preview",
-        "relay the `--questions` set through the host's question tool",
+        "Relay the `--questions` set through the host's question tool",
         "its `suggested` value first",
-        // Audit of 32c514a8ee N3: the route's end.
-        "offer once, in one selection, every step the user left out or that does not read `unchanged`",
-        "report a `blocked` step with what unblocks it",
         "core rule 18 (`internal/core-rules`)",
     ] {
         assert!(project.contains(text), "project.md lacks {text:?}");
@@ -348,8 +350,7 @@ fn the_ledger_is_local_cards_and_previews_run_without_asking() {
 #[test]
 fn the_route_end_offer_leaves_out_what_cannot_run() {
     for (file, tail) in [
-        // The offer sits in the Completion Check of PROJECT and in step 5 of UPDATE.
-        ("workflows/project.md", "## Completion Check"),
+        // The offer sits in step 5 of UPDATE; PROJECT ends with one line that points to it.
         ("workflows/update.md", "5. **Re-run and report.**"),
     ] {
         let text = skill(file);
@@ -368,16 +369,16 @@ fn the_route_end_offer_leaves_out_what_cannot_run() {
     }
 }
 
-/// #2936 S0 (F6, F16, F24): PROJECT step 2 says the same three things as UPDATE step 2.
+/// #2936 S0 (F6, F16, F24): the earlier-generation section of UPDATE says the same three things as step 2.
 #[test]
 fn project_step_two_names_the_layout_and_the_backup_destination() {
-    let project = skill("workflows/project.md");
+    let project = skill("workflows/update.md");
     for text in [
         "The preview's `layout` says whether the Go folder moves or stays (`folder_moves`, `folder_stays`, `legacy_into_new` or `nothing`): read it out first",
         "`backup_to` is where the backup would go (the apply fills in `<UTC>`) and is `null` when nothing moves; `go_backup` is `null` unless `layout` is `folder_moves`",
         "A `folder_stays` or `nothing` layout with `backup_to` `null` means no backup is made and no step waits for a confirmation on it",
     ] {
-        assert!(project.contains(text), "project.md lacks {text:?}");
+        assert!(project.contains(text), "update.md lacks {text:?}");
     }
 }
 

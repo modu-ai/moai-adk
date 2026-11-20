@@ -10,7 +10,7 @@
 const PROJECT: &str = include_str!("../skills/moai/workflows/project.md");
 
 /// Where the paragraph starts.
-const MARK: &str = "Final report (card C-87): ";
+const MARK: &str = "Final report: ";
 
 fn paragraph() -> &'static str {
     let start = PROJECT
@@ -31,8 +31,8 @@ fn the_final_report_has_an_applied_settings_table() {
     let p = paragraph();
     // It comes after the closing-commit step and before the permissions section.
     let closing = PROJECT
-        .find("8. **Offer the closing commit")
-        .expect("step 8 exists");
+        .find("7. **Offer the closing commit")
+        .expect("step 7 exists");
     let permissions = PROJECT
         .find("## Exceptions and Permissions")
         .expect("the permissions section exists");
