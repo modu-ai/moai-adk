@@ -1219,6 +1219,12 @@ mod tests {
                 "{label}: {taken} units counted for {} bytes — the counter counted nothing",
                 text.len()
             );
+            // The limit is also checked here, so the test decides even when the counter stops panicking.
+            assert!(
+                taken <= text.len() * WORK_PER_BYTE,
+                "{label}: the screen's work passed {WORK_PER_BYTE} units per byte: {taken} units for {} bytes",
+                text.len()
+            );
             let factor = taken as f64 / text.len() as f64;
             println!(
                 "{label}: {taken} units for {} bytes ({factor:.2} per byte)",
