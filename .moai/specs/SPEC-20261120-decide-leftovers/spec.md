@@ -1,7 +1,7 @@
 ---
 id: SPEC-20261120-decide-leftovers
 title: "Close the last decision model leftovers"
-status: approved
+status: completed
 revision: 1
 created: 2026-11-20
 approval: {by: user, at: 2026-11-21, basis: "AskUserQuestion selection: 승인 (Recommended)", digest: "sha256:850f84f998c0783384ffd83e121137b370b5926c51a8818c23c59e5da2338ee4"}
