@@ -1037,6 +1037,36 @@ fn read_record(path: &Path, gaps: &mut Vec<String>) -> Result<Record> {
     Ok(rec)
 }
 
+/// The one body line that counts the commits of the branch per `Moai-Verified` kind and the
+/// reverted ones, read from the answer of `trailers::list` (SPEC-20261120-verified-trailer-in-use
+/// REQ-5…REQ-7). A commit without the line counts under `none`, as the listing reads it. The line
+/// holds counts and fixed words only, and it does not begin with a trailer key. An answer that is
+/// an error or lacks a count refuses the body (REQ-6): a body states no figure it did not read.
+fn verified_summary(listing: &Result<Value>) -> Result<String> {
+    let list = listing.as_ref().map_err(|e| {
+        format!("bundle body refused: the Moai-Verified listing of the branch cannot be read: {e}")
+    })?;
+    let lacks =
+        || "bundle body refused: the Moai-Verified listing of the branch lacks a count".to_string();
+    let commits = list["commits"].as_array().ok_or_else(lacks)?;
+    let mut by_kind = Vec::new();
+    for kind in trailers::VERIFIED_KINDS {
+        let n = list["counts"][kind].as_u64().ok_or_else(lacks)?;
+        by_kind.push(format!("{kind} {n}"));
+    }
+    let reverted = commits
+        .iter()
+        .filter(|c| c["reverted"].as_bool() == Some(true))
+        .count();
+    let n = commits.len();
+    Ok(format!(
+        "Verification kinds (`Moai-Verified`, {n} commit{}): {} (a commit without the line counts \
+         as none); reverted {reverted}.",
+        if n == 1 { "" } else { "s" },
+        by_kind.join(", ")
+    ))
+}
+
 /// `bundle body`: the pull request body, from the heads, the branch and the run record.
 #[allow(clippy::too_many_arguments)]
 pub fn body(
@@ -1098,6 +1128,9 @@ pub fn body(
         .ok_or_else(|| {
             format!("bundle body refused: the branch `{branch}` has no merge base with the tip")
         })?;
+    // The commits the branch adds beyond the tip, by `Moai-Verified` kind; an unreadable listing
+    // refuses the body before anything is written.
+    let summary = verified_summary(&trailers::list(dir, &format!("{base}..{pinned}")))?;
     let paths = git.changed_paths(&tip.sha, &pinned)?;
     let tier = gate::tier_of(Some(0), &paths);
     let merges = git
@@ -1170,7 +1203,7 @@ pub fn body(
     let s = |n: u64| if n == 1 { "" } else { "s" };
     b.push_str(&format!(
         "\nIntegration: `{branch}` {built} with {merges} merge commits → pinned SHA `{pinned}`. \
-         {files} file{} changed, {ins} insertion{}(+), {del} deletion{}(-).\n\n## Self-Audit\n\n",
+         {files} file{} changed, {ins} insertion{}(+), {del} deletion{}(-).\n\n{summary}\n\n## Self-Audit\n\n",
         s(files),
         s(ins),
         s(del)
@@ -1438,6 +1471,52 @@ mod tests {
     fn a_malformed_spec_value_leaves_the_line_readable_without_a_spec() {
         let line = format!("{MARKER} C-12 head={H} spec=nope");
         assert_eq!(parse_ready(&line, "C-12"), Some((H.into(), None)));
+    }
+
+    /// SPEC-20261120-verified-trailer-in-use REQ-5, REQ-7: the line from a listing answer.
+    #[test]
+    fn verified_summary_names_the_counts_in_the_pinned_order() {
+        let listing = json!({
+            "commits": [
+                {"sha": "a", "kinds": ["tests"], "reverted": true},
+                {"sha": "b", "kinds": ["none"], "reverted": false},
+            ],
+            "counts": {"tests": 1, "mutants": 0, "e2e": 0, "smoke": 0, "none": 1},
+        });
+        assert_eq!(
+            verified_summary(&Ok(listing)).unwrap(),
+            "Verification kinds (`Moai-Verified`, 2 commits): tests 1, mutants 0, e2e 0, smoke 0, \
+             none 1 (a commit without the line counts as none); reverted 1."
+        );
+        let one = json!({
+            "commits": [{"sha": "a", "kinds": ["smoke"], "reverted": false}],
+            "counts": {"tests": 0, "mutants": 0, "e2e": 0, "smoke": 1, "none": 0},
+        });
+        let line = verified_summary(&Ok(one)).unwrap();
+        assert!(line.contains("1 commit)"), "{line}");
+        assert!(!line.starts_with("Moai-"), "{line}");
+    }
+
+    /// REQ-6: an error from the listing, or a listing without a count, refuses the body.
+    #[test]
+    fn verified_summary_refuses_an_unreadable_or_incomplete_listing() {
+        let err = verified_summary(&Err("git log failed: bad range".into())).unwrap_err();
+        assert!(
+            err.starts_with("bundle body refused:") && err.contains("cannot be read"),
+            "{err}"
+        );
+        assert!(err.contains("git log failed: bad range"), "{err}");
+        let full = |counts: Value| json!({"commits": [], "counts": counts});
+        for broken in [
+            json!({"counts": {"tests": 0, "mutants": 0, "e2e": 0, "smoke": 0, "none": 0}}),
+            full(json!({"tests": 0, "mutants": 0, "e2e": 0, "smoke": 0})),
+            full(json!({"tests": 0, "mutants": 0, "e2e": 0, "smoke": 0, "none": -1})),
+            full(json!({"tests": "0", "mutants": 0, "e2e": 0, "smoke": 0, "none": 0})),
+            json!({}),
+        ] {
+            let err = verified_summary(&Ok(broken.clone())).unwrap_err();
+            assert!(err.contains("lacks a count"), "{broken}: {err}");
+        }
     }
 
     #[test]
