@@ -29,6 +29,7 @@ created: 2026-11-20
 - REQ-6: The tool shall take its job count from `-j`, else from `MOAI_UNITTEST_JOBS`, else the smaller of four and the machine's processor count. · failure: none — a test runs with `-j 1` and with `MOAI_UNITTEST_JOBS`.
 - REQ-7: When no module matches the pattern, the tool shall print that no module matched and exit 1. · failure: none — a test runs on an empty folder.
 - REQ-9: When a module file is bigger than 32 KiB and unittest lists at least two test classes for it, the tool shall run each class in its own process, so that every test runs once, and run the module whole when unittest cannot list its classes (an import error, or a `load_tests` hook that adds a test of another module). · failure: none — a test with a 33 KB fixture module reads the process count and the test total, and one with a hook.
+- REQ-10: The `tools/local_check.sh` script shall pass `--max 5` to the heavy-slot command for its cargo steps unless `MOAI_HEAVY_SLOT_MAX` names another limit. · failure: none — `tests/local_check_test.py` pins the recorded slot command.
 - REQ-8: The `tools/local_check.sh` step `unittest` shall run the tool with `-v -s tests -p '*_test.py'`, keep the log `ci-unittest.log` and the python slot, and exit with the tool's code. · failure: none — a test reads the step line and `tests/local_check_test.py` pins the recorded command.
 
 ## Acceptance
@@ -43,6 +44,8 @@ created: 2026-11-20
   verify: `cargo test --locked --offline --test unittest_parallel_tool a_big_module_is_split_by_class`; `cargo test --locked --offline --test unittest_parallel_tool a_big_module_with_a_load_tests_hook_runs_whole`
 - AC-4 (REQ-5): 모듈마다 HOME 과 TMPDIR 이 서로 다르고 호출자의 것과도 달라요.
   verify: `cargo test --locked --offline --test unittest_parallel_tool each_module_gets_its_own_home_and_tmpdir`
+- AC-7 (REQ-10): `local_check.sh` 가 cargo 단계마다 넘기는 heavy-slot 한도의 기본값이 5 이고 `tests/local_check_test.py` 의 고정이 `--max 5` 예요.
+  verify: `python3 -m unittest tests.local_check_test`
 - AC-5 (REQ-8): `local_check.sh` 의 `unittest` 단계 줄과 `tests/local_check_test.py` 의 고정이 새 명령이에요.
   verify: `cargo test --locked --offline --test unittest_parallel_tool local_check_runs_the_tool`; `python3 -m unittest tests.local_check_test`
 
@@ -77,4 +80,22 @@ created: 2026-11-20
 
 ## Result
 
-(채워요: RED, GREEN, 직렬·병렬 비교와 시간, 이웃, Not run)
+RED: 첫 커밋 9313ae7494 는 SPEC 과 테스트만 담았고, 그때 만든 여덟 테스트는 도구가 없어서 실패해요(커밋 글에 적은 대로; 그 시점 실패 줄은 이 노트를 쓸 때 다시 읽지 않았어요). 이후 테스트가 둘 늘어 열 개가 됐어요.
+
+GREEN: `cargo test --locked --offline --test unittest_parallel_tool` 10개 통과(READY 체인 영역 실행, 로그 ready-c198-area.log, 11:40Z 전후). 뮤턴트: `tools/unittest_parallel.py` 14개를 하나씩 적용해 모두 테스트가 막았어요(실행 스크립트 mut-c198.py, 한 번 돌릴 때마다 커밋된 파일로 복구해요; 이 줄의 14/14 는 앞선 실행 보고에서 옮겼고 이번 READY 체인에서는 다시 돌리지 않았어요).
+
+측정(같은 트리, 같은 macOS 16코어, 전체 `unittest` 1177개, skipped=7): 직렬 `unittest discover` 1940.4 s(04:22:17Z~04:54:45Z, 시작 부하 75), 모듈 단위 병렬(작업자 4) 945.8 s(04:55:09Z~05:15:23Z, 시작 부하 18), 클래스 분할 병렬 1464.3 s(08:00:14Z~08:24:38Z, 시작 부하 약 38, 끝 약 26; 개수 1177·skipped=7 이 직렬과 같고 실패는 아래 둘뿐). 가장 느린 처리는 `install_script_test.py::InstallPs1Test` 1464.0 s 이고 같은 파일의 `InstallShTest` 는 112 s 라서 한 클래스가 전체를 정해요. 솔직한 결론: 클래스 분할(REQ-9)은 이 스위트에서 측정된 이득이 없어요. 느린 숫자는 부하 차이 때문이고 같은 조건 비교는 못 했어요. 기본 A(그대로 둠)로 올려요: 코드는 뮤턴트가 지키고, 파일 하나가 더 커질 때 쓰여요.
+
+이웃(READY 체인, head 4c37e3ba50 기준, 모두 이 실행에서 읽은 종료 코드): `git diff --check` 0, `cargo fmt --check` 0, ops `rustfmt --edition 2021` 0, `cargo clippy` 0, `build-moai-cli` 0, `cargo-tests` 0, `trailer-check` 0, 파이썬 `unittest` 1(아래 둘). `tools/repo_scans.json` 39개 명령: 37개 exit 0, 2개 exit 1(아래 둘). 영역 대상 7개(local_check.sh·unittest_parallel·ci.yml 을 읽는 테스트) exit 0, `--lib` 1619개 통과 exit 0, `--bins` 28개 통과 exit 0, 파이썬 영역 모듈(`local_check_test`, `repo_scans_test`, `github_assets_test`) 124개 중 실패 2개. 그 뒤 커밋 32fe8cd20c(heavy-slot 기본 한도 5)는 `python3 -m unittest tests.local_check_test` 54개 OK 로 확인했어요.
+
+예상한 실패 둘(둘 다 다른 카드의 짝): `tests/github_assets_test.py::WorkflowTest::test_rc_ci_reports_the_rc_ci_check_on_prs_to_the_integration_branch` 는 한 줄 핀(`unittest discover -v -s tests -p '*_test.py'` → `unittest_parallel.py -v -s tests -p '*_test.py'`)을 지금 쥔 카드가 반환하면 고쳐요; `tests/repo_scans_test.py::test_exemptions_are_not_stale` 는 이 브랜치가 더한 `tests/update_guided_migration_cli.rs` 면제 항목이 그 파일이 있는 브랜치와 같은 통합에서만 낡지 않게 읽혀요.
+
+Not run: CI macOS rest 다리의 시간(로컬 측정만), 같은 부하에서 모듈 병렬과 클래스 분할의 직접 비교, Windows 에서의 실행.
+
+- AC-1: met — `the_job_count_bounds_the_overlap` 통과(`-j 1` 과 `-j 3`, 환경 변수 우선순위).
+- AC-2: met — `unittest_parallel_tool` 10개 통과(합계·OK·exit 0, 실패 모듈 출력과 `FAILED`·exit 1, 맞는 모듈 없음 exit 1).
+- AC-3: met — `verbose_keeps_the_per_test_line_shape` 통과.
+- AC-4: met — `each_module_gets_its_own_home_and_tmpdir` 통과.
+- AC-5: met — `local_check_runs_the_tool` 통과, `local_check_test` 54개 OK.
+- AC-6: met — `a_big_module_is_split_by_class` 와 `a_big_module_with_a_load_tests_hook_runs_whole` 통과.
+- AC-7: met — `local_check_test` 54개 OK(`--max 5` 고정).
