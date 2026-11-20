@@ -167,6 +167,29 @@
       "rejects": "a ledger test that runs the binary without TempHome, a test that runs the binary without naming HOME and is not in the baseline list, a process, socket, program name or URL in src/ledger/ (#3068 P2), or one in src/decide/ other than the two provider endpoints (C-37 S2)"
     },
     {
+      "id": "user-asset-bundle-cli",
+      "tests": [
+        "tests/bundle_user_assets_cli.rs::list_prints_every_pack_in_the_go_format_in_name_order",
+        "tests/bundle_user_assets_cli.rs::an_unknown_pack_name_refuses_like_go_and_touches_nothing",
+        "tests/bundle_user_assets_cli.rs::add_installs_the_pack_records_the_go_manifest_and_prints_the_summary",
+        "tests/bundle_user_assets_cli.rs::remove_of_a_lone_pack_deletes_its_files_and_clears_the_journal",
+        "tests/bundle_user_assets_cli.rs::a_journal_of_an_interrupted_run_is_reconciled_as_a_collision"
+      ],
+      "checks": [
+        "cargo test --offline --locked --test bundle_user_assets_cli"
+      ],
+      "rules": [
+        "tests/bundle_user_assets_cli.rs",
+        "templates/bundle-packs/packs.json"
+      ],
+      "scope": [
+        {
+          "prefix": "templates/bundle-packs/"
+        }
+      ],
+      "rejects": "a change to the pack assets or their catalog data that the CLI tests did not re-run: the tests read the repository's packs.json and entry files to compute the expected list lines, install counts and shipped bytes"
+    },
+    {
       "id": "git-spawns-scrubbed",
       "tests": [
         "tests/git_env_scrub.rs::every_git_subprocess_in_src_is_scrubbed"
