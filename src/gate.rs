@@ -229,6 +229,9 @@ const MANIFEST: &str = "skills/moai/references/source-manifest.json";
 /// `src/go_hooks.rs`), the gate's tip judgment (`src/flow.rs`) and the worktree secret-copy
 /// rule (`src/worktree_include.rs` and the file that module reads; that file's name is joined
 /// at compile time because `tests/worktree_include_guard.rs` lets only that module spell it).
+/// The files that judge a pull request are here too, one entry per entry of
+/// `tools/protected_checks.json` (the list `check-guard` reads from the base branch):
+/// `tests/protected_paths_one_list.rs` fails when an entry of that list is not judged tier 2.
 pub const TIER2_PREFIXES: &[&str] = &[
     "src/gate",
     "src/ops/gate",
@@ -264,6 +267,17 @@ pub const TIER2_PREFIXES: &[&str] = &[
     concat!(".worktree", "include"),
     ".claude/",
     ".codex/",
+    "tools/ci_scope.py",
+    "tools/check_guard.py",
+    "tools/protected_checks.json",
+    "tools/repo_scans.json",
+    "tools/self_check.sh",
+    "tools/review_checklist.json",
+    "src/audit_gate.rs",
+    "REVIEW.md",
+    "agents/audit.md",
+    "skills/moai/workflows/audit.md",
+    "AGENTS.md",
 ];
 
 /// Whether a changed path may be tier 0 (#2906 T, user decision 6878414880): `docs/**`,

@@ -187,7 +187,7 @@ fn version_before_basis(h: &RecoveryHost) -> Value {
         (None, "none") => json!("no host receipt"),
         (None, "blocked") => json!("host receipt unreadable or refused"),
         (None, _) => json!(
-            "not recorded: a first apply on this host, or a receipt written before version_before existed (#2091)"
+            "not recorded: a first apply on this host, or a receipt written before version_before existed"
         ),
     }
 }
@@ -375,7 +375,7 @@ pub fn recovery_plan(home: &Path) -> Result<RecoveryPlan> {
                         class: "added_into_pre_existing_root".into(),
                         reason: Some(
                             "first apply landed this file in a folder that already existed \
-                             (unmanaged root at apply time, #2268)"
+                             (unmanaged root at apply time)"
                                 .into(),
                         ),
                         action: "none".into(),

@@ -21,8 +21,9 @@ use std::{
 
 /// Prefix of the one stderr line a launch prints after it initialized something.
 pub const INIT_LINE: &str = "moai: initialized";
-/// Recorded in the apply receipts as the reason for the writes (the user decision).
-const PERMISSION: &str = "launcher-auto-init #2481 user decision 6810818827";
+/// Recorded in the apply receipts as the reason for the writes: the user chose that a first
+/// launch sets the project up itself.
+const PERMISSION: &str = "launcher-auto-init: the user chose first-launch setup";
 /// The generated workflow id; AGENTS.md points at `.moai-cli/workflows/moai/`.
 const WORKFLOW_ID: &str = "moai";
 /// Test-only: milliseconds a first launch holds `.init-lock` between writing the settings and

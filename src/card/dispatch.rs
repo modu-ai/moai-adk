@@ -461,8 +461,8 @@ pub fn handoff(
 /// something visible in it and no word shaped like a secret (the filter `card note` uses). It is
 /// what the reclaimer found out about the old holder.
 /// A `--reason` that is kept for good: one line of 1 to [`reservation::MAX_REASON_LEN`]
-/// characters, with no word that has the shape of a secret (the check `card note` uses,
-/// `redact::redact_outgoing`; `card export` writes it out). The text is never repeated. The
+/// characters, passing the one card text screen ([`crate::card::input::secret_words`], the same
+/// check `card note` uses; `card export` writes it out). The text is never repeated. The
 /// text is kept without its leading and trailing blanks; a line separator (U+2028, U+2029) or a
 /// control character anywhere in what was typed is refused.
 fn checked_reason(action: &str, reason: &str) -> Result<String> {
@@ -477,12 +477,13 @@ fn checked_reason(action: &str, reason: &str) -> Result<String> {
             reservation::MAX_REASON_LEN
         ));
     }
-    let (_, shaped) = crate::redact::redact_outgoing(kept);
-    if shaped > 0 {
+    // Follow-ups REQ-5 (SPEC-20261120-card-secret-followups): the same one screen as the note
+    // and the criterion fields, not the shared shape filter alone.
+    let words = crate::card::input::secret_words(kept);
+    if words > 0 {
         return Err(format!(
-            "card {action} refused: --reason has {shaped} word(s) with the shape of a secret \
-             (a token, a key, `password=`); a reason is kept for good and written out by \
-             `card export`, so take them out"
+            "card {action} refused: --reason has {}",
+            crate::card::input::secret_refusal(words)
         ));
     }
     Ok(kept.to_string())

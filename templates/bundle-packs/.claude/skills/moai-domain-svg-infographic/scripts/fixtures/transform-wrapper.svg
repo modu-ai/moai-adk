@@ -1,0 +1,20 @@
+<!-- expect: SVG074 -->
+<!-- Transform aggregate: one g transform wraps the whole diagram. Because the transform predicate walks ancestors, every element inside is excluded - the reported count is the transitively excluded population, not the single element carrying the attribute. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200"
+     role="img" aria-labelledby="transform-wrapper-title transform-wrapper-desc">
+  <title id="transform-wrapper-title">Wrapped flow</title>
+  <desc id="transform-wrapper-desc">The whole diagram is positioned by a single group transform.</desc>
+  <defs>
+    <marker id="transform-wrapper-arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+  <g transform="translate(10,10)">
+    <rect x="0" y="0" width="380" height="180" fill="#FAF9F5"/>
+    <path d="M 160 100 H 230" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#transform-wrapper-arrow)"/>
+    <rect x="40" y="70" width="120" height="60" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <text x="100" y="105" font-size="11" text-anchor="middle" fill="#141413">client</text>
+    <rect x="240" y="70" width="120" height="60" rx="12" fill="#FBE9DF" stroke="#D97757"/>
+    <text x="300" y="105" font-size="11" text-anchor="middle" fill="#141413">api</text>
+  </g>
+</svg>

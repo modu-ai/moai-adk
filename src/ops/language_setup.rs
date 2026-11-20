@@ -4,8 +4,9 @@ use std::path::PathBuf;
 
 /// Choose the writing language item by item
 ///
-/// Per-item writing-language setup (#2293): asks one question per item and returns a
-/// complete profile for `project-plan`; writes nothing. `--questions` prints the question
+/// Writing-language setup (#2293): asks three questions (conversation, commit messages,
+/// documents; everything else is English) and returns a complete profile for `project-plan`;
+/// writes nothing. `--questions` prints the question
 /// set for a host question tool, `--answers` reads that tool's `{item: code}` JSON on
 /// stdin, and neither flag asks on the terminal (prompts on stderr, answers on stdin).
 #[derive(clap::Args)]
