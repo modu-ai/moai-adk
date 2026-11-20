@@ -67,4 +67,15 @@ created: 2026-11-20
 
 ## Result
 
-(아직 구현 전이에요.)
+2026-11-20, 가지 `spec/protected-paths-one-list-20261120`, 기준 로컬 `v2026.11.0` 의 `b09d24c310`. 아래 증거는 코드 head `4fb10b848e` 에서 읽은 것이에요(그다음 커밋은 이 Result 만 더해요).
+
+- AC-1: met — `every_protected_entry_is_judged_tier_2` 통과(`cargo test --offline --locked --test protected_paths_one_list`, 5/5). RED 먼저: 목록을 고치기 전에는 이 시험이 보호 항목 여섯(`tools/ci_scope.py`, `tools/check_guard.py`, `tools/protected_checks.json`, `src/audit_gate.rs`, `REVIEW.md`, `agents/audit.md`)을 이름으로 대며 실패했어요(5개 중 2개 실패).
+- AC-2: met — `the_judging_files_are_in_the_protected_list` 통과. RED 때는 `tools/repo_scans.json` 이 목록에 없다며 실패했어요. 보호 목록은 8항목에서 12항목이 됐어요.
+- AC-3: met — `a_gap_between_the_two_lists_is_named` 통과. 변이 M1(`TIER2_PREFIXES` 에서 `src/audit_gate.rs` 삭제)이 `every_protected_entry_is_judged_tier_2` 를 실패시켰고 나머지 4개는 통과했어요.
+- AC-4: met — `an_entry_the_test_cannot_sample_is_reported` 통과(`src/gate?.rs`, `src/[gate].rs` 가 항목 이름과 함께 오류).
+- AC-5: met — `a_sample_path_matches_its_own_entry_and_a_neighbour_is_not_raised` 통과. 변이 M3(`starts_with` 를 `contains` 로)가 이 시험을 실패시켰어요.
+- 변이 3개(각각 적용 → `git diff --numstat` 로 적용 확인 → 시험 → `git checkout` 복원 → `git status --short` 비어 있음): M1 위 AC-3, M2(보호 목록에서 `tools/self_check.sh` 삭제)가 `the_judging_files_are_in_the_protected_list` 만 실패시킴, M3 위 AC-5. 의도한 시험 하나만 실패하고 나머지 4개는 통과했어요.
+- 이웃 시험(필터 없이, 각 exit 0): `audit_gate_cli` 5, `bundle_body_cli` 7, `bundle_build_cli` 14, `bundle_check_cli` 11, `bundle_ready_cli` 2, `bundle_verify_cli` 12, `gate_check_cli` 46, `gate_loop` 18, `gate_merge` 16, `gate_stacked_2859` 9, 게이트 단위 시험(`--lib gate::`) 30. Python: `tests.check_guard_test`·`tests.github_assets_test`·`tests.ci_scope_test` 109개, `tests.repo_scans_test`·`tests.source_manifest_test` 70개(pyenv 3.13.1, 빌드 폴더의 `moai-cli` 사용).
+- READY 여섯 검사(head `4fb10b848e`, 기준 로컬 `v2026.11.0`, exit 코드는 각 명령에서 읽음): `git diff --check` 0, `cargo fmt --check` 0, `rustfmt --check --edition 2021 src/ops/*.rs` 0, `cargo clippy --offline --locked --all-targets -- -D warnings` 0, 가벼운 Rust 시험 다섯 파일 0 과 `tests.repo_scans_test`·`tests.source_manifest_test`·`tests.local_check_test` 124개 0, `trailer-check` 0(findings 0). `tools/self_check.sh --pre-ready`: diff-check·fmt·fmt-ops·manifest·py-source-manifest·py-repo-scans·skill-package 모두 0, spec-check 는 이 Result 를 쓰기 전에 `closure_open` 이어서 실패했고 아래에서 다시 돌렸어요.
+- 돌리지 않은 것: 전체 `cargo test`(CI 가 인용), 전체 Python discover, Linux·Windows 전용 검사, GitHub CI. 저장소 규칙과 필수 검사 설정은 읽지도 바꾸지도 않았어요(`check-guard` 를 필수로 만드는 일은 이 SPEC 밖이에요).
+- 후속(이 SPEC 밖, 쓰기 범위 밖): `docs/design-review/appendix/operations/gate_check.md` 의 등급 2 경로 나열에 새 열 항목이 빠져 있어요. 리더가 범위를 넓혀 주거나 후속 SPEC 으로 정해 주세요.
