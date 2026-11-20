@@ -71,6 +71,19 @@ impl Fixture {
         sha
     }
 
+    /// A commit on a new branch off `from` that deletes `paths`; the checkout goes back to `main`.
+    fn branch_without(&self, name: &str, from: &str, paths: &[&str]) -> String {
+        let p = self.root();
+        git_ok(p, &["checkout", "-q", "-b", name, from]);
+        for rel in paths {
+            git_ok(p, &["rm", "-q", rel]);
+        }
+        git_ok(p, &["commit", "-q", "-m", name]);
+        let sha = git(p, &["rev-parse", "HEAD"]);
+        git_ok(p, &["checkout", "-q", "main"]);
+        sha
+    }
+
     /// The candidate: edits line 1 of the models file.
     fn candidate(&self) -> String {
         let edited = MODELS.replacen("// 1\n", "// 1 edited\n", 1);
@@ -166,6 +179,41 @@ fn decides_reuse_after_an_unrelated_base_move() {
         names(&a["selection"]["new"]["rust"]),
         ["home_isolation_scan", "update_command_cli"]
     );
+}
+
+#[test]
+fn decides_reuse_when_the_tip_only_removed_a_target_the_candidate_ran() {
+    let fx = Fixture::new();
+    let head = fx.candidate();
+    // The tip deleted a test target of the candidate's area: the new selection is smaller, so
+    // every check the new selection names was already run.
+    let tip = fx.branch_without("tip", &fx.base, &["tests/update_command_cli.rs"]);
+    let a = decide(&fx, &fx.base, &head, &tip);
+    assert_eq!(a["decision"], "reuse", "{a}");
+    assert!(
+        names(&a["reasons"]).contains(&"selection_is_covered".to_string()),
+        "{a}"
+    );
+    assert_eq!(
+        names(&a["selection"]["old"]["rust"]),
+        ["home_isolation_scan", "update_command_cli"]
+    );
+    assert_eq!(
+        names(&a["selection"]["new"]["rust"]),
+        ["home_isolation_scan"]
+    );
+    assert_eq!(names(&a["rerun"]["rust"]), Vec::<String>::new(), "{a}");
+}
+
+#[test]
+fn reruns_a_new_python_module_of_the_candidates_area() {
+    let fx = Fixture::new();
+    let head = fx.candidate();
+    let tip = fx.branch("tip", &fx.base, &[("tests/update_new_test.py", "#\n")]);
+    let a = decide(&fx, &fx.base, &head, &tip);
+    assert_eq!(a["decision"], "rerun", "{a}");
+    assert_eq!(names(&a["rerun"]["python"]), ["update_new_test"], "{a}");
+    assert_eq!(names(&a["rerun"]["rust"]), Vec::<String>::new(), "{a}");
 }
 
 #[test]

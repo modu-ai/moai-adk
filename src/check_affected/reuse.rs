@@ -229,6 +229,7 @@ fn paths(dir: &Path, args: &[&str]) -> Result<Vec<String>> {
 pub fn tree_facts(dir: &Path, tree: &str) -> Result<TreeFacts> {
     let listing = git(dir, &["ls-tree", "-z", tree, "--", "tests/"])?;
     let mut tests = Vec::new();
+    let mut rust: Vec<(String, String)> = Vec::new();
     for entry in listing.split('\0').filter(|l| !l.is_empty()) {
         let Some((meta, path)) = entry.split_once('\t') else {
             continue;
@@ -243,13 +244,7 @@ pub fn tree_facts(dir: &Path, tree: &str) -> Result<TreeFacts> {
         };
         let name = stem(file).to_string();
         if file.ends_with(".rs") {
-            let text = git(dir, &["cat-file", "blob", sha])?;
-            tests.push(TestFile {
-                name,
-                python: false,
-                modules: declared_mods(&text),
-                os: os_names(&text),
-            });
+            rust.push((name, sha.to_string()));
         } else if file.ends_with(".py") && name.ends_with("_test") {
             tests.push(TestFile {
                 name,
@@ -258,19 +253,92 @@ pub fn tree_facts(dir: &Path, tree: &str) -> Result<TreeFacts> {
             });
         }
     }
-    tests.sort_by(|a, b| (a.python, &a.name).cmp(&(b.python, &b.name)));
     let scan = git(dir, &["ls-tree", "-z", tree, "--", "tools/repo_scans.json"])?;
-    let scan_list = match scan.split('\0').find(|l| !l.is_empty()) {
-        Some(entry) => {
-            let sha = entry
-                .split_once('\t')
-                .and_then(|(m, _)| m.split_whitespace().nth(2))
-                .unwrap_or("");
-            Some(git(dir, &["cat-file", "blob", sha])?)
-        }
-        None => None,
-    };
+    let scan_sha = scan
+        .split('\0')
+        .find(|l| !l.is_empty())
+        .and_then(|entry| entry.split_once('\t'))
+        .and_then(|(m, _)| m.split_whitespace().nth(2))
+        .map(String::from);
+    // One `git cat-file --batch` for every blob: a process per test file made the answer slow.
+    let mut shas: Vec<&str> = rust.iter().map(|(_, s)| s.as_str()).collect();
+    shas.extend(scan_sha.as_deref());
+    let mut texts = blobs(dir, &shas)?.into_iter();
+    for (name, _) in &rust {
+        let text = texts.next().unwrap_or_default();
+        tests.push(TestFile {
+            name: name.clone(),
+            python: false,
+            modules: declared_mods(&text),
+            os: os_names(&text),
+        });
+    }
+    let scan_list = scan_sha.map(|_| texts.next().unwrap_or_default());
+    tests.sort_by(|a, b| (a.python, &a.name).cmp(&(b.python, &b.name)));
     Ok(TreeFacts { tests, scan_list })
+}
+
+/// The text of each blob, in the order asked, from one `git cat-file --batch`.
+fn blobs(dir: &Path, shas: &[&str]) -> Result<Vec<String>> {
+    use std::io::Write;
+    use std::process::Stdio;
+    if shas.is_empty() {
+        return Ok(Vec::new());
+    }
+    let mut cmd = Command::new("git");
+    crate::identity::scrub_git_env(&mut cmd);
+    let mut child = cmd
+        .args(["cat-file", "--batch"])
+        .current_dir(dir)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("cannot run git: {e}"))?;
+    // The request is a few KiB, far under a pipe buffer, so it is written before any reading.
+    let mut stdin = child.stdin.take().ok_or("git cat-file has no stdin")?;
+    let mut request = String::new();
+    for sha in shas {
+        request.push_str(sha);
+        request.push('\n');
+    }
+    stdin
+        .write_all(request.as_bytes())
+        .map_err(|e| format!("cannot write to git: {e}"))?;
+    drop(stdin);
+    let out = child
+        .wait_with_output()
+        .map_err(|e| format!("cannot read git: {e}"))?;
+    if !out.status.success() {
+        return Err(format!(
+            "git cat-file failed: {}",
+            String::from_utf8_lossy(&out.stderr).trim()
+        ));
+    }
+    let bytes = out.stdout;
+    let mut texts = Vec::with_capacity(shas.len());
+    let mut at = 0;
+    for sha in shas {
+        let end = bytes[at..]
+            .iter()
+            .position(|b| *b == b'\n')
+            .ok_or("git cat-file answer is cut short")?
+            + at;
+        let header = String::from_utf8_lossy(&bytes[at..end]).into_owned();
+        let words: Vec<&str> = header.split_whitespace().collect();
+        let size: usize = match words.as_slice() {
+            [_, "blob", size] => size
+                .parse()
+                .map_err(|_| format!("bad size in `{header}`"))?,
+            _ => return Err(format!("git cat-file did not find {sha}: `{header}`")),
+        };
+        let body = bytes
+            .get(end + 1..end + 1 + size)
+            .ok_or("git cat-file answer is cut short")?;
+        texts.push(String::from_utf8_lossy(body).into_owned());
+        at = end + 1 + size + 1;
+    }
+    Ok(texts)
 }
 
 fn exists_in(dir: &Path, tree: &str, path: &str) -> bool {

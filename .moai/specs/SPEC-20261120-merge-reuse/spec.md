@@ -46,9 +46,9 @@ created: 2026-11-20
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2, REQ-3): a tip equal to the base is `fast_forward`; a head inside the tip is `already_merged`; a tip that moved by an unrelated change is `reuse` with its reasons.
+- AC-1 (REQ-1, REQ-2, REQ-3): a tip equal to the base is `fast_forward`; a head inside the tip is `already_merged`; a tip that moved by an unrelated change, or that only removed a target the candidate ran, is `reuse` with its reasons.
   verify: `cargo test --locked --offline --test merge_reuse_cli decides_`
-- AC-2 (REQ-4, REQ-5, REQ-6): a new test target, a changed test of the candidate's area, a changed scan list, an overlapping edit, a conflict and a base that is not an ancestor each give `rerun` with exactly the newly affected checks, or `rerun_all`.
+- AC-2 (REQ-4, REQ-5, REQ-6): a new test target, a new Python module of the area, a changed test of the candidate's area, a changed scan list, an overlapping edit, a conflict and a base that is not an ancestor each give `rerun` with exactly the newly affected checks, or `rerun_all`.
   verify: `cargo test --locked --offline --test merge_reuse_cli reruns_`
 - AC-3 (REQ-7, REQ-8, REQ-9, REQ-10): read-only, `--merge`, refused arguments and a fixed order.
   verify: `cargo test --locked --offline --test merge_reuse_cli answers_`
@@ -83,6 +83,11 @@ created: 2026-11-20
 | D-1 | The decision is a read-only `check reuse` action, not a new top-level word | A new word touches `src/main.rs`, `src/lib.rs` and `src/help.rs`, which other cards hold; `check` already exists | Move the action behind its own word later |
 | D-2 | Reuse needs equal selection and no overlap; anything unreadable is `rerun_all` | The leader's rule: "uncertain → re-run" | Loosen the rule in one function |
 | D-3 | Rerun lists the newly affected targets, not a fresh full check | The leader's rule: "re-run only the newly affected checks" | Answer `rerun_all` for every non-reuse |
+| D-4 | The tests of a tree are read with one `git cat-file --batch`, not one git call per file | First real run on this repository took 40 s of wall time and 16 s of CPU under load, mostly from about 300 git processes; the decision must cost less than the re-check it saves | Read file by file again (same answers, slower) |
+
+### Next slice (needs the leader's decision, not built here)
+
+The decision above answers one candidate. The queue the card asks for (durable first-in-first-out, one lock, the leader draining it) needs three things this slice does not touch: reading the `MERGE-READY` notes of the card ledger in process (wiring in `src/main.rs` and the card module, held by other cards), writing `MERGED-LOCAL` (a git write on the primary checkout, which only the leader's session may do), and `pair=` / `after=` grouping. A smaller path that keeps the queue in the existing notes: each `MERGE-READY` note already carries card, head, base and merge, so its note id is the queue order; a later `moai check queue` could list the notes after the last `MERGED-LOCAL`, call this decision for each against the current tip and print what to merge, what to re-run and what to skip. That needs a leader decision on who runs it (the leader session, once per round) and on which card holds the ledger wiring.
 
 ## Result
 
