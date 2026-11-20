@@ -71,7 +71,7 @@ RED: 테스트 커밋 `d939b150db` 에서 `cargo test --test trailer_verified_cl
 
 부수 효과: `--verified-since` 가 범위 안 커밋을 가리킬 때도 이제 그 자손에만 줄을 요구해요(REQ-3). 전에는 목록 순서로 그 뒤의 커밋 모두에 요구했어요. `verified_from` 의 값과 의미는 그대로예요(REQ-5).
 
-이웃과 READY 체인(종료 코드와 숫자는 체인이 끝난 뒤 이 줄 아래에 이어서 적어요): 영역 대상은 `trailer_*`, `bundle_*`, 그리고 `trailer-check`·`trailers::`·`Moai-Verified` 를 읽는 모든 테스트 파일이에요. 이어서 `--lib`, `--bins`, `tools/repo_scans.json` 전체, 여섯 가지 가벼운 검사, `tests.local_check_test`.
+이웃과 READY 체인(head `8b54dea972` 기준, 모두 `ready-c206.sh` 가 이 실행에서 남긴 종료 코드와 로그에서 읽었어요): 여섯 가지 가벼운 검사 `git diff --check` 0, `cargo fmt --check` 0, ops `rustfmt --edition 2021` 0, `cargo clippy` 0, `build-moai-cli` 0, `cargo-tests` 0, 파이썬 `unittest` 0, `trailer-check` 0. `tools/repo_scans.json` 41개 명령 모두 exit 0(`failed=0`). 영역 대상 11개(`trailer_*`, `bundle_*`, 그리고 `trailer-check`·`trailers::`·`Moai-Verified` 를 읽는 테스트 파일: bundle_body_cli, bundle_build_cli, bundle_check_cli, bundle_ready_cli, bundle_user_assets_cli, bundle_verify_cli, claim_verify_cli, sdd_guidance, spec_branch_name_first, trailer_check_cli, trailer_verified_cli) 128개 통과, exit 0. `--lib` 1641개 통과 exit 0, `--bins` 2개 대상 56개 통과 exit 0, `python3 -m unittest tests.local_check_test` 54개 OK exit 0. 병합 뒤 커밋은 이 SPEC 문서만 바꿔요.
 
 Not run: 전체 `--test` 한 번에, 다른 카드가 쥔 파일을 읽는 테스트의 새 tip 위 재실행, CI macOS·Windows 시간. 이 변경은 새 프로세스 호출 방식을 더하지 않아요: `verified_cover` 는 `check_rules` 가 이미 쓰는 `git` 클로저(`crate::audit_delta::command`)를 받아 써요(`src/trailers.rs:402`, `src/trailers.rs:463`).
 
