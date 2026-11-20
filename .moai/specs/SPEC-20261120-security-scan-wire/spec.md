@@ -2,7 +2,7 @@
 id: SPEC-20261120-security-scan-wire
 title: "The generated Claude Code hooks run the security-scan event after each write, and its would-notify lines have a log of their own"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-20
 ---
 
@@ -39,6 +39,7 @@ S2 감사(노트 4492)가 이 조각 전에 정하라고 한 것 하나를 같�
 - REQ-9: WHEN security-scan observes a finding, it shall append its would_notify line to the log `security-scan.jsonl` of the receipts folder and not to `hook-engine.jsonl`.
 - REQ-10 (REQ-9): IF the log `security-scan.jsonl` has reached its size limit, THEN security-scan shall write no line, print nothing and exit 0.
 - REQ-11: The lines that other events append to `hook-engine.jsonl` shall not depend on the size of `security-scan.jsonl`.
+- REQ-12: The legacy set with the old binary name `moai-cli` shall hold no security-scan group.
 
 ## Acceptance
 
@@ -46,11 +47,12 @@ S2 감사(노트 4492)가 이 조각 전에 정하라고 한 것 하나를 같�
 - AC-2 (REQ-3): the hooks objects of codex and omp hold no group that runs security-scan and equal what they were before this change in their other groups · verify: `cargo test --locked --offline --test security_scan_wire_cli other_hosts`
 - AC-3 (REQ-6, REQ-7, REQ-8): on a temporary project, a Claude settings file holding the previous release's untouched MoAI set and its ownership receipt gets `action` update from `hooks-plan` with the new group listed and every other settings key kept, and after `hooks-apply` a second `hooks-plan` says unchanged; a settings file whose hooks were edited by hand stays a conflict with its bytes untouched · verify: `cargo test --locked --offline --test security_scan_wire_cli plan`
 - AC-4 (REQ-9, REQ-10, REQ-11): the would_notify line lands in `security-scan.jsonl` and `hook-engine.jsonl` gets none; with `security-scan.jsonl` at its limit security-scan prints nothing, exits 0 and a deny line of tool-preflight is still appended to `hook-engine.jsonl` · verify: `cargo test --locked --offline --test hook_security_scan_cli mode` and `cargo test --locked --offline --test security_scan_wire_cli log`
-- AC-5 (REQ-1…REQ-11): every test file that reads the hook set, `hooks-plan` or `PostToolUse` passes after its expectation is updated for the new group and for no other reason, and the hooks-pre-p4 fixtures stay unchanged · verify: the test files named in the Result, run unfiltered
+- AC-5 (REQ-12): the legacy Claude set equals the pre-P4 fixture bytes and holds no group that runs security-scan, while the current set with the same binary name would · verify: `cargo test --locked --offline --test security_scan_wire_cli legacy` and `cargo test --locked --offline --test hooks_pre_p4_fixtures`
+- AC-6 (REQ-1…REQ-12): every test file that reads the hook set, `hooks-plan` or `PostToolUse` passes after its expectation is updated for the new group and for no other reason, and the hooks-pre-p4 fixtures stay unchanged · verify: the test files named in the Result, run unfiltered
 
 ## Scope
 
-- write: `src/hooks.rs` (the handler, its command, `hook_set`, the matcher constant), `src/hook_engine.rs` and `src/hook_engine/scan.rs` (the log of the would_notify line), `tests/security_scan_wire_cli.rs` (new), `tests/hook_security_scan_cli.rs`, `.moai/specs/SPEC-20261120-security-scan-wire/**`, and the neighbour tests whose expectation must follow the new group, named in the Result and added to the reservation one by one by `card scope`
+- write: `src/hooks.rs` (the handler, its command, `hook_set`, the matcher constant, the legacy set that omits the group), `src/hook_engine.rs` and `src/hook_engine/scan.rs` (the log of the would_notify line), `tests/security_scan_wire_cli.rs` (new), `tests/hook_security_scan_cli.rs`, `.moai/specs/SPEC-20261120-security-scan-wire/**`, and the neighbour tests whose expectation must follow the new group, named in the Result and added to the reservation one by one by `card scope`
 - read-only: `src/hook_legacy.rs`, `src/claude.rs`, `src/go_hooks.rs`, `src/ops/go_hooks_plan.rs`, `tests/fixtures/hooks-pre-p4/**`, `docs/hooks-generation.md`
 - forbidden: `skills/**`, `schemas/**`, other projects' hook files, the real HOME and ledger, the Go repository
 

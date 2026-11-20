@@ -53,8 +53,9 @@ fn claude_plan_apply_replan_is_noop() {
     .unwrap();
     assert_eq!(applied["state"], json!("applied"));
     assert_eq!(applied["host_loaded"], json!("not_run"));
-    // #2877 Q1: Claude Code also gets the hook engine's preflight guard (Codex stays at 3).
-    assert_eq!(applied["hooks_generated"].as_array().unwrap().len(), 4);
+    // #2877 Q1: Claude Code also gets the hook engine's preflight guard (Codex stays at 3); the
+    // security-scan group after each write tool makes it five (SPEC-20261120-security-scan-wire).
+    assert_eq!(applied["hooks_generated"].as_array().unwrap().len(), 5);
     let settings = read_json(&p.path().join(".claude/settings.json"));
     assert_eq!(
         settings["hooks"],

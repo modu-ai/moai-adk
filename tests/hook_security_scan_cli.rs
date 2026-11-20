@@ -759,7 +759,13 @@ fn contract_existing_duties_and_generated_files_are_unchanged() {
         assert!(out.status.success(), "{host}: {out:?}");
         let v: Value = serde_json::from_slice(&out.stdout).unwrap();
         let hooks = v["result"]["hooks"].to_string();
-        assert!(!hooks.contains("security-scan"), "{host}: {hooks}");
+        // SPEC-20261120-security-scan-wire: Claude Code runs the event once, Codex still none.
+        let wanted = if host == "claude" { 1 } else { 0 };
+        assert_eq!(
+            hooks.matches("--event security-scan").count(),
+            wanted,
+            "{host}: {hooks}"
+        );
     }
 }
 

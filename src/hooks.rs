@@ -52,6 +52,11 @@ pub enum Handler {
     /// edit-diagnostics S1): Claude Code only, generated only while `[hooks.edit_diagnostics]`
     /// is enabled ([`edit_diagnostics_timeout`]); never blocks.
     EditDiagnostics,
+    /// `hook-dispatch --event security-scan` after a write tool (SPEC-20261120-security-scan-
+    /// wire): Claude Code only for now; it looks for the critical and high shapes in the text
+    /// just written and, in the default observe mode, only counts them in its own log. It never
+    /// blocks.
+    SecurityScan,
 }
 
 /// The handler timeout of the edit-diagnostics hook when it is generated: the checker's own
@@ -72,6 +77,10 @@ pub fn edit_diagnostics_timeout(binary: &str, host: &str) -> Option<u64> {
 /// The tools the Claude preflight guard sees: the hook engine's Bash and write guards
 /// (`hook_engine::capabilities("claude")`).
 pub const CLAUDE_PREFLIGHT_MATCHER: &str = "Bash|Write|Edit|MultiEdit|NotebookEdit";
+
+/// The tools the Claude security-scan event reads (`hook_engine::capabilities("claude")`, the
+/// event `security-scan`): the write tools whose input holds the text just written.
+pub const CLAUDE_SECURITY_SCAN_MATCHER: &str = "Write|Edit|MultiEdit|NotebookEdit";
 
 /// The MoAI hook set: (event, matcher, handler). The session context at session start, one
 /// blocking guard before each Bash tool call (it refuses only an unverified claim's commit or
@@ -243,6 +252,9 @@ pub fn command_with(binary: &str, host: &str, handler: Handler) -> String {
         Handler::EditDiagnostics => {
             format!("{binary} hook-dispatch --host {host} --event edit-diagnostics")
         }
+        Handler::SecurityScan => {
+            format!("{binary} hook-dispatch --host {host} --event security-scan")
+        }
     }
 }
 
@@ -283,8 +295,22 @@ pub fn moai_state(project: &Path, path_env: &str, home: Option<&Path>) -> Value 
 }
 
 /// The hook set of one host: [`HOOK_SET`], and for Claude Code the preflight guard after the
-/// claim guard (#2877 Q1).
+/// claim guard (#2877 Q1) and the security scan after the Bash receipt group.
 pub fn hook_set(host: &str) -> Vec<(&'static str, Option<&'static str>, Handler)> {
+    hook_set_with(host, true)
+}
+
+/// The hook set that `binary` generates: the legacy set (the old binary name, [`LEGACY_BINARY`])
+/// is the set as the releases before #3004 P4-2 wrote it and holds no security-scan group, so the
+/// rewrite still recognises those installs byte for byte.
+fn hook_set_of(binary: &str, host: &str) -> Vec<(&'static str, Option<&'static str>, Handler)> {
+    hook_set_with(host, binary != LEGACY_BINARY)
+}
+
+fn hook_set_with(
+    host: &str,
+    security_scan: bool,
+) -> Vec<(&'static str, Option<&'static str>, Handler)> {
     let mut set = HOOK_SET.to_vec();
     if host == "claude" {
         let at = set
@@ -299,6 +325,21 @@ pub fn hook_set(host: &str) -> Vec<(&'static str, Option<&'static str>, Handler)
                 Handler::Preflight,
             ),
         );
+        // The security scan stands directly after the Bash receipt group of PostToolUse.
+        if security_scan {
+            let after = set
+                .iter()
+                .rposition(|(e, _, _)| *e == "PostToolUse")
+                .map_or(set.len(), |i| i + 1);
+            set.insert(
+                after,
+                (
+                    "PostToolUse",
+                    Some(CLAUDE_SECURITY_SCAN_MATCHER),
+                    Handler::SecurityScan,
+                ),
+            );
+        }
     }
     set
 }
@@ -313,7 +354,7 @@ pub fn hooks_object(host: &str) -> Result<Map<String, Value>> {
 pub fn hooks_object_with(binary: &str, host: &str) -> Result<Map<String, Value>> {
     check_host(host)?;
     let mut out = Map::new();
-    for (event, matcher, handler) in hook_set(host) {
+    for (event, matcher, handler) in hook_set_of(binary, host) {
         let mut group = Map::new();
         if let Some(m) = matcher {
             group.insert("matcher".into(), json!(m));
@@ -494,7 +535,7 @@ fn hook_list_with(binary: &str, host: &str) -> Value {
             })
             .collect();
     }
-    let mut list: Vec<Value> = hook_set(host)
+    let mut list: Vec<Value> = hook_set_of(binary, host)
         .into_iter()
         .map(|(event, matcher, handler)| {
             json!({"event": event, "matcher": matcher, "command": command_with(binary, host, handler),

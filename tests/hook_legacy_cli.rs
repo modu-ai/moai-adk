@@ -42,6 +42,9 @@ struct Host {
     fresh_args: &'static [&'static str],
     /// The entries a rewrite replaces.
     entries: usize,
+    /// The commands a fresh install of the current set writes (the security-scan group of
+    /// Claude Code is new and has no legacy entry to replace).
+    fresh_commands: usize,
 }
 
 const CLAUDE: Host = Host {
@@ -52,6 +55,7 @@ const CLAUDE: Host = Host {
     fixture_receipt: "claude.receipt.json",
     fresh_args: &[],
     entries: 4,
+    fresh_commands: 5,
 };
 const CODEX: Host = Host {
     name: "codex",
@@ -61,6 +65,7 @@ const CODEX: Host = Host {
     fixture_receipt: "codex.receipt.json",
     fresh_args: &[],
     entries: 3,
+    fresh_commands: 3,
 };
 const CODEX_LANE: Host = Host {
     name: "codex",
@@ -70,6 +75,7 @@ const CODEX_LANE: Host = Host {
     fixture_receipt: "codex-lane.receipt.json",
     fresh_args: &LANE_ARGS,
     entries: 4,
+    fresh_commands: 4,
 };
 const OMP: Host = Host {
     name: "omp",
@@ -79,6 +85,7 @@ const OMP: Host = Host {
     fixture_receipt: "omp.receipt.json",
     fresh_args: &[],
     entries: 1,
+    fresh_commands: 1,
 };
 const ALL: [Host; 4] = [CLAUDE, CODEX, CODEX_LANE, OMP];
 
@@ -248,7 +255,7 @@ fn a_fresh_install_calls_moai_everywhere() {
             assert_eq!(file, hooks::omp_module("moai").as_bytes());
         } else {
             let cmds = commands(&file);
-            assert_eq!(cmds.len(), h.entries, "{cmds:?}");
+            assert_eq!(cmds.len(), h.fresh_commands, "{cmds:?}");
             assert!(cmds.iter().all(|c| c.starts_with("moai ")), "{cmds:?}");
         }
         assert_eq!(next["action"], json!("unchanged"), "{next}");

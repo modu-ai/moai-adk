@@ -414,7 +414,7 @@ fn security_scan(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) -> Ve
         "call": call_key(input),
         "unix_ms": now_unix_ms as u64,
     });
-    let _ = crate::hooks::append_receipt_line(cwd, ENGINE_LOG, &line);
+    let _ = crate::hooks::append_receipt_line(cwd, SECURITY_SCAN_LOG, &line);
     Verdict::Allow
 }
 
@@ -973,6 +973,11 @@ fn tool_preflight_deny(
 /// The log both stage-2 duties share, under `<cwd>/.moai-cli/receipts/`: tool-observe appends
 /// `observe` lines, turn-validation appends `stop_block` lines and counts them per session.
 pub const ENGINE_LOG: &str = "hook-engine.jsonl";
+
+/// The log of the `security-scan` event, next to [`ENGINE_LOG`]: its `would_notify` lines pile up
+/// with every observed finding, so they must not share the size limit of the log that the deny
+/// lines are written to (a full limit stops every later line of that log).
+pub const SECURITY_SCAN_LOG: &str = "security-scan.jsonl";
 
 /// SPEC-20261119-enforce-spec-hooks REQ-6: what the Bash side of the GREEN test lock covers,
 /// and what it does not (shown in every host's `capabilities`).

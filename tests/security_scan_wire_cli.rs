@@ -138,6 +138,23 @@ fn other_hosts_get_no_security_scan_group() {
     }
 }
 
+/// AC-5 (REQ-12): the legacy set (the old binary name) holds no security-scan group, so the files
+/// of the releases before the rename are still recognised; the same binary name in the current set
+/// does hold it.
+#[test]
+fn legacy_set_holds_no_security_scan_group() {
+    let legacy = hooks::legacy_hooks("claude", None).unwrap();
+    for event in legacy.keys() {
+        for command in commands(&legacy, event) {
+            assert!(command.starts_with("moai-cli "), "{command}");
+            assert!(!command.contains("security-scan"), "{event}: {command}");
+        }
+    }
+    assert_eq!(legacy["PostToolUse"].as_array().unwrap().len(), 1);
+    let current = hooks::current_hooks("claude", None).unwrap();
+    assert_eq!(current["PostToolUse"].as_array().unwrap().len(), 2);
+}
+
 /// Writes the settings and the ownership receipt of a project as if the release before this
 /// change had applied its set: the current hooks object without the security-scan group, next to
 /// one key MoAI does not own.
