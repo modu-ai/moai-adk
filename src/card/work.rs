@@ -515,10 +515,11 @@ fn mflow_landing(
         )
         .ok();
     let Some(head) = head else {
-        return Err(format!(
+        return Err(
             "card done refused: cannot close: no local landing is linked (`card landed` after \
              the merge); nothing was changed"
-        ));
+                .to_string(),
+        );
     };
     let git_out = |args: &[&str]| -> Result<String> {
         let mut cmd = Command::new("git");

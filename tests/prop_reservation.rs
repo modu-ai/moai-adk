@@ -198,7 +198,7 @@ fn random_interleavings_keep_the_two_invariants() {
                     }
                 }
                 5 => {
-                    let _ = workflow::done(&mut world.w, card, holder, gen);
+                    let _ = workflow::done(&mut world.w, card, holder, gen, None);
                 }
                 6 => {
                     let to = *rng.pick(SESSIONS);

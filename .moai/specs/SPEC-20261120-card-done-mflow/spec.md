@@ -26,15 +26,16 @@ created: 2026-11-20
 ## Requirements
 
 - REQ-1: When a card in state review carries a `card.landed` event, the `card landed` command shall record one `card.landed` event whose payload names the head (40-hex) and the by, with the writing session as the actor · failure: none — another state, a head that is not 40-hex, or an unknown card leaves every row as it was.
-- REQ-2: When `card done` runs on a project whose profile work_flow is m-flow with an integration branch, it shall close without a merged pull request when the newest `card.landed` event's head is an ancestor of that branch's tip, checked with `git merge-base --is-ancestor` at done time, and the `card.done` event shall record the head and the tip · failure: none — with no landed event, a non-ancestor head, or no such branch, the refusal names the rule and nothing is written.
-- REQ-3: When the project's profile names no m-flow work_flow, `card done` shall keep the merged-pull-request rule exactly as before · failure: none — a profile without work_flow or with another flow behaves as before, and the done help names both rules.
+- REQ-2: When `card done` runs on a project whose profile work_flow is m-flow with an integration branch and the newest `card.landed` event's head is an ancestor of that branch's tip (checked with `git merge-base --is-ancestor` at done time), it shall close without a merged pull request · failure: none — with no landed event, a non-ancestor head, or no such branch, the refusal names the rule and nothing is written.
+- REQ-4: When `card done` closes a card on the local landing evidence, the `card.done` event shall record the landed head and the integration branch tip · failure: none — no mflow key when the merged-pull-request rule closed the card.
+- REQ-3: When the project's profile names no m-flow work_flow, done shall keep the merged-pull-request rule exactly as before · failure: none — a profile without work_flow or with another flow behaves as before, and the done help names both rules.
 
 ## Acceptance
 
 - AC-1 (REQ-1): 원장 시험 — review 카드의 landed 이벤트 기록(payload head·by·actor), 다른 상태·잘못된 head 거절. verify: `cargo test --locked --offline --test card_done_mflow_cli`
-- AC-2 (REQ-2): 명령 시험(임시 git 저장소) — m-flow 프로필 + landed head 가 통합 브랜치에 포함 → done 성공(card.done 이벤트에 head·tip); 비포함 head → 규칙 문장 거절. verify: `cargo test --locked --offline --test card_done_mflow_cli`
+- AC-2 (REQ-2, REQ-4): 명령 시험(임시 git 저장소) — m-flow 프로필 + landed head 가 통합 브랜치에 포함 → done 성공(card.done 이벤트에 head·tip); 비포함 head → 규칙 문장 거절. verify: `cargo test --locked --offline --test card_done_mflow_cli`
 - AC-3 (REQ-3): 명령 시험 — work_flow 없는 프로젝트는 병합-PR 규칙 유지(착상 기록 있어도 done 거절). verify: `cargo test --locked --offline --test card_done_mflow_cli`
-- AC-4 (이웃): 이웃 검사. verify: `cargo test --locked --offline --test ledger_workflow`; `cargo test --locked --offline --test card_dispatch_cli`; `cargo fmt --check`; `cargo clippy --locked --offline --all-targets -- -D warnings`
+- AC-4: 이웃 검사. verify: `cargo test --locked --offline --test ledger_workflow`; `cargo test --locked --offline --test card_dispatch_cli`; `cargo fmt --check`; `cargo clippy --locked --offline --all-targets -- -D warnings`
 
 ## Scope
 
