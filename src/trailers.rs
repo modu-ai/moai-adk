@@ -359,10 +359,12 @@ fn log_trailers(git: &impl Fn(&[&str]) -> Result<String>, range: &str) -> Result
     ])
 }
 
-/// Where the `Moai-Verified` rule starts among `commits`: the index of the first commit the rule
-/// covers. `--verified-since` resolves to a commit — itself exempt, everything after it covered,
-/// and a start outside the range covers the whole range; without it the range's first commit
-/// carrying the line is the start (that commit carries, so covering it changes nothing).
+/// The index reported as `verified_from` in the oldest-first list of `commits`: the position of
+/// the rule's start. `--verified-since` resolves to a commit — the index just after it, or 0 when
+/// that commit is outside the list (a start outside the range, or a merge commit, which the list
+/// leaves out); without it the first commit carrying the line is the start. The index only
+/// reports the start: which commits the rule requires the line on is decided by ancestry in
+/// `verified_cover`, not by this index.
 fn verified_from(commits: &[CommitTrailers], since: Option<&str>, sha: &str) -> Option<usize> {
     if since.is_some() {
         return Some(match commits.iter().position(|c| c.sha == sha) {

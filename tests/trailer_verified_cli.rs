@@ -440,6 +440,40 @@ fn trailer_check_since_inside_the_range() {
     assert_eq!(v["failing"], 3, "{v}");
 }
 
+/// AC-3: `--verified-since` may name a merge commit of the range: a merge is no listed commit, so
+/// only its descendants are required, not the commits that forked before it.
+#[test]
+fn trailer_check_since_names_a_merge_commit() {
+    let r = Repo::new();
+    let base = r.git(&["rev-parse", "HEAD"]).trim().to_string();
+    let a1 = r.commit_at("first", None, "2026-11-20T10:00:01", "a1.txt");
+    r.git(&["checkout", "-q", "-b", "side", &base]);
+    r.commit_at("side", None, "2026-11-20T10:00:02", "s1.txt");
+    r.git(&["checkout", "-q", "-b", "late", &a1]);
+    r.commit_at(
+        "forked before the merge",
+        None,
+        "2026-11-20T10:00:03",
+        "x1.txt",
+    );
+    r.git(&["checkout", "-q", "main"]);
+    r.merge_at("side", "2026-11-20T10:00:04");
+    let m = r.git(&["rev-parse", "HEAD"]).trim().to_string();
+    let d1 = r.commit_at("after the merge", None, "2026-11-20T10:00:05", "d1.txt");
+    r.merge_at("late", "2026-11-20T10:00:06");
+    let range = format!("{base}..HEAD");
+    let v = checked(&r.run(&[
+        "trailer-check",
+        &range,
+        "--dir",
+        r.p(),
+        "--verified-since",
+        &m,
+    ]));
+    assert_eq!(missing_shas(&v), vec![d1], "{v}");
+    assert_eq!(v["failing"], 1, "{v}");
+}
+
 /// AC-3: `--list` groups the commits of a range by verification kind — a commit with several
 /// kinds appears in each — and marks the commits a standard revert message names, so `none` and
 /// reverted commits can be counted together.
