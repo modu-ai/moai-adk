@@ -64,7 +64,10 @@ fn agents_md_states_the_finish_line_once() {
         ("release only", RELEASE_ONLY),
         ("tip check", TIP_CHECK),
     ] {
-        assert!(text.contains(sentence), "AGENTS.md lacks the {name} sentence");
+        assert!(
+            text.contains(sentence),
+            "AGENTS.md lacks the {name} sentence"
+        );
     }
     let line = text
         .lines()
@@ -87,7 +90,9 @@ fn agents_md_has_no_pull_request_per_issue_step() {
     }
     // The merge rule that stays is the formal release's.
     assert!(
-        text.contains("release pull request merges when its current head has a successful `ci` run"),
+        text.contains(
+            "release pull request merges when its current head has a successful `ci` run"
+        ),
         "AGENTS.md ties the pull request merge rule to the release pull request"
     );
 }
@@ -147,9 +152,16 @@ fn no_guidance_opens_a_pull_request_per_bundle() {
         };
         for old in OLD_PHRASES {
             if text.contains(old) {
-                hits.push(format!("{}: {old}", path.strip_prefix(root()).unwrap().display()));
+                hits.push(format!(
+                    "{}: {old}",
+                    path.strip_prefix(root()).unwrap().display()
+                ));
             }
         }
     }
-    assert!(hits.is_empty(), "old finish-line wording remains:\n{}", hits.join("\n"));
+    assert!(
+        hits.is_empty(),
+        "old finish-line wording remains:\n{}",
+        hits.join("\n")
+    );
 }
