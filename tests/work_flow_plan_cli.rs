@@ -345,3 +345,87 @@ fn an_unreadable_profile_reports_the_state() {
         "the discovery still answers: {v}"
     );
 }
+
+/// The audit's surviving mutants, each pinned by its own scene. W1: origin/HEAD
+/// naming a release branch is skipped — the release pull request is for the formal
+/// release — and the current-branch fallback carries the question.
+#[test]
+fn an_origin_head_naming_a_release_branch_is_skipped() {
+    let w = World::new();
+    git(
+        &w.project,
+        &["update-ref", "refs/remotes/origin/release/v1", "HEAD"],
+    );
+    git(
+        &w.project,
+        &[
+            "symbolic-ref",
+            "refs/remotes/origin/HEAD",
+            "refs/remotes/origin/release/v1",
+        ],
+    );
+    let v = w.plan();
+    assert_eq!(
+        v["recommendation"]["branch"], "main",
+        "release origin/HEAD: {v}"
+    );
+    let reason = v["recommendation"]["reason"].as_str().unwrap();
+    assert!(reason.contains("current branch"), "reason: {reason}");
+}
+
+/// W2: the current branch itself being release-prefixed means no recommendation at
+/// all — neither discovery rule may name a release branch, and the detached wording
+/// is the answer that remains.
+#[test]
+fn a_release_current_branch_means_no_recommendation() {
+    let w = World::new();
+    git(&w.project, &["checkout", "-q", "-b", "release/v4.2647.10"]);
+    let v = w.plan();
+    assert!(
+        v["recommendation"].is_null(),
+        "a release current branch recommends nothing: {v}"
+    );
+}
+
+/// W3: an origin/HEAD pointing at a pull-request ref that really exists is skipped
+/// for the same reason as a broken one — the namespace decides, not the existence.
+#[test]
+fn an_existing_pr_ref_naming_origin_head_is_skipped() {
+    let w = World::new();
+    git(
+        &w.project,
+        &["update-ref", "refs/remotes/origin/pr/7", "HEAD"],
+    );
+    git(
+        &w.project,
+        &[
+            "symbolic-ref",
+            "refs/remotes/origin/HEAD",
+            "refs/remotes/origin/pr/7",
+        ],
+    );
+    let v = w.plan();
+    assert_eq!(
+        v["recommendation"]["branch"], "main",
+        "existing pr ref: {v}"
+    );
+    let reason = v["recommendation"]["reason"].as_str().unwrap();
+    assert!(reason.contains("current branch"), "reason: {reason}");
+}
+
+/// W6: a missing profile file is the plain unrecorded case — the state stays ok,
+/// not profile-unreadable, and the discovery still answers.
+#[test]
+fn a_missing_profile_file_is_ok_not_unreadable() {
+    let w = World::new();
+    let path = w.project.join(".moai-cli").join("project.yaml");
+    // The fixture may not have written one; either way the scene is a folder with
+    // no profile in it.
+    let _ = fs::remove_file(&path);
+    let v = w.plan();
+    assert_eq!(v["state"]["kind"], "ok", "missing profile: {v}");
+    assert_eq!(
+        v["recommendation"]["branch"], "main",
+        "the discovery answers: {v}"
+    );
+}
