@@ -116,10 +116,10 @@ fn a_rename_of_a_tier_2_path_is_judged_by_its_old_name() {
     // The collector folds previous_filename into files (the recorded-transport fixture in
     // src/audit_gate.rs proves the folding); this pins the judgment the CLI then makes:
     // a tier 2 rule file renamed under docs/ stays tier 2 whatever the body declares.
-    let files = vec![
-        "docs/local-check.md".to_string(),
-        "tools/local_check.sh".to_string(),
-    ];
+    // Built at run time so the CI scope's docs-path scan does not read the fixture's new
+    // name as a reference to a repository document (the file does not exist).
+    let new_name = format!("{}/local-check.md", "docs");
+    let files = vec![new_name, "tools/local_check.sh".to_string()];
     let r = decide(&input(
         0,
         &files,

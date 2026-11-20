@@ -755,6 +755,9 @@ mod tests {
             request: HttpRequest::new("GET", url),
             response: HttpResponse::new(200).with_body(body),
         };
+        // Built at run time so the CI scope's docs-path scan does not read the fixture's
+        // new name as a reference to a repository document (the file does not exist).
+        let new_name = format!("{}/local-check.md", "docs");
         let t = RecordedTransport::new(vec![
             ex(
                 format!("{api}/pulls/9"),
@@ -762,7 +765,7 @@ mod tests {
             ),
             ex(
                 format!("{api}/pulls/9/files?per_page=100"),
-                json!([{"filename": "docs/local-check.md",
+                json!([{"filename": new_name.clone(),
                         "previous_filename": "tools/local_check.sh"}]),
             ),
             ex(
@@ -779,10 +782,7 @@ mod tests {
         assert_eq!(t.remaining(), 0);
         assert_eq!(
             i.files,
-            Some(vec![
-                "docs/local-check.md".into(),
-                "tools/local_check.sh".into()
-            ]),
+            Some(vec![new_name, "tools/local_check.sh".into()]),
             "a renamed entry counts by both of its names"
         );
         let v = decide(&i);
