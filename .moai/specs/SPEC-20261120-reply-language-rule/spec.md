@@ -76,4 +76,18 @@ created: 2026-11-20
 
 ## Result
 
-(아직 구현 전이에요.)
+이 조각(설정 키와 문장 모듈, 가지 머리 `30c4c34d3c`)의 근거예요. AGENTS.md 에 문장을 싣는 호출 한 줄(REQ-7 의 마지막 걸음)은 `render_agents` 를 쥔 세 질문 정리가 통합된 뒤의 후속 조각이에요(리더 결정, 카드 노트 3952 답).
+
+| AC | 상태 | 시험 |
+| --- | --- | --- |
+| 1 | 충족 | `--test home_style_language the_plan_sets_language_to_the_saved_conversation_language` |
+| 2 | 충족 | `--test home_style_language a_user_set_language_is_kept_and_said_so` |
+| 3 | 충족 | `--test home_style_language without_a_known_conversation_language_no_key_is_planned_and_the_reason_is_named` |
+| 4 | 충족 | `--test home_style_language one_apply_writes_both_keys_and_revert_removes_only_those`, 옛 영수증은 `a_receipt_from_before_the_language_key_still_reverts` |
+| 5 | 충족 | `--test home_style_language a_config_dir_profile_gets_its_own_settings` |
+| 6 | 일부: 문장을 만드는 모듈만 | `--lib reply_language::` 6개(en·ko 문장, 이름 없는 코드, 모든 코드의 양쪽 이름, Codex 한 줄). `render_agents` 가 이 문장을 부르는 줄은 아직 없어요 |
+| 7 | 충족 | `--test home_style_language the_codex_block_carries_the_reply_sentence_when_the_language_is_known` |
+
+READY 검사 종료 코드(`CARGO_TARGET_DIR` 는 이 worktree 전용): diff-check 0, fmt 0, ops rustfmt 0, clippy `--all-targets -D warnings` 0, `--lib` 전체 0(1610 통과), `--bins` 0, 영역 시험 대상(`home_*`, 11개 파일) 0, 저장소 전체 검사용 시험(`git_env_scrub`, `home_isolation_scan`, `windows_unix_gate_scan`, `product_cli`) 0, `tools/repo_scans.json` 검사 39개 실패 0, 파이썬 `repo_scans_test`·`source_manifest_test`·`local_check_test` 0, `trailer-check` 0, 이 Mac 에서 도는 `cfg(macos)` 시험 0. 이 영역의 파이썬 시험 파일(`home_*_test.py`)은 없어요.
+
+돌리지 않은 것: GitHub CI(PR 없음), 실제 HOME 과 실제 `~/.claude`·`~/.codex` 에 쓰는 실행(시험은 임시 HOME 만), Windows. 알려진 한계: `moai update` 가 다루는 Claude Code 폴더는 `CLAUDE_CONFIG_DIR` 하나(없으면 기본 폴더)예요. 키 값은 언어 이름 소문자(`korean`)이고, Claude Code 가 이 값을 검증하지 않고 그대로 모델에 넘긴다고 공식 문서가 말해요(결정 D-1). 같은 설정에서 Codex 에는 응답 언어 키가 없어서(공식 문서 확인, 요약 모델을 거친 읽기) 전역 AGENTS.md 블록의 한 문장이 유일한 길이에요(D-6).
