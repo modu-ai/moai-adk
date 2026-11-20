@@ -10,7 +10,13 @@ const ROOT: &str = env!("CARGO_MANIFEST_DIR");
 fn metadata() -> Value {
     let cargo = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
     let out = Command::new(cargo)
-        .args(["metadata", "--no-deps", "--offline", "--format-version", "1"])
+        .args([
+            "metadata",
+            "--no-deps",
+            "--offline",
+            "--format-version",
+            "1",
+        ])
         .current_dir(ROOT)
         .output()
         .expect("cargo metadata starts");
@@ -82,7 +88,11 @@ fn the_shipped_build_does_not_contain_xtask() {
     assert!(defaults[0].as_str().unwrap().contains("moai-cli"));
 
     let xtask = package(&meta, "xtask");
-    assert_eq!(xtask["publish"], serde_json::json!([]), "xtask is published");
+    assert_eq!(
+        xtask["publish"],
+        serde_json::json!([]),
+        "xtask is published"
+    );
     assert_eq!(
         xtask["metadata"]["dist"]["dist"],
         serde_json::json!(false),
@@ -99,14 +109,15 @@ fn the_shipped_build_does_not_contain_xtask() {
             .all(|d| d["name"] != "xtask"),
         "moai-cli depends on xtask"
     );
-    let bins: Vec<&str> = moai["targets"]
+    let mut bins: Vec<&str> = moai["targets"]
         .as_array()
         .unwrap()
         .iter()
         .filter(|t| t["kind"][0] == "bin")
         .map(|t| t["name"].as_str().unwrap())
         .collect();
-    assert_eq!(bins, ["moai-cli", "moai"], "the shipped binaries changed");
+    bins.sort_unstable();
+    assert_eq!(bins, ["moai", "moai-cli"], "the shipped binaries changed");
 }
 
 fn files_under(dir: &Path, out: &mut Vec<std::path::PathBuf>) {

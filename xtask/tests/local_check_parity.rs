@@ -281,7 +281,7 @@ impl Fx {
             )
         };
         for name in ["cargo", "python3", "rustfmt"] {
-            self.script(&name.to_string(), &body(name));
+            self.script(name, &body(name));
         }
         self.script(
             "rustc",
