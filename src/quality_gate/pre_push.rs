@@ -520,7 +520,7 @@ fn resolve_auto(repo: &Path, s: &Settings) -> Result<Convention, String> {
             .filter(|m| is_valid(&validate(m, &conv)))
             .count();
         let confidence = matched as f64 / subjects.len() as f64;
-        if best.as_ref().map_or(true, |(_, c)| confidence > *c) {
+        if best.as_ref().is_none_or(|(_, c)| confidence > *c) {
             best = Some((conv, confidence));
         }
     }

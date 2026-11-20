@@ -515,10 +515,7 @@ fn normalize_prepush(raw: &[u8]) -> String {
         let t = line.trim();
         if line.starts_with("time=")
             || t == "ERROR"
-            || (t.is_empty()
-                && out
-                    .last()
-                    .map_or(true, |l: &String| l.starts_with("error: ")))
+            || (t.is_empty() && out.last().is_none_or(|l: &String| l.starts_with("error: ")))
         {
             continue;
         }
