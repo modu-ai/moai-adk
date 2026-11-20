@@ -486,3 +486,22 @@ fn without_a_recorded_branch_the_old_tip_default_stays() {
         "the refusal names the old default: {v}"
     );
 }
+
+/// The tip resolution is an m-flow rule: a github-flow profile does not point the
+/// tip at origin/<integration_branch> even when one is recorded — without --tip it
+/// keeps the old default (audit B1: the non-m-flow branch of the resolution had no
+/// scene of its own).
+#[test]
+fn a_github_flow_profile_keeps_the_old_tip_default() {
+    let w = World::new();
+    w.write_profile(Some(
+        serde_json::json!({"flow": "github-flow", "integration_branch": "trunk"}),
+    ));
+    let (v, code) = w.bundle_args(&["ready"], false);
+    assert_eq!(code, 1, "github-flow keeps the old default: {v}");
+    let message = v["error"]["message"].as_str().unwrap();
+    assert!(
+        message.contains("origin/v2026.11.0"),
+        "the refusal names the old default, not the recorded branch: {v}"
+    );
+}
