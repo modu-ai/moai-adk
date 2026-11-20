@@ -611,12 +611,20 @@ pub fn run(dir: &Path, range: &str, opts: &RunOptions) -> Result<serde_json::Val
         .out
         .clone()
         .unwrap_or_else(|| target.join(format!("check-affected-{}", short(&facts.head))));
-    std::fs::create_dir_all(&out)
-        .map_err(|e| format!("check affected refused: cannot create {}: {e}", out.display()))?;
+    std::fs::create_dir_all(&out).map_err(|e| {
+        format!(
+            "check affected refused: cannot create {}: {e}",
+            out.display()
+        )
+    })?;
     let mut results: Vec<(String, i32)> = Vec::new();
     let mut records = Vec::new();
     for (i, s) in planned.iter().enumerate() {
-        let log = out.join(format!("{:02}-{}.log", i + 1, s.label.replace([':', '/'], "_")));
+        let log = out.join(format!(
+            "{:02}-{}.log",
+            i + 1,
+            s.label.replace([':', '/'], "_")
+        ));
         let code = run_step(dir, s, opts, &log);
         results.push((s.label.clone(), code));
         records.push(serde_json::json!({

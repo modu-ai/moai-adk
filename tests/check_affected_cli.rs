@@ -366,7 +366,13 @@ fn a_failed_step_does_not_stop_the_rest_and_the_summary_says_fail() {
     assert!(ok, "{r}");
     let line = r["summary"].as_str().unwrap();
     assert!(line.ends_with(" result=PASS"), "{line}");
-    assert!(!line.contains("=3"), "{line}");
+    // A step key never carries 3 (a commit id can start with a 3, so look at whole words).
+    assert!(
+        !line
+            .split(' ')
+            .any(|w| w.split_once('=').is_some_and(|(_, v)| v == "3")),
+        "{line}"
+    );
     assert_eq!(r["steps"].as_array().unwrap().len(), labels(&r).len());
 }
 
