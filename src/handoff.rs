@@ -944,7 +944,7 @@ pub fn effects_reconcile<T: Transport, C: Clock>(
     if left_unjudgeable {
         notes.push(
             "some effects cannot be judged from Issue comments; pass --remote-probe to judge \
-             them (REQ-06B-07, #2099)"
+             them"
                 .into(),
         );
     }

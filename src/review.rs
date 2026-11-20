@@ -20,14 +20,23 @@
 //! and a repository with `.git/info/attributes` is refused (audit FAIL 6839909483 B1). Paths and
 //! diff text that are not UTF-8 are carried with U+FFFD replacements (deterministic, and
 //! `diff_sha256` hashes that replaced text). Reads only; writes nothing.
+//!
+//! The package also carries a `checklist` (SPEC-20261120-review-checklist-by-diff): the items of
+//! `tools/review_checklist.json`, read from the BASE commit like `REVIEW.md`, whose trigger the
+//! diff meets. An item fires when a changed path is in its `trigger.paths`
+//! (`repo_scans::in_scope`) and, when it has `diff_pattern`, an added line of that path contains
+//! one of the strings literally. A table that is not valid is skipped whole with its reason.
 
 use serde::Serialize;
+use serde_json::Value;
 use std::collections::BTreeSet;
 use std::path::Path;
 
 type Result<T> = std::result::Result<T, String>;
 
 pub const REVIEW_FILE: &str = "REVIEW.md";
+/// The checklist table inside a repository.
+pub const CHECKLIST_FILE: &str = "tools/review_checklist.json";
 pub const BYTE_LIMIT: usize = 150_000;
 pub const INCLUDE_LIMIT: usize = 8;
 pub const LINK_LIMIT: usize = 64;
@@ -92,6 +101,23 @@ pub struct Skipped {
     pub reason: String,
 }
 
+/// Why a checklist item is in the package: the changed paths that met its trigger and the first
+/// `diff_pattern` string found in them (`null` for an item without patterns).
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct Matched {
+    pub paths: Vec<String>,
+    pub pattern: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct ChecklistItem {
+    pub id: String,
+    pub check: String,
+    pub source: String,
+    pub added: String,
+    pub matched: Matched,
+}
+
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct Package {
     pub schema_version: u32,
@@ -104,8 +130,312 @@ pub struct Package {
     pub diff_sha256: String,
     pub review: Vec<File>,
     pub context: Vec<File>,
+    pub checklist: Vec<ChecklistItem>,
     pub skipped: Vec<Skipped>,
     pub package_digest: String,
+}
+
+/// One item of the checklist table, checked for every field the judge reads.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Item {
+    id: String,
+    scope: Vec<(String, Vec<String>)>,
+    patterns: Vec<String>,
+    check: String,
+    source: String,
+    added: String,
+}
+
+const TOP_KEYS: [&str; 3] = ["schema_version", "comment", "items"];
+const ITEM_KEYS: [&str; 5] = ["id", "trigger", "check", "source", "added"];
+const TRIGGER_KEYS: [&str; 2] = ["paths", "diff_pattern"];
+const PATH_KEYS: [&str; 2] = ["prefix", "suffixes"];
+
+fn unknown_key(obj: &serde_json::Map<String, Value>, allowed: &[&str]) -> Option<String> {
+    obj.keys().find(|k| !allowed.contains(&k.as_str())).cloned()
+}
+
+fn text_of<'a>(v: &'a Value, what: &str) -> std::result::Result<&'a str, String> {
+    v.as_str()
+        .filter(|s| !s.trim().is_empty())
+        .ok_or_else(|| format!("{what} is not a non-empty string"))
+}
+
+/// A list whose entries are all non-empty strings; the list itself may be empty.
+fn strings_of(v: &Value, what: &str) -> std::result::Result<Vec<String>, String> {
+    let list = v
+        .as_array()
+        .ok_or_else(|| format!("{what} is not a list"))?;
+    list.iter()
+        .map(|s| {
+            s.as_str()
+                .filter(|s| !s.is_empty())
+                .map(str::to_string)
+                .ok_or_else(|| format!("{what} holds an empty or non-string entry"))
+        })
+        .collect()
+}
+
+/// Whether `s` names an `Issue #<n>`, a `PR #<n>` or a `SPEC-<8 digits>-<slug>`.
+fn names_source(s: &str) -> bool {
+    let number_after = |prefix: &str| {
+        s.match_indices(prefix)
+            .any(|(i, _)| s[i + prefix.len()..].starts_with(|c: char| c.is_ascii_digit()))
+    };
+    if number_after("Issue #") || number_after("PR #") {
+        return true;
+    }
+    s.match_indices("SPEC-").any(|(i, _)| {
+        let b = &s.as_bytes()[i + 5..];
+        b.len() > 9
+            && b[..8].iter().all(u8::is_ascii_digit)
+            && b[8] == b'-'
+            && (b[9].is_ascii_lowercase() || b[9].is_ascii_digit())
+    })
+}
+
+/// `YYYY-MM-DD` with a month of 01 to 12 and a day of 01 to 31.
+fn valid_date(s: &str) -> bool {
+    let b = s.as_bytes();
+    s.is_ascii()
+        && b.len() == 10
+        && b[4] == b'-'
+        && b[7] == b'-'
+        && b.iter()
+            .enumerate()
+            .all(|(i, c)| i == 4 || i == 7 || c.is_ascii_digit())
+        && matches!(s[5..7].parse::<u32>(), Ok(1..=12))
+        && matches!(s[8..10].parse::<u32>(), Ok(1..=31))
+}
+
+fn parse_item(n: usize, v: &Value) -> std::result::Result<Item, String> {
+    let at = |m: String| format!("item {n}: {m}");
+    let obj = v.as_object().ok_or_else(|| at("is not an object".into()))?;
+    if let Some(k) = unknown_key(obj, &ITEM_KEYS) {
+        return Err(at(format!("unknown key `{k}`")));
+    }
+    if let Some(k) = ITEM_KEYS.iter().find(|k| !obj.contains_key(**k)) {
+        return Err(at(format!("missing `{k}`")));
+    }
+    let id = text_of(&obj["id"], "`id`").map_err(&at)?;
+    if !id
+        .chars()
+        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+    {
+        return Err(at(format!(
+            "`id` {id:?} is not lowercase letters, digits and hyphens"
+        )));
+    }
+    let check = text_of(&obj["check"], "`check`").map_err(&at)?;
+    let source = text_of(&obj["source"], "`source`").map_err(&at)?;
+    if !names_source(source) {
+        return Err(at(
+            "`source` names no Issue #<n>, PR #<n> or SPEC-<id>".into()
+        ));
+    }
+    let added = text_of(&obj["added"], "`added`").map_err(&at)?;
+    if !valid_date(added) {
+        return Err(at("`added` is not a YYYY-MM-DD date".into()));
+    }
+    let trigger = obj["trigger"]
+        .as_object()
+        .ok_or_else(|| at("`trigger` is not an object".into()))?;
+    if let Some(k) = unknown_key(trigger, &TRIGGER_KEYS) {
+        return Err(at(format!("unknown trigger key `{k}`")));
+    }
+    let paths = trigger
+        .get("paths")
+        .and_then(Value::as_array)
+        .filter(|p| !p.is_empty())
+        .ok_or_else(|| at("`trigger.paths` is not a non-empty list".into()))?;
+    let mut scope = Vec::new();
+    for entry in paths {
+        let entry = entry
+            .as_object()
+            .ok_or_else(|| at("a `trigger.paths` entry is not an object".into()))?;
+        if let Some(k) = unknown_key(entry, &PATH_KEYS) {
+            return Err(at(format!("unknown `trigger.paths` key `{k}`")));
+        }
+        let prefix = entry
+            .get("prefix")
+            .and_then(Value::as_str)
+            .ok_or_else(|| at("a `trigger.paths` entry has no string `prefix`".into()))?;
+        let suffixes = match entry.get("suffixes") {
+            None => Vec::new(),
+            Some(v) => strings_of(v, "`suffixes`").map_err(&at)?,
+        };
+        scope.push((prefix.to_string(), suffixes));
+    }
+    let patterns = match trigger.get("diff_pattern") {
+        None => Vec::new(),
+        Some(v) => {
+            let list = strings_of(v, "`diff_pattern`").map_err(&at)?;
+            if list.is_empty() {
+                return Err(at("`diff_pattern` is an empty list".into()));
+            }
+            list
+        }
+    };
+    Ok(Item {
+        id: id.to_string(),
+        scope,
+        patterns,
+        check: check.to_string(),
+        source: source.to_string(),
+        added: added.to_string(),
+    })
+}
+
+/// The items of a table's text, or the first problem found.
+fn parse_checklist(text: &str) -> std::result::Result<Vec<Item>, String> {
+    let doc: Value = serde_json::from_str(text).map_err(|e| format!("not JSON: {e}"))?;
+    let top = doc
+        .as_object()
+        .ok_or("the table is not an object".to_string())?;
+    if let Some(k) = unknown_key(top, &TOP_KEYS) {
+        return Err(format!("unknown key `{k}`"));
+    }
+    if top.get("schema_version").and_then(Value::as_u64) != Some(1) {
+        return Err("unsupported schema_version; supported: 1".into());
+    }
+    let list = top
+        .get("items")
+        .and_then(Value::as_array)
+        .ok_or("`items` is not a list".to_string())?;
+    let mut items: Vec<Item> = Vec::new();
+    for (n, v) in list.iter().enumerate() {
+        let item = parse_item(n, v)?;
+        if items.iter().any(|i| i.id == item.id) {
+            return Err(format!("item {n}: duplicate `id` {:?}", item.id));
+        }
+        items.push(item);
+    }
+    Ok(items)
+}
+
+/// The diff's per-file sections in order, when there is exactly one for each changed path.
+fn diff_sections(diff: &str, expected: usize) -> Option<Vec<&str>> {
+    let mut starts: Vec<usize> = Vec::new();
+    let mut at = 0;
+    for line in diff.split_inclusive('\n') {
+        if line.starts_with("diff --git ") {
+            starts.push(at);
+        }
+        at += line.len();
+    }
+    if starts.len() != expected {
+        return None;
+    }
+    Some(
+        starts
+            .iter()
+            .enumerate()
+            .map(|(i, s)| &diff[*s..starts.get(i + 1).copied().unwrap_or(diff.len())])
+            .collect(),
+    )
+}
+
+/// The added lines of one file's section, without the leading `+`: only lines after the first
+/// hunk header count, so the `+++` file header is never one.
+fn added_lines(section: &str) -> Vec<&str> {
+    let mut in_hunk = false;
+    let mut out = Vec::new();
+    for line in section.lines() {
+        if line.starts_with("@@ ") {
+            in_hunk = true;
+        } else if in_hunk {
+            if let Some(text) = line.strip_prefix('+') {
+                out.push(text);
+            }
+        }
+    }
+    out
+}
+
+/// The items the diff triggers, in table order. `sections` is the diff split per changed path;
+/// without it the items that need a `diff_pattern` are not judged.
+fn judge_checklist(
+    items: &[Item],
+    changed: &[Changed],
+    sections: Option<&[&str]>,
+) -> Vec<ChecklistItem> {
+    let mut out = Vec::new();
+    for item in items {
+        let in_scope: Vec<usize> = changed
+            .iter()
+            .enumerate()
+            .filter(|(_, c)| crate::repo_scans::in_scope(&c.path, &item.scope))
+            .map(|(i, _)| i)
+            .collect();
+        let mut paths = Vec::new();
+        let mut pattern: Option<usize> = None;
+        if item.patterns.is_empty() {
+            paths = in_scope.iter().map(|&i| changed[i].path.clone()).collect();
+        } else if let Some(sections) = sections {
+            for i in in_scope {
+                let lines = added_lines(sections[i]);
+                let found = item
+                    .patterns
+                    .iter()
+                    .position(|p| lines.iter().any(|l| l.contains(p.as_str())));
+                if let Some(k) = found {
+                    paths.push(changed[i].path.clone());
+                    pattern = Some(pattern.map_or(k, |f| f.min(k)));
+                }
+            }
+        }
+        if paths.is_empty() {
+            continue;
+        }
+        out.push(ChecklistItem {
+            id: item.id.clone(),
+            check: item.check.clone(),
+            source: item.source.clone(),
+            added: item.added.clone(),
+            matched: Matched {
+                paths,
+                pattern: pattern.map(|k| item.patterns[k].clone()),
+            },
+        });
+    }
+    out
+}
+
+/// The checklist of the BASE commit judged against the diff, and the skips it leaves. No table
+/// at base is an empty list without a skip, like a missing `REVIEW.md`.
+fn read_checklist(
+    repo: &Path,
+    base: &str,
+    changed: &[Changed],
+    diff: &str,
+) -> Result<(Vec<ChecklistItem>, Vec<Skipped>)> {
+    let skip = |reason: &str| Skipped {
+        path: CHECKLIST_FILE.into(),
+        reason: reason.into(),
+    };
+    let text = match blob_text(repo, base, CHECKLIST_FILE)? {
+        None => return Ok((Vec::new(), Vec::new())),
+        Some(Err(reason)) => return Ok((Vec::new(), vec![skip(reason)])),
+        Some(Ok(text)) => text,
+    };
+    if text.len() > BYTE_LIMIT {
+        return Ok((Vec::new(), vec![skip("byte-limit")]));
+    }
+    let items = match parse_checklist(&text) {
+        Ok(items) => items,
+        Err(problem) => {
+            return Ok((
+                Vec::new(),
+                vec![skip(&format!("invalid-checklist: {problem}"))],
+            ))
+        }
+    };
+    let sections = diff_sections(diff, changed.len());
+    let mut skips = Vec::new();
+    if sections.is_none() && items.iter().any(|i| !i.patterns.is_empty()) {
+        skips.push(skip("diff-sections-mismatch"));
+    }
+    Ok((judge_checklist(&items, changed, sections.as_deref()), skips))
 }
 
 fn git(repo: &Path, args: &[&str]) -> Result<Vec<u8>> {
@@ -561,6 +891,8 @@ pub fn package(repo: &Path, base: &str, head: &str) -> Result<Package> {
             }
         }
     }
+    let (checklist, checklist_skips) = read_checklist(repo, &base, &changed, &diff)?;
+    skipped.extend(checklist_skips);
     let mut package = Package {
         schema_version: 1,
         diff_sha256: crate::digest(diff.as_bytes()),
@@ -572,6 +904,7 @@ pub fn package(repo: &Path, base: &str, head: &str) -> Result<Package> {
         diff,
         review,
         context,
+        checklist,
         skipped,
         package_digest: String::new(),
     };
@@ -835,6 +1168,125 @@ mod tests {
             include_lines("@a.md\n @b.md\n@c d.md\n@a.md\r\n@e.md\r\ntext @f.md\n@\n"),
             ["a.md", "e.md"]
         );
+    }
+
+    #[test]
+    fn a_source_names_an_issue_a_pr_or_a_spec() {
+        assert!(names_source("Issue #2401"));
+        assert!(names_source("see PR #7"));
+        assert!(names_source("SPEC-20261120-review-checklist-by-diff"));
+        assert!(names_source("SPEC-20261120-x1"));
+        for no in [
+            "",
+            "C-12",
+            "Issue #",
+            "Issue # 5",
+            "issue #5",
+            "SPEC-2026112-x",
+            "SPEC-20261120-",
+            "SPEC-20261120-Abc",
+        ] {
+            assert!(!names_source(no), "{no:?}");
+        }
+    }
+
+    #[test]
+    fn a_date_is_year_month_day_in_ascii() {
+        assert!(valid_date("2026-11-20"));
+        assert!(valid_date("2026-01-31"));
+        for no in [
+            "2026-13-01",
+            "2026-00-10",
+            "2026-11-32",
+            "2026-11-00",
+            "2026-1-1",
+            "2026/11/20",
+            "２０２６-11-20",
+            "2026-11-20 ",
+            "",
+        ] {
+            assert!(!valid_date(no), "{no:?}");
+        }
+    }
+
+    #[test]
+    fn diff_sections_pair_one_to_one_with_the_changed_paths() {
+        let diff = "diff --git a/a b/a\n+++ b/a\n@@ -1 +1 @@\n-x\n+y\ndiff --git a/b b/b\nbinary\n";
+        let sections = diff_sections(diff, 2).unwrap();
+        assert_eq!(sections.len(), 2);
+        assert!(sections[0].starts_with("diff --git a/a"));
+        assert!(sections[1].starts_with("diff --git a/b"));
+        assert!(diff_sections(diff, 1).is_none());
+        assert!(diff_sections(diff, 3).is_none());
+        assert_eq!(diff_sections("", 0), Some(Vec::new()));
+        // A content line that merely contains the words is not a header.
+        let inner = "diff --git a/a b/a\n@@ -0,0 +1 @@\n+diff --git a/x b/x\n";
+        assert_eq!(diff_sections(inner, 1).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn only_lines_after_a_hunk_header_that_start_with_plus_are_added() {
+        let section = "diff --git a/a b/a\n--- a/a\n+++ b/a\n@@ -1,3 +1,3 @@\n ctx\n-gone\n+new\n\\ No newline at end of file\n@@ -9 +9 @@\n+++ also added\n";
+        assert_eq!(added_lines(section), ["new", "++ also added"]);
+        assert!(added_lines("diff --git a/a b/a\nnew file mode 100644\n").is_empty());
+    }
+
+    fn item(id: &str, prefix: &str, patterns: &[&str]) -> Item {
+        Item {
+            id: id.into(),
+            scope: vec![(prefix.into(), Vec::new())],
+            patterns: patterns.iter().map(|p| p.to_string()).collect(),
+            check: "c".into(),
+            source: "Issue #1".into(),
+            added: "2026-11-20".into(),
+        }
+    }
+
+    fn changed(paths: &[&str]) -> Vec<Changed> {
+        paths
+            .iter()
+            .map(|p| Changed {
+                path: p.to_string(),
+                status: "M".into(),
+            })
+            .collect()
+    }
+
+    #[test]
+    fn items_fire_by_path_and_by_added_pattern_in_that_path() {
+        let ch = changed(&["a/x", "b/y"]);
+        let diff = "diff --git a/a/x b/a/x\n@@ -1 +1 @@\n+needle\ndiff --git a/b/y b/b/y\n@@ -1 +1 @@\n+other\n";
+        let sections = diff_sections(diff, 2).unwrap();
+        let items = [
+            item("path", "a/", &[]),
+            item("hit", "", &["zzz", "needle"]),
+            item("wrong-path", "b/", &["needle"]),
+            item("none", "c/", &[]),
+        ];
+        let got = judge_checklist(&items, &ch, Some(&sections));
+        let ids: Vec<&str> = got.iter().map(|g| g.id.as_str()).collect();
+        assert_eq!(ids, ["path", "hit"]);
+        assert_eq!(got[0].matched.paths, ["a/x"]);
+        assert_eq!(got[0].matched.pattern, None);
+        assert_eq!(got[1].matched.paths, ["a/x"]);
+        assert_eq!(got[1].matched.pattern.as_deref(), Some("needle"));
+        // Without sections only the items that need no pattern are judged.
+        let got = judge_checklist(&items, &ch, None);
+        let ids: Vec<&str> = got.iter().map(|g| g.id.as_str()).collect();
+        assert_eq!(ids, ["path"]);
+    }
+
+    #[test]
+    fn a_table_is_refused_for_its_first_problem() {
+        let ok = r#"{"schema_version":1,"items":[{"id":"a","trigger":{"paths":[{"prefix":""}]},"check":"c","source":"PR #3","added":"2026-11-20"}]}"#;
+        assert_eq!(parse_checklist(ok).unwrap().len(), 1);
+        let bad = ok.replace("\"source\":\"PR #3\",", "");
+        assert_eq!(
+            parse_checklist(&bad).unwrap_err(),
+            "item 0: missing `source`"
+        );
+        assert!(parse_checklist("[]").is_err());
+        assert!(parse_checklist(r#"{"schema_version":1}"#).is_err());
     }
 
     #[test]

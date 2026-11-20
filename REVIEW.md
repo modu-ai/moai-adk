@@ -14,11 +14,6 @@ line in HEAD, evidence quoted from that line, and a confirmed verification.
   `.git/config` and the worktree `.gitattributes` must be varied too.
 - A test that writes outside its temporary directory, reads or writes the real HOME, or
   reaches the network.
-- Test git calls that bypass `tests/common/git.rs`, or copying the binary with
-  `fs::copy(EXE…)` instead of `common::copy_executable`.
-- A test that reads a file under `docs/` without that path denied in `tools/ci_scope.py`.
-- A change under `skills/moai/**` without the matching `sha256` in
-  `skills/moai/references/source-manifest.json`.
 - A commit whose `Moai-Claim:` trailer is not in the last paragraph after `🗿 MoAI`, or a
   trailer paragraph with any line that is not a trailer.
 - Deleting, overwriting or moving files without a preview, a receipt and a way back;
@@ -42,8 +37,8 @@ report them.
 Report a defect that is already on the base branch as `pre_existing`, with a follow-up Issue
 suggestion. It never blocks this pull request.
 
-## Do not review
+## Path-specific items
 
-- Re-recorded golden files under `tests/fixtures/**/golden/`: check only that each differs
-  from the base by the intended change.
-- `Cargo.lock` changes that only follow a `Cargo.toml` change in the same pull request.
+Items that depend on which paths the diff touches (tests, `skills/moai/**`, golden files,
+`Cargo.lock`) arrive in the package's `checklist` key, from `tools/review_checklist.json`
+at the base commit; they are not repeated here.

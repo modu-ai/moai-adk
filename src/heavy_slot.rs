@@ -444,7 +444,7 @@ pub fn build_folder_note(
         .file_name()
         .is_some_and(|n| n.to_string_lossy().starts_with("moai-rc-target-"))
     {
-        "the per-lane folder every worktree of the lane shares (#2841)".to_string()
+        "the per-lane folder every worktree of the lane shares".to_string()
     } else if let Some(w) = recorded {
         format!(
             "a build folder whose record names the worktree {}",
@@ -458,7 +458,7 @@ pub fn build_folder_note(
         return None;
     };
     Some(format!(
-        "heavy-slot: CARGO_TARGET_DIR {} is {why}; this worktree's build folder is {} (internal/build-folder, card C-82): run `e=$(moai lane-env --lane {name}) && eval \"$e\"` first",
+        "heavy-slot: CARGO_TARGET_DIR {} is {why}; this worktree's build folder is {} (internal/build-folder): run `e=$(moai lane-env --lane {name}) && eval \"$e\"` first",
         t.display(),
         here.folder.display()
     ))

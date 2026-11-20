@@ -39,6 +39,7 @@ pub const GROUPS: &[Group] = &[
             ("language-set", false),
             ("index-build", true),
             ("check-tree", false),
+            ("check", false),
             ("ledger-status", false),
             ("card", false),
             ("spec", false),
@@ -307,6 +308,13 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("language-set", &["language-set --home ko"]),
     ("index-build", &["index-build . < request.json"]),
     ("check-tree", &["check-tree ."]),
+    (
+        "check",
+        &[
+            "check affected <base>..<head> --list",
+            "check affected <base>..<head>",
+        ],
+    ),
     ("agents-plan", &["agents-plan . < request.json", "agents-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("agents-apply", &["agents-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
     ("generation-plan", &["generation-plan . < request.json", "generation-apply --plan-digest <digest> --permission-reference <ref> . < request.json"]),
@@ -529,7 +537,7 @@ pub const EXAMPLES: &[(&str, &[&str])] = &[
     ("audit-verdict-line", &["audit-verdict-line --pr 2850 --head <head> --verdict PASS --title <scope>", "audit-verdict-line --pr 2850 --head <head> --verdict FAIL --title <scope> --base <earlier-head>"]),
     ("trailers", &["trailers --spec SPEC-20261117-session-trailer"]),
     ("trailer-check", &["trailer-check origin/v2026.11.0..HEAD"]),
-    ("bundle", &["bundle check C-119 C-120", "bundle build C-119 C-120"]),
+    ("bundle", &["bundle check C-1 C-2", "bundle build C-1 C-2"]),
     (
         "audit-gate",
         &["audit-gate < input.json", "audit-gate --require-pass < input.json"],
@@ -1384,55 +1392,55 @@ pub const KOREAN_GROUPS: &[&str] = &["Start", "Project", "Update and move", "Key
 const LONG_ABOUT_KO: &[(&str, &str)] = &[
     (
         "project-detect",
-        "`/moai project` 경로(#2496)가 쓰는 프로젝트의 사실을 알아내요: 새 프로젝트인지 기존 \
+        "`/moai project` 경로가 쓰는 프로젝트의 사실을 알아내요: 새 프로젝트인지 기존 \
          프로젝트인지, manifest, 언어, 언어 서버, 설정된 MCP 서버 이름, 데이터베이스. 읽기만 하고 \
          아무것도 쓰지 않아요. `project-plan` 에 넘길, `detected` 가 채워진 프로필을 돌려줘요.",
     ),
     (
         "language-setup",
-        "쓰는 언어를 항목마다 정해요(#2293): 항목마다 질문을 하나씩 하고 `project-plan` 에 넘길 \
+        "쓰는 언어를 항목마다 정해요: 항목마다 질문을 하나씩 하고 `project-plan` 에 넘길 \
          완전한 프로필을 돌려줘요. 아무것도 쓰지 않아요. `--questions` 는 호스트 질문 도구용 질문 \
          묶음을 찍고, `--answers` 는 그 도구의 JSON 답을 stdin 에서 읽어요. 두 플래그가 없으면 \
          터미널에서 물어요(질문은 stderr, 답은 stdin).",
     ),
     (
         "index-build",
-        "증분 색인의 새 세대를 만들어요(C6 #2182): 추적 파일을 훑고, 바뀌지 않는 manifest 폴더를 \
+        "증분 색인의 새 세대를 만들어요: 추적 파일을 훑고, 바뀌지 않는 manifest 폴더를 \
          준비한 뒤 원자적 포인터 교체로 게시해요. 빌드가 실패하면 앞 세대를 그대로 두고 partial 로 \
          표시해요(REQ-C6-01).",
     ),
     (
         "update",
-        "이 실행 파일과 함께 설치된 패키지로 스킬을 업데이트해요(#2522): update-plan 처럼 미리 \
+        "이 실행 파일과 함께 설치된 패키지로 스킬을 업데이트해요: update-plan 처럼 미리 \
          보여 주고, 확인하기 전에는 아무것도 쓰지 않아요 — 터미널에서는 한 번 묻고, 그 밖에서는 \
          미리 보기의 digest 를 --confirm 으로 넘겨요. HOME 은 환경에서 읽어요.",
     ),
     (
         "go-state-plan",
-        "PROJECT 의 Go 세대 상태를 읽기만 하고 미리 봐요(#2561): Go manifest 가 도구가 만들고 \
+        "PROJECT 의 Go 세대 상태를 읽기만 하고 미리 봐요: Go manifest 가 도구가 만들고 \
          바뀌지 않았다고 증명하는 파일은 무엇인지, 나머지는 왜 그대로 남는지. 아무것도 쓰지 \
          않아요.",
     ),
     (
         "go-state-apply",
-        "확인한 go-state 미리 보기를 실행해요(#2561, #2696): Go `.moai/` 는 `.moai-backup`(또는 \
+        "확인한 go-state 미리 보기를 실행해요: Go `.moai/` 는 `.moai-backup`(또는 \
          `.moai-backup-<UTC>`)이 되고, 새 `.moai/` 가 앞서의 `.moai-cli` 제품 상태를 받고 표식은 \
-         마지막에 써요. 남는 Go 폴더는 #2561 2단계 파일 이동을 그대로 해요. 새로 계산한 미리 보기의 \
+         마지막에 써요. 남는 Go 폴더는 파일 이동 단계를 그대로 해요. 새로 계산한 미리 보기의 \
          digest 가 같을 때만 실행하고, 절대 덮어쓰지 않아요.",
     ),
     (
         "go-state-revert-plan",
-        "go-state 실행 하나를 되돌리면 무엇을 하는지 읽기만 해요(#2561 2단계).",
+        "go-state 실행 하나를 되돌리면 무엇을 하는지 읽기만 해요.",
     ),
     (
         "go-state-revert",
-        "go-state 실행 하나를 되돌려요(#2561, #2696): 새 `.moai/` 는 `.moai.rust-<UTC>` 로 비켜 \
+        "go-state 실행 하나를 되돌려요: 새 `.moai/` 는 `.moai.rust-<UTC>` 로 비켜 \
          두고, Go 백업이 다시 `.moai` 가 돼요. 전부 아니면 전무: 원래 경로에 무언가 다시 생겼거나 \
          백업이 바뀌었으면 되돌리기를 거절해요.",
     ),
     (
         "home-state-plan",
-        "HOME 상태 폴더를 미리 봐요(#2723): 프로젝트 판정 표와 HOME 의 Go 표식으로 `~/.moai` 를 \
+        "HOME 상태 폴더를 미리 봐요: 프로젝트 판정 표와 HOME 의 Go 표식으로 `~/.moai` 를 \
          나누고, 백업 이름(`~/.moai-backup`, 이미 있으면 `~/.moai-backup-<UTC>` — 절대 덮어쓰지 \
          않음)을 정하고, 이동을 막는 것(살아 있는 Go 세션, 안에서 도는 프로세스, 안쪽 체크아웃, \
          확인하기에 너무 큼)과 사용자가 다시 복사해 올 수 있는 항목(기본 없음, 비밀은 절대 제안 \
@@ -1442,18 +1450,18 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
         "home-state-apply",
         "Go `~/.moai` 를 미리 보기가 정한 백업으로 비켜 두고(절대 덮어쓰지 않음) Rust `~/.moai` 를 \
          만들고, `--copy` 로 이름 댄 항목만 복사하고(비밀·Go 표식은 절대 안 함), 영수증을 쓴 뒤 Rust \
-         표식을 써요(#2723). 같은 입력으로 다시 계산한 미리 보기의 `plan_digest` 가 같고 동작이 \
+         표식을 써요. 같은 입력으로 다시 계산한 미리 보기의 `plan_digest` 가 같고 동작이 \
          `migrate` 일 때만 실행해요. 실제 HOME 에서는 사용자가 확인한 뒤에만 리더가 실행해요.",
     ),
     (
         "home-state-revert",
-        "Go `~/.moai` 를 되돌려 놓아요(#2723): 실행이 만든 Rust `~/.moai`(올바른 표식과 영수증)는 \
+        "Go `~/.moai` 를 되돌려 놓아요: 실행이 만든 Rust `~/.moai`(올바른 표식과 영수증)는 \
          `~/.moai.rust-<UTC>` 로 비켜 두고, 영수증이 이름 댄 백업이 `~/.moai` 로 돌아와요. 아무것도 \
          지우지 않아요.",
     ),
     (
         "home-retire-plan",
-        "`~/.moai` 안 Go 세대 항목의 은퇴를 미리 봐요(#2871): HOME 이름 표로 맨 위 항목마다 \
+        "`~/.moai` 안 Go 세대 항목의 은퇴를 미리 봐요: HOME 이름 표로 맨 위 항목마다 \
          `retire`(`~/.moai-go-retired/<UTC>/` 로 이동)·`keep`(사용자 자료, 주인 모름, 표에 없는 \
          이름, 이 세대 이름, 병합 단계를 기다리는 키 파일, 링크)·`skip-in-use`(돌고 있는 \
          프로그램이 씀)로 나눠요. 비밀은 이름만 보고 절대 열지 않아요. 이동을 막는 것과 적용에 \
@@ -1461,7 +1469,7 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
     (
         "home-retire-apply",
-        "미리 보기가 `retire` 로 정한 항목을 `~/.moai-go-retired/<UTC>/` 로 옮겨요(#2871): 먼저 \
+        "미리 보기가 `retire` 로 정한 항목을 `~/.moai-go-retired/<UTC>/` 로 옮겨요: 먼저 \
          매니페스트와 이동 저널을 쓰고, 항목마다 rename 한 번(덮어쓰지 않음, 같은 파일 \
          시스템)이에요. 같은 입력으로 다시 계산한 미리 보기의 `plan_digest` 가 같고 동작이 \
          `retire` 일 때만 실행해요. 복사도 삭제도 없고, 돌고 있는 프로그램이 쥔 항목은 건너뛰어요. \
@@ -1469,14 +1477,14 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
     (
         "home-retire-revert",
-        "은퇴 저널을 거꾸로 되짚어 항목을 되돌려 놓아요(#2871): 항목은 옮긴 그 항목이 \
+        "은퇴 저널을 거꾸로 되짚어 항목을 되돌려 놓아요: 항목은 옮긴 그 항목이 \
          그대로이고 옛 자리가 비어 있을 때만 돌아가요. 그 사이 바뀐 항목은 그 자리에 두고 \
          상태가 `revert_partial` 이에요. `--stamp` 가 없으면 가장 새 은퇴 저널을 써요. 아무것도 \
          지우지 않아요.",
     ),
     (
         "home-install-plan",
-        "`~/.moai-cli` 의 이 세대 항목을 `~/.moai` 맨 위로 옮기는 일을 미리 봐요(#2871 U3a): \
+        "`~/.moai-cli` 의 이 세대 항목을 `~/.moai` 맨 위로 옮기는 일을 미리 봐요: \
          HOME 이름 표로 맨 위 항목마다 `move`(`~/.moai/<이름>` 으로 rename)·`keep`(사용자 자료, \
          옛 worktrees, 표에 없는 이름, 링크, 표식)·`blocked`(자리가 이미 있음)로 나눠요. Go \
          항목이 아직 은퇴 전이면 막혀요. 버전 폴더마다 이동 전후 설치 id, `path` 항목을 어디로 \
@@ -1486,7 +1494,7 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
     (
         "home-install-apply",
-        "미리 보기가 `move` 로 정한 `~/.moai-cli` 항목을 `~/.moai` 로 옮겨요(#2871 U3c): 먼저 \
+        "미리 보기가 `move` 로 정한 `~/.moai-cli` 항목을 `~/.moai` 로 옮겨요: 먼저 \
          매니페스트와 이동 저널을 쓰고, 항목마다 rename 한 번(덮어쓰지 않음, 같은 파일 시스템, \
          `versions` 와 `path` 는 맨 마지막)이에요. 다음에 `path` 의 링크를 옮겨진 `versions` 로 \
          다시 가리키고, vault 는 이름·모드만 확인하고(열지도 모드를 바꾸지도 않아요), schema 2 \
@@ -1498,7 +1506,7 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
     (
         "home-install-revert",
-        "이동을 되돌려 놓아요(#2871 U3c): 적용이 쓴 표식(고쳐졌으면 거부)을 `~/.moai-cli/home-install/` \
+        "이동을 되돌려 놓아요: 적용이 쓴 표식(고쳐졌으면 거부)을 `~/.moai-cli/home-install/` \
          로 치우고, `path` 의 링크는 아직 새 대상을 가리킬 때만 옛 대상으로 돌리고, 이동 저널을 \
          거꾸로 되짚어요. 항목은 옮긴 그 항목이 그대로이고 옛 자리가 비어 있을 때만 돌아가요. \
          `~/.moai` 는 적용이 만들었고 비어 있을 때만 없애요. `--stamp` 가 없으면 가장 새 설치를 \
@@ -1506,13 +1514,13 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
     (
         "ledger-status",
-        "프로젝트의 로컬 SQLite 원장 상태를 읽기만 하고 보여 줘요(#3068): 있는지, 스키마 버전, WAL \
+        "프로젝트의 로컬 SQLite 원장 상태를 읽기만 하고 보여 줘요: 있는지, 스키마 버전, WAL \
          모드가 아닌지, 카드가 상태별로 몇 장인지. 원장이 없는 것은 정상 답(`exists: false`)이고 \
          폴더도 파일도 만들지 않아요. 쓸 수 없는 파일은 `problem` 코드로 알리고 고치지 않아요.",
     ),
     (
         "card",
-        "프로젝트의 로컬 카드를 읽고 써요(#3070): `list`(목록), `show C-n`(카드 하나와 기준·메모·링크), \
+        "프로젝트의 로컬 카드를 읽고 써요: `list`(목록), `show C-n`(카드 하나와 기준·메모·링크), \
          `add`(draft 카드 하나와 기준을 한 트랜잭션으로), `ready`(draft 를 ready 로), `take`·`release`·`handoff`(예약을 잡고, 돌려주고, 넘겨요). `list`·`show` 는 읽기만 하고, 원장 파일과 \
          폴더는 어떤 동작도 만들지 않아요(`ledger-register-apply` 만 만들어요). 원장이 없으면 \
          `list` 는 빈 목록, 나머지는 `ledger not found` 오류와 안내를 줘요.",
@@ -1520,18 +1528,18 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     (
         "ledger-register-plan",
         "프로젝트의 로컬 원장을 `<HOME>/.moai/projects/<project_id>/` 에 만들면 무엇이 생기는지 \
-         미리 봐요(#3068). 프로젝트 id 는 프로파일의 `project_id` 예요. 이미 있는 파일은 읽기만 \
+         미리 봐요. 프로젝트 id 는 프로파일의 `project_id` 예요. 이미 있는 파일은 읽기만 \
          하고 바꾸지 않아요. 아무것도 쓰지 않고, 답에 `plan_digest` 가 있어요.",
     ),
     (
         "ledger-register-apply",
-        "미리 본 프로젝트 원장을 만들어요(#3068) — 같은 입력으로 다시 계산한 계획의 `plan_digest` 가 \
+        "미리 본 프로젝트 원장을 만들어요 — 같은 입력으로 다시 계산한 계획의 `plan_digest` 가 \
          같을 때만, 원장 폴더와 파일을 만드는 유일한 명령이에요. Go 세대의 `~/.moai` 에는 만들지 \
          않아요. 이미 있는 유효한 원장은 그대로 두고, 이 프로젝트 것이 아닌 파일은 대체하지 않아요.",
     ),
     (
         "card-import-plan",
-        "코드 호스트의 열린 이슈를 로컬 원장의 카드로 가져오면 무엇이 되는지 미리 봐요(#3071) — \
+        "코드 호스트의 열린 이슈를 로컬 원장의 카드로 가져오면 무엇이 되는지 미리 봐요 — \
          모든 페이지를 읽고(끝까지 못 읽으면 오류), 이슈마다 만들어질 카드와 읽어 낸 합격 기준, \
          표를 읽지 못한 이슈, 남길 구성원 댓글과 걸러 낼 제어 줄을 보여 줘요. 이슈 글은 글로만 \
          다루고 명령으로 실행하지 않아요. 읽기(GET)만 하고 원장도 폴더도 만들지 않으며, 답에 \
@@ -1539,7 +1547,7 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
     (
         "card-import-apply",
-        "미리 본 열린 이슈를 로컬 원장에 카드(draft)로 써요(#3071) — 호스트가 지금 주는 이슈 집합이 \
+        "미리 본 열린 이슈를 로컬 원장에 카드(draft)로 써요 — 호스트가 지금 주는 이슈 집합이 \
          미리 보기의 `plan_digest` 와 같을 때만, 한 트랜잭션으로 전부 쓰거나 아무것도 쓰지 않아요. \
          이미 카드가 있는 이슈는 그대로 두고, 원장이 없으면 호스트도 읽지 않고 멈춰요. 이슈를 \
          닫거나 바꾸지 않아요.",
@@ -1547,19 +1555,19 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     (
         "card-summary-plan",
         "카드 한 장의 요약을 그 카드의 이슈(또는 `--number` 로 정한 PR)에 올리면 무엇이 올라가는지 \
-         미리 봐요(#3071) — 올라갈 글(올라가는 바이트 그대로, 제어 줄·멘션·비밀 모양을 씻은 뒤), \
+         미리 봐요 — 올라갈 글(올라가는 바이트 그대로, 제어 줄·멘션·비밀 모양을 씻은 뒤), \
          출처, 대상, 두 번 올라가지 않게 하는 표지, `plan_digest` 를 보여 줘요. 카드는 `--to` 로 적은 호스트에서 온 것이어야 해요. 로컬 원장만 읽고 통신도 쓰기도 \
          하지 않아요.",
     ),
     (
         "card-summary-apply",
-        "미리 본 카드 요약을 이슈에 한 번 올려요(#3071) — 미리 보기의 `plan_digest` 가 그대로이고 \
+        "미리 본 카드 요약을 이슈에 한 번 올려요 — 미리 보기의 `plan_digest` 가 그대로이고 \
          권한 참조가 있을 때만, 호스트에 쓰는 유일한 명령이에요. 올리기 전에 호스트를 읽어 구성원 또는 \
          토큰 계정의 댓글에 이 카드의 표지가 이미 있으면 아무것도 올리지 않고 `already_posted` 로 답해요.",
     ),
     (
         "ledger-recover-plan",
-        "망가진 프로젝트 원장을 읽을 수 있는 사본에서 다시 만들면 무엇이 생기는지 미리 봐요(#3068). \
+        "망가진 프로젝트 원장을 읽을 수 있는 사본에서 다시 만들면 무엇이 생기는지 미리 봐요. \
          사본은 `--source` 로 넘겨요(원장 파일 자체, `.bak`, 또는 원장 모양의 파일). 표마다 읽다가 \
          오류를 만나면 마지막 좋은 행에서 멈추고 잃은 행 수를 알려 줘요. 예약은 클레임 저널의 \
          lease 가 살아 있고, worktree 가 그 가지에 있고, 원격 관찰 파일이 그 가지를 보여 줄 때만 \
@@ -1569,7 +1577,7 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
     (
         "ledger-recover-apply",
-        "미리 본 원장 복구를 해요(#3068) — 같은 입력으로 다시 계산한 계획의 `plan_digest` 가 같고 \
+        "미리 본 원장 복구를 해요 — 같은 입력으로 다시 계산한 계획의 `plan_digest` 가 같고 \
          권한 참조가 있을 때만. 새 원장을 `<원장>.recovering` 에 만들어 `integrity_check`·\
          `foreign_key_check` 를 통과시킨 뒤, 망가진 파일을 `<원장>.damaged-<UTC>` 로 남기고(하드 \
          링크라 원래 이름이 빈 적이 없어요) 새 파일을 원래 이름으로 바꿔 놓아요. 아무것도 지우지 \
@@ -1578,8 +1586,8 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
     (
         "worktree-move-plan",
-        "이 클론의 linked worktree 를 `<root>/<project>-<name>` 으로 옮기는 일을 미리 봐요(#2723, \
-         #2835) — `worktree-plan` 이 새 worktree 를 만드는 자리예요. worktree 마다 `location` 과 \
+        "이 클론의 linked worktree 를 `<root>/<project>-<name>` 으로 옮기는 일을 미리 봐요 — \
+         `worktree-plan` 이 새 worktree 를 만드는 자리예요. worktree 마다 `location` 과 \
          `move`·`keep`(이미 root 안, 앞서의 `~/.moai-cli/worktrees/<key>/` 또는 Go 세대의 \
          `~/.moai/worktrees/projects/` 안)·`blocked` 와 그 까닭을 보여 줘요: main worktree, 없음, \
          잠김, submodule, 커밋 안 한·추적 안 하는 파일, push 안 한 커밋, 그 가지의 stash, 안에서 \
@@ -1588,7 +1596,7 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
     (
         "worktree-move-apply",
-        "`worktree-move-plan` 이 `move` 로 적은 worktree 를 옮겨요(#2723) — 같은 입력으로 다시 \
+        "`worktree-move-plan` 이 `move` 로 적은 worktree 를 옮겨요 — 같은 입력으로 다시 \
          계산한 계획의 `plan_digest` 가 같을 때만. 옮길 때마다 프로세스와 열린 파일을 다시 보고, \
          `git worktree move` 를 돌리고(`--force` 는 절대 안 함), git 이 새 경로에 같은 HEAD·가지로 \
          적었는지 확인해요(아니면 `git worktree repair` 한 번). 옮긴 worktree 마다 되돌리는 명령이 \
@@ -1627,7 +1635,7 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
     (
         "install-inspect",
-        "설치를 읽기만 하고 살펴봐요(04-A #1998): PATH 의 세대, `~/.moai-cli/installations/` 의 \
+        "설치를 읽기만 하고 살펴봐요: PATH 의 세대, `~/.moai-cli/installations/` 의 \
          영수증, Go 세대 경로가 있는지. 아무것도 쓰지 않아요.",
     ),
     (
@@ -1636,18 +1644,18 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
     (
         "worktree-report",
-        "저장소의 worktree, 그 빌드 폴더, 임시 `moai-*` 폴더가 쓰는 공간을 읽기만 하고 보고해요 \
-         (WT-1, #2380). 사실만 — 지울 후보는 판단하지 않아요. 아무것도 쓰지 않아요.",
+        "저장소의 worktree, 그 빌드 폴더, 임시 `moai-*` 폴더가 쓰는 공간을 읽기만 하고 보고해요. \
+         사실만 — 지울 후보는 판단하지 않아요. 아무것도 쓰지 않아요.",
     ),
     (
         "worktree-install-plan",
-        "프로필 `scopes` 의 scope 하나가 고른 폴더만 설치하는 명령을 보여 주기만 해요(#3010 P6a). \
+        "프로필 `scopes` 의 scope 하나가 고른 폴더만 설치하는 명령을 보여 주기만 해요. \
          명령을 실행하지 않고 아무것도 쓰지 않아요 — 패키지 설치는 네트워크로 받는 일이에요. \
          잠금 파일로 매니저를 고르고, 문서에 없는 것은 `unverified` 에 적어요.",
     ),
     (
         "optimize-plan",
-        "비울 수 있는 공간을 읽기만 하고 미리 봐요(#2724): 병합 뒤의 linked worktree(squash 병합 \
+        "비울 수 있는 공간을 읽기만 하고 미리 봐요: 병합 뒤의 linked worktree(squash 병합 \
          포함), 이름 댄 루트 아래의 cargo 빌드 폴더, 보고서 — 크기, 마지막 변경, 보관 기간, 남기는 \
          까닭, 되살리는 법. worktree 는 정확한 HEAD 에 대한 독립 감사 PASS 가 있을 때만 `remove` \
          후보이고, 살아 있는 claim·HOLD·관측 안 된 부분이 있으면 남겨요. 아무것도 지우지 않아요 — \
@@ -1659,29 +1667,29 @@ const LONG_ABOUT_KO: &[(&str, &str)] = &[
     ),
     (
         "key-set",
-        "공급자 키를 암호화해 금고에 저장해요(#2393): 지금 프로젝트용, 또는 `--shared` 면 모든 \
+        "공급자 키를 암호화해 금고에 저장해요: 지금 프로젝트용, 또는 `--shared` 면 모든 \
          프로젝트용. 값은 stdin 에서 읽고(argv 로는 받지 않음) 대화형 터미널이면 거절해요. 다만 \
          `--prompt` 를 붙이면 터미널에서 화면에 보이지 않게 입력받아요. 답에는 값이 절대 들어가지 \
          않아요.",
     ),
     (
         "key-status",
-        "공급자 항목(지금 프로젝트, 또는 `--shared`)이 있는지, 안전한지, 복호화되는지 확인해요 \
-         (#2393). 값·길이·지문은 절대 보이지 않아요.",
+        "공급자 항목(지금 프로젝트, 또는 `--shared`)이 있는지, 안전한지, 복호화되는지 확인해요. \
+         값·길이·지문은 절대 보이지 않아요.",
     ),
     (
         "key-remove",
-        "금고에서 공급자 키를 지워요(#2393): 지금 프로젝트의 항목, 또는 `--shared` 면 공유 항목. \
+        "금고에서 공급자 키를 지워요: 지금 프로젝트의 항목, 또는 `--shared` 면 공유 항목. \
          `--yes` 가 없으면 지울 것만 알려 줘요. 기계 키와 옛 키 파일은 절대 건드리지 않아요.",
     ),
     (
         "key-import-plan",
-        "옛 키 파일을 암호화 금고로 옮기는 일을 미리 봐요(#2393 S3): 어느 파일, 어느 폴더로 — 값은 \
+        "옛 키 파일을 암호화 금고로 옮기는 일을 미리 봐요: 어느 파일, 어느 폴더로 — 값은 \
          절대 보이지 않아요. 아무것도 쓰지 않아요.",
     ),
     (
         "key-import-apply",
-        "옛 키 파일의 키를 암호화 금고로 복사해요(#2393 S3): 미리 보기의 digest 와 권한 참조가 \
+        "옛 키 파일의 키를 암호화 금고로 복사해요: 미리 보기의 digest 와 권한 참조가 \
          있을 때만, 다시 읽은 값이 같아야 하고, 옛 파일은 그대로 둬요. 목적지는 지금 프로젝트 폴더, \
          또는 `--shared` 면 `_shared`.",
     ),
@@ -1858,20 +1866,20 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     (
         "update",
         "confirm_cleanup",
-        "미리 보기의 `cleanup.confirm_token`(#2872): 거기 적힌 Go 잔여물을 보관 폴더로. \
+        "미리 보기의 `cleanup.confirm_token`: 거기 적힌 Go 잔여물을 보관 폴더로. \
          --confirm 이 없으면 나머지는 미리 보기로 남음",
     ),
     (
         "update",
         "confirm_home",
-        "미리 보기의 `home.confirm_token`(#2871): 거기 적힌 Go 세대 `~/.moai` 항목을 \
+        "미리 보기의 `home.confirm_token`: 거기 적힌 Go 세대 `~/.moai` 항목을 \
          `~/.moai-go-retired/<UTC>/` 로 옮김. --confirm 이 없으면 나머지는 미리 보기로 남고, \
          --confirm-cleanup 과 같이 못 씀",
     ),
     (
         "update",
         "confirm_switch",
-        "미리 보기의 `switch.confirm_token`(C-33 S3): 이름 전환 스크립트 `<상태 폴더>/path/moai` 를 \
+        "미리 보기의 `switch.confirm_token`: 이름 전환 스크립트 `<상태 폴더>/path/moai` 를 \
          새 것으로 바꿈. 옛 파일은 옆에 `moai.before-<UTC>` 로 보관됨. --confirm 이 없으면 \
          나머지는 미리 보기로 남음",
     ),
@@ -2061,7 +2069,7 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     (
         "home-state-plan",
         "selective",
-        "폴더 전체를 옮기는 대신 맨 위 항목마다 나누기(#2815): 제자리·백업으로 옮김·비밀 \
+        "폴더 전체를 옮기는 대신 맨 위 항목마다 나누기: 제자리·백업으로 옮김·비밀 \
          수동(절대 안 엶)·모름(아무것도 안 옮김)",
     ),
     (
@@ -2097,7 +2105,7 @@ const ARG_HELP_KO: &[(&str, &str, &str)] = &[
     (
         "worktree-move-plan",
         "root",
-        "worktree 를 옮겨 넣을 절대 폴더(기본 `<HOME>/.moai/worktrees`, #2835). 모든 worktree \
+        "worktree 를 옮겨 넣을 절대 폴더(기본 `<HOME>/.moai/worktrees`). 모든 worktree \
          밖이어야 함",
     ),
     (
@@ -2620,7 +2628,7 @@ mod tests {
     #[test]
     fn a_moved_command_reads_its_korean_texts() {
         let ko = sub_help_of("project-detect", Lang::Ko, true);
-        assert!(ko.contains("`/moai project` 경로(#2496)"), "{ko}");
+        assert!(ko.contains("`/moai project` 경로가 쓰는"), "{ko}");
         assert!(!ko.contains("Detect the project's facts"), "{ko}");
         assert!(ko.contains("프로젝트 루트"), "{ko}");
         let short = sub_help_of("project-detect", Lang::Ko, false);
