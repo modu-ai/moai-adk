@@ -195,7 +195,7 @@
       }
     },
     "references/internal/interview.md": {
-      "sha256": "a7b25e19cd1ad71c268619aa5cdd1eafc3a88f64675959e6d74972640c55970b",
+      "sha256": "3ff647efd185159e9ceb2611c6fd7f6d3303587bf25ec66f2a9999f541560940",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-interview",
@@ -222,7 +222,7 @@
       }
     },
     "references/internal/questions.md": {
-      "sha256": "b5243550b336a43fbf07f90aa1f7100bda31df06776133e2685cdf1db118012a",
+      "sha256": "759ab1fdd5e387fe22b7f9395bb0ab47b4fec74bd497788ab92254adb5a2fff7",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-questions",
@@ -291,7 +291,7 @@
       }
     },
     "references/internal/versioning.md": {
-      "sha256": "937835dcb420d6acf2d51193c991dc16d060bc0831eff6518f2c464f69d268b6",
+      "sha256": "54d9488b1973c0128d3eea3aba5d0a641920dd42f80e82127e323b91c0d51cd1",
       "origin": {
         "kind": "design-spec",
         "template_id": "internal-versioning",

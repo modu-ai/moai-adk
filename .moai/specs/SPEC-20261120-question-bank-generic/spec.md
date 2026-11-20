@@ -79,4 +79,8 @@ created: 2026-11-20
 
 ## Result
 
-(채워요: RED, GREEN, 변이, 이웃, Not run)
+- RED: `tests/question_bank_generic.rs` 시험 4개가 4개 모두 실패했고, purpose 시험을 더한 뒤 그 하나가 실패했어요(`cargo test --locked --offline --test question_bank_generic`).
+- GREEN: 같은 대상이 5개 모두 통과해요.
+- 변이: 글에 일부러 넣은 흠 7개(결정 모델 행 복귀, 언어 행의 프로필 목적지 바꿈, CalVer 를 HeadVer 앞에 두기, m-flow 표기 문장 약화, purpose 행 복귀, `questions.md` 에 카드 인용 복귀, autonomy 행이 다른 파일의 case 를 가리키기)를 모두 시험이 잡았어요.
+- 이웃: 이 글을 읽는 시험 대상 11개(`agent_defs_package`, `code_atlas_reference`, `codex_question_tool`, `core_rules_2876`, `mode_workflow_steps`, `question_bank_generic`, `question_bank_hosts`, `rule_history_guard`, `sdd_guidance`, `spec_branch_name_first`, `update_route`)를 결정 모델 삭제 조각의 head 와 합친 scratch 에서 돌렸고, `agent_defs_package` 의 목적지 목록에 `profile `language`` 를 더한 뒤 모두 통과했어요. 이 가지 혼자서는 `agent_defs_package` 의 시험 4개가 낡은 문구를 고정해 빨개요(그 파일은 결정 모델 삭제 조각의 쌍 통합 몫이에요).
+- Not run: 호스트(Claude Code·Codex CLI)에서 글이 실제로 읽히는지, `moai update` 로 설치된 스킬로 본 동작, 전체 로컬 시험.
