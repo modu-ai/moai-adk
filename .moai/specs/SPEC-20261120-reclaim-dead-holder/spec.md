@@ -53,7 +53,7 @@ created: 2026-11-20
 - AC-5 (REQ-5, REQ-8): the event keeps its kind and carries the proof in a payload field while the ledger tables stay the same.
   verify: `cargo test --locked --offline --test card_reclaim_early_cli event_names_the_proof`
 - AC-6 (REQ-6): the ledger refuses an early reclaim whose proof names another holder than the current one.
-  verify: `cargo test --locked --offline --lib reclaim_early_holder`
+  verify: `cargo test --locked --offline --test card_reclaim_early_cli reclaim_early_holder`
 - AC-7 (REQ-7): a card with three reclaims refuses a fourth early reclaim and the new lease is four hours.
   verify: `cargo test --locked --offline --test card_reclaim_early_cli early_reclaim_counts`
 - AC-8 (REQ-9, REQ-10): the reclaim of an ended lease works without any registry, and the proof changes no file of the registry or the worktree.
@@ -81,6 +81,7 @@ created: 2026-11-20
 - A proof taken just before the write can age: the holder is proven gone, so only a new session with the same id could change it; the ledger transaction re-checks the holder and the generation.
 - `lsof` or `/proc` may be missing or denied: the process proof then answers unproven and the old refusal stays.
 - The liveness lookup lives in another SPEC's change; until it is in the tip this change builds on its pushed head.
+- The registry is a local, unsigned folder: a forged entry could answer launcher-exited for a session that still runs. The other two proofs still stop a holder that is working, because it has uncommitted work or a process in its worktree; the liveness card owns the forging question.
 
 ## Decisions
 

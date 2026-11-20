@@ -17,6 +17,7 @@
 //! is `invalid_input`.
 
 use super::command::{actor, open_for_write};
+use super::early_reclaim;
 use super::input::{self, CardRef};
 use super::spec_link;
 use crate::ledger::reservation::{self, Reservation};
@@ -497,6 +498,23 @@ fn reclaim_reason(reason: &str) -> Result<String> {
     checked_reason("reclaim", reason)
 }
 
+/// The reason of an early reclaim: the caller's reason, then the proof in brackets, as one line
+/// that still fits the reason limit (REQ-11). A reason that would not fit is refused before any
+/// write, naming how much the proof adds.
+fn early_reason(reason: &str, proof: &str) -> Result<String> {
+    let combined = format!("{reason} [{proof}]");
+    let (own, all) = (reason.chars().count(), combined.chars().count());
+    if all > reservation::MAX_REASON_LEN {
+        return Err(format!(
+            "card reclaim refused: --reason is {own} characters and the early-reclaim proof adds {}, \
+             over the limit of {}; shorten the reason",
+            all - own,
+            reservation::MAX_REASON_LEN
+        ));
+    }
+    checked_reason("reclaim", &combined)
+}
+
 /// What `card reclaim` was given.
 pub struct ReclaimRequest<'a> {
     /// The new holder: this session.
@@ -517,6 +535,12 @@ pub struct ReclaimRequest<'a> {
 /// links; one `card.reclaim` event names the old holder, the new one, `--by` and `--reason`. A
 /// live lease, another generation, a `done` card or a card that is not held is refused and
 /// nothing is written.
+///
+/// One exception to "a live lease is refused" (SPEC-20261120-reclaim-dead-holder, user decision
+/// 2026-11-20): when the holder session is proven gone ([`super::early_reclaim`]: its launcher
+/// has exited, its worktree is gone or clean and no process works in it) the reservation is
+/// reclaimed while its lease still runs, and the proof goes into the reason and the event. A
+/// missing or unreadable proof leaves the refusal as it was, with the missing part named.
 pub fn reclaim(
     project: &Path,
     home: &Path,
@@ -527,17 +551,44 @@ pub fn reclaim(
     let by = actor(Some(req.by), "reclaim")?;
     let reason = reclaim_reason(req.reason)?;
     takeover_gates(project, home, card_id, req.to_holder)?;
+    let early = early_reclaim::assess(project, home, card_id, req.to_holder);
+    let reason = match &early {
+        early_reclaim::Early::Proven(proof) => early_reason(&reason, &proof.text)?,
+        _ => reason,
+    };
     let (id, mut ledger) = open_for_write(project, home)?;
-    let out = reservation::reclaim(
-        &mut ledger,
-        card_id,
-        req.to_holder,
-        req.generation,
-        &by,
-        &reason,
-        req.lease_secs.unwrap_or(DEFAULT_LEASE_SECS),
-    )
-    .map_err(|e| e.to_string())?;
+    let lease_secs = req.lease_secs.unwrap_or(DEFAULT_LEASE_SECS);
+    let taken = match &early {
+        early_reclaim::Early::Proven(proof) => reservation::reclaim_early(
+            &mut ledger,
+            card_id,
+            req.to_holder,
+            req.generation,
+            &by,
+            &reason,
+            lease_secs,
+            &reservation::EarlyProof {
+                holder: &proof.holder,
+                detail: &proof.detail,
+            },
+        ),
+        _ => reservation::reclaim(
+            &mut ledger,
+            card_id,
+            req.to_holder,
+            req.generation,
+            &by,
+            &reason,
+            lease_secs,
+        ),
+    };
+    let out = taken.map_err(|e| match (&e, &early) {
+        // The lease is live and the proof is missing: say which part.
+        (reservation::ReclaimError::LeaseLive { .. }, early_reclaim::Early::Unproven(why)) => {
+            format!("{e}; an early reclaim needs proof that the holder is gone, and {why}")
+        }
+        _ => e.to_string(),
+    })?;
     Ok(json!({
         "action": "reclaim", "project_id": id,
         "reservation": reservation_json(&out.reservation),
@@ -588,7 +639,7 @@ fn takeover_gates(project: &Path, home: &Path, card_id: i64, to_holder: &str) ->
 /// REQ-1..3: refuse a worktree that exists and holds uncommitted or unpushed work, go on
 /// only when the path is known to be gone (nothing there can be orphaned), refuse as
 /// unverifiable when the path cannot be told apart from "gone" or git cannot be read.
-fn worktree_gate(worktree: Option<&str>) -> Result<()> {
+pub(super) fn worktree_gate(worktree: Option<&str>) -> Result<()> {
     let Some(wt) = worktree.filter(|w| !w.is_empty()) else {
         return Ok(());
     };
