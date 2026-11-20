@@ -22,14 +22,14 @@ parent: null
 ## Requirements
 
 - REQ-1: The secret_suspects timing test shall judge the repeated-prefix cost relatively — the doubling of the line's length multiplying the measured cost by less than 3.2, on top of an absolute ceiling of thirty seconds per measurement. · failure: none — a loaded machine slows both measurements together, so the multiple holds while the ceiling absorbs the rest.
-- REQ-2: The heavy-slot built-in concurrency limit shall default to four, so the announced cap holds without a limits file, with a limits.json value still winning over the built-in default. · failure: none — the file path is unchanged; only the built-in default number moves.
+- REQ-2: The heavy-slot built-in concurrency limit shall default to five, so the announced cap holds without a limits file, with a limits.json value still winning over the built-in default. · failure: none — the file path is unchanged; only the built-in default number moves.
 
 ## Acceptance
 
 - AC-1 (REQ-1): the relative measurement holds in the green run, and a mutation that restores the quadratic cost in the repeated-prefix scan (dropping the `take(min)` clamp) pushes the multiple past 3.2 and fails the test.
   verify: `cargo test -p moai-cli --lib agents_local_merge` — the timing test name in the output
   verify: the mutation run recorded on the card's READY note
-- AC-2 (REQ-2): the heavy-slot unit tests pin the built-in default of four and pin a limits.json value winning over it.
+- AC-2 (REQ-2): the heavy-slot unit tests pin the built-in default of five and pin a limits.json value winning over it.
   verify: `cargo test heavy_slot`
 - AC-3: the wider READY set around the change passes.
   verify: `cargo test --locked --offline --bins`
