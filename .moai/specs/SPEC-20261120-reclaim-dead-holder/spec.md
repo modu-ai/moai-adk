@@ -39,6 +39,7 @@ created: 2026-11-20
 - REQ-9: A reservation whose lease has ended shall be reclaimed as before and need no proof.
 - REQ-10: The proof shall read the registry and the ledger and the worktree and write none of them.
 - REQ-11: The `card reclaim` command shall refuse before any write a reason that is too long to carry the proof.
+- REQ-12: The worktree check shall count every changed tracked file and every untracked file except one named in the list of tool cache files, the statusline's GitHub counts under either state folder.
 
 ## Acceptance
 
@@ -60,6 +61,8 @@ created: 2026-11-20
   verify: `cargo test --locked --offline --test card_reclaim_early_cli --test card_reclaim_cli`
 - AC-9 (REQ-11): a reason of the longest allowed length is refused with the proof's length named and nothing written.
   verify: `cargo test --locked --offline --test card_reclaim_early_cli reason_too_long`
+- AC-10 (REQ-12): a worktree whose only untracked file is the listed cache counts as clean, and another untracked file, an unlisted name beside the cache and a changed tracked file each keep it dirty with the count naming only the work.
+  verify: `cargo test --locked --offline --test card_reclaim_early_cli a_listed_tool_cache` and `cargo test --locked --offline --lib only_an_untracked_listed_file_is_a_cache`
 
 ## Scope
 
@@ -90,6 +93,7 @@ created: 2026-11-20
 | D-1 | the early path is automatic: `card reclaim` has no new flag | the user decision names the conditions, not an option | add a flag later |
 | D-2 | a reservation with no recorded worktree is unproven | the clean-or-gone proof needs a path | allow it by a later decision |
 | D-3 | the proof goes into the reason when it fits and always into a payload field | the user asked for the reason; the payload is machine-readable | drop the payload field |
+| D-4 | the cache list names whole files, not patterns, and the worktree check lists untracked files one by one (`--untracked-files=all`) | a folder that git shows as one entry could hide real work next to the cache; the leader note limited the exemption to listed cache paths | empty the list |
 
 ## Result
 

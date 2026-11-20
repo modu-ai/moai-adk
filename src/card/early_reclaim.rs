@@ -19,6 +19,22 @@ use crate::ledger::{self, reservation};
 use serde_json::{json, Value};
 use std::path::Path;
 
+/// Files a tool rewrites by itself on its next run, so one left in a worktree is no work
+/// (SPEC-20261120-reclaim-dead-holder REQ-12): the statusline's GitHub counts, under either
+/// state folder name. A name is listed here or it is work; nothing is matched by pattern.
+const TOOL_CACHE_FILES: &[&str] = &[
+    ".moai-cli/state/github/counts.json",
+    ".moai/state/github/counts.json",
+];
+
+/// True when one `git status --porcelain=v1 --untracked-files=all` line is an untracked file
+/// from [`TOOL_CACHE_FILES`]. A changed tracked file, an untracked file that is not listed and
+/// a line that is quoted or unreadable are never a cache: they stay work.
+pub(super) fn is_tool_cache_entry(line: &str) -> bool {
+    line.strip_prefix("?? ")
+        .is_some_and(|path| TOOL_CACHE_FILES.contains(&path))
+}
+
 /// A complete proof, about one holder.
 #[derive(Debug)]
 pub struct Proof {
@@ -250,5 +266,26 @@ mod tests {
             processes_in(&gone).is_err(),
             "a folder that cannot be resolved gives no answer"
         );
+    }
+}
+
+#[cfg(test)]
+mod cache_tests {
+    use super::is_tool_cache_entry;
+
+    /// AC-10 (REQ-12): only an untracked, listed cache file is a cache.
+    #[test]
+    fn only_an_untracked_listed_file_is_a_cache() {
+        assert!(is_tool_cache_entry("?? .moai-cli/state/github/counts.json"));
+        assert!(is_tool_cache_entry("?? .moai/state/github/counts.json"));
+        // A changed tracked file of the same name is work.
+        assert!(!is_tool_cache_entry(" M .moai-cli/state/github/counts.json"));
+        assert!(!is_tool_cache_entry("A  .moai-cli/state/github/counts.json"));
+        // An unlisted name, a folder and a path that only ends alike are work.
+        assert!(!is_tool_cache_entry("?? .moai-cli/state/github/other.json"));
+        assert!(!is_tool_cache_entry("?? .moai-cli/state/"));
+        assert!(!is_tool_cache_entry("?? sub/.moai-cli/state/github/counts.json"));
+        assert!(!is_tool_cache_entry("?? .moai-cli/state/github/counts.json.bak"));
+        assert!(!is_tool_cache_entry(""));
     }
 }
