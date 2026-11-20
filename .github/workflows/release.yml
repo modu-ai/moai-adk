@@ -29,12 +29,13 @@ name: release
 
 on:
   push:
-    branches: ['release/**']
     # The release pull request's own branch is `release/v…` (the ci.yml guard reads the
     # same family) — pushing it must not fire this workflow: its name carries a version,
-    # not a commit, so `release / plan` would refuse it and read red. The ignore keeps
-    # the release-PR branch silent here.
-    branches-ignore: ['release/v*']
+    # not a commit, so `release / plan` would refuse it and read red. The negated
+    # pattern is written after the positive one, because GitHub evaluates the list in
+    # order and the last matching pattern wins — and branches cannot carry
+    # branches-ignore beside it at all (a workflow with both is invalid, actionlint).
+    branches: ['release/**', '!release/v*']
 
 permissions:
   contents: read

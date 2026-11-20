@@ -62,6 +62,22 @@ def gh_branch_filter(pattern, branch):
     return len(b_parts) == len(p_parts)
 
 
+def gh_branch_fires(patterns, branch):
+    """GitHub's ordered evaluation of a branch filter list: patterns are matched in
+    order and the last matching one wins, a `!` prefix negates its match, and a list
+    that matches nothing means the event does not fire (the audit's corrected rule —
+    branches cannot carry branches-ignore beside it at all)."""
+    decision = False
+    matched = False
+    for pattern in patterns:
+        negated = pattern.startswith("!")
+        inner = pattern[1:] if negated else pattern
+        if gh_branch_filter(inner, branch):
+            decision = not negated
+            matched = True
+    return matched and decision
+
+
 class IssueFormTest(unittest.TestCase):
     def test_forms_parse_and_follow_the_form_schema(self):
         for path in FORMS:
@@ -570,21 +586,19 @@ class WorkflowTest(unittest.TestCase):
     def test_release_push_trigger_ignores_the_release_v_family(self):
         """The audit's last item (leader decision a): `release / plan` refuses a
         `release/v…` branch name, so a release pull request pushed for CI would read red
-        — the trigger must not fire for it. `release.yml` carries
-        `branches-ignore: ['release/v*']` beside `branches: ['release/**']`, and this
-        test evaluates the two filters the way GitHub does (`**` spans segments, `*`
-        stays inside one) instead of reading comment letters: a real release branch and
-        a release candidate fire, the release pull request's own branch does not."""
+        — the trigger must not fire for it. GitHub cannot take branches-ignore beside
+        branches (a workflow with both is invalid), so the negated pattern sits in the
+        ordered list itself — `['release/**', '!release/v*']` — and this test evaluates
+        the list the way GitHub does: the last matching pattern wins, `!` negates, `**`
+        spans segments, `*` stays inside one. A real release branch and a release
+        candidate fire; the release pull request's own branch does not."""
         flow = dict(self.workflows())[WORKFLOWS / "release.yml"]
         trigger = flow.get("on", flow.get(True))["push"]
-        self.assertEqual(trigger.get("branches"), ["release/**"])
-        self.assertEqual(trigger.get("branches-ignore"), ["release/v*"])
+        self.assertEqual(trigger.get("branches"), ["release/**", "!release/v*"])
+        self.assertNotIn("branches-ignore", trigger)
 
         def fires(branch):
-            listed = any(gh_branch_filter(p, branch) for p in trigger["branches"])
-            ignored = any(gh_branch_filter(p, branch)
-                          for p in trigger.get("branches-ignore", []))
-            return listed and not ignored
+            return gh_branch_fires(trigger["branches"], branch)
 
         self.assertTrue(fires("release/" + "a" * 40),
                         "a release branch still fires the workflow")

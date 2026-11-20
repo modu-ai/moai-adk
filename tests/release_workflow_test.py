@@ -60,9 +60,13 @@ def bash(text, cwd, env):
 class WorkflowShapeTest(unittest.TestCase):
     def test_the_workflow_starts_only_from_a_push_to_a_release_branch(self):
         """AC-1, AC-4: a person pushes `release/<sha>` or `release/rc/<sha>`; nothing else
-        starts it, and a newer run never cancels an older one."""
+        starts it — the release pull request's own `release/v…` branch is negated out of
+        the same list (its name carries a version, not a commit) — and a newer run never
+        cancels an older one. GitHub cannot take branches-ignore beside branches, so the
+        negation lives in the ordered list itself (the last matching pattern wins)."""
         f = flow()
-        self.assertEqual(f.get("on", f.get(True)), {"push": {"branches": ["release/**"]}})
+        self.assertEqual(f.get("on", f.get(True)),
+                         {"push": {"branches": ["release/**", "!release/v*"]}})
         self.assertNotIn("concurrency", f)
         for job in f["jobs"].values():
             self.assertNotIn("concurrency", job)
