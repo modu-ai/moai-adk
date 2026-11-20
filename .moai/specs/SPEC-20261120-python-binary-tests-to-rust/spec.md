@@ -120,6 +120,41 @@ created: 2026-11-20
 - 변형 5개(상한 5, 모두 잡힘, 변형 뒤 트리 변경 0, 시험 대상은 새 Rust 파일만): ① `src/banner.rs` 의 `w <= LOGO_WIDTH` 를 `w < LOGO_WIDTH` → `ui_terminal_cli` 의 `a_narrow_terminal_gets_the_line_not_the_logo`; ② `src/ui.rs` 오류 색을 빨강에서 초록으로 → `an_operation_error_is_framed_on_a_terminal_and_unchanged_on_a_pipe`, `the_color_flag_comes_before_the_environment`; ③ `src/key_prompt.rs` 신호 처리기의 `TCSAFLUSH` 를 `TCSANOW` 로 → `a_signal_drops_what_was_typed_and_not_read_yet` 외 2개; ④ 같은 파일 종료 신호 목록에서 `SIGHUP` 을 `SIGINT` 로 바꿔 빼기 → `ending_signals_leave_the_terminal_as_it_was_and_store_nothing`; ⑤ `src/ui_text.rs` 의 둘째 단계 줄을 `(2/4)` 로 → `stages_show_on_a_terminal_and_never_on_a_pipe` 외 2개.
 - 리눅스: 이 Mac 에서 돌릴 수 없어요(D4). 새 시험의 리눅스 결과는 CI 가 처음 보여 줘요. 신호·`setsid`·`TIOCSCTTY` 를 쓰는 `key_set_prompt_terminal_cli` 가 가장 눈여겨볼 곳이에요. 그 전에는 "리눅스 통과"라고 쓰지 않아요.
 
+### 조각 2 이웃 검사(수리 뒤) — head 는 조각 3 head 와 같아요
+
+- 처음 올린 이웃 검사에서 둘이 실패했어요: clippy 가 `key_set_prompt_terminal_cli` 의 복잡한 콜백 타입과 `is_some` 뒤 `unwrap` 을 막았고, `cargo_env_developer_dir` 의 "환경은 `.clean_env()` 로만 비운다" 검사가 이 파일의 `env_clear` 를 막았어요. 콜백 타입에 이름을 붙이고 시각 비교를 한 번에 맞추고 두 곳 모두 `.clean_env()` 로 바꿨어요(시험 동작은 그대로). 조각 3 의 표 시험이 `ui_korean_terminal_cli.rs` 도 짚었어요: 임시 프로젝트만 훑으니 EXEMPT 에 이유와 함께 올렸어요.
+- 수리 뒤 전체 이웃 검사(`target/ready.log`, 모두 exit 0): `cargo fmt --check` 0, clippy `--all-targets -D warnings` 0, 터미널·update·새 대상 381 passed, `--lib` 1604 passed, `--bins` 56 passed, macOS cfg 대상(`archive_privacy_suite`, `card_export_cli`, `cargo_env_developer_dir`, `e2e_host_fixture`, `go_state_cli`, `launcher_terminal_output`) 112 passed, 파이썬 `ci_scope_test`·`repo_scans_test` 0, `tools/repo_scans.json` 의 검사 39개 모두 0.
+
+### 조각 3 (개발 도구 테스트 9개)
+
+- 처분 근거: 아홉 모듈에서 실제 바이너리를 부르는 시험을 하나하나 가려 냈어요(읽기만 하는 조사, 실행 없음).
+
+  | 모듈 | 시험 | 바이너리를 부르는 것 | 처분 |
+  |---|---|---|---|
+  | `goal_block_test.py` | 10 | 10 (`goal-block`) | Rust 로 옮기고 지움 → `tests/goal_block_cli.rs` 10 |
+  | `repo_scans_test.py` | 25 | 19 (`repo-scans`: 판정 8, 명령 6, `--refs` 표 5) | 19개를 `tests/repo_scans_cli.rs` 19 로 옮기고, 표만 보는 6개는 파이썬에 남김 |
+  | `heavy_check_slot_test.py` | 25 | 2 (`heavy-slot-acquire`) | 남김 |
+  | `smoke_harness_test.py` | 30 | 5 (`AreasTest`) | 남김 |
+  | `build_folder_test.py` | 16 | 2 (`optimize-plan`, 도구가 부름) | 남김 |
+  | `self_check_test.py` | 66 | 0 | 남김 |
+  | `ci_smoke_step_test.py` | 16 | 0 | 남김 |
+  | `hook_latency_test.py` | 6 | 0 | 남김 |
+  | `github_assets_test.py` | 45 | 0 | 남김 |
+
+- 남긴 이유(REQ-7):
+  - `heavy_check_slot_test.py`: 바이너리를 부르는 2개(`test_2930_item6_python_and_rust_warn_with_the_same_words`, `test_ac2_python_and_rust_judge_the_same_inputs_the_same_way`)는 파이썬 도구 `tools/heavy_check_slot.py` 와 바이너리가 같은 입력에 같은 판정을 내는지 견주는 시험이에요. 도구가 남아 있는 동안 그 견줌이 시험 자체라서 Rust 로 옮기면 의미가 사라져요. 나머지 23개는 파이썬 도구만 돌려요. 바이너리 쪽 단독 사례는 이미 `tests/heavy_slot_cli.rs` 에 있어요.
+  - `smoke_harness_test.py`: `tools/smoke/` 하네스가 실제 바이너리로 설치·update·project·`cc` 를 차례로 도는 인수 시험(`AreasTest`)이고, 나머지 25개는 가짜 바이너리로 하네스의 실패·격리·인수 검사를 봐요. 시험 대상이 하네스(파이썬 도구)예요. 하위 명령 단독 시험은 이미 `install_cli`, `project_detect_cli` 등에 있고, 하네스의 "비운 HOME 에서 차례로" 순서를 보는 Rust 시험은 없어요.
+  - `build_folder_test.py`: 바이너리를 부르는 시험은 `tools/build_folder.py remove` 가 내부에서 `optimize-plan` 을 다시 돌리는 2개(`test_remove_deletes_only_a_picked_trim_row`, `test_remove_refuses_a_hand_written_preview_that_marks_a_live_folder_trim`)뿐이고, 시험 대상은 파이썬 도구예요. `optimize-plan` 의 행은 `tests/optimize_plan_cli.rs` 가 이미 고정해요. 바이너리 의존을 끊고 싶으면 가짜 `optimize-plan` 스크립트를 `--moai` 로 넘기는 방법이 있어서 후속 후보로 남겨요.
+  - `self_check_test.py`·`ci_smoke_step_test.py`: 가짜 `moai`/`cargo`/`python3` 스크립트나 가짜 `tools/smoke/run.sh` 로 `tools/self_check.sh` 와 CI 단계의 셸 모양을 봐요. 실제 바이너리를 실행하는 시험이 없어요.
+  - `hook_latency_test.py`: 독스트링대로 "바이너리를 돌리지 않아요"(순수 함수와 인수 검사).
+  - `github_assets_test.py`: YAML·JSON·워크플로 글을 읽고 `jq`, `tools/check_guard.py` 만 불러요. `target/debug/moai-cli` 는 주석과 글자 비교로만 나와요.
+
+- `goal_block_cli.rs`: 파이썬 시험 10개를 하나씩 같은 이름·같은 기대값(스냅샷 3개, 열린 항목 없음, 레인 전체 반복 줄, 보류 카드만 있을 때, 열린 PR 또는 시작 가능 카드, 이슈 필드, 순서 바꿔도 같음, 잘못된 항목)으로 옮겼어요. 기대 글자는 파이썬이 쥐고 있던 것을 그대로 썼어요(제품 소스의 비공개 값이라 끌어올 길이 없어요). 실행은 항상 임시 HOME 이고 `.clean_env()` 경로(`piped_with`)로 해요.
+- `repo_scans_cli.rs`: 판정 8, 명령 6, 표 5 를 같은 이름으로 옮겼어요. `--refs` 시험은 임시 git 저장소를 만드는 방식 그대로(`git_in`)예요. 표만 보는 6개(`RepoScansTableTest`)는 표와 저장소의 시험 파일을 읽을 뿐 바이너리를 안 불러서 파이썬에 남기고, 파이썬 모듈은 이제 바이너리를 하나도 안 불러요. `tools/self_check.sh:26,355` 와 `tests/self_check_test.py:582` 가 이 파이썬 모듈 이름을 쥐고 있어서 모듈은 지우지 않았어요.
+- 이 head 에서 돌린 것: `cargo test --offline --locked --test goal_block_cli --test repo_scans_cli` 10 + 19 passed, `python3 -m unittest tests.repo_scans_test` 6 passed(위 이웃 검사에도 들어 있어요).
+- 변형 5개(상한 5, 모두 잡힘, 변형 뒤 트리 변경 0, 대상은 새 Rust 파일만, `target/mutants4.log`): ① `src/repo_scans.rs` 규칙 경로 정렬 빼기 → `hit_paths_are_sorted`; ② 범위 접두 일치를 `contains` 로 → `scope_boundaries`; ③ 같은 검사 명령 중복 허용 → `two_scans_sharing_a_command`; ④ `src/goal_block.rs` 보유 목록 정렬 빼기 → `snapshot_keep_set_included`, `input_permutations_produce_identical_output`; ⑤ 열린 Issue 정렬 빼기 → `snapshot_issues_only`, `input_permutations_produce_identical_output`.
+- 리눅스: 이 Mac 에서 돌릴 수 없어요. 새 두 파일은 신호나 터미널을 쓰지 않아 위험이 작지만, 리눅스 결과는 CI 가 처음 보여 줘요.
+
 ### 수용 기준 결과
 
 - AC-1: met — `cargo test --test pty_helper` 8 passed(질문 뒤 입력, 터미널 stdin 없음, 정리, 한도에 죽임, 깨끗한 환경 포함).
@@ -130,4 +165,4 @@ created: 2026-11-20
 
 ### 남은 조각(카드는 열려 있어요)
 
-- 조각 3: 개발 도구 테스트가 바이너리를 곁다리로 부르는 9개 — 처분과 이유.
+- 없어요. 조각 1·2·3 이 모두 코드와 Result 를 가졌어요. 남은 일은 감사와 병합 열차 순서예요.
