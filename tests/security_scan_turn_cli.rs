@@ -337,8 +337,8 @@ fn notify_lists_new_findings_of_tracked_and_untracked_files_by_relative_path() {
     let seen = o.of_kind("would_notify");
     assert_eq!(seen.len(), 1, "{:?}", o.lines());
     assert_eq!(seen[0]["findings"], json!(6));
-    let mut classes: Vec<&str> = samples().iter().map(|(name, _, _)| *name).collect();
-    classes.sort();
+    // The line keeps the class names in table order, as the write-time duty's line does.
+    let classes: Vec<&str> = samples().iter().map(|(name, _, _)| *name).collect();
     assert_eq!(seen[0]["classes"], json!(classes));
 }
 
