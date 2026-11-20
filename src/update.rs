@@ -1863,6 +1863,14 @@ pub fn layer_summary(p: &UserLayerPlan) -> String {
             "  {} {}: {} {}\n",
             t.host, t.kind, t.action, t.path
         ));
+        // The settings keys an apply writes, so a person sees what they agree to
+        // (SPEC-20261120-reply-language-rule): `settings.json: language = korean`.
+        let file = std::path::Path::new(&t.path)
+            .file_name()
+            .map_or_else(|| t.path.clone(), |n| n.to_string_lossy().into_owned());
+        for k in &t.keys {
+            out.push_str(&format!("    {file}: {}\n", k.shown()));
+        }
     }
     out.push_str(&format!("command names\n  moai: {}\n", p.bin_names.state));
     out.push_str(&p.hooks.summary());
@@ -3059,6 +3067,35 @@ mod user_layer_tests {
         assert!(user_layer_plan(&home, &a, &agents, &staged).is_ok());
         let e = user_layer_plan(&home, &b, &agents, &staged).err().unwrap();
         assert!(e.contains("package changed"), "{e}");
+    }
+
+    /// SPEC-20261120-reply-language-rule: with a conversation language saved in the HOME, the
+    /// summary a person answers `[y/N]` to names the settings key and its value
+    /// (`settings.json: language = korean`); with none saved it names no `language`.
+    #[test]
+    fn the_summary_names_the_language_key_a_saved_language_would_write() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        let pkg = root.join("skills/moai");
+        let agents = root.join(crate::agent_defs::SOURCE_DIR);
+        let staged = stage_package(&pkg).unwrap();
+        let summary = |save: Option<&str>| {
+            let tmp = tempfile::tempdir().unwrap();
+            let home = tmp.path().join("home");
+            fs::create_dir_all(&home).unwrap();
+            if let Some(code) = save {
+                fs::create_dir_all(crate::home_root::path(&home)).unwrap();
+                crate::language::set_home(&home, code).unwrap();
+            }
+            layer_summary(&user_layer_plan(&home, &pkg, &agents, &staged).unwrap())
+        };
+        let with = summary(Some("ko"));
+        let line = with
+            .lines()
+            .find(|l| l.contains("language"))
+            .unwrap_or_else(|| panic!("no language line: {with}"));
+        assert_eq!(line.trim(), "settings.json: language = korean", "{with}");
+        let without = summary(None);
+        assert!(!without.contains("language ="), "{without}");
     }
 
     /// #2872 stage 2: the terminal summary gets a cleanup block only when the cleanup plan

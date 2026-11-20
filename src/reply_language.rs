@@ -31,7 +31,7 @@ pub fn sentence(ui: &str, conversation: &str, commit: &str, documents: &str) -> 
     Some(if ui == "ko" {
         // Every Korean language name ends in a vowel, so the particle is always `로`.
         format!(
-            "사용자에게 답하고 보고서를 쓰고 질문할 때는 {c}로, 커밋 메시지는 {m}로, 문서는 {d}로 쓰고, 그 밖의 모든 글은 영어로 써요."
+            "사용자에게 답하고 보고서를 쓰고 질문할 때는 {c}로, 커밋 메시지는 {m}로, 문서는 {d}로 쓰고, 그 밖의 모든 글은 영어로 쓰세요."
         )
     } else {
         format!(
@@ -70,7 +70,7 @@ mod tests {
         let s = sentence("ko", "ko", "en", "ja").unwrap();
         assert_eq!(
             s,
-            "사용자에게 답하고 보고서를 쓰고 질문할 때는 한국어로, 커밋 메시지는 영어로, 문서는 일본어로 쓰고, 그 밖의 모든 글은 영어로 써요."
+            "사용자에게 답하고 보고서를 쓰고 질문할 때는 한국어로, 커밋 메시지는 영어로, 문서는 일본어로 쓰고, 그 밖의 모든 글은 영어로 쓰세요."
         );
         assert!(s.contains("영어"), "{s}");
     }

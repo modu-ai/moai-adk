@@ -78,6 +78,17 @@ pub struct SettingKey {
     pub value: Value,
 }
 
+impl SettingKey {
+    /// `language = korean`: the text a person reads on the update screen before they agree. A
+    /// string value is shown without its quotes.
+    pub fn shown(&self) -> String {
+        match &self.value {
+            Value::String(s) => format!("{} = {s}", self.key),
+            other => format!("{} = {other}", self.key),
+        }
+    }
+}
+
 /// A key an apply added: its value and the exact text put into the file, so a revert can take
 /// back this key alone.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

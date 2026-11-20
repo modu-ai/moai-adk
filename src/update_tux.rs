@@ -822,6 +822,19 @@ fn preview_rows(v: &Value, lang: Lang) -> Vec<Row> {
             let (m, text) = tally_text(lang, tally(&rest));
             rows.push(row(m, w(lang, W::Style).into(), text));
         }
+        // The settings keys an apply writes, one row per file, so a person sees what they
+        // agree to: `settings.json  language = korean`.
+        for t in &rest {
+            if let Some(keys) = style_keys(t) {
+                let label = format!(
+                    "{} {}",
+                    w(lang, W::Style),
+                    short(t["path"].as_str().unwrap_or(""))
+                );
+                let m = change_mark(t["action"].as_str().unwrap_or("")).unwrap_or(Mark::Update);
+                rows.push(row(m, label, keys));
+            }
+        }
         for t in &blocked {
             let label = format!(
                 "{} {}",
@@ -1444,7 +1457,14 @@ impl Out<'_> {
             .flatten()
             .filter_map(|t| {
                 let m = change_mark(t["action"].as_str().unwrap_or(""))?;
-                Some((m, self.home(t["path"].as_str().unwrap_or(""))))
+                let file = self.home(t["path"].as_str().unwrap_or(""));
+                Some((
+                    m,
+                    match style_keys(t) {
+                        Some(keys) => format!("{file} ({keys})"),
+                        None => file,
+                    },
+                ))
             })
             .collect();
         if !style.is_empty() {
@@ -1546,6 +1566,23 @@ impl Out<'_> {
             }
         }
     }
+}
+
+/// The settings keys a style target writes, as `language = korean` joined by `, `; none when the
+/// target writes no key. A string value is shown without its quotes.
+fn style_keys(t: &Value) -> Option<String> {
+    let list: Vec<String> = t["keys"]
+        .as_array()?
+        .iter()
+        .filter_map(|k| {
+            let key = k["key"].as_str()?;
+            Some(match &k["value"] {
+                Value::String(s) => format!("{key} = {s}"),
+                other => format!("{key} = {other}"),
+            })
+        })
+        .collect();
+    (!list.is_empty()).then(|| list.join(", "))
 }
 
 fn change_mark(action: &str) -> Option<Mark> {

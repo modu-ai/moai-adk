@@ -690,3 +690,43 @@ fn the_preview_shows_routing_appends_and_blocked_style_targets() {
     let name = path.rsplit('/').next().unwrap();
     assert!(flat_text.contains(name), "{text}");
 }
+
+/// SPEC-20261120-reply-language-rule: the question a person answers `[y/N]` to names the
+/// settings key the style step would write and its value, in a row of its own and in the changes
+/// list, in both languages; a settings target that writes no key adds no such text.
+#[test]
+fn the_update_question_names_the_settings_key_a_style_target_writes() {
+    let mut changes = fixture("preview-changes");
+    changes["style"]["targets"]
+        .as_array_mut()
+        .unwrap()
+        .push(serde_json::json!({
+            "host": "claude", "kind": "setting",
+            "path": "/home/u/.claude/settings.json", "action": "merge",
+            "expected_sha256": null, "baseline_sha256": null, "detail": null,
+            "keys": [
+                {"key": "outputStyle", "value": "MoAI-Easy"},
+                {"key": "language", "value": "korean"},
+            ],
+        }));
+    for lang in [Lang::En, Lang::Ko] {
+        let v = view(lang, Look::Plain, 100, None);
+        let q = question(&changes, &v);
+        let lines: Vec<&str> = q
+            .lines()
+            .filter(|l| l.contains("language = korean"))
+            .collect();
+        assert!(
+            lines.len() >= 2,
+            "the row and the changes list both name the key: {q}"
+        );
+        assert!(lines.iter().all(|l| l.contains("settings.json")), "{q}");
+        assert!(q.contains("outputStyle = MoAI-Easy"), "{q}");
+    }
+    // The fixture's own targets write no key: their text carries no `=`.
+    let plain = question(
+        &fixture("preview-changes"),
+        &view(Lang::En, Look::Plain, 100, None),
+    );
+    assert!(!plain.contains("language = "), "{plain}");
+}
