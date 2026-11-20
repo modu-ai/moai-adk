@@ -17,7 +17,7 @@
 //! Left out on purpose: the model questions. They are asked after an apply and are no migration
 //! step, so they never keep a survey from reporting nothing to apply.
 
-use super::{agents_write_anything, plan_writes_anything, routing_writes_anything, UserLayerPlan};
+use super::{agents_write_anything, routing_writes_anything, UserLayerPlan};
 use serde_json::{json, Value};
 use std::path::Path;
 
@@ -958,12 +958,12 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let home = tmp.path().join("h");
         std::fs::create_dir(&home).unwrap();
-        std::fs::create_dir(home.join(crate::HOME_STATE_DIR)).unwrap();
+        std::fs::create_dir(crate::home_install::old_root(&home)).unwrap();
         std::fs::set_permissions(&home, std::fs::Permissions::from_mode(0o000)).unwrap();
         let unreadable = !old_folder_absent(&home);
         std::fs::set_permissions(&home, std::fs::Permissions::from_mode(0o755)).unwrap();
         // Run as root the folder stays readable and the check proves nothing: skip then.
-        let readable = std::fs::symlink_metadata(home.join(crate::HOME_STATE_DIR)).is_ok();
+        let readable = std::fs::symlink_metadata(crate::home_install::old_root(&home)).is_ok();
         assert!(readable, "the folder is back");
         let as_root = std::fs::read_dir(&home).is_ok() && {
             std::fs::set_permissions(&home, std::fs::Permissions::from_mode(0o000)).unwrap();
@@ -981,7 +981,7 @@ mod tests {
     fn the_move_plan_is_skipped_only_when_the_old_folder_is_not_found() {
         let tmp = tempfile::tempdir().unwrap();
         assert!(old_folder_absent(tmp.path()));
-        std::fs::create_dir(tmp.path().join(crate::HOME_STATE_DIR)).unwrap();
+        std::fs::create_dir(crate::home_install::old_root(tmp.path())).unwrap();
         assert!(!old_folder_absent(tmp.path()));
     }
 
