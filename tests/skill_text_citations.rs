@@ -203,6 +203,15 @@ fn scan_flags_each_kind_and_leaves_markers_alone() {
         ("in the moai-adk repository run it", "tool"),
         ("run `tools/self_check.sh` first", "tool"),
         ("the M-Flow bundle", "tool"),
+        // Found by the audit: forms without a hash, with a capital, with a possessive, a four
+        // digit card, and a character whose lower case is longer than itself.
+        ("Issue 2619 says so", "number"),
+        ("PR 3234 was merged", "number"),
+        ("see Issue#2619", "number"),
+        ("Decision D7 of the review", "decision"),
+        ("the user's decision 2026-11-17", "decision"),
+        ("card C-1234 is done", "card"),
+        ("\u{130} the user decision 2026-11-16", "decision"),
     ] {
         assert!(
             kinds(line).contains(&kind),
@@ -216,6 +225,7 @@ fn scan_flags_each_kind_and_leaves_markers_alone() {
         "the user decision is recorded with its answer",
         "ask the user for a decision before the pick",
         "a card id looks like `C-<number>` in the text",
+        "issue 12 of the series, and PR 12 of the other",
     ] {
         assert!(kinds(line).is_empty(), "`{line}` should be clean: {:?}", kinds(line));
     }
