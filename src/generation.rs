@@ -220,27 +220,45 @@ fn validate(r: &GenerationRequest) -> Result<()> {
         || !valid_skill_name(&r.workflow_id)
         || r.workflow_reference.trim().is_empty()
         || r.workflow_reference.len() > 256
-        || r.native_roles.len() > MAX_ROLES
-        || r.skill_projections.len() > MAX_PROJECTIONS
-        || r.project_skills.len() > MAX_PROJECTIONS
     {
         return Err("invalid generation request; no values were logged".into());
     }
-    for role in &r.native_roles {
+    // A refusal names the field and the limit and never a value of the request.
+    for (field, len, limit) in [
+        ("native_roles", r.native_roles.len(), MAX_ROLES),
+        ("skill_projections", r.skill_projections.len(), MAX_PROJECTIONS),
+        ("project_skills", r.project_skills.len(), MAX_PROJECTIONS),
+    ] {
+        if len > limit {
+            return Err(format!(
+                "invalid generation request: {field} has more than {limit} entries; no values were logged"
+            ));
+        }
+    }
+    for (i, role) in r.native_roles.iter().enumerate() {
         // A project role is named `prj-<name>` (leader design 6842177115, #2706): it never
         // shadows a user-layer `moai-*` agent, and a name without the prefix is refused. The
         // bare `prj-` fails `valid_skill_name` (no trailing `-`).
-        if !valid_skill_name(&role.role_id)
-            || !role.role_id.starts_with("prj-")
-            || !(role.host == "claude" || role.host == "codex")
-            || !bounded_purpose(&role.purpose)
-            || role.tools.len() > 32
+        let bad = if !valid_skill_name(&role.role_id) || !role.role_id.starts_with("prj-") {
+            Some("role_id")
+        } else if !(role.host == "claude" || role.host == "codex") {
+            Some("host")
+        } else if !bounded_purpose(&role.purpose) {
+            Some("purpose")
+        } else if role.tools.len() > 32
             || !role
                 .tools
                 .iter()
                 .all(|t| !t.is_empty() && t.len() <= 128 && !t.contains(char::is_whitespace))
         {
-            return Err("invalid generation request; no values were logged".into());
+            Some("tools")
+        } else {
+            None
+        };
+        if let Some(field) = bad {
+            return Err(format!(
+                "invalid generation request: native_roles[{i}].{field} is not accepted; no values were logged"
+            ));
         }
     }
     for p in &r.skill_projections {
@@ -256,7 +274,7 @@ fn validate(r: &GenerationRequest) -> Result<()> {
         }
     }
     let mut seen_ids = std::collections::BTreeSet::new();
-    for ps in &r.project_skills {
+    for (i, ps) in r.project_skills.iter().enumerate() {
         if !seen_ids.insert(ps.id.as_str())
             || ps
                 .hosts
@@ -267,12 +285,19 @@ fn validate(r: &GenerationRequest) -> Result<()> {
         {
             return Err("invalid generation request: a project skill id or host repeats".into());
         }
-        if !valid_skill_name(&ps.id)
-            || !ps.id.starts_with("prj-")
-            || !bounded_purpose(&ps.purpose)
-            || ps.hosts.iter().any(|h| h != "claude" && h != "codex")
-        {
-            return Err("invalid generation request; no values were logged".into());
+        let bad = if !valid_skill_name(&ps.id) || !ps.id.starts_with("prj-") {
+            Some("id")
+        } else if !bounded_purpose(&ps.purpose) {
+            Some("purpose")
+        } else if ps.hosts.iter().any(|h| h != "claude" && h != "codex") {
+            Some("hosts")
+        } else {
+            None
+        };
+        if let Some(field) = bad {
+            return Err(format!(
+                "invalid generation request: project_skills[{i}].{field} is not accepted; no values were logged"
+            ));
         }
         render_safe(&ps.purpose)?;
     }
