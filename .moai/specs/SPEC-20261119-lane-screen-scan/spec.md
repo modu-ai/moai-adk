@@ -2,7 +2,7 @@
 id: SPEC-20261119-lane-screen-scan
 title: "A scan lists every open terminal's state and the UTC reset time of each lane stopped by a usage limit"
 status: draft
-revision: 1
+revision: 2
 created: 2026-11-19
 parent: SPEC-20261119-lane-screen-guard
 ---
@@ -13,20 +13,23 @@ parent: SPEC-20261119-lane-screen-guard
 
 카드 C-120 의 셋째 조각이에요. 2026-11-19 에 레인 여덟 개가 사용 한도로 멈췄는데 사용자가 말해서야 알았고, 화면에 적힌 해제 시각을 한국 시각으로 읽었지만 실제로는 UTC+8 이라 해제 요청이 한 시간 일찍 나갔어요. 이 SPEC 은 `moai lane-screen --scan` 을 만들어요: 열려 있는 터미널을 `orca terminal list --json` 으로 모아 터미널마다 바탕 SPEC(`SPEC-20261119-lane-screen-guard`)의 분류기를 돌려, 상태 표와 한도로 멈춘 레인의 해제 시각(UTC)을 한 번에 보여 줘요.
 
-이 SPEC 은 분류기가 병합된 뒤에 구현해요. 이 조각(1)은 SPEC 뿐이고 코드와 시험은 만들지 않아요.
+개정 1 은 SPEC 만 있었고(조각 A 의 분류기가 병합되기 전), 개정 2 는 분류기(조각 A)와 Orca 호출 틀(조각 B 의 `Orca` 트레이트와 `ProcessOrca`) 위에서 구현해요.
 
 ## Interview
 
-- Q1: 터미널 목록은 어디서 얻나요? → A: `orca terminal list --json`(2026-11-19 읽음). 대상이 많아도 터미널마다 한 번씩 화면을 읽어요.
+- Q1: 터미널 목록은 어디서 얻나요? → A: `orca terminal list --json`(2026-11-19 읽음: 답은 `result.terminals[]`, 터미널마다 `handle`·`title`·`branch`·`connected` 등, 그리고 `totalCount`·`truncated`). 대상이 많아도 터미널마다 한 번씩 화면을 읽어요.
 - Q2: 한 터미널이 읽히지 않으면요? → A: 그 줄만 `unreachable` 로 두고 나머지는 계속해요. 한 줄의 실패가 목록 전체를 막지 않아요.
-- Q3: 해제 시각은 어디서 가져오나요? → A: 바탕 SPEC 의 규칙 그대로예요(`--home` 의 `resets_at` 우선, 화면 글자는 아는 시간대만 바꿔요). 레인마다 HOME 을 알 수 없으면 화면 글자만 써요.
-- Q4: 출력은요? → A: 사람이 읽는 표(터미널·상태·해제 시각 UTC)와 `--json`(기계가 읽는 모양)이에요. 화면 전체는 남기지 않고 근거 줄 하나만 둬요.
+- Q3: 해제 시각은 어디서 가져오나요? → A: 화면 글자에서만, 바탕 SPEC 의 시간대 규칙 그대로예요(아는 시간대만 UTC 로 바꾸고, 시간대가 없거나 모르는 것은 `unknown` 과 원문). 터미널마다 HOME 을 알 수 없으니 `--home` 은 `--scan` 과 같이 쓰지 못해요.
+- Q4: 출력은요? → A: 다른 `moai` 명령처럼 JSON 봉투예요. `result.terminals` 에 줄마다 `handle`·`title`·`branch`·`state`·`reason`·`evidence`·`reset`, 그리고 사람이 읽는 표를 `result.table`(줄의 목록)에 같이 둬요. 화면 전체는 남기지 않고 근거 줄 하나만 둬요.
+- Q5: 목록이 Orca 쪽에서 잘렸으면요? → A: Orca 의 `truncated` 가 참이면 `result.truncated` 를 참으로 두고 표 끝에 "n 중 m 개만 보여요" 줄을 적어요. 전부 봤다고 말하지 않아요.
+- Q6: 목록에 이상한 핸들이 있으면요? → A: `orca terminal read` 의 옵션으로 읽힐 수 있는 핸들(`-` 로 시작 등)은 `orca` 에 넘기지 않고 그 줄을 `unreachable` 로 둬요(조각 B 의 핸들 규칙과 같아요).
 
 ## Non-goals
 
 - 한도로 멈춘 레인을 깨우거나 해제 시각에 맞춰 자동으로 보내기.
 - 상태를 파일에 기록하기: 읽기만 하고 아무것도 쓰지 않아요.
 - 레인이 아닌 터미널의 구분: 목록에 있는 터미널을 모두 보여요.
+- 레인마다 `usage-limits.json` 을 읽기: 터미널에서 레인 HOME 을 알 수 없어요(`--home` 은 한 화면을 읽는 기본 모드에서만 써요).
 
 ## Requirements
 
@@ -35,31 +38,35 @@ parent: SPEC-20261119-lane-screen-guard
 - REQ-3 (REQ-1): IF a listed terminal is stopped by a usage limit, THEN `moai lane-screen --scan` shall print the reset time of that limit in UTC next to its state.
 - REQ-4 (REQ-1): IF the Orca program is absent or `orca terminal list` fails, THEN `moai lane-screen --scan` shall exit with a non-zero code that says the list could not be read.
 - REQ-5: The command `moai lane-screen --scan` shall write no file and send no input to any terminal.
+- REQ-6 (REQ-1): IF `orca terminal list` reports that its list is cut short, THEN `moai lane-screen --scan` shall say how many of how many terminals it shows.
 
 ## Acceptance
 
-- AC-1 (REQ-1, REQ-2): 가짜 `orca` 가 터미널 셋(작업 중·확인 창·읽기 실패)을 주면 표가 셋을 모두 보이고 읽기 실패는 `unreachable` 이며 나머지는 정상이에요.
+- AC-1 (REQ-1, REQ-2): 가짜 `orca` 가 터미널 셋(작업 중·확인 창·읽기 실패)을 주면 표가 셋을 모두 보이고 읽기 실패는 `unreachable` 이며 나머지는 정상이에요. `-` 로 시작하는 핸들은 `orca terminal read` 를 부르지 않고 `unreachable` 예요.
   verify: `cargo test --locked --offline --test lane_screen_cli lane_screen_scan`
-- AC-2 (REQ-3): 한도 화면의 터미널 줄에 해제 시각이 UTC 로 있어요.
+- AC-2 (REQ-3): 한도 화면의 터미널 줄에 해제 시각이 UTC 로 있고, 시간대 없는 해제 시각은 UTC 를 지어내지 않고 `unknown` 이에요.
   verify: `cargo test --locked --offline --test lane_screen_cli lane_screen_scan_reset`
-- AC-3 (REQ-4, REQ-5): 목록을 읽지 못하면 종료 코드가 0 이 아니고, 도구는 보내지도 쓰지도 않아요(가짜 `orca` 의 보내기 기록 파일이 비어 있어요).
+- AC-3 (REQ-4, REQ-5): 목록을 읽지 못하면(`orca` 없음·종료 코드 0 아님·JSON 이 아닌 답) 종료 코드가 0 이 아니고 "list could not be read" 가 있으며, 도구는 보내지도 쓰지도 않아요(가짜 `orca` 의 호출 기록에 `send` 가 없고 실행 폴더에 새 파일이 없어요).
   verify: `cargo test --locked --offline --test lane_screen_cli lane_screen_scan_fails`
+- AC-4 (REQ-6): 목록이 잘렸다고 Orca 가 말하면 `result.truncated` 가 참이고 표 끝 줄이 몇 중 몇 개인지 말해요.
+  verify: `cargo test --locked --offline --test lane_screen_cli lane_screen_scan_truncated`
 
 ## Scope
 
-- write(이 조각): `.moai/specs/SPEC-20261119-lane-screen-scan/**`
-- write(구현 조각 C, 쓰기 범위를 새로 받아요, 분류기 병합 뒤): `src/ops/lane_screen.rs`(`--scan` 가지), `tests/lane_screen_cli.rs`, `tests/fixtures/lane_screens/**`
-- read-only: `src/lane_screen.rs`(분류기)
+- write: `.moai/specs/SPEC-20261119-lane-screen-scan/**`
+- write(구현 조각 C): `src/lane_screen.rs`(`scan`), `src/lane_send.rs`(`Orca::list` 와 `ProcessOrca::list`, 그리고 재감사 C-N2 수리로 `ProcessOrca::call` 의 출력 기다림), `src/ops/lane_send.rs`(조각 B 의 명령; 이 조각은 쓰지 않아요, 재감사 C-N6 이 빠졌다고 짚어서 적어요), `src/ops/lane_screen.rs`(`--scan` 가지), `tests/orca_optional_3005.rs`(`SRC_ORCA_FILES` 의 주석), `src/help.rs`(예시), 도움말 골든 넷, `docs/design-review/appendix/operations/lane_screen.md`, `tests/lane_screen_cli.rs`, `tests/fixtures/lane_screens/**`
+- read-only: 그 밖의 모든 것
 
 ## Plan
 
-1. (이 조각) SPEC.
-2. 구현 조각 C: 가짜 `orca` 로 `lane_screen_scan*` 시험을 먼저 써서 실패를 보고 `--scan` 을 만든 뒤 이웃 시험과 변이 시험(상한 12).
+1. SPEC 개정 2(이 문서).
+2. 가짜 `orca`(목록·읽기·호출 기록)로 `lane_screen_scan*` 시험을 먼저 써서 실패를 보고 `scan` 과 `--scan` 을 만든 뒤 이웃 시험, rustfmt(ops 포함), clippy, 변이 시험(레인 상한 5).
 
 ## Risks
 
-- 터미널이 많으면 읽는 횟수가 많아요: 터미널마다 한 번이고 그 수만큼 `orca` 를 불러요; 한 번에 하나씩 순서대로 읽어 부하를 늘리지 않아요.
-- 목록에 레인이 아닌 터미널(셸)이 섞이면 `unknown` 이나 `idle` 이 아닌 `unknown` 으로 나와요: 화면 표지가 없는 셸은 추측하지 않아요(바탕 SPEC REQ-7).
+- 터미널이 많으면 읽는 횟수가 많아요: 터미널마다 한 번이고 그 수만큼 `orca` 를 불러요; 한 번에 하나씩 순서대로 읽어 부하를 늘리지 않아요. 멈춘 터미널 하나는 호출당 시간 제한(`MOAI_ORCA_TIMEOUT_SECS`, 기본 15초)만큼 걸려요.
+- 목록에 레인이 아닌 터미널(셸)이 섞이면 `idle` 이 아닌 `unknown` 으로 나와요: 화면 표지가 없는 셸은 추측하지 않아요(바탕 SPEC REQ-7).
+- 터미널 제목·브랜치는 남이 정한 글이에요: 제어 문자를 지우고 길이를 잘라서 보여요.
 
 ## Decisions
 
@@ -67,11 +74,31 @@ parent: SPEC-20261119-lane-screen-guard
 | --- | --- | --- | --- |
 | D-1 | 터미널을 순서대로 하나씩 읽음 | 부하와 실패 경계가 단순해요 | 병렬 읽기 |
 | D-2 | 읽기 실패는 그 줄만 `unreachable` | 한 줄의 실패가 목록을 막지 않아요 | 전체 실패 |
+| D-3 | `--scan` 은 `--home` 과 같이 쓰지 못함, 해제 시각은 화면 글자에서만 | 터미널에서 레인 HOME 을 알 수 없어요 | 하나의 HOME 을 모든 줄에 적용 |
+| D-4 | JSON 봉투 + `result.table` 줄 목록 | 다른 명령이 모두 봉투를 내고, 사람은 표 줄을 그대로 출력해 읽어요 | 사람용 별도 출력 모드 |
+| D-5 | 분류는 `lane_screen::scan` 의 닫는 함수(`read`)로, Orca 호출은 `Orca` 트레이트로 | 분류기는 프로세스를 모르고 시험이 가짜 하나로 끝나요 | 분류기가 `orca` 를 직접 부름 |
+| D-6 | Orca 의 글자만 온 답(JSON 아님)은 화면으로 믿지 않고 `unreachable` | 조각 B 와 같은 규칙이에요 | 글자를 화면으로 읽음 |
+| D-7 | 한 번에 읽는 터미널은 최대 200개, 더 있으면 `truncated` 로 말함 | 목록이 끝없이 길어도 호출 수에 상한이 있고 전부 봤다고 말하지 않아요 | 상한 없음 |
+| D-8 | 한도 줄과 Yes/No 메뉴가 같은 화면이면 상태는 `permission_prompt` 그대로, `reset` 만 화면 글에서 채움 | 보내기 보호(조각 A·B)는 건드리지 않고, 한도로 멈춘 레인이 해제 시각 목록에서 빠지지 않아요(조각 A 재감사 R-N3) | 상태를 `usage_limit` 으로 바꿈(메뉴 위의 보내기 보호가 약해져요) |
 
 ## Result
 
-이 조각은 SPEC 뿐이에요: 코드·시험을 만들지 않았어요.
+구현 조각 C(`moai lane-screen --scan`, 코드 커밋 `d2e465d168`)예요. 시험은 RED 먼저: 구현 전 `cargo test --locked --offline --test lane_screen_cli scan_tests` 에서 시험 8개가 모두 실패했고(`--scan` 이 없는 명령), 구현 뒤 경계 시험(200/201)과 R-N3 시험을 더해 `scan_tests` 10개가 모두 통과해요. 실제 `orca` 는 부르지 않았고 가짜 `orca`(셸 스크립트, 호출 기록 `calls.txt`)만 썼어요.
 
-- AC-1: 아직 안 했어요(구현 조각 C).
-- AC-2: 아직 안 했어요(구현 조각 C).
-- AC-3: 아직 안 했어요(구현 조각 C).
+- AC-1: 충족 — `cargo test --locked --offline --test lane_screen_cli lane_screen_scan` 이 통과해요(`lane_screen_scan_lists_every_terminal_and_reads_them_one_by_one`: 터미널 셋의 상태가 `working`·`permission_prompt`·`unreachable`, 호출 기록이 `terminal list --json` 다음 터미널마다 `terminal read` 하나씩 순서대로이고 `send` 도 새 파일도 없음; `..._a_handle_orca_could_read_as_an_option_is_not_read`: `-bad`·핸들 없음·공백 든 핸들은 `unreachable` 이고 `orca` 에는 좋은 핸들만 닿음; `..._an_answer_that_is_plain_text_is_not_a_screen`; `..._title_and_branch_are_cleaned_and_cut`). `--lib lane_send` 의 `read_checked_never_hands_a_bad_handle_to_orca` 도 통과.
+- AC-2: 충족 — `... lane_screen_scan_reset` 이 통과해요(`..._reset_is_in_utc_next_to_the_state`: 한도 줄에 `2026-11-20T10:00:00Z`(`source: screen`), 시간대 없는 해제 시각은 `utc: null`·`unknown: true` 이고 표에 `unknown` 이며 지어낸 UTC 없음, 한도가 아닌 줄은 `reset: null`; `..._reset_is_kept_when_a_yes_no_menu_hides_the_usage_limit`: 조각 A 재감사 R-N3 — 한도 줄과 Yes/No 메뉴가 같이 있는 화면은 `permission_prompt` 이면서 `reset` 이 `2026-11-20T10:00:00Z`, 한도 글 없는 메뉴는 `reset: null`).
+- AC-3: 충족 — `... lane_screen_scan_fails` 와 `... lane_screen_scan_cannot_be_combined_with_home` 이 통과해요(목록 읽기가 종료 코드 0 아님·JSON 아님·`ok: false`·`terminals` 없음일 때 종료 코드 1 과 "the terminal list could not be read", 없는 `orca` 는 "cannot run", 모든 경우에 호출 기록은 `terminal list --json` 하나뿐이고 보내기도 새 파일도 없음; `--scan --home` 은 거절되고 `orca` 를 부르지 않음).
+- AC-4: 충족 — `... lane_screen_scan_truncated` 와 `... lane_screen_scan_reads_at_most_200_terminals` 가 통과해요(Orca 가 `truncated` 라고 하면 `result.truncated` 가 참이고 표 끝 줄이 "2 of 5 terminals shown: the list was cut short"; 경계 N/N+1: 200개는 전부 읽고 줄이 없고, 201개는 200개만 읽고(호출 201번 = 목록 1 + 읽기 200) "200 of 201 ... cut short").
+- 확인한 것들: `--test lane_screen_cli` 36 passed, `--test lane_send_cli` 16, `--test lane_status_cli` 25, `--test help_layout` 10(골든은 바뀌지 않았어요), `cargo test --bins` 28 passed(처음에 `help_rules::stdin_examples_match_the_commands_that_read_stdin` 이 예시 `lane-screen --scan` 을 걸렀어요: 그 규칙은 명령 이름 단위라 `lane-screen` 의 예시에는 ` < file` 이 있어야 하는데 `--scan` 은 표준 입력을 읽지 않아요. 규칙 파일 `src/main.rs` 는 이 조각의 범위가 아니라서 예시를 목록에서 빼고 `--scan` 은 `--help` 본문과 문서에 두었어요), `--test lane_duty_line` 8, `--lib lane_` 202 passed. `cargo fmt --check` 0, `rustfmt --check --edition 2021 src/ops/*.rs` 0, `cargo clippy --locked --offline --all-targets -- -D warnings` 0. 변이 5개(핸들 검사 빼기, 읽는 수 상한 +1, 메뉴가 한도를 가리는 것을 되돌리기, 글자만 온 답을 화면으로 믿기, `--scan` 과 `--home` 허용)가 모두 KILLED, 변이마다 `git checkout` 으로 복원하고 끝나고 작업 트리가 깨끗했어요.
+- 구현에서 SPEC 보다 구체화한 것: 한 번에 읽는 터미널은 최대 200개(`MAX_SCAN`)고 더 있으면 잘렸다고 말해요(D-7); `ProcessOrca::from_env`(`MOAI_ORCA_BIN`·`MOAI_ORCA_TIMEOUT_SECS`)를 `lane-send` 와 `--scan` 이 함께 써요; 한도 줄과 Yes/No 메뉴가 같이 있을 때 한도 해제 시각을 잃지 않아요(R-N3, D-8: 보내기 보호를 위해 상태는 `permission_prompt` 그대로, `reset` 만 채우고 `reason` 에 "a usage-limit message is also on the screen").
+- 조각 B 의 감사 FAIL 수리(노트 3362, B 가지 head `9eeb46a7ee`: 번호 앞머리 건너뛰기, 보내기 답의 `ok`, 질문 아래 yes/no 낱말)를 병합했어요(병합 트리는 `git merge-tree --write-tree` 시뮬레이션과 같은 `127ec5c5ce`). 병합 뒤 `--test lane_screen_cli` 38 passed(조각 B 의 28 + `--scan` 10), `--test lane_send_cli` 19, `--test lane_status_cli` 25 passed.
+- 돌리지 않은 것: 전체 cargo 시험, 파이썬 discover(CI), nextest, 실제 `orca` 터미널에 붙인 실행(`orca terminal list` 의 실제 답 모양은 2026-11-19 에 읽은 것을 가짜로 옮겼어요), 여섯 검사와 등재 검사 전부의 종료 코드는 READY 때(repair 노트)에 적어요.
+
+**감사 FAIL 수리(리더 판정 note 3497, head 66dda56b16 → 코드 커밋 `e3e1f92614`)**: 조각 B 의 둘째 수리(`57547e83ab`, R-B1·R-N1)를 먼저 병합했어요(병합 `6768fda8c5`, 트리가 `git merge-tree --write-tree` 시뮬레이션과 같은 `a7c483b796`). 그 위에 다음을 고쳤어요.
+- C-B1(AC-1, 차단): `--scan` 이 가져오는 다른 터미널의 글 다섯 곳 — 제목·브랜치·표(`shown`), `evidence`, `reset.raw`, 읽기 실패 `reason`, 목록 실패 `message` — 에 비밀 모양이 그대로 나왔어요. 이제 모두 `safe_text` 를 거쳐요: `lane_duty::unsafe_char` 문자를 먼저 지우고(폭 없는 문자로 모양을 쪼개 숨기지 못하게), `redact::redact_outgoing`(낱말 단위: `AKIA…`·`xox…`·`eyJ…` 등)과 `redact::redact_secret_shapes`(`sk-`·`ghp_`·`password=`·`token=`·PEM 등 낱말 안 어디든)를 차례로 걸어 `[redacted]` 로 바꿔요. `lane-screen`(한 화면)의 `evidence`·`reset.raw` 도 같은 `cut` 을 지나요. 대가: `task-list` 처럼 `sk-` 가 낱말 안에 든 글도 줄어요(`lane_screen.md` 에 적었어요). 시험: `lane_screen_cli lane_screen_scan_secret_shapes_from_other_terminals_never_reach_the_answer`(합성 값 셋 — GitHub 토큰 접두 꼴, `sk` 키 꼴, `password=` 쌍 — 을 조각을 이어 붙여 만들어, 제목·브랜치·`evidence`·`reset.raw`·읽기 실패 `reason`·목록 실패 `message` 마다 값이 응답과 stderr 에 없고 `[redacted]` 가 있음), 단위 `text_from_a_terminal_hides_secret_shapes_and_unsafe_characters`.
+- C-N1: 같은 다섯 곳에서 양방향·폭 없는 문자(U+202E, U+200B, U+2066, U+FEFF)와 줄 구분 U+2028 을 지워요. 시험: `lane_screen_scan_bidi_and_zero_width_characters_are_removed_from_every_shown_text`(제목 `lane abcde`, 브랜치 `brabcde`, 나머지 셋과 목록 실패 `message` 가 `abcde` 로 끝남, 응답 전체에 다섯 문자 없음).
+- C-N2(조각 B 코드, `src/lane_send.rs` `ProcessOrca::call`): `orca` 가 끝났는데 자식이 출력 관을 쥐면 `join` 이 제한 없이 기다렸어요(제한 2초에 12초). 이제 출력 읽기를 채널로 받고 같은 시간 제한(적어도 0.25초 말미, `OUTPUT_GRACE`)이 지나면 읽기를 버리고 "did not finish its output within N seconds" 로 그 터미널만 `unreachable` 이에요. 시험: `lane_screen_scan_an_orca_child_holding_the_output_does_not_hold_the_scan`(한 터미널의 읽기가 `sleep 10 &` 자식을 남기고, 제한 1초에 스캔이 6초 안에 끝나고, 그 줄은 `unreachable`, 다른 터미널은 `working`).
+- C-N5: 살아남은 변이 셋을 잡는 시험을 더했어요 — `lane_screen_scan_each_of_the_two_cut_short_signals_is_enough`(`totalCount` 만 큼, `truncated` 만 참, 둘 다 아님), `lane_screen_scan_by_state_counts_every_terminal_of_a_state`(같은 상태 셋의 개수 3). 양방향 문자 제목은 C-N1 시험이 맡아요.
+- C-N6·N7: 이 SPEC 의 Scope 에 `src/ops/lane_send.rs`(쓰지 않음)·`tests/orca_optional_3005.rs`·`ProcessOrca::call` 을 적었고, `tests/orca_optional_3005.rs` 의 `SRC_ORCA_FILES` 주석이 "아무도 프로그램을 띄우지 않는다/다른 명령은 부르지 않는다" 고 한 곳을 사실대로 고쳤어요.
+- 증거(코드 head `e3e1f92614`, 2026-11-19): RED 먼저 — 새 시험 3개가 수리 전 코드에서 실패했어요(비밀 모양, 양방향 문자, 자식이 출력을 쥔 호출; C-N5 시험 둘은 수리 전에도 통과하고 변이로 확인해요). 수리 뒤 `--lib lane_` 208 passed, `--test lane_screen_cli` 44, `--test lane_send_cli` 20, `--test lane_status_cli` 25, `--test lane_duty_line` 8 passed. 변이 8/8 KILLED — 수리 5개(`cut`·`shown` 이 안전하게 만들지 않음, 지우기를 먼저 하지 않음, 부분 문자열 거름 없음, 끝난 호출의 출력을 한없이 기다림)와 감사의 C-N5 셋(`totalCount` 무시, `truncated` 무시, `by_state` 개수 1 고정); 변이마다 `git checkout` 으로 복원, 끝나고 깨끗. 여섯 검사·등재 검사·같은 접두 16개 대상의 종료 코드는 repair 노트에 있어요.
+- 후속 후보(이번 수리 밖, 감사 기록): C-N3 전체 시간 상한(200 × 15초), C-N4 1 MiB 넘는 목록의 사유, C-N8 긴 프로그램 경로가 사유를 가림.
