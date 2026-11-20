@@ -62,7 +62,8 @@ class Worker:
         self.home = root / "home"
         (self.project / ".moai-cli").mkdir(parents=True)
         (self.home / ".moai-cli").mkdir(parents=True)
-        self.log = self.project / ".moai-cli/receipts/hook-engine.jsonl"
+        # The would_notify lines have a log of their own since SPEC-20261120-security-scan-wire.
+        self.log = self.project / ".moai-cli/receipts/security-scan.jsonl"
         self.seen = 0
 
     def feed(self, rel, text):

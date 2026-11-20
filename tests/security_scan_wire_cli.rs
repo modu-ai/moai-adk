@@ -328,3 +328,49 @@ fn a_full_security_scan_log_does_not_stop_the_engine_log() {
         "the deny line is written while the log of the event is full: {engine:?}"
     );
 }
+
+/// AC-4 (REQ-9, REQ-10): an observed finding lands in the log of the event and leaves the engine
+/// log without a line (this fails when the line goes to `hook-engine.jsonl`), and the size limit
+/// of the log of the event is exact: one byte below it the log still takes a line, at it not.
+#[test]
+fn an_observed_finding_stays_out_of_the_engine_log_and_the_limit_edge_is_exact() {
+    let f = fx();
+    let log = f.receipts("security-scan.jsonl");
+    let write = |f: &Fx| {
+        f.dispatch(
+            "security-scan",
+            json!({"session_id": "s1", "hook_event_name": "PostToolUse", "tool_name": "Write",
+                "tool_use_id": "t1", "tool_response": {"success": true}, "cwd": f.proj,
+                "tool_input": {"file_path": f.proj.join("src/a.py"), "content": "x = eval(y)\n"}}),
+        )
+    };
+    assert_eq!(write(&f), (0, String::new()));
+    let own = f.lines("security-scan.jsonl");
+    assert_eq!(own.len(), 1, "{own:?}");
+    assert_eq!(own[0]["kind"], json!("would_notify"));
+    assert!(
+        f.lines("hook-engine.jsonl").is_empty(),
+        "the would_notify line must not reach the engine log"
+    );
+    let set_len = |n: u64| {
+        fs::OpenOptions::new()
+            .write(true)
+            .open(&log)
+            .unwrap()
+            .set_len(n)
+            .unwrap()
+    };
+    set_len(hooks::RECEIPT_LOG_LIMIT - 1);
+    assert_eq!(write(&f), (0, String::new()));
+    assert!(
+        fs::metadata(&log).unwrap().len() > hooks::RECEIPT_LOG_LIMIT - 1,
+        "one byte below the limit the log still takes a line"
+    );
+    set_len(hooks::RECEIPT_LOG_LIMIT);
+    assert_eq!(write(&f), (0, String::new()));
+    assert_eq!(
+        fs::metadata(&log).unwrap().len(),
+        hooks::RECEIPT_LOG_LIMIT,
+        "at the limit it does not"
+    );
+}

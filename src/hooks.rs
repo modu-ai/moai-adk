@@ -300,11 +300,12 @@ pub fn hook_set(host: &str) -> Vec<(&'static str, Option<&'static str>, Handler)
     hook_set_with(host, true)
 }
 
-/// The hook set that `binary` generates: the legacy set (the old binary name, [`LEGACY_BINARY`])
-/// is the set as the releases before #3004 P4-2 wrote it and holds no security-scan group, so the
-/// rewrite still recognises those installs byte for byte.
+/// The hook set that `binary` generates: only the current binary ([`HOOK_BINARY`]) gets the
+/// security-scan group. The legacy set (the old binary name, [`LEGACY_BINARY`]) is the set as the
+/// releases before #3004 P4-2 wrote it, so the rewrite still recognises those installs byte for
+/// byte; any other name fails closed to the same set, as `edit_diagnostics_timeout` does.
 fn hook_set_of(binary: &str, host: &str) -> Vec<(&'static str, Option<&'static str>, Handler)> {
-    hook_set_with(host, binary != LEGACY_BINARY)
+    hook_set_with(host, binary == HOOK_BINARY)
 }
 
 fn hook_set_with(
