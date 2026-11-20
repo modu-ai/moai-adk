@@ -1,0 +1,16 @@
+<!-- expect: SVG070 -->
+<!-- C2: mask bottom y=116 clears the y=120 stroke by 4 units, under the 6-unit floor. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200"
+     role="img" aria-labelledby="c2-mask-too-close-title c2-mask-too-close-desc">
+  <title id="c2-mask-too-close-title">Stage handoff</title>
+  <desc id="c2-mask-too-close-desc">One connector carries a masked label between two stages.</desc>
+  <defs>
+    <marker id="c2-mask-too-close-arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="400" height="200" fill="#FAF9F5"/>
+  <path d="M 60 120 H 340" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#c2-mask-too-close-arrow)"/>
+  <rect x="150" y="96" width="90" height="20" fill="#FFFFFF"/>
+  <text x="195" y="110" font-size="11" text-anchor="middle" fill="#141413">handoff</text>
+</svg>

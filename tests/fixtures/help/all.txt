@@ -13,10 +13,12 @@ Project
   project-plan            Preview the project profile
   project-apply           Write a previewed project profile
   project-update-plan     Preview the whole project update in one view
+  work-flow-plan          Reads only. Print the integration-branch question evidence
   language-setup          Choose the writing language item by item
   language-set            Record the conversation language in HOME
   index-build             Build the code map index
   check-tree              Warn about what the tracked MoAI folders hold
+  check                   Pick the tests a change can break and check them
   ledger-status           Show the project's ledger state
   card                    Work with the project's local cards
   spec                    Write, check, list, show, take and close the project's SPECs

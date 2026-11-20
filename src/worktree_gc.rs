@@ -784,7 +784,7 @@ pub fn plan_paced(
 ) -> Result<Value> {
     if recent.as_secs() < MIN_RECENT_MINUTES * 60 {
         return Err(format!(
-            "--recent-minutes must be at least {MIN_RECENT_MINUTES} (#2498); got {}",
+            "--recent-minutes must be at least {MIN_RECENT_MINUTES}; got {}",
             recent.as_secs() / 60
         ));
     }
@@ -1010,7 +1010,7 @@ pub fn plan_paced(
         // this one, never a sum of sizes (clonefile and hard links make sums wrong).
         "before_free_bytes": crate::worktree_report::disk_bytes(&top).map(|(free, _)| free),
         "plan_digest": plan_digest,
-        "apply": "worktree-gc-apply with this plan_digest and a permission reference (#2498); on this machine the leader runs it only after the user confirms (#2389 comment 6774899518 item 2)",
+        "apply": "worktree-gc-apply with this plan_digest and a permission reference; on this machine the leader runs it only after the user confirms",
         "network": "disabled",
         "writes": false,
     }))
