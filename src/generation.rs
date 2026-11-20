@@ -9,9 +9,11 @@
 //! generation state joins the one manifest publish (#2114). `src/agents.rs` is 01-B
 //! #1989's; its public API and behavior are unchanged; the
 //! generation-specific files — portable project workflows under
-//! `.moai-cli/workflows/<id>/`, native role files `.claude/agents/<role>.md` and
-//! `.codex/agents/<role>.toml`, and skill projections `.claude/skills/<id>/SKILL.md`
-//! (`.agents/skills/…`) — are planned and published in this module through the public
+//! `.moai-cli/workflows/<id>/`, native role files `.claude/agents/moai/<role>.md` and
+//! `.codex/agents/moai/<role>.toml`, and skills `.claude/skills/moai-<id>/SKILL.md`
+//! (`.agents/skills/moai-<id>/…`), in a `moai` namespace apart from the user's own files; files of
+//! an earlier run at the former paths move through the plan (`plan_former_paths`) — are planned
+//! and published in this module through the public
 //! 01-B apply engine (`decide`, `publish_exclusive`/`publish_replace`,
 //! `save_before_bytes`, `Receipt`). Baselines of generation files live in the same
 //! `generation.json` `owned_files` list, recorded with an additive `kind` field

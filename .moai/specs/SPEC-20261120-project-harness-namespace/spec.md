@@ -23,7 +23,7 @@ This change moves the four generated paths into that namespace, once the officia
 - REQ-5: WHEN a file that the generation record owns lies at the former path of a requested agent or skill and its bytes equal the recorded ones, the `generation-plan` operation shall plan the removal of the former path together with the creation of the new path. · failure: none
 - REQ-6 (REQ-5): IF a file that the generation record owns at a former path was edited after it was generated, THEN the `generation-plan` operation shall plan the former path and the new path as conflict and leave the edited file where it is.
 - REQ-7: The `generation-plan` operation shall plan no change to a file at a former path that the generation record does not own.
-- REQ-8 (REQ-7): IF a file the generation record does not own lies at the former path of a requested agent or skill, THEN the `generation-plan` operation shall plan the new path as conflict and say why, because Claude Code loads only one of two agents that share a name.
+- REQ-8 (REQ-7): IF a file the generation record does not own lies at the former path of a requested agent, THEN the `generation-plan` operation shall plan the new path as conflict and say why, because Claude Code loads only one of two agents that share a name.
 - REQ-9: The `generation-apply` operation shall refuse to remove a former path whose bytes differ from the plan.
 - REQ-10: The project route shall tell the agent that the agents and skills it generates are written inside the `moai` folder of the agents folder and the `moai-` skill folders, apart from the files the user made.
 
@@ -31,7 +31,7 @@ This change moves the four generated paths into that namespace, once the officia
 
 - AC-1 (REQ-1, REQ-2, REQ-3): a plan for one agent per host and one project skill and one skill projection names exactly the namespaced paths, writes the front matter and the TOML keys named in the requirements, and plans nothing at the former paths · verify: `cargo test --locked --offline --test project_harness_namespace fresh_`
 - AC-2 (REQ-4): an id of sixty and of fifty-nine characters, the first refused with the field and the limit and the second planned · verify: `cargo test --locked --offline --test project_harness_namespace folder_name_`
-- AC-3 (REQ-5, REQ-6, REQ-7, REQ-8, REQ-9): in temporary projects, an earlier run's owned and untouched files move through plan and apply with their bytes kept; an edited one stays and both paths are conflict; a file of the user's at a former path is never changed and the new path is conflict with the reason; a former path edited after the plan is not removed · verify: `cargo test --locked --offline --test project_harness_namespace moved_`
+- AC-3 (REQ-5, REQ-6, REQ-7, REQ-8, REQ-9): in temporary projects, an earlier run's owned and untouched files move through plan and apply with their bytes kept; an edited one stays and both paths are conflict; a file of the user's at a former path is never changed (a skill folder of theirs beside ours is left alone; their agent file at the old path of a requested agent makes the new path conflict with the reason); a former path edited after the plan is not removed · verify: `cargo test --locked --offline --test project_harness_namespace moved_`
 - AC-4 (REQ-1, REQ-2, REQ-3): `research.md` of this folder holds the official quotes and the read times that the paths rest on, and the test reads them · verify: `cargo test --locked --offline --test project_harness_namespace research_`
 - AC-5 (REQ-10): step 6 of `skills/moai/workflows/project.md` names the namespace folders, and the scan and reader tests of the project text pass · verify: `cargo test --locked --offline --test project_harness_namespace text_`
 
@@ -61,8 +61,11 @@ This change moves the four generated paths into that namespace, once the officia
 
 ## Result
 
-- AC-1: not yet — nothing written.
-- AC-2: not yet — nothing written.
-- AC-3: not yet — nothing written.
-- AC-4: not yet — `research.md` is written and the test that reads it is not.
-- AC-5: not yet — `project.md` is held by another card.
+- AC-1: met — `cargo test --locked --offline --test project_harness_namespace fresh_` passed (2 tests): a plan for one agent per host, one project skill names exactly `.claude/agents/moai/prj-reviewer.md`, `.codex/agents/moai/prj-reviewer.toml`, `.claude/skills/moai-prj-checks/SKILL.md` and `.agents/skills/moai-prj-checks/SKILL.md` and nothing at the former paths; the written files carry `name: prj-reviewer`, `name = "prj-reviewer"` and `name: moai-prj-checks`; a second plan of the same request is `unchanged`. Skill projections go through the same `namespaced_path` and are not covered by a test of their own.
+- AC-2: met — `cargo test --locked --offline --test project_harness_namespace folder_name_` passed: an id of 59 characters is planned and one of 60 is refused with `project_skills[0].id` and the limit 64, never the value.
+- AC-3: met — `cargo test --locked --offline --test project_harness_namespace moved_` passed (6 tests): owned and unedited files move with their bytes kept (the skill front matter name changes with the folder) and the second plan is `unchanged`; an edited file stays and both paths are `conflict` and apply refuses; a user's agent file at the former path is not in the plan and turns the new path into `conflict` with the reason; a user's skill folder beside ours is left alone with its other files; a former path edited after the plan is not removed (the plan is refused); an owned agent that a request no longer names stays with a warning.
+- AC-4: met — `cargo test --locked --offline --test project_harness_namespace research_` passed: `research.md` holds the official quotes (Claude Code recursion and identity, the skills layout, the Codex source lines and commit) and at least six read times.
+- AC-5: not yet — step 6 of `skills/moai/workflows/project.md` still names the old folders; the file is held by another card and the same line is rewritten by the project-harness research card, so the text change and `text_step_six_names_the_namespace_folders` (red today) wait for both (D-7).
+- Mutants (five, in a copy of the module in this worktree, each restored with `git checkout`): the Claude agent path back to the old folder (8 tests fail), an edited former file counted as unedited (2), the user's file at the former agent path ignored (2), the folder bound one too wide (2), the not-requested warning dropped (2): all killed by the test meant for it (the text test is red in every run).
+- Tests that pinned the former paths follow the namespace: `empty_parent_prune_cli` 5, `project_skills_generation` 11, `product_cli` 79 passed.
+- Not yet: the whole-area run on the final head, clippy, the python area modules, AC-5, the audit, the card's own D-5 limit (a user file with another file name that declares the same `name` is not detected), and a move for an owned agent that a request does not name (it stays, with a warning).
