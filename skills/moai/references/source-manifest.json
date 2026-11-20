@@ -489,7 +489,7 @@
       }
     },
     "workflows/sync.md": {
-      "sha256": "404e6fffb09a6ba4d777b94b0a3969acfc2ab0cc09697bc394c19ea4c699be92",
+      "sha256": "2460962fa8cf0420dab4c21453a6083c106f4e140be6ad2ba8f89a735cd75544",
       "origin": {
         "kind": "design-template",
         "template_id": "workflow-sync",
