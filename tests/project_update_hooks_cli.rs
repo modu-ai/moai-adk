@@ -598,8 +598,11 @@ fn a_file_without_hooks_and_without_a_record_says_drifted_like_the_status() {
     assert_eq!(step["preview"]["configured"], "drifted", "{step}");
     let reason = step["reason"].as_str().unwrap();
     assert!(reason.contains("hooks-plan reads update"), "{step}");
-    assert!(reason.contains("moai hooks-plan"), "{step}");
-    assert!(reason.contains("moai hooks-apply"), "{step}");
+    // SPEC-20261121-update-installs-hooks REQ-10: the reason tells the user where the set is
+    // offered, never to run the two commands by hand.
+    assert!(reason.contains("home update"), "{step}");
+    assert!(!reason.contains("moai hooks-plan"), "{step}");
+    assert!(!reason.contains("moai hooks-apply"), "{step}");
     assert!(!reason.contains("is current"), "{step}");
 }
 
