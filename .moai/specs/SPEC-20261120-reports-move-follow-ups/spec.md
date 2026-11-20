@@ -71,4 +71,10 @@ created: 2026-11-20
 
 ## Result
 
-구현 전(2026-11-20, 가지 `spec/20261120-reports-move-follow-ups`). 구현이 끝나면 AC 마다 `- AC-n: met — <근거>` 줄을 이 자리에 적어요.
+구현 끝(2026-11-20, 가지 `spec/20261120-reports-move-follow-ups`). 먼저 시험을 쓰고 실패하는 것을 봤어요(`every_blocked_apply…` 는 `internal` 로, `.GIT` 은 `ready` 로 실패, 단위 시험은 `Internal` 로 실패). 그다음 고쳤고, 변이 넷(`target/c/mut222.sum`)을 모두 시험이 잡았으며 각 변이 뒤 파일은 그대로 되돌렸어요.
+
+- AC-1: met — `cargo test --locked --offline --test reports_move_cli every_blocked_apply_reports_invalid_input_through_the_cli` 통과(링크·중첩 저장소·프로젝트 안 HOME·상대 HOME 네 원인이 CLI 에서 `error.kind` `invalid_input`, 문장에 `blocked` 가 남고, 파일과 실제 HOME 은 그대로). 변이 "분류 표의 접두어 줄 지우기", "적용 문장에서 접두어 빼기", "표의 종류를 `Blocked` 로"에 이 시험이 실패했어요.
+- AC-2: met — `cargo test --locked --offline --lib contract::tests::a_reports_move_blocked_message_is_invalid_input` 통과. 변이 "표의 줄 지우기"와 "종류를 `Blocked` 로"에 실패했어요.
+- AC-3: met — 같은 시험이 상대 HOME(`relative-home`)을 임시 작업 폴더에서 돌리고 그 폴더에 `relative-home` 이 없음을 확인해요(통과). 옛 시험 `a_home_that_is_relative_or_inside_the_project_blocks_the_move` 는 저장소 루트에서 풀리던 상대 HOME 사례를 빼고 프로젝트 안 HOME 만 남겼어요(이전 SPEC 의 검증 줄이 그 이름으로 돌려서 이름은 그대로 두고 주석에 적었어요).
+- AC-4: met — `cargo test --locked --offline --test reports_move_cli a_git_folder_in_any_letter_case_below_the_report_folder_blocks_the_move` 통과(`.GIT`·`.Git` 모두 막히고 파일과 HOME 그대로). 변이 "`eq_ignore_ascii_case` 를 `==` 로"에 실패했어요.
+- 확인: `reports_move_cli` 23개와 `--lib contract` 11개 통과. 전체 `moai check affected` 결과는 병합 준비 노트에 줄째로 적어요(이 SPEC 이 닫힌 뒤의 병합 커밋 위에서 돌려요).
