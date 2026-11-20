@@ -1,0 +1,101 @@
+{
+  "files": {
+    "skills/moai/SKILL.md": {
+      "card-number": 2,
+      "issue-number": 6,
+      "local-rules-file": 1
+    },
+    "skills/moai/references/adapters/aside.md": {
+      "issue-number": 1
+    },
+    "skills/moai/references/adapters/orca.md": {
+      "issue-number": 9
+    },
+    "skills/moai/references/internal/build-folder.md": {
+      "card-number": 1
+    },
+    "skills/moai/references/internal/git-safety.md": {
+      "issue-number": 4
+    },
+    "skills/moai/references/internal/interview.md": {
+      "card-number": 5,
+      "issue-number": 2
+    },
+    "skills/moai/references/internal/questions.md": {
+      "card-number": 3
+    },
+    "skills/moai/references/internal/review.md": {
+      "issue-number": 1
+    },
+    "skills/moai/references/internal/self-check.md": {
+      "card-number": 1
+    },
+    "skills/moai/references/internal/versioning.md": {
+      "card-number": 3
+    },
+    "skills/moai/references/rule-history.md": {
+      "card-number": 5,
+      "issue-number": 95
+    },
+    "skills/moai/references/source-manifest.json": {
+      "card-number": 9,
+      "issue-number": 163,
+      "repo-link": 1
+    },
+    "skills/moai/workflows/audit.md": {
+      "card-number": 1,
+      "issue-number": 13
+    },
+    "skills/moai/workflows/mode-agent.md": {
+      "card-number": 7,
+      "issue-number": 65
+    },
+    "skills/moai/workflows/mode-leader.md": {
+      "card-number": 7,
+      "issue-number": 63
+    },
+    "skills/moai/workflows/optimize.md": {
+      "card-number": 1,
+      "issue-number": 2
+    },
+    "skills/moai/workflows/project.md": {
+      "card-number": 11,
+      "issue-number": 14,
+      "local-rules-file": 2
+    },
+    "skills/moai/workflows/read.md": {
+      "issue-number": 1
+    },
+    "skills/moai/workflows/run.md": {
+      "issue-number": 3
+    },
+    "skills/moai/workflows/setup.md": {
+      "card-number": 3,
+      "issue-number": 2
+    },
+    "skills/moai/workflows/sync.md": {
+      "issue-number": 4
+    },
+    "skills/moai/workflows/update.md": {
+      "card-number": 4,
+      "issue-number": 8,
+      "local-rules-file": 3
+    },
+    "skills/moai/workflows/verify.md": {
+      "card-number": 6,
+      "issue-number": 33
+    },
+    "src/help.rs": {
+      "card-number": 9,
+      "issue-number": 26,
+      "repo-link": 10
+    }
+  },
+  "tokens": {
+    "card-number": 78,
+    "issue-number": 515,
+    "local-rules-file": 6,
+    "repo-link": 11
+  },
+  "version": 1
+}

@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "paths": [
+    "skills/moai/**",
+    "agents/*.md",
+    "src/help.rs"
+  ],
+  "tokens": [
+    {
+      "id": "card-number",
+      "pattern": "\\bC-[0-9]+\\b",
+      "why": "a work-card number: only this repository's maintainers can open it"
+    },
+    {
+      "id": "issue-number",
+      "pattern": "(?<![\\w&/])#[0-9]{3,5}\\b",
+      "why": "a tracker issue or pull request number of this repository"
+    },
+    {
+      "id": "repo-link",
+      "pattern": "modu-ai/moai-adk",
+      "why": "a link into this repository's own tracker or tree"
+    },
+    {
+      "id": "local-rules-file",
+      "pattern": "AGENTS\\.local\\.md",
+      "why": "the name of the maintainers' private rules file"
+    }
+  ]
+}
