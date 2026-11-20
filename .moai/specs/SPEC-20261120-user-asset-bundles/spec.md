@@ -49,10 +49,10 @@ unchanged.
   verify: `cargo test --locked --offline --test bundle_user_assets_cli`
 - AC-3 (REQ-3, REQ-4): add of a pack in a temporary home writes the manifest in the Go shape, installs the pack's files with the embedded bytes, and prints the Go summary line with the pack's counts.
   verify: `cargo test --locked --offline --test bundle_user_assets_cli`
-- AC-4 (REQ-5): remove with a second selection sharing an entry keeps the shared entry and a declared dependency, prints their lines, deletes the rest, saves the remaining selection and clears the journal.
-  verify: `cargo test --locked --offline --test bundle_user_assets_cli`
-- AC-5 (REQ-6, REQ-7): the guard file appears at the Go path during a run, the journal is written before the asset writes and is gone after a remove, and a journal left by an interrupted run is reconciled on the next run.
-  verify: `cargo test --locked --offline --test bundle_user_assets_cli`
+- AC-4 (REQ-5): remove of a lone selection deletes exactly its pack's files, empties the selection and clears the journal; the complement rule (an entry another selection still names survives with the kept line) and the deferral rule (an entry a preserved asset declares survives with the deferred line) are pinned with a synthetic catalog, because no two shipped packs share an entry.
+  verify: `cargo test --locked --offline --test bundle_user_assets_cli`; `cargo test --locked --offline --lib user_assets`
+- AC-5 (REQ-6, REQ-7): a journal left by an interrupted run is reconciled on the next run — a mismatched target is preserved as a collision through the CLI, and a matching one installs through the engine; the journal is gone after a successful run.
+  verify: `cargo test --locked --offline --test bundle_user_assets_cli`; `cargo test --locked --offline --lib user_assets`
 - AC-6 (REQ-1, REQ-2, REQ-3, REQ-4, REQ-5, REQ-6, REQ-7): neighbours — the five existing bundle actions and the repository scans.
   verify: `cargo test --locked --offline --test bundle_ready_cli --test bundle_body_cli --test bundle_check_cli --test bundle_build_cli`; `python3 -m unittest tests.repo_scans_test`; the built binary's `spec check SPEC-20261120-user-asset-bundles`
 
