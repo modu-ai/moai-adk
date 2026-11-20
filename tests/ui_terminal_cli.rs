@@ -9,7 +9,7 @@
 #![cfg(unix)]
 
 mod common;
-use common::pty::Terminal;
+use common::pty::{output_within, Terminal};
 use common::CleanEnv;
 use std::{
     path::PathBuf,
@@ -68,7 +68,7 @@ fn on_a_pipe(fx: &Fx, args: &[&str], extra: &[(&str, &str)]) -> (String, Option<
     for (k, v) in env_of(fx, extra) {
         cmd.env(k, v);
     }
-    let out = cmd.output().unwrap();
+    let out = output_within(&mut cmd, None);
     (
         String::from_utf8_lossy(&out.stdout).into_owned(),
         out.status.code(),

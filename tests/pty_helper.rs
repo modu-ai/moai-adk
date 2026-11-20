@@ -5,7 +5,10 @@
 #![cfg(unix)]
 
 mod common;
-use common::pty::Terminal;
+use common::pty::{output_within_limit, piped_with, Terminal};
+use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::path::Path;
+use std::process::Command;
 use std::time::{Duration, Instant};
 
 fn sh(script: &str) -> Terminal {
@@ -158,4 +161,125 @@ fn a_command_that_does_not_end_is_killed_with_the_screen_so_far() {
     let _ = sh("echo started; sleep 30")
         .limit(Duration::from_secs(1))
         .run();
+}
+
+/// The text a panic carried.
+fn panic_text(err: Box<dyn std::any::Any + Send>) -> String {
+    err.downcast_ref::<String>()
+        .cloned()
+        .or_else(|| err.downcast_ref::<&str>().map(|s| s.to_string()))
+        .unwrap_or_default()
+}
+
+/// The pid a script wrote to `file` (it writes it before anything else the test waits for).
+fn pid_in(file: &Path) -> libc::pid_t {
+    for _ in 0..100 {
+        if let Some(pid) = std::fs::read_to_string(file)
+            .ok()
+            .and_then(|t| t.trim().parse().ok())
+        {
+            return pid;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    panic!("no pid in {}", file.display());
+}
+
+/// Whether `pid` is gone within a few seconds (it can take a moment to be reaped).
+fn gone(pid: libc::pid_t) -> bool {
+    (0..100).any(|_| {
+        let ended = unsafe { libc::kill(pid, 0) } != 0;
+        if !ended {
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        ended
+    })
+}
+
+/// A script that starts a long-lived child of its own, notes its pid, and waits for it.
+fn with_grandchild(file: &Path, then: &str) -> String {
+    format!("sleep 25 & echo $! > '{}'; {then}; wait", file.display())
+}
+
+#[test]
+fn the_limit_kills_the_command_and_the_children_it_started() {
+    let dir = tempfile::tempdir().unwrap();
+    let pidfile = dir.path().join("pid");
+    let script = with_grandchild(&pidfile, "echo started");
+    let err = catch_unwind(AssertUnwindSafe(|| {
+        sh(&script).limit(Duration::from_secs(1)).run();
+    }))
+    .unwrap_err();
+    assert!(panic_text(err).contains("still running after"));
+    assert!(gone(pid_in(&pidfile)), "the child outlived the limit");
+}
+
+#[test]
+fn a_panic_in_the_test_kills_the_command_and_its_children() {
+    let dir = tempfile::tempdir().unwrap();
+    let pidfile = dir.path().join("pid");
+    let script = with_grandchild(&pidfile, "printf 'go on? [y/N] '");
+    let err = catch_unwind(AssertUnwindSafe(|| {
+        sh(&script)
+            .before_answer(|| panic!("the hook failed"))
+            .run();
+    }))
+    .unwrap_err();
+    assert_eq!(panic_text(err), "the hook failed");
+    assert!(gone(pid_in(&pidfile)), "the child outlived the panic");
+}
+
+#[test]
+fn the_limit_counts_again_from_the_answer() {
+    // 1.3 s before the question and 1.3 s after the answer: each stretch is under the 2 s limit,
+    // the sum is not.
+    let s = sh("sleep 1.3; printf 'go on? [y/N] '; read a; sleep 1.3; echo done-$a")
+        .answer("y\n")
+        .limit(Duration::from_secs(2))
+        .run();
+    assert_eq!(s.code, Some(0), "{}", s.text);
+    assert!(s.text.contains("done-y"), "{}", s.text);
+}
+
+#[test]
+fn a_command_that_closed_the_terminal_and_runs_on_is_killed() {
+    let err = catch_unwind(AssertUnwindSafe(|| {
+        sh("exec 0<&- 1>&- 2>&-; sleep 25")
+            .limit(Duration::from_secs(1))
+            .run();
+    }))
+    .unwrap_err();
+    assert!(panic_text(err).contains("killed"));
+}
+
+#[test]
+fn a_big_input_and_a_big_output_do_not_wait_on_each_other() {
+    // `cat` writes what it reads: with the input written before anything reads the output, both
+    // pipes fill and nobody moves.
+    let big = "x".repeat(1 << 20);
+    let s = Terminal::new("/bin/cat")
+        .env("PATH", "/usr/bin:/bin")
+        .stdin_text(&big)
+        .stdout_not_a_terminal()
+        .limit(Duration::from_secs(20))
+        .run();
+    assert_eq!(s.stdout.len(), big.len());
+    let env = common::pty::env_with(&[("PATH", "/usr/bin:/bin")], &[]);
+    let seen = piped_with("/bin/cat", &std::env::temp_dir(), &env, &[], Some(&big));
+    assert_eq!(seen.stdout.len(), big.len());
+}
+
+#[test]
+fn a_piped_command_that_does_not_end_is_killed_with_its_children() {
+    let dir = tempfile::tempdir().unwrap();
+    let pidfile = dir.path().join("pid");
+    let mut cmd = Command::new("/bin/sh");
+    cmd.args(["-c", &with_grandchild(&pidfile, "echo started")])
+        .env("PATH", "/usr/bin:/bin");
+    let err = catch_unwind(AssertUnwindSafe(|| {
+        output_within_limit(&mut cmd, None, Duration::from_secs(1));
+    }))
+    .unwrap_err();
+    assert!(panic_text(err).contains("still running after"));
+    assert!(gone(pid_in(&pidfile)), "the child outlived the limit");
 }

@@ -8,7 +8,7 @@
 #![cfg(unix)]
 
 mod common;
-use common::pty::Terminal;
+use common::pty::{output_within, Terminal};
 use common::screens::{has_row, strip_colors};
 use common::CleanEnv;
 use std::{
@@ -62,7 +62,7 @@ fn run(cwd: &Path, home: &Path, args: &[&str], extra: &[(&str, &str)], stderr_tt
         for (k, v) in env_of(home, extra) {
             cmd.env(k, v);
         }
-        let out = cmd.output().unwrap();
+        let out = output_within(&mut cmd, None);
         return Run {
             stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
             stderr: String::from_utf8_lossy(&out.stderr).into_owned(),

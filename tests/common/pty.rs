@@ -12,8 +12,10 @@ use std::ffi::OsStr;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
+use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Child, ChildStdin, Command, ExitStatus, Output, Stdio};
+use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 /// What a question ends with.
@@ -22,8 +24,97 @@ pub const QUESTION_END: &[u8] = b"[y/N] ";
 /// How long a command may run before the helper kills it.
 pub const LIMIT: Duration = Duration::from_secs(60);
 
+/// How long the loop waits for more output before it looks at whether the command ended. A
+/// short wait keeps a test that starts many commands one after another quick.
+const POLL_MILLIS: libc::c_int = 20;
+
 /// End of input typed at a terminal (Ctrl-D).
 pub const END_OF_INPUT: u8 = 0x04;
+
+/// How long the helper waits for a command that already ended to let go of its pipes.
+const PIPES_CLOSE_WITHIN: Duration = Duration::from_secs(10);
+
+/// A command the helper started, in a process group of its own. Dropping it before the command
+/// was seen to end (a failed assertion, a panic, the limit) kills the whole group, so neither the
+/// command nor a child it started outlives the test.
+struct Running {
+    child: Child,
+    ended: Option<ExitStatus>,
+}
+
+impl Running {
+    fn spawn(cmd: &mut Command) -> Running {
+        cmd.process_group(0);
+        Running {
+            child: cmd.spawn().unwrap(),
+            ended: None,
+        }
+    }
+
+    fn kill_group(&mut self) {
+        if self.ended.is_none() {
+            // The group is the command's own (`process_group(0)`): its id is the command's pid.
+            unsafe { libc::kill(-(self.child.id() as libc::pid_t), libc::SIGKILL) };
+            let _ = self.child.kill();
+            self.ended = self.child.wait().ok();
+        }
+    }
+
+    /// The exit status once the command ends, `None` at `deadline`.
+    fn wait_until(&mut self, deadline: Instant) -> Option<ExitStatus> {
+        loop {
+            if let Some(status) = self.child.try_wait().unwrap() {
+                self.ended = Some(status);
+                return Some(status);
+            }
+            if Instant::now() >= deadline {
+                return None;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+}
+
+impl Drop for Running {
+    fn drop(&mut self) {
+        self.kill_group();
+    }
+}
+
+/// What a pipe carried, sent when it ends; the thread reads so a full pipe never stops the command.
+fn read_thread(mut pipe: impl Read + Send + 'static) -> mpsc::Receiver<Vec<u8>> {
+    let (tx, rx) = mpsc::channel();
+    std::thread::spawn(move || {
+        let mut bytes = Vec::new();
+        let _ = pipe.read_to_end(&mut bytes);
+        let _ = tx.send(bytes);
+    });
+    rx
+}
+
+/// Writes `text` to the command's stdin on a thread of its own, then ends the input, so a command
+/// that writes a lot before it has read everything never waits on the helper. A broken pipe means
+/// the command stopped reading; its exit says why.
+fn write_thread(mut pipe: ChildStdin, text: Vec<u8>) {
+    std::thread::spawn(move || {
+        let _ = pipe.write_all(&text);
+    });
+}
+
+/// What a pipe carried, once the command ended; a pipe still open at `deadline` (a child kept it)
+/// kills the group and fails.
+fn bytes_of(rx: Option<mpsc::Receiver<Vec<u8>>>, deadline: Instant, run: &mut Running) -> Vec<u8> {
+    let Some(rx) = rx else {
+        return Vec::new();
+    };
+    match rx.recv_timeout(deadline.saturating_duration_since(Instant::now())) {
+        Ok(bytes) => bytes,
+        Err(_) => {
+            run.kill_group();
+            panic!("the command ended but a stream it started stayed open; the group was killed");
+        }
+    }
+}
 
 /// What the terminal showed and how the command ended.
 pub struct Screen {
@@ -169,33 +260,18 @@ impl Terminal {
             Stdio::piped()
         };
         cmd.stdin(stdin).stdout(stdout).stderr(stderr);
-        let mut child = cmd.spawn().unwrap();
-        if let (Some(text), Some(mut pipe)) = (&self.stdin_text, child.stdin.take()) {
-            // A broken pipe means the command stopped reading; its exit says why.
-            let _ = pipe.write_all(text);
+        let mut run = Running::spawn(&mut cmd);
+        let (child_in, child_out, child_err) = (
+            run.child.stdin.take(),
+            run.child.stdout.take(),
+            run.child.stderr.take(),
+        );
+        // The readers start before the input is written, so output never waits on input.
+        let out_rx = child_out.map(read_thread);
+        let err_rx = child_err.map(read_thread);
+        if let (Some(text), Some(pipe)) = (&self.stdin_text, child_in) {
+            write_thread(pipe, text.clone());
         }
-        // A pipe is read on its own thread so a full pipe never stops the command.
-        let pipe_reader = |pipe: Option<Box<dyn Read + Send>>| {
-            pipe.map(|mut p| {
-                std::thread::spawn(move || {
-                    let mut bytes = Vec::new();
-                    let _ = p.read_to_end(&mut bytes);
-                    bytes
-                })
-            })
-        };
-        let out_thread = pipe_reader(
-            child
-                .stdout
-                .take()
-                .map(|p| Box::new(p) as Box<dyn Read + Send>),
-        );
-        let err_thread = pipe_reader(
-            child
-                .stderr
-                .take()
-                .map(|p| Box::new(p) as Box<dyn Read + Send>),
-        );
         // Our copies of the slave end go with `cmd`: the master reads to its end only when the
         // command and its children have closed theirs.
         drop(cmd);
@@ -204,20 +280,21 @@ impl Terminal {
         let mut master = File::from(master);
         let mut seen: Vec<u8> = Vec::new();
         let mut typed = false;
-        let started = Instant::now();
+        // The limit counts from the start, and again from the answer: a slow command is judged
+        // on each stretch, not on the sum.
+        let mut deadline = Instant::now() + self.limit;
         let mut buf = [0u8; 8192];
         loop {
-            if started.elapsed() > self.limit {
-                let _ = child.kill();
-                let _ = child.wait();
+            if Instant::now() > deadline {
+                run.kill_group();
                 panic!(
                     "still running after {:?}, killed; screen so far:\n{}",
                     self.limit,
                     text_of(&seen)
                 );
             }
-            if !readable(fd, 200) {
-                if child.try_wait().unwrap().is_some() {
+            if !readable(fd, POLL_MILLIS) {
+                if run.wait_until(Instant::now()).is_some() {
                     // Exited without more output: take what is left, then stop.
                     while readable(fd, 0) {
                         match master.read(&mut buf) {
@@ -241,17 +318,28 @@ impl Terminal {
                 let bytes = self.answer.clone().unwrap_or_else(|| vec![END_OF_INPUT]);
                 master.write_all(&bytes).unwrap();
                 typed = true;
+                deadline = Instant::now() + self.limit;
             }
         }
-        let status = child.wait().unwrap();
-        let joined = |t: Option<std::thread::JoinHandle<Vec<u8>>>| {
-            t.map(|t| String::from_utf8_lossy(&t.join().unwrap()).into_owned())
-                .unwrap_or_default()
+        // The terminal is closed, but the command may still run (it closed its ends and kept
+        // going): wait for it within the limit too.
+        let Some(status) =
+            run.wait_until(deadline.max(Instant::now() + Duration::from_millis(500)))
+        else {
+            run.kill_group();
+            panic!(
+                "closed the terminal but was still running after {:?}, killed; screen so far:\n{}",
+                self.limit,
+                text_of(&seen)
+            );
         };
+        let pipes_by = Instant::now() + PIPES_CLOSE_WITHIN.min(self.limit);
+        let stdout = bytes_of(out_rx, pipes_by, &mut run);
+        let stderr = bytes_of(err_rx, pipes_by, &mut run);
         Screen {
             text: text_of(&seen),
-            stdout: joined(out_thread),
-            stderr: joined(err_thread),
+            stdout: String::from_utf8_lossy(&stdout).into_owned(),
+            stderr: String::from_utf8_lossy(&stderr).into_owned(),
             code: status.code(),
         }
     }
@@ -295,29 +383,56 @@ pub fn piped_with(
     input: Option<&str>,
 ) -> Seen {
     let mut cmd = Command::new(exe.as_ref());
-    cmd.args(args)
-        .clean_env()
-        .current_dir(cwd)
-        .stdin(if input.is_some() {
-            Stdio::piped()
-        } else {
-            Stdio::null()
-        })
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+    cmd.args(args).clean_env().current_dir(cwd);
     for (k, v) in env {
         cmd.env(k, v);
     }
-    let mut child = cmd.spawn().unwrap();
-    if let (Some(text), Some(mut pipe)) = (input, child.stdin.take()) {
-        // A broken pipe means the command stopped reading; its exit says why.
-        let _ = pipe.write_all(text.as_bytes());
-    }
-    let out = child.wait_with_output().unwrap();
+    let out = output_within(&mut cmd, input.map(str::as_bytes));
     Seen {
         code: out.status.code(),
         stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
         stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
+    }
+}
+
+/// `Command::output` with a time limit (`LIMIT`, as the Python tests had `timeout=60`): stdin is
+/// `input` and then ends (or `/dev/null` without it), stdout and stderr are pipes. A command
+/// still running at the limit is killed with its whole process group and the call fails.
+pub fn output_within(cmd: &mut Command, input: Option<&[u8]>) -> Output {
+    output_within_limit(cmd, input, LIMIT)
+}
+
+/// Like `output_within` with a limit of the caller's choosing.
+pub fn output_within_limit(cmd: &mut Command, input: Option<&[u8]>, limit: Duration) -> Output {
+    cmd.stdin(if input.is_some() {
+        Stdio::piped()
+    } else {
+        Stdio::null()
+    })
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped());
+    let mut run = Running::spawn(cmd);
+    let (child_in, child_out, child_err) = (
+        run.child.stdin.take(),
+        run.child.stdout.take(),
+        run.child.stderr.take(),
+    );
+    let out_rx = child_out.map(read_thread);
+    let err_rx = child_err.map(read_thread);
+    if let (Some(text), Some(pipe)) = (input, child_in) {
+        write_thread(pipe, text.to_vec());
+    }
+    let Some(status) = run.wait_until(Instant::now() + limit) else {
+        run.kill_group();
+        panic!("still running after {limit:?}, killed");
+    };
+    let pipes_by = Instant::now() + PIPES_CLOSE_WITHIN.min(limit);
+    let stdout = bytes_of(out_rx, pipes_by, &mut run);
+    let stderr = bytes_of(err_rx, pipes_by, &mut run);
+    Output {
+        status,
+        stdout,
+        stderr,
     }
 }
 

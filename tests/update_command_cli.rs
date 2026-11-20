@@ -6,7 +6,7 @@
 #![cfg(unix)]
 
 mod common;
-use common::pty::{Terminal, END_OF_INPUT};
+use common::pty::{output_within, Terminal, END_OF_INPUT};
 use common::CleanEnv;
 
 use moai_cli::model_effort_settings::default_choice;
@@ -15,7 +15,7 @@ use std::{
     fs,
     io::Write as _,
     path::{Path, PathBuf},
-    process::{Command, Output, Stdio},
+    process::{Command, Output},
     thread::sleep,
     time::Duration,
 };
@@ -84,20 +84,14 @@ fn install_version(home: &Path, version: &str, pkg: &[(&str, String)]) -> PathBu
 }
 
 fn run(exe: &Path, home: &Path, args: &[&str]) -> Output {
-    let mut child = Command::new(exe)
-        .args(args)
+    let mut cmd = Command::new(exe);
+    cmd.args(args)
         .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("HOME", home)
         .env("LC_ALL", "C")
-        .current_dir(home)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    let _ = child.stdin.take();
-    child.wait_with_output().unwrap()
+        .current_dir(home);
+    output_within(&mut cmd, None)
 }
 
 fn envelope(out: &Output) -> Value {
@@ -349,10 +343,19 @@ fn at_terminal(exe: &Path, home: &Path, args: &[&str]) -> Terminal {
 /// Terminal confirmation: `update` at a terminal. The answer is typed only after the question
 /// is on screen, as a person would.
 fn run_in_terminal(exe: &Path, home: &Path, answer: &str) -> String {
-    at_terminal(exe, home, &["update"])
-        .answer(answer)
-        .run()
-        .text
+    let s = at_terminal(exe, home, &["update"]).answer(answer).run();
+    // Every terminal path of `update` that is asked or told something ends with exit 0.
+    assert_eq!(s.code, Some(0), "{}", s.text);
+    s.text
+}
+
+/// The saved settings files under the home, by path (the Python case looked at the whole tree).
+fn launcher_files(home: &Path) -> Vec<PathBuf> {
+    state(home)
+        .into_iter()
+        .map(|(p, _)| p)
+        .filter(|p| p.ends_with("launcher.yaml"))
+        .collect()
 }
 
 // In a terminal `update` asks once: anything but yes writes nothing, yes applies.
@@ -396,6 +399,9 @@ fn in_a_terminal_an_applied_update_asks_the_model_stage_and_saves_after_a_yes() 
     let a = install_version(&f.home, "a", &v1());
     let text = run_in_terminal(&a, &f.home, "y\n\n\n\n\n\ny\n");
     assert!(text.contains("Save these model settings? [y/N]"), "{text}");
+    // Exactly one settings file was written, and it is the one the command reads.
+    let files = launcher_files(&f.home);
+    assert_eq!(files.len(), 1, "{files:?}\n{text}");
     let saved = fs::read_to_string(moai_cli::update_models::settings_path(&f.home)).unwrap();
     let saved: Value = serde_json::from_str(&saved).unwrap();
     // The answers were Enter, so the saved choice is the default of the source, not a copied literal.
@@ -527,6 +533,7 @@ fn end_of_input_at_the_model_stage_keeps_the_applied_update() {
         "{}",
         s.text
     );
+    assert_eq!(launcher_files(&f.home), Vec::<PathBuf>::new(), "{}", s.text);
 }
 
 // The package changes after the preview, then `y`: nothing is written and the new preview shows.
@@ -614,22 +621,14 @@ fn a_yes_piped_without_a_terminal_writes_nothing() {
     let f = fx();
     let a = install_version(&f.home, "a", &v1());
     let before = state(&f.home);
-    let mut child = Command::new(&a)
-        .arg("update")
+    let mut cmd = Command::new(&a);
+    cmd.arg("update")
         .clean_env()
         .env("PATH", "/usr/bin:/bin")
         .env("HOME", &f.home)
         .env("LC_ALL", "C")
-        .current_dir(&f.home)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    let mut stdin = child.stdin.take().unwrap();
-    let _ = stdin.write_all(b"y\nyes\n");
-    drop(stdin);
-    let r = ok(&child.wait_with_output().unwrap());
+        .current_dir(&f.home);
+    let r = ok(&output_within(&mut cmd, Some(b"y\nyes\n")));
     assert_eq!(r["mode"], json!("preview"), "{r}");
     assert_eq!(state(&f.home), before);
 }
@@ -782,7 +781,9 @@ fn a_preview_with_only_a_conflict_has_nothing_to_apply() {
 
 /// Runs `update` at a terminal with nothing typed, and returns everything shown.
 fn run_in_terminal_unanswered(exe: &Path, home: &Path) -> String {
-    at_terminal(exe, home, &["update"]).run().text
+    let s = at_terminal(exe, home, &["update"]).run();
+    assert_eq!(s.code, Some(0), "{}", s.text);
+    s.text
 }
 
 // #2540 AC-3: in a terminal, a plan with every host blocked is shown without the question.

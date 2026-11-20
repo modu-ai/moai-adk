@@ -11,7 +11,7 @@
 #![cfg(unix)]
 
 mod common;
-use common::pty::Terminal;
+use common::pty::{output_within, Terminal};
 use common::CleanEnv;
 use std::{
     path::{Path, PathBuf},
@@ -75,7 +75,7 @@ fn pipe(fx: &Fx, args: &[&str], extra: &[(&str, &str)]) -> (String, String, Opti
     for (k, v) in env_of(fx, extra) {
         cmd.env(k, v);
     }
-    let out = cmd.output().unwrap();
+    let out = output_within(&mut cmd, None);
     (
         String::from_utf8_lossy(&out.stdout).into_owned(),
         String::from_utf8_lossy(&out.stderr).into_owned(),
@@ -96,6 +96,9 @@ fn on_a_terminal(fx: &Fx, args: &[&str], extra: &[(&str, &str)]) -> (String, Str
         term = term.env(k, v);
     }
     let s = term.run();
+    // The pty turns each `\n` into `\r\n`, and under a full output queue macOS has been seen to
+    // send one `\r` twice (`\r\r\n`, in a 15 KB `help --all`); `Screen::text` reads `\r\n` as `\n`,
+    // so the odd `\r` is left over. Help text carries no `\r` of its own.
     (s.text.replace('\r', ""), s.stderr, s.code)
 }
 

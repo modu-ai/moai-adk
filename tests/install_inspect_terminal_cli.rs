@@ -9,7 +9,7 @@
 #![cfg(unix)]
 
 mod common;
-use common::pty::Terminal;
+use common::pty::{output_within, Terminal};
 use common::CleanEnv;
 use std::{
     fs,
@@ -95,7 +95,7 @@ fn piped(fx: &Fx, first: &Path, extra: &[(&str, &str)]) -> Run {
     for (k, v) in env_of(fx, first, extra) {
         cmd.env(k, v);
     }
-    let out = cmd.output().unwrap();
+    let out = output_within(&mut cmd, None);
     Run {
         code: out.status.code(),
         stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
