@@ -211,7 +211,7 @@ def run_prompt(args, env, cwd, typed=None, at_prompt=None, stderr_tty=True, igno
 
 @unittest.skipUnless(os.name == "posix", "pseudo-terminals are POSIX only")
 class KeySetPrompt(unittest.TestCase):
-    ARGS = ["key-set", "typesafe", "--shared", "--prompt"]
+    ARGS = ["key-set", "demo", "--shared", "--prompt"]
 
     def setUp(self):
         if not rust_bin().exists():
@@ -235,10 +235,10 @@ class KeySetPrompt(unittest.TestCase):
         return os.path.join(self.home, ".moai-cli", "vault")
 
     def entry(self):
-        return os.path.join(self.vault(), "_shared", "typesafe.key")
+        return os.path.join(self.vault(), "_shared", "demo.key")
 
     def status(self):
-        out, err, code = run_pipe(["key-status", "typesafe", "--shared"], self.env, self.cwd)
+        out, err, code = run_pipe(["key-status", "demo", "--shared"], self.env, self.cwd)
         self.assertEqual(code, 0, err)
         return json.loads(out)["result"]["entry"]
 
@@ -256,7 +256,7 @@ class KeySetPrompt(unittest.TestCase):
         self.assert_hidden(self.value, r)
         self.assertIs(r.echo_asked, False, "echo is off while the prompt waits")
         self.assert_terminal_as_before(r)
-        self.assertIn(b"typesafe", r.term, "the prompt names the provider")
+        self.assertIn(b"demo", r.term, "the prompt names the provider")
         result = json.loads(r.out)["result"]
         # The answer of a piped `key-set`, field for field: no value, length or fingerprint.
         self.assertEqual(sorted(result), ["encrypted", "folder", "path", "provider", "scope",
@@ -269,7 +269,7 @@ class KeySetPrompt(unittest.TestCase):
             self.assertNotIn(self.value.encode(), f.read())
 
     def test_the_prompt_answers_like_the_pipe(self):
-        piped, err, code = run_pipe(["key-set", "typesafe", "--shared"], self.env, self.cwd,
+        piped, err, code = run_pipe(["key-set", "demo", "--shared"], self.env, self.cwd,
                                     stdin=self.value + "\n")
         self.assertEqual(code, 0, err)
         # A terminal that ends a line with CR LF sends one more line end: still one line.
