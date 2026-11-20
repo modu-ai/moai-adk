@@ -335,6 +335,80 @@ fn an_issue_project_block_without_specs_gets_the_line_as_a_merge() {
     assert_eq!(Fx::ignore_row(&again)["action"], "unchanged", "{again}");
 }
 
+/// SPEC-20261120-moai-layout REQ-3: the block names `local/` as ignored and allows `tools/` and
+/// `evals/` after the earlier allow-list, whose lines keep their order.
+#[test]
+fn the_block_ignores_local_and_keeps_tools_and_evals() {
+    let fx = Fx::new(None);
+    fx.apply_ok("none");
+    let text = fx.ignore();
+    assert!(
+        text.lines().any(|l| l == ".moai-cli/local/"),
+        "no local/ line:\n{text}"
+    );
+    let allows: Vec<&str> = text.lines().filter(|l| l.starts_with('!')).collect();
+    assert_eq!(
+        allows[allows.len() - 3..],
+        [
+            "!.moai-cli/specs/",
+            "!.moai-cli/tools/",
+            "!.moai-cli/evals/"
+        ],
+        "{text}"
+    );
+    for rel in [".moai-cli/tools/check.sh", ".moai-cli/evals/set.json"] {
+        assert!(!fx.ignored(rel), "{rel} is ignored:\n{text}");
+    }
+    for rel in [
+        ".moai-cli/local/receipts/r1.json",
+        ".moai-cli/local/state/lane.json",
+    ] {
+        assert!(fx.ignored(rel), "{rel} is not ignored:\n{text}");
+    }
+}
+
+/// SPEC-20261120-moai-layout REQ-4, REQ-9: a block written before the layout rule gets its three
+/// new lines as a `merge` in the plan, and the file is not written until the plan is applied.
+#[test]
+fn an_earlier_block_is_shown_as_changed_and_left_until_applied() {
+    let fx = Fx::new(None);
+    fx.apply_ok("none");
+    let full = fx.ignore();
+    let old = full
+        .replace(".moai-cli/local/\n", "")
+        .replace("!.moai-cli/tools/\n", "")
+        .replace("!.moai-cli/evals/\n", "");
+    assert_ne!(old, full, "the block lists the new lines:\n{full}");
+    fs::write(fx.root.join(".gitignore"), &old).unwrap();
+    let path = fx.root.join(".moai-cli/manifests/generation.json");
+    let mut manifest = fx.manifest();
+    for file in manifest["owned_files"].as_array_mut().unwrap() {
+        if file["path"] == ".gitignore" {
+            file["baseline_sha256"] = json!(sha(old.as_bytes()));
+        }
+    }
+    fs::write(&path, serde_json::to_vec_pretty(&manifest).unwrap()).unwrap();
+
+    let plan = fx.plan("none");
+    let row = Fx::ignore_row(&plan);
+    assert_eq!(row["action"], "merge", "{row}");
+    let detail = row["detail"].as_str().unwrap();
+    for line in [
+        "managed block lines: 3 added, 0 removed",
+        "+ .moai-cli/local/",
+        "+ !.moai-cli/tools/",
+        "+ !.moai-cli/evals/",
+    ] {
+        assert!(detail.lines().any(|l| l == line), "{line:?} in:\n{detail}");
+    }
+    assert_eq!(fx.ignore(), old, "the preview wrote");
+
+    fx.apply_ok("none");
+    assert_eq!(fx.ignore(), full);
+    let again = fx.plan("none");
+    assert_eq!(Fx::ignore_row(&again)["action"], "unchanged", "{again}");
+}
+
 /// SPEC-20261117-sdd-foundation REQ-7, REQ-8, REQ-9: this repository's own `.gitignore`, read
 /// by git in a temporary repository without global rules, keeps the SPECs in git, ignores the
 /// rest of the root `.moai/` and every `.moai/` below the root, and ignores credential and
@@ -403,13 +477,16 @@ fn the_plan_shows_the_new_block_line_by_line_and_writes_nothing() {
     assert_eq!(row["action"], "create", "{row}");
     let detail = row["detail"].as_str().unwrap();
     for line in [
-        "managed block lines: 12 added, 0 removed",
+        "managed block lines: 15 added, 0 removed",
         "+ AGENTS.local.md",
         "+ .moai-cli/receipts/",
         "+ .moai-cli/*",
+        "+ .moai-cli/local/",
         "+ !.moai-cli/project.yaml",
         "+ !.moai-cli/manifests/",
         "+ !.moai-cli/specs/",
+        "+ !.moai-cli/tools/",
+        "+ !.moai-cli/evals/",
     ] {
         assert!(detail.lines().any(|l| l == line), "{line:?} in:\n{detail}");
     }
@@ -904,10 +981,13 @@ fn the_plan_shows_the_lines_added_to_a_gitignore_without_a_block() {
     assert_eq!(row["action"], "append", "{row}");
     let detail = row["detail"].as_str().unwrap();
     for line in [
-        "managed block lines: 12 added, 0 removed",
+        "managed block lines: 15 added, 0 removed",
         "+ AGENTS.local.md",
         "+ .moai-cli/*",
+        "+ .moai-cli/local/",
         "+ !.moai-cli/specs/",
+        "+ !.moai-cli/tools/",
+        "+ !.moai-cli/evals/",
     ] {
         assert!(detail.lines().any(|l| l == line), "{line:?} in:\n{detail}");
     }

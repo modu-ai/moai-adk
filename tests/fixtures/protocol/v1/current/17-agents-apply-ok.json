@@ -37,8 +37,8 @@
         "expected_sha256": null,
         "section_id": "moai-local",
         "baseline_sha256": null,
-        "rendered_sha256": "sha256:81d0c891f8c41a84e897d13a733842f15031d1dff9e2c85e55fc9f262f9b076f",
-        "detail": "managed block lines: 11 added, 0 removed\n+ .moai/receipts/\n+ .moai/*\n+ !.moai/project.yaml\n+ !.moai/moai-cli.json\n+ !.moai/moai.json\n+ !.moai/manifests/\n+ !.moai/workflows/\n+ !.moai/config/\n+ !.moai/decisions/\n+ !.moai/docs/\n+ !.moai/specs/"
+        "rendered_sha256": "sha256:75eb76ffdc08b7cccea623f218a447d21d52c9007b24b7a56a05712bdbff8265",
+        "detail": "managed block lines: 14 added, 0 removed\n+ .moai/receipts/\n+ .moai/*\n+ .moai/local/\n+ !.moai/project.yaml\n+ !.moai/moai-cli.json\n+ !.moai/moai.json\n+ !.moai/manifests/\n+ !.moai/workflows/\n+ !.moai/config/\n+ !.moai/decisions/\n+ !.moai/docs/\n+ !.moai/specs/\n+ !.moai/tools/\n+ !.moai/evals/"
       },
       {
         "path": ".moai/manifests/generation.json",
@@ -69,7 +69,7 @@
         ".moai/manifests/generation.json"
       ],
       "files_created": true,
-      "manifest_sha256": "sha256:2b5058e6db8961684afc6ac9ef760173f5087d33363fd569b3d8fbf2e0ce68ef",
+      "manifest_sha256": "sha256:bd43420ef5743586d24c6f987c01a368c25bbf2e70f65986f286d8c09e64bf01",
       "host_loaded": false,
       "execution_verified": false,
       "host_notes": []

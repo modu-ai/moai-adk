@@ -411,20 +411,13 @@ pub fn is_generated_local(bytes: &[u8]) -> bool {
 /// generation manifests and workflows this tool writes into it today, the two generation
 /// markers (a fresh checkout classifies the folder by them), the team's own `config/`,
 /// `decisions/` and `docs/`, and the SPECs in `specs/` for every project, with or without GitHub
-/// Issues (user decision 2026-11-17, SDD always; replaces decision 6892663669). `specs/` stays
-/// last so a block written before that decision for a project without Issues keeps its bytes.
-/// Everything else in the folder is machine output and is ignored.
-const STATE_KEPT: [&str; 9] = [
-    "project.yaml",
-    "moai-cli.json",
-    "moai.json",
-    "manifests/",
-    "workflows/",
-    "config/",
-    "decisions/",
-    "docs/",
-    "specs/",
-];
+/// Issues (user decision 2026-11-17, SDD always; replaces decision 6892663669), and the
+/// project's own development scripts and evaluation sets in `tools/` and `evals/`
+/// (SPEC-20261120-moai-layout). The list is [`crate::state_root::KEPT`], one place; its order is
+/// the order of the block's `!` lines, so the earlier nine keep their places and a block written
+/// before a later line was added differs only by that line. Everything else in the folder is
+/// machine output under `local/` and is ignored.
+const STATE_KEPT: [&str; 11] = crate::state_root::KEPT;
 
 /// The `kind` an owned `.gitignore` block is recorded with: whether it lists `AGENTS.local.md`
 /// (#3009 S3b). A block recorded before this field existed listed it, so `None` reads as listed.
@@ -448,6 +441,9 @@ fn render_ignore(root: &Path, list_local: bool, allow: &[String]) -> String {
     // personal file; src/apply.rs::receipts_rel is the single source of the path.
     body.push_str(&format!("{}/\n", apply::receipts_rel(root)));
     body.push_str(&format!("{state}/*\n"));
+    // The machine's own output lives under `local/`; the line says so (the `*` line above
+    // already covers it, and a user rule cannot change that without a `!` line of its own).
+    body.push_str(&format!("{state}/{}/\n", state_root::LOCAL_DIR));
     for path in allow {
         // `ignore_block` refused a name that cannot be written, so the fallback is not reached.
         let line = escape_ignore_path(path).unwrap_or_else(|| path.clone());

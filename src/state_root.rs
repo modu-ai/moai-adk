@@ -661,6 +661,85 @@ pub fn rel(root: &Path, sub: &str) -> String {
     }
 }
 
+/// What the team keeps in git under the state folder (SPEC-20261120-moai-layout, REQ-1): the
+/// profile, the two generation markers (a fresh checkout classifies the folder by them), the
+/// generation manifests and workflows, the team's own `config/`, `decisions/` and `docs/`, the
+/// SPECs, the project's development scripts in `tools/` and its evaluation sets in `evals/`.
+/// A name ending in `/` is a folder. The order is the order of the managed `.gitignore` block's
+/// `!` lines: the first nine keep the places they had before the layout rule, the last two
+/// follow them.
+pub const KEPT: [&str; 11] = [
+    "project.yaml",
+    "moai-cli.json",
+    "moai.json",
+    "manifests/",
+    "workflows/",
+    "config/",
+    "decisions/",
+    "docs/",
+    "specs/",
+    "tools/",
+    "evals/",
+];
+
+/// The kinds of machine output the folder holds today. Each lives under `local/`, which git
+/// ignores, so a new worktree does not carry a copy of it. The list names what exists; a kind
+/// that is not in [`KEPT`] is local to the machine whether or not it is listed here.
+pub const LOCAL_KINDS: [&str; 15] = [
+    "receipts",
+    "backups",
+    "index",
+    "logs",
+    "state",
+    "cache",
+    "forge",
+    "messages",
+    "archive",
+    "evidence",
+    "imports",
+    "settings-backups",
+    "lane-stop-hook",
+    "project-skill-rollback",
+    "statusline.local.yaml",
+];
+
+/// The places a host reads its own files, which the layout never moves: the instruction file, the
+/// two hosts' folders and the issue templates this tool writes.
+pub const HOST_OWNED: [&str; 4] = ["AGENTS.md", ".claude", ".codex", ".github/ISSUE_TEMPLATE"];
+
+/// The folder of the machine's own output under the state folder.
+pub const LOCAL_DIR: &str = "local";
+
+/// Whether `name` (with or without its trailing `/`) is one of the kinds the team keeps in git.
+pub fn is_kept(name: &str) -> bool {
+    let name = name.trim_end_matches('/');
+    KEPT.iter().any(|k| k.trim_end_matches('/') == name)
+}
+
+/// `<state>/local/<kind>`: where a local kind lives (REQ-2).
+pub fn local_path(root: &Path, kind: &str) -> std::path::PathBuf {
+    path(root, LOCAL_DIR).join(kind)
+}
+
+/// `<state>/<kind>`: where an earlier project kept the kind (REQ-2).
+pub fn earlier_path(root: &Path, kind: &str) -> std::path::PathBuf {
+    path(root, kind)
+}
+
+/// Where a writer creates the kind (REQ-6): always the new place.
+pub fn write_path(root: &Path, kind: &str) -> std::path::PathBuf {
+    local_path(root, kind)
+}
+
+/// Where a reader finds the kind (REQ-5, REQ-10): `local/<kind>` when it exists, else the earlier
+/// `<state>/<kind>`, else `None` (the kind is absent). A link counts as existing, a dangling
+/// one too, so the reader never silently skips to the other place past a broken link.
+pub fn read_path(root: &Path, kind: &str) -> Option<std::path::PathBuf> {
+    [local_path(root, kind), earlier_path(root, kind)]
+        .into_iter()
+        .find(|p| fs::symlink_metadata(p).is_ok())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1605,5 +1684,85 @@ mod tests {
         assert!(c.legacy_root);
         assert_eq!(c.to_json()["legacy_root"], json!(crate::PROJECT_STATE_DIR));
         assert_eq!(verdict(|_| {}).to_json()["legacy_root"], Value::Null);
+    }
+
+    /// The layout rule: eleven kinds the team keeps in git, everything else under `local/`.
+    #[test]
+    fn the_layout_names_kept_kinds_and_local_paths() {
+        let kept: Vec<&str> = KEPT.iter().map(|k| k.trim_end_matches('/')).collect();
+        assert_eq!(
+            kept,
+            [
+                "project.yaml",
+                "moai-cli.json",
+                "moai.json",
+                "manifests",
+                "workflows",
+                "config",
+                "decisions",
+                "docs",
+                "specs",
+                "tools",
+                "evals"
+            ]
+        );
+        assert!(is_kept("tools") && is_kept("evals") && is_kept("specs"));
+        assert!(!is_kept("receipts") && !is_kept("local"));
+        for kind in LOCAL_KINDS {
+            assert!(!is_kept(kind), "{kind} is both kept and local");
+        }
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        assert_eq!(
+            local_path(root, "receipts"),
+            root.join(dir(root)).join("local/receipts")
+        );
+        assert_eq!(
+            earlier_path(root, "receipts"),
+            root.join(dir(root)).join("receipts")
+        );
+        assert_eq!(write_path(root, "receipts"), local_path(root, "receipts"));
+    }
+
+    /// A reader takes `local/<kind>` first and the earlier `<state>/<kind>` when the new one is
+    /// absent; a writer creates only the new one and leaves the earlier one as it was.
+    #[test]
+    fn a_reader_falls_back_to_the_earlier_path_and_a_writer_uses_the_new_one() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path();
+        assert_eq!(read_path(root, "receipts"), None, "neither path exists");
+
+        write(root, &format!("{}/receipts/old.json", dir(root)), "old");
+        assert_eq!(
+            read_path(root, "receipts"),
+            Some(earlier_path(root, "receipts"))
+        );
+
+        let new = write_path(root, "receipts");
+        fs::create_dir_all(&new).unwrap();
+        fs::write(new.join("new.json"), "new").unwrap();
+        assert_eq!(
+            read_path(root, "receipts"),
+            Some(local_path(root, "receipts"))
+        );
+        assert_eq!(
+            fs::read_to_string(earlier_path(root, "receipts").join("old.json")).unwrap(),
+            "old",
+            "the earlier folder is untouched"
+        );
+        assert!(!earlier_path(root, "receipts").join("new.json").exists());
+    }
+
+    /// The files a host reads in a fixed place are not part of the layout.
+    #[test]
+    fn host_owned_files_are_not_in_the_layout() {
+        for name in HOST_OWNED {
+            assert!(!is_kept(name), "{name} is listed as kept");
+            assert!(!LOCAL_KINDS.contains(&name), "{name} is listed as local");
+        }
+        assert_eq!(
+            HOST_OWNED,
+            ["AGENTS.md", ".claude", ".codex", ".github/ISSUE_TEMPLATE"]
+        );
     }
 }
