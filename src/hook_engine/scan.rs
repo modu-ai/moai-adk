@@ -332,7 +332,7 @@ fn command_injection(line: &Line) -> bool {
 /// or `None` when the file lies outside the project (a `..`, another root). An absolute path
 /// that does not start with `cwd` is resolved through the file system once (a link such as
 /// `/var` for `/private/var`) and judged again; the file's content is never read.
-fn project_relative(raw: &str, cwd: &Path) -> Option<String> {
+pub(super) fn project_relative(raw: &str, cwd: &Path) -> Option<String> {
     let path = Path::new(raw);
     let resolved;
     let rel = if path.is_absolute() {
@@ -460,7 +460,15 @@ pub(super) fn scan_call(tool: &str, tool_input: &Value, cwd: &Path) -> Vec<(Stri
 /// The notification: fixed words, at most [`LISTED_MAX`] findings within [`NOTE_MAX_BYTES`], the
 /// rest counted. It never repeats the matched text.
 pub(super) fn notification(found: &[(String, Finding)]) -> String {
-    let mut text = HEADER.to_string();
+    notification_with(HEADER, found)
+}
+
+/// The opening words of the notification the turn-end duty sends (SPEC-20261121-security-scan-turn).
+pub(super) const TURN_HEADER: &str = "MoAI security-scan (advisory, nothing was blocked): the changes of this turn hold patterns worth a look. Check them before you finish.";
+
+/// [`notification`] with the opening words the caller names; the same entries, the same bounds.
+pub(super) fn notification_with(header: &str, found: &[(String, Finding)]) -> String {
+    let mut text = header.to_string();
     let mut listed = 0;
     for (index, (path, finding)) in found.iter().enumerate().take(LISTED_MAX) {
         let entry = format!(
@@ -610,5 +618,34 @@ mod tests {
         let long = notification(&many(7, &"d".repeat(250)));
         assert!(long.len() <= NOTE_MAX_BYTES, "{} bytes", long.len());
         assert!(long.starts_with(HEADER));
+    }
+
+    /// The turn-end notification has opening words of its own and keeps every bound of the
+    /// write-time one: the same entries, five listed, the rest counted, 800 bytes at most.
+    #[test]
+    fn the_turn_header_changes_only_the_opening_words() {
+        let found: Vec<(String, Finding)> = (1..=7)
+            .map(|line| {
+                (
+                    "d".repeat(250),
+                    Finding {
+                        class: Class::HardcodedSecret,
+                        line,
+                    },
+                )
+            })
+            .collect();
+        let turn = notification_with(TURN_HEADER, &found);
+        assert!(
+            turn.starts_with(TURN_HEADER) && turn.len() <= NOTE_MAX_BYTES,
+            "{turn}"
+        );
+        let write = notification(&found);
+        assert_eq!(
+            turn.strip_prefix(TURN_HEADER),
+            write.strip_prefix(HEADER),
+            "only the header differs"
+        );
+        assert!(TURN_HEADER.contains("this turn") && !TURN_HEADER.contains("just wrote"));
     }
 }

@@ -40,6 +40,7 @@
 //! Issue numbers only; tool input, branch names and file content are never echoed.
 
 mod scan;
+mod turn;
 
 use serde_json::{json, Value};
 use std::path::Path;
@@ -61,6 +62,10 @@ pub enum Event {
     /// critical and high classes; the rule `security_scan` decides between nothing, a
     /// `would_notify` line (the default) and a notification (Claude Code and Codex).
     SecurityScan,
+    /// SPEC-20261121-security-scan-turn: at the end of a turn (Stop, Claude Code) the changes of
+    /// the turn are scanned once per session; the rule `security_turn` decides between nothing,
+    /// a `would_notify` line (the default) and a `systemMessage`. It never blocks.
+    SecurityTurn,
 }
 
 impl Event {
@@ -72,6 +77,7 @@ impl Event {
             "turn-validation" => Some(Event::TurnValidation),
             "edit-diagnostics" => Some(Event::EditDiagnostics),
             "security-scan" => Some(Event::SecurityScan),
+            "security-turn" => Some(Event::SecurityTurn),
             _ => None,
         }
     }
@@ -82,7 +88,7 @@ impl Event {
             Event::SessionCheck => "SessionStart",
             Event::ToolPreflight => "PreToolUse",
             Event::ToolObserve | Event::EditDiagnostics | Event::SecurityScan => "PostToolUse",
-            Event::TurnValidation => "Stop",
+            Event::TurnValidation | Event::SecurityTurn => "Stop",
         }
     }
 }
@@ -149,7 +155,7 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
     };
     let Some(event) = Event::parse(event) else {
         return engine_error(
-            "unknown hook event; must be session-check, tool-preflight, tool-observe, turn-validation, edit-diagnostics or security-scan",
+            "unknown hook event; must be session-check, tool-preflight, tool-observe, turn-validation, edit-diagnostics, security-scan or security-turn",
         );
     };
     // OMP's turn-end event is `session_stop` (OMP 18.18.7, extensions.md), but the generated
@@ -169,6 +175,10 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
     // wiring for it.
     if event == Event::SecurityScan && host == Host::Omp {
         return engine_error("security-scan is not wired for OMP");
+    }
+    // The turn-end scan is Claude Code only in this release (SPEC-20261121-security-scan-turn).
+    if event == Event::SecurityTurn && host != Host::Claude {
+        return engine_error("security-turn is Claude Code only in this release");
     }
     let Ok(Value::Object(input)) = serde_json::from_slice::<Value>(stdin) else {
         // A PostToolUse input carries the whole tool result; one past the stdin bound is cut
@@ -206,6 +216,10 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
             Host::Omp => render_omp(event, verdict),
         };
     }
+    if event == Event::SecurityTurn {
+        let verdict = security_turn(&input, cwd, now_unix_ms, host);
+        return render_claude(event, verdict);
+    }
     // The sentence of a guard whose text is fixed (set by tool-preflight); see `record_deny`.
     let mut fixed_reason: Option<&'static str> = None;
     let verdict = match event {
@@ -229,7 +243,7 @@ pub fn dispatch(host: &str, event: &str, stdin: &[u8], cwd: &Path, now_unix_ms: 
         Event::ToolObserve => tool_observe(&input, cwd, now_unix_ms, host),
         Event::TurnValidation => turn_validation_with(STOP_RULES, &input, cwd, now_unix_ms),
         // Answered above, before any verdict.
-        Event::EditDiagnostics | Event::SecurityScan => Verdict::Allow,
+        Event::EditDiagnostics | Event::SecurityScan | Event::SecurityTurn => Verdict::Allow,
     };
     if let (Event::ToolPreflight, Verdict::Deny(_)) = (event, &verdict) {
         record_deny(&input, cwd, now_unix_ms, host, fixed_reason);
@@ -416,6 +430,71 @@ fn security_scan(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) -> Ve
     });
     let _ = crate::hooks::append_receipt_line(cwd, SECURITY_SCAN_LOG, &line);
     Verdict::Allow
+}
+
+/// The rule id of the turn-end duty in `[hooks.modes]` (SPEC-20261121-security-scan-turn).
+pub const SECURITY_TURN_RULE: &str = "security_turn";
+
+/// security-turn (Stop, Claude Code): scans what the turn changed and only ever notifies. The
+/// mode of [`SECURITY_TURN_RULE`] decides: `off` does nothing at all (no git command, no file
+/// read); `observe` (the default) writes one `would_notify` line and prints nothing; `enforce`
+/// writes one `notified` line and answers with the notification as `systemMessage`. A turn that
+/// already continues because of a stop hook, a set of findings this session was already told
+/// (same digest) and any failure to read the changes write and print nothing.
+fn security_turn(input: &Value, cwd: &Path, now_unix_ms: u128, host: Host) -> Verdict {
+    use crate::hook_config::RuleMode;
+    let loaded = crate::hook_config::load();
+    if let Some(problem) = loaded.problem {
+        record_config_error(input, cwd, now_unix_ms, host, problem);
+    }
+    let mode = loaded.config.mode_of(SECURITY_TURN_RULE);
+    if mode == RuleMode::Off || input["stop_hook_active"] == json!(true) {
+        return Verdict::Allow;
+    }
+    let Some(found) = turn::collect(cwd) else {
+        return Verdict::Allow;
+    };
+    if found.is_empty() {
+        return Verdict::Allow;
+    }
+    let digest = turn::digest_of(&found);
+    let session = session_key(input);
+    let told =
+        crate::hooks::receipt_lines_in(crate::hooks::env_home().as_deref(), cwd, SECURITY_SCAN_LOG)
+            .iter()
+            .any(|line| {
+                line["rule"] == json!(SECURITY_TURN_RULE)
+                    && line["session"] == json!(session)
+                    && line["digest"] == json!(digest)
+            });
+    if told {
+        return Verdict::Allow;
+    }
+    let classes: std::collections::BTreeSet<scan::Class> =
+        found.iter().map(|item| item.finding.class).collect();
+    let classes: Vec<&str> = classes.iter().map(|class| class.name()).collect();
+    let enforce = mode == RuleMode::Enforce;
+    let line = json!({
+        "schema_version": 1,
+        "kind": if enforce { "notified" } else { "would_notify" },
+        "rule": SECURITY_TURN_RULE,
+        "classes": classes,
+        "findings": found.len(),
+        "digest": digest,
+        "host": host.name(),
+        "session": session,
+        "call": call_key(input),
+        "unix_ms": now_unix_ms as u64,
+    });
+    let _ = crate::hooks::append_receipt_line(cwd, SECURITY_SCAN_LOG, &line);
+    if !enforce {
+        return Verdict::Allow;
+    }
+    let pairs: Vec<(String, scan::Finding)> = found
+        .into_iter()
+        .map(|item| (item.path, item.finding))
+        .collect();
+    Verdict::Context(scan::notification_with(scan::TURN_HEADER, &pairs))
 }
 
 /// An unusable `~/.moai-cli/hook-config.toml` leaves one `config_error` line (session, host, fixed
@@ -636,6 +715,9 @@ fn render_claude(event: Event, verdict: Verdict) -> Answer {
         (Event::TurnValidation, Verdict::Deny(reason)) => {
             json!({"decision": "block", "reason": reason}).to_string()
         }
+        // The turn-end notification is a message to the user and nothing else: no decision, no
+        // `continue`, no `hookSpecificOutput` (SPEC-20261121-security-scan-turn REQ-4).
+        (Event::SecurityTurn, Verdict::Context(text)) => json!({"systemMessage": text}).to_string(),
         // A verdict the duty cannot carry is a bug in the policy core, reported, not guessed.
         _ => return engine_error("policy returned a verdict this duty cannot carry"),
     };
