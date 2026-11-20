@@ -228,9 +228,27 @@ jobs:
               Windows)
                 # The Windows 2025 image ships no ripgrep (its toolset json lists no
                 # ripgrep package; the add-ripgrep runner-image request closed as
-                # not_planned), and the check set's repo scans need it. The Chocolatey
-                # shim lands on PATH for the steps below.
-                choco install ripgrep
+                # not_planned), and the check set's repo scans need it. Pinned like the
+                # Linux installer: the sha256 below is a reviewed literal, checked before
+                # the archive is unpacked or put on PATH (the candidate-target precedent).
+                version=14.1.1
+                name="ripgrep-${version}-x86_64-pc-windows-msvc"
+                sum=d0f534024c42afd6cb4d38907c25cd2b249b79bbe6cc1dbee8e3e37c2b6e25a1
+                tmp="$(cygpath -u "$RUNNER_TEMP")"
+                work="${tmp}/moai-ripgrep"
+                mkdir -p "${work}/bin"
+                curl --proto '=https' --tlsv1.2 -fsSL --retry 3 -o "${work}/archive.zip" \
+                  "https://github.com/BurntSushi/ripgrep/releases/download/${version}/${name}.zip"
+                actual="$(sha256sum "${work}/archive.zip" | cut -d' ' -f1)"
+                if [ "$actual" != "$sum" ]; then
+                  echo "ripgrep checksum mismatch: expected $sum, got $actual" >&2
+                  exit 1
+                fi
+                # bsdtar unpacks a zip; the GNU tar first on PATH in Git Bash does not.
+                /c/Windows/System32/tar.exe -xf "${work}/archive.zip" -C "${work}" "${name}/rg.exe"
+                cp "${work}/${name}/rg.exe" "${work}/bin/rg.exe"
+                cygpath -w "${work}/bin" >> "$GITHUB_PATH"
+                export PATH="${work}/bin:${PATH}"
                 ;;
               *)
                 echo "ripgrep installation is not configured for $RUNNER_OS" >&2
@@ -239,18 +257,6 @@ jobs:
             esac
           fi
           rg --version
-      - name: python3 name (Windows runners ship python without one)
-        if: ${{ env.CI_SCOPE == 'full' && runner.os == 'Windows' }}
-        shell: bash
-        run: |
-          # The check set's unittest step calls python3 by name; a Windows runner ships
-          # python and no python3 command (actions/setup-python #1079, maintainer-
-          # confirmed; the Windows 2025 image lists Python 3.12 with no python3.exe).
-          # The link is a CI-machine step: it keeps the one local check set (#2906 S5a)
-          # byte-identical on every runner, the unittest runner included.
-          mkdir -p "$RUNNER_TEMP/py3-bin"
-          ln -s "$(command -v python)" "$RUNNER_TEMP/py3-bin/python3"
-          echo "$RUNNER_TEMP/py3-bin" >> "$GITHUB_PATH"
       # rustup reads rust-toolchain.toml (#2029). A runner can start with a partially installed
       # copy of the pinned toolchain (rustup#4724); repairing it in place can fail with a
       # component file conflict (rustup#2417), so remove it first and install explicitly, with
@@ -302,13 +308,17 @@ jobs:
         shell: bash
         run: |
           version=0.9.151
+          member=cargo-nextest
+          if [ "$RUNNER_OS" = Windows ]; then member=cargo-nextest.exe; fi
+          tmp="$RUNNER_TEMP"
+          if [ "$RUNNER_OS" = Windows ]; then tmp="$(cygpath -u "$RUNNER_TEMP")"; fi
           case "${{ matrix.target }}" in
             linux-x86_64) asset=x86_64-unknown-linux-gnu; sum=1d4ce302b820c41f4b89c5fb9bce45f0f0c94882c1cf08fc360caf08be6e7df4 ;;
             macos-arm64) asset=universal-apple-darwin; sum=d1d7d025d4bfc9fb154cd76aea3949bd78534829a0589abefa6e5dd4edb135dd ;;
             windows-x86_64) asset=x86_64-pc-windows-msvc; sum=e51bdb4b5883df48f335381b287378edb244318fac65ae0adaf6b9e69298246b ;;
             *) echo "no pinned cargo-nextest asset for ${{ matrix.target }}" >&2; exit 1 ;;
           esac
-          file="$RUNNER_TEMP/cargo-nextest-${version}-${asset}.tar.gz"
+          file="${tmp}/cargo-nextest-${version}-${asset}.tar.gz"
           curl --proto '=https' --tlsv1.2 -fsSL --retry 3 -o "$file" \
             "https://github.com/nextest-rs/nextest/releases/download/cargo-nextest-${version}/cargo-nextest-${version}-${asset}.tar.gz"
           actual="$( (sha256sum "$file" 2>/dev/null || shasum -a 256 "$file") | cut -d' ' -f1)"
@@ -317,7 +327,7 @@ jobs:
             exit 1
           fi
           mkdir -p "$HOME/.cargo/bin"
-          tar xzf "$file" -C "$HOME/.cargo/bin" cargo-nextest
+          tar xzf "$file" -C "$HOME/.cargo/bin" "$member"
           cargo nextest --version
       # C-20 (SPEC-20261119-ci-check-set-legs): the rest leg's python unittest runs tests
       # that execute ${CARGO_TARGET_DIR:-target}/debug/moai-cli (tests/self_audit_run.py,

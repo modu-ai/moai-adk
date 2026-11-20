@@ -7,6 +7,7 @@ comparison is a separate, explicitly authorized `gh` step recorded in the Issue 
 """
 import importlib.util
 import json
+import os
 import pathlib
 import re
 import shutil
@@ -391,7 +392,10 @@ class WorkflowTest(unittest.TestCase):
         """SPEC-20261120-release-pr-three-os: the windows-x86_64 leg downloads the same
         pinned cargo-nextest through its own asset, verified against the release's .sha256
         (read 2026-11-20) the way the linux and macos assets are; a mismatch still fails
-        the leg loudly, with no fallback."""
+        the leg loudly, with no fallback. The audit's B1: the Windows tar member carries
+        the .exe suffix and `$RUNNER_TEMP` is a Windows path — the candidate-target
+        precedent converts it (cygpath -u) before curl, sha256sum and tar read it, and
+        the tar member is the .exe name."""
         flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
         install = next(s for s in flow["jobs"]["check"]["steps"]
                        if s.get("name") == "cargo-nextest (pinned, sha256-checked)")
@@ -399,29 +403,147 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn("windows-x86_64) asset=x86_64-pc-windows-msvc", run)
         self.assertIn("e51bdb4b5883df48f335381b287378edb244318fac65ae0adaf6b9e69298246b", run)
         self.assertIn("checksum mismatch", run)
+        self.assertIn("member=cargo-nextest", run)
+        self.assertIn('member=cargo-nextest.exe', run)
+        self.assertIn('tmp="$(cygpath -u "$RUNNER_TEMP")"', run)
+        self.assertIn('tar xzf "$file" -C "$HOME/.cargo/bin" "$member"', run)
 
-    def test_windows_runners_get_ripgrep_and_a_python3_name(self):
-        """SPEC-20261120-release-pr-three-os: the two machine-setup gaps the Windows legs
-        would hit are covered in the workflow — the image ships no ripgrep (its toolset
-        json lists no ripgrep package; the add-ripgrep request closed as not_planned), and
-        no python3 command name (actions/setup-python #1079, maintainer-confirmed): choco
-        installs ripgrep on Windows, and one Windows-only step links the runner's python
-        under python3 through GITHUB_PATH so the check set's unittest step stays the one
-        step it is on every runner (tools/local_check.sh untouched)."""
+    def test_windows_nextest_step_runs_end_to_end_with_stubs(self):
+        """The audit's B1 wanted the step run, not its strings pinned: on a Windows
+        RUNNER_OS with a Windows-shaped temp path, the install script runs end to end
+        against stub curl/sha256sum/cygpath/tar/cargo — the temp path is converted, the
+        .exe member is the one unpacked, the checksum passes, and the binary lands under
+        the test HOME's .cargo/bin. The stubs are shell scripts defined here, so this
+        stays a Unix-side test and adds nothing to the repository."""
+        flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
+        install = next(s for s in flow["jobs"]["check"]["steps"]
+                       if s.get("name") == "cargo-nextest (pinned, sha256-checked)")
+        script = install["run"].replace("${{ matrix.target }}", "windows-x86_64")
+        with tempfile.TemporaryDirectory(prefix="ac-nextest-") as tmp:
+            posix_tmp = os.path.join(tmp, "runner", "posix")
+            home = os.path.join(tmp, "home")
+            os.makedirs(posix_tmp)
+            os.makedirs(home)
+            bin_dir = os.path.join(tmp, "stubbin")
+            os.makedirs(bin_dir)
+            stubs = {
+                "curl": "#!/bin/sh\n"
+                        "out=\"\"\n"
+                        "prev=\"\"\n"
+                        "for a in \"$@\"; do\n"
+                        "  [ \"$prev\" = \"-o\" ] && out=\"$a\"\n"
+                        "  prev=\"$a\"\n"
+                        "done\n"
+                        "printf 'stub archive\\n' > \"$out\"\n",
+                "sha256sum": "#!/bin/sh\necho \"e51bdb4b5883df48f335381b287378edb244318fac65ae0adaf6b9e69298246b  $1\"\n",
+                "cygpath": "#!/bin/sh\nshift\nprintf '%s\\n' \"$CYGPATH_TARGET\"\n",
+                "tar": "#!/bin/sh\n"
+                       "mode=\"$1\"; shift\n"
+                       "if [ \"$mode\" = \"xzf\" ]; then\n"
+                       "  file=\"$1\"; shift\n"
+                       "  [ \"$1\" = \"-C\" ] && { shift; dir=\"$1\"; shift; }\n"
+                       "  member=\"$1\"\n"
+                       "  case \"$CARGO_ARCHIVE_MEMBERS\" in\n"
+                       "    *\"$member\"*) printf '#!/bin/sh\\necho \"cargo-nextest 0.9.151 (stub)\"\\n' > \"$dir/$member\"; chmod +x \"$dir/$member\" ;;\n"
+                       "    *) echo \"tar: $member: Not found in archive\" >&2; exit 2 ;;\n"
+                       "  esac\n"
+                       "fi\n",
+                "cargo": "#!/bin/sh\n[ \"$1\" = \"nextest\" ] && { echo \"cargo-nextest 0.9.151 (stub)\"; exit 0; }\nexit 0\n",
+            }
+            for name, body in stubs.items():
+                path = os.path.join(bin_dir, name)
+                with open(path, "w", encoding="utf-8") as fh:
+                    fh.write(body)
+                os.chmod(path, 0o755)
+            script_path = os.path.join(tmp, "step.sh")
+            with open(script_path, "w", encoding="utf-8") as fh:
+                fh.write(script)
+            env = dict(os.environ,
+                       RUNNER_OS="Windows",
+                       RUNNER_TEMP="C:\\runner\\temp",
+                       HOME=home,
+                       PATH=bin_dir + os.pathsep + os.environ.get("PATH", ""),
+                       CARGO_ARCHIVE_MEMBERS="cargo-nextest.exe",
+                       CYGPATH_TARGET=posix_tmp)
+            out = subprocess.run(["bash", script_path], capture_output=True,
+                                 text=True, env=env)
+            self.assertEqual(out.returncode, 0, out.stderr or out.stdout)
+            self.assertTrue(
+                os.path.isfile(os.path.join(
+                    posix_tmp,
+                    "cargo-nextest-0.9.151-x86_64-pc-windows-msvc.tar.gz")),
+                "curl wrote the archive through the converted path")
+            self.assertTrue(
+                os.path.isfile(os.path.join(home, ".cargo", "bin", "cargo-nextest.exe")),
+                "the .exe member was unpacked under the cargo bin")
+
+    def test_windows_runners_get_a_pinned_ripgrep(self):
+        """SPEC-20261120-release-pr-three-os: the Windows 2025 image ships no ripgrep
+        (its toolset json lists no ripgrep package; the add-ripgrep request closed as
+        not_planned), so the workflow installs the pinned official release — 14.1.1,
+        sha256 checked before unpack, put on PATH — the candidate-target precedent, not a
+        package manager. The runner's Git Bash answers `python3` on the real runner (run
+        44634311021), so no interpreter shim exists here."""
         flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
         steps = flow["jobs"]["check"]["steps"]
         names = [s.get("name") for s in steps]
         rg = steps[names.index("Install and verify ripgrep (C10a baseline)")]["run"]
         self.assertIn("Windows)", rg)
-        self.assertIn("choco install ripgrep", rg)
-        shim = steps[names.index("python3 name (Windows runners ship python without one)")]
-        self.assertEqual(shim["if"],
-                         "${{ env.CI_SCOPE == 'full' && runner.os == 'Windows' }}")
-        self.assertIn('ln -s "$(command -v python)" "$RUNNER_TEMP/py3-bin/python3"',
-                      shim["run"])
-        self.assertIn("GITHUB_PATH", shim["run"])
+        self.assertNotIn("choco", rg)
+        self.assertIn("version=14.1.1", rg)
+        self.assertIn("d0f534024c42afd6cb4d38907c25cd2b249b79bbe6cc1dbee8e3e37c2b6e25a1", rg)
+        self.assertIn("checksum mismatch", rg)
+        self.assertIn('cygpath -u "$RUNNER_TEMP"', rg)
+        self.assertIn("GITHUB_PATH", rg)
         self.assertLess(names.index("Install and verify ripgrep (C10a baseline)"),
                         names.index("Check set"))
+
+    def test_release_head_ref_guard_rejects_near_misses(self):
+        """The audit's N3: the guard reads the head branch family the release naming
+        rules spell — `release/v…`, a lowercase r and the v right after the slash, no
+        wider family. `feature/release/v4…` and `Release/v4…` are ordinary pull requests;
+        only `release/v…` picks the three-OS list. The test runs the guard's own `case`
+        pattern extracted from the decide script, so the pin cannot drift from it."""
+        flow = dict(self.workflows())[WORKFLOWS / "ci.yml"]
+        script = next(s for s in flow["jobs"]["targets"]["steps"]
+                      if s.get("id") == "decide")["run"]
+        match = re.search(
+            r'case "\$\{HEAD_REF:-\}" in\s*\n\s*(release/v\*)\)\s*matrix="\$release" ;;',
+            script,
+        )
+        self.assertIsNotNone(match,
+                             "the decide script's guard lost its release/v* pattern")
+        pattern = match.group(1)
+        cases = [
+            ("release/v4.2647.10", "release"),
+            ("release/v", "release"),
+            ("feature/release/v4.2647.10", "ordinary"),
+            ("Release/v4.2647.10", "ordinary"),
+            ("release-x/v4.2647.10", "ordinary"),
+        ]
+        for head_ref, want in cases:
+            with self.subTest(head_ref=head_ref):
+                guard = (
+                    'case "$1" in\n'
+                    f'  {pattern}) echo release ;;\n'
+                    '  *) echo ordinary ;;\n'
+                    'esac'
+                )
+                out = subprocess.run(["bash", "-c", guard, "guard", head_ref],
+                                     capture_output=True, text=True)
+                self.assertEqual(out.stdout.strip(), want, out.stderr)
+
+    def test_release_naming_and_the_ci_guard_name_the_same_family(self):
+        """The release workflow names its releases by the HeadVer shape its rules spell
+        (`{head}.{yearweek}.{build}`) and the ci guard reads exactly that branch family
+        (`release/v…`) — the same family, pinned together so a rename on one side fails
+        here (the audit's release.yml rule)."""
+        release_text = (WORKFLOWS / "release.yml").read_text(encoding="utf-8")
+        self.assertIn("{head}.{yearweek}", release_text)
+        ci = dict(self.workflows())[WORKFLOWS / "ci.yml"]
+        script = next(s for s in ci["jobs"]["targets"]["steps"]
+                      if s.get("id") == "decide")["run"]
+        self.assertIn("release/v*", script)
 
     def test_ordinary_prs_keep_todays_matrix(self):
         """SPEC-20261120-release-pr-three-os: a head branch name that is not a release
