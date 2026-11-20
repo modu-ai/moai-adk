@@ -30,4 +30,3 @@ Moai-Spec: SPEC-20261120-load-tolerant-time-bounds
 Moai-Session: 9ebb4435-547b-459a-a771-14aba15db85b:5c385eafbc9e
 Moai-Verified: tests
 Co-Authored-By: Claude Code <noreply@anthropic.com>
-

@@ -44,12 +44,12 @@ index 3b8e8112c2..ac4bab58ca 100644
 +// OMP support was removed (SPEC-20261120-drop-omp): the legacy table runs the three live
 +// hosts; the retired host keeps its own skip-contract tests in hooks_cli.
 +const ALL: [Host; 3] = [CLAUDE, CODEX, CODEX_LANE];
- 
+
  /// One temporary world: `root/project`, `root/home` and the PATH folders `rust`, `go`.
  struct World {
 @@ -448,7 +441,7 @@ fn mixed_and_receipt_less_installs_are_held() {
      assert_eq!(w.read(CLAUDE.file), before);
- 
+
      // Codex and OMP: a whole-file receipt; an edited file or no receipt is a review.
 -    for h in [CODEX, CODEX_LANE, OMP] {
 +    for h in [CODEX, CODEX_LANE] {
@@ -66,7 +66,7 @@ index 3b8e8112c2..ac4bab58ca 100644
 -    let p = plan_envelope(&w, OMP, &w.rust());
 -    assert!(p.to_string().contains("preservation review"), "{p}");
  }
- 
+
  /// A file the receipt owns whole but that is neither the old nor the current set (an earlier
 @@ -618,22 +606,4 @@ fn an_earlier_owned_set_is_replaced_whole_and_named() {
      assert_eq!(m["entries"], json!([]), "{p}");
@@ -98,7 +98,7 @@ index e9ad675101..2f2529d456 100644
 @@ -628,120 +628,6 @@ fn cli_raw(args: &[&str], cwd: &Path, home: &Path, stdin: &[u8]) -> (i32, String
      )
  }
- 
+
 -/// #2239 × #2238: the user-facing settings op never writes `hooks` itself, and changing
 -/// `outputStyle` after hooks-apply keeps the generated hook set instead of removing it.
 -#[test]
@@ -214,7 +214,7 @@ index e9ad675101..2f2529d456 100644
 -}
 -
  // ---- SPEC-20261119-enforce-merge-confirm: a direct pull request merge asks first ----
- 
+
  /// Commands that merge a pull request outside the gate.
 diff --git a/tests/hooks_conflict_choices_cli.rs b/tests/hooks_conflict_choices_cli.rs
 index 4a4ce675c7..c288261a38 100644
@@ -229,12 +229,12 @@ index 4a4ce675c7..c288261a38 100644
 +// the retired host answers a skip plan (its skip-contract tests live in hooks_cli).
 +const BOTH: [H; 1] = [CODEX];
  const BACKUPS: &str = ".moai-cli/backups";
- 
+
  struct Fx {
 @@ -397,24 +399,6 @@ fn plan_replace_reports_the_replacement_and_writes_nothing() {
      assert_eq!(before, fx.tree(), "the plan wrote something");
  }
- 
+
 -/// AC-1 (REQ-1): omp takes the same path and names a `.ts` backup.
 -#[test]
 -fn plan_replace_for_omp_names_the_ts_backup() {
@@ -298,7 +298,7 @@ index 4a4ce675c7..c288261a38 100644
          json!(false)
      );
  }
- 
+
 +/// The retired host answers a skip plan with its notice, whatever the replace flag asks for
 +/// (SPEC-20261120-drop-omp): the replace path never runs for it.
 +#[test]
@@ -314,12 +314,12 @@ index 4a4ce675c7..c288261a38 100644
 +}
 +
  // ---- apply ------------------------------------------------------------------------------
- 
+
  /// AC-2 (REQ-3, REQ-7): the replace apply backs the original up byte for byte (mode 0600), writes
 @@ -622,20 +620,6 @@ fn apply_replace_writes_backup_then_file_then_receipt_and_settles() {
      assert_eq!(fx.backups().len(), 1);
  }
- 
+
 -/// AC-2 (REQ-3, REQ-7): the same for omp.
 -#[test]
 -fn apply_replace_for_omp_settles() {
@@ -340,7 +340,7 @@ index 4a4ce675c7..c288261a38 100644
 @@ -652,24 +636,6 @@ fn apply_without_the_flag_refuses_the_replace_digest() {
      }
  }
- 
+
 -/// AC-2 (REQ-4): a digest of a file that changed since is refused before any backup exists.
 -#[test]
 -fn apply_refuses_a_stale_replace_digest_after_the_file_changed() {
@@ -456,7 +456,7 @@ index 4ffc886b96..4f92438757 100644
 +    assert_eq!(s["apply"], Value::Null, "{s}");
 +    assert_eq!(step(&again, "omp-hooks")["state"], "skip", "{again}");
  }
- 
+
  #[test]
 @@ -1738,6 +1738,13 @@ fn host_steps_follow_the_profile_hosts() {
          }
@@ -486,13 +486,13 @@ index 4ffc886b96..4f92438757 100644
 +    assert_eq!(step(&plan, "omp-hooks")["state"], "skip", "{plan}");
      assert_eq!(step(&plan, "omp-config")["state"], "skip", "{plan}");
  }
- 
+
 diff --git a/tests/update_end_to_end_cli.rs b/tests/update_end_to_end_cli.rs
 index 0f4e1a827e..2c673ffc9e 100644
 --- a/tests/update_end_to_end_cli.rs
 +++ b/tests/update_end_to_end_cli.rs
 @@ -309,14 +309,13 @@ fn assert_walks_to_the_end(fx: &GoFx, expected: &[&str]) -> Walk {
- 
+
  /// The order every shape runs: the settings clean-up, the move of the Go folder, then the
  /// install steps that have something to write (the MoAI files, the hook set, the host files).
 -const ORDER: [&str; 7] = [
@@ -505,7 +505,7 @@ index 0f4e1a827e..2c673ffc9e 100644
      "codex-config",
 -    "omp-hooks",
  ];
- 
+
  #[test]
 @@ -572,7 +571,7 @@ fn the_printed_undo_order_takes_the_chain_back_to_the_start_bytes() {
              .map(|c| c.as_str().unwrap().to_string())
@@ -584,7 +584,7 @@ index 2f2529d456..47413800b4 100644
 @@ -274,6 +274,38 @@ fn claude_hooks_keep_other_owned_keys() {
      assert_eq!(receipt["owned"]["outputStyle"], json!("MoAI"));
  }
- 
+
 +/// #2239 × #2238: the user-facing settings op never writes `hooks` itself, and changing
 +/// `outputStyle` after hooks-apply keeps the generated hook set instead of removing it.
 +#[test]
@@ -627,7 +627,7 @@ index c288261a38..0b18a42afc 100644
 @@ -636,6 +636,24 @@ fn apply_without_the_flag_refuses_the_replace_digest() {
      }
  }
- 
+
 +/// AC-2 (REQ-4): a digest of a file that changed since is refused before any backup exists.
 +#[test]
 +fn apply_refuses_a_stale_replace_digest_after_the_file_changed() {
@@ -656,7 +656,7 @@ index 86ff2c58f5..a065060dd5 100644
 @@ -434,6 +434,75 @@ fn a_receipt_id_of_another_shape_is_refused() {
      assert!(text.contains("hook receipt not found"), "{text}");
  }
- 
+
 +/// R2 of the removal audit: a receipt an older binary wrote names OMP, which this binary no
 +/// longer plans for — the revert still recognizes the retired host, gives back the file the
 +/// old binary replaced, removes the file it created, and marks the receipt reverted. The
